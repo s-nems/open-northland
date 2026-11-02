@@ -22,6 +22,7 @@ import {
   VehicleDrive,
   VehicleMarchRoute,
   VehicleRoute,
+  VehicleStock,
   vehicleCommander,
 } from '../components/index.js';
 import { contentIndex } from '../core/content-index.js';
@@ -206,7 +207,8 @@ const haulingCartsLinked: Invariant = (world, content) => {
 };
 
 /** A pinned ship and its trader name each other, the ship is a ship, its commander's slot is the trader's
- *  alone, and its hauler link never leads a cart reader astray. */
+ *  alone, its lines' `reserved` stays on `current`, helpers' runs being the one record of units under way,
+ *  and its hauler link never leads a cart reader astray. */
 const tradeShipsLinked: Invariant = (world, content) => {
   const out: string[] = [];
   for (const e of world.query(TradeShip)) {
@@ -226,6 +228,13 @@ const tradeShipsLinked: Invariant = (world, content) => {
     const commander = vehicleCommander(state);
     if (commander !== null && commander !== e) {
       out.push(`entity ${e}: rider ${commander} holds the commander's slot of its trade ship ${vehicle}`);
+    }
+    for (const [good, line] of world.tryGet(vehicle, VehicleStock)?.lines ?? []) {
+      if (line.reserved !== line.current) {
+        out.push(
+          `entity ${e}: trade ship ${vehicle} books ${line.reserved} of good ${good}, ${line.current} aboard`,
+        );
+      }
     }
   }
   return out;

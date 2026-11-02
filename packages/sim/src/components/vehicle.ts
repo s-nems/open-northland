@@ -282,7 +282,8 @@ export const VEHICLE_STOCK_BYTE_MAX = 255;
 /**
  * A carrier's booking on its vehicle's hold: `load` means one unit of `goodType` (the hold's canonical
  * good) is counted in `reserved` for the unit on the carrier's back, `unload` that one unit was taken
- * off `reserved` for the unit it is about to lift out. Cleared when the atomic at the door applies.
+ * off `reserved` for the unit it is about to lift out. Cleared when the atomic at the door applies. A
+ * pinned ship's helpers touch no `reserved`: on such a ship the run alone books the unit (`ferryHoldOf`).
  */
 export const CargoRun = defineComponent<{
   vehicle: Entity;

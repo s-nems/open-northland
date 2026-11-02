@@ -6,6 +6,7 @@ import {
   CargoRun,
   Carrying,
   MissionObjectId,
+  MoveGoal,
   Owner,
   Position,
   Rider,
@@ -27,9 +28,10 @@ import {
   type TerrainMap,
 } from '../../../src/index.js';
 import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
+import { ferryHoldOf, traderHoldOf } from '../../../src/systems/trade/hold.js';
 import { canAttachToVehicle } from '../../../src/systems/vehicles/crew.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
-import { stockVehicleGoods } from '../../../src/systems/vehicles/stock.js';
+import { consumeVehicleGood, stockVehicleGoods } from '../../../src/systems/vehicles/stock.js';
 import { TEST_MANIFEST, testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 
@@ -62,6 +64,9 @@ const WEST_HOUSE_CELL = 5;
 const EAST_HOUSE_CELL = 18;
 const HOUSE_ROW = 8;
 const TRADING_POST_ID = 700;
+/** Open water a goto names, off both shores. */
+const OPEN_WATER_X = 24;
+const OPEN_WATER_Y = 6;
 /** A ship with one ordinary seat, so a second helper finds none. */
 const ONE_SEAT = 1;
 const HELPERS = 3;
@@ -166,6 +171,10 @@ function shipLine(sim: Simulation, ship: Entity, good: number) {
   return sim.world.get(ship, VehicleStock).lines.get(good) ?? { current: 0, wanted: 0, reserved: 0 };
 }
 
+function heldBy(sim: Simulation, trader: Entity, ship: Entity) {
+  return ferryHoldOf(sim.world, ctxOf(sim), traderHoldOf(sim.world, ctxOf(sim), trader), ship);
+}
+
 function inHands(sim: Simulation, e: Entity): number {
   return sim.world.tryGet(e, Carrying)?.amount ?? 0;
 }
@@ -179,6 +188,25 @@ function withShipSeats(content: ContentSet, seats: number): ContentSet {
       type.typeId === SHIP_SMALL ? { ...type, passengerSlots: seats } : type,
     ),
   });
+}
+
+/** A trader on foot unloading a ship at the west house, stepped to the tick its one helper walks back to
+ *  the door for a further unit, under its run. */
+function walkingToUnload() {
+  const sim = newSim();
+  const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN);
+  const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+  const { trader, ship, carriers } = crew(sim, 1, false);
+  const carrier = carriers[0] as Entity;
+  stockVehicleGoods(sim.world, ship, sim.content, WOOD, LOAD);
+  order(sim, { kind: 'attachTradeHouse', entity: trader, house: west });
+  order(sim, { kind: 'attachTradeHouse', entity: trader, house: east });
+  order(sim, { kind: 'setTradeImport', entity: trader, house: west, good: WOOD, on: true });
+  const walking = (): boolean =>
+    sim.world.tryGet(carrier, CargoRun)?.direction === 'unload' && sim.world.has(carrier, MoveGoal);
+  for (let elapsed = 0; elapsed < LONG_TICKS && !walking(); elapsed++) sim.step();
+  if (!walking()) throw new Error('the helper never walked to the door on an unload run');
+  return { sim, trader, ship, carrier };
 }
 
 describe('a pinned ship seats its helpers', () => {
@@ -246,6 +274,24 @@ describe('a pinned ship seats its helpers', () => {
   });
 });
 
+describe('helpers aboard with the trader ashore', () => {
+  it('step ashore once a held order is called off', () => {
+    const sim = newSim();
+    const { trader, ship, carriers } = crew(sim, HELPERS);
+    sim.run(FIRST_TRIP_TICKS);
+    order(sim, { kind: 'moveVehicle', vehicle: ship, x: OPEN_WATER_X, y: OPEN_WATER_Y });
+    runUntil(sim, FIRST_TRIP_TICKS, () => carriers.every((carrier) => !sim.world.has(carrier, Position)));
+    expect(carriers.every((carrier) => !sim.world.has(carrier, Position))).toBe(true);
+
+    order(sim, { kind: 'stopVehicle', vehicle: ship });
+    sim.run(FIRST_TRIP_TICKS);
+
+    expect(sim.world.has(trader, Rider)).toBe(false);
+    expect(carriers.every((carrier) => sim.world.has(carrier, Position))).toBe(true);
+    expect(vehiclePassengers(sim.world.get(ship, Vehicle))).toHaveLength(HELPERS);
+  });
+});
+
 describe('helpers at work', () => {
   it('load and unload one unit at a time on a route between own houses, every unit arriving', () => {
     const sim = newSim();
@@ -294,7 +340,6 @@ describe('helpers at work', () => {
     runUntil(sim, LONG_TICKS, () => stockOf(sim, west, WOOD) >= UP_TO && settled());
 
     expect(stockOf(sim, west, WOOD)).toBe(UP_TO);
-    expect(shipLine(sim, ship, WOOD).reserved).toBe(shipLine(sim, ship, WOOD).current);
   });
 
   it('leaves the ship with no helper behind and no unit lost', () => {
@@ -329,13 +374,34 @@ describe('helpers at work', () => {
 
     runUntil(sim, FIRST_TRIP_TICKS, () => sim.world.has(carrier, CargoRun));
     expect(sim.world.get(carrier, CargoRun).direction).toBe('load');
-    const line = shipLine(sim, ship, WOOD);
-    expect(line.reserved).toBe(line.current + 1);
+    const { current } = shipLine(sim, ship, WOOD);
+    expect(heldBy(sim, trader, ship)?.booked.amount(WOOD)).toBe(current + 1);
 
     removeSettlerSilently(sim.world, carrier);
 
-    const after = shipLine(sim, ship, WOOD);
-    expect(after.reserved).toBe(after.current);
+    expect(heldBy(sim, trader, ship)?.booked.amount(WOOD)).toBe(current);
+  });
+
+  it('keeps a hold true to its stock when a meal empties the line under a helper on its way to the door', () => {
+    const { sim, ship, carrier } = walkingToUnload();
+
+    while (consumeVehicleGood(sim.world, ship, sim.content, WOOD));
+    sim.run(FIRST_TRIP_TICKS);
+
+    expect(shipLine(sim, ship, WOOD)).toMatchObject({ current: 0, reserved: 0 });
+    expect(sim.world.has(carrier, CargoRun)).toBe(false);
+    expect(checkInvariants(sim.world, sim.content)).toEqual([]);
+  });
+
+  it('gives a unit back to the hold when a helper dies on its way to the door', () => {
+    const { sim, trader, ship, carrier } = walkingToUnload();
+    const { current } = shipLine(sim, ship, WOOD);
+    expect(heldBy(sim, trader, ship)?.booked.amount(WOOD)).toBe(current - 1);
+
+    removeSettlerSilently(sim.world, carrier);
+
+    expect(heldBy(sim, trader, ship)?.booked.amount(WOOD)).toBe(current);
+    expect(checkInvariants(sim.world, sim.content)).toEqual([]);
   });
 
   it('leaves a foreign route to the trader, the helpers riding along with empty hands', () => {

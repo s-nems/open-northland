@@ -401,16 +401,19 @@ export function dropHauler(world: World, vehicle: Entity): void {
 /**
  * Drop the trader's pin, the ship free for anyone again, its hold as it stands. A trader aboard stays a
  * plain commander, and its carried cart a plain carried vehicle; with the trader ashore or gone the first
- * helper takes the commander's slot, and every helper's booking lapses. Nothing happens without a pin.
+ * helper takes the commander's slot, and every helper's run ends while the pin still stands, since a run
+ * on a pinned ship holds no booking to give back. Nothing happens without a pin.
  */
 export function releaseTradeShip(world: World, trader: Entity): void {
   const ship = world.tryGet(trader, TradeShip)?.vehicle;
   if (ship === undefined) return;
-  world.remove(trader, TradeShip);
   const state = world.tryGet(ship, Vehicle);
+  if (state !== undefined) {
+    for (const seat of vehiclePassengers(state)) abandonCargoRun(world, seat.entity);
+  }
+  world.remove(trader, TradeShip);
   if (state?.hauler === trader) {
     world.mut(ship, Vehicle).hauler = null;
-    for (const seat of vehiclePassengers(state)) abandonCargoRun(world, seat.entity);
     fillCommanderSeat(world, ship);
   }
   const cart = world.tryGet(trader, HaulingCart)?.vehicle;

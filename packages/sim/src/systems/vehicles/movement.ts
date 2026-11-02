@@ -980,6 +980,14 @@ export function stopVehicle(world: World, command: Extract<Command, { kind: 'sto
   if (!live.moored) live.mooring = null;
 }
 
+/** Drop an order held for boarding that nobody can answer, with the no-commander note. */
+export function lapseHeldOrder(world: World, ctx: SystemContext, e: Entity): void {
+  stopAskingCrewIn(world, world.get(e, Vehicle));
+  dropHeldGoal(world, e);
+  world.mut(e, Vehicle).task = 'none';
+  refuseMove(world, ctx, e, 'noCommander');
+}
+
 /** Clear the boarding request on every rider still outside, so a lapsed order stops pulling them in. */
 function stopAskingCrewIn(world: World, state: VehicleStateView): void {
   for (const seat of state.passengers) {

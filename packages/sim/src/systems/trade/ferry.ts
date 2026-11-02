@@ -19,6 +19,7 @@ import type { PlannerContext } from '../settlers/planner/context.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
 import { boardingNode, pinnedTraderAshore } from '../vehicles/crew.js';
 import { haulingCartLiftTicks, parkHaulingCart } from '../vehicles/hauling-cart.js';
+import { lapseHeldOrder } from '../vehicles/movement.js';
 import {
   cartStands,
   type FerryHold,
@@ -259,7 +260,8 @@ function goAboard(plan: PlannerContext, hold: FerryHold, flips: boolean, rules: 
  * An order held on the pinned ship calls its trader aboard ahead of everything the route would do, a
  * pin needing no route for it; the voyage takes the ship back up once the order is done. False while no
  * such order waits on the trader; a unit in the hands of a trader with a cart goes to the delivery rung
- * first, as on the route.
+ * first, as on the route. A door the trader's walk failed to reach lapses the order, as a rider's lost
+ * door drops the rider, rather than leave it held for good.
  */
 export function planShipOrder(
   plan: PlannerContext,
@@ -269,6 +271,11 @@ export function planShipOrder(
   const ship = world.tryGet(e, TradeShip)?.vehicle;
   if (ship === undefined || (world.tryGet(ship, Vehicle)?.heldGoal ?? null) === null) return false;
   if (pinnedTraderAshore(world, ctx, ship) !== e) return false;
+  const door = boardingNode(world, ctx, plan.terrain, ship);
+  if (door !== null && failedToReachDoor(plan, door)) {
+    lapseHeldOrder(world, ctx, ship);
+    return false;
+  }
   const near = traderHoldOf(world, ctx, e);
   if (near.cart !== null && world.has(e, Carrying)) return false;
   const hold = ferryHoldOf(world, ctx, near, ship);

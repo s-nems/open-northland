@@ -2,7 +2,7 @@ import { CargoRun, Position, Rider, Vehicle, VehicleDrive, VehicleStock } from '
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { isShipAtSea, landingOf, landRider, refuseCrew } from './crew.js';
+import { isShipAtSea, landingOf, landRider, pinnedTraderOf, refuseCrew } from './crew.js';
 import { cargoHandHasWork, clearVehicleWanted, hasCargoHand, setVehicleWanted } from './stock.js';
 
 // The wanted-amount orders of docs/formats/VEHICLES.md "Cargo", the booking a cargo hand holds on a hold
@@ -41,12 +41,14 @@ function noteMissingCarrier(world: World, ctx: SystemContext, vehicle: Entity): 
 /**
  * Drop a carrier's booking: a `load` run gives its unit back to the hold's free budget, an `unload` run
  * books its unit again, so a carrier that leaves, dies or is re-tasked mid-walk leaves `reserved` as if it
- * had never set out, as in the original. The unit on its back stays there.
+ * had never set out, as in the original. The unit on its back stays there. A pinned ship's helpers book
+ * nothing on its lines (`ferryHoldOf`), so their run just ends.
  */
 export function abandonCargoRun(world: World, carrier: Entity): void {
   const run = world.tryGet(carrier, CargoRun);
   if (run === undefined) return;
   world.remove(carrier, CargoRun);
+  if (pinnedTraderOf(world, run.vehicle) !== null) return;
   const stock = world.tryGet(run.vehicle, VehicleStock);
   const line = stock?.lines.get(run.goodType);
   if (line === undefined) return;
@@ -56,12 +58,20 @@ export function abandonCargoRun(world: World, carrier: Entity): void {
   if (live !== undefined) live.reserved += delta;
 }
 
+/** Whether `e` is a helper of a pinned ship whose trader is ashore, aboard for an order that has lapsed
+ *  since: only `landTrader` lands a helper otherwise. */
+function leftAboard(world: World, vehicle: Entity, e: Entity): boolean {
+  const trader = pinnedTraderOf(world, vehicle);
+  return trader !== null && trader !== e && !world.has(trader, Rider);
+}
+
 /**
  * A cargo hand riding inside a vehicle that stands still, a cart with no drive or held goal or a moored
  * ship, steps out onto the door while the hold has a trip for it, so a ship's crew unloads at the shore
  * and a cart's commander loads it beside a house without a carrier (owner's choice; the original's carrier
  * works only from outside). A commander of no loading trade, with no loader seated, lets a request
- * nobody can fill lapse. Before the planner, so the hand is planned the tick it lands.
+ * nobody can fill lapse. A helper left aboard its pinned ship steps out the same way ({@link leftAboard}).
+ * Before the planner, so the hand is planned the tick it lands.
  */
 export const cargoHandDisembarkSystem: System = (world, ctx) => {
   for (const e of world.canonicalQuery(Rider)) {
@@ -70,7 +80,7 @@ export const cargoHandDisembarkSystem: System = (world, ctx) => {
     const state = world.tryGet(vehicle, Vehicle);
     if (state === undefined || state.carrier !== null || state.heldGoal !== null) continue;
     if (world.has(vehicle, VehicleDrive) || isShipAtSea(ctx, state)) continue;
-    if (!cargoHandHasWork(world, ctx.content, vehicle, e)) continue;
+    if (!cargoHandHasWork(world, ctx.content, vehicle, e) && !leftAboard(world, vehicle, e)) continue;
     const landing = landingOf(world, ctx, vehicle);
     if (landing !== null) landRider(world, ctx, e, landing);
   }

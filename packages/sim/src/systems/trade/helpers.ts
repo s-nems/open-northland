@@ -26,7 +26,7 @@ import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goa
 import { isCarrierJob } from '../stores/index.js';
 import { abandonCargoRun } from '../vehicles/cargo.js';
 import { boardingNode, pinnedTraderOf } from '../vehicles/crew.js';
-import { modifyVehicleReserved, vehicleStockGood } from '../vehicles/stock.js';
+import { vehicleStockGood } from '../vehicles/stock.js';
 import { decideForHelper, routeStandsFinished, storableFormAt } from './drive.js';
 import { type FerryHold, ferryHoldOf, traderHoldOf } from './hold.js';
 import { routeCrossesSea, shipLiesOn, stopContinent } from './ship.js';
@@ -45,8 +45,8 @@ interface HelperShift {
  * choice), not original behavior: the original has no sea trader to help. It works only a crossing route
  * between the player's own houses, on the shore of the trader's current stop while the ship lies moored
  * there, one unit a trip: `load` carries a unit from the house the land rule names to the ship's door,
- * `unload` lifts a unit at the door and carries it to the stop's house. A trip books its unit on the
- * ship's line as it sets out (`CargoRun`), so the trader and the other helpers see it, and a booking is
+ * `unload` lifts a unit at the door and carries it to the stop's house. A trip's `CargoRun` books its unit
+ * as it sets out, so the trader and the other helpers see it through `ferryHoldOf`, and a run is
  * re-decided at every plan. A unit in hand finishes its trip whatever became of the route, so nothing
  * rides aboard in the hands. Everyone else, and a helper with no work, is left to the rungs below, which
  * stand it by the door.
@@ -108,19 +108,18 @@ function setOutToLoad(plan: PlannerContext, hold: FerryHold, from: Entity, good:
   const type = contentIndex(ctx.content).vehicles.get(world.get(ship, Vehicle).vehicleType);
   const line = type && vehicleStockGood(ctx.content, type, edibleGoodFormOf(ctx.content, good));
   if (line === undefined || line === null || failedToReach(plan, cell)) return false;
-  if (modifyVehicleReserved(world, ship, ctx.content, line, HELPER_UNIT) !== HELPER_UNIT) return false;
+  if (hold.booked.room < HELPER_UNIT) return false;
   world.add(e, CargoRun, { vehicle: ship, goodType: line, direction: 'load' });
   plan.supply.stampPickupClaim(e, { source: from, goodType: good, amount: HELPER_UNIT });
   atOrWalk(world, e, here, cell, () => startPickup(world, ctx, e, plan, from, good, HELPER_UNIT));
   return true;
 }
 
-/** Book a unit out of the ship and go lift it at the door. */
+/** Book a unit out of the ship, one `setOut` read as liftable, and go lift it at the door. */
 function setOutToUnload(plan: PlannerContext, ship: Entity, good: number): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const door = boardingNode(world, ctx, terrain, ship);
   if (door === null || failedToReach(plan, door)) return false;
-  if (modifyVehicleReserved(world, ship, ctx.content, good, -HELPER_UNIT) !== -HELPER_UNIT) return false;
   world.add(e, CargoRun, { vehicle: ship, goodType: good, direction: 'unload' });
   atOrWalk(world, e, here, door, () =>
     startAtomic(

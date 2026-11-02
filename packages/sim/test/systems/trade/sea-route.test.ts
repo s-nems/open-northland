@@ -36,8 +36,10 @@ import {
 import { hexagonRing, hexDistance } from '../../../src/nav/halfcell.js';
 import { interactionNode, vehicleAnchor } from '../../../src/systems/footprint/index.js';
 import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
+import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-goals.js';
 import { TRADE_DOCK_RETRY_TICKS } from '../../../src/systems/trade/index.js';
 import { mooringTargetOf } from '../../../src/systems/trade/ship.js';
+import { boardingNode } from '../../../src/systems/vehicles/crew.js';
 import { createVehicle, removeVehicle } from '../../../src/systems/vehicles/index.js';
 import {
   cargoHandHasWork,
@@ -813,6 +815,32 @@ describe("a player's order to a moored pinned ship with its trader ashore", () =
     expect(sim.world.has(ship, VehicleDrive)).toBe(false);
     expect(sim.world.get(ship, Vehicle).heldGoal).toBeNull();
     expect(refusalsOf(sim, ship)).toEqual(['noCommander']);
+  });
+
+  it('lapses with the no-commander note when the trader cannot walk to the door', () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, SMALL_LOAD]]);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const { trader, ship } = crossing(sim);
+    attach(sim, trader, west);
+    attach(sim, trader, east);
+    sim.step();
+    const ctx = ctxOf(sim);
+    const door = ctx.terrain === undefined ? null : boardingNode(sim.world, ctx, ctx.terrain, ship);
+    if (door === null) throw new Error('no door');
+    noteUnreachableGoal(sim.world, ctx, trader, door);
+    order(sim, { kind: 'moveVehicle', vehicle: ship, x: OPEN_WATER_X, y: NORTH_WATER_Y });
+
+    const refused: string[] = [];
+    for (let elapsed = 0; elapsed < WAIT_TICKS && refused.length === 0; elapsed++) {
+      sim.step();
+      refused.push(...refusalsOf(sim, ship));
+    }
+
+    expect(refused).toEqual(['noCommander']);
+    expect(sim.world.get(ship, Vehicle).heldGoal).toBeNull();
+    expect(sim.world.get(ship, Vehicle).task).toBe('none');
+    expect(sim.world.has(trader, Rider)).toBe(false);
   });
 
   it('calls the held order off on a stop, and the trader goes back to its work', () => {

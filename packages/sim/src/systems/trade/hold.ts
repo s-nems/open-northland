@@ -12,12 +12,12 @@ import {
   TradeShip,
   Vehicle,
   VehicleStock,
-  type VehicleStockLine,
+  vehicleLoad,
   vehiclePassengers,
   vehicleStockEntries,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { stockOf } from '../missions/stock.js';
 import { grantTradeExperience } from '../progression/index.js';
@@ -64,7 +64,7 @@ export interface TraderHold {
 
 /** What the helpers of a pinned ship have under way, by good: units in neither the ship nor the house. */
 export interface HelperFlight {
-  /** Units bound for the stop's house, on a helper's back or booked out of the ship. */
+  /** Units bound for the stop's house, on a helper's back or on its run to lift them out of the ship. */
   toHouse(good: number): number;
   /** Units a helper walks to lift, still on the house's shelf. */
   toLift(good: number): number;
@@ -74,8 +74,7 @@ export const NO_HELPERS: HelperFlight = { toHouse: () => 0, toLift: () => 0 };
 
 /**
  * The route's goods on a sea crossing, in the pinned ship and the near hold together: the decisions read
- * one hold, the ship's share as booked so a helper's unit under way counts, while units move through the
- * near hold alone (`loadTraderHold`, `unloadTraderHold`). A good rides only if both can take it, and a
+ * one hold, the ship's share as booked by its helpers' runs, while units move through the near hold alone (`loadTraderHold`, `unloadTraderHold`). A good rides only if both can take it, and a
  * ship's good the near hold refuses stays out of `entries`, since no lift could bring it ashore.
  */
 export interface FerryHold extends TraderHold {
@@ -84,9 +83,10 @@ export interface FerryHold extends TraderHold {
   readonly near: TraderHold;
   /** The ship's hold alone, `cart` naming the ship: the units physically aboard. */
   readonly aboard: TraderHold;
-  /** The ship's hold as booked: aboard, plus units on their way in, less units booked out. */
+  /** The ship's hold as booked: aboard, plus the helpers' `load` runs, less their `unload` runs. A pinned
+   *  ship's own lines keep `reserved` on `current`; the seated helpers' runs are the one record. */
   readonly booked: TraderHold;
-  /** The units of `good` a lift may take out of the ship: aboard and not booked by a helper. */
+  /** The units of `good` a lift may take out of the ship: aboard and on no helper's run. */
   liftable(good: number): number;
 }
 
@@ -118,27 +118,14 @@ export function traderHoldOf(world: World, ctx: ContentContext, trader: Entity):
   return vehicleHoldOf(world, ctx, cart);
 }
 
-type LineUnits = (line: DeepReadonly<VehicleStockLine>) => number;
-
-const unitsAboard: LineUnits = (line) => line.current;
-const unitsBooked: LineUnits = (line) => line.reserved;
-
-/** A detached read of `vehicle`'s own hold, as a hold of `cart` naming it, its lines read by `unitsOf`. */
-function vehicleHoldOf(
-  world: World,
-  ctx: ContentContext,
-  vehicle: Entity,
-  unitsOf: LineUnits = unitsAboard,
-): TraderHold {
+/** A detached read of `vehicle`'s own hold, as a hold of `cart` naming it. */
+function vehicleHoldOf(world: World, ctx: ContentContext, vehicle: Entity): TraderHold {
   const type = contentIndex(ctx.content).vehicles.get(world.get(vehicle, Vehicle).vehicleType);
   const stock = world.get(vehicle, VehicleStock);
-  const entries: Array<readonly [number, number]> = [];
-  let load = 0;
-  for (const [good, line] of vehicleStockEntries(stock)) {
-    const units = unitsOf(line);
-    load += units;
-    if (units > 0) entries.push([good, units]);
-  }
+  const entries = vehicleStockEntries(stock).flatMap(
+    ([good, line]): Array<readonly [number, number]> => (line.current > 0 ? [[good, line.current]] : []),
+  );
+  const load = vehicleLoad(stock);
   const capacity = type === undefined ? 0 : vehicleLineCap(type);
   return {
     cart: vehicle,
@@ -146,17 +133,36 @@ function vehicleHoldOf(
     load,
     room: Math.max(0, capacity - load),
     capacity,
-    amount: (good) => {
-      const line = stock.lines.get(good);
-      return line === undefined ? 0 : unitsOf(line);
-    },
+    amount: (good) => stock.lines.get(good)?.current ?? 0,
     carries: (good) => type !== undefined && vehicleStockGood(ctx.content, type, good) !== null,
     helpers: NO_HELPERS,
   };
 }
 
-/** What `ship`'s helpers on the map have under way, read off its seats once per decision. */
-function helperFlightOf(world: World, ctx: ContentContext, ship: Entity): HelperFlight {
+/** `aboard` as the helpers' runs book it, `runs` by hold line. A line a meal emptied under a run books
+ *  no less than nothing. */
+function bookedHoldOf(aboard: TraderHold, runs: ReadonlyMap<number, number>): TraderHold {
+  const units = new Map<number, number>(aboard.entries);
+  for (const [good, run] of runs) units.set(good, Math.max(0, (units.get(good) ?? 0) + run));
+  const entries = [...units].filter(([, held]) => held > 0).sort(([a], [b]) => a - b);
+  const load = entries.reduce((sum, [, held]) => sum + held, 0);
+  return {
+    ...aboard,
+    entries,
+    load,
+    room: Math.max(0, aboard.capacity - load),
+    amount: (good) => units.get(good) ?? 0,
+  };
+}
+
+/** What `ship`'s helpers on the map have under way, read off its seats once per decision: `runs` nets
+ *  their runs by hold line, `load` adding a unit and `unload` taking one away. */
+function helperFlightOf(
+  world: World,
+  ctx: ContentContext,
+  ship: Entity,
+): { readonly flight: HelperFlight; readonly runs: ReadonlyMap<number, number> } {
+  const runs = new Map<number, number>();
   const toHouse = new Map<number, number>();
   const toLift = new Map<number, number>();
   const count = (units: Map<number, number>, good: number): void => {
@@ -169,6 +175,10 @@ function helperFlightOf(world: World, ctx: ContentContext, ship: Entity): Helper
     const run = world.tryGet(seat.entity, CargoRun);
     const held = world.tryGet(seat.entity, Carrying);
     const loaded = held !== undefined && held.amount > 0;
+    if (run !== undefined) {
+      const net = run.direction === 'load' ? 1 : -1;
+      runs.set(run.goodType, (runs.get(run.goodType) ?? 0) + net);
+    }
     if (run?.direction === 'load') {
       if (!loaded) count(toLift, run.goodType);
     } else if (run !== undefined) count(toHouse, run.goodType);
@@ -178,7 +188,7 @@ function helperFlightOf(world: World, ctx: ContentContext, ship: Entity): Helper
     (units: ReadonlyMap<number, number>) =>
     (good: number): number =>
       units.get(edibleGoodFormOf(ctx.content, good)) ?? 0;
-  return { toHouse: unitsIn(toHouse), toLift: unitsIn(toLift) };
+  return { flight: { toHouse: unitsIn(toHouse), toLift: unitsIn(toLift) }, runs };
 }
 
 /** The trader's hold merged with its pinned `ship`'s, or the near hold alone for a ship with no hold. */
@@ -190,7 +200,8 @@ export function ferryHoldOf(
 ): FerryHold | null {
   if (!world.has(ship, VehicleStock)) return null;
   const aboard = vehicleHoldOf(world, ctx, ship);
-  const booked = vehicleHoldOf(world, ctx, ship, unitsBooked);
+  const { flight, runs } = helperFlightOf(world, ctx, ship);
+  const booked = bookedHoldOf(aboard, runs);
   const merged = new Map<number, number>(near.entries);
   for (const [good, units] of booked.entries) {
     if (near.carries(good)) merged.set(good, (merged.get(good) ?? 0) + units);
@@ -203,7 +214,7 @@ export function ferryHoldOf(
     capacity: near.capacity + aboard.capacity,
     amount: (good) => near.amount(good) + booked.amount(good),
     carries: (good) => near.carries(good) && aboard.carries(good),
-    helpers: helperFlightOf(world, ctx, ship),
+    helpers: flight,
     ship,
     near,
     aboard,
@@ -247,8 +258,7 @@ function liftsAtShip(world: World, lifter: Entity, ship: Entity): boolean {
 }
 
 /** Resolve one completed `tradeShipStow`: one unit of `goodType` out of the near hold into the pinned
- *  ship's, a helper's booking given back first since the stow books its unit. A unit the ship refuses
- *  stays where it is. */
+ *  ship's, ending a helper's run. A unit the ship refuses stays where it is. */
 export function stowIntoTradeShip(
   world: World,
   ctx: ContentContext,
@@ -264,8 +274,7 @@ export function stowIntoTradeShip(
 }
 
 /** Resolve one completed `tradeShipFetch`: one unit of `goodType` out of the pinned ship's hold into the
- *  near hold, a helper's booking given back first since the lift books its unit out; a line a meal
- *  emptied keeps the lower booking instead. A unit the near hold has no room for stays aboard. */
+ *  near hold, ending a helper's run. A unit the near hold has no room for stays aboard. */
 export function fetchFromTradeShip(
   world: World,
   ctx: ContentContext,
@@ -276,8 +285,7 @@ export function fetchFromTradeShip(
   if (!liftsAtShip(world, lifter, ship)) return;
   const near = traderHoldOf(world, ctx, lifter);
   if (near.room <= 0 || !near.carries(goodType)) return;
-  if (vehicleHoldOf(world, ctx, ship).amount(goodType) > 0) abandonCargoRun(world, lifter);
-  else world.remove(lifter, CargoRun);
+  abandonCargoRun(world, lifter);
   if (tradeVehicleStock(world, ship, ctx.content, goodType, -1) !== -1) return;
   if (moveThroughHold(world, ctx, lifter, goodType, 1) !== 1) {
     tradeVehicleStock(world, ship, ctx.content, goodType, 1);
