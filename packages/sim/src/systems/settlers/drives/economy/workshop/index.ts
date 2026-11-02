@@ -39,6 +39,7 @@ import { deliverableGoodProbe } from '../delivery-targets.js';
 import { haulFlagArea, waitAtHaulFlag } from '../haul-flag-area.js';
 import { planVehicleYard } from '../vehicle-yard.js';
 import { startCraftAtomic } from './craft.js';
+import { doorHeapLift } from './door-heap.js';
 import {
   type InputShortfall,
   type MissingInputSource,
@@ -181,7 +182,8 @@ const LOITER_PLAN_PERIOD_TICKS = 1;
 
 /**
  * Run the self-service producer loop: advance running batches, supply open products, claim a new batch
- * seat, clear a full slot, haul an output out, then loiter by the door with nothing to do. Original
+ * seat, clear a full slot to a store or the door's heap, haul an output out, then loiter by the door with
+ * nothing to do. Original
  * behavior: a producer fetches a missing input of its own recipe itself, whatever other settlers are
  * bringing, and never waits inside for them.
  *
@@ -244,6 +246,19 @@ export function planProducer(
   const blocked = blockedOutputToHaul(plan, workplace);
   if (blocked !== null) {
     walkPickupBatch(plan, workplace, blocked);
+    return;
+  }
+  const heap = doorHeapLift(
+    world,
+    ctx,
+    plan.terrain,
+    plan.entity,
+    workplace,
+    own,
+    deliverableGoodProbe(plan),
+  );
+  if (heap !== null) {
+    walkPickupBatch(plan, workplace, heap.goodType, undefined, heap.units);
     return;
   }
 

@@ -32,6 +32,7 @@ import { jobCanBuild } from '../settlers/atomics/start.js';
 import { strandedWorkplaceDoor } from '../settlers/drives/cut-off.js';
 import { carriedGoodForm } from '../settlers/drives/economy/delivery-targets.js';
 import { isBoundToStorageSink } from '../settlers/drives/economy/store-policy.js';
+import { doorHeapLift } from '../settlers/drives/economy/workshop/door-heap.js';
 import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
 import { StoreSinks } from '../settlers/targets/stores/sinks.js';
 import { navigationLimitFor } from '../signposts/index.js';
@@ -276,6 +277,22 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
       ),
     }));
   if (outputs.length === 0) return { kind: 'unknown', reason: 'productionGate' };
+  // A worker with room left at the door sets the output down there, so nothing has stopped him yet.
+  const reachesStore = (goodType: number): boolean =>
+    outputs.some((output) => output.goodType === goodType && output.destination === 'inReach');
+  if (
+    terrain !== undefined &&
+    doorHeapLift(
+      world,
+      ctx,
+      terrain,
+      entity,
+      workplace,
+      enabled.map((entry) => entry.recipe),
+      reachesStore,
+    ) !== null
+  )
+    return undefined;
   const stranded = outputs.find((output) => output.destination === 'outOfReach');
   return stranded !== undefined
     ? { kind: 'noOutputDestination', goodType: stranded.goodType, reason: 'outOfReach' }

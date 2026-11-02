@@ -203,7 +203,7 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
   }
 
   it('names the product no store within reach takes, and a full shelf once one is in reach', () => {
-    const { sim, forge: f, smith } = confinedForge(2);
+    const { sim, forge: f, smith } = confinedForge(0);
     const stock = sim.world.mut(f, Stockpile).amounts;
     stock.set(PLANK, SHELF_CAPACITY);
     stock.set(FOOD, SHELF_CAPACITY);
@@ -362,7 +362,7 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
   });
 
   it('names a full shelf no store takes as having no destination at all', () => {
-    const { sim, forge: f, smith } = confinedForge(2);
+    const { sim, forge: f, smith } = confinedForge(0);
     const stock = sim.world.mut(f, Stockpile).amounts;
     stock.set(PLANK, SHELF_CAPACITY);
     stock.set(FOOD, SHELF_CAPACITY);
