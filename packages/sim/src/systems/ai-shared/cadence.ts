@@ -94,6 +94,10 @@ export function handlerTurn(tick: number): number {
 /** Defence shares the existing military decision slot; it runs before the campaign. */
 export const MILITARY_DECISION_PHASE = 5;
 
+/** The population module's phase, the lightest module's tick, so a module with no slot of its own shares it:
+ *  a seventh phase would land on the next seat's first. */
+export const POPULATION_PHASE = 4;
+
 /** Whether `tick` is `player`'s defence decision: on the computer slot while a computer controller runs
  *  the seat (`computerControllerRuns`), on the map-AI slot otherwise. */
 export function militaryDecisionDue(tick: number, player: number, controllerRuns: boolean): boolean {

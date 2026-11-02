@@ -6,6 +6,7 @@ import { computerDecisionDue, moduleBeatDue } from '../ai-shared/cadence.js';
 import type { System, SystemContext } from '../context.js';
 import { catchUpSeatStock } from '../stores/index.js';
 import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
+import { colonyModule } from './colony/index.js';
 import { updateComputerIntel } from './knowledge/intel/index.js';
 import { ensureMapBrief } from './knowledge/map-brief/index.js';
 import { militaryModule } from './military/index.js';
@@ -41,14 +42,19 @@ export * from './workforce/index.js';
 /** The commands a seat issues this decision; the system enqueues them. */
 type ComputerDecision = (world: World, ctx: SystemContext, player: number) => readonly PlayerCommand[];
 
-/** One autonomous concern of the computer player (see {@link ComputerModuleId} - the HAI toggle decomposition). */
-export interface ComputerModule {
-  readonly id: ComputerModuleId;
+interface ComputerModuleParts {
   readonly run: ComputerDecision;
   /** Every how many of the seat's decisions the module runs ({@link moduleBeatDue}); every one when
    *  absent. */
   readonly everyDecisions?: number;
+  /** The phase the module shares with another; its index in the run order when absent. */
+  readonly phase?: number;
 }
+
+/** One autonomous concern of the computer player (see {@link ComputerModuleId} - the HAI toggle
+ *  decomposition). `colony` has no map toggle of its own, so `gate` names the toggle that runs it. */
+export type ComputerModule = ComputerModuleParts &
+  ({ readonly id: ComputerModuleId } | { readonly id: 'colony'; readonly gate: ComputerModuleId });
 
 /**
  * The computer modules, in fixed run order.
@@ -64,6 +70,8 @@ export const COMPUTER_MODULES: readonly ComputerModule[] = [
   scoutModule(DEFAULT_BUILD_ORDER),
   populationModule,
   militaryModule,
+  // Last, on a phase of its own choosing: the six indices above and the military phase stay put.
+  colonyModule,
 ];
 
 /**
@@ -96,14 +104,15 @@ export function runComputerModules(
   reviewComputerStrategies(world, ctx, seats);
   updateComputerIntel(world, ctx, seats);
   for (const seat of seats) {
-    for (let phase = 0; phase < modules.length; phase++) {
-      const module = modules[phase];
-      const slot = ctx.tick - phase * COMPUTER_MODULE_PHASE_TICKS;
-      if (module === undefined || !computerDecisionDue(slot, seat)) continue;
+    for (let index = 0; index < modules.length; index++) {
+      const module = modules[index];
+      if (module === undefined) continue;
+      const slot = ctx.tick - (module.phase ?? index) * COMPUTER_MODULE_PHASE_TICKS;
+      if (!computerDecisionDue(slot, seat)) continue;
       if (module.everyDecisions !== undefined && !moduleBeatDue(slot, seat, module.everyDecisions)) continue;
       // The authority gate would refuse a dead seat's orders anyway; skipping keeps them out of the log.
       if (isPlayerDead(world, seat)) continue;
-      if (!computerModuleRuns(world, seat, module.id)) continue;
+      if (!computerModuleRuns(world, seat, module.id === 'colony' ? module.gate : module.id)) continue;
       for (const command of module.run(world, ctx, seat)) {
         ctx.commands.enqueue(aiCommand(seat, command, module.id));
       }

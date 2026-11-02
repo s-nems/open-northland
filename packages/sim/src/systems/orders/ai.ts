@@ -4,6 +4,7 @@ import {
   AssistantMovesFlags,
   AssistantUpgradesTools,
   aiControlEntity,
+  COLONY_MODULES,
   type ComputerModuleEnables,
   computerModuleEnables,
   DefenceMode,
@@ -115,6 +116,7 @@ function applyAiControl(
     if (source === 'map-ai') return !mapAiEnabled;
     // Autonomous sorties have no camp leash. A map-only controller must plan a bounded replacement.
     if (source === 'settlement-defence') return !next.military && (!mapAiEnabled || previous.military);
+    if (source === 'colony') return !COLONY_MODULES.every((module) => next[module]);
     return !next[source];
   });
   if (previous.military && !next.military) retireComputerCampaign(world, command.player);

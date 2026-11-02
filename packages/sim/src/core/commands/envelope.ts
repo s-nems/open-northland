@@ -28,7 +28,7 @@ export type CommandEnvelope = SeatEnvelope | TrustedEnvelope;
  * An envelope acting for one player: `player` is a human seat and `ai` a machine seat, and both reach
  * only that player's assets.
  */
-export type AiDecisionSource = ComputerModuleId | 'map-ai' | 'settlement-defence';
+export type AiDecisionSource = ComputerModuleId | 'colony' | 'map-ai' | 'settlement-defence';
 
 export type SeatEnvelope =
   | {

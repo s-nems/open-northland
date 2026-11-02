@@ -145,6 +145,24 @@ describe('AI control transitions', () => {
     },
   );
 
+  it('stops colony decisions when any toggle the colony needs turns off', () => {
+    const { sim, unit, ctx } = fixture();
+    const move = aiCommand(PLAYER, { kind: 'moveUnit', entity: unit, x: 10, y: 10 }, 'colony');
+    sim.world.add(unit, PlayerOrder, {});
+    recordAiOrder(sim.world, unit, { player: PLAYER, source: 'colony' });
+    expect(
+      authorizedCommand(sim.world, parseCommandEnvelope(JSON.parse(JSON.stringify(move)))),
+    ).toBeDefined();
+    setAiControl(sim.world, ctx, {
+      kind: 'setAiControl',
+      player: PLAYER,
+      enabled: true,
+      modules: { guideBuild: false },
+    });
+    expect(authorizedCommand(sim.world, move)).toBeUndefined();
+    expect(sim.world.has(unit, PlayerOrder)).toBe(false);
+  });
+
   it('preserves decision provenance in the queue and imported diagnostic log', () => {
     const { sim, unit } = fixture();
     const command = aiCommand(PLAYER, { kind: 'moveUnit', entity: unit, x: 10, y: 10 }, 'map-ai');

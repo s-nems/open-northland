@@ -62,7 +62,7 @@ function parseAuthority(
     source !== undefined &&
     (origin !== 'ai' ||
       typeof source !== 'string' ||
-      ![...COMPUTER_MODULE_IDS, 'map-ai', 'settlement-defence'].includes(source))
+      ![...COMPUTER_MODULE_IDS, 'colony', 'map-ai', 'settlement-defence'].includes(source))
   ) {
     throw new Error(`${at}: invalid AI decision source ${JSON.stringify(source)}`);
   }

@@ -1,4 +1,4 @@
-import { AiControl, aiControlEntity, computerModuleRuns } from '../../components/ai/control.js';
+import { AiControl, aiControlEntity, colonyRuns, computerModuleRuns } from '../../components/ai/control.js';
 import { isContinuingMatch, isPlayerDead } from '../../components/match.js';
 import { hasMissionBehaviour, MISSION_BEHAVIOUR } from '../../components/missions/behaviour.js';
 import { isValidPlayer, ownerOf, ownersCompatible } from '../../components/players/ownership.js';
@@ -216,6 +216,7 @@ function decisionStillAllowed(world: World, envelope: Extract<SeatEnvelope, { or
   if (source === 'map-ai') return control.mapAiEnabled;
   if (source === 'settlement-defence')
     return control.mapAiEnabled || computerModuleRuns(world, envelope.player, 'military');
+  if (source === 'colony') return colonyRuns(world, envelope.player);
   if (!computerModuleRuns(world, envelope.player, source)) return false;
   const command = envelope.command;
   if (command.kind === 'setAssistantCounter') {

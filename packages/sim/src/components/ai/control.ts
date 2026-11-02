@@ -92,10 +92,20 @@ export function isScriptedEconomySeat(world: World, player: number): boolean {
   return isMachinePlayer(world, player) && !computerModuleRuns(world, player, 'collectResources');
 }
 
+/** The toggles a computer seat's colony needs, all of them: it raises houses, gathers and posts its own
+ *  signposts. A colony is no `[AIData]` toggle of its own, or every game's hashed {@link ComputerModuleEnables}
+ *  would move. */
+export const COLONY_MODULES: readonly ComputerModuleId[] = ['houseBuild', 'collectResources', 'guideBuild'];
+
 /** Whether the computer player may run `module`; both master and module permission are required. */
 export function computerModuleRuns(world: World, player: number, module: ComputerModuleId): boolean {
   const carrier = aiControlEntity(world, player);
   if (carrier === null) return false;
   const control = world.get(carrier, AiControl);
   return control.computerEnabled && control.modules[module];
+}
+
+/** Whether the computer player may run `player`'s colony ({@link COLONY_MODULES}). */
+export function colonyRuns(world: World, player: number): boolean {
+  return COLONY_MODULES.every((module) => computerModuleRuns(world, player, module));
 }

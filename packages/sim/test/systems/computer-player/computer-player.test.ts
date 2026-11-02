@@ -393,9 +393,9 @@ describe('computerPlayerSystem - cadence, stagger, and module gates', () => {
     const firstTilingSeats = COMPUTER_DECISION_INTERVAL_TICKS / (2 * AI_SEAT_SLOT_STEP_TICKS);
     const owner = new Map<number, number>();
     for (let player = 0; player < firstTilingSeats; player++) {
-      for (let module = 0; module < COMPUTER_MODULES.length; module++) {
+      for (const [index, module] of COMPUTER_MODULES.entries()) {
         const tick =
-          (computerDecisionSlot(player) + module * COMPUTER_MODULE_PHASE_TICKS) %
+          (computerDecisionSlot(player) + (module.phase ?? index) * COMPUTER_MODULE_PHASE_TICKS) %
           COMPUTER_DECISION_INTERVAL_TICKS;
         expect(owner.get(tick) ?? player).toBe(player);
         owner.set(tick, player);
@@ -442,7 +442,8 @@ describe('computerPlayerSystem - cadence, stagger, and module gates', () => {
     const runs: Array<{ tick: number; player: number; module: number }> = [];
     const modules = COMPUTER_MODULES.map(
       (real, module): ComputerModule => ({
-        id: real.id,
+        ...real,
+        everyDecisions: 1,
         run: (_w, ctx, player) => {
           runs.push({ tick: ctx.tick, player, module });
           return [];
@@ -456,13 +457,14 @@ describe('computerPlayerSystem - cadence, stagger, and module gates', () => {
     expect(runs).toHaveLength(MAX_PLAYERS * modules.length - 1);
     const byTick = new Map<number, string[]>();
     for (const run of runs) {
-      const slot = run.tick - run.module * COMPUTER_MODULE_PHASE_TICKS;
-      expect(computerDecisionDue(slot, run.player)).toBe(true);
+      const phase = COMPUTER_MODULES[run.module]?.phase ?? run.module;
+      expect(computerDecisionDue(run.tick - phase * COMPUTER_MODULE_PHASE_TICKS, run.player)).toBe(true);
       byTick.set(run.tick, [...(byTick.get(run.tick) ?? []), COMPUTER_MODULES[run.module]?.id ?? '']);
     }
     for (const ids of byTick.values()) {
       expect(ids.filter((id) => DEAR.includes(id)).length).toBeLessThanOrEqual(1);
-      expect(ids.filter((id) => !DEAR.includes(id)).length).toBeLessThanOrEqual(1);
+      // The colony shares the population's tick: an idle seat's colony costs one read.
+      expect(ids.filter((id) => !DEAR.includes(id) && id !== 'colony').length).toBeLessThanOrEqual(1);
     }
   });
 
