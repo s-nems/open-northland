@@ -72,9 +72,9 @@ const COLONY_SAIL_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
 const COLONY_LANDING_HANDS = 5;
 /** How long they get before they step ashore and leave what is left aboard (authored). */
 const COLONY_UNLOAD_TICKS = minutesToTicks(5);
-/** The shores a site's fire test keeps, nearest the site first (authored): enough that one whose ground
- *  refuses a store leaves others to try. */
-const SHORE_CANDIDATES = 6;
+/** The shores a site's fire test keeps, nearest the site first (authored): spaced ten nodes apart, these span
+ *  about the block's coast, so {@link shoreWithStore} has real choices to weigh. */
+const SHORE_CANDIDATES = 12;
 
 /** The land the seat's base stands on, or {@link NO_COMPONENT}. */
 export function homeLandOf(env: ColonyEnv): number {

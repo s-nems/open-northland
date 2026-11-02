@@ -1,16 +1,20 @@
 import type { BuildingType } from '@open-northland/data';
 import { playerPlacementTribes } from '../../../components/index.js';
 import type { Entity } from '../../../ecs/world.js';
-import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
+import { type HalfCellNode, nodeManhattan } from '../../../nav/halfcell.js';
+import { buildingTypeByContentId, goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { everyBuildingOf, homeBuildings } from '../../ai-shared/home-roster.js';
-import { bestRingNode } from '../../ai-shared/node-geometry.js';
+import { anchorNodeOf, bestRingNode } from '../../ai-shared/node-geometry.js';
 import { routeRegions } from '../../footprint/index.js';
+import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js';
 import { VEHICLE_CARGO_SEARCH_RADIUS } from '../../settlers/drives/economy/vehicle-cargo.js';
+import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { buildReach, footprintOnGrass } from '../build-order/placement.js';
 import { seatSpotAcceptor } from '../build-order/plots.js';
 import { seatSiege } from '../build-order/siege.js';
+import { nearestLiveResource } from '../live-resources.js';
 import type { StepGround } from './plan.js';
+import { LAND_GOOD_IDS } from './provision.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
 import type { ColonyEnv } from './voyage.js';
 
@@ -45,12 +49,12 @@ export function colonySpot(
   const reach = buildReach(world, owned, anchor, COLONY_REACH_NODES);
   const { underFire } = seatSiege(world, ctx, terrain, seat, owned);
   const acceptor = seatSpotAcceptor(world, ctx, terrain, seat, type.typeId, tribe);
-  const accept = acceptor.around(underFire, anchor, radius);
   const regions = routeRegions(world, ctx, terrain);
   const from = terrain.nodeAtClamped(anchor.hx, anchor.hy);
   const walled = regions.pocketed(from) ? null : regions;
-  const search = (fits: (x: number, y: number) => boolean): HalfCellNode | null =>
-    bestRingNode(
+  const search = (fits: (x: number, y: number) => boolean, spareGrass = false): HalfCellNode | null => {
+    const accept = acceptor.around(underFire, anchor, radius, spareGrass);
+    return bestRingNode(
       anchor.hx,
       anchor.hy,
       radius,
@@ -63,7 +67,10 @@ export function colonySpot(
         fits(x, y) &&
         walled?.unroutable(from, terrain.nodeAt(x, y)) !== true,
     );
-  if (ground !== 'field') return search(() => true);
+  };
+  // Owner ruling: the grass stays for a farm and a well where anything else can stand off it.
+  if (ground === 'any') return search(() => true, true) ?? search(() => true);
+  if (ground === 'grass') return search(() => true);
   // A farm stands on its grass where it fits, else beside it, as the home search has it.
   return (
     search((x, y) => footprintOnGrass(ctx, terrain, type, tribe, x, y)) ??
@@ -71,8 +78,50 @@ export function colonySpot(
   );
 }
 
-/** The first shore of `shores` with room for a store in the reach of a hold's hands: they carry cargo into a
- *  warehouse only that near the door. Null also for a seat with no tribe or a content with no store. */
+/** How far round a shore its colony's first buildings and gatherers look, in Manhattan nodes (authored: the
+ *  store's walk range). */
+const SHORE_LOOK_NODES = 50;
+/** Sampling step of a shore's open ground, so a look costs a few hundred node reads. */
+const SHORE_LOOK_STEP = 3;
+/** A shore's score per {@link LAND_GOOD_IDS} good in reach and per live swarm, against one per open node
+ *  sampled: a good nobody can reach costs a colony more than a corner of room (authored). */
+const SHORE_GOOD_POINTS = 60;
+const SHORE_FISH_POINTS = 20;
+const SHORE_GRASS_DIVISOR = 8;
+
+/** How a shore serves a colony (owner ruling): open ground, resources in gatherers' reach, grass and fish. */
+function shoreScore(env: ColonyEnv, land: number, at: HalfCellNode): number {
+  const { world, ctx, terrain } = env;
+  const grid = placementBlockerGrid(world, ctx.content, terrain);
+  let open = 0;
+  let grass = 0;
+  for (let dy = -SHORE_LOOK_NODES; dy <= SHORE_LOOK_NODES; dy += SHORE_LOOK_STEP) {
+    const span = SHORE_LOOK_NODES - Math.abs(dy);
+    for (let dx = -span; dx <= span; dx += SHORE_LOOK_STEP) {
+      const x = at.hx + dx;
+      const y = at.hy + dy;
+      if (!terrain.inBounds(x, y)) continue;
+      const node = terrain.nodeAt(x, y);
+      if (terrain.componentOf(node) !== land || !terrain.isBuildable(node)) continue;
+      if ((grid.obstacle[node] ?? 0) === 0) open++;
+      if (terrain.isPlantable(node)) grass++;
+    }
+  }
+  const goods = LAND_GOOD_IDS.filter((id) => {
+    const good = goodTypeByContentId(ctx.content, id);
+    const near = good === undefined ? null : nearestLiveResource(world, good.typeId, at);
+    const node = near === null ? null : anchorNodeOf(world, near);
+    return node !== null && nodeManhattan(node, at) <= SHORE_LOOK_NODES;
+  }).length;
+  const fish = fishSwarmsNearNode(world, at.hx, at.hy, SHORE_LOOK_NODES).length;
+  return (
+    open + Math.floor(grass / SHORE_GRASS_DIVISOR) + SHORE_GOOD_POINTS * goods + SHORE_FISH_POINTS * fish
+  );
+}
+
+/** The best of `shores` with room for a store in the reach of a hold's hands: they carry cargo into a
+ *  warehouse only that near the door. The first best on a tie. Null also for a seat with no tribe or a
+ *  content with no store. */
 export function shoreWithStore(
   env: ColonyEnv,
   land: number,
@@ -82,7 +131,14 @@ export function shoreWithStore(
   const tribe = playerPlacementTribes(world, seat)?.[0];
   const type = buildingTypeByContentId(ctx.content, COLONY_STORE_BUILDING_ID);
   if (tribe === undefined || type === undefined) return null;
-  const fits = (at: HalfCellNode): boolean =>
-    colonySpot(env, land, type, tribe, at, VEHICLE_CARGO_SEARCH_RADIUS) !== null;
-  return shores.find(fits) ?? null;
+  let best: HalfCellNode | null = null;
+  let bestScore = -1;
+  for (const at of shores) {
+    if (colonySpot(env, land, type, tribe, at, VEHICLE_CARGO_SEARCH_RADIUS) === null) continue;
+    const score = shoreScore(env, land, at);
+    if (score <= bestScore) continue;
+    best = at;
+    bestScore = score;
+  }
+  return best;
 }

@@ -25,13 +25,29 @@ const BLOCK_REACH_ZONES = 1;
 const MIN_FREE_NODES = 300;
 const MIN_WOOD = 300;
 const MIN_STONE = 150;
-/** Deposit past these buys a site nothing: a colony sends home what its men dig in a game. */
-const WOOD_SCORE_CAP = 900;
-const STONE_SCORE_CAP = 600;
-const STONE_SCORE_WEIGHT = 2;
-const FISH_SCORE_DIVISOR = 4;
-/** Score lost per hex node from home: a longer voyage costs line trips. */
-const DISTANCE_SCORE_WEIGHT = 2;
+/** The units of a good in a block that count it as there for a colony's gatherers. */
+const VARIETY_UNITS: Readonly<Record<string, number>> = { wood: 300, stone: 150, mud: 50, iron: 50 };
+/** A zone this free joins the open ground around the block's centre. */
+const OPEN_ZONE_FREE_NODES = 64;
+/** Water nodes that make a zone coast, and how far a coast zone may lie from the centre zone to count. */
+const COAST_WATER_NODES = 32;
+
+/** Each part of a site's score runs to {@link PART_POINTS}: room, variety, grass and shore weigh most, and
+ *  distance least. Owner ruling: fairly open with room to expand, varied resources close by, a patch of grass
+ *  for a farm, near the shore; the nearest no longer wins. */
+const PART_POINTS = 100;
+const ROOM_WEIGHT = 4;
+const VARIETY_WEIGHT = 4;
+const GRASS_WEIGHT = 3;
+const SHORE_WEIGHT = 2;
+const FISH_WEIGHT = 1;
+const DISTANCE_WEIGHT = 1;
+/** Past these a site gains nothing: the ground for a colony's plan, a farm's fields and well, a swarm's
+ *  catch, and the widest sea a line crosses in a few minutes. */
+const ROOM_FULL_NODES = 2000;
+const GRASS_FULL_NODES = 400;
+const FISH_FULL_UNITS = 400;
+const DISTANCE_FULL_NODES = 400;
 /** The best sites the live test weighs, in score order. */
 const LIVE_CANDIDATES = 8;
 
@@ -44,8 +60,38 @@ export const COLONY_STORE_BUILDING_ID = 'stock_00';
 /** The fewest spots for it the block must offer as the map stands now. */
 const MIN_STORE_SPOTS = 300;
 
-const WOOD_ID = 'wood';
-const STONE_ID = 'stone';
+/** What a site's block holds, the score's reads. */
+export interface SiteTally {
+  /** Free nodes joined to the centre zone over open zones. */
+  readonly room: number;
+  /** Of {@link VARIETY_UNITS}' goods, how many the block holds enough of. */
+  readonly goods: number;
+  readonly grass: number;
+  readonly fish: number;
+  /** Whether a coast zone lies in the block. */
+  readonly coast: boolean;
+  /** Hex nodes from the seat's start. */
+  readonly distance: number;
+}
+
+/** {@link part} of `full` a figure makes. */
+function part(figure: number, full: number): number {
+  return Math.floor((PART_POINTS * Math.min(figure, full)) / full);
+}
+
+/** A block's score (owner ruling): open ground to grow on, varied resources in gatherers' reach, grass for a
+ *  farm and a well, a shore and its fish. Distance only breaks what is left. */
+export function siteScore(tally: SiteTally): number {
+  const goods = Object.keys(VARIETY_UNITS).length;
+  return (
+    ROOM_WEIGHT * part(tally.room, ROOM_FULL_NODES) +
+    VARIETY_WEIGHT * part(tally.goods, goods) +
+    GRASS_WEIGHT * part(tally.grass, GRASS_FULL_NODES) +
+    (tally.coast ? SHORE_WEIGHT * PART_POINTS : 0) +
+    FISH_WEIGHT * part(tally.fish, FISH_FULL_UNITS) -
+    DISTANCE_WEIGHT * part(tally.distance, DISTANCE_FULL_NODES)
+  );
+}
 
 /** A 3x3 zone block on one land the seat's ships can reach. */
 export interface ColonySite {
@@ -59,7 +105,7 @@ export interface ColonySite {
   readonly contested: boolean;
 }
 
-const candidatesByBrief = new WeakMap<MapBriefView, Map<number, readonly ColonySite[]>>();
+const candidatesByBrief = new WeakMap<MapBriefView, ReadonlyMap<number, readonly ColonySite[]>>();
 
 /** The zones of the block around `zone`, in row order, cut at the map's edge. */
 function blockZones(brief: MapBriefView, zone: number): number[] {
@@ -117,59 +163,115 @@ function landsOverSea(brief: MapBriefView, home: number): ReadonlySet<number> | 
   return lands;
 }
 
+/** The free nodes of the zones of `block` on `land` joined to `zone` over open zones. */
+function openRoom(brief: MapBriefView, block: readonly number[], land: number, zone: number): number {
+  const open = (z: number): boolean =>
+    block.includes(z) && brief.dominantLand[z] === land && (brief.free[z] ?? 0) >= OPEN_ZONE_FREE_NODES;
+  if (!open(zone)) return 0;
+  const seen = new Set([zone]);
+  const queue = [zone];
+  let room = 0;
+  for (let z = queue.shift(); z !== undefined; z = queue.shift()) {
+    room += brief.free[z] ?? 0;
+    const left = z % brief.zonesWide > 0 ? [z - 1] : [];
+    const right = z % brief.zonesWide < brief.zonesWide - 1 ? [z + 1] : [];
+    for (const next of [...left, ...right, z - brief.zonesWide, z + brief.zonesWide]) {
+      if (seen.has(next) || !open(next)) continue;
+      seen.add(next);
+      queue.push(next);
+    }
+  }
+  return room;
+}
+
+/** What the block round `zone` holds on `land`. */
+function tallyBlock(
+  brief: MapBriefView,
+  zone: number,
+  land: number,
+  distance: number,
+): SiteTally & { readonly free: number; readonly wood: number; readonly stone: number } {
+  const block = blockZones(brief, zone);
+  const units = new Map<string, number>();
+  let free = 0;
+  let grass = 0;
+  let fish = 0;
+  let coast = false;
+  for (const z of block) {
+    if (brief.dominantLand[z] !== land) continue;
+    free += brief.free[z] ?? 0;
+    grass += brief.plantable[z] ?? 0;
+    fish += brief.fish[z] ?? 0;
+    coast ||= (brief.water[z] ?? 0) >= COAST_WATER_NODES;
+    for (const [column, id] of brief.goods.entries())
+      units.set(id, (units.get(id) ?? 0) + (brief.deposits[z * brief.goods.length + column] ?? 0));
+  }
+  const held = (id: string): number => units.get(id) ?? 0;
+  return {
+    room: openRoom(brief, block, land, zone),
+    goods: Object.entries(VARIETY_UNITS).filter(([id, least]) => held(id) >= least).length,
+    grass,
+    fish,
+    coast,
+    distance,
+    free,
+    wood: held('wood'),
+    stone: held('stone'),
+  };
+}
+
 function scanCandidates(brief: MapBriefView, seat: number): readonly ColonySite[] {
   const start = brief.seats.find((s) => s.player === seat);
   const lands = start === undefined ? null : landsOverSea(brief, start.component);
-  const wood = brief.goods.indexOf(WOOD_ID);
-  const stone = brief.goods.indexOf(STONE_ID);
-  if (start === undefined || lands === null || wood < 0 || stone < 0) return [];
+  if (start === undefined || lands === null) return [];
   const home = { hx: start.hx, hy: start.hy };
   const rivals = brief.seats.filter((other) => other.player !== seat);
   const sites: ColonySite[] = [];
   for (let zone = 0; zone < brief.dominantLand.length; zone++) {
     const land = brief.dominantLand[zone] ?? NO_COMPONENT;
     if (!lands.has(land)) continue;
-    let free = 0;
-    let woodUnits = 0;
-    let stoneUnits = 0;
-    let fish = 0;
-    for (const z of blockZones(brief, zone)) {
-      if (brief.dominantLand[z] !== land) continue;
-      free += brief.free[z] ?? 0;
-      woodUnits += brief.deposits[z * brief.goods.length + wood] ?? 0;
-      stoneUnits += brief.deposits[z * brief.goods.length + stone] ?? 0;
-      fish += brief.fish[z] ?? 0;
-    }
-    if (free < MIN_FREE_NODES || woodUnits < MIN_WOOD || stoneUnits < MIN_STONE) continue;
     const centre = zoneCentre(brief, zone);
-    const score =
-      Math.min(woodUnits, WOOD_SCORE_CAP) +
-      STONE_SCORE_WEIGHT * Math.min(stoneUnits, STONE_SCORE_CAP) +
-      Math.floor(fish / FISH_SCORE_DIVISOR) -
-      DISTANCE_SCORE_WEIGHT * hexDistance(home, centre);
+    const tally = tallyBlock(brief, zone, land, hexDistance(home, centre));
+    if (tally.free < MIN_FREE_NODES || tally.wood < MIN_WOOD || tally.stone < MIN_STONE) continue;
     const contested = rivals.some((rival) => hexDistance(rival, centre) < hexDistance(home, centre));
-    sites.push({ zone, land, centre, score, contested });
+    sites.push({ zone, land, centre, score: siteScore(tally), contested });
   }
-  return sites.sort(
-    (a, b) => Number(a.contested) - Number(b.contested) || b.score - a.score || a.zone - b.zone,
-  );
+  return sites;
+}
+
+const ranked = (a: ColonySite, b: ColonySite): number =>
+  Number(a.contested) - Number(b.contested) || b.score - a.score || a.zone - b.zone;
+
+/** Each seat's sites: what {@link scanCandidates} finds, seats ascending, a site within
+ *  {@link COLONY_RANGE_NODES} of an earlier seat's first pick taken for contested too, or two seats sail for
+ *  one coast and the later turns back at the range rule. */
+function spreadSeats(brief: MapBriefView): Map<number, readonly ColonySite[]> {
+  const bySeat = new Map<number, readonly ColonySite[]>();
+  const picks: HalfCellNode[] = [];
+  for (const { player } of [...brief.seats].sort((a, b) => a.player - b.player)) {
+    const sites = scanCandidates(brief, player)
+      .map((site) => ({
+        ...site,
+        contested: site.contested || picks.some((at) => hexDistance(at, site.centre) <= COLONY_RANGE_NODES),
+      }))
+      .sort(ranked);
+    bySeat.set(player, sites);
+    const first = sites[0];
+    if (first !== undefined) picks.push(first.centre);
+  }
+  return bySeat;
 }
 
 /** The sites the static map offers `seat`, blocks on a land sharing water with home: those nearer it than
- *  any other seat's start first, so seats spread by what they all know, then best first, the lowest zone
- *  on a tie. Scanned once per seat, and a pure function of the saved brief. */
+ *  any other seat's start and clear of the earlier seats' picks first, so seats spread by what they all know,
+ *  then best first, the lowest zone on a tie. Scanned once per brief, and a pure function of it. */
 export function colonySiteCandidates(brief: MapBriefView, seat: number): readonly ColonySite[] {
   let bySeat = candidatesByBrief.get(brief);
   if (bySeat === undefined) {
-    bySeat = new Map();
+    bySeat = spreadSeats(brief);
     candidatesByBrief.set(brief, bySeat);
   }
-  let sites = bySeat.get(seat);
-  if (sites === undefined) {
-    sites = scanCandidates(brief, seat);
-    bySeat.set(seat, sites);
-  }
-  return sites;
+  return bySeat.get(seat) ?? [];
 }
 
 /** Every spot `seat` must keep a colony from: the other seats' starts and start buildings, which it may

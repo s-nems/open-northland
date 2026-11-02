@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { FOG_MODE, type MapBriefView, mapBriefOf } from '../../../../src/components/index.js';
 import { halfCellMapFromCells, Simulation } from '../../../../src/index.js';
+import { hexDistance } from '../../../../src/nav/halfcell.js';
 import {
+  COLONY_RANGE_NODES,
   colonySiteCandidates,
   colonySiteClear,
+  type SiteTally,
+  siteScore,
   surveyColonySite,
 } from '../../../../src/systems/computer-player/colony/survey.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
@@ -93,6 +97,28 @@ const pair = (column: number, land: number, extra: Partial<ZoneFill> = {}): Zone
   { column: column + 1, land, ...extra },
 ];
 
+const TALLY: SiteTally = { room: 900, goods: 2, grass: 0, fish: 0, coast: true, distance: 120 };
+
+describe('a site score', () => {
+  it('takes open ground, varied goods and grass over a short voyage', () => {
+    const near = siteScore({ ...TALLY, distance: 60 });
+    expect(siteScore({ ...TALLY, room: 1800, distance: 300 })).toBeGreaterThan(near);
+    expect(siteScore({ ...TALLY, goods: 3, distance: 300 })).toBeGreaterThan(near);
+    expect(siteScore({ ...TALLY, grass: 200, distance: 300 })).toBeGreaterThan(near);
+  });
+
+  it('wants a shore and its fish, and lets distance only break what is left', () => {
+    expect(siteScore(TALLY)).toBeGreaterThan(siteScore({ ...TALLY, coast: false }));
+    expect(siteScore({ ...TALLY, fish: 200 })).toBeGreaterThan(siteScore(TALLY));
+    expect(siteScore({ ...TALLY, distance: 60 })).toBeGreaterThan(siteScore(TALLY));
+  });
+
+  it('gains nothing past a full part', () => {
+    expect(siteScore({ ...TALLY, room: 9000 })).toBe(siteScore({ ...TALLY, room: 2000 }));
+    expect(siteScore({ ...TALLY, grass: 9000 })).toBe(siteScore({ ...TALLY, grass: 400 }));
+  });
+});
+
 describe('the static colony candidates', () => {
   it('keeps blocks over the thresholds on a land sharing water with home', () => {
     const brief = briefOf([
@@ -108,7 +134,7 @@ describe('the static colony candidates', () => {
     expect(colonySiteCandidates(brief, SEAT).every((site) => site.centre.hx >= 5 * ZONE_NODES)).toBe(true);
   });
 
-  it('caps a deposit, prefers the nearer block and breaks a tie on the lowest zone', () => {
+  it('gives a deposit no weight past its need, then the nearer block and the lowest zone lead', () => {
     const rich = { wood: 5000, stone: 5000 };
     const brief = briefOf([...pair(2, NEAR_LAND, rich), ...pair(5, NEAR_LAND, rich)]);
     const [best, next] = colonySiteCandidates(brief, SEAT);
@@ -117,9 +143,19 @@ describe('the static colony candidates', () => {
     expect(next?.score).toBeLessThanOrEqual(best?.score ?? 0);
   });
 
+  it("keeps a later seat off an earlier seat's pick, however good the block", () => {
+    const brief = briefOf([...pair(2, NEAR_LAND, { free: 900 }), ...pair(6, NEAR_LAND)]);
+    const twin = { player: SEAT + 1, hx: 0, hy: 48, component: HOME_LAND, buildings: [] };
+    const both = { ...brief, seats: [...brief.seats, twin] };
+    const [first] = colonySiteCandidates(both, SEAT);
+    const [second] = colonySiteCandidates(both, SEAT + 1);
+    if (first === undefined || second === undefined) throw new Error('expected sites');
+    expect(hexDistance(first.centre, second.centre)).toBeGreaterThan(COLONY_RANGE_NODES);
+  });
+
   it('looks last at a block another start lies nearer, whatever its score', () => {
-    const rich = { wood: 5000, stone: 5000 };
-    const brief = briefOf([...pair(2, NEAR_LAND), ...pair(6, NEAR_LAND, rich)]);
+    const open = { free: 900 };
+    const brief = briefOf([...pair(2, NEAR_LAND), ...pair(6, NEAR_LAND, open)]);
     const shared = {
       ...brief,
       seats: [...brief.seats, { player: FOE, hx: FOE_START, hy: 48, component: HOME_LAND, buildings: [] }],

@@ -44,11 +44,8 @@ describe('a colony spot', () => {
 
   it('finds land from a centre in the water only within its radius, and picks the shore with room', () => {
     const { env, terrain, land, store } = setup();
-    const reach = nodeManhattan(IN_THE_STRAIT, EAST_SHORE);
     expect(terrain.isWater(terrain.nodeAt(IN_THE_STRAIT.hx, IN_THE_STRAIT.hy))).toBe(true);
     expect(colonySpot(env, land, store, VIKING, IN_THE_STRAIT, 1)).toBeNull();
-    expect(shoreWithStore(env, land, [IN_THE_STRAIT, EAST_SHORE])).toEqual(
-      reach <= SEARCH_NODES ? IN_THE_STRAIT : EAST_SHORE,
-    );
+    expect(shoreWithStore(env, land, [IN_THE_STRAIT, EAST_SHORE])).toEqual(EAST_SHORE);
   });
 });
