@@ -1074,6 +1074,27 @@ describe('an attack-move against a sealed palisade', () => {
     expect(sim.world.get(soldier, AttackOrder)).toEqual({ target: enemy });
   });
 
+  it('keeps breaching through the same order repeated on the walled-in enemy', () => {
+    const sim = fresh();
+    const gate = wallRow(sim, P1);
+    sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
+    sim.step();
+    const enemy = fighter(sim, SOUTH, P1);
+    const soldier = fighter(sim, NORTH, P0);
+    const orderSoldier = (): void =>
+      attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: soldier, target: enemy });
+    orderSoldier();
+    for (let tick = 0; tick < 20 && sim.world.get(soldier, AttackOrder).breach === undefined; tick++)
+      sim.step();
+    const wall = sim.world.get(soldier, AttackOrder).target;
+    const before = sim.world.get(wall, Health).hitpoints;
+    for (let tick = 0; tick < 300 && sim.world.get(wall, Health).hitpoints === before; tick++) {
+      orderSoldier();
+      sim.step();
+    }
+    expect(sim.world.get(wall, Health).hitpoints).toBeLessThan(before);
+  });
+
   it('gives up on a wall it may not attack, as on any other unreachable spot', () => {
     const sim = fresh();
     const gate = wallRow(sim, P0);
