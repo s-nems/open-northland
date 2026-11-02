@@ -32,6 +32,7 @@ export type PlacementAffinity =
  * - `wanted`: a step heading another line wants the good (it holds on nothing of its own, its tier is open
  *   to the seat and its bill takes the good);
  * - `noneDue`: no step heading another line is ready to place one of `buildings` (`./progress.ts`);
+ * - `shipPath`: the seat sails for a rival (`../sea-route.ts`) and its defence does not come first;
  * - `settlers`: the seat counts `count` settlers;
  * - `deadline`: the clock reaches `leadTicks` before the seat's military deadline
  *   (`../military/deadline.ts`), lifted at once while its defence comes first;
@@ -47,6 +48,7 @@ export type StepHold =
   | { readonly kind: 'good'; readonly good: string }
   | { readonly kind: 'wanted'; readonly good: string }
   | { readonly kind: 'noneDue'; readonly buildings: readonly string[] }
+  | { readonly kind: 'shipPath' }
   | { readonly kind: 'settlers'; readonly count: number }
   | { readonly kind: 'deadline'; readonly leadTicks: number }
   | { readonly kind: 'tick'; readonly tick: number }

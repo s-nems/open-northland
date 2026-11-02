@@ -533,6 +533,8 @@ function holdOpen(
     }
     case 'noneDue':
       return scope.due(hold.buildings);
+    case 'shipPath':
+      return !seatDefenceFirst(world, ctx, player) && memoOverSea(world, ctx, player, memo);
     case 'settlers':
       return ownedSettlers(world, player).length < hold.count;
     case 'deadline':

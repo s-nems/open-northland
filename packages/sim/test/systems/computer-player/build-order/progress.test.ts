@@ -1,5 +1,5 @@
 import { parseContentSet } from '@open-northland/data';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { aiControlEntity, ComputerStrategy, StalledPlacements } from '../../../../src/components/index.js';
 import type { Simulation } from '../../../../src/index.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
@@ -20,6 +20,7 @@ import {
   ASSUMED_PEACE_TICKS,
   TOWER_LEAD_TICKS,
 } from '../../../../src/systems/computer-player/military/deadline.js';
+import * as seaRoute from '../../../../src/systems/computer-player/sea-route.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import {
   aiSim,
@@ -110,6 +111,27 @@ describe('build order progress', () => {
     const strategy = sim.world.mut(carrier, ComputerStrategy);
     strategy.military = { ...strategy.military, posture: 'defend', evidence: ['underAttack'] };
     expect(held(sim, towersDue(TOWER_LEAD_TICKS))).toBe(false);
+  });
+
+  it('holds a step on the ship path only while the seat sails and its defence does not come first', () => {
+    const entry: BuildOrderEntry = {
+      kind: 'place',
+      building: 'barracks',
+      count: 1,
+      holdUntil: { kind: 'shipPath' },
+    };
+    const landed = seat();
+    expect(held(landed, entry)).toBe(false);
+
+    const sailing = seat();
+    vi.spyOn(seaRoute, 'rivalOverSea').mockReturnValue(true);
+    expect(held(sailing, entry)).toBe(true);
+    const carrier = aiControlEntity(sailing.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    const strategy = sailing.world.mut(carrier, ComputerStrategy);
+    strategy.military = { ...strategy.military, posture: 'defend', evidence: ['underAttack'] };
+    expect(held(sailing, entry)).toBe(false);
+    vi.restoreAllMocks();
   });
 
   it('holds the tower ring until the barracks is placed, unless the defence comes first', () => {

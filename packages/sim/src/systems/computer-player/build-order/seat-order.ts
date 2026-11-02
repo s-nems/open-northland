@@ -119,10 +119,12 @@ const STANDARD: ArchetypeTuning = {
 
 /** Owner ruling: the ship joinery goes ahead of the upper workshops on the island plan, which leave the few
  *  builders of its opening on four to ten sites at once (arabskie_wyspy_wolna_gra_mieszana, minute 30-60).
- *  Authored: the wait ends with the top tier or at game minute 50, so a seat stuck on it still arms. */
+ *  Authored: the wait ends with the top tier or at game minute 50, so a seat stuck on it still arms, and at
+ *  once for a seat whose defence comes first or that has no ship to build. */
 const SHIP_JOINERY_FIRST: StepHold = {
   kind: 'any',
   holds: [
+    { kind: 'shipPath' },
     { kind: 'built', building: 'work_joinery_03' },
     { kind: 'tick', tick: minutesToTicks(SHIP_JOINERY_FIRST_MINUTES) },
   ],
