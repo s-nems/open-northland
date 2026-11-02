@@ -56,7 +56,8 @@ export function createWeatherFeed(
   const nodesY = map.height * 2;
   const held = override?.kind === 'ambient' && ambient !== null ? override : null;
   const over = override === null || held !== null ? [] : overrideRegions(override, nodesX, nodesY);
-  const own = held !== null || (ambient !== null && ambient.mode !== 'map' && override === null);
+  const plays = ambient?.mode === 'variable' || ambient?.mode === 'winter';
+  const own = held !== null || (plays && override === null);
   const winter = ambient?.mode === 'winter';
   let now: AmbientWeatherNow =
     held === null ? { level: 0, cold: false } : { level: held.percent / PERCENT_FULL, cold: false };

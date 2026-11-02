@@ -1,7 +1,12 @@
 import type { SceneryObject, SoundStatsView, UiCue, VoiceCall } from '@open-northland/audio';
 import type { Campaign, MapVariant } from '@open-northland/data';
 import { BUILDING_KIND, jobCanPray, type MapRelationFlag } from '@open-northland/data';
-import type { SessionDriver } from '@open-northland/lockstep';
+import {
+  type DayNightMode,
+  DEFAULT_DAY_NIGHT_MODE,
+  type SessionDriver,
+  type WeatherMode,
+} from '@open-northland/lockstep';
 import type {
   DoorBadge,
   ElevationField,
@@ -234,6 +239,10 @@ export interface GameViewDeps {
   readonly mapSize: { readonly width: number; readonly height: number };
   /** Ambient weather for a map that authors none; absent, the sky stays as the map wrote it. */
   readonly ambientWeather?: AmbientWeather | null;
+  /** The match's weather rule; `off` draws no weather whatever the player's setting. */
+  readonly weatherMode?: WeatherMode;
+  /** The match's day and night rule. */
+  readonly dayNightMode?: DayNightMode;
   /** Terrain-height field, so clicks on lifted hills resolve to the tile drawn there. */
   readonly elevation?: ElevationField;
   /** The static quad still drawing a harvestable the sprite pool skips, so a click on a virgin tree or
@@ -477,12 +486,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     );
 
     // A checkout without a decoded sound bank degrades to silence.
+    const weatherAllowed = deps.weatherMode !== 'off';
     const soundDriver = await mountGamePresentation(
       params,
       renderer,
       host.content.jobs,
       deps.musicType,
       lifetime.signal,
+      weatherAllowed,
     );
     cleanup.push(() => soundDriver?.close());
     if (deps.soundScenery !== undefined) soundDriver?.setLandscapeScenery(deps.soundScenery);
@@ -874,7 +885,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       });
     }
     // Assembled below, once the controls and the camera it steers exist.
-    const scriptTints = await mountScriptTints(host, renderer, { pinnedIndex: tintParam(params) });
+    const scriptTints = await mountScriptTints(host, renderer, {
+      pinnedIndex: tintParam(params),
+      dayNight: deps.dayNightMode ?? DEFAULT_DAY_NIGHT_MODE,
+      dayNightShown: storedSettings.dayNight,
+      weatherShown: storedSettings.weather && weatherAllowed,
+      tick: host.tick,
+    });
     cleanup.push(() => scriptTints.dispose());
     const siege = mountSiegePresentation({
       host,
@@ -1340,9 +1357,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         perfReadout.setCapFps(limit);
       },
       setWeatherEnabled: (enabled) => {
-        setWeatherDrawn(enabled);
-        soundDriver?.setWeatherEnabled(enabled);
+        const drawn = enabled && weatherAllowed;
+        setWeatherDrawn(drawn);
+        soundDriver?.setWeatherEnabled(drawn);
+        scriptTints.setWeatherShown(drawn);
       },
+      setDayNightShown: (shown) => scriptTints.setDayNightShown(shown),
       setKeyBindings: (next) => {
         Object.assign(keyBindings, next);
         cameraCtl.setBindings(next);
@@ -1429,6 +1449,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         onFrame: (snapshot) => {
           autosave.update(snapshot.tick, liveSettings.settings.current());
           siege.frame();
+          scriptTints.frame(snapshot.tick);
           netOverlays?.refresh();
           followLink?.();
           deps.onFrame?.(snapshot);

@@ -1,5 +1,6 @@
 import type {
   ComputerDifficulty,
+  DayNightMode,
   PeaceMinutes,
   SeatMode,
   SessionRules,
@@ -59,7 +60,8 @@ const SEAT_MODES = keysOf<SeatMode>({
   idle: true,
   absent: true,
 });
-const WEATHER_MODES = keysOf<WeatherMode>({ map: true, variable: true, winter: true });
+const WEATHER_MODES = keysOf<WeatherMode>({ map: true, variable: true, winter: true, off: true });
+const DAY_NIGHT_MODES = keysOf<DayNightMode>({ map: true, on: true, off: true });
 export const VACANT_SEAT_MODES = keysOf<VacantSeatMode>({
   'map-ai': true,
   computer: true,
@@ -167,6 +169,7 @@ function parseSessionRules(value: unknown, at: string): SessionRules {
     progression: raw.progression === null ? null : asBoolean(raw.progression, `${at}.progression`),
     needs: raw.needs === null ? null : asBoolean(raw.needs, `${at}.needs`),
     weather: raw.weather === null ? null : asOneOf(raw.weather, WEATHER_MODES, `${at}.weather`),
+    dayNight: raw.dayNight === null ? null : asOneOf(raw.dayNight, DAY_NIGHT_MODES, `${at}.dayNight`),
     alliedVision: raw.alliedVision === null ? null : asBoolean(raw.alliedVision, `${at}.alliedVision`),
     peace: raw.peace === null ? null : parsePeace(raw.peace, `${at}.peace`),
   };

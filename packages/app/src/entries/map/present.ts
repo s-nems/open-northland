@@ -1,5 +1,6 @@
 import { mapLobbySlots } from '@open-northland/data';
 import {
+  DEFAULT_DAY_NIGHT_MODE,
   DEFAULT_WEATHER_MODE,
   isReadOnlySpectator,
   isSpectator,
@@ -253,6 +254,8 @@ export async function presentMapWorld(
       hosted.seed,
       session.rules.weather ?? DEFAULT_WEATHER_MODE,
     ),
+    weatherMode: session.rules.weather ?? DEFAULT_WEATHER_MODE,
+    dayNightMode: session.rules.dayNight ?? DEFAULT_DAY_NIGHT_MODE,
     elevation: world.elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
     onEvents: (events) => {
       staticLayer?.onEvents(events);

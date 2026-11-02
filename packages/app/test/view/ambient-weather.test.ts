@@ -85,6 +85,10 @@ describe('ambient weather feed', () => {
     return { fields, feed };
   };
 
+  it('plays nothing under the off rule', () => {
+    expect(played('off').fields).toEqual([]);
+  });
+
   it('holds a preview episode under the ambient override', () => {
     const fields: WeatherField[] = [];
     createWeatherFeed(

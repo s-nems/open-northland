@@ -17,7 +17,15 @@ const LOBBY: RoomView = {
     name: 'Room',
     world: { kind: 'map', mapId: 'forest' },
     seed: 1,
-    rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+    rules: {
+      fog: null,
+      progression: null,
+      needs: null,
+      weather: null,
+      dayNight: null,
+      alliedVision: null,
+      peace: null,
+    },
     speed: 1,
   },
   seats: [

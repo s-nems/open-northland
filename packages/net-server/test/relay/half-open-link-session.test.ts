@@ -22,7 +22,15 @@ const SETTINGS: RoomSettings = {
   name: 'half-open',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 13,
-  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+  rules: {
+    fog: null,
+    progression: null,
+    needs: null,
+    weather: null,
+    dayNight: null,
+    alliedVision: null,
+    peace: null,
+  },
   speed: 1,
 };
 const SEATS = [0, 1].map((player) => ({

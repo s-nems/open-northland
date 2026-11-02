@@ -173,6 +173,16 @@ export const plSurfaces = {
         map: { label: 'Mapa', detail: 'Tylko pogoda ustalona przez mapę.' },
         variable: { label: 'Zmienna', detail: 'Pogoda mapy oraz okazjonalna pogoda samej gry.' },
         winter: { label: 'Zima', detail: 'Śnieżna gra.' },
+        off: { label: 'Wyłączona', detail: 'Bez pogody, także tej ustalonej przez mapę.' },
+      },
+      dayNightLabel: 'Cykl dnia i nocy',
+      dayNightModes: {
+        map: { label: 'Mapa', detail: 'Tylko dzień i noc ustalone przez mapę.' },
+        on: {
+          label: 'Włączony',
+          detail: 'Cykl dnia i nocy na każdej mapie. Mapa z własnym cyklem zachowuje swój.',
+        },
+        off: { label: 'Wyłączony', detail: 'Zawsze dzień, także na mapie z własnym cyklem.' },
       },
       start: 'Rozpocznij grę',
       startNeedsSeat: 'Najpierw zajmij miejsce',
@@ -265,9 +275,6 @@ export const plSurfaces = {
       buildingDamage: 'Zniszczenia budynków',
       buildingDamageTip:
         'Wyrwy w dachach, odsłonięte belki, dym, ogień i odpadające fragmenty. Wyłącz, aby używać prostszego dymu i odciążyć grafikę.',
-      nightLights: 'Światło nocą',
-      nightLightsTip:
-        'Nocą ogniska, domy i osadnicy rozświetlają mapę: okolice ognisk dostają ciepłą poświatę, a postacie i domy zachowują część dziennych barw. Po wyłączeniu noc jest równomiernie przyciemniona, a grafika ma mniej pracy.',
       environmentMotion: 'Ruch otoczenia',
       environmentMotionTip:
         'Drzewa, które oryginał rysuje jedną nieruchomą klatką, kołyszą się na wietrze razem ze swoim cieniem, ryby pływają płynnie, a wiatr w roślinności projektu jest wygładzony. Osadnicy i zwierzęta zachowują krok oryginału, a oryginalne animacje nie dostają dodatkowych klatek. We wczytanym zapisie drzewa stoją nieruchomo.',
@@ -283,6 +290,9 @@ export const plSurfaces = {
       weather: 'Pogoda',
       weatherTip:
         'Deszcz, śnieg i burze piaskowe tam, gdzie przewiduje je mapa: padające krople i płatki, mgła i światło burzy, mokra i zaśnieżona ziemia, rozpryski, wiatr i grzmoty. Pogoda nigdy nie zmienia samej rozgrywki. Po wyłączeniu niebo jest czyste, a pogody nie słychać.',
+      dayNight: 'Cykl dnia i nocy',
+      dayNightTip:
+        'Dzień i noc tam, gdzie prowadzi je mapa lub reguła gry: słońce, zmierzch i noc, w której ogniska, domy i osadnicy rozświetlają mapę. Cykl nigdy nie zmienia samej rozgrywki. Po wyłączeniu zawsze jest dzień, a grafika ma mniej pracy; mroczne mapy i nocne ataki są wtedy równomiernie przyciemnione.',
       uiScale: 'Skala interfejsu w grze',
       uiScaleTip: 'Wielkość paneli i przycisków w grze; nie zmienia ostrości świata.',
       uiScalePinnedTip: 'Ta sesja ma stałą wartość diagnostyczną ?uiscale.',

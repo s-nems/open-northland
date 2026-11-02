@@ -172,6 +172,13 @@ export const chsSurfaces = {
         map: { label: '地图', detail: '仅使用地图自身设定的天气。' },
         variable: { label: '多变', detail: '地图设定的天气，外加游戏自身偶尔出现的天气。' },
         winter: { label: '冬季', detail: '白雪皑皑的一局。' },
+        off: { label: '关闭', detail: '没有天气，地图设定的天气也不出现。' },
+      },
+      dayNightLabel: '昼夜循环',
+      dayNightModes: {
+        map: { label: '地图', detail: '仅使用地图自身设定的昼夜。' },
+        on: { label: '开启', detail: '每张地图都有昼夜循环。自带循环的地图保留自己的循环。' },
+        off: { label: '关闭', detail: '始终白天，自带循环的地图也一样。' },
       },
       start: '开始游戏',
       startNeedsSeat: '请先入座',
@@ -260,9 +267,6 @@ export const chsSurfaces = {
       buildingDamage: '建筑损毁',
       buildingDamageTip:
         '破损的屋顶、裸露的梁木、烟雾、火焰和飞溅的碎片。关闭后改用更简单的烟雾，减轻图形负担。',
-      nightLights: '夜间光照',
-      nightLightsTip:
-        '夜晚时，篝火、房屋和居民照亮地图：篝火周围有温暖的光晕，人物和房屋保留部分白天的颜色。关闭后夜晚均匀变暗，减轻图形负担。',
       environmentMotion: '环境动态',
       environmentMotionTip:
         '原版只用一帧静止画面绘制的树木会连同阴影随风摇曳，鱼会平滑地游动，本项目自带植被中的微风也更加平滑。居民和动物保留原版的步伐，原版动画不会增加额外的帧。在载入的存档中，树木保持静止。',
@@ -277,6 +281,9 @@ export const chsSurfaces = {
       weather: '天气',
       weatherTip:
         '在地图需要的地方出现雨、雪和沙尘暴：落下的雨滴和雪花、雾气和风暴的光线、潮湿和积雪的地面、水花、风声和雷声。天气从不改变游戏本身。关闭则显示晴朗的天空，天气也不再发出声音。',
+      dayNight: '昼夜循环',
+      dayNightTip:
+        '在地图或游戏规则运行昼夜的地方显示：太阳、黄昏，以及篝火、房屋和居民照亮地图的夜晚。昼夜循环不会改变游戏本身。关闭后始终是白天，图形负担更轻；黑暗地图和夜袭则均匀变暗。',
       uiScale: '游戏内界面缩放',
       uiScaleTip: '游戏内面板和按钮的大小；不影响世界画面的清晰度。',
       uiScalePinnedTip: '本次会话使用了固定的诊断参数 ?uiscale。',

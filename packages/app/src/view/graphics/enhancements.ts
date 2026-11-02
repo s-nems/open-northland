@@ -9,7 +9,7 @@ const ENHANCEMENT_FIELDS: Readonly<Record<keyof WorldEnhancements, true>> = {
   environmentMotion: true,
   groundedBuildings: true,
   buildingDamage: true,
-  nightLights: true,
+  dayNight: true,
 };
 
 /** Every enhancement the Graphics settings own. */
@@ -25,6 +25,6 @@ export function enhancementsOf(settings: WorldEnhancements): WorldEnhancements {
     environmentMotion: settings.environmentMotion,
     groundedBuildings: settings.groundedBuildings,
     buildingDamage: settings.buildingDamage,
-    nightLights: settings.nightLights,
+    dayNight: settings.dayNight,
   };
 }

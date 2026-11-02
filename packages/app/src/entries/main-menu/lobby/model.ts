@@ -1,6 +1,8 @@
 import { applyMapVariantSlots, findMapVariant, type MapVariantKind } from '@open-northland/data';
 import {
   type ComputerDifficulty,
+  type DayNightMode,
+  DEFAULT_DAY_NIGHT_MODE,
   DEFAULT_LOCAL_PLAYER,
   DEFAULT_WEATHER_MODE,
   type GameSession,
@@ -16,7 +18,7 @@ import {
   type LobbyFogModeName,
 } from '../../../game/fog.js';
 import { mapSessionWorld } from '../../../game/map/variant.js';
-import { onOffParam, weatherModeParam } from '../../../game/match/session-rules.js';
+import { dayNightModeParam, onOffParam, weatherModeParam } from '../../../game/match/session-rules.js';
 import {
   claimableLocalSeat,
   DEFAULT_SESSION_SPEED,
@@ -45,6 +47,7 @@ export interface LobbyOptions {
   professionProgression: boolean;
   settlerNeeds: boolean;
   weather: WeatherMode;
+  dayNight: DayNightMode;
   alliedVision: boolean;
   /** Null plays without a peace. */
   peace: PeaceMinutes | null;
@@ -60,6 +63,7 @@ export function initialLobbyOptions(params: URLSearchParams, alliedVision: boole
     professionProgression: onOffParam(params, 'progression') !== false,
     settlerNeeds: onOffParam(params, 'needs') !== false,
     weather: weatherModeParam(params) ?? DEFAULT_WEATHER_MODE,
+    dayNight: dayNightModeParam(params) ?? DEFAULT_DAY_NIGHT_MODE,
     alliedVision,
     peace: null,
   };
@@ -171,6 +175,7 @@ export function lobbySession(
       progression: options.professionProgression,
       needs: options.settlerNeeds,
       weather: options.weather,
+      dayNight: options.dayNight,
       alliedVision: options.alliedVision,
       peace: options.peace,
     },

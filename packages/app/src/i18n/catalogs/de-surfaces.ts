@@ -199,7 +199,7 @@ export const deSurfaces = {
       weatherLabel: 'Wetter',
       weatherModes: {
         map: {
-          label: 'Kartenvorgabe',
+          label: 'Karte',
           detail: 'Nur das Wetter, das die Karte vorgibt.',
         },
         variable: {
@@ -210,6 +210,16 @@ export const deSurfaces = {
           label: 'Winter',
           detail: 'Eine verschneite Spielwelt.',
         },
+        off: { label: 'Aus', detail: 'Kein Wetter, auch nicht das der Karte.' },
+      },
+      dayNightLabel: 'Tag und Nacht',
+      dayNightModes: {
+        map: { label: 'Karte', detail: 'Nur Tag und Nacht, wie die Karte sie vorgibt.' },
+        on: {
+          label: 'An',
+          detail: 'Ein Tag-und-Nacht-Zyklus auf jeder Karte. Eine Karte mit eigenem Zyklus behält ihn.',
+        },
+        off: { label: 'Aus', detail: 'Immer Tag, auch auf einer Karte mit eigenem Zyklus.' },
       },
       start: 'Spiel starten',
       startNeedsSeat: 'Zuerst einen Spielerplatz belegen',
@@ -304,9 +314,6 @@ export const deSurfaces = {
       buildingDamage: 'Gebäudeschäden',
       buildingDamageTip:
         'Beschädigte Dächer, freiliegende Balken, Rauch, Feuer und Trümmer. Ausschalten reduziert die Grafiklast auf einfachen Rauch.',
-      nightLights: 'Nachtlicht',
-      nightLightsTip:
-        'Nachts erhellen Feuer, Häuser und Siedler die Karte: warmer Schein um jedes Feuer, Figuren und Häuser behalten einen Teil ihrer Tagesfarben. Ausschalten ergibt eine gleichmäßig abgedunkelte Nacht und reduziert die Grafiklast.',
       environmentMotion: 'Bewegte Umgebung',
       environmentMotionTip:
         'Bäume, die im Original nur ein Einzelbild haben, wiegen sich samt Schatten im Wind. Fische schwimmen flüssig, und die Bewegung der eigenen Pflanzengrafiken wird geglättet. Siedler und Tiere behalten ihre ursprünglichen Bewegungsschritte; Originalanimationen erhalten keine zusätzlichen Bilder. In geladenen Spielständen stehen Bäume still.',
@@ -322,6 +329,9 @@ export const deSurfaces = {
       weather: 'Wetter',
       weatherTip:
         'Regen, Schnee und Sandstürme nach Vorgabe der Karte: Tropfen und Flocken, Nebel und Sturmlicht, nasser und verschneiter Boden, Spritzer, Wind und Donner. Das Wetter beeinflusst den Spielablauf nicht. Aus zeigt klaren Himmel und schaltet Wettergeräusche ab.',
+      dayNight: 'Tag-und-Nacht-Zyklus',
+      dayNightTip:
+        'Tag und Nacht, wo die Karte oder die Spielregel sie vorgibt: Sonne, Dämmerung und eine Nacht, in der Feuer, Häuser und Siedler die Karte erhellen. Der Zyklus ändert nie das Spiel selbst. Ausgeschaltet bleibt es Tag und die Grafiklast sinkt; dunkle Karten und Angriffsnächte sind dann gleichmäßig abgedunkelt.',
       uiScale: 'Größe der Spieloberfläche',
       uiScaleTip: 'Größe der Fenster und Schaltflächen im Spiel. Ändert nicht die Schärfe der Weltgrafik.',
       uiScalePinnedTip: 'In dieser Sitzung ist ein fester Diagnosewert für ?uiscale gesetzt.',

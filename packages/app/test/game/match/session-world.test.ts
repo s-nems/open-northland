@@ -16,6 +16,7 @@ const SESSION: GameSession = {
     progression: null,
     needs: null,
     weather: null,
+    dayNight: null,
     alliedVision: true,
     peace: null,
   },

@@ -13,7 +13,15 @@ const settings: RoomSettings = {
   name: 'command budget',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: SEED,
-  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+  rules: {
+    fog: null,
+    progression: null,
+    needs: null,
+    weather: null,
+    dayNight: null,
+    alliedVision: null,
+    peace: null,
+  },
   speed: 1,
 };
 /** A wall line of twenty edges: its anchor and twenty nodes, one gesture each, in one click. */

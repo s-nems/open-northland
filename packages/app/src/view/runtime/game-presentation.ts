@@ -54,17 +54,20 @@ export async function mountGamePresentation(
   musicType: number | null | undefined,
   /** The view's lifetime; it ends the gesture listeners that start and restore audio. */
   signal: AbortSignal,
+  /** False when the match's rule draws no weather, whatever the player's setting. */
+  weatherAllowed: boolean,
 ): Promise<ReturnType<typeof createSoundDriver> | null> {
   const ir = await loadIr();
   const settings = readStoredSettings();
   const sound = createSoundDriver(ir, settings.soundQuality);
-  renderer.setWeatherEnabled(settings.weather);
+  const weatherDrawn = settings.weather && weatherAllowed;
+  renderer.setWeatherEnabled(weatherDrawn);
   try {
     if (sound !== null) {
       const enabled = gameSoundEnabled(params, settings.soundEnabled);
       sound.setEnabled(enabled);
       sound.setVolumes(settings.volumes);
-      sound.setWeatherEnabled(settings.weather);
+      sound.setWeatherEnabled(weatherDrawn);
       sound.setPlayInBackground(settings.soundInBackground);
       sound.setMono(settings.monoSound);
       sound.setJinglesEnabled(settings.jinglesEnabled);

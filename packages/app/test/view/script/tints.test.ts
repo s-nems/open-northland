@@ -1,21 +1,25 @@
 import { VERTEX_PALETTE_ENTRIES } from '@open-northland/data';
 import { type LightGrade, shownGrade } from '@open-northland/render/data';
-import type { LandscapeEditView } from '@open-northland/sim';
+import { type LandscapeEditView, TICKS_PER_SECOND } from '@open-northland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vertexPalette from '../../../src/content/vertex-palette.js';
 import type { SessionHost } from '../../../src/session/index.js';
 import { cellColorsToCorners, mountScriptTints, splitScriptTints } from '../../../src/view/script/tints.js';
 
+/** 40 minutes past daybreak: the cycle's long night. */
+const NIGHT_TICK = 2400 * TICKS_PER_SECOND;
 const NEUTRAL = 0;
 const DARK = 5;
 const TORCH = 9;
 const WARM = 11;
 const DIM = 13;
+/** The cycle's night in the game's own chain. */
+const CYCLE_NIGHT = 58;
 const palette: readonly number[] = Array.from({ length: VERTEX_PALETTE_ENTRIES }, (_, index) => {
   if (index === DARK) return 0x404040;
   if (index === TORCH) return 0xc08040;
   if (index === WARM) return 0xac9373;
-  if (index === DIM) return 0x606060;
+  if (index === DIM || index === CYCLE_NIGHT) return 0x606060;
   return 0x808080;
 });
 
@@ -75,10 +79,33 @@ describe('splitScriptTints', () => {
   });
 
   it('holds a pinned index as the whole-map tint', () => {
-    const split = splitScriptTints(tints, palette, undefined, WARM);
+    const split = splitScriptTints(tints, palette, undefined, () => WARM);
     expect(split.scene?.[0]).toBeGreaterThan(1);
     // 0x40 grey over the scene's (1, 1, 0.898) multiply.
     expect(rgbAt(split.colors, 0).map((c) => Number(c.toFixed(3)))).toEqual([0.5, 0.5, 0.557]);
+  });
+
+  it('darkens with a cycle of its own: local tints undivided on a neutral dominant', () => {
+    const NEUTRAL_TWIN = 53;
+    const cells = Uint8Array.from([...new Array<number>(9).fill(NEUTRAL_TWIN), DIM]);
+    const split = splitScriptTints(cells, palette, undefined, undefined, [0.5, 0.5, 0.5]);
+    expect(split.scene).toEqual([0.5, 0.5, 0.5]);
+    expect(rgbAt(split.colors, 9)).toEqual([0.75, 0.75, 0.75]);
+  });
+
+  it("lets a map's tint darken the cycle and never brighten it", () => {
+    const cycle: LightGrade = [0.5, 0.5, 0.5];
+    const dark = splitScriptTints(new Uint8Array(10).fill(DARK), palette, undefined, undefined, cycle);
+    expect(dark.scene).toEqual([0.25, 0.25, 0.25]);
+    expect(rgbAt(dark.colors, 0)).toEqual([1, 1, 1]);
+    const sun = splitScriptTints(new Uint8Array(10).fill(TORCH), palette, undefined, undefined, cycle);
+    expect(sun.scene).toEqual([0.5, 0.5, 0.25]);
+  });
+
+  it('holds daylight over the dominant index, the ground included', () => {
+    const split = splitScriptTints(tints, palette, undefined, () => NEUTRAL);
+    expect(split.scene).toBeNull();
+    expect(rgbAt(split.colors, 0)).toEqual([1, 1, 1]);
   });
 });
 
@@ -188,6 +215,133 @@ describe('mountScriptTints', () => {
     expect(drawn.snaps).toEqual([true]);
     expect(drawn.lights).toEqual([[0.5, 0.5, 0.5]]);
     scriptTints.dispose();
+  });
+
+  describe('day and night', () => {
+    const WHOLE_MAP = 900;
+    const cycling = (tintState: Uint8Array) =>
+      ({
+        ...tintingHost([edits(tintState), edits(tintState), edits(tintState)]),
+        missions: {
+          missions: [
+            {
+              results: [
+                { opcode: 'SetVertexColor', range: WHOLE_MAP, amount: DARK },
+                { opcode: 'SetVertexColor', range: WHOLE_MAP, amount: WARM },
+              ],
+            },
+          ],
+        },
+      }) as unknown as Parameters<typeof mountScriptTints>[0];
+
+    it('holds a scripted cycle at daylight when the rule turns it off', async () => {
+      const drawn = surface();
+      const scriptTints = await mountScriptTints(cycling(tints), drawn, { dayNight: 'off' });
+      await landed();
+      expect(drawn.lights).toEqual([null]);
+      scriptTints.dispose();
+    });
+
+    it("follows the player's setting live, over the map's own rule", async () => {
+      const drawn = surface();
+      const scriptTints = await mountScriptTints(cycling(tints), drawn, { dayNightShown: false });
+      await landed();
+      expect(drawn.lights).toEqual([null]);
+      scriptTints.setDayNightShown(true);
+      await landed();
+      expect(drawn.lights[1]).toEqual([0.5, 0.5, 0.5]);
+      scriptTints.dispose();
+    });
+
+    it("keeps a single dark write: a cave's mood is no cycle", async () => {
+      const drawn = surface();
+      const cave = tintingHost([edits(tints)]);
+      const scriptTints = await mountScriptTints(cave, drawn, { dayNight: 'off' });
+      await landed();
+      expect(drawn.lights).toEqual([[0.5, 0.5, 0.5]]);
+      scriptTints.dispose();
+    });
+
+    it("steps the game's own cycle on a map without one, and only on a step's change", async () => {
+      const drawn = surface();
+      const clear = new Uint8Array(10);
+      const host = { missions: undefined, landscapeEdits: () => Promise.resolve(edits(clear)) };
+      const scriptTints = await mountScriptTints(host, drawn, { dayNight: 'on' });
+      await landed();
+      expect(drawn.lights).toEqual([null]);
+      scriptTints.frame(1);
+      await landed();
+      expect(drawn.lights).toHaveLength(1);
+      scriptTints.frame(NIGHT_TICK);
+      await landed();
+      expect(drawn.lights).toHaveLength(2);
+      expect(drawn.lights[1]).not.toBeNull();
+      scriptTints.dispose();
+    });
+
+    it("darkens the game's cycle with a map's own whole-map tint", async () => {
+      const drawn = surface();
+      const host = { missions: undefined, landscapeEdits: () => Promise.resolve(edits(tints)) };
+      const scriptTints = await mountScriptTints(host, drawn, { dayNight: 'on', tick: NIGHT_TICK });
+      await landed();
+      expect(drawn.lights).toEqual([[0.375, 0.375, 0.375]]);
+      scriptTints.dispose();
+    });
+
+    it('holds a pinned tint over the rule and the cycle', async () => {
+      const drawn = surface();
+      const scriptTints = await mountScriptTints(cycling(tints), drawn, {
+        pinnedIndex: DIM,
+        dayNight: 'off',
+      });
+      await landed();
+      expect(drawn.lights).toEqual([[0.75, 0.75, 0.75]]);
+      scriptTints.dispose();
+      const own = surface();
+      const clear = { missions: undefined, landscapeEdits: () => Promise.resolve(edits(new Uint8Array(10))) };
+      const pinned = await mountScriptTints(clear, own, {
+        pinnedIndex: DIM,
+        dayNight: 'on',
+        tick: NIGHT_TICK,
+      });
+      await landed();
+      expect(own.lights).toEqual([[0.75, 0.75, 0.75]]);
+      pinned.dispose();
+    });
+
+    const raining = (opcodes: readonly number[]) =>
+      ({
+        ...tintingHost([edits(tints), edits(tints), edits(tints)]),
+        missions: {
+          missions: [
+            {
+              results: [
+                { opcode: 'SetWeather' },
+                ...opcodes.map((amount) => ({ opcode: 'SetVertexColor', range: WHOLE_MAP, amount })),
+              ],
+            },
+          ],
+        },
+      }) as unknown as Parameters<typeof mountScriptTints>[0];
+
+    it("clears a script's weather tint with the weather, live", async () => {
+      const drawn = surface();
+      const scriptTints = await mountScriptTints(raining([NEUTRAL, DARK]), drawn, { weatherShown: false });
+      await landed();
+      expect(drawn.lights).toEqual([null]);
+      scriptTints.setWeatherShown(true);
+      await landed();
+      expect(drawn.lights[1]).toEqual([0.5, 0.5, 0.5]);
+      scriptTints.dispose();
+    });
+
+    it("keeps a colour written once when the weather is off: that is the map's look", async () => {
+      const drawn = surface();
+      const scriptTints = await mountScriptTints(raining([DARK]), drawn, { weatherShown: false });
+      await landed();
+      expect(drawn.lights).toEqual([[0.5, 0.5, 0.5]]);
+      scriptTints.dispose();
+    });
   });
 
   it('grades a map its author tinted even when its script never writes a tint', async () => {

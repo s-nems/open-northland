@@ -35,6 +35,12 @@ describe('the on/off session rules', () => {
     expect(launch('weathermode=winter').hashState()).toBe(launch('').hashState());
   });
 
+  it('reads ?daynight= as a presentation choice the sim never receives', () => {
+    expect(sessionRuleOverrides(new URLSearchParams('daynight=on')).dayNight).toBe('on');
+    expect(sessionRuleOverrides(new URLSearchParams('daynight=dusk')).dayNight).toBeNull();
+    expect(launch('daynight=on').hashState()).toBe(launch('').hashState());
+  });
+
   it('carries ?alliedvision= to the running sim', () => {
     expect(sessionRuleOverrides(new URLSearchParams('')).alliedVision).toBeNull();
     expect(components.alliedVisionEnabled(launch('alliedvision=on').world)).toBe(true);

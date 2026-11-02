@@ -13,6 +13,7 @@ export const CARRIED_PARAMS = [
   'progression',
   'needs',
   'weathermode',
+  'daynight',
   'sound',
   'debug',
   'api',

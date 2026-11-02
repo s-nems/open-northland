@@ -32,7 +32,8 @@ Common options:
 | `zoom=<n>` | Fixed map zoom |
 | `uiscale=<n>` | Fixed UI scale for this entry; not carried across menu/game switches |
 | `postfx=on\|off` | Override stored post effects |
-| `weathermode=map\|variable\|winter` | Match weather; default `map` |
+| `weathermode=map\|variable\|winter\|off` | Match weather; default `map` |
+| `daynight=map\|on\|off` | Match day and night cycle; default `map` |
 | `peace=30\|45\|60\|75\|90` | Minutes of peace from the match start among the human, idle and lobby computer seats; default none |
 | `weather=rain\|snow\|sand\|clear[:percent]` | View-only weather; default intensity 30; leaves simulation weather unchanged |
 | `weather=ambient[:percent]` | Hold the game's weather; 100 is light, 300 is a storm |

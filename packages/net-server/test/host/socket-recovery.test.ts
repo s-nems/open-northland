@@ -98,7 +98,15 @@ it('recovers when a stalled upload releases a valid catch-up acknowledgement bur
         name: 'catch-up burst',
         world: { kind: 'scene', sceneId: 'fixture' },
         seed: 3,
-        rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+        rules: {
+          fog: null,
+          progression: null,
+          needs: null,
+          weather: null,
+          dayNight: null,
+          alliedVision: null,
+          peace: null,
+        },
         speed: 8,
       },
       clients.map((_, player) => ({

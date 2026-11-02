@@ -40,6 +40,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
   readonly setMinimapFrame: (frame: MenuSettings['minimapFrame']) => void;
   readonly setWeatherEnabled: (enabled: boolean) => void;
+  readonly setDayNightShown: (shown: boolean) => void;
   readonly setBloodEnabled: (enabled: boolean) => void;
   readonly setBonesFade: (fades: boolean) => void;
   readonly setFpsCounterShown: (shown: boolean) => void;
@@ -92,6 +93,7 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     if (patch.blood !== undefined) deps.setBloodEnabled(patch.blood);
     if (patch.bonesFade !== undefined) deps.setBonesFade(patch.bonesFade);
     if (patch.weather !== undefined) deps.setWeatherEnabled(patch.weather);
+    if (patch.dayNight !== undefined) deps.setDayNightShown(patch.dayNight);
     if (patch.fpsCounter !== undefined) deps.setFpsCounterShown(patch.fpsCounter);
     if (patch.fpsLimit !== undefined) deps.setFpsLimit(patch.fpsLimit);
     if (ENHANCEMENT_KEYS.some((key) => patch[key] !== undefined)) {

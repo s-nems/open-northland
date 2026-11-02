@@ -18,7 +18,7 @@ database. The game owns only the mapping in
 | --- | --- | --- | --- |
 | `BENCHMARK`, tier 3 | Quality | xBR | All enabled |
 | `BENCHMARK`, tier 2 | Balanced | Off | All enabled |
-| `BENCHMARK`, tier 0 or 1 | Performance | Off | Enhanced shadows, water, environment motion, building grounding, detailed building damage, night lights, weather and post effects disabled |
+| `BENCHMARK`, tier 0 or 1 | Performance | Off | Enhanced shadows, water, environment motion, building grounding, detailed building damage, day and night, weather and post effects disabled |
 | Missing, blocked, failed or fallback detection | Performance | Off | Same as above |
 
 Every profile keeps blood, bone fading and sprite smoothing enabled. Disabling detailed damage
@@ -48,7 +48,7 @@ HD 4000 match tier 1. These are tested library outputs, not performance measurem
 | Environment motion | Per-frame vegetation updates; visible shore waves also draw a lift map over the waves' rectangle, copy the ground under them and redraw the wave quads. | No GPU cost above noise on the M2; shore waves in view at ×3 cost 0.65 ms at 1080p and 3.4 ms at 4K on an Intel UHD 770 |
 | Enhanced water | Terrain shader swell and domain-warped noise shimmer on water pixels, and the swash on the coast band; shore waves are owned by environment motion. | On an Apple M2 Pro at 1440×900, a coast view on `arabskie_wyspy_wolna_gra_mieszana` with half the screen sea: 0.2 ms of a 0.95 ms frame at zoom 1 and 0.16 ms of 0.9 ms at zoom 2, the swash about 0.07 ms of it; zoomed out to 0.35, 0.13-0.15 ms of 1.1-1.4 ms |
 | Building grounding / damage | Cached source-pixel analysis, baking and uploads; extra overlays or detailed smoke/flame/debris sprites. | Grounding: on an Intel UHD 770 at 1080p, 1.0 to 1.1 ms of a 13.4 ms dense-town frame with xBR at zoom 1 and 0.35 ms of 6 ms with the filter off, nearly all of it the shade and cover overlays' fill; damage: none above noise without fires in view |
-| Night lights | While a map script's night darkens the scene: the world drawn into a texture with a one-byte lit mask beside it, a half-resolution light map of the house and fire pools, the weather and chrome drawn into it in a second pass, and one composite pass. Light-bearers mark their own quads, so no draws are added. | `magiczny_las` t100000 at 1920×1080, ×3, densest town, night against a flat night: on an Intel UHD 770 0.4 ms CPU and 0.6 ms GPU at zoom 1, 0.9 ms CPU and 1.0 ms GPU at zoom 0.5; on an RTX 4090 0.3 ms CPU and no GPU cost above noise |
+| Day and night | While a night darkens the scene: the world drawn into a texture with a one-byte lit mask beside it, a half-resolution light map of the house and fire pools, the weather and chrome drawn into it in a second pass, and one composite pass. Light-bearers mark their own quads, so no draws are added. | `magiczny_las` t100000 at 1920×1080, ×3, densest town, night against a flat night: on an Intel UHD 770 0.4 ms CPU and 0.6 ms GPU at zoom 1, 0.9 ms CPU and 1.0 ms GPU at zoom 0.5; on an RTX 4090 0.3 ms CPU and no GPU cost above noise |
 | Post effects | One screen-covering vignette sprite, not a separate render of the world. | Under 1% of the GPU frame |
 | Blood | Combat-event history and visible spray/stain rendering; not a constant full-screen workload. | CPU only: about 0.6 ms a frame at ×3 in a battle, mostly the contact walk of fresh bursts |
 | Bone fading | Age-based opacity. Disabling it retains piles indefinitely. | No cost above noise |

@@ -14,6 +14,7 @@ const RULE_FIELDS = keysOf<keyof SessionRules>({
   progression: true,
   needs: true,
   weather: true,
+  dayNight: true,
   alliedVision: true,
   peace: true,
 });

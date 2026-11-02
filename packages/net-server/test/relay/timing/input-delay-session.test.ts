@@ -12,7 +12,15 @@ const SETTINGS: RoomSettings = {
   name: 'donor',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 7,
-  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+  rules: {
+    fog: null,
+    progression: null,
+    needs: null,
+    weather: null,
+    dayNight: null,
+    alliedVision: null,
+    peace: null,
+  },
   speed: 1,
 };
 /** Long enough for the smoothed trips and the reserve to settle before the upload. */

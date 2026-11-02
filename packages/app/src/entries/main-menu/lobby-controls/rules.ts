@@ -1,4 +1,7 @@
 import {
+  DAY_NIGHT_MODES,
+  type DayNightMode,
+  DEFAULT_DAY_NIGHT_MODE,
   DEFAULT_WEATHER_MODE,
   PEACE_MINUTES,
   type PeaceMinutes,
@@ -19,6 +22,8 @@ export interface GameRules {
   readonly needs: boolean | null;
   /** Null plays the default weather mode. */
   readonly weather: WeatherMode | null;
+  /** Null plays the default day and night mode. */
+  readonly dayNight: DayNightMode | null;
   readonly alliedVision: boolean | null;
   /** Null plays without a peace. */
   readonly peace: PeaceMinutes | null;
@@ -32,7 +37,6 @@ interface BooleanRuleText extends RuleText {
   readonly off: string;
 }
 export interface GameRuleControlOptions {
-  readonly presentation: 'compact' | 'select';
   /** Offers progression and needs a "keep the world's own" choice; the fog pair is always explicit. */
   readonly inheritedLabel?: string;
   /** A dropdown rule's field; absent stands it in the lobby's label-and-control row. */
@@ -50,6 +54,10 @@ export interface GameRuleControlOptions {
   readonly weather: {
     readonly label: string;
     readonly modes: Readonly<Record<WeatherMode, RuleText>>;
+  };
+  readonly dayNight: {
+    readonly label: string;
+    readonly modes: Readonly<Record<DayNightMode, RuleText>>;
   };
   /** Offers the peace choice; absent for a map that plays without one. */
   readonly peace?: PeaceRuleText;
@@ -108,6 +116,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       update(value: T, disabled: boolean, label?: string): void {
         state.update(value, disabled);
         control.update(String(value ?? ''), disabled, label);
+        showDetail(control.root, choices.find((choice) => choice.value === value)?.detail);
       },
     };
   }
@@ -117,7 +126,6 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       { value: false, label: text.off },
     ];
     if (inheritable && inherited !== undefined) choices.unshift({ value: null, label: inherited });
-    if (options.presentation === 'select') return select(text.label, choices, change);
     const state = ruleChoiceState(
       choices.map((choice) => choice.value),
       change,
@@ -194,15 +202,6 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       if (mode !== null && isMapMode(mode))
         options.onChange({ fog: fog.request({ terrainKnown: mode === 'recon' }) });
     };
-    if (options.presentation === 'select') {
-      const control = select<ShownMap>(options.map.label, mapChoices, change);
-      return {
-        elements: control.elements,
-        update(shown: ShownMap, disabled: boolean): void {
-          control.update(shown, disabled, shown === 'revealed' ? options.map.revealed : undefined);
-        },
-      };
-    }
     const control = segmentedRule<MapModeName>(options.map.label, mapChoices, change);
     const inheritedMap = document.createElement('p');
     inheritedMap.className = 'main-menu__rule-note';
@@ -230,10 +229,14 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     ...options.weather.modes[mode],
   }));
   const changeWeather = (weather: WeatherMode) => options.onChange({ weather });
-  const weather =
-    options.presentation === 'select'
-      ? select(options.weather.label, weatherChoices, changeWeather)
-      : segmentedRule(options.weather.label, weatherChoices, changeWeather);
+  // Label and strip overflow the options card's line, so these rules are dropdowns as the peace is.
+  const weather = select(options.weather.label, weatherChoices, changeWeather);
+  const dayNightChoices: Choice<DayNightMode>[] = DAY_NIGHT_MODES.map((mode) => ({
+    value: mode,
+    ...options.dayNight.modes[mode],
+  }));
+  const changeDayNight = (dayNight: DayNightMode) => options.onChange({ dayNight });
+  const dayNight = select(options.dayNight.label, dayNightChoices, changeDayNight);
   const peace = (() => {
     const text = options.peace;
     if (text === undefined) return null;
@@ -247,12 +250,12 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     ];
     const change = (id: string) =>
       options.onChange({ peace: PEACE_MINUTES.find((minutes) => peaceChoiceId(minutes) === id) ?? null });
-    // Six lengths overflow a compact segment strip, so the peace is a dropdown in either presentation.
+    // Six lengths overflow a segment strip.
     return select(text.label, choices, change);
   })();
   const peaceElements = peace?.elements ?? [];
   return {
-    environmentElements: [...map.elements, ...weather.elements],
+    environmentElements: [...map.elements, ...weather.elements, ...dayNight.elements],
     gameplayElements: [
       ...fogOfWar.elements,
       ...alliedVision.elements,
@@ -268,6 +271,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       ...progression.elements,
       ...needs.elements,
       ...weather.elements,
+      ...dayNight.elements,
     ],
     update(rules: GameRules, disabled: boolean): void {
       const settings = fog.show(rules.fog);
@@ -277,11 +281,19 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       needs.update(rules.needs, disabled);
       alliedVision.update(rules.alliedVision, disabled);
       weather.update(rules.weather ?? DEFAULT_WEATHER_MODE, disabled);
+      dayNight.update(rules.dayNight ?? DEFAULT_DAY_NIGHT_MODE, disabled);
       peace?.update(peaceChoiceId(rules.peace), disabled);
     },
     /** The room refused the last settings change; drop what the fog pair composed on top of it. */
     rejected: fog.reject,
   };
+}
+
+/** A dropdown row's hover tip: the detail of the choice it holds. */
+function showDetail(row: HTMLElement, detail: string | undefined): void {
+  row.classList.toggle('main-menu__tip-host', detail !== undefined);
+  if (detail === undefined) delete row.dataset.tip;
+  else row.dataset.tip = detail;
 }
 
 /** The hovered or focused segment's detail in the shared menu bubble: the segment strip clips its own

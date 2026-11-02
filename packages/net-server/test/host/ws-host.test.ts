@@ -23,7 +23,15 @@ const SETTINGS: RoomSettings = {
   name: 'socket',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 3,
-  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+  rules: {
+    fog: null,
+    progression: null,
+    needs: null,
+    weather: null,
+    dayNight: null,
+    alliedVision: null,
+    peace: null,
+  },
   // The fastest clock: the run is paced by wall time over real sockets.
   speed: MAX_SPEED,
 };

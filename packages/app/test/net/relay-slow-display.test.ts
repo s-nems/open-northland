@@ -38,7 +38,15 @@ const SETTINGS: RoomSettings = {
   name: 'Zastój',
   world: { kind: 'map', mapId: 'zatoka' },
   seed: 7,
-  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+  rules: {
+    fog: null,
+    progression: null,
+    needs: null,
+    weather: null,
+    dayNight: null,
+    alliedVision: null,
+    peace: null,
+  },
   speed: SESSION_SPEED,
 };
 const HOSTED_NICK = 'Bartek';

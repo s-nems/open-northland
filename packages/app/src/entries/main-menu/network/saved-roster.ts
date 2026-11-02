@@ -1,4 +1,5 @@
 import {
+  type DayNightMode,
   parseSavedSessionMetadata,
   type SessionSeat,
   type SessionWorld,
@@ -7,7 +8,7 @@ import {
 import type { RoomSeatSetup } from '@open-northland/net-protocol';
 import type { SaveGame } from '@open-northland/sim';
 import { mapSessionWorld, mapVariantParam } from '../../../game/map/variant.js';
-import { weatherModeParam } from '../../../game/match/session-rules.js';
+import { dayNightModeParam, weatherModeParam } from '../../../game/match/session-rules.js';
 import { SAVED_COMPUTER_DIFFICULTY } from '../lobby/roster-state.js';
 
 export function savedRoster(save: SaveGame) {
@@ -34,6 +35,13 @@ export function savedWeatherMode(save: SaveGame): WeatherMode | null {
   const saved = savedRoster(save);
   if (saved !== null) return saved.descriptor.rules.weather;
   return save.header.entry === null ? null : weatherModeParam(new URLSearchParams(save.header.entry));
+}
+
+/** The day and night mode a save was played under, read as {@link savedWeatherMode} reads the weather. */
+export function savedDayNightMode(save: SaveGame): DayNightMode | null {
+  const saved = savedRoster(save);
+  if (saved !== null) return saved.descriptor.rules.dayNight;
+  return save.header.entry === null ? null : dayNightModeParam(new URLSearchParams(save.header.entry));
 }
 
 export function restoreSavedSeats(

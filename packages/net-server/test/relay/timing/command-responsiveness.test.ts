@@ -50,7 +50,15 @@ describe('relay command responsiveness', () => {
         name: 'latency',
         world: { kind: 'scene', sceneId: 'fixture' },
         seed: 3,
-        rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+        rules: {
+          fog: null,
+          progression: null,
+          needs: null,
+          weather: null,
+          dayNight: null,
+          alliedVision: null,
+          peace: null,
+        },
         speed: scenario.speed,
       },
       seats: clients.map((_, player) => ({

@@ -4,6 +4,7 @@ import { exportSaveGame } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   restoreSavedSeats,
+  savedDayNightMode,
   savedRoster,
   savedWeatherMode,
 } from '../../../../src/entries/main-menu/network/saved-roster.js';
@@ -14,7 +15,15 @@ const descriptor: GameSession = {
   seed: 7,
   localSeat: 0,
   speed: 2,
-  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+  rules: {
+    fog: null,
+    progression: null,
+    needs: null,
+    weather: null,
+    dayNight: null,
+    alliedVision: null,
+    peace: null,
+  },
   seats: [
     { player: 0, mode: 'human', color: 3, tribe: 7 },
     { player: 1, mode: 'computer', color: 4 },
@@ -129,6 +138,19 @@ describe('saved multiplayer roster', () => {
     const single = { ...save.header, session: null, entry: '?map=test&weathermode=map' };
     expect(savedWeatherMode({ ...save, header: single })).toBe('map');
     expect(savedWeatherMode({ ...save, header: { ...single, entry: null } })).toBeNull();
+  });
+  it('reads the day and night mode a save played under from its descriptor or its entry URL', () => {
+    const cycling = createSavedSessionMetadata(
+      { ...descriptor, rules: { ...descriptor.rules, dayNight: 'on' } },
+      [
+        { player: 0, nick: 'Ania' },
+        { player: 1, nick: null },
+      ],
+    );
+    expect(savedDayNightMode({ ...save, header: { ...save.header, session: cycling } })).toBe('on');
+    const single = { ...save.header, session: null, entry: '?map=test&daynight=off' };
+    expect(savedDayNightMode({ ...save, header: single })).toBe('off');
+    expect(savedDayNightMode({ ...save, header: { ...single, entry: null } })).toBeNull();
   });
   it('rejects a saved descriptor naming a different map, seed or roster', () => {
     expect(() => savedRoster({ ...save, header: { ...save.header, mapId: 'other' } })).toThrow(/world/);
