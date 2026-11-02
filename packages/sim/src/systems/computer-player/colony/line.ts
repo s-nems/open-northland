@@ -336,7 +336,13 @@ function homewardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): Cargo
   const supply = homeSupply(env);
   const staples = LAND_GOOD_IDS.flatMap((id) => goodTypeByContentId(ctx.content, id)?.typeId ?? []);
   const finished = [...held.keys()]
-    .filter((good) => !staples.includes(good) && !kept.has(good) && !isEdibleFoodIn(ctx.content, good))
+    .filter(
+      (good) =>
+        !staples.includes(good) &&
+        !kept.has(good) &&
+        !isEdibleFoodIn(ctx.content, good) &&
+        !supply.atGlut(good),
+    )
     .sort((a, b) => a - b);
   return homewardCargo({
     room: cargoRoom(env, line),
