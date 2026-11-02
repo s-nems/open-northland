@@ -208,7 +208,7 @@ export interface AttachPlan {
   readonly pending?: PendingAnswer;
 }
 
-/** Whether a trader's route holds the ship, which then seats nobody by an order. */
+/** Whether a trader's route holds the ship, which then seats nobody but its helpers by an order. */
 function pinnedShip(ctx: Pick<VehicleContext, 'snapshot' | 'content'>, vehicle: number): boolean {
   const e = entityById(ctx.snapshot, vehicle);
   const hauler = (e?.components.Vehicle as { hauler?: unknown } | undefined)?.hauler;
@@ -251,9 +251,18 @@ export function resolveShipPin(
   return { trader: trader.id, ship: ship.id, unpins: pinnedTo(trader, ship) };
 }
 
+/** Whether `unit` is a settler of the carrier trade, the one a pinned ship seats. */
+function isCarrier(ctx: Pick<VehicleContext, 'snapshot' | 'content'>, unit: FormationUnit): boolean {
+  const e = entityById(ctx.snapshot, unit.ref);
+  const jobType = e === undefined ? undefined : settlerJobType(e);
+  const job = jobType === undefined ? undefined : contentLookups(ctx.content).jobs.get(jobType);
+  return job !== undefined && systems.isCarrierJobRow(job);
+}
+
 /** Approximation, owner's choice: the original assigns a vehicle through the ring's pick only. Null when
  *  no own vehicle lies under the cursor, an own settler or an enemy drawn there takes the click first (a
- *  crew waiting by the door stands over the hull), the ship seats nobody, or nobody is selected. */
+ *  crew waiting by the door stands over the hull), or nobody is selected whom the vehicle seats: a pinned
+ *  ship seats the carriers among them, its helpers, and leaves everyone else out of the plan. */
 export function resolveAttachSelected(
   ctx: Pick<VehicleContext, 'snapshot' | 'content'> & { readonly asks: Pick<RightClickAsks, 'attach'> },
   settlers: readonly FormationUnit[],
@@ -261,10 +270,11 @@ export function resolveAttachSelected(
 ): AttachPlan | null {
   const vehicle = hit.ownVehicle;
   if (vehicle === null || hit.ownSettler !== null || hit.enemy !== null || settlers.length === 0) return null;
-  if (pinnedShip(ctx, vehicle)) return null;
+  const boarding = pinnedShip(ctx, vehicle) ? settlers.filter((unit) => isCarrier(ctx, unit)) : settlers;
+  if (boarding.length === 0) return null;
   return {
     vehicle,
-    settlers: settlers.map((unit) => unit.ref),
+    settlers: boarding.map((unit) => unit.ref),
     ...(ctx.asks.attach ? { pending: 'attach' as const } : {}),
   };
 }

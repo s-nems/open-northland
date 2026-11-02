@@ -380,6 +380,7 @@ describe('vehicle crew', () => {
     deck: null,
     assign: true,
     leave: true,
+    leaveCommander: true,
     unload: true,
     load: null,
     unloadVehicle: null,
@@ -423,6 +424,12 @@ describe('vehicle crew', () => {
     expect(wellPress({ kind: 'add' }, own, true)).toBe('seat');
     expect(wellPress({ kind: 'free' }, own, false)).toBeNull();
     expect(wellPress(riderWell, { foreign: true, crew: crew({ leave: null }) }, false)).toBeNull();
+  });
+
+  it('steps a helper out on a Ctrl click while the commander of a pinned ship refuses it', () => {
+    const pinned = { foreign: false, crew: crew({ leaveCommander: 'pinned' }) };
+    expect(wellPress(commanderWell(pinned.crew), pinned, true)).toBe('refuse');
+    expect(wellPress({ kind: 'rider', rider: rider(2) }, pinned, true)).toBe('leave');
   });
 
   it('names the commander by role and name, an ordinary rider by name, a foreign one by trade', () => {
@@ -534,7 +541,7 @@ describe('a ship pinned to a trader', () => {
     const model = shipPanel(tradeSeaScene);
     expect(model.crew.commander?.entity).toBe(model.tradePin?.entity);
     expect(model.crew.commander?.inside).toBe(false);
-    expect(model.crew.leave).toBe(messages().hud.vehiclePanel.refusals.pinned);
+    expect(model.crew.leaveCommander).toBe(messages().hud.vehiclePanel.refusals.pinned);
     expect(wellPress(commanderWell(model.crew), model, true)).toBe('refuse');
   });
 
@@ -554,11 +561,12 @@ describe('a ship pinned to a trader', () => {
     expect(control(atSea, 'goTo')).toBe(messages().hud.vehiclePanel.refusals.noCommander.ship);
   });
 
-  it('leaves its hold, its seats and its deck to the route', () => {
+  it('leaves its hold, its captain and its deck to the route, its seats open to helpers', () => {
     const { hold, crew } = shipPanel(tradeSeaScene);
     const { pinned } = messages().hud.vehiclePanel.refusals;
     expect(hold?.routed).toBe(true);
-    expect([crew.assign, crew.load, crew.unloadVehicle]).toEqual([pinned, pinned, pinned]);
+    expect([crew.leaveCommander, crew.load, crew.unloadVehicle]).toEqual([pinned, pinned, pinned]);
+    expect([crew.assign, crew.leave]).toEqual([true, true]);
   });
 
   it('frees all of that on a ship nobody pinned', () => {

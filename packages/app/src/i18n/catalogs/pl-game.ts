@@ -856,6 +856,7 @@ export const plGame = {
       roles: { cart: 'Dowódca', ship: 'Dowódca', siege: 'Dowódca' },
       assignRole: { cart: 'Przydziel dowódcę', ship: 'Przydziel dowódcę', siege: 'Przydziel dowódcę' },
       assignTooltip: 'Wskaż swojego osadnika na mapie · Esc anuluje',
+      assignHelperTooltip: 'Wskaż swojego tragarza na mapie, pomoże kupcowi · Esc anuluje',
       seatCount: 'Miejsca zajęte / wszystkie',
       walking: 'idzie',
       seat: 'Wsadź osadnika',

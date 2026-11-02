@@ -59,6 +59,7 @@ export type PendingAnswer = 'attach' | 'tradeAttach' | 'equip' | 'mooring' | 'fo
 
 interface ContentLookups {
   readonly goods: ReadonlyMap<number, ContentSet['goods'][number]>;
+  readonly jobs: ReadonlyMap<number, ContentSet['jobs'][number]>;
   readonly buildings: ReadonlyMap<number, ContentSet['buildings'][number]>;
   readonly vehicles: ReadonlyMap<number, ContentSet['vehicles'][number]>;
 }
@@ -71,6 +72,7 @@ export function contentLookups(content: ContentSet): ContentLookups {
   if (found === undefined) {
     found = {
       goods: lastByTypeId(content.goods),
+      jobs: lastByTypeId(content.jobs),
       buildings: lastByTypeId(content.buildings),
       vehicles: lastByTypeId(content.vehicles),
     };

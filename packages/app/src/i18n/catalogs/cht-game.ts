@@ -725,7 +725,8 @@ export const chtGame = {
       tradeAddStop: '新增貿易站',
       tradeConfigure: '設定貿易',
       tradePinShip: '指定船隻',
-      tradePinShipHint: '點擊，然後選擇此岸邊一艘高亮的、無船員的己方船隻，或在選中商人時右鍵點擊該船。商人將乘它走這條路線。',
+      tradePinShipHint:
+        '點擊，然後選擇此岸邊一艘高亮的、無船員的己方船隻，或在選中商人時右鍵點擊該船。商人將乘它走這條路線。',
       tradeUnpinShip: '取消指定船隻',
       tradeShipNeeded: '需跨海',
       tradeShipNeededTooltip: '站點位於不同的海岸：請指定一艘船，商人才能渡海',
@@ -840,6 +841,7 @@ export const chtGame = {
       roles: { cart: '指揮官', ship: '指揮官', siege: '指揮官' },
       assignRole: { cart: '指派指揮官', ship: '指派指揮官', siege: '指派指揮官' },
       assignTooltip: '在地圖上選擇你的一名居民 · Esc 取消',
+      assignHelperTooltip: '在地圖上選擇你的一名搬運工來協助商人 · Esc 取消',
       seatCount: '已佔座位 / 全部座位',
       walking: '步行中',
       seat: '安排居民入座',

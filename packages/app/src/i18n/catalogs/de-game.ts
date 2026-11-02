@@ -942,6 +942,8 @@ export const deGame = {
         siege: 'Kommandanten zuweisen',
       },
       assignTooltip: 'Einen deiner Siedler auf der Karte auswählen · Esc zum Abbrechen',
+      assignHelperTooltip:
+        'Einen deiner Träger auf der Karte auswählen, er hilft dem Händler · Esc zum Abbrechen',
       seatCount: 'Plätze belegt / gesamt',
       walking: 'zu Fuß unterwegs',
       seat: 'Siedler einsteigen lassen',

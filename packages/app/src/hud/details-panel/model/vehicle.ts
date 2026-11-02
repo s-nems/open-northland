@@ -91,10 +91,13 @@ export interface VehicleCrewModel {
   readonly capacity: number;
   /** The carried vehicles and the deck's slot count; null for a type without one. */
   readonly deck: { readonly capacity: number; readonly vehicles: readonly VehicleDeckModel[] } | null;
-  /** The pick that seats a person: the commander's seat first, then a free ordinary one. */
+  /** The pick that seats a person: the commander's seat first, then a free ordinary one; a pinned
+   *  ship's commander seat is its trader's, so the pick seats a helper. */
   readonly assign: SeatControl | null;
-  /** One rider stepping out. */
+  /** A rider of an ordinary seat stepping out. */
   readonly leave: SeatControl | null;
+  /** The commander stepping out, which a pinned ship's trader does for its route alone. */
+  readonly leaveCommander: SeatControl | null;
   /** "Unload everyone"; null while nobody rides. */
   readonly unload: SeatControl | null;
   /** The pick that drives an own land vehicle onto the deck; null without a deck or on a foreign ship. */
@@ -397,7 +400,7 @@ interface CrewInputs {
   readonly carried: boolean;
   /** The carrier or trader whose cart this is, which refuses crew meanwhile; null for any other vehicle. */
   readonly hauler: VehicleHaulerModel | null;
-  /** The trader whose route holds the ship: its seats and deck are the route's. */
+  /** The trader whose route holds the ship: its commander's seat and deck are the route's. */
   readonly tradePin: VehicleTradePinModel | null;
   /** A ship lying at sea: nobody steps in or out. */
   readonly atSea: boolean;
@@ -448,15 +451,16 @@ function crewModel(
   const atSea: SeatControl = copy.atSea;
   const carried: SeatControl = copy.carried;
   const doorless = inputs.atSea ? atSea : inputs.carried ? carried : true;
-  const full = passengers.length >= capacity;
+  const full = pinned ? seats.every((seat) => seat !== null) : passengers.length >= capacity;
   return {
     commander,
     seats,
     count: passengers.length,
     capacity,
     deck,
-    assign: own ? (hauled ? copy.hauled : pinned ? copy.pinned : full ? copy.noSeat : doorless) : null,
-    leave: own ? (hauled ? copy.hauled : pinned ? copy.pinned : doorless) : null,
+    assign: own ? (hauled ? copy.hauled : full ? copy.noSeat : doorless) : null,
+    leave: own ? (hauled ? copy.hauled : doorless) : null,
+    leaveCommander: own ? (hauled ? copy.hauled : pinned ? copy.pinned : doorless) : null,
     unload: own && passengers.length > 0 ? doorless : null,
     load:
       own && deck !== null

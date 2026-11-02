@@ -875,6 +875,7 @@ export const enGame = {
       roles: { cart: 'Commander', ship: 'Commander', siege: 'Commander' },
       assignRole: { cart: 'Assign a commander', ship: 'Assign a commander', siege: 'Assign a commander' },
       assignTooltip: 'Pick one of your settlers on the map · Esc cancels',
+      assignHelperTooltip: 'Pick one of your carriers on the map to help the merchant · Esc cancels',
       seatCount: 'Seats taken / all',
       walking: 'walking',
       seat: 'Seat a settler',

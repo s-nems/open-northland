@@ -214,6 +214,18 @@ describe('the right-click hint', () => {
     });
   });
 
+  it('reads a pinned ship as full by its ordinary seats, the commander slot being its trader', () => {
+    const carrier = settler(2, CARRIER_JOB);
+    const onShip = { ownVehicle: SHIP };
+    const open = vehicle(SHIP, VEHICLE_SHIP_SMALL, [null, null], STAFF);
+    const taken = vehicle(SHIP, VEHICLE_SHIP_SMALL, [{ entity: BUILDING }, null], STAFF);
+    expect(hintOf([carrier, open], [2], onShip)).toMatchObject(action('board'));
+    expect(hintOf([carrier, taken], [2], onShip)).toEqual({
+      tone: 'refusal',
+      refusal: 'noRoom',
+    });
+  });
+
   it('names the pin of a free ship until the sim refuses it, then what the click does instead', () => {
     const trader = settler(1, TRADER_JOB);
     const ship = vehicle(SHIP, VEHICLE_SHIP_SMALL, [null]);

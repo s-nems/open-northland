@@ -60,6 +60,7 @@ export function warmVehicleModel(goodIds: readonly string[]): VehiclePanelModel 
       deck: { capacity: 1, vehicles: [{ entity: 6, label: 'Warm' }] },
       assign: true,
       leave: true,
+      leaveCommander: true,
       unload: 'warm',
       load: true,
       unloadVehicle: true,

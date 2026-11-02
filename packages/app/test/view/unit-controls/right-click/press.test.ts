@@ -1,6 +1,6 @@
 import { MAX_UNIT_ORDER_MEMBERS, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_COLLECTOR, JOB_TRADER } from '../../../../src/catalog/jobs.js';
+import { JOB_CARRIER, JOB_COLLECTOR, JOB_TRADER } from '../../../../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
 import {
   sandboxContent,
@@ -33,7 +33,8 @@ const SHIP = 12;
 const PINNED_SHIP = 13;
 const TRADER = 2;
 const SECOND_TRADER = 3;
-const SAILOR = 4;
+const SAILOR = 5;
+const CARRIER = 4;
 const TRADERS_SHIP = 14;
 const SAILORS_SHIP = 15;
 const ENEMY = 20;
@@ -74,6 +75,14 @@ const WORLD = snapshotOf([
   vehicle(CART, VEHICLE_HANDCART),
   vehicle(SHIP, VEHICLE_SHIP_SMALL),
   vehicle(PINNED_SHIP, VEHICLE_SHIP_SMALL, COLLECTOR),
+  {
+    id: CARRIER,
+    components: {
+      Settler: { jobType: JOB_CARRIER },
+      Owner: { player: HUMAN_PLAYER },
+      Position: { x: ONE, y: ONE },
+    },
+  },
   trader(TRADER, { TradeShip: { vehicle: TRADERS_SHIP } }),
   trader(SECOND_TRADER),
   // Commands the ship it rides, with no position of its own.
@@ -224,6 +233,13 @@ describe('a right press', () => {
       settlers: { groups: [{ intent: { kind: 'walk', tile: TILE } }] },
       riders: { kind: 'none' },
       vehicles: { kind: 'none' },
+    });
+  });
+
+  it('boards the carriers of a selection on a pinned ship, and only them', () => {
+    expect(press([COLLECTOR, CARRIER], { ownVehicle: PINNED_SHIP })).toMatchObject({
+      kind: 'attach',
+      attach: { vehicle: PINNED_SHIP, settlers: [CARRIER] },
     });
   });
 

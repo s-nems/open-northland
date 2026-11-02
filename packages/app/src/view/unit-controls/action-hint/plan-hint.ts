@@ -3,6 +3,7 @@ import {
   buildingTypeOf,
   isAdult,
   isFemale,
+  num,
   residenceHomeOf,
   settlerJobType,
   vehicleSeatsOf,
@@ -154,13 +155,17 @@ function pastShipPinHint(ctx: HintContext, plan: PastShipPinPlan): PlanHint | nu
   return refused ? refusal('cannotBoard') : action('board');
 }
 
-/** A vehicle with every seat taken refuses each settler not already riding it. */
+/** A vehicle with every seat taken refuses each settler not already riding it; a pinned ship's commander
+ *  slot, its trader's, offers no seat. */
 function vehicleFull(ctx: HintContext, vehicle: number, settlers: readonly number[]): boolean {
-  const state = entityById(ctx.snapshot, vehicle)?.components.Vehicle as { passengers?: unknown } | undefined;
+  const e = entityById(ctx.snapshot, vehicle);
+  const state = e?.components.Vehicle as { passengers?: unknown; hauler?: unknown } | undefined;
   const slots = state?.passengers;
-  if (!Array.isArray(slots)) return false;
+  if (e === undefined || !Array.isArray(slots)) return false;
   const seated = vehicleSeatsOf(slots);
-  if (seated.length < slots.length) return false;
+  const pinned = isShip(ctx.content, e) && num(state?.hauler) !== undefined;
+  const open = pinned ? slots.slice(0, -1) : slots;
+  if (vehicleSeatsOf(open).length < open.length) return false;
   return settlers.every((settler) => !seated.some((seat) => seat.entity === settler));
 }
 

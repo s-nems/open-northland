@@ -79,7 +79,8 @@ export function wellPress(
   if (well.kind === 'add') return 'seat';
   if (well.kind === 'free') return null;
   if (!ctrl) return 'select';
-  return model.crew.leave === true ? 'leave' : 'refuse';
+  const { commander, leave, leaveCommander } = model.crew;
+  return (well.rider.entity === commander?.entity ? leaveCommander : leave) === true ? 'leave' : 'refuse';
 }
 
 /** The seat pick's well lights while its pick waits for a settler. */
@@ -223,7 +224,7 @@ export function createCrewSection(
       rider !== null
         ? riderTooltip(rider, model.foreign, role)
         : seat.kind === 'add'
-          ? `${seatLabel} · ${copy.assignTooltip}`
+          ? `${seatLabel} · ${model.tradePin === null ? copy.assignTooltip : copy.assignHelperTooltip}`
           : typeof model.crew.assign === 'string'
             ? `${empty} · ${model.crew.assign}`
             : empty;
