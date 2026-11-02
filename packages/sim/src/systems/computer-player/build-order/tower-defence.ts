@@ -6,7 +6,6 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { hexDistance, hexDistanceBetween } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
-import { spotAcceptor } from '../../ai-shared/building-spot.js';
 import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import { anchorNodeOf, firstRingNode } from '../../ai-shared/node-geometry.js';
@@ -21,6 +20,7 @@ import type { DefenceWants } from './entries.js';
 import { scheduledTowers, seatFrontLine, TOWER_CONTENT_IDS } from './front.js';
 import { grassBound } from './grass-reserve.js';
 import { type BuildReach, buildReach } from './placement.js';
+import { seatSpotAcceptor } from './plots.js';
 import { seatDefenceFirst, seatTuning } from './seat-order.js';
 import { baseWalkTest } from './spot-walk.js';
 
@@ -319,7 +319,7 @@ export function towerSpot(
   const base = seatBaseOf(world, ctx, player);
   const baseNode = base === null ? null : anchorNodeOf(world, base);
   if (baseNode === null) return null;
-  const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
+  const acceptor = seatSpotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
   const walkable = baseWalkTest(world, ctx, terrain, player);
   const spareGrass = reserveGrass && !grassBound(type);
   for (const target of plan.short) {

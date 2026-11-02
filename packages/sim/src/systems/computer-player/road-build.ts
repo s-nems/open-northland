@@ -13,6 +13,7 @@ import { ownedRoadSites, roadSitesByNode } from '../roads/site-index.js';
 import { roadSitePlacementProbe } from '../roads/sites.js';
 import { networkLimitAt } from '../signposts/network.js';
 import { seatBaseOf } from './base.js';
+import { plottedNodes } from './build-order/plots.js';
 import type { ComputerModule } from './index.js';
 import { type RoadStepCost, roadRoute } from './road-route.js';
 import {
@@ -199,8 +200,11 @@ function roadPlanner(
     const site = sites.get(node);
     return site !== undefined && own.has(site);
   };
+  const plotted = plottedNodes(world, ctx, terrain, player);
   const pavable = (node: NodeId): boolean =>
-    (limit === null || limit.allowsNode(node)) && probe.canPlace(terrain.xOf(node), terrain.yOf(node));
+    (limit === null || limit.allowsNode(node)) &&
+    plotted?.has(node) !== true &&
+    probe.canPlace(terrain.xOf(node), terrain.yOf(node));
   const stepCost: RoadStepCost = (node) => {
     if (!terrain.isWalkable(node) || blocked.has(node)) return null;
     if (laid(node)) return ROAD_STEP_LAID;

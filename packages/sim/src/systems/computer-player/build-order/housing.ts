@@ -25,6 +25,7 @@ import { seatHuntsGame } from '../workforce/hunter.js';
 import { billSourced, sourcedTiers } from './bill-sources.js';
 import type { BuildOrder, BuildOrderEntry } from './entries.js';
 import { placementSpot } from './placement.js';
+import { seatHomesCap } from './plots.js';
 import { suppliedUpgrade } from './upgrade-supply.js';
 
 type HousingEntry = Extract<BuildOrderEntry, { kind: 'housing' }>;
@@ -430,7 +431,8 @@ function upgradeLeavesRoom(
  * the slots not short, only a home to the cap while the ceiling has room. From the `feeding` stage any
  * upgrade wins over a new home and the lowest-tier home goes first, so no home is left at the base tier;
  * with the slots not short only a home below the highest tier is upgraded. A new home with no spot yields
- * to the best upgrade, so a cramped seat grows its homes upward. Null when nothing can be raised.
+ * to the best upgrade, so a cramped seat grows its homes upward. A seat's ground plan cuts `entry.count`
+ * further ({@link seatHomesCap}). Null when nothing can be raised.
  */
 export function housingPick(
   world: World,
@@ -499,7 +501,7 @@ export function housingPick(
   if (upgrade !== null && upgradesLead(stage)) return upgrade.pick;
 
   let place: Option<BuildingType> | null = null;
-  if (short && homes.length < entry.count) {
+  if (short && homes.length < seatHomesCap(world, player, entry.count)) {
     const types = [...homeTiersOf(ctx.content, entry)]
       .flatMap((id) => index.buildings.get(id) ?? [])
       .sort((a, b) => b.homeSize - a.homeSize);

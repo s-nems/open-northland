@@ -178,9 +178,10 @@ const TUNIC_ARMS: StepMatch = {
   steps: [EARLY_SECOND_TAILOR, SECOND_UPPER_TAILOR, SECOND_ANIMAL_FARM, SECOND_ANIMAL_FARM_WELL],
 };
 
-/** The homes of a seat with no room (authored): a cramped seat fits eight homes on 3.3-3.5k free nodes of
- *  home band, about 420 nodes a home, and the islands' home bands hold 1.5-3.2k, 2.6k on average. */
-const NO_ROOM_HOMES = 6;
+/** The most homes of a seat with no room (authored): a cramped seat fits eight homes on 3.3-3.5k free
+ *  nodes of home band, about 420 nodes a home, and the islands' home bands hold 1.5-3.2k, 2.6k on average.
+ *  What the seat's own ground holds may cut it further (`./ground-plan.ts`). */
+export const NO_ROOM_HOMES = 6;
 
 /** Owner ruling: a seat with almost no room to grow (arabskie_wyspy_wolna_gra_mieszana's islands) limits
  *  its expansion hard: one smithy, bakery, animal farm, tailor, brewery and armory, fewer homes, no
@@ -203,13 +204,14 @@ const NO_ROOM_COPY_CAPS: Readonly<Record<string, number>> = {
 /** What each side changes (authored): the steps it drops, the steps only the sides keeping them play, and
  *  copy caps under the archetype's. `fishing` changes the workforce (`workforce/fisher.ts`); `herbs` keeps
  *  the grass reserve rules as they are (`./grass-reserve.ts`). Owner ruling: a seat with little iron forges
- *  weapons in two upper smithies and a seat with little gold strikes coins in one mint. `oneJoinery` lifts
- *  every step's `belowTier`, so a top-tier joinery meets the tools line. */
+ *  weapons in two upper smithies and a seat with little gold strikes coins in one mint. `tightGround` lifts
+ *  every step's `belowTier`, so a top-tier joinery meets the tools line, and lets a copy with no room
+ *  pass ({@link BuildOrderEntry} `yieldsRoom`). */
 interface SideRule {
   readonly drops?: StepMatch;
   readonly keeps?: StepMatch;
   readonly copyCaps?: Readonly<Record<string, number>>;
-  readonly oneJoinery?: true;
+  readonly tightGround?: true;
 }
 
 const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
@@ -225,7 +227,7 @@ const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
     copyCaps: NO_ROOM_COPY_CAPS,
     // Owner ruling: no second carpenter beside the one the seat has. Without catapults every top-tier
     // joinery of this side works tools (`workforce/craft.ts`), the ship joinery once its fleet stands.
-    oneJoinery: true,
+    tightGround: true,
   },
 };
 
@@ -310,8 +312,8 @@ export function shapeBuildOrder(order: BuildOrder, shape: OrderShape): BuildOrde
   const tuning = ARCHETYPE_TUNING[shape.archetype];
   const drops = sideDrops(shape.sides);
   const caps = copyCapsOf(tuning, shape.sides);
-  const oneJoinery = shape.sides.some((side) => SIDE_RULES[side].oneJoinery === true);
-  const lines = order.lines.map((line) => shapeLine(line, tuning, drops, caps, oneJoinery));
+  const tightGround = shape.sides.some((side) => SIDE_RULES[side].tightGround === true);
+  const lines = order.lines.map((line) => shapeLine(line, tuning, drops, caps, tightGround));
   // An archetype on the default priority keeps the order's own; one with an authored priority plays it.
   let priority = tuning.priority === STANDARD_PRIORITY ? order.priority : tuning.priority;
   if (shape.sides.some((side) => TUNIC_SIDES.includes(side)))
@@ -364,12 +366,12 @@ function shapeLine(
   tuning: ArchetypeTuning,
   dropped: SideDrop,
   caps: CopyCaps,
-  oneJoinery: boolean,
+  tightGround: boolean,
 ): BuildLine {
   let steps = line.steps
     .filter((entry) => !tuning.drops.includes(entry) && !dropped(entry))
     .flatMap((entry) => copiesOf(entry, caps))
-    .map((entry) => (oneJoinery ? withoutTierCap(entry) : entry));
+    .map((entry) => (tightGround ? onTightGround(entry) : entry));
   if (tuning.leadOnlyWhen !== null) {
     const lead = tuning.leadOnlyWhen;
     const leading = (entry: BuildOrderEntry) =>
@@ -393,11 +395,12 @@ function copiesOf(entry: BuildOrderEntry, caps: CopyCaps): BuildOrderEntry[] {
   return entry.kind === 'place' && count === 1 ? [] : [{ ...entry, count }];
 }
 
-/** `entry` counting every tier of its chain, its own object when it has no `belowTier`. */
-function withoutTierCap(entry: BuildOrderEntry): BuildOrderEntry {
-  if ((entry.kind !== 'place' && entry.kind !== 'upgrade') || entry.belowTier === undefined) return entry;
+/** `entry` on a seat with {@link SideRule} `tightGround`, its own object when that changes nothing. */
+function onTightGround(entry: BuildOrderEntry): BuildOrderEntry {
+  if (entry.kind !== 'place' && entry.kind !== 'upgrade') return entry;
   const { belowTier: _cap, ...uncapped } = entry;
-  return uncapped;
+  if (entry.kind === 'place' && entry.count > 1) return { ...uncapped, kind: 'place', yieldsRoom: true };
+  return entry.belowTier === undefined ? entry : uncapped;
 }
 
 /** `priority` with `lines` moved, in their order, right behind `behind`. */

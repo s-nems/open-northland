@@ -5,7 +5,6 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { nodeBoxOfCircles, withinNodeRadius } from '../../../nav/node-circle.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
-import { spotAcceptor } from '../../ai-shared/building-spot.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import { anchorNodeOf, firstRingNode } from '../../ai-shared/node-geometry.js';
 import { ownedSettlers } from '../../ai-shared/seat-roster.js';
@@ -15,6 +14,7 @@ import { seatBaseOf } from '../base.js';
 import type { BuildOrderEntry, DefenceWants } from './entries.js';
 import { grassBound } from './grass-reserve.js';
 import { buildReach } from './placement.js';
+import { seatSpotAcceptor } from './plots.js';
 import { seatDefenceFirst, seatTuning } from './seat-order.js';
 import { baseWalkTest } from './spot-walk.js';
 import { OPENING_DEFENCE, seatDefenceWants, towerRingStands } from './tower-defence.js';
@@ -164,7 +164,7 @@ export function coverageSpotSearch(
   const apartFrom = storeCentres(world, ctx, player, owned);
   const { reachNodes } = seatTuning(world, player);
   const fan = 2 * reachNodes;
-  const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
+  const acceptor = seatSpotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
   const settlement = buildReach(world, owned, anchor, reachNodes);
   const box = nodeBoxOfCircles([{ x: 0, y: 0, r: coverage.radius }]);
   // Every node covering a target lies within this Manhattan span of it.

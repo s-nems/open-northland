@@ -7,7 +7,7 @@ import {
 } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
-import type { TerrainGraph } from '../../../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import { buildingTypeByContentId, goodTypeByContentId } from '../../../ai-shared/content-lookup.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../../context.js';
@@ -23,6 +23,7 @@ import {
   seatTuning,
   stepKey,
 } from '../../build-order/index.js';
+import { plottedNodes } from '../../build-order/plots.js';
 import { CLEARING_GOOD_IDS } from './wanted-goods.js';
 
 /** How far from a tree or rock's anchor its walk body may block ground, in Manhattan half-cell nodes
@@ -64,26 +65,60 @@ export function clearingAim(
     return NO_AIM;
   const building = stalledBuilding(order, holding);
   const type = building === null ? undefined : buildingTypeByContentId(ctx.content, building);
-  const zone =
-    type === undefined ? undefined : buildingFootprintOf(ctx.content, type.typeId, tribe)?.reserved;
-  if (zone === undefined || zone.length === 0) return NO_AIM;
-  const reach = seatTuning(world, player).reachNodes;
-  const ground = ClearingGround.around(world, ctx, terrain, baseNode, reach + zoneSpan(zone));
+  if (type === undefined) return NO_AIM;
+  const patch = clearingPatch(world, ctx, terrain, player, type.typeId, tribe, baseNode);
+  // A patch that fits already: the search failed on something else.
+  return patch === null || patch.cost === 0 ? NO_AIM : patch.resources();
+}
+
+/** The patch a building of `typeId` would take within the seat's build reach of its base with the fewest
+ *  blocked nodes, the nearest to the base on a tie and the first found with none. */
+interface ClearingPatch {
+  readonly x: number;
+  readonly y: number;
+  readonly cost: number;
+  /** The clearing resources on the patch. */
+  resources(): ReadonlySet<Entity>;
+}
+
+/** {@link ClearingPatch} for the seat, off ground another building's plot keeps
+ *  (`../../build-order/plots.ts`) and, on an archetype keeping to its own land, on the base's land; null
+ *  when the type has no zone or no patch would ever take it. */
+export function clearingPatch(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  typeId: number,
+  tribe: number,
+  baseNode: HalfCellNode,
+): ClearingPatch | null {
+  const zone = buildingFootprintOf(ctx.content, typeId, tribe)?.reserved;
+  if (zone === undefined || zone.length === 0) return null;
+  const tuning = seatTuning(world, player);
+  const reach = tuning.reachNodes;
+  const plotted = plottedNodes(world, ctx, terrain, player, typeId);
+  const home = tuning.homeLandOnly ? terrain.componentOf(terrain.nodeAt(baseNode.hx, baseNode.hy)) : null;
+  const refused = (node: NodeId): boolean =>
+    plotted?.has(node) === true || (home !== null && terrain.componentOf(node) !== home);
+  const ground = ClearingGround.around(world, ctx, terrain, baseNode, reach + zoneSpan(zone), refused);
   let best: { x: number; y: number; cost: number; distance: number } | null = null;
-  for (let dy = -reach; dy <= reach; dy++) {
+  scan: for (let dy = -reach; dy <= reach; dy++) {
     const span = reach - Math.abs(dy);
     for (let dx = -span; dx <= span; dx++) {
       const x = baseNode.hx + dx;
       const y = baseNode.hy + dy;
       const cost = ground.cost(zone, x, y);
       if (cost === null) continue;
-      if (cost === 0) return NO_AIM; // the ground fits already: the search failed on something else
       const distance = Math.abs(dx) + Math.abs(dy);
       if (best === null || cost < best.cost || (cost === best.cost && distance < best.distance))
         best = { x, y, cost, distance };
+      if (cost === 0) break scan;
     }
   }
-  return best === null ? NO_AIM : ground.resourcesOn(zone, best.x, best.y);
+  if (best === null) return null;
+  const { x, y, cost } = best;
+  return { x, y, cost, resources: () => ground.resourcesOn(zone, x, y) };
 }
 
 /** The building of the first holding step, in line priority, that places one. */
@@ -124,6 +159,7 @@ class ClearingGround {
     terrain: TerrainGraph,
     centre: HalfCellNode,
     radius: number,
+    refused: (node: NodeId) => boolean,
   ): ClearingGround {
     const side = 2 * radius + 1;
     const minX = centre.hx - radius;
@@ -166,7 +202,12 @@ class ClearingGround {
         const node = terrain.nodeAt(hx, hy);
         const slot = hy * terrain.width + hx;
         const obstacles = grid.obstacle[slot] ?? 0;
-        if (!terrain.isBuildable(node) || terrain.isRoad(node) || (grid.buildingZone[slot] ?? 0) > 0) {
+        if (
+          !terrain.isBuildable(node) ||
+          terrain.isRoad(node) ||
+          (grid.buildingZone[slot] ?? 0) > 0 ||
+          refused(node)
+        ) {
           verdict[i] = NEVER;
         } else if (resources.has(i) || obstacles > 0) {
           verdict[i] = obstacles <= (clearable[i] ?? 0) ? CLEARABLE : NEVER;

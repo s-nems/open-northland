@@ -5,7 +5,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween, nodeManhattan } from '../../../nav/halfcell.js';
 import { withinNodeRadius } from '../../../nav/node-circle.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../nav/terrain/index.js';
-import { type SpotAcceptor, spotAcceptor } from '../../ai-shared/building-spot.js';
+import type { SpotAcceptor } from '../../ai-shared/building-spot.js';
 import {
   buildingTypeByContentId,
   countedTiers,
@@ -33,7 +33,8 @@ import { workedDeposit } from '../workforce/collectors/anchor.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, overflowBuildReachNodes } from './entries.js';
 import { enemiesSurround, scriptedFrontLine } from './front.js';
-import { grassBound } from './grass-reserve.js';
+import { grassBound, grassBoundEntry } from './grass-reserve.js';
+import { seatSpotAcceptor } from './plots.js';
 import { seatTuning } from './seat-order.js';
 import { baseWalkTest } from './spot-walk.js';
 
@@ -104,7 +105,12 @@ const SHORE_SPOT_SPAN_NODES = Math.ceil((3 * SHORE_SPOT_RINGS) / 2);
 
 /** The static land component of the seat's base interaction cell, as {@link seaRouteOf} reads it, or
  *  {@link NO_COMPONENT} for a seat with no base. */
-function baseComponent(world: World, ctx: SystemContext, terrain: TerrainGraph, player: number): number {
+export function baseComponent(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+): number {
   const base = seatBaseOf(world, ctx, player);
   return base === null ? NO_COMPONENT : terrain.componentOf(interactionCell(world, ctx, terrain, base));
 }
@@ -266,6 +272,18 @@ export function unservedAnchor(
 
 function mapCentreNode(terrain: TerrainGraph): HalfCellNode {
   return { hx: Math.floor(terrain.width / 2), hy: Math.floor(terrain.height / 2) };
+}
+
+/** A placement that exists to serve something beside it, a workshop an `unlessWithin` entry supplies or
+ *  the ships a `shore` workshop launches, a {@link grassBoundEntry} the list can go on without, or one a
+ *  seat short of ground lets go (`yieldsRoom`): its line passes it over when no spot is found. */
+export function placementPassesOver(
+  ctx: SystemContext,
+  entry: Extract<BuildOrderEntry, { kind: 'place' }>,
+): boolean {
+  if (entry.yieldsRoom === true || entry.unlessWithin !== undefined) return true;
+  if (entry.near?.some((a) => a.kind === 'shore') ?? false) return true;
+  return entry.essential !== true && grassBoundEntry(ctx, entry);
 }
 
 /** Where the spot must land beyond the reach and the acceptor, or null for anywhere. */
@@ -700,7 +718,7 @@ function boundedSpot(
 ): HalfCellNode | null {
   const tuning = seatTuning(world, player);
   const settlement = buildReach(world, owned, anchor, tuning.reachNodes);
-  const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
+  const acceptor = seatSpotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
   const search = searchCentre(
     world,
     ctx,

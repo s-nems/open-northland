@@ -81,6 +81,32 @@ export const StalledPlacements = defineComponent<StalledPlacementsState>('Stalle
   simOnly: true,
 });
 
+/** A building's reserved ground a computer seat keeps for it (`systems/computer-player/build-order/`). */
+export interface GroundPlot {
+  /** The stable content id of the step's building. */
+  building: string;
+  /** The step it waits on, its line and index. */
+  line: BuildLineId;
+  step: number;
+  hx: number;
+  hy: number;
+  /** Whether the ground still needs clearing: no free fit was left when it was plotted. */
+  clearing: boolean;
+}
+
+export interface GroundPlanState {
+  /** The ground still waiting for its building, in the order it was plotted. */
+  plots: GroundPlot[];
+  /** The most homes the seat raises on what the plots leave. */
+  homes: number;
+}
+
+/**
+ * The seat's plan of the little ground it has, held on its {@link AiControl} carrier: drawn at its first
+ * build-order decision, and absent on a seat with room. It binds that seat's own computer placements only.
+ */
+export const GroundPlan = defineComponent<GroundPlanState>('GroundPlan', 'players', { simOnly: true });
+
 export interface LineFrontier {
   /** The line's first unmet step at the seat's last build-order decision that reached it. */
   step: number;

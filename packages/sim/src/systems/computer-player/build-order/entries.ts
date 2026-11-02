@@ -84,7 +84,8 @@ export type BuildOrderEntry =
    *  line and when the seat owns a building of its kind, so it goes up with the bread chain's first
    *  buildings. `atUnlock` places the entry the moment its building unlocks, over the site pace and ahead
    *  of the lanes and the other lines, unless the seat is attacked (`./index.ts`).
-   *  `lockPasses` passes over the entry while its building's tier is locked instead of holding its line. */
+   *  `lockPasses` passes over the entry while its building's tier is locked instead of holding its line.
+   *  `yieldsRoom` passes over an entry whose search finds no spot, a copy on a seat short of ground. */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -105,6 +106,7 @@ export type BuildOrderEntry =
       readonly firstRank?: true;
       readonly atUnlock?: true;
       readonly lockPasses?: true;
+      readonly yieldsRoom?: true;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier, and below `belowTier` when given. `role` counts and lifts only the joineries holding that
@@ -287,7 +289,7 @@ const AFTER_FOOD_AND_ARMS: StepHold = {
 };
 
 /** The homes every seat's opening raises (owner ruling): a roomy or rich seat raises more on top. */
-const OPENING_HOMES = 3;
+export const OPENING_HOMES = 3;
 
 /**
  * When the pottery and the mason hut go up a tier (owner ruling: the mill, the bakery, the homes, the

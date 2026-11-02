@@ -49,7 +49,8 @@ import {
 } from './entries.js';
 import { foodChainStep, seatFoodFailing } from './food-first.js';
 import { TOWER_CONTENT_IDS, towerUpgradeWaits } from './front.js';
-import { grassBoundEntry, grassReserved } from './grass-reserve.js';
+import { grassReserved } from './grass-reserve.js';
+import { keepGroundPlan } from './ground-plan.js';
 import {
   daughtersBlocked,
   HOUSING_PACE,
@@ -61,7 +62,7 @@ import {
   housingStage,
 } from './housing.js';
 import { holdsNamedPaper, paperedPlacement, paperedSteps, stepTiers } from './papers.js';
-import { placementSpot } from './placement.js';
+import { placementPassesOver, placementSpot } from './placement.js';
 import {
   type DecisionMemo,
   decisionMemo,
@@ -302,6 +303,12 @@ function runBuildOrder(
   const statuses = statusesNow();
   const statusOf = (line: BuildLineId, step: number): EntryStatus | undefined => statuses.get(line)?.[step];
   const reserveGrass = grassReserved(ctx, terrain, anchor, order, statuses);
+  if (tribe !== undefined) {
+    keepGroundPlan(world, ctx, terrain, player, owned, anchor, tribe, order, statuses, {
+      underFire: () => siegeOf().underFire,
+      reserveGrass,
+    });
+  }
   const searches = new StalledSearches(world, player, keyedStatuses(order, statuses));
   let made: ReadonlySet<number> | undefined;
   const madeGoods = (): ReadonlySet<number> => (made ??= goodsMadeBy(world, ctx, owned));
@@ -885,16 +892,6 @@ const PASSED_OVER: Verdict = { kind: 'pass' };
 function passesOver(ctx: SystemContext, entry: BuildOrderEntry): boolean {
   if (entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') return true;
   return entry.kind === 'place' && placementPassesOver(ctx, entry);
-}
-
-/** A placement that exists to serve something beside it, a workshop an `unlessWithin` entry supplies or
- *  the ships a `shore` workshop launches, or a {@link grassBoundEntry} the list can go on without. */
-function placementPassesOver(
-  ctx: SystemContext,
-  entry: Extract<BuildOrderEntry, { kind: 'place' }>,
-): boolean {
-  if (entry.unlessWithin !== undefined || (entry.near?.some((a) => a.kind === 'shore') ?? false)) return true;
-  return entry.essential !== true && grassBoundEntry(ctx, entry);
 }
 
 function searchVerdict(
