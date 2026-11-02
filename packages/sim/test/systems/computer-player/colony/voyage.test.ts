@@ -236,7 +236,8 @@ describe('a colony sails', () => {
     const builders = (): number => {
       const ctx = ctxOf(sim);
       const away = everySettlerOf(sim.world, SEAT).filter((e) => colonyMember(sim.world, ctx, SEAT, e));
-      return away.filter((e) => sim.world.get(e, Settler).jobType === BUILDER).length;
+      return away.filter((e) => !sim.world.has(e, Rider) && sim.world.get(e, Settler).jobType === BUILDER)
+        .length;
     };
     expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
     const ctx = ctxOf(sim);
