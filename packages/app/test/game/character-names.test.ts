@@ -2,24 +2,26 @@ import { JobType } from '@open-northland/data';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { settlerName } from '../../src/game/character-names/index.js';
 import { installLocalizedNames } from '../../src/game/character-names/localized-names.js';
-import { installPetNames, memoryPetNames, petNames } from '../../src/game/character-names/pet-names.js';
+import { installPetNames, petNames, petNamesOf } from '../../src/game/character-names/pet-names.js';
 import type { SnapshotEntity } from '../../src/game/snapshot/index.js';
 import { currentLocale, LOCALE_CODES, setActiveLocale } from '../../src/i18n/index.js';
 
 let previousLocale = currentLocale();
 beforeEach(() => {
   previousLocale = currentLocale();
-  installPetNames(memoryPetNames());
+  installPetNames(petNamesOf());
   installLocalizedNames(currentLocale(), new Map());
 });
 afterEach(() => {
   setActiveLocale(previousLocale);
-  installPetNames(memoryPetNames());
+  installPetNames(petNamesOf());
   installLocalizedNames(currentLocale(), new Map());
 });
 
 const entity = (components: SnapshotEntity['components']): SnapshotEntity => ({ id: 42, components });
 const identity = { NameIdentity: { pool: 'egyptian-male', name: 'Nakht' } };
+/** The settler `entity(identity)` is, as the player's names know it. */
+const nakht = { entity: 42, pool: 'egyptian-male', raw: 'Nakht' };
 /** A dictionary for the pool `identity` names; a second pool spells the same raw name differently. */
 const dictionary = new Map([
   ['egyptian-male', new Map([['Nakht', '纳赫特']])],
@@ -61,7 +63,7 @@ describe('settlerName', () => {
   it('resolves script then the player’s own name then the generated identity', () => {
     const e = entity({ ...identity, ScriptedName: { stringId: 5 } });
     expect(settlerName({ jobs: [], mapText: () => 'Isis' }, e)).toBe('Isis');
-    petNames().set(42, 'Ada');
+    petNames().set(nakht, 'Ada');
     // The scripted name still wins, and a blank one falls through to the player's.
     expect(settlerName({ jobs: [], mapText: () => 'Isis' }, e)).toBe('Isis');
     expect(settlerName({ jobs: [], mapText: () => ' ' }, e)).toBe('Ada (Nakht)');
@@ -69,13 +71,13 @@ describe('settlerName', () => {
   });
 
   it('shows the name the player gave with the one it replaced beside it', () => {
-    petNames().set(42, 'Ada');
+    petNames().set(nakht, 'Ada');
     expect(settlerName({ jobs: [] }, entity(identity))).toBe('Ada (Nakht)');
     setActiveLocale('chs');
     installLocalizedNames('chs', dictionary);
     expect(settlerName({ jobs: [] }, entity(identity))).toBe('Ada (纳赫特)');
     // Taking the name back leaves the settler with the one it was generated with.
-    petNames().set(42, '   ');
+    petNames().set(nakht, '   ');
     expect(settlerName({ jobs: [] }, entity(identity))).toBe('纳赫特');
   });
 
@@ -84,9 +86,15 @@ describe('settlerName', () => {
     const jobs = [JobType.parse({ typeId: 44, id: 'hero_sword_bjarni' })];
     const e = entity({ ...identity, Settler: { jobType: 44, tribe: 1 }, ScriptedName: { stringId: 1 } });
     expect(settlerName({ jobs }, e)).toBe('Bjarni');
-    petNames().set(42, 'Ada');
+    petNames().set(nakht, 'Ada');
     expect(settlerName({ jobs }, e)).toBe('Ada (Bjarni)');
     expect(settlerName({ jobs, mapText: () => 'Sigurd' }, e)).toBe('Sigurd');
+  });
+
+  it('drops a name given to another settler that held the same entity id', () => {
+    petNames().set(nakht, 'Ada');
+    const later = entity({ NameIdentity: { pool: 'viking-male', name: 'Harald' } });
+    expect(settlerName({ jobs: [] }, later)).toBe('Harald');
   });
 
   it('uses a numbered localized fallback for an unknown person', () => {

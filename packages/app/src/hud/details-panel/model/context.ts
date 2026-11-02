@@ -3,7 +3,6 @@ import type { SignpostReachView } from '@open-northland/sim';
 import {
   PRODUCTION_COUNT_MAX,
   PRODUCTION_UNLIMITED,
-  SETTLER_NAME_MAX_CHARS,
   systems,
   type TradeOffer,
   type TraderView,
@@ -107,7 +106,7 @@ export type DiplomacyStance = 'friend' | 'neutral' | 'enemy';
 /** The sim's own status union and counter range, so the panel cannot drift from `Simulation.workStatus`
  *  and `ProductionCounters.counters`. */
 export type SettlerWorkStatus = WorkStatus;
-export { PRODUCTION_COUNT_MAX, PRODUCTION_UNLIMITED, SETTLER_NAME_MAX_CHARS };
+export { PRODUCTION_COUNT_MAX, PRODUCTION_UNLIMITED };
 
 /** The content slice a building's store and construction rows are read through: the surfaces that show
  *  only those rows, such as the hover card, need nothing else. */

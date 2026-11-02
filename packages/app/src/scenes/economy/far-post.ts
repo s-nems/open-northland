@@ -1,4 +1,4 @@
-import { components, type Entity, fx, type Simulation } from '@open-northland/sim';
+import { components, fx, type Simulation } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
 import { JOB_CIVILIST, JOB_SCOUT, JOB_WOMAN } from '../../catalog/jobs.js';
 import {
@@ -10,6 +10,7 @@ import {
   placeBuiltSandboxBuilding,
   spawnSettlerDirect,
 } from '../../game/sandbox/index.js';
+import { labelledSceneSettler, labelSceneSettler } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
 
 const MAP_W = 96;
@@ -31,21 +32,13 @@ const INITIAL_ZOOM = 0.6;
 
 const { JobAssignment, LostWay, Position } = components;
 
-/** The settler this scene posts, by the name it calls it. No sim component carries a scene's label any
- *  more: a rename is the player's own, and it stays on their client. */
-const namedInScene = new Map<string, Entity>();
-
-function named(name: string): Entity | undefined {
-  return namedInScene.get(name);
-}
-
 function build(sim: Simulation): void {
   sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   placeBuiltSandboxBuilding(sim, BUILDING_HEADQUARTERS, HEADQUARTERS.x, HEADQUARTERS.y);
   const bakery = placeBuiltSandboxBuilding(sim, BUILDING_BAKERY, FAR_BAKERY.x, FAR_BAKERY.y);
   placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, FAR_HOME.x, FAR_HOME.y);
   const posted = spawnSettlerDirect(sim, JOB_CIVILIST, POSTED.x, POSTED.y);
-  namedInScene.set(POSTED_NAME, posted);
+  labelSceneSettler(sim, POSTED_NAME, posted);
   for (const at of CIVILIANS) spawnSettlerDirect(sim, JOB_CIVILIST, at.x, at.y);
   spawnSettlerDirect(sim, JOB_WOMAN, WOMAN.x, WOMAN.y);
   spawnSettlerDirect(sim, JOB_SCOUT, SCOUT.x, SCOUT.y);
@@ -68,14 +61,14 @@ export const farPostScene: SceneDefinition = {
     {
       label: 'Olaf keeps his post at the far bakery',
       predicate: (sim) => {
-        const olaf = named(POSTED_NAME);
+        const olaf = labelledSceneSettler(sim, POSTED_NAME);
         return olaf !== undefined && sim.world.has(olaf, JobAssignment);
       },
     },
     {
       label: 'Olaf stands lost by the camp, his status naming the workplace beyond signpost reach',
       predicate: (sim) => {
-        const olaf = named(POSTED_NAME);
+        const olaf = labelledSceneSettler(sim, POSTED_NAME);
         return (
           olaf !== undefined &&
           sim.world.has(olaf, LostWay) &&

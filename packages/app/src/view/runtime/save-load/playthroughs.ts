@@ -19,9 +19,7 @@ export interface RunningWorld {
   readonly seed: number | null;
 }
 
-/** The key a game's saves share, and the key the renames of its settlers are kept under. */
-export const playthroughKey = (mapId: string | null, seed: number | null): string =>
-  `${mapId ?? ''}|${seed ?? ''}`;
+const playthroughKey = (mapId: string | null, seed: number | null): string => `${mapId ?? ''}|${seed ?? ''}`;
 
 const newest = (playthrough: { readonly slots: readonly SaveSlotInfo[] }): number =>
   playthrough.slots[0]?.savedAt ?? 0;

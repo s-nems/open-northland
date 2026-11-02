@@ -276,14 +276,14 @@ describe('the settler head', () => {
     name: 'Ulf',
     profession: 'Kowal',
     foreign: false,
-    renamable: true,
+    rename: { given: 'Ada' },
     meta: null,
   } as SettlerPanelModel;
 
   it('browses the trade, offers rename and the orders medallion for the seat’s own person', () => {
     const head = settlerHead(model, { ids: [5, 7, 9], index: 1 }, 'Spacja');
     expect(head.browse).toMatchObject({ index: 2, count: 3 });
-    expect(head.rename).not.toBeNull();
+    expect(head.rename?.current).toBe('Ada');
     expect(head.orders?.tooltip).toContain('Spacja');
   });
 
@@ -294,7 +294,7 @@ describe('the settler head', () => {
   });
 
   it('keeps another seat’s person to the name alone', () => {
-    const head = settlerHead({ ...model, foreign: true, renamable: false }, NO_PEERS, 'Spacja');
+    const head = settlerHead({ ...model, foreign: true, rename: null }, NO_PEERS, 'Spacja');
     expect(head.browse).toBeNull();
     expect(head.rename).toBeNull();
     expect(head.orders).toBeNull();

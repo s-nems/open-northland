@@ -7,6 +7,21 @@ const { Building, GroundDrop, Health, Owner, Position, Settler, Stockpile } = co
 /** Read-only queries for scene checks: they read a scene-owned sim after its headless run, never live
  *  render glue. */
 
+/** The settlers a scene labels by name, per sim: the sim itself keeps no name of a scene's choosing. */
+const sceneLabels = new WeakMap<Simulation, Map<string, Entity>>();
+
+/** Label `entity` as `name` for this sim's scene checks. */
+export function labelSceneSettler(sim: Simulation, name: string, entity: Entity): void {
+  const labels = sceneLabels.get(sim) ?? new Map<string, Entity>();
+  labels.set(name, entity);
+  sceneLabels.set(sim, labels);
+}
+
+/** The settler this sim's scene labelled `name`, or undefined before the label. */
+export function labelledSceneSettler(sim: Simulation, name: string): Entity | undefined {
+  return sceneLabels.get(sim)?.get(name);
+}
+
 /** The one placed building of `typeId`, or null before its placement command ran. */
 export function buildingOfType(sim: Simulation, typeId: number): Entity | null {
   for (const e of sim.world.query(Building)) {

@@ -17,6 +17,7 @@ import { loadScriptLandscapeSprites } from '../../content/map/script-landscape-s
 import { mapBriefingPictures } from '../../content/map-source/briefing-pictures.js';
 import { mapBriefingVoices } from '../../content/map-source/briefing-voices.js';
 import { loadFellingClips } from '../../content/object-gfx/felling-clips.js';
+import { petNames } from '../../game/character-names/pet-names.js';
 import { briefingMatchObjectives, briefingPage, mapBriefFallback } from '../../game/map/mission-brief.js';
 import { playerNameMap, playerTribe } from '../../game/map/roster.js';
 import { mapStartFocus } from '../../game/map/start.js';
@@ -36,7 +37,7 @@ import { bindStaticLayer } from '../../view/map-objects/static-layer.js';
 import type { NetReadout } from '../../view/net/readout.js';
 import { formatSearch } from '../../view/params.js';
 import { type GameViewDeps, type GameViewHandle, startGameView } from '../../view/runtime/game-view.js';
-import { decodeFogMemory, encodeFogMemory } from '../../view/runtime/save-load/fog-memory.js';
+import { decodeClientMemory, encodeClientMemory } from '../../view/runtime/save-load/client-memory.js';
 import { terrainColourOption } from '../../view/runtime/world-bootstrap.js';
 import { bindScriptLandscapes } from '../../view/script/landscapes.js';
 import { readStoredSettings } from '../../view/settings/store.js';
@@ -124,7 +125,8 @@ export async function presentMapWorld(
         : harvestablePlacementOrdinals(host.content, loaded.objects, ir);
 
   // The fog memory a save keeps is its saving seat's in its own world; anything else starts blank.
-  const savedMemory = decodeFogMemory(stagedSave?.presentation ?? null);
+  const clientMemory = decodeClientMemory(stagedSave?.presentation ?? null);
+  const savedMemory = clientMemory.fog;
   const restoredMemory =
     savedMemory !== null && savedMemory.seat === (localPlayer ?? null) && savedMemory.mapId === mapId
       ? savedMemory
@@ -269,15 +271,11 @@ export async function presentMapWorld(
     mapText: mapStringLookup(world.strings, currentLocale()),
     ...(stagedSave?.parent !== undefined ? { parentSave: stagedSave.parent } : {}),
     ...(stagedSave !== null ? { restoredView: stagedSave.header.view } : {}),
+    restoredPetNames: clientMemory.names,
     presentation: () => {
       const { statics, roads } = renderer.savedFogMemory();
-      return encodeFogMemory({
-        mapId,
-        seat: localPlayer ?? null,
-        statics,
-        roads,
-        layer: staticLayer?.memory() ?? null,
-      });
+      const fog = { mapId, seat: localPlayer ?? null, statics, roads, layer: staticLayer?.memory() ?? null };
+      return encodeClientMemory({ fog, names: petNames().records() });
     },
     ...(runtime.sharedClock
       ? {}

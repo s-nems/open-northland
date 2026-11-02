@@ -13,7 +13,7 @@ import {
   JOB_TRADER,
   JOB_WOMAN,
 } from '../../../../src/catalog/jobs.js';
-import { installPetNames, memoryPetNames } from '../../../../src/game/character-names/pet-names.js';
+import { installPetNames, petNamesOf } from '../../../../src/game/character-names/pet-names.js';
 import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
 import {
   BUILDING_HOME_00,
@@ -105,9 +105,9 @@ function workshop(ctx: UnitPanelModelContext): { type: number; operator: number;
 
 describe('the settler panel model', () => {
   it('names a settler by the player’s own name over the generated one, and the map name over both', () => {
-    const pet = memoryPetNames();
+    const pet = petNamesOf();
     installPetNames(pet);
-    pet.set(SETTLER, 'Bjorn');
+    pet.set({ entity: SETTLER, pool: 'viking-female', raw: 'Ragna' }, 'Bjorn');
     const named = settlerModel([
       {
         id: SETTLER,
@@ -133,7 +133,7 @@ describe('the settler panel model', () => {
       { ...sandboxCtx(), mapText: (id) => (id === 7 ? 'Ykol' : undefined) },
     );
     expect(scripted.name).toBe('Ykol');
-    installPetNames(memoryPetNames());
+    installPetNames(petNamesOf());
   });
 
   it('links the workplace, the home, the spouse and the growing child by entity id', () => {
@@ -530,7 +530,7 @@ describe('the settler panel model', () => {
       { ...sandboxCtx(), diplomacyStance: () => 'neutral' },
     );
     expect(model.foreign).toBe(true);
-    expect(model.renamable).toBe(false);
+    expect(model.rename).toBeNull();
     expect(model.bars.map((bar) => bar.label)).toEqual([messages().hud.health]);
     expect(model.workplace).toMatchObject({ target: { id: WORKSHOP }, assign: null, remove: null });
     expect(model.home).toBeNull();

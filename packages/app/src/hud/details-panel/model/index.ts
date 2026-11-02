@@ -51,7 +51,6 @@ export {
   type DiplomacyStance,
   PRODUCTION_COUNT_MAX,
   PRODUCTION_UNLIMITED,
-  SETTLER_NAME_MAX_CHARS,
   type SettlerWorkStatus,
   type UnitPanelModelContext,
 } from './context.js';
