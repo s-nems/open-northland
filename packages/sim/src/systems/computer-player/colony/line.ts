@@ -1,4 +1,3 @@
-import { BUILDING_KIND } from '@open-northland/data';
 import type { ColonyLine, ColonyLineLeg } from '../../../components/ai/colony.js';
 import {
   Building,
@@ -19,7 +18,6 @@ import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { isEdibleFoodIn } from '../../readviews/index.js';
-import { stockAtBuildings } from '../../stores/index.js';
 import { DEFAULT_BUILD_ORDER } from '../build-order/entries.js';
 import { seatBuildOrder } from '../build-order/seat-order.js';
 import { sitesShortfalls } from '../build-order/upgrade-supply.js';
@@ -33,7 +31,7 @@ import { type CargoLine, homewardCargo, LINE_CARGO_MOST, type OutwardRead, outwa
 import { colonists, colonyOrigin } from './founding.js';
 import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan } from './plan.js';
-import { colonyMakes, LAND_GOOD_IDS } from './provision.js';
+import { colonyMakes, LAND_GOOD_IDS, storesHeld } from './provision.js';
 import { colonyBuildings } from './spot.js';
 import { homeStockOf } from './stock.js';
 import {
@@ -193,8 +191,7 @@ function wantOrders(ship: Entity, lines: readonly CargoLine[]): PlayerCommand[] 
 
 interface ColonyStores {
   readonly buildings: readonly Entity[];
-  /** What the colony's warehouses hold, by good, those still sites included: they own the ground heaps of a
-   *  hold set ashore before a store stands. */
+  /** What the colony's warehouses hold, by good. */
   readonly held: ReadonlyMap<number, number>;
   /** What its open sites and next builds still want, by good. */
   readonly owed: ReadonlyMap<number, number>;
@@ -209,12 +206,8 @@ function addUp(into: Map<number, number>, units: ReadonlyMap<number, number>): v
 }
 
 function colonyStores(env: ColonyEnv, colony: ColonyView): ColonyStores {
-  const { world, ctx, seat } = env;
-  const index = contentIndex(ctx.content);
+  const { world, ctx } = env;
   const buildings = colonyBuildings(env);
-  const stores = buildings.filter(
-    (e) => index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage,
-  );
   const plan = colonyPlan(env, colony, buildings);
   const owed = sitesShortfalls(world, ctx, buildings);
   addUp(owed, billsOf(env, plan.slice(0, COLONY_OPEN_SITES)));
@@ -224,7 +217,7 @@ function colonyStores(env: ColonyEnv, colony: ColonyView): ColonyStores {
   const from = colonyOrigin(env, colony, buildings);
   return {
     buildings,
-    held: stockAtBuildings(world, seat, stores),
+    held: storesHeld(env, buildings),
     owed,
     kept,
     makes: from === null ? new Set() : colonyMakes(env, from, buildings),

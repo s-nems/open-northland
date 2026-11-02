@@ -7,15 +7,14 @@ import type { SystemContext } from '../../context.js';
 import type { SeatStock } from '../../stores/index.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
 
-/** What a colony sails with, by content id, in the order the hold takes it (authored from the founding bill
- *  of a store and four homes, about twice over). Wood comes last: hands fetch line by line, so a load cut
- *  short lacks what the bill wants most of, not a whole good, and a 50-unit hold cuts it to 22, past the
- *  12 that bill wants. */
+/** What a colony sails with, by content id, in the order the hold takes it (authored from the bills of its
+ *  store, a home, a farm, a mill and a well): the first buildings before its diggers bring anything in and
+ *  the first line ship is back. Owner ruling: the rest its land gives it, so this is no more than that. */
 const MANIFEST: readonly { readonly id: string; readonly amount: number }[] = [
-  { id: 'stone', amount: 7 },
-  { id: 'mud', amount: 9 },
-  { id: 'wheat', amount: 12 },
-  { id: 'wood', amount: 23 },
+  { id: 'stone', amount: 4 },
+  { id: 'mud', amount: 3 },
+  { id: 'wheat', amount: 4 },
+  { id: 'wood', amount: 9 },
 ];
 
 interface CargoLine {

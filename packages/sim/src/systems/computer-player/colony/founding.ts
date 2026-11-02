@@ -27,14 +27,9 @@ import { colonyBuildings, colonySpot } from './spot.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
 import { type ColonyEnv, type ColonyView, unloaded } from './voyage.js';
 
-/** What a colony raises, in order (authored): a store, four homes, no road, no farm, no tower. */
-export const COLONY_BUILDS: readonly string[] = [
-  COLONY_STORE_BUILDING_ID,
-  'home_level_00',
-  'home_level_00',
-  'home_level_00',
-  'home_level_00',
-];
+/** What a colony raises first (owner ruling): its warehouse near the shore. The rest it raises as it needs
+ *  ({@link colonyPlan}). */
+export const COLONY_BUILDS: readonly string[] = [COLONY_STORE_BUILDING_ID];
 /** How far from its anchor a building's spot may lie, in Manhattan nodes (authored: the walk range). */
 const SPOT_SEARCH_NODES = 50;
 /** How far from the first store a deposit gets a second one, in Manhattan nodes (authored: a hold's hands'

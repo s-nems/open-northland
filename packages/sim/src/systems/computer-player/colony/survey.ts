@@ -74,6 +74,19 @@ function blockZones(brief: MapBriefView, zone: number): number[] {
   return zones;
 }
 
+/** The free nodes of `colony`'s site block on its land, as the map brief took them. */
+export function siteRoom(
+  world: World,
+  colony: { readonly land: number; readonly site: Readonly<HalfCellNode> },
+): number {
+  const brief = mapBriefOf(world);
+  if (brief === null) return 0;
+  let free = 0;
+  for (const zone of blockZones(brief, zoneOfNode(brief, colony.site.hx, colony.site.hy)))
+    if (brief.dominantLand[zone] === colony.land) free += brief.free[zone] ?? 0;
+  return free;
+}
+
 /** Whether node `(hx, hy)` lies in the block around `zone`. */
 export function siteBlockHolds(brief: MapBriefView, zone: number, hx: number, hy: number): boolean {
   const inside = zoneOfNode(brief, hx, hy);
