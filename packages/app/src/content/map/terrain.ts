@@ -1,7 +1,6 @@
 import {
   type CellTexture,
   type GroundPattern,
-  loadAtlasSource,
   patternSrcRect,
   type TerrainTextureSet,
   type TransitionPattern,
@@ -10,6 +9,7 @@ import {
 import { diag } from '../../diag/index.js';
 import { loadIr } from '../ir/load.js';
 import type { ContentIr } from '../ir/rows.js';
+import { loadAtlasWithMods } from '../net.js';
 import { contentUrl } from '../url.js';
 
 /**
@@ -23,7 +23,7 @@ import { contentUrl } from '../url.js';
  * The sprite atlases stay `nearest`.
  */
 
-type LoadedSource = Awaited<ReturnType<typeof loadAtlasSource>>;
+type LoadedSource = Awaited<ReturnType<typeof loadAtlasWithMods>>;
 
 /** Index the decoded ground patterns without loading their texture pages. */
 export function buildGroundPatternIndex(tables: ContentIr): ReadonlyMap<string, GroundPattern> {
@@ -77,7 +77,7 @@ export class MissingTerrainError extends Error {}
  */
 export async function loadRealTerrain(
   ir?: ContentIr | null,
-  loadPage: (url: string) => Promise<LoadedSource> = (url) => loadAtlasSource(url, 'linear'),
+  loadPage: (url: string) => Promise<LoadedSource> = (url) => loadAtlasWithMods(url, 'linear'),
 ): Promise<TerrainTextureSet> {
   const tables = ir !== undefined ? ir : await loadIr();
   if (tables === null) {

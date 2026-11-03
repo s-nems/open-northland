@@ -1,4 +1,4 @@
-import { isCivilizationTribe, type MapsIndexPlayerSlot } from '@open-northland/data';
+import { CIVILIZATION_TRIBES, type MapsIndexPlayerSlot } from '@open-northland/data';
 import type { ComputerDifficulty, LocalSeat } from '@open-northland/lockstep';
 import { isReservedMapAiSeat } from '../../../game/match/session-url.js';
 
@@ -61,20 +61,28 @@ export function vacantOffers(slot: MapPlayerSlot): VacantMode[] {
   ];
 }
 
-/** A seat the map gives a civilization may be played as any other; a monster seat keeps its tribe. */
-export function offersTribeChoice(slot: MapPlayerSlot): boolean {
-  return isCivilizationTribe(slot.tribeId);
+/** A seat the map gives a civilization may be played as any other; a monster seat keeps its tribe.
+ *  `civilizations` is the content's list - the authored five plus a pack's flagged tribes rows
+ *  (`docs/MODS.md`, "New civilizations"). */
+export function offersTribeChoice(
+  slot: MapPlayerSlot,
+  civilizations: readonly number[] = CIVILIZATION_TRIBES,
+): boolean {
+  return civilizations.includes(slot.tribeId);
 }
 
 /** Claimable civilization seats offer computer difficulty; a locked computer needs active autonomous
  *  modules. Monster tribes have no computer difficulty. */
-export function offersDifficulty(slot: MapPlayerSlot): boolean {
+export function offersDifficulty(
+  slot: MapPlayerSlot,
+  civilizations: readonly number[] = CIVILIZATION_TRIBES,
+): boolean {
   return (
     (slot.claimable || isReservedMapAiSeat(slot)) &&
     !slot.hidden &&
     slot.aiAllowed &&
     (slot.claimable || slot.hasComputerControl) &&
-    offersTribeChoice(slot)
+    offersTribeChoice(slot, civilizations)
   );
 }
 

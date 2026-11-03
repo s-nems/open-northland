@@ -1,4 +1,4 @@
-import { isCivilizationTribe, type MapsIndexPlayerSlot } from '@open-northland/data';
+import { CIVILIZATION_TRIBES, isCivilizationTribe, type MapsIndexPlayerSlot } from '@open-northland/data';
 import {
   type ComputerDifficulty,
   DEFAULT_LOCAL_PLAYER,
@@ -249,10 +249,15 @@ export function seatMode(
   return slot.type === 'ai' && slot.aiAllowed !== false ? 'computer' : 'idle';
 }
 
-/** `?tribe=<id>`: the civilization the person's seat plays, whatever seat that is; map AIs keep theirs. */
+/** `?tribe=<id>`: the civilization the person's seat plays, whatever seat that is; map AIs keep theirs.
+ *  The authored five pass as always, and so does any id above them - a pack's people, which ids the
+ *  content offers says (`docs/MODS.md`); the world's seat switches gate on that list in
+ *  `sessionSeatChanges`, so an id the content does not offer keeps its seat's own people. The monsters
+ *  and the animal-species range below the authored maximum stay out. */
+const AUTHORED_TRIBE_MAX = Math.max(...CIVILIZATION_TRIBES);
 function humanTribeParam(params: URLSearchParams): number | undefined {
   const tribe = intParam(params, HUMAN_TRIBE_PARAM, NO_TRIBE);
-  return isCivilizationTribe(tribe) ? tribe : undefined;
+  return isCivilizationTribe(tribe) || tribe > AUTHORED_TRIBE_MAX ? tribe : undefined;
 }
 
 /** `?colors=<slot>:<colorId>,…`. Colours are bounded to the player colours the game draws, because

@@ -1,10 +1,17 @@
-import { CIVILIZATION_TRIBES, isCivilizationTribe } from '@open-northland/data';
+import { CIVILIZATION_TRIBES } from '@open-northland/data';
+import {
+  type CivilizationRow,
+  liveCivilizationTribes,
+  loadCivilizations,
+} from '../../../content/civilizations.js';
 import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import { node } from '../dom.js';
 import { tribeEmblem } from './tribe-emblems.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const STAR_PATH = 'M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7-6.2-3.8-6.2 3.8 1.6-7L2 9.5l7.1-.6z';
+/** The civilizations a build offers without content: the authored five, until the IR names more. */
+const DEFAULT_TRIBES: readonly CivilizationRow[] = CIVILIZATION_TRIBES.map((typeId) => ({ typeId }));
 /** Gap in CSS pixels between the button and its opened list, and between the list and the viewport edge. */
 const MENU_GAP_PX = 4;
 /** The thumbnail's class on the button and in every list entry. */
@@ -57,17 +64,32 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
   // The button invokes the list natively, so a second click closes it instead of light-dismissing
   // and reopening it.
   button.popoverTargetElement = menu;
-  const options = CIVILIZATION_TRIBES.map((tribe) => {
-    const option = node('button', 'lobby-tribe__option');
-    option.type = 'button';
-    option.setAttribute('role', 'option');
-    option.append(tribeEmblem(tribe, EMBLEM_CLASS), caption(tribe, authored));
-    option.addEventListener('click', () => {
-      menu.hidePopover();
-      if (tribe !== current) change(tribe);
+  let options: { tribe: number; option: HTMLElement }[] = [];
+  /** Rebuilds the list's entries over `rows`, keeping the open popover's focus behaviour intact. */
+  const renderOptions = (rows: readonly CivilizationRow[]): void => {
+    menu.replaceChildren();
+    options = rows.map((row) => {
+      const option = node('button', 'lobby-tribe__option');
+      option.type = 'button';
+      option.setAttribute('role', 'option');
+      option.append(tribeEmblem(row.typeId, EMBLEM_CLASS), caption(row.typeId, authored));
+      option.addEventListener('click', () => {
+        menu.hidePopover();
+        if (row.typeId !== current) change(row.typeId);
+      });
+      menu.append(option);
+      return { tribe: row.typeId, option };
     });
-    menu.append(option);
-    return { tribe, option };
+    for (const { tribe, option } of options) {
+      const selected = tribe === current;
+      option.classList.toggle('is-current', selected);
+      option.setAttribute('aria-selected', String(selected));
+    }
+  };
+  renderOptions(DEFAULT_TRIBES);
+  // A content pack's own people joins the list once the served IR has answered.
+  void loadCivilizations().then((rows) => {
+    if (rows.length > DEFAULT_TRIBES.length) renderOptions(rows);
   });
   root.append(label, button, menu);
 
@@ -125,7 +147,7 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
     button,
     update(chosen: number, disabled: boolean): void {
       // The world plays the map's own tribe for any other value a relay passes on.
-      const tribe = isCivilizationTribe(chosen) ? chosen : authored;
+      const tribe = liveCivilizationTribes().includes(chosen) ? chosen : authored;
       if (tribe !== current) {
         const next = tribeEmblem(tribe, EMBLEM_CLASS);
         buttonEmblem.replaceWith(next);

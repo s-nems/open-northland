@@ -54,6 +54,8 @@ interface IdSets {
   readonly landscapeGfxIndices: ReadonlySet<number>;
   readonly patternIds: ReadonlySet<number>;
   readonly armorIds: ReadonlySet<number>;
+  /** The tribes the `animals` lane declares - an animal species' id, which a civilization must not take. */
+  readonly animalTribeIds: ReadonlySet<number>;
 }
 
 function buildIdSets(set: ContentSet): IdSets {
@@ -67,6 +69,7 @@ function buildIdSets(set: ContentSet): IdSets {
     landscapeGfxIndices: new Set(set.landscapeGfx.map((g) => g.index)),
     patternIds: new Set(set.gfxPatterns.map((p) => p.id)),
     armorIds: new Set(set.armor.map((a) => a.typeId)),
+    animalTribeIds: new Set(set.animals.map((a) => a.tribeType)),
   };
 }
 
@@ -155,6 +158,10 @@ function checkTribes(set: ContentSet, ids: IdSets): string[] {
   for (const t of set.tribes) {
     if (t.naturalWeaponType !== undefined && !weaponTypesByTribe.get(t.typeId)?.has(t.naturalWeaponType))
       errors.push(`tribe "${t.id}" naturalWeaponType ${t.naturalWeaponType} has no scoped weapon`);
+    // An animal species owns its tribe id in the wildlife join, so a people flagged onto one would turn
+    // the species into a civilization and the id's wildlife into its creatures.
+    if (t.civilization === true && ids.animalTribeIds.has(t.typeId))
+      errors.push(`tribe "${t.id}" is flagged civilization, but tribe id ${t.typeId} is an animal species`);
     const walkJob = t.walkStepReduction?.jobType;
     if (walkJob !== undefined && !jobIds.has(walkJob))
       errors.push(`tribe "${t.id}" walkStepReduction has unknown jobType ${walkJob}`);

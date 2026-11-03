@@ -54,6 +54,20 @@ describe('sessionSeatChanges', () => {
     // Seat 1 is a monster, seat 2 kept its own, seat 9 is off the roster.
     expect([...changes.values()]).toEqual([CHANGE]);
   });
+
+  it("takes a pack's flagged people as a civilization, through the content's list", () => {
+    const NORTHMEN = 42;
+    const civilizations = new Set([VIKING, FRANK, SARACEN, NORTHMEN]);
+    const changes = sessionSeatChanges(
+      { seats: [human(0, NORTHMEN), human(1, NORTHMEN)] },
+      script(),
+      civilizations,
+    );
+    // Seat 0's viking map seat plays the pack's people; seat 1 keeps a choice the list does not offer.
+    expect([...changes.values()]).toEqual([{ seat: 0, authored: VIKING, chosen: NORTHMEN }]);
+    // The default reads the authored five, which never offer the pack's people.
+    expect(sessionSeatChanges({ seats: [human(0, NORTHMEN)] }, script()).size).toBe(0);
+  });
 });
 
 describe('seatFlows', () => {

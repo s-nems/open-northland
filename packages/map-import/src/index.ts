@@ -7,6 +7,7 @@ export {
   openNsis,
   openRar,
   openZip,
+  openZipFiles,
 } from './archives/open.js';
 export {
   type ConvertedMap,

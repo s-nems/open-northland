@@ -1,3 +1,7 @@
+import { parseGeneratedContentSet } from '@open-northland/data';
+import { ContentModLoadError, mergeContentModPatches } from './mods/merge.js';
+import { contentModFile, contentModFiles } from './mods/store.js';
+
 declare const __CONTENT_PREFIX__: string;
 
 /**
@@ -38,10 +42,48 @@ export type ContentFetch = (path: string, init?: RequestInit) => Promise<Respons
 
 /** The page's `fetch` over content paths; an installed map's store answers the same paths itself. */
 export const contentFetch: ContentFetch = async (path, init) => {
+  if (path.replace(/^\/+/, '').toLowerCase() === 'ir.json') {
+    const modFiles = await contentModFiles(path);
+    if (modFiles.length > 0) {
+      try {
+        const response = await fetch(contentUrl(path), init);
+        noteMovedOn(response);
+        if (!response.ok && response.status !== 404) return response;
+        const base = response.ok ? parseGeneratedContentSet(await response.json()) : null;
+        const patches = modFiles.map(({ bytes }) => JSON.parse(new TextDecoder().decode(bytes)) as unknown);
+        const merged = mergeContentModPatches(base, patches);
+        return new Response(JSON.stringify(merged), {
+          headers: { 'content-type': 'application/json' },
+        });
+      } catch (error) {
+        throw new ContentModLoadError(error instanceof Error ? error.message : String(error));
+      }
+    }
+  }
+  const modBytes = await contentModFile(path);
+  if (modBytes !== null) {
+    return new Response(new Uint8Array(modBytes), {
+      headers: { 'content-type': contentType(path), 'content-length': String(modBytes.byteLength) },
+    });
+  }
   const response = await fetch(contentUrl(path), init);
+  noteMovedOn(response);
+  return response;
+};
+
+function noteMovedOn(response: Response): void {
   if (response.redirected && !movedOn) {
     movedOn = true;
     movedOnListener?.();
   }
-  return response;
-};
+}
+
+function contentType(path: string): string {
+  if (path.endsWith('.json')) return 'application/json';
+  if (path.endsWith('.png')) return 'image/png';
+  if (path.endsWith('.webp')) return 'image/webp';
+  if (path.endsWith('.wav')) return 'audio/wav';
+  if (path.endsWith('.ogg')) return 'audio/ogg';
+  if (path.endsWith('.mp3')) return 'audio/mpeg';
+  return 'application/octet-stream';
+}

@@ -462,12 +462,14 @@ describe('playCampaignMovie subtitles', () => {
     t.dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
     expect(document.activeElement).toBe(skip);
   });
-  it('aborts outstanding subtitle loads when the film closes', () => {
+  it('aborts outstanding subtitle loads when the film closes', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() => new Promise(() => {})),
     );
     start();
+    // Content fetch checks the installed-pack overlay before issuing the network request.
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
     const options = vi.mocked(fetch).mock.calls[0]?.[1];
     lifetime.abort();
     expect(options?.signal?.aborted).toBe(true);

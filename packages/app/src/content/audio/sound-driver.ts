@@ -10,6 +10,7 @@ import {
 import type { SoundBank, SoundQuality } from '@open-northland/data';
 import { timedAudioContext } from '../../diag/audio-context.js';
 import type { ContentIr } from '../ir/rows.js';
+import { moddedContentAssetUrl } from '../net.js';
 import { contentUrl } from '../url.js';
 
 /**
@@ -25,7 +26,16 @@ const CONTENT_AUDIO_URLS = {
 
 /** The engine options of this page's content tree, loading its sound banks at `soundQuality`. */
 export function contentAudioOptions(soundQuality: SoundQuality): AudioEngineOptions {
-  return { ...CONTENT_AUDIO_URLS, soundQuality, createContext: timedAudioContext() };
+  return {
+    ...CONTENT_AUDIO_URLS,
+    soundQuality,
+    createContext: timedAudioContext(),
+    fetchBytes: async (url) => {
+      const response = await fetch(await moddedContentAssetUrl(url));
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.arrayBuffer();
+    },
+  };
 }
 
 /**

@@ -17,6 +17,7 @@ describe('backTarget', () => {
     expect(backTarget('newGame')).toBe('main');
     expect(backTarget('load')).toBe('main');
     expect(backTarget('settings')).toBe('main');
+    expect(backTarget('mods')).toBe('main');
     expect(backTarget('credits')).toBe('main');
     expect(backTarget('catalogue')).toBe('main');
   });
@@ -37,6 +38,7 @@ describe('deepLinkScreen', () => {
 describe('MAIN_NAV', () => {
   it('offers the exit only in the desktop shell, since a page cannot close its browser tab', () => {
     expect(mainNavFor(false).map((item) => item.id)).toContain('exit');
+    expect(mainNavFor(false).map((item) => item.id)).toContain('mods');
     expect(mainNavFor(true).map((item) => item.id)).not.toContain('exit');
   });
 });

@@ -1,4 +1,9 @@
-import { applyMapVariantSlots, findMapVariant, type MapVariantKind } from '@open-northland/data';
+import {
+  applyMapVariantSlots,
+  CIVILIZATION_TRIBES,
+  findMapVariant,
+  type MapVariantKind,
+} from '@open-northland/data';
 import {
   type ComputerDifficulty,
   DEFAULT_LOCAL_PLAYER,
@@ -89,10 +94,12 @@ export interface LobbySlotRow {
   readonly difficulty: ComputerDifficulty | null;
 }
 
-/** The listed slot rows in authored order; hidden slots never render. */
+/** The listed slot rows in authored order; hidden slots never render. `civilizations` is the content's
+ *  list (`docs/MODS.md`, "New civilizations"). */
 export function lobbySlotRows(
   players: readonly MapPlayerSlot[],
   state: RosterState,
+  civilizations: readonly number[] = CIVILIZATION_TRIBES,
 ): readonly LobbySlotRow[] {
   return players
     .filter((slot) => !slot.hidden)
@@ -102,15 +109,19 @@ export function lobbySlotRows(
       kind: slot.player === state.seat ? 'yours' : slot.claimable ? 'open' : 'scenario',
       vacantMode: state.vacantModes.get(slot.player) ?? authoredVacantMode(slot),
       tribe: state.tribes.get(slot.player) ?? slot.tribeId,
-      offersTribe: offersTribeChoice(slot),
-      difficulty: playsAtDifficulty(slot, state) ? slotDifficulty(state, slot) : null,
+      offersTribe: offersTribeChoice(slot, civilizations),
+      difficulty: playsAtDifficulty(slot, state, civilizations) ? slotDifficulty(state, slot) : null,
     }));
 }
 
 /** Whether the computer plays `slot` at a level: the map's own computer seat always, an offered seat
  *  once the lobby hands it over. */
-function playsAtDifficulty(slot: MapPlayerSlot, state: RosterState): boolean {
-  if (!offersDifficulty(slot)) return false;
+function playsAtDifficulty(
+  slot: MapPlayerSlot,
+  state: RosterState,
+  civilizations: readonly number[],
+): boolean {
+  if (!offersDifficulty(slot, civilizations)) return false;
   return (
     (isReservedMapAiSeat(slot) && slot.hasComputerControl) ||
     (state.seat !== null && computerSeats(state, [slot]).length > 0)
@@ -129,6 +140,7 @@ export function lobbySession(
   options: LobbyOptions,
   seed: number,
   variant: MapVariantKind | null = null,
+  civilizations: readonly number[] = CIVILIZATION_TRIBES,
 ): GameSession {
   const lists = {
     computer: new Set(state.seat === null ? [] : computerSeats(state, players)),
@@ -142,10 +154,11 @@ export function lobbySession(
   const localSeat = claimableLocalSeat(state.seat ?? DEFAULT_LOCAL_PLAYER, players);
   const seats: SessionSeat[] = players.map((slot) => {
     const tribe = state.tribes.get(slot.player);
-    const retribed = tribe !== undefined && tribe !== slot.tribeId && offersTribeChoice(slot);
+    const retribed = tribe !== undefined && tribe !== slot.tribeId && offersTribeChoice(slot, civilizations);
     const mode = seatMode(slot, localSeat, lists);
     const difficulty =
-      (mode === 'computer' || (mode === 'map-ai' && slot.hasComputerControl)) && offersDifficulty(slot)
+      (mode === 'computer' || (mode === 'map-ai' && slot.hasComputerControl)) &&
+      offersDifficulty(slot, civilizations)
         ? slotDifficulty(state, slot)
         : undefined;
     return {
@@ -186,8 +199,11 @@ export function lobbyStartEntry(
   options: LobbyOptions,
   seed: number,
   variant: MapVariantKind | null = null,
+  civilizations: readonly number[] = CIVILIZATION_TRIBES,
 ): string {
-  return formatSearch(sessionSearch(lobbySession(mapId, state, players, options, seed, variant), players));
+  return formatSearch(
+    sessionSearch(lobbySession(mapId, state, players, options, seed, variant, civilizations), players),
+  );
 }
 
 /** The seat rows a map index entry lists, as `variant` of the map offers them. */

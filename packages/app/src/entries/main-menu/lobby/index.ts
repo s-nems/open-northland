@@ -1,4 +1,5 @@
 import { isMultiplayerMapType, type MapVariantKind } from '@open-northland/data';
+import { civilizationTribes, loadCivilizations } from '../../../content/civilizations.js';
 import { chosenMapVariantParam } from '../../../game/map/variant.js';
 import { localAlliedVision } from '../../../game/match/session-rules.js';
 import { drawSessionSeed } from '../../../game/match/session-url.js';
@@ -130,6 +131,15 @@ export function lobbyScreen(
   let pickerSlot: number | null = null;
   /** Focus key restored after the next re-render when the focused control goes away. */
   let refocus: string | null = null;
+  /** The content's civilization list, opened up by a pack's flagged tribes rows once the IR answers. */
+  let civilizations = civilizationTribes(undefined);
+  void loadCivilizations().then((rows) => {
+    const next = civilizationTribes(rows);
+    if (next.length > civilizations.length) {
+      civilizations = next;
+      renderSeats();
+    }
+  });
 
   const gateStart = (): void => {
     const gated = hasClaimableSeat(players) && state.seat === null;
@@ -205,7 +215,7 @@ export function lobbyScreen(
       },
     });
     const rows: HTMLElement[] = [];
-    const slotRows = lobbySlotRows(players, state);
+    const slotRows = lobbySlotRows(players, state, civilizations);
     for (const row of slotRows) {
       rows.push(seats.row(row));
       if (pickerSlot === row.slot.player) rows.push(seats.picker(row));
@@ -241,7 +251,11 @@ export function lobbyScreen(
 
   start.addEventListener('click', () => {
     if (!start.disabled)
-      launch(targetSearch(lobbyStartEntry(item.id, state, players, options, drawSessionSeed(), variant)));
+      launch(
+        targetSearch(
+          lobbyStartEntry(item.id, state, players, options, drawSessionSeed(), variant, civilizations),
+        ),
+      );
   });
 
   return { element: section, dispose: () => window.removeEventListener('keydown', onKeydown, true) };

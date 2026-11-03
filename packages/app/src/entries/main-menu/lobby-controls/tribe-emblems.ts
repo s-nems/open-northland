@@ -1,10 +1,11 @@
-import { CIVILIZATION_TRIBES } from '@open-northland/data';
 import { pictureSheetUrl } from '../../../content/atlas-sheet/index.js';
 import { loadAtlasManifest } from '../../../content/bob-atlases.js';
 import { tribeEmblemRows } from '../../../content/building-gfx/emblems.js';
+import { civilizationTribes } from '../../../content/civilizations.js';
 import { servedAtlasStem } from '../../../content/ir/joins.js';
 import { loadIr } from '../../../content/ir/load.js';
 import type { BuildingBobRow } from '../../../content/ir/rows.js';
+import { moddedContentAssetUrl } from '../../../content/net.js';
 import { tribeName } from '../../../i18n/index.js';
 import { node } from '../dom.js';
 
@@ -25,7 +26,7 @@ export function loadTribeEmblems(): Promise<TribeEmblems> {
       emblems = null;
       return new Map<number, string>();
     }
-    const rows = tribeEmblemRows(ir, CIVILIZATION_TRIBES);
+    const rows = tribeEmblemRows(ir, civilizationTribes(ir.tribes));
     const entries = await Promise.all(
       [...rows].map(async ([tribe, row]) => [tribe, await emblemUrl(row).catch(() => null)] as const),
     );
@@ -60,7 +61,7 @@ async function emblemUrl(bob: BuildingBobRow): Promise<string | null> {
   const src = pictureSheetUrl(manifest);
   if (src === null) return null;
   const image = new Image();
-  image.src = src;
+  image.src = await moddedContentAssetUrl(src);
   await image.decode();
   const canvas = document.createElement('canvas');
   canvas.width = EMBLEM_PX;

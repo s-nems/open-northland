@@ -1,4 +1,4 @@
-import { isCivilizationTribe } from '@open-northland/data';
+import { CIVILIZATION_TRIBES } from '@open-northland/data';
 import type { SavedSessionMetadata } from '@open-northland/lockstep';
 import { compatibilityIssues, type RoomSeatView, type RoomView } from '@open-northland/net-protocol';
 
@@ -34,9 +34,12 @@ export function canClaimSeat(room: RoomView, seat: RoomSeatView, nick: string, c
 }
 
 /** The map's civilization for a seat that may play another; null for a seat without one, such as a
- *  monster's. */
-export function seatCivilization(seat: RoomSeatView): number | null {
-  return seat.authoredTribe !== undefined && isCivilizationTribe(seat.authoredTribe)
+ *  monster's. `civilizations` is the content's list (`docs/MODS.md`, "New civilizations"). */
+export function seatCivilization(
+  seat: RoomSeatView,
+  civilizations: readonly number[] = CIVILIZATION_TRIBES,
+): number | null {
+  return seat.authoredTribe !== undefined && civilizations.includes(seat.authoredTribe)
     ? seat.authoredTribe
     : null;
 }

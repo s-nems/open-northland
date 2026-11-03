@@ -40,7 +40,7 @@ export interface AuthoredJoinRows {
   }[];
   readonly buildings?: readonly { typeId?: number; id?: string; kind?: string }[];
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
-  readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
+  readonly tribes?: readonly { typeId?: number; id?: string; name?: string; civilization?: boolean }[];
   readonly goods?: readonly { typeId?: number; name?: string; id?: string }[];
   readonly landscapeGfx?: readonly { index: number; editName?: string }[];
   readonly vehicles?: readonly { typeId?: number; id?: string; name?: string }[];

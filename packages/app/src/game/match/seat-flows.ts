@@ -1,6 +1,6 @@
 import {
+  CIVILIZATION_TRIBES,
   decodeMissionResult,
-  isCivilizationTribe,
   type MapScript,
   type MissionPoint,
   type MissionResult,
@@ -61,17 +61,20 @@ const NO_MISSION_ID = 0;
 
 /**
  * The seats the session plays as another civilization than the map's roster row names. A monster seat
- * has no civilization to trade, so it keeps its own tribe whatever the session carries.
+ * has no civilization to trade, so it keeps its own tribe whatever the session carries. `civilizations`
+ * is the set the page's content offers - the authored five, then a pack's flagged tribes rows
+ * (`docs/MODS.md`, "New civilizations"); a tribe outside it keeps its seat's own people.
  */
 export function sessionSeatChanges(
   session: Pick<GameSession, 'seats'>,
   script: Pick<MapScript, 'players'>,
+  civilizations: ReadonlySet<number> = new Set(CIVILIZATION_TRIBES),
 ): ReadonlyMap<number, SeatChange> {
   const changes = new Map<number, SeatChange>();
   for (const seat of session.seats) {
-    if (seat.tribe === undefined || !isCivilizationTribe(seat.tribe)) continue;
+    if (seat.tribe === undefined || !civilizations.has(seat.tribe)) continue;
     const authored = script.players.find((row) => row.player === seat.player)?.tribeId;
-    if (authored === undefined || !isCivilizationTribe(authored) || authored === seat.tribe) continue;
+    if (authored === undefined || !civilizations.has(authored) || authored === seat.tribe) continue;
     changes.set(seat.player, { seat: seat.player, authored, chosen: seat.tribe });
   }
   return changes;
@@ -86,8 +89,12 @@ interface FlowBuilder {
   readonly played: ReadonlySet<number>;
 }
 
-export function seatFlows(session: Pick<GameSession, 'seats'>, script: SeatScript): SeatFlows {
-  const changes = sessionSeatChanges(session, script);
+export function seatFlows(
+  session: Pick<GameSession, 'seats'>,
+  script: SeatScript,
+  civilizations?: ReadonlySet<number>,
+): SeatFlows {
+  const changes = sessionSeatChanges(session, script, civilizations);
   const played = new Set(session.seats.filter((seat) => seat.mode === 'human').map((seat) => seat.player));
   const flows: FlowBuilder = {
     changes,

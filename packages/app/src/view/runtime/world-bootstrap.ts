@@ -4,7 +4,7 @@ import { WorldRenderer } from '@open-northland/render';
 import type { Application } from 'pixi.js';
 import { loadBerthPostArt } from '../../content/gui/berth-post-art.js';
 import { loadGuiStrings } from '../../content/gui/gfx.js';
-import { installOriginalNames } from '../../content/gui/original-names.js';
+import { installContentTribeNames, installOriginalNames } from '../../content/gui/original-names.js';
 import { loadPlanRoadArt } from '../../content/gui/plan-road-art.js';
 import { loadPlanStakeArt } from '../../content/gui/plan-stake-art.js';
 import {
@@ -33,6 +33,7 @@ export async function loadLocalizedRealContent(params: URLSearchParams): Promise
   if (realContent === null) return null;
   logRealContentGaps(realContent);
   if (strings !== null) installOriginalNames(locale, strings, realContent.content);
+  else installContentTribeNames(locale, realContent.content);
   return realContent;
 }
 

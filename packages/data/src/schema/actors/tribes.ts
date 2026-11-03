@@ -73,6 +73,15 @@ export const TribeType = z.strictObject({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
+  /**
+   * `true` marks a people the app treats as a civilization a player may play: the lobby lists it,
+   * its art loads on the maps that field it, and a seat may switch to it. The original's five carry
+   * no flag - they are the floor every build offers. A mod's new people sets it on its own row,
+   * whose `typeId` must be one the rest of the content does not use (`docs/MODS.md`, "New
+   * civilizations"): the original ids above the monsters name animal species, which the wildlife
+   * join owns.
+   */
+  civilization: z.boolean().optional(),
   unitVariants: z.array(UnitVariant).optional(),
   /** Reset weapon type (original behavior: a person's weapon resets to type 1). Keeping it equipped
    *  across a monster's body-form job changes is an approximation, not traced for all five body jobs. */

@@ -90,4 +90,21 @@ describe('worldTribes', () => {
     });
     expect(worldTribes(script, entities({}), rows)).toEqual([VIKING, SARACEN, 5, 6]);
   });
+
+  it("loads a pack's flagged people above the animal-species range, and only that", () => {
+    const northmen = 42;
+    const modded: AuthoredJoinRows = {
+      ...rows,
+      tribes: [
+        ...(rows.tribes ?? []),
+        // An animal species carries no flag, so its id joins no civilization's art.
+        { typeId: 8, id: 'bears' },
+        { typeId: northmen, id: 'northmen', civilization: true },
+        { typeId: 43, id: 'npcs', civilization: true },
+      ],
+    };
+    // A seat the modded map authors as the new people; the unflagged rows never load.
+    expect(worldTribes(seats(northmen), undefined, modded)).toEqual([VIKING, northmen]);
+    expect(worldTribes(seats(8), undefined, modded)).toEqual([VIKING]);
+  });
 });

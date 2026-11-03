@@ -1,11 +1,11 @@
 import {
   type AtlasImageEncoding,
   type AtlasSheetLayout,
-  loadAtlasSource,
   RecolouredPageSource,
   type TextureSource,
 } from '@open-northland/render';
 import { diag } from '../../diag/log.js';
+import { loadAtlasWithMods, moddedContentAssetUrl } from '../net.js';
 import { atlasImagePath, contentUrl } from '../url.js';
 import { colourOnPage, indexedOnPage } from './page-colour.js';
 import type {
@@ -166,7 +166,9 @@ export function palettedSheetBitmap(sheet: PalettedSheetRef): Promise<ImageBitma
   if (sheet.imageEncoding !== 'index-coverage-png') {
     return Promise.reject(new Error(`atlas sheet ${sheet.image}: unknown encoding ${sheet.imageEncoding}`));
   }
-  return (workersDecode() ? colourInWorkers : colourOnPage)(sheetUrl(sheet.image), sheet.palette);
+  return moddedContentAssetUrl(sheetUrl(sheet.image)).then((url) =>
+    (workersDecode() ? colourInWorkers : colourOnPage)(url, sheet.palette),
+  );
 }
 
 /** Recoloured pages by sheet image: every recolour of a bob set draws from the one page. */
@@ -183,10 +185,10 @@ export function recolouredPage(sheet: PalettedSheetRef): Promise<RecolouredPageS
   }
   let page = recolouredPages.get(sheet.image);
   if (page === undefined) {
-    const url = sheetUrl(sheet.image);
-    page = (workersDecode() ? indexedInWorkers(url) : indexedOnPage(url)).then(
-      ({ pixels, width, height }) => new RecolouredPageSource(pixels, width, height),
-    );
+    const loadIndexed = workersDecode() ? indexedInWorkers : indexedOnPage;
+    page = moddedContentAssetUrl(sheetUrl(sheet.image))
+      .then((url) => loadIndexed(url))
+      .then(({ pixels, width, height }) => new RecolouredPageSource(pixels, width, height));
     recolouredPages.set(sheet.image, page);
     const pending = page;
     pending.catch(() => {
@@ -211,7 +213,7 @@ export async function loadAtlasSheet(
   layout: AtlasSheetLayout,
 ): Promise<TextureSource | undefined> {
   if (sheet.palette === undefined) {
-    return loadAtlasSource(contentUrl(atlasImagePath(sheet.image)), 'nearest', layout);
+    return loadAtlasWithMods(contentUrl(atlasImagePath(sheet.image)), 'nearest', layout);
   }
   try {
     return await recolouredPage({ ...sheet, palette: sheet.palette });

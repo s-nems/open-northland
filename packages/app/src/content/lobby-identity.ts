@@ -1,6 +1,7 @@
 import { contentFingerprint, jsonFingerprint } from '@open-northland/data';
 import { type LobbyCompatibility, PROTOCOL_VERSION } from '@open-northland/net-protocol';
 import { mapFetch } from './map-source/sources.js';
+import { activeContentModIds } from './mods/store.js';
 import { loadRealContent, mergeRealContent } from './real-content.js';
 import {
   loadVerifiedMapDocuments,
@@ -25,12 +26,14 @@ export async function loadLobbyCompatibility(
       ? mapFetch(mapId, fetchImpl).then((files) => loadVerifiedMapDocuments(mapId, files))
       : supplied,
   ]);
+  const mods = fetchImpl === contentFetch ? await activeContentModIds() : [];
   if (content === null) throw new Error('Missing game content');
   if (documents !== null) readVerifiedMapDocuments(documents, mapId);
   return {
     content: jsonFingerprint({
       content: contentFingerprint(content),
       resolved: contentFingerprint(mergeRealContent(content).content),
+      mods,
       // Authored placements join script names against these.
       authoredNames: {
         goods: content.goods.map((row) => [row.typeId, row.name ?? row.id]),

@@ -3,7 +3,7 @@ import type { AtlasManifest } from '@open-northland/render';
 import { palettedSheetBitmap } from '../content/atlas-sheet/index.js';
 import { loadAtlasManifest } from '../content/bob-atlases.js';
 import { GUI_FRAMES } from '../content/gui/atlas-map.js';
-import { fetchJsonOrNull } from '../content/net.js';
+import { fetchJsonOrNull, moddedContentAssetUrl } from '../content/net.js';
 import { atlasImagePath, contentUrl } from '../content/url.js';
 import { diag } from '../diag/log.js';
 import { formatMessage, messages } from '../i18n/index.js';
@@ -84,7 +84,7 @@ let colouredSheetUrl: string | undefined;
  * an object URL (its caller revokes it), since a sheet-sized data URL passes the browser's URL length limit.
  */
 async function gallerySheetUrl(atlas: AtlasManifest): Promise<string> {
-  if (atlas.palette === undefined) return contentUrl(atlasImagePath(atlas.image));
+  if (atlas.palette === undefined) return moddedContentAssetUrl(contentUrl(atlasImagePath(atlas.image)));
   const bitmap = await palettedSheetBitmap({ ...atlas, palette: atlas.palette });
   const canvas = document.createElement('canvas');
   canvas.width = bitmap.width;

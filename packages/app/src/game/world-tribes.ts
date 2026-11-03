@@ -29,8 +29,16 @@ export function worldTribes(
   // The base is pinned even on a map that fields no viking: it backs every building type and character
   // look the other tribes do not skin, at the cost of its own pages on such a map.
   const tribes = new Set<number>([PRIMARY_TRIBE]);
+  // A mod's own people (`docs/MODS.md`, "New civilizations"): a flagged tribes row joins the
+  // original's human range, whose other ids above the monsters name animal species.
+  const declared = new Set<number>();
+  for (const row of rows.tribes ?? []) {
+    if (row.civilization === true && row.typeId !== undefined && row.typeId > LAST_HUMAN_TRIBE)
+      declared.add(row.typeId);
+  }
   const add = (tribe: number | undefined): void => {
-    if (tribe !== undefined && tribe > 0 && tribe <= LAST_HUMAN_TRIBE) tribes.add(tribe);
+    if (tribe !== undefined && tribe > 0 && (tribe <= LAST_HUMAN_TRIBE || declared.has(tribe)))
+      tribes.add(tribe);
   };
   for (const seat of script?.players ?? []) add(seat.tribeId);
   // The same joins the placements themselves resolve through, so the art loaded and the tribe the sim
