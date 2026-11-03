@@ -49,7 +49,6 @@ import {
   flagGroundAt,
   kitchenMouths,
   LAND_GOOD_IDS,
-  type LandGood,
   landHolds,
   MOUTHS_PER_FOOD_HAND,
   storesHeld,
@@ -62,7 +61,11 @@ import type { ColonyEnv, ColonyView } from './voyage.js';
  *  every other man digs, which is what the colony is for. */
 const BUILDERS_AT_REST = 2;
 /** The men on a good at most (authored): past these the colony's carriers cannot take in what they dig. */
-const DIGGERS_MOST: Readonly<Record<LandGood, number>> = { wood: 4, stone: 4, mud: 2, iron: 2 };
+const DIGGERS_MOST: Readonly<Record<DugGood, number>> = { wood: 4, stone: 4, mud: 2, iron: 2, gold: 1 };
+/** What the colony's men dig: the land's goods, and gold, which a mint's bill takes before its own gatherer
+ *  sits down. */
+const DUG_IDS = [...LAND_GOOD_IDS, 'gold'] as const;
+type DugGood = (typeof DUG_IDS)[number];
 /** The women a colony with a food hand gets before its food holds (authored): the couples its homes wait
  *  for, as a colony of men alone never grows whatever it eats. */
 const WOMEN_FIRST = 2;
@@ -70,7 +73,7 @@ const WOMEN_FIRST = 2;
  *  plan is no reason for a ship to fetch another. */
 const HANDS_SLACK = 1;
 
-type Post = 'builder' | 'carrier' | LandGood | 'hunter' | 'fisher' | 'scout';
+type Post = 'builder' | 'carrier' | DugGood | 'hunter' | 'fisher' | 'scout';
 
 /**
  * The men's posts, filled in this order as the party's size allows (authored). Owner ruling: fishers first,
@@ -102,8 +105,8 @@ const POSTS: readonly Post[] = [
   'stone',
 ];
 
-function isDug(post: Post | null): post is LandGood {
-  return post !== null && (LAND_GOOD_IDS as readonly string[]).includes(post);
+function isDug(post: Post | null): post is DugGood {
+  return post !== null && (DUG_IDS as readonly string[]).includes(post);
 }
 
 /** One founding decision's reads. */
@@ -124,7 +127,7 @@ function postOf(world: World, ctx: SystemContext, e: Entity, builder: number | n
   if (job !== null && world.has(e, JobAssignment) && isCarrierJob(ctx, job)) return 'carrier';
   if (liveWorkFlag(world, e) !== undefined) {
     const good = heldGatherGood(world, ctx, e);
-    return LAND_GOOD_IDS.find((id) => goodTypeByContentId(ctx.content, id)?.typeId === good) ?? null;
+    return DUG_IDS.find((id) => goodTypeByContentId(ctx.content, id)?.typeId === good) ?? null;
   }
   return job === builder ? 'builder' : null;
 }
@@ -276,7 +279,7 @@ function storeRoom(env: ColonyEnv, buildings: readonly Entity[]): (good: number)
  * What the colony has reason to dig, from what its land holds: wood and stone, as home always wants them, and
  * clay and iron while the colony's own plan, sites or workshops or home's stock call for them.
  */
-function digGoods(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
+function digGoods(env: ColonyEnv, read: FoundingRead): Set<DugGood> {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
   const called = billsOf(env, read.plan);
@@ -290,13 +293,13 @@ function digGoods(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
       called.set(line.goodType, line.amount);
   }
   let supply: ReturnType<typeof homeSupply> | null = null;
-  const wanted = (id: LandGood, good: number): boolean => {
+  const wanted = (id: DugGood, good: number): boolean => {
     if (id === 'wood' || id === 'stone' || (called.get(good) ?? 0) > 0) return true;
     supply ??= homeSupply(env);
     return supply.lackToComfort(good) > 0;
   };
-  const digs = new Set<LandGood>();
-  for (const id of LAND_GOOD_IDS) {
+  const digs = new Set<DugGood>();
+  for (const id of DUG_IDS) {
     const good = goodTypeByContentId(ctx.content, id)?.typeId;
     if (good === undefined || !wanted(id, good)) continue;
     if (landHolds(env, read.origin, good)) digs.add(id);
@@ -306,7 +309,7 @@ function digGoods(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
 
 /** {@link digGoods} but those at the stores' cap: men left on one stand by a full warehouse while another
  *  good runs short. */
-function digGoodsWithRoom(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
+function digGoodsWithRoom(env: ColonyEnv, read: FoundingRead): Set<DugGood> {
   const room = storeRoom(env, read.buildings);
   const digs = digGoods(env, read);
   for (const id of digs) {
@@ -505,8 +508,8 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
     else held.set(post, (held.get(post) ?? 0) + 1);
     if (post === 'builder') builders.push(man);
   }
-  const dug = new Map<LandGood, number>();
-  for (const id of LAND_GOOD_IDS) dug.set(id, held.get(id) ?? 0);
+  const dug = new Map<DugGood, number>();
+  for (const id of DUG_IDS) dug.set(id, held.get(id) ?? 0);
   const resting = atRest(env, read);
   const table = POSTS.slice(0, posted.length).filter(
     (post) => (!isDug(post) || digs.has(post)) && (post !== 'hunter' || hunting),
@@ -516,7 +519,7 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
   const called = billsOf(env, read.plan);
   for (const [good, lacking] of sitesShortfalls(world, ctx, read.buildings))
     called.set(good, (called.get(good) ?? 0) + lacking);
-  const urgent = LAND_GOOD_IDS.filter((id) => {
+  const urgent = DUG_IDS.filter((id) => {
     const good = goodTypeByContentId(ctx.content, id)?.typeId;
     return digs.has(id) && (dug.get(id) ?? 0) === 0 && good !== undefined && (called.get(good) ?? 0) > 0;
   });
