@@ -98,7 +98,8 @@ export interface VehicleCrewModel {
   readonly leave: SeatControl | null;
   /** The commander stepping out, which a pinned ship's trader does for its route alone. */
   readonly leaveCommander: SeatControl | null;
-  /** "Unload everyone"; null while nobody rides. */
+  /** "Unload everyone"; null while nobody rides. The order lands every rider, so a pinned ship refuses it
+   *  while its trader is aboard, as it refuses the trader's own step out. */
   readonly unload: SeatControl | null;
   /** The pick that drives an own land vehicle onto the deck; null without a deck or on a foreign ship. */
   readonly load: SeatControl | null;
@@ -461,7 +462,12 @@ function crewModel(
     assign: own ? (hauled ? copy.hauled : full ? copy.noSeat : doorless) : null,
     leave: own ? (hauled ? copy.hauled : doorless) : null,
     leaveCommander: own ? (hauled ? copy.hauled : pinned ? copy.pinned : doorless) : null,
-    unload: own && passengers.length > 0 ? doorless : null,
+    unload:
+      own && passengers.length > 0
+        ? passengers.some((seat) => seat.entity === inputs.tradePin?.entity)
+          ? copy.pinned
+          : doorless
+        : null,
     load:
       own && deck !== null
         ? pinned
