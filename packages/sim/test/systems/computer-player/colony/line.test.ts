@@ -56,6 +56,7 @@ const HULL_HIT = 100;
 const LINE_CREW_LEAST = 2;
 const STRAIT_MID_HX = 114;
 const STRAIT_ACROSS = [30, 60, 90];
+const DANGER_LAPSED_TICKS = minutesToTicks(40);
 const ENEMY = 5;
 const CHILD_MALE = 4;
 const IDLE_MEN = 40;
@@ -229,7 +230,7 @@ describe('a colony line', () => {
 });
 
 describe('a line under fire', () => {
-  it('marks where its hull fell, sails with the fewest hands and owes no ship once no way is clear', () => {
+  it('marks where its hull fell, sails with the fewest hands and owes no ship while no way is clear', () => {
     const { sim, ship } = linedWorld();
     const _carrier = aiControlEntity(sim.world, SEAT) as Entity;
     sim.world.mut(ship, Health).hitpoints -= HULL_HIT;
@@ -238,11 +239,15 @@ describe('a line under fire', () => {
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => leg(sim) === 'loadHome')).toBe(true);
     expect(colonyState(sim)?.line?.crew.length).toBeLessThanOrEqual(LINE_CREW_LEAST);
     // The strait runs the map's height: fire across all of it leaves no way round.
-    editColony(sim).dangers = STRAIT_ACROSS.map((hy) => ({ hx: STRAIT_MID_HX, hy }));
+    editColony(sim).dangers = STRAIT_ACROSS.map((hy) => ({ at: { hx: STRAIT_MID_HX, hy }, seen: sim.tick }));
     expect(colonySmallShips(sim.world, ctxOf(sim), SEAT)).toBe(0);
     removeVehicle(sim.world, ctxOf(sim), ship, 'destroyed');
     expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.line === null)).toBe(true);
     expect(colonySmallShips(sim.world, ctxOf(sim), SEAT)).toBe(0);
+    // Fire moves on: once its dangers lapse the line takes the seat's other ship instead of waiting for good.
+    for (const danger of editColony(sim).dangers) danger.seen = sim.tick - DANGER_LAPSED_TICKS;
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => (colonyState(sim)?.line ?? null) !== null)).toBe(true);
+    expect(colonyState(sim)?.dangers).toEqual([]);
   });
 });
 

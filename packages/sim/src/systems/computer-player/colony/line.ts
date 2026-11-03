@@ -44,7 +44,7 @@ import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan, ladderAhead } from './plan.js';
 import { handsWanted, menPastWork } from './posts.js';
 import { colonyMakes, LAND_GOOD_IDS, storesHeld, workshopGoods } from './provision.js';
-import { clearWay, lineWayClear, withDanger } from './sea-danger.js';
+import { clearWay, lineWayClear, withDanger, withoutLapsed } from './sea-danger.js';
 import { colonyBuildings } from './spot.js';
 import { homeStockOf } from './stock.js';
 import {
@@ -216,7 +216,7 @@ function noteLine(env: ColonyEnv, colony: ColonyView, line: LineView): void {
   const hull = hullOf(world, line.ship);
   if (load === line.load && !lost && hull === line.hull) return;
   const at = hull < line.hull ? nodeOfEntity(world, line.ship) : null;
-  const dangers = at === null ? null : withDanger(colony.dangers, at);
+  const dangers = at === null ? null : withDanger(colony.dangers, at, ctx.tick);
   if (dangers !== null) env.edit().dangers = dangers;
   const live = env.edit().line;
   if (live === null) return;
@@ -538,6 +538,12 @@ export function landPassengers(env: ColonyEnv, line: LineView): PlayerCommand[] 
     .map((entity) => ({ kind: 'detachFromVehicle', entity }));
 }
 
+/** Forget the dangers whose fire has had time to move on; only a change writes. */
+function forgetLapsedDangers(env: ColonyEnv, colony: ColonyView): void {
+  const kept = withoutLapsed(colony.dangers, env.ctx.tick);
+  if (kept !== null) env.edit().dangers = kept;
+}
+
 /** A line that lost its ship takes the next free one at home. */
 function claimShip(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx } = env;
@@ -565,10 +571,12 @@ function claimShip(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
  * on settlers, the outward load and food, and sails while there is something to carry either way, else it
  * looks again. At the colony it lands its passengers, empties and takes on the homeward load. A leg's hold ends
  * when it is met or stands unchanged past {@link LEG_STALL_TICKS}, and is pinned before each sail, or the hands
- * would fetch and flush at the far shore. A ship lost leaves the seat owing one.
+ * would fetch and flush at the far shore. A ship lost leaves the seat owing one while a way clear of fire
+ * remains; dangers lapse, so a colony with no clear way waits for one instead of losing its line for good.
  */
 export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx } = env;
+  forgetLapsedDangers(env, colony);
   const line = colony.line;
   if (line === null) return claimShip(env, colony);
   if (!world.has(line.ship, Vehicle)) {

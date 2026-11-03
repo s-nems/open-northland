@@ -68,6 +68,12 @@ export interface ColonyThreat {
   since: number;
 }
 
+/** Where a colony's ship took fire, and the tick of the latest hit there. */
+export interface SeaDanger {
+  at: HalfCellNode;
+  seen: number;
+}
+
 /** One colony over the sea, from its chosen site on. */
 export interface ColonyState {
   phase: ColonyPhase;
@@ -95,8 +101,8 @@ export interface ColonyState {
   line: ColonyLine | null;
   overflow: ColonyOverflow[];
   stalls: ColonyStall[];
-  /** Where its ships took fire, out of the seat's own experience. */
-  dangers: HalfCellNode[];
+  /** Where its ships took fire lately, out of the seat's own experience. */
+  dangers: SeaDanger[];
 }
 
 /** A seat's colonies, oldest first, and what its survey has learned across them. */

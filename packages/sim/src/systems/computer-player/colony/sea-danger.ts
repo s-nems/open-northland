@@ -1,10 +1,13 @@
+import type { SeaDanger } from '../../../components/index.js';
+import type { DeepReadonly } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { nodeManhattan } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import { minutesToTicks } from '../game-phase.js';
 
 // Where the seat's own line ships took fire. Only what a hull felt goes in, so nothing here reads what the
-// seat has not seen. Figures are authored from arabskie_wyspy_wolna_gra_mieszana (seed 13), where three ships
-// went down between (254,142) and (283,157) off a rival's coast.
+// seat has not seen. Figures are authored from arabskie_wyspy_wolna_gra_mieszana, where line ships went down
+// off a rival's coast.
 
 /** How near a danger a course may pass, in Manhattan nodes: past the 30 of a tower's clearance. */
 const DANGER_NODES = 45;
@@ -12,18 +15,34 @@ const DANGER_NODES = 45;
 const SAME_DANGER_NODES = 40;
 /** The most dangers a colony remembers: past these no way is left worth trying. */
 const DANGERS_MOST = 4;
+/** How long a danger is kept after its latest hit (authored: about two of a line's rounds). Fire moves on, and
+ *  a danger kept for good would leave a colony with no line for good. */
+const DANGER_KEPT_TICKS = minutesToTicks(30);
 /** How often a course is tested, in nodes along it. */
 const COURSE_STEP_NODES = 8;
 /** How far off a danger a detour's turning point goes, nearest first. */
 const DETOUR_NODES: readonly number[] = [70, 100, 130, 160];
 
 type Node = Readonly<HalfCellNode>;
+type DangerView = DeepReadonly<SeaDanger>;
 
-/** `dangers` with one more hit at `at`, or null when it adds nothing. */
-export function withDanger(dangers: readonly Node[], at: Node): HalfCellNode[] | null {
-  if (dangers.length >= DANGERS_MOST) return null;
-  if (dangers.some((d) => nodeManhattan(d, at) <= SAME_DANGER_NODES)) return null;
-  return [...dangers.map((d) => ({ hx: d.hx, hy: d.hy })), { hx: at.hx, hy: at.hy }];
+function copyOf(danger: DangerView): SeaDanger {
+  return { at: { hx: danger.at.hx, hy: danger.at.hy }, seen: danger.seen };
+}
+
+/** `dangers` with a hit at `at` on `tick`: a danger near it seen again, or one more. Null when full. */
+export function withDanger(dangers: readonly DangerView[], at: Node, tick: number): SeaDanger[] | null {
+  const near = dangers.findIndex((d) => nodeManhattan(d.at, at) <= SAME_DANGER_NODES);
+  if (near < 0 && dangers.length >= DANGERS_MOST) return null;
+  const kept = dangers.map((d, i) => (i === near ? { ...copyOf(d), seen: tick } : copyOf(d)));
+  if (near < 0) kept.push({ at: { hx: at.hx, hy: at.hy }, seen: tick });
+  return kept;
+}
+
+/** The dangers still kept on `tick` ({@link DANGER_KEPT_TICKS}), or null when none has lapsed. */
+export function withoutLapsed(dangers: readonly DangerView[], tick: number): SeaDanger[] | null {
+  const kept = dangers.filter((d) => tick - d.seen < DANGER_KEPT_TICKS);
+  return kept.length === dangers.length ? null : kept.map(copyOf);
 }
 
 /** The danger a straight course from `from` to `to` passes, or null. */
@@ -47,15 +66,19 @@ export interface ClearWay {
 
 /**
  * The way from `from` to `to` clear of `dangers`, the shortest detour of one turn off the danger the straight
- * course meets, or null when none is clear. Approximation: the courses are straight lines, and the ship's own
- * route over the water may bend away from them.
+ * course meets, or null when none is clear. A danger at either end is passed: no course reaches its mooring
+ * or leaves where it lies round it. Approximation: the courses are straight lines, and the ship's own route
+ * over the water may bend away from them.
  */
 export function clearWay(
   terrain: TerrainGraph,
-  dangers: readonly Node[],
+  known: readonly DangerView[],
   from: Node,
   to: Node,
 ): ClearWay | null {
+  const dangers = known
+    .map((d) => d.at)
+    .filter((at) => nodeManhattan(at, from) > DANGER_NODES && nodeManhattan(at, to) > DANGER_NODES);
   const danger = dangerOn(dangers, from, to);
   if (danger === null) return { via: null };
   const span = Math.max(1, nodeManhattan(from, to));
@@ -78,7 +101,7 @@ export function clearWay(
 /** Whether a line can still run between `berth` and `shore`. */
 export function lineWayClear(
   terrain: TerrainGraph | undefined,
-  dangers: readonly Node[],
+  dangers: readonly DangerView[],
   berth: Node | null,
   shore: Node | null,
 ): boolean {
