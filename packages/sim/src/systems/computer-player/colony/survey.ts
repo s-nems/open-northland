@@ -48,6 +48,11 @@ const ROOM_FULL_NODES = 2000;
 const GRASS_FULL_NODES = 400;
 const FISH_FULL_UNITS = 400;
 const DISTANCE_FULL_NODES = 400;
+/** The open room that makes a site roomy: the room a colony's plan gives a second home. */
+export const ROOMY_SITE_NODES = 1000;
+/** The fish a block without wood and stone must hold to feed a colony of homes (authored): half a swarm's
+ *  full catch, past the stray swarm of a dry coast. */
+const PEOPLE_SITE_FISH_UNITS = FISH_FULL_UNITS / 2;
 /** The best sites the live test weighs, in score order. */
 const LIVE_CANDIDATES = 8;
 
@@ -93,6 +98,10 @@ export function siteScore(tally: SiteTally): number {
   );
 }
 
+/** What a site is for: the land goods home lacks, or, with room but no wood and stone, people (owner
+ *  ruling): homes on fish whose sons sail home to fight. */
+export type SiteUse = 'resources' | 'people';
+
 /** A 3x3 zone block on one land the seat's ships can reach. */
 export interface ColonySite {
   /** The block's centre zone, its identity. */
@@ -101,6 +110,7 @@ export interface ColonySite {
   /** The centre zone's middle node. */
   readonly centre: HalfCellNode;
   readonly score: number;
+  readonly use: SiteUse;
   /** Another seat's start lies nearer: it weighs the same block, so this seat looks there late. */
   readonly contested: boolean;
   /** An earlier seat's first pick lies in range of it: this seat looks there last. */
@@ -235,6 +245,12 @@ function tallyBlock(
   };
 }
 
+/** What a block's tally makes it good for, or null for neither. */
+function siteUse(tally: ReturnType<typeof tallyBlock>): SiteUse | null {
+  if (tally.free >= MIN_FREE_NODES && tally.wood >= MIN_WOOD && tally.stone >= MIN_STONE) return 'resources';
+  return tally.room >= ROOMY_SITE_NODES && tally.fish >= PEOPLE_SITE_FISH_UNITS ? 'people' : null;
+}
+
 function scanCandidates(brief: MapBriefView, seat: number): readonly ColonySite[] {
   const start = brief.seats.find((s) => s.player === seat);
   const lands = start === undefined ? null : landsOverSea(brief, start.component);
@@ -247,14 +263,16 @@ function scanCandidates(brief: MapBriefView, seat: number): readonly ColonySite[
     if (!lands.has(land)) continue;
     const centre = zoneCentre(brief, zone);
     const tally = tallyBlock(brief, zone, land, hexDistance(home, centre));
-    if (tally.free < MIN_FREE_NODES || tally.wood < MIN_WOOD || tally.stone < MIN_STONE) continue;
+    const use = siteUse(tally);
+    if (use === null) continue;
     const contested = rivals.some((rival) => hexDistance(rival, centre) < hexDistance(home, centre));
-    sites.push({ zone, land, centre, score: siteScore(tally), contested, crowded: false });
+    sites.push({ zone, land, centre, score: siteScore(tally), use, contested, crowded: false });
   }
   return sites;
 }
 
 const ranked = (a: ColonySite, b: ColonySite): number =>
+  Number(a.use === 'people') - Number(b.use === 'people') ||
   Number(a.crowded) - Number(b.crowded) ||
   Number(a.contested) - Number(b.contested) ||
   b.score - a.score ||
@@ -280,9 +298,10 @@ function spreadSeats(brief: MapBriefView): Map<number, readonly ColonySite[]> {
   return bySeat;
 }
 
-/** The sites the static map offers `seat`, blocks on a land sharing water with home: those nearer it than
- *  any other seat's start and clear of the earlier seats' picks first, so seats spread by what they all know,
- *  then best first, the lowest zone on a tie. Scanned once per brief, and a pure function of it. */
+/** The sites the static map offers `seat`, blocks on a land sharing water with home: every site with
+ *  resources ahead of every site for people, then those nearer it than any other seat's start and clear of
+ *  the earlier seats' picks first, so seats spread by what they all know, then best first, the lowest zone on
+ *  a tie. Scanned once per brief, and a pure function of it. */
 export function colonySiteCandidates(brief: MapBriefView, seat: number): readonly ColonySite[] {
   let bySeat = candidatesByBrief.get(brief);
   if (bySeat === undefined) {

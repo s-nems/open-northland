@@ -38,6 +38,8 @@ const ZONES_HIGH = 3;
 /** The middle row: a site's block reaches a row each way. */
 const ROW = 1;
 const AMPLE = { free: 200, wood: 200, stone: 100 };
+/** Fish enough to feed a colony of homes. */
+const PEOPLE_FISH = 400;
 
 interface ZoneFill {
   readonly column: number;
@@ -160,6 +162,26 @@ describe('the static colony candidates', () => {
     const [second] = colonySiteCandidates(both, SEAT + 1);
     if (first === undefined || second === undefined) throw new Error('expected sites');
     expect(hexDistance(first.centre, second.centre)).toBeGreaterThan(COLONY_RANGE_NODES);
+  });
+
+  it('keeps a roomy block with fish but no wood or stone for people, after every block with resources', () => {
+    const roomy = { free: 600, wood: 0, stone: 0, fish: PEOPLE_FISH };
+    const brief = briefOf([...pair(1, NEAR_LAND, roomy), ...pair(5, NEAR_LAND)]);
+    const sites = colonySiteCandidates(brief, SEAT);
+    const people = sites.filter((site) => site.use === 'people');
+    expect(people.length).toBeGreaterThan(0);
+    expect(sites[0]?.use).toBe('resources');
+    expect(people[0]?.score).toBeGreaterThan(sites[0]?.score ?? 0);
+    expect(sites.findIndex((site) => site.use === 'people')).toBeGreaterThan(
+      sites.findLastIndex((site) => site.use === 'resources'),
+    );
+  });
+
+  it.each([
+    ['no fish', { free: 600, wood: 0, stone: 0 }],
+    ['too little room', { free: 300, wood: 0, stone: 0, fish: PEOPLE_FISH }],
+  ])('passes over a block with no resources and %s', (_why, fill) => {
+    expect(colonySiteCandidates(briefOf(pair(2, NEAR_LAND, fill)), SEAT)).toEqual([]);
   });
 
   it('looks last at a block another start lies nearer, whatever its score', () => {

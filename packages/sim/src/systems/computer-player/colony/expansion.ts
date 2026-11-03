@@ -12,7 +12,6 @@ import { civilianCount } from '../../ai-shared/workforce/pool.js';
 import { needLevel } from '../../lifecycle/needs/index.js';
 import { NEED_CRITICAL_THRESHOLD } from '../../lifecycle/needs/scale.js';
 import { seatBaseOf } from '../base.js';
-import { seatHasSide } from '../build-order/seat-order.js';
 import { LATE_GAME_FROM_TICKS, minutesToTicks } from '../game-phase.js';
 import { freeShips } from '../military/operations/landing.js';
 import { colonists, colonyOrigin } from './founding.js';
@@ -20,7 +19,7 @@ import { homeSupply } from './home-supply.js';
 import { pickParty } from './people.js';
 import { LAND_GOOD_IDS, type LandGood, landHolds } from './provision.js';
 import { colonyBuildings } from './spot.js';
-import { type ColonySite, siteOffers, siteRoom, surveyColonySite } from './survey.js';
+import { type ColonySite, ROOMY_SITE_NODES, siteOffers, siteRoom, surveyColonySite } from './survey.js';
 import {
   type ColonyEnv,
   type ColonyView,
@@ -53,8 +52,6 @@ const MOUTHS_PER_HUNGRY = 10;
 /** A later site is looked for over the whole survey: by then the rivals' colonies rule out the first ones, and
  *  a seat was seen to find none of its best few clear with many more on offer. */
 const NEXT_SITE_CANDIDATES = Number.POSITIVE_INFINITY;
-/** The free nodes in its block that make a site roomy: the room a colony's plan gives a second home. */
-const ROOMY_SITE_NODES = 1000;
 
 /** The cheap reads of whether a seat may look for one more site. */
 export interface NextColonyRead {
@@ -156,8 +153,9 @@ function lackedGoods(env: SeatEnv, colonies: readonly ColonyEnv[]): LandGood[] {
 
 /**
  * The minute's look past the colonies a seat holds. It opens one more once {@link mayLookFurther} holds, the
- * home can spare a party, and a site on a land of no colony of its gives home a good it lacks, or, with no room
- * at home, room.
+ * home can spare a party, and a site on a land of no colony of its gives home a good it lacks or room for homes,
+ * whose people sail home to fight (owner ruling); the survey ranks a site for people alone after every site
+ * with resources.
  */
 export function openNextColony(env: SeatEnv): void {
   const { world, ctx, seat, carrier } = env;
@@ -171,11 +169,10 @@ export function openNextColony(env: SeatEnv): void {
   if (brief === null || pickParty(world, ctx, seat, homeLandOf(env)).length === 0) return;
   const held = new Set(state.colonies.map((colony) => colony.land));
   const lacked = lackedGoods(env, live);
-  const cramped = seatHasSide(world, seat, 'noRoom');
   const wanted = (site: ColonySite): boolean =>
     !held.has(site.land) &&
     (lacked.some((id) => siteOffers(brief, site, id)) ||
-      (cramped && siteRoom(world, { land: site.land, site: site.centre }) >= ROOMY_SITE_NODES));
+      siteRoom(world, { land: site.land, site: site.centre }) >= ROOMY_SITE_NODES);
   const site = surveyColonySite(world, ctx, seat, state.rejected, wanted, NEXT_SITE_CANDIDATES);
   if (site !== null) openColony(env, site);
 }
