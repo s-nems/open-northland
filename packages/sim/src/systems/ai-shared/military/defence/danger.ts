@@ -133,8 +133,8 @@ export function unitDanger(world: World, ctx: SystemContext, e: Entity): number 
 /**
  * What the seat's fighters add to every zone's defence: each the danger he would pose himself, by the
  * weights its enemies are weighed by. Every live fighter of the seat counts, whether idle, already in the
- * fight or still waiting for a weapon, but the men away (`away`: marching off or on a map-AI task) and those holding a tower post,
- * whose tower counts for them where it stands.
+ * fight or still waiting for a weapon, but the men away (`away`: marching off, on a map-AI task or holding
+ * a colony) and those holding a tower post, whose tower counts for them where it stands.
  */
 function fighterDefence(world: World, ctx: SystemContext, player: number, away: ReadonlySet<Entity>): number {
   let defence = 0;

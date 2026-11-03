@@ -37,6 +37,7 @@ import { SeatSupply } from '../workforce/supply.js';
 import { holdDone, holdFlushed, holdLoad, pinHold } from './cargo.js';
 import { type CargoLine, homewardCargo, LINE_CARGO_MOST, type OutwardRead, outwardCargo } from './demand.js';
 import { colonists, colonyOrigin } from './founding.js';
+import { garrisonBoarders } from './garrison.js';
 import { tradesmenFor } from './overflow.js';
 import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan, ladderAhead } from './plan.js';
@@ -232,10 +233,11 @@ function forgetListed(env: ColonyEnv, colony: ColonyView, gone: readonly Entity[
   const { world, ctx } = env;
   const stays = (e: Entity): boolean =>
     world.isAlive(e) && !gone.includes(e) && (world.has(e, Rider) || standsOn(world, ctx, e, colony.land));
-  if (colony.people.every(stays) && colony.rest.every(stays)) return;
+  if (colony.people.every(stays) && colony.rest.every(stays) && colony.garrison.every(stays)) return;
   const live = env.edit();
   live.people = live.people.filter(stays);
   live.rest = live.rest.filter(stays);
+  live.garrison = live.garrison.filter(stays);
 }
 
 /** The line gives up its ship, moored where it lies: everyone aboard steps off, home's again, and the seat
@@ -437,7 +439,8 @@ function crewFromColony(env: ColonyEnv, line: LineView): PlayerCommand[] {
 }
 
 /** Hire the crew's shortfall from home, then, in the seats left, the craftsmen no colonist can stand in for,
- *  and the hands the colony lacks for its gatherers, sites and workshops ({@link handsWanted}). */
+ *  the garrison's shortfall ({@link garrisonBoarders}) and the hands the colony lacks for its gatherers, sites
+ *  and workshops ({@link handsWanted}). */
 function boardHome(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCommand[] {
   const { world, ctx, seat } = env;
   forgetListed(env, colony, []);
@@ -455,11 +458,16 @@ function boardHome(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCo
   const lacking = { men: wanted.men - men, women: wanted.women - women };
   const trades = tradesmenFor(env, people, home, free);
   const tradesmen = trades.sailing.filter((e) => !hired.includes(e));
-  const party = topUpParty(world, ctx, seat, home, lacking, free - tradesmen.length).filter(
+  const garrison = garrisonBoarders(env, colony, free - tradesmen.length);
+  const party = topUpParty(world, ctx, seat, home, lacking, free - tradesmen.length - garrison.length).filter(
     (e) => !hired.includes(e) && !tradesmen.includes(e),
   );
   if (tradesmen.length + party.length > 0) env.edit().rest.push(...tradesmen, ...party);
-  return [...trades.lessons, ...boardOrders(world, [...hired, ...tradesmen, ...party], line.ship)];
+  if (garrison.length > 0) env.edit().garrison.push(...garrison);
+  return [
+    ...trades.lessons,
+    ...boardOrders(world, [...hired, ...tradesmen, ...garrison, ...party], line.ship),
+  ];
 }
 
 /** The home stop's work begins: settlers board and the hands fetch the outward load and the crew's food. */

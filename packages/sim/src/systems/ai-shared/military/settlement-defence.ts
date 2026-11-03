@@ -24,7 +24,7 @@ import { peaceGroundFor } from '../../match/peace.js';
 import { hexNodeDistance } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
 import { militaryDecisionDue } from '../cadence.js';
-import { homeBuildings } from '../home-roster.js';
+import { colonyGarrisons, homeBuildings } from '../home-roster.js';
 import { isBuilt } from '../seat-roster.js';
 import { type ArmyCensus, takeCensus } from './census.js';
 import { assessSeatThreat, NO_THREAT, type SeatThreat } from './defence/danger.js';
@@ -162,7 +162,7 @@ function deriveSettlementDefence(
         owned,
         raiders,
         liveOffenders(world, player, ctx.tick),
-        new Set([...marching, ...claimed]),
+        new Set([...marching, ...claimed, ...colonyGarrisons(world, player)]),
       )
     : NO_THREAT;
   // A raid sends the whole free band, intruders among the raiders' targets.

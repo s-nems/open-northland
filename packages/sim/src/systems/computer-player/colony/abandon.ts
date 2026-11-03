@@ -10,6 +10,7 @@ import { minutesToTicks } from '../game-phase.js';
 import { visibleEnemyFighters } from '../military/operations/raid-target.js';
 import { holdFlushed } from './cargo.js';
 import { colonists } from './founding.js';
+import { forgetGarrison } from './garrison.js';
 import {
   enterLeg,
   hullOf,
@@ -44,8 +45,9 @@ export function overrun(env: ColonyEnv, colony: ColonyView): boolean {
   return visibleEnemyFighters(world, ctx, seat).some((f) => hexDistance(f.at, site) <= OVERRUN_RANGE_NODES);
 }
 
-/** The colony is given up for good. The people lists empty, as a survivor home again is home's; the land
- *  stays out of the home reads, and the line goes for whoever is left. */
+/** The colony is given up for good. The people lists empty, as a survivor home again is home's; the garrison
+ *  stays listed until it lands at home, as a fighter counts by his list alone. The land stays out of the home
+ *  reads, and the line goes for whoever is left. */
 export function abandonColony(env: ColonyEnv): void {
   const { world, ctx } = env;
   const live = env.edit();
@@ -110,6 +112,7 @@ function leaveLate(env: ColonyEnv, line: LineView): PlayerCommand[] {
  */
 export function evacuate(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world } = env;
+  forgetGarrison(env, colony, true);
   const commands = bringScoutHome(env, colony);
   const line = colony.line;
   if (line === null) return commands;

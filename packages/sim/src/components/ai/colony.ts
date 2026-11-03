@@ -60,6 +60,14 @@ export interface ColonyStall {
   since: number;
 }
 
+/** The largest band of enemy fighters a colony has seen about its buildings lately: where, and since when. */
+export interface ColonyThreat {
+  men: number;
+  at: HalfCellNode;
+  /** The tick it was last seen at that size or more. */
+  since: number;
+}
+
 /** One colony over the sea, from its chosen site on. */
 export interface ColonyState {
   phase: ColonyPhase;
@@ -77,6 +85,9 @@ export interface ColonyState {
   /** The colonists: those on the colony ship, and the rest the scout ship brings. */
   people: Entity[];
   rest: Entity[];
+  /** The fighters home sent to hold it: aboard its line or on its land. */
+  garrison: Entity[];
+  threat: ColonyThreat | null;
   failures: number;
   /** The tick its line last brought a load home, null until then. */
   delivered: number | null;

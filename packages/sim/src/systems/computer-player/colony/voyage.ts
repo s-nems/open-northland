@@ -183,6 +183,8 @@ function settledOn(
     ship: null,
     people: [],
     rest: [],
+    garrison: [],
+    threat: null,
     failures,
     delivered: null,
     builds: [],

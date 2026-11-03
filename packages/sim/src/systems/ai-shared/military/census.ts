@@ -16,7 +16,7 @@ import { towerPostFor } from '../../conflict/tower-post.js';
 import { attackerWeapon } from '../../conflict/weapons.js';
 import type { SystemContext } from '../../context.js';
 import { isFighterJob, isRangedWeapon, WEAPON_MAIN_TYPE, weaponClassOf } from '../../readviews/index.js';
-import { ownedSettlers } from '../seat-roster.js';
+import { homeSettlers } from '../home-roster.js';
 
 /** The seat's fighters, sorted by what this decision can do with them (canonical ascending id). */
 export interface ArmyCensus {
@@ -42,6 +42,7 @@ export interface WeaponMix {
  * A man holding a tower post leaves the army too. {@link towerPostFor}'s entitlement is the test rather
  * than the garrison marker, so an archer still walking to his tower is already gone from the muster. A
  * man attached to a vehicle belongs to it: a walk order to a driver would drive his catapult instead.
+ * A computer seat's colony garrison holds its own land and is no man of the home army ({@link homeSettlers}).
  * A man the map put beyond control (behaviour bit 5) is no soldier of the seat's: the original's scripted
  * handler never lists him, so a script-placed guard or envoy stays where the map stands him. Approximation:
  * the strategic modules read this census too, so they pass him over by the same rule.
@@ -49,7 +50,7 @@ export interface WeaponMix {
 export function takeCensus(world: World, ctx: SystemContext, player: number): ArmyCensus {
   const ready: Entity[] = [];
   const awaitingWeapon: Entity[] = [];
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     const settler = world.get(e, Settler);
     const jobType = settler.jobType;
     if (jobType === null || !isFighterJob(ctx.content, jobType)) continue;

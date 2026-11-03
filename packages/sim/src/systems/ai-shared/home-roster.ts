@@ -54,6 +54,11 @@ export function colonyLands(world: World, seat: number): ReadonlySet<number> {
   return new Set(seatColonies(world, seat).map((colony) => colony.land));
 }
 
+/** The fighters `seat`'s colonies hold as their garrisons. */
+export function colonyGarrisons(world: World, seat: number): readonly Entity[] {
+  return seatColonies(world, seat).flatMap((colony) => colony.garrison);
+}
+
 /** Whether `seat` holds a live colony plan, whose ships its joinery owes. */
 export function colonyWantsShips(world: World, seat: number): boolean {
   return seatColonies(world, seat).some((colony) => colony.phase !== 'abandoned');
@@ -81,13 +86,15 @@ function claimsOf(colonies: readonly ColonyView[]): ColonyClaims {
     lands.add(colony.land);
     for (const e of colony.people) listed.set(e, colony.land);
     for (const e of colony.rest) listed.set(e, colony.land);
+    for (const e of colony.garrison) listed.set(e, colony.land);
     for (const ship of heldShipsOf(colony)) ships.set(ship, colony.land);
   }
   return { lands, listed, ships };
 }
 
 /** The land of the colony `e` is held by, or undefined for one of home's: a building by the land of its door,
- *  a person when listed, riding a held ship, or standing on that land and no fighter. */
+ *  a person when listed (a garrison's fighter too), riding a held ship, or standing on that land and no
+ *  fighter. */
 function colonyLandOf(
   world: World,
   ctx: SystemContext,

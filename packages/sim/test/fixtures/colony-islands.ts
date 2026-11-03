@@ -176,6 +176,50 @@ export function fishingColonyContent(): ContentSet {
   });
 }
 
+/** The fighter classes of the base fixture: the wooden spear and the short bow, which mans its tower. */
+export const SPEARMAN = 32;
+export const BOWMAN = 40;
+
+/** What a wooden spear takes off an unarmoured man a blow, and how long its swing lasts in ticks. */
+const SPEAR_DAMAGE = 1000;
+const SWING_TICKS = 4;
+/** The attack atomic a fighter's swing binds, and the event that lands it. */
+const ATTACK_ATOMIC = 81;
+const HIT_EVENT = 25;
+
+/** {@link colonyContent} whose ships seat the fighters a garrison sails with, and whose spearmen strike. */
+export function garrisonContent(): ContentSet {
+  const base = colonyContent();
+  return parseContentSet({
+    ...base,
+    vehicles: base.vehicles.map((ship) => ({
+      ...ship,
+      passengerJobs: [...ship.passengerJobs, SPEARMAN, BOWMAN],
+    })),
+    weapons: base.weapons.map((w) => (w.jobType === SPEARMAN ? { ...w, damage: { '0': SPEAR_DAMAGE } } : w)),
+    tribes: base.tribes.map((t) =>
+      t.typeId === VIKING
+        ? {
+            ...t,
+            atomicBindings: [
+              ...t.atomicBindings,
+              { jobType: SPEARMAN, atomicId: ATTACK_ATOMIC, animation: 'viking_attack' },
+            ],
+          }
+        : t,
+    ),
+    atomicAnimations: [
+      ...base.atomicAnimations,
+      {
+        id: 'viking_attack',
+        name: 'viking_attack',
+        length: SWING_TICKS,
+        events: [{ at: SWING_TICKS, type: HIT_EVENT }],
+      },
+    ],
+  });
+}
+
 export const SPEAR = 46;
 export const ARMORY_TYPE = 50;
 const ARMORER = 10;
@@ -345,6 +389,8 @@ export function blankColony(land: number, overrides: Partial<ColonyState> = {}):
     ship: null,
     people: [],
     rest: [],
+    garrison: [],
+    threat: null,
     failures: 0,
     delivered: null,
     builds: [],
