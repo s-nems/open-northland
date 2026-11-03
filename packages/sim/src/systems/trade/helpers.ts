@@ -30,6 +30,7 @@ import { abandonCargoRun } from '../vehicles/cargo.js';
 import { boardingNode, pinnedTraderOf } from '../vehicles/crew.js';
 import { vehicleStockGood } from '../vehicles/stock.js';
 import { decideForHelper, routeStandsFinished, storableFormAt } from './drive.js';
+import { isDeparting } from './ferry.js';
 import { type FerryHold, ferryHoldOf, traderHoldOf } from './hold.js';
 import { routeCrossesSea, shipLiesOn, stopContinent } from './ship.js';
 
@@ -63,9 +64,11 @@ export function planShipHelper(
   const trader = pinnedTraderOf(world, ship);
   if (trader === null || trader === e || !isCarrierJob(ctx, plan.jobType)) return false;
   if (load !== undefined && load.amount > 0) return finishTrip(plan, trader, ship, load);
+  // A trader called to sail lets a load run already under way finish, and starts no new one.
+  const mayLoad = world.tryGet(e, CargoRun)?.direction === 'load' || !isDeparting(world, trader);
   abandonCargoRun(world, e);
   const shift = helperShift(plan, trader, ship);
-  return shift !== null && setOut(plan, trader, ship, shift);
+  return shift !== null && setOut(plan, trader, ship, shift, mayLoad);
 }
 
 /** The stop `trader` has its helpers work on the planned settler's shore, or null: the trader is aboard,
@@ -91,14 +94,20 @@ function failedToReach(plan: PlannerContext, cell: NodeId): boolean {
 
 /** Set out on the unit the land rule asks for, as the trader's hold reads with what is under way. Only
  *  goods aboard the ship count: what lies in the trader's cart is the trader's to move. */
-function setOut(plan: PlannerContext, trader: Entity, ship: Entity, shift: HelperShift): boolean {
+function setOut(
+  plan: PlannerContext,
+  trader: Entity,
+  ship: Entity,
+  shift: HelperShift,
+  mayLoad: boolean,
+): boolean {
   const { world, ctx } = plan;
   const hold = ferryHoldOf(world, ctx, traderHoldOf(world, ctx, trader), ship);
   if (hold === null) return false;
   const entries = hold.entries.filter(([good]) => hold.liftable(good) > 0);
   const work = decideForHelper(plan, trader, { ...hold, entries }, shift.stop, shift.other);
   if (work.kind === 'next') return false;
-  if (work.kind === 'load') return setOutToLoad(plan, hold, work.from, work.good);
+  if (work.kind === 'load') return mayLoad && setOutToLoad(plan, hold, work.from, work.good);
   return setOutToUnload(plan, ship, work.good);
 }
 

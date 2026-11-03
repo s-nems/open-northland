@@ -31,6 +31,7 @@ export function boardTradeShip(world: World, trader: Entity, ship: Entity): void
   if (!seatPassenger(world, ship, trader)) return;
   stowCartOnShip(world, trader, ship);
   boardRider(world, trader, ship);
+  if (world.tryGet(trader, TradeShip)?.departing === true) world.mut(trader, TradeShip).departing = false;
 }
 
 /** The trader steps ashore on the ship's landing, its cart with it, and the planner takes it up. Its

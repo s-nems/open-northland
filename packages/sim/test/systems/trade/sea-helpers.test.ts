@@ -483,6 +483,33 @@ describe('helpers at work', () => {
     expect(stockOf(sim, west, WOOD) + aboard + stockOf(sim, east, WOOD)).toBe(LOAD);
   });
 
+  it('sails once its stop is done though fresh spare keeps coming for the helpers to fetch', () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, HELPERS]]);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const { trader, ship, carriers } = crew(sim, HELPERS, false);
+    route(sim, trader, west, east);
+    order(sim, {
+      kind: 'setTradeImportLimits',
+      entity: trader,
+      house: east,
+      good: WOOD,
+      upTo: BOTH_WAYS_LOAD,
+      keep: 0,
+    });
+
+    for (let elapsed = 0; elapsed < LONG_TICKS && stockOf(sim, east, WOOD) === 0; elapsed++) {
+      // A workshop's trickle keeps a unit on the shelf for every helper.
+      if (stockOf(sim, west, WOOD) < HELPERS) sim.world.mut(west, Stockpile).amounts.set(WOOD, HELPERS);
+      sim.step();
+    }
+
+    // The first voyage goes with what the stop's work brought aboard, not once the trickle filled the import.
+    expect(stockOf(sim, east, WOOD)).toBeGreaterThan(0);
+    expect(stockOf(sim, east, WOOD) + shipLine(sim, ship, WOOD).current).toBeLessThan(BOTH_WAYS_LOAD / 2);
+    expect(carriers.every((c) => !sim.world.has(c, CargoRun))).toBe(true);
+  });
+
   it('sets out only once no helper has a run left at the stop, both ways', () => {
     const sim = newSim();
     const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, BOTH_WAYS_LOAD]]);

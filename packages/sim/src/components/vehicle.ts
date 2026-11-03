@@ -190,11 +190,14 @@ export const HaulingCart = defineComponent<{
  * empty stub), the ship's `Vehicle.hauler` naming the trader back so nobody boards or loads it but the
  * carriers assigned to help (`trade/helpers.ts`). The route owns the ship's hold. `dockRetryAt` is the tick before which a failed voyage is not tried again,
  * `failedDock` the mooring point that last failed, so a ship already on that shore stays where it lies.
+ * `departing` holds from the trader's call to sail until it boards: no new unit is loaded meanwhile, so the
+ * helpers' trips run out rather than a trickle of fresh spare keeping the ship at the stop.
  */
 export const TradeShip = defineComponent<{
   vehicle: Entity;
   dockRetryAt: number;
   failedDock: HalfCellNode | null;
+  departing: boolean;
 }>('TradeShip', 'economy');
 
 /**

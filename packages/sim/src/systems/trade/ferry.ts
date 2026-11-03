@@ -100,7 +100,7 @@ export function planCrossing(plan: PlannerContext, leg: SeaLeg, near: TraderHold
   if (stopContinent(world, ctx, terrain, stop) !== continent) return setOut(plan, hold, target, false, rules);
   if (shipLiesAwayFrom(world, ctx, terrain, e, ship, target)) return setOut(plan, hold, target, false, rules);
 
-  const action = rules.decide(hold);
+  const action = departureHolds(plan, hold, rules, rules.decide(hold));
   switch (action.kind) {
     case 'wait':
       return rules.wait(near);
@@ -133,8 +133,39 @@ export function planCrossing(plan: PlannerContext, leg: SeaLeg, near: TraderHold
     case 'next':
       break;
   }
-  if (!rules.setsOut(hold)) return false;
+  if (!rules.setsOut(hold)) {
+    setDeparting(world, e, false);
+    return false;
+  }
+  // Done with this stop: the call to sail stands while the helpers' last trips end.
+  if (action.kind === 'next' && hold.helpersOnTrips) setDeparting(world, e, true);
   return setOut(plan, hold, mooringTargetOfStop(world, ctx, terrain, ship, other), true, rules);
+}
+
+const NEXT: StopAction = { kind: 'next' };
+
+/** `decided`, or `next` for a load while the trader's call to sail stands: a trickle of fresh spare does
+ *  not hold the ship. A call the other stop no longer answers lapses, and the load goes ahead. */
+function departureHolds(
+  plan: PlannerContext,
+  hold: FerryHold,
+  rules: StopRules,
+  decided: StopAction,
+): StopAction {
+  if (decided.kind !== 'load' || !isDeparting(plan.world, plan.entity)) return decided;
+  if (rules.setsOut(hold)) return NEXT;
+  setDeparting(plan.world, plan.entity, false);
+  return decided;
+}
+
+/** Whether `trader` has called its pinned ship to sail and waits only for its helpers' trips to end. */
+export function isDeparting(world: World, trader: Entity): boolean {
+  return world.tryGet(trader, TradeShip)?.departing === true;
+}
+
+function setDeparting(world: World, trader: Entity, departing: boolean): void {
+  if (world.tryGet(trader, TradeShip)?.departing === !departing)
+    world.mut(trader, TradeShip).departing = departing;
 }
 
 /** The near good a lift into the ship moves next, with room there past a helper's booking: `first` while
@@ -238,7 +269,8 @@ function setOut(
   rules: StopRules,
 ): boolean {
   const cooling = plan.ctx.tick < plan.world.get(plan.entity, TradeShip).dockRetryAt;
-  if (target === null || cooling || hold.helpersOnTrips) return rules.wait(hold.near);
+  if (target === null || cooling) return rules.wait(hold.near);
+  if (hold.helpersOnTrips) return rules.wait(hold.near);
   return goAboard(plan, hold, flips, rules);
 }
 
