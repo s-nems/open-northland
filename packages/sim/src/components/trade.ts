@@ -252,7 +252,7 @@ export function setTradeAgreementLimits(
 }
 
 /** Turn an own stop's settlement flag on or off; the caller checks the house is a storehouse. Refused
- *  for a foreign stop, and turning it on is refused while the other stop carries the flag and
+ *  for a foreign stop, and turning it on is refused while the other own stop carries the flag and
  *  `sharesSettlement` finds the two settlements share a house: the trader would only shuttle the same
  *  goods between its storehouses. */
 export function setTradeSettlement(
@@ -267,8 +267,12 @@ export function setTradeSettlement(
   const stop = route?.stops[index];
   if (route === undefined || stop === undefined || isForeignHouse(world, e, house)) return false;
   if (stop.settlement === on) return true;
-  if (on && route.stops.some((other) => other !== stop && other.settlement && sharesSettlement(other.house)))
-    return false;
+  const refuses = (other: DeepReadonly<TradeStop>): boolean =>
+    other !== stop &&
+    other.settlement &&
+    !isForeignHouse(world, e, other.house) &&
+    sharesSettlement(other.house);
+  if (on && route.stops.some(refuses)) return false;
   const live = world.mut(e, TradeRoute).stops[index];
   if (live === undefined) return false;
   live.settlement = on;

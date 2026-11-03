@@ -22,7 +22,7 @@ import type { MapContext } from '../context.js';
 import { isTraderJob } from '../readviews/jobs.js';
 import { activeAgreement, agreementsAt, type HouseAgreement } from './agreements.js';
 import { traderHoldOf } from './hold.js';
-import { isSettlementAnchor, settlementsOverlap } from './settlement.js';
+import { flaggedForSettlement, isSettlementAnchor, settlementsOverlap } from './settlement.js';
 import { mooringTargetOfStop, routeCrossesSea, shipLiesOn } from './ship.js';
 
 /**
@@ -54,8 +54,8 @@ export interface TradeStopView {
   readonly settlement: boolean;
   /** The stop is an own storehouse, so it may stand for its settlement. */
   readonly settles: boolean;
-  /** The other stop carries the flag and the two settlements share a house: this stop's flag is refused,
-   *  or, set on the second stop, held aside while that lasts. */
+  /** The other stop is flagged and the two settlements share a house: this stop's flag cannot be turned
+   *  on, a set flag on the second stop is held aside, and a set flag on the first stop still stands. */
   readonly sharesSettlement: boolean;
   /** The flag is set but held aside: the stop counts its storehouse alone. */
   readonly settlementSuspended: boolean;
@@ -130,7 +130,7 @@ function shipStateOf(world: World, ctx: MapContext, trader: Entity): TraderShipS
   return shipLiesOn(world, ctx, terrain, ship, continent) ? 'ready' : 'unreachable';
 }
 
-/** Whether the other stop of an own route carries the settlement flag and the two settlements share a
+/** Whether the other stop of an own route is flagged for its settlement and the two settlements share a
  *  house; asked of an own storehouse stop alone. */
 function sharesSettlement(
   world: World,
@@ -142,7 +142,8 @@ function sharesSettlement(
   const stop = stops[index];
   const other = stops[1 - index];
   const terrain = ctx.terrain;
-  if (stop === undefined || other === undefined || terrain === undefined || !other.settlement) return false;
+  if (stop === undefined || other === undefined || terrain === undefined) return false;
+  if (!flaggedForSettlement(world, trader, other)) return false;
   if (isForeignHouse(world, trader, stop.house) || !isSettlementAnchor(world, ctx, stop.house)) return false;
   return settlementsOverlap(world, ctx, terrain, trader, stop.house, other.house);
 }

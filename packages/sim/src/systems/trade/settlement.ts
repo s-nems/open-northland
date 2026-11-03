@@ -1,5 +1,5 @@
 import { BUILDING_KIND } from '@open-northland/data';
-import { Building, ownerOf, type TradeStop } from '../../components/index.js';
+import { Building, isForeignHouse, ownerOf, type TradeStop } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
@@ -68,6 +68,9 @@ interface OverlapVerdict {
 }
 const overlapVerdicts = new WeakMap<World, Map<string, OverlapVerdict>>();
 
+/** Anchor pairs held per world before the verdicts start over, bounding them as routes come and go. */
+const OVERLAP_VERDICT_CAP = 1024;
+
 /**
  * Whether the settlements of `trader`'s storehouses `a` and `b` share a house: one of the player's
  * buildings lies in both goods searches. Different continents never share one; with signpost navigation
@@ -89,9 +92,8 @@ export function settlementsOverlap(
   if (terrain.componentOf(doorA) !== terrain.componentOf(doorB)) return false;
   const limitA = limitAtDoor(world, ctx, terrain, player, doorA);
   if (limitA === null) return true;
-  // The walk reads the player's doors and the two searches, all versioned by the reach key and the
-  // terrain's resistance clock, so a held verdict answers as a fresh walk would.
-  const key = `${signpostReachKey(world, ctx.content, terrain)}:${terrain.resistanceClock}`;
+  // The walk reads only what the reach key versions, so a held verdict answers as a fresh walk would.
+  const key = signpostReachKey(world, ctx.content, terrain);
   const pair = `${player}:${Math.min(a, b)}:${Math.max(a, b)}`;
   let verdicts = overlapVerdicts.get(world);
   if (verdicts === undefined) {
@@ -103,6 +105,7 @@ export function settlementsOverlap(
   const limitB = limitAtDoor(world, ctx, terrain, player, doorB);
   const overlap =
     limitB !== null && goodsSearchesShareDoor(world, ctx.content, terrain, player, limitA, limitB);
+  if (held === undefined && verdicts.size >= OVERLAP_VERDICT_CAP) verdicts.clear();
   verdicts.set(pair, { terrain, key, overlap });
   return overlap;
 }
@@ -117,10 +120,16 @@ function limitAtDoor(
   return goodsSearchLimitAt(world, ctx.content, terrain, player, terrain.xOf(door), terrain.yOf(door));
 }
 
+/** Whether `stop` carries the settlement flag and is still `trader`'s own: a flag left on a stop whose
+ *  house passed to another player stands for nothing. */
+export function flaggedForSettlement(world: World, trader: Entity, stop: DeepReadonly<TradeStop>): boolean {
+  return stop.settlement && !isForeignHouse(world, trader, stop.house);
+}
+
 /**
- * Whether the stop at `index` of a two-stop own route stands for its settlement now: its flag is set,
- * and when both stops carry it, their settlements stay apart, else the second stop counts its
- * storehouse alone. Our own extension, for networks joined after both flags were set.
+ * Whether the stop at `index` of a two-stop own route stands for its settlement now: it is flagged,
+ * and when both stops are, their settlements stay apart, else the second stop counts its storehouse
+ * alone. Our own extension, for networks joined after both flags were set.
  */
 export function standsForSettlement(
   world: World,
@@ -131,8 +140,8 @@ export function standsForSettlement(
   index: number,
 ): boolean {
   const stop = stops[index];
-  if (stop?.settlement !== true) return false;
+  if (stop === undefined || !flaggedForSettlement(world, trader, stop)) return false;
   const first = stops[0];
-  if (index === 0 || first === undefined || !first.settlement) return true;
+  if (index === 0 || first === undefined || !flaggedForSettlement(world, trader, first)) return true;
   return !settlementsOverlap(world, ctx, terrain, trader, first.house, stop.house);
 }

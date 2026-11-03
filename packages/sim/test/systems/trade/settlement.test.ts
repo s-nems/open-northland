@@ -23,6 +23,7 @@ import {
   serializeSaveGame,
 } from '../../../src/index.js';
 import { createSignpost } from '../../../src/systems/signposts/index.js';
+import { standsForSettlement } from '../../../src/systems/trade/settlement.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
@@ -634,5 +635,29 @@ describe('two stops standing for their settlements', () => {
       expect(stockOf(sim, bMember, WOOD)).toBe(joined ? B_MEMBER_HELD : 0);
       expect(sim.traderView(trader)?.stops.map((stop) => stop.settlementSuspended)).toEqual([false, joined]);
     }
+  });
+
+  it('no longer holds the second stop aside once the first stop turns foreign', () => {
+    const sim = pairSim();
+    const a = houseAt(sim, A_X);
+    const b = houseAt(sim, B_X);
+    const trader = traderAt(sim, A_X);
+    route(sim, trader, a, b);
+    settle(sim, trader, a);
+    settle(sim, trader, b);
+    sim.step();
+    houseAt(sim, MIDDLE_X);
+    sim.step();
+    expect(sim.traderView(trader)?.stops.map((stop) => stop.settlementSuspended)).toEqual([false, true]);
+
+    sim.world.mut(a, Owner).player = NEIGHBOUR;
+    sim.step();
+
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the sim has a map');
+    const stops = sim.world.get(trader, TradeRoute).stops;
+    expect(sim.traderView(trader)?.stops.map((stop) => stop.settlementSuspended)).toEqual([false, false]);
+    expect(standsForSettlement(sim.world, ctxOf(sim), terrain, trader, stops, 0)).toBe(false);
+    expect(standsForSettlement(sim.world, ctxOf(sim), terrain, trader, stops, 1)).toBe(true);
   });
 });
