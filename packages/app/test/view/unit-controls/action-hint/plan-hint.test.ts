@@ -216,11 +216,13 @@ describe('the right-click hint', () => {
 
   it('reads a pinned ship as full by its ordinary seats, the commander slot being its trader', () => {
     const carrier = settler(2, CARRIER_JOB);
+    const mate = 3;
+    const seated = settler(mate, CARRIER_JOB);
     const onShip = { ownVehicle: SHIP };
     const open = vehicle(SHIP, VEHICLE_SHIP_SMALL, [null, null], STAFF);
-    const taken = vehicle(SHIP, VEHICLE_SHIP_SMALL, [{ entity: BUILDING }, null], STAFF);
+    const taken = vehicle(SHIP, VEHICLE_SHIP_SMALL, [{ entity: mate }, null], STAFF);
     expect(hintOf([carrier, open], [2], onShip)).toMatchObject(action('board'));
-    expect(hintOf([carrier, taken], [2], onShip)).toEqual({
+    expect(hintOf([carrier, seated, taken], [2], onShip)).toEqual({
       tone: 'refusal',
       refusal: 'noRoom',
     });
