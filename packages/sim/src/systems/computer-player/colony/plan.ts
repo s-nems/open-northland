@@ -190,7 +190,7 @@ function makerOf(env: ColonyEnv, good: number): BuildingType | undefined {
 }
 
 /** How many of `buildings` stand at any tier of `type`'s chain, sites included. */
-function chainCount(env: ColonyEnv, buildings: readonly Entity[], type: BuildingType): number {
+export function chainCount(env: ColonyEnv, buildings: readonly Entity[], type: BuildingType): number {
   const { world, ctx } = env;
   const chain = countedTiers(ctx.content, type, undefined);
   return buildings.filter((e) => chain.has(world.get(e, Building).buildingType)).length;
@@ -215,7 +215,7 @@ export function homeTeaches(env: ColonyEnv, job: number): boolean {
 
 /** Whether each trade of `type` has its man: earned by one of the colony's, or one home's school can make.
  *  Owner ruling: people cross like goods, so a trade the colony lacks is no reason to go without its building. */
-function crewInReach(env: ColonyEnv, type: BuildingType): boolean {
+export function crewInReach(env: ColonyEnv, type: BuildingType): boolean {
   const { world, ctx } = env;
   const men = colonists(env).filter((e) => isAllocatableMan(world, ctx, e));
   return operatorJobs(env, type).every(
@@ -228,7 +228,7 @@ function crewInReach(env: ColonyEnv, type: BuildingType): boolean {
 }
 
 /** Whether the colony's `tribe` has unlocked `type`. */
-function unlocked(env: ColonyEnv, type: BuildingType): boolean {
+export function unlocked(env: ColonyEnv, type: BuildingType): boolean {
   const tribe = playerPlacementTribes(env.world, env.seat)?.[0];
   return tribe !== undefined && buildingEnabled(env.world, env.ctx, env.seat, tribe, type.typeId);
 }

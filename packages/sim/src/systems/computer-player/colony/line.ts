@@ -34,6 +34,7 @@ import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { shorePoints, strandedShip } from '../sea-route.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER, storedFoodUnits } from '../workforce/food.js';
 import { SeatSupply } from '../workforce/supply.js';
+import { workshopsForHome } from './arms.js';
 import { holdDone, holdFlushed, holdLoad, pinHold } from './cargo.js';
 import { type CargoLine, homewardCargo, LINE_CARGO_MOST, type OutwardRead, outwardCargo } from './demand.js';
 import { colonists, colonyOrigin } from './founding.js';
@@ -360,14 +361,6 @@ function outwardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): CargoL
   return outwardCargo(read);
 }
 
-/** The colony's standing workshops home's order handed it: what they make is why they stand there. */
-function handedWorkshops(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity[]): Entity[] {
-  const { world, ctx } = env;
-  const index = contentIndex(ctx.content);
-  const handed = new Set(colony.overflow.map((row) => index.buildingTypeBySlug.get(row.building)));
-  return buildings.filter((e) => isBuilt(world, e) && handed.has(world.get(e, Building).buildingType));
-}
-
 /** `held` and what `workshops` have made and still hold on their shelves. */
 function withShelves(
   env: ColonyEnv,
@@ -388,7 +381,7 @@ function homewardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): Cargo
   const supply = homeSupply(env);
   const staples = LAND_GOOD_IDS.flatMap((id) => goodTypeByContentId(ctx.content, id)?.typeId ?? []);
   const water = goodTypeByContentId(ctx.content, WATER_ID)?.typeId;
-  const workshops = handedWorkshops(env, colony, buildings);
+  const workshops = workshopsForHome(env, colony, buildings);
   const made = workshopGoods(env, workshops);
   const units = withShelves(env, workshops, made, held);
   const sails = [...units.keys()]
