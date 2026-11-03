@@ -20,6 +20,7 @@ import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { holdsSiteClaim, isSoloSite } from '../../../economy/site-claim.js';
 import { constructionWorkCell } from '../../../footprint/index.js';
+import { landReachAt } from '../../../signposts/index.js';
 import {
   bankedSlot,
   buildingProduces,
@@ -72,10 +73,11 @@ export const DELIVERY_RULES: readonly DeliveryRule[] = [
   { kind: 'searched', resolve: toNearestCapableStore },
 ];
 
-/** Where a searched rule may look: the settler's signpost confinement plus its failed-goal veto, vetoed by
- *  cell and, for a site walked at a perimeter stand, by that stand. */
+/** Where a searched rule may look: the settler's signpost confinement, else its own land, so a load is never
+ *  routed to a sink across water, plus its failed-goal veto, by cell and, for a site walked at a perimeter
+ *  stand, by that stand. */
 export interface DeliverySearchArea {
-  readonly gate: SpatialGate | undefined;
+  readonly gate: SpatialGate;
   readonly avoid: ((cell: NodeId) => boolean) | undefined;
   readonly avoidSite: ((site: Entity) => boolean) | undefined;
 }
@@ -84,7 +86,7 @@ export function deliverySearchArea(plan: PlannerContext): DeliverySearchArea {
   const { world, ctx, terrain, entity, here, targets } = plan;
   const avoid = unreachableGoalVeto(world, ctx, entity);
   return {
-    gate: plan.limit ?? undefined,
+    gate: plan.limit ?? landReachAt(terrain, here),
     avoid,
     avoidSite: unreachableSiteStand(world, ctx, terrain, targets.yard.blocked, here, avoid),
   };

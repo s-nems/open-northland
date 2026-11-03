@@ -18,6 +18,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isFinishedPrayerSite } from '../../readviews/index.js';
 import { goodsSearchLimitAt } from '../../signposts/reach.js';
+import { landReachAt } from '../../signposts/settlement-reach.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { type HeldBands, heldBands, type SyncedBand } from './held-bands.js';
 
@@ -54,17 +55,21 @@ export class TargetBands {
     this.stamp = this.generationSum();
   }
 
-  goodsGate(here: NodeId, owner: number | undefined, gate?: SpatialGate): SpatialGate | undefined {
-    return intersectReach(
-      gate,
-      goodsSearchLimitAt(
-        this.world,
-        this.ctx.content,
-        this.terrain,
-        owner,
-        this.terrain.xOf(here),
-        this.terrain.yOf(here),
-      ),
+  /** Where a fetch from `here` may find its source: `gate` met with the goods search there, else the land
+   *  under `here`, so no source across water is ever picked. */
+  goodsGate(here: NodeId, owner: number | undefined, gate?: SpatialGate): SpatialGate {
+    return (
+      intersectReach(
+        gate,
+        goodsSearchLimitAt(
+          this.world,
+          this.ctx.content,
+          this.terrain,
+          owner,
+          this.terrain.xOf(here),
+          this.terrain.yOf(here),
+        ),
+      ) ?? landReachAt(this.terrain, here)
     );
   }
 

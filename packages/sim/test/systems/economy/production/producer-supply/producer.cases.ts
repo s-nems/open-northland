@@ -29,6 +29,7 @@ import {
 } from '../../../../../src/systems/index.js';
 import { testContent } from '../../../../fixtures/content.js';
 import { pinProducts } from '../../../../fixtures/production-counters.js';
+import { waterColumnMap } from '../../../../fixtures/terrain.js';
 
 import {
   BAKEHOUSE,
@@ -57,6 +58,9 @@ import {
   WOODCUTTER,
 } from './support.js';
 
+/** The water column between a mill on cell 6 and the store on cell 10, nearer than its own on cell 1. */
+const STRAIT_CELL = 8;
+
 describe('producer self-service - fetching a missing recipe input', () => {
   it('walks to a separate store that holds a missing input', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
@@ -81,6 +85,18 @@ describe('producer self-service - fetching a missing recipe input', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 5, 0));
+  });
+
+  it('fetches its missing input from a store on its own land, past a nearer one across water', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: waterColumnMap(16, 1, STRAIT_CELL) });
+    const mill = buildingAt(sim, SAWMILL, 6, 0);
+    buildingAt(sim, HEADQUARTERS, 1, 0, [[WOOD, 3]]);
+    buildingAt(sim, HEADQUARTERS, 10, 0, [[WOOD, 3]]);
+    const smith = settlerAt(sim, 6, 0, CARPENTER, mill);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 1, 0));
   });
 
   it('skips a nearer ENEMY store and fetches its missing input from its own side', () => {

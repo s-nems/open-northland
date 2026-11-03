@@ -20,19 +20,36 @@ export function settlementReachAt(
 ): SpatialGate {
   return (
     goodsSearchLimitAt(world, content, terrain, player, terrain.xOf(node), terrain.yOf(node)) ??
-    landGate(terrain, terrain.componentOf(node))
+    landReachAt(terrain, node)
   );
 }
 
-/** Every node of `component`, none for a node off walkable ground. */
-function landGate(terrain: TerrainGraph, component: number): SpatialGate {
+/**
+ * The land under `node`: every node a walk from there can reach, none for a node off walkable ground. What
+ * bounds a search that signpost confinement leaves unlimited, so it never picks a target across water.
+ */
+export function landReachAt(terrain: TerrainGraph, node: NodeId): SpatialGate {
+  const component = terrain.componentOf(node);
   if (component === NO_COMPONENT) return NOWHERE;
-  const box = terrain.componentBounds(component);
-  return {
-    bounds: { minX: box.minX, maxX: box.maxX, minY: box.minY, maxY: box.maxY },
-    allowsNode: (node) => terrain.componentOf(node) === component,
-  };
+  let gates = landGates.get(terrain);
+  if (gates === undefined) {
+    gates = new Map();
+    landGates.set(terrain, gates);
+  }
+  let gate = gates.get(component);
+  if (gate === undefined) {
+    const box = terrain.componentBounds(component);
+    gate = {
+      bounds: { minX: box.minX, maxX: box.maxX, minY: box.minY, maxY: box.maxY },
+      allowsNode: (n) => terrain.componentOf(n) === component,
+    };
+    gates.set(component, gate);
+  }
+  return gate;
 }
+
+/** One gate per land of a terrain: its components never change, so a gate stands for the terrain's life. */
+const landGates = new WeakMap<TerrainGraph, Map<number, SpatialGate>>();
 
 const NOWHERE: SpatialGate = {
   bounds: { minX: 0, maxX: -1, minY: 0, maxY: -1 },
