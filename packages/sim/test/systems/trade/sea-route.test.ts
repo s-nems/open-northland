@@ -439,7 +439,7 @@ describe('a pinned ship on a route between two islands', () => {
     expect(woodBack).toBe(0);
   });
 
-  it('unloads the cart first when it lands at a full ship whose goods sort before the cart', () => {
+  it('unloads the whole cart first when it lands at a full ship whose goods sort before the cart', () => {
     const sim = newSim();
     const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[PLANK, LOAD]]);
     const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
@@ -453,8 +453,14 @@ describe('a pinned ship on a route between two islands', () => {
     mark(sim, trader, east, WOOD);
     mark(sim, trader, east, PLANK);
 
-    runUntil(sim, LONG_TICKS, () => stockOf(sim, east, WOOD) === full && stockOf(sim, east, PLANK) === LOAD);
+    let planksPastOneCart: number | undefined;
+    runUntil(sim, LONG_TICKS, () => {
+      if (stockOf(sim, east, WOOD) > HANDCART_HOLD) planksPastOneCart ??= stockOf(sim, east, PLANK);
+      return stockOf(sim, east, WOOD) === full && stockOf(sim, east, PLANK) === LOAD;
+    });
 
+    // The cart's planks all landed before more than one cart load of the ship's wood did.
+    expect(planksPastOneCart).toBe(HANDCART_HOLD);
     expect(stockOf(sim, east, WOOD)).toBe(full);
     expect(stockOf(sim, east, PLANK)).toBe(LOAD);
     expectSound(sim);
