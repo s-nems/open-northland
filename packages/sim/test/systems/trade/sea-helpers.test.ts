@@ -70,6 +70,10 @@ const STRAIT_FROM = 8;
 const STRAIT_TO = 16;
 const WEST_SHIP_X = 18;
 const SHIP_ROW = 16;
+/** Up the west shore, away from the west house's mooring. */
+const FAR_SHIP_ROW = 2;
+/** Down the west shore, far from the ship up it. */
+const FAR_TRADER_ROW = 15;
 const WEST_HOUSE_CELL = 5;
 const EAST_HOUSE_CELL = 18;
 const HOUSE_ROW = 8;
@@ -140,12 +144,12 @@ function order(sim: Simulation, command: Parameters<typeof playerCommand>[1]): v
 }
 
 /** A trader with a handcart, a small ship pinned to it, and `helpers` carriers assigned to the ship. */
-function crew(sim: Simulation, helpers: number, cart = true) {
+function crew(sim: Simulation, helpers: number, cart = true, shipRow = SHIP_ROW) {
   const trader = settlerAt(sim, TRADER, HOUSE_ROW + 2);
   const ship = createVehicle(sim.world, ctxOf(sim), {
     vehicleType: SHIP_SMALL,
     x: WEST_SHIP_X,
-    y: SHIP_ROW,
+    y: shipRow,
     tribe: VIKING,
     owner: HUMAN,
   });
@@ -481,6 +485,24 @@ describe('helpers at work', () => {
     // The booked unit went into the ship, not back onto the shelf.
     expect(stockOf(sim, west, WOOD)).toBeLessThanOrEqual(westBefore);
     expect(stockOf(sim, west, WOOD) + aboard + stockOf(sim, east, WOOD)).toBe(LOAD);
+  });
+
+  it('lets no helper set out while the ship lies away from the stop, so the trader sails it round first', () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, SMALL_LOAD]]);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const { trader, ship, carriers } = crew(sim, HELPERS, false, FAR_SHIP_ROW);
+    // The trader far down the shore, so its helpers stand by the ship long before it does.
+    sim.world.mut(trader, Position).y = fx.fromInt(FAR_TRADER_ROW);
+    route(sim, trader, west, east);
+    sim.step();
+    const start = sim.world.get(ship, Vehicle).mooring;
+
+    const helping = () => carriers.some((c) => sim.world.has(c, CargoRun));
+    runUntil(sim, LONG_TICKS, helping);
+
+    expect(helping()).toBe(true);
+    expect(sim.world.get(ship, Vehicle).mooring).not.toEqual(start);
   });
 
   it('sails once its stop is done though fresh spare keeps coming for the helpers to fetch', () => {
