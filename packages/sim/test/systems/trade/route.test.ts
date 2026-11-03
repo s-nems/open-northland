@@ -84,6 +84,8 @@ const HEADQUARTERS_L1 = 90;
 /** The fixture's work temple, a house type that keeps no stock. */
 const TEMPLE = 3;
 const TRADING_POST_ID = 700;
+/** A mission id no house on the map carries. */
+const OTHER_POST_ID = 701;
 const NEAR_X = 1;
 const FAR_X = 7;
 /** A third house between the two. */
@@ -1090,6 +1092,42 @@ describe('a trader at a foreign house', () => {
     expect(stockOf(sim, post, FOOD)).toBeGreaterThan(0);
     expect(stockOf(sim, home, PLANK)).toBeGreaterThan(0);
     expect(goodsTradedWith(sim.world, HUMAN, NEIGHBOUR)).toBe(2 * stockOf(sim, post, FOOD));
+  });
+
+  it('takes only an agreement its foreign stop offers', () => {
+    const { sim, trader } = tradingWorld();
+    sim.enqueueSetup({
+      kind: 'addTradeAgreement',
+      missionId: OTHER_POST_ID,
+      giveGood: WOOD,
+      giveAmount: 1,
+      takeGood: PLANK,
+      takeAmount: 1,
+    });
+    sim.step();
+    expect(sim.traderView(trader)?.agreement).toBe(0);
+
+    sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeAgreement', entity: trader, agreement: 1 }));
+    sim.step();
+    expect(sim.traderView(trader)?.agreement).toBe(0);
+
+    sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeAgreement', entity: trader, agreement: -1 }));
+    sim.step();
+    expect(sim.traderView(trader)?.agreement).toBe(-1);
+  });
+
+  it('takes no agreement on a route without a foreign stop', () => {
+    const sim = newSim();
+    offerWoodForPlanks(sim);
+    const near = houseAt(sim, NEAR_X, HUMAN);
+    const far = houseAt(sim, FAR_X, HUMAN);
+    const trader = traderAt(sim, NEAR_X);
+    attach(sim, trader, near);
+    attach(sim, trader, far);
+    sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeAgreement', entity: trader, agreement: 0 }));
+    sim.step();
+
+    expect(sim.traderView(trader)?.agreement).toBe(-1);
   });
 
   it("trades nothing once the trader's player is no friend of the partner", () => {

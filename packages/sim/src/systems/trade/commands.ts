@@ -47,7 +47,8 @@ export function canAttachTradeHouse(
   return (contentIndex(ctx.content).storedGoodsByBuilding.get(building.buildingType)?.size ?? 0) > 0;
 }
 
-/** Apply one trader order. A stale house, a non-trader, or a choice the route cannot hold is skipped. */
+/** Apply one trader order. A stale house, a non-trader, or a choice the route cannot hold is skipped: an
+ *  agreement is taken only from those the route's foreign stop offers. */
 export function applyTradeCommand(world: World, ctx: SystemContext, command: TradeCommand): void {
   if (!isTrader(world, ctx.content, command.entity)) return;
   switch (command.kind) {
@@ -87,8 +88,11 @@ export function applyTradeCommand(world: World, ctx: SystemContext, command: Tra
         setTradeAgreement(world, command.entity, -1);
         return;
       }
-      const offered = tradeAgreements(world)[command.agreement];
-      if (offered === undefined) return;
+      const foreign = tradeRouteOf(world, command.entity)?.stops.find((stop) =>
+        isForeignHouse(world, command.entity, stop.house),
+      );
+      if (foreign === undefined) return;
+      if (!agreementsAt(world, foreign.house).some((offer) => offer.index === command.agreement)) return;
       setTradeAgreement(world, command.entity, command.agreement);
       return;
     }
