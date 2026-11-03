@@ -50,18 +50,10 @@ export async function loadTextureIfPresent(
   }
 }
 
-/**
- * Pixi chooses an asset parser from the URL extension. A blob URL has neither the original extension
- * nor a useful MIME type by default, so a modded atlas would otherwise fail with "don't know how to
- * parse it". Keep the original filename in the fragment (which does not affect blob fetching) and
- * carry the content MIME type on the Blob itself.
- */
+/** Preserve the content MIME type when turning a modded file into a blob URL for the texture loader. */
 export function modAssetBlobUrl(path: string, bytes: Uint8Array): string {
   const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-  const blob = new Blob([buffer], { type: contentType(path) });
-  const url = URL.createObjectURL(blob);
-  const filename = path.split('/').at(-1) || 'asset.png';
-  return `${url}#${encodeURIComponent(filename)}`;
+  return URL.createObjectURL(new Blob([buffer], { type: contentType(path) }));
 }
 
 export async function moddedContentAssetUrl(url: string): Promise<string> {
