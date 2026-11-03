@@ -248,10 +248,16 @@ export async function loadAtlasSource(
   scaleMode: 'nearest' | 'linear' = 'nearest',
   layout: AtlasSheetLayout = 'rgba',
 ): Promise<TextureSource> {
+  // Blob URLs have no file extension, so Pixi cannot infer the texture parser from the URL.
+  // Select it explicitly for every atlas source; keep displacement's decode option on that parser.
   const texture =
     layout === 'displacement'
-      ? ((await Assets.load({ src: url, data: { alphaMode: 'premultiplied-alpha' } })) as Texture)
-      : ((await Assets.load(url)) as Texture);
+      ? ((await Assets.load({
+          src: url,
+          parser: 'texture',
+          data: { alphaMode: 'premultiplied-alpha' },
+        })) as Texture)
+      : ((await Assets.load({ src: url, parser: 'texture' })) as Texture);
   texture.source.scaleMode = scaleMode;
   // A nearest-loaded page is authored pixel art and may magnify edge-aware; ground pages stay linear.
   if (scaleMode === 'nearest') markPixelArtSource(texture.source);
