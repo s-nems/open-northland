@@ -816,10 +816,13 @@ export const deGame = {
         'Dieses Schiff kann die Route nicht bedienen: Es fährt auf einem anderen Meer oder liegt an einer anderen Küste als der Händler',
       tradeSettlement: 'Siedlung',
       tradeSettlementOn:
-        'Lädt aus der ganzen Siedlung: zuerst aus diesem Lager, dann aus den Lagern und Werkstätten, die sein Wegweisernetz erreicht. Was er zurückbringt, kommt in dieses Lager · Klicken: nur dieses Lager',
+        'Steht für die ganze Siedlung: die Lager und Werkstätten, die sein Wegweisernetz erreicht. Er lädt aus ihnen, zuerst aus diesem Lager, und die Grenzen „bis zu“ und „zurückbehalten“ zählen ihren Bestand. Was er zurückbringt, kommt in dieses Lager · Klicken: nur dieses Lager',
       tradeSettlementOff:
-        'Klicken: aus der ganzen Siedlung laden, zuerst aus diesem Lager, dann aus den Lagern und Werkstätten, die sein Wegweisernetz erreicht',
-      tradeSettlementTaken: 'Die andere Station lädt bereits aus der Siedlung',
+        'Klicken: für die ganze Siedlung stehen. Er lädt aus allen Lagern und Werkstätten, die sein Wegweisernetz erreicht, und die Grenzen „bis zu“ und „zurückbehalten“ zählen ihren Bestand',
+      tradeSettlementShared:
+        'Dasselbe Wegweisernetz wie die andere Station, die schon für die Siedlung steht',
+      tradeSettlementSuspended:
+        'Dasselbe Wegweisernetz wie die andere Station, daher zählt vorerst nur dieses Lager · Klicken: nur dieses Lager',
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: 'bis zu {count}',

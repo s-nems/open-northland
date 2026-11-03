@@ -30,8 +30,9 @@ export interface TradeStop {
   readonly house: Entity;
   /** The goods the player marked for import into this house, ascending by good. */
   imports: TradeImportMark[];
-  /** An own storehouse stop that loads out of its whole settlement: itself first, then the storehouses
-   *  and workshops its goods search reaches. What the route brings in still goes into the house. */
+  /** An own storehouse stop that stands for its whole settlement, the storehouses and workshops its
+   *  goods search reaches: it loads out of them, and its limits count their stock. What the route
+   *  brings in still goes into the house. */
   settlement: boolean;
 }
 
@@ -250,16 +251,24 @@ export function setTradeAgreementLimits(
   return true;
 }
 
-/** Turn an own stop's settlement loading on or off; the caller checks the house is a storehouse. Refused
- *  for a foreign stop, and turning it on is refused while the other stop already loads out of a
- *  settlement: two would only shuttle the same goods between their storehouses. */
-export function setTradeSettlement(world: World, e: Entity, house: Entity, on: boolean): boolean {
+/** Turn an own stop's settlement flag on or off; the caller checks the house is a storehouse. Refused
+ *  for a foreign stop, and turning it on is refused while the other stop carries the flag and
+ *  `sharesSettlement` finds the two settlements share a house: the trader would only shuttle the same
+ *  goods between its storehouses. */
+export function setTradeSettlement(
+  world: World,
+  e: Entity,
+  house: Entity,
+  on: boolean,
+  sharesSettlement: (other: Entity) => boolean,
+): boolean {
   const route = world.tryGet(e, TradeRoute);
   const index = route?.stops.findIndex((stop) => stop.house === house) ?? -1;
   const stop = route?.stops[index];
   if (route === undefined || stop === undefined || isForeignHouse(world, e, house)) return false;
   if (stop.settlement === on) return true;
-  if (on && route.stops.some((other) => other !== stop && other.settlement)) return false;
+  if (on && route.stops.some((other) => other !== stop && other.settlement && sharesSettlement(other.house)))
+    return false;
   const live = world.mut(e, TradeRoute).stops[index];
   if (live === undefined) return false;
   live.settlement = on;

@@ -343,6 +343,27 @@ export function goodsSearchLimitAt(
   return made;
 }
 
+/** Whether a door of one of `player`'s buildings, finished or not, lies under both goods searches. The
+ *  answer reads only what {@link signpostReachKey} versions. */
+export function goodsSearchesShareDoor(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  player: number,
+  a: SpatialGate,
+  b: SpatialGate,
+): boolean {
+  const inside = (box: NodeBox, x: number, y: number): boolean =>
+    x >= box.minX && x <= box.maxX && y >= box.minY && y <= box.maxY;
+  for (const door of doorsOf(world, content, terrain).entries.values()) {
+    if (door.player !== player || !inside(a.bounds, door.hx, door.hy) || !inside(b.bounds, door.hx, door.hy))
+      continue;
+    const node = terrain.nodeAt(door.hx, door.hy);
+    if (a.allowsNode(node) && b.allowsNode(node)) return true;
+  }
+  return false;
+}
+
 /**
  * {@link goodsSearchLimitAt} without its terrain flood: a node passes inside hex range of the spot or under
  * a group caught by that range. The flood is the one cost that grows with distinct spots, so a read that

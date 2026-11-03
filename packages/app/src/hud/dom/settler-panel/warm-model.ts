@@ -81,7 +81,17 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     military: { stance: null, regeneration: true },
     trade: {
       stops: [
-        { slot: 0, house: 1, label: 'Warm', foreign: false, heading: true, settlement: true, settles: true },
+        {
+          slot: 0,
+          house: 1,
+          label: 'Warm',
+          foreign: false,
+          heading: true,
+          settlement: true,
+          settles: true,
+          sharesSettlement: false,
+          settlementSuspended: false,
+        },
         {
           slot: 1,
           house: 2,
@@ -90,6 +100,8 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
           heading: false,
           settlement: false,
           settles: false,
+          sharesSettlement: false,
+          settlementSuspended: false,
         },
       ],
       attachSlot: null,

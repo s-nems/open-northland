@@ -44,13 +44,12 @@ export function slotState(trade: TradePanelModel, slot: number): SlotState {
 }
 
 /** The settlement toggle's state on a stop: offered on an own storehouse, refused while the other stop
- *  already loads out of a settlement. */
-export function settlementToggle(
-  trade: TradePanelModel,
-  stop: TradeStopModel,
-): { readonly shown: boolean; readonly enabled: boolean } {
-  const otherSettled = trade.stops.some((other) => other !== stop && other.settlement);
-  return { shown: stop.settles, enabled: stop.settlement || !otherSettled };
+ *  stands for a settlement this one shares a house with. */
+export function settlementToggle(stop: TradeStopModel): {
+  readonly shown: boolean;
+  readonly enabled: boolean;
+} {
+  return { shown: stop.settles, enabled: stop.settlement || !stop.sharesSettlement };
 }
 
 /** One row per route slot, both always present so the section never changes height with the route:
@@ -120,7 +119,7 @@ export function createTradeStops(deps: SettlerPanelDeps, current: () => TraderSu
         setClass(row.item, 'on-stop--heading', state.kind === 'stop' && state.stop.heading);
         setClass(row.link, 'on-ledger--missing', state.kind === 'attach');
         setTip(row.heading, panel.tradeHeading);
-        const toggle = state.kind === 'stop' ? settlementToggle(trade, state.stop) : null;
+        const toggle = state.kind === 'stop' ? settlementToggle(state.stop) : null;
         setHidden(row.settlement, toggle?.shown !== true);
         if (state.kind === 'stop' && toggle?.shown === true) {
           write(row.settlement, panel.tradeSettlement);
@@ -129,10 +128,12 @@ export function createTradeStops(deps: SettlerPanelDeps, current: () => TraderSu
           setTip(
             row.settlement,
             !toggle.enabled
-              ? panel.tradeSettlementTaken
-              : state.stop.settlement
-                ? panel.tradeSettlementOn
-                : panel.tradeSettlementOff,
+              ? panel.tradeSettlementShared
+              : state.stop.settlementSuspended
+                ? panel.tradeSettlementSuspended
+                : state.stop.settlement
+                  ? panel.tradeSettlementOn
+                  : panel.tradeSettlementOff,
           );
         }
         switch (state.kind) {

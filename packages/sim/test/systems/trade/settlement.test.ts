@@ -22,6 +22,7 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../../src/index.js';
+import { createSignpost } from '../../../src/systems/signposts/index.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
@@ -313,7 +314,7 @@ describe('a settlement stop between own houses', () => {
     expect(sim.world.has(trader, HaulingCart)).toBe(true);
   });
 
-  it('is set on an own storehouse alone, on one stop at a time, and shown on the trader view', () => {
+  it('is set on an own storehouse alone, on one stop of a shared settlement, and shown on the trader view', () => {
     const sim = newSim();
     const anchor = houseAt(sim, ANCHOR_X);
     const sawmill = houseAt(sim, MEMBER_X, [], { type: SAWMILL });
@@ -425,5 +426,184 @@ describe('a settlement stop before a foreign trip', () => {
     });
     expect(restored.hashState()).toBe(sim.hashState());
     expect(serializeSaveGame(exportSaveGame(restored))).toBe(saved);
+  });
+});
+
+describe('two stops standing for their settlements', () => {
+  /** Two settlements on one continent, each a storehouse with a second one behind it, further apart than
+   *  a goods search reaches (40 nodes) and nearer than a trader walks (50 nodes). */
+  const PAIR_MAP_W = 32;
+  const A_MEMBER_X = 1;
+  const A_X = 4;
+  const B_X = 26;
+  const B_MEMBER_X = 29;
+  /** Inside both goods searches: a house here joins the two settlements. */
+  const MIDDLE_X = 15;
+  const ISLAND_X = 26;
+  const STOCK_LEVEL = 20;
+  const B_HELD = 12;
+  const B_MEMBER_HELD = 10;
+  const B_KEEP = 30;
+  const B_WOOD = 25;
+  const B_MEMBER_WOOD = 15;
+  const A_WOOD = 30;
+  const BALANCE_SIDE = 10;
+  const SLOW_RUN_TICKS = 3 * RUN_TICKS;
+
+  function pairSim(map = grassMap(PAIR_MAP_W, MAP_H), navigation = true): Simulation {
+    const sim = newSim(map);
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: navigation });
+    return sim;
+  }
+
+  /** A signpost on the cell at `x` of the houses' row. */
+  function postAt(sim: Simulation, x: number): void {
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the sim has a map');
+    createSignpost(sim.world, terrain, terrain.nodeAt(2 * x + 1, 2), HUMAN);
+  }
+
+  function flags(sim: Simulation, trader: Entity): boolean[] {
+    return sim.world.get(trader, TradeRoute).stops.map((stop) => stop.settlement);
+  }
+
+  function mark(sim: Simulation, trader: Entity, into: Entity, upTo = TRADE_LIMIT_NONE, keep = 0): void {
+    woodInto(sim, trader, into, upTo, keep);
+  }
+
+  it('may stand on both stops across two islands', () => {
+    const sim = pairSim(waterColumnMap(MAP_W, MAP_H, WATER_X), false);
+    const a = houseAt(sim, ANCHOR_X);
+    const b = houseAt(sim, ISLAND_X);
+    const trader = traderAt(sim, ANCHOR_X);
+    route(sim, trader, a, b);
+    settle(sim, trader, a);
+    settle(sim, trader, b);
+    sim.step();
+
+    expect(flags(sim, trader)).toEqual([true, true]);
+  });
+
+  it('stands on one stop alone when one signpost network joins the two', () => {
+    const sim = pairSim();
+    const a = houseAt(sim, A_X);
+    const b = houseAt(sim, B_X);
+    for (const x of [A_X, MIDDLE_X, B_X]) postAt(sim, x);
+    const trader = traderAt(sim, A_X);
+    route(sim, trader, a, b);
+    settle(sim, trader, a);
+    settle(sim, trader, b);
+    sim.step();
+
+    expect(flags(sim, trader)).toEqual([true, false]);
+    expect(sim.traderView(trader)?.stops.map((stop) => stop.sharesSettlement)).toEqual([false, true]);
+  });
+
+  it('may stand on both stops of one continent whose signpost networks share no house', () => {
+    const sim = pairSim();
+    const a = houseAt(sim, A_X);
+    const b = houseAt(sim, B_X);
+    postAt(sim, A_X);
+    postAt(sim, B_X);
+    const trader = traderAt(sim, A_X);
+    route(sim, trader, a, b);
+    settle(sim, trader, a);
+    settle(sim, trader, b);
+    sim.step();
+
+    expect(flags(sim, trader)).toEqual([true, true]);
+  });
+
+  it("fills a stop up to its mark counting its settlement's stock", () => {
+    for (const settled of [true, false]) {
+      const sim = newSim();
+      const a = houseAt(sim, ANCHOR_X, [[WOOD, A_WOOD]]);
+      const bMember = houseAt(sim, MEMBER_X, [[WOOD, B_MEMBER_HELD]]);
+      const b = houseAt(sim, OTHER_X, [[WOOD, B_HELD]]);
+      const trader = traderAt(sim, ANCHOR_X);
+      route(sim, trader, a, b);
+      mark(sim, trader, b, STOCK_LEVEL);
+      if (settled) settle(sim, trader, b);
+
+      sim.run(RUN_TICKS);
+
+      expect(stockOf(sim, b, WOOD)).toBe(settled ? B_HELD : STOCK_LEVEL);
+      expect(stockOf(sim, a, WOOD)).toBe(settled ? A_WOOD : A_WOOD - (STOCK_LEVEL - B_HELD));
+      expect(stockOf(sim, bMember, WOOD)).toBe(B_MEMBER_HELD);
+    }
+  });
+
+  it('keeps its reserve summed over its settlement on the way out', () => {
+    const sim = newSim();
+    const a = houseAt(sim, ANCHOR_X);
+    const bMember = houseAt(sim, MEMBER_X, [[WOOD, B_MEMBER_WOOD]]);
+    const b = houseAt(sim, OTHER_X, [[WOOD, B_WOOD]]);
+    const trader = traderAt(sim, OTHER_X);
+    route(sim, trader, a, b);
+    mark(sim, trader, a, TRADE_LIMIT_NONE, B_KEEP);
+    settle(sim, trader, b);
+
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, b, WOOD) + stockOf(sim, bMember, WOOD)).toBe(B_KEEP);
+    expect(stockOf(sim, a, WOOD)).toBe(B_WOOD + B_MEMBER_WOOD - B_KEEP);
+  });
+
+  it('balances a good both stops mark between the two settlements', () => {
+    const sim = pairSim();
+    const aMember = houseAt(sim, A_MEMBER_X, [[WOOD, BALANCE_SIDE]]);
+    const a = houseAt(sim, A_X, [[WOOD, BALANCE_SIDE]]);
+    const b = houseAt(sim, B_X);
+    const bMember = houseAt(sim, B_MEMBER_X);
+    const trader = traderAt(sim, A_X);
+    route(sim, trader, a, b);
+    mark(sim, trader, a);
+    mark(sim, trader, b);
+    settle(sim, trader, a);
+    settle(sim, trader, b);
+
+    sim.run(SLOW_RUN_TICKS);
+
+    expect(flags(sim, trader)).toEqual([true, true]);
+    expect(stockOf(sim, a, WOOD) + stockOf(sim, aMember, WOOD)).toBe(BALANCE_SIDE);
+    expect(stockOf(sim, b, WOOD) + stockOf(sim, bMember, WOOD)).toBe(BALANCE_SIDE);
+  });
+
+  it('bounds a settlement by its continent with signpost navigation off', () => {
+    const sim = newSim(waterColumnMap(MAP_W, MAP_H, WATER_X));
+    const a = houseAt(sim, ANCHOR_X);
+    houseAt(sim, MEMBER_X, [[WOOD, WOOD_KEPT]]);
+    houseAt(sim, ISLAND_X, [[WOOD, WOOD_KEPT]]);
+    const b = houseAt(sim, OTHER_X);
+    const trader = traderAt(sim, ANCHOR_X);
+    route(sim, trader, a, b);
+    mark(sim, trader, b, TRADE_LIMIT_NONE, WOOD_KEPT);
+    settle(sim, trader, a);
+
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, b, WOOD)).toBe(0);
+  });
+
+  it('counts the second stop as its storehouse alone once the two settlements join', () => {
+    for (const joined of [false, true]) {
+      const sim = pairSim();
+      const a = houseAt(sim, A_X);
+      const b = houseAt(sim, B_X);
+      const bMember = houseAt(sim, B_MEMBER_X, [[WOOD, B_MEMBER_HELD]]);
+      const trader = traderAt(sim, A_X);
+      route(sim, trader, a, b);
+      mark(sim, trader, a);
+      settle(sim, trader, a);
+      settle(sim, trader, b);
+      sim.step();
+      if (joined) houseAt(sim, MIDDLE_X);
+
+      sim.run(SLOW_RUN_TICKS);
+
+      expect(flags(sim, trader)).toEqual([true, true]);
+      expect(stockOf(sim, bMember, WOOD)).toBe(joined ? B_MEMBER_HELD : 0);
+      expect(sim.traderView(trader)?.stops.map((stop) => stop.settlementSuspended)).toEqual([false, joined]);
+    }
   });
 });

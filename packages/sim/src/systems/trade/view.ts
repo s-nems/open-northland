@@ -9,6 +9,7 @@ import {
   TRADE_LIMIT_NONE,
   type TradeImportMark,
   TradeRoute,
+  type TradeRouteView,
   TradeShip,
   tradeRouteOf,
   Vehicle,
@@ -21,7 +22,7 @@ import type { MapContext } from '../context.js';
 import { isTraderJob } from '../readviews/jobs.js';
 import { activeAgreement, agreementsAt, type HouseAgreement } from './agreements.js';
 import { traderHoldOf } from './hold.js';
-import { isSettlementAnchor } from './settlement.js';
+import { isSettlementAnchor, settlementsOverlap } from './settlement.js';
 import { mooringTargetOfStop, routeCrossesSea, shipLiesOn } from './ship.js';
 
 /**
@@ -49,10 +50,15 @@ export interface TradeStopView {
   readonly imports: readonly TradeImportMark[];
   /** The agreements the house offers; only a foreign stop lists any. */
   readonly offers: readonly TradeOffer[];
-  /** The stop loads out of its whole settlement. */
+  /** The stop carries the flag to stand for its whole settlement. */
   readonly settlement: boolean;
-  /** The stop is an own storehouse, so it may load out of its settlement. */
+  /** The stop is an own storehouse, so it may stand for its settlement. */
   readonly settles: boolean;
+  /** The other stop carries the flag and the two settlements share a house: this stop's flag is refused,
+   *  or, set on the second stop, held aside while that lasts. */
+  readonly sharesSettlement: boolean;
+  /** The flag is set but held aside: the stop counts its storehouse alone. */
+  readonly settlementSuspended: boolean;
 }
 
 /**
@@ -124,6 +130,23 @@ function shipStateOf(world: World, ctx: MapContext, trader: Entity): TraderShipS
   return shipLiesOn(world, ctx, terrain, ship, continent) ? 'ready' : 'unreachable';
 }
 
+/** Whether the other stop of an own route carries the settlement flag and the two settlements share a
+ *  house; asked of an own storehouse stop alone. */
+function sharesSettlement(
+  world: World,
+  ctx: MapContext,
+  trader: Entity,
+  stops: TradeRouteView['stops'],
+  index: number,
+): boolean {
+  const stop = stops[index];
+  const other = stops[1 - index];
+  const terrain = ctx.terrain;
+  if (stop === undefined || other === undefined || terrain === undefined || !other.settlement) return false;
+  if (isForeignHouse(world, trader, stop.house) || !isSettlementAnchor(world, ctx, stop.house)) return false;
+  return settlementsOverlap(world, ctx, terrain, trader, stop.house, other.house);
+}
+
 /** The route of a trader, as a detached copy; undefined for anything that is no trader. */
 export function traderView(world: World, ctx: MapContext, trader: Entity): TraderView | undefined {
   const settler = world.tryGet(trader, Settler);
@@ -164,8 +187,9 @@ export function traderView(world: World, ctx: MapContext, trader: Entity): Trade
     };
   }
   return {
-    stops: route.stops.map((stop) => {
+    stops: route.stops.map((stop, index) => {
       const foreign = isForeignHouse(world, trader, stop.house);
+      const shared = sharesSettlement(world, ctx, trader, route.stops, index);
       return {
         slot: stop.slot,
         house: stop.house,
@@ -174,6 +198,8 @@ export function traderView(world: World, ctx: MapContext, trader: Entity): Trade
         offers: foreign ? agreementsAt(world, stop.house).map(offerOf) : [],
         settlement: stop.settlement,
         settles: !foreign && isSettlementAnchor(world, ctx, stop.house),
+        sharesSettlement: shared,
+        settlementSuspended: stop.settlement && shared && index > 0,
       };
     }),
     current: route.current,

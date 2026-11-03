@@ -752,10 +752,12 @@ export const plGame = {
         'Ten statek nie obsłuży trasy: pływa po innym morzu albo stoi przy innym brzegu niż kupiec',
       tradeSettlement: 'osada',
       tradeSettlementOn:
-        'Ładuje z całej osady: najpierw z tego magazynu, potem z magazynów i warsztatów w zasięgu jego sieci drogowskazów. Co przywiezie, trafia do tego magazynu · kliknij: tylko ten magazyn',
+        'Liczy całą osadę: magazyny i warsztaty w zasięgu jego sieci drogowskazów. Ładuje z nich, najpierw z tego magazynu, a limity „do” i „zostaw” liczą ich zapasy. Co przywiezie, trafia do tego magazynu · kliknij: tylko ten magazyn',
       tradeSettlementOff:
-        'Kliknij: ładuj z całej osady, najpierw z tego magazynu, potem z magazynów i warsztatów w zasięgu jego sieci drogowskazów',
-      tradeSettlementTaken: 'Z całej osady ładuje już drugi punkt',
+        'Kliknij: licz całą osadę. Ładuje z każdego magazynu i warsztatu w zasięgu sieci drogowskazów, a limity „do” i „zostaw” liczą ich zapasy',
+      tradeSettlementShared: 'Ta sama sieć drogowskazów co drugi punkt, który już liczy całą osadę',
+      tradeSettlementSuspended:
+        'Ta sama sieć drogowskazów co drugi punkt, więc na razie liczy tylko ten magazyn · kliknij: tylko ten magazyn',
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: 'do {count}',

@@ -767,10 +767,13 @@ export const enGame = {
         'This ship cannot serve the route: it sails another sea, or lies at another shore than the merchant',
       tradeSettlement: 'settlement',
       tradeSettlementOn:
-        'Loads from the whole settlement: this storehouse first, then the storehouses and workshops its signpost network reaches. What it brings back goes into this storehouse · click: this storehouse only',
+        'Stands for the whole settlement: the storehouses and workshops its signpost network reaches. It loads from them, this storehouse first, and the "up to" and "keep" limits count their stock. What it brings back goes into this storehouse · click: this storehouse only',
       tradeSettlementOff:
-        'Click: load from the whole settlement, this storehouse first, then the storehouses and workshops its signpost network reaches',
-      tradeSettlementTaken: 'The other stop already loads from the settlement',
+        'Click: stand for the whole settlement. It loads from every storehouse and workshop its signpost network reaches, and the "up to" and "keep" limits count their stock',
+      tradeSettlementShared:
+        'Shares a signpost network with the other stop, which already stands for the settlement',
+      tradeSettlementSuspended:
+        'Shares a signpost network with the other stop, so for now it counts this storehouse only · click: this storehouse only',
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: 'up to {count}',

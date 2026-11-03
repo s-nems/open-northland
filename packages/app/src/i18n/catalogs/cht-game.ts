@@ -734,9 +734,11 @@ export const chtGame = {
       tradeShipUnreachableTooltip: '這艘船無法服務此路線：它在另一片海上，或停靠在與商人不同的海岸',
       tradeSettlement: '聚落',
       tradeSettlementOn:
-        '從整個聚落裝貨：先從這座倉庫，再從其路標網路所及的倉庫與工坊。運回的貨物會存進這座倉庫 · 點擊：只用這座倉庫',
-      tradeSettlementOff: '點擊：從整個聚落裝貨，先從這座倉庫，再從其路標網路所及的倉庫與工坊',
-      tradeSettlementTaken: '另一個停靠站已經從聚落裝貨',
+        '代表整個聚落：其路標網路所及的倉庫與工坊。從這些建築裝貨，先從這座倉庫，「最多」與「保留」限額按它們的庫存計算。運回的貨物會存進這座倉庫 · 點擊：只用這座倉庫',
+      tradeSettlementOff:
+        '點擊：代表整個聚落。從路標網路所及的所有倉庫與工坊裝貨，「最多」與「保留」限額按它們的庫存計算',
+      tradeSettlementShared: '與另一個停靠站同屬一個路標網路，該站已代表整個聚落',
+      tradeSettlementSuspended: '與另一個停靠站同屬一個路標網路，因此暫時只計算這座倉庫 · 點擊：只用這座倉庫',
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: '最多 {count}',

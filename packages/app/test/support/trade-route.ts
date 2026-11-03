@@ -54,6 +54,8 @@ export function ownRoute(transfers: readonly TradeTransferModel[] = []): TradePa
         heading: true,
         settlement: false,
         settles: true,
+        sharesSettlement: false,
+        settlementSuspended: false,
       },
       {
         slot: 1,
@@ -63,6 +65,8 @@ export function ownRoute(transfers: readonly TradeTransferModel[] = []): TradePa
         heading: false,
         settlement: false,
         settles: false,
+        sharesSettlement: false,
+        settlementSuspended: false,
       },
     ],
     attachSlot: null,

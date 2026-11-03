@@ -43,10 +43,14 @@ export interface TradeStopModel {
   readonly foreign: boolean;
   /** The stop the trader serves now. */
   readonly heading: boolean;
-  /** The stop loads out of its whole settlement. */
+  /** The stop carries the flag to stand for its whole settlement. */
   readonly settlement: boolean;
-  /** The stop is an own storehouse, so it may load out of its settlement. */
+  /** The stop is an own storehouse, so it may stand for its settlement. */
   readonly settles: boolean;
+  /** The other stop carries the flag and the two settlements share a house. */
+  readonly sharesSettlement: boolean;
+  /** The flag is set but held aside while the two settlements share a house. */
+  readonly settlementSuspended: boolean;
 }
 
 /** One good an own stop's house stores: its stock table's line with the units it holds now. */
@@ -297,6 +301,8 @@ export function tradePanelModel(
     heading: index === view.current,
     settlement: stop.settlement,
     settles: stop.settles,
+    sharesSettlement: stop.sharesSettlement,
+    settlementSuspended: stop.settlementSuspended,
   }));
   const a = view.stops.find((stop) => stop.slot === TRADE_SLOT_A);
   const b = view.stops.find((stop) => stop.slot === TRADE_SLOT_B);
