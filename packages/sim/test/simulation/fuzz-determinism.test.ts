@@ -17,6 +17,7 @@ import {
   Sheltering,
   VEHICLE_STANCES,
   Vehicle,
+  VehicleDrive,
 } from '../../src/components/index.js';
 import { COMMAND_ISSUER } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -25,6 +26,7 @@ import {
   type Command,
   checkInvariants,
   exportSaveGame,
+  halfCellMapFromCells,
   type LoggedCommand,
   type PlayerCommand,
   parseCommandEnvelope,
@@ -41,7 +43,6 @@ import {
 } from '../../src/index.js';
 import { type ChestSpec, createChest } from '../../src/systems/chests/index.js';
 import { testContent } from '../fixtures/content.js';
-import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Seeded command-stream fuzz covers input combinations that curated goldens miss. It checks
@@ -380,10 +381,16 @@ const COMMAND_EVERY = 4;
  *  self-check round-trips at the same points, so its cost stays a dozen exports per run. */
 const CHECKPOINT_EVERY = 50;
 
-// A 12×12-CELL map - the graph is its 24×24 half-cell lattice, and command coords draw from the
-// full NODE range so the fuzz exercises off-centre anchors (buildings/spawns on any half-cell).
-const MAP_W = 12;
+// A 16×12-CELL map, 12 columns of grass and a sea strip east of them - the graph is its 32×24 half-cell
+// lattice, and command coords draw from the full NODE range so the fuzz exercises off-centre anchors
+// (buildings/spawns on any half-cell) and vehicle orders onto the sea.
+const LAND_W = 12;
+const SEA_W = 4;
+const MAP_W = LAND_W + SEA_W;
 const MAP_H = 12;
+/** The fixture ground types: walkable grass and water no walk crosses. */
+const GRASS = 0;
+const WATER = 1;
 const NODE_W = MAP_W * 2;
 const NODE_H = MAP_H * 2;
 /** The anchors {@link runFuzz}'s preamble builds its home and its workshop on - the nodes an authored
@@ -459,12 +466,53 @@ const PREAMBLE_HUT_NODE = { x: 19, y: 12 } as const;
 const CATAPULT_TYPE = 5;
 const SOLDIER_JOB = 31;
 
+/** The preamble's trader, its handcart and the small ship it pins, on a route between two houses, all
+ *  minted after the hut; the aimed vehicle and pin rolls below keep the pin's lock under the stream. */
+const PREAMBLE_HUT = (PREAMBLE_GUNNER + 1) as Entity;
+const PREAMBLE_TRADE_HOUSES = [(PREAMBLE_HUT + 1) as Entity, (PREAMBLE_HUT + 2) as Entity] as const;
+const PREAMBLE_SHIP = (PREAMBLE_HUT + 3) as Entity;
+const PREAMBLE_CART = (PREAMBLE_HUT + 4) as Entity;
+const PREAMBLE_TRADER = (PREAMBLE_HUT + 5) as Entity;
+const PREAMBLE_TRADE_HOUSE_NODES = [
+  { x: 22, y: 8 },
+  { x: 20, y: 20 },
+] as const;
+/** Three nodes out on the sea strip, moored off the east shore. */
+const PREAMBLE_SHIP_NODE = { x: 2 * LAND_W + 3, y: 12 } as const;
+const PREAMBLE_CART_NODE = { x: 22, y: 16 } as const;
+const PREAMBLE_TRADER_NODE = { x: 22, y: 14 } as const;
+/** The harness sails the pinned ship along the strip, calling its trader aboard, then unpins and pins it
+ *  again, so every seed runs the lock's take-over and release under the stream. */
+const PREAMBLE_SAIL_NODE = { x: 2 * LAND_W + 5, y: 4 } as const;
+const SAIL_TICK = 20;
+const UNPIN_TICK = 400;
+const REPIN_TICK = 450;
+const HEADQUARTERS_TYPE = 1;
+const HANDCART_TYPE = 1;
+const SHIP_TYPE = 3;
+const TRADER_JOB = 25;
+
 /** The middle wall of the preamble run, where the harness cuts its gate. */
 const PREAMBLE_GATE_CENTRE = (ATTACHED_SETTLER + 6) as Entity;
 
-/** The fuzz map: the grass fixture with the wall rows in its landscape catalog. */
+/** The fuzz map: grass with the sea strip east of it, and the wall rows in its landscape catalog. */
 function fuzzMap(): TerrainMap {
-  return { ...grassMap(MAP_W, MAP_H), landscapes: { types: FUZZ_WALL_ROWS, placements: [] } };
+  const typeIds = new Array<number>(MAP_W * MAP_H).fill(GRASS);
+  for (let row = 0; row < MAP_H; row++) typeIds.fill(WATER, row * MAP_W + LAND_W, (row + 1) * MAP_W);
+  const map = halfCellMapFromCells({ width: MAP_W, height: MAP_H, typeIds });
+  return { ...map, landscapes: { types: FUZZ_WALL_ROWS, placements: [] } };
+}
+
+/** A vehicle-order target: half the time the preamble's pinned ship or its trader's cart, else any id. */
+function vehicleTarget(rng: Rng): Entity {
+  return rng.int(2) === 0
+    ? pick(rng, [PREAMBLE_SHIP, PREAMBLE_CART])
+    : ((rng.int(TARGET_ID_RANGE) + 1) as Entity);
+}
+
+/** A rider-order target: half the time the preamble's trader, else any id. */
+function riderTarget(rng: Rng): Entity {
+  return rng.int(2) === 0 ? PREAMBLE_TRADER : ((rng.int(TARGET_ID_RANGE) + 1) as Entity);
 }
 
 /** A wall-order target: half the time one of the preamble walls, else any id. */
@@ -492,7 +540,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(80);
+  const roll = rng.int(81);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiControl carrier created/updated/destroyed - the
@@ -1014,42 +1062,42 @@ function nextCommand(rng: Rng): Command {
       return { kind: 'convertPalisadeGate', palisade: wallTarget(rng), gfxIndex: pick(rng, PALISADE_ROWS) };
     case 57:
       // A vehicle goto at a random id: the stream's carts and ships (refused - nobody commands them,
-      // the note must hash and replay like any event), non-vehicle and dead ids (skipped), and both
-      // envelope branches of the vehicle ownership gate.
-      return { kind: 'moveVehicle', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+      // the note must hash and replay like any event), the preamble's pinned ship (its trader called
+      // aboard), non-vehicle and dead ids (skipped), and both envelope branches of the ownership gate.
+      return { kind: 'moveVehicle', vehicle: vehicleTarget(rng), x, y };
     case 58:
-      // The stop twin: no drive stands in this stream, so every roll is the no-drive skip.
-      return { kind: 'stopVehicle', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+      // The stop twin: the preamble's ship under way stops at sea, every other roll is the no-drive skip.
+      return { kind: 'stopVehicle', vehicle: vehicleTarget(rng) };
     case 59:
       // An attach at two random ids: a crew-trade settler on a cart or ship (seated, walking to the
       // door, boarding on the next goto), a trade the type refuses, another owner's vehicle, and the
       // wrong-kind and dead ids; every refusal note must hash and replay like the seat itself.
       return {
         kind: 'attachToVehicle',
-        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
-        vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        entity: riderTarget(rng),
+        vehicle: vehicleTarget(rng),
       };
     case 60:
       // The detach twin at a random id: a seated rider steps off on the door, the rest are skips.
-      return { kind: 'detachFromVehicle', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+      return { kind: 'detachFromVehicle', entity: riderTarget(rng) };
     case 61:
       // Unload people at a random id: a crewed vehicle empties, an empty one and a non-vehicle skip.
-      return { kind: 'unloadPeople', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+      return { kind: 'unloadPeople', vehicle: vehicleTarget(rng) };
     case 62:
       // A dock order at a random id and tile: the ships (no commander, or a held point while the crew
       // boards), the carts (not a ship), and every skip; the ring search must replay exactly.
-      return { kind: 'dockVehicle', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+      return { kind: 'dockVehicle', vehicle: vehicleTarget(rng), x, y };
     case 63:
       // A wanted amount on a random id: the hold's clamp, the no-carrier note, an uncarriable good.
       return {
         kind: 'setVehicleWanted',
-        vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        vehicle: vehicleTarget(rng),
         goodType: pick(rng, [RESOURCE_GOOD, FOOD_GOOD, INVALID_TYPE]),
         amount: rng.int(20) - 2, // a negative ask hits the floor at 0
       };
     case 64:
       // The clear-all twin.
-      return { kind: 'clearVehicleWanted', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+      return { kind: 'clearVehicleWanted', vehicle: vehicleTarget(rng) };
     case 65:
       // A stance on a random id: the guard position moves under a cart as well as a siege engine.
       return {
@@ -1070,17 +1118,17 @@ function nextCommand(rng: Rng): Command {
       };
     case 67:
       // A board order at a random id: an attached rider walks in, which a later goto or attack drives.
-      return { kind: 'boardVehicle', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+      return { kind: 'boardVehicle', entity: riderTarget(rng) };
     case 68:
       // A vehicle loaded into a random carrier: a cart or catapult into a ship, and the refusals.
       return {
         kind: 'loadIntoVehicle',
-        vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
-        carrier: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        vehicle: vehicleTarget(rng),
+        carrier: vehicleTarget(rng),
       };
     case 69:
       // The unload twin: a carried vehicle set down on its carrier's door, or released on its way.
-      return { kind: 'leaveCarrier', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+      return { kind: 'leaveCarrier', vehicle: vehicleTarget(rng) };
     case 70:
       // A recruit weapon veto flip, the grant flip's twin: the AssistantWeaponVetoes carrier created,
       // updated and destroyed under the arming pass on the sword good; every other good is the
@@ -1153,6 +1201,14 @@ function nextCommand(rng: Rng): Command {
       // The debug eraser at a random id: nodes, bushes and piles go under whoever is bound for them, and
       // every other kind or a dead id is skipped.
       return { kind: 'debugErase', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 80:
+      // A pin or an unpin at the preamble's trader and ship or any id: the lock's take-over of the hold
+      // and the commander slot, the refusals, and the release under the stream's vehicle orders.
+      return {
+        kind: 'setTradeShip',
+        entity: riderTarget(rng),
+        ship: rng.int(3) === 0 ? null : vehicleTarget(rng),
+      };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }
@@ -1216,6 +1272,9 @@ interface FuzzRun {
   /** Whether the harness's own sword veto ever stood as a non-empty list, so the arming pass read a veto
    *  and the random veto rolls land on a good that arms a class rather than all being refused. */
   readonly weaponVetoed: boolean;
+  /** Whether the preamble's ship sailed under its trader's pin, so the stream's vehicle orders met the lock
+   *  on a voyage as well as at the shore. */
+  readonly pinnedShipSailed: boolean;
 }
 
 /** Export → parse → restore at a live checkpoint: the restored sim must hash exactly like the live
@@ -1329,6 +1388,38 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     ...PREAMBLE_HUT_NODE,
     tribe: VIKING,
   });
+  // A trader with a handcart on a route between two houses, and a small ship moored off the east shore
+  // that it pins on the second tick; placed last so the pinned ids above hold.
+  for (const node of PREAMBLE_TRADE_HOUSE_NODES) {
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HEADQUARTERS_TYPE,
+      ...node,
+      tribe: VIKING,
+      owner: 0,
+    });
+  }
+  sim.enqueueSetup({
+    kind: 'createVehicle',
+    vehicleType: SHIP_TYPE,
+    ...PREAMBLE_SHIP_NODE,
+    tribe: VIKING,
+    owner: 0,
+  });
+  sim.enqueueSetup({
+    kind: 'createVehicle',
+    vehicleType: HANDCART_TYPE,
+    ...PREAMBLE_CART_NODE,
+    tribe: VIKING,
+    owner: 0,
+  });
+  sim.enqueueSetup({
+    kind: 'spawnSettler',
+    jobType: TRADER_JOB,
+    ...PREAMBLE_TRADER_NODE,
+    tribe: VIKING,
+    owner: 0,
+  });
   // An independent generator stream (any fixed derivation of the fuzz seed works - it only must
   // differ from the sim's seed so the two streams aren't trivially correlated).
   const gen = new Rng(fuzzSeed ^ 0x5eed);
@@ -1345,6 +1436,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
   let catapultFired = false;
   let alliesJoined = false;
   let alliesJoinedAndSplit = false;
+  let pinnedShipSailed = false;
   for (let t = 0; t < ticks; t++) {
     // House one nucleus woman and man on the second tick (ids are monotonic: the chests, the home, then
     // the six spawns in order). Not in the preamble: the home's `built` flips within tick 1's system run,
@@ -1417,6 +1509,28 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
         target: { kind: 'ground', ...PREAMBLE_SHOT_NODE },
       });
     }
+    // Put the preamble trader on its route with its cart, then pin the ship. Fixed input, logged like
+    // every command.
+    if (t === 1) {
+      sim.enqueueSetup({ kind: 'attachToVehicle', entity: PREAMBLE_TRADER, vehicle: PREAMBLE_CART });
+      for (const house of PREAMBLE_TRADE_HOUSES) {
+        sim.enqueueSetup({ kind: 'attachTradeHouse', entity: PREAMBLE_TRADER, house });
+      }
+      const [, importer] = PREAMBLE_TRADE_HOUSES;
+      sim.enqueueSetup({
+        kind: 'setTradeImport',
+        entity: PREAMBLE_TRADER,
+        house: importer,
+        good: RESOURCE_GOOD,
+        on: true,
+      });
+    }
+    if (t === 2 || t === REPIN_TICK) {
+      sim.enqueueSetup({ kind: 'setTradeShip', entity: PREAMBLE_TRADER, ship: PREAMBLE_SHIP });
+    }
+    if (t === UNPIN_TICK) sim.enqueueSetup({ kind: 'setTradeShip', entity: PREAMBLE_TRADER, ship: null });
+    if (t === SAIL_TICK)
+      sim.enqueueSetup({ kind: 'moveVehicle', vehicle: PREAMBLE_SHIP, ...PREAMBLE_SAIL_NODE });
     if (gen.int(COMMAND_EVERY) === 0) submit(sim, gen, nextCommand(gen));
     sim.step();
     if (t === 0) {
@@ -1425,6 +1539,11 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
       }
       if (!sim.world.has(PREAMBLE_CATAPULT, Vehicle) || !sim.world.has(PREAMBLE_GUNNER, Settler)) {
         throw new Error('preamble catapult or gunner id drifted');
+      }
+      const traded = PREAMBLE_TRADE_HOUSES.every((house) => sim.world.has(house, Building));
+      const vehicles = sim.world.has(PREAMBLE_SHIP, Vehicle) && sim.world.has(PREAMBLE_CART, Vehicle);
+      if (!traded || !vehicles || !sim.world.has(PREAMBLE_TRADER, Settler)) {
+        throw new Error('preamble trade house, ship, cart or trader id drifted');
       }
     }
     // A per-tick snapshot populates the clone cache, arming the cachesCoherent invariant's stale-clone
@@ -1456,6 +1575,9 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
         .current()
         .some((ev) => ev.kind === 'projectileLaunched' && ev.shooter === PREAMBLE_GUNNER);
     }
+    if (!pinnedShipSailed && sim.world.has(PREAMBLE_SHIP, VehicleDrive)) {
+      pinnedShipSailed = sim.world.get(PREAMBLE_SHIP, Vehicle).hauler === PREAMBLE_TRADER;
+    }
     if (!gateSwung)
       gateSwung = PREAMBLE_WALL_IDS.some((id) => sim.world.tryGet(id, Palisade)?.gate?.open === true);
     if (!weaponVetoed) {
@@ -1484,6 +1606,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     weaponVetoed,
     catapultFired,
     alliesJoinedAndSplit,
+    pinnedShipSailed,
     log: [...sim.commands.log],
   };
 }
@@ -1510,6 +1633,7 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
       expect(a.catapultFired).toBe(true); // and a crewed catapult really loosed a stone
       expect(a.alliesJoinedAndSplit).toBe(true); // and allies really shared a fog mask, then split it
       expect(a.weaponVetoed).toBe(true); // and a weapon veto really stood, not just the arms-no-class skip
+      expect(a.pinnedShipSailed).toBe(true); // and a pinned ship really sailed, its trader aboard
       expect(a.violations).toEqual([]);
       expect(b.violations).toEqual([]);
       // Checkpoint-wise equality first: on a divergence the failing index names the 50-tick window.
