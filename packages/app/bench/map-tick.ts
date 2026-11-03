@@ -42,7 +42,8 @@ function progressLine(window: BenchWindow, total: number): string {
   return (
     `window ${window.index + 1}/${total}  ticks ${window.fromTick}..${window.toTick}  ` +
     `mean ${window.tickMs.meanMs.toFixed(3)} ms  median ${window.tickMs.medianMs.toFixed(3)} ms  p99 ${window.tickMs.p99Ms.toFixed(3)} ms  ` +
-    `max ${window.tickMs.maxMs.toFixed(3)} ms  gc ${window.gc.ms.toFixed(0)} ms  ` +
+    `max ${window.tickMs.maxMs.toFixed(3)} ms  cpu ${window.cpuMsPerTick.toFixed(3)} ms  ` +
+    `alloc ${window.allocKbPerTick.toFixed(1)} KB  gc ${window.gc.ms.toFixed(0)} ms  ` +
     `settlers ${window.population.settlers}  fighters ${window.population.fighters}  ` +
     `buildings ${window.population.buildings}  rss ${window.rssMb} MB`
   );

@@ -45,6 +45,8 @@ const META: Parameters<typeof summarize>[2] = {
   },
   ticks: { warmup: 10, measured: 4, windows: 1 },
   firstTick: 11,
+  cpuMsPerTick: 9,
+  allocKbPerTick: 64,
   windows: [],
   environment: ENVIRONMENT,
   trust: { trustworthy: true, warnings: [] },
@@ -71,6 +73,8 @@ function windowFixture(index: number, medianMs: number, overrides: Partial<Bench
     rssMb: 200 + index,
     heapUsedMb: 120 + index,
     gc: { count: 3, ms: 2.5, maxMs: 1.25 },
+    cpuMsPerTick: medianMs,
+    allocKbPerTick: 64,
     ...overrides,
   };
 }

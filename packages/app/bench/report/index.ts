@@ -6,6 +6,7 @@ export {
   formatComparison,
   formatSeats,
   realMapSession,
+  WHOLE_RUN_ROW_COUNT,
   worldIdentity,
 } from './compare.js';
 export { formatReport } from './format.js';

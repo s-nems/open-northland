@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { compareReports, formatComparison, readReport } from './report/index.js';
+import { compareReports, formatComparison, readReport, WHOLE_RUN_ROW_COUNT } from './report/index.js';
 import { benchOutDir, latestComparablePair, type StoredReport } from './store.js';
 
 /**
@@ -7,9 +7,6 @@ import { benchOutDir, latestComparablePair, type StoredReport } from './store.js
  * the report shapes stay in one typed place and the noise-band logic is covered by `npm test`;
  * `scripts/bench/compare.mjs` is the argv wrapper.
  */
-
-/** `tick total` and `tick p99`, appended after the per-system rows. */
-const TICK_ROWS = 2;
 
 function reportAt(path: string): StoredReport {
   return { path, report: readReport(JSON.parse(readFileSync(path, 'utf8')), path) };
@@ -32,11 +29,13 @@ function main(): void {
   const before = beforeStored.report;
   const comparison = compareReports(before, afterStored.report);
   console.log(`\n${formatComparison(comparison)}\n`);
-  // The two tick rows are always appended, so they prove nothing; require a row per system the inputs
-  // actually carried, or the tool would report a clean comparison of two empty reports.
+  // The whole-run rows are always appended, so they prove nothing; require a row per system the
+  // baseline carried, or the tool would report a clean comparison of two empty reports. A system only
+  // the after side measured adds a row with no baseline.
   if (before.systems.length === 0) throw new Error(`${beforeStored.path} names no systems`);
-  if (comparison.rows.length !== before.systems.length + TICK_ROWS) {
-    throw new Error(`compared ${comparison.rows.length} rows over ${before.systems.length} system(s)`);
+  const baselineRows = comparison.rows.filter((row) => row.beforeMs !== null).length;
+  if (baselineRows !== before.systems.length + WHOLE_RUN_ROW_COUNT) {
+    throw new Error(`compared ${baselineRows} baseline rows over ${before.systems.length} system(s)`);
   }
 }
 

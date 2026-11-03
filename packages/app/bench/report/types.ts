@@ -2,7 +2,7 @@
 
 /** The report layout the reader accepts; a layout change bumps it, and a report of any other version is
  *  refused rather than read. */
-export const BENCH_REPORT_VERSION = 7;
+export const BENCH_REPORT_VERSION = 8;
 
 /** One system's cost across a measured segment. `sharePct` is its share of the summed per-system
  *  time - the scale-invariant number a regression check can compare across machines. */
@@ -98,6 +98,13 @@ export interface BenchWindow {
   /** V8 heap in use at the segment boundary, after the segment's own garbage was or was not collected. */
   readonly heapUsedMb: number;
   readonly gc: GcStat;
+  /** Main-thread CPU time (user + system) per tick, read at the segment's bounds. Unlike the wall
+   *  tick it does not count time the thread waited for a core, so it moves less with machine load.
+   *  It includes the harness's per-tick hooks and instrument, and excludes GC work on helper threads. */
+  readonly cpuMsPerTick: number;
+  /** V8 bytes allocated per tick (KiB), from the isolate's cumulative counter at the segment's bounds:
+   *  nearly load-independent, the number allocation work moves. Includes the harness's own samples. */
+  readonly allocKbPerTick: number;
 }
 
 /** Machine and run context; `trust.ts` turns it into a verdict. */
@@ -136,6 +143,9 @@ export interface BenchReport {
     readonly windows: number;
   };
   readonly tickMs: TickStat;
+  /** Whole-run {@link BenchWindow.cpuMsPerTick} and {@link BenchWindow.allocKbPerTick}. */
+  readonly cpuMsPerTick: number;
+  readonly allocKbPerTick: number;
   /** Whole-run per-system rows, heaviest median first. */
   readonly systems: readonly SystemStat[];
   /** The run's slowest ticks, slowest first. */

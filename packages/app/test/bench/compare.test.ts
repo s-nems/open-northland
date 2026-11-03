@@ -33,6 +33,8 @@ function window(index: number, medianMs: number): BenchWindow {
     rssMb: 200,
     heapUsedMb: 120,
     gc: { count: 4, ms: 3, maxMs: 1 },
+    cpuMsPerTick: medianMs,
+    allocKbPerTick: 80,
   };
 }
 
@@ -51,6 +53,8 @@ function report(overrides: Partial<BenchReport> = {}): BenchReport {
     },
     ticks: { warmup: 60, measured: 600, windows: 2 },
     tickMs: { meanMs: 6, medianMs: 6, p95Ms: 12, p99Ms: 18, maxMs: 30 },
+    cpuMsPerTick: 5.5,
+    allocKbPerTick: 80,
     systems: [
       { name: 'ai', meanMs: 4, medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 80 },
       { name: 'movement', meanMs: 1, medianMs: 1, p95Ms: 2, maxMs: 4, sharePct: 20 },
@@ -155,9 +159,19 @@ describe('compareReports', () => {
   });
 
   it('always appends the whole-tick rows, which the per-system rows do not sum to', () => {
-    const rows = compareReports(report(), report({ tickMs: { ...report().tickMs, p99Ms: 27 } })).rows;
-    expect(rows.slice(-3).map((r) => r.name)).toEqual(['tick mean', 'tick total', 'tick p99']);
-    expect(rows.at(-1)?.verdict).toBe('slower');
+    const rows = compareReports(
+      report(),
+      report({ tickMs: { ...report().tickMs, p99Ms: 27 }, allocKbPerTick: 40 }),
+    ).rows;
+    expect(rows.slice(-5).map((r) => r.name)).toEqual([
+      'tick mean',
+      'tick total',
+      'tick p99',
+      'cpu ms/tick',
+      'alloc KB/tick',
+    ]);
+    expect(rows.find((r) => r.name === 'tick p99')?.verdict).toBe('slower');
+    expect(rows.at(-1)?.verdict).toBe('faster');
   });
 
   it('reports a changed state hash rather than raising: the runs measured different behaviour', () => {

@@ -36,7 +36,8 @@ export interface Comparison {
   readonly noiseBandPct: number;
   readonly untrusted: boolean;
   readonly stateHashIdentical: boolean;
-  /** Per-system mean rows heaviest first, then the `tick mean`, `tick total` (median) and `tick p99` rows. */
+  /** Per-system mean rows heaviest first, then the whole-run rows: `tick mean`, `tick total` (median),
+   *  `tick p99`, `cpu ms/tick` and `alloc KB/tick`. */
   readonly rows: readonly DeltaRow[];
   /** Per-window tick deltas; empty when the two runs were cut into different window counts. */
   readonly windowRows: readonly DeltaRow[];
@@ -83,6 +84,16 @@ export function worldIdentity(world: BenchWorld): string {
       return `${world.mapId}, ${realMapSession(world)}, ${size}`;
   }
 }
+
+/** The whole-run rows appended after the per-system rows; `alloc KB/tick` is in KiB, not ms. */
+const WHOLE_RUN_ROWS: readonly (readonly [string, (report: BenchReport) => number])[] = [
+  ['tick mean', (r) => r.tickMs.meanMs],
+  ['tick total', (r) => r.tickMs.medianMs],
+  ['tick p99', (r) => r.tickMs.p99Ms],
+  ['cpu ms/tick', (r) => r.cpuMsPerTick],
+  ['alloc KB/tick', (r) => r.allocKbPerTick],
+];
+export const WHOLE_RUN_ROW_COUNT = WHOLE_RUN_ROWS.length;
 
 function delta(name: string, beforeMs: number | null, afterMs: number | null, bandPct: number): DeltaRow {
   if (beforeMs === null) return { name, beforeMs, afterMs, deltaPct: null, verdict: 'added' };
@@ -138,9 +149,9 @@ export function compareReports(before: BenchReport, after: BenchReport): Compari
         (b.beforeMs ?? b.afterMs ?? 0) - (a.beforeMs ?? a.afterMs ?? 0) ||
         (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
     );
-  rows.push(delta('tick mean', before.tickMs.meanMs, after.tickMs.meanMs, noiseBandPct));
-  rows.push(delta('tick total', before.tickMs.medianMs, after.tickMs.medianMs, noiseBandPct));
-  rows.push(delta('tick p99', before.tickMs.p99Ms, after.tickMs.p99Ms, noiseBandPct));
+  for (const [name, value] of WHOLE_RUN_ROWS) {
+    rows.push(delta(name, value(before), value(after), noiseBandPct));
+  }
 
   let windowRows: readonly DeltaRow[] = [];
   if (before.windows.length !== after.windows.length) {

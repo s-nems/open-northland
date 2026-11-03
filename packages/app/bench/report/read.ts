@@ -16,6 +16,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isBenchReport(value: unknown, bad: (why: string) => never): value is BenchReport {
   if (!isRecord(value)) return bad('not an object');
   const { version, world, ticks, tickMs, systems, windows, environment, trust, stateHash } = value;
+  const { cpuMsPerTick, allocKbPerTick } = value;
 
   if (version !== BENCH_REPORT_VERSION) {
     return bad(
@@ -40,6 +41,9 @@ function isBenchReport(value: unknown, bad: (why: string) => never): value is Be
     typeof tickMs.p99Ms !== 'number'
   ) {
     return bad('missing tickMs.meanMs / medianMs / p99Ms');
+  }
+  if (typeof cpuMsPerTick !== 'number' || typeof allocKbPerTick !== 'number') {
+    return bad('missing cpuMsPerTick / allocKbPerTick');
   }
   if (!Array.isArray(systems)) return bad('missing systems[]');
   if (!Array.isArray(windows)) return bad('missing windows[]');

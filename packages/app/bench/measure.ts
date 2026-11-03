@@ -8,13 +8,16 @@
  */
 import { type PerformanceEntry, PerformanceObserver } from 'node:perf_hooks';
 import { setImmediate as nextTurn } from 'node:timers/promises';
+import { getHeapStatistics } from 'node:v8';
 import { type Component, components, type Simulation, systems } from '@open-northland/sim';
 import { calibrationMs, loadPerCpu } from './environment.js';
 import { type BenchWindow, type GcStat, summarizeSegment } from './report/index.js';
 
 const { Building, Resource, Settler } = components;
 
+const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = 1024 * 1024;
+const US_PER_MS = 1000;
 
 export interface MeasureOptions {
   readonly warmupTicks: number;
@@ -38,6 +41,9 @@ export interface Measurement {
   /** The worst load sampled across the run, so a box that got busy midway is not averaged away. */
   readonly loadPerCpu: number | null;
   readonly peakRssMb: number;
+  /** Whole-run {@link BenchWindow.cpuMsPerTick} and {@link BenchWindow.allocKbPerTick}. */
+  readonly cpuMsPerTick: number;
+  readonly allocKbPerTick: number;
   readonly calibration: { readonly beforeMs: number; readonly afterMs: number };
 }
 
@@ -103,6 +109,25 @@ class GcLog {
   stop(): void {
     this.observer.disconnect();
   }
+}
+
+/** Main-thread CPU and V8 allocation so far: two cheap reads, taken only at window bounds. */
+interface WorkSample {
+  readonly cpuUs: number;
+  readonly allocatedBytes: number;
+}
+
+function workSample(): WorkSample {
+  const cpu = process.threadCpuUsage();
+  return { cpuUs: cpu.user + cpu.system, allocatedBytes: getHeapStatistics().total_allocated_bytes };
+}
+
+function perTick(from: WorkSample, to: WorkSample, ticks: number): { cpuMs: number; allocKb: number } {
+  if (ticks === 0) return { cpuMs: 0, allocKb: 0 };
+  return {
+    cpuMs: (to.cpuUs - from.cpuUs) / US_PER_MS / ticks,
+    allocKb: (to.allocatedBytes - from.allocatedBytes) / BYTES_PER_KB / ticks,
+  };
 }
 
 function worstLoad(a: number | null, b: number | null): number | null {
@@ -182,7 +207,10 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
   const firstTick = sim.tick + 1;
   const tickSamples: number[] = [];
   const windows: BenchWindow[] = [];
+  let cpuUs = 0;
+  let allocatedBytes = 0;
   for (const [index, bound] of windowBounds(options.measuredTicks, options.windows).entries()) {
+    const workStart = workSample();
     const windowStartMs = performance.now();
     for (let i = bound.from; i < bound.to; i++) {
       const start = performance.now();
@@ -191,6 +219,10 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
       options.afterTick?.();
     }
     const windowEndMs = performance.now();
+    const workEnd = workSample();
+    cpuUs += workEnd.cpuUs - workStart.cpuUs;
+    allocatedBytes += workEnd.allocatedBytes - workStart.allocatedBytes;
+    const work = perTick(workStart, workEnd, bound.to - bound.from);
     const heap = heapUsedMb();
     const rss = rssMb();
     peakRssMb = Math.max(peakRssMb, rss);
@@ -209,6 +241,8 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
       rssMb: rss,
       heapUsedMb: heap,
       gc: await gc.window(windowStartMs, windowEndMs),
+      cpuMsPerTick: work.cpuMs,
+      allocKbPerTick: work.allocKb,
     };
     windows.push(window);
     options.onWindow?.(window);
@@ -218,6 +252,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
   // Release the seam: a caller that keeps stepping this sim should not keep paying two clock reads
   // per system per tick for samples nobody collects.
   sim.setInstrument(null);
+  const run = perTick({ cpuUs: 0, allocatedBytes: 0 }, { cpuUs, allocatedBytes }, options.measuredTicks);
 
   return {
     firstTick,
@@ -229,6 +264,8 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
     buildings: count(sim, Building),
     loadPerCpu: worstLoad(load, loadPerCpu()),
     peakRssMb,
+    cpuMsPerTick: run.cpuMs,
+    allocKbPerTick: run.allocKb,
     calibration: { beforeMs, afterMs: calibrationMs() },
   };
 }
