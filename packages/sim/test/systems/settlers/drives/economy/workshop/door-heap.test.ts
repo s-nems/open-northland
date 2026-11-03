@@ -9,6 +9,10 @@ import {
 } from '../../../../../../src/components/index.js';
 import type { Entity } from '../../../../../../src/ecs/world.js';
 import { type NodeId, positionOfNode, Simulation } from '../../../../../../src/index.js';
+import {
+  MASTERY_BONUS_TENTHS,
+  OUTPUT_TENTHS_PER_UNIT,
+} from '../../../../../../src/systems/economy/production/bonus-output.js';
 import { dynamicBlockOverlay } from '../../../../../../src/systems/footprint/index.js';
 import {
   DOOR_HEAP_RADIUS_NODES,
@@ -44,6 +48,10 @@ const FOREIGN_FILL = 1;
 /** Ample for a worker to lift, walk and work every unit of the door's heap. */
 const HEAP_TICKS = 6000;
 const CARRY_IN_TICKS = 6000;
+/** The whole bonus units one cycle can shelve: a remainder short of a unit plus a master's tenths. */
+const MOST_BONUS_UNITS_PER_CYCLE = Math.floor(
+  (OUTPUT_TENTHS_PER_UNIT - 1 + MASTERY_BONUS_TENTHS) / OUTPUT_TENTHS_PER_UNIT,
+);
 /** Two ground stacks, the most the heap once took. */
 const PAST_TWO_STACKS = 2 * MAX_GROUND_STACK;
 
@@ -102,9 +110,11 @@ describe('a workshop door heap', () => {
     runMill(fixture, HEAP_TICKS);
     const heap = heaped(sim, PLANK);
     expect(heap).toBeGreaterThan(PAST_TWO_STACKS);
-    // A cycle's output can overrun the shelf by what it makes beyond the last free unit.
+    // A cycle starts only with room for its recipe output; its bonus lands whole past the shelf, and
+    // with no ground left nothing lifts it to the door.
     const held = sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0;
-    expect(held).toBeGreaterThanOrEqual(shelf);
+    expect(held - shelf).toBeGreaterThanOrEqual(0);
+    expect(held - shelf).toBeLessThanOrEqual(MOST_BONUS_UNITS_PER_CYCLE);
     expect(sim.world.has(worker, Carrying)).toBe(false);
     expect(sim.workStatus(worker)).toMatchObject({ kind: 'outputFull' });
     expect(seatStockOf(sim.world, PLAYER).units(PLANK)).toBe(held + heap);
