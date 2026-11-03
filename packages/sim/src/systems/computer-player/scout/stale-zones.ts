@@ -45,9 +45,9 @@ interface StaleZone {
  * zones never seen that hold a deposit the seat gathers. Score = importance x staleness (capped; a zone
  * never seen counts the cap), best first, ties to the lower zone index; a zone seen within
  * {@link SCOUT_REVISIT_TICKS} is not due, and neither is a zone the seat lost a scout in
- * ({@link scoutLostZones}) or one whose straight walk crosses such a zone, nor a zone whose goal lately
- * turned the scout back ({@link scoutTurnedBackZones}), or one whose goal lies in such a zone, so a route
- * past a tower is not walked again at once. The goal is the zone's centre
+ * ({@link scoutLostZones}), nor one whose goal lately turned the scout back ({@link scoutTurnedBackZones}),
+ * nor one whose straight walk crosses or ends in either kind, so a route past a tower is not walked again
+ * at once: a long trip goes in legs, so the turn-back may name a zone on the way. The goal is the zone's centre
  * when clear of the {@link scoutDanger} reach, else the farthest point of the straight walk toward it
  * before the walk enters that reach (owner ruling: a scout comes near, looks and turns back, never into a
  * tower's reach); either way a node on the seat's land, clear of the reach, searched around that point.
@@ -94,7 +94,8 @@ export function nextStaleZoneTarget(
     if (goal === null || playerSeesNode(fog, player, goal.hx, goal.hy)) continue;
     if (turnedBack.node(goal.hx, goal.hy)) continue;
     // Approximation: the straight walk stands in for the pathfinder's route past a zone that took a scout.
-    if (![...zonesOnLine(brief, anchor, goal)].some(lost.zone)) return goal;
+    const crossed = [...zonesOnLine(brief, anchor, goal)];
+    if (!crossed.some(lost.zone) && !crossed.some(turnedBack.zone)) return goal;
   }
   return null;
 }

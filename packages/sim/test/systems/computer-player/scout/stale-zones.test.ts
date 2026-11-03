@@ -15,12 +15,14 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../../src/index.js';
-import type { HalfCellNode } from '../../../../src/nav/halfcell.js';
+import { type HalfCellNode, nodeManhattan, nodeOfPosition } from '../../../../src/nav/halfcell.js';
 import { ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
 import {
   DEFAULT_BUILD_ORDER,
   nextSignpostTarget,
   nextStaleZoneTarget,
+  SCOUT_LEG_NODES,
+  SCOUT_LEG_SNAP_NODES,
   SCOUT_LOSS_MEMORY_TICKS,
   SCOUT_REVISIT_TICKS,
   SCOUT_STALENESS_CAP_TICKS,
@@ -285,10 +287,20 @@ describe('scout staleness scouting', () => {
     expect(guide.run(sim.world, ctxAt(sim, early, fog), SEAT)[0]).toMatchObject({ kind: 'placeSignpost' });
     const zone = nextStaleZoneTarget(sim.world, ctxAt(sim, open, fog), SEAT, DEFAULT_BUILD_ORDER);
     if (zone === null) throw new Error('setup: a zone is stale');
-    expect(guide.run(sim.world, ctxAt(sim, open, fog), SEAT)[0]).toMatchObject({
-      kind: 'moveUnit',
-      x: zone.hx,
-      y: zone.hy,
-    });
+    const walk = guide.run(sim.world, ctxAt(sim, open, fog), SEAT)[0];
+    if (walk?.kind !== 'moveUnit') throw new Error('expected a walk');
+    // The zone lies past one leg: the walk goes a leg's length along the way to it.
+    const at = scoutNode(sim);
+    const leg = { hx: walk.x, hy: walk.y };
+    expect(nodeManhattan(at, zone)).toBeGreaterThan(SCOUT_LEG_NODES);
+    expect(nodeManhattan(at, leg)).toBeLessThanOrEqual(SCOUT_LEG_NODES + SCOUT_LEG_SNAP_NODES);
+    expect(nodeManhattan(leg, zone)).toBeLessThan(nodeManhattan(at, zone) - SCOUT_LEG_NODES / 2);
   });
 });
+
+function scoutNode(sim: Simulation): HalfCellNode {
+  const scout = ownedSettlers(sim.world, SEAT).find((e) => sim.world.get(e, Settler).jobType === SCOUT);
+  if (scout === undefined) throw new Error('setup: a scout');
+  const p = sim.world.get(scout, Position);
+  return nodeOfPosition(p.x, p.y);
+}
