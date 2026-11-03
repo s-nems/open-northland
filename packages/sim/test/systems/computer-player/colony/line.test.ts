@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AiControl,
   aiControlEntity,
   Health,
   Rider,
@@ -16,9 +17,11 @@ import {
   serializeSaveGame,
 } from '../../../../src/index.js';
 import {
+  colonyHeldShips,
   colonyMember,
   everyBuildingOf,
   everySettlerOf,
+  homeBuildings,
   homeSettlers,
 } from '../../../../src/systems/ai-shared/home-roster.js';
 import { seatBaseOf } from '../../../../src/systems/computer-player/base.js';
@@ -26,6 +29,7 @@ import { colonySmallShips } from '../../../../src/systems/computer-player/colony
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { strandedShip } from '../../../../src/systems/computer-player/sea-route.js';
+import { setAiControl } from '../../../../src/systems/orders/ai.js';
 import { interactionCell } from '../../../../src/systems/settlers/targets/index.js';
 import { removeVehicle } from '../../../../src/systems/vehicles/index.js';
 import {
@@ -226,6 +230,24 @@ describe('a colony line', () => {
     }
     expect(leg(copy)).toBe(leg(sim));
     expect(copy.hashState()).toBe(sim.hashState());
+  });
+});
+
+describe('a colony toggle turned off', () => {
+  it('hands the colony back to the whole seat and stays off while the toggle does', () => {
+    const { sim } = linedWorld();
+    const carrier = aiControlEntity(sim.world, SEAT) as Entity;
+    expect(homeSettlers(sim.world, ctxOf(sim), SEAT).length).toBeLessThan(
+      everySettlerOf(sim.world, SEAT).length,
+    );
+    const modules = { ...sim.world.get(carrier, AiControl).modules, houseBuild: false };
+    setAiControl(sim.world, ctxOf(sim), { kind: 'setAiControl', player: SEAT, enabled: true, modules });
+    expect(colonyState(sim)).toBeUndefined();
+    expect(colonyHeldShips(sim.world, SEAT)).toEqual([]);
+    expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).toEqual(everySettlerOf(sim.world, SEAT));
+    expect(homeBuildings(sim.world, ctxOf(sim), SEAT)).toEqual(everyBuildingOf(sim.world, SEAT));
+    stepUntil(sim, AFTER_SAVE_TICKS, () => false);
+    expect(colonyState(sim)).toBeUndefined();
   });
 });
 

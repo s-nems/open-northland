@@ -5,6 +5,7 @@ import {
   AssistantUpgradesTools,
   aiControlEntity,
   COLONY_MODULES,
+  ComputerColony,
   type ComputerModuleEnables,
   computerModuleEnables,
   DefenceMode,
@@ -116,10 +117,11 @@ function applyAiControl(
     if (source === 'map-ai') return !mapAiEnabled;
     // Autonomous sorties have no camp leash. A map-only controller must plan a bounded replacement.
     if (source === 'settlement-defence') return !next.military && (!mapAiEnabled || previous.military);
-    if (source === 'colony') return !COLONY_MODULES.every((module) => next[module]);
+    if (source === 'colony') return !runsColony(next);
     return !next[source];
   });
   if (previous.military && !next.military) retireComputerCampaign(world, command.player);
+  if (runsColony(previous) && !runsColony(next)) world.remove(carrier, ComputerColony);
   for (const entry of COMPUTER_PUBLISHED_COUNTERS) {
     if (publishes(previous, entry.modules) && !publishes(next, entry.modules)) {
       resetAssistantCounters(world, command.player, entry.kinds);
@@ -137,6 +139,13 @@ function applyAiControl(
   seat.computerEnabled = computerEnabled;
   if (!mapAiEnabled && !next.military) standDownAlarms(world, command.player);
   if (command.difficulty !== undefined) seat.difficulty = command.difficulty;
+}
+
+/** Whether `enables` let the colony controller run. Once it stops, its colonies are dropped, their ships, people,
+ *  garrison and land the whole seat's again for whichever controller runs it; a colony toggle turned back on
+ *  starts the seat's colonies over from a fresh survey. */
+function runsColony(enables: ComputerModuleEnables): boolean {
+  return COLONY_MODULES.every((module) => enables[module]);
 }
 
 /** Lift the recruit weapon vetoes and the soldier outfit (its grants and their soldiers-only limits) the
