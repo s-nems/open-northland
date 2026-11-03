@@ -27,6 +27,7 @@ import { hunterJobType, isFisherJob, isHunterJob, isScoutJob, scoutJobType } fro
 import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { isCarrierJob } from '../../stores/workplace.js';
+import { sitesShortfalls } from '../build-order/upgrade-supply.js';
 import { genericCollectorJob } from '../workforce/collectors/wanted-goods.js';
 import { FISHER_FLAG_MAX_DISTANCE_NODES, FISHING_TRIP_RADIUS_NODES } from '../workforce/fisher.js';
 import {
@@ -510,7 +511,11 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
   const table = POSTS.slice(0, posted.length).filter(
     (post) => (!isDug(post) || digs.has(post)) && (post !== 'hunter' || hunting),
   );
+  // What the next builds take and what the open sites still lack: a smithy site's iron, which no ship brings
+  // past what home's stop holds, calls its digger while the site stands.
   const called = billsOf(env, read.plan);
+  for (const [good, lacking] of sitesShortfalls(world, ctx, read.buildings))
+    called.set(good, (called.get(good) ?? 0) + lacking);
   const urgent = LAND_GOOD_IDS.filter((id) => {
     const good = goodTypeByContentId(ctx.content, id)?.typeId;
     return digs.has(id) && (dug.get(id) ?? 0) === 0 && good !== undefined && (called.get(good) ?? 0) > 0;
