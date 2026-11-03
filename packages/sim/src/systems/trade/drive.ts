@@ -326,7 +326,7 @@ function decide(
 function carryHomeWhileNoAgreement(scope: LoadScope, hold: TraderHold, foreign: boolean): TradeAction {
   const held = hold.cart === null ? hold.entries[0] : undefined;
   if (held === undefined) return WAIT;
-  return foreign ? NEXT : unloadInto(scope.world, scope.ctx, scope.stop.house, held[0]);
+  return foreign ? NEXT : (unloadAtHome(scope, held[0]) ?? WAIT);
 }
 
 /**
@@ -346,7 +346,9 @@ function shuttles(hold: TraderHold, agreement: DeepReadonly<TradeAgreement>): bo
  * space for the take goods every aboard batch will bring back. A {@link shuttles} hold loads what the
  * exchange still lacks as far as it fits, and leaves empty while take goods are still owed. The player's
  * two limits are this build's own (owner's choice): the give goods load only above `giveKeep`, and no
- * batch starts once the take goods at home plus what the batches aboard bring back reach `takeUpTo`.
+ * batch starts once the take goods at home plus what the batches aboard bring back reach `takeUpTo`. A
+ * full home takes the rest onto the ground by its door; once no ground there has room no batch starts,
+ * and what home cannot take waits aboard.
  */
 function decidePreparation(
   scope: LoadScope,
@@ -355,8 +357,13 @@ function decidePreparation(
   agreement: DeepReadonly<TradeAgreement>,
 ): TradeAction {
   const { world, ctx, stop } = scope;
-  const stray = hold.entries.find(([good]) => !sameFoodClass(ctx, good, agreement.giveGood));
-  if (stray !== undefined) return unloadInto(world, ctx, stop.house, stray[0]);
+  const strays = hold.entries.filter(([good]) => !sameFoodClass(ctx, good, agreement.giveGood));
+  for (const [good] of strays) {
+    const unload = unloadAtHome(scope, good);
+    if (unload !== null) return unload;
+  }
+  // Goods home cannot take wait aboard until it can.
+  if (strays.length > 0) return WAIT;
   const aboard = aboardOfClass(ctx, hold, agreement.giveGood);
   const shuttle = shuttles(hold, agreement);
   if (shuttle && route.given >= agreement.giveAmount) return NEXT;
@@ -370,8 +377,9 @@ function decidePreparation(
   const startsBatch = shuttle ? route.given + aboard === 0 : aboard % give === 0;
   const filled =
     startsBatch &&
-    route.takeUpTo !== TRADE_LIMIT_NONE &&
-    homeStockOf(scope, agreement.takeGood) + batchesAboard * agreement.takeAmount >= route.takeUpTo;
+    ((route.takeUpTo !== TRADE_LIMIT_NONE &&
+      homeStockOf(scope, agreement.takeGood) + batchesAboard * agreement.takeAmount >= route.takeUpTo) ||
+      unloadAtHome(scope, edibleGoodFormOf(ctx.content, agreement.takeGood)) === null);
   if (fits && !filled && !isFoodKeptAtHome(world, ctx, stop.house, agreement.giveGood)) {
     const source = loadSourceOf(scope, agreement.giveGood, route.giveKeep);
     if (source !== undefined && hold.carries(source.good)) return { kind: 'load', ...source };
@@ -497,7 +505,7 @@ function decideDomestic(
     if (wantedThere !== undefined && wantedHere === undefined) continue;
     const full = roomFor(world, ctx, stop.house, slot) - coming <= 0;
     // Owner ruling: a full store does not stop goods marked for it coming ashore; they go onto the ground by
-    // its door, bounded as a workshop's door heap. Not original behavior.
+    // its door while the ground there has room, as a workshop's door heap. Not original behavior.
     if (full && (wantedHere === undefined || wantedThere !== undefined)) continue;
     if (full && heapRoomAt(scope, stop.house, good) - coming <= 0) continue;
     const held =
@@ -646,7 +654,7 @@ function membersOf(scope: LoadScope, anchor: Entity, exclude: Entity, good: numb
   return members;
 }
 
-/** The units of `good` the heap by `house`'s door still takes. */
+/** The units of `good` the ground by `house`'s door still takes. */
 function heapRoomAt(scope: LoadScope, house: Entity, good: number): number {
   const { world, ctx, terrain } = scope;
   return doorHeapRoom(world, ctx, terrain, interactionCell(world, ctx, terrain, house), good);
@@ -657,10 +665,16 @@ function reachesCeiling(mark: DeepReadonly<TradeImportMark>, units: number): boo
   return mark.upTo !== TRADE_LIMIT_NONE && units >= mark.upTo;
 }
 
-function unloadInto(world: World, ctx: SystemContext, house: Entity, good: number): TradeAction {
-  const slot = storableFormAt(world, ctx, house, good);
-  const into = slot !== undefined && roomFor(world, ctx, house, slot) > 0 ? house : null;
-  return { kind: 'unload', good, into };
+/** Unloading `good` at the stop's own house: onto its shelf while it has room, else onto the ground by its
+ *  door while that has room (owner ruling: a full store does not block unloading, as a workshop's door
+ *  heap); null once neither has. */
+function unloadAtHome(scope: LoadScope, good: number): StopWork | null {
+  const { world, ctx, stop } = scope;
+  const slot = storableFormAt(world, ctx, stop.house, good);
+  if (slot !== undefined && roomFor(world, ctx, stop.house, slot) > 0) {
+    return { kind: 'unload', good, into: stop.house };
+  }
+  return heapRoomAt(scope, stop.house, good) > 0 ? { kind: 'unload', good, into: null } : null;
 }
 
 /** The goods a house type counts as its own stock, ascending: what a trader may take out of it. */

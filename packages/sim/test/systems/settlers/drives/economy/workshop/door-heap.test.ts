@@ -11,12 +11,12 @@ import type { Entity } from '../../../../../../src/ecs/world.js';
 import { type NodeId, positionOfNode, Simulation } from '../../../../../../src/index.js';
 import { dynamicBlockOverlay } from '../../../../../../src/systems/footprint/index.js';
 import {
-  DOOR_HEAP_LIMIT_UNITS,
   DOOR_HEAP_RADIUS_NODES,
+  doorHeapRoom,
 } from '../../../../../../src/systems/settlers/drives/economy/workshop/door-heap.js';
 import { interactionCell } from '../../../../../../src/systems/settlers/targets/index.js';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../../../../src/systems/spatial/metric.js';
-import { seatStockOf, stockCapacity } from '../../../../../../src/systems/stores/index.js';
+import { MAX_GROUND_STACK, seatStockOf, stockCapacity } from '../../../../../../src/systems/stores/index.js';
 import { testContent } from '../../../../../fixtures/content.js';
 import {
   buildingAt,
@@ -44,6 +44,8 @@ const FOREIGN_FILL = 1;
 /** Ample for a worker to lift, walk and work every unit of the door's heap. */
 const HEAP_TICKS = 6000;
 const CARRY_IN_TICKS = 6000;
+/** Two ground stacks, the most the heap once took. */
+const PAST_TWO_STACKS = 2 * MAX_GROUND_STACK;
 
 interface Mill {
   readonly sim: Simulation;
@@ -93,18 +95,22 @@ function doorOf(sim: Simulation, mill: Entity): NodeId {
 }
 
 describe('a workshop door heap', () => {
-  it('takes a full shelf no store clears up to its limit, and only then reports the shelf', () => {
+  it('takes a full shelf no store clears onto the ground by the door until none there has room, and only then reports the shelf', () => {
     const fixture = fullMill();
     const { sim, mill, worker, shelf } = fixture;
     expect(sim.workStatus(worker)).toBeUndefined();
     runMill(fixture, HEAP_TICKS);
-    expect(heaped(sim, PLANK)).toBe(DOOR_HEAP_LIMIT_UNITS);
-    expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(shelf);
+    const heap = heaped(sim, PLANK);
+    expect(heap).toBeGreaterThan(PAST_TWO_STACKS);
+    // A cycle's output can overrun the shelf by what it makes beyond the last free unit.
+    const held = sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0;
+    expect(held).toBeGreaterThanOrEqual(shelf);
     expect(sim.world.has(worker, Carrying)).toBe(false);
     expect(sim.workStatus(worker)).toMatchObject({ kind: 'outputFull' });
-    expect(seatStockOf(sim.world, PLAYER).units(PLANK)).toBe(shelf + DOOR_HEAP_LIMIT_UNITS);
+    expect(seatStockOf(sim.world, PLAYER).units(PLANK)).toBe(held + heap);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped fixture');
+    expect(doorHeapRoom(sim.world, ctxOf(sim), terrain, doorOf(sim, mill), PLANK)).toBe(0);
     expect(dynamicBlockOverlay(sim.world, ctxOf(sim), terrain).has(doorOf(sim, mill))).toBe(false);
   });
 
@@ -112,14 +118,14 @@ describe('a workshop door heap', () => {
     const fixture = fullMill();
     const { sim } = fixture;
     runMill(fixture, HEAP_TICKS);
+    const heap = heaped(sim, PLANK);
     const hq = buildingAt(sim, HEADQUARTERS, MILL_CELL + 2, MILL_CELL);
     sim.world.add(hq, Owner, { player: PLAYER });
     sim.world.add(settlerAt(sim, MILL_CELL + 2, MILL_CELL, CARRIER, hq), Owner, { player: PLAYER });
-    runMill(fixture, CARRY_IN_TICKS);
-    expect(heaped(sim, PLANK)).toBe(0);
-    expect(sim.world.get(hq, Stockpile).amounts.get(PLANK) ?? 0).toBeGreaterThanOrEqual(
-      DOOR_HEAP_LIMIT_UNITS,
-    );
+    // The mill's wood is no longer kept up, so the heap drains.
+    sim.run(CARRY_IN_TICKS);
+    expect(heaped(sim, PLANK)).toBeLessThan(heap);
+    expect(sim.world.get(hq, Stockpile).amounts.get(PLANK) ?? 0).toBeGreaterThan(PAST_TWO_STACKS);
   });
 
   it('stops a worker on cramped ground with no tile free near the door', () => {

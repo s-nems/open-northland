@@ -20,19 +20,17 @@ import { interactionCell } from '../../../targets/index.js';
 import { carriedGoodForm } from '../delivery-targets.js';
 
 // Owner ruling: a worker whose full output shelf no store can clear sets the goods down at the workshop's
-// door instead of standing idle, where the original stops at the full shelf. Carriers, consumers and the
-// seat's stock read the heap as any other.
+// door instead of standing idle, where the original stops at the full shelf. No amount caps the heap; it
+// stops only once no ground near the door has room. Carriers, consumers and the seat's stock read the heap
+// as any other.
 
-/** The units of one good a door's heap holds before its worker stops (authored): two tiles' stacks, so a
- *  workshop does not turn all its inputs into a heap. */
-export const DOOR_HEAP_LIMIT_UNITS = 2 * MAX_GROUND_STACK;
-
-/** How far from the door the heap counts and may spread, in rings of nodes. Cramped ground with no tile
- *  free this near stops the worker, so the heap never scatters out of the count. */
+/** How far from the door the heap may spread, in rings of nodes: the reach of the search for ground with
+ *  room, which bounds its cost. Ground with no room this near stops the worker. */
 export const DOOR_HEAP_RADIUS_NODES = 3;
 
-/** The units of `good` the heap around `door` still takes: none at its limit or with no tile free. A trader
- *  unloading at its own full stop heaps by the same bound. */
+/** The units of `good` the ground around `door` still takes: the room left in the stacks of every open
+ *  tile within {@link DOOR_HEAP_RADIUS_NODES} that holds no other good. A trader unloading at its own full
+ *  stop heaps by the same rule. */
 export function doorHeapRoom(
   world: World,
   ctx: MapContext,
@@ -42,14 +40,15 @@ export function doorHeapRoom(
 ): number {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const { x, y } = terrain.coordsOf(door);
-  let heaped = 0;
-  let tileFree = false;
+  let room = 0;
   for (let ring = 0; ring <= DOOR_HEAP_RADIUS_NODES; ring++) {
     const offsets = ringOffsetCount(ring);
     for (let i = 0; i < offsets; i++) {
-      const node = terrain.nodeAtClamped(x + ringOffsetDx(ring, i), y + ringOffsetDy(ring, i));
+      const hx = x + ringOffsetDx(ring, i);
+      const hy = y + ringOffsetDy(ring, i);
+      if (!terrain.inBounds(hx, hy)) continue;
+      const node = terrain.nodeAt(hx, hy);
       if (!terrain.isWalkable(node) || blocked.has(node)) continue;
-      const { x: hx, y: hy } = terrain.coordsOf(node);
       let fill = 0;
       let foreign = false;
       for (const e of stockpilesAtNode(world, hx, hy)) {
@@ -59,11 +58,10 @@ export function doorHeapRoom(
         if (held !== null && held !== good) foreign = true;
         fill += stock.amounts.get(good) ?? 0;
       }
-      heaped += fill;
-      tileFree ||= !foreign && fill < MAX_GROUND_STACK;
+      if (!foreign) room += Math.max(0, MAX_GROUND_STACK - fill);
     }
   }
-  return tileFree ? Math.max(0, DOOR_HEAP_LIMIT_UNITS - heaped) : 0;
+  return room;
 }
 
 /** An output stopping `recipes` at `workplace` that `worker` may lift for the door, and how much of it. */

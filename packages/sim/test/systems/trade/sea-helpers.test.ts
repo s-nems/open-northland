@@ -32,10 +32,7 @@ import {
 import { hexDistance, nodeOfPosition } from '../../../src/nav/halfcell.js';
 import { interactionNode } from '../../../src/systems/footprint/index.js';
 import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
-import {
-  DOOR_HEAP_LIMIT_UNITS,
-  DOOR_HEAP_RADIUS_NODES,
-} from '../../../src/systems/settlers/drives/economy/workshop/door-heap.js';
+import { DOOR_HEAP_RADIUS_NODES } from '../../../src/systems/settlers/drives/economy/workshop/door-heap.js';
 import { isLoosePile } from '../../../src/systems/stores/index.js';
 import { ferryHoldOf, traderHoldOf } from '../../../src/systems/trade/hold.js';
 import { canAttachToVehicle } from '../../../src/systems/vehicles/crew.js';
@@ -369,7 +366,7 @@ describe('helpers at work', () => {
     expect(stockOf(sim, west, WOOD)).toBe(UP_TO);
   });
 
-  it("set a good for a full stop down in the heap by the stop's door, no further than its bound", () => {
+  it("set a good for a full stop down on the ground by the stop's door, not by the ship's", () => {
     const sim = newSim();
     const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, HEADQUARTERS_WOOD_ROOM]]);
     const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
@@ -391,9 +388,9 @@ describe('helpers at work', () => {
       const { x, y } = sim.world.get(pile, Position);
       farthest = Math.max(farthest, hexDistance(nodeOfPosition(x, y), { hx: door.x, hy: door.y }));
     }
-    expect(heaped).toBe(DOOR_HEAP_LIMIT_UNITS);
+    expect(heaped).toBe(LOAD);
     expect(farthest).toBeLessThanOrEqual(DOOR_HEAP_RADIUS_NODES);
-    expect(shipLine(sim, ship, WOOD).current).toBe(LOAD - DOOR_HEAP_LIMIT_UNITS);
+    expect(shipLine(sim, ship, WOOD).current).toBe(0);
   });
 
   it('leaves the ship with no helper behind and no unit lost', () => {

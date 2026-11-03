@@ -29,6 +29,7 @@ import {
   ONE,
   parseSaveGame,
   playerCommand,
+  positionOfNode,
   restoreSimulation,
   Simulation,
   serializeSaveGame,
@@ -36,8 +37,10 @@ import {
 import { hexDistance, nodeOfPosition } from '../../../src/nav/halfcell.js';
 import { AI_HANDLER_ROUND_TICKS } from '../../../src/systems/ai-shared/cadence.js';
 import { interactionNode, vehicleAnchor } from '../../../src/systems/footprint/index.js';
-import { DOOR_HEAP_LIMIT_UNITS } from '../../../src/systems/settlers/drives/economy/workshop/door-heap.js';
-import { isLoosePile } from '../../../src/systems/stores/index.js';
+import { DOOR_HEAP_RADIUS_NODES } from '../../../src/systems/settlers/drives/economy/workshop/door-heap.js';
+import { interactionCell } from '../../../src/systems/settlers/targets/index.js';
+import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../src/systems/spatial/metric.js';
+import { isLoosePile, MAX_GROUND_STACK } from '../../../src/systems/stores/index.js';
 import {
   AI_STOCK_REFILL_LEVEL,
   AI_STOCK_REFILL_TURNS,
@@ -116,8 +119,10 @@ const WOOD_DRAWN_DOWN = 2;
 const WOOD_KEPT = 4;
 /** The wood a headquarters stores, by the fixture. */
 const HEADQUARTERS_WOOD_ROOM = 150;
-/** More wood than one ground stack holds, so the heap spreads over a second tile. */
-const WOOD_SENT = DOOR_HEAP_LIMIT_UNITS;
+/** More wood than two ground stacks hold, so the heap spreads over a third tile. */
+const WOOD_SENT = 3 * MAX_GROUND_STACK;
+/** Planks a trading post holds: more than three ground stacks, a whole number of two-plank batches. */
+const PARTNER_PLANKS = 16;
 
 function houseAt(
   sim: Simulation,
@@ -284,6 +289,39 @@ function offerWoodForPlanks(sim: Simulation, wood = 1, planks = 2): void {
   });
 }
 
+/** A route from a home whose plank shelf is full to the trading post, trading on its one agreement. */
+function fullHomeTrade(onFoot: boolean) {
+  const sim = newSim();
+  befriend(sim, NEIGHBOUR);
+  offerWoodForPlanks(sim);
+  const home = houseAt(sim, NEAR_X, HUMAN, [
+    [WOOD, PLENTY_OF_WOOD],
+    [PLANK, HEADQUARTERS_WOOD_ROOM],
+  ]);
+  const post = houseAt(sim, FAR_X, NEIGHBOUR, [[PLANK, PARTNER_PLANKS]], TRADING_POST_ID);
+  const trader = onFoot ? traderOnFoot(sim, NEAR_X) : traderAt(sim, NEAR_X);
+  attach(sim, trader, home);
+  attach(sim, trader, post);
+  sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeAgreement', entity: trader, agreement: 0 }));
+  return { sim, home, post };
+}
+
+/** Cover every tile within the door heap's reach of `house` with a unit of another good. */
+function coverDoorGround(sim: Simulation, house: Entity): void {
+  const ctx = ctxOf(sim);
+  const terrain = ctx.terrain;
+  if (terrain === undefined) throw new Error('mapless sim');
+  const door = interactionCell(sim.world, ctx, terrain, house);
+  const { x, y } = terrain.coordsOf(door);
+  for (let ring = 0; ring <= DOOR_HEAP_RADIUS_NODES; ring++) {
+    for (let i = 0; i < ringOffsetCount(ring); i++) {
+      const pile = sim.world.create();
+      sim.world.add(pile, Position, positionOfNode(x + ringOffsetDx(ring, i), y + ringOffsetDy(ring, i)));
+      sim.world.add(pile, Stockpile, { amounts: new Map([[FOOD, 1]]) });
+    }
+  }
+}
+
 describe('a trader between its own houses', () => {
   it('carts a good marked at one house only over to it, however much it already holds', () => {
     const sim = newSim();
@@ -319,7 +357,7 @@ describe('a trader between its own houses', () => {
     const trader = traderOnFoot(sim, NEAR_X);
     woodRoute(sim, trader, near, far);
 
-    sim.run(SHUTTLE_TICKS);
+    sim.run(2 * SHUTTLE_TICKS);
 
     expect(stockOf(sim, near, WOOD)).toBe(0);
     expect(holdOf(sim, trader, WOOD)).toBe(0);
@@ -968,6 +1006,30 @@ describe('a trader at a foreign house', () => {
     expect(stockOf(sim, post, WOOD)).toBe(2 * CART_OVERSIZED_GIVE);
     expect(stockOf(sim, home, PLANK)).toBe(4);
     expect(goodsTradedWith(sim.world, HUMAN, NEIGHBOUR)).toBe(4);
+  });
+
+  it('sets the take goods a full home refuses down on the ground by its door', () => {
+    for (const onFoot of [true, false]) {
+      const { sim, home, post } = fullHomeTrade(onFoot);
+
+      sim.run(2 * SHUTTLE_TICKS);
+
+      expect(stockOf(sim, post, PLANK)).toBe(0);
+      expect(groundUnits(sim, PLANK)).toBe(PARTNER_PLANKS);
+      expect(stockOf(sim, home, PLANK)).toBe(HEADQUARTERS_WOOD_ROOM);
+    }
+  });
+
+  it('starts no batch for a full home whose door has no ground with room', () => {
+    for (const onFoot of [true, false]) {
+      const { sim, home, post } = fullHomeTrade(onFoot);
+      coverDoorGround(sim, home);
+
+      sim.run(SHUTTLE_TICKS);
+
+      expect(stockOf(sim, post, PLANK)).toBe(PARTNER_PLANKS);
+      expect(stockOf(sim, home, WOOD)).toBe(PLENTY_OF_WOOD);
+    }
   });
 
   it('brings a unit in its hands home once its agreement is dropped', () => {
