@@ -386,9 +386,10 @@ function splitParty(
 
 /**
  * Fitting out: the second ship is claimed as soon as it lies free. A scout ship that is the trade ship
- * carries the whole party at once, any other past {@link COLONY_FIT_OUT_TICKS} with none; with no ship at all the voyage fails. The same span then runs
- * for the manifest to lie in the home stock and a party to be spared: the site is looked at once more and
- * loading starts. A scout ship the party does not need goes free here.
+ * carries the whole party at once, any other past {@link COLONY_FIT_OUT_TICKS} with none; with no ship at
+ * all the voyage fails. The same span then runs for the manifest to lie in the home stock and a party to be
+ * spared: the site is looked at once more and loading starts. A scout ship the party does not need goes
+ * free here.
  */
 export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx, seat } = env;
