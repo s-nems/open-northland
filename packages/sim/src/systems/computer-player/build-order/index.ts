@@ -78,6 +78,7 @@ import {
 import { DEFENCE_LINES, seatBuildOrder, seatDefenceFirst, seatSitePace } from './seat-order.js';
 import { type Siege, seatSiege } from './siege.js';
 import { StalledSearches } from './stalled-searches.js';
+import { homeStoreLift } from './store-lift.js';
 import {
   coverageLaneSites,
   coverageOf,
@@ -295,6 +296,9 @@ function runBuildOrder(
   // Scanned once the order has something to do: an idle decision never walks the map's people.
   let siege: Siege | null = null;
   const siegeOf = (): Siege => (siege ??= seatSiege(world, ctx, terrain, player, owned));
+  // A warehouse below the top tier goes up to it ahead of the steps, on one of the pace's sites.
+  const lift = earnedOnly ? null : homeStoreLift(world, ctx, player, owned, base);
+  if (lift !== null && !siegeOf().attacked) return started(lift);
   const anchor = anchorNodeOf(world, base);
   if (anchor === null) return [];
   const index = contentIndex(ctx.content);
