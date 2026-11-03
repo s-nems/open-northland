@@ -1,7 +1,7 @@
 import { Settler, SiteAssignment } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import { NO_COMPONENT, type TerrainGraph } from '../../../nav/terrain/index.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
@@ -92,9 +92,9 @@ function hasOpenSite(sites: ReadonlyMap<Entity, OwnedRoadSite>, posted: Readonly
   return false;
 }
 
-/** The seat's unclaimed road site nearest `e` by Manhattan node distance, ties to the lower entity id,
- *  leaving out those `posted` this decision: a road site takes one builder, so one another builder holds
- *  has no room for a roadster. */
+/** The seat's unclaimed road site on `e`'s land nearest him by Manhattan node distance, ties to the lower
+ *  entity id, leaving out those `posted` this decision: a road site takes one builder, so one another
+ *  builder holds has no room for a roadster, and a run never starts across water. */
 function nearestOpenSite(
   world: World,
   terrain: TerrainGraph,
@@ -104,9 +104,11 @@ function nearestOpenSite(
 ): { site: Entity; distance: number } | null {
   const here = anchorNodeOf(world, e);
   if (here === null) return null;
+  const land = terrain.componentOf(terrain.nodeAtClamped(here.hx, here.hy));
   let best: { site: Entity; distance: number } | null = null;
   for (const [site, { node, open }] of sites) {
     if (!open || posted.has(site)) continue;
+    if (land !== NO_COMPONENT && terrain.componentOf(node) !== land) continue;
     const distance = Math.abs(terrain.xOf(node) - here.hx) + Math.abs(terrain.yOf(node) - here.hy);
     if (best === null || distance < best.distance || (distance === best.distance && site < best.site)) {
       best = { site, distance };

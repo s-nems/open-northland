@@ -42,6 +42,7 @@ import {
   idleReplanPeriodOf,
 } from '../../../../src/systems/settlers/planner/idle-replan.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
+import { colonyWorld } from '../../../fixtures/colony-islands.js';
 import {
   BUILDER,
   collectModule,
@@ -94,6 +95,15 @@ const HQ_STONE_CAPACITY = 150;
 const RUN_END_TICKS = 600;
 /** Builders the crew cases give the seat. */
 const CREW_CASE_BUILDERS = 6;
+/** Road sites on the east island of the colony fixture, and where its home builders stand on the west. */
+const ISLAND_SITES = [
+  { x: 176, y: 100 },
+  { x: 182, y: 100 },
+];
+const HOME_BUILDERS = [
+  { x: 20, y: 80 },
+  { x: 24, y: 80 },
+];
 
 /** {@link roadSim} whose builders are busy raising {@link BUSY_SITES}. */
 function busySim(seed: number): Simulation {
@@ -296,6 +306,19 @@ describe('road build module (roadBuild)', () => {
     const later = collectModule.run(backlog.world, ctxOf(backlog, backlog.tick), SEAT);
     expect(later.filter((c) => c.kind === 'assignBuilder')).toEqual([]);
     for (const e of roadsters(backlog)) expect(named(later, e)).toEqual([]);
+  });
+
+  it('never sends a home builder on a road run that starts across the water', () => {
+    const sim = colonyWorld();
+    for (const at of HOME_BUILDERS)
+      sim.enqueueSetup({ kind: 'spawnSettler', jobType: BUILDER, ...at, tribe: VIKING, owner: SEAT });
+    for (const at of ISLAND_SITES)
+      sim.enqueueSetup({ kind: 'placeRoadSite', ...at, tribe: VIKING, owner: SEAT });
+    sim.step();
+
+    const commands = collectModule.run(sim.world, ctxOf(sim, sim.tick), SEAT);
+
+    expect(commands.filter((c) => c.kind === 'assignBuilder')).toEqual([]);
   });
 
   it('hands a roadster back when no road site is left, and posts one again for new sites', () => {
