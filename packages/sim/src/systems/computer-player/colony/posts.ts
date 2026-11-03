@@ -33,6 +33,7 @@ import {
   legalFlagNodeTest,
   type TakenFlagNodes,
 } from '../workforce/flag-spots.js';
+import { rowPlan } from '../workforce/staffing-rows.js';
 import { colonists, colonyOrigin, storeOf } from './founding.js';
 import { homeSupply } from './line.js';
 import { MEN_PER_WOMAN } from './people.js';
@@ -305,8 +306,8 @@ function crewOrders(
     settlerMeetsNeed(world, ctx, needSubjectOf(world, man), 'job', job);
   const seat = (type: BuildingType, e: Entity, carriers: boolean): void => {
     const held = assignedWorkers(world, e);
-    for (const { jobType, count } of type.workers) {
-      if (isCarrierJob(ctx, jobType) !== carriers || (genericCollectorJob(ctx) ?? -1) === jobType) continue;
+    for (const { jobType, count } of colonySeats(ctx, type)) {
+      if (isCarrierJob(ctx, jobType) !== carriers) continue;
       let open = count - held.filter((w) => world.get(w, Settler).jobType === jobType).length;
       while (open-- > 0) {
         const fits = (man: Entity): boolean =>
@@ -339,10 +340,30 @@ export function atWorkshop(env: ColonyEnv, e: Entity): boolean {
   return contentIndex(ctx.content).buildings.get(building.buildingType)?.kind === BUILDING_KIND.workplace;
 }
 
-/** The seats of `type` the colony fills: every trade but the gatherer's ({@link crewOrders}). */
-function seatsOf(ctx: SystemContext, type: BuildingType): number {
+/**
+ * The seats of each trade of `type` the colony fills: the shared staffing row's target tier, so a farm takes
+ * two farmers, a mill one miller, a bakery one baker and its porter, and a well or a hive none (owner ruling:
+ * the colony's farm crews ran every slot). A gatherer's seat stays open ({@link crewOrders}).
+ */
+export function colonySeats(
+  ctx: SystemContext,
+  type: BuildingType,
+): readonly { readonly jobType: number; readonly count: number }[] {
+  const { plan } = rowPlan(ctx, type);
   const gatherer = genericCollectorJob(ctx);
-  return type.workers.reduce((sum, slot) => sum + (slot.jobType === gatherer ? 0 : slot.count), 0);
+  let carriers = plan.carrierTarget;
+  return type.workers.flatMap(({ jobType, count }) => {
+    if (jobType === gatherer) return [];
+    if (!isCarrierJob(ctx, jobType)) return [{ jobType, count: Math.min(count, plan.operatorTarget) }];
+    const seated = Math.min(count, carriers);
+    carriers -= seated;
+    return seated > 0 ? [{ jobType, count: seated }] : [];
+  });
+}
+
+/** The seats of `type` the colony fills, all trades together ({@link colonySeats}). */
+function seatsOf(ctx: SystemContext, type: BuildingType): number {
+  return colonySeats(ctx, type).reduce((sum, slot) => sum + slot.count, 0);
 }
 
 /** The mouths the food hands of `posts`, the ones the colony can fill, and its kitchens' crews feed. */
