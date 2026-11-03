@@ -340,17 +340,32 @@ describe('updateSettings', () => {
   const VIKINGS = 1;
   const TRIBE_NAMES: Readonly<Record<string, string>> = { ger: 'Nordmänner', rus: 'Викинги' };
 
-  /** Answers each language's strings only when the test releases it, so installs can overlap. */
+  /** Answers language strings on release, including releases that precede the async content fetch. */
   function heldStrings(): (lang: string) => void {
     const pending = new Map<string, () => void>();
+    const released = new Set<string>();
     vi.stubGlobal('fetch', (url: string) => {
-      const lang = /strings\/(\w+)\.json$/.exec(url)?.[1] ?? '';
+      const parts = String(url).split('/');
+      const filename = parts.at(-1) ?? '';
+      const lang =
+        parts.at(-2) === 'strings' && filename.endsWith('.json') ? filename.slice(0, -5) : undefined;
+      // The name overlay also reads the served IR for mod-added civilizations.
+      if (lang === undefined) return Promise.resolve(new Response(JSON.stringify({ tribes: [] })));
       const body = { tribes: { [VIKINGS]: TRIBE_NAMES[lang] } };
-      return new Promise<Response>((resolve) =>
-        pending.set(lang, () => resolve(new Response(JSON.stringify(body)))),
-      );
+      return new Promise<Response>((resolve) => {
+        const complete = () => {
+          pending.delete(lang);
+          resolve(new Response(JSON.stringify(body)));
+        };
+        pending.set(lang, complete);
+        if (released.delete(lang)) complete();
+      });
     });
-    return (lang) => pending.get(lang)?.();
+    return (lang) => {
+      const complete = pending.get(lang);
+      if (complete === undefined) released.add(lang);
+      else complete();
+    };
   }
 
   // Drop the fresh graph from the shared registry too, or the next test file would import it.

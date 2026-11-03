@@ -11,6 +11,7 @@ import {
   messages,
   type NameOverlay,
 } from '../../i18n/index.js';
+import { loadIr } from '../ir/load.js';
 import { type GuiStrings, loadGuiStrings } from './gfx.js';
 
 /** The content rows that turn a string table's type id into the slug a catalog keys the name by. The
@@ -67,6 +68,27 @@ function sharedKeys<T, K>(rows: readonly T[], key: (row: T) => K): Set<K> {
 /** The tribes table is keyed by tribe id, which is also the catalog's key, so it needs no content rows. */
 function tribeNamesOf(strings: GuiStrings): Record<number, string> {
   return Object.fromEntries(Object.entries(strings.tribes ?? {}).map(([id, name]) => [Number(id), name]));
+}
+
+/** The content's own tribe names for the ids the locale catalogs do not translate: a pack's new people
+ *  shows as its tribes row's name instead of a bare id, on every surface that reads the catalog. Only
+ *  an array of rows counts - a stub or another build's document carries none. */
+function contentTribeNames(
+  tribes:
+    | readonly {
+        readonly typeId?: number;
+        readonly name?: string | undefined;
+      }[]
+    | undefined,
+): Record<number, string> {
+  const out: Record<number, string> = {};
+  if (!Array.isArray(tribes)) return out;
+  for (const row of tribes) {
+    if (row.typeId === undefined || row.name === undefined) continue;
+    if (messages().tribeNames[row.typeId] !== undefined) continue;
+    out[row.typeId] = row.name;
+  }
+  return out;
 }
 
 /** The job each profession key names: the picker roster, the off-roster keys, and every other authored
@@ -130,7 +152,7 @@ export function originalNameOverlay(strings: GuiStrings, content: NameContent): 
       ([, key]) => key,
       ([type]) => type,
     ),
-    tribeNames: tribeNamesOf(strings),
+    tribeNames: { ...tribeNamesOf(strings), ...contentTribeNames(content.tribes) },
   };
 }
 
@@ -142,11 +164,15 @@ export function installOriginalNames(locale: Locale, strings: GuiStrings, conten
 /**
  * `locale`'s original tribe names, which need no content rows, so every entry shows the same names
  * whether or not a world booted in this document; a world's {@link installOriginalNames} keeps them.
- * Without the pipeline's strings it is empty and the authored catalog stays.
+ * The served IR's own tribe rows name a pack's people, so their names join the overlay; without the
+ * pipeline's strings it is still the content's names over the authored catalog.
  */
 export async function originalTribeNameOverlay(locale: Locale): Promise<NameOverlay> {
-  const strings = await loadGuiStrings(locale);
-  return strings === null ? {} : { tribeNames: tribeNamesOf(strings) };
+  const [strings, ir] = await Promise.all([loadGuiStrings(locale), loadIr()]);
+  // The pipeline's strings name the authored tribes; the content's rows name a pack's people beside
+  // them. No name from either keeps the overlay empty, so the authored catalog stands.
+  const names = { ...contentTribeNames(ir?.tribes), ...(strings === null ? {} : tribeNamesOf(strings)) };
+  return Object.keys(names).length === 0 ? {} : { tribeNames: names };
 }
 
 /** Show `locale`'s original tribe names, as a screen that picks a language installs them. */

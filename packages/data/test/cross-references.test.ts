@@ -26,6 +26,9 @@ function base(): Record<string, unknown> {
   };
 }
 
+/** A minimal civilization tribe row: flagged, on a free id, with no rules of its own. */
+const CIVILIZATION = { typeId: 42, id: 'northmen', civilization: true };
+
 const UNKNOWN = 99;
 /** A two-stage cadaver: each `transition` tuple is a pluck (event 3) into the other stage, yielding good
  *  1 then good 2. */
@@ -595,6 +598,19 @@ describe('attack alert references', () => {
   it('rejects an alert naming no static group', () => {
     expect(() => parseWith({ sounds: sounds('Attack Alert Absent') })).toThrow(
       /attack alert 1\/units names unknown sound group "Attack Alert Absent"/,
+    );
+  });
+});
+
+describe('civilization tribe flags', () => {
+  it('accepts a people flagged onto a free tribe id', () => {
+    expect(() => parseWith({ tribes: [CIVILIZATION] })).not.toThrow();
+  });
+
+  it('rejects a people flagged onto an animal species', () => {
+    const bear = { id: 'bears', tribeType: 8 };
+    expect(() => parseWith({ tribes: [{ ...CIVILIZATION, typeId: 8 }], animals: [bear] })).toThrow(
+      /tribe "northmen" is flagged civilization, but tribe id 8 is an animal species/,
     );
   });
 });

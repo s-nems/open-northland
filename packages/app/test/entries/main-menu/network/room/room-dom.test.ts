@@ -295,7 +295,7 @@ describe('room guidance and chat', () => {
     if (!checks || !roster) throw new Error('Missing room panels');
     expect(checks.compareDocumentPosition(roster) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
   });
-  it('shows a late map preview and preserves the chosen view across room updates', () => {
+  it('shows a late map preview and preserves the chosen view across room updates', async () => {
     let item: MapSelectItem | null = null;
     const { room } = mount((world) => (world.kind === 'map' ? item : null));
     const view = lobby();
@@ -312,12 +312,12 @@ describe('room guidance and chat', () => {
     room.update(view, true);
     expect(card?.hidden).toBe(false);
     const image = card?.querySelector<HTMLImageElement>('img');
-    expect(image?.getAttribute('src')).toBe('/maps/test.png');
+    await vi.waitFor(() => expect(image?.getAttribute('src')).toBe('/maps/test.png'));
     const mapButton = [...(card?.querySelectorAll('button') ?? [])].find(
       (button) => button.textContent === messages().mainMenu.mapSelect.previewViews.map,
     );
     mapButton?.click();
-    expect(image?.getAttribute('src')).toBe('/maps/test.map.png');
+    await vi.waitFor(() => expect(image?.getAttribute('src')).toBe('/maps/test.map.png'));
     room.update({ ...view, seats: view.seats.map((seat) => ({ ...seat, ready: true })) }, true);
     expect(image?.getAttribute('src')).toBe('/maps/test.map.png');
     item = null;

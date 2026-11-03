@@ -1,7 +1,14 @@
 import { zipSync } from 'fflate';
 import { describe, expect, it, vi } from 'vitest';
 import { encodeC2m } from '../../formats/test/fixtures/c2m.js';
-import { detectArchiveFormat, openArchive, openC2m, openRar, openZip } from '../src/archives/open.js';
+import {
+  detectArchiveFormat,
+  openArchive,
+  openC2m,
+  openRar,
+  openZip,
+  openZipFiles,
+} from '../src/archives/open.js';
 import { MapImportError, type MapImportFailure } from '../src/errors.js';
 import { DEFAULT_IMPORT_LIMITS } from '../src/limits.js';
 import { treeFromFolder } from '../src/tree.js';
@@ -116,6 +123,19 @@ describe('openZip', () => {
     expect(await limited({ entries: 2 })).toBe('too-large');
     expect(await limited({ depth: 1 })).toBe('too-large');
     expect((await openZip(zip, { limits: { ...DEFAULT_IMPORT_LIMITS, entries: 3 } })).files.size).toBe(2);
+  });
+});
+
+describe('openZipFiles', () => {
+  it('returns arbitrary files while applying the archive path and byte limits', async () => {
+    const zip = zipSync({ 'content/ir.json': bytes(1, 2), 'content/bobs/atlas.png': bytes(3) });
+    const tree = await openZipFiles(zip);
+    expect([...tree.files.keys()].sort()).toEqual(['content/bobs/atlas.png', 'content/ir.json']);
+    expect(Array.from(tree.files.get('content/ir.json') ?? [])).toEqual([1, 2]);
+    expect(await failure(openZipFiles(zipSync({ '../ir.json': bytes(1) })))).toBe('unsupported-archive');
+    expect(await failure(openZipFiles(zip, { limits: { ...DEFAULT_IMPORT_LIMITS, entryBytes: 1 } }))).toBe(
+      'too-large',
+    );
   });
 });
 

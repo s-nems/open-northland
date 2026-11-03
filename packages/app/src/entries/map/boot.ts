@@ -16,6 +16,7 @@ import type { Application } from 'pixi.js';
 import { MONSTER_TRIBES } from '../../catalog/creatures.js';
 import { loadAmbientCreatures } from '../../content/animal-gfx/index.js';
 import { authoredBuildingSheet } from '../../content/building-gfx/authored.js';
+import { loadCivilizations } from '../../content/civilizations.js';
 import { loadIr } from '../../content/ir/load.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { loadGroundWaves } from '../../content/map/ground-waves.js';
@@ -285,6 +286,9 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
       return null;
     }
     const ir = await irLoad;
+    // The HUD's civilization surfaces read the content's list, which a pack's flagged tribes rows
+    // extends; the IR is in hand here, so the list is current before any window opens.
+    void loadCivilizations();
     // Every civilization the map fields brings its own building and settler pages, so the sheet loads
     // exactly the seats' and the authored entities' tribes.
     const seating = sessionSeating(session, script, ir ?? {});

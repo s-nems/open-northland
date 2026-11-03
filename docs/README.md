@@ -18,6 +18,7 @@ behavior. Open deeper format references when the task needs their evidence.
 Other references:
 
 - [`API.md`](API.md): catalogue API, offline replay and map import flow
+- [`MODS.md`](MODS.md): install and author ZIP-based content packs
 - [`BROWSER-DEVELOPMENT.md`](BROWSER-DEVELOPMENT.md): browser entries and screenshots
 - [`PERFORMANCE.md`](PERFORMANCE.md): profiling and benchmark commands
 - [`BUILDING.md`](BUILDING.md): builds, packaging and images

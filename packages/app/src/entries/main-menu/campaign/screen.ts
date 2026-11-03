@@ -38,6 +38,7 @@ import {
   unlockedStages,
 } from './model.js';
 import './screen.css';
+import { moddedContentAssetUrl } from '../../../content/net.js';
 import { contentUrl } from '../../../content/url.js';
 import { campaignTribeChoice } from './tribe-choice.js';
 
@@ -110,7 +111,9 @@ function campaignTab(campaign: Campaign, language: MapTextLanguage): HTMLButtonE
   }
   const logo = node('img', 'campaign-screen__campaign-logo');
   logo.alt = title;
-  logo.src = contentUrl(url);
+  void moddedContentAssetUrl(contentUrl(url)).then((resolved) => {
+    if (logo.isConnected) logo.src = resolved;
+  });
   logo.addEventListener('error', () => logo.replaceWith(text()), { once: true });
   button.append(logo);
   return button;

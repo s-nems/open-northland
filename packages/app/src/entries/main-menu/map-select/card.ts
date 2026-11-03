@@ -1,4 +1,5 @@
 import { playerSwatchHex } from '../../../catalog/roster.js';
+import { moddedContentAssetUrl } from '../../../content/net.js';
 import { bcp47Tag, formatMessage, messages, pluralForm, tribeName } from '../../../i18n/index.js';
 import { segControl } from '../../../view/settings/controls.js';
 import {
@@ -31,13 +32,15 @@ export function paintMapThumb(thumb: HTMLElement, item: MapSelectItem): void {
     return;
   }
   const img = document.createElement('img');
-  img.src = mapPreviewUrl(item, view);
   img.alt = '';
   img.loading = 'lazy';
   img.dataset.view = view;
   // A missing file leaves the thumb's gradient instead of a broken-image glyph.
   img.addEventListener('error', () => img.remove());
   thumb.replaceChildren(img);
+  void moddedContentAssetUrl(mapPreviewUrl(item, view)).then((url) => {
+    if (img.isConnected) img.src = url;
+  });
 }
 
 /** The row/card meta line: category name, plus the roster size when the map ships one. */
@@ -166,8 +169,12 @@ export function createMapDetailsCard(): MapDetailsCard {
       return;
     }
     previewImg.dataset.view = view;
-    previewImg.src = mapPreviewUrl(item, view);
     previewImg.hidden = false;
+    const preview = previewImg;
+    void moddedContentAssetUrl(mapPreviewUrl(item, view)).then((url) => {
+      if (shown === item && preview === previewImg && preview.dataset.view === view && preview.isConnected)
+        preview.src = url;
+    });
   };
 
   return {

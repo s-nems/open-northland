@@ -262,11 +262,13 @@ export interface ContentIr {
   /** The `vehicletype` rows, narrowed to the join keys a mission script names a vehicle by. */
   readonly vehicles?: readonly { typeId?: number; id?: string; name?: string; passengerSlots?: number }[];
   /** `name` is a species join key too: a map's `setanimal` authors the display name (`evil hares`).
-   *  `atomicBindings` is the tribe's `setatomic <job> <atomic> "<animation>"` table. */
+   *  `atomicBindings` is the tribe's `setatomic <job> <atomic> "<animation>"` table. A mod's
+   *  `civilization` flag marks a new people (`docs/MODS.md`). */
   readonly tribes?: readonly {
     typeId?: number;
     id?: string;
     name?: string;
+    civilization?: boolean;
     atomicBindings?: readonly { jobType: number; atomicId: number; animation: string }[];
   }[];
   /** The `atomicanimations.ini` clips, narrowed to the `length` in ticks each runs for. */

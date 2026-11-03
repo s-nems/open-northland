@@ -25,6 +25,17 @@ export interface OpenOptions {
   readonly name?: string;
 }
 
+/** Opens every regular file in one ZIP archive without interpreting its contents or nested archives. */
+export async function openZipFiles(bytes: Uint8Array, options: OpenOptions = {}): Promise<MapTree> {
+  const limits = options.limits ?? DEFAULT_IMPORT_LIMITS;
+  const source = options.name ?? 'zip';
+  assertArchiveSize(bytes, limits, source);
+  const builder = new TreeBuilder(limits, source);
+  const entries = await unpackZip(bytes, builder, (path) => !path.endsWith('/'));
+  for (const entry of entries) builder.add(entry.path, entry.bytes);
+  return builder.build();
+}
+
 function unpackers(options: OpenOptions): (format: ArchiveFormat) => Unpack {
   let wasm: Promise<ArrayBuffer> | undefined;
   const loadWasm = async (): Promise<ArrayBuffer> => {

@@ -15,6 +15,7 @@ import {
   type MissionSeatTribe,
   systems,
 } from '@open-northland/sim';
+import { civilizationTribes } from '../../content/civilizations.js';
 import type { AuthoredPlacement } from '../world/authored-placements.js';
 import type { MapScriptWorld } from '../world/build.js';
 import type { AuthoredJoinRows } from '../world/content-joins.js';
@@ -67,8 +68,9 @@ interface SeatBuildingRow {
   readonly recordFootprints?: readonly BuildingRecordFootprint[];
 }
 
-/** The content rows the remap reads: the drawn house types, the hero jobs and the house footprints. */
-export type SeatTribeRows = Pick<AuthoredJoinRows, 'buildingBobs' | 'jobs'> & {
+/** The content rows the remap reads: the drawn house types, the hero jobs, the house footprints and the
+ *  tribes whose flagged rows join the civilization list. */
+export type SeatTribeRows = Pick<AuthoredJoinRows, 'buildingBobs' | 'jobs' | 'tribes'> & {
   readonly buildings?: readonly SeatBuildingRow[];
 };
 
@@ -284,7 +286,9 @@ export function sessionSeating(
   rows: SeatTribeRows,
 ): SessionSeating {
   if (script === null) return { players: [], remap: MAP_TRIBES };
-  const remap = seatTribeRemap(seatFlows(session, script), rows);
+  // The content's own civilization list: the authored five plus a pack's flagged tribes rows.
+  const civilizations = new Set(civilizationTribes(rows.tribes));
+  const remap = seatTribeRemap(seatFlows(session, script, civilizations), rows);
   return { players: seatedRoster(script.players, remap), remap };
 }
 

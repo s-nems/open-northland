@@ -1,7 +1,9 @@
 import { IR_VERSION, parseContentSet } from '@open-northland/data';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadLobbyCompatibility } from '../../src/content/lobby-identity.js';
+import * as modStore from '../../src/content/mods/store.js';
 import { verifyMapDocuments } from '../../src/content/transfer/index.js';
+import { contentFetch } from '../../src/content/url.js';
 
 const IR = parseContentSet({
   manifest: { version: IR_VERSION, generatedFrom: { data: 'synthetic' } },
@@ -10,6 +12,11 @@ const IR = parseContentSet({
   buildings: [],
 });
 const MAP = { width: 1, height: 1, typeIds: [0] };
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function fetchFiles(files: Record<string, unknown>): typeof fetch {
   return async (input) => {
@@ -50,6 +57,17 @@ describe('lobby world identity', () => {
     const a = await identity({ '/ir.json': { ...IR, goods } });
     const b = await identity({ '/ir.json': { ...IR, goods: [{ ...goods[0], name: 'spring' }] } });
     expect(a.content).not.toBe(b.content);
+  });
+
+  it('includes the selected mod archives in world compatibility', async () => {
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify(IR), { status: 200 }));
+    vi.spyOn(modStore, 'activeContentModIds')
+      .mockResolvedValueOnce(['a'.repeat(64)])
+      .mockResolvedValueOnce(['b'.repeat(64)]);
+    const documents = verifyMapDocuments('island', MAP, null);
+    const first = await loadLobbyCompatibility('island', contentFetch, 'build-a', documents);
+    const second = await loadLobbyCompatibility('island', contentFetch, 'build-a', documents);
+    expect(first.content).not.toBe(second.content);
   });
 
   it('reports retained verified inputs without re-fetching map or script', async () => {

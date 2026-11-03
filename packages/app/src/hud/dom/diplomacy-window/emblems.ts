@@ -1,6 +1,6 @@
-import { isCivilizationTribe } from '@open-northland/data';
 import { type DrawItem, resolveLayers, type SpriteSheet } from '@open-northland/render';
 import { JOB_SOLDIER_UNARMED } from '../../../catalog/jobs.js';
+import { liveCivilizationTribes } from '../../../content/civilizations.js';
 import type { FigureFrames } from '../../figures/figure-frames.js';
 import { growFigureBounds } from '../../figures/vehicle-fit.js';
 import type { BuildingThumbs } from '../building-thumb.js';
@@ -24,7 +24,9 @@ export function createNationEmblems(
 ): NationEmblemPainter {
   const pictures = createStaticPictures();
   return (image, tribe, player, size) => {
-    if (isCivilizationTribe(tribe))
+    // The content's civilization list, which a pack's flagged tribes rows extends; the boot loaded it
+    // before any HUD reads it.
+    if (liveCivilizationTribes().includes(tribe))
       return headquarters !== undefined && thumbs.paint(image, headquarters, size, tribe);
     // An unloaded tribe must not silently acquire the base civilization's character.
     if (

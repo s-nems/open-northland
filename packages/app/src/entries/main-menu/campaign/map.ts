@@ -1,5 +1,6 @@
 import type { Campaign, CampaignRoute, MapTextLanguage } from '@open-northland/data';
 import { localizedText } from '../../../campaign/locale.js';
+import { moddedContentAssetUrl } from '../../../content/net.js';
 import { contentUrl } from '../../../content/url.js';
 import { node } from '../dom.js';
 import type { UnlockedStage } from './model.js';
@@ -26,8 +27,10 @@ function placeOnMap(element: HTMLElement, route: CampaignRoute): void {
 
 function routeImage(route: CampaignRoute): HTMLImageElement {
   const image = node('img', 'campaign-map__route');
-  image.src = contentUrl(route.url);
   image.alt = '';
+  void moddedContentAssetUrl(contentUrl(route.url)).then((url) => {
+    if (image.isConnected) image.src = url;
+  });
   placeOnMap(image, route);
   return image;
 }
@@ -45,10 +48,14 @@ function revealingRoute(route: CampaignRoute, from: { readonly x: number; readon
   const born = performance.now();
   const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const source = new Image();
-  source.src = contentUrl(route.url);
-  void source
-    .decode()
+  void moddedContentAssetUrl(contentUrl(route.url))
+    .then((url) => {
+      if (!canvas.isConnected) return;
+      source.src = url;
+      return source.decode();
+    })
     .then(() => {
+      if (!canvas.isConnected) return;
       const { naturalWidth: width, naturalHeight: height } = source;
       canvas.width = width;
       canvas.height = height;
@@ -97,7 +104,9 @@ export function campaignMap(
   const root = node('div', 'campaign-map');
   const background = node('img', 'campaign-map__background');
   background.alt = '';
-  background.src = contentUrl(campaign.background);
+  void moddedContentAssetUrl(contentUrl(campaign.background)).then((url) => {
+    if (background.isConnected) background.src = url;
+  });
   // The map keeps the picture's own proportions, so stage fractions land on the picture.
   const fit = (): void => {
     if (background.naturalWidth > 0 && background.naturalHeight > 0)

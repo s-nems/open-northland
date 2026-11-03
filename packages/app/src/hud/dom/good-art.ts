@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import { pictureSheetUrl } from '../../content/atlas-sheet/index.js';
 import { loadGoodsManifest } from '../../content/goods-gfx.js';
+import { moddedContentAssetUrl } from '../../content/net.js';
 import {
   type SpriteIconFrame,
   servedAtlas,
@@ -46,7 +47,7 @@ export async function goodIconSource(
   const url = pictureSheetUrl(atlas);
   if (url === null) return null;
   return {
-    url,
+    url: await moddedContentAssetUrl(url),
     sheet: { width: atlas.width, height: atlas.height },
     rect: frame.rect,
   };

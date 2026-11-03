@@ -1,5 +1,7 @@
+import { CIVILIZATION_TRIBES } from '@open-northland/data';
 import type { PlayerFlag, RoomSeatView, RoomView, VacantSeatMode } from '@open-northland/net-protocol';
 import { components } from '@open-northland/sim';
+import { civilizationTribes, loadCivilizations } from '../../../../content/civilizations.js';
 import { localizedMapText } from '../../../../game/map/strings.js';
 import { currentLocale, formatMessage, messages, tribeName } from '../../../../i18n/index.js';
 import { memberLoadText } from '../../../../view/net/member-load.js';
@@ -26,6 +28,18 @@ const ROOM_VACANT_ORDER: readonly VacantSeatMode[] = ['map-ai', 'computer', 'idl
 
 export function roomSeats(deps: NetworkRoomDeps) {
   const { client, copy } = deps;
+  /** The content's civilization list, opened up by a pack's flagged tribes rows once the IR answers;
+   *  a change rebuilds the seat rows, whose tribe cells were built from the previous list. */
+  let civilizations = CIVILIZATION_TRIBES;
+  void loadCivilizations().then((civRows) => {
+    const next = civilizationTribes(civRows);
+    if (next.length > civilizations.length) {
+      civilizations = next;
+      for (const row of rows) row[1].row.remove();
+      rows.clear();
+      repaint();
+    }
+  });
   const root = node('section', 'network-room__seats');
   const header = node('div', 'network-room__seat-head');
   header.setAttribute('aria-hidden', 'true');
@@ -273,7 +287,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
             seat.player,
             seat.offers,
             room.settings.initialSave !== undefined,
-            seatCivilization(seat),
+            seatCivilization(seat, civilizations),
           );
           rows.set(seat.player, row);
           root.append(row.row);

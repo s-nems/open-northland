@@ -28,6 +28,7 @@ import {
   moveFocus,
   VERSION_LINE,
 } from './model.js';
+import { modsScreen } from './mods/screen.js';
 import { startMenuMusic } from './music.js';
 import { networkScreen } from './network/index.js';
 import { originalGameGateScreen } from './original-game/gate-screen.js';
@@ -187,6 +188,8 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
       case 'lobby':
         // Only `openLobby` leads here, with its map already set.
         return lobbyMap === null ? screenFor('newGame') : lobbyScreen(lobbyMap, show, rosters, launch);
+      case 'mods':
+        return modsScreen(show);
       case 'settings':
         return settingsScreen(show, settingsMemory, scope.signal, fullscreenPrompt.relabel, sound);
       case 'credits':
