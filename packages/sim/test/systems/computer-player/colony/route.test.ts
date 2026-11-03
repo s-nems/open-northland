@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   AiControl,
   aiControlEntity,
+  Female,
   Health,
+  Marriage,
   Rider,
   Settler,
   TradeRoute,
@@ -49,7 +51,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { BUILDER, CIVILIST, MUD, SEAT, STONE, UNARMED, VIKING } from '../support.js';
+import { BUILDER, CIVILIST, MUD, SEAT, STONE, UNARMED, VIKING, WOMAN } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -67,7 +69,8 @@ const STRAIT_MID_HX = 114;
 const STRAIT_ACROSS = [30, 60, 90];
 const DANGER_LAPSED_TICKS = minutesToTicks(40);
 const ENEMY = 5;
-const IDLE_MEN = 40;
+/** Idle builders few enough that every one is past the colony's work. */
+const IDLE_MEN = 8;
 const IDLE_STEP = 2;
 
 /** The colony's trader once the route stands: a trader with the ship pinned and both stops on its route. */
@@ -167,7 +170,7 @@ describe('a colony ferry', () => {
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyPeople(sim) > before)).toBe(true);
   });
 
-  it('sends men with no work left home as civilians, and keeps the men it has work for', () => {
+  it("sends men with no work left home as civilians, but keeps its posted men and a wife's husband", () => {
     const { sim } = routedWorld();
     const site = colonyState(sim)?.site;
     if (site === undefined) throw new Error('no site');
@@ -178,25 +181,28 @@ describe('a colony ferry', () => {
     });
     expect(posted.length).toBeGreaterThan(0);
     const before = new Set(everySettlerOf(sim.world, SEAT));
-    for (let i = 0; i < IDLE_MEN; i++)
-      sim.enqueueSetup({
-        kind: 'spawnSettler',
-        jobType: BUILDER,
-        x: site.hx + IDLE_STEP * i,
-        y: site.hy,
-        tribe: VIKING,
-        owner: SEAT,
-      });
+    const spawn = (jobType: number, x: number): void =>
+      sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y: site.hy, tribe: VIKING, owner: SEAT });
+    for (let i = 0; i < IDLE_MEN; i++) spawn(BUILDER, site.hx + IDLE_STEP * i);
+    spawn(WOMAN, site.hx);
     sim.step();
-    const idle = colonySettlersOf(sim).filter((e) => !before.has(e));
-    expect(idle.length).toBeGreaterThan(0);
+    const fresh = colonySettlersOf(sim).filter((e) => !before.has(e));
+    const wife = fresh.find((e) => sim.world.has(e, Female));
+    const idle = fresh.filter((e) => !sim.world.has(e, Female));
+    const husband = idle[0];
+    if (wife === undefined || husband === undefined) throw new Error('setup: no couple on the colony');
+    sim.world.add(wife, Marriage, { spouse: husband, child: null });
+    sim.world.add(husband, Marriage, { spouse: wife, child: null });
     const landed = (): Entity[] => {
       const home = homeSettlers(sim.world, ctxOf(sim), SEAT);
       return idle.filter((e) => home.includes(e) && !sim.world.has(e, Rider));
     };
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => landed().length > 0)).toBe(true);
     expect(landed().map((e) => sim.world.get(e, Settler).jobType)).toEqual(landed().map(() => CIVILIST));
+    stepUntil(sim, ROUND_DUE_TICKS, () => false);
+    expect(landed()).toEqual(idle.filter((e) => e !== husband));
     const colony = colonySettlersOf(sim);
+    expect(colony).toContain(husband);
     expect(posted.filter((e) => sim.world.isAlive(e) && !colony.includes(e))).toEqual([]);
   });
 });

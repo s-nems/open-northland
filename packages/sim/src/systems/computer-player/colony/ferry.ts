@@ -1,4 +1,12 @@
-import { Female, Health, Rider, Settler, Vehicle, vehiclePassengers } from '../../../components/index.js';
+import {
+  Female,
+  Health,
+  Marriage,
+  Rider,
+  Settler,
+  Vehicle,
+  vehiclePassengers,
+} from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
@@ -83,9 +91,16 @@ export function survivorsFor(env: ColonyEnv, ship: Entity): Entity[] {
   return colonists(env).filter((e) => passengerJobAllowed(type, world.get(e, Settler).jobType));
 }
 
-/** Who goes home from the colony: its men past work, or every survivor of an abandoned one. */
+/** Who goes home from the colony: its men past work but a husband whose wife lives there, as a couple split
+ *  by water bears no child, or every survivor of an abandoned one. */
 function homeward(env: ColonyEnv, colony: ColonyView, ship: Entity): Entity[] {
-  return colony.phase === 'abandoned' ? survivorsFor(env, ship) : menPastWork(env, colony);
+  if (colony.phase === 'abandoned') return survivorsFor(env, ship);
+  const { world, ctx, seat } = env;
+  const here = new Set(colonySettlersOn(world, ctx, seat, colony.land));
+  return menPastWork(env, colony).filter((e) => {
+    const wife = world.tryGet(e, Marriage)?.spouse;
+    return wife === undefined || !here.has(wife);
+  });
 }
 
 /** The free seats of `ship` for passengers: the fewest once fire has found the colony's ships. */
