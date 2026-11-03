@@ -347,12 +347,15 @@ export class MeleeSlots {
     const key = `${target}:${weapon.minRange}:${weapon.maxRange}`;
     const cached = this.bands.get(key);
     if (cached !== undefined) return cached;
-    const cells = encircleBands(this.world, this.terrain).cellsOf(target, body ?? NO_CELLS, weapon);
-    this.blocked ??= dynamicBlockOverlay(this.world, this.ctx, this.terrain);
-    const blocked = this.blocked;
-    const candidates = cells.filter((cell) => !blocked.has(cell));
+    const candidates = this.encircleCells(target, body, weapon).filter((cell) => this.isOpen(cell));
     this.bands.set(key, candidates);
     return candidates;
+  }
+
+  /** {@link encircleCandidates} before the walk block: the held static band, every cell of it walkable, so
+   *  {@link isOpen} tells which of them a candidate list would keep. Shared across ticks; never mutate it. */
+  encircleCells(target: Entity, body: readonly NodeId[] | null, weapon: WeaponBand): readonly NodeId[] {
+    return encircleBands(this.world, this.terrain).cellsOf(target, body ?? NO_CELLS, weapon);
   }
 }
 
