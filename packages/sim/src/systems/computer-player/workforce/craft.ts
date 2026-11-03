@@ -514,13 +514,16 @@ export function joineryRolePlans(cap: number, resume: number): JoineryRolePlans 
   };
 }
 
-/** Owner ruling: a colony's level-4 joinery builds its carriers' handcarts and iron tools, whose tools alone go
- *  home. It takes no role: the seat's ships and catapults are home's joineries' (authored). */
-const COLONY_JOINERY_PLAN: CraftPlan = {
-  seats: [HANDCART_SEAT, JOINERY_SEAT, JOINERY_SEAT],
+/** Owner ruling: a colony's level-4 joinery builds carts, ships and iron tools, whose tools alone go home.
+ *  Its first joiner builds the seat's ships while it needs them over the sea, by the fleet caps home's ship
+ *  joinery works to, and handcarts otherwise; it takes no catapults, which are home's (authored). */
+const colonyJoineryPlan = (ships: boolean): CraftPlan => ({
+  seats: [ships ? TRADE_SHIP_SEAT : HANDCART_SEAT, JOINERY_SEAT, JOINERY_SEAT],
   unfed: NO_IRON_SEAT,
   sparing: WOODEN_TOOLS,
-};
+});
+const COLONY_JOINERY_PLAN = colonyJoineryPlan(false);
+const COLONY_SHIP_JOINERY_PLAN = colonyJoineryPlan(true);
 
 /** The role plans of a seat keeping no catapults (owner ruling: a seat with no room to grow builds none). */
 const NO_CATAPULT_ROLE_PLANS: JoineryRolePlans = joineryRolePlans(0, 0);
@@ -688,7 +691,9 @@ export function tuneCraftCounters(
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
   const plans = seatCraftPlans(world, ctx, player, profile);
-  const roleOf = joineryRoles(world, ctx, player, () => seatNeedsShips(world, ctx, player));
+  let overSea: boolean | undefined;
+  const needsShips = (): boolean => (overSea ??= seatNeedsShips(world, ctx, player));
+  const roleOf = joineryRoles(world, ctx, player, needsShips);
   const rolePlans = seatHasSide(world, player, 'noRoom') ? NO_CATAPULT_ROLE_PLANS : profile.joineryRolePlans;
   const fleets = new Map<string, number>();
   const fleetOf = (good: number, freeOnly: boolean): number => {
@@ -722,7 +727,9 @@ export function tuneCraftCounters(
       roles === undefined
         ? plans[type.id]
         : homeSet?.has(assignment.workplace) === false
-          ? COLONY_JOINERY_PLAN
+          ? needsShips()
+            ? COLONY_SHIP_JOINERY_PLAN
+            : COLONY_JOINERY_PLAN
           : roles[roleOf(assignment.workplace)];
     if (plan === undefined) {
       // An unplanned workshop's crew works every product, while a fresh hire starts on the first alone.
