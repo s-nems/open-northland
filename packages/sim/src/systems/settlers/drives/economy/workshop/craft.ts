@@ -6,10 +6,10 @@ import {
 } from '../../../../../components/index.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
-import { productionAssignments } from '../../../../economy/production/assignments.js';
+import { productionAssignmentsInto } from '../../../../economy/production/assignments.js';
 import { religionAllowsAtomic } from '../../../../lifecycle/needs/religion.js';
 import { productionAtomic } from '../../../../readviews/production-atomic.js';
-import { presentOperators } from '../../../../stores/index.js';
+import { presentOperatorsInto, type StaffedScratch } from '../../../../stores/index.js';
 
 /**
  * Show this operator's oldest executable batch using the same assignment as production. An empty
@@ -21,9 +21,9 @@ import { presentOperators } from '../../../../stores/index.js';
  */
 export function startCraftAtomic(world: World, ctx: SystemContext, e: Entity, workplace: Entity): void {
   removeCurrentAtomic(world, e);
-  const staffing = presentOperators(world, ctx, workplace);
+  const staffing = presentOperatorsInto(world, ctx, workplace, crewScratch);
   if (staffing.kind === 'unstaffed') return;
-  const batch = productionAssignments(world, ctx, workplace, staffing.operators)[
+  const batch = productionAssignmentsInto(world, ctx, workplace, staffing.operators, batchScratch)[
     staffing.operators.indexOf(e)
   ];
   const cycle = batch === undefined ? undefined : world.tryGet(workplace, Production)?.cycles[batch];
@@ -44,3 +44,7 @@ export function startCraftAtomic(world: World, ctx: SystemContext, e: Entity, wo
     Math.min(cycle.elapsed, duration),
   );
 }
+
+// The crew and assignment lists one call reads and drops; no call nests another.
+const crewScratch: StaffedScratch = { kind: 'staffed', operators: [] };
+const batchScratch: number[] = [];

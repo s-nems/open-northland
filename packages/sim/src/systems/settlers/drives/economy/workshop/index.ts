@@ -2,7 +2,10 @@ import type { Recipe } from '@open-northland/data';
 import { CARRY_CAPACITY, inPastimeChat, Owner, Resting } from '../../../../../components/index.js';
 import { mergeRecipes } from '../../../../../core/content-index/production.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
-import { claimProductionCycle, productionAssignments } from '../../../../economy/production/assignments.js';
+import {
+  claimProductionCycle,
+  productionAssignmentsInto,
+} from '../../../../economy/production/assignments.js';
 import {
   isYardBuilt,
   outputRoomForCycles,
@@ -12,7 +15,12 @@ import {
 import { operatorRecipeEnabled } from '../../../../progression/index.js';
 import { planGossipIdle } from '../../../../social/index.js';
 import { assignedWorkers } from '../../../../stores/assigned-workers.js';
-import { isWorkplaceOperator, mergedRecipeOf, presentOperators } from '../../../../stores/index.js';
+import {
+  isWorkplaceOperator,
+  mergedRecipeOf,
+  presentOperatorsInto,
+  type StaffedScratch,
+} from '../../../../stores/index.js';
 import { type WorkshopWorkforce, workshopWorkforce } from '../../../../stores/workshop-workforce.js';
 import { carryCapacityOf } from '../../../../vehicles/hauling-cart.js';
 import { atOrWalk, walkFetchInput, walkPickupBatch } from '../../../atomics/start.js';
@@ -84,9 +92,9 @@ export class WorkSeatClaims {
     let claimed = this.batches.get(workplace);
     if (claimed === undefined) {
       claimed = new Set();
-      const present = presentOperators(world, ctx, workplace);
+      const present = presentOperatorsInto(world, ctx, workplace, claimCrew);
       if (present.kind === 'staffed') {
-        const assignments = productionAssignments(world, ctx, workplace, present.operators);
+        const assignments = productionAssignmentsInto(world, ctx, workplace, present.operators, claimBatches);
         for (let i = 0; i < present.operators.length; i++) {
           const worker = present.operators[i];
           const batch = assignments[i];
@@ -156,6 +164,10 @@ export class WorkSeatClaims {
     byGood.set(errand.goodType, (byGood.get(errand.goodType) ?? 0) + units);
   }
 }
+
+// The crew and assignment lists one claim reads and drops.
+const claimCrew: StaffedScratch = { kind: 'staffed', operators: [] };
+const claimBatches: number[] = [];
 
 /** An operator fetches against its own recipe amounts and a carrier restocks to capacity, neither counting
  *  the units other settlers are bringing: the original's producer fetches with no regard to them. */
