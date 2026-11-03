@@ -24,6 +24,7 @@ import { hexNodeDistance } from '../../../../src/systems/spatial/metric.js';
 import { testContent } from '../../../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from '../../../fixtures/needs.js';
 import { needsOf } from '../../../fixtures/settler.js';
+import { waterColumnMap } from '../../../fixtures/terrain.js';
 
 /**
  * The SLEEP-AT-HOME rung: a settler with a built house walks to its door, goes inside (hidden by the
@@ -63,6 +64,8 @@ const NEARER_FAR_STORE = 27;
 const HOME_AT_RANGE = 1 + HOME_ERRAND_RANGE_NODES / 2;
 /** Half a bar spent: under the drive trigger, over the level a served need sits at, so only the at-home
  *  chain answers it. */
+/** A one-cell strait between a settler on cell 1 and its home on cell 5, well inside the home errand range. */
+const STRAIT_CELL = 3;
 const HALF_SPENT: Fixed = fx.div(ONE, fx.fromInt(2));
 
 /** The shared fixture plus a `home` building type; `restfulBed: false` strips the sleep clip's rest
@@ -259,6 +262,17 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
 
     expect(sim.world.has(settler, Resting)).toBe(false);
     expect(sim.world.get(settler, CurrentAtomic).duration).toBe(SLEEP_TICKS);
+  });
+
+  it('beds down where it stands when its home lies across water, however near', () => {
+    const sim = new Simulation({ seed: 1, content: homeContent(), map: waterColumnMap(8, 6, STRAIT_CELL) });
+    const settler = tiredAt(sim, 1, 2);
+    sim.world.add(settler, Residence, { home: homeAt(sim, 5, 2) });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(settler, MoveGoal)).toBe(false);
+    expect(sim.world.get(settler, CurrentAtomic).effect).toEqual({ kind: 'sleep' });
   });
 
   it('gives up on a door its routes cannot reach, and beds down outside instead', () => {

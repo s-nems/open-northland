@@ -45,10 +45,11 @@ export function storedFoodGood(
 }
 
 /**
- * The door a home errand walks in by, or null when it is barred: outside the settler's signpost area,
- * a goal the settler's routes just failed to reach (`memo`, see {@link unreachableGoals}), such as a
- * house walled in by later building, or beyond {@link HOME_ERRAND_RANGE_NODES}. A home rung takes the
- * whole tick, so looping on a barred door would pin the settler at the top of its need bar for good.
+ * The door a home errand walks in by, or null when it is barred: on other land than the settler, outside
+ * its signpost area, a goal the settler's routes just failed to reach (`memo`, see
+ * {@link unreachableGoals}), such as a house walled in by later building, or beyond
+ * {@link HOME_ERRAND_RANGE_NODES}. A home rung takes the whole tick, so looping on a barred door would pin
+ * the settler at the top of its need bar for good.
  */
 export function homeErrandDoor(
   world: World,
@@ -60,6 +61,7 @@ export function homeErrandDoor(
   memo: readonly UnreachableGoal[] | null,
 ): NodeId | null {
   const door = interactionCell(world, ctx, terrain, home, here);
+  if (terrain.componentOf(door) !== terrain.componentOf(here)) return null;
   if (limit !== null && !limit.allowsNode(door)) return null;
   if (isUnreachableGoal(memo, door)) return null;
   if (hexNodeDistance(terrain, here, door) > HOME_ERRAND_RANGE_NODES) return null;
