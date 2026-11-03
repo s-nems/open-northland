@@ -74,8 +74,8 @@ type Post = 'builder' | 'carrier' | LandGood | 'hunter' | 'fisher' | 'scout';
 /**
  * The men's posts, filled in this order as the party's size allows (authored). Owner ruling: fishers first,
  * they may meet the hunger at the start. 4 builders, 2 carriers, 4 on wood, 3 on stone, 3 hunters, 3 fishers
- * and a scout make 20, more than the largest party's 15, so the tail is what a small party goes without. A
- * store seats three of each: on arabskie_wyspy_wolna_gra_mieszana two and two brought about 3.5 food a game
+ * and a scout make 20, more than the largest party's 15, so the tail is what a small party goes without.
+ * Three of each food hand: on arabskie_wyspy_wolna_gra_mieszana two and two brought about 3.5 food a game
  * minute to colonies of 30 eating 4, and their stores stood empty.
  */
 const POSTS: readonly Post[] = [
@@ -217,13 +217,15 @@ function postOrders(
       ? null
       : [{ kind: 'assignWorker', entity: man, building: store, jobPriority: [job] }];
   }
-  const job = seatJob((j) => isFisherJob(ctx.content, j));
+  // Owner ruling: a fisher sets his catch down on the shore by his water and the store's carriers take it
+  // from there. A flag fisher drops it at his flag; one employed at the store walks every fish to it.
+  const job = ctx.content.jobs.find((j) => isFisherJob(ctx.content, j.typeId))?.typeId;
   if (job === undefined || !qualified(job)) return null;
   const spot = fishSpot(env, read.origin, ground(), taken);
   if (spot === null) return null;
   claimFlagNode(taken, spot);
   return [
-    { kind: 'assignWorker', entity: man, building: store, jobPriority: [job] },
+    { kind: 'setJob', entity: man, jobType: job },
     { kind: 'setWorkFlag', entity: man, x: spot.hx, y: spot.hy },
   ];
 }

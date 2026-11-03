@@ -155,6 +155,27 @@ export function huntingColonyContent(): ContentSet {
   });
 }
 
+const FISH = 47;
+const FISHER = 22;
+const FISHER_SEATS = 3;
+/** The fishing atomics a fisher plays, the original's. */
+const FISHER_ATOMICS = [36, 37, 38];
+
+/** {@link colonyContent} with fish, the fisher trade and the warehouse's fisher seat, as the real one has. */
+export function fishingColonyContent(): ContentSet {
+  const base = colonyContent();
+  return parseContentSet({
+    ...base,
+    goods: [...base.goods, { typeId: FISH, id: 'fish', weight: 1 }],
+    jobs: [...base.jobs, { typeId: FISHER, id: 'fisher', allowedAtomics: FISHER_ATOMICS }],
+    buildings: base.buildings.map((b) =>
+      b.typeId === STOCK_TYPE
+        ? { ...b, workers: [...b.workers, { jobType: FISHER, count: FISHER_SEATS }] }
+        : b,
+    ),
+  });
+}
+
 export const SPEAR = 46;
 export const ARMORY_TYPE = 50;
 const ARMORER = 10;

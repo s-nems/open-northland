@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   Female,
+  JobAssignment,
   Position,
   Resource,
   Rider,
@@ -35,7 +36,9 @@ import { spareMen } from '../../../../src/systems/computer-player/colony/people.
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { seatNeedsShips } from '../../../../src/systems/computer-player/sea-route.js';
-import { isFighterJob } from '../../../../src/systems/readviews/index.js';
+import { addFishSwarms } from '../../../../src/systems/economy/fish.js';
+import { liveWorkFlag } from '../../../../src/systems/economy/work-flag.js';
+import { isFighterJob, isFisherJob } from '../../../../src/systems/readviews/index.js';
 import {
   BIG_SHIP,
   colonyContent,
@@ -43,6 +46,7 @@ import {
   colonyState,
   colonyWorld,
   editColony,
+  fishingColonyContent,
   huntingColonyContent,
   mooredShip,
   SHIP_AT,
@@ -71,6 +75,9 @@ const BUILDERS_AT_REST = 2;
 const TRADE_SHIP_SEATS = 10;
 const AFTER_SAVE_TICKS = minutesToTicks(4);
 const SECOND_SHIP_AT = { x: 90, y: 100 };
+/** A swarm in the strait off the east island's shore, and its fish. */
+const EAST_FISH_AT = { hx: 134, hy: 60 };
+const FISH_IN_SWARM = 40;
 
 function freeShipsOf(sim: Simulation): Entity[] {
   const ctx = ctxOf(sim);
@@ -293,5 +300,30 @@ describe('a colony sails', () => {
     const ctx = ctxOf(sim);
     const away = everySettlerOf(sim.world, SEAT).filter((e) => colonyMember(sim.world, ctx, SEAT, e));
     expect(away.filter((e) => sim.world.get(e, Settler).jobType === HUNTER)).toEqual([]);
+  });
+
+  it('sets its fishers by the shore with a flag of their own, not at the store, so each catch is set down there', () => {
+    const sim = colonyWorld(SEED, fishingColonyContent());
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    addFishSwarms(sim.world, terrain, [{ ...EAST_FISH_AT, count: FISH_IN_SWARM, continent: 0 }]);
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const fishers = (): Entity[] => {
+      const ctx = ctxOf(sim);
+      return everySettlerOf(sim.world, SEAT).filter(
+        (e) =>
+          colonyMember(sim.world, ctx, SEAT, e) &&
+          isFisherJob(ctx.content, sim.world.get(e, Settler).jobType),
+      );
+    };
+    expect(stepUntil(sim, GATHER_DUE_TICKS, () => fishers().length > 0)).toBe(true);
+    for (const e of fishers()) {
+      expect(sim.world.has(e, JobAssignment)).toBe(false);
+      expect(liveWorkFlag(sim.world, e)).toBeDefined();
+    }
   });
 });
