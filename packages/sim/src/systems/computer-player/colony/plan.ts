@@ -28,6 +28,7 @@ import { colonists, colonyOrigin } from './founding.js';
 import { homeSupply } from './line.js';
 import { colonyFed, colonyFoodHeld, landHolds, workshopGoods } from './provision.js';
 import { siteRoom } from './survey.js';
+import { towersLacking } from './towers.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
 /** The open sites a colony's builders work at once (authored): its hold pays for little more. */
@@ -427,8 +428,8 @@ export function ladderAhead(
   return ladder === null ? [] : stepsAhead(ladder).map((step) => step.building);
 }
 
-/** What the colony means to raise, in order: its unplaced rows; then its next food step, its homes, and what
- *  the ladder's bills and theirs make worth raising. */
+/** What the colony means to raise, in order: its unplaced rows; then its next food step, the towers its
+ *  garrison mans, its homes, and what the ladder's bills and theirs make worth raising. */
 export function colonyPlan(
   env: ColonyEnv,
   colony: ColonyView,
@@ -441,5 +442,11 @@ export function colonyPlan(
   const ahead = ladder === null ? [] : stepsAhead(ladder).map((step) => step.building);
   const homes = homeStep(env, colony, buildings);
   const bills = billsOf(env, [...ahead, ...homes]);
-  return [...(food === null ? [] : [food]), ...homes, ...materialWorkshops(env, colony, buildings, bills)];
+  const towers = towersLacking(env, colony, buildings);
+  return [
+    ...(food === null ? [] : [food]),
+    ...towers,
+    ...homes,
+    ...materialWorkshops(env, colony, buildings, bills),
+  ];
 }

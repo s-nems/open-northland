@@ -30,6 +30,7 @@ import { type FoundingRead, fillPosts } from './posts.js';
 import { colonyFoodHeld, LAND_GOOD_IDS } from './provision.js';
 import { colonyBuildings, colonySpot, workshopSpot } from './spot.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
+import { isColonyTower, towerAnchor } from './towers.js';
 import { type ColonyEnv, type ColonyView, unloaded } from './voyage.js';
 
 /** What a colony raises first (owner ruling): its warehouse near the shore. The rest it raises as it needs
@@ -79,7 +80,8 @@ function placementOf(type: number, spot: HalfCellNode, tribe: number, seat: numb
 }
 
 /** The next build the colony lacks, placed once fewer than {@link COLONY_OPEN_SITES} sites stand open:
- *  the anchor is a real node on the land, the shore while no store stands, then the store. */
+ *  the anchor is a real node on the land, the shore while no store stands, then the store, and a tower's
+ *  own ({@link towerAnchor}). */
 function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): PlayerCommand[] {
   const { world, ctx, seat } = env;
   const tribe = playerPlacementTribes(world, seat)?.[0];
@@ -93,9 +95,12 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
     const type = typeId === undefined ? undefined : index.buildings.get(typeId);
     if (type === undefined) continue;
     const ground = stepGround(building);
+    const anchor = isColonyTower(building)
+      ? towerAnchor(env, colony, read.origin, read.buildings)
+      : read.origin;
     const spot = isOverflowBuilding(building)
       ? workshopSpot(env, colony.land, type, tribe, read.origin)
-      : colonySpot(env, colony.land, type, tribe, read.origin, COLONY_SPOT_NODES, ground);
+      : colonySpot(env, colony.land, type, tribe, anchor, COLONY_SPOT_NODES, ground);
     if (spot === null) continue;
     const live = env.edit();
     const row = live.builds.find((b) => b.building === building && !b.placed);

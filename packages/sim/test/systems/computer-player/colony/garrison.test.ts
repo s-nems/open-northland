@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { Health } from '../../../../src/components/index.js';
+import { Building, Health } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import {
   exportSaveGame,
@@ -8,14 +8,18 @@ import {
   type Simulation,
   serializeSaveGame,
 } from '../../../../src/index.js';
-import { everySettlerOf } from '../../../../src/systems/ai-shared/home-roster.js';
+import { nodeManhattan } from '../../../../src/nav/halfcell.js';
+import { colonyBuildingsOn, everySettlerOf } from '../../../../src/systems/ai-shared/home-roster.js';
 import { takeCensus } from '../../../../src/systems/ai-shared/military/census.js';
 import { planSettlementDefence } from '../../../../src/systems/ai-shared/military/settlement-defence.js';
 import { garrisonRoom } from '../../../../src/systems/computer-player/colony/garrison.js';
+import { colonyTowerCount } from '../../../../src/systems/computer-player/colony/towers.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { nodeOfEntity } from '../../../../src/systems/computer-player/military/operations/raid-target.js';
 import { ARMY_FLOOR_MIN } from '../../../../src/systems/computer-player/workforce/garrison.js';
+import { towerPostFor } from '../../../../src/systems/conflict/tower-post.js';
 import {
+  BOWMAN,
   colonyIslands,
   colonyState,
   colonyWorld,
@@ -26,7 +30,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { SEAT, VIKING } from '../support.js';
+import { SEAT, STOCK_TYPE, TOWER_TYPE, VIKING } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -44,14 +48,20 @@ const ENEMY = 5;
 const RAIDERS = 2;
 const RAID_NEAR = 6;
 const GARRISON_LEAST = 3;
+const RAIDERS_FOR_SECOND = 3;
+const MANY_RAIDERS = 20;
+const TOWERS_MOST = 3;
+const TOWER_DUE_TICKS = minutesToTicks(30);
+/** Near enough that the tower's bows cover the spot. */
+const TOWER_NEAR_NODES = 12;
 /** A raider falls to a few blows. */
 const RAIDER_HITPOINTS = 2000;
 
-function spawnArmy(sim: Simulation): void {
+function spawnArmy(sim: Simulation, jobType: number): void {
   for (let i = 0; i < ARMY; i++)
     sim.enqueueSetup({
       kind: 'spawnSettler',
-      jobType: SPEARMAN,
+      jobType,
       x: ARMY_AT.x + ARMY_STEP * (i % ARMY_ROW),
       y: ARMY_AT.y + ARMY_STEP * Math.floor(i / ARMY_ROW),
       tribe: VIKING,
@@ -59,10 +69,10 @@ function spawnArmy(sim: Simulation): void {
     });
 }
 
-/** The colony's garrison standing on its land, once its first men landed. */
-function garrisonedWorld(): Simulation {
+/** The colony's garrison of `jobType` standing on its land, once its first men landed. */
+function garrisonedWorld(jobType = SPEARMAN): Simulation {
   const sim = colonyWorld(7, garrisonContent());
-  spawnArmy(sim);
+  spawnArmy(sim, jobType);
   stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
   mooredShip(sim);
   stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
@@ -142,5 +152,38 @@ describe('a garrisoned colony', () => {
     expect(stepUntil(sim, RAID_DUE_TICKS, () => raiders.every((e) => !sim.world.isAlive(e)))).toBe(true);
     expect(colonyState(sim)?.phase).toBe('running');
     expect(colonyState(sim)?.threat?.men).toBe(RAIDERS);
+  });
+});
+
+describe('the towers a colony wants', () => {
+  it('raise one once a garrison sails, and one more per three raiders seen, up to three', () => {
+    expect(colonyTowerCount(false, RAIDERS)).toBe(0);
+    expect(colonyTowerCount(true, 0)).toBe(1);
+    expect(colonyTowerCount(true, RAIDERS_FOR_SECOND)).toBe(2);
+    expect(colonyTowerCount(true, MANY_RAIDERS)).toBe(TOWERS_MOST);
+  });
+});
+
+describe('a garrisoned colony of archers', () => {
+  it('raises a tower by its store and its shore, and its archers man it', () => {
+    const sim = garrisonedWorld(BOWMAN);
+    const ctx = () => ctxOf(sim);
+    const tower = (): Entity | undefined =>
+      colonyBuildingsOn(sim.world, ctx(), SEAT, colonyState(sim)?.land ?? -1).find(
+        (e) => sim.world.get(e, Building).buildingType === TOWER_TYPE,
+      );
+    expect(stepUntil(sim, TOWER_DUE_TICKS, () => tower() !== undefined)).toBe(true);
+    const at = nodeOfEntity(sim.world, tower() as Entity);
+    const store = colonyBuildingsOn(sim.world, ctx(), SEAT, colonyState(sim)?.land ?? -1).find(
+      (e) => sim.world.get(e, Building).buildingType === STOCK_TYPE,
+    );
+    const from = store === undefined ? null : nodeOfEntity(sim.world, store);
+    const shore = colonyState(sim)?.shore;
+    if (at === null || from === null || shore == null) throw new Error('no tower, store or shore');
+    expect(nodeManhattan(at, shore)).toBeLessThanOrEqual(TOWER_NEAR_NODES);
+    expect(nodeManhattan(at, from)).toBeLessThanOrEqual(TOWER_NEAR_NODES);
+    const posted = () =>
+      ashore(sim).filter((e) => towerPostFor(sim.world, ctx(), e, BOWMAN) === tower()).length;
+    expect(stepUntil(sim, TOWER_DUE_TICKS, () => posted() === GARRISON_LEAST)).toBe(true);
   });
 });
