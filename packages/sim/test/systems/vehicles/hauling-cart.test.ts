@@ -27,12 +27,12 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../../src/index.js';
+import { vehicleBlockedCells } from '../../../src/systems/footprint/index.js';
 import { reap } from '../../../src/systems/lifecycle/death.js';
 import { atomicDuration } from '../../../src/systems/readviews/animations.js';
 import { MEAL_UNITS } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
 import { PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
 import { cartLiftTicks, HANDCART_FULL_SPEED_LOSS_PERCENT } from '../../../src/systems/vehicles/drag.js';
-import { vehicleBlockedCells } from '../../../src/systems/footprint/index.js';
 import {
   carryCapacityOf,
   haulingCartSpeedLossPercent,
