@@ -98,6 +98,9 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
   const open = read.buildings.filter((e) => world.has(e, UnderConstruction)).length;
   if (open >= COLONY_OPEN_SITES) return [];
   const { plan } = read;
+  // The first store goes up alone: another site would take the bill the founding ship brought for it, and
+  // the trader that brings the rest waits for that store.
+  if (colony.phase === 'founding' && read.store !== null && !isBuilt(world, read.store)) return [];
   for (const building of read.store === null ? plan.slice(0, 1) : plan) {
     const typeId = index.buildingTypeBySlug.get(building);
     const type = typeId === undefined ? undefined : index.buildings.get(typeId);
