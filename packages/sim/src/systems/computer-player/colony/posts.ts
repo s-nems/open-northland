@@ -313,7 +313,7 @@ function digGoodsWithRoom(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
 /** Each standing workshop's open seats, operators first and ascending by building: the trades men of the
  *  colony have earned sit down, taken off `spare` as they do, a digger at need, as digging is how a colony's
  *  man earns his trade. An empty workshop takes a hand off `movers`: the farmer who earned the mill moves up
- *  and a fresh man takes the farm. A gatherer's seat at a workshop stays open: the diggers fill its store. */
+ *  and a fresh man takes the farm. Only the gatherer's seats {@link colonySeats} lists are filled. */
 function crewOrders(
   env: ColonyEnv,
   read: FoundingRead,
@@ -362,10 +362,25 @@ export function atWorkshop(env: ColonyEnv, e: Entity): boolean {
   return contentIndex(ctx.content).buildings.get(building.buildingType)?.kind === BUILDING_KIND.workplace;
 }
 
+/** The gatherers a workshop seats for an input no digger of the colony digs (authored): one keeps a
+ *  workshop's shelf of gold or mushrooms. */
+const OWN_GATHERERS = 1;
+
+/** Whether one of `type`'s recipes takes a good gathered off the map that the colony's diggers leave
+ *  ({@link LAND_GOOD_IDS}): the mint's gold, the druid's mushrooms. Its own gatherer brings it. */
+function gathersOwnInput(ctx: SystemContext, type: BuildingType): boolean {
+  const index = contentIndex(ctx.content);
+  const dug = new Set(LAND_GOOD_IDS.map((id) => goodTypeByContentId(ctx.content, id)?.typeId));
+  return type.recipes.some((recipe) =>
+    recipe.inputs.some((i) => !dug.has(i.goodType) && index.goods.get(i.goodType)?.gathering !== undefined),
+  );
+}
+
 /**
  * The seats of each trade of `type` the colony fills: the shared staffing row's target tier, so a farm takes
  * two farmers, a mill one miller, a bakery one baker and its porter, and a well or a hive none (owner ruling:
- * the colony's farm crews ran every slot). A gatherer's seat stays open ({@link crewOrders}).
+ * the colony's farm crews ran every slot). A gatherer's seat stays open ({@link crewOrders}) but where the
+ * workshop takes a good its diggers leave ({@link gathersOwnInput}).
  */
 export function colonySeats(
   ctx: SystemContext,
@@ -375,7 +390,8 @@ export function colonySeats(
   const gatherer = genericCollectorJob(ctx);
   let carriers = plan.carrierTarget;
   return type.workers.flatMap(({ jobType, count }) => {
-    if (jobType === gatherer) return [];
+    if (jobType === gatherer)
+      return gathersOwnInput(ctx, type) ? [{ jobType, count: Math.min(count, OWN_GATHERERS) }] : [];
     if (!isCarrierJob(ctx, jobType)) return [{ jobType, count: Math.min(count, plan.operatorTarget) }];
     const seated = Math.min(count, carriers);
     carriers -= seated;
