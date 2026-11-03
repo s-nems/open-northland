@@ -18,7 +18,6 @@ import {
 } from '../../../../src/index.js';
 import {
   colonyHeldShips,
-  colonyMember,
   everyBuildingOf,
   everySettlerOf,
   homeBuildings,
@@ -33,6 +32,7 @@ import { setAiControl } from '../../../../src/systems/orders/ai.js';
 import { interactionCell } from '../../../../src/systems/settlers/targets/index.js';
 import { removeVehicle } from '../../../../src/systems/vehicles/index.js';
 import {
+  colonyBuildingsOf,
   colonyContent,
   colonyIslands,
   colonyState,
@@ -282,8 +282,7 @@ describe('an overrun colony', () => {
     const home = new Set(homeSettlers(sim.world, ctx, SEAT));
     const crew = colonyState(sim)?.line?.crew ?? [];
     const settlers = everySettlerOf(sim.world, SEAT).filter((e) => !home.has(e) && !crew.includes(e));
-    for (const e of everyBuildingOf(sim.world, SEAT))
-      if (colonyMember(sim.world, ctx, SEAT, e)) sim.world.destroy(e);
+    for (const e of [...colonyBuildingsOf(sim)]) sim.world.destroy(e);
     sim.enqueueSetup({
       kind: 'spawnSettler',
       jobType: UNARMED,
@@ -329,8 +328,7 @@ describe('an overrun colony', () => {
       tribe: VIKING,
       owner: ENEMY,
     });
-    for (const e of everyBuildingOf(sim.world, SEAT))
-      if (colonyMember(sim.world, ctx, SEAT, e)) sim.world.destroy(e);
+    for (const e of [...colonyBuildingsOf(sim)]) sim.world.destroy(e);
     expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.phase === 'abandoned')).toBe(true);
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.line === null)).toBe(true);
     sim.step();

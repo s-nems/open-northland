@@ -24,13 +24,7 @@ import {
   serializeSaveGame,
 } from '../../../../src/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../src/systems/ai-shared/cadence.js';
-import {
-  colonyHeldShips,
-  colonyMember,
-  everyBuildingOf,
-  everySettlerOf,
-  homeBuildings,
-} from '../../../../src/systems/ai-shared/home-roster.js';
+import { colonyHeldShips, homeBuildings } from '../../../../src/systems/ai-shared/home-roster.js';
 import { holdLoad } from '../../../../src/systems/computer-player/colony/cargo.js';
 import { spareMen } from '../../../../src/systems/computer-player/colony/people.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
@@ -41,8 +35,10 @@ import { liveWorkFlag } from '../../../../src/systems/economy/work-flag.js';
 import { isFighterJob, isFisherJob } from '../../../../src/systems/readviews/index.js';
 import {
   BIG_SHIP,
+  colonyBuildingsOf,
   colonyContent,
   colonyIslands,
+  colonySettlersOf,
   colonyState,
   colonyWorld,
   editColony,
@@ -238,7 +234,7 @@ describe('a colony sails', () => {
     mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
     expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
     const ctx = ctxOf(sim);
-    const away = everyBuildingOf(sim.world, SEAT).filter((e) => colonyMember(sim.world, ctx, SEAT, e));
+    const away = colonyBuildingsOf(sim);
     const standing = away.filter((e) => !sim.world.has(e, UnderConstruction));
     expect(standing.map((e) => sim.world.get(e, Building).buildingType)).toContain(STOCK_TYPE);
     const left = (): number => {
@@ -262,10 +258,7 @@ describe('a colony sails', () => {
     expect(farmRow()).toBe(false);
     expect(stepUntil(sim, LADDER_DUE_TICKS, farmRow)).toBe(true);
     sim.step();
-    const ctx = ctxOf(sim);
-    const farm = everyBuildingOf(sim.world, SEAT).find(
-      (e) => sim.world.get(e, Building).buildingType === FARM_TYPE && colonyMember(sim.world, ctx, SEAT, e),
-    );
+    const farm = colonyBuildingsOf(sim).find((e) => sim.world.get(e, Building).buildingType === FARM_TYPE);
     expect(farm).toBeDefined();
   });
 
@@ -276,15 +269,13 @@ describe('a colony sails', () => {
     stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
     mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
     const builders = (): number => {
-      const ctx = ctxOf(sim);
-      const away = everySettlerOf(sim.world, SEAT).filter((e) => colonyMember(sim.world, ctx, SEAT, e));
-      return away.filter((e) => !sim.world.has(e, Rider) && sim.world.get(e, Settler).jobType === BUILDER)
-        .length;
+      return colonySettlersOf(sim).filter(
+        (e) => !sim.world.has(e, Rider) && sim.world.get(e, Settler).jobType === BUILDER,
+      ).length;
     };
     expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    const ctx = ctxOf(sim);
-    for (const e of everyBuildingOf(sim.world, SEAT))
-      if (colonyMember(sim.world, ctx, SEAT, e) && sim.world.has(e, UnderConstruction)) sim.world.destroy(e);
+    for (const e of [...colonyBuildingsOf(sim)])
+      if (sim.world.has(e, UnderConstruction)) sim.world.destroy(e);
     for (const build of editColony(sim).builds) build.placed = true;
     expect(stepUntil(sim, GATHER_DUE_TICKS, () => builders() <= BUILDERS_AT_REST)).toBe(true);
   });
@@ -297,9 +288,7 @@ describe('a colony sails', () => {
     mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
     expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
     stepUntil(sim, GATHER_DUE_TICKS, () => false);
-    const ctx = ctxOf(sim);
-    const away = everySettlerOf(sim.world, SEAT).filter((e) => colonyMember(sim.world, ctx, SEAT, e));
-    expect(away.filter((e) => sim.world.get(e, Settler).jobType === HUNTER)).toEqual([]);
+    expect(colonySettlersOf(sim).filter((e) => sim.world.get(e, Settler).jobType === HUNTER)).toEqual([]);
   });
 
   it('sets its fishers by the shore with a flag of their own, not at the store, so each catch is set down there', () => {
@@ -314,11 +303,7 @@ describe('a colony sails', () => {
     expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
     const fishers = (): Entity[] => {
       const ctx = ctxOf(sim);
-      return everySettlerOf(sim.world, SEAT).filter(
-        (e) =>
-          colonyMember(sim.world, ctx, SEAT, e) &&
-          isFisherJob(ctx.content, sim.world.get(e, Settler).jobType),
-      );
+      return colonySettlersOf(sim).filter((e) => isFisherJob(ctx.content, sim.world.get(e, Settler).jobType));
     };
     expect(stepUntil(sim, GATHER_DUE_TICKS, () => fishers().length > 0)).toBe(true);
     for (const e of fishers()) {

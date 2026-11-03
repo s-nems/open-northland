@@ -122,13 +122,6 @@ function colonyLandOf(
     : undefined;
 }
 
-/** Whether `seat`'s building or settler `e` is one of its colonies' ({@link colonyLandOf}). */
-export function colonyMember(world: World, ctx: SystemContext, seat: number, e: Entity): boolean {
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return false;
-  return colonyLandOf(world, ctx, terrain, claimsOf(seatColonies(world, seat)), e) !== undefined;
-}
-
 /** A roster parted into home and each colony land, ascending id. */
 interface RosterSplit {
   readonly roster: readonly Entity[];

@@ -12,7 +12,11 @@ import {
 } from '../../src/components/index.js';
 import type { DeepReadonly, Entity } from '../../src/ecs/world.js';
 import { halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
-import { seatColonies } from '../../src/systems/ai-shared/home-roster.js';
+import {
+  colonyBuildingsOn,
+  colonySettlersOn,
+  seatColonies,
+} from '../../src/systems/ai-shared/home-roster.js';
 import type { ColonyEnv } from '../../src/systems/computer-player/colony/voyage.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import {
@@ -366,6 +370,18 @@ export function mooredShip(sim: Simulation, vehicleType = SMALL_SHIP, at = SHIP_
 /** The seat's colony at `at`, oldest first. */
 export function colonyState(sim: Simulation, at = 0): DeepReadonly<ColonyState> | undefined {
   return seatColonies(sim.world, SEAT)[at];
+}
+
+/** The seat's buildings on its first colony's land. */
+export function colonyBuildingsOf(sim: Simulation): readonly Entity[] {
+  const land = colonyState(sim)?.land;
+  return land === undefined ? [] : colonyBuildingsOn(sim.world, ctxOf(sim), SEAT, land);
+}
+
+/** The seat's people its first colony holds. */
+export function colonySettlersOf(sim: Simulation): readonly Entity[] {
+  const land = colonyState(sim)?.land;
+  return land === undefined ? [] : colonySettlersOn(sim.world, ctxOf(sim), SEAT, land);
 }
 
 /** The seat's first colony, to write to. */
