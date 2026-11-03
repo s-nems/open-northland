@@ -29,7 +29,14 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../../src/index.js';
+import { hexDistance, nodeOfPosition } from '../../../src/nav/halfcell.js';
+import { interactionNode } from '../../../src/systems/footprint/index.js';
 import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
+import {
+  DOOR_HEAP_LIMIT_UNITS,
+  DOOR_HEAP_RADIUS_NODES,
+} from '../../../src/systems/settlers/drives/economy/workshop/door-heap.js';
+import { isLoosePile } from '../../../src/systems/stores/index.js';
 import { ferryHoldOf, traderHoldOf } from '../../../src/systems/trade/hold.js';
 import { canAttachToVehicle } from '../../../src/systems/vehicles/crew.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
@@ -90,6 +97,8 @@ const TICK_STEP = 5;
 const LONG_TICKS = 8000;
 /** Ticks a helper's first trip needs to be under way. */
 const FIRST_TRIP_TICKS = 2000;
+/** The wood a headquarters stores, by the fixture. */
+const HEADQUARTERS_WOOD_ROOM = 150;
 
 function islandMap(): TerrainMap {
   const typeIds = new Array<number>(MAP_W * MAP_H).fill(GRASS);
@@ -358,6 +367,33 @@ describe('helpers at work', () => {
     runUntil(sim, LONG_TICKS, () => stockOf(sim, west, WOOD) >= UP_TO && settled());
 
     expect(stockOf(sim, west, WOOD)).toBe(UP_TO);
+  });
+
+  it("set a good for a full stop down in the heap by the stop's door, no further than its bound", () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, HEADQUARTERS_WOOD_ROOM]]);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const { trader, ship } = crew(sim, HELPERS, false);
+    stockVehicleGoods(sim.world, ship, sim.content, WOOD, LOAD);
+    order(sim, { kind: 'attachTradeHouse', entity: trader, house: west });
+    order(sim, { kind: 'attachTradeHouse', entity: trader, house: east });
+    order(sim, { kind: 'setTradeImport', entity: trader, house: west, good: WOOD, on: true });
+
+    sim.run(LONG_TICKS);
+
+    const door = interactionNode(sim.world, ctxOf(sim), west);
+    if (door === null) throw new Error('house with no door');
+    let heaped = 0;
+    let farthest = 0;
+    for (const pile of sim.world.query(Stockpile)) {
+      if (!isLoosePile(sim.world, pile)) continue;
+      heaped += sim.world.get(pile, Stockpile).amounts.get(WOOD) ?? 0;
+      const { x, y } = sim.world.get(pile, Position);
+      farthest = Math.max(farthest, hexDistance(nodeOfPosition(x, y), { hx: door.x, hy: door.y }));
+    }
+    expect(heaped).toBe(DOOR_HEAP_LIMIT_UNITS);
+    expect(farthest).toBeLessThanOrEqual(DOOR_HEAP_RADIUS_NODES);
+    expect(shipLine(sim, ship, WOOD).current).toBe(LOAD - DOOR_HEAP_LIMIT_UNITS);
   });
 
   it('leaves the ship with no helper behind and no unit lost', () => {
