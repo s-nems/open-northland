@@ -2,6 +2,7 @@ import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
   Female,
+  Livestock,
   Position,
   playerPlacementTribes,
   Rider,
@@ -22,9 +23,12 @@ import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
+import { claimableBy, herdOf } from '../../livestock/index.js';
 import { isScoutJob, isTraderJob } from '../../readviews/index.js';
+import { playerSeesNode } from '../../vision/gates.js';
+import { HERD_PAIR } from '../herd.js';
 import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../live-resources.js';
-import { scoutBusy } from '../scout/index.js';
+import { SCOUT_CATCH_RADIUS_NODES, scoutBusy } from '../scout/index.js';
 import { corridorSamples, signpostTargetAround } from '../scout/signpost-coverage.js';
 import { enabledTiersAbove, liftCommand, liftTarget } from '../top-tier.js';
 import { COLONY_SPOT_NODES } from './industry-read.js';
@@ -42,6 +46,8 @@ import { type ColonyEnv, type ColonyView, unloaded } from './voyage.js';
 /** How far from the first store a deposit gets a second one, in Manhattan nodes (authored: a hold's hands'
  *  reach, past which the carriers' trips outweigh a store's bill). */
 const SECOND_STORE_NODES = 40;
+/** The animal farm whose herd the colony's scout rounds up. */
+const ANIMAL_FARM_ID = 'work_animal_farm';
 /** The people standing on the colony: its members on its land. A man listed for the ferry but still walking
  *  to the ship is not one yet, or a workshop on the far shore would post him; the trader only calls there. */
 export function colonists(env: ColonyEnv): Entity[] {
@@ -188,11 +194,45 @@ function depositsOf(env: ColonyEnv, origin: HalfCellNode): HalfCellNode[] {
   });
 }
 
-/** The colony's one scout carries its lattice round what stands there and out to its land's deposits. */
+/** The animals a colony's farm holds before its scout stops rounding up wild ones (authored): two breeding
+ *  pairs, so one lost leaves the farm breeding. */
+const COLONY_HERD = 2 * HERD_PAIR;
+
+/** The wild animal the colony's scout rounds up next (owner ruling: husbandry where the scout can capture
+ *  animals), or null: while an animal farm stands there short of {@link COLONY_HERD}, the claimable one he
+ *  sees on its land within his catch reach of `read`'s origin nearest him, the lowest id on a tie. A claimed
+ *  animal joins a farm on its own land. Cost: the livestock, only while such a farm is short. */
+function herdToClaim(env: ColonyEnv, scout: Entity, read: FoundingRead): Entity | null {
+  const { world, ctx, terrain, seat } = env;
+  const farm = buildingTypeByContentId(ctx.content, ANIMAL_FARM_ID);
+  const farms = read.buildings.filter(
+    (e) => world.get(e, Building).buildingType === farm?.typeId && isBuilt(world, e),
+  );
+  const held = farms.reduce((sum, e) => sum + herdOf(world, e).length, 0);
+  const at = anchorNodeOf(world, scout);
+  if (farms.length === 0 || held >= COLONY_HERD || at === null) return null;
+  let best: { readonly animal: Entity; readonly distance: number } | null = null;
+  for (const animal of world.query(Livestock, Position)) {
+    const node = anchorNodeOf(world, animal);
+    if (node === null || !terrain.inBounds(node.hx, node.hy) || !claimableBy(world, animal, seat)) continue;
+    if (terrain.componentOf(terrain.nodeAt(node.hx, node.hy)) !== env.colony.land) continue;
+    if (nodeManhattan(node, read.origin) > SCOUT_CATCH_RADIUS_NODES) continue;
+    if (!playerSeesNode(ctx.fog, seat, node.hx, node.hy)) continue;
+    const distance = nodeManhattan(node, at);
+    if (best === null || distance < best.distance || (distance === best.distance && animal < best.animal))
+      best = { animal, distance };
+  }
+  return best?.animal ?? null;
+}
+
+/** The colony's one scout rounds up its farm's herd ({@link herdToClaim}), else carries its lattice round
+ *  what stands there and out to its land's deposits. */
 function raiseSignposts(env: ColonyEnv, men: readonly Entity[], read: FoundingRead): PlayerCommand[] {
   const { world, ctx, seat } = env;
   const scout = men.find((e) => isScoutJob(ctx.content, world.get(e, Settler).jobType));
   if (scout === undefined || read.store === null || scoutBusy(world, ctx, scout)) return [];
+  const animal = herdToClaim(env, scout, read);
+  if (animal !== null) return [{ kind: 'claimAnimal', entity: scout, animal }];
   const buildings = read.buildings.flatMap((e) => anchorNodeOf(world, e) ?? []);
   const corridors = depositsOf(env, read.origin).map((at) => corridorSamples(read.origin, at));
   const from = anchorNodeOf(world, scout);
