@@ -194,6 +194,25 @@ describe('a colony sails', () => {
     expect(freeShipsOf(sim)).toContain(first);
   });
 
+  it('scouts in the small ship while the trade ship lies ready, and claims that one once home', () => {
+    const sim = colonyWorld(SEED, colonyContent(true));
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    const scout = mooredShip(sim);
+    const trade = mooredShip(sim, BIG_SHIP, SECOND_SHIP_AT);
+    expect(stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim)?.phase === 'scouting')).toBe(true);
+    expect(colonyState(sim)?.scout?.ship).toBe(scout);
+    expect(stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.ship === trade)).toBe(true);
+  });
+
+  it('carries the party in a trade ship that scouted, with no wait for another', () => {
+    const sim = colonyWorld(SEED, colonyContent(true));
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    const trade = mooredShip(sim, BIG_SHIP);
+    expect(stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim)?.scout?.ship === trade)).toBe(true);
+    expect(stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.ship === trade)).toBe(true);
+    expect(colonyState(sim)?.scout).toBeNull();
+  });
+
   it('sends ten and the manifest in a trade ship and the rest in the scout ship, which sails home', () => {
     const sim = colonyWorld(SEED, colonyContent(true));
     stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);

@@ -8,8 +8,8 @@ import {
   colonyWantsShips,
   liveColonyLands,
 } from '../../../../src/systems/ai-shared/home-roster.js';
-import { colonySmallShips } from '../../../../src/systems/computer-player/colony/fleet.js';
-import { blankColony, colonyWorld } from '../../../fixtures/colony-islands.js';
+import { colonySmallShips, colonyTradeShips } from '../../../../src/systems/computer-player/colony/fleet.js';
+import { blankColony, colonyContent, colonyWorld } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
 import { SEAT } from '../support.js';
 
@@ -56,5 +56,41 @@ describe('a seat of several colonies', () => {
     expect(liveColonyLands(sim.world, SEAT)).toEqual([NEAR_LAND, FAR_LAND]);
     expect(colonyOverflow(sim.world, SEAT)).toEqual([]);
     expect(colonyWantsShips(sim.world, SEAT)).toBe(true);
+  });
+});
+
+describe('the carrying ship ahead of the scouting', () => {
+  it("is owed from the site's choice and through the scouting", () => {
+    const sim = colonyWorld();
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no carrier');
+    sim.world.add(carrier, ComputerColony, {
+      colonies: [
+        blankColony(NEAR_LAND, { phase: 'siteChosen' }),
+        blankColony(FAR_LAND, { phase: 'scouting', scout: scoutOf(FIRST_SHIP) }),
+      ],
+      rejected: [],
+      retryAt: 0,
+    });
+    expect(colonySmallShips(sim.world, ctxOf(sim), SEAT)).toBe(2);
+  });
+
+  it('is owed for the first colony before its site where the seat may build the trade ship', () => {
+    const sim = colonyWorld(undefined, colonyContent(true));
+    expect(colonyTradeShips(sim.world, ctxOf(sim), SEAT)).toBe(1);
+    expect(colonySmallShips(sim.world, ctxOf(sim), SEAT)).toBe(0);
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no carrier');
+    sim.world.add(carrier, ComputerColony, {
+      colonies: [blankColony(NEAR_LAND, { phase: 'fittingOut', ship: FIRST_SHIP })],
+      rejected: [],
+      retryAt: 0,
+    });
+    expect(colonyTradeShips(sim.world, ctxOf(sim), SEAT)).toBe(0);
+  });
+
+  it('is not owed before a site where the seat sails small ships, its landing fleet scouts and carries', () => {
+    const sim = colonyWorld();
+    expect(colonySmallShips(sim.world, ctxOf(sim), SEAT)).toBe(0);
   });
 });

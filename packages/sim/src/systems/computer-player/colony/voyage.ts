@@ -280,6 +280,13 @@ function fedHelm(env: ColonyEnv, home: number): Entity | undefined {
   );
 }
 
+/** The free ship that scouts, the newest: one that is not the trade ship where one is free, since the trade
+ *  ship lying ready carries the party. */
+function scoutShipOf(env: ColonyEnv, free: readonly Entity[]): Entity | undefined {
+  const other = free.filter((e) => shipId(env, e) !== TRADE_SHIP_ID);
+  return (other.length > 0 ? other : free).at(-1);
+}
+
 /**
  * Site chosen: the first free moored ship takes one spare man at the helm and sails round the site's coast
  * ({@link scoutLoop}), past no peace gate: a sail refuses no target outside the peace's keep-out. A site
@@ -289,7 +296,7 @@ export function claimScoutShip(env: ColonyEnv, colony: ColonyView): PlayerComman
   const { world, ctx, terrain, seat, carrier } = env;
   if (ctx.tick < world.get(carrier, ComputerColony).retryAt) return [];
   const home = homeLandOf(env);
-  const ship = home === NO_COMPONENT ? undefined : freeShips(env, home).at(-1);
+  const ship = home === NO_COMPONENT ? undefined : scoutShipOf(env, freeShips(env, home));
   const berth = ship === undefined ? null : mooringOf(world, ship);
   if (ship === undefined || berth === null) return [];
   const helm = fedHelm(env, home);
@@ -372,8 +379,8 @@ function splitParty(
 }
 
 /**
- * Fitting out: the second ship is claimed as soon as it lies free. Past {@link COLONY_FIT_OUT_TICKS} with
- * none the scout ship carries the whole party; with no ship at all the voyage fails. The same span then runs
+ * Fitting out: the second ship is claimed as soon as it lies free. A scout ship that is the trade ship
+ * carries the whole party at once, any other past {@link COLONY_FIT_OUT_TICKS} with none; with no ship at all the voyage fails. The same span then runs
  * for the manifest to lie in the home stock and a party to be spared: the site is looked at once more and
  * loading starts. A scout ship the party does not need goes free here.
  */
@@ -381,7 +388,9 @@ export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] 
   const { world, ctx, seat } = env;
   const late = ctx.tick - colony.since >= COLONY_FIT_OUT_TICKS;
   if (colony.ship === null) {
-    const ship = carryingShip(env) ?? (late ? (colony.scout?.ship ?? null) : null);
+    const scout = colony.scout?.ship ?? null;
+    const scoutCarries = scout !== null && (late || shipId(env, scout) === TRADE_SHIP_ID);
+    const ship = carryingShip(env) ?? (scoutCarries ? scout : null);
     if (ship === null) return late ? turnHome(env, false) : [];
     const live = env.edit();
     live.ship = ship;
