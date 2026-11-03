@@ -22,7 +22,7 @@ import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
-import { isScoutJob } from '../../readviews/index.js';
+import { isScoutJob, isTraderJob } from '../../readviews/index.js';
 import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { scoutBusy } from '../scout/index.js';
 import { corridorSamples, signpostTargetAround } from '../scout/signpost-coverage.js';
@@ -38,19 +38,20 @@ import { COLONY_STORE_BUILDING_ID } from './survey.js';
 import { isColonyTower, towerAnchor } from './towers.js';
 import { type ColonyEnv, type ColonyView, unloaded } from './voyage.js';
 
-/** What a colony raises first (owner ruling): its warehouse near the shore. The rest it raises as it needs
- *  ({@link colonyPlan}). */
-export const COLONY_BUILDS: readonly string[] = [COLONY_STORE_BUILDING_ID];
 /** How far from the first store a deposit gets a second one, in Manhattan nodes (authored: a hold's hands'
  *  reach, past which the carriers' trips outweigh a store's bill). */
 const SECOND_STORE_NODES = 40;
-/** The people standing on the colony: its members on its land. A man listed for the line but still walking
- *  to the ship is not one yet, or a workshop on the far shore would post him. */
+/** The people standing on the colony: its members on its land. A man listed for the ferry but still walking
+ *  to the ship is not one yet, or a workshop on the far shore would post him; the trader only calls there. */
 export function colonists(env: ColonyEnv): Entity[] {
   const { world, ctx, seat } = env;
   const { land } = env.colony;
   return colonySettlersOn(world, ctx, seat, land).filter(
-    (e) => !world.has(e, Rider) && world.has(e, Position) && standsOn(world, ctx, e, land),
+    (e) =>
+      !world.has(e, Rider) &&
+      world.has(e, Position) &&
+      standsOn(world, ctx, e, land) &&
+      !isTraderJob(ctx.content, world.get(e, Settler).jobType),
   );
 }
 
@@ -124,7 +125,11 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
   const type = colonyStoreType(world, ctx, seat);
   const wood = goodTypeByContentId(ctx.content, 'wood');
   if (type === undefined || wood === undefined || read.store === null) return [];
-  if (colony.builds.filter((b) => b.building === COLONY_STORE_BUILDING_ID).length > 1) return [];
+  const index = contentIndex(ctx.content);
+  const base = buildingTypeByContentId(ctx.content, COLONY_STORE_BUILDING_ID);
+  const tiers = base === undefined ? new Set<number>() : tiersAtOrAbove(index, base);
+  const stores = colony.builds.filter((b) => tiers.has(index.buildingTypeBySlug.get(b.building) ?? -1));
+  if (stores.length > 1) return [];
   const reachable = reachableResourceTest(
     world,
     ctx,
@@ -137,7 +142,7 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
   if (at === null || nodeManhattan(at, read.origin) <= SECOND_STORE_NODES) return [];
   const spot = colonySpot(env, colony.land, type, tribe, at, COLONY_SPOT_NODES);
   if (spot === null) return [];
-  env.edit().builds.push({ building: COLONY_STORE_BUILDING_ID, placed: true });
+  env.edit().builds.push({ building: type.id, placed: true });
   return [placementOf(type.typeId, spot, tribe, seat)];
 }
 
@@ -191,7 +196,7 @@ function raiseSignposts(env: ColonyEnv, men: readonly Entity[], read: FoundingRe
 }
 
 /**
- * Founding and running: the colony raises {@link COLONY_BUILDS}, posts its men by {@link POSTS}, marries and
+ * Founding and running: the colony raises its plan, its first store first, posts its men by {@link POSTS}, marries and
  * houses its people. It runs on, not stopping at `running`, so a post whose man fell is filled by the next
  * free one. `running` starts once the store stands, the hold is empty and a gatherer works.
  */

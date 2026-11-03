@@ -3,6 +3,7 @@ import {
   Female,
   JobAssignment,
   Militia,
+  Rider,
   Settler,
   TrainingOrder,
 } from '../../../components/index.js';
@@ -12,9 +13,10 @@ import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { isAdultSettler } from '../../family/eligibility.js';
-import { isFighterJob, isFisherJob, isScoutJob } from '../../readviews/index.js';
+import { isFighterJob, isFisherJob, isScoutJob, isTraderJob } from '../../readviews/index.js';
 import { jobCanBuild } from '../../settlers/atomics/start.js';
 import { jobAtomics } from '../../settlers/targets/index.js';
+import { pinnedTraderOf } from '../../vehicles/crew.js';
 import { homeSettlers } from '../home-roster.js';
 import { byExperience, trackExperience } from './experience.js';
 
@@ -65,11 +67,14 @@ export function civilianCount(world: World, ctx: SystemContext, player: number):
   return civilians;
 }
 
-/** Whether the settler is labour the allocator may move: an adult man, neither a fighter nor committed
- *  to a drill or the militia. */
+/** Whether the settler is labour the allocator may move: an adult man, neither a fighter, a trader nor a
+ *  pinned trade ship's helper, and not committed to a drill or the militia. */
 export function isAllocatableMan(world: World, ctx: SystemContext, e: Entity): boolean {
   if (world.has(e, Female) || !isAdultSettler(world, e)) return false;
-  if (isFighterJob(ctx.content, world.get(e, Settler).jobType)) return false;
+  const job = world.get(e, Settler).jobType;
+  if (isFighterJob(ctx.content, job) || isTraderJob(ctx.content, job)) return false;
+  const ship = world.tryGet(e, Rider)?.vehicle;
+  if (ship !== undefined && pinnedTraderOf(world, ship) !== null) return false;
   return !world.has(e, TrainingOrder) && !world.has(e, Militia);
 }
 

@@ -5,8 +5,8 @@ import { nodeManhattan } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { minutesToTicks } from '../game-phase.js';
 
-// Where the seat's own line ships took fire. Only what a hull felt goes in, so nothing here reads what the
-// seat has not seen. Figures are authored from arabskie_wyspy_wolna_gra_mieszana, where line ships went down
+// Where the seat's own colony ships took fire. Only what a hull felt goes in, so nothing here reads what the
+// seat has not seen. Figures are authored from arabskie_wyspy_wolna_gra_mieszana, where colony ships went down
 // off a rival's coast.
 
 /** How near a danger a course may pass, in Manhattan nodes: past the 30 of a tower's clearance. */
@@ -15,7 +15,7 @@ const DANGER_NODES = 45;
 const SAME_DANGER_NODES = 40;
 /** The most dangers a colony remembers: past these no way is left worth trying. */
 const DANGERS_MOST = 4;
-/** How long a danger is kept after its latest hit (authored: about two of a line's rounds). Fire moves on, and
+/** How long a danger is kept after its latest hit (authored: about two crossings there and back). Fire moves on, and
  *  a danger kept for good would leave a colony with no line for good. */
 const DANGER_KEPT_TICKS = minutesToTicks(30);
 /** How often a course is tested, in nodes along it. */
@@ -98,7 +98,7 @@ export function clearWay(
   return best === null ? null : { via: best.via };
 }
 
-/** Whether a line can still run between `berth` and `shore`. */
+/** Whether a ship can still sail between `berth` and `shore`. */
 export function lineWayClear(
   terrain: TerrainGraph | undefined,
   dangers: readonly DangerView[],

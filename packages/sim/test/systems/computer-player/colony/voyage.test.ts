@@ -11,7 +11,6 @@ import {
   UnderConstruction,
   Vehicle,
   VehicleStock,
-  vehicleCommander,
 } from '../../../../src/components/index.js';
 import { ONE } from '../../../../src/core/fixed.js';
 import type { Entity } from '../../../../src/ecs/world.js';
@@ -50,7 +49,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { BUILDER, FARM_TYPE, HOME_TOP_TYPE, HOME_TYPE, HUNTER, SEAT, STOCK_TYPE } from '../support.js';
+import { BUILDER, FARM_TYPE, HOME_TOP_TYPE, HOME_TYPE, HUNTER, SEAT, STOCK_TOP_TYPE } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -161,7 +160,7 @@ function ashoreEast(sim: Simulation, list: readonly Entity[]): Entity[] {
 }
 
 describe('a colony sails', () => {
-  it('takes one party and the manifest over the strait in a second small ship', () => {
+  it('takes one party and the manifest over the strait in a second small ship, kept for the trade route', () => {
     const sim = colonyWorld();
     stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
     const first = mooredShip(sim);
@@ -176,14 +175,19 @@ describe('a colony sails', () => {
     expect(wanted.some((line) => line.wanted === 0)).toBe(false);
     expect(stepUntil(sim, SAIL_DUE_TICKS, () => colonyState(sim)?.phase === 'founding')).toBe(true);
     expect(stepUntil(sim, UNLOAD_DUE_TICKS, () => holdLoad(sim.world, ship) === 0)).toBe(true);
-    expect(stepUntil(sim, UNLOAD_DUE_TICKS, () => colonyState(sim)?.line !== null)).toBe(true);
-    const crew = colonyState(sim)?.line?.crew ?? [];
-    const settlers = people.filter((e) => !crew.includes(e));
+    expect(stepUntil(sim, UNLOAD_DUE_TICKS, () => (colonyState(sim)?.route?.ship ?? null) === ship)).toBe(
+      true,
+    );
+    const riding = (): Entity[] =>
+      sim.world.get(ship, Vehicle).passengers.flatMap((seat) => (seat === null ? [] : [seat.entity]));
+    expect(stepUntil(sim, UNLOAD_TICKS, () => riding().length === 1)).toBe(true);
+    const helm = riding()[0] as Entity;
+    expect(sim.world.has(helm, Female)).toBe(false);
+    const settlers = people.filter((e) => e !== helm);
     expect(stepUntil(sim, UNLOAD_TICKS, () => ashoreEast(sim, settlers).length === settlers.length)).toBe(
       true,
     );
     expect(colonyHeldShips(sim.world, SEAT)).toContain(ship);
-    expect(vehicleCommander(sim.world.get(ship, Vehicle))).toBe(crew[0]);
     expect(sim.world.get(first, Vehicle).passengers.every((seat) => seat === null)).toBe(true);
     expect(freeShipsOf(sim)).toContain(first);
   });
@@ -230,7 +234,7 @@ describe('a colony sails', () => {
     expect(copy.hashState()).toBe(sim.hashState());
   });
 
-  it('founds a store on the far land, houses its families and sets gatherers to work there', () => {
+  it('founds a level-3 store on the far land, houses its families and sets gatherers to work there', () => {
     const sim = colonyWorld();
     stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
     mooredShip(sim);
@@ -240,7 +244,7 @@ describe('a colony sails', () => {
     const ctx = ctxOf(sim);
     const away = colonyBuildingsOf(sim);
     const standing = away.filter((e) => !sim.world.has(e, UnderConstruction));
-    expect(standing.map((e) => sim.world.get(e, Building).buildingType)).toContain(STOCK_TYPE);
+    expect(standing.map((e) => sim.world.get(e, Building).buildingType)).toContain(STOCK_TOP_TYPE);
     const left = (): number => {
       let units = 0;
       for (const e of sim.world.query(Resource)) units += sim.world.get(e, Resource).remaining;

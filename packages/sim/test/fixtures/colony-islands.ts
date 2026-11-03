@@ -30,6 +30,7 @@ import {
   makeAiSeat,
   SCOUT,
   SEAT,
+  STOCK_TOP_TYPE,
   STOCK_TYPE,
   STONE,
   STONE_HARVEST,
@@ -51,7 +52,11 @@ const SEATS_BIG = 9;
 const SHIP_FOOTPRINT = 2;
 const DOOR = { direction: 2, distance: 4 };
 const HULL = 5000;
-const CREW_JOBS = [WOMAN, CIVILIST, BUILDER, COLLECTOR, CARRIER, SCOUT];
+/** The trade a route's trader takes, the real one's id. */
+export const TRADER = 25;
+const CREW_JOBS = [WOMAN, CIVILIST, BUILDER, COLLECTOR, CARRIER, SCOUT, TRADER];
+/** Every ship has a slot for a cart, as the real ones do. */
+const VEHICLE_SLOTS = 1;
 export const WHEAT = 44;
 const TRADE_SHIP_GOOD = 45;
 export const FOOD = 3;
@@ -123,14 +128,22 @@ export function colonyContent(tradeShip = false): ContentSet {
     cargoGoods: CARGO_GOODS,
     commanderJob: CARRIER,
     passengerVector: DOOR,
+    vehicleSlots: VEHICLE_SLOTS,
     hitpoints: HULL,
   });
   const base = aiContent();
   return parseContentSet({
     ...base,
+    jobs: [...base.jobs, { typeId: TRADER, id: 'trader' }],
+    // The warehouse chain a colony founds on, its first store raised straight at the top tier as the route
+    // asks (owner ruling).
     buildings: base.buildings.map((b) =>
-      b.typeId === STOCK_TYPE
-        ? { ...b, stock: CARGO_GOODS.map((goodType) => ({ goodType, capacity: STORE_SLOT, initial: 0 })) }
+      b.typeId === STOCK_TYPE || b.typeId === STOCK_TOP_TYPE
+        ? {
+            ...b,
+            ...(b.typeId === STOCK_TYPE ? { upgradeTarget: STOCK_TOP_TYPE } : {}),
+            stock: CARGO_GOODS.map((goodType) => ({ goodType, capacity: STORE_SLOT, initial: 0 })),
+          }
         : b,
     ),
     goods: [
@@ -410,7 +423,8 @@ export function blankColony(land: number, overrides: Partial<ColonyState> = {}):
     failures: 0,
     delivered: null,
     builds: [],
-    line: null,
+    route: null,
+    ferry: null,
     overflow: [],
     stalls: [],
     dangers: [],

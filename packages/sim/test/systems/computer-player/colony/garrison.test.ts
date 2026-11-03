@@ -30,7 +30,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { SEAT, STOCK_TYPE, TOWER_TYPE, VIKING } from '../support.js';
+import { SEAT, STOCK_TOP_TYPE, TOWER_TYPE, VIKING } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -78,8 +78,8 @@ function garrisonedWorld(jobType = SPEARMAN): Simulation {
   mooredShip(sim);
   stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
   mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
-  if (!stepUntil(sim, LANDING_DUE_TICKS, () => (colonyState(sim)?.line ?? null) !== null))
-    throw new Error('setup: no line');
+  if (!stepUntil(sim, LANDING_DUE_TICKS, () => (colonyState(sim)?.route?.ship ?? null) !== null))
+    throw new Error('setup: no route');
   if (!stepUntil(sim, GARRISON_DUE_TICKS, () => ashore(sim).length >= GARRISON_LEAST))
     throw new Error('setup: no garrison ashore');
   return sim;
@@ -176,7 +176,7 @@ describe('a garrisoned colony of archers', () => {
     expect(stepUntil(sim, TOWER_DUE_TICKS, () => towers().length === TOWERS_LEAST)).toBe(true);
     const at = nodeOfEntity(sim.world, towers()[0] as Entity);
     const store = colonyBuildingsOn(sim.world, ctx(), SEAT, colonyState(sim)?.land ?? -1).find(
-      (e) => sim.world.get(e, Building).buildingType === STOCK_TYPE,
+      (e) => sim.world.get(e, Building).buildingType === STOCK_TOP_TYPE,
     );
     const from = store === undefined ? null : nodeOfEntity(sim.world, store);
     const shore = colonyState(sim)?.shore;

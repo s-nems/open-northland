@@ -8,10 +8,11 @@ import type { ComputerModule } from '../index.js';
 import { abandonColony, evacuate, overrun } from './abandon.js';
 import { reviewArms } from './arms.js';
 import { openNextColony } from './expansion.js';
+import { runFerry } from './ferry.js';
 import { foundColony } from './founding.js';
 import { defendColony } from './garrison.js';
-import { runLine } from './line.js';
 import { reviewOverflow } from './overflow.js';
+import { runRoute } from './route.js';
 import { recoverStrayShips } from './stray-ships.js';
 import {
   afterLanding,
@@ -59,7 +60,12 @@ function runOneColony(env: ColonyEnv): readonly PlayerCommand[] {
       return landing(env, colony);
     case 'founding':
     case 'running': {
-      const ships = [...afterLanding(env, colony), ...runLine(env, colony), ...defendColony(env, env.colony)];
+      const ships = [
+        ...afterLanding(env, colony),
+        ...runRoute(env, env.colony),
+        ...runFerry(env, env.colony),
+        ...defendColony(env, env.colony),
+      ];
       if (!moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS)) return ships;
       if (!overrun(env, colony))
         return [...ships, ...recoverStrayShips(env, colony), ...foundColony(env, colony)];

@@ -86,8 +86,8 @@ export function garrisonRoom(army: number, held: number): number {
 }
 
 /** The men home owes the colony's garrison, archers first and then ascending id: none while home is raided,
- *  and no more than {@link garrisonRoom} lets go. A want any carrier between the islands meets; today the
- *  line's home stop seats them. */
+ *  and no more than {@link garrisonRoom} lets go. The colony's ferry seats them at
+ *  home. */
 export function garrisonOwed(env: ColonyEnv, colony: ColonyView): Entity[] {
   const { world, ctx, seat } = env;
   const lacking = garrisonWant(colony, ctx.tick) - colony.garrison.length;
@@ -124,8 +124,8 @@ function noteThreat(
 }
 
 /** Drop from the garrison who has died, and with `landed` who stands neither aboard nor on the colony's land:
- *  a man landed home is home's again. A man ordered aboard boards only next tick, so a running line forgets
- *  the one the door refused at its next home stop instead. Only a change writes. */
+ *  a man landed home is home's again. A man ordered aboard boards only next tick, so a running ferry forgets
+ *  the one the door refused once it is done. Only a change writes. */
 export function forgetGarrison(env: ColonyEnv, colony: ColonyView, landed: boolean): void {
   const { world, ctx } = env;
   const stays = (e: Entity): boolean =>

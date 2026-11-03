@@ -2,7 +2,7 @@ import type { BuildingType } from '@open-northland/data';
 import { playerPlacementTribes } from '../../../components/index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../nav/halfcell.js';
-import { buildingTypeByContentId, goodTypeByContentId } from '../../ai-shared/content-lookup.js';
+import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { colonyBuildingsOn } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf, bestRingNode } from '../../ai-shared/node-geometry.js';
 import { routeRegions } from '../../footprint/index.js';
@@ -16,7 +16,7 @@ import { seatSiege } from '../build-order/siege.js';
 import { nearestLiveResource } from '../live-resources.js';
 import type { StepGround } from './plan.js';
 import { LAND_GOOD_IDS } from './provision.js';
-import { COLONY_STORE_BUILDING_ID } from './survey.js';
+import { colonyStoreType } from './store-tier.js';
 import type { ColonyEnv } from './voyage.js';
 
 /** How far from what stands on the colony a building goes, in Manhattan nodes (authored): the walk range,
@@ -155,7 +155,7 @@ export function shoreWithStore(
 ): HalfCellNode | null {
   const { world, ctx, seat } = env;
   const tribe = playerPlacementTribes(world, seat)?.[0];
-  const type = buildingTypeByContentId(ctx.content, COLONY_STORE_BUILDING_ID);
+  const type = colonyStoreType(world, ctx, seat);
   if (tribe === undefined || type === undefined) return null;
   let best: HalfCellNode | null = null;
   let bestScore = -1;

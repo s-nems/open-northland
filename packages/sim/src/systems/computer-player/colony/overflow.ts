@@ -29,7 +29,7 @@ import { minutesToTicks } from '../game-phase.js';
 import { Schooling } from '../technology/schooling.js';
 import { fullCrew } from '../workforce/staffing-rows.js';
 import { colonyOrigin } from './founding.js';
-import { homeSpare, homeSupply } from './line.js';
+import { homeSpare, homeSupply } from './home-supply.js';
 import { homeMaySpare, sparePartyMen } from './people.js';
 import { atWorkshop } from './posts.js';
 import { landHolds } from './provision.js';
@@ -108,8 +108,8 @@ function takenBySibling(env: ColonyEnv, stall: DeepReadonly<ColonyStall>): boole
 }
 
 /** Hand the longest-held step that qualifies to the colony, one at a time so its bills do not outrun its
- *  line, ahead of the homes still to raise. Owner ruling: no home goes with it; homes serve population growth
- *  and the crew sails on the line. */
+ *  trader, ahead of the homes still to raise. Owner ruling: no home goes with it; homes serve population
+ *  growth. */
 function handOver(env: ColonyEnv, colony: ColonyView): void {
   const { ctx } = env;
   if (colony.builds.some((b) => !b.placed && OVERFLOW_BUILDING_IDS.has(b.building))) return;
@@ -211,7 +211,7 @@ function fitsTrade(env: ColonyEnv, job: number): (e: Entity) => boolean {
   return (e) => !world.has(e, Carrying) && settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', job);
 }
 
-/** Who a line's home stop owes the colony: the spare men of the trades no colonist among `people` has earned,
+/** Who the ferry owes the colony from home: the spare men of the trades no colonist among `people` has earned,
  *  in at most `seats`, and the lessons that make the next such man where home's school teaches the trade.
  *  A workshop none of them reaches simply waits: home's line has moved on. */
 export function tradesmenFor(

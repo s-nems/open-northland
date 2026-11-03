@@ -24,25 +24,34 @@ export interface ColonyScout {
   leg: number;
 }
 
-export type ColonyLineLeg =
-  | 'unloadHome'
-  | 'loadHome'
-  | 'sailOut'
-  | 'unloadColony'
-  | 'loadColony'
-  | 'sailHome';
+/** The seat's trader for a colony and the ship pinned to its route, home's warehouse to the colony's. */
+export interface ColonyRoute {
+  /** The man who took the trade, null until one is chosen. */
+  trader: Entity | null;
+  /** The tick the trader was chosen: his trade change may wait out what he is doing. */
+  chosen: number;
+  /** The ship the route sails, null while the seat owes one. */
+  ship: Entity | null;
+  /** The ship's hull when last read: a drop is fire the seat has felt. */
+  hull: number;
+  /** The units aboard the ship and in the trader's cart when last read: a drop at home is a delivery. */
+  load: number;
+}
 
-/** The ship that carries goods between a seat's home and its colony. */
-export interface ColonyLine {
+/** Where a colony's people ferry stands on its trip: taking riders on at `side`, or sailing for it. */
+export type ColonyFerryLeg = 'board' | 'sail';
+
+/** A free ship that carries a colony's people across, settlers out and men past work home. */
+export interface ColonyFerry {
   ship: Entity;
-  crew: Entity[];
-  leg: ColonyLineLeg;
+  /** The side it boards at or sails for. */
+  side: 'home' | 'colony';
+  leg: ColonyFerryLeg;
   /** The tick the leg began. */
   since: number;
-  /** The units aboard when last read, and the tick that figure last changed. */
-  load: number;
-  lastLoad: number;
-  /** The hull when last read: a drop is fire the seat has felt. */
+  /** The man at the helm who brings it back from the colony; null on a trip that ends there. */
+  helm: Entity | null;
+  /** The ship's hull when last read: a drop is fire the seat has felt. */
   hull: number;
 }
 
@@ -91,14 +100,15 @@ export interface ColonyState {
   /** The colonists: those on the colony ship, and the rest the scout ship brings. */
   people: Entity[];
   rest: Entity[];
-  /** The fighters home sent to hold it: aboard its line or on its land. */
+  /** The fighters home sent to hold it: aboard its ferry or on its land. */
   garrison: Entity[];
   threat: ColonyThreat | null;
   failures: number;
-  /** The tick its line last brought a load home, null until then. */
+  /** The tick its trader last brought a load home, null until then. */
   delivered: number | null;
   builds: { building: string; placed: boolean }[];
-  line: ColonyLine | null;
+  route: ColonyRoute | null;
+  ferry: ColonyFerry | null;
   overflow: ColonyOverflow[];
   stalls: ColonyStall[];
   /** Where its ships took fire lately, out of the seat's own experience. */

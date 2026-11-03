@@ -2,45 +2,50 @@ import { Vehicle, VehicleStock, vehicleLoad } from '../../../components/index.js
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import type { SeatStock } from '../../stores/index.js';
-import { COLONY_STORE_BUILDING_ID } from './survey.js';
+import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
+import { foodGood } from './home-supply.js';
+import { colonyStoreType } from './store-tier.js';
 
-/** What a colony sails with, by content id, in the order the hold takes it (authored from the bills of its
- *  store, a home, a farm, a mill and a well): the first buildings before its diggers bring anything in and
- *  the first line ship is back. Owner ruling: the rest its land gives it, so this is no more than that. */
-const MANIFEST: readonly { readonly id: string; readonly amount: number }[] = [
-  { id: 'stone', amount: 4 },
-  { id: 'mud', amount: 3 },
-  { id: 'wheat', amount: 4 },
-  { id: 'wood', amount: 9 },
-];
+/** Food per member of the founding party (authored: the comfort line home keeps a mouth), what it eats
+ *  until its fishers and the trader feed it. */
+const FOUNDING_FOOD_PER_COLONIST = FOOD_COMFORT_UNITS_PER_SETTLER;
 
 interface CargoLine {
   readonly goodType: number;
   readonly amount: number;
 }
 
-/** The manifest's lines the content knows. */
-export function colonyManifest(ctx: SystemContext): CargoLine[] {
-  return MANIFEST.flatMap(({ id, amount }) => {
-    const good = goodTypeByContentId(ctx.content, id);
-    return good === undefined ? [] : [{ goodType: good.typeId, amount }];
-  });
+/** What a colony sails with: the whole bill of its first store, placed at that tier, and food for its
+ *  `party`. */
+export function colonyManifest(world: World, ctx: SystemContext, seat: number, party: number): CargoLine[] {
+  const store = colonyStoreType(world, ctx, seat);
+  const bill =
+    store === undefined ? [] : (contentIndex(ctx.content).constructionBillByBuilding.get(store.typeId) ?? []);
+  const lines = new Map<number, number>();
+  for (const line of bill) lines.set(line.goodType, (lines.get(line.goodType) ?? 0) + line.amount);
+  const food = foodGood(ctx);
+  if (food !== null) lines.set(food, (lines.get(food) ?? 0) + FOUNDING_FOOD_PER_COLONIST * party);
+  return [...lines].map(([goodType, amount]) => ({ goodType, amount }));
 }
 
 /** Whether `stock` holds what the manifest still wants beyond what lies aboard `ship`. */
-export function manifestInStock(world: World, ctx: SystemContext, stock: SeatStock, ship: Entity): boolean {
+export function manifestInStock(
+  world: World,
+  stock: SeatStock,
+  ship: Entity,
+  manifest: readonly CargoLine[],
+): boolean {
   const hold = world.tryGet(ship, VehicleStock)?.lines;
-  return colonyManifest(ctx).every(
+  return manifest.every(
     (line) => stock.units(line.goodType) >= line.amount - (hold?.get(line.goodType)?.current ?? 0),
   );
 }
 
-/** One order per line of the manifest: the riders of `ship` fetch them. */
-export function wantManifest(ctx: SystemContext, ship: Entity): PlayerCommand[] {
-  return colonyManifest(ctx).map((line) => ({
+/** One order per line of `manifest`: the riders of `ship` fetch them. */
+export function wantManifest(ship: Entity, manifest: readonly CargoLine[]): PlayerCommand[] {
+  return manifest.map((line) => ({
     kind: 'setVehicleWanted',
     vehicle: ship,
     goodType: line.goodType,
@@ -48,30 +53,19 @@ export function wantManifest(ctx: SystemContext, ship: Entity): PlayerCommand[] 
   }));
 }
 
-/** Whether every line asked of `ship`'s hold lies aboard, but `eating` units of `food`: a crew eats from the
- *  hold while it loads, and the good a colony has none of would hold the ship to the stall limit. */
-export function holdDone(world: World, ship: Entity, food: number | null = null, eating = 0): boolean {
+/** Whether every line asked of `ship`'s hold lies aboard. */
+export function holdDone(world: World, ship: Entity): boolean {
   const stock = world.tryGet(ship, VehicleStock);
   if (stock === undefined) return false;
-  for (const [good, line] of stock.lines) {
-    if (line.current < line.wanted - (good === food ? eating : 0)) return false;
-  }
+  for (const line of stock.lines.values()) if (line.current < line.wanted) return false;
   return vehicleLoad(stock) > 0;
 }
 
-/** Whether no line of `ship`'s hold lies aboard past what is asked of it. */
-export function holdFlushed(world: World, ship: Entity): boolean {
-  const stock = world.tryGet(ship, VehicleStock);
-  if (stock === undefined) return true;
-  for (const line of stock.lines.values()) if (line.current > line.wanted) return false;
-  return true;
-}
-
-/** Whether `ship` holds what a warehouse costs: without that a colony cannot start. */
-export function holdsStoreBill(world: World, ctx: SystemContext, ship: Entity): boolean {
-  const index = contentIndex(ctx.content);
-  const store = index.buildingTypeBySlug.get(COLONY_STORE_BUILDING_ID);
-  const bill = store === undefined ? undefined : index.constructionBillByBuilding.get(store);
+/** Whether `ship` holds what the colony's first store costs: without that a colony cannot start. */
+export function holdsStoreBill(world: World, ctx: SystemContext, seat: number, ship: Entity): boolean {
+  const store = colonyStoreType(world, ctx, seat);
+  const bill =
+    store === undefined ? undefined : contentIndex(ctx.content).constructionBillByBuilding.get(store.typeId);
   const stock = world.tryGet(ship, VehicleStock);
   if (bill === undefined || stock === undefined) return false;
   return bill.every((line) => (stock.lines.get(line.goodType)?.current ?? 0) >= line.amount);

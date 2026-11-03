@@ -4,6 +4,7 @@ import {
   ComputerColony,
   type ComputerColonyState,
   Female,
+  Marriage,
   mapBriefOf,
   SettlerNeeds,
   Vehicle,
@@ -30,13 +31,21 @@ import { believedLand, underFire } from '../military/operations/landing-target.j
 import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { SEA_SCOUT_TRIP_TIMEOUT_TICKS, scoutLoop } from '../military/operations/sea-scout.js';
 import { shorePoints } from '../sea-route.js';
-import { holdDone, holdLoad, holdsStoreBill, manifestInStock, pinHold, wantManifest } from './cargo.js';
+import {
+  colonyManifest,
+  holdDone,
+  holdLoad,
+  holdsStoreBill,
+  manifestInStock,
+  pinHold,
+  wantManifest,
+} from './cargo.js';
 import { mayBuildTradeShip, TRADE_SHIP_ID } from './fleet.js';
-import { COLONY_BUILDS } from './founding.js';
-import { startLine } from './line.js';
 import { boardOrders, pickParty, spareMen } from './people.js';
+import { takeRouteShip } from './route.js';
 import { shoreWithStore } from './spot.js';
 import { homeStockOf } from './stock.js';
+import { colonyStoreType } from './store-tier.js';
 import { type ColonySite, colonySiteClear, siteBlockHolds, surveyColonySite } from './survey.js';
 
 export type ColonyView = DeepReadonly<ColonyState>;
@@ -188,7 +197,8 @@ function settledOn(
     failures,
     delivered: null,
     builds: [],
-    line: null,
+    route: null,
+    ferry: null,
     overflow: [],
     stalls: [],
     dangers: [],
@@ -386,10 +396,11 @@ export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] 
   }
   if (late) return turnHome(env, false);
   const home = homeLandOf(env);
-  if (!mooredOn(env, ship, home) || !manifestInStock(world, ctx, homeStockOf(world, ctx, seat), ship))
-    return [];
+  if (!mooredOn(env, ship, home)) return [];
   const party = pickParty(world, ctx, seat, home);
   if (party.length === 0) return [];
+  const manifest = colonyManifest(world, ctx, seat, party.length);
+  if (!manifestInStock(world, homeStockOf(world, ctx, seat), ship, manifest)) return [];
   if (!colonySiteClear(world, ctx, seat, colony.site)) return turnHome(env, true);
   const tradeShip = shipId(env, ship) === TRADE_SHIP_ID ? (colony.scout?.ship ?? null) : null;
   const { people, rest } = splitParty(world, party, ship, tradeShip);
@@ -400,7 +411,7 @@ export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] 
   live.rest = rest;
   if (tradeShip === null) live.scout = null;
   else if (live.scout !== null && rest[0] !== undefined) live.scout.helm = rest[0];
-  return [...boardOrders(world, people, ship), ...wantManifest(ctx, ship)];
+  return [...boardOrders(world, people, ship), ...wantManifest(ship, manifest)];
 }
 
 /** The home could not fill the hold: the party goes back to work, what lies aboard stays, and the fit-out
@@ -425,7 +436,7 @@ export function loading(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const ship = colony.ship;
   if (ship === null || !world.has(ship, Vehicle)) return turnHome(env, false);
   const elapsed = ctx.tick - colony.since;
-  const billed = holdsStoreBill(world, ctx, ship);
+  const billed = holdsStoreBill(world, ctx, seat, ship);
   if (!holdDone(world, ship) && (elapsed < COLONY_LOAD_TICKS || (!billed && elapsed < 2 * COLONY_LOAD_TICKS)))
     return [];
   if (!billed) return backToFittingOut(env, ship);
@@ -527,7 +538,8 @@ export function landing(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const live = env.edit();
   live.phase = 'founding';
   live.since = ctx.tick;
-  live.builds = COLONY_BUILDS.map((building) => ({ building, placed: false }));
+  const store = colonyStoreType(world, ctx, env.seat);
+  live.builds = store === undefined ? [] : [{ building: store.id, placed: false }];
   return [
     { kind: 'clearVehicleWanted', vehicle: ship },
     ...setAshore(world, ctx, ship, COLONY_LANDING_HANDS),
@@ -539,14 +551,24 @@ export function unloaded(env: ColonyEnv, colony: ColonyView, ship: Entity): bool
   return holdLoad(env.world, ship) === 0 || env.ctx.tick - colony.since >= COLONY_UNLOAD_TICKS;
 }
 
-/** What a founding colony's ships still do: the scout ship goes home, and an unloaded colony ship turns
- *  into the shipping line, or, sunk first, leaves the seat owing one. */
+/** What a founding colony's ships still do: the scout ship goes home, and an unloaded colony ship keeps an
+ *  unwed man at the helm, lets the rest ashore and goes to the colony's trade route, which sails it home; sunk first, the
+ *  route owes one. */
 export function afterLanding(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
+  const { world } = env;
   const commands = bringScoutHome(env, colony);
   const ship = colony.ship;
-  if (ship !== null && !env.world.has(ship, Vehicle)) env.edit().ship = null;
-  else if (ship !== null && mooringOf(env.world, ship) !== null && unloaded(env, colony, ship))
-    commands.push(...startLine(env, colony, ship));
+  if (ship !== null && !world.has(ship, Vehicle)) env.edit().ship = null;
+  else if (ship !== null && mooringOf(world, ship) !== null && unloaded(env, colony, ship)) {
+    const state = world.get(ship, Vehicle);
+    const riders = vehiclePassengers(state).map((seat) => seat.entity);
+    // A wed man stays with his family, who live on the colony now.
+    const helm =
+      riders.find((e) => !world.has(e, Female) && !world.has(e, Marriage)) ?? vehicleCommander(state);
+    for (const e of riders) if (e !== helm) commands.push({ kind: 'detachFromVehicle', entity: e });
+    env.edit().ship = null;
+    takeRouteShip(env, ship);
+  }
   return commands;
 }
 

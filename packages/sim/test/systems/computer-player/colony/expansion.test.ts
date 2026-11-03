@@ -75,15 +75,15 @@ describe('a seat looking past its colonies', () => {
   });
 });
 
-/** A seat with a line running on the east island, and the far island's colony on its way. */
+/** A seat with a route running on the east island, and the far island's colony on its way. */
 function twoColonies() {
   const sim = colonyWorld(SEED, colonyContent(), [], true);
   stepUntil(sim, FIRST_LANDS_TICKS, () => colonyState(sim) !== undefined);
   mooredShip(sim);
   stepUntil(sim, FIRST_LANDS_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
   mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
-  if (!stepUntil(sim, FIRST_LANDS_TICKS, () => (colonyState(sim)?.line ?? null) !== null))
-    throw new Error('setup: no first line');
+  if (!stepUntil(sim, FIRST_LANDS_TICKS, () => (colonyState(sim)?.route?.ship ?? null) !== null))
+    throw new Error('setup: no first route');
   const ctx = ctxOf(sim);
   const terrain = ctx.terrain;
   const carrier = aiControlEntity(sim.world, SEAT);
@@ -100,16 +100,19 @@ function twoColonies() {
 }
 
 describe('a seat of two colonies on three islands', () => {
-  it('runs each on its own land with its own line, and comes back from a save', () => {
+  it('runs each on its own land with its own route, and comes back from a save', () => {
     const sim = twoColonies();
     const running = stepUntil(sim, SECOND_LINE_TICKS, () => colonyState(sim, 1)?.phase === 'running');
     expect(running).toBe(true);
     const near = colonyState(sim);
     const far = colonyState(sim, 1);
-    if (near?.line == null || far?.line == null) throw new Error('a line is missing');
+    const nearShip = near?.route?.ship ?? null;
+    const farShip = far?.route?.ship ?? null;
+    if (near === undefined || far === undefined || nearShip === null || farShip === null)
+      throw new Error('a route is missing');
     expect(far.land).not.toBe(near.land);
-    expect(far.line.ship).not.toBe(near.line.ship);
-    expect(colonyHeldShips(sim.world, SEAT)).toEqual(expect.arrayContaining([near.line.ship, far.line.ship]));
+    expect(farShip).not.toBe(nearShip);
+    expect(colonyHeldShips(sim.world, SEAT)).toEqual(expect.arrayContaining([nearShip, farShip]));
     const ctx = ctxOf(sim);
     const nearBuildings = colonyBuildingsOn(sim.world, ctx, SEAT, near.land);
     const farBuildings = colonyBuildingsOn(sim.world, ctx, SEAT, far.land);
@@ -126,7 +129,7 @@ describe('a seat of two colonies on three islands', () => {
       copy.step();
     }
     expect(colonyState(copy, 1)?.land).toBe(far.land);
-    expect(copy.world.has(far.line.ship, Vehicle)).toBe(true);
+    expect(copy.world.has(farShip, Vehicle)).toBe(true);
     expect(copy.hashState()).toBe(sim.hashState());
   });
 });

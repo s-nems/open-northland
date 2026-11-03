@@ -17,7 +17,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { BARRACKS_TYPE, SEAT, STOCK_TYPE, VIKING } from '../support.js';
+import { BARRACKS_TYPE, SEAT, STOCK_TOP_TYPE, VIKING } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -52,7 +52,7 @@ function runningWorld(): Simulation {
     throw new Error('setup: no running colony');
   const land = colonyState(sim)?.land ?? -1;
   const store = colonyBuildingsOn(sim.world, ctxOf(sim), SEAT, land).find(
-    (e) => sim.world.get(e, Building).buildingType === STOCK_TYPE,
+    (e) => sim.world.get(e, Building).buildingType === STOCK_TOP_TYPE,
   );
   if (store === undefined) throw new Error('setup: no colony store');
   sim.world.mut(store, Stockpile).amounts.set(FOOD, COLONY_FOOD);

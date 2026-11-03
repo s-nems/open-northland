@@ -201,7 +201,7 @@ export function pickParty(world: World, ctx: SystemContext, seat: number, land: 
   return party.length < PARTY_LEAST ? [] : party;
 }
 
-/** Who sails on a line's outward leg, in `seats`, for the `lacking` men and women of a colony; home keeps
+/** Who sails on the ferry's outward leg, in `seats`, for the `lacking` men and women of a colony; home keeps
  *  its {@link HOME_KEEPS_CIVILIANS} and its food posts. */
 export function topUpParty(
   world: World,

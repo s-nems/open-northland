@@ -1,30 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import { VehicleStock } from '../../../../src/components/index.js';
-import { colonyManifest, wantManifest } from '../../../../src/systems/computer-player/colony/cargo.js';
-import { colonyWorld, mooredShip, WHEAT } from '../../../fixtures/colony-islands.js';
+import { contentIndex } from '../../../../src/core/content-index.js';
+import {
+  colonyManifest,
+  firstStoreType,
+  wantManifest,
+} from '../../../../src/systems/computer-player/colony/cargo.js';
+import { colonyWorld, FOOD, mooredShip } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { MUD, STONE, WOOD } from '../support.js';
+import { SEAT, STOCK_TOP_TYPE } from '../support.js';
 
-/** What a store and a home cost in the real content, by good. */
-const FOUNDING_BILL = new Map([
-  [WOOD, 4],
-  [STONE, 1],
-  [MUD, 2],
-  [WHEAT, 2],
-]);
-const SMALL_HOLD = 50;
+const PARTY = 12;
+const FOOD_PER_COLONIST = 2;
 
 describe('a colony manifest', () => {
-  it('fits a small hold and covers the founding bill', () => {
+  it('carries the whole bill of a level-3 store placed at once, and food for the party', () => {
     const sim = colonyWorld();
     const ctx = ctxOf(sim);
     const ship = mooredShip(sim);
-    const lines = colonyManifest(ctx);
-    expect(lines.reduce((sum, line) => sum + line.amount, 0)).toBeLessThanOrEqual(SMALL_HOLD);
-    for (const command of wantManifest(ctx, ship)) sim.enqueueSetup(command);
+    expect(firstStoreType(sim.world, ctx, SEAT)?.typeId).toBe(STOCK_TOP_TYPE);
+    const manifest = colonyManifest(sim.world, ctx, SEAT, PARTY);
+    for (const command of wantManifest(ship, manifest)) sim.enqueueSetup(command);
     sim.step();
     const wanted = sim.world.get(ship, VehicleStock).lines;
-    for (const [good, bill] of FOUNDING_BILL)
-      expect(wanted.get(good)?.wanted ?? 0).toBeGreaterThanOrEqual(bill);
+    for (const line of contentIndex(ctx.content).constructionBillByBuilding.get(STOCK_TOP_TYPE) ?? [])
+      expect(wanted.get(line.goodType)?.wanted ?? 0).toBeGreaterThanOrEqual(line.amount);
+    expect(wanted.get(FOOD)?.wanted).toBe(FOOD_PER_COLONIST * PARTY);
   });
 });

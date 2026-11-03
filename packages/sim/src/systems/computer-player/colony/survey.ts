@@ -9,11 +9,11 @@ import {
 import type { World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistance } from '../../../nav/halfcell.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../nav/terrain/index.js';
-import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { placementProbe } from '../../footprint/placement/building.js';
 import { believedBuildings } from '../knowledge/intel/index.js';
+import { colonyStoreType } from './store-tier.js';
 
 // Where a seat could settle over the sea. The figures below are authored from a survey of the 65 free-play
 // maps' zones unless they say otherwise: on arabskie_wyspy_wolna_gra_mieszana every seat keeps a site 99-122
@@ -43,7 +43,7 @@ const SHORE_WEIGHT = 2;
 const FISH_WEIGHT = 1;
 const DISTANCE_WEIGHT = 1;
 /** Past these a site gains nothing: the ground for a colony's plan, a farm's fields and well, a swarm's
- *  catch, and the widest sea a line crosses in a few minutes. */
+ *  catch, and the widest sea a ship crosses in a few minutes. */
 const ROOM_FULL_NODES = 2000;
 const GRASS_FULL_NODES = 400;
 const FISH_FULL_UNITS = 400;
@@ -365,7 +365,7 @@ export function surveyColonySite(
   const terrain = ctx.terrain;
   const brief = mapBriefOf(world);
   const tribe = playerPlacementTribes(world, seat)?.[0];
-  const store = buildingTypeByContentId(ctx.content, COLONY_STORE_BUILDING_ID);
+  const store = colonyStoreType(world, ctx, seat);
   if (terrain === undefined || brief === null || tribe === undefined || store === undefined) return null;
   const sites = colonySiteCandidates(brief, seat)
     .filter((site) => !rejected.includes(site.zone) && accepts(site))

@@ -185,7 +185,7 @@ function operatorJobs(env: ColonyEnv, type: BuildingType): number[] {
   return type.workers.map((slot) => slot.jobType).filter((job) => !isCarrierJob(env.ctx, job));
 }
 
-/** Whether a school standing at home teaches `job`: its pupil sails on the line. */
+/** Whether a school standing at home teaches `job`: its pupil sails on the ferry. */
 export function homeTeaches(env: ColonyEnv, job: number): boolean {
   const { world, ctx, seat } = env;
   const tribe = playerPlacementTribes(world, seat)?.[0];

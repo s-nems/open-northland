@@ -16,7 +16,7 @@ import { seatHasSide } from '../build-order/seat-order.js';
 import { LATE_GAME_FROM_TICKS, minutesToTicks } from '../game-phase.js';
 import { freeShips } from '../military/operations/landing.js';
 import { colonists, colonyOrigin } from './founding.js';
-import { homeSupply } from './line.js';
+import { homeSupply } from './home-supply.js';
 import { pickParty } from './people.js';
 import { LAND_GOOD_IDS, type LandGood, landHolds } from './provision.js';
 import { colonyBuildings } from './spot.js';
@@ -42,7 +42,7 @@ const SETTLERS_PER_COLONY = 100;
  *  colony that lost most fighters stood under it, and those stay at home until the army has caught up, as
  *  another party would be recruits it never gets. */
 const FIGHTERS_PER_CIVILIAN = 1;
-/** How long a colony's last load home counts: about two of a line's rounds. */
+/** How long a colony's last load home counts: about two of a trader's rounds. */
 const DELIVERY_FRESH_TICKS = minutesToTicks(30);
 /** The free ships at home that spare one for a scout and still leave the next landing a hull. */
 const FREE_SHIPS_LEAST = 2;
@@ -67,9 +67,10 @@ export interface NextColonyRead {
   readonly settlers: number;
   readonly fighters: number;
   readonly civilians: number;
-  /** Whether every live colony runs and nothing of the seat's colonies is under way but their lines. */
+  /** Whether every live colony runs on its trade route and nothing else of the seat's colonies is under
+   *  way. */
   readonly settled: boolean;
-  /** Whether the newest colony eats, and the tick its line last brought a load home. */
+  /** Whether the newest colony eats, and the tick its trader last brought a load home. */
   readonly fed: boolean;
   readonly delivered: number | null;
   readonly freeShips: number;
@@ -90,12 +91,15 @@ export function mayLookFurther(read: NextColonyRead): boolean {
   );
 }
 
-/** Whether nothing of the seat's colonies is under way but a running colony's line. */
+/** Whether nothing of the seat's colonies is under way but a running colony's route and ferry. */
 function settled(colonies: readonly ColonyView[]): boolean {
   return colonies.every((colony) =>
     colony.phase === 'abandoned'
-      ? colony.line === null && colony.scout === null
-      : colony.phase === 'running' && colony.line !== null && colony.scout === null && colony.ship === null,
+      ? colony.route === null && colony.ferry === null && colony.scout === null
+      : colony.phase === 'running' &&
+        (colony.route?.ship ?? null) !== null &&
+        colony.scout === null &&
+        colony.ship === null,
   );
 }
 

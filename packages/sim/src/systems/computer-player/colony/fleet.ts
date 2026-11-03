@@ -16,15 +16,17 @@ export function mayBuildTradeShip(world: World, ctx: SystemContext, seat: number
   return tribe !== undefined && good !== undefined && goodEnabled(world, ctx, seat, tribe, good.typeId);
 }
 
-/** Whether `colony` lacks a carrying ship: from the scout's return until it claims one, and for a shipping
- *  line that lost its ship, while a way clear of the fire that took it remains. */
+/** Whether `colony` lacks a carrying ship: from the scout's return until it claims one, and for a trade
+ *  route that lost its ship, while a way clear of the fire that took it remains. */
 function shipOwed(ctx: SystemContext, colony: DeepReadonly<ColonyState>): boolean {
   if (colony.ship !== null) return false;
   const fitting = colony.phase === 'fittingOut' && colony.scout !== null;
   const settled = colony.phase === 'founding' || colony.phase === 'running';
-  const lineOwed =
-    settled && colony.line === null && lineWayClear(ctx.terrain, colony.dangers, colony.berth, colony.shore);
-  return fitting || lineOwed;
+  const routeOwed =
+    settled &&
+    (colony.route?.ship ?? null) === null &&
+    lineWayClear(ctx.terrain, colony.dangers, colony.berth, colony.shore);
+  return fitting || routeOwed;
 }
 
 /** The carrying ships `seat`'s colonies lack, one each at most. */

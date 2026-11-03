@@ -39,7 +39,7 @@ import {
 import { huntWorkLeft } from '../workforce/hunter.js';
 import { rowPlan } from '../workforce/staffing-rows.js';
 import { colonists, colonyOrigin, storeOf } from './founding.js';
-import { homeSupply } from './line.js';
+import { homeSupply } from './home-supply.js';
 import { MEN_PER_WOMAN } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan, homeSlots } from './plan.js';
 import {
@@ -60,7 +60,7 @@ import type { ColonyEnv, ColonyView } from './voyage.js';
 /** The builders a colony keeps once nothing is left to raise (authored): a pair for a lost building, and
  *  every other man digs, which is what the colony is for. */
 const BUILDERS_AT_REST = 2;
-/** The men on a good at most (authored): past these a line of 40 units a stop cannot carry what they dig. */
+/** The men on a good at most (authored): past these the colony's carriers cannot take in what they dig. */
 const DIGGERS_MOST: Readonly<Record<LandGood, number>> = { wood: 4, stone: 4, mud: 2, iron: 2 };
 /** The women a colony with a food hand gets before its food holds (authored): the couples its homes wait
  *  for, as a colony of men alone never grows whatever it eats. */
@@ -395,8 +395,8 @@ function mouthsFed(env: ColonyEnv, buildings: readonly Entity[], posts: readonly
 }
 
 /** The men and women the colony has work for now and can feed: a man idle there is a man lost at home. Owner
- *  ruling: people cross like goods. A colony needing hands for gatherers, sites or workshops gets men over
- *  the line, and once it eats well women for their share and for every slot of its homes. A good its stores
+ *  ruling: people cross like goods. A colony needing hands for gatherers, sites or workshops gets men by
+ *  the ferry, and once it eats well women for their share and for every slot of its homes. A good its stores
  *  cannot take calls no digger. */
 export function handsWanted(
   env: ColonyEnv,
@@ -449,9 +449,8 @@ export function handsWanted(
 export function menPastWork(env: ColonyEnv, colony: ColonyView): Entity[] {
   const { world, ctx } = env;
   if (colony.phase !== 'running') return [];
-  const crew = colony.line?.crew.length ?? 0;
   const men = colonists(env).filter((e) => isAllocatableMan(world, ctx, e));
-  const past = men.length + crew - handsWanted(env, colony).men - HANDS_SLACK;
+  const past = men.length - handsWanted(env, colony).men - HANDS_SLACK;
   if (past <= 0) return [];
   const builder = builderJobOf(ctx);
   return men

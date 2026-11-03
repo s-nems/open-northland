@@ -5,7 +5,7 @@ import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { colonists, colonyOrigin, storeOf } from './founding.js';
-import { homeSpare, homeSupply } from './line.js';
+import { homeSpare, homeSupply } from './home-supply.js';
 import { chainCount, crewInReach, unlocked } from './plan.js';
 import { colonyFoodHeld, landHolds, workshopGoods } from './provision.js';
 import { colonyBuildings, workshopSpot } from './spot.js';
@@ -26,18 +26,6 @@ function isArmsWorkshop(building: string): boolean {
   return ARMS_WORKSHOP_IDS.has(building);
 }
 
-/** The colony's standing workshops whose goods it owes home: those home's order handed it and its arms
- *  workshops. A want any carrier between the islands meets; today the line's homeward load reads it. */
-export function workshopsForHome(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity[]): Entity[] {
-  const { world, ctx } = env;
-  const index = contentIndex(ctx.content);
-  const handed = new Set(colony.overflow.map((row) => row.building));
-  return buildings.filter((e) => {
-    const id = index.buildings.get(world.get(e, Building).buildingType)?.id;
-    return isBuilt(world, e) && id !== undefined && (handed.has(id) || isArmsWorkshop(id));
-  });
-}
-
 /** Whether each of the colony's arms workshops stands with a craftsman at work: the next waits for it. */
 function armsAtWork(env: ColonyEnv, buildings: readonly Entity[]): boolean {
   const { world, ctx } = env;
@@ -56,10 +44,10 @@ function armsAtWork(env: ColonyEnv, buildings: readonly Entity[]): boolean {
 /**
  * Plan the next arms workshop, once the last has its craftsman at work, where the colony runs, holds a meal a mouth and has room
  * ({@link ARMS_ROOM_NODES}). Owner ruling: only where the whole chain exists, so each input of one of its
- * recipes is made by a standing colony workshop, lies in the colony's deposits or is home's to spare for the
- * line; and only while home is short of one of its goods. The tribe must have it unlocked, its trades a
- * man in reach and the land a spot for it. A row in the colony's builds; what it makes is owed home
- * ({@link workshopsForHome}).
+ * recipes is made by a standing colony workshop, lies in the colony's deposits or is home's to spare for its
+ * trader; and only while home is short of one of its goods. The tribe must have it unlocked, its trades a
+ * man in reach and the land a spot for it. A row in the colony's builds; what it makes goes home with the
+ * rest of the colony's surplus (`./stock-policy.ts`).
  */
 export function reviewArms(env: ColonyEnv, colony: ColonyView): void {
   const { world, ctx } = env;
