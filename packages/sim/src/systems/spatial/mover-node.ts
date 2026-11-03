@@ -1,7 +1,7 @@
 import { PathFollow, PathRoute, type Waypoint } from '../../components/index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
+import { type HalfCellNode, insideNodeCore, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import { worldX } from '../../nav/world-metric.js';
 
 /** The Position `y` span of a column step: two node rows, one visual row. */
@@ -64,11 +64,41 @@ export function moverNode(
   e: Entity,
   p: { readonly x: Fixed; readonly y: Fixed },
 ): Readonly<HalfCellNode> {
+  return locatedMoverNode(e, p, readColumnStep(world, e));
+}
+
+/**
+ * {@link moverNode} of `e` at `p`, given node `(hx, hy)` that `e` read lately: that node without locating
+ * while `e` walks no column step and `p` lies in its core ({@link insideNodeCore}), as an in-node step near
+ * the node's centre does. The result is shared like {@link moverNode}'s.
+ */
+export function moverNodeNear(
+  world: World,
+  e: Entity,
+  p: { readonly x: Fixed; readonly y: Fixed },
+  hx: number,
+  hy: number,
+): Readonly<HalfCellNode> {
+  const onColumnStep = readColumnStep(world, e);
+  if (!onColumnStep && insideNodeCore(p.x, p.y, hx, hy)) {
+    read.hx = hx;
+    read.hy = hy;
+    return read;
+  }
+  return locatedMoverNode(e, p, onColumnStep);
+}
+
+/** {@link moverNode} after {@link readColumnStep}, its stops in {@link step} when `onColumnStep`. */
+function locatedMoverNode(
+  e: Entity,
+  p: { readonly x: Fixed; readonly y: Fixed },
+  onColumnStep: boolean,
+): Readonly<HalfCellNode> {
   let x = p.x;
   let y = p.y;
-  const from = readColumnStep(world, e) ? step.from : null;
+  const from = step.from;
   const to = step.to;
-  if (from !== null && to !== null) {
+  if (onColumnStep && from !== null && to !== null) {
     const stop = columnStepStopAt(from, to, p.y);
     x = stop.x;
     y = stop.y;

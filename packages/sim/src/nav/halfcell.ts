@@ -131,6 +131,33 @@ function locateNode(x: Fixed, y: Fixed): void {
   else locatedAt(northHx, northHy, northHx, northHy, southHx, southHy);
 }
 
+/**
+ * The radius of a node's core in column units, 23/128 column (12.2 px). A position inside it is nearer that
+ * node than any other-row node by the triangle inequality, since it stays under half {@link ROW_EDGE}, and
+ * no other-row node's column line reaches it, since it stays under a quarter column less
+ * {@link COLUMN_LINE_TOLERANCE}. Both bounds are 24/128 column within 4 ulps; the 1/128 column (512 ulps)
+ * left dwarfs the metric's ulp truncations.
+ */
+const NODE_CORE_RADIUS: Fixed = fx.div(fx.fromInt(23), fx.fromInt(128));
+/** {@link NODE_CORE_RADIUS} squared in raw units, beside raw squared offsets. */
+const NODE_CORE_RADIUS_SQUARED = NODE_CORE_RADIUS * NODE_CORE_RADIUS;
+/** A Position `y` offset past which no position lies in a node's core: the radius over {@link ROW_STEP},
+ *  rounded up to twice the radius. */
+const NODE_CORE_SPAN_Y: Fixed = fx.add(NODE_CORE_RADIUS, NODE_CORE_RADIUS);
+
+/**
+ * Whether `(x, y)` lies in node `(hx, hy)`'s core ({@link NODE_CORE_RADIUS} of screen distance from its
+ * centre), which proves {@link nodeOfPosition} reads that node there, so a caller holding a node nearby
+ * skips locating. False proves nothing.
+ */
+export function insideNodeCore(x: Fixed, y: Fixed, hx: number, hy: number): boolean {
+  const dwx = fx.sub(worldX(x, y), nodeWorldX(hx, hy));
+  const dy = fx.sub(y, positionYOfNode(hy));
+  if (Math.abs(dwx) >= NODE_CORE_RADIUS || Math.abs(dy) >= NODE_CORE_SPAN_Y) return false;
+  const dsy = fx.mul(dy, ROW_STEP);
+  return dwx * dwx + dsy * dsy < NODE_CORE_RADIUS_SQUARED;
+}
+
 /** Write a located node and the nodes beside its position into {@link located}. */
 function locatedAt(
   hx: number,
