@@ -5,9 +5,17 @@ import {
   Position,
   Settler,
   Stockpile,
+  setSettlerJob,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { halfCellMapFromCells, Simulation } from '../../../src/index.js';
+import {
+  exportSaveGame,
+  halfCellMapFromCells,
+  parseSaveGame,
+  restoreSimulation,
+  Simulation,
+  serializeSaveGame,
+} from '../../../src/index.js';
 import { positionOfNode } from '../../../src/nav/halfcell.js';
 import {
   colonyBuildingsOn,
@@ -144,6 +152,21 @@ describe('the home view of a seat', () => {
     const settlers = ownedSettlers(sim.world, SEAT);
     expect(settlers).toHaveLength(3);
     expect(homeSettlers(sim.world, ctx, SEAT)).toHaveLength(2);
+  });
+
+  it('reads a trade change on colony land as a restored game reads it', () => {
+    const sim = seatOverSea();
+    foundColony(sim);
+    const soldier = ownedSettlers(sim.world, SEAT).find(
+      (e) => sim.world.get(e, Settler).jobType === SPEARMAN,
+    );
+    if (soldier === undefined) throw new Error('setup: no soldier');
+    expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).toContain(soldier);
+    setSettlerJob(sim.world, soldier, CIVILIST);
+    const saved = parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(sim))));
+    const copy = restoreSimulation(saved, { content: aiContent(), map: islandMap() });
+    expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).not.toContain(soldier);
+    expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).toEqual(homeSettlers(copy.world, ctxOf(copy), SEAT));
   });
 
   it('never elects a colony store as the seat base', () => {

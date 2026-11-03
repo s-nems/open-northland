@@ -133,15 +133,16 @@ export function colonyMember(world: World, ctx: SystemContext, seat: number, e: 
 interface RosterSplit {
   readonly roster: readonly Entity[];
   readonly riders: number;
+  readonly trades: number;
   readonly colonyRevision: number;
   readonly home: readonly Entity[];
   readonly byLand: ReadonlyMap<number, readonly Entity[]>;
 }
 
 /** A seat's reader of `roster` parted between home and its colonies, null with no colony. Derived from saved
- *  state in one pass over the roster and kept while the roster, the riders and the seat's colonies stand: a
- *  person changes land only through {@link Rider}, and another seat's colony write leaves this one's. Never
- *  hashed. */
+ *  state in one pass over the roster and kept while the roster, the riders, the trades and the seat's colonies
+ *  stand: a person changes land only through {@link Rider}, a trade written in place on {@link Settler} turns
+ *  one on colony land fighter or not, and another seat's colony write leaves this one's. Never hashed. */
 function rosterSplitOf(
   roster: (world: World, player: number) => readonly Entity[],
 ): (world: World, ctx: SystemContext, seat: number) => RosterSplit | null {
@@ -158,11 +159,13 @@ function rosterSplitOf(
       views.set(world, bySeat);
     }
     const riders = world.componentGeneration(Rider);
+    const trades = world.componentValueGeneration(Settler);
     const held = bySeat.get(seat);
     if (
       held !== undefined &&
       held.roster === owned &&
       held.riders === riders &&
+      held.trades === trades &&
       held.colonyRevision === colonyRevision
     )
       return held;
@@ -175,7 +178,7 @@ function rosterSplitOf(
       else if (byLand.has(land)) byLand.get(land)?.push(e);
       else byLand.set(land, [e]);
     }
-    const split: RosterSplit = { roster: owned, riders, colonyRevision, home, byLand };
+    const split: RosterSplit = { roster: owned, riders, trades, colonyRevision, home, byLand };
     bySeat.set(seat, split);
     return split;
   };
