@@ -341,11 +341,54 @@ export function fightsPlayer(world: World, from: number, to: number): boolean {
   return diplomacyStance(world, from, to) === 'enemy' && !atPeace(world, from, to);
 }
 
-/** {@link hostilePlayerMasks} without the pairs a peace binds: the either-way rule a fight reads. A body
- *  block keeps the bare masks. */
-export function combatHostileMasks(world: World): number[] {
+/** One world's {@link combatHostileMasks}, with the stance and peace store generations it was derived at:
+ *  any stance or peace write, or a carrier added or removed, moves one of them. */
+interface HeldCombatMasks {
+  readonly masks: readonly number[];
+  readonly diplomacy: number;
+  readonly diplomacyValues: number;
+  readonly peace: number;
+  readonly peaceValues: number;
+}
+const heldCombatMasks = new WeakMap<World, HeldCombatMasks>();
+
+function holdsCurrent(world: World, held: HeldCombatMasks): boolean {
+  return (
+    held.diplomacy === world.componentGeneration(DiplomacyRules) &&
+    held.diplomacyValues === world.componentValueGeneration(DiplomacyRules) &&
+    held.peace === world.componentGeneration(PeaceRules) &&
+    held.peaceValues === world.componentValueGeneration(PeaceRules)
+  );
+}
+
+function deriveCombatHostileMasks(world: World): number[] {
   const masks = hostilePlayerMasks(world);
   for (let p = 0; p < MAX_PLAYERS; p++) masks[p] = (masks[p] ?? 0) & ~peacePartnerBits(world, p);
+  return masks;
+}
+
+/** {@link hostilePlayerMasks} without the pairs a peace binds: the either-way rule a fight reads. A body
+ *  block keeps the bare masks. Held per world until a stance or peace generation moves; the registered
+ *  verifier re-derives it. */
+export function combatHostileMasks(world: World): readonly number[] {
+  const held = heldCombatMasks.get(world);
+  if (held !== undefined && holdsCurrent(world, held)) return held.masks;
+  if (held === undefined) {
+    world.registerCacheVerifier('combatHostileMasks', () => {
+      const current = heldCombatMasks.get(world);
+      if (current === undefined || !holdsCurrent(world, current)) return [];
+      const derived = deriveCombatHostileMasks(world);
+      return current.masks.every((m, p) => m === derived[p]) ? [] : ['combatHostileMasks is stale'];
+    });
+  }
+  const masks = deriveCombatHostileMasks(world);
+  heldCombatMasks.set(world, {
+    masks,
+    diplomacy: world.componentGeneration(DiplomacyRules),
+    diplomacyValues: world.componentValueGeneration(DiplomacyRules),
+    peace: world.componentGeneration(PeaceRules),
+    peaceValues: world.componentValueGeneration(PeaceRules),
+  });
   return masks;
 }
 
