@@ -298,16 +298,15 @@ function runs(industry: Industry, chosen: readonly IndustryChoice[], read: StepR
 }
 
 /**
- * The next steps of `chosen`, in order: each industry's next step once the one before it stands. An industry
- * with a site still open waits for it, and one whose next step its tribe or men cannot take yet is passed
- * over, so a site starved of its bill holds no other industry back; the colony's open sites bound how many
- * go up at once.
+ * The next steps of `chosen`, in order: one industry at a time, as each site draws on home's materials. A site
+ * still open holds the rest back; an industry whose next step its tribe or men cannot take yet is passed
+ * over. Each later industry's next step follows, for a placement that finds no spot for the first.
  */
 export function nextIndustrySteps(chosen: readonly IndustryChoice[], read: StepRead): ChainStep[] {
   const next: ChainStep[] = [];
   for (const { industry, steps } of chosen) {
     if (!runs(industry, chosen, read)) continue;
-    if (steps.some((s) => read.raised.has(s.building) && !read.standing.has(s.building))) continue;
+    if (steps.some((s) => read.raised.has(s.building) && !read.standing.has(s.building))) return next;
     const step = steps.find(
       (s) => !read.raised.has(s.building) && s.after.every((b) => read.standing.has(b)) && read.open(s),
     );

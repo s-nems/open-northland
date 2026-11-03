@@ -185,10 +185,9 @@ describe('a colony chain', () => {
     expect(next(stepRead({ settled: false }))).toBeNull();
   });
 
-  it('waits on its own open site, not on that of another industry', () => {
-    expect(
-      nextIndustrySteps(choices, stepRead({ raised: new Set(['work_armory_00']) })).map((s) => s.building),
-    ).toEqual(['work_temple', 'work_joinery_00']);
+  it('holds the next industry back while a site of one stands open', () => {
+    expect(next(stepRead({ raised: new Set(['work_armory_00']) }))).toBeNull();
+    expect(next(stepRead({}, ['work_armory_00']))).toBe('work_temple');
   });
 
   it('passes over a step nobody can take yet', () => {
