@@ -77,7 +77,7 @@ const OPEN_WATER_Y = 6;
 const ONE_SEAT = 1;
 const HELPERS = 3;
 const LOAD = 20;
-/** Few enough that the helpers land the last ones while the trader has set out. */
+/** A load one voyage takes, well short of what the helpers and the trader could move. */
 const SMALL_LOAD = 6;
 const UP_TO = 9;
 /** The fixture's `food_simple`, the meal a hungry helper walks to the warehouse for. */
@@ -376,6 +376,37 @@ describe('helpers at work', () => {
 
     expect(leftBehind).toBe(0);
     expect(stockOf(sim, east, WOOD)).toBe(SMALL_LOAD);
+  });
+
+  it("waits on a player's order for a helper with a unit in hand, which it stows before boarding", () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, LOAD]]);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const { trader, ship, carriers } = crew(sim, HELPERS, false);
+    route(sim, trader, west, east);
+    const loaded = (): Entity | undefined =>
+      carriers.find((c) => inHands(sim, c) > 0 && sim.world.tryGet(c, CargoRun)?.direction === 'load');
+    for (let elapsed = 0; elapsed < FIRST_TRIP_TICKS && loaded() === undefined; elapsed++) sim.step();
+    const carrier = loaded();
+    if (carrier === undefined) throw new Error('no helper ever carried a unit to the ship');
+
+    const westBefore = stockOf(sim, west, WOOD);
+    order(sim, { kind: 'moveVehicle', vehicle: ship, x: OPEN_WATER_X, y: OPEN_WATER_Y });
+    let askedWithUnit = false;
+    for (let elapsed = 0; elapsed < FIRST_TRIP_TICKS && !sim.world.has(ship, VehicleDrive); elapsed++) {
+      sim.step();
+      askedWithUnit ||= sim.world.tryGet(carrier, Rider)?.boarding === true && inHands(sim, carrier) > 0;
+    }
+
+    const aboard = sim.world.get(ship, VehicleStock).lines.get(WOOD)?.current ?? 0;
+    const inHand = carriers.reduce((sum, c) => sum + inHands(sim, c), inHands(sim, trader));
+    expect(askedWithUnit).toBe(true);
+    expect(sim.world.has(ship, VehicleDrive)).toBe(true);
+    expect(carriers.every((c) => !sim.world.has(c, Position))).toBe(true);
+    expect(inHand).toBe(0);
+    // The booked unit went into the ship, not back onto the shelf.
+    expect(stockOf(sim, west, WOOD)).toBeLessThanOrEqual(westBefore);
+    expect(stockOf(sim, west, WOOD) + aboard + stockOf(sim, east, WOOD)).toBe(LOAD);
   });
 
   it('sets out only once no helper has a run left at the stop, both ways', () => {
