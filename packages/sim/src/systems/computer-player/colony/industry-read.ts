@@ -14,10 +14,8 @@ import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import { buildingEnabled, jobEnabled, needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { minutesToTicks } from '../game-phase.js';
 import { technologyTable } from '../technology/requirements.js';
 import { topEnabledTier } from '../top-tier.js';
-import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { colonists, colonyOrigin } from './founding.js';
 import {
   ALL_STEPS,
@@ -30,7 +28,7 @@ import {
   type StepRead,
   type Worth,
 } from './industry.js';
-import { colonyFoodHeld, landHolds } from './provision.js';
+import { landHolds } from './provision.js';
 import { homeStockOf } from './stock.js';
 import { siteRoom } from './survey.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
@@ -41,18 +39,15 @@ export const COLONY_SPOT_NODES = 50;
  *  footprint node (authored, an approximation): the room a site's block holds at the map's scan is spent at
  *  this rate, so a block of 300 free nodes takes about four level-0 homes and one of 2600 about forty. */
 const ROOM_PER_FOOTPRINT_NODE = 3;
-/** Fishers first: what they and the hunters bring may meet the hunger, so the food chain waits this long
- *  after the landing (authored: a warehouse and its first catch take about that on
- *  arabskie_wyspy_wolna_gra_mieszana). */
-const FISHERS_FIRST_TICKS = minutesToTicks(10);
 /** Plantable nodes within the spot search of a colony's store that a grain farm's fields want, and that a
  *  well, a hive or a herb hut wants under its body (authored, untuned: every colony site on
  *  arabskie_wyspy_wolna_gra_mieszana clears both). */
 const FIELD_NODES = 48;
 const GRASS_NODES = 6;
-/** The free nodes of its block a colony keeps for its homes, which its industries do not spend (authored:
- *  the smallest site the survey takes, about four level-0 homes). A site with no more grows people alone. */
-const HOMES_ROOM_NODES = 300;
+/** The homes whose room a colony keeps from its industries (authored), at the top tier enabled: owner
+ *  ruling, colony homes go straight to the top level. A site with no more grows people alone. */
+const HOMES_KEPT = 2;
+const HOME_ID = 'home_level_00';
 /** The units of a good home makes at which it holds plenty, and a colony makes none for it (authored: a
  *  wave's arms and more). */
 const HOME_PLENTY_UNITS = 30;
@@ -173,6 +168,15 @@ function plantableNear(
   return nodes;
 }
 
+/** The room the colony keeps for {@link HOMES_KEPT} homes at the top tier its tribe has enabled. */
+function homesRoom(env: ColonyEnv): number {
+  const { world, ctx, seat } = env;
+  const base = buildingTypeByContentId(ctx.content, HOME_ID);
+  const tribe = playerPlacementTribes(world, seat)?.[0];
+  if (base === undefined || tribe === undefined) return 0;
+  return HOMES_KEPT * roomOfType(env, topEnabledTier(world, ctx, seat, tribe, base));
+}
+
 /** What the colony's land offers ({@link SiteFacts}). Costs a resource search per deposit good. */
 function siteFacts(
   env: ColonyEnv,
@@ -193,7 +197,7 @@ function siteFacts(
     gold: holds('gold'),
     mushroom: holds('mushroom'),
     animals: animalsOn(env, colony.land),
-    room: Math.max(0, siteRoom(env.world, colony) - roomTaken(env, buildings) - HOMES_ROOM_NODES),
+    room: Math.max(0, siteRoom(env.world, colony) - roomTaken(env, buildings) - homesRoom(env)),
   };
 }
 
@@ -287,20 +291,11 @@ function readIndustries(
     roomOf: (step) => roomOfType(env, stepType(env, step)),
     raised,
   };
-  const mouths = people.length;
-  const fishersDone = ctx.tick - colony.since >= FISHERS_FIRST_TICKS;
-  const food = colonyFoodHeld(env, buildings);
   return {
     site,
     homeMakesHolyOil,
     choices: chooseIndustries(site, seatRead),
-    read: {
-      raised,
-      standing,
-      hungry: fishersDone && food < FOOD_COMFORT_UNITS_PER_SETTLER * mouths,
-      settled: colony.phase === 'running' && food >= mouths,
-      open,
-    },
+    read: { raised, standing, running: colony.phase === 'running', open },
   };
 }
 

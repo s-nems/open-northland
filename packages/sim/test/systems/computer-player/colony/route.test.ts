@@ -51,7 +51,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { BUILDER, CIVILIST, MUD, SEAT, STONE, UNARMED, VIKING, WOMAN } from '../support.js';
+import { BUILDER, CIVILIST, MUD, SEAT, UNARMED, VIKING, WOMAN, WOOD } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -131,13 +131,14 @@ describe('a colony trade route', () => {
     expect(marks()[1]?.imports.some((m) => m.good === MUD)).toBe(true);
     const colonyHolds = (good: number): number =>
       stockAtBuildings(sim.world, SEAT, colonyBuildingsOf(sim)).get(good) ?? 0;
-    let stoneOut = 0;
+    // The colony's wood goes home; its stone its industries' sites take.
+    let woodOut = 0;
     const both = stepUntil(sim, ROUND_DUE_TICKS, () => {
-      stoneOut = Math.max(stoneOut, aboard(sim, ship, STONE));
-      return colonyHolds(MUD) > 0 && stoneOut > 0 && (colonyState(sim)?.delivered ?? null) !== null;
+      woodOut = Math.max(woodOut, aboard(sim, ship, WOOD));
+      return colonyHolds(MUD) > 0 && woodOut > 0 && (colonyState(sim)?.delivered ?? null) !== null;
     });
     expect(both).toBe(true);
-    expect(marks()[0]?.imports.some((m) => m.good === STONE)).toBe(true);
+    expect(marks()[0]?.imports.some((m) => m.good === WOOD)).toBe(true);
   });
 
   it('owes a ship once its own is sunk, and pins the next free one', () => {

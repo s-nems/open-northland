@@ -1,5 +1,5 @@
 // A colony's industries (owner ruling): chosen from what its site offers and what the seat needs, weighed
-// against its room, and raised one chain at a time. Pure over the reads below; `./industry-read.ts` takes
+// against its room, each chain raised at its own pace. Pure over the reads below; `./industry-read.ts` takes
 // them off the world.
 
 /** The ground a step asks for: a farm's fields, a patch of grass, or any. */
@@ -268,46 +268,38 @@ export function chooseIndustries(site: SiteFacts, seat: SeatRead): IndustryChoic
     if (fits(steps, begun)) chosen.push({ industry, steps, score });
   const temple = templeSteps(chosen, site, seat);
   if (temple === null || !temple.every(seat.open) || !fits(temple, started(temple, seat))) return chosen;
-  // It goes up straight after the first industry whose crew prays.
-  chosen.splice(chosen.findIndex((c) => PRAYING.has(c.industry)) + 1, 0, {
-    industry: 'temple',
-    steps: temple,
-    score: 0,
-  });
+  // It goes up straight after the first industry whose crew prays, once that one's workshop stands.
+  const at = chosen.findIndex((c) => PRAYING.has(c.industry));
+  const workshop = chosen[at]?.steps.at(-1)?.building;
+  const steps = temple.map((step) =>
+    step.building === TEMPLE && workshop !== undefined ? { ...step, after: [...step.after, workshop] } : step,
+  );
+  chosen.splice(at + 1, 0, { industry: 'temple', steps, score: 0 });
   return chosen;
 }
 
-/** One look at what the colony has raised and how it eats. */
+/** One look at what the colony has raised. */
 export interface StepRead {
   /** The steps raised, sites included, and those standing, by base id. */
   readonly raised: ReadonlySet<string>;
   readonly standing: ReadonlySet<string>;
-  /** Whether the colony's food runs under its comfort past the fishers' start. */
-  readonly hungry: boolean;
-  /** Whether the colony runs and holds a meal a mouth: what every other industry waits for. */
-  readonly settled: boolean;
+  /** Whether the colony runs: its store stands and its first gatherers work. */
+  readonly running: boolean;
   readonly open: (step: ChainStep) => boolean;
 }
 
-/** Whether `industry` runs now. Owner ruling: food is raised as the colony needs it, not all at founding, so
- *  baking runs only while the colony is hungry; husbandry's meat feeds a hungry colony with no field for a
- *  farm, and runs for home once it is settled; every other runs once it is settled. */
-function runs(industry: Industry, chosen: readonly IndustryChoice[], read: StepRead): boolean {
-  if (industry === 'baking') return read.hungry;
-  const feeds = industry === 'husbandry' && !chosen.some((c) => c.industry === 'baking');
-  return read.settled || (feeds && read.hungry);
-}
-
 /**
- * The next steps of `chosen`, in order: one industry at a time, as each site draws on home's materials. A site
- * still open holds the rest back; an industry whose next step its tribe or men cannot take yet is passed
- * over. Each later industry's next step follows, for a placement that finds no spot for the first.
+ * The next step of each chain of `chosen`, in order (owner ruling: a colony whose land fits a chain shows
+ * it early, and every chain it has room for). Each chain goes its own pace from the moment the colony runs:
+ * one whose site stands open waits for it, the others go on, so a site waiting on a good holds back its own
+ * chain alone. A step its tribe or men cannot take yet is passed over. The colony's open-site budget picks
+ * from the front, so the most valuable chain is served first.
  */
 export function nextIndustrySteps(chosen: readonly IndustryChoice[], read: StepRead): ChainStep[] {
+  if (!read.running) return [];
   const next: ChainStep[] = [];
-  for (const { industry, steps } of chosen) {
-    if (!runs(industry, chosen, read)) continue;
-    if (steps.some((s) => read.raised.has(s.building) && !read.standing.has(s.building))) return next;
+  for (const { steps } of chosen) {
+    if (steps.some((s) => read.raised.has(s.building) && !read.standing.has(s.building))) continue;
     const step = steps.find(
       (s) => !read.raised.has(s.building) && s.after.every((b) => read.standing.has(b)) && read.open(s),
     );

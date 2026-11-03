@@ -164,35 +164,35 @@ describe('a colony temple', () => {
 const stepRead = (over: Partial<StepRead>, standing: readonly string[] = []): StepRead => ({
   raised: new Set(standing),
   standing: new Set(standing),
-  hungry: false,
-  settled: true,
+  running: true,
   open: () => true,
   ...over,
 });
 
 describe('a colony chain', () => {
   const choices = chooseIndustries({ ...BARE, field: true, wood: true }, seatRead());
-  const next = (read: StepRead): string | null => nextIndustrySteps(choices, read)[0]?.building ?? null;
+  const next = (read: StepRead): string[] => nextIndustrySteps(choices, read).map((s) => s.building);
 
-  it('raises its food while the colony is hungry, one standing before the next', () => {
-    expect(next(stepRead({ hungry: true }))).toBe('work_farm_00');
-    expect(next(stepRead({ hungry: true }, ['work_farm_00']))).toBe('work_mill_00');
-    expect(next(stepRead({ hungry: true }, ['work_farm_00', 'work_mill_00']))).toBe('work_well_00');
+  it('raises its food one step standing before the next, fed or hungry', () => {
+    expect(next(stepRead({}))[0]).toBe('work_farm_00');
+    expect(next(stepRead({}, ['work_farm_00']))[0]).toBe('work_mill_00');
+    expect(next(stepRead({}, ['work_farm_00', 'work_mill_00']))[0]).toBe('work_well_00');
   });
 
-  it('passes its food over while the colony eats, and its others until it is settled', () => {
-    expect(next(stepRead({}))).toBe('work_armory_00');
-    expect(next(stepRead({ settled: false }))).toBeNull();
+  it('starts every chain it chose once the colony runs, none before', () => {
+    expect(next(stepRead({}))).toEqual(['work_farm_00', 'work_armory_00', 'work_joinery_00']);
+    expect(next(stepRead({ running: false }))).toEqual([]);
   });
 
-  it('holds the next industry back while a site of one stands open', () => {
-    expect(next(stepRead({ raised: new Set(['work_armory_00']) }))).toBeNull();
-    expect(next(stepRead({}, ['work_armory_00']))).toBe('work_temple');
+  it('holds back only the chain whose site stands open', () => {
+    const farmSite = stepRead({ raised: new Set(['work_farm_00']) });
+    expect(next(farmSite)).toEqual(['work_armory_00', 'work_joinery_00']);
+    expect(next(stepRead({}, ['work_armory_00']))).toContain('work_temple');
   });
 
   it('passes over a step nobody can take yet', () => {
     const noArmory = (step: ChainStep): boolean => step.building !== 'work_armory_00';
-    expect(next(stepRead({ open: noArmory }))).toBe('work_temple');
+    expect(next(stepRead({ open: noArmory }))).not.toContain('work_armory_00');
   });
 });
 
@@ -210,15 +210,8 @@ describe('a colony chain held up', () => {
     const choices = chooseIndustries({ ...BARE, wood: true }, seatRead());
     expect(nextIndustrySteps(choices, stepRead({})).map((s) => s.building)).toEqual([
       'work_armory_00',
-      'work_temple',
       'work_joinery_00',
     ]);
-  });
-
-  it('feeds a hungry colony with no field from its animal farm', () => {
-    const choices = chooseIndustries({ ...BARE, grass: true, animals: true }, seatRead());
-    const read = stepRead({ hungry: true, settled: false }, ['work_well_00']);
-    expect(nextIndustrySteps(choices, read)[0]?.building).toBe('work_animal_farm');
   });
 
   it('starts no druid chain for the druid hut its temple boils oil in', () => {
