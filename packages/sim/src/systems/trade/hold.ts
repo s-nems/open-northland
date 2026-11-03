@@ -88,6 +88,9 @@ export interface FerryHold extends TraderHold {
   readonly booked: TraderHold;
   /** The units of `good` a lift may take out of the ship: aboard and on no helper's run. */
   liftable(good: number): number;
+  /** Whether a helper on the map is on a trip, a run or a unit in hand, which the trader waits out rather
+   *  than sail with a unit booked and not yet moved; a helper indoors holds no one up. */
+  readonly helpersOnTrips: boolean;
 }
 
 /** The trader's own hauling cart with a hold, or null for a trader on foot. */
@@ -161,8 +164,13 @@ function helperFlightOf(
   world: World,
   ctx: ContentContext,
   ship: Entity,
-): { readonly flight: HelperFlight; readonly runs: ReadonlyMap<number, number> } {
+): {
+  readonly flight: HelperFlight;
+  readonly runs: ReadonlyMap<number, number>;
+  readonly onTrips: boolean;
+} {
   const runs = new Map<number, number>();
+  let onTrips = false;
   const toHouse = new Map<number, number>();
   const toLift = new Map<number, number>();
   const count = (units: Map<number, number>, good: number): void => {
@@ -175,6 +183,7 @@ function helperFlightOf(
     const run = world.tryGet(seat.entity, CargoRun);
     const held = world.tryGet(seat.entity, Carrying);
     const loaded = held !== undefined && held.amount > 0;
+    onTrips ||= (run !== undefined || loaded) && world.has(seat.entity, Position);
     if (run !== undefined) {
       const net = run.direction === 'load' ? 1 : -1;
       runs.set(run.goodType, (runs.get(run.goodType) ?? 0) + net);
@@ -188,7 +197,7 @@ function helperFlightOf(
     (units: ReadonlyMap<number, number>) =>
     (good: number): number =>
       units.get(edibleGoodFormOf(ctx.content, good)) ?? 0;
-  return { flight: { toHouse: unitsIn(toHouse), toLift: unitsIn(toLift) }, runs };
+  return { flight: { toHouse: unitsIn(toHouse), toLift: unitsIn(toLift) }, runs, onTrips };
 }
 
 /** The trader's hold merged with its pinned `ship`'s, or the near hold alone for a ship with no hold. */
@@ -200,7 +209,7 @@ export function ferryHoldOf(
 ): FerryHold | null {
   if (!world.has(ship, VehicleStock)) return null;
   const aboard = vehicleHoldOf(world, ctx, ship);
-  const { flight, runs } = helperFlightOf(world, ctx, ship);
+  const { flight, runs, onTrips } = helperFlightOf(world, ctx, ship);
   const booked = bookedHoldOf(aboard, runs);
   const merged = new Map<number, number>(near.entries);
   for (const [good, units] of booked.entries) {
@@ -220,6 +229,7 @@ export function ferryHoldOf(
     aboard,
     booked,
     liftable: (good) => Math.min(aboard.amount(good), booked.amount(good)),
+    helpersOnTrips: onTrips,
   };
 }
 

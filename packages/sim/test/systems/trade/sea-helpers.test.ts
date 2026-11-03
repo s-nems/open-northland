@@ -74,6 +74,8 @@ const LOAD = 20;
 /** Few enough that the helpers land the last ones while the trader has set out. */
 const SMALL_LOAD = 6;
 const UP_TO = 9;
+/** Goods each stop sends the other, past one handcart and short of a small ship. */
+const BOTH_WAYS_LOAD = 40;
 const TICK_STEP = 5;
 const LONG_TICKS = 8000;
 /** Ticks a helper's first trip needs to be under way. */
@@ -349,19 +351,42 @@ describe('helpers at work', () => {
     const { trader, ship, carriers } = crew(sim, HELPERS, false);
     route(sim, trader, west, east);
 
-    let waited = 0;
     let leftBehind = 0;
     runUntil(sim, LONG_TICKS, () => {
       const outside = carriers.filter((carrier) => sim.world.has(carrier, Position));
-      const handed = outside.some((carrier) => inHands(sim, carrier) > 0);
       if (sim.world.has(ship, VehicleDrive)) leftBehind += outside.length;
-      else if (sim.world.has(trader, Rider) && handed) waited++;
       return stockOf(sim, east, WOOD) === SMALL_LOAD;
     });
 
-    expect(waited).toBeGreaterThan(0);
     expect(leftBehind).toBe(0);
     expect(stockOf(sim, east, WOOD)).toBe(SMALL_LOAD);
+  });
+
+  it('sets out only once no helper has a run left at the stop, both ways', () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, BOTH_WAYS_LOAD]]);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN, [[PLANK, BOTH_WAYS_LOAD]]);
+    const { trader, carriers } = crew(sim, HELPERS);
+    route(sim, trader, west, east);
+    order(sim, { kind: 'setTradeImport', entity: trader, house: west, good: PLANK, on: true });
+
+    let boardings = 0;
+    let runsLeft = 0;
+    let ashore = true;
+    for (let elapsed = 0; elapsed < LONG_TICKS; elapsed++) {
+      sim.step();
+      const boarded = ashore && sim.world.has(trader, Rider);
+      ashore = !sim.world.has(trader, Rider);
+      if (!boarded) continue;
+      boardings++;
+      runsLeft += carriers.filter((carrier) => sim.world.has(carrier, CargoRun)).length;
+      if (stockOf(sim, east, WOOD) === BOTH_WAYS_LOAD && stockOf(sim, west, PLANK) === BOTH_WAYS_LOAD) break;
+    }
+
+    expect(boardings).toBeGreaterThan(1);
+    expect(runsLeft).toBe(0);
+    expect(stockOf(sim, east, WOOD)).toBe(BOTH_WAYS_LOAD);
+    expect(stockOf(sim, west, PLANK)).toBe(BOTH_WAYS_LOAD);
   });
 
   it('gives the booking back when a helper dies mid trip', () => {

@@ -225,7 +225,7 @@ function liftAtShip(
 
 /**
  * Take the ship to `target`, aboard through {@link goAboard}. `flips` is a departure for the other stop.
- * A failed dock's cooldown or no shore to sail to keep the trader ashore.
+ * A failed dock's cooldown, no shore to sail to or a helper still on a trip keep the trader ashore.
  */
 function setOut(
   plan: PlannerContext,
@@ -235,7 +235,7 @@ function setOut(
   rules: StopRules,
 ): boolean {
   const cooling = plan.ctx.tick < plan.world.get(plan.entity, TradeShip).dockRetryAt;
-  if (target === null || cooling) return rules.wait(hold.near);
+  if (target === null || cooling || hold.helpersOnTrips) return rules.wait(hold.near);
   return goAboard(plan, hold, flips, rules);
 }
 
