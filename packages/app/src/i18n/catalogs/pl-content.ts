@@ -391,6 +391,11 @@ export const plContent = {
       summary:
         'Trzech tragarzy przypisanych do statku pomaga kupcowi przewozić drewno między magazynami na dwóch wyspach: na każdym brzegu noszą po sztuce między magazynem a drzwiami statku obok wózka kupca, a między brzegami płyną razem z nim. Pomagają tylko między twoimi magazynami. Zaznacz statek, by zobaczyć ich na miejscach, a miejsce kapitana nadal zajęte przez kupca. Ctrl i kliknięcie miejsca tragarza wysadza go ze statku.',
     },
+    'trade-sea-settlements': {
+      title: 'Wyrównywanie zapasów między wyspami',
+      summary:
+        'Na każdej wyspie stoją dwa magazyny w jednej sieci drogowskazów, a oba punkty trasy kupca liczą całą osadę. Wschodnia wyspa trzyma 20 cegieł i 20 kamieni, dowożonych z obu zachodnich magazynów, a jej drewno płynie na zachód, aż w jej dwóch magazynach zostanie 30. Zaznacz kupca, by zobaczyć włączony przycisk „osada” przy obu punktach.',
+    },
     'trade-domestic': {
       title: 'Handel między własnymi magazynami',
       summary:

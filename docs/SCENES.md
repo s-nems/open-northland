@@ -110,6 +110,12 @@ pinned ship. On both shores they carry a unit a trip between the warehouse and t
 trader's cart and ride along in between, 48 wood across in the 2220 ticks the trader alone lands 15.
 Select the ship for their seats, the captain's well still the trader's, and Ctrl click a seat to step one out.
 
+`?scene=trade-sea-settlements` holds stock levels between two islands. Each island has two warehouses
+under one signpost, and both stops of the route stand for their whole settlement ("osada"). The east
+island is filled up to 20 bricks and 20 stone out of both west warehouses, and its wood goes west until 30
+are left over its two warehouses; the levels settle by tick 2806 and hold. Select the trader for both lit
+"osada" chips.
+
 `?scene=cart-drivers` hands a handcart to a trader to pull and crews an ox cart with a carrier for
 each civilization, in rows: viking, frank, byzantine, saracen, egyptian, and sends them east. Every
 driver wears his own civilization's head, standing and driving.

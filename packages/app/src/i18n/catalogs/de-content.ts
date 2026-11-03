@@ -395,6 +395,11 @@ export const deContent = {
       summary:
         'Drei dem Schiff zugewiesene Träger helfen einem Händler, Holz zwischen Lagerhäusern auf zwei Inseln zu bringen: An jedem Ufer tragen sie neben seinem Handkarren je eine Einheit zwischen Lagerhaus und Schiffstür und fahren dazwischen mit. Sie helfen nur zwischen deinen eigenen Lagerhäusern. Wähle das Schiff, um sie auf ihren Plätzen zu sehen, der Kapitänsplatz bleibt der des Händlers. Strg und Klick auf den Platz eines Trägers lässt ihn aussteigen.',
     },
+    'trade-sea-settlements': {
+      title: 'Vorräte zwischen Inseln ausgleichen',
+      summary:
+        'Auf jeder Insel stehen zwei Lager in einem Wegweisernetz, und beide Stationen der Route des Händlers stehen für ihre ganze Siedlung. Die Ostinsel wird auf 20 Ziegel und 20 Steine gehalten, geholt aus beiden Lagern im Westen, und ihr Holz geht nach Westen, bis in ihren zwei Lagern 30 bleiben. Wähle den Händler, um an beiden Stationen den aktiven Schalter „Siedlung“ zu sehen.',
+    },
     'trade-domestic': {
       title: 'Handel zwischen eigenen Lagerhäusern',
       summary:

@@ -393,6 +393,11 @@ export const enContent = {
       summary:
         "Three carriers assigned to the ship help a merchant move wood between warehouses on two islands: on each shore they carry a unit a trip between the warehouse and the ship's door beside the merchant's handcart, and ride along in between. They help only between your own warehouses. Select the ship to see them in its seats, with the captain's seat still the merchant's. Ctrl click a carrier's seat to step it out.",
     },
+    'trade-sea-settlements': {
+      title: 'Holding stock levels between islands',
+      summary:
+        'Each island has two warehouses in one signpost network, and both stops of the merchant\'s route stand for their whole settlement. The east island is kept at 20 bricks and 20 stone, taken out of both west warehouses, and its wood goes west until 30 are left over its two warehouses. Select the merchant to see the lit "settlement" chip on both stops.',
+    },
     'trade-domestic': {
       title: 'Trade between own warehouses',
       summary:
