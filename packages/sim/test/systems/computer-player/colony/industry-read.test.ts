@@ -1,9 +1,11 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, Stockpile, UnderConstruction } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../src/index.js';
 import { colonyBuildingsOn } from '../../../../src/systems/ai-shared/home-roster.js';
 import { colonyIndustries } from '../../../../src/systems/computer-player/colony/industry-read.js';
+import { colonyStockPolicyOf } from '../../../../src/systems/computer-player/colony/stock-policy.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { seatArmsStock } from '../../../../src/systems/computer-player/military/outfit.js';
 import {
@@ -21,7 +23,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { BARRACKS_TYPE, SEAT, STOCK_TOP_TYPE, VIKING } from '../support.js';
+import { BARRACKS_TYPE, SEAT, STOCK_TOP_TYPE, VIKING, WOOD } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -36,18 +38,71 @@ const ARMORY_ID = 'work_armory_00';
 /** A meal a mouth for a colony's first party and more. */
 const COLONY_FOOD = 40;
 
-/** A seat with room at home and a barracks, whose colony runs and is fed. */
-function runningWorld(): Simulation {
-  const sim = colonyWorld(7, overflowContent());
+const HOLY_OIL = 48;
+const MUSHROOM = 49;
+const DRUID_HUT_TYPE = 60;
+const TEMPLE_TYPE = 61;
+const DRUID = 11;
+/** Beside the barracks, inside the headquarters' signposts. */
+const DRUID_HUT_AT = { x: 60, y: 96 };
+/** The holy oil a temple wants in store. */
+const TEMPLE_OIL_UNITS = 1;
+
+/** {@link overflowContent} with a druid hut boiling holy oil and a temple, the armourer's prayer place. */
+function templeContent(): ContentSet {
+  const base = overflowContent();
+  return parseContentSet({
+    ...base,
+    goods: [
+      ...base.goods,
+      { typeId: HOLY_OIL, id: 'holy_oil', weight: 1 },
+      { typeId: MUSHROOM, id: 'mushroom', weight: 1 },
+    ],
+    jobs: [...base.jobs, { typeId: DRUID, id: 'druid' }],
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: DRUID_HUT_TYPE,
+        id: 'work_druid_00',
+        kind: 'workplace',
+        workers: [{ jobType: DRUID, count: 1 }],
+        recipes: [
+          {
+            inputs: [{ goodType: MUSHROOM, amount: 1 }],
+            outputs: [{ goodType: HOLY_OIL, amount: 1 }],
+            ticks: 180,
+          },
+        ],
+        construction: [{ goodType: WOOD, amount: 2 }],
+      },
+      {
+        typeId: TEMPLE_TYPE,
+        id: 'work_temple',
+        kind: 'workplace',
+        workers: [],
+        construction: [{ goodType: WOOD, amount: 2 }],
+      },
+    ],
+  });
+}
+
+function placeAtHome(sim: Simulation, buildingType: number, at: { x: number; y: number }): void {
   sim.enqueueSetup({
     kind: 'placeBuilding',
-    buildingType: BARRACKS_TYPE,
-    ...BARRACKS_AT,
+    buildingType,
+    ...at,
     tribe: VIKING,
     owner: SEAT,
     force: true,
     underConstruction: false,
   });
+}
+
+/** A seat with room at home and a barracks, whose colony runs and is fed; with `oil`, home boils holy oil. */
+function runningWorld(oil = false): Simulation {
+  const sim = colonyWorld(7, oil ? templeContent() : overflowContent());
+  placeAtHome(sim, BARRACKS_TYPE, BARRACKS_AT);
+  if (oil) placeAtHome(sim, DRUID_HUT_TYPE, DRUID_HUT_AT);
   stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
   mooredShip(sim);
   stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
@@ -88,5 +143,15 @@ describe('a colony with wood and room', () => {
     ).toBe(true);
     const armed = () => seatArmsStock(sim.world, ctxOf(sim), SEAT)?.units(SPEAR) ?? 0;
     expect(stepUntil(sim, HOME_DUE_TICKS, () => armed() > 0)).toBe(true);
+  });
+
+  it("has its trader bring the holy oil its armourers' temple takes, home boiling it", () => {
+    const sim = runningWorld(true);
+    const colony = editColony(sim);
+    const env = looseColonyEnv(sim, colony);
+    const chosen = colonyIndustries(env, colony, colonyBuildingsOf(sim));
+    expect(chosen?.choices.map((c) => c.industry)).toEqual(expect.arrayContaining(['armoury', 'temple']));
+    const oil = colonyStockPolicyOf(env, new Set()).inbound.find((m) => m.good === HOLY_OIL);
+    expect(oil?.upTo).toBe(TEMPLE_OIL_UNITS);
   });
 });

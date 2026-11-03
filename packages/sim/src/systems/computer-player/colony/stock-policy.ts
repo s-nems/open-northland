@@ -12,6 +12,7 @@ import { sitesShortfalls } from '../build-order/upgrade-supply.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { colonists, colonyOrigin } from './founding.js';
 import { foodGood, homeSpare, homeSupply, workshopShelves } from './home-supply.js';
+import { colonyIndustryWantsOf } from './industry-read.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan } from './plan.js';
 import { colonyMakes, storesHeld, workshopGoods } from './provision.js';
 import { colonyBuildings } from './spot.js';
@@ -81,7 +82,8 @@ export interface StockPolicyRead {
   readonly buildingFloor: Units;
   /** The settler goods and food its people want in store. */
   readonly settlerReserve: Units;
-  /** Other goods its buildings want in store, by the units: a temple's holy oil, say ({@link colonyWants}). */
+  /** Other goods its buildings want in store, by the units: a temple's holy oil, say
+   *  ({@link colonyIndustryWantsOf}). */
   readonly wants: Units;
   /** The inputs of its standing workshops, with the units their shelves take. */
   readonly workshopInputs: Units;
@@ -296,15 +298,6 @@ function homeKeepOf(env: SeatEnv): (good: number) => number {
   };
 }
 
-/** The goods a colony's own buildings want in store past the rules above, by the units: the seam a colony
- *  industry fills (a temple's one holy oil), so its wants arrive with the rest of the colony's goods. None
- *  yet. */
-export function colonyWants(_env: ColonyEnv): ReadonlyMap<number, number> {
-  return NO_WANTS;
-}
-
-const NO_WANTS: ReadonlyMap<number, number> = new Map();
-
 /** The colony's policy now; `outboundNow` the goods its carrier sends home as marked. */
 export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<number>): ColonyStockPolicy {
   const { world, ctx } = env;
@@ -318,7 +311,7 @@ export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<num
   return colonyStockPolicy({
     buildingFloor,
     settlerReserve: settlerReserve(env, people, spare),
-    wants: colonyWants(env),
+    wants: colonyIndustryWantsOf(env, buildings),
     workshopInputs: workshopShelves(env, buildings),
     makes: colonyMade(env, buildings, people),
     held: heldByForm(env, buildings),

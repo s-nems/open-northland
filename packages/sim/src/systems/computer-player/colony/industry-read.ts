@@ -325,17 +325,15 @@ export function colonyIndustries(
   return value;
 }
 
-/** What the colony's industries want delivered past their workshops' inputs ({@link colonyIndustryWants}),
- *  by good type: a stock policy's inbound rows. */
-export function colonyIndustryWantsOf(
-  env: ColonyEnv,
-  colony: ColonyView,
-  buildings: readonly Entity[],
-): readonly { readonly goodType: number; readonly upTo: number }[] {
-  const industries = colonyIndustries(env, colony, buildings);
-  if (industries === null) return [];
-  return colonyIndustryWants(industries.choices, industries.homeMakesHolyOil).flatMap(({ good, upTo }) => {
+/** What the colony's industries want in store past their workshops' inputs ({@link colonyIndustryWants}),
+ *  units by good type: the stock policy's `wants`. */
+export function colonyIndustryWantsOf(env: ColonyEnv, buildings: readonly Entity[]): Map<number, number> {
+  const wants = new Map<number, number>();
+  const industries = colonyIndustries(env, env.colony, buildings);
+  if (industries === null) return wants;
+  for (const { good, upTo } of colonyIndustryWants(industries.choices, industries.homeMakesHolyOil)) {
     const goodType = goodTypeByContentId(env.ctx.content, good)?.typeId;
-    return goodType === undefined ? [] : [{ goodType, upTo }];
-  });
+    if (goodType !== undefined) wants.set(goodType, Math.max(wants.get(goodType) ?? 0, upTo));
+  }
+  return wants;
 }
