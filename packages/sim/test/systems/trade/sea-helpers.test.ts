@@ -298,6 +298,47 @@ describe('a pinned ship seats its helpers', () => {
   });
 });
 
+describe('a pin over seated helpers', () => {
+  it('pins again over its own seated helpers, keeping them seated and the commander slot for the trader', () => {
+    const sim = newSim();
+    const { trader, ship, carriers } = crew(sim, HELPERS);
+    sim.step();
+    order(sim, { kind: 'setTradeShip', entity: trader, ship: null });
+    sim.step();
+    expect(vehicleCommander(sim.world.get(ship, Vehicle))).toBe(carriers[0]);
+
+    order(sim, { kind: 'setTradeShip', entity: trader, ship });
+    sim.step();
+
+    expect(sim.world.get(ship, Vehicle).hauler).toBe(trader);
+    expect(vehicleCommander(sim.world.get(ship, Vehicle))).toBeNull();
+    expect(carriers.every((carrier) => sim.world.get(carrier, Rider).vehicle === ship)).toBe(true);
+    expect(checkInvariants(sim.world, sim.content)).toEqual([]);
+  });
+
+  it('refuses a pin over anyone but carriers seated', () => {
+    const sim = newSim();
+    const trader = settlerAt(sim, TRADER, HOUSE_ROW + 2);
+    const soldier = settlerAt(sim, SOLDIER, HOUSE_ROW + 4);
+    const ship = createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: SHIP_SMALL,
+      x: WEST_SHIP_X,
+      y: SHIP_ROW,
+      tribe: VIKING,
+      owner: HUMAN,
+    });
+    if (ship === null) throw new Error('no small ship in the fixture');
+    order(sim, { kind: 'attachToVehicle', entity: soldier, vehicle: ship });
+    sim.step();
+    expect(sim.world.get(soldier, Rider).vehicle).toBe(ship);
+
+    order(sim, { kind: 'setTradeShip', entity: trader, ship });
+    sim.step();
+
+    expect(sim.world.get(ship, Vehicle).hauler).toBeNull();
+  });
+});
+
 describe('helpers aboard with the trader ashore', () => {
   it('step ashore once a held order is called off', () => {
     const sim = newSim();

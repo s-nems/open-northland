@@ -1,12 +1,15 @@
 import {
   carriedVehicles,
+  commanderSlotOf,
   ownerOf,
   Rider,
+  Settler,
   TRADE_ROUTE_HOUSES,
   TradeRoute,
   TradeShip,
   type TradeStop,
   Vehicle,
+  type VehicleStateView,
   VehicleStock,
   vehiclePassengers,
 } from '../../components/index.js';
@@ -18,6 +21,8 @@ import type { ContentContext, MapContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
 import { isTrader } from '../readviews/jobs.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
+import { isCarrierJob } from '../stores/index.js';
+import { abandonCargoRun } from '../vehicles/cargo.js';
 import { doorReachable, landingOf } from '../vehicles/crew.js';
 import { mooringSpotsOf } from '../vehicles/dock.js';
 import { releaseTradeShip } from '../vehicles/hauling-cart.js';
@@ -27,8 +32,9 @@ import { releaseTradeShip } from '../vehicles/hauling-cart.js';
 
 /**
  * Whether the `setTradeShip` command would pin `ship` to `trader`: a trader on no vehicle, its own ship
- * with a vehicle slot, empty of people and vehicles and held by nobody, with its door on the trader's
- * continent. The ship pick lights ships by it.
+ * with a vehicle slot, empty of vehicles and held by nobody, with no one aboard but carriers who fit its
+ * ordinary seats (helpers left seated by an earlier pin), and its door on the trader's continent. The
+ * ship pick lights ships by it.
  */
 export function canPinTradeShip(world: World, ctx: MapContext, trader: Entity, ship: Entity): boolean {
   if (!isTrader(world, ctx.content, trader) || world.has(trader, Rider)) return false;
@@ -36,9 +42,20 @@ export function canPinTradeShip(world: World, ctx: MapContext, trader: Entity, s
   if (state === undefined || ownerOf(world, ship) !== ownerOf(world, trader)) return false;
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (type === undefined || !isShipVehicle(type) || state.vehicles.length === 0) return false;
-  if (vehiclePassengers(state).length > 0 || carriedVehicles(state).length > 0) return false;
+  if (!onlyHelpersAboard(world, ctx, state) || carriedVehicles(state).length > 0) return false;
   if (state.hauler !== null || state.carrier !== null) return false;
   return doorReachable(world, ctx, trader, ship);
+}
+
+/** Whether everyone aboard is a carrier of the ship's owner and they all fit its ordinary seats, the
+ *  commander's slot kept for the trader. */
+function onlyHelpersAboard(world: World, ctx: ContentContext, state: VehicleStateView): boolean {
+  const aboard = vehiclePassengers(state);
+  if (aboard.length > state.passengers.length - 1) return false;
+  return aboard.every((seat) => {
+    const jobType = world.tryGet(seat.entity, Settler)?.jobType ?? null;
+    return jobType !== null && isCarrierJob(ctx, jobType);
+  });
 }
 
 /** Pin `ship` in place of any pinned before, or drop the pin with null. The route owns the hold from now
@@ -50,13 +67,28 @@ export function setTradeShip(world: World, ctx: MapContext, trader: Entity, ship
   }
   if (!canPinTradeShip(world, ctx, trader, ship)) return;
   releaseTradeShip(world, trader);
+  // A seated carrier's cargo run books on the lines; it ends before the pin takes the hold over.
+  for (const seat of vehiclePassengers(world.get(ship, Vehicle))) abandonCargoRun(world, seat.entity);
   world.add(trader, TradeShip, { vehicle: ship, dockRetryAt: 0, failedDock: null });
   world.mut(ship, Vehicle).hauler = trader;
+  freeCommanderSeat(world, ship);
   if (!world.has(ship, VehicleStock)) return;
   for (const line of world.mut(ship, VehicleStock).lines.values()) {
     line.wanted = line.current;
     line.reserved = line.current;
   }
+}
+
+/** A helper the last pin's end promoted to commander steps back to an ordinary seat. */
+function freeCommanderSeat(world: World, ship: Entity): void {
+  const state = world.get(ship, Vehicle);
+  const commander = commanderSlotOf(state.passengers.length - 1);
+  const seat = state.passengers[commander];
+  const free = state.passengers.findIndex((open, i) => i !== commander && open === null);
+  if (seat === null || seat === undefined || free < 0) return;
+  const live = world.mut(ship, Vehicle);
+  live.passengers[free] = live.passengers[commander] ?? null;
+  live.passengers[commander] = null;
 }
 
 /** Whether the pin still stands: the ship is there and names the trader back, and both are the same
