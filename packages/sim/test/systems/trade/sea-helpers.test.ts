@@ -487,22 +487,25 @@ describe('helpers at work', () => {
     expect(stockOf(sim, west, WOOD) + aboard + stockOf(sim, east, WOOD)).toBe(LOAD);
   });
 
-  it('lets no helper set out while the ship lies away from the stop, so the trader sails it round first', () => {
+  it('sails a ship lying away round to the stop once its helpers end their trips, not once it is loaded', () => {
     const sim = newSim();
-    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, SMALL_LOAD]]);
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, LOAD]]);
     const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
-    const { trader, ship, carriers } = crew(sim, HELPERS, false, FAR_SHIP_ROW);
+    const { trader, ship } = crew(sim, HELPERS, false, FAR_SHIP_ROW);
     // The trader far down the shore, so its helpers stand by the ship long before it does.
     sim.world.mut(trader, Position).y = fx.fromInt(FAR_TRADER_ROW);
     route(sim, trader, west, east);
     sim.step();
     const start = sim.world.get(ship, Vehicle).mooring;
 
-    const helping = () => carriers.some((c) => sim.world.has(c, CargoRun));
-    runUntil(sim, LONG_TICKS, helping);
+    const sailedRound = () => {
+      const mooring = sim.world.get(ship, Vehicle).mooring;
+      return mooring !== null && (mooring.hx !== start?.hx || mooring.hy !== start?.hy);
+    };
+    runUntil(sim, LONG_TICKS, sailedRound);
 
-    expect(helping()).toBe(true);
-    expect(sim.world.get(ship, Vehicle).mooring).not.toEqual(start);
+    expect(sailedRound()).toBe(true);
+    expect(shipLine(sim, ship, WOOD).current).toBeLessThan(LOAD);
   });
 
   it('sails once its stop is done though fresh spare keeps coming for the helpers to fetch', () => {

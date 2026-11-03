@@ -270,7 +270,12 @@ function setOut(
 ): boolean {
   const cooling = plan.ctx.tick < plan.world.get(plan.entity, TradeShip).dockRetryAt;
   if (target === null || cooling) return rules.wait(hold.near);
-  if (hold.helpersOnTrips) return rules.wait(hold.near);
+  if (hold.helpersOnTrips) {
+    // A ship lying away from its stop is sailed round first: its helpers' trips end rather than load it
+    // unit by unit at the wrong landing.
+    if (!flips) setDeparting(plan.world, plan.entity, true);
+    return rules.wait(hold.near);
+  }
   return goAboard(plan, hold, flips, rules);
 }
 

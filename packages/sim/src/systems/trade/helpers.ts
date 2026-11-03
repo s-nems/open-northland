@@ -32,8 +32,7 @@ import { vehicleStockGood } from '../vehicles/stock.js';
 import { decideForHelper, routeStandsFinished, storableFormAt } from './drive.js';
 import { isDeparting } from './ferry.js';
 import { type FerryHold, ferryHoldOf, traderHoldOf } from './hold.js';
-import { mooringTargetOfStop, routeCrossesSea, shipLiesOn, stopContinent } from './ship.js';
-import { shipLiesAwayFrom } from './voyage.js';
+import { routeCrossesSea, shipLiesOn, stopContinent } from './ship.js';
 
 /** A helper moves one unit a trip. */
 const HELPER_UNIT = 1;
@@ -73,9 +72,7 @@ export function planShipHelper(
 }
 
 /** The stop `trader` has its helpers work on the planned settler's shore, or null: the trader is aboard,
- *  the route is broken, foreign or does not cross the sea, or the ship or the stop lies elsewhere, the ship
- *  away from the stop's mooring included: the trader sails it round first, and a helper's trip would hold it
- *  where it lies. */
+ *  the route is broken, foreign or does not cross the sea, or the ship or the stop lies elsewhere. */
 function helperShift(plan: PlannerContext, trader: Entity, ship: Entity): HelperShift | null {
   const { world, ctx, terrain, here } = plan;
   if (world.has(trader, Rider) || !world.has(trader, TradeRoute)) return null;
@@ -87,9 +84,7 @@ function helperShift(plan: PlannerContext, trader: Entity, ship: Entity): Helper
   if (isForeignHouse(world, trader, stop.house) || isForeignHouse(world, trader, other.house)) return null;
   const continent = terrain.componentOf(here);
   if (stopContinent(world, ctx, terrain, stop) !== continent) return null;
-  if (!shipLiesOn(world, ctx, terrain, ship, continent)) return null;
-  const mooring = mooringTargetOfStop(world, ctx, terrain, ship, stop);
-  return shipLiesAwayFrom(world, ctx, terrain, trader, ship, mooring) ? null : { stop, other };
+  return shipLiesOn(world, ctx, terrain, ship, continent) ? { stop, other } : null;
 }
 
 /** Whether a walk to `cell` failed lately. */
