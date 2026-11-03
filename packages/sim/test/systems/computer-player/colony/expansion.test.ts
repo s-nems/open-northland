@@ -67,8 +67,8 @@ describe('a seat looking past its colonies', () => {
     ['with fewer fighters at home than civilians', { fighters: AT_HOME - 1 }],
     ['with a voyage under way', { settled: false }],
     ['with its newest colony hungry', { fed: false }],
-    ['with no load home yet', { delivered: null }],
-    ['with its last load home long past', { delivered: 0 }],
+    ['with nothing unloaded yet', { delivered: null }],
+    ['with its last unloading long past', { delivered: 0 }],
     ['with one ship free', { freeShips: 1 }],
   ])('stays as it is %s', (_rule, change) => {
     expect(mayLookFurther({ ...ready, ...change })).toBe(false);

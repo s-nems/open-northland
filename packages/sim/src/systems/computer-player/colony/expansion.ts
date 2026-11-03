@@ -42,7 +42,7 @@ const SETTLERS_PER_COLONY = 100;
  *  colony that lost most fighters stood under it, and those stay at home until the army has caught up, as
  *  another party would be recruits it never gets. */
 const FIGHTERS_PER_CIVILIAN = 1;
-/** How long a colony's last load home counts: about two of a trader's rounds. */
+/** How long a colony's last unloading counts: about two of a trader's rounds. */
 const DELIVERY_FRESH_TICKS = minutesToTicks(30);
 /** The free ships at home that spare one for a scout and still leave the next landing a hull. */
 const FREE_SHIPS_LEAST = 2;
@@ -70,7 +70,7 @@ export interface NextColonyRead {
   /** Whether every live colony runs on its trade route and nothing else of the seat's colonies is under
    *  way. */
   readonly settled: boolean;
-  /** Whether the newest colony eats, and the tick its trader last brought a load home. */
+  /** Whether the newest colony eats, and the tick its trader last unloaded at either stop. */
   readonly fed: boolean;
   readonly delivered: number | null;
   readonly freeShips: number;

@@ -98,7 +98,8 @@ function routeLoad(world: World, ship: Entity, trader: Entity | null): number {
 }
 
 /** Keep the record of the hull and the load: a hull that fell marks where the ship lies as danger, a load
- *  that fell with the ship at home is a delivery. Only a change writes. */
+ *  that fell with the ship moored at either stop is a delivery, so a full store at one end does not hide a
+ *  working route. Only a change writes. */
 function noteRoute(env: ColonyEnv, colony: ColonyView, route: RouteView, ship: Entity): void {
   const { world, ctx } = env;
   const hull = world.tryGet(ship, Health)?.hitpoints ?? 0;
@@ -109,7 +110,8 @@ function noteRoute(env: ColonyEnv, colony: ColonyView, route: RouteView, ship: E
     const dangers = at === null ? null : withDanger(colony.dangers, at, ctx.tick);
     if (dangers !== null) env.edit().dangers = dangers;
   }
-  if (load < route.load && mooredOn(env, ship, homeLandOf(env))) env.edit().delivered = ctx.tick;
+  if (load < route.load && (mooredOn(env, ship, homeLandOf(env)) || mooredOn(env, ship, colony.land)))
+    env.edit().delivered = ctx.tick;
   const live = env.edit().route;
   if (live === null) return;
   live.hull = hull;

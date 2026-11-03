@@ -104,7 +104,7 @@ export interface ColonyState {
   garrison: Entity[];
   threat: ColonyThreat | null;
   failures: number;
-  /** The tick its trader last brought a load home, null until then. */
+  /** The tick its trader last unloaded at either stop, null until then. */
   delivered: number | null;
   builds: { building: string; placed: boolean }[];
   route: ColonyRoute | null;
