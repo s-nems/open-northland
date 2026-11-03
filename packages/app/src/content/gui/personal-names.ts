@@ -1,4 +1,4 @@
-import { PersonalNamesFile } from '@open-northland/data';
+import { isSourceLanguage, PersonalNamesFile } from '@open-northland/data';
 import { diag } from '../../diag/index.js';
 import { installLocalizedNames, type LocalizedNames } from '../../game/character-names/localized-names.js';
 import type { Locale } from '../../i18n/index.js';
@@ -18,6 +18,8 @@ const byLocale = new Map<Locale, Promise<LocalizedNames>>();
 export function loadPersonalNames(locale: Locale): Promise<LocalizedNames> {
   const cached = byLocale.get(locale);
   if (cached !== undefined) return cached;
+  // The pools spell a source language's names already, so the pipeline writes it no file to ask for.
+  if (isSourceLanguage(locale)) return Promise.resolve(new Map());
   const loading = fetchJsonOrNull<unknown>(`${GUI_ROOT}/names/${locale}.json`).then((raw) => {
     if (raw === null) return new Map();
     const parsed = PersonalNamesFile.safeParse(raw);
