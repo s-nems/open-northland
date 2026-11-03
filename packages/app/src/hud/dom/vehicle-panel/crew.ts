@@ -21,8 +21,9 @@ import {
 import { createFigureWell, type FigureWell, showInWell, type WellFigureFit } from '../parts/figure-well.js';
 import { createLedger } from '../parts/ledger.js';
 import { createSection } from '../parts/section.js';
+import type { SettlerPanelActions } from '../settler-panel/actions.js';
 import { seatButton } from '../settler-panel/work.js';
-import type { VehiclePanelDeps, VehiclePick } from './actions.js';
+import type { VehiclePanelActions, VehiclePanelDeps, VehiclePick } from './actions.js';
 
 /** The badge on the commander's well: what it commands. */
 const ROLE_GLYPH: Readonly<Record<VehicleClass, string>> = {
@@ -115,10 +116,14 @@ export interface CrewSection {
   wells(): readonly FigureWell[];
 }
 
-export function createCrewSection(
-  deps: VehiclePanelDeps,
-  current: () => VehiclePanelModel | null,
-): CrewSection {
+/** What the crew rows press: a rider or the trader to select, the unpin, and the crew orders. */
+interface CrewDeps {
+  readonly actions: Pick<SettlerPanelActions, 'select' | 'unpinTradeShip'>;
+  readonly vehicle: VehiclePanelActions;
+  readonly cue: VehiclePanelDeps['cue'];
+}
+
+export function createCrewSection(deps: CrewDeps, current: () => VehiclePanelModel | null): CrewSection {
   const { actions, vehicle } = deps;
   const count = element('span', 'on-section__count');
   const unload = button('on-more');

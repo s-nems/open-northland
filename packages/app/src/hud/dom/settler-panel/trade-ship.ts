@@ -3,7 +3,7 @@ import type { TradePanelModel, TraderSubject } from '../../details-panel/model/i
 import { GLYPH } from '../icons.js';
 import { button, element, setClass, setHidden, setTip, write } from '../parts/dom.js';
 import { createRoundButton } from '../parts/round-button.js';
-import type { SettlerPanelDeps } from './actions.js';
+import type { SettlerPanelActions } from './actions.js';
 
 /** The ship row under the stops, always present so the section never changes height with the pin: the
  *  ship as a link with its hold in the tooltip and the detach, or the link that arms the pin pick, then
@@ -14,10 +14,9 @@ export interface TradeShipRow {
 }
 
 export function createTradeShipRow(
-  deps: SettlerPanelDeps,
+  actions: Pick<SettlerPanelActions, 'pinTradeShip' | 'show' | 'unpinTradeShip'>,
   current: () => TraderSubject | null,
 ): TradeShipRow {
-  const { actions } = deps;
   const list = element('ul', 'on-stops on-trade-ship');
   const item = element('li', 'on-stop');
   const badge = element('span', 'on-stop__badge', GLYPH.anchor);

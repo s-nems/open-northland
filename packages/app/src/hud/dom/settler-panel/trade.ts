@@ -56,7 +56,7 @@ export function createTradeSection(
   joint.append(configure);
   const route = element('div', 'on-trade-route');
   route.append(stops.element, joint);
-  const ship = createTradeShipRow(deps, current);
+  const ship = createTradeShipRow(deps.actions, current);
   const lines = createTradeTransfers(deps, onConfigure);
   const agreement = createTradeAgreement(deps, current);
   const root = element('div', '');
