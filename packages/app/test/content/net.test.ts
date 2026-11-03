@@ -9,8 +9,9 @@ describe('mod asset URLs', () => {
     const url = modAssetBlobUrl('/bobs/viking.png', new Uint8Array([1, 2, 3]));
 
     expect(create).toHaveBeenCalledOnce();
-    expect(create.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
-    expect(create.mock.calls[0]?.[0].type).toBe('image/png');
+    const blob = create.mock.calls[0]?.[0];
+    expect(blob).toBeInstanceOf(Blob);
+    if (blob instanceof Blob) expect(blob.type).toBe('image/png');
     expect(url).toBe('blob:http://localhost/atlas');
   });
 
@@ -18,7 +19,9 @@ describe('mod asset URLs', () => {
     const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:http://localhost/atlas');
     const url = modAssetBlobUrl('/bobs/viking.webp', new Uint8Array([1]));
 
-    expect(create.mock.calls[0]?.[0].type).toBe('image/webp');
+    const blob = create.mock.calls[0]?.[0];
+    expect(blob).toBeInstanceOf(Blob);
+    if (blob instanceof Blob) expect(blob.type).toBe('image/webp');
     expect(url).toBe('blob:http://localhost/atlas');
   });
 });
