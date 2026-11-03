@@ -34,6 +34,7 @@ function read(overrides: Partial<StockPolicyRead> = {}): StockPolicyRead {
     keptOnColony: new Set(),
     outboundNow: new Set(),
     homeKeep: () => HOME_KEEPS,
+    homeWants: new Set(),
     ...overrides,
   };
 }
@@ -66,6 +67,18 @@ describe('a colony stock policy', () => {
     expect(outboundOf(policy, SHOES)).toEqual({ good: SHOES, keep: SHOES_RESERVE });
     expect(outboundOf(policy, WOOD)).toEqual({ good: WOOD, keep: WOOD_FLOOR });
     expect(outboundOf(policy, SWORD)).toEqual({ good: SWORD, keep: 0 });
+  });
+
+  it("sends home what it holds above its floor of an input home's workshops lack, made there or not", () => {
+    const held = new Map([[BRICK, BRICK_FLOOR + 2]]);
+    expect(outboundOf(colonyStockPolicy(read({ held })), BRICK)).toBeUndefined();
+    const policy = colonyStockPolicy(read({ held, homeWants: new Set([BRICK]) }));
+    expect(outboundOf(policy, BRICK)).toEqual({ good: BRICK, keep: BRICK_FLOOR });
+    expect(inboundOf(policy, BRICK)).toBeUndefined();
+    const short = colonyStockPolicy(
+      read({ held: new Map([[BRICK, BRICK_FLOOR - 1]]), homeWants: new Set([BRICK]) }),
+    );
+    expect(outboundOf(short, BRICK)).toBeUndefined();
   });
 
   it('moves a good it both makes and is filled up to one way at a time, meeting at the floor', () => {

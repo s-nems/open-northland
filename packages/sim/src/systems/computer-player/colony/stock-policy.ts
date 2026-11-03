@@ -8,6 +8,7 @@ import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { edibleGoodFormOf, mayChangeEquipment } from '../../readviews/index.js';
 import { toolHelpsJob } from '../../settlers/planner/assistant-grants.js';
+import { stockAtBuildings } from '../../stores/index.js';
 import { sitesShortfalls } from '../build-order/upgrade-supply.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { colonists, colonyOrigin } from './founding.js';
@@ -97,6 +98,8 @@ export interface StockPolicyRead {
   readonly outboundNow: ReadonlySet<number>;
   /** What home keeps of a good it sends. */
   readonly homeKeep: (good: number) => number;
+  /** The inputs home's workshops lack: a good the colony holds above its floor goes home, made there or not. */
+  readonly homeWants: ReadonlySet<number>;
 }
 
 /** What the colony keeps of a workshop input: a small floor brought in, its shelves of one it makes. */
@@ -118,8 +121,9 @@ function floorOf(read: StockPolicyRead, good: number): number {
 
 /**
  * Per good, which way it moves. Inbound: the building floor always, settler goods and workshop inputs the
- * colony does not make. Outbound: what it makes, and anything else it holds that no inbound mark brought,
- * never what it keeps. A good on both lists, a building material the colony digs, goes the way its stock
+ * colony does not make. Outbound: what it makes, anything else it holds that no inbound mark brought, and
+ * an input home's workshops lack, so a colony holding clay feeds home's brickworks that build it; never what
+ * it keeps. A good on both lists, a building material the colony digs, goes the way its stock
  * stands to the floor, and at the floor the way it went: its keep at the colony is the colony's floor, so
  * units that went one way never come back. Both ways at once would balance the two stores instead, holding
  * the colony's surplus while home holds more.
@@ -131,7 +135,7 @@ export function colonyStockPolicy(read: StockPolicyRead): ColonyStockPolicy {
   const outboundGoods = new Set<number>();
   for (const good of [...read.makes, ...read.held.keys()]) {
     if (read.keptOnColony.has(good)) continue;
-    if (inboundGoods.has(good) && !read.makes.has(good)) continue;
+    if (inboundGoods.has(good) && !read.makes.has(good) && !read.homeWants.has(good)) continue;
     if (!read.makes.has(good) && (read.held.get(good) ?? 0) <= 0) continue;
     outboundGoods.add(good);
   }
@@ -147,6 +151,22 @@ export function colonyStockPolicy(read: StockPolicyRead): ColonyStockPolicy {
     else if (takes) inbound.push({ good, upTo: floor, keep: read.homeKeep(good) });
   }
   return { inbound, outbound };
+}
+
+/** The inputs home's own workshops, its ship yard among them, have fewer of in home's stores than their
+ *  shelves take: what a colony's surplus goes home to feed. */
+function homeWantsOf(env: SeatEnv): Set<number> {
+  const { world, ctx, seat } = env;
+  const index = contentIndex(ctx.content);
+  const home = homeBuildings(world, ctx, seat);
+  const stores = home.filter(
+    (e) => index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage,
+  );
+  const stored = stockAtBuildings(world, seat, stores);
+  const wants = new Set<number>();
+  for (const [good, shelves] of workshopShelves(env, home))
+    if ((stored.get(good) ?? 0) < shelves) wants.add(good);
+  return wants;
 }
 
 /** The good types of `ids` the content knows, with their figures. */
@@ -331,5 +351,6 @@ export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<num
     keptOnColony: keptOnColony(env, buildings),
     outboundNow,
     homeKeep: keepPastSites(homeKeepOf(env), lacking, held),
+    homeWants: homeWantsOf(env),
   });
 }
