@@ -89,8 +89,10 @@ export interface FerryHold extends TraderHold {
   readonly booked: TraderHold;
   /** The units of `good` a lift may take out of the ship: aboard and on no helper's run. */
   liftable(good: number): number;
-  /** Whether a helper on the map is on a trip, a run or a unit in hand, which the trader waits out rather
-   *  than sail with a unit booked and not yet moved; a helper indoors holds no one up. */
+  /** Whether a seated helper ashore is on a trip, a run or a unit in hand. The trader waits it out rather
+   *  than sail with a unit booked and not yet moved; a helper holding a unit finishes its trip, through a
+   *  need if one takes it first, so the wait is bounded, and it stands in for the ship waiting for that
+   *  helper at departure. An empty-handed helper gives its run back when a need takes it. */
   readonly helpersOnTrips: boolean;
 }
 
@@ -184,7 +186,7 @@ function helperFlightOf(
     const run = world.tryGet(seat.entity, CargoRun);
     const held = world.tryGet(seat.entity, Carrying);
     const loaded = held !== undefined && held.amount > 0;
-    onTrips ||= (run !== undefined || loaded) && world.has(seat.entity, Position);
+    onTrips ||= run !== undefined || loaded;
     if (run !== undefined) {
       const net = run.direction === 'load' ? 1 : -1;
       runs.set(run.goodType, (runs.get(run.goodType) ?? 0) + net);
