@@ -190,7 +190,7 @@ describe('content mod merge', () => {
       expect(merged.sounds.humanVoices.map((v) => v.tribe)).toEqual([43]);
       expect(merged.humanPalettes.jobChanges.map((c) => c.tribe)).toEqual([43]);
       const barracks = merged.buildings.find((b) => b.id === 'barracks');
-      expect(barracks?.tribeVariants.map((v) => v.tribe)).toEqual([43]);
+      expect(barracks?.tribeVariants?.map((v) => v.tribe)).toEqual([43]);
     });
 
     it('renames only the slug when the tribe id is free', () => {
