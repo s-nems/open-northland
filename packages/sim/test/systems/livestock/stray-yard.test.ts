@@ -13,8 +13,8 @@ it('finds the same nearest door as a canonical scan across both tree axes and eq
       doors.push({ entity: farmAt(sim, x, y, { owner: 0, buildingType: 7 }), x, y });
     }
   }
-  const yard = strayYardOf(sim.world, ctxOf(sim), terrain, 0);
-  if (yard === null) throw new Error('the finished warehouses provide yards');
+  const yards = strayYardOf(sim.world, ctxOf(sim), terrain, 0);
+  if (yards.size === 0) throw new Error('the finished warehouses provide yards');
   for (let x = 0; x < 64; x += 5) {
     for (let y = 0; y < 64; y += 5) {
       const animal = cowAt(sim, x, y, { owner: 0 });
@@ -28,7 +28,7 @@ it('finds the same nearest door as a canonical scan across both tree axes and eq
         }
       }
       if (expected === undefined) throw new Error('fixture has doors');
-      expect(nearestYardDoor(sim.world, terrain, yard, animal)).toBe(terrain.nodeAt(expected.x, expected.y));
+      expect(nearestYardDoor(sim.world, terrain, yards, animal)).toBe(terrain.nodeAt(expected.x, expected.y));
       sim.world.destroy(animal);
     }
   }

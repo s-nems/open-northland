@@ -9,12 +9,14 @@ import {
 } from '../../../src/components/index.js';
 import { ZERO } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
+import { Simulation } from '../../../src/index.js';
 import {
   FARM_HERD_LEASH_NODES,
   LIVESTOCK_GRAZE_RANGE_NODES,
   livestockAssignmentSystem,
 } from '../../../src/systems/index.js';
-import { BEAR_TRIBE, cowAt, ctxOf, farmAt, HEADQUARTERS, livestockSim } from './support.js';
+import { waterColumnMap } from '../../fixtures/terrain.js';
+import { BEAR_TRIBE, cowAt, ctxOf, farmAt, HEADQUARTERS, livestockContent, livestockSim } from './support.js';
 
 const P0 = 0;
 const P1 = 1;
@@ -122,6 +124,20 @@ describe('livestock assignment - a herd keeps to its farm, loose stock to the ba
     livestockAssignmentSystem(sim.world, ctxOf(sim));
 
     expect(onRing(anchorDistance(sim, cow, 40, 40))).toBe(true);
+  });
+
+  it('keeps a stray to a yard on its own island, never the headquarters across water', () => {
+    const sim = new Simulation({ seed: 1, content: livestockContent(), map: waterColumnMap(32, 32, 16) });
+    farmAt(sim, 12, 12, { owner: P0, buildingType: HEADQUARTERS });
+    farmAt(sim, 48, 12, { owner: P0, buildingType: WAREHOUSE });
+    const settled = cowAt(sim, 44, 40, { owner: P0 });
+    farmAt(sim, 4, 4, { owner: P1, buildingType: HEADQUARTERS });
+    const unsettled = cowAt(sim, 56, 40, { owner: P1 });
+
+    livestockAssignmentSystem(sim.world, ctxOf(sim));
+
+    expect(onRing(anchorDistance(sim, settled, 48, 12))).toBe(true);
+    expect(sim.world.has(unsettled, StayPoint)).toBe(false);
   });
 
   it('without headquarters each animal chooses its nearest warehouse, ahead of a closer workshop', () => {

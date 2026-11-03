@@ -21,7 +21,7 @@ import { stayPointRangeOf } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { acrossWater, farmStands, recountHerdRows } from './herd.js';
-import { nearestYardDoor, type StrayYard, strayYardOf } from './stray-yard.js';
+import { nearestYardDoor, type StrayYards, strayYardOf } from './stray-yard.js';
 
 /** Re-anchoring cadence (ticks): a slow sweep, so claims, adoptions, new farms, and demolitions converge
  *  within a period. Approximated; the original's herding cadence is not readable. */
@@ -84,7 +84,9 @@ export function territoryRangeIn(world: World, content: ContentSet, e: Entity): 
  * to a spot beside that door; inside the leash the grazing drive takes over.
  *
  * A farm's animal standing across water from its door leaves the herd for the same yard, so the farm's
- * breeder neither chases nor counts a beast it can never reach (named addition).
+ * breeder neither chases nor counts a beast it can never reach, and a stray answers only to a yard on its
+ * own land, so an island settlement keeps its strays and one with no building there leaves them be (named
+ * additions).
  *
  * Source basis: a house-attached animal keeps to its work house's door in the original; the
  * headquarters fallback and the ring of home spots are observed original behaviour. Without headquarters,
@@ -117,15 +119,15 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
     }
     strays.push(e);
   }
-  const yards = new Map<number, StrayYard | null>();
+  const yardsByPlayer = new Map<number, StrayYards>();
   for (const e of strays) {
     const player = world.get(e, Owner).player;
-    let yard = yards.get(player);
-    if (yard === undefined) {
-      yard = strayYardOf(world, ctx, terrain, player);
-      yards.set(player, yard);
+    let yards = yardsByPlayer.get(player);
+    if (yards === undefined) {
+      yards = strayYardOf(world, ctx, terrain, player);
+      yardsByPlayer.set(player, yards);
     }
-    const door = yard === null ? null : nearestYardDoor(world, terrain, yard, e);
+    const door = nearestYardDoor(world, terrain, yards, e);
     if (door !== null) push(byDoor, door, e);
   }
   if (byDoor.size === 0) return;

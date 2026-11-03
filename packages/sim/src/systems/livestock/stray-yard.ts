@@ -24,16 +24,29 @@ export interface StrayYard {
   readonly right: StrayYard | null;
 }
 
-/** Built once per owner and assignment sweep, from the highest available building priority. */
+/** Per land component, the yard an animal standing on it walks to. */
+export type StrayYards = ReadonlyMap<number, StrayYard>;
+
+/** The doors one land offers: its headquarters alone, else its finished storehouses, else every finished
+ *  building. */
+interface LandDoors {
+  headquarters: YardDoor | null;
+  storageOnly: boolean;
+  readonly doors: YardDoor[];
+}
+
+/**
+ * Built once per owner and assignment sweep, from the highest available building priority of each land:
+ * an animal never walks to a yard across water, so a settlement on another island keeps its own strays.
+ */
 export function strayYardOf(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
-): StrayYard | null {
+): StrayYards {
   const types = contentIndex(ctx.content).buildings;
-  const doors: YardDoor[] = [];
-  let storageOnly = false;
+  const lands = new Map<number, LandDoors>();
   for (const e of ownedBuildings(world, player)) {
     const building = world.get(e, Building);
     if (building.built < ONE) continue;
@@ -41,17 +54,33 @@ export function strayYardOf(
     if (type === undefined) continue;
     const cell = interactionNodeId(world, ctx, terrain, e);
     if (cell === null) continue;
+    const component = terrain.componentOf(cell);
+    let land = lands.get(component);
+    if (land === undefined) {
+      land = { headquarters: null, storageOnly: false, doors: [] };
+      lands.set(component, land);
+    }
+    if (land.headquarters !== null) continue;
     const door = { entity: e, cell, ...terrain.coordsOf(cell) };
     if (type.id === HEADQUARTERS_BUILDING_ID) {
-      return { door, splitX: true, left: null, right: null };
+      land.headquarters = door;
+      continue;
     }
-    if (type.kind === 'storage' && !storageOnly) {
-      doors.length = 0;
-      storageOnly = true;
+    if (type.kind === 'storage' && !land.storageOnly) {
+      land.doors.length = 0;
+      land.storageOnly = true;
     }
-    if (!storageOnly || type.kind === 'storage') doors.push(door);
+    if (!land.storageOnly || type.kind === 'storage') land.doors.push(door);
   }
-  return doorTree(doors, true);
+  const yards = new Map<number, StrayYard>();
+  for (const [component, land] of lands) {
+    const yard =
+      land.headquarters === null
+        ? doorTree(land.doors, true)
+        : { door: land.headquarters, splitX: true, left: null, right: null };
+    if (yard !== null) yards.set(component, yard);
+  }
+  return yards;
 }
 
 function doorTree(doors: YardDoor[], splitX: boolean): StrayYard | null {
@@ -68,14 +97,18 @@ function doorTree(doors: YardDoor[], splitX: boolean): StrayYard | null {
   };
 }
 
-/** Manhattan distance from the animal to the door; equal distances choose the lower entity id. */
+/** The nearest door of the yard on the animal's land by Manhattan distance, equal distances choosing the
+ *  lower entity id; null when the player holds no yard there. */
 export function nearestYardDoor(
   world: World,
   terrain: TerrainGraph,
-  yard: StrayYard,
+  yards: StrayYards,
   animal: Entity,
-): NodeId {
-  const at = terrain.coordsOf(entityNode(world, terrain, animal));
+): NodeId | null {
+  const here = entityNode(world, terrain, animal);
+  const yard = yards.get(terrain.componentOf(here));
+  if (yard === undefined) return null;
+  const at = terrain.coordsOf(here);
   let best = yard.door;
   let distance = Math.abs(at.x - best.x) + Math.abs(at.y - best.y);
   const visit = (node: StrayYard | null): void => {
