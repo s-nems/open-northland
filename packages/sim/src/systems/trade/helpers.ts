@@ -140,7 +140,8 @@ function setOutToUnload(plan: PlannerContext, ship: Entity, good: number): boole
 /**
  * The trip a unit in hand is on: a booked unit goes to the ship's door, any other to an own stop on this
  * shore, or onto the door heap of a full one that marks it, and one none of these takes to the nearest
- * storehouse or the ground, as a cargo hand places a refused load. False with no moored ship to anchor that search: the delivery rung takes the unit.
+ * storehouse or the ground, as a cargo hand places a refused load. False with no moored ship to anchor
+ * that search: the delivery rung takes the unit.
  */
 function finishTrip(
   plan: PlannerContext,
