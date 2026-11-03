@@ -22,7 +22,7 @@ import type { ContentContext, SystemContext } from '../context.js';
 import { stockOf } from '../missions/stock.js';
 import { grantTradeExperience } from '../progression/index.js';
 import { edibleGoodFormOf } from '../readviews/food.js';
-import { addCarry, dropCarryAtOwnTile, shrinkCarry } from '../settlers/atomics/effects/goods/carry.js';
+import { addCarry, dropCarriedLoad, shrinkCarry } from '../settlers/atomics/effects/goods/carry.js';
 import { cappedByStorageMinimum } from '../settlers/targets/stores/storage-reserve.js';
 import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '../stores/index.js';
 import { abandonCargoRun } from '../vehicles/cargo.js';
@@ -344,8 +344,8 @@ export function loadTraderHold(
 /**
  * Resolve one completed `tradeUnload`: one unit of `goodType` leaves the trader's hold for `store`'s
  * shelf, on the slot the store banks it in; with no room left, or with no store, the unit goes onto the
- * ground at the trader's feet instead. At a foreign stop the unit counts toward the agreement's give. A
- * delivery that lands trains the trader.
+ * ground at the trader's feet instead, or on the nearest tile with room once that one holds a full stack.
+ * At a foreign stop the unit counts toward the agreement's give. A delivery that lands trains the trader.
  */
 export function unloadTraderHold(
   world: World,
@@ -378,5 +378,5 @@ export function unloadTraderHold(
     }
   }
   addCarry(world, trader, goodType, 1);
-  dropCarryAtOwnTile(world, ctx, trader);
+  dropCarriedLoad(world, ctx, trader);
 }

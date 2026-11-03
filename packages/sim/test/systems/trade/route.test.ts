@@ -36,6 +36,7 @@ import {
 import { hexDistance, nodeOfPosition } from '../../../src/nav/halfcell.js';
 import { AI_HANDLER_ROUND_TICKS } from '../../../src/systems/ai-shared/cadence.js';
 import { interactionNode, vehicleAnchor } from '../../../src/systems/footprint/index.js';
+import { DOOR_HEAP_LIMIT_UNITS } from '../../../src/systems/settlers/drives/economy/workshop/door-heap.js';
 import { UNREACHABLE_GOAL_MEMO_TICKS } from '../../../src/systems/settlers/unreachable-goals.js';
 import { isLoosePile } from '../../../src/systems/stores/index.js';
 import {
@@ -116,7 +117,8 @@ const WOOD_DRAWN_DOWN = 2;
 const WOOD_KEPT = 4;
 /** The wood a headquarters stores, by the fixture. */
 const HEADQUARTERS_WOOD_ROOM = 150;
-const WOOD_SENT = 5;
+/** More wood than one ground stack holds, so the heap spreads over a second tile. */
+const WOOD_SENT = DOOR_HEAP_LIMIT_UNITS;
 
 function houseAt(
   sim: Simulation,
@@ -308,6 +310,20 @@ describe('a trader between its own houses', () => {
 
     expect(stockOf(sim, near, WOOD)).toBe(0);
     expect(stockOf(sim, far, WOOD)).toBe(HEADQUARTERS_WOOD_ROOM);
+    expect(groundUnits(sim, WOOD)).toBe(WOOD_SENT);
+  });
+
+  it('sets a good marked for a full house down on the ground by its door on foot as well', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, WOOD_SENT]]);
+    const far = houseAt(sim, FAR_X, HUMAN, [[WOOD, HEADQUARTERS_WOOD_ROOM]]);
+    const trader = traderOnFoot(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+
+    sim.run(SHUTTLE_TICKS);
+
+    expect(stockOf(sim, near, WOOD)).toBe(0);
+    expect(holdOf(sim, trader, WOOD)).toBe(0);
     expect(groundUnits(sim, WOOD)).toBe(WOOD_SENT);
   });
 
