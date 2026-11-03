@@ -729,7 +729,7 @@ export const chtGame = {
         '點擊，然後選擇此岸邊一艘高亮的、無船員的己方船隻，或在選中商人時右鍵點擊該船。商人將乘它走這條路線。',
       tradeUnpinShip: '取消指定船隻',
       tradeShipNeeded: '需跨海',
-      tradeShipNeededTooltip: '站點位於不同的海岸：請指定一艘船，商人才能渡海',
+      tradeShipNeededTooltip: '停靠站位於不同的海岸：請指定一艘船，商人才能渡海',
       tradeShipUnreachable: '無法到達',
       tradeShipUnreachableTooltip: '這艘船無法服務此路線：它在另一片海上，或停靠在與商人不同的海岸',
       tradeSettlement: '聚落',
