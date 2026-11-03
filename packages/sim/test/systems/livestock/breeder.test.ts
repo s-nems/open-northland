@@ -10,6 +10,7 @@ import {
   Production,
   SettlerProgress,
   Stockpile,
+  setSignpostNavigation,
   YoungAnimal,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -25,7 +26,7 @@ import {
   productionSystem,
   recountHerdRows,
 } from '../../../src/systems/index.js';
-import { waterColumnMap } from '../../fixtures/terrain.js';
+import { grassCellMap, waterColumnMap } from '../../fixtures/terrain.js';
 import {
   BREED_TICKS,
   BREEDER_TRACK,
@@ -52,6 +53,8 @@ const P0 = 0;
 /** Another civilization than the farm's own (tribe 1). */
 const FRANK_TRIBE = 2;
 const FARM_AT = { hx: 20, hy: 20 } as const;
+/** A second settlement of the same player on the same land, far past the goods search from the farm. */
+const FAR_SETTLEMENT_HX = 200;
 
 /** A farm with a breeder on its door, and whatever breeding stock the case needs. */
 function farmWithBreeder(sim: ReturnType<typeof livestockSim>, stock: Array<[number, number]> = []) {
@@ -129,6 +132,21 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     plan(sim);
 
     expect(herd.every((cow) => sim.world.get(cow, FarmAnimal).farm === island)).toBe(true);
+    expect(sim.world.has(stray, FarmAnimal)).toBe(false);
+    expect(herdRow(sim, farm)).toBe(0);
+  });
+
+  it("never takes or adopts an animal of the player's other settlement on the same land", () => {
+    const sim = new Simulation({ seed: 1, content: livestockContent(), map: grassCellMap(128, 32) });
+    setSignpostNavigation(sim.world, true);
+    const { farm } = farmWithBreeder(sim);
+    const far = farmAt(sim, FAR_SETTLEMENT_HX, 20, { owner: P0 });
+    const herd = [0, 1, 2].map((i) => cowAt(sim, FAR_SETTLEMENT_HX + i, 24, { owner: P0, farm: far }));
+    const stray = cowAt(sim, FAR_SETTLEMENT_HX - 4, 20, { owner: P0 });
+
+    plan(sim);
+
+    expect(herd.every((cow) => sim.world.get(cow, FarmAnimal).farm === far)).toBe(true);
     expect(sim.world.has(stray, FarmAnimal)).toBe(false);
     expect(herdRow(sim, farm)).toBe(0);
   });

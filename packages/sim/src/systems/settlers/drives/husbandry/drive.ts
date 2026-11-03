@@ -39,6 +39,7 @@ import {
   livestockTribeOfGood,
   slayAtomicOfSpecies,
 } from '../../../readviews/index.js';
+import { settlementReachAt } from '../../../signposts/settlement-reach.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { buildingWorkerJobs, recipesByProductOf, stockCapacity } from '../../../stores/index.js';
 import { startAtomic, walkPickupBatch } from '../../atomics/start.js';
@@ -147,6 +148,8 @@ function tendedSpecies(plan: PlannerContext, farm: Entity): readonly number[] {
 /**
  * Adopt the player's nearest unheld animal of either species into this herd, while the herd has room.
  * Instant, as the original's attachment is: the animal then walks itself to the farm on the herding sweep.
+ * Only an animal inside the farm's settlement reach is taken: across water it could never walk in, and
+ * from another settlement of the same player it would be marched away from its own (our own rule).
  *
  * Approximation: the original gates the adoption on the row of the breeder's own production species; with
  * a rotation over both species there is no single one, so each candidate answers to its own row.
@@ -165,15 +168,14 @@ function adoptStray(plan: PlannerContext, farm: Entity): boolean {
   }
   if (!anyRoom) return false;
   const door = interactionCell(world, ctx, terrain, farm);
-  const side = terrain.componentOf(door);
+  const settlement = settlementReachAt(world, ctx.content, terrain, owner, door);
   let best: Entity | null = null;
   let bestRange = Number.POSITIVE_INFINITY;
   for (const animal of freeStockOf(world, owner)) {
     const good = speciesGoodOf(world, ctx, animal);
     if (good === null || room.get(good) !== true) continue;
     const node = entityNode(world, terrain, animal);
-    // Across water it could never walk in, and the herding sweep would march it at the farm forever.
-    if (terrain.componentOf(node) !== side) continue;
+    if (!settlement.allowsNode(node)) continue;
     const range = hexRange(plan, door, node);
     if (range < bestRange || (range === bestRange && best !== null && animal < best)) {
       best = animal;
@@ -189,8 +191,8 @@ function adoptStray(plan: PlannerContext, farm: Entity): boolean {
 /**
  * Take the nearest animal of `good` from a neighbouring farm of the same player that holds more than a
  * pair of them, but only while this herd is short of a pair itself (the original
- * scans up to {@link TAKE_SOURCE_FARMS} such farms). An animal across water, which could never walk in,
- * is passed over, as {@link adoptStray} passes one over; the original's scan is not known to check.
+ * scans up to {@link TAKE_SOURCE_FARMS} such farms). An animal outside the farm's settlement reach is
+ * passed over, as {@link adoptStray} passes one over; the original's scan is not known to check.
  */
 function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): boolean {
   const { world, ctx, terrain } = plan;
@@ -198,7 +200,7 @@ function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): bo
   const owner = ownerOf(world, farm);
   if (owner === undefined) return false;
   const door = interactionCell(world, ctx, terrain, farm);
-  const side = terrain.componentOf(door);
+  const settlement = settlementReachAt(world, ctx.content, terrain, owner, door);
   let sources = 0;
   let best: Entity | null = null;
   let bestRange = Number.POSITIVE_INFINITY;
@@ -208,12 +210,12 @@ function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): bo
     if (other === farm || !world.has(other, Stockpile) || ownerOf(world, other) !== owner) continue;
     if (!farmStands(world, ctx, other)) continue;
     if (speciesHerdOf(world, ctx, other, good).all <= BREEDING_PAIR) continue;
-    // A farm offering nothing on this side of the water is not one of the farms the scan draws from.
+    // A farm offering nothing inside this settlement is not one of the farms the scan draws from.
     let offered = false;
     for (const animal of herdOf(world, other)) {
       if (speciesGoodOf(world, ctx, animal) !== good) continue;
       const node = entityNode(world, terrain, animal);
-      if (terrain.componentOf(node) !== side) continue;
+      if (!settlement.allowsNode(node)) continue;
       offered = true;
       const range = hexRange(plan, door, node);
       if (range < bestRange || (range === bestRange && best !== null && animal < best)) {

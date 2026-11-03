@@ -20,4 +20,5 @@ export {
   signpostProbe,
 } from './placement.js';
 export { plannedSignposts, plannedSignpostsVersion, type SignpostSpot } from './planned.js';
+export { settlementReachAt } from './settlement-reach.js';
 export { warmPostReaches } from './terrain-reach.js';

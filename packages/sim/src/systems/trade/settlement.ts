@@ -8,6 +8,7 @@ import type { ContentContext, MapContext, SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
 import { FetchableStock } from '../settlers/targets/index.js';
 import { goodsSearchesShareDoor, goodsSearchLimitAt, signpostReachKey } from '../signposts/reach.js';
+import { settlementReachAt } from '../signposts/settlement-reach.js';
 import { isWorkplaceOutput } from '../stores/index.js';
 import { sameFoodClass } from './goods.js';
 
@@ -20,8 +21,7 @@ export function isSettlementAnchor(world: World, ctx: ContentContext, house: Ent
 /**
  * The houses of `anchor`'s settlement besides it and `exclude` that hold `good` or a dish of its edible
  * class, ascending by id: the trader's own finished storehouses, and workshops whose output the good is,
- * whose door the goods search from the anchor's door reaches, the reach a porter there fetches through.
- * With signpost navigation off that search sets no bound, so the anchor's continent bounds it instead.
+ * whose door lies in the anchor's settlement reach.
  */
 export function settlementHouses(
   world: World,
@@ -35,8 +35,7 @@ export function settlementHouses(
   const player = ownerOf(world, trader);
   const anchorDoor = interactionNodeId(world, ctx, terrain, anchor);
   if (player === undefined || anchorDoor === null) return [];
-  const reach = limitAtDoor(world, ctx, terrain, player, anchorDoor);
-  const continent = terrain.componentOf(anchorDoor);
+  const reach = settlementReachAt(world, ctx.content, terrain, player, anchorDoor);
   const ledger = FetchableStock.of(world, ctx);
   const found = new Set<Entity>();
   for (const { typeId: form } of ctx.content.goods) {
@@ -46,7 +45,7 @@ export function settlementHouses(
       if (ownerOf(world, house) !== player || !lendsToSettlement(world, ctx, house, form)) continue;
       const door = interactionNodeId(world, ctx, terrain, house);
       if (door === null) continue;
-      if (reach === null ? terrain.componentOf(door) === continent : reach.allowsNode(door)) found.add(house);
+      if (reach.allowsNode(door)) found.add(house);
     }
   }
   return [...found].sort((a, b) => a - b);
