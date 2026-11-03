@@ -37,7 +37,7 @@ import { chainStepOf } from './industry.js';
 import { COLONY_SPOT_NODES } from './industry-read.js';
 import { isOverflowBuilding } from './overflow.js';
 import { colonyFamilies, standsOn } from './people.js';
-import { COLONY_OPEN_SITES, colonyPlan, farStep, siteFree, stepGround } from './plan.js';
+import { COLONY_OPEN_SITES, colonyPlan, farStep, type OpenSites, siteFree, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
 import { colonyFoodHeld, LAND_GOOD_IDS } from './provision.js';
 import { colonyBuildings, colonySpot, storeSupply, workshopSpot } from './spot.js';
@@ -97,6 +97,20 @@ function placementOf(type: number, spot: HalfCellNode, tribe: number, seat: numb
   };
 }
 
+/** The colony's open sites, its industries' apart. */
+function openSites(env: ColonyEnv, buildings: readonly Entity[]): OpenSites {
+  const { world, ctx } = env;
+  const index = contentIndex(ctx.content);
+  const open = { industry: 0, other: 0 };
+  for (const e of buildings) {
+    if (!world.has(e, UnderConstruction)) continue;
+    const id = index.buildings.get(world.get(e, Building).buildingType)?.id;
+    if (id !== undefined && chainStepOf(id) !== undefined) open.industry++;
+    else open.other++;
+  }
+  return open;
+}
+
 /** The next build the colony lacks, placed while its kind has a site free ({@link siteFree}). The anchor is
  *  a real node on the land, the shore while no store stands, then the store, and a tower's own
  *  ({@link towerAnchor}). */
@@ -105,13 +119,7 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
   const tribe = playerPlacementTribes(world, seat)?.[0];
   const index = contentIndex(ctx.content);
   if (tribe === undefined) return [];
-  const open = { industry: 0, other: 0 };
-  for (const e of read.buildings) {
-    if (!world.has(e, UnderConstruction)) continue;
-    const id = index.buildings.get(world.get(e, Building).buildingType)?.id;
-    if (id !== undefined && chainStepOf(id) !== undefined) open.industry++;
-    else open.other++;
-  }
+  const open = openSites(env, read.buildings);
   const { plan } = read;
   // The first store goes up alone: another site would take the bill the founding ship brought for it, and
   // the trader that brings the rest waits for that store.
@@ -168,13 +176,14 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
   return [placementOf(type.typeId, spot, tribe, seat)];
 }
 
-/** With nothing else to raise, a fed colony of women lifts one building, its homes first: a home straight to
- *  the top tier enabled (owner ruling: the line supplies its materials), any other a tier. What the bill takes
- *  past its land and workshops sails from home. A store goes up by `./store-tier.ts` instead. */
+/** With no home, tower or store to raise or open, a fed colony of women lifts one building, its homes first:
+ *  a home straight to the top tier enabled (owner ruling: the line supplies its materials), any other a tier.
+ *  What the bill takes past its land and workshops sails from home. A store goes up by `./store-tier.ts` instead. */
 function nextUpgrade(env: ColonyEnv, read: FoundingRead, people: readonly Entity[]): PlayerCommand[] {
   const { world, ctx, seat } = env;
-  const open = read.buildings.some((e) => world.has(e, UnderConstruction));
-  if (open || read.plan.length > 0) return [];
+  // Its industries go their own pace: their sites and steps hold back no lift.
+  const busy = read.plan.some((building) => chainStepOf(building) === undefined);
+  if (openSites(env, read.buildings).other > 0 || busy) return [];
   if (!people.some((e) => world.has(e, Female))) return [];
   if (colonyFoodHeld(env, read.buildings) < people.length) return [];
   const index = contentIndex(ctx.content);
