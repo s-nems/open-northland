@@ -6,6 +6,7 @@ import type { SystemContext } from '../../context.js';
 import { seatArchetype } from '../build-order/seat-order.js';
 import type { ComputerModule } from '../index.js';
 import { abandonColony, evacuate, overrun } from './abandon.js';
+import { openNextColony } from './expansion.js';
 import { foundColony } from './founding.js';
 import { runLine } from './line.js';
 import { reviewOverflow } from './overflow.js';
@@ -25,8 +26,8 @@ import {
   scouting,
 } from './voyage.js';
 
-/** Every how many decisions a seat with no colony surveys for one (authored): the survey's cost once a
- *  game minute. */
+/** Every how many decisions a seat surveys for a colony, its next or its first (authored): the survey's cost
+ *  once a game minute. */
 const SURVEY_EVERY_DECISIONS = 15;
 /** Every how many decisions a colony reads the seat's held steps (authored): a game minute. */
 const OVERFLOW_EVERY_DECISIONS = 15;
@@ -82,7 +83,13 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
     return [];
   }
   // A copy: a voyage that fails for good drops its colony off the list.
-  return [...state.colonies].flatMap((colony) => runOneColony(colonyEnv(env, colony)));
+  const commands = [...state.colonies].flatMap((colony) => runOneColony(colonyEnv(env, colony)));
+  if (
+    world.has(carrier, ComputerColony) &&
+    moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, SURVEY_EVERY_DECISIONS)
+  )
+    openNextColony(env);
+  return commands;
 }
 
 /** A seat's colonies over the sea. It writes no state and issues no command while a seat holds none. */

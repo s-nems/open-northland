@@ -58,6 +58,10 @@ const STORE_SLOT = 45;
 const CELLS = { width: 120, height: 60 };
 const STRAIT_FROM_CELL = 44;
 const STRAIT_TO_CELL = 70;
+const FAR_CELLS = { width: 190, height: 60 };
+const FAR_STRAIT_FROM_CELL = 120;
+const FAR_STRAIT_TO_CELL = 146;
+const CHANNEL_ROW = 50;
 const GRASS = 0;
 const WATER = 1;
 
@@ -74,6 +78,8 @@ const STONE_AT = [
   { x: 192, y: 48 },
   { x: 192, y: 72 },
 ];
+/** How far east of the east island's deposits the far island's lie, in half-cell nodes. */
+const FAR_DEPOSITS_DX = 152;
 const WOOD_DEPOSIT = 100;
 const STONE_DEPOSIT = 100;
 /** The men and women on the seat's home island, in rows west of the headquarters. */
@@ -91,6 +97,11 @@ const HOME_GOODS = [
   { good: WHEAT, amount: 30 },
   { good: FOOD, amount: 150 },
 ];
+
+/** What a seat of two colonies takes on top: a second party's people, and goods for a second manifest. */
+const SECOND_PARTY_MEN = 40;
+const SECOND_PARTY_WOMEN = 12;
+const SECOND_PARTY_GOODS = 2;
 
 /** Two ship types that seat every civilian trade and carry the building goods, sized as the real ones. */
 export function colonyContent(tradeShip = false): ContentSet {
@@ -175,6 +186,21 @@ export function colonyIslands(): TerrainMap {
   return halfCellMapFromCells({ width, height, typeIds });
 }
 
+/** {@link colonyIslands} grown east past a second strait, with a channel along the south side joining the
+ *  two, so one sea reaches all three islands. */
+export function threeIslands(): TerrainMap {
+  const { width, height } = FAR_CELLS;
+  const typeIds = new Array<number>(width * height).fill(GRASS);
+  for (let row = 0; row < height; row++) {
+    for (let col = STRAIT_FROM_CELL; col < width; col++) {
+      const strait = col < STRAIT_TO_CELL || (col >= FAR_STRAIT_FROM_CELL && col < FAR_STRAIT_TO_CELL);
+      const channel = row >= CHANNEL_ROW && col < FAR_STRAIT_TO_CELL;
+      if (strait || channel) typeIds[row * width + col] = WATER;
+    }
+  }
+  return halfCellMapFromCells({ width, height, typeIds });
+}
+
 /** Only what a colony needs of the computer player runs, so the scenario shows the voyage alone. */
 function colonyModules(): Partial<ComputerModuleEnables> {
   const modules: Partial<ComputerModuleEnables> = {};
@@ -184,13 +210,15 @@ function colonyModules(): Partial<ComputerModuleEnables> {
 }
 
 /** A seat of civilians alone on the west island, no rival, no soldier, goods at home and an islands
- *  economy, with an empty east island over the strait: everything a colony wants but a ship. */
+ *  economy, with an empty east island over the strait: everything a colony wants but a ship. With `far`,
+ *  a third island past the second strait, deposits like the east's and enough at home for two parties. */
 export function colonyWorld(
   seed = 7,
   content: ContentSet = colonyContent(),
   sides: readonly EconomicSide[] = [],
+  far = false,
 ): Simulation {
-  const sim = new Simulation({ seed, content, map: colonyIslands() });
+  const sim = new Simulation({ seed, content, map: far ? threeIslands() : colonyIslands() });
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.OFF });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
@@ -202,7 +230,9 @@ export function colonyWorld(
     owner: SEAT,
     force: true,
     underConstruction: false,
-    initialGoods: HOME_GOODS,
+    initialGoods: far
+      ? HOME_GOODS.map(({ good, amount }) => ({ good, amount: SECOND_PARTY_GOODS * amount }))
+      : HOME_GOODS,
   });
   const person = (jobType: number, i: number) =>
     sim.enqueueSetup({
@@ -213,24 +243,30 @@ export function colonyWorld(
       tribe: VIKING,
       owner: SEAT,
     });
-  for (let i = 0; i < MEN; i++) person(CIVILIST, i);
-  for (let i = 0; i < WOMEN; i++) person(WOMAN, MEN + i);
-  for (const at of WOOD_AT)
-    sim.enqueueSetup({
-      kind: 'placeResource',
-      good: WOOD,
-      ...at,
-      remaining: WOOD_DEPOSIT,
-      harvestAtomic: WOOD_HARVEST,
-    });
-  for (const at of STONE_AT)
-    sim.enqueueSetup({
-      kind: 'placeResource',
-      good: STONE,
-      ...at,
-      remaining: STONE_DEPOSIT,
-      harvestAtomic: STONE_HARVEST,
-    });
+  const men = far ? MEN + SECOND_PARTY_MEN : MEN;
+  const women = far ? WOMEN + SECOND_PARTY_WOMEN : WOMEN;
+  for (let i = 0; i < men; i++) person(CIVILIST, i);
+  for (let i = 0; i < women; i++) person(WOMAN, men + i);
+  for (const dx of far ? [0, FAR_DEPOSITS_DX] : [0]) {
+    for (const at of WOOD_AT)
+      sim.enqueueSetup({
+        kind: 'placeResource',
+        good: WOOD,
+        ...at,
+        x: at.x + dx,
+        remaining: WOOD_DEPOSIT,
+        harvestAtomic: WOOD_HARVEST,
+      });
+    for (const at of STONE_AT)
+      sim.enqueueSetup({
+        kind: 'placeResource',
+        good: STONE,
+        ...at,
+        x: at.x + dx,
+        remaining: STONE_DEPOSIT,
+        harvestAtomic: STONE_HARVEST,
+      });
+  }
   makeAiSeat(sim, SEAT, colonyModules());
   seatEconomy(sim, 'islands', sides);
   sim.step();
@@ -272,6 +308,7 @@ export function blankColony(land: number, overrides: Partial<ColonyState> = {}):
     people: [],
     rest: [],
     failures: 0,
+    delivered: null,
     builds: [],
     line: null,
     overflow: [],

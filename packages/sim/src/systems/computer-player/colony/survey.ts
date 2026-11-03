@@ -135,6 +135,19 @@ export function siteRoom(
   return free;
 }
 
+/** Whether `site`'s block holds enough of the land good `id` for a colony's gatherers. Approximation: the map
+ *  brief's deposits, as they stood at the start. */
+export function siteOffers(brief: MapBriefView, site: ColonySite, id: string): boolean {
+  const column = brief.goods.indexOf(id);
+  const least = VARIETY_UNITS[id];
+  if (column < 0 || least === undefined) return false;
+  let units = 0;
+  for (const zone of blockZones(brief, site.zone))
+    if (brief.dominantLand[zone] === site.land)
+      units += brief.deposits[zone * brief.goods.length + column] ?? 0;
+  return units >= least;
+}
+
 /** Whether node `(hx, hy)` lies in the block around `zone`. */
 export function siteBlockHolds(brief: MapBriefView, zone: number, hx: number, hy: number): boolean {
   const inside = zoneOfNode(brief, hx, hy);
@@ -337,8 +350,8 @@ function storeFits(
 }
 
 /**
- * The best site `seat` may settle now, skipping the `rejected` zones: of the {@link LIVE_CANDIDATES} best,
- * the first clear of every threat with room for a store. Null when none is. Costs the believed buildings
+ * The best site `seat` may settle now, skipping the `rejected` zones and whatever `accepts` turns down: of the
+ * `candidates` best, the first clear of every threat with room for a store. Null when none is. Costs the believed buildings
  * and, per clear candidate, up to a block of placement probes.
  */
 export function surveyColonySite(
@@ -346,6 +359,8 @@ export function surveyColonySite(
   ctx: SystemContext,
   seat: number,
   rejected: readonly number[],
+  accepts: (site: ColonySite) => boolean = () => true,
+  candidates = LIVE_CANDIDATES,
 ): ColonySite | null {
   const terrain = ctx.terrain;
   const brief = mapBriefOf(world);
@@ -353,8 +368,8 @@ export function surveyColonySite(
   const store = buildingTypeByContentId(ctx.content, COLONY_STORE_BUILDING_ID);
   if (terrain === undefined || brief === null || tribe === undefined || store === undefined) return null;
   const sites = colonySiteCandidates(brief, seat)
-    .filter((site) => !rejected.includes(site.zone))
-    .slice(0, LIVE_CANDIDATES);
+    .filter((site) => !rejected.includes(site.zone) && accepts(site))
+    .slice(0, candidates);
   if (sites.length === 0) return null;
   const threats = threatNodes(world, ctx, brief, seat);
   for (const site of sites) {

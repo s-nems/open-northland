@@ -54,6 +54,7 @@ import {
   lyingStill,
   mooredOn,
   mooringOf,
+  type SeatEnv,
   unloadAt,
 } from './voyage.js';
 
@@ -300,7 +301,7 @@ function colonyStores(env: ColonyEnv, colony: ColonyView): ColonyStores {
   };
 }
 
-export function homeSupply(env: ColonyEnv): SeatSupply {
+export function homeSupply(env: SeatEnv): SeatSupply {
   const { world, ctx, seat } = env;
   const order = seatBuildOrder(world, ctx, seat, DEFAULT_BUILD_ORDER, computerProfileOf(world, seat));
   return SeatSupply.of(world, ctx, seat, homeBuildings(world, ctx, seat), order);
@@ -580,6 +581,7 @@ export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   switch (line.leg) {
     case 'sailHome':
       return sail(env, colony, line, 'berth', home, () => {
+        if (holdLoad(world, ship) > provisionsFor(line.crew.length)) env.edit().delivered = ctx.tick;
         enterLeg(env, 'unloadHome');
         const size = crewSize(colony);
         const live = env.edit().line;

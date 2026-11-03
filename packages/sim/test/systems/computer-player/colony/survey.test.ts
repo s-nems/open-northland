@@ -7,6 +7,7 @@ import {
   colonySiteCandidates,
   colonySiteClear,
   type SiteTally,
+  siteOffers,
   siteScore,
   surveyColonySite,
 } from '../../../../src/systems/computer-player/colony/survey.js';
@@ -132,6 +133,14 @@ describe('the static colony candidates', () => {
     expect(new Set(lands)).toEqual(new Set([NEAR_LAND]));
     // A block reaches a zone each way, so the thin pair's columns count only from the rich pair's edge.
     expect(colonySiteCandidates(brief, SEAT).every((site) => site.centre.hx >= 5 * ZONE_NODES)).toBe(true);
+  });
+
+  it("offers a land good only where its block holds a gatherer's worth", () => {
+    const brief = briefOf(pair(2, NEAR_LAND));
+    const [site] = colonySiteCandidates(brief, SEAT);
+    if (site === undefined) throw new Error('setup: no site');
+    expect(siteOffers(brief, site, 'wood')).toBe(true);
+    expect(siteOffers(brief, site, 'iron')).toBe(false);
   });
 
   it('gives a deposit no weight past its need, then the nearer block and the lowest zone lead', () => {

@@ -78,6 +78,8 @@ export interface ColonyState {
   people: Entity[];
   rest: Entity[];
   failures: number;
+  /** The tick its line last brought a load home, null until then. */
+  delivered: number | null;
   builds: { building: string; placed: boolean }[];
   line: ColonyLine | null;
   overflow: ColonyOverflow[];

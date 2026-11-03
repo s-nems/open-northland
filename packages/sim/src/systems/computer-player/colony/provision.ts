@@ -18,7 +18,7 @@ import {
 } from '../live-resources.js';
 import { collectorSpot, type FlagGround, flagGround } from '../workforce/flag-spots.js';
 import { storedFoodUnits } from '../workforce/food.js';
-import type { ColonyEnv } from './voyage.js';
+import type { ColonyEnv, SeatEnv } from './voyage.js';
 
 /** Owner ruling: wood, iron, stone and clay depend on what lies on the colony's land: what it holds never
  *  sails out, what it lacks and needs does. */
@@ -50,7 +50,7 @@ export function colonyFoodHeld(env: ColonyEnv, buildings: readonly Entity[]): nu
 
 /** Whether the land under `from` holds a live deposit of `goodType` the seat knows of. Costs a resource
  *  search, the whole good's on a land that holds none. */
-export function landHolds(env: ColonyEnv, from: HalfCellNode, goodType: number): boolean {
+export function landHolds(env: SeatEnv, from: HalfCellNode, goodType: number): boolean {
   const { world, ctx, terrain, seat } = env;
   const reachable = reachableResourceTest(
     world,

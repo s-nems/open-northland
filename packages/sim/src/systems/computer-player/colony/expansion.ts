@@ -1,0 +1,177 @@
+import {
+  ComputerColony,
+  type ComputerColonyState,
+  mapBriefOf,
+  SettlerNeeds,
+} from '../../../components/index.js';
+import type { DeepReadonly } from '../../../ecs/world.js';
+import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
+import { everySettlerOf, homeSettlers } from '../../ai-shared/home-roster.js';
+import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
+import { civilianCount } from '../../ai-shared/workforce/pool.js';
+import { needLevel } from '../../lifecycle/needs/index.js';
+import { NEED_CRITICAL_THRESHOLD } from '../../lifecycle/needs/scale.js';
+import { seatBaseOf } from '../base.js';
+import { seatHasSide } from '../build-order/seat-order.js';
+import { LATE_GAME_FROM_TICKS, minutesToTicks } from '../game-phase.js';
+import { freeShips } from '../military/operations/landing.js';
+import { colonists, colonyOrigin } from './founding.js';
+import { homeSupply } from './line.js';
+import { pickParty } from './people.js';
+import { LAND_GOOD_IDS, type LandGood, landHolds } from './provision.js';
+import { colonyBuildings } from './spot.js';
+import { type ColonySite, siteOffers, siteRoom, surveyColonySite } from './survey.js';
+import {
+  type ColonyEnv,
+  type ColonyView,
+  colonyEnv,
+  homeLandOf,
+  openColony,
+  type SeatEnv,
+} from './voyage.js';
+
+// When a seat opens one more colony (owner ruling: it is not limited to one as time goes on). Every figure is
+// authored from arabskie_wyspy_wolna_gra_mieszana, seeds 7 and 13, 150 game minutes with one colony and with none.
+
+/** First colonies ran from minute 56 to 96, so the late game is when the earliest has shown what it brings. */
+const NEXT_COLONY_FROM_TICKS = LATE_GAME_FROM_TICKS;
+/** A seat carries a colony per this many people: colonies held 30 to 60 of the 140 to 280 a seat counts by
+ *  minute 150, so past this share home's own economy goes short. */
+const SETTLERS_PER_COLONY = 100;
+/** Fighters at home a civilian there asks for. Seats left without a colony reach one for one by minute 150 (153
+ *  to 144, 132 to 70, 106 to 114). With one colony the seats that lost most stood under it (32 to 68, 39 to 69),
+ *  and those stay at home until the army has caught up, as another party would be recruits it never gets. */
+const FIGHTERS_PER_CIVILIAN = 1;
+/** How long a colony's last load home counts: a line's round took 10 to 15 minutes. */
+const DELIVERY_FRESH_TICKS = minutesToTicks(30);
+/** The free ships at home that spare one for a scout and still leave the next landing a hull. */
+const FREE_SHIPS_LEAST = 2;
+/** A colony counts as fed while at most one mouth in this many is past the hunger that sends a settler to eat
+ *  at any cost. Its stores say little: food passes straight through them, and at minute 150 of seed 7 they
+ *  held 1 unit for 24 mouths on a colony that held its people. */
+const MOUTHS_PER_HUNGRY = 10;
+/** A later site is looked for over the whole survey: by then the rivals' colonies rule out the first ones, and
+ *  seat 3 of seed 7 found none of its eight best clear with 36 on offer. */
+const NEXT_SITE_CANDIDATES = Number.POSITIVE_INFINITY;
+/** The free nodes in its block that make a site roomy: the room a colony's plan gives a second home. */
+const ROOMY_SITE_NODES = 1000;
+
+/** The cheap reads of whether a seat may look for one more site. */
+export interface NextColonyRead {
+  readonly tick: number;
+  /** The tick the seat may try again. */
+  readonly retryAt: number;
+  /** Its colonies, a given-up one among them: a lost colony counts, so a seat does not bleed itself on them. */
+  readonly colonies: number;
+  /** Everyone it holds, and at home those who fight and those who do not. */
+  readonly settlers: number;
+  readonly fighters: number;
+  readonly civilians: number;
+  /** Whether every live colony runs and nothing of the seat's colonies is under way but their lines. */
+  readonly settled: boolean;
+  /** Whether the newest colony eats, and the tick its line last brought a load home. */
+  readonly fed: boolean;
+  readonly delivered: number | null;
+  readonly freeShips: number;
+}
+
+/** Whether a seat may look past the colonies it holds. */
+export function mayLookFurther(read: NextColonyRead): boolean {
+  return (
+    read.tick >= NEXT_COLONY_FROM_TICKS &&
+    read.tick >= read.retryAt &&
+    read.colonies < Math.floor(read.settlers / SETTLERS_PER_COLONY) &&
+    read.fighters >= FIGHTERS_PER_CIVILIAN * read.civilians &&
+    read.settled &&
+    read.fed &&
+    read.delivered !== null &&
+    read.tick - read.delivered <= DELIVERY_FRESH_TICKS &&
+    read.freeShips >= FREE_SHIPS_LEAST
+  );
+}
+
+/** Whether nothing of the seat's colonies is under way but a running colony's line. */
+function settled(colonies: readonly ColonyView[]): boolean {
+  return colonies.every((colony) =>
+    colony.phase === 'abandoned'
+      ? colony.line === null && colony.scout === null
+      : colony.phase === 'running' && colony.line !== null && colony.scout === null && colony.ship === null,
+  );
+}
+
+/** Whether the colony's people eat ({@link MOUTHS_PER_HUNGRY}). */
+function colonyFed(env: ColonyEnv): boolean {
+  const { world, ctx } = env;
+  const people = colonists(env);
+  const hungry = people.filter((e) => {
+    const needs = world.tryGet(e, SettlerNeeds);
+    return needs !== undefined && needLevel(needs, 'hunger', ctx.tick) > NEED_CRITICAL_THRESHOLD;
+  });
+  return MOUTHS_PER_HUNGRY * hungry.length <= people.length;
+}
+
+function nextColonyRead(
+  env: SeatEnv,
+  state: DeepReadonly<ComputerColonyState>,
+  newest: ColonyEnv,
+): NextColonyRead {
+  const { world, ctx, seat } = env;
+  const civilians = civilianCount(world, ctx, seat);
+  return {
+    tick: ctx.tick,
+    retryAt: state.retryAt,
+    colonies: state.colonies.length,
+    settlers: everySettlerOf(world, seat).length,
+    fighters: homeSettlers(world, ctx, seat).length - civilians,
+    civilians,
+    settled: settled(state.colonies),
+    fed: colonyFed(newest),
+    delivered: newest.colony.delivered,
+    freeShips: freeShips(env, homeLandOf(env)).length,
+  };
+}
+
+/** The land goods home runs short of and neither its land nor a live colony's holds. */
+function lackedGoods(env: SeatEnv, colonies: readonly ColonyEnv[]): LandGood[] {
+  const { world, ctx, seat } = env;
+  const base = seatBaseOf(world, ctx, seat);
+  const home = base === null ? null : anchorNodeOf(world, base);
+  if (home === null) return [];
+  const origins = [home];
+  for (const colony of colonies) {
+    const origin = colonyOrigin(colony, colony.colony, colonyBuildings(colony));
+    if (origin !== null) origins.push(origin);
+  }
+  const supply = homeSupply(env);
+  return LAND_GOOD_IDS.filter((id) => {
+    const good = goodTypeByContentId(ctx.content, id)?.typeId;
+    if (good === undefined || supply.lackToComfort(good) <= 0) return false;
+    return !origins.some((from) => landHolds(env, from, good));
+  });
+}
+
+/**
+ * The minute's look past the colonies a seat holds. It opens one more once {@link mayLookFurther} holds, the
+ * home can spare a party, and a site on a land of no colony of its gives home a good it lacks, or, with no room
+ * at home, room.
+ */
+export function openNextColony(env: SeatEnv): void {
+  const { world, ctx, seat, carrier } = env;
+  const state = world.get(carrier, ComputerColony);
+  const live = state.colonies
+    .filter((colony) => colony.phase !== 'abandoned')
+    .map((colony) => colonyEnv(env, colony));
+  const newest = live.at(-1);
+  if (newest === undefined || !mayLookFurther(nextColonyRead(env, state, newest))) return;
+  const brief = mapBriefOf(world);
+  if (brief === null || pickParty(world, ctx, seat, homeLandOf(env)).length === 0) return;
+  const held = new Set(state.colonies.map((colony) => colony.land));
+  const lacked = lackedGoods(env, live);
+  const cramped = seatHasSide(world, seat, 'noRoom');
+  const wanted = (site: ColonySite): boolean =>
+    !held.has(site.land) &&
+    (lacked.some((id) => siteOffers(brief, site, id)) ||
+      (cramped && siteRoom(world, { land: site.land, site: site.centre }) >= ROOMY_SITE_NODES));
+  const site = surveyColonySite(world, ctx, seat, state.rejected, wanted, NEXT_SITE_CANDIDATES);
+  if (site !== null) openColony(env, site);
+}

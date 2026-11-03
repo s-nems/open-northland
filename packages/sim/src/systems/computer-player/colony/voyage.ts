@@ -37,7 +37,7 @@ import { startLine } from './line.js';
 import { boardOrders, pickParty, spareMen } from './people.js';
 import { shoreWithStore } from './spot.js';
 import { homeStockOf } from './stock.js';
-import { colonySiteClear, siteBlockHolds, surveyColonySite } from './survey.js';
+import { type ColonySite, colonySiteClear, siteBlockHolds, surveyColonySite } from './survey.js';
 
 export type ColonyView = DeepReadonly<ColonyState>;
 
@@ -98,7 +98,7 @@ const COLONY_UNLOAD_TICKS = minutesToTicks(5);
 const SHORE_CANDIDATES = 12;
 
 /** The land the seat's base stands on, or {@link NO_COMPONENT}. */
-export function homeLandOf(env: ColonyEnv): number {
+export function homeLandOf(env: SeatEnv): number {
   const { world, ctx, terrain, seat } = env;
   const base = seatBaseOf(world, ctx, seat);
   return base === null ? NO_COMPONENT : terrain.componentOf(interactionCell(world, ctx, terrain, base));
@@ -184,6 +184,7 @@ function settledOn(
     people: [],
     rest: [],
     failures,
+    delivered: null,
     builds: [],
     line: null,
     overflow: [],
@@ -199,6 +200,11 @@ export function chooseSite(env: SeatEnv): void {
   const site = surveyColonySite(world, ctx, seat, []);
   if (site !== null)
     world.add(carrier, ComputerColony, { colonies: [settledOn(env, site, 0)], rejected: [], retryAt: 0 });
+}
+
+/** The seat takes `site` as one colony more. */
+export function openColony(env: SeatEnv, site: ColonySite): void {
+  env.world.mut(env.carrier, ComputerColony).colonies.push(settledOn(env, site, 0));
 }
 
 /** The seat lets the colony's plan go, and with it, when it was the last, what its survey learned. */
@@ -222,7 +228,9 @@ function nextSite(env: ColonyEnv, colony: ColonyView): void {
     live.rest = [];
     return;
   }
-  const site = surveyColonySite(world, ctx, seat, world.get(carrier, ComputerColony).rejected);
+  const { colonies, rejected } = world.get(carrier, ComputerColony);
+  const others = new Set(colonies.filter((held) => held !== colony).map((held) => held.land));
+  const site = surveyColonySite(world, ctx, seat, rejected, (next) => !others.has(next.land));
   if (site === null) {
     dropColony(env);
     return;
