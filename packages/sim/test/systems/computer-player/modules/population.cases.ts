@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AssistantChildOrder,
   AssistantRecruit,
+  BuildMode,
   ChildOrder,
   type ComputerDifficulty,
   JobAssignment,
@@ -399,6 +400,14 @@ describe('population module (homeExpansion)', () => {
         sim.world.add(man, AssistantRecruit, { intent: 'trainSword', armed: false, barracks });
       };
       expect(sonsAfter(reserve + IDLE_MEN_HOLD_BIRTHS, booked)).toEqual({ value: 0, infinite: true });
+    });
+
+    it('never counts a man on a road run as idle', () => {
+      const laying = (sim: Simulation, [man]: readonly Entity[]): void => {
+        if (man === undefined) throw new Error('setup: no builder');
+        sim.world.add(man, BuildMode, { kind: 'roads' });
+      };
+      expect(sonsAfter(reserve + IDLE_MEN_HOLD_BIRTHS, laying)).toEqual({ value: 0, infinite: true });
     });
   });
 });

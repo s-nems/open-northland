@@ -2,6 +2,7 @@ import {
   Age,
   AssistantRecruit,
   Building,
+  BuildMode,
   Female,
   JobAssignment,
   Marriage,
@@ -12,6 +13,7 @@ import type { PlayerCommand } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { homeBuildings, homeSettlers } from '../ai-shared/home-roster.js';
+import { onErrand } from '../ai-shared/military/errand.js';
 import { isBuilt } from '../ai-shared/seat-roster.js';
 import { builderJobOf, civilianCount, isAllocatableMan } from '../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../context.js';
@@ -144,9 +146,9 @@ function husbandOrder(
 
 /**
  * Whether at least {@link IDLE_MEN_HOLD_BIRTHS} builder-trade men beyond the builder reserve
- * ({@link builderCap}) stand idle: no post, no live work flag, no drill or recruit booking. A man nobody
- * can post or arm is a mouth, so more sons wait until posts or arms open up. It reads no clock, so the
- * opening, where every man is placed, is never held.
+ * ({@link builderCap}) stand idle: no post, no live work flag, no road or wall run, no errand, no drill or
+ * recruit booking. A man nobody can post or arm is a mouth, so more sons wait until posts or arms open up.
+ * It reads no clock, so the opening, where every man is placed, is never held.
  */
 function idleMenHoldBirths(
   world: World,
@@ -160,6 +162,8 @@ function idleMenHoldBirths(
   for (const e of homeSettlers(world, ctx, player)) {
     if (world.get(e, Settler).jobType !== builderJob || !isAllocatableMan(world, ctx, e)) continue;
     if (world.has(e, JobAssignment) || world.has(e, AssistantRecruit)) continue;
+    // A man on a road or wall run, or sent out on an errand, has work, as the workforce counts him.
+    if (world.has(e, BuildMode) || onErrand(world, e)) continue;
     if (liveWorkFlag(world, e) === undefined) idle++;
   }
   return idle - builderCap(profile, civilianCount(world, ctx, player), ctx.tick) >= IDLE_MEN_HOLD_BIRTHS;
