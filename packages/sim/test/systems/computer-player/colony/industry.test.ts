@@ -58,7 +58,7 @@ describe('a colony industry', () => {
       [{ wood: true, iron: true }, 'smithy'],
       [{ grass: true, animals: true }, 'husbandry'],
       [{ grass: true, mushroom: true, gold: true }, 'druid'],
-      [{ gold: true }, 'amulets'],
+      [{ gold: true, wood: true, iron: true }, 'amulets'],
     ];
     for (const [site, industry] of fits)
       expect(industries(chooseIndustries({ ...BARE, ...site }, seatRead()))).toContain(industry);
@@ -67,6 +67,16 @@ describe('a colony industry', () => {
     expect(industries(chooseIndustries({ ...BARE, gold: true, grass: true }, seatRead()))).not.toContain(
       'druid',
     );
+  });
+
+  it('mints amulets only where a sword or a leather armour can be had', () => {
+    const noSwords = (good: string): Worth =>
+      good === 'sword_shord' || good === 'armor_leather' ? 'lacking' : 'wanted';
+    expect(industries(chooseIndustries({ ...BARE, gold: true }, seatRead({ worth: noSwords })))).toEqual([]);
+    const homeSwords = (good: string): Worth => (good === 'sword_shord' ? 'wanted' : 'lacking');
+    expect(industries(chooseIndustries({ ...BARE, gold: true }, seatRead({ worth: homeSwords })))).toEqual([
+      'amulets',
+    ]);
   });
 
   it('is none on a site with room alone, which grows people', () => {
@@ -130,8 +140,8 @@ describe('a colony temple', () => {
     choices.find((c) => c.industry === 'temple')?.steps.map((s) => s.building) ?? [];
 
   it('follows the first industry whose workers pray, on the oil home boils', () => {
-    const choices = chooseIndustries({ ...BARE, wood: true, gold: true }, seatRead());
-    expect(industries(choices)).toEqual(['armoury', 'temple', 'amulets', 'carpentry']);
+    const choices = chooseIndustries({ ...BARE, wood: true }, seatRead());
+    expect(industries(choices)).toEqual(['armoury', 'temple', 'carpentry']);
     expect(temple(choices)).toEqual(['work_temple']);
   });
 
@@ -175,9 +185,10 @@ describe('a colony chain', () => {
     expect(next(stepRead({ settled: false }))).toBeNull();
   });
 
-  it('holds the next industry back while a site of one stands open', () => {
-    expect(next(stepRead({ raised: new Set(['work_armory_00']) }))).toBeNull();
-    expect(next(stepRead({}, ['work_armory_00']))).toBe('work_temple');
+  it('waits on its own open site, not on that of another industry', () => {
+    expect(
+      nextIndustrySteps(choices, stepRead({ raised: new Set(['work_armory_00']) })).map((s) => s.building),
+    ).toEqual(['work_temple', 'work_joinery_00']);
   });
 
   it('passes over a step nobody can take yet', () => {
@@ -197,11 +208,10 @@ describe('what a colony industry wants brought', () => {
 
 describe('a colony chain held up', () => {
   it('offers the next industry where the first finds no spot', () => {
-    const choices = chooseIndustries({ ...BARE, wood: true, gold: true }, seatRead());
+    const choices = chooseIndustries({ ...BARE, wood: true }, seatRead());
     expect(nextIndustrySteps(choices, stepRead({})).map((s) => s.building)).toEqual([
       'work_armory_00',
       'work_temple',
-      'work_coin_mint',
       'work_joinery_00',
     ]);
   });

@@ -144,10 +144,10 @@ const HOME_GOODS: Readonly<Record<Exclude<Industry, 'temple'>, readonly string[]
  *  as no other industry runs on hungry men. */
 const INDUSTRY_WEIGHT: Readonly<Record<Exclude<Industry, 'temple'>, number>> = {
   baking: 12,
-  smithy: 5,
-  armoury: 4,
+  smithy: 6,
+  armoury: 5,
   druid: 3,
-  amulets: 3,
+  amulets: 2,
   husbandry: 2,
   carpentry: 2,
   brewing: 2,
@@ -204,6 +204,14 @@ const SHARED_STEPS: ReadonlySet<string> = new Set(
     .filter((building, i, all) => all.indexOf(building) !== i),
 );
 
+/** Owner ruling: an amulet takes a short sword or a leather armour beside its gold and iron, so the mint
+ *  makes them only where the colony's land could arm a smithy or a tailor, or home makes either. */
+function fed(industry: Exclude<Industry, 'temple'>, site: SiteFacts, seat: SeatRead): boolean {
+  if (industry !== 'amulets') return true;
+  const made = (good: string): boolean => seat.worth(good) !== 'lacking';
+  return SITE_FITS.smithy(site) || SITE_FITS.husbandry(site) || made('sword_shord') || made('armor_leather');
+}
+
 /** Whether a building of `steps` of its own stands on the colony, or its site. */
 function started(steps: readonly ChainStep[], seat: SeatRead): boolean {
   return steps.some((step) => seat.raised.has(step.building) && !SHARED_STEPS.has(step.building));
@@ -240,7 +248,8 @@ export function chooseIndustries(site: SiteFacts, seat: SeatRead): IndustryChoic
     const steps = CHAINS[industry];
     const score = scoreOf(industry, seat);
     const begun = started(steps, seat);
-    const fits = SITE_FITS[industry](site) && steps.every(seat.open) && score > 0;
+    const fits =
+      SITE_FITS[industry](site) && steps.every(seat.open) && score > 0 && fed(industry, site, seat);
     return begun || fits ? [{ industry, steps, score, begun }] : [];
   });
   candidates.sort((a, b) => Number(b.begun) - Number(a.begun) || b.score - a.score);
@@ -289,15 +298,16 @@ function runs(industry: Industry, chosen: readonly IndustryChoice[], read: StepR
 }
 
 /**
- * The next steps of `chosen`, in order: one industry at a time. An industry with a site still open holds the
- * rest back; one whose next step its tribe or men cannot take yet is passed over. Each later industry's next
- * step follows, for a placement that finds no spot for the first.
+ * The next steps of `chosen`, in order: each industry's next step once the one before it stands. An industry
+ * with a site still open waits for it, and one whose next step its tribe or men cannot take yet is passed
+ * over, so a site starved of its bill holds no other industry back; the colony's open sites bound how many
+ * go up at once.
  */
 export function nextIndustrySteps(chosen: readonly IndustryChoice[], read: StepRead): ChainStep[] {
   const next: ChainStep[] = [];
   for (const { industry, steps } of chosen) {
     if (!runs(industry, chosen, read)) continue;
-    if (steps.some((s) => read.raised.has(s.building) && !read.standing.has(s.building))) return next;
+    if (steps.some((s) => read.raised.has(s.building) && !read.standing.has(s.building))) continue;
     const step = steps.find(
       (s) => !read.raised.has(s.building) && s.after.every((b) => read.standing.has(b)) && read.open(s),
     );

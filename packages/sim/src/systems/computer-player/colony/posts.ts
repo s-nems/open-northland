@@ -273,15 +273,20 @@ function storeRoom(env: ColonyEnv, buildings: readonly Entity[]): (good: number)
 
 /**
  * What the colony has reason to dig, from what its land holds: wood and stone, as home always wants them, and
- * clay and iron while the colony's own plan or workshops or home's stock call for them.
+ * clay and iron while the colony's own plan, sites or workshops or home's stock call for them.
  */
 function digGoods(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
   const called = billsOf(env, read.plan);
   for (const e of read.buildings) {
-    const inputs = index.mergedRecipeByBuilding.get(world.get(e, Building).buildingType)?.inputs;
+    const typeId = world.get(e, Building).buildingType;
+    const inputs = index.mergedRecipeByBuilding.get(typeId)?.inputs;
     for (const input of inputs ?? []) called.set(input.goodType, input.amount);
+    // A site still waits for its bill: a smithy's iron is dug while it stands unfinished.
+    if (!world.has(e, UnderConstruction)) continue;
+    for (const line of index.constructionBillByBuilding.get(typeId) ?? [])
+      called.set(line.goodType, line.amount);
   }
   let supply: ReturnType<typeof homeSupply> | null = null;
   const wanted = (id: LandGood, good: number): boolean => {
