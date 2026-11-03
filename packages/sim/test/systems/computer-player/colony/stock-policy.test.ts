@@ -26,6 +26,7 @@ function read(overrides: Partial<StockPolicyRead> = {}): StockPolicyRead {
       [BRICK, BRICK_FLOOR],
     ]),
     settlerReserve: new Map([[SHOES, SHOES_RESERVE]]),
+    wants: new Map(),
     workshopInputs: new Map(),
     makes: new Set(),
     held: new Map(),
@@ -148,6 +149,15 @@ describe('a colony stock policy', () => {
       }),
     );
     expect(outboundOf(policy, GOLD)).toEqual({ good: GOLD, keep: shelves });
+  });
+
+  it('brings in what its buildings want past the rules, unless it makes it', () => {
+    const oil = 9;
+    const policy = colonyStockPolicy(read({ wants: new Map([[oil, 1]]) }));
+    expect(inboundOf(policy, oil)).toEqual({ good: oil, upTo: 1, keep: HOME_KEEPS });
+    expect(
+      inboundOf(colonyStockPolicy(read({ wants: new Map([[oil, 1]]), makes: new Set([oil]) })), oil),
+    ).toBeUndefined();
   });
 
   it('never sends what it keeps or what home brought it, and sends what it gathered', () => {

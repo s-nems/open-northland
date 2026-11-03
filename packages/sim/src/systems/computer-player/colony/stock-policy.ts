@@ -81,6 +81,8 @@ export interface StockPolicyRead {
   readonly buildingFloor: Units;
   /** The settler goods and food its people want in store. */
   readonly settlerReserve: Units;
+  /** Other goods its buildings want in store, by the units: a temple's holy oil, say ({@link colonyWants}). */
+  readonly wants: Units;
   /** The inputs of its standing workshops, with the units their shelves take. */
   readonly workshopInputs: Units;
   /** What it makes, gathers or digs itself. */
@@ -107,6 +109,7 @@ function floorOf(read: StockPolicyRead, good: number): number {
   return Math.max(
     read.buildingFloor.get(good) ?? 0,
     read.settlerReserve.get(good) ?? 0,
+    read.wants.get(good) ?? 0,
     inputFloor(read, good),
   );
 }
@@ -121,7 +124,7 @@ function floorOf(read: StockPolicyRead, good: number): number {
  */
 export function colonyStockPolicy(read: StockPolicyRead): ColonyStockPolicy {
   const inboundGoods = new Set<number>(read.buildingFloor.keys());
-  for (const good of [...read.settlerReserve.keys(), ...read.workshopInputs.keys()])
+  for (const good of [...read.settlerReserve.keys(), ...read.wants.keys(), ...read.workshopInputs.keys()])
     if (!read.makes.has(good)) inboundGoods.add(good);
   const outboundGoods = new Set<number>();
   for (const good of [...read.makes, ...read.held.keys()]) {
@@ -290,6 +293,15 @@ function homeKeepOf(env: SeatEnv): (good: number) => number {
   };
 }
 
+/** The goods a colony's own buildings want in store past the rules above, by the units: the seam a colony
+ *  industry fills (a temple's one holy oil), so its wants arrive with the rest of the colony's goods. None
+ *  yet. */
+export function colonyWants(_env: ColonyEnv): ReadonlyMap<number, number> {
+  return NO_WANTS;
+}
+
+const NO_WANTS: ReadonlyMap<number, number> = new Map();
+
 /** The colony's policy now; `outboundNow` the goods its carrier sends home as marked. */
 export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<number>): ColonyStockPolicy {
   const { world, ctx } = env;
@@ -303,6 +315,7 @@ export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<num
   return colonyStockPolicy({
     buildingFloor,
     settlerReserve: settlerReserve(env, people, spare),
+    wants: colonyWants(env),
     workshopInputs: workshopShelves(env, buildings),
     makes: colonyMade(env, buildings, people),
     held: heldByForm(env, buildings),
