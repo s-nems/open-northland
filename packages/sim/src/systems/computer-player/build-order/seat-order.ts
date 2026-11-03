@@ -117,10 +117,11 @@ const STANDARD: ArchetypeTuning = {
   drops: RICH_STEPS,
 };
 
-/** Owner ruling: the ship joinery goes ahead of the upper workshops on the island plan, which leave the few
- *  builders of its opening on four to ten sites at once (arabskie_wyspy_wolna_gra_mieszana, minute 30-60).
- *  Authored: the wait ends with the top tier or at game minute 50, so a seat stuck on it still arms, and at
- *  once for a seat whose defence comes first or that has no ship to build. */
+/** Authored from the owner's ruling that the island plan's carpenter reaches ships sooner: the ship joinery
+ *  goes ahead of the upper workshops, which otherwise spread the few builders of its opening over many sites
+ *  at once (observed on arabskie_wyspy_wolna_gra_mieszana). The wait ends with the top tier or at game minute
+ *  50, so a seat stuck on it still arms, and at once for a seat whose defence comes first or that has no ship
+ *  to build. */
 const SHIP_JOINERY_FIRST: StepHold = {
   kind: 'any',
   holds: [
@@ -139,7 +140,8 @@ export const ARCHETYPE_TUNING: Readonly<Record<EconomicArchetype, ArchetypeTunin
   rich: { ...STANDARD, copyCaps: {}, extraSites: 1, drops: [] },
   islands: {
     ...STANDARD,
-    // Owner ruling: the carpenter opens the whole sea path, so his line runs right behind the ship joinery's.
+    // Owner ruling: on the island plan the carpenter gets much higher priority, to reach ships sooner. He
+    // opens the whole sea path, so his line runs right behind the ship joinery's.
     priority: [
       'opening',
       'military',
