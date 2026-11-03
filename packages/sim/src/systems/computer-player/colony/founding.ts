@@ -27,9 +27,10 @@ import { nearestLiveResource, reachableResourceTest, workableResourceTest } from
 import { scoutBusy } from '../scout/index.js';
 import { corridorSamples, signpostTargetAround } from '../scout/signpost-coverage.js';
 import { enabledTiersAbove, liftCommand, liftTarget } from '../top-tier.js';
+import { COLONY_SPOT_NODES } from './industry-read.js';
 import { isOverflowBuilding } from './overflow.js';
 import { colonyFamilies, standsOn } from './people.js';
-import { COLONY_OPEN_SITES, COLONY_SPOT_NODES, colonyPlan, stepGround } from './plan.js';
+import { COLONY_OPEN_SITES, colonyPlan, farStep, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
 import { colonyFoodHeld, LAND_GOOD_IDS } from './provision.js';
 import { colonyBuildings, colonySpot, workshopSpot } from './spot.js';
@@ -109,9 +110,10 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
     const anchor = isColonyTower(building)
       ? towerAnchor(env, colony, read.origin, read.buildings)
       : read.origin;
-    const spot = isOverflowBuilding(building)
-      ? workshopSpot(env, colony.land, type, tribe, read.origin)
-      : colonySpot(env, colony.land, type, tribe, anchor, COLONY_SPOT_NODES, ground);
+    const spot =
+      isOverflowBuilding(building) || farStep(building)
+        ? workshopSpot(env, colony.land, type, tribe, read.origin)
+        : colonySpot(env, colony.land, type, tribe, anchor, COLONY_SPOT_NODES, ground);
     if (spot === null) continue;
     const live = env.edit();
     const row = live.builds.find((b) => b.building === building && !b.placed);

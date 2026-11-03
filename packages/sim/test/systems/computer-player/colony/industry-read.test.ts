@@ -3,13 +3,17 @@ import { Building, Stockpile, UnderConstruction } from '../../../../src/componen
 import type { Entity } from '../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../src/index.js';
 import { colonyBuildingsOn } from '../../../../src/systems/ai-shared/home-roster.js';
+import { colonyIndustries } from '../../../../src/systems/computer-player/colony/industry-read.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { seatArmsStock } from '../../../../src/systems/computer-player/military/outfit.js';
 import {
   ARMORY_TYPE,
+  colonyBuildingsOf,
   colonyState,
   colonyWorld,
+  editColony,
   FOOD,
+  looseColonyEnv,
   mooredShip,
   overflowContent,
   SMALL_SHIP,
@@ -67,8 +71,12 @@ function colonyArmory(sim: Simulation): Entity | undefined {
 }
 
 describe('a colony with wood and room', () => {
-  it('raises an armory of its own and its spears reach the barracks at home', () => {
+  it('chooses an armoury, raises it and its spears reach the barracks at home', () => {
     const sim = runningWorld();
+    const colony = editColony(sim);
+    const chosen = colonyIndustries(looseColonyEnv(sim, colony), colony, colonyBuildingsOf(sim));
+    expect(chosen?.site.wood).toBe(true);
+    expect(chosen?.choices.map((c) => c.industry)).toContain('armoury');
     const planned = () => colonyState(sim)?.builds.some((b) => b.building === ARMORY_ID) === true;
     expect(stepUntil(sim, PLANNED_DUE_TICKS, planned)).toBe(true);
     expect(colonyState(sim)?.overflow).toEqual([]);

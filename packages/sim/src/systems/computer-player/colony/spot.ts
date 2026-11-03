@@ -14,7 +14,7 @@ import { buildReach, footprintOnGrass } from '../build-order/placement.js';
 import { seatSpotAcceptor } from '../build-order/plots.js';
 import { seatSiege } from '../build-order/siege.js';
 import { nearestLiveResource } from '../live-resources.js';
-import type { StepGround } from './plan.js';
+import type { StepGround } from './industry.js';
 import { LAND_GOOD_IDS } from './provision.js';
 import { colonyStoreType } from './store-tier.js';
 import type { ColonyEnv } from './voyage.js';

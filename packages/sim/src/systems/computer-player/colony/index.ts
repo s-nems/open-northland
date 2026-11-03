@@ -6,7 +6,6 @@ import type { SystemContext } from '../../context.js';
 import { seatArchetype } from '../build-order/seat-order.js';
 import type { ComputerModule } from '../index.js';
 import { abandonColony, evacuate, overrun } from './abandon.js';
-import { reviewArms } from './arms.js';
 import { openNextColony } from './expansion.js';
 import { runFerry } from './ferry.js';
 import { foundColony } from './founding.js';
@@ -32,7 +31,7 @@ import {
 /** Every how many decisions a seat surveys for a colony, its next or its first (authored): the survey's cost
  *  once a game minute. */
 const SURVEY_EVERY_DECISIONS = 15;
-/** Every how many decisions a colony reads the seat's held steps and its arms (authored): a game minute. */
+/** Every how many decisions a colony reads the seat's held steps (authored): a game minute. */
 const OVERFLOW_EVERY_DECISIONS = 15;
 
 /** One colony's decision. */
@@ -43,7 +42,6 @@ function runOneColony(env: ColonyEnv): readonly PlayerCommand[] {
     moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, OVERFLOW_EVERY_DECISIONS)
   ) {
     reviewOverflow(env, colony);
-    reviewArms(env, env.colony);
   }
   switch (colony.phase) {
     case 'siteChosen':
