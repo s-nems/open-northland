@@ -4,7 +4,6 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
-import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { edibleGoodFormOf, mayChangeEquipment } from '../../readviews/index.js';
@@ -46,8 +45,11 @@ const SETTLER_GOOD_SPARE = 2;
 const SETTLER_GOOD_MOST = 12;
 /** The most food a colony is filled up to, however many it feeds: the trader comes back. */
 const COLONY_FOOD_MOST = 40;
-/** What a colony keeps of each input of its standing workshops. */
+/** What a colony is brought of each input of its standing workshops that it does not make; one it makes it
+ *  keeps up to its shelves. */
 export const WORKSHOP_INPUT_FLOOR = 5;
+/** Drawn where it is drunk: a well stands wherever a workshop wants it, so it never sails. */
+const WATER_ID = 'water';
 /** Owner ruling: of a colony joinery's goods only the iron tool goes home; a workshop that makes it is one. */
 const JOINERY_EXPORT_ID = TOOL_IRON_ID;
 
@@ -79,8 +81,8 @@ export interface StockPolicyRead {
   readonly buildingFloor: Units;
   /** The settler goods and food its people want in store. */
   readonly settlerReserve: Units;
-  /** The inputs of its standing workshops. */
-  readonly workshopInputs: ReadonlySet<number>;
+  /** The inputs of its standing workshops, with the units their shelves take. */
+  readonly workshopInputs: Units;
   /** What it makes, gathers or digs itself. */
   readonly makes: ReadonlySet<number>;
   /** What its stores hold. */
@@ -93,12 +95,19 @@ export interface StockPolicyRead {
   readonly homeKeep: (good: number) => number;
 }
 
+/** What the colony keeps of a workshop input: a small floor brought in, its shelves of one it makes. */
+function inputFloor(read: StockPolicyRead, good: number): number {
+  const shelves = read.workshopInputs.get(good);
+  if (shelves === undefined) return 0;
+  return read.makes.has(good) ? Math.max(WORKSHOP_INPUT_FLOOR, shelves) : WORKSHOP_INPUT_FLOOR;
+}
+
 /** The colony's floor of `good`: what it is filled up to and keeps when it sends the rest home. */
 function floorOf(read: StockPolicyRead, good: number): number {
   return Math.max(
     read.buildingFloor.get(good) ?? 0,
     read.settlerReserve.get(good) ?? 0,
-    read.workshopInputs.has(good) ? WORKSHOP_INPUT_FLOOR : 0,
+    inputFloor(read, good),
   );
 }
 
@@ -112,7 +121,7 @@ function floorOf(read: StockPolicyRead, good: number): number {
  */
 export function colonyStockPolicy(read: StockPolicyRead): ColonyStockPolicy {
   const inboundGoods = new Set<number>(read.buildingFloor.keys());
-  for (const good of [...read.settlerReserve.keys(), ...read.workshopInputs])
+  for (const good of [...read.settlerReserve.keys(), ...read.workshopInputs.keys()])
     if (!read.makes.has(good)) inboundGoods.add(good);
   const outboundGoods = new Set<number>();
   for (const good of [...read.makes, ...read.held.keys()]) {
@@ -210,18 +219,22 @@ function settlerReserve(
   return reserve;
 }
 
-/** The inputs of the colony's built workshops. */
-function workshopInputsOf(env: ColonyEnv, buildings: readonly Entity[]): Set<number> {
-  return new Set(workshopShelves(env, buildings).keys());
-}
-
-/** What never leaves the colony: vehicles, and of a workshop that makes the joinery's export, its other
- *  goods. */
+/** What never leaves the colony: vehicles, water, what no store of its takes (its livestock), and of a
+ *  workshop that makes the joinery's export, its other goods. */
 function keptOnColony(env: ColonyEnv, buildings: readonly Entity[]): Set<number> {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
+  const stored = new Set<number>();
+  for (const e of buildings) {
+    const typeId = world.get(e, Building).buildingType;
+    if (index.buildings.get(typeId)?.kind !== BUILDING_KIND.storage) continue;
+    for (const good of index.storedGoodsByBuilding.get(typeId) ?? []) stored.add(good);
+  }
+  const water = goodTypeByContentId(ctx.content, WATER_ID)?.typeId;
   const kept = new Set<number>();
-  for (const good of ctx.content.goods) if (good.vehicleHouse !== undefined) kept.add(good.typeId);
+  for (const good of ctx.content.goods)
+    if (good.vehicleHouse !== undefined || good.typeId === water || !stored.has(good.typeId))
+      kept.add(good.typeId);
   const export_ = goodTypeByContentId(ctx.content, JOINERY_EXPORT_ID)?.typeId;
   for (const e of buildings) {
     const typeId = world.get(e, Building).buildingType;
@@ -290,10 +303,7 @@ export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<num
   return colonyStockPolicy({
     buildingFloor,
     settlerReserve: settlerReserve(env, people, spare),
-    workshopInputs: workshopInputsOf(
-      env,
-      buildings.filter((e) => isBuilt(world, e)),
-    ),
+    workshopInputs: workshopShelves(env, buildings),
     makes: colonyMade(env, buildings, people),
     held: heldByForm(env, buildings),
     keptOnColony: keptOnColony(env, buildings),

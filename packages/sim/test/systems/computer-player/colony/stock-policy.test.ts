@@ -26,7 +26,7 @@ function read(overrides: Partial<StockPolicyRead> = {}): StockPolicyRead {
       [BRICK, BRICK_FLOOR],
     ]),
     settlerReserve: new Map([[SHOES, SHOES_RESERVE]]),
-    workshopInputs: new Set(),
+    workshopInputs: new Map(),
     makes: new Set(),
     held: new Map(),
     keptOnColony: new Set(),
@@ -90,7 +90,10 @@ describe('a colony stock policy', () => {
       [true, false].map((sending) =>
         read({
           makes: new Set([WOOD, BRICK, MEAD]),
-          workshopInputs: new Set([LEATHER, WOOD]),
+          workshopInputs: new Map([
+            [LEATHER, 0],
+            [WOOD, 0],
+          ]),
           settlerReserve: new Map([
             [SHOES, SHOES_RESERVE],
             [MEAD, 2],
@@ -118,7 +121,13 @@ describe('a colony stock policy', () => {
 
   it('brings in the inputs of its workshops at a small floor, unless it makes them', () => {
     const policy = colonyStockPolicy(
-      read({ workshopInputs: new Set([LEATHER, GOLD]), makes: new Set([GOLD]) }),
+      read({
+        workshopInputs: new Map([
+          [LEATHER, 0],
+          [GOLD, 0],
+        ]),
+        makes: new Set([GOLD]),
+      }),
     );
     expect(inboundOf(policy, LEATHER)).toEqual({
       good: LEATHER,
@@ -127,6 +136,18 @@ describe('a colony stock policy', () => {
     });
     expect(inboundOf(policy, GOLD)).toBeUndefined();
     expect(outboundOf(policy, GOLD)).toEqual({ good: GOLD, keep: WORKSHOP_INPUT_FLOOR });
+  });
+
+  it('keeps an input its own workshops use up to their shelves before sending the rest home', () => {
+    const shelves = 12;
+    const policy = colonyStockPolicy(
+      read({
+        workshopInputs: new Map([[GOLD, shelves]]),
+        makes: new Set([GOLD]),
+        held: new Map([[GOLD, 20]]),
+      }),
+    );
+    expect(outboundOf(policy, GOLD)).toEqual({ good: GOLD, keep: shelves });
   });
 
   it('never sends what it keeps or what home brought it, and sends what it gathered', () => {

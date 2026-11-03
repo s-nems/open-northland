@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { VehicleStock } from '../../../../src/components/index.js';
 import { contentIndex } from '../../../../src/core/content-index.js';
-import {
-  colonyManifest,
-  firstStoreType,
-  wantManifest,
-} from '../../../../src/systems/computer-player/colony/cargo.js';
+import { colonyManifest, wantManifest } from '../../../../src/systems/computer-player/colony/cargo.js';
+import { colonyStoreType } from '../../../../src/systems/computer-player/colony/store-tier.js';
 import { colonyWorld, FOOD, mooredShip } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
 import { SEAT, STOCK_TOP_TYPE } from '../support.js';
@@ -18,7 +15,7 @@ describe('a colony manifest', () => {
     const sim = colonyWorld();
     const ctx = ctxOf(sim);
     const ship = mooredShip(sim);
-    expect(firstStoreType(sim.world, ctx, SEAT)?.typeId).toBe(STOCK_TOP_TYPE);
+    expect(colonyStoreType(sim.world, ctx, SEAT)?.typeId).toBe(STOCK_TOP_TYPE);
     const manifest = colonyManifest(sim.world, ctx, SEAT, PARTY);
     for (const command of wantManifest(ship, manifest)) sim.enqueueSetup(command);
     sim.step();
