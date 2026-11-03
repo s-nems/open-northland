@@ -315,8 +315,15 @@ const SET_DOWN_RINGS = 3;
 function standCartBeside(world: World, ctx: MapContext, settler: Entity, vehicle: Entity): void {
   if (world.has(vehicle, Position)) return;
   const at = setDownNode(world, ctx, settler);
-  if (at !== null) placeOnNode(world, vehicle, at);
+  if (at !== null) standCartOn(world, vehicle, at);
   stowHands(world, ctx.content, settler, vehicle);
+}
+
+/** Stand a cart in hand on `point`. The write to its record is what tells the caches keyed on vehicle
+ *  writes, such as the cells standing vehicles cover, that it stands again. */
+function standCartOn(world: World, vehicle: Entity, point: HalfCellNode): void {
+  placeOnNode(world, vehicle, point);
+  world.mut(vehicle, Vehicle);
 }
 
 /**
@@ -366,7 +373,7 @@ export function abandonHaulingCart(world: World, settler: Entity): void {
   if (state.hauler === settler) world.mut(held.vehicle, Vehicle).hauler = null;
   if (!held.taken || world.has(held.vehicle, Position)) return;
   const pos = world.tryGet(settler, Position);
-  if (pos !== undefined) placeOnNode(world, held.vehicle, nodeOfPosition(pos.x, pos.y));
+  if (pos !== undefined) standCartOn(world, held.vehicle, nodeOfPosition(pos.x, pos.y));
 }
 
 /**
