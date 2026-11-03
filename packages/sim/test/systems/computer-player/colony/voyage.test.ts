@@ -50,7 +50,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { BUILDER, FARM_TYPE, HUNTER, SEAT, STOCK_TYPE } from '../support.js';
+import { BUILDER, FARM_TYPE, HOME_TOP_TYPE, HOME_TYPE, HUNTER, SEAT, STOCK_TYPE } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -67,6 +67,10 @@ const FOUND_DUE_TICKS = minutesToTicks(16);
 const GATHER_DUE_TICKS = minutesToTicks(4);
 const LADDER_DUE_TICKS = minutesToTicks(14);
 const FARM_ID = 'work_farm_00';
+const HOMES_DUE_TICKS = minutesToTicks(20);
+/** The fixture's home chain, base tier to top. */
+const HOME_MID_TYPE = HOME_TYPE + 1;
+const HOME_TYPES = [HOME_TYPE, HOME_MID_TYPE, HOME_TOP_TYPE];
 const BUILDERS_AT_REST = 2;
 const TRADE_SHIP_SEATS = 10;
 const AFTER_SAVE_TICKS = minutesToTicks(4);
@@ -245,6 +249,20 @@ describe('a colony sails', () => {
     const before = left();
     expect(stepUntil(sim, GATHER_DUE_TICKS, () => left() < before)).toBe(true);
     expect(homeBuildings(sim.world, ctx, SEAT).some((e) => away.includes(e))).toBe(false);
+  });
+
+  it('raises its homes straight at the top tier the tribe has', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    const homes = (): number[] =>
+      colonyBuildingsOf(sim)
+        .map((e) => sim.world.get(e, Building).buildingType)
+        .filter((type) => HOME_TYPES.includes(type));
+    expect(stepUntil(sim, FOUND_DUE_TICKS + HOMES_DUE_TICKS, () => homes().length > 0)).toBe(true);
+    expect(homes().every((type) => type === HOME_TOP_TYPE)).toBe(true);
   });
 
   it('raises a farm on the colony once the fishers do not meet its hunger', () => {

@@ -12,7 +12,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
-import { countedTiers } from '../../ai-shared/content-lookup.js';
+import { buildingTypeByContentId, countedTiers } from '../../ai-shared/content-lookup.js';
 import { homeBuildings } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
@@ -23,6 +23,7 @@ import { isCarrierJob } from '../../stores/index.js';
 import { seatHasSide } from '../build-order/seat-order.js';
 import { minutesToTicks } from '../game-phase.js';
 import { technologyTable } from '../technology/requirements.js';
+import { topEnabledTier } from '../top-tier.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { colonists, colonyOrigin } from './founding.js';
 import { homeSupply } from './line.js';
@@ -45,7 +46,7 @@ const MATERIAL_GOOD_IDS: readonly string[] = ['brick', 'pillar', 'tile', 'orname
  *  bill holds four pillars and two bricks, so the mason pays and the pottery does not. */
 const MATERIAL_WORKSHOP_FROM_UNITS = 3;
 
-/** The home a colony raises. */
+/** The home chain's base tier: a colony raises its homes at the top tier enabled ({@link topEnabledTier}). */
 const HOME_ID = 'home_level_00';
 /** The nodes round its footprint a building takes for its door, its paths and its neighbours' spacing, per
  *  footprint node (authored, an approximation): the room a site's block holds at the map's scan is spent at
@@ -398,10 +399,11 @@ export function homeSlots(
 /** The home the colony raises next, if one is due ({@link homeStepDue}). */
 function homeStep(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity[]): string[] {
   const { world, ctx, seat } = env;
-  const index = contentIndex(ctx.content);
-  const home = index.buildingTypeBySlug.get(HOME_ID);
-  const type = home === undefined ? undefined : index.buildings.get(home);
-  if (type === undefined) return [];
+  const base = buildingTypeByContentId(ctx.content, HOME_ID);
+  const tribe = playerPlacementTribes(world, seat)?.[0];
+  if (base === undefined || tribe === undefined) return [];
+  // Owner ruling: a colony home goes to the top level at once, since the line supplies its materials.
+  const type = topEnabledTier(world, ctx, seat, tribe, base);
   const people = colonists(env);
   const women = people.filter((e) => world.has(e, Female));
   const wives = women.filter((e) => world.has(e, Marriage) && !world.has(e, Residence)).length;
@@ -414,7 +416,7 @@ function homeStep(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity
     roomy: roomFor(env, colony, buildings, type),
     cramped: seatHasSide(world, seat, 'noRoom'),
   });
-  return due ? [HOME_ID] : [];
+  return due ? [type.id] : [];
 }
 
 /** The buildings the colony's ladders still hold for its ground, whatever the moment: what it keeps goods
