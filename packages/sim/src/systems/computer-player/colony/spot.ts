@@ -9,6 +9,7 @@ import { routeRegions } from '../../footprint/index.js';
 import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js';
 import { VEHICLE_CARGO_SEARCH_RADIUS } from '../../settlers/drives/economy/vehicle-cargo.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
+import { goodsSearchLimitAt } from '../../signposts/reach.js';
 import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { buildReach, footprintOnGrass } from '../build-order/placement.js';
 import { seatSpotAcceptor } from '../build-order/plots.js';
@@ -33,10 +34,18 @@ export function colonyBuildings(env: ColonyEnv): readonly Entity[] {
  *  and many beyond, its footprint being far larger than a home's. */
 const WORKSHOP_SPOT_NODES = 100;
 
-/** A wider search than the walk range: its reach of what stands, and the signposts that make it walkable. */
+/** A search other than the walk range's: its reach of what stands, the signposts that make it walkable,
+ *  and the goods search of the store its builders fetch the bill from. */
 interface FarGround {
-  readonly reachNodes: number;
-  readonly limit: NavigationLimit | null;
+  readonly reachNodes?: number;
+  readonly limit?: NavigationLimit | null;
+  readonly supply?: NavigationLimit | null;
+}
+
+/** The goods search from the store at `at`: builders fetch a site's bill only from a store whose search
+ *  takes in the site. Null where signposts are off. */
+export function storeSupply(env: ColonyEnv, at: HalfCellNode): NavigationLimit | null {
+  return goodsSearchLimitAt(env.world, env.ctx.content, env.terrain, env.seat, at.hx, at.hy);
 }
 
 /** The spot of a workshop handed over by home, which may lie past the walk range but inside the signposts'
@@ -89,6 +98,7 @@ export function colonySpot(
         terrain.componentOf(terrain.nodeAt(x, y)) === land &&
         reach.contains(x, y) &&
         far?.limit?.allowsNode(terrain.nodeAt(x, y)) !== false &&
+        far?.supply?.allowsNode(terrain.nodeAt(x, y)) !== false &&
         accept(x, y) &&
         fits(x, y) &&
         walled?.unroutable(from, terrain.nodeAt(x, y)) !== true,

@@ -39,7 +39,7 @@ import { colonyFamilies, standsOn } from './people.js';
 import { COLONY_OPEN_SITES, colonyPlan, farStep, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
 import { colonyFoodHeld, LAND_GOOD_IDS } from './provision.js';
-import { colonyBuildings, colonySpot, workshopSpot } from './spot.js';
+import { colonyBuildings, colonySpot, storeSupply, workshopSpot } from './spot.js';
 import { colonyStoreType, liftStore } from './store-tier.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
 import { isColonyTower, towerAnchor } from './towers.js';
@@ -153,7 +153,10 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
   const near = nearestLiveResource(world, wood.typeId, read.origin, reachable);
   const at = near === null ? null : anchorNodeOf(world, near);
   if (at === null || nodeManhattan(at, read.origin) <= SECOND_STORE_NODES) return [];
-  const spot = colonySpot(env, colony.land, type, tribe, at, COLONY_SPOT_NODES);
+  // Its builders fetch its bill from the first store, so it stands inside that store's goods search: one
+  // past it waits for its bill for good and holds a site's place from every other build.
+  const supply = { supply: storeSupply(env, read.origin) };
+  const spot = colonySpot(env, colony.land, type, tribe, at, COLONY_SPOT_NODES, 'any', supply);
   if (spot === null) return [];
   env.edit().builds.push({ building: type.id, placed: true });
   return [placementOf(type.typeId, spot, tribe, seat)];
