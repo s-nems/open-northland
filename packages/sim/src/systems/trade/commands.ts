@@ -10,7 +10,6 @@ import {
   setTradeImport,
   setTradeImportLimits,
   setTradeSettlement,
-  tradeAgreements,
   tradeRouteOf,
 } from '../../components/index.js';
 import type { TradeAgreementCommand, TradeCommand } from '../../core/commands/trade.js';
