@@ -39,7 +39,7 @@ import { isOverflowBuilding } from './overflow.js';
 import { colonyFamilies, standsOn } from './people.js';
 import { COLONY_OPEN_SITES, colonyPlan, farStep, type OpenSites, siteFree, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
-import { colonyFoodHeld, LAND_GOOD_IDS } from './provision.js';
+import { colonyFoodHeld, LAND_GOOD_IDS, storesHeld } from './provision.js';
 import { colonyBuildings, colonySpot, storeSupply, workshopSpot } from './spot.js';
 import { colonyStoreType, liftStore } from './store-tier.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
@@ -120,6 +120,13 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
   const index = contentIndex(ctx.content);
   if (tribe === undefined) return [];
   const open = openSites(env, read.buildings);
+  let held: Map<number, number> | undefined;
+  const billHeld = (typeId: number): boolean => {
+    held ??= storesHeld(env, read.buildings);
+    const stored = held;
+    const bill = index.constructionBillByBuilding.get(typeId) ?? [];
+    return bill.every((line) => (stored.get(line.goodType) ?? 0) >= line.amount);
+  };
   const { plan } = read;
   // The first store goes up alone: another site would take the bill the founding ship brought for it, and
   // the trader that brings the rest waits for that store.
@@ -128,6 +135,9 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
     const typeId = index.buildingTypeBySlug.get(building);
     const type = typeId === undefined ? undefined : index.buildings.get(typeId);
     if (type === undefined || !siteFree(building, open)) continue;
+    // An industry's site opens once the colony's stores hold its bill: one waiting on a good locks what it
+    // was brought, while the plan's bills still have the trader bring the rest.
+    if (chainStepOf(building) !== undefined && !billHeld(type.typeId)) continue;
     const ground = stepGround(building);
     const anchor = isColonyTower(building)
       ? towerAnchor(env, colony, read.origin, read.buildings)
