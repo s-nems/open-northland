@@ -232,7 +232,7 @@ function offersHunterSeat(world: World, ctx: SystemContext, base: Entity, hunter
  * the bare ground and the retirement the chase leash, so game grazing on the edge does not flip the post
  * each decision. Mapless: always true.
  */
-function huntWorkLeft(
+export function huntWorkLeft(
   world: World,
   ctx: SystemContext,
   base: Entity,

@@ -1,6 +1,8 @@
 import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
 import {
+  AttackOrder,
   Building,
+  CurrentAtomic,
   FishSwarm,
   JobAssignment,
   Marriage,
@@ -16,6 +18,7 @@ import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { nearestRingNode } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { builderJobOf, isAllocatableMan } from '../../ai-shared/workforce/pool.js';
+import { HUNT_CHASE_SLACK_NODES } from '../../conflict/hunting/index.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
@@ -33,6 +36,7 @@ import {
   legalFlagNodeTest,
   type TakenFlagNodes,
 } from '../workforce/flag-spots.js';
+import { huntWorkLeft } from '../workforce/hunter.js';
 import { rowPlan } from '../workforce/staffing-rows.js';
 import { colonists, colonyOrigin, storeOf } from './founding.js';
 import { homeSupply } from './line.js';
@@ -224,6 +228,22 @@ function postOrders(
   ];
 }
 
+/** Whether game is left for the colony's hunters among `men`: on their ground, past it by the chase's
+ *  leash while one hunts, or on the store's while none does. Owner ruling: hunters kill the game quickly and
+ *  then stand idle, so with none left the hunter post closes and its men take other work. */
+function gameLeft(env: ColonyEnv, store: Entity | null, men: readonly Entity[]): boolean {
+  const { world, ctx } = env;
+  const job = hunterJobType(ctx.content);
+  if (store === null || job === null || !isBuilt(world, store)) return false;
+  const hunters = men.filter((e) => world.get(e, Settler).jobType === job);
+  return huntWorkLeft(world, ctx, store, job, hunters, hunters.length > 0 ? HUNT_CHASE_SLACK_NODES : 0);
+}
+
+/** Whether `e` is mid-action or sent at an animal: a post change waits for him. */
+function busy(world: World, e: Entity): boolean {
+  return world.has(e, CurrentAtomic) || world.has(e, AttackOrder);
+}
+
 /** Whether the colony has raised all it means to, for now. */
 function atRest(env: ColonyEnv, read: FoundingRead): boolean {
   return read.plan.length === 0 && !read.buildings.some((e) => env.world.has(e, UnderConstruction));
@@ -396,8 +416,15 @@ export function handsWanted(
   let men = 0;
   for (const good of diggable) men += DIGGERS_MOST[good];
   const fishes = fishNear(env, origin) !== null;
+  const people = colonists(env);
+  const hunts = gameLeft(
+    env,
+    read.store,
+    people.filter((e) => isAllocatableMan(world, ctx, e)),
+  );
   const others = POSTS.filter(
-    (p) => !isDug(p) && (p !== 'builder' || !resting) && (p !== 'fisher' || fishes),
+    (p) =>
+      !isDug(p) && (p !== 'builder' || !resting) && (p !== 'fisher' || fishes) && (p !== 'hunter' || hunts),
   );
   men += others.length + (resting ? BUILDERS_AT_REST : 0);
   for (const e of buildings) {
@@ -409,7 +436,6 @@ export function handsWanted(
     const type = typeId === undefined ? undefined : index.buildings.get(typeId);
     if (type?.kind === BUILDING_KIND.workplace) men += seatsOf(ctx, type);
   }
-  const people = colonists(env);
   const fishing = people.some((e) => isFisherJob(ctx.content, world.get(e, Settler).jobType));
   const share = Math.max(Math.floor(men / MEN_PER_WOMAN), homeSlots(env, buildings).slots);
   const women = colonyFed(env, buildings, people) ? share : fishing ? WOMEN_FIRST : 0;
@@ -445,17 +471,23 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
   const free: Entity[] = [];
   const posted = men.filter((man) => !atWorkshop(env, man));
   const digs = digGoodsWithRoom(env, read);
+  const hunting = gameLeft(env, read.store, posted);
   for (const man of posted) {
     const post = postOf(world, ctx, man, builder);
-    // A man at a full store's good moves on while another good wants digging.
-    if (post === null || (isDug(post) && !digs.has(post) && digs.size > 0)) free.push(man);
+    // A man at a full store's good moves on while another good wants digging, a hunter once no game is left.
+    const moves =
+      (isDug(post) && !digs.has(post) && digs.size > 0) ||
+      (post === 'hunter' && !hunting && !busy(world, man));
+    if (post === null || moves) free.push(man);
     else held.set(post, (held.get(post) ?? 0) + 1);
     if (post === 'builder') builders.push(man);
   }
   const dug = new Map<LandGood, number>();
   for (const id of LAND_GOOD_IDS) dug.set(id, held.get(id) ?? 0);
   const resting = atRest(env, read);
-  const table = POSTS.slice(0, posted.length).filter((post) => !isDug(post) || digs.has(post));
+  const table = POSTS.slice(0, posted.length).filter(
+    (post) => (!isDug(post) || digs.has(post)) && (post !== 'hunter' || hunting),
+  );
   const called = billsOf(env, read.plan);
   const urgent = LAND_GOOD_IDS.filter((id) => {
     const good = goodTypeByContentId(ctx.content, id)?.typeId;

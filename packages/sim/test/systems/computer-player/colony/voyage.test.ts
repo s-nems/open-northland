@@ -43,13 +43,14 @@ import {
   colonyState,
   colonyWorld,
   editColony,
+  huntingColonyContent,
   mooredShip,
   SHIP_AT,
   SMALL_SHIP,
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { BUILDER, FARM_TYPE, SEAT, STOCK_TYPE } from '../support.js';
+import { BUILDER, FARM_TYPE, HUNTER, SEAT, STOCK_TYPE } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -279,5 +280,18 @@ describe('a colony sails', () => {
       if (colonyMember(sim.world, ctx, SEAT, e) && sim.world.has(e, UnderConstruction)) sim.world.destroy(e);
     for (const build of editColony(sim).builds) build.placed = true;
     expect(stepUntil(sim, GATHER_DUE_TICKS, () => builders() <= BUILDERS_AT_REST)).toBe(true);
+  });
+
+  it('puts no man on the hunter seat where no game is left, and sets him to other work', () => {
+    const sim = colonyWorld(SEED, huntingColonyContent());
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    stepUntil(sim, GATHER_DUE_TICKS, () => false);
+    const ctx = ctxOf(sim);
+    const away = everySettlerOf(sim.world, SEAT).filter((e) => colonyMember(sim.world, ctx, SEAT, e));
+    expect(away.filter((e) => sim.world.get(e, Settler).jobType === HUNTER)).toEqual([]);
   });
 });

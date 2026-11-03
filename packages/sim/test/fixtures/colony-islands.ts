@@ -21,6 +21,7 @@ import {
   CIVILIST,
   COLLECTOR,
   HQ_TYPE,
+  HUNTER,
   MUD,
   makeAiSeat,
   SCOUT,
@@ -53,6 +54,8 @@ export const FOOD = 3;
 const CARGO_GOODS = [WOOD, MUD, STONE, WHEAT, FOOD];
 /** What a warehouse holds of a good, the real one's figure. */
 const STORE_SLOT = 45;
+/** The hunters a warehouse seats, the real one's figure. */
+const HUNTER_SEATS = 3;
 
 /** Cells: the west island, the strait, the east island; rows run the map's height. */
 const CELLS = { width: 120, height: 60 };
@@ -135,6 +138,20 @@ export function colonyContent(tradeShip = false): ContentSet {
       ship(SMALL_SHIP, 'ship_small', HOLD_SMALL, SEATS_SMALL),
       ship(BIG_SHIP, 'ship_big', HOLD_BIG, SEATS_BIG),
     ],
+  });
+}
+
+/** {@link colonyContent} whose warehouse offers a hunter seat, as the real one does. */
+export function huntingColonyContent(): ContentSet {
+  const base = colonyContent();
+  return parseContentSet({
+    ...base,
+    jobs: [...base.jobs, { typeId: HUNTER, id: 'hunter' }],
+    buildings: base.buildings.map((b) =>
+      b.typeId === STOCK_TYPE
+        ? { ...b, workers: [...b.workers, { jobType: HUNTER, count: HUNTER_SEATS }] }
+        : b,
+    ),
   });
 }
 
