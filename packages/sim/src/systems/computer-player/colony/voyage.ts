@@ -86,7 +86,8 @@ const SCOUTING_GROWTH_CIVILIANS = 4;
  *  ({@link PARTY_FROM_CIVILIANS}) about when the scout comes home, rather than starting the scouting only
  *  then. */
 const COLONY_FROM_CIVILIANS = PARTY_FROM_CIVILIANS - SCOUTING_GROWTH_CIVILIANS;
-/** How long a failed voyage holds the seat's next one (authored): time for the home stores to refill. */
+/** How long a failed voyage holds the seat's next one (authored): time for the home stores to refill. A
+ *  voyage that failed before it claimed its carrying ship, a scouting turned back, took nothing from them. */
 const COLONY_RETRY_TICKS = minutesToTicks(10);
 /** The failed voyages a seat gives its colony (authored): past them it stays at home. */
 export const COLONY_MAX_FAILURES = 2;
@@ -251,7 +252,8 @@ function nextSite(env: ColonyEnv, colony: ColonyView): void {
     dropColony(env);
     return;
   }
-  env.editSeat().retryAt = colony.failures > 0 ? ctx.tick + COLONY_RETRY_TICKS : 0;
+  const spent = colony.failures > 0 && colony.ship !== null;
+  env.editSeat().retryAt = spent ? ctx.tick + COLONY_RETRY_TICKS : 0;
   Object.assign(env.edit(), settledOn(env, site, colony.failures));
 }
 

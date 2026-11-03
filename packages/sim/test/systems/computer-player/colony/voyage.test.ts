@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  aiControlEntity,
   Building,
+  ComputerColony,
   Female,
   JobAssignment,
   Position,
@@ -26,6 +28,7 @@ import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../src/systems/ai-sha
 import { colonyHeldShips, homeBuildings } from '../../../../src/systems/ai-shared/home-roster.js';
 import { holdLoad } from '../../../../src/systems/computer-player/colony/cargo.js';
 import { spareMen } from '../../../../src/systems/computer-player/colony/people.js';
+import { colonyEnv, returning } from '../../../../src/systems/computer-player/colony/voyage.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { seatNeedsShips } from '../../../../src/systems/computer-player/sea-route.js';
@@ -353,5 +356,34 @@ describe('a colony sails', () => {
       expect(sim.world.has(e, JobAssignment)).toBe(false);
       expect(liveWorkFlag(sim.world, e)).toBeDefined();
     }
+  });
+});
+
+describe('a failed voyage', () => {
+  /** The seat's colony back home after one failed voyage, with `ship` claimed for the party or none. */
+  function failedOnce(ship: 'claimed' | 'none') {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    const live = editColony(sim);
+    live.phase = 'returning';
+    live.failures = 1;
+    live.ship = ship === 'claimed' ? mooredShip(sim) : null;
+    const ctx = ctxOf(sim);
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (ctx.terrain === undefined || carrier === null) throw new Error('setup: no terrain or AI seat');
+    const env = { world: sim.world, ctx, terrain: ctx.terrain, seat: SEAT, carrier };
+    const colony = sim.world.get(carrier, ComputerColony).colonies[0];
+    if (colony === undefined) throw new Error('setup: no colony');
+    returning(colonyEnv(env, colony), colony);
+    return { retryAt: sim.world.get(carrier, ComputerColony).retryAt, tick: ctx.tick };
+  }
+
+  it('holds the next one while the stores refill once it took a carrying ship', () => {
+    const { retryAt, tick } = failedOnce('claimed');
+    expect(retryAt).toBeGreaterThan(tick);
+  });
+
+  it('lets the next scouting go at once when it turned back before that', () => {
+    expect(failedOnce('none').retryAt).toBe(0);
   });
 });
