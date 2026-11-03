@@ -188,6 +188,11 @@ export function currentLocale(): Locale {
   return activeLocale ?? defaultLocale();
 }
 
+/** The tribe names `locale`'s catalog ships, before any content overlay. */
+export function authoredTribeNames(locale: Locale = currentLocale()): Readonly<Record<number, string>> {
+  return LOCALES[locale].tribeNames;
+}
+
 /** A tribe's localized name. The authored catalog names only the playable tribes, so without the game's
  *  own tables an animal species falls back to `contentName`, the content's untranslated id, and then to
  *  the bare tribe code. */

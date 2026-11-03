@@ -9,6 +9,7 @@ import {
 } from '../../../src/catalog/jobs.js';
 import type { GuiStrings } from '../../../src/content/gui/gfx.js';
 import {
+  installContentTribeNames,
   installOriginalNames,
   installOriginalTribeNames,
   type NameContent,
@@ -211,6 +212,22 @@ describe('launch-time tribe names', () => {
 
     installOriginalNames(currentLocale(), strings, content);
     expect([tribeName(VIKING), tribeName(FRANK)]).toEqual(['Fixture northman', 'Fixture westman']);
+  });
+
+  it("keep a pack's people named when a world installs over the launch names", async () => {
+    const PACK_PEOPLE = 43;
+    const [anyTribe] = content.tribes;
+    if (anyTribe === undefined) throw new Error('fixture has no tribe row');
+    const withPack = {
+      ...content,
+      tribes: [...content.tribes, { ...anyTribe, typeId: PACK_PEOPLE, id: 'chinese', name: 'Chinesen' }],
+    };
+    stubStrings(strings);
+    installNameOverlay(currentLocale(), { tribeNames: { [PACK_PEOPLE]: 'Chinesen' } });
+    installOriginalNames(currentLocale(), strings, withPack);
+    expect(tribeName(PACK_PEOPLE)).toBe('Chinesen');
+    installContentTribeNames(currentLocale(), withPack);
+    expect(tribeName(PACK_PEOPLE)).toBe('Chinesen');
   });
 
   it('leave the authored names without the pipeline strings', async () => {
