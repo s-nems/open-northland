@@ -37,20 +37,16 @@ import { colonyBuildings, workshopSpot } from './spot.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
 /**
- * The workshops home may hand over: the chains that turn raw goods into what its army and sites want. Owner
- * ruling: a colony is a resource outpost, but when the home island lacks room it may grow production. Food
- * stays home; a tower, barracks, school, grass or shore building serves the ground it stands on.
+ * The workshops home may hand over: the chains that turn raw goods into what its army wants. Owner ruling: a
+ * colony is a resource outpost, but when the home island lacks room it may grow production. Food stays home;
+ * so do the pottery and the mason hut, whose goods home sends; a tower, barracks, school, grass or shore
+ * building serves the ground it stands on.
  */
 const OVERFLOW_BUILDING_IDS: ReadonlySet<string> = new Set([
   'work_smithy_00',
   'work_smithy_01',
   'work_armory_00',
   'work_armory_01',
-  'work_mason_hut_00',
-  'work_mason_hut_01',
-  'work_pottery_00',
-  'work_pottery_01',
-  'work_pottery_02',
   'work_sewery_00',
   'work_sewery_01',
 ]);

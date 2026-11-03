@@ -32,6 +32,7 @@ import {
 import { entryStatuses } from '../../../../src/systems/computer-player/build-order/progress.js';
 import { seatBuildOrder } from '../../../../src/systems/computer-player/build-order/seat-order.js';
 import { colonists } from '../../../../src/systems/computer-player/colony/founding.js';
+import { isOverflowBuilding } from '../../../../src/systems/computer-player/colony/overflow.js';
 import { homeStockOf } from '../../../../src/systems/computer-player/colony/stock.js';
 import { computerProfileOf } from '../../../../src/systems/computer-player/difficulty.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
@@ -51,6 +52,13 @@ import {
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
 import { SEAT } from '../support.js';
+
+const MATERIAL_WORKSHOP_IDS = [
+  'work_pottery_00',
+  'work_pottery_01',
+  'work_mason_hut_00',
+  'work_mason_hut_01',
+];
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -108,6 +116,13 @@ function colonyArmory(sim: Simulation): Entity | undefined {
     (e) => !home.has(e) && sim.world.get(e, Building).buildingType === ARMORY_TYPE,
   );
 }
+
+describe('the workshops a colony takes over', () => {
+  it('leaves out the pottery and the mason hut, whose goods home sends', () => {
+    for (const id of MATERIAL_WORKSHOP_IDS) expect(isOverflowBuilding(id)).toBe(false);
+    expect(isOverflowBuilding('work_smithy_00')).toBe(true);
+  });
+});
 
 describe('overflow production', () => {
   it("hands a held step over and brings the workshop's goods home, through a save", () => {

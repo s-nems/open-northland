@@ -26,8 +26,7 @@ import { technologyTable } from '../technology/requirements.js';
 import { topEnabledTier } from '../top-tier.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { colonists, colonyOrigin } from './founding.js';
-import { homeSupply } from './line.js';
-import { colonyFed, colonyFoodHeld, landHolds, workshopGoods } from './provision.js';
+import { colonyFed, colonyFoodHeld } from './provision.js';
 import { siteRoom } from './survey.js';
 import { towersLacking } from './towers.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
@@ -36,15 +35,6 @@ import type { ColonyEnv, ColonyView } from './voyage.js';
 export const COLONY_OPEN_SITES = 2;
 /** How far from its anchor a building's spot may lie, in Manhattan nodes (authored: the walk range). */
 export const COLONY_SPOT_NODES = 50;
-
-/** Owner ruling: the materials a colony makes in its own workshop or ships, decided per material; what it
- *  makes past its bills sails home. */
-const MATERIAL_GOOD_IDS: readonly string[] = ['brick', 'pillar', 'tile', 'ornament'];
-
-/** The units of a material the colony's plan must call for before its workshop earns its bill and its man
- *  (authored): a mason hut or a pottery costs four or five units and a man for good, and the ladder's whole
- *  bill holds four pillars and two bricks, so the mason pays and the pottery does not. */
-const MATERIAL_WORKSHOP_FROM_UNITS = 3;
 
 /** The home chain's base tier: a colony raises its homes at the top tier enabled ({@link topEnabledTier}). */
 const HOME_ID = 'home_level_00';
@@ -183,13 +173,6 @@ export function stepGround(building: string): StepGround {
   return [...GRAIN_LADDER, ...GREEN_LADDER].find((s) => s.building === building)?.ground ?? 'any';
 }
 
-/** The workshop that makes `good`, the lowest type id of those whose record names it. */
-function makerOf(env: ColonyEnv, good: number): BuildingType | undefined {
-  return env.ctx.content.buildings.find(
-    (b) => b.kind === BUILDING_KIND.workplace && b.produces.includes(good),
-  );
-}
-
 /** How many of `buildings` stand at any tier of `type`'s chain, sites included. */
 export function chainCount(env: ColonyEnv, buildings: readonly Entity[], type: BuildingType): number {
   const { world, ctx } = env;
@@ -244,43 +227,6 @@ export function billsOf(env: ColonyEnv, plan: readonly string[]): Map<number, nu
       bills.set(line.goodType, (bills.get(line.goodType) ?? 0) + line.amount);
   }
   return bills;
-}
-
-/**
- * Owner ruling: a colony with room raises the workshops it needs, new goods for home first of all, and makes
- * or ships each material. A workshop goes up when its good is called for, by `bills` for
- * {@link MATERIAL_WORKSHOP_FROM_UNITS} or by home's stock under its comfort line, the colony's land or
- * workshops supply all it works up, its block has room, the tribe has it unlocked and its trade a man in reach.
- * Everything else sails.
- */
-function materialWorkshops(
-  env: ColonyEnv,
-  colony: ColonyView,
-  buildings: readonly Entity[],
-  bills: ReadonlyMap<number, number>,
-): string[] {
-  const { ctx } = env;
-  const index = contentIndex(ctx.content);
-  const from = colonyOrigin(env, colony, buildings);
-  if (from === null) return [];
-  const made = workshopGoods(env, buildings);
-  let supply: ReturnType<typeof homeSupply> | null = null;
-  const called = (good: number): boolean => {
-    if ((bills.get(good) ?? 0) >= MATERIAL_WORKSHOP_FROM_UNITS) return true;
-    supply ??= homeSupply(env);
-    return supply.lackToComfort(good) > 0;
-  };
-  const workshops: string[] = [];
-  for (const id of MATERIAL_GOOD_IDS) {
-    const good = index.goodTypeBySlug.get(id);
-    const maker = good === undefined ? undefined : makerOf(env, good);
-    if (good === undefined || maker === undefined || workshops.includes(maker.id)) continue;
-    if (chainCount(env, buildings, maker) > 0 || !unlocked(env, maker) || !called(good)) continue;
-    const inputs = index.mergedRecipeByBuilding.get(maker.typeId)?.inputs ?? [];
-    const fed = inputs.every((input) => made.has(input.goodType) || landHolds(env, from, input.goodType));
-    if (fed && roomFor(env, colony, buildings, maker) && crewInReach(env, maker)) workshops.push(maker.id);
-  }
-  return workshops;
 }
 
 /** Whether a wild herd stood on `land` at the map's scan. */
@@ -431,7 +377,7 @@ export function ladderAhead(
 }
 
 /** What the colony means to raise, in order: its unplaced rows; then its next food step, the towers its
- *  garrison mans, its homes, and what the ladder's bills and theirs make worth raising. */
+ *  garrison mans and its homes. Owner ruling: it raises no pottery or mason hut, home makes their goods. */
 export function colonyPlan(
   env: ColonyEnv,
   colony: ColonyView,
@@ -441,14 +387,6 @@ export function colonyPlan(
   if (rows.length > 0) return rows;
   const ladder = ladderRead(env, colony, buildings);
   const food = ladder === null ? null : nextFoodStep(ladder);
-  const ahead = ladder === null ? [] : stepsAhead(ladder).map((step) => step.building);
-  const homes = homeStep(env, colony, buildings);
-  const bills = billsOf(env, [...ahead, ...homes]);
   const towers = towersLacking(env, colony, buildings);
-  return [
-    ...(food === null ? [] : [food]),
-    ...towers,
-    ...homes,
-    ...materialWorkshops(env, colony, buildings, bills),
-  ];
+  return [...(food === null ? [] : [food]), ...towers, ...homeStep(env, colony, buildings)];
 }
