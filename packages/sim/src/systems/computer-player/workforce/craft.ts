@@ -514,6 +514,14 @@ export function joineryRolePlans(cap: number, resume: number): JoineryRolePlans 
   };
 }
 
+/** Owner ruling: a colony's level-4 joinery builds its carriers' handcarts and iron tools, whose tools alone go
+ *  home. It takes no role: the seat's ships and catapults are home's joineries' (authored). */
+const COLONY_JOINERY_PLAN: CraftPlan = {
+  seats: [HANDCART_SEAT, JOINERY_SEAT, JOINERY_SEAT],
+  unfed: NO_IRON_SEAT,
+  sparing: WOODEN_TOOLS,
+};
+
 /** The role plans of a seat keeping no catapults (owner ruling: a seat with no room to grow builds none). */
 const NO_CATAPULT_ROLE_PLANS: JoineryRolePlans = joineryRolePlans(0, 0);
 
@@ -698,6 +706,8 @@ export function tuneCraftCounters(
   // seats and the emitted command order are both deterministic. A colony's workshop crews work the seat's
   // plans with home's, which no other reader of the home roster sees: the army they arm is home's.
   const crews = new Map<CraftPlan, Map<number, RestrictedCrew>>();
+  // Read once a role type's crew turns up: a role joinery off home is a colony's.
+  let homeSet: ReadonlySet<Entity> | undefined;
   for (const e of everySettlerOf(world, player)) {
     const assignment = world.tryGet(e, JobAssignment);
     if (assignment === undefined) continue;
@@ -707,7 +717,13 @@ export function tuneCraftCounters(
     const type = building === undefined ? undefined : index.buildings.get(building.buildingType);
     if (type === undefined) continue;
     const roles = rolePlans[type.id];
-    const plan = roles === undefined ? plans[type.id] : roles[roleOf(assignment.workplace)];
+    if (roles !== undefined) homeSet ??= new Set(homeBuildings(world, ctx, player));
+    const plan =
+      roles === undefined
+        ? plans[type.id]
+        : homeSet?.has(assignment.workplace) === false
+          ? COLONY_JOINERY_PLAN
+          : roles[roleOf(assignment.workplace)];
     if (plan === undefined) {
       // An unplanned workshop's crew works every product, while a fresh hire starts on the first alone.
       if ((world.tryGet(e, ProductionCounters)?.counters.length ?? 0) > 0)
