@@ -20,7 +20,7 @@ import type { SceneDefinition } from '../types.js';
 import { POST_MISSION_ID, sceneTrader, stockOf, TRADER_NATION } from './trade.js';
 import {
   EAST_HOUSE_AT,
-  HANDCART_HOLD,
+  handcartHold,
   spawnTradeSeaCrew,
   TRADE_SEA_ZOOM,
   tradeSeaTerrain,
@@ -51,7 +51,7 @@ const IRON_STOCK_MARGIN = 2;
 const IRON_STOCKED = IRON_STOCK_MARGIN * IRON_BOUGHT;
 const WOOD_STOCKED = 30;
 
-/** Headroom over the measured run: seed 47 lands the last iron by tick 1874. */
+/** Headroom over the run: seed 47 lands the last iron near tick 1730, which a sim change moves. */
 const RUN_TICKS = TICKS_PER_SECOND * 180;
 
 const { setStockAmount, stampMissionId } = components;
@@ -156,7 +156,7 @@ export const tradeSeaAgreementScene: SceneDefinition = {
           coinsGiven === COIN_STOCKED &&
           ironTaken === coinsGiven * IRON_FOR_COIN &&
           ironHome === ironTaken &&
-          ironHome > HANDCART_HOLD
+          ironHome > handcartHold(sim)
         );
       },
     },

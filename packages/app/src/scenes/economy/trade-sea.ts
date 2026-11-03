@@ -40,14 +40,12 @@ const TRADER_AT = { x: 7, y: 11 } as const;
 const CART_AT = { x: 8, y: 11 } as const;
 /** One cell off the west shore, within its door distance of the land. */
 const SHIP_AT = { x: STRAIT.fromX + 1, y: 7 } as const;
-/** The handcart's hold, in units. */
-export const HANDCART_HOLD = 15;
 /** Two cart loads, within the small ship's fifty. */
 const TRADE_SEA_WOOD = 30;
 export const TRADE_SEA_ZOOM = 0.8;
 const TRADE_SEA_EAST_SLOT = 1;
 
-/** Headroom over the measured run: seed 45 lands the last unit by tick 1800. */
+/** Headroom over the run: seed 45 lands the last unit near tick 1660, which a sim change moves. */
 const RUN_TICKS = TICKS_PER_SECOND * 160;
 
 const { setStockAmount, Stockpile, WALK_DIRECTION } = components;
@@ -103,6 +101,13 @@ export function buildTradeSea(sim: Simulation, pinned: boolean): void {
   if (pinned) sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'setTradeShip', entity: trader, ship }));
 }
 
+/** One handcart load in units; content without a handcart fails the checks that compare against it. */
+export function handcartHold(sim: Simulation): number {
+  return (
+    sim.content.vehicles.find((v) => v.typeId === VEHICLE_HANDCART)?.stockSlots ?? Number.POSITIVE_INFINITY
+  );
+}
+
 /** The small ship the scene spawned. */
 export function tradeSeaShip(sim: Simulation): Entity | undefined {
   return sim.vehiclesOf(HUMAN_PLAYER).find((v) => v.vehicleType === VEHICLE_SHIP_SMALL)?.entity;
@@ -126,7 +131,7 @@ export const tradeSeaScene: SceneDefinition = {
   checks: [
     {
       label: 'the wood crossed the sea: more reached the far warehouse than the cart holds in one load',
-      predicate: (sim) => tradeSeaWoodAt(sim, TRADE_SEA_EAST_SLOT) > HANDCART_HOLD,
+      predicate: (sim) => tradeSeaWoodAt(sim, TRADE_SEA_EAST_SLOT) > handcartHold(sim),
     },
     {
       label: 'the trader kept the ship and the cart it set out with',
