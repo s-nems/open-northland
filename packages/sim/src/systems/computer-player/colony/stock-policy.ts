@@ -10,7 +10,7 @@ import { edibleGoodFormOf, mayChangeEquipment } from '../../readviews/index.js';
 import { toolHelpsJob } from '../../settlers/planner/assistant-grants.js';
 import { stockAtBuildings } from '../../stores/index.js';
 import { sitesShortfalls } from '../build-order/upgrade-supply.js';
-import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
+import { FOOD_COMFORT_UNITS_PER_SETTLER, FOOD_SHORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { colonists, colonyOrigin } from './founding.js';
 import { foodGood, homeSpare, homeSupply, workshopShelves } from './home-supply.js';
 import { colonyIndustryWantsOf } from './industry-read.js';
@@ -295,8 +295,9 @@ function heldByForm(env: ColonyEnv, buildings: readonly Entity[]): Map<number, n
 }
 
 /**
- * What home keeps of `good` when it sends some: food at its comfort per mouth, a managed good at its comfort
- * line past its sites, a settler good for its own people who lack it, and a workshop input its own shelves.
+ * What home keeps of `good` when it sends some: food at its short line per mouth, so a colony's larder fills
+ * before home's reaches comfort; a managed good at its comfort line past its sites, a settler good for its
+ * own people who lack it, and a workshop input its own shelves.
  */
 function homeKeepOf(env: SeatEnv): (good: number) => number {
   const { world, ctx, seat } = env;
@@ -306,7 +307,7 @@ function homeKeepOf(env: SeatEnv): (good: number) => number {
   const people = homeSettlers(world, ctx, seat);
   let shelves: Map<number, number> | undefined;
   return (good) => {
-    if (good === food) return FOOD_COMFORT_UNITS_PER_SETTLER * people.length;
+    if (good === food) return FOOD_SHORT_UNITS_PER_SETTLER * people.length;
     const comfort = Math.max(0, supply.units(good) - spare(good));
     shelves ??= workshopShelves(env, homeBuildings(world, ctx, seat));
     // Home keeps a unit for each of its own people who lacks one, with no colony's bound on it.
