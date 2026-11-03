@@ -32,6 +32,7 @@ import { isAdultSettler } from '../../family/eligibility.js';
 import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import { canChooseJob, needSubjectOf } from '../../progression/index.js';
 import { isFighterJob, isTraderJob } from '../../readviews/index.js';
+import { isCarrierJob } from '../../stores/index.js';
 import { canPinTradeShip } from '../../trade/ship.js';
 import { isCartType } from '../../vehicles/drag.js';
 import { canTakeHaulingCart } from '../../vehicles/hauling-cart.js';
@@ -60,6 +61,8 @@ import {
 // to his route between a home warehouse and the colony's, both standing for their settlements, and the marks
 // follow the colony's stock policy. Everything is a player's command.
 
+/** A settler with no trade, which no job type matches. */
+const NO_JOB = -1;
 /** Owner ruling: a trader works from a level-3 warehouse, so the route waits for the colony's to stand. */
 const ROUTE_STORE_ID = 'stock_02';
 /** The carriers seated on the route's ship to help load (authored: the trade-sea carriers scene's three). */
@@ -156,8 +159,8 @@ function livesAtHome(world: World, homes: ReadonlySet<Entity>, e: Entity): boole
   return home === undefined || homes.has(home);
 }
 
-/** The man at home who takes the trade: one who has earned it, standing on home's land and living there, a
- *  wed man first, then a spare one, then ascending id. */
+/** The man at home who takes the trade: a spare man or a carrier who has earned it, standing on home's land
+ *  and living there, a wed man first, then a spare one, then ascending id. */
 function traderFor(env: ColonyEnv, trader: number): Entity | null {
   const { world, ctx, seat } = env;
   const home = homeLandOf(env);
@@ -169,9 +172,11 @@ function traderFor(env: ColonyEnv, trader: number): Entity | null {
       livesAtHome(world, homes, e) &&
       !isTraderJob(ctx.content, world.get(e, Settler).jobType) &&
       standsOn(world, ctx, e, home) &&
+      (spare.has(e) || isCarrierJob(ctx, world.get(e, Settler).jobType ?? NO_JOB)) &&
       canChooseJob(world, ctx, needSubjectOf(world, e), trader),
   );
   // A man wed at home goes on living there; an unwed one could take a wife on the colony and be called over.
+  // A spare man before a carrier off his store, never a craftsman off his workshop.
   const rank = (e: Entity): number => (world.has(e, Marriage) ? 0 : 2) + (spare.has(e) ? 0 : 1);
   return able.reduce<Entity | null>((best, e) => (best === null || rank(e) < rank(best) ? e : best), null);
 }
@@ -184,7 +189,7 @@ function keepTrader(env: ColonyEnv, route: RouteView): { trader: Entity | null; 
   if (job === null) return { trader: null, commands: [] };
   const held = route.trader;
   if (held !== null && world.isAlive(held)) {
-    if (isTraderJob(ctx.content, world.get(held, Settler).jobType)) return { trader: held, commands: [] };
+    if (isTraderJob(ctx.content, world.tryGet(held, Settler)?.jobType ?? null)) return { trader: held, commands: [] };
     if (ctx.tick - route.chosen < TRADE_TAKE_UP_TICKS) return { trader: null, commands: [] };
   }
   const next = traderFor(env, job);
@@ -395,7 +400,7 @@ export function releaseRoute(env: ColonyEnv, colony: ColonyView): PlayerCommand[
   if (
     trader === null ||
     !world.isAlive(trader) ||
-    !isTraderJob(ctx.content, world.get(trader, Settler).jobType)
+    !isTraderJob(ctx.content, world.tryGet(trader, Settler)?.jobType ?? null)
   )
     return [];
   return [
