@@ -44,12 +44,15 @@ export function slotState(trade: TradePanelModel, slot: number): SlotState {
 }
 
 /** The settlement toggle's state on a stop: offered on an own storehouse, refused while the other stop
- *  stands for a settlement this one shares a house with. */
+ *  stands for a settlement this one shares a house with. A flag held aside reads `mixed`: set, but the
+ *  stop counts its storehouse alone, so it is drawn unlit. */
 export function settlementToggle(stop: TradeStopModel): {
   readonly shown: boolean;
   readonly enabled: boolean;
+  readonly pressed: 'true' | 'false' | 'mixed';
 } {
-  return { shown: stop.settles, enabled: stop.settlement || !stop.sharesSettlement };
+  const pressed = stop.settlementSuspended ? 'mixed' : stop.settlement ? 'true' : 'false';
+  return { shown: stop.settles, enabled: stop.settlement || !stop.sharesSettlement, pressed };
 }
 
 /** One row per route slot, both always present so the section never changes height with the route:
@@ -123,7 +126,8 @@ export function createTradeStops(deps: SettlerPanelDeps, current: () => TraderSu
         setHidden(row.settlement, toggle?.shown !== true);
         if (state.kind === 'stop' && toggle?.shown === true) {
           write(row.settlement, panel.tradeSettlement);
-          setAttribute(row.settlement, 'aria-pressed', String(state.stop.settlement));
+          setAttribute(row.settlement, 'aria-pressed', toggle.pressed);
+          setClass(row.settlement, 'on-stop__settlement--held', toggle.pressed === 'mixed');
           setDisabled(row.settlement, !toggle.enabled);
           setTip(
             row.settlement,

@@ -4050,6 +4050,10 @@ body.on-drag-scroll.on-drag-scroll-free * {
   background: linear-gradient(#e8c479, #b58a3f);
   color: var(--ink);
 }
+/* A flag held aside: still set, drawn unlit with a dashed border. */
+.on-hud button.on-stop__settlement--held {
+  border-style: dashed;
+}
 .on-hud button.on-stop__settlement[aria-disabled="true"] {
   opacity: 0.45;
 }

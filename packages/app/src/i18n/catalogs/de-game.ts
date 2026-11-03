@@ -820,9 +820,9 @@ export const deGame = {
       tradeSettlementOff:
         'Klicken: für die ganze Siedlung stehen. Er lädt aus allen Lagern und Werkstätten, die sein Wegweisernetz erreicht, und die Grenzen „bis zu“ und „zurückbehalten“ zählen ihren Bestand',
       tradeSettlementShared:
-        'Dasselbe Wegweisernetz wie die andere Station, die schon für die Siedlung steht',
+        'Diese Siedlung teilt ein Gebäude mit der Siedlung der anderen Station, die schon für ihre ganze Siedlung steht',
       tradeSettlementSuspended:
-        'Dasselbe Wegweisernetz wie die andere Station, daher zählt vorerst nur dieses Lager · Klicken: nur dieses Lager',
+        'Diese Siedlung teilt ein Gebäude mit der Siedlung der anderen Station, daher zählt vorerst nur dieses Lager · Klicken: nur dieses Lager',
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: 'bis zu {count}',

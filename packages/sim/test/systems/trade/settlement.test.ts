@@ -40,6 +40,7 @@ const HUMAN = 0;
 const NEIGHBOUR = 1;
 const TRADER = 25;
 const HANDCART = 1;
+const OXCART = 2;
 const WOOD = 1;
 const PLANK = 2;
 const HEADQUARTERS = 1;
@@ -87,8 +88,8 @@ function houseAt(
   return e;
 }
 
-/** A trader at `x` handed a handcart standing beside it. */
-function traderAt(sim: Simulation, x: number): Entity {
+/** A trader at `x` handed a cart of `vehicleType` standing beside it. */
+function traderAt(sim: Simulation, x: number, vehicleType = HANDCART): Entity {
   const trader = sim.world.create();
   sim.world.add(trader, Position, { x: fx.fromInt(x), y: fx.fromInt(1) });
   addPerson(sim.world, trader, {
@@ -101,13 +102,13 @@ function traderAt(sim: Simulation, x: number): Entity {
   });
   sim.world.add(trader, Owner, { player: HUMAN });
   const cart = createVehicle(sim.world, ctxOf(sim), {
-    vehicleType: HANDCART,
+    vehicleType,
     x: 2 * x,
     y: 0,
     tribe: VIKING,
     owner: HUMAN,
   });
-  if (cart === null) throw new Error('handcart not in the fixture');
+  if (cart === null) throw new Error('cart type not in the fixture');
   sim.enqueue(playerCommand(HUMAN, { kind: 'attachToVehicle', entity: trader, vehicle: cart }));
   return trader;
 }
@@ -431,7 +432,7 @@ describe('a settlement stop before a foreign trip', () => {
 
 describe('two stops standing for their settlements', () => {
   /** Two settlements on one continent, each a storehouse with a second one behind it, further apart than
-   *  a goods search reaches (40 nodes) and nearer than a trader walks (50 nodes). */
+   *  one goods search reaches (40 nodes). */
   const PAIR_MAP_W = 32;
   const A_MEMBER_X = 1;
   const A_X = 4;
@@ -449,6 +450,12 @@ describe('two stops standing for their settlements', () => {
   const A_WOOD = 30;
   const BALANCE_SIDE = 10;
   const SLOW_RUN_TICKS = 3 * RUN_TICKS;
+  /** Leaves 2 of the member's 5 to go when the settlement ends at its continent. */
+  const CONTINENT_KEEP = 3;
+  /** A continent whose far storehouse lies 120 nodes from the first, past any two goods searches. */
+  const FAR_MAP_W = 68;
+  const FAR_B_X = 64;
+  const FAR_RUN_TICKS = 6 * RUN_TICKS;
 
   function pairSim(map = grassMap(PAIR_MAP_W, MAP_H), navigation = true): Simulation {
     const sim = newSim(map);
@@ -577,12 +584,34 @@ describe('two stops standing for their settlements', () => {
     const b = houseAt(sim, OTHER_X);
     const trader = traderAt(sim, ANCHOR_X);
     route(sim, trader, a, b);
-    mark(sim, trader, b, TRADE_LIMIT_NONE, WOOD_KEPT);
+    mark(sim, trader, b, TRADE_LIMIT_NONE, CONTINENT_KEEP);
     settle(sim, trader, a);
 
     sim.run(RUN_TICKS);
 
-    expect(stockOf(sim, b, WOOD)).toBe(0);
+    // The island's wood would raise the settlement to 10 and let the whole member's 5 go.
+    expect(stockOf(sim, b, WOOD)).toBe(WOOD_KEPT - CONTINENT_KEEP);
+  });
+
+  it('serves two settlements at the far ends of one continent with an ox cart', () => {
+    const sim = pairSim(grassMap(FAR_MAP_W, MAP_H));
+    const aMember = houseAt(sim, A_MEMBER_X, [[WOOD, BALANCE_SIDE]]);
+    const a = houseAt(sim, A_X);
+    const b = houseAt(sim, FAR_B_X);
+    postAt(sim, A_X);
+    postAt(sim, FAR_B_X);
+    const trader = traderAt(sim, A_X, OXCART);
+    route(sim, trader, a, b);
+    mark(sim, trader, b);
+    settle(sim, trader, a);
+    settle(sim, trader, b);
+
+    sim.run(FAR_RUN_TICKS);
+
+    expect(flags(sim, trader)).toEqual([true, true]);
+    expect(sim.traderView(trader)?.stops.map((stop) => stop.settlementSuspended)).toEqual([false, false]);
+    expect(stockOf(sim, aMember, WOOD)).toBe(0);
+    expect(stockOf(sim, b, WOOD)).toBe(BALANCE_SIDE);
   });
 
   it('counts the second stop as its storehouse alone once the two settlements join', () => {

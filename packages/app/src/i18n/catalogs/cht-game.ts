@@ -737,8 +737,9 @@ export const chtGame = {
         '代表整個聚落：其路標網路所及的倉庫與工坊。從這些建築裝貨，先從這座倉庫，「最多」與「保留」限額按它們的庫存計算。運回的貨物會存進這座倉庫 · 點擊：只用這座倉庫',
       tradeSettlementOff:
         '點擊：代表整個聚落。從路標網路所及的所有倉庫與工坊裝貨，「最多」與「保留」限額按它們的庫存計算',
-      tradeSettlementShared: '與另一個停靠站同屬一個路標網路，該站已代表整個聚落',
-      tradeSettlementSuspended: '與另一個停靠站同屬一個路標網路，因此暫時只計算這座倉庫 · 點擊：只用這座倉庫',
+      tradeSettlementShared: '此聚落與另一個停靠站的聚落共有建築，而該站已代表整個聚落',
+      tradeSettlementSuspended:
+        '此聚落與另一個停靠站的聚落共有建築，因此暫時只計算這座倉庫 · 點擊：只用這座倉庫',
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: '最多 {count}',

@@ -43,13 +43,20 @@ describe('the settler panel’s Handel summary', () => {
   it('offers "osada" on an own storehouse stop, refused while the other stop stands for a shared settlement', () => {
     const [storehouse, barracks] = ownRoute().stops;
     if (storehouse === undefined || barracks === undefined) throw new Error('route has two stops');
-    expect(settlementToggle(storehouse)).toEqual({ shown: true, enabled: true });
+    expect(settlementToggle(storehouse)).toEqual({ shown: true, enabled: true, pressed: 'false' });
     expect(settlementToggle(barracks).shown).toBe(false);
-    expect(settlementToggle({ ...storehouse, sharesSettlement: true })).toEqual({
-      shown: true,
-      enabled: false,
+    expect(settlementToggle({ ...storehouse, sharesSettlement: true })).toMatchObject({ enabled: false });
+    expect(settlementToggle({ ...storehouse, settlement: true, sharesSettlement: true })).toMatchObject({
+      enabled: true,
+      pressed: 'true',
     });
-    expect(settlementToggle({ ...storehouse, settlement: true, sharesSettlement: true }).enabled).toBe(true);
+  });
+
+  it('draws a flag held aside unlit, still set and clickable', () => {
+    const [storehouse] = ownRoute().stops;
+    if (storehouse === undefined) throw new Error('route has a stop');
+    const held = { ...storehouse, settlement: true, sharesSettlement: true, settlementSuspended: true };
+    expect(settlementToggle(held)).toEqual({ shown: true, enabled: true, pressed: 'mixed' });
   });
 
   it('writes a transfer as its direction and its limits, and says it in words in the tooltip', () => {

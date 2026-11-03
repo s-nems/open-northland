@@ -771,9 +771,9 @@ export const enGame = {
       tradeSettlementOff:
         'Click: stand for the whole settlement. It loads from every storehouse and workshop its signpost network reaches, and the "up to" and "keep" limits count their stock',
       tradeSettlementShared:
-        'Shares a signpost network with the other stop, which already stands for the settlement',
+        "Its settlement shares a house with the other stop's, which already stands for its whole settlement",
       tradeSettlementSuspended:
-        'Shares a signpost network with the other stop, so for now it counts this storehouse only · click: this storehouse only',
+        "Its settlement shares a house with the other stop's, so for now it counts this storehouse only · click: this storehouse only",
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: 'up to {count}',

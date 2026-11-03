@@ -100,9 +100,17 @@ export class GenerationalCache<V> {
   }
 }
 
+interface DoorEntry {
+  readonly player: number;
+  readonly hx: number;
+  readonly hy: number;
+}
+
 interface Doors {
   readonly feed: ChangeFeed;
-  readonly entries: Map<Entity, { player: number; hx: number; hy: number }>;
+  readonly entries: Map<Entity, DoorEntry>;
+  /** The same doors per player, bucketed by tile, so a box query walks one player's doors near it. */
+  readonly byPlayer: Map<number, TileBuckets<Entity>>;
   revision: number;
   /** What the last read resolved doors against; the verifier re-derives with the same pair. */
   content: ContentSet;
@@ -117,6 +125,7 @@ function doorsOf(world: World, content: ContentSet, terrain: TerrainGraph): Door
       // value feed would only record every walker on every step; the verifier below guards the rule.
       feed: world.watchChanges([Building, Position, Owner], [Building, Owner]),
       entries: new Map(),
+      byPlayer: new Map(),
       revision: 0,
       content,
       terrain,
@@ -131,16 +140,29 @@ function doorsOf(world: World, content: ContentSet, terrain: TerrainGraph): Door
   const state = held;
   const update = (id: Entity): void => {
     const old = state.entries.get(id);
+    const drop = (): void => {
+      if (old === undefined) return;
+      state.entries.delete(id);
+      state.byPlayer.get(old.player)?.delete(id);
+      state.revision++;
+    };
     if (!world.has(id, Building)) {
-      if (state.entries.delete(id)) state.revision++;
+      drop();
       return;
     }
     const player = world.tryGet(id, Owner)?.player;
     const door = interactionNode(world, { content, terrain }, id);
     if (player === undefined || door === null) {
-      if (state.entries.delete(id)) state.revision++;
+      drop();
     } else if (old?.player !== player || old.hx !== door.x || old.hy !== door.y) {
+      if (old !== undefined && old.player !== player) state.byPlayer.get(old.player)?.delete(id);
       state.entries.set(id, { player, hx: door.x, hy: door.y });
+      let buckets = state.byPlayer.get(player);
+      if (buckets === undefined) {
+        buckets = new TileBuckets();
+        state.byPlayer.set(player, buckets);
+      }
+      buckets.set(id, id, door.x / 2, door.y / 2);
       state.revision++;
     }
   };
@@ -172,7 +194,13 @@ function verifyDoors(world: World, doors: Doors): string[] {
       );
     }
   }
-  for (const id of doors.entries.keys()) {
+  let bucketed = 0;
+  for (const buckets of doors.byPlayer.values()) bucketed += buckets.size;
+  if (bucketed !== doors.entries.size)
+    problems.push(`signpostDoors buckets ${bucketed} doors for ${doors.entries.size} entries`);
+  for (const [id, entry] of doors.entries) {
+    if (doors.byPlayer.get(entry.player)?.has(id) !== true)
+      problems.push(`signpostDoors misses building ${id} in player ${entry.player}'s buckets`);
     if (!seen.has(id) && !pending.has(id))
       problems.push(`signpostDoors lists ${id}, which is no owned building`);
   }
@@ -343,8 +371,9 @@ export function goodsSearchLimitAt(
   return made;
 }
 
-/** Whether a door of one of `player`'s buildings, finished or not, lies under both goods searches. The
- *  answer reads only what {@link signpostReachKey} versions. */
+/** Whether a door of one of `player`'s buildings, finished or not, lies under both goods searches. Only
+ *  the player's doors bucketed inside both searches' boxes are asked. The answer reads only what
+ *  {@link signpostReachKey} versions. */
 export function goodsSearchesShareDoor(
   world: World,
   content: ContentSet,
@@ -353,16 +382,29 @@ export function goodsSearchesShareDoor(
   a: SpatialGate,
   b: SpatialGate,
 ): boolean {
-  const inside = (box: NodeBox, x: number, y: number): boolean =>
-    x >= box.minX && x <= box.maxX && y >= box.minY && y <= box.maxY;
-  for (const door of doorsOf(world, content, terrain).entries.values()) {
-    if (door.player !== player || !inside(a.bounds, door.hx, door.hy) || !inside(b.bounds, door.hx, door.hy))
-      continue;
+  const box: NodeBox = {
+    minX: Math.max(a.bounds.minX, b.bounds.minX),
+    maxX: Math.min(a.bounds.maxX, b.bounds.maxX),
+    minY: Math.max(a.bounds.minY, b.bounds.minY),
+    maxY: Math.min(a.bounds.maxY, b.bounds.maxY),
+  };
+  if (box.minX > box.maxX || box.minY > box.maxY) return false;
+  const doors = doorsOf(world, content, terrain);
+  const buckets = doors.byPlayer.get(player);
+  if (buckets === undefined) return false;
+  const end = buckets.collect(tileBoxOf(box), doorScratch);
+  for (let i = 0; i < end; i++) {
+    const door = doors.entries.get(doorScratch[i] as Entity);
+    if (door === undefined) continue;
+    if (door.hx < box.minX || door.hx > box.maxX || door.hy < box.minY || door.hy > box.maxY) continue;
     const node = terrain.nodeAt(door.hx, door.hy);
     if (a.allowsNode(node) && b.allowsNode(node)) return true;
   }
   return false;
 }
+
+/** The doors {@link goodsSearchesShareDoor} last collected; slots past its end hold stale entries. */
+const doorScratch: Entity[] = [];
 
 /**
  * {@link goodsSearchLimitAt} without its terrain flood: a node passes inside hex range of the spot or under

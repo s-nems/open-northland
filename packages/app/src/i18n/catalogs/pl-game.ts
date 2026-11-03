@@ -755,9 +755,10 @@ export const plGame = {
         'Liczy całą osadę: magazyny i warsztaty w zasięgu jego sieci drogowskazów. Ładuje z nich, najpierw z tego magazynu, a limity „do” i „zostaw” liczą ich zapasy. Co przywiezie, trafia do tego magazynu · kliknij: tylko ten magazyn',
       tradeSettlementOff:
         'Kliknij: licz całą osadę. Ładuje z każdego magazynu i warsztatu w zasięgu sieci drogowskazów, a limity „do” i „zostaw” liczą ich zapasy',
-      tradeSettlementShared: 'Ta sama sieć drogowskazów co drugi punkt, który już liczy całą osadę',
+      tradeSettlementShared:
+        'Ta osada ma wspólny budynek z osadą drugiego punktu, a tamten punkt już liczy całą osadę',
       tradeSettlementSuspended:
-        'Ta sama sieć drogowskazów co drugi punkt, więc na razie liczy tylko ten magazyn · kliknij: tylko ten magazyn',
+        'Ta osada ma wspólny budynek z osadą drugiego punktu, więc na razie liczy się tylko ten magazyn · kliknij: tylko ten magazyn',
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: 'do {count}',

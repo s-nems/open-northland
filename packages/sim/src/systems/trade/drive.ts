@@ -73,7 +73,7 @@ interface LoadScope {
   readonly exclude: Entity;
   readonly countsSettlement: boolean;
   readonly otherCountsSettlement: boolean;
-  readonly members: Map<string, readonly Entity[]>;
+  members: Map<string, readonly Entity[]> | undefined;
 }
 
 /**
@@ -174,17 +174,6 @@ function scopeAt(
   stop: DeepReadonly<TradeStop>,
   other: DeepReadonly<TradeStop>,
 ): LoadScope {
-  const stops = world.get(trader, TradeRoute).stops;
-  const countsSettlement = (at: DeepReadonly<TradeStop>): boolean =>
-    at.settlement &&
-    standsForSettlement(
-      world,
-      ctx,
-      terrain,
-      trader,
-      stops,
-      stops.findIndex((s) => s.house === at.house),
-    );
   return {
     world,
     ctx,
@@ -193,10 +182,24 @@ function scopeAt(
     hold,
     stop,
     exclude: other.house,
-    countsSettlement: countsSettlement(stop),
-    otherCountsSettlement: countsSettlement(other),
-    members: new Map(),
+    countsSettlement: countsSettlement(world, ctx, terrain, trader, stop),
+    otherCountsSettlement: countsSettlement(world, ctx, terrain, trader, other),
+    members: undefined,
   };
+}
+
+/** Whether `at` stands for its settlement in this decision; a stop without the flag reads nothing. */
+function countsSettlement(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  trader: Entity,
+  at: DeepReadonly<TradeStop>,
+): boolean {
+  if (!at.settlement) return false;
+  const stops = world.get(trader, TradeRoute).stops;
+  const index = stops.findIndex((s) => s.house === at.house);
+  return standsForSettlement(world, ctx, terrain, trader, stops, index);
 }
 
 /** Move one unit at the stop whose house is `stopHouse`, at the house the unit moves at: a cart standing
@@ -614,6 +617,7 @@ function stockOfStop(
 /** {@link settlementHouses} of `anchor` for `good`, walked once per decision. */
 function membersOf(scope: LoadScope, anchor: Entity, exclude: Entity, good: number): readonly Entity[] {
   const key = `${anchor}:${good}`;
+  scope.members ??= new Map();
   let members = scope.members.get(key);
   if (members === undefined) {
     members = settlementHouses(scope.world, scope.ctx, scope.terrain, scope.trader, anchor, exclude, good);
