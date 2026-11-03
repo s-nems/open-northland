@@ -41,8 +41,8 @@ export type RightClickPlan =
   | { readonly kind: 'doorSettler'; readonly settler: number }
   /** A whole mixed gesture past the order cap is refused before anyone submits anything. */
   | { readonly kind: 'orderLimit' }
-  /** The lone trader pins the ship or lets it go; once the sim refused a pin, the press takes what lies
-   *  past this step (`resolvePastShipPin`). */
+  /** The lone trader pins the ship or lets it go; once the sim refused a pin, the press boards or
+   *  orders as it would without one (`resolveBoardOrOrders`). */
   | { readonly kind: 'pinShip'; readonly pin: ShipPinPlan; readonly onBuilding: number | null }
   /** The selected settlers board the vehicle; once its rule refused every one, the press is resolved
    *  again without this step and takes its `orders`. */
@@ -88,18 +88,19 @@ export function resolveRightClick(ctx: RightClickContext, input: RightClickInput
   const onBuilding = marker?.kind === 'building' ? marker.ref : null;
   const pin = resolveShipPin(ctx, settlers, hit, input.mods.queued);
   if (pin !== null) return { kind: 'pinShip', pin, onBuilding };
-  return resolvePastShipPin(ctx, input, onBuilding);
+  return resolveBoardOrOrders(ctx, input, onBuilding);
 }
 
 export type RightClickOrders = Extract<RightClickPlan, { kind: 'orders' }>;
-export type PastShipPinPlan = Extract<RightClickPlan, { kind: 'attach' | 'orders' }>;
+export type BoardOrOrdersPlan = Extract<RightClickPlan, { kind: 'attach' | 'orders' }>;
 
-/** The press past the ship pin: what a refused pin falls back to. */
-export function resolvePastShipPin(
+/** The selection boards the vehicle under the press, else takes its orders: every press past a ship pin,
+ *  and a refused pin's fallback. */
+export function resolveBoardOrOrders(
   ctx: RightClickContext,
   input: Pick<RightClickInput, 'hit' | 'selected' | 'settlers' | 'mods'>,
   onBuilding: number | null,
-): PastShipPinPlan {
+): BoardOrOrdersPlan {
   const attach = resolveAttachSelected(ctx, input.settlers, input.hit);
   if (attach !== null) return { kind: 'attach', attach, onBuilding };
   return resolveRightClickOrders(ctx, input, onBuilding);

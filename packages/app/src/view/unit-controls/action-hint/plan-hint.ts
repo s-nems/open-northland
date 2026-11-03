@@ -15,10 +15,10 @@ import { schoolStudents } from '../panels/school-dialog.js';
 import type { BuildingIntent, BuildingWorker } from '../right-click/building-rungs.js';
 import { contentLookups, type RightClickContext } from '../right-click/context.js';
 import {
-  type PastShipPinPlan,
+  type BoardOrOrdersPlan,
   type RightClickInput,
   type RightClickOrders,
-  resolvePastShipPin,
+  resolveBoardOrOrders,
   resolveRightClick,
 } from '../right-click/press.js';
 import type { RiderPlan } from '../right-click/riders.js';
@@ -139,15 +139,15 @@ export function planHint(ctx: HintContext, input: RightClickInput): PlanHint | n
       const { trader, ship, unpins } = plan.pin;
       if (unpins) return action('unpinShip');
       if (ctx.answers.tradeShipPin(trader, ship) !== false) return action('pinShip');
-      return pastShipPinHint(ctx, resolvePastShipPin(ctx, input, plan.onBuilding));
+      return boardOrOrdersHint(ctx, resolveBoardOrOrders(ctx, input, plan.onBuilding));
     }
     case 'attach':
     case 'orders':
-      return pastShipPinHint(ctx, plan);
+      return boardOrOrdersHint(ctx, plan);
   }
 }
 
-function pastShipPinHint(ctx: HintContext, plan: PastShipPinPlan): PlanHint | null {
+function boardOrOrdersHint(ctx: HintContext, plan: BoardOrOrdersPlan): PlanHint | null {
   if (plan.kind === 'orders') return ordersHint(ctx, plan);
   const { vehicle, settlers } = plan.attach;
   if (vehicleFull(ctx, vehicle, settlers)) return refusal('noRoom');

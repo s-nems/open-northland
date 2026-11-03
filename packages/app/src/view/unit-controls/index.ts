@@ -52,9 +52,9 @@ import {
   rightClickMods,
 } from './right-click/context.js';
 import {
-  type PastShipPinPlan,
+  type BoardOrOrdersPlan,
   type RightClickOrders,
-  resolvePastShipPin,
+  resolveBoardOrOrders,
   resolveRightClick,
   resolveRightClickOrders,
 } from './right-click/press.js';
@@ -266,7 +266,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     askAttachTradeHouse: opts.askAttachTradeHouse,
     onTradeRefused: refuseTradeHouse,
     canPinTradeShip: opts.canPinTradeShip,
-    askPinTradeShip: opts.askPinTradeShip,
     askPlaceSignpostAt: opts.askPlaceSignpostAt,
     signpostAnswerAt: opts.signpostAnswerAt,
     tradeHouseAttachAnswer: opts.tradeHouseAttachAnswer,
@@ -552,20 +551,20 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       case 'pinShip': {
         // The pin waits on the sim with no cue yet: the sim's answer or the click it hands on plays one.
         const refused = replayed(press, () => {
-          const past = resolvePastShipPin(rightClickContext(), inputAt(press), plan.onBuilding);
-          if (issuePastShipPin(past, e, press)) cue('confirm');
+          const fallback = resolveBoardOrOrders(rightClickContext(), inputAt(press), plan.onBuilding);
+          if (issueBoardOrOrders(fallback, e, press)) cue('confirm');
         });
         vehicleOrders.issueShipPin(plan.pin, () => cue('confirm'), refused);
         return;
       }
       case 'attach':
       case 'orders':
-        if (issuePastShipPin(plan, e, press)) cue('confirm');
+        if (issueBoardOrOrders(plan, e, press)) cue('confirm');
     }
   };
 
   /** Settlers the vehicle under the cursor refuses take the usual right-click once it answered. */
-  const issuePastShipPin = (plan: PastShipPinPlan, e: MouseEvent, press: RightClickPress): boolean => {
+  const issueBoardOrOrders = (plan: BoardOrOrdersPlan, e: MouseEvent, press: RightClickPress): boolean => {
     if (plan.kind === 'orders') return issueOrders(plan, e, press);
     const usual = (): boolean =>
       issueOrders(resolveRightClickOrders(rightClickContext(), inputAt(press), plan.onBuilding), e, press);

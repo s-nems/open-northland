@@ -17,7 +17,7 @@ import type {
 import {
   type RightClickInput,
   type RightClickPlan,
-  resolvePastShipPin,
+  resolveBoardOrOrders,
   resolveRightClick,
   resolveRightClickOrders,
 } from '../../../../src/view/unit-controls/right-click/press.js';
@@ -104,6 +104,9 @@ const WORLD = snapshotOf([
   }))(vehicle(SAILORS_SHIP, VEHICLE_SHIP_SMALL)),
 ]);
 
+/** The world's settlers: the selected ones take settler orders, the rest are vehicles. */
+const SETTLERS: ReadonlySet<number> = new Set([COLLECTOR, TRADER, SECOND_TRADER, CARRIER, SAILOR]);
+
 const NOTHING: RightClickHit = {
   ownSettler: null,
   ownVehicle: null,
@@ -146,16 +149,16 @@ function press(
     hit: { ...NOTHING, ...hit },
     doorMarker: null,
     selected: new Set(selected),
-    settlers: selected.filter((ref) => ref <= SAILOR).map((ref) => ({ ref, x: 0, y: 0 })),
+    settlers: selected.filter((ref) => SETTLERS.has(ref)).map((ref) => ({ ref, x: 0, y: 0 })),
     mods: { queued: false, landsCrew: false },
     workFlag: false,
     ...input,
   });
 }
 
-/** The plan past the pin, for one selected settler. */
-function past(hit: RightClickHit, settler: number) {
-  return resolvePastShipPin(
+/** The board-or-orders plan a refused pin falls back to, for one selected settler. */
+function boardOrOrders(hit: RightClickHit, settler: number) {
+  return resolveBoardOrOrders(
     CONTEXT,
     {
       hit,
@@ -305,11 +308,11 @@ describe('a right press', () => {
   });
 
   it('hands a refused pin to the boarding, and past a ship that seats nobody to the walk', () => {
-    expect(past({ ...NOTHING, ownVehicle: SHIP }, SECOND_TRADER)).toMatchObject({
+    expect(boardOrOrders({ ...NOTHING, ownVehicle: SHIP }, SECOND_TRADER)).toMatchObject({
       kind: 'attach',
       attach: { vehicle: SHIP },
     });
-    expect(past({ ...NOTHING, ownVehicle: TRADERS_SHIP }, SECOND_TRADER)).toMatchObject({
+    expect(boardOrOrders({ ...NOTHING, ownVehicle: TRADERS_SHIP }, SECOND_TRADER)).toMatchObject({
       kind: 'orders',
       settlers: { groups: [{ intent: { kind: 'walk', tile: TILE } }] },
     });
