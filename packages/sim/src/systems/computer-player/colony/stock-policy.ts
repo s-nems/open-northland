@@ -287,8 +287,11 @@ function homeKeepOf(env: SeatEnv): (good: number) => number {
     if (good === food) return FOOD_COMFORT_UNITS_PER_SETTLER * people.length;
     const comfort = Math.max(0, supply.units(good) - spare(good));
     shelves ??= workshopShelves(env, homeBuildings(world, ctx, seat));
+    // Home keeps a unit for each of its own people who lacks one, with no colony's bound on it.
     const gear =
-      contentIndex(ctx.content).goods.get(good)?.equip === undefined ? 0 : gearReserve(env, people, good);
+      contentIndex(ctx.content).goods.get(good)?.equip === undefined
+        ? 0
+        : settlersLacking(env, people, good) + SETTLER_GOOD_SPARE;
     return Math.max(comfort, gear, shelves.get(good) ?? 0);
   };
 }
