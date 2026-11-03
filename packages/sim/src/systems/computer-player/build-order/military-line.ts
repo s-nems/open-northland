@@ -57,7 +57,7 @@ export const CATAPULT_JOINERY: BuildOrderEntry = {
  *  upper pottery whose tiles the top tier's bill takes, that joinery lifted to the top tier, and a fresh
  *  top-tier joinery by the water where none could claim the shore. While a tier is locked each lets the
  *  barracks and the rest of the line pass rather than hold them. The upgrades rank with an earned workshop:
- *  among other copies they waited 20-38 game minutes behind new kinds on arabskie_wyspy_wolna_gra_mieszana. */
+ *  among other copies they were seen waiting long behind new kinds on arabskie_wyspy_wolna_gra_mieszana. */
 const SHIP_JOINERY_STEPS: readonly BuildOrderEntry[] = [
   {
     kind: 'place',
@@ -106,8 +106,8 @@ export const MILITARY_LINE: BuildLine = {
   steps: [
     // Where only a ship reaches the nearest rival, the joinery that builds it is the economy's way across,
     // not a wait for the deadline. The top tier waits on the tile and ship discoveries, which arabskie_wyspy
-    // seats made at game minute 36-48 or later (seed 7), and by then the settlement had taken every shore
-    // spot it fits (seats 0-2), so a joinery claims the shore at once, at the tier the seat may raise, or
+    // seats were seen to make in the middle game, by when the settlement had taken every shore spot it fits,
+    // so a joinery claims the shore at once, at the tier the seat may raise, or
     // the seat's own joinery serves where it already stands by the water (`../joinery-role.ts`).
     ...SHIP_JOINERY_STEPS,
     // The ring runs as a lane, so no later step of the line ever waits on it. Owner ruling: a tower rises at

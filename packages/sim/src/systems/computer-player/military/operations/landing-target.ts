@@ -113,9 +113,9 @@ export function underFire(sources: readonly FireSource[], at: HalfCellNode): boo
  * no other tower or shelter covers (it falls fast and is the war aim), else the enemy building nearest
  * `from` that lies clear of every believed tower's and shelter's reach ({@link underFire}), the lower id
  * on a tie.
- * Null once none is left: the rest of the land is a siege, not a landing's work. Authored: on
- * arabskie_wyspy_wolna_gra_mieszana (seeds 7, 11) waves sent on a headquarters beside a large tower lost
- * 19 to 32 of 24 to 34 dead within 30 nodes of it, mostly to the people sheltering inside, while it fell.
+ * Null once none is left: the rest of the land is a siege, not a landing's work. Authored: observed on
+ * arabskie_wyspy_wolna_gra_mieszana, waves sent on a headquarters beside a large tower lost most of their
+ * dead near it, mostly to the people sheltering inside, while it fell.
  */
 export function landingObjective(
   ctx: SystemContext,

@@ -172,8 +172,8 @@ export interface PaperedStore {
 /**
  * The first unmet `storeCoverage` step with the first warehouse paper the seat holds, or null. A warehouse
  * has no `place` step and a coverage step comes late at its own tier, so such a paper would lie unspent
- * while the seat pays for the sites: on arabskie_wyspy_wolna_gra_mieszana all three of a seat's lay unused
- * past game minute 130. A paper is free and stands finished, so it goes down at once, on any tier.
+ * while the seat pays for the sites: observed on arabskie_wyspy_wolna_gra_mieszana, a seat's papers lay
+ * unused into the late game. A paper is free and stands finished, so it goes down at once, on any tier.
  */
 export function paperedStore(
   world: World,

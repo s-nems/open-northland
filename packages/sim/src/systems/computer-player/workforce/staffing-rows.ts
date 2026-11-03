@@ -111,13 +111,13 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // as a minimum post, since a joiner fetches a cart's bill from his own shelves first and the carts speed
   // every haul, and fills its third joiner slot, since iron tools and handcarts are always short.
   // Owner ruling: on the island plan the carpenter comes first: one man, kept and fed by a porter, earns
-  // the small ship. On arabskie_wyspy_wolna_gra_mieszana (seed 7) a lone joiner waited on his shelves with
-  // 20-40 iron and wood in store, a tool every four game minutes where a fed one makes four a minute.
+  // the small ship. Observed on arabskie_wyspy_wolna_gra_mieszana: a lone joiner waited on his shelves with
+  // iron and wood in store, many times slower than a fed one.
   work_joinery_00: { islandMasterUntil: SMALL_SHIP },
   work_joinery_01: { operatorTarget: 2, carrierTarget: 1, islandMasterUntil: SMALL_SHIP },
   work_joinery_02: { operatorTarget: 3, carrierMin: 1, carrierTarget: 1, islandMasterUntil: SMALL_SHIP },
   // Owner ruling: on the island plan the ship joinery runs its whole crew and a porter as minimum posts: a
-  // yard's bill goes up one fetch at a time, and a lone joiner took 18-40 game minutes per small ship on
+  // yard's bill goes up one fetch at a time, and a lone joiner was seen taking far longer per small ship on
   // arabskie_wyspy_wolna_gra_mieszana with every good of the bill in store.
   work_joinery_03: {
     operatorTarget: 3,

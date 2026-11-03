@@ -84,8 +84,8 @@ const HELM_BOARD_TICKS = minutesToTicks(4);
 const RETURN_TIMEOUT_TICKS = SEA_SCOUT_TRIP_TIMEOUT_TICKS;
 /** How long the second ship may take once the first is home (authored). */
 const COLONY_FIT_OUT_TICKS = minutesToTicks(20);
-/** How long a party loads before it sails with what it has (authored). Seen on
- *  arabskie_wyspy_wolna_gra_mieszana: eight hands bring 34 to 46 units in it. */
+/** How long a party loads before it sails with what it has (authored): observed on
+ *  arabskie_wyspy_wolna_gra_mieszana, a party's hands bring most of a hold in it. */
 const COLONY_LOAD_TICKS = minutesToTicks(6);
 /** How long a ship may sail out (authored: a landing's sail limit). */
 const COLONY_SAIL_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
@@ -255,8 +255,8 @@ function rejectSite(env: ColonyEnv, colony: ColonyView): void {
 }
 
 /** The spare man on `home` hungry the least, the helm of a scout ship: it sails with an empty hold, and on
- *  arabskie_wyspy_wolna_gra_mieszana (seeds 7 and 13) a helm boarding hungry starved at sea, its ship lost
- *  to the seat on a far shore. */
+ *  arabskie_wyspy_wolna_gra_mieszana a helm boarding hungry was seen to starve at sea, its ship lost to the
+ *  seat on a far shore. */
 function fedHelm(env: ColonyEnv, home: number): Entity | undefined {
   const { world, ctx, terrain, seat } = env;
   const hunger = (e: Entity): number => {

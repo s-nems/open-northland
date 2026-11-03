@@ -289,8 +289,8 @@ function productsRest(
  * Whether a recipe input of `type` that the sites build with ({@link COLLECTED_GOOD_IDS}) runs short for
  * them: under its short line, or while the
  * workshop already rests (`resting`), under its comfort line, so the rest holds until the sites have
- * enough. Authored: on battle_for_the_four_hills_multiplayer (seed 7) a seat's mason turned the 2-8 stone
- * its sites waited for into 23-52 pillars nobody used.
+ * enough. Authored: observed on battle_for_the_four_hills_multiplayer, a seat's mason turned the little
+ * stone its sites waited for into pillars nobody used.
  */
 function inputsShortForSites(
   ctx: SystemContext,

@@ -21,9 +21,9 @@ import type { SeatSupply } from './supply.js';
  * take it. A pin lapses when the site stands.
  *
  * While the site lacks a good neither the seat's store (`stocked`) nor a crew hand holds, the pins are
- * lifted instead, so the builders raise the workshop that makes it (authored: on
- * battle_for_the_four_hills_multiplayer, seed 7, every bakery stood at five of six units for an hour,
- * its pillar waiting on a mason hut whose builders were all pinned to the bakery).
+ * lifted instead, so the builders raise the workshop that makes it (authored: observed on
+ * battle_for_the_four_hills_multiplayer, a bakery stood one unit short for a long time, its pillar waiting
+ * on a mason hut whose builders were all pinned to the bakery).
  *
  * A `cap` bounds the crew below the bill, so the seat's other builders stay on its other sites. Builders
  * pinned past the cap are released, the farthest first and ties to the higher id, except one an atomic
@@ -110,9 +110,9 @@ function siteSourced(
 }
 
 /** The builders the seat keeps while the bread chain's focus site rises, ahead of every gatherer post
- *  and workshop hand (authored, the pair `BUILDERS_PER_OPEN_SITE` puts on one site): on
- *  battle_for_the_four_hills_multiplayer, seed 7, a seat of eight men had every man posted and no builder
- *  from minute 19 to 26 while its bakery site waited with sixteen pillars in store. */
+ *  and workshop hand (authored, the pair `BUILDERS_PER_OPEN_SITE` puts on one site): observed on
+ *  battle_for_the_four_hills_multiplayer, a seat of few men had every man posted and no builder while its
+ *  bakery site waited with its goods in store. */
 export const FOCUS_BUILDERS = 2;
 
 /**

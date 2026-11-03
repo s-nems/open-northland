@@ -103,9 +103,8 @@ export const LATE_GAME_BUILDER_CAP = 16;
 
 /** The share of a hard seat's civilians past the grown head count it adds to its builder reserve (owner
  *  ruling: a large seat keeps more builders, 20 and more in the late game of a rich map; authored rate).
- *  Basis: on magiczny_las (seed 7) the seats held 128 to 279 people at minute 90 with 10 to 15 builders,
- *  the late figure reached on every seat. One in sixteen gives a late seat of 250 civilians 27 builders
- *  and one of 150 21. */
+ *  Basis: observed on magiczny_las, where large seats reached the late cap on every seat while their head
+ *  counts still grew. One in sixteen gives a late seat of 250 civilians 27 builders and one of 150 21. */
 const HARD_BUILDERS_PER_CIVILIAN: Share = { num: 1, den: 16 };
 
 /** The medium seat's share (authored): it keeps two sites open, so half the hard rate. */

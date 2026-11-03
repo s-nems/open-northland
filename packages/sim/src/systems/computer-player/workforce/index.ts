@@ -171,9 +171,9 @@ function runWorkforce(
   const builders = seatBuilderCount(world, ctx, player, builderJob);
   const shortOfBuilders = builders < builderFloor;
   // The clearing posts yield the men the open sites' builders lack, so a stalled placement never keeps
-  // its gatherers while the sites already standing wait for hands (authored: on ciezka_wspolpraca and
-  // smocza_kraina, seed 7, seats with five to eight open sites kept four builders while five to seven
-  // clearing gatherers piled 150-1060 wood).
+  // its gatherers while the sites already standing wait for hands (authored: observed on ciezka_wspolpraca
+  // and smocza_kraina, seats with many open sites kept few builders while their clearing gatherers piled
+  // wood).
   const clearingPosts = Math.max(0, clearing - Math.max(0, builderFloor - builders));
   // The core chain's next site (pottery, mason hut, then the bread chain) takes the reserve's builders
   // ahead of every other site, unless the seat is under attack; the gatherers of a good it waits on take one more post ahead of the reserve.
@@ -304,7 +304,7 @@ function runWorkforce(
   // workshop's first hand, the hunters and the fishers), and before the
   // other goods' posts, the standing buildings' first hands and the scout: on a seat of few men the ore
   // posts and the workshops otherwise took every man and left five sites without a builder for half an
-  // hour (authored, battle_for_the_four_hills_multiplayer seeds 7 and 11).
+  // hour (authored, observed on battle_for_the_four_hills_multiplayer).
   const core = reserveBuilders(world, force, builderJob, coreFloor - focusCore.reserved.length, ctx);
   const posted = [
     ...sitePosts,

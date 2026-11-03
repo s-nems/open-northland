@@ -922,8 +922,8 @@ function heldBack(
  * The units of each good the seat's crafts leave in stock for the ships its landing fleet still lacks,
  * while its ship joinery stands: the missing ships' share of every line of the smallest ship's bill that
  * no collector gathers (the wood and the like come through the supply lines and their gatherers).
- * Authored: on arabskie_wyspy_wolna_gra_mieszana (seed 7) a seat's tailors sewed the leather it started
- * with into shoes, and its ship yard then waited 40 minutes on the leather of its bill.
+ * Authored: observed on arabskie_wyspy_wolna_gra_mieszana, a seat's tailors sewed the leather it started
+ * with into shoes, and its ship yard then waited long on the leather of its bill.
  */
 function fleetReserve(
   world: World,

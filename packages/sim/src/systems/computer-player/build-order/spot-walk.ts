@@ -8,9 +8,9 @@ import { seatBaseOf } from '../base.js';
 import { WalkFlood, walkLowerBound, walkSeedNear } from '../walk-distance.js';
 
 /** How many times its straight-line walk a building spot's walk from the base door may cost, beyond
- *  {@link SPOT_WALK_SLACK_TILES} (authored). On ciezka_wspolpraca seed 7 every building on the base's
- *  side of the river walked at most 2 x its line + 1.1 tiles from the base door, and the six raised
- *  across it 2 x + 36 to 2 x + 85 tiles: close as the crow flies, half the map round the river on foot. */
+ *  {@link SPOT_WALK_SLACK_TILES} (authored). Observed on ciezka_wspolpraca: every building on the base's
+ *  side of the river walked within twice its line and a tile from the base door, and those raised across
+ *  it far more: close as the crow flies, half the map round the river on foot. */
 export const SPOT_WALK_LINE_RATIO = 2;
 
 /** The detour a spot near the base may take on top of {@link SPOT_WALK_LINE_RATIO}, in tiles (authored):

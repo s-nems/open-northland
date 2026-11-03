@@ -31,27 +31,27 @@ import {
 } from './voyage.js';
 
 // When a seat opens one more colony (owner ruling: it is not limited to one as time goes on). Every figure is
-// authored from arabskie_wyspy_wolna_gra_mieszana, seeds 7 and 13, 150 game minutes with one colony and with none.
+// authored from games observed on arabskie_wyspy_wolna_gra_mieszana with one colony and with none.
 
-/** First colonies ran from minute 56 to 96, so the late game is when the earliest has shown what it brings. */
+/** First colonies open in the middle game, so the late game is when the earliest has shown what it brings. */
 const NEXT_COLONY_FROM_TICKS = LATE_GAME_FROM_TICKS;
-/** A seat carries a colony per this many people: colonies held 30 to 60 of the 140 to 280 a seat counts by
- *  minute 150, so past this share home's own economy goes short. */
+/** A seat carries a colony per this many people: a colony holds about a fifth of a late seat's people, and
+ *  past this share home's own economy goes short. */
 const SETTLERS_PER_COLONY = 100;
-/** Fighters at home a civilian there asks for. Seats left without a colony reach one for one by minute 150 (153
- *  to 144, 132 to 70, 106 to 114). With one colony the seats that lost most stood under it (32 to 68, 39 to 69),
- *  and those stay at home until the army has caught up, as another party would be recruits it never gets. */
+/** Fighters at home a civilian there asks for: about what seats without a colony reach late. Seats with one
+ *  colony that lost most fighters stood under it, and those stay at home until the army has caught up, as
+ *  another party would be recruits it never gets. */
 const FIGHTERS_PER_CIVILIAN = 1;
-/** How long a colony's last load home counts: a line's round took 10 to 15 minutes. */
+/** How long a colony's last load home counts: about two of a line's rounds. */
 const DELIVERY_FRESH_TICKS = minutesToTicks(30);
 /** The free ships at home that spare one for a scout and still leave the next landing a hull. */
 const FREE_SHIPS_LEAST = 2;
 /** A colony counts as fed while at most one mouth in this many is past the hunger that sends a settler to eat
- *  at any cost. Its stores say little: food passes straight through them, and at minute 150 of seed 7 they
- *  held 1 unit for 24 mouths on a colony that held its people. */
+ *  at any cost. Its stores say little: food passes straight through them, and a colony that held its people
+ *  was seen with almost nothing in store. */
 const MOUTHS_PER_HUNGRY = 10;
 /** A later site is looked for over the whole survey: by then the rivals' colonies rule out the first ones, and
- *  seat 3 of seed 7 found none of its eight best clear with 36 on offer. */
+ *  a seat was seen to find none of its best few clear with many more on offer. */
 const NEXT_SITE_CANDIDATES = Number.POSITIVE_INFINITY;
 /** The free nodes in its block that make a site roomy: the room a colony's plan gives a second home. */
 const ROOMY_SITE_NODES = 1000;

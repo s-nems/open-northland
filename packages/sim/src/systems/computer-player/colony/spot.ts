@@ -28,9 +28,9 @@ export function colonyBuildings(env: ColonyEnv): readonly Entity[] {
   return colonyBuildingsOn(env.world, env.ctx, env.seat, env.colony.land);
 }
 
-/** How far from the store and what stands a workshop may go (authored): on
- *  arabskie_wyspy_wolna_gra_mieszana (seed 7) a colony's forest left an armory no spot within 50 nodes of its
- *  store and 648 between 50 and 100, its footprint being far larger than a home's. */
+/** How far from the store and what stands a workshop may go (authored): observed on
+ *  arabskie_wyspy_wolna_gra_mieszana, a colony's forest left an armory no spot within half this of its store
+ *  and many beyond, its footprint being far larger than a home's. */
 const WORKSHOP_SPOT_NODES = 100;
 
 /** A wider search than the walk range: its reach of what stands, and the signposts that make it walkable. */

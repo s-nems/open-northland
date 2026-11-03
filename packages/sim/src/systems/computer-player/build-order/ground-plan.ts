@@ -49,9 +49,9 @@ export function plannedHomes(fit: number): number {
 }
 
 /** When a seat draws its plan (authored): past the opening's first homes and school, which keep the ground
- *  by the base. Drawn at the start, the plots sent the school 39 nodes out where it stood 17 from the
- *  headquarters, it finished ten to twenty minutes later and the housing lane behind it held back the
- *  homes; the big patches lasted to minute 30 unplotted (arabskie_wyspy_wolna_gra_mieszana). */
+ *  by the base. Observed on arabskie_wyspy_wolna_gra_mieszana: drawn at the start, the plots sent the school
+ *  twice as far out, it finished much later and the housing lane behind it held back the homes, while the
+ *  big patches lasted well into the game unplotted. */
 export const GROUND_PLAN_FROM_TICKS = minutesToTicks(10);
 
 /** How often a plan looks for ground again for what it lacks, a stalled search's own pace. */

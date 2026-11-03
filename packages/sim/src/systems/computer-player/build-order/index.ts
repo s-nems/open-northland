@@ -118,9 +118,9 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
 }
 
 /** The adult men the seat keeps per open construction site before it opens a tower site (authored): the
- *  open sites' builder pair (`workforce/staffing.ts`) and a gatherer feeding them. Basis: on magiczny_las
- *  (seed 7) the seats held four or more men a site and grew; on specjalna_forteca a seat of six men
- *  opened three tower sites beside its homes and mill and finished none in 90 minutes. */
+ *  open sites' builder pair (`workforce/staffing.ts`) and a gatherer feeding them. Basis: observed on
+ *  magiczny_las, seats with more men a site grew; on specjalna_forteca a seat of few men opened several
+ *  tower sites beside its homes and mill and finished none. */
 export const MEN_PER_OPEN_SITE = 3;
 
 /** The open sites `player`'s men can staff ({@link MEN_PER_OPEN_SITE}), at least one: no tower site

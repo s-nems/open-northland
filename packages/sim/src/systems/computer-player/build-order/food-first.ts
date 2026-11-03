@@ -69,10 +69,10 @@ const EARNED_TRADE_WORKSHOPS: readonly string[] = [
   'work_bakery_00',
 ];
 
-/** The site past the chain every builder goes to: a seat's first barracks. Authored: on
- *  arabskie_wyspy_wolna_gra_mieszana (seed 7) seat 4's stood 59 minutes after its site opened, none of its
- *  goods delivered for 40 of them with all of them in stock, its builders spread over nine sites and on
- *  the towers beside them, and a rival's landing razed a seat with no soldier at minute 83. */
+/** The site past the chain every builder goes to: a seat's first barracks. Authored: observed on
+ *  arabskie_wyspy_wolna_gra_mieszana, a seat's barracks stood unbuilt for most of an hour with its goods in
+ *  stock, its builders spread over many sites and the towers beside them, and a rival's landing razed a seat
+ *  with no soldier. */
 const FOCUS_BARRACKS = 'barracks';
 
 /** The bread chain's supplier ({@link FOCUS_CHAIN}): the workshop making a good the bakery's bill

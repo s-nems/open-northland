@@ -27,9 +27,9 @@ import { incrementStaffing, type StaffingTally } from './tally.js';
 export type StaffingTier = 'food' | 'min' | 'target' | 'surplus';
 
 /** The operators the `food` tier posts per food chain workplace (owner ruling: food production outranks
- *  population and weapons). Authored: on battle_for_the_four_hills_multiplayer (seed 7) seats of twelve
- *  men whose builders, gatherers, potter and mason came first left the farm, the animal farm and the
- *  bakery without a hand for 30-60 minutes, their store food at 0-3 and the homes closed. */
+ *  population and weapons). Authored: observed on battle_for_the_four_hills_multiplayer, small seats whose
+ *  builders, gatherers, potter and mason came first left the farm, the animal farm and the bakery without
+ *  a hand for long stretches, their stores empty of food and the homes closed. */
 export const FOOD_CHAIN_FIRST_HANDS = 1;
 
 /** The reserve's floor while a build-order placement finds no spot (authored): every man the open sites
@@ -37,8 +37,8 @@ export const FOOD_CHAIN_FIRST_HANDS = 1;
 export const STALLED_BUILDER_CAP = 4;
 
 /** The builders each open construction site of the seat keeps out of the gatherer posts (authored): one
- *  carries the bill while another raises it. Basis: on mroczny_las (seed 7) a seat with three sites and
- *  two or three builders left a site at 60% for over fifteen minutes with its wood and stone in stock. */
+ *  carries the bill while another raises it. Basis: observed on mroczny_las, a seat with fewer builders than
+ *  this left a site half raised for a long time with its wood and stone in stock. */
 export const BUILDERS_PER_OPEN_SITE = 2;
 
 /** The builders the seat's open sites among `owned` call for, upgrades included, at most `cap`. A
@@ -56,10 +56,9 @@ export function siteBuilderFloor(
 
 /** The builder reserve while a placement is stalled, out of the seat's `cap`: {@link STALLED_BUILDER_CAP},
  *  or the open sites' pairs ({@link siteBuilderFloor}) when they call for more, so the sites already standing
- *  still rise while the clearing posts take the rest. Authored: on ciezka_wspolpraca and smocza_kraina
- *  (cramped seats, seed 7) seats whose steps found no spot kept 2-4 builders for five to eight open sites
- *  from minute 15 to 70, home sites and the bakery open 20-50 minutes, while 9-18 gatherers piled 150-1060
- *  wood and 100-285 stone. */
+ *  still rise while the clearing posts take the rest. Authored: observed on the cramped seats of
+ *  ciezka_wspolpraca and smocza_kraina, seats whose steps found no spot kept few builders for many open
+ *  sites, homes and the bakery left open, while their gatherers piled wood and stone. */
 export function stalledBuilderLimit(
   world: World,
   ctx: SystemContext,
@@ -70,8 +69,8 @@ export function stalledBuilderLimit(
 }
 
 /** The builders a seat with open sites keeps ahead of its scout and its generic posts (authored, the
- *  pair {@link BUILDERS_PER_OPEN_SITE} puts on one site). Basis: on specjalna_forteca (seed 7) a seat of six
- *  men posted its gatherers, hunter, scout and farmer and kept no builder for 90 minutes. */
+ *  pair {@link BUILDERS_PER_OPEN_SITE} puts on one site). Basis: observed on specjalna_forteca, a seat of
+ *  few men posted its gatherers, hunter, scout and farmer and kept no builder for the whole game. */
 export const CORE_BUILDERS = 2;
 
 /** The core of the open sites' `builderFloor` ({@link siteBuilderFloor}): none while no site is open. */

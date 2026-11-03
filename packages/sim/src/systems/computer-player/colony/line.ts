@@ -78,9 +78,9 @@ const FOOD_LINE_ID = 'food_simple';
 const WATER_ID = 'water';
 /** How long a hold may stand unchanged before the ship goes with what it has (authored). */
 const LEG_STALL_TICKS = minutesToTicks(2);
-/** How long a stop may load at all (authored): 40 units come aboard in four to six minutes from a store by
- *  the shore, and one seat's ship lay 19 minutes while hands fetched a good a unit at a time from far off
- *  (arabskie_wyspy_wolna_gra_mieszana). */
+/** How long a stop may load at all (authored): a full hold comes aboard in a few minutes from a store by the
+ *  shore, and a ship was seen lying far longer while hands fetched a good a unit at a time from far off
+ *  (observed on arabskie_wyspy_wolna_gra_mieszana). */
 const LEG_LOAD_TICKS = minutesToTicks(7);
 /** The shores near its base a seat weighs for its line's berth (authored). */
 const BERTH_CANDIDATES = 6;

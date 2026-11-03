@@ -70,8 +70,8 @@ export const LANDING_STRANDED_GRACE_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
 /** The share of its ships, in percent, a landing may lose before setting anyone ashore and still sail on. */
 export const LANDING_SHIP_LOSS_PCT = 50;
 /** The share of the men set ashore, in percent, a landing may lose before the survivors board the waiting
- *  ships and sail home. Authored: on arabskie_wyspy_wolna_gra_mieszana (seeds 7, 13) the waves that lost
- *  half their landed men lost nearly all the rest within a minute or two, to tower and shelter fire. */
+ *  ships and sail home. Authored: observed on arabskie_wyspy_wolna_gra_mieszana, the waves that lost half
+ *  their landed men lost nearly all the rest within a minute or two, to tower and shelter fire. */
 export const LANDING_RETREAT_LOSS_PCT = 50;
 /** The most the ships lie at the shore to take the landed men back; past it they sail home and the men
  *  fight on alone. */
@@ -81,9 +81,9 @@ export const LANDING_SHORE_STAY_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
 export const LANDING_REEMBARK_TICKS = 2 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 
 /** The least a landing outweighs what the seat believes defends the rival, whatever its posture's launch
- *  ratio. Authored: on arabskie_wyspy_wolna_gra_mieszana (seed 7) 68 men landed at parity with a rival's
- *  79 soldiers all fell in two and a half minutes for 28 of his, and 68 landed against a twelfth of their
- *  weight fell too, to his towers and the fire of his sheltering people: landed men cannot fall back. */
+ *  ratio. Authored: observed on arabskie_wyspy_wolna_gra_mieszana, a landing at parity with a rival's
+ *  soldiers all fell within minutes for far fewer of his, and one against a fraction of its weight fell
+ *  too, to his towers and the fire of his sheltering people: landed men cannot fall back. */
 export const LANDING_EDGE: Share = { num: 3, den: 2 };
 
 const PERCENT = 100;
@@ -123,9 +123,9 @@ export function freeShips(env: ShipEnv, home: number): Entity[] {
 /**
  * The shore points of a landing's ships ({@link shorePoints}): on the rival's land, nearest his headquarters,
  * outside the reach of every tower and shelter the seat believes stands there ({@link underFire}), so the
- * hulls waiting at the shore are not shot. Authored: on arabskie_wyspy_wolna_gra_mieszana (seed 7) four ships
- * moored six nodes from a rival's headquarters, its people shooting from inside, lost three hulls and all 61
- * men aboard before the last one moored.
+ * hulls waiting at the shore are not shot. Authored: observed on arabskie_wyspy_wolna_gra_mieszana, ships
+ * moored beside a rival's headquarters, its people shooting from inside, lost most hulls and every man
+ * aboard before the last one moored.
  */
 function landingShores(
   env: OperationEnv,
