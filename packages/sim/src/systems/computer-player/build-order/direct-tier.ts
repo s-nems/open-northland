@@ -4,10 +4,10 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { buildingTypeByContentId, countedTiers } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
-import { buildingEnabled } from '../../progression/index.js';
 import { homeStockOf } from '../colony/stock.js';
 import { MID_GAME_FROM_TICKS } from '../game-phase.js';
 import { militaryDeadlineTick } from '../military/deadline.js';
+import { enabledTiersAbove } from '../top-tier.js';
 import { goodsMadeBy, sourcedTiers } from './bill-sources.js';
 import type { BuildOrderEntry } from './entries.js';
 import { seatDefenceFirst } from './seat-order.js';
@@ -42,13 +42,7 @@ export function directTier(
   if (base?.upgradeTarget === undefined || base.kind === BUILDING_KIND.home) return base;
   const index = contentIndex(ctx.content);
   const allowed = countedTiers(ctx.content, base, entry.kind === 'place' ? entry.belowTier : undefined);
-  const tiers: number[] = [];
-  for (let tier: number | undefined = base.upgradeTarget; tier !== undefined; ) {
-    if (!allowed.has(tier) || tiers.includes(tier)) break;
-    if (!buildingEnabled(world, ctx, player, tribe, tier)) break;
-    tiers.push(tier);
-    tier = index.buildings.get(tier)?.upgradeTarget;
-  }
+  const tiers = enabledTiersAbove(world, ctx, player, tribe, base, allowed).map((t) => t.typeId);
   if (tiers.length === 0) return base;
   if (entry.kind === 'towerCoverage' && attacksComeEarly(world, ctx, player)) return base;
   const sourced = sourcedTiers(world, ctx, player, tiers, made);
