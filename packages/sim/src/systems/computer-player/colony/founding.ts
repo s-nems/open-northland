@@ -32,13 +32,13 @@ import { HERD_PAIR } from '../herd.js';
 import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { SCOUT_CATCH_RADIUS_NODES, type ScoutDanger, scoutBusy, scoutDanger } from '../scout/index.js';
 import { corridorSamples, signpostTargetAround } from '../scout/signpost-coverage.js';
-import { enabledTiersAbove, liftCommand, liftTarget } from '../top-tier.js';
+import { enabledTiersAbove, liftCommand, topCoveredTier } from '../top-tier.js';
 import { COLONY_SPOT_NODES } from './industry-read.js';
 import { isOverflowBuilding } from './overflow.js';
 import { colonyFamilies, standsOn } from './people.js';
 import { COLONY_OPEN_SITES, colonyPlan, farStep, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
-import { colonyFoodHeld, LAND_GOOD_IDS } from './provision.js';
+import { colonyFoodHeld, LAND_GOOD_IDS, storesHeld } from './provision.js';
 import { colonyBuildings, colonySpot, storeSupply, workshopSpot } from './spot.js';
 import { colonyStoreType, liftStore } from './store-tier.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
@@ -172,13 +172,20 @@ function nextUpgrade(env: ColonyEnv, read: FoundingRead, people: readonly Entity
   if (!people.some((e) => world.has(e, Female))) return [];
   if (colonyFoodHeld(env, read.buildings) < people.length) return [];
   const index = contentIndex(ctx.content);
+  const stored = storesHeld(env, read.buildings);
+  const held = (good: number): number => stored.get(good) ?? 0;
   const liftable = read.buildings.flatMap((building) => {
     const house = world.get(building, Building);
     const type = index.buildings.get(house.buildingType);
     if (type === undefined || type.kind === BUILDING_KIND.storage || !isBuilt(world, building)) return [];
     const home = type.kind === BUILDING_KIND.home;
+    // A home lifts only to a tier whose bill its stores hold: an upgrading home bears no child.
     const target = home
-      ? liftTarget(world, ctx, seat, building)
+      ? topCoveredTier(
+          enabledTiersAbove(world, ctx, seat, house.tribe, type),
+          (tier) => index.upgradeBillByTarget.get(type.typeId)?.get(tier.typeId),
+          held,
+        )
       : enabledTiersAbove(world, ctx, seat, house.tribe, type)[0];
     return target === undefined ? [] : [{ building, target, home }];
   });

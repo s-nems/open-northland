@@ -1,5 +1,5 @@
 import type { BuildingType } from '@open-northland/data';
-import { Building, Stockpile, UnderConstruction } from '../../components/index.js';
+import { Building, type GoodsLine, Stockpile, UnderConstruction } from '../../components/index.js';
 import type { PlayerCommand } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -66,6 +66,20 @@ export function holdsUpgradeBill(
   const bill = contentIndex(ctx.content).upgradeBillByTarget.get(from)?.get(target);
   const pile = world.tryGet(building, Stockpile)?.amounts;
   return bill !== undefined && bill.every((line) => (pile?.get(line.goodType) ?? 0) >= line.amount);
+}
+
+/** The highest of `tiers` whose `bill` the `held` units cover, else undefined. */
+export function topCoveredTier<Tier>(
+  tiers: readonly Tier[],
+  bill: (tier: Tier) => readonly GoodsLine[] | undefined,
+  held: (goodType: number) => number,
+): Tier | undefined {
+  for (let i = tiers.length - 1; i >= 0; i--) {
+    const tier = tiers[i];
+    if (tier !== undefined && bill(tier)?.every((line) => held(line.goodType) >= line.amount) === true)
+      return tier;
+  }
+  return undefined;
 }
 
 /** The command upgrading `building` straight to `target`. */

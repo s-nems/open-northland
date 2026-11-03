@@ -257,7 +257,7 @@ describe('a colony sails', () => {
     expect(homeBuildings(sim.world, ctx, SEAT).some((e) => away.includes(e))).toBe(false);
   });
 
-  it('raises its homes straight at the top tier the tribe has', () => {
+  it('raises its homes at the tier its stores pay for, and lifts them to the top tier as goods come', () => {
     const sim = colonyWorld();
     stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
     mooredShip(sim);
@@ -268,7 +268,10 @@ describe('a colony sails', () => {
         .map((e) => sim.world.get(e, Building).buildingType)
         .filter((type) => HOME_TYPES.includes(type));
     expect(stepUntil(sim, FOUND_DUE_TICKS + HOMES_DUE_TICKS, () => homes().length > 0)).toBe(true);
-    expect(homes().every((type) => type === HOME_TOP_TYPE)).toBe(true);
+    // The first home is due before the stores hold the top tier's whole bill.
+    expect(homes()).toEqual([HOME_TYPE]);
+    const topped = (): boolean => homes().every((type) => type === HOME_TOP_TYPE);
+    expect(stepUntil(sim, HOMES_DUE_TICKS, topped)).toBe(true);
   });
 
   it('raises a farm on the colony once the fishers do not meet its hunger', () => {

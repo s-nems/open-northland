@@ -7,18 +7,18 @@ import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { mayMarry } from '../../family/eligibility.js';
 import { familiesOf } from '../../family/households.js';
 import { seatHasSide } from '../build-order/seat-order.js';
-import { topEnabledTier } from '../top-tier.js';
+import { enabledTiersAbove, topCoveredTier } from '../top-tier.js';
 import { colonists } from './founding.js';
 import { type ChainStep, chainStepOf, nextIndustrySteps, type StepGround, stepsAhead } from './industry.js';
 import { colonyIndustries, roomFor } from './industry-read.js';
-import { colonyFed } from './provision.js';
+import { colonyFed, storesHeld } from './provision.js';
 import { towersLacking } from './towers.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
 /** The open sites a colony's builders work at once (authored): its hold pays for little more. */
 export const COLONY_OPEN_SITES = 2;
 
-/** The home chain's base tier: a colony raises its homes at the top tier enabled ({@link topEnabledTier}). */
+/** The home chain's base tier: a colony raises its homes at the top tier enabled whose bill its stores hold. */
 const HOME_ID = 'home_level_00';
 /** The family slots a colony keeps free ahead of its couples while home has no room to build (owner ruling:
  *  a roomy colony grows the people of a cramped seat): a home's worth. */
@@ -96,8 +96,8 @@ function homeStep(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity
   const base = buildingTypeByContentId(ctx.content, HOME_ID);
   const tribe = playerPlacementTribes(world, seat)?.[0];
   if (base === undefined || tribe === undefined) return [];
-  // Owner ruling: a colony home goes to the top level at once, since the line supplies its materials.
-  const type = topEnabledTier(world, ctx, seat, tribe, base);
+  const tiers = [base, ...enabledTiersAbove(world, ctx, seat, tribe, base)];
+  const top = tiers.at(-1) ?? base;
   const people = colonists(env);
   const women = people.filter((e) => world.has(e, Female));
   const wives = women.filter((e) => world.has(e, Marriage) && !world.has(e, Residence)).length;
@@ -107,10 +107,22 @@ function homeStep(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity
     homeless: wives + Math.min(brides, grooms),
     freeSlots: homeSlots(env, buildings).free,
     fed: colonyFed(env, buildings, people),
-    roomy: roomFor(env, colony, buildings, type),
+    roomy: roomFor(env, colony, buildings, top),
     cramped: seatHasSide(world, seat, 'noRoom'),
   });
-  return due ? [type.id] : [];
+  if (!due) return [];
+  // Owner ruling: a colony home goes to the top level at once, since the trader brings its materials. It goes
+  // to the top its stores cover: a tier whose bill never arrives stands a site for good, and a colony with no
+  // home bears no child; the home lifts as the goods come.
+  const bills = contentIndex(ctx.content).constructionBillByBuilding;
+  const held = storesHeld(env, buildings);
+  const type =
+    topCoveredTier(
+      tiers,
+      (t) => bills.get(t.typeId),
+      (good) => held.get(good) ?? 0,
+    ) ?? base;
+  return [type.id];
 }
 
 /** The buildings the colony's industries still hold, whatever the moment: what it keeps goods for though
