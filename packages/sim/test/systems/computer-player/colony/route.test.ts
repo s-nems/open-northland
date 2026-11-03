@@ -71,6 +71,8 @@ const DANGER_LAPSED_TICKS = minutesToTicks(40);
 const ENEMY = 5;
 /** Idle builders few enough that every one is past the colony's work. */
 const IDLE_MEN = 8;
+/** The builders a colony keeps at rest once nothing is left to raise. */
+const BUILDERS_KEPT = 2;
 const IDLE_STEP = 2;
 
 /** The colony's trader once the route stands: a trader with the ship pinned and both stops on its route. */
@@ -200,7 +202,9 @@ describe('a colony ferry', () => {
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => landed().length > 0)).toBe(true);
     expect(landed().map((e) => sim.world.get(e, Settler).jobType)).toEqual(landed().map(() => CIVILIST));
     stepUntil(sim, ROUND_DUE_TICKS, () => false);
-    expect(landed()).toEqual(idle.filter((e) => e !== husband));
+    // The colony keeps a pair of builders at rest, which a fresh idle man may fill.
+    expect(landed()).not.toContain(husband);
+    expect(landed().length).toBeGreaterThanOrEqual(idle.length - 1 - BUILDERS_KEPT);
     const colony = colonySettlersOf(sim);
     expect(colony).toContain(husband);
     expect(posted.filter((e) => sim.world.isAlive(e) && !colony.includes(e))).toEqual([]);

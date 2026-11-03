@@ -69,7 +69,7 @@ export function setTradeShip(world: World, ctx: MapContext, trader: Entity, ship
   releaseTradeShip(world, trader);
   // A seated carrier's cargo run books on the lines; it ends before the pin takes the hold over.
   for (const seat of vehiclePassengers(world.get(ship, Vehicle))) abandonCargoRun(world, seat.entity);
-  world.add(trader, TradeShip, { vehicle: ship, dockRetryAt: 0, failedDock: null, departing: false });
+  world.add(trader, TradeShip, { vehicle: ship, dockRetryAt: 0, failedDock: null, departure: null });
   world.mut(ship, Vehicle).hauler = trader;
   freeCommanderSeat(world, ship);
   if (!world.has(ship, VehicleStock)) return;

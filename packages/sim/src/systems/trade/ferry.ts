@@ -1,6 +1,7 @@
 import {
   Carrying,
   StandIn,
+  type TradeDeparture,
   TradeRoute,
   type TradeRouteView,
   TradeShip,
@@ -100,6 +101,7 @@ export function planCrossing(plan: PlannerContext, leg: SeaLeg, near: TraderHold
   if (stopContinent(world, ctx, terrain, stop) !== continent) return setOut(plan, hold, target, false, rules);
   if (shipLiesAwayFrom(world, ctx, terrain, e, ship, target)) return setOut(plan, hold, target, false, rules);
 
+  if (departureOf(world, e) === 'round') setDeparture(world, e, null);
   const action = departureHolds(plan, hold, rules, rules.decide(hold));
   switch (action.kind) {
     case 'wait':
@@ -134,11 +136,11 @@ export function planCrossing(plan: PlannerContext, leg: SeaLeg, near: TraderHold
       break;
   }
   if (!rules.setsOut(hold)) {
-    setDeparting(world, e, false);
+    setDeparture(world, e, null);
     return false;
   }
   // Done with this stop: the call to sail stands while the helpers' last trips end.
-  if (action.kind === 'next' && hold.helpersOnTrips) setDeparting(world, e, true);
+  if (action.kind === 'next' && hold.helpersOnTrips) setDeparture(world, e, 'onward');
   return setOut(plan, hold, mooringTargetOfStop(world, ctx, terrain, ship, other), true, rules);
 }
 
@@ -152,20 +154,24 @@ function departureHolds(
   rules: StopRules,
   decided: StopAction,
 ): StopAction {
-  if (decided.kind !== 'load' || !isDeparting(plan.world, plan.entity)) return decided;
+  if (decided.kind !== 'load' || departureOf(plan.world, plan.entity) !== 'onward') return decided;
   if (rules.setsOut(hold)) return NEXT;
-  setDeparting(plan.world, plan.entity, false);
+  setDeparture(plan.world, plan.entity, null);
   return decided;
 }
 
 /** Whether `trader` has called its pinned ship to sail and waits only for its helpers' trips to end. */
 export function isDeparting(world: World, trader: Entity): boolean {
-  return world.tryGet(trader, TradeShip)?.departing === true;
+  return departureOf(world, trader) !== null;
 }
 
-function setDeparting(world: World, trader: Entity, departing: boolean): void {
-  if (world.tryGet(trader, TradeShip)?.departing === !departing)
-    world.mut(trader, TradeShip).departing = departing;
+function departureOf(world: World, trader: Entity): TradeDeparture | null {
+  return world.tryGet(trader, TradeShip)?.departure ?? null;
+}
+
+function setDeparture(world: World, trader: Entity, departure: TradeDeparture | null): void {
+  if (world.has(trader, TradeShip) && departureOf(world, trader) !== departure)
+    world.mut(trader, TradeShip).departure = departure;
 }
 
 /** The near good a lift into the ship moves next, with room there past a helper's booking: `first` while
@@ -273,10 +279,17 @@ function setOut(
   if (hold.helpersOnTrips) {
     // A ship lying away from its stop is sailed round first: its helpers' trips end rather than load it
     // unit by unit at the wrong landing.
-    if (!flips) setDeparting(plan.world, plan.entity, true);
+    if (!flips) setDeparture(plan.world, plan.entity, 'round');
     return rules.wait(hold.near);
   }
   return goAboard(plan, hold, flips, rules);
+}
+
+/** A trader that cannot board waits ashore, and lets go a call to sail round, so its helpers work the ship
+ *  where it lies. */
+function stayAshore(plan: PlannerContext, near: TraderHold, rules: WaitRule): boolean {
+  if (departureOf(plan.world, plan.entity) === 'round') setDeparture(plan.world, plan.entity, null);
+  return rules.wait(near);
 }
 
 /**
@@ -287,13 +300,14 @@ function setOut(
 function goAboard(plan: PlannerContext, hold: FerryHold, flips: boolean, rules: WaitRule): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const { near, ship } = hold;
-  if (near.cart !== null && !world.get(ship, Vehicle).vehicles.includes(null)) return rules.wait(near);
+  if (near.cart !== null && !world.get(ship, Vehicle).vehicles.includes(null))
+    return stayAshore(plan, near, rules);
   if (near.cart === null && near.load > 0) {
     const stow = stowableGood(hold);
     if (stow !== undefined) return liftAtShip(plan, hold, stow, 'stow', rules);
   }
   const door = boardingNode(world, ctx, terrain, ship);
-  if (door === null || failedToReachDoor(plan, door)) return rules.wait(near);
+  if (door === null || failedToReachDoor(plan, door)) return stayAshore(plan, near, rules);
   if (cartStands(world, near) && !cartStandsAtShip(world, near, terrain, door)) return fetchHaulingCart(plan);
   atOrWalk(world, e, here, door, () => {
     if (flips) world.mut(e, TradeRoute).current = 1 - world.get(e, TradeRoute).current;
