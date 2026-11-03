@@ -510,13 +510,11 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   const pressTradeShip = (trader: number, event: MouseEvent): PickPress => {
     const ship = ownShipAt(deps.toWorld(event.clientX, event.clientY));
     if (ship === null) return 'missed';
-    deps
-      .vehicleOrders()
-      .issueShipPin(
-        { trader, ship, unpins: false },
-        () => deps.cue?.('confirm'),
-        () => deps.cue?.('fail'),
-      );
+    deps.vehicleOrders().issueShipPin(
+      { trader, ship, unpins: false },
+      () => deps.cue?.('confirm'),
+      () => deps.cue?.('fail'),
+    );
     return 'pending';
   };
 
