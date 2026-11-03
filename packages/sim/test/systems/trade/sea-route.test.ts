@@ -45,6 +45,7 @@ import {
   cargoHandHasWork,
   consumeVehicleGood,
   stockVehicleGoods,
+  vehicleLineCap,
 } from '../../../src/systems/vehicles/stock.js';
 import { TEST_MANIFEST, testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
@@ -436,6 +437,27 @@ describe('a pinned ship on a route between two islands', () => {
 
     expect(stockOf(sim, home, PLANK)).toBeGreaterThan(0);
     expect(woodBack).toBe(0);
+  });
+
+  it('unloads the cart first when it lands at a full ship whose goods sort before the cart', () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[PLANK, LOAD]]);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const { trader, ship, cart } = crossing(sim);
+    const type = sim.content.vehicles.find((row) => row.typeId === SHIP_SMALL);
+    if (type === undefined || cart === null) throw new Error('fixture lacks the small ship or the cart');
+    const full = vehicleLineCap(type);
+    stockVehicleGoods(sim.world, ship, sim.content, WOOD, full);
+    attach(sim, trader, west);
+    attach(sim, trader, east);
+    mark(sim, trader, east, WOOD);
+    mark(sim, trader, east, PLANK);
+
+    runUntil(sim, LONG_TICKS, () => stockOf(sim, east, WOOD) === full && stockOf(sim, east, PLANK) === LOAD);
+
+    expect(stockOf(sim, east, WOOD)).toBe(full);
+    expect(stockOf(sim, east, PLANK)).toBe(LOAD);
+    expectSound(sim);
   });
 
   it('crosses on foot with one unit in the hands a trip, the rest in the ship', () => {

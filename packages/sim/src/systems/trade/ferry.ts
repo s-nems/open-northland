@@ -119,6 +119,12 @@ export function planCrossing(plan: PlannerContext, leg: SeaLeg, near: TraderHold
       // A cart full of goods for the other stop makes room first, a unit a lift.
       const stow = stowableGood(hold);
       if (stow !== undefined) return liftAtShip(plan, hold, stow, 'stow', rules);
+      // A full ship and a full cart: what this stop takes out of the cart goes first, freeing room.
+      const inCart = rules.decide({
+        ...hold,
+        entries: hold.entries.filter(([good]) => near.amount(good) > 0),
+      });
+      if (inCart.kind === 'unload' && near.amount(inCart.good) > 0) return rules.work(near, inCart);
       break;
     }
     case 'next':
