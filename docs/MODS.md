@@ -49,6 +49,23 @@ The `typeId` must be one the rest of the content does not use. The original's id
 (5, 6) name animal species, which the wildlife join owns, so a people takes a free id above them
 (42 is the first after the shipped content); a flagged row on an animal species is rejected at load.
 
+Two packs may add a people under the same identity. The pack that merges later - the one whose
+archive id sorts greater, the same tie-breaker the file overlay uses, so the outcome stays
+independent of install order - then re-keys its people instead of overwriting or failing: its
+`civilization` row takes the first free `chinese-2`-style slug and, when its `typeId` is taken too,
+the first id above every `tribes`, `animals` and `weapons` row. Every tribe-bound row of that pack
+follows the move - `weapons`, `personalNames`, the house-art lanes, the `sounds` voice tables,
+`humanPalettes.jobChanges`, the `buildings` variants and the row's own `unitVariants` weapon refs,
+plus row ids the pack derived from its slug (`chinese-male`, `chinese_fist`). The fallback keys on
+the data, not on the flag alone: it also fires when the pack's rows kept an authored tribe id their
+edited tribe row no longer names - a slug-derived row id still ties them to the people - and when a
+pack brings a name pool onto a `(tribe, sex)` pair another pool already holds, which catches a
+flagless row too, since pools cannot override through a different id. Rows without the flag that
+bring no such clash keep the override semantics: they patch the identity they name, and a row -
+flagged or not - naming an identity the base itself carries is that base people coming back and
+overrides in place. Map scripts spawn tribes by absolute
+id and are not rewritten.
+
 A playable people needs more than its rules row, because the settlers draw and arm per tribe while
 the buildings draw per `(tribe, typeId)`:
 
