@@ -131,6 +131,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // most once per settler per tick, and only by a rung whose answer it changes, which each rung does after
   // its own cheap refusals - the presence sweep behind it is the pass's one expensive read.
   const alert = pass.alert.of(e);
+  dropEmptyHandedShipRun(world, e, load);
   if (planBreak(pass, plan, settler, load, hx, hy, alert)) {
     // Whatever took the carrier off its trade parks its hauling cart where it stands; the rung below
     // takes the cart up again once the trade is back on. A meal from its own hands is eaten on the spot
@@ -142,6 +143,21 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // free; a hold that no longer stands sets the cart down here, whatever the carrier does next.
   if (planHaulingCart(plan, load !== undefined && load.amount > 0)) return;
   planEconomy(plan, pass, settler, load, hx, hy, alert);
+}
+
+/** A pinned ship's helper with empty hands holds no unit of its run, so a need or an order taking it
+ *  gives the run back rather than keep the trader waiting; the helper rung books afresh if it still
+ *  works the ship. A loaded helper keeps its booking to finish the trip. Other cargo hands keep theirs. */
+function dropEmptyHandedShipRun(
+  world: World,
+  e: Entity,
+  load: { goodType: number; amount: number } | undefined,
+): void {
+  if (load !== undefined && load.amount > 0) return;
+  const ship = world.tryGet(e, Rider)?.vehicle;
+  if (ship === undefined) return;
+  const trader = pinnedTraderOf(world, ship);
+  if (trader !== null && trader !== e) abandonCargoRun(world, e);
 }
 
 /** A settler eating a unit it carries, the one break that spends what is in its hands. */

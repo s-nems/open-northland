@@ -5,6 +5,7 @@ import {
   Building,
   CargoRun,
   Carrying,
+  CurrentAtomic,
   MissionObjectId,
   MoveGoal,
   Owner,
@@ -19,6 +20,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
+  adminCommand,
   checkInvariants,
   fx,
   halfCellMapFromCells,
@@ -78,6 +80,10 @@ const LOAD = 20;
 /** Few enough that the helpers land the last ones while the trader has set out. */
 const SMALL_LOAD = 6;
 const UP_TO = 9;
+/** The fixture's `food_simple`, the meal a hungry helper walks to the warehouse for. */
+const FOOD = 3;
+/** A hunger the needs rung answers before any work. */
+const STARVING_PCT = 90;
 /** Goods each stop sends the other, past one handcart and short of a small ship. */
 const BOTH_WAYS_LOAD = 40;
 const TICK_STEP = 5;
@@ -431,6 +437,31 @@ describe('helpers at work', () => {
 
     expect(loadRuns).toBeGreaterThan(0);
     expect(intoFullShip).toBe(0);
+  });
+
+  it('gives a run back when its helper turns to a meal, so the trader does not wait on it', () => {
+    const sim = newSim();
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: true });
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [
+      [WOOD, LOAD],
+      [FOOD, LOAD],
+    ]);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const { trader, ship, carriers } = crew(sim, 1);
+    route(sim, trader, west, east);
+    const carrier = carriers[0] as Entity;
+    const walkingToLoad = (): boolean =>
+      sim.world.tryGet(carrier, CargoRun)?.direction === 'load' && sim.world.has(carrier, MoveGoal);
+    for (let elapsed = 0; elapsed < FIRST_TRIP_TICKS && !walkingToLoad(); elapsed++) sim.step();
+    expect(walkingToLoad()).toBe(true);
+
+    sim.enqueue(adminCommand({ kind: 'debugSetNeeds', target: carrier, hunger: STARVING_PCT }));
+    const eating = (): boolean => sim.world.tryGet(carrier, CurrentAtomic)?.effect.kind === 'eat';
+    for (let elapsed = 0; elapsed < FIRST_TRIP_TICKS && !eating(); elapsed++) sim.step();
+
+    expect(eating()).toBe(true);
+    expect(sim.world.has(carrier, CargoRun)).toBe(false);
+    expect(heldBy(sim, trader, ship)?.helpersOnTrips).toBe(false);
   });
 
   it('gives the booking back when a helper dies mid trip', () => {
