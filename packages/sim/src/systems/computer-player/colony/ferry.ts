@@ -3,9 +3,11 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { colonyLands, colonySettlersOn, homeSettlers } from '../../ai-shared/home-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { passengerJobAllowed } from '../../vehicles/crew.js';
+import { type Share, shareOf } from '../difficulty.js';
 import { minutesToTicks } from '../game-phase.js';
 import { freeShips, LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../military/operations/landing.js';
 import { nodeOfEntity } from '../military/operations/raid-target.js';
@@ -105,6 +107,23 @@ function forgetListed(env: ColonyEnv, colony: ColonyView, gone: readonly Entity[
   live.garrison = live.garrison.filter(stays);
 }
 
+/** The share of home's men the seat's colonies may hold in hands the ferry brings (authored: about what
+ *  the colony line delivered). Home's men are its army and its births, so past this a colony waits for its
+ *  own sons. */
+const COLONY_MEN_SHARE: Share = { num: 1, den: 4 };
+
+/** How many more hands the seat's colonies may take: {@link COLONY_MEN_SHARE} of home's men, less the men
+ *  its colonies hold. */
+function colonyMenRoom(env: ColonyEnv): number {
+  const { world, ctx, seat } = env;
+  const man = (e: Entity): boolean => !world.has(e, Female) && isAdultSettler(world, e);
+  const home = homeSettlers(world, ctx, seat).filter(man).length;
+  let away = 0;
+  for (const land of colonyLands(world, seat))
+    away += colonySettlersOn(world, ctx, seat, land).filter((e) => isAllocatableMan(world, ctx, e)).length;
+  return shareOf(home, COLONY_MEN_SHARE) - away;
+}
+
 /** Who home owes the colony now, in `seats`: the craftsmen no colonist can stand in for, the garrison and the
  *  hands it lacks; listed as the colony's, with the lessons that make the next craftsman. */
 function outward(
@@ -118,7 +137,9 @@ function outward(
   const men = people.filter((e) => isAllocatableMan(world, ctx, e)).length;
   const women = people.filter((e) => world.has(e, Female) && isAdultSettler(world, e)).length;
   const wanted = handsWanted(env, colony);
-  const lacking = { men: wanted.men - men, women: wanted.women - women };
+  const room = colonyMenRoom(env);
+  // With no room for men no women sail either: a wife takes her husband along, and home's couples raise its sons.
+  const lacking = { men: Math.min(wanted.men - men, room), women: room > 0 ? wanted.women - women : 0 };
   const trades = tradesmenFor(env, people, home, seats);
   const tradesmen = [...trades.sailing];
   const garrison = garrisonOwed(env, colony).slice(0, Math.max(0, seats - tradesmen.length));
