@@ -60,9 +60,9 @@ const NEXT: NextStop = { kind: 'next' };
 const WAIT: TradeAction = { kind: 'wait' };
 
 /** The stop the trader loads at, with what choosing a source there reads. `exclude` is the other stop's
- *  house, which a settlement never loads out of. `countsSettlement` and `otherCountsSettlement` say whether this stop and
- *  the other one stand for their settlements in this decision; `members` holds the settlement houses
- *  read so far, by anchor and good, so one decision walks each settlement once per good. */
+ *  house, which a settlement never loads out of. `countsSettlement` and `otherCountsSettlement` say
+ *  whether this stop and the other one stand for their settlements in this decision; `members` holds the
+ *  settlement houses read so far, by anchor and good, so one decision walks each settlement once per good. */
 interface LoadScope {
   readonly world: World;
   readonly ctx: SystemContext;

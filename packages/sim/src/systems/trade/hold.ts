@@ -74,8 +74,9 @@ export const NO_HELPERS: HelperFlight = { toHouse: () => 0, toLift: () => 0 };
 
 /**
  * The route's goods on a sea crossing, in the pinned ship and the near hold together: the decisions read
- * one hold, the ship's share as booked by its helpers' runs, while units move through the near hold alone (`loadTraderHold`, `unloadTraderHold`). A good rides only if both can take it, and a
- * ship's good the near hold refuses stays out of `entries`, since no lift could bring it ashore.
+ * one hold, the ship's share as booked by its helpers' runs, while units move through the near hold alone
+ * (`loadTraderHold`, `unloadTraderHold`). A good rides only if both can take it, and a ship's good the
+ * near hold refuses stays out of `entries`, since no lift could bring it ashore.
  */
 export interface FerryHold extends TraderHold {
   readonly ship: Entity;
