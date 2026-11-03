@@ -86,6 +86,23 @@ function templeContent(): ContentSet {
   });
 }
 
+/** The mushrooms an armoury's bill takes in {@link mushroomArmoryContent}. */
+const ARMORY_MUSHROOMS = 2;
+
+/** {@link overflowContent} with an armoury whose bill takes mushrooms, a good neither settlement has. */
+function mushroomArmoryContent(): ContentSet {
+  const base = overflowContent();
+  return parseContentSet({
+    ...base,
+    goods: [...base.goods, { typeId: MUSHROOM, id: 'mushroom', weight: 1 }],
+    buildings: base.buildings.map((b) =>
+      b.typeId === ARMORY_TYPE
+        ? { ...b, construction: [...b.construction, { goodType: MUSHROOM, amount: ARMORY_MUSHROOMS }] }
+        : b,
+    ),
+  });
+}
+
 function placeAtHome(sim: Simulation, buildingType: number, at: { x: number; y: number }): void {
   sim.enqueueSetup({
     kind: 'placeBuilding',
@@ -99,8 +116,8 @@ function placeAtHome(sim: Simulation, buildingType: number, at: { x: number; y: 
 }
 
 /** A seat with room at home and a barracks, whose colony runs and is fed; with `oil`, home boils holy oil. */
-function runningWorld(oil = false): Simulation {
-  const sim = colonyWorld(7, oil ? templeContent() : overflowContent());
+function runningWorld(oil = false, content = oil ? templeContent() : overflowContent()): Simulation {
+  const sim = colonyWorld(7, content);
   placeAtHome(sim, BARRACKS_TYPE, BARRACKS_AT);
   if (oil) placeAtHome(sim, DRUID_HUT_TYPE, DRUID_HUT_AT);
   stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
@@ -143,6 +160,17 @@ describe('a colony with wood and room', () => {
     ).toBe(true);
     const armed = () => seatArmsStock(sim.world, ctxOf(sim), SEAT)?.units(SPEAR) ?? 0;
     expect(stepUntil(sim, HOME_DUE_TICKS, () => armed() > 0)).toBe(true);
+  });
+
+  it('opens its armoury site only once its stores hold the bill', () => {
+    const sim = runningWorld(false, mushroomArmoryContent());
+    expect(stepUntil(sim, PLANNED_DUE_TICKS, () => colonyArmory(sim) !== undefined)).toBe(false);
+    const store = colonyBuildingsOf(sim).find(
+      (e) => sim.world.get(e, Building).buildingType === STOCK_TOP_TYPE,
+    );
+    if (store === undefined) throw new Error('setup: no colony store');
+    sim.world.mut(store, Stockpile).amounts.set(MUSHROOM, ARMORY_MUSHROOMS);
+    expect(stepUntil(sim, PLANNED_DUE_TICKS, () => colonyArmory(sim) !== undefined)).toBe(true);
   });
 
   it("has its trader bring the holy oil its armourers' temple takes, home boiling it", () => {
