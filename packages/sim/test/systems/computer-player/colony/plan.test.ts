@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { noteSettlerProgress, Settler, SettlerProgress } from '../../../../src/components/index.js';
 import {
-  colonyHomes,
   type HomesRead,
+  homeStepDue,
   homeTeaches,
   type LadderRead,
   nextFoodStep,
@@ -30,29 +30,29 @@ import {
 
 const SCHOOL_OFF = 8;
 const FARM_OFF = 6;
-const SMALL_ROOM = 300;
-const FAIR_ROOM = 1200;
-const LOTS_OF_ROOM = 2400;
 
 const read = (over: Partial<HomesRead>): HomesRead => ({
-  couples: 2,
+  homeless: 1,
+  freeSlots: 0,
   fed: true,
-  room: SMALL_ROOM,
-  people: 14,
+  roomy: true,
+  cramped: false,
   ...over,
 });
 
 describe('a colony home', () => {
-  it('waits for a couple and for food in store', () => {
-    expect(colonyHomes(read({ couples: 0 }))).toBe(0);
-    expect(colonyHomes(read({ fed: false }))).toBe(0);
+  it('rises for each family it cannot house, with no fixed number, while the colony is fed and roomy', () => {
+    expect(homeStepDue(read({}))).toBe(true);
+    expect(homeStepDue(read({ homeless: 9, freeSlots: 8 }))).toBe(true);
+    expect(homeStepDue(read({ freeSlots: 1 }))).toBe(false);
+    expect(homeStepDue(read({ fed: false }))).toBe(false);
+    expect(homeStepDue(read({ roomy: false }))).toBe(false);
   });
 
-  it('runs to two by the room on the land, and past that only for a big colony with room to spare', () => {
-    expect(colonyHomes(read({}))).toBe(1);
-    expect(colonyHomes(read({ room: FAIR_ROOM }))).toBe(2);
-    expect(colonyHomes(read({ room: LOTS_OF_ROOM }))).toBe(2);
-    expect(colonyHomes(read({ room: LOTS_OF_ROOM, people: 30 }))).toBe(3);
+  it('stands a home ahead of its families while home has no room to build', () => {
+    expect(homeStepDue(read({ homeless: 0 }))).toBe(false);
+    expect(homeStepDue(read({ homeless: 0, cramped: true }))).toBe(true);
+    expect(homeStepDue(read({ homeless: 0, freeSlots: 1, cramped: true }))).toBe(false);
   });
 });
 

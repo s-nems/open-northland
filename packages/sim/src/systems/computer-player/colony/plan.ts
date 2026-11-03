@@ -1,10 +1,11 @@
-import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
+import { BUILDING_KIND, type BuildingType, buildingFootprintFor } from '@open-northland/data';
 import {
   Building,
   Female,
   Marriage,
   mapBriefOf,
   playerPlacementTribes,
+  Residence,
   Settler,
 } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
@@ -15,13 +16,17 @@ import { countedTiers } from '../../ai-shared/content-lookup.js';
 import { homeBuildings } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
+import { mayMarry } from '../../family/eligibility.js';
+import { familiesOf } from '../../family/households.js';
 import { buildingEnabled, jobEnabled, needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isCarrierJob } from '../../stores/index.js';
+import { seatHasSide } from '../build-order/seat-order.js';
 import { minutesToTicks } from '../game-phase.js';
 import { technologyTable } from '../technology/requirements.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { colonists, colonyOrigin } from './founding.js';
-import { colonyFoodHeld, landHolds, workshopGoods } from './provision.js';
+import { homeSupply } from './line.js';
+import { colonyFed, colonyFoodHeld, landHolds, workshopGoods } from './provision.js';
 import { siteRoom } from './survey.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
@@ -30,7 +35,8 @@ export const COLONY_OPEN_SITES = 2;
 /** How far from its anchor a building's spot may lie, in Manhattan nodes (authored: the walk range). */
 export const COLONY_SPOT_NODES = 50;
 
-/** Owner ruling: what a colony builds with, made in its own workshop or shipped, decided per material. */
+/** Owner ruling: the materials a colony makes in its own workshop or ships, decided per material; what it
+ *  makes past its bills sails home. */
 const MATERIAL_GOOD_IDS: readonly string[] = ['brick', 'pillar', 'tile', 'ornament'];
 
 /** The units of a material the colony's plan must call for before its workshop earns its bill and its man
@@ -40,35 +46,33 @@ const MATERIAL_WORKSHOP_FROM_UNITS = 3;
 
 /** The home a colony raises. */
 const HOME_ID = 'home_level_00';
-/** Free nodes in the site's block past which a colony has room for a second home, and with
- *  {@link BIG_COLONY_PEOPLE} people for a third (authored from the brief's blocks on
- *  arabskie_wyspy_wolna_gra_mieszana: they hold 300 to 2600). */
-const ROOM_FOR_TWO_HOMES_NODES = 1000;
-const ROOM_FOR_THREE_HOMES_NODES = 2000;
-const BIG_COLONY_PEOPLE = 25;
-const ONE_HOME = 1;
-const TWO_HOMES = 2;
-const THREE_HOMES = 3;
+/** The nodes round its footprint a building takes for its door, its paths and its neighbours' spacing, per
+ *  footprint node (authored, an approximation): the room a site's block holds at the map's scan is spent at
+ *  this rate, so a block of 300 free nodes takes about four level-0 homes and one of 2600 about forty. */
+const ROOM_PER_FOOTPRINT_NODE = 3;
+/** The family slots a colony keeps free ahead of its couples while home has no room to build (owner ruling:
+ *  a roomy colony grows the people of a cramped seat): a home's worth. */
+const SLOTS_AHEAD_WHEN_CRAMPED = 1;
 
-/** What sizes a colony's homes. */
+/** What a colony's next home waits for. */
 export interface HomesRead {
-  /** The couples living there. */
-  readonly couples: number;
-  /** Whether its food holds one meal a mouth. */
+  /** The families with no home there: wives, and the brides its grooms can marry. */
+  readonly homeless: number;
+  /** The family slots free in its homes, sites included. */
+  readonly freeSlots: number;
+  /** Whether its people eat well ({@link colonyFed}). */
   readonly fed: boolean;
-  /** Free nodes in its site's block. */
-  readonly room: number;
-  /** The people living there. */
-  readonly people: number;
+  /** Whether its block has room left for another home. */
+  readonly roomy: boolean;
+  /** Whether home has no room left to build. */
+  readonly cramped: boolean;
 }
 
-/** Owner ruling: homes only serve growth, and a colony lacking everything has nothing to grow: none while
- *  it has no couple to house or no food in store, then one or two by the island's size, more only with a
- *  lot of room and a big planned colony. People come by ship, not by homes. */
-export function colonyHomes(read: HomesRead): number {
-  if (read.couples === 0 || !read.fed) return 0;
-  if (read.room >= ROOM_FOR_THREE_HOMES_NODES && read.people >= BIG_COLONY_PEOPLE) return THREE_HOMES;
-  return read.room >= ROOM_FOR_TWO_HOMES_NODES ? TWO_HOMES : ONE_HOME;
+/** Owner ruling: a colony with room builds homes as it needs, no fixed number: one more while it is fed and
+ *  roomy and its homeless families, with a home's slots ahead on a cramped seat, outnumber its free slots. */
+export function homeStepDue(read: HomesRead): boolean {
+  if (!read.fed || !read.roomy) return false;
+  return read.homeless + (read.cramped ? SLOTS_AHEAD_WHEN_CRAMPED : 0) > read.freeSlots;
 }
 
 /** Fishers first: what they and the hunters bring may meet the hunger, so the ladder waits this long after
@@ -241,9 +245,11 @@ export function billsOf(env: ColonyEnv, plan: readonly string[]): Map<number, nu
 }
 
 /**
- * Owner ruling: make a material or ship it, per material. The workshop goes up when `bills` call for
- * {@link MATERIAL_WORKSHOP_FROM_UNITS} of what it makes, the colony's land or workshops supply all it works
- * up, the tribe has it unlocked and its trade has a man in reach. Everything else sails.
+ * Owner ruling: a colony with room raises the workshops it needs, new goods for home first of all, and makes
+ * or ships each material. A workshop goes up when its good is called for, by `bills` for
+ * {@link MATERIAL_WORKSHOP_FROM_UNITS} or by home's stock under its comfort line, the colony's land or
+ * workshops supply all it works up, its block has room, the tribe has it unlocked and its trade a man in reach.
+ * Everything else sails.
  */
 function materialWorkshops(
   env: ColonyEnv,
@@ -256,16 +262,21 @@ function materialWorkshops(
   const from = colonyOrigin(env, colony, buildings);
   if (from === null) return [];
   const made = workshopGoods(env, buildings);
+  let supply: ReturnType<typeof homeSupply> | null = null;
+  const called = (good: number): boolean => {
+    if ((bills.get(good) ?? 0) >= MATERIAL_WORKSHOP_FROM_UNITS) return true;
+    supply ??= homeSupply(env);
+    return supply.lackToComfort(good) > 0;
+  };
   const workshops: string[] = [];
   for (const id of MATERIAL_GOOD_IDS) {
     const good = index.goodTypeBySlug.get(id);
-    if (good === undefined || (bills.get(good) ?? 0) < MATERIAL_WORKSHOP_FROM_UNITS) continue;
-    const maker = makerOf(env, good);
-    if (maker === undefined || workshops.includes(maker.id) || chainCount(env, buildings, maker) > 0)
-      continue;
+    const maker = good === undefined ? undefined : makerOf(env, good);
+    if (good === undefined || maker === undefined || workshops.includes(maker.id)) continue;
+    if (chainCount(env, buildings, maker) > 0 || !unlocked(env, maker) || !called(good)) continue;
     const inputs = index.mergedRecipeByBuilding.get(maker.typeId)?.inputs ?? [];
     const fed = inputs.every((input) => made.has(input.goodType) || landHolds(env, from, input.goodType));
-    if (fed && unlocked(env, maker) && crewInReach(env, maker)) workshops.push(maker.id);
+    if (fed && roomFor(env, colony, buildings, maker) && crewInReach(env, maker)) workshops.push(maker.id);
   }
   return workshops;
 }
@@ -343,20 +354,66 @@ function ladderRead(env: ColonyEnv, colony: ColonyView, buildings: readonly Enti
   };
 }
 
-/** The homes the colony still lacks ({@link colonyHomes}), each a row of the plan. */
-function homesLacking(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity[]): string[] {
+/** The nodes of the colony's block its buildings and `extra` would take ({@link ROOM_PER_FOOTPRINT_NODE}). */
+function roomTaken(env: ColonyEnv, buildings: readonly Entity[], extra: BuildingType): number {
+  const { world, ctx, seat } = env;
+  const index = contentIndex(ctx.content);
+  const tribe = playerPlacementTribes(world, seat)?.[0];
+  const nodes = (type: BuildingType | undefined): number =>
+    type === undefined ? 0 : (buildingFootprintFor(type, tribe)?.blocked.length ?? 0);
+  let taken = nodes(extra);
+  for (const e of buildings) taken += nodes(index.buildings.get(world.get(e, Building).buildingType));
+  return ROOM_PER_FOOTPRINT_NODE * taken;
+}
+
+/** Whether the colony's block still has room for `type` beside what stands there. */
+function roomFor(
+  env: ColonyEnv,
+  colony: ColonyView,
+  buildings: readonly Entity[],
+  type: BuildingType,
+): boolean {
+  return roomTaken(env, buildings, type) <= siteRoom(env.world, colony);
+}
+
+/** The family slots of the colony's homes, sites included, and those families fill. */
+export function homeSlots(
+  env: ColonyEnv,
+  buildings: readonly Entity[],
+): { readonly slots: number; readonly free: number } {
   const { world, ctx } = env;
-  const home = contentIndex(ctx.content).buildingTypeBySlug.get(HOME_ID);
-  const type = home === undefined ? undefined : contentIndex(ctx.content).buildings.get(home);
+  const index = contentIndex(ctx.content);
+  let slots = 0;
+  let free = 0;
+  for (const e of buildings) {
+    const type = index.buildings.get(world.get(e, Building).buildingType);
+    if (type?.kind !== BUILDING_KIND.home) continue;
+    slots += type.homeSize;
+    free += type.homeSize - (isBuilt(world, e) ? familiesOf(world, e).length : 0);
+  }
+  return { slots, free };
+}
+
+/** The home the colony raises next, if one is due ({@link homeStepDue}). */
+function homeStep(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity[]): string[] {
+  const { world, ctx, seat } = env;
+  const index = contentIndex(ctx.content);
+  const home = index.buildingTypeBySlug.get(HOME_ID);
+  const type = home === undefined ? undefined : index.buildings.get(home);
   if (type === undefined) return [];
   const people = colonists(env);
-  const wanted = colonyHomes({
-    couples: people.filter((e) => world.has(e, Female) && world.has(e, Marriage)).length,
-    fed: colonyFoodHeld(env, buildings) >= people.length,
-    room: siteRoom(world, colony),
-    people: people.length,
+  const women = people.filter((e) => world.has(e, Female));
+  const wives = women.filter((e) => world.has(e, Marriage) && !world.has(e, Residence)).length;
+  const brides = women.filter((e) => mayMarry(world, ctx.content, e)).length;
+  const grooms = people.filter((e) => !world.has(e, Female) && mayMarry(world, ctx.content, e)).length;
+  const due = homeStepDue({
+    homeless: wives + Math.min(brides, grooms),
+    freeSlots: homeSlots(env, buildings).free,
+    fed: colonyFed(env, buildings, people),
+    roomy: roomFor(env, colony, buildings, type),
+    cramped: seatHasSide(world, seat, 'noRoom'),
   });
-  return new Array<string>(Math.max(0, wanted - chainCount(env, buildings, type))).fill(HOME_ID);
+  return due ? [HOME_ID] : [];
 }
 
 /** The buildings the colony's ladders still hold for its ground, whatever the moment: what it keeps goods
@@ -382,7 +439,7 @@ export function colonyPlan(
   const ladder = ladderRead(env, colony, buildings);
   const food = ladder === null ? null : nextFoodStep(ladder);
   const ahead = ladder === null ? [] : stepsAhead(ladder).map((step) => step.building);
-  const homes = homesLacking(env, colony, buildings);
+  const homes = homeStep(env, colony, buildings);
   const bills = billsOf(env, [...ahead, ...homes]);
   return [...(food === null ? [] : [food]), ...homes, ...materialWorkshops(env, colony, buildings, bills)];
 }
