@@ -1,11 +1,13 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import { Building, Position, playerPlacementTribes } from '../../components/index.js';
 import type { PlayerCommand } from '../../core/commands/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { forEachRingNode, hexDistanceBetween, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../ai-shared/cadence.js';
-import { homeBuildings, homeSettlers } from '../ai-shared/home-roster.js';
+import { colonyBuildingsOn, homeBuildings, homeSettlers, liveColonyLands } from '../ai-shared/home-roster.js';
 import { isBuilt } from '../ai-shared/seat-roster.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/blocked.js';
@@ -96,49 +98,107 @@ export interface RoadBuildPlan {
   readonly commands: PlayerCommand[];
 }
 
+/** A settlement the seat paves on its own: its hub, the land it stands on and the built buildings it links. */
+interface RoadHub {
+  readonly hub: Entity;
+  readonly land: number;
+  readonly linked: readonly Entity[];
+}
+
+/** The land node (hx, hy) lies on. */
+function landAt(terrain: TerrainGraph, hx: number, hy: number): number {
+  return terrain.componentOf(terrain.nodeAtClamped(hx, hy));
+}
+
+/** The seat's road hubs: home round its base, then each live colony round its first built store (owner
+ *  ruling: once home lays roads, its colonies do too). */
+function roadHubs(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  base: Entity,
+): RoadHub[] {
+  const builtAll = (list: readonly Entity[], hub: Entity): Entity[] =>
+    list.filter((e) => e !== hub && isBuilt(world, e));
+  const baseAt = nodeOfPosition(world.get(base, Position).x, world.get(base, Position).y);
+  const hubs: RoadHub[] = [
+    {
+      hub: base,
+      land: landAt(terrain, baseAt.hx, baseAt.hy),
+      linked: builtAll(homeBuildings(world, ctx, player), base),
+    },
+  ];
+  const buildings = contentIndex(ctx.content).buildings;
+  for (const land of liveColonyLands(world, player)) {
+    const on = colonyBuildingsOn(world, ctx, player, land);
+    const store = on.find(
+      (e) =>
+        isBuilt(world, e) &&
+        buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage,
+    );
+    if (store !== undefined) hubs.push({ hub: store, land, linked: builtAll(on, store) });
+  }
+  return hubs;
+}
+
 /**
  * The RoadBuild module: once the seat has grown ({@link roadsDue}), link every built building of the seat
- * to its base by road, and pave where its settlers walk most. A building decision takes one building in turn (the decision count, so no state is
- * kept) and routes its door to the base's door over the nodes a road paints across ({@link roadRoute}). A
- * traffic decision takes the seat's busiest bucket of off-road walking ({@link hottestTraffic}) and
- * routes from where its walks crossed to the base's door the same way. Roads and the seat's road sites
- * cost less to cross than open ground, so a later route runs into the network and it grows as one tree
- * toward the base, and a route cut by a new building is re-laid around it when the building's turn comes
- * again. The route's nodes that are no road yet and pass the road probe become road sites, base end
- * first, up to {@link MAX_PENDING_ROAD_SITES} pending, so a route cut short still hangs off the network.
- * Project rule; the road crew that lays them is the workforce's (`workforce/road-crew.ts`).
+ * to its hub by road, and pave where its settlers walk most. A hub is home's base or a colony's store
+ * ({@link roadHubs}), each paved within its own signposts. A building decision takes one building in turn
+ * (the decision count, so no state is kept) and routes its door to its hub's door over the nodes a road
+ * paints across ({@link roadRoute}). A traffic decision takes the seat's busiest bucket of off-road walking
+ * ({@link hottestTraffic}) and routes from where its walks crossed to the door of the hub on its land the
+ * same way. Roads and the seat's road sites cost less to cross than open ground, so a later route runs into
+ * the network and it grows as one tree toward the hub, and a route cut by a new building is re-laid around
+ * it when the building's turn comes again. The route's nodes that are no road yet and pass the road probe
+ * become road sites, hub end first, up to {@link MAX_PENDING_ROAD_SITES} pending on the hub's land, so a
+ * route cut short still hangs off the network. Project rule; home's road crew is the workforce's
+ * (`workforce/road-crew.ts`), a colony's builders pave once no building waits on them.
  */
 export function roadBuildPlan(world: World, ctx: SystemContext, player: number): RoadBuildPlan {
   const none: RoadBuildPlan = { source: 'building', commands: [] };
   const terrain = ctx.terrain;
   if (terrain === undefined || !roadsDue(world, ctx, player)) return none;
-  const room = Math.min(
-    MAX_PENDING_ROAD_SITES - ownedRoadSites(world, terrain, player).size,
-    ROAD_SITES_PER_DECISION,
-  );
-  if (room <= 0) return none;
   // A seat lays roads of its own nation, whatever nation its base house is: the map may hand it another's.
   const tribe = playerPlacementTribes(world, player)?.[0];
   if (tribe === undefined) return none;
   const base = seatBaseOf(world, ctx, player);
   if (base === null) return none;
+  const hubs = roadHubs(world, ctx, terrain, player, base);
+  const pending = new Map<number, number>();
+  for (const { node } of ownedRoadSites(world, terrain, player).values()) {
+    const land = terrain.componentOf(node);
+    pending.set(land, (pending.get(land) ?? 0) + 1);
+  }
+  const roomOn = (hub: RoadHub): number =>
+    Math.min(MAX_PENDING_ROAD_SITES - (pending.get(hub.land) ?? 0), ROAD_SITES_PER_DECISION);
+  if (hubs.every((hub) => roomOn(hub) <= 0)) return none;
   const decision = Math.floor(ctx.tick / COMPUTER_DECISION_INTERVAL_TICKS);
   const trafficTurn = decision % ROAD_TURNS === TRAFFIC_TURN;
   const hot = trafficTurn ? hottestTraffic(world, player, ctx.tick, TRAFFIC_ROAD_WALKS) : null;
-  const linked = homeBuildings(world, ctx, player).filter((e) => e !== base && isBuilt(world, e));
+  const linked = hubs.flatMap((hub) => hub.linked.map((building) => ({ hub, building })));
   // A traffic turn with nothing hot links the building half the roster on from the one before it.
   const turn = Math.floor(decision / ROAD_TURNS) + (trafficTurn ? Math.ceil(linked.length / ROAD_TURNS) : 0);
-  const building = linked[turn % linked.length];
-  if (hot === null && building === undefined) return none;
-  const roads = roadPlanner(world, ctx, terrain, player, tribe, base, room);
-  if (roads === null) return none;
+  const next = linked[turn % linked.length];
+  if (hot === null && next === undefined) return none;
+  const plannerOf = (hub: RoadHub): RoadPlanner | null => {
+    const room = roomOn(hub);
+    return room <= 0 ? null : roadPlanner(world, ctx, terrain, player, tribe, hub.hub, room);
+  };
   if (hot !== null) {
-    const commands = trafficRoad(world, ctx.tick, roads, hot);
+    const hub = hubs.find((h) => h.land === landAt(terrain, hot.centre.hx, hot.centre.hy));
+    const roads = hub === undefined ? null : plannerOf(hub);
+    // A bucket on no hub's land waits like one no route serves.
+    if (hub === undefined) deferTraffic(world, hot.entity, ctx.tick + TRAFFIC_RETRY_TICKS);
+    const commands = roads === null ? [] : trafficRoad(world, ctx.tick, roads, hot);
     // A bucket already served or deferred leaves the turn to a building, as a turn with none hot does.
-    if (commands.length > 0 || building === undefined) return { source: 'traffic', commands };
+    if (commands.length > 0 || next === undefined) return { source: 'traffic', commands };
   }
-  if (building === undefined) return none;
-  const from = entranceOf(world, ctx, terrain, roads.blocked, building);
+  if (next === undefined) return none;
+  const roads = plannerOf(next.hub);
+  if (roads === null) return none;
+  const from = entranceOf(world, ctx, terrain, roads.blocked, next.building);
   return { source: 'building', commands: from === null ? [] : (roads.route(from)?.commands ?? []) };
 }
 
@@ -166,7 +226,7 @@ function trafficRoad(world: World, tick: number, roads: RoadPlanner, hot: HotTra
   return placed.commands;
 }
 
-/** One decision's view of where the seat's roads may go, and its routes from a node to the base. */
+/** One decision's view of where the seat's roads may go, and its routes from a node to its hub. */
 interface RoadPlanner {
   readonly terrain: TerrainGraph;
   readonly player: number;
@@ -174,7 +234,7 @@ interface RoadPlanner {
   pavable(node: NodeId): boolean;
   /** Whether a road or one of the seat's road sites lies within `radius` map points of `node`. */
   servedNear(node: NodeId, radius: number): boolean;
-  /** The road sites of a route from `from` to the base's entrance, and whether they are all the route
+  /** The road sites of a route from `from` to the hub's entrance, and whether they are all the route
    *  needs; null when no route is found. */
   route(from: NodeId): { commands: PlaceRoadSite[]; whole: boolean } | null;
 }
@@ -185,14 +245,14 @@ function roadPlanner(
   terrain: TerrainGraph,
   player: number,
   tribe: number,
-  base: Entity,
+  hub: Entity,
   room: number,
 ): RoadPlanner | null {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
-  const to = entranceOf(world, ctx, terrain, blocked, base);
+  const to = entranceOf(world, ctx, terrain, blocked, hub);
   if (to === null) return null;
-  const baseNode = nodeOfPosition(world.get(base, Position).x, world.get(base, Position).y);
-  const limit = networkLimitAt(world, terrain, player, baseNode.hx, baseNode.hy);
+  const hubNode = nodeOfPosition(world.get(hub, Position).x, world.get(hub, Position).y);
+  const limit = networkLimitAt(world, terrain, player, hubNode.hx, hubNode.hy);
   const probe = roadSitePlacementProbe(world, ctx.content, terrain);
   const sites = roadSitesByNode(world, terrain);
   const own = ownedRoadSites(world, terrain, player);

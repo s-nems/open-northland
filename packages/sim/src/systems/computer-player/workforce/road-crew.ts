@@ -2,6 +2,7 @@ import { Settler, SiteAssignment } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../nav/terrain/index.js';
+import { colonyLands } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
@@ -49,7 +50,13 @@ export function allocateRoadCrew(
 ): { commands: PlayerCommand[]; crew: number } {
   const terrain = ctx.terrain;
   if (terrain === undefined || builderJob === null) return { commands: [], crew: roadsters.length };
-  const sites = ownedRoadSites(world, terrain, player);
+  // A colony's road sites are its own builders' (`../road-build.ts`): home's crew never sails for them.
+  const colonies = colonyLands(world, player);
+  const sites = new Map(
+    [...ownedRoadSites(world, terrain, player)].filter(
+      ([, site]) => !colonies.has(terrain.componentOf(site.node)),
+    ),
+  );
   const target = roadCrewTarget(sites.size, roadsters.length);
   const commands: PlayerCommand[] = [];
   for (const e of roadsters.slice(target)) {
