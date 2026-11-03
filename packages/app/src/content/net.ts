@@ -50,6 +50,20 @@ export async function loadTextureIfPresent(
   }
 }
 
+/**
+ * Pixi chooses an asset parser from the URL extension. A blob URL has neither the original extension
+ * nor a useful MIME type by default, so a modded atlas would otherwise fail with "don't know how to
+ * parse it". Keep the original filename in the fragment (which does not affect blob fetching) and
+ * carry the content MIME type on the Blob itself.
+ */
+export function modAssetBlobUrl(path: string, bytes: Uint8Array): string {
+  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  const blob = new Blob([buffer], { type: contentType(path) });
+  const url = URL.createObjectURL(blob);
+  const filename = path.split('/').at(-1) || 'asset.png';
+  return `${url}#${encodeURIComponent(filename)}`;
+}
+
 export async function moddedContentAssetUrl(url: string): Promise<string> {
   let pathname: string;
   try {
@@ -63,8 +77,7 @@ export async function moddedContentAssetUrl(url: string): Promise<string> {
   if (cached !== undefined) return cached;
   const bytes = await contentModFile(path);
   if (bytes === null) return url;
-  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-  const blobUrl = URL.createObjectURL(new Blob([buffer]));
+  const blobUrl = modAssetBlobUrl(path, bytes);
   modAssetUrls.set(path, blobUrl);
   return blobUrl;
 }
@@ -87,8 +100,8 @@ async function isServed(url: string): Promise<boolean> {
 }
 
 /**
- * Fetch a content PNG by its content path and read it back CPU-side as pixels. `null` when the image is
- * absent or unreadable or no 2D context can be had, so callers degrade.
+ * Fetch a content PNG by its content path and read it back CPU-side as pixels. `null` when the image
+ * is absent or unreadable or no 2D context can be had, so callers degrade.
  */
 export async function fetchImageData(path: string): Promise<ImageData | null> {
   try {
@@ -118,4 +131,14 @@ export async function readImageData(image: Blob, options?: ImageBitmapOptions): 
     canvas.width = 0;
     canvas.height = 0;
   }
+}
+
+function contentType(path: string): string {
+  if (path.endsWith('.json')) return 'application/json';
+  if (path.endsWith('.png')) return 'image/png';
+  if (path.endsWith('.webp')) return 'image/webp';
+  if (path.endsWith('.wav')) return 'audio/wav';
+  if (path.endsWith('.ogg')) return 'audio/ogg';
+  if (path.endsWith('.mp3')) return 'audio/mpeg';
+  return 'application/octet-stream';
 }
