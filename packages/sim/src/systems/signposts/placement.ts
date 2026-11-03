@@ -27,9 +27,10 @@ import { plannedSignposts, type SignpostSpot } from './planned.js';
 
 /**
  * Whether `player` may erect a signpost at `node`: open walkable ground under the work-flag rule, off any
- * existing signpost's cell, not inside {@link SIGNPOST_SPACING_NODES} of a same-player signpost on the same
- * land (a post on another island never links with it), and off the ground a lobby peace keeps the seat
- * off. Signposts do not block walking, so walkability is a ground-quality gate only.
+ * existing signpost's cell, not inside {@link SIGNPOST_SPACING_NODES} of a same-player signpost, and off the
+ * ground a lobby peace keeps the seat off. The original spaces same-player posts; our own rule waives that
+ * for a post on another land, which never links with it. Signposts do not block walking, so walkability is
+ * a ground-quality gate only.
  */
 export function canPlaceSignpost(
   world: World,
@@ -39,7 +40,7 @@ export function canPlaceSignpost(
   player: number,
 ): boolean {
   // canPlaceWorkFlag already covers ground quality, standing bodies, markers, and existing signpost
-  // cells; the spacing is the signpost-specific extra gate, same-player only as in the original.
+  // cells; the spacing is the signpost-specific extra gate.
   if (!canPlaceWorkFlag(world, ctx, terrain, node)) return false;
   const c = terrain.coordsOf(node);
   if (insideSpacing(terrain, signpostNetwork(world).get(player) ?? [], c.x, c.y)) return false;

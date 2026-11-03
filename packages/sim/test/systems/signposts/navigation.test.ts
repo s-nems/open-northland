@@ -388,20 +388,35 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
       stampPost(sim, 4, 3);
       stampPost(sim, WEST_CELL.x, WEST_CELL.y);
       stampPost(sim, EAST_CELL.x, EAST_CELL.y);
-      for (const goalCell of [WEST_CELL, FAR_EAST_CELL, STRAIT_CELL]) {
-        const goal = cellNode(terrain, goalCell);
-        const reaching = spotsReaching(sim.world, sim.content, terrain, WOODCUTTER, P0, [goal]);
-        const widened = spotsReaching(sim.world, sim.content, terrain, WOODCUTTER, P0, [goal], SLACK_NODES);
-        if (reaching === null || widened === null) throw new Error('the woodcutter is confined');
-        for (let hy = 0; hy < terrain.height; hy++) {
-          for (let hx = 0; hx < terrain.width; hx++) {
-            const allowed = networkLimitAt(sim.world, terrain, P0, hx, hy)?.allowsNode(goal) === true;
-            expect(reaching(hx, hy), `spot (${hx},${hy})`).toBe(allowed);
-            if (!allowed) continue;
-            for (let dy = -SLACK_NODES; dy <= SLACK_NODES; dy++) {
-              const across = SLACK_NODES - Math.abs(dy);
-              for (let dx = -across; dx <= across; dx++) {
-                expect(widened(hx + dx, hy + dy), `spot (${hx + dx},${hy + dy})`).toBe(true);
+      // Single goals, and goal sets on both banks, as a site's work cells can straddle the strait.
+      const goalSets = [
+        [WEST_CELL],
+        [FAR_EAST_CELL],
+        [STRAIT_CELL],
+        [WEST_CELL, FAR_EAST_CELL],
+        [STRAIT_CELL, EAST_CELL],
+      ];
+      const ranges = [
+        { job: WOODCUTTER, range: WALK_RANGE_NODES },
+        { job: CARRIER, range: CARRIER_WALK_RANGE_NODES },
+      ];
+      for (const { job, range } of ranges) {
+        for (const cells of goalSets) {
+          const goals = cells.map((cell) => cellNode(terrain, cell));
+          const reaching = spotsReaching(sim.world, sim.content, terrain, job, P0, goals);
+          const widened = spotsReaching(sim.world, sim.content, terrain, job, P0, goals, SLACK_NODES);
+          if (reaching === null || widened === null) throw new Error('the job is confined');
+          for (let hy = 0; hy < terrain.height; hy++) {
+            for (let hx = 0; hx < terrain.width; hx++) {
+              const limit = networkLimitAt(sim.world, terrain, P0, hx, hy, range);
+              const allowed = goals.some((goal) => limit?.allowsNode(goal) === true);
+              expect(reaching(hx, hy), `job ${job} spot (${hx},${hy})`).toBe(allowed);
+              if (!allowed) continue;
+              for (let dy = -SLACK_NODES; dy <= SLACK_NODES; dy++) {
+                const across = SLACK_NODES - Math.abs(dy);
+                for (let dx = -across; dx <= across; dx++) {
+                  expect(widened(hx + dx, hy + dy), `job ${job} spot (${hx + dx},${hy + dy})`).toBe(true);
+                }
               }
             }
           }

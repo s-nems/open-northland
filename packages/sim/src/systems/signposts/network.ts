@@ -412,7 +412,8 @@ export function spotsReaching(
   const range = walkRangeOf(content, jobType);
   const posts = refreshedMemo(world).byPlayer.get(player) ?? [];
   const goalLands = goals.map((goal) => landComponentOf(terrain, goal));
-  const serving = servingPosts(terrain, posts, goals, goalLands, range);
+  const landsOfGroup = goalLandsByGroup(terrain, posts, goals, goalLands, range);
+  const serving = landsOfGroup.size === 0 ? NO_SITES : posts.filter((s) => landsOfGroup.has(s.group));
   const judgeGround = slack === 0;
   // Indexed loops: the test runs per candidate spot, and an array iterator here is not always elided.
   return (hx, hy) => {
@@ -427,11 +428,11 @@ export function spotsReaching(
     }
     const here = judgeGround ? componentAt(terrain, hx, hy) : null;
     for (let i = 0; i < serving.length; i++) {
-      const s = serving[i] as ServingPost;
+      const s = serving[i] as SignpostSite;
       if (
-        hexDistanceBetween(hx, hy, s.site.hx, s.site.hy) < range + slack &&
-        (here === null || componentAt(terrain, s.site.hx, s.site.hy) === here) &&
-        (land === null || s.lands.includes(land) || s.lands.includes(null))
+        hexDistanceBetween(hx, hy, s.hx, s.hy) < range + slack &&
+        (here === null || componentAt(terrain, s.hx, s.hy) === here) &&
+        (land === null || coversLand(landsOfGroup.get(s.group), land))
       )
         return true;
     }
@@ -439,21 +440,15 @@ export function spotsReaching(
   };
 }
 
-/** A post of a group that covers a goal, with the land of every goal its group covers (null for a goal
- *  off walkable land, which any spot may claim). */
-interface ServingPost {
-  readonly site: SignpostSite;
-  readonly lands: readonly (number | null)[];
-}
-
-/** The posts of every group with a post strictly inside `range` of one of `goals`, in network order. */
-function servingPosts(
+/** The lands of the goals each group covers with a post strictly inside `range`, by group label (null for
+ *  a goal off walkable land, which any spot may claim). */
+function goalLandsByGroup(
   terrain: TerrainGraph,
   posts: readonly SignpostSite[],
   goals: readonly NodeId[],
   goalLands: readonly (number | null)[],
   range: number,
-): readonly ServingPost[] {
+): Map<number, (number | null)[]> {
   const landsOfGroup = new Map<number, (number | null)[]>();
   for (const s of posts) {
     let lands = landsOfGroup.get(s.group);
@@ -469,16 +464,12 @@ function servingPosts(
       lands.push(land);
     }
   }
-  if (landsOfGroup.size === 0) return NO_SERVING;
-  const serving: ServingPost[] = [];
-  for (const site of posts) {
-    const lands = landsOfGroup.get(site.group);
-    if (lands !== undefined) serving.push({ site, lands });
-  }
-  return serving;
+  return landsOfGroup;
 }
 
-const NO_SERVING: readonly ServingPost[] = [];
+function coversLand(lands: readonly (number | null)[] | undefined, land: number): boolean {
+  return lands !== undefined && (lands.includes(land) || lands.includes(null));
+}
 
 /** Whether signposts confine `jobType`. The original routes soldiers, heroes, scouts, hunters and druids
  *  over its global walk sectors instead. */
