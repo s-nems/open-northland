@@ -32,6 +32,7 @@ import {
   startRefillWait,
 } from '../settlers/atomics/start.js';
 import { fetchHaulingCart } from '../settlers/drives/economy/hauling-cart.js';
+import { doorHeapRoom } from '../settlers/drives/economy/workshop/door-heap.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { LendableTally, storageLendable } from '../settlers/targets/stores/storage-reserve.js';
@@ -483,10 +484,15 @@ function decideDomestic(
   for (const [good, aboard] of hold.entries) {
     const slot = storableFormAt(world, ctx, stop.house, good);
     const coming = helpers.toHouse(good);
-    if (slot === undefined || roomFor(world, ctx, stop.house, slot) - coming <= 0) continue;
+    if (slot === undefined) continue;
     const wantedHere = markOf(stop, good);
     const wantedThere = markOf(other, good);
     if (wantedThere !== undefined && wantedHere === undefined) continue;
+    const full = roomFor(world, ctx, stop.house, slot) - coming <= 0;
+    // Owner ruling: a full store does not stop goods marked for it coming ashore; they go onto the ground by
+    // its door, bounded as a workshop's door heap. Not original behavior.
+    if (full && (wantedHere === undefined || wantedThere !== undefined)) continue;
+    if (full && heapRoomAt(scope, stop.house, good) - coming <= 0) continue;
     const held =
       (wantedHere !== undefined && scope.countsSettlement
         ? homeStockOf(scope, good)
@@ -497,7 +503,7 @@ function decideDomestic(
       const shortfall = (there === undefined ? 0 : otherStockOf(scope, other, good)) - held;
       if (there !== undefined && Math.floor((aboard + shortfall) / 2) <= 0) continue;
     }
-    return { kind: 'unload', good, into: stop.house };
+    return { kind: 'unload', good, into: full ? null : stop.house };
   }
 
   if (hold.room <= 0) return NEXT;
@@ -507,7 +513,14 @@ function decideDomestic(
     const carried = edibleGoodFormOf(ctx.content, good);
     if (!hold.carries(carried)) continue;
     const slot = storableFormAt(world, ctx, other.house, carried);
-    if (slot === undefined || roomFor(world, ctx, other.house, slot) - hold.amount(carried) <= 0) continue;
+    if (slot === undefined) continue;
+    const aboard = hold.amount(carried);
+    // A full other stop still takes a good marked only there, onto the ground by its door.
+    if (
+      roomFor(world, ctx, other.house, slot) - aboard <= 0 &&
+      (markOf(stop, good) !== undefined || heapRoomAt(scope, other.house, carried) - aboard <= 0)
+    )
+      continue;
     const bound = otherStockOf(scope, other, carried) + hold.amount(carried);
     if (reachesCeiling(wantedThere, bound)) continue;
     const leaving = helpers.toLift(carried);
@@ -624,6 +637,12 @@ function membersOf(scope: LoadScope, anchor: Entity, exclude: Entity, good: numb
     scope.members.set(key, members);
   }
   return members;
+}
+
+/** The units of `good` the heap by `house`'s door still takes. */
+function heapRoomAt(scope: LoadScope, house: Entity, good: number): number {
+  const { world, ctx, terrain } = scope;
+  return doorHeapRoom(world, ctx, terrain, interactionCell(world, ctx, terrain, house), good);
 }
 
 /** Whether `units` in (or bound for) a mark's stop reach the mark's `upTo` ceiling. */

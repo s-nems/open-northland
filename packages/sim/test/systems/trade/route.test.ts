@@ -37,6 +37,7 @@ import { hexDistance, nodeOfPosition } from '../../../src/nav/halfcell.js';
 import { AI_HANDLER_ROUND_TICKS } from '../../../src/systems/ai-shared/cadence.js';
 import { interactionNode, vehicleAnchor } from '../../../src/systems/footprint/index.js';
 import { UNREACHABLE_GOAL_MEMO_TICKS } from '../../../src/systems/settlers/unreachable-goals.js';
+import { isLoosePile } from '../../../src/systems/stores/index.js';
 import {
   AI_STOCK_REFILL_LEVEL,
   AI_STOCK_REFILL_TURNS,
@@ -113,6 +114,9 @@ const WOOD_CEILING = 5;
 const WOOD_DRAWN_DOWN = 2;
 /** The wood a mark leaves in the near house. */
 const WOOD_KEPT = 4;
+/** The wood a headquarters stores, by the fixture. */
+const HEADQUARTERS_WOOD_ROOM = 150;
+const WOOD_SENT = 5;
 
 function houseAt(
   sim: Simulation,
@@ -166,6 +170,14 @@ function traderAt(sim: Simulation, x: number): Entity {
   const cart = cartAt(sim, x);
   sim.enqueue(playerCommand(HUMAN, { kind: 'attachToVehicle', entity: trader, vehicle: cart }));
   return trader;
+}
+
+/** The units of `good` lying on the ground. */
+function groundUnits(sim: Simulation, good: number): number {
+  let units = 0;
+  for (const e of sim.world.query(Stockpile))
+    if (isLoosePile(sim.world, e)) units += sim.world.get(e, Stockpile).amounts.get(good) ?? 0;
+  return units;
 }
 
 function stockOf(sim: Simulation, house: Entity, good: number): number {
@@ -283,6 +295,20 @@ describe('a trader between its own houses', () => {
 
     expect(stockOf(sim, near, WOOD)).toBe(0);
     expect(stockOf(sim, far, WOOD)).toBe(17);
+  });
+
+  it('sets a good marked for a full house down on the ground by its door', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, WOOD_SENT]]);
+    const far = houseAt(sim, FAR_X, HUMAN, [[WOOD, HEADQUARTERS_WOOD_ROOM]]);
+    const trader = traderAt(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, near, WOOD)).toBe(0);
+    expect(stockOf(sim, far, WOOD)).toBe(HEADQUARTERS_WOOD_ROOM);
+    expect(groundUnits(sim, WOOD)).toBe(WOOD_SENT);
   });
 
   it('swaps two goods each house marks for itself', () => {

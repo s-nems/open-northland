@@ -31,8 +31,9 @@ export const DOOR_HEAP_LIMIT_UNITS = 2 * MAX_GROUND_STACK;
  *  free this near stops the worker, so the heap never scatters out of the count. */
 export const DOOR_HEAP_RADIUS_NODES = 3;
 
-/** The units of `good` the heap around `door` still takes: none at its limit or with no tile free. */
-function doorHeapRoom(
+/** The units of `good` the heap around `door` still takes: none at its limit or with no tile free. A trader
+ *  unloading at its own full stop heaps by the same bound. */
+export function doorHeapRoom(
   world: World,
   ctx: MapContext,
   terrain: TerrainGraph,
