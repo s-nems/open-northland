@@ -37,7 +37,6 @@ import { hexDistance, nodeOfPosition } from '../../../src/nav/halfcell.js';
 import { AI_HANDLER_ROUND_TICKS } from '../../../src/systems/ai-shared/cadence.js';
 import { interactionNode, vehicleAnchor } from '../../../src/systems/footprint/index.js';
 import { DOOR_HEAP_LIMIT_UNITS } from '../../../src/systems/settlers/drives/economy/workshop/door-heap.js';
-import { UNREACHABLE_GOAL_MEMO_TICKS } from '../../../src/systems/settlers/unreachable-goals.js';
 import { isLoosePile } from '../../../src/systems/stores/index.js';
 import {
   AI_STOCK_REFILL_LEVEL,
@@ -841,7 +840,7 @@ describe('a trader between its own houses', () => {
     expect(holdOf(sim, trader, WOOD)).toBe(1);
   });
 
-  it('waits out a stop it cannot reach instead of searching the way again on every retry', () => {
+  it('never searches a way to a stop across the water, and loads nothing for it', () => {
     // A water column cuts the far house off from the near one.
     const sim = new Simulation({
       seed: 3,
@@ -854,18 +853,14 @@ describe('a trader between its own houses', () => {
     const trader = traderOnFoot(sim, NEAR_X);
     woodRoute(sim, trader, near, far);
 
-    const ticks = 2 * RUN_TICKS;
-    let searches = 0;
-    let failed = false;
-    for (let tick = 0; tick < ticks; tick++) {
+    let searched = false;
+    for (let tick = 0; tick < 2 * RUN_TICKS; tick++) {
       sim.step();
-      const now = sim.world.tryGet(trader, PathRequest)?.failed === true;
-      if (now && !failed) searches++;
-      failed = now;
+      searched ||= sim.world.tryGet(trader, PathRequest)?.failed === true;
     }
 
-    expect(searches).toBeGreaterThan(0);
-    expect(searches).toBeLessThanOrEqual(Math.ceil(ticks / UNREACHABLE_GOAL_MEMO_TICKS));
+    expect(searched).toBe(false);
+    expect(stockOf(sim, near, WOOD)).toBe(10);
     expect(stockOf(sim, far, WOOD)).toBe(0);
   });
 

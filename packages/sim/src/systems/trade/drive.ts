@@ -45,6 +45,7 @@ import { sameFoodClass } from './goods.js';
 import { cartStands, NO_HELPERS, TRADE_CART_HOUSE_DISTANCE, type TraderHold, traderHoldOf } from './hold.js';
 import { refillRestores } from './partner-stock.js';
 import { settlementHouses, standsForSettlement } from './settlement.js';
+import { routeCrossesSea, stopContinent } from './ship.js';
 
 /** A unit the trader moves at a stop: loaded out of `from`, the stop's house or a house of its
  *  settlement, or unloaded into the stop's house. */
@@ -117,6 +118,12 @@ export function planTrader(plan: PlannerContext): boolean {
     });
   }
   const action = decide(loadScope(plan, hold, stop, other), current, hold, other);
+  if (routeCrossesSea(world, ctx, plan.terrain, e)) {
+    // No ship is pinned to the crossing: what the hold carries for this island's stop still lands, but
+    // nothing is loaded for a stop no walk reaches, and the trader idles.
+    const onIsland = stopContinent(world, ctx, plan.terrain, stop) === plan.terrain.componentOf(plan.here);
+    return onIsland && action.kind === 'unload' && workStop(plan, hold, stop.house, action);
+  }
   switch (action.kind) {
     case 'wait':
       return waitWithLoad(plan, hold);

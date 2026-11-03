@@ -76,7 +76,7 @@ export function seaLegOf(plan: PlannerContext, route: TradeRouteView): SeaLeg | 
  *  that stop as current. */
 export function takeStopAtHand(plan: PlannerContext): void {
   const { world, ctx, terrain, entity: e, here } = plan;
-  if (!world.has(e, TradeShip) || !routeCrossesSea(world, ctx, terrain, e)) return;
+  if (!routeCrossesSea(world, ctx, terrain, e)) return;
   const route = world.get(e, TradeRoute);
   const other = route.stops[1 - route.current];
   if (other === undefined || stopContinent(world, ctx, terrain, other) !== terrain.componentOf(here)) return;

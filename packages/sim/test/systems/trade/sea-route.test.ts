@@ -534,6 +534,45 @@ describe('where the trader and its ship stand', () => {
     expect(hexDistance(mooringOf(sim, ship), doorOf(sim, west))).toBeLessThan(before);
   });
 
+  it('loads nothing for the other island with no ship pinned, with a cart or on foot', () => {
+    for (const cart of [true, false]) {
+      const sim = newSim();
+      const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, LOAD]]);
+      const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+      const trader = traderAt(sim, WEST_HOUSE_CELL);
+      if (cart) {
+        const handcart = vehicleAt(sim, HANDCART, 2 * WEST_HOUSE_CELL, 2 * (HOUSE_ROW + 2));
+        order(sim, { kind: 'attachToVehicle', entity: trader, vehicle: handcart });
+      }
+      attach(sim, trader, west);
+      attach(sim, trader, east);
+      mark(sim, trader, east, WOOD);
+
+      sim.run(VOYAGE_TICKS);
+
+      expect(sim.traderView(trader)?.shipState).toBe('needed');
+      expect(stockOf(sim, west, WOOD)).toBe(LOAD);
+      expect(sim.traderView(trader)?.cargo).toEqual([]);
+    }
+  });
+
+  it('still unloads at its own island what its hold carries for it, with no ship pinned', () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const trader = traderAt(sim, WEST_HOUSE_CELL);
+    const handcart = vehicleAt(sim, HANDCART, 2 * WEST_HOUSE_CELL, 2 * (HOUSE_ROW + 2));
+    stockVehicleGoods(sim.world, handcart, sim.content, WOOD, SMALL_LOAD);
+    order(sim, { kind: 'attachToVehicle', entity: trader, vehicle: handcart });
+    attach(sim, trader, east);
+    attach(sim, trader, west);
+    mark(sim, trader, west, WOOD);
+
+    sim.run(VOYAGE_TICKS);
+
+    expect(stockOf(sim, west, WOOD)).toBe(SMALL_LOAD);
+  });
+
   it('takes the stop on its own island as current and waits while the ship lies across the sea', () => {
     const sim = newSim();
     const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN);
