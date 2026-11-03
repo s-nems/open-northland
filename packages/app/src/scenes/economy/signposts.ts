@@ -46,9 +46,9 @@ for (let y = 11; y < MAP_H; y++)
 const { Owner, Position, Resource, Settler, Signpost, signpostNavigationEnabled } = components;
 
 /** Stands a post on tile `(x, y)` directly, without the scout's erect command. */
-function stampPost(sim: Simulation, x: number, y: number, player = HUMAN_PLAYER): void {
+export function stampPost(sim: Simulation, x: number, y: number, player = HUMAN_PLAYER): void {
   const terrain = sim.terrain;
-  if (terrain === undefined) throw new Error('signposts scene: mapped sim');
+  if (terrain === undefined) throw new Error('a stamped signpost needs a mapped sim');
   const anchor = cellAnchorNode(x, y);
   systems.createSignpost(sim.world, terrain, terrain.nodeAt(anchor.hx, anchor.hy), player);
 }

@@ -1,10 +1,8 @@
 import {
-  cellAnchorNode,
   components,
   type Entity,
   playerCommand,
   type Simulation,
-  systems,
   TICKS_PER_SECOND,
 } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../../game/rules.js';
@@ -15,6 +13,7 @@ import {
 } from '../../game/sandbox/index.js';
 import { goodBySlug } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
+import { stampPost } from './signposts.js';
 import {
   EAST_HOUSE_AT,
   spawnTradeSeaCrew,
@@ -57,13 +56,6 @@ const RUN_TICKS = TICKS_PER_SECOND * 300;
 
 const { Building, Owner, setStockAmount, Stockpile, TRADE_LIMIT_NONE } = components;
 
-function stampPost(sim: Simulation, at: { readonly x: number; readonly y: number }): void {
-  const terrain = sim.terrain;
-  if (terrain === undefined) throw new Error('trade-sea-settlements scene: mapped sim');
-  const anchor = cellAnchorNode(at.x, at.y);
-  systems.createSignpost(sim.world, terrain, terrain.nodeAt(anchor.hx, anchor.hy), HUMAN_PLAYER);
-}
-
 function warehouseAt(sim: Simulation, at: { readonly x: number; readonly y: number }): Entity {
   return placeBuiltSandboxBuilding(sim, BUILDING_WAREHOUSE_00, at.x, at.y, HUMAN_PLAYER);
 }
@@ -72,8 +64,8 @@ function build(sim: Simulation): void {
   sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   const west = [warehouseAt(sim, WEST_HOUSE_AT), warehouseAt(sim, WEST_SECOND_AT)];
   const east = [warehouseAt(sim, EAST_HOUSE_AT), warehouseAt(sim, EAST_SECOND_AT)];
-  stampPost(sim, WEST_POST_AT);
-  stampPost(sim, EAST_POST_AT);
+  stampPost(sim, WEST_POST_AT.x, WEST_POST_AT.y);
+  stampPost(sim, EAST_POST_AT.x, EAST_POST_AT.y);
   const wood = goodBySlug(sim, 'wood');
   const stock = (houses: readonly Entity[], good: number, amounts: readonly number[]): void => {
     houses.forEach((house, i) => {
