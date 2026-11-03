@@ -15,7 +15,7 @@ import {
 } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { Simulation } from '../../../src/index.js';
+import { cellAnchorNode, hexDistanceBetween, Simulation } from '../../../src/index.js';
 import {
   BUILD_GUIDE_ATOMIC_ID,
   canPlaceSignpost,
@@ -207,6 +207,34 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     const nearby = terrain.nodeAt(12, 4);
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(false);
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, 1)).toBe(true); // a rival may crowd it
+  });
+
+  it('a post across a narrow strait keeps no spacing on the far bank, but keeps it on its own', () => {
+    const STRAIT_CELL_COLUMN = 20;
+    const POST_CELL = { x: 17, y: 3 };
+    const FAR_BANK_CELL = { x: 22, y: 1 };
+    const OWN_BANK_CELL = { x: 12, y: 1 }; // the far-bank spot mirrored about the post
+    const sim = new Simulation({
+      seed: 3,
+      content: testContent(),
+      map: waterColumnMap(40, 8, STRAIT_CELL_COLUMN),
+    });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    stampPost(sim, POST_CELL.x, POST_CELL.y);
+    const post = cellAnchorNode(POST_CELL.x, POST_CELL.y);
+    const probe = sim.signpostProbe(P0);
+    if (probe === null) throw new Error('mapped sim has a probe');
+    for (const [cell, placeable] of [
+      [FAR_BANK_CELL, true],
+      [OWN_BANK_CELL, false],
+    ] as const) {
+      const spot = cellAnchorNode(cell.x, cell.y);
+      expect(hexDistanceBetween(post.hx, post.hy, spot.hx, spot.hy)).toBeLessThan(SIGNPOST_SPACING_NODES);
+      const node = terrain.nodeAt(spot.hx, spot.hy);
+      expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, node, P0)).toBe(placeable);
+      expect(probe.canPlace(spot.hx, spot.hy)).toBe(placeable);
+    }
   });
 
   it('signpostProbe agrees with canPlaceSignpost node by node (the overlay seam)', () => {
