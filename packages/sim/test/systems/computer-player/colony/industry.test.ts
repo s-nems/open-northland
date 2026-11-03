@@ -106,7 +106,7 @@ describe('a colony industry', () => {
 
   it('takes the most valuable first on a cramped site, while its buildings fit', () => {
     const site = { ...BARE, wood: true, iron: true, room: BUILDING_ROOM };
-    expect(industries(chooseIndustries(site, seatRead()))).toEqual(['smithy']);
+    expect(industries(chooseIndustries(site, seatRead()))).toEqual(['armoury']);
   });
 
   it('pays once for a well two chains share', () => {

@@ -139,13 +139,14 @@ const HOME_GOODS: Readonly<Record<Exclude<Industry, 'temple'>, readonly string[]
   carpentry: ['tool_iron'],
 };
 
-/** How much an industry's goods weigh against the others' (authored): the army's weapons first, then what
- *  heals and strengthens it, then the settlers' goods. Food for the colony's own people weighs most of all,
+/** How much an industry's goods weigh against the others' (authored): the army's weapons first, the armoury
+ *  ahead of the smithy as its wooden spears feed the smithy's iron ones and its bill is wood and home's
+ *  materials alone, then what heals and strengthens the army, then the settlers' goods. Food for the colony's own people weighs most of all,
  *  as no other industry runs on hungry men. */
 const INDUSTRY_WEIGHT: Readonly<Record<Exclude<Industry, 'temple'>, number>> = {
   baking: 12,
-  smithy: 6,
-  armoury: 5,
+  armoury: 6,
+  smithy: 5,
   druid: 3,
   amulets: 2,
   husbandry: 2,
@@ -156,8 +157,8 @@ const INDUSTRY_WEIGHT: Readonly<Record<Exclude<Industry, 'temple'>, number>> = {
 /** The industries in the order a tie between their scores keeps. */
 const INDUSTRY_ORDER: readonly Exclude<Industry, 'temple'>[] = [
   'baking',
-  'smithy',
   'armoury',
+  'smithy',
   'druid',
   'amulets',
   'husbandry',
