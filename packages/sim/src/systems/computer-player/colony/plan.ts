@@ -15,8 +15,26 @@ import { colonyFed } from './provision.js';
 import { towersLacking } from './towers.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
-/** The open sites a colony's builders work at once (authored): its hold pays for little more. */
+/** The open sites a colony's builders work at once besides its industries' (authored): its hold pays for
+ *  little more. */
 export const COLONY_OPEN_SITES = 2;
+/** The open sites its industries hold at once (authored), apart from the others: each chain raises one
+ *  building at a time, so a stuck site holds back its own chain and this many chains go up together. */
+const COLONY_INDUSTRY_SITES = 2;
+
+/** The sites a colony has open, its industries' apart. */
+export interface OpenSites {
+  readonly industry: number;
+  readonly other: number;
+}
+
+/** Whether `building` may go up beside the colony's `open` sites: within its kind's budget, so a home
+ *  waiting on its bill holds back no workshop and the other way round. */
+export function siteFree(building: string, open: OpenSites): boolean {
+  return chainStepOf(building) === undefined
+    ? open.other < COLONY_OPEN_SITES
+    : open.industry < COLONY_INDUSTRY_SITES;
+}
 
 /** The home chain's base tier: a colony raises its homes at the top tier enabled ({@link topEnabledTier}). */
 const HOME_ID = 'home_level_00';

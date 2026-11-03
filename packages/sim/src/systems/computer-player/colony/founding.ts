@@ -33,10 +33,11 @@ import { nearestLiveResource, reachableResourceTest, workableResourceTest } from
 import { SCOUT_CATCH_RADIUS_NODES, type ScoutDanger, scoutBusy, scoutDanger } from '../scout/index.js';
 import { corridorSamples, signpostTargetAround } from '../scout/signpost-coverage.js';
 import { enabledTiersAbove, liftCommand, liftTarget } from '../top-tier.js';
+import { chainStepOf } from './industry.js';
 import { COLONY_SPOT_NODES } from './industry-read.js';
 import { isOverflowBuilding } from './overflow.js';
 import { colonyFamilies, standsOn } from './people.js';
-import { COLONY_OPEN_SITES, colonyPlan, farStep, stepGround } from './plan.js';
+import { COLONY_OPEN_SITES, colonyPlan, farStep, siteFree, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
 import { colonyFoodHeld, LAND_GOOD_IDS } from './provision.js';
 import { colonyBuildings, colonySpot, storeSupply, workshopSpot } from './spot.js';
@@ -96,16 +97,21 @@ function placementOf(type: number, spot: HalfCellNode, tribe: number, seat: numb
   };
 }
 
-/** The next build the colony lacks, placed once fewer than {@link COLONY_OPEN_SITES} sites stand open:
- *  the anchor is a real node on the land, the shore while no store stands, then the store, and a tower's
- *  own ({@link towerAnchor}). */
+/** The next build the colony lacks, placed while its kind has a site free ({@link siteFree}). The anchor is
+ *  a real node on the land, the shore while no store stands, then the store, and a tower's own
+ *  ({@link towerAnchor}). */
 function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): PlayerCommand[] {
   const { world, ctx, seat } = env;
   const tribe = playerPlacementTribes(world, seat)?.[0];
   const index = contentIndex(ctx.content);
   if (tribe === undefined) return [];
-  const open = read.buildings.filter((e) => world.has(e, UnderConstruction)).length;
-  if (open >= COLONY_OPEN_SITES) return [];
+  const open = { industry: 0, other: 0 };
+  for (const e of read.buildings) {
+    if (!world.has(e, UnderConstruction)) continue;
+    const id = index.buildings.get(world.get(e, Building).buildingType)?.id;
+    if (id !== undefined && chainStepOf(id) !== undefined) open.industry++;
+    else open.other++;
+  }
   const { plan } = read;
   // The first store goes up alone: another site would take the bill the founding ship brought for it, and
   // the trader that brings the rest waits for that store.
@@ -113,7 +119,7 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
   for (const building of read.store === null ? plan.slice(0, 1) : plan) {
     const typeId = index.buildingTypeBySlug.get(building);
     const type = typeId === undefined ? undefined : index.buildings.get(typeId);
-    if (type === undefined) continue;
+    if (type === undefined || !siteFree(building, open)) continue;
     const ground = stepGround(building);
     const anchor = isColonyTower(building)
       ? towerAnchor(env, colony, read.origin, read.buildings)
@@ -129,7 +135,7 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
     else row.placed = true;
     return [placementOf(type.typeId, spot, tribe, seat)];
   }
-  return plan.length === 0 ? secondStore(env, colony, read, tribe) : [];
+  return plan.length === 0 && open.other < COLONY_OPEN_SITES ? secondStore(env, colony, read, tribe) : [];
 }
 
 /** A second store by the wood when the nearest stands past {@link SECOND_STORE_NODES} of the first. */

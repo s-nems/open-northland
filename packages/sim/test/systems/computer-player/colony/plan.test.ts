@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { noteSettlerProgress, Settler, SettlerProgress } from '../../../../src/components/index.js';
 import { homeTeaches } from '../../../../src/systems/computer-player/colony/industry-read.js';
-import { type HomesRead, homeStepDue } from '../../../../src/systems/computer-player/colony/plan.js';
+import {
+  type HomesRead,
+  homeStepDue,
+  siteFree,
+} from '../../../../src/systems/computer-player/colony/plan.js';
 import type { ColonyEnv } from '../../../../src/systems/computer-player/colony/voyage.js';
 import {
   aiSim,
@@ -33,6 +37,17 @@ const read = (over: Partial<HomesRead>): HomesRead => ({
   roomy: true,
   cramped: false,
   ...over,
+});
+
+describe('a colony site', () => {
+  it("goes up on its own kind's budget, so stuck homes hold back no workshop", () => {
+    const homesStuck = { industry: 0, other: 2 };
+    expect(siteFree('work_farm_00', homesStuck)).toBe(true);
+    expect(siteFree('home_level_00', homesStuck)).toBe(false);
+    const workshopsStuck = { industry: 2, other: 0 };
+    expect(siteFree('work_joinery_03', workshopsStuck)).toBe(false);
+    expect(siteFree('tower_00', workshopsStuck)).toBe(true);
+  });
 });
 
 describe('a colony home', () => {
