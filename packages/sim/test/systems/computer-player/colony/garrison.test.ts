@@ -48,7 +48,8 @@ const ENEMY = 5;
 const RAIDERS = 2;
 const RAID_NEAR = 6;
 const GARRISON_LEAST = 3;
-const RAIDERS_FOR_SECOND = 3;
+const TOWERS_LEAST = 2;
+const RAIDERS_FOR_THIRD = 3;
 const MANY_RAIDERS = 20;
 const TOWERS_MOST = 3;
 const TOWER_DUE_TICKS = minutesToTicks(30);
@@ -156,24 +157,24 @@ describe('a garrisoned colony', () => {
 });
 
 describe('the towers a colony wants', () => {
-  it('raise one once a garrison sails, and one more per three raiders seen, up to three', () => {
+  it('raise two once a garrison sails, and one more per three raiders seen, up to three', () => {
     expect(colonyTowerCount(false, RAIDERS)).toBe(0);
-    expect(colonyTowerCount(true, 0)).toBe(1);
-    expect(colonyTowerCount(true, RAIDERS_FOR_SECOND)).toBe(2);
+    expect(colonyTowerCount(true, 0)).toBe(TOWERS_LEAST);
+    expect(colonyTowerCount(true, RAIDERS_FOR_THIRD)).toBe(TOWERS_MOST);
     expect(colonyTowerCount(true, MANY_RAIDERS)).toBe(TOWERS_MOST);
   });
 });
 
 describe('a garrisoned colony of archers', () => {
-  it('raises a tower by its store and its shore, and its archers man it', () => {
+  it('raises two towers, the first by its store and its shore, and its archers man them', () => {
     const sim = garrisonedWorld(BOWMAN);
     const ctx = () => ctxOf(sim);
-    const tower = (): Entity | undefined =>
-      colonyBuildingsOn(sim.world, ctx(), SEAT, colonyState(sim)?.land ?? -1).find(
+    const towers = (): Entity[] =>
+      colonyBuildingsOn(sim.world, ctx(), SEAT, colonyState(sim)?.land ?? -1).filter(
         (e) => sim.world.get(e, Building).buildingType === TOWER_TYPE,
       );
-    expect(stepUntil(sim, TOWER_DUE_TICKS, () => tower() !== undefined)).toBe(true);
-    const at = nodeOfEntity(sim.world, tower() as Entity);
+    expect(stepUntil(sim, TOWER_DUE_TICKS, () => towers().length === TOWERS_LEAST)).toBe(true);
+    const at = nodeOfEntity(sim.world, towers()[0] as Entity);
     const store = colonyBuildingsOn(sim.world, ctx(), SEAT, colonyState(sim)?.land ?? -1).find(
       (e) => sim.world.get(e, Building).buildingType === STOCK_TYPE,
     );
@@ -183,7 +184,10 @@ describe('a garrisoned colony of archers', () => {
     expect(nodeManhattan(at, shore)).toBeLessThanOrEqual(TOWER_NEAR_NODES);
     expect(nodeManhattan(at, from)).toBeLessThanOrEqual(TOWER_NEAR_NODES);
     const posted = () =>
-      ashore(sim).filter((e) => towerPostFor(sim.world, ctx(), e, BOWMAN) === tower()).length;
+      ashore(sim).filter((e) => {
+        const post = towerPostFor(sim.world, ctx(), e, BOWMAN);
+        return post !== null && towers().includes(post);
+      }).length;
     expect(stepUntil(sim, TOWER_DUE_TICKS, () => posted() === GARRISON_LEAST)).toBe(true);
   });
 });

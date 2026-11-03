@@ -23,9 +23,11 @@ import { standsOn } from './people.js';
 import { colonyBuildings } from './spot.js';
 import { type ColonyEnv, type ColonyView, homeLandOf } from './voyage.js';
 
-/** The fighters a running colony holds with no threat seen (owner ruling: a small garrison): one tower's
- *  archers, so its first tower shoots. */
-const GARRISON_LEAST = TOWER_GARRISON_ARCHERS;
+/** The towers a garrisoned colony raises with no threat seen (owner ruling: two defence towers at once). */
+export const COLONY_TOWERS_LEAST = 2;
+/** The fighters a running colony holds with no threat seen (owner ruling: a small garrison): its first
+ *  towers' archers, so each of them shoots. */
+const GARRISON_LEAST = COLONY_TOWERS_LEAST * TOWER_GARRISON_ARCHERS;
 /** The most a colony holds however many raiders it has seen (owner ruling: a small garrison; authored
  *  figure: two towers' archers and two men for the sortie). */
 const GARRISON_MOST = 8;

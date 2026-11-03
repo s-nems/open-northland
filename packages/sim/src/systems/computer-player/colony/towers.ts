@@ -4,23 +4,20 @@ import type { Entity } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { TOWER_CONTENT_IDS } from '../build-order/front.js';
-import { recentThreat } from './garrison.js';
+import { COLONY_TOWERS_LEAST, recentThreat } from './garrison.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
-/** The towers a garrisoned colony raises with no threat seen (owner ruling: defence towers on a colony): one,
- *  by its store and its shore. */
-const TOWERS_LEAST = 1;
 /** A tower more per this many raiders seen about the colony lately (authored: a tower's three archers hold
  *  off about their own number). */
 const RAIDERS_PER_TOWER = 3;
 /** The most towers a colony raises (authored: a small garrison mans no more). */
 const TOWERS_MOST = 3;
 
-/** The towers a colony wants: none before a garrison is on its way, then {@link TOWERS_LEAST} and one more per
+/** The towers a colony wants: none before a garrison is on its way, then {@link COLONY_TOWERS_LEAST} and one more per
  *  {@link RAIDERS_PER_TOWER} raiders seen lately, up to {@link TOWERS_MOST}. */
 export function colonyTowerCount(garrisoned: boolean, raiders: number): number {
   if (!garrisoned) return 0;
-  return Math.min(TOWERS_MOST, TOWERS_LEAST + Math.floor(raiders / RAIDERS_PER_TOWER));
+  return Math.min(TOWERS_MOST, COLONY_TOWERS_LEAST + Math.floor(raiders / RAIDERS_PER_TOWER));
 }
 
 /** The lowest tower tier the seat's tribe has unlocked, by id, or null. */
