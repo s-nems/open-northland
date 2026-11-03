@@ -4,8 +4,9 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { colonyLands, colonySettlersOn, homeSettlers } from '../../ai-shared/home-roster.js';
-import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
+import { builderJobOf, isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import { isAdultSettler } from '../../family/eligibility.js';
+import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import { passengerJobAllowed } from '../../vehicles/crew.js';
 import { type Share, shareOf } from '../difficulty.js';
 import { minutesToTicks } from '../game-phase.js';
@@ -224,6 +225,17 @@ function landAtColony(env: ColonyEnv, colony: ColonyView, ferry: FerryView): Pla
   return [...off, ...boardOrders(world, back, ferry.ship)];
 }
 
+/** Arrived home: everyone steps off, and the builders the colony had no work for step off civilians, so
+ *  home's workforce posts or drafts them rather than leaving them idle builders, who hold its births. */
+function landAtHome(env: ColonyEnv, colony: ColonyView, ferry: FerryView): PlayerCommand[] {
+  const { world, ctx } = env;
+  const builder = builderJobOf(ctx);
+  const retrades = ridersOf(world, ferry.ship)
+    .filter((e) => e !== ferry.helm && builder !== null && world.get(e, Settler).jobType === builder)
+    .map((entity): PlayerCommand => ({ kind: 'setJob', entity, jobType: CIVILIST_JOB }));
+  return [...retrades, ...releaseFerry(env, colony, ferry.ship)];
+}
+
 /** Keep the record of the ferry's hull: a drop marks where it lies as danger. Only a change writes. */
 function noteHull(env: ColonyEnv, colony: ColonyView, ferry: FerryView): void {
   const hull = env.world.tryGet(ferry.ship, Health)?.hitpoints ?? 0;
@@ -281,7 +293,7 @@ export function runFerry(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const arriving = ferry.side === 'colony';
   const land = arriving ? colony.land : homeLandOf(env);
   if (mooredOn(env, ship, land))
-    return arriving ? landAtColony(env, colony, ferry) : releaseFerry(env, colony, ship);
+    return arriving ? landAtColony(env, colony, ferry) : landAtHome(env, colony, ferry);
   const moored = mooringOf(world, ship) !== null;
   if ((ctx.tick - ferry.since >= FERRY_SAIL_TICKS && moored) || strandedShip(world, ctx, seat, ship))
     return releaseFerry(env, colony, ship);
