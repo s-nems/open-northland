@@ -6,6 +6,7 @@ import type { Simulation } from '../../../../src/index.js';
 import { everySettlerOf } from '../../../../src/systems/ai-shared/home-roster.js';
 import {
   boardOrders,
+  PARTY_FROM_CIVILIANS,
   partyFor,
   pickParty,
   topUpParty,
@@ -85,6 +86,11 @@ describe('a colony party', () => {
     expect(partyFor(SPARE_SEAT)).toEqual({ men: 15, women: 5 });
     expect(partyFor(TIGHT_SEAT)).toEqual({ men: 8, women: 2 });
     expect(partyFor(THIN_SEAT)).toBeNull();
+  });
+
+  it('is spared from the fewest civilians the seat names for it, not one fewer', () => {
+    expect(partyFor(PARTY_FROM_CIVILIANS)).not.toBeNull();
+    expect(partyFor(PARTY_FROM_CIVILIANS - 1)).toBeNull();
   });
 
   it('sails a wife with her husband, and a husband alone leaves the home to his family', () => {

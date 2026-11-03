@@ -76,6 +76,11 @@ const HOME_KEEPS_CIVILIANS = 30;
 /** Fewer than this found nothing: a warehouse wants builders, carriers and gatherers. */
 const PARTY_LEAST = 8;
 const COUPLE_SEATS = 2;
+/** The fewest civilians a seat spares a party from ({@link partyFor}). */
+export const PARTY_FROM_CIVILIANS = Math.max(
+  CIVILIANS_PER_COLONIST * PARTY_LEAST,
+  HOME_KEEPS_CIVILIANS + PARTY_LEAST,
+);
 
 /** Who sails from `civilians`, or none while the seat cannot spare a party. */
 export function partyFor(civilians: number): { readonly men: number; readonly women: number } | null {

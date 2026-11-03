@@ -41,7 +41,7 @@ import {
   wantManifest,
 } from './cargo.js';
 import { mayBuildTradeShip, TRADE_SHIP_ID } from './fleet.js';
-import { boardOrders, pickParty, spareMen } from './people.js';
+import { boardOrders, PARTY_FROM_CIVILIANS, pickParty, spareMen } from './people.js';
 import { takeRouteShip } from './route.js';
 import { shoreWithStore } from './spot.js';
 import { homeStockOf } from './stock.js';
@@ -79,9 +79,13 @@ export function colonyEnv(seat: SeatEnv, colony: ColonyView): ColonyEnv {
   return { ...seat, colony, edit, editSeat };
 }
 
-/** The civilians a seat holds before it looks for a site (authored from the home island's size: a colony
- *  takes a quarter of them and home keeps 30). */
-const COLONY_FROM_CIVILIANS = 40;
+/** The civilians a seat grows by while its scout sails (authored: arabskie_wyspy_wolna_gra_mieszana seats
+ *  grew by four to six in a scouting's five minutes). */
+const SCOUTING_GROWTH_CIVILIANS = 4;
+/** The civilians a seat holds before it looks for a site: so many that it spares a party
+ *  ({@link PARTY_FROM_CIVILIANS}) about when the scout comes home, rather than starting the scouting only
+ *  then. */
+const COLONY_FROM_CIVILIANS = PARTY_FROM_CIVILIANS - SCOUTING_GROWTH_CIVILIANS;
 /** How long a failed voyage holds the seat's next one (authored): time for the home stores to refill. */
 const COLONY_RETRY_TICKS = minutesToTicks(10);
 /** The failed voyages a seat gives its colony (authored): past them it stays at home. */
