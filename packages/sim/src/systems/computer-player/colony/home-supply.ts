@@ -5,6 +5,8 @@ import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
+import { operatorRecipes } from '../../settlers/drives/economy/workshop/supply.js';
+import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { DEFAULT_BUILD_ORDER } from '../build-order/entries.js';
 import { seatBuildOrder } from '../build-order/seat-order.js';
 import { computerProfileOf } from '../difficulty.js';
@@ -45,17 +47,23 @@ export function homeSpare(env: SeatEnv, supply: SeatSupply): (good: number) => n
   };
 }
 
-/** The input shelves of `buildings`' built workshops, summed by good: what they draw on to keep working. */
-export function workshopShelves(env: SeatEnv, buildings: readonly Entity[]): Map<number, number> {
+/** The input shelves of `buildings`' built workshops, summed by good: what they draw on to keep working.
+ *  Only the inputs of what their crews are set to make, so a mint making coins draws no long bow. */
+export function workshopShelves(
+  env: Pick<SeatEnv, 'world' | 'ctx'>,
+  buildings: readonly Entity[],
+): Map<number, number> {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
   const shelves = new Map<number, number>();
   for (const e of buildings) {
     if (!isBuilt(world, e)) continue;
-    const type = world.get(e, Building).buildingType;
-    const capacity = index.stockSlotCapacityByBuilding.get(type);
-    for (const input of index.mergedRecipeByBuilding.get(type)?.inputs ?? [])
-      shelves.set(input.goodType, (shelves.get(input.goodType) ?? 0) + (capacity?.get(input.goodType) ?? 0));
+    const capacity = index.stockSlotCapacityByBuilding.get(world.get(e, Building).buildingType);
+    const inputs = new Set<number>();
+    for (const worker of assignedWorkers(world, e))
+      for (const recipe of operatorRecipes(world, ctx, e, worker))
+        for (const input of recipe.inputs) inputs.add(input.goodType);
+    for (const good of inputs) shelves.set(good, (shelves.get(good) ?? 0) + (capacity?.get(good) ?? 0));
   }
   return shelves;
 }
