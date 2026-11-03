@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type ColonyStockPolicy,
   colonyStockPolicy,
+  keepPastSites,
   type StockPolicyRead,
   WORKSHOP_INPUT_FLOOR,
 } from '../../../../src/systems/computer-player/colony/stock-policy.js';
@@ -175,5 +176,16 @@ describe('a colony stock policy', () => {
     expect(outboundOf(policy, HANDCART)).toBeUndefined();
     expect(outboundOf(policy, SHOES)).toBeUndefined();
     expect(outboundOf(policy, GOLD)).toEqual({ good: GOLD, keep: 0 });
+  });
+});
+
+describe("home's keep for a colony's sites", () => {
+  it('gives up what the standing sites lack past the colony store, never below none', () => {
+    const lacking = new Map([[BRICK, 2]]);
+    const keep = keepPastSites(() => HOME_KEEPS, lacking, new Map());
+    expect(keep(BRICK)).toBe(HOME_KEEPS - 2);
+    expect(keep(WOOD)).toBe(HOME_KEEPS);
+    expect(keepPastSites(() => HOME_KEEPS, lacking, new Map([[BRICK, 2]]))(BRICK)).toBe(HOME_KEEPS);
+    expect(keepPastSites(() => 1, lacking, new Map())(BRICK)).toBe(0);
   });
 });

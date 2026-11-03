@@ -298,25 +298,38 @@ function homeKeepOf(env: SeatEnv): (good: number) => number {
   };
 }
 
+/** Home's `keep` of each good less what the colony's standing sites still lack past its own `held` store: a
+ *  colony site waits on no comfort stock of home's, so a top-tier home is not held up for two units home
+ *  could spare. */
+export function keepPastSites(
+  keep: (good: number) => number,
+  lacking: ReadonlyMap<number, number>,
+  held: ReadonlyMap<number, number>,
+): (good: number) => number {
+  return (good) => Math.max(0, keep(good) - Math.max(0, (lacking.get(good) ?? 0) - (held.get(good) ?? 0)));
+}
+
 /** The colony's policy now; `outboundNow` the goods its carrier sends home as marked. */
 export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<number>): ColonyStockPolicy {
   const { world, ctx } = env;
   const buildings = colonyBuildings(env);
   const people = colonists(env);
-  const owed = sitesShortfalls(world, ctx, buildings);
+  const lacking = sitesShortfalls(world, ctx, buildings);
+  const owed = new Map(lacking);
   addUp(owed, billsOf(env, colonyPlan(env, env.colony, buildings).slice(0, COLONY_OPEN_SITES)));
   const buildingFloor = byType(ctx, Object.entries(COLONY_BUILDING_FLOOR));
   raise(buildingFloor, owed);
   const spare = homeSpare(env, homeSupply(env));
+  const held = heldByForm(env, buildings);
   return colonyStockPolicy({
     buildingFloor,
     settlerReserve: settlerReserve(env, people, spare),
     wants: colonyIndustryWantsOf(env, buildings),
     workshopInputs: workshopShelves(env, buildings),
     makes: colonyMade(env, buildings, people),
-    held: heldByForm(env, buildings),
+    held,
     keptOnColony: keptOnColony(env, buildings),
     outboundNow,
-    homeKeep: homeKeepOf(env),
+    homeKeep: keepPastSites(homeKeepOf(env), lacking, held),
   });
 }
