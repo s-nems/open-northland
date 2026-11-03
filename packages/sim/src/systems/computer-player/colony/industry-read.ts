@@ -50,6 +50,9 @@ const FISHERS_FIRST_TICKS = minutesToTicks(10);
  *  arabskie_wyspy_wolna_gra_mieszana clears both). */
 const FIELD_NODES = 48;
 const GRASS_NODES = 6;
+/** The free nodes of its block a colony keeps for its homes, which its industries do not spend (authored:
+ *  the smallest site the survey takes, about four level-0 homes). A site with no more grows people alone. */
+const HOMES_ROOM_NODES = 300;
 /** The units of a good home makes at which it holds plenty, and a colony makes none for it (authored: a
  *  wave's arms and more). */
 const HOME_PLENTY_UNITS = 30;
@@ -190,7 +193,7 @@ function siteFacts(
     gold: holds('gold'),
     mushroom: holds('mushroom'),
     animals: animalsOn(env, colony.land),
-    room: Math.max(0, siteRoom(env.world, colony) - roomTaken(env, buildings)),
+    room: Math.max(0, siteRoom(env.world, colony) - roomTaken(env, buildings) - HOMES_ROOM_NODES),
   };
 }
 
@@ -268,11 +271,12 @@ function readIndustries(
   const men = people.filter((e) => isAllocatableMan(world, ctx, e));
   const opened = new Map<string, boolean>();
   const open = (step: ChainStep): boolean => {
-    let held = opened.get(step.building);
+    const key = step.tier ?? step.building;
+    let held = opened.get(key);
     if (held === undefined) {
       const type = stepType(env, step);
       held = type !== undefined && unlocked(env, type) && crewInReach(env, men, type);
-      opened.set(step.building, held);
+      opened.set(key, held);
     }
     return held;
   };
@@ -280,7 +284,7 @@ function readIndustries(
     worth,
     homeMakesHolyOil,
     open,
-    roomOf: (building) => roomOfType(env, stepType(env, { building, ground: 'any', after: [] })),
+    roomOf: (step) => roomOfType(env, stepType(env, step)),
     raised,
   };
   const mouths = people.length;

@@ -3,6 +3,7 @@ import {
   Building,
   Female,
   Livestock,
+  ownerOf,
   Position,
   playerPlacementTribes,
   Rider,
@@ -23,12 +24,13 @@ import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
-import { claimableBy, herdOf } from '../../livestock/index.js';
+import { routeRegions } from '../../footprint/index.js';
+import { herdOf } from '../../livestock/index.js';
 import { isScoutJob, isTraderJob } from '../../readviews/index.js';
 import { playerSeesNode } from '../../vision/gates.js';
 import { HERD_PAIR } from '../herd.js';
 import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../live-resources.js';
-import { SCOUT_CATCH_RADIUS_NODES, scoutBusy } from '../scout/index.js';
+import { SCOUT_CATCH_RADIUS_NODES, type ScoutDanger, scoutBusy, scoutDanger } from '../scout/index.js';
 import { corridorSamples, signpostTargetAround } from '../scout/signpost-coverage.js';
 import { enabledTiersAbove, liftCommand, liftTarget } from '../top-tier.js';
 import { COLONY_SPOT_NODES } from './industry-read.js';
@@ -199,9 +201,10 @@ function depositsOf(env: ColonyEnv, origin: HalfCellNode): HalfCellNode[] {
 const COLONY_HERD = 2 * HERD_PAIR;
 
 /** The wild animal the colony's scout rounds up next (owner ruling: husbandry where the scout can capture
- *  animals), or null: while an animal farm stands there short of {@link COLONY_HERD}, the claimable one he
- *  sees on its land within his catch reach of `read`'s origin nearest him, the lowest id on a tie. A claimed
- *  animal joins a farm on its own land. Cost: the livestock, only while such a farm is short. */
+ *  animals), or null: while an animal farm stands there short of {@link COLONY_HERD}, the ownerless one he
+ *  sees on its land within his catch reach of `read`'s origin, out of enemy reach and routable from the
+ *  origin, nearest him, the lowest id on a tie. A claimed animal joins a farm on its own land. Cost: the
+ *  livestock, only while such a farm is short. */
 function herdToClaim(env: ColonyEnv, scout: Entity, read: FoundingRead): Entity | null {
   const { world, ctx, terrain, seat } = env;
   const farm = buildingTypeByContentId(ctx.content, ANIMAL_FARM_ID);
@@ -211,13 +214,21 @@ function herdToClaim(env: ColonyEnv, scout: Entity, read: FoundingRead): Entity 
   const held = farms.reduce((sum, e) => sum + herdOf(world, e).length, 0);
   const at = anchorNodeOf(world, scout);
   if (farms.length === 0 || held >= COLONY_HERD || at === null) return null;
+  const from = terrain.nodeAtClamped(read.origin.hx, read.origin.hy);
+  const regions = routeRegions(world, ctx, terrain);
+  const sealed = regions.pocketed(from) ? null : regions;
+  let danger: ScoutDanger | null = null;
   let best: { readonly animal: Entity; readonly distance: number } | null = null;
   for (const animal of world.query(Livestock, Position)) {
     const node = anchorNodeOf(world, animal);
-    if (node === null || !terrain.inBounds(node.hx, node.hy) || !claimableBy(world, animal, seat)) continue;
-    if (terrain.componentOf(terrain.nodeAt(node.hx, node.hy)) !== env.colony.land) continue;
+    if (node === null || !terrain.inBounds(node.hx, node.hy) || ownerOf(world, animal) !== undefined)
+      continue;
+    const cell = terrain.nodeAt(node.hx, node.hy);
+    if (terrain.componentOf(cell) !== env.colony.land) continue;
     if (nodeManhattan(node, read.origin) > SCOUT_CATCH_RADIUS_NODES) continue;
     if (!playerSeesNode(ctx.fog, seat, node.hx, node.hy)) continue;
+    danger ??= scoutDanger(world, ctx, seat);
+    if (danger.covers(node.hx, node.hy) || sealed?.unroutable(from, cell) === true) continue;
     const distance = nodeManhattan(node, at);
     if (best === null || distance < best.distance || (distance === best.distance && animal < best.animal))
       best = { animal, distance };

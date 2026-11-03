@@ -5,7 +5,7 @@ import {
   colonyIndustryWants,
   type Industry,
   type IndustryChoice,
-  nextIndustryStep,
+  nextIndustrySteps,
   type SeatRead,
   type SiteFacts,
   type StepRead,
@@ -162,7 +162,7 @@ const stepRead = (over: Partial<StepRead>, standing: readonly string[] = []): St
 
 describe('a colony chain', () => {
   const choices = chooseIndustries({ ...BARE, field: true, wood: true }, seatRead());
-  const next = (read: StepRead): string | null => nextIndustryStep(choices, read)?.building ?? null;
+  const next = (read: StepRead): string | null => nextIndustrySteps(choices, read)[0]?.building ?? null;
 
   it('raises its food while the colony is hungry, one standing before the next', () => {
     expect(next(stepRead({ hungry: true }))).toBe('work_farm_00');
@@ -187,14 +187,34 @@ describe('a colony chain', () => {
 });
 
 describe('what a colony industry wants brought', () => {
-  it('is the temple oil home boils and the leather of a ship where no farm tans it', () => {
+  it('is the unit of holy oil a temple takes, while home boils it', () => {
     const choices = chooseIndustries({ ...BARE, wood: true }, seatRead());
-    expect(colonyIndustryWants(choices, true)).toEqual([
-      { good: 'holy_oil', upTo: 1 },
-      { good: 'leather', upTo: 5 },
-    ]);
-    const tanning = chooseIndustries({ ...BARE, wood: true, grass: true, animals: true }, seatRead());
-    expect(colonyIndustryWants(tanning, false)).toEqual([]);
+    expect(colonyIndustryWants(choices, true)).toEqual([{ good: 'holy_oil', upTo: 1 }]);
+    expect(colonyIndustryWants(choices, false)).toEqual([]);
     expect(colonyIndustryWants([], true)).toEqual([]);
+  });
+});
+
+describe('a colony chain held up', () => {
+  it('offers the next industry where the first finds no spot', () => {
+    const choices = chooseIndustries({ ...BARE, wood: true, gold: true }, seatRead());
+    expect(nextIndustrySteps(choices, stepRead({})).map((s) => s.building)).toEqual([
+      'work_armory_00',
+      'work_temple',
+      'work_coin_mint',
+      'work_joinery_00',
+    ]);
+  });
+
+  it('feeds a hungry colony with no field from its animal farm', () => {
+    const choices = chooseIndustries({ ...BARE, grass: true, animals: true }, seatRead());
+    const read = stepRead({ hungry: true, settled: false }, ['work_well_00']);
+    expect(nextIndustrySteps(choices, read)[0]?.building).toBe('work_animal_farm');
+  });
+
+  it('starts no druid chain for the druid hut its temple boils oil in', () => {
+    const site = { ...BARE, wood: true, grass: true, mushroom: true };
+    const read = seatRead({ homeMakesHolyOil: false, raised: new Set(['work_druid_00']) });
+    expect(industries(chooseIndustries(site, read))).not.toContain('druid');
   });
 });

@@ -46,7 +46,7 @@ const DRUID_HUT = 'work_druid_00';
 const TEMPLE = 'work_temple';
 const JOINERY = 'work_joinery_00';
 /** Owner ruling: the druid hut at its top tier brews the big healing potion, and the carpenter's is the
- *  level-4 joinery, which builds carts and ships. */
+ *  level-4 joinery, which builds carts. */
 const DRUID_TOP = 'work_druid_01';
 const JOINERY_TOP = 'work_joinery_03';
 
@@ -102,7 +102,7 @@ export interface SiteFacts {
   readonly mushroom: boolean;
   /** Wild herds on its land, which its scout can round up. */
   readonly animals: boolean;
-  /** The free nodes its block holds past what stands there. */
+  /** The free nodes its block holds for industries past what stands there and the room kept for homes. */
   readonly room: number;
 }
 
@@ -177,7 +177,7 @@ export interface SeatRead {
   /** Whether the tribe has unlocked a step at the tier it is raised at, and its trades have a man in reach. */
   readonly open: (step: ChainStep) => boolean;
   /** The nodes of the colony's block a building takes. */
-  readonly roomOf: (building: string) => number;
+  readonly roomOf: (step: ChainStep) => number;
   /** The steps raised on the colony, sites included, by base id. */
   readonly raised: ReadonlySet<string>;
 }
@@ -196,9 +196,9 @@ function scoreOf(industry: Exclude<Industry, 'temple'>, seat: SeatRead): number 
   return INDUSTRY_WEIGHT[industry] * worth;
 }
 
-/** The steps more than one chain holds, as the well and the mint: raising one starts none of them. */
+/** The steps more than one chain holds, as the well, the mint and the temple's druid hut: raising one starts none of them. */
 const SHARED_STEPS: ReadonlySet<string> = new Set(
-  Object.values(CHAINS)
+  [...Object.values(CHAINS), TEMPLE_OIL_CHAIN]
     .flat()
     .map((step) => step.building)
     .filter((building, i, all) => all.indexOf(building) !== i),
@@ -213,7 +213,7 @@ function started(steps: readonly ChainStep[], seat: SeatRead): boolean {
 function roomStill(steps: readonly ChainStep[], seat: SeatRead, planned: Set<string>): number {
   let room = 0;
   for (const step of steps)
-    if (!seat.raised.has(step.building) && !planned.has(step.building)) room += seat.roomOf(step.building);
+    if (!seat.raised.has(step.building) && !planned.has(step.building)) room += seat.roomOf(step);
   return room;
 }
 
@@ -279,24 +279,31 @@ export interface StepRead {
   readonly open: (step: ChainStep) => boolean;
 }
 
-/** Owner ruling: food is raised as the colony needs it, not all at founding. */
-const FOOD_INDUSTRIES: ReadonlySet<Industry> = new Set<Industry>(['baking']);
+/** Whether `industry` runs now. Owner ruling: food is raised as the colony needs it, not all at founding, so
+ *  baking runs only while the colony is hungry; husbandry's meat feeds a hungry colony with no field for a
+ *  farm, and runs for home once it is settled; every other runs once it is settled. */
+function runs(industry: Industry, chosen: readonly IndustryChoice[], read: StepRead): boolean {
+  if (industry === 'baking') return read.hungry;
+  const feeds = industry === 'husbandry' && !chosen.some((c) => c.industry === 'baking');
+  return read.settled || (feeds && read.hungry);
+}
 
 /**
- * The next step of `chosen`, or null: one industry at a time, in order. A food industry runs only while the
- * colony is hungry, every other once it is settled. An industry with a site still open holds the rest back;
- * one whose next step its tribe or men cannot take yet is passed over.
+ * The next steps of `chosen`, in order: one industry at a time. An industry with a site still open holds the
+ * rest back; one whose next step its tribe or men cannot take yet is passed over. Each later industry's next
+ * step follows, for a placement that finds no spot for the first.
  */
-export function nextIndustryStep(chosen: readonly IndustryChoice[], read: StepRead): ChainStep | null {
+export function nextIndustrySteps(chosen: readonly IndustryChoice[], read: StepRead): ChainStep[] {
+  const next: ChainStep[] = [];
   for (const { industry, steps } of chosen) {
-    if (FOOD_INDUSTRIES.has(industry) ? !read.hungry : !read.settled) continue;
-    if (steps.some((s) => read.raised.has(s.building) && !read.standing.has(s.building))) return null;
-    const next = steps.find(
+    if (!runs(industry, chosen, read)) continue;
+    if (steps.some((s) => read.raised.has(s.building) && !read.standing.has(s.building))) return next;
+    const step = steps.find(
       (s) => !read.raised.has(s.building) && s.after.every((b) => read.standing.has(b)) && read.open(s),
     );
-    if (next !== undefined) return next;
+    if (step !== undefined && !next.some((s) => s.building === step.building)) next.push(step);
   }
-  return null;
+  return next;
 }
 
 /** The steps of `chosen` not raised yet, whatever the moment: what the colony keeps goods for. */
@@ -326,21 +333,15 @@ export interface IndustryWant {
 
 /** The holy oil a temple's bill takes. */
 const TEMPLE_OIL_UNITS = 1;
-/** The leather a ship's bill takes at the joinery's yard. */
-const SHIP_LEATHER_UNITS = 5;
 
 /**
  * What `chosen` needs delivered that no workshop of the colony takes as a recipe input, so the generic rule
- * of bringing a standing workshop's inputs cannot know it: the temple's unit of holy oil while home boils it,
- * and the leather of a ship the joinery builds while the colony keeps no animal farm (owner ruling).
+ * of bringing a standing workshop's inputs cannot know it: the temple's unit of holy oil, while home boils it.
  */
 export function colonyIndustryWants(
   chosen: readonly IndustryChoice[],
   homeMakesHolyOil: boolean,
 ): readonly IndustryWant[] {
-  const has = (industry: Industry): boolean => chosen.some((c) => c.industry === industry);
-  const wants: IndustryWant[] = [];
-  if (has('temple') && homeMakesHolyOil) wants.push({ good: 'holy_oil', upTo: TEMPLE_OIL_UNITS });
-  if (has('carpentry') && !has('husbandry')) wants.push({ good: 'leather', upTo: SHIP_LEATHER_UNITS });
-  return wants;
+  const temple = chosen.some((c) => c.industry === 'temple');
+  return temple && homeMakesHolyOil ? [{ good: 'holy_oil', upTo: TEMPLE_OIL_UNITS }] : [];
 }

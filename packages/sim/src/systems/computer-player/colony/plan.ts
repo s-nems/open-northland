@@ -9,7 +9,7 @@ import { familiesOf } from '../../family/households.js';
 import { seatHasSide } from '../build-order/seat-order.js';
 import { topEnabledTier } from '../top-tier.js';
 import { colonists } from './founding.js';
-import { type ChainStep, chainStepOf, nextIndustryStep, type StepGround, stepsAhead } from './industry.js';
+import { type ChainStep, chainStepOf, nextIndustrySteps, type StepGround, stepsAhead } from './industry.js';
 import { colonyIndustries, roomFor } from './industry-read.js';
 import { colonyFed } from './provision.js';
 import { towersLacking } from './towers.js';
@@ -135,7 +135,7 @@ export function colonyPlan(
   const rows = colony.builds.filter((b) => !b.placed).map((b) => b.building);
   if (rows.length > 0) return rows;
   const industries = colonyIndustries(env, colony, buildings);
-  const step = industries === null ? null : nextIndustryStep(industries.choices, industries.read);
+  const steps = industries === null ? [] : nextIndustrySteps(industries.choices, industries.read);
   const towers = towersLacking(env, colony, buildings);
-  return [...(step === null ? [] : [placedId(step)]), ...towers, ...homeStep(env, colony, buildings)];
+  return [...steps.map(placedId), ...towers, ...homeStep(env, colony, buildings)];
 }
