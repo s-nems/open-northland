@@ -64,6 +64,8 @@ const SHORE_DX = 8;
 const SEED = 7;
 const FOUND_DUE_TICKS = minutesToTicks(16);
 const GATHER_DUE_TICKS = minutesToTicks(4);
+/** The sites a running colony places once its store stands, and their building, before it rests. */
+const REST_DUE_TICKS = minutesToTicks(8);
 const LADDER_DUE_TICKS = minutesToTicks(14);
 const FARM_ID = 'work_farm_00';
 const HOMES_DUE_TICKS = minutesToTicks(20);
@@ -299,7 +301,7 @@ describe('a colony sails', () => {
     for (const e of [...colonyBuildingsOf(sim)])
       if (sim.world.has(e, UnderConstruction)) sim.world.destroy(e);
     for (const build of editColony(sim).builds) build.placed = true;
-    expect(stepUntil(sim, GATHER_DUE_TICKS, () => builders() <= BUILDERS_AT_REST)).toBe(true);
+    expect(stepUntil(sim, REST_DUE_TICKS, () => builders() <= BUILDERS_AT_REST)).toBe(true);
   });
 
   it('puts no man on the hunter seat where no game is left, and sets him to other work', () => {

@@ -189,7 +189,8 @@ function keepTrader(env: ColonyEnv, route: RouteView): { trader: Entity | null; 
   if (job === null) return { trader: null, commands: [] };
   const held = route.trader;
   if (held !== null && world.isAlive(held)) {
-    if (isTraderJob(ctx.content, world.tryGet(held, Settler)?.jobType ?? null)) return { trader: held, commands: [] };
+    if (isTraderJob(ctx.content, world.tryGet(held, Settler)?.jobType ?? null))
+      return { trader: held, commands: [] };
     if (ctx.tick - route.chosen < TRADE_TAKE_UP_TICKS) return { trader: null, commands: [] };
   }
   const next = traderFor(env, job);
