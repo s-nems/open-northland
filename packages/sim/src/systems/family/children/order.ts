@@ -23,6 +23,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { interactionNodeId } from '../../footprint/interaction.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { isFood, jobIgnoresHomeHouse } from '../../readviews/index.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
@@ -32,7 +33,7 @@ import { anyNeedPressing } from '../../settlers/drives/needs.js';
 import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { unreachableGoalVeto } from '../../settlers/unreachable-goals.js';
-import { navigationLimitFor } from '../../signposts/index.js';
+import { landReachAt, navigationLimitFor } from '../../signposts/index.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { deliverHome, fetchFrom, HAUL_LIFT_UNITS } from '../food-haul.js';
 import type { ExternalFoodIndex } from '../food-search.js';
@@ -191,11 +192,28 @@ function blockerAt(
     return 'homeUnbuilt';
   if (jobIgnoresHomeHouse(ctx.content, world.get(husband, Settler).jobType)) return 'husbandAway';
   if (world.tryGet(husband, Residence)?.home !== home) return 'livesApart';
+  if (standsOffHomeLand(world, ctx, woman, home) || standsOffHomeLand(world, ctx, husband, home))
+    return 'homeAcrossWater';
   return undefined;
 }
 
 function upgradeSparesSession(world: World, woman: Entity, home: Entity): boolean {
   return world.has(home, Upgrading) && world.tryGet(home, MakingLove)?.wife === woman;
+}
+
+/**
+ * Whether `e` stands ashore on other land than `home`'s door, where no walk home leads: our own rule, so a
+ * household split by water, such as a husband ferried to another island, is never called home across it.
+ * A rider aboard a vehicle is waited for instead, until it steps off.
+ */
+function standsOffHomeLand(world: World, ctx: SystemContext, e: Entity, home: Entity): boolean {
+  const terrain = ctx.terrain;
+  if (terrain === undefined || isAboardVehicle(world, e)) return false;
+  const door = interactionNodeId(world, ctx, terrain, home);
+  if (door === null) return false;
+  const p = world.get(e, Position);
+  const here = nodeOfPosition(p.x, p.y);
+  return terrain.componentOf(terrain.nodeAtClamped(here.hx, here.hy)) !== terrain.componentOf(door);
 }
 
 /** Drop an order that can never complete, and let its holder out of the house. */
@@ -244,8 +262,12 @@ function haulFood(
   }
   // This pass runs before the planner releases her last trip's claim, which must not hide its unit from her.
   pass.supply.releasePickupClaim(woman);
-  // Null when navigation is unlimited; otherwise she sees only sources inside her allowed area.
-  const limit = terrain !== undefined ? navigationLimitFor(world, ctx.content, terrain, woman) : null;
+  // Her signpost area, else her own land: never a source across water.
+  const limit =
+    terrain !== undefined
+      ? (navigationLimitFor(world, ctx.content, terrain, woman) ??
+        landReachAt(terrain, terrain.nodeAtClamped(hereNode.hx, hereNode.hy)))
+      : null;
   const source = pass.externalFood.nearest(
     hereNode,
     ownerOf(world, woman),

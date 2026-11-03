@@ -2319,6 +2319,7 @@ export const deGame = {
         noHome: 'Kein Familienheim',
         homeUnbuilt: 'Haus nicht fertig',
         livesApart: 'Getrennte Haushalte',
+        homeAcrossWater: 'Haus übers Meer',
         noFood: 'Keine Nahrung vorrätig',
       },
       full: {
@@ -2328,6 +2329,8 @@ export const deGame = {
         homeUnbuilt: '{name} kann erst ein Kind bekommen, wenn das Haus fertig ist. Schließe den Bau ab.',
         livesApart:
           '{name} kann kein Kind bekommen: Ihr Mann{partner} wohnt in einem anderen Haus. Lass sie in dasselbe Haus ziehen.',
+        homeAcrossWater:
+          '{name} kann kein Kind bekommen: sie oder ihr Mann{partner} ist auf anderem Land als ihr Haus. Bringe sie per Schiff dorthin zurück.',
         noFood:
           '{name} kann kein Kind bekommen: In Reichweite gibt es keine Nahrung, um das Haus zu versorgen. Bringe Nahrung in ein nahes Lager.',
       },

@@ -34,9 +34,9 @@ export const Residence = defineComponent<{ home: Entity }>('Residence', 'settler
 
 /**
  * Why a standing child order waits undriven: the wife has no home, it is still a building site, the
- * husband lives in another one, or his trade never comes home.
+ * husband lives in another one, his trade never comes home, or one of them stands on land the home is not on.
  */
-export type ChildOrderBlocker = 'noHome' | 'homeUnbuilt' | 'livesApart' | 'husbandAway';
+export type ChildOrderBlocker = 'noHome' | 'homeUnbuilt' | 'livesApart' | 'husbandAway' | 'homeAcrossWater';
 
 /**
  * A married woman's standing make-a-child order. The player picks the sex - the one readable

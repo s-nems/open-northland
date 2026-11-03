@@ -50,8 +50,9 @@ import { interactionCell } from '../../../src/systems/settlers/targets/index.js'
 import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-goals.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
+import { stepToIdleReplan } from '../../fixtures/idle-replan.js';
 import { needsOf } from '../../fixtures/settler.js';
-import { grassNodeMap as grassMap } from '../../fixtures/terrain.js';
+import { grassNodeMap as grassMap, waterColumnMap } from '../../fixtures/terrain.js';
 
 /**
  * GAME-LEVEL (e2e) - the marriage → household → child loop under the real `Simulation.step()`
@@ -77,6 +78,15 @@ const SOLDIER = 31;
 const HOME = 2;
 const WAREHOUSE = 7;
 const GRASS = 0;
+const WATER = 1;
+/** Two islands, in half-cell nodes: the water column on cell 14 parts the map between nodes 27 and 30. A
+ *  home on the west island, and the east island's people on nodes 34 to 60. */
+const ISLANDS_MAP_CELLS = { width: 32, height: 4, strait: 14 } as const;
+const WEST_HOME_X = 4;
+const EAST_X = 34;
+const WEST_SHORE_X = 24;
+const EAST_BESIDE_X = 36;
+const EAST_FAR_X = 60;
 /** The eat slot (`setatomic <job> 10`), and the one `event 3 2 +4000` meal its clip pays out. */
 const EAT_ATOMIC = 10;
 /** Any craft clip id: the test stamps the display itself, so no binding is read. */
@@ -103,7 +113,10 @@ function familyContent(): ContentSet {
       // Every real soldier trade carries `ignoresHomeHouseFlag 1`.
       { typeId: SOLDIER, id: 'soldier_unarmed', ignoresHomeHouse: true },
     ],
-    landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
+    landscape: [
+      { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
+      { typeId: WATER, id: 'water', walkable: false, buildable: false },
+    ],
     buildings: [
       {
         typeId: HOME,
@@ -162,6 +175,27 @@ function familySim(
   if (woman === undefined || man === undefined) throw new Error('setup: settlers missing');
   const homeEntity = homeOf(sim);
   return { sim, woman: () => woman, man: () => man, home: () => homeEntity };
+}
+
+/** {@link familySim}'s content on two islands parted by water, with one home on the west island. */
+function islandsSim(): { sim: Simulation; home: Entity; spawn: (jobType: number, x: number) => Entity } {
+  const { width, height, strait } = ISLANDS_MAP_CELLS;
+  const sim = new Simulation({
+    seed: 3,
+    content: familyContent(),
+    map: waterColumnMap(width, height, strait),
+  });
+  sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME, x: WEST_HOME_X, y: 0, tribe: VIKING });
+  sim.step();
+  const spawn = (jobType: number, x: number): Entity => {
+    const before = new Set(sim.world.query(Settler));
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y: 0, tribe: VIKING, owner: PLAYER });
+    sim.step();
+    const spawned = [...sim.world.query(Settler)].find((e) => !before.has(e));
+    if (spawned === undefined) throw new Error('setup: settler missing');
+    return spawned;
+  };
+  return { sim, home: homeOf(sim), spawn };
 }
 
 /** The one home building entity. */
@@ -511,6 +545,41 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.step();
     expect(sim.world.get(woman(), ChildOrder).blocked).toBe('husbandAway');
     expectHomeMealIndoors(sim, woman(), home());
+  });
+
+  it('holds the order while the wife stands on other land than the home, never walking her into the water', () => {
+    const { sim, home, spawn } = islandsSim();
+    const woman = spawn(WOMAN, EAST_X);
+    const man = spawn(CIVILIST, WEST_HOME_X + 2);
+    sim.world.add(woman, Marriage, { spouse: man, child: null });
+    sim.world.add(man, Marriage, { spouse: woman, child: null });
+    sim.world.add(woman, Residence, { home });
+    sim.world.add(man, Residence, { home });
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, CHILD_FOOD_UNITS);
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman, child: 'female' });
+
+    for (let t = 0; t < IDLE_REPLAN_PERIOD_TICKS; t++) sim.step();
+
+    expect(sim.world.get(woman, ChildOrder).blocked).toBe('homeAcrossWater');
+    expect(sim.world.has(woman, MoveGoal)).toBe(false);
+    expect(sim.world.has(man, FamilyDuty)).toBe(false);
+  });
+
+  it('fetches the child cost from a pile on her own island, past a nearer one across the water', () => {
+    const { sim, home, spawn } = islandsSim();
+    const woman = spawn(WOMAN, WEST_SHORE_X);
+    const man = spawn(CIVILIST, WEST_HOME_X + 2);
+    sim.world.add(woman, Marriage, { spouse: man, child: null });
+    sim.world.add(man, Marriage, { spouse: woman, child: null });
+    sim.world.add(woman, Residence, { home });
+    sim.world.add(man, Residence, { home });
+    sim.enqueueSetup({ kind: 'dropGood', good: FOOD, x: EAST_X, y: 0, amount: CHILD_FOOD_UNITS });
+    sim.enqueueSetup({ kind: 'dropGood', good: FOOD, x: 0, y: 0, amount: CHILD_FOOD_UNITS });
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman, child: 'female' });
+    sim.step();
+
+    const goal = sim.world.get(woman, MoveGoal).cell;
+    expect(sim.terrain?.xOf(goal)).toBeLessThan(WEST_SHORE_X);
   });
 
   it('holds the order while the husband serves a trade that never comes home, and resumes after', () => {
@@ -1172,6 +1241,20 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(sim.world.has(woman(), ChildOrder)).toBe(false); // no order drove this - the hoard rung did
   });
 
+  it('a housewife stocks the larder from her own island, past a nearer pile across the water', () => {
+    const { sim, home, spawn } = islandsSim();
+    const woman = spawn(WOMAN, WEST_SHORE_X);
+    sim.world.add(woman, Residence, { home });
+    sim.enqueueSetup({ kind: 'dropGood', good: FOOD, x: EAST_X, y: 0, amount: CHILD_FOOD_UNITS });
+    sim.enqueueSetup({ kind: 'dropGood', good: FOOD, x: 0, y: 0, amount: CHILD_FOOD_UNITS });
+    sim.step();
+
+    stepToIdleReplan(sim, woman);
+
+    const goal = sim.world.get(woman, MoveGoal).cell;
+    expect(sim.terrain?.xOf(goal)).toBeLessThan(WEST_SHORE_X);
+  });
+
   it('a second housewife hauls from the farther pile while the first walks to the nearer one', () => {
     const sim = new Simulation({ seed: 9, content: familyContent(), map: grassMap(28, 4) });
     sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
@@ -1293,6 +1376,19 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
 });
 
 describe('marry matches the nearest partner', () => {
+  it('weds a man of her own island over a nearer one ashore from a home across the water', () => {
+    const { sim, home, spawn } = islandsSim();
+    const woman = spawn(WOMAN, EAST_X);
+    const visitor = spawn(CIVILIST, EAST_BESIDE_X);
+    sim.world.add(visitor, Residence, { home });
+    const islander = spawn(CIVILIST, EAST_FAR_X);
+
+    sim.enqueueSetup({ kind: 'marry', entity: woman });
+    sim.step();
+
+    expect(sim.world.get(woman, Wedding).partner).toBe(islander);
+  });
+
   it('weds the nearest eligible bachelor over a farther one', () => {
     const { sim, woman, man } = familySim(3);
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 4, y: 0, tribe: VIKING, owner: PLAYER });

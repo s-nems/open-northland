@@ -17,7 +17,7 @@ import { isFood } from '../readviews/index.js';
 import { startDrop } from '../settlers/atomics/start.js';
 import { hasRoom } from '../settlers/drives/economy/store-policy.js';
 import { unreachableGoalVeto } from '../settlers/unreachable-goals.js';
-import type { NavigationLimit } from '../signposts/index.js';
+import { landReachAt, type NavigationLimit } from '../signposts/index.js';
 import type { SupplyTally } from '../stores/index.js';
 import { deliverHome, fetchFrom, HAUL_LIFT_UNITS } from './food-haul.js';
 import type { ExternalFoodIndex } from './food-search.js';
@@ -37,8 +37,8 @@ import type { ExternalQualityIndex } from './quality-search.js';
 
 /**
  * Maybe task the idle adult woman `e` with one hoarding step, returning true when it took her for this
- * tick. `limit` is her signpost confinement (null when unlimited): a home outside her allowed area
- * suspends the drive entirely, and a source outside it is invisible.
+ * tick. `limit` is her signpost confinement (null when unlimited, when her land bounds her instead): a
+ * home outside her reach suspends the drive entirely, and a source outside it is invisible.
  */
 export function planWomanHoard(
   world: World,
@@ -55,13 +55,18 @@ export function planWomanHoard(
   if (home === undefined) return false;
   const homeType = builtHomeType(world, ctx, home);
   if (homeType === undefined) return false;
-  if (limit !== null && terrain !== undefined) {
-    const inode = interactionNode(world, ctx, home);
-    if (inode !== null && !limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y))) return false;
-  }
-  const settler = world.get(e, Settler);
   const p = world.get(e, Position);
   const hereNode = nodeOfPosition(p.x, p.y);
+  // Her signpost area, else her own land: a home or a source across water is out of her reach.
+  const reach =
+    terrain === undefined
+      ? null
+      : (limit ?? landReachAt(terrain, terrain.nodeAtClamped(hereNode.hx, hereNode.hy)));
+  if (reach !== null && terrain !== undefined) {
+    const inode = interactionNode(world, ctx, home);
+    if (inode !== null && !reach.allowsNode(terrain.nodeAtClamped(inode.x, inode.y))) return false;
+  }
+  const settler = world.get(e, Settler);
   const load = world.tryGet(e, Carrying);
   if (load !== undefined && load.amount > 0) {
     const quality = homeQualityUse(ctx, load.goodType);
@@ -85,11 +90,11 @@ export function planWomanHoard(
   const avoid = unreachableGoalVeto(world, ctx, e);
   const foodSource =
     storedFoodUnits(world, ctx, home) < larderCapacity(ctx, homeType)
-      ? externalFood.nearest(hereNode, owner, home, limit, avoid)
+      ? externalFood.nearest(hereNode, owner, home, reach, avoid)
       : null;
   const demanded = demandedHomeQualityGoods(world, ctx, e, home);
   const qualitySource =
-    demanded.size > 0 ? externalQuality.nearest(hereNode, owner, demanded, limit, avoid) : null;
+    demanded.size > 0 ? externalQuality.nearest(hereNode, owner, demanded, reach, avoid) : null;
   const source = nearerSource(world, hereNode, foodSource, qualitySource);
   if (source === null) return false; // nothing to hoard, so fall through to idling
   supply.stampPickupClaim(e, { source: source.store, goodType: source.goodType, amount: HAUL_LIFT_UNITS });

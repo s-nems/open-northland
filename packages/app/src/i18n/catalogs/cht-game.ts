@@ -2100,6 +2100,7 @@ export const chtGame = {
         noHome: '沒有住所',
         homeUnbuilt: '民居未完工',
         livesApart: '分居',
+        homeAcrossWater: '民居在水的另一邊',
         noFood: '沒有存糧',
       },
       full: {
@@ -2108,6 +2109,7 @@ export const chtGame = {
         noHome: '{name}無法生孩子：這對夫妻沒有住所。請為他們指派一座民居。',
         homeUnbuilt: '{name}要等他們的民居完工後才能生孩子。請完成建造。',
         livesApart: '{name}無法生孩子：她的丈夫{partner}住在另一座民居。請讓他們搬進同一座民居。',
+        homeAcrossWater: '{name}無法生孩子：她或她的丈夫{partner}不在民居所在的陸地上。請用船把他們送回去。',
         noFood: '{name}無法生孩子：範圍內沒有食物可以存進民居。請把食物送到附近的倉庫。',
       },
     },

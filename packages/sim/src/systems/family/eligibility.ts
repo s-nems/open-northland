@@ -2,10 +2,12 @@ import type { ContentSet } from '@open-northland/data';
 import {
   Age,
   Female,
+  JobAssignment,
   Marriage,
   ownerOf,
   Person,
   Position,
+  Residence,
   Settler,
   TrainingOrder,
   Wedding,
@@ -13,9 +15,12 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { MapContext } from '../context.js';
+import { interactionNodeId } from '../footprint/interaction.js';
 import { isNonWorkingAge } from '../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob } from '../readviews/index.js';
 import type { NavigationLimit } from '../signposts/index.js';
+import { settlementReachAt } from '../signposts/settlement-reach.js';
 import { isMinor } from './households.js';
 
 /**
@@ -80,6 +85,10 @@ export function raisingChild(world: World, marriage: { child: Entity | null }): 
  * under signpost navigation a partner outside the seeker's allowed area is not eligible. Original
  * behavior: only the seeker's own player's humans of its tribe are candidates. Approximation: the
  * whole-map nearest pick; the original searches a bounded area around the seeker.
+ *
+ * Our own rule: both partners belong to the settlement where the seeker stands ({@link settlementReachAt}),
+ * so a man passing through, such as a ship's hand ashore at another island, is not wed into a household
+ * across water, and a seeker away from her own settlement weds no one there.
  */
 export function findPartnerFor(
   world: World,
@@ -94,6 +103,11 @@ export function findPartnerFor(
   const tribe = world.get(seeker, Settler).tribe;
   const owner = ownerOf(world, seeker);
   const seekerFemale = world.has(seeker, Female);
+  const settlement =
+    terrain === undefined || owner === undefined
+      ? null
+      : settlementOf(world, { content, terrain }, terrain, owner, from);
+  if (settlement !== null && !settlement.holds(seeker)) return null;
   let best: { entity: Entity; dist: number } | null = null;
   for (const e of world.canonicalQuery(Person, Position)) {
     if (e === seeker || !mayMarry(world, content, e)) continue;
@@ -101,6 +115,8 @@ export function findPartnerFor(
     if (world.has(e, Female) === seekerFemale) continue;
     const p = world.get(e, Position);
     const node = nodeOfPosition(p.x, p.y);
+    const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
+    if (best !== null && dist >= best.dist) continue;
     if (
       limit !== null &&
       terrain !== undefined &&
@@ -108,8 +124,42 @@ export function findPartnerFor(
     ) {
       continue;
     }
-    const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
-    if (best === null || dist < best.dist) best = { entity: e, dist };
+    if (settlement !== null && !settlement.holds(e)) continue;
+    best = { entity: e, dist };
   }
   return best?.entity ?? null;
+}
+
+/** The settlement `player` holds around `from`, as a test of who belongs to it: a settler standing inside
+ *  whose home and workplace, where it has them, stand inside too. */
+function settlementOf(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  player: number,
+  from: { hx: number; hy: number },
+): { holds(e: Entity): boolean } {
+  const reach = settlementReachAt(
+    world,
+    ctx.content,
+    terrain,
+    player,
+    terrain.nodeAtClamped(from.hx, from.hy),
+  );
+  const inside = (building: Entity | undefined): boolean => {
+    if (building === undefined || !world.isAlive(building)) return true;
+    const door = interactionNodeId(world, ctx, terrain, building);
+    return door === null || reach.allowsNode(door);
+  };
+  return {
+    holds: (e) => {
+      const p = world.get(e, Position);
+      const node = nodeOfPosition(p.x, p.y);
+      return (
+        reach.allowsNode(terrain.nodeAtClamped(node.hx, node.hy)) &&
+        inside(world.tryGet(e, Residence)?.home) &&
+        inside(world.tryGet(e, JobAssignment)?.workplace)
+      );
+    },
+  };
 }

@@ -2144,6 +2144,7 @@ export const plGame = {
         noHome: 'Para bez domu',
         homeUnbuilt: 'Dom w budowie',
         livesApart: 'Osobne domy',
+        homeAcrossWater: 'Dom za wodą',
         noFood: 'Brak jedzenia',
       },
       full: {
@@ -2153,6 +2154,8 @@ export const plGame = {
         homeUnbuilt: '{name} nie może mieć dziecka, dopóki ich dom jest w budowie. Dokończ budowę.',
         livesApart:
           '{name} nie może mieć dziecka: jej mąż{partner} mieszka w innym domu. Przenieś ich do jednego domu.',
+        homeAcrossWater:
+          '{name} nie może mieć dziecka: ona lub jej mąż{partner} jest na innym lądzie niż ich dom. Przewieź ich do niego statkiem.',
         noFood:
           '{name} nie może mieć dziecka: w zasięgu brakuje jedzenia, by zaopatrzyć dom. Dostarcz jedzenie do pobliskiego magazynu.',
       },

@@ -2168,6 +2168,7 @@ export const enGame = {
         noHome: 'No dwelling',
         homeUnbuilt: 'Dwelling unbuilt',
         livesApart: 'Living apart',
+        homeAcrossWater: 'Home across sea',
         noFood: 'No food stock',
       },
       full: {
@@ -2178,6 +2179,8 @@ export const enGame = {
           '{name} cannot have a child until their dwelling is finished. Complete the construction.',
         livesApart:
           '{name} cannot have a child: her husband{partner} lives in another dwelling. Move them into one dwelling.',
+        homeAcrossWater:
+          '{name} cannot have a child: she or her husband{partner} is on other land than their dwelling. Bring them back to it by ship.',
         noFood:
           '{name} cannot have a child: there is no food in reach to stock the dwelling. Bring food to a store nearby.',
       },

@@ -2096,6 +2096,7 @@ export const chsGame = {
         noHome: '没有民居',
         homeUnbuilt: '民居未建成',
         livesApart: '夫妻分居',
+        homeAcrossWater: '民居在水的另一边',
         noFood: '没有存粮',
       },
       full: {
@@ -2104,6 +2105,7 @@ export const chsGame = {
         noHome: '{name}无法生孩子：这对夫妇没有住所。请为他们指定一座民居。',
         homeUnbuilt: '{name}要等他们的民居建成后才能生孩子。请完成建造。',
         livesApart: '{name}无法生孩子：她的丈夫{partner}住在另一座民居。请让他们搬进同一座民居。',
+        homeAcrossWater: '{name}无法生孩子：她或她的丈夫{partner}不在民居所在的陆地上。请用船把他们送回去。',
         noFood: '{name}无法生孩子：范围内没有食物可以储备到民居中。请把食物送到附近的仓库。',
       },
     },

@@ -39,6 +39,8 @@ const HOME = 2;
 const GRASS = 0;
 const IN_AREA = 6;
 const OUT_OF_AREA = 40;
+/** A second settlement of the same player on the strip, far past the goods search from tile 2. */
+const FAR_SETTLEMENT = 150;
 
 function familyContent(): ContentSet {
   return parseContentSet({
@@ -160,6 +162,21 @@ describe('confinement gates the marry partner pick', () => {
     sim.enqueueSetup({ kind: 'marry', entity: woman });
     sim.step();
     expect(sim.world.has(woman, Wedding)).toBe(true); // the near match is inside her area
+  });
+});
+
+describe("the marry partner pick keeps to the seeker's settlement", () => {
+  it('passes over a man beside her whose home is in a far settlement of her player for one of her own', () => {
+    const sim = confinedSim();
+    const woman = adultAt(sim, 2, 2, WOMAN, true);
+    const visitor = adultAt(sim, IN_AREA, 2, CIVILIST, false);
+    sim.world.add(visitor, Residence, { home: homeAt(sim, FAR_SETTLEMENT, 2) });
+    const neighbour = adultAt(sim, IN_AREA + 2, 2, CIVILIST, false);
+
+    sim.enqueueSetup({ kind: 'marry', entity: woman });
+    sim.step();
+
+    expect(sim.world.get(woman, Wedding).partner).toBe(neighbour);
   });
 });
 

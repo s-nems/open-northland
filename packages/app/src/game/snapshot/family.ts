@@ -67,6 +67,7 @@ const CHILD_ORDER_BLOCKERS: readonly components.ChildOrderBlocker[] = [
   'homeUnbuilt',
   'livesApart',
   'husbandAway',
+  'homeAcrossWater',
 ];
 
 /**
