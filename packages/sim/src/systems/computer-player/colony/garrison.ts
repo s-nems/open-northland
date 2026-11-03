@@ -33,7 +33,7 @@ const GARRISON_MOST = 8;
  *  (authored): a sixth, so the home army keeps five men in six. */
 const FIGHTERS_PER_GARRISON_MAN = 6;
 /** How long a band seen about the colony keeps its garrison and towers raised after it was last seen
- *  (authored: a raid's return, from the probe's raids). */
+ *  (authored: long enough for a beaten band to come back, untuned: no colony was raided in the probes). */
 export const THREAT_MEMORY_TICKS = minutesToTicks(30);
 /** How far from the colony's store, in Manhattan nodes, an idle garrison man walks back (authored: inside a
  *  tower's reach of the store). */
@@ -83,14 +83,15 @@ export function garrisonRoom(army: number, held: number): number {
   return Math.max(0, Math.min(share, army - ARMY_FLOOR_MIN));
 }
 
-/** Who sails to garrison the colony, in at most `seats`, archers first and then ascending id: none while home
- *  is raided, and no more than {@link garrisonRoom} lets go. */
-export function garrisonBoarders(env: ColonyEnv, colony: ColonyView, seats: number): Entity[] {
+/** The men home owes the colony's garrison, archers first and then ascending id: none while home is raided,
+ *  and no more than {@link garrisonRoom} lets go. A want any carrier between the islands meets; today the
+ *  line's home stop seats them. */
+export function garrisonOwed(env: ColonyEnv, colony: ColonyView): Entity[] {
   const { world, ctx, seat } = env;
   const lacking = garrisonWant(colony, ctx.tick) - colony.garrison.length;
-  if (seats <= 0 || lacking <= 0 || underAttack(world, seat)) return [];
+  if (lacking <= 0 || underAttack(world, seat)) return [];
   const { army, free } = homeFighters(env);
-  const take = Math.min(seats, lacking, garrisonRoom(army, colonyGarrisons(world, seat).length));
+  const take = Math.min(lacking, garrisonRoom(army, colonyGarrisons(world, seat).length));
   if (take <= 0) return [];
   return free
     .map((e) => ({ e, ranged: isRangedFighter(world, ctx, e) }))

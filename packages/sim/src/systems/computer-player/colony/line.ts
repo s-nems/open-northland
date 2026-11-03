@@ -38,7 +38,7 @@ import { workshopsForHome } from './arms.js';
 import { holdDone, holdFlushed, holdLoad, pinHold } from './cargo.js';
 import { type CargoLine, homewardCargo, LINE_CARGO_MOST, type OutwardRead, outwardCargo } from './demand.js';
 import { colonists, colonyOrigin } from './founding.js';
-import { garrisonBoarders } from './garrison.js';
+import { garrisonOwed } from './garrison.js';
 import { tradesmenFor } from './overflow.js';
 import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan, ladderAhead } from './plan.js';
@@ -432,7 +432,7 @@ function crewFromColony(env: ColonyEnv, line: LineView): PlayerCommand[] {
 }
 
 /** Hire the crew's shortfall from home, then, in the seats left, the craftsmen no colonist can stand in for,
- *  the garrison's shortfall ({@link garrisonBoarders}) and the hands the colony lacks for its gatherers, sites
+ *  the garrison home owes ({@link garrisonOwed}) and the hands the colony lacks for its gatherers, sites
  *  and workshops ({@link handsWanted}). */
 function boardHome(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCommand[] {
   const { world, ctx, seat } = env;
@@ -451,7 +451,7 @@ function boardHome(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCo
   const lacking = { men: wanted.men - men, women: wanted.women - women };
   const trades = tradesmenFor(env, people, home, free);
   const tradesmen = trades.sailing.filter((e) => !hired.includes(e));
-  const garrison = garrisonBoarders(env, colony, free - tradesmen.length);
+  const garrison = garrisonOwed(env, colony).slice(0, Math.max(0, free - tradesmen.length));
   const party = topUpParty(world, ctx, seat, home, lacking, free - tradesmen.length - garrison.length).filter(
     (e) => !hired.includes(e) && !tradesmen.includes(e),
   );
