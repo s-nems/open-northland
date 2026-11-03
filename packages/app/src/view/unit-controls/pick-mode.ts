@@ -235,7 +235,8 @@ export type PickAim =
 
 /** The orders a Shift press queues behind each settler's or vehicle's current order (the sim's
  *  `QUEUEABLE_ORDER_KINDS` and `QUEUEABLE_VEHICLE_ORDER_KINDS`), keeping the mode armed while Shift is
- *  held. A post, a home, a trade stop and a work flag are standing settings, which apply at once. */
+ *  held. A post, a home, a trade stop, a trade ship and a work flag are standing settings, which apply
+ *  at once. */
 type QueueableKind = Exclude<
   PickMode['kind'],
   'workplace' | 'workplace-or-flag' | 'home' | 'trade-house' | 'trade-ship' | 'work-area'
@@ -296,8 +297,6 @@ export interface PickModeDeps {
   /** The sim's ship pin rule as its last answer, which the trade-ship pick lights by; absent, the pick
    *  lights nothing. */
   readonly canPinTradeShip?: TradeShipRule | undefined;
-  /** The same rule asked as the pick's click lands, which it pins by; absent, it pins nothing. */
-  readonly askPinTradeShip?: ((trader: number, ship: number) => Promise<boolean>) | undefined;
   readonly askPlaceSignpostAt?: ((col: number, row: number) => Promise<boolean>) | undefined;
   /** The signpost, trade-stop and vehicle attach rules' last answers, undefined while unanswered, which
    *  the label beside the cursor reads; it names the press optimistically without one. */
@@ -507,20 +506,17 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     return pickTopAt(ships, world.x, world.y);
   };
 
-  /** Pin the ship under the press to the trader; the sim's fresh answer decides the order and its cue. */
-  const resolveShipPin = (trader: number, event: MouseEvent): PickPress => {
-    const ask = deps.askPinTradeShip;
+  /** Pin the ship under the press to the trader through the right click's own order. */
+  const pressTradeShip = (trader: number, event: MouseEvent): PickPress => {
     const ship = ownShipAt(deps.toWorld(event.clientX, event.clientY));
-    if (ask === undefined || ship === null) return 'missed';
-    deps.answered.after(ask(trader, ship), (admitted) => {
-      if (!admitted) {
-        deps.cue?.('fail');
-        return;
-      }
-      deps.enqueue({ kind: 'setTradeShip', entity: trader as Entity, ship: ship as Entity });
-      deps.flashTarget?.(ship, 'assign');
-      deps.cue?.('confirm');
-    });
+    if (ship === null) return 'missed';
+    deps
+      .vehicleOrders()
+      .issueShipPin(
+        { trader, ship, unpins: false },
+        () => deps.cue?.('confirm'),
+        () => deps.cue?.('fail'),
+      );
     return 'pending';
   };
 
@@ -698,7 +694,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         event.shiftKey,
         event.ctrlKey || event.metaKey,
       );
-    if (mode.kind === 'trade-ship') return resolveShipPin(mode.trader, event);
+    if (mode.kind === 'trade-ship') return pressTradeShip(mode.trader, event);
     return chained(mode, resolvePicked(mode, event, queued), queued);
   };
 

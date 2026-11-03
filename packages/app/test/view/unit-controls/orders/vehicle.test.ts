@@ -829,6 +829,20 @@ describe('vehicle picks', () => {
     expect(outcomes).toEqual([]);
   });
 
+  it("drops a panel pick's pin once a newer order took the trader, as a right click's pin drops", async () => {
+    const pendingGroundOrders = createPendingGroundOrders();
+    const h = harness([OWN_SETTLER], {
+      canPinTradeShip: () => true,
+      pendingGroundOrders,
+      vehicles: [under(SHIP, 'vehicle')],
+    });
+    h.pickMode.arm({ kind: 'trade-ship', trader: OWN_SETTLER });
+    expect(h.pickMode.handleMouseDown(leftClick)).toBe('pending');
+    pendingGroundOrders.begin([OWN_SETTLER], false);
+    await landed();
+    expect(h.issued).toEqual([]);
+  });
+
   it('lets a pinned ship go at once, without asking', () => {
     const h = harness([OWN_SETTLER], { canPinTradeShip: () => false });
     expect(pinOutcomes(h.controller, true)).toEqual(['set']);

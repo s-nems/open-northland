@@ -8,6 +8,7 @@ import { createAnsweredOrders } from '../../../src/view/unit-controls/orders/ans
 import { createUnitOrderController } from '../../../src/view/unit-controls/orders/controller.js';
 import type { VehicleOrderController } from '../../../src/view/unit-controls/orders/vehicle.js';
 import { createPickModeController, type PickModeDeps } from '../../../src/view/unit-controls/pick-mode.js';
+import type { ShipPinPlan } from '../../../src/view/unit-controls/right-click/vehicles.js';
 import { createUnitSelection } from '../../../src/view/unit-controls/selection.js';
 import { NO_TARGETS } from '../../support/pick-mode.js';
 import { snapshotOf } from '../../support/snapshot.js';
@@ -51,7 +52,6 @@ function harness(
     | 'vehicleAttachAnswer'
     | 'askAttachTradeHouse'
     | 'tradeShipPinAnswer'
-    | 'askPinTradeShip'
     | 'cue'
   > = {},
 ) {
@@ -188,59 +188,46 @@ describe('an armed pick aims as its press orders', () => {
     expect(h.aim()).toEqual({ kind: 'loadAboard', fits: false });
   });
 
-  it('pins the ship the sim admits once it answered, with one cue for the press', async () => {
-    const cues: UiCue[] = [];
-    const h = harness(
-      { vehicles: [drawnHere(SHIP, 'vehicle')] },
-      {},
-      {
-        tradeShipPinAnswer: () => true,
-        askPinTradeShip: async () => true,
-        cue: (cue) => cues.push(cue),
-      },
-    );
-    h.pickMode.arm({ kind: 'trade-ship', trader: SOLDIER });
-    expect(h.aim()).toEqual({ kind: 'pinShip', fits: true });
-    expect(h.press()).toBe('pending');
-    await Promise.resolve();
-    expect(h.issued).toEqual([{ kind: 'setTradeShip', entity: SOLDIER, ship: SHIP }]);
-    expect(cues).toEqual(['confirm']);
+  it('pins the ship under the press through the vehicle order, with its cue for each verdict', () => {
+    for (const [admits, cue] of [
+      [true, 'confirm'],
+      [false, 'fail'],
+    ] as const) {
+      const cues: UiCue[] = [];
+      const pins: ShipPinPlan[] = [];
+      const h = harness(
+        { vehicles: [drawnHere(SHIP, 'vehicle')] },
+        {
+          issueShipPin: (plan, onSet, onRefused) => {
+            pins.push(plan);
+            (admits ? onSet : onRefused)();
+          },
+        },
+        { tradeShipPinAnswer: () => admits, cue: (played) => cues.push(played) },
+      );
+      h.pickMode.arm({ kind: 'trade-ship', trader: SOLDIER });
+      expect(h.aim()).toEqual({ kind: 'pinShip', fits: admits });
+      expect(h.press()).toBe('pending');
+      expect(pins).toEqual([{ trader: SOLDIER, ship: SHIP, unpins: false }]);
+      expect(cues).toEqual([cue]);
+    }
   });
 
-  it('refuses a ship the sim turns down with the fail cue alone', async () => {
-    const cues: UiCue[] = [];
-    const h = harness(
-      { vehicles: [drawnHere(SHIP, 'vehicle')] },
-      {},
-      {
-        tradeShipPinAnswer: () => false,
-        askPinTradeShip: async () => false,
-        cue: (cue) => cues.push(cue),
-      },
-    );
-    h.pickMode.arm({ kind: 'trade-ship', trader: SOLDIER });
-    expect(h.aim()).toEqual({ kind: 'pinShip', fits: false });
-    expect(h.press()).toBe('pending');
-    await Promise.resolve();
-    expect(h.issued).toEqual([]);
-    expect(cues).toEqual(['fail']);
-  });
-
-  it('judges the ship under a trade-ship press, not a cart drawn over it', async () => {
+  it('judges the ship under a trade-ship press, not a cart drawn over it', () => {
     for (const vehicles of [
       [drawnHere(SHIP, 'vehicle'), drawnHere(CART, 'vehicle')],
       [drawnHere(CART, 'vehicle'), drawnHere(SHIP, 'vehicle')],
     ]) {
-      const h = harness({ vehicles }, {}, { askPinTradeShip: async () => true });
+      const ships: number[] = [];
+      const h = harness({ vehicles }, { issueShipPin: (plan) => ships.push(plan.ship) });
       h.pickMode.arm({ kind: 'trade-ship', trader: SOLDIER });
       expect(h.press()).toBe('pending');
-      await Promise.resolve();
-      expect(h.issued).toEqual([{ kind: 'setTradeShip', entity: SOLDIER, ship: SHIP }]);
+      expect(ships).toEqual([SHIP]);
     }
   });
 
   it('misses and disarms where no ship lies under the trade-ship pick', () => {
-    const h = harness({ vehicles: [drawnHere(CART, 'vehicle')] }, {}, { askPinTradeShip: async () => true });
+    const h = harness({ vehicles: [drawnHere(CART, 'vehicle')] });
     h.pickMode.arm({ kind: 'trade-ship', trader: SOLDIER });
     expect(h.aim()).toBeNull();
     expect(h.press()).toBe('missed');
