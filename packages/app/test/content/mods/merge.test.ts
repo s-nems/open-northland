@@ -234,7 +234,8 @@ describe('content mod merge', () => {
       // Pools cannot override through a different id, so a flagless pack bringing `han-male` onto a
       // (tribe, sex) pair another pack's pool holds is a second people and re-keys like a flagged one.
       const second = { ...peoplePatch(42, 'chinese') };
-      delete (second.tribes as Array<Record<string, unknown>>)[0].civilization;
+      const secondTribe = (second.tribes as Array<Record<string, unknown>>)[0];
+      if (secondTribe) delete secondTribe.civilization;
       second.personalNames = [{ id: 'han-male', tribe: 42, sex: 'male', names: ['Yao'] }];
       const merged = mergeContentModPatches(BASE, [peoplePatch(42, 'chinese'), second]);
       expect(merged.tribes.map((t) => [t.id, t.typeId])).toEqual([
