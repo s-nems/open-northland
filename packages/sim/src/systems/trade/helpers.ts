@@ -108,7 +108,8 @@ function setOutToLoad(plan: PlannerContext, hold: FerryHold, from: Entity, good:
   const type = contentIndex(ctx.content).vehicles.get(world.get(ship, Vehicle).vehicleType);
   const line = type && vehicleStockGood(ctx.content, type, edibleGoodFormOf(ctx.content, good));
   if (line === undefined || line === null || failedToReach(plan, cell)) return false;
-  if (hold.booked.room < HELPER_UNIT) return false;
+  // As the trader stows: room aboard now and past the runs booked, so no unit waits at a full ship.
+  if (Math.min(hold.aboard.room, hold.booked.room) < HELPER_UNIT) return false;
   world.add(e, CargoRun, { vehicle: ship, goodType: line, direction: 'load' });
   plan.supply.stampPickupClaim(e, { source: from, goodType: good, amount: HELPER_UNIT });
   atOrWalk(world, e, here, cell, () => startPickup(world, ctx, e, plan, from, good, HELPER_UNIT));

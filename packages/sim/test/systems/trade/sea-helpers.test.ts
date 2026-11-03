@@ -31,7 +31,11 @@ import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
 import { ferryHoldOf, traderHoldOf } from '../../../src/systems/trade/hold.js';
 import { canAttachToVehicle } from '../../../src/systems/vehicles/crew.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
-import { consumeVehicleGood, stockVehicleGoods } from '../../../src/systems/vehicles/stock.js';
+import {
+  consumeVehicleGood,
+  stockVehicleGoods,
+  vehicleLineCap,
+} from '../../../src/systems/vehicles/stock.js';
 import { TEST_MANIFEST, testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 
@@ -179,6 +183,12 @@ function heldBy(sim: Simulation, trader: Entity, ship: Entity) {
 
 function inHands(sim: Simulation, e: Entity): number {
   return sim.world.tryGet(e, Carrying)?.amount ?? 0;
+}
+
+function shipCapacity(sim: Simulation): number {
+  const type = sim.content.vehicles.find((row) => row.typeId === SHIP_SMALL);
+  if (type === undefined) throw new Error('no small ship in the fixture');
+  return vehicleLineCap(type);
 }
 
 /** The fixture with a small ship of `seats` ordinary seats. */
@@ -387,6 +397,40 @@ describe('helpers at work', () => {
     expect(runsLeft).toBe(0);
     expect(stockOf(sim, east, WOOD)).toBe(BOTH_WAYS_LOAD);
     expect(stockOf(sim, west, PLANK)).toBe(BOTH_WAYS_LOAD);
+  });
+
+  it('sets out to load only while the ship has room aboard, not merely room booked', () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[PLANK, LOAD]]);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const { trader, ship, carriers } = crew(sim, HELPERS, false);
+    const full = shipCapacity(sim);
+    stockVehicleGoods(sim.world, ship, sim.content, WOOD, full);
+    order(sim, { kind: 'attachTradeHouse', entity: trader, house: west });
+    order(sim, { kind: 'attachTradeHouse', entity: trader, house: east });
+    order(sim, { kind: 'setTradeImport', entity: trader, house: east, good: PLANK, on: true });
+    order(sim, { kind: 'setTradeImport', entity: trader, house: west, good: WOOD, on: true });
+    order(sim, { kind: 'setTradeImportLimits', entity: trader, house: west, good: WOOD, upTo: 1, keep: 0 });
+
+    let loadRuns = 0;
+    let intoFullShip = 0;
+    const loading = new Set<Entity>();
+    for (let elapsed = 0; elapsed < FIRST_TRIP_TICKS; elapsed++) {
+      sim.step();
+      const shipFull = shipLine(sim, ship, WOOD).current + shipLine(sim, ship, PLANK).current >= full;
+      for (const carrier of carriers) {
+        const starts = sim.world.tryGet(carrier, CargoRun)?.direction === 'load';
+        if (starts && !loading.has(carrier)) {
+          loadRuns++;
+          if (shipFull) intoFullShip++;
+        }
+        if (starts) loading.add(carrier);
+        else loading.delete(carrier);
+      }
+    }
+
+    expect(loadRuns).toBeGreaterThan(0);
+    expect(intoFullShip).toBe(0);
   });
 
   it('gives the booking back when a helper dies mid trip', () => {
