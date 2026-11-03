@@ -1061,34 +1061,38 @@ function nextCommand(rng: Rng): Command {
       // A gate cut into the preamble run's centre, or refused anywhere else and for a non-gate row.
       return { kind: 'convertPalisadeGate', palisade: wallTarget(rng), gfxIndex: pick(rng, PALISADE_ROWS) };
     case 57:
-      // A vehicle goto at a random id: the stream's carts and ships (refused - nobody commands them,
-      // the note must hash and replay like any event), the preamble's pinned ship (its trader called
-      // aboard), non-vehicle and dead ids (skipped), and both envelope branches of the ownership gate.
+      // A vehicle goto at an aimed id ({@link vehicleTarget}): the stream's carts and ships (refused -
+      // nobody commands them, the note must hash and replay like any event), the preamble's pinned ship
+      // (its trader called aboard), non-vehicle and dead ids (skipped), and both envelope branches of the
+      // ownership gate.
       return { kind: 'moveVehicle', vehicle: vehicleTarget(rng), x, y };
     case 58:
       // The stop twin: the preamble's ship under way stops at sea, every other roll is the no-drive skip.
       return { kind: 'stopVehicle', vehicle: vehicleTarget(rng) };
     case 59:
-      // An attach at two random ids: a crew-trade settler on a cart or ship (seated, walking to the
-      // door, boarding on the next goto), a trade the type refuses, another owner's vehicle, and the
-      // wrong-kind and dead ids; every refusal note must hash and replay like the seat itself.
+      // An attach at two aimed ids ({@link riderTarget}, {@link vehicleTarget}): a crew-trade settler on a
+      // cart or ship (seated, walking to the door, boarding on the next goto), the preamble trader on its
+      // own cart or pinned ship, a trade the type refuses, another owner's vehicle, and the wrong-kind and
+      // dead ids; every refusal note must hash and replay like the seat itself.
       return {
         kind: 'attachToVehicle',
         entity: riderTarget(rng),
         vehicle: vehicleTarget(rng),
       };
     case 60:
-      // The detach twin at a random id: a seated rider steps off on the door, the rest are skips.
+      // The detach twin at an aimed id: a seated rider steps off on the door, the preamble trader lets its
+      // cart or ship go, the rest are skips.
       return { kind: 'detachFromVehicle', entity: riderTarget(rng) };
     case 61:
-      // Unload people at a random id: a crewed vehicle empties, an empty one and a non-vehicle skip.
+      // Unload people at an aimed id: a crewed vehicle empties, an empty one and a non-vehicle skip.
       return { kind: 'unloadPeople', vehicle: vehicleTarget(rng) };
     case 62:
-      // A dock order at a random id and tile: the ships (no commander, or a held point while the crew
-      // boards), the carts (not a ship), and every skip; the ring search must replay exactly.
+      // A dock order at an aimed id and a random tile: the ships (no commander, or a held point while the
+      // crew boards), the carts (not a ship), and every skip; the ring search must replay exactly.
       return { kind: 'dockVehicle', vehicle: vehicleTarget(rng), x, y };
     case 63:
-      // A wanted amount on a random id: the hold's clamp, the no-carrier note, an uncarriable good.
+      // A wanted amount on an aimed id: the pinned ship's locked hold, the hold's clamp, the no-carrier
+      // note, an uncarriable good.
       return {
         kind: 'setVehicleWanted',
         vehicle: vehicleTarget(rng),
@@ -1117,17 +1121,20 @@ function nextCommand(rng: Rng): Command {
             : { kind: 'ground', hx: x, hy: y },
       };
     case 67:
-      // A board order at a random id: an attached rider walks in, which a later goto or attack drives.
+      // A board order at an aimed id: an attached rider walks in, which a later goto or attack drives;
+      // the preamble trader walks onto its pinned ship.
       return { kind: 'boardVehicle', entity: riderTarget(rng) };
     case 68:
-      // A vehicle loaded into a random carrier: a cart or catapult into a ship, and the refusals.
+      // A vehicle loaded into a carrier, both aimed: a cart or catapult into a ship, the preamble cart into
+      // the pinned ship, and the refusals.
       return {
         kind: 'loadIntoVehicle',
         vehicle: vehicleTarget(rng),
         carrier: vehicleTarget(rng),
       };
     case 69:
-      // The unload twin: a carried vehicle set down on its carrier's door, or released on its way.
+      // The unload twin at an aimed id: a carried vehicle set down on its carrier's door, or released on
+      // its way.
       return { kind: 'leaveCarrier', vehicle: vehicleTarget(rng) };
     case 70:
       // A recruit weapon veto flip, the grant flip's twin: the AssistantWeaponVetoes carrier created,
