@@ -3,6 +3,7 @@ import {
   AiControl,
   aiControlEntity,
   Health,
+  Rider,
   Settler,
   TradeRoute,
   TradeShip,
@@ -24,6 +25,7 @@ import {
   homeBuildings,
   homeSettlers,
 } from '../../../../src/systems/ai-shared/home-roster.js';
+import { isAllocatableMan } from '../../../../src/systems/ai-shared/workforce/pool.js';
 import { seatBaseOf } from '../../../../src/systems/computer-player/base.js';
 import { colonySmallShips } from '../../../../src/systems/computer-player/colony/fleet.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
@@ -38,6 +40,7 @@ import {
   colonyBuildingsOf,
   colonyContent,
   colonyIslands,
+  colonySettlersOf,
   colonyState,
   colonyWorld,
   editColony,
@@ -164,11 +167,16 @@ describe('a colony ferry', () => {
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyPeople(sim) > before)).toBe(true);
   });
 
-  it('sends men with no work left home', () => {
+  it('sends men with no work left home as civilians, and keeps the men it has work for', () => {
     const { sim } = routedWorld();
     const site = colonyState(sim)?.site;
     if (site === undefined) throw new Error('no site');
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const posted = colonySettlersOf(sim).filter((e) => {
+      const job = sim.world.get(e, Settler).jobType;
+      return job !== BUILDER && job !== CIVILIST && isAllocatableMan(sim.world, ctxOf(sim), e);
+    });
+    expect(posted.length).toBeGreaterThan(0);
     const before = new Set(everySettlerOf(sim.world, SEAT));
     for (let i = 0; i < IDLE_MEN; i++)
       sim.enqueueSetup({
@@ -180,13 +188,16 @@ describe('a colony ferry', () => {
         owner: SEAT,
       });
     sim.step();
-    const idle = everySettlerOf(sim.world, SEAT).filter((e) => !before.has(e));
-    expect(idle).toHaveLength(IDLE_MEN);
-    const homeAgain = (): boolean => {
+    const idle = colonySettlersOf(sim).filter((e) => !before.has(e));
+    expect(idle.length).toBeGreaterThan(0);
+    const landed = (): Entity[] => {
       const home = homeSettlers(sim.world, ctxOf(sim), SEAT);
-      return idle.some((e) => home.includes(e));
+      return idle.filter((e) => home.includes(e) && !sim.world.has(e, Rider));
     };
-    expect(stepUntil(sim, ROUND_DUE_TICKS, homeAgain)).toBe(true);
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => landed().length > 0)).toBe(true);
+    expect(landed().map((e) => sim.world.get(e, Settler).jobType)).toEqual(landed().map(() => CIVILIST));
+    const colony = colonySettlersOf(sim);
+    expect(posted.filter((e) => sim.world.isAlive(e) && !colony.includes(e))).toEqual([]);
   });
 });
 
