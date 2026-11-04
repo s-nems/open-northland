@@ -60,8 +60,9 @@ import { isFarmCarrierHaulOutRole } from './store-policy.js';
  * A ground pile is an {@link isLoosePile} heap not buried under a building's walls or out of every unit's
  * reach; a wall or road site's delivered material is never one. The good lifted is the pile's lowest-id
  * stocked one passing `deliverable` and not handed back to a trade route ({@link routeReturnTest}), and
- * the scan is canonical by Manhattan distance then ascending cell id. The tests run per candidate, so a lift or claim earlier in the pass is seen by the next porter, and
- * a good every unit of which a walker already claimed is passed over.
+ * the scan is canonical by Manhattan distance then ascending cell id. The tests run per candidate, so a
+ * lift or claim earlier in the pass is seen by the next porter, and a good every unit of which a walker
+ * already claimed is passed over.
  */
 function nearestLoosePickup(
   plan: PlannerContext,
