@@ -23,7 +23,7 @@ export interface MarkerFacts {
   readonly desktopFaults: readonly { readonly id: string; readonly atMs: number }[];
   /** The freeze record the marker's page left, if it left one; `seenAt` is when it was last seen frozen. */
   readonly freeze: { readonly id: string; readonly seenAt: number } | null;
-  /** The desktop shell run that served the page, when it ended without quitting. */
+  /** The desktop shell run that served the page. */
   readonly shellRun: PreviousShellRun | null;
 }
 
@@ -51,7 +51,7 @@ function endedWithSystem(marker: SessionMarker, run: PreviousShellRun | null): b
  * guess, and the watchdog's freeze record over a plain end. A page last seen hidden or in the menu
  * is not reported: a hidden page may be ended by the browser or the system without `pagehide`, and a
  * menu holds nothing a report could replay, while a game's sudden end is most likely a crash. Nor is
- * a page whose shell the system shut down or put to sleep for good.
+ * a page whose shell quit, or the system shut down or put to sleep for good.
  */
 export function judgeMarker(marker: SessionMarker, facts: MarkerFacts): MarkerVerdict {
   const reloaded = facts.previous?.id === marker.id;
@@ -66,7 +66,10 @@ export function judgeMarker(marker: SessionMarker, facts: MarkerFacts): MarkerVe
   if (faultIds.length > 0) return { kind: 'desktop', faultIds };
   if (!reloaded && facts.nowMs - marker.beatAt <= MARKER_STALE_MS) return { kind: 'live' };
   if (facts.freeze !== null) return { kind: 'freeze', freezeId: facts.freeze.id };
-  if (!marker.visible || !marker.context.inGame || endedWithSystem(marker, facts.shellRun))
+  // The shell quits after its windows closed. A page that crashed or hung before that left a fault or
+  // a freeze record, judged above, so a marker still left from it is no crash.
+  const shellQuit = facts.shellRun?.end === 'quit';
+  if (!marker.visible || !marker.context.inGame || shellQuit || endedWithSystem(marker, facts.shellRun))
     return { kind: 'quiet' };
   return { kind: 'unclean-exit' };
 }

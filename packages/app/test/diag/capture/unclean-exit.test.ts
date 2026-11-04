@@ -44,18 +44,33 @@ describe('judgeMarker', () => {
     expect(judgeMarker(marker, facts())).toEqual({ kind: 'unclean-exit' });
   });
 
-  it('keeps quiet about a page last seen hidden, in the menu, discarded, or ended with its system', () => {
+  it('keeps quiet about a page last seen hidden, in the menu, discarded, or ended with its shell or system', () => {
     const verdicts = [
       judgeMarker({ ...marker, visible: false }, facts()),
       judgeMarker({ ...marker, context: { ...marker.context, inGame: false, entry: 'menu' } }, facts()),
       judgeMarker(marker, facts({ previous: { id: marker.id, discarded: true } })),
       judgeMarker(marker, facts({ shellRun: shellRun('shutdown', BEAT_AT + 1000) })),
       judgeMarker(marker, facts({ shellRun: shellRun('asleep', BEAT_AT + 1000) })),
+      judgeMarker(marker, facts({ shellRun: shellRun('quit', LONG_AFTER) })),
     ].map(kind);
-    expect(verdicts).toEqual(['quiet', 'quiet', 'quiet', 'quiet', 'quiet']);
+    expect(verdicts).toEqual(['quiet', 'quiet', 'quiet', 'quiet', 'quiet', 'quiet']);
     expect(kind(judgeMarker(marker, facts({ shellRun: shellRun('crash', BEAT_AT + 1000) })))).toBe(
       'unclean-exit',
     );
+  });
+
+  it('still reports a crash or a freeze the shell or the watchdog saw in a run that quit', () => {
+    const quit = shellRun('quit', LONG_AFTER);
+    const gone = { id: 'd'.repeat(32), atMs: BEAT_AT + 500 };
+    const freeze = { id: 'f'.repeat(32), seenAt: BEAT_AT };
+    expect(judgeMarker(marker, facts({ shellRun: quit, desktopFaults: [gone] }))).toEqual({
+      kind: 'desktop',
+      faultIds: [gone.id],
+    });
+    expect(judgeMarker(marker, facts({ shellRun: quit, freeze }))).toEqual({
+      kind: 'freeze',
+      freezeId: freeze.id,
+    });
   });
 
   it('reports a page that beat on past a shutdown notice: that shutdown was cancelled', () => {

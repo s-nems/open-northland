@@ -1,5 +1,13 @@
 import { release } from 'node:os';
-import { app, type BrowserWindow, dialog, type IpcMainInvokeEvent, ipcMain, powerMonitor } from 'electron';
+import {
+  app,
+  type BrowserWindow,
+  dialog,
+  type IpcMainInvokeEvent,
+  ipcMain,
+  powerMonitor,
+  session,
+} from 'electron';
 import {
   CLEAR_FAULTS_CHANNEL,
   FAULT_VERSIONS_CHANNEL,
@@ -45,7 +53,13 @@ function errorFault(error: unknown): NewFault {
  * unhandled rejection, and a listener silences that warning, so this one prints it instead.
  */
 export function recordProcessFaults(store: FaultStore, run: ShellRun): void {
-  app.on('will-quit', () => run.quit());
+  app.on('will-quit', () => {
+    // Chromium writes localStorage to disk on a delay. The windows have closed by now, so this pushes
+    // their last writes (a setting, a session marker's removal) out before the process ends; whether
+    // that delay is what left markers after an ordinary quit on Windows is unconfirmed.
+    if (app.isReady()) session.defaultSession.flushStorageData();
+    run.quit();
+  });
   app.on('render-process-gone', (_event, _contents, details) => {
     if (details.reason !== 'clean-exit') run.childGone();
   });

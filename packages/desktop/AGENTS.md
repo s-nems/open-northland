@@ -33,11 +33,11 @@ converted content over the `app://` protocol. The root [`AGENTS.md`](../../AGENT
   JSON file each in the profile's `faults/`, the newest 20 kept, home directory redacted, until the
   page clears them. A crashed page reloads the start page; a second crash within a minute
   asks the player to restart or quit instead. Main-process errors keep Electron's own handling.
-- `src/faults/shell-run.ts` keeps `shell-run.json` while the shell runs and removes it on quit. One
-  left at the next start tells the page how that run ended: a minidump newer than the run's start
-  and its last child-process death plus a grace (a native crash), a system shutdown or a sleep it
-  never woke from (no report for a page that stopped with either), or none of these. Dumps are never
-  uploaded; the start deletes them once judged.
+- `src/faults/shell-run.ts` keeps `shell-run.json` while the shell runs and records its quit there.
+  At the next start it tells the page how that run ended: an ordinary quit, a minidump newer than the
+  run's start and its last child-process death plus a grace (a native crash), a system shutdown or a
+  sleep it never woke from (no unclean-exit report for a page that stopped with a quit, a shutdown or
+  a sleep), or none of these. Dumps are never uploaded; the start deletes them once judged.
 - A packaged build (or a run with `ON_ORIGINAL_GAME_CHECK=1`) requires an installed original game
   through `src/original-game/`. Before the window opens, a profile without `original-game.json`
   runs detection (or checks only the folder `ON_ORIGINAL_GAME_DIR` names) and records a hit. The
