@@ -24,8 +24,8 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
 export interface UnitPanel {
   render(snapshot: WorldSnapshot, selected: ReadonlySet<number>): void;
   tick(snapshot: WorldSnapshot): void;
-  /** The player issued a command from a panel: show its effect as soon as it lands. */
-  commanded(): void;
+  /** The player issued a command from a panel on session tick `tick`: show its effect as soon as it lands. */
+  commanded(tick: number): void;
 }
 
 export function createUnitPanel(opts: UnitPanelOptions): UnitPanel {
@@ -48,6 +48,6 @@ export function createUnitPanel(opts: UnitPanelOptions): UnitPanel {
       update(snapshot, true);
     },
     tick: (snapshot) => update(snapshot, false),
-    commanded: () => gate.commanded(),
+    commanded: (tick) => gate.commanded(tick),
   };
 }

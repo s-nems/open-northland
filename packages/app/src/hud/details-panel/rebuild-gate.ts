@@ -1,12 +1,12 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import { TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import type { UnitPanelModel } from './model/index.js';
 
 /** Minimum wall-clock gap in ms between rebuilds a new snapshot calls for; a selection change (a forced pass)
  *  rebuilds immediately, and so do answers landing under the snapshot that selection was baked from. */
 const VALUE_REBUILD_MIN_MS = 250;
-/** How long after the player's own panel command every new snapshot or landed answer re-derives
- *  unthrottled: long enough for the command's tick and the reads it changes to come back. */
-const COMMAND_ECHO_MS = 1000;
+/** Ticks after the player's own panel command in which every new snapshot or landed answer re-derives
+ *  unthrottled: past a relayed session's largest input delay plus the answer's trip back. */
+const COMMAND_ECHO_TICKS = TICKS_PER_SECOND * 2;
 
 export interface PanelRebuild {
   readonly model: UnitPanelModel;
@@ -24,8 +24,9 @@ export interface PanelRebuildGate {
   ): PanelRebuild | null;
   /** Report a rebuild the gate did not decide, which restarts the throttle window. */
   rebuilt(): void;
-  /** The player just issued a command from the panel: its effect shows as soon as it lands. */
-  commanded(): void;
+  /** The player issued a command from the panel on session tick `tick`: its effect shows as soon as it
+   *  lands. */
+  commanded(tick: number): void;
 }
 
 export interface PanelRebuildGateDeps {
@@ -55,8 +56,7 @@ const structureKeyOf = (model: UnitPanelModel): string => {
 
 /** Gates the panel's model re-derive and re-bake: `decide` runs every frame, the model build at most once
  *  per snapshot, and both at most once per throttle window unless forced, an answer landed or a panel
- *  command's echo is due. A group's
- *  model costs its members, and the snapshot changes every tick. */
+ *  command's echo is due. A group's model costs its members, and the snapshot changes every tick. */
 export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuildGate {
   /** Keyed on snapshot identity, not `snapshot.tick`: a same-tick world mutation hands out a new snapshot
    *  object under an unchanged tick, and a paused tick never advances to heal a stale model. */
@@ -71,8 +71,8 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
    *  answers version the last rebuild read. */
   let structuralSnapshot: WorldSnapshot | null = null;
   let rebuiltAnswers = 0;
-  /** Until when a command's echo skips the throttle. */
-  let echoUntil = Number.NEGATIVE_INFINITY;
+  /** The last session tick a command's echo skips the throttle on. */
+  let echoUntilTick = Number.NEGATIVE_INFINITY;
 
   const modelFor = (
     snapshot: WorldSnapshot,
@@ -98,7 +98,7 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
       const mayLand = snapshot === structuralSnapshot && answersNow !== rebuiltAnswers;
       // Within a command's echo only a new snapshot or answer derives, so the cost stays per tick.
       const echo =
-        now < echoUntil &&
+        snapshot.tick <= echoUntilTick &&
         (derived === null || derived.snapshot !== snapshot || derived.answers !== answersNow);
       if (!force && checked && !mayLand && !echo) return null;
       const { model, json, answers } = modelFor(snapshot, force);
@@ -126,8 +126,8 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
     rebuilt(): void {
       lastRebuildAt = deps.now();
     },
-    commanded(): void {
-      echoUntil = deps.now() + COMMAND_ECHO_MS;
+    commanded(tick): void {
+      echoUntilTick = tick + COMMAND_ECHO_TICKS;
       // A press the panel shows before the sim answers changes the model under the same snapshot.
       derived = null;
     },

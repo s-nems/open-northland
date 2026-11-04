@@ -142,8 +142,10 @@ export async function createUnitChrome(
   const pendingTrade = createPendingTradeMarks();
   const enqueue = (command: PlayerCommand): void => {
     opts.enqueue(command);
-    pendingTrade.record(command, opts.snapshot().tick);
-    panel.commanded();
+    if (opts.readOnly?.() === true) return;
+    const tick = opts.snapshot().tick;
+    pendingTrade.record(command, tick);
+    panel.commanded(tick);
   };
   const panelOpts = { snapshot: opts.snapshot, viewer: opts.viewer, content: opts.content, enqueue };
   // The settler panel's commands: `setProductionCount` is the sim's, while a rename is the player's

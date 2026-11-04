@@ -1138,6 +1138,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       mapText,
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
       enqueue: issueCommand,
+      readOnly,
       centerOn: jumpToWorld,
       drawnItems: () => renderer.drawnItems(),
       resourceVisible: (tileX, tileY) => {

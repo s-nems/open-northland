@@ -45,18 +45,34 @@ function route(a: TradeStopView['imports'] = [], b: TradeStopView['imports'] = [
 const unlimited = (good: number) => ({ good, upTo: TRADE_LIMIT_NONE, keep: TRADE_LIMIT_NONE });
 
 describe('pending trade marks', () => {
-  it('shows a pressed mark before the sim answers, then gives way to the live route', () => {
+  it('shows a pressed mark until the press could have applied, then gives way to the live route', () => {
     const pending = createPendingTradeMarks();
     const live = route();
     pending.record({ kind: 'setTradeImport', entity: TRADER, house: HOUSE_B, good: SWORD, on: true }, 5);
 
     expect(pending.view(TRADER, live, 5)?.stops[1]?.imports).toEqual([unlimited(SWORD)]);
-    // A route answered for the press's own tick is not the answer yet.
     expect(pending.view(TRADER, live, 6)?.stops[1]?.imports).toEqual([unlimited(SWORD)]);
+    expect(pending.view(TRADER, live, 5 + LONG_AFTER)).toBe(live);
+  });
 
-    const answered = route([], [unlimited(SWORD)]);
-    expect(pending.view(TRADER, answered, 6)).toBe(answered);
-    expect(pending.view(TRADER, live, 7)).toBe(live);
+  it('holds a press and its undo over a delayed route that still shows neither', () => {
+    const pending = createPendingTradeMarks();
+    const before = route();
+    pending.record({ kind: 'setTradeImport', entity: TRADER, house: HOUSE_B, good: SWORD, on: true }, 5);
+    pending.record({ kind: 'setTradeImport', entity: TRADER, house: HOUSE_B, good: SWORD, on: false }, 6);
+    pending.view(TRADER, before, 7);
+
+    // The first press lands alone a few ticks later; the window keeps showing the undo.
+    expect(pending.view(TRADER, route([], [unlimited(SWORD)]), 8)?.stops[1]?.imports).toEqual([]);
+  });
+
+  it('clears the limits of a mark set again after a press cleared it, as the sim does', () => {
+    const pending = createPendingTradeMarks();
+    const live = route([{ good: SWORD, upTo: 20, keep: 3 }]);
+    pending.record({ kind: 'setTradeImport', entity: TRADER, house: HOUSE_A, good: SWORD, on: false }, 5);
+    pending.record({ kind: 'setTradeImport', entity: TRADER, house: HOUSE_A, good: SWORD, on: true }, 5);
+
+    expect(pending.view(TRADER, live, 5)?.stops[0]?.imports).toEqual([unlimited(SWORD)]);
   });
 
   it('applies limits over a mark still pending, sorted among the live ones', () => {

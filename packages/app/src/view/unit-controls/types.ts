@@ -109,6 +109,8 @@ export interface UnitControlsOptions {
   /** Owner slot to team-colour slot; absent means identity. */
   readonly playerColourOf?: (player: number) => number;
   readonly enqueue: (command: PlayerCommand) => void;
+  /** The session drops every command `enqueue` takes (a spectator); absent, it issues them. */
+  readonly readOnly?: () => boolean;
   /** The map's own string by id, for the names a map gives its settlers. */
   readonly mapText?: (stringId: number) => string | undefined;
   /** Re-centre the main view on a world-px point at the current zoom; the hud layer never reaches the
