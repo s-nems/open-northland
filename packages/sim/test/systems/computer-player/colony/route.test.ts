@@ -10,6 +10,7 @@ import {
   TradeRoute,
   TradeShip,
   Vehicle,
+  vehiclePassengers,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import {
@@ -295,6 +296,37 @@ describe('a route under fire', () => {
     for (const danger of editColony(sim).dangers) danger.seen = sim.tick - DANGER_LAPSED_TICKS;
     expect(stepUntil(sim, LEG_DUE_TICKS, () => colonySmallShips(sim.world, ctxOf(sim), SEAT) > 0)).toBe(true);
     expect(colonyState(sim)?.dangers).toEqual([]);
+  });
+});
+
+describe('an abandoned route', () => {
+  it('lets go of the helpers seated on its ship, so the ship lies free at the colony', () => {
+    const { sim, ship } = routedWorld();
+    const trader = routeTrader(sim) as Entity;
+    const helpers = (): Entity[] =>
+      vehiclePassengers(sim.world.get(ship, Vehicle))
+        .map((seat) => seat.entity)
+        .filter((e) => e !== trader);
+    const ctx = ctxOf(sim);
+    const terrain = ctx.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    const atColony = (): boolean => {
+      const { moored, mooring } = sim.world.get(ship, Vehicle);
+      return (
+        moored &&
+        mooring !== null &&
+        terrain.componentOf(terrain.nodeAt(mooring.hx, mooring.hy)) === colonyState(sim)?.land
+      );
+    };
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => atColony() && helpers().length > 0)).toBe(true);
+    const live = editColony(sim);
+    live.phase = 'abandoned';
+    live.since = sim.tick;
+    live.people = [];
+    live.rest = [];
+    live.ship = null;
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.route === null)).toBe(true);
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => helpers().length === 0)).toBe(true);
   });
 });
 

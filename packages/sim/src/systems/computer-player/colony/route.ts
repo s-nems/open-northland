@@ -408,20 +408,26 @@ export function runRoute(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   return orders;
 }
 
-/** The colony lets its route go: the ship unpinned and the trader back to a civilian. */
+/** The colony lets its route go: the helpers off the ship, so it lies free for a ferry, the ship unpinned
+ *  and the trader back to a civilian. A helper aboard at sea stays seated. */
 export function releaseRoute(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx } = env;
   const route = colony.route;
   if (route === null) return [];
   env.edit().route = null;
   const trader = route.trader;
+  const state = route.ship === null ? undefined : world.tryGet(route.ship, Vehicle);
+  const helpersOff = (state === undefined ? [] : vehiclePassengers(state))
+    .filter((seat) => seat.entity !== trader)
+    .map((seat): PlayerCommand => ({ kind: 'detachFromVehicle', entity: seat.entity }));
   if (
     trader === null ||
     !world.isAlive(trader) ||
     !isTraderJob(ctx.content, world.tryGet(trader, Settler)?.jobType ?? null)
   )
-    return [];
+    return helpersOff;
   return [
+    ...helpersOff,
     { kind: 'setTradeShip', entity: trader, ship: null },
     { kind: 'setJob', entity: trader, jobType: CIVILIST_JOB },
   ];
