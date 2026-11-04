@@ -37,11 +37,15 @@ If a model has only one resolution sample, resizing cannot improve that evidence
 With the pinned database at 1920×1080, RTX 4090 and GTX 1650 match tier 3, while Intel UHD 620 and
 HD 4000 match tier 1. These are tested library outputs, not performance measurements of this game.
 
+Ryzen APUs report `AMD Radeon(TM) Graphics` with a PCI device id and no model. The database matches that
+name to an unrelated discrete card (`intel radeong 0.4 on amd tonga` at 119 fps with the id,
+`amd radeon polaris` at 60 fps without), so every such APU gets tier 3 whatever its size.
+
 ## Cost basis
 
 | Option | Work it adds | Measured cost |
 | --- | --- | --- |
-| xBR / enhanced sampling | Multi-tap sprite/palette sampling and edge arithmetic; also enhanced terrain sampling and building minification. Cost depends on covered pixels, DPR and zoom. | See the magnifier scenarios of `npm run bench:gpu` |
+| xBR / enhanced sampling | Multi-tap sprite/palette sampling and edge arithmetic; also enhanced terrain sampling and building minification. Cost depends on covered pixels, DPR and zoom. | See [laptop GPUs](#laptop-gpus-at-19201080) |
 | xBRZ / Super-xBR / MMPX | One GPU redraw of each plain page a view draws at twice its size, at most 1 Mi texels a frame, then the twins' memory: up to a 1.5 GiB budget against 433 MB for the pages themselves on `magiczny_las` late game. Characters, flat decor (trees, rocks, grass), construction sites and damage overlays keep xBR, terrain filtering or the sharp path. | See the magnifier scenarios of `npm run bench:gpu`; a dense 1440×900 view holds 1.45 GB of twins |
 | Enhanced shadows | Cached blur baking and uploads; flat decor uses a 6×6 sampling footprint. | None at zoom 1; on is cheaper than off below zoom 1 and on a DPR 2 display (14% of the frame there), because a soft bake samples once where the authored silhouette goes through the magnifier |
 | Weather | Screen-covering procedural atmosphere, precipitation, ground reactions and cover updates. | See the weather scenarios of `npm run bench:gpu` |
@@ -61,6 +65,37 @@ The measured column comes from an Apple M2 Pro at 1440×900 with every other opt
 and renderer CPU time at ×3. It ranks the options; it does
 not predict a weak GPU's milliseconds, validate the tier-to-settings mapping or quantify weather.
 Weak-device weather defaults are precautionary.
+
+### Laptop GPUs at 1920×1080
+
+`npm run bench:gpu-settings` (6 cycles, two runs; a cell gives both runs' medians when they differ) on
+`magiczny_las` at tick 100000, the densest town, every other option on with xBR, Windows Chrome 156 on
+ANGLE Direct3D 11: a Radeon Vega 7 (Ryzen 7 4800HS, `AMD Radeon(TM) Graphics`) and a GeForce GTX 1660 Ti
+Max-Q. Both GPUs match tier 3, Quality.
+
+| Row | Vega 7, zoom 1 | Vega 7, zoom 0.5 | GTX 1660 Ti, zoom 1 | GTX 1660 Ti, zoom 0.5 |
+| --- | --- | --- | --- | --- |
+| Frame, every option on | 4.67 / 4.71 ms | 6.53 ms | 2.10 / 2.24 ms | 3.02 / 3.03 ms |
+| xBR against art filter off | 1.05 | 1.77 / 1.71 | none above noise | none above noise |
+| xBRZ, Super-xBR, MMPX against off | 1.56-1.59 | - | 0.08-0.20 | - |
+| Enhanced shadows | 0.10 | -0.17 / -0.16 (on is cheaper) | none above noise | none above noise |
+| Building grounding | 0.21 | 0.24 / 0.22 | 0.27 / 0.22 | 0.33 / 0.38 |
+| Enhanced water, environment motion, building damage, post effects | 0.08 or less | 0.08 or less | none above noise | none above noise |
+| Coast (36 shore waves in view): environment motion, enhanced water | 0.04 / 0.05, 0.17 / 0.14 | - | none above noise | - |
+| Day and night, at night | 0.75 / 0.73 of a 5.6 ms frame | 0.93 / 0.97 of 7.7 ms | 0.14 / 0.22 | 0.18 / 0.23 |
+| Weather: rain, snow | 3.33 / 3.27, 4.15 / 3.89 | - | 0.11 / 0.13, 0.25 / 0.07 | - |
+| Sprite smoothing off (a separate load) | 5.02 / 5.01 ms frame | 7.31 / 6.95 ms frame | 2.15 ms frame (one run; the other's load was noisy) | 3.08 / 3.10 ms frame |
+| Render scale 1.5 (a separate load) | 17.75 / 17.56 ms frame | - | 3.15 / 3.16 ms frame | - |
+
+The loop's control rows stay within 0.1 ms; a separate load's frame differs from the `day` session's by
+up to 0.3 ms at zoom 1 on the Vega 7 with nothing changed. On the GTX 1660 Ti the page's own script
+takes 1.3 ms of the 2.2 ms redraw at zoom 1 and 2.3 of 3.0 ms at zoom 0.5, and render scale 1.5 adds
+only half the frame, so the GPU work of a setting there hides under the frame's CPU work. On the
+Vega 7 the Quality frame takes 9.1 ms at zoom 1 in snow and 7.7 ms at zoom 0.5 at night, inside a
+60 fps frame's 16.7 ms.
+
+The WebGL timer `npm run bench:gpu` reads on the Vega 7 takes one of two clock modes for seconds at a
+time, about 5 or 13 ms for the same view, so its per-scenario milliseconds there are not setting costs.
 
 ## Detection and calibration
 
