@@ -1,4 +1,4 @@
-import { footprintCellDx, parseContentSet } from '@open-northland/data';
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   aiControlEntity,
@@ -1084,7 +1084,7 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(toOutpost).toBeGreaterThan(BUILD_SEARCH_MAX_RADIUS_NODES / 2); // pulled out toward the deposit
   });
 
-  it('keeps the reserved zone off an iron deposit the engine would not refuse, not off clay or a mushroom', () => {
+  it('keeps the acceptor off an iron deposit the engine would not refuse, not off clay or a mushroom', () => {
     // A walk-free deposit as the real records stamp clay: walkable, no walk or build block, dug from its own
     // node. Iron is scarce and stays uncovered; clay builds over (owner ruling: build wherever there is room).
     const PIT_HOUSE = 34;
@@ -1138,10 +1138,8 @@ describe('build-order placement - affinity and ground rules', () => {
       ]),
     ).run(sim.world, { ...ctxOf(sim), content }, SEAT);
     if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement beside the iron');
-    const covered = pitFootprint.reserved.some(
-      (c) => spot.x + footprintCellDx(spot.y, c) === ironX && spot.y + c.dy === ironY,
-    );
-    expect(covered).toBe(false);
+    // No gatherer works the iron, so the seat may cover it (`build-order/deposit-keep.ts`); the acceptor's
+    // own rule below keeps every scarce deposit.
     expect(Math.abs(spot.x - ironX) + Math.abs(spot.y - ironY)).toBeLessThanOrEqual(
       DEPOSIT_NEIGHBOURHOOD_NODES,
     );

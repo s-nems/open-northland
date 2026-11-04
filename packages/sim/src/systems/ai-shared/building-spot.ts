@@ -54,6 +54,12 @@ export interface SpotAcceptor {
   grassBeside(x: number, y: number): boolean;
 }
 
+/** Whether a live deposit of `goodType` with `remaining` units keeps the seat's buildings off it; by default
+ *  every one does. */
+export type DepositKept = (goodType: number, remaining: number) => boolean;
+
+const EVERY_DEPOSIT_KEPT: DepositKept = () => true;
+
 export function spotAcceptor(
   world: World,
   ctx: SystemContext,
@@ -61,6 +67,7 @@ export function spotAcceptor(
   player: number,
   buildingTypeId: number,
   tribe: number,
+  depositKept: DepositKept = EVERY_DEPOSIT_KEPT,
 ): SpotAcceptor {
   const span = wallSpan(ctx, buildingTypeId, tribe);
   const occupied = new Set<NodeId>(); // an off-grid anchor can never match a candidate, so it is left out
@@ -106,7 +113,7 @@ export function spotAcceptor(
         if (spareGrass && coversGrass(terrain, zone, x, y)) return false;
         return (
           probe.canPlace(x, y) &&
-          !coversLiveDeposit(world, deposits, zone, x, y) &&
+          !coversLiveDeposit(world, deposits, depositKept, zone, x, y) &&
           !coversRoad(terrain, roadSites, body, x, y)
         );
       };
@@ -133,10 +140,12 @@ function coversRoad(
   return false;
 }
 
-/** Whether the zone `cells` anchored at `(x, y)` covers the node of a `deposits` resource with goods left. */
+/** Whether the zone `cells` anchored at `(x, y)` covers the node of a `deposits` resource with goods left
+ *  that `kept` keeps. */
 function coversLiveDeposit(
   world: World,
   deposits: ReadonlySet<number>,
+  kept: DepositKept,
   cells: readonly { dx: number; dy: number }[],
   x: number,
   y: number,
@@ -145,7 +154,7 @@ function coversLiveDeposit(
   for (const c of cells) {
     for (const e of resourcesAtNode(world, x + footprintCellDx(y, c), y + c.dy)) {
       const r = world.get(e, Resource);
-      if (r.remaining > 0 && deposits.has(r.goodType)) return true;
+      if (r.remaining > 0 && deposits.has(r.goodType) && kept(r.goodType, r.remaining)) return true;
     }
   }
   return false;

@@ -6,6 +6,7 @@ import { type SpotAcceptor, spotAcceptor } from '../../ai-shared/building-spot.j
 import { buildingTypeByContentId, countedTiers } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../../footprint/geometry.js';
+import { seatDepositKept } from './deposit-keep.js';
 
 /**
  * The reserved nodes of the seat's ground plots (`./ground-plan.ts`), but those of a plot `forType` takes
@@ -33,7 +34,8 @@ export function plottedNodes(
   return nodes.size === 0 ? null : nodes;
 }
 
-/** The seat's placement test ({@link spotAcceptor}), which also keeps a building's zone off the ground
+/** The seat's placement test ({@link spotAcceptor}), off only the deposits the seat still works
+ *  ({@link seatDepositKept}), which also keeps a building's zone off the ground
  *  plotted for another: every computer search goes through it, a human's placement never. */
 export function seatSpotAcceptor(
   world: World,
@@ -43,7 +45,15 @@ export function seatSpotAcceptor(
   buildingTypeId: number,
   tribe: number,
 ): SpotAcceptor {
-  const acceptor = spotAcceptor(world, ctx, terrain, player, buildingTypeId, tribe);
+  const acceptor = spotAcceptor(
+    world,
+    ctx,
+    terrain,
+    player,
+    buildingTypeId,
+    tribe,
+    seatDepositKept(world, ctx, player),
+  );
   const plotted = plottedNodes(world, ctx, terrain, player, buildingTypeId);
   if (plotted === null) return acceptor;
   const reserved = buildingFootprintOf(ctx.content, buildingTypeId, tribe)?.reserved;
