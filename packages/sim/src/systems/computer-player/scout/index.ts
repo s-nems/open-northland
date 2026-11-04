@@ -6,6 +6,7 @@ import {
   MealBreak,
   MoveGoal,
   mapBriefOf,
+  OpenChestOrder,
   OrderQueue,
   PlayerOrder,
   Settler,
@@ -28,11 +29,13 @@ import { minutesToTicks } from '../game-phase.js';
 import type { ComputerModule } from '../index.js';
 import { recordScoutTurnBack } from '../knowledge/intel/index.js';
 import { militaryDeadlineTick } from '../military/deadline.js';
+import { druidChestOrder, nextScoutChest } from './chests.js';
 import { enemyFighterNear, scoutDanger, seatHasSoldier } from './danger.js';
 import { nextLivestockCatch } from './livestock-catch.js';
 import { nextSignpostTarget } from './signpost-coverage.js';
 import { nextStaleZoneTarget } from './stale-zones.js';
 
+export { druidChestOrder, nextScoutChest } from './chests.js';
 export {
   enemyFighterNear,
   SCOUT_FIGHTER_CLEARANCE_NODES,
@@ -123,11 +126,12 @@ export function scoutingLeads(tick: number): boolean {
 
 /**
  * The GuideBuild module: the seat's one scout and the only issuer of its orders, so its duties can never
- * order the same man in one decision. Signposts outrank the round-up (authored): a lattice target is
- * static, while an animal that wanders off is picked up again next decision. Scouting stale zones comes
- * last in the opening, where the signposts gate where the gatherers may work, and first in every
- * {@link scoutingLeads} round after it, so the network keeps growing between trips. Before
- * {@link scoutingOpen} and with the fog off (nothing is stale) the order is the two duties alone.
+ * order the same man in one decision. Signposts come first, then the wooden chests, then the round-up
+ * (authored): a lattice target and a chest stay put, while an animal that wanders off is picked up again
+ * next decision. Scouting stale zones comes last in the opening, where the signposts gate where the
+ * gatherers may work, and first in every {@link scoutingLeads} round after it, so the network keeps growing
+ * between trips. Before {@link scoutingOpen} and with the fog off (nothing is stale) the order is the
+ * three duties alone.
  */
 function runScout(
   world: World,
@@ -151,6 +155,8 @@ function runScout(
   if (zone !== null) return [{ kind: 'moveUnit', entity: scout, x: zone.hx, y: zone.hy }];
   const post = nextSignpostTarget(world, ctx, player, order, at);
   if (post !== null) return [{ kind: 'placeSignpost', entity: scout, x: post.hx, y: post.hy }];
+  const chest = nextScoutChest(world, ctx, player, at, danger);
+  if (chest !== null) return [{ kind: 'openChest', entity: scout, chest }];
   const herd = nextLivestockCatch(world, ctx, player, at, danger);
   if (herd?.kind === 'claim') return [{ kind: 'claimAnimal', entity: scout, animal: herd.animal }];
   if (herd?.kind === 'look') return [{ kind: 'moveUnit', entity: scout, x: herd.node.hx, y: herd.node.hy }];
@@ -220,6 +226,7 @@ function scoutBusy(world: World, ctx: SystemContext, scout: Entity): boolean {
     world.has(scout, ErectSignpostOrder) ||
     world.has(scout, PlayerOrder) ||
     world.has(scout, ClaimAnimalOrder) ||
+    world.has(scout, OpenChestOrder) ||
     world.has(scout, MealBreak) ||
     (world.tryGet(scout, OrderQueue)?.orders.length ?? 0) > 0 ||
     anyNeedPressing(world, ctx, scout)
@@ -227,10 +234,14 @@ function scoutBusy(world: World, ctx: SystemContext, scout: Entity): boolean {
 }
 
 /** The scout module over the seat's build order, whose collector goods name the deposits the lattice
- *  reaches out to. */
+ *  reaches out to. It also sends a druid to the magical chests, the one chest kind the scout cannot open. */
 export function scoutModule(order: BuildOrder): ComputerModule {
   return {
     id: 'guideBuild',
-    run: (world, ctx, player) => runScout(world, ctx, player, order),
+    run: (world, ctx, player) => {
+      const druid = druidChestOrder(world, ctx, player);
+      const scout = runScout(world, ctx, player, order);
+      return druid === null ? scout : [...scout, druid];
+    },
   };
 }

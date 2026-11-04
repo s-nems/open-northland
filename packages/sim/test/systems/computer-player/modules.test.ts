@@ -1,6 +1,7 @@
 import './modules/build-order-execution.cases.js';
 import './modules/build-order-fleet.cases.js';
 import './modules/build-order-placement.cases.js';
+import './modules/chest-errands.cases.js';
 import './modules/contested-rebuild.cases.js';
 import './modules/difficulty.cases.js';
 import './modules/experience-retention.cases.js';

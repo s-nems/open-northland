@@ -38,6 +38,7 @@ import type { ComputerModule } from '../index.js';
 import { knownResourceTest, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import {
   nextLivestockCatch,
+  nextScoutChest,
   nextSignpostTarget,
   nextStaleZoneTarget,
   scoutHeldForBuilders,
@@ -557,6 +558,7 @@ function allocateScout(
   const hasScoutWork = (): boolean => {
     scoutWork ??=
       nextLivestockCatch(world, ctx, player) !== null ||
+      nextScoutChest(world, ctx, player) !== null ||
       (scoutingOpen(world, ctx, player) && nextStaleZoneTarget(world, ctx, player, order) !== null) ||
       nextSignpostTarget(world, ctx, player, order) !== null;
     return scoutWork;
