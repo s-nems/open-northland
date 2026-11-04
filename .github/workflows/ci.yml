@@ -36,7 +36,7 @@ jobs:
       - run: npm run check:assets
       - run: npm run check:docs
       - run: npm ci
-      - run: npm run check
+      - run: npm run check -- --max-diagnostics=300
       - run: npm run build
       - run: npm run check:translations
 
