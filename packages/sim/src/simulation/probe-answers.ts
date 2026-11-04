@@ -405,7 +405,16 @@ export interface ShipWaterAnswer {
  * ships, so a hull drifting across the candidate water does not flip the verdict.
  */
 export function shipWaterVersionOf(world: World): string {
-  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Palisade)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Owner)}.${world.componentValueGeneration(Owner)}.${landscapePlacementRevision(world)}.${landscapeEditState(world).topologyRevision}`;
+  return [
+    world.componentGeneration(Building),
+    world.componentValueGeneration(Building),
+    world.componentGeneration(Palisade),
+    world.componentGeneration(ResourceFootprint),
+    world.componentGeneration(Owner),
+    world.componentValueGeneration(Owner),
+    landscapePlacementRevision(world),
+    landscapeEditState(world).topologyRevision,
+  ].join('.');
 }
 
 /** The building types a ship-water verdict applies to, memoized per content index: those whose upgrade

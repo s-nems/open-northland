@@ -443,7 +443,9 @@ describe('placement gates - the ship water a held joinery would get', () => {
     expect(probe.mock.calls[0]?.slice(0, 4)).toEqual([BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy]);
   });
 
-  it('asks a type that builds no ships nothing, and holds one answer per anchor while the version stands', async () => {
+  it(
+    'asks a type that builds no ships nothing, and holds one answer per anchor while the version stands',
+    async () => {
     const sim = shoreSim();
     const host = inlineSessionHost(sim);
     const fog = createFogGates();
@@ -472,7 +474,8 @@ describe('placement gates - the ship water a held joinery would get', () => {
     sim.step();
     expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
     expect(probe.mock.calls.length).toBe(2);
-  });
+    },
+  );
 
   it('gates a new anchor, so a cursor swept along the shore costs the sim two sweeps a second', async () => {
     const { sim, gates } = shoreGates();
