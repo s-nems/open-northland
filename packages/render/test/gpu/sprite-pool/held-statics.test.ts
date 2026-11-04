@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DrawItem } from '../../../src/data/scene/index.js';
 import type { ElevationField } from '../../../src/data/terrain/index.js';
 import type { TargetTone } from '../../../src/gpu/selection/style.js';
+import { LayerBinder } from '../../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool } from '../../../src/gpu/sprite-pool/index.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
 import { ONE, type SpriteAtlas, type SpriteSheet, type Viewport } from '../../../src/index.js';
@@ -187,8 +188,8 @@ describe('SpritePool - a looping tree', () => {
     ]);
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), loopSheet);
-    const drawnX = (): number[] =>
-      layer.children.flatMap((c) =>
+    const drawnX = (of: Container = layer): number[] =>
+      of.children.flatMap((c) =>
         c.children.map((s) => (s as unknown as { texture: { frame: { x: number } } }).texture.frame.x),
       );
     pool.reconcile(frameOf(mirror.snapshot()));
@@ -198,12 +199,37 @@ describe('SpritePool - a looping tree', () => {
       const snapshot = advance(mirror, [moved(SETTLER, x, walker)]);
       pool.reconcile(frameOf(snapshot));
       expect(drawnX()).not.toEqual(before);
+      // The step draws the frame a first visit at this tick draws.
+      const visited = new Container();
+      new SpritePool(visited, new TextureCache(), loopSheet).reconcile(frameOf(snapshot));
+      expect(drawnX()).toEqual(drawnX(visited));
       expect(pool.boundsOf(TREE)).toBeDefined();
       const stepped = drawnX();
       pool.reconcile(frameOf(snapshot, { alpha: 0.5 }));
       expect(drawnX()).toEqual(stepped);
     }
-    expect(refs()).not.toContain(TREE);
+    // Only the comparison pools' first visits presented it.
+    expect(refs().filter((ref) => ref === TREE)).toHaveLength(2);
+  });
+
+  it('binds a stepped tree whose bake was turned away again on the next still frame', () => {
+    const mirror = mirrorOf([
+      entity(SETTLER, 1, 1, walker),
+      entity(TREE, 4, 1, { Resource: { goodType: 1 } }),
+    ]);
+    let turnedAway = 0;
+    vi.spyOn(TextureCache.prototype, 'deferrals', 'get').mockImplementation(() => turnedAway);
+    const pool = new SpritePool(new Container(), new TextureCache(), loopSheet);
+    pool.reconcile(frameOf(mirror.snapshot()));
+    const boundRefs: number[] = [];
+    vi.spyOn(LayerBinder.prototype, 'bind').mockImplementation((_pe, item) => {
+      boundRefs.push(item.ref);
+      if (item.ref === TREE && boundRefs.filter((ref) => ref === TREE).length === 1) turnedAway++;
+    });
+    const snapshot = advance(mirror, [moved(SETTLER, 2, walker)]);
+    pool.reconcile(frameOf(snapshot));
+    pool.reconcile(frameOf(snapshot, { alpha: 0.5 }));
+    expect(boundRefs.filter((ref) => ref === TREE)).toHaveLength(2);
   });
 });
 

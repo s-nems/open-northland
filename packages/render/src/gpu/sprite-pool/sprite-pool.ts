@@ -773,8 +773,11 @@ export class SpritePool {
         this.keepBound(pe);
       } else {
         this.bindPresented(pe, item, layers, frame, frame.erased?.get(item.ref));
-        // A stand-in for a turned-away bake binds again on the next visit.
-        if (pe.bound.retrying) this.release(item as SpriteDrawItem);
+        // A stand-in for a turned-away bake binds again next frame, a still one included.
+        if (pe.bound.retrying) {
+          this.release(item as SpriteDrawItem);
+          this.movingHeld.push(pe);
+        }
       }
     }
     loopers.length = kept;
