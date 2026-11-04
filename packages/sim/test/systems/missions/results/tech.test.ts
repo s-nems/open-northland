@@ -47,6 +47,7 @@ import {
 const PLANK = 2;
 const GATED_HOUSE = 4;
 const SAWMILL = 2;
+const CIVILIST = 6;
 const OWNER = 0;
 const RIVAL = 1;
 
@@ -234,6 +235,9 @@ describe('EnableHouse and AllowHouse', () => {
 
   it('EnableHouse opens both the placement probe and the command for the selected seat only', () => {
     const sim = new Simulation({ seed: 1, content: cutterGatedContent(), map: grassNodeMap(48, 48) });
+    // A man of each seat's by the site, so the build reach covers it and the gate alone decides.
+    for (const player of [OWNER, RIVAL]) spawn(sim, { job: CIVILIST, player, at: { hx: 20, hy: 26 } });
+    sim.step();
     const place = () =>
       sim.enqueueSetup({
         kind: 'placeBuilding',

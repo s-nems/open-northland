@@ -95,15 +95,20 @@ describe('map escalation - tower garrison', () => {
     expect(now).not.toContain(lost);
 
     removeBuildingSilently(sim.world, ctxOf(sim), tower);
-    placeBuilding(sim.world, ctxOf(sim), {
-      kind: 'placeBuilding',
-      buildingType: TOWER_TYPE,
-      ...TOWER,
-      tribe: VIKING,
-      owner: FORTRESS,
-      force: true,
-      underConstruction: false,
-    });
+    placeBuilding(
+      sim.world,
+      ctxOf(sim),
+      {
+        kind: 'placeBuilding',
+        buildingType: TOWER_TYPE,
+        ...TOWER,
+        tribe: VIKING,
+        owner: FORTRESS,
+        force: true,
+        underConstruction: false,
+      },
+      false,
+    );
     const raised = towerOf(sim);
     runToSecond(sim, 6 * REFILL_EVERY_SECONDS);
     expect(postedTo(sim, raised)).toHaveLength(TOWER_POSTS);

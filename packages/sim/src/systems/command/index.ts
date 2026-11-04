@@ -133,11 +133,12 @@ export const commandSystem: System = (world, ctx) => {
   for (const queued of ctx.commands.drain(ctx.tick)) {
     const command = authorizedCommand(world, queued, ctx.terrain);
     if (command !== undefined) {
+      const seatIssued = queued.origin === 'player' || queued.origin === 'ai';
       const origin =
         queued.origin === 'ai' && queued.decisionSource !== undefined
           ? { player: queued.player, source: queued.decisionSource }
           : undefined;
-      applyCommand(world, ctx, command, pass, origin);
+      applyCommand(world, ctx, command, pass, seatIssued, origin);
       wakeAddressed(world, command);
     }
     ctx.commands.record(ctx.tick, queued);
@@ -167,11 +168,14 @@ interface CommandPass {
   readonly peaceRefused: Set<number>;
 }
 
+/** `seatIssued`: the command came from a seat, a person's or a computer player's, whose placements keep
+ *  to its site reach; map setup and the admin tools place anywhere. */
 function applyCommand(
   world: World,
   ctx: SystemContext,
   command: Command,
   pass: CommandPass,
+  seatIssued: boolean,
   origin?: AiOrderOrigin,
 ): void {
   // Original behavior (not yet confirmed in a running game): a food amulet makes an eat order a no-op,
@@ -227,6 +231,7 @@ function applyCommand(
             ...(command.queued ? { queued: true } : {}),
           },
           pass,
+          seatIssued,
           origin,
         );
       }
@@ -244,6 +249,7 @@ function applyCommand(
             ...(command.queued ? { queued: true } : {}),
           },
           pass,
+          seatIssued,
           origin,
         );
       return;
@@ -254,13 +260,14 @@ function applyCommand(
       )
         return;
       for (const { entity, actions } of command.members) {
-        for (const action of actions) applyCommand(world, ctx, { ...action, entity }, pass, origin);
+        for (const action of actions)
+          applyCommand(world, ctx, { ...action, entity }, pass, seatIssued, origin);
       }
       return;
     case 'unitActionGroup':
       if (command.members.length > MAX_UNIT_ORDER_MEMBERS) return;
       for (const { entity } of command.members) {
-        applyCommand(world, ctx, { ...command.action, entity }, pass, origin);
+        applyCommand(world, ctx, { ...command.action, entity }, pass, seatIssued, origin);
       }
       return;
     case 'moveUnitGroup':
@@ -273,6 +280,7 @@ function applyCommand(
           ctx,
           { kind, ...member, ...(command.queued ? { queued: true } : {}) },
           pass,
+          seatIssued,
           origin,
         );
       }
@@ -294,11 +302,11 @@ function applyCommand(
             : command.kind === 'setStanceGroup'
               ? { kind: 'setStance', entity, mode: command.mode }
               : { kind: 'setRegeneration', entity, enabled: command.enabled };
-        applyCommand(world, ctx, single, pass, origin);
+        applyCommand(world, ctx, single, pass, seatIssued, origin);
       }
       return;
     case 'placeBuilding':
-      placeBuilding(world, ctx, command);
+      placeBuilding(world, ctx, command, seatIssued);
       return;
     case 'spawnSettler':
       spawnSettler(world, ctx, command);

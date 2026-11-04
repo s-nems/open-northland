@@ -3,7 +3,7 @@ import { fightsPlayer, Health, isValidPlayer, Owner, Position, Settler } from '.
 import type { World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
-import { type PlacementProbe, placementProbe } from '../footprint/index.js';
+import { type PlacementProbe, placementProbe, siteReachFor } from '../footprint/index.js';
 import { peaceGroundFor } from '../match/peace.js';
 import { isFighterJob } from '../readviews/index.js';
 import { type FogState, playerSeesEntity } from '../vision/index.js';
@@ -68,9 +68,10 @@ export function contestedGroundFor(
   return ground;
 }
 
-/** The footprint rule and, for an owned placement, the contested-ground rule and the ground a lobby peace
- *  keeps the seat off ({@link peaceGroundFor}), as one probe: the placement command, the computer
- *  players' site search and the placement ghost read the same verdict. */
+/** The footprint rule and, for an owned placement, the seat's site reach ({@link siteReachFor}) unless
+ *  `withinReach` is off, the contested-ground rule and the ground a lobby peace keeps the seat off
+ *  ({@link peaceGroundFor}), as one probe: the placement command, the computer players' site search and
+ *  the placement ghost read the same verdict. */
 export function seatPlacementProbe(
   world: World,
   content: ContentSet,
@@ -79,13 +80,19 @@ export function seatPlacementProbe(
   buildingType: number,
   tribe: number | undefined,
   player: number | undefined,
+  withinReach = true,
 ): PlacementProbe {
   const footprint = placementProbe(world, content, terrain, buildingType, tribe);
   if (player === undefined) return footprint;
   const ground = contestedGroundFor(world, content, fog, player);
+  const reach = withinReach ? siteReachFor(world, player) : null;
   const peace = peaceGroundFor(world, player);
   return {
-    canPlace: (x, y) => footprint.canPlace(x, y) && !ground.contested(x, y) && !(peace?.bars(x, y) ?? false),
+    canPlace: (x, y) =>
+      footprint.canPlace(x, y) &&
+      (reach?.reaches(x, y) ?? true) &&
+      !ground.contested(x, y) &&
+      !(peace?.bars(x, y) ?? false),
   };
 }
 

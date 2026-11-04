@@ -514,7 +514,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
     const fogGates = createFogGates();
 
-    const placementGates = createPlacementGates(host, fogGates, localPlayer);
+    const placementGates = createPlacementGates(host, fogGates, localPlayer, deps.observer === true);
     cleanup.push(() => placementGates.dispose());
     const {
       canPlaceAt,

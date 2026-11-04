@@ -14,6 +14,7 @@ import {
   type PlacementProbe,
   placementBlockerVersion,
   placementProbe,
+  siteReachFor,
   workFlagBlockerVersion,
 } from '../systems/footprint/index.js';
 import {
@@ -207,9 +208,9 @@ function footprintGrid(
   return fresh;
 }
 
-/** The building placement probe's answer over `area`: `tribe`'s footprint, contested ground, the ground a
- *  peace keeps the seat off and, with a tribe while `gated`, the seat's technology gate. Null for a
- *  mapless sim. */
+/** The building placement probe's answer over `area`: `tribe`'s footprint, the seat's site reach (unless `withinReach` is off),
+ *  contested ground, the ground a peace keeps the seat off and, with a tribe while `gated`, the seat's
+ *  technology gate. Null for a mapless sim. */
 export function placementAnswerFor(
   world: World,
   content: ContentSet,
@@ -220,6 +221,7 @@ export function placementAnswerFor(
   player?: number,
   tribe?: number,
   gated = true,
+  withinReach = true,
 ): NodeGridAnswer | null {
   if (terrain === undefined) return null;
   const { key: version, grid: footprint } = footprintGrid(world, content, terrain, buildingType, tribe, area);
@@ -232,21 +234,32 @@ export function placementAnswerFor(
       key: `${version}:${enabled}`,
     };
   }
+  const reach = withinReach ? siteReachFor(world, player).over(area) : null;
   const ground = contestedGroundFor(world, content, fog, player);
   const peace = peaceGroundWithin(world, player, area);
   const width = nodeAreaWidth(area);
   const accepted = new Uint8Array(footprint.length);
+  // The footprint-accepted nodes out of reach, as runs of indices: settlers walking about inside the area
+  // leave the key alone until the edge of the reach actually moves across it.
+  const outOfReach: number[] = [];
   if (enabled) {
     for (let i = 0; i < footprint.length; i++) {
       if (footprint[i] !== 1) continue;
       const hx = area.minHx + (i % width);
       const hy = area.minHy + Math.floor(i / width);
+      if (reach !== null && reach[i] !== 1) {
+        const runs = outOfReach.length;
+        if (runs > 0 && outOfReach[runs - 1] === i - 1) outOfReach[runs - 1] = i;
+        else outOfReach.push(i, i);
+        continue;
+      }
       if (!ground.contested(hx, hy) && !(peace?.bars(hx, hy) ?? false)) accepted[i] = 1;
     }
   }
+  const reachKey = outOfReach.join(',');
   const contestedKey = ground.keyWithin(area.minHx, area.maxHx, area.minHy, area.maxHy);
   const peaceKey = peace === null ? '-' : peace.key;
-  return { area, accepted, key: `${version}:${enabled}:${contestedKey}:${peaceKey}` };
+  return { area, accepted, key: `${version}:${enabled}:${reachKey}:${contestedKey}:${peaceKey}` };
 }
 
 /** What the signpost overlay's answer reads: the work-flag blockers, a lobby peace's hold among them, the

@@ -483,13 +483,15 @@ export class Simulation {
     return formationSlotsFor(this.world, this.content, this.terrain, target, members, rowSpacing, order);
   }
 
-  /** {@link placementProbe}'s verdict over every node of `area`, as plain data. */
+  /** {@link placementProbe}'s verdict over every node of `area`, as plain data; `withinReach` off drops
+   *  the seat's site reach, for a placement that enters through the admin channel. */
   placementAnswer(
     buildingType: number,
     area: NodeArea,
     player?: number,
     tribe?: number,
     gated = true,
+    withinReach = true,
   ): NodeGridAnswer | null {
     return placementAnswerFor(
       this.world,
@@ -501,6 +503,7 @@ export class Simulation {
       player,
       tribe,
       gated,
+      withinReach,
     );
   }
 

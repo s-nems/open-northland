@@ -7,6 +7,7 @@ import {
   type FogView,
   halfCellMapFromCells,
   NODE_SET_STRIDE,
+  positionOfNode,
   Simulation,
 } from '@open-northland/sim';
 import { describe, expect, it, vi } from 'vitest';
@@ -36,19 +37,32 @@ const WAIVED = true;
 const RAIDER = { x: 6, y: 4 };
 const NEAR = cellAnchorNode(8, 4);
 const FAR = cellAnchorNode(18, 8);
+const POST = cellAnchorNode(1, 11);
 /** A screen that frames the whole field at scale 1. */
 const WIDE_SCREEN = { width: 1920, height: 1080 };
 
 /** Let the inline host's answers land: each resolves one microtask after it was asked. */
 const landed = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
-function openField(): { sim: Simulation; gates: PlacementGates; fog: ReturnType<typeof createFogGates> } {
+function openField(seatPost = true): {
+  sim: Simulation;
+  gates: PlacementGates;
+  fog: ReturnType<typeof createFogGates>;
+} {
   const terrain = grassTerrain(MAP_W, MAP_H);
   const sim = new Simulation({
     seed: 1,
     content: resolveWorldContent(terrain, {}),
     map: { ...halfCellMapFromCells(terrain), landscapes: { types: sandboxPalisadeTypes(), placements: [] } },
   });
+  // A post of the seat's in a corner, whose site reach spans the field and outlives the settlers the
+  // cases clear away.
+  if (seatPost) {
+    const post = sim.world.create();
+    sim.world.add(post, components.Position, positionOfNode(POST.hx, POST.hy));
+    sim.world.add(post, components.Owner, { player: HUMAN_PLAYER });
+    sim.world.add(post, components.Signpost, { links: [] });
+  }
   const fog = createFogGates();
   fog.setFrame(null); // fog off: only the placement rules decide
   return { sim, gates: createPlacementGates(inlineSessionHost(sim), fog, HUMAN_PLAYER), fog };
@@ -137,6 +151,21 @@ describe('placement gates - the ground an enemy army contests', () => {
     await expect(ask(ENEMY_PLAYER)).resolves.toBe(true);
     expect(gates.canPlaceAt(BUILDING_HOME_00, VIKING, NEAR.hx, NEAR.hy, WAIVED, ENEMY_PLAYER)).toBe(true);
     expect(gates.canPlaceAt(BUILDING_HOME_00, VIKING, NEAR.hx, NEAR.hy, WAIVED)).toBe(false);
+  });
+
+  it("refuses the seat's own house where none of its people reach, unless the overseer places it", async () => {
+    const { sim, fog, gates } = openField(false);
+    await expect(gates.askPlaceAt(BUILDING_HOME_00, VIKING, FAR.hx, FAR.hy, WAIVED)).resolves.toBe(false);
+    const overseer = createPlacementGates(inlineSessionHost(sim), fog, HUMAN_PLAYER, true);
+    await expect(overseer.askPlaceAt(BUILDING_HOME_00, VIKING, FAR.hx, FAR.hy, WAIVED)).resolves.toBe(true);
+  });
+
+  it('stands an admin house for a seat with nobody on the map, as the admin channel places past its reach', async () => {
+    const { gates } = openField();
+    const UNSEATED = 5;
+    await expect(gates.askPlaceAt(BUILDING_HOME_00, VIKING, FAR.hx, FAR.hy, WAIVED, UNSEATED)).resolves.toBe(
+      true,
+    );
   });
 
   it("waives only the technology gate for a waived probe, and asks each nation's rule apart", () => {

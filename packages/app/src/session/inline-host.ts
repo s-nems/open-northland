@@ -84,8 +84,8 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     },
     hashState: () => Promise.resolve({ tick: sim.tick, hash: sim.hashState() }),
 
-    placementProbe: (buildingType, area, player, tribe, gated) =>
-      Promise.resolve(sim.placementAnswer(buildingType, area, player, tribe, gated)),
+    placementProbe: (buildingType, area, player, tribe, gated, withinReach) =>
+      Promise.resolve(sim.placementAnswer(buildingType, area, player, tribe, gated, withinReach)),
     formationSlots: (...args) => Promise.resolve(sim.formationSlots(...args)),
     signpostProbe: (player, area) => Promise.resolve(sim.signpostAnswer(player, area)),
     palisadeProbe: (gfxIndex, area, player) => Promise.resolve(sim.palisadeAnswer(gfxIndex, area, player)),

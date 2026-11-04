@@ -175,7 +175,8 @@ export interface SessionHost {
 
   // Probes: the placement rules as data over a node area, or null for a mapless world.
 
-  /** The `placeBuilding` rule; with a `player` it also refuses the ground a hostile army contests, and a
+  /** The `placeBuilding` rule; with a `player` it also refuses the ground a hostile army contests and,
+   *  while `withinReach`, the ground past the seat's site reach (an admin placement skips it), and a
    *  `tribe` picks the footprint and, while `gated`, adds the seat's technology gate (a paper waives it). */
   placementProbe(
     buildingType: number,
@@ -183,6 +184,7 @@ export interface SessionHost {
     player?: number,
     tribe?: number,
     gated?: boolean,
+    withinReach?: boolean,
   ): Promise<NodeGridAnswer | null>;
   /** Fresh formation groups on land, with vehicle commanders retaining the clicked target. */
   formationSlots(
