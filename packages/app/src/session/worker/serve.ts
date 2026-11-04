@@ -207,7 +207,7 @@ export class ServedSession<E> {
   /** The calls being answered; a replacement rejects them. */
   private readonly answering = new Set<number>();
   private lastFacts: WorldFacts;
-  private fogSeat: number | null;
+  private fogSeats: readonly number[] | null;
   private lastFogKey: string;
   private readonly fogPosts = new FogPosts();
   /** Cancels the pending wakeup; null while none is pending. */
@@ -260,12 +260,12 @@ export class ServedSession<E> {
     });
     this.answers = inlineSessionHost(sim, { snapshots: 'live' });
     this.deltas = this.openDeltas();
-    this.fogSeat = options.fogSeat;
+    this.fogSeats = options.fogSeat === null ? null : [options.fogSeat];
     this.recordedTick = sim.tick;
     this.lastFacts = readWorldFacts(sim);
     const delta = this.deltas.next();
     if (delta === null) throw new Error('a fresh delta stream opens with a rebuild');
-    const fog = this.fogSeat === null ? null : sim.fogMaskAnswer(this.fogSeat);
+    const fog = this.fogSeats === null ? null : sim.sharedFogMaskAnswer(this.fogSeats);
     this.lastFogKey = this.fogKey();
     this.fogPosts.changed(fog);
     this.post({
@@ -363,8 +363,8 @@ export class ServedSession<E> {
         this.resume();
         return;
       }
-      case 'fogSeat':
-        this.fogSeat = message.player;
+      case 'fogSeats':
+        this.fogSeats = message.players;
         this.postFogChange();
         return;
       case 'instruments':
@@ -577,14 +577,15 @@ export class ServedSession<E> {
     };
   }
 
-  /** Moves only when the seat's own fog could have: another vision group's rebuild leaves it be, so
-   *  the seat's mask is neither copied nor compared then. */
+  /** Moves only when the seats' own fog could have: another vision group's rebuild leaves it be, so
+   *  the seats' masks are neither copied nor compared then. */
   private fogKey(): string {
-    if (this.fogSeat === null) return 'none';
+    const seats = this.fogSeats;
+    if (seats === null) return 'none';
     const fog = this.sim.fog;
     const mode = this.sim.fogMode();
     if (fog === undefined || mode === FOG_MODE.OFF) return 'off';
-    return `${this.fogSeat}:${mode}:${fog.viewGeneration(this.fogSeat)}`;
+    return `${seats.join(',')}:${mode}:${seats.map((seat) => fog.viewGeneration(seat)).join(',')}`;
   }
 
   /** The seat's masks when they or the seat changed since the last post, else null. */
@@ -592,7 +593,7 @@ export class ServedSession<E> {
     const key = this.fogKey();
     if (key === this.lastFogKey) return null;
     this.lastFogKey = key;
-    const fog = this.fogSeat === null ? null : this.sim.fogMaskAnswer(this.fogSeat);
+    const fog = this.fogSeats === null ? null : this.sim.sharedFogMaskAnswer(this.fogSeats);
     return this.fogPosts.changed(fog) ? { fog } : null;
   }
 

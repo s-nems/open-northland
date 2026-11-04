@@ -26,7 +26,7 @@ import type { MissionBriefingAnswer, MissionReader } from '../../game/map/missio
 import type { ObserverSeatEntry } from '../../game/match/observer-seats.js';
 import { canonicalJobType } from '../../game/sandbox/index.js';
 import type { SnapshotEntity } from '../../game/snapshot/index.js';
-import type { ViewerSeat } from '../../game/viewer-seat.js';
+import type { ViewerSeat, WatchTarget } from '../../game/viewer-seat.js';
 import { messages, professionLabel } from '../../i18n/index.js';
 import type { PresentationPack } from '../../presentation/pack.js';
 import { type AssistantSource, createAssistantWindow } from '../dom/assistant-window/index.js';
@@ -149,7 +149,7 @@ export interface ToolPanelOptions {
   readonly observer?: {
     readonly enabled?: () => boolean;
     readonly seats: readonly ObserverSeatEntry[];
-    readonly onWatch: (seat: number | null) => void;
+    readonly onWatch: (target: WatchTarget) => void;
   };
   /** Submit a seat command into the sim. */
   readonly enqueue: (command: PlayerCommand) => void;

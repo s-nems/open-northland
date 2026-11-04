@@ -1,6 +1,6 @@
 import { playerSwatchHex } from '../../../catalog/roster.js';
 import type { ObserverSeatEntry } from '../../../game/match/observer-seats.js';
-import type { ViewerSeat } from '../../../game/viewer-seat.js';
+import { PLAYERS_SIGHT, type ViewerSeat, type WatchTarget } from '../../../game/viewer-seat.js';
 import { messages } from '../../../i18n/index.js';
 import { GLYPH } from '../icons.js';
 
@@ -11,11 +11,11 @@ export interface ObserverPickerDeps {
   readonly viewer: ViewerSeat;
   /** Owner slot to team-colour slot for the swatches; absent = identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
-  readonly onWatch: (seat: number | null) => void;
+  readonly onWatch: (target: WatchTarget) => void;
 }
 
-/** The spectator's seat picker: one button naming the watched seat, over a list of the whole map and
- *  every seat it may watch. */
+/** The spectator's seat picker: one button naming the watched seat, over a list of the whole map
+ *  (uncovered or under the players' sight) and every seat it may watch. */
 export interface ObserverPicker {
   readonly element: HTMLElement;
   /** Show the viewer's current choice; the same choice twice costs nothing. */
@@ -64,23 +64,24 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   for (const { name } of deps.seats) {
     if (name !== undefined) nameCount.set(name, (nameCount.get(name) ?? 0) + 1);
   }
-  const labelOf = (seat: number | null): string => {
+  const labelOf = (seat: WatchTarget): string => {
     if (seat === null) return copy.observer.wholeMap;
+    if (seat === PLAYERS_SIGHT) return copy.observer.playersSight;
     const name = deps.seats.find((s) => s.player === seat)?.name;
     if (name === undefined) return `${copy.player} ${seatNumber(seat)}`;
     return (nameCount.get(name) ?? 0) > 1 ? `${name} ${seatNumber(seat)}` : name;
   };
-  const colourOf = (seat: number | null): string =>
-    seat === null ? 'transparent' : playerSwatchHex(deps.playerColourOf?.(seat) ?? seat);
+  const colourOf = (seat: WatchTarget): string =>
+    typeof seat !== 'number' ? 'transparent' : playerSwatchHex(deps.playerColourOf?.(seat) ?? seat);
 
-  const entries = new Map<number | null, HTMLButtonElement>();
-  const entry = (seat: number | null): void => {
+  const entries = new Map<WatchTarget, HTMLButtonElement>();
+  const entry = (seat: WatchTarget): void => {
     const option = document.createElement('button');
     option.type = 'button';
     option.className = 'on-seat';
     option.setAttribute('role', 'option');
     option.setAttribute('aria-selected', 'false');
-    if (seat !== null) option.append(swatch(colourOf(seat)));
+    if (typeof seat === 'number') option.append(swatch(colourOf(seat)));
     option.append(labelOf(seat));
     option.addEventListener('click', () => {
       show(false);
@@ -89,6 +90,7 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
     entries.set(seat, option);
     list.append(option);
   };
+  entry(PLAYERS_SIGHT);
   entry(null);
   for (const seat of deps.seats) entry(seat.player);
 
@@ -115,17 +117,17 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   document.addEventListener('pointerdown', onPressOutside, true);
   root.append(button, list);
 
-  let shown: number | null | undefined;
+  let shown: WatchTarget | undefined;
   return {
     element: root,
     refresh: () => {
       root.hidden = deps.enabled?.() === false;
-      const seat = deps.viewer.seat();
+      const seat = watchedOf(deps.viewer);
       if (seat === shown) return;
       shown = seat;
       chosenName.textContent = labelOf(seat);
       chosenSwatch.style.background = colourOf(seat);
-      chosenSwatch.hidden = seat === null;
+      chosenSwatch.hidden = typeof seat !== 'number';
       for (const [entrySeat, option] of entries) {
         option.setAttribute('aria-selected', String(entrySeat === seat));
       }
@@ -136,4 +138,8 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
       root.remove();
     },
   };
+}
+
+function watchedOf(viewer: ViewerSeat): WatchTarget {
+  return viewer.seat() ?? (viewer.sharedSight() ? PLAYERS_SIGHT : null);
 }

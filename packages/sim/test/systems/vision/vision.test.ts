@@ -23,7 +23,13 @@ import {
 } from '../../../src/components/index.js';
 import { fx, ONE } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { cellAnchorNode, fogViewOfMask, Simulation, scanChangedBytes } from '../../../src/index.js';
+import {
+  cellAnchorNode,
+  fogViewOfMask,
+  SHARED_SIGHT_VIEWER,
+  Simulation,
+  scanChangedBytes,
+} from '../../../src/index.js';
 import { SIGHT_RADIUS_NODES } from '../../../src/systems/conflict/targeting.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../../src/systems/readviews/index.js';
 import { looseProjectile } from '../../../src/systems/settlers/atomics/effects/combat/index.js';
@@ -1003,6 +1009,24 @@ describe('fog mask answer - the view a reader on another thread rebuilds', () =>
     const sim = simOn(FOG_MODE.OFF, W, H);
     sim.run(1);
     expect(sim.fogMaskAnswer(P0)).toBeNull();
+    expect(sim.sharedFogMaskAnswer([P0, P1])).toBeNull();
+  });
+
+  it("shares several players' sight: a cell reads the most any of them knows", () => {
+    const sim = simOn(FOG_MODE.CLASSIC, W, H);
+    unit(sim, 2, 2, P0);
+    unit(sim, 20, 2, P1);
+    sim.run(1);
+    const answer = sim.sharedFogMaskAnswer([P0, P1]);
+    if (answer === null) throw new Error('fog is on, so the shared view exists');
+    const view = fogViewOfMask(answer);
+    expect(view.player).toBe(SHARED_SIGHT_VIEWER);
+    for (const [x, y] of cellsAround()) {
+      const own = Math.max(sim.fogView(P0)?.stateAt(x, y) ?? 0, sim.fogView(P1)?.stateAt(x, y) ?? 0);
+      expect(view.stateAt(x, y)).toBe(own);
+    }
+    expect([view.stateAt(2, 2), view.stateAt(20, 2)]).toEqual([FOG_STATE.VISIBLE, FOG_STATE.VISIBLE]);
+    expect(sim.sharedFogMaskAnswer([P0])?.player).toBe(P0);
   });
 });
 

@@ -8,6 +8,7 @@ import { heapMb } from '../../diag/heap.js';
 import type { PerfReading } from '../../diag/perf-reading.js';
 import type { SystemProfileRow } from '../../diag/system-profile.js';
 import { recordedTraceEvents, type TraceEvent } from '../../diag/trace.js';
+import type { WatchTarget } from '../../game/viewer-seat.js';
 import type { ProfileSource, SessionHost } from '../../session/index.js';
 import type { CameraController } from '../camera/index.js';
 import type { NetReadout } from '../net/readout.js';
@@ -126,9 +127,9 @@ export interface OpenNorthlandDebug {
   setPaused(paused: boolean): Promise<void>;
   /** The `?debug=trace` ring (a bounded tail), or null when not recording. */
   trace(): readonly TraceEvent[] | null;
-  /** A spectator's seat picker: watch `seat`'s fog and figures, or the whole map for null. Null outside
-   *  a spectated session. */
-  readonly watchSeat: ((seat: number | null) => void) | null;
+  /** A spectator's seat picker: watch a seat's fog and figures, the whole map uncovered for null, or
+   *  the players' sight together. Null outside a spectated session. */
+  readonly watchSeat: ((target: WatchTarget) => void) | null;
   /** A copy of the sound driver's running one-shot counts per lane, or null when the session plays no
    *  sound. A probe differences two reads. */
   audioStats(): SoundStatsView | null;
@@ -218,7 +219,7 @@ export interface DebugHandleDeps {
   readonly frameStats: FrameStats;
   /** Null unless `?debug=profile` asked for a running per-system profile. */
   readonly profile: ProfileSource | null;
-  readonly watchSeat: ((seat: number | null) => void) | null;
+  readonly watchSeat: ((target: WatchTarget) => void) | null;
   /** The sound driver's live counts, or null when the session plays no sound. */
   readonly audioStats: () => SoundStatsView | null;
   /** The FPS counter's newest reading, null while it is off. */

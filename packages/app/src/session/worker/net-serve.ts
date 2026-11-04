@@ -166,7 +166,7 @@ class RelayConnection<B, E> {
         client.worldShown(message.worldId);
         return;
       case 'delivered':
-      case 'fogSeat':
+      case 'fogSeats':
       case 'instruments':
       case 'profileReset':
         this.served?.receive(message);

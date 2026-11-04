@@ -600,7 +600,10 @@ describe('selection details panel model', () => {
     const overseen = buildUnitPanelModel(
       snapshotOf([buildingEntity(1, BUILDING_HOME_00, { components: { Owner: { player: 1 } } })]),
       new Set([1]),
-      { ...sandboxCtx(), viewer: { seat: () => 0, wholeMap: () => true, version: () => 0 } },
+      {
+        ...sandboxCtx(),
+        viewer: { seat: () => 0, wholeMap: () => true, sharedSight: () => false, version: () => 0 },
+      },
     );
     if (overseen.kind !== 'building') throw new Error('expected a building panel');
     expect(overseen.homeQuality?.control).toBe(messages().hud.buildingPanel.policyForeign);

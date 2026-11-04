@@ -257,7 +257,7 @@ export {
   nodeSetHas,
   shipWaterWorkshopsOf,
 } from './simulation/probe-answers.js';
-export { fogViewOfMask } from './simulation/read-seams.js';
+export { fogViewOfMask, SHARED_SIGHT_VIEWER } from './simulation/read-seams.js';
 export {
   type DigestComponentInputs,
   type FogMaskAnswer,

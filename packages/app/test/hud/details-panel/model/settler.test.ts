@@ -756,7 +756,15 @@ describe('the settler panel model', () => {
           components: { Owner: { player: OTHER_SEAT }, Settler: { tribe: 1, jobType: JOB_COLLECTOR } },
         },
       ],
-      { ...sandboxCtx(), viewer: { seat: () => HUMAN_PLAYER, wholeMap: () => true, version: () => 0 } },
+      {
+        ...sandboxCtx(),
+        viewer: {
+          seat: () => HUMAN_PLAYER,
+          wholeMap: () => true,
+          sharedSight: () => false,
+          version: () => 0,
+        },
+      },
     );
     expect(model.foreign).toBe(false);
     const watched = settlerModel(

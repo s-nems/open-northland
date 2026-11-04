@@ -1585,7 +1585,8 @@ export const enGame = {
     },
     observer: {
       label: 'Watched player',
-      wholeMap: 'Whole map',
+      wholeMap: 'Revealed map',
+      playersSight: "Players' sight",
     },
     stats: {
       playerTick: 'Player {player} · tick {tick}',

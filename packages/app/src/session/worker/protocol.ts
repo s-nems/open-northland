@@ -119,7 +119,8 @@ export type ToWorker<B> =
   /** The runtime delivered this many more `ticks` messages, in a frame that followed the previous one
    *  by `frameMs`. */
   | { readonly kind: 'delivered'; readonly messages: number; readonly frameMs: number }
-  | { readonly kind: 'fogSeat'; readonly player: number }
+  /** The seats whose sight the worker posts from now on, together; one seat is that seat's own fog. */
+  | { readonly kind: 'fogSeats'; readonly players: readonly number[] }
   | { readonly kind: 'instruments'; readonly profile: boolean; readonly spans: boolean }
   | { readonly kind: 'profileReset' }
   | { readonly kind: 'ping' }

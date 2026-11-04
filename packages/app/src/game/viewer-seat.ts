@@ -1,22 +1,32 @@
 /**
  * The seat whose perspective the view shows: the summary figures, the notes, the papers, the assistant,
  * and, unless the view spans the whole map, the fog and what a click may select. A played session's
- * is its own seat for good; a spectator's is the seat it chose to watch, or none for the whole map.
+ * is its own seat for good; a spectator's is the seat it chose to watch, or none for the whole map,
+ * uncovered or under every watched seat's sight together.
  */
 export interface ViewerSeat {
   /** The seat whose figures, notes, papers and assistant the HUD shows; null shows nobody's. */
   seat(): number | null;
-  /** Whether the view spans the whole map: no fog, every entity pickable. */
+  /** Whether the view spans the whole map: every entity pickable, and no fog unless `sharedSight`. */
   wholeMap(): boolean;
+  /** Whether the whole map draws under the watched seats' sight together instead of uncovered. */
+  sharedSight(): boolean;
   /** Bumps on every switch, so a memo keyed on a snapshot also keys on it. */
   version(): number;
 }
 
+/** A spectator's every-seat choice that draws the watched seats' sight together. */
+export const PLAYERS_SIGHT = 'playersSight';
+
+/** What a spectator watches: one seat, the whole map uncovered (null), or {@link PLAYERS_SIGHT}. */
+export type WatchTarget = number | null | typeof PLAYERS_SIGHT;
+
 /** A spectator's seat, switched from the HUD. */
 export interface SwitchableViewerSeat extends ViewerSeat {
-  watch(seat: number | null): void;
-  /** Runs after every switch, with the seat now watched. */
-  onSwitch(listener: (seat: number | null) => void): void;
+  target(): WatchTarget;
+  watch(target: WatchTarget): void;
+  /** Runs after every switch, with the choice now watched. */
+  onSwitch(listener: (target: WatchTarget) => void): void;
 }
 
 /** The owner a click or a control-group recall is limited to; null on the whole map, where every
@@ -33,27 +43,29 @@ export function ownedByAnotherSeat(owner: number | undefined, seat: number | nul
 
 /** A played session's own seat: its fog, its entities, its figures. */
 export function fixedViewerSeat(seat: number): ViewerSeat {
-  return { seat: () => seat, wholeMap: () => false, version: () => 0 };
+  return { seat: () => seat, wholeMap: () => false, sharedSight: () => false, version: () => 0 };
 }
 
 /** The overseer's view: the whole map to see and pick, with `seat`'s figures, assistant and papers, since
  *  its orders and paper plans go out as that seat's. */
 export function overseerViewerSeat(seat: number): ViewerSeat {
-  return { seat: () => seat, wholeMap: () => true, version: () => 0 };
+  return { seat: () => seat, wholeMap: () => true, sharedSight: () => false, version: () => 0 };
 }
 
-/** A spectator's switchable seat; watching none (null) is the whole map with nobody's figures. */
-export function switchableViewerSeat(initial: number | null): SwitchableViewerSeat {
-  let seat = initial;
+/** A spectator's switchable seat; watching no single seat is the whole map with nobody's figures. */
+export function switchableViewerSeat(initial: WatchTarget): SwitchableViewerSeat {
+  let target = initial;
   let version = 0;
-  const listeners: ((seat: number | null) => void)[] = [];
+  const listeners: ((target: WatchTarget) => void)[] = [];
   return {
-    seat: () => seat,
-    wholeMap: () => seat === null,
+    seat: () => (typeof target === 'number' ? target : null),
+    wholeMap: () => typeof target !== 'number',
+    sharedSight: () => target === PLAYERS_SIGHT,
     version: () => version,
+    target: () => target,
     watch: (next) => {
-      if (next === seat) return;
-      seat = next;
+      if (next === target) return;
+      target = next;
       version++;
       for (const listener of listeners) listener(next);
     },

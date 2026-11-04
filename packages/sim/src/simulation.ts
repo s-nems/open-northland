@@ -86,6 +86,7 @@ import {
   fogMaskAnswerFor,
   fogViewFor,
   placementProbeFor,
+  sharedFogMaskAnswerFor,
   signpostProbeFor,
 } from './simulation/read-seams.js';
 import {
@@ -962,6 +963,11 @@ export class Simulation {
   /** {@link fogView}'s masks as plain data, for a reader on another thread. */
   fogMaskAnswer(player: number): FogMaskAnswer | null {
     return fogMaskAnswerFor(this.world, this.fog, player);
+  }
+
+  /** {@link fogMaskAnswer} over several players' sight together; see {@link sharedFogMaskAnswerFor}. */
+  sharedFogMaskAnswer(players: readonly number[]): FogMaskAnswer | null {
+    return sharedFogMaskAnswerFor(this.world, this.fog, players);
   }
 
   run(ticks: number): void {

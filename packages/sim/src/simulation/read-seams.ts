@@ -10,7 +10,13 @@ import { seatPlacementProbe } from '../systems/conflict/contested-ground.js';
 import type { PlacementProbe } from '../systems/footprint/index.js';
 import { buildingEnabled } from '../systems/progression/index.js';
 import { type SignpostProbe, signpostProbe } from '../systems/signposts/index.js';
-import { effectiveFogState, type FogState, maskFogState, viewedFogState } from '../systems/vision/index.js';
+import {
+  effectiveFogState,
+  FOG_STATE,
+  type FogState,
+  maskFogState,
+  viewedFogState,
+} from '../systems/vision/index.js';
 
 /** One viewer player's fog: plain data and one pure accessor over the live {@link FogState}. */
 export interface FogView {
@@ -102,6 +108,44 @@ export function fogMaskAnswerFor(
     cellsHigh: fog.cellsHigh,
     generation: fog.generation,
     mask: fog.tryMaskFor(player)?.slice() ?? null,
+  };
+}
+
+/** The {@link FogView.player} of a view over several seats' sight together: no seat's own id. */
+export const SHARED_SIGHT_VIEWER = -1;
+
+/** Several players' fog as one mask answer, for a spectator watching them all: each cell reads the
+ *  most any of them knows of it, so what one sees reads seen. Null when fog is OFF or the sim is
+ *  mapless, as {@link fogViewFor}; one player answers as {@link fogMaskAnswerFor}. */
+export function sharedFogMaskAnswerFor(
+  world: World,
+  fog: FogState | undefined,
+  players: readonly number[],
+): FogMaskAnswer | null {
+  const [only] = players;
+  if (players.length === 1 && only !== undefined) return fogMaskAnswerFor(world, fog, only);
+  if (fog === undefined) return null;
+  const mode = fogMode(world);
+  if (mode === FOG_MODE.OFF) return null;
+  const mask = new Uint8Array(fog.cellsWide * fog.cellsHigh);
+  const groups = new Set<number>();
+  for (const player of players) {
+    const source = fog.tryMaskFor(player);
+    if (source === undefined || groups.has(fog.visionGroupOf(player))) continue;
+    groups.add(fog.visionGroupOf(player));
+    // Mask bytes rank by knowledge, the script-revealed byte above VISIBLE, so the max is the union.
+    for (let i = 0; i < mask.length; i++) {
+      const byte = source[i] ?? FOG_STATE.UNEXPLORED;
+      if (byte > (mask[i] ?? FOG_STATE.UNEXPLORED)) mask[i] = byte;
+    }
+  }
+  return {
+    player: SHARED_SIGHT_VIEWER,
+    mode,
+    cellsWide: fog.cellsWide,
+    cellsHigh: fog.cellsHigh,
+    generation: fog.generation,
+    mask,
   };
 }
 

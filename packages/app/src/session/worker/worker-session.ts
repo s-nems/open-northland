@@ -10,6 +10,7 @@ import {
   fogViewOfMask,
   type MatchRulesView,
   type SaveGame,
+  SHARED_SIGHT_VIEWER,
   type SimEvent,
   SnapshotMirror,
 } from '@open-northland/sim';
@@ -230,7 +231,8 @@ class WorkerClient<E> {
   private departed: readonly EntitySnapshot[] = [];
   private facts: WorldFacts;
   private fog: FogView | null;
-  private fogSeat: number | null;
+  /** The seats whose sight the worker was last asked for, joined as their key. */
+  private fogSeats: string | null;
   private paused: boolean;
   private speed: number;
   private droppedTicks = 0;
@@ -256,7 +258,7 @@ class WorkerClient<E> {
     this.tick = ready.delta.tick;
     this.facts = ready.facts;
     this.fog = ready.fog === null ? null : fogViewOfMask(ready.fog);
-    this.fogSeat = options.fogSeat;
+    this.fogSeats = options.fogSeat === null ? null : String(options.fogSeat);
     this.paused = options.paused;
     this.speed = options.speed;
     this.alpha = new ArrivalAlpha(options.speed, options.paused);
@@ -391,9 +393,26 @@ class WorkerClient<E> {
     return this.alpha.at(performance.now());
   }
 
+  /** The {@link FogView.player} the asked-for seats' answers carry. */
+  private get fogViewer(): number | null {
+    if (this.fogSeats === null) return null;
+    return this.fogSeats.includes(',') ? SHARED_SIGHT_VIEWER : Number(this.fogSeats);
+  }
+
+  private fogOf(players: readonly number[]): FogView | null {
+    const key = players.join(',');
+    if (key !== this.fogSeats) {
+      this.fogSeats = key;
+      this.post({ kind: 'fogSeats', players: [...players] });
+    }
+    // Until the new seats' masks land the previous ones stay drawn: an unfogged frame would show the
+    // whole map for a moment.
+    return this.fog;
+  }
+
   /** A backlog held since before a seat pick carries the previous seat's masks: they no longer apply. */
   private setFog(answer: FogMaskAnswer | null): void {
-    if (answer !== null && answer.player !== this.fogSeat) return;
+    if (answer !== null && answer.player !== this.fogViewer) return;
     this.fog = answer === null ? null : fogViewOfMask(answer);
   }
 
@@ -491,15 +510,8 @@ class WorkerClient<E> {
       },
       snapshot: () => this.mirror.snapshot(),
       departed: () => this.departed,
-      fogView: (player) => {
-        if (player !== this.fogSeat) {
-          this.fogSeat = player;
-          this.post({ kind: 'fogSeat', player });
-        }
-        // Until the new seat's masks land the previous seat's stay drawn: an unfogged frame would
-        // show the whole map for a moment.
-        return this.fog;
-      },
+      fogView: (player) => this.fogOf([player]),
+      sharedFogView: (players) => this.fogOf(players),
       constructionPlots: () => facts().constructionPlots,
       placementBlockerVersion: () => facts().placementBlockerVersion,
       shipWaterVersion: () => facts().shipWaterVersion,

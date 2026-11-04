@@ -1708,7 +1708,8 @@ export const ruGame = {
     },
     observer: {
       label: 'Наблюдаемый игрок',
-      wholeMap: 'Вся карта',
+      wholeMap: 'Открытая карта',
+      playersSight: 'Обзор игроков',
     },
     stats: {
       playerTick: 'Игрок {player} · такт {tick}',

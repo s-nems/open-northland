@@ -118,6 +118,8 @@ export interface SessionHost {
   departed(): readonly EntitySnapshot[];
   /** The seat's fog masks, keyed by their `generation`; null with fog off. */
   fogView(player: number): FogView | null;
+  /** Several seats' sight as one view, the most any of them knows per cell; null with fog off. */
+  sharedFogView(players: readonly number[]): FogView | null;
   constructionPlots(): readonly ConstructionPlot[];
   /** Changes when a placement blocker does, not per tick; building, wall and mooring answers follow it. */
   placementBlockerVersion(): string;

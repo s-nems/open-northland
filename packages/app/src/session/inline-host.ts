@@ -2,6 +2,8 @@ import {
   type EntitySnapshot,
   type ExportSaveOptions,
   exportSaveGame,
+  type FogView,
+  fogViewOfMask,
   type ScriptLandscapeType,
   type Simulation,
   SnapshotMirror,
@@ -30,6 +32,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     options.snapshots === 'live'
       ? { snapshot: () => sim.snapshot(), departed: () => NO_ENTITIES }
       : mirroredSnapshots(sim);
+  const sharedFog = sharedFogMemo(sim);
   return {
     content: sim.content,
     get mapFingerprint() {
@@ -45,6 +48,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     snapshot,
     departed,
     fogView: (player) => sim.fogView(player),
+    sharedFogView: (players) => sharedFog.view(players),
     constructionPlots: () => sim.constructionPlots(),
     placementBlockerVersion: () => sim.placementBlockerVersion(),
     signpostReachVersion: () => sim.signpostReachVersion(),
@@ -156,5 +160,23 @@ function mirroredSnapshots(sim: Simulation): Pick<SessionHost, 'snapshot' | 'dep
   return {
     snapshot: (): WorldSnapshot => pull().snapshot(),
     departed: (): readonly EntitySnapshot[] => pull().departed,
+  };
+}
+
+/** The shared view is a fresh mask union, so it is rebuilt only when a mask, the mode or the seats
+ *  changed; a frame between vision rebuilds reads the last one. */
+function sharedFogMemo(sim: Simulation): { view(players: readonly number[]): FogView | null } {
+  let key: string | null = null;
+  let view: FogView | null = null;
+  return {
+    view: (players) => {
+      const next = `${players.join(',')}:${sim.fogMode()}:${sim.fog?.generation ?? 'none'}`;
+      if (next !== key) {
+        key = next;
+        const answer = sim.sharedFogMaskAnswer(players);
+        view = answer === null ? null : fogViewOfMask(answer);
+      }
+      return view;
+    },
   };
 }

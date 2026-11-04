@@ -1541,7 +1541,8 @@ export const chtGame = {
     },
     observer: {
       label: '觀看的玩家',
-      wholeMap: '整張地圖',
+      wholeMap: '全圖',
+      playersSight: '玩家視野',
     },
     stats: {
       playerTick: '玩家 {player} · 邏輯幀 {tick}',

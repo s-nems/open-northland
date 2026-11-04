@@ -1720,7 +1720,8 @@ export const deGame = {
     },
     observer: {
       label: 'Beobachteter Spieler',
-      wholeMap: 'Ganze Karte',
+      wholeMap: 'Aufgedeckte Karte',
+      playersSight: 'Sicht der Spieler',
     },
     stats: {
       playerTick: 'Spieler {player} · Tick {tick}',

@@ -1540,7 +1540,8 @@ export const chsGame = {
     },
     observer: {
       label: '被观察的玩家',
-      wholeMap: '整张地图',
+      wholeMap: '全图',
+      playersSight: '玩家视野',
     },
     stats: {
       playerTick: '玩家 {player} · 逻辑帧 {tick}',

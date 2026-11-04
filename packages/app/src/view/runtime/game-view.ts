@@ -67,6 +67,7 @@ import { technologyName, vehicleLabel } from '../../game/technology.js';
 import {
   fixedViewerSeat,
   overseerViewerSeat,
+  PLAYERS_SIGHT,
   pickableSeat,
   switchableViewerSeat,
   type ViewerSeat,
@@ -352,13 +353,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   // Shared players start on their own seat and may switch to observation after a result.
   let watching = deps.observer === true && deps.readOnly === true;
   const switchableSeat =
-    deps.observerSeats === undefined ? null : switchableViewerSeat(watching ? null : localPlayer);
+    deps.observerSeats === undefined ? null : switchableViewerSeat(watching ? PLAYERS_SIGHT : localPlayer);
   const viewer: ViewerSeat =
     switchableSeat ??
     (deps.observer === true ? overseerViewerSeat(localPlayer) : fixedViewerSeat(localPlayer));
   /** The seat a read needing one answers for; watching the whole map reads as the fallback seat. */
   const viewerPlayer = (): number => viewer.seat() ?? localPlayer;
+  const sightSeats = (deps.observerSeats ?? []).map((entry) => entry.player);
   const fogViewOf = (): FogView | null => {
+    if (viewer.sharedSight()) return host.sharedFogView(sightSeats);
     const seat = viewer.seat();
     return viewer.wholeMap() || seat === null ? null : host.fogView(seat);
   };
@@ -908,7 +911,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         onContinue: () => {
           if (sharedClock) {
             watching = true;
-            switchableSeat?.watch(null);
+            switchableSeat?.watch(PLAYERS_SIGHT);
             deps.onWatchAfterResult?.();
           } else issueTrusted({ kind: 'continueMatch', player: localPlayer });
         },
@@ -1386,12 +1389,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     // A seat switch from the picker: the selection was the last seat's, and the view goes where the
     // new seat's people are.
-    switchableSeat?.onSwitch((seat) => {
+    switchableSeat?.onSwitch((target) => {
       uiCue('confirm');
       // The gates follow at once, so a click before the next frame reads the new seat's fog.
       fogGates.setFrame(fogViewOf());
       controls.select([]);
-      if (seat === null) return;
+      if (typeof target !== 'number') return;
+      const seat = target;
       const focus = mapStartFocus(host.snapshot(), deps.mapSize.width, deps.mapSize.height, seat);
       const zoom = cameraCtl.camera().scale ?? 1;
       cameraCtl.jumpTo(cameraCenteredOnTile(focus.x, focus.y, zoom, app.screen.width, app.screen.height));

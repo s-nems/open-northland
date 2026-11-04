@@ -1563,7 +1563,8 @@ export const plGame = {
     },
     observer: {
       label: 'Obserwowany gracz',
-      wholeMap: 'Cała mapa',
+      wholeMap: 'Odkryta mapa',
+      playersSight: 'Wizja graczy',
     },
     stats: {
       playerTick: 'Gracz {player} · krok {tick}',

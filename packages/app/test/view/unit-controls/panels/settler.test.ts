@@ -79,7 +79,12 @@ describe('the settler panel’s orders', () => {
   });
 
   it('lets the whole-map view order everyone', () => {
-    const { actions, sent } = harness({ seat: () => SEAT, wholeMap: () => true, version: () => 0 });
+    const { actions, sent } = harness({
+      seat: () => SEAT,
+      wholeMap: () => true,
+      sharedSight: () => false,
+      version: () => 0,
+    });
     actions.setStance(FOREIGN, 1);
     expect(sent).toEqual([{ kind: 'setStance', entity: FOREIGN, mode: 1 }]);
   });
