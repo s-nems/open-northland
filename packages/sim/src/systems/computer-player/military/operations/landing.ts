@@ -42,7 +42,13 @@ import { type LandingAim, landingAim, stormObjective } from './landing-aim.js';
 import { isRelief, mayRelieve, reliefAim, reliefObjective } from './landing-relief.js';
 import { believedLand, type FireSource, landingObjective, underFire } from './landing-target.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
-import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleEnemyFighters } from './raid-target.js';
+import {
+  believedEnemyTowers,
+  nodeOfEntity,
+  RAID_DEFENCE_RADIUS_NODES,
+  RAID_TOWER_CLEARANCE_NODES,
+  visibleEnemyFighters,
+} from './raid-target.js';
 
 // A naval landing (owner ruling): a seat fills its moored ships with soldiers at home and sails them
 // together to the shore of the land it aims at (`landing-aim.ts`, `landing-relief.ts`), outside the reach
@@ -119,15 +125,45 @@ export function freeShips(env: ShipEnv, home: number): Entity[] {
 /**
  * The shore points of a landing's ships ({@link shorePoints}) on the `aim`'s land, nearest where it heads,
  * outside the reach of every tower and shelter the seat believes stands there ({@link underFire}), so the
- * hulls waiting at the shore are not shot; a storm too lands clear of them and walks in. Ships beyond the
- * clear shores found share them. Authored: observed on arabskie_wyspy_wolna_gra_mieszana, ships moored
- * beside a rival's headquarters, its people shooting from inside, lost most hulls and every man aboard
- * before the last one moored.
+ * hulls waiting at the shore are not shot; a storm too lands clear of them and walks in. Shores whose
+ * course from `ship`'s mooring passes no tower the seat believes stands ({@link courseClear}) come first;
+ * with none, any clear shore. Ships beyond the shores found share them. Authored: observed on
+ * arabskie_wyspy_wolna_gra_mieszana, ships moored beside a rival's headquarters, its people shooting from
+ * inside, lost most hulls and every man aboard before the last one moored, and fleets sailing past
+ * coastal towers lost most hulls before they reached the shore.
  */
 function landingShores(env: OperationEnv, ship: Entity, aim: LandingAim, count: number): HalfCellNode[] {
-  const { world, ctx, terrain } = env;
+  const { world, ctx, terrain, seat } = env;
   const clear = (at: HalfCellNode): boolean => !underFire(aim.believed.sources, at);
-  return shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, clear, count);
+  const from = world.get(ship, Vehicle).mooring;
+  const towers = believedEnemyTowers(world, ctx, seat).map((t) => t.at);
+  const safe = (at: HalfCellNode): boolean => clear(at) && (from === null || courseClear(towers, from, at));
+  const shores = shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, safe, count);
+  return shores.length > 0
+    ? shores
+    : shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, clear, count);
+}
+
+/** How often a course is tested for towers, in nodes along it. */
+const COURSE_STEP_NODES = 8;
+
+/** Whether the straight course from `from` to `to` keeps out of every one of `towers`' reach
+ *  ({@link RAID_TOWER_CLEARANCE_NODES}). Approximation: a ship's route bends round the land it passes. */
+function courseClear(
+  towers: readonly HalfCellNode[],
+  from: DeepReadonly<HalfCellNode>,
+  to: HalfCellNode,
+): boolean {
+  if (towers.length === 0) return true;
+  const steps = Math.max(1, Math.ceil(nodeManhattan(from, to) / COURSE_STEP_NODES));
+  for (let i = 0; i <= steps; i++) {
+    const at = {
+      hx: from.hx + Math.floor(((to.hx - from.hx) * i) / steps),
+      hy: from.hy + Math.floor(((to.hy - from.hy) * i) / steps),
+    };
+    if (towers.some((t) => nodeManhattan(t, at) <= RAID_TOWER_CLEARANCE_NODES)) return false;
+  }
+  return true;
 }
 
 /** The tick from which the seat may land: its peace over and its difficulty's first wave due. */
