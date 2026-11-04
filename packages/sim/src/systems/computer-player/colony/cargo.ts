@@ -1,12 +1,16 @@
-import { BUILDING_KIND } from '@open-northland/data';
-import { Building, Vehicle, VehicleStock, vehicleLoad } from '../../../components/index.js';
+import {
+  Stockpile,
+  UnderConstruction,
+  Vehicle,
+  VehicleStock,
+  vehicleLoad,
+} from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { homeBuildings } from '../../ai-shared/home-roster.js';
-import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
-import { stockAtBuildings } from '../../stores/index.js';
+import { mayFetchGoodFrom } from '../../stores/workplace.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { foodGood } from './home-supply.js';
 import { homeStockOf } from './stock.js';
@@ -34,23 +38,25 @@ export function colonyManifest(world: World, ctx: SystemContext, seat: number, p
   return [...lines].map(([goodType, amount]) => ({ goodType, amount }));
 }
 
-/** The units of each good at home a hold's hands may fetch: home's stock less what lies on its sites,
- *  workshop shelves and in its homes, which nobody hands a ship. Its warehouses and the heaps on its ground
- *  stay in. */
+/** The units of each good at home a hold's hands may fetch: home's stock less what its sites and upgrades
+ *  hold for their bills, its workshops for their recipes and its homes as food, which nobody hands a ship.
+ *  Warehouses, workshop output and the heaps on home's ground stay in. */
 export function homeStockToLoad(
   world: World,
   ctx: SystemContext,
   seat: number,
 ): (goodType: number) => number {
-  const buildings = contentIndex(ctx.content).buildings;
   const stock = homeStockOf(world, ctx, seat);
-  const shelves = homeBuildings(world, ctx, seat).filter(
-    (e) =>
-      !isBuilt(world, e) ||
-      buildings.get(world.get(e, Building).buildingType)?.kind !== BUILDING_KIND.storage,
-  );
-  const held = stockAtBuildings(world, seat, shelves, () => false);
-  return (goodType) => stock.units(goodType) - (held.get(goodType) ?? 0);
+  const home = homeBuildings(world, ctx, seat);
+  return (goodType) => {
+    let kept = 0;
+    for (const e of home) {
+      const pile = world.tryGet(e, Stockpile)?.amounts.get(goodType) ?? 0;
+      if (pile > 0 && (world.has(e, UnderConstruction) || !mayFetchGoodFrom(world, ctx, e, goodType)))
+        kept += pile;
+    }
+    return stock.units(goodType) - kept;
+  };
 }
 
 /** Whether home holds (`held`, {@link homeStockToLoad}) what the manifest still wants beyond what lies
