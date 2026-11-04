@@ -80,7 +80,7 @@ export function planBuilder(
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
   if (!jobCanBuild(ctx.content, settler.jobType)) {
-    dropAssignment(plan, claims);
+    if (world.has(e, SiteAssignment)) dropAssignment(plan, claims);
     return false;
   }
   // A pinned, bound or run site was chosen past the confinement, so its material is too.

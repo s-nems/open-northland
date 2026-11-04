@@ -11,14 +11,14 @@ import {
 import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
-import { hasOpenSide } from '../../../nav/nearest.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { translatedCells } from '../../footprint/geometry.js';
-import { buildingDoorwayNodes, constructionWorkCells, dynamicBlockOverlay } from '../../footprint/index.js';
+import { buildingDoorwayNodes } from '../../footprint/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { type NodeMoveFeed, watchNodeMoves } from '../../spatial/node-moves.js';
 import { NodeBuckets } from '../../spatial/nodes.js';
+import { HeldWorkCells, openWorkCells } from './work-cells.js';
 
 /**
  * The radius of a completed workplace's loiter yard, in lattice edges, about two visual tiles.
@@ -45,13 +45,15 @@ export class PlannerSpacing {
     /** Stationary owned settlers bucketed by integer tile, as of the moment this pass began. */
     readonly occupancy: NodeBuckets,
     private readonly buildBlockedCells: () => BlockOverlay,
+    /** The building work cells kept across passes over the live walk-block mask; undefined over a
+     *  fixture's pinned overlay. */
+    private readonly heldWorkCells: HeldWorkCells | undefined,
   ) {}
 
   /** Gated on {@link Owner}, so an unowned fixture buckets nothing. */
   static forTick(world: World, ctx: SystemContext, terrain: TerrainGraph): PlannerSpacing {
-    return new PlannerSpacing(world, ctx, terrain, stationaryOwnedSettlers(world), () =>
-      dynamicBlockOverlay(world, ctx, terrain),
-    );
+    const held = HeldWorkCells.of(world, ctx, terrain);
+    return new PlannerSpacing(world, ctx, terrain, stationaryOwnedSettlers(world), () => held.mask, held);
   }
 
   /** Spacing over an occupancy and a walk-block overlay the caller already holds, for a fixture that
@@ -63,7 +65,7 @@ export class PlannerSpacing {
     occupancy: NodeBuckets,
     blocked: BlockOverlay,
   ): PlannerSpacing {
-    return new PlannerSpacing(world, ctx, terrain, occupancy, () => blocked);
+    return new PlannerSpacing(world, ctx, terrain, occupancy, () => blocked, undefined);
   }
 
   /** The building/resource walk-block overlay: cells a drive may neither aim at nor route through. */
@@ -92,11 +94,9 @@ export class PlannerSpacing {
     this.workCellsBySite ??= new Map();
     let cells = this.workCellsBySite.get(site);
     if (cells === undefined) {
-      const blocked = this.blockedCells();
-      const perimeter = constructionWorkCells(this.world, this.ctx, this.terrain, site, blocked);
-      const open = perimeter.filter((cell) => hasOpenSide(this.terrain, cell, blocked));
-      // A site whose every perimeter cell is wedged still gets built.
-      cells = open.length > 0 ? open : perimeter;
+      cells =
+        this.heldWorkCells?.cellsOf(site) ??
+        openWorkCells(this.world, this.ctx, this.terrain, this.blockedCells(), site);
       if (this.world.has(site, Palisade)) cells = this.offOtherWallSites(cells);
       this.workCellsBySite.set(site, cells);
     }
