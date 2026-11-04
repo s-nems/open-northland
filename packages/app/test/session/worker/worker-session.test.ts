@@ -5,8 +5,10 @@ import {
   components,
   type Entity,
   exportSaveGame,
+  fogViewOfMask,
   parseCommandLog,
   playerCommand,
+  SHARED_SIGHT_VIEWER,
   type Simulation,
   serializeSaveGame,
   stepReplaying,
@@ -321,6 +323,19 @@ describe('session worker host', () => {
       const received = session.host.fogView(ALLY);
       if (ally === null || received === null) throw new Error('the scene plays under fog');
       expect(fogCells(received)).toEqual(fogCells(ally));
+
+      // A spectator watching both seats' sight gets their union, under the shared viewer id.
+      const both = [HUMAN_PLAYER, ALLY];
+      session.driver.setPaused(false);
+      session.host.sharedFogView(both);
+      await pumpUntil(session, () => session.host.sharedFogView(both)?.player === SHARED_SIGHT_VIEWER);
+      session.driver.setPaused(true);
+      await pumpWhile(session, session.host.settled());
+      sim.run(session.host.tick - sim.tick);
+      const union = sim.sharedFogMaskAnswer(both);
+      const shared = session.host.sharedFogView(both);
+      if (union === null || shared === null) throw new Error('the scene plays under fog');
+      expect(fogCells(shared)).toEqual(fogCells(fogViewOfMask(union)));
 
       // The human soldier's walk east reveals ground to the shared mask: a changed mask reaches the
       // runtime after the ones already drawn.
