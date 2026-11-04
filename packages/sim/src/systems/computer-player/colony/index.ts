@@ -12,6 +12,7 @@ import { foundColony } from './founding.js';
 import { defendColony } from './garrison.js';
 import { reviewOverflow } from './overflow.js';
 import { runRoute } from './route.js';
+import { stopPullOrders } from './stop-pull.js';
 import { recoverStrayShips } from './stray-ships.js';
 import {
   afterLanding,
@@ -92,6 +93,11 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
   }
   // A copy: a voyage that fails for good drops its colony off the list.
   const commands = [...state.colonies].flatMap((colony) => runOneColony(colonyEnv(env, colony)));
+  if (
+    world.has(carrier, ComputerColony) &&
+    moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS)
+  )
+    commands.push(...stopPullOrders(env));
   if (
     world.has(carrier, ComputerColony) &&
     moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, SURVEY_EVERY_DECISIONS)
