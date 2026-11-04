@@ -21,7 +21,7 @@ esac
 # so an empty result (lsof exits 1) doesn't trip pipefail.
 listeners="$(lsof -nP -iTCP -sTCP:LISTEN -Fpcn 2>/dev/null || true)"
 
-printf '%-6s %-7s %-12s %s\n' PORT PID COMMAND CWD
+printf '%-6s %-7s %-16s %s\n' PORT PID COMMAND CWD
 
 pid='' cmd='' seen=' '
 printf '%s\n' "$listeners" | while IFS= read -r line; do
@@ -29,7 +29,8 @@ printf '%s\n' "$listeners" | while IFS= read -r line; do
     p*) pid="${line#p}" ;;
     c*) cmd="${line#c}" ;;
     n*)
-      if ! $show_all && [ "$cmd" != node ]; then continue; fi
+      # Linux reports Node's renamed main thread, `node-MainThread`, as the command.
+      if ! $show_all; then case "$cmd" in node | node-*) ;; *) continue ;; esac; fi
       # A server bound on IPv4+IPv6 emits two n lines -> dedupe by pid:port.
       port="${line##*:}"
       case "$seen" in *" $pid:$port "*) continue ;; esac
@@ -45,7 +46,7 @@ printf '%s\n' "$listeners" | while IFS= read -r line; do
           fi
           ;;
       esac
-      printf '%-6s %-7s %-12s %s%s\n' "$port" "$pid" "$cmd" "${cwd:-?}" "$note"
+      printf '%-6s %-7s %-16s %s%s\n' "$port" "$pid" "$cmd" "${cwd:-?}" "$note"
       ;;
   esac
 done
