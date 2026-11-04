@@ -800,9 +800,10 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     runUntil(sim, () => !sim.world.isAlive(woman()), 5, 'death');
     expect(sim.world.get(man(), Residence).home).toBe(home()); // the carve-out holds while raising
 
-    // Age the child to the eve of adulthood; the next step runs the real graduation path.
+    // Age the baby to the eve of adulthood; it moves up one stage per tick, so the second step runs the real
+    // graduation path.
     sim.world.add(child, Age, { ticks: ADULT_AGE_TICKS - 1, asOf: null });
-    sim.step();
+    sim.run(2);
     expect(sim.world.has(child, Age)).toBe(false); // grown - the carve-out expired
     // The widowed father is released: the stale union dissolves, he vacates, and the slot is free.
     expect(sim.world.has(man(), Marriage)).toBe(false);
@@ -844,7 +845,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     runUntil(sim, () => !sim.world.isAlive(man()), 5, 'death');
 
     sim.world.add(child, Age, { ticks: ADULT_AGE_TICKS - 1, asOf: null });
-    sim.step();
+    sim.run(2);
     // Same expiry, opposite sex: the stale union dissolves (she may remarry) but homes anchor on
     // women, so the widow keeps her slot and refills it by remarrying.
     expect(sim.world.has(woman(), Marriage)).toBe(false);

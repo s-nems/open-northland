@@ -103,7 +103,7 @@ export const familyScene: SceneDefinition = {
       predicate: (sim) => {
         for (const e of sim.world.query(Age, Settler)) {
           // She is born around tick 875, so by tick 2500 she is deterministically past
-          // CHILD_AGE_TICKS (960) and short of ADULT_AGE_TICKS (2880).
+          // CHILD_AGE_TICKS (1441) and short of ADULT_AGE_TICKS (2881).
           if (!systems.isChild(sim.world.get(e, Settler).jobType)) return false;
           if (!sim.world.has(e, Female)) return false;
           return sim.world.tryGet(e, Residence)?.home === HOME_ENTITY;
