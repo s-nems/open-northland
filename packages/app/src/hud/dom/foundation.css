@@ -2099,8 +2099,12 @@ body.on-drag-scroll.on-drag-scroll-free * {
 .on-hud .on-seat .on-key {
   margin-left: auto;
 }
-.on-hud .on-seat:has(.on-key)[aria-selected="true"]::after {
+.on-hud .on-seat:has(.on-key:not([hidden]))[aria-selected="true"]::after {
   margin-left: 0;
+}
+.on-hud .on-seat .on-key[hidden],
+.on-hud .on-picker__hint[hidden] {
+  display: none;
 }
 .on-hud .on-picker__hint {
   display: flex;

@@ -15,7 +15,6 @@ export const FIGHT_SPOTS_KEPT = 5;
 export interface FightSpot {
   readonly id: number;
   readonly at: HalfCellNode;
-  readonly tick: number;
 }
 
 /**
@@ -35,13 +34,13 @@ export function createLatestFights(): LatestFights {
   const spots: FightSpot[] = [];
   let nextId = 0;
 
-  const hit = (at: HalfCellNode, tick: number): void => {
+  const hit = (at: HalfCellNode): void => {
     const near = spots.findIndex(
       (spot) => hexDistanceBetween(spot.at.hx, spot.at.hy, at.hx, at.hy) <= FIGHT_AREA_RADIUS_NODES,
     );
     const id = spots[near]?.id ?? nextId++;
     if (near >= 0) spots.splice(near, 1);
-    spots.unshift({ id, at, tick });
+    spots.unshift({ id, at });
     if (spots.length > FIGHT_SPOTS_KEPT) spots.length = FIGHT_SPOTS_KEPT;
   };
 
@@ -61,10 +60,9 @@ export function createLatestFights(): LatestFights {
     record: (events, snapshot) => {
       for (const ev of events) {
         if (ev.kind === 'combatHit') {
-          if (hostile(snapshot, ev.attackerPlayer, ev.target, false)) hit(ev.at, snapshot.tick);
+          if (hostile(snapshot, ev.attackerPlayer, ev.target, false)) hit(ev.at);
         } else if (ev.kind === 'projectileHit') {
-          if (hostile(snapshot, ev.shooterPlayer, ev.target, ev.collateral === true))
-            hit(ev.at, snapshot.tick);
+          if (hostile(snapshot, ev.shooterPlayer, ev.target, ev.collateral === true)) hit(ev.at);
         }
       }
     },

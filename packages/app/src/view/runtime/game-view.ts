@@ -27,7 +27,6 @@ import {
   adminCommand,
   type Command,
   type Entity,
-  type FogView,
   type Paper,
   type PlayerCommand,
   playerCommand,
@@ -194,6 +193,7 @@ import { otherWorldLoader } from './save-load/other-world.js';
 import { worldScreenshot, worldThumbnail } from './save-load/thumbnail.js';
 import { noteRestartOnLeave } from './settings-restart.js';
 import { createSubMissions, type PrepareSubMission } from './sub-missions.js';
+import { viewerFog } from './viewer-fog.js';
 import { createWorldEventHandler } from './world-events.js';
 import { createWorldTeardown } from './world-teardown.js';
 
@@ -363,11 +363,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   /** The seat a read needing one answers for; watching the whole map reads as the fallback seat. */
   const viewerPlayer = (): number => viewer.seat() ?? localPlayer;
   const sightSeats = (deps.observerSeats ?? []).map((entry) => entry.player);
-  const fogViewOf = (): FogView | null => {
-    if (viewer.sharedSight()) return host.sharedFogView(sightSeats);
-    const seat = viewer.seat();
-    return viewer.wholeMap() || seat === null ? null : host.fogView(seat);
-  };
+  const fogViewOf = viewerFog(host, viewer, sightSeats, deps.mapSize);
   const seatTribeOf = deps.seatTribeOf ?? ((): number => PRIMARY_TRIBE);
   const sharedClock = deps.sharedClock === true;
   // A relay refuses a tempo past its cap, so a shared clock keeps the original's three.

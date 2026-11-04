@@ -2,6 +2,7 @@ import {
   type EntitySnapshot,
   type ExportSaveOptions,
   exportSaveGame,
+  type FogMode,
   type FogView,
   fogViewOfMask,
   type ScriptLandscapeType,
@@ -163,16 +164,21 @@ function mirroredSnapshots(sim: Simulation): Pick<SessionHost, 'snapshot' | 'dep
   };
 }
 
-/** The shared view is a fresh mask union, so it is rebuilt only when a mask, the mode or the seats
- *  changed; a frame between vision rebuilds reads the last one. */
+/** The shared view is a fresh mask union, so it is rebuilt only when a mask, the mode or the seat list
+ *  (by identity: the viewer asks with one array) changed; a frame between vision rebuilds reads the
+ *  last one. */
 function sharedFogMemo(sim: Simulation): { view(players: readonly number[]): FogView | null } {
-  let key: string | null = null;
+  let seats: readonly number[] | null = null;
+  let mode: FogMode | null = null;
+  let generation: number | null = null;
   let view: FogView | null = null;
   return {
     view: (players) => {
-      const next = `${players.join(',')}:${sim.fogMode()}:${sim.fog?.generation ?? 'none'}`;
-      if (next !== key) {
-        key = next;
+      const nextGeneration = sim.fog?.generation ?? null;
+      if (players !== seats || sim.fogMode() !== mode || nextGeneration !== generation) {
+        seats = players;
+        mode = sim.fogMode();
+        generation = nextGeneration;
         const answer = sim.sharedFogMaskAnswer(players);
         view = answer === null ? null : fogViewOfMask(answer);
       }

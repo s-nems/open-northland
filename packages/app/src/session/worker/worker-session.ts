@@ -233,6 +233,10 @@ class WorkerClient<E> {
   private fog: FogView | null;
   /** The seats whose sight the worker was last asked for, joined as their key. */
   private fogSeats: string | null;
+  /** The last seat list asked for, so the same array asked again each frame costs no join. */
+  private fogSeatList: readonly number[] | null = null;
+  /** The {@link FogView.player} the asked-for seats' answers carry; null before any ask. */
+  private fogViewer: number | null;
   private paused: boolean;
   private speed: number;
   private droppedTicks = 0;
@@ -259,6 +263,7 @@ class WorkerClient<E> {
     this.facts = ready.facts;
     this.fog = ready.fog === null ? null : fogViewOfMask(ready.fog);
     this.fogSeats = options.fogSeat === null ? null : String(options.fogSeat);
+    this.fogViewer = options.fogSeat;
     this.paused = options.paused;
     this.speed = options.speed;
     this.alpha = new ArrivalAlpha(options.speed, options.paused);
@@ -393,18 +398,16 @@ class WorkerClient<E> {
     return this.alpha.at(performance.now());
   }
 
-  /** The {@link FogView.player} the asked-for seats' answers carry. */
-  private get fogViewer(): number | null {
-    if (this.fogSeats === null) return null;
-    return this.fogSeats.includes(',') ? SHARED_SIGHT_VIEWER : Number(this.fogSeats);
-  }
-
   private fogOf(players: readonly number[]): FogView | null {
+    if (players === this.fogSeatList) return this.fog;
     const key = players.join(',');
     if (key !== this.fogSeats) {
+      const [only] = players;
       this.fogSeats = key;
+      this.fogViewer = players.length === 1 && only !== undefined ? only : SHARED_SIGHT_VIEWER;
       this.post({ kind: 'fogSeats', players: [...players] });
     }
+    this.fogSeatList = players;
     // Until the new seats' masks land the previous ones stay drawn: an unfogged frame would show the
     // whole map for a moment.
     return this.fog;

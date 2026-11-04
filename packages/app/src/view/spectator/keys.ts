@@ -34,8 +34,9 @@ export function installSpectatorKeys(deps: SpectatorKeysDeps): () => void {
 
   const jumpToFight = (): void => {
     const camera = deps.camera();
-    const stillThere = lastJump !== null && lastJump.x === camera.offsetX && lastJump.y === camera.offsetY;
-    const spot = deps.fights.next(stillThere && lastJump !== null ? lastJump.spot : null);
+    const stillThere =
+      lastJump !== null && lastJump.x === camera.offsetX && lastJump.y === camera.offsetY ? lastJump : null;
+    const spot = deps.fights.next(stillThere?.spot ?? null);
     if (spot === null) return;
     deps.centreOn(spot.at);
     const moved = deps.camera();
@@ -43,7 +44,9 @@ export function installSpectatorKeys(deps: SpectatorKeysDeps): () => void {
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {
-    if (!deps.active()) return;
+    // A modal dialog (the bug report) keeps its keys, as it does from the tool panel.
+    if (!deps.active() || (e.target instanceof Element && e.target.closest('[aria-modal="true"]') !== null))
+      return;
     const action = spectatorKeyAction(e, deps.bindings);
     if (action === null) return;
     e.preventDefault();

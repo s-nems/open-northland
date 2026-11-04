@@ -18,10 +18,11 @@ import {
   viewedFogState,
 } from '../systems/vision/index.js';
 
-/** One viewer player's fog: plain data and one pure accessor over the live {@link FogState}. */
+/** One viewer's fog: plain data and one pure accessor over the live {@link FogState} or a mask copy. */
 export interface FogView {
-  /** The seat whose perspective `stateAt` answers for; a render cache keys on it beside `generation`,
-   *  since a spectator may switch seats under one unchanged mask. */
+  /** The seat whose perspective `stateAt` answers for, or {@link SHARED_SIGHT_VIEWER} for several
+   *  seats' together; a render cache keys on it beside `generation`, since a spectator may switch
+   *  seats under one unchanged mask. */
   readonly player: number;
   /** Never `OFF`, which yields a null view instead. */
   readonly mode: FogMode;
@@ -81,8 +82,9 @@ export function fogViewFor(world: World, fog: FogState | undefined, player: numb
   };
 }
 
-/** One viewer player's fog as plain data, for a reader on another thread: the raw bytes of the
- *  viewer's vision-group mask (a copy), null while the group has none. {@link fogViewOfMask} reads it. */
+/** One viewer's fog as plain data, for a reader on another thread: a copy of the viewer's vision-group
+ *  mask, null while the group has none, or several seats' union, never null. {@link fogViewOfMask}
+ *  reads it. */
 export interface FogMaskAnswer {
   readonly player: number;
   readonly mode: FogMode;

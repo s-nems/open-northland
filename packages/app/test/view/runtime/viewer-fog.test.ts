@@ -1,0 +1,29 @@
+import { FOG_MODE, FOG_STATE, type FogMode, type FogView, SHARED_SIGHT_VIEWER } from '@open-northland/sim';
+import { describe, expect, it } from 'vitest';
+import { PLAYERS_SIGHT, switchableViewerSeat } from '../../../src/game/viewer-seat.js';
+import { viewerFog } from '../../../src/view/runtime/viewer-fog.js';
+
+const MAP = { width: 4, height: 3 };
+const SEATS = [0, 2];
+
+function hostAnswering(shared: FogView | null, mode: FogMode = FOG_MODE.CLASSIC) {
+  return { fogView: () => null, sharedFogView: () => shared, fogMode: () => mode };
+}
+
+describe('viewer fog', () => {
+  it('under the players’ sight shows nothing seen until the first union lands, then the union', () => {
+    const viewer = switchableViewerSeat(PLAYERS_SIGHT);
+    const waiting = viewerFog(hostAnswering(null), viewer, SEATS, MAP)();
+    expect(waiting?.player).toBe(SHARED_SIGHT_VIEWER);
+    expect(waiting?.stateAt(1, 1)).toBe(FOG_STATE.UNEXPLORED);
+    const union = { ...(waiting as FogView), generation: 7 };
+    expect(viewerFog(hostAnswering(union), viewer, SEATS, MAP)()).toBe(union);
+  });
+
+  it('draws no fog with fog off, over the revealed map, or with no seat to share', () => {
+    const sight = switchableViewerSeat(PLAYERS_SIGHT);
+    expect(viewerFog(hostAnswering(null, FOG_MODE.OFF), sight, SEATS, MAP)()).toBeNull();
+    expect(viewerFog(hostAnswering(null), sight, [], MAP)()).toBeNull();
+    expect(viewerFog(hostAnswering(null), switchableViewerSeat(null), SEATS, MAP)()).toBeNull();
+  });
+});

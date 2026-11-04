@@ -107,6 +107,7 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   };
 
   const entries = new Map<WatchTarget, HTMLButtonElement>();
+  const entryKeys = new Map<WatchTarget, HTMLElement>();
   const entry = (seat: WatchTarget): void => {
     const option = document.createElement('button');
     option.type = 'button';
@@ -115,8 +116,9 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
     option.setAttribute('aria-selected', 'false');
     if (typeof seat === 'number') option.append(swatch(colourOf(seat)));
     option.append(labelOf(seat));
-    const key = keyOf(seat);
-    if (key !== null) option.append(keycap(key));
+    const key = keycap('');
+    entryKeys.set(seat, key);
+    option.append(key);
     option.addEventListener('click', () => {
       show(false);
       deps.onWatch(seat);
@@ -127,13 +129,22 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   entry(PLAYERS_SIGHT);
   entry(null);
   for (const seat of deps.seats) entry(seat.player);
-  const fightBinding = deps.bindings?.jumpToFight ?? null;
-  if (fightBinding !== null) {
-    const hint = document.createElement('p');
-    hint.className = 'on-picker__hint';
-    hint.append(keycap(keyDisplayLabel(fightBinding)), copy.observer.latestFight);
-    list.append(hint);
-  }
+  const fightHint = document.createElement('p');
+  fightHint.className = 'on-picker__hint';
+  const fightKey = keycap('');
+  fightHint.append(fightKey, copy.observer.latestFight);
+  list.append(fightHint);
+  // Read on every open, since the bindings object is rebound in place from the settings.
+  const showKeys = (): void => {
+    for (const [seat, key] of entryKeys) {
+      const label = keyOf(seat);
+      key.hidden = label === null;
+      key.textContent = label ?? '';
+    }
+    const fightBinding = deps.bindings?.jumpToFight ?? null;
+    fightHint.hidden = fightBinding === null;
+    fightKey.textContent = fightBinding === null ? '' : keyDisplayLabel(fightBinding);
+  };
 
   // Escape closes the open list from wherever focus sits, since a clicked button holds no focus in
   // every browser; the tool panel's own Escape runs first, so an open window closes before the list.
@@ -146,6 +157,7 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   const show = (open: boolean): void => {
     if (list.hidden === !open) return;
     list.hidden = !open;
+    if (open) showKeys();
     button.setAttribute('aria-expanded', String(open));
     if (open) document.addEventListener('keydown', onEscape, true);
     else document.removeEventListener('keydown', onEscape, true);
