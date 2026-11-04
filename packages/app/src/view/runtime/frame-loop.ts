@@ -116,6 +116,19 @@ export interface FrameLoopDeps {
   readonly defenceRangeAt: (typeId: number, tribe: number, col: number, row: number) => number | undefined;
   readonly blessingRangeFor?: (typeId: number) => number | undefined;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
+  /** Whether a workshop of the type placed at the node would find ship water in its crew's yard search
+   *  (the placement gates' read); null when the type takes no verdict, undefined while the node's answer
+   *  is on its way. Absent where the verdict is not served. */
+  readonly shipWaterAt?: (
+    typeId: number,
+    tribe: number,
+    col: number,
+    row: number,
+    owner?: number,
+  ) => boolean | null | undefined;
+  /** The held ship workshop's no-ship-water warning: raised at the cursor while its ghost shows on a
+   *  spot whose coast builds no ships, hidden with null. Absent where no chip is mounted. */
+  readonly onShipWaterHint?: (at: { readonly clientX: number; readonly clientY: number } | null) => void;
   readonly soundDriver: ReturnType<typeof createSoundDriver> | null;
   /** Owner slot to its roster tribe: the viewer seat's tribe picks the attack alert's voice. */
   readonly seatTribeOf: (player: number) => number;
@@ -205,6 +218,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     defenceRangeAt,
     blessingRangeFor,
     canPlaceSignpostAt,
+    shipWaterAt,
+    onShipWaterHint,
     soundDriver,
     seatTribeOf,
     presentation,
@@ -214,6 +229,19 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   } = loop;
   const { app, renderer, host, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
+  // The ship-water verdict the ghost warns with reads fenced: a failed answer warns at nothing this frame
+  // instead of stopping the loop for good - the half-drawn world a thrown frame leaves behind is broken
+  // graphics no cursor warning may be able to cause.
+  const shipWaterWarnAt =
+    shipWaterAt === undefined
+      ? undefined
+      : (typeId: number, tribe: number, col: number, row: number, owner?: number) => {
+          try {
+            return shipWaterAt(typeId, tribe, col, row, owner);
+          } catch {
+            return undefined;
+          }
+        };
 
   // Frame phases join the sim instrument's per-system slices in one `?debug=perf` / `?debug=trace` recording.
   const emitPhase = framePhaseEmitter(deps.params);
@@ -388,6 +416,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       dockOverlay,
       tileAt: () => (pointer === null ? null : toolPanel.clientToTile(pointer.clientX, pointer.clientY)),
       canPlaceAt,
+      ...(shipWaterWarnAt === undefined ? {} : { shipWaterAt: shipWaterWarnAt }),
       defenceRangeAt,
       ...(blessingRangeFor === undefined ? {} : { blessingRangeFor }),
       canPlaceSignpostAt,
@@ -400,6 +429,17 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     });
     renderer.updatePlacementOverlay(cursor.overlay);
     renderer.updatePlacementGhost(cursor.ghost, snap);
+    // The held ship workshop's warning rides the ghost: the tint and the cursor chip both read the `warn`
+    // the verdict stamped on the ghost the frame shows, so a fogged or refused spot says nothing, and the
+    // chip hides the frame the pick or the tile changes.
+    if (onShipWaterHint !== undefined) {
+      const ghost = cursor.ghost;
+      onShipWaterHint(
+        ghost !== null && ghost.kind === 'building' && ghost.warn === true && pointer !== null
+          ? { clientX: pointer.clientX, clientY: pointer.clientY }
+          : null,
+      );
+    }
     const wallDemolish = toolPanel.controller.wallDemolishHighlight(
       pointer === null ? null : { x: pointer.clientX, y: pointer.clientY },
     );

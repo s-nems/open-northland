@@ -537,6 +537,7 @@ export const chsGame = {
       costLine: '{name} ×{amount}',
       costShort: '{name}：现有 {have}，需要 {amount}',
       placeHint: '在地图上指定位置，按住 Shift 可连续放置多个',
+      shipWater: '附近没有可供建造船只的水域：在这里无法造船',
       placeWallHint: '点击木栅栏的起点',
       placeWallLineHint: '左键铺设木栅栏，按住 Ctrl/Cmd 继续延伸，按住 Shift 保持直线，右键放弃此线',
       placeGateHint: '指向一段由五节已完工木栅栏组成的直线',

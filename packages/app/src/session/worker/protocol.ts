@@ -45,6 +45,7 @@ export interface WorkerSessionOptions {
  *  sim; `hashState`, `run` and `settled` carry the worker's tick and have their own calls. */
 export const HOST_REQUESTS = [
   'placementProbe',
+  'shipWaterProbe',
   'formationSlots',
   'signpostProbe',
   'signpostReach',
@@ -158,6 +159,7 @@ export interface WorldFacts {
   /** The same array while no site changes, which the runtime keeps as its identity. */
   readonly constructionPlots: readonly ConstructionPlot[];
   readonly placementBlockerVersion: string;
+  readonly shipWaterVersion: string;
   readonly signpostBlockerVersion: string;
   readonly signpostReachVersion: string;
   readonly palisadeLayoutVersion: string;

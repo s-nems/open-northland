@@ -85,6 +85,9 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
 
     placementProbe: (buildingType, area, player, tribe, gated) =>
       Promise.resolve(sim.placementAnswer(buildingType, area, player, tribe, gated)),
+    shipWaterVersion: () => sim.shipWaterVersion(),
+    shipWaterProbe: (buildingType, tribe, hx, hy, player) =>
+      Promise.resolve(sim.shipWaterAnswer(buildingType, tribe, hx, hy, player)),
     formationSlots: (...args) => Promise.resolve(sim.formationSlots(...args)),
     signpostProbe: (player, area) => Promise.resolve(sim.signpostAnswer(player, area)),
     palisadeProbe: (gfxIndex, area, player) => Promise.resolve(sim.palisadeAnswer(gfxIndex, area, player)),

@@ -36,6 +36,7 @@ import type {
   Paper,
   SaveGame,
   ScriptLandscapeType,
+  ShipWaterAnswer,
   SignpostReachView,
   SimEvent,
   systems,
@@ -182,6 +183,18 @@ export interface SessionHost {
     tribe?: number,
     gated?: boolean,
   ): Promise<NodeGridAnswer | null>;
+  /** Changes whenever a ship-water answer may, movers aside; see {@link shipWaterProbe}. */
+  shipWaterVersion(): string;
+  /** Whether a workshop of `buildingType` (of `tribe`, whose footprint the door reads) placed at the
+   *  half-cell anchor `(hx, hy)` would find ship water in its crew's yard search; null for a type whose
+   *  chain builds no ships. With a `player`, the seat's unfinished ship yards in reach count too. */
+  shipWaterProbe(
+    buildingType: number,
+    tribe: number,
+    hx: number,
+    hy: number,
+    player?: number,
+  ): Promise<ShipWaterAnswer | null>;
   /** Fresh formation groups on land, with vehicle commanders retaining the clicked target. */
   formationSlots(
     target: HalfCellNode,

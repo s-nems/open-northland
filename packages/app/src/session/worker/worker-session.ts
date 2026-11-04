@@ -502,6 +502,7 @@ class WorkerClient<E> {
       },
       constructionPlots: () => facts().constructionPlots,
       placementBlockerVersion: () => facts().placementBlockerVersion,
+      shipWaterVersion: () => facts().shipWaterVersion,
       signpostReachVersion: () => facts().signpostReachVersion,
       signpostReach: (...args) => this.ask('signpostReach', args),
       signpostBlockerVersion: () => facts().signpostBlockerVersion,
@@ -541,6 +542,7 @@ class WorkerClient<E> {
       hashState: () => this.call({ method: 'hashState' }).then(({ value }) => value as StateHash),
 
       placementProbe: (...args) => this.ask('placementProbe', args),
+      shipWaterProbe: (...args) => this.ask('shipWaterProbe', args),
       formationSlots: (...args) => this.ask('formationSlots', args),
       signpostProbe: (...args) => this.ask('signpostProbe', args),
       palisadeProbe: (...args) => this.ask('palisadeProbe', args),

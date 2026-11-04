@@ -74,6 +74,9 @@ import {
   palisadeAnswerFor,
   placementAnswerFor,
   roadSiteAnswerFor,
+  type ShipWaterAnswer,
+  shipWaterAnswerFor,
+  shipWaterVersionOf,
   signpostAnswerFor,
   signpostBlockerVersionOf,
 } from './simulation/probe-answers.js';
@@ -500,6 +503,25 @@ export class Simulation {
       tribe,
       gated,
     );
+  }
+
+  /** Changes whenever {@link shipWaterAnswer} may over the same anchor, movers aside. */
+  shipWaterVersion(): string {
+    return shipWaterVersionOf(this.world);
+  }
+
+  /** Whether a workshop of `buildingType` (of `tribe`, whose footprint the door reads) placed at the
+   *  anchor `(x, y)` would find ship water in its crew's yard search, as plain data; null for a type
+   *  whose chain builds no ships or a mapless sim. With a `player`, the seat's unfinished ship yards in
+   *  reach count as ship water too. */
+  shipWaterAnswer(
+    buildingType: number,
+    tribe: number | undefined,
+    x: number,
+    y: number,
+    player?: number,
+  ): ShipWaterAnswer | null {
+    return shipWaterAnswerFor(this.world, this.content, this.terrain, buildingType, tribe, x, y, player);
   }
 
   /** Collision probe for one data-described palisade or gate graphic and, with a `player`, the ground a

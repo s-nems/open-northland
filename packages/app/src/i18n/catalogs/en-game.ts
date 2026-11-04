@@ -565,6 +565,7 @@ export const enGame = {
       costLine: '{name} ×{amount}',
       costShort: '{name}: you have {have} of {amount}',
       placeHint: 'point at a place on the map, hold Shift to place several',
+      shipWater: 'No ship water in reach: a shop here will build no ships',
       placeWallHint: 'click where the stockade starts',
       placeWallLineHint:
         'left click lays the stockade, with Ctrl/Cmd it draws on, Shift keeps it straight, right click drops the line',
