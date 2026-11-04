@@ -11,6 +11,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
 import { homeBuildings, seatColonies } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan, SpareForce } from '../../ai-shared/workforce/pool.js';
@@ -55,6 +56,8 @@ const OVERFLOW_BUILDING_IDS: ReadonlySet<string> = new Set([
  *  ground plan's fair chance). The clock starts at the first sight of the hold with a colony planned, not
  *  at its landing, so a colony that lands late takes the step in its first running minute. */
 const HELD_FOR_GROUND_TICKS = minutesToTicks(10);
+
+const NO_TIERS: ReadonlySet<number> = new Set();
 
 /** Whether `building` is one a colony raises for home. */
 export function isOverflowBuilding(building: string): boolean {
@@ -143,20 +146,35 @@ function noteStalls(env: ColonyEnv, colony: ColonyView): void {
 }
 
 /** Take back what no building stands for: a refused placement or a razed workshop goes off the builds and
- *  the hand-overs, so home's step stands open again. */
+ *  the hand-overs, so home's step stands open again. A workshop the colony lifted a tier still stands for
+ *  it, as home's own steps count their upgraded buildings. */
 function dropLost(env: ColonyEnv, colony: ColonyView): void {
   if (colony.overflow.length === 0) return;
   const index = contentIndex(env.ctx.content);
-  const standing = new Map<string, number>();
-  for (const e of colonyBuildings(env)) {
-    const id = index.buildings.get(env.world.get(e, Building).buildingType)?.id;
-    if (id !== undefined) standing.set(id, (standing.get(id) ?? 0) + 1);
-  }
+  const chainOf = (typeId: number | undefined): ReadonlySet<number> => {
+    const type = typeId === undefined ? undefined : index.buildings.get(typeId);
+    return type === undefined ? NO_TIERS : tiersAtOrAbove(index, type);
+  };
+  const standing = colonyBuildings(env).map((e) => env.world.get(e, Building).buildingType);
+  // The highest tier handed over picks first, each the lowest building standing on its chain, so a lower
+  // hand-over is not left without the building a higher one needed.
+  const handed = colony.overflow
+    .map(({ building }) => ({ building, tiers: chainOf(index.buildingTypeBySlug.get(building)) }))
+    .sort((a, b) => a.tiers.size - b.tiers.size);
   const lost: string[] = [];
-  for (const { building } of colony.overflow) {
+  for (const { building, tiers } of handed) {
     if (colony.builds.some((b) => !b.placed && b.building === building)) continue;
-    const left = standing.get(building) ?? 0;
-    if (left > 0) standing.set(building, left - 1);
+    // The lowest tier spans the most of its chain; ties go to the first standing.
+    let pick = -1;
+    let span = 0;
+    standing.forEach((type, i) => {
+      const above = chainOf(type).size;
+      if (tiers.has(type) && above > span) {
+        pick = i;
+        span = above;
+      }
+    });
+    if (pick >= 0) standing.splice(pick, 1);
     else lost.push(building);
   }
   if (lost.length === 0) return;

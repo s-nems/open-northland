@@ -1,7 +1,9 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   aiControlEntity,
   Building,
+  ComputerColony,
   type EconomicSide,
   JobAssignment,
   ProductionCounters,
@@ -32,13 +34,17 @@ import {
 import { entryStatuses } from '../../../../src/systems/computer-player/build-order/progress.js';
 import { seatBuildOrder } from '../../../../src/systems/computer-player/build-order/seat-order.js';
 import { colonists } from '../../../../src/systems/computer-player/colony/founding.js';
-import { isOverflowBuilding } from '../../../../src/systems/computer-player/colony/overflow.js';
+import {
+  isOverflowBuilding,
+  reviewOverflow,
+} from '../../../../src/systems/computer-player/colony/overflow.js';
 import { homeStockOf } from '../../../../src/systems/computer-player/colony/stock.js';
 import { computerProfileOf } from '../../../../src/systems/computer-player/difficulty.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { stockAtBuildings } from '../../../../src/systems/stores/index.js';
 import {
   ARMORY_TYPE,
+  blankColony,
   colonyIslands,
   colonyState,
   colonyWorld,
@@ -51,7 +57,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { SEAT } from '../support.js';
+import { SEAT, VIKING } from '../support.js';
 
 const MATERIAL_WORKSHOP_IDS = [
   'work_pottery_00',
@@ -71,6 +77,26 @@ const AFTER_SAVE_TICKS = minutesToTicks(3);
 const SECOND_SHIP_AT = { x: 90, y: 100 };
 const NEVER_RETRY_TICK = Number.MAX_SAFE_INTEGER;
 const ARMORY_ID = 'work_armory_00';
+/** The armory's next tier, in {@link armoryChainContent}. */
+const ARMORY_TOP_TYPE = 51;
+/** A workshop on the east island, clear of its deposits. */
+const COLONY_WORKSHOP_AT = { x: 160, y: 64 };
+
+/** {@link overflowContent} whose armory upgrades a tier. */
+function armoryChainContent(): ContentSet {
+  const content = overflowContent();
+  const armory = content.buildings.find((b) => b.typeId === ARMORY_TYPE);
+  if (armory === undefined) throw new Error('fixture: no armory');
+  return parseContentSet({
+    ...content,
+    buildings: [
+      ...content.buildings.map((b) =>
+        b.typeId === ARMORY_TYPE ? { ...b, upgradeTarget: ARMORY_TOP_TYPE } : b,
+      ),
+      { ...armory, typeId: ARMORY_TOP_TYPE, id: 'work_armory_01' },
+    ],
+  });
+}
 
 /** Mark the step that places `building` as holding its line for ground, as a failed search leaves it. */
 function holdForGround(sim: Simulation, building: string): StepKey {
@@ -194,6 +220,34 @@ describe('overflow production', () => {
     editColony(sim).phase = 'abandoned';
     const entry = { kind: 'place', building: ARMORY_ID, count: 1 } as const;
     expect(entryStatuses(sim.world, ctxOf(sim), SEAT, [entry])).toEqual(['unmet']);
+  });
+
+  it('keeps a handed-over workshop once the colony lifts it a tier', () => {
+    const sim = colonyWorld(7, armoryChainContent(), ['noRoom']);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: ARMORY_TOP_TYPE,
+      ...COLONY_WORKSHOP_AT,
+      tribe: VIKING,
+      owner: SEAT,
+      force: true,
+      underConstruction: false,
+    });
+    sim.step();
+    const carrier = aiControlEntity(sim.world, SEAT);
+    const terrain = sim.terrain;
+    if (carrier === null || terrain === undefined) throw new Error('setup: no AI seat or terrain');
+    const land = terrain.componentOf(terrain.nodeAt(COLONY_WORKSHOP_AT.x, COLONY_WORKSHOP_AT.y));
+    const handed = blankColony(land, {
+      overflow: [{ line: 'armory', step: 0, building: ARMORY_ID }],
+      builds: [{ building: ARMORY_ID, placed: true }],
+    });
+    sim.world.add(carrier, ComputerColony, { colonies: [handed], rejected: [], retryAt: 0 });
+    const colony = editColony(sim);
+
+    reviewOverflow(looseColonyEnv(sim, colony), colony);
+
+    expect(colony.overflow.map((row) => row.building)).toEqual([ARMORY_ID]);
   });
 
   it('keeps a held step at home on a seat with room', () => {
