@@ -210,10 +210,11 @@ function claimFerry(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   return [...out.lessons, ...startFerry(env, ship, 'home', helm, out.riders)];
 }
 
-/** The ferry is done: riders off where the ship lies, and it is free again. */
-function releaseFerry(env: ColonyEnv, colony: ColonyView, ship: Entity): PlayerCommand[] {
+/** The ferry is done: riders off where the ship lies, and it is free again. The riders are home's again
+ *  unless `landed` says they step off at the colony. */
+function releaseFerry(env: ColonyEnv, colony: ColonyView, ship: Entity, landed = false): PlayerCommand[] {
   const mooring = mooringOf(env.world, ship);
-  forgetListed(env, colony, ridersOf(env.world, ship));
+  forgetListed(env, colony, landed ? [] : ridersOf(env.world, ship));
   env.edit().ferry = null;
   return mooring === null ? [] : [unloadAt(ship, mooring)];
 }
@@ -231,7 +232,7 @@ function enterLeg(env: ColonyEnv, leg: 'board' | 'sail', side: 'home' | 'colony'
 function landAtColony(env: ColonyEnv, colony: ColonyView, ferry: FerryView): PlayerCommand[] {
   const { world } = env;
   const helm = ferry.helm !== null && world.isAlive(ferry.helm) ? ferry.helm : null;
-  if (helm === null) return releaseFerry(env, colony, ferry.ship);
+  if (helm === null) return releaseFerry(env, colony, ferry.ship, true);
   const off = ridersOf(world, ferry.ship)
     .filter((e) => e !== helm)
     .map((entity): PlayerCommand => ({ kind: 'detachFromVehicle', entity }));
