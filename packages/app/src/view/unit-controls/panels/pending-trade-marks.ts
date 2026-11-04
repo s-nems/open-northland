@@ -5,7 +5,6 @@ import {
   TRADE_LIMIT_NONE,
   type TradeImportMark,
   type TraderView,
-  type TradeStopView,
 } from '@open-northland/sim';
 
 /** Ticks a press overrides the live route: past a relayed session's largest input delay, so a press and
