@@ -1,3 +1,4 @@
+import type { KeybindingAction } from '../keybindings.js';
 import type { ToolWindowId } from './windows.js';
 
 /** The seven direct entries of the navigation beam, in beam order. */
@@ -12,6 +13,17 @@ export const NAV_ENTRY_IDS = [
 ] as const;
 
 export type NavEntryId = (typeof NAV_ENTRY_IDS)[number];
+
+/** The action whose key toggles each beam entry. */
+export const NAV_KEYS: Readonly<Record<NavEntryId, KeybindingAction>> = {
+  build: 'construction',
+  residents: 'residents',
+  assistant: 'assistant',
+  statistics: 'statistics',
+  mission: 'mission',
+  diplomacy: 'diplomacy',
+  knowledge: 'knowledge',
+};
 
 export interface NavEntryEffect {
   /** The central window the entry toggles. */

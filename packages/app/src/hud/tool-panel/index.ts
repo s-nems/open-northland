@@ -74,7 +74,7 @@ import {
   type SiteSeam,
   type WorkshopSeam,
 } from './messages/index.js';
-import { applyNavEntry, NAV_ENTRY_IDS, type NavEntryId, navEntryForWindow } from './nav-effects.js';
+import { applyNavEntry, NAV_ENTRY_IDS, NAV_KEYS, type NavEntryId, navEntryForWindow } from './nav-effects.js';
 import type { PapersSeam } from './paper-cards.js';
 import { paperLabel } from './paper-label.js';
 import { createPendingWindow } from './pending-window.js';
@@ -364,6 +364,8 @@ export interface ToolPanelController {
   /** How the speed segments read beside the control; while `held`, the pause and speed presses are
    *  refused, from the bar and the keys alike. */
   setSpeedLook(look: SpeedBarLook | null): void;
+  /** Re-read the beam's keys into its tips after the player rebinds them mid-game. */
+  showKeys(): void;
   /** Open the network window alone, as the game menu and the net status line do; nothing outside a
    *  relayed game. */
   openNetwork(): void;
@@ -731,6 +733,13 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       applyNavEntry(surfaces, id);
     });
     domParts.push(nav);
+    const showNavKeys = (): void => {
+      for (const id of NAV_ENTRY_IDS) {
+        const binding = opts.bindings[NAV_KEYS[id]];
+        nav.setKey(id, binding === null ? null : keyDisplayLabel(binding));
+      }
+    };
+    showNavKeys();
     focusOwner = (id) => {
       if (id !== null) nav.focus(id);
     };
@@ -996,6 +1005,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         speedHeld = look?.kind === 'held';
         systemBar.setLook(look);
       },
+      showKeys: showNavKeys,
       openNetwork: () => showNetwork(true),
       closeNetwork: () => windows.byId.network.close(),
       networkOpen: () => windows.byId.network.isOpen(),

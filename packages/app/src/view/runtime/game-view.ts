@@ -1432,6 +1432,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         Object.assign(keyBindings, next);
         cameraCtl.setBindings(next);
         showDiplomacyMapKey();
+        toolPanel.controller.showKeys();
       },
     });
     cleanup.push(() => liveSettings.dispose());

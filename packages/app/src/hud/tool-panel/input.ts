@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { isActionHotkey, isFieldKey } from '../hotkeys.js';
 import { isFunctionKeyCode, type KeyBindings, type KeybindingAction } from '../keybindings.js';
-import { NAV_ENTRY_IDS, type NavEntryId } from './nav-effects.js';
+import { NAV_ENTRY_IDS, NAV_KEYS, type NavEntryId } from './nav-effects.js';
 
 /** Every branch here that consumes a press stops it reaching world picking behind the panel. */
 
@@ -26,17 +26,6 @@ export interface HeldMode {
   /** The upgrade-ground key: a wall or road line takes or skirts that ground; false when no line is held. */
   toggleUpgradeGround?(): boolean;
 }
-
-/** The action whose key toggles each beam entry. */
-const NAV_KEYS: Readonly<Record<NavEntryId, KeybindingAction>> = {
-  build: 'construction',
-  residents: 'residents',
-  assistant: 'assistant',
-  statistics: 'statistics',
-  mission: 'mission',
-  diplomacy: 'diplomacy',
-  knowledge: 'knowledge',
-};
 
 export interface ToolPanelInputDeps {
   readonly canvas: HTMLCanvasElement;
