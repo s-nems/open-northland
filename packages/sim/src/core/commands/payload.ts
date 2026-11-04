@@ -398,6 +398,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   setAssistantPostGraduates: { required: { player: 'integer', enabled: 'boolean' } },
   setAssistantMoveFlags: { required: { player: 'integer', enabled: 'boolean' } },
+  setAssistantUpgradeTools: { required: { player: 'integer', enabled: 'boolean' } },
   setProductionGoods: {
     required: { entity: 'integer', goods: { arrayOf: 'integer', maxLength: GOOD_TYPE_SPACE } },
   },

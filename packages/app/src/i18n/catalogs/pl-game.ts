@@ -1474,6 +1474,10 @@ export const plGame = {
           label: 'Amulet wiatru',
           tip: 'Każdy bez niego pójdzie po niego do magazynu. Noszący chodzi szybciej.',
         },
+        upgradeTools: {
+          label: 'Wymieniaj drewniane',
+          tip: 'Pracownik z drewnianym narzędziem pójdzie do magazynu po żelazne. Częściowo zużyte narzędzie przepada przy wymianie. Działa, gdy żelazne narzędzia są rozdawane.',
+        },
         postGraduates: {
           label: 'Absolwenci szkół automatycznie przydzielani do warsztatów',
           tip: 'Absolwent szkoły idzie od razu do najbliższego wolnego miejsca pracy w swoim zawodzie.',

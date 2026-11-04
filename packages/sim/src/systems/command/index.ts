@@ -59,6 +59,7 @@ import {
   setAssistantGrantAudience,
   setAssistantMoveFlags,
   setAssistantPostGraduates,
+  setAssistantUpgradeTools,
   setAssistantWeaponOrder,
   setAssistantWeaponVeto,
   setDefenceMode,
@@ -533,6 +534,9 @@ function applyCommand(
       return;
     case 'setAssistantMoveFlags':
       setAssistantMoveFlags(world, command);
+      return;
+    case 'setAssistantUpgradeTools':
+      setAssistantUpgradeTools(world, command);
       return;
     case 'setPlayerPlacementTribes':
       setPlayerPlacementTribes(world, ctx.content, command.player, command.tribes);

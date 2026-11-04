@@ -63,6 +63,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     assistantWeaponOrder: (player, intent) => sim.assistantWeaponOrder(player, intent),
     assistantPostsGraduates: (player) => sim.assistantPostsGraduates(player),
     assistantMovesFlags: (player) => sim.assistantMovesFlags(player),
+    assistantUpgradesTools: (player) => sim.assistantUpgradesTools(player),
     needsEnabled: () => sim.needsEnabled(),
     fogMode: () => sim.fogMode(),
     matchOutcome: (player) => sim.matchOutcome(player),

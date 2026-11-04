@@ -14,6 +14,7 @@ import {
   assistantMovesFlags,
   assistantPostsGraduatesEntity,
   assistantSoldierOnlyGoods,
+  assistantUpgradesTools,
   assistantWeaponOrder,
   atPeace,
   Building,
@@ -704,6 +705,11 @@ export class Simulation {
   /** Whether `player`'s gatherers move their own flags after the resources. */
   assistantMovesFlags(player: number): boolean {
     return assistantMovesFlags(this.world, player);
+  }
+
+  /** Whether `player`'s workers swap their tools for better granted ones. */
+  assistantUpgradesTools(player: number): boolean {
+    return assistantUpgradesTools(this.world, player);
   }
 
   /** `player`'s assistant production counters as a detached copy; all-default when the carrier is absent. */

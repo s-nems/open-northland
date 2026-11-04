@@ -13,7 +13,8 @@ export type AssistantCommand =
   | AssistantWeaponOrderCommand
   | AssistantCounterCommand
   | AssistantPostGraduatesCommand
-  | AssistantMoveFlagsCommand;
+  | AssistantMoveFlagsCommand
+  | AssistantUpgradeToolsCommand;
 
 type AssistantGrantCommand = {
   /**
@@ -121,6 +122,17 @@ type AssistantMoveFlagsCommand = {
    * carrier. While on, a flag gatherer's flag is kept within 3-5 tiles of a resource he can work.
    */
   readonly kind: 'setAssistantMoveFlags';
+  /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
+  readonly player: number;
+  readonly enabled: boolean;
+};
+
+type AssistantUpgradeToolsCommand = {
+  /**
+   * Switch `player`'s "upgrade to better tools" on or off, held on the per-player `AssistantUpgradesTools`
+   * carrier. While on, a worker holding a tool swaps it for a granted tool with a higher production bonus.
+   */
+  readonly kind: 'setAssistantUpgradeTools';
   /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
   readonly player: number;
   readonly enabled: boolean;

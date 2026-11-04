@@ -14,8 +14,12 @@ import type { SessionHost } from '../../session/index.js';
 /** The switches that map to no good: each flips one sim assistant switch. */
 type SimSwitchId = Exclude<AssistantGrantId, GiveSwitchId>;
 const SIM_SWITCH_COMMANDS: Readonly<
-  Record<SimSwitchId, 'setAssistantPostGraduates' | 'setAssistantMoveFlags'>
-> = { postGraduates: 'setAssistantPostGraduates', moveFlags: 'setAssistantMoveFlags' };
+  Record<SimSwitchId, 'setAssistantUpgradeTools' | 'setAssistantPostGraduates' | 'setAssistantMoveFlags'>
+> = {
+  upgradeTools: 'setAssistantUpgradeTools',
+  postGraduates: 'setAssistantPostGraduates',
+  moveFlags: 'setAssistantMoveFlags',
+};
 const isSimSwitch = (id: AssistantGrantId): id is SimSwitchId => id in SIM_SWITCH_COMMANDS;
 
 interface GrantContent {
@@ -47,6 +51,7 @@ export function assistantGrantsSeam(
     | 'assistantGrants'
     | 'assistantSoldierOnlyGrants'
     | 'assistantCivilianOnlyGrants'
+    | 'assistantUpgradesTools'
     | 'assistantPostsGraduates'
     | 'assistantMovesFlags'
   >,
@@ -62,6 +67,7 @@ export function assistantGrantsSeam(
       const granted = new Set(seat === null ? [] : host.assistantGrants(seat));
       const on = (id: AssistantGrantId): boolean => {
         if (seat === null) return false;
+        if (id === 'upgradeTools') return host.assistantUpgradesTools(seat);
         if (id === 'postGraduates') return host.assistantPostsGraduates(seat);
         if (id === 'moveFlags') return host.assistantMovesFlags(seat);
         const goods = grantGoods.get(id);
@@ -110,9 +116,9 @@ export function assistantGrantsSeam(
   };
 }
 
-/** The default give switches and the flag follow start enabled in a playable map only; scenes keep the sim
- *  default of nothing granted and flags left where they stand. Every weapon starts allowed and every good
- *  open to everyone: the sim defaults, no command needed. */
+/** The default give switches, the tool upgrade and the flag follow start enabled in a playable map only;
+ *  scenes keep the sim default of nothing granted, tools kept and flags left where they stand. Every
+ *  weapon starts allowed and every good open to everyone: the sim defaults, no command needed. */
 export function grantAssistantDefaults(
   sim: WorldSetup,
   content: GrantContent,
@@ -125,6 +131,7 @@ export function grantAssistantDefaults(
         sim.enqueueSetup({ kind: 'setAssistantGrant', player, goodType, enabled: true });
       }
     }
+    sim.enqueueSetup({ kind: 'setAssistantUpgradeTools', player, enabled: true });
     sim.enqueueSetup({ kind: 'setAssistantMoveFlags', player, enabled: true });
   }
 }

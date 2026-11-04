@@ -188,6 +188,7 @@ export interface AssistantFacts {
   readonly weaponOrders: Readonly<Record<AssistantArmingIntent, readonly number[]>>;
   readonly postsGraduates: boolean;
   readonly movesFlags: boolean;
+  readonly upgradesTools: boolean;
 }
 
 /** One stepped tick as the worker saw it. */

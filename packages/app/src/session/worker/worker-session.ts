@@ -526,6 +526,7 @@ class WorkerClient<E> {
       assistantWeaponOrder: (player, intent) => assistantFacts(facts(), player).weaponOrders[intent],
       assistantPostsGraduates: (player) => assistantFacts(facts(), player).postsGraduates,
       assistantMovesFlags: (player) => assistantFacts(facts(), player).movesFlags,
+      assistantUpgradesTools: (player) => assistantFacts(facts(), player).upgradesTools,
       needsEnabled: () => facts().needsEnabled,
       fogMode: () => facts().fogMode,
       matchOutcome: (player) => facts().matchOutcomes[player] ?? 'undecided',
@@ -661,6 +662,7 @@ function assistantFacts(facts: WorldFacts, player: number): AssistantFacts {
       armorOrders: { trainSword: NO_ARMOR, trainSpear: NO_ARMOR, trainBow: NO_ARMOR },
       postsGraduates: false,
       movesFlags: false,
+      upgradesTools: false,
     }
   );
 }

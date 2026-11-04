@@ -201,6 +201,11 @@ starts on it.
 collector with two trees beside his flag. Once both are felled the flag moves 3-5 tiles from a tree of
 the grove to the east, between the grove and the headquarters, and he goes on felling there.
 
+`?scene=tool-upgrade` hands out both tools with the assistant's "replace wooden ones" switch on.
+Three extractors holding wooden tools walk to the headquarters for its three iron ones. The two part-used
+wooden tools are lost in the swap, the fresh one goes back into the store, and the extractor already
+holding iron stays where he is.
+
 `?scene=porter-flag` puts a stone miner at a quarry far east of the headquarters. The headquarters
 porter holds a pickup flag beside the miner's yard: he carries the quarry stone and the flour of an
 unstaffed mill near the flag home, leaves the heap beside the headquarters alone and waits at the flag

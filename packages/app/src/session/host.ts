@@ -146,6 +146,8 @@ export interface SessionHost {
   assistantArmorOrder(player: number, intent: AssistantArmingIntent): AssistantArmorOrder;
   /** The order `player`'s `intent` class shops its weapon goods in. */
   assistantWeaponOrder(player: number, intent: AssistantArmingIntent): readonly number[];
+  /** Whether `player`'s workers swap their tools for better granted ones. */
+  assistantUpgradesTools(player: number): boolean;
   /** Whether `player`'s assistant sends graduates straight to a free workplace. */
   assistantPostsGraduates(player: number): boolean;
   /** Whether `player`'s gatherers move their own flags after the resources. */

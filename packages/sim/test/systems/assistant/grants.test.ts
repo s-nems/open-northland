@@ -28,7 +28,7 @@ import {
   UnreachableGoals,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, nodeHxOfPosition, nodeHyOfPosition, Simulation } from '../../../src/index.js';
+import { type Fixed, fx, nodeHxOfPosition, nodeHyOfPosition, Simulation } from '../../../src/index.js';
 import type { NodeId } from '../../../src/nav/terrain/index.js';
 import { CHILD_MALE, CIVILIST_JOB, WOMAN_JOB } from '../../../src/systems/lifecycle/ageclass.js';
 import { defaultStance } from '../../../src/systems/readviews/index.js';
@@ -78,6 +78,8 @@ const ERRAND_TICKS = 600;
 const DROP_ATOMIC_TICKS = 120;
 /** Stuck fetchers a reservation test parks, more than the one unit of stock it lays out. */
 const STUCK_FETCHERS = 4;
+/** Wooden tools left in store beside the iron ones: nobody holding iron swaps down to them. */
+const SPARE_WOODEN = 2;
 
 function freshSim(): Simulation {
   const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(16, 6) });
@@ -145,6 +147,28 @@ function wearBoots(sim: Simulation, e: Entity, goodType: number): void {
     armor: null,
     misc: new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null),
   });
+}
+
+function wearTool(sim: Simulation, e: Entity, goodType: number, degreeOfUse: Fixed): void {
+  sim.world.add(e, Equipment, {
+    boots: null,
+    tool: { goodType, degreeOfUse },
+    weapon: null,
+    armor: null,
+    misc: new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null),
+  });
+}
+
+/** Wooden tools held in stock or carried, rather than worn. */
+function woodenToolsOutsideSlots(sim: Simulation): number {
+  let held = 0;
+  for (const e of sim.world.query(Stockpile))
+    held += sim.world.get(e, Stockpile).amounts.get(TOOL_WOODEN) ?? 0;
+  for (const e of sim.world.query(Carrying)) {
+    const load = sim.world.get(e, Carrying);
+    if (load.goodType === TOOL_WOODEN) held += load.amount;
+  }
+  return held;
 }
 
 /** A built headquarters at visual cell (x,y) that banks wood, so a hauler's load has somewhere to go. */
@@ -457,6 +481,30 @@ describe('assistant auto-equip - dispatch and reservation', () => {
     sim.run(ERRAND_TICKS);
 
     expect(sim.world.get(settler, Equipment).tool?.goodType).toBe(TOOL_IRON);
+  });
+
+  it('with the upgrade switch on, swaps a weaker tool for a granted better one, never a stronger tool', () => {
+    const sim = freshSim();
+    const worn = ownedSettler(sim, 2, 2);
+    const fresh = ownedSettler(sim, 2, 3);
+    const strong = ownedSettler(sim, 2, 4);
+    wearTool(sim, worn, TOOL_WOODEN, fx.div(fx.fromInt(1), fx.fromInt(4)));
+    wearTool(sim, fresh, TOOL_WOODEN, fx.fromInt(0));
+    wearTool(sim, strong, TOOL_IRON, fx.fromInt(0));
+    pileAt(sim, 12, 2, TOOL_IRON, 2, HUMAN_PLAYER);
+    pileAt(sim, 12, 4, TOOL_WOODEN, SPARE_WOODEN, HUMAN_PLAYER); // in reach of the iron holder too
+    grant(sim, TOOL_WOODEN);
+    grant(sim, TOOL_IRON);
+
+    sim.run(ERRAND_TICKS);
+    expect(sim.world.get(worn, Equipment).tool?.goodType).toBe(TOOL_WOODEN); // switch off: kept
+
+    sim.enqueueSetup({ kind: 'setAssistantUpgradeTools', player: HUMAN_PLAYER, enabled: true });
+    sim.run(2 * ERRAND_TICKS);
+
+    for (const e of [worn, fresh, strong]) expect(sim.world.get(e, Equipment).tool?.goodType).toBe(TOOL_IRON);
+    // The take-off rule: the part-used tool is gone, the fresh one survives off the back.
+    expect(woodenToolsOutsideSlots(sim)).toBe(SPARE_WOODEN + 1);
   });
 
   it('stops dispatching the moment the grant is revoked; an underway errand still finishes', () => {

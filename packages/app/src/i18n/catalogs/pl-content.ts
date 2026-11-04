@@ -556,6 +556,11 @@ export const plContent = {
       summary:
         'Zbieracz, myśliwy i rybak pracują dla kwatery głównej, przy której stoi jedno drzewo, a w pobliżu nie ma ani zwierzyny, ani wody. Zbieracz ma chorągiewkę w zagajniku na południowym wschodzie, myśliwy przy łące z zającami daleko na wschodzie, rybak na brzegu stawu. Wszyscy trzej pracują przy swoich chorągiewkach i noszą do kwatery drewno, skóry, mięso i ryby, a mięso i ryby trafiają tam do zapasów jako jedzenie. Drzewo przy kwaterze stoi nietknięte. Zaznacz któregoś, by przenieść lub zabrać chorągiewkę w wierszu „Obszar” panelu osadnika; bez niej zbieracz ścina pobliskie drzewo, a pozostali stoją bezczynnie przy kwaterze.',
     },
+    'tool-upgrade': {
+      title: 'Wymiana narzędzi na lepsze',
+      summary:
+        'Trzech zbieraczy z drewnianymi narzędziami idzie do kwatery głównej po żelazne, bo asystent wymienia narzędzia na lepsze. Częściowo zużyte drewniane przepadają, nieużywane wraca do magazynu, a zbieracz z żelaznym zostaje na miejscu.',
+    },
     'gatherer-flag-follow': {
       title: 'Flagi idą za surowcami',
       summary:

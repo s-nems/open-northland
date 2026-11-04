@@ -1491,6 +1491,10 @@ export const enGame = {
           label: 'Wind Amulet',
           tip: 'Every man without one fetches one from the store. Its bearer walks faster.',
         },
+        upgradeTools: {
+          label: 'Replace wooden ones',
+          tip: 'A worker holding a wooden tool fetches an iron one from the store. A part-used tool is lost in the swap. Works while iron tools are handed out.',
+        },
         postGraduates: {
           label: 'School graduates assigned to workshops automatically',
           tip: 'A school graduate goes straight to the nearest free workplace in his profession.',

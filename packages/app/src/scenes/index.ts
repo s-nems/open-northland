@@ -120,6 +120,7 @@ import { schoolQueueScene } from './settlers/school-queue.js';
 import { scoutClaimScene } from './settlers/scout-claim.js';
 import { scoutExploreScene } from './settlers/scout-explore.js';
 import { templeAuraScene } from './settlers/temple-aura.js';
+import { toolUpgradeScene } from './settlers/tool-upgrade.js';
 import type { SceneDefinition } from './types.js';
 import { cartDriversScene } from './vehicles/cart-drivers.js';
 import { haulingCartScene } from './vehicles/hauling-cart.js';
@@ -273,6 +274,7 @@ export const SCENES: readonly SceneDefinition[] = [
   schoolGraduatesScene,
   schoolQueueScene,
   gathererFlagFollowScene,
+  toolUpgradeScene,
   porterFlagScene,
   fieldPostFlagsScene,
   gathererGoodsScene,

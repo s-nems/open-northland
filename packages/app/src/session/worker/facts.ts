@@ -44,6 +44,7 @@ export function readWorldFacts(sim: Simulation): WorldFacts {
         },
         postsGraduates: sim.assistantPostsGraduates(player),
         movesFlags: sim.assistantMovesFlags(player),
+        upgradesTools: sim.assistantUpgradesTools(player),
       }),
     ),
     needsEnabled: sim.needsEnabled(),

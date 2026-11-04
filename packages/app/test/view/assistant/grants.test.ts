@@ -32,12 +32,14 @@ const simGranting = (
   assistantCivilianOnlyGrants: () => readonly number[];
   assistantPostsGraduates: () => boolean;
   assistantMovesFlags: () => boolean;
+  assistantUpgradesTools: () => boolean;
 } => ({
   assistantGrants: () => granted,
   assistantSoldierOnlyGrants: () => soldiersOnly,
   assistantCivilianOnlyGrants: () => civiliansOnly,
   assistantPostsGraduates: () => posts,
   assistantMovesFlags: () => movesFlags,
+  assistantUpgradesTools: () => false,
 });
 
 const SHOES = 30;
@@ -83,6 +85,7 @@ describe('assistantGrantsSeam', () => {
       giveDefenseAmulet: true,
       giveCriticalHitAmulet: false,
       giveSpeedAmulet: false,
+      upgradeTools: false,
       postGraduates: false,
       moveFlags: false,
     });
@@ -177,10 +180,11 @@ describe('assistantGrantsSeam', () => {
 });
 
 describe('grantAssistantDefaults', () => {
-  it('switches the four default grants and the flag follow ON for the seat at world start, no potion, amulet or veto', () => {
+  it('switches the four default grants, the tool upgrade and the flag follow ON for the seat at world start, no potion, amulet or veto', () => {
     const sent: Command[] = [];
     grantAssistantDefaults({ enqueueSetup: (c) => sent.push(c) }, CONTENT, [1]);
     expect(sent.filter((c) => c.kind !== 'setAssistantGrant')).toEqual([
+      { kind: 'setAssistantUpgradeTools', player: 1, enabled: true },
       { kind: 'setAssistantMoveFlags', player: 1, enabled: true },
     ]);
     const grants = sent.filter((c) => c.kind === 'setAssistantGrant');

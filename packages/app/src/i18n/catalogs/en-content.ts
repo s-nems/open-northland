@@ -558,6 +558,11 @@ export const enContent = {
       summary:
         "An extractor, a hunter and a fisherman work for the headquarters, which has one tree beside it and no game or water in reach. The extractor holds a flag in a grove to the south-east, the hunter one by a hare meadow far east and the fisherman one on the shore of a pond. All three work at their flag and carry the haul home, where meat and fish are stored as food, and the tree by the headquarters stays standing. Select any of them to move or take away the flag in the settler panel's Area row; without it the extractor fells the near tree and the other two stand idle by the headquarters.",
     },
+    'tool-upgrade': {
+      title: 'Swapping tools for better ones',
+      summary:
+        'Three extractors holding wooden tools walk to the headquarters for its iron tools, because the assistant replaces wooden tools. The part-used wooden tools are lost, the fresh one goes back into the store, and the extractor already holding iron stays put.',
+    },
     'gatherer-flag-follow': {
       title: 'Flags follow the resources',
       summary:

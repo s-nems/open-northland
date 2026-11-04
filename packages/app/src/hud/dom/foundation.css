@@ -7208,6 +7208,22 @@ body.on-drag-scroll.on-drag-scroll-free * {
 .on-hud .on-asst-row--off .on-asst-row__label {
   color: var(--muted);
 }
+/* A sub-row refines the row above it: an elbow in the art column ties it to that row's icon. */
+.on-hud .on-asst-row--sub {
+  padding-top: 0;
+}
+.on-hud .on-asst-row--sub .on-asst-row__label {
+  font-size: 12.5px;
+}
+.on-hud .on-asst-branch {
+  justify-self: end;
+  align-self: start;
+  width: 12px;
+  height: 14px;
+  border-bottom-left-radius: 4px;
+  border-bottom: 1.5px solid var(--muted);
+  border-left: 1.5px solid var(--muted);
+}
 /* A row's art: a figure, a glyph, or a good with the seat's stock of it on a tag at its foot and the men
    still without it on a tag at its head. */
 .on-hud .on-asst-art {

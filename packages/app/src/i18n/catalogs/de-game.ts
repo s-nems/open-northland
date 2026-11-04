@@ -1623,6 +1623,10 @@ export const deGame = {
           label: 'Windamulett',
           tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Sein Träger geht schneller.',
         },
+        upgradeTools: {
+          label: 'Holzwerkzeug ersetzen',
+          tip: 'Ein Arbeiter mit Holzwerkzeug holt sich ein eisernes aus dem Lager. Ein angebrauchtes Werkzeug geht beim Tausch verloren. Wirkt, solange Eisenwerkzeug ausgegeben wird.',
+        },
         postGraduates: {
           label: 'Schulabgänger automatisch Werkstätten zuweisen',
           tip: 'Ein Schulabgänger geht direkt zum nächsten freien Arbeitsplatz seines Berufs.',
