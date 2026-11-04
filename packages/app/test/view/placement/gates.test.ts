@@ -446,34 +446,34 @@ describe('placement gates - the ship water a held joinery would get', () => {
   it(
     'asks a type that builds no ships nothing, and holds one answer per anchor while the version stands',
     async () => {
-    const sim = shoreSim();
-    const host = inlineSessionHost(sim);
-    const fog = createFogGates();
-    fog.setFrame(null);
-    const gates = createPlacementGates(host, fog, HUMAN_PLAYER);
-    const probe = vi.spyOn(host, 'shipWaterProbe');
-    expect(gates.shipWaterAt(BUILDING_WAREHOUSE_00, VIKING, SHORE.hx, SHORE.hy)).toBeNull();
-    expect(probe).not.toHaveBeenCalled();
+      const sim = shoreSim();
+      const host = inlineSessionHost(sim);
+      const fog = createFogGates();
+      fog.setFrame(null);
+      const gates = createPlacementGates(host, fog, HUMAN_PLAYER);
+      const probe = vi.spyOn(host, 'shipWaterProbe');
+      expect(gates.shipWaterAt(BUILDING_WAREHOUSE_00, VIKING, SHORE.hx, SHORE.hy)).toBeNull();
+      expect(probe).not.toHaveBeenCalled();
 
-    gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy);
-    gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy);
-    await landed();
-    expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
-    expect(probe.mock.calls.length).toBe(1);
+      gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy);
+      gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy);
+      await landed();
+      expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
+      expect(probe.mock.calls.length).toBe(1);
 
-    // A placed building moves the version, so the held cursor reads the changed coast afresh.
-    sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: BUILDING_HOME_00,
-      x: SHORE.hx,
-      y: SHORE.hy,
-      tribe: VIKING,
-      owner: HUMAN_PLAYER,
-      force: true,
-    });
-    sim.step();
-    expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
-    expect(probe.mock.calls.length).toBe(2);
+      // A placed building moves the version, so the held cursor reads the changed coast afresh.
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: BUILDING_HOME_00,
+        x: SHORE.hx,
+        y: SHORE.hy,
+        tribe: VIKING,
+        owner: HUMAN_PLAYER,
+        force: true,
+      });
+      sim.step();
+      expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
+      expect(probe.mock.calls.length).toBe(2);
     },
   );
 
