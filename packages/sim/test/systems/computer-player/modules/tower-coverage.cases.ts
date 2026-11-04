@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { Building, mapBriefOf, Settler } from '../../../../src/components/index.js';
-import { Simulation } from '../../../../src/index.js';
-import { hexDistanceBetween } from '../../../../src/nav/halfcell.js';
+import { halfCellMapFromCells, Simulation, type TerrainMap } from '../../../../src/index.js';
+import { cellAnchorNode, hexDistanceBetween } from '../../../../src/nav/halfcell.js';
 import { withinNodeRadius } from '../../../../src/nav/node-circle.js';
+import { buildingTypeByContentId } from '../../../../src/systems/ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../../../src/systems/ai-shared/military/defence/index.js';
+import { anchorNodeOf } from '../../../../src/systems/ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
 import {
   FRONT_LINE_DEPTH_NODES,
@@ -12,6 +14,7 @@ import {
   TOWER_UPGRADE_QUIET_TICKS,
   towerUpgradeWaits,
 } from '../../../../src/systems/computer-player/build-order/front.js';
+import { coverageSpotSearch } from '../../../../src/systems/computer-player/build-order/tower-coverage.js';
 import {
   defenceAt,
   defenceCircleOf,
@@ -57,6 +60,26 @@ import {
   VIKING,
   WALL_TYPE,
 } from '../support.js';
+
+/** A map in cells: mainland west of {@link STRAIT_FROM_CELL}, water east of it, one grass islet in it. */
+const STRAIT_MAP_CELLS = { width: 32, height: 16 };
+const STRAIT_FROM_CELL = 24;
+const ISLET_CELL = { x: 28, y: 8 };
+/** Nodes west of the islet a mainland target stands, on the shore. */
+const ISLET_OFF_SHORE_NODES = 10;
+/** An HQ far enough west that the shore lies outside its store circle. */
+const SHORE_HQ_X = 20;
+const GRASS = 0;
+const WATER = 1;
+
+function straitWithIslet(): TerrainMap {
+  const { width, height } = STRAIT_MAP_CELLS;
+  const typeIds = new Array<number>(width * height).fill(GRASS);
+  for (let row = 0; row < height; row++)
+    for (let col = STRAIT_FROM_CELL; col < width; col++) typeIds[row * width + col] = WATER;
+  typeIds[ISLET_CELL.y * width + ISLET_CELL.x] = GRASS;
+  return halfCellMapFromCells({ width, height, typeIds });
+}
 
 /** No enemy shooter anywhere. */
 const NO_FIRE: EnemyFire = { reaches: () => false, around: () => NO_FIRE };
@@ -507,6 +530,43 @@ describe('build-order tower and store coverage', () => {
       sim.enqueueSetup(order);
       sim.step();
       expect(next(sim)).toBeUndefined();
+    });
+
+    it("keeps a warehouse spot on its target's land, never across the water", () => {
+      const sim = new Simulation({ seed: 1, content: aiContent(), map: straitWithIslet() });
+      placeHq(sim, SHORE_HQ_X, HQ_Y);
+      sim.step();
+      const ctx = ctxOf(sim);
+      const terrain = ctx.terrain;
+      const hq = [...sim.world.query(Building)][0];
+      const store = buildingTypeByContentId(ctx.content, 'stock_02');
+      if (terrain === undefined || hq === undefined || store === undefined) throw new Error('setup');
+      const anchor = anchorNodeOf(sim.world, hq);
+      if (anchor === null) throw new Error('setup: no anchor');
+      const owned = ownedBuildings(sim.world, SEAT);
+      const coverage = { by: 'store', radius } as const;
+      const spotFor = coverageSpotSearch(
+        sim.world,
+        ctx,
+        terrain,
+        SEAT,
+        owned,
+        anchor,
+        store,
+        VIKING,
+        coverage,
+        NO_FIRE,
+        false,
+      );
+      const islet = cellAnchorNode(ISLET_CELL.x, ISLET_CELL.y);
+      const shore = { hx: islet.hx - ISLET_OFF_SHORE_NODES, hy: islet.hy };
+
+      // The islet holds no warehouse; the mainland across the strait would cover it, yet serves none of it.
+      expect(spotFor(islet)).toBeNull();
+      const mainland = spotFor(shore);
+      if (mainland === null) throw new Error('expected a spot for a target on the mainland');
+      const land = (at: { hx: number; hy: number }) => terrain.componentOf(terrain.nodeAt(at.hx, at.hy));
+      expect(land(mainland)).toBe(land(shore));
     });
 
     it('passes a flag beyond the build reach over and covers the next target', () => {
