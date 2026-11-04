@@ -133,7 +133,7 @@ export function mooringOf(world: World, ship: Entity): DeepReadonly<HalfCellNode
 }
 
 /** Whether `ship` lies moored on `land`. */
-export function mooredOn(env: ColonyEnv, ship: Entity, land: number): boolean {
+export function mooredOn(env: SeatEnv, ship: Entity, land: number): boolean {
   return land !== NO_COMPONENT && landOf(env.terrain, mooringOf(env.world, ship)) === land;
 }
 

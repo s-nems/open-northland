@@ -10,6 +10,7 @@ import {
   TradeRoute,
   TradeShip,
   Vehicle,
+  VehicleDrive,
   vehiclePassengers,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
@@ -106,6 +107,19 @@ function homeLandOfSeat(sim: Simulation): number {
   const base = seatBaseOf(sim.world, ctx, SEAT);
   if (terrain === undefined || base === null) throw new Error('setup: no base');
   return terrain.componentOf(interactionCell(sim.world, ctx, terrain, base));
+}
+
+/** The colony's stop on a colony route, home's being the first. */
+const COLONY_STOP = 1;
+
+/** Give the colony up, as its overrun read does. */
+function abandon(sim: Simulation): void {
+  const live = editColony(sim);
+  live.phase = 'abandoned';
+  live.since = sim.tick;
+  live.people = [];
+  live.rest = [];
+  live.ship = null;
 }
 
 /** Who stands on the colony or rides for it. */
@@ -319,14 +333,26 @@ describe('an abandoned route', () => {
       );
     };
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => atColony() && helpers().length > 0)).toBe(true);
-    const live = editColony(sim);
-    live.phase = 'abandoned';
-    live.since = sim.tick;
-    live.people = [];
-    live.rest = [];
-    live.ship = null;
+    abandon(sim);
     expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.route === null)).toBe(true);
     expect(stepUntil(sim, LEG_DUE_TICKS, () => helpers().length === 0)).toBe(true);
+  });
+
+  it('sets down whoever rode its ship once the ship docks, when the colony is let go at sea', () => {
+    const { sim, ship } = routedWorld();
+    const seats = () => vehiclePassengers(sim.world.get(ship, Vehicle));
+    // The trader and a helper at least, all inside, under way.
+    const trader = routeTrader(sim) as Entity;
+    const atSea = (): boolean =>
+      sim.world.has(ship, VehicleDrive) &&
+      sim.world.get(trader, TradeRoute).current === COLONY_STOP &&
+      seats().length > 1 &&
+      seats().every((seat) => seat.inside);
+    expect(stepUntil(sim, ROUND_DUE_TICKS, atSea)).toBe(true);
+    abandon(sim);
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.route === null)).toBe(true);
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => seats().length === 0)).toBe(true);
+    expect(sim.world.get(trader, Settler).jobType).toBe(CIVILIST);
   });
 });
 

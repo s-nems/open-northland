@@ -13,7 +13,7 @@ import { defendColony } from './garrison.js';
 import { reviewOverflow } from './overflow.js';
 import { runRoute } from './route.js';
 import { stopPullOrders } from './stop-pull.js';
-import { recoverStrayShips } from './stray-ships.js';
+import { recoverStrayShips, strayCrewsHome } from './stray-ships.js';
 import {
   afterLanding,
   type ColonyEnv,
@@ -93,11 +93,13 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
   }
   // A copy: a voyage that fails for good drops its colony off the list.
   const commands = [...state.colonies].flatMap((colony) => runOneColony(colonyEnv(env, colony)));
-  if (
-    world.has(carrier, ComputerColony) &&
-    moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS)
-  )
+  const held = world.tryGet(carrier, ComputerColony);
+  if (held !== undefined && moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS)) {
     commands.push(...stopPullOrders(env));
+    // A berth at home a colony sails from: the seat's crews come home whether or not that colony stands.
+    const berth = held.colonies.find((colony) => colony.berth !== null)?.berth ?? null;
+    if (berth !== null) commands.push(...strayCrewsHome(env, berth));
+  }
   if (
     world.has(carrier, ComputerColony) &&
     moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, SURVEY_EVERY_DECISIONS)
