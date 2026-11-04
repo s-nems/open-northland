@@ -368,18 +368,16 @@ export class SpritePool {
     // Outlines copy the bound texture. Refresh after swaps/releases, including a fully repaired house
     // that has just left the damaged list, so a stamp cannot retain a recycled atlas slot, and a hurt
     // gate's outline follows its holes.
-    this.refreshDamageableSelection(frame.selection, frame);
-    this.refreshDamageableSelection(frame.flagged, frame);
-    this.refreshDamageableSelection(drawnMarksOf(frame.marks), frame);
+    for (const refs of [frame.selection, frame.flagged, drawnMarksOf(frame.marks)])
+      for (const ref of refs ?? NO_REFS) this.refreshDamageableSelection(ref, frame);
+    if (frame.hovered !== undefined) this.refreshDamageableSelection(frame.hovered, frame);
   }
 
-  private refreshDamageableSelection(refs: Iterable<number> | undefined, frame: PoolFrame): void {
-    for (const ref of refs ?? NO_REFS) {
-      const pe = this.pool.get(ref);
-      const item = pe?.bound.item;
-      const damageable = pe?.kind === 'building' || pe?.kind === 'palisade';
-      if (damageable && pe.attached && item !== undefined) this.applySelection(pe, item, frame);
-    }
+  private refreshDamageableSelection(ref: number, frame: PoolFrame): void {
+    const pe = this.pool.get(ref);
+    const item = pe?.bound.item;
+    const damageable = pe?.kind === 'building' || pe?.kind === 'palisade';
+    if (damageable && pe.attached && item !== undefined) this.applySelection(pe, item, frame, false);
   }
   private readonly ships: ShipAfloat[] = [];
   /** Scratch {@link keelOf} answers in, valid until the next call. */
@@ -676,10 +674,12 @@ export class SpritePool {
   private presentItemAt(pe: PooledEntity, item: DrawItem, frame: PoolFrame, continuous: boolean): boolean {
     this.presentPooled(pe, item, frame, continuous);
     if (item.kind === 'settler') coatBody(pe, this.bloodCoats.packed(item.ref, frame.tick + frame.alpha));
-    return this.applySelection(pe, item, frame);
+    // A moved camera re-placed the paletted layers an outline copies.
+    return this.applySelection(pe, item, frame, !this.epoch.viewMoved);
   }
 
-  private applySelection(pe: PooledEntity, item: DrawItem, frame: PoolFrame): boolean {
+  /** Apply `item`'s emphasis to `pe`; `fits` lets an outline laid over the same bind stand. */
+  private applySelection(pe: PooledEntity, item: DrawItem, frame: PoolFrame, fits: boolean): boolean {
     const ref = item.ref;
     // Ghosts and portrait insets never take an emphasis.
     const plain = item.ghost === true || item.portraitOnly === true;
@@ -710,6 +710,7 @@ export class SpritePool {
       flash,
       mark === undefined ? undefined : aimed ? TARGET_MARK_LIFT : targetMarkBreath(seconds),
       mark?.liftTone,
+      fits ? pe.bindSerial : undefined,
     );
     return style !== undefined || flash !== undefined;
   }

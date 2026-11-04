@@ -1,4 +1,4 @@
-import { Container, Matrix, type ObservablePoint, type Texture } from 'pixi.js';
+import { Container, Matrix, type ObservablePoint, Texture } from 'pixi.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { OutlineSprite, SelectionGraphics } from '../selection/sprite-effect.js';
@@ -41,10 +41,31 @@ export const OUTLINE_REACH = Math.max(
   ...[...OUTLINE_PASSES, ...WIDE_OUTLINE_PASSES].map((pass) => pass.radius),
 );
 
+/** What one entity's outline was last laid from: an unchanged one is not laid again. */
+interface OutlineInputs {
+  zoom: number;
+  colour: number;
+  wide: boolean;
+  bodySerial: number;
+}
+
+/**
+ * Take an outline stamp off the picture without a `visible` flip, which rebuilds the instructions of its
+ * band: at zero alpha it repacks in place. A quad lets go of its textures, which may be bakes destroyed
+ * while it waits.
+ */
+function hideStamp(stamp: OutlineSprite | SelectionGraphics): void {
+  stamp.alpha = 0;
+  if (!(stamp instanceof OutlineSprite)) return;
+  if (stamp.texture !== Texture.EMPTY) stamp.texture = Texture.EMPTY;
+  stamp.bodyTexture = Texture.EMPTY;
+}
+
 /** Outline quads sit behind the complete body, so overlapping layers leave no internal outlines.
  * They use the world batch and the existing atlas alpha, without filters or per-entity render targets. */
 export class SelectionEffects {
   private readonly outlines = new Map<PooledEntity, Container<OutlineSprite | SelectionGraphics>>();
+  private readonly outlineInputs = new Map<PooledEntity, OutlineInputs>();
   private readonly transform = new Matrix();
   /** Each lit entity's lift, packed by {@link packLift}. */
   private readonly lit = new Map<PooledEntity, number>();
@@ -62,6 +83,9 @@ export class SelectionEffects {
      *  also wears the wide outline band. */
     markLift?: number,
     markTone: TargetFlashTone = 'order',
+    /** {@link PooledEntity.bindSerial} when the body's sprites stand where the camera last placed them;
+     *  absent lays the outline again whatever it was laid from. */
+    bodySerial?: number,
   ): void {
     // Nothing selected and nothing left to clear: every drawn entity asks each frame, so skip the
     // two map lookups below.
@@ -83,14 +107,29 @@ export class SelectionEffects {
       this.clearOutline(pe);
       return;
     }
+    const wide = markLift !== undefined;
     let outline = this.outlines.get(pe);
-    if (outline === undefined) {
+    let inputs = this.outlineInputs.get(pe);
+    if (outline === undefined || inputs === undefined) {
       outline = new Container<OutlineSprite | SelectionGraphics>();
       this.outlines.set(pe, outline);
       pe.container.addChildAt(outline, 0);
+      inputs = { zoom: Number.NaN, colour: Number.NaN, wide, bodySerial: Number.NaN };
+      this.outlineInputs.set(pe, inputs);
+    } else if (
+      bodySerial === inputs.bodySerial &&
+      zoom === inputs.zoom &&
+      outlineColour === inputs.colour &&
+      wide === inputs.wide
+    ) {
+      return;
     }
+    inputs.zoom = zoom;
+    inputs.colour = outlineColour;
+    inputs.wide = wide;
+    inputs.bodySerial = bodySerial ?? Number.NaN;
     let count = 0;
-    for (const pass of markLift !== undefined ? WIDE_OUTLINE_PASSES : OUTLINE_PASSES) {
+    for (const pass of wide ? WIDE_OUTLINE_PASSES : OUTLINE_PASSES) {
       const reach = pass.radius / zoom;
       const colour = pass.colour ?? outlineColour;
       for (let i = 0; i < pe.sprites.length; i++) {
@@ -106,7 +145,7 @@ export class SelectionEffects {
           const frame = body.frame;
           const source = body.frameSource;
           if (frame === undefined || source === undefined) {
-            quad.visible = false;
+            hideStamp(quad);
             continue;
           }
           texture = this.textures.castSilhouette(source, frame);
@@ -134,13 +173,12 @@ export class SelectionEffects {
           this.transform.tx += dx * reach;
           this.transform.ty += dy * reach;
           stamp.setFromMatrix(this.transform);
-          stamp.visible = true;
         }
       }
     }
     for (let i = count; i < outline.children.length; i++) {
       const stamp = outline.children[i];
-      if (stamp !== undefined) stamp.visible = false;
+      if (stamp !== undefined) hideStamp(stamp);
     }
   }
 
@@ -153,7 +191,7 @@ export class SelectionEffects {
     const { a, b, c, d, tx, ty } = this.transform;
     const det = a * d - b * c;
     if (det === 0) {
-      quad.visible = false;
+      hideStamp(quad);
       return;
     }
     const sum = (a * a + b * b + c * c + d * d) / 2;
@@ -170,7 +208,6 @@ export class SelectionEffects {
     this.transform.tx = tx - margin * (a + c);
     this.transform.ty = ty - margin * (b + d);
     quad.setFromMatrix(this.transform);
-    quad.visible = true;
   }
 
   /** Portrait and map insets borrow the world without its selection emphasis. The outlines go to zero
@@ -205,6 +242,7 @@ export class SelectionEffects {
     if (outline === undefined) return;
     outline.destroy({ children: true });
     this.outlines.delete(pe);
+    this.outlineInputs.delete(pe);
   }
 }
 

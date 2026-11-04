@@ -163,6 +163,7 @@ export class LayerBinder {
     frame: BindFrame,
     frameId: number,
   ): void {
+    pe.bindSerial++;
     if (pe.damageBodies !== undefined) pe.damageBodies.length = 0;
     setBloodless(pe.container, BLOODLESS_KINDS.has(item.kind));
     let buildingBlood: WeakMap<AtlasFrame, BloodSurface> | undefined;

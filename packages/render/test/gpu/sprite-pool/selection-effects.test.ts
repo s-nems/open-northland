@@ -127,10 +127,42 @@ it('fades the old building tier outline with its body and resets opacity when qu
     body.alpha = alpha;
     effects.update(pe, 'outline', 1, 0);
     expect(pe.container.children[0]).toBe(outline);
-    const visible = outline.children.filter((stamp) => stamp.visible);
-    expect(visible).toHaveLength(alpha === 0 ? 0 : 2);
-    for (const stamp of visible) expect(stamp.alpha).toBe(alpha);
+    // A stamp leaves the picture at zero alpha, never by a visibility flip.
+    expect(outline.children.every((stamp) => stamp.visible)).toBe(true);
+    const shown = outline.children.filter((stamp) => stamp.alpha > 0);
+    expect(shown).toHaveLength(alpha === 0 ? 0 : 2);
+    for (const stamp of shown) expect(stamp.alpha).toBe(alpha);
   }
+  effects.clear(pe);
+  pe.container.destroy({ children: true });
+  textures.clear();
+});
+
+it('lays a static outline again only once the body is bound anew, the zoom moves or the colour changes', () => {
+  const textures = new TextureCache();
+  const effects = new SelectionEffects(textures);
+  const pe = createPooled('building', undefined);
+  if (pe.paletted) throw new Error('Expected a plain building');
+  const body = new SelectionSprite(Texture.WHITE);
+  pe.sprites.push(body);
+  pe.pickExempt.push(false);
+  pe.container.addChild(body);
+  const laidX = (): number => {
+    const quad = pe.container.children[0]?.children[0];
+    if (!(quad instanceof OutlineSprite)) throw new Error('Missing outline');
+    return quad.position.x;
+  };
+  effects.update(pe, 'outline', 1, 0, undefined, undefined, undefined, undefined, pe.bindSerial);
+  const first = laidX();
+  body.position.x += 5;
+  effects.update(pe, 'outline', 1, 0.5, undefined, undefined, undefined, undefined, pe.bindSerial);
+  expect(laidX()).toBe(first);
+  pe.bindSerial++;
+  effects.update(pe, 'outline', 1, 0.5, undefined, undefined, undefined, undefined, pe.bindSerial);
+  expect(laidX()).toBeCloseTo(first + 5);
+  body.position.x += 5;
+  effects.update(pe, 'outline', 2, 0.5, undefined, undefined, undefined, undefined, pe.bindSerial);
+  expect(laidX()).not.toBeCloseTo(first + 5);
   effects.clear(pe);
   pe.container.destroy({ children: true });
   textures.clear();

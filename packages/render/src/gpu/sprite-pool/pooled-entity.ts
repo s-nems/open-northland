@@ -55,6 +55,8 @@ interface PooledEntityBase extends PresentationTrack {
   looping: boolean;
   /** The whole animation tick its looping record was last presented at. */
   loopStep: number;
+  /** Counts the binds that set this entity's sprites, so an outline laid over them knows it still fits. */
+  bindSerial: number;
   selectionEllipse: { -readonly [K in keyof SelectionEllipse]: SelectionEllipse[K] } | undefined;
   readonly bound: BindStamp;
 }
@@ -109,6 +111,7 @@ export function createPooled(kind: SpriteKind, palette: PaletteLut | undefined):
     held: -1,
     looping: false,
     loopStep: Number.NaN,
+    bindSerial: 0,
     selectionEllipse: undefined,
     bound: new BindStamp(),
   };
