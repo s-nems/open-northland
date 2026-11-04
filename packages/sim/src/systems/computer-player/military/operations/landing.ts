@@ -39,17 +39,17 @@ import { marchOrders } from '../muster.js';
 import { unitPoints } from '../points.js';
 import { homeOf } from './band.js';
 import { type LandingAim, landingAim, stormObjective } from './landing-aim.js';
-import { reliefAim, reliefObjective, relievesLand } from './landing-relief.js';
+import { isRelief, mayRelieve, reliefAim, reliefObjective } from './landing-relief.js';
 import { believedLand, type FireSource, landingObjective, underFire } from './landing-target.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleEnemyFighters } from './raid-target.js';
 
-// A naval landing (owner ruling): a seat whose rival lies over the sea fills its moored ships with the
-// soldiers at home, sails them together to the rival's shore nearest his headquarters outside the reach of
-// his towers and shelters, sets every man but each ship's commander ashore once the fleet lies there and
-// marches the landed men on his headquarters and then on what stands clear of his towers and shelters. The
-// ships lie at the shore meanwhile and take the survivors home once the landing is losing or has nothing
-// left to strike.
+// A naval landing (owner ruling): a seat fills its moored ships with soldiers at home and sails them
+// together to the shore of the land it aims at (`landing-aim.ts`, `landing-relief.ts`), outside the reach
+// of the towers and shelters it believes stand there where it can, sets every man but each ship's commander
+// ashore once the fleet lies there and marches the landed men on their objective: a rival's buildings, or
+// the enemy band on a colony it relieves. The ships lie at the shore meanwhile and take the survivors home
+// once the landing is losing or has nothing left to strike.
 // Every figure below is authored unless it says otherwise.
 
 const SECONDS_PER_MINUTE = 60;
@@ -119,7 +119,7 @@ export function freeShips(env: ShipEnv, home: number): Entity[] {
 /**
  * The shore points of a landing's ships ({@link shorePoints}) on the `aim`'s land, nearest where it heads,
  * outside the reach of every tower and shelter the seat believes stands there ({@link underFire}), so the
- * hulls waiting at the shore are not shot; a storm takes the nearest covered ones when too few lie clear.
+ * hulls waiting at the shore are not shot; a storm fills what too few clear ones leave with covered ones.
  * Authored: observed on arabskie_wyspy_wolna_gra_mieszana, ships moored beside a rival's headquarters, its
  * people shooting from inside, lost most hulls and every man aboard before the last one moored.
  */
@@ -128,7 +128,19 @@ function landingShores(env: OperationEnv, ship: Entity, aim: LandingAim, count: 
   const clear = (at: HalfCellNode): boolean => !underFire(aim.believed.sources, at);
   const shores = shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, clear, count);
   if (!aim.storm || shores.length >= count) return shores;
-  return shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, () => true, count);
+  const spaced = (at: HalfCellNode): boolean =>
+    shores.every((s) => nodeManhattan(s, at) >= LANDING_SHORE_SPACING_NODES);
+  const covered = shorePoints(
+    world,
+    ctx,
+    terrain,
+    ship,
+    aim.land,
+    aim.towards,
+    spaced,
+    count - shores.length,
+  );
+  return [...shores, ...covered];
 }
 
 /** The tick from which the seat may land: its peace over and its difficulty's first wave due. */
@@ -211,11 +223,13 @@ function releaseStranded(env: OperationEnv, op: LandingOperation, from: number):
 }
 
 /** Why the landing should turn back before setting anyone ashore, or null: its posture no longer
- *  attacks (a relief sails whatever the posture), the target's owner is no enemy, or it lost
- *  {@link LANDING_SHIP_LOSS_PCT} of its ships. */
+ *  attacks (a relief sails whatever the posture, but not once home is raided), the target's owner is no
+ *  enemy, or it lost {@link LANDING_SHIP_LOSS_PCT} of its ships. */
 function abortReason(env: OperationEnv, op: LandingOperation): OperationEndReason | null {
   const owner = op.target.owner;
-  if (env.orders.launchRatio === null && !relievesLand(env, rivalComponent(env, op))) return 'postureChanged';
+  if (isRelief(op)) {
+    if (underAttack(env.world, env.seat)) return 'defenceMode';
+  } else if (env.orders.launchRatio === null) return 'postureChanged';
   if (owner === null || diplomacyStance(env.world, env.seat, owner) !== 'enemy') return 'targetLost';
   if ((op.startShips - op.ships.length) * PERCENT >= op.startShips * LANDING_SHIP_LOSS_PCT) return 'losses';
   return null;
@@ -378,12 +392,12 @@ export function otherShore(
   return best?.at ?? null;
 }
 
-/** The land the men were set ashore on: the target's component, read at its headquarters' anchor. */
+/** The land the men were set ashore on: the target's component, read at the spot the landing aimed at. */
 function rivalComponent(env: OperationEnv, op: LandingOperation): number {
   return componentOfPoint(env.terrain, { hx: op.target.hx, hy: op.target.hy });
 }
 
-/** The men set ashore: members on the rival's land, no longer aboard. */
+/** The men set ashore: members on the target's land, no longer aboard. */
 function landedMen(env: OperationEnv, op: LandingOperation): Entity[] {
   const { world, terrain } = env;
   const rival = rivalComponent(env, op);
@@ -418,7 +432,7 @@ function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
   const free = landed.filter(
     (e) => !spokenFor(world, e) && !world.has(e, Engagement) && !world.has(e, AttackOrder),
   );
-  if (relievesLand(env, land)) {
+  if (isRelief(op)) {
     const foe = reliefObjective(env, land, from);
     if (foe === null) return { landed, striking: false, fire: [], commands: [] };
     return { landed, striking: true, fire: [], commands: marchOrders(world, terrain, free, foe) };
@@ -529,7 +543,8 @@ function sailWaitingHome(env: OperationEnv, op: LandingOperation, all: boolean):
 
 /**
  * Acting: the landed men fight while the ships wait at the shore. Once they are {@link losing}, or the land
- * holds nothing more for them to strike ({@link landingObjective}), they board the waiting ships
+ * holds nothing more for them to strike ({@link landedOrders}: no building left, or for a relief no enemy
+ * fighter in sight), they board the waiting ships
  * ({@link reembark}). Past {@link LANDING_SHORE_STAY_TICKS} the ships sail home and the men
  * fight on alone, let go where they stand once nothing is left to strike. Ends once no landed man is left
  * and every ship is home or lost: `wiped` when the landed men fell, `nothingToStrike` when the land holds
@@ -642,7 +657,7 @@ function crewsOf(
 function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<LandingOperation> | null {
   const { world, ctx, terrain, seat, orders } = env;
   const ratio = orders.launchRatio;
-  if (ctx.tick < landingFromTick(world, seat)) return null;
+  if (ctx.tick < landingFromTick(world, seat) || (ratio === null && !mayRelieve(env))) return null;
   const home = terrain.componentOf(env.home);
   if (home === NO_COMPONENT) return null;
   const fleet = landingFleetShips(world, seat, computerProfileOf(world, seat));

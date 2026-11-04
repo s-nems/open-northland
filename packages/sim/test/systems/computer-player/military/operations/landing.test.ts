@@ -6,6 +6,7 @@ import {
   COMPUTER_MODULE_IDS,
   ComputerColony,
   type ComputerModuleEnables,
+  FOG_MODE,
   Owner,
   Position,
   Rider,
@@ -31,6 +32,7 @@ import {
 } from '../../../../../src/systems/computer-player/military/operations/landing.js';
 import { COLONY_RAID_LEAST_MEN } from '../../../../../src/systems/computer-player/military/operations/landing-aim.js';
 import { RELIEF_LEAST_MEN } from '../../../../../src/systems/computer-player/military/operations/landing-relief.js';
+import { militaryOrdersOf } from '../../../../../src/systems/computer-player/strategy/military.js';
 import {
   LANDING_BIG_SHIPS,
   LANDING_FLEET_MIN_SHIPS,
@@ -83,6 +85,9 @@ const GUARD_OFFSET = 6;
 const ARMY_RANK = 6;
 /** The foe's band that lands on the seat's colony. */
 const RAIDERS = 6;
+/** A foe army that outweighs the seat's whole fleet load several times over. */
+const OUTMATCHING_FOES = 120;
+const FOE_ARMY = { x: 110, y: 0 };
 /** The most a landing may take to board, cross and sail home: a run ending sooner stops at once. */
 const LANDING_LIMIT_TICKS = LANDING_FORM_TIMEOUT_TICKS + 2 * LANDING_SAIL_TIMEOUT_TICKS;
 /** Twice the decisions a full fleet with its full band takes to open its landing here. */
@@ -176,8 +181,11 @@ function landingWorld({
   armed = false,
   seats = SHIP_SEATS,
   colony = false,
+  fog = FOG_MODE.OFF,
   foe = [],
 }: {
+  /** A `FOG_MODE` id. */
+  fog?: number;
   ships?: number;
   men?: number;
   shelterFire?: boolean;
@@ -195,6 +203,7 @@ function landingWorld({
     map: islands(colony),
   });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+  sim.enqueueSetup({ kind: 'setFogMode', mode: fog });
   sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: true, modules: militaryOnly() });
   const place = (buildingType: number, at: { x: number; y: number }, owner: number) =>
     sim.enqueueSetup({
@@ -444,8 +453,12 @@ describe('landing operations', () => {
     expect(seen?.landing?.landed).toBeGreaterThan(0);
   });
 
-  it('storms the headquarters a tower covers once the wave outweighs the tower twice', () => {
+  it.each([
+    ['in plain sight', FOG_MODE.OFF],
+    ['knowing only the start layout under fog', FOG_MODE.CLASSIC_FOG_OF_WAR],
+  ])('storms the headquarters a tower covers once the wave outweighs the tower twice, %s', (_, fog) => {
     const { sim } = landingWorld({
+      fog,
       armed: true,
       seats: STORM_SHIP_SEATS,
       foe: [{ buildingType: TOWER_TYPE, at: FOE_TOWER }],
@@ -499,6 +512,38 @@ describe('landing operations', () => {
     ).toBe(colonyLand);
     expect(seen?.landing?.startMen).toBeGreaterThanOrEqual(RELIEF_LEAST_MEN);
     expect(seen?.landing?.startMen).toBeLessThan(RAIDERS * 2 + RELIEF_LEAST_MEN);
+    expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it('relieves its colony while its posture holds the army home, and raids nothing', () => {
+    const { sim } = landingWorld({ colony: true, foe: [{ buildingType: FARM_TYPE, at: FOE_FARM }] });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    // A foe army far stronger than the seat's, beyond his headquarters from the colony, keeps the seat
+    // defending at home.
+    spawnBand(sim, OUTMATCHING_FOES, FOE_ARMY, GUARD_RANK, FOE);
+    let seen: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return seen !== undefined;
+    });
+    // Holding home, the seat raids no colony of the foe's.
+    expect(seen).toBeUndefined();
+    expect(militaryOrdersOf(sim.world, SEAT).launchRatio).toBeNull();
+    const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
+    sim.world.add(carrier, ComputerColony, {
+      colonies: [blankColony(colonyLand, { threat })],
+      rejected: [],
+      retryAt: 0,
+    });
+    spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return (seen?.landing?.landed ?? 0) > 0;
+    });
+    expect(seen?.target.entity).toBeNull();
     expect(seen?.landing?.landed).toBeGreaterThan(0);
   });
 

@@ -104,12 +104,22 @@ export interface FireSource {
   readonly entity: Entity;
   readonly at: HalfCellNode;
   readonly room: number;
+  /** A tower, which fights with its garrison; else a shelter, which fires its people's house bow. */
+  readonly tower: boolean;
+  /** The points the seat last saw posted on it. */
+  readonly postedPoints: number;
 }
 
 function fireSourcesOf(ctx: SystemContext, targets: readonly BelievedTarget[]): FireSource[] {
   return targets
     .filter((t) => shoots(ctx, t.buildingType))
-    .map((t) => ({ entity: t.entity, at: t.at, room: shelterCapacityOf(ctx.content, t.buildingType) }));
+    .map((t) => ({
+      entity: t.entity,
+      at: t.at,
+      room: shelterCapacityOf(ctx.content, t.buildingType),
+      tower: buildingCombatClass(ctx, t.buildingType) === 'tower',
+      postedPoints: t.postedPoints,
+    }));
 }
 
 /** What the seat believes stands on one land: the enemy buildings that could fall, and of them the towers
@@ -192,9 +202,13 @@ export function landingObjective(
   return best === null ? null : { entity: best.entity, node: best.approach, at: best.at };
 }
 
-/** How many of `sources` reach `at` ({@link sourcesReaching}), the building `except` left out. */
-export function coverAt(sources: readonly FireSource[], at: HalfCellNode, except?: Entity): number {
-  return sourcesReaching(sources, at, except).length;
+/** The towers of `sources` that reach `at` ({@link sourcesReaching}), the building `except` left out. */
+export function towersReaching(
+  sources: readonly FireSource[],
+  at: HalfCellNode,
+  except?: Entity,
+): readonly FireSource[] {
+  return sourcesReaching(sources, at, except).filter((s) => s.tower);
 }
 
 /**

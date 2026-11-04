@@ -1,5 +1,11 @@
-import { diplomacyStance, MAX_PLAYERS, Vehicle } from '../../../../components/index.js';
-import type { Entity } from '../../../../ecs/world.js';
+import {
+  type ColonyPhase,
+  diplomacyStance,
+  type LandingOperation,
+  MAX_PLAYERS,
+  Vehicle,
+} from '../../../../components/index.js';
+import type { DeepReadonly, Entity } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId } from '../../../../nav/terrain/index.js';
 import { seatColonies } from '../../../ai-shared/home-roster.js';
@@ -15,10 +21,11 @@ import { believedLand } from './landing-target.js';
 import type { OperationEnv } from './lifecycle.js';
 import { nodeOfEntity, visibleEnemyFighters } from './raid-target.js';
 
-// A relief (owner ruling): an enemy band seen on one of the seat's colonies, or an enemy ship seen moored
-// at it, sends a landing from home to fight it, sized to outweigh what the seat sees there beyond the
-// colony's own fighters. The landed men go for the enemy fighters they see on the colony and sail home once
-// none is left. Every figure is authored.
+// A relief (owner ruling): an enemy band on one of the seat's colonies sends a landing from home to fight
+// it, sized to outweigh what the seat sees there beyond the colony's own fighters; an enemy ship moored at
+// the colony adds the load it may still carry. The landed men go for the enemy fighters they see on the
+// colony and sail home once none is left. A relief is the landing with no building for its target. Every
+// figure is authored.
 
 /** The fewest men a relief sails with. */
 export const RELIEF_LEAST_MEN = 5;
@@ -35,17 +42,31 @@ interface ColonyThreatSeen {
   readonly points: number;
 }
 
+/** The colony phases in which the colony stands on its land, so there is something to relieve. */
+const STANDING_PHASES: ReadonlySet<ColonyPhase> = new Set(['landing', 'founding', 'running']);
+
+/** Whether the seat has a colony standing on its land, which a relief may sail for. */
+export function mayRelieve(env: OperationEnv): boolean {
+  return seatColonies(env.world, env.seat).some((c) => STANDING_PHASES.has(c.phase));
+}
+
+/** Whether `op` is a relief: the only landing aimed at no building (`reliefAim`). */
+export function isRelief(op: DeepReadonly<LandingOperation>): boolean {
+  return op.target.entity === null;
+}
+
 /**
- * The relief of the colony the seat sees most threatened, or null: for each live colony with an enemy ship
- * moored at its land or a band its garrison saw lately, the enemy points seen there (a moored ship counts
- * {@link SOLDIERS_PER_SHIP} men of the `ranked` men's mean, an approximation of a load the seat cannot see)
- * past {@link LANDING_EDGE} of the seat's own fighters on that land; the strongest of `ranked` that outweigh
- * the gap by that edge, at least {@link RELIEF_LEAST_MEN}, within `seats`. Costs the enemies' ships and, with
- * a colony to weigh, their fighters and the seat's own.
+ * The relief of the colony the seat sees most threatened, or null: for each colony standing on its land
+ * with a band its garrison saw lately or an enemy ship moored there, and enemy fighters in sight on that
+ * land, the enemy points seen there (a moored ship adds {@link SOLDIERS_PER_SHIP} men of the `ranked` men's
+ * mean, an approximation of a load the seat cannot see) past {@link LANDING_EDGE} of the seat's own fighters
+ * on that land; the strongest of `ranked` that outweigh the gap by that edge, at least
+ * {@link RELIEF_LEAST_MEN}, within `seats`. Costs the enemies' ships and, with a colony to weigh, their
+ * fighters and the seat's own.
  */
 export function reliefAim(env: OperationEnv, ranked: readonly RankedMan[], seats: number): LandingAim | null {
   const { world, ctx, seat } = env;
-  const colonies = seatColonies(world, seat).filter((c) => c.phase !== 'abandoned');
+  const colonies = seatColonies(world, seat).filter((c) => STANDING_PHASES.has(c.phase));
   if (colonies.length === 0 || ranked.length === 0) return null;
   let total = 0;
   for (const m of ranked) total += m.points;
@@ -57,15 +78,15 @@ export function reliefAim(env: OperationEnv, ranked: readonly RankedMan[], seats
       (c.threat !== null && ctx.tick - c.threat.since < RELIEF_THREAT_TICKS),
   );
   if (watched.length === 0) return null;
-  const threats = [...ships, ...enemyFightersOn(env, new Set(watched.map((c) => c.land)))];
+  const fighters = enemyFightersOn(env, new Set(watched.map((c) => c.land)));
   const own = ownPointsOn(env, new Set(watched.map((c) => c.land)));
   let best: { readonly land: number; readonly gap: number; readonly first: ColonyThreatSeen } | null = null;
   for (const colony of watched) {
-    const seen = threats.filter((t) => t.land === colony.land);
-    const first = seen[0];
+    const band = fighters.filter((t) => t.land === colony.land);
+    const first = band[0];
     if (first === undefined) continue;
     let enemy = 0;
-    for (const t of seen) enemy += t.points;
+    for (const t of [...band, ...ships.filter((t) => t.land === colony.land)]) enemy += t.points;
     const gap = enemy * LANDING_EDGE.num - (own.get(colony.land) ?? 0) * LANDING_EDGE.den;
     if (gap > 0 && (best === null || gap > best.gap)) best = { land: colony.land, gap, first };
   }
@@ -91,14 +112,9 @@ export function reliefAim(env: OperationEnv, ranked: readonly RankedMan[], seats
   };
 }
 
-/** Whether `land` is one of the seat's live colonies, where a landing relieves rather than strikes. */
-export function relievesLand(env: OperationEnv, land: number): boolean {
-  return seatColonies(env.world, env.seat).some((c) => c.land === land && c.phase !== 'abandoned');
-}
-
 /**
- * Where the men a relief set ashore on `land` go: the enemy fighter the seat sees there nearest `from`,
- * the lower id on a tie, or null once it sees none.
+ * Where the men a relief set ashore on `land` go: the enemy fighter the seat sees there nearest `from`, the
+ * first in sighting order on a tie, or null once it sees none.
  */
 export function reliefObjective(env: OperationEnv, land: number, from: HalfCellNode): NodeId | null {
   const { terrain } = env;
