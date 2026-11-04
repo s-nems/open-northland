@@ -54,7 +54,7 @@ the ten slowest ticks. Rank occasional work by its mean: a system's median can b
 | Metric | Meaning |
 | --- | --- |
 | `cpuMsPerTick` | Main-thread CPU time (user + system) per tick, per window and whole run, read at window bounds. Moves less with machine load than the wall tick; includes the harness hooks, excludes GC on helper threads |
-| `allocKbPerTick` | V8 KiB allocated per tick, per window and whole run, from the isolate's cumulative counter. Nearly load-independent; the target for allocation and GC work. Node 26 reports it; Node 22 lacks the counter and reports `null` (`n/a`) |
+| `allocKbPerTick` | V8 KiB allocated per tick, per window and whole run, from the isolate's cumulative counter. Nearly load-independent; the target for allocation and GC work. `null` (`n/a`) on a runtime whose V8 lacks the counter |
 
 ### Profiles
 

@@ -166,7 +166,7 @@ describe('delta column element types', () => {
     expect(wide.changeOf[CHANGES]).toBe(CHANGES);
   });
 
-  it('read touched ids back across gaps past 16 bits, in 16 bits until a gap passes 30 bits', () => {
+  it('read touched ids back across gaps past 16 bits, in 16 bits until a gap passes 2^30 + 2^15', () => {
     const idsOf = (ids: readonly number[]): SnapshotDelta => {
       const columns = new DeltaColumns();
       for (const id of ids) {
