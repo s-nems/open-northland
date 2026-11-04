@@ -119,6 +119,13 @@ const TICK_STEP = 10;
 /** An agreement that hands over less than the near hold carries and pays out more than it. */
 const FEW_GIVEN = 5;
 const MANY_TAKEN = 20;
+/** Gatherers' heaps of wood on the east island, in cells, off its house's door. */
+const EAST_HEAPS = [
+  { x: 21, y: 12 },
+  { x: 22, y: 4 },
+];
+/** The wood in each heap: a ground stack's most. */
+const HEAP_WOOD = 5;
 
 function islandMap(): TerrainMap {
   const typeIds = new Array<number>(MAP_W * MAP_H).fill(GRASS);
@@ -202,6 +209,13 @@ function crossing(sim: Simulation, opts: { readonly cart?: boolean; readonly typ
 /** Step until `done` holds, by small steps, or the limit runs out. */
 function runUntil(sim: Simulation, limit: number, done: () => boolean): void {
   for (let elapsed = 0; elapsed < limit && !done(); elapsed += TICK_STEP) sim.run(TICK_STEP);
+}
+
+/** A loose heap of `wood` on the ground at cell `at`, as a gatherer sets it down by its flag. */
+function heapAt(sim: Simulation, at: { readonly x: number; readonly y: number }, wood: number): void {
+  const heap = sim.world.create();
+  sim.world.add(heap, Position, { x: fx.fromInt(at.x), y: fx.fromInt(at.y) });
+  sim.world.add(heap, Stockpile, { amounts: new Map([[WOOD, wood]]) });
 }
 
 function stockOf(sim: Simulation, house: Entity, good: number): number {
@@ -374,6 +388,24 @@ describe('a pinned ship on a route between two islands', () => {
     expect(cartRodeTheSlot).toBe(true);
     expect(fullestCart).toBe(HANDCART_HOLD);
     expectSound(sim);
+  });
+
+  it("sails home the wood lying in heaps on the far island's settlement, its store empty", () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    for (const at of EAST_HEAPS) heapAt(sim, at, HEAP_WOOD);
+    const { trader } = crossing(sim);
+    attach(sim, trader, west);
+    attach(sim, trader, east);
+    mark(sim, trader, west, WOOD);
+    order(sim, { kind: 'setTradeSettlement', entity: trader, house: east, on: true });
+    const heaped = EAST_HEAPS.length * HEAP_WOOD;
+
+    runUntil(sim, LONG_TICKS, () => stockOf(sim, west, WOOD) === heaped);
+
+    expect(stockOf(sim, west, WOOD)).toBe(heaped);
+    expect(stockOf(sim, east, WOOD)).toBe(0);
   });
 
   it('runs a foreign agreement over the sea, the give and the take each past the near hold, and counts both', () => {

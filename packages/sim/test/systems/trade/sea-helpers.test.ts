@@ -100,6 +100,13 @@ const LONG_TICKS = 8000;
 const FIRST_TRIP_TICKS = 2000;
 /** The wood a headquarters stores, by the fixture. */
 const HEADQUARTERS_WOOD_ROOM = 150;
+/** Gatherers' heaps of wood on the west island, in cells, off its house's door. */
+const WEST_HEAPS = [
+  { x: 2, y: 3 },
+  { x: 2, y: 13 },
+];
+/** The wood in each heap: a ground stack's most. */
+const HEAP_WOOD = 5;
 
 function islandMap(): TerrainMap {
   const typeIds = new Array<number>(MAP_W * MAP_H).fill(GRASS);
@@ -384,6 +391,30 @@ describe('helpers at work', () => {
     expect(stockOf(sim, west, WOOD)).toBe(0);
     expect(directions).toEqual(new Set(['load', 'unload']));
     expect(most).toBe(1);
+  });
+
+  it("carry the wood lying in heaps on a settlement stop's ground to the ship", () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    for (const at of WEST_HEAPS) {
+      const heap = sim.world.create();
+      sim.world.add(heap, Position, { x: fx.fromInt(at.x), y: fx.fromInt(at.y) });
+      sim.world.add(heap, Stockpile, { amounts: new Map([[WOOD, HEAP_WOOD]]) });
+    }
+    const { trader, carriers } = crew(sim, HELPERS, false);
+    route(sim, trader, west, east);
+    order(sim, { kind: 'setTradeSettlement', entity: trader, house: west, on: true });
+    const heaped = WEST_HEAPS.length * HEAP_WOOD;
+
+    let helped = false;
+    for (let elapsed = 0; elapsed < LONG_TICKS && stockOf(sim, east, WOOD) < heaped; elapsed++) {
+      sim.step();
+      helped ||= carriers.some((carrier) => sim.world.tryGet(carrier, CargoRun)?.direction === 'load');
+    }
+
+    expect(stockOf(sim, east, WOOD)).toBe(heaped);
+    expect(helped).toBe(true);
   });
 
   it('never carries past the upTo of the stop, with the trader and several helpers unloading at it', () => {

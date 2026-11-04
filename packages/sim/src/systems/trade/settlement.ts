@@ -10,7 +10,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
-import { hexDistance, nodeOfPosition } from '../../nav/halfcell.js';
+import { hexDistance, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, MapContext, SystemContext } from '../context.js';
 import { interactionNode, interactionNodeId } from '../footprint/interaction.js';
@@ -78,19 +78,24 @@ export function settlementPiles(
   const anchorDoor = interactionNodeId(world, ctx, terrain, anchor);
   if (player === undefined || anchorDoor === null) return [];
   const reach = settlementReachAt(world, ctx.content, terrain, player, anchorDoor);
-  const away = interactionNode(world, ctx, exclude);
+  const door = interactionNode(world, ctx, exclude);
+  const away = door === null ? null : { hx: door.x, hy: door.y };
   const ledger = FetchableStock.of(world, ctx);
   const found = new Set<Entity>();
+  const { minX, maxX, minY, maxY } = reach.bounds;
   for (const { typeId: form } of ctx.content.goods) {
     if (!sameFoodClass(ctx, form, good)) continue;
     for (const pile of ledger.holders(form)) {
-      if (found.has(pile) || !isLoosePile(world, pile)) continue;
+      const pos = world.tryGet(pile, Position);
+      if (pos === undefined || found.has(pile)) continue;
+      // The reach's box first, so a pile of another settlement costs no further check.
+      const hx = nodeHxOfPosition(pos.x, pos.y);
+      const hy = nodeHyOfPosition(pos.x, pos.y);
+      if (hx < minX || hx > maxX || hy < minY || hy > maxY || !isLoosePile(world, pile)) continue;
       const owner = ownerOf(world, pile);
       if (owner !== undefined && owner !== player) continue;
-      const { x, y } = world.get(pile, Position);
-      const at = nodeOfPosition(x, y);
-      if (!terrain.inBounds(at.hx, at.hy) || !reach.allowsNode(terrain.nodeAt(at.hx, at.hy))) continue;
-      if (away !== null && hexDistance(at, { hx: away.x, hy: away.y }) <= DOOR_HEAP_RADIUS_NODES) continue;
+      if (!terrain.inBounds(hx, hy) || !reach.allowsNode(terrain.nodeAt(hx, hy))) continue;
+      if (away !== null && hexDistance({ hx, hy }, away) <= DOOR_HEAP_RADIUS_NODES) continue;
       found.add(pile);
     }
   }

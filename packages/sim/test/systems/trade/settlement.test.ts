@@ -23,6 +23,7 @@ import {
   serializeSaveGame,
 } from '../../../src/index.js';
 import { createSignpost } from '../../../src/systems/signposts/index.js';
+import { isLoosePile } from '../../../src/systems/stores/index.js';
 import { standsForSettlement } from '../../../src/systems/trade/settlement.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -126,6 +127,14 @@ function groundPileAt(sim: Simulation, x: number, wood: number): Entity {
   return pile;
 }
 
+/** The wood lying loose on the ground. */
+function groundWood(sim: Simulation): number {
+  let units = 0;
+  for (const e of sim.world.query(Stockpile))
+    if (isLoosePile(sim.world, e)) units += sim.world.get(e, Stockpile).amounts.get(WOOD) ?? 0;
+  return units;
+}
+
 function stockOf(sim: Simulation, house: Entity, good: number): number {
   return sim.world.get(house, Stockpile).amounts.get(good) ?? 0;
 }
@@ -192,6 +201,23 @@ describe('a settlement stop between own houses', () => {
       expect(stockOf(sim, other, WOOD)).toBe(carried);
       expect(stockOf(sim, near, WOOD)).toBe(WOOD_HELD - carried);
     }
+  });
+
+  it("loads the wood lying on its settlement's ground, its stores empty", () => {
+    const sim = newSim();
+    const anchor = houseAt(sim, ANCHOR_X);
+    const other = houseAt(sim, OTHER_X);
+    groundPileAt(sim, MEMBER_X, GROUND_WOOD);
+    groundPileAt(sim, MEMBER_X + 1, GROUND_WOOD);
+    const trader = traderAt(sim, ANCHOR_X);
+    route(sim, trader, anchor, other);
+    woodInto(sim, trader, other);
+    settle(sim, trader, anchor);
+
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, other, WOOD)).toBe(2 * GROUND_WOOD);
+    expect(groundWood(sim)).toBe(0);
   });
 
   it('takes from its own storehouse first', () => {

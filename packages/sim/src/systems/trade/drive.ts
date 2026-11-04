@@ -5,6 +5,7 @@ import {
   isForeignHouse,
   Position,
   Rider,
+  Stockpile,
   TRADE_LIMIT_NONE,
   TRADE_ROUTE_HOUSES,
   type TradeAgreement,
@@ -34,10 +35,10 @@ import {
 import { fetchHaulingCart } from '../settlers/drives/economy/hauling-cart.js';
 import { doorHeapRoom, doorHeapUnits } from '../settlers/drives/economy/workshop/door-heap.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
-import { interactionCell } from '../settlers/targets/index.js';
+import { interactionCell, unclaimedStockOf } from '../settlers/targets/index.js';
 import { LendableTally, storageLendable } from '../settlers/targets/stores/storage-reserve.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
-import { mayFetchGoodFrom } from '../stores/index.js';
+import { lowestStockedGood, mayFetchGoodFrom, type SupplyTally } from '../stores/index.js';
 import { haulingCartLiftTicks, parkHaulingCart } from '../vehicles/hauling-cart.js';
 import { activeAgreement } from './agreements.js';
 import { planCrossing, planShipOrder, seaLegOf, takeStopAtHand } from './ferry.js';
@@ -76,6 +77,7 @@ interface LoadScope {
   readonly exclude: Entity;
   readonly countsSettlement: boolean;
   readonly otherCountsSettlement: boolean;
+  readonly supply: SupplyTally;
   members: Map<string, readonly Entity[]> | undefined;
   piles: Map<string, readonly Entity[]> | undefined;
 }
@@ -172,22 +174,22 @@ function loadScope(
   stop: DeepReadonly<TradeStop>,
   other: DeepReadonly<TradeStop>,
 ): LoadScope {
-  return scopeAt(plan.world, plan.ctx, plan.terrain, plan.entity, hold, stop, other);
+  return scopeAt(plan, plan.entity, hold, stop, other);
 }
 
 function scopeAt(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
+  plan: PlannerContext,
   trader: Entity,
   hold: TraderHold,
   stop: DeepReadonly<TradeStop>,
   other: DeepReadonly<TradeStop>,
 ): LoadScope {
+  const { world, ctx, terrain, supply } = plan;
   return {
     world,
     ctx,
     terrain,
+    supply,
     trader,
     hold,
     stop,
@@ -255,9 +257,12 @@ function waitWithLoad(plan: PlannerContext, hold: TraderHold): boolean {
   return true;
 }
 
+/** The node the trader works `house` from: its door, or a ground pile's own node. */
 function houseDoor(world: World, ctx: SystemContext, house: Entity): HalfCellNode | null {
   const door = interactionNode(world, ctx, house);
-  return door === null ? null : { hx: door.x, hy: door.y };
+  if (door !== null) return { hx: door.x, hy: door.y };
+  const pile = world.has(house, Building) ? undefined : world.tryGet(house, Position);
+  return pile === undefined ? null : nodeOfPosition(pile.x, pile.y);
 }
 
 /** Where the trader's hold is: the standing cart's anchor, else the trader's own node. */
@@ -575,7 +580,7 @@ export function decideForHelper(
   stop: DeepReadonly<TradeStop>,
   other: DeepReadonly<TradeStop>,
 ): StopWork | NextStop {
-  return decideDomestic(scopeAt(plan.world, plan.ctx, plan.terrain, trader, hold, stop, other), hold, other);
+  return decideDomestic(scopeAt(plan, trader, hold, stop, other), hold, other);
 }
 
 /** A house to load one unit of a good out of, and the form it holds the good in. */
@@ -610,16 +615,22 @@ function loadSourceOf(scope: LoadScope, good: number, keep: number): LoadSource 
   if (homeSpare >= 1 && atHome) return fromHome;
   const anchor = holdPoint(world, trader, hold);
   const failed = unreachableGoals(world, ctx, trader);
+  const reachable = (source: Entity): HalfCellNode | null => {
+    const door = houseDoor(world, ctx, source);
+    return door === null || isUnreachableGoal(failed, terrain.nodeAtClamped(door.hx, door.hy)) ? null : door;
+  };
   let best: { readonly house: Entity; readonly distance: number } | undefined;
-  for (const house of members) {
-    if (spareOf(world, ctx, house, good) < 1) continue;
-    const door = houseDoor(world, ctx, house);
-    if (door === null || isUnreachableGoal(failed, terrain.nodeAtClamped(door.hx, door.hy))) continue;
+  // Houses, then ground piles, each ascending by id, so a later source wins only when strictly nearer.
+  for (const source of [...members, ...pilesOf(scope, stop.house, scope.exclude, good)]) {
+    const spare = world.has(source, Building)
+      ? spareOf(world, ctx, source, good)
+      : pileSpareOf(scope, source, good);
+    const door = spare < 1 ? null : reachable(source);
+    if (door === null) continue;
     const distance = anchor === null ? 0 : hexDistance(anchor, door);
-    // Members run ascending by id, so a later house wins only when strictly nearer.
-    if (best === undefined || distance < best.distance) best = { house, distance };
+    if (best === undefined || distance < best.distance) best = { house: source, distance };
   }
-  const form = best === undefined ? undefined : stockedFormAt(world, ctx, best.house, good);
+  const form = best === undefined ? undefined : sourceFormAt(world, ctx, best.house, good);
   const fromMember = best === undefined || form === undefined ? undefined : { from: best.house, good: form };
   if (best !== undefined && best.distance <= TRADE_CART_HOUSE_DISTANCE) return fromMember;
   return homeSpare >= 1 ? fromHome : fromMember;
@@ -743,6 +754,21 @@ function tallyStock(
 ): void {
   const stocked = fetchableFormAt(world, ctx, house, good);
   if (stocked !== undefined) tally.add(house, stocked, stockOf(world, house, stocked));
+}
+
+/** The units of `good` a ground pile lends the trader: what no walker claimed there. */
+function pileSpareOf(scope: LoadScope, pile: Entity, good: number): number {
+  const form = sourceFormAt(scope.world, scope.ctx, pile, good);
+  return form === undefined ? 0 : unclaimedStockOf(scope.world, scope.ctx, scope.supply, pile, form);
+}
+
+/** {@link stockedFormAt} of a house; of a ground pile, the lowest good of `good`'s class it holds. */
+function sourceFormAt(world: World, ctx: ContentContext, source: Entity, good: number): number | undefined {
+  if (world.has(source, Building)) return stockedFormAt(world, ctx, source, good);
+  const stock = world.tryGet(source, Stockpile);
+  return stock === undefined
+    ? undefined
+    : (lowestStockedGood(stock, (g) => sameFoodClass(ctx, g, good)) ?? undefined);
 }
 
 /** {@link stockedFormAt} when the house may give that form up at all. */

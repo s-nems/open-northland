@@ -23,6 +23,7 @@ import { stockOf } from '../missions/stock.js';
 import { grantTradeExperience } from '../progression/index.js';
 import { edibleGoodFormOf } from '../readviews/food.js';
 import { addCarry, dropCarriedLoad, shrinkCarry } from '../settlers/atomics/effects/goods/carry.js';
+import { reapEmptyLoosePile } from '../settlers/atomics/effects/goods/piles.js';
 import { cappedByStorageMinimum } from '../settlers/targets/stores/storage-reserve.js';
 import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '../stores/index.js';
 import { abandonCargoRun } from '../vehicles/cargo.js';
@@ -312,10 +313,10 @@ function atForeignStop(world: World, trader: Entity, house: Entity): boolean {
 }
 
 /**
- * Resolve one completed `tradeLoad`: one unit of `goodType` leaves `from`'s shelf for the trader's hold,
- * in the form it takes outside the house (a dish becomes its edible). At a foreign stop the unit counts
- * toward the agreement's take and the player's trade tally with the house's owner. A full hold, a good
- * the hold refuses or a shelf already empty moves nothing.
+ * Resolve one completed `tradeLoad`: one unit of `goodType` leaves `from`'s shelf, or a ground pile that
+ * goes once empty, for the trader's hold, in the form it takes outside the house (a dish becomes its
+ * edible). At a foreign stop the unit counts toward the agreement's take and the player's trade tally with
+ * the house's owner. A full hold, a good the hold refuses or a shelf already empty moves nothing.
  */
 export function loadTraderHold(
   world: World,
@@ -332,6 +333,7 @@ export function loadTraderHold(
   const carried = edibleGoodFormOf(ctx.content, goodType);
   if (moveThroughHold(world, ctx, trader, carried, 1) !== 1) return;
   setAccessibleStockAmount(world, from, goodType, have - 1);
+  reapEmptyLoosePile(world, from);
   if (!atForeignStop(world, trader, from)) return;
   const agreement = activeAgreement(world, trader, route);
   if (agreement === undefined || !sameFoodClass(ctx, carried, agreement.takeGood)) return;
