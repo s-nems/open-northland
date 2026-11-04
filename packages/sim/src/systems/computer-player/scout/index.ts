@@ -14,9 +14,8 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { type HalfCellNode, hexDistanceBetween, nodeManhattan } from '../../../nav/halfcell.js';
-import { NO_COMPONENT } from '../../../nav/terrain/index.js';
-import { anchorNodeOf, firstRingNode, towardNode } from '../../ai-shared/node-geometry.js';
+import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
+import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { isAdultSettler } from '../../family/eligibility.js';
@@ -29,7 +28,7 @@ import { minutesToTicks } from '../game-phase.js';
 import type { ComputerModule } from '../index.js';
 import { recordScoutTurnBack } from '../knowledge/intel/index.js';
 import { militaryDeadlineTick } from '../military/deadline.js';
-import { enemyFighterNear, type ScoutDanger, scoutDanger, seatHasSoldier } from './danger.js';
+import { enemyFighterNear, scoutDanger, seatHasSoldier } from './danger.js';
 import { nextLivestockCatch } from './livestock-catch.js';
 import { nextSignpostTarget } from './signpost-coverage.js';
 import { nextStaleZoneTarget } from './stale-zones.js';
@@ -148,49 +147,16 @@ function runScout(
   const danger = scoutDanger(world, ctx, player);
   const scouts = scoutingOpen(world, ctx, player);
   const leads = scouts && scoutingLeads(ctx.tick);
-  const walk = (goal: HalfCellNode): PlayerCommand[] => [moveTo(scout, legToward(ctx, at, goal, danger))];
   const zone = leads ? nextStaleZoneTarget(world, ctx, player, order, danger) : null;
-  if (zone !== null) return walk(zone);
+  if (zone !== null) return [{ kind: 'moveUnit', entity: scout, x: zone.hx, y: zone.hy }];
   const post = nextSignpostTarget(world, ctx, player, order, at);
   if (post !== null) return [{ kind: 'placeSignpost', entity: scout, x: post.hx, y: post.hy }];
   const herd = nextLivestockCatch(world, ctx, player, at, danger);
   if (herd?.kind === 'claim') return [{ kind: 'claimAnimal', entity: scout, animal: herd.animal }];
-  if (herd?.kind === 'look') return walk(herd.node);
+  if (herd?.kind === 'look') return [{ kind: 'moveUnit', entity: scout, x: herd.node.hx, y: herd.node.hy }];
   const late = scouts && !leads ? nextStaleZoneTarget(world, ctx, player, order, danger) : null;
-  if (late !== null) return walk(late);
-  return at !== null && home !== null && !nearHome(at, home) ? walk(home) : [];
-}
-
-/** How far one scout walk reaches, in Manhattan half-cell nodes (authored, a performance trade): a farther
- *  goal is walked in legs, each decision sending a free scout one leg on, so no single route search spans
- *  the map. The danger retreat's walk home from a trip out stays one walk. */
-export const SCOUT_LEG_NODES = 120;
-
-/** How far around a leg's straight-line end a scout looks for a node on his own walkable component, clear
- *  of the danger reach (authored); with none the walk goes straight to the goal. */
-export const SCOUT_LEG_SNAP_NODES = 8;
-
-/** Where a scout at `at` walks next on his way to `goal`: the goal within {@link SCOUT_LEG_NODES}, else
- *  a node about that far along the straight line to it. */
-function legToward(
-  ctx: SystemContext,
-  at: HalfCellNode | null,
-  goal: HalfCellNode,
-  danger: ScoutDanger,
-): HalfCellNode {
-  const terrain = ctx.terrain;
-  if (at === null || terrain === undefined) return goal;
-  const end = towardNode(at, goal, SCOUT_LEG_NODES);
-  if (end === goal) return goal;
-  const component = terrain.componentOf(terrain.nodeAtClamped(at.hx, at.hy));
-  if (component === NO_COMPONENT) return goal;
-  const open = (x: number, y: number): boolean =>
-    terrain.inBounds(x, y) && terrain.componentOf(terrain.nodeAt(x, y)) === component && !danger.covers(x, y);
-  return firstRingNode(end.hx, end.hy, SCOUT_LEG_SNAP_NODES, open) ?? goal;
-}
-
-function moveTo(scout: Entity, node: HalfCellNode): PlayerCommand {
-  return { kind: 'moveUnit', entity: scout, x: node.hx, y: node.hy };
+  if (late !== null) return [{ kind: 'moveUnit', entity: scout, x: late.hx, y: late.hy }];
+  return at !== null && home !== null && !nearHome(at, home) ? [walkHome(scout, home)] : [];
 }
 
 /** Where the scout falls back to: the base door, else the base anchor; null with no base. */
@@ -205,26 +171,16 @@ function nearHome(at: HalfCellNode, home: HalfCellNode): boolean {
   return hexDistanceBetween(at.hx, at.hy, home.hx, home.hy) <= SCOUT_HOME_RADIUS_NODES;
 }
 
-/** How far (Manhattan half-cell nodes) a walk's goal may stray off the straight way from the scout to his
- *  home and still count as a leg of the walk home (authored): both ends of a leg snap up to
- *  {@link SCOUT_LEG_SNAP_NODES} off the line. */
-const SCOUT_HOMEWARD_SLACK_NODES = 2 * SCOUT_LEG_SNAP_NODES;
-
-/** Whether a walk from `at` to `goal` leads home: the goal lies on the way from the scout to `home`. */
-function onWayHome(at: HalfCellNode, goal: HalfCellNode, home: HalfCellNode): boolean {
-  return (
-    nodeManhattan(at, goal) + nodeManhattan(goal, home) <=
-    nodeManhattan(at, home) + SCOUT_HOMEWARD_SLACK_NODES
-  );
+function walkHome(scout: Entity, home: HalfCellNode): PlayerCommand {
+  return { kind: 'moveUnit', entity: scout, x: home.hx, y: home.hy };
 }
 
 /**
  * The walk home for a scout on a move whose goal lies in the {@link scoutDanger} reach, who stands in
  * it, or who sees an enemy fighter near him (owner ruling: a scout looks from nearby and turns back, he
- * does not die): a tower first seen on the way, or an army, ends the trip, and the zone of the walk's
- * goal, a leg's end on a long trip, is recorded so the next look goes elsewhere ({@link
- * nextStaleZoneTarget}). A walk that already leads home records nothing and keeps going in legs, with a
- * fresh leg when danger covers its goal.
+ * does not die): a tower first seen on the way, or an army, ends the trip, and the goal's zone is
+ * recorded so the next look goes elsewhere ({@link nextStaleZoneTarget}). None while he already walks
+ * home.
  */
 function retreat(
   world: World,
@@ -241,8 +197,6 @@ function retreat(
   const goal = { hx: coords.x, hy: coords.y };
   if (nearHome(goal, home)) return [];
   const danger = scoutDanger(world, ctx, player);
-  if (onWayHome(at, goal, home))
-    return danger.covers(goal.hx, goal.hy) ? [moveTo(scout, legToward(ctx, at, home, danger))] : [];
   const threatened =
     danger.covers(goal.hx, goal.hy) ||
     danger.covers(at.hx, at.hy) ||
@@ -250,7 +204,7 @@ function retreat(
   if (!threatened) return [];
   const brief = mapBriefOf(world);
   if (brief !== null) recordScoutTurnBack(world, player, zoneOfNode(brief, goal.hx, goal.hy), ctx.tick);
-  return [moveTo(scout, home)];
+  return [walkHome(scout, home)];
 }
 
 /**

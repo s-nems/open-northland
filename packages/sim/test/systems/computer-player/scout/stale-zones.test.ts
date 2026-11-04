@@ -15,14 +15,12 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../../src/index.js';
-import { type HalfCellNode, nodeManhattan, nodeOfPosition } from '../../../../src/nav/halfcell.js';
+import type { HalfCellNode } from '../../../../src/nav/halfcell.js';
 import { ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
 import {
   DEFAULT_BUILD_ORDER,
   nextSignpostTarget,
   nextStaleZoneTarget,
-  SCOUT_LEG_NODES,
-  SCOUT_LEG_SNAP_NODES,
   SCOUT_LOSS_MEMORY_TICKS,
   SCOUT_REVISIT_TICKS,
   SCOUT_STALENESS_CAP_TICKS,
@@ -228,35 +226,6 @@ describe('scout staleness scouting', () => {
     );
   });
 
-  it('keeps walking home in legs past a tower, recording no turn-back', () => {
-    const sim = staleSim([DEPOSIT], true);
-    const fog = fogOfWar(sim);
-    const { world } = sim;
-    const scout = ownedSettlers(world, SEAT).find((e) => world.get(e, Settler).jobType === SCOUT);
-    const terrain = sim.terrain;
-    const carrier = aiControlEntity(world, SEAT);
-    if (scout === undefined || terrain === undefined || carrier === null) throw new Error('setup: a scout');
-    // Far out beside a manned tower, one leg of the walk home ahead of him.
-    const far = { hx: OTHER_START.x + 20, hy: HOME.y };
-    const legEnd = { hx: far.hx - SCOUT_LEG_NODES, hy: HOME.y };
-    world.mut(scout, Position).x = positionOfNode(far.hx, far.hy).x;
-    world.mut(scout, Position).y = positionOfNode(far.hx, far.hy).y;
-    world.add(scout, PlayerOrder, {});
-    world.add(scout, MoveGoal, { cell: terrain.nodeAt(legEnd.hx, legEnd.hy) });
-    world.remove(scout, CurrentAtomic);
-    world.mut(carrier, ComputerIntel).buildings.push({
-      entity: TOWER_POST,
-      owner: OTHER,
-      buildingType: HQ_TYPE,
-      ...far,
-      seenAt: NOW,
-      posted: 1,
-      postedPoints: 1,
-    });
-    expect(scoutModule(DEFAULT_BUILD_ORDER).run(world, ctxAt(sim, NOW, fog), SEAT)).toEqual([]);
-    expect(world.get(carrier, ComputerIntel).scoutTurnedBackAt).not.toContain(NOW);
-  });
-
   it('erects no signpost in a zone that took a scout', () => {
     const sim = staleSim();
     const ctx = ctxAt(sim, NOW);
@@ -316,20 +285,10 @@ describe('scout staleness scouting', () => {
     expect(guide.run(sim.world, ctxAt(sim, early, fog), SEAT)[0]).toMatchObject({ kind: 'placeSignpost' });
     const zone = nextStaleZoneTarget(sim.world, ctxAt(sim, open, fog), SEAT, DEFAULT_BUILD_ORDER);
     if (zone === null) throw new Error('setup: a zone is stale');
-    const walk = guide.run(sim.world, ctxAt(sim, open, fog), SEAT)[0];
-    if (walk?.kind !== 'moveUnit') throw new Error('expected a walk');
-    // The zone lies past one leg: the walk goes a leg's length along the way to it.
-    const at = scoutNode(sim);
-    const leg = { hx: walk.x, hy: walk.y };
-    expect(nodeManhattan(at, zone)).toBeGreaterThan(SCOUT_LEG_NODES);
-    expect(nodeManhattan(at, leg)).toBeLessThanOrEqual(SCOUT_LEG_NODES + SCOUT_LEG_SNAP_NODES);
-    expect(nodeManhattan(leg, zone)).toBeLessThan(nodeManhattan(at, zone) - SCOUT_LEG_NODES / 2);
+    expect(guide.run(sim.world, ctxAt(sim, open, fog), SEAT)[0]).toMatchObject({
+      kind: 'moveUnit',
+      x: zone.hx,
+      y: zone.hy,
+    });
   });
 });
-
-function scoutNode(sim: Simulation): HalfCellNode {
-  const scout = ownedSettlers(sim.world, SEAT).find((e) => sim.world.get(e, Settler).jobType === SCOUT);
-  if (scout === undefined) throw new Error('setup: a scout');
-  const p = sim.world.get(scout, Position);
-  return nodeOfPosition(p.x, p.y);
-}
