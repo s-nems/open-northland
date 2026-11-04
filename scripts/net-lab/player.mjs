@@ -2,8 +2,8 @@
 // windows and its recovery after a chaos event. Every page call carries a hard timeout, since a page
 // under load can stall `page.evaluate` for good.
 import { resolve } from 'node:path';
+import { seedHarnessSettings } from '../browser/harness-settings.mjs';
 import { boxAround, drag, worldArea } from '../browser/input.mjs';
-import { skipOriginalGameGate } from '../browser/original-game-gate.mjs';
 import { repoRoot } from '../content/dir.mjs';
 import { createRecoveryTrack, percentile } from './plan.mjs';
 
@@ -67,7 +67,7 @@ export async function openPlayer(browser, { nick, profile, log }) {
   const context = await browser.newContext({ viewport: VIEWPORT, locale: 'en-US' });
   let page;
   try {
-    await skipOriginalGameGate(context);
+    await seedHarnessSettings(context);
     page = await context.newPage();
   } catch (error) {
     await context.close().catch(() => undefined);

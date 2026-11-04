@@ -359,7 +359,7 @@ advances the network and relay by the real time each turn took.
 check: a fresh profile sees the gate, an unrecognized folder shows the failure line, a synthetic
 install opens the menu, an unverified `?map=` link lands on the gate, and a seeded flag skips it. It
 needs no content, only `npx playwright install chromium`. Every browser harness that opens the menu or
-a map seeds the flag through `scripts/browser/original-game-gate.mjs` or its own one helper.
+a map seeds the flag through `scripts/browser/harness-settings.mjs` or its own one helper.
 
 ## Desktop boot and persistence
 

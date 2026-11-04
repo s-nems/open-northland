@@ -69,7 +69,7 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   the check is owed; `launch.ts` sends an owed `?map=` or `?relay=` visit to the menu. A
   browser-served production page owes it until `originalGameVerified` is set in the menu settings
   store; a dev server checks only when the URL carries `originalGameCheck`, and browser harnesses
-  seed the flag (`scripts/browser/original-game-gate.mjs`). Under the desktop shell,
+  seed the flag (`scripts/browser/harness-settings.mjs`). Under the desktop shell,
   `window.desktop.originalGame` decides instead: `status()` owes the check when it is required and
   unverified, and the pick button calls `pickFolder()`, whose native dialog checks the folder in
   the shell. Browser folder access goes through the `@open-northland/ownership` rule and reads only

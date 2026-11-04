@@ -92,7 +92,7 @@ export async function openEngine(engine: EngineId, url: string): Promise<EngineS
   });
   const page = await browser.newPage({ viewport: VIEWPORT });
   const errors = watchErrors(page);
-  await skipOriginalGameGate(page);
+  await seedHarnessSettings(page);
   await page.goto(muted.href, { waitUntil: 'load' });
   return { page, errors, close: () => browser.close() };
 }
@@ -126,7 +126,7 @@ async function openElectron(url: string): Promise<EngineSession> {
   try {
     const page = await app.firstWindow();
     const errors = watchErrors(page);
-    await skipOriginalGameGate(page);
+    await seedHarnessSettings(page);
     await page.goto(url, { waitUntil: 'load' });
     return { page, errors, close };
   } catch (err) {
@@ -135,13 +135,18 @@ async function openElectron(url: string): Promise<EngineSession> {
   }
 }
 
-/** Marks the original-game check passed before the app reads its settings, so `?map=` boots. */
-async function skipOriginalGameGate(page: Page): Promise<void> {
+/** The settings `scripts/browser/harness-settings.mjs` seeds for the other harnesses, seeded before the
+ *  app reads them: the original-game check passed, so `?map=` boots, and no automatic error report to
+ *  the live server. */
+async function seedHarnessSettings(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const key = 'open-northland.settings';
     const stored: unknown = JSON.parse(window.localStorage.getItem(key) ?? '{}');
     const settings = typeof stored === 'object' && stored !== null ? stored : {};
-    window.localStorage.setItem(key, JSON.stringify({ ...settings, originalGameVerified: true }));
+    window.localStorage.setItem(
+      key,
+      JSON.stringify({ ...settings, originalGameVerified: true, autoErrorReports: false }),
+    );
   });
 }
 

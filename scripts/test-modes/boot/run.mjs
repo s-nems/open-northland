@@ -3,7 +3,7 @@
 // and `boot.finish()` then removes the `.boot-card` loading overlay; a `.boot-notice` on the same
 // backdrop is a boot the app gave up on.
 
-import { skipOriginalGameGate } from '../../browser/original-game-gate.mjs';
+import { seedHarnessSettings } from '../../browser/harness-settings.mjs';
 import { readProgramLinks, watchProgramLinks } from './program-links.mjs';
 
 const VIEWPORT = { width: 1280, height: 720 };
@@ -188,7 +188,7 @@ export async function bootMap({
       }
       page = await withTimeout(
         browser.newContext({ viewport: VIEWPORT }).then(async (context) => {
-          await skipOriginalGameGate(context);
+          await seedHarnessSettings(context);
           await watchProgramLinks(context);
           return context.newPage();
         }),

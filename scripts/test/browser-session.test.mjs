@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { seedHarnessSettings } from '../browser/harness-settings.mjs';
 import {
   cameraAt,
   checkpointSession,
@@ -74,4 +75,46 @@ test('a bench device scale is a positive ratio, 1 when unset', () => {
   assert.equal(parseDeviceScale('2'), 2);
   for (const text of ['0', '-1', 'retina'])
     assert.throws(() => parseDeviceScale(text), /ON_BENCH_DEVICE_SCALE must be a positive number/);
+});
+
+/** Runs the init script a harness registers against a stand-in `window`, as the page would. */
+async function seededSettings(windowStub) {
+  let script;
+  let arg;
+  await seedHarnessSettings({
+    addInitScript: async (fn, value) => {
+      script = fn;
+      arg = value;
+    },
+  });
+  const previous = globalThis.window;
+  globalThis.window = windowStub;
+  try {
+    script(arg);
+  } finally {
+    globalThis.window = previous;
+  }
+}
+
+test('a harness page passes the original-game gate and sends no error report by itself', async () => {
+  const items = new Map([
+    ['open-northland.settings', JSON.stringify({ language: 'pol', autoErrorReports: true })],
+  ]);
+  const localStorage = {
+    getItem: (key) => items.get(key) ?? null,
+    setItem: (key, value) => items.set(key, value),
+  };
+  await seededSettings({ localStorage });
+  assert.deepEqual(JSON.parse(items.get('open-northland.settings')), {
+    language: 'pol',
+    autoErrorReports: false,
+    originalGameVerified: true,
+  });
+  // about:blank refuses storage; the seed leaves it alone instead of throwing in the page.
+  const blank = Object.defineProperty({}, 'localStorage', {
+    get() {
+      throw new Error('SecurityError');
+    },
+  });
+  await seededSettings(blank);
 });

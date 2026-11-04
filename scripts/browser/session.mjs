@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import { loadConfigFromFile } from 'vite';
 import { verifyPreview } from '../../packages/app/scripts/dev-verify.mjs';
 import { repoRoot } from '../content/dir.mjs';
-import { skipOriginalGameGate } from './original-game-gate.mjs';
+import { seedHarnessSettings } from './harness-settings.mjs';
 
 /** The window unless `ON_BENCH_VIEWPORT` names another; numbers compare only at one window size. */
 const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
@@ -85,11 +85,11 @@ export function benchBrowserInfo(browser) {
   return { version: browser.version(), cdp: process.env.ON_BENCH_CDP || null };
 }
 
-/** A bench page at the bench window and device scale that skips the original-game gate, which would
- *  otherwise hold `?map=`. */
+/** A bench page at the bench window and device scale, seeded with the harness settings: past the
+ *  original-game gate, which would otherwise hold `?map=`, and without automatic error reports. */
 export async function openBenchPage(browser) {
   const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE });
-  await skipOriginalGameGate(page);
+  await seedHarnessSettings(page);
   return page;
 }
 /** A window whose one-minute load per CPU exceeds this at either boundary is void. */
