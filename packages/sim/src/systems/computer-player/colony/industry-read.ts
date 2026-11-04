@@ -15,7 +15,7 @@ import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import { buildingEnabled, jobEnabled, needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { technologyTable } from '../technology/requirements.js';
-import { topEnabledTier } from '../top-tier.js';
+import { enabledTiersAbove, topEnabledTier } from '../top-tier.js';
 import { colonists, colonyOrigin } from './founding.js';
 import {
   ALL_STEPS,
@@ -88,16 +88,22 @@ function unlocked(env: ColonyEnv, type: BuildingType): boolean {
   return tribe !== undefined && buildingEnabled(env.world, env.ctx, env.seat, tribe, type.typeId);
 }
 
-/** The building `step` is raised as: its base, or the top tier the tribe has enabled, which must be the
- *  step's own tier. Undefined while the content or the tribe lacks it. */
+/** The building `step` is raised as: the top tier the tribe has enabled, which must be the step's own
+ *  tier when it names one; the highest enabled up to its top; else its base. Undefined while the content or
+ *  the tribe lacks it. */
 export function stepType(env: ColonyEnv, step: ChainStep): BuildingType | undefined {
   const { world, ctx, seat } = env;
   const base = buildingTypeByContentId(ctx.content, step.building);
   const tribe = playerPlacementTribes(world, seat)?.[0];
-  if (base === undefined || step.tier === undefined) return base;
+  if (base === undefined || (step.tier === undefined && step.top === undefined)) return base;
   if (tribe === undefined) return undefined;
-  const top = topEnabledTier(world, ctx, seat, tribe, base);
-  return top.id === step.tier ? top : undefined;
+  const tiers = enabledTiersAbove(world, ctx, seat, tribe, base);
+  if (step.tier !== undefined) {
+    const top = tiers.at(-1) ?? base;
+    return top.id === step.tier ? top : undefined;
+  }
+  const upTo = tiers.findIndex((tier) => tier.id === step.top);
+  return (upTo < 0 ? tiers.at(-1) : tiers[upTo]) ?? base;
 }
 
 /** The nodes of the colony's block `type` takes ({@link ROOM_PER_FOOTPRINT_NODE}). */

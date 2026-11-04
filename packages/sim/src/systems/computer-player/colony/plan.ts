@@ -1,5 +1,12 @@
 import { BUILDING_KIND } from '@open-northland/data';
-import { Building, Female, Marriage, playerPlacementTribes, Residence } from '../../../components/index.js';
+import {
+  Building,
+  Female,
+  Marriage,
+  playerPlacementTribes,
+  Residence,
+  UnderConstruction,
+} from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
@@ -9,7 +16,7 @@ import { familiesOf } from '../../family/households.js';
 import { topEnabledTier } from '../top-tier.js';
 import { colonists } from './founding.js';
 import { type ChainStep, chainStepOf, nextIndustrySteps, type StepGround, stepsAhead } from './industry.js';
-import { colonyIndustries, roomFor } from './industry-read.js';
+import { colonyIndustries, roomFor, stepType } from './industry-read.js';
 import { colonyFed } from './provision.js';
 import { towersLacking } from './towers.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
@@ -25,6 +32,20 @@ const COLONY_INDUSTRY_SITES = 2;
 export interface OpenSites {
   readonly industry: number;
   readonly other: number;
+}
+
+/** The colony's open sites, its industries' apart: an upgrading building is a site of its kind. */
+export function openSites(env: ColonyEnv, buildings: readonly Entity[]): OpenSites {
+  const { world, ctx } = env;
+  const index = contentIndex(ctx.content);
+  const open = { industry: 0, other: 0 };
+  for (const e of buildings) {
+    if (!world.has(e, UnderConstruction)) continue;
+    const id = index.buildings.get(world.get(e, Building).buildingType)?.id;
+    if (id !== undefined && chainStepOf(id) !== undefined) open.industry++;
+    else open.other++;
+  }
+  return open;
 }
 
 /** Whether `building` may go up beside the colony's `open` sites: within its kind's budget, so a home
@@ -69,9 +90,9 @@ export function farStep(building: string): boolean {
   return chainStepOf(building)?.far === true;
 }
 
-/** The building `step` is raised as: its tier, or its base. */
-function placedId(step: ChainStep): string {
-  return step.tier ?? step.building;
+/** The building `step` is raised as now ({@link stepType}), or its base. */
+function placedId(env: ColonyEnv, step: ChainStep): string {
+  return stepType(env, step)?.id ?? step.building;
 }
 
 /** The units of each good `plan`'s bills take. */
@@ -135,7 +156,9 @@ export function ladderAhead(
   buildings: readonly Entity[],
 ): readonly string[] {
   const industries = colonyIndustries(env, colony, buildings);
-  return industries === null ? [] : stepsAhead(industries.choices, industries.read.raised).map(placedId);
+  return industries === null
+    ? []
+    : stepsAhead(industries.choices, industries.read.raised).map((step) => placedId(env, step));
 }
 
 /** What the colony means to raise, in order: its unplaced rows; then the next step of its industries
@@ -151,5 +174,5 @@ export function colonyPlan(
   const industries = colonyIndustries(env, colony, buildings);
   const steps = industries === null ? [] : nextIndustrySteps(industries.choices, industries.read);
   const towers = towersLacking(env, colony, buildings);
-  return [...steps.map(placedId), ...towers, ...homeStep(env, colony, buildings)];
+  return [...steps.map((step) => placedId(env, step)), ...towers, ...homeStep(env, colony, buildings)];
 }

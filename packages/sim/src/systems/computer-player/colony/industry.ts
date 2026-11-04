@@ -26,6 +26,10 @@ export interface ChainStep {
   readonly after: readonly string[];
   /** The tier it is raised at: the top tier the tribe has enabled, which must be this one. */
   readonly tier?: string;
+  /** The highest tier it goes up to, the level home's build plan lifts it to (owner ruling: colony lines
+   *  match home's, levels included): placed at the highest tier enabled up to it, and lifted there later
+   *  when it was placed lower. */
+  readonly top?: string;
   /** A workshop with a large footprint, whose spot may lie past the store's walk range. */
   readonly far?: true;
 }
@@ -49,6 +53,11 @@ const JOINERY = 'work_joinery_00';
  *  level-4 joinery, which builds carts. */
 const DRUID_TOP = 'work_druid_01';
 const JOINERY_TOP = 'work_joinery_03';
+/** The levels home's build plan lifts these workshops to (`../build-order/entries.ts`). */
+const BAKERY_TOP = 'work_bakery_01';
+const SEWERY_TOP = 'work_sewery_01';
+const ARMORY_TOP = 'work_armory_01';
+const SMITHY_TOP = 'work_smithy_01';
 
 /** Owner ruling: the farm, mill, well and bakery on grass, the farm's fields first; and so on per industry.
  *  The well comes once the mill stands, as only the bakery drinks of it. */
@@ -57,7 +66,7 @@ const CHAINS: Readonly<Record<Exclude<Industry, 'temple'>, readonly ChainStep[]>
     { building: FARM, ground: 'field', after: [] },
     { building: MILL, ground: 'any', after: [FARM] },
     { building: WELL, ground: 'grass', after: [MILL] },
-    { building: BAKERY, ground: 'any', after: [MILL, WELL] },
+    { building: BAKERY, ground: 'any', after: [MILL, WELL], top: BAKERY_TOP },
   ],
   brewing: [
     { building: WELL, ground: 'grass', after: [] },
@@ -67,10 +76,10 @@ const CHAINS: Readonly<Record<Exclude<Industry, 'temple'>, readonly ChainStep[]>
   husbandry: [
     { building: WELL, ground: 'grass', after: [] },
     { building: ANIMAL_FARM, ground: 'any', after: [WELL], far: true },
-    { building: SEWERY, ground: 'any', after: [ANIMAL_FARM], far: true },
+    { building: SEWERY, ground: 'any', after: [ANIMAL_FARM], top: SEWERY_TOP, far: true },
   ],
-  armoury: [{ building: ARMORY, ground: 'any', after: [], far: true }],
-  smithy: [{ building: SMITHY, ground: 'any', after: [], far: true }],
+  armoury: [{ building: ARMORY, ground: 'any', after: [], top: ARMORY_TOP, far: true }],
+  smithy: [{ building: SMITHY, ground: 'any', after: [], top: SMITHY_TOP, far: true }],
   druid: [
     { building: WELL, ground: 'grass', after: [] },
     { building: HERB_HUT, ground: 'grass', after: [WELL] },
@@ -322,9 +331,11 @@ export const ALL_STEPS: readonly ChainStep[] = [...Object.values(CHAINS).flat(),
   (step, i, all) => all.findIndex((s) => s.building === step.building) === i,
 );
 
-/** The step of any chain raised as `building`, at its base or its tier. */
+/** The step of any chain raised as `building`, at its base, its tier or its top. */
 export function chainStepOf(building: string): ChainStep | undefined {
-  return ALL_STEPS.find((step) => step.building === building || step.tier === building);
+  return ALL_STEPS.find(
+    (step) => step.building === building || step.tier === building || step.top === building,
+  );
 }
 
 /** A good the colony wants delivered up to `upTo` units, by stable content id. */

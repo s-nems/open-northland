@@ -1,14 +1,11 @@
-import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
-  Female,
   Livestock,
   ownerOf,
   Position,
   playerPlacementTribes,
   Rider,
   Settler,
-  UnderConstruction,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
@@ -32,15 +29,15 @@ import { HERD_PAIR } from '../herd.js';
 import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { SCOUT_CATCH_RADIUS_NODES, type ScoutDanger, scoutBusy, scoutDanger } from '../scout/index.js';
 import { corridorSamples, signpostTargetAround } from '../scout/signpost-coverage.js';
-import { enabledTiersAbove, liftCommand, liftTarget } from '../top-tier.js';
 import { porterFlagOrders } from './haulers.js';
 import { chainStepOf } from './industry.js';
 import { COLONY_SPOT_NODES } from './industry-read.js';
+import { liftColony } from './lifts.js';
 import { isOverflowBuilding } from './overflow.js';
 import { colonyFamilies, standsOn } from './people.js';
-import { COLONY_OPEN_SITES, colonyPlan, farStep, type OpenSites, siteFree, stepGround } from './plan.js';
+import { COLONY_OPEN_SITES, colonyPlan, farStep, openSites, siteFree, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
-import { colonyFoodHeld, LAND_GOOD_IDS, storesHeld } from './provision.js';
+import { LAND_GOOD_IDS, storesHeld } from './provision.js';
 import { colonyBuildings, colonySpot, storeSupply, workshopSpot } from './spot.js';
 import { colonyStoreType, liftStore } from './store-tier.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
@@ -98,20 +95,6 @@ function placementOf(type: number, spot: HalfCellNode, tribe: number, seat: numb
   };
 }
 
-/** The colony's open sites, its industries' apart. */
-function openSites(env: ColonyEnv, buildings: readonly Entity[]): OpenSites {
-  const { world, ctx } = env;
-  const index = contentIndex(ctx.content);
-  const open = { industry: 0, other: 0 };
-  for (const e of buildings) {
-    if (!world.has(e, UnderConstruction)) continue;
-    const id = index.buildings.get(world.get(e, Building).buildingType)?.id;
-    if (id !== undefined && chainStepOf(id) !== undefined) open.industry++;
-    else open.other++;
-  }
-  return open;
-}
-
 /** The next build the colony lacks, placed while its kind has a site free ({@link siteFree}). The anchor is
  *  a real node on the land, the shore while no store stands, then the store, and a tower's own
  *  ({@link towerAnchor}). */
@@ -157,6 +140,12 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
   return plan.length === 0 && open.other < COLONY_OPEN_SITES ? secondStore(env, colony, read, tribe) : [];
 }
 
+/** The next build, or with none to place this decision the next lift (`./lifts.ts`). */
+function buildOrLift(env: ColonyEnv, colony: ColonyView, read: FoundingRead): PlayerCommand[] {
+  const build = nextBuild(env, colony, read);
+  return build.length > 0 ? build : liftColony(env, colony, read);
+}
+
 /** A second store by the wood when the nearest stands past {@link SECOND_STORE_NODES} of the first. */
 function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tribe: number): PlayerCommand[] {
   const { world, ctx, terrain, seat } = env;
@@ -185,31 +174,6 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
   if (spot === null) return [];
   env.edit().builds.push({ building: type.id, placed: true });
   return [placementOf(type.typeId, spot, tribe, seat)];
-}
-
-/** With no home, tower or store to raise or open, a fed colony of women lifts one building, its homes first:
- *  a home straight to the top tier enabled (owner ruling: the line supplies its materials), any other a tier.
- *  What the bill takes past its land and workshops sails from home. A store goes up by `./store-tier.ts` instead. */
-function nextUpgrade(env: ColonyEnv, read: FoundingRead, people: readonly Entity[]): PlayerCommand[] {
-  const { world, ctx, seat } = env;
-  // Its industries go their own pace: their sites and steps hold back no lift.
-  const busy = read.plan.some((building) => chainStepOf(building) === undefined);
-  if (openSites(env, read.buildings).other > 0 || busy) return [];
-  if (!people.some((e) => world.has(e, Female))) return [];
-  if (colonyFoodHeld(env, read.buildings) < people.length) return [];
-  const index = contentIndex(ctx.content);
-  const liftable = read.buildings.flatMap((building) => {
-    const house = world.get(building, Building);
-    const type = index.buildings.get(house.buildingType);
-    if (type === undefined || type.kind === BUILDING_KIND.storage || !isBuilt(world, building)) return [];
-    const home = type.kind === BUILDING_KIND.home;
-    const target = home
-      ? liftTarget(world, ctx, seat, building)
-      : enabledTiersAbove(world, ctx, seat, house.tribe, type)[0];
-    return target === undefined ? [] : [{ building, target, home }];
-  });
-  const lift = liftable.find((b) => b.home) ?? liftable[0];
-  return lift === undefined ? [] : [liftCommand(lift.building, lift.target)];
 }
 
 /** The nearest deposit of each good the land holds: a flag stands only inside the signposts, so a deposit
@@ -300,7 +264,7 @@ export function foundColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[]
   }
   const lift = liftStore(env, colony, read);
   return [
-    ...(lift.length > 0 ? lift : [...nextBuild(env, colony, read), ...nextUpgrade(env, read, people)]),
+    ...(lift.length > 0 ? lift : buildOrLift(env, colony, read)),
     ...fillPosts(env, men, read),
     ...porterFlagOrders(env, store),
     ...raiseSignposts(env, men, read),

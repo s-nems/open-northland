@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type ChainStep,
+  chainStepOf,
   chooseIndustries,
   colonyIndustryWants,
   type Industry,
@@ -218,5 +219,12 @@ describe('a colony chain held up', () => {
     const site = { ...BARE, wood: true, grass: true, mushroom: true };
     const read = seatRead({ homeMakesHolyOil: false, raised: new Set(['work_druid_00']) });
     expect(industries(chooseIndustries(site, read))).not.toContain('druid');
+  });
+});
+
+describe('a colony workshop at home’s level', () => {
+  it('is the same chain step at its base and at the tier home lifts it to', () => {
+    expect(chainStepOf('work_smithy_01')).toBe(chainStepOf('work_smithy_00'));
+    expect(chainStepOf('work_bakery_01')?.top).toBe('work_bakery_01');
   });
 });
