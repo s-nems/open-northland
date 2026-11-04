@@ -16,6 +16,7 @@ import {
 } from './channels.js';
 import { crashPromptFor } from './crash-prompt.js';
 import { hungStack } from './hung-stack.js';
+import { machineFacts } from './machine-facts.js';
 import { createCrashReloadGuard } from './reload-guard.js';
 import type { ShellRun } from './shell-run.js';
 import type { FaultStore, FaultUpdate, NewFault, ShellFault } from './store.js';
@@ -87,7 +88,10 @@ export function recordProcessFaults(store: FaultStore, run: ShellRun): void {
   });
 }
 
-/** Build facts for a report; `osRelease` is the kernel's, `osVersion` the system's own number. */
+/**
+ * Build and machine facts for a report; `osRelease` is the kernel's, `osVersion` the system's own
+ * number. Free memory is read when the page builds the report, the moment the player saw the problem.
+ */
 function shellVersions(): Readonly<Record<string, string>> {
   return {
     app: app.getVersion(),
@@ -98,6 +102,10 @@ function shellVersions(): Readonly<Record<string, string>> {
     arch: process.arch,
     osRelease: release(),
     osVersion: process.getSystemVersion(),
+    ...machineFacts({
+      arm64Translation: app.runningUnderARM64Translation,
+      memoryKib: process.getSystemMemoryInfo(),
+    }),
   };
 }
 

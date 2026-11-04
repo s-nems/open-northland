@@ -13,7 +13,7 @@ converted content over the `app://` protocol. The root [`AGENTS.md`](../../AGENT
   subscribe), `window.desktop.originalGame` (status, pick a folder), `window.desktop.maps`
   (pick/drop/cancel a local file or folder, list records, read a map snapshot, file or retained source,
   commit maps and source together) and `window.desktop.faults` (pending faults, clear by id, build
-  versions, how the previous run ended), which the app feature-detects. Keep that bridge narrow,
+  versions and machine facts, how the previous run ended), which the app feature-detects. Keep that bridge narrow,
   validate every IPC argument and sender, and keep sandbox and context isolation on.
   Saves live in the page's IndexedDB like in a browser. A page or mail link the game opens goes to
   the system browser or mail client, never a second window.
@@ -51,7 +51,7 @@ converted content over the `app://` protocol. The root [`AGENTS.md`](../../AGENT
 - Keep `main.ts` and `window/create.ts` free of logic worth a unit test; routing, containment and
   path rules live in `protocol/routing.ts`, `protocol/static-files.ts`, `protocol/file-response.ts`,
   `maps/installed.ts`, `maps/store.ts`, `faults/store.ts`, `faults/redact.ts`, `faults/hung-stack.ts`,
-  `faults/reload-guard.ts`, `faults/shell-run.ts`, `paths.ts`, `window/state.ts` and
+  `faults/reload-guard.ts`, `faults/shell-run.ts`, `faults/machine-facts.ts`, `paths.ts`, `window/state.ts` and
   `window/control.ts`, which import nothing from `electron`.
 
 ## Layout

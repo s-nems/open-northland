@@ -35,7 +35,7 @@ export interface DesktopFaults {
   /** Faults recorded and not yet cleared, oldest first. */
   pending(): Promise<readonly DesktopFault[]>;
   clear(ids: readonly string[]): Promise<void>;
-  /** App, Electron, Chrome and OS versions, for a report's build facts. */
+  /** App, Electron, Chrome and OS versions, x64 translation and system memory, for a report. */
   versions(): Promise<Readonly<Record<string, string>>>;
   /** The previous run; null on a first start or when the shell could not read its record. */
   previousRun(): Promise<PreviousShellRun | null>;
