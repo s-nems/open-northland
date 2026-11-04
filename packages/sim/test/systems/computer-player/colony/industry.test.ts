@@ -4,6 +4,7 @@ import {
   chainStepOf,
   chooseIndustries,
   colonyIndustryWants,
+  earningDeposits,
   type Industry,
   type IndustryChoice,
   nextIndustrySteps,
@@ -129,10 +130,21 @@ describe('a colony industry', () => {
     expect(industries(chooseIndustries(site, seatRead({ open: noSmithy })))).not.toContain('smithy');
   });
 
-  it('raises the joinery and the druid hut at the tier the ruling names', () => {
+  it('raises the joinery at the tier the ruling names and takes the druid hut up to its top', () => {
     const choices = chooseIndustries(RICH, seatRead());
-    const tiers = choices.flatMap((c) => c.steps.flatMap((s) => (s.tier === undefined ? [] : [s.tier])));
-    expect(tiers).toEqual(expect.arrayContaining(['work_joinery_03', 'work_druid_01']));
+    const steps = choices.flatMap((c) => c.steps);
+    expect(steps.flatMap((s) => (s.tier === undefined ? [] : [s.tier]))).toContain('work_joinery_03');
+    expect(steps.flatMap((s) => (s.top === undefined ? [] : [s.top]))).toContain('work_druid_01');
+  });
+
+  it('chooses the druids before home has their trades, gathering the mushrooms that earn the first', () => {
+    const unearned = new Set(['work_herb_hut', 'work_druid_00']);
+    const open = (step: ChainStep) => !unearned.has(step.building);
+    const site = { ...BARE, grass: true, mushroom: true, gold: true };
+    const choices = chooseIndustries(site, seatRead({ open }));
+    expect(industries(choices)).toContain('druid');
+    expect(earningDeposits(choices, open)).toEqual(['mushroom']);
+    expect(earningDeposits(choices, () => true)).toEqual([]);
   });
 });
 

@@ -18,6 +18,13 @@ export type Industry =
   | 'carpentry'
   | 'temple';
 
+/** A deposit a colony's land may hold, as {@link SiteFacts} reads it. */
+export type DepositFact = 'wood' | 'iron' | 'gold' | 'mushroom';
+
+/** How the colony earns the trade of a step its seat has not discovered: its men gathering a deposit of its
+ *  land, or the crew of the chain's step before it at work. */
+export type EarnedBy = { readonly gathering: DepositFact } | { readonly workAt: string };
+
 export interface ChainStep {
   /** The base tier's stable content id: a building at any tier of its chain counts as this step. */
   readonly building: string;
@@ -32,6 +39,9 @@ export interface ChainStep {
   readonly top?: string;
   /** A workshop with a large footprint, whose spot may lie past the store's walk range. */
   readonly far?: true;
+  /** How the colony earns its trade while the seat has not, so the chain is chosen before the step opens
+   *  and waits at it until then. */
+  readonly earnedBy?: EarnedBy;
 }
 
 const FARM = 'work_farm_00';
@@ -49,8 +59,8 @@ const MINT = 'work_coin_mint';
 const DRUID_HUT = 'work_druid_00';
 const TEMPLE = 'work_temple';
 const JOINERY = 'work_joinery_00';
-/** Owner ruling: the druid hut at its top tier brews the big healing potion, and the carpenter's is the
- *  level-4 joinery, which builds carts. */
+/** Owner ruling: the druid hut goes up to its top tier, which brews the big healing potion, and the
+ *  carpenter's is the level-4 joinery, which builds carts. */
 const DRUID_TOP = 'work_druid_01';
 const JOINERY_TOP = 'work_joinery_03';
 /** The levels home's build plan lifts these workshops to (`../build-order/entries.ts`). */
@@ -80,11 +90,20 @@ const CHAINS: Readonly<Record<Exclude<Industry, 'temple'>, readonly ChainStep[]>
   ],
   armoury: [{ building: ARMORY, ground: 'any', after: [], top: ARMORY_TOP, far: true }],
   smithy: [{ building: SMITHY, ground: 'any', after: [], top: SMITHY_TOP, far: true }],
+  // Its trades are earned on the colony when home has none: the mushroom gatherer earns the herb hut's, and
+  // the herb hut's crew the druid's, whose lower hut earns the upper one by its oil.
   druid: [
     { building: WELL, ground: 'grass', after: [] },
-    { building: HERB_HUT, ground: 'grass', after: [WELL] },
+    { building: HERB_HUT, ground: 'grass', after: [WELL], earnedBy: { gathering: 'mushroom' } },
     { building: MINT, ground: 'any', after: [HERB_HUT], far: true },
-    { building: DRUID_HUT, ground: 'any', after: [WELL, HERB_HUT, MINT], tier: DRUID_TOP, far: true },
+    {
+      building: DRUID_HUT,
+      ground: 'any',
+      after: [WELL, HERB_HUT, MINT],
+      top: DRUID_TOP,
+      far: true,
+      earnedBy: { workAt: HERB_HUT },
+    },
   ],
   amulets: [{ building: MINT, ground: 'any', after: [], far: true }],
   carpentry: [{ building: JOINERY, ground: 'any', after: [], tier: JOINERY_TOP, far: true }],
@@ -150,17 +169,18 @@ const HOME_GOODS: Readonly<Record<Exclude<Industry, 'temple'>, readonly string[]
 
 /** How much an industry's goods weigh against the others' (authored): the army's weapons first, the armoury
  *  ahead of the smithy as its wooden spears feed the smithy's iron ones and its bill is wood and home's
- *  materials alone, then what heals and strengthens the army, then the settlers' goods. Food for the colony's own people weighs most of all,
- *  as no other industry runs on hungry men. */
+ *  materials alone, then the settlers' goods. Food for the colony's own people weighs most of all, as no
+ *  other industry runs on hungry men. Owner ruling: the potions and amulets are a colony's last phases, so
+ *  they weigh least and come last on a tie. */
 const INDUSTRY_WEIGHT: Readonly<Record<Exclude<Industry, 'temple'>, number>> = {
   baking: 12,
   armoury: 6,
   smithy: 5,
-  druid: 3,
-  amulets: 2,
   husbandry: 2,
   carpentry: 2,
   brewing: 2,
+  druid: 1,
+  amulets: 1,
 };
 
 /** The industries in the order a tie between their scores keeps. */
@@ -168,11 +188,11 @@ const INDUSTRY_ORDER: readonly Exclude<Industry, 'temple'>[] = [
   'baking',
   'armoury',
   'smithy',
-  'druid',
-  'amulets',
   'husbandry',
   'carpentry',
   'brewing',
+  'druid',
+  'amulets',
 ];
 
 /** Owner ruling: the industries whose workers must pray, so a temple follows them: the smith, the armourer
@@ -222,6 +242,13 @@ function fed(industry: Exclude<Industry, 'temple'>, site: SiteFacts, seat: SeatR
   return SITE_FITS.smithy(site) || SITE_FITS.husbandry(site) || made('sword_shord') || made('armor_leather');
 }
 
+/** Whether the colony earns `step`'s trade itself ({@link EarnedBy}): its land holds the deposit, or the
+ *  chain's earlier step's crew works it. */
+function earnable(step: ChainStep, site: SiteFacts): boolean {
+  if (step.earnedBy === undefined) return false;
+  return 'gathering' in step.earnedBy ? site[step.earnedBy.gathering] : true;
+}
+
 /** Whether a building of `steps` of its own stands on the colony, or its site. */
 function started(steps: readonly ChainStep[], seat: SeatRead): boolean {
   return steps.some((step) => seat.raised.has(step.building) && !SHARED_STEPS.has(step.building));
@@ -259,7 +286,10 @@ export function chooseIndustries(site: SiteFacts, seat: SeatRead): IndustryChoic
     const score = scoreOf(industry, seat);
     const begun = started(steps, seat);
     const fits =
-      SITE_FITS[industry](site) && steps.every(seat.open) && score > 0 && fed(industry, site, seat);
+      SITE_FITS[industry](site) &&
+      steps.every((step) => seat.open(step) || earnable(step, site)) &&
+      score > 0 &&
+      fed(industry, site, seat);
     return begun || fits ? [{ industry, steps, score, begun }] : [];
   });
   candidates.sort((a, b) => Number(b.begun) - Number(a.begun) || b.score - a.score);
@@ -324,6 +354,20 @@ export function stepsAhead(chosen: readonly IndustryChoice[], raised: ReadonlySe
     for (const step of steps)
       if (!raised.has(step.building) && !ahead.some((s) => s.building === step.building)) ahead.push(step);
   return ahead;
+}
+
+/** The deposits `chosen` asks the colony's men to gather to earn a trade its steps wait on, by stable
+ *  content id: the steps not open yet whose trade is earned by gathering. */
+export function earningDeposits(
+  chosen: readonly IndustryChoice[],
+  open: (step: ChainStep) => boolean,
+): DepositFact[] {
+  const deposits: DepositFact[] = [];
+  for (const { steps } of chosen)
+    for (const step of steps)
+      if (step.earnedBy !== undefined && 'gathering' in step.earnedBy && !open(step))
+        deposits.push(step.earnedBy.gathering);
+  return deposits;
 }
 
 /** Every step of every chain, once each. */

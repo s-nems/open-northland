@@ -42,6 +42,8 @@ import { rowPlan } from '../workforce/staffing-rows.js';
 import { colonists, colonyOrigin, storeOf } from './founding.js';
 import { farDigPorters } from './haulers.js';
 import { homeSupply } from './home-supply.js';
+import { earningDeposits } from './industry.js';
+import { colonyIndustries } from './industry-read.js';
 import { MEN_PER_WOMAN } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan, homeSlots } from './plan.js';
 import {
@@ -62,10 +64,17 @@ import type { ColonyEnv, ColonyView } from './voyage.js';
  *  every other man digs, which is what the colony is for. */
 const BUILDERS_AT_REST = 2;
 /** The men on a good at most (authored): past these the colony's carriers cannot take in what they dig. */
-const DIGGERS_MOST: Readonly<Record<DugGood, number>> = { wood: 4, stone: 4, mud: 2, iron: 2, gold: 1 };
-/** What the colony's men dig: the land's goods, and gold, which a mint's bill takes before its own gatherer
- *  sits down. */
-const DUG_IDS = [...LAND_GOOD_IDS, 'gold'] as const;
+const DIGGERS_MOST: Readonly<Record<DugGood, number>> = {
+  wood: 4,
+  stone: 4,
+  mud: 2,
+  iron: 2,
+  gold: 1,
+  mushroom: 1,
+};
+/** What the colony's men dig: the land's goods; gold, which a mint's bill takes before its own gatherer
+ *  sits down; and mushrooms, whose gathering earns the herb hut's trade where home has not. */
+const DUG_IDS = [...LAND_GOOD_IDS, 'gold', 'mushroom'] as const;
 type DugGood = (typeof DUG_IDS)[number];
 /** The women a colony with a food hand gets before its food holds (authored): the couples its homes wait
  *  for, as a colony of men alone never grows whatever it eats. */
@@ -300,9 +309,12 @@ function digGoods(env: ColonyEnv, read: FoundingRead): Set<DugGood> {
     for (const line of index.constructionBillByBuilding.get(typeId) ?? [])
       called.set(line.goodType, line.amount);
   }
+  const industries = colonyIndustries(env, env.colony, read.buildings);
+  const earning: readonly string[] =
+    industries === null ? [] : earningDeposits(industries.choices, industries.read.open);
   let supply: ReturnType<typeof homeSupply> | null = null;
   const wanted = (id: DugGood, good: number): boolean => {
-    if (id === 'wood' || id === 'stone' || (called.get(good) ?? 0) > 0) return true;
+    if (id === 'wood' || id === 'stone' || (called.get(good) ?? 0) > 0 || earning.includes(id)) return true;
     supply ??= homeSupply(env);
     return supply.lackToComfort(good) > 0;
   };
