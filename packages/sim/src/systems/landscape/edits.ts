@@ -117,7 +117,7 @@ function removePlacements(
   const ids = new Set(matches.map((p) => p.id));
   const resources = landscapeResources(world);
   for (const placement of matches) {
-    for (const entity of resources.get(placement.id) ?? []) {
+    for (const entity of resources.entitiesOf(placement.id)) {
       if (world.has(entity, Palisade)) {
         palisadeBodyCells(world, entity, (hx, hy) => {
           if (terrain.inBounds(hx, hy)) freed.push(terrain.nodeAt(hx, hy));
