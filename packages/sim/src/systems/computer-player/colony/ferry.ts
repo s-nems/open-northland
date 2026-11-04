@@ -27,6 +27,7 @@ import { tradesmenFor } from './overflow.js';
 import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
 import { handsWanted, menPastWork } from './posts.js';
 import { clearWay, lineWayClear, withDanger, withoutLapsed } from './sea-danger.js';
+import { colonyBuildings } from './spot.js';
 import {
   type ColonyEnv,
   type ColonyView,
@@ -317,6 +318,8 @@ export function runFerry(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const at = arriving ? colony.shore : colony.berth;
   if (!lyingStill(world, ship) || at === null) return [];
   const next = otherShore(env, ship, at) ?? at;
-  env.edit()[arriving ? 'shore' : 'berth'] = { hx: next.hx, hy: next.hy };
+  // The colony's shore is where it founds until its store is placed: a refused dock does not move that.
+  if (!arriving || colonyBuildings(env).length > 0)
+    env.edit()[arriving ? 'shore' : 'berth'] = { hx: next.hx, hy: next.hy };
   return sailOrders(env, colony, ship, next);
 }
