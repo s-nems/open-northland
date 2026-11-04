@@ -1,6 +1,7 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { aiControlEntity, ComputerColony } from '../../../../src/components/index.js';
+import { aiControlEntity, Building, ComputerColony } from '../../../../src/components/index.js';
+import type { Entity } from '../../../../src/ecs/world.js';
 import { NO_COMPONENT } from '../../../../src/nav/terrain/index.js';
 import { everyBuildingOf } from '../../../../src/systems/ai-shared/home-roster.js';
 import { colonists } from '../../../../src/systems/computer-player/colony/founding.js';
@@ -12,6 +13,7 @@ import {
   type StockPolicyRead,
   WORKSHOP_INPUT_FLOOR,
 } from '../../../../src/systems/computer-player/colony/stock-policy.js';
+import { addStock } from '../../../../src/systems/missions/stock.js';
 import {
   blankColony,
   colonyContent,
@@ -21,7 +23,7 @@ import {
   looseColonyEnv,
   WHEAT,
 } from '../../../fixtures/colony-islands.js';
-import { CIVILIST, FARM_TYPE, MILL_TYPE, SEAT, VIKING } from '../support.js';
+import { CIVILIST, FARM_TYPE, MILL_TYPE, SEAT, STOCK_TOP_TYPE, VIKING } from '../support.js';
 
 const WOOD = 1;
 const BRICK = 2;
@@ -49,6 +51,8 @@ const SEED = 7;
 /** Where the chain's workshops stand, a row on open ground, in half-cell nodes. */
 const CHAIN_AT = { x: 170, y: 100 };
 const CHAIN_STEP = 12;
+/** Grain in the colony's store, well past its building floor of ten. */
+const GRAIN_HELD = 40;
 
 function read(overrides: Partial<StockPolicyRead> = {}): StockPolicyRead {
   return {
@@ -319,6 +323,34 @@ describe("a colony's own chain", () => {
         { type: MILL_TYPE, site: false },
       ]).has(WHEAT),
     ).toBe(false);
+  });
+
+  it('never sends grain home, even with no mill of its own to take it in', () => {
+    const sim = colonyWorld(SEED, chainContent(true));
+    const carrier = aiControlEntity(sim.world, SEAT);
+    const terrain = sim.terrain;
+    if (carrier === null || terrain === undefined) throw new Error('setup: no AI seat or terrain');
+    const land = terrain.componentOf(terrain.nodeAt(EAST_ISLAND_AT.x, EAST_ISLAND_AT.y));
+    sim.world.add(carrier, ComputerColony, { colonies: [blankColony(land)], rejected: [], retryAt: 0 });
+    for (const [i, type] of [FARM_TYPE, STOCK_TOP_TYPE].entries())
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: type,
+        x: EAST_ISLAND_AT.x + i * CHAIN_STEP,
+        y: EAST_ISLAND_AT.y,
+        tribe: VIKING,
+        owner: SEAT,
+        force: true,
+        underConstruction: false,
+      });
+    sim.step();
+    const store = everyBuildingOf(sim.world, SEAT).find(
+      (e) => sim.world.get(e, Building).buildingType === STOCK_TOP_TYPE,
+    ) as Entity;
+    addStock(sim.world, store, WHEAT, GRAIN_HELD);
+    const policy = colonyStockPolicyOf(looseColonyEnv(sim, editColony(sim)), new Set());
+
+    expect(outboundOf(policy, WHEAT)).toBeUndefined();
   });
 
   it('lets a good the content does not flag as an input good go home', () => {

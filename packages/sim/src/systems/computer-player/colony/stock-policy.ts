@@ -56,6 +56,9 @@ export const WORKSHOP_INPUT_FLOOR = 5;
 const WATER_ID = 'water';
 /** Owner ruling: of a colony joinery's goods only the iron tool goes home; a workshop that makes it is one. */
 const JOINERY_EXPORT_ID = TOOL_IRON_ID;
+/** Owner ruling: grain and flour never sail home, whether or not a mill or bakery of the colony's takes them
+ *  in yet; home grows and grinds its own. */
+const NEVER_HOME_IDS = ['wheat', 'flour'] as const;
 
 /** A good the colony is filled up to `upTo`, home keeping `keep` of it. */
 export interface InboundMark {
@@ -282,8 +285,9 @@ export function chainIntermediates(env: ColonyEnv, buildings: readonly Entity[])
   return kept;
 }
 
-/** What never leaves the colony: vehicles, water, what no store of its takes (its livestock), the
- *  intermediates its own chain consumes, and of a workshop that makes the joinery's export, its other goods. */
+/** What never leaves the colony: vehicles, water, what no store of its takes (its livestock), grain and
+ *  flour, the intermediates its own chain consumes, and of a workshop that makes the joinery's export, its
+ *  other goods. */
 function keptOnColony(env: ColonyEnv, buildings: readonly Entity[]): Set<number> {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
@@ -299,6 +303,10 @@ function keptOnColony(env: ColonyEnv, buildings: readonly Entity[]): Set<number>
     if (good.vehicleHouse !== undefined || good.typeId === water || !stored.has(good.typeId))
       kept.add(good.typeId);
   for (const good of chainIntermediates(env, buildings)) kept.add(good);
+  for (const id of NEVER_HOME_IDS) {
+    const good = goodTypeByContentId(ctx.content, id)?.typeId;
+    if (good !== undefined) kept.add(good);
+  }
   const export_ = goodTypeByContentId(ctx.content, JOINERY_EXPORT_ID)?.typeId;
   for (const e of buildings) {
     const typeId = world.get(e, Building).buildingType;
