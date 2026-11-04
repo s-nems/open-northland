@@ -261,14 +261,16 @@ describe('a colony route that cannot keep up', () => {
     const store = colonyBuildingsOf(sim).find(
       (e) => sim.world.get(e, Building).buildingType === STOCK_TOP_TYPE,
     ) as Entity;
-    const pile = () => {
+    /** Tops the colony's stone up, then reads `done`: the route stays behind on every tick asked. */
+    const piled = (done: () => boolean) => (): boolean => {
       const held = stockOf(sim.world, store, STONE);
       if (held < STONE_TOPPED_BELOW) addStock(sim.world, store, STONE, STONE_PILED - held);
+      return done();
     };
     const first = routeTrader(sim) as Entity;
     const stoneHome = () =>
       sim.world.get(first, TradeRoute).stops[0]?.imports.some((m) => m.good === STONE) === true;
-    expect(stepUntil(sim, LEG_DUE_TICKS, () => (pile(), stoneHome()))).toBe(true);
+    expect(stepUntil(sim, LEG_DUE_TICKS, piled(stoneHome))).toBe(true);
     // Behind for all but the last minute of its span, and delivering: the next marks beat raises the relief.
     const live = editColony(sim);
     if (live.route === null) throw new Error('setup: no route');
@@ -276,15 +278,21 @@ describe('a colony route that cannot keep up', () => {
     live.delivered = sim.tick;
     const relief = () => (colonyState(sim)?.relief ?? null) !== null;
     expect(relief()).toBe(false);
-    expect(stepUntil(sim, LEG_DUE_TICKS, () => (pile(), relief()))).toBe(true);
+    expect(stepUntil(sim, LEG_DUE_TICKS, piled(relief))).toBe(true);
     mooredShip(sim, SMALL_SHIP, THIRD_SHIP_AT);
     const reliefTrader = () => {
       const relief = colonyState(sim)?.relief;
       const trader = relief?.trader ?? null;
-      if (trader === null || relief?.ship == null) return null;
+      if (trader === null || relief === undefined || relief.ship === null) return null;
       return sim.world.tryGet(trader, TradeShip)?.vehicle === relief.ship ? trader : null;
     };
-    expect(stepUntil(sim, ROUND_DUE_TICKS, () => (pile(), reliefTrader() !== null))).toBe(true);
+    expect(
+      stepUntil(
+        sim,
+        ROUND_DUE_TICKS,
+        piled(() => reliefTrader() !== null),
+      ),
+    ).toBe(true);
     const second = reliefTrader() as Entity;
     expect(second).not.toBe(first);
     const stopsOf = (trader: Entity) =>
