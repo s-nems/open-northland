@@ -62,6 +62,13 @@ export function believedFighterPoints(
   return forces === undefined ? null : pointsOrUnknown(forces, tick);
 }
 
+/** The most fighter points of `owner` that `seat` ever saw at once, unaged; null when none is remembered.
+ *  For a decision that cannot be taken back, where a faded memory would undercount an army out of sight. */
+export function peakFighterPoints(world: World, seat: number, owner: number): number | null {
+  const forces = intelOf(world, seat)?.forces.find((f) => f.player === owner);
+  return forces === undefined || forces.peakPoints <= 0 ? null : forces.peakPoints;
+}
+
 function peakOrUnknown(forces: DeepReadonly<IntelForces>, tick: number): number | null {
   const peak = decayedPeak(forces.peak, forces.peakAt, tick);
   return peak > 0 ? peak : null;

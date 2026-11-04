@@ -4,6 +4,7 @@ import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import { TOWER_POST_STRENGTH } from '../../../ai-shared/military/census.js';
 import { buildingCombatClass } from '../../../readviews/index.js';
 import type { Share } from '../../difficulty.js';
+import { peakFighterPoints } from '../../knowledge/intel/index.js';
 import { knownDefendingPoints } from '../enemy-strength.js';
 import { launchRatioReached } from '../plan.js';
 import {
@@ -193,7 +194,7 @@ function headquartersAim(
   wave: readonly RankedMan[],
   ratio: Share,
 ): LandingAim | null {
-  const { world, ctx, seat } = env;
+  const { ctx } = env;
   if (wave.length === 0) return null;
   const points = pointsOf(wave);
   const aim = (storm: boolean): LandingAim => ({
@@ -208,7 +209,7 @@ function headquartersAim(
   });
   const clear = landingObjective(ctx, c.believed, c.towards.at);
   if (clear !== null) {
-    const known = knownDefendingPoints(world, ctx, seat, c.owner);
+    const known = landingArmy(env, c.owner);
     const edge = known === null ? ratio : atLeast(ratio, LANDING_EDGE);
     const fire = fireAt(env, c.believed, clear.at, tribeOf(env, c.headquarters));
     const opposing = known === null ? Math.max(points, fire) : known + fire;
@@ -218,6 +219,20 @@ function headquartersAim(
   if (storm === null) return null;
   const opposing = stormDefence(env, c.believed, c.land, c.owner, storm);
   return launchRatioReached(points, opposing, atLeast(ratio, LANDING_STORM_EDGE)) ? aim(true) : null;
+}
+
+/**
+ * What `owner`'s army weighs against a landing on his headquarters land: what the seat believes defends
+ * him ({@link knownDefendingPoints}), at least the most it ever saw of his army at once
+ * ({@link peakFighterPoints}): landed men cannot fall back, and a memory faded while his army was out of
+ * sight undercounts it. Null when the seat knows nothing of it.
+ */
+function landingArmy(env: OperationEnv, owner: number): number | null {
+  const { world, ctx, seat } = env;
+  const known = knownDefendingPoints(world, ctx, seat, owner);
+  const peak = peakFighterPoints(world, seat, owner);
+  if (known === null) return peak;
+  return peak === null ? known : Math.max(known, peak);
 }
 
 /** The points of the enemy fighters the seat sees, by the land they stand on. */
@@ -250,13 +265,13 @@ function stormDefence(
   goal: Objective,
   fighters?: LandFighters,
 ): number {
-  const { world, ctx, seat } = env;
+  const { ctx } = env;
   const towers = towersReaching(believed.sources, goal.at);
   const headquarters =
     believed.targets.find((t) => buildingCombatClass(ctx, t.buildingType) === 'hq') ?? null;
   let army = 0;
   if (headquarters !== null && owner !== null) {
-    army = (knownDefendingPoints(world, ctx, seat, owner) ?? 0) + towers.length * STORM_TOWER_POINTS;
+    army = (landingArmy(env, owner) ?? 0) + towers.length * STORM_TOWER_POINTS;
   } else {
     army = (fighters ?? landFighters(env)).get(land) ?? 0;
     for (const t of towers) army += STORM_TOWER_POINTS + t.postedPoints * TOWER_POST_STRENGTH;
