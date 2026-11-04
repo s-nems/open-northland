@@ -276,6 +276,16 @@ describe('createFrameLimiter', () => {
     expect(frames.length).toBeLessThanOrEqual(61);
   });
 
+  it.each([119.88, 120.5])('draws every second refresh of a %s Hz display under a 60 FPS cap', (hz) => {
+    const limiter = createFrameLimiter(60);
+    const refreshMs = 1000 / hz;
+    const frames = admitted(limiter, refreshMs, Math.round(hz * 10));
+    const refreshesApart = frames
+      .slice(1)
+      .map((nowMs, i) => Math.round((nowMs - (frames[i] ?? Number.NaN)) / refreshMs));
+    expect(new Set(refreshesApart)).toEqual(new Set([2]));
+  });
+
   it('admits every frame on a display slower than the cap', () => {
     const limiter = createFrameLimiter(30);
     expect(admitted(limiter, 1000 / 24, 24)).toHaveLength(24);

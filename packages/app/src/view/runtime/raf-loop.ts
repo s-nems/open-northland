@@ -21,12 +21,18 @@ export interface RafLoopOptions {
 /** rAF timestamps jitter a few ms around the display's refresh grid; admitting a frame this early
  *  keeps a display that matches the cap from losing every borderline frame to the gate. */
 const EARLY_FRAME_TOLERANCE_MS = 4;
+/** How far each admitted frame may pull the cap's grid toward its own timestamp. A display a fraction
+ *  of a percent off a multiple of the cap (119.88 Hz under 60) then stays locked to every n-th refresh
+ *  instead of drifting through the grid and drawing one refresh early, then one late, every second; the
+ *  admitted rate stays within 0.6% of the cap. */
+const GRID_SLEW_MS = 0.1;
 
 /**
  * Wall-clock gate for a drawn-frame cap: `null` admits every animation frame. Due times advance
  * along the cap's own grid rather than from each admitted timestamp, so the admitted rate averages
- * the cap even when the display rate is not a multiple of it. Given the last frame drawn before it,
- * the grid starts one interval after that frame; without one, the first frame draws and anchors it.
+ * the cap even when the display rate is not a multiple of it; each admitted frame slews the grid by
+ * at most {@link GRID_SLEW_MS} toward itself. Given the last frame drawn before it, the grid starts one
+ * interval after that frame; without one, the first frame draws and anchors it.
  */
 export function createFrameLimiter(
   fpsLimit: FpsLimit,
@@ -41,7 +47,8 @@ export function createFrameLimiter(
       // More than a whole interval past due is a stall: re-anchor the grid instead of replaying it.
       nextDueMs = nowMs + intervalMs;
     } else {
-      nextDueMs += intervalMs;
+      const slewedMs = Math.min(nextDueMs + GRID_SLEW_MS, Math.max(nextDueMs - GRID_SLEW_MS, nowMs));
+      nextDueMs = slewedMs + intervalMs;
     }
     return true;
   };
