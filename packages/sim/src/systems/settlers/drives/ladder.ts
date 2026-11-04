@@ -42,7 +42,7 @@ import { forgetWorkTried, noteWorkTaken } from '../lost-way.js';
 import type { PlannerContext } from '../planner/context.js';
 import { idleReplanPeriodOf, standsStillForMachine, waitsHoldOnBeat } from '../planner/idle-replan.js';
 import type { PlannerPass } from '../planner/pass.js';
-import { combatOwnsFeet } from '../planner/replan.js';
+import { combatOwnsFeet, shelterHasRoom } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
 import { planHomeTopUp } from './at-home.js';
 import { cutOffCheckDue, reconcileCutOff, strandedPost } from './cut-off.js';
@@ -93,6 +93,8 @@ export function planChild(pass: PlannerPass, e: Entity, settler: SettlerView): v
 export function planShelterRung(pass: PlannerPass, e: Entity, settler: SettlerView): boolean {
   if (pass.shelters.size === 0) return false;
   const { world, ctx, terrain } = pass;
+  // Without a held shelter, the rung only claims a place its owner still has: refuse before the reads.
+  if (!world.has(e, Sheltering) && !shelterHasRoom(pass.shelters, ownerOf(world, e))) return false;
   const p = world.get(e, Position);
   const hx = nodeHxOfPosition(p.x, p.y);
   const hy = nodeHyOfPosition(p.x, p.y);
