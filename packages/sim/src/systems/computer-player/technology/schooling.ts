@@ -55,12 +55,19 @@ export class Schooling {
   private readonly promisedSlots = new Map<Entity, Map<number, number>>();
   private readonly freeSeats = new Map<Entity, number>();
 
+  /** `owned` holds the schools it may send to, `roster` the men its pupils and operators come from: home's
+   *  settlers unless given, as a colony with a school of its own teaches its own. */
   constructor(
     private readonly world: World,
     private readonly ctx: SystemContext,
     private readonly player: number,
     private readonly owned: readonly Entity[],
+    private readonly roster?: readonly Entity[],
   ) {}
+
+  private people(): readonly Entity[] {
+    return this.roster ?? homeSettlers(this.world, this.ctx, this.player);
+  }
 
   /** The slots of `job` at `building` this decision's lessons fill. */
   promised(building: Entity, job: number): number {
@@ -117,7 +124,7 @@ export class Schooling {
     if (tribe === undefined || table === null) return [];
     const commands: PlayerCommand[] = [];
     let standing: readonly Entity[] | undefined;
-    for (const e of homeSettlers(world, ctx, player)) {
+    for (const e of this.people()) {
       const workplace = world.tryGet(e, JobAssignment)?.workplace;
       if (workplace === undefined || world.has(e, TrainingOrder) || world.has(e, Carrying)) continue;
       const good = this.lessonFor(e, workplace, tribe, table.goods);
@@ -188,7 +195,7 @@ export class Schooling {
   /** The seat's men in a job lesson now, by the job they learn. */
   private livePupils(): Map<number, number> {
     const pupils = new Map<number, number>();
-    for (const e of homeSettlers(this.world, this.ctx, this.player)) {
+    for (const e of this.people()) {
       const lesson = this.world.tryGet(e, TrainingOrder)?.lesson;
       if (lesson?.kind === 'job') pupils.set(lesson.typeId, (pupils.get(lesson.typeId) ?? 0) + 1);
     }

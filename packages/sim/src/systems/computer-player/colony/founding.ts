@@ -38,6 +38,7 @@ import { colonyFamilies, standsOn } from './people.js';
 import { COLONY_OPEN_SITES, colonyPlan, farStep, openSites, siteFree, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
 import { LAND_GOOD_IDS, storesHeld } from './provision.js';
+import { colonyLessons } from './school.js';
 import { colonyBuildings, colonySpot, storeSupply, workshopSpot } from './spot.js';
 import { colonyStoreType, liftStore } from './store-tier.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
@@ -263,9 +264,15 @@ export function foundColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[]
     if (colony.ship === null || unloaded(env, colony, colony.ship)) env.edit().phase = 'running';
   }
   const lift = liftStore(env, colony, read);
+  const lessons = colonyLessons(env, men);
   return [
     ...(lift.length > 0 ? lift : buildOrLift(env, colony, read)),
-    ...fillPosts(env, men, read),
+    ...lessons.commands,
+    ...fillPosts(
+      env,
+      men.filter((e) => !lessons.pupils.has(e)),
+      read,
+    ),
     ...porterFlagOrders(env, store),
     ...raiseSignposts(env, men, read),
     ...colonyFamilies(world, ctx, people, buildings),

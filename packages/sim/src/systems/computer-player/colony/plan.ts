@@ -18,6 +18,7 @@ import { colonists } from './founding.js';
 import { type ChainStep, chainStepOf, nextIndustrySteps, type StepGround, stepsAhead } from './industry.js';
 import { colonyIndustries, roomFor, stepType } from './industry-read.js';
 import { colonyFed } from './provision.js';
+import { schoolLacking } from './school.js';
 import { towersLacking } from './towers.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
@@ -161,9 +162,9 @@ export function ladderAhead(
     : stepsAhead(industries.choices, industries.read.raised).map((step) => placedId(env, step));
 }
 
-/** What the colony means to raise, in order: its unplaced rows; then the next step of its industries
- *  (`./industry.ts`), the towers its garrison mans and its homes. Owner ruling: it raises no pottery or mason
- *  hut, home makes their goods. */
+/** What the colony means to raise, in order: its unplaced rows; then its school (`./school.ts`), the next
+ *  step of its industries (`./industry.ts`), the towers its garrison mans and its homes. Owner ruling: it
+ *  raises no pottery or mason hut, home makes their goods. */
 export function colonyPlan(
   env: ColonyEnv,
   colony: ColonyView,
@@ -174,5 +175,10 @@ export function colonyPlan(
   const industries = colonyIndustries(env, colony, buildings);
   const steps = industries === null ? [] : nextIndustrySteps(industries.choices, industries.read);
   const towers = towersLacking(env, colony, buildings);
-  return [...steps.map((step) => placedId(env, step)), ...towers, ...homeStep(env, colony, buildings)];
+  return [
+    ...schoolLacking(env, buildings),
+    ...steps.map((step) => placedId(env, step)),
+    ...towers,
+    ...homeStep(env, colony, buildings),
+  ];
 }

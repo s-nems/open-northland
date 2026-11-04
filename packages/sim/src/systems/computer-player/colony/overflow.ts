@@ -34,6 +34,7 @@ import { homeSpare, homeSupply } from './home-supply.js';
 import { homeMaySpare, sparePartyMen } from './people.js';
 import { atWorkshop } from './posts.js';
 import { landHolds } from './provision.js';
+import { colonySchool } from './school.js';
 import { colonyBuildings, workshopSpot } from './spot.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
@@ -198,14 +199,14 @@ export function reviewOverflow(env: ColonyEnv, colony: ColonyView): void {
   if (colony.phase === 'running') handOver(env, colony);
 }
 
-interface CraftSeat {
+export interface CraftSeat {
   readonly building: Entity;
   readonly job: number;
 }
 
 /** The craftsmen's seats the colony's standing workshops lack; a carrier any man can be, a gatherer's seat
  *  stays open. */
-function openCraftSeats(env: ColonyEnv, buildings: readonly Entity[]): CraftSeat[] {
+export function openCraftSeats(env: ColonyEnv, buildings: readonly Entity[]): CraftSeat[] {
   const { world, ctx, seat } = env;
   const index = contentIndex(ctx.content);
   const seats: CraftSeat[] = [];
@@ -224,14 +225,15 @@ function openCraftSeats(env: ColonyEnv, buildings: readonly Entity[]): CraftSeat
 }
 
 /** A man free to take `job`: no load to drop, and the trade earned. */
-function fitsTrade(env: ColonyEnv, job: number): (e: Entity) => boolean {
+export function fitsTrade(env: ColonyEnv, job: number): (e: Entity) => boolean {
   const { world, ctx } = env;
   return (e) => !world.has(e, Carrying) && settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', job);
 }
 
 /** Who the ferry owes the colony from home: the spare men of the trades no colonist among `people` has earned,
- *  in at most `seats`, and the lessons that make the next such man where home's school teaches the trade.
- *  A workshop none of them reaches simply waits: home's line has moved on. */
+ *  in at most `seats`, and the lessons that make the next such man where home's school teaches the trade;
+ *  none once the colony's own school stands. A workshop none of them reaches simply waits: home's line has
+ *  moved on. */
 export function tradesmenFor(
   env: ColonyEnv,
   people: readonly Entity[],
@@ -245,7 +247,9 @@ export function tradesmenFor(
   );
   const sailing: Entity[] = [];
   const lessons: PlayerCommand[] = [];
-  if (short.length === 0 || !homeMaySpare(world, ctx, seat)) return { sailing, lessons };
+  // A colony with its own school teaches its men there (`./school.ts`); the ferry brings plain hands.
+  if (short.length === 0 || !homeMaySpare(world, ctx, seat) || colonySchool(env) !== null)
+    return { sailing, lessons };
   const force = new SpareForce(sparePartyMen(world, ctx, seat, home));
   const schooling = new Schooling(world, ctx, seat, homeBuildings(world, ctx, seat));
   for (const post of short) {
