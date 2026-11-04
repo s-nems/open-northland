@@ -236,6 +236,11 @@ export class InteractionCellIndex {
     return this.revision;
   }
 
+  /** Hand `visit` every door candidate whose door lies in `box`, with that door's node, in no fixed order. */
+  forEachDoorIn(box: NodeBox, visit: (e: Entity, x: number, y: number) => void): void {
+    this.all.doors.forEachIn(box, visit);
+  }
+
   /** Hand `visit` every loose candidate filed in `box` with its node, in no fixed order. */
   forEachLooseIn(box: NodeBox, visit: (e: Entity, x: number, y: number) => void): void {
     this.gridOfLoose(this.all).forEachIn(box, visit);

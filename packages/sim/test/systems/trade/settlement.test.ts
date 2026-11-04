@@ -1,4 +1,4 @@
-import { type ContentSet, parseContentSet } from '@open-northland/data';
+import { BUILDING_KIND, type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addPerson,
@@ -6,12 +6,14 @@ import {
   HaulingCart,
   MissionObjectId,
   Owner,
+  ownerOf,
   Position,
   Stockpile,
   setStockAmount,
   TRADE_LIMIT_NONE,
   TradeRoute,
 } from '../../../src/components/index.js';
+import { contentIndex } from '../../../src/core/content-index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
   exportSaveGame,
@@ -24,9 +26,13 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../../src/index.js';
+import { interactionNodeId } from '../../../src/systems/footprint/interaction.js';
+import { collectTargets, FetchableStock } from '../../../src/systems/settlers/targets/index.js';
 import { createSignpost } from '../../../src/systems/signposts/index.js';
-import { isLoosePile } from '../../../src/systems/stores/index.js';
-import { standsForSettlement } from '../../../src/systems/trade/settlement.js';
+import { settlementReachAt } from '../../../src/systems/signposts/settlement-reach.js';
+import { isLoosePile, isWorkplaceOutput } from '../../../src/systems/stores/index.js';
+import { sameFoodClass } from '../../../src/systems/trade/goods.js';
+import { settlementHouses, standsForSettlement } from '../../../src/systems/trade/settlement.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
 import { TEST_MANIFEST, testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
@@ -71,6 +77,20 @@ const GROUND_ROW = 2;
 const WALLED_HUT = 95;
 /** A node between the stops, under the hut's walls. */
 const BURIED_NODE = { hx: 2 * MEMBER_X, hy: 2 * GROUND_ROW };
+/** The fixture's edible, and its bakery, the one house that makes bread. */
+const FOOD = 3;
+const BREAD = 7;
+const KITCHEN = 21;
+/** A map wide past a goods search's reach both ways, for houses strewn in and out of it. */
+const WIDE_MAP_W = 90;
+const WIDE_MAP_H = 30;
+const SPREAD_HOUSES = 120;
+const SPREAD_PILES = 60;
+const HOUSE_TYPES = [HEADQUARTERS, SAWMILL, KITCHEN];
+const SPREAD_GOODS = [WOOD, PLANK, BREAD, FOOD];
+/** One house in this many is another seat's, and one in this many unfinished. */
+const OTHER_SEAT_ONE_IN = 4;
+const UNFINISHED_ONE_IN = 6;
 /** The agreement's planks once home holds them, two per wood. */
 const PLANKS_WANTED = 4;
 
@@ -757,4 +777,102 @@ describe('two stops standing for their settlements', () => {
     expect(standsForSettlement(sim.world, ctxOf(sim), terrain, trader, stops, 0)).toBe(false);
     expect(standsForSettlement(sim.world, ctxOf(sim), terrain, trader, stops, 1)).toBe(true);
   });
+});
+
+describe("a settlement's houses", () => {
+  /** A deterministic LCG, so a failure replays. */
+  function rng(seed: number): (n: number) => number {
+    let s = seed >>> 0;
+    return (n) => {
+      s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+      return s % n;
+    };
+  }
+
+  /** The walk over every holder of the good on the map that the box read stands in for. */
+  function walkedHouses(
+    sim: Simulation,
+    trader: Entity,
+    anchor: Entity,
+    exclude: Entity,
+    good: number,
+  ): Entity[] {
+    const ctx = ctxOf(sim);
+    const terrain = ctx.terrain;
+    const anchorDoor = terrain === undefined ? null : interactionNodeId(sim.world, ctx, terrain, anchor);
+    if (terrain === undefined || anchorDoor === null) return [];
+    const reach = settlementReachAt(sim.world, ctx.content, terrain, HUMAN, anchorDoor);
+    const index = contentIndex(ctx.content);
+    const found = new Set<Entity>();
+    for (const { typeId: form } of ctx.content.goods) {
+      if (!sameFoodClass(ctx, form, good)) continue;
+      for (const house of FetchableStock.of(sim.world, ctx).holders(form)) {
+        if (house === anchor || house === exclude || ownerOf(sim.world, house) !== ownerOf(sim.world, trader))
+          continue;
+        const building = sim.world.tryGet(house, Building);
+        const kind = building === undefined ? undefined : index.buildings.get(building.buildingType)?.kind;
+        const lends =
+          building?.built === ONE &&
+          (kind === BUILDING_KIND.storage ||
+            (kind === BUILDING_KIND.workplace && isWorkplaceOutput(sim.world, ctx, house, form)));
+        const door = interactionNodeId(sim.world, ctx, terrain, house);
+        if (lends && door !== null && reach.allowsNode(door)) found.add(house);
+      }
+    }
+    return [...found].sort((a, b) => a - b);
+  }
+
+  it.each([
+    [1, true],
+    [2, false],
+  ])(
+    'read off the doors in the reach are the walk over every holder (seed %i, signposts %s)',
+    (seed, nav) => {
+      const sim = newSim(grassMap(WIDE_MAP_W, WIDE_MAP_H));
+      sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: nav });
+      const roll = rng(seed);
+      const houses: Entity[] = [];
+      for (let i = 0; i < SPREAD_HOUSES; i++) {
+        const type = HOUSE_TYPES[roll(HOUSE_TYPES.length)] ?? HEADQUARTERS;
+        const owner = roll(OTHER_SEAT_ONE_IN) === 0 ? NEIGHBOUR : HUMAN;
+        const e = sim.world.create();
+        sim.world.add(e, Position, { x: fx.fromInt(roll(WIDE_MAP_W)), y: fx.fromInt(roll(WIDE_MAP_H)) });
+        const built = roll(UNFINISHED_ONE_IN) === 0 ? fx.div(ONE, fx.fromInt(2)) : ONE;
+        sim.world.add(e, Building, { buildingType: type, tribe: VIKING, built, level: 0 });
+        const stock = SPREAD_GOODS.filter(() => roll(2) === 0).map((good): [number, number] => [
+          good,
+          1 + roll(4),
+        ]);
+        sim.world.add(e, Stockpile, { amounts: new Map(stock) });
+        sim.world.add(e, Owner, { player: owner });
+        houses.push(e);
+      }
+      for (let i = 0; i < SPREAD_PILES; i++) {
+        const pile = sim.world.create();
+        sim.world.add(pile, Position, { x: fx.fromInt(roll(WIDE_MAP_W)), y: fx.fromInt(roll(WIDE_MAP_H)) });
+        sim.world.add(pile, Stockpile, { amounts: new Map([[WOOD, 1 + roll(4)]]) });
+      }
+      const trader = traderAt(sim, 0);
+      sim.step();
+      const ctx = ctxOf(sim);
+      const terrain = ctx.terrain;
+      if (terrain === undefined) throw new Error('mapless sim');
+      const targets = collectTargets(sim.world, ctx, terrain);
+      const anchors = houses.filter(
+        (e) => ownerOf(sim.world, e) === HUMAN && sim.world.get(e, Building).buildingType === HEADQUARTERS,
+      );
+      let compared = 0;
+      for (const anchor of anchors) {
+        const exclude = houses[roll(houses.length)] as Entity;
+        for (const good of [WOOD, PLANK, FOOD]) {
+          const read = settlementHouses(sim.world, ctx, terrain, trader, anchor, exclude, good, (form) =>
+            targets.bands.holding(form),
+          );
+          expect(read).toEqual(walkedHouses(sim, trader, anchor, exclude, good));
+          compared += read.length;
+        }
+      }
+      expect(compared).toBeGreaterThan(0);
+    },
+  );
 });

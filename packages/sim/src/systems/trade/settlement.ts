@@ -6,11 +6,11 @@ import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, MapContext, SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
-import { FetchableStock } from '../settlers/targets/index.js';
 import { goodsSearchesShareDoor, goodsSearchLimitAt, signpostReachKey } from '../signposts/reach.js';
 import { settlementReachAt } from '../signposts/settlement-reach.js';
 import { isWorkplaceOutput } from '../stores/index.js';
 import { sameFoodClass } from './goods.js';
+import type { HoldingBandOf } from './settlement-ground.js';
 
 /** Whether a stop at `house` may stand for its settlement: the house is a storehouse. */
 export function isSettlementAnchor(world: World, ctx: ContentContext, house: Entity): boolean {
@@ -21,7 +21,8 @@ export function isSettlementAnchor(world: World, ctx: ContentContext, house: Ent
 /**
  * The houses of `anchor`'s settlement besides it and `exclude` that hold `good` or a dish of its edible
  * class, ascending by id: the trader's own finished storehouses, and workshops whose output the good is,
- * whose door lies in the anchor's settlement reach.
+ * whose door lies in the anchor's settlement reach. Read off the holding bands, which file every holder's
+ * door: only the doors in the reach's box are visited.
  */
 export function settlementHouses(
   world: World,
@@ -31,22 +32,22 @@ export function settlementHouses(
   anchor: Entity,
   exclude: Entity,
   good: number,
+  holding: HoldingBandOf,
 ): Entity[] {
   const player = ownerOf(world, trader);
   const anchorDoor = interactionNodeId(world, ctx, terrain, anchor);
   if (player === undefined || anchorDoor === null) return [];
   const reach = settlementReachAt(world, ctx.content, terrain, player, anchorDoor);
-  const ledger = FetchableStock.of(world, ctx);
   const found = new Set<Entity>();
   for (const { typeId: form } of ctx.content.goods) {
     if (!sameFoodClass(ctx, form, good)) continue;
-    for (const house of ledger.holders(form)) {
-      if (house === anchor || house === exclude || found.has(house)) continue;
-      if (ownerOf(world, house) !== player || !lendsToSettlement(world, ctx, house, form)) continue;
+    holding(form).forEachDoorIn(reach.bounds, (house) => {
+      if (house === anchor || house === exclude || found.has(house)) return;
+      if (ownerOf(world, house) !== player || !lendsToSettlement(world, ctx, house, form)) return;
+      // The band files a door off the map at the nearest node; such a house stands for no settlement.
       const door = interactionNodeId(world, ctx, terrain, house);
-      if (door === null) continue;
-      if (reach.allowsNode(door)) found.add(house);
-    }
+      if (door !== null && reach.allowsNode(door)) found.add(house);
+    });
   }
   return [...found].sort((a, b) => a - b);
 }

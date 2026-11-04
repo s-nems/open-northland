@@ -681,7 +681,8 @@ function membersOf(scope: LoadScope, anchor: Entity, exclude: Entity, good: numb
   scope.members ??= new Map();
   let members = scope.members.get(key);
   if (members === undefined) {
-    members = settlementHouses(scope.world, scope.ctx, scope.terrain, scope.trader, anchor, exclude, good);
+    const { world, ctx, terrain, trader, holding } = scope;
+    members = settlementHouses(world, ctx, terrain, trader, anchor, exclude, good, holding);
     scope.members.set(key, members);
   }
   return members;
