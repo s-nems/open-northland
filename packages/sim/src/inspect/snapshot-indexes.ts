@@ -100,9 +100,14 @@ export class SnapshotIndexes implements SnapshotIndexReader {
   private readonly presenceReaders = new Map<string, HeldIndex[]>();
   /** The changes of the delta being applied, and the plans resolved for them so far. */
   private changes: readonly EntityChange[] = [];
-  private readonly plans: (ChangePlan | undefined)[] = [];
-  /** The new objects of the held entities the delta touched so far, ascending, for `swapAll`. */
-  private readonly nexts: EntitySnapshot[] = [];
+  private plans: (ChangePlan | undefined)[] = [];
+  /** The plans resolved since the held indexes last changed, by {@link changeKey}: deltas keep making
+   *  the same few changes, which a plan then costs a lookup instead of a filter over every index. */
+  private readonly plansByChange = new Map<string, ChangePlan>();
+  /** The new objects of the held entities the delta touched so far, ascending, for `swapAll`: sized to
+   *  the delta's touched run up front and cut to `nextCount` once the run ends. */
+  private nexts: EntitySnapshot[] = [];
+  private nextCount = 0;
 
   /** `current` is the id table a mirror keeps beside `entities`; a set without one takes no deltas. */
   constructor(
@@ -120,6 +125,7 @@ export class SnapshotIndexes implements SnapshotIndexReader {
     const index = heldIndex(spec as SnapshotIndexSpec<unknown>, state);
     this.held.set(index.spec, index);
     this.order.push(index);
+    this.plansByChange.clear();
     for (const name of spec.reads?.values ?? []) listUnder(this.valueReaders, name).push(index);
     for (const name of spec.reads?.presence ?? []) listUnder(this.presenceReaders, name).push(index);
     return state;
@@ -128,6 +134,7 @@ export class SnapshotIndexes implements SnapshotIndexReader {
   reset(): void {
     this.held.clear();
     this.order.length = 0;
+    this.plansByChange.clear();
     this.valueReaders.clear();
     this.presenceReaders.clear();
   }
@@ -156,23 +163,30 @@ export class SnapshotIndexes implements SnapshotIndexReader {
     for (const { spec, state } of this.order) spec.remove(state, entity);
   }
 
-  /** The next replacements come from a delta whose changes are `changes`. */
-  beginDelta(changes: readonly EntityChange[]): void {
+  /** The next replacements come from a delta whose changes are `changes` and which touches `touched`
+   *  entities. */
+  beginDelta(changes: readonly EntityChange[], touched: number): void {
     this.changes = changes;
-    this.plans.length = 0;
-    this.nexts.length = 0;
+    this.plans = [];
+    // A fresh run sized up front: emptying the last one would free its storage and regrow it per push.
+    this.nexts = new Array<EntitySnapshot>(touched);
+    this.nextCount = 0;
   }
 
-  /** `next` replaces `previous` after the current delta's change `change`; entities come ascending. */
-  replaced(previous: EntitySnapshot, next: EntitySnapshot, change: number): void {
+  /** `next` replaces `previous` after the current delta's change `change`; entities come ascending.
+   *  `gained` says the change wrote a component `previous` did not carry; without one, no presence
+   *  reader sees a difference. */
+  replaced(previous: EntitySnapshot, next: EntitySnapshot, change: number, gained: boolean): void {
     const plan = this.plans[change] ?? this.planOf(change);
     let added: HeldIndex[] | null = null;
-    for (const [name, readers] of plan.presence) {
-      if (name in previous.components) continue;
-      for (const index of readers) {
-        if (plan.replace.includes(index)) continue;
-        if (added === null) added = [];
-        added.push(index);
+    if (gained) {
+      for (const [name, readers] of plan.presence) {
+        if (name in previous.components) continue;
+        for (const index of readers) {
+          if (plan.replace.includes(index)) continue;
+          if (added === null) added = [];
+          added.push(index);
+        }
       }
     }
     for (const index of plan.replace) index.replace(index.state, previous, next);
@@ -180,25 +194,32 @@ export class SnapshotIndexes implements SnapshotIndexReader {
     for (const index of plan.swap) {
       if (added === null || !added.includes(index)) index.swap?.(index.state, previous, next);
     }
-    this.nexts.push(next);
+    this.nexts[this.nextCount++] = next;
   }
 
   /** The delta's replacements are done: the states that swap per delta take them. */
   endDelta(): void {
     const { nexts, current } = this;
+    nexts.length = this.nextCount;
     if (nexts.length > 0) {
       if (current === null) throw new Error('snapshot indexes: a delta needs the id table of its mirror');
       for (const index of this.order) {
         if (index.gated) index.swapAll?.(index.state, nexts, current);
       }
     }
-    nexts.length = 0;
+    this.nexts = [];
     this.changes = [];
   }
 
   private planOf(at: number): ChangePlan {
     const change = this.changes[at];
     if (change === undefined) throw new Error(`snapshot indexes: the delta has no change ${at}`);
+    const key = changeKey(change);
+    const known = this.plansByChange.get(key);
+    if (known !== undefined) {
+      this.plans[at] = known;
+      return known;
+    }
     const marked = new Set<HeldIndex>();
     const presence: [string, readonly HeldIndex[]][] = [];
     for (const name of change.written) {
@@ -217,8 +238,19 @@ export class SnapshotIndexes implements SnapshotIndexReader {
       presence,
     };
     this.plans[at] = plan;
+    this.plansByChange.set(key, plan);
     return plan;
   }
+}
+
+/** The names a change writes and removes, each prefixed by its length so no two changes share a key
+ *  whatever their names hold. */
+function changeKey(change: EntityChange): string {
+  let key = '';
+  for (const name of change.written) key += `${name.length}:${name}`;
+  key += '/';
+  for (const name of change.removed) key += `${name.length}:${name}`;
+  return key;
 }
 
 function listUnder(readers: Map<string, HeldIndex[]>, name: string): HeldIndex[] {
@@ -528,8 +560,10 @@ function swapHeld(list: EntitySnapshot[], entity: EntitySnapshot): void {
 function swapAllHeld(list: EntitySnapshot[], nexts: readonly EntitySnapshot[], current: EntityTable): void {
   if (list.length <= nexts.length) {
     for (let at = 0; at < list.length; at++) {
-      const next = current[(list[at] as EntitySnapshot).id];
-      if (next !== undefined) list[at] = next;
+      const held = list[at] as EntitySnapshot;
+      const next = current[held.id];
+      // Most of a short list sits untouched: storing its own entity again would still pay the barrier.
+      if (next !== undefined && next !== held) list[at] = next;
     }
     return;
   }

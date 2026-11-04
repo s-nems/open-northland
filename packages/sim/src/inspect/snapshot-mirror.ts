@@ -32,6 +32,8 @@ export class SnapshotMirror {
   private dropped: EntitySnapshot[] = [];
   /** The list places of the entities the delta being applied removes, ascending. */
   private readonly droppedAt: number[] = [];
+  /** What the last {@link patched} entity did besides rewriting its components. */
+  private readonly patch: PatchOutcome = { gained: false };
 
   /** The tick of the last applied delta; null before the first. */
   get tick(): number | null {
@@ -152,7 +154,7 @@ export class SnapshotMirror {
     const inserts: EntitySnapshot[] = [];
     const reader = new DeltaReader(delta);
     const { touched } = reader;
-    this.indexes.beginDelta(reader.changes);
+    this.indexes.beginDelta(reader.changes, touched.length);
     let from = 0;
     for (let i = 0; i < touched.length; i++) {
       const id = touched[i] as number;
@@ -161,10 +163,10 @@ export class SnapshotMirror {
       if (held !== undefined) {
         const found = searchIds(this.ids, list.length, id, from);
         if (found < 0) throw new Error(`snapshot mirror holds entity ${id} by id but not in its sorted list`);
-        const next = patched(held, change, reader);
+        const next = patched(held, change, reader, this.patch);
         list[found] = next;
         this.byId[id] = next;
-        this.indexes.replaced(held, next, delta.changeOf[i] as number);
+        this.indexes.replaced(held, next, delta.changeOf[i] as number, this.patch.gained);
         from = found + 1;
       } else {
         const entity = created(id, change, reader);
@@ -242,11 +244,22 @@ function created(id: number, change: EntityChange, values: DeltaReader): EntityS
   return { id, components };
 }
 
+interface PatchOutcome {
+  /** The change wrote a component the entity did not hold: a presence reader has to place it again. */
+  gained: boolean;
+}
+
 /** The new object of a held entity: the previous clones of the components the change left alone, the
  *  change's fresh clones over them, without the components it removed. A name the entity did not hold
- *  lands last. */
-function patched(held: EntitySnapshot, change: EntityChange, values: DeltaReader): EntitySnapshot {
+ *  lands last, and sets `outcome.gained`. */
+function patched(
+  held: EntitySnapshot,
+  change: EntityChange,
+  values: DeltaReader,
+  outcome: PatchOutcome,
+): EntitySnapshot {
   const { written, kinds, removed } = change;
+  outcome.gained = false;
   let components: Record<string, unknown>;
   let fields = -1; // counted only once a name is added
   if (removed.length === 0) {
@@ -268,6 +281,7 @@ function patched(held: EntitySnapshot, change: EntityChange, values: DeltaReader
     }
     if (fields < 0) fields = fieldCount(components);
     addField(components, fields++, name, value);
+    outcome.gained = true;
   }
   return { id: held.id, components };
 }

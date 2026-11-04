@@ -19,6 +19,7 @@ import {
   SnapshotMirror,
   TileBuckets,
   type WorldSnapshot,
+  withComponent,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { keepSettlersWalking } from '../fixtures/snapshot-parity.js';
@@ -345,6 +346,32 @@ describe('a spec that declares its reads', () => {
       [1, 2, 3],
       [1, 3],
     ]);
+  });
+
+  it('plans a change met before a spec registered again for that spec', () => {
+    const marked = listedWhere(
+      (entity) => (entity.components.Mark as { kind: number } | undefined)?.kind === 1,
+      'marked',
+      { values: ['Mark'] },
+    );
+    const mark = (sequence: number, kind: number): SnapshotDelta =>
+      packSnapshotDelta({
+        tick: sequence + 1,
+        sequence,
+        rebuild: sequence === 0,
+        touched: [{ id: 1, components: { Mark: { kind } }, removed: [] }],
+        removed: [],
+        events: [],
+      });
+    const mirror = new SnapshotMirror();
+    mirror.apply(mark(0, 0));
+    indexesOf(mirror.snapshot()).get(withComponent('Mark'));
+    // The Mark rewrite is planned for the presence reader alone, which swaps it.
+    mirror.apply(mark(1, 0));
+    const list = indexesOf(mirror.snapshot()).get(marked);
+    mirror.apply(mark(2, 1));
+    expect(list.map((entity) => entity.id)).toEqual([1]);
+    expect(mirror.verifyIndexes()).toEqual([]);
   });
 });
 
