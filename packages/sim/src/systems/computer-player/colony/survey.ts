@@ -414,20 +414,8 @@ export function surveyColonySite(
         site.contested === first.contested,
     )
     .slice(0, LAND_ROOM_CANDIDATES);
-  let best = first;
-  let bestHomes = homesFitNear(
-    world,
-    ctx,
-    terrain,
-    tribe,
-    first.land,
-    first.centre,
-    BLOCK_HOMES_REACH_NODES,
-    BLOCK_HOMES_FULL,
-  );
-  for (const site of alike) {
-    if (site === first || !fits(site)) continue;
-    const homes = homesFitNear(
+  const roomAt = (site: ColonySite): number =>
+    homesFitNear(
       world,
       ctx,
       terrain,
@@ -437,6 +425,11 @@ export function surveyColonySite(
       BLOCK_HOMES_REACH_NODES,
       BLOCK_HOMES_FULL,
     );
+  let best = first;
+  let bestHomes = alike.length > 1 ? roomAt(first) : 0;
+  for (const site of alike) {
+    if (site === first || !fits(site)) continue;
+    const homes = roomAt(site);
     if (homes > bestHomes) {
       best = site;
       bestHomes = homes;
