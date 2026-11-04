@@ -60,6 +60,10 @@ const MAP_H = 3;
 const RUN_TICKS = 2000;
 const WOOD_HELD = 6;
 const WOOD_KEPT = 5;
+/** Wood lying loose on the ground between the stops, off both doors' heaps. */
+const GROUND_WOOD = 3;
+/** The row below the houses. */
+const GROUND_ROW = 2;
 /** The agreement's planks once home holds them, two per wood. */
 const PLANKS_WANTED = 4;
 
@@ -114,6 +118,14 @@ function traderAt(sim: Simulation, x: number, vehicleType = HANDCART): Entity {
   return trader;
 }
 
+/** A loose pile of `wood` on the ground at cell `x` of the row below the houses. */
+function groundPileAt(sim: Simulation, x: number, wood: number): Entity {
+  const pile = sim.world.create();
+  sim.world.add(pile, Position, { x: fx.fromInt(x), y: fx.fromInt(GROUND_ROW) });
+  sim.world.add(pile, Stockpile, { amounts: new Map([[WOOD, wood]]) });
+  return pile;
+}
+
 function stockOf(sim: Simulation, house: Entity, good: number): number {
   return sim.world.get(house, Stockpile).amounts.get(good) ?? 0;
 }
@@ -160,6 +172,25 @@ describe('a settlement stop between own houses', () => {
 
       expect(stockOf(sim, other, WOOD)).toBe(settled ? WOOD_HELD : 0);
       expect(stockOf(sim, member, WOOD)).toBe(settled ? 0 : WOOD_HELD);
+    }
+  });
+
+  it("counts the wood lying on its settlement's ground toward its mark's ceiling, and only once set to it", () => {
+    for (const settled of [false, true]) {
+      const sim = newSim();
+      const near = houseAt(sim, ANCHOR_X, [[WOOD, WOOD_HELD]]);
+      const other = houseAt(sim, OTHER_X);
+      groundPileAt(sim, MEMBER_X, GROUND_WOOD);
+      const trader = traderAt(sim, ANCHOR_X);
+      route(sim, trader, near, other);
+      woodInto(sim, trader, other, WOOD_KEPT);
+      if (settled) settle(sim, trader, other);
+
+      sim.run(RUN_TICKS);
+
+      const carried = settled ? WOOD_KEPT - GROUND_WOOD : WOOD_KEPT;
+      expect(stockOf(sim, other, WOOD)).toBe(carried);
+      expect(stockOf(sim, near, WOOD)).toBe(WOOD_HELD - carried);
     }
   });
 

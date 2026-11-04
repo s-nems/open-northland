@@ -44,7 +44,7 @@ import { planCrossing, planShipOrder, seaLegOf, takeStopAtHand } from './ferry.j
 import { sameFoodClass } from './goods.js';
 import { cartStands, NO_HELPERS, TRADE_CART_HOUSE_DISTANCE, type TraderHold, traderHoldOf } from './hold.js';
 import { refillRestores } from './partner-stock.js';
-import { settlementHouses, standsForSettlement } from './settlement.js';
+import { pileUnitsOf, settlementHouses, settlementPiles, standsForSettlement } from './settlement.js';
 import { routeCrossesSea, stopContinent } from './ship.js';
 
 /** A unit the trader moves at a stop: loaded out of `from`, the stop's house or a house of its
@@ -63,8 +63,9 @@ const WAIT: TradeAction = { kind: 'wait' };
 
 /** The stop the trader loads at, with what choosing a source there reads. `exclude` is the other stop's
  *  house, which a settlement never loads out of. `countsSettlement` and `otherCountsSettlement` say
- *  whether this stop and the other one stand for their settlements in this decision; `members` holds the
- *  settlement houses read so far, by anchor and good, so one decision walks each settlement once per good. */
+ *  whether this stop and the other one stand for their settlements in this decision; `members` and
+ *  `piles` hold the settlement houses and ground piles read so far, by anchor and good, so one decision
+ *  reads each settlement once per good. */
 interface LoadScope {
   readonly world: World;
   readonly ctx: SystemContext;
@@ -76,6 +77,7 @@ interface LoadScope {
   readonly countsSettlement: boolean;
   readonly otherCountsSettlement: boolean;
   members: Map<string, readonly Entity[]> | undefined;
+  piles: Map<string, readonly Entity[]> | undefined;
 }
 
 /**
@@ -193,6 +195,7 @@ function scopeAt(
     countsSettlement: countsSettlement(world, ctx, terrain, trader, stop),
     otherCountsSettlement: countsSettlement(world, ctx, terrain, trader, other),
     members: undefined,
+    piles: undefined,
   };
 }
 
@@ -477,7 +480,8 @@ function resetExchange(world: World, trader: Entity): void {
  *   Approximation: `keep` stands in for the original's per-house minimum stock setting, and the `upTo`
  *   ceiling is this build's own addition (owner's choice).
  * - A stop standing for its settlement (our own extension) loads out of the whole settlement, and its
- *   stock in every rule above is the settlement's; what it takes in still goes into its house.
+ *   stock in every rule above is the settlement's, the goods lying loose on its ground included (owner
+ *   ruling); what it takes in still goes into its house.
  * - With no mark on either stop nothing moves. The original then balances every good; this build waits
  *   for the player's marks instead (owner's choice).
  * Food is never taken out of a home. Approximations: the original ranks candidates by the houses'
@@ -513,7 +517,11 @@ function decideDomestic(
       (wantedHere !== undefined && scope.countsSettlement
         ? homeStockOf(scope, good)
         : stockOf(world, stop.house, slot)) + coming;
-    if (wantedHere !== undefined && reachesCeiling(scope, wantedHere, stop.house, good, held)) continue;
+    if (
+      wantedHere !== undefined &&
+      reachesCeiling(scope, wantedHere, stop.house, good, held, scope.countsSettlement)
+    )
+      continue;
     if (wantedHere !== undefined && wantedThere !== undefined) {
       const there = storableFormAt(world, ctx, other.house, good);
       const shortfall = (there === undefined ? 0 : otherStockOf(scope, other, good)) - held;
@@ -538,7 +546,8 @@ function decideDomestic(
     )
       continue;
     const bound = otherStockOf(scope, other, carried) + hold.amount(carried);
-    if (reachesCeiling(scope, wantedThere, other.house, carried, bound)) continue;
+    if (reachesCeiling(scope, wantedThere, other.house, carried, bound, scope.otherCountsSettlement))
+      continue;
     const leaving = helpers.toLift(carried);
     if (markOf(stop, good) !== undefined) {
       if (scope.countsSettlement) {
@@ -595,6 +604,8 @@ function loadSourceOf(scope: LoadScope, good: number, keep: number): LoadSource 
   const settlementSpare = new LendableTally(world, ctx);
   tallyStock(world, ctx, settlementSpare, stop.house, good);
   for (const house of members) tallyStock(world, ctx, settlementSpare, house, good);
+  for (const pile of pilesOf(scope, stop.house, scope.exclude, good))
+    settlementSpare.add(pile, good, pileUnitsOf(world, ctx, pile, good));
   if (settlementSpare.total() - keep < 1) return undefined;
   if (homeSpare >= 1 && atHome) return fromHome;
   const anchor = holdPoint(world, trader, hold);
@@ -640,6 +651,7 @@ function stockOfStop(
   for (const member of membersOf(scope, house, exclude, good)) {
     total += held(member, stockedFormAt(world, ctx, member, good));
   }
+  for (const pile of pilesOf(scope, house, exclude, good)) total += pileUnitsOf(world, ctx, pile, good);
   return total;
 }
 
@@ -655,23 +667,38 @@ function membersOf(scope: LoadScope, anchor: Entity, exclude: Entity, good: numb
   return members;
 }
 
+/** {@link settlementPiles} of `anchor` for `good`, read once per decision. */
+function pilesOf(scope: LoadScope, anchor: Entity, exclude: Entity, good: number): readonly Entity[] {
+  const key = `${anchor}:${good}`;
+  scope.piles ??= new Map();
+  let piles = scope.piles.get(key);
+  if (piles === undefined) {
+    piles = settlementPiles(scope.world, scope.ctx, scope.terrain, scope.trader, anchor, exclude, good);
+    scope.piles.set(key, piles);
+  }
+  return piles;
+}
+
 /** The units of `good` the ground by `house`'s door still takes. */
 function heapRoomAt(scope: LoadScope, house: Entity, good: number): number {
   const { world, ctx, terrain } = scope;
   return doorHeapRoom(world, ctx, terrain, interactionCell(world, ctx, terrain, house), good);
 }
 
-/** Whether `units` in (or bound for) a mark's stop at `house` reach the mark's `upTo` ceiling, with what
- *  of `good` lies heaped by the house's door, where the stop's goods go once its shelf is full. */
+/** Whether `units` in (or bound for) a mark's stop at `house` reach the mark's `upTo` ceiling. A stop that
+ *  counts its whole settlement has its ground in `units` already; another adds what of `good` lies heaped
+ *  by the house's door, where the stop's goods go once its shelf is full. */
 function reachesCeiling(
   scope: LoadScope,
   mark: DeepReadonly<TradeImportMark>,
   house: Entity,
   good: number,
   units: number,
+  settlementWide: boolean,
 ): boolean {
   if (mark.upTo === TRADE_LIMIT_NONE) return false;
   if (units >= mark.upTo) return true;
+  if (settlementWide) return false;
   const { world, ctx, terrain } = scope;
   const heaped = doorHeapUnits(world, terrain, interactionCell(world, ctx, terrain, house), good);
   return units + heaped >= mark.upTo;
