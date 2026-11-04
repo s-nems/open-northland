@@ -127,7 +127,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'food',
       name: '飲食',
-      lead: '食物包括麵包、肉和魚。同樣一餐在家吃，體力加倍。',
+      lead: '食物包括麵包、肉和魚。在家吃的一餐，體力加倍。',
       blocks: [
         {
           h: '進餐效果',
@@ -150,7 +150,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          p: '居民也吃工坊庫存裡的食物。在倉庫先拿食物，沒有食物才拿蛋糕。成熟的灌木就地吃，吃完灌木變空。',
+          p: '居民也吃工坊庫存裡的食物。在倉庫先拿食物，然後拿蛋糕。',
         },
         {
           h: '在哪裡吃',
@@ -238,7 +238,7 @@ export const SETTLERS: ArticleGroup = {
     },
     {
       id: 'life',
-      name: '生與死',
+      name: '成長',
       lead: '兒童出生{{age.adultMinutes}}分鐘後成年。沒有人會老死。',
       blocks: [
         {
@@ -270,32 +270,13 @@ export const SETTLERS: ArticleGroup = {
             foot: '一歲等於{{age.yearSeconds}}秒。',
           },
         },
-        {
-          h: '死後留下什麼',
-        },
-        {
-          table: {
-            head: ['物品', '去向'],
-            rows: [
-              ['攜帶的貨物', '全部掉在地上。'],
-              ['[[good:shoes|鞋子]]、工具', '磨損不超過{{death.newWearPct}}%時按新品掉落，否則消失。'],
-              ['武器', '僅士兵掉落。'],
-              ['護甲', '一定掉落。'],
-              ['飲品、護符', '掉落護符和未開封的瓶子。'],
-              ['搬運工推車', '連同貨物留在原地。'],
-            ],
-          },
-        },
-        {
-          p: '對配偶的影響見[[article:family|家庭與住所]]。',
-        },
       ],
       see: ['article:family', 'article:health', 'article:trades'],
     },
     {
       id: 'family',
       name: '家庭與住所',
-      lead: '生一個孩子花{{family.childFood}}份存糧，一對夫妻一次只養一個孩子。',
+      lead: '生一個孩子需要{{family.childFood}}份食物。',
       blocks: [
         {
           h: '指派住所',
@@ -318,24 +299,6 @@ export const SETTLERS: ArticleGroup = {
             '士兵、英雄、偵察兵，以及被派往[[building:barracks|兵營]]或[[building:school|學校]]的居民不能結婚。',
             '夫妻住在妻子家。妻子沒有住所時住在丈夫家。',
           ],
-        },
-        {
-          h: '生孩子',
-        },
-        {
-          steps: [
-            '玩家選擇：「生個兒子」或「生個女兒」。',
-            '存糧少於{{family.childFood}}份時，妻子去運糧。',
-            '夫妻倆進屋。',
-            '存糧減少{{family.childFood}}份。',
-            '維京人{{family.birthVikingSeconds}}秒後出生，其他民族{{family.birthOtherSeconds}}秒後出生。',
-          ],
-        },
-        {
-          p: '下列情況夫妻不會生孩子：妻子沒有住所、住所還在建造、丈夫是士兵、[[job:trader|商人]]或[[job:scout|偵察兵]]、夫妻分居、範圍內沒有食物。',
-        },
-        {
-          p: '上一個孩子成年後才能生下一個，也就是{{age.adultMinutes}}分鐘後。孩子不佔住所的家庭名額。',
         },
         {
           h: '住所等級',

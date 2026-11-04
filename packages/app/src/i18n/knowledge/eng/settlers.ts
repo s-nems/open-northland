@@ -146,7 +146,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'food',
       name: 'Food',
-      lead: 'Food means Bread, Meat and Fish. The same meal at home gives twice the Energy.',
+      lead: 'Food means Bread, Meat and Fish. A meal eaten at home gives twice the Energy.',
       blocks: [
         {
           h: 'What a meal gives',
@@ -169,7 +169,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          p: "A settler also eats from a workshop's stock. In a store he takes Food first, Cake only when there's no Food. He eats a ripe bush where it stands, leaving it bare.",
+          p: "A settler also eats from a workshop's stock. In a store he takes Food first, then Cake.",
         },
         {
           h: 'Where a settler eats',
@@ -262,7 +262,7 @@ export const SETTLERS: ArticleGroup = {
     },
     {
       id: 'life',
-      name: 'Life and Death',
+      name: 'Growing Up',
       lead: 'A child grows up {{age.adultMinutes}} minutes after birth. Nobody dies of old age.',
       blocks: [
         {
@@ -294,35 +294,13 @@ export const SETTLERS: ArticleGroup = {
             foot: 'A year of life lasts {{age.yearSeconds}} s.',
           },
         },
-        {
-          h: 'What stays after death',
-        },
-        {
-          table: {
-            head: ['Item', 'What happens'],
-            rows: [
-              ['Carried goods', 'Dropped on the ground in full.'],
-              [
-                '[[good:shoes|Shoes]], tool',
-                'Dropped as new if worn at most {{death.newWearPct}}%. Otherwise lost.',
-              ],
-              ['Weapon', 'Dropped only by a soldier.'],
-              ['Armour', 'Always dropped.'],
-              ['Potions, amulets', 'Amulets and unopened bottles drop.'],
-              ["Carrier's handcart", 'Stays in place with its load.'],
-            ],
-          },
-        },
-        {
-          p: 'Effects on the spouse: [[article:family|Family and Home]].',
-        },
       ],
       see: ['article:family', 'article:health', 'article:trades'],
     },
     {
       id: 'family',
       name: 'Family and Home',
-      lead: 'A child costs {{family.childFood}} pieces of food from the larder, and a couple has one child at a time.',
+      lead: 'A child needs {{family.childFood}} pieces of food to be born.',
       blocks: [
         {
           h: 'Assigning a dwelling',
@@ -345,24 +323,6 @@ export const SETTLERS: ArticleGroup = {
             'Soldiers, heroes, Scouts and anyone sent to the [[building:barracks|Barracks]] or [[building:school|School]] do not marry.',
             "A couple lives in the wife's dwelling, or the husband's if she has none.",
           ],
-        },
-        {
-          h: 'Child',
-        },
-        {
-          steps: [
-            'The player chooses: Have a Boy or Have a Girl.',
-            'The wife brings food while the larder holds under {{family.childFood}} pieces.',
-            'Both go into the dwelling.',
-            'The larder loses {{family.childFood}} pieces.',
-            'The child is born after {{family.birthVikingSeconds}} s for Vikings, {{family.birthOtherSeconds}} s for other tribes.',
-          ],
-        },
-        {
-          p: 'A couple has no child when the wife has no dwelling, the dwelling is under construction, the husband is a soldier, [[job:trader|Merchant]] or [[job:scout|Scout]], the spouses live apart, or there is no food in reach.',
-        },
-        {
-          p: 'A couple can have the next child once the last one grows up, after {{age.adultMinutes}} minutes. A child takes no family place in the dwelling.',
         },
         {
           h: 'Dwelling levels',

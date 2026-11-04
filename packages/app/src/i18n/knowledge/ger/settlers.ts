@@ -155,7 +155,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'food',
       name: 'Essen',
-      lead: 'Nahrung sind Brot, Fleisch und Fisch. Zu Hause bringt dieselbe Mahlzeit doppelt so viel Energie.',
+      lead: 'Nahrung sind Brot, Fleisch und Fisch. Eine zu Hause gegessene Mahlzeit bringt doppelt so viel Energie.',
       blocks: [
         {
           h: 'Was eine Mahlzeit bringt',
@@ -178,7 +178,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          p: 'Ein Siedler isst auch aus dem Vorrat einer Werkstatt. Im Lager nimmt er zuerst Nahrung, Kuchen nur, wenn keine Nahrung da ist. Einen reifen Strauch isst er an Ort und Stelle leer.',
+          p: 'Ein Siedler isst auch aus dem Vorrat einer Werkstatt. Im Lager nimmt er zuerst Nahrung, danach Kuchen.',
         },
         {
           h: 'Wo ein Siedler isst',
@@ -271,7 +271,7 @@ export const SETTLERS: ArticleGroup = {
     },
     {
       id: 'life',
-      name: 'Leben und Tod',
+      name: 'Aufwachsen',
       lead: 'Ein Kind ist {{age.adultMinutes}} Minuten nach der Geburt erwachsen. Niemand stirbt an Altersschwäche.',
       blocks: [
         {
@@ -303,35 +303,13 @@ export const SETTLERS: ArticleGroup = {
             foot: 'Ein Lebensjahr dauert {{age.yearSeconds}} s.',
           },
         },
-        {
-          h: 'Was nach dem Tod bleibt',
-        },
-        {
-          table: {
-            head: ['Sache', 'Was damit passiert'],
-            rows: [
-              ['Getragene Ware', 'Fällt vollständig zu Boden.'],
-              [
-                '[[good:shoes|Schuhe]], Werkzeug',
-                'Fallen als neu zu Boden, wenn höchstens zu {{death.newWearPct}}% abgenutzt. Sonst verloren.',
-              ],
-              ['Waffe', 'Fällt nur bei Soldaten zu Boden.'],
-              ['Rüstung', 'Fällt immer zu Boden.'],
-              ['Getränke, Amulette', 'Amulette und unangebrochene Flaschen fallen zu Boden.'],
-              ['Karren des Trägers', 'Bleibt mit der Ladung stehen.'],
-            ],
-          },
-        },
-        {
-          p: 'Folgen für den Ehepartner: [[article:family|Familie und Wohnhaus]].',
-        },
       ],
       see: ['article:family', 'article:health', 'article:trades'],
     },
     {
       id: 'family',
       name: 'Familie und Wohnhaus',
-      lead: 'Ein Kind kostet {{family.childFood}} Stück Essen aus der Speisekammer, und ein Paar hat jeweils nur ein Kind.',
+      lead: 'Für die Geburt eines Kindes braucht es {{family.childFood}} Stück Essen.',
       blocks: [
         {
           h: 'Wohnhaus zuweisen',
@@ -354,24 +332,6 @@ export const SETTLERS: ArticleGroup = {
             'Soldaten, Helden, Kundschafter und Siedler auf dem Weg in [[building:barracks|Kaserne]] oder [[building:school|Schule]] heiraten nicht.',
             'Das Paar wohnt im Haus der Frau. Hat sie keines, im Haus des Mannes.',
           ],
-        },
-        {
-          h: 'Kind',
-        },
-        {
-          steps: [
-            'Der Spieler wählt: Bekomme einen Jungen oder Bekomme ein Mädchen.',
-            'Die Frau holt Essen, wenn weniger als {{family.childFood}} Stück in der Speisekammer sind.',
-            'Beide gehen ins Haus.',
-            'Die Speisekammer verliert {{family.childFood}} Stück.',
-            'Das Kind kommt bei Wikingern nach {{family.birthVikingSeconds}} s zur Welt, bei den übrigen Stämmen nach {{family.birthOtherSeconds}} s.',
-          ],
-        },
-        {
-          p: 'Ein Paar bekommt kein Kind, wenn die Frau kein Wohnhaus hat, das Wohnhaus im Bau ist, der Mann Soldat, [[job:trader|Händler]] oder [[job:scout|Kundschafter]] ist, die Eheleute getrennt wohnen oder kein Essen in Reichweite ist.',
-        },
-        {
-          p: 'Das nächste Kind ist möglich, wenn das vorige erwachsen ist, also nach {{age.adultMinutes}} Minuten. Ein Kind belegt keinen Familienplatz im Haus.',
         },
         {
           h: 'Stufen des Wohnhauses',

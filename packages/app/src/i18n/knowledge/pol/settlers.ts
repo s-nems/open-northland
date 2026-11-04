@@ -142,7 +142,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'food',
       name: 'Jedzenie',
-      lead: 'Żywność to Chleb, Mięso i Ryba. Ten sam posiłek w domu daje dwa razy więcej Energii.',
+      lead: 'Żywność to Chleb, Mięso i Ryby. Posiłek zjedzony w domu daje dwa razy więcej Energii.',
       blocks: [
         {
           h: 'Co daje posiłek',
@@ -165,7 +165,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          p: 'Osadnik je też z zapasu warsztatu. W magazynie bierze najpierw Żywność, Ciastko dopiero bez Żywności. Dojrzały krzew zjada na miejscu, krzew zostaje pusty.',
+          p: 'Osadnik je też z zapasu warsztatu. W magazynie bierze najpierw Żywność, a później Ciastka.',
         },
         {
           h: 'Gdzie je osadnik',
@@ -258,7 +258,7 @@ export const SETTLERS: ArticleGroup = {
     },
     {
       id: 'life',
-      name: 'Życie i śmierć',
+      name: 'Dorastanie',
       lead: 'Dziecko dorasta {{age.adultMinutes}} minuty po narodzinach. Nikt nie umiera ze starości.',
       blocks: [
         {
@@ -290,35 +290,13 @@ export const SETTLERS: ArticleGroup = {
             foot: 'Rok życia trwa {{age.yearSeconds}} s.',
           },
         },
-        {
-          h: 'Co zostaje po śmierci',
-        },
-        {
-          table: {
-            head: ['Rzecz', 'Co się z nią dzieje'],
-            rows: [
-              ['Niesiony towar', 'Spada na ziemię w całości.'],
-              [
-                '[[good:shoes|Buty]], narzędzie',
-                'Spadają jako nowe, jeśli są zużyte najwyżej w {{death.newWearPct}}%. Inaczej przepadają.',
-              ],
-              ['Broń', 'Spada tylko po żołnierzu.'],
-              ['Pancerz', 'Spada zawsze.'],
-              ['Napoje, amulety', 'Spadają amulety i nienapoczęte butelki.'],
-              ['Wózek Tragarza', 'Stoi na miejscu z ładunkiem.'],
-            ],
-          },
-        },
-        {
-          p: 'Skutki dla współmałżonka: [[article:family|Rodzina i dom]].',
-        },
       ],
       see: ['article:family', 'article:health', 'article:trades'],
     },
     {
       id: 'family',
       name: 'Rodzina i dom',
-      lead: 'Dziecko kosztuje {{family.childFood}} sztuki jedzenia ze spiżarni, a para ma jedno dziecko naraz.',
+      lead: 'Do narodzin dziecka potrzebne są {{family.childFood}} sztuki jedzenia.',
       blocks: [
         {
           h: 'Przydział domu',
@@ -341,24 +319,6 @@ export const SETTLERS: ArticleGroup = {
             'Ślubu nie biorą żołnierze, bohaterowie, Zwiadowcy ani osadnik wysłany do [[building:barracks|Koszar]] lub [[building:school|Szkoły]].',
             'Para mieszka w domu żony, a gdy żona go nie ma, w domu męża.',
           ],
-        },
-        {
-          h: 'Dziecko',
-        },
-        {
-          steps: [
-            'Gracz wybiera: Niech ma Chłopca albo Niech ma Dziewczynkę.',
-            'Żona donosi jedzenie, gdy spiżarnia ma mniej niż {{family.childFood}} sztuki.',
-            'Oboje wchodzą do domu.',
-            'Spiżarnia traci {{family.childFood}} sztuki.',
-            'Dziecko rodzi się po {{family.birthVikingSeconds}} s u Wikingów, po {{family.birthOtherSeconds}} s u pozostałych plemion.',
-          ],
-        },
-        {
-          p: 'Para nie będzie mieć dziecka, gdy żona nie ma domu, dom jest w budowie, mąż to żołnierz, [[job:trader|Kupiec]] lub [[job:scout|Zwiadowca]], małżonkowie mieszkają osobno albo w zasięgu nie ma jedzenia.',
-        },
-        {
-          p: 'Następne dziecko para może mieć, gdy poprzednie dorośnie, czyli po {{age.adultMinutes}} minutach. Dziecko nie zajmuje miejsca rodziny w domu.',
         },
         {
           h: 'Poziomy domu',
