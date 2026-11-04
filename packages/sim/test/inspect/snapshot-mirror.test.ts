@@ -81,9 +81,9 @@ function layoutKeys(delta: SnapshotDelta): (readonly string[])[] {
   return deltaLayouts(delta).map((layout) => layout.keys);
 }
 
-/** Each layout's field kinds as one letter apiece: number, boolean, string, null, record, array. */
+/** Each layout's field kinds as one letter apiece: number, boolean, string, null, record, array, float. */
 function layoutFields(delta: SnapshotDelta): string[] {
-  return deltaLayouts(delta).map((layout) => layout.kinds.map((kind) => 'nbszra'[kind]).join(''));
+  return deltaLayouts(delta).map((layout) => layout.kinds.map((kind) => 'nbszraf'[kind]).join(''));
 }
 
 function ids(snapshot: WorldSnapshot): number[] {
