@@ -40,6 +40,7 @@ import {
 import { huntWorkLeft } from '../workforce/hunter.js';
 import { rowPlan } from '../workforce/staffing-rows.js';
 import { colonists, colonyOrigin, storeOf } from './founding.js';
+import { farDigPorters } from './haulers.js';
 import { homeSupply } from './home-supply.js';
 import { MEN_PER_WOMAN } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan, homeSlots } from './plan.js';
@@ -104,6 +105,13 @@ const POSTS: readonly Post[] = [
   'wood',
   'stone',
 ];
+
+/** The porters the digs past the store's round want on top of `posts`, whose first carrier keeps the round:
+ *  none before that one. */
+function haulersBeyond(posts: readonly Post[], farDigs: number): number {
+  const carriers = posts.filter((post) => post === 'carrier').length;
+  return carriers === 0 ? 0 : Math.max(0, farDigs - (carriers - 1));
+}
 
 function isDug(post: Post | null): post is DugGood {
   return post !== null && (DUG_IDS as readonly string[]).includes(post);
@@ -454,6 +462,7 @@ export function handsWanted(
       !isDug(p) && (p !== 'builder' || !resting) && (p !== 'fisher' || fishes) && (p !== 'hunter' || hunts),
   );
   men += others.length + (resting ? BUILDERS_AT_REST : 0);
+  men += haulersBeyond(others, farDigPorters(env, read.store));
   for (const e of buildings) {
     const type = index.buildings.get(world.get(e, Building).buildingType);
     if (type?.kind === BUILDING_KIND.workplace && !world.has(e, UnderConstruction)) men += seatsOf(ctx, type);
@@ -511,9 +520,12 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
   const dug = new Map<DugGood, number>();
   for (const id of DUG_IDS) dug.set(id, held.get(id) ?? 0);
   const resting = atRest(env, read);
-  const table = POSTS.slice(0, posted.length).filter(
+  const listed = POSTS.slice(0, posted.length).filter(
     (post) => (!isDug(post) || digs.has(post)) && (post !== 'hunter' || hunting),
   );
+  // A dig past the store porter's round wants a porter of its own before any other post.
+  const haulers = haulersBeyond(listed, farDigPorters(env, read.store));
+  const table: Post[] = [...Array.from({ length: haulers }, (): Post => 'carrier'), ...listed];
   // What the next builds take and what the open sites still lack: a smithy site's iron, which no ship brings
   // past what home's stop holds, calls its digger while the site stands.
   const called = billsOf(env, read.plan);

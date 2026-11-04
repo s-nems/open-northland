@@ -33,6 +33,7 @@ import { nearestLiveResource, reachableResourceTest, workableResourceTest } from
 import { SCOUT_CATCH_RADIUS_NODES, type ScoutDanger, scoutBusy, scoutDanger } from '../scout/index.js';
 import { corridorSamples, signpostTargetAround } from '../scout/signpost-coverage.js';
 import { enabledTiersAbove, liftCommand, liftTarget } from '../top-tier.js';
+import { porterFlagOrders } from './haulers.js';
 import { chainStepOf } from './industry.js';
 import { COLONY_SPOT_NODES } from './industry-read.js';
 import { isOverflowBuilding } from './overflow.js';
@@ -301,6 +302,7 @@ export function foundColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[]
   return [
     ...(lift.length > 0 ? lift : [...nextBuild(env, colony, read), ...nextUpgrade(env, read, people)]),
     ...fillPosts(env, men, read),
+    ...porterFlagOrders(env, store),
     ...raiseSignposts(env, men, read),
     ...colonyFamilies(world, ctx, people, buildings),
   ];
