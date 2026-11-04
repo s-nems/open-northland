@@ -250,7 +250,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     ];
     const change = (id: string) =>
       options.onChange({ peace: PEACE_MINUTES.find((minutes) => peaceChoiceId(minutes) === id) ?? null });
-    // Six lengths overflow a segment strip.
+    // The lengths overflow a segment strip.
     return select(text.label, choices, change);
   })();
   const peaceElements = peace?.elements ?? [];

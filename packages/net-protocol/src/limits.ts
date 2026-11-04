@@ -31,7 +31,7 @@ export const MAX_LOADING_PROGRESS = 100;
 /** The sim's `FOG_MODE` ids, which a test pins; the descriptor refuses any other. */
 export const FOG_MODES: readonly number[] = [0, 1, 2, 3, 4];
 /** The session descriptor's `PEACE_MINUTES`, the lengths a room's peace may take, which a test pins. */
-export const PEACE_MINUTES: readonly PeaceMinutes[] = [30, 45, 60, 75, 90];
+export const PEACE_MINUTES: readonly PeaceMinutes[] = [30, 45, 60, 75, 90, 120, 180];
 /** The widest tribe id a seat may carry, a sanity bound: which ids name a civilization is the
  *  content's to say, and the relay holds no content. */
 export const MAX_TRIBE_ID = 0xff;

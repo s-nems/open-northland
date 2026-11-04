@@ -34,7 +34,7 @@ Common options:
 | `postfx=on\|off` | Override stored post effects |
 | `weathermode=map\|variable\|winter\|off` | Match weather; default `map` |
 | `daynight=map\|on\|off` | Match day and night cycle; default `map` |
-| `peace=30\|45\|60\|75\|90` | Minutes of peace from the match start among the human, idle and lobby computer seats; default none |
+| `peace=30\|45\|60\|75\|90\|120\|180` | Minutes of peace from the match start among the human, idle and lobby computer seats; default none |
 | `weather=rain\|snow\|sand\|clear[:percent]` | View-only weather; default intensity 30; leaves simulation weather unchanged |
 | `weather=ambient[:percent]` | Hold the game's weather; 100 is light, 300 is a storm |
 | `tint=<palette index>` | Hold a view-only map tint |

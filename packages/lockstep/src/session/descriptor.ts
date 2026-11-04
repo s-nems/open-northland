@@ -67,7 +67,7 @@ export const DAY_NIGHT_MODES = ['map', 'on', 'off'] as const satisfies readonly 
 export const DEFAULT_DAY_NIGHT_MODE: DayNightMode = 'map';
 
 /** The lengths of a lobby peace a session may choose, in minutes of match time. */
-export const PEACE_MINUTES = [30, 45, 60, 75, 90] as const;
+export const PEACE_MINUTES = [30, 45, 60, 75, 90, 120, 180] as const;
 
 export type PeaceMinutes = (typeof PEACE_MINUTES)[number];
 
