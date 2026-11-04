@@ -14,7 +14,7 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
+import { type HalfCellNode, hexDistanceBetween, nodeManhattan } from '../../../nav/halfcell.js';
 import { NO_COMPONENT } from '../../../nav/terrain/index.js';
 import { anchorNodeOf, firstRingNode, towardNode } from '../../ai-shared/node-geometry.js';
 import { ownedSettlers } from '../../ai-shared/seat-roster.js';
@@ -163,7 +163,7 @@ function runScout(
 
 /** How far one scout walk reaches, in Manhattan half-cell nodes (authored, a performance trade): a farther
  *  goal is walked in legs, each decision sending a free scout one leg on, so no single route search spans
- *  the map. The danger retreat's walk home stays one walk. */
+ *  the map. The danger retreat's walk home from a trip out stays one walk. */
 export const SCOUT_LEG_NODES = 120;
 
 /** How far around a leg's straight-line end a scout looks for a node on his own walkable component, clear
@@ -205,12 +205,26 @@ function nearHome(at: HalfCellNode, home: HalfCellNode): boolean {
   return hexDistanceBetween(at.hx, at.hy, home.hx, home.hy) <= SCOUT_HOME_RADIUS_NODES;
 }
 
+/** How far (Manhattan half-cell nodes) a walk's goal may stray off the straight way from the scout to his
+ *  home and still count as a leg of the walk home (authored): both ends of a leg snap up to
+ *  {@link SCOUT_LEG_SNAP_NODES} off the line. */
+const SCOUT_HOMEWARD_SLACK_NODES = 2 * SCOUT_LEG_SNAP_NODES;
+
+/** Whether a walk from `at` to `goal` leads home: the goal lies on the way from the scout to `home`. */
+function onWayHome(at: HalfCellNode, goal: HalfCellNode, home: HalfCellNode): boolean {
+  return (
+    nodeManhattan(at, goal) + nodeManhattan(goal, home) <=
+    nodeManhattan(at, home) + SCOUT_HOMEWARD_SLACK_NODES
+  );
+}
+
 /**
  * The walk home for a scout on a move whose goal lies in the {@link scoutDanger} reach, who stands in
  * it, or who sees an enemy fighter near him (owner ruling: a scout looks from nearby and turns back, he
  * does not die): a tower first seen on the way, or an army, ends the trip, and the zone of the walk's
  * goal, a leg's end on a long trip, is recorded so the next look goes elsewhere ({@link
- * nextStaleZoneTarget}). None while he already walks home.
+ * nextStaleZoneTarget}). A walk that already leads home records nothing and keeps going in legs, with a
+ * fresh leg when danger covers its goal.
  */
 function retreat(
   world: World,
@@ -227,6 +241,8 @@ function retreat(
   const goal = { hx: coords.x, hy: coords.y };
   if (nearHome(goal, home)) return [];
   const danger = scoutDanger(world, ctx, player);
+  if (onWayHome(at, goal, home))
+    return danger.covers(goal.hx, goal.hy) ? [moveTo(scout, legToward(ctx, at, home, danger))] : [];
   const threatened =
     danger.covers(goal.hx, goal.hy) ||
     danger.covers(at.hx, at.hy) ||

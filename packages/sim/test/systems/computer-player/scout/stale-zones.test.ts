@@ -228,6 +228,35 @@ describe('scout staleness scouting', () => {
     );
   });
 
+  it('keeps walking home in legs past a tower, recording no turn-back', () => {
+    const sim = staleSim([DEPOSIT], true);
+    const fog = fogOfWar(sim);
+    const { world } = sim;
+    const scout = ownedSettlers(world, SEAT).find((e) => world.get(e, Settler).jobType === SCOUT);
+    const terrain = sim.terrain;
+    const carrier = aiControlEntity(world, SEAT);
+    if (scout === undefined || terrain === undefined || carrier === null) throw new Error('setup: a scout');
+    // Far out beside a manned tower, one leg of the walk home ahead of him.
+    const far = { hx: OTHER_START.x + 20, hy: HOME.y };
+    const legEnd = { hx: far.hx - SCOUT_LEG_NODES, hy: HOME.y };
+    world.mut(scout, Position).x = positionOfNode(far.hx, far.hy).x;
+    world.mut(scout, Position).y = positionOfNode(far.hx, far.hy).y;
+    world.add(scout, PlayerOrder, {});
+    world.add(scout, MoveGoal, { cell: terrain.nodeAt(legEnd.hx, legEnd.hy) });
+    world.remove(scout, CurrentAtomic);
+    world.mut(carrier, ComputerIntel).buildings.push({
+      entity: TOWER_POST,
+      owner: OTHER,
+      buildingType: HQ_TYPE,
+      ...far,
+      seenAt: NOW,
+      posted: 1,
+      postedPoints: 1,
+    });
+    expect(scoutModule(DEFAULT_BUILD_ORDER).run(world, ctxAt(sim, NOW, fog), SEAT)).toEqual([]);
+    expect(world.get(carrier, ComputerIntel).scoutTurnedBackAt).not.toContain(NOW);
+  });
+
   it('erects no signpost in a zone that took a scout', () => {
     const sim = staleSim();
     const ctx = ctxAt(sim, NOW);
