@@ -257,13 +257,13 @@ function walkHumanLeg(
     beginTimedLeg(follow, stops, p, target, walkStepTicks(resistance, modifiers));
     // The planned heading is fixed for this leg. Separation can nudge the position across an octant
     // boundary; re-aiming every tick would insert fresh turn holds in the middle of a steady step.
-    beginWalkTurn(world, e, pf.legPace === undefined ? (stops[pf.index - 1] ?? p) : p, target);
+    // The departure charge below spends boots and needs only, so the facing read here still holds.
+    turn = beginWalkTurn(world, e, pf.legPace === undefined ? (stops[pf.index - 1] ?? p) : p, target);
     if (pf.departureCharged !== true) {
       // Laying the leg and the turn out writes neither boots nor load, so the modifiers still hold.
       chargeNode(world, ctx, e, resistance, modifiers.shoes, modifiers.carrying);
       follow.departureCharged = true;
     }
-    turn = world.tryGet(e, WalkFacing);
   }
   // Rotate before the first advancing tick as well as later ones. Moving once and only then holding
   // for the rest of a turn made rapid redirects visibly jerk and left the first step facing sideways.

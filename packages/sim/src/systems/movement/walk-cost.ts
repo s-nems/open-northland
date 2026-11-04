@@ -121,8 +121,12 @@ export const UNMODIFIED_STEP: WalkStepModifiers = {
 
 /** Whether `e` wears a live pair of boots: a boots slot holding a good not yet worn to ONE. The original
  *  checks the same two facts, a shoe type set and a condition above zero. */
-export function hasLiveBoots(world: World, e: Entity): boolean {
-  const degreeOfUse = bootsDegreeOfUse(world, e);
+export function hasLiveBoots(
+  world: World,
+  e: Entity,
+  equipment: Readonly<EquipmentData> | undefined = world.tryGet(e, Equipment),
+): boolean {
+  const degreeOfUse = bootsDegreeOfUse(world, e, equipment);
   return degreeOfUse !== null && degreeOfUse < ONE;
 }
 
@@ -155,8 +159,8 @@ export function walkStepModifiersOf(
   const job = settler?.jobType ?? null;
   const variant = settler === undefined ? undefined : unitVariantFor(content, settler);
   const reduction = settler === undefined ? undefined : index.tribes.get(settler.tribe)?.walkStepReduction;
-  out.shoes = equipment?.boots != null && hasLiveBoots(world, e);
-  out.stepTicksSaved = equipment === undefined ? 0 : carriedStepTicksSaved(world, content, e);
+  out.shoes = equipment?.boots != null && hasLiveBoots(world, e, equipment);
+  out.stepTicksSaved = equipment === undefined ? 0 : carriedStepTicksSaved(world, content, e, equipment);
   out.carrying = isCarryingGood(world, e);
   out.cartSpeedLossPercent = haulingCartSpeedLossPercent(world, content, e);
   out.tired = fatigue !== undefined && fatigue >= NEED_DRIVE_THRESHOLD;

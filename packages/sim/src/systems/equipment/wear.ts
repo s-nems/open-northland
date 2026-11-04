@@ -100,8 +100,9 @@ export function wearWornBoots(
   carrying: boolean,
 ): void {
   if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.SHOES_DO_NOT_WEAR)) return;
-  const boots = world.tryGet(e, Equipment)?.boots;
-  const degreeOfUse = bootsDegreeOfUse(world, e);
+  const equipment = world.tryGet(e, Equipment);
+  const boots = equipment?.boots;
+  const degreeOfUse = bootsDegreeOfUse(world, e, equipment);
   if (boots == null || degreeOfUse === null || degreeOfUse >= ONE) return;
   const equip = contentIndex(ctx.content).goods.get(boots.goodType)?.equip;
   if (equip === undefined || !equip.wears || equip.uses === undefined) return;
