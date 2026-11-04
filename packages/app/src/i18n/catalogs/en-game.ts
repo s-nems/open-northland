@@ -1587,6 +1587,12 @@ export const enGame = {
       label: 'Watched player',
       wholeMap: 'Revealed map',
       playersSight: "Players' sight",
+      standings: "Players' standings",
+      /** A seat's chip on the standings strip, for assistive tech. */
+      standing: '{name}: {people} people, {soldiers} soldiers',
+      buildings: 'Buildings',
+      status: { won: 'Victorious', defeated: 'Defeated', empty: 'Nothing left' },
+      watchHint: 'Click to watch this player',
     },
     stats: {
       playerTick: 'Player {player} · tick {tick}',

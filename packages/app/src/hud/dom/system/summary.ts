@@ -10,6 +10,7 @@ import {
 import { GOOD_ICON_BOX_PX, type GoodIconPainter, goodIconMarkup } from '../good-art.js';
 import { FIGURE } from '../icons.js';
 import { write } from '../parts/dom.js';
+import { keepTipOnScreen, tipRow } from './breakdown.js';
 
 export interface HudSummaryDeps {
   /** Paints the counters' and the breakdown rows' good icons in the art this game draws with. */
@@ -31,9 +32,6 @@ export interface HudSummary {
 
 /** The good icon on a breakdown row, sized to the row's 15 px type. */
 const ROW_ICON_PX = 18;
-
-/** Design px a breakdown keeps from the screen's side edges. */
-const TIP_EDGE_MARGIN_PX = 6;
 
 /** The counters near the screen's right edge hang their breakdown to the left instead. */
 const FLIPPED_CATEGORIES: ReadonlySet<SummaryCategoryId> = new Set(['armament', 'equipment', 'other']);
@@ -60,16 +58,6 @@ interface Group {
   readonly tip: HTMLElement;
 }
 
-function tipRow(label: string, className = ''): { row: HTMLElement; figure: HTMLElement } {
-  const row = document.createElement('p');
-  row.className = `on-tip__row ${className}`.trim();
-  const name = document.createElement('span');
-  name.textContent = label;
-  const figure = document.createElement('b');
-  row.append(name, figure);
-  return { row, figure };
-}
-
 export function createHudSummary(deps: HudSummaryDeps): HudSummary {
   const copy = messages().hud.summary;
   const element = document.createElement('div');
@@ -78,20 +66,8 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
   element.setAttribute('aria-label', copy.label);
   let open: Group | null = null;
 
-  // A breakdown hangs under its counter, and on a narrow screen a wide one would run past the edge.
-  // Measured in screen px and converted back through the plane's scale, so the shift is design px.
-  const keepOnScreen = (tip: HTMLElement): void => {
-    tip.style.transform = '';
-    const rect = tip.getBoundingClientRect();
-    if (rect.width === 0) return;
-    const scale = rect.width / tip.offsetWidth;
-    const margin = TIP_EDGE_MARGIN_PX * scale;
-    const screenWidth = document.documentElement.clientWidth;
-    const shift = Math.min(0, screenWidth - margin - rect.right) + Math.max(0, margin - rect.left);
-    if (shift !== 0) tip.style.transform = `translateX(${String(shift / scale)}px)`;
-  };
   const onResize = (): void => {
-    if (open !== null) keepOnScreen(open.tip);
+    if (open !== null) keepTipOnScreen(open.tip);
   };
   window.addEventListener('resize', onResize);
 
@@ -104,7 +80,7 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
     open = group;
     if (group !== null) {
       group.tip.hidden = false;
-      keepOnScreen(group.tip);
+      keepTipOnScreen(group.tip);
       for (const { button } of group.buttons) button.setAttribute('aria-expanded', 'true');
     }
   };

@@ -1543,6 +1543,11 @@ export const chtGame = {
       label: '觀看的玩家',
       wholeMap: '全圖',
       playersSight: '玩家視野',
+      standings: '玩家戰況',
+      standing: '{name}：人口 {people}，士兵 {soldiers}',
+      buildings: '建築',
+      status: { won: '勝利', defeated: '戰敗', empty: '一無所有' },
+      watchHint: '點擊觀看該玩家',
     },
     stats: {
       playerTick: '玩家 {player} · 邏輯幀 {tick}',

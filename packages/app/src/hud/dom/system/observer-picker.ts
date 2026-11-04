@@ -23,6 +23,28 @@ export interface ObserverPicker {
   dispose(): void;
 }
 
+/** A seat's name as the spectator's HUD shows it. Seats are numbered from one, as the lobby numbers
+ *  them; a name several seats share (a map's "Duchy" ×6) carries the number too, so the seats stay
+ *  distinguishable beyond their swatch. */
+export function observerSeatLabels(seats: readonly ObserverSeatEntry[]): (seat: number) => string {
+  const copy = messages().hud;
+  const seatNumber = (seat: number): number => seat + 1;
+  const nameCount = new Map<string, number>();
+  for (const { name } of seats) {
+    if (name !== undefined) nameCount.set(name, (nameCount.get(name) ?? 0) + 1);
+  }
+  return (seat) => {
+    const name = seats.find((s) => s.player === seat)?.name;
+    if (name === undefined) return `${copy.player} ${seatNumber(seat)}`;
+    return (nameCount.get(name) ?? 0) > 1 ? `${name} ${seatNumber(seat)}` : name;
+  };
+}
+
+/** A seat's swatch colour, through the owner-to-team-colour map when one is given. */
+export function observerSeatColour(seat: number, playerColourOf?: (player: number) => number): string {
+  return playerSwatchHex(playerColourOf?.(seat) ?? seat);
+}
+
 function swatch(colour: string): HTMLElement {
   const span = document.createElement('span');
   span.className = 'on-seat__swatch';
@@ -57,22 +79,14 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   title.textContent = copy.observer.label;
   list.append(title);
 
-  // Seats are numbered from one, as the lobby numbers them. A name several seats share (a map's
-  // "Duchy" ×6) carries the number too, so the rows stay distinguishable beyond their swatch.
-  const seatNumber = (seat: number): number => seat + 1;
-  const nameCount = new Map<string, number>();
-  for (const { name } of deps.seats) {
-    if (name !== undefined) nameCount.set(name, (nameCount.get(name) ?? 0) + 1);
-  }
+  const seatLabel = observerSeatLabels(deps.seats);
   const labelOf = (seat: WatchTarget): string => {
     if (seat === null) return copy.observer.wholeMap;
     if (seat === PLAYERS_SIGHT) return copy.observer.playersSight;
-    const name = deps.seats.find((s) => s.player === seat)?.name;
-    if (name === undefined) return `${copy.player} ${seatNumber(seat)}`;
-    return (nameCount.get(name) ?? 0) > 1 ? `${name} ${seatNumber(seat)}` : name;
+    return seatLabel(seat);
   };
   const colourOf = (seat: WatchTarget): string =>
-    typeof seat !== 'number' ? 'transparent' : playerSwatchHex(deps.playerColourOf?.(seat) ?? seat);
+    typeof seat !== 'number' ? 'transparent' : observerSeatColour(seat, deps.playerColourOf);
 
   const entries = new Map<WatchTarget, HTMLButtonElement>();
   const entry = (seat: WatchTarget): void => {

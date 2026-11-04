@@ -1,7 +1,7 @@
 import type { SignpostReachView } from '@open-northland/sim';
 import { IDLE_JOB as SIM_IDLE_JOB, type WorldSnapshot } from '@open-northland/sim';
 import { empireInventoryOf } from './inventory.js';
-import { hudTotalsOf } from './totals.js';
+import { hudPeopleTotalsOf, hudTotalsOf, type PlayerHudTotals } from './totals.js';
 
 /**
  * Turns a {@link WorldSnapshot} into a flat {@link HudModel}. Aggregates come from the read-only
@@ -40,6 +40,23 @@ export interface HudModel {
   readonly stocks: readonly StockCount[];
 }
 
+/** The people part of a {@link HudModel}: what a seat's standing reads without its stock. */
+export type HudPeople = Pick<HudModel, 'population' | 'jobs'>;
+
+const NO_PEOPLE: HudPeople = { population: 0, jobs: [] };
+
+function jobCounts(jobs: PlayerHudTotals['jobs']): JobCount[] {
+  return [...jobs.entries()]
+    .map(([jobType, { count, female }]) => ({ jobType, count, female }))
+    .sort((a, b) => a.jobType - b.jobType);
+}
+
+/** `player`'s people off the maintained index alone; no stock reach is derived. */
+export function hudPeopleOf(snapshot: WorldSnapshot, player: number): HudPeople {
+  const people = hudPeopleTotalsOf(snapshot, player);
+  return people === undefined ? NO_PEOPLE : { population: people.population, jobs: jobCounts(people.jobs) };
+}
+
 /** Live stock uses the sim's terrain reach. A snapshot-only caller keeps the mapless inventory estimate. */
 export function buildHud(
   snapshot: WorldSnapshot,
@@ -49,9 +66,7 @@ export function buildHud(
   const totals = hudTotalsOf(snapshot, player);
   if (totals === undefined) return { tick: snapshot.tick, player, population: 0, jobs: [], stocks: [] };
 
-  const jobs: JobCount[] = [...totals.jobs.entries()]
-    .map(([jobType, { count, female }]) => ({ jobType, count, female }))
-    .sort((a, b) => a.jobType - b.jobType);
+  const jobs = jobCounts(totals.jobs);
   const stockTotals = new Map(totals.owned);
   for (const [goodType, amount] of totals.heapStock) {
     stockTotals.set(goodType, (stockTotals.get(goodType) ?? 0) + amount);

@@ -2103,6 +2103,123 @@ body.on-drag-scroll.on-drag-scroll-free * {
   border-radius: 2px;
   box-shadow: inset 0 0 0 1px #fff5;
 }
+/* The bar's parts a spectator's view swaps: the picker while it may not switch, the counters while
+   it watches no single seat, the standings strip while it does. */
+.on-hud .on-picker[hidden],
+.on-hud .on-summary[hidden],
+.on-hud .on-standings[hidden] {
+  display: none;
+}
+/* The spectator's standings strip in the counters' place: a legend naming the two figures once, then
+   a chip per seat, its colour edge beside its people over its soldiers. Narrow enough for every seat a
+   map holds; the rest of a seat's figures open under its chip. */
+.on-hud .on-standings {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.on-hud .on-standings__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 3px 0 1px;
+  color: var(--bronze);
+}
+.on-hud .on-standings__legend .on-glyph {
+  width: 12px;
+  height: 12px;
+  filter: drop-shadow(0 1px 1px #000c);
+}
+.on-hud .on-standing {
+  display: flex;
+  align-items: stretch;
+  gap: 5px;
+  min-height: 30px;
+  padding: 2px 6px 2px 3px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  cursor: var(--cursor-pointer, pointer);
+}
+.on-hud .on-standing:hover,
+.on-hud .on-standing:focus-visible,
+.on-hud .on-standing[aria-expanded="true"] {
+  background: #c9a26222;
+  box-shadow: inset 0 -2px var(--bronze);
+}
+.on-hud .on-standing__swatch {
+  flex: none;
+  width: 5px;
+  border: 1px solid #0009;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px #fff5;
+}
+.on-hud .on-standing__figures {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 20px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px #000;
+}
+.on-hud .on-standing__people {
+  font: 700 13px / 1 var(--font-body);
+  color: var(--text-hi);
+}
+.on-hud .on-standing__soldiers {
+  font: 700 11px / 1 var(--font-body);
+  color: var(--bronze-hi);
+}
+.on-hud .on-standing__mark {
+  align-self: flex-start;
+  display: flex;
+  margin: 0 -3px 0 -2px;
+}
+.on-hud .on-standing__mark:empty {
+  display: none;
+}
+.on-hud .on-standing__mark .on-glyph {
+  width: 11px;
+  height: 11px;
+  filter: drop-shadow(0 1px 1px #000c);
+}
+.on-hud .on-standing[data-status="won"] .on-standing__mark {
+  color: var(--bronze-hi);
+}
+.on-hud .on-standing[data-status="defeated"] .on-standing__mark {
+  color: var(--text-hi);
+}
+/* A seat out of the match keeps its place in the row, faded behind its mark. */
+.on-hud
+  .on-standing:is([data-status="defeated"], [data-status="empty"])
+  :is(.on-standing__swatch, .on-standing__figures) {
+  opacity: 0.45;
+}
+.on-hud .on-standings__title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.on-hud .on-standings__status {
+  margin: 8px 0 0;
+  font: 700 13px var(--font-caps);
+  letter-spacing: 0.06em;
+}
+.on-hud .on-standings__status[data-status="defeated"] {
+  color: var(--paper-error);
+}
+.on-hud .on-standings__status[hidden] {
+  display: none;
+}
+.on-hud .on-standings__hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ink-muted);
+}
 /* A good's icon: its sheet frame, sized by area in good-art.ts so every good carries the same mass,
    centred in the box; the frame element is exactly the crop, so no neighbouring frame shows. */
 .on-hud .on-good {

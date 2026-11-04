@@ -1542,6 +1542,11 @@ export const chsGame = {
       label: '被观察的玩家',
       wholeMap: '全图',
       playersSight: '玩家视野',
+      standings: '玩家战况',
+      standing: '{name}：人口 {people}，士兵 {soldiers}',
+      buildings: '建筑',
+      status: { won: '胜利', defeated: '战败', empty: '一无所有' },
+      watchHint: '点击观看该玩家',
     },
     stats: {
       playerTick: '玩家 {player} · 逻辑帧 {tick}',

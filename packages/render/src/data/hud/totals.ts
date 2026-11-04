@@ -305,6 +305,14 @@ function settleReach(state: HudReach, reach: Reach): void {
 
 const NO_COUNTS: ReadonlyMap<number, never> = new Map<number, never>();
 
+/** `player`'s maintained head-counts alone, without settling the stock reach; undefined with nobody. */
+export function hudPeopleTotalsOf(
+  snapshot: WorldSnapshot,
+  player: number,
+): Pick<PlayerHudTotals, 'population' | 'jobs'> | undefined {
+  return indexesOf(snapshot).get(HUD_PEOPLE).get(player);
+}
+
 /** `player`'s maintained HUD figures over `snapshot`, or undefined for a player owning nothing. */
 export function hudTotalsOf(snapshot: WorldSnapshot, player: number): PlayerHudTotals | undefined {
   const indexes = indexesOf(snapshot);

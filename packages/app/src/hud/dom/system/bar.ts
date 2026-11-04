@@ -2,6 +2,7 @@ import type { HudModel } from '@open-northland/render';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { createTooltip } from '../../../view/tooltip.js';
 import { formatPeaceLeft, formatSimClock } from '../../summary/model.js';
+import type { SeatStanding } from '../../summary/standings.js';
 import {
   DEV_GAME_SPEED_STATES,
   GAME_SPEED_STATES,
@@ -9,9 +10,10 @@ import {
   type RunningGameSpeed,
 } from '../../tool-panel/game-speed.js';
 import { GLYPH, menuArt } from '../icons.js';
-import { setAttribute, setClass, setTip, setTitle } from '../parts/dom.js';
+import { setAttribute, setClass, setHidden, setTip, setTitle } from '../parts/dom.js';
 import { attachTipLayer } from '../parts/tip-layer.js';
 import { createObserverPicker, type ObserverPickerDeps } from './observer-picker.js';
+import { createObserverStandings } from './standings.js';
 import { createHudSummary, type HudSummaryDeps } from './summary.js';
 
 const MENU_MEDALLION_PX = 34;
@@ -31,9 +33,16 @@ export function sameSpeedBarLook(a: SpeedBarLook | null, b: SpeedBarLook | null)
   return a.kind === 'held' || (b.kind === 'slowed' && a.pressed === b.pressed);
 }
 
+/** A spectator's part of the bar: the seat picker, and every seat's standing while it watches none. */
+export interface ObserverBarDeps extends ObserverPickerDeps {
+  /** Each watched seat's standing over the snapshot shown; read only while no single seat is watched. */
+  readonly standings: () => readonly SeatStanding[];
+}
+
 export interface HudSystemBarDeps {
-  /** Set for a spectator: the seat picker leads the bar, before the seat's counters. */
-  readonly observer?: ObserverPickerDeps | undefined;
+  /** Set for a spectator: the seat picker leads the bar, before the seat's counters, which give way to
+   *  every seat's standing while it watches no single seat. */
+  readonly observer?: ObserverBarDeps | undefined;
   readonly summary: HudSummaryDeps;
   readonly onPauseToggle: () => void;
   readonly onSpeed: (running: RunningGameSpeed) => void;
@@ -45,8 +54,9 @@ export interface HudSystemBarDeps {
   readonly lead?: HTMLElement;
 }
 
-/** The top-right bar, one panel: the summary counters, the lobby peace's countdown while it holds, the
- *  sim clock, the pause and running-speed segments and the game-menu medallion. */
+/** The top-right bar, one panel: the summary counters (for a spectator watching no single seat, the
+ *  standings strip), the lobby peace's countdown while it holds, the sim clock, the pause and
+ *  running-speed segments and the game-menu medallion. */
 export interface HudSystemBar {
   /** Show the control as it stands; never pushes to the loop. */
   setSpeed(control: GameSpeedControl): void;
@@ -69,7 +79,16 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   bar.className = 'on-bar on-bar--right on-panel';
   Object.assign(bar.style, { position: 'absolute', top: '0', right: '0' });
 
-  const picker = deps.observer === undefined ? null : createObserverPicker(deps.observer);
+  const observer = deps.observer;
+  const picker = observer === undefined ? null : createObserverPicker(observer);
+  const standings =
+    observer === undefined
+      ? null
+      : createObserverStandings({
+          seats: observer.seats,
+          playerColourOf: observer.playerColourOf,
+          onWatch: observer.onWatch,
+        });
   const summary = createHudSummary(deps.summary);
 
   // The peace's own framed cell: a glyph and the time left, its name and meaning in the label and tip.
@@ -140,6 +159,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
     bar.append(deps.lead);
   }
   if (picker !== null) bar.append(picker.element);
+  if (standings !== null) bar.append(standings.element);
   bar.append(summary.element, peace, clock, speed, menu, aside);
   plane.append(bar);
   const showSpeed = (): void => {
@@ -170,7 +190,12 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
     },
     update: (model, peaceHoldsUntil) => {
       picker?.refresh();
-      summary.update(model);
+      // Watching no single seat, the bar shows every seat's standing in place of nobody's counters.
+      const overview = observer !== undefined && observer.viewer.seat() === null;
+      standings?.setShown(overview);
+      setHidden(summary.element, overview);
+      if (overview) standings?.update(observer.standings());
+      else summary.update(model);
       const left = peaceHoldsUntil === null ? '' : formatPeaceLeft(peaceHoldsUntil, model.tick);
       if (left !== shownPeace) {
         shownPeace = left;
@@ -194,6 +219,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
     },
     dispose: () => {
       picker?.dispose();
+      standings?.dispose();
       summary.dispose();
       peaceTips.dispose();
       peaceChip.destroy();

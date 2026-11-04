@@ -1710,6 +1710,11 @@ export const ruGame = {
       label: 'Наблюдаемый игрок',
       wholeMap: 'Открытая карта',
       playersSight: 'Обзор игроков',
+      standings: 'Положение игроков',
+      standing: '{name}: жители {people}, солдаты {soldiers}',
+      buildings: 'Здания',
+      status: { won: 'Победа', defeated: 'Поражение', empty: 'Ничего не осталось' },
+      watchHint: 'Нажмите, чтобы наблюдать за этим игроком',
     },
     stats: {
       playerTick: 'Игрок {player} · такт {tick}',

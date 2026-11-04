@@ -1722,6 +1722,11 @@ export const deGame = {
       label: 'Beobachteter Spieler',
       wholeMap: 'Aufgedeckte Karte',
       playersSight: 'Sicht der Spieler',
+      standings: 'Stand der Spieler',
+      standing: '{name}: {people} Einwohner, {soldiers} Soldaten',
+      buildings: 'Gebäude',
+      status: { won: 'Sieg', defeated: 'Niederlage', empty: 'Nichts mehr übrig' },
+      watchHint: 'Klicken, um diesen Spieler zu beobachten',
     },
     stats: {
       playerTick: 'Spieler {player} · Tick {tick}',

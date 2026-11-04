@@ -31,6 +31,7 @@ import {
 } from '../../game/snapshot/index.js';
 import { readMinimapIndexes } from '../../hud/minimap/dots.js';
 import { standingNodesRevision } from '../../hud/minimap/live-objects.js';
+import { seatStandings } from '../../hud/summary/standings.js';
 import { restingBuildingsOf } from '../../hud/tool-panel/messages/workshop-stalls.js';
 import { assistantBookingsOf } from '../assistant/bookings.js';
 import { gearTalliesOf } from '../assistant/shortages.js';
@@ -76,6 +77,13 @@ export const FRAME_INDEX_READERS: readonly AppFrameIndexReader[] = [
     read: (snapshot) => {
       const post = signpostOverlayIndex(snapshot).posts.values().next().value;
       if (post !== undefined) networkInventoryOf(snapshot, post.id);
+    },
+  },
+  {
+    // The system bar's standings strip, read every frame a spectator watches no single seat.
+    name: 'observer standings',
+    read: (snapshot, seat) => {
+      if (seat === null) seatStandings(snapshot, [NO_SEAT], () => 'undecided');
     },
   },
   { name: 'needs rule', read: (snapshot) => needsRuleEnabled(snapshot) },

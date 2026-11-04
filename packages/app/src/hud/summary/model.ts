@@ -1,4 +1,4 @@
-import type { HudModel } from '@open-northland/render';
+import type { HudModel, HudPeople } from '@open-northland/render';
 import { systems, TICKS_PER_SECOND } from '@open-northland/sim';
 import {
   JOB_BABY_FEMALE,
@@ -120,7 +120,7 @@ const isMilitaryJob = (jobType: number): boolean =>
   (jobType >= SOLDIER_JOB_MIN && jobType <= SOLDIER_JOB_MAX) ||
   (jobType >= JOB_HERO_UNARMED && jobType <= JOB_HEROINE_BOW);
 
-export function summaryPopulation(model: HudModel): SummaryPopulation {
+export function summaryPopulation(model: HudPeople): SummaryPopulation {
   let women = 0;
   let men = 0;
   let soldiers = 0;

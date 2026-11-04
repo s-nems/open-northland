@@ -1565,6 +1565,11 @@ export const plGame = {
       label: 'Obserwowany gracz',
       wholeMap: 'Odkryta mapa',
       playersSight: 'Wizja graczy',
+      standings: 'Stan graczy',
+      standing: '{name}: ludzie {people}, żołnierze {soldiers}',
+      buildings: 'Budynki',
+      status: { won: 'Zwycięstwo', defeated: 'Porażka', empty: 'Nic nie zostało' },
+      watchHint: 'Kliknij, aby obserwować tego gracza',
     },
     stats: {
       playerTick: 'Gracz {player} · krok {tick}',
