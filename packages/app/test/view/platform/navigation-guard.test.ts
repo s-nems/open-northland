@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// The guard only pauses the freeze watch; the real module pulls the whole crash-report graph into
+// every fresh import below.
+const { pauseFreezeWatch } = vi.hoisted(() => ({ pauseFreezeWatch: vi.fn() }));
+vi.mock('../../../src/diag/capture/install.js', () => ({ pauseFreezeWatch }));
+
 /** The module keeps the document's hold, so each test gets a fresh copy. */
 async function freshGuard() {
   vi.resetModules();
@@ -33,6 +38,7 @@ describe('navigation guard', () => {
     uninstall = guard.installNavigationGuard(reload);
     pushState = vi.spyOn(window.history, 'pushState');
     reload.mockClear();
+    pauseFreezeWatch.mockClear();
   });
 
   afterEach(() => {
@@ -189,6 +195,7 @@ describe('navigation guard', () => {
     expect(unload()).toBe(false);
     guard.guardEntry('map');
     expect(unload()).toBe(true);
+    expect(pauseFreezeWatch).toHaveBeenCalledTimes(1);
     Object.defineProperty(navigator, 'webdriver', { value: true, configurable: true });
     expect(unload()).toBe(false);
     Object.defineProperty(navigator, 'webdriver', { value: false, configurable: true });
