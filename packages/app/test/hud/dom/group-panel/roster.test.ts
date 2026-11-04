@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { GroupMemberModel } from '../../../../src/hud/details-panel/model/index.js';
-import { rosterRows, rosterRowsOf, rowsInView } from '../../../../src/hud/dom/group-panel/members.js';
+import { layRoster, rosterRows, rowsInView } from '../../../../src/hud/dom/group-panel/members.js';
 
+let nextId = 0;
 const member = (look: GroupMemberModel['look']): GroupMemberModel => ({
-  id: 0,
+  id: nextId++,
   look,
   kind: look,
   name: '',
@@ -12,22 +13,48 @@ const member = (look: GroupMemberModel['look']): GroupMemberModel => ({
   hungerPct: null,
   carriesMead: false,
 });
+const settlers = (n: number) => Array.from({ length: n }, () => member('settler'));
 
-describe('roster rows', () => {
-  it('fills a row with settlers and lets a vehicle that would cross its end start the next', () => {
-    const settlers = (n: number) => Array.from({ length: n }, () => member('settler'));
-    expect(rosterRows([], 8)).toBe(0);
-    expect(rosterRows(settlers(8), 8)).toBe(1);
-    expect(rosterRows(settlers(9), 8)).toBe(2);
-    expect(rosterRows([...settlers(7), member('vehicle')], 8)).toBe(2);
-    expect(rosterRows([...settlers(6), member('vehicle')], 8)).toBe(1);
+describe('roster layout', () => {
+  it('fills a row with settlers and lets a vehicle with no member after it open the next', () => {
+    expect(layRoster([], 8).rows).toBe(0);
+    expect(layRoster(settlers(8), 8).rows).toBe(1);
+    expect(layRoster(settlers(9), 8).rows).toBe(2);
+    expect(layRoster([...settlers(7), member('vehicle')], 8).rows).toBe(2);
+    expect(layRoster([...settlers(6), member('vehicle')], 8).rows).toBe(1);
   });
 
-  it('places each member on its row, a vehicle that would cross the end on the next', () => {
-    const settlers = (n: number) => Array.from({ length: n }, () => member('settler'));
-    expect(rosterRowsOf([...settlers(7), member('vehicle'), member('settler')], 8)).toEqual([
-      0, 0, 0, 0, 0, 0, 0, 1, 1,
-    ]);
+  it('fills the well a crossing vehicle would leave empty with the next member', () => {
+    const before = settlers(7);
+    const vehicle = member('vehicle');
+    const after = member('settler');
+    const layout = layRoster([...before, vehicle, after], 8);
+    expect(layout.members).toEqual([...before, after, vehicle]);
+    expect(layout.rowOf).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 1]);
+    expect(layout.rows).toBe(2);
+  });
+
+  it('keeps vehicles that wait together in their order', () => {
+    const before = settlers(7);
+    const first = member('vehicle');
+    const second = member('vehicle');
+    const after = member('settler');
+    const layout = layRoster([...before, first, second, after], 8);
+    expect(layout.members).toEqual([...before, after, first, second]);
+    expect(layout.rowOf).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 1, 1]);
+  });
+
+  it('leaves no gap in a mixed army before its last row', () => {
+    const army = [...settlers(9), member('vehicle'), member('vehicle'), ...settlers(20), member('vehicle')];
+    const layout = layRoster(army, 10);
+    const used = new Map<number, number>();
+    layout.members.forEach((m, index) => {
+      const row = layout.rowOf[index] as number;
+      used.set(row, (used.get(row) ?? 0) + (m.look === 'vehicle' ? 2 : 1));
+    });
+    for (let row = 0; row < layout.rows - 1; row += 1) expect(used.get(row)).toBe(10);
+    expect(new Set(layout.members).size).toBe(army.length);
+    expect(rosterRows(army, 10)).toBe(layout.rows);
   });
 });
 

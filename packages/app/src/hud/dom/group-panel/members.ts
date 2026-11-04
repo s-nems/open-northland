@@ -32,41 +32,61 @@ const COMPACT_MEAD_BADGE_PX = 8;
 /** Grid rows attached beyond each edge of the roster's view, so a wheel turn shows built wells at once. */
 const ROW_MARGIN = 2;
 
-/** Each member's grid row in order: a vehicle that would cross the row's end starts the next. */
-export function rosterRowsOf(members: readonly GroupMemberModel[], columns: number): number[] {
-  const rows: number[] = [];
+/** The roster's grid order and each member's row in it. */
+export interface RosterLayout {
+  readonly members: readonly GroupMemberModel[];
+  readonly rowOf: readonly number[];
+  readonly rows: number;
+}
+
+/** Walk `members` in grid order, handing each its row, and answer the rows they fill. A vehicle that
+ *  would cross a row's end waits while the members after it fill the row, then opens the next one, so a
+ *  mixed list leaves no empty well before its last row. */
+function walkRoster(
+  members: readonly GroupMemberModel[],
+  columns: number,
+  visit: ((member: GroupMemberModel, row: number) => void) | null,
+): number {
+  // Allocated only when a vehicle has to wait.
+  let waiting: GroupMemberModel[] | null = null;
   let row = -1;
   let free = 0;
-  for (const member of members) {
-    const span = member.look === 'vehicle' ? VEHICLE_SPAN : 1;
+  const place = (member: GroupMemberModel, span: number): void => {
     if (span > free) {
       row += 1;
       free = columns;
     }
     free -= span;
-    rows.push(row);
-  }
-  return rows;
-}
-
-/** The rows `members` fill in grid order, counted as {@link rosterRowsOf} places them. */
-export function rosterRows(members: readonly GroupMemberModel[], columns: number): number {
-  let rows = 0;
-  let free = 0;
+    visit?.(member, row);
+  };
   for (const member of members) {
-    const span = member.look === 'vehicle' ? VEHICLE_SPAN : 1;
-    if (span > free) {
-      rows += 1;
-      free = columns;
+    const vehicle = member.look === 'vehicle';
+    if (vehicle && free > 0 && free < VEHICLE_SPAN) {
+      waiting ??= [];
+      waiting.push(member);
+      continue;
     }
-    free -= span;
+    place(member, vehicle ? VEHICLE_SPAN : 1);
+    while (waiting !== null && waiting.length > 0 && (free === 0 || free >= VEHICLE_SPAN))
+      place(waiting.shift() as GroupMemberModel, VEHICLE_SPAN);
   }
-  return rows;
+  for (const member of waiting ?? []) place(member, VEHICLE_SPAN);
+  return row + 1;
 }
 
-/** The rows a placement from {@link rosterRowsOf} fills. */
-function rowsFilled(rowOf: readonly number[]): number {
-  return rowOf.length === 0 ? 0 : (rowOf[rowOf.length - 1] as number) + 1;
+export function layRoster(members: readonly GroupMemberModel[], columns: number): RosterLayout {
+  const order: GroupMemberModel[] = [];
+  const rowOf: number[] = [];
+  const rows = walkRoster(members, columns, (member, row) => {
+    order.push(member);
+    rowOf.push(row);
+  });
+  return { members: order, rowOf, rows };
+}
+
+/** The rows {@link layRoster} would fill, without building the layout. */
+export function rosterRows(members: readonly GroupMemberModel[], columns: number): number {
+  return walkRoster(members, columns, null);
 }
 
 /** A grid row's height and the gap under it, in design px. */
@@ -246,9 +266,9 @@ export function createMemberRoster(
   };
 
   const wellOf = (member: GroupMemberModel): RosterWell => {
+    // A known well keeps the member the last update gave it; `listed` may hold an older model.
     const known = wells.get(member.id);
     if (known !== undefined) {
-      known.member = member;
       return known;
     }
     const vehicle = member.look === 'vehicle';
@@ -373,7 +393,6 @@ export function createMemberRoster(
         wells.clear();
         shownKey = '';
       }
-      listed = members;
       const hud = messages().hud;
       // Another language words every tooltip anew.
       if (hud !== shownCopy) {
@@ -392,8 +411,11 @@ export function createMemberRoster(
           entry.well.node.remove();
           wells.delete(id);
         }
-        rowOf = rosterRowsOf(members, compact ? COMPACT_COLUMNS : ROSTER_COLUMNS);
-        listedRows = rowsFilled(rowOf);
+        const layout = layRoster(members, compact ? COMPACT_COLUMNS : ROSTER_COLUMNS);
+        // A member's look is fixed by its id, so the layout holds until the ids change.
+        listed = layout.members;
+        rowOf = layout.rowOf;
+        listedRows = layout.rows;
         // A shorter list clamps the box's scroll; the next rows follow the clamped offset.
         scrollTop = clampedScroll();
         attach(true);
