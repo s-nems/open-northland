@@ -1,4 +1,5 @@
 import { Building, Position, Vehicle } from '../../../components/index.js';
+import { EntityIntLists } from '../../../ecs/entity-int-lists.js';
 import type { Component, Entity, World } from '../../../ecs/world.js';
 import { vehicleCellsKey } from '../vehicle-anchors.js';
 import { BLOCKER_STORES, type BlockerStore, BUILDING_STORE, VEHICLE_STORE } from './blockers.js';
@@ -8,14 +9,15 @@ import { BLOCKER_STORES, type BlockerStore, BUILDING_STORE, VEHICLE_STORE } from
 // entity and how it applies and withdraws that capture; what a replay has to get right lives here once.
 
 /**
- * What one cache does with a blocker store's per-entity contribution. `capture` is the only op that may
- * read the world: `withdraw` replays after the entity may have been destroyed, so it works from the held
- * capture alone. A capture keeps duplicate cells, so a stamp and its withdrawal cancel exactly.
+ * What one cache does with a blocker store's per-entity contribution, a list of int32 codes or node ids.
+ * `capture` is the only op that may read the world: `withdraw` replays after the entity may have been
+ * destroyed, so it works from the held copy alone. A capture keeps duplicate cells, so a stamp and its
+ * withdrawal cancel exactly. Neither `apply` nor `withdraw` may keep the list it is handed.
  */
-export interface BlockerCaptureOps<Captured> {
-  capture(world: World, store: BlockerStore, e: Entity): Captured;
-  apply(captured: Captured): void;
-  withdraw(captured: Captured): void;
+export interface BlockerCaptureOps<V extends number> {
+  capture(world: World, store: BlockerStore, e: Entity): readonly V[];
+  apply(captured: readonly V[]): void;
+  withdraw(captured: readonly V[]): void;
 }
 
 /** One cache's replay against the blocker stores, over the world it was started on. */
@@ -43,13 +45,16 @@ export interface BlockerJournal {
  * entity holds the component. Each cache's registered `verifyCaches` verifier is the tripwire if any of
  * that stops holding.
  */
-export function startBlockerJournal<Captured>(
+export function startBlockerJournal<V extends number>(
   world: World,
-  ops: BlockerCaptureOps<Captured>,
+  ops: BlockerCaptureOps<V>,
 ): BlockerJournal {
   /** Held membership generations of the journal-replayed stores. */
   const gens = new Map<Component<unknown>, number>();
-  const records = new Map<BlockerStore, Map<Entity, Captured>>();
+  /** Each store's held captures, packed: every standing resource on the map holds one. */
+  const records = new Map<BlockerStore, EntityIntLists<V>>();
+  /** The held capture a withdrawal replays, copied out of {@link records}. */
+  const withdrawn: V[] = [];
   /** The `buildingType` each held Building capture used - the only Building value a capture reads, so a
    *  value bump resyncs exactly the mismatches instead of demanding a full rebuild. */
   const buildingTypes = new Map<Entity, number>();
@@ -60,10 +65,10 @@ export function startBlockerJournal<Captured>(
   world.journalValueWrites(Vehicle);
   let vehicleValueGen = world.componentValueGeneration(Vehicle);
 
-  const recordsOf = (store: BlockerStore): Map<Entity, Captured> => {
+  const recordsOf = (store: BlockerStore): EntityIntLists<V> => {
     let held = records.get(store);
     if (held === undefined) {
-      held = new Map();
+      held = new EntityIntLists();
       records.set(store, held);
     }
     return held;
@@ -74,9 +79,8 @@ export function startBlockerJournal<Captured>(
    *  building type is recorded in the same step, so record and capture cannot drift. */
   const resync = (store: BlockerStore, e: Entity): void => {
     const byEntity = recordsOf(store);
-    const held = byEntity.get(e);
-    if (held !== undefined) {
-      ops.withdraw(held);
+    if (byEntity.read(e, withdrawn)) {
+      ops.withdraw(withdrawn);
       byEntity.delete(e);
     }
     if (store === BUILDING_STORE) {
