@@ -269,17 +269,24 @@ function cloneCommand(source, target) {
 }
 
 /**
- * Copy `source` into the absent `target` as a clone that shares its bytes until either side changes
- * them. False where no clone command is known, the two sit on different volumes (where macOS `cp -c`
- * copies every byte instead of failing) or the command fails, leaving no partial tree.
+ * Copy `source` into the absent `target`: a clone that shares its bytes until either side changes them
+ * where the file system can make one, else a plain copy, which still takes seconds where converting the
+ * pack again takes many minutes. Says which it made, or false when both failed, leaving no partial tree.
  */
 export async function cloneTree(source, target) {
   const command = cloneCommand(source, target);
-  if (command === null) return false;
   try {
-    if ((await stat(source)).dev !== (await stat(dirname(target))).dev) return false;
-    await promisify(execFile)(command.file, command.args);
-    return true;
+    // macOS `cp -c` copies every byte across volumes instead of failing, so only one volume clones.
+    if (command !== null && (await stat(source)).dev === (await stat(dirname(target))).dev) {
+      await promisify(execFile)(command.file, command.args);
+      return 'clone';
+    }
+  } catch {
+    await rm(target, { recursive: true, force: true });
+  }
+  try {
+    await cp(source, target, { recursive: true });
+    return 'copy';
   } catch {
     await rm(target, { recursive: true, force: true });
     return false;
@@ -290,9 +297,10 @@ export async function cloneTree(source, target) {
  *  tree in meanwhile (both swaps rename a fresh tree into place), which would leave a mix of the two. */
 export async function cloneSettledTree(source, target, clone) {
   const before = await stat(source);
-  if (!(await clone(source, target))) return false;
+  const made = await clone(source, target);
+  if (!made) return false;
   const after = await stat(source).catch(() => undefined);
-  if (after?.ino === before.ino) return true;
+  if (after?.ino === before.ino) return made;
   await rm(target, { recursive: true, force: true });
   return false;
 }
@@ -338,12 +346,17 @@ export async function buildContent(zip, log, stamp, { outDir, dataRootOptions, c
 /** Clone the primary checkout's content tree when its stamp matches this checkout's inputs. */
 async function clonePrimaryContent(primaryOutDir, outDir, stamp, log, clone) {
   if (!(await contentIsCurrent(primaryOutDir, stamp))) return false;
-  const cloned = await replaceContent(outDir, async (staging) => {
+  let made = false;
+  const replaced = await replaceContent(outDir, async (staging) => {
     await rm(staging, { recursive: true, force: true });
-    return cloneSettledTree(primaryOutDir, staging, clone);
+    made = await cloneSettledTree(primaryOutDir, staging, clone);
+    return made !== false;
   });
-  if (cloned) log(`${outDir} cloned from ${primaryOutDir}, built from the same inputs`);
-  return cloned;
+  if (replaced)
+    log(
+      `${outDir} ${made === 'clone' ? 'cloned' : 'copied'} from ${primaryOutDir}, built from the same inputs`,
+    );
+  return replaced;
 }
 
 function cachedArchivePath(outDir, archiveUrl) {
@@ -478,8 +491,11 @@ export async function obtainPinnedDataRoot(
     primaryOutDir === undefined ? undefined : await cachedDataRoot(primaryOutDir, expectedDigest);
   try {
     await rm(partialDir, { recursive: true, force: true });
-    if (primary !== undefined && (await cloneSettledTree(primary, partialDir, clone))) {
-      log(`cached unpacked data missing or stale, cloning ${primary} into ${unpackedDir}`);
+    const made = primary === undefined ? false : await cloneSettledTree(primary, partialDir, clone);
+    if (made) {
+      log(
+        `cached unpacked data missing or stale, ${made === 'clone' ? 'cloned' : 'copied'} ${primary} into ${unpackedDir}`,
+      );
     } else {
       log(`cached unpacked data missing or stale, extracting ${archive} into ${unpackedDir}`);
       await mkdir(partialDir, { recursive: true });

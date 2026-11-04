@@ -373,10 +373,10 @@ test('buildContent stamps the converted tree and replaces the previous one', asy
   assert.equal(await contentIsCurrent(outDir, stamp), true);
 });
 
-/** A tree whose bytes match on both sides, standing in for a clone where the file system cannot make one. */
+/** A plain copy, what `cloneTree` makes where the file system cannot clone. */
 const copyTree = async (source, target) => {
   await cp(source, target, { recursive: true });
-  return true;
+  return 'copy';
 };
 
 /** A copy during which the source checkout swaps a rebuilt tree in at the same path, as its build does. */
@@ -418,13 +418,13 @@ test('--if-stale in a worktree clones the primary tree built from the same input
   await main({ ...options, outDir, log: (message) => logs.push(message), clone: copyTree });
   assert.equal(await contentIsCurrent(outDir, stamp), true);
   assert.equal(await contentIsCurrent(primaryOutDir, stamp), true);
-  assert.match(logs.join('\n'), /cloned from .*primary/);
+  assert.match(logs.join('\n'), /copied from .*primary/);
   assert.doesNotMatch(logs.join('\n'), /starting content build/);
 
   // The swapping case runs last: it leaves a new tree at the primary's path.
   const cases = [
     ['a primary tree of other inputs', { ...stamp, irVersion: stamp.irVersion + 1 }, copyTree],
-    ['a file system that cannot clone', stamp, async () => false],
+    ['a primary tree that cannot be copied', stamp, async () => false],
     ['a primary tree swapped in during the clone', stamp, copyWhileSwapped],
   ];
   for (const [index, [why, primary, clone]] of cases.entries()) {
@@ -458,21 +458,21 @@ test("a worktree clones the primary checkout's unpacked data instead of extracti
     clone: copyTree,
   });
   assert.equal(root, join(dir, 'cache', 'unpacked'));
-  assert.match(logs.join('\n'), /cloning .*primary-cache/);
+  assert.match(logs.join('\n'), /copied .*primary-cache/);
   assert.equal((await readFile(join(dir, 'cache', 'unpacked.sha256'), 'utf8')).trim(), expectedDigest);
 });
 
-test('cloneTree clones a tree or leaves nothing behind', async (t) => {
+test('cloneTree clones or copies a tree, or leaves nothing behind', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'clone-tree-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, 'source', 'nested'), { recursive: true });
   await writeFile(join(dir, 'source', 'nested', 'file.txt'), 'bytes');
   const target = join(dir, 'target');
-  const cloned = await cloneTree(join(dir, 'source'), target);
-  // APFS clones within one volume; a Linux file system without reflinks cannot clone at all.
-  if (process.platform === 'darwin') assert.equal(cloned, true);
-  if (cloned) assert.equal(await readFile(join(target, 'nested', 'file.txt'), 'utf8'), 'bytes');
-  else assert.equal(existsSync(target), false);
+  const made = await cloneTree(join(dir, 'source'), target);
+  // APFS clones within one volume; ext4 or tmpfs cannot, and the tree is copied instead.
+  if (process.platform === 'darwin') assert.equal(made, 'clone');
+  else assert.match(made, /^(clone|copy)$/);
+  assert.equal(await readFile(join(target, 'nested', 'file.txt'), 'utf8'), 'bytes');
   assert.equal(await cloneTree(join(dir, 'missing'), join(dir, 'nothing')), false);
   assert.equal(existsSync(join(dir, 'nothing')), false);
 });
@@ -484,7 +484,7 @@ test('cloneSettledTree keeps a clone of a settled tree and drops one the source 
   await mkdir(source);
   await writeFile(join(source, 'file.txt'), 'bytes');
 
-  assert.equal(await cloneSettledTree(source, join(dir, 'kept'), copyTree), true);
+  assert.equal(await cloneSettledTree(source, join(dir, 'kept'), copyTree), 'copy');
   assert.equal(await readFile(join(dir, 'kept', 'file.txt'), 'utf8'), 'bytes');
   assert.equal(await cloneSettledTree(source, join(dir, 'dropped'), copyWhileSwapped), false);
   assert.equal(existsSync(join(dir, 'dropped')), false);

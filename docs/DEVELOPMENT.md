@@ -88,8 +88,8 @@ covers multiplayer identity inputs, not assets or every rendering module.
 
 After the last edit or rebase, run verification, open the **same URL** in a browser, inspect console
 errors and exercise the changed behavior. For real maps also check `/maps-index.json` and the chosen
-map load. The worktree's `content/` starts as a clone of the primary checkout's tree when that tree
-matches this checkout's archive, IR version and translations ([Local game content](#local-game-content)),
+map load. The worktree's `content/` starts as a clone or copy of the primary checkout's tree when that
+tree matches this checkout's archive, IR version and translations ([Local game content](#local-game-content)),
 so a task that writes content changes only its own copy. If the primary content is absent, prepare it
 there first; never hand off the fallback app as a real-map preview. Browser verification is required
 even when identity matches, especially for asset changes.
@@ -119,7 +119,8 @@ version or translation set, and otherwise returns at once. In a Git worktree it 
 primary checkout's `content/` when that tree's stamp matches, and a worktree that must convert clones
 the primary checkout's unpacked pack instead of extracting the archive again. A clone (APFS, or a
 reflink on Btrfs or XFS) shares the bytes until either tree changes them; where the two checkouts sit
-on different volumes or the file system cannot clone, the worktree builds its own copy. The stamp does
+on different volumes or the file system cannot clone (ext4, NTFS), the worktree copies the tree
+instead, which takes seconds and the tree's full size on disk (about 1.3 GB). The stamp does
 not track the converter itself: after a pipeline change that keeps the IR version, run
 `npm run build:content`, which always rebuilds and takes the unpacked pack only from this checkout's
 cache or the archive, never from the primary checkout.
