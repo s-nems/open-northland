@@ -2,6 +2,7 @@ import { deserialize, serialize } from 'node:v8';
 import {
   cloneEvents,
   cloneReadView,
+  deltaChanges,
   diffSnapshots,
   MirrorTruth,
   type SignpostReachView,
@@ -209,9 +210,13 @@ export class MirrorProbe {
     this.factsUs.push((tFacts - t1) * US_PER_MS);
     this.serializeUs.push((t2 - tFacts) * US_PER_MS);
     this.deserializeUs.push((t3 - t2) * US_PER_MS);
-    this.touched.push(delta.touched.length + delta.removed.length);
-    let components = delta.valueKinds.length;
-    for (const change of delta.changeOf) components += delta.changes[change]?.removed.length ?? 0;
+    this.touched.push(delta.changeOf.length + delta.removed.length);
+    const changes = deltaChanges(delta);
+    let components = 0;
+    for (const at of delta.changeOf) {
+      const change = changes[at];
+      components += (change?.written.length ?? 0) + (change?.removed.length ?? 0);
+    }
     this.components.push(components);
     this.kilobytes.push(bytes.byteLength / BYTES_PER_KB);
   }

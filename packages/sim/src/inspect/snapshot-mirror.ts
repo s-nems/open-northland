@@ -1,7 +1,7 @@
 import { addField } from './fast-record.js';
 import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
 import { attachIdTable } from './snapshot.js';
-import { changeAt, DeltaValueReader, type EntityChange, type SnapshotDelta } from './snapshot-delta.js';
+import { DeltaReader, type EntityChange, type SnapshotDelta } from './snapshot-delta.js';
 import { attachIndexes, SnapshotIndexes } from './snapshot-indexes.js';
 
 /**
@@ -53,11 +53,12 @@ export class SnapshotMirror {
     if (delta.rebuild) {
       this.entities.length = 0;
       this.byId.length = 0;
-      this.reserveIds(delta.touched.length);
-      this.ids.set(delta.touched);
-      const values = new DeltaValueReader(delta);
-      for (let i = 0; i < delta.touched.length; i++) {
-        const entity = created(delta.touched[i] as number, changeAt(delta, i), values);
+      const reader = new DeltaReader(delta);
+      const { touched } = reader;
+      this.reserveIds(touched.length);
+      this.ids.set(touched);
+      for (let i = 0; i < touched.length; i++) {
+        const entity = created(touched[i] as number, reader.changeAt(i), reader);
         this.entities.push(entity);
         // Grown slot by slot: a sparse store far past the table's end would drop V8's array into its
         // dictionary layout, and every store after that into a hashed one.
@@ -149,24 +150,24 @@ export class SnapshotMirror {
   private merge(delta: SnapshotDelta): void {
     const list = this.entities;
     const inserts: EntitySnapshot[] = [];
-    const { touched } = delta;
-    const values = new DeltaValueReader(delta);
-    this.indexes.beginDelta(delta.changes);
+    const reader = new DeltaReader(delta);
+    const { touched } = reader;
+    this.indexes.beginDelta(reader.changes);
     let from = 0;
     for (let i = 0; i < touched.length; i++) {
       const id = touched[i] as number;
-      const change = changeAt(delta, i);
+      const change = reader.changeAt(i);
       const held = this.byId[id];
       if (held !== undefined) {
         const found = searchIds(this.ids, list.length, id, from);
         if (found < 0) throw new Error(`snapshot mirror holds entity ${id} by id but not in its sorted list`);
-        const next = patched(held, change, values);
+        const next = patched(held, change, reader);
         list[found] = next;
         this.byId[id] = next;
         this.indexes.replaced(held, next, delta.changeOf[i] as number);
         from = found + 1;
       } else {
-        const entity = created(id, change, values);
+        const entity = created(id, change, reader);
         inserts.push(entity);
         this.byId[id] = entity;
         this.indexes.added(entity);
@@ -233,18 +234,19 @@ function searchIds(ids: Int32Array, length: number, id: number, from: number): n
   return -lo - 1;
 }
 
-function created(id: number, change: EntityChange, values: DeltaValueReader): EntitySnapshot {
+function created(id: number, change: EntityChange, values: DeltaReader): EntitySnapshot {
   const components: Record<string, unknown> = {};
-  const { written } = change;
-  for (let k = 0; k < written.length; k++) addField(components, k, written[k] as string, values.next());
+  const { written, kinds } = change;
+  for (let k = 0; k < written.length; k++)
+    addField(components, k, written[k] as string, values.next(kinds[k] as number));
   return { id, components };
 }
 
 /** The new object of a held entity: the previous clones of the components the change left alone, the
  *  change's fresh clones over them, without the components it removed. A name the entity did not hold
  *  lands last. */
-function patched(held: EntitySnapshot, change: EntityChange, values: DeltaValueReader): EntitySnapshot {
-  const { written, removed } = change;
+function patched(held: EntitySnapshot, change: EntityChange, values: DeltaReader): EntitySnapshot {
+  const { written, kinds, removed } = change;
   let components: Record<string, unknown>;
   let fields = -1; // counted only once a name is added
   if (removed.length === 0) {
@@ -259,7 +261,7 @@ function patched(held: EntitySnapshot, change: EntityChange, values: DeltaValueR
   }
   for (let k = 0; k < written.length; k++) {
     const name = written[k] as string;
-    const value = values.next();
+    const value = values.next(kinds[k] as number);
     if (name in components) {
       components[name] = value;
       continue;

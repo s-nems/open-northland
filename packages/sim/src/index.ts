@@ -146,12 +146,14 @@ export {
   type SnapshotDeltaStreamOptions,
 } from './inspect/snapshot-clones.js';
 export {
+  deltaChanges,
   type EntityChange,
   type EntityDelta,
   type EntitySnapshotDelta,
   entityDeltas,
   packSnapshotDelta,
   type SnapshotDelta,
+  touchedIds,
 } from './inspect/snapshot-delta.js';
 export {
   type ChangedEntity,
