@@ -33,6 +33,7 @@
     "bench:browser": "node scripts/bench/browser/frames.mjs",
     "bench:browser-shots": "node scripts/bench/browser/shots.mjs",
     "bench:gpu": "node scripts/bench/browser/gpu.mjs",
+    "bench:gpu-settings": "node scripts/bench/browser/gpu-settings.mjs",
     "bench:hud": "node scripts/bench/browser/hud.mjs",
     "bench:net-lab": "node scripts/bench/net-lab.mjs",
     "test:content": "node scripts/test-modes/content.mjs",

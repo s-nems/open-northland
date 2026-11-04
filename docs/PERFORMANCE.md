@@ -14,6 +14,7 @@ untrustworthy and rerun. Profiled timings include overhead: never use them as co
 | Is a live frame limited by simulation or rendering? | `?debug=profile` and `await window.__opennorthland.perf()` |
 | How does a checkpoint render at different speeds/zooms? | `npm run bench:browser` |
 | What costs GPU time? | `npm run bench:gpu` |
+| What does each graphics setting cost on the GPU? | `npm run bench:gpu-settings` |
 | What does the HUD cost the main thread and the compositor? | `npm run bench:hud` |
 | How much JavaScript does each entry load? | Size table from `npm run build` |
 
@@ -284,22 +285,45 @@ Read milliseconds only from an idle machine; WebGL call counts remain useful und
 
 ### Per-setting GPU cost
 
-The measured column of the cost basis in [GRAPHICS.md](GRAPHICS.md#cost-basis) comes from a paused,
-GPU-bound loop run in the page through `window.__opennorthland`; no command wraps it yet.
+```bash
+npm run bench:gpu-settings -- bench-out/late.t100000.checkpoint http://127.0.0.1:5174 bench-out/gpu-settings 10
+ON_BENCH_SETTINGS_ROWS=day-town-z1-control,day-town-z1-softShadows npm run bench:gpu-settings -- <checkpoint> <origin>
+```
 
-1. Restore the checkpoint with every graphics option on, frame the densest buildings (the densest
-   fighting for blood and bones) at the zoom under test, run ten seconds at ×3 so bakes and caches
-   settle, pause, and wait 1.5 s.
-2. Per cycle, set the option on and off in turn (`renderer.setGraphicsEnhancements`, or
-   `renderer.chrome` for post effects and sprite smoothing), alternating which state comes first.
-   After each change wait four animation frames and render 15 frames unmeasured.
-3. Time one state: a 1x1 `gl.readPixels` drains the GPU, then `renderer.app.render()` runs 60 times
-   with `gl.flush()` after each, then a second `readPixels`. The wall-clock span over 60 is that
-   state's milliseconds per frame.
-4. Ten cycles. The setting's cost is the median of the per-cycle on-minus-off differences, reported
-   with their range, beside a control row that sets nothing.
+Arguments: checkpoint, origin, output directory (default `bench-out/gpu-settings`), cycles (default 10).
+The measured column of the cost basis in [GRAPHICS.md](GRAPHICS.md#cost-basis) comes from it.
 
-The loop redraws one paused stage, so it measures drawing alone, not baking or uploads.
+1. Each session restores the checkpoint with every graphics option on and xBR, the FPS counter off so
+   no timer query runs. Each view jumps the camera, runs ten seconds at ×3 so bakes and caches
+   settle, pauses and waits 1.5 s.
+2. Per row, one uncounted cycle, then per cycle the option on and off in turn, alternating which
+   state comes first. After each change the page draws 30 real frames, hands the pages' sampling to
+   GL (an uploaded page otherwise keeps the filter of its first upload) and, for a prescaled filter,
+   waits until no drawn page waits for its twin.
+3. Time one state: 15 unmeasured redraws, a 1x1 `gl.readPixels` to drain the GPU, 60 redraws with
+   `gl.flush()` after each, a second `readPixels`. The wall-clock span over 60 is that state's
+   milliseconds per frame. A redraw is the GPU half of a frame, replaying the last real frame's
+   arguments: the scene light's light map, the shore waves' lift map every fifth redraw (a paused
+   water clock still steps them 12 times a second, every fifth frame at the 60 fps cap), the world
+   into its texture while it composites, and the stage.
+4. The cost is the median of the per-cycle on-minus-off differences, reported with their range. The
+   `control` row sets nothing: its on and off give the view's frame time, its range the loop's noise.
+
+| Session | Views | Rows (each on against off) |
+| --- | --- | --- |
+| `day` | densest town at zoom 1 and 0.5, the coast nearest it at zoom 1 | town: `xbr` against art filter off, and at zoom 1 `xbrz`, `superxbr`, `mmpx` against off; `softShadows`, `enhancedWater`, `environmentMotion`, `groundedBuildings`, `buildingDamage`, `postFx` (the vignette quad). Coast: `environmentMotion` (the shore waves), `enhancedWater` |
+| `night` (`?tint=58`, the cycle's night step) | town at zoom 1 and 0.5 | `dayNight`: the lit night against the flat night grade |
+| `rain`, `snow` | town at zoom 1 | `weather` |
+| `smoothing-off`, `scale1.5` | town at zoom 1 and 0.5, at zoom 1 | `control` only. Sprite smoothing and render scale apply as a map starts, so these are separate loads read against the `day` session's control rows, not interleaved |
+
+Row ids are `<session>-<view>-z<zoom>-<row>`. `report.md` lists each row's median on and off
+milliseconds, cost and range, and the page's own script time per redraw in the on state (`on submit
+ms`); `report.json` adds every cycle; each view leaves a screenshot and the report counts the shore
+waves in the coast view. Where the submit time nears the frame time, the loop waits on the CPU, not
+the GPU, and a setting's GPU cost hides under it: compare a scaled session's control to see how much
+GPU time the frame has. The loop measures drawing alone, not baking, uploads or the frame's CPU work;
+the paused weather draws a still field. Blood and bone fading are CPU costs, read from
+`bench:browser` and the battle views of `bench:gpu`.
 
 Any loop that renders many frames between two `readPixels` must call `gl.flush()` once per frame, as
 a real present does. Without it, ANGLE over Metal stacks the frames into one command buffer that runs
@@ -313,7 +337,8 @@ app's own meter read about 9 ms).
 
 At ×3 on an Apple M2 Pro, `perf().gpu.ms` holds one of two clock modes for seconds at a time, about
 3.5 ms apart in a dense view, so a setting that costs well under a millisecond only shows as a paired
-on/off delta within one mode; the paused loop above is steadier for a per-setting cost.
+on/off delta within one mode; the paused loop above is steadier for a per-setting cost. A Radeon
+Vega 7 under ANGLE Direct3D 11 reads the same scenario at about 5 ms or 13 ms across repeats.
 
 Playwright's default headless browser renders on SwiftShader, far below a real frame rate; launching
 with `channel: 'chromium'` runs Chromium's new headless mode on the real GPU, which suits counts and
