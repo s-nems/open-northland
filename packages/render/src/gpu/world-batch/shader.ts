@@ -114,15 +114,17 @@ void main(void) {
   }
 }`;
 
-/** GLSL ES 3.0 indexes sampler arrays only by constants, so every lookup is an if-chain over the
- *  float `slot` expression. */
+/**
+ * GLSL ES 3.0 indexes sampler arrays only by constants, so every lookup picks its slot from the float
+ * `slot` expression through a switch: over the same reads, an if-chain that nests each slot one level
+ * deeper took Direct3D's compiler twice as long (11 s against 5 s for the 16-slot xBR program).
+ */
 function textureChain(maxTextures: number, slot: string, call: (index: number) => string): string {
-  const lines: string[] = [];
-  for (let i = 0; i < maxTextures; i++) {
-    const guard = i < maxTextures - 1 ? `if (${slot} < ${i}.5) ` : '';
-    lines.push(`  ${i > 0 ? 'else ' : ''}${guard}{ ${call(i)} }`);
-  }
-  return lines.join('\n');
+  const cases = Array.from(
+    { length: maxTextures },
+    (_, i) => `    ${i < maxTextures - 1 ? `case ${i}:` : 'default:'} { ${call(i)} } break;`,
+  );
+  return [`  switch (int(${slot} + 0.5)) {`, ...cases, '  }'].join('\n');
 }
 
 /** Taps in one 2x2 window. */
