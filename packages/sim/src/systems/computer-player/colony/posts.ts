@@ -37,6 +37,7 @@ import {
   type TakenFlagNodes,
 } from '../workforce/flag-spots.js';
 import { rowPlan } from '../workforce/staffing-rows.js';
+import { colonyBuilderWant, withBuilderPosts } from './builders.js';
 import { colonists, colonyOrigin, storeOf } from './founding.js';
 import { farDigPorters } from './haulers.js';
 import { homeSupply } from './home-supply.js';
@@ -60,9 +61,6 @@ import { colonyHand } from './school.js';
 import { colonyBuildings } from './spot.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
-/** The builders a colony keeps once nothing is left to raise (authored): a pair for a lost building, and
- *  every other man digs, which is what the colony is for. */
-const BUILDERS_AT_REST = 2;
 /** The men on a good at most (authored): past these the colony's carriers cannot take in what they dig. */
 const DIGGERS_MOST: Readonly<Record<DugGood, number>> = {
   wood: 4,
@@ -89,6 +87,7 @@ type Post = 'builder' | 'carrier' | DugGood | 'hunter' | 'fisher' | 'scout';
  * The men's posts, filled in this order as the party's size allows (authored). Owner ruling: fishers first,
  * they may meet the hunger at the start. 4 builders, 2 carriers, 4 on wood, 3 on stone, 3 hunters, 3 fishers
  * and a scout make 20, more than the largest party's 15, so the tail is what a small party goes without.
+ * The builder posts place the first builders; their number follows the sites ({@link colonyBuilderWant}).
  * Three of each food hand: on arabskie_wyspy_wolna_gra_mieszana two and two brought about 3.5 food a game
  * minute to colonies of 30 eating 4, and their stores stood empty.
  */
@@ -260,11 +259,6 @@ function postOrders(
 /** Whether `e` is mid-action or sent at an animal: a post change waits for him. */
 function busy(world: World, e: Entity): boolean {
   return world.has(e, CurrentAtomic) || world.has(e, AttackOrder);
-}
-
-/** Whether the colony has raised all it means to, for now. */
-function atRest(env: ColonyEnv, read: FoundingRead): boolean {
-  return read.plan.length === 0 && !read.buildings.some((e) => env.world.has(e, UnderConstruction));
 }
 
 /** The units the colony's standing stores can still take of a good, unbounded while none stands: its
@@ -454,8 +448,7 @@ export function handsWanted(
     const good = goodTypeByContentId(ctx.content, id)?.typeId;
     return good !== undefined && canDig(env, origin, good, flags);
   });
-  const resting = atRest(env, read);
-  let men = 0;
+  let men = colonyBuilderWant(world, ctx, buildings, plan.length);
   for (const good of diggable) men += DIGGERS_MOST[good];
   const fishes = fishNear(env, origin) !== null;
   const people = colonists(env);
@@ -465,9 +458,9 @@ export function handsWanted(
     people.filter((e) => isAllocatableMan(world, ctx, e)),
   );
   const others = withoutHunters(POSTS, hunts).filter(
-    (p) => !isDug(p) && (p !== 'builder' || !resting) && (p !== 'fisher' || fishes),
+    (p) => !isDug(p) && p !== 'builder' && (p !== 'fisher' || fishes),
   );
-  men += others.length + (resting ? BUILDERS_AT_REST : 0);
+  men += others.length;
   men += haulersBeyond(others, farDigPorters(env, read.store));
   for (const e of buildings) {
     const type = index.buildings.get(world.get(e, Building).buildingType);
@@ -485,7 +478,8 @@ export function handsWanted(
 }
 
 /** The colony's men with no work left, who sail home by the next ship (owner ruling): its free builders past
- *  what it has work for, unwed first and then ascending id. */
+ *  its sites' crew ({@link colonyBuilderWant}) and past what it has work for, unwed first and then ascending
+ *  id. */
 export function menPastWork(env: ColonyEnv, colony: ColonyView): Entity[] {
   const { world, ctx } = env;
   if (colony.phase !== 'running') return [];
@@ -494,17 +488,20 @@ export function menPastWork(env: ColonyEnv, colony: ColonyView): Entity[] {
   const past = hands - handsWanted(env, colony).men - HANDS_SLACK;
   if (past <= 0) return [];
   const builder = builderJobOf(ctx);
+  const buildings = colonyBuildings(env);
+  const crew = colonyBuilderWant(world, ctx, buildings, colonyPlan(env, colony, buildings).length);
   return men
     .filter((e) => !atWorkshop(env, e) && postOf(world, ctx, e, builder) === 'builder')
     .sort((a, b) => Number(world.has(a, Marriage)) - Number(world.has(b, Marriage)) || a - b)
-    .slice(BUILDERS_AT_REST)
+    .slice(crew)
     .slice(0, past);
 }
 
-/** The posts of {@link POSTS} the men's number reaches that none holds, handed to the free men and to the
- *  builders past their share, then the workshops' seats; with nothing left to raise, the rest dig, the
- *  least dug good first; a good a site needs and nobody digs goes first of all, as no ship brings what the
- *  land holds; a free man with no post to take builds. */
+/** The posts of {@link POSTS} the men's number reaches that none holds, its builder posts sized to the
+ *  colony's sites ({@link colonyBuilderWant}), handed to the free men and to the builders past their share,
+ *  then the workshops' seats; once the store stands the rest dig, the least dug good first; a good a site
+ *  needs and nobody digs goes first of all, as no ship brings what the land holds; a free man with no post
+ *  to take builds. */
 export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: FoundingRead): PlayerCommand[] {
   const { world, ctx } = env;
   const builder = builderJobOf(ctx);
@@ -526,9 +523,11 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
   }
   const dug = new Map<DugGood, number>();
   for (const id of DUG_IDS) dug.set(id, held.get(id) ?? 0);
-  const resting = atRest(env, read);
-  const listed = withoutHunters(POSTS.slice(0, posted.length), hunting).filter(
-    (post) => !isDug(post) || digs.has(post),
+  const crew = colonyBuilderWant(world, ctx, read.buildings, read.plan.length);
+  const listed = withBuilderPosts(
+    withoutHunters(POSTS.slice(0, posted.length), hunting).filter((post) => !isDug(post) || digs.has(post)),
+    'builder',
+    crew,
   );
   // A dig past the store porter's round wants a porter of its own before any other post.
   const haulers = haulersBeyond(listed, farDigPorters(env, read.store));
@@ -547,10 +546,8 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
     held.set(post, standing - 1);
     return standing <= 0;
   });
-  // Men who built while their post could not take them yet go to it now.
-  const past = resting
-    ? builders.slice(BUILDERS_AT_REST)
-    : builders.slice(0, Math.max(0, held.get('builder') ?? 0));
+  // Men who built while their post could not take them yet, or past the sites' crew, go to work now.
+  const past = builders.slice(0, Math.max(0, held.get('builder') ?? 0));
   const spare = [...free, ...past];
   const diggers = posted.filter((man) => isDug(postOf(world, ctx, man, builder)) && !spare.includes(man));
   const movers = men.filter((man) => {
@@ -577,7 +574,9 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
     spare.shift();
     if (isDug(post)) dug.set(post, (dug.get(post) ?? 0) + 1);
   }
-  while (resting) {
+  // Once the store stands the men past every post dig; before it they help raise it.
+  const settled = read.store !== null && isBuilt(world, read.store);
+  while (settled) {
     const man = spare[0];
     if (man === undefined) break;
     const goods = [...digs]
