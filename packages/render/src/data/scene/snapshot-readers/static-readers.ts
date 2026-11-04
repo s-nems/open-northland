@@ -282,6 +282,9 @@ export function assignStaticFields(
       if (level !== undefined) target.level = level;
       const builtPct = readBuiltPct(components);
       if (builtPct !== undefined) target.builtPct = builtPct;
+      // A ship yard site draws its ship in its owner's colour.
+      const player = readNumField(components, 'Owner', 'player');
+      if (player !== undefined) target.player = player;
       return;
     }
     case 'palisade': {

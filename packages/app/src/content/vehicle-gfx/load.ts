@@ -1,4 +1,11 @@
-import type { SpriteLayer, VehicleBinding, VehicleColourLut } from '@open-northland/render';
+import {
+  GFX_DIR_TO_FACING,
+  type ShipYardSites,
+  type SpriteLayer,
+  type VehicleBinding,
+  type VehicleColourLut,
+} from '@open-northland/render';
+import { components } from '@open-northland/sim';
 import { loadLayer, MissingAtlasError } from '../ir/load.js';
 import type { ContentIr } from '../ir/rows.js';
 import { loadTextureIfPresent } from '../net.js';
@@ -19,6 +26,20 @@ function shipTypes(ir: ContentIr | null): ReadonlySet<number> {
     if (row.typeId !== undefined && (row.passengerSlots ?? 0) > 0) ships.add(row.typeId);
   }
   return ships;
+}
+
+/** The yard houses launching a ship, each to its ship type, with the facing a launched ship takes. */
+function shipYards(ir: ContentIr | null, ships: ReadonlySet<number>): ShipYardSites | undefined {
+  const vehicleByHouse: Record<number, number> = {};
+  let any = false;
+  for (const house of ir?.buildings ?? []) {
+    if (house.typeId === undefined || house.vehicleType === undefined || !ships.has(house.vehicleType))
+      continue;
+    vehicleByHouse[house.typeId] = house.vehicleType;
+    any = true;
+  }
+  const facing = GFX_DIR_TO_FACING[components.VEHICLE_SPAWN_FACING];
+  return any ? { vehicleByHouse, facing } : undefined;
 }
 
 /** The vehicle half of the sheet: the binding, exactly the family atlases it draws from, and the owner
@@ -67,9 +88,12 @@ export async function loadVehicleSheet(ir: ContentIr | null, fallbackTribe: numb
       return [stem, drawable] as const;
     }),
   );
+  const ships = shipTypes(ir);
+  const yards = shipYards(ir, ships);
   const binding = buildVehicleBinding(rows, loaded, frames, fallbackTribe, {
-    ships: shipTypes(ir),
+    ships,
     ...(ownerFamily !== undefined ? { ownerFamily } : {}),
+    ...(yards !== undefined ? { shipYards: yards } : {}),
   });
   return { binding, families, palette };
 }

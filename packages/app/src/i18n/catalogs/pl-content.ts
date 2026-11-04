@@ -466,6 +466,11 @@ export const plContent = {
       summary:
         'Warsztat ciesielski czwartego poziomu na brzegu, którego cieśle mają robić na zmianę statek i katapultę: plac statku otwiera się na wodzie obok warsztatu, a cieśla pracuje z brzegu; plac katapulty na lądzie. Zwodowany statek stoi zacumowany przy brzegu ze zwiniętymi żaglami.',
     },
+    'vehicle-ship-sites': {
+      title: 'Stocznie wszystkich nacji',
+      summary:
+        'Dwie stocznie każdej nacji, po jednej kolumnie na nację: stocznia statku nad stocznią statku handlowego, w każdej place budowy na 30% i 90% nad statkiem, który z takiego placu schodzi, zacumowanym przy brzegu. Plac budowy rośnie jako ten sam statek, który z niego zejdzie.',
+    },
     'vehicle-ox-yard': {
       title: 'Budowa zaprzęgu',
       summary:

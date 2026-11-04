@@ -470,6 +470,11 @@ export const deContent = {
       summary:
         'Eine Schreinerei der Stufe 4 am Ufer, deren Schreiner nacheinander das Schiff und das Katapult bauen sollen: Der Schiffsbauplatz entsteht im Wasser neben der Werkstatt, wobei der Schreiner vom Ufer aus arbeitet; der Katapultbauplatz entsteht an Land. Das zu Wasser gelassene Schiff liegt mit eingeholten Segeln am Ufer.',
     },
+    'vehicle-ship-sites': {
+      title: 'Werften aller Völker',
+      summary:
+        'Die beiden Werften jedes Volkes, eine Spalte pro Volk: die Werft des Schiffs über der des großen Schiffs, jeweils mit Bauplätzen bei 30 % und 90 % über dem Schiff, das ein solcher Bauplatz vom Stapel lässt, am Ufer vertäut. Ein Bauplatz wächst als genau das Schiff, das er vom Stapel lässt.',
+    },
     'vehicle-ox-yard': {
       title: 'Bau eines Ochsenkarrens',
       summary:

@@ -100,6 +100,8 @@ export class TextureCache {
   /** Bottom-kept views of a frame, keyed by how many top pixels are hidden. Nested so the primary
    *  frame→texture cache above stays a clean 1:1. */
   private readonly cropCache = new Map<AtlasFrame, Map<number, Texture>>();
+  /** {@link cropCache}'s twin for indexed frames read through a LUT. */
+  private readonly palettedCropCache = new Map<AtlasFrame, Map<number, Texture>>();
   /** Top-kept views of a frame, keyed by how many top pixels are kept. */
   private readonly topCache = new Map<AtlasFrame, Map<number, Texture>>();
   /** Reveal bakes per frame, keyed by quantised threshold. */
@@ -308,6 +310,27 @@ export class TextureCache {
       });
       markPalettedTexture(tex, lut);
       this.paletteIndexed.set(frame, tex);
+    }
+    return tex;
+  }
+
+  /** {@link palettedFrame} with its top `hiddenTop` rows cut away, as {@link cropped} does a plain frame. */
+  palettedCropped(source: TextureSource, frame: AtlasFrame, lut: TextureSource, hiddenTop: number): Texture {
+    const top = clamp(Math.round(hiddenTop), 0, frame.height);
+    if (top === 0) return this.palettedFrame(source, frame, lut);
+    let byTop = this.palettedCropCache.get(frame);
+    if (byTop === undefined) {
+      byTop = new Map();
+      this.palettedCropCache.set(frame, byTop);
+    }
+    let tex = byTop.get(top);
+    if (tex === undefined) {
+      tex = new Texture({
+        source,
+        frame: new Rectangle(frame.x, frame.y + top, frame.width, frame.height - top),
+      });
+      markPalettedTexture(tex, lut);
+      byTop.set(top, tex);
     }
     return tex;
   }
@@ -534,6 +557,10 @@ export class TextureCache {
       for (const tex of byTop.values()) tex.destroy();
     }
     this.cropCache.clear();
+    for (const byTop of this.palettedCropCache.values()) {
+      for (const tex of byTop.values()) tex.destroy();
+    }
+    this.palettedCropCache.clear();
     for (const byRows of this.topCache.values()) {
       for (const tex of byRows.values()) tex.destroy();
     }

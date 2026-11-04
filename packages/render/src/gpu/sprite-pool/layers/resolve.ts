@@ -27,7 +27,7 @@ import {
   resolveFromLayer,
 } from './layered.js';
 import { LayerBuffer, type ResolvedLayer } from './resolved-layer.js';
-import { pushVehicleLayers } from './vehicle.js';
+import { pushShipYardSiteLayers, pushVehicleLayers } from './vehicle.js';
 
 /** Kinds whose layers read no clock: see {@link resolvesWithoutClock}. */
 const CLOCKLESS_KINDS: ReadonlySet<DrawItem['kind']> = new Set<DrawItem['kind']>([
@@ -136,6 +136,7 @@ function pushLayers(
       return pushFishSchool(out, sheet, item, tick);
     }
     case 'building': {
+      if (pushShipYardSiteLayers(out, sheet, item)) return true;
       const branch = pushBuildingLayers(out, sheet, item, tick);
       if (typeof branch === 'boolean') return branch;
       bobId = branch;

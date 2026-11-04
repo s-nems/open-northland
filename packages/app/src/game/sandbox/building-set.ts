@@ -24,6 +24,7 @@ import {
   BUILDING_OXCART_YARD,
   BUILDING_POTTERY,
   BUILDING_POTTERY_01,
+  BUILDING_SHIP_BIG_YARD,
   BUILDING_SHIP_SMALL_YARD,
   BUILDING_WAREHOUSE_00,
   BUILDING_WAREHOUSE_01,
@@ -71,6 +72,7 @@ import {
   VEHICLE_CART_NO_OX,
   VEHICLE_CATAPULT,
   VEHICLE_HANDCART,
+  VEHICLE_SHIP_BIG,
   VEHICLE_SHIP_SMALL,
 } from './ids/index.js';
 import { workerSlotsFor } from './worker-slots.js';
@@ -101,12 +103,13 @@ const CRAFT_INPUT_CAPACITY = 10;
 // Extracted `logicstock` on "work joinery 02": the cart slot is declared and never filled, since a
 // vehicle good is built on a yard, not shelved.
 const JOINERY_CART_CAPACITY = 20;
-// Extracted bills of the vehicle yards (houses 42/43/44/46): the carts' 2/5 wood, the small ship's
-// 5 leather and 10 wood, the catapult's 9 wood and 1 iron; the footprints are the real ones.
+// Extracted bills of the vehicle yards (houses 42..46): the carts' 2/5 wood, the ships' 5 leather and
+// 10 or 15 wood, the catapult's 9 wood and 1 iron; the footprints are the real ones.
 const HANDCART_YARD_WOOD = 2;
 const OXCART_YARD_WOOD = 5;
 const SHIP_YARD_LEATHER = 5;
 const SHIP_YARD_WOOD = 10;
+const SHIP_BIG_YARD_WOOD = 15;
 const CATAPULT_YARD_WOOD = 9;
 const CATAPULT_YARD_IRON = 1;
 /** Extracted `logicstock` caps of the level-4 joinery: 20 per input and vehicle good, 15 leather. */
@@ -530,7 +533,7 @@ const OXCART_BODY = cells([
   [0, 0],
   [-1, 1],
 ]);
-const SHIP_SMALL_BODY = cells([
+const SHIP_YARD_BODY = cells([
   [-1, -2],
   [0, -2],
   [1, -2],
@@ -551,6 +554,52 @@ const SHIP_SMALL_BODY = cells([
   [0, 2],
   [1, 2],
 ]);
+/** Both ship yards' footprint: the two `[GfxHouse]` records author the same areas. */
+const SHIP_YARD_FOOTPRINT = {
+  blocked: SHIP_YARD_BODY,
+  familyBody: SHIP_YARD_BODY,
+  reserved: cells([
+    [-2, -3],
+    [-1, -3],
+    [0, -3],
+    [1, -3],
+    [-2, -2],
+    [-1, -2],
+    [0, -2],
+    [1, -2],
+    [2, -2],
+    [-3, -1],
+    [-2, -1],
+    [-1, -1],
+    [0, -1],
+    [1, -1],
+    [2, -1],
+    [-3, 0],
+    [-2, 0],
+    [-1, 0],
+    [0, 0],
+    [1, 0],
+    [2, 0],
+    [3, 0],
+    [5, 0],
+    [-3, 1],
+    [-2, 1],
+    [-1, 1],
+    [0, 1],
+    [1, 1],
+    [2, 1],
+    [-2, 2],
+    [-1, 2],
+    [0, 2],
+    [1, 2],
+    [2, 2],
+    [-2, 3],
+    [-1, 3],
+    [0, 3],
+    [1, 3],
+  ]),
+  door: { dx: -2, dy: 3 },
+};
 const CATAPULT_BODY = cells([
   [-1, -1],
   [0, -1],
@@ -628,51 +677,18 @@ const VEHICLE_YARDS: readonly VehicleYard[] = [
       { goodType: GOOD_WOOD, amount: SHIP_YARD_WOOD },
     ],
     ignoreContinents: true,
-    footprint: {
-      blocked: SHIP_SMALL_BODY,
-      familyBody: SHIP_SMALL_BODY,
-      reserved: cells([
-        [-2, -3],
-        [-1, -3],
-        [0, -3],
-        [1, -3],
-        [-2, -2],
-        [-1, -2],
-        [0, -2],
-        [1, -2],
-        [2, -2],
-        [-3, -1],
-        [-2, -1],
-        [-1, -1],
-        [0, -1],
-        [1, -1],
-        [2, -1],
-        [-3, 0],
-        [-2, 0],
-        [-1, 0],
-        [0, 0],
-        [1, 0],
-        [2, 0],
-        [3, 0],
-        [5, 0],
-        [-3, 1],
-        [-2, 1],
-        [-1, 1],
-        [0, 1],
-        [1, 1],
-        [2, 1],
-        [-2, 2],
-        [-1, 2],
-        [0, 2],
-        [1, 2],
-        [2, 2],
-        [-2, 3],
-        [-1, 3],
-        [0, 3],
-        [1, 3],
-      ]),
-      door: { dx: -2, dy: 3 },
-    },
+    footprint: SHIP_YARD_FOOTPRINT,
+  },
+  {
+    typeId: BUILDING_SHIP_BIG_YARD,
+    id: 'ship_big',
+    vehicleType: VEHICLE_SHIP_BIG,
+    construction: [
+      { goodType: GOOD_LEATHER, amount: SHIP_YARD_LEATHER },
+      { goodType: GOOD_WOOD, amount: SHIP_BIG_YARD_WOOD },
+    ],
+    ignoreContinents: true,
+    footprint: SHIP_YARD_FOOTPRINT,
   },
   {
     typeId: BUILDING_CATAPULT_YARD,

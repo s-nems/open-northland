@@ -2,7 +2,7 @@ import type { Command } from '../core/commands/index.js';
 import { type DeepReadonly, defineComponent, type Entity, type World } from '../ecs/world.js';
 import type { HalfCellNode } from '../nav/halfcell.js';
 import type { AiOrderOrigin } from './ai/order.js';
-import { Position, type WalkDirection } from './movement.js';
+import { Position, WALK_DIRECTION, type WalkDirection } from './movement.js';
 
 /** The tasks the original's vehicle window shows, in its numbering 0..6. */
 export const VEHICLE_TASKS = [
@@ -15,6 +15,9 @@ export const VEHICLE_TASKS = [
   'boardsShip',
 ] as const;
 export type VehicleTask = (typeof VEHICLE_TASKS)[number];
+
+/** The facing a fresh vehicle takes. Approximation: neither `setvehicle` nor a yard authors one. */
+export const VEHICLE_SPAWN_FACING: WalkDirection = WALK_DIRECTION.E;
 
 /** A siege vehicle's stances, the original's 1 attack / 2 defence / 3 hold; a fresh vehicle holds. */
 export const VEHICLE_STANCES = ['attack', 'defence', 'hold'] as const;

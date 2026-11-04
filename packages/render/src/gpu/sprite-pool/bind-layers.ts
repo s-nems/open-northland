@@ -31,7 +31,7 @@ import { cartDriveLook } from './layers/cart-drive.js';
 import { settlerPalette } from './layers/character.js';
 import { humanLayerRow } from './layers/human-palette-row.js';
 import type { ResolvedLayer } from './layers/resolved-layer.js';
-import { vehicleBodyRow, vehiclePalette } from './layers/vehicle-palette.js';
+import { shipYardSitePalette, vehicleBodyRow, vehiclePalette } from './layers/vehicle-palette.js';
 import { drawPlaceholder, placeholderBounds } from './placeholder.js';
 import {
   createPooled,
@@ -116,8 +116,9 @@ export class LayerBinder {
 
   /** A settler is created paletted when its look is an indexed human character and the player-colour
    *  LUT is loaded; animal atlases and baked looks are never LUT-indexed. A vehicle is created paletted
-   *  when its look is the indexed body, or through the settler LUT while it draws as its driver. Settlers
-   *  and vehicles can change class over their lives, which {@link suits} tells the pool. */
+   *  when its look is the indexed body, or through the settler LUT while it draws as its driver, and so
+   *  is a ship yard site rising as an indexed ship, for its whole life. Settlers and vehicles can change
+   *  class over their lives, which {@link suits} tells the pool. */
   create(kind: SpriteKind, item: DrawItem): PooledEntity {
     return createPooled(kind, this.paletteFor(kind, item));
   }
@@ -144,6 +145,7 @@ export class LayerBinder {
    *  foot look is baked on. */
   private paletteFor(kind: SpriteKind, item: DrawItem): PaletteLut | undefined {
     if (kind === 'vehicle') return vehiclePalette(this.sheet, item);
+    if (kind === 'building') return shipYardSitePalette(this.sheet, item);
     if (kind !== 'settler') return undefined;
     return cartDriveLook(this.sheet, item) !== undefined
       ? this.sheet?.palette
@@ -197,9 +199,9 @@ export class LayerBinder {
     // The LUT row the body reads; a human's head reads the row after it. Unused on the plain path.
     const bodyRow = !pe.paletted
       ? 0
-      : pe.kind === 'vehicle'
-        ? vehicleBodyRow(this.sheet, item, pe.palette, pe.humanRow)
-        : pe.humanRow.row(this.sheet, item);
+      : pe.kind === 'settler'
+        ? pe.humanRow.row(this.sheet, item)
+        : vehicleBodyRow(this.sheet, item, pe.palette, pe.humanRow);
     const human = pe.paletted && pe.palette === this.sheet?.palette;
     if (pe.paletted) pe.lutRow = bodyRow;
     const tint = entityTint(item.ghost === true); // constant per entity
@@ -461,7 +463,8 @@ export class LayerBinder {
     );
   }
 
-  /** A character layer: one quad of the world batch, drawn through the entity's LUT. */
+  /** A character or ship yard site layer: one quad of the world batch, drawn through the entity's LUT,
+   *  cropped from the top while it rises. */
   private bindPalettedQuad(
     pe: PalettedPooledEntity,
     i: number,
@@ -472,10 +475,17 @@ export class LayerBinder {
     tint: number,
   ): void {
     const spr = palettedSlot(pe, i, PalettedQuad, () => new PalettedQuad());
-    spr.texture = this.textures.palettedFrame(layer.source, layer.frame, pe.palette.source);
+    if (box.hiddenTop >= layer.frame.height) {
+      spr.visible = false;
+      return;
+    }
+    spr.texture =
+      box.hiddenTop > 0
+        ? this.textures.palettedCropped(layer.source, layer.frame, pe.palette.source, box.hiddenTop)
+        : this.textures.palettedFrame(layer.source, layer.frame, pe.palette.source);
     spr.scale.set(layer.scale);
     spr.offsetX = box.ox;
-    spr.offsetY = box.oy;
+    spr.offsetY = box.drawnOy;
     spr.placeFor(frame.camera, pe.motion.drawX, pe.motion.drawY, frame.snapResolution);
     // The shader reads the LUT without a bounds check.
     spr.lutRow = clamp(lutRow, 0, pe.palette.colours - 1);

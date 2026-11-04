@@ -468,6 +468,11 @@ export const enContent = {
       summary:
         "A level-4 carpenter's shop on a shore whose carpenters are set to the ship and the catapult in turn: the ship yard opens on the water beside the shop with the carpenter working from the shore, the catapult yard on the land. The launched ship lies moored at the shore with its sails furled.",
     },
+    'vehicle-ship-sites': {
+      title: 'Ship yards of every tribe',
+      summary:
+        "Each civilization's two ship yards, one column per tribe: the ship's yard above the big ship's, each with sites at 30% and 90% built over the ship such a site launches, moored at a shore. A site rises as the very ship it launches.",
+    },
     'vehicle-ox-yard': {
       title: 'Building an ox cart',
       summary:
