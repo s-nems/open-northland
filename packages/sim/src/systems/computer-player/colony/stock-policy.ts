@@ -45,8 +45,10 @@ const TOOL_WOODEN_ID = 'tool_wooden';
 const SETTLER_GOOD_SPARE = 2;
 /** The most a colony stores of a settler good: a store reserve, not a hoard. */
 const SETTLER_GOOD_MOST = 12;
-/** The most food a colony is filled up to, however many it feeds: the trader comes back. */
-const COLONY_FOOD_MOST = 40;
+/** The food a colonist eats over one trader round, the colony's floor of food per mouth: about 0.18 units
+ *  a game minute over a round of about 15 minutes (measured on arabskie_wyspy_wolna_gra_mieszana), so an
+ *  import is not eaten before the next one lands. */
+const COLONY_FOOD_PER_SETTLER_ROUND = 3;
 /** What a colony is brought of each input of its standing workshops that it does not make; one it makes it
  *  keeps up to its shelves. */
 export const WORKSHOP_INPUT_FLOOR = 5;
@@ -255,7 +257,7 @@ function settlerReserve(
   if (food !== null)
     reserve.set(
       food,
-      Math.min(COLONY_FOOD_MOST, FOOD_COMFORT_UNITS_PER_SETTLER * Math.max(1, people.length)),
+      Math.max(FOOD_COMFORT_UNITS_PER_SETTLER, COLONY_FOOD_PER_SETTLER_ROUND) * Math.max(1, people.length),
     );
   return reserve;
 }
