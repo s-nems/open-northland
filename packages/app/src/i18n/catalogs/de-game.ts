@@ -1727,6 +1727,7 @@ export const deGame = {
       buildings: 'Gebäude',
       status: { won: 'Sieg', defeated: 'Niederlage', empty: 'Nichts mehr übrig' },
       watchHint: 'Klicken, um diesen Spieler zu beobachten',
+      latestFight: 'Letzter Kampf',
     },
     stats: {
       playerTick: 'Spieler {player} · Tick {tick}',

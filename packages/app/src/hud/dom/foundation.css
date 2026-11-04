@@ -2095,6 +2095,20 @@ body.on-drag-scroll.on-drag-scroll-free * {
   border-width: 0 2px 2px 0;
   transform: translateY(-1px) rotate(45deg);
 }
+/* The entry's key sits at the row's end, before the chosen entry's tick. */
+.on-hud .on-seat .on-key {
+  margin-left: auto;
+}
+.on-hud .on-seat:has(.on-key)[aria-selected="true"]::after {
+  margin-left: 0;
+}
+.on-hud .on-picker__hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 2px 0;
+  font: 700 12px / 1 var(--font-body);
+}
 .on-hud .on-seat__swatch {
   flex: none;
   width: 11px;

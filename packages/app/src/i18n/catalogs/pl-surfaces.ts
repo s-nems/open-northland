@@ -432,6 +432,18 @@ export const plSurfaces = {
         controlGroup0: 'Wybierz grupę 0',
         controlGroup0Replace: 'Zastąp grupę 0 zaznaczeniem',
         controlGroup0Add: 'Dodaj/przenieś zaznaczenie do grupy 0',
+        watchSeat1: 'Obserwator: gracz 1 z listy',
+        watchSeat2: 'Obserwator: gracz 2 z listy',
+        watchSeat3: 'Obserwator: gracz 3 z listy',
+        watchSeat4: 'Obserwator: gracz 4 z listy',
+        watchSeat5: 'Obserwator: gracz 5 z listy',
+        watchSeat6: 'Obserwator: gracz 6 z listy',
+        watchSeat7: 'Obserwator: gracz 7 z listy',
+        watchSeat8: 'Obserwator: gracz 8 z listy',
+        watchSeat9: 'Obserwator: gracz 9 z listy',
+        watchPlayersSight: 'Obserwator: wizja graczy',
+        watchRevealedMap: 'Obserwator: odkryta mapa',
+        jumpToFight: 'Obserwator: skok do ostatniej walki',
         cancel: 'Anuluj / zamknij / odznacz',
         toggleSelection: 'Dodawanie do zaznaczenia i usuwanie z niego',
         queueOrder: 'Dodanie polecenia do kolejki po bieżącym',
@@ -459,6 +471,9 @@ export const plSurfaces = {
       escapeBindingRebindTip:
         'Kliknij, potem naciśnij nowy klawisz lub kombinację; Esc też można tu przypisać. Kliknięcie obok anuluje. Esc najpierw zamyka to, co otwarte, a menu otwiera, gdy nie ma już nic do zamknięcia.',
       recallSelectedTip: 'Naciśnięty, gdy grupa jest już zaznaczona, wyśrodkowuje widok na grupie.',
+      spectatorKeyTip:
+        'Działa tylko podczas obserwowania meczu, więc może dzielić klawisz z grupą jednostek.',
+      fightKeyTip: 'Wciśnięty ponownie, zanim widok się przesunie, przenosi do wcześniejszej walki.',
       hudToggleTip:
         'Ukrywa interfejs do zrzutów ekranu i nagrań. Okno otwarte, gdy interfejs jest ukryty, nadal się pokazuje.',
       pointerBindingRebindTip:

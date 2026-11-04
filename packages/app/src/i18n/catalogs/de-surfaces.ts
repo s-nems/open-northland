@@ -472,6 +472,18 @@ export const deSurfaces = {
         controlGroup0: 'Gruppe 0 auswählen',
         controlGroup0Replace: 'Gruppe 0 durch Auswahl ersetzen',
         controlGroup0Add: 'Auswahl Gruppe 0 zuordnen',
+        watchSeat1: 'Zuschauer: Spieler 1 der Liste beobachten',
+        watchSeat2: 'Zuschauer: Spieler 2 der Liste beobachten',
+        watchSeat3: 'Zuschauer: Spieler 3 der Liste beobachten',
+        watchSeat4: 'Zuschauer: Spieler 4 der Liste beobachten',
+        watchSeat5: 'Zuschauer: Spieler 5 der Liste beobachten',
+        watchSeat6: 'Zuschauer: Spieler 6 der Liste beobachten',
+        watchSeat7: 'Zuschauer: Spieler 7 der Liste beobachten',
+        watchSeat8: 'Zuschauer: Spieler 8 der Liste beobachten',
+        watchSeat9: 'Zuschauer: Spieler 9 der Liste beobachten',
+        watchPlayersSight: 'Zuschauer: Sicht der Spieler',
+        watchRevealedMap: 'Zuschauer: Aufgedeckte Karte',
+        jumpToFight: 'Zuschauer: Zum letzten Kampf springen',
         cancel: 'Abbrechen / schließen / Auswahl aufheben',
         toggleSelection: 'Zur Auswahl hinzufügen oder daraus entfernen',
         queueOrder: 'Befehl nach dem aktuellen einreihen',
@@ -500,6 +512,8 @@ export const deSurfaces = {
         'Anklicken und die neue Taste oder Tastenkombination drücken. Hier lässt sich auch Esc zuweisen; ein Klick außerhalb bricht ab. Esc schließt zuerst offene Fenster und öffnet das Menü, wenn keines mehr offen ist.',
       recallSelectedTip:
         'Ist die Gruppe bereits ausgewählt, zentriert ein weiterer Tastendruck die Ansicht auf die Gruppe.',
+      spectatorKeyTip: 'Wirkt nur beim Zuschauen, darum darf die Taste mit einer Gruppe geteilt werden.',
+      fightKeyTip: 'Erneut gedrückt, bevor sich die Ansicht bewegt, springt sie zum Kampf davor.',
       hudToggleTip:
         'Blendet die Oberfläche für Bildschirmfotos und Aufnahmen aus. Ein danach geöffnetes Fenster bleibt sichtbar.',
       pointerBindingRebindTip:

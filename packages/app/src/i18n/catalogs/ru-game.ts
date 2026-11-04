@@ -1715,6 +1715,7 @@ export const ruGame = {
       buildings: 'Здания',
       status: { won: 'Победа', defeated: 'Поражение', empty: 'Ничего не осталось' },
       watchHint: 'Нажмите, чтобы наблюдать за этим игроком',
+      latestFight: 'Последний бой',
     },
     stats: {
       playerTick: 'Игрок {player} · такт {tick}',

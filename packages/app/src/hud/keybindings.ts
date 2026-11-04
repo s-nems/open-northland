@@ -27,6 +27,28 @@ export const CONTROL_GROUP_BINDING_ACTIONS = [
 
 export type ControlGroupBindingAction = (typeof CONTROL_GROUP_BINDING_ACTIONS)[number];
 
+/** A spectator's keys to watch the first nine seats of its picker, in the picker's order. */
+export const SPECTATOR_SEAT_ACTIONS = [
+  'watchSeat1',
+  'watchSeat2',
+  'watchSeat3',
+  'watchSeat4',
+  'watchSeat5',
+  'watchSeat6',
+  'watchSeat7',
+  'watchSeat8',
+  'watchSeat9',
+] as const;
+
+export const SPECTATOR_ACTIONS = [
+  ...SPECTATOR_SEAT_ACTIONS,
+  'watchPlayersSight',
+  'watchRevealedMap',
+  'jumpToFight',
+] as const;
+
+export type SpectatorAction = (typeof SPECTATOR_ACTIONS)[number];
+
 /** Display order of the bindings table; also the priority order when stored bindings collide. */
 export const KEYBINDING_ACTIONS = [
   'panUp',
@@ -74,6 +96,7 @@ export const KEYBINDING_ACTIONS = [
   'keepHeroes',
   'keepSoldiers',
   ...CONTROL_GROUP_BINDING_ACTIONS,
+  ...SPECTATOR_ACTIONS,
 ] as const;
 
 /** Rebindable player actions. A binding is a normalized input chord; `null` is unbound. */
@@ -90,6 +113,10 @@ const controlGroupDefaults = Object.fromEntries(
     ];
   }),
 ) as Pick<KeyBindings, ControlGroupBindingAction>;
+
+const spectatorSeatDefaults = Object.fromEntries(
+  SPECTATOR_SEAT_ACTIONS.map((action, index) => [action, `Digit${index + 1}`]),
+) as Pick<KeyBindings, (typeof SPECTATOR_SEAT_ACTIONS)[number]>;
 
 export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   panLeft: 'ArrowLeft',
@@ -147,7 +174,31 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   keepHeroes: 'KeyX',
   keepSoldiers: 'KeyY',
   ...controlGroupDefaults,
+  // A spectator's digits pick the seats, 0 the players' sight beside them, the key left of 1 the
+  // revealed map, and J jumps to the latest fight.
+  ...spectatorSeatDefaults,
+  watchPlayersSight: 'Digit0',
+  watchRevealedMap: 'Backquote',
+  jumpToFight: 'KeyJ',
 };
+
+const SPECTATOR_ACTION_SET: ReadonlySet<string> = new Set(SPECTATOR_ACTIONS);
+const CONTROL_GROUP_BINDING_SET: ReadonlySet<string> = new Set(CONTROL_GROUP_BINDING_ACTIONS);
+
+export function isSpectatorAction(action: KeybindingAction): action is SpectatorAction {
+  return SPECTATOR_ACTION_SET.has(action);
+}
+
+/**
+ * Whether two actions may not hold the same chord. A spectator's keys answer only while it watches,
+ * where its control groups give way to them, so the two may share one; every other pair conflicts.
+ */
+export function bindingsConflict(a: KeybindingAction, b: KeybindingAction): boolean {
+  const spectatorBesideGroup =
+    (isSpectatorAction(a) && CONTROL_GROUP_BINDING_SET.has(b)) ||
+    (isSpectatorAction(b) && CONTROL_GROUP_BINDING_SET.has(a));
+  return !spectatorBesideGroup;
+}
 
 export function controlGroupBinding(action: ControlGroupBindingAction): {
   readonly group: ControlGroupAction;
@@ -282,14 +333,18 @@ export function changedKeyBindings(bindings: KeyBindings): Partial<Record<Keybin
 /**
  * Parse stored bindings, filling missing or malformed actions from the current defaults. A stored chord
  * claims its key before any default does, so a new default never takes a key the player picked; within
- * each pass the earlier action wins a doubly-claimed chord and the later one is left unbound.
+ * each pass the earlier action wins a chord two conflicting actions claim and the later one is left
+ * unbound.
  */
 export function parseKeyBindings(value: unknown): KeyBindings {
   const record = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
-  const taken = new Set<string>();
-  const claim = (binding: string | null): string | null => {
-    if (binding === null || taken.has(binding)) return null;
-    taken.add(binding);
+  const holders = new Map<string, KeybindingAction[]>();
+  const claim = (action: KeybindingAction, binding: string | null): string | null => {
+    if (binding === null) return null;
+    const held = holders.get(binding) ?? [];
+    if (held.some((other) => bindingsConflict(action, other))) return null;
+    held.push(action);
+    holders.set(binding, held);
     return binding;
   };
   const own = new Map<KeybindingAction, string | null>();
@@ -297,22 +352,23 @@ export function parseKeyBindings(value: unknown): KeyBindings {
     const stored = record[action];
     if (stored === null) own.set(action, null);
     else if (typeof stored === 'string' && isBindableBinding(stored) && bindingAllowedFor(action, stored)) {
-      own.set(action, claim(stored));
+      own.set(action, claim(action, stored));
     }
   }
   const result = {} as Record<KeybindingAction, string | null>;
   for (const action of KEYBINDING_ACTIONS) {
     const binding = own.get(action);
-    result[action] = binding !== undefined ? binding : claim(DEFAULT_KEY_BINDINGS[action]);
+    result[action] = binding !== undefined ? binding : claim(action, DEFAULT_KEY_BINDINGS[action]);
   }
   return result;
 }
 
-/** Give `binding` to `action`; an action previously holding the same chord becomes unbound. */
+/** Give `binding` to `action`; an action conflicting with it that held the same chord becomes unbound. */
 export function assignBinding(bindings: KeyBindings, action: KeybindingAction, binding: string): KeyBindings {
   const next: Record<KeybindingAction, string | null> = { ...bindings, [action]: binding };
   for (const other of KEYBINDING_ACTIONS) {
-    if (other !== action && bindings[other] === binding) next[other] = null;
+    if (other !== action && bindings[other] === binding && bindingsConflict(action, other))
+      next[other] = null;
   }
   return next;
 }

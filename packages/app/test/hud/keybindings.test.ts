@@ -4,9 +4,11 @@ import {
   bindingAllowedFor,
   bindingFromKeyboardEvent,
   bindingFromMouseEvent,
+  bindingsConflict,
   DEFAULT_KEY_BINDINGS,
   isBindableBinding,
   isBindableCode,
+  KEYBINDING_ACTIONS,
   keyDisplayLabel,
   matchesKeyboardBindingUnderShift,
   matchesMouseBinding,
@@ -23,16 +25,16 @@ describe('parseKeyBindings', () => {
 
   it('keeps valid stored codes and defaults the missing actions', () => {
     // Settings store only the changed bindings, so an action left out reads its default.
-    expect(parseKeyBindings({ pauseToggle: 'KeyJ' })).toEqual({
+    expect(parseKeyBindings({ pauseToggle: 'KeyU' })).toEqual({
       ...DEFAULT_KEY_BINDINGS,
-      pauseToggle: 'KeyJ',
+      pauseToggle: 'KeyU',
     });
   });
 
   it('keeps modifier chords distinct from their plain base key', () => {
-    const parsed = parseKeyBindings({ pauseToggle: 'Ctrl+KeyJ', actionRing: 'KeyJ' });
-    expect(parsed.pauseToggle).toBe('Ctrl+KeyJ');
-    expect(parsed.actionRing).toBe('KeyJ');
+    const parsed = parseKeyBindings({ pauseToggle: 'Ctrl+KeyU', actionRing: 'KeyU' });
+    expect(parsed.pauseToggle).toBe('Ctrl+KeyU');
+    expect(parsed.actionRing).toBe('KeyU');
   });
 
   it('drops an invalid or unbindable code to the default', () => {
@@ -55,24 +57,37 @@ describe('parseKeyBindings', () => {
     expect(later.residents).toBeNull();
   });
 
+  it('lets a spectator key share a control group chord, never another chord', () => {
+    const parsed = parseKeyBindings({ jumpToFight: 'Digit2', watchSeat1: 'KeyB' });
+    expect(parsed.jumpToFight).toBe('Digit2');
+    expect(parsed.controlGroup2).toBe('Digit2');
+    expect(parsed.watchSeat2).toBeNull();
+    expect(parsed.watchSeat1).toBe('KeyB');
+    expect(parsed.construction).toBeNull();
+  });
+
   it('gives a chord stored twice to the earlier action and unbinds the later one', () => {
-    const parsed = parseKeyBindings({ panLeft: 'KeyJ', attackMove: 'KeyJ' });
-    expect(parsed.panLeft).toBe('KeyJ');
+    const parsed = parseKeyBindings({ panLeft: 'KeyU', attackMove: 'KeyU' });
+    expect(parsed.panLeft).toBe('KeyU');
     expect(parsed.attackMove).toBeNull();
   });
 });
 
 describe('defaults', () => {
-  it('gives every default chord to one action', () => {
-    const chords = Object.values(DEFAULT_KEY_BINDINGS).filter((chord) => chord !== null);
-    expect(new Set(chords).size).toBe(chords.length);
+  it('gives no default chord to two conflicting actions', () => {
+    const clashes = KEYBINDING_ACTIONS.flatMap((a) =>
+      KEYBINDING_ACTIONS.filter(
+        (b) => a < b && DEFAULT_KEY_BINDINGS[a] === DEFAULT_KEY_BINDINGS[b] && bindingsConflict(a, b),
+      ).map((b) => `${a}/${b}`),
+    );
+    expect(clashes).toEqual([]);
   });
 });
 
 describe('assignBinding', () => {
   it('assigns a free code without touching other actions', () => {
-    const next = assignBinding(DEFAULT_KEY_BINDINGS, 'pauseToggle', 'KeyJ');
-    expect(next.pauseToggle).toBe('KeyJ');
+    const next = assignBinding(DEFAULT_KEY_BINDINGS, 'pauseToggle', 'KeyU');
+    expect(next.pauseToggle).toBe('KeyU');
     expect(next.attackMove).toBe('KeyA');
   });
 
@@ -80,6 +95,15 @@ describe('assignBinding', () => {
     const next = assignBinding(DEFAULT_KEY_BINDINGS, 'pauseToggle', 'KeyA');
     expect(next.pauseToggle).toBe('KeyA');
     expect(next.attackMove).toBeNull();
+  });
+
+  it('keeps a control group beside a spectator key given its chord, and unbinds both for another action', () => {
+    const spectator = assignBinding(DEFAULT_KEY_BINDINGS, 'jumpToFight', 'Digit3');
+    expect(spectator.controlGroup3).toBe('Digit3');
+    expect(spectator.watchSeat3).toBeNull();
+    const pause = assignBinding(DEFAULT_KEY_BINDINGS, 'pauseToggle', 'Digit3');
+    expect(pause.controlGroup3).toBeNull();
+    expect(pause.watchSeat3).toBeNull();
   });
 
   it('reassigning an action its own code is a no-op', () => {

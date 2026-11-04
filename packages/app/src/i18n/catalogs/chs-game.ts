@@ -1547,6 +1547,7 @@ export const chsGame = {
       buildings: '建筑',
       status: { won: '胜利', defeated: '战败', empty: '一无所有' },
       watchHint: '点击观看该玩家',
+      latestFight: '最近的战斗',
     },
     stats: {
       playerTick: '玩家 {player} · 逻辑帧 {tick}',

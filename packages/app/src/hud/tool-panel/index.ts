@@ -764,6 +764,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
               playerColourOf: opts.playerColourOf,
               onWatch: opts.observer.onWatch,
               standings: opts.observer.standings,
+              bindings: opts.bindings,
             },
           }
         : {}),

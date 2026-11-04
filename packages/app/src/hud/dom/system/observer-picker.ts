@@ -2,6 +2,8 @@ import { playerSwatchHex } from '../../../catalog/roster.js';
 import type { ObserverSeatEntry } from '../../../game/match/observer-seats.js';
 import { PLAYERS_SIGHT, type ViewerSeat, type WatchTarget } from '../../../game/viewer-seat.js';
 import { messages } from '../../../i18n/index.js';
+import { type KeyBindings, keyDisplayLabel } from '../../keybindings.js';
+import { watchActionOf } from '../../spectator-keys.js';
 import { GLYPH } from '../icons.js';
 
 export interface ObserverPickerDeps {
@@ -12,6 +14,8 @@ export interface ObserverPickerDeps {
   /** Owner slot to team-colour slot for the swatches; absent = identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
   readonly onWatch: (target: WatchTarget) => void;
+  /** The spectator keys each entry and the fight jump show; absent, the list names no key. */
+  readonly bindings?: KeyBindings | undefined;
 }
 
 /** The spectator's seat picker: one button naming the watched seat, over a list of the whole map
@@ -43,6 +47,13 @@ export function observerSeatLabels(seats: readonly ObserverSeatEntry[]): (seat: 
 /** A seat's swatch colour, through the owner-to-team-colour map when one is given. */
 export function observerSeatColour(seat: number, playerColourOf?: (player: number) => number): string {
   return playerSwatchHex(playerColourOf?.(seat) ?? seat);
+}
+
+function keycap(label: string): HTMLElement {
+  const key = document.createElement('kbd');
+  key.className = 'on-key';
+  key.textContent = label;
+  return key;
 }
 
 function swatch(colour: string): HTMLElement {
@@ -88,6 +99,13 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   const colourOf = (seat: WatchTarget): string =>
     typeof seat !== 'number' ? 'transparent' : observerSeatColour(seat, deps.playerColourOf);
 
+  const seatOrder = deps.seats.map((seat) => seat.player);
+  const keyOf = (seat: WatchTarget): string | null => {
+    const action = watchActionOf(seat, seatOrder);
+    const binding = action === null ? null : (deps.bindings?.[action] ?? null);
+    return binding === null ? null : keyDisplayLabel(binding);
+  };
+
   const entries = new Map<WatchTarget, HTMLButtonElement>();
   const entry = (seat: WatchTarget): void => {
     const option = document.createElement('button');
@@ -97,6 +115,8 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
     option.setAttribute('aria-selected', 'false');
     if (typeof seat === 'number') option.append(swatch(colourOf(seat)));
     option.append(labelOf(seat));
+    const key = keyOf(seat);
+    if (key !== null) option.append(keycap(key));
     option.addEventListener('click', () => {
       show(false);
       deps.onWatch(seat);
@@ -107,6 +127,13 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   entry(PLAYERS_SIGHT);
   entry(null);
   for (const seat of deps.seats) entry(seat.player);
+  const fightBinding = deps.bindings?.jumpToFight ?? null;
+  if (fightBinding !== null) {
+    const hint = document.createElement('p');
+    hint.className = 'on-picker__hint';
+    hint.append(keycap(keyDisplayLabel(fightBinding)), copy.observer.latestFight);
+    list.append(hint);
+  }
 
   // Escape closes the open list from wherever focus sits, since a clicked button holds no focus in
   // every browser; the tool panel's own Escape runs first, so an open window closes before the list.

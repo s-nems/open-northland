@@ -4,6 +4,7 @@ import {
   bindingFromKeyboardEvent,
   bindingFromMouseEvent,
   CONTROL_GROUP_ACTIONS,
+  isSpectatorAction,
   KEYBINDING_ACTIONS,
   type KeybindingAction,
   keyDisplayLabel,
@@ -113,6 +114,8 @@ export function createControlsTab(opts: {
               : text.bindingRebindTip,
           ...(RECALL_ACTIONS.has(action) ? [text.recallSelectedTip] : []),
           ...(action === 'hudToggle' ? [text.hudToggleTip] : []),
+          ...(isSpectatorAction(action) ? [text.spectatorKeyTip] : []),
+          ...(action === 'jumpToFight' ? [text.fightKeyTip] : []),
           ...(opts.deferredTip === undefined ? [] : [opts.deferredTip]),
         ].join(' '),
       });

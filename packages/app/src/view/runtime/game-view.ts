@@ -158,6 +158,8 @@ import { createScriptMarkers } from '../script/markers.js';
 import { createScriptPresentation } from '../script/presentation.js';
 import { mountScriptTints } from '../script/tints.js';
 import { patchStoredSettings, readStoredSettings } from '../settings/store.js';
+import { installSpectatorKeys } from '../spectator/keys.js';
+import { createLatestFights } from '../spectator/latest-fights.js';
 import { createShortfallLook } from '../speed-shortfall.js';
 import { createTooltip, TOOLTIP_Z_INDEX } from '../tooltip.js';
 import { type ControlGroupMembers, isControlGroupMember } from '../unit-controls/control-groups.js';
@@ -672,6 +674,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const vehicleSiteTypes = new Set(
       host.content.buildings.filter((b) => b.kind === BUILDING_KIND.vehicle).map((b) => b.typeId),
     );
+    const modalOpen = (): boolean =>
+      systemMenu?.isOpen() === true || linkLost?.isOpen() === true || verdict?.isOpen() === true;
     const toolPanel = await mountGameToolPanel({
       settlerName: (entity) => settlerName({ jobs: host.content.jobs, mapText }, entity),
       app,
@@ -800,8 +804,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       onSaveGame: () => systemMenu?.openPage('save'),
       ...(sharedClock ? {} : { onLoadGame: () => systemMenu?.openPage('load') }),
       onToggleHud: () => toggleHud?.(),
-      modalOpen: () =>
-        systemMenu?.isOpen() === true || linkLost?.isOpen() === true || verdict?.isOpen() === true,
+      modalOpen,
       escapeClaimed: () => escapeClaimed?.() === true,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       ...(mission !== undefined ? { mission } : {}),
@@ -1018,8 +1021,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         })
       : null;
     campaign?.restore(host.snapshot());
+    // Kept from the first tick, so a player who watches on after the result finds the fights fought.
+    const latestFights = switchableSeat === null ? null : createLatestFights();
     const onEvents = (events: readonly SimEvent[]): void => {
       playtest?.onEvents(events);
+      latestFights?.record(events, host.snapshot());
       if (campaign === null) forwardEvents(events);
       else campaign.events(events, forwardEvents);
     };
@@ -1405,6 +1411,22 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       const zoom = cameraCtl.camera().scale ?? 1;
       cameraCtl.jumpTo(cameraCenteredOnTile(focus.x, focus.y, zoom, app.screen.width, app.screen.height));
     });
+    if (switchableSeat !== null && latestFights !== null) {
+      cleanup.push(
+        installSpectatorKeys({
+          bindings: keyBindings,
+          seats: sightSeats,
+          active: () => watching && !modalOpen(),
+          watch: (target) => switchableSeat.watch(target),
+          fights: latestFights,
+          camera: () => cameraCtl.camera(),
+          centreOn: (at) => {
+            const world = projectNode(deps.elevation, at.hx, at.hy);
+            jumpToWorld(world.x, world.y);
+          },
+        }),
+      );
+    }
 
     // Turning an effect on may need its programs linked first; turning it off draws nothing new. The
     // weather sound follows at once either way.
