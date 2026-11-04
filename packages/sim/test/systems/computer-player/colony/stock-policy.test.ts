@@ -1,10 +1,21 @@
 import { describe, expect, it } from 'vitest';
+import { aiControlEntity, ComputerColony } from '../../../../src/components/index.js';
+import { colonists } from '../../../../src/systems/computer-player/colony/founding.js';
 import {
   type ColonyStockPolicy,
   colonyStockPolicy,
+  colonyStockPolicyOf,
   type StockPolicyRead,
   WORKSHOP_INPUT_FLOOR,
 } from '../../../../src/systems/computer-player/colony/stock-policy.js';
+import {
+  blankColony,
+  colonyWorld,
+  editColony,
+  FOOD,
+  looseColonyEnv,
+} from '../../../fixtures/colony-islands.js';
+import { CIVILIST, SEAT, VIKING } from '../support.js';
 
 const WOOD = 1;
 const BRICK = 2;
@@ -18,6 +29,14 @@ const WOOD_FLOOR = 20;
 const BRICK_FLOOR = 15;
 const SHOES_RESERVE = 4;
 const HOME_KEEPS = 9;
+/** A spot on the colony fixture's east island, in half-cell nodes. */
+const EAST_ISLAND_AT = { x: 160, y: 40 };
+/** More colonists than the larder's old cap of 40 food fed at three units each. */
+const MOUTHS = 20;
+const MOUTHS_A_ROW = 5;
+const MOUTH_STEP = 4;
+/** The food a colonist eats over a trader round. */
+const FOOD_PER_MOUTH_ROUND = 3;
 
 function read(overrides: Partial<StockPolicyRead> = {}): StockPolicyRead {
   return {
@@ -231,5 +250,33 @@ describe("a colony's sites", () => {
     expect(outboundOf(surplus, WOOD)).toEqual({ good: WOOD, keep: WOOD_FLOOR });
     const short = colonyStockPolicy(read({ ...homeShort, held: new Map([[WOOD, 1]]) }));
     expect(inboundOf(short, WOOD)).toEqual({ good: WOOD, upTo: WOOD_FLOOR, keep: HOME_KEEPS });
+  });
+});
+
+describe("a colony's larder", () => {
+  it('asks the food its people eat over a trader round, three units a mouth with no cap', () => {
+    const sim = colonyWorld();
+    const carrier = aiControlEntity(sim.world, SEAT);
+    const terrain = sim.terrain;
+    if (carrier === null || terrain === undefined) throw new Error('setup: no AI seat or terrain');
+    const land = terrain.componentOf(terrain.nodeAt(EAST_ISLAND_AT.x, EAST_ISLAND_AT.y));
+    const colony = blankColony(land);
+    sim.world.add(carrier, ComputerColony, { colonies: [colony], rejected: [], retryAt: 0 });
+    for (let i = 0; i < MOUTHS; i++)
+      sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: CIVILIST,
+        x: EAST_ISLAND_AT.x + MOUTH_STEP * (i % MOUTHS_A_ROW),
+        y: EAST_ISLAND_AT.y + MOUTH_STEP * Math.floor(i / MOUTHS_A_ROW),
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    sim.step();
+    const env = looseColonyEnv(sim, editColony(sim));
+    expect(colonists(env)).toHaveLength(MOUTHS);
+
+    const policy = colonyStockPolicyOf(env, new Set());
+
+    expect(inboundOf(policy, FOOD)?.upTo).toBe(FOOD_PER_MOUTH_ROUND * MOUTHS);
   });
 });
