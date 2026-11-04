@@ -387,10 +387,10 @@ function splitParty(
 /**
  * Fitting out: the second ship is claimed as soon as it lies free. A scout ship that is the trade ship
  * carries the whole party at once, any other past {@link COLONY_FIT_OUT_TICKS} with none; with no ship at
- * all the voyage fails. The same span then runs for the ship to lie moored at home and a party to be
- * spared. Then it waits, the party at work, for home to hold the manifest where hands fetch it, which
- * costs a moored ship and never fails the voyage: the site is looked at once more and loading starts. A
- * scout ship the party does not need goes free here.
+ * all the voyage fails. The same span then runs for the ship to lie moored at home. Then it waits for a
+ * party to be spared and for home to hold the manifest where hands fetch it, the party at work, which costs
+ * a moored ship and never fails the voyage: the site is looked at once more and loading starts. A scout
+ * ship the party does not need goes free here.
  */
 export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx, seat } = env;
@@ -414,7 +414,7 @@ export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] 
   const home = homeLandOf(env);
   if (!mooredOn(env, ship, home)) return late ? turnHome(env, false) : [];
   const party = pickParty(world, ctx, seat, home);
-  if (party.length === 0) return late ? turnHome(env, false) : [];
+  if (party.length === 0) return [];
   const manifest = colonyManifest(world, ctx, seat, party.length);
   if (!manifestInStock(world, homeStockToLoad(world, ctx, seat), ship, manifest)) return [];
   if (!colonySiteClear(world, ctx, seat, colony.site)) return turnHome(env, true);

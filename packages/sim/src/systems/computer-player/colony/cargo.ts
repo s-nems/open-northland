@@ -10,6 +10,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { homeBuildings } from '../../ai-shared/home-roster.js';
 import type { SystemContext } from '../../context.js';
+import { edibleClassOf } from '../../readviews/food.js';
 import { mayFetchGoodFrom } from '../../stores/workplace.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { foodGood } from './home-supply.js';
@@ -40,7 +41,7 @@ export function colonyManifest(world: World, ctx: SystemContext, seat: number, p
 
 /** The units of each good at home a hold's hands may fetch: home's stock less what its sites and upgrades
  *  hold for their bills, its workshops for their recipes and its homes as food, which nobody hands a ship.
- *  Warehouses, workshop output and the heaps on home's ground stay in. */
+ *  Warehouses, workshop output and the heaps on home's ground stay in, and a food line's dishes. */
 export function homeStockToLoad(
   world: World,
   ctx: SystemContext,
@@ -48,7 +49,7 @@ export function homeStockToLoad(
 ): (goodType: number) => number {
   const stock = homeStockOf(world, ctx, seat);
   const home = homeBuildings(world, ctx, seat);
-  return (goodType) => {
+  const units = (goodType: number): number => {
     let kept = 0;
     for (const e of home) {
       const pile = world.tryGet(e, Stockpile)?.amounts.get(goodType) ?? 0;
@@ -56,6 +57,11 @@ export function homeStockToLoad(
         kept += pile;
     }
     return stock.units(goodType) - kept;
+  };
+  // A food line takes the dishes that become it too, as the hold's hands fetch them.
+  return (goodType) => {
+    const forms = edibleClassOf(ctx.content, goodType);
+    return forms.length === 0 ? units(goodType) : forms.reduce((sum, form) => sum + units(form), 0);
   };
 }
 
