@@ -206,4 +206,14 @@ describe("a colony's sites", () => {
     const lacking = colonyStockPolicy(read({ ...made, siteLack: new Map([[WOOD, 1]]) }));
     expect(outboundOf(lacking, WOOD)).toBeUndefined();
   });
+
+  it('give way to home: what home lacks goes home above the colony floor, and none is asked of home', () => {
+    const homeShort = { homeWants: new Set([WOOD]), siteLack: new Map([[WOOD, 3]]) };
+    const surplus = colonyStockPolicy(
+      read({ ...homeShort, makes: new Set([WOOD]), held: new Map([[WOOD, WOOD_FLOOR + 5]]) }),
+    );
+    expect(outboundOf(surplus, WOOD)).toEqual({ good: WOOD, keep: WOOD_FLOOR });
+    const short = colonyStockPolicy(read({ ...homeShort, held: new Map([[WOOD, 1]]) }));
+    expect(inboundOf(short, WOOD)).toEqual({ good: WOOD, upTo: WOOD_FLOOR, keep: HOME_KEEPS });
+  });
 });

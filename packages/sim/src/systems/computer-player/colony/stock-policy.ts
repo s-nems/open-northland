@@ -130,7 +130,7 @@ function floorOf(read: StockPolicyRead, good: number): number {
  * units that went one way never come back. Both ways at once would balance the two stores instead, holding
  * the colony's surplus while home holds more. A good the colony's sites lack never goes home, and what they
  * lack past its stores comes past home's keep: the mark asks just that much, with nothing kept, so a site
- * waits on no comfort stock of home's.
+ * waits on no comfort stock of home's. A good home itself lacks is the exception: the colony keeps its floor.
  */
 export function colonyStockPolicy(read: StockPolicyRead): ColonyStockPolicy {
   const inboundGoods = new Set<number>(read.buildingFloor.keys());
@@ -150,7 +150,8 @@ export function colonyStockPolicy(read: StockPolicyRead): ColonyStockPolicy {
     const sends = outboundGoods.has(good);
     const takes = inboundGoods.has(good) && floor > 0;
     const held = read.held.get(good) ?? 0;
-    const lack = read.siteLack.get(good) ?? 0;
+    // Home's own lack wins: what its workshops and sites wait on goes home above the colony's floor.
+    const lack = read.homeWants.has(good) ? 0 : (read.siteLack.get(good) ?? 0);
     const goesHome =
       sends && lack <= 0 && (!takes || held > floor || (held === floor && read.outboundNow.has(good)));
     if (goesHome) outbound.push({ good, keep: floor });
@@ -160,8 +161,8 @@ export function colonyStockPolicy(read: StockPolicyRead): ColonyStockPolicy {
   return { inbound, outbound };
 }
 
-/** The inputs home's own workshops, its ship yard among them, have fewer of in home's stores than their
- *  shelves take: what a colony's surplus goes home to feed. */
+/** The goods home's stores hold fewer of than its own workshops' shelves take, its ship yard among them, or
+ *  than its sites still lack: what a colony's surplus goes home to feed. */
 function homeWantsOf(env: SeatEnv): Set<number> {
   const { world, ctx, seat } = env;
   const index = contentIndex(ctx.content);
@@ -173,6 +174,8 @@ function homeWantsOf(env: SeatEnv): Set<number> {
   const wants = new Set<number>();
   for (const [good, shelves] of workshopShelves(env, home))
     if ((stored.get(good) ?? 0) < shelves) wants.add(good);
+  for (const [good, lacking] of sitesShortfalls(world, ctx, home))
+    if ((stored.get(good) ?? 0) < lacking) wants.add(good);
   return wants;
 }
 
