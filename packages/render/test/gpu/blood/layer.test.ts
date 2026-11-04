@@ -1,4 +1,4 @@
-import { type Entity, positionOfNode, type SimEvent } from '@open-northland/sim';
+import { type Entity, positionOfNode, type SimEvent, TileBuckets } from '@open-northland/sim';
 import { Container, Mesh, Rectangle, Texture, TextureSource } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -154,6 +154,23 @@ describe('blood event history', () => {
     history.expire(21 + BLOOD_LIFETIME_TICKS);
     expect(history.size).toBe(0);
     expect(removed).toHaveBeenCalledTimes(1000 + MAX_BLOOD_MARKS + 101);
+  });
+
+  it('reuses the bucket ids of the marks it drops and still returns a view oldest first', () => {
+    const set = vi.spyOn(TileBuckets.prototype, 'set');
+    const history = new BloodHistory(() => undefined);
+    const CHURN = 50;
+    // Every mark lands on one node, so each past its budget drops the oldest.
+    for (let i = 0; i < CHURN; i++) history.ingest([hit(i)], i);
+    const bucketIds = set.mock.calls.map(([id]) => id);
+    set.mockRestore();
+    expect(history.size).toBe(MAX_BLOOD_PER_NODE);
+    expect(Math.max(...bucketIds)).toBeLessThan(MAX_BLOOD_PER_NODE);
+    const out: BloodMark[] = [];
+    history.query(vp, 0, out);
+    expect(out.map((mark) => mark.target)).toEqual(
+      Array.from({ length: MAX_BLOOD_PER_NODE }, (_, i) => CHURN - MAX_BLOOD_PER_NODE + i),
+    );
   });
 });
 
