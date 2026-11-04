@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   type ColonyStockPolicy,
   colonyStockPolicy,
-  keepPastSites,
   type StockPolicyRead,
   WORKSHOP_INPUT_FLOOR,
 } from '../../../../src/systems/computer-player/colony/stock-policy.js';
@@ -35,6 +34,7 @@ function read(overrides: Partial<StockPolicyRead> = {}): StockPolicyRead {
     outboundNow: new Set(),
     homeKeep: () => HOME_KEEPS,
     homeWants: new Set(),
+    siteLack: new Map(),
     ...overrides,
   };
 }
@@ -192,13 +192,18 @@ describe('a colony stock policy', () => {
   });
 });
 
-describe("home's keep for a colony's sites", () => {
-  it('gives up what the standing sites lack past the colony store, never below none', () => {
-    const lacking = new Map([[BRICK, 2]]);
-    const keep = keepPastSites(() => HOME_KEEPS, lacking, new Map());
-    expect(keep(BRICK)).toBe(HOME_KEEPS - 2);
-    expect(keep(WOOD)).toBe(HOME_KEEPS);
-    expect(keepPastSites(() => HOME_KEEPS, lacking, new Map([[BRICK, 2]]))(BRICK)).toBe(HOME_KEEPS);
-    expect(keepPastSites(() => 1, lacking, new Map())(BRICK)).toBe(0);
+describe("a colony's sites", () => {
+  it('ask what they lack past the colony store with nothing kept at home, and only that much', () => {
+    const policy = colonyStockPolicy(read({ siteLack: new Map([[BRICK, 2]]), held: new Map([[BRICK, 1]]) }));
+    expect(inboundOf(policy, BRICK)).toEqual({ good: BRICK, upTo: 2, keep: 0 });
+    const covered = colonyStockPolicy(read({ siteLack: new Map([[BRICK, 2]]), held: new Map([[BRICK, 2]]) }));
+    expect(inboundOf(covered, BRICK)).toEqual({ good: BRICK, upTo: BRICK_FLOOR, keep: HOME_KEEPS });
+  });
+
+  it('keep at the colony a good it makes past its floor while a site lacks it', () => {
+    const made = { makes: new Set([WOOD]), held: new Map([[WOOD, WOOD_FLOOR + 5]]) };
+    expect(outboundOf(colonyStockPolicy(read(made)), WOOD)).toEqual({ good: WOOD, keep: WOOD_FLOOR });
+    const lacking = colonyStockPolicy(read({ ...made, siteLack: new Map([[WOOD, 1]]) }));
+    expect(outboundOf(lacking, WOOD)).toBeUndefined();
   });
 });

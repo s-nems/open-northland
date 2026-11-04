@@ -100,6 +100,8 @@ export interface StockPolicyRead {
   readonly homeKeep: (good: number) => number;
   /** The inputs home's workshops lack: a good the colony holds above its floor goes home, made there or not. */
   readonly homeWants: ReadonlySet<number>;
+  /** What the colony's standing sites, its industries' among them, still lack of their bills. */
+  readonly siteLack: Units;
 }
 
 /** What the colony keeps of a workshop input: a small floor brought in, its shelves of one it makes. */
@@ -126,7 +128,9 @@ function floorOf(read: StockPolicyRead, good: number): number {
  * it keeps. A good on both lists, a building material the colony digs, goes the way its stock
  * stands to the floor, and at the floor the way it went: its keep at the colony is the colony's floor, so
  * units that went one way never come back. Both ways at once would balance the two stores instead, holding
- * the colony's surplus while home holds more.
+ * the colony's surplus while home holds more. A good the colony's sites lack never goes home, and what they
+ * lack past its stores comes past home's keep: the mark asks just that much, with nothing kept, so a site
+ * waits on no comfort stock of home's.
  */
 export function colonyStockPolicy(read: StockPolicyRead): ColonyStockPolicy {
   const inboundGoods = new Set<number>(read.buildingFloor.keys());
@@ -146,8 +150,11 @@ export function colonyStockPolicy(read: StockPolicyRead): ColonyStockPolicy {
     const sends = outboundGoods.has(good);
     const takes = inboundGoods.has(good) && floor > 0;
     const held = read.held.get(good) ?? 0;
-    const goesHome = sends && (!takes || held > floor || (held === floor && read.outboundNow.has(good)));
+    const lack = read.siteLack.get(good) ?? 0;
+    const goesHome =
+      sends && lack <= 0 && (!takes || held > floor || (held === floor && read.outboundNow.has(good)));
     if (goesHome) outbound.push({ good, keep: floor });
+    else if (takes && lack > held) inbound.push({ good, upTo: lack, keep: 0 });
     else if (takes) inbound.push({ good, upTo: floor, keep: read.homeKeep(good) });
   }
   return { inbound, outbound };
@@ -319,17 +326,6 @@ function homeKeepOf(env: SeatEnv): (good: number) => number {
   };
 }
 
-/** Home's `keep` of each good less what the colony's standing sites still lack past its own `held` store: a
- *  colony site waits on no comfort stock of home's, so a top-tier home is not held up for two units home
- *  could spare. */
-export function keepPastSites(
-  keep: (good: number) => number,
-  lacking: ReadonlyMap<number, number>,
-  held: ReadonlyMap<number, number>,
-): (good: number) => number {
-  return (good) => Math.max(0, keep(good) - Math.max(0, (lacking.get(good) ?? 0) - (held.get(good) ?? 0)));
-}
-
 /** The colony's policy now; `outboundNow` the goods its carrier sends home as marked. */
 export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<number>): ColonyStockPolicy {
   const { world, ctx } = env;
@@ -351,7 +347,8 @@ export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<num
     held,
     keptOnColony: keptOnColony(env, buildings),
     outboundNow,
-    homeKeep: keepPastSites(homeKeepOf(env), lacking, held),
+    homeKeep: homeKeepOf(env),
     homeWants: homeWantsOf(env),
+    siteLack: lacking,
   });
 }
