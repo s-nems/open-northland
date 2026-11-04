@@ -17,6 +17,7 @@ import { seatSiege } from '../build-order/siege.js';
 import { nearestLiveResource } from '../live-resources.js';
 import type { StepGround } from './industry.js';
 import { LAND_GOOD_IDS } from './provision.js';
+import { homesFitNear } from './room.js';
 import { colonyStoreType } from './store-tier.js';
 import type { ColonyEnv } from './voyage.js';
 
@@ -122,12 +123,19 @@ const SHORE_LOOK_STEP = 3;
 /** A shore's score per {@link LAND_GOOD_IDS} good in reach and per live swarm, against one per open node
  *  sampled: a good nobody can reach costs a colony more than a corner of room (authored). */
 const SHORE_GOOD_POINTS = 60;
+/** A shore's score per home that fits in its look (owner ruling: free room for homes, workshops and towers
+ *  weighs heavily): worth more than a good in reach, so a cramped cove loses to a roomy shore (authored). */
+const SHORE_HOME_POINTS = 100;
+/** The homes past which a shore's room gains nothing (authored): a colony's homes and its industries' room. */
+const SHORE_HOMES_FULL = 12;
 const SHORE_FISH_POINTS = 20;
 const SHORE_GRASS_DIVISOR = 8;
 
-/** How a shore serves a colony (owner ruling): open ground, resources in gatherers' reach, grass and fish. */
-function shoreScore(env: ColonyEnv, land: number, at: HalfCellNode): number {
+/** How a shore serves a colony (owner ruling): room for homes first, then open ground, resources in
+ *  gatherers' reach, grass and fish. */
+function shoreScore(env: ColonyEnv, land: number, at: HalfCellNode, tribe: number): number {
   const { world, ctx, terrain } = env;
+  const homes = homesFitNear(world, ctx, terrain, tribe, land, at, SHORE_LOOK_NODES, SHORE_HOMES_FULL);
   const grid = placementBlockerGrid(world, ctx.content, terrain);
   let open = 0;
   let grass = 0;
@@ -151,7 +159,11 @@ function shoreScore(env: ColonyEnv, land: number, at: HalfCellNode): number {
   }).length;
   const fish = fishSwarmsNearNode(world, at.hx, at.hy, SHORE_LOOK_NODES).length;
   return (
-    open + Math.floor(grass / SHORE_GRASS_DIVISOR) + SHORE_GOOD_POINTS * goods + SHORE_FISH_POINTS * fish
+    SHORE_HOME_POINTS * homes +
+    open +
+    Math.floor(grass / SHORE_GRASS_DIVISOR) +
+    SHORE_GOOD_POINTS * goods +
+    SHORE_FISH_POINTS * fish
   );
 }
 
@@ -171,7 +183,7 @@ export function shoreWithStore(
   let bestScore = -1;
   for (const at of shores) {
     if (colonySpot(env, land, type, tribe, at, VEHICLE_CARGO_SEARCH_RADIUS) === null) continue;
-    const score = shoreScore(env, land, at);
+    const score = shoreScore(env, land, at, tribe);
     if (score <= bestScore) continue;
     best = at;
     bestScore = score;

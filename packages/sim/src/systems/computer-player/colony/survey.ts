@@ -13,6 +13,7 @@ import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { placementProbe } from '../../footprint/placement/building.js';
 import { believedBuildings } from '../knowledge/intel/index.js';
+import { homesFitNear } from './room.js';
 import { colonyStoreType } from './store-tier.js';
 
 // Where a seat could settle over the sea. The figures below are authored from a survey of the 65 free-play
@@ -55,6 +56,12 @@ export const ROOMY_SITE_NODES = 1000;
 const PEOPLE_SITE_FISH_UNITS = FISH_FULL_UNITS / 2;
 /** The best sites the live test weighs, in score order. */
 const LIVE_CANDIDATES = 8;
+/** The blocks of the chosen land whose room the live test compares, in score order (authored). */
+const LAND_ROOM_CANDIDATES = 8;
+/** How far round a block's centre its room for homes is counted, in Manhattan nodes (authored: about the
+ *  block's half width, where its shores lie), and the homes past which more room gains nothing. */
+const BLOCK_HOMES_REACH_NODES = 48;
+const BLOCK_HOMES_FULL = 16;
 
 /** Owner ruling: a colony keeps clear of every seat it does not call friend. The figure is authored from the
  *  survey: hex nodes between a site's centre and the nearest start or believed building. */
@@ -370,8 +377,9 @@ function storeFits(
 
 /**
  * The best site `seat` may settle now, skipping the `rejected` zones and whatever `accepts` turns down: of the
- * `candidates` best, the first clear of every threat with room for a store. Null when none is. Costs the believed buildings
- * and, per clear candidate, up to a block of placement probes.
+ * `candidates` best, the first clear of every threat with room for a store, or a block of its land ranked alike
+ * with more room for homes. Null when none is. Costs the believed buildings and, per clear candidate, up to a
+ * block of placement probes.
  */
 export function surveyColonySite(
   world: World,
@@ -391,9 +399,48 @@ export function surveyColonySite(
     .slice(0, candidates);
   if (sites.length === 0) return null;
   const threats = threatNodes(world, ctx, brief, seat);
-  for (const site of sites) {
-    if (clearOf(threats, site.centre) && storeFits(world, ctx, terrain, brief, site, store.typeId, tribe))
-      return site;
+  const fits = (site: ColonySite): boolean =>
+    clearOf(threats, site.centre) && storeFits(world, ctx, terrain, brief, site, store.typeId, tribe);
+  const first = sites.find(fits);
+  if (first === undefined) return null;
+  // The best spot of that land wins over the first that passes: of the blocks ranked alike, the one with the
+  // most room for homes round its centre, the higher ranked on a tie.
+  const alike = sites
+    .filter(
+      (site) =>
+        site.land === first.land &&
+        site.use === first.use &&
+        site.crowded === first.crowded &&
+        site.contested === first.contested,
+    )
+    .slice(0, LAND_ROOM_CANDIDATES);
+  let best = first;
+  let bestHomes = homesFitNear(
+    world,
+    ctx,
+    terrain,
+    tribe,
+    first.land,
+    first.centre,
+    BLOCK_HOMES_REACH_NODES,
+    BLOCK_HOMES_FULL,
+  );
+  for (const site of alike) {
+    if (site === first || !fits(site)) continue;
+    const homes = homesFitNear(
+      world,
+      ctx,
+      terrain,
+      tribe,
+      site.land,
+      site.centre,
+      BLOCK_HOMES_REACH_NODES,
+      BLOCK_HOMES_FULL,
+    );
+    if (homes > bestHomes) {
+      best = site;
+      bestHomes = homes;
+    }
   }
-  return null;
+  return best;
 }
