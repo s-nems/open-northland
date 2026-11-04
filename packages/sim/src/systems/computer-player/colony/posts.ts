@@ -498,6 +498,34 @@ export function menPastWork(env: ColonyEnv, colony: ColonyView): Entity[] {
     .slice(0, past);
 }
 
+/** The `diggers` past the table's dig posts, in `held`'s surplus of each good, that the open builder posts of
+ *  `open` call back once the `spare` men run short: a site that opens after another finished gets its pair
+ *  back from the men the dig loop took. Not a man mid-action; the highest ids first. */
+function diggersForBuilders(
+  env: ColonyEnv,
+  open: readonly Post[],
+  spare: number,
+  diggers: readonly Entity[],
+  held: ReadonlyMap<Post, number>,
+): Entity[] {
+  const { world, ctx } = env;
+  let short = open.filter((post) => post === 'builder').length - spare;
+  if (short <= 0) return [];
+  const builder = builderJobOf(ctx);
+  const called: Entity[] = [];
+  for (const id of DUG_IDS) {
+    const surplus = Math.min(short, held.get(id) ?? 0);
+    if (surplus <= 0) continue;
+    const men = diggers
+      .filter((man) => postOf(world, ctx, man, builder) === id && !busy(world, man))
+      .sort((a, b) => b - a)
+      .slice(0, surplus);
+    called.push(...men);
+    short -= men.length;
+  }
+  return called;
+}
+
 /** The posts of {@link POSTS} the men's number reaches that none holds, its builder posts sized to the
  *  colony's sites ({@link colonyBuilderWant}), handed to the free men and to the builders past their share,
  *  then the workshops' seats; once the store stands the rest dig, the least dug good first; a good a site
@@ -564,6 +592,8 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
     return operator && posted.some(refilled);
   });
   const commands = crewOrders(env, read, spare, diggers, movers);
+  // Only a colony with men past its table has diggers the dig loop placed there.
+  if (posted.length > table.length) spare.push(...diggersForBuilders(env, open, spare.length, diggers, held));
   if (spare.length === 0) return commands;
   let flags: FlagGround | null = null;
   const ground = (): FlagGround => {
