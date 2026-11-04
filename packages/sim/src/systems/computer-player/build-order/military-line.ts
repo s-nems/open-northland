@@ -32,10 +32,12 @@ const FILLED_DEFENCE: DefenceWants = { village: 30, front: 40 };
  *  spares a lower tower's stone and wood (`./filled-towers.ts`). */
 const GROUND_FILLED: StepHold = { kind: 'all', holds: [ECONOMY_SAFE, { kind: 'filledGround' }] };
 
-/** How many of the seat's towers stand at the upper tier (authored): about the ring a settlement of medium
- *  room stands under. A tower the rings raised straight at the upper tier counts, so the upgrades only lift
- *  the lower towers of a seat whose attacks came early (`./direct-tier.ts`). */
-const UPGRADED_TOWERS = 6;
+/** How many of the seat's towers stand at the upper tier (authored): owner ruling, every tower goes up to
+ *  the upper tier over time, the cheap lower ones the filled ring puts into the gaps too; twelve is more than
+ *  the rings and the gaps were seen to hold together. A tower the rings raised straight at the upper tier
+ *  counts, and a step with no lower tower left is passed over (`./index.ts`), so the upgrades lift only the
+ *  lower towers: those of a seat whose attacks came early (`./direct-tier.ts`) and the filled ring's. */
+const UPGRADED_TOWERS = 12;
 
 /** One upgrade step per tower, so each upgrade is its own site and the line's lookahead paces them. */
 const TOWER_UPGRADES: readonly BuildOrderEntry[] = Array.from({ length: UPGRADED_TOWERS }, (_, i) => ({
