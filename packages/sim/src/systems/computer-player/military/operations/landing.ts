@@ -119,28 +119,15 @@ export function freeShips(env: ShipEnv, home: number): Entity[] {
 /**
  * The shore points of a landing's ships ({@link shorePoints}) on the `aim`'s land, nearest where it heads,
  * outside the reach of every tower and shelter the seat believes stands there ({@link underFire}), so the
- * hulls waiting at the shore are not shot; a storm fills what too few clear ones leave with covered ones.
- * Authored: observed on arabskie_wyspy_wolna_gra_mieszana, ships moored beside a rival's headquarters, its
- * people shooting from inside, lost most hulls and every man aboard before the last one moored.
+ * hulls waiting at the shore are not shot; a storm too lands clear of them and walks in. Ships beyond the
+ * clear shores found share them. Authored: observed on arabskie_wyspy_wolna_gra_mieszana, ships moored
+ * beside a rival's headquarters, its people shooting from inside, lost most hulls and every man aboard
+ * before the last one moored.
  */
 function landingShores(env: OperationEnv, ship: Entity, aim: LandingAim, count: number): HalfCellNode[] {
   const { world, ctx, terrain } = env;
   const clear = (at: HalfCellNode): boolean => !underFire(aim.believed.sources, at);
-  const shores = shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, clear, count);
-  if (!aim.storm || shores.length >= count) return shores;
-  const spaced = (at: HalfCellNode): boolean =>
-    shores.every((s) => nodeManhattan(s, at) >= LANDING_SHORE_SPACING_NODES);
-  const covered = shorePoints(
-    world,
-    ctx,
-    terrain,
-    ship,
-    aim.land,
-    aim.towards,
-    spaced,
-    count - shores.length,
-  );
-  return [...shores, ...covered];
+  return shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, clear, count);
 }
 
 /** The tick from which the seat may land: its peace over and its difficulty's first wave due. */
