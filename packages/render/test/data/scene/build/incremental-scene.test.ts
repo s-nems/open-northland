@@ -14,7 +14,7 @@ import {
   SceneItemMemo,
   type SpriteDrawItem,
 } from '../../../../src/data/scene/index.js';
-import { ONE, type Viewport } from '../../../../src/index.js';
+import { ONE, tileToScreen, type Viewport } from '../../../../src/index.js';
 import { entity, ghostSourceOf } from '../../../support/fixtures.js';
 
 /**
@@ -23,6 +23,8 @@ import { entity, ghostSourceOf } from '../../../support/fixtures.js';
  */
 
 const VIEW: Viewport = { minX: -200, minY: -200, maxX: 900, maxY: 600 };
+/** Screen px a widened view reaches past the entity it is widened to. */
+const MARGIN = 50;
 const SETTLER = { Settler: { tribe: 0 } };
 const tree = (goodType: number) => ({ Resource: { goodType } });
 const heap = (goodType: number, amount: number) => ({ Stockpile: { goodType, amount } });
@@ -122,6 +124,39 @@ describe('IncrementalScene', () => {
     expect(build(snapshot)).toEqual(fromScratch(snapshot));
     expect(incremental.spliced).toBe(true);
     expect(build(snapshot)).toEqual(fromScratch(snapshot));
+  });
+
+  it('splices while portraits frame subjects on and off the view, as a build from scratch draws them', () => {
+    const mirror = mirrorOf([
+      entity(1, 1, 1, SETTLER),
+      entity(2, 3, 2, tree(1)),
+      entity(3, 4, 4, tree(2)),
+      entity(5, 60, 60, SETTLER), // off view, the settler panel's subject
+      entity(6, 70, 60, tree(1)), // off view, an inset's subject
+    ]);
+    const { incremental, build, scratch } = buildLoop();
+    const framing: SpriteSceneOptions = { portraitRef: 5, insetRefs: [3, 6] };
+    const drawn = (items: readonly SpriteDrawItem[]) => items.map((i) => [i.ref, i.portraitOnly === true]);
+    let snapshot = mirror.snapshot();
+    expect(drawn(build(snapshot, framing))).toEqual(drawn(scratch(snapshot, framing)));
+    // A walker passes, then the framed trees change and the panel's subject walks into view.
+    snapshot = advance(mirror, [moved(1, 2, 2, SETTLER)]);
+    expect(drawn(build(snapshot, framing))).toEqual(drawn(scratch(snapshot, framing)));
+    expect(incremental.spliced).toBe(true);
+    snapshot = advance(mirror, [moved(3, 4, 4, tree(3)), moved(5, 2, 4, SETTLER), moved(6, 70, 60, tree(2))]);
+    expect(drawn(build(snapshot, framing))).toEqual(drawn(scratch(snapshot, framing)));
+    expect(incremental.spliced).toBe(true);
+    // A pan whose uncovered strip brings the inset's tree in draws it once.
+    const far = tileToScreen(70, 60);
+    const panned = { ...framing, viewport: { ...VIEW, maxX: far.x + MARGIN, maxY: far.y + MARGIN } };
+    expect(drawn(build(snapshot, panned))).toEqual(drawn(scratch(snapshot, panned)));
+    expect(incremental.spliced).toBe(true);
+    // Closing the portraits hands the inset's tree back to the run.
+    snapshot = advance(mirror, [moved(1, 3, 3, SETTLER)]);
+    expect(drawn(build(snapshot))).toEqual(drawn(scratch(snapshot)));
+    snapshot = advance(mirror, [moved(1, 2, 3, SETTLER)]);
+    expect(drawn(build(snapshot))).toEqual(drawn(scratch(snapshot)));
+    expect(incremental.spliced).toBe(true);
   });
 
   it('splices across a pan or zoom, keeping the run under the new view', () => {

@@ -154,6 +154,12 @@ interface StaticInputs {
   readonly fogVisible: SpriteSceneOptions['fogVisible'];
   readonly fogEpoch: number | undefined;
   readonly playerColourOf: SpriteSceneOptions['playerColourOf'];
+  /** The portrait subjects, forced through the culls and kept out of the static run. */
+  readonly subjects: readonly number[];
+}
+
+function sameRefs(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((ref, i) => ref === b[i]);
 }
 
 /** Everything but the view box: a build across a pan or zoom keeps the run under the new box. */
@@ -164,7 +170,8 @@ function sameStaticInputs(a: StaticInputs, b: StaticInputs): boolean {
     a.staticCount === b.staticCount &&
     a.fogVisible === b.fogVisible &&
     a.fogEpoch === b.fogEpoch &&
-    a.playerColourOf === b.playerColourOf
+    a.playerColourOf === b.playerColourOf &&
+    sameRefs(a.subjects, b.subjects)
   );
 }
 
@@ -433,14 +440,16 @@ function collectScene(
   };
 
   const touched = incremental === undefined ? undefined : touchedIdsOf(snapshot);
-  // A portrait forces its subjects through the culls, which a kept run cannot answer for.
+  // A portrait forces its subjects through the culls, which a kept run cannot answer for: every build
+  // emits them afresh, and the run never holds one.
+  const subjects: number[] = [...(insetRefs ?? [])];
+  if (portraitRef !== undefined) subjects.push(portraitRef);
+  if (portraitHouse !== undefined) subjects.push(portraitHouse);
+  const inRun = (item: SpriteDrawItem): boolean => isStaticItem(item) && !subjects.includes(item.ref);
   const inputs: StaticInputs | null =
     incremental === undefined ||
     viewport === undefined ||
     opts.onlyRefs !== undefined ||
-    portraitRef !== undefined ||
-    portraitHouse !== undefined ||
-    (insetRefs?.length ?? 0) > 0 ||
     keepIndoorSettlers === true ||
     keepAboardRiders === true ||
     (fogVisible !== undefined && opts.fogEpoch === undefined)
@@ -457,6 +466,7 @@ function collectScene(
           fogVisible,
           fogEpoch: opts.fogEpoch,
           playerColourOf,
+          subjects,
         };
   const splices =
     incremental !== undefined &&
@@ -479,7 +489,11 @@ function collectScene(
     // Over an unchanged snapshot the other kinds' items stand too: a pan keeps those the new view still
     // shows and emits only the entities its uncovered strips bring in.
     const keptOthers =
-      viewMoved && incremental.othersSnapshot === snapshot && touched.ids.size === 0 && withheld.size === 0
+      viewMoved &&
+      subjects.length === 0 &&
+      incremental.othersSnapshot === snapshot &&
+      touched.ids.size === 0 &&
+      withheld.size === 0
         ? keepShownOthers(incremental, viewport, collected)
         : undefined;
     if (keptOthers !== undefined && previous !== null) {
@@ -520,16 +534,24 @@ function collectScene(
     };
     for (const id of touched.ids) emitTouched(id);
     for (const id of withheld) if (!touched.ids.has(id)) emitTouched(id);
+    // A subject the queries above passed over, off the view or in no feed.
+    for (const ref of subjects) {
+      if (collected.has(ref)) continue;
+      const subject = entityById(snapshot, ref);
+      if (subject !== undefined) emit(subject, false);
+    }
     if (viewMoved) {
+      // A subject the loop above already emitted is skipped.
       emitExposedStatics(snapshot, viewport, previous, memo, (entity) => {
-        if (!touched.ids.has(entity.id) && !withheld.has(entity.id)) emit(entity, true);
+        const id = entity.id;
+        if (!touched.ids.has(id) && !withheld.has(id) && !collected.has(id)) emit(entity, true);
       });
     }
     if (ghosts !== undefined) pushGhostItems(list, ghosts, viewport, elevation, liveVehicles, playerColourOf);
     const emittedItems = list.finish();
     const fresh: SpriteDrawItem[] = [];
     let others: SpriteDrawItem[] = [];
-    for (const item of emittedItems) (isStaticItem(item) ? fresh : others).push(item);
+    for (const item of emittedItems) (inRun(item) ? fresh : others).push(item);
     if (keptOthers !== undefined) {
       // The depth order keeps the ranks of the last full sort; a pan's few new items sort apart.
       others.sort(drawOrder);
@@ -583,8 +605,8 @@ function collectScene(
     if (order !== undefined) order.sort(items);
     else items.sort(drawOrder);
     if (incremental !== undefined) {
-      incremental.statics = inputs === null ? [] : items.filter(isStaticItem);
-      incremental.others = inputs === null ? [] : items.filter((item) => !isStaticItem(item));
+      incremental.statics = inputs === null ? [] : items.filter(inRun);
+      incremental.others = inputs === null ? [] : items.filter((item) => !inRun(item));
       incremental.spliced = false;
     }
   }
