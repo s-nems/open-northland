@@ -8,7 +8,12 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../ai-shared/cadence.js';
+import {
+  COMPUTER_DECISION_INTERVAL_TICKS,
+  computerDecisionSlot,
+  decisionIndex,
+  moduleBeatDue,
+} from '../../ai-shared/cadence.js';
 import { buildingTypeByContentId, countedTiers } from '../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import { firstRingNode } from '../../ai-shared/node-geometry.js';
@@ -36,9 +41,23 @@ function zonesCounted(homes: number, cap: number): number {
   return homes >= cap && cap < ROOM_HOMES_CAP ? FIT_PER_HOME * ROOM_HOMES_CAP - homes : 0;
 }
 
-/** How often a seat measures its room again, a stalled placement's retry pace (about a game minute): felled
+/** Decisions between a seat's room reviews, a stalled placement's retry pace (about a game minute): felled
  *  trees and mined-out deposits free ground slowly. */
-export const ROOM_REVIEW_TICKS = STALLED_PLACEMENT_RETRY_DECISIONS * COMPUTER_DECISION_INTERVAL_TICKS;
+export const ROOM_REVIEW_EVERY_DECISIONS = STALLED_PLACEMENT_RETRY_DECISIONS;
+
+/**
+ * The seat's first decision after `tick` on its room beat ({@link moduleBeatDue}). A review costs a few
+ * milliseconds, so it never shares a tick with another seat's: every seat decides on a tick of its own in
+ * the decision interval ({@link computerDecisionSlot}), and the beat, offset by the seat, gives each seat a
+ * different interval of the {@link ROOM_REVIEW_EVERY_DECISIONS}, so the seats' reviews spread over the
+ * minute rather than bunching in one interval.
+ */
+export function nextRoomReviewTick(tick: number, player: number): number {
+  let start = (decisionIndex(tick) + 1) * COMPUTER_DECISION_INTERVAL_TICKS;
+  while (!moduleBeatDue(start, player, ROOM_REVIEW_EVERY_DECISIONS))
+    start += COMPUTER_DECISION_INTERVAL_TICKS;
+  return start + computerDecisionSlot(player);
+}
 
 /** Where {@link freeHomeZones} counts: the nodes within `radius` Manhattan nodes of the base anchor, and
  *  of those only the ones `contains` takes when given. */
@@ -106,7 +125,7 @@ export function freeHomeZones(
 
 /**
  * Measures the seat's room ({@link freeHomeZones}), as far as its readers need with its housing lane's
- * `homesCap`, and counts its homes of `owned`, sites included, once its review is due, every {@link ROOM_REVIEW_TICKS}; on a seat keeping a ground plan only once its plots are
+ * `homesCap`, and counts its homes of `owned`, sites included, once its review is due ({@link nextRoomReviewTick}); on a seat keeping a ground plan only once its plots are
  * drawn, so the opening's ground counts as room only where no plot keeps it. Observed on
  * arabskie_wyspy_wolna_gra_mieszana: measured from the start, a seat cut to two homes raised four on the
  * ground its brewery and barracks were later plotted on.
@@ -141,7 +160,7 @@ export function keepSeatRoom(
     zonesCounted(homes, homesCap),
     placementArea(world, player, owned, anchor),
   );
-  const reviewTick = ctx.tick + ROOM_REVIEW_TICKS;
+  const reviewTick = nextRoomReviewTick(ctx.tick, player);
   if (held === undefined) world.add(carrier, SeatRoom, { freeZones, homes, reviewTick });
   else {
     const room = world.mut(carrier, SeatRoom);

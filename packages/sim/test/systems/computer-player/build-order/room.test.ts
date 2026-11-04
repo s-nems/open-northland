@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { aiControlEntity, SeatRoom, type SeatRoomState } from '../../../../src/components/index.js';
 import type { Simulation } from '../../../../src/index.js';
+import {
+  COMPUTER_DECISION_INTERVAL_TICKS,
+  computerDecisionDue,
+  decisionIndex,
+  moduleBeatDue,
+} from '../../../../src/systems/ai-shared/cadence.js';
 import type { BuildOrderEntry } from '../../../../src/systems/computer-player/build-order/entries.js';
 import { GROUND_PLAN_FROM_TICKS } from '../../../../src/systems/computer-player/build-order/ground-plan.js';
 import {
   FIT_PER_HOME,
+  nextRoomReviewTick,
   ROOM_HOMES_CAP,
-  ROOM_REVIEW_TICKS,
+  ROOM_REVIEW_EVERY_DECISIONS,
   roomHomesCap,
 } from '../../../../src/systems/computer-player/build-order/room.js';
 import { buildOrderModule } from '../../../../src/systems/computer-player/index.js';
@@ -65,7 +72,7 @@ describe('seat room', () => {
     long.step();
     decide(long, [HELD_HOME]);
     expect(roomOf(long)).toEqual(measured);
-    expect(measured.reviewTick - contextOf(long).tick).toBe(ROOM_REVIEW_TICKS);
+    expect(measured.reviewTick).toBe(nextRoomReviewTick(contextOf(long).tick, SEAT));
     buildOrderModule(oneLine([HELD_HOME])).run(
       long.world,
       { ...contextOf(long), tick: measured.reviewTick },
@@ -83,6 +90,19 @@ describe('seat room', () => {
     at(first.reviewTick);
     expect(roomOf(sim)).toEqual(first);
     expect(first.reviewTick).toBeLessThan(GROUND_PLAN_FROM_TICKS);
+  });
+
+  it("staggers the seats' reviews: each on its own decision tick, in its own decision interval", () => {
+    const SEATS = [0, 1, 2, 3, 4, 5];
+    const ticks = SEATS.map((seat) => nextRoomReviewTick(0, seat));
+    for (const [seat, tick] of ticks.entries()) {
+      expect(computerDecisionDue(tick, seat)).toBe(true);
+      expect(moduleBeatDue(tick, seat, ROOM_REVIEW_EVERY_DECISIONS)).toBe(true);
+      expect(nextRoomReviewTick(tick, seat) - tick).toBe(
+        ROOM_REVIEW_EVERY_DECISIONS * COMPUTER_DECISION_INTERVAL_TICKS,
+      );
+    }
+    expect(new Set(ticks.map((tick) => decisionIndex(tick))).size).toBe(SEATS.length);
   });
 
   it('lifts the homes past their cap to the room the review saw, two zones a home, up to the room cap', () => {
