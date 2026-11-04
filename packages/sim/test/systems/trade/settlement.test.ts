@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addPerson,
@@ -18,6 +19,7 @@ import {
   ONE,
   parseSaveGame,
   playerCommand,
+  positionOfNode,
   restoreSimulation,
   Simulation,
   serializeSaveGame,
@@ -26,7 +28,7 @@ import { createSignpost } from '../../../src/systems/signposts/index.js';
 import { isLoosePile } from '../../../src/systems/stores/index.js';
 import { standsForSettlement } from '../../../src/systems/trade/settlement.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
-import { testContent } from '../../fixtures/content.js';
+import { TEST_MANIFEST, testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { grassCellMap as grassMap, waterColumnMap } from '../../fixtures/terrain.js';
 
@@ -65,13 +67,30 @@ const WOOD_KEPT = 5;
 const GROUND_WOOD = 3;
 /** The row below the houses. */
 const GROUND_ROW = 2;
+/** A house type whose walls cover its own node, so a pile laid there lies buried. */
+const WALLED_HUT = 95;
+/** A node between the stops, under the hut's walls. */
+const BURIED_NODE = { hx: 2 * MEMBER_X, hy: 2 * GROUND_ROW };
 /** The agreement's planks once home holds them, two per wood. */
 const PLANKS_WANTED = 4;
 
-function newSim(map = grassMap(MAP_W, MAP_H)): Simulation {
-  const sim = new Simulation({ seed: 3, content: testContent(), map });
+function newSim(map = grassMap(MAP_W, MAP_H), content: ContentSet = testContent()): Simulation {
+  const sim = new Simulation({ seed: 3, content, map });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   return sim;
+}
+
+/** The fixture content with {@link WALLED_HUT}. */
+function walledContent(): ContentSet {
+  const content = testContent();
+  return parseContentSet({
+    ...content,
+    manifest: TEST_MANIFEST,
+    buildings: [
+      ...content.buildings,
+      { typeId: WALLED_HUT, id: 'walled_hut', kind: 'home', footprint: { blocked: [{ dx: 0, dy: 0 }] } },
+    ],
+  });
 }
 
 function houseAt(
@@ -201,6 +220,27 @@ describe('a settlement stop between own houses', () => {
       expect(stockOf(sim, other, WOOD)).toBe(carried);
       expect(stockOf(sim, near, WOOD)).toBe(WOOD_HELD - carried);
     }
+  });
+
+  it('leaves a pile buried under standing walls out of its count, as no fetcher reaches it', () => {
+    const sim = newSim(grassMap(MAP_W, MAP_H), walledContent());
+    const near = houseAt(sim, ANCHOR_X, [[WOOD, WOOD_HELD]]);
+    const other = houseAt(sim, OTHER_X);
+    const hut = sim.world.create();
+    sim.world.add(hut, Position, positionOfNode(BURIED_NODE.hx, BURIED_NODE.hy));
+    sim.world.add(hut, Building, { buildingType: WALLED_HUT, tribe: VIKING, built: ONE, level: 0 });
+    const buried = sim.world.create();
+    sim.world.add(buried, Position, positionOfNode(BURIED_NODE.hx, BURIED_NODE.hy));
+    sim.world.add(buried, Stockpile, { amounts: new Map([[WOOD, GROUND_WOOD]]) });
+    const trader = traderAt(sim, ANCHOR_X);
+    route(sim, trader, near, other);
+    woodInto(sim, trader, other, WOOD_KEPT);
+    settle(sim, trader, other);
+
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, other, WOOD)).toBe(WOOD_KEPT);
+    expect(stockOf(sim, buried, WOOD)).toBe(GROUND_WOOD);
   });
 
   it("loads the wood lying on its settlement's ground, its stores empty", () => {
