@@ -81,6 +81,9 @@ export interface StockPolicyRead {
   /** The building materials of {@link COLONY_BUILDING_FLOOR}, each raised to what the colony's open sites
    *  and next builds still lack. */
   readonly buildingFloor: Units;
+  /** {@link COLONY_BUILDING_FLOOR} itself: the floor of a good home lacks, which the colony's open sites do
+   *  not raise. */
+  readonly plainFloor: Units;
   /** The settler goods and food its people want in store. */
   readonly settlerReserve: Units;
   /** Other goods its buildings want in store, by the units: a temple's holy oil, say
@@ -113,8 +116,11 @@ function inputFloor(read: StockPolicyRead, good: number): number {
 
 /** The colony's floor of `good`: what it is filled up to and keeps when it sends the rest home. */
 function floorOf(read: StockPolicyRead, good: number): number {
+  // Home's ship yard and sites outrank the colony's own building (owner ruling): of a good home lacks the
+  // colony keeps its plain floor, so its builders never stand at none, and the rest goes home.
+  const building = read.homeWants.has(good) ? read.plainFloor : read.buildingFloor;
   return Math.max(
-    read.buildingFloor.get(good) ?? 0,
+    building.get(good) ?? 0,
     read.settlerReserve.get(good) ?? 0,
     read.wants.get(good) ?? 0,
     inputFloor(read, good),
@@ -337,12 +343,14 @@ export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<num
   const lacking = sitesShortfalls(world, ctx, buildings);
   const owed = new Map(lacking);
   addUp(owed, billsOf(env, colonyPlan(env, env.colony, buildings).slice(0, COLONY_OPEN_SITES)));
-  const buildingFloor = byType(ctx, Object.entries(COLONY_BUILDING_FLOOR));
+  const plainFloor = byType(ctx, Object.entries(COLONY_BUILDING_FLOOR));
+  const buildingFloor = new Map(plainFloor);
   raise(buildingFloor, owed);
   const spare = homeSpare(env, homeSupply(env));
   const held = heldByForm(env, buildings);
   return colonyStockPolicy({
     buildingFloor,
+    plainFloor,
     settlerReserve: settlerReserve(env, people, spare),
     wants: colonyIndustryWantsOf(env, buildings),
     workshopInputs: workshopShelves(env, buildings),

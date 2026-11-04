@@ -25,6 +25,10 @@ function read(overrides: Partial<StockPolicyRead> = {}): StockPolicyRead {
       [WOOD, WOOD_FLOOR],
       [BRICK, BRICK_FLOOR],
     ]),
+    plainFloor: new Map([
+      [WOOD, WOOD_FLOOR],
+      [BRICK, BRICK_FLOOR],
+    ]),
     settlerReserve: new Map([[SHOES, SHOES_RESERVE]]),
     wants: new Map(),
     workshopInputs: new Map(),
@@ -205,6 +209,18 @@ describe("a colony's sites", () => {
     expect(outboundOf(colonyStockPolicy(read(made)), WOOD)).toEqual({ good: WOOD, keep: WOOD_FLOOR });
     const lacking = colonyStockPolicy(read({ ...made, siteLack: new Map([[WOOD, 1]]) }));
     expect(outboundOf(lacking, WOOD)).toBeUndefined();
+  });
+
+  it("send home all above the plain floor of a good home lacks, whatever the colony's open bills owe", () => {
+    const owed = WOOD_FLOOR + 30;
+    const colony = {
+      makes: new Set([WOOD]),
+      held: new Map([[WOOD, WOOD_FLOOR + 10]]),
+      buildingFloor: new Map([[WOOD, owed]]),
+    };
+    expect(outboundOf(colonyStockPolicy(read(colony)), WOOD)).toBeUndefined();
+    const homeShort = colonyStockPolicy(read({ ...colony, homeWants: new Set([WOOD]) }));
+    expect(outboundOf(homeShort, WOOD)).toEqual({ good: WOOD, keep: WOOD_FLOOR });
   });
 
   it('give way to home: what home lacks goes home above the colony floor, and none is asked of home', () => {
