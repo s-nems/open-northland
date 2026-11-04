@@ -9,13 +9,12 @@ import {
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../ai-shared/cadence.js';
 import { buildingTypeByContentId, countedTiers } from '../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
-import { firstRingNode } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
-import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../../footprint/geometry.js';
+import { ANCHOR_ONLY, buildingFootprintOf } from '../../footprint/geometry.js';
 import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js';
 import { placementProbe } from '../../footprint/placement/building.js';
 import { minutesToTicks } from '../game-phase.js';
@@ -29,21 +28,19 @@ import {
 import { baseComponent, buildReach, placementPassesOver, placementSpot } from './placement.js';
 import { plottedNodes, seatSpotAcceptor } from './plots.js';
 import { type LineStatuses, upgradesInto } from './progress.js';
+import { FIT_PER_HOME, freeHomeZones, ROOM_HOME_BUILDING } from './room.js';
 import { NO_ROOM_HOMES, seatHasSide, seatTuning } from './seat-order.js';
 import { baseWalkTest } from './spot-walk.js';
 
 /** Owner ruling: on very little room a seat's homes go as low as this, and the more room the more homes. */
 export const PLANNED_HOMES_FLOOR = 2;
 
-/** Home zones that must fit on a seat's land off its plots for each home it keeps (authored): at the start of
- *  arabskie_wyspy_wolna_gra_mieszana the five seats fit 13, 2, 2, 13 and 6, which gives them 6, 2, 2, 6 and 3
- *  homes and keeps the ground beside a home for what grows there. */
-const FIT_PER_HOME = 2;
 /** How far a fit is counted: past what {@link NO_ROOM_HOMES} homes ask, more room changes nothing. */
 const FIT_COUNTED = FIT_PER_HOME * NO_ROOM_HOMES;
 
-/** The homes a seat keeps on `fit` home zones of room, from {@link PLANNED_HOMES_FLOOR} to
- *  {@link NO_ROOM_HOMES}. */
+/** The homes a seat keeps on `fit` home zones of room, {@link FIT_PER_HOME} each, from
+ *  {@link PLANNED_HOMES_FLOOR} to {@link NO_ROOM_HOMES}: at the start of arabskie_wyspy_wolna_gra_mieszana the
+ *  five seats fit 13, 2, 2, 13 and 6, which gives them 6, 2, 2, 6 and 3 homes. */
 export function plannedHomes(fit: number): number {
   return Math.min(NO_ROOM_HOMES, Math.max(PLANNED_HOMES_FLOOR, Math.floor(fit / FIT_PER_HOME)));
 }
@@ -60,9 +57,6 @@ const PLAN_REVIEW_TICKS = STALLED_PLACEMENT_RETRY_DECISIONS * COMPUTER_DECISION_
 /** Owner ruling: what a plan never cuts, plotted ahead of every bigger building: on one island seat a
  *  bakery's plot took the last patch the barracks could be cleared on. */
 const NEVER_CUT: readonly string[] = ['barracks', 'work_armory_00'];
-
-/** The stable content id of the home chain's base tier. */
-const HOME_BUILDING = 'home_level_00';
 
 /** A node's neighbours on its row and column. */
 const RIM_STEPS: readonly (readonly [number, number])[] = [
@@ -181,7 +175,7 @@ function essentialSteps(seat: Seat, order: BuildOrder, statuses: LineStatuses): 
       const held = index.buildings.get(world.get(e, Building).buildingType);
       return held !== undefined && upgradesInto(index, held, target);
     });
-  const home = buildingTypeByContentId(ctx.content, HOME_BUILDING);
+  const home = buildingTypeByContentId(ctx.content, ROOM_HOME_BUILDING);
   const homeZone = home === undefined ? 0 : zoneOf(seat, home.typeId).length;
   const chosen = new Map<string, PlottedStep & { readonly zone: number }>();
   for (const line of order.lines) {
@@ -316,38 +310,27 @@ function rimOf(zone: readonly FootprintCell[]): readonly FootprintCell[] {
 }
 
 /** The home zones the seat's land takes off its plots: those it owns plus as many more as fit one beside
- *  the other, up to {@link FIT_COUNTED}. Homes are the first copies a plan cuts. */
+ *  the other ({@link freeHomeZones}), up to {@link FIT_COUNTED}. Homes are the first copies a plan cuts. */
 function homeFit(seat: Seat): number {
   const { world, ctx, terrain, player, owned, anchor, tribe, decision } = seat;
-  const home = buildingTypeByContentId(ctx.content, HOME_BUILDING);
+  const home = buildingTypeByContentId(ctx.content, ROOM_HOME_BUILDING);
   if (home === undefined) return FIT_COUNTED;
   const chain = countedTiers(ctx.content, home, undefined);
-  let fits = owned.filter((e) => chain.has(world.get(e, Building).buildingType)).length;
-  const zone = buildingFootprintOf(ctx.content, home.typeId, tribe)?.reserved ?? ANCHOR_ONLY;
-  const fan = overflowBuildReachNodes(seatTuning(world, player).reachNodes);
-  const accept = seatSpotAcceptor(world, ctx, terrain, player, home.typeId, tribe).around(
-    decision.underFire(),
+  const fits = owned.filter((e) => chain.has(world.get(e, Building).buildingType)).length;
+  // The plan sizes its homes on the overflow fan round the base.
+  const area = { radius: overflowBuildReachNodes(seatTuning(world, player).reachNodes) };
+  const free = freeHomeZones(
+    world,
+    ctx,
+    terrain,
+    player,
     anchor,
-    fan,
+    tribe,
+    decision.underFire(),
+    FIT_COUNTED - fits,
+    area,
   );
-  const land = baseComponent(world, ctx, terrain, player);
-  const taken = new Set<NodeId>();
-  while (fits < FIT_COUNTED) {
-    const spot = firstRingNode(
-      anchor.hx,
-      anchor.hy,
-      fan,
-      (x, y) =>
-        terrain.inBounds(x, y) &&
-        terrain.componentOf(terrain.nodeAt(x, y)) === land &&
-        accept(x, y) &&
-        !translatedCells(terrain, zone, x, y).some((node) => taken.has(node)),
-    );
-    if (spot === null) break;
-    for (const node of translatedCells(terrain, zone, spot.hx, spot.hy)) taken.add(node);
-    fits++;
-  }
-  return fits;
+  return fits + free;
 }
 
 /** The plots still waiting after this decision: those whose step no longer waits go, a free one that no

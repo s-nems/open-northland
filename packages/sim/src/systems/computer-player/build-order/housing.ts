@@ -27,6 +27,7 @@ import { billSourced, sourcedTiers } from './bill-sources.js';
 import type { BuildOrder, BuildOrderEntry } from './entries.js';
 import { placementSpot } from './placement.js';
 import { seatHomesCap } from './plots.js';
+import { roomHomesCap } from './room.js';
 import { suppliedUpgrade } from './upgrade-supply.js';
 
 type HousingEntry = Extract<BuildOrderEntry, { kind: 'housing' }>;
@@ -434,7 +435,8 @@ function upgradeLeavesRoom(
  * upgrade wins over a new home and the lowest-tier home goes first, so no home is left at the base tier;
  * with the slots not short only a home below the highest tier is upgraded. A new home with no spot yields
  * to the best upgrade, so a cramped seat grows its homes upward. A seat's ground plan cuts `entry.count`
- * further ({@link seatHomesCap}). Null when nothing can be raised.
+ * further ({@link seatHomesCap}); once its homes reach that, the room its land still holds lifts it
+ * ({@link roomHomesCap}). Null when nothing can be raised.
  */
 export function housingPick(
   world: World,
@@ -503,7 +505,8 @@ export function housingPick(
   if (upgrade !== null && upgradesLead(stage)) return upgrade.pick;
 
   let place: Option<BuildingType> | null = null;
-  if (short && homes.length < seatHomesCap(world, player, entry.count)) {
+  const cap = roomHomesCap(world, player, seatHomesCap(world, player, entry.count));
+  if (short && homes.length < cap) {
     const types = [...homeTiersOf(ctx.content, entry)]
       .flatMap((id) => index.buildings.get(id) ?? [])
       .sort((a, b) => b.homeSize - a.homeSize);

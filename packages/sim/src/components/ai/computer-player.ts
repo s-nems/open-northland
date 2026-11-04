@@ -111,6 +111,22 @@ export interface GroundPlanState {
  */
 export const GroundPlan = defineComponent<GroundPlanState>('GroundPlan', 'players', { simOnly: true });
 
+export interface SeatRoomState {
+  /** Home-sized zones that fit side by side on the seat's land off its plots, at the last review. */
+  freeZones: number;
+  /** The seat's homes of any tier, sites included, at the last review. */
+  homes: number;
+  /** The first tick the room is measured again. */
+  reviewTick: number;
+}
+
+/**
+ * How much building room a computer seat's own land still holds, held on its {@link AiControl} carrier and
+ * measured on a slow cadence (`systems/computer-player/build-order/room.ts`), so felled forest or mined-out
+ * ground is built on as it opens.
+ */
+export const SeatRoom = defineComponent<SeatRoomState>('SeatRoom', 'players', { simOnly: true });
+
 export interface LineFrontier {
   /** The line's first unmet step at the seat's last build-order decision that reached it. */
   step: number;
