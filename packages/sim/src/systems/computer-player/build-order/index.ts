@@ -1105,12 +1105,14 @@ function coverageCommand(
   const base = buildingTypeByContentId(ctx.content, entry.building);
   if (base === undefined) return null; // unreachable after 'skip', kept for the type system
   if (!buildingEnabled(world, ctx, player, tribe, base.typeId)) return null;
-  const type = directTier(world, ctx, player, owned, tribe, entry, made) ?? base;
+  const lowerTier = entry.kind === 'towerCoverage' && entry.lowerTier === true;
+  const type = lowerTier ? base : (directTier(world, ctx, player, owned, tribe, entry, made) ?? base);
   const coverage = coverageOf(world, ctx, player, entry);
   if (coverage.by === 'tower')
     return towerCommand(world, ctx, terrain, player, owned, tribe, base, type, coverage, underFire, {
       reserveGrass,
       made,
+      lifts: !lowerTier,
     });
   const spotFor = coverageSpotSearch(
     world,
@@ -1130,8 +1132,8 @@ function coverageCommand(
 }
 
 /** A short tower ring's next command (`./tower-defence.ts`): the upgrade of a lower tower that lifts its
- *  defence, while the seat may start one, else a new tower of `type` where it lifts the lowest covered
- *  target most. */
+ *  defence, while the ring `lifts` towers and the seat may start one, else a new tower of `type` where it
+ *  lifts the lowest covered target most. */
 function towerCommand(
   world: World,
   ctx: SystemContext,
@@ -1143,12 +1145,16 @@ function towerCommand(
   type: BuildingType,
   coverage: TowerCoverage,
   underFire: EnemyFire,
-  decision: { readonly reserveGrass: boolean; readonly made: () => ReadonlySet<number> },
+  decision: {
+    readonly reserveGrass: boolean;
+    readonly made: () => ReadonlySet<number>;
+    readonly lifts: boolean;
+  },
 ): PlayerCommand | null {
   const plan = towerPlan(world, ctx, player, owned, coverage);
   if (plan === null || plan.short.length === 0) return null;
   const upper =
-    base.upgradeTarget === undefined
+    !decision.lifts || base.upgradeTarget === undefined
       ? undefined
       : contentIndex(ctx.content).buildings.get(base.upgradeTarget);
   if (

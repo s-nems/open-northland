@@ -37,6 +37,7 @@ export type PlacementAffinity =
  * - `deadline`: the clock reaches `leadTicks` before the seat's military deadline
  *   (`../military/deadline.ts`), lifted at once while its defence comes first;
  * - `tick`: the clock reaches `tick`;
+ * - `filledGround`: the seat's land is built up and its store spares a lower tower (`./filled-towers.ts`);
  * - `all` / `any`: every one, or any one, of `holds`.
  * A hold the seat can never meet (a building or good missing from the content, a discovery it can never
  * make, a building or the good's maker no unskipped step raises) lets the step act; within `all` only that
@@ -52,6 +53,7 @@ export type StepHold =
   | { readonly kind: 'settlers'; readonly count: number }
   | { readonly kind: 'deadline'; readonly leadTicks: number }
   | { readonly kind: 'tick'; readonly tick: number }
+  | { readonly kind: 'filledGround' }
   | { readonly kind: 'all'; readonly holds: readonly StepHold[] }
   | { readonly kind: 'any'; readonly holds: readonly StepHold[] };
 
@@ -143,7 +145,8 @@ export type BuildOrderEntry =
    *  re-arms whenever a later building lands short, so the tower count is dynamic. A `lane` entry runs beside the lines once
    *  every counted step before it in its line stands met, and the game clock reaches `fromTick`: it holds
    *  one site of its building at a time, taken out of the clock's site count, never stalls the steps
-   *  behind it, and they never wait on it. `holdUntil` holds a line's ring as a placement's. */
+   *  behind it, and they never wait on it. `holdUntil` holds a line's ring as a placement's. `lowerTier`
+   *  raises only `building`'s own tier and lifts no standing tower. */
   | {
       readonly kind: 'towerCoverage';
       readonly building: string;
@@ -151,6 +154,7 @@ export type BuildOrderEntry =
       readonly lane?: true;
       readonly fromTick?: number;
       readonly holdUntil?: StepHold;
+      readonly lowerTier?: true;
     }
   /** The same rule over the seat's stores: every owned building within `radius` nodes of the base or a
    *  warehouse, so goods never travel far to a store. */

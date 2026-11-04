@@ -35,10 +35,15 @@ export const FIT_PER_HOME = 2;
  *  seat, and a bigger settlement makes a stronger player on every plan). */
 export const ROOM_HOMES_CAP = 14;
 
-/** How many free zones a review counts at most, `homes` standing against a housing cap of `cap`: what the
- *  homes lift can tell apart, once homes reach a cap below {@link ROOM_HOMES_CAP}, and none before. */
+/**
+ * How many free zones a review counts at most, `homes` standing against a housing cap of `cap`: what its
+ * readers can tell apart and no more, so a settlement with room stops its walk early. The filled tower ring
+ * asks whether a home still fits ({@link FIT_PER_HOME}), and the homes lift, once homes reach a cap below
+ * {@link ROOM_HOMES_CAP}, how many more homes fit up to it.
+ */
 function zonesCounted(homes: number, cap: number): number {
-  return homes >= cap && cap < ROOM_HOMES_CAP ? FIT_PER_HOME * ROOM_HOMES_CAP - homes : 0;
+  const lift = homes >= cap && cap < ROOM_HOMES_CAP ? FIT_PER_HOME * ROOM_HOMES_CAP - homes : 0;
+  return Math.max(FIT_PER_HOME, lift);
 }
 
 /** Decisions between a seat's room reviews, a stalled placement's retry pace (about a game minute): felled
@@ -185,4 +190,11 @@ export function roomHomesCap(world: World, player: number, cap: number): number 
   const room = seatRoomOf(world, player);
   if (room === null || room.homes < cap) return cap;
   return Math.max(cap, Math.min(ROOM_HOMES_CAP, Math.floor((room.homes + room.freeZones) / FIT_PER_HOME)));
+}
+
+/** Whether the seat's land is built up: measured, and too little room left for another home, so the homes
+ *  lift has nothing more to raise. */
+export function roomFilled(world: World, player: number): boolean {
+  const room = seatRoomOf(world, player);
+  return room !== null && room.freeZones < FIT_PER_HOME;
 }

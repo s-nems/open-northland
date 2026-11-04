@@ -40,6 +40,7 @@ import {
   type StepHold,
   stepKey,
 } from './entries.js';
+import { filledTowersWait } from './filled-towers.js';
 import { grassScarce } from './grass-reserve.js';
 import { housingShort } from './housing.js';
 import { unservedAnchor } from './placement.js';
@@ -563,6 +564,8 @@ function holdOpen(
       return militaryWaits(world, ctx, player, hold.leadTicks);
     case 'tick':
       return ctx.tick < hold.tick;
+    case 'filledGround':
+      return filledTowersWait(world, ctx, player, owned);
     case 'all':
       return hold.holds.some((part) => holdOpen(world, ctx, player, owned, part, memo, scope));
     case 'any':

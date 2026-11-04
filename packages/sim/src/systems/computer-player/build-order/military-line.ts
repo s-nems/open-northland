@@ -19,6 +19,19 @@ const ECONOMY_SAFE: StepHold = {
   ],
 };
 
+/** The tower the filled ring raises: the lower tier, whose bill is mostly stone and wood. */
+export const FILLED_TOWER_BUILDING = 'tower_00';
+
+/** The filled ring's wants (owner ruling: a built-up settlement puts defence towers into the free spots
+ *  inside it, since a tower needs little room and is often the only building that still fits): every
+ *  building under half again the settled ring's village want. Authored, kept small: a denser ring cost the
+ *  island seats births and fighters on arabskie_wyspy_wolna_gra_mieszana. */
+const FILLED_DEFENCE: DefenceWants = { village: 30, front: 40 };
+
+/** When the filled ring runs: the economy is safe, the homes lift has nothing left to raise, and the store
+ *  spares a lower tower's stone and wood (`./filled-towers.ts`). */
+const GROUND_FILLED: StepHold = { kind: 'all', holds: [ECONOMY_SAFE, { kind: 'filledGround' }] };
+
 /** How many of the seat's towers stand at the upper tier (authored): about the ring a settlement of medium
  *  room stands under. A tower the rings raised straight at the upper tier counts, so the upgrades only lift
  *  the lower towers of a seat whose attacks came early (`./direct-tier.ts`). */
@@ -148,6 +161,15 @@ export const MILITARY_LINE: BuildLine = {
       defence: SETTLED_DEFENCE,
       lane: true,
       holdUntil: ECONOMY_SAFE,
+    },
+    // Once the land is built up, a third lane puts cheap lower towers into the gaps left inside it.
+    {
+      kind: 'towerCoverage',
+      building: FILLED_TOWER_BUILDING,
+      defence: FILLED_DEFENCE,
+      lane: true,
+      holdUntil: GROUND_FILLED,
+      lowerTier: true,
     },
     // Owner ruling: the standing towers go up to the upper tier slowly, once the seat makes the bricks and
     // pillars its bill asks for; an upgrade step holds its line until its bill has a source.

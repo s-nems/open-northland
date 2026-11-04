@@ -348,11 +348,14 @@ export function towerSpot(
         out: hexDistance(c, baseNode),
       }))
       .sort((a, b) => b.gain - a.gain || b.out - a.out || a.i - b.i);
+    // A tower guards the land it stands on: one across the water covers nothing of the target's.
+    const land = terrain.componentOf(terrain.nodeAtClamped(hx, hy));
     const search = (c: HalfCellNode, offGrass: boolean): HalfCellNode | null => {
       const reach = plan.reach.around(c, spread);
       const accept = acceptor.around(underFire, c, spread, offGrass);
       return firstRingNode(c.hx, c.hy, spread, (x, y) => {
         if (hexDistanceBetween(x, y, hx, hy) > radius) return false;
+        if (!terrain.inBounds(x, y) || terrain.componentOf(terrain.nodeAt(x, y)) !== land) return false;
         if (plan.circles.some((d) => hexDistanceBetween(d.hx, d.hy, x, y) < apart)) return false;
         if (!reach.contains(x, y)) return false;
         return accept(x, y) && (walkable === null || walkable(x, y));
