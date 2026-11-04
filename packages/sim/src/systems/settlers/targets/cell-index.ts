@@ -230,6 +230,17 @@ export class InteractionCellIndex {
     this.sideOf.clear();
   }
 
+  /** Moves on every edit of the candidates or their sides: an equal value means the same candidates on the
+   *  same nodes, for a memo over a read of this index. */
+  get version(): number {
+    return this.revision;
+  }
+
+  /** Hand `visit` every loose candidate filed in `box` with its node, in no fixed order. */
+  forEachLooseIn(box: NodeBox, visit: (e: Entity, x: number, y: number) => void): void {
+    this.gridOfLoose(this.all).forEachIn(box, visit);
+  }
+
   /** Whether the seeker-independent candidate filter admitted anything. */
   hasCandidates(): boolean {
     return this.all.any() !== undefined;

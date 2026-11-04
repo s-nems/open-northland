@@ -329,6 +329,32 @@ export class CellGrid {
     }
   }
 
+  /** Hand `visit` every candidate on an occupied node inside `box`, block by block and tile by tile, so the
+   *  walk costs the box's occupied blocks and tiles, never its nodes. */
+  forEachIn(box: NodeBox, visit: (e: Entity, x: number, y: number) => void): void {
+    const minBx = Math.max(0, box.minX) >> BLOCK_SHIFT;
+    const maxBx = Math.max(0, box.maxX) >> BLOCK_SHIFT;
+    const minBy = Math.max(0, box.minY) >> BLOCK_SHIFT;
+    const maxBy = Math.max(0, box.maxY) >> BLOCK_SHIFT;
+    for (let bx = minBx; bx <= maxBx; bx++) {
+      for (let by = minBy; by <= maxBy; by++) {
+        const tiles = this.blocks.get(bx * GRID_KEY_STRIDE + by);
+        if (tiles === undefined) continue;
+        for (const tile of tiles) {
+          const tx = Math.floor(tile / GRID_KEY_STRIDE);
+          const ty = tile - tx * GRID_KEY_STRIDE;
+          if (!squareNearBox(box, tx << TILE_SHIFT, ty << TILE_SHIFT, TILE_SIZE, 0)) continue;
+          for (const node of this.tiles.get(tile) ?? NO_NODES) {
+            const nx = Math.floor(node.key / GRID_KEY_STRIDE);
+            const ny = node.key - nx * GRID_KEY_STRIDE;
+            if (nx < box.minX || nx > box.maxX || ny < box.minY || ny > box.maxY) continue;
+            for (const e of node.entities) visit(e, nx, ny);
+          }
+        }
+      }
+    }
+  }
+
   /** The ring radius from `(x,y)` covering every bucket, or -1 when there is none. */
   reach(x: number, y: number): number {
     if (this.size === 0) return -1;
@@ -337,6 +363,7 @@ export class CellGrid {
   }
 }
 
+const NO_NODES: readonly GridNode[] = [];
 const tileKey = (key: number): number => key;
 const nodeKeyOf = (node: GridNode): number => node.key;
 const entityId = (e: Entity): number => e;

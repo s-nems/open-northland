@@ -1,24 +1,15 @@
 import { BUILDING_KIND } from '@open-northland/data';
-import {
-  Building,
-  isForeignHouse,
-  ownerOf,
-  Position,
-  Stockpile,
-  type TradeStop,
-} from '../../components/index.js';
+import { Building, isForeignHouse, ownerOf, type TradeStop } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
-import { hexDistance, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, MapContext, SystemContext } from '../context.js';
-import { interactionNode, interactionNodeId } from '../footprint/interaction.js';
-import { DOOR_HEAP_RADIUS_NODES } from '../settlers/drives/economy/workshop/door-heap.js';
+import { interactionNodeId } from '../footprint/interaction.js';
 import { FetchableStock } from '../settlers/targets/index.js';
 import { goodsSearchesShareDoor, goodsSearchLimitAt, signpostReachKey } from '../signposts/reach.js';
 import { settlementReachAt } from '../signposts/settlement-reach.js';
-import { isLoosePile, isWorkplaceOutput } from '../stores/index.js';
+import { isWorkplaceOutput } from '../stores/index.js';
 import { sameFoodClass } from './goods.js';
 
 /** Whether a stop at `house` may stand for its settlement: the house is a storehouse. */
@@ -58,56 +49,6 @@ export function settlementHouses(
     }
   }
   return [...found].sort((a, b) => a - b);
-}
-
-/**
- * The loose ground piles of `anchor`'s settlement that hold `good` or a dish of its edible class, ascending
- * by id: unowned or the trader's player's, lying in the anchor's settlement reach and off `exclude`'s door
- * heap, which is the other stop's. Read off the stock ledger's holders, never a walk over the tiles.
- */
-export function settlementPiles(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  trader: Entity,
-  anchor: Entity,
-  exclude: Entity,
-  good: number,
-): Entity[] {
-  const player = ownerOf(world, trader);
-  const anchorDoor = interactionNodeId(world, ctx, terrain, anchor);
-  if (player === undefined || anchorDoor === null) return [];
-  const reach = settlementReachAt(world, ctx.content, terrain, player, anchorDoor);
-  const door = interactionNode(world, ctx, exclude);
-  const away = door === null ? null : { hx: door.x, hy: door.y };
-  const ledger = FetchableStock.of(world, ctx);
-  const found = new Set<Entity>();
-  const { minX, maxX, minY, maxY } = reach.bounds;
-  for (const { typeId: form } of ctx.content.goods) {
-    if (!sameFoodClass(ctx, form, good)) continue;
-    for (const pile of ledger.holders(form)) {
-      const pos = world.tryGet(pile, Position);
-      if (pos === undefined || found.has(pile)) continue;
-      // The reach's box first, so a pile of another settlement costs no further check.
-      const hx = nodeHxOfPosition(pos.x, pos.y);
-      const hy = nodeHyOfPosition(pos.x, pos.y);
-      if (hx < minX || hx > maxX || hy < minY || hy > maxY || !isLoosePile(world, pile)) continue;
-      const owner = ownerOf(world, pile);
-      if (owner !== undefined && owner !== player) continue;
-      if (!terrain.inBounds(hx, hy) || !reach.allowsNode(terrain.nodeAt(hx, hy))) continue;
-      if (away !== null && hexDistance({ hx, hy }, away) <= DOOR_HEAP_RADIUS_NODES) continue;
-      found.add(pile);
-    }
-  }
-  return [...found].sort((a, b) => a - b);
-}
-
-/** The units of `good`, or of a dish of its edible class, a ground pile holds. */
-export function pileUnitsOf(world: World, ctx: ContentContext, pile: Entity, good: number): number {
-  let units = 0;
-  const amounts = world.get(pile, Stockpile).amounts;
-  for (const form of amounts.keys()) if (sameFoodClass(ctx, form, good)) units += amounts.get(form) ?? 0;
-  return units;
 }
 
 function lendsToSettlement(world: World, ctx: SystemContext, house: Entity, good: number): boolean {

@@ -4,6 +4,7 @@ import { contentIndex } from '../../../../src/core/content-index.js';
 import { GENERATION_JOURNAL_LIMIT } from '../../../../src/ecs/generation-journal.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { ONE, positionOfNode, type Simulation } from '../../../../src/index.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../src/nav/halfcell.js';
 import type { SpatialGate } from '../../../../src/nav/node-circle.js';
 import type { NodeId } from '../../../../src/nav/terrain/index.js';
 import {
@@ -48,6 +49,9 @@ const OWNER_HANDOVERS = 40;
 const RING_CAP_PROBE_MIN = 40;
 const RING_CAP_PROBE_SPAN = 30;
 const PLAYERS = 3;
+/** Random box reads, and the most nodes a box spans past its corner on each axis. */
+const BOX_READS = 200;
+const BOX_SPAN = 120;
 /** A candidate list short enough for the index's linear scan. */
 const SHORT_LIST = 40;
 
@@ -222,6 +226,38 @@ describe('InteractionCellIndex', () => {
       );
     }
   });
+
+  it.each([3])(
+    'hands a box read every loose candidate filed in the box, and only those (seed %i)',
+    (seed) => {
+      const { sim, terrain, candidates, roll, index } = world(seed, WIDE);
+      const loose = candidates.filter((e) => !sim.world.has(e, Building));
+      for (let q = 0; q < BOX_READS; q++) {
+        const minX = roll(terrain.width);
+        const minY = roll(terrain.height);
+        const box = { minX, maxX: minX + roll(BOX_SPAN), minY, maxY: minY + roll(BOX_SPAN) };
+        const read: Entity[] = [];
+        index.forEachLooseIn(box, (e, x, y) => {
+          const p = sim.world.get(e, Position);
+          expect(terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y))).toBe(
+            terrain.nodeAt(x, y),
+          );
+          read.push(e);
+        });
+        const inBox = loose.filter((e) => {
+          const p = sim.world.get(e, Position);
+          const node = terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y));
+          const x = terrain.xOf(node);
+          const y = terrain.yOf(node);
+          return x >= box.minX && x <= box.maxX && y >= box.minY && y <= box.maxY;
+        });
+        expect(
+          read.sort((a, b) => a - b),
+          `read ${q}`,
+        ).toEqual(inBox);
+      }
+    },
+  );
 
   it.each([4])('keeps the same answers when filled and thinned one candidate at a time (seed %i)', (seed) => {
     const { sim, terrain, ctx, candidates, roll, index: built } = world(seed);

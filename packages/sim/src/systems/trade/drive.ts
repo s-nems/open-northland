@@ -45,7 +45,8 @@ import { planCrossing, planShipOrder, seaLegOf, takeStopAtHand } from './ferry.j
 import { sameFoodClass } from './goods.js';
 import { cartStands, NO_HELPERS, TRADE_CART_HOUSE_DISTANCE, type TraderHold, traderHoldOf } from './hold.js';
 import { refillRestores } from './partner-stock.js';
-import { pileUnitsOf, settlementHouses, settlementPiles, standsForSettlement } from './settlement.js';
+import { settlementHouses, standsForSettlement } from './settlement.js';
+import { type HoldingBandOf, type SettlementGround, settlementGround } from './settlement-ground.js';
 import { routeCrossesSea, stopContinent } from './ship.js';
 
 /** A unit the trader moves at a stop: loaded out of `from`, the stop's house or a house of its
@@ -65,8 +66,8 @@ const WAIT: TradeAction = { kind: 'wait' };
 /** The stop the trader loads at, with what choosing a source there reads. `exclude` is the other stop's
  *  house, which a settlement never loads out of. `countsSettlement` and `otherCountsSettlement` say
  *  whether this stop and the other one stand for their settlements in this decision; `members` and
- *  `piles` hold the settlement houses and ground piles read so far, by anchor and good, so one decision
- *  reads each settlement once per good. */
+ *  `grounds` hold the settlement houses and ground read so far, by anchor and good, so one decision reads
+ *  each settlement once per good. */
 interface LoadScope {
   readonly world: World;
   readonly ctx: SystemContext;
@@ -78,8 +79,9 @@ interface LoadScope {
   readonly countsSettlement: boolean;
   readonly otherCountsSettlement: boolean;
   readonly supply: SupplyTally;
+  readonly holding: HoldingBandOf;
   members: Map<string, readonly Entity[]> | undefined;
-  piles: Map<string, readonly Entity[]> | undefined;
+  grounds: Map<string, SettlementGround> | undefined;
 }
 
 /**
@@ -184,12 +186,13 @@ function scopeAt(
   stop: DeepReadonly<TradeStop>,
   other: DeepReadonly<TradeStop>,
 ): LoadScope {
-  const { world, ctx, terrain, supply } = plan;
+  const { world, ctx, terrain, supply, targets } = plan;
   return {
     world,
     ctx,
     terrain,
     supply,
+    holding: (good) => targets.bands.holding(good),
     trader,
     hold,
     stop,
@@ -197,7 +200,7 @@ function scopeAt(
     countsSettlement: countsSettlement(world, ctx, terrain, trader, stop),
     otherCountsSettlement: countsSettlement(world, ctx, terrain, trader, other),
     members: undefined,
-    piles: undefined,
+    grounds: undefined,
   };
 }
 
@@ -609,9 +612,9 @@ function loadSourceOf(scope: LoadScope, good: number, keep: number): LoadSource 
   const settlementSpare = new LendableTally(world, ctx);
   tallyStock(world, ctx, settlementSpare, stop.house, good);
   for (const house of members) tallyStock(world, ctx, settlementSpare, house, good);
-  for (const pile of pilesOf(scope, stop.house, scope.exclude, good))
-    settlementSpare.add(pile, good, pileUnitsOf(world, ctx, pile, good));
-  if (settlementSpare.total() - keep < 1) return undefined;
+  const ground = groundOf(scope, stop.house, scope.exclude, good);
+  // A ground pile holds no storehouse stock, so no storage minimum binds it.
+  if (settlementSpare.total() + ground.units() - keep < 1) return undefined;
   if (homeSpare >= 1 && atHome) return fromHome;
   const anchor = holdPoint(world, trader, hold);
   const failed = unreachableGoals(world, ctx, trader);
@@ -621,14 +624,21 @@ function loadSourceOf(scope: LoadScope, good: number, keep: number): LoadSource 
   };
   let best: { readonly house: Entity; readonly distance: number } | undefined;
   // Houses, then ground piles, each ascending by id, so a later source wins only when strictly nearer.
-  for (const source of [...members, ...pilesOf(scope, stop.house, scope.exclude, good)]) {
-    const spare = world.has(source, Building)
-      ? spareOf(world, ctx, source, good)
-      : pileSpareOf(scope, source, good);
-    const door = spare < 1 ? null : reachable(source);
+  for (const house of members) {
+    const door = spareOf(world, ctx, house, good) < 1 ? null : reachable(house);
     if (door === null) continue;
     const distance = anchor === null ? 0 : hexDistance(anchor, door);
-    if (best === undefined || distance < best.distance) best = { house: source, distance };
+    if (best === undefined || distance < best.distance) best = { house, distance };
+  }
+  const { piles, nodes } = ground;
+  for (let i = 0; i < piles.length; i++) {
+    const pile = piles[i] as Entity;
+    const at = { hx: nodes[2 * i] as number, hy: nodes[2 * i + 1] as number };
+    const distance = anchor === null ? 0 : hexDistance(anchor, at);
+    // The distance first: the spare and the failed-goal memo are read only for a pile that would win.
+    if (best !== undefined && distance >= best.distance) continue;
+    if (pileSpareOf(scope, pile, good) < 1 || reachable(pile) === null) continue;
+    best = { house: pile, distance };
   }
   const form = best === undefined ? undefined : sourceFormAt(world, ctx, best.house, good);
   const fromMember = best === undefined || form === undefined ? undefined : { from: best.house, good: form };
@@ -662,8 +672,7 @@ function stockOfStop(
   for (const member of membersOf(scope, house, exclude, good)) {
     total += held(member, stockedFormAt(world, ctx, member, good));
   }
-  for (const pile of pilesOf(scope, house, exclude, good)) total += pileUnitsOf(world, ctx, pile, good);
-  return total;
+  return total + groundOf(scope, house, exclude, good).units();
 }
 
 /** {@link settlementHouses} of `anchor` for `good`, walked once per decision. */
@@ -678,16 +687,17 @@ function membersOf(scope: LoadScope, anchor: Entity, exclude: Entity, good: numb
   return members;
 }
 
-/** {@link settlementPiles} of `anchor` for `good`, read once per decision. */
-function pilesOf(scope: LoadScope, anchor: Entity, exclude: Entity, good: number): readonly Entity[] {
+/** {@link settlementGround} of `anchor` for `good`, read once per decision. */
+function groundOf(scope: LoadScope, anchor: Entity, exclude: Entity, good: number): SettlementGround {
   const key = `${anchor}:${good}`;
-  scope.piles ??= new Map();
-  let piles = scope.piles.get(key);
-  if (piles === undefined) {
-    piles = settlementPiles(scope.world, scope.ctx, scope.terrain, scope.trader, anchor, exclude, good);
-    scope.piles.set(key, piles);
+  scope.grounds ??= new Map();
+  let ground = scope.grounds.get(key);
+  if (ground === undefined) {
+    const { world, ctx, terrain, trader, holding } = scope;
+    ground = settlementGround(world, ctx, terrain, trader, anchor, exclude, good, holding);
+    scope.grounds.set(key, ground);
   }
-  return piles;
+  return ground;
 }
 
 /** The units of `good` the ground by `house`'s door still takes. */
