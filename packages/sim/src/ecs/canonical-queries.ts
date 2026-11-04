@@ -8,6 +8,13 @@ const ascending = (a: Entity, b: Entity): number => a - b;
 /** Pending entities a list holds before it settles without a query, beyond its own length: a list
  *  nobody queries any more stays bounded while the merge cost is still spread over many changes. */
 const PENDING_SETTLE_MIN = 64;
+/** Pending lists up to this long are insertion-sorted in place; a longer one sorts in a typed copy, since
+ *  the array sort copies its input. */
+const INSERTION_SORT_MAX = 32;
+/** The copy a long pending list sorts in, grown to the longest; float64 holds any entity id exactly. */
+let sortScratch = new Float64Array(0);
+/** The list one settle merges into before it is copied out at its exact length. Settles never nest. */
+const mergeScratch: Entity[] = [];
 
 /**
  * Ascending ids handed to readers as they are, never edited in place: changes collect in
@@ -17,8 +24,10 @@ interface SortedIds {
   ids: readonly Entity[];
   /** The stores a member carries: one for a component's members, every required one for a joint. */
   readonly stores: readonly ComponentStore<unknown>[];
-  /** Entities whose membership may have changed since {@link ids} was built, unsorted, repeats allowed. */
+  /** Entities whose membership may have changed since {@link ids} was built, unsorted, repeats allowed:
+   *  the first {@link pendingCount}, the array keeping its storage across settles. */
   readonly pending: Entity[];
+  pendingCount: number;
 }
 
 /** One component's members, kept current by every membership change once tracked. */
@@ -104,7 +113,7 @@ export class CanonicalQueries {
     }
     if (smallest === null) return null;
     const ids = smallest.ids.filter((e) => carriesAll(stores, e));
-    const joint: Joint = { required, stores, ids, pending: [] };
+    const joint: Joint = { required, stores, ids, pending: [], pendingCount: 0 };
     for (const m of tracked) if (!m.joints.includes(joint)) m.joints.push(joint);
     this.joints.push(joint);
     return joint;
@@ -115,7 +124,7 @@ export class CanonicalQueries {
     if (m === undefined) {
       const store = this.stores.get(component);
       if (store === undefined) return null;
-      m = { stores: [store], ids: store.keys().sort(ascending), pending: [], joints: [] };
+      m = { stores: [store], ids: store.keys().sort(ascending), pending: [], pendingCount: 0, joints: [] };
       this.members.set(component, m);
     }
     return m;
@@ -141,38 +150,64 @@ export class CanonicalQueries {
 }
 
 function note(list: SortedIds, entity: Entity): void {
-  list.pending.push(entity);
-  if (list.pending.length > Math.max(list.ids.length, PENDING_SETTLE_MIN)) settle(list);
+  list.pending[list.pendingCount++] = entity;
+  if (list.pendingCount > Math.max(list.ids.length, PENDING_SETTLE_MIN)) settle(list);
 }
 
 /** Merge the pending entities into a fresh ascending list, each kept only while it carries every store;
  *  the old list stays as it is for readers holding it, and stays current when nothing moved. */
 function settle(list: SortedIds): void {
   const { pending, ids } = list;
-  if (pending.length === 0) return;
-  pending.sort(ascending);
-  // Built at the first pending entity whose membership moved, copying the unchanged prefix then.
-  let merged: Entity[] | null = null;
+  const count = list.pendingCount;
+  if (count === 0) return;
+  sortPending(pending, count);
+  list.pendingCount = 0;
+  // Merged into the scratch from the first pending entity whose membership moved, unchanged prefix first.
+  let merging = false;
+  let n = 0;
   let at = 0;
   let previous: Entity | undefined;
-  for (let i = 0; i < pending.length; i++) {
+  for (let i = 0; i < count; i++) {
     const e = pending[i] as Entity;
     if (e === previous) continue;
     previous = e;
     while (at < ids.length && (ids[at] as Entity) < e) {
-      if (merged !== null) merged.push(ids[at] as Entity);
+      if (merging) mergeScratch[n++] = ids[at] as Entity;
       at++;
     }
     const held = at < ids.length && ids[at] === e;
     if (held) at++;
     const member = carriesAll(list.stores, e);
-    if (merged === null && member !== held) merged = ids.slice(0, held ? at - 1 : at);
-    if (member && merged !== null) merged.push(e);
+    if (!merging && member !== held) {
+      merging = true;
+      const prefix = held ? at - 1 : at;
+      for (let k = 0; k < prefix; k++) mergeScratch[n++] = ids[k] as Entity;
+    }
+    if (member && merging) mergeScratch[n++] = e;
   }
-  pending.length = 0;
-  if (merged === null) return;
-  while (at < ids.length) merged.push(ids[at++] as Entity);
-  list.ids = merged;
+  if (!merging) return;
+  while (at < ids.length) mergeScratch[n++] = ids[at++] as Entity;
+  list.ids = mergeScratch.slice(0, n);
+}
+
+/** Sort the first `count` pending entities ascending, in place. */
+function sortPending(pending: Entity[], count: number): void {
+  if (count > INSERTION_SORT_MAX) {
+    if (sortScratch.length < count) sortScratch = new Float64Array(Math.max(count, 2 * sortScratch.length));
+    for (let i = 0; i < count; i++) sortScratch[i] = pending[i] as Entity;
+    const sorted = sortScratch.subarray(0, count).sort();
+    for (let i = 0; i < count; i++) pending[i] = sorted[i] as Entity;
+    return;
+  }
+  for (let i = 1; i < count; i++) {
+    const e = pending[i] as Entity;
+    let k = i - 1;
+    while (k >= 0 && (pending[k] as Entity) > e) {
+      pending[k + 1] = pending[k] as Entity;
+      k--;
+    }
+    pending[k + 1] = e;
+  }
 }
 
 function carriesAll(stores: readonly ComponentStore<unknown>[], entity: Entity): boolean {
