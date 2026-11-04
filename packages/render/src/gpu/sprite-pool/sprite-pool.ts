@@ -829,16 +829,21 @@ export class SpritePool {
     this.ships.length = 0;
     const vehicles = this.sheet?.bindings.vehicle;
     for (const item of items) {
-      if ((item.kind === 'building' || item.kind === 'palisade') && item.hpFrac !== undefined) {
-        this.damaged.push({
-          ref: item.ref,
-          hpFrac: item.hpFrac,
-          ...(item.ghost === true ? { ghost: true } : {}),
-        });
-      }
-      // A portrait-only ship is hidden on the map, so it pushes no water there.
-      const onMap = item.ghost !== true && item.portraitOnly !== true;
-      if (item.kind === 'vehicle' && onMap && vehicles !== undefined) {
+      const kind = item.kind;
+      if (kind === 'building' || kind === 'palisade') {
+        if (item.hpFrac !== undefined)
+          this.damaged.push({
+            ref: item.ref,
+            hpFrac: item.hpFrac,
+            ...(item.ghost === true ? { ghost: true } : {}),
+          });
+      } else if (
+        kind === 'vehicle' &&
+        vehicles !== undefined &&
+        // A portrait-only ship is hidden on the map, so it pushes no water there.
+        item.ghost !== true &&
+        item.portraitOnly !== true
+      ) {
         // A moored ship still sits in the water: it keeps its lapping foam and lets a wake settle.
         const look = vehicleLookFor(vehicles, item);
         if (look?.afloat === true) {
