@@ -230,16 +230,27 @@ function nearest(env: ColonyEnv, stores: readonly Entity[], to: DeepReadonly<Hal
 
 /** The route's two stops: the colony's level-3 warehouse nearest its shore, and home's store nearest the
  *  berth, a level-3 one where home has one. Null until both stand. */
-function stopsOf(env: ColonyEnv, colony: ColonyView): { home: Entity; colony: Entity } | null {
+function stopsOf(
+  env: ColonyEnv,
+  colony: ColonyView,
+  held: readonly Entity[],
+): { home: Entity; colony: Entity } | null {
   const { world, ctx, seat } = env;
   const there = colonyBuildings(env).filter((e) => routeStore(env, e));
   const at = colony.shore ?? colony.site;
-  const away = nearest(env, there, at);
+  const away = keptOr(held, there) ?? nearest(env, there, at);
   const stores = homeBuildings(world, ctx, seat).filter((e) => isStore(env, e));
   const topStores = stores.filter((e) => routeStore(env, e));
   const berth = colony.berth ?? colony.site;
-  const home = nearest(env, topStores.length > 0 ? topStores : stores, berth);
+  const candidates = topStores.length > 0 ? topStores : stores;
+  const home = keptOr(held, candidates) ?? nearest(env, candidates, berth);
   return away === null || home === null ? null : { home, colony: away };
+}
+
+/** The stop the route holds among `candidates`, kept while it qualifies: moving a stop starts the route over,
+ *  which turned a ship under way back home each time home raised a warehouse nearer the berth. */
+function keptOr(held: readonly Entity[], candidates: readonly Entity[]): Entity | null {
+  return held.find((house) => candidates.includes(house)) ?? null;
 }
 
 /** Orders that put the route on `home` then `away`, both standing for their settlements. */
@@ -380,7 +391,11 @@ export function runRoute(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
     if (!canPinTradeShip(world, ctx, trader, ship)) return commands;
     return [...commands, { kind: 'setTradeShip', entity: trader, ship }];
   }
-  const stops = stopsOf(env, colony);
+  const stops = stopsOf(
+    env,
+    colony,
+    (world.tryGet(trader, TradeRoute)?.stops ?? []).map((s) => s.house),
+  );
   if (stops === null) return commands;
   const orders = [
     ...commands,

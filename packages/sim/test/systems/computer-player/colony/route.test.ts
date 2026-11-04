@@ -50,7 +50,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { BUILDER, CIVILIST, MUD, SEAT, STONE, UNARMED, VIKING, WOMAN } from '../support.js';
+import { BUILDER, CIVILIST, MUD, SEAT, STOCK_TOP_TYPE, STONE, UNARMED, VIKING, WOMAN } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -68,6 +68,10 @@ const STRAIT_MID_HX = 114;
 const STRAIT_ACROSS = [30, 60, 90];
 const DANGER_LAPSED_TICKS = minutesToTicks(40);
 const ENEMY = 5;
+/** Home's first warehouse of the route's tier, south of the headquarters. */
+const FAR_STORE_AT = { x: 72, y: 84 };
+/** A warehouse home raises by the berth later, nearer it than the route's home stop. */
+const BERTH_STORE_AT = { x: 86, y: 64 };
 /** Idle builders few enough that every one is past the colony's work. */
 const IDLE_MEN = 8;
 /** The builders a colony keeps at rest once nothing is left to raise. */
@@ -137,6 +141,28 @@ describe('a colony trade route', () => {
     // Its stone goes home once its men dig past what its own industries' sites took first.
     const stoneHome = () => marks()[0]?.imports.some((m) => m.good === STONE) === true;
     expect(stepUntil(sim, ROUND_DUE_TICKS, stoneHome)).toBe(true);
+  });
+
+  it('keeps its home stop when home raises a warehouse nearer the berth, so no voyage starts over', () => {
+    const { sim } = routedWorld();
+    const trader = routeTrader(sim) as Entity;
+    const homeStop = () => sim.world.get(trader, TradeRoute).stops[0]?.house;
+    const raise = (at: { readonly x: number; readonly y: number }): void =>
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: STOCK_TOP_TYPE,
+        ...at,
+        tribe: VIKING,
+        owner: SEAT,
+        force: true,
+        underConstruction: false,
+      });
+    const first = homeStop();
+    raise(FAR_STORE_AT);
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => homeStop() !== first)).toBe(true);
+    const held = homeStop();
+    raise(BERTH_STORE_AT);
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => homeStop() !== held)).toBe(false);
   });
 
   it('owes a ship once its own is sunk, and pins the next free one', () => {
