@@ -281,10 +281,9 @@ describe('a colony route that cannot keep up', () => {
     expect(stepUntil(sim, LEG_DUE_TICKS, piled(relief))).toBe(true);
     mooredShip(sim, SMALL_SHIP, THIRD_SHIP_AT);
     const reliefTrader = () => {
-      const relief = colonyState(sim)?.relief;
-      const trader = relief?.trader ?? null;
-      if (trader === null || relief === undefined || relief.ship === null) return null;
-      return sim.world.tryGet(trader, TradeShip)?.vehicle === relief.ship ? trader : null;
+      const relief = colonyState(sim)?.relief ?? null;
+      if (relief === null || relief.trader === null || relief.ship === null) return null;
+      return sim.world.tryGet(relief.trader, TradeShip)?.vehicle === relief.ship ? relief.trader : null;
     };
     expect(
       stepUntil(
