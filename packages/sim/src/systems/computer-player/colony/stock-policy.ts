@@ -262,8 +262,28 @@ function settlerReserve(
   return reserve;
 }
 
-/** What never leaves the colony: vehicles, water, what no store of its takes (its livestock), and of a
- *  workshop that makes the joinery's export, its other goods. */
+/**
+ * The intermediate goods the colony's own chain consumes: an input good by the content's flag that one of
+ * its standing workshops makes and one of its workshops, standing or a site, takes in, such as wheat for its
+ * mill and flour for its bakery (owner ruling: these never go home). Home makes its own, and the ship's room
+ * goes to what home lacks.
+ */
+export function chainIntermediates(env: ColonyEnv, buildings: readonly Entity[]): Set<number> {
+  const { world, ctx } = env;
+  const index = contentIndex(ctx.content);
+  const made = workshopGoods(env, buildings);
+  const kept = new Set<number>();
+  for (const e of buildings) {
+    const recipe = index.mergedRecipeByBuilding.get(world.get(e, Building).buildingType);
+    for (const { goodType } of recipe?.inputs ?? [])
+      if (made.has(goodType) && index.goods.get(goodType)?.classification.inputGood === true)
+        kept.add(goodType);
+  }
+  return kept;
+}
+
+/** What never leaves the colony: vehicles, water, what no store of its takes (its livestock), the
+ *  intermediates its own chain consumes, and of a workshop that makes the joinery's export, its other goods. */
 function keptOnColony(env: ColonyEnv, buildings: readonly Entity[]): Set<number> {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
@@ -278,6 +298,7 @@ function keptOnColony(env: ColonyEnv, buildings: readonly Entity[]): Set<number>
   for (const good of ctx.content.goods)
     if (good.vehicleHouse !== undefined || good.typeId === water || !stored.has(good.typeId))
       kept.add(good.typeId);
+  for (const good of chainIntermediates(env, buildings)) kept.add(good);
   const export_ = goodTypeByContentId(ctx.content, JOINERY_EXPORT_ID)?.typeId;
   for (const e of buildings) {
     const typeId = world.get(e, Building).buildingType;

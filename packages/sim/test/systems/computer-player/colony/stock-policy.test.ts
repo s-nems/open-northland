@@ -1,8 +1,12 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { aiControlEntity, ComputerColony } from '../../../../src/components/index.js';
+import { NO_COMPONENT } from '../../../../src/nav/terrain/index.js';
+import { everyBuildingOf } from '../../../../src/systems/ai-shared/home-roster.js';
 import { colonists } from '../../../../src/systems/computer-player/colony/founding.js';
 import {
   type ColonyStockPolicy,
+  chainIntermediates,
   colonyStockPolicy,
   colonyStockPolicyOf,
   type StockPolicyRead,
@@ -10,12 +14,14 @@ import {
 } from '../../../../src/systems/computer-player/colony/stock-policy.js';
 import {
   blankColony,
+  colonyContent,
   colonyWorld,
   editColony,
   FOOD,
   looseColonyEnv,
+  WHEAT,
 } from '../../../fixtures/colony-islands.js';
-import { CIVILIST, SEAT, VIKING } from '../support.js';
+import { CIVILIST, FARM_TYPE, MILL_TYPE, SEAT, VIKING } from '../support.js';
 
 const WOOD = 1;
 const BRICK = 2;
@@ -37,6 +43,12 @@ const MOUTHS_A_ROW = 5;
 const MOUTH_STEP = 4;
 /** The food a colonist eats over a trader round. */
 const FOOD_PER_MOUTH_ROUND = 3;
+const FLOUR = 48;
+const MILL_TICKS = 60;
+const SEED = 7;
+/** Where the chain's workshops stand, a row on open ground, in half-cell nodes. */
+const CHAIN_AT = { x: 170, y: 100 };
+const CHAIN_STEP = 12;
 
 function read(overrides: Partial<StockPolicyRead> = {}): StockPolicyRead {
   return {
@@ -250,6 +262,72 @@ describe("a colony's sites", () => {
     expect(outboundOf(surplus, WOOD)).toEqual({ good: WOOD, keep: WOOD_FLOOR });
     const short = colonyStockPolicy(read({ ...homeShort, held: new Map([[WOOD, 1]]) }));
     expect(inboundOf(short, WOOD)).toEqual({ good: WOOD, upTo: WOOD_FLOOR, keep: HOME_KEEPS });
+  });
+});
+
+describe("a colony's own chain", () => {
+  /** The fixture's farm growing wheat, flagged an input good, and a mill grinding it into flour. */
+  function chainContent(flagged: boolean) {
+    const content = colonyContent();
+    return parseContentSet({
+      ...content,
+      goods: [
+        ...content.goods.map((g) =>
+          g.typeId === WHEAT ? { ...g, classification: { ...g.classification, inputGood: flagged } } : g,
+        ),
+        { typeId: FLOUR, id: 'flour', weight: 1 },
+      ],
+      buildings: content.buildings.map((b) => {
+        if (b.typeId === FARM_TYPE) return { ...b, produces: [WHEAT] };
+        if (b.typeId !== MILL_TYPE) return b;
+        const recipe = {
+          inputs: [{ goodType: WHEAT, amount: 1 }],
+          outputs: [{ goodType: FLOUR, amount: 1 }],
+        };
+        return { ...b, recipes: [{ ...recipe, ticks: MILL_TICKS }] };
+      }),
+    });
+  }
+
+  function chainOf(flagged: boolean, buildings: readonly { type: number; site: boolean }[]) {
+    const sim = colonyWorld(SEED, chainContent(flagged));
+    buildings.forEach(({ type, site }, i) => {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: type,
+        x: CHAIN_AT.x + i * CHAIN_STEP,
+        y: CHAIN_AT.y,
+        tribe: VIKING,
+        owner: SEAT,
+        force: true,
+        underConstruction: site,
+      });
+    });
+    sim.step();
+    const env = looseColonyEnv(sim, blankColony(NO_COMPONENT));
+    return chainIntermediates(env, everyBuildingOf(sim.world, SEAT));
+  }
+
+  it('keeps an input good one of its workshops makes while another of them, a site too, takes it in', () => {
+    const farm = { type: FARM_TYPE, site: false };
+    expect(chainOf(true, [farm, { type: MILL_TYPE, site: true }]).has(WHEAT)).toBe(true);
+    expect(chainOf(true, [farm, { type: MILL_TYPE, site: false }]).has(WHEAT)).toBe(true);
+    expect(chainOf(true, [farm]).has(WHEAT)).toBe(false);
+    expect(
+      chainOf(true, [
+        { type: FARM_TYPE, site: true },
+        { type: MILL_TYPE, site: false },
+      ]).has(WHEAT),
+    ).toBe(false);
+  });
+
+  it('lets a good the content does not flag as an input good go home', () => {
+    expect(
+      chainOf(false, [
+        { type: FARM_TYPE, site: false },
+        { type: MILL_TYPE, site: false },
+      ]).size,
+    ).toBe(0);
   });
 });
 
