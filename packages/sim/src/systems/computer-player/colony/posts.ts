@@ -114,14 +114,14 @@ const POSTS: readonly Post[] = [
   'stone',
 ];
 
-/** The porters the digs past the store's round want on top of `posts`, whose first carrier keeps the round:
- *  none before that one. */
 /** `posts` with each hunter post a fisher's while the colony posts no hunter ({@link huntingOpen}): its food
  *  comes from the water instead. */
 function withoutHunters(posts: readonly Post[], hunting: boolean): Post[] {
   return hunting ? [...posts] : posts.map((post) => (post === 'hunter' ? 'fisher' : post));
 }
 
+/** The porters the digs past the store's round want on top of `posts`, whose first carrier keeps the round:
+ *  none before that one. */
 function haulersBeyond(posts: readonly Post[], farDigs: number): number {
   const carriers = posts.filter((post) => post === 'carrier').length;
   return carriers === 0 ? 0 : Math.max(0, farDigs - (carriers - 1));
@@ -456,6 +456,7 @@ export function handsWanted(
     env,
     read.store,
     people.filter((e) => isAllocatableMan(world, ctx, e)),
+    fishes || kitchenMouths(env, buildings) > 0,
   );
   const others = withoutHunters(POSTS, hunts).filter(
     (p) => !isDug(p) && p !== 'builder' && (p !== 'fisher' || fishes),
@@ -510,7 +511,12 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
   const free: Entity[] = [];
   const posted = men.filter((man) => !atWorkshop(env, man));
   const digs = digGoodsWithRoom(env, read);
-  const hunting = huntingOpen(env, read.store, posted);
+  const hunting = huntingOpen(
+    env,
+    read.store,
+    posted,
+    fishNear(env, read.origin) !== null || kitchenMouths(env, read.buildings) > 0,
+  );
   for (const man of posted) {
     const post = postOf(world, ctx, man, builder);
     // A man at a full store's good moves on while another good wants digging, a hunter once no game is left.

@@ -32,15 +32,22 @@ function herdInReach(env: ColonyEnv, store: Entity): boolean {
 
 /**
  * Whether the colony posts hunters among `men` at its store: game is left on their ground, past it by the
- * chase's leash while one hunts (owner ruling: hunters kill the game quickly and then stand idle), and no
- * wild cattle stands within that chase (owner ruling: a cow or sheep is worth far more caught by the scout,
- * and a hunter feeds little beside fishers and a bakery). Our own choice for the computer player; the
- * hunter's rule of what he may shoot stays every player's.
+ * chase's leash while one hunts (owner ruling: hunters kill the game quickly and then stand idle), and,
+ * while the colony has `otherFood` (fish or a kitchen), no wild cattle stands within that chase (owner
+ * ruling: a cow or sheep is worth far more caught by the scout, and a hunter feeds little beside fishers and
+ * a bakery). A colony with no other food still hunts what it finds. Our own choice for the computer player;
+ * the hunter's rule of what he may shoot stays every player's.
  */
-export function huntingOpen(env: ColonyEnv, store: Entity | null, men: readonly Entity[]): boolean {
+export function huntingOpen(
+  env: ColonyEnv,
+  store: Entity | null,
+  men: readonly Entity[],
+  otherFood: boolean,
+): boolean {
   const { world, ctx } = env;
   const job = hunterJobType(ctx.content);
-  if (store === null || job === null || !isBuilt(world, store) || herdInReach(env, store)) return false;
+  if (store === null || job === null || !isBuilt(world, store)) return false;
+  if (otherFood && herdInReach(env, store)) return false;
   const hunters = men.filter((e) => world.get(e, Settler).jobType === job);
   return huntWorkLeft(world, ctx, store, job, hunters, hunters.length > 0 ? HUNT_CHASE_SLACK_NODES : 0);
 }

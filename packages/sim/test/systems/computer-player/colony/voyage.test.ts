@@ -365,8 +365,11 @@ describe('a colony sails', () => {
     expect(colonySettlersOf(sim).filter((e) => sim.world.get(e, Settler).jobType === HUNTER)).toEqual([]);
   });
 
-  it('puts no man on the hunter seat while a wild cow grazes within the hunt, so the cow is left alive', () => {
+  it('puts no man on the hunter seat while a wild cow grazes within the hunt and fish feed it, so the cow lives', () => {
     const sim = colonyWorld(SEED, huntingColonyContent());
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    addFishSwarms(sim.world, terrain, [{ ...EAST_FISH_AT, count: FISH_IN_SWARM, continent: 0 }]);
     stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
     mooredShip(sim);
     stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
