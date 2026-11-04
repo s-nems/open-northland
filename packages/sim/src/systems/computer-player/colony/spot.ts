@@ -131,11 +131,22 @@ const SHORE_HOMES_FULL = 12;
 const SHORE_FISH_POINTS = 20;
 const SHORE_GRASS_DIVISOR = 8;
 
-/** How a shore serves a colony (owner ruling): room for homes first, then open ground, resources in
- *  gatherers' reach, grass and fish. */
-function shoreScore(env: ColonyEnv, land: number, at: HalfCellNode, tribe: number): number {
+/** How far from its landing shore a colony's first warehouse may stand, in Manhattan nodes (owner ruling:
+ *  fairly close, so the trader's helpers and the unloading walk little): the reach of a hold's hands, who
+ *  carry cargo into a warehouse only that near the door. */
+export const STORE_SHORE_NODES = VEHICLE_CARGO_SEARCH_RADIUS;
+
+/** How a shore serves a colony (owner ruling): room for homes round the warehouse spot it gives first, then
+ *  open ground, resources in gatherers' reach, grass and fish round the shore. */
+function shoreScore(
+  env: ColonyEnv,
+  land: number,
+  at: HalfCellNode,
+  store: HalfCellNode,
+  tribe: number,
+): number {
   const { world, ctx, terrain } = env;
-  const homes = homesFitNear(world, ctx, terrain, tribe, land, at, SHORE_LOOK_NODES, SHORE_HOMES_FULL);
+  const homes = homesFitNear(world, ctx, terrain, tribe, land, store, SHORE_LOOK_NODES, SHORE_HOMES_FULL);
   const grid = placementBlockerGrid(world, ctx.content, terrain);
   let open = 0;
   let grass = 0;
@@ -167,9 +178,9 @@ function shoreScore(env: ColonyEnv, land: number, at: HalfCellNode, tribe: numbe
   );
 }
 
-/** The best of `shores` with room for a store in the reach of a hold's hands: they carry cargo into a
- *  warehouse only that near the door. The first best on a tie. Null also for a seat with no tribe or a
- *  content with no store. */
+/** The best of `shores` with room for a store within {@link STORE_SHORE_NODES}, its room counted round the
+ *  nearest such spot, where the founding places the store. The first best on a tie. Null also for a seat
+ *  with no tribe or a content with no store. */
 export function shoreWithStore(
   env: ColonyEnv,
   land: number,
@@ -182,8 +193,9 @@ export function shoreWithStore(
   let best: HalfCellNode | null = null;
   let bestScore = -1;
   for (const at of shores) {
-    if (colonySpot(env, land, type, tribe, at, VEHICLE_CARGO_SEARCH_RADIUS) === null) continue;
-    const score = shoreScore(env, land, at, tribe);
+    const store = colonySpot(env, land, type, tribe, at, STORE_SHORE_NODES);
+    if (store === null) continue;
+    const score = shoreScore(env, land, at, store, tribe);
     if (score <= bestScore) continue;
     best = at;
     bestScore = score;
