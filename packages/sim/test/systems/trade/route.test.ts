@@ -123,6 +123,8 @@ const WOOD_KEPT = 4;
 const HEADQUARTERS_WOOD_ROOM = 150;
 /** More wood than two ground stacks hold, so the heap spreads over a third tile. */
 const WOOD_SENT = 3 * MAX_GROUND_STACK;
+/** Units a mark's ceiling lets past a full house, onto the ground by its door. */
+const HEAPED_PAST_FULL = 2;
 /** Planks a trading post holds: more than three ground stacks, a whole number of two-plank batches. */
 const PARTNER_PLANKS = 16;
 
@@ -364,6 +366,21 @@ describe('a trader between its own houses', () => {
     expect(stockOf(sim, near, WOOD)).toBe(0);
     expect(holdOf(sim, trader, WOOD)).toBe(0);
     expect(groundUnits(sim, WOOD)).toBe(WOOD_SENT);
+  });
+
+  it("counts the heap by a full house's door toward its mark's ceiling", () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, WOOD_SENT]]);
+    const far = houseAt(sim, FAR_X, HUMAN, [[WOOD, HEADQUARTERS_WOOD_ROOM]]);
+    const trader = traderAt(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+    limit(sim, trader, far, WOOD, HEADQUARTERS_WOOD_ROOM + HEAPED_PAST_FULL, TRADE_LIMIT_NONE);
+
+    sim.run(RUN_TICKS);
+
+    expect(groundUnits(sim, WOOD)).toBe(HEAPED_PAST_FULL);
+    expect(holdOf(sim, trader, WOOD)).toBe(0);
+    expect(stockOf(sim, near, WOOD)).toBe(WOOD_SENT - HEAPED_PAST_FULL);
   });
 
   it('swaps two goods each house marks for itself', () => {

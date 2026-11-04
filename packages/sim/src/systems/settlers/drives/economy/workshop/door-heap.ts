@@ -39,29 +39,45 @@ export function doorHeapRoom(
   good: number,
 ): number {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
-  const { x, y } = terrain.coordsOf(door);
   let room = 0;
+  forEachDoorTile(terrain, door, (hx, hy) => {
+    const node = terrain.nodeAt(hx, hy);
+    if (!terrain.isWalkable(node) || blocked.has(node)) return;
+    let fill = 0;
+    let foreign = false;
+    for (const e of stockpilesAtNode(world, hx, hy)) {
+      if (!isLoosePile(world, e)) continue;
+      const stock = world.get(e, Stockpile);
+      const held = lowestStockedGood(stock);
+      if (held !== null && held !== good) foreign = true;
+      fill += stock.amounts.get(good) ?? 0;
+    }
+    if (!foreign) room += Math.max(0, MAX_GROUND_STACK - fill);
+  });
+  return room;
+}
+
+/** The units of `good` lying loose within {@link DOOR_HEAP_RADIUS_NODES} of `door`: its heap. */
+export function doorHeapUnits(world: World, terrain: TerrainGraph, door: NodeId, good: number): number {
+  let units = 0;
+  forEachDoorTile(terrain, door, (hx, hy) => {
+    for (const e of stockpilesAtNode(world, hx, hy)) {
+      if (isLoosePile(world, e)) units += world.get(e, Stockpile).amounts.get(good) ?? 0;
+    }
+  });
+  return units;
+}
+
+function forEachDoorTile(terrain: TerrainGraph, door: NodeId, visit: (hx: number, hy: number) => void): void {
+  const { x, y } = terrain.coordsOf(door);
   for (let ring = 0; ring <= DOOR_HEAP_RADIUS_NODES; ring++) {
     const offsets = ringOffsetCount(ring);
     for (let i = 0; i < offsets; i++) {
       const hx = x + ringOffsetDx(ring, i);
       const hy = y + ringOffsetDy(ring, i);
-      if (!terrain.inBounds(hx, hy)) continue;
-      const node = terrain.nodeAt(hx, hy);
-      if (!terrain.isWalkable(node) || blocked.has(node)) continue;
-      let fill = 0;
-      let foreign = false;
-      for (const e of stockpilesAtNode(world, hx, hy)) {
-        if (!isLoosePile(world, e)) continue;
-        const stock = world.get(e, Stockpile);
-        const held = lowestStockedGood(stock);
-        if (held !== null && held !== good) foreign = true;
-        fill += stock.amounts.get(good) ?? 0;
-      }
-      if (!foreign) room += Math.max(0, MAX_GROUND_STACK - fill);
+      if (terrain.inBounds(hx, hy)) visit(hx, hy);
     }
   }
-  return room;
 }
 
 /** An output stopping `recipes` at `workplace` that `worker` may lift for the door, and how much of it. */

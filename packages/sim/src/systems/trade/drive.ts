@@ -32,7 +32,7 @@ import {
   startRefillWait,
 } from '../settlers/atomics/start.js';
 import { fetchHaulingCart } from '../settlers/drives/economy/hauling-cart.js';
-import { doorHeapRoom } from '../settlers/drives/economy/workshop/door-heap.js';
+import { doorHeapRoom, doorHeapUnits } from '../settlers/drives/economy/workshop/door-heap.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { LendableTally, storageLendable } from '../settlers/targets/stores/storage-reserve.js';
@@ -470,8 +470,9 @@ function resetExchange(world: World, trader: Entity): void {
  * - A good both stops mark is balanced: it is loaded while this stop holds more than the other plus
  *   what is aboard, and unloaded while the other stop holds more (score `(here - there - aboard) / 2`).
  * - A mark limits the flow into its own stop: nothing is unloaded there once the stop holds `upTo`
- *   units, nothing is loaded for it once its stock plus what is aboard reaches `upTo`, and loading for
- *   it leaves `keep` units in the other stop, each counting what a pinned ship's helpers have under way.
+ *   units, nothing is loaded for it once its stock plus what is aboard reaches `upTo`, the heap by its
+ *   door counted toward the ceiling, and loading for it leaves `keep` units in the other stop, each
+ *   counting what a pinned ship's helpers have under way.
  *   A balanced good is two such flows, each limited by the mark at the stop it flows into.
  *   Approximation: `keep` stands in for the original's per-house minimum stock setting, and the `upTo`
  *   ceiling is this build's own addition (owner's choice).
@@ -512,7 +513,7 @@ function decideDomestic(
       (wantedHere !== undefined && scope.countsSettlement
         ? homeStockOf(scope, good)
         : stockOf(world, stop.house, slot)) + coming;
-    if (wantedHere !== undefined && reachesCeiling(wantedHere, held)) continue;
+    if (wantedHere !== undefined && reachesCeiling(scope, wantedHere, stop.house, good, held)) continue;
     if (wantedHere !== undefined && wantedThere !== undefined) {
       const there = storableFormAt(world, ctx, other.house, good);
       const shortfall = (there === undefined ? 0 : otherStockOf(scope, other, good)) - held;
@@ -537,7 +538,7 @@ function decideDomestic(
     )
       continue;
     const bound = otherStockOf(scope, other, carried) + hold.amount(carried);
-    if (reachesCeiling(wantedThere, bound)) continue;
+    if (reachesCeiling(scope, wantedThere, other.house, carried, bound)) continue;
     const leaving = helpers.toLift(carried);
     if (markOf(stop, good) !== undefined) {
       if (scope.countsSettlement) {
@@ -660,9 +661,20 @@ function heapRoomAt(scope: LoadScope, house: Entity, good: number): number {
   return doorHeapRoom(world, ctx, terrain, interactionCell(world, ctx, terrain, house), good);
 }
 
-/** Whether `units` in (or bound for) a mark's stop reach the mark's `upTo` ceiling. */
-function reachesCeiling(mark: DeepReadonly<TradeImportMark>, units: number): boolean {
-  return mark.upTo !== TRADE_LIMIT_NONE && units >= mark.upTo;
+/** Whether `units` in (or bound for) a mark's stop at `house` reach the mark's `upTo` ceiling, with what
+ *  of `good` lies heaped by the house's door, where the stop's goods go once its shelf is full. */
+function reachesCeiling(
+  scope: LoadScope,
+  mark: DeepReadonly<TradeImportMark>,
+  house: Entity,
+  good: number,
+  units: number,
+): boolean {
+  if (mark.upTo === TRADE_LIMIT_NONE) return false;
+  if (units >= mark.upTo) return true;
+  const { world, ctx, terrain } = scope;
+  const heaped = doorHeapUnits(world, terrain, interactionCell(world, ctx, terrain, house), good);
+  return units + heaped >= mark.upTo;
 }
 
 /** Unloading `good` at the stop's own house: onto its shelf while it has room, else onto the ground by its
