@@ -61,7 +61,7 @@ function runOneColony(env: ColonyEnv): readonly PlayerCommand[] {
     case 'running': {
       const ships = [
         ...afterLanding(env, colony),
-        ...runRoute(env, env.colony),
+        ...runRoute(env),
         ...runFerry(env, env.colony),
         ...defendColony(env, env.colony),
       ];

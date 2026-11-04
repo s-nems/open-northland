@@ -31,8 +31,8 @@ function heldShipsOf(colony: ColonyView): Entity[] {
   const ships: Entity[] = [];
   if (colony.scout !== null) ships.push(colony.scout.ship);
   if (colony.ship !== null) ships.push(colony.ship);
-  const routeShip = colony.route?.ship ?? null;
-  if (routeShip !== null) ships.push(routeShip);
+  for (const route of [colony.route, colony.relief])
+    if (route !== null && route.ship !== null) ships.push(route.ship);
   if (colony.ferry !== null) ships.push(colony.ferry.ship);
   return ships;
 }

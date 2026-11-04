@@ -23,7 +23,7 @@ export function mayBuildTradeShip(world: World, ctx: SystemContext, seat: number
 const SHIP_AHEAD_PHASES: ReadonlySet<ColonyState['phase']> = new Set(['siteChosen', 'scouting']);
 
 /** Whether `colony` lacks a carrying ship: from the site's choice until it claims one, and for a trade
- *  route that lost its ship, while a way clear of the fire that took it remains. */
+ *  route or its relief without a ship, while a way clear of the fire that took the last remains. */
 function shipOwed(ctx: SystemContext, colony: DeepReadonly<ColonyState>): boolean {
   if (colony.ship !== null) return false;
   const fitting =
@@ -31,7 +31,7 @@ function shipOwed(ctx: SystemContext, colony: DeepReadonly<ColonyState>): boolea
   const settled = colony.phase === 'founding' || colony.phase === 'running';
   const routeOwed =
     settled &&
-    (colony.route?.ship ?? null) === null &&
+    ((colony.route?.ship ?? null) === null || (colony.relief !== null && colony.relief.ship === null)) &&
     lineWayClear(ctx.terrain, colony.dangers, colony.berth, colony.shore);
   return fitting || routeOwed;
 }

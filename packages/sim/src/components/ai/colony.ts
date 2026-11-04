@@ -36,6 +36,9 @@ export interface ColonyRoute {
   hull: number;
   /** The units aboard the ship and in the trader's cart when last read: a drop at home is a delivery. */
   load: number;
+  /** The tick since which the colony's marks have asked more than one hold of this ship while the route
+   *  kept delivering, null while it keeps up. */
+  behindSince: number | null;
 }
 
 /** Where a colony's people ferry stands on its trip: taking riders on at `side`, or sailing for it. */
@@ -108,6 +111,8 @@ export interface ColonyState {
   delivered: number | null;
   builds: { building: string; placed: boolean }[];
   route: ColonyRoute | null;
+  /** A second trader and ship on the route's stops, raised once the route cannot keep up. */
+  relief: ColonyRoute | null;
   ferry: ColonyFerry | null;
   overflow: ColonyOverflow[];
   stalls: ColonyStall[];

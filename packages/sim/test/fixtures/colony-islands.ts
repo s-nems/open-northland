@@ -424,6 +424,7 @@ export function blankColony(land: number, overrides: Partial<ColonyState> = {}):
     delivered: null,
     builds: [],
     route: null,
+    relief: null,
     ferry: null,
     overflow: [],
     stalls: [],

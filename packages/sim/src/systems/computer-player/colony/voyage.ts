@@ -203,6 +203,7 @@ function settledOn(
     delivered: null,
     builds: [],
     route: null,
+    relief: null,
     ferry: null,
     overflow: [],
     stalls: [],

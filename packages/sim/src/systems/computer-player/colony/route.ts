@@ -1,6 +1,7 @@
 import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
+  type ColonyRoute,
   HaulingCart,
   Health,
   Marriage,
@@ -45,8 +46,10 @@ import { strandedShip } from '../sea-route.js';
 import { sailOrders } from './ferry.js';
 import { colonists } from './founding.js';
 import { sparePartyMen, standsOn } from './people.js';
+import { storesHeld } from './provision.js';
 import { lineWayClear, withDanger } from './sea-danger.js';
 import { colonyBuildings } from './spot.js';
+import { homeStockOf } from './stock.js';
 import { type ColonyStockPolicy, colonyStockPolicyOf } from './stock-policy.js';
 import {
   type ColonyEnv,
@@ -77,6 +80,16 @@ const MARKS_EVERY_DECISIONS = 15;
 
 export type RouteView = DeepReadonly<NonNullable<ColonyView['route']>>;
 
+/** Which of a colony's routes a decision works: its first, or the relief raised once that cannot keep up. */
+type RouteSlot = 'route' | 'relief';
+
+/** One trader round on arabskie_wyspy_wolna_gra_mieszana, home to colony and back (measured: about 15
+ *  game minutes, as the colony's food per mouth assumes). A route that unloaded within it is working. */
+const ROUTE_ROUND_TICKS = minutesToTicks(15);
+/** How long the marks must ask more than one hold while the route works before a relief sails beside it
+ *  (authored: two rounds, so one slow round or a burst of surplus raises none). */
+export const RELIEF_AFTER_TICKS = 2 * ROUTE_ROUND_TICKS;
+
 /** The first job of `content` whose id passes `test`. */
 function jobWhere(ctx: SystemContext, test: (id: string) => boolean): number | null {
   for (const [typeId, job] of contentIndex(ctx.content).jobs) if (test(job.id)) return typeId;
@@ -102,7 +115,13 @@ function routeLoad(world: World, ship: Entity, trader: Entity | null): number {
 /** Keep the record of the hull and the load: a hull that fell marks where the ship lies as danger, a load
  *  that fell with the ship moored at either stop is a delivery, so a full store at one end does not hide a
  *  working route. Only a change writes. */
-function noteRoute(env: ColonyEnv, colony: ColonyView, route: RouteView, ship: Entity): void {
+function noteRoute(
+  env: ColonyEnv,
+  colony: ColonyView,
+  route: RouteView,
+  ship: Entity,
+  slot: RouteSlot,
+): void {
   const { world, ctx } = env;
   const hull = world.tryGet(ship, Health)?.hitpoints ?? 0;
   const load = routeLoad(world, ship, route.trader);
@@ -114,26 +133,32 @@ function noteRoute(env: ColonyEnv, colony: ColonyView, route: RouteView, ship: E
   }
   if (load < route.load && (mooredOn(env, ship, homeLandOf(env)) || mooredOn(env, ship, colony.land)))
     env.edit().delivered = ctx.tick;
-  const live = env.edit().route;
+  const live = env.edit()[slot];
   if (live === null) return;
   live.hull = hull;
   live.load = load;
 }
 
+/** A route of no trader and no ship yet, behind on nothing. */
+function newRoute(tick: number, ship: Entity | null, hull: number): ColonyRoute {
+  return { trader: null, chosen: tick, ship, hull, load: 0, behindSince: null };
+}
+
 /** The colony takes `ship` for its route: the founding ship once its hold is out, or a free one at home. */
-export function takeRouteShip(env: ColonyEnv, ship: Entity): void {
+export function takeRouteShip(env: ColonyEnv, ship: Entity, slot: RouteSlot = 'route'): void {
   const { world, ctx } = env;
   const live = env.edit();
   const hull = world.tryGet(ship, Health)?.hitpoints ?? 0;
-  if (live.route === null) live.route = { trader: null, chosen: ctx.tick, ship, hull, load: 0 };
-  else Object.assign(live.route, { ship, hull, load: 0 });
+  const held = live[slot];
+  if (held === null) live[slot] = newRoute(ctx.tick, ship, hull);
+  else Object.assign(held, { ship, hull, load: 0 });
 }
 
 /** A route with no ship takes a free one at home while a way clear of the fire that took the last remains. */
-function claimShip(env: ColonyEnv, colony: ColonyView): void {
+function claimShip(env: ColonyEnv, colony: ColonyView, slot: RouteSlot): void {
   if (!lineWayClear(env.terrain, colony.dangers, colony.berth, colony.shore)) return;
   const ship = carryingShip(env);
-  if (ship !== null) takeRouteShip(env, ship);
+  if (ship !== null) takeRouteShip(env, ship, slot);
 }
 
 /** Bring an unpinned ship home: riders off where it lies at home, else a helm aboard sails it to the berth. */
@@ -187,7 +212,11 @@ function traderFor(env: ColonyEnv, trader: number): Entity | null {
 
 /** Keep the route's trader: a dead one, or one who has not taken the trade in time, is let go and the next
  *  is chosen; null while none is a trader yet. */
-function keepTrader(env: ColonyEnv, route: RouteView): { trader: Entity | null; commands: PlayerCommand[] } {
+function keepTrader(
+  env: ColonyEnv,
+  route: RouteView,
+  slot: RouteSlot,
+): { trader: Entity | null; commands: PlayerCommand[] } {
   const { world, ctx } = env;
   const job = jobWhere(ctx, isTraderJobId);
   if (job === null) return { trader: null, commands: [] };
@@ -198,7 +227,7 @@ function keepTrader(env: ColonyEnv, route: RouteView): { trader: Entity | null; 
     if (ctx.tick - route.chosen < TRADE_TAKE_UP_TICKS) return { trader: null, commands: [] };
   }
   const next = traderFor(env, job);
-  const live = env.edit().route;
+  const live = env.edit()[slot];
   if (live !== null) {
     live.trader = next;
     live.chosen = ctx.tick;
@@ -384,28 +413,38 @@ function cartOrder(env: ColonyEnv, trader: Entity, ship: Entity): PlayerCommand[
   return best === null ? [] : [{ kind: 'attachToVehicle', entity: trader, vehicle: best.e }];
 }
 
+/** The houses `slot`'s trader already plies between, then the first route's: a relief takes the same stops. */
+function heldStops(env: ColonyEnv, slot: RouteSlot, trader: Entity): Entity[] {
+  const { world, colony } = env;
+  const own = (world.tryGet(trader, TradeRoute)?.stops ?? []).map((s) => s.house);
+  const first = slot === 'relief' ? (colony.route?.trader ?? null) : null;
+  const firstStops =
+    first === null || !world.isAlive(first) ? [] : (world.tryGet(first, TradeRoute)?.stops ?? []);
+  return [...own, ...firstStops.map((s) => s.house)];
+}
+
 /**
- * What a colony's route does this decision. A route with no ship takes one; a ship not yet pinned comes home
- * and lets its riders off; a home man who has earned the trade takes it; the ship is pinned to him, his route
- * runs from home's store to the colony's level-3 warehouse, both standing for their settlements, with the
- * marks of the colony's stock policy, issued only as they change; on the workforce beat carriers are seated
- * as helpers and a cart goes to the trader.
+ * What one of a colony's routes does this decision. A route with no ship takes one; a ship not yet pinned
+ * comes home and lets its riders off; a home man who has earned the trade takes it; the ship is pinned to
+ * him, his route runs from home's store to the colony's level-3 warehouse, both standing for their
+ * settlements, with the marks of the colony's stock policy, issued only as they change; on the workforce
+ * beat carriers are seated as helpers and a cart goes to the trader.
  */
-export function runRoute(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
-  const { world, ctx, seat } = env;
-  const route = colony.route;
+function runRouteSlot(env: ColonyEnv, slot: RouteSlot): PlayerCommand[] {
+  const { world, ctx, seat, colony } = env;
+  const route = colony[slot];
   if (route === null || route.ship === null) {
-    claimShip(env, colony);
+    claimShip(env, colony, slot);
     return [];
   }
   const ship = route.ship;
   if (!world.has(ship, Vehicle) || strandedShip(world, ctx, seat, ship)) {
-    const live = env.edit().route;
+    const live = env.edit()[slot];
     if (live !== null) live.ship = null;
     return [];
   }
-  noteRoute(env, colony, route, ship);
-  const { trader, commands } = keepTrader(env, env.colony.route ?? route);
+  noteRoute(env, colony, route, ship, slot);
+  const { trader, commands } = keepTrader(env, env.colony[slot] ?? route, slot);
   const pinned = trader !== null && world.tryGet(trader, TradeShip)?.vehicle === ship;
   if (!pinned) {
     const home = shipHome(env, colony, ship);
@@ -413,11 +452,7 @@ export function runRoute(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
     if (!canPinTradeShip(world, ctx, trader, ship)) return commands;
     return [...commands, { kind: 'setTradeShip', entity: trader, ship }];
   }
-  const stops = stopsOf(
-    env,
-    colony,
-    (world.tryGet(trader, TradeRoute)?.stops ?? []).map((s) => s.house),
-  );
+  const stops = stopsOf(env, colony, heldStops(env, slot, trader));
   if (stops === null) return commands;
   const orders = [
     ...commands,
@@ -425,18 +460,73 @@ export function runRoute(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   ];
   if (orders.length > 0) return orders;
   orders.push(...syncMarks(env, trader, stops.home, stops.colony));
+  if (slot === 'route') noteBehind(env, trader, ship, stops.home, stops.colony);
   if (moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS))
     orders.push(...seatHelpers(env, trader, ship), ...cartOrder(env, trader, ship));
   return orders;
 }
 
-/** The colony lets its route go: the helpers off the ship, so it lies free for a ferry, the ship unpinned
- *  and the trader back to a civilian. A helper aboard at sea stays seated. */
-export function releaseRoute(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
+/** What a colony's routes do this decision: the first, and the relief once raised. */
+export function runRoute(env: ColonyEnv): PlayerCommand[] {
+  const orders = runRouteSlot(env, 'route');
+  if (env.colony.relief !== null) orders.push(...runRouteSlot(env, 'relief'));
+  return orders;
+}
+
+/** The units the marks still ask to move that the giving side spares: of each mark at the colony, what the
+ *  colony lacks of its `upTo` past what home holds above its `keep`; of each mark at home, what the colony
+ *  holds above its `keep`. */
+export function routeBacklog(
+  atColony: readonly DeepReadonly<TradeImportMark>[],
+  atHome: readonly DeepReadonly<TradeImportMark>[],
+  colonyHeld: (good: number) => number,
+  homeHeld: (good: number) => number,
+): number {
+  let units = 0;
+  for (const mark of atColony)
+    units += Math.max(0, Math.min(mark.upTo - colonyHeld(mark.good), homeHeld(mark.good) - mark.keep));
+  for (const mark of atHome) units += Math.max(0, colonyHeld(mark.good) - mark.keep);
+  return units;
+}
+
+/** Whether a route measurably cannot keep up: it unloaded within the last round, so its ship is at work,
+ *  and still the marks ask more than its hold carries in one trip. */
+export function routeBehind(backlog: number, hold: number, delivered: number | null, tick: number): boolean {
+  return backlog > hold && delivered !== null && tick - delivered <= ROUTE_ROUND_TICKS;
+}
+
+/** On the marks beat, keep the first route's record of how long it has been behind, and raise the relief
+ *  once that is {@link RELIEF_AFTER_TICKS}: a second trader and ship, which the decisions after take up. */
+function noteBehind(env: ColonyEnv, trader: Entity, ship: Entity, home: Entity, away: Entity): void {
+  const { world, ctx, seat, colony } = env;
+  if (colony.relief !== null || colony.route === null) return;
+  if (!moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, MARKS_EVERY_DECISIONS)) return;
+  const stops = world.tryGet(trader, TradeRoute)?.stops ?? [];
+  const atHome = stops.find((s) => s.house === home)?.imports ?? [];
+  const atColony = stops.find((s) => s.house === away)?.imports ?? [];
+  const held = storesHeld(env, colonyBuildings(env));
+  const homeStock = homeStockOf(world, ctx, seat);
+  const backlog = routeBacklog(
+    atColony,
+    atHome,
+    (g) => held.get(g) ?? 0,
+    (g) => homeStock.units(g),
+  );
+  const hold = contentIndex(ctx.content).vehicles.get(world.get(ship, Vehicle).vehicleType)?.stockSlots ?? 0;
+  const behind = routeBehind(backlog, hold, colony.delivered, ctx.tick);
+  const since = behind ? (colony.route.behindSince ?? ctx.tick) : null;
+  if (since !== colony.route.behindSince) {
+    const live = env.edit().route;
+    if (live !== null) live.behindSince = since;
+  }
+  if (since !== null && ctx.tick - since >= RELIEF_AFTER_TICKS)
+    env.edit().relief = newRoute(ctx.tick, null, 0);
+}
+
+/** One route let go: the helpers off the ship, so it lies free for a ferry, the ship unpinned and the
+ *  trader back to a civilian. A helper aboard at sea stays seated. */
+function releaseOne(env: ColonyEnv, route: RouteView): PlayerCommand[] {
   const { world, ctx } = env;
-  const route = colony.route;
-  if (route === null) return [];
-  env.edit().route = null;
   const trader = route.trader;
   const state = route.ship === null ? undefined : world.tryGet(route.ship, Vehicle);
   const helpersOff = (state === undefined ? [] : vehiclePassengers(state))
@@ -452,5 +542,18 @@ export function releaseRoute(env: ColonyEnv, colony: ColonyView): PlayerCommand[
     ...helpersOff,
     { kind: 'setTradeShip', entity: trader, ship: null },
     { kind: 'setJob', entity: trader, jobType: CIVILIST_JOB },
+  ];
+}
+
+/** The colony lets its routes go, the relief with the first. */
+export function releaseRoute(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
+  const { route, relief } = colony;
+  if (route === null && relief === null) return [];
+  const live = env.edit();
+  live.route = null;
+  live.relief = null;
+  return [
+    ...(route === null ? [] : releaseOne(env, route)),
+    ...(relief === null ? [] : releaseOne(env, relief)),
   ];
 }

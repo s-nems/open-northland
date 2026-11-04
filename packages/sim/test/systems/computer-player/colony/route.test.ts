@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AiControl,
   aiControlEntity,
+  Building,
   Female,
   Health,
   Marriage,
@@ -31,10 +32,16 @@ import {
 import { isAllocatableMan } from '../../../../src/systems/ai-shared/workforce/pool.js';
 import { seatBaseOf } from '../../../../src/systems/computer-player/base.js';
 import { colonySmallShips } from '../../../../src/systems/computer-player/colony/fleet.js';
-import { routeMarks } from '../../../../src/systems/computer-player/colony/route.js';
+import {
+  RELIEF_AFTER_TICKS,
+  routeBacklog,
+  routeBehind,
+  routeMarks,
+} from '../../../../src/systems/computer-player/colony/route.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { strandedShip } from '../../../../src/systems/computer-player/sea-route.js';
+import { addStock, stockOf } from '../../../../src/systems/missions/stock.js';
 import { setAiControl } from '../../../../src/systems/orders/ai.js';
 import { isTraderJob } from '../../../../src/systems/readviews/index.js';
 import { interactionCell } from '../../../../src/systems/settlers/targets/index.js';
@@ -211,6 +218,79 @@ describe('a colony trade route', () => {
       copy.step();
     }
     expect(copy.hashState()).toBe(sim.hashState());
+  });
+});
+
+/** Stone piled in the colony's store, far past one small ship's hold of 50, and the line it is topped up
+ *  at, so the route stays behind however many trips it makes. */
+const STONE_PILED = 200;
+const STONE_TOPPED_BELOW = 150;
+/** A small ship's hold in the fixture. */
+const SMALL_HOLD = 50;
+const ROUND_TICKS = minutesToTicks(15);
+/** What is left of the span a route must stay behind for, when the test takes it over. */
+const BEHIND_LEFT_TICKS = minutesToTicks(1);
+
+describe('a colony route that cannot keep up', () => {
+  it('counts what its marks ask past what the giving side keeps, each way', () => {
+    const atColony = [{ good: STONE, upTo: 20, keep: 5 }];
+    const atHome = [{ good: MUD, upTo: -1, keep: 10 }];
+    const colony = (good: number) => (good === STONE ? 4 : 30);
+    // The colony lacks 16 stone and home spares 7 past its keep; the colony holds 20 mud past its keep.
+    expect(routeBacklog(atColony, atHome, colony, () => 12)).toBe(7 + 20);
+    expect(
+      routeBacklog(
+        atColony,
+        atHome,
+        () => 40,
+        () => 0,
+      ),
+    ).toBe(30);
+  });
+
+  it('is behind only while its marks ask more than a hold and it unloaded within a round', () => {
+    const now = 10 * ROUND_TICKS;
+    expect(routeBehind(SMALL_HOLD + 1, SMALL_HOLD, now - ROUND_TICKS, now)).toBe(true);
+    expect(routeBehind(SMALL_HOLD, SMALL_HOLD, now, now)).toBe(false);
+    expect(routeBehind(SMALL_HOLD + 1, SMALL_HOLD, now - ROUND_TICKS - 1, now)).toBe(false);
+    expect(routeBehind(SMALL_HOLD + 1, SMALL_HOLD, null, now)).toBe(false);
+  });
+
+  it('raises a second trader and ship on the same stops once it has stayed behind', () => {
+    const { sim } = routedWorld();
+    const store = colonyBuildingsOf(sim).find(
+      (e) => sim.world.get(e, Building).buildingType === STOCK_TOP_TYPE,
+    ) as Entity;
+    const pile = () => {
+      const held = stockOf(sim.world, store, STONE);
+      if (held < STONE_TOPPED_BELOW) addStock(sim.world, store, STONE, STONE_PILED - held);
+    };
+    const first = routeTrader(sim) as Entity;
+    const stoneHome = () =>
+      sim.world.get(first, TradeRoute).stops[0]?.imports.some((m) => m.good === STONE) === true;
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => (pile(), stoneHome()))).toBe(true);
+    // Behind for all but the last minute of its span, and delivering: the next marks beat raises the relief.
+    const live = editColony(sim);
+    if (live.route === null) throw new Error('setup: no route');
+    live.route.behindSince = sim.tick - RELIEF_AFTER_TICKS + BEHIND_LEFT_TICKS;
+    live.delivered = sim.tick;
+    const relief = () => (colonyState(sim)?.relief ?? null) !== null;
+    expect(relief()).toBe(false);
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => (pile(), relief()))).toBe(true);
+    mooredShip(sim, SMALL_SHIP, THIRD_SHIP_AT);
+    const reliefTrader = () => {
+      const relief = colonyState(sim)?.relief;
+      const trader = relief?.trader ?? null;
+      if (trader === null || relief?.ship == null) return null;
+      return sim.world.tryGet(trader, TradeShip)?.vehicle === relief.ship ? trader : null;
+    };
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => (pile(), reliefTrader() !== null))).toBe(true);
+    const second = reliefTrader() as Entity;
+    expect(second).not.toBe(first);
+    const stopsOf = (trader: Entity) =>
+      (sim.world.tryGet(trader, TradeRoute)?.stops ?? []).map((stop) => stop.house);
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => stopsOf(second).length === 2)).toBe(true);
+    expect(stopsOf(second)).toEqual(stopsOf(first));
   });
 });
 
