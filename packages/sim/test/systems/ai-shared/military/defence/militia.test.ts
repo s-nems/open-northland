@@ -223,6 +223,23 @@ describe('computer defence - desperate militia', () => {
     expect(shooters.size).toBeGreaterThan(0);
   });
 
+  it('leaves a militiaman aboard a ship, who stands nowhere on the ground, out of the fight', () => {
+    const { sim, hq } = town();
+    control(sim, 'computer');
+    const people = crowd(sim, CROWD);
+    shelterFull(sim, hq, people);
+    raiderIn(sim);
+    decide(sim);
+    const [aboard] = militia(sim);
+    if (aboard === undefined) throw new Error('setup: nobody was armed');
+    // A rider has no position of his own while his ship carries him.
+    sim.world.remove(aboard, AttackOrder);
+    sim.world.remove(aboard, Position);
+
+    expect(() => decide(sim, DEFENCE_TICK + COMPUTER_DECISION_INTERVAL_TICKS)).not.toThrow();
+    expect(sim.world.has(aboard, AttackOrder)).toBe(false);
+  });
+
   it('rings its shelters first, and with room left arms only those who cannot take cover', () => {
     const { sim, hq } = town();
     control(sim, 'computer');

@@ -284,6 +284,8 @@ function arm(
 /** Send `e` at the armed raider of `zone` nearest him, ascending (distance, id), on the militia's leash. An
  *  unarmed offender is the offender answer's, not the militia's. */
 function engage(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity, zone: ZoneThreat): void {
+  // A man aboard a ship has no position of his own and nobody to reach from there.
+  if (!world.has(e, Position)) return;
   const at = entityNode(world, terrain, e);
   const x = terrain.xOf(at);
   const y = terrain.yOf(at);
