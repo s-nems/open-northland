@@ -109,6 +109,8 @@ const TRADE_START_TICKS = 60;
 const STRAY_PLANKS = 2;
 /** More wood than a handcart takes on one trip. */
 const PLENTY_OF_WOOD = 30;
+/** The units a handcart's hold takes. */
+const HANDCART_HOLD = 15;
 /** Long enough for a handcart's load of wood to be sold over several of the partner's refills. */
 const SELL_OUT_TICKS = 4000;
 /** Where the player sends the trader mid-stop: the row below the houses, between them. */
@@ -516,6 +518,26 @@ describe('a trader between its own houses', () => {
 
     expect(stockOf(sim, near, PLANK)).toBe(STRAY_PLANKS);
     expect(holdOf(sim, trader, PLANK)).toBe(0);
+  });
+
+  it('loads a scarce marked good beside a plentiful one rather than filling the hold with the first', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [
+      [WOOD, PLENTY_OF_WOOD],
+      [PLANK, STRAY_PLANKS],
+    ]);
+    const far = houseAt(sim, FAR_X, HUMAN, []);
+    const trader = traderAt(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+    mark(sim, trader, far, PLANK);
+
+    const laden = () =>
+      sim.world.has(trader, HaulingCart) &&
+      holdOf(sim, trader, WOOD) + holdOf(sim, trader, PLANK) >= HANDCART_HOLD;
+    for (let t = 0; t < RUN_TICKS && !laden(); t++) sim.step();
+
+    expect(laden()).toBe(true);
+    expect(holdOf(sim, trader, PLANK)).toBe(STRAY_PLANKS);
   });
 
   it('moves only the goods marked for import once any mark is set', () => {

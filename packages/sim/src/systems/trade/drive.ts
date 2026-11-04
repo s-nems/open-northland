@@ -493,8 +493,9 @@ function resetExchange(world: World, trader: Entity): void {
  * - With no mark on either stop nothing moves. The original then balances every good; this build waits
  *   for the player's marks instead (owner's choice).
  * Food is never taken out of a home. Approximations: the original ranks candidates by the houses'
- * request counters, which this build does not keep, so the lowest good id goes first; and it keeps
- * "home enhancer" goods out of a home, a good class the content does not flag.
+ * request counters, which this build does not keep, so the good with the fewest units aboard loads first,
+ * then the lowest id: one plentiful good does not fill every trip while another marked good waits; and
+ * it keeps "home enhancer" goods out of a home, a good class the content does not flag.
  */
 function decideDomestic(
   scope: LoadScope,
@@ -539,7 +540,7 @@ function decideDomestic(
   }
 
   if (hold.room <= 0) return NEXT;
-  for (const good of ownGoodsOf(ctx, hereType)) {
+  for (const good of fewestAboardFirst(ctx, hold, ownGoodsOf(ctx, hereType))) {
     const wantedThere = markOf(other, good);
     if (wantedThere === undefined || isFoodKeptAtHome(world, ctx, stop.house, good)) continue;
     const carried = edibleGoodFormOf(ctx.content, good);
@@ -743,6 +744,15 @@ function ownGoodsOf(ctx: ContentContext, buildingType: number): number[] {
   const stored = contentIndex(ctx.content).storedGoodsByBuilding.get(buildingType);
   if (stored === undefined) return [];
   return [...stored].filter((good) => countsAsOwnStock(ctx, buildingType, good)).sort((a, b) => a - b);
+}
+
+/** `goods`, ascending by id, reordered stably by the units of each (its carried form) the hold has aboard. */
+function fewestAboardFirst(ctx: ContentContext, hold: TraderHold, goods: readonly number[]): number[] {
+  const aboard = (good: number): number => hold.amount(edibleGoodFormOf(ctx.content, good));
+  return goods
+    .map((good) => ({ good, aboard: aboard(good) }))
+    .sort((a, b) => a.aboard - b.aboard || a.good - b.good)
+    .map(({ good }) => good);
 }
 
 /** The units of `good` a house can give up: its own stock, none of it while its recipe consumes the
