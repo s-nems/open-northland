@@ -111,8 +111,7 @@ function seeksShelterEnRoute(world: World, ctx: SystemContext, e: Entity, shelte
   const settler = world.tryGet(e, Settler);
   if (
     settler === undefined ||
-    settler.jobType === null ||
-    !sheltersOnAlarm(ctx.content, settler.jobType) ||
+    !takesCoverFrom(world, ctx.content, e, shelters) ||
     world.has(e, PlayerOrder) ||
     !(isTravelling(world, e) || world.has(e, Fleeing))
   ) {
