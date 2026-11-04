@@ -30,16 +30,20 @@ export function colonyManifest(world: World, ctx: SystemContext, seat: number, p
   return [...lines].map(([goodType, amount]) => ({ goodType, amount }));
 }
 
-/** Whether `stock` holds what the manifest still wants beyond what lies aboard `ship`. */
+/** Whether `stock`, less what home's sites hold or still lack (`claimed`), holds what the manifest still
+ *  wants beyond what lies aboard `ship`: seat stock counts a site's hold, which only the site spends. */
 export function manifestInStock(
   world: World,
   stock: SeatStock,
+  claimed: ReadonlyMap<number, number>,
   ship: Entity,
   manifest: readonly CargoLine[],
 ): boolean {
   const hold = world.tryGet(ship, VehicleStock)?.lines;
   return manifest.every(
-    (line) => stock.units(line.goodType) >= line.amount - (hold?.get(line.goodType)?.current ?? 0),
+    (line) =>
+      stock.units(line.goodType) - (claimed.get(line.goodType) ?? 0) >=
+      line.amount - (hold?.get(line.goodType)?.current ?? 0),
   );
 }
 

@@ -10,6 +10,7 @@ import {
   Rider,
   Settler,
   SettlerNeeds,
+  setStockAmount,
   UnderConstruction,
   Vehicle,
   VehicleStock,
@@ -28,7 +29,7 @@ import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../src/systems/ai-sha
 import { colonyHeldShips, homeBuildings } from '../../../../src/systems/ai-shared/home-roster.js';
 import { holdLoad } from '../../../../src/systems/computer-player/colony/cargo.js';
 import { spareMen } from '../../../../src/systems/computer-player/colony/people.js';
-import { colonyEnv, returning } from '../../../../src/systems/computer-player/colony/voyage.js';
+import { colonyEnv, fittingOut, returning } from '../../../../src/systems/computer-player/colony/voyage.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { seatNeedsShips } from '../../../../src/systems/computer-player/sea-route.js';
@@ -52,7 +53,18 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { BUILDER, FARM_TYPE, HOME_TOP_TYPE, HOME_TYPE, HUNTER, SEAT, STOCK_TOP_TYPE } from '../support.js';
+import {
+  BUILDER,
+  FARM_TYPE,
+  HOME_TOP_TYPE,
+  HOME_TYPE,
+  HUNTER,
+  SEAT,
+  STOCK_TOP_TYPE,
+  STOCK_TYPE,
+  VIKING,
+  WOOD,
+} from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -82,6 +94,10 @@ const SECOND_SHIP_AT = { x: 90, y: 100 };
 /** A swarm in the strait off the east island's shore, and its fish. */
 const EAST_FISH_AT = { hx: 134, hy: 60 };
 const FISH_IN_SWARM = 40;
+/** A home warehouse site on the west island, south of the headquarters. */
+const HOME_SITE_AT = { x: 72, y: 84 };
+/** The wood a colony's first store costs, by the fixture: the manifest's only wood. */
+const STORE_BILL_WOOD = 2;
 
 function freeShipsOf(sim: Simulation): Entity[] {
   const ctx = ctxOf(sim);
@@ -388,5 +404,40 @@ describe('a failed voyage', () => {
 
   it('lets the next scouting go at once when it turned back before that', () => {
     expect(failedOnce('none').retryAt).toBe(0);
+  });
+});
+
+describe('a colony fitting out', () => {
+  it("waits while the manifest's goods lie only in home's sites, which spend them", () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    const before = new Set(homeBuildings(sim.world, ctxOf(sim), SEAT));
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: STOCK_TYPE,
+      ...HOME_SITE_AT,
+      tribe: VIKING,
+      owner: SEAT,
+      force: true,
+      underConstruction: true,
+    });
+    sim.step();
+    // The manifest's wood lies in the new site alone: all the store's bill, which the site spends itself.
+    for (const e of homeBuildings(sim.world, ctxOf(sim), SEAT))
+      setStockAmount(sim.world, e, WOOD, before.has(e) ? 0 : STORE_BILL_WOOD);
+    const live = editColony(sim);
+    live.phase = 'fittingOut';
+    live.since = sim.tick;
+    live.ship = mooredShip(sim);
+    const ctx = ctxOf(sim);
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (ctx.terrain === undefined || carrier === null) throw new Error('setup: no terrain or AI seat');
+    const env = { world: sim.world, ctx, terrain: ctx.terrain, seat: SEAT, carrier };
+    const colony = sim.world.get(carrier, ComputerColony).colonies[0];
+    if (colony === undefined) throw new Error('setup: no colony');
+
+    fittingOut(colonyEnv(env, colony), colony);
+
+    expect(colonyState(sim)?.phase).toBe('fittingOut');
   });
 });
