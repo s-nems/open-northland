@@ -27,6 +27,7 @@ import {
   LANDING_FORM_TIMEOUT_TICKS,
   LANDING_SAIL_TIMEOUT_TICKS,
 } from '../../../../../src/systems/computer-player/military/operations/landing.js';
+import { COLONY_RAID_LEAST_MEN } from '../../../../../src/systems/computer-player/military/operations/landing-aim.js';
 import {
   LANDING_BIG_SHIPS,
   LANDING_FLEET_MIN_SHIPS,
@@ -81,13 +82,30 @@ const LANDING_LIMIT_TICKS = LANDING_FORM_TIMEOUT_TICKS + 2 * LANDING_SAIL_TIMEOU
 /** Twice the decisions a full fleet with its full band takes to open its landing here. */
 const DECISIONS_TO_OPEN = 8;
 
-/** {@link aiContent} with a small ship that admits spearmen and, unless `shelterFire`, no house bow, so
- *  the foe's headquarters shelters its people without the fire a landing weighs. */
-function landingContent(shelterFire: boolean): ContentSet {
+/** A spear's blow on every armour, so an armed spearman weighs his share of a fight. */
+const SPEAR_DAMAGE = 100;
+const ARMOUR_MATERIALS = ['0', '1', '2', '3', '4'];
+/** A ship's seats for a wave big enough to storm one tower. */
+const STORM_SHIP_SEATS = 9;
+
+interface ContentOptions {
+  /** Keep the house bow, so the foe's headquarters fires on a landing. */
+  readonly shelterFire: boolean;
+  /** Give the spear its blow ({@link SPEAR_DAMAGE}); else every man weighs a bare man's point. */
+  readonly armed: boolean;
+  readonly seats: number;
+}
+
+/** {@link aiContent} with a small ship of `seats` that admits spearmen and, unless `shelterFire`, no house
+ *  bow, so the foe's headquarters shelters its people without the fire a landing weighs. */
+function landingContent({ shelterFire, armed, seats }: ContentOptions): ContentSet {
   const base = aiContent();
+  const damage = Object.fromEntries(ARMOUR_MATERIALS.map((m) => [m, SPEAR_DAMAGE]));
   return parseContentSet({
     ...base,
-    weapons: shelterFire ? base.weapons : base.weapons.filter((w) => w.id !== 'house_bow'),
+    weapons: base.weapons
+      .filter((w) => shelterFire || w.id !== 'house_bow')
+      .map((w) => (armed && w.jobType === SPEARMAN ? { ...w, damage } : w)),
     buildings: base.buildings.map((b) => (b.typeId === FARM_TYPE ? { ...b, hitpoints: FARM_HITPOINTS } : b)),
     vehicles: [
       {
@@ -95,7 +113,7 @@ function landingContent(shelterFire: boolean): ContentSet {
         id: 'ship_small',
         jobId: 52,
         stockSlots: 0,
-        passengerSlots: SHIP_SEATS,
+        passengerSlots: seats,
         logicSize: 2,
         passengerJobs: [SPEARMAN],
         commanderJob: 24,
@@ -106,13 +124,21 @@ function landingContent(shelterFire: boolean): ContentSet {
   });
 }
 
-function islands(): TerrainMap {
+/** Cell rows of the channel that, with `colony`, cuts the east island in two: the foe's headquarters north
+ *  of it, his farm on a colony island south of it. */
+const CHANNEL_FROM = 30;
+const CHANNEL_TO = 38;
+
+function islands(colony: boolean): TerrainMap {
   const GRASS = 0;
   const WATER = 1;
   const { width, height } = MAP_CELLS;
   const typeIds = new Array<number>(width * height).fill(GRASS);
   for (let row = 0; row < height; row++)
     for (let col = STRAIT_FROM; col < STRAIT_TO; col++) typeIds[row * width + col] = WATER;
+  if (colony)
+    for (let row = CHANNEL_FROM; row < CHANNEL_TO; row++)
+      for (let col = STRAIT_TO; col < width; col++) typeIds[row * width + col] = WATER;
   return halfCellMapFromCells({ width, height, typeIds });
 }
 
@@ -141,15 +167,27 @@ function landingWorld({
   ships,
   men,
   shelterFire = false,
+  armed = false,
+  seats = SHIP_SEATS,
+  colony = false,
   foe = [],
 }: {
   ships?: number;
   men?: number;
   shelterFire?: boolean;
+  armed?: boolean;
+  /** Each ship's seats besides the commander's. */
+  seats?: number;
+  /** Cut the east island in two ({@link islands}). */
+  colony?: boolean;
   /** More foe buildings on the east island. */
   foe?: readonly { readonly buildingType: number; readonly at: { x: number; y: number } }[];
 } = {}): LandingWorld {
-  const sim = new Simulation({ seed: 7, content: landingContent(shelterFire), map: islands() });
+  const sim = new Simulation({
+    seed: 7,
+    content: landingContent({ shelterFire, armed, seats }),
+    map: islands(colony),
+  });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: true, modules: militaryOnly() });
   const place = (buildingType: number, at: { x: number; y: number }, owner: number) =>
@@ -172,7 +210,7 @@ function landingWorld({
     const at = { x: SHIP_COLUMN, y: FIRST_SHIP_ROW + SHIP_SPACING * i };
     createVehicle(sim.world, ctxOf(sim), { vehicleType: SHIP, ...at, tribe: VIKING, owner: SEAT });
   }
-  spawnBand(sim, men ?? fleet * MEN_PER_SHIP, { x: BARRACKS.x - 6, y: BARRACKS.y + 8 }, ARMY_RANK, SEAT);
+  spawnBand(sim, men ?? fleet * (seats + 1), { x: BARRACKS.x - 6, y: BARRACKS.y + 8 }, ARMY_RANK, SEAT);
   return { sim, fleet };
 }
 
@@ -377,7 +415,7 @@ describe('landing operations', () => {
     });
   });
 
-  it('sails no landing while a tower covers the headquarters and nothing else lies clear', () => {
+  it('sails no landing while a tower covers the headquarters, nothing else lies clear and the wave cannot storm it', () => {
     const { sim } = landingWorld({ foe: [{ buildingType: TOWER_TYPE, at: FOE_TOWER }] });
     runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
       expect(landings(sim)).toEqual([]);
@@ -397,6 +435,39 @@ describe('landing operations', () => {
       seen = landings(sim)[0] ?? seen;
       return (seen?.landing?.landed ?? 0) > 0;
     });
+    expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it('storms the headquarters a tower covers once the wave outweighs the tower twice', () => {
+    const { sim } = landingWorld({
+      armed: true,
+      seats: STORM_SHIP_SEATS,
+      foe: [{ buildingType: TOWER_TYPE, at: FOE_TOWER }],
+    });
+    let seen: OperationView | undefined;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return (seen?.landing?.landed ?? 0) > 0;
+    });
+    expect(seen?.target.entity).toBe(foeHeadquarters(sim));
+    expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it('raids a rival colony with a band sized to it while too few ships lie free for his headquarters', () => {
+    const ships = LANDING_BIG_SHIPS - 1;
+    const { sim } = landingWorld({ ships, colony: true, foe: [{ buildingType: FARM_TYPE, at: FOE_FARM }] });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
+    let seen: OperationView | undefined;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return (seen?.landing?.landed ?? 0) > 0;
+    });
+    const target = seen?.target;
+    expect(
+      target === undefined ? null : terrain.componentOf(terrain.nodeAtClamped(target.hx, target.hy)),
+    ).toBe(colonyLand);
+    expect(seen?.landing?.startMen).toBe(COLONY_RAID_LEAST_MEN);
     expect(seen?.landing?.landed).toBeGreaterThan(0);
   });
 

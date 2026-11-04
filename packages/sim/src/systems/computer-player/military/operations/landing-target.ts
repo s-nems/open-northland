@@ -8,12 +8,13 @@ import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../../context.js';
 import {
   ARMOR_MATERIAL,
+  type BuildingCombatClass,
   buildingCombatClass,
   houseBow,
   shelterCapacityOf,
 } from '../../../readviews/index.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
-import { believedBuildings } from '../../knowledge/intel/index.js';
+import { believedBuildings, rememberedBuildings } from '../../knowledge/intel/index.js';
 import { fighterPoints } from '../points.js';
 import type { OperationEnv } from './lifecycle.js';
 import { RAID_TOWER_CLEARANCE_NODES } from './raid-target.js';
@@ -28,12 +29,15 @@ const NO_BLOCKING = 0;
 /** What reading a seat's belief of a land takes: no operation need be open. */
 type BeliefEnv = Pick<OperationEnv, 'world' | 'ctx' | 'terrain' | 'seat'>;
 
-/** One enemy building the seat believes stands, with where a band walks to strike it. */
+/** One enemy building the seat believes stands, with where a band walks to strike it, its owner when last
+ *  seen and the points the seat last saw posted on it. */
 export interface BelievedTarget {
   readonly entity: Entity;
   readonly buildingType: number;
+  readonly owner: number;
   readonly at: HalfCellNode;
   readonly approach: NodeId;
+  readonly postedPoints: number;
 }
 
 /** Whether a building of `buildingType` shoots a landing: a tower, or a type its owner's people shelter in
@@ -44,32 +48,55 @@ function shoots(ctx: SystemContext, buildingType: number): boolean {
   );
 }
 
-/** The enemy buildings on `land` the seat believes stand and could fall: a seen one with hitpoints left, a
- *  remembered one out of sight of a type with hitpoints. Walls are no target. Costs the believed
- *  buildings. */
-function believedTargets(env: BeliefEnv, land: number): BelievedTarget[] {
+/** The enemy buildings the seat believes stand and could fall, by the land component they are struck from:
+ *  a seen one with hitpoints left, a remembered one out of sight of a type with hitpoints. Walls are no
+ *  target, and land `only` keeps a single land. Costs the believed buildings. */
+function believedTargets(env: BeliefEnv, only: number | null): Map<number, BelievedTarget[]> {
   const { world, ctx, terrain, seat } = env;
   const enemy = (owner: number): boolean => owner !== seat && diplomacyStance(world, seat, owner) === 'enemy';
-  const targets: BelievedTarget[] = [];
+  const byLand = new Map<number, BelievedTarget[]>();
+  const add = (land: number, target: BelievedTarget): void => {
+    if (only !== null && land !== only) return;
+    if (buildingCombatClass(ctx, target.buildingType) === 'wall') return;
+    const list = byLand.get(land);
+    if (list === undefined) byLand.set(land, [target]);
+    else list.push(target);
+  };
   const { seen, remembered } = believedBuildings(world, ctx, seat);
+  // The posts last seen on each remembered building, a seen one's included.
+  const posted = new Map<Entity, number>();
+  for (const b of rememberedBuildings(world, seat)) posted.set(b.entity, b.postedPoints);
   for (const e of seen) {
     const building = world.get(e, Building);
     const owner = ownerOf(world, e);
     if (owner === undefined || !enemy(owner) || (world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
     const at = anchorNodeOf(world, e);
     const approach = interactionCell(world, ctx, terrain, e);
-    if (at !== null && terrain.componentOf(approach) === land)
-      targets.push({ entity: e, buildingType: building.buildingType, at, approach });
+    if (at === null) continue;
+    add(terrain.componentOf(approach), {
+      entity: e,
+      buildingType: building.buildingType,
+      owner,
+      at,
+      approach,
+      postedPoints: posted.get(e) ?? 0,
+    });
   }
   for (const b of remembered) {
     if (!enemy(b.owner)) continue;
     const type = contentIndex(ctx.content).buildings.get(b.buildingType);
     if (type === undefined || buildingHitpointsFor(type, undefined) === undefined) continue;
     const approach = terrain.nodeAtClamped(b.hx, b.hy);
-    if (terrain.componentOf(approach) === land)
-      targets.push({ entity: b.entity, buildingType: b.buildingType, at: { hx: b.hx, hy: b.hy }, approach });
+    add(terrain.componentOf(approach), {
+      entity: b.entity,
+      buildingType: b.buildingType,
+      owner: b.owner,
+      at: { hx: b.hx, hy: b.hy },
+      approach,
+      postedPoints: b.postedPoints,
+    });
   }
-  return targets.filter((t) => buildingCombatClass(ctx, t.buildingType) !== 'wall');
+  return byLand;
 }
 
 /** A tower or shelter the seat believes shoots a landing, with the people it shelters on alarm. */
@@ -94,8 +121,20 @@ export interface BelievedLand {
 
 /** The {@link BelievedLand} of `land`. Costs the believed buildings. */
 export function believedLand(env: BeliefEnv, land: number): BelievedLand {
-  const targets = believedTargets(env, land);
+  const targets = believedTargets(env, land).get(land) ?? [];
   return { targets, sources: fireSourcesOf(env.ctx, targets) };
+}
+
+/** The {@link BelievedLand} of every land the seat believes holds an enemy building, ascending land. Costs
+ *  the believed buildings once. */
+export function believedLands(env: BeliefEnv): ReadonlyMap<number, BelievedLand> {
+  const lands = new Map<number, BelievedLand>();
+  const byLand = believedTargets(env, null);
+  for (const land of [...byLand.keys()].sort((a, b) => a - b)) {
+    const targets = byLand.get(land) ?? [];
+    lands.set(land, { targets, sources: fireSourcesOf(env.ctx, targets) });
+  }
+  return lands;
 }
 
 /** The `sources` within {@link RAID_TOWER_CLEARANCE_NODES} of `at`, but the building `except`. */
@@ -108,28 +147,36 @@ export function underFire(sources: readonly FireSource[], at: HalfCellNode): boo
   return sourcesReaching(sources, at).length > 0;
 }
 
+/** A storm's objective tiers, best first: the CombatSystem's own siege priority ({@link buildingCombatClass}),
+ *  so the towers fall before the rest of a covered settlement. */
+const STORM_RANK: Readonly<Record<BuildingCombatClass, number>> = { hq: 0, tower: 1, other: 2, wall: 3 };
+
 /**
  * What landed men standing at `from` on the `believed` land strike next: an enemy headquarters there that
  * no other tower or shelter covers (it falls fast and is the war aim), else the enemy building nearest
  * `from` that lies clear of every believed tower's and shelter's reach ({@link underFire}), the lower id
- * on a tie.
- * Null once none is left: the rest of the land is a siege, not a landing's work. Authored: observed on
- * arabskie_wyspy_wolna_gra_mieszana, waves sent on a headquarters beside a large tower lost most of their
- * dead near it, mostly to the people sheltering inside, while it fell.
+ * on a tie. A `storm` strikes covered ground too: the headquarters, else the nearest tower, else the
+ * nearest building. Null once none is left. Authored: observed on arabskie_wyspy_wolna_gra_mieszana,
+ * waves sent on a headquarters beside a large tower lost most of their dead near it while it fell, so only
+ * a landing that clearly outweighs the cover storms it (`landing-aim.ts`).
  */
 export function landingObjective(
   ctx: SystemContext,
   believed: BelievedLand,
   from: HalfCellNode,
+  storm = false,
 ): { readonly entity: Entity; readonly node: NodeId; readonly at: HalfCellNode } | null {
   const { targets, sources } = believed;
   let best: BelievedTarget | null = null;
   let bestRank = 0;
   let bestDistance = 0;
   for (const t of targets) {
-    const hq = buildingCombatClass(ctx, t.buildingType) === 'hq';
-    if (sourcesReaching(sources, t.at, hq ? t.entity : undefined).length > 0) continue;
-    const rank = hq ? 0 : 1;
+    const tier = buildingCombatClass(ctx, t.buildingType);
+    const hq = tier === 'hq';
+    let rank: number;
+    if (storm) rank = STORM_RANK[tier];
+    else if (sourcesReaching(sources, t.at, hq ? t.entity : undefined).length > 0) continue;
+    else rank = hq ? 0 : 1;
     const distance = nodeManhattan(t.at, from);
     if (
       best === null ||
@@ -143,6 +190,11 @@ export function landingObjective(
     }
   }
   return best === null ? null : { entity: best.entity, node: best.approach, at: best.at };
+}
+
+/** How many of `sources` reach `at` ({@link sourcesReaching}), the building `except` left out. */
+export function coverAt(sources: readonly FireSource[], at: HalfCellNode, except?: Entity): number {
+  return sourcesReaching(sources, at, except).length;
 }
 
 /**

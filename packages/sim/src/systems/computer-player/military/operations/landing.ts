@@ -1,6 +1,5 @@
 import {
   AttackOrder,
-  Building,
   diplomacyStance,
   Engagement,
   type LandingOperation,
@@ -26,21 +25,20 @@ import { isShipVehicle } from '../../../readviews/vehicles.js';
 import { mooringSpotsOf } from '../../../vehicles/dock.js';
 import { crewInside } from '../../../vehicles/movement.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
-import { computerProfileOf, type Share } from '../../difficulty.js';
-import { LANDING_SHORE_SPACING_NODES, type SeaRoute, seaRouteOf, shorePoints } from '../../sea-route.js';
-import { LANDING_FLEET_MIN_SHIPS, landingFewestShips, landingFleetShips } from '../../workforce/craft.js';
-import { knownDefendingPoints } from '../enemy-strength.js';
-import { marchOrders } from '../muster.js';
-import { launchRatioReached } from '../plan.js';
-import { unitPoints } from '../points.js';
+import { computerProfileOf } from '../../difficulty.js';
+import { LANDING_SHORE_SPACING_NODES, shorePoints } from '../../sea-route.js';
 import {
-  type BelievedLand,
-  believedFireAt,
-  believedLand,
-  type FireSource,
-  landingObjective,
-  underFire,
-} from './landing-target.js';
+  LANDING_FLEET_MIN_SHIPS,
+  landingFewestShips,
+  landingFleetShips,
+  SOLDIERS_PER_SHIP,
+} from '../../workforce/craft.js';
+import { ownArmyPoints } from '../enemy-strength.js';
+import { marchOrders } from '../muster.js';
+import { unitPoints } from '../points.js';
+import { homeOf } from './band.js';
+import { type LandingAim, landingAim, stormObjective } from './landing-aim.js';
+import { believedLand, type FireSource, landingObjective, underFire } from './landing-target.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleEnemyFighters } from './raid-target.js';
 
@@ -54,8 +52,10 @@ import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleEnemyFighters } from '.
 
 const SECONDS_PER_MINUTE = 60;
 
-/** How long after a landing ends before the next one forms. */
+/** How long after a landing ends before the next one forms, for an army its landing fleet seats. */
 export const LANDING_COOLDOWN_TICKS = 5 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+/** The shortest such pause, for an army far bigger than its fleet seats (`cooldownTicks`). */
+export const LANDING_QUICK_COOLDOWN_TICKS = SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 /** The most a landing waits for its men to walk to their ships and board. */
 export const LANDING_FORM_TIMEOUT_TICKS = 4 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 /** The most its ships sail out before it turns back, and sail home before it lets the crews go. */
@@ -79,12 +79,6 @@ export const LANDING_SHORE_STAY_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
 /** The most the waiting ships wait for the men called back to walk aboard before they sail without the
  *  rest. */
 export const LANDING_REEMBARK_TICKS = 2 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
-
-/** The least a landing outweighs what the seat believes defends the rival, whatever its posture's launch
- *  ratio. Authored: observed on arabskie_wyspy_wolna_gra_mieszana, a landing at parity with a rival's
- *  soldiers all fell within minutes for far fewer of his, and one against a fraction of its weight fell
- *  too, to his towers and the fire of his sheltering people: landed men cannot fall back. */
-export const LANDING_EDGE: Share = { num: 3, den: 2 };
 
 const PERCENT = 100;
 
@@ -121,22 +115,18 @@ export function freeShips(env: ShipEnv, home: number): Entity[] {
 }
 
 /**
- * The shore points of a landing's ships ({@link shorePoints}): on the rival's land, nearest his headquarters,
+ * The shore points of a landing's ships ({@link shorePoints}) on the `aim`'s land, nearest where it heads,
  * outside the reach of every tower and shelter the seat believes stands there ({@link underFire}), so the
- * hulls waiting at the shore are not shot. Authored: observed on arabskie_wyspy_wolna_gra_mieszana, ships
- * moored beside a rival's headquarters, its people shooting from inside, lost most hulls and every man
- * aboard before the last one moored.
+ * hulls waiting at the shore are not shot; a storm takes the nearest covered ones when too few lie clear.
+ * Authored: observed on arabskie_wyspy_wolna_gra_mieszana, ships moored beside a rival's headquarters, its
+ * people shooting from inside, lost most hulls and every man aboard before the last one moored.
  */
-function landingShores(
-  env: OperationEnv,
-  ship: Entity,
-  route: SeaRoute,
-  believed: BelievedLand,
-  count: number,
-): HalfCellNode[] {
+function landingShores(env: OperationEnv, ship: Entity, aim: LandingAim, count: number): HalfCellNode[] {
   const { world, ctx, terrain } = env;
-  const clear = (at: HalfCellNode): boolean => !underFire(believed.sources, at);
-  return shorePoints(world, ctx, terrain, ship, route.rival, route.headquarters.node, clear, count);
+  const clear = (at: HalfCellNode): boolean => !underFire(aim.believed.sources, at);
+  const shores = shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, clear, count);
+  if (!aim.storm || shores.length >= count) return shores;
+  return shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, () => true, count);
 }
 
 /** The tick from which the seat may land: its peace over and its difficulty's first wave due. */
@@ -412,7 +402,8 @@ interface LandedOrders {
 
 /**
  * The landed men march on the landing's next objective from where the first of them stands
- * ({@link landingObjective}); a man fighting or on his way is left to it.
+ * ({@link landingObjective}), storming covered ground while they clearly outweigh what defends it
+ * ({@link stormObjective}); a man fighting or on his way is left to it.
  */
 function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
   const { world, ctx, terrain } = env;
@@ -420,8 +411,14 @@ function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
   const first = landed[0];
   const from = first === undefined ? null : nodeOfEntity(world, first);
   if (from === null) return { landed, striking: false, fire: [], commands: [] };
-  const believed = believedLand(env, rivalComponent(env, op));
-  const goal = landingObjective(ctx, believed, from);
+  const land = rivalComponent(env, op);
+  const believed = believedLand(env, land);
+  let goal = landingObjective(ctx, believed, from);
+  if (goal === null) {
+    let points = 0;
+    for (const e of landed) points += unitPoints(world, ctx, e);
+    goal = stormObjective(env, believed, land, op.target.owner, from, points);
+  }
   if (goal === null) return { landed, striking: false, fire: believed.sources, commands: [] };
   const free = landed.filter(
     (e) => !spokenFor(world, e) && !world.has(e, Engagement) && !world.has(e, AttackOrder),
@@ -626,62 +623,49 @@ function crewsOf(
 }
 
 /**
- * A landing when the seat's posture attacks, its peace is over, its rival lies over the sea
- * ({@link seaRouteOf}) and is an enemy, at least {@link landingFewestShips} of its ships lie free and moored,
- * and the free men on its home land fill at least {@link LANDING_FLEET_MIN_SHIPS} of them. Every such man
- * goes, in as few of those ships as seat him, weighing the posture's launch ratio, at least
- * {@link LANDING_EDGE} against an army it knows, of what the seat believes defends the rival plus the fire
- * it believes covers the first objective ({@link believedFireAt}); an unknown army counts at parity, and
- * the fire alone must not outweigh the wave. No landing sails while nothing on the rival's land lies
- * clear to strike ({@link landingObjective}). The men fill the ships by {@link crewsOf}; each ship docks
- * at its own shore point ({@link landingShores}).
+ * A landing when the seat's posture attacks and its peace is over, on the land {@link landingAim} picks
+ * among every land the seat believes holds an enemy building: a rival's headquarters land takes every free
+ * man on home land once at least {@link landingFewestShips} of its ships lie free and moored and the men fill
+ * {@link LANDING_FLEET_MIN_SHIPS} of them; a raid on a colony takes the band sized to it. Either sails in as
+ * few of the free ships as seat it. The men fill the ships by {@link crewsOf}; each ship docks at its own
+ * shore point ({@link landingShores}).
  */
 function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<LandingOperation> | null {
   const { world, ctx, terrain, seat, orders } = env;
   const ratio = orders.launchRatio;
   if (ratio === null || ctx.tick < landingFromTick(world, seat)) return null;
-  const route = seaRouteOf(world, ctx, seat);
-  if (route === null) return null;
+  const home = terrain.componentOf(env.home);
+  if (home === NO_COMPONENT) return null;
   const fleet = landingFleetShips(world, seat, computerProfileOf(world, seat));
-  const fewest = landingFewestShips(fleet);
-  const moored = freeShips(env, route.home).slice(0, fleet);
-  if (moored.length < fewest) return null;
-  const owner = route.headquarters.owner;
-  if (diplomacyStance(world, seat, owner) !== 'enemy') return null;
+  const moored = freeShips(env, home).slice(0, fleet);
+  if (moored.length === 0) return null;
   const men = free.filter((e) => {
     const node = standingNode(world, terrain, e);
-    return node !== null && terrain.componentOf(node) === route.home && !onErrand(world, e);
+    return node !== null && terrain.componentOf(node) === home && !onErrand(world, e);
   });
   const seatsOf = (ship: Entity): number => world.get(ship, Vehicle).passengers.length;
   let least = 0;
   for (const ship of moored.slice(0, LANDING_FLEET_MIN_SHIPS)) least += seatsOf(ship);
-  if (men.length < least) return null;
-  // The fewest ships, in id order, that seat every man at home.
+  let seats = 0;
+  for (const ship of moored) seats += seatsOf(ship);
+  const ranked = men
+    .map((entity) => ({ entity, points: unitPoints(world, ctx, entity) }))
+    .sort((a, b) => b.points - a.points || a.entity - b.entity);
+  const bigLanding = moored.length >= landingFewestShips(fleet) && men.length >= least;
+  const aim = landingAim(env, home, homeOf(env), ranked, ratio, { seats, bigLanding });
+  if (aim === null) return null;
+  // The fewest ships, in id order, that seat the wave.
   const ships: Entity[] = [];
   let capacity = 0;
   for (const ship of moored) {
-    if (capacity >= men.length) break;
+    if (capacity >= aim.men.length) break;
     ships.push(ship);
     capacity += seatsOf(ship);
   }
-  const crews = crewsOf(env, ships, men);
-  const wave = crews.flatMap((crew) => crew.men);
-  let points = 0;
-  for (const e of wave) points += unitPoints(world, ctx, e);
-  // An enemy it knows nothing of is taken at parity on the posture's own ratio, as every launch takes him.
-  const known = knownDefendingPoints(world, ctx, seat, owner);
-  const edge =
-    known === null || ratio.num * LANDING_EDGE.den >= LANDING_EDGE.num * ratio.den ? ratio : LANDING_EDGE;
-  const believed = believedLand(env, route.rival);
+  const crews = crewsOf(env, ships, aim.men);
   const first = crews[0];
-  const shores = first === undefined ? [] : landingShores(env, first.ship, route, believed, crews.length);
-  const nearest = shores[0];
-  const goal = nearest === undefined ? null : landingObjective(ctx, believed, nearest);
-  if (goal === null) return null;
-  const tribe = world.tryGet(route.headquarters.entity, Building)?.tribe;
-  const fire = tribe === undefined ? 0 : believedFireAt(ctx, believed.sources, goal.at, tribe);
-  const opposing = known === null ? Math.max(points, fire) : known + fire;
-  if (!launchRatioReached(points, opposing, edge)) return null;
+  const shores = first === undefined ? [] : landingShores(env, first.ship, aim, crews.length);
+  if (shores.length === 0) return null;
   const commands: PlayerCommand[] = [];
   const landingShips: LandingShip[] = [];
   crews.forEach((crew, i) => {
@@ -696,14 +680,14 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
       leg: 'out',
     });
   });
-  const hq = route.headquarters;
+  const wave = crews.flatMap((crew) => crew.men);
   const op: LandingOperation = {
     id,
     kind: 'landing',
     state: 'forming',
     since: ctx.tick,
     members: [...wave].sort((a, b) => a - b),
-    target: { hx: hq.node.hx, hy: hq.node.hy, entity: hq.entity, owner },
+    target: { hx: aim.towards.hx, hy: aim.towards.hy, entity: aim.entity, owner: aim.owner },
     reason: null,
     ships: landingShips,
     startShips: landingShips.length,
@@ -714,9 +698,22 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
   return { op, commands };
 }
 
+/**
+ * How long after a landing ends before the next one forms: {@link LANDING_COOLDOWN_TICKS}, shortened in
+ * proportion as the seat's fit army outgrows the seats of its landing fleet, down to
+ * {@link LANDING_QUICK_COOLDOWN_TICKS}, so a bigger army lands more often. Costs the seat's fighters.
+ */
+function cooldownTicks(env: OperationEnv): number {
+  const { world, ctx, seat } = env;
+  const fleetSeats = landingFleetShips(world, seat, computerProfileOf(world, seat)) * SOLDIERS_PER_SHIP;
+  const men = ownArmyPoints(world, ctx, seat).men;
+  if (men <= fleetSeats) return LANDING_COOLDOWN_TICKS;
+  return Math.max(LANDING_QUICK_COOLDOWN_TICKS, Math.floor((LANDING_COOLDOWN_TICKS * fleetSeats) / men));
+}
+
 export const landingHandler: OperationHandler<LandingOperation> = {
   phase: 'beforeCampaign',
-  cooldownTicks: () => LANDING_COOLDOWN_TICKS,
+  cooldownTicks,
   step,
   open,
 };
