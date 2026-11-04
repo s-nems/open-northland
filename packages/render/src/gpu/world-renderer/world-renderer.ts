@@ -552,7 +552,13 @@ export class WorldRenderer {
     this.terrain.animate(waterSeconds);
     const screenW = this.app.screen.width;
     const screenH = this.app.screen.height;
-    const weatherView = { camera, screenW, screenH, viewport: cameraViewport(camera, screenW, screenH) };
+    const weatherView = {
+      camera,
+      screenW,
+      screenH,
+      viewport: cameraViewport(camera, screenW, screenH),
+      resolution: this.offscreen.drawResolution(),
+    };
     this.weather = this.climate.step({
       field: this.weatherField,
       viewport: weatherView.viewport,

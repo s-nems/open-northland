@@ -99,6 +99,8 @@ export class PrecipitationLayer {
     private readonly kind: WeatherKind,
     private readonly field: WeatherFieldTextures,
     private readonly reach: WeatherReach,
+    /** Sand only: this layer draws the large wisps, not the dashes. */
+    puffs = false,
   ) {
     const channel = new Float32Array(WEATHER_KINDS.length);
     channel[WEATHER_KINDS.indexOf(kind)] = 1;
@@ -119,6 +121,7 @@ export class PrecipitationLayer {
         type: 'vec2<f32>',
       },
       uDraw: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
+      ...(kind === 'sand' ? { uPuffPass: { value: puffs ? 1 : 0, type: 'f32' } } : {}),
     }) as PrecipitationUniforms;
     this.shader = new Shader({
       glProgram: precipitationProgram(kind),

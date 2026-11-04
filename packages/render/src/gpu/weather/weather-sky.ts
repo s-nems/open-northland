@@ -1,4 +1,4 @@
-import { Container, type Renderer } from 'pixi.js';
+import { Container, Filter, Rectangle, type Renderer } from 'pixi.js';
 import type { Camera } from '../../data/projection/iso.js';
 import type { Viewport } from '../../data/projection/viewport.js';
 import { WEATHER_SNAP_SECONDS } from '../../data/weather/climate.js';
@@ -12,15 +12,22 @@ import {
 } from '../../data/weather/precipitation.js';
 import { WEATHER_KINDS, type WeatherConditions, type WeatherKind } from '../../data/weather/types.js';
 import type { FogWashMask } from '../overlays/index.js';
+import { glProgramFor } from '../shaders/program-source.js';
 import { type AtmosphereFrame, WeatherAtmosphere } from './atmosphere.js';
 import { atmosphereLook, atmosphereLookScratch } from './atmosphere-look.js';
 import { WeatherFieldTextures } from './field-textures.js';
 import { flashingStrike, LightningBolt } from './lightning-bolt.js';
 import { type PrecipitationFrame, PrecipitationLayer } from './precipitation-layer.js';
+import { WISP_UPSCALE_SOURCE } from './precipitation-shader.js';
 import { WeatherReach } from './weather-reach.js';
 
-/** Paint order of the particle kinds: dust behind snow behind rain. */
+/** Paint order of the particle kinds: dust behind snow behind rain, the sand's wisps behind its dashes. */
 const PARTICLE_ORDER: readonly WeatherKind[] = ['sand', 'snow', 'rain'];
+/** The sand's large soft wisps draw into a target at this share of the world's draw resolution and are
+ *  scaled up bilinearly. At full size they blend several screens of fill per frame in a sandstorm, the
+ *  dearest part of the weather on a weak GPU; their edges fade over tens of px, so the coarser target
+ *  stays within a few levels of the full-size picture. */
+const WISP_RESOLUTION_SHARE = 0.5;
 /** Screen fraction a flash without a strike lights around: the sky above the view's middle. */
 const FLASH_UNPLACED = 0.5;
 
@@ -31,6 +38,8 @@ export interface WeatherSkyView {
   readonly screenH: number;
   /** World rectangle the camera frames: `cameraViewport(camera, screenW, screenH)`. */
   readonly viewport: Viewport;
+  /** Device px per screen px the world and its sky draw at. */
+  readonly resolution: number;
 }
 
 type SkyFrame = {
@@ -56,6 +65,12 @@ export class WeatherSky {
   private readonly reach = new WeatherReach();
   private readonly atmosphere: WeatherAtmosphere;
   private readonly layers: Readonly<Record<WeatherKind, PrecipitationLayer>>;
+  /** The sand's wisps, apart from its dashes, in {@link wispAir}. */
+  private readonly sandWisps: PrecipitationLayer;
+  private readonly wispAir = new Container();
+  /** Pixi takes a filter's resolution as absolute, so it follows the view's on every frame. */
+  private readonly wispUpscale: Filter;
+  private readonly wispArea = new Rectangle();
   private readonly bolt: LightningBolt;
   private enabled = true;
   private readonly travel = new PrecipitationTravel();
@@ -91,6 +106,16 @@ export class WeatherSky {
       snow: new PrecipitationLayer('snow', this.field, this.reach),
       sand: new PrecipitationLayer('sand', this.field, this.reach),
     };
+    this.sandWisps = new PrecipitationLayer('sand', this.field, this.reach, true);
+    this.wispUpscale = new Filter({
+      glProgram: glProgramFor(WISP_UPSCALE_SOURCE),
+      resources: {},
+      resolution: WISP_RESOLUTION_SHARE,
+    });
+    this.wispAir.filters = [this.wispUpscale];
+    this.wispAir.filterArea = this.wispArea;
+    this.wispAir.addChild(this.sandWisps.mesh);
+    this.container.addChild(this.wispAir);
     for (const kind of PARTICLE_ORDER) this.container.addChild(layers[kind].mesh);
     this.layers = layers;
     this.bolt = new LightningBolt(this.container);
@@ -99,7 +124,7 @@ export class WeatherSky {
   /** The map's weather; call on map load and whenever a script rewrites it. A change cross-fades. */
   setField(field: WeatherField | null): void {
     this.field.set(field);
-    for (const kind of PARTICLE_ORDER) this.layers[kind].bindField();
+    for (const layer of this.particleLayers()) layer.bindField();
     this.field.dropRetired();
   }
 
@@ -137,7 +162,7 @@ export class WeatherSky {
     this.container.visible = true;
     if (this.reach.update()) {
       this.atmosphere.bindReach();
-      for (const kind of PARTICLE_ORDER) this.layers[kind].bindReach();
+      for (const layer of this.particleLayers()) layer.bindReach();
     }
     const frame = this.frame;
     frame.screenW = screenW;
@@ -175,22 +200,36 @@ export class WeatherSky {
       const layer = this.layers[kind];
       if (!this.field.any) {
         layer.hide();
+        if (kind === 'sand') this.sandWisps.hide();
         continue;
       }
       const amount = this.field.maxAmount(kind, viewport);
       const intensity = weatherIntensity(kind, amount);
       const count = particleCount(kind, screenW, screenH, intensity, zoom, stormOf(kind, amount));
       layer.update(frame, count, intensity);
+      if (kind === 'sand') this.sandWisps.update(frame, count, intensity);
     }
+    this.fitWispAir(screenW, screenH, view.resolution);
     this.bolt.update(flashing, conditions.flash, screenW, screenH, shiftX, shiftY);
   }
 
   destroy(): void {
     this.atmosphere.destroy();
-    for (const kind of PARTICLE_ORDER) this.layers[kind].destroy();
+    for (const layer of this.particleLayers()) layer.destroy();
     this.bolt.destroy();
     this.field.destroy();
     this.container.destroy({ children: true });
+  }
+
+  private particleLayers(): PrecipitationLayer[] {
+    return [...PARTICLE_ORDER.map((kind) => this.layers[kind]), this.sandWisps];
+  }
+
+  /** The wisp pass runs only while wisps show, over the whole screen. */
+  private fitWispAir(screenW: number, screenH: number, resolution: number): void {
+    this.wispAir.visible = this.sandWisps.mesh.visible;
+    this.wispArea.set(0, 0, screenW, screenH);
+    this.wispUpscale.resolution = resolution * WISP_RESOLUTION_SHARE;
   }
 
   private hide(): void {

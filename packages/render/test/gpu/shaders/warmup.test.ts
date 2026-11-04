@@ -17,7 +17,7 @@ import {
 import { WEATHER_GRADE_SOURCE, WEATHER_VEIL_SOURCE } from '../../../src/gpu/weather/atmosphere.js';
 import { ATMOSPHERE_NOISE_BAKE_SOURCE } from '../../../src/gpu/weather/atmosphere-noise.js';
 import { GROUND_REACTIONS_SOURCE } from '../../../src/gpu/weather/ground-reactions.js';
-import { precipitationSource } from '../../../src/gpu/weather/precipitation-shader.js';
+import { precipitationSource, WISP_UPSCALE_SOURCE } from '../../../src/gpu/weather/precipitation-shader.js';
 import { DEFAULT_SHADOW_STYLE } from '../../../src/gpu/world-batch/shadow-style.js';
 import { useHeadlessShaderContext } from '../../support/shader-context.js';
 
@@ -157,6 +157,7 @@ describe('boot shader programs', () => {
         WEATHER_VEIL_SOURCE,
         GROUND_REACTIONS_SOURCE,
         ...WEATHER_KINDS.map((kind) => precipitationSource(kind)),
+        WISP_UPSCALE_SOURCE,
       ]).sort(),
     );
     expect(nothing.every((name) => everything.includes(name))).toBe(true);

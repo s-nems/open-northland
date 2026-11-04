@@ -18,7 +18,7 @@ import { SHADED_DECOR_SOURCE, SHADED_TERRAIN_SOURCE, TINTED_TERRAIN_SOURCE } fro
 import { WEATHER_GRADE_SOURCE, WEATHER_VEIL_SOURCE } from '../weather/atmosphere.js';
 import { ATMOSPHERE_NOISE_BAKE_SOURCE } from '../weather/atmosphere-noise.js';
 import { GROUND_REACTIONS_SOURCE } from '../weather/ground-reactions.js';
-import { precipitationSource } from '../weather/precipitation-shader.js';
+import { precipitationSource, WISP_UPSCALE_SOURCE } from '../weather/precipitation-shader.js';
 import { WORLD_BATCH_MAX_TEXTURES, worldBatchProgramSource } from '../world-batch/shader.js';
 import { DEFAULT_SHADOW_STYLE, type ShadowStyle } from '../world-batch/shadow-style.js';
 import { OFFSCREEN_WORLD_SOURCE } from '../world-renderer/offscreen-world.js';
@@ -44,8 +44,8 @@ function unconditionalPrograms(): readonly GlslProgramSource[] {
   ];
 }
 
-/** The sky grade, veil and their noise bake, ground reactions and precipitation the weather setting
- *  turns off. */
+/** The sky grade, veil and their noise bake, ground reactions, precipitation and the sand wisps'
+ *  upscale the weather setting turns off. */
 function weatherPrograms(): readonly GlslProgramSource[] {
   return [
     ATMOSPHERE_NOISE_BAKE_SOURCE,
@@ -53,6 +53,7 @@ function weatherPrograms(): readonly GlslProgramSource[] {
     WEATHER_VEIL_SOURCE,
     GROUND_REACTIONS_SOURCE,
     ...WEATHER_KINDS.map((kind) => precipitationSource(kind)),
+    WISP_UPSCALE_SOURCE,
   ];
 }
 

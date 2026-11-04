@@ -395,10 +395,13 @@ const SAND_VERTEX = `
   // Vertical wobble of a dash, whole cycles per time split.
   const vec2 WOBBLE_CYCLES = vec2(20.0, 50.0);
   const float WOBBLE_PX = 5.0;
+  // 1 draws the wisps alone, 0 the dashes alone: the wisps go to a coarser target of their own.
+  uniform float uPuffPass;
   void main(void) {
     float depth = aSeedA.z;
     vec2 box = uScreen + 2.0 * MARGIN;
     bool puff = aSeedB.w < PUFF_SHARE;
+    if (puff != (uPuffPass > 0.5)) { cull(); return; }
     float fall = mix(FALL.x, FALL.y, depth) * jitterOf(aSeedB.x);
     float windBase = WIND_RESPONSE * (puff ? PUFF_WIND : mix(0.7, 1.15, depth) * (0.8 + 0.4 * aSeedB.x));
     vec2 centre = wrapped(box, fall, windBase, mix(PARALLAX.x, PARALLAX.y, depth));
@@ -479,6 +482,37 @@ export function precipitationSource(kind: WeatherKind): GlslProgramSource {
     fragment: FRAGMENT_HEAD + body.fragment,
   };
 }
+
+/** Draws the sand wisps' coarse target over the screen, bilinearly upscaled: a Pixi filter pass that
+ *  copies its input, premultiplied. The pooled input texture is larger than the drawn frame, so a read
+ *  clamps to the frame's last texel centres instead of blending in the cleared rest. */
+export const WISP_UPSCALE_SOURCE: GlslProgramSource = {
+  name: 'weather-wisp-upscale',
+  vertex: `#version 300 es
+  in vec2 aPosition;
+  out vec2 vTextureCoord;
+  uniform vec4 uInputSize;
+  uniform vec4 uOutputFrame;
+  uniform vec4 uOutputTexture;
+  void main(void) {
+    vec2 position = aPosition * uOutputFrame.zw + uOutputFrame.xy;
+    position.x = position.x * (2.0 / uOutputTexture.x) - 1.0;
+    position.y = position.y * (2.0 * uOutputTexture.z / uOutputTexture.y) - uOutputTexture.z;
+    gl_Position = vec4(position, 0.0, 1.0);
+    vTextureCoord = aPosition * (uOutputFrame.zw * uInputSize.zw);
+  }
+`,
+  fragment: `#version 300 es
+  precision highp float;
+  in vec2 vTextureCoord;
+  out vec4 finalColor;
+  uniform sampler2D uTexture;
+  uniform vec4 uInputClamp;
+  void main(void) {
+    finalColor = texture(uTexture, clamp(vTextureCoord, uInputClamp.xy, uInputClamp.zw));
+  }
+`,
+};
 
 /** The compiled program for `kind`, shared by every sky. */
 export function precipitationProgram(kind: WeatherKind): GlProgram {
