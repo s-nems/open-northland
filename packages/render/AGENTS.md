@@ -85,8 +85,9 @@ reads in one pass over the chain, as `gpu/world-batch/shader.ts` does for a body
 and keep xBR and the other magnifiers out of per-slot code. Its selection outline picks the page once
 and reads its eight plain coverage taps there, a cost the budget below and the Windows compile check bound.
 The chain picks its slot through a switch, which the Direct3D compiler handled in half the time of
-the same reads in a nested if-chain.
-`test/gpu/shaders/budget.test.ts` bounds the inlined texture operations
+the same reads in a nested if-chain. A loop the compiler unrolls in every branch costs the same way:
+`gpu/map-objects/decor-shadow-shader.ts` reads its page sizes in one chain and works out the blur
+weights once, so its second chain's branches hold only the guarded, weighted fetches. `test/gpu/shaders/budget.test.ts` bounds the inlined texture operations
 of every program; a new GL program or generated variant joins `gpu/shaders/catalog.ts` in the same
 commit so the budget and the Windows compile check (`npm run test:shaders`) see it.
 
