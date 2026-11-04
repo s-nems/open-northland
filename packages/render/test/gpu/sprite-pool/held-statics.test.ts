@@ -180,7 +180,7 @@ describe('SpritePool - a looping tree', () => {
     bindings: { ...sheet.bindings, resource: { byGood: { 1: [{ frames: [BOB, SWAY_BOB] }] }, default: BOB } },
   };
 
-  it('is never held: an untouched tree steps its loop on every tick', () => {
+  it('holds an untouched tree unvisited, steps its loop on every tick and keeps it pickable', () => {
     const mirror = mirrorOf([
       entity(SETTLER, 1, 1, walker),
       entity(TREE, 4, 1, { Resource: { goodType: 1 } }),
@@ -192,11 +192,18 @@ describe('SpritePool - a looping tree', () => {
         c.children.map((s) => (s as unknown as { texture: { frame: { x: number } } }).texture.frame.x),
       );
     pool.reconcile(frameOf(mirror.snapshot()));
-    const before = drawnX();
     const refs = presentedRefs();
-    pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, 2, walker)])));
-    expect(refs()).toContain(TREE);
-    expect(drawnX()).not.toEqual(before);
+    for (const x of [2, 3]) {
+      const before = drawnX();
+      const snapshot = advance(mirror, [moved(SETTLER, x, walker)]);
+      pool.reconcile(frameOf(snapshot));
+      expect(drawnX()).not.toEqual(before);
+      expect(pool.boundsOf(TREE)).toBeDefined();
+      const stepped = drawnX();
+      pool.reconcile(frameOf(snapshot, { alpha: 0.5 }));
+      expect(drawnX()).toEqual(stepped);
+    }
+    expect(refs()).not.toContain(TREE);
   });
 });
 

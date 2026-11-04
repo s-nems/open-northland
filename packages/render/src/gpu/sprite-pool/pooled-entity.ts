@@ -51,6 +51,10 @@ interface PooledEntityBase extends PresentationTrack {
    *  a held entity needs no present, and its last sighting and bounds stand for the current frame. −1 =
    *  not held. */
   held: number;
+  /** Whether this entity is on the pool's list of held entities that step a looping record. */
+  looping: boolean;
+  /** The whole animation tick its looping record was last presented at. */
+  loopStep: number;
   selectionEllipse: { -readonly [K in keyof SelectionEllipse]: SelectionEllipse[K] } | undefined;
   readonly bound: BindStamp;
 }
@@ -103,6 +107,8 @@ export function createPooled(kind: SpriteKind, palette: PaletteLut | undefined):
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
     boundsFrame: -1,
     held: -1,
+    looping: false,
+    loopStep: Number.NaN,
     selectionEllipse: undefined,
     bound: new BindStamp(),
   };

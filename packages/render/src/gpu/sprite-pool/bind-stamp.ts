@@ -110,8 +110,10 @@ export class BindStamp {
   private upgradePct: number | undefined;
   private upgradeTypeId: number | undefined;
   private player: number | undefined;
-  /** Whether a bound layer leans with the vegetation clock or steps a looping record. */
-  private clocked = false;
+  /** Whether a bound layer leans with the vegetation clock. */
+  private sheared = false;
+  /** Whether a bound layer steps a looping record. */
+  private looped = false;
 
   /** Whether the bind reads the same item, frame-wide inputs and erased region it last read. */
   holds(item: DrawItem, epoch: number, erased: ErasedRegion | undefined): boolean {
@@ -153,7 +155,13 @@ export class BindStamp {
 
   /** Whether the bound layers hold still with the frame clocks: none of them sways or loops. */
   get clockFree(): boolean {
-    return !this.clocked;
+    return !this.sheared && !this.looped;
+  }
+
+  /** Whether the bound layers move only by stepping a looping record, which changes only with the
+   *  whole tick of the animation clock. */
+  get loopsOnly(): boolean {
+    return this.looped && !this.sheared;
   }
 
   /** Whether `item` carries the same fields, each the same value, as the item last bound or carried. */
@@ -218,7 +226,8 @@ export class BindStamp {
     this.drawX = motion.drawX;
     this.drawY = motion.drawY;
     this.drawRotation = motion.drawRotation;
-    this.clocked = false;
+    this.sheared = false;
+    this.looped = false;
     if (layers === null) {
       this.layers = null;
       return;
@@ -229,7 +238,8 @@ export class BindStamp {
       const layer = layers[i];
       if (layer === undefined) continue;
       bound[i] = layer;
-      if (layer.shear !== undefined || layer.clocked === true) this.clocked = true;
+      if (layer.shear !== undefined) this.sheared = true;
+      if (layer.clocked === true) this.looped = true;
     }
     this.layers = bound;
   }

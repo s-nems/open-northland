@@ -62,6 +62,12 @@ export function writeMotionClocks(
         : Math.floor(motion.gaitPhase);
 }
 
+/** The whole tick of the animation clock {@link writeMotionClocks} gives a resting entity: a looping
+ *  record's frame changes only when this does. */
+export function loopStepOf(tick: number, alpha: number, continuousAnimation: boolean): number {
+  return continuousAnimation ? Math.floor(tick + clamp01(alpha)) : tick;
+}
+
 /**
  * Retain a settler's or vehicle's heading through a route gap or arrival, and present idle after a
  * blocked route stops making progress. Wildlife has no persisted human turn heading to supply its idle

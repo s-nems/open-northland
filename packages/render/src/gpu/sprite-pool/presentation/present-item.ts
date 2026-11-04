@@ -208,6 +208,36 @@ export function presentItem(
   return layers;
 }
 
+/**
+ * {@link presentItem}'s layers for a resting entity of a kind with no pose of its own, at this frame's
+ * clocks: its anchor, pose and reveal stand still, so only the clocks the layers read move. The motion
+ * track keeps its last tick, as it does for an entity the pool holds unvisited.
+ */
+export function presentAtRest(
+  track: PresentationTrack,
+  item: DrawItem,
+  tick: number,
+  frameAlpha: number,
+  sheet: SpriteSheet | undefined,
+  environmentMotion: boolean,
+  wind?: WindSway,
+  seaClock?: number,
+): readonly ResolvedLayer[] | null {
+  const clocks = track.clocks;
+  writeMotionClocks(clocks, item, tick, frameAlpha, track.motion, false, environmentMotion);
+  return resolveLayersInto(
+    track.layers,
+    sheet,
+    item,
+    clocks.animation,
+    clocks.gait,
+    environmentMotion ? tick + frameAlpha : clocks.animation,
+    undefined,
+    environmentMotion ? wind : undefined,
+    seaClock ?? clocks.animation,
+  );
+}
+
 /** Whether a present of `item` would repeat the track's last one (see {@link TickPresent}) and return
  *  its layers unchanged. */
 export function repeatsInTick(

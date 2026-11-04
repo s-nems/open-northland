@@ -52,6 +52,7 @@ import { cullBox, type KindReach, type KindReaches, kindReaches } from './cull-r
 import { GroundPileCover } from './ground-pile-cover.js';
 import { damageScaffoldLayers } from './layers/building.js';
 import { resolvesWithoutClock } from './layers/resolve.js';
+import type { ResolvedLayer } from './layers/resolved-layer.js';
 import { NightBearers } from './night-bearers.js';
 import {
   anchorOf,
@@ -66,7 +67,8 @@ import { type EntityBounds, meshablePooled, type PooledEntity } from './pooled-e
 import { PortraitSubject } from './portrait-subject.js';
 import { atRest, SNAP_DISTANCE } from './presentation/motion.js';
 import { presentEntity } from './presentation/present-entity.js';
-import { repeatsInTick } from './presentation/present-item.js';
+import { presentAtRest, repeatsInTick } from './presentation/present-item.js';
+import { loopStepOf } from './presentation/presentation.js';
 import { reconcileSprites } from './reconcile.js';
 import { SpriteSceneCache } from './scene-cache.js';
 import { SelectionEffects } from './selection-effects.js';
@@ -299,6 +301,9 @@ export class SpritePool {
   /** Held entities the last full pass visited off the draw list for an emphasis that moves with the
    *  frame clock, such as a pick target's breathing lift; still frames present them with {@link moving}. */
   private readonly movingHeld: PooledEntity[] = [];
+  /** Held entities that step a looping record: they skip the visits, and each new step of the animation
+   *  clock presents them alone. Entries whose hold ended leave on the next step. */
+  private readonly loopers: PooledEntity[] = [];
   /** What the last full pass drew under, which a still frame must match. */
   private passEpoch = -1;
   private passMarks: PoolFrame['marks'];
@@ -387,6 +392,11 @@ export class SpritePool {
   private readonly epoch = new FrameEpoch();
   /** What each kind can draw around its anchor; a kind absent here is culled by the scene's box alone. */
   private readonly reaches: KindReaches;
+  /** Whether this pass culls by the same boxes as the last one: the screen's alone, the camera, screen
+   *  and cast shear unchanged. */
+  private cullsStand = false;
+  private cullScreenOnly = false;
+  private cullShear = Number.NaN;
   /** The insets the last frame framed, and those this frame frames so far. */
   private framed: FramedInset[] = [];
   private framing: FramedInset[] = [];
@@ -436,6 +446,7 @@ export class SpritePool {
     this.snapResolution = frame.snapResolution;
     if (this.repeatsStill(scene, frame)) {
       this.presentMoving(frame);
+      this.stepLoopers(frame);
       this.reap(scene.liveRefs);
       this.sheet?.palette?.flush();
       this.drawDamage(frame);
@@ -457,11 +468,21 @@ export class SpritePool {
     const kept = scene.kept;
     const generation = this.holdGeneration;
     const culls = this.cullBoxes(frame);
+    const cullsStand = this.cullsStand;
     // A new list per full pass: a reader keying on the list sees a rebuild as a new one.
     const drawn: SpriteDrawItem[] | null = culls === undefined ? null : [];
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
+      // A self-contained item kept from the last build, its entity holding still: nothing to present.
+      const held =
+        kept !== undefined && kept[i] === 1 && (item as unknown as HoldMarked)[HELD] === generation;
+      // A held item passed every cull since its hold began, so under the last pass's boxes it still does.
+      if (held && cullsStand) {
+        drawn?.push(item);
+        this.lastPooled[i] = undefined;
+        continue;
+      }
       // An item drawing nothing on screen stays detached, and out of the drawn list the pickers read.
       const boxes = culls?.[item.kind];
       if (
@@ -474,8 +495,7 @@ export class SpritePool {
         continue;
       }
       drawn?.push(item);
-      // A self-contained item kept from the last build, its entity holding still: nothing to present.
-      if (kept !== undefined && kept[i] === 1 && (item as unknown as HoldMarked)[HELD] === generation) {
+      if (held) {
         this.lastPooled[i] = undefined;
         continue;
       }
@@ -498,6 +518,7 @@ export class SpritePool {
       if (pe !== undefined && pe.held === generation && pe.lastSeen !== this.frameId && item !== undefined)
         this.visitHeld(pe, item as SpriteDrawItem, frame);
     }
+    this.stepLoopers(frame);
     this.lastItems = scene.items;
     this.drawn = drawn ?? scene.items;
     this.lastPooled.length = scene.items.length;
@@ -553,13 +574,21 @@ export class SpritePool {
       this.portrait.capture(item.ref, pe, item.frozen === true);
       this.passHasPortrait = true;
     }
-    const still = !emphasis && this.holdsStill(pe, item);
+    const rests = !emphasis && this.restsInPlace(pe, item);
+    const still = rests && pe.bound.clockFree;
     // Only a static-run item may stand unvisited: the scene names it among its released statics when a
     // delta touches it, its withheld state changes or it leaves the view. Any other kind is rebuilt every
     // build, and only a visit notices it left the draw list.
-    pe.held = still && isStaticItem(item) ? this.holdGeneration : -1;
+    const loops = rests && pe.bound.loopsOnly && isStaticItem(item);
+    pe.held = (still && isStaticItem(item)) || loops ? this.holdGeneration : -1;
     (item as unknown as HoldMarked)[HELD] = pe.held;
-    if (!still && index >= 0) {
+    if (loops) {
+      pe.loopStep = loopStepOf(frame.tick, frame.alpha, frame.environmentMotion === true);
+      if (!pe.looping) {
+        pe.looping = true;
+        this.loopers.push(pe);
+      }
+    } else if (!still && index >= 0) {
       this.moving.push(index);
       this.movingRefs.add(item.ref);
     }
@@ -573,8 +602,13 @@ export class SpritePool {
    */
   private cullBoxes(frame: PoolFrame): Partial<Record<DrawItem['kind'], Viewport[]>> | undefined {
     const subjects = portraitSubjectsOf(frame);
-    if (subjects.length > 0 && !framesSubjects(this.framed, subjects)) return undefined;
     const castShear = frame.shadowStyle?.castShear ?? 0;
+    const screenOnly = subjects.length === 0;
+    this.cullsStand =
+      screenOnly && this.cullScreenOnly && !this.epoch.viewMoved && castShear === this.cullShear;
+    this.cullScreenOnly = screenOnly;
+    this.cullShear = castShear;
+    if (!screenOnly && !framesSubjects(this.framed, subjects)) return undefined;
     const screen = cameraViewport(frame.camera, frame.screenW, frame.screenH);
     const boxes: Partial<Record<DrawItem['kind'], Viewport[]>> = {};
     for (const kind of Object.keys(this.reaches) as (keyof KindReaches)[]) {
@@ -687,16 +721,63 @@ export class SpritePool {
     return pe !== undefined && meshablePooled(pe);
   }
 
-  /** Whether `pe` draws the same whatever the frame alpha: what a still frame may leave untouched. */
-  private holdsStill(pe: PooledEntity, item: DrawItem): boolean {
+  /** Whether `pe` stands where it is whatever the frame alpha, drawing what its layers alone decide: held
+   *  when they are {@link BindStamp.clockFree}, stepped on the animation clock when they only loop. */
+  private restsInPlace(pe: PooledEntity, item: DrawItem): boolean {
     return (
       item.hpFrac === undefined &&
       pe.reveal === undefined &&
       !pe.bound.retrying &&
       resolvesWithoutClock(item) &&
-      pe.bound.clockFree &&
       atRest(pe.motion)
     );
+  }
+
+  /**
+   * Present each held looper whose animation clock reached a new whole tick, as a visit would; one that
+   * no longer holds, or holds still, leaves the list.
+   */
+  private stepLoopers(frame: PoolFrame): void {
+    const step = loopStepOf(frame.tick, frame.alpha, frame.environmentMotion === true);
+    const generation = this.holdGeneration;
+    const loopers = this.loopers;
+    let kept = 0;
+    for (let i = 0; i < loopers.length; i++) {
+      const pe = loopers[i];
+      if (pe === undefined) continue;
+      if (pe.held !== generation || !pe.attached || !pe.bound.loopsOnly) {
+        pe.looping = false;
+        continue;
+      }
+      loopers[kept++] = pe;
+      const item = pe.bound.item;
+      if (pe.loopStep === step || item === undefined) continue;
+      pe.loopStep = step;
+      // As a visit of a held entity: the bounds it stamped stand until this present restamps them.
+      if (pe.boundsFrame === pe.lastSeen) pe.boundsFrame = this.frameId - 1;
+      pe.lastSeen = this.frameId;
+      // Its hold stands for the bind inputs, the erased regions and its palette: only the layers can move.
+      const layers = presentAtRest(
+        pe,
+        item,
+        frame.tick,
+        frame.alpha,
+        this.sheet,
+        frame.environmentMotion === true,
+        frame.wind,
+        frame.seaClock,
+      );
+      pe.bound.alpha = frame.alpha;
+      if (pe.bound.presents(pe.motion, layers)) {
+        pe.bound.carry(item, this.epoch.current);
+        this.keepBound(pe);
+      } else {
+        this.bindPresented(pe, item, layers, frame, frame.erased?.get(item.ref));
+        // A stand-in for a turned-away bake binds again on the next visit.
+        if (pe.bound.retrying) this.release(item as SpriteDrawItem);
+      }
+    }
+    loopers.length = kept;
   }
 
   /**
@@ -819,11 +900,22 @@ export class SpritePool {
       this.keepBound(pe);
       return;
     }
+    this.bindPresented(pe, item, layers, frame, erased);
+  }
+
+  /** Bind the layers a present of `item` resolved onto `pe`, and stamp what the bind read. */
+  private bindPresented(
+    pe: PooledEntity,
+    item: DrawItem,
+    layers: readonly ResolvedLayer[] | null,
+    frame: PoolFrame,
+    erased: ErasedRegion | undefined,
+  ): void {
     const deferrals = this.textures.deferrals;
     this.binder.bind(pe, item, layers, frame, this.frameId);
-    stamp.record(item, this.epoch, erased, pe.motion, layers);
+    pe.bound.record(item, this.epoch, erased, pe.motion, layers);
     // A bake the budget turned away left a stand-in on this entity alone: it binds again next frame.
-    if (this.textures.deferrals !== deferrals) stamp.retry();
+    if (this.textures.deferrals !== deferrals) pe.bound.retry();
     pe.container.zIndex = pooledDepth(pe, item);
   }
 
@@ -852,6 +944,7 @@ export class SpritePool {
       }
       this.selectionEffects.clear(pe);
       pe.container.destroy({ children: true });
+      pe.held = -1;
     }
     this.pool.set(item.ref, fresh);
     (fresh.container as PooledContainer)[POOLED] = fresh;
@@ -1131,6 +1224,7 @@ export class SpritePool {
     this.moving.length = 0;
     this.movingRefs.clear();
     this.movingHeld.length = 0;
+    this.loopers.length = 0;
     this.passEpoch = -1;
     this.passHovered = undefined;
     this.reapCursor = undefined;
