@@ -128,6 +128,8 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
     },
     commanded(): void {
       echoUntil = deps.now() + COMMAND_ECHO_MS;
+      // A press the panel shows before the sim answers changes the model under the same snapshot.
+      derived = null;
     },
   };
 }

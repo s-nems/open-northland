@@ -53,6 +53,7 @@ import type { UnitControlsOptions } from '../types.js';
 import { buildingPanelActions, buildingPeers } from './building.js';
 import type { EquipPickController } from './equip-picker.js';
 import { groupPanelActions } from './group.js';
+import { createPendingTradeMarks } from './pending-trade-marks.js';
 import { type SettlerContractCommands, settlerPanelActions } from './settler.js';
 import { armedVehiclePick, vehiclePanelActions, vehiclePeersOf } from './vehicle.js';
 
@@ -136,9 +137,12 @@ export async function createUnitChrome(
   equipPicker: EquipPickController | null,
   callbacks: UnitChromeCallbacks,
 ): Promise<UnitChromeHandle> {
-  // A command from the panels or the ring skips the panel throttle: its effect shows once it lands.
+  // A command from the panels or the ring skips the panel throttle: its effect shows once it lands, and a
+  // trade mark at once.
+  const pendingTrade = createPendingTradeMarks();
   const enqueue = (command: PlayerCommand): void => {
     opts.enqueue(command);
+    pendingTrade.record(command, opts.snapshot().tick);
     panel.commanded();
   };
   const panelOpts = { snapshot: opts.snapshot, viewer: opts.viewer, content: opts.content, enqueue };
@@ -415,6 +419,7 @@ export async function createUnitChrome(
     return portraitsMemo.list;
   };
 
+  const traderView = opts.traderView;
   const modelContext: UnitPanelModelContext = {
     viewer: opts.viewer,
     technologyReason:
@@ -446,7 +451,9 @@ export async function createUnitChrome(
     isTraderJob: (jobType) => systems.isTraderJob(opts.content, jobType),
     ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
     ...(opts.signpostReach !== undefined ? { signpostReach: opts.signpostReach } : {}),
-    ...(opts.traderView !== undefined ? { traderView: opts.traderView } : {}),
+    ...(traderView !== undefined
+      ? { traderView: (id: number) => pendingTrade.view(id, traderView(id), opts.snapshot().tick) }
+      : {}),
     ...(opts.tradeOffersAt !== undefined ? { tradeOffersAt: opts.tradeOffersAt } : {}),
     ...(opts.workStatus !== undefined ? { workStatus: opts.workStatus } : {}),
     ...(opts.diplomacyStance !== undefined ? { diplomacyStance: opts.diplomacyStance } : {}),
