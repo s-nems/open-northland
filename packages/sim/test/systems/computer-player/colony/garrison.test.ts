@@ -129,6 +129,15 @@ describe('the garrison a colony wants', () => {
     expect(garrisonWant(blankColony(0, { phase: 'founding' }), 0, worth)).toBe(0);
   });
 
+  it('answers raiders seen lately with the small garrison alone, its growth on top', () => {
+    const THREAT_MOST = 8;
+    const raided = blankColony(0, { threat: { men: MANY_RAIDERS, at: { hx: 0, hy: 0 }, since: 0 } });
+    const none = { people: 0, workshops: 0, fed: true };
+    expect(garrisonWant(raided, 0, none)).toBe(THREAT_MOST);
+    expect(garrisonWant(raided, 0, worth)).toBe(Math.min(MOST, THREAT_MOST + GROWN - LEAST));
+    expect(garrisonCrossing(raided, 0, MOST, 0)).toBe(THREAT_MOST);
+  });
+
   it('takes its least garrison at once and grows a few men a crossing', () => {
     const PER_CROSSING = 3;
     expect(garrisonCrossing(running, 0, GROWN, 0)).toBe(LEAST);

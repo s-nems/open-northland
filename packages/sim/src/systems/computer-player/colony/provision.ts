@@ -70,16 +70,23 @@ export function kitchenMouths(env: ColonyEnv, buildings: readonly Entity[]): num
   return mouths;
 }
 
-/** Whether the colony's `people` eat well: its stores hold a meal a mouth, or its fishers, hunters and
- *  kitchens at work feed them all. A store eaten down as fast as the catch comes in still feeds them. */
-export function colonyFed(env: ColonyEnv, buildings: readonly Entity[], people: readonly Entity[]): boolean {
-  if (colonyFoodHeld(env, buildings) >= people.length) return true;
+/** Whether the colony's `people` and `more` mouths besides eat well: its stores hold a meal a mouth, or its
+ *  fishers, hunters and kitchens at work feed them all. A store eaten down as fast as the catch comes in
+ *  still feeds them. */
+export function colonyFed(
+  env: ColonyEnv,
+  buildings: readonly Entity[],
+  people: readonly Entity[],
+  more = 0,
+): boolean {
+  const mouths = people.length + more;
+  if (colonyFoodHeld(env, buildings) >= mouths) return true;
   const { world, ctx } = env;
   const hands = people.filter((e) => {
     const job = world.get(e, Settler).jobType;
     return isFisherJob(ctx.content, job) || (job !== null && isHunterJob(ctx.content, job));
   }).length;
-  return MOUTHS_PER_FOOD_HAND * hands + kitchenMouths(env, buildings) >= people.length;
+  return MOUTHS_PER_FOOD_HAND * hands + kitchenMouths(env, buildings) >= mouths;
 }
 
 /** Whether the land under `from` holds a live deposit of `goodType` the seat knows of. Costs a resource

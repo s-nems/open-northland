@@ -30,6 +30,7 @@ import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { ARMY_FLOOR_MIN, underAttack } from '../workforce/garrison.js';
 import { colonists, colonyOrigin } from './founding.js';
 import { standsOn } from './people.js';
+import { colonySeats } from './posts.js';
 import { colonyFed } from './provision.js';
 import { colonyBuildings } from './spot.js';
 import { type ColonyEnv, type ColonyView, homeLandOf } from './voyage.js';
@@ -45,8 +46,11 @@ const PEOPLE_PER_GUARD = 4;
 /** A garrison man more per standing workshop of the colony (authored): its industries are what a raid
  *  takes. */
 const GUARDS_PER_WORKSHOP = 1;
-/** The most a colony holds however large it grows and however many raiders it has seen (authored: about
- *  a seat's whole army early in the game, far below it late). */
+/** The most a colony holds for the raiders it has seen (owner ruling: a small garrison; authored figure: two
+ *  towers' archers and two men for the sortie). */
+const THREAT_MOST = 8;
+/** The most a colony holds however large it grows (authored: about a seat's whole army early in the game,
+ *  far below it late). */
 const GARRISON_MOST = 20;
 /** The garrison men a crossing takes past the colony's least garrison and its threat (authored): a growing
  *  garrison leaves the ferry's other seats to the colony's hands. */
@@ -67,8 +71,8 @@ export function recentThreat(colony: ColonyView, tick: number): number {
   return threat === null || tick - threat.since >= THREAT_MEMORY_TICKS ? 0 : threat.men;
 }
 
-/** What a colony is worth guarding: its own people, garrison apart, its standing workshops, and whether it
- *  feeds everyone on its land. */
+/** What a colony is worth guarding: its own people, garrison apart, its standing workshops that seat a
+ *  hand, and whether it feeds everyone on its land and a crossing's growth more. */
 export interface ColonyWorth {
   readonly people: number;
   readonly workshops: number;
@@ -76,21 +80,23 @@ export interface ColonyWorth {
 }
 
 /** The garrison a colony wants: none before it runs, then {@link GARRISON_LEAST} and a man more per raider
- *  seen lately; while it feeds everyone, a man more per {@link PEOPLE_PER_GUARD} of its people and
- *  {@link GUARDS_PER_WORKSHOP} per workshop; up to {@link GARRISON_MOST}. The seat's army bounds how many
- *  sail ({@link garrisonRoom}), so the garrison grows with the colony and with the army. */
+ *  seen lately, up to {@link THREAT_MOST}; while it would still feed everyone with a crossing's growth
+ *  more, a man more per {@link PEOPLE_PER_GUARD} of its people and {@link GUARDS_PER_WORKSHOP} per
+ *  workshop; up to {@link GARRISON_MOST}. The seat's army bounds how many sail ({@link garrisonRoom}), so
+ *  the garrison grows with the colony and with the army. */
 export function garrisonWant(colony: ColonyView, tick: number, worth: ColonyWorth): number {
   if (colony.phase !== 'running') return 0;
+  const held = Math.min(THREAT_MOST, GARRISON_LEAST + recentThreat(colony, tick));
   const growth = worth.fed
     ? Math.floor(worth.people / PEOPLE_PER_GUARD) + GUARDS_PER_WORKSHOP * worth.workshops
     : 0;
-  return Math.min(GARRISON_MOST, GARRISON_LEAST + recentThreat(colony, tick) + growth);
+  return Math.min(GARRISON_MOST, held + growth);
 }
 
 /** The garrison men a crossing takes when `held` of `want` stand: all it lacks of its least garrison and its
- *  threat, else up to {@link GROWTH_PER_CROSSING}. */
+ *  threat ({@link THREAT_MOST} at most), else up to {@link GROWTH_PER_CROSSING}. */
 export function garrisonCrossing(colony: ColonyView, tick: number, want: number, held: number): number {
-  const urgent = GARRISON_LEAST + recentThreat(colony, tick) - held;
+  const urgent = Math.min(THREAT_MOST, GARRISON_LEAST + recentThreat(colony, tick)) - held;
   return Math.max(0, Math.min(want - held, Math.max(urgent, GROWTH_PER_CROSSING)));
 }
 
@@ -101,15 +107,18 @@ function worthOf(env: ColonyEnv, colony: ColonyView): ColonyWorth {
   const buildings = colonyBuildings(env);
   const people = colonists(env);
   const guards = new Set(colony.garrison);
-  const workshops = buildings.filter(
-    (e) =>
+  const workshops = buildings.filter((e) => {
+    const type = index.buildings.get(world.get(e, Building).buildingType);
+    return (
       isBuilt(world, e) &&
-      index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.workplace,
-  ).length;
+      type?.kind === BUILDING_KIND.workplace &&
+      colonySeats(ctx, type).some((slot) => slot.count > 0)
+    );
+  }).length;
   return {
     people: people.filter((e) => !guards.has(e)).length,
     workshops,
-    fed: colonyFed(env, buildings, people),
+    fed: colonyFed(env, buildings, people, GROWTH_PER_CROSSING),
   };
 }
 
