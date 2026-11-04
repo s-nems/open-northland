@@ -8,7 +8,7 @@ import { homeStockOf } from '../colony/stock.js';
 import { TOWER_CONTENT_IDS } from './front.js';
 import { FILLED_TOWER_BUILDING } from './military-line.js';
 import { roomFilled } from './room.js';
-import { sitesShortfalls } from './upgrade-supply.js';
+import { sitesClaims } from './upgrade-supply.js';
 
 /** The goods a filled-ring tower may only take from the home's spare (owner ruling: the stone and wood the
  *  ship yard and the sites wait on go to them first). */
@@ -22,7 +22,7 @@ export const FILLED_TOWERS_CAP = 8;
  * Whether the filled ring still waits: the seat's land fits another home ({@link roomFilled}), so the homes
  * lift comes first; it owns {@link FILLED_TOWERS_CAP} towers; or its home store cannot pay a lower tower's
  * bill, the stone and wood out of what is left over the workshops' unfilled input shelves (the ship yard
- * among them) and the sites' shortfalls. Our own approximation of a cheap tower in the settlement's gaps.
+ * among them) and the sites' claims. Our own approximation of a cheap tower in the settlement's gaps.
  */
 export function filledTowersWait(
   world: World,
@@ -54,7 +54,8 @@ export function filledTowersWait(
   return false;
 }
 
-/** What the home's sites still lack and its built workshops' input shelves still want of `goods`. */
+/** What the home's sites hold, still lack or keep aside, and its built workshops' input shelves still want,
+ *  of `goods`. */
 function waitedOn(
   world: World,
   ctx: SystemContext,
@@ -66,7 +67,7 @@ function waitedOn(
   const add = (good: number, units: number) => {
     if (goods.has(good) && units > 0) waited.set(good, (waited.get(good) ?? 0) + units);
   };
-  for (const [good, lacking] of sitesShortfalls(world, ctx, owned)) add(good, lacking);
+  for (const [good, claimed] of sitesClaims(world, ctx, owned)) add(good, claimed);
   for (const e of owned) {
     if (!isBuilt(world, e)) continue;
     const typeId = world.get(e, Building).buildingType;

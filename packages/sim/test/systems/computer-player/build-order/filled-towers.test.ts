@@ -1,6 +1,6 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { aiControlEntity, SeatRoom, Stockpile } from '../../../../src/components/index.js';
+import { aiControlEntity, SeatRoom, Stockpile, setStockAmount } from '../../../../src/components/index.js';
 import type { Simulation } from '../../../../src/index.js';
 import { homeBuildings } from '../../../../src/systems/ai-shared/home-roster.js';
 import { filledTowersWait } from '../../../../src/systems/computer-player/build-order/filled-towers.js';
@@ -11,10 +11,13 @@ import {
   ctxOf,
   entityOfBuilding,
   HQ_TYPE,
+  HQ_X,
+  HQ_Y,
   makeAiSeat,
   placeHq,
   RESOURCE_SPOTS,
   SEAT,
+  VIKING,
 } from '../support.js';
 
 const STONE = RESOURCE_SPOTS.stone.good;
@@ -22,6 +25,8 @@ const WOOD = RESOURCE_SPOTS.wood.good;
 const LOWER_TOWER_TYPE = 99;
 const TOWER_STONE = 6;
 const TOWER_WOOD = 2;
+/** Where a tower site stands east of the headquarters, in cells. */
+const SITE_DX = 10;
 
 const base = aiContent();
 const content = parseContentSet({
@@ -70,5 +75,24 @@ describe('filled towers', () => {
     expect(waits(seat(FIT_PER_HOME, TOWER_STONE, TOWER_WOOD))).toBe(true);
     expect(waits(seat(0, TOWER_STONE, TOWER_WOOD))).toBe(false);
     expect(waits(seat(0, TOWER_STONE - 1, TOWER_WOOD))).toBe(true);
+  });
+
+  it('wait while the only stone and wood the seat holds lie in a site, which spends them itself', () => {
+    const sim = seat(0, 0, 0);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: LOWER_TOWER_TYPE,
+      x: HQ_X + SITE_DX,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+      underConstruction: true,
+    });
+    sim.step();
+    const site = entityOfBuilding(sim, LOWER_TOWER_TYPE);
+    setStockAmount(sim.world, site, STONE, TOWER_STONE);
+    setStockAmount(sim.world, site, WOOD, TOWER_WOOD);
+
+    expect(waits(sim)).toBe(true);
   });
 });
