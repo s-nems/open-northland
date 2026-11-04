@@ -59,7 +59,8 @@ export class HeldWorkCells {
 
   private constructor(
     private readonly world: World,
-    private readonly ctx: SystemContext,
+    /** The context of the tick that last asked, refreshed like the mask's, never an older tick's. */
+    private ctx: SystemContext,
     readonly mask: WalkBlockMask,
   ) {}
 
@@ -73,6 +74,7 @@ export class HeldWorkCells {
       heldByMask.set(mask, created);
       held = created;
     }
+    held.ctx = ctx;
     return held;
   }
 
