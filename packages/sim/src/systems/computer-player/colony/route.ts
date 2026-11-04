@@ -32,7 +32,9 @@ import { isAdultSettler } from '../../family/eligibility.js';
 import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import { canChooseJob, needSubjectOf } from '../../progression/index.js';
 import { isFighterJob, isTraderJob } from '../../readviews/index.js';
+import { heldBands } from '../../settlers/targets/held-bands.js';
 import { isCarrierJob } from '../../stores/index.js';
+import { settlementGround } from '../../trade/settlement-ground.js';
 import { canPinTradeShip } from '../../trade/ship.js';
 import { isCartType } from '../../vehicles/drag.js';
 import { canTakeHaulingCart } from '../../vehicles/hauling-cart.js';
@@ -295,13 +297,25 @@ export function markOrders(
   return commands;
 }
 
-/** The trader's marks for `policy`: inbound at the colony's stop, outbound at home's with no ceiling. */
-export function routeMarks(policy: ColonyStockPolicy): {
+/**
+ * The trader's marks for `policy`: inbound at the colony's stop, outbound at home's with no ceiling. Home
+ * keeps a reserve in its stores, but its stop counts the goods lying on home's ground as home's stock, so a
+ * kept reserve is raised by `homeGround`: else heaps by the flags and the shore would let the colony's
+ * marks empty home's stores below the reserve.
+ */
+export function routeMarks(
+  policy: ColonyStockPolicy,
+  homeGround: (good: number) => number,
+): {
   readonly atColony: TradeImportMark[];
   readonly atHome: TradeImportMark[];
 } {
   return {
-    atColony: policy.inbound.map(({ good, upTo, keep }) => ({ good, upTo, keep })),
+    atColony: policy.inbound.map(({ good, upTo, keep }) => ({
+      good,
+      upTo,
+      keep: keep > 0 ? keep + homeGround(good) : keep,
+    })),
     atHome: policy.outbound.map(({ good, keep }) => ({ good, upTo: TRADE_LIMIT_NONE, keep })),
   };
 }
@@ -316,7 +330,15 @@ function syncMarks(env: ColonyEnv, trader: Entity, home: Entity, away: Entity): 
   const due = moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, MARKS_EVERY_DECISIONS);
   if (!due && awayStop.imports.length > 0) return [];
   const policy = colonyStockPolicyOf(env, new Set(homeStop.imports.map((m) => m.good)));
-  const { atColony, atHome } = routeMarks(policy);
+  const bands = heldBands(world, ctx, env.terrain);
+  const holding = (good: number) => {
+    const band = bands.holding(good);
+    band.sync();
+    return band.index;
+  };
+  const { atColony, atHome } = routeMarks(policy, (good) =>
+    settlementGround(world, ctx, env.terrain, trader, home, away, good, holding).units(),
+  );
   return [
     ...markOrders(trader, away, awayStop.imports, atColony),
     ...markOrders(trader, home, homeStop.imports, atHome),

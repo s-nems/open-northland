@@ -31,6 +31,7 @@ import {
 import { isAllocatableMan } from '../../../../src/systems/ai-shared/workforce/pool.js';
 import { seatBaseOf } from '../../../../src/systems/computer-player/base.js';
 import { colonySmallShips } from '../../../../src/systems/computer-player/colony/fleet.js';
+import { routeMarks } from '../../../../src/systems/computer-player/colony/route.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { strandedShip } from '../../../../src/systems/computer-player/sea-route.js';
@@ -47,6 +48,7 @@ import {
   colonyState,
   colonyWorld,
   editColony,
+  FOOD,
   mooredShip,
   SMALL_SHIP,
   stepUntil,
@@ -111,6 +113,13 @@ function homeLandOfSeat(sim: Simulation): number {
 
 /** The colony's stop on a colony route, home's being the first. */
 const COLONY_STOP = 1;
+/** A colony route's marks: the food a colony is filled up to and home keeps, the stone a colony site lacks,
+ *  and what of each lies loose on home's ground. */
+const COLONY_FOOD_UP_TO = 36;
+const HOME_FOOD_KEPT = 34;
+const COLONY_SITE_STONE = 8;
+const FOOD_ON_HOME_GROUND = 12;
+const STONE_ON_HOME_GROUND = 5;
 
 /** Give the colony up, as its overrun read does. */
 function abandon(sim: Simulation): void {
@@ -202,6 +211,25 @@ describe('a colony trade route', () => {
       copy.step();
     }
     expect(copy.hashState()).toBe(sim.hashState());
+  });
+});
+
+describe("a colony route's marks", () => {
+  it("raise home's reserve of a good by what of it lies on home's ground, which home's stop counts as stock", () => {
+    const policy = {
+      inbound: [
+        { good: FOOD, upTo: COLONY_FOOD_UP_TO, keep: HOME_FOOD_KEPT },
+        { good: STONE, upTo: COLONY_SITE_STONE, keep: 0 },
+      ],
+      outbound: [],
+    };
+    const onHomeGround = (good: number): number =>
+      good === FOOD ? FOOD_ON_HOME_GROUND : STONE_ON_HOME_GROUND;
+    expect(routeMarks(policy, onHomeGround).atColony).toEqual([
+      { good: FOOD, upTo: COLONY_FOOD_UP_TO, keep: HOME_FOOD_KEPT + FOOD_ON_HOME_GROUND },
+      // A colony site's lack comes past home's reserve, so a mark that keeps nothing stays so.
+      { good: STONE, upTo: COLONY_SITE_STONE, keep: 0 },
+    ]);
   });
 });
 
