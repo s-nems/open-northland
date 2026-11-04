@@ -13,6 +13,7 @@ import { sitesShortfalls } from '../build-order/upgrade-supply.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER, FOOD_SHORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { colonists, colonyOrigin } from './founding.js';
 import { foodGood, homeSpare, homeSupply, workshopShelves } from './home-supply.js';
+import { chainStepOf } from './industry.js';
 import { colonyIndustryWantsOf } from './industry-read.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan } from './plan.js';
 import { colonyMakes, storesHeld, workshopGoods } from './provision.js';
@@ -373,7 +374,16 @@ export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<num
   const people = colonists(env);
   const lacking = sitesShortfalls(world, ctx, buildings);
   const owed = new Map(lacking);
-  addUp(owed, billsOf(env, colonyPlan(env, env.colony, buildings).slice(0, COLONY_OPEN_SITES)));
+  // The next builds' bills, and each industry's next step's: its site opens only once the colony's stores
+  // hold its whole bill, so a mint's gold dug on the colony stays there rather than sailing home.
+  const plan = colonyPlan(env, env.colony, buildings);
+  addUp(
+    owed,
+    billsOf(
+      env,
+      plan.filter((building, i) => i < COLONY_OPEN_SITES || chainStepOf(building) !== undefined),
+    ),
+  );
   const plainFloor = byType(ctx, Object.entries(COLONY_BUILDING_FLOOR));
   const buildingFloor = new Map(plainFloor);
   raise(buildingFloor, owed);
