@@ -43,7 +43,7 @@ export interface Measurement {
   readonly peakRssMb: number;
   /** Whole-run {@link BenchWindow.cpuMsPerTick} and {@link BenchWindow.allocKbPerTick}. */
   readonly cpuMsPerTick: number;
-  readonly allocKbPerTick: number;
+  readonly allocKbPerTick: number | null;
   readonly calibration: { readonly beforeMs: number; readonly afterMs: number };
 }
 
@@ -114,19 +114,25 @@ class GcLog {
 /** Main-thread CPU and V8 allocation so far: two cheap reads, taken only at window bounds. */
 interface WorkSample {
   readonly cpuUs: number;
-  readonly allocatedBytes: number;
+  /** Null on a runtime whose heap statistics lack the cumulative counter (Node 22 does). */
+  readonly allocatedBytes: number | null;
 }
 
 function workSample(): WorkSample {
   const cpu = process.threadCpuUsage();
-  return { cpuUs: cpu.user + cpu.system, allocatedBytes: getHeapStatistics().total_allocated_bytes };
+  const allocated: unknown = getHeapStatistics().total_allocated_bytes;
+  return { cpuUs: cpu.user + cpu.system, allocatedBytes: typeof allocated === 'number' ? allocated : null };
 }
 
-function perTick(from: WorkSample, to: WorkSample, ticks: number): { cpuMs: number; allocKb: number } {
-  if (ticks === 0) return { cpuMs: 0, allocKb: 0 };
+function perTick(from: WorkSample, to: WorkSample, ticks: number): { cpuMs: number; allocKb: number | null } {
+  const allocated =
+    from.allocatedBytes === null || to.allocatedBytes === null
+      ? null
+      : to.allocatedBytes - from.allocatedBytes;
+  if (ticks === 0) return { cpuMs: 0, allocKb: allocated === null ? null : 0 };
   return {
     cpuMs: (to.cpuUs - from.cpuUs) / US_PER_MS / ticks,
-    allocKb: (to.allocatedBytes - from.allocatedBytes) / BYTES_PER_KB / ticks,
+    allocKb: allocated === null ? null : allocated / BYTES_PER_KB / ticks,
   };
 }
 
@@ -208,7 +214,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
   const tickSamples: number[] = [];
   const windows: BenchWindow[] = [];
   let cpuUs = 0;
-  let allocatedBytes = 0;
+  let allocatedBytes: number | null = 0;
   for (const [index, bound] of windowBounds(options.measuredTicks, options.windows).entries()) {
     const workStart = workSample();
     const windowStartMs = performance.now();
@@ -221,7 +227,10 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
     const windowEndMs = performance.now();
     const workEnd = workSample();
     cpuUs += workEnd.cpuUs - workStart.cpuUs;
-    allocatedBytes += workEnd.allocatedBytes - workStart.allocatedBytes;
+    allocatedBytes =
+      allocatedBytes === null || workStart.allocatedBytes === null || workEnd.allocatedBytes === null
+        ? null
+        : allocatedBytes + workEnd.allocatedBytes - workStart.allocatedBytes;
     const work = perTick(workStart, workEnd, bound.to - bound.from);
     const heap = heapUsedMb();
     const rss = rssMb();

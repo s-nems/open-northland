@@ -174,6 +174,20 @@ describe('compareReports', () => {
     expect(rows.at(-1)?.verdict).toBe('faster');
   });
 
+  it('reads and compares a report from a runtime without the allocation counter', () => {
+    const counterless = readReport(
+      JSON.parse(JSON.stringify(report({ allocKbPerTick: null }))),
+      'old-node.json',
+    );
+    const row = compareReports(report(), counterless).rows.at(-1);
+    expect(row).toMatchObject({
+      name: 'alloc KB/tick',
+      afterMs: null,
+      deltaPct: null,
+      verdict: 'unmeasured',
+    });
+  });
+
   it('reports a changed state hash rather than raising: the runs measured different behaviour', () => {
     const comparison = compareReports(report(), report({ stateHash: 'def456' }));
     expect(comparison.stateHashIdentical).toBe(false);

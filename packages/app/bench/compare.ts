@@ -33,7 +33,7 @@ function main(): void {
   // baseline carried, or the tool would report a clean comparison of two empty reports. A system only
   // the after side measured adds a row with no baseline.
   if (before.systems.length === 0) throw new Error(`${beforeStored.path} names no systems`);
-  const baselineRows = comparison.rows.filter((row) => row.beforeMs !== null).length;
+  const baselineRows = comparison.rows.filter((row) => row.verdict !== 'added').length;
   if (baselineRows !== before.systems.length + WHOLE_RUN_ROW_COUNT) {
     throw new Error(`compared ${baselineRows} baseline rows over ${before.systems.length} system(s)`);
   }

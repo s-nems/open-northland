@@ -42,7 +42,7 @@ function isBenchReport(value: unknown, bad: (why: string) => never): value is Be
   ) {
     return bad('missing tickMs.meanMs / medianMs / p99Ms');
   }
-  if (typeof cpuMsPerTick !== 'number' || typeof allocKbPerTick !== 'number') {
+  if (typeof cpuMsPerTick !== 'number' || (typeof allocKbPerTick !== 'number' && allocKbPerTick !== null)) {
     return bad('missing cpuMsPerTick / allocKbPerTick');
   }
   if (!Array.isArray(systems)) return bad('missing systems[]');

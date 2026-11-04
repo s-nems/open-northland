@@ -103,8 +103,9 @@ export interface BenchWindow {
    *  It includes the harness's per-tick hooks and instrument, and excludes GC work on helper threads. */
   readonly cpuMsPerTick: number;
   /** V8 bytes allocated per tick (KiB), from the isolate's cumulative counter at the segment's bounds:
-   *  nearly load-independent, the number allocation work moves. Includes the harness's own samples. */
-  readonly allocKbPerTick: number;
+   *  nearly load-independent, the number allocation work moves. Includes the harness's own samples.
+   *  Null on a runtime without the counter. */
+  readonly allocKbPerTick: number | null;
 }
 
 /** Machine and run context; `trust.ts` turns it into a verdict. */
@@ -145,7 +146,7 @@ export interface BenchReport {
   readonly tickMs: TickStat;
   /** Whole-run {@link BenchWindow.cpuMsPerTick} and {@link BenchWindow.allocKbPerTick}. */
   readonly cpuMsPerTick: number;
-  readonly allocKbPerTick: number;
+  readonly allocKbPerTick: number | null;
   /** Whole-run per-system rows, heaviest median first. */
   readonly systems: readonly SystemStat[];
   /** The run's slowest ticks, slowest first. */

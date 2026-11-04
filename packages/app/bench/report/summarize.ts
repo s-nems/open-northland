@@ -141,7 +141,7 @@ export function summarize(
     /** The sim tick of the first measured sample. */
     readonly firstTick: number;
     readonly cpuMsPerTick: number;
-    readonly allocKbPerTick: number;
+    readonly allocKbPerTick: number | null;
     readonly windows: readonly BenchWindow[];
     readonly environment: BenchEnvironment;
     readonly trust: BenchTrust;
