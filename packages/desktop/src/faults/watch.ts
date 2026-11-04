@@ -55,11 +55,11 @@ function errorFault(error: unknown): NewFault {
  */
 export function recordProcessFaults(store: FaultStore, run: ShellRun): void {
   app.on('will-quit', () => {
+    run.quit();
     // Chromium writes localStorage to disk on a delay. The windows have closed by now, so this pushes
     // their last writes (a setting, a session marker's removal) out before the process ends; whether
     // that delay is what left markers after an ordinary quit on Windows is unconfirmed.
     if (app.isReady()) session.defaultSession.flushStorageData();
-    run.quit();
   });
   app.on('render-process-gone', (_event, _contents, details) => {
     if (details.reason !== 'clean-exit') run.childGone();
@@ -103,7 +103,8 @@ function shellVersions(): Readonly<Record<string, string>> {
     osRelease: release(),
     osVersion: process.getSystemVersion(),
     ...machineFacts({
-      arm64Translation: app.runningUnderARM64Translation,
+      // Electron declares it only on macOS and Windows.
+      arm64Translation: app.runningUnderARM64Translation === true,
       memoryKib: process.getSystemMemoryInfo(),
     }),
   };

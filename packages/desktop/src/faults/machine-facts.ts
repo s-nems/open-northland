@@ -4,7 +4,8 @@ const KIB_PER_MIB = 1024;
 export interface ShellMachine {
   /** An x64 build translated on an ARM64 machine: Rosetta on macOS, emulation on Windows. */
   readonly arm64Translation: boolean;
-  /** `process.getSystemMemoryInfo()` when the page asks; macOS counts file cache as used, not free. */
+  /** `process.getSystemMemoryInfo()` when the page asks; `free` leaves out the file cache on macOS and
+   *  Linux, so a low value alone is no proof of memory pressure. */
   readonly memoryKib: { readonly total: number; readonly free: number };
 }
 

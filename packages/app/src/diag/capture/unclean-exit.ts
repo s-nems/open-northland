@@ -66,8 +66,8 @@ export function judgeMarker(marker: SessionMarker, facts: MarkerFacts): MarkerVe
   if (faultIds.length > 0) return { kind: 'desktop', faultIds };
   if (!reloaded && facts.nowMs - marker.beatAt <= MARKER_STALE_MS) return { kind: 'live' };
   if (facts.freeze !== null) return { kind: 'freeze', freezeId: facts.freeze.id };
-  // The shell quits after its windows closed. A page that crashed or hung before that left a fault or
-  // a freeze record, judged above, so a marker still left from it is no crash.
+  // The shell quits after its windows closed. A page that crashed, or hung long enough to report, before
+  // that left a fault or a freeze record, judged above, so a marker still left from it is no crash.
   const shellQuit = facts.shellRun?.end === 'quit';
   if (!marker.visible || !marker.context.inGame || shellQuit || endedWithSystem(marker, facts.shellRun))
     return { kind: 'quiet' };
