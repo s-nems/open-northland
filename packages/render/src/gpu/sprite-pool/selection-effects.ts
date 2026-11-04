@@ -197,8 +197,17 @@ export class SelectionEffects {
     const sum = (a * a + b * b + c * c + d * d) / 2;
     const scale = Math.sqrt(sum - Math.sqrt(Math.max(0, sum * sum - det * det)));
     const margin = Math.ceil(reach / scale);
-    quad.bodyTexture = body;
-    quad.texture = this.textures.grownView(body, margin);
+    // A grown view lives as long as its body texture, so the quad's still serves the same body and margin.
+    const held = quad.texture;
+    if (
+      quad.bodyTexture !== body ||
+      held.destroyed ||
+      held.frame.width !== body.frame.width + 2 * margin ||
+      held.frame.height !== body.frame.height + 2 * margin
+    ) {
+      quad.bodyTexture = body;
+      quad.texture = this.textures.grownView(body, margin);
+    }
     // The inverse transform takes a reach step to texels; a texel is a fixed uv step on the page.
     const { uvs, frame } = body;
     const uPerTexel = (uvs.x1 - uvs.x0) / frame.width;
