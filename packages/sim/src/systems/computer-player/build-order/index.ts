@@ -115,14 +115,14 @@ export {
 export { type Siege, seatSiege } from './siege.js';
 export { DEFENCE_FIRST_WANT_PCT, OPENING_DEFENCE } from './tower-defence.js';
 
-/** The seat's open sites that count against its pace: a workshop's hidden vehicle yard is the crew's own
- *  cycle, never a placement the list made, so it holds no slot. */
 /** The most homes the seat's housing lane raises before room lifts it, under its ground plan's cut. */
 function housingCap(world: World, player: number, order: BuildOrder): number {
   const entry = orderSteps(order).find((step) => step.kind === 'housing');
   return entry?.kind === 'housing' ? seatHomesCap(world, player, entry.count) : 0;
 }
 
+/** The seat's open sites that count against its pace: a workshop's hidden vehicle yard is the crew's own
+ *  cycle, never a placement the list made, so it holds no slot. */
 function constructionSites(world: World, ctx: SystemContext, owned: readonly Entity[]): Entity[] {
   return owned.filter((e) => isServedConstructionSite(world, ctx.content, e));
 }
@@ -310,7 +310,7 @@ function runBuildOrder(
   if (lift !== null && !siegeOf().attacked) return started(lift);
   const anchor = anchorNodeOf(world, base);
   if (anchor === null) return [];
-  // Measured before the statuses, so a copy's room and the filled ring read the same room as the homes.
+  // Measured before the statuses, so the filled tower ring reads the same room as the homes.
   if (tribe !== undefined)
     keepSeatRoom(
       world,
