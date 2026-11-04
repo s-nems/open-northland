@@ -27,6 +27,7 @@ import {
 } from '../../../../src/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../src/systems/ai-shared/cadence.js';
 import { colonyHeldShips, homeBuildings } from '../../../../src/systems/ai-shared/home-roster.js';
+import { seatBaseOf } from '../../../../src/systems/computer-player/base.js';
 import { holdLoad } from '../../../../src/systems/computer-player/colony/cargo.js';
 import { spareMen } from '../../../../src/systems/computer-player/colony/people.js';
 import { colonyEnv, fittingOut, returning } from '../../../../src/systems/computer-player/colony/voyage.js';
@@ -408,7 +409,9 @@ describe('a failed voyage', () => {
 });
 
 describe('a colony fitting out', () => {
-  it("waits while the manifest's goods lie only in home's sites, which spend them", () => {
+  /** The phase after one fitting-out decision beside a new home warehouse site holding `siteWood` of its
+   *  bill, with `storeWood` in the headquarters and no wood anywhere else at home. */
+  function fitOutBesideSite(storeWood: number, siteWood: number): string | undefined {
     const sim = colonyWorld();
     stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
     const before = new Set(homeBuildings(sim.world, ctxOf(sim), SEAT));
@@ -422,9 +425,9 @@ describe('a colony fitting out', () => {
       underConstruction: true,
     });
     sim.step();
-    // The manifest's wood lies in the new site alone: all the store's bill, which the site spends itself.
+    const base = seatBaseOf(sim.world, ctxOf(sim), SEAT);
     for (const e of homeBuildings(sim.world, ctxOf(sim), SEAT))
-      setStockAmount(sim.world, e, WOOD, before.has(e) ? 0 : STORE_BILL_WOOD);
+      setStockAmount(sim.world, e, WOOD, !before.has(e) ? siteWood : e === base ? storeWood : 0);
     const live = editColony(sim);
     live.phase = 'fittingOut';
     live.since = sim.tick;
@@ -435,9 +438,17 @@ describe('a colony fitting out', () => {
     const env = { world: sim.world, ctx, terrain: ctx.terrain, seat: SEAT, carrier };
     const colony = sim.world.get(carrier, ComputerColony).colonies[0];
     if (colony === undefined) throw new Error('setup: no colony');
-
     fittingOut(colonyEnv(env, colony), colony);
+    return colonyState(sim)?.phase;
+  }
 
-    expect(colonyState(sim)?.phase).toBe('fittingOut');
+  it("waits while the manifest's goods lie only in home's sites, which spend them", () => {
+    // The manifest's wood lies in the new site alone: all the store's bill, which the site spends itself.
+    expect(fitOutBesideSite(0, STORE_BILL_WOOD)).toBe('fittingOut');
+  });
+
+  it('loads what home stores while its sites still lack the same goods, so open sites never hold the party', () => {
+    // The headquarters holds the manifest's wood, and the empty site lacks as much again.
+    expect(fitOutBesideSite(STORE_BILL_WOOD, 0)).toBe('loading');
   });
 });
