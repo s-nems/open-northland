@@ -357,7 +357,8 @@ over its own densest cluster, reaches its HUD state with the player's input (a c
 window's key) and measures at x3 with the pointer resting on the bottom bar. Scenarios: nothing open,
 a settler or a building selected (and each again with the pointer over the world), the residents
 window, the mission book, diplomacy, the construction window (and switching its tabs every 0.4 s), the
-notices, 50 or more settlers selected, the pointer over the world, the mouse button pressed and
+notices, 50 or more settlers selected (drawn at zoom 0.5, where they fit on screen, beside the empty
+view at that zoom as its baseline), the pointer over the world, the mouse button pressed and
 released every 0.25 s, the FPS counter and group numbers.
 
 `report.md` lists the RAF interval's median, 95th percentile and maximum, and per rendered frame:
