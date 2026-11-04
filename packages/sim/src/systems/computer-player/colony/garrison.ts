@@ -1,5 +1,14 @@
-import { AttackOrder, Engagement, operationMembersOf, Rider, Settler } from '../../../components/index.js';
+import { BUILDING_KIND } from '@open-northland/data';
+import {
+  AttackOrder,
+  Building,
+  Engagement,
+  operationMembersOf,
+  Rider,
+  Settler,
+} from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { nodeManhattan } from '../../../nav/halfcell.js';
 import { colonyGarrisons } from '../../ai-shared/home-roster.js';
@@ -13,13 +22,15 @@ import {
 } from '../../ai-shared/military/defence/index.js';
 import { type Raider, raidersNearAny } from '../../ai-shared/military/defence/threat.js';
 import { spokenFor } from '../../ai-shared/military/errand.js';
+import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { towerPostFor } from '../../conflict/tower-post.js';
 import { minutesToTicks } from '../game-phase.js';
 import { isFitSoldier } from '../military/fit.js';
 import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { ARMY_FLOOR_MIN, underAttack } from '../workforce/garrison.js';
-import { colonyOrigin } from './founding.js';
+import { colonists, colonyOrigin } from './founding.js';
 import { standsOn } from './people.js';
+import { colonyFed } from './provision.js';
 import { colonyBuildings } from './spot.js';
 import { type ColonyEnv, type ColonyView, homeLandOf } from './voyage.js';
 
@@ -28,9 +39,18 @@ export const COLONY_TOWERS_LEAST = 2;
 /** The fighters a running colony holds with no threat seen (owner ruling: a small garrison): its first
  *  towers' archers, so each of them shoots. */
 const GARRISON_LEAST = COLONY_TOWERS_LEAST * TOWER_GARRISON_ARCHERS;
-/** The most a colony holds however many raiders it has seen (owner ruling: a small garrison; authored
- *  figure: two towers' archers and two men for the sortie). */
-const GARRISON_MOST = 8;
+/** A garrison man more per this many of the colony's own people (owner ruling: the garrison grows with the
+ *  colony; authored figure). */
+const PEOPLE_PER_GUARD = 4;
+/** A garrison man more per standing workshop of the colony (authored): its industries are what a raid
+ *  takes. */
+const GUARDS_PER_WORKSHOP = 1;
+/** The most a colony holds however large it grows and however many raiders it has seen (authored: about
+ *  a seat's whole army early in the game, far below it late). */
+const GARRISON_MOST = 20;
+/** The garrison men a crossing takes past the colony's least garrison and its threat (authored): a growing
+ *  garrison leaves the ferry's other seats to the colony's hands. */
+const GROWTH_PER_CROSSING = 3;
 /** The seat's garrisons together hold at most one fighter of this many of its own, garrisons included
  *  (authored): a sixth, so the home army keeps five men in six. */
 const FIGHTERS_PER_GARRISON_MAN = 6;
@@ -47,11 +67,50 @@ export function recentThreat(colony: ColonyView, tick: number): number {
   return threat === null || tick - threat.since >= THREAT_MEMORY_TICKS ? 0 : threat.men;
 }
 
-/** The garrison a colony wants: none before it runs, then {@link GARRISON_LEAST}, a man more per raider seen
- *  lately, up to {@link GARRISON_MOST}. */
-export function garrisonWant(colony: ColonyView, tick: number): number {
+/** What a colony is worth guarding: its own people, garrison apart, its standing workshops, and whether it
+ *  feeds everyone on its land. */
+export interface ColonyWorth {
+  readonly people: number;
+  readonly workshops: number;
+  readonly fed: boolean;
+}
+
+/** The garrison a colony wants: none before it runs, then {@link GARRISON_LEAST} and a man more per raider
+ *  seen lately; while it feeds everyone, a man more per {@link PEOPLE_PER_GUARD} of its people and
+ *  {@link GUARDS_PER_WORKSHOP} per workshop; up to {@link GARRISON_MOST}. The seat's army bounds how many
+ *  sail ({@link garrisonRoom}), so the garrison grows with the colony and with the army. */
+export function garrisonWant(colony: ColonyView, tick: number, worth: ColonyWorth): number {
   if (colony.phase !== 'running') return 0;
-  return Math.min(GARRISON_MOST, GARRISON_LEAST + recentThreat(colony, tick));
+  const growth = worth.fed
+    ? Math.floor(worth.people / PEOPLE_PER_GUARD) + GUARDS_PER_WORKSHOP * worth.workshops
+    : 0;
+  return Math.min(GARRISON_MOST, GARRISON_LEAST + recentThreat(colony, tick) + growth);
+}
+
+/** The garrison men a crossing takes when `held` of `want` stand: all it lacks of its least garrison and its
+ *  threat, else up to {@link GROWTH_PER_CROSSING}. */
+export function garrisonCrossing(colony: ColonyView, tick: number, want: number, held: number): number {
+  const urgent = GARRISON_LEAST + recentThreat(colony, tick) - held;
+  return Math.max(0, Math.min(want - held, Math.max(urgent, GROWTH_PER_CROSSING)));
+}
+
+/** {@link ColonyWorth} read off the colony's land. */
+function worthOf(env: ColonyEnv, colony: ColonyView): ColonyWorth {
+  const { world, ctx } = env;
+  const index = contentIndex(ctx.content);
+  const buildings = colonyBuildings(env);
+  const people = colonists(env);
+  const guards = new Set(colony.garrison);
+  const workshops = buildings.filter(
+    (e) =>
+      isBuilt(world, e) &&
+      index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.workplace,
+  ).length;
+  return {
+    people: people.filter((e) => !guards.has(e)).length,
+    workshops,
+    fed: colonyFed(env, buildings, people),
+  };
 }
 
 /** The colony's garrison men alive and standing on its land. */
@@ -85,13 +144,15 @@ export function garrisonRoom(army: number, held: number): number {
   return Math.max(0, Math.min(share, army - ARMY_FLOOR_MIN));
 }
 
-/** The men home owes the colony's garrison, archers first and then ascending id: none while home is raided,
- *  and no more than {@link garrisonRoom} lets go. The colony's ferry seats them at
- *  home. */
+/** The men home owes the colony's garrison on this crossing ({@link garrisonCrossing}), archers first and
+ *  then ascending id: none while home is raided, and no more than {@link garrisonRoom} lets go. The colony's
+ *  ferry seats them at home. */
 export function garrisonOwed(env: ColonyEnv, colony: ColonyView): Entity[] {
   const { world, ctx, seat } = env;
-  const lacking = garrisonWant(colony, ctx.tick) - colony.garrison.length;
-  if (lacking <= 0 || underAttack(world, seat)) return [];
+  if (colony.phase !== 'running' || underAttack(world, seat)) return [];
+  const want = garrisonWant(colony, ctx.tick, worthOf(env, colony));
+  const lacking = garrisonCrossing(colony, ctx.tick, want, colony.garrison.length);
+  if (lacking <= 0) return [];
   const { army, free } = homeFighters(env);
   const take = Math.min(lacking, garrisonRoom(army, colonyGarrisons(world, seat).length));
   if (take <= 0) return [];

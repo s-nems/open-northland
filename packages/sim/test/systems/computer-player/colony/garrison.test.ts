@@ -12,7 +12,11 @@ import { nodeManhattan } from '../../../../src/nav/halfcell.js';
 import { colonyBuildingsOn, everySettlerOf } from '../../../../src/systems/ai-shared/home-roster.js';
 import { takeCensus } from '../../../../src/systems/ai-shared/military/census.js';
 import { planSettlementDefence } from '../../../../src/systems/ai-shared/military/settlement-defence.js';
-import { garrisonRoom } from '../../../../src/systems/computer-player/colony/garrison.js';
+import {
+  garrisonCrossing,
+  garrisonRoom,
+  garrisonWant,
+} from '../../../../src/systems/computer-player/colony/garrison.js';
 import { colonyTowerCount } from '../../../../src/systems/computer-player/colony/towers.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { nodeOfEntity } from '../../../../src/systems/computer-player/military/operations/raid-target.js';
@@ -20,6 +24,7 @@ import { ARMY_FLOOR_MIN } from '../../../../src/systems/computer-player/workforc
 import { towerPostFor } from '../../../../src/systems/conflict/tower-post.js';
 import {
   BOWMAN,
+  blankColony,
   colonyIslands,
   colonyState,
   colonyWorld,
@@ -101,6 +106,35 @@ describe('the garrison gate', () => {
     expect(garrisonRoom(ARMY_FLOOR_MIN, 0)).toBe(0);
     expect(garrisonRoom(ARMY, 0)).toBe(GARRISON_LEAST);
     expect(garrisonRoom(ARMY - GARRISON_LEAST, GARRISON_LEAST)).toBe(0);
+  });
+});
+
+describe('the garrison a colony wants', () => {
+  /** Two towers' archers with no threat and nothing grown. */
+  const LEAST = 6;
+  const PEOPLE = 20;
+  const WORKSHOPS = 3;
+  /** A man per four of its people and one per workshop on top of its least. */
+  const GROWN = LEAST + PEOPLE / 4 + WORKSHOPS;
+  const MOST = 20;
+  const HUGE = 400;
+  const running = blankColony(0);
+  const worth = { people: PEOPLE, workshops: WORKSHOPS, fed: true };
+
+  it('grows with the colony while it feeds everyone, up to a cap', () => {
+    expect(garrisonWant(running, 0, { people: 0, workshops: 0, fed: true })).toBe(LEAST);
+    expect(garrisonWant(running, 0, worth)).toBe(GROWN);
+    expect(garrisonWant(running, 0, { ...worth, fed: false })).toBe(LEAST);
+    expect(garrisonWant(running, 0, { ...worth, people: HUGE })).toBe(MOST);
+    expect(garrisonWant(blankColony(0, { phase: 'founding' }), 0, worth)).toBe(0);
+  });
+
+  it('takes its least garrison at once and grows a few men a crossing', () => {
+    const PER_CROSSING = 3;
+    expect(garrisonCrossing(running, 0, GROWN, 0)).toBe(LEAST);
+    expect(garrisonCrossing(running, 0, GROWN, LEAST)).toBe(PER_CROSSING);
+    expect(garrisonCrossing(running, 0, LEAST + 1, LEAST)).toBe(1);
+    expect(garrisonCrossing(running, 0, GROWN, GROWN)).toBe(0);
   });
 });
 
