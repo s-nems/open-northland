@@ -97,8 +97,9 @@ const EAST_FISH_AT = { hx: 134, hy: 60 };
 const FISH_IN_SWARM = 40;
 /** A home warehouse site on the west island, south of the headquarters. */
 const HOME_SITE_AT = { x: 72, y: 84 };
-/** The wood a colony's first store costs, by the fixture: the manifest's only wood. */
-const STORE_BILL_WOOD = 2;
+/** The wood a colony's first store costs, by the fixture, both warehouse tiers it is raised through: the
+ *  manifest's only wood. */
+const STORE_BILL_WOOD = 4;
 
 function freeShipsOf(sim: Simulation): Entity[] {
   const ctx = ctxOf(sim);
@@ -410,8 +411,9 @@ describe('a failed voyage', () => {
 
 describe('a colony fitting out', () => {
   /** The phase after one fitting-out decision beside a new home warehouse site holding `siteWood` of its
-   *  bill, with `storeWood` in the headquarters and no wood anywhere else at home. */
-  function fitOutBesideSite(storeWood: number, siteWood: number): string | undefined {
+   *  bill, with `storeWood` in the headquarters, `shelfWood` on a built workshop's shelf and no wood anywhere
+   *  else at home. */
+  function fitOutBesideSite(storeWood: number, siteWood: number, shelfWood = 0): string | undefined {
     const sim = colonyWorld();
     stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
     const before = new Set(homeBuildings(sim.world, ctxOf(sim), SEAT));
@@ -428,6 +430,11 @@ describe('a colony fitting out', () => {
     const base = seatBaseOf(sim.world, ctxOf(sim), SEAT);
     for (const e of homeBuildings(sim.world, ctxOf(sim), SEAT))
       setStockAmount(sim.world, e, WOOD, !before.has(e) ? siteWood : e === base ? storeWood : 0);
+    const shelf = homeBuildings(sim.world, ctxOf(sim), SEAT).find(
+      (e) => e !== base && before.has(e) && sim.world.get(e, Building).built >= ONE,
+    );
+    if (shelf === undefined) throw new Error('setup: no built workshop');
+    setStockAmount(sim.world, shelf, WOOD, shelfWood);
     const live = editColony(sim);
     live.phase = 'fittingOut';
     live.since = sim.tick;
@@ -445,6 +452,10 @@ describe('a colony fitting out', () => {
   it("waits while the manifest's goods lie only in home's sites, which spend them", () => {
     // The manifest's wood lies in the new site alone: all the store's bill, which the site spends itself.
     expect(fitOutBesideSite(0, STORE_BILL_WOOD)).toBe('fittingOut');
+  });
+
+  it("waits while the manifest's goods lie only on a workshop's shelf, which no hand fetches for a hold", () => {
+    expect(fitOutBesideSite(0, 0, STORE_BILL_WOOD)).toBe('fittingOut');
   });
 
   it('loads what home stores while its sites still lack the same goods, so open sites never hold the party', () => {

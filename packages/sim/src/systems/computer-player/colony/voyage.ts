@@ -18,7 +18,6 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../nav/terrain/index.js';
-import { homeBuildings } from '../../ai-shared/home-roster.js';
 import { civilianCount } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { needLevel } from '../../lifecycle/needs/index.js';
@@ -26,7 +25,6 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { mooringSpotsOf } from '../../vehicles/dock.js';
 import { isCargoHand, isLoaderRider } from '../../vehicles/stock.js';
 import { seatBaseOf } from '../base.js';
-import { setAside } from '../build-order/upgrade-supply.js';
 import { minutesToTicks } from '../game-phase.js';
 import { freeShips, LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../military/operations/landing.js';
 import { believedLand, underFire } from '../military/operations/landing-target.js';
@@ -38,6 +36,7 @@ import {
   holdDone,
   holdLoad,
   holdsStoreBill,
+  homeStockToLoad,
   manifestInStock,
   pinHold,
   wantManifest,
@@ -46,7 +45,6 @@ import { mayBuildTradeShip, TRADE_SHIP_ID } from './fleet.js';
 import { boardOrders, PARTY_FROM_CIVILIANS, pickParty, spareMen } from './people.js';
 import { takeRouteShip } from './route.js';
 import { shoreWithStore } from './spot.js';
-import { homeStockOf } from './stock.js';
 import { colonyStoreType } from './store-tier.js';
 import { type ColonySite, colonySiteClear, siteBlockHolds, surveyColonySite } from './survey.js';
 
@@ -389,9 +387,10 @@ function splitParty(
 /**
  * Fitting out: the second ship is claimed as soon as it lies free. A scout ship that is the trade ship
  * carries the whole party at once, any other past {@link COLONY_FIT_OUT_TICKS} with none; with no ship at
- * all the voyage fails. The same span then runs for the manifest to lie in the home stock and a party to be
- * spared: the site is looked at once more and loading starts. A scout ship the party does not need goes
- * free here.
+ * all the voyage fails. The same span then runs for the ship to lie moored at home and a party to be
+ * spared. Then it waits, the party at work, for home to hold the manifest where hands fetch it, which
+ * costs a moored ship and never fails the voyage: the site is looked at once more and loading starts. A
+ * scout ship the party does not need goes free here.
  */
 export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx, seat } = env;
@@ -412,14 +411,12 @@ export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] 
     env.edit().ship = null;
     return [];
   }
-  if (late) return turnHome(env, false);
   const home = homeLandOf(env);
-  if (!mooredOn(env, ship, home)) return [];
+  if (!mooredOn(env, ship, home)) return late ? turnHome(env, false) : [];
   const party = pickParty(world, ctx, seat, home);
-  if (party.length === 0) return [];
+  if (party.length === 0) return late ? turnHome(env, false) : [];
   const manifest = colonyManifest(world, ctx, seat, party.length);
-  const held = setAside(world, homeBuildings(world, ctx, seat));
-  if (!manifestInStock(world, homeStockOf(world, ctx, seat), held, ship, manifest)) return [];
+  if (!manifestInStock(world, homeStockToLoad(world, ctx, seat), ship, manifest)) return [];
   if (!colonySiteClear(world, ctx, seat, colony.site)) return turnHome(env, true);
   const tradeShip = shipId(env, ship) === TRADE_SHIP_ID ? (colony.scout?.ship ?? null) : null;
   const { people, rest } = splitParty(world, party, ship, tradeShip);

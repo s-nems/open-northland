@@ -1,11 +1,15 @@
-import { Vehicle, VehicleStock, vehicleLoad } from '../../../components/index.js';
+import { BUILDING_KIND } from '@open-northland/data';
+import { Building, Vehicle, VehicleStock, vehicleLoad } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { homeBuildings } from '../../ai-shared/home-roster.js';
+import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
-import type { SeatStock } from '../../stores/index.js';
+import { stockAtBuildings } from '../../stores/index.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { foodGood } from './home-supply.js';
+import { homeStockOf } from './stock.js';
 import { colonyStoreType } from './store-tier.js';
 
 /** Food per member of the founding party (authored: the comfort line home keeps a mouth), what it eats
@@ -30,21 +34,38 @@ export function colonyManifest(world: World, ctx: SystemContext, seat: number, p
   return [...lines].map(([goodType, amount]) => ({ goodType, amount }));
 }
 
-/** Whether `stock`, less what home's sites hold or keep aside (`held`), holds what the manifest still
- *  wants beyond what lies aboard `ship`: seat stock counts a site's hold, which only the site spends. What
- *  the sites still lack is left out, so the homes lift, which keeps sites open, never holds the party. */
+/** The units of each good at home a hold's hands may fetch: home's stock less what lies on its sites,
+ *  workshop shelves and in its homes, which nobody hands a ship. Its warehouses and the heaps on its ground
+ *  stay in. */
+export function homeStockToLoad(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+): (goodType: number) => number {
+  const buildings = contentIndex(ctx.content).buildings;
+  const stock = homeStockOf(world, ctx, seat);
+  const shelves = homeBuildings(world, ctx, seat).filter(
+    (e) =>
+      !isBuilt(world, e) ||
+      buildings.get(world.get(e, Building).buildingType)?.kind !== BUILDING_KIND.storage,
+  );
+  const held = stockAtBuildings(world, seat, shelves, () => false);
+  return (goodType) => stock.units(goodType) - (held.get(goodType) ?? 0);
+}
+
+/** Whether home holds (`held`, {@link homeStockToLoad}) what the manifest still wants beyond what lies
+ *  aboard `ship`.
+ *  What home's sites still lack is not set against it, so the homes lift, which keeps sites open, never
+ *  holds the party. */
 export function manifestInStock(
   world: World,
-  stock: SeatStock,
-  held: ReadonlyMap<number, number>,
+  held: (goodType: number) => number,
   ship: Entity,
   manifest: readonly CargoLine[],
 ): boolean {
   const hold = world.tryGet(ship, VehicleStock)?.lines;
   return manifest.every(
-    (line) =>
-      stock.units(line.goodType) - (held.get(line.goodType) ?? 0) >=
-      line.amount - (hold?.get(line.goodType)?.current ?? 0),
+    (line) => held(line.goodType) >= line.amount - (hold?.get(line.goodType)?.current ?? 0),
   );
 }
 

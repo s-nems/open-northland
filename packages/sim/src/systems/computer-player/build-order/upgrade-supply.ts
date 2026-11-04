@@ -114,7 +114,7 @@ export function sitesClaims(world: World, ctx: SystemContext, owned: readonly En
 
 /** What the seat's construction sites hold and its upgrades keep aside, by good type: seat stock no
  *  other site can draw on before they finish. */
-export function setAside(world: World, owned: readonly Entity[]): Map<number, number> {
+function setAside(world: World, owned: readonly Entity[]): Map<number, number> {
   const aside = new Map<number, number>();
   const add = (amounts: ReadonlyMap<number, number> | undefined): void => {
     for (const [good, units] of amounts ?? []) aside.set(good, (aside.get(good) ?? 0) + units);
