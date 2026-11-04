@@ -653,7 +653,6 @@ const NEED_FACTS: Readonly<Record<string, Fact>> = {
   'meal.candyPct': whole((base) => base.goodById.get('candy')?.meal?.hungerPct),
   'meal.candyHomePct': whole((base) => base.goodById.get('candy')?.meal?.homeHungerPct),
   'meal.candyCompanyPct': whole((base) => base.goodById.get('candy')?.meal?.leisurePct),
-  'meal.breakRetrySeconds': whole(seconds(systems.MEAL_BREAK_RETRY_TICKS)),
   'alert.standTo': whole(systems.STAND_TO_RADIUS_NODES),
   'alert.restClearance': whole(systems.REST_CLEARANCE_NODES),
 };

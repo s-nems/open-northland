@@ -16,7 +16,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Bar', 'Drains on its own', 'Drains with work', 'Refilled by', 'At 0%'],
+            head: ['Bar', 'Drains over time', 'Drains with work', 'Refilled by', 'At 0%'],
             rows: [
               [
                 'Energy',
@@ -32,7 +32,7 @@ export const SETTLERS: ArticleGroup = {
                 'no',
                 'weapons and armour only',
                 '[[article:religion|prayer]]',
-                "won't start weapons or armour",
+                'makes no weapons or armour',
               ],
             ],
             foot: 'At map start each bar is random, {{need.startMinPct}}-100%. Without [[good:shoes|Shoes]] each step costs {{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}% Energy depending on the ground, double that under load.',
@@ -59,32 +59,11 @@ export const SETTLERS: ArticleGroup = {
               ['{{need.satedPct}}%', 'At home he tops up Stamina, then Energy, to this level and leaves.'],
               [
                 '{{need.overfillPct}}%',
-                'The most a bar holds. A meal at home or sleep on Furniture stores a reserve above 100%.',
+                'The most a bar holds. A meal at home or sleep at home with Furniture stores a reserve above 100%.',
               ],
             ],
             foot: '[[job:armorer|Armourers]], [[job:smith|Blacksmiths]] and [[job:sewer|Tailors]] go to pray on their own.',
           },
-        },
-        {
-          h: 'What a settler does first',
-        },
-        {
-          steps: [
-            'Alarm: shelter.',
-            '[[article:draughts|Potions and amulets]], on the spot.',
-            'Energy: eat.',
-            'Stamina: sleep.',
-            'Religion: pray.',
-            'Player orders: Barracks, equipment, tower.',
-            'Social Motivation: talk.',
-            'Work.',
-          ],
-        },
-        {
-          p: 'With nothing to eat and nowhere to pray, a settler returns to work and the bar keeps falling. With no dwelling within {{reach.walk}} hexes he sleeps in the open.',
-        },
-        {
-          p: "A soldier in combat eats only what he carries or from the tower's stock. An eat order breaks off the fight.",
         },
         {
           h: 'Sleep',
@@ -124,38 +103,13 @@ export const SETTLERS: ArticleGroup = {
               ['[[article:heroes|Hero]]', 'None.'],
               ['Monsters, animals', 'None.'],
               ['Soldier', 'No Social Motivation.'],
-              ['Cart passenger', 'Bars and health stand still.'],
+              ['Cart passenger', 'Bars do not drain, health does not change.'],
               [
                 'Ship passenger',
                 'Eats from the hold, sleeps as away from home, talks. Religion waits for land.',
               ],
             ],
           },
-        },
-        {
-          h: 'Eat, Sleep, Talk and Pray orders',
-        },
-        {
-          list: [
-            'The order works at any bar level. It interrupts marching, attacks and fights.',
-            'With no food or place to pray, the order waits. If more orders are queued behind it, it is lost.',
-            'Heroes do not take them. "Pray" works only in a profession that can pray.',
-          ],
-        },
-        {
-          h: 'Hunger and long orders',
-        },
-        {
-          list: [
-            'At {{need.criticalPct}}% Energy a settler breaks off marching, scouting or an order queue. Status: "Hungry, going to eat".',
-            'He eats to {{need.satedPct}}%, then starts the order again.',
-            'If he finds nothing, he returns to the order and looks again after {{meal.breakRetrySeconds}} s.',
-            "A new order takes priority: hunger won't break it off for {{meal.breakRetrySeconds}} s.",
-            "Tiredness doesn't break off orders.",
-          ],
-        },
-        {
-          p: 'The "Eating and sleeping" switch and the "Standing to" state apply only to soldiers: [[article:stances|Stances]].',
         },
         {
           h: 'Religion and Social Motivation',

@@ -3,10 +3,8 @@
   width: 100%;
   max-width: 640px;
   margin: 12px auto;
-  padding: 10px 12px;
-  border: 1px solid var(--parchment-lo);
-  border-radius: 3px;
-  background: var(--parchment-hi);
+  /* No frame of its own: it is drawn on the page, so halos and holes take the page's tone. */
+  --fig-ground: color-mix(in srgb, var(--parchment-hi) 50%, var(--parchment));
   color: var(--ink);
 }
 .on-hud .kn-fig:empty {
@@ -37,7 +35,7 @@
 }
 .on-hud .kn-fig__svg .kn-fig__t--halo {
   paint-order: stroke;
-  stroke: var(--parchment-hi);
+  stroke: var(--fig-ground);
   stroke-width: 4px;
   stroke-linejoin: round;
 }
@@ -69,7 +67,7 @@
   stroke: var(--wax-danger);
 }
 .on-hud .kn-fig__hole {
-  fill: var(--parchment-hi);
+  fill: var(--fig-ground);
 }
 .on-hud .kn-fig__union {
   fill: var(--bronze);
@@ -94,7 +92,7 @@
 }
 .on-hud .kn-fig__mark--enemy {
   fill: var(--wax-danger);
-  stroke: var(--parchment-hi);
+  stroke: var(--fig-ground);
   stroke-width: 2;
 }
 .on-hud .kn-fig__cross {
@@ -134,7 +132,7 @@
 }
 
 .on-hud .kn-fig__blow {
-  stroke: var(--parchment-hi);
+  stroke: var(--fig-ground);
   stroke-width: 2;
 }
 .on-hud .kn-fig__blow--0,
@@ -182,7 +180,7 @@
   fill: var(--wax-ok);
 }
 .on-hud .kn-fig__level--reserve {
-  fill: color-mix(in srgb, var(--wax-ok) 40%, var(--parchment-hi));
+  fill: color-mix(in srgb, var(--wax-ok) 40%, var(--fig-ground));
 }
 
 .on-hud .kn-fig__curve {
@@ -193,17 +191,17 @@
 }
 .on-hud .kn-fig__curve-mark {
   fill: var(--wax-danger);
-  stroke: var(--parchment-hi);
+  stroke: var(--fig-ground);
   stroke-width: 2;
 }
 
 .on-hud .kn-fig__disc {
-  fill: color-mix(in srgb, var(--wax-danger) 34%, var(--parchment-hi));
+  fill: color-mix(in srgb, var(--wax-danger) 34%, var(--fig-ground));
   stroke: var(--wax-danger);
   stroke-width: 1.4;
 }
 .on-hud .kn-fig__disc--hit {
-  fill: color-mix(in srgb, var(--wax-danger) 62%, var(--parchment-hi));
+  fill: color-mix(in srgb, var(--wax-danger) 62%, var(--fig-ground));
 }
 
 .on-hud .kn-fig__wall {
@@ -220,7 +218,7 @@
   fill: var(--wood-hi);
 }
 .on-hud .kn-fig__seed {
-  fill: var(--parchment-hi);
+  fill: var(--fig-ground);
 }
 .on-hud .kn-fig__stem {
   stroke: var(--wax-ok);
@@ -307,7 +305,7 @@
   bottom: -2px;
   padding: 0 2px;
   border-radius: 2px;
-  background: var(--parchment-hi);
+  background: var(--fig-ground);
   font-size: 12px;
   font-weight: 700;
 }

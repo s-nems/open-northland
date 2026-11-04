@@ -16,7 +16,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Balken', 'Sinkt von selbst', 'Sinkt bei Arbeit', 'Füllt auf', 'Bei 0%'],
+            head: ['Balken', 'Sinkt mit der Zeit', 'Sinkt bei Arbeit', 'Füllt auf', 'Bei 0%'],
             rows: [
               [
                 'Energie',
@@ -38,7 +38,7 @@ export const SETTLERS: ArticleGroup = {
                 'nein',
                 'nur bei Waffen und Rüstungen',
                 '[[article:religion|Gebet]]',
-                'beginnt keine Waffe und keine Rüstung',
+                'stellt keine Waffen und Rüstungen her',
               ],
             ],
             foot: 'Beim Kartenstart steht jeder Balken zufällig auf {{need.startMinPct}}-100%. Ohne [[good:shoes|Schuhe]] kostet jeder Schritt je nach Boden {{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}% Energie, mit Last doppelt so viel.',
@@ -68,32 +68,11 @@ export const SETTLERS: ArticleGroup = {
               ],
               [
                 '{{need.overfillPct}}%',
-                'Obergrenze. Eine Mahlzeit zu Hause und Schlaf auf Möbeln legen Vorrat über 100% an.',
+                'Obergrenze. Eine Mahlzeit zu Hause und Schlaf zu Hause mit Möbeln legen Vorrat über 100% an.',
               ],
             ],
             foot: 'Von selbst beten gehen [[job:armorer|Waffenbauer]], [[job:smith|Schmied]] und [[job:sewer|Näher]].',
           },
-        },
-        {
-          h: 'Was ein Siedler zuerst tut',
-        },
-        {
-          steps: [
-            'Verteidigungsmodus: Schutz suchen.',
-            '[[article:draughts|Getränke und Amulette]], an Ort und Stelle.',
-            'Energie: essen.',
-            'Kondition: schlafen.',
-            'Religion: beten.',
-            'Befehle des Spielers: Kaserne, Ausrüstung, Turm.',
-            'Soziale Motivation: reden.',
-            'Arbeit.',
-          ],
-        },
-        {
-          p: 'Gibt es nichts zu essen oder keinen Ort zum Beten, geht der Siedler zurück an die Arbeit, und der Balken sinkt weiter. Ohne Wohnhaus im Umkreis von {{reach.walk}} Hexfeldern schläft er im Freien.',
-        },
-        {
-          p: 'Ein Soldat im Kampf isst nur, was er bei sich trägt, oder aus dem Turmvorrat. Der Befehl Iss unterbricht den Kampf.',
         },
         {
           h: 'Schlaf',
@@ -133,38 +112,13 @@ export const SETTLERS: ArticleGroup = {
               ['[[article:heroes|Held]]', 'Keine.'],
               ['Monster, Tiere', 'Keine.'],
               ['Soldat', 'Ohne Soziale Motivation.'],
-              ['Mitfahrer im Karren', 'Balken und Gesundheit stehen still.'],
+              ['Mitfahrer im Karren', 'Balken sinken nicht, Gesundheit bleibt gleich.'],
               [
                 'Passagier auf dem Schiff',
                 'Isst aus dem Frachtraum, schläft wie außer Haus, redet. Religion wartet bis zum Landgang.',
               ],
             ],
           },
-        },
-        {
-          h: 'Befehle Iss, Schlaf, Rede, Bete',
-        },
-        {
-          list: [
-            'Der Befehl wirkt bei jedem Balkenstand. Er unterbricht Marsch, Angriff und Kampf.',
-            'Gibt es kein Essen oder keinen Ort zum Beten, wartet der Befehl. Stehen weitere Befehle in der Reihe, verfällt er.',
-            'Helden nehmen diese Befehle nicht an. „Bete“ wirkt nur in einem Beruf, der beten kann.',
-          ],
-        },
-        {
-          h: 'Hunger und lange Befehle',
-        },
-        {
-          list: [
-            'Bei {{need.criticalPct}}% Energie verlässt der Siedler Marsch, Erkundung oder Befehlsreihe. Status: „Hungrig, geht essen“.',
-            'Er isst bis {{need.satedPct}}% und beginnt den Befehl dann von vorne.',
-            'Findet er nichts, kehrt er zum Befehl zurück und sucht nach {{meal.breakRetrySeconds}} s erneut.',
-            'Ein neuer Befehl geht vor: {{meal.breakRetrySeconds}} s lang unterbricht ihn der Hunger nicht.',
-            'Müdigkeit unterbricht keine Befehle.',
-          ],
-        },
-        {
-          p: 'Der Schalter „Essen und Schlafen“ und der Status „In Alarmbereitschaft“ gelten nur für Soldaten: [[article:stances|Soldatenmodi]].',
         },
         {
           h: 'Religion und Soziale Motivation',

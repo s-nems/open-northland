@@ -16,7 +16,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Pasek', 'Spada sam', 'Spada przy pracy', 'Uzupełnia', 'Przy 0%'],
+            head: ['Pasek', 'Spada z czasem', 'Spada przy pracy', 'Uzupełnia', 'Przy 0%'],
             rows: [
               [
                 'Energia',
@@ -32,7 +32,7 @@ export const SETTLERS: ArticleGroup = {
                 'nie',
                 'tylko broń i zbroje',
                 '[[article:religion|modlitwa]]',
-                'nie zacznie broni ani zbroi',
+                'nie wytwarza broni ani zbroi',
               ],
             ],
             foot: 'Na starcie mapy każdy pasek ma losowo {{need.startMinPct}}-100%. Bez [[good:shoes|Butów]] każdy krok zabiera {{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}% Energii zależnie od podłoża, z ładunkiem dwa razy tyle.',
@@ -62,32 +62,11 @@ export const SETTLERS: ArticleGroup = {
               ],
               [
                 '{{need.overfillPct}}%',
-                'Tyle najwyżej mieści pasek. Posiłek w domu i sen na Meblach odkładają zapas ponad 100%.',
+                'Tyle najwyżej mieści pasek. Posiłek w domu i sen w domu z meblami odkładają zapas ponad 100%.',
               ],
             ],
             foot: 'Sami idą się modlić [[job:armorer|Płatnerz]], [[job:smith|Kowal]] i [[job:sewer|Krawiec]].',
           },
-        },
-        {
-          h: 'Co osadnik robi najpierw',
-        },
-        {
-          steps: [
-            'Alarm: schronienie.',
-            '[[article:draughts|Napoje i amulety]], w miejscu.',
-            'Energia: jedzenie.',
-            'Wytrzymałość: sen.',
-            'Religia: modlitwa.',
-            'Rozkazy gracza: Koszary, wyposażenie, wieża.',
-            'Towarzystwo: rozmowa.',
-            'Praca.',
-          ],
-        },
-        {
-          p: 'Gdy nie ma czego zjeść ani gdzie się modlić, osadnik wraca do pracy, a pasek spada dalej. Bez domu w zasięgu {{reach.walk}} hexów śpi na otwartym terenie.',
-        },
-        {
-          p: 'Żołnierz w walce je tylko to, co niesie, albo z zapasu wieży. Rozkaz jedzenia przerywa walkę.',
         },
         {
           h: 'Sen',
@@ -127,35 +106,10 @@ export const SETTLERS: ArticleGroup = {
               ['[[article:heroes|Bohater]]', 'Brak.'],
               ['Potwory, zwierzęta', 'Brak.'],
               ['Żołnierz', 'Bez Towarzystwa.'],
-              ['Pasażer wozu', 'Paski i zdrowie stoją.'],
+              ['Pasażer wozu', 'Paski nie spadają, zdrowie się nie zmienia.'],
               ['Pasażer statku', 'Je z ładowni, śpi jak poza domem, rozmawia. Religia czeka na ląd.'],
             ],
           },
-        },
-        {
-          h: 'Rozkazy Jedz, Śpij, Rozmawiaj, Módl się',
-        },
-        {
-          list: [
-            'Rozkaz działa przy każdym stanie paska. Przerywa marsz, atak i walkę.',
-            'Gdy nie ma jedzenia albo miejsca modlitwy, rozkaz czeka. Jeśli w kolejce stoją następne rozkazy, ten przepada.',
-            'Bohater ich nie przyjmuje. "Módl się" działa tylko w zawodzie, który umie się modlić.',
-          ],
-        },
-        {
-          h: 'Głód a długie rozkazy',
-        },
-        {
-          list: [
-            'Przy {{need.criticalPct}}% Energii osadnik schodzi z marszu, zwiadu lub kolejki rozkazów. Stan: "Głodny, idzie coś zjeść".',
-            'Je do {{need.satedPct}}%, potem zaczyna rozkaz od nowa.',
-            'Gdy nic nie znajdzie, wraca do rozkazu i szuka znowu po {{meal.breakRetrySeconds}} s.',
-            'Nowy rozkaz ma pierwszeństwo: przez {{meal.breakRetrySeconds}} s głód go nie przerwie.',
-            'Zmęczenie nie przerywa rozkazów.',
-          ],
-        },
-        {
-          p: 'Przełącznik "Jedzenie i sen" i stan "Stoi na alarmie" dotyczą tylko żołnierza: [[article:stances|Postawy]].',
         },
         {
           h: 'Religia i Towarzystwo',
