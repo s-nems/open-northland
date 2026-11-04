@@ -1,8 +1,10 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  aiControlEntity,
   Building,
   COMPUTER_MODULE_IDS,
+  ComputerColony,
   type ComputerModuleEnables,
   Owner,
   Position,
@@ -28,6 +30,7 @@ import {
   LANDING_SAIL_TIMEOUT_TICKS,
 } from '../../../../../src/systems/computer-player/military/operations/landing.js';
 import { COLONY_RAID_LEAST_MEN } from '../../../../../src/systems/computer-player/military/operations/landing-aim.js';
+import { RELIEF_LEAST_MEN } from '../../../../../src/systems/computer-player/military/operations/landing-relief.js';
 import {
   LANDING_BIG_SHIPS,
   LANDING_FLEET_MIN_SHIPS,
@@ -37,6 +40,7 @@ import { spawnSettler } from '../../../../../src/systems/spawn/index.js';
 import { createVehicle } from '../../../../../src/systems/vehicles/index.js';
 import { crewInside } from '../../../../../src/systems/vehicles/movement.js';
 import { aiContent } from '../../../../fixtures/ai-content.js';
+import { blankColony } from '../../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../../fixtures/context.js';
 
 const VIKING = 1;
@@ -77,6 +81,8 @@ const GUARD_FACTOR = 2;
 const GUARD_RANK = 8;
 const GUARD_OFFSET = 6;
 const ARMY_RANK = 6;
+/** The foe's band that lands on the seat's colony. */
+const RAIDERS = 6;
 /** The most a landing may take to board, cross and sail home: a run ending sooner stops at once. */
 const LANDING_LIMIT_TICKS = LANDING_FORM_TIMEOUT_TICKS + 2 * LANDING_SAIL_TIMEOUT_TICKS;
 /** Twice the decisions a full fleet with its full band takes to open its landing here. */
@@ -468,6 +474,31 @@ describe('landing operations', () => {
       target === undefined ? null : terrain.componentOf(terrain.nodeAtClamped(target.hx, target.hy)),
     ).toBe(colonyLand);
     expect(seen?.landing?.startMen).toBe(COLONY_RAID_LEAST_MEN);
+    expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it('relieves its colony from home with a band sized to the enemy it sees there', () => {
+    const { sim } = landingWorld({ colony: true });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    // The colony's garrison saw the band land, as its own defence notes it.
+    const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
+    const colony = blankColony(colonyLand, { threat });
+    sim.world.add(carrier, ComputerColony, { colonies: [colony], rejected: [], retryAt: 0 });
+    spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
+    let seen: OperationView | undefined;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return (seen?.landing?.landed ?? 0) > 0;
+    });
+    const target = seen?.target;
+    expect(
+      target === undefined ? null : terrain.componentOf(terrain.nodeAtClamped(target.hx, target.hy)),
+    ).toBe(colonyLand);
+    expect(seen?.landing?.startMen).toBeGreaterThanOrEqual(RELIEF_LEAST_MEN);
+    expect(seen?.landing?.startMen).toBeLessThan(RAIDERS * 2 + RELIEF_LEAST_MEN);
     expect(seen?.landing?.landed).toBeGreaterThan(0);
   });
 

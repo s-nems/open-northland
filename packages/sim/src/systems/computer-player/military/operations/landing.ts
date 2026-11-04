@@ -33,11 +33,13 @@ import {
   landingFleetShips,
   SOLDIERS_PER_SHIP,
 } from '../../workforce/craft.js';
+import { underAttack } from '../../workforce/garrison.js';
 import { ownArmyPoints } from '../enemy-strength.js';
 import { marchOrders } from '../muster.js';
 import { unitPoints } from '../points.js';
 import { homeOf } from './band.js';
 import { type LandingAim, landingAim, stormObjective } from './landing-aim.js';
+import { reliefAim, reliefObjective, relievesLand } from './landing-relief.js';
 import { believedLand, type FireSource, landingObjective, underFire } from './landing-target.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleEnemyFighters } from './raid-target.js';
@@ -209,10 +211,11 @@ function releaseStranded(env: OperationEnv, op: LandingOperation, from: number):
 }
 
 /** Why the landing should turn back before setting anyone ashore, or null: its posture no longer
- *  attacks, the target's owner is no enemy, or it lost {@link LANDING_SHIP_LOSS_PCT} of its ships. */
+ *  attacks (a relief sails whatever the posture), the target's owner is no enemy, or it lost
+ *  {@link LANDING_SHIP_LOSS_PCT} of its ships. */
 function abortReason(env: OperationEnv, op: LandingOperation): OperationEndReason | null {
   const owner = op.target.owner;
-  if (env.orders.launchRatio === null) return 'postureChanged';
+  if (env.orders.launchRatio === null && !relievesLand(env, rivalComponent(env, op))) return 'postureChanged';
   if (owner === null || diplomacyStance(env.world, env.seat, owner) !== 'enemy') return 'targetLost';
   if ((op.startShips - op.ships.length) * PERCENT >= op.startShips * LANDING_SHIP_LOSS_PCT) return 'losses';
   return null;
@@ -412,6 +415,14 @@ function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
   const from = first === undefined ? null : nodeOfEntity(world, first);
   if (from === null) return { landed, striking: false, fire: [], commands: [] };
   const land = rivalComponent(env, op);
+  const free = landed.filter(
+    (e) => !spokenFor(world, e) && !world.has(e, Engagement) && !world.has(e, AttackOrder),
+  );
+  if (relievesLand(env, land)) {
+    const foe = reliefObjective(env, land, from);
+    if (foe === null) return { landed, striking: false, fire: [], commands: [] };
+    return { landed, striking: true, fire: [], commands: marchOrders(world, terrain, free, foe) };
+  }
   const believed = believedLand(env, land);
   let goal = landingObjective(ctx, believed, from);
   if (goal === null) {
@@ -420,9 +431,6 @@ function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
     goal = stormObjective(env, believed, land, op.target.owner, from, points);
   }
   if (goal === null) return { landed, striking: false, fire: believed.sources, commands: [] };
-  const free = landed.filter(
-    (e) => !spokenFor(world, e) && !world.has(e, Engagement) && !world.has(e, AttackOrder),
-  );
   return {
     landed,
     striking: true,
@@ -623,7 +631,8 @@ function crewsOf(
 }
 
 /**
- * A landing when the seat's posture attacks and its peace is over, on the land {@link landingAim} picks
+ * A relief of the seat's colony a rival sails on ({@link reliefAim}) once its peace is over, unless home
+ * itself is raided; else a landing when the seat's posture attacks, on the land {@link landingAim} picks
  * among every land the seat believes holds an enemy building: a rival's headquarters land takes every free
  * man on home land once at least {@link landingFewestShips} of its ships lie free and moored and the men fill
  * {@link LANDING_FLEET_MIN_SHIPS} of them; a raid on a colony takes the band sized to it. Either sails in as
@@ -633,7 +642,7 @@ function crewsOf(
 function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<LandingOperation> | null {
   const { world, ctx, terrain, seat, orders } = env;
   const ratio = orders.launchRatio;
-  if (ratio === null || ctx.tick < landingFromTick(world, seat)) return null;
+  if (ctx.tick < landingFromTick(world, seat)) return null;
   const home = terrain.componentOf(env.home);
   if (home === NO_COMPONENT) return null;
   const fleet = landingFleetShips(world, seat, computerProfileOf(world, seat));
@@ -652,7 +661,9 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
     .map((entity) => ({ entity, points: unitPoints(world, ctx, entity) }))
     .sort((a, b) => b.points - a.points || a.entity - b.entity);
   const bigLanding = moored.length >= landingFewestShips(fleet) && men.length >= least;
-  const aim = landingAim(env, home, homeOf(env), ranked, ratio, { seats, bigLanding });
+  const aim =
+    (underAttack(world, seat) ? null : reliefAim(env, ranked, seats)) ??
+    (ratio === null ? null : landingAim(env, home, homeOf(env), ranked, ratio, { seats, bigLanding }));
   if (aim === null) return null;
   // The fewest ships, in id order, that seat the wave.
   const ships: Entity[] = [];

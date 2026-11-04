@@ -52,8 +52,8 @@ export interface LandingAim {
   readonly headquarters: boolean;
   /** Where the ships seek their shores: the headquarters, else the building nearest the seat. */
   readonly towards: HalfCellNode;
-  /** The building at {@link towards}. */
-  readonly entity: Entity;
+  /** The building at {@link towards}, null for a relief, which heads for a band. */
+  readonly entity: Entity | null;
   readonly believed: BelievedLand;
   /** No building there lies clear: the landing strikes covered ground ({@link landingObjective}). */
   readonly storm: boolean;
