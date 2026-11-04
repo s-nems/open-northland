@@ -582,6 +582,16 @@ describe('ai program town - rebuilding', () => {
     expect(rebuilds(sim, razedHome(sim, SPEARMAN))).toEqual([]);
   });
 
+  it('passes over a civilian aboard a vehicle, who stands nowhere', () => {
+    const sim = townSim();
+    const houses = razedHome(sim);
+    const [aboard] = spawn(sim, 1, { x: HOME.x + 6, y: HOME.y + 8 }, CIVILIST);
+    if (aboard === undefined) throw new Error('setup: the rider was refused');
+    // Boarding takes the rider's position away; the fixture content has no vehicle to board.
+    sim.world.remove(aboard, Position);
+    expect(rebuilds(sim, houses)).toMatchObject([{ kind: 'placeBuilding', buildingType: HOME_TYPE }]);
+  });
+
   /** A wall and an open gate of the seat, remembered and then razed, with a civilian beside them. */
   function razedWalls(sim: Simulation): ReturnType<typeof wallList> {
     sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });

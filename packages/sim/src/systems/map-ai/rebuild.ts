@@ -3,6 +3,7 @@ import {
   Building,
   MAP_AI_REBUILD_LIST_LIMIT,
   type MapAiHouseRecord,
+  Position,
   Settler,
 } from '../../components/index.js';
 import type { PlayerCommand } from '../../core/commands/index.js';
@@ -68,8 +69,9 @@ export function rebuildOrders(
   houses: readonly MapAiHouseRecord[],
   raiders: readonly Raider[],
 ): PlayerCommand[] {
+  // A person aboard a vehicle stands nowhere until set down.
   const people = ownedSettlers(world, seat).filter(
-    (e) => !isFighterJob(ctx.content, world.get(e, Settler).jobType),
+    (e) => world.has(e, Position) && !isFighterJob(ctx.content, world.get(e, Settler).jobType),
   );
   if (houses.length === 0 || people.length === 0) return [];
   const index = contentIndex(ctx.content);
