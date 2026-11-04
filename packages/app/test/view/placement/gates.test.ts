@@ -26,9 +26,9 @@ import { sandboxPalisadeTypes } from '../../../src/game/sandbox/palisades.js';
 import { createLineTool } from '../../../src/hud/tool-panel/line-tool.js';
 import { inlineSessionHost } from '../../../src/session/index.js';
 import {
-  SHIP_WATER_PREVIEW_REFRESH_MS,
   createPlacementGates,
   type PlacementGates,
+  SHIP_WATER_PREVIEW_REFRESH_MS,
 } from '../../../src/view/placement/gates.js';
 import { makeLitOverlaySource, makeOverlayFrameSource } from '../../../src/view/placement/overlay.js';
 import { createFogGates } from '../../../src/view/projections/index.js';
@@ -443,39 +443,36 @@ describe('placement gates - the ship water a held joinery would get', () => {
     expect(probe.mock.calls[0]?.slice(0, 4)).toEqual([BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy]);
   });
 
-  it(
-    'asks a type that builds no ships nothing, and holds one answer per anchor while the version stands',
-    async () => {
-      const sim = shoreSim();
-      const host = inlineSessionHost(sim);
-      const fog = createFogGates();
-      fog.setFrame(null);
-      const gates = createPlacementGates(host, fog, HUMAN_PLAYER);
-      const probe = vi.spyOn(host, 'shipWaterProbe');
-      expect(gates.shipWaterAt(BUILDING_WAREHOUSE_00, VIKING, SHORE.hx, SHORE.hy)).toBeNull();
-      expect(probe).not.toHaveBeenCalled();
+  it('asks a type that builds no ships nothing, and holds one answer per anchor while the version stands', async () => {
+    const sim = shoreSim();
+    const host = inlineSessionHost(sim);
+    const fog = createFogGates();
+    fog.setFrame(null);
+    const gates = createPlacementGates(host, fog, HUMAN_PLAYER);
+    const probe = vi.spyOn(host, 'shipWaterProbe');
+    expect(gates.shipWaterAt(BUILDING_WAREHOUSE_00, VIKING, SHORE.hx, SHORE.hy)).toBeNull();
+    expect(probe).not.toHaveBeenCalled();
 
-      gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy);
-      gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy);
-      await landed();
-      expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
-      expect(probe.mock.calls.length).toBe(1);
+    gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy);
+    gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy);
+    await landed();
+    expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
+    expect(probe.mock.calls.length).toBe(1);
 
-      // A placed building moves the version, so the held cursor reads the changed coast afresh.
-      sim.enqueueSetup({
-        kind: 'placeBuilding',
-        buildingType: BUILDING_HOME_00,
-        x: SHORE.hx,
-        y: SHORE.hy,
-        tribe: VIKING,
-        owner: HUMAN_PLAYER,
-        force: true,
-      });
-      sim.step();
-      expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
-      expect(probe.mock.calls.length).toBe(2);
-    },
-  );
+    // A placed building moves the version, so the held cursor reads the changed coast afresh.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BUILDING_HOME_00,
+      x: SHORE.hx,
+      y: SHORE.hy,
+      tribe: VIKING,
+      owner: HUMAN_PLAYER,
+      force: true,
+    });
+    sim.step();
+    expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
+    expect(probe.mock.calls.length).toBe(2);
+  });
 
   it('gates a new anchor, so a cursor swept along the shore costs the sim two sweeps a second', async () => {
     const { sim, gates } = shoreGates();

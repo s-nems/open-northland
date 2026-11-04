@@ -461,8 +461,7 @@ export function shipWaterAnswerFor(
     player === undefined
       ? []
       : ownedBuildings(world, player).filter(
-          (e) =>
-            world.tryGet(e, Building)?.buildingType === house && world.has(e, UnderConstruction),
+          (e) => world.tryGet(e, Building)?.buildingType === house && world.has(e, UnderConstruction),
         );
   const shipWater = shipWaterWithin(
     world,
