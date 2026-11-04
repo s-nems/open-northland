@@ -47,6 +47,8 @@ of the same language, `map.dat` and alias adds the first 12 hex digits of its `b
   the pipeline refuses a source-language overlay on a campaign map, on the original game's tutorials
   the mod bundles (`tutorial_001` to `tutorial_007`), on an object table and on a book, because that
   would be a committed copy of the original text. Those keep `tools/asset-pipeline/corrections/`.
+  It also refuses a source-language `names` overlay: a source language shows the pools' own spelling,
+  which a change to `packages/data/src/names/` edits.
 - A `names` overlay carries no `basis`: the pools are the project's own independently selected names,
   not text the pack ships, so no source-language text exists for a digest to pin it to. Its file id is
   the pool id it translates, which its `pool` field repeats, and its keys are the raw names the pool

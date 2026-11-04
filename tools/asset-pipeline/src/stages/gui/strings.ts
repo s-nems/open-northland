@@ -255,8 +255,8 @@ async function writeObjectOverlays(
  * Writes an overlay language's `gui/names/<lang>.json` from its personal-name overlays, as
  * `{ <pool>: { <rawName>: <localizedName> } }`; `tables` counts the pools and `strings` the names. A
  * pool with no entries is left out, so a locale that has translated nothing ships no file and every
- * settler keeps the raw name. A source language's overlays are refused, as the object tables': the
- * pools already spell the source text, so a file repeating it would be a copy of it.
+ * settler keeps the raw name. A source language's overlays are refused: it shows the pools' own spelling,
+ * which a change to `packages/data/src/names/` edits.
  */
 async function writePersonalNameOverlays(
   outDir: string,
@@ -265,7 +265,7 @@ async function writePersonalNameOverlays(
 ): Promise<GuiStringsResult | undefined> {
   if (isSourceLanguage(lang)) {
     console.warn(
-      `[pipeline] gui: refused ${lang} personal-name overlays: source-language text belongs in corrections`,
+      `[pipeline] gui: refused ${lang} personal-name overlays: a source language shows the pools' own spelling`,
     );
     return undefined;
   }

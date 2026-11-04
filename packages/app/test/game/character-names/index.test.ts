@@ -1,10 +1,10 @@
 import { JobType } from '@open-northland/data';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { settlerName } from '../../src/game/character-names/index.js';
-import { installLocalizedNames } from '../../src/game/character-names/localized-names.js';
-import { installPetNames, petNames, petNamesOf } from '../../src/game/character-names/pet-names.js';
-import type { SnapshotEntity } from '../../src/game/snapshot/index.js';
-import { currentLocale, LOCALE_CODES, setActiveLocale } from '../../src/i18n/index.js';
+import { settlerName } from '../../../src/game/character-names/index.js';
+import { installLocalizedNames } from '../../../src/game/character-names/localized-names.js';
+import { installPetNames, petNames, petNamesOf } from '../../../src/game/character-names/pet-names.js';
+import type { SnapshotEntity } from '../../../src/game/snapshot/index.js';
+import { currentLocale, LOCALE_CODES, setActiveLocale } from '../../../src/i18n/index.js';
 
 let previousLocale = currentLocale();
 beforeEach(() => {

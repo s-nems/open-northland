@@ -16,8 +16,7 @@ export function installLocalizedNames(locale: Locale, names: LocalizedNames): vo
   else byLocale.set(locale, names);
 }
 
-/** What the active locale calls the raw `name` of `pool`, or undefined to keep the raw name. A settler
- *  whose snapshot names no pool never has a localized spelling. */
-export function localizedName(pool: string | undefined, name: string): string | undefined {
-  return pool === undefined ? undefined : byLocale.get(currentLocale())?.get(pool)?.get(name);
+/** What the active locale calls the raw `name` of `pool`, or undefined to keep the raw name. */
+export function localizedName(pool: string, name: string): string | undefined {
+  return byLocale.get(currentLocale())?.get(pool)?.get(name);
 }
