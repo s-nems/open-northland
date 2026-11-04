@@ -111,6 +111,8 @@ const STRAY_PLANKS = 2;
 const PLENTY_OF_WOOD = 30;
 /** The units a handcart's hold takes. */
 const HANDCART_HOLD = 15;
+/** The ceiling of two marks the far house fills, one nearly met and one empty. */
+const MARK_CEILING = 10;
 /** Long enough for a handcart's load of wood to be sold over several of the partner's refills. */
 const SELL_OUT_TICKS = 4000;
 /** Where the player sends the trader mid-stop: the row below the houses, between them. */
@@ -538,6 +540,26 @@ describe('a trader between its own houses', () => {
 
     expect(laden()).toBe(true);
     expect(holdOf(sim, trader, PLANK)).toBe(STRAY_PLANKS);
+  });
+
+  it('loads for the emptiest mark first', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [
+      [WOOD, PLENTY_OF_WOOD],
+      [PLANK, PLENTY_OF_WOOD],
+    ]);
+    const far = houseAt(sim, FAR_X, HUMAN, [[WOOD, MARK_CEILING - 1]]);
+    const trader = traderAt(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+    mark(sim, trader, far, PLANK);
+    limit(sim, trader, far, WOOD, MARK_CEILING, 0);
+    limit(sim, trader, far, PLANK, MARK_CEILING, 0);
+
+    const loaded = () => holdOf(sim, trader, WOOD) + holdOf(sim, trader, PLANK);
+    for (let t = 0; t < RUN_TICKS && (!sim.world.has(trader, HaulingCart) || loaded() === 0); t++) sim.step();
+
+    expect(holdOf(sim, trader, PLANK)).toBe(1);
+    expect(holdOf(sim, trader, WOOD)).toBe(0);
   });
 
   it('moves only the goods marked for import once any mark is set', () => {

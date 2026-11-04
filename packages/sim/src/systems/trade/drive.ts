@@ -493,9 +493,8 @@ function resetExchange(world: World, trader: Entity): void {
  * - With no mark on either stop nothing moves. The original then balances every good; this build waits
  *   for the player's marks instead (owner's choice).
  * Food is never taken out of a home. Approximations: the original ranks candidates by the houses'
- * request counters, which this build does not keep, so the good with the fewest units aboard loads first,
- * then the lowest id: one plentiful good does not fill every trip while another marked good waits; and
- * it keeps "home enhancer" goods out of a home, a good class the content does not flag.
+ * request counters, which this build does not keep, so the emptiest mark loads first ({@link loadOrder});
+ * and it keeps "home enhancer" goods out of a home, a good class the content does not flag.
  */
 function decideDomestic(
   scope: LoadScope,
@@ -540,7 +539,7 @@ function decideDomestic(
   }
 
   if (hold.room <= 0) return NEXT;
-  for (const good of fewestAboardFirst(ctx, hold, ownGoodsOf(ctx, hereType))) {
+  for (const good of loadOrder(scope, hold, other, ownGoodsOf(ctx, hereType), markOf)) {
     const wantedThere = markOf(other, good);
     if (wantedThere === undefined || isFoodKeptAtHome(world, ctx, stop.house, good)) continue;
     const carried = edibleGoodFormOf(ctx.content, good);
@@ -746,13 +745,32 @@ function ownGoodsOf(ctx: ContentContext, buildingType: number): number[] {
   return [...stored].filter((good) => countsAsOwnStock(ctx, buildingType, good)).sort((a, b) => a - b);
 }
 
-/** `goods`, ascending by id, reordered stably by the units of each (its carried form) the hold has aboard. */
-function fewestAboardFirst(ctx: ContentContext, hold: TraderHold, goods: readonly number[]): number[] {
-  const aboard = (good: number): number => hold.amount(edibleGoodFormOf(ctx.content, good));
-  return goods
-    .map((good) => ({ good, aboard: aboard(good) }))
-    .sort((a, b) => a.aboard - b.aboard || a.good - b.good)
-    .map(({ good }) => good);
+/**
+ * The goods marked at `other` among `goods`, the emptiest mark first: by the other stop's stock plus what is
+ * aboard over the mark's `upTo`, a mark with no ceiling counting as empty; then the fewest aboard, then the
+ * lowest id. So a site's lack outranks a full larder's top-up, and one plentiful good does not fill every
+ * trip while another marked good waits (our own rule, as the emptiest workshop input is fetched first).
+ */
+function loadOrder(
+  scope: LoadScope,
+  hold: TraderHold,
+  other: DeepReadonly<TradeStop>,
+  goods: readonly number[],
+  markOf: (at: DeepReadonly<TradeStop>, good: number) => DeepReadonly<TradeImportMark> | undefined,
+): number[] {
+  const ranked: { good: number; filled: number; of: number; aboard: number }[] = [];
+  for (const good of goods) {
+    const mark = markOf(other, good);
+    if (mark === undefined) continue;
+    const carried = edibleGoodFormOf(scope.ctx.content, good);
+    const aboard = hold.amount(carried);
+    const open = mark.upTo === TRADE_LIMIT_NONE;
+    const filled = open ? 0 : otherStockOf(scope, other, carried) + aboard;
+    ranked.push({ good, filled, of: open ? 1 : Math.max(1, mark.upTo), aboard });
+  }
+  // Fill fractions compared by cross-multiplication, so the rank stays in integers.
+  ranked.sort((a, b) => a.filled * b.of - b.filled * a.of || a.aboard - b.aboard || a.good - b.good);
+  return ranked.map(({ good }) => good);
 }
 
 /** The units of `good` a house can give up: its own stock, none of it while its recipe consumes the
