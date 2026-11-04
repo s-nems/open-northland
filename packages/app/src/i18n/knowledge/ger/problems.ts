@@ -19,7 +19,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„Dorf angegriffen“',
                 'Wichtig',
-                'Angriff auf ein Gebäude oder eine Palisade oder Kampf bis {{notice.settlementReach}} Hexfelder davon. Angriffe bis {{notice.fightRadius}} Hexfelder voneinander ergeben eine Meldung, sie verschwindet nach {{notice.fightQuietSeconds}} s Ruhe',
+                'Jemand greift dein Gebäude oder deine Palisade an oder kämpft bis {{notice.settlementReach}} Hexfelder davon',
                 'Schicke Soldaten',
               ],
               [
@@ -61,8 +61,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„Kein Partner“',
                 'Normal',
-                'Nach „Heirate“ war in Reichweite niemand frei. Der Befehl verfällt',
-                'Gib den Befehl, wenn jemand frei ist',
+                'Nach dem Befehl „Heirate“ war in der Nähe niemand frei',
+                'Versuch es wieder, wenn jemand frei ist',
               ],
               [
                 '„Paar benötigt: [Ware]“',
@@ -74,12 +74,12 @@ export const PROBLEMS: ArticleGroup = {
                 '„Kein Bauplatz“, „Bauplatz blockiert“',
                 'Bemerkenswert',
                 'Neben der Werkstatt ist kein freier Boden fürs Fahrzeug, oder dort steht ein anderes Fahrzeug',
-                'Schaffe Platz, nach {{notice.yardRetrySeconds}} s folgt ein neuer Versuch',
+                'Schaffe Platz, die Werkstatt versucht es nach {{notice.yardRetrySeconds}} s wieder',
               ],
               [
                 '„Keine Fische“',
                 'Bemerkenswert',
-                'In Reichweite des Ufers gibt es keine Fische mehr',
+                'Im nahen Wasser gibt es keine Fische mehr',
                 'Setze die Fahne an Wasser mit Fischen',
               ],
               [
@@ -181,7 +181,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„Nichts zu tun“',
                 'Normal',
-                'Ein Siedler mit Arbeitsplatz steht seit {{notice.idleSeconds}} s ohne erkennbaren Grund',
+                'Ein Siedler mit Arbeitsplatz tut seit {{notice.idleSeconds}} s nichts, und der Grund ist unklar',
                 'Prüfe das Gebäude oder wechsle seinen Beruf',
               ],
               [
@@ -193,8 +193,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„Kein Weg zum Schiff“',
                 'Bemerkenswert',
-                'Die Tür des Schiffs liegt auf einer anderen Landmasse',
-                'Lege an einem erreichbaren Ufer an',
+                'Das Schiff liegt an einer anderen Landmasse als das Fahrzeug',
+                'Lege an einem Ufer an, das das Fahrzeug erreicht',
               ],
               [
                 '„Falscher Beruf“',
@@ -205,7 +205,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„Zutritt gesperrt“, „Bauen gesperrt“',
                 'Bemerkenswert',
-                'Es herrscht Frieden, und der Befehl reicht bis zum Dorf des Partners',
+                'Es ist Friedenszeit, und der Ort liegt zu nah am Dorf eines anderen Spielers',
                 'Wähle einen Ort weiter weg: [[article:diplomacy|Diplomatie]]',
               ],
               [
@@ -247,8 +247,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„In Alarmbereitschaft“',
                 '-',
-                'Ein Soldat im Modus Angriff oder Verteidigung ruht nicht bei Kampf bis {{alert.restClearance}} Hexfelder oder bei sichtbarem feindlichem Soldaten bis {{alert.standTo}} Hexfelder. Ein Wildtier zählt erst im Kampf',
-                'Der Befehl „Iss“ oder „Schlaf“ gibt ihn frei',
+                'Ein Soldat im Modus Angriff oder Verteidigung ruht nicht, solange bis {{alert.restClearance}} Hexfelder gekämpft wird oder bis {{alert.standTo}} Hexfelder ein feindlicher Soldat zu sehen ist',
+                'Gib ihm den Befehl „Iss“ oder „Schlaf“',
               ],
               [
                 '„Rohstoff zu weit weg“',
@@ -277,7 +277,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„Neustart nötig“',
                 'Wichtig',
-                'Die geänderte Einstellung wirkt erst bei einem neuen Start',
+                'Die geänderte Einstellung wirkt erst nach einem Neustart',
                 '„Mission neu starten“ im Esc-Menü',
               ],
               [
@@ -321,23 +321,23 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Die Werkstatt steht leer',
-              'Status „Keine Arbeiter“: Dort arbeitet niemand. Weise einen Siedler mit passendem Beruf zu. Klappt das nicht, sagt die Meldung warum: „Falscher Beruf“, „Stellen belegt“ oder „Zu unerfahren“. Status „Untätig“ nennt den fehlenden Rohstoff. Der Arbeiter holt ihn selbst, wenn er höchstens {{reach.goods}} Hexfelder von einem Wegweiser entfernt liegt.',
+              'Status „Keine Arbeiter“ heißt, dass dort niemand arbeitet: Weise einen Siedler mit passendem Beruf zu. Lehnt er ab, sagt die Meldung warum: „Falscher Beruf“, „Stellen belegt“ oder „Zu unerfahren“. Status „Untätig“ nennt den fehlenden Rohstoff. Der Arbeiter geht ihn selbst holen, wenn er höchstens {{reach.goods}} Hexfelder von einem Wegweiser entfernt liegt.',
             ],
             [
               'Waffenbauer, Schmied oder Näher arbeitet nicht',
-              'Religion steht unter „Wohlbefinden“ auf 0%. Eine Charge Waffen oder Rüstungen kostet {{piety.lowPct}}% oder {{piety.highPct}}%, ein Gebet bringt {{pray.pct}}%. „Will beten“ heißt, dass ein Ort zum Beten fehlt: Nötig sind ein [[building:work_temple|Tempel]], das [[building:headquarters|Hauptquartier]] oder Heiliges Feuer im Wohnhaus. Mehr: [[article:religion|Religion und Tempel]].',
+              'Wahrscheinlich steht seine Religion unter „Wohlbefinden“ auf 0%. Jede Waffe und Rüstung kostet {{piety.lowPct}}% oder {{piety.highPct}}% Religion, ein Gebet bringt {{pray.pct}}%. „Will beten“ heißt, dass ein Ort zum Beten fehlt: Nötig sind ein [[building:work_temple|Tempel]], das [[building:headquarters|Hauptquartier]] oder Heiliges Feuer im Wohnhaus. Mehr: [[article:religion|Religion und Tempel]].',
             ],
             [
               'Träger tragen nichts',
-              'Ein Träger trägt nur mit Arbeitsplatz in einem Gebäude. „Nichts zum Tragen in Reichweite“: Bis {{flag.radius}} Hexfelder um das Gebäude oder die Arbeitsfahne liegt keine Ware. „Kein Ziel nimmt diese Ware an“: Die Lager sind voll.',
+              'Ein Träger arbeitet nur, wenn er einen Arbeitsplatz in einem Gebäude hat. Status „Nichts zum Tragen in Reichweite“ heißt, dass bis {{flag.radius}} Hexfelder um das Gebäude oder die Arbeitsfahne keine Ware liegt, und „Kein Ziel nimmt diese Ware an“, dass die Lager voll sind.',
             ],
             [
               'Die Zucht steht',
-              'Der Viehzüchter züchtet nur bei genau {{livestock.pair}} erwachsenen Tieren. Was der Status der Viehzüchterei bedeutet: [[article:livestock|Viehzucht]].',
+              'Der Viehzüchter züchtet nur, wenn er genau {{livestock.pair}} erwachsene Tiere hat. Was der Status der Viehzüchterei bedeutet: [[article:livestock|Viehzucht]].',
             ],
             [
               'Der Jäger bringt nichts',
-              'Status „Kein verfügbares Wild im Jagdgebiet“: Bis {{flag.hunter}} Hexfelder um Fahne oder Arbeitsplatz gibt es nichts zu jagen. Nicht jedes Tier jagt er von selbst, siehe Spalte „Auto-Jagd“: [[article:wildlife|Wildtiere und Jagd]]. Versetze die Arbeitsfahne dorthin, wo Wild weidet.',
+              'Status „Kein verfügbares Wild im Jagdgebiet“ heißt, dass es bis {{flag.hunter}} Hexfelder um Fahne oder Arbeitsplatz nichts zu jagen gibt. Nicht jedes Tier jagt er von selbst, siehe Spalte „Auto-Jagd“: [[article:wildlife|Wildtiere und Jagd]]. Versetze die Arbeitsfahne dorthin, wo Wild weidet.',
             ],
           ],
         },
@@ -348,11 +348,11 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Es werden keine Kinder geboren',
-              'Ein Paar braucht ein gemeinsames Wohnhaus und {{family.childFood}} Stück Essen in der Speisekammer. Die Meldung sagt, was fehlt: „Kein Familienheim“, „Haus nicht fertig“, „Getrennte Haushalte“, „Keine Nahrung vorrätig“. „Ehemann abwesend“ heißt, dass der Mann Händler, Kundschafter, Soldat oder Held ist und nicht nach Hause kommt. Kinder bestellt auch der Zähler „Geburten“ im Assistenten. Mehr: [[article:family|Familie und Wohnhaus]].',
+              'Ein Paar braucht ein gemeinsames Wohnhaus und {{family.childFood}} Stück Essen in der Speisekammer. Die Meldung sagt, was fehlt: „Kein Familienheim“, „Haus nicht fertig“, „Getrennte Haushalte“, „Keine Nahrung vorrätig“. „Ehemann abwesend“ heißt, dass der Mann Händler, Kundschafter, Soldat oder Held ist und nicht nach Hause kommt. Kinder kannst du auch mit dem Zähler „Geburten“ im Assistenten bestellen. Mehr: [[article:family|Familie und Wohnhaus]].',
             ],
             [
               'Hunger trotz vollem Lager',
-              'Prüfe das „Lagerminimum“: Unter dieser Summe nimmt niemand Ware heraus, auch nicht zum Essen. Senke das Minimum bei Essen. Vielleicht ist es auch zu weit: Das Lager muss bis {{reach.walk}} Hexfelder vom Siedler entfernt sein oder im Wegweisernetz liegen.',
+              'Prüfe das „Lagerminimum“: Unter dieser Menge nimmt niemand Ware heraus, auch nicht zum Essen. Senke das Minimum bei Essen. Vielleicht ist es auch zu weit: Das Lager muss bis {{reach.walk}} Hexfelder vom Siedler entfernt sein oder im Wegweisernetz liegen.',
             ],
             [
               'Der Beruf fehlt auf der Schulliste',
@@ -394,11 +394,11 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Das Schiff legt nicht ab',
-              'Status „Wartet auf einen Kommandanten“: Weise einen zu, das kann jeder Erwachsene sein. „Wartet auf seine Besatzung“: Jemand aus der Besatzung ist noch auf dem Weg zum Schiff. Ein Siedler auf einer anderen Landmasse fällt aus der Besatzung. „Kein Weg“: Das Ziel liegt nicht auf diesem Wasser. Auf See steigt niemand ein, also erst „Andocken“.',
+              'Status „Wartet auf einen Kommandanten“: Weise einen zu, das kann jeder Erwachsene sein. „Wartet auf seine Besatzung“: Jemand aus der Besatzung ist noch auf dem Weg zum Schiff. „Kein Weg“: Das Ziel liegt nicht auf diesem Wasser. Auf See steigt niemand ein, also erst „Andocken“.',
             ],
             [
               'Der Ochsenkarren steht',
-              'Status „Wartet auf sein Zugtier“: Er nimmt nur einen [[good:cattle|Ochsen]], der nicht zum Paar gehört, also brauchst du {{livestock.pairPlusOne}} erwachsene Tiere in einer Viehzüchterei oder {{livestock.pairPlusOne}} außerhalb: [[article:vehicles|Fahrzeuge und Schiffe]].',
+              'Status „Wartet auf sein Zugtier“ heißt, dass ein Ochse fehlt. Er nimmt nur einen [[good:cattle|Ochsen]], der nicht zum Paar gehört, also brauchst du {{livestock.pairPlusOne}} erwachsene Tiere in einer Viehzüchterei oder {{livestock.pairPlusOne}} außerhalb: [[article:vehicles|Fahrzeuge und Schiffe]].',
             ],
           ],
         },

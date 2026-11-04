@@ -106,7 +106,7 @@ export const SETTLERS: ArticleGroup = {
               ['Cart passenger', 'Bars do not drain, health does not change.'],
               [
                 'Ship passenger',
-                'Eats from the hold, sleeps as away from home, talks. Religion waits for land.',
+                'Eats from the hold, sleeps as away from home, talks. Prays only once ashore.',
               ],
             ],
           },
@@ -239,7 +239,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1, 3],
-            foot: 'Regeneration and aura add up to {{aura.totalPerSecond}} per second. Regeneration stops at {{health.human}}, the aura heals past normal, up to {{aura.ceiling}}. Children and heroes also have {{health.human}} and regenerate.',
+            foot: 'Regeneration and aura add up to {{aura.totalPerSecond}} per second. Regeneration stops at {{health.human}}, but the aura heals past normal, up to {{aura.ceiling}}.',
           },
         },
         {
@@ -254,7 +254,6 @@ export const SETTLERS: ArticleGroup = {
             'A settler drinks sip after sip until the wound leaves him at least {{draught.healBelow}} health.',
             "Even a killing blow doesn't kill, if the sips cover the wound.",
             'A settler also drinks when hunger takes his health below {{draught.healBelow}}.',
-            'An opened bottle goes first, then a small one, then a large one.',
           ],
         },
       ],
@@ -426,7 +425,7 @@ export const SETTLERS: ArticleGroup = {
                 'yes',
               ],
             ],
-            foot: 'Range 0-{{assistant.counterMax}}, starting at 0. An order given to one person beats the Assistant. Weapon and armour order: [[article:equip|Equipping Soldiers]].',
+            foot: 'A counter goes from 0 to {{assistant.counterMax}}. An order given to one person beats the Assistant. Weapon and armour order: [[article:equip|Equipping Soldiers]].',
           },
         },
         {
@@ -440,7 +439,7 @@ export const SETTLERS: ArticleGroup = {
               [
                 'Iron tools, Wooden tools',
                 'on',
-                'anyone working a profession, except soldiers, [[job:scout|Scouts]] and Civilians',
+                'anyone with a job except soldiers, [[job:scout|Scouts]] and Civilians',
               ],
               ['[[good:mead|Mead]]', 'on', 'Civilians, Soldiers'],
               ['Nourishing potions, Stamina potions, Healing potions', 'off', 'Civilians, Soldiers'],
@@ -464,10 +463,8 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Daughters first, then sons. Daughters have no ∞ setting, or sons would never get a turn.',
-            'At a counter of 3, at most 3 couples have a child at once.',
-            'A couple takes one order at a time. The same things block it as a direct order: [[article:family|Family and Home]].',
-            'Lowering the counter does not cancel an order a couple already has.',
+            'Daughters are born first, then sons. That is why the daughters counter has no ∞, or sons would never be born.',
+            'At a counter of 3, at most 3 couples wait for a child at once.',
           ],
         },
         {
@@ -475,7 +472,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Only an adult Civilian with no workplace and no errand goes. Unmarried men first. Nobody is pulled off work.',
+            'Only an adult Civilian with no job and nothing to do goes to the Barracks, unmarried men first. The Assistant never pulls anyone off work.',
             'The Sword fighters, Spearmen or Archers counter first arms an unarmed soldier, if a weapon is in his reach.',
           ],
         },
@@ -490,7 +487,7 @@ export const SETTLERS: ArticleGroup = {
                 "Deliver the weapon. Until then he holds the new recruit's place.",
               ],
             ],
-            foot: 'At most {{assistant.draftsPerSecond}} people per second. Recruits on the way count toward the counter, and a lost recruit goes back in the queue.',
+            foot: 'A recruit on his way to the Barracks already counts toward the counter.',
           },
         },
         {
@@ -499,10 +496,9 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             "The Assistant doesn't equip women, children, [[article:heroes|heroes]] or tower crews.",
-            'A settler goes to the store once and takes everything in one trip.',
-            'Only one settler sets out for each piece in the store. Stock below the [[article:hauling|storage minimum]] stays put.',
-            'Fills empty slots only, never swaps for better. Iron tools go before wooden, a large bottle before a small one.',
-            "A settler with a small potion doesn't fetch a large one. There are {{amulet.slots}} slots for potions and amulets: [[article:draughts|Potions and Amulets]].",
+            "The Assistant doesn't hand out stock below the [[article:hauling|storage minimum]].",
+            'It only fills empty slots and never swaps an item for a better one. Iron tools come before wooden ones.',
+            'A settler has {{amulet.slots}} slots for potions and amulets: [[article:draughts|Potions and Amulets]].',
           ],
         },
         {
@@ -510,15 +506,15 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            "A graduate goes once, to the nearest free post in his profession, even a workshop construction site. A workshop making the course's product beats a closer one.",
-            'With no free post he waits at the School. Skips [[job:collector|Extractors]], [[job:hunter|Hunters]], [[job:fisher|Fishermen]] and soldiers.',
+            'A graduate goes to the nearest free post in his profession, even a workshop still being built. A workshop making the product he studied comes first, even if it is further away.',
+            "With no free post he waits at the School. The Assistant doesn't place [[job:collector|Extractors]], [[job:hunter|Hunters]], [[job:fisher|Fishermen]] or soldiers.",
           ],
         },
         {
-          p: 'The flag moves with the resource, staying {{assistant.flagMin}}-{{assistant.flagMax}} hexes from it: [[article:work-flag|Work flag]].',
+          p: 'When the resource by a flag runs out, the Assistant moves the flag closer to the next one, {{assistant.flagMin}}-{{assistant.flagMax}} hexes from it: [[article:work-flag|Work flag]].',
         },
         {
-          p: 'The "Subjects" window counts shortages: dwellings, workplaces, tools, shoes, partners, children, weapons, mead.',
+          p: 'The "Subjects" window shows how many settlers lack a dwelling, a job, tools, shoes, a partner, children, weapons or mead.',
         },
       ],
       see: [
@@ -568,7 +564,6 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1],
-            foot: 'An Eat, Sleep, Talk or Pray order holds off drinking.',
           },
         },
         {
@@ -614,8 +609,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'A second copy of the same amulet does nothing.',
             'Different amulets work together: Strength and Precision give ×{{amulet.comboFactor}} on a lucky roll.',
-            'For hunger and tiredness a settler reaches in turn for an opened bottle, an amulet, then a full bottle with fewer sips.',
-            "With a Nourishing Amulet a settler doesn't look for food, with an Amulet of Stamina he doesn't go to sleep.",
+            'With a Nourishing Amulet a settler never goes to eat, and with an Amulet of Stamina he never goes to sleep.',
           ],
         },
         {

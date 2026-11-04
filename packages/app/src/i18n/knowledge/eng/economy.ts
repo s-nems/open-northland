@@ -6,18 +6,18 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'construction',
       name: 'Building, Upgrades and Repairs',
-      lead: 'The strokes alone on Dwelling 1 take one Builder {{build.noviceSeconds}} s, or {{build.noviceIronSeconds}} s with an Iron Tool. Hauling the material comes on top of that.',
+      lead: 'One Builder puts up Dwelling 1 in {{build.noviceSeconds}} s, or {{build.noviceIronSeconds}} s with an Iron Tool. Hauling the material comes on top of that.',
       blocks: [
         {
           h: 'Where you can build',
         },
         {
           table: {
-            head: ['What', 'What happens'],
+            head: ['What', 'Rule'],
             rows: [
               [
                 'Terrain',
-                'You can build on land, sand, beach and stony desert. Mountains, snow, water and swamp are out.',
+                "You can build on land, sand, beach and stony desert. Mountains, snow, water and swamp won't do.",
               ],
               [
                 '[[building:work_well_00|Well]], [[building:work_hive_00|Beehive]]',
@@ -25,33 +25,24 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Space',
-                'A building reserves room for its top level from the start, plus a narrow margin around it. The margins of two buildings cannot overlap.',
+                'A building takes the room its top level will need right away, plus a narrow margin around it. The margins of two buildings cannot overlap.',
               ],
               [
                 'Tree, rock, deposit, stockade',
-                'They block. They must stand outside the room for the top level.',
+                "They must stand outside the room for the building's top level.",
               ],
               [
                 'Enemy soldier',
-                "You can't build within {{contest.radius}} hexes of him, about {{contest.diagonal}} on the slant. Only a soldier you can see counts. A tower's crew at its post doesn't.",
+                "You can't build within {{contest.radius}} hexes of him, about {{contest.diagonal}} on the slant. Only soldiers you can see count, and a tower's crew doesn't.",
               ],
               [
                 'Building of a player you are at peace with',
                 "You can't build within {{peace.keepOut}} hexes of his building or site, unless your own building stands closer to the spot than his.",
               ],
-              ['Ground under fog', 'Blocks. The spot must be visible right now.'],
-              ['Settler, vehicle, work flag, signpost, pile, carcass', 'Moved aside.'],
-              ['Bush, field, stump, open chest', 'They vanish when the site goes up.'],
-              ['Road site', 'Cancelled, delivered Quarrystone lands next to it.'],
-              [
-                'Road or stockade on room for upgrades',
-                'A line you draw goes around that room. By default the G key lets you lay it there, but the upgrade removes it with no refund.',
-              ],
-              ['Enemy civilians, animals', "They don't get in the way. The site goes up beside them."],
-              ['Finished road', 'Stays under the building.'],
+              ['Ground under fog', "You can't build there. The spot must be visible right now."],
               [
                 'Signpost reach',
-                'Does not apply. A site can go outside the network too, and the Builder arrives once the network gets there.',
+                "Doesn't matter. You can place a site outside the network, but the Builder only arrives once the network gets there.",
               ],
             ],
           },
@@ -122,42 +113,28 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Strokes per 1 piece of material. A [[job:builder|Builder]] reaches 100% after {{exp.build.repeatsFull}} strokes. Only strokes that added something count.',
+            foot: 'Strokes per 1 piece of material. A [[job:builder|Builder]] reaches 100% after {{exp.build.repeatsFull}} strokes, but only strokes that moved the work on count.',
           },
         },
         {
-          list: [
-            'A building with no cost takes 1 stroke.',
-            'A stockade or road segment takes 1 Builder and 1 stroke once the material is there.',
-            'The Builder and workers assigned to the site carry the material, 1 piece at a time.',
-          ],
+          p: 'Builders and workers assigned to the site carry the material to it, 1 piece at a time.',
         },
         {
-          h: "Builder's work order",
+          h: 'What a Builder does first',
         },
         {
-          steps: [
-            'A road or stockade the player has just given this Builder.',
-            'Repairs: gates, then buildings, then stockades.',
-            'Building sites, supplied and nearly finished ones first.',
-            'New stockade segments.',
-            'Roads.',
-          ],
-        },
-        {
-          p: 'A Builder the player assigned to a site stays there, even if there is work elsewhere.',
+          p: 'A Builder repairs first, then puts up buildings, and leaves stockades and roads for last. If you assign him to a site, he stays there even when there is work elsewhere.',
         },
         {
           h: 'Upgrades',
         },
         {
           list: [
-            'Costs the materials of the levels gained. You can skip several levels at once if each is unlocked.',
-            'Goods in the cost that the building has in stock go straight to the site. The rest of its stock comes back on completion.',
-            'Workers and residents move out, keep their places and return on completion.',
-            'Health stands still during an upgrade. On completion the building has the full health of the new level.',
-            'Starting an upgrade switches defence mode off.',
-            'Cancelling returns the stock and the goods taken from it. Delivered material is lost.',
+            'Costs the materials of the levels gained. You can skip several levels at once if they are all unlocked.',
+            'Goods the upgrade needs that the building already has in stock go straight into the work.',
+            'Workers and residents move out during the upgrade and return to their places afterwards.',
+            'On completion the building has the full health of the new level.',
+            'If you cancel the upgrade, the building gets its stock back, but delivered material is lost.',
           ],
         },
         {
@@ -176,27 +153,19 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          list: [
-            "A Builder won't go to repair on his own for {{repair.calmSeconds}} s after the last hit, or while a fight is on within {{alert.standTo}} hexes. Your order skips both conditions.",
-            "Sites and stockades under construction can't be repaired. Their health grows as they are built.",
-            'Damaged building being upgraded: repair first, then upgrade.',
-          ],
+          p: "A Builder won't repair on his own for {{repair.calmSeconds}} s after the last hit, or while a fight is on within {{alert.standTo}} hexes. On your order he goes right away.",
         },
         {
           h: 'What is lost and what comes back',
         },
         {
           table: {
-            head: ['Situation', 'Result'],
+            head: ['Situation', 'What is left'],
             rows: [
-              ['Demolishing a site', 'Delivered material lands on the ground'],
-              ['Demolishing or destroying a building', 'Contents plus half the cost, each good rounded up'],
-              [
-                'Demolishing a building mid-upgrade',
-                'The same for the current level, plus set-aside stock and upgrade material',
-              ],
+              ['Demolishing a site', 'Delivered material stays on the ground'],
+              ['Demolishing or destroying a building', 'Contents plus half the cost, rounded up'],
             ],
-            foot: "Goods spread out on the ground up to {{reach.spill}} hexes away, on the same landmass. What doesn't fit is lost.",
+            foot: "Goods land on the ground up to {{reach.spill}} hexes from the building. What doesn't fit is lost.",
           },
         },
       ],
@@ -205,7 +174,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'workshops',
       name: 'Workshops and Product Choice',
-      lead: 'The counter next to a product says how many cycles the worker should run: 0 is stop, ∞ is no limit. A cycle is one run of the recipe.',
+      lead: 'The counter next to a product says how many cycles the worker will run: 0 is stop, ∞ is no limit. A cycle is one run of the recipe.',
       blocks: [
         {
           h: 'Counter values',
@@ -214,15 +183,15 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Counter', 'Workshop', 'Extractor'],
             rows: [
-              ['0', 'Product stopped', 'Good skipped'],
+              ['0', "Doesn't make this product", "Doesn't gather this good"],
               [
                 '1-{{workshop.counterMax}}',
-                'That many cycles, -1 at each cycle start',
-                'That many pieces, -1 per piece gathered',
+                'That many cycles, the counter drops by 1 as each starts',
+                'That many pieces, the counter drops by 1 for each one gathered',
               ],
               ['∞', 'No limit, the counter never drops', 'No limit, the counter never drops'],
             ],
-            foot: 'A workshop counts cycles, an Extractor counts pieces. Experience and tools add pieces per cycle: [[article:tools|Tools]].',
+            foot: 'Experience and tools give more pieces per cycle: [[article:tools|Tools]].',
           },
         },
         {
@@ -236,7 +205,7 @@ export const ECONOMY: ArticleGroup = {
                 'Good icon, "Only this product"',
                 'This good ∞, rest 0',
                 '-',
-                'This good: from 0 to ∞, from any other value to 0. Rest unchanged.',
+                'Switches this good between 0 and ∞, rest unchanged',
               ],
               ['Less', '-1. From 0 jumps to ∞, from ∞ to {{workshop.counterMax}}', '-10', 'To 0'],
               ['More', '+1. From {{workshop.counterMax}} jumps to ∞, from ∞ to 0', '+10', 'To ∞'],
@@ -244,57 +213,34 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          h: "A new worker's start",
-        },
-        {
-          table: {
-            head: ['Who', 'Starting counters'],
-            rows: [
-              ['Craftsman', "The workshop's first product ∞, rest 0"],
-              [
-                '[[job:breeder|Stock Farmer]] at a [[building:work_animal_farm|Cattle Farm]]',
-                'Ox ∞, Sheep 0',
-              ],
-              [
-                'Graduate assigned by the Assistant, when the School teaches this profession several products',
-                'Products learned at School ∞, rest 0',
-              ],
-              ['[[job:collector|Extractor]]', 'Every good ∞'],
-            ],
-          },
-        },
-        {
           h: 'What happens to counters',
         },
         {
-          p: 'They are lost when a worker changes workplace or profession, including when the building is demolished. An upgrade leaves them alone, and new products from the higher level start at 0. Each worker has his own counters: 2 men in one workshop can make 2 different products.',
+          p: 'Each worker has his own counters, so 2 men in one workshop can make 2 different products. The counters are gone when a worker changes workplace or profession, including when the building is demolished. An upgrade leaves them alone, and products from the new level start at 0.',
         },
         {
           h: 'Several products at once',
         },
         {
-          p: 'A worker takes turns on the products with a counter above 0, 1 cycle each, in panel order.',
+          p: 'A worker takes turns on all products with a counter above 0, 1 cycle each, in panel order.',
         },
         {
           table: {
-            head: ['Situation', 'Result'],
+            head: ['When', 'What the worker does'],
             rows: [
+              ['Product stock is full', 'Moves on to the next product'],
+              ['An ingredient is missing', 'Moves on to the next product'],
               [
-                'Product stock full',
-                'The worker moves on to the next product. Cycles in progress count as taken space.',
-              ],
-              ['No ingredient in the building', 'The worker moves on to the next product'],
-              [
-                'Part of an ingredient in the building',
-                "He waits for the rest. When there's nowhere to get it, he moves on to the next product.",
+                'Only part of the ingredients is there',
+                "Waits for the rest. When there's nowhere to get it, moves on to the next product.",
               ],
               [
-                'Product without the required experience',
-                'Shows "locked" instead of a counter and is skipped',
+                'Not enough experience for a product',
+                'The panel shows "locked" instead of a counter, and the worker skips that product',
               ],
               [
                 'All products with a counter are locked',
-                'The worker makes what he already knows, even products at 0',
+                'Makes what he already knows, even products with a counter of 0',
               ],
             ],
           },
@@ -303,26 +249,25 @@ export const ECONOMY: ArticleGroup = {
           h: 'Vehicles',
         },
         {
-          list: [
-            'A vehicle is built outside the workshop: the craftsman places a site next to it, hauls the material himself and builds.',
-            "A vehicle's counter drops when the vehicle is finished, not at the start.",
-            'With no room for a site next to the workshop, the worker moves on to the next product.',
-          ],
+          p: "A vehicle isn't made inside the workshop. The craftsman places a site next to it, hauls the material there himself and builds. With no room for a site next to the workshop, he moves on to the next product.",
         },
         {
           h: 'Extractors',
         },
         {
           table: {
-            head: ['Action', 'Result'],
+            head: ['Situation', 'Result'],
             rows: [
               ['"Only this good"', 'This good ∞, rest 0'],
-              ['Right-click a resource', '"Gather": this good ∞, rest 0, the work flag stays where it was'],
-              ['Ctrl + right-click a resource', 'The same, and the flag goes to the resource'],
-              ['All counters at 0', 'Status "All set to 0"'],
               [
-                'Counter at 0, good on the ground',
-                'The counter covers extraction only. The Extractor keeps hauling logs and piles.',
+                'Right-click a resource',
+                'The "Gather" order: this good ∞, rest 0. The work flag stays where it is.',
+              ],
+              ['Ctrl + right-click a resource', 'The same, but the flag moves to the resource'],
+              ['All counters at 0', 'The Extractor shows "All set to 0" and gathers nothing'],
+              [
+                'Goods already lie on the ground',
+                'The counter covers extraction only. The Extractor keeps hauling logs and piles, even at 0.',
               ],
             ],
           },
@@ -339,14 +284,14 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'gathering',
       name: 'Gathering and Farming',
-      lead: 'A tree gives {{gather.treeYield}} pieces of Wood after {{gather.strokes}} strokes. Rock takes that many strokes for 1 piece, so Wood comes about {{gather.treeYield}} times faster.',
+      lead: 'A tree gives {{gather.treeYield}} pieces of Wood after {{gather.strokes}} strokes. Rock takes that many strokes for every piece, so Wood comes about {{gather.treeYield}} times faster than Quarrystone.',
       blocks: [
         {
           h: 'What a resource gives',
         },
         {
           table: {
-            head: ['Resource', 'Who', 'Gives', 'Strokes with no experience', 'Time', 'Tool'],
+            head: ['Resource', 'Who', 'Gives', 'Strokes with no experience', 'Time', 'Tool helps'],
             rows: [
               [
                 'Tree',
@@ -405,31 +350,17 @@ export const ECONOMY: ArticleGroup = {
                 'yes',
               ],
             ],
-            foot: 'Working time only, with no experience, no tool and no walking.',
+            foot: 'Working time only, with no experience and no tool, not counting the walk.',
           },
         },
         {
-          list: [
-            'A felled tree lies as a log with {{gather.treeYield}} pieces. The Extractor carries them off 1 piece at a time.',
-            'A piece from a rock or deposit drops on the ground beside it.',
-          ],
+          p: 'A felled tree stays as a log with {{gather.treeYield}} pieces, and the Extractor carries them off 1 at a time. Every piece from a rock or deposit drops on the ground beside it.',
         },
         {
           h: 'Iron and Gold',
         },
         {
-          table: {
-            head: ['Route', 'Condition', 'Who it applies to'],
-            rows: [
-              [
-                'Work',
-                '{{gather.oreNeed}} pieces of [[good:mud|Clay]] and [[good:stone|Quarrystone]] combined',
-                'That settler. The first one discovers the good for the settlement.',
-              ],
-              ['[[building:school|School]]', 'A course, once the good is discovered', 'The graduate'],
-            ],
-            foot: 'Each settler has to meet the condition himself, separately for [[good:iron|Iron]] and [[good:gold|Gold]]. Until then the panel shows "locked".',
-          },
+          p: 'To mine [[good:iron|Iron]] or [[good:gold|Gold]], an Extractor first has to gather {{gather.oreNeed}} pieces of [[good:mud|Clay]] and [[good:stone|Quarrystone]] combined himself, separately for each of the two. The first one to manage it discovers the good for the whole settlement, and after that it can also be taught at the [[building:school|School]]. Until then the panel shows "locked".',
         },
         {
           h: 'Field',
@@ -441,10 +372,10 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'A field grows only from watering, time has no effect. Each watering adds 1 stage to the field and 6 neighbouring ones, so a field needs at most {{field.waterings}} waterings. After the harvest 1 piece lies there and the spot is free to sow again.',
+          p: "A field only grows when someone waters it, it won't grow by itself over time. Each watering raises that field and 6 neighbouring ones by 1 stage, so one field needs at most {{field.waterings}} waterings. After the harvest 1 piece of crop is left, and the spot can be sown again.",
         },
         {
-          p: 'Sowing and watering cost nothing, and no Water is needed.',
+          p: 'Sowing and watering cost nothing, not even Water.',
         },
         {
           table: {
@@ -466,26 +397,11 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 4],
-            foot: 'On the slant the radius is about {{field.diagonal}} hexes. The field limit is per building, not per worker. More people means faster harvests.',
+            foot: 'On the slant the radius is about {{field.diagonal}} hexes. The field limit is per building, not per worker, so more people means faster harvests but not more fields.',
           },
         },
         {
-          h: 'Farmer and Herb Gatherer work order',
-        },
-        {
-          steps: [
-            'Takes the harvested piece to the building.',
-            'Sows if the building has under {{field.max}} fields.',
-            'Harvests the nearest ripe field.',
-            'Waters the field at the lowest stage.',
-            'Waits in the building.',
-          ],
-        },
-        {
-          p: "You can't sow a field on sand or on a road. Wild fields from the map within the building's radius count toward its limit.",
-        },
-        {
-          p: "A field cut off from the building's door for {{field.reclaimSeconds}} s disappears and frees a place in the limit.",
+          p: "You can't sow a field on sand or on a road. Wild fields from the map within the building's radius count toward its limit. A field nobody can reach from the building's door for {{field.reclaimSeconds}} s disappears and frees a place in the limit.",
         },
         {
           h: 'What grows back',
@@ -529,13 +445,13 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'tools',
       name: 'Tools',
-      lead: 'A tool cuts strokes and adds workshop pieces, and it lasts {{tool.uses}} uses.',
+      lead: 'A tool cuts strokes, gives more pieces in a workshop and lasts {{tool.uses}} uses.',
       blocks: [
         {
           h: 'Where a settler gets a tool',
         },
         {
-          p: "Tools are handed out by the [[article:assistant|Assistant]], which is on from the start, or by your order. A settler goes to a store for one only with an empty tool slot, Iron before Wooden. He won't fetch a better one on his own.",
+          p: "Tools are handed out by the [[article:assistant|Assistant]], which is on from the start of the game, or by your own order. A settler with no tool goes to a store for one by himself and takes an Iron one, or a Wooden one if there is no Iron. He won't swap a Wooden one for a better one on his own.",
         },
         {
           h: 'Who benefits',
@@ -574,7 +490,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Tree, rock, deposit, herb field.',
+            foot: 'At a tree, rock, deposit or herb field.',
           },
         },
         {
@@ -592,7 +508,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Harvesting a [[good:wheat|Wheat]] field takes {{gather.wheatStrokes}} strokes with no tool, and 1 with a tool or from 20% experience.',
+          p: 'A [[good:wheat|Wheat]] field takes {{gather.wheatStrokes}} strokes with no tool, and with a tool or from 20% experience 1 is enough.',
         },
         {
           h: 'Pieces per workshop cycle',
@@ -609,28 +525,17 @@ export const ECONOMY: ArticleGroup = {
               ['100%', '{{tool.output.100.bare}}', '{{tool.output.100.wooden}}', '{{tool.output.100.iron}}'],
             ],
             num: [1, 2, 3],
-            foot: 'For a recipe that makes 1 piece. A 2-piece recipe gets double the bonus. Ingredients and time stay the same. Experience also works at slaughter.',
+            foot: 'For a recipe that makes 1 piece, a 2-piece recipe gets double the bonus. Ingredients and working time stay the same. Experience also works at slaughter.',
           },
         },
         {
-          p: 'Fractions build up in the workshop. A whole piece goes into stock, even over capacity.',
+          p: 'Fractions of a piece add up. Once a whole piece is there, it goes into stock, even over capacity.',
         },
         {
           h: 'Wear',
         },
         {
-          table: {
-            head: ['Work', 'Tool use'],
-            rows: [
-              ['Workshop cycle', '1 per finished cycle'],
-              ['Gathering stroke', '1 per stroke, even one with no effect'],
-              ['Rod cast', '1 per cast, even a failed one'],
-              ["Builder's stroke", '1 per stroke, also on repairs and strokes that added nothing'],
-              ['Watering', '1 per watering'],
-              ['Sowing, picking mushrooms', '0'],
-            ],
-            foot: 'After {{tool.uses}} uses the tool is gone and the settler works bare-handed until he gets a new one. An Iron Tool lasts a settler with no experience {{tool.ironTrees}} trees.',
-          },
+          p: 'Every stroke, rod cast, watering and finished workshop cycle uses the tool once, failed ones too. Sowing and picking mushrooms use nothing. After {{tool.uses}} uses the tool is gone and the settler works bare-handed until he gets a new one. An Iron Tool lasts a settler with no experience {{tool.ironTrees}} trees.',
         },
       ],
       see: [
@@ -666,41 +571,16 @@ export const ECONOMY: ArticleGroup = {
           h: 'Priority',
         },
         {
-          p: 'You set priority on one building: a warehouse, Headquarters, Barracks or tower. Its Carriers bring goods in from other warehouses, workshops and piles as long as there is room.',
+          p: "You set priority in a warehouse, Headquarters, Barracks or tower. That building's Carriers then bring the good in from other warehouses, workshops and piles as long as there is room for it.",
         },
         {
           h: 'Storage minimum',
         },
         {
-          p: 'The minimum counts all warehouses and Headquarters together, up to {{haul.minimumMax}} pieces of a good. While the total is lower, Carriers of warehouses, Headquarters, Wells and Beehives bring the good in from workshops, Wells, Beehives and piles, and nobody takes it from a store.',
+          p: 'The minimum, up to {{haul.minimumMax}} pieces of a good, counts all warehouses and Headquarters together. While the total is lower, Carriers bring the good in from workshops, Wells, Beehives and piles, and nobody takes it from a store.',
         },
         {
-          p: 'That goes for food too: if all your food fits inside the minimum, nobody eats from the store. A store gives goods to a priority store only above the minimum.',
-        },
-        {
-          h: "Warehouse Carrier's work order",
-        },
-        {
-          steps: [
-            'Delivers what he has in hand.',
-            'Brings in goods marked priority in his building.',
-            'At warehouses and Headquarters, brings in goods below the minimum.',
-            'Picks up the nearest pile with goods for his building.',
-            'Takes finished products from workshops to his building.',
-          ],
-        },
-        {
-          table: {
-            head: ['Carrier works at', 'What he does'],
-            rows: [
-              [
-                '[[building:work_farm_00|Farm]], [[building:work_herb_hut|Herb Hut]]',
-                'Takes the harvest to a store first, then piles',
-              ],
-              ['Workshop', 'Brings in ingredients first, then takes out products'],
-              ['[[building:work_well_00|Well]], [[building:work_hive_00|Beehive]]', 'Takes out the contents'],
-            ],
-          },
+          p: 'That goes for food too: if all your food fits inside the minimum, nobody eats it from the store. A priority store gets only what is above the minimum from another store.',
         },
         {
           h: 'Cart',
@@ -714,25 +594,21 @@ export const ECONOMY: ArticleGroup = {
               ['With [[good:oxcart|Ox Cart]]', '{{haul.oxcart}}', '{{haul.oxcartLossPct}}%'],
             ],
             num: [1, 2],
-            foot: "The smaller the load, the less it slows him. A [[job:trader|Merchant's]] carts have the same numbers.",
+            foot: "The smaller the load, the less a cart slows him. A [[job:trader|Merchant's]] carts work the same way.",
           },
         },
         {
           list: [
-            'Only a Carrier with a workplace and a [[job:trader|Merchant]] take a cart. The Carrier keeps his workplace.',
-            'The cart must be yours and free: no crew, no other commander, same landmass.',
-            'A warehouse Carrier with room left on his cart picks up the same good from piles and workshops within {{haul.cartTopUp}} hexes of himself, then returns.',
-            'If he loses his workplace, the cart stays where it is.',
+            'Only a Carrier who has a workplace and a [[job:trader|Merchant]] take a cart.',
+            'The cart must be yours, free and on the same landmass.',
+            'If there is room left on the cart, a warehouse Carrier picks up the same good from piles and workshops within {{haul.cartTopUp}} hexes before he heads back.',
           ],
         },
         {
           h: 'Piles on the ground',
         },
         {
-          list: [
-            'A pile has no owner. Anyone can take it.',
-            'A Carrier with no work flag picks up within {{flag.radius}} hexes of the building, with a flag within {{flag.radius}} hexes of the flag.',
-          ],
+          p: 'A pile on the ground belongs to nobody, and anyone can take it. A Carrier picks up piles within {{flag.radius}} hexes of his building, or within {{flag.radius}} hexes of his work flag if he has one.',
         },
       ],
       see: [
@@ -747,7 +623,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'work-flag',
       name: 'Work flag',
-      lead: 'The work flag (just "flag" on the buttons) marks the work area and stores nothing. An Extractor with no workplace leaves goods on the ground.',
+      lead: 'The work flag (just "flag" on the buttons) marks where a worker works. It stores nothing, so an Extractor with no workplace leaves goods on the ground.',
       blocks: [
         {
           figure: {
@@ -770,17 +646,12 @@ export const ECONOMY: ArticleGroup = {
               [
                 'Where the flag comes from',
                 'Appears at his feet when he takes the profession',
-                'Only from "Plant a flag"',
+                'Only from the "Plant a flag" order',
               ],
-              ['Where he works', 'Around the flag', 'Around the flag, with no flag per the table below'],
-              ['Which goods', 'Any the profession gathers', 'Only those the building stores'],
-              ['Where the load goes', 'A pile on the ground by the flag', "To the worker's building"],
-              ['Taking the flag away', 'Not possible, only moving it', '"Take the flag away"'],
-              [
-                'Losing the workplace',
-                '-',
-                'Extractors, Fishermen and Hunters keep working from their flag. With no flag they get a new one at their feet. A Carrier loses his flag.',
-              ],
+              ['Where he works', 'Around the flag', 'Around the flag, and without one as in the table below'],
+              ['Which goods', 'Everything his profession gathers', 'Only those the building stores'],
+              ['Where the load goes', 'Onto a pile by the flag', 'To his building'],
+              ['Taking the flag away', "Can't be done, it can only be moved", '"Take the flag away"'],
             ],
           },
         },
@@ -792,9 +663,9 @@ export const ECONOMY: ArticleGroup = {
             head: ['Who', 'No flag'],
             rows: [
               ['Extractor', 'Full signpost reach'],
-              ['Carrier', 'Warehouse: piles within {{flag.radius}} hexes of the building'],
+              ['Warehouse Carrier', 'Piles within {{flag.radius}} hexes of the building'],
               ['Hunter', 'Around the workplace'],
-              ['Fisherman', 'Looks for a shore from where he stands'],
+              ['Fisherman', 'Fishes from where he stands'],
             ],
           },
         },
@@ -817,34 +688,33 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [2, 3],
-            foot: 'In hexes. A profession that depends on signposts works only within their reach.',
+            foot: 'In hexes. Anyone who needs signposts works only within their reach.',
           },
         },
         {
-          p: 'Carriers at a Farm, Herb Hut, Well, Beehive, tower or Barracks take no work flag.',
+          p: "You can't plant a work flag for Carriers at a Farm, Herb Hut, Well, Beehive, tower or Barracks.",
         },
         {
           h: 'The pile by the flag',
         },
         {
           list: [
-            'Only a Carrier with a workplace takes a pile from under a flag.',
-            "More than {{flag.radius}} hexes from a warehouse, give the Carrier his own flag next to the Extractor's.",
-            'A Carrier with a flag takes piles and finished products around it and brings them to his building.',
-            'Moving the flag leaves the piles where they are.',
+            'Only a Carrier who has a workplace takes a pile from under a flag.',
+            "When the Extractor's flag is more than {{flag.radius}} hexes from a warehouse, plant a flag for the warehouse Carrier next to it.",
+            'When you move the flag, the piles stay where they were.',
           ],
         },
         {
           h: 'Planting a flag',
         },
         {
-          p: '"Plant a flag" places the flag on the spot you pick or moves it there. On an occupied spot it looks for a free one within {{flag.snap}} hexes, and past that the order is lost. Ctrl + right-click does the same.',
+          p: '"Plant a flag" places the flag on the spot you pick or moves it there, just like Ctrl + right-click. If the spot is taken, the flag goes to a free one within {{flag.snap}} hexes, and if there is none, the order is lost.',
         },
         {
-          p: "A switch in the [[article:assistant|Assistant]] lets an Extractor move his flag himself: he plants it {{assistant.flagMin}}-{{assistant.flagMax}} hexes from the resource. Once the area runs out, he goes to the resource nearest his building. This doesn't apply to Hunters or Fishermen.",
+          p: "In the [[article:assistant|Assistant]] you can let Extractors move their flags themselves. An Extractor then plants it {{assistant.flagMin}}-{{assistant.flagMax}} hexes from the resource, and once everything nearby runs out, he moves to the resource nearest his building. Hunters and Fishermen don't do this.",
         },
         {
-          p: 'You can plant a flag out of reach, but the worker stands until the network gets there: [[article:roads|Roads and Signposts]].',
+          p: 'You can plant a flag outside the network, but the worker will stand still until the network gets there: [[article:roads|Roads and Signposts]].',
         },
       ],
       see: ['article:hauling', 'article:workshops', 'article:roads', 'article:assistant', 'job:collector'],
@@ -858,7 +728,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Signpost',
         },
         {
-          p: 'A [[job:scout|Scout]] places signposts, no material needed.',
+          p: 'Signposts are placed by a [[job:scout|Scout]] and cost no material.',
         },
         {
           figure: {
@@ -867,19 +737,19 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'A settler gets to a target on his own within {{reach.walk}} hexes, a [[job:carrier|Carrier]] within {{reach.carrier}}. Further out a signpost leads the way: if one stands closer than that reach, it opens the whole linked network, and the target must lie within the same reach of some signpost in that network.',
+          p: 'Without signposts a settler reaches a target at most {{reach.walk}} hexes away, a [[job:carrier|Carrier]] {{reach.carrier}}. Further out signposts lead the way: if one stands within that reach, the settler can use its whole linked network, and the target must lie within the same reach of one of its signposts.',
         },
         {
           list: [
-            'Two signposts link when they stand closer than {{reach.link}} hexes, with a route between them of up to {{reach.linkRoute}} hexes.',
-            'Your own signpost goes at least {{reach.spacing}} hexes from another one.',
-            'A settler looks for goods closer than {{reach.goods}} hexes, also from signposts within that reach.',
-            'A building placed on a signpost pushes it up to {{reach.displace}} hexes aside. Past that the signpost is lost.',
+            'Two signposts link when they stand closer than {{reach.link}} hexes and the route between them is at most {{reach.linkRoute}} hexes.',
+            'Your new signpost has to stand at least {{reach.spacing}} hexes from another one.',
+            'A settler looks for goods closer than {{reach.goods}} hexes from himself or from signposts within that reach.',
+            "A building placed on a signpost moves it up to {{reach.displace}} hexes aside, and if that isn't possible, the signpost is gone.",
           ],
         },
         {
           table: {
-            head: ['Terrain', 'Searching for goods, hexes'],
+            head: ['Terrain', 'Goods search range, hexes'],
             rows: [
               ['Road, land', 'under {{reach.goods}}'],
               ['Sand', 'about {{reach.goodsSand}}'],
@@ -891,25 +761,25 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Reach does not apply to Scouts, soldiers, heroes, [[job:hunter|Hunters]] or [[job:druid|Druids]].',
+          p: 'Scouts, soldiers, heroes, [[job:hunter|Hunters]] and [[job:druid|Druids]] go anywhere, signposts or not.',
         },
         {
-          p: 'A worker whose workplace or flag ends up out of reach gets status "Lost" and stands until the network gets there. He still delivers what he\'s carrying.',
+          p: 'A worker whose workplace or flag ends up out of reach gets status "Lost" and waits until the network gets there. He still delivers what he\'s carrying.',
         },
         {
           h: 'Signpost panel',
         },
         {
           table: {
-            head: ['Item', 'Meaning'],
+            head: ['In the panel', 'Meaning'],
             rows: [
               [
                 '"Network goods"',
-                'Goods within reach of the whole linked network: buildings, piles, carts, hands. Each piece counts once.',
+                'All goods within reach of the linked network: in buildings, on piles, carts and in hands.',
               ],
               [
                 '"Demolish"',
-                'The signpost vanishes at once, no confirmation, no Scout needed. If it was the only link, the network splits apart.',
+                'The signpost vanishes at once, with no question asked. If it joined two parts of the network, the network splits.',
               ],
             ],
             foot: 'The "Signposts" map overlay shows networks.',
@@ -934,9 +804,8 @@ export const ECONOMY: ArticleGroup = {
         {
           list: [
             'A segment costs 1 [[good:stone|Quarrystone]] and 1 [[job:builder|Builder]] stroke.',
-            'The same Quarrystone also paves up to 6 neighbouring segments, if no Builder has taken them and no Quarrystone lies on them.',
-            'Cancelling a segment: the delivered Quarrystone lands next to it.',
-            'A settler takes the road on his own when that gets him there faster.',
+            'One Quarrystone also paves up to 6 neighbouring segments, as long as no Builder has taken them yet and no Quarrystone lies on them.',
+            'Settlers take the road on their own when it gets them there faster.',
           ],
         },
       ],
@@ -968,7 +837,7 @@ export const ECONOMY: ArticleGroup = {
               ['Snow', '{{step.snow}} s', '{{step.snowBare}} s', '{{shoes.snow}}'],
             ],
             num: [1, 2, 3],
-            foot: 'With a load in hand, shoes wear {{shoes.carryWear}} times faster. Energy cost of a barefoot step: [[article:needs|Needs]].',
+            foot: 'With a load in hand, shoes wear {{shoes.carryWear}} times faster. How much energy walking barefoot costs: [[article:needs|Needs]].',
           },
         },
         {
@@ -988,7 +857,7 @@ export const ECONOMY: ArticleGroup = {
               ['Full [[good:handcart|Handcart]]', '{{haul.handcartLossPct}}% slower'],
               ['Full [[good:oxcart|Ox Cart]]', '{{haul.oxcartLossPct}}% slower'],
             ],
-            foot: 'The fastest step takes {{step.shortest}} s. The smaller the load, the less a cart slows him. Weight does not slow heroes.',
+            foot: 'A step never takes less than {{step.shortest}} s. The smaller the load, the less a cart slows him. Weight does not slow heroes.',
           },
         },
         {
@@ -1003,7 +872,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:spear_iron|Iron Spear]], [[good:sword_long|Longsword]]', '{{weight.ironSpear}}'],
             ],
             num: [1],
-            foot: 'The same for all tribes. Add weapon weight to armour weight from the table below.',
+            foot: 'The same for all tribes. Add the weapon weight to the armour weight from the table below.',
           },
         },
         {
@@ -1029,7 +898,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'trade',
       name: 'Trade',
-      lead: 'A Merchant runs between {{trade.stops}} buildings and with no cart takes {{haul.carry}} piece per trip.',
+      lead: 'A Merchant runs between {{trade.stops}} buildings, and with no cart he takes {{haul.carry}} piece at a time.',
       blocks: [
         {
           h: 'Carried by',
@@ -1047,15 +916,15 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'In shoes, with the cart full one way and empty on the way back, both carts move the same amount on a route of about {{trade.cartParLand}} hexes over land or {{trade.cartParRoad}} hexes by road. On a shorter route the Handcart wins, on a longer one the Ox Cart.',
+          p: 'With the cart full one way and empty on the way back, both carts move the same amount on a route of about {{trade.cartParLand}} hexes over land or {{trade.cartParRoad}} hexes by road. On a shorter route the Handcart is better, on a longer one the Ox Cart.',
         },
         {
           h: 'Route',
         },
         {
           list: [
-            'A route links {{trade.stops}} finished buildings with stock. At most 1 can be foreign.',
-            'While a building is being upgraded, the [[job:trader|Merchant]] waits for it to finish.',
+            'A route links {{trade.stops}} finished buildings with stock. At most 1 of them can belong to someone else.',
+            'While a building is being upgraded, the [[job:trader|Merchant]] waits until it is done.',
             'A Merchant takes no food from a Dwelling.',
           ],
         },
@@ -1069,17 +938,17 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Setting', 'Result'],
             rows: [
-              ['Good marked in building B', 'Loads at A, unloads at B'],
+              ['Good marked in building B', 'Takes it from A and brings it to B'],
               ['Good marked in both buildings', 'Evens out stock between them'],
-              ['Neither building marks anything', 'The Merchant stands still'],
-              ['up to N', 'Stops delivering when the destination holds N, load included'],
+              ['Nothing marked in either building', 'The Merchant carries nothing'],
+              ['up to N', 'Stops delivering once the destination will hold N pieces, load included'],
               ['keep N', 'N pieces stay in the source building'],
               [
                 'settlement',
-                'Loads from the whole settlement: this warehouse first, then warehouses and workshops within its signpost network',
+                'Takes goods from the whole settlement: this warehouse first, then other warehouses and workshops within its signpost network',
               ],
             ],
-            foot: 'The settlement option works only for a warehouse or Headquarters, on one of the two route buildings. The storage minimum also limits loading.',
+            foot: "You can turn on the settlement option only in a warehouse or Headquarters, and only in one of the two route buildings. The Merchant won't take goods below the storage minimum.",
           },
         },
         {
@@ -1087,13 +956,12 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'You can trade only with a finished building of a computer player that has an offer from the map.',
-            "To add the building to a route, both sides must be friendly. After that it's enough that the Merchant's tribe is friendly: [[article:diplomacy|Diplomacy]].",
-            'An offer is N pieces of one good for M of another, with the numbers set by the map. A route trades one offer at a time.',
-            "Every {{trade.refillSeconds}} s the computer's store goes back to {{trade.refillLevel}} pieces of the offer's good.",
-            'The Merchant loads as many full exchanges as the cart holds with room for the payment. On a small cart one exchange splits over several trips.',
-            'He hands over the goods, takes the payment and repeats while he has goods. With no payment in the building he waits and hands nothing over.',
-            '"keep N" leaves N pieces of the sale good in the building. Return limit N: the Merchant stops once the building holds N pieces of payment.',
+            'You can trade only with a finished building of a computer player that has an offer set by the map.',
+            "To add the building to a route, both sides must be friendly to each other. After that it's enough that the Merchant's tribe is friendly: [[article:diplomacy|Diplomacy]].",
+            'An offer is N pieces of one good for M of another, with the numbers set by the map. A route works one offer at a time.',
+            "Every {{trade.refillSeconds}} s the computer tops up the offer's good in its store to {{trade.refillLevel}} pieces.",
+            "When the computer's building has no payment, the Merchant waits and hands nothing over.",
+            '"keep N" leaves N pieces of the sale good in your building. Return limit N ends the trade once your building holds N pieces of payment.',
           ],
         },
       ],

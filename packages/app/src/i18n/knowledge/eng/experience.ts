@@ -21,10 +21,10 @@ export const EXPERIENCE: ArticleGroup = {
           data: 'experience',
         },
         {
-          p: 'The table shows ordinary work. Wood, hunting, fishing and building count differently, and their multiplier is in the table below. In [[article:gathering|gathering]], experience means fewer strokes per piece. In workshops and at slaughter it adds extra pieces. Tables with tools: [[article:tools|Tools]]. Building: [[article:construction|Building, Upgrades and Repairs]].',
+          p: 'The table is for ordinary work. Wood, hunting, fishing and building grow at their own pace, see the table below. In [[article:gathering|gathering]], experience cuts the strokes per piece, and in workshops and at slaughter it adds extra pieces. Experience together with tools: [[article:tools|Tools]]. Building: [[article:construction|Building, Upgrades and Repairs]].',
         },
         {
-          p: "A selected settler of yours wears a profession star. It appears at {{star.step}}% in the profession's best skill and grows every {{star.step}}%, up to {{star.full}}%. Carriers don't get one.",
+          p: "When you select one of your settlers you see his profession star. It appears once his best skill in the profession reaches {{star.step}}% and grows every {{star.step}}% up to {{star.full}}%. Carriers don't get one.",
         },
         {
           h: 'How much work it takes',
@@ -70,11 +70,11 @@ export const EXPERIENCE: ArticleGroup = {
               ],
             ],
             num: [2, 3, 4],
-            foot: 'The last columns count trees, pieces, cycles or strokes. From {{exp.quotedPct}}% a [[job:builder|Builder]] with no tool needs half as many strokes per piece of material. In the settler panel, under Experience, each skill has its own row, e.g. Extraction - Iron: {{exp.craft.repeatsQuoted}} times, output +{{exp.quotedPct}}%.',
+            foot: 'The last columns count trees, pieces, cycles or strokes. From {{exp.quotedPct}}% a [[job:builder|Builder]] with no tool needs half as many strokes per piece of material. In the settler panel, on the Experience tab, each skill has its own row, e.g. Extraction - Iron: {{exp.craft.repeatsQuoted}} times, output +{{exp.quotedPct}}%.',
           },
         },
         {
-          p: "Each tree, piece and cycle also counts toward the profession's general skill, e.g. Agriculture. A profession opens through the general skill or through the skill of one good: Agriculture opens the [[job:miller|Miller]], and Extraction - Wood the [[job:joiner|Carpenter]]. Requirements: [[article:trades|Professions and School]]. The general skill also applies to a good with no skill of its own. Experience stays through a change of profession.",
+          p: "Each tree, piece and cycle also counts toward the profession's general skill, e.g. Agriculture. A new profession opens through that general skill or through the skill of one good: Agriculture opens the [[job:miller|Miller]], and Extraction - Wood the [[job:joiner|Carpenter]]. The requirements are in [[article:trades|Professions and School]]. For a good with no skill of its own, the general skill counts. Experience stays through a change of profession.",
         },
         {
           h: 'Who gains nothing',
@@ -117,16 +117,16 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'The multiplier applies to melee blows against people, animals and buildings. It does not apply to [[article:walls|stockades]] and [[article:vehicles|vehicles]], or to arrows and the [[article:catapult|catapult]].',
         },
         {
-          p: 'Bow and catapult: {{aim.basePct}}% of shots are accurate at 0 hits, and from {{aim.noSpreadHits}} hits every shot lands on target. Table: [[article:aim|Hitting and Shooting]].',
+          p: 'Without experience, bows and catapults hit with {{aim.basePct}}% of shots, and from {{aim.noSpreadHits}} hits every shot lands on target. Details: [[article:aim|Hitting and Shooting]].',
         },
         {
           h: 'What counts as a hit',
         },
         {
-          p: "A hit is a blow or shot that dealt damage. It counts separately for each kind of weapon: Fist, Spear, Sword, Bow, Catapult. The [[job:hunter|Hunter's]] bow is a Bow too. A shot that hits several targets counts once.",
+          p: "A hit is a blow or shot that dealt damage. It counts separately for each kind of weapon: Fist, Spear, Sword, Bow, Catapult. [[job:hunter|Hunter's]] shots count toward Bow too.",
         },
         {
-          p: "In the settler panel these are the rows Fighting - Sword, Fighting - Bow and so on. Sword hits don't help a spearman, and they stay after a change of profession. Fighting doesn't raise a hero's damage, unless the mission allows it.",
+          p: "In the settler panel these are the rows Fighting - Sword, Fighting - Bow and so on. Sword hits don't help a spearman, and they stay after a change of profession. Fighting doesn't raise a hero's damage, unless the mission turns it on.",
         },
         {
           h: 'Discovering weapons',
@@ -157,7 +157,7 @@ export const EXPERIENCE: ArticleGroup = {
           },
         },
         {
-          p: 'A soldier needs no hits to take a weapon: he takes any weapon from a store in reach and fights as a Swordsman, Spearman or Archer on the spot. The {{exp.classLowNeed}} or {{exp.classHighNeed}} hit threshold only discovers that kind of soldier for the settlement and opens it in "Change profession": [[article:trades|Professions and School]].',
+          p: 'A soldier needs no hits to take a weapon: he takes any weapon from a store in reach and fights as a Swordsman, Spearman or Archer on the spot. The {{exp.classLowNeed}} or {{exp.classHighNeed}} hit threshold only discovers that kind of soldier for the settlement, after which you can pick it in "Change profession": [[article:trades|Professions and School]].',
         },
         {
           h: 'The star',
@@ -196,15 +196,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Products are discovered the same way, e.g. [[good:furniture|Furniture]] needs Carpentry: {{exp.furnitureNeed}} times.',
         },
         {
-          h: 'How a discovery happens',
-        },
-        {
-          steps: [
-            'A settler works, e.g. an [[job:collector|Extractor]] fells trees.',
-            'After {{exp.joinerNeed}} trees he meets the [[job:joiner|Carpenter]] requirement and the game announces the discovery.',
-            'The profession is discovered for the whole settlement, and this settler can take it up at once.',
-            'Everyone else goes to the [[building:school|School]] or earns the same requirement through work.',
-          ],
+          p: 'A settler who meets the requirement can take up the profession at once. Everyone else has to take a course at the [[building:school|School]] or earn the same requirement through work.',
         },
         {
           h: 'School and Barracks',
@@ -223,13 +215,13 @@ export const EXPERIENCE: ArticleGroup = {
                 'unarmed Soldier, old profession stays known',
               ],
             ],
-            foot: 'When the places are full, pupils wait at the door in order of enrolment.',
+            foot: 'When the places are full, the next pupils wait at the door.',
           },
         },
         {
           list: [
-            'Needs interrupt a course without losing progress. Cancelling wipes it.',
-            'A pupil sent to a School under construction brings materials and waits.',
+            'A pupil who leaves to eat or sleep keeps his progress. Calling him off the course wipes it.',
+            'A pupil sent to a School under construction brings materials and waits until it is built.',
             'A finished course is permanent, even after a change of profession.',
           ],
         },
@@ -260,14 +252,14 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Profession and workplace',
         },
         {
-          p: '"Change profession" clears the workplace and nobody assigns a new one on their own. The exception is graduates, once you switch on their toggle in the [[article:assistant|Assistant]].',
+          p: 'After "Change profession" a settler loses his workplace and won\'t get a new one on his own. The exception is graduates, once you switch on their toggle in the [[article:assistant|Assistant]].',
         },
         {
           table: {
             head: ['Profession', 'Building', 'Without a building'],
             rows: [
               ['[[job:builder|Builder]]', 'not needed', 'Goes to construction sites on his own.'],
-              ['[[job:scout|Scout]]', 'not needed', 'Works on orders.'],
+              ['[[job:scout|Scout]]', 'not needed', 'Follows orders.'],
               ['[[job:trader|Merchant]]', 'not needed', 'Drives his own [[article:trade|route]].'],
               ['[[job:civilist|Civilian]]', 'not needed', 'Does not work, waits for a post.'],
               [
@@ -284,32 +276,11 @@ export const EXPERIENCE: ArticleGroup = {
         {
           list: [
             'Right-click a building ("Work here") to change profession and get the workplace at once.',
-            "A settler who lacks the requirement for the building's profession takes a free Carrier post there, if there is one.",
+            "A settler who doesn't meet the requirement for that profession takes a free Carrier post in the building, if there is one.",
             'A soldier only takes a post in his own profession.',
-            '"Remove work place" keeps the profession and whatever he is carrying. It takes away the production counters and the Carrier\'s handcart.',
-            'Demolishing the building keeps the profession too.',
+            '"Remove work place" and demolishing the building don\'t take the profession away.',
             'Women, children and heroes never get a profession.',
           ],
-        },
-        {
-          h: 'What changing profession costs',
-        },
-        {
-          table: {
-            head: ['Item', 'What happens'],
-            rows: [
-              ['Workplace and production counters', 'Lost.'],
-              ['Carried goods', 'Dropped on the ground.'],
-              ['Tool', 'Kept. On joining the army a new tool drops to the ground, a used one is lost.'],
-              ['Weapon and armour', 'On leaving the army they go to his hands or the ground.'],
-              [
-                'Orders',
-                'The current order and the queue are lost. "Eating and sleeping" returns to "Allowed".',
-              ],
-              ['Known professions', 'Kept, including the previous one. Experience too.'],
-            ],
-            foot: 'The School and Barracks change profession the same way, but the order queue stays. A Carrier leaves his handcart behind.',
-          },
         },
       ],
       see: [

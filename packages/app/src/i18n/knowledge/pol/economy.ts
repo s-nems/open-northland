@@ -6,49 +6,40 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'construction',
       name: 'Budowa, rozbudowa, naprawa',
-      lead: 'Same uderzenia przy Domu 1 zajmują jednemu Budowniczemu {{build.noviceSeconds}} s, z Żelaznym Narzędziem {{build.noviceIronSeconds}} s. Noszenie materiału dolicza się osobno.',
+      lead: 'Jeden Budowniczy stawia Dom 1 w {{build.noviceSeconds}} s, a z Żelaznym Narzędziem w {{build.noviceIronSeconds}} s. Do tego dochodzi noszenie materiału.',
       blocks: [
         {
           h: 'Gdzie można budować',
         },
         {
           table: {
-            head: ['Co', 'Co się dzieje'],
+            head: ['Co', 'Zasada'],
             rows: [
               [
                 'Teren',
-                'Stawiasz na lądzie, piasku, plaży i kamienistej pustyni. Góry, śnieg, woda i bagno odpadają.',
+                'Budujesz na lądzie, piasku, plaży i kamienistej pustyni. Na górach, śniegu, wodzie i bagnie się nie da.',
               ],
               [
                 '[[building:work_well_00|Studnia]], [[building:work_hive_00|Ul]]',
-                'Choć skraj budynku musi stać na trawie.',
+                'Przynajmniej skraj budynku musi stać na trawie.',
               ],
               [
                 'Miejsce',
-                'Budynek od razu rezerwuje miejsce na najwyższy poziom i wąski pas wokół. Te pasy dwóch budynków nie mogą na siebie zachodzić.',
+                'Budynek od razu zajmuje miejsce potrzebne na najwyższy poziom, plus wąski pas wokół. Pasy dwóch budynków nie mogą na siebie zachodzić.',
               ],
-              ['Drzewo, skała, złoże, palisada', 'Blokują. Muszą stać poza miejscem na najwyższy poziom.'],
+              ['Drzewo, skała, złoże, palisada', 'Muszą stać poza miejscem na najwyższy poziom budynku.'],
               [
                 'Wrogi żołnierz',
-                'Nie zbudujesz do {{contest.radius}} hexów od niego, po skosie około {{contest.diagonal}}. Liczy się tylko żołnierz, którego widzisz. Załoga na stanowisku w wieży się nie liczy.',
+                'Nie zbudujesz w promieniu {{contest.radius}} hexów od niego, po skosie około {{contest.diagonal}}. Liczą się tylko żołnierze, których widzisz, ale nie załoga wieży.',
               ],
               [
-                'Budynek gracza, z którym łączy cię pokój',
-                'Nie zbudujesz do {{peace.keepOut}} hexów od jego budynku lub placu, chyba że twój własny budynek stoi tam bliżej niż jego.',
+                'Budynek gracza, z którym masz pokój',
+                'Nie zbudujesz w promieniu {{peace.keepOut}} hexów od jego budynku lub placu, chyba że twój budynek stoi tam bliżej niż jego.',
               ],
-              ['Teren pod mgłą', 'Blokuje. Miejsce musi być teraz widoczne.'],
-              ['Osadnik, pojazd, flaga robocza, drogowskaz, stos, truchło', 'Zostaną odsunięte na bok.'],
-              ['Krzew, pole, pniak, otwarta skrzynia', 'Znikają, gdy stanie plac.'],
-              ['Plac pod drogę', 'Zostaje anulowany, dostarczony Kamień ląduje obok.'],
-              [
-                'Droga, palisada na miejscu pod rozbudowę',
-                'Wytyczana linia omija to miejsce. Domyślnie klawisz G pozwala ją tam położyć, ale rozbudowa usunie ją bez zwrotu.',
-              ],
-              ['Wrodzy cywile, zwierzęta', 'Nie przeszkadzają. Plac stanie obok nich.'],
-              ['Ułożona droga', 'Zostaje pod budynkiem.'],
+              ['Teren pod mgłą', 'Nie zbudujesz tam. Miejsce musi być w tej chwili widoczne.'],
               [
                 'Zasięg drogowskazów',
-                'Nie obowiązuje. Plac stanie też poza siecią, a Budowniczy dojdzie, gdy sieć tam sięgnie.',
+                'Nie ma znaczenia. Plac możesz postawić poza siecią, ale Budowniczy dojdzie dopiero, gdy sieć tam sięgnie.',
               ],
             ],
           },
@@ -79,7 +70,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2],
-            foot: 'Dom 1 kosztuje {{build.homeUnits}} sztuki materiału. Czas samych uderzeń, 1 uderzenie trwa {{build.swingSeconds}} s.',
+            foot: 'Dom 1 kosztuje {{build.homeUnits}} sztuki materiału. Liczony jest sam czas uderzeń, 1 uderzenie trwa {{build.swingSeconds}} s.',
           },
         },
         {
@@ -119,42 +110,28 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Uderzeń na 1 sztukę materiału. [[job:builder|Budowniczy]] ma 100% po {{exp.build.repeatsFull}} uderzeniach. Liczą się tylko te, które coś wniosły.',
+            foot: 'Uderzenia na 1 sztukę materiału. [[job:builder|Budowniczy]] dochodzi do 100% po {{exp.build.repeatsFull}} uderzeniach, ale liczą się tylko te, które posunęły budowę.',
           },
         },
         {
-          list: [
-            'Budynek bez kosztu wymaga 1 uderzenia.',
-            'Odcinek palisady lub drogi stawia 1 Budowniczy, 1 uderzeniem, gdy materiał jest na miejscu.',
-            'Materiał nosi Budowniczy i pracownik przypisany do placu, po 1 sztuce.',
-          ],
+          p: 'Materiał na plac noszą Budowniczowie i pracownicy przypisani do placu, po 1 sztuce.',
         },
         {
-          h: 'Kolejność pracy Budowniczego',
+          h: 'Co Budowniczy robi najpierw',
         },
         {
-          steps: [
-            'Droga albo palisada, które gracz właśnie zlecił temu Budowniczemu.',
-            'Naprawa: bramy, potem budynki, potem palisady.',
-            'Place budynków, najpierw zaopatrzone i bliskie końca.',
-            'Nowe odcinki palisady.',
-            'Drogi.',
-          ],
-        },
-        {
-          p: 'Budowniczy przypisany przez gracza do placu zostaje przy nim, także gdy gdzie indziej jest praca.',
+          p: 'Budowniczy najpierw naprawia, potem stawia budynki, a palisady i drogi zostawia na koniec. Jeśli przypiszesz go do placu, zostaje przy nim, nawet gdy gdzie indziej czeka praca.',
         },
         {
           h: 'Rozbudowa',
         },
         {
           list: [
-            'Kosztuje materiały podnoszonych poziomów. Można przeskoczyć kilka poziomów naraz, jeśli każdy jest odblokowany.',
-            'Towar z kosztu, który budynek ma w zapasie, idzie od razu na plac. Reszta zapasów wraca po ukończeniu.',
-            'Pracownicy i mieszkańcy wychodzą, zachowują miejsce i wracają po ukończeniu.',
-            'W czasie rozbudowy zdrowie nie rośnie. Po ukończeniu budynek ma pełne zdrowie nowego poziomu.',
-            'Start rozbudowy wyłącza tryb obrony.',
-            'Anulowanie oddaje zapasy i towar z nich wzięty, dostarczony materiał przepada.',
+            'Kosztuje materiały kolejnych poziomów. Możesz przeskoczyć kilka poziomów naraz, jeśli wszystkie są odblokowane.',
+            'Towar potrzebny do rozbudowy, który budynek ma już w zapasie, od razu idzie na budowę.',
+            'Pracownicy i mieszkańcy wychodzą na czas rozbudowy, a potem wracają na swoje miejsca.',
+            'Po ukończeniu budynek ma pełne zdrowie nowego poziomu.',
+            'Gdy anulujesz rozbudowę, budynek odzyskuje swoje zapasy, ale dostarczony materiał przepada.',
           ],
         },
         {
@@ -173,30 +150,19 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          list: [
-            'Budowniczy sam nie idzie naprawiać przez {{repair.calmSeconds}} s od ostatniego trafienia ani gdy do {{alert.standTo}} hexów trwa walka. Twój rozkaz omija oba warunki.',
-            'Placu budowy i palisady w budowie się nie naprawia. Ich zdrowie rośnie razem z budową.',
-            'Uszkodzony budynek w rozbudowie: najpierw naprawa, potem rozbudowa.',
-          ],
+          p: 'Budowniczy sam nie naprawia przez {{repair.calmSeconds}} s od ostatniego trafienia ani wtedy, gdy w promieniu {{alert.standTo}} hexów trwa walka. Na twój rozkaz pójdzie od razu.',
         },
         {
           h: 'Co przepada, a co wraca',
         },
         {
           table: {
-            head: ['Sytuacja', 'Skutek'],
+            head: ['Sytuacja', 'Co zostaje'],
             rows: [
-              ['Wyburzenie placu', 'Dostarczony materiał ląduje na ziemi'],
-              [
-                'Wyburzenie lub zniszczenie budynku',
-                'Zawartość i połowa kosztu, każdy towar zaokrąglony w górę',
-              ],
-              [
-                'Wyburzenie budynku w rozbudowie',
-                'To samo dla obecnego poziomu, plus odłożone zapasy i materiał rozbudowy',
-              ],
+              ['Wyburzenie placu', 'Dostarczony materiał zostaje na ziemi'],
+              ['Wyburzenie lub zniszczenie budynku', 'Zawartość i połowa kosztu, zaokrąglona w górę'],
             ],
-            foot: 'Towar układa się na ziemi do {{reach.spill}} hexów, na tym samym lądzie. Co się nie zmieści, przepada.',
+            foot: 'Towar ląduje na ziemi do {{reach.spill}} hexów od budynku. Co się nie zmieści, przepada.',
           },
         },
       ],
@@ -205,7 +171,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'workshops',
       name: 'Warsztaty i wybór produktu',
-      lead: 'Licznik przy produkcie mówi, ile cykli ma wykonać pracownik: 0 to stop, ∞ bez końca. Cykl to jedno wykonanie przepisu.',
+      lead: 'Licznik przy produkcie mówi, ile cykli zrobi pracownik: 0 to stop, ∞ to bez końca. Jeden cykl to jedno wykonanie przepisu.',
       blocks: [
         {
           h: 'Wartości licznika',
@@ -214,15 +180,15 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Licznik', 'Warsztat', 'Zbieracz'],
             rows: [
-              ['0', 'Produkt stoi', 'Towar pominięty'],
+              ['0', 'Nie robi tego produktu', 'Nie zbiera tego towaru'],
               [
                 '1-{{workshop.counterMax}}',
-                'Tyle cykli, -1 przy starcie cyklu',
-                'Tyle sztuk, -1 za zdobytą sztukę',
+                'Tyle cykli, licznik spada o 1 na starcie każdego',
+                'Tyle sztuk, licznik spada o 1 za każdą zdobytą',
               ],
               ['∞', 'Bez końca, licznik nie spada', 'Bez końca, licznik nie spada'],
             ],
-            foot: 'Warsztat liczy cykle, Zbieracz sztuki. Doświadczenie i narzędzie dokładają sztuk z cyklu: [[article:tools|Narzędzia]].',
+            foot: 'Doświadczenie i narzędzie dają więcej sztuk z cyklu: [[article:tools|Narzędzia]].',
           },
         },
         {
@@ -236,7 +202,7 @@ export const ECONOMY: ArticleGroup = {
                 'Ikona towaru, "Tylko ten produkt"',
                 'Ten towar ∞, reszta 0',
                 '-',
-                'Ten towar: z 0 na ∞, z każdej innej wartości na 0. Reszta bez zmian.',
+                'Przełącza ten towar między 0 a ∞, reszta bez zmian',
               ],
               ['Mniej', '-1. Z 0 skok na ∞, z ∞ na {{workshop.counterMax}}', '-10', 'Na 0'],
               ['Więcej', '+1. Ze {{workshop.counterMax}} skok na ∞, z ∞ na 0', '+10', 'Na ∞'],
@@ -244,54 +210,34 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          h: 'Start nowego pracownika',
-        },
-        {
-          table: {
-            head: ['Kto', 'Liczniki na start'],
-            rows: [
-              ['Rzemieślnik', 'Pierwszy produkt warsztatu ∞, reszta 0'],
-              ['[[job:breeder|Hodowca]] na [[building:work_animal_farm|Fermie bydła]]', 'Wół ∞, Owca 0'],
-              [
-                'Absolwent przydzielony przez Asystenta, gdy Szkoła uczy tego zawodu kilku wyrobów',
-                'Wyroby poznane w Szkole ∞, reszta 0',
-              ],
-              ['[[job:collector|Zbieracz]]', 'Każdy towar ∞'],
-            ],
-          },
-        },
-        {
           h: 'Co dzieje się z licznikami',
         },
         {
-          p: 'Liczniki przepadają przy zmianie miejsca pracy lub zawodu, także gdy budynek zostanie zburzony. Rozbudowa ich nie rusza, a nowe produkty z wyższego poziomu dostają 0. Każdy pracownik ma własne liczniki: 2 ludzi w jednym warsztacie może robić 2 różne produkty.',
+          p: 'Każdy pracownik ma własne liczniki, więc 2 ludzi w jednym warsztacie może robić 2 różne produkty. Liczniki znikają, gdy pracownik zmieni miejsce pracy lub zawód, także po zburzeniu budynku. Rozbudowa ich nie zmienia, a produkty z nowego poziomu startują od 0.',
         },
         {
           h: 'Kilka produktów naraz',
         },
         {
-          p: 'Pracownik robi na zmianę produkty z licznikiem powyżej 0, po 1 cyklu, w kolejności z panelu.',
+          p: 'Pracownik robi na zmianę wszystkie produkty z licznikiem powyżej 0, po 1 cyklu każdy, w kolejności z panelu.',
         },
         {
           table: {
-            head: ['Sytuacja', 'Skutek'],
+            head: ['Kiedy', 'Co robi pracownik'],
             rows: [
+              ['Zapas produktu jest pełny', 'Bierze się za następny produkt'],
+              ['Brakuje składnika', 'Bierze się za następny produkt'],
               [
-                'Pełny zapas produktu',
-                'Pracownik bierze następny produkt. Cykle w toku liczą się jako zajęte miejsce.',
-              ],
-              ['Brak składnika w budynku', 'Pracownik bierze następny produkt'],
-              [
-                'Część składnika w budynku',
-                'Czeka na resztę. Gdy reszty nie ma skąd wziąć, bierze następny produkt.',
+                'Jest tylko część składników',
+                'Czeka na resztę. Gdy nie ma jej skąd wziąć, bierze się za następny produkt.',
               ],
               [
-                'Produkt bez wymaganego doświadczenia',
-                'Napis "zablokowane" zamiast licznika, pomijany w kolejce',
+                'Ma za mało doświadczenia na produkt',
+                'Panel pokazuje "zablokowane" zamiast licznika, a pracownik ten produkt pomija',
               ],
               [
-                'Zablokowane wszystkie produkty z licznikiem',
-                'Pracownik robi to, co już umie, także produkty na 0',
+                'Wszystkie produkty z licznikiem są zablokowane',
+                'Robi to, co już umie, nawet produkty z licznikiem 0',
               ],
             ],
           },
@@ -300,26 +246,25 @@ export const ECONOMY: ArticleGroup = {
           h: 'Pojazdy',
         },
         {
-          list: [
-            'Pojazd powstaje poza warsztatem: rzemieślnik stawia obok plac, sam nosi materiał i buduje.',
-            'Licznik pojazdu spada po ukończeniu pojazdu, nie na starcie.',
-            'Gdy obok warsztatu nie ma miejsca na plac, pracownik bierze następny produkt.',
-          ],
+          p: 'Pojazd nie powstaje w warsztacie. Rzemieślnik stawia obok plac, sam nosi na niego materiał i buduje. Gdy obok warsztatu brakuje miejsca na plac, bierze się za następny produkt.',
         },
         {
           h: 'Zbieracze',
         },
         {
           table: {
-            head: ['Akcja', 'Skutek'],
+            head: ['Sytuacja', 'Skutek'],
             rows: [
               ['"Tylko to dobro"', 'Ten towar ∞, reszta 0'],
-              ['Prawy klik na zasobie', '"Zbieraj": ten towar ∞, reszta 0, flaga robocza stoi, gdzie stała'],
-              ['Ctrl i prawy klik na zasobie', 'To samo, a flaga idzie na zasób'],
-              ['Wszystkie liczniki na 0', 'Stan "Towary na 0"'],
               [
-                'Licznik na 0, a towar leży',
-                'Licznik dotyczy tylko wydobycia. Leżące pnie i stosy Zbieracz nosi dalej.',
+                'Prawy klik na zasobie',
+                'Rozkaz "Zbieraj": ten towar ∞, reszta 0. Flaga robocza zostaje na miejscu.',
+              ],
+              ['Ctrl i prawy klik na zasobie', 'To samo, ale flaga przenosi się na zasób'],
+              ['Wszystkie liczniki na 0', 'Zbieracz ma stan "Towary na 0" i nic nie zbiera'],
+              [
+                'Towar już leży na ziemi',
+                'Licznik dotyczy tylko wydobycia. Ścięte pnie i stosy Zbieracz nosi dalej, nawet przy 0.',
               ],
             ],
           },
@@ -336,14 +281,14 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'gathering',
       name: 'Zbieranie i uprawa',
-      lead: 'Drzewo daje {{gather.treeYield}} sztuki Drewna po {{gather.strokes}} uderzeniach. Skała tyle samo uderzeń bierze na 1 sztukę, więc Drewno idzie około {{gather.treeYield}} razy szybciej.',
+      lead: 'Drzewo daje {{gather.treeYield}} sztuki Drewna po {{gather.strokes}} uderzeniach. Skała potrzebuje tylu uderzeń na każdą sztukę, więc Drewno zbiera się około {{gather.treeYield}} razy szybciej niż Kamień.',
       blocks: [
         {
           h: 'Co daje zasób',
         },
         {
           table: {
-            head: ['Zasób', 'Kto', 'Daje', 'Uderzeń bez doświadczenia', 'Czas', 'Narzędzie'],
+            head: ['Zasób', 'Kto', 'Daje', 'Uderzenia bez doświadczenia', 'Czas', 'Narzędzie pomaga'],
             rows: [
               [
                 'Drzewo',
@@ -373,7 +318,7 @@ export const ECONOMY: ArticleGroup = {
                 'Grzyb',
                 '[[job:collector|Zbieracz]]',
                 '1 [[good:mushroom|Grzyb]]',
-                '1 podniesienie',
+                '1 schylenie',
                 '{{gather.mushroomSeconds}} s',
                 'nie',
               ],
@@ -402,31 +347,17 @@ export const ECONOMY: ArticleGroup = {
                 'tak',
               ],
             ],
-            foot: 'Czas samej pracy, bez doświadczenia i narzędzia, bez chodzenia.',
+            foot: 'Czas samej pracy bez doświadczenia i narzędzia, bez dojścia.',
           },
         },
         {
-          list: [
-            'Ścięte drzewo leży jako pień z {{gather.treeYield}} sztukami. Zbieracz nosi je po 1 sztuce.',
-            'Sztuka ze skały lub złoża spada obok, na ziemię.',
-          ],
+          p: 'Ścięte drzewo zostaje jako pień z {{gather.treeYield}} sztukami, a Zbieracz odnosi je po 1. Każda sztuka ze skały lub złoża spada na ziemię obok.',
         },
         {
           h: 'Żelazo i Złoto',
         },
         {
-          table: {
-            head: ['Sposób', 'Warunek', 'Kogo dotyczy'],
-            rows: [
-              [
-                'Praca',
-                '{{gather.oreNeed}} sztuk [[good:mud|Gliny]] i [[good:stone|Kamienia]] razem',
-                'Tego osadnika. Pierwszy odkrywa towar dla osady.',
-              ],
-              ['[[building:school|Szkoła]]', 'Kurs, gdy towar jest już odkryty', 'Absolwenta'],
-            ],
-            foot: 'Osadnik musi spełnić warunek sam, osobno dla [[good:iron|Żelaza]] i [[good:gold|Złota]]. Do tego czasu panel pokazuje "zablokowane".',
-          },
+          p: 'Żeby wydobywać [[good:iron|Żelazo]] albo [[good:gold|Złoto]], Zbieracz musi najpierw sam zebrać {{gather.oreNeed}} sztuk [[good:mud|Gliny]] i [[good:stone|Kamienia]] razem, osobno dla każdego z tych dwóch towarów. Pierwszy, któremu się to uda, odkrywa towar dla całej osady, a potem można go też nauczyć w [[building:school|Szkole]]. Do tego czasu panel pokazuje "zablokowane".',
         },
         {
           h: 'Pole',
@@ -438,10 +369,10 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Pole rośnie tylko od podlewania, czas nie ma wpływu. Każde podlanie dodaje 1 etap temu polu i 6 sąsiednim, więc pole potrzebuje najwyżej {{field.waterings}} podlania. Po ścięciu leży 1 sztuka, a miejsce wraca pod siew.',
+          p: 'Pole rośnie tylko wtedy, gdy ktoś je podlewa, samo z czasem nie urośnie. Każde podlanie podnosi o 1 etap to pole i 6 sąsiednich, więc jedno pole potrzebuje najwyżej {{field.waterings}} podlań. Po ścięciu zostaje 1 sztuka plonu, a w tym miejscu można znowu siać.',
         },
         {
-          p: 'Sianie i podlewanie nic nie kosztują, Woda nie jest potrzebna.',
+          p: 'Sianie i podlewanie nic nie kosztują, nawet Wody.',
         },
         {
           table: {
@@ -463,26 +394,11 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 4],
-            foot: 'Po skosie promień to około {{field.diagonal}} hexów. Limit pól dotyczy budynku, nie pracownika. Więcej ludzi to szybsze zbiory.',
+            foot: 'Po skosie promień to około {{field.diagonal}} hexów. Limit pól jest na budynek, nie na pracownika, więc więcej ludzi daje szybsze zbiory, ale nie więcej pól.',
           },
         },
         {
-          h: 'Kolejność pracy Farmera i Zbieracza Ziół',
-        },
-        {
-          steps: [
-            'Zanosi ściętą sztukę do budynku.',
-            'Sieje, gdy budynek ma mniej niż {{field.max}} pól.',
-            'Ścina najbliższe dojrzałe pole.',
-            'Podlewa pole o najniższym etapie.',
-            'Czeka w budynku.',
-          ],
-        },
-        {
-          p: 'Pola nie zasiejesz na piasku ani na drodze. Dzikie pola z mapy w zasięgu budynku liczą się do jego limitu.',
-        },
-        {
-          p: 'Pole odcięte od drzwi budynku na {{field.reclaimSeconds}} s znika i zwalnia miejsce w limicie.',
+          p: 'Pola nie zasiejesz na piasku ani na drodze. Dzikie pola z mapy w zasięgu budynku liczą się do jego limitu. Pole, do którego przez {{field.reclaimSeconds}} s nie da się dojść od drzwi budynku, znika i zwalnia miejsce w limicie.',
         },
         {
           h: 'Co odrasta',
@@ -526,13 +442,13 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'tools',
       name: 'Narzędzia',
-      lead: 'Narzędzie zmniejsza liczbę uderzeń, dokłada sztuk w warsztacie i wytrzymuje {{tool.uses}} użyć.',
+      lead: 'Narzędzie zmniejsza liczbę uderzeń, daje więcej sztuk w warsztacie i starcza na {{tool.uses}} użyć.',
       blocks: [
         {
           h: 'Skąd osadnik ma narzędzie',
         },
         {
-          p: 'Narzędzia rozdaje [[article:assistant|Asystent]], włączony od startu, albo twój rozkaz. Osadnik idzie po nie do magazynu tylko z pustym miejscem na narzędzie, Żelazne przed Drewnianymi. Lepszego nie weźmie sam.',
+          p: 'Narzędzia rozdaje [[article:assistant|Asystent]], który jest włączony od początku gry, albo ty swoim rozkazem. Osadnik bez narzędzia sam idzie po nie do magazynu i bierze Żelazne, a jeśli ich nie ma, Drewniane. Drewnianego sam nie wymieni na lepsze.',
         },
         {
           h: 'Kto korzysta',
@@ -571,7 +487,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Drzewo, skała, złoże, pole ziół.',
+            foot: 'Przy drzewie, skale, złożu i polu ziół.',
           },
         },
         {
@@ -589,7 +505,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Ścięcie pola [[good:wheat|Pszenicy]] to {{gather.wheatStrokes}} uderzenia bez narzędzia, a 1 z narzędziem lub od 20% doświadczenia.',
+          p: 'Pole [[good:wheat|Pszenicy]] wymaga {{gather.wheatStrokes}} uderzeń bez narzędzia, a z narzędziem albo od 20% doświadczenia wystarczy 1.',
         },
         {
           h: 'Sztuki z cyklu w warsztacie',
@@ -606,28 +522,17 @@ export const ECONOMY: ArticleGroup = {
               ['100%', '{{tool.output.100.bare}}', '{{tool.output.100.wooden}}', '{{tool.output.100.iron}}'],
             ],
             num: [1, 2, 3],
-            foot: 'Dla przepisu na 1 sztukę, przy przepisie na 2 sztuki dodatek jest podwójny. Składniki i czas się nie zmieniają. Doświadczenie działa też przy uboju.',
+            foot: 'Dla przepisu na 1 sztukę, przy przepisie na 2 sztuki premia jest podwójna. Składniki i czas pracy się nie zmieniają. Doświadczenie działa też przy uboju.',
           },
         },
         {
-          p: 'Ułamki zbierają się w warsztacie. Pełna sztuka trafia do zapasu, nawet ponad pojemność.',
+          p: 'Ułamki sztuk się sumują. Gdy uzbiera się pełna sztuka, trafia do zapasu, nawet ponad jego pojemność.',
         },
         {
           h: 'Zużycie',
         },
         {
-          table: {
-            head: ['Praca', 'Użycie narzędzia'],
-            rows: [
-              ['Cykl w warsztacie', '1 za ukończony cykl'],
-              ['Uderzenie przy zbieraniu', '1 za uderzenie, także bez efektu'],
-              ['Rzut wędką', '1 za rzut, także nieudany'],
-              ['Uderzenie Budowniczego', '1 za uderzenie, także przy naprawie i gdy nic nie wniosło'],
-              ['Podlewanie', '1 za podlanie'],
-              ['Sianie, podnoszenie grzybów', '0'],
-            ],
-            foot: 'Po {{tool.uses}} użyciach narzędzie znika. Osadnik pracuje gołymi rękami, aż dostanie nowe. Żelazne Narzędzie starcza osadnikowi bez doświadczenia na {{tool.ironTrees}} drzew.',
-          },
+          p: 'Każde uderzenie, rzut wędką, podlanie i ukończony cykl w warsztacie zużywa jedno użycie, także te nieudane. Sianie i zbieranie grzybów nic nie zużywają. Po {{tool.uses}} użyciach narzędzie znika i osadnik pracuje gołymi rękami, aż dostanie nowe. Żelazne Narzędzie starcza osadnikowi bez doświadczenia na {{tool.ironTrees}} drzew.',
         },
       ],
       see: [
@@ -641,7 +546,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'hauling',
       name: 'Tragarze i magazyny',
-      lead: 'Tragarz bez wozu nosi {{haul.carry}} sztukę. W jednym miejscu na ziemi leży do {{haul.groundStack}} sztuk jednego towaru.',
+      lead: 'Tragarz bez wozu niesie {{haul.carry}} sztukę naraz. Na jednym miejscu na ziemi zmieści się do {{haul.groundStack}} sztuk jednego towaru.',
       blocks: [
         {
           h: 'Pojemność',
@@ -663,41 +568,16 @@ export const ECONOMY: ArticleGroup = {
           h: 'Priorytet',
         },
         {
-          p: 'Priorytet ustawiasz w jednym budynku: magazynie, Kwaterze głównej, Koszarach lub wieży. Jego Tragarze zwożą towar z innych magazynów, warsztatów i stosów, dopóki jest miejsce.',
+          p: 'Priorytet ustawiasz w magazynie, Kwaterze głównej, Koszarach lub wieży. Tragarze tego budynku zwożą wtedy dany towar z innych magazynów, warsztatów i stosów, dopóki jest na niego miejsce.',
         },
         {
           h: 'Minimum',
         },
         {
-          p: 'Minimum liczy razem wszystkie magazyny i Kwaterę główną, do {{haul.minimumMax}} sztuk towaru. Dopóki suma jest niższa, Tragarze magazynów, Kwatery głównej, Studni i Uli zwożą towar z warsztatów, Studni, Uli i stosów, a nikt nie weźmie go z magazynu.',
+          p: 'Minimum, do {{haul.minimumMax}} sztuk towaru, liczy razem wszystkie magazyny i Kwaterę główną. Dopóki suma jest niższa, Tragarze zwożą ten towar z warsztatów, Studni, Uli i stosów, a nikt nie weźmie go z magazynu.',
         },
         {
-          p: 'To dotyczy też jedzenia: gdy całe jedzenie mieści się w minimum, nikt nie zje z magazynu. Magazyn oddaje towar magazynowi z priorytetem tylko ponad minimum.',
-        },
-        {
-          h: 'Kolejność pracy Tragarza w magazynie',
-        },
-        {
-          steps: [
-            'Odnosi to, co ma w rękach.',
-            'Zwozi towar oznaczony jako priorytet w swoim budynku.',
-            'W magazynie i Kwaterze głównej zwozi towar poniżej minimum.',
-            'Podnosi najbliższy stos z towarem dla swojego budynku.',
-            'Zabiera gotowe wyroby z warsztatów do swojego budynku.',
-          ],
-        },
-        {
-          table: {
-            head: ['Tragarz pracuje w', 'Co robi'],
-            rows: [
-              [
-                '[[building:work_farm_00|Farma]], [[building:work_herb_hut|Chatka zielarza]]',
-                'Najpierw wywozi plon do magazynu, potem stosy',
-              ],
-              ['Warsztat', 'Najpierw dowozi składniki, potem wywozi wyroby'],
-              ['[[building:work_well_00|Studnia]], [[building:work_hive_00|Ul]]', 'Wywozi zawartość'],
-            ],
-          },
+          p: 'Dotyczy to też jedzenia: jeśli całe jedzenie mieści się w minimum, nikt nie zje go z magazynu. Magazyn z priorytetem dostanie z innego magazynu tylko to, co jest ponad minimum.',
         },
         {
           h: 'Wóz',
@@ -711,25 +591,21 @@ export const ECONOMY: ArticleGroup = {
               ['Z [[good:oxcart|Zaprzęgiem]]', '{{haul.oxcart}}', '{{haul.oxcartLossPct}}%'],
             ],
             num: [1, 2],
-            foot: 'Im mniejszy ładunek, tym mniej zwalnia. Wozy [[job:trader|Kupca]] mają te same liczby.',
+            foot: 'Im mniejszy ładunek, tym mniej wóz zwalnia. Wozy [[job:trader|Kupca]] działają tak samo.',
           },
         },
         {
           list: [
-            'Wóz bierze tylko Tragarz z miejscem pracy i [[job:trader|Kupiec]]. Tragarz zachowuje miejsce pracy.',
-            'Wóz musi być własny i wolny: bez załogi, bez innego dowódcy, na tym samym lądzie.',
-            'Gdy na wozie zostało miejsce, Tragarz magazynu dobiera ten sam towar ze stosów i warsztatów do {{haul.cartTopUp}} hexów od siebie, potem wraca.',
-            'Po utracie miejsca pracy wóz zostaje na miejscu.',
+            'Wóz weźmie tylko Tragarz, który ma miejsce pracy, i [[job:trader|Kupiec]].',
+            'Wóz musi być twój, wolny i stać na tym samym lądzie.',
+            'Jeśli na wozie zostało miejsce, Tragarz magazynu dobiera ten sam towar ze stosów i warsztatów w promieniu {{haul.cartTopUp}} hexów, zanim wróci.',
           ],
         },
         {
           h: 'Stosy na ziemi',
         },
         {
-          list: [
-            'Stos nie ma właściciela, bierze każdy.',
-            'Tragarz bez flagi roboczej podnosi do {{flag.radius}} hexów od budynku, z flagą do {{flag.radius}} hexów od flagi.',
-          ],
+          p: 'Stos na ziemi jest niczyj, może go wziąć każdy. Tragarz podnosi stosy do {{flag.radius}} hexów od swojego budynku, a jeśli ma flagę roboczą, do {{flag.radius}} hexów od flagi.',
         },
       ],
       see: [
@@ -744,7 +620,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'work-flag',
       name: 'Flaga robocza',
-      lead: 'Flaga robocza (na przyciskach chorągiewka) wyznacza obszar roboczy i nic nie przechowuje. Zbieracz bez miejsca pracy zostawia towar na ziemi.',
+      lead: 'Flaga robocza (na przyciskach: chorągiewka) wyznacza, gdzie pracownik pracuje. Nic nie przechowuje, więc Zbieracz bez miejsca pracy zostawia towar na ziemi.',
       blocks: [
         {
           figure: {
@@ -764,16 +640,15 @@ export const ECONOMY: ArticleGroup = {
                 '[[job:collector|Zbieracz]], [[job:fisher|Rybak]], [[job:hunter|Myśliwy]]',
                 'Ci sami, plus [[job:carrier|Tragarz]] magazynu, Kwatery głównej lub warsztatu',
               ],
-              ['Skąd flaga', 'Staje sama pod nogami przy objęciu zawodu', 'Tylko z "Wbij chorągiewkę"'],
-              ['Gdzie pracuje', 'Wokół flagi', 'Wokół flagi, bez flagi według tabeli niżej'],
-              ['Jakie towary', 'Każdy, który zawód zbiera', 'Tylko te, które budynek przechowuje'],
-              ['Dokąd idzie ładunek', 'Stos na ziemi przy fladze', 'Do budynku pracownika'],
-              ['Zabranie flagi', 'Nie można, można tylko przenieść', '"Zabierz chorągiewkę"'],
               [
-                'Utrata miejsca pracy',
-                '-',
-                'Zbieracz, Rybak i Myśliwy pracują dalej od swojej flagi. Bez flagi dostają nową pod nogami. Tragarz traci flagę.',
+                'Skąd się bierze flaga',
+                'Staje sama pod nogami, gdy osadnik obejmuje zawód',
+                'Tylko z rozkazu "Wbij chorągiewkę"',
               ],
+              ['Gdzie pracuje', 'Wokół flagi', 'Wokół flagi, a bez niej jak w tabeli niżej'],
+              ['Jakie towary', 'Wszystko, co zbiera jego zawód', 'Tylko te, które budynek przechowuje'],
+              ['Dokąd idzie ładunek', 'Na stos przy fladze', 'Do jego budynku'],
+              ['Zabranie flagi', 'Nie da się, można ją tylko przenieść', '"Zabierz chorągiewkę"'],
             ],
           },
         },
@@ -785,9 +660,9 @@ export const ECONOMY: ArticleGroup = {
             head: ['Kto', 'Bez flagi'],
             rows: [
               ['Zbieracz', 'Cały zasięg drogowskazów'],
-              ['Tragarz', 'Magazyn: stosy do {{flag.radius}} hexów od budynku'],
+              ['Tragarz magazynu', 'Stosy do {{flag.radius}} hexów od budynku'],
               ['Myśliwy', 'Wokół miejsca pracy'],
-              ['Rybak', 'Szuka brzegu od miejsca, w którym stoi'],
+              ['Rybak', 'Łowi od miejsca, w którym stoi'],
             ],
           },
         },
@@ -810,34 +685,33 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [2, 3],
-            foot: 'W hexach. Zawód zależny od drogowskazów pracuje tylko w ich zasięgu.',
+            foot: 'W hexach. Kto potrzebuje drogowskazów, pracuje tylko w ich zasięgu.',
           },
         },
         {
-          p: 'Flagi roboczej nie przyjmuje Tragarz Farmy, Chatki zielarza, Studni, Ula, wieży ani Koszar.',
+          p: 'Tragarzowi Farmy, Chatki zielarza, Studni, Ula, wieży i Koszar nie wbijesz flagi roboczej.',
         },
         {
           h: 'Stos przy fladze',
         },
         {
           list: [
-            'Stos spod flagi zabierze tylko Tragarz z miejscem pracy.',
-            'Dalej niż {{flag.radius}} hexów od magazynu daj Tragarzowi własną flagę przy fladze Zbieracza.',
-            'Tragarz z flagą bierze stosy i gotowe wyroby wokół niej i niesie je do swojego budynku.',
-            'Przeniesienie flagi nie przenosi stosów.',
+            'Stos spod flagi zabierze tylko Tragarz, który ma miejsce pracy.',
+            'Gdy flaga Zbieracza stoi dalej niż {{flag.radius}} hexów od magazynu, wbij Tragarzowi magazynu flagę obok niej.',
+            'Gdy przeniesiesz flagę, stosy zostają tam, gdzie były.',
           ],
         },
         {
           h: 'Stawianie flagi',
         },
         {
-          p: '"Wbij chorągiewkę" stawia flagę we wskazanym miejscu albo ją tam przenosi. Na zajętym miejscu szuka wolnego do {{flag.snap}} hexów, dalej rozkaz przepada. To samo robi Ctrl i prawy klik.',
+          p: '"Wbij chorągiewkę" stawia flagę we wskazanym miejscu albo ją tam przenosi, tak samo jak Ctrl z prawym kliknięciem. Jeśli miejsce jest zajęte, flaga stanie na wolnym do {{flag.snap}} hexów obok, a jak takiego nie ma, rozkaz przepada.',
         },
         {
-          p: 'Przełącznik w [[article:assistant|Asystencie]] pozwala Zbieraczowi przenosić flagę samemu: stawia ją {{assistant.flagMin}}-{{assistant.flagMax}} hexów od zasobu. Gdy obszar się wyczerpie, idzie do zasobu najbliżej swojego budynku. Myśliwego i Rybaka to nie dotyczy.',
+          p: 'W [[article:assistant|Asystencie]] możesz pozwolić Zbieraczom samym przenosić flagę. Zbieracz stawia ją wtedy {{assistant.flagMin}}-{{assistant.flagMax}} hexów od zasobu, a gdy w okolicy wszystko się skończy, przenosi się do zasobu najbliżej swojego budynku. Myśliwi i Rybacy tego nie robią.',
         },
         {
-          p: 'Flagę wolno wbić poza zasięgiem, ale pracownik stoi, aż sieć tam dotrze: [[article:roads|Drogi i drogowskazy]].',
+          p: 'Flagę możesz wbić poza zasięgiem sieci, ale pracownik będzie stał, aż sieć tam dotrze: [[article:roads|Drogi i drogowskazy]].',
         },
       ],
       see: ['article:hauling', 'article:workshops', 'article:roads', 'article:assistant', 'job:collector'],
@@ -851,7 +725,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Drogowskaz',
         },
         {
-          p: 'Drogowskaz stawia [[job:scout|Zwiadowca]], bez materiału.',
+          p: 'Drogowskazy stawia [[job:scout|Zwiadowca]] i nie kosztują materiału.',
         },
         {
           figure: {
@@ -860,19 +734,19 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Osadnik dojdzie sam do celu w zasięgu {{reach.walk}} hexów, [[job:carrier|Tragarz]] {{reach.carrier}}. Dalej prowadzi drogowskaz: gdy stoi bliżej niż ten zasięg, otwiera całą połączoną sieć, a cel musi leżeć w tym samym zasięgu od któregoś drogowskazu tej sieci.',
+          p: 'Bez drogowskazów osadnik dojdzie do celu oddalonego najwyżej o {{reach.walk}} hexów, [[job:carrier|Tragarz]] o {{reach.carrier}}. Dalej prowadzą drogowskazy: jeśli któryś stoi w tym zasięgu, osadnik korzysta z całej połączonej z nim sieci, a cel musi leżeć w tym samym zasięgu od któregoś jej drogowskazu.',
         },
         {
           list: [
-            'Dwa drogowskazy łączą się bliżej niż {{reach.link}} hexów, trasa między nimi do {{reach.linkRoute}} hexów.',
-            'Własny drogowskaz stanie co najmniej {{reach.spacing}} hexów od innego.',
-            'Towaru osadnik szuka bliżej niż {{reach.goods}} hexów, także od drogowskazów w tym zasięgu.',
-            'Budynek postawiony na drogowskazie odsuwa go do {{reach.displace}} hexów, dalej drogowskaz przepada.',
+            'Dwa drogowskazy łączą się, gdy stoją bliżej niż {{reach.link}} hexów, a droga między nimi ma najwyżej {{reach.linkRoute}} hexów.',
+            'Twój nowy drogowskaz musi stać co najmniej {{reach.spacing}} hexów od innego.',
+            'Towaru osadnik szuka bliżej niż {{reach.goods}} hexów od siebie albo od drogowskazów w tym zasięgu.',
+            'Budynek postawiony na drogowskazie przesuwa go najwyżej o {{reach.displace}} hexów, a jeśli się nie da, drogowskaz znika.',
           ],
         },
         {
           table: {
-            head: ['Teren', 'Szukanie towaru, hexy'],
+            head: ['Teren', 'Zasięg szukania towaru, hexy'],
             rows: [
               ['Droga, ląd', 'mniej niż {{reach.goods}}'],
               ['Piasek', 'około {{reach.goodsSand}}'],
@@ -884,25 +758,25 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Zasięg nie dotyczy Zwiadowcy, żołnierzy, bohaterów, [[job:hunter|Myśliwego]] i [[job:druid|Druida]].',
+          p: 'Zwiadowcy, żołnierze, bohaterowie, [[job:hunter|Myśliwi]] i [[job:druid|Druidzi]] chodzą bez względu na drogowskazy.',
         },
         {
-          p: 'Pracownik, którego miejsce pracy lub flaga wypadnie poza zasięg, dostaje stan "Zgubił się" i stoi, aż sieć tam dotrze. Niesiony towar jeszcze odnosi.',
+          p: 'Pracownik, którego miejsce pracy lub flaga wypadnie poza zasięg, ma stan "Zgubił się" i czeka, aż sieć tam dotrze. Towar, który niesie, jeszcze odnosi.',
         },
         {
           h: 'Panel drogowskazu',
         },
         {
           table: {
-            head: ['Element', 'Znaczenie'],
+            head: ['W panelu', 'Znaczenie'],
             rows: [
               [
                 '"Towary w sieci"',
-                'Towar w zasięgu całej połączonej sieci: budynki, stosy, wozy, ręce. Każda sztuka liczona raz.',
+                'Wszystkie towary w zasięgu połączonej sieci: w budynkach, na stosach, wozach i w rękach.',
               ],
               [
                 '"Wyburz"',
-                'Drogowskaz znika od razu, bez potwierdzenia i bez Zwiadowcy. Jeśli był jedynym łącznikiem, sieć rozpada się na części.',
+                'Drogowskaz znika od razu, bez pytania. Jeśli łączył dwie części sieci, sieć się rozpada.',
               ],
             ],
             foot: 'Nakładka "Drogowskazy" na mapie pokazuje sieci.',
@@ -927,9 +801,8 @@ export const ECONOMY: ArticleGroup = {
         {
           list: [
             'Odcinek kosztuje 1 [[good:stone|Kamień]] i 1 uderzenie [[job:builder|Budowniczego]].',
-            'Ten sam Kamień brukuje też do 6 sąsiednich odcinków, jeśli żaden Budowniczy ich nie wziął i nie leży na nich Kamień.',
-            'Anulowanie odcinka: dostarczony Kamień ląduje obok.',
-            'Osadnik sam wybiera drogę, gdy tak dojdzie szybciej.',
+            'Jeden Kamień brukuje też do 6 sąsiednich odcinków, o ile żaden Budowniczy ich jeszcze nie wziął i nie leży na nich Kamień.',
+            'Osadnicy sami idą drogą, jeśli tak dojdą szybciej.',
           ],
         },
       ],
@@ -966,7 +839,7 @@ export const ECONOMY: ArticleGroup = {
               ['Śnieg', '{{step.snow}} s', '{{step.snowBare}} s', '{{shoes.snow}}'],
             ],
             num: [1, 2, 3],
-            foot: 'Z ładunkiem w rękach buty zużywają się {{shoes.carryWear}} razy szybciej. Energia za bosy krok: [[article:needs|Potrzeby]].',
+            foot: 'Z ładunkiem w rękach buty zużywają się {{shoes.carryWear}} razy szybciej. Ile energii kosztuje chodzenie boso: [[article:needs|Potrzeby]].',
           },
         },
         {
@@ -977,7 +850,7 @@ export const ECONOMY: ArticleGroup = {
             head: ['Stan', 'Zmiana'],
             rows: [
               ['Ładunek w rękach', '+{{step.carryExtra}} s'],
-              ['Wytrzymałość do {{need.drivePct}}%', '+{{step.tiredExtra}} s'],
+              ['Wytrzymałość najwyżej {{need.drivePct}}%', '+{{step.tiredExtra}} s'],
               ['Dziecko', '+{{step.childExtra}} s'],
               ['Niemowlę', 'krok × 2'],
               ['Broń i pancerz ważą razem 2-3', '+{{step.weightLowExtra}} s'],
@@ -986,7 +859,7 @@ export const ECONOMY: ArticleGroup = {
               ['Pełny [[good:handcart|Wózek Ręczny]]', '{{haul.handcartLossPct}}% wolniej'],
               ['Pełny [[good:oxcart|Zaprzęg]]', '{{haul.oxcartLossPct}}% wolniej'],
             ],
-            foot: 'Najszybszy krok trwa {{step.shortest}} s. Im mniejszy ładunek, tym mniej wóz zwalnia. Bohaterowie nie zwalniają od ciężaru.',
+            foot: 'Krok nigdy nie trwa krócej niż {{step.shortest}} s. Im mniejszy ładunek, tym mniej wóz zwalnia. Bohaterów ciężar nie spowalnia.',
           },
         },
         {
@@ -1007,7 +880,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1],
-            foot: 'Taki sam dla wszystkich plemion. Ciężar broni dodaj do ciężaru pancerza z tabeli niżej.',
+            foot: 'Tak samo u wszystkich plemion. Dodaj ciężar broni do ciężaru pancerza z tabeli niżej.',
           },
         },
         {
@@ -1033,7 +906,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'trade',
       name: 'Handel',
-      lead: 'Kupiec jeździ między {{trade.stops}} budynkami i bez wozu bierze {{haul.carry}} sztukę na kurs.',
+      lead: 'Kupiec kursuje między {{trade.stops}} budynkami, a bez wozu bierze {{haul.carry}} sztukę naraz.',
       blocks: [
         {
           h: 'Czym wozi',
@@ -1051,15 +924,15 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'W butach, gdy wóz jedzie pełny w jedną stronę i pusty z powrotem, oba wozy przewożą tyle samo na trasie około {{trade.cartParLand}} hexów po lądzie albo {{trade.cartParRoad}} hexów drogą. Na krótszej wygrywa Wózek Ręczny, na dłuższej Zaprzęg.',
+          p: 'Gdy wóz jedzie pełny w jedną stronę i pusty z powrotem, oba wozy przewożą tyle samo na trasie około {{trade.cartParLand}} hexów po lądzie albo {{trade.cartParRoad}} hexów drogą. Na krótszej trasie lepszy jest Wózek Ręczny, na dłuższej Zaprzęg.',
         },
         {
           h: 'Trasa',
         },
         {
           list: [
-            'Trasa łączy {{trade.stops}} gotowe budynki z zapasami. Obcy może być najwyżej 1.',
-            'Gdy budynek jest w rozbudowie, [[job:trader|Kupiec]] czeka na jej koniec.',
+            'Trasa łączy {{trade.stops}} gotowe budynki z zapasami. Najwyżej 1 z nich może należeć do kogoś innego.',
+            'Gdy budynek jest w rozbudowie, [[job:trader|Kupiec]] czeka, aż się skończy.',
             'Z Domu Kupiec nie zabiera jedzenia.',
           ],
         },
@@ -1073,17 +946,17 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Ustawienie', 'Skutek'],
             rows: [
-              ['Towar oznaczony w budynku B', 'Ładuje w A, rozładowuje w B'],
+              ['Towar oznaczony w budynku B', 'Bierze go z A i zawozi do B'],
               ['Towar oznaczony w obu budynkach', 'Wyrównuje zapasy między nimi'],
-              ['Żaden budynek nic nie oznacza', 'Kupiec stoi'],
-              ['do N', 'Zatrzymuje dowóz, gdy budynek docelowy ma N razem z ładunkiem'],
+              ['W żadnym budynku nic nie oznaczono', 'Kupiec nic nie wozi'],
+              ['do N', 'Przestaje dowozić, gdy w budynku docelowym będzie N sztuk, licząc z ładunkiem'],
               ['zostaw N', 'W budynku źródłowym zostaje N sztuk'],
               [
                 'osada',
-                'Ładuje z całej osady: najpierw z tego magazynu, potem z magazynów i warsztatów w jego sieci drogowskazów',
+                'Bierze towar z całej osady: najpierw z tego magazynu, potem z innych magazynów i warsztatów w jego sieci drogowskazów',
               ],
             ],
-            foot: 'Opcja osada działa tylko dla magazynu lub Kwatery głównej, tylko na jednym z dwóch budynków trasy. Minimum w magazynach też ogranicza załadunek.',
+            foot: 'Opcję osada włączysz tylko w magazynie lub Kwaterze głównej i tylko w jednym z dwóch budynków trasy. Kupiec nie zabierze towaru poniżej minimum w magazynach.',
           },
         },
         {
@@ -1091,13 +964,12 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'Handlować można tylko z gotowym budynkiem gracza komputerowego, który ma ofertę z mapy.',
-            'Żeby dodać budynek do trasy, obie strony muszą być przyjazne. Później wystarczy, że plemię Kupca jest przyjazne: [[article:diplomacy|Dyplomacja]].',
-            'Oferta to N sztuk jednego towaru za M sztuk drugiego, liczby ustala mapa. Trasa handluje jedną ofertą naraz.',
-            'Co {{trade.refillSeconds}} s magazyn komputera wraca do {{trade.refillLevel}} sztuk towaru z oferty.',
-            'Kupiec ładuje tyle pełnych wymian, ile zmieści wóz, z miejscem na zapłatę. Na małym wozie jedna wymiana dzieli się na kilka kursów.',
-            'Oddaje towar, bierze zapłatę i powtarza, dopóki ma towar. Gdy w budynku nie ma zapłaty, czeka i nie oddaje towaru.',
-            '"zostaw N" zostawia w budynku N sztuk towaru na sprzedaż. Limit powrotu N: Kupiec kończy, gdy budynek ma N sztuk zapłaty.',
+            'Handlować możesz tylko z gotowym budynkiem gracza komputerowego, który ma ofertę ustaloną przez mapę.',
+            'Żeby dodać budynek do trasy, obie strony muszą być wobec siebie przyjazne. Później wystarczy, że przyjazne jest plemię Kupca: [[article:diplomacy|Dyplomacja]].',
+            'Oferta to N sztuk jednego towaru za M sztuk innego, a liczby ustala mapa. Trasa obsługuje jedną ofertę naraz.',
+            'Co {{trade.refillSeconds}} s komputer uzupełnia towar z oferty w swoim magazynie do {{trade.refillLevel}} sztuk.',
+            'Gdy w budynku komputera nie ma zapłaty, Kupiec czeka i nie oddaje towaru.',
+            '"zostaw N" zostawia w twoim budynku N sztuk towaru na sprzedaż. Limit powrotu N kończy handel, gdy twój budynek ma już N sztuk zapłaty.',
           ],
         },
       ],

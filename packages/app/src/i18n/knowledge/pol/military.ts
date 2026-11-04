@@ -43,10 +43,9 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Doświadczenie nie działa na strzały, kamienie, pojazdy i palisady.',
-            'Kierunek i Amulet Obrony działają tylko na ludzi. Dla strzały liczy się miejsce, z którego padł strzał.',
-            'Amulety dowódcy nie działają na kamień z Katapulty.',
+            'Kierunek ciosu i Amulet Obrony liczą się tylko przy ludziach. Przy strzale kierunek liczy się od miejsca, z którego strzelano.',
+            'Amulety dowódcy Katapulty nie wzmacniają kamieni.',
             'Palisada liczy obrażenia inaczej: [[article:walls|Palisady i bramy]].',
-            'Cios za 0 nie rani i nie daje doświadczenia.',
             'Dziecka nie da się zranić.',
           ],
         },
@@ -55,9 +54,9 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Saracen: [[good:bow_short|Krótki Łuk]] zadaje Tunice {{saracen.bowOnWool}} zamiast {{viking.bowOnWool}}, Kolczudze i Płytowej {{saracen.bowOnChain}} zamiast {{viking.bowOnChain}}.',
-            'Bizantyjczyk: Smok z mapy walczy własną [[good:spear_wooden|Drewnianą Włócznią]]: {{dragon.hitpoints}} zdrowia, zasięg {{dragon.min}}-{{dragon.max}}, {{dragon.blows}} ciosów co {{dragon.seconds}} s, {{dragon.bare}} obrażeń bez pancerza. Tabela pokazuje go w tym wierszu. Wyszkolony Włócznik walczy jak w innych plemionach.',
-            'Reszta broni jest taka sama we wszystkich plemionach.',
+            'U Saracenów [[good:bow_short|Krótki Łuk]] zadaje Tunice {{saracen.bowOnWool}} zamiast {{viking.bowOnWool}}, Kolczudze i Płytowej {{saracen.bowOnChain}} zamiast {{viking.bowOnChain}}.',
+            'U Bizantyjczyków w wierszu [[good:spear_wooden|Drewnianej Włóczni]] tabela pokazuje Smoka z mapy. Ma {{dragon.hitpoints}} zdrowia, zasięg {{dragon.min}}-{{dragon.max}} i zadaje {{dragon.blows}} ciosów co {{dragon.seconds}} s, po {{dragon.bare}} bez pancerza. Wyszkolony Włócznik walczy tak samo jak w innych plemionach.',
+            'Pozostała broń działa tak samo we wszystkich plemionach.',
           ],
         },
         {
@@ -83,14 +82,14 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'equip',
       name: 'Wyposażanie żołnierzy',
-      lead: 'Wojsko uzbrajasz licznikami w oknie Asystent. Jedną osobę przebierasz w jej panelu.',
+      lead: 'Wojsko uzbrajasz licznikami w oknie Asystenta. Pojedynczemu osadnikowi zmieniasz wyposażenie w jego panelu.',
       blocks: [
         {
           h: 'Liczniki',
         },
         {
           table: {
-            head: ['Licznik', 'Co robi', 'Maleje'],
+            head: ['Licznik', 'Co robi', 'Kiedy maleje'],
             rows: [
               ['"Żołnierze bez broni"', 'Szkoli w Koszarach, broni nie wydaje', 'Po szkoleniu'],
               [
@@ -104,21 +103,20 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Dopóki żołnierz bez broni czeka, licznik nie szkoli nowego, nawet gdy broni na razie nie ma.',
+            'Dopóki żołnierz bez broni czeka na broń, licznik nie szkoli nowego, nawet gdy broni długo nie ma.',
             'Żołnierz bez broni idzie po nią, gdy broń tego rodzaju leży w jego zasięgu i nikt inny na nią nie czeka.',
-            'Gdy zmniejszysz licznik, czekający na broń przestają czekać.',
           ],
         },
         {
           h: 'Paski Broń i Zbroja',
         },
         {
-          p: 'Każdy rodzaj żołnierza ma swoje paski. Żołnierz bierze pierwszą od lewej rzecz, która jest w magazynie, i pomija przekreślone. Na starcie najmocniejsza stoi po lewej. Kliknięcie przekreśla, przytrzymanie i przesunięcie zmienia kolejność.',
+          p: 'Każdy rodzaj żołnierza ma własne paski. Żołnierz bierze pierwszą od lewej rzecz, która jest w magazynie, a przekreślone pomija. Na początku najmocniejsze rzeczy stoją po lewej. Kliknięcie przekreśla rzecz, a przeciągnięcie zmienia kolejność.',
         },
         {
           list: [
-            'Nie ma broni do wzięcia: czeka, okno pokazuje "czeka na broń".',
-            'Nie ma zbroi do wzięcia: idzie bez zbroi. Później założy ją tylko na rozkaz.',
+            'Gdy nie ma broni, żołnierz czeka, a okno pokazuje "czeka na broń".',
+            'Gdy nie ma zbroi, idzie bez niej i później założy ją tylko na Twój rozkaz.',
           ],
         },
         {
@@ -128,11 +126,11 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Koszary mają', 'Rekrut'],
             rows: [
-              ['Broń i zbroję', 'Wychodzi ubrany'],
-              ['Tylko jedno z dwóch', 'Bierze to i idzie po resztę'],
+              ['Broń i zbroję', 'Wychodzi w pełnym wyposażeniu'],
+              ['Tylko broń albo tylko zbroję', 'Bierze to, co jest, a po resztę idzie do magazynu'],
               ['Nic', 'Idzie po broń, potem po zbroję'],
             ],
-            foot: 'Gdy lepsza rzecz z paska leży w magazynie w zasięgu, rekrut idzie po nią i nie bierze gorszej z Koszar. Potem wraca pod Koszary. Tak samo żołnierz uzbrojony z licznika.',
+            foot: 'Gdy lepsza rzecz z paska leży w magazynie w zasięgu, rekrut idzie po nią zamiast brać gorszą z Koszar.',
           },
         },
         {
@@ -140,7 +138,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Towar', 'Sztuk'],
+            head: ['Towar', 'Ile sztuk'],
             rows: [
               [
                 'Każda broń, zbroja, [[good:shoes|Buty]], [[good:mead|Miód Pitny]], każda mikstura i amulet',
@@ -150,7 +148,7 @@ export const MILITARY: ArticleGroup = {
               ['[[good:coin|Moneta]]', '{{barracks.coinStock}}'],
             ],
             num: [1],
-            foot: 'Koszary mają {{barracks.carriers}} miejsca dla Tragarzy. Towar oznaczony priorytetem zwożą sami z magazynów: [[article:hauling|Tragarze i magazyny]].',
+            foot: 'Koszary mają {{barracks.carriers}} miejsca dla Tragarzy. Towar, któremu nadasz priorytet, sami przywożą z magazynów: [[article:hauling|Tragarze i magazyny]].',
           },
         },
         {
@@ -169,19 +167,17 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Osadnik idzie po rzecz i wraca tam, gdzie dostał rozkaz.',
-            'Gdy nigdzie nie znajdzie tej rzeczy, wraca z pustymi rękami.',
-            'Broń od razu zmienia rodzaj żołnierza. Po zdjęciu broni zostaje [[job:soldier_unarmed|Żołnierzem]].',
-            'Używane Buty, narzędzia i napoczęte butelki przepadają przy wymianie i zdjęciu. Nieużywane wracają do magazynu.',
-            'Broń, pancerz i amulety się nie zużywają, więc wracają do magazynu.',
-            'Rozkaz dla jednej osoby ma pierwszeństwo przed Asystentem.',
+            'Nowa broń od razu zmienia rodzaj żołnierza. Po zdjęciu broni zostaje zwykłym [[job:soldier_unarmed|Żołnierzem]].',
+            'Przy wymianie albo zdjęciu znoszone Buty, używane narzędzia i napoczęte butelki przepadają. Nieużywane wracają do magazynu.',
+            'Broń, pancerz i amulety się nie zużywają i zawsze wracają do magazynu.',
+            'Twój rozkaz dla jednej osoby ma pierwszeństwo przed ustawieniami Asystenta.',
           ],
         },
         {
           h: 'Kto może nosić lepszą broń',
         },
         {
-          p: 'Każdy żołnierz weźmie każdą broń z magazynu, trafienia tego nie ograniczają. Ograniczenie jest przy wyrobie: [[good:spear_iron|Żelazną Włócznię]] i [[good:sword_long|Długi Miecz]] zrobi doświadczony [[job:smith|Kowal]], [[good:bow_long|Długi Łuk]] doświadczony [[job:armorer|Płatnerz]]. Tabela: [[article:exp-combat|Doświadczenie w walce]].',
+          p: 'Każdy żołnierz weźmie z magazynu każdą broń, bez względu na doświadczenie. Ograniczenie dotyczy wyrobu: [[good:spear_iron|Żelazną Włócznię]] i [[good:sword_long|Długi Miecz]] zrobi tylko doświadczony [[job:smith|Kowal]], a [[good:bow_long|Długi Łuk]] tylko doświadczony [[job:armorer|Płatnerz]]. Ile doświadczenia potrzeba: [[article:exp-combat|Doświadczenie w walce]].',
         },
       ],
       see: [
@@ -195,14 +191,14 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'aim',
       name: 'Trafienie i strzelanie',
-      lead: 'Cios wręcz chybia tylko wtedy, gdy cel w chwili ciosu stoi dalej niż zasięg broni. Celność łucznika rośnie z trafieniami łukiem.',
+      lead: 'Cios wręcz chybia tylko wtedy, gdy cel zdążył odejść poza zasięg broni. Łucznik strzela tym celniej, im więcej razy już trafił.',
       blocks: [
         {
           h: 'Broń dystansowa',
         },
         {
           table: {
-            head: ['Broń', 'Zasięg', 'Zasięg na wieży', 'Podchodzi na', 'Strzał co'],
+            head: ['Broń', 'Zasięg', 'Zasięg na wieży', 'Podchodzi do celu na', 'Strzał co'],
             rows: [
               [
                 '[[good:bow_short|Krótki Łuk]]',
@@ -241,7 +237,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4],
-            foot: 'Zasięg w hexach. Bliżej niż dolna liczba zasięgu łucznik nie strzela. Podchodzi na: z jakiej odległości zaczyna strzelać, gdy sam idzie do celu.',
+            foot: 'Zasięg w hexach. Do celu bliżej niż dolna granica zasięgu łucznik nie strzela.',
           },
         },
         {
@@ -249,14 +245,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Trafienia', 'Celny strzał'],
+            head: ['Trafień', 'Szansa na celny strzał'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
               ['{{aim.noSpreadHits}}+', 'Zawsze w cel'],
             ],
             num: [0, 1],
-            foot: 'Każde trafienie to +1%. Od {{aim.noSpreadHits}} trafień nawet niecelna strzała spada w cel. Krótki i Długi Łuk mają wspólny licznik trafień, [[article:catapult|Katapulta]] własny, według tej samej tabeli. Bohater zawsze strzela celnie.',
+            foot: 'Każde trafienie dodaje 1%. Od {{aim.noSpreadHits}} trafień nawet niecelna strzała spada w cel. Krótki i Długi Łuk liczą trafienia wspólnie, [[article:catapult|Katapulta]] osobno, ale według tej samej tabeli. Bohater zawsze trafia.',
           },
         },
         {
@@ -264,20 +260,17 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Niecelna strzała spada blisko celu: z [[good:bow_short|Krótkiego Łuku]] do {{aim.spreadShort}} hexów, z [[good:bow_long|Długiego Łuku]] do {{aim.spreadLong}}, z Długiego Łuku na wieży do {{aim.spreadTower}}. Rozrzut rośnie z odległością.',
-            'Niecelna strzała rani pierwszego wroga w miejscu upadku. Najpierw człowieka, zwierzę albo pojazd, potem budynek, na końcu palisadę.',
-            'Strzała przelatuje nad swoimi, sojusznikami i neutralnymi.',
-            'Łucznik celuje przed idącego wroga. Budynek strzela tam, gdzie wróg właśnie stoi.',
+            'Niecelna strzała spada niedaleko celu: z [[good:bow_short|Krótkiego Łuku]] do {{aim.spreadShort}} hexów, z [[good:bow_long|Długiego Łuku]] do {{aim.spreadLong}}, z Długiego Łuku na wieży do {{aim.spreadTower}}. Rozrzut rośnie z odległością.',
+            'Niecelna strzała może zranić innego wroga tam, gdzie spadnie.',
+            'Strzała nie rani swoich, sojuszników ani neutralnych.',
+            'Łucznik bierze poprawkę na ruch wroga, a budynek strzela tam, gdzie wróg jest w chwili strzału.',
           ],
         },
         {
           h: 'Posterunek na wieży',
         },
         {
-          list: [
-            'Dłuższy zasięg łucznik ma dopiero na posterunku, nie w drodze na niego.',
-            'Wróg nie może strzelać do łucznika na posterunku, tylko do wieży.',
-          ],
+          list: ['Łucznika na posterunku nie da się trafić. Wróg może strzelać tylko do wieży.'],
         },
       ],
       see: ['article:exp-combat', 'article:defence', 'building:tower_00', 'building:tower_01'],
@@ -285,7 +278,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'stances',
       name: 'Postawy',
-      lead: 'Postawa mówi, czy żołnierz sam szuka wroga i jak daleko za nim idzie. Żołnierz i bohater zaczynają w Obronie.',
+      lead: 'Postawa mówi, czy żołnierz sam szuka wroga i jak daleko za nim idzie. Nowy żołnierz i bohater stoją w Obronie.',
       blocks: [
         {
           figure: {
@@ -295,60 +288,57 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Postawa', 'Szuka wroga', 'Promień', 'Rezygnuje, gdy', 'Na cios'],
+            head: ['Postawa', 'Szuka wroga', 'Promień', 'Rezygnuje, gdy', 'Gdy go uderzą'],
             rows: [
               [
                 'Atak',
                 'Wokół siebie',
                 '{{stance.search}}',
-                'Cel padnie albo jest nieosiągalny',
+                'Cel zginie albo nie da się do niego dojść',
                 'Idzie na napastnika',
               ],
               [
                 'Obrona',
                 'Wokół miejsca postoju',
                 '{{stance.search}}',
-                'Cel ponad {{stance.defendLeash}} od miejsca postoju',
+                'Cel odejdzie dalej niż {{stance.defendLeash}} od miejsca postoju',
                 'Idzie na napastnika',
               ],
               [
                 'Ignorowanie',
                 'Tylko w zasięgu broni, nie podchodzi',
                 'Zasięg broni',
-                'Cel ponad {{stance.ignoreLeash}} od miejsca postoju',
+                'Cel odejdzie dalej niż {{stance.ignoreLeash}} od miejsca postoju',
                 'Zostaje na miejscu',
               ],
             ],
-            foot: 'Promienie w hexach. Miejsce postoju to tam, gdzie żołnierz stał przy zmianie postawy. Po rozkazie ruchu albo ataku zmienia się na nowe.',
+            foot: 'Odległości w hexach. Miejsce postoju to miejsce, w którym żołnierz stał, gdy zmieniłeś postawę. Rozkaz ruchu albo ataku ustawia je na nowo.',
           },
         },
         {
           list: [
             'Żołnierz w Ataku wraca do miejsca postoju, gdy skończy walkę dalej niż {{stance.attackReturn}} hexów od niego.',
-            'Żołnierz znajdzie wroga także we [[article:fog|mgle]].',
+            'Żołnierz wypatrzy wroga także we [[article:fog|mgle]].',
             'Rozkaz ataku działa w każdej postawie.',
-            'Łucznik na posterunku strzela do tego, co ma w zasięgu, w każdej postawie.',
-            'Po zwykłym rozkazie ruchu żołnierz idzie dalej, nawet gdy go biją. Po rozkazie "Atakuj po drodze" odwraca się do napastnika.',
+            'Łucznik na posterunku w każdej postawie strzela do wszystkiego, co ma w zasięgu.',
+            'Po zwykłym rozkazie ruchu żołnierz idzie dalej, nawet gdy ktoś go bije. Po rozkazie "Atakuj po drodze" staje do walki z napastnikiem.',
           ],
         },
         {
           h: 'Kogo atakuje najpierw',
         },
         {
-          steps: [
-            'Żołnierzy, bohaterów, katapulty, wieże i budynki, które strzelają.',
-            'Resztę: cywilów, pozostałe budynki, nieuzbrojone pojazdy.',
-          ],
+          p: 'Żołnierz najpierw bije tych, którzy mogą oddać: żołnierzy, bohaterów, katapulty, wieże i strzelające budynki. Cywilów, pozostałe budynki i nieuzbrojone pojazdy zostawia na później.',
         },
         {
-          p: 'Palisady i Muru obronnego żołnierz nie wybiera sam: [[article:walls|Palisady i bramy]].',
+          p: 'Palisady ani Muru obronnego żołnierz sam nie atakuje: [[article:walls|Palisady i bramy]].',
         },
         {
           h: 'Kto reaguje na cios',
         },
         {
           table: {
-            head: ['Kto', 'Do rannego, hexów', 'Reakcja'],
+            head: ['Kto', 'Odległość od rannego', 'Co robi'],
             rows: [
               ['Żołnierze i bohaterowie w Ataku lub Obronie', '{{stance.soldierAlarm}}', 'Idą na napastnika'],
               ['Żołnierze i bohaterowie w Ignorowaniu', '-', 'Biją tylko to, co w zasięgu broni'],
@@ -357,11 +347,9 @@ export const MILITARY: ArticleGroup = {
                 '{{stance.peopleAlarm}}',
                 'Uciekają {{stance.fleeMin}}-{{stance.fleeMax}} hexów i wracają do pracy',
               ],
-              ['Ludzie w budynkach', '-', 'Nie reagują, poza łucznikiem na posterunku'],
-              ['Cywil śpiący na otwartym terenie', '-', 'Śpi, ucieka tylko uderzony'],
             ],
             num: [1],
-            foot: 'Liczy się tylko cios w człowieka. Uderzony budynek albo zwierzę nikogo nie zaalarmuje.',
+            foot: 'Odległość w hexach. Alarmuje tylko cios w człowieka, nie w budynek ani zwierzę.',
           },
         },
         {
@@ -370,34 +358,30 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Cywil nie walczy. Postawę ustawiasz tylko żołnierzom i bohaterom.',
-            'Widok wroga nie rusza cywila.',
-            'Uciekający zrzuca niesiony towar. Tragarz zostawia wózek.',
+            'Cywil nie ucieka na sam widok wroga.',
+            'Uciekając, cywil rzuca niesiony towar, a Tragarz zostawia wózek.',
           ],
         },
         {
           h: 'Przełącznik "Jedzenie i sen"',
         },
         {
-          p: 'Przy "Zabronione" żołnierz sam nie idzie do jedzenia, łóżka ani na modlitwę, nie je z rąk ani z zapasu wieży, a głód nie przerywa długiego rozkazu. Bez napojów kończy się to głodem. Ratuje rozkaz Jedz albo powrót na "Dozwolone".',
+          p: 'Przy "Zabronione" żołnierz sam nie idzie jeść, spać ani się modlić. Nie je nawet tego, co niesie, ani z zapasu wieży, a głód nie przerywa mu długiego rozkazu. Jeśli nie dostaje napojów, w końcu zacznie głodować. Pomoże rozkaz Jedz albo powrót na "Dozwolone".',
         },
         {
-          p: 'Napoje, amulety i rozkazy Jedz, Śpij, Módl się działają w obu stanach. W menu rozkazów stany to "Zezwól na przerwy" i "Bez przerw na potrzeby". Przełącznik ma tylko żołnierz, zaczyna od "Dozwolone" i wraca do niego po zmianie zawodu.',
+          p: 'Napoje, amulety i rozkazy Jedz, Śpij, Módl się działają przy obu ustawieniach. W menu rozkazów te ustawienia nazywają się "Zezwól na przerwy" i "Bez przerw na potrzeby".',
         },
         {
-          h: 'Stoi na alarmie',
-        },
-        {
-          p: 'To stan żołnierza w Ataku lub Obronie blisko walki, nie [[article:defence|alarm osady]], który włącza gracz.',
+          h: 'Odpoczynek blisko walki',
         },
         {
           table: {
-            head: ['Co jest w pobliżu', 'Hexy', 'Skutek'],
+            head: ['Co jest blisko', 'Hexów', 'Żołnierz'],
             rows: [
-              ['Walka', 'do {{alert.restClearance}}', 'Nie śpi, nie modli się, nie rozmawia.'],
-              ['Widoczny wróg w Ataku lub Obronie', 'do {{alert.standTo}}', 'To samo.'],
-              ['Walka przy śpiącym na otwartym terenie', 'do {{alert.standTo}}', 'Wstaje.'],
+              ['Walka', 'do {{alert.restClearance}}', 'Nie śpi, nie modli się i nie rozmawia'],
+              ['Wróg w zasięgu wzroku', 'do {{alert.standTo}}', 'Tak samo'],
             ],
-            foot: 'Na jedzenie idzie dopiero przy {{need.criticalPct}}% Energii. Dzikie zwierzęta liczą się dopiero, gdy toczy się z nimi walka. W Ignorowaniu reguła nie działa, a rozkaz potrzeby ma pierwszeństwo.',
+            foot: 'Jeść idzie dopiero, gdy Energia spadnie do {{need.criticalPct}}%. W Ignorowaniu to nie działa.',
           },
         },
       ],
@@ -412,9 +396,9 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Cecha', 'Żołnierz', 'Bohater'],
             rows: [
-              ['Zasięg widzenia, hexy', '{{vision.soldier}}', '{{vision.hero}}'],
+              ['Zasięg wzroku w hexach', '{{vision.soldier}}', '{{vision.hero}}'],
               ['Celność łuku', 'Rośnie z trafieniami', 'Zawsze celny'],
-              ['Doświadczenie w walce', 'Rośnie', 'Nie rośnie, chyba że pozwala na to misja'],
+              ['Doświadczenie w walce', 'Rośnie', 'Rośnie tylko, gdy pozwala na to misja'],
               ['Jedzenie i sen', 'Potrzebuje', 'Nie potrzebuje'],
               ['Broń, pancerz, Buty', 'Można zmienić, Buty się zużywają', 'Stałe, Buty się nie zużywają'],
               ['Ciężar wyposażenia', 'Spowalnia', 'Nie spowalnia'],
@@ -456,7 +440,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [3],
-            foot: 'Cios co {{hero.blowSeconds}} s. Obrażenia: włącz Bohaterów w tabeli [[article:damage|Broń, pancerz i obrażenia]].',
+            foot: 'Bohater uderza co {{hero.blowSeconds}} s. Obrażenia pokazuje tabela w [[article:damage|Broń, pancerz i obrażenia]] po włączeniu Bohaterów.',
           },
         },
         {
@@ -466,7 +450,7 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Bohater', 'Plemię', 'Różnica'],
             rows: [
-              ['Sigurd', 'Egipcjanin', 'Kolczuga {{hero.sigurdEgyptChain}}'],
+              ['Sigurd', 'Egipcjanin', 'Na Kolczugę zadaje {{hero.sigurdEgyptChain}}'],
               [
                 'Hatchie',
                 'Saracen',
@@ -475,7 +459,7 @@ export const MILITARY: ArticleGroup = {
               [
                 'Cyra',
                 'Frank',
-                'Zasięg {{frankHeroBow.min}}-{{frankHeroBow.max}}, strzał co {{frankHeroBow.seconds}} s, bez pancerza {{hero.frankBowBare}}, Tunika i Skórzana {{hero.frankBowWool}}, Kolczuga i Płytowa {{hero.frankBowChain}}, Budynek i Pojazd {{hero.frankBowVehicle}}',
+                'Zasięg {{frankHeroBow.min}}-{{frankHeroBow.max}}, strzał co {{frankHeroBow.seconds}} s. Obrażenia: bez pancerza {{hero.frankBowBare}}, Tunika i Skórzana {{hero.frankBowWool}}, Kolczuga i Płytowa {{hero.frankBowChain}}, budynek i pojazd {{hero.frankBowVehicle}}',
               ],
             ],
           },
@@ -485,14 +469,8 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Bierze tylko: [[good:amulet_strength|Amulet Siły]], [[good:amulet_defense|Amulet Obrony]], [[good:amulet_crithit|Amulet Precyzji]], [[good:amulet_speed|Amulet Wiatru]], [[good:potion_heal_small|Mała Lecznicza Mikstura]], [[good:potion_heal_big|Duża Lecznicza Mikstura]].',
+            'Do torby bohater bierze tylko [[good:amulet_strength|Amulet Siły]], [[good:amulet_defense|Amulet Obrony]], [[good:amulet_crithit|Amulet Precyzji]], [[good:amulet_speed|Amulet Wiatru]], [[good:potion_heal_small|Mała Lecznicza Mikstura]], [[good:potion_heal_big|Duża Lecznicza Mikstura]].',
           ],
-        },
-        {
-          h: 'Po śmierci',
-        },
-        {
-          p: 'Broń znika. Pancerz, Buty i nieużyte rzeczy z torby zostają na ziemi.',
         },
       ],
       see: ['article:damage', 'article:chests', 'article:fog', 'article:exp-combat'],
@@ -500,7 +478,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'defence',
       name: 'Wieże i alarm',
-      lead: 'Budynek na alarmie strzela sam. Każda osoba w środku to {{shelter.shotsPerSeat}} strzału na sekundę.',
+      lead: 'Budynek na alarmie sam strzela do wrogów. Każda osoba schowana w środku dodaje {{shelter.shotsPerSeat}} strzału na sekundę.',
       blocks: [
         {
           h: 'Alarm',
@@ -508,9 +486,8 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             '"Bij na alarm" działa na jeden budynek, "Cała osada" na wszystkie budynki obronne.',
-            'Alarm włączasz sam. Atak na osadę go nie włączy.',
-            'Budynek w budowie nie podnosi alarmu.',
-            'Alarm sam się nie wyłącza. Trwa do "Odwołaj alarm" albo zniszczenia budynku.',
+            'Alarm włączasz sam, atak na osadę go nie włącza.',
+            'Alarm nie wyłącza się sam. Trwa, dopóki nie klikniesz "Odwołaj alarm" albo budynek nie zostanie zniszczony.',
           ],
         },
         {
@@ -518,12 +495,12 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Cywile, kobiety i dzieci biegną do najbliższego budynku z wolnym miejscem. Budynek musi być w zasięgu chodu.',
+            'Cywile, kobiety i dzieci biegną do najbliższego budynku z wolnym miejscem, do którego mogą dojść.',
             'Żołnierze, bohaterowie i [[job:scout|Zwiadowca]] zostają na zewnątrz.',
             'Kto nie znajdzie miejsca, pracuje dalej.',
-            'Na alarm osadnik rzuca jedzenie i sen. W środku nie pracuje, je tylko to, co ma przy sobie.',
-            'Schowanego nie można zaatakować.',
-            'Gdy budynek padnie, schowani wychodzą na zewnątrz.',
+            'Na alarm osadnik przerywa jedzenie i sen. W środku nie pracuje i je tylko to, co ma przy sobie.',
+            'Schowanego osadnika nie da się zaatakować.',
+            'Gdy budynek zostanie zniszczony, schowani wychodzą.',
           ],
         },
         {
@@ -549,7 +526,7 @@ export const MILITARY: ArticleGroup = {
               ['[[building:barracks|Koszary]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}', '-'],
             ],
             num: [1, 2],
-            foot: 'Strzały na sekundę przy pełnym budynku. Posterunek nie zabiera miejsca w budynku. Łucznik zatrudniony w wieży strzela sam, bez alarmu: [[article:aim|Trafienie i strzelanie]].',
+            foot: 'Strzały na sekundę przy pełnym budynku. Posterunki nie zajmują miejsc dla schowanych. Łucznik zatrudniony w wieży strzela sam, bez alarmu: [[article:aim|Trafienie i strzelanie]].',
           },
         },
         {
@@ -575,7 +552,7 @@ export const MILITARY: ArticleGroup = {
             'Budynek strzela na {{shelter.range}} hexów od najbliższej ściany, także do wroga pod samymi murami.',
             'Budynek strzela także do wroga we mgle.',
             'Strzały nic nie kosztują i nie dają doświadczenia.',
-            'Kolejność celów: żołnierze i bohaterowie, dzikie zwierzęta, budynki, pozostali ludzie.',
+            'Najpierw strzela do żołnierzy i bohaterów, do cywilów na samym końcu.',
           ],
         },
         {
@@ -583,7 +560,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Wieża', 'Miejsca Tragarzy', 'Miód Pitny', 'Żywność', 'Broń, każdej sztuk'],
+            head: ['Wieża', 'Miejsca Tragarzy', 'Miód Pitny', 'Żywność', 'Każdej broni'],
             rows: [
               [
                 '[[building:tower_00|Wieża obronna 1]]',
@@ -605,11 +582,11 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Posterunek przyjmuje tylko swojego łucznika: [[job:soldier_bow_short|Łucznika z krót. łukiem]] albo [[job:soldier_bow_long|Łucznika z dł. łukiem]]. Przydziela się go jak miejsce pracy.',
+            'Na posterunek wejdzie tylko właściwy łucznik: [[job:soldier_bow_short|Łucznika z krót. łukiem]] albo [[job:soldier_bow_long|Łucznika z dł. łukiem]]. Przydzielasz go tak jak do miejsca pracy.',
             'Łucznik, który weźmie inną broń, traci posterunek.',
-            'Załoga je z zapasu wieży i śpi na posterunku, nie schodzi. Gdy zapas się skończy, idzie po jedzenie.',
-            'Asystent nie ściąga łuczników z wieży, nawet po wyposażenie.',
-            '"Wyprowadź załogę": łucznicy opuszczają wieżę i zostają zaznaczeni do następnego rozkazu. Rozkaz ruchu też zdejmuje łucznika z posterunku.',
+            'Załoga je z zapasu wieży i śpi na posterunku. Schodzi po jedzenie dopiero, gdy zapas się skończy.',
+            'Asystent nie zabiera łuczników z wieży, nawet po nowe wyposażenie.',
+            'Przycisk "Wyprowadź załogę" wyprowadza łuczników z wieży i zaznacza ich, żebyś od razu mógł wydać im rozkaz. Rozkaz ruchu też zdejmuje łucznika z posterunku.',
           ],
         },
       ],
@@ -630,13 +607,13 @@ export const MILITARY: ArticleGroup = {
       blocks: [
         {
           table: {
-            head: ['Element', 'Zdrowie', 'Naprawa na uderzenie', 'Koszt'],
+            head: ['Element', 'Zdrowie', 'Naprawa za uderzenie', 'Koszt'],
             rows: [
               ['Odcinek palisady', '{{wall.segmentHp}}', '{{wall.segmentRepair}}', '1 [[good:wood|Drewno]]'],
               ['Brama', '{{wall.gateHp}}', '{{wall.gateRepair}}', 'Darmowa, powstaje z odcinków'],
             ],
             num: [1, 2],
-            foot: 'Naprawa nic nie kosztuje. Palisadę naprawia jeden Budowniczy naraz.',
+            foot: 'Naprawa nic nie kosztuje. Jeden odcinek naprawia naraz tylko jeden Budowniczy.',
           },
         },
         {
@@ -651,7 +628,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Brama zajmuje {{wall.gateSegments}} Twoich gotowych odcinków w prostej linii. Każdy musi mieć co najmniej {{wall.gateMinHealthPct}}% zdrowia i stać na równym terenie, a w przejściu nikt nie może stać.',
-            'Brama powstaje od razu i jest zamknięta. Ma pełne zdrowie, także gdy odcinek był uszkodzony.',
+            'Brama staje od razu, zamknięta i z pełnym zdrowiem, nawet jeśli odcinki były uszkodzone.',
           ],
         },
         {
@@ -665,17 +642,14 @@ export const MILITARY: ArticleGroup = {
               ['Zamknij', 'Nikt nie przechodzi, także swoi'],
               [
                 'Automatyczny',
-                'Otwarta. Zamyka się, gdy wróg jest do {{wall.gateEnemyNear}} hexów od bramy, potem znów się otwiera',
+                'Otwarta. Zamyka się, gdy wróg podejdzie na {{wall.gateEnemyNear}} hexów, i otwiera, gdy odejdzie',
               ],
             ],
-            foot: 'Bramę zamyka każdy człowiek albo pojazd gracza, z którym masz wojnę, także cywil. Zwierzęta jej nie zamykają.',
+            foot: 'Bramę zamyka każdy człowiek i pojazd gracza, z którym jesteś w stanie wojny, także cywil. Zwierzęta nie.',
           },
         },
         {
-          list: [
-            'Brama zamyka się dopiero, gdy nikt nie stoi w przejściu.',
-            'Komputer ustawia swoje bramy na tryb automatyczny.',
-          ],
+          list: ['Brama zamyka się dopiero, gdy nikt nie stoi w przejściu.'],
         },
         {
           h: 'Jak szybko pada palisada',
@@ -748,10 +722,10 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Doświadczenie w walce nie podnosi ciosu w palisadę.',
-            'Amulet Siły podnosi tę liczbę: {{wall.ironSpear.blow}} daje {{wall.ironSpear.strongBlow}}, {{wall.shortSword.blow}} daje {{wall.shortSword.strongBlow}}, {{wall.shortBow.blow}} zostaje {{wall.shortBow.strongBlow}}.',
-            'Żołnierz nie wybiera palisady sam. Bije ją na rozkaz albo wtedy, gdy zagradza mu drogę do wroga.',
-            'Gdy odcinek padnie, żołnierze idą przez wyłom i zostawiają sąsiednie odcinki.',
+            'Doświadczenie w walce nie wzmacnia ciosów w palisadę.',
+            'Amulet Siły wzmacnia cios: {{wall.ironSpear.blow}} zmienia się w {{wall.ironSpear.strongBlow}}, {{wall.shortSword.blow}} w {{wall.shortSword.strongBlow}}, a {{wall.shortBow.blow}} zostaje {{wall.shortBow.strongBlow}}.',
+            'Żołnierz sam nie atakuje palisady. Bije ją na rozkaz albo wtedy, gdy zagradza mu drogę do wroga.',
+            'Gdy padnie jeden odcinek, żołnierze idą przez wyłom i nie burzą sąsiednich.',
           ],
         },
         {
@@ -793,7 +767,7 @@ export const MILITARY: ArticleGroup = {
                 '[[building:catapult|Katapulta]]: {{catapult.wood}} [[good:wood|Drewno]], {{catapult.iron}} [[good:iron|Żelazo]]',
               ],
             ],
-            foot: 'Bez dowódcy Katapulta nie jedzie i nie strzela. Kamienie nic nie kosztują.',
+            foot: 'Bez dowódcy Katapulta nie rusza się i nie strzela. Kamienie nic nie kosztują.',
           },
         },
         {
@@ -811,7 +785,7 @@ export const MILITARY: ArticleGroup = {
               ['Budynek', '{{stone.building}}', '{{stone.tower1}}-{{stone.frankHq}}'],
             ],
             num: [2],
-            foot: 'Obrażenia człowieka z przodu, bez amuletów. Palisada: [[article:walls|Palisady i bramy]].',
+            foot: 'Obrażenia dla człowieka trafionego z przodu, bez amuletów. Palisada: [[article:walls|Palisady i bramy]].',
           },
         },
         {
@@ -851,7 +825,7 @@ export const MILITARY: ArticleGroup = {
               ['Wróg', 'Rani'],
               ['Swoi ludzie, pojazdy, budynki, palisady', 'Rani'],
               ['Neutralni i sojusznicy', 'Rani, nie psuje stosunków'],
-              ['Gracz, z którym masz pokój z lobby', 'Omija'],
+              ['Gracz, z którym masz pokój ustawiony w lobby', 'Omija'],
               ['Dzieci', 'Omija'],
               ['Ludzie wewnątrz budynków', 'Omija'],
               ['Drzewa', 'Przewraca'],
@@ -862,7 +836,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Celność',
         },
         {
-          p: 'Celność rośnie jak u łucznika: [[article:aim|Trafienie i strzelanie]]. Na {{catapult.max}} hexach niecelny kamień spada do {{stone.spread.0}} hexów od celu przy 0 trafień, {{stone.spread.25}} przy 25, {{stone.spread.50}} przy 50. Od {{aim.noSpreadHits}} trafień spada w cel. Doświadczenie zbiera dowódca: 1 trafienie za kamień, który coś uszkodził, także budynek. Kamień, który trafił kilka celów, liczy się raz.',
+          p: 'Celność rośnie jak u łucznika: [[article:aim|Trafienie i strzelanie]]. Na {{catapult.max}} hexach niecelny kamień spada do {{stone.spread.0}} hexów od celu przy 0 trafień, {{stone.spread.25}} przy 25, {{stone.spread.50}} przy 50. Od {{aim.noSpreadHits}} trafień spada w cel. Trafienia zbiera dowódca: liczy się każdy kamień, który coś uszkodził, także budynek, ale tylko raz, nawet gdy trafił kilka celów.',
         },
         {
           h: 'Postawy Katapulty',
@@ -880,14 +854,14 @@ export const MILITARY: ArticleGroup = {
               ],
               ['Ignorowanie', 'Wokół swojej pozycji', '{{catapult.min}}-{{catapult.max}}', 'Nie'],
             ],
-            foot: 'Nowa Katapulta stoi w Ignorowaniu. Sama wybiera tylko cel, który widzi. Rozkaz ataku działa w każdej postawie.',
+            foot: 'Nowa Katapulta stoi w Ignorowaniu. Sama atakuje tylko cel, który widzi. Rozkaz ataku działa w każdej postawie.',
           },
         },
         {
           list: [
-            'Cel bliżej niż {{catapult.min}} hexów: Katapulta odjeżdża. Cel dalej niż {{catapult.max}}: podjeżdża na {{catapult.bandMin}}-{{catapult.max}} hexy.',
+            'Gdy cel jest bliżej niż {{catapult.min}} hexów, Katapulta odjeżdża. Gdy jest dalej niż {{catapult.max}}, podjeżdża na {{catapult.bandMin}}-{{catapult.max}} hexy.',
             'Strzela tylko, gdy stoi i nie styka się z innym pojazdem.',
-            'Możesz kazać jej strzelać w miejsce na ziemi. Palisadę bije tylko na rozkaz.',
+            'Możesz kazać jej strzelać w dowolne miejsce na ziemi. Palisadę ostrzeliwuje tylko na rozkaz.',
           ],
         },
         {
@@ -921,7 +895,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'computer',
       name: 'Przeciwnicy komputerowi',
-      lead: 'Poziom ustawia się w lobby. Trudny może wysłać pierwszą falę zaraz po końcu pokoju.',
+      lead: 'Poziom komputera wybierasz w lobby. Trudny może zaatakować zaraz po końcu czasu pokoju.',
       blocks: [
         {
           table: {
@@ -942,7 +916,7 @@ export const MILITARY: ArticleGroup = {
               ],
               ['Gęsty pierścień wież', 'Nie', 'Tak', 'Tak'],
               [
-                'Place budowy naraz',
+                'Ile budów naraz',
                 '{{ai.easy.sites}}',
                 '{{ai.medium.sites}}, od {{ai.medium.grownMinutes}} min {{ai.medium.grownSites}}',
                 '{{ai.hard.sites}}, od {{ai.hard.midMinutes}} min {{ai.hard.midSites}}, od {{ai.hard.lateMinutes}} min {{ai.hard.lateSites}}',
@@ -956,7 +930,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Czas od startu fal', 'Ludzi w fali'],
+            head: ['Czas od pierwszej fali', 'Ludzi w fali'],
             rows: [
               ['0', '{{ai.wave.0.min}}-{{ai.wave.0.max}}'],
               ['1 godz.', '{{ai.wave.1.min}}-{{ai.wave.1.max}}'],
@@ -964,13 +938,13 @@ export const MILITARY: ArticleGroup = {
               ['3 godz. i później', '{{ai.wave.3.min}}-{{ai.wave.3.max}}'],
             ],
             num: [1],
-            foot: 'Czas liczy się od późniejszego z dwóch momentów: "Pierwszej fali" albo końca pokoju. Wielkość fali jest losowana z tego zakresu.',
+            foot: 'Wielkość fali jest losowana z tego zakresu.',
           },
         },
         {
           list: [
-            'Naraz idzie jedna fala. Następna zbiera się pod [[building:barracks|Koszarami]].',
-            'Zbiórka trwa do {{ai.gatherMinutes}} minut. Potem rusza tylu, ile wynosi dolna liczba z tabeli, a gdy tylu nie ma, wszyscy, którzy mogą dojść.',
+            'Naraz atakuje tylko jedna fala, a następna w tym czasie zbiera się pod [[building:barracks|Koszarami]].',
+            'Zbiórka trwa najwyżej {{ai.gatherMinutes}} minut. Potem rusza tylu ludzi, ile mówi dolna liczba w tabeli, a jeśli tylu nie ma, to wszyscy, którzy mogą dojść.',
           ],
         },
         {
@@ -978,13 +952,13 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Komputer porównuje siłę swojej armii z siłą Twojej. Liczy broń, pancerz, amulety, zdrowie i mikstury lecznicze. Doświadczenia nie liczy.',
-            'Twój łucznik na wieży liczy się za {{ai.towerPostWeight}}.',
-            'Każdy komputer losuje na początku plan. Agresywny rusza, gdy ma {{ai.planAggressivePct}}% Twojej siły, obronny dopiero przy {{ai.planDefensivePct}}%, pozostałe przy {{ai.planBalancedPct}}%.',
-            'We mgle liczy to, co widział. Gdy nic o Tobie nie wie, uznaje, że jesteś równie silny.',
-            'Póki siły nie ma, fala czeka pod Koszarami, także po zbiórce.',
-            'Gdy armia komputera dojdzie do limitu, fala rusza mimo to.',
-            'Gdy atakujesz jego osadę albo jesteś od niego {{ai.defendRatio}} raza silniejszy, trzyma wojsko w domu, a idąca fala zawraca.',
+            'Komputer porównuje siłę swojej armii z Twoją. Liczy broń, pancerz, amulety, zdrowie i mikstury lecznicze, ale nie doświadczenie.',
+            'Twój łucznik na posterunku wieży liczy się {{ai.towerPostWeight}} razy mocniej niż w polu.',
+            'Na początku gry każdy komputer losuje plan. Agresywny rusza, gdy ma {{ai.planAggressivePct}}% Twojej siły, obronny dopiero przy {{ai.planDefensivePct}}%, pozostałe przy {{ai.planBalancedPct}}%.',
+            'Twoje wojsko ukryte we mgle liczy tak, jak je ostatnio widział. Gdy nic o Tobie nie wie, uznaje, że jesteś równie silny.',
+            'Dopóki komputer nie jest dość silny, fala czeka pod Koszarami, także po zbiórce.',
+            'Gdy armia komputera dojdzie do limitu, fala rusza bez względu na siłę.',
+            'Gdy atakujesz jego osadę albo jesteś od niego {{ai.defendRatio}} raza silniejszy, komputer trzyma wojsko w domu, a fala w drodze zawraca.',
           ],
         },
         {
@@ -992,8 +966,8 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Mały oddział, {{ai.raidMen}} ludzi, idzie na Twoich zbieraczy i budynki gospodarcze. Omija zasięg wież, a gdy drogi bez wież nie ma, nie rusza.',
-            'Trudny komputer robi tak w {{ai.raidChancePct}}% gier, chyba że startuje na wyspie. Plan nękania robi tak zawsze, na każdym poziomie.',
+            'Najazd to mały oddział, {{ai.raidMen}} ludzi, który idzie na Twoich zbieraczy i budynki gospodarcze. Omija zasięg wież, a gdy nie ma drogi poza nim, nie wyrusza.',
+            'Trudny komputer najeżdża w {{ai.raidChancePct}}% gier, chyba że startuje na wyspie. Komputer z planem nękania najeżdża zawsze, na każdym poziomie.',
             'Pierwszy najazd wychodzi {{ai.raidMinMinutes}}-{{ai.raidMaxMinutes}} minut po końcu pokoju, następne w podobnych odstępach.',
           ],
         },
@@ -1001,16 +975,11 @@ export const MILITARY: ArticleGroup = {
           h: 'Cele',
         },
         {
-          steps: [
-            'Najbliższa [[building:headquarters|Kwatera główna]].',
-            'Wieże.',
-            'Pozostałe budynki, także place budowy.',
-            'Ludzie.',
-          ],
+          p: 'Fala idzie najpierw na najbliższą [[building:headquarters|Kwaterę główną]], potem na wieże i pozostałe budynki, także place budowy, a na końcu na ludzi.',
         },
         {
           list: [
-            'Palisada i [[building:work_pottery_02|Mur obronny]] nie są celem: [[article:walls|Palisady i bramy]].',
+            'Palisada i [[building:work_pottery_02|Mur obronny]] nie są celem fali: [[article:walls|Palisady i bramy]].',
             'We mgle komputer zna budynki ze startu mapy i te, które już widział. O nowych dowie się, gdy je zobaczy.',
           ],
         },
@@ -1019,10 +988,10 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Fala piesza idzie tylko po lądzie, na którym stoją Koszary komputera. Twój budynek albo człowiek na tym lądzie staje się celem.',
+            'Piesza fala chodzi tylko po lądzie, na którym stoją Koszary komputera. Celem może być każdy Twój budynek i człowiek na tym lądzie.',
             'Gdy Kwatera główna rywala stoi na innym lądzie, komputer stawia nad brzegiem [[building:work_joinery_03|Warszt. ciesielski 4]], buduje [[good:ship_small|Statki]] i przewozi nimi wojsko.',
-            'Desant wypływa, gdy przy brzegu stoją {{ai.landingShips}} Statki, u słabszego komputera mniej, a wojsko jest {{ai.landingEdge}} raza silniejsze od obrońców. Statek wiezie {{vehicle.shipSeats}} żołnierzy.',
-            'Przybija poza zasięgiem Twoich wież i budynków na alarmie, jak najbliżej Kwatery głównej, i idzie na nią.',
+            'Desant wypływa, gdy przy brzegu stoją {{ai.landingShips}} Statki (u słabszego komputera mniej), a wojsko jest {{ai.landingEdge}} raza silniejsze od obrońców. Statek wiezie {{vehicle.shipSeats}} żołnierzy.',
+            'Desant przybija jak najbliżej Twojej Kwatery głównej, ale poza zasięgiem wież i budynków na alarmie, i idzie na Kwaterę.',
             'Gdy straci na lądzie {{ai.landingRetreatPct}}% ludzi, reszta wraca na Statki. Następny desant rusza najwcześniej po {{ai.landingCooldownMinutes}} minutach.',
           ],
         },
@@ -1030,7 +999,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Odbudowa',
         },
         {
-          p: 'Gracz ustawiony w lobby na "AI mapy" odbudowuje budynki, gdy do {{ai.rebuildNear}} hexów nie ma wroga, a jest jego cywil. Kwatery głównej nie odbudowuje.',
+          p: 'Gracz ustawiony w lobby na "AI mapy" odbudowuje zniszczone budynki, gdy w promieniu {{ai.rebuildNear}} hexów nie ma wroga, a jest jego cywil. Kwatery głównej nie odbudowuje.',
         },
       ],
       see: ['article:defence', 'article:walls', 'article:catapult', 'article:fog', 'article:diplomacy'],

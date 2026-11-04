@@ -115,7 +115,7 @@ export const SETTLERS: ArticleGroup = {
               ['Mitfahrer im Karren', 'Balken sinken nicht, Gesundheit bleibt gleich.'],
               [
                 'Passagier auf dem Schiff',
-                'Isst aus dem Frachtraum, schläft wie außer Haus, redet. Religion wartet bis zum Landgang.',
+                'Isst aus dem Frachtraum, schläft wie außer Haus, redet. Betet erst wieder an Land.',
               ],
             ],
           },
@@ -248,7 +248,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1, 3],
-            foot: 'Zusammen ergibt das {{aura.totalPerSecond}} pro Sekunde. Regeneration endet bei {{health.human}}, die Aura heilt darüber hinaus bis {{aura.ceiling}}. Kinder und Helden haben ebenfalls {{health.human}} und regenerieren.',
+            foot: 'Zusammen ergibt das {{aura.totalPerSecond}} pro Sekunde. Regeneration endet bei {{health.human}}, die Aura heilt aber darüber hinaus bis {{aura.ceiling}}.',
           },
         },
         {
@@ -263,7 +263,6 @@ export const SETTLERS: ArticleGroup = {
             'Der Siedler trinkt Schluck für Schluck, bis ihm die Wunde mindestens {{draught.healBelow}} Gesundheit lässt.',
             'Ein tödlicher Schlag tötet nicht, wenn die Schlucke die Wunde abdecken.',
             'Auch Hunger löst das Trinken aus, sobald die Gesundheit unter {{draught.healBelow}} fällt.',
-            'Zuerst die angebrochene Flasche, dann die kleine, dann die große.',
           ],
         },
       ],
@@ -435,7 +434,7 @@ export const SETTLERS: ArticleGroup = {
                 'ja',
               ],
             ],
-            foot: 'Bereich 0-{{assistant.counterMax}}, anfangs 0. Ein Befehl an eine einzelne Person geht dem Assistenten vor. Reihenfolge der Waffen und Rüstungen: [[article:equip|Soldaten ausrüsten]].',
+            foot: 'Ein Zähler reicht von 0 bis {{assistant.counterMax}}. Ein Befehl an eine einzelne Person geht dem Assistenten vor. Reihenfolge der Waffen und Rüstungen: [[article:equip|Soldaten ausrüsten]].',
           },
         },
         {
@@ -449,7 +448,7 @@ export const SETTLERS: ArticleGroup = {
               [
                 'Eisenwerkzeug, Holzwerkzeug',
                 'an',
-                'Berufstätige, außer Soldat, [[job:scout|Kundschafter]] und Zivilist',
+                'alle Berufstätigen außer Soldat, [[job:scout|Kundschafter]] und Zivilist',
               ],
               ['[[good:mead|Met]]', 'an', 'Zivilisten, Soldaten'],
               ['Nahrungstränke, Wachtränke, Heiltränke', 'aus', 'Zivilisten, Soldaten'],
@@ -473,10 +472,8 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Zuerst Töchter, dann Söhne. Töchter haben kein ∞, sonst kämen die Söhne nie an die Reihe.',
-            'Bei Zähler 3 bekommen höchstens 3 Paare gleichzeitig ein Kind.',
-            'Ein Paar nimmt immer nur eine Bestellung an. Es gelten dieselben Hindernisse wie beim Befehl: [[article:family|Familie und Wohnhaus]].',
-            'Einen Zähler zu senken nimmt einem Paar die laufende Bestellung nicht weg.',
+            'Zuerst kommen Töchter zur Welt, dann Söhne. Deshalb hat der Töchterzähler kein ∞, sonst würden nie Söhne geboren.',
+            'Bei Zähler 3 warten höchstens 3 Paare gleichzeitig auf ein Kind.',
           ],
         },
         {
@@ -484,7 +481,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Es geht nur ein erwachsener Zivilist ohne Arbeitsplatz und ohne Auftrag, Unverheiratete zuerst. Niemand wird von der Arbeit geholt.',
+            'In die Kaserne geht nur ein erwachsener Zivilist ohne Arbeit und ohne Beschäftigung, Unverheiratete zuerst. Der Assistent holt niemanden von der Arbeit weg.',
             'Die Zähler Schwertkämpfer, Speerträger oder Bogenschützen bewaffnen zuerst einen unbewaffneten Soldaten, wenn eine Waffe in seiner Reichweite liegt.',
           ],
         },
@@ -499,7 +496,7 @@ export const SETTLERS: ArticleGroup = {
                 'Liefere die Waffe. Bis dahin belegt er den Platz eines neuen Rekruten.',
               ],
             ],
-            foot: 'Höchstens {{assistant.draftsPerSecond}} Personen pro Sekunde. Rekruten unterwegs zählen mit, ein verlorener Rekrut kehrt in die Warteschlange zurück.',
+            foot: 'Ein Rekrut auf dem Weg zur Kaserne zählt schon zum Zähler.',
           },
         },
         {
@@ -508,10 +505,9 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Der Assistent rüstet Frauen, Kinder, [[article:heroes|Helden]] und die Turmbesatzung nicht aus.',
-            'Ein Siedler geht einmal zum Lager und nimmt alles auf einmal mit.',
-            'Für jedes Stück im Lager geht nur ein Siedler los. Vorrat unter dem [[article:hauling|Lagerminimum]] rührt er nicht an.',
-            'Füllt nur leere Plätze und tauscht nichts gegen Besseres. Eisenwerkzeug geht vor Holzwerkzeug, die große Flasche vor der kleinen.',
-            'Wer einen kleinen Trank hat, holt keinen großen. Es gibt {{amulet.slots}} Plätze für Getränke und Amulette: [[article:draughts|Getränke und Amulette]].',
+            'Vorrat unter dem [[article:hauling|Lagerminimum]] verteilt der Assistent nicht.',
+            'Er füllt nur leere Plätze und tauscht nichts gegen Besseres. Eisenwerkzeug geht vor Holzwerkzeug.',
+            'Ein Siedler hat {{amulet.slots}} Plätze für Getränke und Amulette: [[article:draughts|Getränke und Amulette]].',
           ],
         },
         {
@@ -519,15 +515,15 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Der Absolvent geht einmal zum nächsten freien Platz seines Berufs, auch auf die Baustelle einer Werkstatt. Eine Werkstatt mit dem Kursprodukt geht einer näheren vor.',
-            'Ohne freien Platz wartet er an der Schule. [[job:collector|Abbauer]], [[job:hunter|Jäger]], [[job:fisher|Fischer]] und Soldaten sind ausgenommen.',
+            'Der Absolvent geht zum nächsten freien Platz seines Berufs, auch in eine Werkstatt im Bau. Eine Werkstatt, die das gelernte Produkt herstellt, hat Vorrang, auch wenn sie weiter weg ist.',
+            'Ohne freien Platz wartet er an der Schule. [[job:collector|Abbauer]], [[job:hunter|Jäger]], [[job:fisher|Fischer]] und Soldaten teilt der Assistent nicht zu.',
           ],
         },
         {
-          p: 'Die Fahne folgt dem Rohstoff, {{assistant.flagMin}}-{{assistant.flagMax}} Hexfelder davon entfernt: [[article:work-flag|Arbeitsfahne]].',
+          p: 'Geht der Rohstoff an einer Fahne zur Neige, setzt der Assistent sie näher an den nächsten, {{assistant.flagMin}}-{{assistant.flagMax}} Hexfelder davon entfernt: [[article:work-flag|Arbeitsfahne]].',
         },
         {
-          p: 'Das Fenster „Untertanen“ zählt, was fehlt: Wohnhaus, Arbeitsplatz, Werkzeug, Schuhe, Partner, Kinder, Waffen, Met.',
+          p: 'Das Fenster „Untertanen“ zeigt, wie vielen Siedlern ein Wohnhaus, Arbeit, Werkzeug, Schuhe, ein Partner, Kinder, Waffen oder Met fehlen.',
         },
       ],
       see: [
@@ -577,7 +573,6 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1],
-            foot: 'Die Befehle Iss, Schlaf, Rede oder Bete halten das Trinken an.',
           },
         },
         {
@@ -627,8 +622,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Ein zweites gleiches Amulett bringt nichts.',
             'Verschiedene Amulette wirken zusammen: Stärke und Treffer ergeben bei erfolgreichem Wurf ×{{amulet.comboFactor}}.',
-            'Bei Hunger und Müdigkeit greift der Siedler der Reihe nach zu: angebrochene Flasche, Amulett, volle Flasche mit weniger Schlucken.',
-            'Mit Nahrungsamulett sucht der Siedler kein Essen, mit Wachbleibamulett geht er nicht schlafen.',
+            'Mit Nahrungsamulett geht der Siedler nie essen, mit Wachbleibamulett nie schlafen.',
           ],
         },
         {

@@ -6,18 +6,18 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'construction',
       name: 'Bau, Ausbau, Reparatur',
-      lead: 'Allein die Arbeitsschläge an Wohnhaus 1 dauern für einen Bauarbeiter {{build.noviceSeconds}} s, mit Eisenwerkzeug {{build.noviceIronSeconds}} s. Das Tragen des Materials kommt noch dazu.',
+      lead: 'Ein Bauarbeiter baut Wohnhaus 1 in {{build.noviceSeconds}} s, mit Eisenwerkzeug in {{build.noviceIronSeconds}} s. Das Tragen des Materials kommt noch dazu.',
       blocks: [
         {
           h: 'Wo du bauen kannst',
         },
         {
           table: {
-            head: ['Was', 'Was passiert'],
+            head: ['Was', 'Regel'],
             rows: [
               [
                 'Gelände',
-                'Du baust auf Land, Sand, Strand und Steinwüste. Gebirge, Schnee, Wasser und Sumpf scheiden aus.',
+                'Du baust auf Land, Sand, Strand und Steinwüste. Auf Gebirge, Schnee, Wasser und Sumpf geht es nicht.',
               ],
               [
                 '[[building:work_well_00|Brunnen]], [[building:work_hive_00|Bienenstock]]',
@@ -25,33 +25,24 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Platz',
-                'Ein Gebäude reserviert sofort den Platz für seine höchste Stufe und einen schmalen Streifen darum. Diese Streifen zweier Gebäude dürfen sich nicht überlappen.',
+                'Ein Gebäude belegt sofort den Platz, den seine höchste Stufe braucht, und einen schmalen Streifen darum. Die Streifen zweier Gebäude dürfen sich nicht überlappen.',
               ],
               [
                 'Baum, Fels, Lagerstätte, Palisade',
-                'Blockieren. Sie müssen außerhalb des Platzes für die höchste Stufe stehen.',
+                'Sie müssen außerhalb des Platzes für die höchste Stufe des Gebäudes stehen.',
               ],
               [
                 'Feindlicher Soldat',
-                'Du baust nicht bis {{contest.radius}} Hexfelder von ihm, schräg etwa {{contest.diagonal}}. Es zählt nur ein Soldat, den du siehst. Die Besatzung auf Turmposten zählt nicht.',
+                'Im Umkreis von {{contest.radius}} Hexfeldern um ihn baust du nicht, schräg etwa {{contest.diagonal}}. Es zählen nur Soldaten, die du siehst, die Turmbesatzung nicht.',
               ],
               [
-                'Gebäude eines Spielers, mit dem Frieden herrscht',
-                'Du baust nicht bis {{peace.keepOut}} Hexfelder von seinem Gebäude oder seiner Baustelle, außer dein eigenes Gebäude steht dort näher als seines.',
+                'Gebäude eines Spielers, mit dem du Frieden hast',
+                'Im Umkreis von {{peace.keepOut}} Hexfeldern um sein Gebäude oder seine Baustelle baust du nicht, außer dein eigenes Gebäude steht dort näher als seines.',
               ],
-              ['Gelände unter Nebel', 'Blockiert. Der Platz muss gerade sichtbar sein.'],
-              ['Siedler, Fahrzeug, Arbeitsfahne, Wegweiser, Haufen, Kadaver', 'Werden zur Seite gerückt.'],
-              ['Strauch, Feld, Baumstumpf, offene Kiste', 'Verschwinden, wenn die Baustelle entsteht.'],
-              ['Straßenbaustelle', 'Wird aufgehoben, gelieferter Bruchstein landet daneben.'],
-              [
-                'Straße, Palisade auf dem Platz für den Ausbau',
-                'Die gezogene Linie umgeht diesen Platz. Standardmäßig legt sie die Taste G trotzdem dorthin, aber der Ausbau entfernt sie dann ohne Rückgabe.',
-              ],
-              ['Feindliche Zivilisten, Tiere', 'Stören nicht. Die Baustelle entsteht neben ihnen.'],
-              ['Fertige Straße', 'Bleibt unter dem Gebäude.'],
+              ['Gelände unter Nebel', 'Dort baust du nicht. Der Platz muss gerade sichtbar sein.'],
               [
                 'Wegweiser-Reichweite',
-                'Gilt nicht. Die Baustelle entsteht auch außerhalb des Netzes, der Bauarbeiter kommt, sobald das Netz dorthin reicht.',
+                'Spielt keine Rolle. Du kannst die Baustelle auch außerhalb des Netzes setzen, aber der Bauarbeiter kommt erst, wenn das Netz dorthin reicht.',
               ],
             ],
           },
@@ -82,7 +73,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2],
-            foot: 'Wohnhaus 1 kostet {{build.homeUnits}} Stück Baustoff. Reine Zeit der Arbeitsschläge, 1 Arbeitsschlag dauert {{build.swingSeconds}} s.',
+            foot: 'Wohnhaus 1 kostet {{build.homeUnits}} Stück Baustoff. Gezählt wird nur die Zeit der Arbeitsschläge, 1 Arbeitsschlag dauert {{build.swingSeconds}} s.',
           },
         },
         {
@@ -122,42 +113,28 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Arbeitsschläge je 1 Stück Baustoff. Ein [[job:builder|Bauarbeiter]] hat 100% nach {{exp.build.repeatsFull}} Arbeitsschlägen. Es zählen nur die, die etwas hinzugefügt haben.',
+            foot: 'Arbeitsschläge je 1 Stück Baustoff. Ein [[job:builder|Bauarbeiter]] erreicht 100% nach {{exp.build.repeatsFull}} Arbeitsschlägen, aber es zählen nur die, die den Bau vorangebracht haben.',
           },
         },
         {
-          list: [
-            'Ein Gebäude ohne Kosten braucht 1 Arbeitsschlag.',
-            'Einen Palisadenabschnitt oder ein Straßenstück setzt 1 Bauarbeiter mit 1 Arbeitsschlag, wenn das Material da ist.',
-            'Material tragen der Bauarbeiter und Arbeiter, die der Baustelle zugewiesen sind, je 1 Stück.',
-          ],
+          p: 'Das Material bringen Bauarbeiter und der Baustelle zugewiesene Arbeiter hin, je 1 Stück.',
         },
         {
-          h: 'Arbeitsreihenfolge des Bauarbeiters',
+          h: 'Was ein Bauarbeiter zuerst tut',
         },
         {
-          steps: [
-            'Straße oder Palisade, die der Spieler diesem Bauarbeiter gerade aufgetragen hat.',
-            'Reparatur: Tore, dann Gebäude, dann Palisaden.',
-            'Gebäude-Baustellen, zuerst versorgte und fast fertige.',
-            'Neue Palisadenabschnitte.',
-            'Straßen.',
-          ],
-        },
-        {
-          p: 'Ein Bauarbeiter, den der Spieler einer Baustelle zuweist, bleibt dort, auch wenn es anderswo Arbeit gibt.',
+          p: 'Ein Bauarbeiter repariert zuerst, baut dann Gebäude und lässt Palisaden und Straßen für den Schluss. Weist du ihn einer Baustelle zu, bleibt er dort, auch wenn anderswo Arbeit wartet.',
         },
         {
           h: 'Ausbau',
         },
         {
           list: [
-            'Kostet das Material der angehobenen Stufen. Mehrere Stufen auf einmal gehen, wenn jede freigeschaltet ist.',
-            'Waren aus den Kosten, die das Gebäude auf Vorrat hat, gehen sofort auf die Baustelle. Die übrigen Vorräte kehren nach dem Ausbau zurück.',
-            'Arbeiter und Bewohner gehen hinaus, behalten ihren Platz und kehren nach dem Ausbau zurück.',
-            'Während des Ausbaus steigt die Gesundheit nicht. Danach hat das Gebäude die volle Gesundheit der neuen Stufe.',
-            'Mit dem Ausbau endet der Verteidigungsmodus.',
-            'Ein Abbruch gibt die Vorräte und die daraus genommenen Waren zurück, geliefertes Material geht verloren.',
+            'Kostet das Material der neuen Stufen. Du kannst mehrere Stufen auf einmal überspringen, wenn alle freigeschaltet sind.',
+            'Waren, die der Ausbau braucht und die das Gebäude schon auf Vorrat hat, gehen sofort in den Bau.',
+            'Arbeiter und Bewohner gehen während des Ausbaus hinaus und kehren danach auf ihre Plätze zurück.',
+            'Nach dem Ausbau hat das Gebäude die volle Gesundheit der neuen Stufe.',
+            'Brichst du den Ausbau ab, bekommt das Gebäude seine Vorräte zurück, aber geliefertes Material geht verloren.',
           ],
         },
         {
@@ -176,27 +153,19 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          list: [
-            'Von selbst repariert ein Bauarbeiter {{repair.calmSeconds}} s lang nach dem letzten Treffer nicht, und auch nicht, solange bis {{alert.standTo}} Hexfelder entfernt gekämpft wird. Dein Befehl übergeht beides.',
-            'Baustellen und Palisaden im Bau werden nicht repariert, ihre Gesundheit wächst mit dem Bau.',
-            'Beschädigtes Gebäude im Ausbau: erst Reparatur, dann Ausbau.',
-          ],
+          p: 'Von selbst repariert ein Bauarbeiter {{repair.calmSeconds}} s lang nach dem letzten Treffer nicht, und auch nicht, solange im Umkreis von {{alert.standTo}} Hexfeldern gekämpft wird. Auf deinen Befehl geht er sofort.',
         },
         {
           h: 'Was verloren geht und was zurückkommt',
         },
         {
           table: {
-            head: ['Situation', 'Folge'],
+            head: ['Situation', 'Was bleibt'],
             rows: [
-              ['Abriss einer Baustelle', 'Geliefertes Material landet am Boden'],
-              ['Abriss oder Zerstörung eines Gebäudes', 'Inhalt plus halbe Kosten, jede Ware aufgerundet'],
-              [
-                'Abriss eines Gebäudes im Ausbau',
-                'Dasselbe für die aktuelle Stufe, plus eingelagerte Vorräte und Ausbaumaterial',
-              ],
+              ['Abriss einer Baustelle', 'Geliefertes Material bleibt am Boden'],
+              ['Abriss oder Zerstörung eines Gebäudes', 'Inhalt plus halbe Kosten, aufgerundet'],
             ],
-            foot: 'Die Waren verteilen sich bis zu {{reach.spill}} Hexfelder weit am Boden, auf derselben Landmasse. Was nicht passt, geht verloren.',
+            foot: 'Die Waren landen bis zu {{reach.spill}} Hexfelder vom Gebäude entfernt am Boden. Was nicht passt, geht verloren.',
           },
         },
       ],
@@ -205,7 +174,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'workshops',
       name: 'Werkstätten und Produktwahl',
-      lead: 'Der Zähler beim Produkt sagt, wie viele Chargen ein Arbeiter machen soll: 0 heißt Stopp, ∞ endlos. Eine Charge ist ein Durchlauf des Rezepts.',
+      lead: 'Der Zähler beim Produkt sagt, wie viele Chargen ein Arbeiter macht: 0 heißt Stopp, ∞ endlos. Eine Charge ist ein Durchlauf des Rezepts.',
       blocks: [
         {
           h: 'Zählerwerte',
@@ -214,15 +183,15 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Zähler', 'Werkstatt', 'Abbauer'],
             rows: [
-              ['0', 'Produkt ruht', 'Ware wird übergangen'],
+              ['0', 'Stellt dieses Produkt nicht her', 'Baut diese Ware nicht ab'],
               [
                 '1-{{workshop.counterMax}}',
-                'So viele Chargen, -1 beim Start einer Charge',
-                'So viele Stück, -1 je gewonnenes Stück',
+                'So viele Chargen, der Zähler sinkt beim Start jeder Charge um 1',
+                'So viele Stück, der Zähler sinkt je gewonnenes Stück um 1',
               ],
               ['∞', 'Endlos, Zähler sinkt nicht', 'Endlos, Zähler sinkt nicht'],
             ],
-            foot: 'Die Werkstatt zählt Chargen, der Abbauer Stücke. Erfahrung und Werkzeug bringen mehr Stücke je Charge: [[article:tools|Werkzeug]].',
+            foot: 'Erfahrung und Werkzeug bringen mehr Stücke je Charge: [[article:tools|Werkzeug]].',
           },
         },
         {
@@ -236,7 +205,7 @@ export const ECONOMY: ArticleGroup = {
                 'Warensymbol, „Nur dieses Produkt“',
                 'Diese Ware ∞, Rest 0',
                 '-',
-                'Diese Ware: von 0 auf ∞, von jedem anderen Wert auf 0. Rest bleibt.',
+                'Schaltet diese Ware zwischen 0 und ∞ um, Rest bleibt',
               ],
               ['Weniger', '-1. Springt von 0 auf ∞, von ∞ auf {{workshop.counterMax}}', '-10', 'Auf 0'],
               ['Mehr', '+1. Springt von {{workshop.counterMax}} auf ∞, von ∞ auf 0', '+10', 'Auf ∞'],
@@ -244,54 +213,34 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          h: 'Startwerte neuer Arbeiter',
-        },
-        {
-          table: {
-            head: ['Wer', 'Startzähler'],
-            rows: [
-              ['Handwerker', 'Erstes Produkt der Werkstatt ∞, Rest 0'],
-              [
-                '[[job:breeder|Viehzüchter]] in der [[building:work_animal_farm|Viehzüchterei]]',
-                'Ochse ∞, Schaf 0',
-              ],
-              [
-                'Absolvent, den der Assistent zuweist, wenn die Schule in diesem Beruf mehrere Produkte lehrt',
-                'In der Schule gelernte Produkte ∞, Rest 0',
-              ],
-              ['[[job:collector|Abbauer]]', 'Jede Ware ∞'],
-            ],
-          },
-        },
-        {
           h: 'Was mit den Zählern passiert',
         },
         {
-          p: 'Sie verfallen beim Wechsel von Arbeitsplatz oder Beruf, auch nach dem Abriss des Gebäudes. Ein Ausbau lässt sie stehen, neue Produkte der höheren Stufe beginnen bei 0. Jeder Arbeiter hat eigene Zähler: 2 Leute in einer Werkstatt können 2 verschiedene Produkte herstellen.',
+          p: 'Jeder Arbeiter hat eigene Zähler, also können 2 Leute in einer Werkstatt 2 verschiedene Produkte herstellen. Die Zähler verfallen, wenn ein Arbeiter Arbeitsplatz oder Beruf wechselt, auch nach dem Abriss des Gebäudes. Ein Ausbau lässt sie stehen, Produkte der neuen Stufe beginnen bei 0.',
         },
         {
           h: 'Mehrere Produkte zugleich',
         },
         {
-          p: 'Der Arbeiter macht Produkte mit Zähler über 0 abwechselnd, je 1 Charge, in der Reihenfolge im Panel.',
+          p: 'Der Arbeiter macht alle Produkte mit Zähler über 0 abwechselnd, je 1 Charge, in der Reihenfolge im Panel.',
         },
         {
           table: {
-            head: ['Situation', 'Folge'],
+            head: ['Wann', 'Was der Arbeiter tut'],
             rows: [
+              ['Das Regal des Produkts ist voll', 'Nimmt das nächste Produkt'],
+              ['Eine Zutat fehlt', 'Nimmt das nächste Produkt'],
               [
-                'Regal des Produkts voll',
-                'Der Arbeiter nimmt das nächste Produkt. Laufende Chargen zählen als belegter Platz.',
+                'Nur ein Teil der Zutaten ist da',
+                'Wartet auf den Rest. Gibt es ihn nirgends, nimmt er das nächste Produkt.',
               ],
-              ['Keine Zutat im Gebäude', 'Der Arbeiter nimmt das nächste Produkt'],
               [
-                'Nur ein Teil der Zutat im Gebäude',
-                'Wartet auf den Rest. Gibt es den Rest nirgends, nimmt er das nächste Produkt.',
+                'Zu wenig Erfahrung für ein Produkt',
+                'Das Panel zeigt „gesperrt“ statt des Zählers, und der Arbeiter übergeht dieses Produkt',
               ],
-              ['Produkt ohne nötige Erfahrung', 'Hinweis „gesperrt“ statt Zähler, wird übergangen'],
               [
-                'Alle Produkte mit Zähler gesperrt',
-                'Der Arbeiter macht, was er schon kann, auch Produkte auf 0',
+                'Alle Produkte mit Zähler sind gesperrt',
+                'Macht, was er schon kann, auch Produkte mit Zähler 0',
               ],
             ],
           },
@@ -300,29 +249,25 @@ export const ECONOMY: ArticleGroup = {
           h: 'Fahrzeuge',
         },
         {
-          list: [
-            'Ein Fahrzeug entsteht außerhalb der Werkstatt: Der Handwerker legt daneben eine Baustelle an, trägt selbst das Material und baut.',
-            'Der Fahrzeugzähler sinkt, wenn das Fahrzeug fertig ist, nicht beim Start.',
-            'Ist neben der Werkstatt kein Platz für die Baustelle, nimmt der Arbeiter das nächste Produkt.',
-          ],
+          p: 'Ein Fahrzeug entsteht nicht in der Werkstatt. Der Handwerker legt daneben eine Baustelle an, trägt selbst das Material hin und baut. Ist neben der Werkstatt kein Platz für die Baustelle, nimmt er das nächste Produkt.',
         },
         {
           h: 'Abbauer',
         },
         {
           table: {
-            head: ['Aktion', 'Folge'],
+            head: ['Situation', 'Folge'],
             rows: [
               ['„Nur diese Ware“', 'Diese Ware ∞, Rest 0'],
               [
                 'Rechtsklick auf Vorkommen',
-                '„Sammeln“: diese Ware ∞, Rest 0, die Arbeitsfahne bleibt, wo sie war',
+                'Befehl „Sammeln“: diese Ware ∞, Rest 0. Die Arbeitsfahne bleibt, wo sie ist.',
               ],
-              ['Ctrl und Rechtsklick auf Vorkommen', 'Dasselbe, und die Fahne wandert auf das Vorkommen'],
-              ['Alle Zähler auf 0', 'Status „Alles auf 0 gestellt“'],
+              ['Ctrl und Rechtsklick auf Vorkommen', 'Dasselbe, aber die Fahne wandert auf das Vorkommen'],
+              ['Alle Zähler auf 0', 'Der Abbauer hat den Status „Alles auf 0 gestellt“ und baut nichts ab'],
               [
-                'Zähler auf 0, aber die Ware liegt da',
-                'Der Zähler gilt nur für den Abbau. Stämme und Haufen trägt der Abbauer weiter.',
+                'Die Ware liegt schon am Boden',
+                'Der Zähler gilt nur für den Abbau. Stämme und Haufen trägt der Abbauer weiter, auch bei 0.',
               ],
             ],
           },
@@ -339,14 +284,14 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'gathering',
       name: 'Abbau und Anbau',
-      lead: 'Ein Baum gibt {{gather.treeYield}} Stück Holz nach {{gather.strokes}} Arbeitsschlägen. Ein Fels braucht dieselben Arbeitsschläge für 1 Stück, Holz geht also etwa {{gather.treeYield}} Mal schneller.',
+      lead: 'Ein Baum gibt {{gather.treeYield}} Stück Holz nach {{gather.strokes}} Arbeitsschlägen. Ein Fels braucht so viele Arbeitsschläge für jedes Stück, Holz geht also etwa {{gather.treeYield}} Mal schneller als Bruchstein.',
       blocks: [
         {
           h: 'Was ein Vorkommen liefert',
         },
         {
           table: {
-            head: ['Vorkommen', 'Wer', 'Liefert', 'Arbeitsschläge ohne Erfahrung', 'Dauer', 'Werkzeug'],
+            head: ['Vorkommen', 'Wer', 'Liefert', 'Arbeitsschläge ohne Erfahrung', 'Dauer', 'Werkzeug hilft'],
             rows: [
               [
                 'Baum',
@@ -405,31 +350,17 @@ export const ECONOMY: ArticleGroup = {
                 'ja',
               ],
             ],
-            foot: 'Reine Arbeitszeit, ohne Erfahrung und Werkzeug, ohne Laufwege.',
+            foot: 'Reine Arbeitszeit ohne Erfahrung und Werkzeug, ohne Laufwege.',
           },
         },
         {
-          list: [
-            'Ein gefällter Baum liegt als Stamm mit {{gather.treeYield}} Stück da. Der Abbauer trägt sie einzeln weg.',
-            'Ein Stück aus Fels oder Lagerstätte fällt daneben zu Boden.',
-          ],
+          p: 'Ein gefällter Baum bleibt als Stamm mit {{gather.treeYield}} Stück liegen, und der Abbauer trägt sie einzeln weg. Jedes Stück aus Fels oder Lagerstätte fällt daneben zu Boden.',
         },
         {
           h: 'Eisen und Gold',
         },
         {
-          table: {
-            head: ['Weg', 'Bedingung', 'Für wen'],
-            rows: [
-              [
-                'Arbeit',
-                '{{gather.oreNeed}} Stück [[good:mud|Lehm]] und [[good:stone|Bruchstein]] zusammen',
-                'Diesen Siedler. Der Erste entdeckt die Ware fürs Dorf.',
-              ],
-              ['[[building:school|Schule]]', 'Kurs, sobald die Ware entdeckt ist', 'Den Absolventen'],
-            ],
-            foot: 'Jeder Siedler muss die Bedingung selbst erfüllen, getrennt für [[good:iron|Eisen]] und [[good:gold|Gold]]. Bis dahin zeigt das Panel „gesperrt“.',
-          },
+          p: 'Um [[good:iron|Eisen]] oder [[good:gold|Gold]] abzubauen, muss ein Abbauer zuerst selbst {{gather.oreNeed}} Stück [[good:mud|Lehm]] und [[good:stone|Bruchstein]] zusammen abbauen, getrennt für jede der beiden Waren. Der Erste, dem das gelingt, entdeckt die Ware fürs ganze Dorf, danach kann man sie auch in der [[building:school|Schule]] lernen. Bis dahin zeigt das Panel „gesperrt“.',
         },
         {
           h: 'Feld',
@@ -441,10 +372,10 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Ein Feld wächst nur durch Gießen, Zeit spielt keine Rolle. Jedes Gießen bringt 1 Stufe für dieses Feld und 6 Nachbarfelder, ein Feld braucht also höchstens {{field.waterings}} Mal Gießen. Nach der Ernte liegt 1 Stück da, und der Platz ist wieder frei für neue Saat.',
+          p: 'Ein Feld wächst nur, wenn jemand es gießt, von allein mit der Zeit wächst es nicht. Jedes Gießen hebt dieses Feld und 6 Nachbarfelder um 1 Stufe, ein Feld braucht also höchstens {{field.waterings}} Mal Gießen. Nach der Ernte bleibt 1 Stück liegen, und auf dem Platz kann wieder gesät werden.',
         },
         {
-          p: 'Säen und Gießen kosten nichts, Wasser ist nicht nötig.',
+          p: 'Säen und Gießen kosten nichts, nicht einmal Wasser.',
         },
         {
           table: {
@@ -466,26 +397,11 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 4],
-            foot: 'Schräg beträgt der Radius etwa {{field.diagonal}} Hexfelder. Die Feldgrenze gilt fürs Gebäude, nicht für den Arbeiter. Mehr Leute ernten schneller.',
+            foot: 'Schräg beträgt der Radius etwa {{field.diagonal}} Hexfelder. Die Feldgrenze gilt fürs Gebäude, nicht für den Arbeiter, also ernten mehr Leute schneller, haben aber nicht mehr Felder.',
           },
         },
         {
-          h: 'Arbeitsreihenfolge von Farmer und Kräutergärtner',
-        },
-        {
-          steps: [
-            'Bringt das geerntete Stück ins Gebäude.',
-            'Sät, wenn das Gebäude weniger als {{field.max}} Felder hat.',
-            'Erntet das nächste reife Feld.',
-            'Gießt das Feld mit der niedrigsten Stufe.',
-            'Wartet im Gebäude.',
-          ],
-        },
-        {
-          p: 'Auf Sand und auf der Straße kannst du nicht säen. Wilde Felder der Karte im Radius des Gebäudes zählen zu seiner Grenze.',
-        },
-        {
-          p: 'Ein Feld, das {{field.reclaimSeconds}} s lang von der Tür seines Gebäudes abgeschnitten ist, verschwindet und gibt seinen Platz in der Grenze frei.',
+          p: 'Auf Sand und auf der Straße kannst du nicht säen. Wilde Felder der Karte im Radius des Gebäudes zählen zu seiner Grenze. Ein Feld, das {{field.reclaimSeconds}} s lang von der Tür seines Gebäudes aus nicht erreichbar ist, verschwindet und gibt seinen Platz in der Grenze frei.',
         },
         {
           h: 'Was nachwächst',
@@ -535,7 +451,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Woher ein Siedler Werkzeug bekommt',
         },
         {
-          p: 'Werkzeug verteilt der [[article:assistant|Assistent]], der von Anfang an an ist, oder dein Befehl. Ein Siedler holt es nur aus dem Lager, wenn sein Werkzeugplatz leer ist, Eisen vor Holz. Besseres holt er nicht von selbst.',
+          p: 'Werkzeug verteilt der [[article:assistant|Assistent]], der von Spielbeginn an eingeschaltet ist, oder du per Befehl. Ein Siedler ohne Werkzeug holt sich selbst eines aus dem Lager und nimmt Eisenwerkzeug oder, wenn keins da ist, Holzwerkzeug. Holzwerkzeug tauscht er nicht von selbst gegen besseres.',
         },
         {
           h: 'Wer es nutzt',
@@ -577,7 +493,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Baum, Fels, Lagerstätte, Kräuterfeld.',
+            foot: 'An Baum, Fels, Lagerstätte und Kräuterfeld.',
           },
         },
         {
@@ -595,7 +511,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Ein Feld [[good:wheat|Weizen]] zu ernten kostet ohne Werkzeug {{gather.wheatStrokes}} Arbeitsschläge, mit Werkzeug oder ab 20% Erfahrung 1.',
+          p: 'Ein Feld [[good:wheat|Weizen]] braucht ohne Werkzeug {{gather.wheatStrokes}} Arbeitsschläge, mit Werkzeug oder ab 20% Erfahrung reicht 1.',
         },
         {
           h: 'Stücke je Charge in der Werkstatt',
@@ -612,31 +528,17 @@ export const ECONOMY: ArticleGroup = {
               ['100%', '{{tool.output.100.bare}}', '{{tool.output.100.wooden}}', '{{tool.output.100.iron}}'],
             ],
             num: [1, 2, 3],
-            foot: 'Für ein Rezept mit 1 Stück, bei einem Rezept mit 2 Stück verdoppelt sich der Bonus. Zutaten und Dauer ändern sich nicht. Erfahrung wirkt auch beim Schlachten.',
+            foot: 'Für ein Rezept mit 1 Stück, bei einem Rezept mit 2 Stück verdoppelt sich der Bonus. Zutaten und Arbeitszeit bleiben gleich. Erfahrung wirkt auch beim Schlachten.',
           },
         },
         {
-          p: 'Bruchteile sammeln sich in der Werkstatt. Ein volles Stück kommt in den Vorrat, auch über die Kapazität hinaus.',
+          p: 'Bruchteile von Stücken summieren sich. Sobald ein volles Stück zusammen ist, kommt es in den Vorrat, auch über die Kapazität hinaus.',
         },
         {
           h: 'Verschleiß',
         },
         {
-          table: {
-            head: ['Arbeit', 'Werkzeugeinsatz'],
-            rows: [
-              ['Charge in der Werkstatt', '1 je fertige Charge'],
-              ['Arbeitsschlag beim Abbau', '1 je Arbeitsschlag, auch ohne Wirkung'],
-              ['Angelwurf', '1 je Wurf, auch ohne Fang'],
-              [
-                'Arbeitsschlag des Bauarbeiters',
-                '1 je Arbeitsschlag, auch bei Reparatur und wenn er nichts hinzufügt',
-              ],
-              ['Gießen', '1 je Gießen'],
-              ['Säen, Pilze aufheben', '0'],
-            ],
-            foot: 'Nach {{tool.uses}} Einsätzen ist das Werkzeug weg, und der Siedler arbeitet mit bloßen Händen, bis er neues bekommt. Eisenwerkzeug reicht einem Siedler ohne Erfahrung für {{tool.ironTrees}} Bäume.',
-          },
+          p: 'Jeder Arbeitsschlag, jeder Angelwurf, jedes Gießen und jede fertige Charge kostet einen Einsatz, auch wenn sie nichts bringen. Säen und Pilze aufheben kosten nichts. Nach {{tool.uses}} Einsätzen ist das Werkzeug weg, und der Siedler arbeitet mit bloßen Händen, bis er neues bekommt. Eisenwerkzeug reicht einem Siedler ohne Erfahrung für {{tool.ironTrees}} Bäume.',
         },
       ],
       see: [
@@ -650,7 +552,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'hauling',
       name: 'Träger und Lager',
-      lead: 'Ein Träger ohne Karren trägt {{haul.carry}} Stück. An einer Stelle am Boden liegen bis zu {{haul.groundStack}} Stück einer Ware.',
+      lead: 'Ein Träger ohne Karren trägt {{haul.carry}} Stück auf einmal. An einer Stelle am Boden passen bis zu {{haul.groundStack}} Stück einer Ware.',
       blocks: [
         {
           h: 'Kapazität',
@@ -672,44 +574,16 @@ export const ECONOMY: ArticleGroup = {
           h: 'Vorrang',
         },
         {
-          p: 'Vorrang stellst du in einem Gebäude ein: Lagerhaus, Hauptquartier, Kaserne oder Turm. Seine Träger holen die Ware aus anderen Lagern, Werkstätten und Haufen, solange Platz ist.',
+          p: 'Vorrang stellst du in einem Lagerhaus, Hauptquartier, einer Kaserne oder einem Turm ein. Die Träger dieses Gebäudes holen die Ware dann aus anderen Lagern, Werkstätten und Haufen, solange Platz für sie ist.',
         },
         {
           h: 'Minimum',
         },
         {
-          p: 'Das Minimum zählt alle Lagerhäuser und das Hauptquartier zusammen, bis {{haul.minimumMax}} Stück einer Ware. Solange die Summe darunter liegt, holen die Träger von Lagerhäusern, Hauptquartier, Brunnen und Bienenstöcken die Ware aus Werkstätten, Brunnen, Bienenstöcken und Haufen, und niemand nimmt sie aus dem Lager.',
+          p: 'Das Minimum, bis {{haul.minimumMax}} Stück einer Ware, zählt alle Lagerhäuser und das Hauptquartier zusammen. Solange die Summe darunter liegt, holen die Träger die Ware aus Werkstätten, Brunnen, Bienenstöcken und Haufen, und niemand nimmt sie aus dem Lager.',
         },
         {
-          p: 'Das gilt auch fürs Essen: Liegt alles Essen innerhalb des Minimums, isst niemand aus dem Lager. Ein Lager gibt einem Lager mit Vorrang nur Ware über dem Minimum ab.',
-        },
-        {
-          h: 'Arbeitsreihenfolge des Trägers im Lager',
-        },
-        {
-          steps: [
-            'Bringt weg, was er in den Händen hat.',
-            'Holt Ware, die in seinem Gebäude Vorrang hat.',
-            'In Lagerhaus und Hauptquartier: holt Ware unter dem Minimum.',
-            'Hebt den nächsten Haufen mit Ware für sein Gebäude auf.',
-            'Holt fertige Produkte aus Werkstätten in sein Gebäude.',
-          ],
-        },
-        {
-          table: {
-            head: ['Träger arbeitet in', 'Was er tut'],
-            rows: [
-              [
-                '[[building:work_farm_00|Farm]], [[building:work_herb_hut|Kräuterhütte]]',
-                'Bringt erst die Ernte ins Lager, dann Haufen',
-              ],
-              ['Werkstatt', 'Bringt erst Zutaten, dann holt er Produkte ab'],
-              [
-                '[[building:work_well_00|Brunnen]], [[building:work_hive_00|Bienenstock]]',
-                'Bringt den Inhalt weg',
-              ],
-            ],
-          },
+          p: 'Das gilt auch fürs Essen: Liegt alles Essen innerhalb des Minimums, isst niemand davon aus dem Lager. Ein Lager mit Vorrang bekommt aus einem anderen Lager nur, was über dem Minimum liegt.',
         },
         {
           h: 'Karren',
@@ -723,25 +597,21 @@ export const ECONOMY: ArticleGroup = {
               ['Mit [[good:oxcart|Ochsenkarren]]', '{{haul.oxcart}}', '{{haul.oxcartLossPct}}%'],
             ],
             num: [1, 2],
-            foot: 'Je kleiner die Ladung, desto weniger bremst sie. Die Karren des [[job:trader|Händlers]] haben dieselben Werte.',
+            foot: 'Je kleiner die Ladung, desto weniger bremst der Karren. Die Karren des [[job:trader|Händlers]] verhalten sich genauso.',
           },
         },
         {
           list: [
-            'Einen Karren nehmen nur Träger mit Arbeitsplatz und [[job:trader|Händler]]. Der Träger behält seinen Arbeitsplatz.',
-            'Der Karren muss dir gehören und frei sein: ohne Besatzung, ohne anderen Kommandanten, auf derselben Landmasse.',
-            'Ist auf dem Karren noch Platz, nimmt ein Lagerträger dieselbe Ware von Haufen und aus Werkstätten bis {{haul.cartTopUp}} Hexfelder um sich mit und fährt dann zurück.',
-            'Verliert er den Arbeitsplatz, bleibt der Karren stehen.',
+            'Einen Karren nehmen nur ein Träger mit Arbeitsplatz und der [[job:trader|Händler]].',
+            'Der Karren muss dir gehören, frei sein und auf derselben Landmasse stehen.',
+            'Ist auf dem Karren noch Platz, nimmt ein Lagerträger dieselbe Ware von Haufen und aus Werkstätten im Umkreis von {{haul.cartTopUp}} Hexfeldern mit, bevor er zurückfährt.',
           ],
         },
         {
           h: 'Haufen am Boden',
         },
         {
-          list: [
-            'Ein Haufen gehört niemandem, jeder darf ihn nehmen.',
-            'Ein Träger ohne Arbeitsfahne sammelt bis {{flag.radius}} Hexfelder um sein Gebäude auf, mit Fahne bis {{flag.radius}} Hexfelder um die Fahne.',
-          ],
+          p: 'Ein Haufen am Boden gehört niemandem, jeder darf ihn nehmen. Ein Träger sammelt Haufen bis {{flag.radius}} Hexfelder um sein Gebäude auf, mit Arbeitsfahne bis {{flag.radius}} Hexfelder um die Fahne.',
         },
       ],
       see: [
@@ -756,7 +626,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'work-flag',
       name: 'Arbeitsfahne',
-      lead: 'Die Arbeitsfahne (auf den Knöpfen auch kurz Fahne) legt den Arbeitsbereich fest und lagert nichts. Ein Abbauer ohne Arbeitsplatz lässt die Ware am Boden liegen.',
+      lead: 'Die Arbeitsfahne (auf den Knöpfen kurz Fahne) legt fest, wo ein Arbeiter arbeitet. Sie lagert nichts, also lässt ein Abbauer ohne Arbeitsplatz die Ware am Boden liegen.',
       blocks: [
         {
           figure: {
@@ -777,19 +647,14 @@ export const ECONOMY: ArticleGroup = {
                 'Dieselben, dazu [[job:carrier|Träger]] von Lagerhaus, Hauptquartier oder Werkstatt',
               ],
               [
-                'Woher die Fahne',
-                'Steht beim Berufsantritt von selbst vor seinen Füßen',
-                'Nur über „Arbeitsfahne setzen“',
+                'Woher die Fahne kommt',
+                'Steht von selbst vor seinen Füßen, wenn er den Beruf antritt',
+                'Nur über den Befehl „Arbeitsfahne setzen“',
               ],
-              ['Wo er arbeitet', 'Um die Fahne', 'Um die Fahne, ohne Fahne nach der Tabelle unten'],
-              ['Welche Waren', 'Alle, die der Beruf abbaut', 'Nur die, die das Gebäude lagert'],
-              ['Wohin die Ladung geht', 'Haufen am Boden bei der Fahne', 'Ins Gebäude des Arbeiters'],
-              ['Fahne entfernen', 'Geht nicht, nur versetzen', '„Fahne entfernen“'],
-              [
-                'Arbeitsplatz verloren',
-                '-',
-                'Abbauer, Fischer und Jäger arbeiten an ihrer Fahne weiter. Ohne Fahne bekommen sie eine neue vor die Füße. Der Träger verliert seine Fahne.',
-              ],
+              ['Wo er arbeitet', 'Um die Fahne', 'Um die Fahne, ohne Fahne wie in der Tabelle unten'],
+              ['Welche Waren', 'Alles, was sein Beruf abbaut', 'Nur die, die das Gebäude lagert'],
+              ['Wohin die Ladung geht', 'Auf einen Haufen bei der Fahne', 'In sein Gebäude'],
+              ['Fahne entfernen', 'Geht nicht, sie lässt sich nur versetzen', '„Fahne entfernen“'],
             ],
           },
         },
@@ -801,9 +666,9 @@ export const ECONOMY: ArticleGroup = {
             head: ['Wer', 'Ohne Fahne'],
             rows: [
               ['Abbauer', 'Ganze Wegweiser-Reichweite'],
-              ['Träger', 'Lagerhaus: Haufen bis {{flag.radius}} Hexfelder ums Gebäude'],
+              ['Lagerträger', 'Haufen bis {{flag.radius}} Hexfelder ums Gebäude'],
               ['Jäger', 'Rund um den Arbeitsplatz'],
-              ['Fischer', 'Sucht das Ufer von seinem Standort aus'],
+              ['Fischer', 'Fischt von seinem Standort aus'],
             ],
           },
         },
@@ -826,11 +691,11 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [2, 3],
-            foot: 'In Hexfeldern. Ein Beruf, der von Wegweisern abhängt, arbeitet nur in ihrer Reichweite.',
+            foot: 'In Hexfeldern. Wer Wegweiser braucht, arbeitet nur in ihrer Reichweite.',
           },
         },
         {
-          p: 'Keine Arbeitsfahne nehmen die Träger von Farm, Kräuterhütte, Brunnen, Bienenstock, Turm und Kaserne an.',
+          p: 'Den Trägern von Farm, Kräuterhütte, Brunnen, Bienenstock, Turm und Kaserne kannst du keine Arbeitsfahne setzen.',
         },
         {
           h: 'Haufen an der Fahne',
@@ -838,22 +703,21 @@ export const ECONOMY: ArticleGroup = {
         {
           list: [
             'Einen Haufen an der Fahne holt nur ein Träger mit Arbeitsplatz ab.',
-            'Weiter als {{flag.radius}} Hexfelder vom Lager gib dem Träger eine eigene Fahne neben der des Abbauers.',
-            'Ein Träger mit Fahne nimmt Haufen und fertige Produkte um sie herum und bringt sie in sein Gebäude.',
-            'Das Versetzen der Fahne bewegt die Haufen nicht.',
+            'Steht die Fahne des Abbauers weiter als {{flag.radius}} Hexfelder vom Lager entfernt, setz dem Lagerträger eine Fahne daneben.',
+            'Versetzt du die Fahne, bleiben die Haufen, wo sie waren.',
           ],
         },
         {
           h: 'Fahne setzen',
         },
         {
-          p: '„Arbeitsfahne setzen“ stellt die Fahne an den gewählten Ort oder versetzt sie dorthin. Ist der Ort belegt, sucht sie bis {{flag.snap}} Hexfelder weit einen freien, sonst verfällt der Befehl. Dasselbe macht Ctrl und Rechtsklick.',
+          p: '„Arbeitsfahne setzen“ stellt die Fahne an den gewählten Ort oder versetzt sie dorthin, genau wie Ctrl und Rechtsklick. Ist der Ort belegt, kommt die Fahne auf einen freien bis {{flag.snap}} Hexfelder daneben, und gibt es keinen, verfällt der Befehl.',
         },
         {
-          p: 'Mit dem Schalter im [[article:assistant|Assistenten]] versetzt ein Abbauer seine Fahne selbst: Er setzt sie {{assistant.flagMin}}-{{assistant.flagMax}} Hexfelder vom Vorkommen. Ist der Bereich erschöpft, geht er zum Vorkommen, das seinem Gebäude am nächsten liegt. Für Jäger und Fischer gilt das nicht.',
+          p: 'Im [[article:assistant|Assistenten]] kannst du Abbauern erlauben, ihre Fahne selbst zu versetzen. Ein Abbauer setzt sie dann {{assistant.flagMin}}-{{assistant.flagMax}} Hexfelder vom Vorkommen, und ist in der Gegend alles erschöpft, zieht er zum Vorkommen, das seinem Gebäude am nächsten liegt. Jäger und Fischer tun das nicht.',
         },
         {
-          p: 'Du darfst die Fahne außerhalb der Reichweite setzen, aber der Arbeiter steht dann, bis das Netz dorthin reicht: [[article:roads|Straßen und Wegweiser]].',
+          p: 'Du kannst die Fahne außerhalb des Netzes setzen, aber der Arbeiter steht dann, bis das Netz dorthin reicht: [[article:roads|Straßen und Wegweiser]].',
         },
       ],
       see: ['article:hauling', 'article:workshops', 'article:roads', 'article:assistant', 'job:collector'],
@@ -867,7 +731,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Wegweiser',
         },
         {
-          p: 'Wegweiser setzt der [[job:scout|Kundschafter]], ohne Material.',
+          p: 'Wegweiser setzt der [[job:scout|Kundschafter]], und sie kosten kein Material.',
         },
         {
           figure: {
@@ -876,19 +740,19 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Ein Siedler geht von selbst zu einem Ziel bis {{reach.walk}} Hexfelder weit, ein [[job:carrier|Träger]] bis {{reach.carrier}}. Weiter führt ein Wegweiser: Steht er näher als diese Reichweite, öffnet er das ganze verbundene Netz, und das Ziel muss in derselben Reichweite von einem Wegweiser dieses Netzes liegen.',
+          p: 'Ohne Wegweiser erreicht ein Siedler ein Ziel höchstens {{reach.walk}} Hexfelder weit, ein [[job:carrier|Träger]] {{reach.carrier}}. Weiter führen Wegweiser: Steht einer in dieser Reichweite, kann der Siedler das ganze damit verbundene Netz nutzen, und das Ziel muss in derselben Reichweite von einem seiner Wegweiser liegen.',
         },
         {
           list: [
-            'Zwei Wegweiser verbinden sich näher als {{reach.link}} Hexfelder, der Weg zwischen ihnen darf bis {{reach.linkRoute}} Hexfelder lang sein.',
-            'Ein eigener Wegweiser steht mindestens {{reach.spacing}} Hexfelder vom nächsten entfernt.',
-            'Ware sucht ein Siedler näher als {{reach.goods}} Hexfelder, auch ab Wegweisern in dieser Reichweite.',
-            'Ein Gebäude auf einem Wegweiser rückt ihn bis {{reach.displace}} Hexfelder beiseite, weiter nicht, dann ist er weg.',
+            'Zwei Wegweiser verbinden sich, wenn sie näher als {{reach.link}} Hexfelder stehen und der Weg zwischen ihnen höchstens {{reach.linkRoute}} Hexfelder lang ist.',
+            'Dein neuer Wegweiser muss mindestens {{reach.spacing}} Hexfelder vom nächsten entfernt stehen.',
+            'Ware sucht ein Siedler näher als {{reach.goods}} Hexfelder von sich oder von Wegweisern in dieser Reichweite.',
+            'Ein Gebäude auf einem Wegweiser rückt ihn bis zu {{reach.displace}} Hexfelder beiseite, und geht das nicht, ist der Wegweiser weg.',
           ],
         },
         {
           table: {
-            head: ['Gelände', 'Warensuche, Hexfelder'],
+            head: ['Gelände', 'Reichweite der Warensuche, Hexfelder'],
             rows: [
               ['Straße, Land', 'unter {{reach.goods}}'],
               ['Sand', 'etwa {{reach.goodsSand}}'],
@@ -900,25 +764,25 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Die Reichweite gilt nicht für Kundschafter, Soldaten, Helden, [[job:hunter|Jäger]] und [[job:druid|Druiden]].',
+          p: 'Kundschafter, Soldaten, Helden, [[job:hunter|Jäger]] und [[job:druid|Druiden]] gehen überallhin, mit oder ohne Wegweiser.',
         },
         {
-          p: 'Liegt der Arbeitsplatz oder die Fahne eines Arbeiters außerhalb der Reichweite, bekommt er den Status „Verirrt“ und steht, bis das Netz dorthin reicht. Getragene Ware bringt er noch weg.',
+          p: 'Liegt der Arbeitsplatz oder die Fahne eines Arbeiters außerhalb der Reichweite, bekommt er den Status „Verirrt“ und wartet, bis das Netz dorthin reicht. Ware, die er trägt, bringt er noch weg.',
         },
         {
           h: 'Wegweiser-Panel',
         },
         {
           table: {
-            head: ['Element', 'Bedeutung'],
+            head: ['Im Panel', 'Bedeutung'],
             rows: [
               [
                 '„Waren im Wegweisernetz“',
-                'Ware in Reichweite des ganzen verbundenen Netzes: Gebäude, Haufen, Karren, Hände. Jedes Stück zählt einmal.',
+                'Alle Waren in Reichweite des verbundenen Netzes: in Gebäuden, auf Haufen, Karren und in Händen.',
               ],
               [
                 '„Abreißen“',
-                'Der Wegweiser verschwindet sofort, ohne Rückfrage und ohne Kundschafter. War er das einzige Bindeglied, zerfällt das Netz in Teile.',
+                'Der Wegweiser verschwindet sofort, ohne Rückfrage. Hat er zwei Teile des Netzes verbunden, zerfällt das Netz.',
               ],
             ],
             foot: 'Die Kartenansicht „Wegweiser“ zeigt die Netze.',
@@ -943,8 +807,7 @@ export const ECONOMY: ArticleGroup = {
         {
           list: [
             'Ein Straßenstück kostet 1 [[good:stone|Bruchstein]] und 1 Arbeitsschlag des [[job:builder|Bauarbeiters]].',
-            'Derselbe Bruchstein pflastert auch bis zu 6 Nachbarstücke, wenn kein Bauarbeiter sie übernommen hat und kein Bruchstein darauf liegt.',
-            'Aufgehobenes Straßenstück: Gelieferter Bruchstein landet daneben.',
+            'Ein Bruchstein pflastert auch bis zu 6 Nachbarstücke, sofern kein Bauarbeiter sie schon übernommen hat und kein Bruchstein darauf liegt.',
             'Siedler nehmen die Straße von selbst, wenn sie so schneller ankommen.',
           ],
         },
@@ -977,7 +840,7 @@ export const ECONOMY: ArticleGroup = {
               ['Schnee', '{{step.snow}} s', '{{step.snowBare}} s', '{{shoes.snow}}'],
             ],
             num: [1, 2, 3],
-            foot: 'Mit Last in den Händen nutzen sich Schuhe {{shoes.carryWear}} Mal schneller ab. Energie je Barfußschritt: [[article:needs|Bedürfnisse]].',
+            foot: 'Mit Last in den Händen nutzen sich Schuhe {{shoes.carryWear}} Mal schneller ab. Wie viel Energie Barfußgehen kostet: [[article:needs|Bedürfnisse]].',
           },
         },
         {
@@ -988,7 +851,7 @@ export const ECONOMY: ArticleGroup = {
             head: ['Zustand', 'Änderung'],
             rows: [
               ['Last in den Händen', '+{{step.carryExtra}} s'],
-              ['Kondition bis {{need.drivePct}}%', '+{{step.tiredExtra}} s'],
+              ['Kondition höchstens {{need.drivePct}}%', '+{{step.tiredExtra}} s'],
               ['Kind', '+{{step.childExtra}} s'],
               ['Baby', 'Schritt × 2'],
               ['Waffe und Rüstung wiegen zusammen 2-3', '+{{step.weightLowExtra}} s'],
@@ -997,7 +860,7 @@ export const ECONOMY: ArticleGroup = {
               ['Voller [[good:handcart|Handkarren]]', '{{haul.handcartLossPct}}% langsamer'],
               ['Voller [[good:oxcart|Ochsenkarren]]', '{{haul.oxcartLossPct}}% langsamer'],
             ],
-            foot: 'Der schnellste Schritt dauert {{step.shortest}} s. Je kleiner die Ladung, desto weniger bremst der Karren. Helden bremst das Gewicht nicht.',
+            foot: 'Ein Schritt dauert nie weniger als {{step.shortest}} s. Je kleiner die Ladung, desto weniger bremst der Karren. Helden bremst das Gewicht nicht.',
           },
         },
         {
@@ -1012,7 +875,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:spear_iron|Eisenspeer]], [[good:sword_long|Langschwert]]', '{{weight.ironSpear}}'],
             ],
             num: [1],
-            foot: 'Bei allen Stämmen gleich. Das Waffengewicht kommt zum Rüstungsgewicht aus der Tabelle unten hinzu.',
+            foot: 'Bei allen Stämmen gleich. Rechne das Waffengewicht zum Rüstungsgewicht aus der Tabelle unten hinzu.',
           },
         },
         {
@@ -1038,7 +901,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'trade',
       name: 'Handel',
-      lead: 'Ein Händler pendelt zwischen {{trade.stops}} Gebäuden und nimmt ohne Karren {{haul.carry}} Stück je Fahrt.',
+      lead: 'Ein Händler pendelt zwischen {{trade.stops}} Gebäuden und nimmt ohne Karren {{haul.carry}} Stück auf einmal.',
       blocks: [
         {
           h: 'Womit er fährt',
@@ -1056,15 +919,15 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Mit Schuhen, wenn der Karren voll hinfährt und leer zurück, bringen beide Karren gleich viel auf einer Strecke von etwa {{trade.cartParLand}} Hexfeldern über Land oder {{trade.cartParRoad}} Hexfeldern auf der Straße. Auf kürzeren gewinnt der Handkarren, auf längeren der Ochsenkarren.',
+          p: 'Fährt der Karren voll hin und leer zurück, bringen beide Karren gleich viel auf einer Strecke von etwa {{trade.cartParLand}} Hexfeldern über Land oder {{trade.cartParRoad}} Hexfeldern auf der Straße. Auf kürzeren Strecken ist der Handkarren besser, auf längeren der Ochsenkarren.',
         },
         {
           h: 'Route',
         },
         {
           list: [
-            'Eine Route verbindet {{trade.stops}} fertige Gebäude mit Vorräten. Fremd darf höchstens 1 sein.',
-            'Wird ein Gebäude ausgebaut, wartet der [[job:trader|Händler]] das Ende ab.',
+            'Eine Route verbindet {{trade.stops}} fertige Gebäude mit Vorräten. Höchstens 1 davon darf jemand anderem gehören.',
+            'Wird ein Gebäude ausgebaut, wartet der [[job:trader|Händler]], bis der Ausbau fertig ist.',
             'Aus einem Wohnhaus nimmt der Händler kein Essen.',
           ],
         },
@@ -1078,17 +941,17 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Einstellung', 'Folge'],
             rows: [
-              ['Ware in Gebäude B markiert', 'Lädt in A, entlädt in B'],
+              ['Ware in Gebäude B markiert', 'Holt sie aus A und bringt sie nach B'],
               ['Ware in beiden Gebäuden markiert', 'Gleicht die Vorräte zwischen ihnen aus'],
-              ['Kein Gebäude markiert etwas', 'Der Händler steht'],
-              ['bis N', 'Stoppt die Lieferung, wenn das Zielgebäude samt Ladung N hat'],
+              ['In keinem Gebäude ist etwas markiert', 'Der Händler transportiert nichts'],
+              ['bis N', 'Hört mit dem Liefern auf, sobald das Zielgebäude samt Ladung N Stück hat'],
               ['behalten N', 'Im Quellgebäude bleiben N Stück'],
               [
                 'Siedlung',
-                'Lädt aus dem ganzen Dorf: erst aus diesem Lager, dann aus Lagern und Werkstätten in seinem Wegweisernetz',
+                'Holt Ware aus dem ganzen Dorf: erst aus diesem Lager, dann aus anderen Lagern und Werkstätten in seinem Wegweisernetz',
               ],
             ],
-            foot: 'Die Option Siedlung gilt nur für Lagerhaus oder Hauptquartier, nur an einem der beiden Gebäude. Auch das Lagerminimum begrenzt das Laden.',
+            foot: 'Die Option Siedlung schaltest du nur in einem Lagerhaus oder Hauptquartier ein, und nur in einem der beiden Gebäude der Route. Ware unter dem Lagerminimum nimmt der Händler nicht mit.',
           },
         },
         {
@@ -1096,13 +959,12 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'Handeln kannst du nur mit einem fertigen Gebäude eines Computerspielers, das ein Angebot von der Karte hat.',
-            'Um das Gebäude in die Route einzutragen, müssen beide Seiten freundlich sein. Danach reicht es, wenn der Stamm des Händlers freundlich ist: [[article:diplomacy|Diplomatie]].',
-            'Ein Angebot lautet N Stück einer Ware gegen M Stück einer anderen, die Zahlen legt die Karte fest. Eine Route handelt ein Angebot zur Zeit.',
-            'Alle {{trade.refillSeconds}} s füllt sich das Computerlager auf {{trade.refillLevel}} Stück jeder Angebotsware auf.',
-            'Der Händler lädt so viele volle Tausche, wie auf den Karren passen, Platz für die Bezahlung eingerechnet. Auf einem kleinen Karren verteilt sich ein Tausch auf mehrere Fahrten.',
-            'Er gibt die Ware ab, nimmt die Bezahlung und wiederholt das, solange er Ware hat. Ohne Bezahlung im Gebäude wartet er und gibt nichts ab.',
-            '„behalten N“ lässt N Stück Verkaufsware im Gebäude. Rückgrenze N: Der Händler hört auf, wenn das Gebäude N Stück Bezahlung hat.',
+            'Handeln kannst du nur mit einem fertigen Gebäude eines Computerspielers, das ein von der Karte festgelegtes Angebot hat.',
+            'Um das Gebäude in die Route einzutragen, müssen beide Seiten einander freundlich gesinnt sein. Danach reicht es, wenn der Stamm des Händlers freundlich ist: [[article:diplomacy|Diplomatie]].',
+            'Ein Angebot lautet N Stück einer Ware gegen M Stück einer anderen, die Zahlen legt die Karte fest. Eine Route bedient ein Angebot zur Zeit.',
+            'Alle {{trade.refillSeconds}} s füllt der Computer die Angebotsware in seinem Lager auf {{trade.refillLevel}} Stück auf.',
+            'Hat das Gebäude des Computers keine Bezahlung, wartet der Händler und gibt nichts ab.',
+            '„behalten N“ lässt N Stück Verkaufsware in deinem Gebäude. Die Rückgrenze N beendet den Handel, sobald dein Gebäude N Stück Bezahlung hat.',
           ],
         },
       ],

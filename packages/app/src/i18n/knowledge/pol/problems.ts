@@ -19,19 +19,19 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Atak na osadę"',
                 'Pilne',
-                'Atak na budynek lub palisadę albo walka do {{notice.settlementReach}} hexów od nich. Ataki do {{notice.fightRadius}} hexów od siebie dają jedno powiadomienie, znika po {{notice.fightQuietSeconds}} s spokoju',
+                'Ktoś atakuje twój budynek lub palisadę albo walczy do {{notice.settlementReach}} hexów od nich',
                 'Wyślij żołnierzy',
               ],
               [
                 '"Atakują nas"',
                 'Ważne',
-                'Atak dalej niż {{notice.settlementReach}} hexów od osady',
+                'Walka dalej niż {{notice.settlementReach}} hexów od osady',
                 'Wyślij żołnierzy albo odprowadź ludzi',
               ],
               [
                 '"Brak dojścia"',
                 'Ważne',
-                'Zasób jest w obszarze, ale nie ma do niego drogi',
+                'Zasób jest w obszarze, ale nie da się do niego dojść',
                 'Otwórz przejście albo przenieś flagę',
               ],
               ['"Brak dowódcy"', 'Ważne', 'Pojazd bez dowódcy dostał rozkaz jazdy', 'Przydziel dowódcę'],
@@ -56,8 +56,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Brak pary"',
                 'Zwykłe',
-                'Po "Zawrzyj małżeństwo" w zasięgu nie było wolnej osoby. Rozkaz przepada',
-                'Wydaj rozkaz, gdy ktoś będzie wolny',
+                'Po rozkazie "Zawrzyj małżeństwo" w pobliżu nie było nikogo wolnego',
+                'Spróbuj znowu, gdy ktoś będzie wolny',
               ],
               [
                 '"Brak pary: towar"',
@@ -69,13 +69,13 @@ export const PROBLEMS: ArticleGroup = {
                 '"Brak placu", "Plac zajęty"',
                 'Ważne',
                 'Obok warsztatu nie ma wolnej ziemi na pojazd albo stoi tam inny pojazd',
-                'Zrób miejsce, próba wraca po {{notice.yardRetrySeconds}} s',
+                'Zrób miejsce, warsztat spróbuje znowu po {{notice.yardRetrySeconds}} s',
               ],
-              ['"Brak ryb"', 'Ważne', 'W zasięgu brzegu nie ma już ryb', 'Wskaż flagą wodę z rybami'],
+              ['"Brak ryb"', 'Ważne', 'W pobliskiej wodzie nie ma już ryb', 'Wskaż flagą wodę z rybami'],
               [
                 '"Brak tragarza"',
                 'Ważne',
-                'Na pokładzie nie ma nikogo do ładunku',
+                'Na pokładzie nie ma nikogo, kto by ładował',
                 'Wsadź na pokład Tragarza albo innego cywila',
               ],
               [
@@ -166,20 +166,20 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Nic do roboty"',
                 'Zwykłe',
-                'Osadnik z miejscem pracy stoi od {{notice.idleSeconds}} s bez wyraźnego powodu',
+                'Osadnik z miejscem pracy od {{notice.idleSeconds}} s nic nie robi i nie wiadomo dlaczego',
                 'Sprawdź budynek albo zmień mu zawód',
               ],
               [
                 '"Nic do zebrania"',
                 'Zwykłe',
-                'Tragarz nie ma co podnieść przy swojej fladze',
+                'Przy fladze Tragarza nie ma nic do zabrania',
                 'Przenieś flagę albo ją zabierz',
               ],
               [
                 '"Nie dojedzie"',
                 'Ważne',
-                'Drzwi statku leżą na innym lądzie',
-                'Przybij do brzegu, do którego jest dojazd',
+                'Statek cumuje przy innym lądzie niż pojazd',
+                'Przybij do brzegu, do którego pojazd dojedzie',
               ],
               [
                 '"Nie ten zawód"',
@@ -190,7 +190,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Nie wejdą", "Bez budowy"',
                 'Ważne',
-                'Trwa pokój i rozkaz sięga pod osadę partnera',
+                'Trwa czas pokoju, a wskazane miejsce leży za blisko osady innego gracza',
                 'Wskaż miejsce dalej: [[article:diplomacy|Dyplomacja]]',
               ],
               [
@@ -232,8 +232,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Stoi na alarmie"',
                 '-',
-                'Żołnierz w Ataku lub Obronie nie odpoczywa przy walce do {{alert.restClearance}} hexów albo przy widocznym wrogim żołnierzu do {{alert.standTo}} hexów. Dzikie zwierzę liczy się dopiero w walce',
-                'Rozkaz "Jedz" albo "Śpij" go zwalnia',
+                'Żołnierz w postawie Atak lub Obrona nie odpoczywa, gdy do {{alert.restClearance}} hexów trwa walka albo do {{alert.standTo}} hexów widać wrogiego żołnierza',
+                'Wydaj mu rozkaz "Jedz" albo "Śpij"',
               ],
               [
                 '"Surowiec daleko"',
@@ -262,7 +262,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Wymaga restartu"',
                 'Pilne',
-                'Zmienione ustawienie działa dopiero od nowa',
+                'Zmienione ustawienie zadziała dopiero po restarcie',
                 '"Restart misji" w menu Esc',
               ],
               [
@@ -306,23 +306,23 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Warsztat stoi pusty',
-              'Stan "Brak pracowników": nikt tam nie pracuje. Przydziel osadnika z właściwym zawodem. Odmowę tłumaczy komunikat: "Nie ten zawód", "Brak miejsc" albo "Za mało wprawy". Stan "Bezczynny" podaje brakujący surowiec. Pracownik przyniesie go sam, jeśli leży do {{reach.goods}} hexów od drogowskazu.',
+              'Stan "Brak pracowników" znaczy, że nikt tam nie pracuje: przydziel osadnika z właściwym zawodem. Jeśli odmówi, komunikat powie dlaczego: "Nie ten zawód", "Brak miejsc" albo "Za mało wprawy". Stan "Bezczynny" podaje brakujący surowiec. Pracownik sam po niego pójdzie, jeśli leży do {{reach.goods}} hexów od drogowskazu.',
             ],
             [
               'Płatnerz, Kowal albo Krawiec nie pracuje',
-              'Religia w "Samopoczucie" ma 0%. Cykl produkcji broni lub zbroi kosztuje {{piety.lowPct}}% albo {{piety.highPct}}%, modlitwa daje {{pray.pct}}%. Komunikat "Chce się modlić" oznacza brak miejsca modlitwy: potrzebna [[building:work_temple|Świątynia]], [[building:headquarters|Kwatera główna]] albo święty ogień w domu. Więcej: [[article:religion|Religia i świątynia]].',
+              'Pewnie ma 0% Religii w "Samopoczucie". Każda broń i zbroja kosztuje {{piety.lowPct}}% albo {{piety.highPct}}% Religii, a modlitwa daje {{pray.pct}}%. Komunikat "Chce się modlić" znaczy, że nie ma gdzie się modlić: potrzebna [[building:work_temple|Świątynia]], [[building:headquarters|Kwatera główna]] albo święty ogień w domu. Więcej: [[article:religion|Religia i świątynia]].',
             ],
             [
               'Tragarze nic nie noszą',
-              'Tragarz pracuje tylko z miejscem pracy w budynku. "Nic do przeniesienia w zasięgu": do {{flag.radius}} hexów od budynku albo flagi roboczej nie ma towaru. "Brak miejsca przyjmującego towar": pełne magazyny.',
+              'Tragarz pracuje tylko wtedy, gdy ma miejsce pracy w budynku. Stan "Nic do przeniesienia w zasięgu" znaczy, że do {{flag.radius}} hexów od budynku albo flagi roboczej nie ma towaru, a "Brak miejsca przyjmującego towar", że magazyny są pełne.',
             ],
             [
               'Hodowla stoi',
-              'Hodowca rozmnaża tylko przy dokładnie {{livestock.pair}} dorosłych sztukach. Co oznacza stan Fermy: [[article:livestock|Hodowla]].',
+              'Hodowca rozmnaża zwierzęta tylko wtedy, gdy ma dokładnie {{livestock.pair}} dorosłe sztuki. Co oznacza stan Fermy: [[article:livestock|Hodowla]].',
             ],
             [
               'Myśliwy nic nie przynosi',
-              'Stan "Brak wolnej zwierzyny w terenie łowieckim": do {{flag.hunter}} hexów od flagi albo miejsca pracy nie ma nic do upolowania. Nie każde zwierzę bierze sam, patrz kolumna "Myśliwy": [[article:wildlife|Dzikie zwierzęta i polowanie]]. Przenieś flagę roboczą tam, gdzie pasie się zwierzyna.',
+              'Stan "Brak wolnej zwierzyny w terenie łowieckim" znaczy, że do {{flag.hunter}} hexów od flagi albo miejsca pracy nie ma nic do upolowania. Nie na każde zwierzę poluje sam, patrz kolumna "Myśliwy": [[article:wildlife|Dzikie zwierzęta i polowanie]]. Przenieś flagę roboczą tam, gdzie pasie się zwierzyna.',
             ],
           ],
         },
@@ -333,11 +333,11 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Nie rodzą się dzieci',
-              'Para potrzebuje wspólnego domu i {{family.childFood}} sztuk jedzenia w spiżarni. Komunikat mówi, czego brak: "Para bez domu", "Dom w budowie", "Osobne domy", "Brak jedzenia". "Mąż nie wraca" oznacza, że mąż jest Kupcem, Zwiadowcą, żołnierzem albo bohaterem i nie wraca do domu. Dzieci zamawia też licznik "Narodziny" w Asystencie. Więcej: [[article:family|Rodzina i dom]].',
+              'Para potrzebuje wspólnego domu i {{family.childFood}} sztuk jedzenia w spiżarni. Komunikat mówi, czego brak: "Para bez domu", "Dom w budowie", "Osobne domy", "Brak jedzenia". "Mąż nie wraca" oznacza, że mąż jest Kupcem, Zwiadowcą, żołnierzem albo bohaterem i nie wraca do domu. Dzieci możesz też zamówić licznikiem "Narodziny" w Asystencie. Więcej: [[article:family|Rodzina i dom]].',
             ],
             [
               'Głód przy pełnym magazynie',
-              'Sprawdź "Minimum w magazynach": poniżej tej sumy nikt nie weźmie towaru, także na posiłek. Obniż je przy jedzeniu. Może być też za daleko: magazyn musi leżeć do {{reach.walk}} hexów od osadnika albo w sieci drogowskazów.',
+              'Sprawdź "Minimum w magazynach": poniżej tej ilości nikt nie weźmie towaru, także na posiłek. Obniż je przy jedzeniu. Może być też za daleko: magazyn musi leżeć do {{reach.walk}} hexów od osadnika albo w sieci drogowskazów.',
             ],
             [
               'Zawodu nie ma na liście w Szkole',
@@ -375,15 +375,15 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Żołnierz nie atakuje',
-              'Sprawdź postawę: [[article:stances|Postawy]]. W Ignorowaniu nie podchodzi do wroga i bije tylko to, co ma w zasięgu broni. Zaatakuje tylko plemię, do którego masz stosunek "Wrogi", i tylko poza "Czasem pokoju".',
+              'Sprawdź postawę: [[article:stances|Postawy]]. W postawie Ignorowanie nie podchodzi do wroga i bije tylko to, co ma w zasięgu broni. Zaatakuje tylko plemię, do którego masz stosunek "Wrogi", i tylko poza "Czasem pokoju".',
             ],
             [
               'Statek nie wypływa',
-              'Stan "Czeka na dowódcę": przydziel dowódcę, może nim być każdy dorosły. "Czeka na załogę": ktoś z załogi jeszcze idzie na statek. Osadnik z innego lądu wypada z załogi. "Brak trasy": cel nie leży na tej wodzie. Na morzu nikt nie wsiądzie, najpierw "Zacumuj".',
+              'Stan "Czeka na dowódcę": przydziel dowódcę, może nim być każdy dorosły. "Czeka na załogę": ktoś z załogi jeszcze idzie na statek. "Brak trasy": cel nie leży na tej wodzie. Na morzu nikt nie wsiądzie, najpierw "Zacumuj".',
             ],
             [
               'Zaprzęg stoi',
-              'Stan "Czeka na zwierzę pociągowe": zabierze [[good:cattle|Wołu]] tylko spoza pary, więc potrzebne są {{livestock.pairPlusOne}} dorosłe sztuki w jednej Fermie albo {{livestock.pairPlusOne}} poza Fermą: [[article:vehicles|Pojazdy i statki]].',
+              'Stan "Czeka na zwierzę pociągowe" znaczy, że brakuje Wołu. Zaprzęg zabierze [[good:cattle|Wołu]] tylko spoza pary, więc potrzebne są {{livestock.pairPlusOne}} dorosłe sztuki w jednej Fermie albo {{livestock.pairPlusOne}} poza Fermą: [[article:vehicles|Pojazdy i statki]].',
             ],
           ],
         },

@@ -710,14 +710,7 @@ const LIFE_FACTS: Readonly<Record<string, Fact>> = {
   'age.childWholeMin': whole(minutePart(seconds(systems.CHILD_AGE_TICKS))),
   'age.childRestSec': whole(secondPart(seconds(systems.CHILD_AGE_TICKS))),
   'age.adultMinutes': whole(minutes(systems.ADULT_AGE_TICKS)),
-  'death.newWearPct': whole(PERCENT / systems.DROPS_AS_NEW_WEAR_DIVISOR),
   'family.childFood': whole(components.CHILD_FOOD_UNITS),
-  'family.birthVikingSeconds': oneDecimal((base) =>
-    clipSeconds(base, systems.MAKE_LOVE_ATOMIC_ID, JOB_CIVILIST),
-  ),
-  'family.birthOtherSeconds': oneDecimal((base) =>
-    clipSeconds(base, systems.MAKE_LOVE_ATOMIC_ID, JOB_WOMAN, FRANK),
-  ),
   'home.larder': whole((base) => stockOf(base, 'home_level_00', 'food_simple')),
   'home.candyLarder': whole((base) => stockOf(base, 'home_level_00', 'food_extra')),
   'home.wareUnits': whole((base) => wareRatio(base, 'crockery', 'capacity')),
@@ -748,9 +741,6 @@ const LIFE_FACTS: Readonly<Record<string, Fact>> = {
     return burn === undefined || units === undefined ? undefined : (burn * units) / SECONDS_PER_MINUTE;
   }),
   'assistant.counterMax': whole(components.ASSISTANT_COUNTER_MAX),
-  'assistant.draftsPerSecond': whole(
-    (systems.TRAIN_DISPATCHES_PER_DECISION * TICKS_PER_SECOND) / systems.ASSISTANT_DECISION_PERIOD_TICKS,
-  ),
   'assistant.flagMin': whole(systems.FOLLOW_FLAG_BAND.min),
   'assistant.flagMax': whole(systems.FOLLOW_FLAG_BAND.max),
 };
@@ -914,7 +904,6 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'star.step': whole(STAR_TIER_STEP),
   'star.full': whole(STAR_FULL),
   'exp.carrierTrader': whole((base) => jobNeed(base, 'trader')),
-  'exp.joinerNeed': whole((base) => jobNeed(base, 'joiner')),
   'exp.furnitureNeed': whole((base) => goodNeed(base, 'furniture')),
   'exp.ironSpearNeed': whole((base) => goodNeed(base, 'spear_iron')),
   'exp.longSwordNeed': whole((base) => goodNeed(base, 'sword_long')),
@@ -1252,7 +1241,6 @@ const WORLD_FACTS: Readonly<Record<string, Fact>> = {
   'livestock.captureRange': whole(systems.LIVESTOCK_CAPTURE_RANGE),
   'livestock.scatterRange': whole(systems.SCATTER_RANGE),
   'livestock.growMinutes': whole(minutes(systems.ANIMAL_ADULT_AGE_TICKS)),
-  'livestock.birthRange': whole(systems.BIRTH_PARENT_RANGE),
   'livestock.cycleSeconds': whole((base) => produceSeconds(base, 'sheep', JOB_BREEDER)),
   'livestock.farmHerd': whole((base) => stockOf(base, 'work_animal_farm', 'sheep')),
   'livestock.farmShelf': whole((base) => stockOf(base, 'work_animal_farm', 'meat')),
@@ -1300,12 +1288,9 @@ const WORLD_FACTS: Readonly<Record<string, Fact>> = {
   'chest.wolves': whole(chestAnimals('wolves') ?? 0),
   'chest.lions': whole(chestAnimals('lions') ?? 0),
   'notice.settlementReach': whole(SETTLEMENT_REACH_NODES),
-  'notice.fightRadius': whole(FIGHT_AREA_RADIUS_NODES),
-  'notice.fightQuietSeconds': whole(seconds(FIGHT_QUIET_TICKS)),
   'notice.yardRetrySeconds': whole(seconds(systems.UNREACHABLE_GOAL_MEMO_TICKS)),
   'notice.noGathererSeconds': whole(seconds(PRODUCTION_STALL_GRACE_TICKS)),
   'notice.idleSeconds': whole(seconds(IDLE_SWEEPS_BEFORE_MESSAGE * SNAPSHOT_SWEEP_INTERVAL_TICKS)),
-  'match.checkSeconds': whole(seconds(systems.MATCH_GOAL_CHECK_TICKS)),
   'match.graceSeconds': whole(seconds(systems.MATCH_DEATH_GRACE_TICKS)),
   'piety.lowPct': whole((base) => pietyCost(base, 'bow_short', JOB_ARMORER)),
   'piety.highPct': whole((base) => pietyCost(base, 'bow_long', JOB_ARMORER)),

@@ -40,10 +40,9 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             '經驗對箭矢、石彈、載具和木柵欄無效。',
-            '方向和防禦護符只對人有效。箭矢的方向從發射點算起。',
-            '指揮官的護符對投石機的石彈無效。',
+            '攻擊方向和防禦護符只對人起作用。箭矢的方向按射出的位置計算。',
+            '投石機指揮官的護符不會加強石彈。',
             '木柵欄的傷害另算：[[article:walls|木柵欄與柵門]]。',
-            '0傷害的攻擊不傷人，也不給經驗。',
             '兒童不會受傷。',
           ],
         },
@@ -52,9 +51,9 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '撒拉遜人：[[good:bow_short|短弓]]對布甲{{saracen.bowOnWool}}（他族{{viking.bowOnWool}}），對鎖甲和板甲{{saracen.bowOnChain}}（他族{{viking.bowOnChain}}）。',
-            '拜占庭人：地圖上的龍用自己的[[good:spear_wooden|木矛]]戰鬥：{{dragon.hitpoints}}點生命值，射程{{dragon.min}}-{{dragon.max}}，每{{dragon.seconds}}秒{{dragon.blows}}擊，對無甲{{dragon.bare}}傷害。表中這一行顯示的是它。訓練出的矛兵與其他民族相同。',
-            '其餘武器所有民族相同。',
+            '撒拉遜人的[[good:bow_short|短弓]]對布甲{{saracen.bowOnWool}}（他族{{viking.bowOnWool}}），對鎖甲和板甲{{saracen.bowOnChain}}（他族{{viking.bowOnChain}}）。',
+            '拜占庭人那裡，表中[[good:spear_wooden|木矛]]這一行顯示的是地圖上的龍。牠有{{dragon.hitpoints}}點生命值，射程{{dragon.min}}-{{dragon.max}}，每{{dragon.seconds}}秒攻擊{{dragon.blows}}次，對無甲每次{{dragon.bare}}傷害。訓練出的矛兵和其他民族一樣。',
+            '其餘武器在所有民族中效果相同。',
           ],
         },
         {
@@ -80,7 +79,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'equip',
       name: '士兵裝備',
-      lead: '軍隊用助手視窗的計數器武裝。單個人在他的面板裡更換。',
+      lead: '軍隊用助手視窗裡的計數器來武裝。單個居民的裝備在他自己的面板裡更換。',
       blocks: [
         {
           h: '計數器',
@@ -97,21 +96,20 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '只要有徒手士兵在等，計數器就不會訓練新兵，哪怕暫時沒有武器。',
+            '只要還有徒手士兵在等武器，計數器就不會訓練新兵，哪怕武器遲遲不來。',
             '範圍內有這種武器且沒有別人在等時，徒手士兵才去拿。',
-            '調低計數器後，等武器的人不再等待。',
           ],
         },
         {
           h: '武器和護甲排序欄',
         },
         {
-          p: '每個兵種有自己的排序欄。士兵從左起拿倉庫裡有的第一件，跳過劃掉的。初始時最強的在左邊。點擊劃掉，按住拖動改變順序。',
+          p: '每個兵種有自己的排序欄。士兵從左起拿倉庫裡有的第一件，跳過劃掉的。一開始最強的裝備排在左邊。點擊可劃掉某件裝備，拖動可調整順序。',
         },
         {
           list: [
-            '無武器可拿：等待，視窗顯示「人等待武器」。',
-            '無護甲可拿：不穿護甲出發。之後只有下令才會穿。',
+            '沒有武器時，士兵會等待，視窗顯示「人等待武器」。',
+            '沒有護甲時，他不穿護甲就出發，之後只有你下令才會穿上。',
           ],
         },
         {
@@ -122,10 +120,10 @@ export const MILITARY: ArticleGroup = {
             head: ['兵營裡有', '新兵'],
             rows: [
               ['武器和護甲', '穿戴整齊出營'],
-              ['只有其中一樣', '拿上再去取另一樣'],
+              ['只有武器或只有護甲', '拿上現有的，再去倉庫取另一樣'],
               ['都沒有', '先取武器，再取護甲'],
             ],
-            foot: '倉庫範圍內有排序欄上更好的物品時，新兵去取，不拿兵營裡較差的，然後回到兵營門前。由計數器武裝的士兵也一樣。',
+            foot: '範圍內的倉庫有排序欄上更好的物品時，新兵會去取它，而不拿兵營裡較差的。',
           },
         },
         {
@@ -133,7 +131,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['貨物', '份數'],
+            head: ['貨物', '數量'],
             rows: [
               [
                 '各種武器、護甲、[[good:shoes|鞋子]]、[[good:mead|蜂蜜酒]]、各種藥水和護符',
@@ -143,7 +141,7 @@ export const MILITARY: ArticleGroup = {
               ['[[good:coin|金幣]]', '{{barracks.coinStock}}'],
             ],
             num: [1],
-            foot: '兵營有{{barracks.carriers}}個搬運工職位。標記為優先的貨物由他們從倉庫運來：[[article:hauling|搬運工與倉庫]]。',
+            foot: '兵營有{{barracks.carriers}}個搬運工職位。你設為優先的貨物，他們會自己從倉庫運來：[[article:hauling|搬運工與倉庫]]。',
           },
         },
         {
@@ -162,19 +160,17 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '居民去取東西，再回到接令的地方。',
-            '哪裡都找不到就空手而歸。',
-            '武器立即改變士兵的兵種。卸下武器後成為[[job:soldier_unarmed|士兵]]。',
+            '換上新武器會立即改變士兵的兵種。卸下武器後，他就成為普通[[job:soldier_unarmed|士兵]]。',
             '用過的鞋子、工具和開過封的瓶子在更換和卸下時消失。沒用過的回到倉庫。',
-            '武器、護甲和護符不耗損，會回到倉庫。',
-            '對單人下的命令優先於助手。',
+            '武器、護甲和護符不會耗損，總會回到倉庫。',
+            '你對單人下的命令優先於助手的設定。',
           ],
         },
         {
           h: '誰能用更好的武器',
         },
         {
-          p: '任何士兵都能拿倉庫裡的任何武器，命中次數不限制這一點。限制在生產環節：[[good:spear_iron|鐵矛]]和[[good:sword_long|長劍]]要有經驗的[[job:smith|鐵匠]]，[[good:bow_long|長弓]]要有經驗的[[job:armorer|武器匠]]。數值表：[[article:exp-combat|戰鬥經驗]]。',
+          p: '不管經驗多少，士兵都能拿倉庫裡的任何武器。限制在生產環節：[[good:spear_iron|鐵矛]]和[[good:sword_long|長劍]]只有有經驗的[[job:smith|鐵匠]]做得出，[[good:bow_long|長弓]]只有有經驗的[[job:armorer|武器匠]]做得出。需要多少經驗見[[article:exp-combat|戰鬥經驗]]。',
         },
       ],
       see: [
@@ -188,14 +184,14 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'aim',
       name: '命中與射擊',
-      lead: '近戰只有在出手瞬間目標超出武器範圍時才落空。弓手的命中率隨弓的命中次數上升。',
+      lead: '近戰只有在目標已經走出武器範圍時才會落空。弓手命中的次數越多，射得越準。',
       blocks: [
         {
           h: '遠程武器',
         },
         {
           table: {
-            head: ['武器', '射程', '塔上射程', '接近到', '射擊間隔'],
+            head: ['武器', '射程', '塔上射程', '接近目標至', '射擊間隔'],
             rows: [
               [
                 '[[good:bow_short|短弓]]',
@@ -234,7 +230,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4],
-            foot: '射程單位為格。目標比射程下限更近時弓手不射擊。「接近到」是弓手自己走向目標時開始射擊的距離。',
+            foot: '射程單位為格。目標比射程下限更近時，弓手不射擊。',
           },
         },
         {
@@ -242,14 +238,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['命中次數', '命中率'],
+            head: ['命中次數', '射準的機率'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
               ['{{aim.noSpreadHits}}+', '總是落在目標上'],
             ],
             num: [0, 1],
-            foot: '每命中一次+1%。命中{{aim.noSpreadHits}}次起，沒射準的箭也會落在目標上。短弓和長弓共用命中計數，[[article:catapult|投石機]]單獨計數，數值表相同。英雄百發百中。',
+            foot: '每命中一次增加1%。命中{{aim.noSpreadHits}}次起，沒射準的箭也會落在目標上。短弓和長弓一起累計命中，[[article:catapult|投石機]]單獨累計，但用同一張表。英雄百發百中。',
           },
         },
         {
@@ -258,19 +254,16 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             '沒射準的箭落在目標附近：[[good:bow_short|短弓]]最多{{aim.spreadShort}}格，[[good:bow_long|長弓]]最多{{aim.spreadLong}}格，箭塔上的長弓最多{{aim.spreadTower}}格。距離越遠偏得越多。',
-            '沒射準的箭打中落點的第一個敵人：先是人、動物或載具，然後是建築，最後是木柵欄。',
-            '箭會飛過己方、盟友和中立單位。',
-            '弓手會對行走中的敵人提前瞄準。建築射向敵人當前的位置。',
+            '沒射準的箭可能傷到落點處的其他敵人。',
+            '箭不會傷到己方、盟友和中立單位。',
+            '弓手會對行走中的敵人提前瞄準，而建築射向敵人射擊瞬間所在的位置。',
           ],
         },
         {
           h: '箭塔職位',
         },
         {
-          list: [
-            '弓手站在職位上才有更遠的射程，走向職位途中沒有。',
-            '敵人不能射擊職位上的弓手，只能射擊箭塔。',
-          ],
+          list: ['職位上的弓手打不到，敵人只能射擊箭塔。'],
         },
       ],
       see: ['article:exp-combat', 'article:defence', 'building:tower_00', 'building:tower_01'],
@@ -278,7 +271,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'stances',
       name: '姿態',
-      lead: '姿態決定士兵是否主動找敵人，以及追多遠。士兵和英雄初始為防禦姿態。',
+      lead: '姿態決定士兵是否主動找敵人，以及追多遠。新的士兵和英雄處於防禦姿態。',
       blocks: [
         {
           figure: {
@@ -290,7 +283,7 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['姿態', '索敵位置', '半徑', '放棄條件', '受擊時'],
             rows: [
-              ['進攻', '自身周圍', '{{stance.search}}', '目標倒下或無法到達', '衝向攻擊者'],
+              ['進攻', '自身周圍', '{{stance.search}}', '目標死亡或無法到達', '衝向攻擊者'],
               [
                 '防禦',
                 '駐守點周圍',
@@ -306,33 +299,33 @@ export const MILITARY: ArticleGroup = {
                 '留在原地',
               ],
             ],
-            foot: '半徑單位為格。駐守點是士兵更換姿態時所站的位置。移動或攻擊命令後換到新位置。',
+            foot: '距離單位為格。駐守點是你更換姿態時士兵所站的位置。移動或攻擊命令會重新設定它。',
           },
         },
         {
           list: [
             '進攻姿態的士兵戰鬥結束時若離駐守點超過{{stance.attackReturn}}格，就返回駐守點。',
-            '士兵在[[article:fog|迷霧]]中也能找到敵人。',
+            '士兵在[[article:fog|迷霧]]中也能發現敵人。',
             '攻擊命令在任何姿態下都有效。',
-            '職位上的弓手在任何姿態下都射擊範圍內的目標。',
-            '普通移動命令後士兵繼續走，挨打也不停。「沿途攻擊」命令下他會轉身迎敵。',
+            '職位上的弓手在任何姿態下都會射擊範圍內的所有目標。',
+            '下達普通移動命令後，士兵即使挨打也繼續走。下達「沿途攻擊」命令後，他會和攻擊者交戰。',
           ],
         },
         {
           h: '攻擊優先順序',
         },
         {
-          steps: ['士兵、英雄、投石機、箭塔和會射擊的建築。', '其餘目標：平民、其他建築、無武裝載具。'],
+          p: '士兵先打能還手的目標：士兵、英雄、投石機、箭塔和會射擊的建築。平民、其他建築和無武裝載具放到後面。',
         },
         {
-          p: '士兵不會主動選擇木柵欄和防禦牆：[[article:walls|木柵欄與柵門]]。',
+          p: '士兵不會主動攻擊木柵欄和防禦牆：[[article:walls|木柵欄與柵門]]。',
         },
         {
           h: '誰會響應攻擊',
         },
         {
           table: {
-            head: ['對象', '距傷者（格）', '反應'],
+            head: ['對象', '與傷者的距離', '做什麼'],
             rows: [
               ['進攻或防禦姿態的士兵和英雄', '{{stance.soldierAlarm}}', '衝向攻擊者'],
               ['無視姿態的士兵和英雄', '-', '只打武器範圍內的目標'],
@@ -341,11 +334,9 @@ export const MILITARY: ArticleGroup = {
                 '{{stance.peopleAlarm}}',
                 '逃開{{stance.fleeMin}}-{{stance.fleeMax}}格後回去工作',
               ],
-              ['建築內的人', '-', '不反應，職位上的弓手除外'],
-              ['露天睡覺的平民', '-', '繼續睡，被打才逃'],
             ],
             num: [1],
-            foot: '只有人被攻擊才算。建築或動物挨打不會驚動任何人。',
+            foot: '距離單位為格。只有人被攻擊才會驚動別人，建築或動物挨打不會。',
           },
         },
         {
@@ -354,34 +345,30 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             '平民不戰鬥。只有士兵和英雄能設定姿態。',
-            '平民看見敵人不會動。',
-            '逃跑時扔下攜帶的貨物。搬運工丟下推車。',
+            '平民不會一看見敵人就逃跑。',
+            '平民逃跑時會扔下攜帶的貨物，搬運工會丟下推車。',
           ],
         },
         {
           h: '「進食與睡眠」開關',
         },
         {
-          p: '「禁止」時，士兵不會自己去吃飯、睡覺或禱告，不吃手上或箭塔存糧裡的食物，飢餓也不打斷長命令。沒有飲品就會餓死。下達進食命令或改回「允許」可救。',
+          p: '設為「禁止」時，士兵不會自己去吃飯、睡覺或禱告，連隨身帶的和箭塔存糧裡的食物也不吃，飢餓也不會打斷長命令。沒有飲品的話，他最後會挨餓。下達進食命令或改回「允許」就能解決。',
         },
         {
-          p: '飲品、護符以及進食、睡覺、禱告命令在兩種狀態下都有效。命令選單裡這兩種狀態叫「允許休息恢復」和「禁止休息恢復」。只有士兵有這個開關，預設「允許」，換職業後恢復「允許」。',
+          p: '飲品、護符以及進食、睡覺、禱告命令在兩種設定下都有效。命令選單裡這兩種設定叫「允許休息恢復」和「禁止休息恢復」。',
         },
         {
-          h: '戒備中',
-        },
-        {
-          p: '這是進攻或防禦姿態的士兵靠近戰鬥時的狀態，不是玩家開啟的[[article:defence|聚落防禦模式]]。',
+          h: '戰鬥附近的休息',
         },
         {
           table: {
-            head: ['附近情況', '格數', '結果'],
+            head: ['附近情況', '格數', '士兵'],
             rows: [
-              ['戰鬥', '{{alert.restClearance}}以內', '不睡覺、不禱告、不交談。'],
-              ['可見的進攻或防禦姿態敵人', '{{alert.standTo}}以內', '同上。'],
-              ['露天睡覺者附近有戰鬥', '{{alert.standTo}}以內', '起身。'],
+              ['戰鬥', '{{alert.restClearance}}以內', '不睡覺、不禱告、不交談'],
+              ['視野內有敵人', '{{alert.standTo}}以內', '同上'],
             ],
-            foot: '體力到{{need.criticalPct}}%才去吃飯。野獸只有正在交戰時才算。無視姿態下此規則無效，需求命令優先。',
+            foot: '體力降到{{need.criticalPct}}%時才去吃飯。無視姿態下不適用。',
           },
         },
       ],
@@ -398,7 +385,7 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['視野（格）', '{{vision.soldier}}', '{{vision.hero}}'],
               ['弓箭命中率', '隨命中次數上升', '百發百中'],
-              ['戰鬥經驗', '增長', '不增長，除非任務允許'],
+              ['戰鬥經驗', '增長', '只有任務允許時才增長'],
               ['吃飯和睡覺', '需要', '不需要'],
               ['武器、護甲、鞋子', '可更換，鞋子會磨損', '固定，鞋子不磨損'],
               ['裝備重量', '減速', '不減速'],
@@ -430,7 +417,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [3],
-            foot: '每{{hero.blowSeconds}}秒攻擊一次。傷害：在[[article:damage|武器、護甲與傷害]]的表裡打開「英雄」。',
+            foot: '英雄每{{hero.blowSeconds}}秒攻擊一次。傷害見[[article:damage|武器、護甲與傷害]]裡的表，打開「英雄」即可。',
           },
         },
         {
@@ -445,7 +432,7 @@ export const MILITARY: ArticleGroup = {
               [
                 '希拉',
                 '法蘭克人',
-                '射程{{frankHeroBow.min}}-{{frankHeroBow.max}}，每{{frankHeroBow.seconds}}秒一箭，對無甲{{hero.frankBowBare}}，對布甲和皮甲{{hero.frankBowWool}}，對鎖甲和板甲{{hero.frankBowChain}}，對建築和載具{{hero.frankBowVehicle}}',
+                '射程{{frankHeroBow.min}}-{{frankHeroBow.max}}，每{{frankHeroBow.seconds}}秒一箭。傷害：對無甲{{hero.frankBowBare}}，對布甲和皮甲{{hero.frankBowWool}}，對鎖甲和板甲{{hero.frankBowChain}}，對建築和載具{{hero.frankBowVehicle}}',
               ],
             ],
           },
@@ -455,14 +442,8 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '只能裝：[[good:amulet_strength|力量護符]]、[[good:amulet_defense|防禦護符]]、[[good:amulet_crithit|精準護符]]、[[good:amulet_speed|疾風護符]]、[[good:potion_heal_small|小型治療藥水]]、[[good:potion_heal_big|大型治療藥水]]。',
+            '英雄的背包只能裝：[[good:amulet_strength|力量護符]]、[[good:amulet_defense|防禦護符]]、[[good:amulet_crithit|精準護符]]、[[good:amulet_speed|疾風護符]]、[[good:potion_heal_small|小型治療藥水]]、[[good:potion_heal_big|大型治療藥水]]。',
           ],
-        },
-        {
-          h: '死亡之後',
-        },
-        {
-          p: '武器消失。護甲、鞋子和背包裡未用的物品留在地上。',
         },
       ],
       see: ['article:damage', 'article:chests', 'article:fog', 'article:exp-combat'],
@@ -470,7 +451,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'defence',
       name: '箭塔與防禦模式',
-      lead: '防禦模式下建築自行射擊。裡面每個人每秒增加{{shelter.shotsPerSeat}}箭。',
+      lead: '防禦模式下建築會自行向敵人射擊。裡面每多躲一個人，每秒多射{{shelter.shotsPerSeat}}箭。',
       blocks: [
         {
           h: '防禦模式',
@@ -479,8 +460,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             '「啟動防禦模式」作用於一座建築，「全城」作用於所有防禦建築。',
             '防禦模式由你開啟。聚落挨打不會自動開啟。',
-            '在建建築不能開啟。',
-            '防禦模式不會自己解除，持續到「解除防禦模式」或建築被摧毀。',
+            '防禦模式不會自己解除，會一直持續到你點「解除防禦模式」或建築被摧毀。',
           ],
         },
         {
@@ -488,12 +468,12 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '平民、婦女和兒童跑向最近有空位的建築。建築必須在步行範圍內。',
+            '平民、婦女和兒童跑向最近、走得到的有空位的建築。',
             '士兵、英雄和[[job:scout|偵察兵]]留在外面。',
             '找不到位置的人繼續工作。',
-            '防禦模式一開，居民就丟下吃飯和睡覺。躲在裡面不工作，只吃隨身帶的。',
-            '躲藏者不會受到攻擊。',
-            '建築被摧毀時，躲藏者回到外面。',
+            '防禦模式一開，居民就會中斷吃飯和睡覺。躲在裡面不工作，只吃隨身帶的。',
+            '躲進去的居民不會受到攻擊。',
+            '建築被摧毀時，躲在裡面的人會出來。',
           ],
         },
         {
@@ -519,7 +499,7 @@ export const MILITARY: ArticleGroup = {
               ['[[building:barracks|兵營]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}', '-'],
             ],
             num: [1, 2],
-            foot: '每秒箭數按建築滿員計算。職位不佔建築名額。箭塔裡任職的弓手自己射擊，無需防禦模式：[[article:aim|命中與射擊]]。',
+            foot: '每秒箭數按建築滿員計算。職位不佔避難名額。箭塔裡任職的弓手自己射擊，無需防禦模式：[[article:aim|命中與射擊]]。',
           },
         },
         {
@@ -545,7 +525,7 @@ export const MILITARY: ArticleGroup = {
             '建築從最近的牆起射程{{shelter.range}}格，連牆腳下的敵人也打得到。',
             '建築也會射擊迷霧中的敵人。',
             '箭不耗材料，也不給經驗。',
-            '目標順序：士兵和英雄、野獸、建築、其他人。',
+            '建築先射士兵和英雄，平民排在最後。',
           ],
         },
         {
@@ -553,7 +533,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['箭塔', '搬運工職位', '蜂蜜酒', '食物', '武器，每種份數'],
+            head: ['箭塔', '搬運工職位', '蜂蜜酒', '食物', '每種武器'],
             rows: [
               [
                 '[[building:tower_00|一級箭塔]]',
@@ -575,11 +555,11 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '職位只接受自己的弓手：[[job:soldier_bow_short|短弓手]]或[[job:soldier_bow_long|長弓手]]。指派方式與工作地點相同。',
+            '只有對應的弓手才能就職：[[job:soldier_bow_short|短弓手]]或[[job:soldier_bow_long|長弓手]]。指派方式與工作地點相同。',
             '弓手拿了別的武器就失去職位。',
-            '駐軍吃箭塔存糧，在職位上睡覺，不下塔。存糧空了才去找吃的。',
-            '助手不會把弓手調離箭塔，發裝備也不會。',
-            '「撤出駐軍」：弓手離開箭塔並保持選中，等待下一條命令。移動命令也能讓弓手離崗。',
+            '駐軍吃箭塔的存糧，在職位上睡覺。存糧吃完了才下塔找吃的。',
+            '助手不會把弓手調離箭塔，換新裝備也不會。',
+            '「撤出駐軍」會讓弓手離開箭塔並選中他們，方便你馬上下命令。移動命令也能讓弓手離崗。',
           ],
         },
       ],
@@ -606,7 +586,7 @@ export const MILITARY: ArticleGroup = {
               ['柵門', '{{wall.gateHp}}', '{{wall.gateRepair}}', '免費，由柵欄段改建'],
             ],
             num: [1, 2],
-            foot: '修理不花材料。一段木柵欄同時只有一名建築工人修理。',
+            foot: '修理不花材料。一段柵欄同時只能由一名建築工人修理。',
           },
         },
         {
@@ -621,7 +601,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             '柵門佔用連成直線的{{wall.gateSegments}}段自家已完工柵欄。每段至少要有{{wall.gateMinHealthPct}}%生命值，位於平地，通道內不能有人。',
-            '柵門立即建成，處於關閉狀態。生命值全滿，受損的柵欄段上也一樣。',
+            '柵門立即建成，處於關閉狀態，生命值是滿的，即使原來的柵欄段受過損。',
           ],
         },
         {
@@ -633,13 +613,13 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['開啟', '誰都能過，包括敵人'],
               ['關閉', '誰也過不去，包括自己人'],
-              ['自動', '保持開啟。敵人進入柵門{{wall.gateEnemyNear}}格內時關閉，之後再開啟'],
+              ['自動', '保持開啟。敵人走近到{{wall.gateEnemyNear}}格內時關閉，敵人離開後再開啟'],
             ],
             foot: '與你交戰的玩家的任何人或載具都會讓柵門關閉，平民也算。動物不會。',
           },
         },
         {
-          list: ['通道內沒人時柵門才關閉。', '電腦把自己的柵門設為自動模式。'],
+          list: ['通道內沒人時柵門才關閉。'],
         },
         {
           h: '木柵欄多快倒下',
@@ -712,10 +692,10 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '戰鬥經驗不增加對木柵欄的傷害。',
-            '力量護符提高這個數字：{{wall.ironSpear.blow}}變{{wall.ironSpear.strongBlow}}，{{wall.shortSword.blow}}變{{wall.shortSword.strongBlow}}，{{wall.shortBow.blow}}還是{{wall.shortBow.strongBlow}}。',
-            '士兵不會主動選擇木柵欄。只有下令或柵欄擋住去敵人的路時才會砍。',
-            '一段倒下後，士兵穿過缺口，不再砍旁邊的柵欄。',
+            '戰鬥經驗不會加強對木柵欄的攻擊。',
+            '力量護符會加強攻擊：{{wall.ironSpear.blow}}變{{wall.ironSpear.strongBlow}}，{{wall.shortSword.blow}}變{{wall.shortSword.strongBlow}}，{{wall.shortBow.blow}}還是{{wall.shortBow.strongBlow}}。',
+            '士兵不會主動攻擊木柵欄。只有下令或柵欄擋住去敵人的路時才會砍。',
+            '一段柵欄倒下後，士兵會穿過缺口，不再砍旁邊的柵欄。',
           ],
         },
         {
@@ -775,7 +755,7 @@ export const MILITARY: ArticleGroup = {
               ['建築', '{{stone.building}}', '{{stone.tower1}}-{{stone.frankHq}}'],
             ],
             num: [2],
-            foot: '對正面的人造成的傷害，不含護符。木柵欄見[[article:walls|木柵欄與柵門]]。',
+            foot: '對人的傷害按正面命中、不含護符計算。木柵欄見[[article:walls|木柵欄與柵門]]。',
           },
         },
         {
@@ -826,7 +806,7 @@ export const MILITARY: ArticleGroup = {
           h: '命中率',
         },
         {
-          p: '命中率增長與弓手相同：[[article:aim|命中與射擊]]。在{{catapult.max}}格處，未命中的石彈偏離目標：0次命中時最多{{stone.spread.0}}格，25次{{stone.spread.25}}格，50次{{stone.spread.50}}格。命中{{aim.noSpreadHits}}次起落在目標上。經驗歸指揮官：石彈造成損傷就算1次命中，打建築也算。一發打中多個目標只算一次。',
+          p: '命中率增長與弓手相同：[[article:aim|命中與射擊]]。在{{catapult.max}}格處，未命中的石彈偏離目標：0次命中時最多{{stone.spread.0}}格，25次{{stone.spread.25}}格，50次{{stone.spread.50}}格。命中{{aim.noSpreadHits}}次起落在目標上。命中次數歸指揮官：每發造成損傷的石彈都算，打建築也算，但即使打中多個目標也只算一次。',
         },
         {
           h: '投石機的姿態',
@@ -839,14 +819,14 @@ export const MILITARY: ArticleGroup = {
               ['防禦', '駐守位置周圍', '{{catapult.searchRadius}}', '是，離駐守位置最多{{catapult.leash}}'],
               ['無視', '駐守位置周圍', '{{catapult.min}}-{{catapult.max}}', '否'],
             ],
-            foot: '新投石機為無視姿態。它只自動選擇看得見的目標。攻擊命令在任何姿態下都有效。',
+            foot: '新投石機為無視姿態。它只會主動攻擊看得見的目標。攻擊命令在任何姿態下都有效。',
           },
         },
         {
           list: [
-            '目標近於{{catapult.min}}格：投石機後撤。目標遠於{{catapult.max}}格：開到{{catapult.bandMin}}-{{catapult.max}}格處。',
+            '目標近於{{catapult.min}}格時，投石機後撤。目標遠於{{catapult.max}}格時，它會開到{{catapult.bandMin}}-{{catapult.max}}格處。',
             '只在靜止且不與其他載具接觸時射擊。',
-            '可以命令它射擊地面上的位置。只有下令才打木柵欄。',
+            '可以命令它射擊地面上的任意位置。只有下令它才會打木柵欄。',
           ],
         },
         {
@@ -880,7 +860,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'computer',
       name: '電腦對手',
-      lead: '難度在大廳設定。困難電腦可能在和平結束後立刻發動第一波。',
+      lead: '電腦難度在大廳裡選擇。困難電腦可能在和平時間一結束就進攻。',
       blocks: [
         {
           table: {
@@ -905,7 +885,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['波次開始後', '每波人數'],
+            head: ['第一波之後', '每波人數'],
             rows: [
               ['0', '{{ai.wave.0.min}}-{{ai.wave.0.max}}'],
               ['1小時', '{{ai.wave.1.min}}-{{ai.wave.1.max}}'],
@@ -913,12 +893,12 @@ export const MILITARY: ArticleGroup = {
               ['3小時及以後', '{{ai.wave.3.min}}-{{ai.wave.3.max}}'],
             ],
             num: [1],
-            foot: '時間從「第一波」和和平結束兩者中較晚的時刻算起。波次人數在此區間內隨機。',
+            foot: '波次人數在此區間內隨機。',
           },
         },
         {
           list: [
-            '同時只有一波在行動。下一波在[[building:barracks|兵營]]前集結。',
+            '同時只有一波在進攻，下一波同時在[[building:barracks|兵營]]前集結。',
             '集結最多{{ai.gatherMinutes}}分鐘。之後按表中下限的人數出發，人數不夠時能到的全部出發。',
           ],
         },
@@ -928,12 +908,12 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             '電腦比較自己和你的軍隊實力，算武器、護甲、護符、生命值和治療藥水，不算經驗。',
-            '你箭塔上的弓手算作{{ai.towerPostWeight}}。',
-            '每個電腦開局隨機選一個計畫。進取型達到你{{ai.planAggressivePct}}%的實力就出發，防守型到{{ai.planDefensivePct}}%才出發，其餘是{{ai.planBalancedPct}}%。',
-            '迷霧之下只算它看見過的。對你一無所知時，當作你和它一樣強。',
-            '實力不夠時，波次在兵營前等待，集結結束後也一樣。',
-            '電腦軍隊達到上限時，照樣出發。',
-            '你攻打它的聚落，或比它強{{ai.defendRatio}}倍時，它把軍隊留在家裡，已出發的波次也會折返。',
+            '你箭塔職位上的弓手按野外的{{ai.towerPostWeight}}倍計算。',
+            '開局時每個電腦隨機選一個計畫。進取型達到你{{ai.planAggressivePct}}%的實力就出發，防守型到{{ai.planDefensivePct}}%才出發，其餘是{{ai.planBalancedPct}}%。',
+            '你在迷霧中的軍隊，它按最後一次看到的情況計算。對你一無所知時，當作你和它一樣強。',
+            '電腦實力不夠時，波次在兵營前等待，集結結束後也一樣。',
+            '電腦軍隊達到上限時，波次不管實力如何都會出發。',
+            '你攻打它的聚落，或比它強{{ai.defendRatio}}倍時，電腦會把軍隊留在家裡，已出發的波次也會折返。',
           ],
         },
         {
@@ -941,8 +921,8 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '{{ai.raidMen}}人的小隊攻擊你的採集者和經濟建築。它繞開箭塔射程，沒有繞開箭塔的路就不出發。',
-            '困難電腦在{{ai.raidChancePct}}%的遊戲裡這樣做，除非開局在島上。騷擾計畫總會這樣做，任何等級都一樣。',
+            '突襲是一支{{ai.raidMen}}人的小隊，專打你的採集者和經濟建築。它繞開箭塔射程，沒有繞開箭塔的路就不出發。',
+            '困難電腦在{{ai.raidChancePct}}%的遊戲裡會突襲，除非開局在島上。選了騷擾計畫的電腦總會突襲，任何等級都一樣。',
             '第一次突襲在和平結束後{{ai.raidMinMinutes}}-{{ai.raidMaxMinutes}}分鐘出發，之後間隔相近。',
           ],
         },
@@ -950,11 +930,11 @@ export const MILITARY: ArticleGroup = {
           h: '目標',
         },
         {
-          steps: ['最近的[[building:headquarters|大本營]]。', '箭塔。', '其他建築，包括工地。', '人。'],
+          p: '進攻波次先打最近的[[building:headquarters|大本營]]，再打箭塔和其他建築（包括工地），最後打人。',
         },
         {
           list: [
-            '木柵欄和[[building:work_pottery_02|防禦牆]]不是目標：[[article:walls|木柵欄與柵門]]。',
+            '木柵欄和[[building:work_pottery_02|防禦牆]]不是進攻波次的目標：[[article:walls|木柵欄與柵門]]。',
             '迷霧之下，電腦知道地圖開局時的建築和已見過的建築。新建築要看見才知道。',
           ],
         },
@@ -963,10 +943,10 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '步行波次只走電腦兵營所在的陸地。你在這片陸地上的建築或人員會成為目標。',
+            '步行波次只走電腦兵營所在的陸地。你在這片陸地上的任何建築和人員都可能成為目標。',
             '對手大本營在別的陸地時，電腦在岸邊建[[building:work_joinery_03|四級木匠坊]]，造[[good:ship_small|船]]，用船運兵。',
             '岸邊有{{ai.landingShips}}艘船（較弱的電腦更少），且軍隊比守軍強{{ai.landingEdge}}倍時開始登陸。每艘船載{{vehicle.shipSeats}}名士兵。',
-            '它在你的箭塔和防禦模式建築的射程外靠岸，盡量靠近大本營，然後攻向大本營。',
+            '登陸部隊盡量在靠近你大本營的地方靠岸，但會避開箭塔和防禦模式建築的射程，然後攻向大本營。',
             '在岸上損失{{ai.landingRetreatPct}}%的人後，其餘的人回到船上。下一次登陸最早在{{ai.landingCooldownMinutes}}分鐘後。',
           ],
         },
@@ -974,7 +954,7 @@ export const MILITARY: ArticleGroup = {
           h: '重建',
         },
         {
-          p: '大廳裡設為「地圖 AI」的玩家，在{{ai.rebuildNear}}格內沒有敵人且有自己平民時重建建築。大本營除外。',
+          p: '大廳裡設為「地圖 AI」的玩家，在{{ai.rebuildNear}}格內沒有敵人且有自己平民時重建被毀的建築。大本營除外。',
         },
       ],
       see: ['article:defence', 'article:walls', 'article:catapult', 'article:fog', 'article:diplomacy'],

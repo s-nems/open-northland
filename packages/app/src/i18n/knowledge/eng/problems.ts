@@ -19,7 +19,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Village attacked"',
                 'Important',
-                'An attack on a building or stockade, or a fight within {{notice.settlementReach}} hexes of one. Attacks within {{notice.fightRadius}} hexes of each other share one notice, which clears after {{notice.fightQuietSeconds}} s of calm',
+                'Someone attacks your building or stockade, or fights within {{notice.settlementReach}} hexes of one',
                 'Send soldiers',
               ],
               [
@@ -61,8 +61,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"No match"',
                 'Regular',
-                'After "Marry", nobody free was in reach. The order is lost',
-                'Give the order again when someone is free',
+                'After the "Marry" order, nobody nearby was free',
+                'Try again when someone is free',
               ],
               [
                 '"Need a pair: [good]"',
@@ -74,14 +74,9 @@ export const PROBLEMS: ArticleGroup = {
                 '"No yard space", "Yard blocked"',
                 'Notable',
                 'No free ground next to the workshop for the vehicle, or another vehicle stands there',
-                'Clear some space. The next try comes after {{notice.yardRetrySeconds}} s',
+                'Clear some space, the workshop tries again after {{notice.yardRetrySeconds}} s',
               ],
-              [
-                '"No fish"',
-                'Notable',
-                'No fish left within reach of the shore',
-                'Put the flag on water with fish',
-              ],
+              ['"No fish"', 'Notable', 'No fish left in the nearby water', 'Put the flag on water with fish'],
               [
                 '"No carrier"',
                 'Notable',
@@ -181,7 +176,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Nothing to do"',
                 'Regular',
-                'A settler with a workplace has stood for {{notice.idleSeconds}} s for no clear reason',
+                'A settler with a workplace has done nothing for {{notice.idleSeconds}} s and it is not clear why',
                 'Check the building or change his profession',
               ],
               [
@@ -193,8 +188,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"No way to ship"',
                 'Notable',
-                "The ship's door is on another landmass",
-                'Moor at a shore he can reach',
+                'The ship is moored at a different landmass than the vehicle',
+                'Moor at a shore the vehicle can reach',
               ],
               [
                 '"Wrong trade"',
@@ -205,7 +200,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Peace: no entry", "Peace: no site"',
                 'Notable',
-                "Peace is on and the order reaches into a partner's settlement",
+                "Peace time is on and the spot is too close to another player's settlement",
                 'Pick a spot further off: [[article:diplomacy|Diplomacy]]',
               ],
               [
@@ -242,8 +237,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Standing to"',
                 '-',
-                'A soldier on Attack or Defence does not rest with a fight within {{alert.restClearance}} hexes or a visible enemy soldier within {{alert.standTo}} hexes. A wild animal only counts once fighting',
-                'An "Eat" or "Sleep" order releases him',
+                'A soldier on Attack or Defence does not rest while there is a fight within {{alert.restClearance}} hexes or an enemy soldier in sight within {{alert.standTo}} hexes',
+                'Give him an "Eat" or "Sleep" order',
               ],
               [
                 '"Input too far"',
@@ -272,7 +267,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Needs a restart"',
                 'Important',
-                'The changed setting only applies from a fresh start',
+                'The changed setting takes effect only after a restart',
                 '"Restart mission" in the Esc menu',
               ],
               [
@@ -316,23 +311,23 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'The workshop stands empty',
-              'Status "No workers": nobody works there. Assign a settler with the right profession. A refusal comes with a message: "Wrong trade", "No free post" or "Lacks experience". Status "Idle" names the missing input. The worker fetches it himself if it lies within {{reach.goods}} hexes of a signpost.',
+              'Status "No workers" means nobody works there: assign a settler with the right profession. If he refuses, a message says why: "Wrong trade", "No free post" or "Lacks experience". Status "Idle" names the missing input. The worker goes for it himself if it lies within {{reach.goods}} hexes of a signpost.',
             ],
             [
               "The Armourer, Blacksmith or Tailor won't work",
-              'Religion under "Wellbeing" is at 0%. A cycle of weapons or armour costs {{piety.lowPct}}% or {{piety.highPct}}%, a prayer gives {{pray.pct}}%. "Wants to pray" means there is nowhere to pray: you need a [[building:work_temple|Temple]], [[building:headquarters|Headquarters]] or a holy fire in the dwelling. More: [[article:religion|Religion and the Temple]].',
+              'Most likely his Religion under "Wellbeing" is at 0%. Each weapon or armour costs {{piety.lowPct}}% or {{piety.highPct}}% Religion, and a prayer gives {{pray.pct}}%. "Wants to pray" means there is nowhere to pray: you need a [[building:work_temple|Temple]], [[building:headquarters|Headquarters]] or a holy fire in the dwelling. More: [[article:religion|Religion and the Temple]].',
             ],
             [
               "Carriers aren't carrying",
-              'A Carrier only carries with a workplace in a building. "Nothing to carry in reach": no goods within {{flag.radius}} hexes of the building or work flag. "No destination accepts this good": the stores are full.',
+              'A Carrier only works when he has a workplace in a building. Status "Nothing to carry in reach" means there are no goods within {{flag.radius}} hexes of the building or work flag, and "No destination accepts this good" that the stores are full.',
             ],
             [
               'Breeding has stopped',
-              'The Stock Farmer breeds only at exactly {{livestock.pair}} adults. What the Cattle Farm status means: [[article:livestock|Livestock]].',
+              'The Stock Farmer breeds animals only when he has exactly {{livestock.pair}} adults. What the Cattle Farm status means: [[article:livestock|Livestock]].',
             ],
             [
               'The Hunter brings nothing back',
-              'Status "No free prey in the hunting ground": nothing to hunt within {{flag.hunter}} hexes of the flag or workplace. He doesn\'t go for every animal on his own, see the "Auto-hunted" column: [[article:wildlife|Wild Animals and Hunting]]. Move the work flag to where game grazes.',
+              'Status "No free prey in the hunting ground" means there is nothing to hunt within {{flag.hunter}} hexes of the flag or workplace. He doesn\'t go for every animal on his own, see the "Auto-hunted" column: [[article:wildlife|Wild Animals and Hunting]]. Move the work flag to where game grazes.',
             ],
           ],
         },
@@ -343,11 +338,11 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'No children are being born',
-              'A couple needs a shared dwelling and {{family.childFood}} pieces of food in the larder. A message says what is missing: "No dwelling", "Dwelling unbuilt", "Living apart", "No food stock". "Husband away" means the husband is a Merchant, Scout, soldier or hero and does not come home. The "Births" counter in the Assistant also orders children. More: [[article:family|Family and Home]].',
+              'A couple needs a shared dwelling and {{family.childFood}} pieces of food in the larder. A message says what is missing: "No dwelling", "Dwelling unbuilt", "Living apart", "No food stock". "Husband away" means the husband is a Merchant, Scout, soldier or hero and does not come home. You can also order children with the "Births" counter in the Assistant. More: [[article:family|Family and Home]].',
             ],
             [
               'Hungry with a full store',
-              'Check "Storage minimum": nobody takes a good below that total, not even for a meal. Lower it on food. The store may also be too far: it must lie within {{reach.walk}} hexes of the settler or in the signpost network.',
+              'Check "Storage minimum": nobody takes a good below that amount, not even for a meal. Lower it on food. The store may also be too far: it must lie within {{reach.walk}} hexes of the settler or in the signpost network.',
             ],
             [
               'A profession is missing from the School list',
@@ -389,11 +384,11 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               "A ship won't sail",
-              'Status "Waiting for a commander": assign one, any adult will do. "Waiting for its crew": someone in the crew is still walking to the ship. A settler from another landmass drops out of the crew. "No route": the destination is not on this water. Nobody boards at sea, so "Moor" first.',
+              'Status "Waiting for a commander": assign one, any adult will do. "Waiting for its crew": someone in the crew is still walking to the ship. "No route": the destination is not on this water. Nobody boards at sea, so "Moor" first.',
             ],
             [
               "An Ox Cart won't move",
-              'Status "Waiting for its draught animal": it takes an [[good:cattle|Ox]] only from outside the pair, so you need {{livestock.pairPlusOne}} adults at one Cattle Farm or {{livestock.pairPlusOne}} outside a farm: [[article:vehicles|Vehicles and Ships]].',
+              'Status "Waiting for its draught animal" means it lacks an Ox. It takes an [[good:cattle|Ox]] only from outside the pair, so you need {{livestock.pairPlusOne}} adults at one Cattle Farm or {{livestock.pairPlusOne}} outside a farm: [[article:vehicles|Vehicles and Ships]].',
             ],
           ],
         },

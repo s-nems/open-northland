@@ -107,7 +107,7 @@ export const SETTLERS: ArticleGroup = {
               ['Potwory, zwierzęta', 'Brak.'],
               ['Żołnierz', 'Bez Towarzystwa.'],
               ['Pasażer wozu', 'Paski nie spadają, zdrowie się nie zmienia.'],
-              ['Pasażer statku', 'Je z ładowni, śpi jak poza domem, rozmawia. Religia czeka na ląd.'],
+              ['Pasażer statku', 'Je z ładowni, śpi jak poza domem, rozmawia. Modli się dopiero na lądzie.'],
             ],
           },
         },
@@ -235,7 +235,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1, 3],
-            foot: 'Razem daje to {{aura.totalPerSecond}} na sekundę. Regeneracja kończy się na {{health.human}}, aura leczy ponad normę, do {{aura.ceiling}}. Dziecko i bohater też mają {{health.human}} i regenerują.',
+            foot: 'Razem daje to {{aura.totalPerSecond}} na sekundę. Regeneracja kończy się na {{health.human}}, a aura leczy ponad normę, do {{aura.ceiling}}.',
           },
         },
         {
@@ -250,7 +250,6 @@ export const SETTLERS: ArticleGroup = {
             'Osadnik pije łyk za łykiem, aż rana zostawi mu co najmniej {{draught.healBelow}} zdrowia.',
             'Nawet śmiertelny cios nie zabije, jeśli łyki pokryją ranę.',
             'Osadnik pije też, gdy głód zbije zdrowie poniżej {{draught.healBelow}}.',
-            'Najpierw napoczęta butelka, potem mała, potem duża.',
           ],
         },
       ],
@@ -303,7 +302,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Dom daje tylko rozkaz "Przydziel dom". Nikt nie wprowadza się sam, ślub przenosi tylko współmałżonka.',
+            'Dom dostaje się tylko rozkazem "Przydziel dom". Nikt nie wprowadza się sam, a ślub przenosi tylko współmałżonka.',
             'Dom mieści tyle rodzin, ile podaje kolumna Rodziny w tabeli poziomów. Do pełnego domu rozkaz nie działa.',
             'Ponowny przydział przenosi całą rodzinę: osadnika, małżonka i rosnące dziecko.',
           ],
@@ -422,7 +421,7 @@ export const SETTLERS: ArticleGroup = {
                 'tak',
               ],
             ],
-            foot: 'Zakres 0-{{assistant.counterMax}}, na starcie 0. Rozkaz wydany jednej osobie ma pierwszeństwo przed Asystentem. Kolejność broni i zbroi: [[article:equip|Wyposażanie żołnierzy]].',
+            foot: 'Licznik ustawia się od 0 do {{assistant.counterMax}}. Rozkaz wydany jednej osobie ma pierwszeństwo przed Asystentem. Kolejność broni i zbroi: [[article:equip|Wyposażanie żołnierzy]].',
           },
         },
         {
@@ -436,7 +435,7 @@ export const SETTLERS: ArticleGroup = {
               [
                 'Żelazne narzędzia, Drewniane narzędzia',
                 'włączone',
-                'pracujący w zawodzie, bez żołnierza, [[job:scout|Zwiadowcy]] i Cywila',
+                'każdy pracujący oprócz żołnierza, [[job:scout|Zwiadowcy]] i Cywila',
               ],
               ['[[good:mead|Miód pitny]]', 'włączony', 'Osadnicy, Żołnierze'],
               [
@@ -464,10 +463,8 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Najpierw córki, potem synowie. Córki nie mają ∞, bo synowie nigdy by się nie doczekali.',
-            'Przy liczniku 3 dziecko robią naraz najwyżej 3 pary.',
-            'Para bierze jedno zamówienie naraz. Blokady są te same co przy rozkazie: [[article:family|Rodzina i dom]].',
-            'Obniżenie licznika nie cofa zamówienia, które para już ma.',
+            'Najpierw rodzą się córki, potem synowie. Dlatego licznik córek nie ma ∞, inaczej synowie nigdy by się nie urodzili.',
+            'Przy liczniku 3 na dziecko czekają naraz najwyżej 3 pary.',
           ],
         },
         {
@@ -475,7 +472,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Idzie tylko dorosły Cywil bez miejsca pracy i bez zadania. Najpierw nieżonaci. Nikogo nie zabiera z pracy.',
+            'Do Koszar idzie tylko dorosły Cywil bez pracy i bez zajęcia, najpierw kawalerowie. Asystent nikogo nie zabiera z pracy.',
             'Licznik Miecznicy, Włócznicy lub Łucznicy najpierw uzbraja żołnierza bez broni, jeśli broń jest w jego zasięgu.',
           ],
         },
@@ -490,7 +487,7 @@ export const SETTLERS: ArticleGroup = {
                 'Dostarcz broń. Do tego czasu zajmuje miejsce nowego rekruta.',
               ],
             ],
-            foot: 'Najwyżej {{assistant.draftsPerSecond}} osoby na sekundę. Rekruci w drodze liczą się do licznika, a stracony rekrut wraca do kolejki.',
+            foot: 'Rekrut w drodze do Koszar już liczy się do licznika.',
           },
         },
         {
@@ -499,10 +496,9 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Asystent nie wyposaża kobiet, dzieci, [[article:heroes|bohaterów]] ani załogi wieży.',
-            'Osadnik idzie do magazynu raz i bierze wszystko naraz.',
-            'Po każdą sztukę w magazynie rusza tylko jeden osadnik. Zapasu poniżej [[article:hauling|minimum magazynu]] nie rusza.',
-            'Wypełnia tylko puste miejsca, nie wymienia na lepsze. Żelazne narzędzia idą przed drewnianymi, duża butelka przed małą.',
-            'Kto ma małą miksturę, nie idzie po dużą. Miejsca na napoje i amulety są {{amulet.slots}}: [[article:draughts|Napoje i amulety]].',
+            'Zapasu poniżej [[article:hauling|minimum magazynu]] Asystent nie rozdaje.',
+            'Wypełnia tylko puste miejsca i nie wymienia rzeczy na lepsze. Żelazne narzędzia mają pierwszeństwo przed drewnianymi.',
+            'Osadnik ma {{amulet.slots}} miejsca na napoje i amulety: [[article:draughts|Napoje i amulety]].',
           ],
         },
         {
@@ -510,15 +506,15 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Absolwent idzie raz, do najbliższego wolnego miejsca w swoim zawodzie, także na plac budowy warsztatu. Warsztat, który robi wyrób z kursu, ma pierwszeństwo przed bliższym.',
-            'Bez wolnego miejsca czeka przy Szkole. Pomija [[job:collector|Zbieracza]], [[job:hunter|Myśliwego]], [[job:fisher|Rybaka]] i żołnierzy.',
+            'Absolwent idzie do najbliższego wolnego miejsca w swoim zawodzie, także do warsztatu w budowie. Warsztat robiący wyrób, którego się uczył, ma pierwszeństwo, nawet gdy jest dalej.',
+            'Gdy wolnego miejsca nie ma, czeka przy Szkole. [[job:collector|Zbieracza]], [[job:hunter|Myśliwego]], [[job:fisher|Rybaka]] i żołnierzy Asystent nie przydziela.',
           ],
         },
         {
-          p: 'Flaga przesuwa się za surowcem, {{assistant.flagMin}}-{{assistant.flagMax}} hexów od niego: [[article:work-flag|Flaga robocza]].',
+          p: 'Gdy przy fladze kończy się surowiec, Asystent przenosi ją bliżej następnego, na {{assistant.flagMin}}-{{assistant.flagMax}} hexów od niego: [[article:work-flag|Flaga robocza]].',
         },
         {
-          p: 'Okno "Poddani" liczy braki: domu, miejsca pracy, narzędzi, butów, pary, dzieci, broni, miodu pitnego.',
+          p: 'Okno "Poddani" pokazuje, ilu osadnikom brakuje domu, pracy, narzędzi, butów, pary, dzieci, broni lub miodu pitnego.',
         },
       ],
       see: [
@@ -568,7 +564,6 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1],
-            foot: 'Rozkaz Jedz, Śpij, Rozmawiaj lub Módl się wstrzymuje picie.',
           },
         },
         {
@@ -614,8 +609,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Drugi taki sam amulet nic nie daje.',
             'Różne amulety działają razem: Siła i Precyzja dają ×{{amulet.comboFactor}} przy udanym losowaniu.',
-            'Na głód i zmęczenie osadnik sięga po kolei: napoczęta butelka, amulet, pełna butelka z mniejszą liczbą łyków.',
-            'Z Odżywczym Amuletem osadnik nie szuka jedzenia, z Amuletem Wytrzymałości nie idzie spać.',
+            'Z Odżywczym Amuletem osadnik nie chodzi jeść, a z Amuletem Wytrzymałości nie chodzi spać.',
           ],
         },
         {

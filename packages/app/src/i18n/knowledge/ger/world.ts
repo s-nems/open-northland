@@ -6,7 +6,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'goals',
       name: 'Missionsziele und Spielende',
-      lead: 'Du verlierst, wenn du keinen erwachsenen Mann mehr hast. Ein Held zählt mit. Frauen, Cyra und Kinder nicht.',
+      lead: 'Du verlierst, wenn du keinen erwachsenen Mann mehr hast. Ein Held zählt mit, Frauen, Cyra und Kinder nicht.',
       blocks: [
         {
           h: 'Wie eine Karte endet',
@@ -63,25 +63,16 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Das Spiel prüft zuerst die Männer, dann der Reihe nach die Ziele der Karte. Männer zählt es erst nach {{match.graceSeconds}} s Spielzeit.',
-            'Die erste erfüllte Bedingung entscheidet endgültig über den Spieler.',
-            'Der Sieg eines Spielers beendet das Spiel für die anderen nicht, und ein Sieger, der danach seine Leute verliert, bleibt Sieger.',
-            'Eine Karte kann einen bestimmten Spieler von der Regel mit dem erwachsenen Mann ausnehmen.',
+            'In den ersten {{match.graceSeconds}} s Spielzeit bedeutet es keine Niederlage, wenn du keine Männer hast.',
+            'Das Ergebnis steht einmal und endgültig fest. Wer gewonnen hat, verliert nicht mehr, auch wenn er danach seine Leute verliert.',
+            'Der Sieg eines Spielers beendet das Spiel für die anderen nicht.',
           ],
         },
         {
           h: 'Was vom Besiegten bleibt',
         },
         {
-          steps: [
-            'Kein erwachsener Mann: Fahrzeuge verschwinden sofort.',
-            'Die Niederlage folgt bei der nächsten Zielprüfung, alle {{match.checkSeconds}} s.',
-            'Bei der folgenden Prüfung verschwinden Gebäude, Fahrzeuge und Wegweiser, und an der Stelle jedes Menschen an Land bleibt ein wildes Huhn.',
-            'Die Tiere des Spielers verwildern, wo sie stehen.',
-          ],
-        },
-        {
-          p: 'So läuft es auf Mehrspielerkarten. In Kampagnenmissionen und auf Karten ohne Mission verschwinden nur die Fahrzeuge, und der Computer hört auf zu spielen.',
+          p: 'Auf einer Mehrspielerkarte verschwinden Gebäude, Fahrzeuge und Wegweiser des Besiegten, seine Leute an Land werden zu wilden Hühnern, und seine Tiere verwildern. In Kampagnenmissionen und auf Karten ohne Mission verschwinden nur die Fahrzeuge, und der Computer hört auf zu spielen.',
         },
       ],
       see: ['article:diplomacy', 'article:family', 'article:heroes'],
@@ -89,7 +80,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'vehicles',
       name: 'Fahrzeuge und Schiffe',
-      lead: 'Ohne Kommandant steht ein Fahrzeug. Ein Schiff nimmt mehr Leute mit, ein Großes Schiff mehr Ware.',
+      lead: 'Ohne Kommandant fährt ein Fahrzeug nirgendwohin. Ein Schiff nimmt mehr Leute mit, ein Großes Schiff mehr Ware.',
       blocks: [
         {
           data: 'vehicles',
@@ -110,8 +101,8 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'Die Spalte „Passagiere“ zählt den Kommandanten nicht mit. Der zuerst Zugewiesene wird Kommandant. Geht er, übernimmt der nächste Passagier.',
-            'Wer einsteigt, verliert seinen Arbeitsplatz. Ausnahme: Träger mit Arbeitsplatz und Händler ziehen den Karren selbst und behalten die Arbeit.',
-            'Den Frachtraum bedienen der Kommandant und jeder erwachsene Mann an Bord. Soldaten, Helden, [[job:scout|Kundschafter]] und [[job:druid|Druiden]] laden nur als Kommandant. Ist niemand da, erscheint „Kein Träger“.',
+            'Wer einsteigt, verliert seinen Arbeitsplatz. Nur Träger mit Arbeitsplatz und Händler ziehen den Karren selbst und behalten die Arbeit.',
+            'Die Ware laden der Kommandant und jeder erwachsene Mann an Bord, Soldaten, Helden, [[job:scout|Kundschafter]] und [[job:druid|Druiden]] aber nur, wenn sie das Kommando haben. Lädt niemand, erscheint „Kein Träger“.',
           ],
         },
         {
@@ -119,7 +110,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Fahrzeug', 'Verlust, voll', 'Straße: leer', 'Straße: voll', 'Land: leer', 'Land: voll'],
+            head: ['Fahrzeug', 'Langsamer, voll', 'Straße: leer', 'Straße: voll', 'Land: leer', 'Land: voll'],
             rows: [
               [
                 '[[good:handcart|Handkarren]]',
@@ -140,14 +131,14 @@ export const WORLD: ArticleGroup = {
               ['[[good:catapult|Katapult]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Hexfelder pro Sekunde. Voll heißt {{haul.handcart}} Stück auf dem Handkarren und {{haul.oxcart}} auf dem Ochsenkarren. Der Verlust wächst mit der Ladung: ein halber Karren, halber Verlust. Welcher Karren für eine Route: [[article:trade|Handel]].',
+            foot: 'Hexfelder pro Sekunde. Voll heißt {{haul.handcart}} Stück auf dem Handkarren und {{haul.oxcart}} auf dem Ochsenkarren. Je mehr Ladung, desto langsamer: ein halber Karren, halber Unterschied. Welcher Karren für eine Route: [[article:trade|Handel]].',
           },
         },
         {
           list: [
-            'So fährt ein Karren mit Kommandant, Schuhe ändern hier nichts.',
-            'Träger und Händler, die den Karren selbst ziehen, gehen in ihrem eigenen Schritt. Mit Schuhen sind sie schneller und verlieren denselben Prozentsatz.',
-            'Ein Schiff wird durch Ladung nicht langsamer und fährt etwa {{pace.ship}} Hexfelder/s.',
+            'So fährt ein Karren mit Kommandant. Schuhe ändern hier nichts.',
+            'Träger und Händler, die den Karren selbst ziehen, gehen ihr eigenes Tempo, mit Schuhen schneller. Die Ladung bremst sie um denselben Prozentsatz.',
+            'Ein beladenes Schiff wird nicht langsamer und fährt etwa {{pace.ship}} Hexfelder/s.',
           ],
         },
         {
@@ -190,20 +181,14 @@ export const WORLD: ArticleGroup = {
           h: 'Ochse für den Ochsenkarren',
         },
         {
-          steps: [
-            'Ein fertiger Ochsenkarren hat den Status „Wartet auf sein Zugtier“.',
-            'Er nimmt den nächsten erwachsenen [[good:cattle|Ochsen]] auf derselben Landmasse. Ein Ochse im Inneren einer Viehzüchterei zählt nicht.',
-            'Jede Viehzüchterei behält {{livestock.pair}} erwachsene Ochsen. Ebenso viele bleiben von einer Herde ohne Viehzüchterei.',
-            'Der Ochse geht zum Karren und verschwindet, erst dann fährt der Ochsenkarren.',
-          ],
+          p: 'Ein fertiger Ochsenkarren wartet auf sein Zugtier und nimmt den nächsten erwachsenen [[good:cattle|Ochsen]] auf derselben Landmasse. Jede Viehzüchterei behält {{livestock.pair}} erwachsene Ochsen für sich, ebenso viele bleiben von einer Herde ohne Viehzüchterei. Der Karren bekommt also erst einen Ochsen darüber hinaus.',
         },
         {
           h: 'Schiffe',
         },
         {
           list: [
-            'Der Frachtraum ist für alle Waren gemeinsam.',
-            'Ein Schiff transportiert 1 Fahrzeug: Handkarren, Ochsenkarren oder Katapult. Dessen Besatzung muss an Bord passen. Ein Großes Schiff transportiert keine Fahrzeuge.',
+            'Ein Schiff nimmt 1 Fahrzeug mit: Handkarren, Ochsenkarren oder Katapult, wenn dessen Besatzung an Bord passt. Ein Großes Schiff transportiert keine Fahrzeuge.',
             '„Andocken“: Wähle ein Ufer, das Schiff hält {{vehicle.mooringDistance}} Hexfelder davon entfernt. Ein Hafen ist nicht nötig.',
             'Auf See steigt niemand ein oder aus.',
             'Ctrl/Cmd + Rechtsklick dockt an und setzt die Besatzung ab.',
@@ -214,14 +199,11 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            '„Zielmenge“: Wie viele Stück im Frachtraum sein sollen. Die Summe der Zielmengen übersteigt die Kapazität nicht.',
-            '„durch den Träger“: Ein Träger zieht den Karren und entscheidet auf jeder Fahrt selbst, was er auflädt. Zielmengen kannst du nicht einstellen.',
-            'Wer lädt, steigt aus, wenn der Karren steht oder das Schiff angedockt ist.',
-            'Wer lädt, trägt je 1 Stück. Er sucht zuerst Haufen bis {{vehicle.cargoSearch}} Hexfelder vom Karren, dann Gebäude in derselben Reichweite und zuletzt überall, wohin Wegweiser reichen.',
+            '„Zielmenge“ ist die Stückzahl, die du im Frachtraum haben willst. Die Summe der Zielmengen übersteigt die Kapazität nicht.',
+            '„durch den Träger“: Ein Träger zieht den Karren und sucht die Ladung auf jeder Fahrt selbst aus. Zielmengen kannst du dann nicht einstellen.',
+            'Wer lädt, trägt je 1 Stück. Er sucht zuerst Ware bis {{vehicle.cargoSearch}} Hexfelder vom Karren, dann überall, wohin Wegweiser reichen.',
             'Die Ware muss auf derselben Landmasse liegen wie der Karren oder das Schiff. Essen aus Wohnhäusern nimmt niemand.',
             'Senkst du die Zielmenge, kommt der Überschuss ins nächste Lagerhaus oder Hauptquartier mit Platz, bis {{vehicle.cargoSearch}} Hexfelder vom Karren. Gibt es keines, landet er am Boden.',
-            'Lädt ein Kommandant selbst, der Soldat oder Held ist, und gibt es die Ware nirgends, sinkt die Zielmenge von selbst. Dasselbe gilt für [[job:scout|Kundschafter]] und [[job:druid|Druiden]].',
-            'Ein Fahrbefehl ruft die Besatzung vor der Abfahrt an Bord.',
           ],
         },
         {
@@ -240,7 +222,7 @@ export const WORLD: ArticleGroup = {
               ['Schiff angedockt', 'Geht an Land', 'Steht am Ufer', 'Verloren'],
               ['Schiff auf See', 'Ertrinkt', 'Sinkt samt Besatzung', 'Verloren'],
             ],
-            foot: 'Die Besatzung im Fahrzeug lässt sich nicht treffen, solange das Fahrzeug ganz ist. Wer daneben steht, gehört einfach nicht mehr zur Besatzung.',
+            foot: 'Solange das Fahrzeug ganz ist, kann niemand die Besatzung darin treffen.',
           },
         },
       ],
@@ -283,14 +265,14 @@ export const WORLD: ArticleGroup = {
                 'Kartenstart',
                 'Die Karte legt die Verhältnisse fest. Wo sie nichts angibt, beginnt ihr neutral',
               ],
-              ['Ein anderer Spieler schlägt dich', 'Dein Verhältnis zu ihm wird von selbst feindlich'],
+              ['Jemand greift dich an', 'Dein Verhältnis zu ihm wird von selbst feindlich'],
               ['Du stellst feindlich gegenüber einem neutralen Computer', 'Der Computer wird auch feindlich'],
               ['Neutraler Computer auf einer Inselkarte', 'Wird von selbst feindlich gegenüber den Spielern'],
               [
                 'Du senkst dein Verhältnis zu einem freundlichen Computer',
                 'Auch der Computer senkt seines, auf deine Stufe',
               ],
-              ['Computer feindlich', 'Kehrt nicht von selbst zum Frieden zurück'],
+              ['Feindlicher Computer', 'Schließt von selbst keinen Frieden'],
               ['Mission', 'Kann das Verhältnis ändern, auch nach gezahltem Tribut'],
               ['„Verhältnis durch das Szenario vorgegeben“', 'Im Fenster Diplomatie nicht änderbar'],
             ],
@@ -302,7 +284,7 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'Die „Friedenszeit“ stellst du vor dem Spiel ein. Spieler, für die sie gilt, können nicht gegeneinander kämpfen.',
-            'Du schickst niemanden hin und baust nichts bis {{peace.keepOut}} Hexfelder von seinem Gebäude, außer der Ort liegt näher an deinem eigenen Gebäude.',
+            'Du schickst niemanden hin und baust nichts bis {{peace.keepOut}} Hexfelder von einem Gebäude dieses Spielers, außer der Ort liegt näher an deinem eigenen Gebäude.',
             'Warnungen kommen {{peace.noticeFirstMinutes}} Min. und {{peace.noticeLastMinutes}} Min. vor dem Ende.',
           ],
         },
@@ -310,27 +292,16 @@ export const WORLD: ArticleGroup = {
           h: 'Erstkontakt',
         },
         {
-          p: 'Unter Nebel kommt ein Stamm ins Fenster Diplomatie, wenn du einen seiner Menschen, ein Gebäude, Fahrzeug oder eine Palisade siehst oder wenn er dich angreift. Er bleibt dann dort.',
+          p: 'Unter Nebel kommt ein Stamm ins Fenster Diplomatie, wenn du einen seiner Menschen, ein Gebäude, Fahrzeug oder eine Palisade siehst oder wenn er dich angreift. Danach bleibt er dort.',
         },
         {
           h: 'Tribut',
         },
         {
-          p: 'Tribut fordert nur eine Mission. „Zahlen“ im Fenster Diplomatie nimmt die Ware sofort weg, niemand trägt sie. Das Spiel nimmt sie aus:',
+          p: 'Tribut fordert nur eine Mission. „Zahlen“ im Fenster Diplomatie nimmt die Ware sofort weg, niemand trägt sie, und das „Lagerminimum“ schützt sie nicht.',
         },
         {
-          steps: [
-            'Erstes [[building:headquarters|Hauptquartier]].',
-            'Übrige Hauptquartiere und Lagerhäuser.',
-            'Werkstätten, nur eigene Produkte, ohne Rohstoffe.',
-          ],
-        },
-        {
-          list: [
-            'Wohnhäuser, Türme, [[building:barracks|Kaserne]], [[building:school|Schule]] und Haufen am Boden zahlen nicht.',
-            'Fordert die Mission Essen, zahlst du mit jedem Gericht derselben Art.',
-            'Das „Lagerminimum“ schützt Ware nicht vor Tribut.',
-          ],
+          p: 'Die Ware kommt aus [[building:headquarters|Hauptquartieren]], Lagerhäusern und Werkstätten, aus einer Werkstatt nur ihre eigenen Produkte. Wohnhäuser, Türme, [[building:barracks|Kaserne]], [[building:school|Schule]] und Haufen am Boden zahlen nicht.',
         },
       ],
       see: ['article:trade', 'article:fog', 'article:walls'],
@@ -360,7 +331,7 @@ export const WORLD: ArticleGroup = {
           },
         },
         {
-          p: 'Graues Gelände zeigt Gebäude, Palisaden, Fahrzeuge, Kisten, Rohstoffe, Stämme und Warenhaufen im zuletzt gesehenen Zustand. Menschen und Tiere zeigt es nicht.',
+          p: 'Graues Gelände zeigt Gebäude, Waren, Rohstoffe und Fahrzeuge so, wie du sie zuletzt gesehen hast. Menschen und Tiere sieht man dort nicht.',
         },
         {
           h: 'Sichtweite',
@@ -377,17 +348,17 @@ export const WORLD: ArticleGroup = {
             rows: [
               ['[[job:scout|Kundschafter]], [[building:headquarters|Hauptquartier]]', '{{vision.scout}}'],
               ['Held, [[good:ship_small|Schiff]], [[good:ship_big|Großes Schiff]]', '{{vision.hero}}'],
-              ['Soldat, Gebäude, auch Turm und Wohnhaus', '{{vision.soldier}}'],
+              ['Soldat, jedes Gebäude', '{{vision.soldier}}'],
               [
                 '[[good:handcart|Handkarren]], [[good:oxcart|Ochsenkarren]], [[good:catapult|Katapult]]',
                 '{{vision.cart}}',
               ],
-              ['Übrige Erwachsene, eigenes Tier', '{{vision.adult}}'],
+              ['Übrige Erwachsene, deine Tiere', '{{vision.adult}}'],
               ['Kind', '{{vision.child}}'],
               ['Baustelle', '0'],
             ],
             num: [1],
-            foot: 'Palisaden, Straßen und Wegweiser sehen nichts. Soldaten und [[job:hunter|Jäger]] finden ihr Ziel auch im Nebel. Das [[good:catapult|Katapult]] wählt von selbst nur Ziele, die es sieht.',
+            foot: 'Palisaden, Straßen und Wegweiser decken nichts auf. Soldaten und [[job:hunter|Jäger]] finden ihr Ziel auch im Nebel, das [[good:catapult|Katapult]] schießt von selbst aber nur auf das, was es sieht.',
           },
         },
       ],
@@ -396,21 +367,19 @@ export const WORLD: ArticleGroup = {
     {
       id: 'scout',
       name: 'Kundschafter',
-      lead: 'Ein Kundschafter hat keinen Arbeitsplatz. Ohne Befehl steht er.',
+      lead: 'Ein Kundschafter hat keinen Arbeitsplatz und tut ohne Befehl nichts.',
       blocks: [
         {
-          p: 'Er setzt [[article:roads|Wegweiser]] ohne Material und übernimmt wilde Ochsen und Schafe im Vorbeigehen: [[article:livestock|Viehzucht]]. Wegweiser schränken ihn nicht ein, er geht über die ganze Karte.',
+          p: 'Er setzt [[article:roads|Wegweiser]] ohne Material und übernimmt wilde Ochsen und Schafe im Vorbeigehen: [[article:livestock|Viehzucht]]. Er kann über die ganze Karte gehen, Wegweiser schränken ihn nicht ein.',
         },
         {
           h: '„Kläre Gegend auf“',
         },
         {
           list: [
-            'Du kannst mehrere zugleich schicken.',
-            'Er erkundet das Land in Ringen um den Ort des Befehls.',
+            'Er erkundet das Land immer weiter um den Ort, den du zeigst.',
             'Er verlässt seine Landmasse nicht. Auf eine andere muss ihn ein [[article:vehicles|Schiff]] bringen.',
-            'Er lässt schmale Streifen an Ufern und Kartenrändern aus, kleine Flecken bleiben also unerkundet.',
-            'Unterwegs isst und schläft er und geht dann von seinem Standort aus weiter.',
+            'Er lässt schmale Streifen an Ufern und Kartenrändern aus, kleine Flecken können also unerkundet bleiben.',
           ],
         },
         {
@@ -420,13 +389,12 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Ereignis', 'Folge'],
             rows: [
-              ['Kein Land mehr zu erkunden', 'Meldung „Land erkundet“, der Kundschafter wartet'],
+              ['Nichts mehr zu erkunden', 'Meldung „Land erkundet“, der Kundschafter wartet'],
               [
                 'Mehr als {{explore.maxFailedLegs}} Mal in Folge kam er nicht ans Ziel',
                 'Der Rest gilt als unerreichbar, „Land erkundet“',
               ],
-              ['Kartenmodus „Aufgedeckt“', '„Land erkundet“ sofort'],
-              ['Neuer Befehl, Berufswechsel', 'Die Erkundung verfällt'],
+              ['Neuer Befehl oder Berufswechsel', 'Die Erkundung endet'],
               ['Befehl mit Shift', 'Führt er nach dem Ende der Erkundung aus'],
             ],
           },
@@ -451,7 +419,7 @@ export const WORLD: ArticleGroup = {
             rows: [
               ['Aggressiv', 'Wolf, Löwe, Löwin, Eisbär', 'Greifen von selbst an'],
               [
-                'Greifen an, wenn sie getroffen werden',
+                'Wehren sich, wenn sie getroffen werden',
                 'Bär, Elefant',
                 'Gefährlich für {{wild.angrySeconds}} s ab dem letzten Treffer. Ein begonnener Angriff dauert, bis das Ziel tot ist oder sich versteckt',
               ],
@@ -474,20 +442,19 @@ export const WORLD: ArticleGroup = {
           h: 'Herdenwachstum',
         },
         {
-          p: 'Nur etwa 1 von {{wild.breedingShare}} Herden wächst überhaupt. So eine Herde gewinnt alle {{wild.growthMinutes}} Min. 1 erwachsenes Tier, wenn sie mindestens 2 Tiere und weniger hat, als die Spalte „Herde“ angibt. Ein einzelnes Tier vermehrt sich nicht.',
+          p: 'Nur etwa 1 von {{wild.breedingShare}} Herden wächst. So eine Herde gewinnt alle {{wild.growthMinutes}} Min. 1 erwachsenes Tier, wenn sie mindestens 2 Tiere und weniger hat, als die Spalte „Herde“ angibt.',
         },
         {
           h: 'Was der Jäger jagt',
         },
         {
           list: [
-            'Das Jagdgebiet reicht {{flag.hunter}} Hexfelder um Arbeitsfahne oder Arbeitsplatz. Die Verfolgung geht {{wild.huntChase}} Hexfelder darüber hinaus.',
-            'Er wählt das Tier mit der kleinsten Summe aus Gesundheit und Entfernung. Gesundheit zählt in Hunderten und Tausenden, also gewinnt das schwächste, auch wenn es weit weg ist.',
-            'Er jagt je 1 Tier und nimmt das nächste erst, wenn er die Beute eingesammelt hat.',
-            'Ein Schuss des Jägers nimmt dem Tier {{wild.hunterShot}} Gesundheit, Reichweite {{hunterBow.min}}-{{hunterBow.max}} Hexfelder.',
+            'Das Jagdgebiet reicht {{flag.hunter}} Hexfelder um Arbeitsfahne oder Arbeitsplatz. Bei der Verfolgung geht der Jäger höchstens {{wild.huntChase}} Hexfelder darüber hinaus.',
+            'Er jagt zuerst das schwächste Tier, auch wenn es weit weg ist.',
+            'Ein Schuss des Jägers nimmt dem Tier {{wild.hunterShot}} Gesundheit und reicht {{hunterBow.min}} bis {{hunterBow.max}} Hexfelder weit.',
             'Erwachsene Wildziegen jagt er nicht von selbst, ihre Jungtiere schon.',
-            'Er übergeht Tiere mit Besitzer und Tiere auf einer anderen Landmasse.',
-            'Spalte „Jäger“: „von selbst“ ist Wild, das er selbst jagt, „auf Befehl“ greift er nur auf deinen Befehl an.',
+            'Tiere, die jemandem gehören, und Tiere auf einer anderen Landmasse jagt er nicht.',
+            'In der Spalte „Jäger“ heißt „von selbst“ Wild, das er von sich aus jagt, und „auf Befehl“ Wild, das er nur auf deinen Befehl angreift.',
           ],
         },
         {
@@ -518,7 +485,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'livestock',
       name: 'Viehzucht',
-      lead: 'Der Viehzüchter züchtet nur bei genau {{livestock.pair}} erwachsenen Tieren einer Art. Ein drittes schlachtet er zuerst.',
+      lead: 'Der Viehzüchter züchtet nur, wenn er genau {{livestock.pair}} erwachsene Tiere einer Art hat. Ein drittes schlachtet er zuerst.',
       blocks: [
         {
           figure: {
@@ -535,12 +502,12 @@ export const WORLD: ArticleGroup = {
             rows: [
               [
                 '[[job:scout|Kundschafter]]',
-                'Mit jedem Schritt übernimmt er wilde Ochsen und Schafe und die Tiere eines feindlichen Spielers. Die weiter entfernten laufen auseinander',
+                'Im Vorbeigehen übernimmt er wilde Ochsen und Schafe und die Tiere eines Feindes. Die etwas weiter entfernten laufen auseinander',
                 'Übernahme {{livestock.captureRange}}, Auseinanderlaufen {{livestock.scatterRange}}',
               ],
               [
                 '[[job:breeder|Viehzüchter]]',
-                'Holt dein nächstes Tier ohne Viehzüchterei in seine Viehzüchterei. Unter einem Paar nimmt er auch ein Tier aus deiner anderen Viehzüchterei, die mehr als ein Paar hat',
+                'Holt dein nächstes Tier, das in keiner Viehzüchterei steht, zu sich. Fehlt ihm ein Paar, nimmt er auch den Überschuss aus einer anderen deiner Viehzüchtereien',
                 'gleiche Landmasse',
               ],
             ],
@@ -572,7 +539,6 @@ export const WORLD: ArticleGroup = {
           list: [
             'Die [[building:work_animal_farm|Viehzüchterei]] fasst insgesamt {{livestock.farmHerd}} Tiere, beide Arten und Jungtiere unterwegs eingerechnet.',
             'Ein Jungtier wächst {{livestock.growMinutes}} Min. und zählt bis dahin nicht zum Paar.',
-            'Ist das Elterntier bei der Geburt weiter als {{livestock.birthRange}} Hexfelder von der Viehzüchterei entfernt, sind die Rohstoffe verloren, und es gibt kein Jungtier.',
           ],
         },
         {
@@ -582,7 +548,7 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Meldung', 'Bedeutung'],
             rows: [
-              ['„Keine Tiere“', 'Kein Tier dieser Art, ein Kundschafter muss her'],
+              ['„Keine Tiere“', 'Kein einziges Tier, ein Kundschafter muss her'],
               ['„Nur ein Tier“', 'Ein zweites Tier wird gebraucht'],
               ['„Jungtiere wachsen heran“', 'Die Zucht geht weiter, wenn das Paar erwachsen ist'],
               ['„Herde voll“', 'Der Viehzüchter wartet auf erwachsene Jungtiere'],
@@ -595,10 +561,10 @@ export const WORLD: ArticleGroup = {
     {
       id: 'religion',
       name: 'Religion und Tempel',
-      lead: 'Der Religionsbalken sinkt nur bei der Herstellung von Waffen und Rüstungen. Bei 0% beginnt ein Handwerker keine Charge, die Religion kostet.',
+      lead: 'Religion sinkt nur bei der Herstellung von Waffen und Rüstungen. Bei 0% stellt ein Handwerker keine Waffen und Rüstungen her.',
       blocks: [
         {
-          h: 'Kosten je Charge',
+          h: 'Was ein Stück an Religion kostet',
         },
         {
           table: {
@@ -620,13 +586,13 @@ export const WORLD: ArticleGroup = {
                 '-',
               ],
             ],
-            foot: 'Bei allen Stämmen gleich. Andere Waren dieser Berufe verbrauchen keine Religion.',
+            foot: 'Bei allen Stämmen gleich. Andere Produkte dieser Berufe kosten keine Religion.',
           },
         },
         {
           list: [
-            'Unter {{need.drivePct}}% gehen [[job:joiner|Schreiner]], Waffenbauer, Schmied und Näher von selbst beten. Ohne Ort zum Beten kommt bei {{need.criticalPct}}% die Meldung „Will beten“.',
-            'Eine begonnene Charge beenden sie auch bei 0%.',
+            'Unter {{need.drivePct}}% gehen [[job:joiner|Schreiner]], Waffenbauer, Schmied und Näher von selbst beten. Finden sie keinen Ort dafür, kommt bei {{need.criticalPct}}% die Meldung „Will beten“.',
+            'Ein begonnenes Stück beenden sie auch bei 0%.',
           ],
         },
         {
@@ -636,10 +602,10 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Ort', 'Bedingung'],
             rows: [
-              ['Wohnhaus', 'Wenn darin Heiliges Feuer brennt. Der Siedler geht zuerst dorthin'],
+              ['Wohnhaus', 'Wenn darin Heiliges Feuer brennt. Dann betet der Siedler zuerst zu Hause'],
               [
                 '[[building:work_temple|Tempel]], [[building:headquarters|Hauptquartier]]',
-                'Nur fertig und deine eigenen',
+                'Fertig und deine eigenen',
               ],
             ],
             foot: 'Ein Gebet dauert {{pray.seconds}} s und bringt +{{pray.pct}}% Religion.',
@@ -649,7 +615,7 @@ export const WORLD: ArticleGroup = {
           h: 'Heiliges Feuer',
         },
         {
-          p: 'Du entzündest es ab Wohnhaus 3. 1 [[good:holy_oil|Öl]] brennt {{oil.burnMinutes}} Min., der volle Vorrat im Haus {{oil.fullBurnMinutes}} Min. Es brennt auch, wenn niemand betet.',
+          p: 'Du entzündest es ab Wohnhaus 3. 1 [[good:holy_oil|Öl]] reicht für {{oil.burnMinutes}} Min., der volle Vorrat im Haus für {{oil.fullBurnMinutes}} Min. Das Feuer brennt auch, wenn niemand betet.',
         },
         {
           h: 'Tempelaura',
@@ -661,9 +627,9 @@ export const WORLD: ArticleGroup = {
               ['Reichweite', '{{aura.range}} Hexfelder'],
               ['Gesundheit', '+{{aura.perSecond}} pro Sekunde, bis {{aura.ceiling}}'],
               ['Religion', '+{{aura.pietyPct}}% pro Sekunde, wenn der Balken bis {{need.satedPct}}% steht'],
-              ['Wer', 'Alle Leute des Tempelbesitzers. Kinder bekommen Gesundheit'],
+              ['Für wen', 'Alle deine Leute, Kinder nur Gesundheit'],
               ['Bedingung', 'Tempel fertig und unbeschädigt'],
-              ['Mehrere Tempel', 'Es wirkt eine Aura, die Werte addieren sich nicht'],
+              ['Mehrere Tempel', 'Auren addieren sich nicht'],
             ],
             foot: 'Gesundheit über {{health.human}} bleibt, bis Wunden sie nehmen.',
           },
@@ -677,7 +643,7 @@ export const WORLD: ArticleGroup = {
       lead: 'Briefe aus Kisten setzen ein Gebäude sofort, ohne Bau, Material und nötige Entdeckungen.',
       blocks: [
         {
-          p: 'Eine Kiste öffnet jeder Erwachsene, eine Magische Kiste nur [[job:druid|Druide]] und Held. Der Befehl heißt „Kiste öffnen“. Der Siedler muss sie in seiner Gehreichweite erreichen.',
+          p: 'Eine Kiste öffnet jeder Erwachsene, eine Magische Kiste nur [[job:druid|Druide]] und Held. Der Befehl heißt „Kiste öffnen“. Der Siedler muss zu ihr hingehen können.',
         },
         {
           h: 'Inhalt',
@@ -721,11 +687,8 @@ export const WORLD: ArticleGroup = {
               ["'Name' setzen", 'Das genannte Gebäude, steht sofort'],
               ["'Name' setzen und dessen Lager füllen", 'Das genannte Gebäude mit vollem Vorrat'],
             ],
-            foot: 'Ein Brief verschwindet nach Gebrauch. Passt der Ort nicht, bleibt er. Deine Briefe stehen im Baufenster unter „Briefe“.',
+            foot: 'Ein Brief verschwindet nach Gebrauch, außer der Ort passt nicht. Deine Briefe findest du im Baufenster unter „Briefe“.',
           },
-        },
-        {
-          p: 'Gebäude auf Briefen: [[building:home_level_01|Wohnhaus 2]], [[building:home_level_04|Wohnhaus 5]], [[building:stock_02|Lagerhaus 3]], [[building:headquarters|Hauptquartier]], [[building:work_well_00|Brunnen]], [[building:work_farm_00|Farm]], [[building:work_mill_00|Mühle]], [[building:work_bakery_00|Bäckerei 1]], [[building:work_temple|Tempel]], [[building:school|Schule]], [[building:barracks|Kaserne]], [[building:tower_01|Wachturm 2]].',
         },
         {
           h: 'Briefe mit Werkstatt',
@@ -760,7 +723,7 @@ export const WORLD: ArticleGroup = {
                 '[[good:holy_oil|Öl]], kleine Tränke',
               ],
             ],
-            foot: 'So eine Kiste gibt auch einen Siedler in diesem Beruf und den Zugang zum Beruf.',
+            foot: 'So eine Kiste gibt auch einen Siedler in diesem Beruf und schaltet den Beruf frei.',
           },
         },
       ],
