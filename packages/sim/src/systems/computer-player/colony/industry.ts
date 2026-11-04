@@ -34,8 +34,8 @@ export interface ChainStep {
   /** The tier it is raised at: the top tier the tribe has enabled, which must be this one. */
   readonly tier?: string;
   /** The highest tier it goes up to, the level home's build plan lifts it to (owner ruling: colony lines
-   *  match home's, levels included): placed at the highest tier enabled up to it, and lifted there later
-   *  when it was placed lower. */
+   *  match home's, levels included): placed at its base, whose bill is cheapest, and lifted there once its
+   *  bill spares home's own sites (`./lifts.ts`). */
   readonly top?: string;
   /** A workshop with a large footprint, whose spot may lie past the store's walk range. */
   readonly far?: true;
