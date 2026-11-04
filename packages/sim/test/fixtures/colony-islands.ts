@@ -158,14 +158,14 @@ export function colonyContent(tradeShip = false): ContentSet {
   });
 }
 
-/** {@link colonyContent} whose warehouse offers a hunter seat, as the real one does. */
+/** {@link colonyContent} whose warehouses offer a hunter seat at every tier, as the real ones do. */
 export function huntingColonyContent(): ContentSet {
   const base = colonyContent();
   return parseContentSet({
     ...base,
     jobs: [...base.jobs, { typeId: HUNTER, id: 'hunter' }],
     buildings: base.buildings.map((b) =>
-      b.typeId === STOCK_TYPE
+      b.typeId === STOCK_TYPE || b.typeId === STOCK_TOP_TYPE
         ? { ...b, workers: [...b.workers, { jobType: HUNTER, count: HUNTER_SEATS }] }
         : b,
     ),

@@ -5,6 +5,7 @@ import {
   ComputerColony,
   Female,
   JobAssignment,
+  Livestock,
   Position,
   Resource,
   Rider,
@@ -56,6 +57,7 @@ import {
 import { ctxOf } from '../../../fixtures/context.js';
 import {
   BUILDER,
+  COW_TRIBE,
   FARM_TYPE,
   HOME_TOP_TYPE,
   HOME_TYPE,
@@ -81,6 +83,8 @@ const SHORE_DX = 8;
 const SEED = 7;
 const FOUND_DUE_TICKS = minutesToTicks(16);
 const GATHER_DUE_TICKS = minutesToTicks(4);
+/** A cow this far south of the colony's site grazes inside its store hunters' ground. */
+const COW_DY = 6;
 /** The sites a running colony places once its store stands, and their building, before it rests. */
 const REST_DUE_TICKS = minutesToTicks(8);
 const LADDER_DUE_TICKS = minutesToTicks(14);
@@ -359,6 +363,30 @@ describe('a colony sails', () => {
     expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
     stepUntil(sim, GATHER_DUE_TICKS, () => false);
     expect(colonySettlersOf(sim).filter((e) => sim.world.get(e, Settler).jobType === HUNTER)).toEqual([]);
+  });
+
+  it('puts no man on the hunter seat while a wild cow grazes within the hunt, so the cow is left alive', () => {
+    const sim = colonyWorld(SEED, huntingColonyContent());
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const site = colonyState(sim)?.site;
+    if (site === undefined) throw new Error('setup: no site');
+    sim.enqueueSetup({
+      kind: 'spawnAnimalHerd',
+      tribe: COW_TRIBE,
+      x: site.hx,
+      y: site.hy + COW_DY,
+      count: 1,
+    });
+    sim.step();
+    const [cow] = sim.world.query(Livestock);
+    if (cow === undefined) throw new Error('setup: no cow');
+    stepUntil(sim, GATHER_DUE_TICKS, () => false);
+    expect(colonySettlersOf(sim).filter((e) => sim.world.get(e, Settler).jobType === HUNTER)).toEqual([]);
+    expect(sim.world.isAlive(cow)).toBe(true);
   });
 
   it('sets its fishers by the shore with a flag of their own, not at the store, so each catch is set down there', () => {

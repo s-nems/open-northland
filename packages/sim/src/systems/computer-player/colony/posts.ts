@@ -18,7 +18,6 @@ import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { nearestRingNode } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { builderJobOf, isAllocatableMan } from '../../ai-shared/workforce/pool.js';
-import { HUNT_CHASE_SLACK_NODES } from '../../conflict/hunting/index.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
@@ -37,11 +36,11 @@ import {
   legalFlagNodeTest,
   type TakenFlagNodes,
 } from '../workforce/flag-spots.js';
-import { huntWorkLeft } from '../workforce/hunter.js';
 import { rowPlan } from '../workforce/staffing-rows.js';
 import { colonists, colonyOrigin, storeOf } from './founding.js';
 import { farDigPorters } from './haulers.js';
 import { homeSupply } from './home-supply.js';
+import { huntingOpen } from './hunting.js';
 import { earningDeposits } from './industry.js';
 import { colonyIndustries } from './industry-read.js';
 import { MEN_PER_WOMAN } from './people.js';
@@ -118,6 +117,12 @@ const POSTS: readonly Post[] = [
 
 /** The porters the digs past the store's round want on top of `posts`, whose first carrier keeps the round:
  *  none before that one. */
+/** `posts` with each hunter post a fisher's while the colony posts no hunter ({@link huntingOpen}): its food
+ *  comes from the water instead. */
+function withoutHunters(posts: readonly Post[], hunting: boolean): Post[] {
+  return hunting ? [...posts] : posts.map((post) => (post === 'hunter' ? 'fisher' : post));
+}
+
 function haulersBeyond(posts: readonly Post[], farDigs: number): number {
   const carriers = posts.filter((post) => post === 'carrier').length;
   return carriers === 0 ? 0 : Math.max(0, farDigs - (carriers - 1));
@@ -250,17 +255,6 @@ function postOrders(
     { kind: 'setJob', entity: man, jobType: job },
     { kind: 'setWorkFlag', entity: man, x: spot.hx, y: spot.hy },
   ];
-}
-
-/** Whether game is left for the colony's hunters among `men`: on their ground, past it by the chase's
- *  leash while one hunts, or on the store's while none does. Owner ruling: hunters kill the game quickly and
- *  then stand idle, so with none left the hunter post closes and its men take other work. */
-function gameLeft(env: ColonyEnv, store: Entity | null, men: readonly Entity[]): boolean {
-  const { world, ctx } = env;
-  const job = hunterJobType(ctx.content);
-  if (store === null || job === null || !isBuilt(world, store)) return false;
-  const hunters = men.filter((e) => world.get(e, Settler).jobType === job);
-  return huntWorkLeft(world, ctx, store, job, hunters, hunters.length > 0 ? HUNT_CHASE_SLACK_NODES : 0);
 }
 
 /** Whether `e` is mid-action or sent at an animal: a post change waits for him. */
@@ -465,14 +459,13 @@ export function handsWanted(
   for (const good of diggable) men += DIGGERS_MOST[good];
   const fishes = fishNear(env, origin) !== null;
   const people = colonists(env);
-  const hunts = gameLeft(
+  const hunts = huntingOpen(
     env,
     read.store,
     people.filter((e) => isAllocatableMan(world, ctx, e)),
   );
-  const others = POSTS.filter(
-    (p) =>
-      !isDug(p) && (p !== 'builder' || !resting) && (p !== 'fisher' || fishes) && (p !== 'hunter' || hunts),
+  const others = withoutHunters(POSTS, hunts).filter(
+    (p) => !isDug(p) && (p !== 'builder' || !resting) && (p !== 'fisher' || fishes),
   );
   men += others.length + (resting ? BUILDERS_AT_REST : 0);
   men += haulersBeyond(others, farDigPorters(env, read.store));
@@ -520,7 +513,7 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
   const free: Entity[] = [];
   const posted = men.filter((man) => !atWorkshop(env, man));
   const digs = digGoodsWithRoom(env, read);
-  const hunting = gameLeft(env, read.store, posted);
+  const hunting = huntingOpen(env, read.store, posted);
   for (const man of posted) {
     const post = postOf(world, ctx, man, builder);
     // A man at a full store's good moves on while another good wants digging, a hunter once no game is left.
@@ -534,8 +527,8 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
   const dug = new Map<DugGood, number>();
   for (const id of DUG_IDS) dug.set(id, held.get(id) ?? 0);
   const resting = atRest(env, read);
-  const listed = POSTS.slice(0, posted.length).filter(
-    (post) => (!isDug(post) || digs.has(post)) && (post !== 'hunter' || hunting),
+  const listed = withoutHunters(POSTS.slice(0, posted.length), hunting).filter(
+    (post) => !isDug(post) || digs.has(post),
   );
   // A dig past the store porter's round wants a porter of its own before any other post.
   const haulers = haulersBeyond(listed, farDigPorters(env, read.store));
