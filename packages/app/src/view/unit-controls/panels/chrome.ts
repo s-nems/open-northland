@@ -1,6 +1,13 @@
 import type { UiCue } from '@open-northland/audio';
 import { projectNode } from '@open-northland/render';
-import { type Entity, entityById, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
+import {
+  type Entity,
+  entityById,
+  type PlayerCommand,
+  systems,
+  type UnlockStatus,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { diag } from '../../../diag/index.js';
 import { isRenamable, namedSettlerOf } from '../../../game/character-names/index.js';
 import { petNames } from '../../../game/character-names/pet-names.js';
@@ -129,6 +136,12 @@ export async function createUnitChrome(
   equipPicker: EquipPickController | null,
   callbacks: UnitChromeCallbacks,
 ): Promise<UnitChromeHandle> {
+  // A command from the panels or the ring skips the panel throttle: its effect shows once it lands.
+  const enqueue = (command: PlayerCommand): void => {
+    opts.enqueue(command);
+    panel.commanded();
+  };
+  const panelOpts = { snapshot: opts.snapshot, viewer: opts.viewer, content: opts.content, enqueue };
   // The settler panel's commands: `setProductionCount` is the sim's, while a rename is the player's
   // own and stays on this client, where no other seat's screen can be made to show it.
   const rename = (id: number, name: string): void => {
@@ -144,7 +157,7 @@ export async function createUnitChrome(
   const contract: SettlerContractCommands = {
     rename,
     setProductionCount: (id, goodType, count) =>
-      opts.enqueue({ kind: 'setProductionCount', entity: id as Entity, goodType, count }),
+      enqueue({ kind: 'setProductionCount', entity: id as Entity, goodType, count }),
   };
 
   // Approximation: centring uses a building's base, so a tall house sits above the midpoint.
@@ -197,7 +210,7 @@ export async function createUnitChrome(
   // exactly where this one must stay shown.
   const panelChip = createTooltip();
   const settlerActions = settlerPanelActions(
-    opts,
+    panelOpts,
     {
       selectEntity: callbacks.selectEntity,
       selectGroup: callbacks.selectGroup,
@@ -251,14 +264,14 @@ export async function createUnitChrome(
     vehicle: vehiclePanelActions({
       snapshot: opts.snapshot,
       viewer: opts.viewer,
-      enqueue: opts.enqueue,
+      enqueue,
       arm: callbacks.armPick,
       cue: callbacks.cue,
     }),
     vehiclePeers: (vehicle) => vehiclePeersOf(opts.snapshot(), opts.content, vehicle),
     armedPick: (vehicle) => armedVehiclePick(callbacks.armedPick(), vehicle),
   });
-  const groupActions = groupPanelActions(opts, {
+  const groupActions = groupPanelActions(panelOpts, {
     onOrderLimit: callbacks.onOrderLimit,
     selectEntity: callbacks.selectEntity,
     selectGroup: callbacks.selectGroup,
@@ -294,7 +307,7 @@ export async function createUnitChrome(
       snapshot: opts.snapshot,
       content: opts.content,
       viewer: opts.viewer,
-      enqueue: opts.enqueue,
+      enqueue,
       cue: callbacks.cue,
       selectGroup: callbacks.selectGroup,
       confirm: createHudConfirm(opts.domHud.plane),
@@ -312,15 +325,15 @@ export async function createUnitChrome(
     close: () => settlerActions.clearSelection(),
     mode: (id, mode) => {
       callbacks.cue('confirm');
-      opts.enqueue({ kind: 'setPalisadeGateMode', palisade: id as Entity, mode });
+      enqueue({ kind: 'setPalisadeGateMode', palisade: id as Entity, mode });
     },
     demolish: (id) => {
       callbacks.cue('confirm');
-      opts.enqueue({ kind: 'demolishPalisade', palisade: id as Entity });
+      enqueue({ kind: 'demolishPalisade', palisade: id as Entity });
     },
     cancelRoadSite: (id) => {
       callbacks.cue('confirm');
-      opts.enqueue({ kind: 'cancelRoadSite', roadSite: id as Entity });
+      enqueue({ kind: 'cancelRoadSite', roadSite: id as Entity });
     },
   });
   const signpostPanel = createSignpostPanel({
@@ -332,7 +345,7 @@ export async function createUnitChrome(
       opts.snapshot,
       opts.viewer,
       callbacks.cue,
-    )((id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity })),
+    )((id) => enqueue({ kind: 'demolishSignpost', signpost: id as Entity })),
   });
   const figures = opts.domHud.figures;
   const wellFigures =
@@ -474,7 +487,7 @@ export async function createUnitChrome(
         technologyStatus: opts.technologyStatus,
         answered: callbacks.answered,
         onOrderLimit: callbacks.onOrderLimit,
-        enqueue: opts.enqueue,
+        enqueue,
       }),
       jobAnswersVersion: () => opts.jobChoicesVersion() + (opts.technologyVersion?.() ?? 0),
       onCommand: callbacks.ringCommand,

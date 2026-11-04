@@ -28,6 +28,8 @@ function group(pct: number, ids: readonly number[] = [1, 2]): UnitPanelModel {
 }
 /** The gate's own throttle: a value rebuild is refused until this much wall clock has passed. */
 const VALUE_GAP_MS = 250;
+/** How long after a panel command the gate re-derives every new snapshot and answer. */
+const COMMAND_ECHO_MS = 1000;
 
 /** A gate over a scripted model and a hand-cranked clock: `derive` answers with the model the test set,
  *  and each frame gets a fresh snapshot object unless the case is about snapshot identity. */
@@ -207,6 +209,29 @@ describe('details panel rebuild gate', () => {
       model: { kind: 'signpost', entityId: 7, postCount: 1, stock: [], canDemolish: true },
       structural: false,
     });
+  });
+
+  it("shows a panel command's effect as soon as its snapshot or answer lands, then throttles again", () => {
+    const g = gateOver(group(2));
+    g.frame();
+    g.gate.commanded();
+
+    // The command's tick lands, the read it changes still on its way.
+    expect(g.frame()).toBeNull();
+    g.land(group(3));
+    expect(g.frame()).toEqual({ model: group(3), structural: false });
+    // Frames without a new snapshot or answer derive nothing.
+    const snapshot = snapshotOf([]);
+    g.frame(snapshot);
+    const derives = g.derives();
+    for (let frame = 0; frame < 10; frame++) g.frame(snapshot);
+    expect(g.derives()).toBe(derives);
+
+    g.advance(COMMAND_ECHO_MS);
+    g.show(group(4));
+    expect(g.frame()).not.toBeNull();
+    g.show(group(5));
+    expect(g.frame()).toBeNull();
   });
 
   it('forces a structural rebuild for a re-selection of the same entity', () => {
