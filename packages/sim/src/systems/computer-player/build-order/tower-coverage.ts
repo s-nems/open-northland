@@ -174,11 +174,14 @@ export function coverageSpotSearch(
   return (target) => {
     if (!settlement.meets(target, coverageSpan)) return null;
     const reach = settlement.around(target, fan);
+    // A store serves the carriers of its own land: one across the water covers nothing of the target's.
+    const land = terrain.componentOf(terrain.nodeAtClamped(target.hx, target.hy));
     const search = (offGrass: boolean) => {
       const accept = acceptor.around(underFire, target, fan, offGrass);
       return firstRingNode(target.hx, target.hy, fan, (x, y) => {
         // Coverage first: one distance test, and it passes only nodes near the target, itself in the reach.
         if (!withinNodeRadius(x, y, target.hx, target.hy, coverage.radius)) return false;
+        if (!terrain.inBounds(x, y) || terrain.componentOf(terrain.nodeAt(x, y)) !== land) return false;
         if (apartFrom.some((c) => withinNodeRadius(c.hx, c.hy, x, y, coverage.radius))) return false;
         if (!reach.contains(x, y)) return false;
         return accept(x, y) && (walkable === null || walkable(x, y));
