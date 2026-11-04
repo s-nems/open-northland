@@ -39,7 +39,12 @@ export function cartSpeedLossPercent(content: ContentSet, type: VehicleType, loa
   const full = isAnimalDrawnType(content, type)
     ? DRAWN_CART_FULL_SPEED_LOSS_PERCENT
     : HANDCART_FULL_SPEED_LOSS_PERCENT;
-  return Math.floor((full * Math.min(load, cap)) / cap);
+  return loadSpeedLossPercent(full, load, cap);
+}
+
+/** The speed a cart whose full hold loses `fullLossPercent` loses holding `load` of `cap`, whole percent. */
+export function loadSpeedLossPercent(fullLossPercent: number, load: number, cap: number): number {
+  return Math.floor((fullLossPercent * Math.min(load, cap)) / cap);
 }
 
 /** The ticks one unit's lift into or out of a cart of `type` takes, the lifting clip lasting `clipTicks`;

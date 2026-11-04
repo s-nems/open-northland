@@ -48,12 +48,6 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          figure: {
-            id: 'step-diamond',
-            caption: 'Why less on the slant',
-          },
-        },
-        {
           h: 'How long building takes',
         },
         {

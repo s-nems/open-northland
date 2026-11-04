@@ -593,12 +593,6 @@ export const MILITARY: ArticleGroup = {
           h: '建造栅门',
         },
         {
-          figure: {
-            id: 'gate',
-            caption: '栅门建在哪里',
-          },
-        },
-        {
           list: [
             '栅门占用{{wall.gateSegments}}段连成直线的自家已完工栅栏。每段至少有{{wall.gateMinHealthPct}}%生命值，且在平地上，通道内不能有人。',
             '栅门立即建成，处于关闭状态，生命值是满的，即使原来的栅栏段受过损。',

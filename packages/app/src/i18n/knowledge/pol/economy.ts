@@ -45,12 +45,6 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          figure: {
-            id: 'step-diamond',
-            caption: 'Czemu po skosie mniej',
-          },
-        },
-        {
           h: 'Ile trwa budowa',
         },
         {

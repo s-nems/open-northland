@@ -8,10 +8,10 @@ import {
   type BreakdownRow,
   blowResult,
   type CalculatorState,
-  DIAL_SECTORS,
-  type DialSectorId,
   type DuelFighter,
   duelResult,
+  HIT_SIDES,
+  type HitSide,
   initialCalculator,
   ranking,
   type TargetKind,
@@ -24,30 +24,22 @@ import {
 import {
   CAP_HITS,
   combatTargets,
+  experienceBonusPct,
   gainsFightExperience,
   takesStrengthAmulet,
 } from '../../knowledge/combat.js';
 import { formatFactNumber } from '../../knowledge/facts.js';
-import { goodIconMarkup } from '../good-art.js';
 import { button, element, setHidden, setStyleVar, write } from '../parts/dom.js';
 import { type DropdownEntry, type DropdownHandle, dropdownControl } from '../parts/dropdown.js';
 import { createSegmented } from '../parts/segmented.js';
 import type { KnowledgeContext } from './context.js';
 import './calculator.css';
 
-const WEAPON_ICON_PX = 22;
 const SECONDS_DIGITS = 1;
 const SECONDS_PER_MINUTE = 60;
 const SELECT_SKIN = 'on-res-select';
 const TARGET_KINDS: readonly TargetKind[] = ['person', 'animal', 'building', 'vehicle'];
 const MODES = ['blow', 'duel'] as const;
-const DIAL_SIZE = 76;
-const DIAL_OUTER = 36;
-const DIAL_INNER = 13;
-const FULL_TURN = 360;
-const HALF_TURN = 180;
-const QUARTER_TURN = 90;
-const DIAL_GAP_DEGREES = 2;
 
 /** One per window: reopening the article or stepping back finds the fight as it was left. */
 const states = new WeakMap<KnowledgeContext, CalculatorState>();
@@ -68,7 +60,7 @@ export function selectCalculatorWeapon(context: KnowledgeContext, weaponId: stri
 
 export function focusCalculator(page: HTMLElement): void {
   page.querySelector('.kn-calc')?.scrollIntoView({ block: 'start' });
-  page.querySelector<HTMLElement>('.kn-calc__weapon input:checked')?.focus({ preventScroll: true });
+  page.querySelector<HTMLElement>('.kn-calc__weapon button')?.focus({ preventScroll: true });
 }
 
 function seconds(value: number | null): string {
@@ -89,8 +81,8 @@ const count = (value: number | null): string => (value === null ? '-' : formatFa
 const goodIdOf = (context: KnowledgeContext, weapon: KnowledgeWeapon): string | null =>
   weapon.goodType === null ? null : (context.base.goodByType.get(weapon.goodType)?.id ?? null);
 
-function field(label: string, control: HTMLElement): HTMLElement {
-  const row = element('div', 'kn-calc__field');
+function field(label: string, control: HTMLElement, className = ''): HTMLElement {
+  const row = element('div', `kn-calc__field ${className}`.trim());
   const caption = element('span', 'kn-calc__label');
   write(caption, label);
   row.append(caption, control);
@@ -111,22 +103,26 @@ function checkbox(
   return { host, box };
 }
 
-function slider(
-  label: string,
+/** The fight-experience slider; its readout says what the hits are worth. */
+function experienceSlider(
   value: number,
   change: (next: number) => void,
 ): { readonly host: HTMLElement; readonly input: HTMLInputElement } {
+  const copy = messages().knowledge.mechanics;
   const host = element('div', 'kn-calc__slider');
   const input = element('input', '');
   input.type = 'range';
   input.min = '0';
   input.max = String(CAP_HITS);
   input.value = String(value);
-  input.setAttribute('aria-label', label);
+  input.setAttribute('aria-label', copy.hitsLabel);
   const shown = element('output', 'kn-calc__value');
-  write(shown, String(value));
+  const show = (hits: number): void => {
+    write(shown, formatMessage(copy.experienceValue, { hits, percent: experienceBonusPct(hits) }));
+  };
+  show(value);
   input.addEventListener('input', () => {
-    write(shown, input.value);
+    show(input.valueAsNumber);
     change(input.valueAsNumber);
   });
   host.append(input, shown);
@@ -178,86 +174,46 @@ function armourDropdown(
   return control;
 }
 
-function sectorPath(index: number): string {
-  const centre = DIAL_SIZE / 2;
-  const step = FULL_TURN / DIAL_SECTORS.length;
-  const point = (radius: number, degrees: number): string => {
-    const radians = ((degrees - QUARTER_TURN) * Math.PI) / HALF_TURN;
-    return `${(centre + radius * Math.cos(radians)).toFixed(2)} ${(centre + radius * Math.sin(radians)).toFixed(2)}`;
-  };
-  const from = index * step - step / 2 + DIAL_GAP_DEGREES;
-  const to = index * step + step / 2 - DIAL_GAP_DEGREES;
-  return `M${point(DIAL_INNER, from)} L${point(DIAL_OUTER, from)} A${DIAL_OUTER} ${DIAL_OUTER} 0 0 1 ${point(DIAL_OUTER, to)} L${point(DIAL_INNER, to)} A${DIAL_INNER} ${DIAL_INNER} 0 0 0 ${point(DIAL_INNER, from)} Z`;
+/** A tribe's weapons grouped as the reader knows them, heroes last; `keep` drops rows. */
+function weaponEntries(
+  context: KnowledgeContext,
+  tribe: number,
+  keep: (weapon: KnowledgeWeapon) => boolean = () => true,
+): readonly DropdownEntry<string>[] {
+  const copy = messages().knowledge.mechanics;
+  return weaponGroups(context.base, tribe, true).flatMap((group) => {
+    const choices = group.weapons.filter(keep).map((weapon) => {
+      const goodId = goodIdOf(context, weapon);
+      return { id: weapon.id, label: weaponLabel(weapon), ...(goodId === null ? {} : { goodId }) };
+    });
+    return choices.length === 0 ? [] : [{ group: copy.weaponGroups[group.id], choices }];
+  });
 }
 
-/** Six sides round a target facing up; a radio group, so the arrows walk it and one Tab leaves it. */
-function createDial(
-  active: DialSectorId,
-  pick: (sector: DialSectorId) => void,
-): { readonly element: HTMLElement; setEnabled(on: boolean): void } {
-  const copy = messages().knowledge.mechanics;
-  const host = element('div', 'kn-dial');
-  const paths = DIAL_SECTORS.map((_, i) => `<path class="kn-dial__sector" d="${sectorPath(i)}"></path>`);
-  const centre = DIAL_SIZE / 2;
-  const face = DIAL_INNER / 2;
-  host.innerHTML = `<svg viewBox="0 0 ${DIAL_SIZE} ${DIAL_SIZE}" role="radiogroup">${paths.join('')}<path class="kn-dial__face" d="M${centre} ${centre - face} l${face} ${DIAL_INNER} h${-DIAL_INNER} Z"></path></svg>`;
-  const svg = host.querySelector('svg');
-  svg?.setAttribute('aria-label', copy.dialLabel);
-  const caption = element('span', 'kn-dial__caption');
-  host.append(caption);
-  const sectors = [...host.querySelectorAll<SVGPathElement>('.kn-dial__sector')];
-  let enabled = true;
-  const light = (id: DialSectorId): void => {
-    sectors.forEach((sector, i) => {
-      const on = DIAL_SECTORS[i]?.id === id;
-      sector.setAttribute('aria-checked', String(on));
-      sector.setAttribute('tabindex', on && enabled ? '0' : '-1');
-    });
-    write(caption, enabled ? copy.dialSectors[id] : copy.dialOff);
-  };
-  sectors.forEach((sector, i) => {
-    const entry = DIAL_SECTORS[i];
-    if (entry === undefined) return;
-    sector.setAttribute('role', 'radio');
-    sector.setAttribute('aria-label', copy.dialSectors[entry.id]);
-    const choose = (): void => {
-      if (!enabled) return;
-      light(entry.id);
-      pick(entry.id);
-    };
-    sector.addEventListener('click', choose);
-    sector.addEventListener('keydown', (event) => {
-      const forward = event.key === 'ArrowRight' || event.key === 'ArrowDown';
-      const backward = event.key === 'ArrowLeft' || event.key === 'ArrowUp';
-      if (event.key === ' ' || event.key === 'Enter') choose();
-      if (!forward && !backward && event.key !== ' ' && event.key !== 'Enter') return;
-      event.preventDefault();
-      if (!forward && !backward) return;
-      const next = (i + (forward ? 1 : -1) + sectors.length) % sectors.length;
-      const target = DIAL_SECTORS[next];
-      if (target === undefined || !enabled) return;
-      light(target.id);
-      pick(target.id);
-      sectors[next]?.focus();
-    });
-  });
-  light(active);
-  return {
-    element: host,
-    setEnabled(on): void {
-      enabled = on;
-      host.classList.toggle('kn-dial--off', !on);
-      const at = sectors.findIndex((s) => s.getAttribute('aria-checked') === 'true');
-      light(DIAL_SECTORS[at]?.id ?? active);
+function weaponDropdown(
+  context: KnowledgeContext,
+  tribe: number,
+  active: string,
+  pick: (weaponId: string) => void,
+  keep?: (weapon: KnowledgeWeapon) => boolean,
+): DropdownHandle<string> {
+  const control = dropdownControl<string>({
+    label: messages().knowledge.mechanics.weaponLabel,
+    className: SELECT_SKIN,
+    entries: weaponEntries(context, tribe, keep),
+    active,
+    icons: context.art.goodIcon,
+    onPick: (id) => {
+      control.setActive(id);
+      pick(id);
     },
-  };
+  });
+  return control;
 }
 
 function breakdownTable(rows: readonly BreakdownRow[]): HTMLElement {
   const copy = messages().knowledge.mechanics;
   const table = element('table', 'kn-table kn-calc__breakdown');
-  const caption = element('caption', '');
-  write(caption, copy.breakdownTitle);
   const head = element('tr', '');
   for (const [label, numeric] of [
     [copy.breakdownStep, false],
@@ -289,14 +245,43 @@ function breakdownTable(rows: readonly BreakdownRow[]): HTMLElement {
     line.append(name, change, value);
     body.append(line);
   }
-  table.append(caption, thead, body);
+  table.append(thead, body);
   return table;
 }
 
-function strip(result: BlowResult | undefined): HTMLElement {
+/** What the target fields name, as the answer's subject. */
+function targetName(context: KnowledgeContext, state: CalculatorState): string {
+  const { base } = context;
+  const { target } = state;
+  const copy = messages().knowledge;
+  switch (target.kind) {
+    case 'person':
+      return formatMessage(copy.mechanics.matchupPerson, { armour: copy.targets[target.armour] });
+    case 'animal':
+      return base.animals.find((a) => a.tribe === target.animal)?.name ?? copy.targets.animal;
+    case 'building':
+      return base.buildingById.get(target.building)?.name ?? copy.targets.building;
+    case 'vehicle':
+      return base.vehicles.find((v) => v.id === target.vehicle)?.name ?? copy.targets.vehicle;
+  }
+}
+
+/** The answer: who hits whom, then damage, blows and time in large print. */
+function answer(
+  context: KnowledgeContext,
+  state: CalculatorState,
+  result: BlowResult | undefined,
+): HTMLElement {
   const copy = messages().knowledge.mechanics;
-  const host = element('dl', 'kn-calc__strip');
-  host.setAttribute('aria-live', 'polite');
+  const host = element('div', 'kn-calc__answer');
+  const matchup = element('p', 'kn-calc__matchup');
+  if (result !== undefined) {
+    write(
+      matchup,
+      formatMessage(copy.matchup, { weapon: weaponLabel(result.weapon), target: targetName(context, state) }),
+    );
+  }
+  const strip = element('dl', 'kn-calc__strip');
   const tile = (label: string, value: string): void => {
     const box = element('div', 'kn-calc__tile');
     const term = element('dt', '');
@@ -304,13 +289,40 @@ function strip(result: BlowResult | undefined): HTMLElement {
     const data = element('dd', '');
     write(data, value);
     box.append(term, data);
-    host.append(box);
+    strip.append(box);
   };
   tile(copy.resultDamage, count(result?.damage ?? null));
   tile(copy.resultHits, count(result?.hits ?? null));
   tile(copy.resultTime, seconds(result?.seconds ?? null));
-  tile(copy.resultRate, result?.perSecond == null ? '-' : formatFactNumber(result.perSecond, SECONDS_DIGITS));
+  host.append(matchup, strip);
+  if (result !== undefined && result.hits === null) {
+    const never = element('p', 'kn-calc__never');
+    write(never, copy.neverKillsNote);
+    host.append(never);
+  }
   return host;
+}
+
+function fold(summary: string): { readonly element: HTMLDetailsElement; readonly body: HTMLElement } {
+  const host = element('details', 'kn-fold kn-calc__fold');
+  const title = element('summary', '');
+  write(title, summary);
+  const body = element('div', 'kn-calc__foldbody');
+  host.append(title, body);
+  return { element: host, body };
+}
+
+function howItAdds(result: BlowResult | undefined): readonly HTMLElement[] {
+  const copy = messages().knowledge.mechanics;
+  if (result === undefined) return [];
+  const rate = element('p', 'kn-foot');
+  write(
+    rate,
+    `${copy.resultRate}: ${result.perSecond === null ? '-' : formatFactNumber(result.perSecond, SECONDS_DIGITS)}`,
+  );
+  const assumes = element('p', 'kn-foot');
+  write(assumes, copy.calculatorAssumes);
+  return [breakdownTable(result.rows), rate, assumes];
 }
 
 function rankingList(
@@ -319,10 +331,7 @@ function rankingList(
   pick: (weaponId: string) => void,
 ): HTMLElement {
   const copy = messages().knowledge.mechanics;
-  const host = element('section', 'kn-calc__ranking');
-  const title = element('h4', 'kn-calc__title');
-  write(title, copy.rankingTitle);
-  const list = element('ol', '');
+  const list = element('ol', 'kn-calc__ranking');
   const chosen = weaponFor(context.base, state.attacker.tribe, state.attacker.weapon)?.id;
   for (const row of ranking(context.base, state)) {
     const item = element('li', '');
@@ -340,59 +349,77 @@ function rankingList(
     item.append(pressable);
     list.append(item);
   }
-  host.append(title, list);
-  return host;
+  return list;
 }
 
-let radioGroups = 0;
+type Update = (state: CalculatorState) => void;
 
-function weaponList(
+function sideTitle(text: string): HTMLElement {
+  const title = element('h4', 'kn-calc__title');
+  write(title, text);
+  return title;
+}
+
+function attackerPanel(
   context: KnowledgeContext,
-  state: CalculatorState,
-  pick: (weaponId: string) => void,
-): HTMLElement {
+  read: () => CalculatorState,
+  update: Update,
+): { readonly element: HTMLElement; setWeapon(id: string): void; refresh(result: BlowResult): void } {
+  const { base } = context;
   const copy = messages().knowledge.mechanics;
-  const { tribe } = state.attacker;
-  const host = element('div', 'kn-calc__weapons');
-  host.setAttribute('role', 'radiogroup');
-  host.setAttribute('aria-label', copy.weaponLabel);
-  radioGroups += 1;
-  const name = `kn-calc-weapon-${radioGroups}`;
-  const chosen = weaponFor(context.base, tribe, state.attacker.weapon)?.id;
-  for (const group of weaponGroups(context.base, tribe, state.heroes)) {
-    const title = element('span', 'kn-calc__group');
-    write(title, copy.weaponGroups[group.id]);
-    host.append(title);
-    for (const weapon of group.weapons) {
-      const row = element('label', 'kn-calc__weapon');
-      const radio = element('input', '');
-      radio.type = 'radio';
-      radio.name = name;
-      radio.checked = weapon.id === chosen;
-      radio.addEventListener('change', () => pick(weapon.id));
-      const icon = element('span', 'kn-calc__icon', goodIconMarkup(WEAPON_ICON_PX));
-      const frame = icon.querySelector<HTMLElement>('.on-good__frame');
-      const goodId = goodIdOf(context, weapon);
-      if (frame !== null && goodId !== null) context.art.goodIcon(frame, goodId, WEAPON_ICON_PX);
-      const label = element('span', '');
-      write(label, weaponLabel(weapon));
-      row.append(radio, icon, label);
-      host.append(row);
-    }
-  }
-  return host;
+  const setAttacker = (change: Partial<CalculatorState['attacker']>): void => {
+    const state = read();
+    update({ ...state, attacker: { ...state.attacker, ...change } });
+  };
+  const activeWeapon = (): string => weaponFor(base, read().attacker.tribe, read().attacker.weapon)?.id ?? '';
+  const weapon = weaponDropdown(context, read().attacker.tribe, activeWeapon(), (id) =>
+    update(withWeapon(read(), id)),
+  );
+  const tribe = tribeDropdown(context, copy.tribeLabel, read().attacker.tribe, (id) => {
+    weapon.setEntries(weaponEntries(context, id));
+    setAttacker({ tribe: id });
+    weapon.setActive(activeWeapon());
+  });
+  const experience = experienceSlider(read().attacker.hits, (hits) => setAttacker({ hits }));
+  const experienceNote = element('small', 'kn-calc__note');
+  const strength = checkbox(copy.strengthAmulet, read().attacker.strength, (on) =>
+    setAttacker({ strength: on }),
+  );
+  const pair = element('div', 'kn-calc__pair');
+  pair.append(field(copy.tribeLabel, tribe.root), field(copy.weaponLabel, weapon.root, 'kn-calc__weapon'));
+  const host = element('section', 'kn-calc__side');
+  host.append(
+    sideTitle(copy.attackerTitle),
+    pair,
+    field(copy.hitsLabel, experience.host),
+    experienceNote,
+    strength.host,
+  );
+  return {
+    element: host,
+    setWeapon(id): void {
+      weapon.setActive(id);
+    },
+    refresh(result): void {
+      experience.input.disabled = !result.gainsExperience;
+      const skip = result.rows.find((row) => row.id === 'experience')?.skip ?? null;
+      write(
+        experienceNote,
+        skip === null ? formatMessage(copy.experienceHint, { cap: CAP_HITS }) : copy.skips[skip],
+      );
+      strength.box.disabled = !result.takesStrength;
+    },
+  };
 }
 
 function targetPanel(
   context: KnowledgeContext,
   read: () => CalculatorState,
   update: Update,
-): { readonly element: HTMLElement; refresh(): void } {
+): { readonly element: HTMLElement; refresh(result: BlowResult | undefined): void } {
   const { base } = context;
   const copy = messages().knowledge.mechanics;
   const host = element('section', 'kn-calc__side');
-  const title = element('h4', 'kn-calc__title');
-  write(title, copy.targetTitle);
   const pickers = element('div', 'kn-calc__pickers');
   const setTarget = (change: Partial<CalculatorState['target']>): void => {
     const state = read();
@@ -436,13 +463,16 @@ function targetPanel(
       return field(label, control.root);
     };
     if (target.kind === 'person') {
-      pickers.replaceChildren(
-        field(
-          copy.armourLabel,
-          armourDropdown(context, copy.armourLabel, target.armour, (armour) => setTarget({ armour })).root,
-        ),
+      const armour = field(
+        copy.armourLabel,
+        armourDropdown(context, copy.armourLabel, target.armour, (id) => setTarget({ armour: id })).root,
+      );
+      const pair = element('div', 'kn-calc__pair kn-calc__pair--check');
+      pair.append(
+        armour,
         checkbox(copy.defenseAmulet, target.defense, (defense) => setTarget({ defense })).host,
       );
+      pickers.replaceChildren(pair);
     } else if (target.kind === 'animal') {
       pickers.replaceChildren(
         list(
@@ -453,7 +483,8 @@ function targetPanel(
         ),
       );
     } else if (target.kind === 'building') {
-      pickers.replaceChildren(
+      const pair = element('div', 'kn-calc__pair');
+      pair.append(
         list(
           copy.targetKinds.building,
           base.buildings.filter((b) => b.hitpoints !== null).map((b) => ({ id: b.id, label: b.name })),
@@ -467,6 +498,7 @@ function targetPanel(
           ).root,
         ),
       );
+      pickers.replaceChildren(pair);
     } else {
       pickers.replaceChildren(
         list(
@@ -478,6 +510,20 @@ function targetPanel(
       );
     }
   }
+  const sides = createSegmented(HIT_SIDES, copy.dialLabel, (side) => {
+    const state = read();
+    update({ ...state, attacker: { ...state.attacker, side } });
+  });
+  const sideNote = element('small', 'kn-calc__note');
+  const paintSides = (enabled: boolean): void => {
+    const option = (side: HitSide) => ({ label: copy.directions[side], enabled });
+    sides.update(
+      { front: option('front'), backSide: option('backSide'), behind: option('behind') },
+      read().attacker.side,
+    );
+    write(sideNote, enabled ? '' : copy.dialOff);
+    setHidden(sideNote, enabled);
+  };
   const health = element('input', 'kn-calc__health');
   health.type = 'number';
   health.min = '1';
@@ -494,12 +540,15 @@ function targetPanel(
   healthRow.append(health, full, reset);
   paintKinds();
   fillPickers();
-  host.append(title, kinds.element, pickers, field(copy.healthLabel, healthRow));
+  const sideBox = element('div', 'kn-calc__sidebox');
+  sideBox.append(sides.element, sideNote);
+  const lower = element('div', 'kn-calc__pair');
+  lower.append(field(copy.dialLabel, sideBox), field(copy.healthLabel, healthRow));
+  host.append(sideTitle(copy.targetTitle), kinds.element, pickers, lower);
   return {
     element: host,
-    refresh(): void {
+    refresh(result): void {
       const { target } = read();
-      const result = blowResult(base, read());
       const fullHealth = result?.target.fullHealth ?? 0;
       health.max = String(fullHealth);
       if (document.activeElement !== health || target.health === null) {
@@ -507,11 +556,10 @@ function targetPanel(
       }
       write(full, formatMessage(copy.healthOf, { full: formatFactNumber(fullHealth) }));
       setHidden(reset, target.health === null);
+      paintSides(result?.target.combat.person ?? true);
     },
   };
 }
-
-type Update = (state: CalculatorState) => void;
 
 function blowPane(
   context: KnowledgeContext,
@@ -521,69 +569,31 @@ function blowPane(
   const { base } = context;
   const copy = messages().knowledge.mechanics;
   const host = element('div', 'kn-calc__blow');
-  const setAttacker = (change: Partial<CalculatorState['attacker']>): void => {
-    const state = read();
-    update({ ...state, attacker: { ...state.attacker, ...change } });
-  };
-
-  const weaponsSlot = element('div', 'kn-calc__weaponslot');
-  const fillWeapons = (): void => {
-    weaponsSlot.replaceChildren(weaponList(context, read(), (weapon) => setAttacker({ weapon })));
-  };
-  const tribe = tribeDropdown(context, copy.tribeLabel, read().attacker.tribe, (id) => {
-    setAttacker({ tribe: id });
-    fillWeapons();
-  });
-  const heroes = checkbox(copy.heroes, read().heroes, (on) => {
-    update({ ...read(), heroes: on });
-    fillWeapons();
-  });
-  const experience = slider(copy.hitsLabel, read().attacker.hits, (hits) => setAttacker({ hits }));
-  const experienceNote = element('small', 'kn-calc__note');
-  const strength = checkbox(copy.strengthAmulet, read().attacker.strength, (on) =>
-    setAttacker({ strength: on }),
-  );
-  const dial = createDial(read().attacker.sector, (sector) => setAttacker({ sector }));
-
-  const attacker = element('section', 'kn-calc__side');
-  const attackerTitle = element('h4', 'kn-calc__title');
-  write(attackerTitle, copy.attackerTitle);
-  const modifiers = element('div', 'kn-calc__modifiers');
-  const left = element('div', '');
-  left.append(field(copy.hitsLabel, experience.host), experienceNote, strength.host);
-  modifiers.append(left, dial.element);
-  attacker.append(attackerTitle, field(copy.tribeLabel, tribe.root), heroes.host, weaponsSlot, modifiers);
-
+  const attacker = attackerPanel(context, read, update);
   const target = targetPanel(context, read, update);
   const sides = element('div', 'kn-calc__sides');
-  sides.append(attacker, target.element);
-  const stripSlot = element('div', 'kn-calc__stripslot');
-  const details = element('div', 'kn-calc__details');
-  host.append(stripSlot, sides, details);
+  sides.append(attacker.element, target.element);
+  const answerSlot = element('div', 'kn-calc__answerslot');
+  answerSlot.setAttribute('aria-live', 'polite');
+  const how = fold(copy.breakdownTitle);
+  const compare = fold(copy.rankingTitle);
+  host.append(sides, answerSlot, how.element, compare.element);
 
   const pickFromRanking = (weapon: string): void => {
-    setAttacker({ weapon });
-    fillWeapons();
+    update(withWeapon(read(), weapon));
+    attacker.setWeapon(weapon);
     host.querySelector<HTMLElement>(`[data-weapon="${weapon}"]`)?.focus();
   };
 
   const refresh = (): void => {
     const state = read();
     const result = blowResult(base, state);
-    stripSlot.replaceChildren(strip(result));
-    details.replaceChildren(
-      result === undefined ? element('p', 'kn-empty') : breakdownTable(result.rows),
-      rankingList(context, state, pickFromRanking),
-    );
-    target.refresh();
-    if (result === undefined) return;
-    experience.input.disabled = !result.gainsExperience;
-    const skip = result.rows.find((row) => row.id === 'experience')?.skip ?? null;
-    write(experienceNote, skip === null ? '' : copy.skips[skip]);
-    strength.box.disabled = !result.takesStrength;
-    dial.setEnabled(result.target.combat.person);
+    answerSlot.replaceChildren(answer(context, state, result));
+    how.body.replaceChildren(...howItAdds(result));
+    compare.body.replaceChildren(rankingList(context, state, pickFromRanking));
+    target.refresh(result);
+    if (result !== undefined) attacker.refresh(result);
   };
-  fillWeapons();
   refresh();
   return { element: host, refresh };
 }
@@ -605,39 +615,27 @@ function fighterPanel(
       duel: index === 0 ? [next, state.duel[1]] : [state.duel[0], next],
     });
   };
-  const entries = (): readonly DropdownEntry<string>[] =>
-    weaponGroups(base, fighter().tribe, read().heroes).map((group) => ({
-      group: copy.weaponGroups[group.id],
-      // A row with no clip has no clock to race on.
-      choices: group.weapons
-        .filter((w) => w.clipTicks !== null)
-        .map((w) => ({
-          id: w.id,
-          label: weaponLabel(w),
-          ...(goodIdOf(context, w) === null ? {} : { goodId: goodIdOf(context, w) ?? '' }),
-        })),
-    }));
+  // A row with no clip has no clock to race on.
+  const timed = (w: KnowledgeWeapon): boolean => w.clipTicks !== null;
   const activeWeapon = (): string => weaponFor(base, fighter().tribe, fighter().weapon)?.id ?? '';
-  const weapon = dropdownControl<string>({
-    label: copy.weaponLabel,
-    className: SELECT_SKIN,
-    entries: entries(),
-    active: activeWeapon(),
-    icons: context.art.goodIcon,
-    onPick: (id) => {
-      weapon.setActive(id);
+  const weapon = weaponDropdown(
+    context,
+    fighter().tribe,
+    activeWeapon(),
+    (id) => {
       set({ weapon: id });
       paint();
     },
-  });
+    timed,
+  );
   const tribe = tribeDropdown(context, copy.tribeLabel, fighter().tribe, (id) => {
     set({ tribe: id });
-    weapon.setEntries(entries());
+    weapon.setEntries(weaponEntries(context, id, timed));
     weapon.setActive(activeWeapon());
     paint();
   });
   const armour = armourDropdown(context, copy.armourLabel, fighter().armour, (id) => set({ armour: id }));
-  const experience = slider(copy.hitsLabel, fighter().hits, (hits) => set({ hits }));
+  const experience = experienceSlider(fighter().hits, (hits) => set({ hits }));
   const strength = checkbox(copy.strengthAmulet, fighter().strength, (on) => set({ strength: on }));
   const defense = checkbox(copy.defenseAmulet, fighter().defense, (on) => set({ defense: on }));
   const person = combatTargets(base)[0];
@@ -648,17 +646,17 @@ function fighterPanel(
     strength.box.disabled = !takesStrengthAmulet(row);
   }
   paint();
+  const pair = element('div', 'kn-calc__pair');
+  pair.append(field(copy.tribeLabel, tribe.root), field(copy.weaponLabel, weapon.root, 'kn-calc__weapon'));
+  const checks = element('div', 'kn-calc__checks');
+  checks.append(strength.host, defense.host);
   const host = element('section', 'kn-calc__side');
-  const title = element('h4', 'kn-calc__title');
-  write(title, formatMessage(copy.fighterTitle, { number: index + 1 }));
   host.append(
-    title,
-    field(copy.tribeLabel, tribe.root),
-    field(copy.weaponLabel, weapon.root),
+    sideTitle(formatMessage(copy.fighterTitle, { number: index + 1 })),
+    pair,
     field(copy.armourLabel, armour.root),
     field(copy.hitsLabel, experience.host),
-    strength.host,
-    defense.host,
+    checks,
   );
   return host;
 }
@@ -693,7 +691,7 @@ function verdictText(context: KnowledgeContext, state: CalculatorState): readonl
 
 function duelPane(context: KnowledgeContext, read: () => CalculatorState, update: Update): HTMLElement {
   const host = element('div', 'kn-calc__duel');
-  const verdict = element('div', 'kn-calc__verdict');
+  const verdict = element('div', 'kn-calc__answer kn-calc__verdict');
   verdict.setAttribute('aria-live', 'polite');
   const sides = element('div', 'kn-calc__sides');
   const apply: Update = (state) => {
@@ -712,21 +710,20 @@ function duelPane(context: KnowledgeContext, read: () => CalculatorState, update
     verdict.replaceChildren(lead, ...rest);
   }
   sides.append(fighterPanel(context, 0, read, apply), fighterPanel(context, 1, read, apply));
-  host.append(verdict, sides);
+  host.append(sides, verdict);
   paint();
   return host;
 }
 
-/** The hit calculator; state lives per window, so a rebuilt article shows the same fight. */
+/** The damage calculator; state lives per window, so a rebuilt article shows the same fight. */
 export function createCalculator(context: KnowledgeContext): HTMLElement {
   const copy = messages().knowledge.mechanics;
   const root = element('section', 'kn-calc');
   root.setAttribute(FIELD_KEYS_ATTRIBUTE, '');
   root.setAttribute('aria-label', copy.calculatorTitle);
+  const head = element('div', 'kn-calc__head');
   const title = element('h3', 'kn-h');
   write(title, copy.calculatorTitle);
-  const assumes = element('p', 'kn-foot');
-  write(assumes, copy.calculatorAssumes);
   const slot = element('div', '');
   let refreshBlow: (() => void) | undefined;
   const read = (): CalculatorState => stateOf(context);
@@ -751,6 +748,7 @@ export function createCalculator(context: KnowledgeContext): HTMLElement {
     slot.replaceChildren(pane.element);
   }
   show();
-  root.append(title, mode.element, assumes, slot);
+  head.append(title, mode.element);
+  root.append(head, slot);
   return root;
 }

@@ -199,6 +199,15 @@ export function landed(
   return blowSteps(weapon, target, modifiers).at(-1)?.value ?? 0;
 }
 
+/** Large enough that the sim's integer division leaves the percent exact. */
+const EXPERIENCE_PROBE_DAMAGE = 10_000;
+
+/** How many percent `hits` landed with a weapon class add to its blow. */
+export function experienceBonusPct(hits: number): number {
+  const raised = systems.withFightExperience(EXPERIENCE_PROBE_DAMAGE, hits);
+  return Math.round((raised * PERCENT) / EXPERIENCE_PROBE_DAMAGE) - PERCENT;
+}
+
 /** The damage a critical hit raises `damage` to. */
 export function criticalDamage(damage: number): number {
   return Math.floor((damage * (CRITICAL_HIT?.damagePct ?? PERCENT)) / PERCENT);

@@ -131,7 +131,54 @@ export const WORLD: ArticleGroup = {
               ['[[good:catapult|Catapult]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Hexes per second. Full means {{haul.handcart}} pieces on the Handcart and {{haul.oxcart}} on the Ox Cart. The more load, the slower: half a cart is half the difference. Picking a cart for a route: [[article:trade|Trade]].',
+            foot: 'Hexes per second. Full means {{haul.handcart}} pieces on the Handcart and {{haul.oxcart}} on the Ox Cart. The table below shows partly loaded carts. Picking a cart for a route: [[article:trade|Trade]].',
+          },
+        },
+        {
+          h: 'How much a load slows a cart',
+        },
+        {
+          table: {
+            head: ['Load', 'Handcart: slower', 'Handcart: land', 'Ox Cart: slower', 'Ox Cart: land'],
+            rows: [
+              [
+                '{{vehicle.fill.0}}%',
+                '{{vehicle.handcartLoss.0}}%',
+                '{{pace.handcartLand.0}}',
+                '{{vehicle.oxcartLoss.0}}%',
+                '{{pace.oxcartLand.0}}',
+              ],
+              [
+                '{{vehicle.fill.25}}%',
+                '{{vehicle.handcartLoss.25}}%',
+                '{{pace.handcartLand.25}}',
+                '{{vehicle.oxcartLoss.25}}%',
+                '{{pace.oxcartLand.25}}',
+              ],
+              [
+                '{{vehicle.fill.50}}%',
+                '{{vehicle.handcartLoss.50}}%',
+                '{{pace.handcartLand.50}}',
+                '{{vehicle.oxcartLoss.50}}%',
+                '{{pace.oxcartLand.50}}',
+              ],
+              [
+                '{{vehicle.fill.75}}%',
+                '{{vehicle.handcartLoss.75}}%',
+                '{{pace.handcartLand.75}}',
+                '{{vehicle.oxcartLoss.75}}%',
+                '{{pace.oxcartLand.75}}',
+              ],
+              [
+                '{{vehicle.fill.100}}%',
+                '{{vehicle.handcartLoss.100}}%',
+                '{{pace.handcartLand.100}}',
+                '{{vehicle.oxcartLoss.100}}%',
+                '{{pace.oxcartLand.100}}',
+              ],
+            ],
+            num: [0, 1, 2, 3, 4],
+            foot: "Load is the share of the cart's hold in use. The speed loss grows evenly with the load: a full cart loses all of it, a half-full cart half. Speed in hexes per second on plain land.",
           },
         },
         {

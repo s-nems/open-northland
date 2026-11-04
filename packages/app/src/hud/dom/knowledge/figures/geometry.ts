@@ -1,4 +1,5 @@
 import { TILE_HALF_H, TILE_HALF_W } from '@open-northland/render';
+import { HEX_HEADING_COUNT } from '@open-northland/sim';
 
 /** A point in px of the game's projection, or in a figure's viewBox units. */
 export interface Point {
@@ -10,18 +11,27 @@ export interface Point {
 export const NODE_PX = TILE_HALF_W;
 export const NODE_ROW_PX = TILE_HALF_H / 2;
 
+/**
+ * How much shorter a ground circle draws north-south than east-west: a node's six neighbours lie on one
+ * ground circle, which passes through the east neighbour a node away and the diagonal ones a row down and
+ * half a node aside.
+ */
+export const GROUND_SQUASH = NODE_ROW_PX / Math.sqrt(NODE_PX ** 2 - (NODE_PX / 2) ** 2);
+
 const FULL_TURN_DEG = 360;
 const HALF_TURN_DEG = 180;
+const HEADING_SPAN_DEG = FULL_TURN_DEG / HEX_HEADING_COUNT;
 
 const toRadians = (degrees: number): number => (degrees * Math.PI) / HALF_TURN_DEG;
+const toDegrees = (radians: number): number => (radians * HALF_TURN_DEG) / Math.PI;
 
-/** Where node `(hx, hy)` draws relative to node `(0, 0)`: odd rows sit a quarter column east. */
+/** Where node `(hx, hy)` draws relative to node `(0, 0)`: odd rows sit half a node east. */
 export function nodePoint(hx: number, hy: number): Point {
   return { x: hx * NODE_PX + (hy & 1) * (NODE_PX / 2), y: hy * NODE_ROW_PX };
 }
 
-/** The outline of everything within `radius` map points: a flat-topped hexagon as wide as the radius in
- *  nodes and half as wide along its top row. */
+/** The outline of every node within `radius` map points, as the screen shows it: a hexagon as wide as
+ *  the radius in nodes, flattened to the ground's tilt. */
 export function hexRing(radius: number): readonly Point[] {
   const x = radius * NODE_PX;
   const y = radius * NODE_ROW_PX;
@@ -35,39 +45,7 @@ export function hexRing(radius: number): readonly Point[] {
   ];
 }
 
-/** The outline of a Manhattan radius over half-cell nodes. */
-export function diamondRing(radius: number): readonly Point[] {
-  const x = radius * NODE_PX;
-  const y = radius * NODE_ROW_PX;
-  return [
-    { x, y: 0 },
-    { x: 0, y },
-    { x: -x, y: 0 },
-    { x: 0, y: -y },
-  ];
-}
-
-/** Whether a node `hx`/`hy` away lies within a Manhattan radius. */
-export function withinDiamond(hx: number, hy: number, radius: number): boolean {
-  return Math.abs(hx) + Math.abs(hy) <= radius;
-}
-
-/** The node after `steps` slanted walking steps from `(0, 0)`: each crosses one row and half a column. */
-export function slantNode(steps: number): { readonly hx: number; readonly hy: number } {
-  return { hx: steps >> 1, hy: steps };
-}
-
-/** How many slanted walking steps stay inside a Manhattan radius. */
-export function slantStepsWithin(radius: number): number {
-  let steps = 0;
-  for (;;) {
-    const next = slantNode(steps + 1);
-    if (!withinDiamond(next.hx, next.hy, radius)) return steps;
-    steps += 1;
-  }
-}
-
-/** How many node rows a sight of `radius` nodes spans: its ellipse is a circle on screen, and a row is
+/** How many node rows a sight of `radius` nodes spans: sight is a circle on screen, and a row is
  *  shorter than a node is wide. */
 export function sightRows(radius: number): number {
   return (radius * NODE_PX) / NODE_ROW_PX;
@@ -78,25 +56,51 @@ export function fitScale(extent: number, room: number): number {
   return room / extent;
 }
 
-export function polar(centre: Point, radius: number, degrees: number): Point {
+/** The point at ground bearing `degrees` (clockwise from east) on a ground circle `radius` wide on screen. */
+export function groundPoint(centre: Point, radius: number, degrees: number): Point {
   const angle = toRadians(degrees);
-  return { x: centre.x + radius * Math.cos(angle), y: centre.y + radius * Math.sin(angle) };
+  return {
+    x: centre.x + radius * Math.cos(angle),
+    y: centre.y + radius * GROUND_SQUASH * Math.sin(angle),
+  };
 }
 
-/** Path data of a ring sector centred on `degrees`, clockwise from east. */
-export function wedgePath(
+/**
+ * The ground bearing where heading `heading`'s sector starts and ends. A heading's sector spans
+ * {@link HEADING_SPAN_DEG} on the map-point grid with a row counted as tall as a node is wide, the
+ * grid the sim's heading reads; on the ground the east and west sectors come out narrower.
+ */
+export function headingSector(heading: number): { readonly from: number; readonly to: number } {
+  const centre = heading * HEADING_SPAN_DEG;
+  return {
+    from: gridToGround(centre - HEADING_SPAN_DEG / 2),
+    to: gridToGround(centre + HEADING_SPAN_DEG / 2),
+  };
+}
+
+/** A bearing on the map-point grid as a bearing on the ground, kept in the same turn. */
+function gridToGround(degrees: number): number {
+  const angle = toRadians(degrees);
+  const screenX = Math.cos(angle) * NODE_PX;
+  const screenY = Math.sin(angle) * NODE_ROW_PX;
+  const ground = toDegrees(Math.atan2(screenY / GROUND_SQUASH, screenX));
+  return ground + Math.round((degrees - ground) / FULL_TURN_DEG) * FULL_TURN_DEG;
+}
+
+/** Path data of a ground ring's sector from bearing `from` to `to`, `inner` and `outer` wide on screen. */
+export function groundWedgePath(
   centre: Point,
   inner: number,
   outer: number,
-  degrees: number,
-  span: number,
+  from: number,
+  to: number,
 ): string {
-  const from = degrees - span / 2;
-  const to = degrees + span / 2;
-  const a = polar(centre, outer, from);
-  const b = polar(centre, outer, to);
-  const c = polar(centre, inner, to);
-  const d = polar(centre, inner, from);
-  const sweep = span < FULL_TURN_DEG / 2 ? 0 : 1;
-  return `M${a.x} ${a.y}A${outer} ${outer} 0 ${sweep} 1 ${b.x} ${b.y}L${c.x} ${c.y}A${inner} ${inner} 0 ${sweep} 0 ${d.x} ${d.y}Z`;
+  const a = groundPoint(centre, outer, from);
+  const b = groundPoint(centre, outer, to);
+  const c = groundPoint(centre, inner, to);
+  const d = groundPoint(centre, inner, from);
+  const large = to - from > HALF_TURN_DEG ? 1 : 0;
+  const outerRy = outer * GROUND_SQUASH;
+  const innerRy = inner * GROUND_SQUASH;
+  return `M${a.x} ${a.y}A${outer} ${outerRy} 0 ${large} 1 ${b.x} ${b.y}L${c.x} ${c.y}A${inner} ${innerRy} 0 ${large} 0 ${d.x} ${d.y}Z`;
 }

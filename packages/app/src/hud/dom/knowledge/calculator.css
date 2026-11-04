@@ -1,9 +1,19 @@
-/* The hit calculator inside the damage article. */
+/* The damage calculator inside the damage article. */
 .kn-calc {
   margin: 10px 0 14px;
-  padding: 8px 10px;
+  padding: 8px 12px 10px;
   border: 1px solid #8d754966;
   background: #2738321a;
+}
+.kn-calc__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.kn-article .kn-calc__head .kn-h {
+  margin: 0;
 }
 .on-hud .kn-calc .on-segmented {
   width: auto;
@@ -14,7 +24,7 @@
   font-size: 12px;
 }
 .kn-calc__title {
-  margin: 0 0 4px;
+  margin: 0;
   font: 700 12px var(--font-caps);
   letter-spacing: 0.08em;
   color: var(--paper-warn);
@@ -22,7 +32,7 @@
 .kn-calc__sides {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 16px;
   margin-top: 8px;
 }
 .kn-calc__side {
@@ -31,89 +41,94 @@
   gap: 6px;
   min-width: 0;
 }
+.kn-calc__pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+  align-items: start;
+}
+.kn-calc__pair--check {
+  align-items: end;
+}
+.kn-calc__pair--check .kn-check {
+  padding-bottom: 4px;
+}
 .kn-calc__field {
   display: grid;
   gap: 2px;
+  min-width: 0;
+}
+.kn-calc__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
 }
 .kn-calc__label,
 .kn-calc__note {
   color: var(--ink-muted);
   font-size: 12px;
 }
-.kn-calc__strip {
-  position: sticky;
-  top: -14px;
-  z-index: 3;
+.kn-calc__note {
+  margin-top: -3px;
+  line-height: 1.2;
+}
+.kn-calc__note[hidden] {
+  display: none;
+}
+.kn-calc__sidebox {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin: 6px 0;
-  padding: 6px;
+  gap: 3px;
+}
+/* The answer: what is compared, then the three numbers a player asks for, large. */
+.kn-calc__answer {
+  margin-top: 10px;
+  padding: 6px 12px 8px;
   background: #d3c39c;
   border: 1px solid #8d7549;
 }
-.kn-calc__stripslot {
-  display: contents;
+.kn-calc__matchup {
+  margin: 0 0 2px;
+  font-weight: 700;
+}
+.kn-calc__strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin: 0;
 }
 .kn-calc__tile {
   min-width: 0;
 }
 .kn-calc__tile dt {
   color: var(--ink-muted);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.15;
 }
 .kn-calc__tile dd {
   margin: 0;
-  font: 700 19px / 1.2 var(--font-title);
+  font: 700 26px / 1.15 var(--font-title);
   font-variant-numeric: tabular-nums;
 }
-.kn-calc__weapons {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 8px;
-}
-.kn-calc__group {
-  grid-column: 1 / -1;
-  margin-top: 4px;
-  font: 700 11px var(--font-caps);
-  letter-spacing: 0.08em;
-  color: var(--ink-muted);
-}
-.kn-calc__weapon {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  font-size: 13px;
-  line-height: 1.15;
-  cursor: var(--cursor-pointer, pointer);
-}
-.kn-calc__weapon:has(input:checked) {
+.kn-calc__never {
+  margin: 2px 0 0;
+  color: var(--wax-danger);
   font-weight: 700;
-}
-.kn-calc__weapon:has(input:focus-visible) {
-  outline: 2px solid var(--paper-warn);
-}
-.kn-calc__modifiers {
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-  align-items: flex-start;
 }
 .kn-calc__slider {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 .kn-calc__slider input {
   flex: 1;
   min-width: 0;
   accent-color: var(--paper-warn);
 }
+.kn-calc__slider input:disabled {
+  opacity: 0.5;
+}
 .kn-calc__value {
-  min-width: 3ch;
-  text-align: right;
+  min-width: 13ch;
   font-variant-numeric: tabular-nums;
 }
 .kn-calc__healthrow {
@@ -136,25 +151,21 @@
   font-size: 13px;
 }
 .kn-calc__health {
-  width: 88px;
+  width: 72px;
   padding: 3px 6px;
   border: 1px solid #8d7549;
   background: #fff5;
   color: var(--ink);
   font: inherit;
 }
-.kn-calc__details {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: 10px;
-  margin-top: 8px;
+.on-hud .kn-calc__fold {
+  margin: 8px 0 0;
 }
-.kn-article .kn-calc__breakdown caption {
-  text-align: left;
-  font: 700 12px var(--font-caps);
-  letter-spacing: 0.08em;
-  color: var(--paper-warn);
+.kn-calc__foldbody {
+  margin-top: 4px;
+}
+.kn-calc__foldbody .kn-foot {
+  margin: 4px 0 0;
 }
 .kn-article .kn-calc__breakdown thead th {
   position: static;
@@ -169,9 +180,9 @@
   font-weight: 400;
 }
 .kn-calc__ranking {
-  min-width: 0;
-}
-.kn-calc__ranking ol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -205,73 +216,17 @@
     linear-gradient(var(--wax-danger), var(--wax-danger)) no-repeat left / calc(var(--share) * 100%) 100%,
     #8d754933;
 }
-.kn-dial {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  flex: none;
-  width: 104px;
-  text-align: center;
-}
-.kn-dial svg {
-  width: 76px;
-  height: 76px;
-}
-.kn-dial__sector {
-  fill: #8d754966;
-  stroke: var(--wood-lo);
-  stroke-width: 0.6;
-  cursor: var(--cursor-pointer, pointer);
-  outline: none;
-}
-.kn-dial__sector:hover {
-  fill: #c9a262;
-}
-.kn-dial__sector[aria-checked="true"] {
-  fill: var(--wax-warn);
-}
-.kn-dial__sector:focus-visible {
-  stroke: var(--ink);
-  stroke-width: 2;
-}
-.kn-dial__face {
-  fill: var(--ink);
-}
-.kn-dial__caption {
-  color: var(--ink-muted);
-  font-size: 11.5px;
-  line-height: 1.15;
-}
-.kn-dial--off {
-  opacity: 0.6;
-}
-.kn-dial--off .kn-dial__sector {
-  cursor: var(--cursor-not-allowed, not-allowed);
-}
-.kn-dial--off .kn-dial__sector[aria-checked="true"] {
-  fill: #8d754966;
-}
 .kn-calc__verdict {
-  position: sticky;
-  top: -14px;
-  z-index: 3;
   display: grid;
   gap: 1px;
-  margin: 6px 0;
-  padding: 6px 8px;
-  background: #d3c39c;
-  border: 1px solid #8d7549;
   font-size: 12.5px;
 }
 .kn-calc__verdict strong {
-  font: 700 16px / 1.2 var(--font-title);
+  font: 700 18px / 1.2 var(--font-title);
 }
 @container (max-width: 640px) {
   .kn-calc__sides,
-  .kn-calc__details {
+  .kn-calc__ranking {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .kn-calc__strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

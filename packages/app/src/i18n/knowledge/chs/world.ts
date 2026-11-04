@@ -111,7 +111,54 @@ export const WORLD: ArticleGroup = {
               ['[[good:catapult|投石机]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: '单位为格/秒。满载指手推车{{haul.handcart}}份、牛车{{haul.oxcart}}份。货越多越慢：半车货慢一半。路线选车见[[article:trade|贸易]]。',
+            foot: '单位为格/秒。满载指手推车{{haul.handcart}}份、牛车{{haul.oxcart}}份。部分装载的情况见下表。路线选车见[[article:trade|贸易]]。',
+          },
+        },
+        {
+          h: '载货多少，慢多少',
+        },
+        {
+          table: {
+            head: ['装载', '手推车：减速', '手推车：陆地', '牛车：减速', '牛车：陆地'],
+            rows: [
+              [
+                '{{vehicle.fill.0}}%',
+                '{{vehicle.handcartLoss.0}}%',
+                '{{pace.handcartLand.0}}',
+                '{{vehicle.oxcartLoss.0}}%',
+                '{{pace.oxcartLand.0}}',
+              ],
+              [
+                '{{vehicle.fill.25}}%',
+                '{{vehicle.handcartLoss.25}}%',
+                '{{pace.handcartLand.25}}',
+                '{{vehicle.oxcartLoss.25}}%',
+                '{{pace.oxcartLand.25}}',
+              ],
+              [
+                '{{vehicle.fill.50}}%',
+                '{{vehicle.handcartLoss.50}}%',
+                '{{pace.handcartLand.50}}',
+                '{{vehicle.oxcartLoss.50}}%',
+                '{{pace.oxcartLand.50}}',
+              ],
+              [
+                '{{vehicle.fill.75}}%',
+                '{{vehicle.handcartLoss.75}}%',
+                '{{pace.handcartLand.75}}',
+                '{{vehicle.oxcartLoss.75}}%',
+                '{{pace.oxcartLand.75}}',
+              ],
+              [
+                '{{vehicle.fill.100}}%',
+                '{{vehicle.handcartLoss.100}}%',
+                '{{pace.handcartLand.100}}',
+                '{{vehicle.oxcartLoss.100}}%',
+                '{{pace.oxcartLand.100}}',
+              ],
+            ],
+            num: [0, 1, 2, 3, 4],
+            foot: '装载指货舱占用的比例。减速随装载均匀增加：满载减速全部，半载减速一半。速度为普通陆地上的格/秒。',
           },
         },
         {

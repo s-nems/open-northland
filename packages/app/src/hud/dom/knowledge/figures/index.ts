@@ -6,9 +6,8 @@ import { expCurveFigure, needBarFigure } from './bars.js';
 import { directionFigure } from './directions.js';
 import { fieldStagesFigure } from './field.js';
 import { flagFlowFigure, homeLevelsFigure, livestockCycleFigure } from './flows.js';
-import { gateFigure } from './gate.js';
 import { catapultSplashFigure, leashFigure } from './ranges.js';
-import { reachFigure, stepDiamondFigure, visionFigure } from './reach.js';
+import { reachFigure, visionFigure } from './reach.js';
 
 /** Draws one figure; null when the content lacks what it shows, so an article never prints a false one. */
 type FigurePainter = (context: KnowledgeContext) => Element | null;
@@ -19,10 +18,8 @@ const FIGURES: ReadonlyMap<string, FigurePainter> = new Map<string, FigurePainte
   ['reach', reachFigure],
   ['need-bar', needBarFigure],
   ['exp-curve', expCurveFigure],
-  ['step-diamond', stepDiamondFigure],
   ['leash', leashFigure],
   ['catapult-splash', catapultSplashFigure],
-  ['gate', gateFigure],
   ['flag-flow', flagFlowFigure],
   ['livestock-cycle', livestockCycleFigure],
   ['home-levels', homeLevelsFigure],

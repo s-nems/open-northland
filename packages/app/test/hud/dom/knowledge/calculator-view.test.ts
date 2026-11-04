@@ -71,16 +71,23 @@ describe('calculator view', () => {
     selectCalculatorWeapon(context, 'hero_spear');
     const root = mount(context);
     expect(root.querySelector('[data-weapon="hero_spear"]')?.getAttribute('aria-pressed')).toBe('true');
-    expect(root.querySelectorAll('.kn-calc__weapon').length).toBe(3);
+    expect(root.querySelector('.kn-calc__weapon button')?.textContent).toContain('hero_spear');
+    expect(root.querySelector('.kn-calc__matchup')?.textContent).toContain('hero_spear');
   });
 
-  it('walks the dial with the arrow keys', () => {
+  it('scales the blow by the side it lands on, and only on a person', () => {
     const root = mount(makeContext());
-    const sectors = [...root.querySelectorAll<SVGPathElement>('.kn-dial__sector')];
-    sectors[0]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-    expect(sectors[5]?.getAttribute('aria-checked')).toBe('true');
-    expect(sectors[5]?.getAttribute('tabindex')).toBe('0');
-    expect(sectors[0]?.getAttribute('tabindex')).toBe('-1');
+    const front = tiles(root)[0];
+    const sides = root.querySelectorAll<HTMLButtonElement>('.kn-calc__sidebox button');
+    sides[2]?.click();
+    expect(tiles(root)[0]).not.toBe(front);
+    const kinds = root.querySelectorAll<HTMLButtonElement>('.kn-calc__side .on-segmented')[0];
+    kinds?.querySelectorAll('button')[1]?.click();
+    const off = [...root.querySelectorAll('.kn-calc__sidebox button')].map((b) =>
+      b.getAttribute('aria-disabled'),
+    );
+    expect(off).toEqual(['true', 'true', 'true']);
+    expect(root.querySelector('.kn-calc__sidebox .kn-calc__note')?.textContent).not.toBe('');
   });
 
   it('closes experience to a hero and says why', () => {

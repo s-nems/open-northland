@@ -5,12 +5,112 @@ export const PROBLEMS: ArticleGroup = {
   items: [
     {
       id: 'why',
-      name: 'Dlaczego to nie działa?',
+      name: 'Częste problemy',
       lead: 'Zaznacz budynek albo osadnika i przeczytaj jego pasek stanu.',
       blocks: [
         {
-          h: 'Komunikaty',
+          h: 'Praca i produkcja',
         },
+        {
+          faq: [
+            [
+              'Warsztat stoi pusty',
+              'Stan "Brak pracowników" znaczy, że nikt tam nie pracuje: przydziel osadnika z właściwym zawodem. Jeśli odmówi, komunikat powie dlaczego: "Nie ten zawód", "Brak miejsc" albo "Za mało wprawy". Stan "Bezczynny" podaje brakujący surowiec. Pracownik sam po niego pójdzie, jeśli leży do {{reach.goods}} hexów od drogowskazu.',
+            ],
+            [
+              'Płatnerz, Kowal albo Krawiec nie pracuje',
+              'Pewnie ma 0% Religii w "Samopoczucie". Każda broń i zbroja kosztuje {{piety.lowPct}}% albo {{piety.highPct}}% Religii, a modlitwa daje {{pray.pct}}%. Komunikat "Chce się modlić" znaczy, że nie ma gdzie się modlić: potrzebna [[building:work_temple|Świątynia]], [[building:headquarters|Kwatera główna]] albo święty ogień w domu. Więcej: [[article:religion|Religia i świątynia]].',
+            ],
+            [
+              'Tragarze nic nie noszą',
+              'Tragarz pracuje tylko wtedy, gdy ma miejsce pracy w budynku. Stan "Nic do przeniesienia w zasięgu" znaczy, że do {{flag.radius}} hexów od budynku albo flagi roboczej nie ma towaru, a "Brak miejsca przyjmującego towar", że magazyny są pełne.',
+            ],
+            [
+              'Hodowla stoi',
+              'Hodowca rozmnaża zwierzęta tylko wtedy, gdy ma dokładnie {{livestock.pair}} dorosłe sztuki. Co oznacza stan Fermy: [[article:livestock|Hodowla]].',
+            ],
+            [
+              'Myśliwy nic nie przynosi',
+              'Stan "Brak wolnej zwierzyny w terenie łowieckim" znaczy, że do {{flag.hunter}} hexów od flagi albo miejsca pracy nie ma nic do upolowania. Nie na każde zwierzę poluje sam, patrz kolumna "Myśliwy": [[article:wildlife|Dzikie zwierzęta i polowanie]]. Przenieś flagę roboczą tam, gdzie pasie się zwierzyna.',
+            ],
+          ],
+        },
+        {
+          h: 'Ludzie',
+        },
+        {
+          faq: [
+            [
+              'Nie rodzą się dzieci',
+              'Para potrzebuje wspólnego domu i {{family.childFood}} sztuk jedzenia w spiżarni. Komunikat mówi, czego brak: "Para bez domu", "Dom w budowie", "Osobne domy", "Brak jedzenia". "Mąż nie wraca" oznacza, że mąż jest Kupcem, Zwiadowcą, żołnierzem albo bohaterem i nie wraca do domu. Dzieci możesz też zamówić licznikiem "Narodziny" w Asystencie. Więcej: [[article:family|Rodzina i dom]].',
+            ],
+            [
+              'Głód przy pełnym magazynie',
+              'Sprawdź "Minimum w magazynach": poniżej tej ilości nikt nie weźmie towaru, także na posiłek. Obniż je przy jedzeniu. Może być też za daleko: magazyn musi leżeć do {{reach.walk}} hexów od osadnika albo w sieci drogowskazów.',
+            ],
+            [
+              'Zawodu nie ma na liście w Szkole',
+              'Lista pokazuje tylko kursy odkryte i dozwolone w tej misji. Wiersz bez wyboru podaje powód: "Już nauczone" albo "Nie można wyszkolić wybranych osadników w tej szkole". Kursy odkrywa [[article:exp-work|Doświadczenie w pracy]].',
+            ],
+          ],
+        },
+        {
+          h: 'Budowa i pola',
+        },
+        {
+          faq: [
+            [
+              'Budynek jest zablokowany',
+              'Jest w sekcji "Zablokowane" okna budowy. Podpowiedź "Wymagane odkrycia:" mówi, jakie zawody i towary są potrzebne i ile doświadczenia ci brakuje. "Niedostępne w tej misji": nie zbudujesz go na tej mapie. Papier ze skrzyni stawia budynek także bez odkrycia: [[article:chests|Skrzynie i papiery]].',
+            ],
+            [
+              'Budowa stoi',
+              'Stan budowy mówi, czego brak: "brak materiałów", "dostawa w drodze" albo "brak budowniczego". Komunikat "Budowa czeka: towar" oznacza, że towaru nie ma w żadnym magazynie w zasięgu drogowskazów placu, {{reach.goods}} hexów od drogowskazu. Budowniczy sam nosi materiał.',
+            ],
+            [
+              'Pole nie rośnie',
+              'Rośnie tylko od podlewania przez [[job:farmer|Farmera]] z miejscem pracy na [[building:work_farm_00|Farmie]]. Farmer najpierw sieje, a podlewa dopiero przy {{field.max}} polach albo gdy nie ma gdzie siać. Pole dojrzewa po {{field.waterings}} podlewaniach, a jedno podlewanie obejmuje też 6 sąsiednich pól. Sieje tylko na trawie, poza drogami, do {{field.radius}} hexów od Farmy.',
+            ],
+            [
+              'Czy deszcz, śnieg albo noc coś zmieniają?',
+              'Nie. Pogoda, ustawienie "Zima" i pora dnia to tylko obraz i dźwięk. Wolniej chodzi się tylko po piasku, w górach i po śniegu, który leży na mapie od początku.',
+            ],
+          ],
+        },
+        {
+          h: 'Wojsko i pojazdy',
+        },
+        {
+          faq: [
+            [
+              'Żołnierz nie atakuje',
+              'Sprawdź postawę: [[article:stances|Postawy]]. W postawie Ignorowanie nie podchodzi do wroga i bije tylko to, co ma w zasięgu broni. Zaatakuje tylko plemię, do którego masz stosunek "Wrogi", i tylko poza "Czasem pokoju".',
+            ],
+            [
+              'Statek nie wypływa',
+              'Stan "Czeka na dowódcę": przydziel dowódcę, może nim być każdy dorosły. "Czeka na załogę": ktoś z załogi jeszcze idzie na statek. "Brak trasy": cel nie leży na tej wodzie. Na morzu nikt nie wsiądzie, najpierw "Zacumuj".',
+            ],
+            [
+              'Zaprzęg stoi',
+              'Stan "Czeka na zwierzę pociągowe" znaczy, że brakuje Wołu. Zaprzęg zabierze [[good:cattle|Wołu]] tylko spoza pary, więc potrzebne są {{livestock.pairPlusOne}} dorosłe sztuki w jednej Fermie albo {{livestock.pairPlusOne}} poza Fermą: [[article:vehicles|Pojazdy i statki]].',
+            ],
+          ],
+        },
+      ],
+      see: [
+        'article:notices',
+        'article:walking',
+        'article:hauling',
+        'article:stances',
+        'article:religion',
+        'article:livestock',
+      ],
+    },
+    {
+      id: 'notices',
+      name: 'Komunikaty',
+      lead: 'Komunikat mówi, co się zatrzymało. Tu znajdziesz przyczynę i radę, co zrobić.',
+      blocks: [
         {
           table: {
             filter: 'Szukaj komunikatu',
@@ -299,96 +399,8 @@ export const PROBLEMS: ArticleGroup = {
             foot: 'Filtr "Ważne i pilne" ukrywa Zwykłe, "Tylko pilne" także Ważne. Poziom "-" to napis na panelu, bez powiadomienia.',
           },
         },
-        {
-          h: 'Praca i produkcja',
-        },
-        {
-          faq: [
-            [
-              'Warsztat stoi pusty',
-              'Stan "Brak pracowników" znaczy, że nikt tam nie pracuje: przydziel osadnika z właściwym zawodem. Jeśli odmówi, komunikat powie dlaczego: "Nie ten zawód", "Brak miejsc" albo "Za mało wprawy". Stan "Bezczynny" podaje brakujący surowiec. Pracownik sam po niego pójdzie, jeśli leży do {{reach.goods}} hexów od drogowskazu.',
-            ],
-            [
-              'Płatnerz, Kowal albo Krawiec nie pracuje',
-              'Pewnie ma 0% Religii w "Samopoczucie". Każda broń i zbroja kosztuje {{piety.lowPct}}% albo {{piety.highPct}}% Religii, a modlitwa daje {{pray.pct}}%. Komunikat "Chce się modlić" znaczy, że nie ma gdzie się modlić: potrzebna [[building:work_temple|Świątynia]], [[building:headquarters|Kwatera główna]] albo święty ogień w domu. Więcej: [[article:religion|Religia i świątynia]].',
-            ],
-            [
-              'Tragarze nic nie noszą',
-              'Tragarz pracuje tylko wtedy, gdy ma miejsce pracy w budynku. Stan "Nic do przeniesienia w zasięgu" znaczy, że do {{flag.radius}} hexów od budynku albo flagi roboczej nie ma towaru, a "Brak miejsca przyjmującego towar", że magazyny są pełne.',
-            ],
-            [
-              'Hodowla stoi',
-              'Hodowca rozmnaża zwierzęta tylko wtedy, gdy ma dokładnie {{livestock.pair}} dorosłe sztuki. Co oznacza stan Fermy: [[article:livestock|Hodowla]].',
-            ],
-            [
-              'Myśliwy nic nie przynosi',
-              'Stan "Brak wolnej zwierzyny w terenie łowieckim" znaczy, że do {{flag.hunter}} hexów od flagi albo miejsca pracy nie ma nic do upolowania. Nie na każde zwierzę poluje sam, patrz kolumna "Myśliwy": [[article:wildlife|Dzikie zwierzęta i polowanie]]. Przenieś flagę roboczą tam, gdzie pasie się zwierzyna.',
-            ],
-          ],
-        },
-        {
-          h: 'Ludzie',
-        },
-        {
-          faq: [
-            [
-              'Nie rodzą się dzieci',
-              'Para potrzebuje wspólnego domu i {{family.childFood}} sztuk jedzenia w spiżarni. Komunikat mówi, czego brak: "Para bez domu", "Dom w budowie", "Osobne domy", "Brak jedzenia". "Mąż nie wraca" oznacza, że mąż jest Kupcem, Zwiadowcą, żołnierzem albo bohaterem i nie wraca do domu. Dzieci możesz też zamówić licznikiem "Narodziny" w Asystencie. Więcej: [[article:family|Rodzina i dom]].',
-            ],
-            [
-              'Głód przy pełnym magazynie',
-              'Sprawdź "Minimum w magazynach": poniżej tej ilości nikt nie weźmie towaru, także na posiłek. Obniż je przy jedzeniu. Może być też za daleko: magazyn musi leżeć do {{reach.walk}} hexów od osadnika albo w sieci drogowskazów.',
-            ],
-            [
-              'Zawodu nie ma na liście w Szkole',
-              'Lista pokazuje tylko kursy odkryte i dozwolone w tej misji. Wiersz bez wyboru podaje powód: "Już nauczone" albo "Nie można wyszkolić wybranych osadników w tej szkole". Kursy odkrywa [[article:exp-work|Doświadczenie w pracy]].',
-            ],
-          ],
-        },
-        {
-          h: 'Budowa i pola',
-        },
-        {
-          faq: [
-            [
-              'Budynek jest zablokowany',
-              'Jest w sekcji "Zablokowane" okna budowy. Podpowiedź "Wymagane odkrycia:" mówi, jakie zawody i towary są potrzebne i ile doświadczenia ci brakuje. "Niedostępne w tej misji": nie zbudujesz go na tej mapie. Papier ze skrzyni stawia budynek także bez odkrycia: [[article:chests|Skrzynie i papiery]].',
-            ],
-            [
-              'Budowa stoi',
-              'Stan budowy mówi, czego brak: "brak materiałów", "dostawa w drodze" albo "brak budowniczego". Komunikat "Budowa czeka: towar" oznacza, że towaru nie ma w żadnym magazynie w zasięgu drogowskazów placu, {{reach.goods}} hexów od drogowskazu. Budowniczy sam nosi materiał.',
-            ],
-            [
-              'Pole nie rośnie',
-              'Rośnie tylko od podlewania przez [[job:farmer|Farmera]] z miejscem pracy na [[building:work_farm_00|Farmie]]. Farmer najpierw sieje, a podlewa dopiero przy {{field.max}} polach albo gdy nie ma gdzie siać. Pole dojrzewa po {{field.waterings}} podlewaniach, a jedno podlewanie obejmuje też 6 sąsiednich pól. Sieje tylko na trawie, poza drogami, do {{field.radius}} hexów od Farmy.',
-            ],
-            [
-              'Czy deszcz, śnieg albo noc coś zmieniają?',
-              'Nie. Pogoda, ustawienie "Zima" i pora dnia to tylko obraz i dźwięk. Wolniej chodzi się tylko po piasku, w górach i po śniegu, który leży na mapie od początku.',
-            ],
-          ],
-        },
-        {
-          h: 'Wojsko i pojazdy',
-        },
-        {
-          faq: [
-            [
-              'Żołnierz nie atakuje',
-              'Sprawdź postawę: [[article:stances|Postawy]]. W postawie Ignorowanie nie podchodzi do wroga i bije tylko to, co ma w zasięgu broni. Zaatakuje tylko plemię, do którego masz stosunek "Wrogi", i tylko poza "Czasem pokoju".',
-            ],
-            [
-              'Statek nie wypływa',
-              'Stan "Czeka na dowódcę": przydziel dowódcę, może nim być każdy dorosły. "Czeka na załogę": ktoś z załogi jeszcze idzie na statek. "Brak trasy": cel nie leży na tej wodzie. Na morzu nikt nie wsiądzie, najpierw "Zacumuj".',
-            ],
-            [
-              'Zaprzęg stoi',
-              'Stan "Czeka na zwierzę pociągowe" znaczy, że brakuje Wołu. Zaprzęg zabierze [[good:cattle|Wołu]] tylko spoza pary, więc potrzebne są {{livestock.pairPlusOne}} dorosłe sztuki w jednej Fermie albo {{livestock.pairPlusOne}} poza Fermą: [[article:vehicles|Pojazdy i statki]].',
-            ],
-          ],
-        },
       ],
-      see: ['article:walking', 'article:hauling', 'article:stances', 'article:religion', 'article:livestock'],
+      see: ['article:why'],
     },
   ],
 };

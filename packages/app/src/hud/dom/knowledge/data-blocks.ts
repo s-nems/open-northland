@@ -1,5 +1,5 @@
 import { systems, TICKS_PER_SECOND } from '@open-northland/sim';
-import { JOB_HERO_UNARMED } from '../../../catalog/jobs.js';
+import { JOB_HERO_UNARMED, SOLDIER_JOB_MAX, SOLDIER_JOB_MIN } from '../../../catalog/jobs.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { ArticleDataBlock } from '../../knowledge/articles.js';
 import { buildingHitpoints, type KnowledgeWeapon, SECONDS_PER_TICK } from '../../knowledge/base.js';
@@ -291,7 +291,11 @@ function mostCommon(values: readonly number[]): number | undefined {
 
 function jobs({ base }: KnowledgeContext): HTMLElement {
   const copy = messages().knowledge.mechanics;
-  const rows = base.jobs.filter((j) => j.requirements.length > 0 && j.typeId < JOB_HERO_UNARMED);
+  // A soldier's kind follows the weapon he takes, so the soldier jobs' requirements are left out.
+  const isSoldier = (typeId: number): boolean => typeId >= SOLDIER_JOB_MIN && typeId <= SOLDIER_JOB_MAX;
+  const rows = base.jobs.filter(
+    (j) => j.requirements.length > 0 && j.typeId < JOB_HERO_UNARMED && !isSoldier(j.typeId),
+  );
   const course = mostCommon(
     rows.flatMap((j) =>
       j.requirements.filter((r) => r.route === 'train').map((r) => courseSeconds(r.amount)),

@@ -33,24 +33,17 @@ export type WeaponGroupId = 'civilian' | 'hero' | 'soldier';
 
 export const ARMOUR_IDS: readonly ArmourId[] = ['bare', 'wool', 'leather', 'chain', 'plate'];
 
-/** Where a blow comes from, clockwise from the target's face. */
-export const DIAL_SECTORS = [
-  { id: 'front', direction: HIT_DIRECTION.front },
-  { id: 'frontRight', direction: HIT_DIRECTION.front },
-  { id: 'backRight', direction: HIT_DIRECTION.backSide },
-  { id: 'back', direction: HIT_DIRECTION.behind },
-  { id: 'backLeft', direction: HIT_DIRECTION.backSide },
-  { id: 'frontLeft', direction: HIT_DIRECTION.front },
-] as const;
+/** The side of the target a blow lands on; each scales the blow by its {@link HIT_DIRECTION}. */
+export type HitSide = keyof typeof HIT_DIRECTION;
 
-export type DialSectorId = (typeof DIAL_SECTORS)[number]['id'];
+export const HIT_SIDES: readonly HitSide[] = ['front', 'backSide', 'behind'];
 
 export interface CalculatorAttacker {
   readonly tribe: number;
   readonly weapon: string;
   readonly hits: number;
   readonly strength: boolean;
-  readonly sector: DialSectorId;
+  readonly side: HitSide;
 }
 
 export interface CalculatorTarget {
@@ -149,7 +142,7 @@ export function initialCalculator(base: KnowledgeBase, tribe: number): Calculato
     homeTribe: tribe,
     mode: 'blow',
     heroes: false,
-    attacker: { tribe, weapon: DEFAULT_WEAPON, hits: 0, strength: false, sector: 'front' },
+    attacker: { tribe, weapon: DEFAULT_WEAPON, hits: 0, strength: false, side: 'front' },
     target: {
       kind: 'person',
       armour: DEFAULT_ARMOUR,
@@ -222,14 +215,10 @@ export function resolveTarget(base: KnowledgeBase, target: CalculatorTarget): Re
   return { combat, fullHealth, health };
 }
 
-function directionOf(sector: DialSectorId): number {
-  return DIAL_SECTORS.find((s) => s.id === sector)?.direction ?? HIT_DIRECTION.front;
-}
-
 function modifiersOf(state: CalculatorState, target: ResolvedTarget): BlowModifiers {
   const { attacker } = state;
   return {
-    direction: directionOf(attacker.sector),
+    direction: HIT_DIRECTION[attacker.side],
     hits: attacker.hits,
     strength: attacker.strength,
     defense: target.combat.person && state.target.defense,

@@ -131,7 +131,60 @@ export const WORLD: ArticleGroup = {
               ['[[good:catapult|Katapult]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Hexfelder pro Sekunde. Voll heißt {{haul.handcart}} Stück auf dem Handkarren und {{haul.oxcart}} auf dem Ochsenkarren. Je mehr Ladung, desto langsamer: ein halber Karren, halber Unterschied. Welcher Karren für eine Route: [[article:trade|Handel]].',
+            foot: 'Hexfelder pro Sekunde. Voll heißt {{haul.handcart}} Stück auf dem Handkarren und {{haul.oxcart}} auf dem Ochsenkarren. Teilweise beladene Karren zeigt die Tabelle unten. Welcher Karren für eine Route: [[article:trade|Handel]].',
+          },
+        },
+        {
+          h: 'Wie stark Ladung bremst',
+        },
+        {
+          table: {
+            head: [
+              'Ladung',
+              'Handkarren: langsamer',
+              'Handkarren: Land',
+              'Ochsenkarren: langsamer',
+              'Ochsenkarren: Land',
+            ],
+            rows: [
+              [
+                '{{vehicle.fill.0}}%',
+                '{{vehicle.handcartLoss.0}}%',
+                '{{pace.handcartLand.0}}',
+                '{{vehicle.oxcartLoss.0}}%',
+                '{{pace.oxcartLand.0}}',
+              ],
+              [
+                '{{vehicle.fill.25}}%',
+                '{{vehicle.handcartLoss.25}}%',
+                '{{pace.handcartLand.25}}',
+                '{{vehicle.oxcartLoss.25}}%',
+                '{{pace.oxcartLand.25}}',
+              ],
+              [
+                '{{vehicle.fill.50}}%',
+                '{{vehicle.handcartLoss.50}}%',
+                '{{pace.handcartLand.50}}',
+                '{{vehicle.oxcartLoss.50}}%',
+                '{{pace.oxcartLand.50}}',
+              ],
+              [
+                '{{vehicle.fill.75}}%',
+                '{{vehicle.handcartLoss.75}}%',
+                '{{pace.handcartLand.75}}',
+                '{{vehicle.oxcartLoss.75}}%',
+                '{{pace.oxcartLand.75}}',
+              ],
+              [
+                '{{vehicle.fill.100}}%',
+                '{{vehicle.handcartLoss.100}}%',
+                '{{pace.handcartLand.100}}',
+                '{{vehicle.oxcartLoss.100}}%',
+                '{{pace.oxcartLand.100}}',
+              ],
+            ],
+            num: [0, 1, 2, 3, 4],
+            foot: 'Ladung ist der belegte Anteil des Laderaums. Der Tempoverlust wächst gleichmäßig mit der Ladung: ein voller Karren verliert ihn ganz, ein halb voller zur Hälfte. Tempo in Hexfeldern pro Sekunde auf normalem Land.',
           },
         },
         {

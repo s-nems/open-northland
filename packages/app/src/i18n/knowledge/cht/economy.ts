@@ -36,12 +36,6 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          figure: {
-            id: 'step-diamond',
-            caption: '為什麼斜向更短',
-          },
-        },
-        {
           h: '建造時長',
         },
         {

@@ -63,7 +63,7 @@ export const EXPERIENCE: ArticleGroup = {
               ],
               [
                 '建造、修理',
-                '有進度的一次敲擊',
+                '在工地上敲一錘',
                 '×{{exp.build.points}}',
                 '{{exp.build.repeatsQuoted}}',
                 '{{exp.build.repeatsFull}}',
@@ -145,13 +145,7 @@ export const EXPERIENCE: ArticleGroup = {
           },
         },
         {
-          p: '拿武器不需要命中次數：士兵能拿範圍內倉庫的任何武器，拿到就成為劍兵、矛兵或弓手。{{exp.classLowNeed}}或{{exp.classHighNeed}}次命中的門檻只是讓聚落發現該兵種，之後就能在「更換職業」中選它：[[article:trades|職業與學校]]。',
-        },
-        {
-          h: '星標',
-        },
-        {
-          p: '士兵用手中武器命中{{star.step}}次後佩戴星標。每{{star.step}}次變大一級，{{star.full}}次時最大。每名士兵的星標都看得到，敵人的也一樣。',
+          p: '拿武器不需要命中次數：士兵能拿範圍內倉庫的任何武器，拿到就成為劍兵、矛兵或弓手。',
         },
       ],
       see: [

@@ -133,7 +133,54 @@ export const WORLD: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Гексов в секунду. Полная: {{haul.handcart}} шт. на Тележке и {{haul.oxcart}} шт. на Повозке. Чем больше груз, тем медленнее: половина груза даёт половину разницы. Выбор повозки для маршрута: [[article:trade|Торговля]].',
+            foot: 'Гексов в секунду. Полная: {{haul.handcart}} шт. на Тележке и {{haul.oxcart}} шт. на Повозке. Насколько замедляет неполный груз, показано в таблице ниже. Выбор повозки для маршрута: [[article:trade|Торговля]].',
+          },
+        },
+        {
+          h: 'Насколько груз замедляет',
+        },
+        {
+          table: {
+            head: ['Груз', 'Тележка: медленнее', 'Тележка: земля', 'Повозка: медленнее', 'Повозка: земля'],
+            rows: [
+              [
+                '{{vehicle.fill.0}}%',
+                '{{vehicle.handcartLoss.0}}%',
+                '{{pace.handcartLand.0}}',
+                '{{vehicle.oxcartLoss.0}}%',
+                '{{pace.oxcartLand.0}}',
+              ],
+              [
+                '{{vehicle.fill.25}}%',
+                '{{vehicle.handcartLoss.25}}%',
+                '{{pace.handcartLand.25}}',
+                '{{vehicle.oxcartLoss.25}}%',
+                '{{pace.oxcartLand.25}}',
+              ],
+              [
+                '{{vehicle.fill.50}}%',
+                '{{vehicle.handcartLoss.50}}%',
+                '{{pace.handcartLand.50}}',
+                '{{vehicle.oxcartLoss.50}}%',
+                '{{pace.oxcartLand.50}}',
+              ],
+              [
+                '{{vehicle.fill.75}}%',
+                '{{vehicle.handcartLoss.75}}%',
+                '{{pace.handcartLand.75}}',
+                '{{vehicle.oxcartLoss.75}}%',
+                '{{pace.oxcartLand.75}}',
+              ],
+              [
+                '{{vehicle.fill.100}}%',
+                '{{vehicle.handcartLoss.100}}%',
+                '{{pace.handcartLand.100}}',
+                '{{vehicle.oxcartLoss.100}}%',
+                '{{pace.oxcartLand.100}}',
+              ],
+            ],
+            num: [0, 1, 2, 3, 4],
+            foot: 'Груз: какая доля трюма занята. Потеря скорости растёт ровно вместе с грузом: полная повозка теряет её целиком, наполовину полная наполовину. Скорость в гексах в секунду по обычной земле.',
           },
         },
         {

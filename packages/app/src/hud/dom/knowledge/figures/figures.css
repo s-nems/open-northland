@@ -49,6 +49,15 @@
   fill: var(--paper-error);
 }
 
+/* The ground's triangle lattice under spatial figures, faint enough to read through. */
+.on-hud .kn-fig__mesh {
+  fill: none;
+  stroke: var(--parchment-lo);
+  stroke-width: 1;
+}
+.on-hud .kn-fig__shadow {
+  fill: color-mix(in srgb, var(--ink) 22%, transparent);
+}
 .on-hud .kn-fig__ring {
   fill: none;
   stroke: var(--ink-muted);
@@ -61,10 +70,6 @@
   fill: color-mix(in srgb, var(--bronze) 22%, transparent);
   stroke: var(--bronze-lo);
   stroke-width: 1.4;
-}
-.on-hud .kn-fig__zone--danger {
-  fill: color-mix(in srgb, var(--wax-danger) 14%, transparent);
-  stroke: var(--wax-danger);
 }
 .on-hud .kn-fig__hole {
   fill: var(--fig-ground);
@@ -98,12 +103,6 @@
 .on-hud .kn-fig__cross {
   stroke: var(--ink);
   stroke-width: 2;
-}
-.on-hud .kn-fig__lattice {
-  fill: var(--parchment-lo);
-}
-.on-hud .kn-fig__lattice--in {
-  fill: var(--paper-error);
 }
 
 .on-hud .kn-fig__ink {
@@ -202,16 +201,6 @@
 }
 .on-hud .kn-fig__disc--hit {
   fill: color-mix(in srgb, var(--wax-danger) 62%, var(--fig-ground));
-}
-
-.on-hud .kn-fig__wall {
-  fill: var(--wood);
-}
-.on-hud .kn-fig__gate-post {
-  fill: var(--wood-lo);
-}
-.on-hud .kn-fig__gate-bar {
-  fill: var(--bronze-lo);
 }
 
 .on-hud .kn-fig__soil {

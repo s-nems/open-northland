@@ -63,7 +63,7 @@ export const EXPERIENCE: ArticleGroup = {
               ],
               [
                 'Budowa, naprawa',
-                'uderzenie, które posunęło pracę',
+                'uderzenie młotka w plac budowy',
                 '×{{exp.build.points}}',
                 '{{exp.build.repeatsQuoted}}',
                 '{{exp.build.repeatsFull}}',
@@ -157,13 +157,7 @@ export const EXPERIENCE: ArticleGroup = {
           },
         },
         {
-          p: 'Do wzięcia broni trafienia nie są potrzebne: żołnierz bierze każdą broń z magazynu w zasięgu i od razu walczy jako Miecznik, Włócznik czy Łucznik. Próg {{exp.classLowNeed}} lub {{exp.classHighNeed}} trafień tylko odkrywa ten rodzaj żołnierza dla osady, a potem można go wybrać w "Zmianie zawodu": [[article:trades|Zawody i szkoła]].',
-        },
-        {
-          h: 'Gwiazdka',
-        },
-        {
-          p: 'Żołnierz nosi gwiazdkę od {{star.step}} trafień bronią, którą walczy. Rośnie co {{star.step}} trafień i jest największa przy {{star.full}}. Widać ją u każdego żołnierza, także wroga.',
+          p: 'Do wzięcia broni trafienia nie są potrzebne: żołnierz bierze każdą broń z magazynu w zasięgu i od razu walczy jako Miecznik, Włócznik czy Łucznik.',
         },
       ],
       see: [

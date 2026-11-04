@@ -5,19 +5,8 @@ import {
   WALK_RANGE_NODES,
 } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../../i18n/index.js';
-import {
-  diamondRing,
-  fitScale,
-  hexRing,
-  NODE_PX,
-  NODE_ROW_PX,
-  nodePoint,
-  type Point,
-  sightRows,
-  slantNode,
-  slantStepsWithin,
-  withinDiamond,
-} from './geometry.js';
+import { fitScale, hexRing, NODE_PX, NODE_ROW_PX, nodePoint, type Point, sightRows } from './geometry.js';
+import { groundMesh } from './ground.js';
 import { arrow, dot, drawing, FIGURE_WIDTH, line, number, outline, shape, text } from './svg.js';
 
 const LABEL_GAP = 6;
@@ -43,37 +32,34 @@ function sightRowsByRadius(): readonly SightRow[] {
   return [...names].sort(([a], [b]) => b - a).map(([radius, list]) => ({ radius, name: list.join(', ') }));
 }
 
-const VISION_HEIGHT = 330;
-const VISION_CENTRE: Point = { x: 112, y: 172 };
-const VISION_TOP_ROOM = 150;
-const VISION_ROWS_TOP = 62;
+const VISION_HEIGHT = 320;
+const VISION_CENTRE: Point = { x: 166, y: 160 };
+/** The widest sight's radius on the figure. */
+const VISION_ROOM = 150;
+const VISION_GROUND_MARGIN = 14;
+const VISION_ROWS_TOP = 54;
 const VISION_ROW_STEP = 31;
-const VISION_NAME_X = 232;
-const VISION_ACROSS_X = 462;
-const VISION_ALONG_X = 540;
-const VISION_HEAD_Y = 34;
+const VISION_NAME_X = 334;
+const VISION_ACROSS_X = 486;
+const VISION_ALONG_X = 552;
+const VISION_HEAD_Y = 26;
 const UNIT_DOT = 4;
 
+/** Sight is a circle on screen: its radius in nodes, a node as wide as {@link NODE_PX}. */
 export function visionFigure(): SVGElement {
   const t = messages().knowledge.figures.vision;
   const rows = sightRowsByRadius();
   const widest = Math.max(...rows.map((row) => row.radius));
-  const perStep = fitScale(sightRows(widest), VISION_TOP_ROOM);
+  const scale = fitScale(widest * NODE_PX, VISION_ROOM);
   const { x: cx, y: cy } = VISION_CENTRE;
+  const ground = VISION_ROOM + VISION_GROUND_MARGIN;
   const rings = rows.map(({ radius }) =>
-    shape('ellipse', {
-      cx,
-      cy,
-      rx: radius * perStep,
-      ry: sightRows(radius) * perStep,
-      class: 'kn-fig__zone',
-    }),
+    shape('circle', { cx, cy, r: radius * NODE_PX * scale, class: 'kn-fig__zone' }),
   );
   const listed = rows.flatMap(({ radius, name }, i) => {
     const y = VISION_ROWS_TOP + i * VISION_ROW_STEP;
-    const rx = radius * perStep;
-    const ry = sightRows(radius) * perStep;
-    const x = cx + rx * Math.sqrt(1 - ((y - cy) / ry) ** 2);
+    const r = radius * NODE_PX * scale;
+    const x = cx + Math.sqrt(Math.max(0, r ** 2 - (y - cy) ** 2));
     const baseline = y + LABEL_GAP - 1;
     return [
       line({ x, y }, { x: VISION_NAME_X - LABEL_GAP, y }, 'kn-fig__guide'),
@@ -85,12 +71,12 @@ export function visionFigure(): SVGElement {
   });
   return drawing(
     VISION_HEIGHT,
+    groundMesh(VISION_CENTRE, ground, ground, scale),
     ...rings,
     dot(VISION_CENTRE, UNIT_DOT, 'kn-fig__mark'),
     text({ x: VISION_ACROSS_X, y: VISION_HEAD_Y }, t.across, 'kn-fig__t--small', 'end'),
     text({ x: VISION_ALONG_X, y: VISION_HEAD_Y }, t.along, 'kn-fig__t--small', 'end'),
     ...listed,
-    text({ x: VISION_NAME_X, y: VISION_HEIGHT - 2 * LABEL_GAP }, t.note, 'kn-fig__t--small'),
   );
 }
 
@@ -140,6 +126,7 @@ export function reachFigure(): SVGElement {
   const lost = node(SETTLER_LOST.hx, SETTLER_LOST.hy);
   return drawing(
     REACH_HEIGHT,
+    groundMesh(REACH_CENTRE, FIGURE_WIDTH / 2, REACH_HEIGHT - cy, scale),
     shape(
       'g',
       { class: 'kn-fig__union' },
@@ -176,80 +163,5 @@ export function reachFigure(): SVGElement {
     text({ x: inside.x + 2 * LABEL_GAP, y: inside.y + LABEL_GAP }, t.inside, 'kn-fig__t--small'),
     person(lost, 'kn-fig__person--lost'),
     text({ x: lost.x + 3 * LABEL_GAP, y: lost.y - 3 * LABEL_GAP }, t.lost, 'kn-fig__t--danger', 'end'),
-  );
-}
-
-const DIAMOND_HEIGHT = 348;
-const DIAMOND_CENTRE: Point = { x: FIGURE_WIDTH / 2, y: 168 };
-const DIAMOND_ROOM = 524;
-/** Nodes of plain lattice shown past the rule's edge. */
-const LATTICE_MARGIN = 3;
-const LATTICE_DOT = 1.6;
-const NOTE_GAP = 14;
-
-/** Path data of a dot per node of one set: one path, not a node per dot. */
-function dotsPath(points: readonly Point[]): string {
-  return points
-    .map(
-      (p) =>
-        `M${p.x - LATTICE_DOT} ${p.y}a${LATTICE_DOT} ${LATTICE_DOT} 0 1 0 ${2 * LATTICE_DOT} 0a${LATTICE_DOT} ${LATTICE_DOT} 0 1 0 ${-2 * LATTICE_DOT} 0`,
-    )
-    .join('');
-}
-
-export function stepDiamondFigure(): SVGElement {
-  const t = messages().knowledge.figures.stepDiamond;
-  const radius = systems.CONTESTED_GROUND_RADIUS_NODES;
-  const span = radius + LATTICE_MARGIN;
-  const scale = fitScale(2 * span * NODE_PX, DIAMOND_ROOM);
-  const { x: cx, y: cy } = DIAMOND_CENTRE;
-  const place = (hx: number, hy: number): Point => {
-    const p = nodePoint(hx, hy);
-    return { x: cx + p.x * scale, y: cy + p.y * scale };
-  };
-  const inside: Point[] = [];
-  const beyond: Point[] = [];
-  for (let hy = -span; hy <= span; hy++) {
-    for (let hx = -span; hx <= span; hx++) {
-      (withinDiamond(hx, hy, radius) ? inside : beyond).push(place(hx, hy));
-    }
-  }
-  const slant = slantStepsWithin(radius);
-  const slantEnd = slantNode(slant);
-  const east = place(radius, 0);
-  const north = place(0, -radius);
-  const across = place(slantEnd.hx, slantEnd.hy);
-  return drawing(
-    DIAMOND_HEIGHT,
-    shape('path', { d: dotsPath(beyond), class: 'kn-fig__lattice' }),
-    outline(diamondRing(radius), DIAMOND_CENTRE, scale, 'kn-fig__zone kn-fig__zone--danger'),
-    shape('path', { d: dotsPath(inside), class: 'kn-fig__lattice kn-fig__lattice--in' }),
-    arrow(DIAMOND_CENTRE, east, 'kn-fig__ink'),
-    arrow(DIAMOND_CENTRE, north, 'kn-fig__ink'),
-    arrow(DIAMOND_CENTRE, across, 'kn-fig__ink'),
-    dot(DIAMOND_CENTRE, 2 * LATTICE_DOT + 2, 'kn-fig__mark--enemy'),
-    text({ x: cx - 2 * LABEL_GAP, y: cy + LABEL_GAP }, t.enemy, 'kn-fig__t--strong kn-fig__t--halo', 'end'),
-    text(
-      { x: (cx + east.x) / 2, y: cy - LABEL_GAP },
-      formatMessage(t.straight, { steps: number(radius) }),
-      'kn-fig__t--strong kn-fig__t--halo',
-      'middle',
-    ),
-    text(
-      { x: cx + LABEL_GAP, y: (cy + north.y) / 2 },
-      formatMessage(t.straightUp, { steps: number(radius) }),
-      'kn-fig__t--strong kn-fig__t--halo',
-    ),
-    text(
-      { x: across.x + LABEL_GAP, y: across.y + LABEL_GAP / 2 },
-      formatMessage(t.slant, { steps: number(slant) }),
-      'kn-fig__t--strong kn-fig__t--halo',
-    ),
-    text(
-      { x: FIGURE_WIDTH / 2, y: DIAMOND_HEIGHT - NOTE_GAP / 2 },
-      formatMessage(t.note, { cost: number(radius / slant) }),
-      'kn-fig__t--small',
-      'middle',
-    ),
   );
 }

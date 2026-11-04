@@ -620,12 +620,6 @@ export const MILITARY: ArticleGroup = {
           h: 'Budowa bramy',
         },
         {
-          figure: {
-            id: 'gate',
-            caption: 'Gdzie stanie brama',
-          },
-        },
-        {
           list: [
             'Brama zajmuje {{wall.gateSegments}} Twoich gotowych odcinków w prostej linii. Każdy musi mieć co najmniej {{wall.gateMinHealthPct}}% zdrowia i stać na równym terenie, a w przejściu nikt nie może stać.',
             'Brama staje od razu, zamknięta i z pełnym zdrowiem, nawet jeśli odcinki były uszkodzone.',

@@ -63,7 +63,7 @@ export const EXPERIENCE: ArticleGroup = {
               ],
               [
                 'Building, repairs',
-                'stroke that added something',
+                'hammer stroke on a building site',
                 '×{{exp.build.points}}',
                 '{{exp.build.repeatsQuoted}}',
                 '{{exp.build.repeatsFull}}',
@@ -157,13 +157,7 @@ export const EXPERIENCE: ArticleGroup = {
           },
         },
         {
-          p: 'A soldier needs no hits to take a weapon: he takes any weapon from a store in reach and fights as a Swordsman, Spearman or Archer on the spot. The {{exp.classLowNeed}} or {{exp.classHighNeed}} hit threshold only discovers that kind of soldier for the settlement, after which you can pick it in "Change profession": [[article:trades|Professions and School]].',
-        },
-        {
-          h: 'The star',
-        },
-        {
-          p: 'A soldier wears a star from {{star.step}} hits with the weapon he fights with. It grows every {{star.step}} hits and is biggest at {{star.full}}. You can see it on every soldier, enemies included.',
+          p: 'A soldier needs no hits to take a weapon: he takes any weapon from a store in reach and fights as a Swordsman, Spearman or Archer on the spot.',
         },
       ],
       see: [

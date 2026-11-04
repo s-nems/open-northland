@@ -5,12 +5,112 @@ export const PROBLEMS: ArticleGroup = {
   items: [
     {
       id: 'why',
-      name: "Why Isn't It Working?",
+      name: 'Common Problems',
       lead: 'Select the building or settler and read its status bar.',
       blocks: [
         {
-          h: 'Messages',
+          h: 'Work and Production',
         },
+        {
+          faq: [
+            [
+              'The workshop stands empty',
+              'Status "No workers" means nobody works there: assign a settler with the right profession. If he refuses, a message says why: "Wrong trade", "No free post" or "Lacks experience". Status "Idle" names the missing input. The worker goes for it himself if it lies within {{reach.goods}} hexes of a signpost.',
+            ],
+            [
+              "The Armourer, Blacksmith or Tailor won't work",
+              'Most likely his Religion under "Wellbeing" is at 0%. Each weapon or armour costs {{piety.lowPct}}% or {{piety.highPct}}% Religion, and a prayer gives {{pray.pct}}%. "Wants to pray" means there is nowhere to pray: you need a [[building:work_temple|Temple]], [[building:headquarters|Headquarters]] or a holy fire in the dwelling. More: [[article:religion|Religion and the Temple]].',
+            ],
+            [
+              "Carriers aren't carrying",
+              'A Carrier only works when he has a workplace in a building. Status "Nothing to carry in reach" means there are no goods within {{flag.radius}} hexes of the building or work flag, and "No destination accepts this good" that the stores are full.',
+            ],
+            [
+              'Breeding has stopped',
+              'The Stock Farmer breeds animals only when he has exactly {{livestock.pair}} adults. What the Cattle Farm status means: [[article:livestock|Livestock]].',
+            ],
+            [
+              'The Hunter brings nothing back',
+              'Status "No free prey in the hunting ground" means there is nothing to hunt within {{flag.hunter}} hexes of the flag or workplace. He doesn\'t go for every animal on his own, see the "Auto-hunted" column: [[article:wildlife|Wild Animals and Hunting]]. Move the work flag to where game grazes.',
+            ],
+          ],
+        },
+        {
+          h: 'People',
+        },
+        {
+          faq: [
+            [
+              'No children are being born',
+              'A couple needs a shared dwelling and {{family.childFood}} pieces of food in the larder. A message says what is missing: "No dwelling", "Dwelling unbuilt", "Living apart", "No food stock". "Husband away" means the husband is a Merchant, Scout, soldier or hero and does not come home. You can also order children with the "Births" counter in the Assistant. More: [[article:family|Family and Home]].',
+            ],
+            [
+              'Hungry with a full store',
+              'Check "Storage minimum": nobody takes a good below that amount, not even for a meal. Lower it on food. The store may also be too far: it must lie within {{reach.walk}} hexes of the settler or in the signpost network.',
+            ],
+            [
+              'A profession is missing from the School list',
+              'The list shows only courses that are discovered and allowed in this mission. A row you can\'t pick gives the reason: "Already learned" or "These settlers cannot train at this school". [[article:exp-work|Work Experience]] discovers courses.',
+            ],
+          ],
+        },
+        {
+          h: 'Building and Fields',
+        },
+        {
+          faq: [
+            [
+              'A building is locked',
+              'It sits in the "Locked" section of the build window. The "Required discoveries:" tooltip says which professions and goods you need and how much experience you lack. "Unavailable in this mission": you can\'t build it on this map. A paper from a chest places the building even undiscovered: [[article:chests|Chests and Papers]].',
+            ],
+            [
+              'Construction has stopped',
+              'The site status says what\'s missing: "materials missing", "delivery on the way" or "no builder". The message "Site needs [good]" means no store within the site\'s signpost reach holds it, {{reach.goods}} hexes from a signpost. Builders carry their own materials.',
+            ],
+            [
+              "A field isn't growing",
+              'It grows only when watered by a [[job:farmer|Farmer]] with a workplace at a [[building:work_farm_00|Farm]]. The Farmer sows first and waters only at {{field.max}} fields or when there is nowhere left to sow. A field ripens after {{field.waterings}} waterings, and one watering also covers 6 neighbouring fields. He sows only on grass, off roads, within {{field.radius}} hexes of the Farm.',
+            ],
+            [
+              'Do rain, snow or night change anything?',
+              'No. Weather, the "Winter" setting and time of day are picture and sound only. Walking is slower only on sand, in mountains and on snow that lies on the map from the start.',
+            ],
+          ],
+        },
+        {
+          h: 'Army and Vehicles',
+        },
+        {
+          faq: [
+            [
+              "A soldier won't attack",
+              'Check his stance: [[article:stances|Stances]]. On Ignorant he doesn\'t close in and strikes only what is within weapon range. He attacks only a tribe you hold as "Hostile", and only outside "Peace time".',
+            ],
+            [
+              "A ship won't sail",
+              'Status "Waiting for a commander": assign one, any adult will do. "Waiting for its crew": someone in the crew is still walking to the ship. "No route": the destination is not on this water. Nobody boards at sea, so "Moor" first.',
+            ],
+            [
+              "An Ox Cart won't move",
+              'Status "Waiting for its draught animal" means it lacks an Ox. It takes an [[good:cattle|Ox]] only from outside the pair, so you need {{livestock.pairPlusOne}} adults at one Cattle Farm or {{livestock.pairPlusOne}} outside a farm: [[article:vehicles|Vehicles and Ships]].',
+            ],
+          ],
+        },
+      ],
+      see: [
+        'article:notices',
+        'article:walking',
+        'article:hauling',
+        'article:stances',
+        'article:religion',
+        'article:livestock',
+      ],
+    },
+    {
+      id: 'notices',
+      name: 'Messages',
+      lead: 'A message tells you what has stalled. Here you find the cause and what to do about it.',
+      blocks: [
         {
           table: {
             filter: 'Search messages',
@@ -304,96 +404,8 @@ export const PROBLEMS: ArticleGroup = {
             foot: 'The "Notable and important" filter hides Regular, "Important only" hides Notable too. Level "-" is a line on the panel with no notice.',
           },
         },
-        {
-          h: 'Work and Production',
-        },
-        {
-          faq: [
-            [
-              'The workshop stands empty',
-              'Status "No workers" means nobody works there: assign a settler with the right profession. If he refuses, a message says why: "Wrong trade", "No free post" or "Lacks experience". Status "Idle" names the missing input. The worker goes for it himself if it lies within {{reach.goods}} hexes of a signpost.',
-            ],
-            [
-              "The Armourer, Blacksmith or Tailor won't work",
-              'Most likely his Religion under "Wellbeing" is at 0%. Each weapon or armour costs {{piety.lowPct}}% or {{piety.highPct}}% Religion, and a prayer gives {{pray.pct}}%. "Wants to pray" means there is nowhere to pray: you need a [[building:work_temple|Temple]], [[building:headquarters|Headquarters]] or a holy fire in the dwelling. More: [[article:religion|Religion and the Temple]].',
-            ],
-            [
-              "Carriers aren't carrying",
-              'A Carrier only works when he has a workplace in a building. Status "Nothing to carry in reach" means there are no goods within {{flag.radius}} hexes of the building or work flag, and "No destination accepts this good" that the stores are full.',
-            ],
-            [
-              'Breeding has stopped',
-              'The Stock Farmer breeds animals only when he has exactly {{livestock.pair}} adults. What the Cattle Farm status means: [[article:livestock|Livestock]].',
-            ],
-            [
-              'The Hunter brings nothing back',
-              'Status "No free prey in the hunting ground" means there is nothing to hunt within {{flag.hunter}} hexes of the flag or workplace. He doesn\'t go for every animal on his own, see the "Auto-hunted" column: [[article:wildlife|Wild Animals and Hunting]]. Move the work flag to where game grazes.',
-            ],
-          ],
-        },
-        {
-          h: 'People',
-        },
-        {
-          faq: [
-            [
-              'No children are being born',
-              'A couple needs a shared dwelling and {{family.childFood}} pieces of food in the larder. A message says what is missing: "No dwelling", "Dwelling unbuilt", "Living apart", "No food stock". "Husband away" means the husband is a Merchant, Scout, soldier or hero and does not come home. You can also order children with the "Births" counter in the Assistant. More: [[article:family|Family and Home]].',
-            ],
-            [
-              'Hungry with a full store',
-              'Check "Storage minimum": nobody takes a good below that amount, not even for a meal. Lower it on food. The store may also be too far: it must lie within {{reach.walk}} hexes of the settler or in the signpost network.',
-            ],
-            [
-              'A profession is missing from the School list',
-              'The list shows only courses that are discovered and allowed in this mission. A row you can\'t pick gives the reason: "Already learned" or "These settlers cannot train at this school". [[article:exp-work|Work Experience]] discovers courses.',
-            ],
-          ],
-        },
-        {
-          h: 'Building and Fields',
-        },
-        {
-          faq: [
-            [
-              'A building is locked',
-              'It sits in the "Locked" section of the build window. The "Required discoveries:" tooltip says which professions and goods you need and how much experience you lack. "Unavailable in this mission": you can\'t build it on this map. A paper from a chest places the building even undiscovered: [[article:chests|Chests and Papers]].',
-            ],
-            [
-              'Construction has stopped',
-              'The site status says what\'s missing: "materials missing", "delivery on the way" or "no builder". The message "Site needs [good]" means no store within the site\'s signpost reach holds it, {{reach.goods}} hexes from a signpost. Builders carry their own materials.',
-            ],
-            [
-              "A field isn't growing",
-              'It grows only when watered by a [[job:farmer|Farmer]] with a workplace at a [[building:work_farm_00|Farm]]. The Farmer sows first and waters only at {{field.max}} fields or when there is nowhere left to sow. A field ripens after {{field.waterings}} waterings, and one watering also covers 6 neighbouring fields. He sows only on grass, off roads, within {{field.radius}} hexes of the Farm.',
-            ],
-            [
-              'Do rain, snow or night change anything?',
-              'No. Weather, the "Winter" setting and time of day are picture and sound only. Walking is slower only on sand, in mountains and on snow that lies on the map from the start.',
-            ],
-          ],
-        },
-        {
-          h: 'Army and Vehicles',
-        },
-        {
-          faq: [
-            [
-              "A soldier won't attack",
-              'Check his stance: [[article:stances|Stances]]. On Ignorant he doesn\'t close in and strikes only what is within weapon range. He attacks only a tribe you hold as "Hostile", and only outside "Peace time".',
-            ],
-            [
-              "A ship won't sail",
-              'Status "Waiting for a commander": assign one, any adult will do. "Waiting for its crew": someone in the crew is still walking to the ship. "No route": the destination is not on this water. Nobody boards at sea, so "Moor" first.',
-            ],
-            [
-              "An Ox Cart won't move",
-              'Status "Waiting for its draught animal" means it lacks an Ox. It takes an [[good:cattle|Ox]] only from outside the pair, so you need {{livestock.pairPlusOne}} adults at one Cattle Farm or {{livestock.pairPlusOne}} outside a farm: [[article:vehicles|Vehicles and Ships]].',
-            ],
-          ],
-        },
       ],
-      see: ['article:walking', 'article:hauling', 'article:stances', 'article:religion', 'article:livestock'],
+      see: ['article:why'],
     },
   ],
 };

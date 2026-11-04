@@ -48,11 +48,7 @@ import {
 import { bcp47Tag } from '../../i18n/index.js';
 import { EGYPTIAN, FRANK, SARACEN } from '../../scenes/civilizations.js';
 import { STAR_FULL, STAR_TIER_STEP } from '../../view/projections/experience-stars.js';
-import {
-  FIGHT_AREA_RADIUS_NODES,
-  FIGHT_QUIET_TICKS,
-  SETTLEMENT_REACH_NODES,
-} from '../tool-panel/messages/fight-areas.js';
+import { SETTLEMENT_REACH_NODES } from '../tool-panel/messages/fight-areas.js';
 import {
   IDLE_SWEEPS_BEFORE_MESSAGE,
   SNAPSHOT_SWEEP_INTERVAL_TICKS,
@@ -92,6 +88,8 @@ const BUILD_SAMPLES_PCT = [0, 10, 22, 50, 79, 90] as const;
 /** A cart's unit is lifted twice: into the cart and out of it. */
 const LIFTS_PER_UNIT = 2;
 const WAVE_SAMPLE_HOURS = [0, 1, 2, 3] as const;
+/** The hold fills, in percent, the cart load table shows a row of. */
+const CART_FILL_SAMPLES_PCT = [0, 25, 50, 75, 100] as const;
 const TICKS_PER_HOUR = TICKS_PER_MINUTE * SECONDS_PER_MINUTE;
 /** The value the fight-experience table shows a blow of. */
 const SAMPLE_BLOW = 1000;
@@ -521,6 +519,24 @@ function vehiclePace(roughness: number, siege: boolean, lossPct: number): number
   const period = systems.vehicleMovePeriod(roughness, siege);
   return TICKS_PER_SECOND / (period + systems.cartDragTicks(period, lossPct));
 }
+
+/** A cart's speed loss at `fillPct` of its hold, by the sim's own rule. */
+const cartLossAt = (fullLossPct: number, fillPct: number): number =>
+  systems.loadSpeedLossPercent(fullLossPct, fillPct, PERCENT);
+
+const CART_LOAD_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
+  CART_FILL_SAMPLES_PCT.flatMap((fill) => {
+    const handcart = cartLossAt(systems.HANDCART_FULL_SPEED_LOSS_PERCENT, fill);
+    const oxcart = cartLossAt(systems.DRAWN_CART_FULL_SPEED_LOSS_PERCENT, fill);
+    return [
+      [`vehicle.fill.${fill}`, whole(fill)],
+      [`vehicle.handcartLoss.${fill}`, whole(handcart)],
+      [`vehicle.oxcartLoss.${fill}`, whole(oxcart)],
+      [`pace.handcartLand.${fill}`, fixedOneDecimal(vehiclePace(DEFAULT_NODE_ROUGHNESS, false, handcart))],
+      [`pace.oxcartLand.${fill}`, fixedOneDecimal(vehiclePace(DEFAULT_NODE_ROUGHNESS, false, oxcart))],
+    ];
+  }),
+);
 
 const aiArmy = (level: keyof typeof systems.AI_PROFILES) => systems.AI_PROFILES[level].army;
 const aiPace = (level: keyof typeof systems.AI_PROFILES, step: number) =>
@@ -1314,6 +1330,7 @@ export const FACTS: Readonly<Record<string, Fact>> = {
   ...TOOL_TABLE_FACTS,
   ...CAST_TABLE_FACTS,
   ...WAVE_FACTS,
+  ...CART_LOAD_FACTS,
   ...FIGHT_FACTS,
 };
 

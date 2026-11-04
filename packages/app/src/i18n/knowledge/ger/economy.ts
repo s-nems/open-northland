@@ -48,12 +48,6 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          figure: {
-            id: 'step-diamond',
-            caption: 'Warum es schräg weniger sind',
-          },
-        },
-        {
           h: 'Wie lange der Bau dauert',
         },
         {

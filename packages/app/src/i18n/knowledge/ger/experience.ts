@@ -63,7 +63,7 @@ export const EXPERIENCE: ArticleGroup = {
               ],
               [
                 'Bau, Reparatur',
-                'Arbeitsschlag, der die Arbeit vorangebracht hat',
+                'Hammerschlag auf der Baustelle',
                 '×{{exp.build.points}}',
                 '{{exp.build.repeatsQuoted}}',
                 '{{exp.build.repeatsFull}}',
@@ -157,13 +157,7 @@ export const EXPERIENCE: ArticleGroup = {
           },
         },
         {
-          p: 'Um eine Waffe zu nehmen, braucht man keine Treffer: Ein Soldat nimmt jede Waffe aus einem Lager in Reichweite und kämpft sofort als Schwertkämpfer, Speerträger oder Bogenschütze. Die Schwelle von {{exp.classLowNeed}} oder {{exp.classHighNeed}} Treffern entdeckt nur diese Soldatenart fürs Dorf, danach kann man sie unter „Beruf wechseln“ wählen: [[article:trades|Berufe und Schule]].',
-        },
-        {
-          h: 'Stern',
-        },
-        {
-          p: 'Ein Soldat trägt ab {{star.step}} Treffern mit seiner aktuellen Waffe einen Stern. Er wächst alle {{star.step}} Treffer und ist bei {{star.full}} am größten. Man sieht ihn bei jedem Soldaten, auch beim Feind.',
+          p: 'Um eine Waffe zu nehmen, braucht man keine Treffer: Ein Soldat nimmt jede Waffe aus einem Lager in Reichweite und kämpft sofort als Schwertkämpfer, Speerträger oder Bogenschütze.',
         },
       ],
       see: [

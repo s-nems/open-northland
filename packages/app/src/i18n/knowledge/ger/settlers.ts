@@ -414,14 +414,14 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'assistant',
       name: 'Assistent',
-      lead: 'Zähler bestellen Kinder und Rekruten, Schalter verteilen Ausrüstung aus dem Lager.',
+      lead: 'Mit Zählern legst du fest, wie viele Kinder und Rekruten es geben soll, Schalter verteilen Ausrüstung aus dem Lager.',
       blocks: [
         {
           h: 'Zähler',
         },
         {
           table: {
-            head: ['Zähler', 'Bestellt', 'Wer es tut', 'Sinkt', 'Endlos'],
+            head: ['Zähler', 'Bringt', 'Wer es tut', 'Sinkt', 'Endlos'],
             rows: [
               ['Töchter', 'Mädchen', 'Ehefrau mit Wohnhaus', 'bei der Geburt', 'nein'],
               ['Söhne', 'Jungen', 'Ehefrau mit Wohnhaus', 'bei der Geburt', 'ja'],

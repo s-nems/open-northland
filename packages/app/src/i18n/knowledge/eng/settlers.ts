@@ -405,14 +405,14 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'assistant',
       name: 'Assistant',
-      lead: 'Counters order children and recruits, switches hand out equipment from the stores.',
+      lead: 'Counters set how many children and recruits you want, switches hand out equipment from the stores.',
       blocks: [
         {
           h: 'Counters',
         },
         {
           table: {
-            head: ['Counter', 'Orders', 'Who does it', 'Counts down', 'No limit'],
+            head: ['Counter', 'Gives', 'Who does it', 'Counts down', 'No limit'],
             rows: [
               ['Daughters', 'a girl', 'married woman with a dwelling', 'at birth', 'no'],
               ['Sons', 'a boy', 'married woman with a dwelling', 'at birth', 'yes'],

@@ -111,7 +111,54 @@ export const WORLD: ArticleGroup = {
               ['[[good:catapult|投石機]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: '單位為格/秒。滿載指手推車{{haul.handcart}}份、牛車{{haul.oxcart}}份。貨越多越慢：裝半車只慢一半。路線選車見[[article:trade|貿易]]。',
+            foot: '單位為格/秒。滿載指手推車{{haul.handcart}}份、牛車{{haul.oxcart}}份。部分裝載的情況見下表。路線選車見[[article:trade|貿易]]。',
+          },
+        },
+        {
+          h: '載貨多少，慢多少',
+        },
+        {
+          table: {
+            head: ['裝載', '手推車：減速', '手推車：陸地', '牛車：減速', '牛車：陸地'],
+            rows: [
+              [
+                '{{vehicle.fill.0}}%',
+                '{{vehicle.handcartLoss.0}}%',
+                '{{pace.handcartLand.0}}',
+                '{{vehicle.oxcartLoss.0}}%',
+                '{{pace.oxcartLand.0}}',
+              ],
+              [
+                '{{vehicle.fill.25}}%',
+                '{{vehicle.handcartLoss.25}}%',
+                '{{pace.handcartLand.25}}',
+                '{{vehicle.oxcartLoss.25}}%',
+                '{{pace.oxcartLand.25}}',
+              ],
+              [
+                '{{vehicle.fill.50}}%',
+                '{{vehicle.handcartLoss.50}}%',
+                '{{pace.handcartLand.50}}',
+                '{{vehicle.oxcartLoss.50}}%',
+                '{{pace.oxcartLand.50}}',
+              ],
+              [
+                '{{vehicle.fill.75}}%',
+                '{{vehicle.handcartLoss.75}}%',
+                '{{pace.handcartLand.75}}',
+                '{{vehicle.oxcartLoss.75}}%',
+                '{{pace.oxcartLand.75}}',
+              ],
+              [
+                '{{vehicle.fill.100}}%',
+                '{{vehicle.handcartLoss.100}}%',
+                '{{pace.handcartLand.100}}',
+                '{{vehicle.oxcartLoss.100}}%',
+                '{{pace.oxcartLand.100}}',
+              ],
+            ],
+            num: [0, 1, 2, 3, 4],
+            foot: '裝載指貨艙佔用的比例。減速隨裝載均勻增加：滿載減速全部，半載減速一半。速度為一般陸地上的格/秒。',
           },
         },
         {

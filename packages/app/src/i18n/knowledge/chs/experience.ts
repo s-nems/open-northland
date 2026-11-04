@@ -63,7 +63,7 @@ export const EXPERIENCE: ArticleGroup = {
               ],
               [
                 '建造、修理',
-                '有进度的一次敲击',
+                '在工地上敲一锤',
                 '×{{exp.build.points}}',
                 '{{exp.build.repeatsQuoted}}',
                 '{{exp.build.repeatsFull}}',
@@ -145,13 +145,7 @@ export const EXPERIENCE: ArticleGroup = {
           },
         },
         {
-          p: '拿武器不需要命中次数：士兵能拿范围内仓库的任何武器，拿到就以剑兵、矛兵或弓箭手的身份作战。{{exp.classLowNeed}}或{{exp.classHighNeed}}次命中的门槛只是为聚落发现这个兵种，之后就能在“更换职业”中选它：[[article:trades|职业与学校]]。',
-        },
-        {
-          h: '星标',
-        },
-        {
-          p: '士兵用手中武器命中{{star.step}}次后戴上星标。每{{star.step}}次变大一级，{{star.full}}次时最大。每个士兵的星标都看得见，敌人的也一样。',
+          p: '拿武器不需要命中次数：士兵能拿范围内仓库的任何武器，拿到就以剑兵、矛兵或弓箭手的身份作战。',
         },
       ],
       see: [

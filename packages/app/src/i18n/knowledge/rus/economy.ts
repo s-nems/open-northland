@@ -45,12 +45,6 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          figure: {
-            id: 'step-diamond',
-            caption: 'Почему по диагонали меньше',
-          },
-        },
-        {
           h: 'Сколько длится постройка',
         },
         {

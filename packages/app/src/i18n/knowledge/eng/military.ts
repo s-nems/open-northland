@@ -620,12 +620,6 @@ export const MILITARY: ArticleGroup = {
           h: 'Building a gate',
         },
         {
-          figure: {
-            id: 'gate',
-            caption: 'Where the gate goes',
-          },
-        },
-        {
           list: [
             'A gate takes {{wall.gateSegments}} of your finished segments in a straight line. Each must have at least {{wall.gateMinHealthPct}}% health and stand on level ground, and nobody may be standing in the passage.',
             'The gate appears at once, closed and at full health, even if the segments were damaged.',

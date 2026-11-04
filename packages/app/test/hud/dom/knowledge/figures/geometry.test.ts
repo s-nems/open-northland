@@ -1,14 +1,15 @@
-import { hexDistanceBetween, systems } from '@open-northland/sim';
+import { HEX_HEADING_COUNT, hexDistanceBetween, hexNeighboursOf, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   fitScale,
+  GROUND_SQUASH,
+  groundPoint,
+  headingSector,
   hexRing,
   NODE_PX,
   NODE_ROW_PX,
+  nodePoint,
   sightRows,
-  slantNode,
-  slantStepsWithin,
-  withinDiamond,
 } from '../../../../../src/hud/dom/knowledge/figures/geometry.js';
 
 describe('figure geometry', () => {
@@ -35,13 +36,23 @@ describe('figure geometry', () => {
     );
   });
 
-  it('reaches two thirds as many slanted steps as straight ones in the build rule', () => {
-    const radius = systems.CONTESTED_GROUND_RADIUS_NODES;
-    const steps = slantStepsWithin(radius);
-    const end = slantNode(steps);
-    const past = slantNode(steps + 1);
-    expect(steps).toBe((radius * 2) / 3);
-    expect(withinDiamond(end.hx, end.hy, radius)).toBe(true);
-    expect(withinDiamond(past.hx, past.hy, radius)).toBe(false);
+  it('puts all six neighbours on one ground circle', () => {
+    const centre = { x: 0, y: 0 };
+    for (const n of hexNeighboursOf(0, 0)) {
+      const p = nodePoint(n.hx, n.hy);
+      expect((p.x / NODE_PX) ** 2 + (p.y / (NODE_PX * GROUND_SQUASH)) ** 2).toBeCloseTo(1);
+    }
+    expect(groundPoint(centre, NODE_PX, 0).x).toBeCloseTo(NODE_PX);
+  });
+
+  it('tiles the ground with the six heading sectors, east and west narrower', () => {
+    const spans = Array.from({ length: HEX_HEADING_COUNT }, (_, h) => headingSector(h));
+    for (const [h, sector] of spans.entries()) {
+      const next = spans[(h + 1) % HEX_HEADING_COUNT];
+      expect(next?.from).toBeCloseTo(h + 1 === HEX_HEADING_COUNT ? sector.to - 360 : sector.to);
+    }
+    const width = (h: number): number => headingSector(h).to - headingSector(h).from;
+    expect(width(0)).toBeLessThan(360 / HEX_HEADING_COUNT);
+    expect(width(1)).toBeGreaterThan(360 / HEX_HEADING_COUNT);
   });
 });

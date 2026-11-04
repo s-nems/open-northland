@@ -5,12 +5,112 @@ export const PROBLEMS: ArticleGroup = {
   items: [
     {
       id: 'why',
-      name: 'Warum geht das nicht?',
+      name: 'Häufige Probleme',
       lead: 'Wähle das Gebäude oder den Siedler aus und lies seine Statuszeile.',
       blocks: [
         {
-          h: 'Meldungen',
+          h: 'Arbeit und Produktion',
         },
+        {
+          faq: [
+            [
+              'Die Werkstatt steht leer',
+              'Status „Keine Arbeiter“ heißt, dass dort niemand arbeitet: Weise einen Siedler mit passendem Beruf zu. Lehnt er ab, sagt die Meldung warum: „Falscher Beruf“, „Stellen belegt“ oder „Zu unerfahren“. Status „Untätig“ nennt den fehlenden Rohstoff. Der Arbeiter geht ihn selbst holen, wenn er höchstens {{reach.goods}} Hexfelder von einem Wegweiser entfernt liegt.',
+            ],
+            [
+              'Waffenbauer, Schmied oder Näher arbeitet nicht',
+              'Wahrscheinlich steht seine Religion unter „Wohlbefinden“ auf 0%. Jede Waffe und Rüstung kostet {{piety.lowPct}}% oder {{piety.highPct}}% Religion, ein Gebet bringt {{pray.pct}}%. „Will beten“ heißt, dass ein Ort zum Beten fehlt: Nötig sind ein [[building:work_temple|Tempel]], das [[building:headquarters|Hauptquartier]] oder Heiliges Feuer im Wohnhaus. Mehr: [[article:religion|Religion und Tempel]].',
+            ],
+            [
+              'Träger tragen nichts',
+              'Ein Träger arbeitet nur, wenn er einen Arbeitsplatz in einem Gebäude hat. Status „Nichts zum Tragen in Reichweite“ heißt, dass bis {{flag.radius}} Hexfelder um das Gebäude oder die Arbeitsfahne keine Ware liegt, und „Kein Ziel nimmt diese Ware an“, dass die Lager voll sind.',
+            ],
+            [
+              'Die Zucht steht',
+              'Der Viehzüchter züchtet nur, wenn er genau {{livestock.pair}} erwachsene Tiere hat. Was der Status der Viehzüchterei bedeutet: [[article:livestock|Viehzucht]].',
+            ],
+            [
+              'Der Jäger bringt nichts',
+              'Status „Kein verfügbares Wild im Jagdgebiet“ heißt, dass es bis {{flag.hunter}} Hexfelder um Fahne oder Arbeitsplatz nichts zu jagen gibt. Nicht jedes Tier jagt er von selbst, siehe Spalte „Auto-Jagd“: [[article:wildlife|Wildtiere und Jagd]]. Versetze die Arbeitsfahne dorthin, wo Wild weidet.',
+            ],
+          ],
+        },
+        {
+          h: 'Leute',
+        },
+        {
+          faq: [
+            [
+              'Es werden keine Kinder geboren',
+              'Ein Paar braucht ein gemeinsames Wohnhaus und {{family.childFood}} Stück Essen in der Speisekammer. Die Meldung sagt, was fehlt: „Kein Familienheim“, „Haus nicht fertig“, „Getrennte Haushalte“, „Keine Nahrung vorrätig“. „Ehemann abwesend“ heißt, dass der Mann Händler, Kundschafter, Soldat oder Held ist und nicht nach Hause kommt. Kinder kannst du auch mit dem Zähler „Geburten“ im Assistenten bestellen. Mehr: [[article:family|Familie und Wohnhaus]].',
+            ],
+            [
+              'Hunger trotz vollem Lager',
+              'Prüfe das „Lagerminimum“: Unter dieser Menge nimmt niemand Ware heraus, auch nicht zum Essen. Senke das Minimum bei Essen. Vielleicht ist es auch zu weit: Das Lager muss bis {{reach.walk}} Hexfelder vom Siedler entfernt sein oder im Wegweisernetz liegen.',
+            ],
+            [
+              'Der Beruf fehlt auf der Schulliste',
+              'Die Liste zeigt nur Kurse, die entdeckt und in dieser Mission erlaubt sind. Eine Zeile, die sich nicht wählen lässt, nennt den Grund: „Bereits erlernt“ oder „Diese Siedler können an dieser Schule nicht lernen“. Kurse entdeckst du durch [[article:exp-work|Arbeitserfahrung]].',
+            ],
+          ],
+        },
+        {
+          h: 'Bau und Felder',
+        },
+        {
+          faq: [
+            [
+              'Das Gebäude ist gesperrt',
+              'Es steht im Baufenster im Abschnitt „Gesperrt“. Der Hinweis „Benötigte Entdeckungen:“ sagt, welche Berufe und Waren nötig sind und wie viel Erfahrung dir fehlt. „In dieser Mission nicht verfügbar“: Auf dieser Karte kannst du es nicht bauen. Ein Brief aus einer Kiste setzt das Gebäude auch ohne Entdeckung: [[article:chests|Kisten und Briefe]].',
+            ],
+            [
+              'Der Bau steht',
+              'Der Baustatus sagt, was fehlt: „Material fehlt“, „Lieferung unterwegs“ oder „Kein Bauarbeiter“. „Baustelle: [Ware] fehlt“ heißt, dass die Ware in keinem Lager in Wegweiser-Reichweite der Baustelle liegt, {{reach.goods}} Hexfelder von einem Wegweiser. Der Bauarbeiter trägt das Material selbst.',
+            ],
+            [
+              'Das Feld wächst nicht',
+              'Es wächst nur, wenn ein [[job:farmer|Farmer]] mit Arbeitsplatz auf der [[building:work_farm_00|Farm]] es gießt. Der Farmer sät zuerst und gießt erst bei {{field.max}} Feldern oder wenn er nirgends mehr säen kann. Ein Feld reift nach {{field.waterings}} Mal Gießen, und einmal Gießen erfasst auch 6 Nachbarfelder. Gesät wird nur auf Gras, abseits von Straßen, bis {{field.radius}} Hexfelder von der Farm.',
+            ],
+            [
+              'Ändern Regen, Schnee oder Nacht etwas?',
+              'Nein. Wetter, die Einstellung „Winter“ und die Tageszeit betreffen nur Bild und Ton. Langsamer geht es nur auf Sand, im Gebirge und auf Schnee, der von Anfang an auf der Karte liegt.',
+            ],
+          ],
+        },
+        {
+          h: 'Militär und Fahrzeuge',
+        },
+        {
+          faq: [
+            [
+              'Der Soldat greift nicht an',
+              'Prüfe den Modus: [[article:stances|Soldatenmodi]]. Im Modus Ignorant geht er nicht auf den Feind zu und schlägt nur, was in Waffenreichweite ist. Er greift nur Stämme an, zu denen dein Verhältnis „Feindlich“ ist, und nur außerhalb der „Friedenszeit“.',
+            ],
+            [
+              'Das Schiff legt nicht ab',
+              'Status „Wartet auf einen Kommandanten“: Weise einen zu, das kann jeder Erwachsene sein. „Wartet auf seine Besatzung“: Jemand aus der Besatzung ist noch auf dem Weg zum Schiff. „Kein Weg“: Das Ziel liegt nicht auf diesem Wasser. Auf See steigt niemand ein, also erst „Andocken“.',
+            ],
+            [
+              'Der Ochsenkarren steht',
+              'Status „Wartet auf sein Zugtier“ heißt, dass ein Ochse fehlt. Er nimmt nur einen [[good:cattle|Ochsen]], der nicht zum Paar gehört, also brauchst du {{livestock.pairPlusOne}} erwachsene Tiere in einer Viehzüchterei oder {{livestock.pairPlusOne}} außerhalb: [[article:vehicles|Fahrzeuge und Schiffe]].',
+            ],
+          ],
+        },
+      ],
+      see: [
+        'article:notices',
+        'article:walking',
+        'article:hauling',
+        'article:stances',
+        'article:religion',
+        'article:livestock',
+      ],
+    },
+    {
+      id: 'notices',
+      name: 'Meldungen',
+      lead: 'Eine Meldung sagt dir, was stockt. Hier findest du die Ursache und was du tun kannst.',
+      blocks: [
         {
           table: {
             filter: 'Meldung suchen',
@@ -314,96 +414,8 @@ export const PROBLEMS: ArticleGroup = {
             foot: 'Der Filter „Bemerkenswerte und wichtige“ blendet Normal aus, „Nur wichtige“ auch Bemerkenswert. Stufe „-“ ist eine Anzeige im Panel ohne Meldung.',
           },
         },
-        {
-          h: 'Arbeit und Produktion',
-        },
-        {
-          faq: [
-            [
-              'Die Werkstatt steht leer',
-              'Status „Keine Arbeiter“ heißt, dass dort niemand arbeitet: Weise einen Siedler mit passendem Beruf zu. Lehnt er ab, sagt die Meldung warum: „Falscher Beruf“, „Stellen belegt“ oder „Zu unerfahren“. Status „Untätig“ nennt den fehlenden Rohstoff. Der Arbeiter geht ihn selbst holen, wenn er höchstens {{reach.goods}} Hexfelder von einem Wegweiser entfernt liegt.',
-            ],
-            [
-              'Waffenbauer, Schmied oder Näher arbeitet nicht',
-              'Wahrscheinlich steht seine Religion unter „Wohlbefinden“ auf 0%. Jede Waffe und Rüstung kostet {{piety.lowPct}}% oder {{piety.highPct}}% Religion, ein Gebet bringt {{pray.pct}}%. „Will beten“ heißt, dass ein Ort zum Beten fehlt: Nötig sind ein [[building:work_temple|Tempel]], das [[building:headquarters|Hauptquartier]] oder Heiliges Feuer im Wohnhaus. Mehr: [[article:religion|Religion und Tempel]].',
-            ],
-            [
-              'Träger tragen nichts',
-              'Ein Träger arbeitet nur, wenn er einen Arbeitsplatz in einem Gebäude hat. Status „Nichts zum Tragen in Reichweite“ heißt, dass bis {{flag.radius}} Hexfelder um das Gebäude oder die Arbeitsfahne keine Ware liegt, und „Kein Ziel nimmt diese Ware an“, dass die Lager voll sind.',
-            ],
-            [
-              'Die Zucht steht',
-              'Der Viehzüchter züchtet nur, wenn er genau {{livestock.pair}} erwachsene Tiere hat. Was der Status der Viehzüchterei bedeutet: [[article:livestock|Viehzucht]].',
-            ],
-            [
-              'Der Jäger bringt nichts',
-              'Status „Kein verfügbares Wild im Jagdgebiet“ heißt, dass es bis {{flag.hunter}} Hexfelder um Fahne oder Arbeitsplatz nichts zu jagen gibt. Nicht jedes Tier jagt er von selbst, siehe Spalte „Auto-Jagd“: [[article:wildlife|Wildtiere und Jagd]]. Versetze die Arbeitsfahne dorthin, wo Wild weidet.',
-            ],
-          ],
-        },
-        {
-          h: 'Leute',
-        },
-        {
-          faq: [
-            [
-              'Es werden keine Kinder geboren',
-              'Ein Paar braucht ein gemeinsames Wohnhaus und {{family.childFood}} Stück Essen in der Speisekammer. Die Meldung sagt, was fehlt: „Kein Familienheim“, „Haus nicht fertig“, „Getrennte Haushalte“, „Keine Nahrung vorrätig“. „Ehemann abwesend“ heißt, dass der Mann Händler, Kundschafter, Soldat oder Held ist und nicht nach Hause kommt. Kinder kannst du auch mit dem Zähler „Geburten“ im Assistenten bestellen. Mehr: [[article:family|Familie und Wohnhaus]].',
-            ],
-            [
-              'Hunger trotz vollem Lager',
-              'Prüfe das „Lagerminimum“: Unter dieser Menge nimmt niemand Ware heraus, auch nicht zum Essen. Senke das Minimum bei Essen. Vielleicht ist es auch zu weit: Das Lager muss bis {{reach.walk}} Hexfelder vom Siedler entfernt sein oder im Wegweisernetz liegen.',
-            ],
-            [
-              'Der Beruf fehlt auf der Schulliste',
-              'Die Liste zeigt nur Kurse, die entdeckt und in dieser Mission erlaubt sind. Eine Zeile, die sich nicht wählen lässt, nennt den Grund: „Bereits erlernt“ oder „Diese Siedler können an dieser Schule nicht lernen“. Kurse entdeckst du durch [[article:exp-work|Arbeitserfahrung]].',
-            ],
-          ],
-        },
-        {
-          h: 'Bau und Felder',
-        },
-        {
-          faq: [
-            [
-              'Das Gebäude ist gesperrt',
-              'Es steht im Baufenster im Abschnitt „Gesperrt“. Der Hinweis „Benötigte Entdeckungen:“ sagt, welche Berufe und Waren nötig sind und wie viel Erfahrung dir fehlt. „In dieser Mission nicht verfügbar“: Auf dieser Karte kannst du es nicht bauen. Ein Brief aus einer Kiste setzt das Gebäude auch ohne Entdeckung: [[article:chests|Kisten und Briefe]].',
-            ],
-            [
-              'Der Bau steht',
-              'Der Baustatus sagt, was fehlt: „Material fehlt“, „Lieferung unterwegs“ oder „Kein Bauarbeiter“. „Baustelle: [Ware] fehlt“ heißt, dass die Ware in keinem Lager in Wegweiser-Reichweite der Baustelle liegt, {{reach.goods}} Hexfelder von einem Wegweiser. Der Bauarbeiter trägt das Material selbst.',
-            ],
-            [
-              'Das Feld wächst nicht',
-              'Es wächst nur, wenn ein [[job:farmer|Farmer]] mit Arbeitsplatz auf der [[building:work_farm_00|Farm]] es gießt. Der Farmer sät zuerst und gießt erst bei {{field.max}} Feldern oder wenn er nirgends mehr säen kann. Ein Feld reift nach {{field.waterings}} Mal Gießen, und einmal Gießen erfasst auch 6 Nachbarfelder. Gesät wird nur auf Gras, abseits von Straßen, bis {{field.radius}} Hexfelder von der Farm.',
-            ],
-            [
-              'Ändern Regen, Schnee oder Nacht etwas?',
-              'Nein. Wetter, die Einstellung „Winter“ und die Tageszeit betreffen nur Bild und Ton. Langsamer geht es nur auf Sand, im Gebirge und auf Schnee, der von Anfang an auf der Karte liegt.',
-            ],
-          ],
-        },
-        {
-          h: 'Militär und Fahrzeuge',
-        },
-        {
-          faq: [
-            [
-              'Der Soldat greift nicht an',
-              'Prüfe den Modus: [[article:stances|Soldatenmodi]]. Im Modus Ignorant geht er nicht auf den Feind zu und schlägt nur, was in Waffenreichweite ist. Er greift nur Stämme an, zu denen dein Verhältnis „Feindlich“ ist, und nur außerhalb der „Friedenszeit“.',
-            ],
-            [
-              'Das Schiff legt nicht ab',
-              'Status „Wartet auf einen Kommandanten“: Weise einen zu, das kann jeder Erwachsene sein. „Wartet auf seine Besatzung“: Jemand aus der Besatzung ist noch auf dem Weg zum Schiff. „Kein Weg“: Das Ziel liegt nicht auf diesem Wasser. Auf See steigt niemand ein, also erst „Andocken“.',
-            ],
-            [
-              'Der Ochsenkarren steht',
-              'Status „Wartet auf sein Zugtier“ heißt, dass ein Ochse fehlt. Er nimmt nur einen [[good:cattle|Ochsen]], der nicht zum Paar gehört, also brauchst du {{livestock.pairPlusOne}} erwachsene Tiere in einer Viehzüchterei oder {{livestock.pairPlusOne}} außerhalb: [[article:vehicles|Fahrzeuge und Schiffe]].',
-            ],
-          ],
-        },
       ],
-      see: ['article:walking', 'article:hauling', 'article:stances', 'article:religion', 'article:livestock'],
+      see: ['article:why'],
     },
   ],
 };

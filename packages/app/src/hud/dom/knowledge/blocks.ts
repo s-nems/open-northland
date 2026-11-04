@@ -101,7 +101,8 @@ export function plainTable(
 
 function tableBody(table: ArticleTable, scope: ArticleScope): HTMLTableElement {
   const { head, rows, num = [] } = table;
-  const align = (i: number): string => (num.includes(i) ? 'kn-num' : '');
+  // The first column names the row and stays at the left edge even when it holds numbers.
+  const align = (i: number): string => (i > 0 && num.includes(i) ? 'kn-num' : '');
   const node = element('table', 'kn-table');
   const headRow = element('tr', '');
   head.forEach((label, i) => {

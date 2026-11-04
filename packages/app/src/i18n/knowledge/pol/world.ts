@@ -137,7 +137,60 @@ export const WORLD: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Hexy na sekundę. Pełny to {{haul.handcart}} sztuk na Wózku i {{haul.oxcart}} na Zaprzęgu. Im więcej ładunku, tym wolniej: pół wozu to połowa tej różnicy. Wybór wozu na trasę: [[article:trade|Handel]].',
+            foot: 'Hexy na sekundę. Pełny to {{haul.handcart}} sztuk na Wózku i {{haul.oxcart}} na Zaprzęgu. Ile zwalnia częściowo pełny wóz, pokazuje tabela niżej. Wybór wozu na trasę: [[article:trade|Handel]].',
+          },
+        },
+        {
+          h: 'Ile zwalnia ładunek',
+        },
+        {
+          table: {
+            head: [
+              'Ładunek',
+              'Wózek Ręczny: wolniej',
+              'Wózek Ręczny: ląd',
+              'Zaprzęg: wolniej',
+              'Zaprzęg: ląd',
+            ],
+            rows: [
+              [
+                '{{vehicle.fill.0}}%',
+                '{{vehicle.handcartLoss.0}}%',
+                '{{pace.handcartLand.0}}',
+                '{{vehicle.oxcartLoss.0}}%',
+                '{{pace.oxcartLand.0}}',
+              ],
+              [
+                '{{vehicle.fill.25}}%',
+                '{{vehicle.handcartLoss.25}}%',
+                '{{pace.handcartLand.25}}',
+                '{{vehicle.oxcartLoss.25}}%',
+                '{{pace.oxcartLand.25}}',
+              ],
+              [
+                '{{vehicle.fill.50}}%',
+                '{{vehicle.handcartLoss.50}}%',
+                '{{pace.handcartLand.50}}',
+                '{{vehicle.oxcartLoss.50}}%',
+                '{{pace.oxcartLand.50}}',
+              ],
+              [
+                '{{vehicle.fill.75}}%',
+                '{{vehicle.handcartLoss.75}}%',
+                '{{pace.handcartLand.75}}',
+                '{{vehicle.oxcartLoss.75}}%',
+                '{{pace.oxcartLand.75}}',
+              ],
+              [
+                '{{vehicle.fill.100}}%',
+                '{{vehicle.handcartLoss.100}}%',
+                '{{pace.handcartLand.100}}',
+                '{{vehicle.oxcartLoss.100}}%',
+                '{{pace.oxcartLand.100}}',
+              ],
+            ],
+            num: [0, 1, 2, 3, 4],
+            foot: 'Ładunek to część pojemności wozu. Strata prędkości rośnie równo z ładunkiem: pełny wóz traci całą, do połowy pełny połowę. Prędkość w hexach na sekundę po zwykłym lądzie.',
           },
         },
         {

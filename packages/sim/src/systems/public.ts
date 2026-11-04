@@ -3,6 +3,7 @@
 
 // The scripted handlers' round, so a real-content probe can step to a seat's turn.
 export { AI_HANDLER_ROUND_TICKS } from './ai-shared/cadence.js';
+export { TOWER_POST_STRENGTH } from './ai-shared/military/census.js';
 // The scout chase's cap, asserted by the scout-village scene.
 export { SCOUT_CHASERS_PER_SCOUT } from './ai-shared/military/defence/militia.js';
 // The band the assistant's flag follow keeps a gatherer's flag in.
@@ -69,9 +70,6 @@ export {
   RAID_SEAT_CHANCE_PCT,
 } from './computer-player/military/operations/raid.js';
 export { WAVE_GATHER_TICKS, waveBandAt } from './computer-player/military/plan.js';
-export { DEFEND_RATIO, PLAN_TUNING } from './computer-player/strategy/military.js';
-export { LANDING_BIG_SHIPS } from './computer-player/workforce/craft.js';
-export { TOWER_POST_STRENGTH } from './ai-shared/military/census.js';
 // A seat's strategy (economy, military plan and posture) and the seat brief it was chosen from, and its
 // army, strongest believed enemy and next forecast attack, for a debug view.
 export {
@@ -83,8 +81,10 @@ export {
   seatMilitaryViewOf,
   sendsFlankRaids,
 } from './computer-player/strategy/index.js';
+export { DEFEND_RATIO, PLAN_TUNING } from './computer-player/strategy/military.js';
 // The discoveries a seat earns ahead of time and the men pinned on them, for a debug view.
 export type { ApprenticeView } from './computer-player/technology/apprentices.js';
+export { LANDING_BIG_SHIPS } from './computer-player/workforce/craft.js';
 export {
   COLLECTOR_TARGET_BY_GOOD_ID,
   COLLECTOR_WORKSHOP_BY_GOOD_ID,
@@ -237,6 +237,7 @@ export {
   SUPPORTED_GOALS,
   SUPPORTED_RESULTS,
 } from './missions/index.js';
+export { LEADER_UPKEEP_PERIOD_TICKS } from './movement/herd-roster.js';
 export {
   MIN_STEP_TICKS,
   ROUGHNESS_MAX_ON_MAPS,
@@ -390,6 +391,7 @@ export {
   DRAWN_CART_LIFT_PERCENT,
   HANDCART_FULL_SPEED_LOSS_PERCENT,
   HANDCART_LIFT_PERCENT,
+  loadSpeedLossPercent,
 } from './vehicles/drag.js';
 // createVehicle stands a vehicle in pre-tick assembly the way the command does; modifyVehicleStock and
 // stockVehicleGoods are the writes into a hold, the second the booked-and-stowed one a loaded spawn uses.
@@ -418,5 +420,4 @@ export {
   SIEGE_VISION_NODES,
   SOLDIER_VISION_NODES,
 } from './vision/system.js';
-export { LEADER_UPKEEP_PERIOD_TICKS } from './movement/herd-roster.js';
 export { BREEDING_SPAN_TICKS, BREEDING_SPANS_PER_ROUND } from './wildlife/index.js';

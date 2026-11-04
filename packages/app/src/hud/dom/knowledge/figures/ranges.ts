@@ -2,7 +2,8 @@ import { hexNeighboursOf, systems } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../../i18n/index.js';
 import { shownWeapons } from '../../../knowledge/combat.js';
 import type { KnowledgeContext } from '../context.js';
-import { fitScale, hexRing, NODE_PX, NODE_ROW_PX, nodePoint, type Point } from './geometry.js';
+import { fitScale, GROUND_SQUASH, hexRing, NODE_PX, NODE_ROW_PX, nodePoint, type Point } from './geometry.js';
+import { groundMesh } from './ground.js';
 import { arrow, dot, drawing, FIGURE_WIDTH, line, number, outline, shape, text } from './svg.js';
 
 const PANELS = 3;
@@ -57,8 +58,12 @@ export function leashFigure(context: KnowledgeContext): SVGElement {
     text({ x: centre(panel).x, y: TITLE_Y }, name, 'kn-fig__t--strong', 'middle');
   const attackPoint = { x: centre(0).x - ATTACK_PANEL_SHIFT, y: RING_Y };
   const attacker = { x: attackPoint.x + ATTACKER_OFFSET * NODE_PX * scale, y: RING_Y };
+  const ground = (at: Point): SVGElement => groundMesh(at, PANEL_WIDTH / 2, RING_Y - TITLE_Y, scale);
   return drawing(
     LEASH_HEIGHT,
+    ground(attackPoint),
+    ground(centre(1)),
+    ground(centre(2)),
     title(0, t.attack),
     outline(hexRing(back), attackPoint, scale, 'kn-fig__ring kn-fig__ring--dash'),
     outline(hexRing(systems.SIGHT_RADIUS_NODES), attacker, scale, 'kn-fig__zone'),
@@ -95,6 +100,9 @@ const LANDING_NODES = { hx: 16, hy: 8 };
 const LENS_CENTRE: Point = { x: 452, y: 112 };
 const LENS_SCALE = 2;
 const NODE_DISC = 21;
+/** Half the ground patch under the band and under the lens. */
+const BAND_GROUND: Point = { x: 172, y: 92 };
+const LENS_GROUND: Point = { x: 104, y: 92 };
 const NOTE_Y = 214;
 
 function catapultReach(context: KnowledgeContext): { readonly min: number; readonly max: number } | null {
@@ -116,12 +124,22 @@ export function catapultSplashFigure(context: KnowledgeContext): SVGElement | nu
   const discs = struck.flatMap((node, i) => {
     const p = nodePoint(node.hx, node.hy);
     const at = { x: LENS_CENTRE.x + p.x * LENS_SCALE, y: LENS_CENTRE.y + p.y * LENS_SCALE };
-    return [dot(at, NODE_DISC, i === 0 ? 'kn-fig__disc kn-fig__disc--hit' : 'kn-fig__disc')];
+    return [
+      shape('ellipse', {
+        cx: at.x,
+        cy: at.y,
+        rx: NODE_DISC,
+        ry: NODE_DISC * GROUND_SQUASH,
+        class: i === 0 ? 'kn-fig__disc kn-fig__disc--hit' : 'kn-fig__disc',
+      }),
+    ];
   });
   const arrowEnd = { x: LENS_CENTRE.x - 3 * NODE_DISC + 2, y: LENS_CENTRE.y };
   const maxY = BAND_CENTRE.y + reach.max * NODE_ROW_PX * scale;
   return drawing(
     SPLASH_HEIGHT,
+    groundMesh(BAND_CENTRE, BAND_GROUND.x, BAND_GROUND.y, scale),
+    groundMesh(LENS_CENTRE, LENS_GROUND.x, LENS_GROUND.y, LENS_SCALE),
     outline(hexRing(reach.max), BAND_CENTRE, scale, 'kn-fig__zone'),
     outline(hexRing(reach.min), BAND_CENTRE, scale, 'kn-fig__hole'),
     outline(hexRing(reach.min), BAND_CENTRE, scale, 'kn-fig__ring'),

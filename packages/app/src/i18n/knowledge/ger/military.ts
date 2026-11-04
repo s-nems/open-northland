@@ -634,12 +634,6 @@ export const MILITARY: ArticleGroup = {
           h: 'Bau eines Tors',
         },
         {
-          figure: {
-            id: 'gate',
-            caption: 'Wo das Tor entsteht',
-          },
-        },
-        {
           list: [
             'Ein Tor belegt {{wall.gateSegments}} deiner fertigen Abschnitte in gerader Linie. Jeder braucht mindestens {{wall.gateMinHealthPct}}% Gesundheit und ebenen Boden, und im Durchgang darf niemand stehen.',
             'Das Tor entsteht sofort, geschlossen und mit voller Gesundheit, auch wenn die Abschnitte beschädigt waren.',
