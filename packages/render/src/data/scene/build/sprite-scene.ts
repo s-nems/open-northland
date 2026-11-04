@@ -509,13 +509,14 @@ function collectScene(
     }
     const emitTouched = (id: number): void => {
       const entity = entityById(snapshot, id);
-      const kind = entity === undefined ? null : classify(entity.components);
-      if (
-        entity !== undefined &&
-        kind !== null &&
-        isSelfContainedKind(kind, 'DeliveryFlag' in entity.components)
-      )
-        emit(entity, true);
+      if (entity === undefined) return;
+      // A self-contained kind draws on its own Position, the anchor its cull reads: the log names the
+      // whole map, and one off the view emits nothing.
+      const pos = readPosition(entity.components);
+      if (pos === null) return;
+      if (!isVisible(viewport, tileToScreenX(pos.x / ONE, pos.y / ONE), tileToScreenY(pos.y / ONE))) return;
+      const kind = classify(entity.components);
+      if (kind !== null && isSelfContainedKind(kind, 'DeliveryFlag' in entity.components)) emit(entity, true);
     };
     for (const id of touched.ids) emitTouched(id);
     for (const id of withheld) if (!touched.ids.has(id)) emitTouched(id);
@@ -541,15 +542,17 @@ function collectScene(
     // Most deltas touch no self-contained entity under the view: the run stands as it was. A static
     // item's cull point is its own anchor, so the run keeps an item exactly when the view still shows it.
     const left: number[] = [];
-    const keptRun =
-      touched.ids.size === 0 && withheld.size === 0 && !viewMoved
+    const dropped = withheld.size === 0 ? touched.ids : new Set([...touched.ids, ...withheld]);
+    const keptRun = viewMoved
+      ? incremental.statics.filter((i) => {
+          if (dropped.has(i.ref)) return false;
+          if (isVisible(viewport, i.x, i.y)) return true;
+          left.push(i.ref);
+          return false;
+        })
+      : dropped.size === 0
         ? incremental.statics
-        : incremental.statics.filter((i) => {
-            if (touched.ids.has(i.ref) || withheld.has(i.ref)) return false;
-            if (!viewMoved || isVisible(viewport, i.x, i.y)) return true;
-            left.push(i.ref);
-            return false;
-          });
+        : incremental.statics.filter((i) => !dropped.has(i.ref));
     const staticKept = new Uint8Array(keptRun.length + fresh.length);
     let statics: readonly SpriteDrawItem[] = keptRun;
     if (fresh.length === 0) staticKept.fill(1);
