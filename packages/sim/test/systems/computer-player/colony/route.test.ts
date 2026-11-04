@@ -10,7 +10,6 @@ import {
   TradeRoute,
   TradeShip,
   Vehicle,
-  VehicleStock,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import {
@@ -104,10 +103,6 @@ function homeLandOfSeat(sim: Simulation): number {
   return terrain.componentOf(interactionCell(sim.world, ctx, terrain, base));
 }
 
-function aboard(sim: Simulation, ship: Entity, good: number): number {
-  return sim.world.tryGet(ship, VehicleStock)?.lines.get(good)?.current ?? 0;
-}
-
 /** Who stands on the colony or rides for it. */
 const colonyPeople = (sim: Simulation): number => {
   const home = new Set(homeSettlers(sim.world, ctxOf(sim), SEAT));
@@ -131,10 +126,12 @@ describe('a colony trade route', () => {
     expect(marks()[1]?.imports.some((m) => m.good === MUD)).toBe(true);
     const colonyHolds = (good: number): number =>
       stockAtBuildings(sim.world, SEAT, colonyBuildingsOf(sim)).get(good) ?? 0;
-    let stoneOut = 0;
-    const both = stepUntil(sim, ROUND_DUE_TICKS, () => {
-      stoneOut = Math.max(stoneOut, aboard(sim, ship, STONE));
-      return colonyHolds(MUD) > 0 && stoneOut > 0 && (colonyState(sim)?.delivered ?? null) !== null;
+    let sentHome = false;
+    // The colony's first mud and stone go into the home it raises ahead of its families, so the round runs a
+    // leg longer; what it sends home is what it gathers past its floor.
+    const both = stepUntil(sim, ROUND_DUE_TICKS + LEG_DUE_TICKS, () => {
+      sentHome ||= (marks()[0]?.imports.length ?? 0) > 0;
+      return colonyHolds(MUD) > 0 && sentHome && (colonyState(sim)?.delivered ?? null) !== null;
     });
     expect(both).toBe(true);
     // Its stone goes home once its men dig past what its own industries' sites took first.

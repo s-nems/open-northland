@@ -28,6 +28,8 @@ import {
 } from '../support.js';
 
 const SCHOOL_OFF = 8;
+/** A top-tier home's family slots. */
+const HOME_SLOTS = 5;
 const FARM_OFF = 6;
 
 const read = (over: Partial<HomesRead>): HomesRead => ({
@@ -35,7 +37,7 @@ const read = (over: Partial<HomesRead>): HomesRead => ({
   freeSlots: 0,
   fed: true,
   roomy: true,
-  cramped: false,
+  ahead: 0,
   ...over,
 });
 
@@ -59,10 +61,10 @@ describe('a colony home', () => {
     expect(homeStepDue(read({ roomy: false }))).toBe(false);
   });
 
-  it('stands a home ahead of its families while home has no room to build', () => {
-    expect(homeStepDue(read({ homeless: 0 }))).toBe(false);
-    expect(homeStepDue(read({ homeless: 0, cramped: true }))).toBe(true);
-    expect(homeStepDue(read({ homeless: 0, freeSlots: 1, cramped: true }))).toBe(false);
+  it("keeps a home's slots free ahead of its families", () => {
+    expect(homeStepDue(read({ homeless: 0, ahead: HOME_SLOTS }))).toBe(true);
+    expect(homeStepDue(read({ homeless: 0, freeSlots: HOME_SLOTS, ahead: HOME_SLOTS }))).toBe(false);
+    expect(homeStepDue(read({ homeless: 0, ahead: HOME_SLOTS, fed: false }))).toBe(false);
   });
 });
 

@@ -323,7 +323,10 @@ describe('a colony sails', () => {
     for (const e of [...colonyBuildingsOf(sim)])
       if (sim.world.has(e, UnderConstruction)) sim.world.destroy(e);
     for (const build of editColony(sim).builds) build.placed = true;
-    expect(stepUntil(sim, REST_DUE_TICKS, () => builders() <= BUILDERS_AT_REST)).toBe(true);
+    // It still raises the home it keeps ahead of its families, and rests once that stands.
+    const resting = () =>
+      (colonyState(sim)?.builds.every((b) => b.placed) ?? false) && builders() <= BUILDERS_AT_REST;
+    expect(stepUntil(sim, REST_DUE_TICKS + HOMES_DUE_TICKS, resting)).toBe(true);
   });
 
   it('puts no man on the hunter seat where no game is left, and sets him to other work', () => {

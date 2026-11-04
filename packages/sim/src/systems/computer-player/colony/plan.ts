@@ -6,7 +6,6 @@ import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { mayMarry } from '../../family/eligibility.js';
 import { familiesOf } from '../../family/households.js';
-import { seatHasSide } from '../build-order/seat-order.js';
 import { topEnabledTier } from '../top-tier.js';
 import { colonists } from './founding.js';
 import { type ChainStep, chainStepOf, nextIndustrySteps, type StepGround, stepsAhead } from './industry.js';
@@ -38,10 +37,6 @@ export function siteFree(building: string, open: OpenSites): boolean {
 
 /** The home chain's base tier: a colony raises its homes at the top tier enabled ({@link topEnabledTier}). */
 const HOME_ID = 'home_level_00';
-/** The family slots a colony keeps free ahead of its couples while home has no room to build (owner ruling:
- *  a roomy colony grows the people of a cramped seat): a home's worth. */
-const SLOTS_AHEAD_WHEN_CRAMPED = 1;
-
 /** What a colony's next home waits for. */
 export interface HomesRead {
   /** The families with no home there: wives, and the brides its grooms can marry. */
@@ -52,15 +47,16 @@ export interface HomesRead {
   readonly fed: boolean;
   /** Whether its block has room left for another home. */
   readonly roomy: boolean;
-  /** Whether home has no room left to build. */
-  readonly cramped: boolean;
+  /** The family slots it keeps free ahead of its families: the next home's. */
+  readonly ahead: number;
 }
 
-/** Owner ruling: a colony with room builds homes as it needs, no fixed number: one more while it is fed and
- *  roomy and its homeless families, with a home's slots ahead on a cramped seat, outnumber its free slots. */
+/** Owner ruling: a colony with room builds homes as it needs, no fixed number, and a roomy colony grows the
+ *  seat's people: one more home while it is fed and roomy and its homeless families, with a home's slots
+ *  ahead for the couples the ferry brings, outnumber its free slots. Its room and its food bound how far. */
 export function homeStepDue(read: HomesRead): boolean {
   if (!read.fed || !read.roomy) return false;
-  return read.homeless + (read.cramped ? SLOTS_AHEAD_WHEN_CRAMPED : 0) > read.freeSlots;
+  return read.homeless + read.ahead > read.freeSlots;
 }
 
 /** The ground the chain asks of `building`. */
@@ -126,7 +122,7 @@ function homeStep(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity
     freeSlots: homeSlots(env, buildings).free,
     fed: colonyFed(env, buildings, people),
     roomy: roomFor(env, colony, buildings, type),
-    cramped: seatHasSide(world, seat, 'noRoom'),
+    ahead: type.homeSize,
   });
   return due ? [type.id] : [];
 }

@@ -154,8 +154,9 @@ function outward(
   const women = people.filter((e) => world.has(e, Female) && isAdultSettler(world, e)).length;
   const wanted = handsWanted(env, colony);
   const room = colonyMenRoom(env);
-  // With no room for men no women sail either: a wife takes her husband along, and home's couples raise its sons.
-  const lacking = { men: Math.min(wanted.men - men, room), women: room > 0 ? wanted.women - women : 0 };
+  // Women sail for the colony's free home slots past the men's share, a wife with her husband: the share
+  // keeps home's hands, a married man is the last home drafts, and a roomy colony grows people (owner ruling).
+  const lacking = { men: Math.min(wanted.men - men, room), women: wanted.women - women };
   const trades = tradesmenFor(env, people, home, seats);
   const tradesmen = [...trades.sailing];
   const garrison = garrisonOwed(env, colony).slice(0, Math.max(0, seats - tradesmen.length));
