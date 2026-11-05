@@ -15,7 +15,7 @@ import { isAdultSettler } from '../../family/eligibility.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { isSchoolType } from '../../readviews/index.js';
 import { Schooling } from '../technology/schooling.js';
-import { colonists } from './founding.js';
+import { colonists, storeOf } from './founding.js';
 import { fitsTrade, openCraftSeats } from './overflow.js';
 import { atWorkshop } from './posts.js';
 import { colonyBuildings } from './spot.js';
@@ -41,14 +41,17 @@ export function colonySchool(env: ColonyEnv): Entity | null {
 }
 
 /**
- * The school the colony raises, as a plan row, while it has none (owner ruling: every colony gets its own
- * school, right after its warehouse). It teaches every workshop trade the seat has discovered in a lesson
+ * The school the colony raises, as a plan row, while it has none and its store stands (owner ruling: every
+ * colony gets its own school, right after its warehouse). It teaches every workshop trade the seat has discovered in a lesson
  * of seconds, where a trade earned by work takes ten cycles and a ferried tradesman a voyage; its bill is
  * the opening's goods, and it seats no crew.
  */
 export function schoolLacking(env: ColonyEnv, buildings: readonly Entity[]): string[] {
   const { world, ctx, seat } = env;
   if (buildings.some((e) => isSchool(env, e))) return [];
+  // Its row waits for the store to stand: before then the plan sizes the founding party and its hold.
+  const store = storeOf(env, buildings);
+  if (store === null || !isBuilt(world, store)) return [];
   const tribe = playerPlacementTribes(world, seat)?.[0];
   const school = ctx.content.buildings.find((type) => isSchoolType(type));
   if (tribe === undefined || school === undefined) return [];

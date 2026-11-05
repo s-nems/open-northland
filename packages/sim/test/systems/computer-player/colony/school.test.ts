@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { aiControlEntity, Building, ComputerColony } from '../../../../src/components/index.js';
 import { schoolLacking } from '../../../../src/systems/computer-player/colony/school.js';
 import { blankColony, colonyWorld, looseColonyEnv } from '../../../fixtures/colony-islands.js';
-import { SCHOOL_TYPE, SEAT, technologyContent, VIKING } from '../support.js';
+import { SCHOOL_TYPE, SEAT, STOCK_TYPE, technologyContent, VIKING } from '../support.js';
 
-/** A spot on the east island, clear of its deposits. */
+/** Spots on the east island, clear of its deposits and of each other. */
 const COLONY_SCHOOL = { x: 160, y: 64 };
+const COLONY_STORE = { x: 160, y: 84 };
 
 describe('a colony school', () => {
-  it('is the plan’s row while the colony has none, and no row once one stands', () => {
+  it('is the plan’s row once the store stands and while the colony has none', () => {
     const sim = colonyWorld(7, technologyContent());
     const terrain = sim.terrain;
     const carrier = aiControlEntity(sim.world, SEAT);
@@ -17,20 +18,25 @@ describe('a colony school', () => {
     const colony = blankColony(land);
     sim.world.add(carrier, ComputerColony, { colonies: [colony], rejected: [], retryAt: 0 });
     const env = looseColonyEnv(sim, colony);
-    expect(schoolLacking(env, [])).toEqual(['school']);
-    sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: SCHOOL_TYPE,
-      ...COLONY_SCHOOL,
-      tribe: VIKING,
-      owner: SEAT,
-      force: true,
-      underConstruction: true,
-    });
-    sim.step();
-    const school = [...sim.world.query(Building)].filter(
-      (e) => sim.world.get(e, Building).buildingType === SCHOOL_TYPE,
-    );
-    expect(schoolLacking(env, school)).toEqual([]);
+    const place = (buildingType: number, at: { x: number; y: number }, underConstruction: boolean) => {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType,
+        ...at,
+        tribe: VIKING,
+        owner: SEAT,
+        force: true,
+        underConstruction,
+      });
+      sim.step();
+      return [...sim.world.query(Building)].filter(
+        (e) => sim.world.get(e, Building).buildingType === buildingType,
+      );
+    };
+    expect(schoolLacking(env, [])).toEqual([]);
+    const store = place(STOCK_TYPE, COLONY_STORE, false);
+    expect(schoolLacking(env, store)).toEqual(['school']);
+    const school = place(SCHOOL_TYPE, COLONY_SCHOOL, true);
+    expect(schoolLacking(env, [...store, ...school])).toEqual([]);
   });
 });
