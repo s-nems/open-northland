@@ -538,10 +538,6 @@ const CART_LOAD_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
   }),
 );
 
-const aiArmy = (level: keyof typeof systems.AI_PROFILES) => systems.AI_PROFILES[level].army;
-const aiPace = (level: keyof typeof systems.AI_PROFILES, step: number) =>
-  systems.AI_PROFILES[level].sitePace[step];
-
 const WAVE_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
   WAVE_SAMPLE_HOURS.flatMap((hours) => {
     const band = systems.waveBandAt(hours * TICKS_PER_HOUR);
@@ -625,11 +621,6 @@ const shotsPerSeat = TICKS_PER_SECOND / systems.SHELTER_SHOT_PERIOD_TICKS;
 const shelterShots = (base: KnowledgeBase, id: string): FactValue => {
   const seats = buildingOf(base, id)?.shelterCapacity;
   return seats === undefined ? undefined : seats * shotsPerSeat;
-};
-
-const shipSeats = (base: KnowledgeBase, id: string): FactValue => {
-  const slots = vehicleOf(base, id)?.passengerSlots;
-  return slots === undefined ? undefined : slots + 1;
 };
 
 const NEED_FACTS: Readonly<Record<string, Fact>> = {
@@ -924,8 +915,6 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'exp.ironSpearNeed': whole((base) => goodNeed(base, 'spear_iron')),
   'exp.longSwordNeed': whole((base) => goodNeed(base, 'sword_long')),
   'exp.longBowNeed': whole((base) => goodNeed(base, 'bow_long')),
-  'exp.classLowNeed': whole((base) => jobNeed(base, 'soldier_sword_short')),
-  'exp.classHighNeed': whole((base) => jobNeed(base, 'soldier_sword_long')),
   'school.seats': whole((base) => buildingOf(base, 'school')?.schoolSize),
   'barracks.seats': whole((base) => buildingOf(base, 'barracks')?.schoolSize),
   'barracks.drillSeconds': oneDecimal((base) => drillSeconds(base, systems.BARRACKS_DRILL_TICKS)),
@@ -1055,28 +1044,6 @@ const WALL_FACTS: Readonly<Record<string, Fact>> = {
   ),
 };
 
-/** A plan's launch edge over the target's points, in percent. */
-const launchPct = (plan: keyof typeof systems.PLAN_TUNING): number => {
-  const { num, den } = systems.PLAN_TUNING[plan].launchRatio;
-  return (num * PERCENT) / den;
-};
-
-const RAID_FACTS: Readonly<Record<string, Fact>> = {
-  'ai.towerPostWeight': whole(systems.TOWER_POST_STRENGTH),
-  'ai.planAggressivePct': whole(launchPct('aggressive')),
-  'ai.planBalancedPct': whole(launchPct('balanced')),
-  'ai.planDefensivePct': whole(launchPct('defensive')),
-  'ai.defendRatio': oneDecimal(systems.DEFEND_RATIO.num / systems.DEFEND_RATIO.den),
-  'ai.landingEdge': oneDecimal(systems.LANDING_EDGE.num / systems.LANDING_EDGE.den),
-  'ai.landingShips': whole(systems.LANDING_BIG_SHIPS),
-  'ai.landingRetreatPct': whole(systems.LANDING_RETREAT_LOSS_PCT),
-  'ai.landingCooldownMinutes': whole(minutes(systems.LANDING_COOLDOWN_TICKS)),
-  'ai.raidMen': whole(systems.RAID_BAND_MEN),
-  'ai.raidChancePct': whole(systems.RAID_SEAT_CHANCE_PCT),
-  'ai.raidMinMinutes': whole(minutes(systems.RAID_DELAY_MIN_TICKS)),
-  'ai.raidMaxMinutes': whole(minutes(systems.RAID_DELAY_MAX_TICKS)),
-};
-
 const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'shortBow.towerMax': towerMax('short_bow'),
   'longBow.towerMax': towerMax('long_bow'),
@@ -1196,29 +1163,9 @@ const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'vs.catapult.fist': hit(VIKING, 'fist', 'vehicle'),
   'vs.catapult.fistHits': killedBy((base) => hitOf(base, VIKING, 'fist', 'vehicle'), catapultHp),
   'vs.catapult.arrowHits': killedBy((base) => hitOf(base, VIKING, 'house_bow', 'vehicle'), catapultHp),
-  'ai.easy.firstWaveMinutes': whole(minutes(aiArmy('easy').firstWaveFromTick)),
-  'ai.medium.firstWaveMinutes': whole(minutes(aiArmy('medium').firstWaveFromTick)),
-  'ai.easy.armyCap': whole(aiArmy('easy').cap),
-  'ai.medium.armyCap': whole(aiArmy('medium').cap),
-  'ai.hard.armyCap': whole(aiArmy('hard').cap),
-  'ai.easy.catapults': whole(systems.AI_PROFILES.easy.catapults.cap),
-  'ai.medium.catapults': whole(systems.AI_PROFILES.medium.catapults.cap),
-  'ai.hard.catapults': whole(systems.AI_PROFILES.hard.catapults.cap),
-  'ai.easy.sites': whole(aiPace('easy', 0)?.sites ?? 0),
-  'ai.medium.sites': whole(aiPace('medium', 0)?.sites ?? 0),
-  'ai.medium.grownSites': whole(aiPace('medium', 1)?.sites ?? 0),
-  'ai.medium.grownMinutes': whole(minutes(aiPace('medium', 1)?.fromTick ?? 0)),
-  'ai.hard.sites': whole(aiPace('hard', 0)?.sites ?? 0),
-  'ai.hard.midSites': whole(aiPace('hard', 1)?.sites ?? 0),
-  'ai.hard.midMinutes': whole(minutes(aiPace('hard', 1)?.fromTick ?? 0)),
-  'ai.hard.lateSites': whole(aiPace('hard', 2)?.sites ?? 0),
-  'ai.hard.lateMinutes': whole(minutes(aiPace('hard', 2)?.fromTick ?? 0)),
-  'ai.gatherMinutes': whole(minutes(systems.WAVE_GATHER_TICKS)),
-  'ai.rebuildNear': whole(systems.REBUILD_NEAR_POINTS),
 };
 
 const WORLD_FACTS: Readonly<Record<string, Fact>> = {
-  'vehicle.shipSeats': whole((base) => shipSeats(base, 'ship_small')),
   'vehicle.handcartLossPct': whole(systems.HANDCART_FULL_SPEED_LOSS_PERCENT),
   'vehicle.oxcartLossPct': whole(systems.DRAWN_CART_FULL_SPEED_LOSS_PERCENT),
   'pace.cartRoad': fixedOneDecimal(vehiclePace(ROAD_RESISTANCE, false, 0)),
@@ -1323,7 +1270,6 @@ export const FACTS: Readonly<Record<string, Fact>> = {
   ...COMBAT_FACTS,
   ...AIM_FACTS,
   ...WALL_FACTS,
-  ...RAID_FACTS,
   ...WORLD_FACTS,
   ...WEAPON_FACTS,
   ...BUILD_TABLE_FACTS,

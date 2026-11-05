@@ -3,7 +3,6 @@
 
 // The scripted handlers' round, so a real-content probe can step to a seat's turn.
 export { AI_HANDLER_ROUND_TICKS } from './ai-shared/cadence.js';
-export { TOWER_POST_STRENGTH } from './ai-shared/military/census.js';
 // The scout chase's cap, asserted by the scout-village scene.
 export { SCOUT_CHASERS_PER_SCOUT } from './ai-shared/military/defence/militia.js';
 // The band the assistant's flag follow keeps a gatherer's flag in.
@@ -58,17 +57,6 @@ export {
 export { SOLDIER_OUTFIT_GOOD_IDS, TOWER_GARRISON_ARCHERS } from './computer-player/military/index.js';
 // A seat's military operations (the marching wave, raids) as plain data, for a debug view.
 export { type OperationView, seatOperationsOf } from './computer-player/military/operations/index.js';
-export {
-  LANDING_COOLDOWN_TICKS,
-  LANDING_EDGE,
-  LANDING_RETREAT_LOSS_PCT,
-} from './computer-player/military/operations/landing.js';
-export {
-  RAID_BAND_MEN,
-  RAID_DELAY_MAX_TICKS,
-  RAID_DELAY_MIN_TICKS,
-  RAID_SEAT_CHANCE_PCT,
-} from './computer-player/military/operations/raid.js';
 export { WAVE_GATHER_TICKS, waveBandAt } from './computer-player/military/plan.js';
 // A seat's strategy (economy, military plan and posture) and the seat brief it was chosen from, and its
 // army, strongest believed enemy and next forecast attack, for a debug view.
@@ -81,10 +69,8 @@ export {
   seatMilitaryViewOf,
   sendsFlankRaids,
 } from './computer-player/strategy/index.js';
-export { DEFEND_RATIO, PLAN_TUNING } from './computer-player/strategy/military.js';
 // The discoveries a seat earns ahead of time and the men pinned on them, for a debug view.
 export type { ApprenticeView } from './computer-player/technology/apprentices.js';
-export { LANDING_BIG_SHIPS } from './computer-player/workforce/craft.js';
 export {
   COLLECTOR_TARGET_BY_GOOD_ID,
   COLLECTOR_WORKSHOP_BY_GOOD_ID,
