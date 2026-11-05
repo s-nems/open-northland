@@ -6,9 +6,7 @@ import type { SystemContext } from '../../context.js';
 import { goodEnabled } from '../../progression/index.js';
 import { seatArchetype } from '../build-order/seat-order.js';
 import { lineWayClear } from './sea-danger.js';
-
-/** Owner ruling: a seat that may build it sends its colony in the trade ship, whose hold takes everything. */
-export const TRADE_SHIP_ID = 'ship_big';
+import { TRADE_SHIP_ID } from './trade-ship.js';
 
 /** Whether `seat`'s tribe may build the trade ship: of the five tribes only the Vikings list its good. */
 export function mayBuildTradeShip(world: World, ctx: SystemContext, seat: number): boolean {

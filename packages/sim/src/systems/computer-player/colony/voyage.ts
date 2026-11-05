@@ -42,12 +42,13 @@ import {
   storeBill,
   wantManifest,
 } from './cargo.js';
-import { mayBuildTradeShip, TRADE_SHIP_ID } from './fleet.js';
+import { mayBuildTradeShip } from './fleet.js';
 import { boardOrders, PARTY_FROM_CIVILIANS, pickParty, spareMen } from './people.js';
 import { takeRouteShip } from './route.js';
 import { shoreWithStore } from './spot.js';
 import { colonyStoreType } from './store-tier.js';
 import { type ColonySite, colonySiteClear, siteBlockHolds, surveyColonySite } from './survey.js';
+import { TRADE_SHIP_ID } from './trade-ship.js';
 
 export type ColonyView = DeepReadonly<ColonyState>;
 
