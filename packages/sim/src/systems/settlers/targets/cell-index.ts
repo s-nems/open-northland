@@ -669,9 +669,9 @@ export class InteractionCellIndex {
     best: NearestByCell<P> | null,
   ): NearestByCell<P> | null {
     if (best !== null && this.looseFloor(e, rank) > best.distance) return best;
+    if (this.gatedOutLoose(gate, e)) return best;
     const hit = accept(e);
     if (hit === null) return best;
-    if (this.gatedOutLoose(gate, e)) return best;
     const cell = interactionCell(this.world, this.ctx, this.terrain, e, here);
     const distance = manhattan(this.terrain, rank, cell);
     if (best !== null && !precedes(distance, cell, e, best)) return best;
@@ -715,8 +715,8 @@ export class InteractionCellIndex {
 
   /** The exact linear scan the rings accelerate, for a short list: {@link nearestByCell}'s loop and
    *  tie-break, resolving each candidate's cell in place, over the candidates that could beat `bound`.
-   *  The filters are pure, so a candidate the best so far already beats skips them, and the costly gate
-   *  runs last. */
+   *  The filters are pure, so a candidate the best so far already beats skips them, the gate's cheap
+   *  node test runs before `accept`, which may be a whole task check, and its costly cell test last. */
   private linearNearest<P>(
     list: readonly Entity[],
     here: NodeId,
@@ -747,9 +747,9 @@ export class InteractionCellIndex {
         hit = accept(e);
         if (hit === null) continue;
       } else {
-        if (this.looseFloor(e, rank) > Math.min(bound, bestDist)) continue;
+        if (this.looseFloor(e, rank) > Math.min(bound, bestDist) || this.gatedOutLoose(gate, e)) continue;
         hit = accept(e);
-        if (hit === null || this.gatedOutLoose(gate, e)) continue;
+        if (hit === null) continue;
         cell = interactionCell(world, ctx, terrain, e, here);
         distance = manhattan(terrain, rank, cell);
         if (distance > bound || !closer(distance, cell, bestDist, bestCell)) continue;
