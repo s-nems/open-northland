@@ -1740,6 +1740,14 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
   });
 
+  it('rests the joiners of a seat that gathers no iron rather than take the wood the sites are short of', () => {
+    const seat = crewedWorkshop(furnitureContent(), 2);
+    seat.stock(WOOD, JOINERY_WOOD_UNITS);
+    expect(seat.products()).toEqual([[TOOL_WOODEN], [TOOL_WOODEN]]);
+    seat.stock(WOOD, 1);
+    expect(seat.products()).toEqual(['rest', 'rest']);
+  });
+
   it('works wooden and iron tools together on an island seat until the small ship is earned', () => {
     const SHIP_SMALL = 28;
     const base = furnitureContent();

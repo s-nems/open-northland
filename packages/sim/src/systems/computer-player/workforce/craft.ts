@@ -59,7 +59,8 @@ import type { SeatSupply, SupplyLine } from './supply.js';
  * each of its `goods` while the seat holds at least that many units of it (the summary bar's figure:
  * stores, workshop shelves, hands and the heaps in reach), and takes it back once the stock has fallen its
  * `band` (default {@link CRAFT_GLUT_BAND_UNITS}) under the glut; while every capped good is dropped it
- * works `otherwise`, or the whole list when there is none. A `firstFed` seat works the first of its lines whose `input` the
+ * works `otherwise`, or the whole list when there is none. With `spareOnly` it also drops a good whose
+ * inputs the sites cannot spare ({@link inputsSpare}), an apprentice's too. A `firstFed` seat works the first of its lines whose `input` the
  * seat holds a unit of, and every line while it holds none of them. A good with supply lines
  * ({@link SeatSupply}) takes no authored glut: {@link SeatCraftPlan.sink} covers it. A `firstEnabled` seat
  * works the first of its seats that names a good the seat may make right now, so a better product
@@ -78,6 +79,7 @@ export type CraftSeat =
       readonly goods: readonly string[];
       readonly glut: Readonly<Record<string, number>>;
       readonly band?: number;
+      readonly spareOnly?: true;
       readonly otherwise?: CraftSeat;
     }
   | { readonly firstFed: readonly { readonly good: string; readonly input: string }[] }
@@ -186,15 +188,17 @@ export const JOINERY_TOOL_GLUT_UNITS = 24;
 
 /** The wooden tools in stock up to which joiners make them where iron does not serve (authored): half the
  *  iron tools' line, a stop-gap that keeps them earning their trade's experience, and over the band they
- *  take the line back at. An apprentice works past it; every wooden tool stands behind the sites' wood
- *  ({@link SeatCraftPlan.sparing}). */
+ *  take the line back at. An apprentice works past it. The stop-gap's wooden tools ({@link NO_IRON_SEAT})
+ *  and those beside other goods ({@link SeatCraftPlan.sparing}) stand behind the sites' wood. */
 export const WOODEN_TOOL_GLUT_UNITS = 12;
 
 /** Owner ruling: a joiner never stalls for want of iron. With none in stock he works wooden tools, which
- *  need only wood and train the general track every joinery discovery reads. */
+ *  need only wood and train the general track every joinery discovery reads, from wood the sites can
+ *  spare; he rests while they are short of it. */
 const NO_IRON_SEAT: CraftSeat = {
   goods: ['tool_wooden'],
   glut: { tool_wooden: WOODEN_TOOL_GLUT_UNITS },
+  spareOnly: true,
   otherwise: REST_SEAT,
 };
 
@@ -828,6 +832,7 @@ export function tuneCraftCounters(
     const choice: SeatChoice = {
       ctx,
       supply,
+      type,
       fleetOf,
       landingShips,
       tradeShips,
@@ -1231,6 +1236,8 @@ function selectedGoods(
 interface SeatChoice {
   readonly ctx: SystemContext;
   readonly supply: SeatSupply;
+  /** The workplace type whose recipes a `spareOnly` seat reads. */
+  readonly type: BuildingType;
   readonly fleetOf: (good: number, freeOnly: boolean) => number;
   /** The ships the seat's joinery builds: its {@link landingFleetShips}, with room for {@link SEA_SCOUT_SHIPS}. */
   readonly landingShips: () => number;
@@ -1309,15 +1316,24 @@ function seatProducts(
     return fed === undefined ? seat.firstFed.map((line) => line.good) : [fed.good];
   }
   if (!('goods' in seat)) return seat;
-  const kept = seat.goods.filter((id) => {
+  const goods =
+    seat.spareOnly === true
+      ? seat.goods.filter((id) => {
+          const good = goodTypeByContentId(ctx.content, id)?.typeId;
+          return good === undefined || inputsSpare(ctx, supply, choice.type, good, current.includes(good));
+        })
+      : seat.goods;
+  const kept = goods.filter((id) => {
     const glut = seat.glut[id];
     const good = glut === undefined ? undefined : goodTypeByContentId(ctx.content, id);
     if (glut === undefined || good === undefined) return true;
     const dropAt = current.includes(good.typeId) ? glut : glut - (seat.band ?? CRAFT_GLUT_BAND_UNITS);
     return !supply.exceeds(good.typeId, dropAt - 1);
   });
-  if (kept.length > 0 || choice.pastGlut === true) return kept.length > 0 ? kept : seat.goods;
-  return seat.otherwise === undefined ? seat.goods : seatProducts(choice, current, seat.otherwise);
+  if (kept.length > 0 || (choice.pastGlut === true && goods.length > 0))
+    return kept.length > 0 ? kept : goods;
+  if (seat.otherwise !== undefined) return seatProducts(choice, current, seat.otherwise);
+  return goods.length > 0 ? goods : REST;
 }
 
 /** Whether a settler of `player`, at home or on a colony, works a live flag held to `good`: a colony ships
