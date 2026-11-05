@@ -20,8 +20,14 @@ import { homeSupply } from './home-supply.js';
 import { LAND_GOOD_IDS, type LandGood, landHolds } from './land.js';
 import { pickParty } from './party.js';
 import { colonists, colonyBuildings, colonyOrigin } from './roster.js';
-import { type ColonySite, ROOMY_SITE_NODES, siteOffers, siteRoom, surveyColonySite } from './survey.js';
-import { openColony } from './voyage.js';
+import {
+  type ColonySite,
+  ROOMY_SITE_NODES,
+  siteOffers,
+  siteRoom,
+  surveyColonySite,
+} from './voyage/survey.js';
+import { openColony } from './voyage/voyage.js';
 
 // When a seat opens one more colony (owner ruling: it is not limited to one as time goes on). Every figure is
 // authored from games observed on arabskie_wyspy_wolna_gra_mieszana with one colony and with none.

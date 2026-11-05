@@ -17,7 +17,7 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { ownedBuildings, ownedSettlers } from '../../../src/systems/ai-shared/seat-roster.js';
-import { colonySiteClear } from '../../../src/systems/computer-player/colony/survey.js';
+import { colonySiteClear } from '../../../src/systems/computer-player/colony/voyage/survey.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../src/systems/computer-player/index.js';
 import { knownResourceTest } from '../../../src/systems/computer-player/live-resources.js';
 import { playerSeesEntity } from '../../../src/systems/vision/gates.js';

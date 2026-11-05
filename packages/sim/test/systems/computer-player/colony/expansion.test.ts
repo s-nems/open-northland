@@ -23,9 +23,9 @@ import {
   mayLookFurther,
   type NextColonyRead,
 } from '../../../../src/systems/computer-player/colony/expansion.js';
-import { stopPullOrders } from '../../../../src/systems/computer-player/colony/stop-pull.js';
-import { surveyColonySite } from '../../../../src/systems/computer-player/colony/survey.js';
-import { openColony } from '../../../../src/systems/computer-player/colony/voyage.js';
+import { stopPullOrders } from '../../../../src/systems/computer-player/colony/goods/stop-pull.js';
+import { surveyColonySite } from '../../../../src/systems/computer-player/colony/voyage/survey.js';
+import { openColony } from '../../../../src/systems/computer-player/colony/voyage/voyage.js';
 import { LATE_GAME_FROM_TICKS, minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import {
   colonyContent,

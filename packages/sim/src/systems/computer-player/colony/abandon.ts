@@ -7,11 +7,11 @@ import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { visibleEnemyFighters } from '../military/operations/raid-target.js';
 import type { ColonyEnv, ColonyView } from './env.js';
-import { runFerry } from './ferry.js';
-import { forgetGarrison } from './garrison.js';
+import { releaseRoute } from './goods/route.js';
 import { colonists, colonyBuildings } from './roster.js';
-import { releaseRoute } from './route.js';
-import { bringScoutHome, COLONY_RETRY_TICKS } from './voyage.js';
+import { runFerry } from './settlement/ferry.js';
+import { forgetGarrison } from './settlement/garrison.js';
+import { bringScoutHome, COLONY_RETRY_TICKS } from './voyage/voyage.js';
 
 /** How near the site, in hex nodes, a seen enemy fighter counts against a colony with no store (authored: a
  *  tower's clearance, the reach at which a landing keeps away). */

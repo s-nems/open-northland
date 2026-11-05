@@ -8,13 +8,13 @@ import type { ComputerModule } from '../index.js';
 import { abandonColony, evacuate, evacuated, overrun } from './abandon.js';
 import { type ColonyEnv, colonyEnv, type SeatEnv } from './env.js';
 import { openNextColony } from './expansion.js';
-import { runFerry } from './ferry.js';
-import { foundColony } from './founding.js';
-import { defendColony } from './garrison.js';
-import { reviewOverflow } from './overflow.js';
-import { releaseRoute, runRoute } from './route.js';
-import { stopPullOrders } from './stop-pull.js';
-import { recoverStrayShips, strayCrewsHome } from './stray-ships.js';
+import { releaseRoute, runRoute } from './goods/route.js';
+import { stopPullOrders } from './goods/stop-pull.js';
+import { recoverStrayShips, strayCrewsHome } from './sea/stray-ships.js';
+import { runFerry } from './settlement/ferry.js';
+import { foundColony } from './settlement/founding.js';
+import { defendColony } from './settlement/garrison.js';
+import { reviewOverflow } from './settlement/overflow.js';
 import {
   afterLanding,
   chooseSite,
@@ -25,7 +25,7 @@ import {
   returning,
   sailing,
   scouting,
-} from './voyage.js';
+} from './voyage/voyage.js';
 
 /** Every how many decisions a seat surveys for a colony, its next or its first (authored): the survey's cost
  *  once a game minute. */

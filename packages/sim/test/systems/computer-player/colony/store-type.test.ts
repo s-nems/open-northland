@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { aiControlEntity, Building, ComputerColony, Stockpile } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../src/index.js';
-import { liftStore } from '../../../../src/systems/computer-player/colony/lifts.js';
+import { liftStore } from '../../../../src/systems/computer-player/colony/settlement/lifts.js';
 import { colonyStoreType } from '../../../../src/systems/computer-player/colony/store-type.js';
 import { blankColony, colonyContent, colonyWorld, looseColonyEnv } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';

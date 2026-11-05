@@ -10,8 +10,8 @@ export const COLONY_STORE_BUILDING_ID = 'stock_00';
 
 /** The warehouse tier a colony places (owner ruling: level 3, a trader trades from no lower one): the
  *  highest tier of the store chain `seat` has enabled, placed outright; while the top is not yet enabled, the
- *  highest that is, which `liftStore` (`./lifts.ts`) raises to the top later. Undefined for a seat with no tribe or a
- *  content with no store. */
+ *  highest that is, which `liftStore` (`./settlement/lifts.ts`) raises to the top later. Undefined for a seat
+ *  with no tribe or a content with no store. */
 export function colonyStoreType(world: World, ctx: SystemContext, seat: number): BuildingType | undefined {
   const base = buildingTypeByContentId(ctx.content, COLONY_STORE_BUILDING_ID);
   const tribe = playerPlacementTribes(world, seat)?.[0];
