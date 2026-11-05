@@ -24,7 +24,7 @@ import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../../nav/te
 import { colonyHeldShips } from '../../../ai-shared/home-roster.js';
 import { onErrand, spokenFor } from '../../../ai-shared/military/errand.js';
 import { isShipVehicle } from '../../../readviews/vehicles.js';
-import { mooringSpotsOf } from '../../../vehicles/dock.js';
+import { type MooringSpots, mooringSpotsOf } from '../../../vehicles/dock.js';
 import { crewInside } from '../../../vehicles/movement.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
 import { computerProfileOf } from '../../difficulty.js';
@@ -145,14 +145,38 @@ export function freeShips(env: ShipEnv, home: number): Entity[] {
  */
 function landingShores(env: OperationEnv, ship: Entity, aim: LandingAim, count: number): HalfCellNode[] {
   const { world, ctx, terrain, seat } = env;
+  const spots = mooringSpotsOf(world, ctx, terrain, ship);
+  if (spots === null) return [];
+  const fire = fireKeyOf(aim.believed.sources);
+  const failed = shoreless.get(spots);
+  if (failed?.get(aim.land) === fire) return [];
   const clear = (at: HalfCellNode): boolean => !underFire(aim.believed.sources, at);
   const from = world.get(ship, Vehicle).mooring;
   const towers = believedEnemyTowers(world, ctx, seat).map((t) => t.at);
   const safe = (at: HalfCellNode): boolean => clear(at) && (from === null || courseClear(towers, from, at));
   const shores = shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, safe, count);
-  return shores.length > 0
-    ? shores
-    : shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, clear, count);
+  if (shores.length > 0) return shores;
+  const anyClear = shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, clear, count);
+  if (anyClear.length === 0) {
+    if (failed === undefined) shoreless.set(spots, new Map([[aim.land, fire]]));
+    else failed.set(aim.land, fire);
+  }
+  return anyClear;
+}
+
+/**
+ * Per set of mooring spots a ship reaches ({@link mooringSpotsOf}), the lands whose search found no shore
+ * clear of the fire believed there, with that fire ({@link fireKeyOf}): a pure function of the two, so the
+ * search is skipped until either changes. A derived cache: a restored game finds the same answers anew.
+ */
+const shoreless = new WeakMap<MooringSpots, Map<number, string>>();
+
+/** The believed towers' and shelters' spots, in a key that changes when any of them does. */
+function fireKeyOf(sources: readonly FireSource[]): string {
+  return sources
+    .map((s) => `${s.at.hx},${s.at.hy}`)
+    .sort()
+    .join(';');
 }
 
 /** How often a course is tested for towers, in nodes along it. */
@@ -819,8 +843,9 @@ function openLanding(
   if (ratio === null || ctx.tick < landingFromTick(world, seat)) return null;
   const muster = musterOf(env, free);
   if (muster === null) return null;
-  const aim = landingAim(env, muster.home, homeOf(env), muster.ranked, ratio, muster.room);
-  const voyage = aim === null ? null : launch(env, aim, muster.moored, id);
+  const voyage = landingAim(env, muster.home, homeOf(env), muster.ranked, ratio, muster.room, (aim) =>
+    launch(env, aim, muster.moored, id),
+  );
   return voyage === null ? null : { op: { ...voyage.op, kind: 'landing' }, commands: voyage.commands };
 }
 

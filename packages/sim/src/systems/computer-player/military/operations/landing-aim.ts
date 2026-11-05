@@ -94,35 +94,37 @@ function atLeast(a: Share, b: Share): Share {
 }
 
 /**
- * The land the seat lands on and the wave it sends, or null while no land is worth it: the candidates
- * ({@link candidatesOf}) in turn, each rival's headquarters land first, nearest `from` first, then the
- * colonies the same way; the first the `ranked` men can take within `room` wins. On a headquarters land the
- * whole wave goes once `ratio` (the posture's launch edge) holds over the believed defence; on a colony the
- * strongest men go, as many as outweigh the defence seen there by {@link LANDING_EDGE}, at least
- * {@link COLONY_RAID_LEAST_MEN}. Every edge weighs the men who go ashore ({@link pointsAshore}). Costs the believed buildings and, with a colony to weigh, the enemies'
+ * The first landing `launch` makes of the lands the seat may land on, or null while none is worth it or
+ * none yields one: the candidates ({@link candidatesOf}) in turn, each rival's headquarters land first,
+ * nearest `from` first, then the colonies the same way, each offered to `launch` once the `ranked` men can
+ * take it within `room`. On a headquarters land the whole wave goes once `ratio` (the posture's launch edge)
+ * holds over the believed defence; on a colony the strongest men go, as many as outweigh the defence seen
+ * there by {@link LANDING_EDGE}, at least {@link COLONY_RAID_LEAST_MEN}. Every edge weighs the men who go
+ * ashore ({@link pointsAshore}). Costs the believed buildings and, with a colony to weigh, the enemies'
  * fighters.
  */
-export function landingAim(
+export function landingAim<T>(
   env: OperationEnv,
   home: number,
   from: HalfCellNode,
   ranked: readonly RankedMan[],
   ratio: Share,
   room: LandingRoom,
-): LandingAim | null {
+  launch: (aim: LandingAim) => T | null,
+): T | null {
   let fighters: LandFighters | null = null;
   const armies = armyWeights(env);
   const wave = { ranked, prefix: prefixPoints(ranked), ships: room.ships, seats: room.seats };
   for (const c of candidatesOf(env, home, from)) {
+    let aim: LandingAim | null = null;
     if (c.headquarters !== null) {
-      if (!room.bigLanding) continue;
-      const aim = headquartersAim(env, c, wave, ratio, armies);
-      if (aim !== null) return aim;
-      continue;
+      if (room.bigLanding) aim = headquartersAim(env, c, wave, ratio, armies);
+    } else {
+      fighters ??= landFighters(env);
+      aim = colonyAim(env, c, wave, ratio, armies, fighters);
     }
-    fighters ??= landFighters(env);
-    const aim = colonyAim(env, c, wave, ratio, armies, fighters);
-    if (aim !== null) return aim;
+    const launched = aim === null ? null : launch(aim);
+    if (launched !== null) return launched;
   }
   return null;
 }

@@ -84,6 +84,13 @@ const FOE_FARM = { x: 104, y: 100 };
 /** A foe tower that covers his headquarters from far enough off that the men's rings round the two do not
  *  meet. */
 const FOE_FAR_TOWER = { x: 120, y: 68 };
+/** Foe towers whose reach, with his headquarters' shelter, covers every shore of his land north of the
+ *  channel. */
+const COAST_TOWERS = [
+  { x: 96, y: 14 },
+  { x: 96, y: 50 },
+  { x: 126, y: 52 },
+];
 /** A foe tower on the colony island that covers the farm, far enough off that the men's rings round the two
  *  do not meet. */
 const COLONY_TOWER = { x: 128, y: 106 };
@@ -680,6 +687,29 @@ describe('landing operations', () => {
     ).toBe(colonyLand);
     expect(seen?.landing?.startMen).toBe(COLONY_RAID_LEAST_MEN);
     expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it("raids a rival colony while every shore of his headquarters' land lies under his towers' fire", () => {
+    const { sim } = landingWorld({
+      armed: true,
+      seats: STORM_SHIP_SEATS,
+      colony: true,
+      foe: [
+        ...COAST_TOWERS.map((at) => ({ buildingType: TOWER_TYPE, at })),
+        { buildingType: FARM_TYPE, at: FOE_FARM },
+      ],
+    });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
+    let seen: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return seen !== undefined;
+    });
+    const target = seen?.target;
+    expect(
+      target === undefined ? null : terrain.componentOf(terrain.nodeAtClamped(target.hx, target.hy)),
+    ).toBe(colonyLand);
   });
 
   it('sizes a colony raid on the most it ever saw of the garrison there, out of sight now', () => {
