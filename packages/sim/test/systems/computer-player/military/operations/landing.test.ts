@@ -125,7 +125,7 @@ const NEAR_BERTH = { water: { x: 80, y: 104 }, landed: { x: 92, y: 100 } };
 const FAR_BERTH = { water: { x: 134, y: 72 }, landed: { x: 130, y: 82 } };
 /** The ships beyond the landing fleet a rescue may sail in. */
 const RESCUE_SHIPS = 3;
-/** The seat's own men standing on the colony a relief sails for, at a post out of the band's reach. */
+/** The seat's own men standing on the colony a rescue sails for, at a post out of the band's reach. */
 const GARRISON = 5;
 const GARRISON_POST = { x: 130, y: 114 };
 /** A foe army that outweighs the seat's whole fleet load several times over. */

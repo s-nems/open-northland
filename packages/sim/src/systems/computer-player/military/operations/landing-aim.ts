@@ -7,10 +7,11 @@ import {
 import { isPlayerDead } from '../../../../components/match.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
-import { TOWER_POST_STRENGTH } from '../../../ai-shared/military/census.js';
+import { NO_COMPONENT } from '../../../../nav/terrain/index.js';
 import { buildingCombatClass } from '../../../readviews/index.js';
 import type { Share } from '../../difficulty.js';
 import { peakFighterPoints, rememberedLandPoints } from '../../knowledge/intel/index.js';
+import { landOfPoint } from '../../sea-route.js';
 import { knownDefendingPoints, ownArmyPoints } from '../enemy-strength.js';
 import { launchRatioReached } from '../plan.js';
 import {
@@ -22,7 +23,7 @@ import {
   towersReaching,
 } from './landing-target.js';
 import type { OperationEnv } from './lifecycle.js';
-import { visibleEnemyFighters } from './raid-target.js';
+import { defenceAt, RAID_TOWER_DEFENCE, visibleEnemyFighters } from './raid-target.js';
 
 // Where a landing sails and whom it takes (owner ruling): every land the seat believes holds an enemy
 // building is a candidate, the lands of a rival's headquarters first, where the whole wave goes, then his
@@ -38,13 +39,9 @@ export const LANDING_STORM_EDGE: Share = { num: 2, den: 1 };
  *  {@link LANDING_STORM_EDGE}, the losses on the way in its margin allows for. */
 export const LANDING_STORM_HOLD_EDGE: Share = { num: 1, den: 1 };
 
-/** What one tower covering a storm's objective weighs beside its garrison: the walls the wave must fell
- *  under its fire. Authored: about a dozen armed men of the island maps' late game. */
-export const STORM_TOWER_POINTS = 1000;
-
-/** The least a landing outweighs the believed defence of a target clear of every tower: the edge of
- *  `landing.ts` for a known army. Authored: observed on arabskie_wyspy_wolna_gra_mieszana, a landing at
- *  parity with a rival's soldiers all fell within minutes for far fewer of his. */
+/** The least a landing outweighs the believed defence of a target clear of every tower, and a rescue the
+ *  band it sails for. Authored: observed on arabskie_wyspy_wolna_gra_mieszana, a landing at parity with a
+ *  rival's soldiers all fell within minutes for far fewer of his. */
 export const LANDING_EDGE: Share = { num: 3, den: 2 };
 
 /** The fewest men a raid on a rival's colony sets out with, however little the seat saw defend it: half a
@@ -62,15 +59,11 @@ export interface LandingAim {
   readonly land: number;
   /** The owner of the headquarters there, else of most of the buildings the seat believes stand there. */
   readonly owner: number;
-  /** The rival's headquarters stands on the land: the whole wave goes. Else it is a colony raid. */
-  readonly headquarters: boolean;
   /** Where the ships seek their shores: the headquarters, else the building nearest the seat. */
   readonly towards: HalfCellNode;
-  /** The building at {@link towards}, null for a relief, which heads for a band. */
+  /** The building at {@link towards}, null for a rescue, which heads for a band. */
   readonly entity: Entity | null;
   readonly believed: BelievedLand;
-  /** No building there lies clear: the landing strikes covered ground ({@link landingObjective}). */
-  readonly storm: boolean;
   /** The wave, strongest first. */
   readonly men: readonly Entity[];
 }
@@ -241,26 +234,24 @@ function headquartersAim(
   const wave = room.ranked.slice(0, room.seats);
   if (wave.length === 0) return null;
   const points = pointsAshore(room.prefix, wave.length, room.ships);
-  const aim = (storm: boolean): LandingAim => ({
+  const aim: LandingAim = {
     land: c.land,
     owner: c.owner,
-    headquarters: true,
     towards: c.towards.at,
     entity: c.towards.entity,
     believed: c.believed,
-    storm,
     men: wave.map((m) => m.entity),
-  });
+  };
   const clear = landingObjective(ctx, c.believed, c.towards.at);
   if (clear !== null) {
     const fire = fireAt(env, c.believed, clear.at, tribeOf(env, c.headquarters));
     const opposing = armies(c.owner) + fire;
-    return launchRatioReached(points, opposing, atLeast(ratio, LANDING_EDGE)) ? aim(false) : null;
+    return launchRatioReached(points, opposing, atLeast(ratio, LANDING_EDGE)) ? aim : null;
   }
   const storm = landingObjective(ctx, c.believed, c.towards.at, true);
   if (storm === null) return null;
   const opposing = stormDefence(env, c.believed, c.land, c.owner, storm, armies);
-  return launchRatioReached(points, opposing, atLeast(ratio, LANDING_STORM_EDGE)) ? aim(true) : null;
+  return launchRatioReached(points, opposing, atLeast(ratio, LANDING_STORM_EDGE)) ? aim : null;
 }
 
 /**
@@ -323,9 +314,8 @@ function landFighters(env: OperationEnv): LandFighters {
   const { world, ctx, terrain, seat } = env;
   const byLand = new Map<number, number>();
   for (const f of visibleEnemyFighters(world, ctx, seat)) {
-    if (!terrain.inBounds(f.at.hx, f.at.hy)) continue;
-    const land = terrain.componentOf(terrain.nodeAt(f.at.hx, f.at.hy));
-    byLand.set(land, (byLand.get(land) ?? 0) + f.points);
+    const land = landOfPoint(terrain, f.at);
+    if (land !== NO_COMPONENT) byLand.set(land, (byLand.get(land) ?? 0) + f.points);
   }
   return byLand;
 }
@@ -335,8 +325,9 @@ type Objective = NonNullable<ReturnType<typeof landingObjective>>;
 /**
  * What the seat believes defends `goal` on `believed`, the fire there included. On a land holding a
  * headquarters, or `owner`'s start land, where his army stands even once it fell: his army
- * ({@link ArmyWeights}) and {@link STORM_TOWER_POINTS} for each tower covering the objective. On a colony:
- * those towers with the posts last seen on them, and the enemy fighters it sees on the land, at least the
+ * ({@link ArmyWeights}) and {@link RAID_TOWER_DEFENCE} for each tower covering the objective. On a colony:
+ * those towers with the posts last seen on them ({@link defenceAt}), and the enemy fighters it sees on the
+ * land, at least the
  * most of `owner`'s it ever saw there at once ({@link rememberedLandPoints}), so a raid that met the
  * garrison and turned back weighs it next time. `fighters` is read when absent.
  */
@@ -355,11 +346,11 @@ function stormDefence(
     believed.targets.find((t) => buildingCombatClass(ctx, t.buildingType) === 'hq') ?? null;
   let army = 0;
   if (owner !== null && (headquarters !== null || startLandOf(world, owner) === land)) {
-    army = armies(owner) + towers.length * STORM_TOWER_POINTS;
+    army = armies(owner) + towers.length * RAID_TOWER_DEFENCE;
   } else {
     const remembered = owner === null ? 0 : rememberedLandPoints(world, seat, owner, land);
     army = Math.max((fighters ?? landFighters(env)).get(land) ?? 0, remembered);
-    for (const t of towers) army += STORM_TOWER_POINTS + t.postedPoints * TOWER_POST_STRENGTH;
+    army += defenceAt({ towers, fighters: [] }, goal.at);
   }
   const target = believed.targets.find((t) => t.entity === goal.entity) ?? null;
   return army + fireAt(env, believed, goal.at, tribeOf(env, target ?? headquarters));
@@ -395,11 +386,9 @@ function colonyAim(
   return {
     land: c.land,
     owner: c.owner,
-    headquarters: false,
     towards: c.towards.at,
     entity: c.towards.entity,
     believed: c.believed,
-    storm: clear === null,
     men: room.ranked.slice(0, count).map((m) => m.entity),
   };
 }

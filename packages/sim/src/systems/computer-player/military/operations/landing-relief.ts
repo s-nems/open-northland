@@ -1,13 +1,15 @@
 import type { ColonyPhase, ColonyState, RescueOperation, SeaLanding } from '../../../../components/index.js';
 import type { DeepReadonly, Entity } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
-import { NO_COMPONENT, type NodeId } from '../../../../nav/terrain/index.js';
+import type { NodeId } from '../../../../nav/terrain/index.js';
 import { colonyBuildingsOn, seatColonies } from '../../../ai-shared/home-roster.js';
 import { insideBox, settlementBox } from '../../../ai-shared/military/defence/threat.js';
 import { ownedFightersOf } from '../../../movement/collision/owned-fighters.js';
 import { minutesToTicks } from '../../game-phase.js';
 import { visibleEnemyMooredShips } from '../../knowledge/intel/index.js';
+import { landOfPoint } from '../../sea-route.js';
 import { SOLDIERS_PER_SHIP } from '../../workforce/craft.js';
+import { launchRatioReached } from '../plan.js';
 import { isLiveFighter, unitPoints } from '../points.js';
 import {
   LANDING_EDGE,
@@ -21,18 +23,17 @@ import { believedLand } from './landing-target.js';
 import type { OperationEnv } from './lifecycle.js';
 import { nodeOfEntity, visibleEnemyFighters } from './raid-target.js';
 
-// A relief (owner ruling): an enemy band on one of the seat's colonies sends a landing from home to fight
-// it, sized to outweigh what the seat sees there beyond the colony's own fighters; an enemy ship moored at
-// the colony adds the load it may still carry. The landed men go for the enemy fighters they see on the
-// colony and sail home once none is left. A relief is the landing with no building for its target. Every
-// figure is authored.
+// A rescue (owner ruling): an enemy band on one of the seat's colonies sends men from home over the sea to
+// fight it, sized to outweigh what the seat sees there beside the colony's own fighters; an enemy ship
+// moored at the colony adds the load it may still carry. The landed men go for the enemy fighters they see
+// on the colony and sail home once none is left. Every figure is authored.
 
-/** The fewest men a relief sails with. */
-export const RELIEF_LEAST_MEN = 5;
+/** The fewest men a rescue sails with. */
+export const RESCUE_LEAST_MEN = 5;
 
-/** How long a band seen about a colony keeps it worth relieving after the colony last saw it: the colony's
- *  own threat memory is longer, but a relief sails for a band still there. */
-const RELIEF_THREAT_TICKS = minutesToTicks(5);
+/** How long a band seen about a colony keeps it worth rescuing after the colony last saw it: the colony's
+ *  own threat memory is longer, but a rescue sails for a band still there. */
+const RESCUE_THREAT_TICKS = minutesToTicks(5);
 
 /** An enemy ship the seat sees moored at a colony's land, or an enemy fighter it sees there. */
 interface ColonyThreatSeen {
@@ -44,10 +45,10 @@ interface ColonyThreatSeen {
 
 const NOBODY: ReadonlySet<Entity> = new Set();
 
-/** The colony phases in which the colony stands on its land, so there is something to relieve. */
+/** The colony phases in which the colony stands on its land, so there is something to rescue. */
 const STANDING_PHASES: ReadonlySet<ColonyPhase> = new Set(['landing', 'founding', 'running']);
 
-/** Whether the seat has a colony standing on its land, which a relief may sail for. */
+/** Whether the seat has a colony standing on its land, which a rescue may sail for. */
 export function mayRescue(env: OperationEnv): boolean {
   return seatColonies(env.world, env.seat).some((c) => STANDING_PHASES.has(c.phase));
 }
@@ -58,13 +59,14 @@ export function isRescue(op: DeepReadonly<SeaLanding>): op is DeepReadonly<Rescu
 }
 
 /**
- * The relief of the colony the seat sees most threatened, or null: for each colony standing on its land
+ * The rescue of the colony the seat sees most threatened, or null: for each colony standing on its land
  * with a band its garrison saw lately or an enemy ship moored there, and enemy fighters in sight on that
  * land, the enemy points seen there (a moored ship adds {@link SOLDIERS_PER_SHIP} men of the `ranked` men's
- * mean, an approximation of a load the seat cannot see) past {@link LANDING_EDGE} of the seat's own fighters
- * on that land; the strongest of `ranked` whose men ashore ({@link pointsAshore}, the helms stay aboard)
- * outweigh the gap by that edge, at least {@link RELIEF_LEAST_MEN}, within `room`. Costs the enemies' ships
- * and, with a colony to weigh, their fighters and the seat's own.
+ * mean, an approximation of a load the seat cannot see), the one the seat's own fighters there fall
+ * furthest short of by {@link LANDING_EDGE}; the strongest of `ranked` whose men ashore
+ * ({@link pointsAshore}, the helms stay aboard) reach that edge beside them, at least
+ * {@link RESCUE_LEAST_MEN}, within `room`.
+ * Costs the enemies' ships and, with a colony to weigh, their fighters and the seat's own.
  */
 export function rescueAim(
   env: OperationEnv,
@@ -80,25 +82,34 @@ export function rescueAim(
   const watched = colonies.filter(
     (c) =>
       ships.some((s) => s.land === c.land) ||
-      (c.threat !== null && ctx.tick - c.threat.since < RELIEF_THREAT_TICKS),
+      (c.threat !== null && ctx.tick - c.threat.since < RESCUE_THREAT_TICKS),
   );
   if (watched.length === 0) return null;
   const fighters = enemyFightersOn(env, new Set(watched.map((c) => c.land)));
   const own = ownPointsOn(env, new Set(watched.map((c) => c.land)));
-  let best: { readonly land: number; readonly gap: number; readonly first: ColonyThreatSeen } | null = null;
+  let best: {
+    readonly land: number;
+    readonly enemy: number;
+    readonly own: number;
+    readonly short: number;
+    readonly first: ColonyThreatSeen;
+  } | null = null;
   for (const colony of watched) {
     const band = fighters.filter((t) => t.land === colony.land);
     const first = band[0];
     if (first === undefined) continue;
     let enemy = 0;
     for (const t of [...band, ...ships.filter((t) => t.land === colony.land)]) enemy += t.points;
-    const gap = enemy * LANDING_EDGE.num - (own.get(colony.land) ?? 0) * LANDING_EDGE.den;
-    if (gap > 0 && (best === null || gap > best.gap)) best = { land: colony.land, gap, first };
+    const there = own.get(colony.land) ?? 0;
+    if (launchRatioReached(there, enemy, LANDING_EDGE)) continue;
+    const short = enemy * LANDING_EDGE.num - there * LANDING_EDGE.den;
+    if (best === null || short > best.short) best = { land: colony.land, enemy, own: there, short, first };
   }
   if (best === null) return null;
-  const { gap } = best;
+  const { enemy, own: beside } = best;
   const reached = (count: number): boolean =>
-    count >= RELIEF_LEAST_MEN && pointsAshore(prefix, count, room.ships) * LANDING_EDGE.den >= gap;
+    count >= RESCUE_LEAST_MEN &&
+    launchRatioReached(pointsAshore(prefix, count, room.ships) + beside, enemy, LANDING_EDGE);
   let count = 0;
   while (!reached(count)) {
     if (count >= Math.min(ranked.length, room.seats)) return null;
@@ -107,17 +118,15 @@ export function rescueAim(
   return {
     land: best.land,
     owner: best.first.owner,
-    headquarters: false,
     towards: best.first.at,
     entity: null,
     believed: believedLand(env, best.land),
-    storm: false,
     men: ranked.slice(0, count).map((m) => m.entity),
   };
 }
 
 /**
- * Where the men a relief set ashore on `land` go: the enemy fighter the seat sees there nearest `from`, the
+ * Where the men a rescue set ashore on `land` go: the enemy fighter the seat sees there nearest `from`, the
  * first in sighting order on a tie, or null once it sees none.
  */
 export function rescueObjective(env: OperationEnv, land: number, from: HalfCellNode): NodeId | null {
@@ -128,11 +137,6 @@ export function rescueObjective(env: OperationEnv, land: number, from: HalfCellN
     if (best === null || distance < best.distance) best = { at: t.at, distance };
   }
   return best === null ? null : terrain.nodeAtClamped(best.at.hx, best.at.hy);
-}
-
-function landOf(env: OperationEnv, at: HalfCellNode): number {
-  const { terrain } = env;
-  return terrain.inBounds(at.hx, at.hy) ? terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) : NO_COMPONENT;
 }
 
 /** The enemy ships the seat sees moored at one of `colonies`, each weighed `points`: on its land, inside
@@ -151,7 +155,8 @@ function enemyShipsAt(
     const box = settlementBox(world, ctx, terrain, colonyBuildingsOn(world, ctx, seat, colony.land));
     if (box === null) continue;
     for (const ship of ships) {
-      if (landOf(env, ship.at) !== colony.land || !insideBox(box, ship.at.hx, ship.at.hy)) continue;
+      if (landOfPoint(env.terrain, ship.at) !== colony.land || !insideBox(box, ship.at.hx, ship.at.hy))
+        continue;
       seen.push({ land: colony.land, owner: ship.owner, at: ship.at, points });
     }
   }
@@ -162,13 +167,13 @@ function enemyShipsAt(
 function enemyFightersOn(env: OperationEnv, lands: ReadonlySet<number>): ColonyThreatSeen[] {
   const seen: ColonyThreatSeen[] = [];
   for (const f of visibleEnemyFighters(env.world, env.ctx, env.seat)) {
-    const land = landOf(env, f.at);
+    const land = landOfPoint(env.terrain, f.at);
     if (lands.has(land)) seen.push({ land, owner: f.owner, at: f.at, points: f.points });
   }
   return seen;
 }
 
-/** The points of the seat's own fighters standing on `land` but `except`: what a relief finds there. */
+/** The points of the seat's own fighters standing on `land` but `except`: what a rescue finds there. */
 export function ownPointsOnLand(env: OperationEnv, land: number, except: ReadonlySet<Entity>): number {
   return ownPointsOn(env, new Set([land]), except).get(land) ?? 0;
 }
@@ -185,7 +190,7 @@ function ownPointsOn(
     if (except.has(e) || !isLiveFighter(world, e)) continue;
     const at = nodeOfEntity(world, e);
     if (at === null) continue;
-    const land = landOf(env, at);
+    const land = landOfPoint(env.terrain, at);
     if (lands.has(land)) byLand.set(land, (byLand.get(land) ?? 0) + unitPoints(world, ctx, e));
   }
   return byLand;

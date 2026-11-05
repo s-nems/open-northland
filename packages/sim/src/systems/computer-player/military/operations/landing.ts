@@ -28,7 +28,7 @@ import { type MooringSpots, mooringSpotsOf } from '../../../vehicles/dock.js';
 import { crewInside } from '../../../vehicles/movement.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
 import { computerProfileOf } from '../../difficulty.js';
-import { LANDING_SHORE_SPACING_NODES, shorePoints } from '../../sea-route.js';
+import { LANDING_SHORE_SPACING_NODES, landOfPoint, shorePoints } from '../../sea-route.js';
 import {
   LANDING_FLEET_MIN_SHIPS,
   landingFewestShips,
@@ -59,11 +59,12 @@ import {
 } from './raid-target.js';
 
 // A naval landing (owner ruling): a seat fills its moored ships with soldiers at home and sails them
-// together to the shore of the land it aims at (`landing-aim.ts`, `landing-relief.ts`), outside the reach
-// of the towers and shelters it believes stand there where it can, sets every man but each ship's commander
-// ashore once the fleet lies there and marches the landed men on their objective: a rival's buildings, or
-// the enemy band on a colony it relieves. The ships lie at the shore meanwhile and take the survivors home
-// once the landing is losing or has nothing left to strike.
+// together to the shore of the land it aims at (`landing-aim.ts`), outside the reach of the towers and
+// shelters it believes stand there where it can, sets every man but each ship's commander ashore once the
+// fleet lies there and marches the landed men on their objective: a rival's buildings. A rescue
+// (`landing-relief.ts`) sails the same way to the enemy band on one of the seat's colonies. The ships lie
+// at the shore meanwhile and take the survivors home once the landing is losing or has nothing left to
+// strike.
 // Every figure below is authored unless it says otherwise.
 
 const SECONDS_PER_MINUTE = 60;
@@ -107,10 +108,6 @@ function standingNode(world: World, terrain: TerrainGraph, e: Entity): NodeId | 
   return at === null || !terrain.inBounds(at.hx, at.hy) ? null : terrain.nodeAt(at.hx, at.hy);
 }
 
-function componentOfPoint(terrain: TerrainGraph, at: HalfCellNode): number {
-  return terrain.inBounds(at.hx, at.hy) ? terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) : NO_COMPONENT;
-}
-
 /** What a read of a seat's ships takes, a landing's or a colony's. */
 export type ShipEnv = Pick<OperationEnv, 'world' | 'ctx' | 'terrain' | 'seat'>;
 
@@ -128,7 +125,7 @@ export function freeShips(env: ShipEnv, home: number): Entity[] {
     if (type === undefined || !isShipVehicle(type) || type.passengerVector === undefined) continue;
     if (!world.has(e, Position) || world.has(e, VehicleDrive) || state.carrier !== null) continue;
     if (!state.moored || state.mooring === null || vehiclePassengers(state).length > 0) continue;
-    if (componentOfPoint(terrain, state.mooring) === home) ships.push(e);
+    if (landOfPoint(terrain, state.mooring) === home) ships.push(e);
   }
   return ships.sort((a, b) => a - b);
 }
@@ -251,8 +248,8 @@ function homeMooring(env: OperationEnv, ship: LandingShip): HalfCellNode | null 
   const state = shipState(env.world, ship);
   const mooring = state?.moored === true ? state.mooring : null;
   if (mooring === null) return null;
-  const home = componentOfPoint(env.terrain, ship.home);
-  return home !== NO_COMPONENT && componentOfPoint(env.terrain, mooring) === home ? mooring : null;
+  const home = landOfPoint(env.terrain, ship.home);
+  return home !== NO_COMPONENT && landOfPoint(env.terrain, mooring) === home ? mooring : null;
 }
 
 /** Free the crew of a ship moored at `mooring` and mark it home. */
@@ -293,7 +290,7 @@ function abortReason(env: OperationEnv, op: SeaLanding): OperationEndReason | nu
 }
 
 /** Whether the enemy fighters the seat sees near any of the ships' shores, each counted once, weigh at
- *  least the men aboard who go ashore, a ship's commander staying at its helm, and for a relief the seat's
+ *  least the men aboard who go ashore, a ship's commander staying at its helm, and for a rescue the seat's
  *  own fighters on that land ({@link besideAshore}): read from the first ship's mooring on, while the wave
  *  waits aboard for the rest, for the whole wave. Costs the enemies' fighters. */
 function outmatchedAshore(env: OperationEnv, op: SeaLanding): boolean {
@@ -314,8 +311,8 @@ function outmatchedAshore(env: OperationEnv, op: SeaLanding): boolean {
   return enemy > 0 && enemy >= own;
 }
 
-/** The points of the seat's own fighters a relief finds on the colony it sails for, its own men left out,
- *  who fight the band beside it as its sizing counted them ({@link reliefAim}); 0 for any other landing. */
+/** The points of the seat's own fighters a rescue finds on the colony it sails for, its own men left out,
+ *  who fight the band beside it as its sizing counted them ({@link rescueAim}); 0 for any other landing. */
 function besideAshore(env: OperationEnv, op: SeaLanding): number {
   return isRescue(op) ? ownPointsOnLand(env, rivalComponent(env, op), new Set(op.members)) : 0;
 }
@@ -442,7 +439,7 @@ export function otherShore(
   const { world, ctx, terrain, seat } = env;
   const at = nodeOfEntity(world, ship);
   const spots = mooringSpotsOf(world, ctx, terrain, ship);
-  const land = componentOfPoint(terrain, refused);
+  const land = landOfPoint(terrain, refused);
   if (at === null || spots === null || land === NO_COMPONENT) return null;
   const taken: DeepReadonly<HalfCellNode>[] = [refused, ...tried];
   for (const e of vehicleIndex(world).ownedBy(seat)) {
@@ -464,7 +461,7 @@ export function otherShore(
 
 /** The land the men were set ashore on: the target's component, read at the spot the landing aimed at. */
 function rivalComponent(env: OperationEnv, op: SeaLanding): number {
-  return componentOfPoint(env.terrain, { hx: op.target.hx, hy: op.target.hy });
+  return landOfPoint(env.terrain, { hx: op.target.hx, hy: op.target.hy });
 }
 
 /** The men set ashore: members on the target's land, no longer aboard. */
@@ -525,8 +522,9 @@ function landedOrders(env: OperationEnv, op: SeaLanding): LandedOrders {
 
 /**
  * Whether the landed men are losing: the enemy fighters the seat sees within
- * {@link RAID_DEFENCE_RADIUS_NODES} of them outweigh them, with a relief's {@link besideAshore}, or they lost {@link LANDING_RETREAT_LOSS_PCT} of
- * the men set ashore and one of them stands in the reach of a tower or shelter of `fire` ({@link underFire}).
+ * {@link RAID_DEFENCE_RADIUS_NODES} of them outweigh them, with a rescue's {@link besideAshore}, or they lost
+ * {@link LANDING_RETREAT_LOSS_PCT} of the men set ashore and one of them stands in the reach of a tower or
+ * shelter of `fire` ({@link underFire}).
  */
 function losing(
   env: OperationEnv,

@@ -157,8 +157,8 @@ export function underFire(sources: readonly FireSource[], at: HalfCellNode): boo
   return sourcesReaching(sources, at).length > 0;
 }
 
-/** A storm's objective tiers, best first: the CombatSystem's own siege priority ({@link buildingCombatClass}),
- *  so the towers fall before the rest of a covered settlement. */
+/** A storm's objective tiers by {@link buildingCombatClass}, best first (owner ruling): the headquarters,
+ *  the war aim, then the towers, before the rest of a covered settlement. */
 const STORM_RANK: Readonly<Record<BuildingCombatClass, number>> = { hq: 0, tower: 1, other: 2, wall: 3 };
 
 /**

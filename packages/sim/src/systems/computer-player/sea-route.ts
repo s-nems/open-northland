@@ -10,7 +10,7 @@ import {
   vehiclePassengers,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import type { Entity, World } from '../../ecs/world.js';
+import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { colonyWantsShips, everyBuildingOf, liveColonyLands } from '../ai-shared/home-roster.js';
@@ -268,6 +268,11 @@ export function strandedShip(world: World, ctx: SystemContext, seat: number, shi
   const home = seatBaseLand(world, ctx, terrain, seat);
   const route = seaRouteOf(world, ctx, seat);
   return land !== home && !liveColonyLands(world, seat).includes(land) && land !== route?.rival;
+}
+
+/** The land component `at` stands on, `NO_COMPONENT` off the map. */
+export function landOfPoint(terrain: TerrainGraph, at: DeepReadonly<HalfCellNode>): number {
+  return terrain.inBounds(at.hx, at.hy) ? terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) : NO_COMPONENT;
 }
 
 /** How far apart, in half-cell nodes, ships' shore points lie, so the hulls moor side by side. */
