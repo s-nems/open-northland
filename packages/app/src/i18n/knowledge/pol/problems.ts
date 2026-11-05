@@ -92,7 +92,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Zaprzęg stoi',
-              'Stan "Czeka na zwierzę pociągowe" znaczy, że brakuje Wołu. Zaprzęg zabierze [[good:cattle|Wołu]] tylko spoza pary, więc potrzebne są {{livestock.pairPlusOne}} dorosłe sztuki w jednej Fermie albo {{livestock.pairPlusOne}} poza Fermą: [[article:vehicles|Pojazdy i statki]].',
+              'Stan "Czeka na zwierzę pociągowe" znaczy, że brakuje Wołu. Zaprzęg zabierze [[good:cattle|Wołu]] tylko spoza pary, więc potrzebne są {{draught.keptPlusOne}} dorosłe sztuki w jednej Fermie albo {{draught.keptPlusOne}} poza Fermą: [[article:vehicles|Pojazdy i statki]].',
             ],
           ],
         },
@@ -168,8 +168,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Brak placu", "Plac zajęty"',
                 'Ważne',
-                'Obok warsztatu nie ma wolnej ziemi na pojazd albo stoi tam inny pojazd',
-                'Zrób miejsce, warsztat spróbuje znowu po {{notice.yardRetrySeconds}} s',
+                'Obok warsztatu nie ma wolnej ziemi na pojazd, a przy statku wody w jego zasięgu, albo stoi tam inny pojazd',
+                'Zrób miejsce, warsztat spróbuje znowu po {{notice.yardRetrySeconds}} s. Warsztat do statków stawiaj tam, gdzie okno budowy nie ostrzega o braku wody',
               ],
               ['"Brak ryb"', 'Ważne', 'W pobliskiej wodzie nie ma już ryb', 'Wskaż flagą wodę z rybami'],
               [
@@ -207,7 +207,7 @@ export const PROBLEMS: ArticleGroup = {
                 '"Brak zwierzęcia"',
                 'Ważne',
                 'Zaprzęg nie ma Wołu',
-                'Trzymaj {{livestock.pairPlusOne}} dorosłe sztuki: [[article:vehicles|Pojazdy i statki]]',
+                'Trzymaj {{draught.keptPlusOne}} dorosłe sztuki: [[article:vehicles|Pojazdy i statki]]',
               ],
               [
                 '"Brak zwierzyny"',

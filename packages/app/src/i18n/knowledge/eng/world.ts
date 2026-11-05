@@ -101,7 +101,7 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'The passenger count on the card does not include the commander. The first one assigned becomes commander, and when he leaves the next passenger takes over.',
-            'The [[job:joiner|Carpenter]] puts a vehicle up on a site next to the workshop, and a ship on the water by the shore.',
+            'The [[job:joiner|Carpenter]] puts a vehicle up on a site next to the workshop, and a ship on water within the workshop\'s reach. With no such water, the build window warns "No ship water in reach".',
             'Whoever boards loses his workplace. Only a Carrier with a workplace and a Merchant pull the cart themselves and keep their work.',
             'The commander and any adult man aboard load the goods, but soldiers, heroes, [[job:scout|Scouts]] and [[job:druid|Druids]] only when they are in command. With nobody to load you get "No carrier".',
           ],
@@ -196,14 +196,24 @@ export const WORLD: ArticleGroup = {
           h: 'An Ox for the Ox Cart',
         },
         {
-          p: 'A finished Ox Cart waits for its draught animal and takes the nearest adult [[good:cattle|Ox]] from the same landmass. Every Cattle Farm keeps {{livestock.pair}} adult Oxen for itself and the same number stays from a herd with no farm, so the Ox Cart only gets an Ox beyond that number.',
+          p: 'A finished Ox Cart waits for its draught animal and takes the nearest adult [[good:cattle|Ox]] from the same landmass. Every Cattle Farm keeps {{draught.kept}} adult Oxen for itself and the same number stays from a herd with no farm, so the Ox Cart only gets an Ox beyond that number.',
         },
         {
           h: 'Ships',
         },
         {
+          table: {
+            head: ['Ship', 'Vehicle places', 'Vehicles'],
+            rows: [
+              ['[[good:ship_small|Ship]]', '{{vehicle.shipSlots}}', 'Handcart, Ox Cart, Catapult'],
+              ['[[good:ship_big|Big Ship]]', '{{vehicle.bigShipSlots}}', 'Handcart, Ox Cart'],
+            ],
+            num: [1],
+          },
+        },
+        {
           list: [
-            "A Ship takes 1 vehicle: a Handcart, Ox Cart or Catapult, if the vehicle's crew fits aboard. A Big Ship carries no vehicles.",
+            "A vehicle goes aboard if its crew fits on the ship. A ship pinned to a Merchant's route takes no vehicle.",
             '"Moor": pick a shore and the ship stops {{vehicle.mooringDistance}} hexes from it. No harbour needed.',
             'Nobody boards or leaves at sea.',
             'Ctrl/Cmd + right-click moors and lands the crew.',
@@ -316,7 +326,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'fog',
       name: 'Fog and Vision',
-      lead: 'The Scout and Headquarters see furthest, {{vision.scout}} hexes. A construction site sees nothing.',
+      lead: 'The Scout sees {{vision.scout}} hexes, Headquarters {{vision.headquarters}}. A construction site sees nothing.',
       blocks: [
         {
           h: 'Map modes',
@@ -353,13 +363,14 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Who', 'Range, hexes'],
             rows: [
-              ['[[job:scout|Scout]], [[building:headquarters|Headquarters]]', '{{vision.scout}}'],
-              ['Hero, [[good:ship_small|Ship]], [[good:ship_big|Big Ship]]', '{{vision.hero}}'],
-              ['Soldier, any building', '{{vision.soldier}}'],
-              [
-                '[[good:handcart|Handcart]], [[good:oxcart|Ox Cart]], [[good:catapult|Catapult]]',
-                '{{vision.cart}}',
-              ],
+              ['[[job:scout|Scout]]', '{{vision.scout}}'],
+              ['[[building:headquarters|Headquarters]]', '{{vision.headquarters}}'],
+              ['Hero', '{{vision.hero}}'],
+              ['[[good:ship_small|Ship]], [[good:ship_big|Big Ship]]', '{{vision.ship}}'],
+              ['Soldier', '{{vision.soldier}}'],
+              ['Any other building', '{{vision.building}}'],
+              ['[[good:handcart|Handcart]], [[good:oxcart|Ox Cart]]', '{{vision.cart}}'],
+              ['[[good:catapult|Catapult]]', '{{vision.siege}}'],
               ['Other adults, your animals', '{{vision.adult}}'],
               ['Child', '{{vision.child}}'],
               ['Construction site', '0'],

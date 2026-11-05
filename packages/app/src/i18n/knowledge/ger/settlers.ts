@@ -176,7 +176,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'food',
       name: 'Essen',
-      lead: 'Nahrung sind Brot, Fleisch und Fisch. Eine zu Hause gegessene Mahlzeit bringt doppelt so viel Energie.',
+      lead: 'Nahrung sind Brot, Fleisch und Fisch. Eine zu Hause gegessene Mahlzeit bringt {{home.factor}}-mal so viel Energie.',
       blocks: [
         {
           h: 'Was eine Mahlzeit bringt',
@@ -221,8 +221,8 @@ export const SETTLERS: ArticleGroup = {
         {
           steps: [
             'Eine [[job:woman|Frau]] mit fertigem Wohnhaus sucht das nächste Essen außerhalb von Wohnhäusern.',
-            'Sie trägt 1 Stück nach Hause.',
-            'Mit [[good:crockery|Geschirr]] im Haus wird aus 1 geliefertem Stück 2 Stück in der Speisekammer.',
+            'Sie trägt {{haul.carry}} Stück nach Hause.',
+            'Mit [[good:crockery|Geschirr]] im Haus bringt jede Lieferung {{haul.crockeryDelivery}} Stück in die Speisekammer.',
           ],
         },
         {
@@ -312,15 +312,11 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Abschnitt', 'Alter', 'Seit Geburt'],
             rows: [
-              ['Baby', '0-{{age.babyLastYear}} Jahre', '0-{{age.childTime}}'],
-              [
-                'Kind',
-                '{{age.childYears}}-{{age.childLastYear}} Jahre',
-                '{{age.childTime}}-{{age.adultTime}}',
-              ],
+              ['Baby', 'unter {{age.childYears}} Jahren', '0-{{age.childTime}}'],
+              ['Kind', '{{age.childYears}}-{{age.adultYears}} Jahre', '{{age.childTime}}-{{age.adultTime}}'],
               ['Erwachsen', 'ab {{age.adultYears}} Jahren', 'ab {{age.adultTime}}'],
             ],
-            foot: 'Ein Lebensjahr dauert {{age.yearSeconds}} s. Ein Kind läuft ums Haus. Erwachsen wird ein Junge [[job:civilist|Zivilist]], ein Mädchen [[job:woman|Frau]]. Niemand stirbt an Altersschwäche.',
+            foot: 'Ein Lebensjahr dauert {{age.yearSeconds}} s, das Siedlerpanel zeigt das Alter in vollen Jahren. Ein Kind läuft ums Haus. Erwachsen wird ein Junge [[job:civilist|Zivilist]], ein Mädchen [[job:woman|Frau]]. Niemand stirbt an Altersschwäche.',
           },
         },
         {
@@ -348,14 +344,14 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:crockery|Geschirr]]',
                 'Wohnhaus 1',
-                'Essenslieferung bringt 2 Stück',
+                'Essenslieferung bringt {{haul.crockeryDelivery}} Stück',
                 '{{home.crockeryDeliveries}} Lieferungen',
                 '{{home.crockeryFetchBelow}}',
               ],
               [
                 '[[good:furniture|Möbel]]',
                 'Wohnhaus 1',
-                'Schlaf ×2',
+                'Schlaf ×{{home.factor}}',
                 '{{home.furnitureManSleeps}} Schlafphasen eines Mannes, {{home.furnitureWomanSleeps}} einer Frau',
                 '{{home.furnitureFetchBelow}}',
               ],

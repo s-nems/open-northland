@@ -312,7 +312,7 @@ export const ECONOMY: ArticleGroup = {
           h: '铁矿与金矿',
         },
         {
-          p: '采集者自己采到[[good:mud|黏土]]和[[good:stone|毛石]]合计{{gather.oreNeed}}份，例如4份黏土和6份毛石，就会发现[[good:iron|铁矿]]和[[good:gold|金矿]]。两种矿是同一个条件，一起开放。第一个做到的人为全聚落发现它们，之后也能在[[building:school|学校]]学会。在那之前面板显示“已锁定”。',
+          p: '采集者自己采到[[good:mud|黏土]]和[[good:stone|毛石]]合计{{gather.oreNeed}}份，比例不限，就会发现[[good:iron|铁矿]]和[[good:gold|金矿]]。两种矿是同一个条件，一起开放。第一个做到的人为全聚落发现它们，之后也能在[[building:school|学校]]学会。在那之前面板显示“已锁定”。',
         },
         {
           h: '田地',
@@ -430,7 +430,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: '一块[[good:wheat|小麦]]田无工具时要敲{{gather.wheatStrokes}}下，有工具或经验到20%时敲1下就够。',
+          p: '一块[[good:wheat|小麦]]田无工具时要敲{{gather.wheatStrokes}}下，有工具或经验到{{exp.savedStrokePct}}%时敲1下就够。',
         },
         {
           h: '工坊每批产量',
@@ -732,8 +732,11 @@ export const ECONOMY: ArticleGroup = {
               ['耐力不超过{{need.drivePct}}%', '+{{step.tiredExtra}}秒'],
               ['儿童', '+{{step.childExtra}}秒'],
               ['婴儿', '每步 × 2'],
-              ['武器和护甲合计重量2-3', '+{{step.weightLowExtra}}秒'],
-              ['武器和护甲合计重量4-5', '+{{step.weightHighExtra}}秒'],
+              ['武器和护甲合计重量{{step.weightLowFrom}}-{{step.weightLowTo}}', '+{{step.weightLowExtra}}秒'],
+              [
+                '武器和护甲合计重量{{step.weightHighFrom}}-{{step.weightHighTo}}',
+                '+{{step.weightHighExtra}}秒',
+              ],
               ['[[good:amulet_speed|疾风护符]]', '-{{step.amuletSaved}}秒'],
             ],
             foot: '每步至少{{step.shortest}}秒。英雄不受重量影响。车辆减速多少：[[article:vehicles|载具与船只]]。',
@@ -811,6 +814,15 @@ export const ECONOMY: ArticleGroup = {
           ],
         },
         {
+          h: '跨海',
+        },
+        {
+          list: [
+            '路线上的建筑位于不同岸边时，路线显示“需跨海”。点击“指定船只”，选择商人所在岸边的一艘自己的[[good:ship_small|船]]或[[good:ship_big|大船]]，船上不能有乘员和载具。商人会乘它走自己的路线。',
+            '安排上这艘船的[[job:carrier|搬运工]]会在岸边帮商人装卸，前提是路线两端的建筑都是你的。',
+          ],
+        },
+        {
           h: '自家建筑之间',
         },
         {
@@ -827,7 +839,7 @@ export const ECONOMY: ArticleGroup = {
               ['保留 N', '来源建筑留下N份'],
               ['聚落', '从整个聚落拿货：先从这座仓库，再从其路标网络内的其他仓库和工坊'],
             ],
-            foot: '“聚落”选项只能在仓库或大本营里开启，并且只能用于路线上的一座建筑。商人不会拿走仓库里低于最低库存的物资。',
+            foot: '“聚落”选项只能在仓库或大本营里开启。只有两座建筑的聚落没有共同建筑时（例如在两座岛上），路线两端才能同时开启。商人不会拿走仓库里低于最低库存的物资。',
           },
         },
         {

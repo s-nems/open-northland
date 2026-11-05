@@ -93,7 +93,7 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'Liczba pasażerów na karcie nie obejmuje dowódcy. Dowódcą zostaje pierwszy przydzielony, a gdy odejdzie, dowodzi kolejny pasażer.',
-            '[[job:joiner|Cieśla]] stawia pojazd na placu obok warsztatu, a statek na wodzie przy brzegu.',
+            '[[job:joiner|Cieśla]] stawia pojazd na placu obok warsztatu, a statek na wodzie w zasięgu warsztatu. Gdy takiej wody nie ma, okno budowy ostrzega "Brak wody w zasięgu do budowy statków".',
             'Kto wsiada, traci miejsce pracy. Tylko Tragarz z miejscem pracy i Kupiec ciągną wóz sami i zachowują pracę.',
             'Towar ładuje dowódca i każdy dorosły mężczyzna na pokładzie, ale żołnierze, bohaterowie, [[job:scout|Zwiadowcy]] i [[job:druid|Druidzi]] tylko wtedy, gdy dowodzą. Gdy nie ma komu ładować, pojawia się "Brak tragarza".',
           ],
@@ -188,14 +188,24 @@ export const WORLD: ArticleGroup = {
           h: 'Wół do Zaprzęgu',
         },
         {
-          p: 'Gotowy Zaprzęg czeka na zwierzę pociągowe i bierze najbliższego dorosłego [[good:cattle|Wołu]] z tego samego lądu. Każda Ferma zatrzymuje sobie {{livestock.pair}} dorosłe Woły i tyle samo zostaje ze stada bez Fermy, więc Zaprzęg dostanie dopiero Wołu ponad tę liczbę.',
+          p: 'Gotowy Zaprzęg czeka na zwierzę pociągowe i bierze najbliższego dorosłego [[good:cattle|Wołu]] z tego samego lądu. Każda Ferma zatrzymuje sobie {{draught.kept}} dorosłe Woły i tyle samo zostaje ze stada bez Fermy, więc Zaprzęg dostanie dopiero Wołu ponad tę liczbę.',
         },
         {
           h: 'Statki',
         },
         {
+          table: {
+            head: ['Statek', 'Miejsca na pojazdy', 'Pojazdy'],
+            rows: [
+              ['[[good:ship_small|Statek]]', '{{vehicle.shipSlots}}', 'Wózek Ręczny, Zaprzęg, Katapulta'],
+              ['[[good:ship_big|Statek handlowy]]', '{{vehicle.bigShipSlots}}', 'Wózek Ręczny, Zaprzęg'],
+            ],
+            num: [1],
+          },
+        },
+        {
           list: [
-            'Statek zabierze 1 pojazd: Wózek Ręczny, Zaprzęg albo Katapultę, jeśli jego załoga zmieści się na pokładzie. Statek handlowy pojazdów nie wozi.',
+            'Pojazd wjedzie na statek, jeśli jego załoga zmieści się na pokładzie. Statek przypięty do trasy Kupca nie przyjmie pojazdu.',
             '"Zacumuj": wskaż brzeg, a statek stanie {{vehicle.mooringDistance}} hexy od niego. Port nie jest potrzebny.',
             'Na morzu nikt nie wsiada ani nie wysiada.',
             'Ctrl/Cmd + prawy klik cumuje i wysadza załogę.',
@@ -305,7 +315,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'fog',
       name: 'Mgła i widzenie',
-      lead: 'Najdalej widzą Zwiadowca i Kwatera główna, {{vision.scout}} hexów. Plac budowy nie widzi nic.',
+      lead: 'Zwiadowca widzi na {{vision.scout}} hexów, Kwatera główna na {{vision.headquarters}}. Plac budowy nie widzi nic.',
       blocks: [
         {
           h: 'Tryby mapy',
@@ -342,13 +352,14 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Kto', 'Zasięg, hexy'],
             rows: [
-              ['[[job:scout|Zwiadowca]], [[building:headquarters|Kwatera główna]]', '{{vision.scout}}'],
-              ['Bohater, [[good:ship_small|Statek]], [[good:ship_big|Statek handlowy]]', '{{vision.hero}}'],
-              ['Żołnierz, każdy budynek', '{{vision.soldier}}'],
-              [
-                '[[good:handcart|Wózek Ręczny]], [[good:oxcart|Zaprzęg]], [[good:catapult|Katapulta]]',
-                '{{vision.cart}}',
-              ],
+              ['[[job:scout|Zwiadowca]]', '{{vision.scout}}'],
+              ['[[building:headquarters|Kwatera główna]]', '{{vision.headquarters}}'],
+              ['Bohater', '{{vision.hero}}'],
+              ['[[good:ship_small|Statek]], [[good:ship_big|Statek handlowy]]', '{{vision.ship}}'],
+              ['Żołnierz', '{{vision.soldier}}'],
+              ['Inny budynek', '{{vision.building}}'],
+              ['[[good:handcart|Wózek Ręczny]], [[good:oxcart|Zaprzęg]]', '{{vision.cart}}'],
+              ['[[good:catapult|Katapulta]]', '{{vision.siege}}'],
               ['Inni dorośli, twoje zwierzęta', '{{vision.adult}}'],
               ['Dziecko', '{{vision.child}}'],
               ['Plac budowy', '0'],

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { type ArticleScope, renderBlock } from '../../../../../src/hud/dom/knowledge/articles/blocks.js';
-import type { KnowledgeContext, KnowledgeMotion } from '../../../../../src/hud/dom/knowledge/context.js';
+import type { KnowledgeContext } from '../../../../../src/hud/dom/knowledge/context.js';
 import type { ArticleBlock } from '../../../../../src/hud/knowledge/articles.js';
 import { createKnowledgeBase } from '../../../../../src/hud/knowledge/base.js';
 import { knowledgeContent } from '../../../../support/knowledge-content.js';

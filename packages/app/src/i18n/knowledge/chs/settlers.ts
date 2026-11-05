@@ -130,7 +130,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'food',
       name: '饮食',
-      lead: '食物包括面包、肉和鱼。在家吃的一餐，体力加倍。',
+      lead: '食物包括面包、肉和鱼。在家吃的一餐，体力为{{home.factor}}倍。',
       blocks: [
         {
           h: '进餐效果',
@@ -175,8 +175,8 @@ export const SETTLERS: ArticleGroup = {
         {
           steps: [
             '有已建成住所的[[job:woman|妇女]]寻找住所以外最近的食物。',
-            '拿1份回家。',
-            '家里有[[good:crockery|陶器]]时，运回1份算2份存粮。',
+            '拿{{haul.carry}}份回家。',
+            '家里有[[good:crockery|陶器]]时，每次运回都算{{haul.crockeryDelivery}}份存粮。',
           ],
         },
         {
@@ -266,11 +266,11 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['阶段', '年龄', '出生后'],
             rows: [
-              ['婴儿', '0-{{age.babyLastYear}}岁', '0-{{age.childTime}}'],
-              ['儿童', '{{age.childYears}}-{{age.childLastYear}}岁', '{{age.childTime}}-{{age.adultTime}}'],
+              ['婴儿', '不满{{age.childYears}}岁', '0-{{age.childTime}}'],
+              ['儿童', '{{age.childYears}}-{{age.adultYears}}岁', '{{age.childTime}}-{{age.adultTime}}'],
               ['成人', '{{age.adultYears}}岁起', '{{age.adultTime}}起'],
             ],
-            foot: '一岁等于{{age.yearSeconds}}秒。儿童在家附近活动。成年后男孩成为[[job:civilist|平民]]，女孩成为[[job:woman|妇女]]。没有人会老死。',
+            foot: '一岁等于{{age.yearSeconds}}秒，居民面板按整岁显示年龄。儿童在家附近活动。成年后男孩成为[[job:civilist|平民]]，女孩成为[[job:woman|妇女]]。没有人会老死。',
           },
         },
         {
@@ -298,14 +298,14 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:crockery|陶器]]',
                 '1级民居',
-                '运粮时每份算2份',
+                '每次运粮算{{haul.crockeryDelivery}}份',
                 '{{home.crockeryDeliveries}}次运粮',
                 '{{home.crockeryFetchBelow}}',
               ],
               [
                 '[[good:furniture|家具]]',
                 '1级民居',
-                '睡眠×2',
+                '睡眠×{{home.factor}}',
                 '男性睡{{home.furnitureManSleeps}}次，女性睡{{home.furnitureWomanSleeps}}次',
                 '{{home.furnitureFetchBelow}}',
               ],

@@ -64,10 +64,18 @@ const LIFTS_PER_UNIT = 2;
 /** The hold fills, in percent, the cart load table shows a row of. */
 const CART_FILL_SAMPLES_PCT = [0, 25, 50, 75, 100] as const;
 
-/** The combined weights the walking table's two rows open at: every second point costs a tick. */
-const LOW_STEP_WEIGHT = 2;
+/** The ticks the walking table's two weight rows add to a step. */
+const LOW_ROW_TICKS = 1;
 
-const HIGH_STEP_WEIGHT = 4;
+const HIGH_ROW_TICKS = 2;
+
+/** The combined weights the walking table's two rows open at. */
+const LOW_STEP_WEIGHT = LOW_ROW_TICKS * systems.EQUIPMENT_WEIGHT_PER_STEP_TICK;
+
+const HIGH_STEP_WEIGHT = HIGH_ROW_TICKS * systems.EQUIPMENT_WEIGHT_PER_STEP_TICK;
+
+/** The heaviest load of a walking table row that opens at `from`: the next row's opening, less one. */
+const rowTop = (from: number): number => from + systems.EQUIPMENT_WEIGHT_PER_STEP_TICK - 1;
 
 const fixedTwoDecimals = formatted(2, 2);
 
@@ -166,8 +174,8 @@ function ironToolTrees(base: KnowledgeBase): FactValue {
 function cartParRoute(base: KnowledgeBase, roughness: FactValue): FactValue {
   const handcart = vehicleOf(base, 'handcart')?.stockSlots;
   const oxcart = vehicleOf(base, 'oxcart')?.stockSlots;
-  const handcartLift = liftSeconds(base, systems.HANDCART_LIFT_PERCENT);
-  const oxcartLift = liftSeconds(base, systems.DRAWN_CART_LIFT_PERCENT);
+  const handcartLift = cartLiftSeconds(base, 'handcart');
+  const oxcartLift = cartLiftSeconds(base, 'oxcart');
   const empty = stepAt(roughness);
   const handcartFull = stepAt(roughness, { cartSpeedLossPercent: systems.HANDCART_FULL_SPEED_LOSS_PERCENT });
   const oxcartFull = stepAt(roughness, { cartSpeedLossPercent: systems.DRAWN_CART_FULL_SPEED_LOSS_PERCENT });
@@ -244,9 +252,16 @@ const homeSeconds = (base: KnowledgeBase, pct: number, tool: string | null): Fac
 
 const MASTER_PCT = PERCENT;
 
-const liftSeconds = (base: KnowledgeBase, percent: number): FactValue => {
-  const clip = clipOf(base, systems.PICKUP_ATOMIC_ID, JOB_CIVILIST)?.length;
-  return clip === undefined ? undefined : seconds(Math.max(1, Math.round((clip * percent) / PERCENT)));
+const liftClipTicks = (base: KnowledgeBase): FactValue =>
+  clipOf(base, systems.PICKUP_ATOMIC_ID, JOB_CIVILIST)?.length;
+
+/** One unit's lift into or out of `vehicle`, by the sim's own share of the lifting clip. */
+const cartLiftSeconds = (base: KnowledgeBase, vehicle: string): FactValue => {
+  const clip = liftClipTicks(base);
+  const type = base.content.vehicles.find((row) => row.id === vehicle);
+  return clip === undefined || type === undefined
+    ? undefined
+    : seconds(systems.cartLiftTicks(base.content, type, clip));
 };
 
 /** A cart's speed loss at `fillPct` of its hold, by the sim's own rule. */
@@ -270,7 +285,7 @@ export const CART_LOAD_FACTS: Readonly<Record<string, Fact>> = Object.fromEntrie
 /** How far a goods search reaches on `ground`: its budget spent at the ground's cost per point. */
 function goodsReach(base: KnowledgeBase, ground: string): FactValue {
   const roughness = groundRoughness(base, ground);
-  return roughness === undefined ? undefined : Math.floor(components.SIGNPOST_LINK_STEPS / roughness);
+  return roughness === undefined ? undefined : Math.floor(systems.GOODS_SEARCH_SPAN.budget / roughness);
 }
 
 export const WALK_FACTS: Readonly<Record<string, Fact>> = {
@@ -309,6 +324,10 @@ export const WALK_FACTS: Readonly<Record<string, Fact>> = {
   'step.childExtra': twoDecimals(stepExtra({ age: 'child' })),
   'step.weightLowExtra': twoDecimals(stepExtra({ equipmentWeight: LOW_STEP_WEIGHT })),
   'step.weightHighExtra': twoDecimals(stepExtra({ equipmentWeight: HIGH_STEP_WEIGHT })),
+  'step.weightLowFrom': whole(LOW_STEP_WEIGHT),
+  'step.weightLowTo': whole(rowTop(LOW_STEP_WEIGHT)),
+  'step.weightHighFrom': whole(HIGH_STEP_WEIGHT),
+  'step.weightHighTo': whole(rowTop(HIGH_STEP_WEIGHT)),
   'step.amuletSaved': twoDecimals((base) => {
     const saved = equipOf(base, 'amulet_speed')?.walkStepTicksSaved;
     return saved === undefined ? undefined : seconds(saved);
@@ -392,6 +411,7 @@ export const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'tool.uses': whole((base) => equipOf(base, 'tool_iron')?.uses),
   'tool.ironTrees': whole(ironToolTrees),
   'haul.carry': whole(components.CARRY_CAPACITY),
+  'haul.crockeryDelivery': whole(components.CARRY_CAPACITY + systems.CROCKERY_BONUS_UNITS),
   'haul.groundStack': whole(systems.MAX_GROUND_STACK),
   'haul.minimumMax': whole(components.STORAGE_MINIMUM_MAX),
   'haul.handcart': whole((base) => vehicleOf(base, 'handcart')?.stockSlots),
@@ -404,9 +424,12 @@ export const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'flag.fisherDiagonal': whole(diagonal(systems.FISH_SHORE_SEARCH_RADIUS)),
   'flag.snap': whole(systems.WORK_FLAG_SNAP_MAX_RADIUS),
   'trade.stops': whole(TRADE_ROUTE_HOUSES),
-  'trade.handsSeconds': oneDecimal((base) => liftSeconds(base, PERCENT)),
-  'trade.handcartSeconds': fixedOneDecimal((base) => liftSeconds(base, systems.HANDCART_LIFT_PERCENT)),
-  'trade.oxcartSeconds': fixedOneDecimal((base) => liftSeconds(base, systems.DRAWN_CART_LIFT_PERCENT)),
+  'trade.handsSeconds': oneDecimal((base) => {
+    const clip = liftClipTicks(base);
+    return clip === undefined ? undefined : seconds(clip);
+  }),
+  'trade.handcartSeconds': fixedOneDecimal((base) => cartLiftSeconds(base, 'handcart')),
+  'trade.oxcartSeconds': fixedOneDecimal((base) => cartLiftSeconds(base, 'oxcart')),
   'trade.cartParLand': whole((base) => cartParRoute(base, DEFAULT_NODE_ROUGHNESS)),
   'trade.cartParRoad': whole((base) => cartParRoute(base, ROAD_RESISTANCE)),
   'trade.refillLevel': whole(systems.AI_STOCK_REFILL_LEVEL),
@@ -417,6 +440,7 @@ export const WORK_FACTS: Readonly<Record<string, Fact>> = {
   ...trackFacts('craft', 'collector_stone'),
   ...trackFacts('build', 'builder_general'),
   'exp.quotedPct': whole(QUOTED_EXPERIENCE_PCT),
+  'exp.savedStrokePct': whole(systems.EXPERIENCE_PCT_PER_SAVED_STROKE),
   'star.step': whole(STAR_TIER_STEP),
   'star.full': whole(STAR_FULL),
   'exp.carrierTrader': whole((base) => jobNeed(base, 'trader')),

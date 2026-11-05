@@ -352,7 +352,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Żelazo i Złoto',
         },
         {
-          p: '[[good:iron|Żelazo]] i [[good:gold|Złoto]] odkrywa Zbieracz, który sam wydobędzie łącznie {{gather.oreNeed}} sztuk [[good:mud|Gliny]] i [[good:stone|Kamienia]], np. 4 Gliny i 6 Kamienia. Ten sam wymóg otwiera oba towary. Pierwszy, któremu się to uda, odkrywa je dla całej osady, a potem można się ich też nauczyć w [[building:school|Szkole]]. Do tego czasu panel pokazuje "zablokowane".',
+          p: '[[good:iron|Żelazo]] i [[good:gold|Złoto]] odkrywa Zbieracz, który sam wydobędzie łącznie {{gather.oreNeed}} sztuk [[good:mud|Gliny]] i [[good:stone|Kamienia]], w dowolnym podziale. Ten sam wymóg otwiera oba towary. Pierwszy, któremu się to uda, odkrywa je dla całej osady, a potem można się ich też nauczyć w [[building:school|Szkole]]. Do tego czasu panel pokazuje "zablokowane".',
         },
         {
           h: 'Pole',
@@ -473,7 +473,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Pole [[good:wheat|Pszenicy]] wymaga {{gather.wheatStrokes}} uderzeń bez narzędzia, a z narzędziem albo od 20% doświadczenia wystarczy 1.',
+          p: 'Pole [[good:wheat|Pszenicy]] wymaga {{gather.wheatStrokes}} uderzeń bez narzędzia, a z narzędziem albo od {{exp.savedStrokePct}}% doświadczenia wystarczy 1.',
         },
         {
           h: 'Sztuki z cyklu w warsztacie',
@@ -790,8 +790,14 @@ export const ECONOMY: ArticleGroup = {
               ['Wytrzymałość najwyżej {{need.drivePct}}%', '+{{step.tiredExtra}} s'],
               ['Dziecko', '+{{step.childExtra}} s'],
               ['Niemowlę', 'krok × 2'],
-              ['Broń i pancerz ważą razem 2-3', '+{{step.weightLowExtra}} s'],
-              ['Broń i pancerz ważą razem 4-5', '+{{step.weightHighExtra}} s'],
+              [
+                'Broń i pancerz ważą razem {{step.weightLowFrom}}-{{step.weightLowTo}}',
+                '+{{step.weightLowExtra}} s',
+              ],
+              [
+                'Broń i pancerz ważą razem {{step.weightHighFrom}}-{{step.weightHighTo}}',
+                '+{{step.weightHighExtra}} s',
+              ],
               ['[[good:amulet_speed|Amulet Wiatru]]', '-{{step.amuletSaved}} s'],
             ],
             foot: 'Krok nigdy nie trwa krócej niż {{step.shortest}} s. Bohaterów ciężar nie spowalnia. Ile zwalnia wóz: [[article:vehicles|Pojazdy i statki]].',
@@ -875,6 +881,15 @@ export const ECONOMY: ArticleGroup = {
           ],
         },
         {
+          h: 'Przez morze',
+        },
+        {
+          list: [
+            'Gdy budynki trasy leżą na różnych brzegach, trasa pokazuje "przez morze". Kliknij "Przypnij statek" i wskaż własny [[good:ship_small|Statek]] lub [[good:ship_big|Statek handlowy]] przy brzegu Kupca, bez załogi i bez pojazdu na pokładzie. Kupiec popłynie nim swoją trasą.',
+            '[[job:carrier|Tragarz]] wsadzony na ten statek pomaga Kupcowi ładować i rozładowywać przy brzegu, jeśli oba budynki trasy są twoje.',
+          ],
+        },
+        {
           h: 'Własne budynki',
         },
         {
@@ -894,7 +909,7 @@ export const ECONOMY: ArticleGroup = {
                 'Bierze towar z całej osady: najpierw z tego magazynu, potem z innych magazynów i warsztatów w jego sieci drogowskazów',
               ],
             ],
-            foot: 'Opcję osada włączysz tylko w magazynie lub Kwaterze głównej i tylko w jednym z dwóch budynków trasy. Kupiec nie zabierze towaru poniżej minimum w magazynach.',
+            foot: 'Opcję osada włączysz tylko w magazynie lub Kwaterze głównej. Na obu budynkach trasy naraz tylko wtedy, gdy ich osady nie mają wspólnego budynku, np. na dwóch wyspach. Kupiec nie zabierze towaru poniżej minimum w magazynach.',
           },
         },
         {

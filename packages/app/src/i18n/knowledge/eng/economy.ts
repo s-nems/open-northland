@@ -355,7 +355,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Iron and Gold',
         },
         {
-          p: 'An Extractor discovers [[good:iron|Iron]] and [[good:gold|Gold]] by mining {{gather.oreNeed}} pieces of [[good:mud|Clay]] and [[good:stone|Quarrystone]] himself, counted together, e.g. 4 Clay and 6 Quarrystone. The same requirement opens both goods. The first one to manage it discovers them for the whole settlement, and after that they can also be learned at the [[building:school|School]]. Until then the panel shows "locked".',
+          p: 'An Extractor discovers [[good:iron|Iron]] and [[good:gold|Gold]] by mining {{gather.oreNeed}} pieces of [[good:mud|Clay]] and [[good:stone|Quarrystone]] himself, counted together in any mix. The same requirement opens both goods. The first one to manage it discovers them for the whole settlement, and after that they can also be learned at the [[building:school|School]]. Until then the panel shows "locked".',
         },
         {
           h: 'Field',
@@ -476,7 +476,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'A [[good:wheat|Wheat]] field takes {{gather.wheatStrokes}} strokes with no tool, and with a tool or from 20% experience 1 is enough.',
+          p: 'A [[good:wheat|Wheat]] field takes {{gather.wheatStrokes}} strokes with no tool, and with a tool or from {{exp.savedStrokePct}}% experience 1 is enough.',
         },
         {
           h: 'Pieces per workshop cycle',
@@ -788,8 +788,14 @@ export const ECONOMY: ArticleGroup = {
               ['Stamina at {{need.drivePct}}% or less', '+{{step.tiredExtra}} s'],
               ['Child', '+{{step.childExtra}} s'],
               ['Baby', 'step × 2'],
-              ['Weapon and armour weigh 2-3 together', '+{{step.weightLowExtra}} s'],
-              ['Weapon and armour weigh 4-5 together', '+{{step.weightHighExtra}} s'],
+              [
+                'Weapon and armour weigh {{step.weightLowFrom}}-{{step.weightLowTo}} together',
+                '+{{step.weightLowExtra}} s',
+              ],
+              [
+                'Weapon and armour weigh {{step.weightHighFrom}}-{{step.weightHighTo}} together',
+                '+{{step.weightHighExtra}} s',
+              ],
               ['[[good:amulet_speed|Wind Amulet]]', '-{{step.amuletSaved}} s'],
             ],
             foot: 'A step never takes less than {{step.shortest}} s. Weight does not slow heroes. How much a cart slows: [[article:vehicles|Vehicles and Ships]].',
@@ -867,6 +873,15 @@ export const ECONOMY: ArticleGroup = {
           ],
         },
         {
+          h: 'Across the sea',
+        },
+        {
+          list: [
+            'When the route buildings lie on different shores, the route shows "across the sea". Click "Pin a ship" and pick your own [[good:ship_small|Ship]] or [[good:ship_big|Big Ship]] at the Merchant\'s shore, with no crew and no vehicle aboard. The Merchant sails his route on it.',
+            'A [[job:carrier|Carrier]] seated on that ship helps the Merchant load and unload at the shore, if both route buildings are yours.',
+          ],
+        },
+        {
           h: 'Your own buildings',
         },
         {
@@ -886,7 +901,7 @@ export const ECONOMY: ArticleGroup = {
                 'Takes goods from the whole settlement: this warehouse first, then other warehouses and workshops within its signpost network',
               ],
             ],
-            foot: "You can turn on the settlement option only in a warehouse or Headquarters, and only in one of the two route buildings. The Merchant won't take goods below the storage minimum.",
+            foot: "You can turn on the settlement option only in a warehouse or Headquarters. Both route buildings can have it at once only when their settlements share no building, e.g. on two islands. The Merchant won't take goods below the storage minimum.",
           },
         },
         {

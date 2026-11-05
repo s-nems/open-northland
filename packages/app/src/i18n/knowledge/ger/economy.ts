@@ -355,7 +355,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Eisen und Gold',
         },
         {
-          p: '[[good:iron|Eisen]] und [[good:gold|Gold]] entdeckt ein Abbauer, der selbst insgesamt {{gather.oreNeed}} Stück [[good:mud|Lehm]] und [[good:stone|Bruchstein]] abbaut, zum Beispiel 4 Lehm und 6 Bruchstein. Dieselbe Voraussetzung schaltet beide Waren frei. Der Erste, dem das gelingt, entdeckt sie fürs ganze Dorf, danach kann man sie auch in der [[building:school|Schule]] lernen. Bis dahin zeigt das Panel „gesperrt“.',
+          p: '[[good:iron|Eisen]] und [[good:gold|Gold]] entdeckt ein Abbauer, der selbst insgesamt {{gather.oreNeed}} Stück [[good:mud|Lehm]] und [[good:stone|Bruchstein]] abbaut, in beliebiger Mischung. Dieselbe Voraussetzung schaltet beide Waren frei. Der Erste, dem das gelingt, entdeckt sie fürs ganze Dorf, danach kann man sie auch in der [[building:school|Schule]] lernen. Bis dahin zeigt das Panel „gesperrt“.',
         },
         {
           h: 'Feld',
@@ -479,7 +479,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Ein Feld [[good:wheat|Weizen]] braucht ohne Werkzeug {{gather.wheatStrokes}} Arbeitsschläge, mit Werkzeug oder ab 20% Erfahrung reicht 1.',
+          p: 'Ein Feld [[good:wheat|Weizen]] braucht ohne Werkzeug {{gather.wheatStrokes}} Arbeitsschläge, mit Werkzeug oder ab {{exp.savedStrokePct}}% Erfahrung reicht 1.',
         },
         {
           h: 'Stücke je Charge in der Werkstatt',
@@ -791,8 +791,14 @@ export const ECONOMY: ArticleGroup = {
               ['Kondition höchstens {{need.drivePct}}%', '+{{step.tiredExtra}} s'],
               ['Kind', '+{{step.childExtra}} s'],
               ['Baby', 'Schritt × 2'],
-              ['Waffe und Rüstung wiegen zusammen 2-3', '+{{step.weightLowExtra}} s'],
-              ['Waffe und Rüstung wiegen zusammen 4-5', '+{{step.weightHighExtra}} s'],
+              [
+                'Waffe und Rüstung wiegen zusammen {{step.weightLowFrom}}-{{step.weightLowTo}}',
+                '+{{step.weightLowExtra}} s',
+              ],
+              [
+                'Waffe und Rüstung wiegen zusammen {{step.weightHighFrom}}-{{step.weightHighTo}}',
+                '+{{step.weightHighExtra}} s',
+              ],
               ['[[good:amulet_speed|Windamulett]]', '-{{step.amuletSaved}} s'],
             ],
             foot: 'Ein Schritt dauert nie weniger als {{step.shortest}} s. Helden bremst das Gewicht nicht. Wie stark ein Karren bremst: [[article:vehicles|Fahrzeuge und Schiffe]].',
@@ -870,6 +876,15 @@ export const ECONOMY: ArticleGroup = {
           ],
         },
         {
+          h: 'Über das Meer',
+        },
+        {
+          list: [
+            'Liegen die Gebäude der Route an verschiedenen Ufern, zeigt die Route „über das Meer“. Klicke „Schiff zuweisen“ und wähle ein eigenes [[good:ship_small|Schiff]] oder [[good:ship_big|Großes Schiff]] am Ufer des Händlers, ohne Besatzung und ohne Fahrzeug an Bord. Der Händler fährt damit seine Route.',
+            'Ein [[job:carrier|Träger]], der auf diesem Schiff sitzt, hilft dem Händler am Ufer beim Be- und Entladen, wenn beide Gebäude der Route dir gehören.',
+          ],
+        },
+        {
           h: 'Eigene Gebäude',
         },
         {
@@ -889,7 +904,7 @@ export const ECONOMY: ArticleGroup = {
                 'Holt Ware aus dem ganzen Dorf: erst aus diesem Lager, dann aus anderen Lagern und Werkstätten in seinem Wegweisernetz',
               ],
             ],
-            foot: 'Die Option Siedlung schaltest du nur in einem Lagerhaus oder Hauptquartier ein, und nur in einem der beiden Gebäude der Route. Ware unter dem Lagerminimum nimmt der Händler nicht mit.',
+            foot: 'Die Option Siedlung schaltest du nur in einem Lagerhaus oder Hauptquartier ein. In beiden Gebäuden der Route zugleich nur, wenn ihre Siedlungen kein Gebäude teilen, etwa auf zwei Inseln. Ware unter dem Lagerminimum nimmt der Händler nicht mit.',
           },
         },
         {

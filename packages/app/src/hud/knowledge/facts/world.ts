@@ -37,6 +37,9 @@ const amountOf = (
   return rows?.find((row) => row.goodType === goodType)?.amount;
 };
 
+const vehicleSlotsOf = (base: KnowledgeBase, id: string): FactValue =>
+  base.content.vehicles.find((row) => row.id === id)?.vehicleSlots;
+
 const produceAtomic = (base: KnowledgeBase, good: string): FactValue =>
   base.content.goods.find((row) => row.id === good)?.atomics.produce;
 
@@ -84,10 +87,13 @@ export const WORLD_FACTS: Readonly<Record<string, Fact>> = {
   'vehicle.mooringDistance': whole((base) => {
     return base.content.vehicles.find((row) => row.id === 'ship_small')?.passengerVector?.distance;
   }),
+  'vehicle.shipSlots': whole((base) => vehicleSlotsOf(base, 'ship_small')),
+  'vehicle.bigShipSlots': whole((base) => vehicleSlotsOf(base, 'ship_big')),
   'vehicle.cargoSearch': whole(systems.VEHICLE_CARGO_SEARCH_RADIUS),
   'vehicle.spill': whole(systems.VEHICLE_CARGO_SPILL_RADIUS),
   'livestock.pair': whole(systems.BREEDING_PAIR),
-  'livestock.pairPlusOne': whole(systems.BREEDING_PAIR + 1),
+  'draught.kept': whole(systems.DRAUGHT_BREEDING_PAIR),
+  'draught.keptPlusOne': whole(systems.DRAUGHT_BREEDING_PAIR + 1),
   'livestock.captureRange': whole(systems.LIVESTOCK_CAPTURE_RANGE),
   'livestock.scatterRange': whole(systems.SCATTER_RANGE),
   'livestock.growMinutes': whole(minutes(systems.ANIMAL_ADULT_AGE_TICKS)),
@@ -119,6 +125,10 @@ export const WORLD_FACTS: Readonly<Record<string, Fact>> = {
   'vision.hero': whole(systems.HERO_VISION_NODES),
   'vision.soldier': whole(systems.SOLDIER_VISION_NODES),
   'vision.cart': whole(systems.CART_VISION_NODES),
+  'vision.headquarters': whole(systems.HEADQUARTERS_VISION_NODES),
+  'vision.ship': whole(systems.SHIP_VISION_NODES),
+  'vision.building': whole(systems.BUILDING_VISION_NODES),
+  'vision.siege': whole(systems.SIEGE_VISION_NODES),
   'vision.adult': whole(systems.CIVILIAN_VISION_NODES),
   'vision.child': whole(systems.CHILD_VISION_NODES),
   'explore.maxFailedLegs': whole(systems.EXPLORE_MAX_FAILED_LEGS),

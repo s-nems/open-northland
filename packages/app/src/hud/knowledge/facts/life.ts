@@ -166,14 +166,13 @@ export const HEALTH_FACTS: Readonly<Record<string, Fact>> = {
 };
 
 export const LIFE_FACTS: Readonly<Record<string, Fact>> = {
-  'age.yearSeconds': whole(seconds(systems.TICKS_PER_AGE_YEAR)),
-  'age.childYears': whole(systems.CHILD_AGE_TICKS / systems.TICKS_PER_AGE_YEAR),
-  'age.babyLastYear': whole(systems.CHILD_AGE_TICKS / systems.TICKS_PER_AGE_YEAR - 1),
-  'age.adultYears': whole(systems.ADULT_AGE_TICKS / systems.TICKS_PER_AGE_YEAR),
-  'age.childLastYear': whole(systems.ADULT_AGE_TICKS / systems.TICKS_PER_AGE_YEAR - 1),
+  'age.yearSeconds': oneDecimal(seconds(systems.TICKS_PER_AGE_YEAR)),
+  'age.childYears': oneDecimal(systems.CHILD_AGE_TICKS / systems.TICKS_PER_AGE_YEAR),
+  'age.adultYears': oneDecimal(systems.ADULT_AGE_TICKS / systems.TICKS_PER_AGE_YEAR),
   'age.childTime': duration(seconds(systems.CHILD_AGE_TICKS)),
   'age.adultTime': duration(seconds(systems.ADULT_AGE_TICKS)),
   'family.childFood': whole(components.CHILD_FOOD_UNITS),
+  'home.factor': whole(systems.AT_HOME_FACTOR),
   'home.larder': whole((base) => stockOf(base, 'home_level_00', 'food_simple')),
   'home.candyLarder': whole((base) => stockOf(base, 'home_level_00', 'food_extra')),
   'home.wareUnits': whole((base) => wareRatio(base, 'crockery', 'capacity')),

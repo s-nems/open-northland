@@ -155,7 +155,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'food',
       name: 'Еда',
-      lead: 'Пища: Хлеб, Мясо и Рыба. Еда, съеденная дома, даёт вдвое больше Энергии.',
+      lead: 'Пища: Хлеб, Мясо и Рыба. Еда, съеденная дома, даёт в {{home.factor}} раза больше Энергии.',
       blocks: [
         {
           h: 'Что даёт еда',
@@ -200,8 +200,8 @@ export const SETTLERS: ArticleGroup = {
         {
           steps: [
             '[[job:woman|Женщина]] с готовым жилищем ищет ближайшую еду вне жилищ.',
-            'Несёт домой 1 шт.',
-            'Если в жилище есть [[good:crockery|Посуда]], 1 доставленная шт. даёт 2 шт. в кладовой.',
+            'Несёт домой {{haul.carry}} шт.',
+            'Если в жилище есть [[good:crockery|Посуда]], каждая доставка даёт {{haul.crockeryDelivery}} шт. в кладовой.',
           ],
         },
         {
@@ -291,15 +291,15 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Этап', 'Возраст', 'От рождения'],
             rows: [
-              ['Младенец', 'лет: 0-{{age.babyLastYear}}', '0-{{age.childTime}}'],
+              ['Младенец', 'лет: до {{age.childYears}}', '0-{{age.childTime}}'],
               [
                 'Ребёнок',
-                'лет: {{age.childYears}}-{{age.childLastYear}}',
+                'лет: {{age.childYears}}-{{age.adultYears}}',
                 '{{age.childTime}}-{{age.adultTime}}',
               ],
               ['Взрослый', 'лет: от {{age.adultYears}}', 'от {{age.adultTime}}'],
             ],
-            foot: 'Год жизни длится {{age.yearSeconds}} с. Ребёнок ходит вокруг дома. Повзрослев, мальчик становится [[job:civilist|Гражданином]], девочка [[job:woman|Женщиной]]. От старости никто не умирает.',
+            foot: 'Год жизни длится {{age.yearSeconds}} с, а панель поселенца показывает возраст в полных годах. Ребёнок ходит вокруг дома. Повзрослев, мальчик становится [[job:civilist|Гражданином]], девочка [[job:woman|Женщиной]]. От старости никто не умирает.',
           },
         },
         {
@@ -327,14 +327,14 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:crockery|Посуда]]',
                 'Жилище 1',
-                'Доставка еды даёт 2 шт.',
+                'Доставка еды даёт {{haul.crockeryDelivery}} шт.',
                 'доставок: {{home.crockeryDeliveries}}',
                 '{{home.crockeryFetchBelow}}',
               ],
               [
                 '[[good:furniture|Мебель]]',
                 'Жилище 1',
-                'Сон ×2',
+                'Сон ×{{home.factor}}',
                 'снов мужчины: {{home.furnitureManSleeps}}, женщины: {{home.furnitureWomanSleeps}}',
                 '{{home.furnitureFetchBelow}}',
               ],

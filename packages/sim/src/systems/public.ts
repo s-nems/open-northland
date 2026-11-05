@@ -219,6 +219,7 @@ export {
 } from './missions/index.js';
 export { LEADER_UPKEEP_PERIOD_TICKS } from './movement/herd-roster.js';
 export {
+  EQUIPMENT_WEIGHT_PER_STEP_TICK,
   MIN_STEP_TICKS,
   ROUGHNESS_MAX_ON_MAPS,
   UNMODIFIED_STEP,
@@ -328,6 +329,7 @@ export {
 } from './settlers/atomics/effects/combat/hit/damage.js';
 export { KIN_ALARM_RADIUS_NODES } from './settlers/atomics/effects/combat/hit/reactions.js';
 export { SPILL_MAX_RADIUS } from './settlers/atomics/effects/goods/piles.js';
+export { CROCKERY_BONUS_UNITS } from './settlers/atomics/effects/goods/transfer.js';
 export { AT_HOME_FACTOR, AWAY_REST_DIVISOR } from './settlers/atomics/effects/need-events.js';
 // jobCanBuild is the "can this trade raise a foundation" gate, so the app's right-click on a site cannot
 // drift from the rule assignBuilder and the builder drive ask; PRAY_ATOMIC_ID keys the app's pray gate.
@@ -361,18 +363,21 @@ export {
   signpostNetwork,
   signpostProbe,
 } from './signposts/index.js';
+export { GOODS_SEARCH_SPAN } from './signposts/terrain-reach.js';
 export { createSettler, HUMAN_HITPOINTS, spawnAnimalHerd } from './spawn/index.js';
 export { buildingRowKeepsPriority, isYardHeap, MAX_GROUND_STACK } from './stores/index.js';
 export { canPinTradeShip, type TraderShipState } from './trade/index.js';
 export { AI_STOCK_REFILL_LEVEL, AI_STOCK_REFILL_TURNS } from './trade/partner-stock.js';
 export {
   cartDragTicks,
+  cartLiftTicks,
   DRAWN_CART_FULL_SPEED_LOSS_PERCENT,
   DRAWN_CART_LIFT_PERCENT,
   HANDCART_FULL_SPEED_LOSS_PERCENT,
   HANDCART_LIFT_PERCENT,
   loadSpeedLossPercent,
 } from './vehicles/drag.js';
+export { DRAUGHT_BREEDING_PAIR } from './vehicles/draught.js';
 // createVehicle stands a vehicle in pre-tick assembly the way the command does; modifyVehicleStock and
 // stockVehicleGoods are the writes into a hold, the second the booked-and-stowed one a loaded spawn uses.
 export {

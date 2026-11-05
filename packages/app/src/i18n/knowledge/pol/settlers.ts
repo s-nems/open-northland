@@ -157,7 +157,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'food',
       name: 'Jedzenie',
-      lead: 'Żywność to Chleb, Mięso i Ryby. Posiłek zjedzony w domu daje dwa razy więcej Energii.',
+      lead: 'Żywność to Chleb, Mięso i Ryby. Posiłek zjedzony w domu daje {{home.factor}} razy więcej Energii.',
       blocks: [
         {
           h: 'Co daje posiłek',
@@ -202,8 +202,8 @@ export const SETTLERS: ArticleGroup = {
         {
           steps: [
             '[[job:woman|Kobieta]] z gotowym domem szuka najbliższego jedzenia poza domami.',
-            'Niesie 1 sztukę do domu.',
-            'Z [[good:crockery|Naczyniami]] w domu 1 dostarczona sztuka daje 2 sztuki w spiżarni.',
+            'Niesie {{haul.carry}} sztukę do domu.',
+            'Z [[good:crockery|Naczyniami]] w domu każda dostawa daje {{haul.crockeryDelivery}} sztuki w spiżarni.',
           ],
         },
         {
@@ -293,15 +293,15 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Etap', 'Wiek', 'Od narodzin'],
             rows: [
-              ['Niemowlę', '0-{{age.babyLastYear}} lata', '0-{{age.childTime}}'],
+              ['Niemowlę', 'do {{age.childYears}} roku', '0-{{age.childTime}}'],
               [
                 'Dziecko',
-                '{{age.childYears}}-{{age.childLastYear}} lat',
+                '{{age.childYears}}-{{age.adultYears}} roku',
                 '{{age.childTime}}-{{age.adultTime}}',
               ],
-              ['Dorosły', 'od {{age.adultYears}} lat', 'od {{age.adultTime}}'],
+              ['Dorosły', 'od {{age.adultYears}} roku', 'od {{age.adultTime}}'],
             ],
-            foot: 'Rok życia trwa {{age.yearSeconds}} s. Dziecko chodzi wokół domu. Po dorośnięciu chłopiec zostaje [[job:civilist|Cywilem]], a dziewczynka [[job:woman|Kobietą]]. Nikt nie umiera ze starości.',
+            foot: 'Rok życia trwa {{age.yearSeconds}} s, a panel osadnika pokazuje wiek w pełnych latach. Dziecko chodzi wokół domu. Po dorośnięciu chłopiec zostaje [[job:civilist|Cywilem]], a dziewczynka [[job:woman|Kobietą]]. Nikt nie umiera ze starości.',
           },
         },
         {
@@ -329,14 +329,14 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:crockery|Naczynia]]',
                 'Dom 1',
-                'Dostawa jedzenia daje 2 sztuki',
+                'Dostawa jedzenia daje {{haul.crockeryDelivery}} sztuki',
                 '{{home.crockeryDeliveries}} dostaw',
                 '{{home.crockeryFetchBelow}}',
               ],
               [
                 '[[good:furniture|Meble]]',
                 'Dom 1',
-                'Sen ×2',
+                'Sen ×{{home.factor}}',
                 '{{home.furnitureManSleeps}} snów mężczyzny, {{home.furnitureWomanSleeps}} snów kobiety',
                 '{{home.furnitureFetchBelow}}',
               ],

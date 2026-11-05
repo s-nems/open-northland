@@ -101,7 +101,7 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'Die Passagierzahl auf der Karte zählt den Kommandanten nicht mit. Der zuerst Zugewiesene wird Kommandant. Geht er, übernimmt der nächste Passagier.',
-            'Der [[job:joiner|Schreiner]] baut ein Fahrzeug auf einer Baustelle neben der Werkstatt, ein Schiff auf dem Wasser am Ufer.',
+            'Der [[job:joiner|Schreiner]] baut ein Fahrzeug auf einer Baustelle neben der Werkstatt, ein Schiff auf Wasser in Reichweite der Werkstatt. Fehlt solches Wasser, warnt das Baufenster „Kein Wasser für Schiffe in Reichweite“.',
             'Wer einsteigt, verliert seinen Arbeitsplatz. Nur Träger mit Arbeitsplatz und Händler ziehen den Karren selbst und behalten die Arbeit.',
             'Die Ware laden der Kommandant und jeder erwachsene Mann an Bord, Soldaten, Helden, [[job:scout|Kundschafter]] und [[job:druid|Druiden]] aber nur, wenn sie das Kommando haben. Lädt niemand, erscheint „Kein Träger“.',
           ],
@@ -196,14 +196,24 @@ export const WORLD: ArticleGroup = {
           h: 'Ochse für den Ochsenkarren',
         },
         {
-          p: 'Ein fertiger Ochsenkarren wartet auf sein Zugtier und nimmt den nächsten erwachsenen [[good:cattle|Ochsen]] auf derselben Landmasse. Jede Viehzüchterei behält {{livestock.pair}} erwachsene Ochsen für sich, ebenso viele bleiben von einer Herde ohne Viehzüchterei. Der Karren bekommt also erst einen Ochsen darüber hinaus.',
+          p: 'Ein fertiger Ochsenkarren wartet auf sein Zugtier und nimmt den nächsten erwachsenen [[good:cattle|Ochsen]] auf derselben Landmasse. Jede Viehzüchterei behält {{draught.kept}} erwachsene Ochsen für sich, ebenso viele bleiben von einer Herde ohne Viehzüchterei. Der Karren bekommt also erst einen Ochsen darüber hinaus.',
         },
         {
           h: 'Schiffe',
         },
         {
+          table: {
+            head: ['Schiff', 'Plätze für Fahrzeuge', 'Fahrzeuge'],
+            rows: [
+              ['[[good:ship_small|Schiff]]', '{{vehicle.shipSlots}}', 'Handkarren, Ochsenkarren, Katapult'],
+              ['[[good:ship_big|Großes Schiff]]', '{{vehicle.bigShipSlots}}', 'Handkarren, Ochsenkarren'],
+            ],
+            num: [1],
+          },
+        },
+        {
           list: [
-            'Ein Schiff nimmt 1 Fahrzeug mit: Handkarren, Ochsenkarren oder Katapult, wenn dessen Besatzung an Bord passt. Ein Großes Schiff transportiert keine Fahrzeuge.',
+            'Ein Fahrzeug kommt an Bord, wenn seine Besatzung auf das Schiff passt. Ein Schiff, das einer Händlerroute zugewiesen ist, nimmt kein Fahrzeug auf.',
             '„Andocken“: Wähle ein Ufer, das Schiff hält {{vehicle.mooringDistance}} Hexfelder davon entfernt. Ein Hafen ist nicht nötig.',
             'Auf See steigt niemand ein oder aus.',
             'Ctrl/Cmd + Rechtsklick dockt an und setzt die Besatzung ab.',
@@ -324,7 +334,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'fog',
       name: 'Nebel und Sicht',
-      lead: 'Am weitesten sehen Kundschafter und Hauptquartier, {{vision.scout}} Hexfelder. Eine Baustelle sieht nichts.',
+      lead: 'Der Kundschafter sieht {{vision.scout}} Hexfelder weit, das Hauptquartier {{vision.headquarters}}. Eine Baustelle sieht nichts.',
       blocks: [
         {
           h: 'Kartenmodi',
@@ -361,13 +371,14 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Wer', 'Sichtweite, Hexfelder'],
             rows: [
-              ['[[job:scout|Kundschafter]], [[building:headquarters|Hauptquartier]]', '{{vision.scout}}'],
-              ['Held, [[good:ship_small|Schiff]], [[good:ship_big|Großes Schiff]]', '{{vision.hero}}'],
-              ['Soldat, jedes Gebäude', '{{vision.soldier}}'],
-              [
-                '[[good:handcart|Handkarren]], [[good:oxcart|Ochsenkarren]], [[good:catapult|Katapult]]',
-                '{{vision.cart}}',
-              ],
+              ['[[job:scout|Kundschafter]]', '{{vision.scout}}'],
+              ['[[building:headquarters|Hauptquartier]]', '{{vision.headquarters}}'],
+              ['Held', '{{vision.hero}}'],
+              ['[[good:ship_small|Schiff]], [[good:ship_big|Großes Schiff]]', '{{vision.ship}}'],
+              ['Soldat', '{{vision.soldier}}'],
+              ['Jedes andere Gebäude', '{{vision.building}}'],
+              ['[[good:handcart|Handkarren]], [[good:oxcart|Ochsenkarren]]', '{{vision.cart}}'],
+              ['[[good:catapult|Katapult]]', '{{vision.siege}}'],
               ['Übrige Erwachsene, deine Tiere', '{{vision.adult}}'],
               ['Kind', '{{vision.child}}'],
               ['Baustelle', '0'],

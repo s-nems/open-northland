@@ -48,7 +48,7 @@ export function walkStepTicks(roughness: number, m: WalkStepModifiers): number {
     (m.tired ? TIRED_STEP_TICKS : 0);
   if (m.age === 'baby') cost *= 2;
   else if (m.age === 'child') cost += 2;
-  cost += Math.floor(m.equipmentWeight / 2);
+  cost += Math.floor(m.equipmentWeight / EQUIPMENT_WEIGHT_PER_STEP_TICK);
   if (m.walksSlowly) cost *= SCRIPT_SLOW_FACTOR;
   if (m.walksFast) cost -= SCRIPT_FAST_TICKS;
   cost += cartDragTicks(cost, m.cartSpeedLossPercent);
@@ -82,6 +82,8 @@ const CARRYING_STEP_TICKS = 1;
 const TIRED_STEP_TICKS = 2;
 const SCRIPT_SLOW_FACTOR = 2;
 const SCRIPT_FAST_TICKS = 2;
+/** The combined equipment weight that adds one tick to a step, rounded down. */
+export const EQUIPMENT_WEIGHT_PER_STEP_TICK = 2;
 /** The original's floor on any step cost. */
 export const MIN_STEP_TICKS = 3;
 

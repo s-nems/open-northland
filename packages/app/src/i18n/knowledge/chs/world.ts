@@ -81,7 +81,7 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             '卡片上的乘客数不含指挥官。第一个被分配的人成为指挥官，他离开后由下一名乘客接任。',
-            '[[job:joiner|木匠]]在工坊旁的车场造载具，在岸边水面造船。',
+            '[[job:joiner|木匠]]在工坊旁的车场造载具，在工坊范围内的水面造船。没有这样的水面时，建造窗口会提示“附近没有可造船的水域”。',
             '上载具的人失去工作场所。只有有工作场所的搬运工和商人自己拉车，保留工作。',
             '指挥官和船上任何成年男性都会装货，但士兵、英雄、[[job:scout|侦察兵]]和[[job:druid|德鲁伊]]只在当指挥官时才装。没人装货时显示“无搬运工”。',
           ],
@@ -170,14 +170,24 @@ export const WORLD: ArticleGroup = {
           h: '牛车用牛',
         },
         {
-          p: '造好的牛车会等待役畜，牵走同一陆地上最近的成年[[good:cattle|牛]]。每座畜牧场给自己留下{{livestock.pair}}头成年牛，没有畜牧场的牛群也留下这么多，所以牛车只能牵走超出这个数的牛。',
+          p: '造好的牛车会等待役畜，牵走同一陆地上最近的成年[[good:cattle|牛]]。每座畜牧场给自己留下{{draught.kept}}头成年牛，没有畜牧场的牛群也留下这么多，所以牛车只能牵走超出这个数的牛。',
         },
         {
           h: '船只',
         },
         {
+          table: {
+            head: ['船只', '载具位', '可载载具'],
+            rows: [
+              ['[[good:ship_small|船]]', '{{vehicle.shipSlots}}', '手推车、牛车、投石机'],
+              ['[[good:ship_big|大船]]', '{{vehicle.bigShipSlots}}', '手推车、牛车'],
+            ],
+            num: [1],
+          },
+        },
+        {
           list: [
-            '船能载1辆载具：手推车、牛车或投石机，前提是载具的乘员上得了船。大船不载载具。',
+            '载具的乘员上得了船，载具才能上船。指定给商人路线的船不载载具。',
             '“靠岸”：指定岸边，船停在离它{{vehicle.mooringDistance}}格处。不需要港口。',
             '海上不能上下船。',
             'Ctrl/Cmd + 右键：靠岸并让乘员登陆。',
@@ -282,7 +292,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'fog',
       name: '迷雾与视野',
-      lead: '侦察兵和大本营看得最远，{{vision.scout}}格。工地什么也看不见。',
+      lead: '侦察兵能看{{vision.scout}}格，大本营{{vision.headquarters}}格。工地什么也看不见。',
       blocks: [
         {
           h: '地图模式',
@@ -315,10 +325,14 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['对象', '范围（格）'],
             rows: [
-              ['[[job:scout|侦察兵]]、[[building:headquarters|大本营]]', '{{vision.scout}}'],
-              ['英雄、[[good:ship_small|船]]、[[good:ship_big|大船]]', '{{vision.hero}}'],
-              ['士兵、所有建筑', '{{vision.soldier}}'],
-              ['[[good:handcart|手推车]]、[[good:oxcart|牛车]]、[[good:catapult|投石机]]', '{{vision.cart}}'],
+              ['[[job:scout|侦察兵]]', '{{vision.scout}}'],
+              ['[[building:headquarters|大本营]]', '{{vision.headquarters}}'],
+              ['英雄', '{{vision.hero}}'],
+              ['[[good:ship_small|船]]、[[good:ship_big|大船]]', '{{vision.ship}}'],
+              ['士兵', '{{vision.soldier}}'],
+              ['其他建筑', '{{vision.building}}'],
+              ['[[good:handcart|手推车]]、[[good:oxcart|牛车]]', '{{vision.cart}}'],
+              ['[[good:catapult|投石机]]', '{{vision.siege}}'],
               ['其余成人、你的动物', '{{vision.adult}}'],
               ['儿童', '{{vision.child}}'],
               ['工地', '0'],

@@ -92,7 +92,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               "An Ox Cart won't move",
-              'Status "Waiting for its draught animal" means it lacks an Ox. It takes an [[good:cattle|Ox]] only from outside the pair, so you need {{livestock.pairPlusOne}} adults at one Cattle Farm or {{livestock.pairPlusOne}} outside a farm: [[article:vehicles|Vehicles and Ships]].',
+              'Status "Waiting for its draught animal" means it lacks an Ox. It takes an [[good:cattle|Ox]] only from outside the pair, so you need {{draught.keptPlusOne}} adults at one Cattle Farm or {{draught.keptPlusOne}} outside a farm: [[article:vehicles|Vehicles and Ships]].',
             ],
           ],
         },
@@ -173,8 +173,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"No yard space", "Yard blocked"',
                 'Notable',
-                'No free ground next to the workshop for the vehicle, or another vehicle stands there',
-                'Clear some space, the workshop tries again after {{notice.yardRetrySeconds}} s',
+                'No free ground next to the workshop for the vehicle, for a ship no water in its reach, or another vehicle stands there',
+                'Clear some space, the workshop tries again after {{notice.yardRetrySeconds}} s. Put a ship workshop where the build window gives no water warning',
               ],
               ['"No fish"', 'Notable', 'No fish left in the nearby water', 'Put the flag on water with fish'],
               [
@@ -217,7 +217,7 @@ export const PROBLEMS: ArticleGroup = {
                 '"No animal"',
                 'Notable',
                 'The Ox Cart has no Ox',
-                'Keep {{livestock.pairPlusOne}} adults: [[article:vehicles|Vehicles and Ships]]',
+                'Keep {{draught.keptPlusOne}} adults: [[article:vehicles|Vehicles and Ships]]',
               ],
               [
                 '"No prey"',

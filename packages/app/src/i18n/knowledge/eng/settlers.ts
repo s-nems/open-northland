@@ -167,7 +167,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'food',
       name: 'Food',
-      lead: 'Food means Bread, Meat and Fish. A meal eaten at home gives twice the Energy.',
+      lead: 'Food means Bread, Meat and Fish. A meal eaten at home gives {{home.factor}} times the Energy.',
       blocks: [
         {
           h: 'What a meal gives',
@@ -212,8 +212,8 @@ export const SETTLERS: ArticleGroup = {
         {
           steps: [
             'A [[job:woman|Woman]] with a finished dwelling looks for the nearest food outside dwellings.',
-            'She carries 1 piece home.',
-            'With [[good:crockery|Crockery]] in the dwelling, 1 piece delivered becomes 2 in the larder.',
+            'She carries {{haul.carry}} piece home.',
+            'With [[good:crockery|Crockery]] in the dwelling, each delivery puts {{haul.crockeryDelivery}} pieces in the larder.',
           ],
         },
         {
@@ -303,15 +303,11 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Stage', 'Age', 'Since birth'],
             rows: [
-              ['Baby', '0-{{age.babyLastYear}} years', '0-{{age.childTime}}'],
-              [
-                'Child',
-                '{{age.childYears}}-{{age.childLastYear}} years',
-                '{{age.childTime}}-{{age.adultTime}}',
-              ],
+              ['Baby', 'under {{age.childYears}} years', '0-{{age.childTime}}'],
+              ['Child', '{{age.childYears}}-{{age.adultYears}} years', '{{age.childTime}}-{{age.adultTime}}'],
               ['Adult', 'from {{age.adultYears}} years', 'from {{age.adultTime}}'],
             ],
-            foot: 'A year of life lasts {{age.yearSeconds}} s. A child walks around the dwelling. Once grown, a boy becomes a [[job:civilist|Civilian]] and a girl a [[job:woman|Woman]]. Nobody dies of old age.',
+            foot: 'A year of life lasts {{age.yearSeconds}} s, and the settler panel shows age in whole years. A child walks around the dwelling. Once grown, a boy becomes a [[job:civilist|Civilian]] and a girl a [[job:woman|Woman]]. Nobody dies of old age.',
           },
         },
         {
@@ -339,14 +335,14 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:crockery|Crockery]]',
                 'Dwelling 1',
-                'A food delivery gives 2 pieces',
+                'A food delivery gives {{haul.crockeryDelivery}} pieces',
                 '{{home.crockeryDeliveries}} deliveries',
                 '{{home.crockeryFetchBelow}}',
               ],
               [
                 '[[good:furniture|Furniture]]',
                 'Dwelling 1',
-                'Sleep ×2',
+                'Sleep ×{{home.factor}}',
                 '{{home.furnitureManSleeps}} sleeps for a man, {{home.furnitureWomanSleeps}} for a woman',
                 '{{home.furnitureFetchBelow}}',
               ],

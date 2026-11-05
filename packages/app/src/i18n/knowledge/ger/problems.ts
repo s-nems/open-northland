@@ -92,7 +92,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Der Ochsenkarren steht',
-              'Status „Wartet auf sein Zugtier“ heißt, dass ein Ochse fehlt. Er nimmt nur einen [[good:cattle|Ochsen]], der nicht zum Paar gehört, also brauchst du {{livestock.pairPlusOne}} erwachsene Tiere in einer Viehzüchterei oder {{livestock.pairPlusOne}} außerhalb: [[article:vehicles|Fahrzeuge und Schiffe]].',
+              'Status „Wartet auf sein Zugtier“ heißt, dass ein Ochse fehlt. Er nimmt nur einen [[good:cattle|Ochsen]], der nicht zum Paar gehört, also brauchst du {{draught.keptPlusOne}} erwachsene Tiere in einer Viehzüchterei oder {{draught.keptPlusOne}} außerhalb: [[article:vehicles|Fahrzeuge und Schiffe]].',
             ],
           ],
         },
@@ -173,8 +173,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„Kein Bauplatz“, „Bauplatz blockiert“',
                 'Bemerkenswert',
-                'Neben der Werkstatt ist kein freier Boden fürs Fahrzeug, oder dort steht ein anderes Fahrzeug',
-                'Schaffe Platz, die Werkstatt versucht es nach {{notice.yardRetrySeconds}} s wieder',
+                'Neben der Werkstatt ist kein freier Boden fürs Fahrzeug, beim Schiff kein Wasser in Reichweite, oder dort steht ein anderes Fahrzeug',
+                'Schaffe Platz, die Werkstatt versucht es nach {{notice.yardRetrySeconds}} s wieder. Stelle eine Schiffswerkstatt dorthin, wo das Baufenster nicht vor fehlendem Wasser warnt',
               ],
               [
                 '„Keine Fische“',
@@ -222,7 +222,7 @@ export const PROBLEMS: ArticleGroup = {
                 '„Kein Zugtier“',
                 'Bemerkenswert',
                 'Dem Ochsenkarren fehlt der Ochse',
-                'Halte {{livestock.pairPlusOne}} erwachsene Tiere: [[article:vehicles|Fahrzeuge und Schiffe]]',
+                'Halte {{draught.keptPlusOne}} erwachsene Tiere: [[article:vehicles|Fahrzeuge und Schiffe]]',
               ],
               [
                 '„Kein Wild“',

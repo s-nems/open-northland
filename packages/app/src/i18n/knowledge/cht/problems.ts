@@ -92,7 +92,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               '牛車不動',
-              '狀態「等待役畜」表示缺牛。牛車只牽一對以外的[[good:cattle|牛]]，所以一座畜牧場要有{{livestock.pairPlusOne}}頭成年牲畜，或畜牧場外有{{livestock.pairPlusOne}}頭：[[article:vehicles|載具與船隻]]。',
+              '狀態「等待役畜」表示缺牛。牛車只牽一對以外的[[good:cattle|牛]]，所以一座畜牧場要有{{draught.keptPlusOne}}頭成年牲畜，或畜牧場外有{{draught.keptPlusOne}}頭：[[article:vehicles|載具與船隻]]。',
             ],
           ],
         },
@@ -143,8 +143,8 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '「沒有工場空間」「工場被佔用」',
                 '值得注意',
-                '工坊旁沒有空地放載具，或那裡停著另一輛載具',
-                '騰出空間，工坊{{notice.yardRetrySeconds}}秒後再試',
+                '工坊旁沒有空地放載具，造船時範圍內沒有水面，或那裡停著另一輛載具',
+                '騰出空間，工坊{{notice.yardRetrySeconds}}秒後再試。造船的工坊要建在建造視窗不提示缺水的地方',
               ],
               ['「沒有魚」', '值得注意', '附近水裡沒魚了', '用旗幟標記有魚的水域'],
               ['「沒有搬運工」', '值得注意', '船上沒人處理貨物', '讓搬運工或其他平民上船'],
@@ -162,7 +162,7 @@ export const PROBLEMS: ArticleGroup = {
                 '「沒有役畜」',
                 '值得注意',
                 '牛車沒有牛',
-                '保持{{livestock.pairPlusOne}}頭成年牲畜：[[article:vehicles|載具與船隻]]',
+                '保持{{draught.keptPlusOne}}頭成年牲畜：[[article:vehicles|載具與船隻]]',
               ],
               ['「沒有獵物」', '值得注意', '獵場裡沒有空閒獵物', '把旗幟移到獵物吃草的地方'],
               [

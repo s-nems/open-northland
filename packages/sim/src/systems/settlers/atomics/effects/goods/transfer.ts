@@ -16,6 +16,9 @@ import { cappedByStorageMinimum } from '../../../targets/stores/storage-reserve.
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
 
+/** The food units crockery adds to one delivery into a home's larder. */
+export const CROCKERY_BONUS_UNITS = 1;
+
 /**
  * Resolve one completed `pickup`: move up to `amount` of `goodType` from the source's {@link Stockpile}
  * onto the settler's back, capped by what is left there. The amount is conserved but the identity is not:
@@ -76,7 +79,7 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
   if (moved <= 0) return 0;
 
   let deposited = moved;
-  // A stocked home with crockery turns each delivered food unit into two before it reaches the larder.
+  // A stocked home with crockery adds a unit to each food delivery before it reaches the larder.
   // Crockery spends one durability use per delivery batch, as in the original.
   const cooking = homeQualityUseFor(ctx, 'cooking');
   if (
@@ -85,7 +88,7 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
     cooking !== undefined &&
     spendHomeQuality(world, store, 'cooking', cooking.useCost)
   )
-    deposited += 1;
+    deposited += CROCKERY_BONUS_UNITS;
   setStockAmount(world, store, slot.goodType, Math.min(slot.capacity, have + deposited));
   shrinkCarry(world, settler, load, moved);
   return moved;
