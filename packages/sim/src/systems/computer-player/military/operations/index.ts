@@ -19,7 +19,7 @@ import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
 import { mapAiSoldierClaims } from '../../../ai-shared/military/ownership.js';
 import { assaultHandler } from './assault.js';
 import { holdHandler } from './hold.js';
-import { landingHandler } from './landing.js';
+import { landingHandler, rescueHandler } from './landing.js';
 import { type OperationEnv, type OperationHandler, UNDRAWN_READY_AT } from './lifecycle.js';
 import { raidHandler } from './raid.js';
 import { seaScoutHandler } from './sea-scout.js';
@@ -39,6 +39,7 @@ const HANDLERS: Handlers = {
   assault: assaultHandler,
   hold: holdHandler,
   raid: raidHandler,
+  rescue: rescueHandler,
   landing: landingHandler,
   seaScout: seaScoutHandler,
 };
@@ -136,6 +137,8 @@ function stepOf(env: OperationEnv, op: Operation, pool: Entity[]): readonly Play
       return HANDLERS.hold.step(env, op, pool);
     case 'raid':
       return HANDLERS.raid.step(env, op, pool);
+    case 'rescue':
+      return HANDLERS.rescue.step(env, op, pool);
     case 'landing':
       return HANDLERS.landing.step(env, op, pool);
     case 'seaScout':
@@ -171,7 +174,8 @@ export interface OperationView {
     readonly struck: number;
     readonly killed: number;
   } | null;
-  /** A landing's ships and where each is on its voyage, head count at the start, men set ashore. */
+  /** A landing's or rescue's ships and where each is on its voyage, head count at the start, men set
+   *  ashore. */
   readonly landing: {
     readonly ships: readonly {
       readonly vehicle: Entity;
@@ -209,7 +213,7 @@ export function seatOperationsOf(world: World, seat: number): readonly Operation
           }
         : null,
     landing:
-      op.kind === 'landing'
+      op.kind === 'landing' || op.kind === 'rescue'
         ? {
             ships: op.ships.map((ship) => ({
               vehicle: ship.vehicle,

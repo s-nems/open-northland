@@ -102,6 +102,8 @@ const GUARD_OFFSET = 6;
 const ARMY_RANK = 6;
 /** The foe's band that lands on the seat's colony. */
 const RAIDERS = 6;
+/** The ships beyond the landing fleet a rescue may sail in. */
+const RESCUE_SHIPS = 3;
 /** The seat's own men standing on the colony a relief sails for, at a post out of the band's reach. */
 const GARRISON = 5;
 const GARRISON_POST = { x: 130, y: 114 };
@@ -248,12 +250,17 @@ function landingWorld({
   for (const b of foe) place(b.buildingType, b.at, b.owner ?? FOE);
   sim.step();
   const fleet = landingFleetShips(sim.world, SEAT, computerProfileOf(sim.world, SEAT));
-  for (let i = 0; i < (ships ?? fleet); i++) {
+  launchShips(sim, ships ?? fleet);
+  spawnBand(sim, men ?? fleet * (seats + 1), { x: BARRACKS.x - 6, y: BARRACKS.y + 8 }, ARMY_RANK, SEAT);
+  return { sim, fleet };
+}
+
+/** `count` of the seat's ships moored down the strait beside the west shore. */
+function launchShips(sim: Simulation, count: number): void {
+  for (let i = 0; i < count; i++) {
     const at = { x: SHIP_COLUMN, y: FIRST_SHIP_ROW + SHIP_SPACING * i };
     createVehicle(sim.world, ctxOf(sim), { vehicleType: SHIP, ...at, tribe: VIKING, owner: SEAT });
   }
-  spawnBand(sim, men ?? fleet * (seats + 1), { x: BARRACKS.x - 6, y: BARRACKS.y + 8 }, ARMY_RANK, SEAT);
-  return { sim, fleet };
 }
 
 function spawnBand(
@@ -277,6 +284,10 @@ function spawnBand(
 
 function landings(sim: Simulation): OperationView[] {
   return seatOperationsOf(sim.world, SEAT).filter((op) => op.kind === 'landing');
+}
+
+function rescues(sim: Simulation): OperationView[] {
+  return seatOperationsOf(sim.world, SEAT).filter((op) => op.kind === 'rescue');
 }
 
 function seatShips(sim: Simulation): Entity[] {
@@ -721,7 +732,7 @@ describe('landing operations', () => {
     ['', 0],
     [' beside its garrison', GARRISON],
   ])(
-    'relieves its colony%s with men ashore that outweigh the band, beats it and sails home',
+    'rescues its colony%s with men ashore that outweigh the band, beats it and sails home',
     (_, garrison) => {
       const { sim } = landingWorld({ colony: true, armed: true });
       const terrain = terrainOf(sim);
@@ -737,8 +748,8 @@ describe('landing operations', () => {
       let seen: OperationView | undefined;
       let joined = false;
       runUntil(sim, LANDING_LIMIT_TICKS, () => {
-        seen = landings(sim)[0] ?? seen;
-        // The garrison, posted out of the band's reach, comes up beside the relief as it lands.
+        seen = rescues(sim)[0] ?? seen;
+        // The garrison, posted out of the band's reach, comes up beside the rescue as it lands.
         if (!joined && (seen?.landing?.landed ?? 0) > 0) {
           joined = true;
           const posted = menOf(sim, SEAT, colonyLand).filter((e) => !seen?.members.includes(e));
@@ -761,7 +772,7 @@ describe('landing operations', () => {
     },
   );
 
-  it('relieves its colony while its posture holds the army home, and raids nothing', () => {
+  it('rescues its colony while its posture holds the army home, and raids nothing', () => {
     const { sim } = landingWorld({ colony: true, foe: [{ buildingType: FARM_TYPE, at: FOE_FARM }] });
     const terrain = terrainOf(sim);
     const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
@@ -786,11 +797,43 @@ describe('landing operations', () => {
     });
     spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
     runUntil(sim, LANDING_LIMIT_TICKS, () => {
-      seen = landings(sim)[0] ?? seen;
+      seen = rescues(sim)[0] ?? seen;
       return (seen?.landing?.landed ?? 0) > 0;
     });
-    expect(seen?.target.entity).toBeNull();
+    expect(seen?.kind).toBe('rescue');
     expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it('rescues its colony while a landing of its own is out at the rival, on ships left free', () => {
+    const { sim, fleet } = landingWorld({ colony: true, armed: true, ships: 0 });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    // Ships beyond the landing fleet lie free at home once the landing has taken its own.
+    launchShips(sim, fleet + RESCUE_SHIPS);
+    spawnBand(sim, RESCUE_SHIPS * MEN_PER_SHIP, { x: BARRACKS.x - 6, y: BARRACKS.y - 8 }, ARMY_RANK, SEAT);
+    let attack: OperationView | undefined;
+    let rescue: OperationView | undefined;
+    let raided = false;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      attack = landings(sim)[0] ?? attack;
+      rescue = rescues(sim)[0] ?? rescue;
+      if (!raided && attack?.state === 'moving') {
+        raided = true;
+        const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
+        sim.world.add(carrier, ComputerColony, {
+          colonies: [blankColony(colonyLand, { threat })],
+          rejected: [],
+          retryAt: 0,
+        });
+        spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
+      }
+      return rescue !== undefined;
+    });
+    expect(raided).toBe(true);
+    expect(rescue?.landing?.startShips).toBeGreaterThan(0);
+    expect(attack?.state).not.toBe('done');
   });
 
   it('keeps fewer ships than a big landing home', () => {

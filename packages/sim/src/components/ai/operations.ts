@@ -4,10 +4,12 @@ import { aiControlEntity } from './control.js';
 
 /** What an operation is for. `assault` is the seat's marching wave (its mechanics live on the barracks'
  *  `WaveMarch`); `hold` is a band that takes and keeps an area the map rewards holding; `raid` is a small
- *  band sent at the enemy's gatherers; `landing` is a wave carried over the sea by the seat's ships;
- *  `seaScout` is one ship with one soldier aboard sailing round the rival's island for sight. A new kind is one more entry and one more handler (`systems/computer-player/military/operations`); kinds open
+ *  band sent at the enemy's gatherers; `rescue` is a band the seat's ships carry to one of its colonies to
+ *  fight an enemy band there; `landing` is a wave carried over the sea by the seat's ships at a rival's
+ *  land; `seaScout` is one ship with one soldier aboard sailing round the rival's island for sight. A new
+ *  kind is one more entry and one more handler (`systems/computer-player/military/operations`); kinds open
  *  in this order. */
-export const OPERATION_KINDS = ['assault', 'hold', 'raid', 'landing', 'seaScout'] as const;
+export const OPERATION_KINDS = ['assault', 'hold', 'raid', 'rescue', 'landing', 'seaScout'] as const;
 export type OperationKind = (typeof OPERATION_KINDS)[number];
 
 /** An operation's lifecycle. `done` and `failed` are terminal: the operation lets its men go and is
@@ -98,10 +100,9 @@ export interface LandingShip {
   leg: LandingLeg;
 }
 
-/** A wave carried over the sea: `target` is the rival headquarters it sails for, the members are the men
- *  aboard or set ashore and each ship's commander until his ship is home. */
-export interface LandingOperation extends OperationBase {
-  kind: 'landing';
+/** Men carried over the sea and set ashore: the members are the men aboard or set ashore and each ship's
+ *  commander until his ship is home. */
+interface SeaLandingBase extends OperationBase {
   /** Ascending vehicle id; a sunk ship is dropped. */
   ships: LandingShip[];
   /** The ships and men it set out with, for its losses. */
@@ -112,6 +113,20 @@ export interface LandingOperation extends OperationBase {
   /** The tick its first ship lay moored at its shore with the men still aboard, or null before. */
   firstMooredAt: number | null;
 }
+
+/** A wave sailing at a rival's land: `target` is the building it heads for. */
+export interface LandingOperation extends SeaLandingBase {
+  kind: 'landing';
+}
+
+/** A band sailing to one of the seat's colonies to fight the enemy band there: `target` is where the seat
+ *  saw the band, its entity null. */
+export interface RescueOperation extends SeaLandingBase {
+  kind: 'rescue';
+}
+
+/** Either operation that sails men over the sea and sets them ashore. */
+export type SeaLanding = LandingOperation | RescueOperation;
 
 /** One ship sailing round the rival's island so the seat sees it: `target` is the rival headquarters the
  *  seat sails for, the one member the soldier aboard. */
@@ -131,6 +146,7 @@ export type Operation =
   | HoldOperation
   | LandingOperation
   | RaidOperation
+  | RescueOperation
   | SeaScoutOperation;
 
 export interface ComputerOperationsState {

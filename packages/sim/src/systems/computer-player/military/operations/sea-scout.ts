@@ -280,7 +280,10 @@ function step(env: OperationEnv, op: SeaScoutOperation): readonly PlayerCommand[
 function landingUnderWay(world: World, seat: number): boolean {
   const carrier = aiControlEntity(world, seat);
   const held = carrier === null ? undefined : world.tryGet(carrier, ComputerOperations);
-  return held?.operations.some((op) => op.kind === 'landing' && isOperationOpen(op)) ?? false;
+  return (
+    held?.operations.some((op) => (op.kind === 'landing' || op.kind === 'rescue') && isOperationOpen(op)) ??
+    false
+  );
 }
 
 /** The weakest of `men` by points, the lowest id on a tie (`men` ascend by id). */

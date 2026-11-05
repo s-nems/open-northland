@@ -6,7 +6,9 @@ import {
   type LandingShip,
   type OperationEndReason,
   Position,
+  type RescueOperation,
   Rider,
+  type SeaLanding,
   seatPeaceEndTick,
   Vehicle,
   VehicleDrive,
@@ -38,8 +40,14 @@ import { ownArmyPoints } from '../enemy-strength.js';
 import { marchOrders } from '../muster.js';
 import { unitPoints } from '../points.js';
 import { homeOf } from './band.js';
-import { type LandingAim, landingAim, stormObjective } from './landing-aim.js';
-import { isRelief, mayRelieve, ownPointsOnLand, reliefAim, reliefObjective } from './landing-relief.js';
+import {
+  type LandingAim,
+  type LandingRoom,
+  landingAim,
+  type RankedMan,
+  stormObjective,
+} from './landing-aim.js';
+import { isRescue, mayRescue, ownPointsOnLand, rescueAim, rescueObjective } from './landing-relief.js';
 import { believedLand, type FireSource, landingObjective, underFire } from './landing-target.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import {
@@ -198,7 +206,7 @@ function stoppedShort(world: World, ship: LandingShip, at: HalfCellNode): boolea
 }
 
 /** Turn every ship still out for home for `reason`: one still moored on home land frees its crew there. */
-function withdraw(env: OperationEnv, op: LandingOperation, reason: OperationEndReason): PlayerCommand[] {
+function withdraw(env: OperationEnv, op: SeaLanding, reason: OperationEndReason): PlayerCommand[] {
   enter(op, 'withdrawing', env.ctx.tick, reason);
   const commands: PlayerCommand[] = [];
   for (const ship of op.ships) {
@@ -232,7 +240,7 @@ function freeCrew(ship: LandingShip, mooring: DeepReadonly<HalfCellNode>): Playe
  * stays aboard a ship the seat no longer counts free; past {@link LANDING_STRANDED_GRACE_TICKS} more, a ship
  * still at sea is let go.
  */
-function releaseStranded(env: OperationEnv, op: LandingOperation, from: number): PlayerCommand[] {
+function releaseStranded(env: OperationEnv, op: SeaLanding, from: number): PlayerCommand[] {
   const waited = env.ctx.tick - from;
   if (waited < LANDING_SAIL_TIMEOUT_TICKS) return [];
   const commands: PlayerCommand[] = [];
@@ -249,7 +257,7 @@ function releaseStranded(env: OperationEnv, op: LandingOperation, from: number):
  *  owner is no enemy, or it lost {@link LANDING_SHIP_LOSS_PCT} of its ships. A posture turning to defence
  *  for any other reason lets it sail on: the wave was weighed when it cast off, and turning a fleet round
  *  on every swing of the army's count keeps the army home. */
-function abortReason(env: OperationEnv, op: LandingOperation): OperationEndReason | null {
+function abortReason(env: OperationEnv, op: SeaLanding): OperationEndReason | null {
   const owner = op.target.owner;
   if (underAttack(env.world, env.seat)) return 'defenceMode';
   if (owner === null || diplomacyStance(env.world, env.seat, owner) !== 'enemy') return 'targetLost';
@@ -261,7 +269,7 @@ function abortReason(env: OperationEnv, op: LandingOperation): OperationEndReaso
  *  least the men aboard who go ashore, a ship's commander staying at its helm, and for a relief the seat's
  *  own fighters on that land ({@link besideAshore}): read from the first ship's mooring on, while the wave
  *  waits aboard for the rest, for the whole wave. Costs the enemies' fighters. */
-function outmatchedAshore(env: OperationEnv, op: LandingOperation): boolean {
+function outmatchedAshore(env: OperationEnv, op: SeaLanding): boolean {
   const { world, ctx, seat } = env;
   const helms = new Set<Entity>();
   for (const ship of op.ships) {
@@ -281,8 +289,8 @@ function outmatchedAshore(env: OperationEnv, op: LandingOperation): boolean {
 
 /** The points of the seat's own fighters a relief finds on the colony it sails for, its own men left out,
  *  who fight the band beside it as its sizing counted them ({@link reliefAim}); 0 for any other landing. */
-function besideAshore(env: OperationEnv, op: LandingOperation): number {
-  return isRelief(op) ? ownPointsOnLand(env, rivalComponent(env, op), new Set(op.members)) : 0;
+function besideAshore(env: OperationEnv, op: SeaLanding): number {
+  return isRescue(op) ? ownPointsOnLand(env, rivalComponent(env, op), new Set(op.members)) : 0;
 }
 
 /**
@@ -290,7 +298,7 @@ function besideAshore(env: OperationEnv, op: LandingOperation): number {
  * together. Past {@link LANDING_FORM_TIMEOUT_TICKS} a ship still waiting leaves its men outside behind,
  * or, with nobody aboard, drops out of the landing, and the rest cast off.
  */
-function forming(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
+function forming(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const { world, ctx } = env;
   const reason = abortReason(env, op);
   if (reason !== null) return withdraw(env, op, reason);
@@ -324,7 +332,7 @@ function forming(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
  * the men aboard turns the whole landing back. A ship that stopped short docks at another shore of that
  * land ({@link otherShore}). Once no ship is out the landed men fight.
  */
-function sailing(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
+function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const { world, ctx } = env;
   if (op.landed === 0) {
     const reason = abortReason(env, op);
@@ -375,7 +383,7 @@ function sailing(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
 
 /** The ships sailing back: one moored on home land frees its commander, one stopped short docks at
  *  another shore of home ({@link otherShore}), or at its own again when home has no other. */
-function homecoming(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
+function homecoming(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   for (const ship of op.ships) {
     if (ship.leg !== 'back') continue;
@@ -428,12 +436,12 @@ export function otherShore(
 }
 
 /** The land the men were set ashore on: the target's component, read at the spot the landing aimed at. */
-function rivalComponent(env: OperationEnv, op: LandingOperation): number {
+function rivalComponent(env: OperationEnv, op: SeaLanding): number {
   return componentOfPoint(env.terrain, { hx: op.target.hx, hy: op.target.hy });
 }
 
 /** The men set ashore: members on the target's land, no longer aboard. */
-function landedMen(env: OperationEnv, op: LandingOperation): Entity[] {
+function landedMen(env: OperationEnv, op: SeaLanding): Entity[] {
   const { world, terrain } = env;
   const rival = rivalComponent(env, op);
   return op.members.filter((e) => {
@@ -457,7 +465,7 @@ interface LandedOrders {
  * ({@link landingObjective}), storming covered ground while they clearly outweigh what defends it
  * ({@link stormObjective}); a man fighting or on his way is left to it.
  */
-function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
+function landedOrders(env: OperationEnv, op: SeaLanding): LandedOrders {
   const { world, ctx, terrain } = env;
   const landed = landedMen(env, op);
   const first = landed[0];
@@ -467,8 +475,8 @@ function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
   const free = landed.filter(
     (e) => !spokenFor(world, e) && !world.has(e, Engagement) && !world.has(e, AttackOrder),
   );
-  if (isRelief(op)) {
-    const foe = reliefObjective(env, land, from);
+  if (isRescue(op)) {
+    const foe = rescueObjective(env, land, from);
     if (foe === null) return { landed, striking: false, fire: [], commands: [] };
     return { landed, striking: true, fire: [], commands: marchOrders(world, terrain, free, foe) };
   }
@@ -495,7 +503,7 @@ function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
  */
 function losing(
   env: OperationEnv,
-  op: LandingOperation,
+  op: SeaLanding,
   landed: readonly Entity[],
   fire: readonly FireSource[],
 ): boolean {
@@ -534,7 +542,7 @@ function boundsOf(spots: readonly HalfCellNode[], margin: number) {
  *  him with a seat left, the lower id first; a man no ship seats stays ashore. */
 function reembark(
   env: OperationEnv,
-  op: LandingOperation,
+  op: SeaLanding,
   landed: readonly Entity[],
   reason: OperationEndReason,
 ): PlayerCommand[] {
@@ -562,7 +570,7 @@ function reembark(
 }
 
 /** Send the waiting ships home with whoever is aboard, leaving behind a man still walking to one. */
-function sailWaitingHome(env: OperationEnv, op: LandingOperation, all: boolean): PlayerCommand[] {
+function sailWaitingHome(env: OperationEnv, op: SeaLanding, all: boolean): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   for (const ship of op.ships) {
     const state = shipState(env.world, ship);
@@ -585,7 +593,7 @@ function sailWaitingHome(env: OperationEnv, op: LandingOperation, all: boolean):
  * and every ship is home or lost: `wiped` when the landed men fell, `nothingToStrike` when the land holds
  * nothing more.
  */
-function acting(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
+function acting(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const stayEnd = op.since + LANDING_SHORE_STAY_TICKS;
   const homeward = [...homecoming(env, op), ...releaseStranded(env, op, stayEnd)];
   if (env.ctx.tick >= stayEnd) homeward.push(...sailWaitingHome(env, op, true));
@@ -606,7 +614,7 @@ function acting(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
 /** Withdrawing: a waiting ship sails home once every man called to it is aboard, or past
  *  {@link LANDING_REEMBARK_TICKS} without the rest; every ship frees its crew at home
  *  ({@link releaseStranded} past the sail timeout); done once every ship is home or let go. */
-function withdrawing(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
+function withdrawing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const late = env.ctx.tick - op.since >= LANDING_REEMBARK_TICKS;
   const commands = [
     ...sailWaitingHome(env, op, late),
@@ -619,7 +627,7 @@ function withdrawing(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
 }
 
 /** The members still the landing's: aboard one of its ships, or set ashore on the rival's land. */
-function keepMembers(env: OperationEnv, op: LandingOperation): void {
+function keepMembers(env: OperationEnv, op: SeaLanding): void {
   const { world } = env;
   const ships = new Set(op.ships.map((ship) => ship.vehicle));
   const ashore = new Set(landedMen(env, op));
@@ -629,7 +637,7 @@ function keepMembers(env: OperationEnv, op: LandingOperation): void {
   });
 }
 
-function step(env: OperationEnv, op: LandingOperation): readonly PlayerCommand[] {
+function step<O extends SeaLanding>(env: OperationEnv, op: O): readonly PlayerCommand[] {
   op.ships = op.ships.filter((ship) => env.world.has(ship.vehicle, Vehicle));
   let commands: PlayerCommand[] = [];
   switch (op.state) {
@@ -680,19 +688,20 @@ function crewsOf(
   return crews;
 }
 
-/**
- * A relief of the seat's colony a rival sails on ({@link reliefAim}) once its peace is over, unless home
- * itself is raided; else a landing when the seat's posture attacks, on the land {@link landingAim} picks
- * among every land the seat believes holds an enemy building: a rival's headquarters land takes every free
- * man on home land once at least {@link landingFewestShips} of its ships lie free and moored and the men fill
- * {@link LANDING_FLEET_MIN_SHIPS} of them; a raid on a colony takes the band sized to it. Either sails in as
- * few of the free ships as seat it. The men fill the ships by {@link crewsOf}; each ship docks at its own
- * shore point ({@link landingShores}).
- */
-function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<LandingOperation> | null {
-  const { world, ctx, terrain, seat, orders } = env;
-  const ratio = orders.launchRatio;
-  if (ctx.tick < landingFromTick(world, seat) || (ratio === null && !mayRelieve(env))) return null;
+/** The ships and men a landing may take this decision: the free ships moored on home land, at most the
+ *  landing fleet, and the free men on home land, strongest first. */
+interface Muster {
+  readonly home: number;
+  readonly moored: readonly Entity[];
+  readonly ranked: readonly RankedMan[];
+  readonly room: LandingRoom;
+}
+
+/** The {@link Muster} of this decision, or null with no ship free at home: a headquarters landing is big
+ *  once at least {@link landingFewestShips} ships lie free and the men fill
+ *  {@link LANDING_FLEET_MIN_SHIPS} of them. */
+function musterOf(env: OperationEnv, free: readonly Entity[]): Muster | null {
+  const { world, ctx, terrain, seat } = env;
   const home = terrain.componentOf(env.home);
   if (home === NO_COMPONENT) return null;
   const fleet = landingFleetShips(world, seat, computerProfileOf(world, seat));
@@ -702,31 +711,41 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
     const node = standingNode(world, terrain, e);
     return node !== null && terrain.componentOf(node) === home && !onErrand(world, e);
   });
-  const seatsOf = (ship: Entity): number => world.get(ship, Vehicle).passengers.length;
+  const ships = moored.map((ship) => seatsOf(world, ship));
   let least = 0;
-  for (const ship of moored.slice(0, LANDING_FLEET_MIN_SHIPS)) least += seatsOf(ship);
-  const shipSeats = moored.map(seatsOf);
+  for (const room of ships.slice(0, LANDING_FLEET_MIN_SHIPS)) least += room;
   let seats = 0;
-  for (const room of shipSeats) seats += room;
+  for (const room of ships) seats += room;
   const ranked = men
     .map((entity) => ({ entity, points: unitPoints(world, ctx, entity) }))
     .sort((a, b) => b.points - a.points || a.entity - b.entity);
-  const room = {
-    ships: shipSeats,
-    seats,
-    bigLanding: moored.length >= landingFewestShips(fleet) && men.length >= least,
-  };
-  const aim =
-    (underAttack(world, seat) ? null : reliefAim(env, ranked, room)) ??
-    (ratio === null ? null : landingAim(env, home, homeOf(env), ranked, ratio, room));
-  if (aim === null) return null;
-  // The fewest ships, in id order, that seat the wave.
+  const bigLanding = moored.length >= landingFewestShips(fleet) && men.length >= least;
+  return { home, moored, ranked, room: { ships, seats, bigLanding } };
+}
+
+function seatsOf(world: World, ship: Entity): number {
+  return world.get(ship, Vehicle).passengers.length;
+}
+
+/** A {@link SeaLanding} but its kind, with the orders that start it. */
+interface Voyage {
+  readonly op: Omit<SeaLanding, 'kind'>;
+  readonly commands: readonly PlayerCommand[];
+}
+
+/**
+ * The voyage sailing `aim`'s men in as few of the `moored` ships as seat them, in id order: the men fill
+ * the ships by {@link crewsOf}; each ship docks at its own shore point ({@link landingShores}). Null when
+ * that land offers no shore.
+ */
+function launch(env: OperationEnv, aim: LandingAim, moored: readonly Entity[], id: number): Voyage | null {
+  const { world, ctx } = env;
   const ships: Entity[] = [];
   let capacity = 0;
   for (const ship of moored) {
     if (capacity >= aim.men.length) break;
     ships.push(ship);
-    capacity += seatsOf(ship);
+    capacity += seatsOf(world, ship);
   }
   const crews = crewsOf(env, ships, aim.men);
   const first = crews[0];
@@ -747,9 +766,8 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
     });
   });
   const wave = crews.flatMap((crew) => crew.men);
-  const op: LandingOperation = {
+  const op: Omit<SeaLanding, 'kind'> = {
     id,
-    kind: 'landing',
     state: 'forming',
     since: ctx.tick,
     members: [...wave].sort((a, b) => a - b),
@@ -762,6 +780,41 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
     firstMooredAt: null,
   };
   return { op, commands };
+}
+
+/**
+ * A landing once the seat's posture attacks, its peace is over and its difficulty's first wave is due, on
+ * the land {@link landingAim} picks among every land the seat believes holds an enemy building: a big
+ * landing on a rival's headquarters land takes every free man on home land ({@link musterOf}); a raid on a
+ * colony takes the band sized to it.
+ */
+function openLanding(
+  env: OperationEnv,
+  free: readonly Entity[],
+  id: number,
+): Opened<LandingOperation> | null {
+  const { world, ctx, seat, orders } = env;
+  const ratio = orders.launchRatio;
+  if (ratio === null || ctx.tick < landingFromTick(world, seat)) return null;
+  const muster = musterOf(env, free);
+  if (muster === null) return null;
+  const aim = landingAim(env, muster.home, homeOf(env), muster.ranked, ratio, muster.room);
+  const voyage = aim === null ? null : launch(env, aim, muster.moored, id);
+  return voyage === null ? null : { op: { ...voyage.op, kind: 'landing' }, commands: voyage.commands };
+}
+
+/**
+ * A rescue of the seat's colony an enemy band reaches ({@link rescueAim}) once the seat's peace is over,
+ * whatever its posture, its first wave and its other landings, unless home itself is raided.
+ */
+function openRescue(env: OperationEnv, free: readonly Entity[], id: number): Opened<RescueOperation> | null {
+  const { world, ctx, seat } = env;
+  if (ctx.tick < seatPeaceEndTick(world, seat) || underAttack(world, seat) || !mayRescue(env)) return null;
+  const muster = musterOf(env, free);
+  if (muster === null) return null;
+  const aim = rescueAim(env, muster.ranked, muster.room);
+  const voyage = aim === null ? null : launch(env, aim, muster.moored, id);
+  return voyage === null ? null : { op: { ...voyage.op, kind: 'rescue' }, commands: voyage.commands };
 }
 
 /**
@@ -781,5 +834,13 @@ export const landingHandler: OperationHandler<LandingOperation> = {
   phase: 'beforeCampaign',
   cooldownTicks,
   step,
-  open,
+  open: openLanding,
+};
+
+/** A rescue opens again on the decision after one ends: each is sized afresh on what the seat sees. */
+export const rescueHandler: OperationHandler<RescueOperation> = {
+  phase: 'beforeCampaign',
+  cooldownTicks: () => 0,
+  step,
+  open: openRescue,
 };

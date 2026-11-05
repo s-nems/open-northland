@@ -1,8 +1,9 @@
 import {
   type ColonyPhase,
   diplomacyStance,
-  type LandingOperation,
   MAX_PLAYERS,
+  type RescueOperation,
+  type SeaLanding,
   Vehicle,
 } from '../../../../components/index.js';
 import type { DeepReadonly, Entity } from '../../../../ecs/world.js';
@@ -55,13 +56,13 @@ const NOBODY: ReadonlySet<Entity> = new Set();
 const STANDING_PHASES: ReadonlySet<ColonyPhase> = new Set(['landing', 'founding', 'running']);
 
 /** Whether the seat has a colony standing on its land, which a relief may sail for. */
-export function mayRelieve(env: OperationEnv): boolean {
+export function mayRescue(env: OperationEnv): boolean {
   return seatColonies(env.world, env.seat).some((c) => STANDING_PHASES.has(c.phase));
 }
 
-/** Whether `op` is a relief: the only landing aimed at no building (`reliefAim`). */
-export function isRelief(op: DeepReadonly<LandingOperation>): boolean {
-  return op.target.entity === null;
+/** Whether `op` is a rescue rather than a landing at a rival. */
+export function isRescue(op: DeepReadonly<SeaLanding>): op is DeepReadonly<RescueOperation> {
+  return op.kind === 'rescue';
 }
 
 /**
@@ -73,7 +74,7 @@ export function isRelief(op: DeepReadonly<LandingOperation>): boolean {
  * outweigh the gap by that edge, at least {@link RELIEF_LEAST_MEN}, within `room`. Costs the enemies' ships
  * and, with a colony to weigh, their fighters and the seat's own.
  */
-export function reliefAim(
+export function rescueAim(
   env: OperationEnv,
   ranked: readonly RankedMan[],
   room: LandingRoom,
@@ -127,7 +128,7 @@ export function reliefAim(
  * Where the men a relief set ashore on `land` go: the enemy fighter the seat sees there nearest `from`, the
  * first in sighting order on a tie, or null once it sees none.
  */
-export function reliefObjective(env: OperationEnv, land: number, from: HalfCellNode): NodeId | null {
+export function rescueObjective(env: OperationEnv, land: number, from: HalfCellNode): NodeId | null {
   const { terrain } = env;
   let best: { readonly at: HalfCellNode; readonly distance: number } | null = null;
   for (const t of enemyFightersOn(env, new Set([land]))) {
