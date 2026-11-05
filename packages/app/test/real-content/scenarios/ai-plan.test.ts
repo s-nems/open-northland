@@ -258,6 +258,10 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
         expect(buildingById.get(seat.whileOwned), `seat building ${seat.whileOwned}`).toBeDefined();
         return [...seatGoods(seat.works), ...seatGoods(seat.otherwise)];
       }
+      if ('whileGathered' in seat) {
+        known(seat.whileGathered, 'seat gathered good');
+        return [...seatGoods(seat.works), ...seatGoods(seat.otherwise)];
+      }
       if ('fleet' in seat) return [seat.fleet, ...(seat.beside ?? []), ...seatGoods(seat.otherwise)];
       if (!('goods' in seat)) return [...seat];
       return [...seat.goods, ...(seat.otherwise === undefined ? [] : seatGoods(seat.otherwise))];
