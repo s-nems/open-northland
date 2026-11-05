@@ -145,7 +145,10 @@ interface Member {
   /** The band whose last rebuild drew it from the mesh, and that rebuild's number. */
   band: BandStills | null;
   build: number;
-  /** The container's change ticks and the shading its quads were packed under. */
+  /** The plain containers nested in it whose sprites it draws, as its last reshape found them. */
+  nested: Container[];
+  /** The change ticks of the container and its nested ones, summed, and the shading its quads were packed
+   *  under. Ticks only rise, so a sum moves whenever one of its ticks does. */
   containerTick: number;
   viewTick: number;
   shading: boolean;
@@ -191,6 +194,70 @@ function plainContainer(child: Container): boolean {
     (child.effects?.length ?? 0) === 0 &&
     !child.sortableChildren
   );
+}
+
+/** A plain container inside a member, such as a selection outline's: Pixi collects its sprites in place
+ *  among the member's own, so the mesh does too. */
+function nestedGroup(child: Container): boolean {
+  return plainContainer(child) && child.groupBlendMode === 'normal';
+}
+
+/** Push `container`'s displayed sprites in Pixi's collect order, and its nested groups; false at a
+ *  displayed child the mesh cannot draw. */
+function collectSprites(
+  container: Container,
+  layer: RenderLayer,
+  sprites: Sprite[],
+  nested: Container[],
+): boolean {
+  for (const child of container.children) {
+    if (!displayed(child, layer)) continue;
+    if (nestedGroup(child)) {
+      nested.push(child);
+      if (!collectSprites(child, layer, sprites, nested)) return false;
+    } else if (meshableSprite(child)) sprites.push(child);
+    else return false;
+  }
+  return true;
+}
+
+/**
+ * Match `container`'s displayed sprites, nested groups included, against `quads` from `next` on: the index
+ * past them, or -1 where one is not its quad's sprite, or changed and is no longer meshable.
+ */
+function holdsFrom(
+  container: Container,
+  quads: readonly MeshQuad[],
+  next: number,
+  layer: RenderLayer,
+): number {
+  let at = next;
+  for (const child of container.children) {
+    if (!displayed(child, layer)) continue;
+    if (nestedGroup(child)) {
+      at = holdsFrom(child, quads, at, layer);
+      if (at < 0) return -1;
+      continue;
+    }
+    const quad = quads[at++];
+    if (quad === undefined || quad.sprite !== child || !quad.live) return -1;
+    const changed =
+      quad.containerTick !== child._didContainerChangeTick || quad.viewTick !== child._didViewChangeTick;
+    if (changed && !meshableSprite(child)) return -1;
+  }
+  return at;
+}
+
+function containerTicksOf(member: Member): number {
+  let ticks = member.container._didContainerChangeTick;
+  for (const group of member.nested) ticks += group._didContainerChangeTick;
+  return ticks;
+}
+
+function viewTicksOf(member: Member): number {
+  let ticks = member.container._didViewChangeTick;
+  for (const group of member.nested) ticks += group._didViewChangeTick;
+  return ticks;
 }
 
 /**
@@ -635,6 +702,7 @@ export class StillSpriteMesh implements StillBandCollector {
       member = {
         container: child,
         quads: [],
+        nested: [],
         band: null,
         build: 0,
         containerTick: Number.NaN,
@@ -646,9 +714,9 @@ export class StillSpriteMesh implements StillBandCollector {
     }
     // A child added or removed moves the view tick and may change the sprites; a transform, tint or alpha
     // change moves the container tick, which moves every sprite of it, so all its quads repack.
-    const regrouped = member.band === null || member.viewTick !== child._didViewChangeTick;
+    const regrouped = member.band === null || member.viewTick !== viewTicksOf(member);
     const moved =
-      regrouped || member.containerTick !== child._didContainerChangeTick || member.shading !== this.shading;
+      regrouped || member.containerTick !== containerTicksOf(member) || member.shading !== this.shading;
     const shaped = regrouped
       ? this.reshape(member, layer)
       : (plainContainer(child) && child.groupBlendMode === 'normal' && this.shapeHolds(member, layer)) ||
@@ -688,11 +756,10 @@ export class StillSpriteMesh implements StillBandCollector {
       // Pixi clears this as it collects a view, so the sprite's next change notifies the group again.
       if (sprite.didViewUpdate) sprite.didViewUpdate = false;
     }
-    const container = member.container;
     member.band = state;
     member.build = state.build;
-    member.containerTick = container._didContainerChangeTick;
-    member.viewTick = container._didViewChangeTick;
+    member.containerTick = containerTicksOf(member);
+    member.viewTick = viewTicksOf(member);
     member.shading = this.shading;
   }
 
@@ -702,17 +769,7 @@ export class StillSpriteMesh implements StillBandCollector {
    * of the container.
    */
   private shapeHolds(member: Member, layer: RenderLayer): boolean {
-    const quads = member.quads;
-    let next = 0;
-    for (const sprite of member.container.children) {
-      if (!displayed(sprite, layer)) continue;
-      const quad = quads[next++];
-      if (quad === undefined || quad.sprite !== sprite || !quad.live) return false;
-      const changed =
-        quad.containerTick !== sprite._didContainerChangeTick || quad.viewTick !== sprite._didViewChangeTick;
-      if (changed && !meshableSprite(sprite)) return false;
-    }
-    return next === quads.length;
+    return holdsFrom(member.container, member.quads, 0, layer) === member.quads.length;
   }
 
   /** Match `member`'s quads to the sprites Pixi would collect of it now; false if one cannot be meshed. */
@@ -720,11 +777,8 @@ export class StillSpriteMesh implements StillBandCollector {
     if (!plainContainer(member.container)) return false;
     const sprites = this.reshaped;
     sprites.length = 0;
-    for (const sprite of member.container.children) {
-      if (!displayed(sprite, layer)) continue;
-      if (!meshableSprite(sprite)) return false;
-      sprites.push(sprite);
-    }
+    member.nested.length = 0;
+    if (!collectSprites(member.container, layer, sprites, member.nested)) return false;
     const store = this.store;
     const renderer = this.renderer;
     if (store === null || renderer === null) return false;

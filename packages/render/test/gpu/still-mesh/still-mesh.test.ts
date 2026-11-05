@@ -644,6 +644,27 @@ describe('StillSpriteMesh', () => {
     expect(h.mesh.quadCount).toBe(0);
   });
 
+  it('draws the sprites of a plain container nested in a child, and repacks them when it fades', () => {
+    const h = harness();
+    const selected = entity(h.layer, 0);
+    const outline = new Container();
+    const stamps = [textureOn(4), textureOn(5)].map((t) => worldBatched(new Sprite(t)));
+    outline.addChild(...stamps);
+    selected.addChildAt(outline, 0);
+    h.held.add(selected);
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.mesh.quadCount).toBe(4);
+    const stamp = stamps[0] as Sprite;
+    outline.alpha = 0;
+    // A rebuild in the same frame takes the fade from the nested container's tick.
+    entity(h.layer, 1);
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(packedOf(h, stamp)).toEqual(freshPack(h, stamp));
+    outline.addChild(worldBatched(new Sprite(textureOn(6))));
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.mesh.quadCount).toBe(5);
+  });
+
   it('frees the slots of a removed still child and of a destroyed layer', () => {
     const h = harness();
     const a = entity(h.layer, 0);
