@@ -123,6 +123,8 @@ interface SpritePipeInternals {
 /** One sprite of a meshed child: its batch record and the slot its quad lives in. */
 interface MeshQuad extends TableQuad {
   readonly sprite: Sprite;
+  /** The band child the sprite draws for: its parent, or the member a nested group of it sits in. */
+  readonly owner: Container;
   readonly element: BatchableSprite;
   /** Moves between the store's cold and hot blocks only as its band rebuilds, which rewrites its index. */
   slot: number;
@@ -246,6 +248,13 @@ function holdsFrom(
     if (changed && !meshableSprite(child)) return -1;
   }
   return at;
+}
+
+/** The quads `child` draws from the mesh: its nested groups' sprites once a reshape found them, else one
+ *  per direct child. */
+function quadsOf(child: MemberHost | undefined): number {
+  if (child === undefined) return 0;
+  return Math.max(child.children.length, child[MEMBER]?.quads.length ?? 0);
 }
 
 function containerTicksOf(member: Member): number {
@@ -584,8 +593,8 @@ export class StillSpriteMesh implements StillBandCollector {
     const store = this.store;
     if (quad === undefined || !quad.live || store === null || this.packer === null) return;
     // A sprite changing under a child the owner no longer offers: its band rebuilds and hands it to Pixi.
-    const owner = quad.sprite.parent;
-    if (owner === null || !this.offered(owner)) state.band.renderGroup.structureDidChange = true;
+    if (quad.sprite.parent === null || !this.offered(quad.owner))
+      state.band.renderGroup.structureDidChange = true;
     this.packer.packQuadAttributes(
       quad.element,
       store.f32,
@@ -656,7 +665,7 @@ export class StillSpriteMesh implements StillBandCollector {
       let end = i;
       let quads = 0;
       for (; end < n && classes[end] !== PIXI; end++)
-        if (classes[end] === MESH) quads += children[end]?.children.length ?? 0;
+        if (classes[end] === MESH) quads += quadsOf(children[end]);
       if (runPays(quads, state.interval, this.runPayoff))
         state.largestRun = Math.max(state.largestRun, quads);
       else for (let k = i; k < end; k++) if (classes[k] === MESH) classes[k] = PIXI;
@@ -794,6 +803,7 @@ export class StillSpriteMesh implements StillBandCollector {
       }
       const quad: MeshQuad = {
         sprite,
+        owner: member.container,
         element: pipe._getGpuSprite(sprite),
         slot: store.allocate(),
         containerTick: Number.NaN,

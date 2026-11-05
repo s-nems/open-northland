@@ -665,6 +665,28 @@ describe('StillSpriteMesh', () => {
     expect(h.mesh.quadCount).toBe(5);
   });
 
+  it('repacks a nested container’s sprites in place when its member moves or it fades', () => {
+    const h = harness();
+    const selected = entity(h.layer, 0);
+    const outline = new Container();
+    const stamp = worldBatched(new Sprite(textureOn(4)));
+    outline.addChild(stamp);
+    selected.addChildAt(outline, 0);
+    h.held.add(selected);
+    h.frame();
+    h.frame();
+    const band = selected.parent;
+    const state = band === null ? undefined : (h.mesh as unknown as MeshInternals).bands.get(band);
+    if (state === undefined) throw new Error('expected the band’s mesh state');
+    const builds = state.build;
+    selected.position.x += 1;
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    outline.alpha = 0.5;
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(state.build).toBe(builds);
+    expect(packedOf(h, stamp)).toEqual(freshPack(h, stamp));
+  });
+
   it('frees the slots of a removed still child and of a destroyed layer', () => {
     const h = harness();
     const a = entity(h.layer, 0);
