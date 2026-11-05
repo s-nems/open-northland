@@ -14,6 +14,7 @@ import {
   knownAnd,
   knownResourceTest,
   nearestLiveResource,
+  reachableResourceGate,
   reachableResourceTest,
 } from '../live-resources.js';
 import { COLLECTED_GOOD_IDS } from '../workforce/collectors/wanted-goods.js';
@@ -170,10 +171,11 @@ function corridorGoals(
     knownResourceTest(world, ctx, player),
     reachableResourceTest(world, ctx, terrain, anchor, () => true),
   );
+  const ownGround = reachableResourceGate(ctx, terrain, anchor);
   for (const goodId of gatheredGoodIds(order)) {
     const good = goodTypeByContentId(ctx.content, goodId);
     if (good === undefined) continue;
-    const resource = nearestLiveResource(world, good.typeId, anchor, onOwnGround);
+    const resource = nearestLiveResource(world, good.typeId, anchor, onOwnGround, ownGround);
     const node = resource === null ? null : anchorNodeOf(world, resource);
     if (node !== null) goals.push(node);
   }

@@ -45,7 +45,7 @@ import {
 import { rowPlan } from '../../workforce/staffing-rows.js';
 import type { ColonyEnv, ColonyView } from '../env.js';
 import { homeSupply } from '../home-supply.js';
-import { canDig, flagGroundAt, LAND_GOOD_IDS, landHolds, workableFrom } from '../land.js';
+import { canDig, flagGroundAt, LAND_GOOD_IDS, landHolds, workableFrom, workableFromGate } from '../land.js';
 import { MEN_PER_WOMAN } from '../party.js';
 import { colonists, colonyBuildings, colonyOrigin, storeOf } from '../roster.js';
 import { colonyBuilderWant, withBuilderPosts } from './builders.js';
@@ -213,6 +213,8 @@ function postOrders(
       good.typeId,
       taken,
       workableFrom(env, read.origin, flags),
+      undefined,
+      workableFromGate(env, read.origin, flags),
     );
     if (spot === null) return null;
     claimFlagNode(taken, spot);

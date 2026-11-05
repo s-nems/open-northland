@@ -12,6 +12,7 @@ import {
   knownAnd,
   knownResourceTest,
   nearestLiveResource,
+  reachableResourceGate,
   reachableResourceTest,
   workableResourceTest,
 } from '../../live-resources.js';
@@ -125,7 +126,13 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
     workableResourceTest(world, ctx, terrain),
   );
   const known = knownAnd(knownResourceTest(world, ctx, seat), reachable);
-  const near = nearestLiveResource(world, wood.typeId, read.origin, known);
+  const near = nearestLiveResource(
+    world,
+    wood.typeId,
+    read.origin,
+    known,
+    reachableResourceGate(ctx, terrain, read.origin),
+  );
   const at = near === null ? null : anchorNodeOf(world, near);
   if (at === null || nodeManhattan(at, read.origin) <= SECOND_STORE_NODES) return [];
   // Its builders fetch its bill from the first store, so it stands inside that store's goods search: one

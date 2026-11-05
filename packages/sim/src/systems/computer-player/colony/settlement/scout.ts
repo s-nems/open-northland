@@ -14,6 +14,7 @@ import {
   knownAnd,
   knownResourceTest,
   nearestLiveResource,
+  reachableResourceGate,
   reachableResourceTest,
   workableResourceTest,
 } from '../../live-resources.js';
@@ -33,9 +34,10 @@ function depositsOf(env: ColonyEnv, origin: HalfCellNode): HalfCellNode[] {
   const workable = workableResourceTest(world, ctx, terrain);
   const reachable = reachableResourceTest(world, ctx, terrain, origin, workable);
   const known = knownAnd(knownResourceTest(world, ctx, seat), reachable);
+  const gate = reachableResourceGate(ctx, terrain, origin);
   return LAND_GOOD_IDS.flatMap((id) => {
     const good = goodTypeByContentId(ctx.content, id);
-    const near = good === undefined ? null : nearestLiveResource(world, good.typeId, origin, known);
+    const near = good === undefined ? null : nearestLiveResource(world, good.typeId, origin, known, gate);
     return near === null ? [] : (anchorNodeOf(world, near) ?? []);
   });
 }

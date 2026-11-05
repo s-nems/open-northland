@@ -36,7 +36,14 @@ import { breadChainUnfinished, fishFeedsWomen, focusChainSite } from '../build-o
 import { openingHomesStand } from '../build-order/steps/housing.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
-import { knownResourceTest, reachableResourceTest, workableResourceTest } from '../live-resources.js';
+import {
+  bothGates,
+  knownResourceTest,
+  limitResourceGate,
+  reachableResourceGate,
+  reachableResourceTest,
+  workableResourceTest,
+} from '../live-resources.js';
 import {
   nextLivestockCatch,
   nextScoutChest,
@@ -442,12 +449,10 @@ function collectorGround(
   const judged = (e: Entity): boolean => verdicts.judged(e, epoch, judge);
   const known = knownResourceTest(world, ctx, player);
   const workable = known === null ? judged : (e: Entity): boolean => known(e) && judged(e);
-  // `mayWorkInside` on the indexed anchor, which is the node of the resource's Position.
-  const mayAllowNear = limit?.mayAllowNear?.bind(limit);
-  const gate =
-    mayAllowNear === undefined
-      ? undefined
-      : (hx: number, hy: number): boolean => !terrain.inBounds(hx, hy) || mayAllowNear(hx, hy, maxWorkOffset);
+  const gate = bothGates(
+    limitResourceGate(ctx, terrain, limit),
+    reachableResourceGate(ctx, terrain, baseNode),
+  );
   return { anchors: collectorAnchors(world, ctx, owned, baseNode), baseNode, flags, workable, known, gate };
 }
 

@@ -19,6 +19,7 @@ import { forEachResourceStanceBound, resourceStanceCells } from '../footprint/in
 import { needSubjectOf, settlerMeetsNeed } from '../progression/index.js';
 import { interactionCell, jobAtomics } from '../settlers/targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
+import type { NavigationLimit } from '../signposts/index.js';
 import { manhattan } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import {
@@ -102,6 +103,45 @@ export function reachableResourceTest(
     workable(e) &&
     (stanceComponentVerdict(world, ctx, terrain, e, component) ??
       terrain.componentOf(interactionCell(world, ctx, terrain, e, origin)) === component);
+}
+
+/** {@link reachableResourceTest}'s {@link AnchorGate}: a passing resource's work cell lies on `from`'s
+ *  component, at most `maxResourceWorkOffset` Manhattan nodes from its anchor, so its anchor lies inside the
+ *  component's box widened by that. None when every resource passes the component test. */
+export function reachableResourceGate(
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  from: HalfCellNode,
+): AnchorGate | undefined {
+  const component = terrain.componentOf(terrain.nodeAtClamped(from.hx, from.hy));
+  if (component === NO_COMPONENT) return undefined;
+  const box = terrain.componentBounds(component);
+  const slack = contentIndex(ctx.content).maxResourceWorkOffset;
+  const minX = box.minX - slack;
+  const maxX = box.maxX + slack;
+  const minY = box.minY - slack;
+  const maxY = box.maxY + slack;
+  return (hx, hy) => hx >= minX && hx <= maxX && hy >= minY && hy <= maxY;
+}
+
+/** The {@link AnchorGate} of a test that lets a resource be worked only when `limit` allows its work cell,
+ *  at most `maxResourceWorkOffset` Manhattan nodes from its anchor; none for a limit that cannot tell. */
+export function limitResourceGate(
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  limit: NavigationLimit | null,
+): AnchorGate | undefined {
+  const mayAllowNear = limit?.mayAllowNear?.bind(limit);
+  if (mayAllowNear === undefined) return undefined;
+  const slack = contentIndex(ctx.content).maxResourceWorkOffset;
+  return (hx, hy) => !terrain.inBounds(hx, hy) || mayAllowNear(hx, hy, slack);
+}
+
+/** The gate of a test that is both `a`'s and `b`'s. */
+export function bothGates(a: AnchorGate | undefined, b: AnchorGate | undefined): AnchorGate | undefined {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  return (hx, hy) => a(hx, hy) && b(hx, hy);
 }
 
 /**

@@ -2,9 +2,13 @@ import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import {
+  type AnchorGate,
+  bothGates,
   knownAnd,
   knownResourceTest,
+  limitResourceGate,
   nearestLiveResource,
+  reachableResourceGate,
   reachableResourceTest,
   type WorkableTest,
   workableResourceTest,
@@ -29,7 +33,8 @@ export function landHolds(env: SeatEnv, from: HalfCellNode, goodType: number): b
     workableResourceTest(world, ctx, terrain),
   );
   const known = knownResourceTest(world, ctx, seat);
-  return nearestLiveResource(world, goodType, from, knownAnd(known, reachable)) !== null;
+  const gate = reachableResourceGate(ctx, terrain, from);
+  return nearestLiveResource(world, goodType, from, knownAnd(known, reachable), gate) !== null;
 }
 
 /** The flag ground of the signposts round `origin`. */
@@ -57,9 +62,23 @@ export function workableFrom(env: ColonyEnv, origin: HalfCellNode, ground: FlagG
     (limit === null || limit.allowsNode(interactionCell(world, ctx, terrain, e, door)));
 }
 
+/** {@link workableFrom}'s anchor gate. */
+export function workableFromGate(
+  env: ColonyEnv,
+  origin: HalfCellNode,
+  ground: FlagGround,
+): AnchorGate | undefined {
+  const { ctx, terrain } = env;
+  return bothGates(
+    reachableResourceGate(ctx, terrain, origin),
+    limitResourceGate(ctx, terrain, ground.limit),
+  );
+}
+
 /** Whether a flag on `goodType` can stand now: what the land holds past the signposts nobody digs. Costs a
  *  flag search. */
 export function canDig(env: ColonyEnv, origin: HalfCellNode, goodType: number, ground: FlagGround): boolean {
   const workable = workableFrom(env, origin, ground);
-  return collectorSpot(env.world, ground, origin, goodType, new Set(), workable) !== null;
+  const gate = workableFromGate(env, origin, ground);
+  return collectorSpot(env.world, ground, origin, goodType, new Set(), workable, undefined, gate) !== null;
 }
