@@ -28,7 +28,11 @@ export function collectColliders(
   const walkers = world.canonicalQuery(PathFollow, Position);
   // Before the dormancy exit: a grind ends on arrival, a re-route, or a profession change out of the
   // fighting trades, and none of those walk, so its holder is never a mover.
-  for (const e of world.canonicalQuery(Obstructed)) {
+  // Indexed loops: a for-of over these lists hands out an iterator result per walker that the compiler
+  // does not always elide.
+  const obstructed = world.canonicalQuery(Obstructed);
+  for (let i = 0; i < obstructed.length; i++) {
+    const e = obstructed[i] as Entity;
     if (!world.has(e, PathFollow) || !hasBodyCollision(world, ctx.content, e)) world.remove(e, Obstructed);
   }
 
@@ -37,7 +41,8 @@ export function collectColliders(
   let moverCount = 0;
   let firmCount = 0;
   const kinds = colliderKinds(world, ctx.content);
-  for (const e of walkers) {
+  for (let i = 0; i < walkers.length; i++) {
+    const e = walkers[i] as Entity;
     const kind = kinds[e] ?? NOT_A_COLLIDER;
     if (kind === NOT_A_COLLIDER) continue;
     const slot = moverCount++;

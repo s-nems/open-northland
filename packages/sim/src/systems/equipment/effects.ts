@@ -43,8 +43,9 @@ function carriedEffect<K extends CarriedEffect>(
 ): EquipClass[K] | undefined {
   const misc = equipment?.misc;
   if (misc === undefined) return undefined;
-  for (const held of misc) {
-    const value = liveEquipOf(content, held)?.[effect];
+  // Indexed: each walker's leg start reads this, and a for-of hands out an iterator result per slot.
+  for (let i = 0; i < misc.length; i++) {
+    const value = liveEquipOf(content, misc[i])?.[effect];
     if (value !== undefined) return value;
   }
   return undefined;

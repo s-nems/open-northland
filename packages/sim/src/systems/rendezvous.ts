@@ -42,7 +42,10 @@ export function driveMirroredPairs<R extends { partner: Entity }>(
   onOrphaned: (self: Entity) => void,
   drivePair: (a: Entity, b: Entity) => void,
 ): void {
-  for (const e of world.canonicalQuery(component)) {
+  // Indexed: a for-of here hands out an iterator result per pair that the compiler does not always elide.
+  const halves = world.canonicalQuery(component);
+  for (let i = 0; i < halves.length; i++) {
+    const e = halves[i] as Entity;
     const record = world.tryGet(e, component);
     if (record === undefined) continue; // cancelled earlier this pass from the partner's side
     const mirrored = world.isAlive(record.partner) ? world.tryGet(record.partner, component) : undefined;

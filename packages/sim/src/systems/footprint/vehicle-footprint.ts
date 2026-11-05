@@ -74,7 +74,10 @@ export function forEachVehicleFootprintNode(
   // The anchor node, read without minting it.
   const anchorHx = nodeHxOfPosition(p.x, p.y);
   const anchorHy = nodeHyOfPosition(p.x, p.y);
-  for (const offset of discOffsets(type.logicSize, anchorHy)) {
+  const offsets = discOffsets(type.logicSize, anchorHy);
+  // Indexed: every combat pass walks each vehicle's disc, and a for-of hands out a result per node.
+  for (let i = 0; i < offsets.length; i++) {
+    const offset = offsets[i] as HalfCellNode;
     const hx = anchorHx + offset.hx;
     const hy = anchorHy + offset.hy;
     if (terrain.inBounds(hx, hy)) visit(hx, hy);

@@ -3,7 +3,7 @@ import { Position, Vehicle } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
-import { vehicleFootprintNodes } from './vehicle-footprint.js';
+import { forEachVehicleFootprintNode } from './vehicle-footprint.js';
 
 // The memoized per-world cache of cells standing vehicles cover, which other vehicles may not enter,
 // counted per cell so a vehicle's own disc never hides another's cover of the same cell.
@@ -29,11 +29,13 @@ function deriveVehicleBlockedCells(
   terrain: TerrainGraph,
 ): Map<NodeId, number> {
   const cover = new Map<NodeId, number>();
-  for (const e of world.query(Vehicle, Position)) {
-    for (const node of vehicleFootprintNodes(world, content, terrain, e)) {
-      cover.set(node, (cover.get(node) ?? 0) + 1);
-    }
-  }
+  // Visited node by node: a moving vehicle rewrites its state every tick, so this runs that often.
+  const count = (hx: number, hy: number): void => {
+    const node = terrain.nodeAt(hx, hy);
+    cover.set(node, (cover.get(node) ?? 0) + 1);
+  };
+  for (const e of world.query(Vehicle, Position))
+    forEachVehicleFootprintNode(world, content, terrain, e, count);
   return cover;
 }
 

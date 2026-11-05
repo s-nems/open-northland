@@ -8,7 +8,7 @@ import {
   Settler,
   Sheltering,
 } from '../../../components/index.js';
-import type { World } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isInside } from '../../settlers/indoors.js';
@@ -32,13 +32,16 @@ export function driveChildOrders(world: World, ctx: SystemContext, terrain: Terr
     externalFood: new ExternalFoodIndex(world, ctx, terrain, supply),
     supply,
   };
-  for (const e of world.canonicalQuery(ChildOrder, Settler, Position)) {
+  const orders = world.canonicalQuery(ChildOrder, Settler, Position);
+  for (let i = 0; i < orders.length; i++) {
+    const e = orders[i] as Entity;
     // A sheltering mother keeps her standing order but not her errand; nothing walks her out of cover
     // until the alarm drops.
     if (world.has(e, Sheltering)) continue;
     driveOrder(world, ctx, terrain, e, pass);
   }
-  for (const e of dutyBefore) {
+  for (let i = 0; i < dutyBefore.length; i++) {
+    const e = dutyBefore[i] as Entity;
     if (dutyClaimed.has(e)) continue;
     world.remove(e, FamilyDuty);
     dutyClaimed.forget(e);
