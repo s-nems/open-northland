@@ -32,6 +32,7 @@ import {
 } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
+import { FILED_STRIDE } from '../../targets/cell-index.js';
 import {
   type InteractionCellIndex,
   interactionCell,
@@ -367,6 +368,8 @@ function findWorkBeyondReach(
     here,
     unreachableGoalVeto(world, ctx, e),
   );
+  // The unconfined pick below names work beyond reach only at a site out of reach on this landmass.
+  if (!anySiteBeyondReach(plan, spacing)) return null;
   const confined = constructionMaterialResolver(plan, spacing, { confined: supply });
   if (anyTaskSite(plan, spacing, claims, confined, avoidSite) !== null) return null;
   const free: PlannerContext = { ...plan, limit: null };
@@ -379,6 +382,23 @@ function findWorkBeyondReach(
   // A site in reach with no confined task is one whose material alone lies beyond the signposts.
   if (site === null || builderCanReach(plan, spacing, site)) return null;
   return interactionCell(world, ctx, terrain, site, here);
+}
+
+/** Whether a site of the builder's side, of any kind, has a work cell on the builder's landmass and none it
+ *  may reach within its confinement: the only site an unconfined pick can stand at that lies out of reach. */
+function anySiteBeyondReach(plan: PlannerContext, spacing: PlannerSpacing): boolean {
+  const { terrain, here, targets, owner } = plan;
+  if (owner === undefined) return true;
+  const landmass = terrain.componentOf(here);
+  for (const sites of [targets.constructionSiteCells, targets.wallSiteCells, targets.roadSiteCells]) {
+    const filed = sites.filedOnSide(owner);
+    for (let i = 0; i < filed.length; i += FILED_STRIDE) {
+      const site = filed[i] as Entity;
+      if (!onOwnSide(plan, site) || builderCanReach(plan, spacing, site)) continue;
+      if (spacing.workCells(site).some((cell: NodeId) => terrain.componentOf(cell) === landmass)) return true;
+    }
+  }
+  return false;
 }
 
 /** The nearest site within `plan.limit` that gives this builder a task from `materials`, in the order the
