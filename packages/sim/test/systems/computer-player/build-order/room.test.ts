@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { aiControlEntity, SeatRoom, type SeatRoomState } from '../../../../src/components/index.js';
+import {
+  aiControlEntity,
+  GroundPlan,
+  SeatRoom,
+  type SeatRoomState,
+} from '../../../../src/components/index.js';
 import type { Simulation } from '../../../../src/index.js';
 import {
   COMPUTER_DECISION_INTERVAL_TICKS,
@@ -81,15 +86,20 @@ describe('seat room', () => {
     expect(roomOf(long).freeZones).toBeLessThan(measured.freeZones);
   });
 
-  it('measures no room on a seat with no room before its plots are drawn', () => {
+  it('measures a seat with no room only once its plots are drawn', () => {
     const sim = island(BARRACKS_AND_HOME_END);
     const at = (tick: number) =>
       buildOrderModule(oneLine([HELD_HOME])).run(sim.world, { ...contextOf(sim), tick }, SEAT);
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: an AI seat');
     at(1);
-    const first = roomOf(sim);
-    at(first.reviewTick);
-    expect(roomOf(sim)).toEqual(first);
-    expect(first.reviewTick).toBeLessThan(GROUND_PLAN_FROM_TICKS);
+    expect(sim.world.has(carrier, SeatRoom)).toBe(false);
+    at(GROUND_PLAN_FROM_TICKS);
+    expect(sim.world.get(carrier, GroundPlan).drawn).toBe(true);
+    expect(sim.world.has(carrier, SeatRoom)).toBe(false);
+    // Measured on the decision after the draw, which the plots are already standing on.
+    at(GROUND_PLAN_FROM_TICKS + 1);
+    expect(sim.world.has(carrier, SeatRoom)).toBe(true);
   });
 
   it("staggers the seats' reviews: each on its own decision tick, in its own decision interval", () => {

@@ -22,7 +22,7 @@ import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../../footpri
 import { overflowBuildReachNodes, STALLED_PLACEMENT_RETRY_DECISIONS } from './entries.js';
 import { baseComponent, buildReach } from './placement.js';
 import { seatSpotAcceptor } from './plots.js';
-import { seatTuning } from './seat-order.js';
+import { seatHasSide, seatTuning } from './seat-order.js';
 
 /** The stable content id of the home chain's base tier, whose zone is the unit room is measured in. */
 export const ROOM_HOME_BUILDING = 'home_level_00';
@@ -130,10 +130,11 @@ export function freeHomeZones(
 
 /**
  * Measures the seat's room ({@link freeHomeZones}), as far as its readers need with its housing lane's
- * `homesCap`, and counts its homes of `owned`, sites included, once its review is due ({@link nextRoomReviewTick}); on a seat keeping a ground plan only once its plots are
- * drawn, so the opening's ground counts as room only where no plot keeps it. Observed on
- * arabskie_wyspy_wolna_gra_mieszana: measured from the start, a seat cut to two homes raised four on the
- * ground its brewery and barracks were later plotted on.
+ * `homesCap`, and counts its homes of `owned`, sites included, once its review is due
+ * ({@link nextRoomReviewTick}). A seat with the `noRoom` side is measured only once its plots are drawn, so
+ * the opening's ground counts as room only where no plot keeps it. Observed on
+ * arabskie_wyspy_wolna_gra_mieszana: measured from the start, a seat cut to two homes raised four on the ground its brewery and barracks were
+ * later plotted on.
  */
 export function keepSeatRoom(
   world: World,
@@ -148,7 +149,7 @@ export function keepSeatRoom(
 ): void {
   const carrier = aiControlEntity(world, player);
   if (carrier === null) return;
-  if (world.tryGet(carrier, GroundPlan)?.drawn === false) return;
+  if (seatHasSide(world, player, 'noRoom') && world.tryGet(carrier, GroundPlan)?.drawn !== true) return;
   const held = world.tryGet(carrier, SeatRoom);
   if (held !== undefined && ctx.tick < held.reviewTick) return;
   const home = buildingTypeByContentId(ctx.content, ROOM_HOME_BUILDING);
