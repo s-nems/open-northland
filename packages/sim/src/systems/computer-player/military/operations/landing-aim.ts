@@ -29,6 +29,10 @@ import { visibleEnemyFighters } from './raid-target.js';
  *  men to the towers on the way in still holds its edge. */
 export const LANDING_STORM_EDGE: Share = { num: 2, den: 1 };
 
+/** The least the men a storm set ashore keep outweighing what defends their objective to storm on: half
+ *  {@link LANDING_STORM_EDGE}, the losses on the way in its margin allows for. */
+export const LANDING_STORM_HOLD_EDGE: Share = { num: 1, den: 1 };
+
 /** What one tower covering a storm's objective weighs beside its garrison: the walls the wave must fell
  *  under its fire. Authored: about a dozen armed men of the island maps' late game. */
 export const STORM_TOWER_POINTS = 1000;
@@ -95,7 +99,7 @@ function atLeast(a: Share, b: Share): Share {
  * colonies the same way; the first the `ranked` men can take within `room` wins. On a headquarters land the
  * whole wave goes once `ratio` (the posture's launch edge) holds over the believed defence; on a colony the
  * strongest men go, as many as outweigh the defence seen there by {@link LANDING_EDGE}, at least
- * {@link COLONY_RAID_LEAST_MEN}. Costs the believed buildings and, with a colony to weigh, the enemies'
+ * {@link COLONY_RAID_LEAST_MEN}. Every edge weighs the men who go ashore ({@link pointsAshore}). Costs the believed buildings and, with a colony to weigh, the enemies'
  * fighters.
  */
 export function landingAim(
@@ -108,15 +112,16 @@ export function landingAim(
 ): LandingAim | null {
   let fighters: LandFighters | null = null;
   const armies = armyWeights(env);
+  const wave = { ranked, prefix: prefixPoints(ranked), ships: room.ships, seats: room.seats };
   for (const c of candidatesOf(env, home, from)) {
     if (c.headquarters !== null) {
       if (!room.bigLanding) continue;
-      const aim = headquartersAim(env, c, ranked.slice(0, room.seats), ratio, armies);
+      const aim = headquartersAim(env, c, wave, ratio, armies);
       if (aim !== null) return aim;
       continue;
     }
     fighters ??= landFighters(env);
-    const aim = colonyAim(env, c, ranked, ratio, room.seats, armies, fighters);
+    const aim = colonyAim(env, c, wave, ratio, armies, fighters);
     if (aim !== null) return aim;
   }
   return null;
@@ -188,10 +193,13 @@ export function pointsAshore(prefix: readonly number[], count: number, ships: re
   return prefix[Math.max(0, count - hulls)] ?? 0;
 }
 
-function pointsOf(men: readonly RankedMan[]): number {
-  let points = 0;
-  for (const m of men) points += m.points;
-  return points;
+/** The men a landing may send, strongest first with their {@link prefixPoints}, and the ships that seat
+ *  them ({@link LandingRoom}). */
+interface WaveRoom {
+  readonly ranked: readonly RankedMan[];
+  readonly prefix: readonly number[];
+  readonly ships: readonly number[];
+  readonly seats: number;
 }
 
 /** The tribe whose house bow a believed building's shelter fires, read off the building while it stands. */
@@ -217,13 +225,14 @@ function fireAt(
 function headquartersAim(
   env: OperationEnv,
   c: Candidate,
-  wave: readonly RankedMan[],
+  room: WaveRoom,
   ratio: Share,
   armies: ArmyWeights,
 ): LandingAim | null {
   const { ctx } = env;
+  const wave = room.ranked.slice(0, room.seats);
   if (wave.length === 0) return null;
-  const points = pointsOf(wave);
+  const points = pointsAshore(room.prefix, wave.length, room.ships);
   const aim = (storm: boolean): LandingAim => ({
     land: c.land,
     owner: c.owner,
@@ -349,17 +358,16 @@ function stormDefence(
 }
 
 /**
- * A raid on a rival's colony: the strongest of `ranked`, as many as reach {@link LANDING_EDGE} (or `ratio`
- * when larger) over the {@link stormDefence} of a clear objective, or
- * {@link LANDING_STORM_EDGE} over the {@link stormDefence} of a covered one, at least
- * {@link COLONY_RAID_LEAST_MEN}, all within `seats`; null when the men at home cannot.
+ * A raid on a rival's colony: the strongest of `room`, as many as set ashore ({@link pointsAshore}) reach
+ * {@link LANDING_EDGE} (or `ratio` when larger) over the {@link stormDefence} of a clear objective, or
+ * {@link LANDING_STORM_EDGE} over that of a covered one, at least {@link COLONY_RAID_LEAST_MEN}, all within
+ * its seats; null when the men at home cannot.
  */
 function colonyAim(
   env: OperationEnv,
   c: Candidate,
-  ranked: readonly RankedMan[],
+  room: WaveRoom,
   ratio: Share,
-  seats: number,
   armies: ArmyWeights,
   fighters: LandFighters,
 ): LandingAim | null {
@@ -368,15 +376,14 @@ function colonyAim(
   if (goal === null) return null;
   const edge = atLeast(ratio, clear === null ? LANDING_STORM_EDGE : LANDING_EDGE);
   const opposing = stormDefence(env, c.believed, c.land, c.owner, goal, armies, fighters);
-  const wave: Entity[] = [];
-  let points = 0;
-  for (const m of ranked) {
-    if (wave.length >= COLONY_RAID_LEAST_MEN && launchRatioReached(points, opposing, edge)) break;
-    if (wave.length >= seats) return null;
-    wave.push(m.entity);
-    points += m.points;
+  const reached = (count: number): boolean =>
+    count >= COLONY_RAID_LEAST_MEN &&
+    launchRatioReached(pointsAshore(room.prefix, count, room.ships), opposing, edge);
+  let count = 0;
+  while (!reached(count)) {
+    if (count >= Math.min(room.ranked.length, room.seats)) return null;
+    count++;
   }
-  if (wave.length < COLONY_RAID_LEAST_MEN || !launchRatioReached(points, opposing, edge)) return null;
   return {
     land: c.land,
     owner: c.owner,
@@ -385,13 +392,13 @@ function colonyAim(
     entity: c.towards.entity,
     believed: c.believed,
     storm: clear === null,
-    men: wave,
+    men: room.ranked.slice(0, count).map((m) => m.entity),
   };
 }
 
 /**
  * The objective men landed on `believed` and standing at `from` storm when nothing there lies clear, or
- * null: the storm's objective once their `points` reach {@link LANDING_STORM_EDGE} over its
+ * null: the storm's objective while their `points` hold {@link LANDING_STORM_HOLD_EDGE} over its
  * {@link stormDefence}.
  */
 export function stormObjective(
@@ -405,5 +412,5 @@ export function stormObjective(
   const goal = landingObjective(env.ctx, believed, from, true);
   if (goal === null) return null;
   const defence = stormDefence(env, believed, land, owner, goal, armyWeights(env));
-  return launchRatioReached(points, defence, LANDING_STORM_EDGE) ? goal : null;
+  return launchRatioReached(points, defence, LANDING_STORM_HOLD_EDGE) ? goal : null;
 }

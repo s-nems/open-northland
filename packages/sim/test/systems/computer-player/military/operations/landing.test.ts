@@ -9,6 +9,7 @@ import {
   type ComputerModuleEnables,
   FOG_MODE,
   Owner,
+  PlayerOrder,
   Position,
   Rider,
   Settler,
@@ -78,6 +79,12 @@ const FARM_TYPE = 5;
 /** A foe tower whose reach covers his headquarters, and a farm out of reach of both. */
 const FOE_TOWER = { x: 120, y: 54 };
 const FOE_FARM = { x: 104, y: 100 };
+/** A foe tower that covers his headquarters from far enough off that the men's rings round the two do not
+ *  meet. */
+const FOE_FAR_TOWER = { x: 120, y: 68 };
+/** A foe tower on the colony island that covers the farm, far enough off that the men's rings round the two
+ *  do not meet. */
+const COLONY_TOWER = { x: 128, y: 106 };
 /** A farm of the foe's on his own start land, out of his headquarters' reach. */
 const FOE_HOME_FARM = { x: 104, y: 16 };
 /** The farm's life pool here, so a landing can strike it. */
@@ -103,6 +110,8 @@ const OUTMATCHING_FOES = 120;
 const FOE_ARMY = { x: 110, y: 0 };
 /** The most a landing may take to board, cross and sail home: a run ending sooner stops at once. */
 const LANDING_LIMIT_TICKS = LANDING_FORM_TIMEOUT_TICKS + 2 * LANDING_SAIL_TIMEOUT_TICKS;
+/** The most a landing may take besides to walk on each building it strikes. */
+const STRIKE_LIMIT_TICKS = 2 * LANDING_LIMIT_TICKS;
 /** Twice the decisions a full fleet with its full band takes to open its landing here. */
 const DECISIONS_TO_OPEN = 8;
 
@@ -350,6 +359,58 @@ function manPoints(sim: Simulation): number {
   return everyFighterPoints(sim.world, ctxOf(sim), SEAT) / own.length;
 }
 
+/** The foe's building standing nearest `at`, or null. */
+function foeBuildingAt(sim: Simulation, at: { x: number; y: number }): Entity | null {
+  let best: { readonly e: Entity; readonly distance: number } | null = null;
+  for (const e of sim.world.query(Building, Owner)) {
+    if (sim.world.get(e, Owner).player !== FOE) continue;
+    const node = nodeOfEntity(sim.world, e);
+    if (node === null) continue;
+    const distance = Math.abs(node.hx - at.x) + Math.abs(node.hy - at.y);
+    if (best === null || distance < best.distance) best = { e, distance };
+  }
+  return best?.e ?? null;
+}
+
+/**
+ * Run the seat's landing through to its end while its landed men strike `targets`, the foe's buildings
+ * nearest each spot: once a landed man walks on the ring round the one of them his attack-move aims nearest
+ * (the men here fell no building themselves), it falls by hand. Returns the targets in the order the men
+ * marched on them and the landing as last seen.
+ */
+function strikeInTurn(
+  sim: Simulation,
+  targets: readonly { x: number; y: number }[],
+): { readonly order: { x: number; y: number }[]; readonly seen: OperationView | undefined } {
+  const terrain = terrainOf(sim);
+  const order: { x: number; y: number }[] = [];
+  let seen: OperationView | undefined;
+  runUntil(sim, STRIKE_LIMIT_TICKS, () => {
+    seen = landings(sim)[0] ?? seen;
+    if (seen?.state === 'done') return shipsHomeEmpty(sim);
+    for (const e of seen?.members ?? []) {
+      const goal = sim.world.tryGet(e, PlayerOrder)?.attackMove?.goal;
+      if (goal === undefined) continue;
+      const { x, y } = terrain.coordsOf(goal);
+      const standing = targets.filter((t) => !order.includes(t) && foeBuildingAt(sim, t) !== null);
+      const aimed = standing.reduce<{ x: number; y: number } | null>(
+        (best, t) =>
+          best === null || Math.abs(t.x - x) + Math.abs(t.y - y) < Math.abs(best.x - x) + Math.abs(best.y - y)
+            ? t
+            : best,
+        null,
+      );
+      if (aimed === null) continue;
+      order.push(aimed);
+      const building = foeBuildingAt(sim, aimed);
+      if (building !== null) sim.world.destroy(building);
+      break;
+    }
+    return false;
+  });
+  return { order, seen };
+}
+
 /** Whether every one of the seat's ships lies moored empty. */
 function shipsHomeEmpty(sim: Simulation): boolean {
   return seatShips(sim).every((e) => {
@@ -541,6 +602,19 @@ describe('landing operations', () => {
     expect(seen?.landing?.landed).toBeGreaterThan(0);
   });
 
+  it('storms the headquarters first, then the tower covering it, and sails home once both fell', () => {
+    const { sim } = landingWorld({
+      armed: true,
+      seats: STORM_SHIP_SEATS,
+      foe: [{ buildingType: TOWER_TYPE, at: FOE_FAR_TOWER }],
+    });
+    const struck = strikeInTurn(sim, [FOE_HQ, FOE_FAR_TOWER]);
+    expect(struck.order).toEqual([FOE_HQ, FOE_FAR_TOWER]);
+    expect(struck.seen?.reason).toBe('nothingToStrike');
+    expect(menAcross(sim)).toEqual([]);
+    expect(shipsHomeEmpty(sim)).toBe(true);
+  });
+
   it.each([
     ['a clear headquarters', false],
     ['a headquarters a tower covers', true],
@@ -587,14 +661,33 @@ describe('landing operations', () => {
     const points = REMEMBERED_GARRISON * manPoints(sim);
     rememberFoeArmy(sim, { most: points, lands: [{ land: colonyLand, points }] });
     let seen: OperationView | undefined;
-    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
       seen = landings(sim)[0] ?? seen;
-      return seen !== undefined;
+      return (seen?.landing?.landed ?? 0) > 0;
     });
-    // The fewest men that outweigh the remembered garrison half again.
-    const men = Math.ceil((REMEMBERED_GARRISON * LANDING_EDGE.num) / LANDING_EDGE.den);
-    expect(men).toBeGreaterThan(COLONY_RAID_LEAST_MEN);
-    expect(seen?.landing?.startMen).toBe(men);
+    // The fewest men set ashore that outweigh the remembered garrison half again, every man weighing the
+    // same and each ship's helm staying aboard.
+    const ashore = Math.ceil((REMEMBERED_GARRISON * LANDING_EDGE.num) / LANDING_EDGE.den);
+    expect(ashore).toBeGreaterThan(COLONY_RAID_LEAST_MEN);
+    expect(seen?.landing?.landed).toBe(ashore);
+    expect(seen?.landing?.startMen).toBe(ashore + (seen?.landing?.startShips ?? 0));
+  });
+
+  it('storms a covered colony on the men it sets ashore, the tower first, and sails home once all fell', () => {
+    const { sim } = landingWorld({
+      ships: LANDING_BIG_SHIPS - 1,
+      armed: true,
+      seats: STORM_SHIP_SEATS,
+      colony: true,
+      foe: [
+        { buildingType: FARM_TYPE, at: FOE_FARM },
+        { buildingType: TOWER_TYPE, at: COLONY_TOWER },
+      ],
+    });
+    const struck = strikeInTurn(sim, [COLONY_TOWER, FOE_FARM]);
+    expect(struck.order).toEqual([COLONY_TOWER, FOE_FARM]);
+    expect(struck.seen?.reason).toBe('nothingToStrike');
+    expect(shipsHomeEmpty(sim)).toBe(true);
   });
 
   it("weighs a rival's start land as his army once it believes his headquarters fell", () => {
