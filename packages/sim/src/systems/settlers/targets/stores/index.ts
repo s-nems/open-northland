@@ -8,6 +8,7 @@ export {
   nearestStoreHoldingAnywhere,
   nearestStoreHoldingWithin,
   storeHoldingMayLieIn,
+  storesHoldingRanked,
   storeYieldsGood,
   strandedPile,
   unclaimedGoodsAt,

@@ -1,6 +1,7 @@
 export { TargetBands } from './bands.js';
 export { collectTargets, type TargetCandidates } from './candidates.js';
 export {
+  firstUnvetoed,
   InteractionCellIndex,
   type NearestByCell,
   nearerOf,
@@ -28,6 +29,7 @@ export {
   storageBelowMinimum,
   storageLendable,
   storeHoldingMayLieIn,
+  storesHoldingRanked,
   storeYieldsGood,
   strandedPile,
   unclaimedGoodsAt,

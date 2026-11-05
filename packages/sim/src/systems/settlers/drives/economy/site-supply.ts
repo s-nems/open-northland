@@ -1,4 +1,4 @@
-import { CARRY_CAPACITY, sameSideAs } from '../../../../components/index.js';
+import { CARRY_CAPACITY } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
@@ -7,10 +7,14 @@ import { neededConstructionGoods } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
+import { FILED_STRIDE } from '../../targets/cell-index.js';
 import {
+  firstUnvetoed,
   interactionCell,
+  type NearestByCell,
   nearestStoreHolding,
   nearestStoreHoldingAnywhere,
+  storesHoldingRanked,
   type TargetCandidates,
   unclaimedStockOf,
 } from '../../targets/index.js';
@@ -75,26 +79,50 @@ export function constructionMaterialResolver(
     sourceByGood.set(goodType, source);
     return source;
   };
-  // The nearest source serves every site it can deliver to; a site out of its reach searches again among
-  // the sources that can, which only a split signpost network ever asks for.
+  // The nearest source serves every site it can deliver to; a site out of its reach takes the nearest of
+  // the sources that can, which only a split signpost network ever asks for. Those sources are ranked once
+  // per good, so a builder weighing many such sites scans the stores in its reach once, not per site.
   const liftCellByGood = new Map<number, NodeId>();
+  const rankedByGood = new Map<number, readonly NearestByCell[]>();
+  const rankedSources = (goodType: number, owner: number): readonly NearestByCell[] => {
+    let ranked = rankedByGood.get(goodType);
+    if (ranked === undefined) {
+      ranked = storesHoldingRanked(
+        plan.targets.bands,
+        plan.world,
+        plan.here,
+        goodType,
+        owner,
+        plan.supply,
+        plan.limit ?? undefined,
+        fetcherAvoid(plan, rejectSource),
+      );
+      rankedByGood.set(goodType, ranked);
+    }
+    return ranked;
+  };
   const deliveringSourceFor = (site: Entity, goodType: number): MaterialSource | null => {
     const nearest = sourceFor(goodType);
     const { owner, terrain } = plan;
     if (nearest === null || confined === undefined || plan.limit === null || owner === undefined)
       return nearest;
-    const delivers = confined.liftSpots(owner, plan.jobType, site);
-    if (delivers === null) return nearest;
+    if (confined.liftSpots(owner, plan.jobType, site) === null) return nearest;
     let lift = liftCellByGood.get(goodType);
     if (lift === undefined) {
       lift = interactionCell(plan.world, plan.ctx, terrain, nearest.source, plan.here);
       liftCellByGood.set(goodType, lift);
     }
-    if (delivers(terrain.xOf(lift), terrain.yOf(lift))) return nearest;
+    const lifts = (cell: NodeId): boolean => confined.liftsAt(owner, plan.jobType, site, cell);
+    if (lifts(lift)) return nearest;
     if (!confined.anySource(owner, plan.jobType, site, goodType, plan.limit)) return null;
-    const rejects = (cell: NodeId): boolean =>
-      !delivers(terrain.xOf(cell), terrain.yOf(cell)) || rejectSource?.(cell) === true;
-    return materialSource(plan, goodType, rejects);
+    // Only a store filed near the site can lift for it, and that set is far cheaper to ask than the spots.
+    const near = confined.storesNear(owner, plan.jobType, site, goodType);
+    const source = firstUnvetoed(
+      rankedSources(goodType, owner),
+      plan.here,
+      (cell, store) => near?.stores.has(store) === false || !lifts(cell),
+    );
+    return source === null ? null : lendingSource(plan, source.entity, goodType);
   };
   const resolve = (site: Entity): FetchableMaterial | null => {
     const cached = bySite.get(site);
@@ -170,11 +198,21 @@ function shelfSource(plan: PlannerContext, shelf: Entity, goodType: number): Mat
 
 type SpotTest = (hx: number, hy: number) => boolean;
 
+/** The stores of one band that may lift a load for a site, filed at its spots widened by the filing slack. */
+interface StoresNear {
+  readonly stores: ReadonlySet<Entity>;
+  /** Their filed nodes, `x, y` per store. */
+  readonly nodes: readonly number[];
+}
+
 interface SiteLift {
   readonly spots: SpotTest | null;
-  readonly anyByGood: Map<number, boolean>;
   /** The spots widened by a band's filing slack, one per slack asked. */
   readonly nearBySlack: Map<number, SpotTest | null>;
+  /** {@link SiteSupplyReach.storesNear} by good. */
+  readonly storesByGood: Map<number, StoresNear | null>;
+  /** {@link spots} by cell asked. */
+  readonly liftsByCell: Map<NodeId, boolean>;
 }
 
 /**
@@ -202,35 +240,64 @@ export class SiteSupplyReach {
     return this.lift(owner, jobType, site).spots;
   }
 
-  /** Whether some store of `owner`'s side holding `goodType` may stand at such a spot, and within the
-   *  asking builder's own `reach`: false proves that no source serves the site, so the caller skips a ring
-   *  sweep of the builder's whole reach. The site's answer is shared; the builder's own is one pass over
-   *  the stores filed under the good, where the sweep visits every cell of the reach. Both tests widen by
-   *  the band's filing slack, since a loose pile is filed up to that far from the cell it is lifted at. */
-  anySource(owner: number, jobType: number, site: Entity, goodType: number, reach: NavigationLimit): boolean {
+  /** Whether a load lifted at `cell` reaches `site`: {@link liftSpots} at the cell, true when nothing
+   *  confines. Kept for the pass, since every builder of the seat asks it of the same few store cells. */
+  liftsAt(owner: number, jobType: number, site: Entity, cell: NodeId): boolean {
     const lift = this.lift(owner, jobType, site);
+    if (lift.spots === null) return true;
+    let lifts = lift.liftsByCell.get(cell);
+    if (lifts === undefined) {
+      lifts = lift.spots(this.terrain.xOf(cell), this.terrain.yOf(cell));
+      lift.liftsByCell.set(cell, lifts);
+    }
+    return lifts;
+  }
+
+  /** Whether some store of `owner`'s side holding `goodType` may stand at such a spot, and within the
+   *  asking builder's own `reach`: false proves that no source serves the site, so the caller skips a
+   *  search of the builder's whole reach. The site's stores are shared; the builder's own test is one
+   *  distance and coverage read per store among them. */
+  anySource(owner: number, jobType: number, site: Entity, goodType: number, reach: NavigationLimit): boolean {
+    const near = this.storesNear(owner, jobType, site, goodType);
+    if (near === null) return true;
+    const slack = this.targets.bands.holding(goodType).filedSlack;
+    const { nodes } = near;
+    for (let i = 0; i < nodes.length; i += 2) {
+      if (reach.mayAllowNear?.(nodes[i] as number, nodes[i + 1] as number, slack) ?? true) return true;
+    }
+    return false;
+  }
+
+  /** The stores of `owner`'s side holding `goodType` filed at `site`'s lift spots widened by the band's
+   *  filing slack, since a loose pile is filed up to that far from the cell it is lifted at: a store
+   *  outside them never lifts a load for the site. Null when nothing confines `owner`'s `jobType`. */
+  storesNear(owner: number, jobType: number, site: Entity, goodType: number): StoresNear | null {
+    const lift = this.lift(owner, jobType, site);
+    const held = lift.storesByGood.get(goodType);
+    if (held !== undefined) return held;
     const band = this.targets.bands.holding(goodType);
     const slack = band.filedSlack;
-    let near = lift.nearBySlack.get(slack);
-    if (near === undefined) {
-      near = this.spotsReaching(owner, jobType, site, slack);
-      lift.nearBySlack.set(slack, near);
+    let spots = lift.nearBySlack.get(slack);
+    if (spots === undefined) {
+      spots = this.spotsReaching(owner, jobType, site, slack);
+      lift.nearBySlack.set(slack, spots);
     }
-    if (near === null) return true;
-    const spots = near;
-    const ownSide = sameSideAs(this.world, owner);
-    let any = lift.anyByGood.get(goodType);
-    if (any === undefined) {
-      any = band.anyFiledIn(spots, ownSide);
-      lift.anyByGood.set(goodType, any);
+    let near: StoresNear | null = null;
+    if (spots !== null) {
+      const stores = new Set<Entity>();
+      const nodes: number[] = [];
+      const filed = band.filedOnSide(owner);
+      for (let i = 0; i < filed.length; i += FILED_STRIDE) {
+        const x = filed[i + 1] as number;
+        const y = filed[i + 2] as number;
+        if (!spots(x, y)) continue;
+        stores.add(filed[i] as Entity);
+        nodes.push(x, y);
+      }
+      near = { stores, nodes };
     }
-    if (!any) return false;
-    // The builder's reach first: one distance and a coverage read, where the site's spots test every work
-    // cell and serving post, and most of the side's sources lie outside a builder's reach.
-    return band.anyFiledIn(
-      (hx, hy) => (reach.mayAllowNear?.(hx, hy, slack) ?? true) && spots(hx, hy),
-      ownSide,
-    );
+    lift.storesByGood.set(goodType, near);
+    return near;
   }
 
   private lift(owner: number, jobType: number, site: Entity): SiteLift {
@@ -248,8 +315,9 @@ export class SiteSupplyReach {
     if (lift === undefined) {
       lift = {
         spots: this.spotsReaching(owner, jobType, site, 0),
-        anyByGood: new Map(),
         nearBySlack: new Map(),
+        storesByGood: new Map(),
+        liftsByCell: new Map(),
       };
       bySite.set(site, lift);
     }
@@ -270,14 +338,10 @@ function materialSource(
   rejects?: (cell: NodeId) => boolean,
   anywhere?: true,
 ): MaterialSource | null {
-  const { world, ctx, entity: e, here, targets } = plan;
+  const { world, here, targets } = plan;
   const band = targets.bands.holding(goodType);
   if (!band.hasCandidates()) return null;
-  const failed = unreachableGoalVeto(world, ctx, e);
-  const avoid =
-    rejects === undefined || failed === undefined
-      ? (rejects ?? failed)
-      : (cell: NodeId) => failed(cell) || rejects(cell);
+  const avoid = fetcherAvoid(plan, rejects);
   const source = anywhere
     ? nearestStoreHoldingAnywhere(targets.bands, world, here, goodType, plan.owner, plan.supply, avoid)
     : nearestStoreHolding(
@@ -290,7 +354,22 @@ function materialSource(
         plan.limit ?? undefined,
         avoid,
       );
-  if (source === null) return null;
-  const available = unclaimedStockOf(world, ctx, plan.supply, source, goodType);
+  return source === null ? null : lendingSource(plan, source, goodType);
+}
+
+/** `source` with the units of `goodType` it lends this fetcher, or null for none. */
+function lendingSource(plan: PlannerContext, source: Entity, goodType: number): MaterialSource | null {
+  const available = unclaimedStockOf(plan.world, plan.ctx, plan.supply, source, goodType);
   return available > 0 ? { source, available } : null;
+}
+
+/** The cells a fetcher's source search passes over: its failed goals and those `rejects` names. */
+function fetcherAvoid(
+  plan: PlannerContext,
+  rejects: ((cell: NodeId) => boolean) | undefined,
+): ((cell: NodeId) => boolean) | undefined {
+  const failed = unreachableGoalVeto(plan.world, plan.ctx, plan.entity);
+  return rejects === undefined || failed === undefined
+    ? (rejects ?? failed)
+    : (cell: NodeId) => failed(cell) || rejects(cell);
 }

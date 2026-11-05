@@ -251,26 +251,10 @@ export class InteractionCellIndex {
     return this.all.any() !== undefined;
   }
 
-  /** How far, in Manhattan half-cell nodes, a candidate's interaction cell may lie from the node
-   *  {@link anyFiledIn} tests it at. */
+  /** How far, in Manhattan half-cell nodes, a candidate's interaction cell may lie from the node it is
+   *  filed at ({@link filedOnSide}): a door candidate is filed at its door, a loose one at its own node. */
   get filedSlack(): number {
     return this.slack;
-  }
-
-  /** Whether a candidate filed at a node `area` admits passes `accept`, unranked: for a caller that would
-   *  otherwise sweep every ring to learn there is none. A door candidate is filed at its door, a loose one
-   *  at its own node, up to {@link filedSlack} from its interaction cell. */
-  anyFiledIn(area: (x: number, y: number) => boolean, accept: (e: Entity) => boolean): boolean {
-    const { terrain } = this;
-    for (const e of this.all.doorList) {
-      const cell = this.doorCell.get(e);
-      if (cell !== undefined && area(terrain.xOf(cell), terrain.yOf(cell)) && accept(e)) return true;
-    }
-    for (const e of this.all.looseList) {
-      const node = this.looseNode.get(e);
-      if (node !== undefined && area(terrain.xOf(node), terrain.yOf(node)) && accept(e)) return true;
-    }
-    return false;
   }
 
   /** The candidates on `owner`'s side ({@link sameSideAs}: its own and unowned ones), each as its entity
@@ -390,6 +374,35 @@ export class InteractionCellIndex {
     avoid?: (cell: NodeId) => boolean,
   ): NearestByCell<P> | null {
     return this.linearNearest(field, here, accept, gate, avoid, here, Number.POSITIVE_INFINITY, count);
+  }
+
+  /** Every candidate of `field` that {@link nearestAmong} could pick, each with its resolved cell, in the
+   *  `(distance, cell-id, entity-id)` order: {@link firstUnvetoed} under a further `avoid` is then the
+   *  {@link nearestAmong} winner under both, for a caller that asks again under many. */
+  rankedAmong<P>(
+    field: readonly Entity[],
+    count: number,
+    here: NodeId,
+    accept: (e: Entity) => Qualified<P> | null,
+    gate?: SpatialGate,
+    avoid?: (cell: NodeId) => boolean,
+  ): NearestByCell<P>[] {
+    const { world, ctx, terrain } = this;
+    const ranked: NearestByCell<P>[] = [];
+    for (let i = 0; i < count; i++) {
+      const e = field[i];
+      if (e === undefined) continue;
+      const door = this.doorCell.get(e);
+      if (door === undefined && this.gatedOutLoose(gate, e)) continue;
+      const hit = accept(e);
+      if (hit === null) continue;
+      const cell = door ?? interactionCell(world, ctx, terrain, e, here);
+      if (gate !== undefined && !gate.allowsNode(cell)) continue;
+      if (vetoed(avoid, here, cell)) continue;
+      if (door === undefined && this.pileCellSealed(e, here, cell)) continue;
+      ranked.push({ entity: e, cell, distance: manhattan(terrain, here, cell), payload: hit.payload });
+    }
+    return ranked.sort((a, b) => a.distance - b.distance || a.cell - b.cell || a.entity - b.entity);
   }
 
   /** The {@link nearest} winner among the door-bucketed candidates, for an `accept` that only a building
@@ -773,6 +786,19 @@ export class InteractionCellIndex {
  *  exempt. */
 function vetoed(avoid: ((cell: NodeId) => boolean) | undefined, here: NodeId, cell: NodeId): boolean {
   return avoid !== undefined && cell !== here && avoid(cell);
+}
+
+/** The first of a {@link InteractionCellIndex.rankedAmong} ranking from `here` that `avoid` lets through,
+ *  under the scans' own veto rule (a candidate at `here` is exempt), or null. */
+export function firstUnvetoed<P>(
+  ranked: readonly NearestByCell<P>[],
+  here: NodeId,
+  avoid: (cell: NodeId, entity: Entity) => boolean,
+): NearestByCell<P> | null {
+  for (const candidate of ranked) {
+    if (candidate.cell === here || !avoid(candidate.cell, candidate.entity)) return candidate;
+  }
+  return null;
 }
 
 /** Whether `(x, y)` lies within `slack` of `box` on both axes, as a node within Manhattan `slack` of a

@@ -34,6 +34,7 @@ import {
   ACCEPT_ALL,
   FILED_STRIDE,
   type InteractionCellIndex,
+  type NearestByCell,
   nearBox,
   QUALIFIES,
   RING_MIN_BUCKETS,
@@ -291,24 +292,55 @@ export function nearestStoreHoldingWithin(
   if (owner === undefined) {
     return nearestHolderIn(bands, holders, world, here, goodType, owner, supply, goodsGate, avoid);
   }
-  const near = narrowedField;
-  let count = storesFiledNear(holders, owner, goodsGate);
+  const filed = storesFiledNear(holders, owner, goodsGate);
   // Mostly none: the stock lies outside the gate, and the search ends before its filter is made.
-  if (count === 0) return null;
+  if (filed === 0) return null;
   const lends = holdsUnclaimed(world, bands.ctx, supply, goodType);
-  let lenders = 0;
-  for (let i = 0; i < count; i++) {
-    const store = near[i] as Entity;
-    if (lends(store) !== null) near[lenders++] = store;
-  }
-  count = lenders;
+  const count = keepLenders(filed, lends);
   if (count === 0) return null;
   // Past the ring search's own linear threshold its rings answer, with the identical winner.
   if (count > RING_MIN_BUCKETS) {
     return nearestHolderIn(bands, holders, world, here, goodType, owner, supply, goodsGate, avoid);
   }
-  sortAscending(near, count);
-  return holders.nearestAmong(near, count, here, lends, goodsGate, avoid)?.entity ?? null;
+  sortAscending(narrowedField, count);
+  return holders.nearestAmong(narrowedField, count, here, lends, goodsGate, avoid)?.entity ?? null;
+}
+
+/** The stores {@link nearestStoreHolding} weighs for an owned fetcher, ranked as {@link
+ *  InteractionCellIndex.rankedAmong} ranks them: under a further `avoid`, `firstUnvetoed` of the ranking is
+ *  that search's winner under both, for a fetcher that asks it again under many. */
+export function storesHoldingRanked(
+  bands: TargetBands,
+  world: World,
+  here: NodeId,
+  goodType: number,
+  owner: number,
+  supply: SupplyTally,
+  gate?: SpatialGate,
+  avoid?: (cell: NodeId) => boolean,
+): readonly NearestByCell[] {
+  if (sideLendsNone(bands, world, owner, goodType)) return [];
+  const holders = bands.holding(goodType);
+  if (!holders.hasCandidates()) return [];
+  const goodsGate = bands.goodsGate(here, owner, gate);
+  const filed = storesFiledNear(holders, owner, goodsGate);
+  if (filed === 0) return [];
+  const lends = holdsUnclaimed(world, bands.ctx, supply, goodType);
+  const count = keepLenders(filed, lends);
+  // The ranking orders by entity id too, so the field needs no sort.
+  return holders.rankedAmong(narrowedField, count, here, lends, goodsGate, avoid);
+}
+
+/** Keep the first `count` stores of {@link narrowedField} that `lends` passes, in order, and return how
+ *  many those are. */
+function keepLenders(count: number, lends: (store: Entity) => typeof QUALIFIES | null): number {
+  const near = narrowedField;
+  let lenders = 0;
+  for (let i = 0; i < count; i++) {
+    const store = near[i] as Entity;
+    if (lends(store) !== null) near[lenders++] = store;
+  }
+  return lenders;
 }
 
 /** {@link storesFiledNear}'s list, reused at a count rather than a length, so its storage stays put. */
