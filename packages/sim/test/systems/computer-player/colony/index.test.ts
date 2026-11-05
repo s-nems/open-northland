@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AiControl,
   aiControlEntity,
+  IdleStand,
   prioritizesGood,
   Settler,
   StorePriority,
@@ -28,7 +29,7 @@ const AFTER_SAVE_TICKS = minutesToTicks(3);
 const BRICK = 47;
 
 describe('a colony toggle turned off', () => {
-  it('lets its routes go, lifts the stop pulls and hands the colony back to the whole seat', () => {
+  it('lets its routes go, wakes the trader it frees, lifts the stop pulls and hands the colony back to the whole seat', () => {
     const base = colonyContent();
     const content = parseContentSet({
       ...base,
@@ -45,8 +46,11 @@ describe('a colony toggle turned off', () => {
       everySettlerOf(sim.world, SEAT).length,
     );
     const modules = { ...sim.world.get(carrier, AiControl).modules, houseBuild: false };
+    // A flag gatherer's wait, which a fresh plan never leaves on a trader: one still there was never woken.
+    sim.world.add(trader, IdleStand, { standing: false });
     sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: true, modules });
     sim.step();
+    expect(sim.world.tryGet(trader, IdleStand)?.standing).not.toBe(false);
     expect(colonyState(sim)).toBeUndefined();
     expect(sim.world.tryGet(trader, TradeShip)).toBeUndefined();
     expect(isTraderJob(sim.content, sim.world.get(trader, Settler).jobType)).toBe(false);
