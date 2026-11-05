@@ -39,8 +39,8 @@ const NO_CAMPAIGN: readonly PlayerCommand[] = [];
  * ({@link seatPeaceEndTick}) and the difficulty's first wave may march, and while the seat's posture holds the
  * army home (`strategy/military.ts`), the army only gathers at home ({@link armedStandOf}),
  * as it does with no target, a marching wave called back. With a target and no wave out, a seat awaiting a
- * scripted attack musters under its tower line ({@link towerStandOf}). `wearsArmour` is
- * the seat's armour rule this decision (`fit.ts`). The men at the door set out as a wave when the
+ * scripted attack musters under its tower line ({@link towerStandOf}). `armourWaiting` holds
+ * the men waiting for armour this decision (`fit.ts`). The men at the door set out as a wave when the
  * muster is the one it was gathering and the seat's points reach its plan's edge over the target owner's; a
  * body already nearer the objective goes in whatever the muster says, having nowhere safe to wait;
  * everybody else is called in.
@@ -51,7 +51,7 @@ export function runOffensive(
   terrain: TerrainGraph,
   player: number,
   { army, awaitingWeapon, wave }: CampaignForce,
-  wearsArmour: boolean,
+  armourWaiting: ReadonlySet<Entity>,
 ): readonly PlayerCommand[] {
   // No barracks, no rally point - and no army either, since its drill is the seat's only route to a
   // soldier (workforce/garrison.ts).
@@ -122,7 +122,7 @@ export function runOffensive(
   // of its men is not benched by its own defence; the target's posted men weigh what they kill. The
   // target's side is what the seat has seen of it. A siege train at home outranges the towers, so their
   // posted men then weigh what any man does.
-  const own = ownArmyPoints(world, ctx, player, wearsArmour);
+  const own = ownArmyPoints(world, ctx, player, armourWaiting);
   const postedWeight =
     crewedCatapults(world, ctx, player).length >= SIEGE_MARCH_MIN_CATAPULTS ? COUNTED_ONCE : undefined;
   const strength = {

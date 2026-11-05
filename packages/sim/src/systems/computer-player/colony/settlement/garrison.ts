@@ -26,7 +26,7 @@ import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../../ai-shared/seat-roster.js';
 import { towerPostFor } from '../../../conflict/tower-post.js';
 import { minutesToTicks } from '../../game-phase.js';
-import { isFitSoldier } from '../../military/fit.js';
+import { isFitSoldier, NO_ARMOUR_WAIT } from '../../military/fit.js';
 import { ARMY_FLOOR_MIN, underAttack } from '../../workforce/garrison.js';
 import { type ColonyEnv, type ColonyView, homeLandOf } from '../env.js';
 import { colonists, colonyBuildings, colonyOrigin, standsOn } from '../roster.js';
@@ -137,7 +137,7 @@ function homeFighters(env: ColonyEnv): { readonly army: number; readonly free: r
   const army = takeCensus(world, ctx, seat).ready.filter(
     (e) => !away.has(e) && standsOn(world, ctx, e, home),
   );
-  const free = army.filter((e) => !spokenFor(world, e) && isFitSoldier(world, ctx, e, false));
+  const free = army.filter((e) => !spokenFor(world, e) && isFitSoldier(world, ctx, e, NO_ARMOUR_WAIT));
   return { army: army.length, free };
 }
 

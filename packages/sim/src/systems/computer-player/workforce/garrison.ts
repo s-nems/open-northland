@@ -41,7 +41,7 @@ import { type ComputerProfile, type Share, shareOf } from '../difficulty.js';
 import { homeStockOf } from '../home-stock.js';
 import { BARRACKS_STANDS_BEFORE_TICKS, beforeDeadlineLead } from '../military/deadline.js';
 import { ownArmyPoints, strongestBelievedEnemy } from '../military/enemy-strength.js';
-import { isFitSoldier } from '../military/fit.js';
+import { isFitSoldier, NO_ARMOUR_WAIT } from '../military/fit.js';
 import { WAVE_MIN_SOLDIERS } from '../military/muster.js';
 import { type ReachableStockUnits, seatArmsStock } from '../military/outfit.js';
 import { isLiveFighter } from '../military/points.js';
@@ -420,7 +420,7 @@ function armyOnHand(world: World, ctx: SystemContext, player: number, bookings: 
   const drilling = bookings.filter((e) => !isFighterJob(ctx.content, world.get(e, Settler).jobType));
   let armed = 0;
   for (const e of ownedFightersOf(world, ctx.content, player)) {
-    if (isLiveFighter(world, e) && isFitSoldier(world, ctx, e, false)) armed++;
+    if (isLiveFighter(world, e) && isFitSoldier(world, ctx, e, NO_ARMOUR_WAIT)) armed++;
   }
   return armed + drilling.length;
 }

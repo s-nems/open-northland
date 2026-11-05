@@ -1,6 +1,6 @@
 import { diplomacyStance, MAX_PLAYERS, Position, seatPeaceEndTick } from '../../../components/index.js';
 import { isPlayerDead } from '../../../components/match.js';
-import type { World } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import { TOWER_POST_STRENGTH } from '../../ai-shared/military/census.js';
 import { isManningPost } from '../../conflict/tower-post.js';
@@ -12,7 +12,7 @@ import {
   believedFighterPoints,
   believedFighterStrength,
 } from '../knowledge/intel/index.js';
-import { armyWearsArmour, isFitSoldier } from './fit.js';
+import { armourWaiters, isFitSoldier } from './fit.js';
 import { waveBandAt } from './plan.js';
 import { type ArmyPoints, armyPointsOf, COUNTED_ONCE, isLiveFighter, unitPoints } from './points.js';
 
@@ -22,10 +22,10 @@ export function ownArmyPoints(
   world: World,
   ctx: SystemContext,
   player: number,
-  wearsArmour: boolean = armyWearsArmour(world, ctx, player),
+  waiting: ReadonlySet<Entity> = armourWaiters(world, ctx, player),
 ): ArmyPoints {
   return armyPointsOf(world, ctx, player, COUNTED_ONCE, NEVER_POSTED, (e) =>
-    isFitSoldier(world, ctx, e, wearsArmour),
+    isFitSoldier(world, ctx, e, waiting),
   );
 }
 
