@@ -352,16 +352,22 @@ function homecoming(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
 /**
  * Another shore point on the land of `refused` for a ship lying still short of it, the way hulls moored
  * there since or lying across its berth refuse its dock order: the mooring spot nearest the ship, the
- * lowest node on a tie, at least {@link LANDING_SHORE_SPACING_NODES} from `refused` and from every other
- * ship of the seat's mooring. Null when that land has none. Costs the ship's mooring spots.
+ * lowest node on a tie, at least {@link LANDING_SHORE_SPACING_NODES} from `refused`, from each of `tried`
+ * and from every other ship of the seat's mooring. Null when that land has none. Costs the ship's mooring
+ * spots.
  */
-export function otherShore(env: ShipEnv, ship: Entity, refused: HalfCellNode): HalfCellNode | null {
+export function otherShore(
+  env: ShipEnv,
+  ship: Entity,
+  refused: HalfCellNode,
+  tried: readonly DeepReadonly<HalfCellNode>[] = [],
+): HalfCellNode | null {
   const { world, ctx, terrain, seat } = env;
   const at = nodeOfEntity(world, ship);
   const spots = mooringSpotsOf(world, ctx, terrain, ship);
   const land = componentOfPoint(terrain, refused);
   if (at === null || spots === null || land === NO_COMPONENT) return null;
-  const taken: HalfCellNode[] = [refused];
+  const taken: DeepReadonly<HalfCellNode>[] = [refused, ...tried];
   for (const e of vehicleIndex(world).ownedBy(seat)) {
     const mooring = e === ship ? null : world.get(e, Vehicle).mooring;
     if (mooring !== null) taken.push(mooring);

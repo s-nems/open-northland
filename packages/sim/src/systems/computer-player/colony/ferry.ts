@@ -183,7 +183,7 @@ function startFerry(
   riders: readonly Entity[],
 ): PlayerCommand[] {
   const hull = env.world.tryGet(ship, Health)?.hitpoints ?? 0;
-  env.edit().ferry = { ship, side, leg: 'board', since: env.ctx.tick, helm, hull };
+  env.edit().ferry = { ship, side, leg: 'board', since: env.ctx.tick, helm, hull, tried: [] };
   return boardOrders(env.world, helm === null ? riders : [helm, ...riders], ship);
 }
 
@@ -226,6 +226,7 @@ function enterLeg(env: ColonyEnv, leg: 'board' | 'sail', side: 'home' | 'colony'
   live.leg = leg;
   live.side = side;
   live.since = env.ctx.tick;
+  live.tried = [];
 }
 
 /** Arrived at the colony: everyone but the helm steps ashore and the homeward men board; with no helm the
@@ -317,9 +318,11 @@ export function runFerry(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
     return releaseFerry(env, colony, ship);
   const at = arriving ? colony.shore : colony.berth;
   if (!lyingStill(world, ship) || at === null) return [];
-  const next = otherShore(env, ship, at) ?? at;
+  const next = otherShore(env, ship, at, ferry.tried);
+  if (next === null) return sailOrders(env, colony, ship, at);
   // The colony's shore stays by its store, where its trader stops and its first tower looks: a refused dock
   // there sends this leg elsewhere and moves nothing.
   if (!arriving) env.edit().berth = { hx: next.hx, hy: next.hy };
+  env.edit().ferry?.tried.push({ hx: next.hx, hy: next.hy });
   return sailOrders(env, colony, ship, next);
 }

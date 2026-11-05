@@ -56,6 +56,9 @@ export interface ColonyFerry {
   helm: Entity | null;
   /** The ship's hull when last read: a drop is fire the seat has felt. */
   hull: number;
+  /** The other shores this leg sailed for once its own refused the dock: a dock refused there too sends it
+   *  on clear of each, rather than back to the same spot. */
+  tried: HalfCellNode[];
 }
 
 /** A building the seat's build order handed to its colony, and the step it stood on. */
