@@ -480,7 +480,7 @@ export function handsWanted(
 
 /** The colony's men with no work left, who sail home by the next ship (owner ruling): its free builders past
  *  its sites' crew ({@link colonyBuilderWant}) and past what it has work for, unwed first and then ascending
- *  id. */
+ *  id, so the crew it keeps is its wed men first. */
 export function menPastWork(env: ColonyEnv, colony: ColonyView): Entity[] {
   const { world, ctx } = env;
   if (colony.phase !== 'running') return [];
@@ -491,11 +491,10 @@ export function menPastWork(env: ColonyEnv, colony: ColonyView): Entity[] {
   const builder = builderJobOf(ctx);
   const buildings = colonyBuildings(env);
   const crew = colonyBuilderWant(world, ctx, buildings, colonyPlan(env, colony, buildings).length);
-  return men
+  const builders = men
     .filter((e) => !atWorkshop(env, e) && postOf(world, ctx, e, builder) === 'builder')
-    .sort((a, b) => Number(world.has(a, Marriage)) - Number(world.has(b, Marriage)) || a - b)
-    .slice(crew)
-    .slice(0, past);
+    .sort((a, b) => Number(world.has(a, Marriage)) - Number(world.has(b, Marriage)) || a - b);
+  return builders.slice(0, Math.min(past, Math.max(0, builders.length - crew)));
 }
 
 /** The `diggers` past the table's dig posts, in `held`'s surplus of each good, that the open builder posts of
@@ -530,13 +529,16 @@ function diggersForBuilders(
  *  colony's sites ({@link colonyBuilderWant}), handed to the free men and to the builders past their share,
  *  then the workshops' seats; once the store stands the rest dig, the least dug good first; a good a site
  *  needs and nobody digs goes first of all, as no ship brings what the land holds; a free man with no post
- *  to take builds. */
+ *  to take builds, but a digger by a full store stays at his good. */
 export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: FoundingRead): PlayerCommand[] {
   const { world, ctx } = env;
   const builder = builderJobOf(ctx);
   const held = new Map<Post, number>();
   const builders: Entity[] = [];
   const free: Entity[] = [];
+  // Diggers by a full store, free to move on: one no other post takes keeps digging rather than building, or
+  // the store's room crossing its cap turns him builder and back on alternate decisions.
+  const standing = new Set<Entity>();
   const posted = men.filter((man) => !atWorkshop(env, man));
   const digs = digGoodsWithRoom(env, read);
   const hunting = huntingOpen(
@@ -553,6 +555,7 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
       (post === 'hunter' && !hunting && !busy(world, man));
     if (post === null || moves) free.push(man);
     else held.set(post, (held.get(post) ?? 0) + 1);
+    if (moves && isDug(post)) standing.add(man);
     if (post === 'builder') builders.push(man);
   }
   const dug = new Map<DugGood, number>();
@@ -629,7 +632,7 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
   }
   if (builder !== null)
     for (const man of spare)
-      if (world.get(man, Settler).jobType !== builder)
+      if (!standing.has(man) && world.get(man, Settler).jobType !== builder)
         commands.push({ kind: 'setJob', entity: man, jobType: builder });
   return commands;
 }

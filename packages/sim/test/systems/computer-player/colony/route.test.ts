@@ -32,6 +32,7 @@ import {
 import { isAllocatableMan } from '../../../../src/systems/ai-shared/workforce/pool.js';
 import { seatBaseOf } from '../../../../src/systems/computer-player/base.js';
 import { colonySmallShips } from '../../../../src/systems/computer-player/colony/fleet.js';
+import { menPastWork } from '../../../../src/systems/computer-player/colony/posts.js';
 import {
   RELIEF_AFTER_TICKS,
   routeBacklog,
@@ -56,6 +57,7 @@ import {
   colonyWorld,
   editColony,
   FOOD,
+  looseColonyEnv,
   mooredShip,
   SMALL_SHIP,
   stepUntil,
@@ -356,6 +358,26 @@ describe("a colony route's marks", () => {
   });
 });
 
+/** {@link IDLE_MEN} idle builders landed on the running colony, the first wed to a woman landed beside them. */
+function idleBuilders(sim: Simulation): { readonly idle: readonly Entity[]; readonly husband: Entity } {
+  const site = colonyState(sim)?.site;
+  if (site === undefined) throw new Error('setup: no site');
+  const before = new Set(everySettlerOf(sim.world, SEAT));
+  const spawn = (jobType: number, x: number): void =>
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y: site.hy, tribe: VIKING, owner: SEAT });
+  for (let i = 0; i < IDLE_MEN; i++) spawn(BUILDER, site.hx + IDLE_STEP * i);
+  spawn(WOMAN, site.hx);
+  sim.step();
+  const fresh = colonySettlersOf(sim).filter((e) => !before.has(e));
+  const wife = fresh.find((e) => sim.world.has(e, Female));
+  const idle = fresh.filter((e) => !sim.world.has(e, Female));
+  const husband = idle[0];
+  if (wife === undefined || husband === undefined) throw new Error('setup: no couple on the colony');
+  sim.world.add(wife, Marriage, { spouse: husband, child: null });
+  sim.world.add(husband, Marriage, { spouse: wife, child: null });
+  return { idle, husband };
+}
+
 describe('a colony ferry', () => {
   it('brings the hands a colony lacks over on a free ship', () => {
     const { sim } = routedWorld();
@@ -365,27 +387,13 @@ describe('a colony ferry', () => {
 
   it("sends men with no work left home as civilians, but keeps its posted men and a wife's husband", () => {
     const { sim } = routedWorld();
-    const site = colonyState(sim)?.site;
-    if (site === undefined) throw new Error('no site');
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
     const posted = colonySettlersOf(sim).filter((e) => {
       const job = sim.world.get(e, Settler).jobType;
       return job !== BUILDER && job !== CIVILIST && isAllocatableMan(sim.world, ctxOf(sim), e);
     });
     expect(posted.length).toBeGreaterThan(0);
-    const before = new Set(everySettlerOf(sim.world, SEAT));
-    const spawn = (jobType: number, x: number): void =>
-      sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y: site.hy, tribe: VIKING, owner: SEAT });
-    for (let i = 0; i < IDLE_MEN; i++) spawn(BUILDER, site.hx + IDLE_STEP * i);
-    spawn(WOMAN, site.hx);
-    sim.step();
-    const fresh = colonySettlersOf(sim).filter((e) => !before.has(e));
-    const wife = fresh.find((e) => sim.world.has(e, Female));
-    const idle = fresh.filter((e) => !sim.world.has(e, Female));
-    const husband = idle[0];
-    if (wife === undefined || husband === undefined) throw new Error('setup: no couple on the colony');
-    sim.world.add(wife, Marriage, { spouse: husband, child: null });
-    sim.world.add(husband, Marriage, { spouse: wife, child: null });
+    const { idle, husband } = idleBuilders(sim);
     const landed = (): Entity[] => {
       const home = homeSettlers(sim.world, ctxOf(sim), SEAT);
       return idle.filter((e) => home.includes(e) && !sim.world.has(e, Rider));
@@ -393,12 +401,28 @@ describe('a colony ferry', () => {
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => landed().length > 0)).toBe(true);
     expect(landed().map((e) => sim.world.get(e, Settler).jobType)).toEqual(landed().map(() => CIVILIST));
     stepUntil(sim, ROUND_DUE_TICKS, () => false);
-    // The colony keeps a pair of builders at rest, which a fresh idle man may fill.
+    // The colony keeps a pair of builders at rest, which a fresh idle man may fill, and a fresh man it gave
+    // another post stays at it.
     expect(landed()).not.toContain(husband);
-    expect(landed().length).toBeGreaterThanOrEqual(idle.length - 1 - BUILDERS_KEPT);
     const colony = colonySettlersOf(sim);
+    const reposted = idle.filter(
+      (e) => e !== husband && colony.includes(e) && sim.world.get(e, Settler).jobType !== BUILDER,
+    );
+    expect(landed().length).toBeGreaterThanOrEqual(idle.length - 1 - BUILDERS_KEPT - reposted.length);
     expect(colony).toContain(husband);
     expect(posted.filter((e) => sim.world.isAlive(e) && !colony.includes(e))).toEqual([]);
+  });
+});
+
+describe("a colony's men past work", () => {
+  it('are its unwed builders first, past the crew it keeps, so a wed man stays', () => {
+    const { sim } = routedWorld();
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const { idle, husband } = idleBuilders(sim);
+    const colony = editColony(sim);
+    const past = menPastWork(looseColonyEnv(sim, colony), colony);
+    expect(past.some((e) => idle.includes(e) && e !== husband)).toBe(true);
+    expect(past).not.toContain(husband);
   });
 });
 
