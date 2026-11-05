@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AiControl,
   Building,
+  type ColonyRoute,
   type ColonyScout,
   ComputerColony,
   type ComputerColonyState,
@@ -834,6 +835,51 @@ describe('workforce - the top-tier joineries’ roles', () => {
     expect(tuned(sim)).toEqual(new Map([[joinery, all(TRADE_SHIP_GOOD)]]));
     editColony(sim).ship = scout;
     expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
+  });
+
+  it('builds a trade ship for a relief or a second colony while the first route holds its own', () => {
+    const content = fleetContent();
+    const { sim, joineries } = crewedJoineries(seaMap(), [AWAY], content);
+    const [joinery] = joineries;
+    if (joinery === undefined) throw new Error('setup: one joinery');
+    tuned(sim);
+    const carrier = sim.world.create();
+    sim.world.add(carrier, AiControl, {
+      player: SEAT,
+      computerEnabled: true,
+      modules: computerModuleEnables({}),
+      mapAiEnabled: true,
+      difficulty: 'hard',
+    });
+    const held = createVehicle(sim.world, fleetCtx(sim), {
+      vehicleType: SHIP_BIG,
+      x: (SEA_WEST + SEA_EAST) / 2,
+      y: FLEET_SPACING,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    if (held === null) throw new Error('setup: no trade ship');
+    const hull = sim.world.mut(held, Vehicle);
+    hull.moored = true;
+    hull.mooring = { hx: FLEET_ROW.x, hy: FLEET_ROW.y };
+    const route = (ship: Entity | null): ColonyRoute => ({
+      trader: null,
+      chosen: 0,
+      ship,
+      hull: 1,
+      load: 0,
+      behindSince: null,
+    });
+    sim.world.add(carrier, ComputerColony, {
+      colonies: [blankColony(NO_COMPONENT, { route: route(held), relief: route(null) })],
+      rejected: [],
+      retryAt: 0,
+    });
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(TRADE_SHIP_GOOD)]]));
+    editColony(sim).relief = null;
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
+    sim.world.mut(carrier, ComputerColony).colonies.push(blankColony(NO_COMPONENT, { route: route(null) }));
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(TRADE_SHIP_GOOD)]]));
   });
 
   it('keeps the hides the missing ships of the landing fleet take out of every craft', () => {

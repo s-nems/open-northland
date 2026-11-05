@@ -117,7 +117,8 @@ export type FleetSeat = {
 /** The cap of a {@link FleetSeat} sized to the army the seat would land. */
 export const LANDING_FLEET = 'landingFleet';
 
-/** The cap of a {@link FleetSeat} sized to the trade ships the seat's colony owes ({@link colonyTradeShips}). */
+/** The cap of a {@link FleetSeat} sized to the trade ships the seat's colonies owe ({@link colonyTradeShips})
+ *  beside the ones they already hold. */
 export const COLONY_TRADE_FLEET = 'colonyTradeFleet';
 
 /** Owner ruling: a small ship carries 20 soldiers, its 19 passengers and the commander at the helm. */
@@ -774,12 +775,14 @@ export function tuneCraftCounters(
       const sails = seatNeedsShips(world, ctx, player);
       landing =
         (sails ? Math.max(fleet, landingFewestShips(fleet) + SEA_SCOUT_SHIPS) : fleet) +
-        colonyFleetShips(world, ctx, player) +
+        colonyShipsOf(world, player, smallShipVehicle(ctx)) +
         colonySmallShips(world, ctx, player);
     }
     return landing;
   };
-  const tradeShips = (): number => colonyTradeShips(world, ctx, player);
+  let trade: number | undefined;
+  const tradeShips = (): number =>
+    (trade ??= colonyTradeShips(world, ctx, player) + colonyShipsOf(world, player, tradeShipVehicle(ctx)));
   const tribe = playerPlacementTribes(world, player)?.[0];
   const ownedTypes = new Map<string, boolean>();
   const owns = (buildingId: string, siteOnly: boolean): boolean => {
@@ -981,9 +984,9 @@ function heldBack(
 }
 
 /**
- * The units of each good the seat's crafts leave in stock for the ships its landing fleet still lacks,
- * while its ship joinery stands: the missing ships' share of every line of the smallest ship's bill that
- * no collector gathers (the wood and the like come through the supply lines and their gatherers).
+ * The units of each good the seat's crafts leave in stock for the ships its landing fleet and its colonies'
+ * trade ships still lack, while its ship joinery stands: the missing ships' share of every line of their
+ * bills that no collector gathers (the wood and the like come through the supply lines and their gatherers).
  * Authored: observed on arabskie_wyspy_wolna_gra_mieszana, a seat's tailors sewed the leather it started
  * with into shoes, and its ship yard then waited long on the leather of its bill.
  */
@@ -1004,11 +1007,17 @@ function fleetReserve(
     (e) => world.get(e, Building).buildingType === joinery && isBuilt(world, e) && roleOf(e) === 'ship',
   );
   if (!shipYard) return NO_RESERVE;
+  const tradeVehicle = tradeShipVehicle(ctx);
   let standing = 0;
-  for (const e of vehicleIndex(world).ownedBy(player))
-    if (world.get(e, Vehicle).vehicleType === vehicleType && !strandedShip(world, ctx, player, e)) standing++;
+  let trading = 0;
+  for (const e of vehicleIndex(world).ownedBy(player)) {
+    const type = world.get(e, Vehicle).vehicleType;
+    if ((type !== vehicleType && type !== tradeVehicle) || strandedShip(world, ctx, player, e)) continue;
+    if (type === vehicleType) standing++;
+    else trading++;
+  }
   const missing = Math.max(0, landingShips() - standing);
-  const trade = tradeShips();
+  const trade = Math.max(0, tradeShips() - trading);
   if (missing === 0 && trade === 0) return NO_RESERVE;
   const collected = new Set(COLLECTED_GOOD_IDS.flatMap((id) => index.goodTypeBySlug.get(id) ?? []));
   const reserve = new Map<number, number>();
@@ -1225,7 +1234,8 @@ interface SeatChoice {
   readonly fleetOf: (good: number, freeOnly: boolean) => number;
   /** The ships the seat's joinery builds: its {@link landingFleetShips}, with room for {@link SEA_SCOUT_SHIPS}. */
   readonly landingShips: () => number;
-  /** The trade ships the seat's colony owes ({@link colonyTradeShips}). */
+  /** The trade ships the seat's joinery builds: those its colonies owe ({@link colonyTradeShips}) beside the
+   *  ones they hold. */
   readonly tradeShips: () => number;
   /** Whether the seat owns a building of the type with this stable content id, standing or a site, or
    *  with `siteOnly` a site still under construction. */
@@ -1350,12 +1360,26 @@ function stockReads(
   };
 }
 
-/** The small ships `player`'s colony holds off its landing fleet: the joinery builds that many more. */
-function colonyFleetShips(world: World, ctx: SystemContext, player: number): number {
+/** The ships of `vehicleType` `player`'s colonies hold off the home fleet: the joinery builds that many
+ *  more. */
+function colonyShipsOf(world: World, player: number, vehicleType: number | undefined): number {
+  if (vehicleType === undefined) return 0;
+  return colonyHeldShips(world, player).filter((e) => world.tryGet(e, Vehicle)?.vehicleType === vehicleType)
+    .length;
+}
+
+/** The vehicle type of the smallest ship, the landing fleet's. */
+function smallShipVehicle(ctx: SystemContext): number | undefined {
   const index = contentIndex(ctx.content);
   const house = smallestShipHouse(index);
-  const small = house === null ? undefined : index.buildings.get(house)?.vehicleType;
-  return colonyHeldShips(world, player).filter((e) => world.tryGet(e, Vehicle)?.vehicleType === small).length;
+  return house === null ? undefined : index.buildings.get(house)?.vehicleType;
+}
+
+/** The vehicle type of the trade ship ({@link TRADE_SHIP_ID}). */
+function tradeShipVehicle(ctx: SystemContext): number | undefined {
+  const index = contentIndex(ctx.content);
+  const house = index.buildingTypeBySlug.get(TRADE_SHIP_ID);
+  return house === undefined ? undefined : index.buildings.get(house)?.vehicleType;
 }
 
 /** Whether `player` owns a building of the type with stable content id `buildingId`, standing or a site,
