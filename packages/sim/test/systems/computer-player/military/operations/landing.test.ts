@@ -249,6 +249,8 @@ function landingWorld({
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   sim.enqueueSetup({ kind: 'setFogMode', mode: fog });
   sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: true, modules: militaryOnly() });
+  for (const player of [SEAT, FOE, SECOND_FOE])
+    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player, tribes: [VIKING] });
   const place = (buildingType: number, at: { x: number; y: number }, owner: number) =>
     sim.enqueueSetup({
       kind: 'placeBuilding',
@@ -597,6 +599,23 @@ describe('landing operations', () => {
       expect(landings(sim)).toEqual([]);
       return false;
     });
+  });
+
+  it('holds the landing back on the shelter fire it believes even once the shelter fell out of its sight', () => {
+    const { sim } = landingWorld({
+      men: LANDING_BIG_SHIPS * MEN_PER_SHIP,
+      shelterFire: true,
+      fog: FOG_MODE.CLASSIC_FOG_OF_WAR,
+    });
+    rememberFoeArmy(sim, { most: SEEN_FOE_POINTS });
+    const hq = foeHeadquarters(sim);
+    if (hq === null) throw new Error('setup: no foe headquarters');
+    sim.world.destroy(hq);
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      expect(landings(sim)).toEqual([]);
+      return false;
+    });
+    expect(militaryOrdersOf(sim.world, SEAT).launchRatio).not.toBeNull();
   });
 
   it('sails no landing while a tower covers the headquarters, nothing else lies clear and the wave cannot storm it', () => {

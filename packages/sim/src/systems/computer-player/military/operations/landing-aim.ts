@@ -1,4 +1,9 @@
-import { Building, diplomacyStance, MAX_PLAYERS, mapBriefOf } from '../../../../components/index.js';
+import {
+  diplomacyStance,
+  MAX_PLAYERS,
+  mapBriefOf,
+  playerPlacementTribes,
+} from '../../../../components/index.js';
 import { isPlayerDead } from '../../../../components/match.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
@@ -204,9 +209,10 @@ interface WaveRoom {
   readonly seats: number;
 }
 
-/** The tribe whose house bow a believed building's shelter fires, read off the building while it stands. */
+/** The tribe whose house bow a believed building's shelter fires: its owner's first tribe in the lobby's
+ *  placement, which every seat knows, never the building itself, which may have fallen out of sight. */
 function tribeOf(env: OperationEnv, target: BelievedTarget | null): number | undefined {
-  return target === null ? undefined : env.world.tryGet(target.entity, Building)?.tribe;
+  return target === null ? undefined : playerPlacementTribes(env.world, target.owner)?.[0];
 }
 
 /** The fire the seat believes covers `at`, 0 without a tribe to arm it. */
