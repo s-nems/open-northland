@@ -9,6 +9,7 @@ import {
   blowResult,
   type CalculatorState,
   type DuelFighter,
+  type DuelVerdict,
   duelResult,
   HIT_SIDES,
   type HitSide,
@@ -26,6 +27,7 @@ import {
   combatTargets,
   experienceBonusPct,
   gainsFightExperience,
+  HUMAN_HITPOINTS,
   takesStrengthAmulet,
 } from '../../knowledge/combat.js';
 import { formatFactNumber } from '../../knowledge/facts.js';
@@ -211,42 +213,41 @@ function weaponDropdown(
   return control;
 }
 
-function breakdownTable(rows: readonly BreakdownRow[]): HTMLElement {
+/** The steps that changed the blow, as one line: base, each change, the landed damage. */
+function breakdownLine(rows: readonly BreakdownRow[]): readonly HTMLElement[] {
   const copy = messages().knowledge.mechanics;
-  const table = element('table', 'kn-table kn-calc__breakdown');
-  const head = element('tr', '');
-  for (const [label, numeric] of [
-    [copy.breakdownStep, false],
-    [copy.breakdownChange, true],
-    [copy.breakdownValue, true],
-  ] as const) {
-    const cell = element('th', numeric ? 'kn-num' : '');
-    write(cell, label);
-    head.append(cell);
-  }
-  const thead = element('thead', '');
-  thead.append(head);
-  const body = element('tbody', '');
+  const line = element('p', 'kn-calc__chain');
+  const label = element('span', 'kn-calc__label');
+  write(label, `${copy.breakdownTitle}:`);
+  line.append(label);
+  const term = (name: string, value: string, className: string): void => {
+    const chip = element('span', `kn-calc__term ${className}`.trim());
+    const amount = element('b', '');
+    write(amount, value);
+    chip.append(amount, ` ${name}`);
+    line.append(chip);
+  };
+  const off: string[] = [];
   for (const row of rows) {
-    const line = element('tr', row.skip === null ? '' : 'kn-calc__skipped');
-    const name = element('th', '');
-    name.scope = 'row';
-    write(name, copy.breakdownSteps[row.id]);
-    if (row.skip !== null) {
-      const reason = element('small', '');
-      write(reason, copy.skips[row.skip]);
-      name.append(' ', reason);
+    const name = copy.breakdownSteps[row.id];
+    if (row.id === 'base') term(name, formatFactNumber(row.value), '');
+    else if (row.skip !== null) off.push(`${name} (${copy.skips[row.skip]})`);
+    else if (row.change !== 0) {
+      const shown = formatFactNumber(Math.abs(row.change));
+      term(
+        name,
+        row.change > 0 ? `+${shown}` : `\u2212${shown}`,
+        row.change > 0 ? 'kn-calc__term--up' : 'kn-calc__term--down',
+      );
     }
-    const change = element('td', 'kn-num');
-    const shown = row.id === 'base' || row.change === 0 ? '' : formatFactNumber(row.change);
-    write(change, row.change > 0 && shown !== '' ? `+${shown}` : shown);
-    const value = element('td', 'kn-num');
-    write(value, formatFactNumber(row.value));
-    line.append(name, change, value);
-    body.append(line);
   }
-  table.append(thead, body);
-  return table;
+  const total = element('span', 'kn-calc__term kn-calc__term--total');
+  write(total, `= ${formatFactNumber(rows.at(-1)?.value ?? 0)}`);
+  line.append(total);
+  if (off.length === 0) return [line];
+  const skipped = element('p', 'kn-calc__note');
+  write(skipped, formatMessage(copy.breakdownSkipped, { list: off.join(', ') }));
+  return [line, skipped];
 }
 
 /** What the target fields name, as the answer's subject. */
@@ -266,7 +267,41 @@ function targetName(context: KnowledgeContext, state: CalculatorState): string {
   }
 }
 
-/** The answer: who hits whom, then damage, blows and time in large print. */
+/** More blows than this draw the bar without a mark per blow: the marks would merge. */
+const MAX_BLOW_MARKS = 40;
+
+/**
+ * A health bar over `full`: `left` of it filled, a mark every `blow` across the fill when given.
+ */
+function healthBar(full: number, left: number, blow: number | null, label: string): HTMLElement {
+  const track = element('div', 'kn-calc__hp');
+  track.setAttribute('role', 'img');
+  track.setAttribute('aria-label', label);
+  const fill = element('div', 'kn-calc__hp-fill');
+  setStyleVar(fill, '--fill', full > 0 ? (left / full).toFixed(4) : '0');
+  if (blow !== null && blow > 0 && left / blow <= MAX_BLOW_MARKS) {
+    fill.classList.add('kn-calc__hp-fill--marked');
+    setStyleVar(fill, '--step', Math.min(1, blow / left).toFixed(4));
+  }
+  track.append(fill);
+  return track;
+}
+
+function tiles(values: readonly (readonly [string, string])[]): HTMLElement {
+  const strip = element('dl', 'kn-calc__strip');
+  for (const [label, value] of values) {
+    const box = element('div', 'kn-calc__tile');
+    const term = element('dt', '');
+    write(term, label);
+    const data = element('dd', '');
+    write(data, value);
+    box.append(term, data);
+    strip.append(box);
+  }
+  return strip;
+}
+
+/** The answer: who hits whom, the three numbers in large print, the target's health cut into blows. */
 function answer(
   context: KnowledgeContext,
   state: CalculatorState,
@@ -281,25 +316,31 @@ function answer(
       formatMessage(copy.matchup, { weapon: weaponLabel(result.weapon), target: targetName(context, state) }),
     );
   }
-  const strip = element('dl', 'kn-calc__strip');
-  const tile = (label: string, value: string): void => {
-    const box = element('div', 'kn-calc__tile');
-    const term = element('dt', '');
-    write(term, label);
-    const data = element('dd', '');
-    write(data, value);
-    box.append(term, data);
-    strip.append(box);
-  };
-  tile(copy.resultDamage, count(result?.damage ?? null));
-  tile(copy.resultHits, count(result?.hits ?? null));
-  tile(copy.resultTime, seconds(result?.seconds ?? null));
-  host.append(matchup, strip);
-  if (result !== undefined && result.hits === null) {
+  host.append(
+    matchup,
+    tiles([
+      [copy.resultDamage, count(result?.damage ?? null)],
+      [copy.resultHits, count(result?.hits ?? null)],
+      [copy.resultTime, seconds(result?.seconds ?? null)],
+    ]),
+  );
+  if (result === undefined) return host;
+  if (result.hits === null) {
     const never = element('p', 'kn-calc__never');
     write(never, copy.neverKillsNote);
     host.append(never);
+    return host;
   }
+  const { fullHealth, health } = result.target;
+  const caption = element('p', 'kn-calc__note');
+  write(caption, copy.healthBar);
+  host.append(healthBar(fullHealth, health, result.damage, copy.healthBar), caption);
+  const rate = element('p', 'kn-calc__note');
+  write(
+    rate,
+    `${copy.resultRate}: ${result.perSecond === null ? '-' : formatFactNumber(result.perSecond, SECONDS_DIGITS)}. ${copy.calculatorAssumes}`,
+  );
+  host.append(...breakdownLine(result.rows), rate);
   return host;
 }
 
@@ -312,47 +353,49 @@ function fold(summary: string): { readonly element: HTMLDetailsElement; readonly
   return { element: host, body };
 }
 
-function howItAdds(result: BlowResult | undefined): readonly HTMLElement[] {
-  const copy = messages().knowledge.mechanics;
-  if (result === undefined) return [];
-  const rate = element('p', 'kn-foot');
-  write(
-    rate,
-    `${copy.resultRate}: ${result.perSecond === null ? '-' : formatFactNumber(result.perSecond, SECONDS_DIGITS)}`,
-  );
-  const assumes = element('p', 'kn-foot');
-  write(assumes, copy.calculatorAssumes);
-  return [breakdownTable(result.rows), rate, assumes];
-}
-
 function rankingList(
   context: KnowledgeContext,
   state: CalculatorState,
   pick: (weaponId: string) => void,
 ): HTMLElement {
   const copy = messages().knowledge.mechanics;
-  const list = element('ol', 'kn-calc__ranking');
+  const list = element('div', 'kn-calc__ranking');
+  const header = element('div', 'kn-calc__rank kn-calc__rank--head');
+  for (const text of [copy.weaponLabel, '', copy.rankHits, copy.rankTime]) {
+    const cell = element('span', '');
+    write(cell, text);
+    header.append(cell);
+  }
+  list.append(header);
   const chosen = weaponFor(context.base, state.attacker.tribe, state.attacker.weapon)?.id;
   for (const row of ranking(context.base, state)) {
-    const item = element('li', '');
     const pressable = button('kn-calc__rank');
     pressable.dataset.weapon = row.weapon.id;
     pressable.setAttribute('aria-pressed', String(row.weapon.id === chosen));
     const name = element('span', 'kn-calc__rank-name');
     write(name, weaponLabel(row.weapon));
-    const time = element('span', 'kn-calc__rank-time');
-    write(time, row.hits === null ? copy.neverKills : seconds(row.seconds));
     const bar = element('span', 'kn-calc__bar');
     setStyleVar(bar, '--share', row.share.toFixed(3));
-    pressable.append(name, time, bar);
+    const hits = element('span', 'kn-num');
+    write(hits, count(row.hits));
+    const time = element('span', 'kn-num');
+    write(time, row.hits === null ? copy.neverKills : seconds(row.seconds));
+    pressable.append(name, bar, hits, time);
     pressable.addEventListener('click', () => pick(row.weapon.id));
-    item.append(pressable);
-    list.append(item);
+    list.append(pressable);
   }
   return list;
 }
 
 type Update = (state: CalculatorState) => void;
+
+/** The mark between the two sides: who hits whom, or who fights whom. */
+function versus(mark: string): HTMLElement {
+  const node = element('span', 'kn-calc__versus');
+  node.setAttribute('aria-hidden', 'true');
+  write(node, mark);
+  return node;
+}
 
 function sideTitle(text: string): HTMLElement {
   const title = element('h4', 'kn-calc__title');
@@ -572,12 +615,11 @@ function blowPane(
   const attacker = attackerPanel(context, read, update);
   const target = targetPanel(context, read, update);
   const sides = element('div', 'kn-calc__sides');
-  sides.append(attacker.element, target.element);
+  sides.append(attacker.element, versus('\u2192'), target.element);
   const answerSlot = element('div', 'kn-calc__answerslot');
   answerSlot.setAttribute('aria-live', 'polite');
-  const how = fold(copy.breakdownTitle);
   const compare = fold(copy.rankingTitle);
-  host.append(sides, answerSlot, how.element, compare.element);
+  host.append(sides, answerSlot, compare.element);
 
   const pickFromRanking = (weapon: string): void => {
     update(withWeapon(read(), weapon));
@@ -589,7 +631,6 @@ function blowPane(
     const state = read();
     const result = blowResult(base, state);
     answerSlot.replaceChildren(answer(context, state, result));
-    how.body.replaceChildren(...howItAdds(result));
     compare.body.replaceChildren(rankingList(context, state, pickFromRanking));
     target.refresh(result);
     if (result !== undefined) attacker.refresh(result);
@@ -661,32 +702,66 @@ function fighterPanel(
   return host;
 }
 
-function verdictText(context: KnowledgeContext, state: CalculatorState): readonly string[] {
+/** The health each fighter keeps when the duel ends. */
+function healthAtEnd(verdict: DuelVerdict, index: 0 | 1): number {
+  switch (verdict.kind) {
+    case 'stalemate':
+      return HUMAN_HITPOINTS;
+    case 'draw':
+      return 0;
+    case 'win':
+      return verdict.winner === index ? verdict.healthLeft : 0;
+  }
+}
+
+function verdictHeadline(verdict: DuelVerdict): string {
+  const copy = messages().knowledge.mechanics;
+  switch (verdict.kind) {
+    case 'stalemate':
+      return copy.duelStalemate;
+    case 'draw':
+      return formatMessage(copy.duelDraw, { time: seconds(verdict.seconds) });
+    case 'win':
+      return formatMessage(copy.duelWin, { number: verdict.winner + 1, time: seconds(verdict.seconds) });
+  }
+}
+
+/** The verdict in one line, then each fighter's health at the end and his three numbers. */
+function verdictNodes(context: KnowledgeContext, state: CalculatorState): readonly HTMLElement[] {
   const copy = messages().knowledge.mechanics;
   const result = duelResult(context.base, state.duel);
   if (result === undefined) return [];
   const { sides, verdict } = result;
-  const lines = sides.map((side, i) =>
-    formatMessage(copy.duelSide, {
-      number: i + 1,
-      weapon: weaponLabel(side.weapon),
-      damage: formatFactNumber(side.damage),
-      hits: count(side.hits),
-      time: seconds(side.seconds),
-    }),
-  );
-  if (verdict.kind === 'stalemate') return [copy.duelStalemate, ...lines];
-  if (verdict.kind === 'draw') {
-    return [formatMessage(copy.duelDraw, { time: seconds(verdict.seconds) }), ...lines];
-  }
-  return [
-    formatMessage(copy.duelWin, {
-      number: verdict.winner + 1,
-      time: seconds(verdict.seconds),
-      health: formatFactNumber(verdict.healthLeft),
-    }),
-    ...lines,
-  ];
+  const lead = element('strong', 'kn-calc__headline');
+  write(lead, verdictHeadline(verdict));
+  const rows = sides.map((side, i) => {
+    const index = i === 0 ? 0 : 1;
+    const left = healthAtEnd(verdict, index);
+    const won = verdict.kind === 'win' && verdict.winner === index;
+    const row = element('div', won ? 'kn-calc__fighter kn-calc__fighter--won' : 'kn-calc__fighter');
+    const name = element('p', 'kn-calc__matchup');
+    write(name, `${formatMessage(copy.fighterTitle, { number: index + 1 })}: ${weaponLabel(side.weapon)}`);
+    const health = formatMessage(copy.duelHealth, {
+      health: formatFactNumber(left),
+      full: formatFactNumber(HUMAN_HITPOINTS),
+    });
+    const caption = element('p', 'kn-calc__note');
+    write(caption, health);
+    row.append(
+      name,
+      healthBar(HUMAN_HITPOINTS, left, null, health),
+      caption,
+      tiles([
+        [copy.resultDamage, formatFactNumber(side.damage)],
+        [copy.resultHits, count(side.hits)],
+        [copy.resultTime, seconds(side.seconds)],
+      ]),
+    );
+    return row;
+  });
+  const pair = element('div', 'kn-calc__fighters');
+  pair.append(...rows);
+  return [lead, pair];
 }
 
 function duelPane(context: KnowledgeContext, read: () => CalculatorState, update: Update): HTMLElement {
@@ -699,17 +774,13 @@ function duelPane(context: KnowledgeContext, read: () => CalculatorState, update
     paint();
   };
   function paint(): void {
-    const [headline, ...details] = verdictText(context, read());
-    const lead = element('strong', '');
-    write(lead, headline ?? '');
-    const rest = details.map((line) => {
-      const row = element('span', '');
-      write(row, line);
-      return row;
-    });
-    verdict.replaceChildren(lead, ...rest);
+    verdict.replaceChildren(...verdictNodes(context, read()));
   }
-  sides.append(fighterPanel(context, 0, read, apply), fighterPanel(context, 1, read, apply));
+  sides.append(
+    fighterPanel(context, 0, read, apply),
+    versus('\u2694'),
+    fighterPanel(context, 1, read, apply),
+  );
   host.append(sides, verdict);
   paint();
   return host;
@@ -731,6 +802,7 @@ export function createCalculator(context: KnowledgeContext): HTMLElement {
     states.set(context, state);
     refreshBlow?.();
   };
+  const hint = element('p', 'kn-calc__hint');
   const mode = createSegmented(MODES, copy.modeLabel, (key) => {
     states.set(context, { ...read(), mode: key });
     show();
@@ -738,6 +810,7 @@ export function createCalculator(context: KnowledgeContext): HTMLElement {
   function show(): void {
     const current = read().mode;
     mode.update({ blow: { label: copy.modes.blow }, duel: { label: copy.modes.duel } }, current);
+    write(hint, copy.modeHints[current]);
     refreshBlow = undefined;
     if (current === 'duel') {
       slot.replaceChildren(duelPane(context, read, update));
@@ -748,7 +821,7 @@ export function createCalculator(context: KnowledgeContext): HTMLElement {
     slot.replaceChildren(pane.element);
   }
   show();
-  head.append(title, mode.element);
+  head.append(title, mode.element, hint);
   root.append(head, slot);
   return root;
 }

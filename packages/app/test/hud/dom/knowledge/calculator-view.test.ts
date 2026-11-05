@@ -102,8 +102,8 @@ describe('calculator view', () => {
     const buttons = [...root.querySelectorAll<HTMLElement>('.on-segmented button')];
     buttons[1]?.click();
     expect(root.querySelector('.kn-calc__verdict')?.textContent).not.toBe('');
-    expect(root.querySelector('.kn-calc__strip')).toBeNull();
+    expect(root.querySelector('.kn-calc__blow')).toBeNull();
     buttons[0]?.click();
-    expect(root.querySelector('.kn-calc__strip')).not.toBeNull();
+    expect(root.querySelector('.kn-calc__blow')).not.toBeNull();
   });
 });

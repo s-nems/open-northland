@@ -9,8 +9,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 4px 12px;
+  gap: 4px 14px;
+}
+.kn-calc__hint {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 12.5px;
 }
 .kn-article .kn-calc__head .kn-h {
   margin: 0;
@@ -29,10 +34,11 @@
   letter-spacing: 0.08em;
   color: var(--paper-warn);
 }
+/* The two sides as cards with the mark between them: attacker -> target, fighter vs fighter. */
 .kn-calc__sides {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
   margin-top: 8px;
 }
 .kn-calc__side {
@@ -40,6 +46,14 @@
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+  padding: 6px 10px 8px;
+  border: 1px solid #8d754966;
+  background: #fff2;
+}
+.kn-calc__versus {
+  align-self: center;
+  color: var(--paper-warn);
+  font: 700 24px var(--font-title);
 }
 .kn-calc__pair {
   display: grid;
@@ -91,9 +105,9 @@
   font-weight: 700;
 }
 .kn-calc__strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 36px;
   margin: 0;
 }
 .kn-calc__tile {
@@ -108,6 +122,45 @@
   margin: 0;
   font: 700 26px / 1.15 var(--font-title);
   font-variant-numeric: tabular-nums;
+}
+/* The target's health; marks cut the fill into the blows that empty it. */
+.kn-calc__hp {
+  height: 14px;
+  margin-top: 6px;
+  border: 1px solid #5c4a2c;
+  background: #8d754940;
+}
+.kn-calc__hp-fill {
+  width: calc(var(--fill) * 100%);
+  height: 100%;
+  background: #a33a2a;
+}
+.kn-calc__hp-fill--marked {
+  background: repeating-linear-gradient(
+    90deg,
+    #a33a2a 0 calc(var(--step) * 100% - 2px),
+    #f3e6c4 calc(var(--step) * 100% - 2px) calc(var(--step) * 100%)
+  );
+}
+.kn-calc__answer > .kn-calc__note {
+  margin: 2px 0 0;
+}
+.kn-calc__chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 8px 0 0;
+  font-size: 12.5px;
+}
+.kn-calc__term--up b {
+  color: #2f6a2a;
+}
+.kn-calc__term--down b {
+  color: var(--wax-danger);
+}
+.kn-calc__term--total {
+  font-weight: 700;
 }
 .kn-calc__never {
   margin: 2px 0 0;
@@ -164,69 +217,68 @@
 .kn-calc__foldbody {
   margin-top: 4px;
 }
-.kn-calc__foldbody .kn-foot {
-  margin: 4px 0 0;
-}
-.kn-article .kn-calc__breakdown thead th {
-  position: static;
-}
-.kn-article .kn-calc__breakdown th:first-child {
-  width: 56%;
-}
-.kn-calc__skipped {
-  color: var(--ink-muted);
-}
-.kn-calc__skipped small {
-  font-weight: 400;
-}
+/* One column, fastest first: name, bar, blows, time. */
 .kn-calc__ranking {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 16px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  max-width: 720px;
 }
 .on-hud .kn-calc__rank {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1px 6px;
+  grid-template-columns: 11rem minmax(0, 1fr) 5rem 6rem;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   padding: 2px 4px;
   border: 0;
+  border-bottom: 1px solid #8d754933;
   background: none;
   color: var(--ink);
   font-size: 12.5px;
   text-align: left;
 }
-.on-hud .kn-calc__rank:hover {
+.on-hud .kn-calc__rank--head {
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+.on-hud button.kn-calc__rank:hover {
   background: #fff3;
 }
 .on-hud .kn-calc__rank[aria-pressed="true"] {
   background: #7a54142e;
   font-weight: 700;
 }
-.kn-calc__rank-time {
+.kn-calc__rank .kn-num,
+.kn-calc__rank--head span:nth-child(n + 3) {
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 .kn-calc__bar {
-  grid-column: 1 / -1;
-  height: 4px;
+  height: 6px;
   background:
     linear-gradient(var(--wax-danger), var(--wax-danger)) no-repeat left / calc(var(--share) * 100%) 100%,
     #8d754933;
 }
-.kn-calc__verdict {
-  display: grid;
-  gap: 1px;
-  font-size: 12.5px;
+.kn-calc__headline {
+  display: block;
+  font: 700 18px / 1.3 var(--font-title);
 }
-.kn-calc__verdict strong {
-  font: 700 18px / 1.2 var(--font-title);
+.kn-calc__fighters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+  margin-top: 4px;
+}
+.kn-calc__fighter--won .kn-calc__matchup::after {
+  content: " \2714";
+  color: #2f6a2a;
 }
 @container (max-width: 640px) {
   .kn-calc__sides,
-  .kn-calc__ranking {
+  .kn-calc__fighters {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .kn-calc__versus {
+    justify-self: center;
+    rotate: 90deg;
   }
 }
