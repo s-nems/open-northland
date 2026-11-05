@@ -89,11 +89,24 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
   const grants = collectGrantSpecs(world, ctx);
   if (grants.size === 0) return; // no player granted anything: the pass costs one empty query
   // Manual orders are included, so the assistant also respects a unit the player already sent someone after.
-  // Read at the first settler that passes the gates, before this pass stamps any errand, and not read again
-  // while it stamps them: the errands stamped here are counted apart.
+  // Read once, before this pass stamps any errand, and not read again while it stamps them: the errands
+  // stamped here are counted apart.
   let underwayAtStart: ReadonlyMap<number, ReadonlyMap<number, number>> | undefined;
   const stampedHere = new PlayerGoodCounts();
   const stock = FetchableStock.of(world, ctx);
+  // Each granting player's grants its stock covers at the pass start. One it does not cover stays uncovered
+  // all pass: the stock holds still while the pass stamps errands, and a stamp only adds units underway.
+  const coverable = new Map<number, readonly GrantSpec[]>();
+  const coverableOf = (player: number, wanted: readonly GrantSpec[]): readonly GrantSpec[] => {
+    let specs = coverable.get(player);
+    if (specs === undefined) {
+      underwayAtStart ??= equipFetchesHeld(world);
+      const held = underwayAtStart.get(player);
+      specs = wanted.filter((spec) => stock.exceeds(player, spec.goodType, held?.get(spec.goodType) ?? 0));
+      coverable.set(player, specs);
+    }
+    return specs;
+  };
   // Each granting player's goods kept from civilians (the soldiers-only ones) and from fighters (the
   // civilians-only ones), read once per pass rather than per settler.
   const keptFromCivilians = new Map<number, readonly number[]>();
@@ -124,8 +137,10 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     if (!world.has(e, Position)) continue; // the pass plans positioned settlers only
     const owner = ownerOf(world, e);
     if (owner === undefined) continue;
-    const wanted = grants.get(owner);
-    if (wanted === undefined) continue;
+    const granted = grants.get(owner);
+    if (granted === undefined) continue;
+    const wanted = coverableOf(owner, granted);
+    if (wanted.length === 0) continue;
     if (world.has(e, EquipOrder) || anotherSystemOwns(world, e)) continue;
     // A booked recruit still owed his weapon waits for the arming pass: a grant errand first would hold
     // the equip order his weapon fetch needs, and he would fight bare-handed while out for mead.
@@ -147,8 +162,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     const toolless = !toolHelpsJob(ctx.content, jobType);
     const kept = keptFrom(owner, fighter);
 
-    underwayAtStart ??= equipFetchesHeld(world);
-    const heldAtStart = underwayAtStart.get(owner);
+    const heldAtStart = underwayAtStart?.get(owner);
     const eq = world.tryGet(e, Equipment);
     const upgrade = upgradesOf(owner) && upgradeDue(ctx.content, e, ctx.tick, eq);
     // Resolved once, and only when a grant has both a free slot and spare stock.
