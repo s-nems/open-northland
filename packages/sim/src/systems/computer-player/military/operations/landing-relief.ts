@@ -1,20 +1,12 @@
-import {
-  type ColonyPhase,
-  diplomacyStance,
-  MAX_PLAYERS,
-  type RescueOperation,
-  type SeaLanding,
-  Vehicle,
-} from '../../../../components/index.js';
+import type { ColonyPhase, ColonyState, RescueOperation, SeaLanding } from '../../../../components/index.js';
 import type { DeepReadonly, Entity } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId } from '../../../../nav/terrain/index.js';
-import { seatColonies } from '../../../ai-shared/home-roster.js';
+import { colonyBuildingsOn, seatColonies } from '../../../ai-shared/home-roster.js';
+import { insideBox, settlementBox } from '../../../ai-shared/military/defence/threat.js';
 import { ownedFightersOf } from '../../../movement/collision/owned-fighters.js';
-import { isShipVehicle } from '../../../readviews/vehicles.js';
-import { vehicleIndex } from '../../../vehicles/registry.js';
-import { playerSeesNode } from '../../../vision/gates.js';
 import { minutesToTicks } from '../../game-phase.js';
+import { visibleEnemyMooredShips } from '../../knowledge/intel/index.js';
 import { SOLDIERS_PER_SHIP } from '../../workforce/craft.js';
 import { isLiveFighter, unitPoints } from '../points.js';
 import {
@@ -84,7 +76,7 @@ export function rescueAim(
   if (colonies.length === 0 || ranked.length === 0) return null;
   const prefix = prefixPoints(ranked);
   const shipPoints = Math.floor(((prefix.at(-1) ?? 0) * SOLDIERS_PER_SHIP) / ranked.length);
-  const ships = enemyShipsAt(env, new Set(colonies.map((c) => c.land)), shipPoints);
+  const ships = enemyShipsAt(env, colonies, shipPoints);
   const watched = colonies.filter(
     (c) =>
       ships.some((s) => s.land === c.land) ||
@@ -143,21 +135,24 @@ function landOf(env: OperationEnv, at: HalfCellNode): number {
   return terrain.inBounds(at.hx, at.hy) ? terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) : NO_COMPONENT;
 }
 
-/** The enemy ships the seat sees moored on one of `lands`, each weighed `points`. */
-function enemyShipsAt(env: OperationEnv, lands: ReadonlySet<number>, points: number): ColonyThreatSeen[] {
-  const { world, ctx, seat } = env;
-  const vehicles = ctx.content.vehicles;
+/** The enemy ships the seat sees moored at one of `colonies`, each weighed `points`: on its land, inside
+ *  the watch of its buildings ({@link settlementBox}), the reach its garrison notes a band in. Costs the
+ *  enemies' vehicles and the colonies' buildings. */
+function enemyShipsAt(
+  env: OperationEnv,
+  colonies: readonly DeepReadonly<ColonyState>[],
+  points: number,
+): ColonyThreatSeen[] {
+  const { world, ctx, terrain, seat } = env;
+  const ships = visibleEnemyMooredShips(world, ctx, seat);
+  if (ships.length === 0) return [];
   const seen: ColonyThreatSeen[] = [];
-  for (let owner = 0; owner < MAX_PLAYERS; owner++) {
-    if (owner === seat || diplomacyStance(world, seat, owner) !== 'enemy') continue;
-    for (const e of vehicleIndex(world).ownedBy(owner)) {
-      const state = world.get(e, Vehicle);
-      if (!state.moored || state.mooring === null) continue;
-      const land = landOf(env, state.mooring);
-      if (!lands.has(land) || !playerSeesNode(ctx.fog, seat, state.mooring.hx, state.mooring.hy)) continue;
-      const type = vehicles.find((v) => v.typeId === state.vehicleType);
-      if (type === undefined || !isShipVehicle(type)) continue;
-      seen.push({ land, owner, at: { hx: state.mooring.hx, hy: state.mooring.hy }, points });
+  for (const colony of colonies) {
+    const box = settlementBox(world, ctx, terrain, colonyBuildingsOn(world, ctx, seat, colony.land));
+    if (box === null) continue;
+    for (const ship of ships) {
+      if (landOf(env, ship.at) !== colony.land || !insideBox(box, ship.at.hx, ship.at.hy)) continue;
+      seen.push({ land: colony.land, owner: ship.owner, at: ship.at, points });
     }
   }
   return seen;

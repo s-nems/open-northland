@@ -102,6 +102,12 @@ const GUARD_OFFSET = 6;
 const ARMY_RANK = 6;
 /** The foe's band that lands on the seat's colony. */
 const RAIDERS = 6;
+/** The seat's building on its colony island, by its west shore. */
+const COLONY_STORE = { x: 96, y: 108 };
+/** Where an enemy ship lies off the colony island and its men stand ashore: in the strait by the colony,
+ *  and in the channel at the island's far corner. */
+const NEAR_BERTH = { water: { x: 80, y: 104 }, landed: { x: 92, y: 100 } };
+const FAR_BERTH = { water: { x: 134, y: 72 }, landed: { x: 130, y: 82 } };
 /** The ships beyond the landing fleet a rescue may sail in. */
 const RESCUE_SHIPS = 3;
 /** The seat's own men standing on the colony a relief sails for, at a post out of the band's reach. */
@@ -802,6 +808,40 @@ describe('landing operations', () => {
     });
     expect(seen?.kind).toBe('rescue');
     expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['by the colony', true],
+    ['far off on its land', false],
+  ])('rescues its colony from an enemy ship moored %s only within its watch', (_, near) => {
+    // The house bow gives the colony's buildings their watch, and the seats carry men enough to outweigh
+    // the load the seat reckons the ship still holds.
+    const { sim } = landingWorld({ colony: true, armed: true, shelterFire: true, seats: STORM_SHIP_SEATS });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(COLONY_STORE.x, COLONY_STORE.y));
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: FARM_TYPE,
+      ...COLONY_STORE,
+      tribe: VIKING,
+      owner: SEAT,
+      force: true,
+      underConstruction: false,
+    });
+    sim.step();
+    // No band noted by the colony's garrison: the ship and the men off it are all the seat sees.
+    sim.world.add(carrier, ComputerColony, { colonies: [blankColony(colonyLand)], rejected: [], retryAt: 0 });
+    const berth = near ? NEAR_BERTH : FAR_BERTH;
+    createVehicle(sim.world, ctxOf(sim), { vehicleType: SHIP, ...berth.water, tribe: VIKING, owner: FOE });
+    spawnBand(sim, RAIDERS, berth.landed, GUARD_RANK, FOE);
+    let seen: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      seen = rescues(sim)[0] ?? seen;
+      return seen !== undefined;
+    });
+    expect(seen !== undefined).toBe(near);
   });
 
   it('rescues its colony while a landing of its own is out at the rival, on ships left free', () => {
