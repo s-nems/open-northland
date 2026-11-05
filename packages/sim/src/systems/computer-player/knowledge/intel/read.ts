@@ -8,6 +8,8 @@ import {
   NEVER_SEEN,
 } from '../../../../components/index.js';
 import type { DeepReadonly, World } from '../../../../ecs/world.js';
+import type { SystemContext } from '../../../context.js';
+import { everyFighterPoints } from '../../military/points.js';
 import { decayedPeak } from './update.js';
 
 type IntelView = DeepReadonly<ComputerIntelState>;
@@ -62,11 +64,32 @@ export function believedFighterPoints(
   return forces === undefined ? null : pointsOrUnknown(forces, tick);
 }
 
-/** The most fighter points of `owner` that `seat` ever saw at once, unaged; null when none is remembered.
- *  For a decision that cannot be taken back, where a faded memory would undercount an army out of sight. */
-export function peakFighterPoints(world: World, seat: number, owner: number): number | null {
+/** The most times over {@link peakFighterPoints} lets a remembered army grow out of sight. Authored: on
+ *  arabskie_wyspy_wolna_gra_mieszana armies first seen around minute 90 grew about tenfold by minute 150;
+ *  the limit keeps a sighting made while the seat's own army was a handful from reading a hundredfold. */
+export const UNSEEN_ARMY_GROWTH_LIMIT = 8;
+
+/**
+ * The most fighter points of `owner` that `seat` ever saw at once, never aged, grown in proportion as the
+ * seat's own fighter points ({@link everyFighterPoints}) grew since that sighting, at most
+ * {@link UNSEEN_ARMY_GROWTH_LIMIT} times and never shrunk; null when none is remembered. For a decision that
+ * cannot be taken back, where a faded memory would undercount an army out of sight. Approximation: seats
+ * of one map arm at about one pace, so an army unseen since grows like the seat's own. Costs the seat's
+ * fighters.
+ */
+export function peakFighterPoints(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  owner: number,
+): number | null {
   const forces = intelOf(world, seat)?.forces.find((f) => f.player === owner);
-  return forces === undefined || forces.peakPoints <= 0 ? null : forces.peakPoints;
+  if (forces === undefined || forces.mostPoints <= 0) return null;
+  const { mostPoints, ownPointsAtMost } = forces;
+  const own = everyFighterPoints(world, ctx, seat);
+  if (own <= ownPointsAtMost) return mostPoints;
+  const limit = mostPoints * UNSEEN_ARMY_GROWTH_LIMIT;
+  return ownPointsAtMost <= 0 ? limit : Math.min(limit, Math.floor((mostPoints * own) / ownPointsAtMost));
 }
 
 function peakOrUnknown(forces: DeepReadonly<IntelForces>, tick: number): number | null {

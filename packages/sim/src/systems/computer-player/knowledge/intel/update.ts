@@ -25,7 +25,7 @@ import { ownedFightersOf } from '../../../movement/collision/owned-fighters.js';
 import { isScoutJob } from '../../../readviews/index.js';
 import { playerSeesNode } from '../../../vision/gates.js';
 import type { FogState } from '../../../vision/state.js';
-import { isLiveFighter, unitPoints } from '../../military/points.js';
+import { everyFighterPoints, isLiveFighter, unitPoints } from '../../military/points.js';
 
 /** Ticks after a seat's decision slot its intel is updated (authored): off the seat's own workforce and
  *  build order phases, one phase before its military decision reads it. */
@@ -181,6 +181,8 @@ function observeForces(
       peakAt: ctx.tick,
       peakPoints: 0,
       peakPointsAt: ctx.tick,
+      mostPoints: 0,
+      ownPointsAtMost: 0,
       lastSeenAt: ctx.tick,
       lastZone: 0,
     };
@@ -194,6 +196,10 @@ function observeForces(
   if (seenPoints >= decayedPeak(record.peakPoints, record.peakPointsAt, ctx.tick)) {
     record.peakPoints = seenPoints;
     record.peakPointsAt = ctx.tick;
+  }
+  if (seenPoints > record.mostPoints) {
+    record.mostPoints = seenPoints;
+    record.ownPointsAtMost = everyFighterPoints(world, ctx, seat);
   }
   record.lastSeenAt = ctx.tick;
   record.lastZone = busiestZone(byZone);

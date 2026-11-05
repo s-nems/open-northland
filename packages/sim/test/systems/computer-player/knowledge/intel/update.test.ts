@@ -25,11 +25,14 @@ import {
   computerDecisionDue,
   FORCE_PEAK_HALF_LIFE_TICKS,
   INTEL_DECISION_PHASE,
+  peakFighterPoints,
   SCOUT_LOSS_MEMORY_TICKS,
   scoutLossZones,
   summarizeIntel,
+  UNSEEN_ARMY_GROWTH_LIMIT,
   updateComputerIntel,
 } from '../../../../../src/systems/computer-player/index.js';
+import { everyFighterPoints } from '../../../../../src/systems/computer-player/military/points.js';
 import type { SystemContext } from '../../../../../src/systems/index.js';
 import { removeSettlerSilently } from '../../../../../src/systems/lifecycle/death.js';
 import { ownedFightersOf } from '../../../../../src/systems/movement/collision/owned-fighters.js';
@@ -74,6 +77,21 @@ function intelSim(computerEnabled = true): Simulation {
 
 function placeOther(sim: Simulation, at: { x: number; y: number }): void {
   sim.enqueueSetup({ kind: 'placeBuilding', buildingType: STOCK_TYPE, ...at, tribe: VIKING, owner: OTHER });
+}
+
+/** `count` unarmed fighters of `owner`'s in a row from `at`. */
+function spawnFighters(sim: Simulation, owner: number, count: number, at: { x: number; y: number }): void {
+  for (let i = 0; i < count; i++) {
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: UNARMED,
+      x: at.x + 2 * i,
+      y: at.y,
+      tribe: VIKING,
+      owner,
+    });
+  }
+  sim.step();
 }
 
 /** The other seat's newest building. */
@@ -237,6 +255,35 @@ describe('computer seat intel', () => {
     expect(
       believedFighterStrength(sim.world, SEAT, OTHER, first + 2 * FORCE_PEAK_HALF_LIFE_TICKS),
     ).toBeNull();
+  });
+
+  it('reads the most fighter points ever seen at once past a smaller sighting after the decay', () => {
+    const sim = intelSim();
+    spawnFighters(sim, OTHER, FIGHTERS, OTHER_START);
+    const first = intelTick(sim.tick);
+    observeAt(sim, first);
+    const most = everyFighterPoints(sim.world, ctxOf(sim), OTHER);
+    for (const e of ownedFightersOf(sim.world, sim.content, OTHER).slice(1)) sim.world.destroy(e);
+    // Two halvings on, the one man left outweighs the faded peak and becomes the aged one.
+    observeAt(sim, intelTick(first + 2 * FORCE_PEAK_HALF_LIFE_TICKS));
+    expect(peakFighterPoints(sim.world, ctxOf(sim), SEAT, OTHER)).toBe(most);
+  });
+
+  it("grows the most seen of an army as the seat's own grew since, within the growth limit", () => {
+    const sim = intelSim();
+    const own = { x: HQ_X, y: HQ_Y + 6 };
+    spawnFighters(sim, SEAT, 1, own);
+    spawnFighters(sim, OTHER, FIGHTERS, OTHER_START);
+    observeAt(sim, intelTick(sim.tick));
+    const most = everyFighterPoints(sim.world, ctxOf(sim), OTHER);
+    const ownThen = everyFighterPoints(sim.world, ctxOf(sim), SEAT);
+    const grown = (): number | null => peakFighterPoints(sim.world, ctxOf(sim), SEAT, OTHER);
+    expect(grown()).toBe(most);
+    spawnFighters(sim, SEAT, 1, own);
+    const ownNow = everyFighterPoints(sim.world, ctxOf(sim), SEAT);
+    expect(grown()).toBe(Math.floor((most * ownNow) / ownThen));
+    spawnFighters(sim, SEAT, 2 * UNSEEN_ARMY_GROWTH_LIMIT, own);
+    expect(grown()).toBe(most * UNSEEN_ARMY_GROWTH_LIMIT);
   });
 
   it('keeps no memory for a seat whose computer controller does not run', () => {

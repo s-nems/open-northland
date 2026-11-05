@@ -29,6 +29,9 @@ export interface IntelForces {
    *  like {@link peak}. */
   peakPoints: number;
   peakPointsAt: number;
+  /** The most fighter points ever seen at once, never aged, and the seat's own fighter points then. */
+  mostPoints: number;
+  ownPointsAtMost: number;
   /** The last tick any of its fighters was seen, and the zone most of them stood in then. */
   lastSeenAt: number;
   lastZone: number;

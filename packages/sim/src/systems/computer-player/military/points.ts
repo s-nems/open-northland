@@ -253,3 +253,11 @@ export function armyPointsOf(
   }
   return { men, points };
 }
+
+const NEVER_POSTED = (): boolean => false;
+
+/** The points of every live fighter of `player`'s, fit or not, each counted once. Costs `player`'s
+ *  fighters. */
+export function everyFighterPoints(world: World, ctx: SystemContext, player: number): number {
+  return armyPointsOf(world, ctx, player, COUNTED_ONCE, NEVER_POSTED).points;
+}

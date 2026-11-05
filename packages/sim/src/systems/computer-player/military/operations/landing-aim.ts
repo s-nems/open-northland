@@ -223,14 +223,14 @@ function headquartersAim(
 
 /**
  * What `owner`'s army weighs against a landing on his headquarters land: what the seat believes defends
- * him ({@link knownDefendingPoints}), at least the most it ever saw of his army at once
- * ({@link peakFighterPoints}): landed men cannot fall back, and a memory faded while his army was out of
- * sight undercounts it. Null when the seat knows nothing of it.
+ * him ({@link knownDefendingPoints}), at least the most it ever saw of his army at once, grown since as
+ * its own army grew ({@link peakFighterPoints}): landed men cannot fall back, and a memory faded while his
+ * army was out of sight undercounts it. Null when the seat knows nothing of it.
  */
 function landingArmy(env: OperationEnv, owner: number): number | null {
   const { world, ctx, seat } = env;
   const known = knownDefendingPoints(world, ctx, seat, owner);
-  const peak = peakFighterPoints(world, seat, owner);
+  const peak = peakFighterPoints(world, ctx, seat, owner);
   if (known === null) return peak;
   return peak === null ? known : Math.max(known, peak);
 }
