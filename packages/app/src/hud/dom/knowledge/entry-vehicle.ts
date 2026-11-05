@@ -12,6 +12,7 @@ import type { KnowledgeVehicle, KnowledgeVehicleClass } from '../../knowledge/mo
 import type { KnowledgeContext } from './context.js';
 import {
   articleLinks,
+  buildingPicture,
   type Child,
   type EntryBlock,
   entryPage,
@@ -84,7 +85,8 @@ function buildBlock(context: KnowledgeContext, vehicle: KnowledgeVehicle): Entry
 export function renderVehicle(context: KnowledgeContext, vehicle: KnowledgeVehicle): HTMLElement {
   const text = copy();
   const good = context.base.goodById.get(vehicle.id);
-  const help = good?.help ?? context.base.buildingById.get(vehicle.id)?.help ?? null;
+  const yard = context.base.buildingById.get(vehicle.id);
+  const help = good?.help ?? yard?.help ?? null;
   const render = (block: VehicleBlock): EntryBlock | null => {
     switch (block) {
       case 'purpose':
@@ -99,9 +101,11 @@ export function renderVehicle(context: KnowledgeContext, vehicle: KnowledgeVehic
         return originBlock(help);
     }
   };
+  // The yard's picture is the vehicle as the shown tribe draws it; the good's icon is one tribe's.
+  const picture = yard === undefined ? null : buildingPicture(context, yard);
   const head =
-    good === undefined
-      ? { picture: null, title: vehicle.name, kicker: text.kicker.vehicle }
+    good === undefined || picture !== null
+      ? { picture, title: good?.name ?? vehicle.name, kicker: text.kicker.vehicle }
       : goodHead(context, good, text.kicker.vehicle);
   return entryPage(head, VEHICLE_BLOCKS.map(render));
 }

@@ -224,3 +224,32 @@ describe('a good with no pile icon', { timeout: LOADER_TIMEOUT_MS }, () => {
     expect(await goodIconSource('wood', null, sandboxContent())).toBeNull();
   });
 });
+
+describe('vehiclePictureRows', () => {
+  const SHIP = 4;
+  const THIRD_TRIBE = 3;
+  const row = (tribe: number, vehicleType: number, body: string) => ({
+    tribe,
+    vehicleType,
+    job: 1,
+    body,
+    bodyPalette: 'human_ship01',
+    clips: [],
+    gaits: [],
+  });
+  const ships = {
+    vehicleGraphics: [
+      row(SECOND_TRIBE, SHIP, 'ls_vehicles.bmd'),
+      row(VIKING, SHIP, 've_test_ship.bmd'),
+      row(VIKING, HANDCART, 'cr_veh_body_00.bmd'),
+    ],
+  };
+
+  it("puts the shown tribe's own row first, then the rest from the lowest tribe", async () => {
+    const { vehiclePictureRows } = await import('../../src/content/sprite-good-icons.js');
+    const bodies = (tribe: number) => vehiclePictureRows(ships, [], SHIP, tribe).map((r) => r.body);
+    expect(bodies(SECOND_TRIBE)).toEqual(['ls_vehicles.bmd', 've_test_ship.bmd']);
+    expect(bodies(VIKING)).toEqual(['ve_test_ship.bmd', 'ls_vehicles.bmd']);
+    expect(bodies(THIRD_TRIBE)).toEqual(['ve_test_ship.bmd', 'ls_vehicles.bmd']);
+  });
+});

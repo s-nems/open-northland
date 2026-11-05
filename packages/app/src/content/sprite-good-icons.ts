@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import type { ContentSet, VehicleGraphics } from '@open-northland/data';
 import { type AtlasManifest, DEFAULT_FACING, frameOf, type SpriteFrameRef } from '@open-northland/render';
 import { systems } from '@open-northland/sim';
 import { ANIMAL_BODY_IMAGELIB, ANIMAL_PALETTE_BY_TRIBE, animalBodyStem } from '../catalog/animal-roster.js';
@@ -63,28 +63,47 @@ const ANIMAL_ICON_FACING = 0;
 /** The walk strip's block with the whole body turned sideways. */
 const ANIMAL_SIDE_FACING = 1;
 
+/** A `vehicletype` row's fields the picture join reads. */
+interface VehicleTypeRow {
+  readonly typeId?: number;
+  readonly transformVehicleType?: number | undefined;
+}
+
 /** A cart that recruits a draught animal is drawn as the harnessed type it becomes: the ox cart's yard
  *  spawns the ox-less cart, and the player ordered the ox cart. */
-function finalVehicleType(content: ContentSet, vehicleType: number): number {
+function finalVehicleType(vehicles: readonly VehicleTypeRow[], vehicleType: number): number {
   const seen = new Set<number>();
   let current = vehicleType;
   while (!seen.has(current)) {
     seen.add(current);
-    const next = content.vehicles.find((v) => v.typeId === current)?.transformVehicleType;
+    const next = vehicles.find((v) => v.typeId === current)?.transformVehicleType;
     if (next === undefined) return current;
     current = next;
   }
   return vehicleType;
 }
 
-async function vehicleIcon(ir: ContentIr, content: ContentSet, vehicleHouse: number) {
-  const spawned = content.buildings.find((b) => b.typeId === vehicleHouse)?.vehicleType;
-  if (spawned === undefined) return null;
-  const vehicleType = finalVehicleType(content, spawned);
-  // The bodies are shared across tribes, so the lowest tribe's row that stands is the picture.
-  const rows = vehicleGraphicsRows(ir)
+/**
+ * The graphics rows a picture of the vehicle `spawned` tries in order: `tribe`'s own row first, then
+ * every other tribe's from the lowest, so a tribe with no row (or an unserved one) borrows a look. The
+ * tribes do not share every body: the viking trade ship has a hull of its own.
+ */
+export function vehiclePictureRows(
+  ir: ContentIr,
+  vehicles: readonly VehicleTypeRow[],
+  spawned: number,
+  tribe?: number,
+): readonly VehicleGraphics[] {
+  const vehicleType = finalVehicleType(vehicles, spawned);
+  return vehicleGraphicsRows(ir)
     .filter((row) => row.vehicleType === vehicleType)
-    .sort((a, b) => a.tribe - b.tribe);
+    .sort((a, b) => Number(b.tribe === tribe) - Number(a.tribe === tribe) || a.tribe - b.tribe);
+}
+
+/** The standing frame of the first of `rows` whose baked body is served and binds a wait. */
+export async function standingVehicleFrame(
+  rows: readonly VehicleGraphics[],
+): Promise<SpriteIconFrame | null> {
   for (const row of rows) {
     const stem = vehicleAtlasStem(row);
     const atlas = await servedAtlas(stem);
@@ -96,6 +115,12 @@ async function vehicleIcon(ir: ContentIr, content: ContentSet, vehicleHouse: num
     if (look !== undefined) return { stem, atlas, bobId: frameOf(look.idle, DEFAULT_FACING, 0) };
   }
   return null;
+}
+
+function vehicleIcon(ir: ContentIr, content: ContentSet, vehicleHouse: number) {
+  const spawned = content.buildings.find((b) => b.typeId === vehicleHouse)?.vehicleType;
+  if (spawned === undefined) return null;
+  return standingVehicleFrame(vehiclePictureRows(ir, content.vehicles, spawned));
 }
 
 /** The stem and bob an animal tribe stands in; null for a tribe with no bound body. */

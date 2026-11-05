@@ -1,6 +1,11 @@
 import type { AtlasManifest } from '@open-northland/render';
 import type { ContentIr } from '../../../content/ir/rows.js';
-import { animalPictureBob, servedAtlas } from '../../../content/sprite-good-icons.js';
+import {
+  animalPictureBob,
+  servedAtlas,
+  standingVehicleFrame,
+  vehiclePictureRows,
+} from '../../../content/sprite-good-icons.js';
 import { diag } from '../../../diag/index.js';
 import { buildingPicture, type PictureLayer } from '../../knowledge/picture.js';
 import { type BuildingThumbs, THUMB_BACKING_SCALE, thumbFit } from '../building-thumb.js';
@@ -44,6 +49,9 @@ export function placeLayers(
   };
 }
 
+/** A picture's layers, or how to find them once the sheets they may come from are known. */
+type PictureLayers = readonly PictureLayer[] | (() => Promise<readonly PictureLayer[] | null>);
+
 /** Stills composed from the served sheets, kept as small images: a page is coloured once for its first
  *  picture and closed soon after the last, so an open tab holds pictures, not pages. */
 function createServedPictures() {
@@ -54,10 +62,12 @@ function createServedPictures() {
 
   const compose = async (
     key: string,
-    layers: readonly PictureLayer[],
+    layersOf: PictureLayers,
     size: number,
     maxScale: number | undefined,
   ): Promise<StaticPicture | null> => {
+    const layers = typeof layersOf === 'function' ? await layersOf() : layersOf;
+    if (layers === null) return null;
     const stems = [...new Set(layers.map((layer) => layer.stem))];
     const atlases = new Map<string, AtlasManifest | null>(
       await Promise.all(stems.map(async (stem) => [stem, await servedAtlas(stem)] as const)),
@@ -107,7 +117,7 @@ function createServedPictures() {
   return (
     image: HTMLImageElement,
     key: string,
-    layers: readonly PictureLayer[],
+    layers: PictureLayers,
     boxPx: number,
     maxScale?: number,
   ): void => {
@@ -128,6 +138,23 @@ function createServedPictures() {
         drawing.delete(drawnKey);
         diag.warn('hud', `knowledge picture ${key}: ${String(error)}`);
       });
+  };
+}
+
+/** A vehicle yard is pictured as the vehicle it builds, as `tribe` draws it: its site is one shared
+ *  shape for every vehicle of a kind (both ships stand on one hull). Null for any other building. */
+function vehiclePicture(
+  ir: ContentIr,
+  typeId: number,
+  tribe: number,
+): (() => Promise<readonly PictureLayer[] | null>) | null {
+  const spawned = ir.buildings?.find((building) => building.typeId === typeId)?.vehicleType;
+  if (spawned === undefined) return null;
+  const rows = vehiclePictureRows(ir, ir.vehicles ?? [], spawned, tribe);
+  if (rows.length === 0) return null;
+  return async () => {
+    const frame = await standingVehicleFrame(rows);
+    return frame === null ? null : [{ stem: frame.stem, bob: frame.bobId, x: 0, y: 0 }];
   };
 }
 
@@ -152,6 +179,11 @@ export function createKnowledgeArt({ ir, goodIcon, thumbs }: KnowledgeArtInputs)
     goodIcon,
     buildingThumb: (image, typeId, boxPx, tribe) => {
       const layers = buildingPicture(ir, typeId, tribe);
+      const vehicle = vehiclePicture(ir, typeId, tribe);
+      if (vehicle !== null) {
+        paint(image, `vehicle:${typeId}:${tribe}`, async () => (await vehicle()) ?? layers, boxPx);
+        return true;
+      }
       if (layers === null) return false;
       // A wonder's parts are not one sheet frame, so only a plain body can come from the map's sheet.
       const plain = layers.length === 1 && thumbs?.holds(typeId, tribe) === true;

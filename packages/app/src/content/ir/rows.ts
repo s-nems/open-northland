@@ -260,8 +260,15 @@ export interface ContentIr {
   }[];
   /** `baseJob` is the `jobtypes.ini` parent a job's animation lookups fall back through. */
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string; baseJob?: number }[];
-  /** The `vehicletype` rows, narrowed to the join keys a mission script names a vehicle by. */
-  readonly vehicles?: readonly { typeId?: number; id?: string; name?: string; passengerSlots?: number }[];
+  /** The `vehicletype` rows, narrowed to the join keys a mission script names a vehicle by, and the type a
+   *  vehicle becomes once its draught animal is harnessed. */
+  readonly vehicles?: readonly {
+    typeId?: number;
+    id?: string;
+    name?: string;
+    passengerSlots?: number;
+    transformVehicleType?: number;
+  }[];
   /** `name` is a species join key too: a map's `setanimal` authors the display name (`evil hares`).
    *  `atomicBindings` is the tribe's `setatomic <job> <atomic> "<animation>"` table. */
   readonly tribes?: readonly {

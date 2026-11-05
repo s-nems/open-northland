@@ -30,6 +30,8 @@ export function firstEntry(base: KnowledgeBase): EntryRef | null {
 
 function rowPicture(context: KnowledgeContext, { entry }: CategoryRow): Node | null {
   const { base, art } = context;
+  const yard = entry.kind === 'vehicle' ? base.buildingById.get(entry.id) : undefined;
+  if (yard !== undefined) return buildingPicture(context, yard, ROW_PICTURE_PX);
   if (entry.kind === 'good' || entry.kind === 'vehicle') {
     const good = base.goodById.get(entry.id);
     return good === undefined ? null : goodIcon(context, good, ROW_PICTURE_PX);
