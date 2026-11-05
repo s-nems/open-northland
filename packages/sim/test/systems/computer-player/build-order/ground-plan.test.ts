@@ -148,6 +148,15 @@ describe('ground plan', () => {
     expect(planOf(crowded).plots).toEqual([]);
   });
 
+  it('keeps a plot while its step is skipped, for the step to come back to', () => {
+    const sim = island(LONG_END);
+    decide(sim, [HELD_BARRACKS]);
+    const plotted = plotAt(sim, 'barracks');
+    // No iron on the island: the same step skips.
+    decide(sim, [{ ...HELD_BARRACKS, needsResources: ['iron'] }]);
+    expect(plotAt(sim, 'barracks')).toEqual(plotted);
+  });
+
   it('plots a lost barracks again at the next review, and keeps a later home off it', () => {
     const sim = island(BARRACKS_AND_HOME_END);
     settle(sim, [BARRACKS]);

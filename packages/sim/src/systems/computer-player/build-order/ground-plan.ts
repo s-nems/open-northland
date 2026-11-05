@@ -333,7 +333,7 @@ function homeFit(seat: Seat): number {
   return fits + free;
 }
 
-/** The plots still waiting after this decision: those whose step no longer waits go, a free one that no
+/** The plots still waiting after this decision: those whose step stands met go, a free one that no
  *  longer fits moves ({@link plotOf}). A plot on ground still to clear waits for the plan's review, which
  *  searches it again, and plots a never-cut step with no plot, its building lost or no ground found before. */
 function reviewPlots(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
@@ -343,7 +343,9 @@ function reviewPlots(seat: Seat, carrier: Entity, order: BuildOrder, statuses: L
   let changed = false;
   for (const plot of plan.plots) {
     const type = buildingTypeByContentId(ctx.content, plot.building);
-    if (type === undefined || statuses.get(plot.line)?.[plot.step] !== 'unmet') {
+    // A skipped step keeps its plot: a seat that lost its herd may hold one again and need the ground.
+    const status = statuses.get(plot.line)?.[plot.step];
+    if (type === undefined || status === undefined || status === 'satisfied') {
       changed = true;
       continue;
     }
