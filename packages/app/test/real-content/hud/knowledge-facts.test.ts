@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
-import { FACTS, factText } from '../../../src/hud/knowledge/facts.js';
+import { FACTS, factText } from '../../../src/hud/knowledge/facts/index.js';
 import { hasRealIr, loadContentUnderTest } from '../helpers.js';
 
 describe.runIf(hasRealIr())('knowledge facts', () => {

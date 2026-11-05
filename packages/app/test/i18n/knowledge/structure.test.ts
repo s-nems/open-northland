@@ -8,7 +8,7 @@ import {
   parseInline,
   tokensOf,
 } from '../../../src/hud/knowledge/articles.js';
-import { FACTS } from '../../../src/hud/knowledge/facts.js';
+import { FACTS } from '../../../src/hud/knowledge/facts/index.js';
 import type { Locale } from '../../../src/i18n/index.js';
 
 const REFERENCE: Locale = 'pol';

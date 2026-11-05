@@ -21,7 +21,7 @@ const page = (className: string, text: string): HTMLElement => {
   return node;
 };
 
-vi.mock('../../../../src/hud/dom/knowledge/entry-view.js', () => ({
+vi.mock('../../../../src/hud/dom/knowledge/entries/view.js', () => ({
   renderEntry: (context: KnowledgeContext, ref: EntryRef) => {
     const entry = page('stub-entry', `${ref.kind}:${ref.id}`);
     held.add(ref.id);
@@ -35,7 +35,7 @@ vi.mock('../../../../src/hud/dom/knowledge/entry-view.js', () => ({
     return entry;
   },
 }));
-vi.mock('../../../../src/hud/dom/knowledge/encyclopedia-view.js', () => ({
+vi.mock('../../../../src/hud/dom/knowledge/entries/encyclopedia.js', () => ({
   ENCYCLOPEDIA_LIST_SCROLL: 'enc-list',
   firstEntry: (): EntryRef => ({ kind: 'good', id: 'wood' }),
   renderEncyclopedia: (
@@ -54,7 +54,7 @@ vi.mock('../../../../src/hud/dom/knowledge/encyclopedia-view.js', () => ({
     return encyclopedia;
   },
 }));
-vi.mock('../../../../src/hud/dom/knowledge/article-view.js', () => ({
+vi.mock('../../../../src/hud/dom/knowledge/articles/view.js', () => ({
   CALCULATOR_ARTICLE: 'damage',
   articleGroups: () => [
     {

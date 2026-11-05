@@ -8,9 +8,9 @@ import { goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
 import { button, element, write } from '../parts/dom.js';
 import { tribeEmblem } from '../tribe-emblems.js';
-import { articleGroups, CALCULATOR_ARTICLE, renderArticle } from './article-view.js';
+import { articleGroups, CALCULATOR_ARTICLE, renderArticle } from './articles/view.js';
 import type { KnowledgeContext, KnowledgeDeps, KnowledgeTarget, KnowledgeView } from './context.js';
-import { ENCYCLOPEDIA_LIST_SCROLL, firstEntry, renderEncyclopedia } from './encyclopedia-view.js';
+import { ENCYCLOPEDIA_LIST_SCROLL, firstEntry, renderEncyclopedia } from './entries/encyclopedia.js';
 import {
   createTreeView,
   SCALE_DEFAULT_PCT,
@@ -19,7 +19,7 @@ import {
   SCALE_STEP_PCT,
   type TreeScales,
   type TreeView,
-} from './tree-view.js';
+} from './tree/view.js';
 import './knowledge.css';
 
 const TABS: readonly KnowledgeTab[] = ['goods', 'buildings', 'encyclopedia', 'mechanics'];

@@ -8,7 +8,7 @@ import {
 } from '../../../src/hud/knowledge/articles.js';
 import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
 import { HUMAN_HITPOINTS } from '../../../src/hud/knowledge/combat.js';
-import { FACTS, factText } from '../../../src/hud/knowledge/facts.js';
+import { FACTS, factText } from '../../../src/hud/knowledge/facts/index.js';
 import { knowledgeContent } from '../../support/knowledge-content.js';
 
 describe('parseInline', () => {
