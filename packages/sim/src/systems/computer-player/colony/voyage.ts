@@ -98,6 +98,9 @@ const HELM_BOARD_TICKS = minutesToTicks(4);
 const RETURN_TIMEOUT_TICKS = SEA_SCOUT_TRIP_TIMEOUT_TICKS;
 /** How long the second ship may take once the first is home (authored). */
 const COLONY_FIT_OUT_TICKS = minutesToTicks(20);
+/** How long a ready ship waits for home to spare the party's food beside the store's bill (authored): a
+ *  fast-growing home eats its stock as it comes, so past this the party sails with the food it can fetch. */
+const FOUNDING_FOOD_WAIT_TICKS = minutesToTicks(10);
 /** How long a party loads before it sails with what it has (authored): observed on
  *  arabskie_wyspy_wolna_gra_mieszana, a party's hands bring most of a hold in it. */
 const COLONY_LOAD_TICKS = minutesToTicks(6);
@@ -390,7 +393,8 @@ function splitParty(
  * carries the whole party at once, any other past {@link COLONY_FIT_OUT_TICKS} with none; with no ship at
  * all the voyage fails. The same span then runs for the ship to lie moored at home. Then it waits for a
  * party to be spared and for home to hold the manifest where hands fetch it, the party at work, which costs
- * a moored ship and never fails the voyage: the site is looked at once more and loading starts. A scout
+ * a moored ship and never fails the voyage; past {@link FOUNDING_FOOD_WAIT_TICKS} the store's bill alone holds it,
+ * and the party's food is what the hands find. Then the site is looked at once more and loading starts. A scout
  * ship the party does not need goes free here.
  */
 export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
@@ -417,7 +421,9 @@ export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] 
   const party = pickParty(world, ctx, seat, home);
   if (party.length === 0) return [];
   const manifest = colonyManifest(world, ctx, seat, party.length);
-  if (!manifestInStock(world, homeStockToLoad(world, ctx, seat), ship, manifest)) return [];
+  const fed = ctx.tick - colony.since < FOUNDING_FOOD_WAIT_TICKS;
+  const needed = fed ? manifest : colonyManifest(world, ctx, seat, 0);
+  if (!manifestInStock(world, homeStockToLoad(world, ctx, seat), ship, needed)) return [];
   if (!colonySiteClear(world, ctx, seat, colony.site)) return turnHome(env, true);
   const tradeShip = shipId(env, ship) === TRADE_SHIP_ID ? (colony.scout?.ship ?? null) : null;
   const { people, rest } = splitParty(world, party, ship, tradeShip);
