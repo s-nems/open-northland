@@ -92,7 +92,7 @@ const COLONY_FROM_CIVILIANS = PARTY_FROM_CIVILIANS - SCOUTING_GROWTH_CIVILIANS;
  *  voyage that failed before it claimed its carrying ship, a scouting turned back, took nothing from them. */
 const COLONY_RETRY_TICKS = minutesToTicks(10);
 /** The failed voyages a seat gives its colony (authored): past them it stays at home. */
-export const COLONY_MAX_FAILURES = 2;
+const COLONY_MAX_FAILURES = 2;
 /** How long a helm may take to board (authored: a landing's forming time). */
 const HELM_BOARD_TICKS = minutesToTicks(4);
 /** How long a ship sailing home keeps the colony waiting before it is let go where it is (authored: a full

@@ -105,7 +105,15 @@ export function computerModuleRuns(world: World, player: number, module: Compute
   return control.computerEnabled && control.modules[module];
 }
 
-/** Whether the computer player may run `player`'s colony ({@link COLONY_MODULES}). */
+/** Whether `enables`, master permission folded in, let a colony run ({@link COLONY_MODULES}). */
+export function everyColonyModule(enables: ComputerModuleEnables): boolean {
+  return COLONY_MODULES.every((module) => enables[module]);
+}
+
+/** Whether the computer player may run `player`'s colony ({@link everyColonyModule}). */
 export function colonyRuns(world: World, player: number): boolean {
-  return COLONY_MODULES.every((module) => computerModuleRuns(world, player, module));
+  const carrier = aiControlEntity(world, player);
+  if (carrier === null) return false;
+  const control = world.get(carrier, AiControl);
+  return control.computerEnabled && everyColonyModule(control.modules);
 }

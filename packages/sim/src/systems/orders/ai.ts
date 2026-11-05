@@ -4,11 +4,11 @@ import {
   AssistantMovesFlags,
   AssistantUpgradesTools,
   aiControlEntity,
-  COLONY_MODULES,
   ComputerColony,
   type ComputerModuleEnables,
   computerModuleEnables,
   DefenceMode,
+  everyColonyModule,
   handOnMapBrief,
   Owner,
   playerPlacementTribes,
@@ -121,11 +121,13 @@ function applyAiControl(
     if (source === 'map-ai') return !mapAiEnabled;
     // Autonomous sorties have no camp leash. A map-only controller must plan a bounded replacement.
     if (source === 'settlement-defence') return !next.military && (!mapAiEnabled || previous.military);
-    if (source === 'colony') return !runsColony(next);
+    if (source === 'colony') return !everyColonyModule(next);
     return !next[source];
   });
   if (previous.military && !next.military) retireComputerCampaign(world, command.player);
-  const colonyStops = runsColony(previous) && !runsColony(next);
+  // A stopped colony controller lets its routes go and drops its colonies: their ships, people, garrison and
+  // land are the whole seat's again, and a colony toggle turned back on starts over from a fresh survey.
+  const colonyStops = everyColonyModule(previous) && !everyColonyModule(next);
   const released = colonyStops ? releaseColonies(world, ctx, command.player) : [];
   if (colonyStops) world.remove(carrier, ComputerColony);
   for (const entry of COMPUTER_PUBLISHED_COUNTERS) {
@@ -146,13 +148,6 @@ function applyAiControl(
   if (!mapAiEnabled && !next.military) standDownAlarms(world, command.player);
   if (command.difficulty !== undefined) seat.difficulty = command.difficulty;
   return released;
-}
-
-/** Whether `enables` let the colony controller run. Once it stops, its routes are let go and its colonies
- *  dropped, their ships, people, garrison and land the whole seat's again for whichever controller runs it; a
- *  colony toggle turned back on starts the seat's colonies over from a fresh survey. */
-function runsColony(enables: ComputerModuleEnables): boolean {
-  return COLONY_MODULES.every((module) => enables[module]);
 }
 
 /** Lift the recruit weapon vetoes and the soldier outfit (its grants and their soldiers-only limits) the

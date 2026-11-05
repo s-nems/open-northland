@@ -202,11 +202,12 @@ function claimFerry(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   }
   const ship = freeShips(env, home)[0];
   if (ship === undefined) return [];
-  if (homeward(env, colony, ship).length === 0 && colony.phase === 'abandoned') return [];
+  const back = homeward(env, colony, ship).length;
+  if (back === 0 && colony.phase === 'abandoned') return [];
   const helm = sparePartyMen(world, ctx, seat, home)[0] ?? null;
   const seats = freeSeats(env, colony, ship) - (helm === null ? 0 : 1);
   const out = colony.phase === 'abandoned' ? { riders: [], lessons: [] } : outward(env, colony, seats);
-  if (out.riders.length === 0 && homeward(env, colony, ship).length === 0) return out.lessons;
+  if (out.riders.length === 0 && back === 0) return out.lessons;
   if (helm === null && out.riders.length === 0) return out.lessons;
   return [...out.lessons, ...startFerry(env, ship, 'home', helm, out.riders)];
 }
