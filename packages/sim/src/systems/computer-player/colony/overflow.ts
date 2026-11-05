@@ -1,23 +1,15 @@
-import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
+import type { BuildingType } from '@open-northland/data';
 import {
   Building,
-  Carrying,
   type ColonyStall,
   playerPlacementTribes,
-  Settler,
   StalledPlacements,
 } from '../../../components/index.js';
-import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
-import type { DeepReadonly, Entity } from '../../../ecs/world.js';
+import type { DeepReadonly } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
-import { homeBuildings, seatColonies } from '../../ai-shared/home-roster.js';
-import { isBuilt } from '../../ai-shared/seat-roster.js';
-import { isAllocatableMan, SpareForce } from '../../ai-shared/workforce/pool.js';
-import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
-import { assignedWorkers } from '../../stores/assigned-workers.js';
-import { isCarrierJob } from '../../stores/index.js';
+import { seatColonies } from '../../ai-shared/home-roster.js';
 import {
   type BuildLineId,
   type BuildOrderEntry,
@@ -27,16 +19,11 @@ import {
 import { seatBuildOrder, seatHasSide } from '../build-order/seat-order.js';
 import { computerProfileOf } from '../difficulty.js';
 import { minutesToTicks } from '../game-phase.js';
-import { Schooling } from '../technology/schooling.js';
-import { fullCrew } from '../workforce/staffing-rows.js';
-import { colonyOrigin } from './founding.js';
+import type { ColonyEnv, ColonyView } from './env.js';
 import { homeSpare, homeSupply } from './home-supply.js';
-import { homeMaySpare, sparePartyMen } from './people.js';
-import { atWorkshop } from './posts.js';
-import { landHolds } from './provision.js';
-import { colonySchool } from './school.js';
-import { colonyBuildings, workshopSpot } from './spot.js';
-import type { ColonyEnv, ColonyView } from './voyage.js';
+import { landHolds } from './land.js';
+import { colonyBuildings, colonyOrigin } from './roster.js';
+import { workshopSpot } from './spot.js';
 
 /**
  * The workshops home may hand over: the chains that turn raw goods into what its army wants. Owner ruling: a
@@ -63,11 +50,6 @@ const NO_TIERS: ReadonlySet<number> = new Set();
 /** Whether `building` is one a colony raises for home. */
 export function isOverflowBuilding(building: string): boolean {
   return OVERFLOW_BUILDING_IDS.has(building);
-}
-
-function workshopType(env: ColonyEnv, e: Entity): BuildingType | undefined {
-  const type = contentIndex(env.ctx.content).buildings.get(env.world.get(e, Building).buildingType);
-  return type?.kind === BUILDING_KIND.workplace ? type : undefined;
 }
 
 function stepOf(env: ColonyEnv, stall: DeepReadonly<ColonyStall>): BuildOrderEntry | undefined {
@@ -208,69 +190,4 @@ export function reviewOverflow(env: ColonyEnv, colony: ColonyView): void {
   dropLost(env, colony);
   noteStalls(env, colony);
   if (colony.phase === 'running') handOver(env, colony);
-}
-
-export interface WorkshopSeat {
-  readonly building: Entity;
-  readonly job: number;
-}
-
-/** The craftsmen's seats the colony's standing workshops lack; a carrier any man can be, a gatherer's seat
- *  stays open. */
-export function openCraftSeats(env: ColonyEnv, buildings: readonly Entity[]): WorkshopSeat[] {
-  const { world, ctx, seat } = env;
-  const index = contentIndex(ctx.content);
-  const seats: WorkshopSeat[] = [];
-  for (const building of buildings) {
-    const type = workshopType(env, building);
-    if (type === undefined || !isBuilt(world, building)) continue;
-    const staff = assignedWorkers(world, building);
-    for (const { jobType: job, count } of type.workers) {
-      if (isCarrierJob(ctx, job) || index.harvestJobs.has(job)) continue;
-      const held = staff.filter((e) => world.get(e, Settler).jobType === job).length;
-      const want = Math.min(count, fullCrew(world, ctx, seat, type));
-      for (let i = held; i < want; i++) seats.push({ building, job });
-    }
-  }
-  return seats;
-}
-
-/** A man free to take `job`: no load to drop, and the trade earned. */
-export function fitsTrade(env: ColonyEnv, job: number): (e: Entity) => boolean {
-  const { world, ctx } = env;
-  return (e) => !world.has(e, Carrying) && settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', job);
-}
-
-/** Who the ferry owes the colony from home: the spare men of the trades no colonist among `people` has earned,
- *  in at most `seats`, and the lessons that make the next such man where home's school teaches the trade;
- *  none once the colony's own school stands. A workshop none of them reaches simply waits: home's line has
- *  moved on. */
-export function tradesmenFor(
-  env: ColonyEnv,
-  people: readonly Entity[],
-  home: number,
-  seats: number,
-): { readonly sailing: readonly Entity[]; readonly lessons: readonly PlayerCommand[] } {
-  const { world, ctx, seat } = env;
-  const here = new SpareForce(people.filter((e) => isAllocatableMan(world, ctx, e) && !atWorkshop(env, e)));
-  const short = openCraftSeats(env, colonyBuildings(env)).filter(
-    (post) => here.take(fitsTrade(env, post.job)) === null,
-  );
-  const sailing: Entity[] = [];
-  const lessons: PlayerCommand[] = [];
-  // A colony with its own school teaches its men there (`./school.ts`); the ferry brings plain hands.
-  if (short.length === 0 || !homeMaySpare(world, ctx, seat) || colonySchool(env) !== null)
-    return { sailing, lessons };
-  const force = new SpareForce(sparePartyMen(world, ctx, seat, home));
-  const schooling = new Schooling(world, ctx, seat, homeBuildings(world, ctx, seat));
-  for (const post of short) {
-    const man = sailing.length < seats ? force.take(fitsTrade(env, post.job)) : null;
-    if (man !== null) {
-      sailing.push(man);
-      continue;
-    }
-    const lesson = schooling.enrol(post.job, post.building, force);
-    if (lesson.kind === 'learn') lessons.push(lesson.command);
-  }
-  return { sailing, lessons };
 }

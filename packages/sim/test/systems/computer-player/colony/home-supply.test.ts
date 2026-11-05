@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Settler } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
+import type { SeatEnv } from '../../../../src/systems/computer-player/colony/env.js';
 import { workshopShelves } from '../../../../src/systems/computer-player/colony/home-supply.js';
-import type { SeatEnv } from '../../../../src/systems/computer-player/colony/voyage.js';
 import {
   aiSim,
   CIVILIST,

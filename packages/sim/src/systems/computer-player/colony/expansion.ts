@@ -15,20 +15,13 @@ import { seatBaseOf } from '../base.js';
 import { LATE_GAME_FROM_TICKS, minutesToTicks } from '../game-phase.js';
 import { freeShips } from '../military/operations/landing.js';
 import { evacuated } from './abandon.js';
-import { colonists, colonyOrigin } from './founding.js';
+import { type ColonyEnv, type ColonyView, colonyEnv, homeLandOf, type SeatEnv } from './env.js';
 import { homeSupply } from './home-supply.js';
-import { pickParty } from './people.js';
-import { LAND_GOOD_IDS, type LandGood, landHolds } from './provision.js';
-import { colonyBuildings } from './spot.js';
+import { LAND_GOOD_IDS, type LandGood, landHolds } from './land.js';
+import { pickParty } from './party.js';
+import { colonists, colonyBuildings, colonyOrigin } from './roster.js';
 import { type ColonySite, ROOMY_SITE_NODES, siteOffers, siteRoom, surveyColonySite } from './survey.js';
-import {
-  type ColonyEnv,
-  type ColonyView,
-  colonyEnv,
-  homeLandOf,
-  openColony,
-  type SeatEnv,
-} from './voyage.js';
+import { openColony } from './voyage.js';
 
 // When a seat opens one more colony (owner ruling: it is not limited to one as time goes on). Every figure is
 // authored from games observed on arabskie_wyspy_wolna_gra_mieszana with one colony and with none.

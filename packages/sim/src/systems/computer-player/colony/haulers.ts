@@ -17,8 +17,8 @@ import { landReachAt, networkLimitAt } from '../../signposts/index.js';
 import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { isYardHeap } from '../../stores/index.js';
 import { isCarrierJob } from '../../stores/workplace.js';
-import { colonists } from './founding.js';
-import type { ColonyEnv } from './voyage.js';
+import type { ColonyEnv } from './env.js';
+import { colonists } from './roster.js';
 
 // A colony's gatherers set what they dig down by their flags, and the store's porters take it in: one
 // porter keeps the store's own round, and one more holds a flag at each dig past that round (our own

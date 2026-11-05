@@ -1,7 +1,6 @@
 import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
-  type ColonyRoute,
   HaulingCart,
   Health,
   Marriage,
@@ -42,12 +41,13 @@ import { canTakeHaulingCart } from '../../vehicles/hauling-cart.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { minutesToTicks } from '../game-phase.js';
 import { strandedShip } from '../sea-route.js';
-import { sailOrders } from './ferry.js';
-import { colonists } from './founding.js';
-import { sparePartyMen, standsOn } from './people.js';
+import { type ColonyEnv, type ColonyView, homeLandOf } from './env.js';
+import { carryingShip, newRoute, type RouteSlot, takeRouteShip } from './fleet.js';
+import { lyingStill, mooredOn, mooringOf, unloadAt } from './moorings.js';
+import { sparePartyMen } from './party.js';
 import { storesHeld } from './provision.js';
-import { lineWayClear, withDanger } from './sea-danger.js';
-import { colonyBuildings } from './spot.js';
+import { colonists, colonyBuildings, standsOn } from './roster.js';
+import { lineWayClear, sailOrders, withDanger } from './sea-danger.js';
 import { homeStockOf } from './stock.js';
 import {
   type ColonyStockPolicy,
@@ -55,16 +55,6 @@ import {
   colonyStockPolicy,
   colonyStockReadsOf,
 } from './stock-policy.js';
-import {
-  type ColonyEnv,
-  type ColonyView,
-  carryingShip,
-  homeLandOf,
-  lyingStill,
-  mooredOn,
-  mooringOf,
-  unloadAt,
-} from './voyage.js';
 
 // A colony's goods go by a trader of the seat's (owner ruling): a home man takes the trade, a ship is pinned
 // to his route between a home warehouse and the colony's, both standing for their settlements, and the marks
@@ -83,9 +73,6 @@ const TRADE_TAKE_UP_TICKS = minutesToTicks(2);
 const MARKS_EVERY_DECISIONS = 15;
 
 export type RouteView = DeepReadonly<NonNullable<ColonyView['route']>>;
-
-/** Which of a colony's routes a decision works: its first, or the relief raised once that cannot keep up. */
-type RouteSlot = 'route' | 'relief';
 
 /** What a colony's two routes share within one decision. */
 interface RouteDecision {
@@ -149,21 +136,6 @@ function noteRoute(
   if (live === null) return;
   live.hull = hull;
   live.load = load;
-}
-
-/** A route of no trader and no ship yet, behind on nothing. */
-function newRoute(tick: number, ship: Entity | null, hull: number): ColonyRoute {
-  return { trader: null, chosen: tick, ship, hull, load: 0, behindSince: null };
-}
-
-/** The colony takes `ship` for its route: the founding ship once its hold is out, or a free one at home. */
-export function takeRouteShip(env: ColonyEnv, ship: Entity, slot: RouteSlot = 'route'): void {
-  const { world, ctx } = env;
-  const live = env.edit();
-  const hull = world.tryGet(ship, Health)?.hitpoints ?? 0;
-  const held = live[slot];
-  if (held === null) live[slot] = newRoute(ctx.tick, ship, hull);
-  else Object.assign(held, { ship, hull, load: 0 });
 }
 
 /** A route with no ship takes a free one at home while a way clear of the fire that took the last remains. */

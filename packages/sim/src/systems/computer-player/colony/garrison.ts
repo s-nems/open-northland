@@ -28,12 +28,10 @@ import { towerPostFor } from '../../conflict/tower-post.js';
 import { minutesToTicks } from '../game-phase.js';
 import { isFitSoldier } from '../military/fit.js';
 import { ARMY_FLOOR_MIN, underAttack } from '../workforce/garrison.js';
-import { colonists, colonyOrigin } from './founding.js';
-import { standsOn } from './people.js';
+import { type ColonyEnv, type ColonyView, homeLandOf } from './env.js';
 import { colonySeats } from './posts.js';
 import { colonyFed } from './provision.js';
-import { colonyBuildings } from './spot.js';
-import { type ColonyEnv, type ColonyView, homeLandOf } from './voyage.js';
+import { colonists, colonyBuildings, colonyOrigin, standsOn } from './roster.js';
 
 /** The towers a garrisoned colony raises with no threat seen (owner ruling: two defence towers at once). */
 export const COLONY_TOWERS_LEAST = 2;

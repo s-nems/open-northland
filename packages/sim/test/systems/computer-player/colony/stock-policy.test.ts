@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { aiControlEntity, Building, ComputerColony } from '../../../../src/components/index.js';
 import { NO_COMPONENT } from '../../../../src/nav/terrain/index.js';
 import { everyBuildingOf } from '../../../../src/systems/ai-shared/home-roster.js';
-import { colonists } from '../../../../src/systems/computer-player/colony/founding.js';
+import { colonists } from '../../../../src/systems/computer-player/colony/roster.js';
 import {
   type ColonyStockPolicy,
   chainIntermediates,

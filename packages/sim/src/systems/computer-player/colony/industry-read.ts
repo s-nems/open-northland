@@ -17,7 +17,7 @@ import { isCarrierJob } from '../../stores/index.js';
 import { ROOM_HOME_BUILDING } from '../build-order/room.js';
 import { technologyTable } from '../technology/requirements.js';
 import { enabledTiersAbove, topEnabledTier } from '../top-tier.js';
-import { colonists, colonyOrigin } from './founding.js';
+import type { ColonyEnv, ColonyView } from './env.js';
 import {
   ALL_STEPS,
   type ChainStep,
@@ -29,10 +29,10 @@ import {
   type StepRead,
   type Worth,
 } from './industry.js';
-import { landHolds } from './provision.js';
+import { landHolds } from './land.js';
+import { colonists, colonyOrigin } from './roster.js';
 import { homeStockOf } from './stock.js';
 import { siteRoom } from './survey.js';
-import type { ColonyEnv, ColonyView } from './voyage.js';
 
 /** How far from its anchor a building's spot may lie, in Manhattan nodes (authored: the walk range). */
 export const COLONY_SPOT_NODES = 50;

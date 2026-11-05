@@ -2,7 +2,8 @@ import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { NO_COMPONENT } from '../../../../src/nav/terrain/index.js';
 import { everyBuildingOf } from '../../../../src/systems/ai-shared/home-roster.js';
-import { colonyMakes, landHolds } from '../../../../src/systems/computer-player/colony/provision.js';
+import { landHolds } from '../../../../src/systems/computer-player/colony/land.js';
+import { colonyMakes } from '../../../../src/systems/computer-player/colony/provision.js';
 import {
   blankColony,
   colonyContent,

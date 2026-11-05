@@ -15,11 +15,9 @@ import { isAdultSettler } from '../../family/eligibility.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { isSchoolType } from '../../readviews/index.js';
 import { Schooling } from '../technology/schooling.js';
-import { colonists, storeOf } from './founding.js';
-import { fitsTrade, openCraftSeats } from './overflow.js';
-import { atWorkshop } from './posts.js';
-import { colonyBuildings } from './spot.js';
-import type { ColonyEnv } from './voyage.js';
+import { atWorkshop, fitsTrade, openCraftSeats } from './craft.js';
+import type { ColonyEnv } from './env.js';
+import { colonists, colonyBuildings, storeOf } from './roster.js';
 
 /** Whether `e` is one of a colony's men at work or in a school lesson: a pupil is back within seconds, so
  *  the ferry brings no man from home in his place. */

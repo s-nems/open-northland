@@ -1,19 +1,9 @@
-import {
-  Building,
-  BuildMode,
-  Female,
-  JobAssignment,
-  Marriage,
-  Residence,
-  Settler,
-} from '../../../components/index.js';
+import { Building, BuildMode, Female, JobAssignment, Marriage, Settler } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { onErrand } from '../../ai-shared/military/errand.js';
-import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { isBuilt } from '../../ai-shared/seat-roster.js';
 import {
   builderJobOf,
   civilianCount,
@@ -23,7 +13,6 @@ import {
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { isAdultSettler, mayMarry, raisingChild } from '../../family/eligibility.js';
-import { familiesOf } from '../../family/households.js';
 import { isFisherJob, isHunterJob, isScoutJob } from '../../readviews/index.js';
 import { DEFAULT_BUILD_ORDER } from '../build-order/entries.js';
 import { decisionMemo, lineStatuses } from '../build-order/progress.js';
@@ -31,6 +20,7 @@ import { seatBuildOrder } from '../build-order/seat-order.js';
 import { computerProfileOf } from '../difficulty.js';
 import { seatApprentices } from '../technology/apprentices.js';
 import { inFoodChain } from '../workforce/food.js';
+import { standsOn } from './roster.js';
 
 function apprenticesOf(world: World, ctx: SystemContext, seat: number): ReadonlySet<Entity> {
   const order = seatBuildOrder(world, ctx, seat, DEFAULT_BUILD_ORDER, computerProfileOf(world, seat));
@@ -106,18 +96,6 @@ function unwed(world: World, e: Entity): boolean {
 function hasMinor(world: World, e: Entity): boolean {
   const marriage = world.tryGet(e, Marriage);
   return marriage !== undefined && raisingChild(world, marriage);
-}
-
-/** Whether `e` stands on `land`. */
-export function standsOn(world: World, ctx: SystemContext, e: Entity, land: number): boolean {
-  const terrain = ctx.terrain;
-  const at = anchorNodeOf(world, e);
-  return (
-    terrain !== undefined &&
-    at !== null &&
-    terrain.inBounds(at.hx, at.hy) &&
-    terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) === land
-  );
 }
 
 /** The spare men on `land` who leave no growing child behind. */
@@ -249,34 +227,6 @@ export function boardOrders(world: World, party: readonly Entity[], ship: Entity
     const spouse = world.tryGet(e, Marriage)?.spouse;
     if (spouse === undefined || sailing.has(spouse)) commands.push({ kind: 'unassignHouse', entity: e });
     commands.push({ kind: 'attachToVehicle', entity: e, vehicle: ship });
-  }
-  return commands;
-}
-
-/** What population does at home, over a colony's `people` and `buildings`: one marry order per possible
- *  couple, and a family with no home takes the first free slot. */
-export function colonyFamilies(
-  world: World,
-  ctx: SystemContext,
-  people: readonly Entity[],
-  buildings: readonly Entity[],
-): PlayerCommand[] {
-  const index = contentIndex(ctx.content);
-  const commands: PlayerCommand[] = [];
-  const brides = people.filter((e) => world.has(e, Female) && mayMarry(world, ctx.content, e));
-  const grooms = people.filter((e) => !world.has(e, Female) && mayMarry(world, ctx.content, e));
-  for (const e of brides.slice(0, grooms.length)) commands.push({ kind: 'marry', entity: e });
-  const homes = buildings.flatMap((e) => {
-    const type = index.buildings.get(world.get(e, Building).buildingType);
-    if (!isBuilt(world, e) || type === undefined || type.kind !== 'home') return [];
-    return [{ entity: e, free: type.homeSize - familiesOf(world, e).length }];
-  });
-  for (const wife of people) {
-    if (!world.has(wife, Female) || !world.has(wife, Marriage) || world.has(wife, Residence)) continue;
-    const home = homes.find((h) => h.free > 0);
-    if (home === undefined) break;
-    home.free--;
-    commands.push({ kind: 'assignHouse', entity: wife, house: home.entity });
   }
   return commands;
 }

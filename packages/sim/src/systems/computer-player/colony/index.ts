@@ -6,6 +6,7 @@ import type { SystemContext } from '../../context.js';
 import { seatArchetype } from '../build-order/seat-order.js';
 import type { ComputerModule } from '../index.js';
 import { abandonColony, evacuate, evacuated, overrun } from './abandon.js';
+import { type ColonyEnv, colonyEnv, type SeatEnv } from './env.js';
 import { openNextColony } from './expansion.js';
 import { runFerry } from './ferry.js';
 import { foundColony } from './founding.js';
@@ -16,15 +17,12 @@ import { stopPullOrders } from './stop-pull.js';
 import { recoverStrayShips, strayCrewsHome } from './stray-ships.js';
 import {
   afterLanding,
-  type ColonyEnv,
   chooseSite,
   claimScoutShip,
-  colonyEnv,
   fittingOut,
   landing,
   loading,
   returning,
-  type SeatEnv,
   sailing,
   scouting,
 } from './voyage.js';

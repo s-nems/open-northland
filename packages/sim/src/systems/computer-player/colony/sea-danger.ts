@@ -1,9 +1,12 @@
 import type { SeaDanger } from '../../../components/index.js';
-import type { DeepReadonly } from '../../../ecs/world.js';
-import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { nodeManhattan } from '../../../nav/halfcell.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
+import type { DeepReadonly, Entity } from '../../../ecs/world.js';
+import { type HalfCellNode, nodeManhattan } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { minutesToTicks } from '../game-phase.js';
+import type { ColonyEnv, ColonyView } from './env.js';
+import { dock } from './moorings.js';
 
 // Where the seat's own colony ships took fire. Only what a hull felt goes in, so nothing here reads what the
 // seat has not seen. Figures are authored from arabskie_wyspy_wolna_gra_mieszana, where colony ships went down
@@ -107,4 +110,22 @@ export function lineWayClear(
 ): boolean {
   if (dangers.length === 0 || terrain === undefined || berth === null || shore === null) return true;
   return clearWay(terrain, dangers, berth, shore) !== null;
+}
+
+/** The orders that sail `ship` for `to`, round the fire the colony's ships have met, and straight when no
+ *  way is clear: a ship already out has to come in. */
+export function sailOrders(
+  env: ColonyEnv,
+  colony: ColonyView,
+  ship: Entity,
+  to: DeepReadonly<HalfCellNode>,
+): PlayerCommand[] {
+  const from = anchorNodeOf(env.world, ship);
+  const way = from === null ? null : clearWay(env.terrain, colony.dangers, from, to);
+  if (way === null || way.via === null) return [dock(ship, to)];
+  const { hx: x, hy: y } = way.via;
+  return [
+    { kind: 'moveVehicle', vehicle: ship, x, y },
+    { kind: 'dockVehicle', vehicle: ship, x: to.hx, y: to.hy, queued: true },
+  ];
 }

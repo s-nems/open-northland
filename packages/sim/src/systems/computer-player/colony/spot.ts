@@ -1,40 +1,21 @@
 import type { BuildingType } from '@open-northland/data';
-import { playerPlacementTribes } from '../../../components/index.js';
-import type { Entity } from '../../../ecs/world.js';
-import { type HalfCellNode, nodeManhattan } from '../../../nav/halfcell.js';
-import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
-import { colonyBuildingsOn } from '../../ai-shared/home-roster.js';
-import { anchorNodeOf, bestRingNode } from '../../ai-shared/node-geometry.js';
+import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { bestRingNode } from '../../ai-shared/node-geometry.js';
 import { routeRegions } from '../../footprint/index.js';
-import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js';
-import { VEHICLE_CARGO_SEARCH_RADIUS } from '../../settlers/drives/economy/vehicle-cargo.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { goodsSearchLimitAt } from '../../signposts/reach.js';
-import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { buildReach, footprintOnGrass } from '../build-order/placement.js';
 import { seatSpotAcceptor } from '../build-order/plots.js';
 import { seatSiege } from '../build-order/siege.js';
-import {
-  knownAnd,
-  knownResourceTest,
-  nearestLiveResource,
-  reachableResourceTest,
-  workableResourceTest,
-} from '../live-resources.js';
-import type { StepGround } from './industry.js';
-import { LAND_GOOD_IDS } from './provision.js';
-import { homesFitNear } from './room.js';
-import { colonyStoreType } from './store-tier.js';
-import type { ColonyEnv } from './voyage.js';
+import type { ColonyEnv } from './env.js';
+import { colonyBuildings } from './roster.js';
+
+/** The ground a step asks for: a farm's fields, a patch of grass, or any. */
+export type StepGround = 'field' | 'grass' | 'any';
 
 /** How far from what stands on the colony a building goes, in Manhattan nodes (authored): the walk range,
  *  so a colony with no signpost still reaches its next site. */
 const COLONY_REACH_NODES = 50;
-
-/** The buildings the seat holds on this colony, ascending id. */
-export function colonyBuildings(env: ColonyEnv): readonly Entity[] {
-  return colonyBuildingsOn(env.world, env.ctx, env.seat, env.colony.land);
-}
 
 /** How far from the store and what stands a workshop may go (authored): observed on
  *  arabskie_wyspy_wolna_gra_mieszana, a colony's forest left an armory no spot within half this of its store
@@ -44,7 +25,7 @@ const WORKSHOP_SPOT_NODES = 100;
 /** A search other than the walk range's: its reach of what stands, the signposts that make it walkable,
  *  the goods search of the store its builders fetch the bill from, and `ahead` for land the seat's people
  *  have not landed on, judged without the site reach their landing brings. */
-interface FarGround {
+export interface FarGround {
   readonly reachNodes?: number;
   readonly limit?: NavigationLimit | null;
   readonly supply?: NavigationLimit | null;
@@ -121,100 +102,4 @@ export function colonySpot(
     search((x, y) => footprintOnGrass(ctx, terrain, type, tribe, x, y)) ??
     search((x, y) => acceptor.grassBeside(x, y))
   );
-}
-
-/** How far round a shore its colony's first buildings and gatherers look, in Manhattan nodes (authored: the
- *  store's walk range). */
-const SHORE_LOOK_NODES = 50;
-/** Sampling step of a shore's open ground, so its open count costs a few hundred node reads; the room for
- *  homes beside it ({@link homesFitNear}) costs a placement probe per lattice node of the same diamond, up to
- *  about thirteen hundred, until {@link SHORE_HOMES_FULL} fit. */
-const SHORE_LOOK_STEP = 3;
-/** A shore's score per {@link LAND_GOOD_IDS} good in reach and per live swarm, against one per open node
- *  sampled: a good nobody can reach costs a colony more than a corner of room (authored). */
-const SHORE_GOOD_POINTS = 60;
-/** A shore's score per home that fits in its look (owner ruling: free room for homes, workshops and towers
- *  weighs heavily): worth more than a good in reach, so a cramped cove loses to a roomy shore (authored). */
-const SHORE_HOME_POINTS = 100;
-/** The homes past which a shore's room gains nothing (authored): a colony's homes and its industries' room. */
-const SHORE_HOMES_FULL = 12;
-const SHORE_FISH_POINTS = 20;
-const SHORE_GRASS_DIVISOR = 8;
-
-/** How far from its landing shore a colony's first warehouse may stand, in Manhattan nodes (owner ruling:
- *  fairly close, so the trader's helpers and the unloading walk little): the reach of a hold's hands, who
- *  carry cargo into a warehouse only that near the door. */
-export const STORE_SHORE_NODES = VEHICLE_CARGO_SEARCH_RADIUS;
-
-const AHEAD_OF_LANDING: FarGround = { ahead: true };
-
-/** How a shore serves a colony (owner ruling): room for homes round the warehouse spot it gives first, then
- *  open ground, resources in gatherers' reach, grass and fish round the shore. */
-export function shoreScore(
-  env: ColonyEnv,
-  land: number,
-  at: HalfCellNode,
-  store: HalfCellNode,
-  tribe: number,
-): number {
-  const { world, ctx, terrain, seat } = env;
-  const homes = homesFitNear(world, ctx, terrain, tribe, land, store, SHORE_LOOK_NODES, SHORE_HOMES_FULL);
-  const grid = placementBlockerGrid(world, ctx.content, terrain);
-  let open = 0;
-  let grass = 0;
-  for (let dy = -SHORE_LOOK_NODES; dy <= SHORE_LOOK_NODES; dy += SHORE_LOOK_STEP) {
-    const span = SHORE_LOOK_NODES - Math.abs(dy);
-    for (let dx = -span; dx <= span; dx += SHORE_LOOK_STEP) {
-      const x = at.hx + dx;
-      const y = at.hy + dy;
-      if (!terrain.inBounds(x, y)) continue;
-      const node = terrain.nodeAt(x, y);
-      if (terrain.componentOf(node) !== land || !terrain.isBuildable(node)) continue;
-      if ((grid.obstacle[node] ?? 0) === 0) open++;
-      if (terrain.isPlantable(node)) grass++;
-    }
-  }
-  // A deposit counts on the shore's own land and known to the seat: one over the water is no gatherer's.
-  const reachable = reachableResourceTest(world, ctx, terrain, at, workableResourceTest(world, ctx, terrain));
-  const known = knownAnd(knownResourceTest(world, ctx, seat), reachable);
-  const goods = LAND_GOOD_IDS.filter((id) => {
-    const good = goodTypeByContentId(ctx.content, id);
-    const near = good === undefined ? null : nearestLiveResource(world, good.typeId, at, known);
-    const node = near === null ? null : anchorNodeOf(world, near);
-    return node !== null && nodeManhattan(node, at) <= SHORE_LOOK_NODES;
-  }).length;
-  const fish = fishSwarmsNearNode(world, at.hx, at.hy, SHORE_LOOK_NODES).length;
-  return (
-    SHORE_HOME_POINTS * homes +
-    open +
-    Math.floor(grass / SHORE_GRASS_DIVISOR) +
-    SHORE_GOOD_POINTS * goods +
-    SHORE_FISH_POINTS * fish
-  );
-}
-
-/** The best of `shores` with room for a store within {@link STORE_SHORE_NODES}, its room counted round the
- *  nearest such spot, where the founding places the store. The first best on a tie. Null also for a seat
- *  with no tribe or a content with no store. Judged before the party lands, so without the site reach: the
- *  store is placed once its people stand on the shore, well inside their reach. */
-export function shoreWithStore(
-  env: ColonyEnv,
-  land: number,
-  shores: readonly HalfCellNode[],
-): HalfCellNode | null {
-  const { world, ctx, seat } = env;
-  const tribe = playerPlacementTribes(world, seat)?.[0];
-  const type = colonyStoreType(world, ctx, seat);
-  if (tribe === undefined || type === undefined) return null;
-  let best: HalfCellNode | null = null;
-  let bestScore = -1;
-  for (const at of shores) {
-    const store = colonySpot(env, land, type, tribe, at, STORE_SHORE_NODES, 'any', AHEAD_OF_LANDING);
-    if (store === null) continue;
-    const score = shoreScore(env, land, at, store, tribe);
-    if (score <= bestScore) continue;
-    best = at;
-    bestScore = score;
-  }
-  return best;
 }

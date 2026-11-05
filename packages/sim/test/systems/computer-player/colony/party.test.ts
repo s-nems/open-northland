@@ -10,7 +10,7 @@ import {
   partyFor,
   pickParty,
   topUpParty,
-} from '../../../../src/systems/computer-player/colony/people.js';
+} from '../../../../src/systems/computer-player/colony/party.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { colonyContent, colonyWorld, FOOD, mooredShip, stepUntil } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';

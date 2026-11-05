@@ -10,10 +10,9 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
-import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { colonyLands, colonySettlersOn, homeSettlers } from '../../ai-shared/home-roster.js';
+import { colonyLands, colonySettlersOn, homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { builderJobOf } from '../../ai-shared/workforce/pool.js';
+import { builderJobOf, isAllocatableMan, SpareForce } from '../../ai-shared/workforce/pool.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import { passengerJobAllowed } from '../../vehicles/crew.js';
@@ -21,23 +20,16 @@ import { type Share, shareOf } from '../difficulty.js';
 import { minutesToTicks } from '../game-phase.js';
 import { freeShips, LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../military/operations/landing.js';
 import { strandedShip } from '../sea-route.js';
-import { colonists } from './founding.js';
+import { Schooling } from '../technology/schooling.js';
+import { atWorkshop, fitsTrade, openCraftSeats } from './craft.js';
+import { type ColonyEnv, type ColonyView, homeLandOf } from './env.js';
 import { garrisonOwed } from './garrison.js';
-import { tradesmenFor } from './overflow.js';
-import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
+import { lyingStill, mooredOn, mooringOf, unloadAt } from './moorings.js';
+import { boardOrders, homeMaySpare, sparePartyMen, topUpParty } from './party.js';
 import { handsWanted, menPastWork } from './posts.js';
-import { colonyHand } from './school.js';
-import { clearWay, lineWayClear, withDanger, withoutLapsed } from './sea-danger.js';
-import {
-  type ColonyEnv,
-  type ColonyView,
-  dock,
-  homeLandOf,
-  lyingStill,
-  mooredOn,
-  mooringOf,
-  unloadAt,
-} from './voyage.js';
+import { colonists, colonyBuildings, standsOn } from './roster.js';
+import { colonyHand, colonySchool } from './school.js';
+import { lineWayClear, sailOrders, withDanger, withoutLapsed } from './sea-danger.js';
 
 // A colony's people cross on a free ship of the seat's: the trader's pinned ship seats only its carriers. The
 // ferry takes on at home the tradesmen, garrison and settlers the colony is owed, lands them there, takes the
@@ -54,24 +46,6 @@ const FERRY_SAIL_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
 /** The passengers a ferry takes once fire has found its colony's ships (authored): what a sunk hull may
  *  cost. */
 const RIDERS_NEAR_FIRE = 2;
-
-/** The orders that sail `ship` for `to`, round the fire the colony's ships have met, and straight when no
- *  way is clear: a ship already out has to come in. */
-export function sailOrders(
-  env: ColonyEnv,
-  colony: ColonyView,
-  ship: Entity,
-  to: DeepReadonly<HalfCellNode>,
-): PlayerCommand[] {
-  const from = anchorNodeOf(env.world, ship);
-  const way = from === null ? null : clearWay(env.terrain, colony.dangers, from, to);
-  if (way === null || way.via === null) return [dock(ship, to)];
-  const { hx: x, hy: y } = way.via;
-  return [
-    { kind: 'moveVehicle', vehicle: ship, x, y },
-    { kind: 'dockVehicle', vehicle: ship, x: to.hx, y: to.hy, queued: true },
-  ];
-}
 
 /** The ship's riders, the helm first. */
 function ridersOf(world: World, ship: Entity): Entity[] {
@@ -336,4 +310,38 @@ export function runFerry(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   if (!arriving) env.edit().berth = { hx: next.hx, hy: next.hy };
   env.edit().ferry?.tried.push({ hx: next.hx, hy: next.hy });
   return sailOrders(env, colony, ship, next);
+}
+
+/** Who the ferry owes the colony from home: the spare men of the trades no colonist among `people` has earned,
+ *  in at most `seats`, and the lessons that make the next such man where home's school teaches the trade;
+ *  none once the colony's own school stands. A workshop none of them reaches simply waits: home's line has
+ *  moved on. */
+export function tradesmenFor(
+  env: ColonyEnv,
+  people: readonly Entity[],
+  home: number,
+  seats: number,
+): { readonly sailing: readonly Entity[]; readonly lessons: readonly PlayerCommand[] } {
+  const { world, ctx, seat } = env;
+  const here = new SpareForce(people.filter((e) => isAllocatableMan(world, ctx, e) && !atWorkshop(env, e)));
+  const short = openCraftSeats(env, colonyBuildings(env)).filter(
+    (post) => here.take(fitsTrade(env, post.job)) === null,
+  );
+  const sailing: Entity[] = [];
+  const lessons: PlayerCommand[] = [];
+  // A colony with its own school teaches its men there (`./school.ts`); the ferry brings plain hands.
+  if (short.length === 0 || !homeMaySpare(world, ctx, seat) || colonySchool(env) !== null)
+    return { sailing, lessons };
+  const force = new SpareForce(sparePartyMen(world, ctx, seat, home));
+  const schooling = new Schooling(world, ctx, seat, homeBuildings(world, ctx, seat));
+  for (const post of short) {
+    const man = sailing.length < seats ? force.take(fitsTrade(env, post.job)) : null;
+    if (man !== null) {
+      sailing.push(man);
+      continue;
+    }
+    const lesson = schooling.enrol(post.job, post.building, force);
+    if (lesson.kind === 'learn') lessons.push(lesson.command);
+  }
+  return { sailing, lessons };
 }

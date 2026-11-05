@@ -12,14 +12,13 @@ import { stockAtBuildings } from '../../stores/index.js';
 import { sitesShortfalls } from '../build-order/upgrade-supply.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER, FOOD_SHORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import type { SeatSupply } from '../workforce/supply.js';
-import { colonists, colonyOrigin } from './founding.js';
+import type { ColonyEnv, SeatEnv } from './env.js';
 import { foodGood, homeSpare, homeSupply, workshopShelves } from './home-supply.js';
 import { chainStepOf } from './industry.js';
 import { colonyIndustryWantsOf } from './industry-read.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan } from './plan.js';
 import { colonyMakes, storesHeld, workshopGoods } from './provision.js';
-import { colonyBuildings } from './spot.js';
-import type { ColonyEnv, SeatEnv } from './voyage.js';
+import { colonists, colonyBuildings, colonyOrigin } from './roster.js';
 
 // What a colony keeps in store and what moves between it and home, whatever carries it. Figures are authored
 // unless they say otherwise.

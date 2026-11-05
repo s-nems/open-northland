@@ -15,13 +15,14 @@ import { mayMarry } from '../../family/eligibility.js';
 import { familiesOf } from '../../family/households.js';
 import { ROOM_HOME_BUILDING } from '../build-order/room.js';
 import { topEnabledTier } from '../top-tier.js';
-import { colonists } from './founding.js';
-import { type ChainStep, chainStepOf, nextIndustrySteps, type StepGround } from './industry.js';
+import type { ColonyEnv, ColonyView } from './env.js';
+import { type ChainStep, chainStepOf, nextIndustrySteps } from './industry.js';
 import { colonyIndustries, roomFor, stepType } from './industry-read.js';
 import { colonyFed } from './provision.js';
+import { colonists } from './roster.js';
 import { schoolLacking } from './school.js';
+import type { StepGround } from './spot.js';
 import { towersLacking } from './towers.js';
-import type { ColonyEnv, ColonyView } from './voyage.js';
 
 /** The open sites a colony's builders work at once besides its industries' (authored): its hold pays for
  *  little more. */

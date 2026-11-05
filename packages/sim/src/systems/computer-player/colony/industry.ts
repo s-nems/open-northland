@@ -1,9 +1,8 @@
+import type { StepGround } from './spot.js';
+
 // A colony's industries (owner ruling): chosen from what its site offers and what the seat needs, weighed
 // against its room, each chain raised at its own pace. Pure over the reads below; `./industry-read.ts` takes
 // them off the world.
-
-/** The ground a step asks for: a farm's fields, a patch of grass, or any. */
-export type StepGround = 'field' | 'grass' | 'any';
 
 /** A chain of buildings a colony raises for its own people or for home. The temple follows a weapon
  *  industry, whose workers must pray. */

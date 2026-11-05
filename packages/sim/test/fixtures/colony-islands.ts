@@ -17,7 +17,7 @@ import {
   colonySettlersOn,
   seatColonies,
 } from '../../src/systems/ai-shared/home-roster.js';
-import type { ColonyEnv } from '../../src/systems/computer-player/colony/voyage.js';
+import type { ColonyEnv } from '../../src/systems/computer-player/colony/env.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import {
   BUILDER,

@@ -38,28 +38,19 @@ import {
 } from '../workforce/flag-spots.js';
 import { rowPlan } from '../workforce/staffing-rows.js';
 import { colonyBuilderWant, withBuilderPosts } from './builders.js';
-import { colonists, colonyOrigin, storeOf } from './founding.js';
+import { atWorkshop } from './craft.js';
+import type { ColonyEnv, ColonyView } from './env.js';
 import { farDigPorters } from './haulers.js';
 import { homeSupply } from './home-supply.js';
 import { huntingOpen } from './hunting.js';
 import { earningDeposits } from './industry.js';
 import { colonyIndustries } from './industry-read.js';
-import { MEN_PER_WOMAN } from './people.js';
+import { canDig, flagGroundAt, LAND_GOOD_IDS, landHolds, workableFrom } from './land.js';
+import { MEN_PER_WOMAN } from './party.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan, homeSlots } from './plan.js';
-import {
-  canDig,
-  colonyFed,
-  flagGroundAt,
-  kitchenMouths,
-  LAND_GOOD_IDS,
-  landHolds,
-  MOUTHS_PER_FOOD_HAND,
-  storesHeld,
-  workableFrom,
-} from './provision.js';
+import { colonyFed, kitchenMouths, MOUTHS_PER_FOOD_HAND, storesHeld } from './provision.js';
+import { colonists, colonyBuildings, colonyOrigin, storeOf } from './roster.js';
 import { colonyHand } from './school.js';
-import { colonyBuildings } from './spot.js';
-import type { ColonyEnv, ColonyView } from './voyage.js';
 
 /** The men on a good at most (authored): past these the colony's carriers cannot take in what they dig. */
 const DIGGERS_MOST: Readonly<Record<DugGood, number>> = {
@@ -369,15 +360,6 @@ function crewOrders(
     }
   }
   return commands;
-}
-
-/** Whether `e` works a colony workshop: his seat is not a post of {@link POSTS}. */
-export function atWorkshop(env: ColonyEnv, e: Entity): boolean {
-  const { world, ctx } = env;
-  const workplace = world.tryGet(e, JobAssignment)?.workplace;
-  const building = workplace === undefined ? undefined : world.tryGet(workplace, Building);
-  if (building === undefined) return false;
-  return contentIndex(ctx.content).buildings.get(building.buildingType)?.kind === BUILDING_KIND.workplace;
 }
 
 /** The gatherers a workshop seats for an input no digger of the colony digs (authored): one keeps a

@@ -2,34 +2,28 @@ import {
   type ColonyScout,
   type ColonyState,
   ComputerColony,
-  type ComputerColonyState,
   Female,
   Marriage,
   mapBriefOf,
   SettlerNeeds,
   Vehicle,
-  VehicleDrive,
   vehicleCommander,
   vehiclePassengers,
   zoneOfNode,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
-import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { NO_COMPONENT, type TerrainGraph } from '../../../nav/terrain/index.js';
+import { NO_COMPONENT } from '../../../nav/terrain/index.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { civilianCount } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { needLevel } from '../../lifecycle/needs/index.js';
 import { mooringSpotsOf } from '../../vehicles/dock.js';
 import { isCargoHand, isLoaderRider } from '../../vehicles/stock.js';
-import { seatBaseLand } from '../base.js';
 import { minutesToTicks } from '../game-phase.js';
 import { freeShips, LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../military/operations/landing.js';
-import { believedLand, underFire } from '../military/operations/landing-target.js';
 import { SEA_SCOUT_TRIP_TIMEOUT_TICKS, scoutLoop } from '../military/operations/sea-scout.js';
-import { shorePoints } from '../sea-route.js';
 import {
   colonyManifest,
   holdDone,
@@ -41,44 +35,14 @@ import {
   storeBill,
   wantManifest,
 } from './cargo.js';
-import { mayBuildTradeShip } from './fleet.js';
-import { boardOrders, PARTY_FROM_CIVILIANS, pickParty, spareMen } from './people.js';
-import { takeRouteShip } from './route.js';
-import { shoreWithStore } from './spot.js';
-import { colonyStoreType } from './store-tier.js';
+import { type ColonyEnv, type ColonyView, homeLandOf, type SeatEnv } from './env.js';
+import { carryingShip, shipId, takeRouteShip } from './fleet.js';
+import { dock, landOf, lyingStill, mooredOn, mooringOf, unloadAt } from './moorings.js';
+import { boardOrders, PARTY_FROM_CIVILIANS, pickParty, spareMen } from './party.js';
+import { colonyShores, shoreWithStore } from './shore.js';
+import { colonyStoreType } from './store-type.js';
 import { type ColonySite, colonySiteClear, siteBlockHolds, surveyColonySite } from './survey.js';
 import { TRADE_SHIP_ID } from './trade-ship.js';
-
-export type ColonyView = DeepReadonly<ColonyState>;
-
-/** One seat's world for a colony decision. */
-export interface SeatEnv {
-  readonly world: World;
-  readonly ctx: SystemContext;
-  readonly terrain: TerrainGraph;
-  readonly seat: number;
-  readonly carrier: Entity;
-}
-
-/** One colony's decision. `edit` and `editSeat` acquire the state for a change, and only then: each write
- *  drops the seat's home view. */
-export interface ColonyEnv extends SeatEnv {
-  /** The colony itself, read-only and live: an edit shows through it. */
-  readonly colony: ColonyView;
-  readonly edit: () => ColonyState;
-  readonly editSeat: () => ComputerColonyState;
-}
-
-/** The decision of the seat's `colony`, one of its live records. */
-export function colonyEnv(seat: SeatEnv, colony: ColonyView): ColonyEnv {
-  const editSeat = (): ComputerColonyState => seat.world.mut(seat.carrier, ComputerColony);
-  const edit = (): ColonyState => {
-    const live = editSeat().colonies.find((held) => held === colony);
-    if (live === undefined) throw new Error(`seat ${seat.seat} no longer holds the colony it is editing`);
-    return live;
-  };
-  return { ...seat, colony, edit, editSeat };
-}
 
 /** The civilians a seat grows by while its scout sails (authored: arabskie_wyspy_wolna_gra_mieszana seats
  *  grew by four to six in a scouting's five minutes). */
@@ -109,59 +73,11 @@ const COLONY_SAIL_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
 const COLONY_LANDING_HANDS = 5;
 /** How long they get before they step ashore and leave what is left aboard (authored). */
 const COLONY_UNLOAD_TICKS = minutesToTicks(5);
-/** The shores a site's fire test keeps, nearest the site first (authored): spaced ten nodes apart, these span
- *  about the block's coast, so {@link shoreWithStore} has real choices to weigh. */
-const SHORE_CANDIDATES = 12;
-
-/** The land the seat's base stands on, or {@link NO_COMPONENT}. */
-export function homeLandOf(env: SeatEnv): number {
-  return seatBaseLand(env.world, env.ctx, env.terrain, env.seat);
-}
-
-function landOf(terrain: TerrainGraph, at: DeepReadonly<HalfCellNode> | null): number {
-  return at !== null && terrain.inBounds(at.hx, at.hy)
-    ? terrain.componentOf(terrain.nodeAt(at.hx, at.hy))
-    : NO_COMPONENT;
-}
-
-/** Where `ship` lies moored, or null. */
-export function mooringOf(world: World, ship: Entity): DeepReadonly<HalfCellNode> | null {
-  const state = world.tryGet(ship, Vehicle);
-  return state?.moored === true ? state.mooring : null;
-}
-
-/** Whether `ship` lies moored on `land`. */
-export function mooredOn(env: SeatEnv, ship: Entity, land: number): boolean {
-  return land !== NO_COMPONENT && landOf(env.terrain, mooringOf(env.world, ship)) === land;
-}
-
-/** Whether `ship` lies still with no drive and no goal held for a boarding: its last order is spent. */
-export function lyingStill(world: World, ship: Entity): boolean {
-  return !world.has(ship, VehicleDrive) && world.tryGet(ship, Vehicle)?.heldGoal === null;
-}
-
-export function dock(ship: Entity, at: DeepReadonly<HalfCellNode>): PlayerCommand {
-  return { kind: 'dockVehicle', vehicle: ship, x: at.hx, y: at.hy };
-}
-
-/** The ship's riders step ashore where it lies moored. */
-export function unloadAt(ship: Entity, at: DeepReadonly<HalfCellNode>): PlayerCommand {
-  return { kind: 'unloadPeople', vehicle: ship, mooring: { x: at.hx, y: at.hy } };
-}
 
 /** The zone of the colony's site. */
 function siteZone(world: World, colony: ColonyView): number {
   const brief = mapBriefOf(world);
   return brief === null ? 0 : zoneOfNode(brief, colony.site.hx, colony.site.hy);
-}
-
-/** The shores `ship` may land at on the site's land: the spots no believed tower or shelter reaches,
- *  nearest the site first, spaced as {@link shorePoints} spaces them. */
-export function colonyShores(env: ColonyEnv, ship: Entity, land: number, site: HalfCellNode): HalfCellNode[] {
-  const { world, ctx, terrain } = env;
-  const fire = believedLand(env, land).sources;
-  const clear = (at: HalfCellNode): boolean => !underFire(fire, at);
-  return shorePoints(world, ctx, terrain, ship, land, site, clear, SHORE_CANDIDATES);
 }
 
 /** The mooring spots of the colony's land in its site's block: what the first ship sails round. */
@@ -358,19 +274,6 @@ function heldShips(colony: ColonyView): Entity[] {
 function crewed(world: World, ship: Entity): boolean {
   const state = world.tryGet(ship, Vehicle);
   return state !== undefined && vehiclePassengers(state).some((rider) => rider.inside);
-}
-
-function shipId(env: ColonyEnv, ship: Entity): string | undefined {
-  const type = env.world.tryGet(ship, Vehicle)?.vehicleType;
-  return type === undefined ? undefined : contentIndex(env.ctx.content).vehicles.get(type)?.id;
-}
-
-/** The seat's free moored ship that may carry its colony: a trade ship where its tribe builds one. */
-export function carryingShip(env: ColonyEnv): Entity | null {
-  const { world, ctx, seat } = env;
-  const wantsTrade = mayBuildTradeShip(world, ctx, seat);
-  const free = freeShips(env, homeLandOf(env));
-  return free.find((e) => !wantsTrade || shipId(env, e) === TRADE_SHIP_ID) ?? null;
 }
 
 /** Hand the party to the ships: the colony ship's seats, and with a `scout` ship the rest behind a man at

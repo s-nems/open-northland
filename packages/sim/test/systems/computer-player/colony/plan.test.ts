@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { noteSettlerProgress, Settler, SettlerProgress } from '../../../../src/components/index.js';
+import type { ColonyEnv } from '../../../../src/systems/computer-player/colony/env.js';
 import { homeTeaches } from '../../../../src/systems/computer-player/colony/industry-read.js';
 import {
   type HomesRead,
   homeStepDue,
   siteFree,
 } from '../../../../src/systems/computer-player/colony/plan.js';
-import type { ColonyEnv } from '../../../../src/systems/computer-player/colony/voyage.js';
 import {
   aiSim,
   CIVILIST,

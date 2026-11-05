@@ -12,8 +12,8 @@ import { seatBuildOrder } from '../build-order/seat-order.js';
 import { computerProfileOf } from '../difficulty.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER, storedFoodUnits } from '../workforce/food.js';
 import { SeatSupply } from '../workforce/supply.js';
+import type { SeatEnv } from './env.js';
 import { homeStockOf } from './stock.js';
-import type { SeatEnv } from './voyage.js';
 
 /** The edible class food travels as between home and a colony. */
 export const FOOD_GOOD_ID = 'food_simple';

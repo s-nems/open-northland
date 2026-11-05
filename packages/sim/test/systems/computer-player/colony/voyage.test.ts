@@ -33,9 +33,10 @@ import { colonyHeldShips, homeBuildings } from '../../../../src/systems/ai-share
 import { seatBaseOf } from '../../../../src/systems/computer-player/base.js';
 import { abandonColony } from '../../../../src/systems/computer-player/colony/abandon.js';
 import { holdLoad } from '../../../../src/systems/computer-player/colony/cargo.js';
-import { spareMen } from '../../../../src/systems/computer-player/colony/people.js';
+import { colonyEnv } from '../../../../src/systems/computer-player/colony/env.js';
+import { spareMen } from '../../../../src/systems/computer-player/colony/party.js';
 import { surveyColonySite } from '../../../../src/systems/computer-player/colony/survey.js';
-import { colonyEnv, fittingOut, returning } from '../../../../src/systems/computer-player/colony/voyage.js';
+import { fittingOut, returning } from '../../../../src/systems/computer-player/colony/voyage.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { seatNeedsShips } from '../../../../src/systems/computer-player/sea-route.js';

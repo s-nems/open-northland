@@ -15,7 +15,7 @@ import { mayFetchGoodFrom } from '../../stores/workplace.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { foodGood } from './home-supply.js';
 import { homeStockOf } from './stock.js';
-import { colonyStoreType } from './store-tier.js';
+import { colonyStoreType } from './store-type.js';
 
 /** Food per member of the founding party (authored: the comfort line home keeps a mouth), what it eats
  *  until its fishers and the trader feed it. */

@@ -33,11 +33,11 @@ import {
 } from '../../../../src/systems/computer-player/build-order/entries.js';
 import { entryStatuses } from '../../../../src/systems/computer-player/build-order/progress.js';
 import { seatBuildOrder } from '../../../../src/systems/computer-player/build-order/seat-order.js';
-import { colonists } from '../../../../src/systems/computer-player/colony/founding.js';
 import {
   isOverflowBuilding,
   reviewOverflow,
 } from '../../../../src/systems/computer-player/colony/overflow.js';
+import { colonists } from '../../../../src/systems/computer-player/colony/roster.js';
 import { homeStockOf } from '../../../../src/systems/computer-player/colony/stock.js';
 import { computerProfileOf } from '../../../../src/systems/computer-player/difficulty.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';

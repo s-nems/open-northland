@@ -5,9 +5,9 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { homeBuildings } from '../../ai-shared/home-roster.js';
+import { colonyEnv, type SeatEnv } from './env.js';
 import { storesHeld } from './provision.js';
-import { colonyBuildings } from './spot.js';
-import { colonyEnv, type SeatEnv } from './voyage.js';
+import { colonyBuildings } from './roster.js';
 
 /** The made building materials home's stop store pulls in from home's workshops while a colony's marks
  *  are not met (authored): a trader loads only within its stop's reach, and a workshop out of it, the mason

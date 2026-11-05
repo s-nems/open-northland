@@ -11,7 +11,7 @@ import { hunterJobType } from '../../readviews/index.js';
 import { entityNode } from '../../spatial/nodes.js';
 import { playerSeesNode } from '../../vision/gates.js';
 import { huntWorkLeft } from '../workforce/hunter.js';
-import type { ColonyEnv } from './voyage.js';
+import type { ColonyEnv } from './env.js';
 
 /** {@link herdInReach} by seat and store, read once per tick as the posts' reads ask it again. Never hashed. */
 const herdMemo = new WeakMap<World, Map<string, { readonly tick: number; readonly seen: boolean }>>();

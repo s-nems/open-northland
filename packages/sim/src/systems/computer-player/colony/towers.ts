@@ -4,8 +4,8 @@ import type { Entity } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { TOWER_CONTENT_IDS } from '../build-order/front.js';
+import type { ColonyEnv, ColonyView } from './env.js';
 import { COLONY_TOWERS_LEAST, recentThreat } from './garrison.js';
-import type { ColonyEnv, ColonyView } from './voyage.js';
 
 /** A tower more per this many raiders seen about the colony lately (authored: a tower's three archers hold
  *  off about their own number). */

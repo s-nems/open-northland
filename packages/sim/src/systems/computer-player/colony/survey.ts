@@ -14,7 +14,7 @@ import type { SystemContext } from '../../context.js';
 import { placementProbe } from '../../footprint/placement/building.js';
 import { believedBuildings } from '../knowledge/intel/index.js';
 import { homesFitNear } from './room.js';
-import { colonyStoreType } from './store-tier.js';
+import { colonyStoreType } from './store-type.js';
 
 // Where a seat could settle over the sea. The figures below are authored from a survey of the 65 free-play
 // maps' zones unless they say otherwise: on arabskie_wyspy_wolna_gra_mieszana every seat keeps a site 99-122
@@ -66,9 +66,6 @@ const BLOCK_HOMES_FULL = 16;
 /** Owner ruling: a colony keeps clear of every seat it does not call friend. The figure is authored from the
  *  survey: hex nodes between a site's centre and the nearest start or believed building. */
 export const COLONY_RANGE_NODES = 96;
-
-/** The warehouse a colony founds on. */
-export const COLONY_STORE_BUILDING_ID = 'stock_00';
 /** The fewest spots for it the block must offer as the map stands now. */
 const MIN_STORE_SPOTS = 300;
 

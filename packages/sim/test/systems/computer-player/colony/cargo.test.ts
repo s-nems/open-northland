@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { VehicleStock } from '../../../../src/components/index.js';
 import { contentIndex } from '../../../../src/core/content-index.js';
 import { colonyManifest, wantManifest } from '../../../../src/systems/computer-player/colony/cargo.js';
-import { colonyStoreType } from '../../../../src/systems/computer-player/colony/store-tier.js';
+import { colonyStoreType } from '../../../../src/systems/computer-player/colony/store-type.js';
 import { colonyWorld, FOOD, mooredShip } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
 import { SEAT, STOCK_TOP_TYPE } from '../support.js';
