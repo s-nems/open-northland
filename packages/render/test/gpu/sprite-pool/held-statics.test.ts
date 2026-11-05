@@ -212,6 +212,31 @@ describe('SpritePool - a looping tree', () => {
     expect(refs().filter((ref) => ref === TREE)).toHaveLength(2);
   });
 
+  it('steps a held tree under environment motion as a first visit draws it at every alpha', () => {
+    const mirror = mirrorOf([
+      entity(SETTLER, 1, 1, walker),
+      entity(TREE, 4, 1, { Resource: { goodType: 1 } }),
+    ]);
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), loopSheet);
+    const drawnX = (of: Container): number[] =>
+      of.children.flatMap((c) =>
+        c.children.map((s) => (s as unknown as { texture: { frame: { x: number } } }).texture.frame.x),
+      );
+    const motion = { environmentMotion: true } as const;
+    pool.reconcile(frameOf(mirror.snapshot(), { ...motion, alpha: 0 }));
+    for (const x of [2, 3, 2, 3]) {
+      const snapshot = advance(mirror, [moved(SETTLER, x, walker)]);
+      for (const alpha of [0, 0.3, 0.7, 1]) {
+        const frame = frameOf(snapshot, { ...motion, alpha });
+        pool.reconcile(frame);
+        const visited = new Container();
+        new SpritePool(visited, new TextureCache(), loopSheet).reconcile(frame);
+        expect(drawnX(layer)).toEqual(drawnX(visited));
+      }
+    }
+  });
+
   it('binds a stepped tree whose bake was turned away again on the next still frame', () => {
     const mirror = mirrorOf([
       entity(SETTLER, 1, 1, walker),

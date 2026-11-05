@@ -138,7 +138,10 @@ it('fades the old building tier outline with its body and resets opacity when qu
   textures.clear();
 });
 
-it('lays a static outline again only once the body is bound anew, the zoom moves or the colour changes', () => {
+/** An outline colour other than the default ivory, as a flagged pick draws. */
+const FLAGGED = 0xe0a030;
+
+it('lays a static outline again only once the body is bound anew, the zoom moves or the band changes', () => {
   const textures = new TextureCache();
   const effects = new SelectionEffects(textures);
   const pe = createPooled('building', undefined);
@@ -162,7 +165,16 @@ it('lays a static outline again only once the body is bound anew, the zoom moves
   expect(laidX()).toBeCloseTo(first + 5);
   body.position.x += 5;
   effects.update(pe, 'outline', 2, 0.5, undefined, undefined, undefined, undefined, pe.bindSerial);
-  expect(laidX()).not.toBeCloseTo(first + 5);
+  const atZoom = laidX();
+  expect(atZoom).not.toBeCloseTo(first + 5);
+  body.position.x += 5;
+  effects.update(pe, 'outline', 2, 0.5, FLAGGED, undefined, undefined, undefined, pe.bindSerial);
+  const recoloured = laidX();
+  expect(recoloured).not.toBeCloseTo(atZoom);
+  body.position.x += 5;
+  // A pick target's mark lift widens the band.
+  effects.update(pe, 'outline', 2, 0.5, FLAGGED, undefined, 0, undefined, pe.bindSerial);
+  expect(laidX()).not.toBeCloseTo(recoloured);
   effects.clear(pe);
   pe.container.destroy({ children: true });
   textures.clear();
