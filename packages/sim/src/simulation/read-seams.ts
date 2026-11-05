@@ -116,41 +116,6 @@ export function fogMaskAnswerFor(
 /** The {@link FogView.player} of a view over several seats' sight together: no seat's own id. */
 export const SHARED_SIGHT_VIEWER = -1;
 
-/** Several players' fog as one mask answer, for a spectator watching them all: each cell reads the
- *  most any of them knows of it, so what one sees reads seen. Null when fog is OFF or the sim is
- *  mapless, as {@link fogViewFor}; one player answers as {@link fogMaskAnswerFor}. */
-export function sharedFogMaskAnswerFor(
-  world: World,
-  fog: FogState | undefined,
-  players: readonly number[],
-): FogMaskAnswer | null {
-  const [only] = players;
-  if (players.length === 1 && only !== undefined) return fogMaskAnswerFor(world, fog, only);
-  if (fog === undefined) return null;
-  const mode = fogMode(world);
-  if (mode === FOG_MODE.OFF) return null;
-  const mask = new Uint8Array(fog.cellsWide * fog.cellsHigh);
-  const groups = new Set<number>();
-  for (const player of players) {
-    const source = fog.tryMaskFor(player);
-    if (source === undefined || groups.has(fog.visionGroupOf(player))) continue;
-    groups.add(fog.visionGroupOf(player));
-    // Mask bytes rank by knowledge, the script-revealed byte above VISIBLE, so the max is the union.
-    for (let i = 0; i < mask.length; i++) {
-      const byte = source[i] ?? FOG_STATE.UNEXPLORED;
-      if (byte > (mask[i] ?? FOG_STATE.UNEXPLORED)) mask[i] = byte;
-    }
-  }
-  return {
-    player: SHARED_SIGHT_VIEWER,
-    mode,
-    cellsWide: fog.cellsWide,
-    cellsHigh: fog.cellsHigh,
-    generation: fog.generation,
-    mask,
-  };
-}
-
 /** The {@link FogView} over a mask answer: the same states `fogViewFor` answers at that generation. */
 export function fogViewOfMask(answer: FogMaskAnswer): FogView {
   const { mode, cellsWide, cellsHigh } = answer;

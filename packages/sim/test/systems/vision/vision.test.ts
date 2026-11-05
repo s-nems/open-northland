@@ -30,6 +30,7 @@ import {
   Simulation,
   scanChangedBytes,
 } from '../../../src/index.js';
+import { SharedSightMask } from '../../../src/simulation/shared-sight.js';
 import { SIGHT_RADIUS_NODES } from '../../../src/systems/conflict/targeting.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../../src/systems/readviews/index.js';
 import { looseProjectile } from '../../../src/systems/settlers/atomics/effects/combat/index.js';
@@ -1027,6 +1028,21 @@ describe('fog mask answer - the view a reader on another thread rebuilds', () =>
     }
     expect([view.stateAt(2, 2), view.stateAt(20, 2)]).toEqual([FOG_STATE.VISIBLE, FOG_STATE.VISIBLE]);
     expect(sim.sharedFogMaskAnswer([P0])?.player).toBe(P0);
+  });
+
+  it('folds a later vision rebuild into the shared mask as a fresh fold would', () => {
+    const sim = simOn(FOG_MODE.CLASSIC, W, H);
+    const scout = unit(sim, 2, 2, P0);
+    unit(sim, 20, 2, P1);
+    sim.run(1);
+    sim.sharedFogMaskAnswer([P0, P1]);
+    teleport(sim, scout, 12, 6);
+    sim.run(VISION_CADENCE_TICKS + 1);
+    const folded = sim.sharedFogMaskAnswer([P0, P1]);
+    const fresh = new SharedSightMask().answer(sim.world, sim.fog, [P0, P1]);
+    if (folded === null || fresh === null) throw new Error('fog is on, so the shared view exists');
+    expect(fogViewOfMask(folded).stateAt(12, 6)).toBe(FOG_STATE.VISIBLE);
+    expect(folded.mask).toEqual(fresh.mask);
   });
 });
 

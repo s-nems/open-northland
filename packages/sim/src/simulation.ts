@@ -86,9 +86,9 @@ import {
   fogMaskAnswerFor,
   fogViewFor,
   placementProbeFor,
-  sharedFogMaskAnswerFor,
   signpostProbeFor,
 } from './simulation/read-seams.js';
+import { SharedSightMask } from './simulation/shared-sight.js';
 import {
   type SyncDigest,
   type SyncDigestInputs,
@@ -235,6 +235,8 @@ export class Simulation {
   private digest: SyncDigestRecorder | null = null;
   private lastDigest: SyncDigest | null = null;
   private lastDigestInputs: SyncDigestInputs | null = null;
+  /** A spectator's shared-sight fold, kept between answers; a read memo, never hashed or saved. */
+  private sharedSight: SharedSightMask | null = null;
   /** One-shot events produced during the current tick (drained by render/audio). */
   readonly events = new EventBuffer();
   /** The serializable external-input queue, drained and logged each tick for replay. */
@@ -965,9 +967,10 @@ export class Simulation {
     return fogMaskAnswerFor(this.world, this.fog, player);
   }
 
-  /** {@link fogMaskAnswer} over several players' sight together; see {@link sharedFogMaskAnswerFor}. */
+  /** {@link fogMaskAnswer} over several players' sight together; see {@link SharedSightMask}. */
   sharedFogMaskAnswer(players: readonly number[]): FogMaskAnswer | null {
-    return sharedFogMaskAnswerFor(this.world, this.fog, players);
+    this.sharedSight ??= new SharedSightMask();
+    return this.sharedSight.answer(this.world, this.fog, players);
   }
 
   run(ticks: number): void {
