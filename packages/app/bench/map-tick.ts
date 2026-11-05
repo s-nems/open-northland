@@ -1,6 +1,6 @@
 // First, so the sim it is evaluated before reads the switch.
 import './sim-asserts.js';
-import { boolEnv, intEnv } from './knobs.js';
+import { boolEnv, intEnv, stringEnv } from './knobs.js';
 import { knobRecord, mapBenchKnobs, mapBenchWorld, worldSourceLines } from './map-world.js';
 import { marchKnobRecord, marchKnobs, marchProbe } from './march-order.js';
 import { measureWindows } from './measure.js';
@@ -27,6 +27,7 @@ import { publishReport, reportFrom } from './run.js';
  * `ON_BENCH_MIRROR_BATCH` (ticks per delta, default 1), `ON_BENCH_MIRROR_DIGEST` (carry the truth digest),
  * `ON_BENCH_MIRROR_SPLIT` (time each frame index reader), `ON_BENCH_MIRROR_PARITY` (random batches,
  * indexes checked per delta) and `ON_BENCH_MIRROR_BREAKDOWN` (what the deltas are made of),
+ * `ON_BENCH_HEAP=retained` (a full gc at each window end, reporting the heap that survives it),
  * `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP` and `ON_BENCH_CHECKPOINTS` (see `map-world.ts`), the
  * `ON_BENCH_MARCH_*` group attack-move (see `march-order.ts`),
  * `ON_BENCH_JSON=<path>` (write the machine-readable report).
@@ -37,6 +38,15 @@ import { publishReport, reportFrom } from './run.js';
 const DEFAULT_MEASURED_TICKS = 20_000;
 /** Enough segments to read a curve without turning the table into a log. */
 const DEFAULT_WINDOWS = 10;
+const RETAINED_HEAP = 'retained';
+
+function retainedHeapKnob(): boolean {
+  const value = stringEnv('ON_BENCH_HEAP', '');
+  if (value !== '' && value !== RETAINED_HEAP) {
+    throw new Error(`ON_BENCH_HEAP must be '${RETAINED_HEAP}' or unset, got '${value}'`);
+  }
+  return value === RETAINED_HEAP;
+}
 
 function progressLine(window: BenchWindow, total: number): string {
   return (
@@ -45,13 +55,15 @@ function progressLine(window: BenchWindow, total: number): string {
     `max ${window.tickMs.maxMs.toFixed(3)} ms  cpu ${window.cpuMsPerTick.toFixed(3)} ms  ` +
     `alloc ${window.allocKbPerTick?.toFixed(1) ?? 'n/a'} KB  gc ${window.gc.ms.toFixed(0)} ms  ` +
     `settlers ${window.population.settlers}  fighters ${window.population.fighters}  ` +
-    `buildings ${window.population.buildings}  rss ${window.rssMb} MB`
+    `buildings ${window.population.buildings}  rss ${window.rssMb} MB` +
+    (window.retainedHeapMb === null ? '' : `  retained heap ${window.retainedHeapMb.toFixed(1)} MB`)
   );
 }
 
 async function main(): Promise<void> {
   const knobs = mapBenchKnobs(DEFAULT_MEASURED_TICKS);
   const windows = intEnv('ON_BENCH_WINDOWS', DEFAULT_WINDOWS, 1);
+  const retainedHeap = retainedHeapKnob();
 
   const startedAtMs = Date.now();
   const startMs = performance.now();
@@ -73,6 +85,7 @@ async function main(): Promise<void> {
     warmupTicks: knobs.warmupTicks,
     measuredTicks: knobs.measuredTicks,
     windows,
+    retainedHeap,
     // A multi-hour run must report progress rather than go silent for an hour.
     onWindow: (window) => {
       console.log(progressLine(window, windows));
@@ -97,7 +110,12 @@ async function main(): Promise<void> {
       settlersAtEnd: measurement.settlersAtEnd,
       buildings: measurement.buildings,
     },
-    knobs: { ...knobRecord(knobs), ...marchKnobRecord(marching), ON_BENCH_WINDOWS: `${windows}` },
+    knobs: {
+      ...knobRecord(knobs),
+      ...marchKnobRecord(marching),
+      ON_BENCH_WINDOWS: `${windows}`,
+      ON_BENCH_HEAP: retainedHeap ? RETAINED_HEAP : '',
+    },
     ticks: { warmup: knobs.warmupTicks, measured: knobs.measuredTicks },
     stateHash: world.sim.hashState(),
     startedAtMs,

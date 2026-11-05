@@ -390,9 +390,9 @@ export function marchProbe(sim: Simulation, knobs: MarchKnobs, startTick: number
       const lo = Math.max(from, measurement.firstTick) - measurement.firstTick;
       const hi = Math.min(to, last) - measurement.firstTick + 1;
       if (hi <= lo) return;
-      const perSystem = new Map<string, readonly number[]>();
-      for (const [system, samples] of measurement.perSystem) perSystem.set(system, samples.slice(lo, hi));
-      const { tickMs, systems: rows } = summarizeSegment(perSystem, measurement.tickSamples.slice(lo, hi));
+      const perSystem = new Map<string, Float64Array>();
+      for (const [system, samples] of measurement.perSystem) perSystem.set(system, samples.subarray(lo, hi));
+      const { tickMs, systems: rows } = summarizeSegment(perSystem, measurement.tickSamples.subarray(lo, hi));
       const top = rows
         .slice(0, PHASE_SYSTEMS)
         .map((row) => `${row.name} ${row.meanMs.toFixed(2)}`)

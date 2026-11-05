@@ -37,6 +37,7 @@ const WINDOW_COLUMNS: readonly Column[] = [
   { header: 'gc n', width: 7 },
   { header: 'gc max', width: 9 },
   { header: 'heap MB', width: 9 },
+  { header: 'kept MB', width: 9 },
   { header: 'rss MB', width: 9 },
   // Left-aligned after a right-aligned column, so the gutter has to live in the cells themselves.
   { header: '  heaviest', width: -12 },
@@ -144,7 +145,8 @@ function slowestTicksSection(report: BenchReport): readonly string[] {
 }
 
 /** GC summed over every window, so a single-window run (the profile's) still shows it. */
-function gcLine(windows: readonly BenchWindow[]): readonly string[] {
+function gcLine(report: BenchReport): readonly string[] {
+  const { windows } = report;
   const last = windows.at(-1);
   if (last === undefined) return [];
   const count = windows.reduce((sum, w) => sum + w.gc.count, 0);
@@ -153,6 +155,11 @@ function gcLine(windows: readonly BenchWindow[]): readonly string[] {
   return [
     `gc: ${count} collection(s), ${total.toFixed(1)} ms paused, longest ${longest.toFixed(1)} ms   ` +
       `heap at end ${last.heapUsedMb} MB`,
+    ...(report.retainedHeapMbAtStart === null || last.retainedHeapMb === null
+      ? []
+      : [
+          `retained heap after a full gc: start ${report.retainedHeapMbAtStart.toFixed(1)} MB, end ${last.retainedHeapMb.toFixed(1)} MB`,
+        ]),
   ];
 }
 
@@ -179,6 +186,7 @@ function windowSection(windows: readonly BenchWindow[]): readonly string[] {
         `${w.gc.count}`,
         w.gc.maxMs.toFixed(1),
         `${w.heapUsedMb}`,
+        w.retainedHeapMb === null ? '-' : w.retainedHeapMb.toFixed(1),
         `${w.rssMb}`,
         `  ${w.systems.at(0)?.name ?? '-'}`,
       ]),
@@ -203,7 +211,7 @@ export function formatReport(report: BenchReport): string {
     `tick total: mean ${ms(tickMs.meanMs)} ms   median ${ms(tickMs.medianMs)} ms   p95 ${ms(tickMs.p95Ms)} ms   ` +
       `p99 ${ms(tickMs.p99Ms)} ms   max ${ms(tickMs.maxMs)} ms`,
     `per tick: main-thread cpu ${ms(report.cpuMsPerTick)} ms   allocated ${kb(report.allocKbPerTick)} KB`,
-    ...gcLine(report.windows),
+    ...gcLine(report),
     '',
     ...table(SYSTEM_COLUMNS, systemRows(report.systems)),
     ...slowestTicksSection(report),

@@ -8,7 +8,8 @@
  */
 import { type PerformanceEntry, PerformanceObserver } from 'node:perf_hooks';
 import { setImmediate as nextTurn } from 'node:timers/promises';
-import { getHeapStatistics } from 'node:v8';
+import { getHeapStatistics, setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import { type Component, components, type Simulation, systems } from '@open-northland/sim';
 import { calibrationMs, loadPerCpu } from './environment.js';
 import { type BenchWindow, type GcStat, summarizeSegment } from './report/index.js';
@@ -27,20 +28,25 @@ export interface MeasureOptions {
   readonly onWindow?: (window: BenchWindow) => void;
   /** Called after every warm-up and measured step, outside the timed interval. */
   readonly afterTick?: () => void;
+  /** Force a full collection before the first window and at each window end, outside the timed
+   *  interval and the work counters, and report the heap that survives it. */
+  readonly retainedHeap?: boolean;
 }
 
 export interface Measurement {
   /** The sim tick of the first measured step. */
   readonly firstTick: number;
   readonly windows: readonly BenchWindow[];
-  readonly perSystem: ReadonlyMap<string, readonly number[]>;
-  readonly tickSamples: readonly number[];
+  readonly perSystem: ReadonlyMap<string, Float64Array>;
+  readonly tickSamples: Float64Array;
   readonly settlersAtStart: number;
   readonly settlersAtEnd: number;
   readonly buildings: number;
   /** The worst load sampled across the run, so a box that got busy midway is not averaged away. */
   readonly loadPerCpu: number | null;
   readonly peakRssMb: number;
+  /** Retained heap before the first window; null unless {@link MeasureOptions.retainedHeap}. */
+  readonly retainedHeapMbAtStart: number | null;
   /** Whole-run {@link BenchWindow.cpuMsPerTick} and {@link BenchWindow.allocKbPerTick}. */
   readonly cpuMsPerTick: number;
   readonly allocKbPerTick: number | null;
@@ -68,6 +74,26 @@ function rssMb(): number {
 
 function heapUsedMb(): number {
   return Math.round(process.memoryUsage().heapUsed / BYTES_PER_MB);
+}
+
+/** Tenths of a MB: retained-heap work compares changes far smaller than the heap. */
+const RETAINED_MB_PER_UNIT = 10;
+
+/** Node's `gc()` without `--expose-gc` on the command line: the flag set at runtime exposes it to a
+ *  fresh context. */
+function exposedGc(): () => void {
+  setFlagsFromString('--expose-gc');
+  const gc: unknown = runInNewContext('gc');
+  if (typeof gc !== 'function') throw new Error('V8 did not expose gc()');
+  return () => gc();
+}
+
+/** The heap that survives a full collection: what the world and the harness keep alive. */
+function retainedHeapMb(gc: () => void): number {
+  gc();
+  return (
+    Math.round((process.memoryUsage().heapUsed / BYTES_PER_MB) * RETAINED_MB_PER_UNIT) / RETAINED_MB_PER_UNIT
+  );
 }
 
 /**
@@ -168,21 +194,28 @@ function windowBounds(measuredTicks: number, windows: number): readonly Bound[] 
  * mis-aligned window would silently attribute one system's cost to another's ticks.
  */
 function sliceSamples(
-  perSystem: ReadonlyMap<string, readonly number[]>,
+  perSystem: ReadonlyMap<string, SystemSeries>,
   bound: Bound,
-): ReadonlyMap<string, readonly number[]> {
-  const sliced = new Map<string, readonly number[]>();
-  for (const [name, samples] of perSystem) {
-    if (samples.length !== bound.to) {
-      throw new Error(`system '${name}' sampled ${samples.length}x over ${bound.to} measured tick(s)`);
+): ReadonlyMap<string, Float64Array> {
+  const sliced = new Map<string, Float64Array>();
+  for (const [name, series] of perSystem) {
+    if (series.count !== bound.to) {
+      throw new Error(`system '${name}' sampled ${series.count}x over ${bound.to} measured tick(s)`);
     }
-    sliced.set(name, samples.slice(bound.from, bound.to));
+    sliced.set(name, series.samples.subarray(bound.from, bound.to));
   }
   return sliced;
 }
 
+/** One system's samples, sized to the run up front: an ArrayBuffer lives outside the V8 heap, so the
+ *  harness's per-tick samples neither grow the heap nor leave garbage as they fill. */
+interface SystemSeries {
+  readonly samples: Float64Array;
+  count: number;
+}
+
 export async function measureWindows(sim: Simulation, options: MeasureOptions): Promise<Measurement> {
-  const perSystem = new Map<string, number[]>();
+  const perSystem = new Map<string, SystemSeries>();
   let sampling = false;
   sim.setInstrument((name, run) => {
     // Timed tight around `run`; the bookkeeping below lands outside the interval.
@@ -190,12 +223,13 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
     run();
     const elapsed = performance.now() - start;
     if (!sampling) return;
-    let samples = perSystem.get(name);
-    if (samples === undefined) {
-      samples = [];
-      perSystem.set(name, samples);
+    let series = perSystem.get(name);
+    if (series === undefined) {
+      series = { samples: new Float64Array(options.measuredTicks), count: 0 };
+      perSystem.set(name, series);
     }
-    samples.push(elapsed);
+    // A write past the end is dropped, and the window's count check refuses the run.
+    series.samples[series.count++] = elapsed;
   });
 
   for (let i = 0; i < options.warmupTicks; i++) {
@@ -204,6 +238,8 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
   }
   const settlersAtStart = count(sim, Settler);
 
+  const gcNow = options.retainedHeap === true ? exposedGc() : null;
+  const retainedHeapMbAtStart = gcNow === null ? null : retainedHeapMb(gcNow);
   const beforeMs = calibrationMs();
   let load = loadPerCpu();
   let peakRssMb = rssMb();
@@ -211,7 +247,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
   const gc = new GcLog();
   sampling = true;
   const firstTick = sim.tick + 1;
-  const tickSamples: number[] = [];
+  const tickSamples = new Float64Array(options.measuredTicks);
   const windows: BenchWindow[] = [];
   let cpuUs = 0;
   let allocatedBytes: number | null = 0;
@@ -221,7 +257,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
     for (let i = bound.from; i < bound.to; i++) {
       const start = performance.now();
       sim.step();
-      tickSamples.push(performance.now() - start);
+      tickSamples[i] = performance.now() - start;
       options.afterTick?.();
     }
     const windowEndMs = performance.now();
@@ -233,6 +269,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
         : allocatedBytes + workEnd.allocatedBytes - workStart.allocatedBytes;
     const work = perTick(workStart, workEnd, bound.to - bound.from);
     const heap = heapUsedMb();
+    const retained = gcNow === null ? null : retainedHeapMb(gcNow);
     const rss = rssMb();
     peakRssMb = Math.max(peakRssMb, rss);
     load = worstLoad(load, loadPerCpu());
@@ -240,7 +277,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
       index,
       fromTick: firstTick + bound.from,
       toTick: firstTick + bound.to - 1,
-      ...summarizeSegment(sliceSamples(perSystem, bound), tickSamples.slice(bound.from, bound.to)),
+      ...summarizeSegment(sliceSamples(perSystem, bound), tickSamples.subarray(bound.from, bound.to)),
       population: {
         settlers: count(sim, Settler),
         fighters: countFighters(sim),
@@ -249,6 +286,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
       },
       rssMb: rss,
       heapUsedMb: heap,
+      retainedHeapMb: retained,
       gc: await gc.window(windowStartMs, windowEndMs),
       cpuMsPerTick: work.cpuMs,
       allocKbPerTick: work.allocKb,
@@ -266,13 +304,14 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
   return {
     firstTick,
     windows,
-    perSystem,
+    perSystem: new Map([...perSystem].map(([name, series]) => [name, series.samples])),
     tickSamples,
     settlersAtStart,
     settlersAtEnd: count(sim, Settler),
     buildings: count(sim, Building),
     loadPerCpu: worstLoad(load, loadPerCpu()),
     peakRssMb,
+    retainedHeapMbAtStart,
     cpuMsPerTick: run.cpuMs,
     allocKbPerTick: run.allocKb,
     calibration: { beforeMs, afterMs: calibrationMs() },

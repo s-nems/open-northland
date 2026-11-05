@@ -2,7 +2,7 @@
 
 /** The report layout the reader accepts; a layout change bumps it, and a report of any other version is
  *  refused rather than read. */
-export const BENCH_REPORT_VERSION = 8;
+export const BENCH_REPORT_VERSION = 9;
 
 /** One system's cost across a measured segment. `sharePct` is its share of the summed per-system
  *  time - the scale-invariant number a regression check can compare across machines. */
@@ -91,12 +91,14 @@ export interface BenchWindow {
     readonly buildings: number;
     readonly resourceNodes: number;
   };
-  /** Resident set size at the segment boundary, process-wide: it includes the harness's own per-tick
-   *  sample buffers, which grow with the tick count. A monotone climb is a finding about the run, not
-   *  proof of a leak in the world. */
+  /** Resident set size at the segment boundary, process-wide: it includes the harness's per-tick sample
+   *  buffers, 8 bytes per system per measured tick, allocated before the first window. */
   readonly rssMb: number;
   /** V8 heap in use at the segment boundary, after the segment's own garbage was or was not collected. */
   readonly heapUsedMb: number;
+  /** V8 heap in use after a forced full collection at the segment's end (`ON_BENCH_HEAP=retained`): what
+   *  the world keeps alive, without garbage or the sample buffers, which live outside the heap. */
+  readonly retainedHeapMb: number | null;
   readonly gc: GcStat;
   /** Main-thread CPU time (user + system) per tick, read at the segment's bounds. Unlike the wall
    *  tick it does not count time the thread waited for a core, so it moves less with machine load.
@@ -147,6 +149,8 @@ export interface BenchReport {
   /** Whole-run {@link BenchWindow.cpuMsPerTick} and {@link BenchWindow.allocKbPerTick}. */
   readonly cpuMsPerTick: number;
   readonly allocKbPerTick: number | null;
+  /** {@link BenchWindow.retainedHeapMb} before the first window; null unless measured. */
+  readonly retainedHeapMbAtStart: number | null;
   /** Whole-run per-system rows, heaviest median first. */
   readonly systems: readonly SystemStat[];
   /** The run's slowest ticks, slowest first. */

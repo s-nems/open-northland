@@ -22,28 +22,39 @@ const SYSTEMS_PER_SLOW_TICK = 3;
 /** A tick this many times the median counts as a stutter: at x3 speed one such tick costs a frame. */
 export const SLOW_TICK_FACTOR = 2;
 
+/** Timing samples in milliseconds, one per tick: the harness keeps them in typed arrays sized to the run. */
+export type Samples = readonly number[] | Float64Array;
+
+function sum(samples: Samples): number {
+  let total = 0;
+  for (const ms of samples) total += ms;
+  return total;
+}
+
+/** A sorted copy; a typed array's own sort is numeric. */
+function sortedCopy(samples: Samples): Float64Array {
+  return Float64Array.from(samples).sort();
+}
+
 /**
  * Nearest-rank percentile of a timing sample (`p` in 0..100). Nearest-rank (not interpolated) keeps
  * every reported number an actually-observed tick cost, and needs no special case for tiny windows.
  * Returns 0 for an empty sample.
  */
-export function percentile(samples: readonly number[], p: number): number {
-  return sortedPercentile(
-    [...samples].sort((a, b) => a - b),
-    p,
-  );
+export function percentile(samples: Samples, p: number): number {
+  return sortedPercentile(sortedCopy(samples), p);
 }
 
-function sortedPercentile(sorted: readonly number[], p: number): number {
+function sortedPercentile(sorted: Float64Array, p: number): number {
   const rank = Math.ceil((p / 100) * sorted.length);
   const index = Math.min(sorted.length - 1, Math.max(0, rank - 1));
   return sorted[index] ?? 0; // empty sample -> 0
 }
 
 /** Whole-tick spread from one sort: a long run holds tens of thousands of samples. */
-function tickStat(samples: readonly number[]): TickStat {
-  const sorted = [...samples].sort((a, b) => a - b);
-  const sumMs = samples.reduce((sum, ms) => sum + ms, 0);
+function tickStat(samples: Samples): TickStat {
+  const sorted = sortedCopy(samples);
+  const sumMs = sum(samples);
   return {
     meanMs: samples.length === 0 ? 0 : sumMs / samples.length,
     medianMs: sortedPercentile(sorted, 50),
@@ -61,13 +72,10 @@ export interface Segment {
 
 /** The fold every window and the whole run share. Rows come out heaviest mean first, ties broken
  *  by name so a report is stable across runs. */
-export function summarizeSegment(
-  perSystem: ReadonlyMap<string, readonly number[]>,
-  tickSamples: readonly number[],
-): Segment {
+export function summarizeSegment(perSystem: ReadonlyMap<string, Samples>, tickSamples: Samples): Segment {
   const rows = [...perSystem].map(([name, samples]) => {
-    const sorted = [...samples].sort((a, b) => a - b);
-    const sumMs = samples.reduce((sum, ms) => sum + ms, 0);
+    const sorted = sortedCopy(samples);
+    const sumMs = sum(samples);
     return {
       name,
       sumMs,
@@ -91,12 +99,11 @@ export function summarizeSegment(
 /** The slowest measured ticks with the systems that filled them. Ties keep the earlier tick, so the
  *  list is stable for a given run. `firstTick` is the sim tick of the first sample. */
 export function slowestTicks(
-  perSystem: ReadonlyMap<string, readonly number[]>,
-  tickSamples: readonly number[],
+  perSystem: ReadonlyMap<string, Samples>,
+  tickSamples: Samples,
   firstTick: number,
 ): readonly SlowTick[] {
-  return tickSamples
-    .map((totalMs, index) => ({ totalMs, index }))
+  return Array.from(tickSamples, (totalMs, index) => ({ totalMs, index }))
     .sort((a, b) => b.totalMs - a.totalMs || a.index - b.index)
     .slice(0, SLOWEST_TICKS)
     .map(({ totalMs, index }) => ({
@@ -111,20 +118,20 @@ export function slowestTicks(
 
 /** Which system topped each slow tick, counted per system, most often first. */
 export function stutterSources(
-  perSystem: ReadonlyMap<string, readonly number[]>,
-  tickSamples: readonly number[],
+  perSystem: ReadonlyMap<string, Samples>,
+  tickSamples: Samples,
 ): readonly { readonly name: string; readonly slowTicks: number }[] {
   const threshold = percentile(tickSamples, 50) * SLOW_TICK_FACTOR;
   const counts = new Map<string, number>();
-  tickSamples.forEach((totalMs, index) => {
-    if (totalMs <= threshold) return;
+  for (const [index, totalMs] of tickSamples.entries()) {
+    if (totalMs <= threshold) continue;
     let top: { name: string; ms: number } | null = null;
     for (const [name, samples] of perSystem) {
       const ms = samples[index] ?? 0;
       if (top === null || ms > top.ms) top = { name, ms };
     }
     if (top !== null) counts.set(top.name, (counts.get(top.name) ?? 0) + 1);
-  });
+  }
   return [...counts]
     .map(([name, slowTicks]) => ({ name, slowTicks }))
     .sort((a, b) => b.slowTicks - a.slowTicks || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -133,8 +140,8 @@ export function stutterSources(
 /** Fold the whole run into the report. `perSystem` holds one sample per system per measured tick;
  *  `tickSamples` one per measured tick. */
 export function summarize(
-  perSystem: ReadonlyMap<string, readonly number[]>,
-  tickSamples: readonly number[],
+  perSystem: ReadonlyMap<string, Samples>,
+  tickSamples: Samples,
   meta: {
     readonly world: BenchWorld;
     readonly ticks: BenchReport['ticks'];
@@ -142,6 +149,7 @@ export function summarize(
     readonly firstTick: number;
     readonly cpuMsPerTick: number;
     readonly allocKbPerTick: number | null;
+    readonly retainedHeapMbAtStart: number | null;
     readonly windows: readonly BenchWindow[];
     readonly environment: BenchEnvironment;
     readonly trust: BenchTrust;
@@ -156,6 +164,7 @@ export function summarize(
     tickMs,
     cpuMsPerTick: meta.cpuMsPerTick,
     allocKbPerTick: meta.allocKbPerTick,
+    retainedHeapMbAtStart: meta.retainedHeapMbAtStart,
     systems,
     slowestTicks: slowestTicks(perSystem, tickSamples, meta.firstTick),
     stutterSources: stutterSources(perSystem, tickSamples),

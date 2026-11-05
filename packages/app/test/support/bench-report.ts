@@ -22,6 +22,7 @@ export function window(index: number, medianMs: number): BenchWindow {
     population: { settlers: 100, fighters: 20, buildings: 10, resourceNodes: 500 },
     rssMb: 200,
     heapUsedMb: 120,
+    retainedHeapMb: null,
     gc: { count: 4, ms: 3, maxMs: 1 },
     cpuMsPerTick: medianMs,
     allocKbPerTick: 80,
@@ -45,6 +46,7 @@ export function report(overrides: Partial<BenchReport> = {}): BenchReport {
     tickMs: { meanMs: 6, medianMs: 6, p95Ms: 12, p99Ms: 18, maxMs: 30 },
     cpuMsPerTick: 5.5,
     allocKbPerTick: 80,
+    retainedHeapMbAtStart: null,
     systems: [
       { name: 'ai', meanMs: 4, medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 80 },
       { name: 'movement', meanMs: 1, medianMs: 1, p95Ms: 2, maxMs: 4, sharePct: 20 },

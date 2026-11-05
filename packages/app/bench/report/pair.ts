@@ -17,6 +17,7 @@ const PAIR_METRICS: readonly (readonly [string, (report: BenchReport) => number 
   ['tick mean', (r) => r.tickMs.meanMs],
   ['cpu ms/tick', (r) => r.cpuMsPerTick],
   ['alloc KB/tick', (r) => r.allocKbPerTick],
+  ['retained heap MB', (r) => r.windows.at(-1)?.retainedHeapMb ?? null],
 ];
 
 export interface PairMetric {

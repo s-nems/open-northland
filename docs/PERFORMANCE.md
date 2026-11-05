@@ -48,6 +48,7 @@ same map world builder and seat rules as the browser, including the map's reserv
 | `ON_BENCH_SYNC_DIGEST` | Include per-tick network digest cost |
 | `ON_BENCH_ASSERTS=on` | Enable fixed-point overflow checks; default off, matching production |
 | `ON_BENCH_JSON` | Report destination; default under `bench-out/` |
+| `ON_BENCH_HEAP=retained` | Force a full GC before the first window and at each window end, outside the timings and the CPU and allocation counters, and report the heap that survives it; the forced collections change later windows' GC columns |
 | `ON_BENCH_MARCH_TICK` | Absolute tick a player's group attack-move applies on: `ON_BENCH_MARCH_COUNT` fighters (default 300; `0` is the control run without the order) of `ON_BENCH_MARCH_SEAT` (default the seat with most fighters) sent to `ON_BENCH_MARCH_TARGET` (`hx,hy`; default the farthest headquarters of a seat at war with it); `ON_BENCH_MARCH_SPAWN` fighters (default 0) join that army from `ON_BENCH_MARCH_SPAWN_LEAD` ticks (default 300) before the order, copying its fighters' class, weapon, armor and worn equipment; prints before, order, wake (the first 50 ticks of the march), march (`ON_BENCH_MARCH_PHASE` ticks, default 1500) and after phases |
 
 Reports include system mean/median/p95/max, the tick mean (the fast-forward throughput) and quantiles, entity counts, GC pauses, heap/RSS and
@@ -57,6 +58,9 @@ the ten slowest ticks. Rank occasional work by its mean: a system's median can b
 | --- | --- |
 | `cpuMsPerTick` | Main-thread CPU time (user + system) per tick, per window and whole run, read at window bounds. Moves less with machine load than the wall tick; includes the harness hooks, excludes GC on helper threads |
 | `allocKbPerTick` | V8 KiB allocated per tick, per window and whole run, from the isolate's cumulative counter. Nearly load-independent; the target for allocation and GC work. `null` (`n/a`) on a runtime whose V8 lacks the counter |
+| `heapUsedMb` | V8 heap in use at a window end, garbage included: it moves with when the last GC ran |
+| `retainedHeapMb` | With `ON_BENCH_HEAP=retained`: V8 heap after a full GC at a window end (`kept MB`), and `retainedHeapMbAtStart` before the first window. The RAM number the world keeps alive; the per-tick timing samples live in typed arrays outside the V8 heap, so they are not in it |
+| `rssMb` | Process resident set at a window end. Includes the timing samples, 8 bytes per system per measured tick, allocated before the first window |
 
 ### Profiles
 
@@ -158,7 +162,8 @@ would write the same files. When one side fails, the other is stopped and the pa
 side's error and log path.
 
 Reports and logs land in `bench-out/pair/<name>/` as `r<repeat>-a.json` and `r<repeat>-b.json`. The
-summary prints each repeat's B/A ratio of tick mean, CPU ms/tick and alloc KB/tick, their median and
+summary prints each repeat's B/A ratio of tick mean, CPU ms/tick, alloc KB/tick and, with
+`ON_BENCH_HEAP=retained`, the retained heap at the end, their median and
 spread, and whether A and B ended in the same state. Reports of different worlds, run lengths or
 report formats are refused as `bench:compare` refuses them. Decide on the median, and only when it lies
 outside the spread of a same-code pair.
