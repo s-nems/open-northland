@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_BUILD_ORDER,
+  orderSteps,
+} from '../../../../src/systems/computer-player/build-order/entries.js';
+import {
+  ALL_STEPS,
   type ChainStep,
   chainStepOf,
   chooseIndustries,
@@ -239,4 +244,26 @@ describe('a colony workshop at home’s level', () => {
     expect(chainStepOf('work_smithy_01')).toBe(chainStepOf('work_smithy_00'));
     expect(chainStepOf('work_bakery_01')?.top).toBe('work_bakery_01');
   });
+
+  it('goes up to the highest tier home’s default build order places or lifts it to', () => {
+    const homeTiers = orderSteps(DEFAULT_BUILD_ORDER).flatMap((entry) =>
+      entry.kind === 'place' || entry.kind === 'upgrade' ? [entry.building] : [],
+    );
+    for (const step of ALL_STEPS.filter((s) => s.top !== undefined)) {
+      const chain = chainOf(step.building);
+      const homeTop = homeTiers
+        .filter((id) => chainOf(id) === chain)
+        .sort()
+        .at(-1);
+      expect({ chain, top: step.top }).toEqual({ chain, top: homeTop });
+    }
+  });
 });
+
+/** A workshop tier's content id ends in its two-digit level: `work_bakery_01` is the bakery's second. */
+const TIER_LEVEL = /_\d\d$/;
+
+/** The chain a tier's content id belongs to, its level cut off. */
+function chainOf(id: string): string {
+  return id.replace(TIER_LEVEL, '');
+}
