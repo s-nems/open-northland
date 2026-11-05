@@ -5,6 +5,7 @@ import {
   Building,
   COMPUTER_MODULE_IDS,
   ComputerColony,
+  ComputerIntel,
   type ComputerModuleEnables,
   FOG_MODE,
   Owner,
@@ -32,6 +33,7 @@ import {
 } from '../../../../../src/systems/computer-player/military/operations/landing.js';
 import { COLONY_RAID_LEAST_MEN } from '../../../../../src/systems/computer-player/military/operations/landing-aim.js';
 import { RELIEF_LEAST_MEN } from '../../../../../src/systems/computer-player/military/operations/landing-relief.js';
+import { everyFighterPoints } from '../../../../../src/systems/computer-player/military/points.js';
 import { militaryOrdersOf } from '../../../../../src/systems/computer-player/strategy/military.js';
 import {
   LANDING_BIG_SHIPS,
@@ -282,6 +284,28 @@ function runUntil(sim: Simulation, ticks: number, watch: () => boolean): void {
   }
 }
 
+/** The fighter points the seat remembers seeing of the foe's army at once: a token band. */
+const SEEN_FOE_POINTS = 1;
+
+/** Give the seat the memory of having seen `points` of the foe's army at once, its own army as it stands. */
+function rememberFoeArmy(sim: Simulation, points: number): void {
+  const carrier = aiControlEntity(sim.world, SEAT);
+  if (carrier === null) throw new Error('setup: no AI seat');
+  runUntil(sim, COMPUTER_DECISION_INTERVAL_TICKS, () => sim.world.has(carrier, ComputerIntel));
+  const own = everyFighterPoints(sim.world, ctxOf(sim), SEAT);
+  sim.world.mut(carrier, ComputerIntel).forces.push({
+    player: FOE,
+    peak: 1,
+    peakAt: sim.tick,
+    peakPoints: points,
+    peakPointsAt: sim.tick,
+    mostPoints: points,
+    ownPointsAtMost: own,
+    lastSeenAt: sim.tick,
+    lastZone: 0,
+  });
+}
+
 /** Whether every one of the seat's ships lies moored empty. */
 function shipsHomeEmpty(sim: Simulation): boolean {
   return seatShips(sim).every((e) => {
@@ -455,7 +479,7 @@ describe('landing operations', () => {
 
   it.each([
     ['in plain sight', FOG_MODE.OFF],
-    ['knowing only the start layout under fog', FOG_MODE.CLASSIC_FOG_OF_WAR],
+    ['under fog, knowing only the start layout and the small army it saw', FOG_MODE.CLASSIC_FOG_OF_WAR],
   ])('storms the headquarters a tower covers once the wave outweighs the tower twice, %s', (_, fog) => {
     const { sim } = landingWorld({
       fog,
@@ -463,6 +487,7 @@ describe('landing operations', () => {
       seats: STORM_SHIP_SEATS,
       foe: [{ buildingType: TOWER_TYPE, at: FOE_TOWER }],
     });
+    if (fog !== FOG_MODE.OFF) rememberFoeArmy(sim, SEEN_FOE_POINTS);
     let seen: OperationView | undefined;
     runUntil(sim, LANDING_LIMIT_TICKS, () => {
       seen = landings(sim)[0] ?? seen;
@@ -470,6 +495,22 @@ describe('landing operations', () => {
     });
     expect(seen?.target.entity).toBe(foeHeadquarters(sim));
     expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['a clear headquarters', false],
+    ['a headquarters a tower covers', true],
+  ])('sails no landing on %s of a rival whose army it never saw, knowing no other', (_, covered) => {
+    const { sim } = landingWorld({
+      fog: FOG_MODE.CLASSIC_FOG_OF_WAR,
+      armed: true,
+      seats: STORM_SHIP_SEATS,
+      foe: covered ? [{ buildingType: TOWER_TYPE, at: FOE_TOWER }] : [],
+    });
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      expect(landings(sim)).toEqual([]);
+      return false;
+    });
   });
 
   it('raids a rival colony with a band sized to it while too few ships lie free for his headquarters', () => {
