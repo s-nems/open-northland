@@ -2053,7 +2053,10 @@ body.on-drag-scroll.on-drag-scroll-free * {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  width: 200px;
+  /* Wide enough for the longest seat name beside its key; a longer one is cut by its name rule. */
+  width: max-content;
+  min-width: 200px;
+  max-width: 300px;
   padding: 10px 10px 11px;
 }
 .on-hud .on-picker__list .on-tip__title {
@@ -2098,8 +2101,14 @@ body.on-drag-scroll.on-drag-scroll-free * {
   border-width: 0 2px 2px 0;
   transform: translateY(-1px) rotate(45deg);
 }
+.on-hud .on-seat__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* The entry's key sits at the row's end, before the chosen entry's tick. */
 .on-hud .on-seat .on-key {
+  flex: none;
   margin-left: auto;
 }
 .on-hud .on-seat:has(.on-key:not([hidden]))[aria-selected="true"]::after {

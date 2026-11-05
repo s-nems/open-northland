@@ -132,7 +132,10 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
     option.setAttribute('aria-selected', 'false');
     option.setAttribute('aria-label', labelOf(seat));
     if (typeof seat === 'number') {
-      option.append(swatch(colourOf(seat)), labelOf(seat));
+      const name = document.createElement('span');
+      name.className = 'on-seat__name';
+      name.textContent = labelOf(seat);
+      option.append(swatch(colourOf(seat)), name);
     } else {
       option.classList.add('on-seat--mode');
       option.title = labelOf(seat);
