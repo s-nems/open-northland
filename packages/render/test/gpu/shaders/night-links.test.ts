@@ -31,7 +31,10 @@ const settings: WarmupSettings = {
  * draw buffers, and the objects still alive. A call outside the ones listed throws, so a blocking
  * query such as `getError` or `readPixels` fails the test.
  */
-function recordingContext(lost = () => false) {
+function recordingContext(
+  lost = () => false,
+  syncStatus = (poll: number): number | null => (poll > POLLS_BEFORE_SIGNAL ? SIGNALED : UNSIGNALED),
+) {
   const live = new Set<object>();
   const attachments = new Map<object, Map<number, object | null>>();
   const draws: { program: object | null; attached: (object | null)[]; buffers: number[] }[] = [];
@@ -39,6 +42,8 @@ function recordingContext(lost = () => false) {
   let program: object | null = null;
   let buffers: number[] = [COLOR_ATTACHMENT0];
   let polls = 0;
+  /** The draws and flushes in the order they were issued. */
+  const issued: ('draw' | 'flush')[] = [];
   const made = (): object => {
     const object = {};
     live.add(object);
@@ -59,7 +64,9 @@ function recordingContext(lost = () => false) {
     texStorage2D: () => undefined,
     viewport: () => undefined,
     bindVertexArray: () => undefined,
-    flush: () => undefined,
+    flush: () => {
+      issued.push('flush');
+    },
     bindFramebuffer: (_target: number, bound: object | null) => {
       framebuffer = bound;
       if (bound !== null && !attachments.has(bound)) attachments.set(bound, new Map());
@@ -77,8 +84,9 @@ function recordingContext(lost = () => false) {
       const target = framebuffer === null ? undefined : attachments.get(framebuffer);
       const attached = buffers.map((buffer) => (buffer === NONE ? null : (target?.get(buffer) ?? null)));
       draws.push({ program, attached, buffers: [...buffers] });
+      issued.push('draw');
     },
-    getSyncParameter: () => (++polls > POLLS_BEFORE_SIGNAL ? SIGNALED : UNSIGNALED),
+    getSyncParameter: () => syncStatus(++polls),
   };
   const gl = new Proxy(
     {
@@ -91,6 +99,7 @@ function recordingContext(lost = () => false) {
       SYNC_GPU_COMMANDS_COMPLETE: 0x9117,
       SYNC_STATUS: 0x9114,
       SIGNALED,
+      UNSIGNALED,
     },
     {
       get(constants, key) {
@@ -101,7 +110,7 @@ function recordingContext(lost = () => false) {
       },
     },
   );
-  return { gl, live, draws, polls: () => polls };
+  return { gl, live, draws, issued, polls: () => polls };
 }
 
 function rendererOn(gl: unknown) {
@@ -124,7 +133,7 @@ function rendererOn(gl: unknown) {
   return { renderer, programs, resets: () => resets };
 }
 
-it('draws each night program once with the mask beside the colour, frees its target and resets Pixi', async () => {
+it('draws each night program once, alone in its flush, with the mask beside the colour, and frees its target', async () => {
   const context = recordingContext();
   const { renderer, programs, resets } = rendererOn(context.gl);
   const drawn = await drawNightMaskPrograms(renderer, nightMaskSources(renderer, settings));
@@ -137,10 +146,13 @@ it('draws each night program once with the mask beside the colour, frees its tar
     expect(draw.attached.every((texture) => texture !== null)).toBe(true);
   }
   expect(drawn).toMatchObject({ programs: expected.length, outcome: 'ran' });
-  // Settled only once the GPU had passed the draws' fence.
-  expect(context.polls()).toBe(POLLS_BEFORE_SIGNAL + 1);
+  // One compile per GPU task: each draw is flushed before the next is issued.
+  expect(context.issued).toEqual(expected.flatMap(() => ['draw', 'flush']));
+  // Settled only once the GPU had passed each draw's fence; the first takes a few polls.
+  expect(context.polls()).toBe(POLLS_BEFORE_SIGNAL + expected.length);
   expect(context.live.size).toBe(0);
-  expect(resets()).toBe(1);
+  // Pixi's cached state is reset after the target is laid out and after each draw.
+  expect(resets()).toBe(1 + expected.length);
 });
 
 it('draws nothing on a lost context, and ends the wait when the context goes mid-way', async () => {
@@ -156,4 +168,13 @@ it('draws nothing on a lost context, and ends the wait when the context goes mid
   expect(await pending).toMatchObject({ outcome: 'lost' });
   expect(losing.polls()).toBe(0);
   expect(losing.live.size).toBe(0);
+  // Lost and restored between two polls: the old context's fence answers no status.
+  const restored = recordingContext(
+    () => false,
+    () => null,
+  );
+  const restoredRenderer = rendererOn(restored.gl).renderer;
+  const answer = await drawNightMaskPrograms(restoredRenderer, nightMaskSources(restoredRenderer, settings));
+  expect(answer).toMatchObject({ outcome: 'lost' });
+  expect(restored.polls()).toBe(1);
 });

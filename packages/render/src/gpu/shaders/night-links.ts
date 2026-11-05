@@ -15,9 +15,10 @@ export interface NightMaskDraws {
   readonly outcome: 'ran' | 'timed-out' | 'lost';
 }
 
-/** How often the draws' fence is asked whether the GPU has passed it. */
+/** How often a draw's fence is asked whether the GPU has passed it. */
 const FENCE_POLL_MS = 16;
-/** How long the fence is waited for: four cold Direct3D compiles took 10 s on a Ryzen 7 4800HS. */
+/** How long one draw's fence is waited for: the slowest cold Direct3D compile took 5.5 s on a Ryzen 7
+ *  4800HS. */
 const FENCE_LIMIT_MS = 60_000;
 /** Texels per side of the throwaway target: the draws only need to run, not to cover anything. */
 const TARGET_SIZE = 1;
@@ -40,8 +41,9 @@ export function nightMaskSources(renderer: Renderer, settings: WarmupSettings): 
  * draw that needs it, a synchronous compile of seconds on the GPU process's main thread that would
  * freeze the first night. Drawn here, it compiles behind the loading card, and the browser's program
  * cache keeps the variant for later boots. The sources must be linked already, as the renderer's boot
- * links them. Resolves once the GPU has run the draws, asked through a fence that never blocks this
- * thread; null where nothing was drawn.
+ * links them. Each draw is flushed and waited for alone, through a fence that never blocks this thread,
+ * so the GPU process runs one compile at a time rather than all of them in one task; null where nothing
+ * was drawn.
  */
 export async function drawNightMaskPrograms(
   renderer: Renderer,
@@ -55,7 +57,33 @@ export async function drawNightMaskPrograms(
   const colour = gl.createTexture();
   const mask = gl.createTexture();
   const framebuffer = gl.createFramebuffer();
-  let fence: WebGLSync | null = null;
+  let outcome: NightMaskDraws['outcome'] = 'ran';
+  try {
+    nightTarget(renderer, framebuffer, colour, mask);
+    for (const program of programs) {
+      const fence = drawOnce(renderer, framebuffer, program);
+      outcome = await fenceOutcome(gl, fence);
+      if (fence !== null) gl.deleteSync(fence);
+      if (outcome !== 'ran') break;
+    }
+  } finally {
+    // Freed once the draws that use them have run.
+    gl.deleteFramebuffer(framebuffer);
+    gl.deleteTexture(colour);
+    gl.deleteTexture(mask);
+  }
+  return { programs: programs.length, ms: performance.now() - startedAt, outcome };
+}
+
+/** Lays `framebuffer` out as the night's target: `colour`, then `mask` at {@link NIGHT_LIT_LOCATION},
+ *  both drawn to. The draw buffers belong to the framebuffer, so they stay with it between draws. */
+function nightTarget(
+  renderer: WebGLRenderer,
+  framebuffer: WebGLFramebuffer | null,
+  colour: WebGLTexture | null,
+  mask: WebGLTexture | null,
+): void {
+  const gl = renderer.gl;
   try {
     for (const [texture, format] of [
       [colour, gl.RGBA8],
@@ -71,31 +99,40 @@ export async function drawNightMaskPrograms(
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colour, 0);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, maskAttachment, gl.TEXTURE_2D, mask, 0);
     gl.drawBuffers([gl.COLOR_ATTACHMENT0, maskAttachment]);
+  } finally {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    renderer.resetState();
+  }
+}
+
+/** One draw of `program` into the night's target, flushed and fenced: Pixi's cached state is reset
+ *  after it, so nothing of it is left bound while the fence is waited for. */
+function drawOnce(
+  renderer: WebGLRenderer,
+  framebuffer: WebGLFramebuffer | null,
+  program: WebGLProgram,
+): WebGLSync | null {
+  const gl = renderer.gl;
+  try {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
     gl.viewport(0, 0, TARGET_SIZE, TARGET_SIZE);
     // No attribute arrays: every input reads its constant value.
     gl.bindVertexArray(null);
-    for (const program of programs) {
-      gl.useProgram(program);
-      gl.drawArrays(gl.TRIANGLES, 0, TRIANGLE_VERTICES);
-    }
-    fence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+    gl.useProgram(program);
+    gl.drawArrays(gl.TRIANGLES, 0, TRIANGLE_VERTICES);
+    const fence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
     gl.flush();
+    return fence;
   } finally {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.useProgram(null);
-    // Freed once the draws that use them have run.
-    gl.deleteFramebuffer(framebuffer);
-    gl.deleteTexture(colour);
-    gl.deleteTexture(mask);
     renderer.resetState();
   }
-  const outcome = await fenceOutcome(gl, fence);
-  if (fence !== null) gl.deleteSync(fence);
-  return { programs: programs.length, ms: performance.now() - startedAt, outcome };
 }
 
-/** Whether the GPU passed `fence` within {@link FENCE_LIMIT_MS}, or the context was lost first (no fence
- *  at all is a lost context's). WebGL reports a fence's status between tasks without blocking. */
+/** Whether the GPU passed `fence` within {@link FENCE_LIMIT_MS}, or the context was lost first: no fence
+ *  at all is a lost context's, and a fence answering no status belongs to a context lost and restored
+ *  between two polls. WebGL reports a fence's status between tasks without blocking. */
 function fenceOutcome(
   gl: WebGL2RenderingContext,
   fence: WebGLSync | null,
@@ -107,8 +144,13 @@ function fenceOutcome(
         resolve('lost');
         return;
       }
-      if (gl.getSyncParameter(fence, gl.SYNC_STATUS) === gl.SIGNALED) {
+      const status: unknown = gl.getSyncParameter(fence, gl.SYNC_STATUS);
+      if (status === gl.SIGNALED) {
         resolve('ran');
+        return;
+      }
+      if (status !== gl.UNSIGNALED) {
+        resolve('lost');
         return;
       }
       if (performance.now() - startedAt > FENCE_LIMIT_MS) {
