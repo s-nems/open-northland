@@ -88,6 +88,7 @@ describe('block selection', () => {
       'output',
       'workers',
       'build',
+      'materials',
       'discover',
       'levels',
       'health',

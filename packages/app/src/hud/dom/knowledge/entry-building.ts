@@ -4,6 +4,7 @@ import { JOB_SOLDIER_UNARMED } from '../../../catalog/jobs.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { fillTokens } from '../../knowledge/articles.js';
 import { buildingHitpoints, type KnowledgeBuilding } from '../../knowledge/base.js';
+import { materialBuildings, totalCost } from '../../knowledge/build-cost.js';
 import {
   type BuildingBlock,
   buildingBlocks,
@@ -23,12 +24,14 @@ import type { KnowledgeContext } from './context.js';
 import { recipeTable } from './entry-good.js';
 import {
   articleLinks,
+  buildingLink,
   buildingPicture,
   type Child,
   type EntryBlock,
   entryPage,
   factList,
   fold,
+  foot,
   goodLink,
   goodLinks,
   jobLink,
@@ -132,13 +135,38 @@ function workersBlock(context: KnowledgeContext, building: KnowledgeBuilding): E
   };
 }
 
+/** A level's own cost; an upgrade adds what the whole line costs up to it. */
 function buildBlock(context: KnowledgeContext, building: KnowledgeBuilding): EntryBlock {
   const text = copy().building;
   const previous = previousLevel(context.base, building);
-  const title = previous === undefined ? text.build : formatMessage(text.upgrade, { name: previous.name });
   const cost = goodLinks(context, building.cost);
+  if (previous === undefined) {
+    return {
+      node: section(text.build, cost.length === 0 ? paragraph(text.noBuild) : links(cost)),
+      side: true,
+    };
+  }
   return {
-    node: section(title, cost.length === 0 ? paragraph(text.noBuild) : links(cost)),
+    node: section(
+      formatMessage(text.upgrade, { name: previous.name }),
+      links(cost),
+      node(
+        'div',
+        'kn-tech',
+        node('span', 'kn-tech__label', text.totalCost),
+        links(goodLinks(context, totalCost(context.base, building))),
+      ),
+    ),
+    side: true,
+  };
+}
+
+function materialsBlock(context: KnowledgeContext, building: KnowledgeBuilding): EntryBlock | null {
+  const text = copy().building;
+  const houses = materialBuildings(context.base, building, context.tribe());
+  if (houses.length === 0) return null;
+  return {
+    node: section(text.materials, links(houses.map(buildingLink)), foot(text.materialsNote)),
     side: true,
   };
 }
@@ -278,6 +306,8 @@ export function renderBuilding(context: KnowledgeContext, building: KnowledgeBui
         return workersBlock(context, building);
       case 'build':
         return buildBlock(context, building);
+      case 'materials':
+        return materialsBlock(context, building);
       case 'discover':
         return discoverBlock(context, building);
       case 'levels':

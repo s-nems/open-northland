@@ -201,6 +201,7 @@ export type BuildingBlock =
   | 'teaches'
   | 'workers'
   | 'build'
+  | 'materials'
   | 'discover'
   | 'levels'
   | 'health'
@@ -224,6 +225,7 @@ export function buildingBlocks(
     ...(shows.teaches ? (['teaches'] as const) : []),
     ...(building.workers.length > 0 ? (['workers'] as const) : []),
     'build',
+    'materials',
     ...(building.tech === null ? [] : (['discover'] as const)),
     ...(shows.levels ? (['levels'] as const) : []),
     'health',
