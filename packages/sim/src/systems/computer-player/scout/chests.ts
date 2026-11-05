@@ -13,8 +13,8 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { interactionNode, resourceWorkCell } from '../../footprint/index.js';
@@ -149,7 +149,8 @@ export function nextScoutChest(
 export function druidChestOrder(world: World, ctx: SystemContext, player: number): PlayerCommand | null {
   if (!closedChestStands(world, 'magical')) return null;
   const druids: { entity: Entity; at: HalfCellNode }[] = [];
-  for (const e of ownedSettlers(world, player)) {
+  // The chests lie in the home base's reach, so a druid of a colony over the water is no candidate.
+  for (const e of homeSettlers(world, ctx, player)) {
     if (!isDruidJob(ctx.content, world.get(e, Settler).jobType) || !isAdultSettler(world, e)) continue;
     if (chestErrandOf(world, e) !== null) return null;
     if (druidBusy(world, ctx, e)) continue;
