@@ -167,7 +167,7 @@ and started per lane, its busiest frame and the steals.
 
 ## Real map acceptance
 
-`?scene=mission-map` opens the decoded `wielkie_sprzatanie` map through the normal map entry with
+`?scene=mission-map` opens the decoded `wielkie_sprzatanie_2_0` map through the normal map entry with
 automatic script execution and `debug=missions`. The menu lists it under test scenes. The URL becomes a map URL,
 so save/load uses the real map identity. Explicit mission and fog overrides remain effective.
 

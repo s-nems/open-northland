@@ -17,22 +17,26 @@ import { buildMapWorld, type MapWorldOptions, restoreMapWorld } from '../../../s
 import { mapScriptWorld } from '../../../src/game/world/mission-script.js';
 import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from '../helpers.js';
 
-const MAP_ID = 'wielkie_sprzatanie';
-const REINFORCEMENT_MISSION = 51;
-const CONTACT_MISSION = 81;
-const TRIBUTE_MISSION = 82;
+const MAP_ID = 'wielkie_sprzatanie_2_0';
+const CONTACT_MISSION = 1;
+const TRIBUTE_MISSION = 3;
 const CONTACT_PAGE = 511;
 const FRANK_SEAT = 5;
-/** The pigeon chest's story encounter, whose point lies inside a closed wall ring. */
-const ENCOUNTER_MISSION = 22;
+/** Sigurd's walk to the Sphinx, which lays the chests around it (a chest that fails to lay is a script failure). */
+const SPHINX_MISSION = 18;
+const SPHINX_PAGE = 503;
+/** The pigeon chest, which a closed friendly wall ring surrounds. */
+const PIGEON_CHEST_MISSION = 4;
+const PIGEON_CHEST_PAGE = 501;
+/** Hex distance from the pigeon chest to the ring's nearest wall segments; a larger one lies outside. */
+const WALL_RING_RADIUS = 3;
 /** The mission that hands the player the win, activated only by a later chain of triggers. */
-const VICTORY_MISSION = 77;
-const ENCOUNTER_PAGE = 501;
+const VICTORY_MISSION = 46;
 const MOVEMENT_BUDGET_TICKS = 2400;
 
-/** A real player's opening and reinforcement route; no verdict or mission state is injected. */
+/** A real player's opening, contact and Sphinx route; no verdict or mission state is injected. */
 describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
-  it('opens contact briefings and reaches reinforcements across restore, but not the walled pigeon chest', async () => {
+  it('opens contact briefings and reaches the Sphinx encounter across restore, but not the walled pigeon chest', async () => {
     const ir = rawIrUnderTest() as ContentIr;
     const { merge } = await loadContentUnderTest();
     const root = resolve(contentDir(), 'maps');
@@ -55,9 +59,8 @@ describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
       berryBushes: true,
     };
     const { sim } = buildMapWorld(options);
-    const mission = sim.missions?.missions[REINFORCEMENT_MISSION];
-    const goal = mission?.goals[0];
-    if (goal?.opcode !== 'FindPosByHumans') throw new Error('reinforcement route source changed');
+    const goal = sim.missions?.missions[SPHINX_MISSION]?.goals[0];
+    if (goal?.opcode !== 'FindPosByHumans') throw new Error('Sphinx route source changed');
     const hero = systems.missionObjects(sim.world, goal.humanId)[0];
     if (hero === undefined) throw new Error('authored hero did not spawn');
     const briefingPages: number[] = [];
@@ -88,31 +91,26 @@ describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
     expect(restored.missionBriefingHistory()).toEqual(sim.missionBriefingHistory());
     expect(serializeSaveGame(exportSaveGame(restored, { mapId: MAP_ID }))).toBe(serializeSaveGame(saved));
     const order = playerCommand(0, { kind: 'moveUnit', entity: hero, x: goal.point.hx, y: goal.point.hy });
-    const previousHumans = new Set(sim.world.query(components.Person));
     sim.enqueue(order);
     let ticks = 0;
     while (
-      (components.missionRecords(sim.world)[REINFORCEMENT_MISSION]?.fireCount ?? 0) === 0 &&
+      (components.missionRecords(sim.world)[SPHINX_MISSION]?.fireCount ?? 0) === 0 &&
       ticks < MOVEMENT_BUDGET_TICKS
     ) {
       sim.step();
       collectEvents();
       ticks++;
     }
-    expect(components.missionRecords(sim.world)[REINFORCEMENT_MISSION]?.fireCount).toBe(1);
-    const reinforcements = [...sim.world.query(components.Person)].filter(
-      (entity) => !previousHumans.has(entity) && components.ownerOf(sim.world, entity) === 0,
-    );
-    expect(reinforcements.length).toBeGreaterThanOrEqual(3);
-    const encounter = sim.missions?.missions[ENCOUNTER_MISSION]?.goals[0];
-    if (encounter?.opcode !== 'FindPosByHumans') throw new Error('story encounter source changed');
-    expect(encounter.humanId).toBe(goal.humanId);
+    expect(components.missionRecords(sim.world)[SPHINX_MISSION]?.fireCount).toBe(1);
+    expect(briefingPages).toContain(SPHINX_PAGE);
+    const chest = sim.missions?.missions[PIGEON_CHEST_MISSION]?.goals[0];
+    if (chest?.opcode !== 'ChestNearPos') throw new Error('pigeon chest source changed');
     // The loaded map's friendly wall ring leaves no connected walking route to the chest.
     const approach = playerCommand(0, {
       kind: 'moveUnit',
       entity: hero,
-      x: encounter.point.hx,
-      y: encounter.point.hy,
+      x: chest.point.hx,
+      y: chest.point.hy,
     });
     sim.enqueue(approach);
     for (let tick = 0; tick < MOVEMENT_BUDGET_TICKS; tick++) {
@@ -125,11 +123,11 @@ describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
     expect(sim.world.has(hero, components.PathRequest)).toBe(false);
     const heroAt = sim.world.get(hero, components.Position);
     const heroNode = nodeOfPosition(heroAt.x, heroAt.y);
-    expect(
-      hexDistanceBetween(heroNode.hx, heroNode.hy, encounter.point.hx, encounter.point.hy),
-    ).toBeGreaterThan(encounter.range);
-    expect(sim.missionStatus()[ENCOUNTER_MISSION]).toMatchObject({ done: false, fireCount: 0 });
-    expect(briefingPages).not.toContain(ENCOUNTER_PAGE);
+    expect(hexDistanceBetween(heroNode.hx, heroNode.hy, chest.point.hx, chest.point.hy)).toBeGreaterThan(
+      WALL_RING_RADIUS,
+    );
+    expect(sim.missionStatus()[PIGEON_CHEST_MISSION]).toMatchObject({ done: false, fireCount: 0 });
+    expect(briefingPages).not.toContain(PIGEON_CHEST_PAGE);
     expect(components.missionRecords(sim.world)[VICTORY_MISSION]?.fireCount ?? 0).toBe(0);
     expect(scriptFailures).toEqual([]);
   }, 90_000);

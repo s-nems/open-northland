@@ -5,7 +5,9 @@ export interface MapSceneDefinition {
   readonly mapId: string;
 }
 
-export const MAP_SCENES: readonly MapSceneDefinition[] = [{ id: 'mission-map', mapId: 'wielkie_sprzatanie' }];
+export const MAP_SCENES: readonly MapSceneDefinition[] = [
+  { id: 'mission-map', mapId: 'wielkie_sprzatanie_2_0' },
+];
 
 export function mapSceneParams(scene: MapSceneDefinition, source: URLSearchParams): URLSearchParams {
   const params = new URLSearchParams(source);

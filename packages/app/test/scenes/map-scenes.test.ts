@@ -8,7 +8,7 @@ describe('the real map acceptance entry', () => {
     const scene = MAP_SCENES[0];
     if (scene === undefined) throw new Error('missing map scene');
     const params = mapSceneParams(scene, new URLSearchParams('scene=mission-map&debug=perf&fog=off'));
-    expect(params.get('map')).toBe('wielkie_sprzatanie');
+    expect(params.get('map')).toBe('wielkie_sprzatanie_2_0');
     expect(params.has('scene')).toBe(false);
     expect(params.get('missions')).toBeNull();
     expect(params.get('fog')).toBe('off');

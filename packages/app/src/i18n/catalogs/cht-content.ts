@@ -183,7 +183,7 @@ export const chtContent = {
     'mission-map': {
       title: '劇情地圖腳本驗收',
       summary:
-        '自有的 Wielkie Sprzatanie 地圖，包含完整腳本、戰爭迷霧與會隨存檔保留的任務執行紀錄。需要在本機解碼的內容。戰役與原作還原度的驗收仍待完成。',
+        '自有的 Wielkie Sprzatanie 2.0 地圖，包含完整腳本、戰爭迷霧與會隨存檔保留的任務執行紀錄。需要在本機解碼的內容。戰役與原作還原度的驗收仍待完成。',
     },
     sandbox: {
       title: '開放沙盒',

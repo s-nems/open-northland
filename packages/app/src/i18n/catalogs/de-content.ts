@@ -181,7 +181,7 @@ export const deContent = {
     'mission-map': {
       title: 'Test des Missionsskripts',
       summary:
-        'Die Karte Wielkie Sprzatanie aus dem eigenen Spielbestand mit vollständigem Skript, Kriegsnebel und gespeichertem Missionsausführungsprotokoll. Erfordert lokal dekodierte Inhalte. Die Abnahme der Kampagne und der Übereinstimmung mit dem Originalspiel steht noch aus.',
+        'Die Karte Wielkie Sprzatanie 2.0 aus dem eigenen Spielbestand mit vollständigem Skript, Kriegsnebel und gespeichertem Missionsausführungsprotokoll. Erfordert lokal dekodierte Inhalte. Die Abnahme der Kampagne und der Übereinstimmung mit dem Originalspiel steht noch aus.',
     },
     sandbox: {
       title: 'Freie Sandbox',

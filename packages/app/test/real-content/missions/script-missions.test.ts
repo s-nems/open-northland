@@ -19,15 +19,6 @@ import { realMapWorld } from '../real-map-world.js';
  * without the sim throwing on an opcode it cannot evaluate.
  */
 
-/**
- * The only name argument in the whole corpus the served catalog cannot resolve: one map writes the
- * handcart with its two words swapped. Everything else - the upper-case `logicdefines.inc` macro
- * tails, the capitalised tribe names, the legacy byzantine workshop names - is the same slug under
- * another spelling or a legacy house name. Any other unresolvable name is this join breaking, not a
- * map being wrong.
- */
-const CORPUS_UNKNOWN_NAMES = ['cart_hand'];
-
 /** Passes to run a script for: enough that a mission with a short `TimeGone` fires. */
 const SCRIPT_RUN_PASSES = 6;
 
@@ -110,7 +101,9 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))(
         }
       }
       expect(missions).toBeGreaterThan(1000);
-      expect([...unknown].sort()).toEqual(CORPUS_UNKNOWN_NAMES);
+      // Macro tails, capitalised tribes and legacy workshop names are the same slug spelled another
+      // way, so an unresolvable name is this join breaking, not a map being wrong.
+      expect([...unknown]).toEqual([]);
       // Per field, so a join that resolves nothing at all cannot hide behind the four that work:
       // `vehicleType` is only 160 of the corpus's ~10,700 name arguments.
       for (const [field, resolved] of resolvedPerField) {

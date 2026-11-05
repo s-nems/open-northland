@@ -183,7 +183,7 @@ export const enContent = {
     'mission-map': {
       title: 'Story map script acceptance',
       summary:
-        'The owned Wielkie Sprzatanie map with its complete script, fog and a saved mission execution log. Requires locally decoded content. Campaign and original-game fidelity acceptance remain pending.',
+        'The owned Wielkie Sprzatanie 2.0 map with its complete script, fog and a saved mission execution log. Requires locally decoded content. Campaign and original-game fidelity acceptance remain pending.',
     },
     sandbox: {
       title: 'Open sandbox',

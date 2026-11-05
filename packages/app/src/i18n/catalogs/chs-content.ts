@@ -183,7 +183,7 @@ export const chsContent = {
     'mission-map': {
       title: '剧情地图脚本验收',
       summary:
-        '自有地图 Wielkie Sprzatanie，带有完整脚本、迷雾和随存档保存的任务执行日志。需要本地解码的内容。战役验收和与原版一致性的验收仍待完成。',
+        '自有地图 Wielkie Sprzatanie 2.0，带有完整脚本、迷雾和随存档保存的任务执行日志。需要本地解码的内容。战役验收和与原版一致性的验收仍待完成。',
     },
     sandbox: {
       title: '开放沙盒',

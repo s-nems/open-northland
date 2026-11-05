@@ -181,7 +181,7 @@ export const plContent = {
     'mission-map': {
       title: 'Test skryptu mapy fabularnej',
       summary:
-        'Mapa Wielkie Sprzatanie z pełnym skryptem, mgłą i zapisywanym rejestrem wykonanych misji. Wymaga lokalnie zdekodowanej zawartości. Akceptacja kampanii i zgodności z oryginałem pozostaje otwarta.',
+        'Mapa Wielkie Sprzatanie 2.0 z pełnym skryptem, mgłą i zapisywanym rejestrem wykonanych misji. Wymaga lokalnie zdekodowanej zawartości. Akceptacja kampanii i zgodności z oryginałem pozostaje otwarta.',
     },
     sandbox: {
       title: 'Otwarty sandbox',

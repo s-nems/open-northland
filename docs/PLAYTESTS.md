@@ -164,7 +164,7 @@ does not reach them.
 | `upadek_krola_sub` | WIĘŹIENIE ALTERACK | 1h/2ai | – | – | sub-mission |
 | `wielka_bitwa_z_saracenami` | WIELKA BITWA Z SARACENAMI | 1h/12ai | – | – |  |
 | `wielka_inwazja` | WIELKA INWAZJA | 1h/7ai | – | – |  |
-| `wielkie_sprzatanie` | WIELKIE SPRZATANIE | 1h/7ai | – | ok | main victory and side encounters; open: [pigeon chest](tickets/sim/pigeon-chest-access.md), [power sources](tickets/sim/power-source-healing.md), [coin reward text](tickets/data/wielkie-sprzatanie-coin-reward-description.md) |
+| `wielkie_sprzatanie_2_0` | WIELKIE SPRZĄTANIE 2.0 | 1h/9ai | – | – | open: [pigeon chest](tickets/sim/pigeon-chest-access.md) |
 | `wilczy_lad` | WILCZY LĄD | 1h/3ai | – | – |  |
 | `wilczy_lad_sub` | Wilczy Lad - Zadanie Dodatkowe | 1h/1ai | – | – | sub-mission |
 | `wybrzeze_czarow` | WYBRZEŻE CZARÓW | 1h/11ai | – | – |  |
