@@ -70,7 +70,8 @@ export function homeTeaches(env: ColonyEnv, job: number): boolean {
 }
 
 /** Whether each trade of `type` has its man: earned by one of the colony's, or one home's school can make.
- *  Owner ruling: people cross like goods, so a trade the colony lacks is no reason to go without its building. */
+ *  Owner ruling: people cross like goods, so a trade the colony lacks is no reason to go without its
+ *  building. */
 function crewInReach(env: ColonyEnv, men: readonly Entity[], type: BuildingType): boolean {
   const { world, ctx } = env;
   return operatorJobs(env, type).every(

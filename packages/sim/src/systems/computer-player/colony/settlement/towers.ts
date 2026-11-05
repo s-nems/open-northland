@@ -13,8 +13,8 @@ const RAIDERS_PER_TOWER = 3;
 /** The most towers a colony raises (authored: a small garrison mans no more). */
 const TOWERS_MOST = 3;
 
-/** The towers a colony wants: none before a garrison is on its way, then {@link COLONY_TOWERS_LEAST} and one more per
- *  {@link RAIDERS_PER_TOWER} raiders seen lately, up to {@link TOWERS_MOST}. */
+/** The towers a colony wants: none before a garrison is on its way, then {@link COLONY_TOWERS_LEAST} and one
+ *  more per {@link RAIDERS_PER_TOWER} raiders seen lately, up to {@link TOWERS_MOST}. */
 export function colonyTowerCount(garrisoned: boolean, raiders: number): number {
   if (!garrisoned) return 0;
   return Math.min(TOWERS_MOST, COLONY_TOWERS_LEAST + Math.floor(raiders / RAIDERS_PER_TOWER));

@@ -49,8 +49,8 @@ const FREE_SHIPS_LEAST = 2;
  *  at any cost. Its stores say little: food passes straight through them, and a colony that held its people
  *  was seen with almost nothing in store. */
 const MOUTHS_PER_HUNGRY = 10;
-/** A later site is looked for over the whole survey: by then the rivals' colonies rule out the first ones, and
- *  a seat was seen to find none of its best few clear with many more on offer. */
+/** A later site is looked for over the whole survey: by then the rivals' colonies rule out the first ones,
+ *  and a seat was seen to find none of its best few clear with many more on offer. */
 const NEXT_SITE_CANDIDATES = Number.POSITIVE_INFINITY;
 
 /** The cheap reads of whether a seat may look for one more site. */
@@ -58,7 +58,8 @@ export interface NextColonyRead {
   readonly tick: number;
   /** The tick the seat may try again. */
   readonly retryAt: number;
-  /** Its colonies, a given-up one among them: a lost colony counts, so a seat does not bleed itself on them. */
+  /** Its colonies, a given-up one among them: a lost colony counts, so a seat does not bleed itself on
+   *  them. */
   readonly colonies: number;
   /** Everyone it holds, and at home those who fight and those who do not. */
   readonly settlers: number;
@@ -153,9 +154,9 @@ function lackedGoods(env: SeatEnv, colonies: readonly ColonyEnv[]): LandGood[] {
 
 /**
  * The minute's look past the colonies a seat holds. It opens one more once {@link mayLookFurther} holds, the
- * home can spare a party, and a site on a land of no colony of its gives home a good it lacks or room for homes,
- * whose people sail home to fight (owner ruling); the survey ranks a site for people alone after every site
- * with resources.
+ * home can spare a party, and a site on a land of no colony of its gives home a good it lacks or room for
+ * homes, whose people sail home to fight (owner ruling); the survey ranks a site for people alone after every
+ * site with resources.
  */
 export function openNextColony(env: SeatEnv): void {
   const { world, ctx, seat, carrier } = env;

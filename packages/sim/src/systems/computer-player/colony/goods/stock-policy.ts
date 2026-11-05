@@ -55,7 +55,8 @@ const COLONY_FOOD_PER_SETTLER_ROUND = 3;
 export const WORKSHOP_INPUT_FLOOR = 5;
 /** Drawn where it is drunk: a well stands wherever a workshop wants it, so it never sails. */
 const WATER_ID = 'water';
-/** Owner ruling: of a colony joinery's goods only the iron tool goes home; a workshop that makes it is one. */
+/** Owner ruling: of a colony joinery's goods only the iron tool goes home; a workshop that makes it is
+ *  one. */
 const JOINERY_EXPORT_ID = TOOL_IRON_ID;
 /** Owner ruling: grain and flour never sail home, whether or not a mill or bakery of the colony's takes them
  *  in yet; home grows and grinds its own. */
@@ -107,7 +108,8 @@ export interface StockPolicyRead {
   readonly outboundNow: ReadonlySet<number>;
   /** What home keeps of a good it sends. */
   readonly homeKeep: (good: number) => number;
-  /** The inputs home's workshops lack: a good the colony holds above its floor goes home, made there or not. */
+  /** The inputs home's workshops lack: a good the colony holds above its floor goes home, made there or
+   *  not. */
   readonly homeWants: ReadonlySet<number>;
   /** What the colony's standing sites, its industries' among them, still lack of their bills. */
   readonly siteLack: Units;

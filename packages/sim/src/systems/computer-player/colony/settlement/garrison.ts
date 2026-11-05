@@ -128,7 +128,8 @@ export function garrisonAshore(env: ColonyEnv, colony: ColonyView): Entity[] {
   );
 }
 
-/** The home army's armed men free to sail: in the census, on home's land, in no operation and on no errand. */
+/** The home army's armed men free to sail: in the census, on home's land, in no operation and on no
+ *  errand. */
 function homeFighters(env: ColonyEnv): { readonly army: number; readonly free: readonly Entity[] } {
   const { world, ctx, seat } = env;
   const home = homeLandOf(env);
@@ -217,8 +218,8 @@ function stationOrders(env: ColonyEnv, colony: ColonyView, men: readonly Entity[
 
 /**
  * The garrison holds the colony as home holds its settlement, over the colony's buildings alone: its archers
- * man the colony's towers, and the rest go for a raider about them or, with none, stand by the store. The home
- * army never answers a colony's raid: its defence guards home's buildings only.
+ * man the colony's towers, and the rest go for a raider about them or, with none, stand by the store. The
+ * home army never answers a colony's raid: its defence guards home's buildings only.
  */
 export function defendColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx, terrain, seat } = env;

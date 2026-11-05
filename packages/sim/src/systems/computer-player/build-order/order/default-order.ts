@@ -312,8 +312,9 @@ export const GOLD_FROM_TICKS = IRON_CLIMB_FROM_TICKS;
  * whole tier chain, so the executor holds a line's step until every good of that bill is gathered, made
  * by a building the seat owns, or in store; within a line, the steps keep the order the materials and
  * the workshops they feed come in. Its `_01` workshop steps build straight to that tier because the
- * extracted `jobEnablesHouse` rows enable each tier as a separately placeable house type. The weapon shops have a line of their own rather than a place in
- * a late tail, since the garrison rung publishes only the classes it can arm right now.
+ * extracted `jobEnablesHouse` rows enable each tier as a separately placeable house type. The weapon shops
+ * have a line of their own rather than a place in a late tail, since the garrison rung publishes only the
+ * classes it can arm right now.
  */
 export const DEFAULT_BUILD_ORDER: BuildOrder = {
   lines: [
@@ -514,7 +515,8 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         SECOND_UPPER_TAILOR,
         { kind: 'upgrade', building: 'work_sewery_01', count: 1, onlyWhen: 'livestock' },
         // The second tailor, counted with the upgraded one, so this adds one building: the upper tier
-        // outright once the seat sources it (`../supply/direct-tier.ts`), else the small tailor as a shoemaker.
+        // outright once the seat sources it (`../supply/direct-tier.ts`), else the small tailor as a
+        // shoemaker.
         {
           kind: 'place',
           building: 'work_sewery_00',
@@ -651,8 +653,8 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       // Owner ruling: one mint early enough to earn experience, since the coiner learns the amulets the
       // big potion also wants and the druids pay in coins; never two at once as the first. Once he has
       // learned the amulets, the late game's move into high-end equipment, two more follow, each waiting
-      // for the crews of those standing (`../steps/holds.ts`). The gold gatherer and the first mint wait for the
-      // food and arms like the herb hut.
+      // for the crews of those standing (`../steps/holds.ts`). The gold gatherer and the first mint wait for
+      // the food and arms like the herb hut.
       steps: [
         { kind: 'collector', good: 'gold', fromTick: GOLD_FROM_TICKS, holdUntil: AFTER_FOOD_AND_ARMS },
         { ...mints(1), holdUntil: AFTER_FOOD_AND_ARMS },
@@ -663,9 +665,9 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
   // Owner ruling: the economy first. The opening, so the farm, the first homes and the material workshops
   // take the first sites; then bread and drink, the tools (the handcarts matter a great deal), clothing
   // (boots speed every trade up; a seat dressing its army in tunics raises it ahead of the tools,
-  // `./seat-order.ts`) and the first smithy steps, and only then the tile and marble tiers, which are needed a bit later; the army
-  // the garrison waits on, the mint, the herb hut and druids, whose first steps also wait for the food and
-  // arms to stand ({@link AFTER_FOOD_AND_ARMS}). The homes line holds only lanes.
+  // `./seat-order.ts`) and the first smithy steps, and only then the tile and marble tiers, which are needed
+  // a bit later; the army the garrison waits on, the mint, the herb hut and druids, whose first steps also
+  // wait for the food and arms to stand ({@link AFTER_FOOD_AND_ARMS}). The homes line holds only lanes.
   priority: [
     'opening',
     'bread',

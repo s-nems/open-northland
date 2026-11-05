@@ -138,9 +138,9 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
 }
 
 /**
- * Founding and running: the colony raises its plan, its first store first, posts its men by {@link POSTS}, marries and
- * houses its people. It runs on, not stopping at `running`, so a post whose man fell is filled by the next
- * free one. `running` starts once the store stands, the hold is empty and a gatherer works.
+ * Founding and running: the colony raises its plan, its first store first, posts its men by {@link POSTS},
+ * marries and houses its people. It runs on, not stopping at `running`, so a post whose man fell is filled by
+ * the next free one. `running` starts once the store stands, the hold is empty and a gatherer works.
  */
 export function foundColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx } = env;

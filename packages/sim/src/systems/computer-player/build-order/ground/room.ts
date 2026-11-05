@@ -131,8 +131,8 @@ export function freeHomeZones(
  * `homesCap`, and counts its homes of `owned`, sites included, once its review is due
  * ({@link nextRoomReviewTick}). A seat with the `noRoom` side is measured only once its plots are drawn, so
  * the opening's ground counts as room only where no plot keeps it. Observed on
- * arabskie_wyspy_wolna_gra_mieszana: measured from the start, a seat cut to two homes raised four on the ground its brewery and barracks were
- * later plotted on.
+ * arabskie_wyspy_wolna_gra_mieszana: measured from the start, a seat cut to two homes raised four on the
+ * ground its brewery and barracks were later plotted on.
  */
 export function keepSeatRoom(
   world: World,

@@ -51,9 +51,9 @@ const SCOUTING_GROWTH_CIVILIANS = 4;
  *  ({@link PARTY_FROM_CIVILIANS}) about when the scout comes home, rather than starting the scouting only
  *  then. */
 const COLONY_FROM_CIVILIANS = PARTY_FROM_CIVILIANS - SCOUTING_GROWTH_CIVILIANS;
-/** How long a failed voyage or a lost colony holds the seat's next one (authored): time for the home stores to
- *  refill. A voyage that failed before it claimed its carrying ship, a scouting turned back, took nothing from
- *  them. */
+/** How long a failed voyage or a lost colony holds the seat's next one (authored): time for the home stores
+ *  to refill. A voyage that failed before it claimed its carrying ship, a scouting turned back, took nothing
+ *  from them. */
 export const COLONY_RETRY_TICKS = minutesToTicks(10);
 /** The failed voyages a seat gives its colony (authored): past them it stays at home. */
 const COLONY_MAX_FAILURES = 2;
@@ -357,8 +357,8 @@ function backToFittingOut(env: ColonyEnv, ship: Entity): PlayerCommand[] {
 
 /**
  * Loading: the riders fetch the manifest until the hold is done or {@link COLONY_LOAD_TICKS} pass, twice that
- * while it lacks a warehouse's bill, and then the party goes back ashore. Else the hold is pinned, or hands would
- * fetch at the far shore, and each ship docks at a shore of its own, boarding its crew first.
+ * while it lacks a warehouse's bill, and then the party goes back ashore. Else the hold is pinned, or hands
+ * would fetch at the far shore, and each ship docks at a shore of its own, boarding its crew first.
  */
 export function loading(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx, seat } = env;
@@ -458,7 +458,8 @@ export function bringScoutHome(env: ColonyEnv, colony: ColonyView): PlayerComman
 /**
  * Landing: at the shore every rider but the helm and {@link COLONY_LANDING_HANDS} hands steps ashore, and the
  * hands empty the hold into a warehouse within reach, or onto the ground at their feet. Founding starts as
- * the passengers stand ashore. The hands follow them once the hold is empty, or past {@link COLONY_UNLOAD_TICKS}.
+ * the passengers stand ashore. The hands follow them once the hold is empty, or past
+ * {@link COLONY_UNLOAD_TICKS}.
  */
 export function landing(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx } = env;
@@ -481,8 +482,8 @@ export function unloaded(env: ColonyEnv, colony: ColonyView, ship: Entity): bool
 }
 
 /** What a founding colony's ships still do: the scout ship goes home, and an unloaded colony ship keeps an
- *  unwed man at the helm, lets the rest ashore and goes to the colony's trade route, which sails it home; sunk first, the
- *  route owes one. */
+ *  unwed man at the helm, lets the rest ashore and goes to the colony's trade route, which sails it home;
+ *  sunk first, the route owes one. */
 export function afterLanding(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world } = env;
   const commands = bringScoutHome(env, colony);
@@ -555,8 +556,8 @@ export function scouting(
 
 /**
  * Returning: each held ship docks at home, at another shore when that is refused, empties its hold and lets
- * its riders go there. Past {@link RETURN_TIMEOUT_TICKS} a ship moored anywhere lets them go where it lies and one still at
- * sea is let go. Then the seat moves on from the site.
+ * its riders go there. Past {@link RETURN_TIMEOUT_TICKS} a ship moored anywhere lets them go where it lies
+ * and one still at sea is let go. Then the seat moves on from the site.
  */
 export function returning(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx } = env;

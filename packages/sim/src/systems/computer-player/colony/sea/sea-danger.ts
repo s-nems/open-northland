@@ -9,8 +9,8 @@ import type { ColonyEnv, ColonyView } from '../env.js';
 import { dock } from './moorings.js';
 
 // Where the seat's own colony ships took fire. Only what a hull felt goes in, so nothing here reads what the
-// seat has not seen. Figures are authored from arabskie_wyspy_wolna_gra_mieszana, where colony ships went down
-// off a rival's coast.
+// seat has not seen. Figures are authored from arabskie_wyspy_wolna_gra_mieszana, where colony ships went
+// down off a rival's coast.
 
 /** How near a danger a course may pass, in Manhattan nodes: past the 30 of a tower's clearance. */
 const DANGER_NODES = 45;
@@ -18,8 +18,8 @@ const DANGER_NODES = 45;
 const SAME_DANGER_NODES = 40;
 /** The most dangers a colony remembers: past these no way is left worth trying. */
 const DANGERS_MOST = 4;
-/** How long a danger is kept after its latest hit (authored: about two crossings there and back). Fire moves on, and
- *  a danger kept for good would leave a colony with no line for good. */
+/** How long a danger is kept after its latest hit (authored: about two crossings there and back). Fire moves
+ *  on, and a danger kept for good would leave a colony with no line for good. */
 const DANGER_KEPT_TICKS = minutesToTicks(30);
 /** How often a course is tested, in nodes along it. */
 const COURSE_STEP_NODES = 8;

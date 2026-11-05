@@ -55,9 +55,9 @@ export function workshopSpot(
 
 /**
  * The spot of `type` nearest `anchor`, a node on the colony's land, within `radius` of it and
- * {@link COLONY_REACH_NODES} of what stands there unless `far` widens it, on `land`, on ground the anchor's walkers reach and out of
- * every enemy shooter's reach; null when none. The home search reads the seat's base throughout, so this
- * is the colony's own over the same parts.
+ * {@link COLONY_REACH_NODES} of what stands there unless `far` widens it, on `land`, on ground the anchor's
+ * walkers reach and out of every enemy shooter's reach; null when none. The home search reads the seat's base
+ * throughout, so this is the colony's own over the same parts.
  */
 export function colonySpot(
   env: ColonyEnv,

@@ -203,7 +203,8 @@ export interface SeatRead {
   readonly worth: (good: string) => Worth;
   /** Whether home boils holy oil. */
   readonly homeMakesHolyOil: boolean;
-  /** Whether the tribe has unlocked a step at the tier it is raised at, and its trades have a man in reach. */
+  /** Whether the tribe has unlocked a step at the tier it is raised at, and its trades have a man in
+   *  reach. */
   readonly open: (step: ChainStep) => boolean;
   /** The nodes of the colony's block a building takes. */
   readonly roomOf: (step: ChainStep) => number;
@@ -225,7 +226,8 @@ function scoreOf(industry: Exclude<Industry, 'temple'>, seat: SeatRead): number 
   return INDUSTRY_WEIGHT[industry] * worth;
 }
 
-/** The steps more than one chain holds, as the well, the mint and the temple's druid hut: raising one starts none of them. */
+/** The steps more than one chain holds, as the well, the mint and the temple's druid hut: raising one starts
+ *  none of them. */
 const SHARED_STEPS: ReadonlySet<string> = new Set(
   [...Object.values(CHAINS), TEMPLE_OIL_CHAIN]
     .flat()
@@ -383,7 +385,8 @@ const TEMPLE_OIL_UNITS = 1;
 
 /**
  * What `chosen` needs delivered that no workshop of the colony takes as a recipe input, so the generic rule
- * of bringing a standing workshop's inputs cannot know it: the temple's unit of holy oil, while home boils it.
+ * of bringing a standing workshop's inputs cannot know it: the temple's unit of holy oil, while home boils
+ * it.
  */
 export function colonyIndustryWants(
   chosen: readonly IndustryChoice[],

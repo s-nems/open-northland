@@ -36,8 +36,8 @@ export const PLANNED_HOMES_FLOOR = 2;
 const FIT_COUNTED = FIT_PER_HOME * NO_ROOM_HOMES;
 
 /** The homes a seat keeps on `fit` home zones of room, {@link FIT_PER_HOME} each, from
- *  {@link PLANNED_HOMES_FLOOR} to {@link NO_ROOM_HOMES}: at the start of arabskie_wyspy_wolna_gra_mieszana the
- *  five seats fit 13, 2, 2, 13 and 6, which gives them 6, 2, 2, 6 and 3 homes. */
+ *  {@link PLANNED_HOMES_FLOOR} to {@link NO_ROOM_HOMES}: at the start of arabskie_wyspy_wolna_gra_mieszana
+ *  the five seats fit 13, 2, 2, 13 and 6, which gives them 6, 2, 2, 6 and 3 homes. */
 export function plannedHomes(fit: number): number {
   return Math.min(NO_ROOM_HOMES, Math.max(PLANNED_HOMES_FLOOR, Math.floor(fit / FIT_PER_HOME)));
 }
@@ -162,8 +162,9 @@ interface PlottedStep {
 }
 
 /** The unmet single-copy placements of `order` that would hold their line, with a zone over a home's,
- *  {@link NEVER_CUT} first, then biggest, then by content id, one per building: a role joinery's top tier, which an upgrade of a
- *  lower joinery meets, and a step only serving something beside it stay out, the shore's own joinery in. */
+ *  {@link NEVER_CUT} first, then biggest, then by content id, one per building: a role joinery's top tier,
+ *  which an upgrade of a lower joinery meets, and a step only serving something beside it stay out, the
+ *  shore's own joinery in. */
 function essentialSteps(seat: Seat, order: BuildOrder, statuses: LineStatuses): readonly PlottedStep[] {
   const { world, ctx, owned } = seat;
   const index = contentIndex(ctx.content);
@@ -332,7 +333,8 @@ function homeFit(seat: Seat): number {
 
 /** The plots still waiting after this decision: those whose step stands met go, a free one that no
  *  longer fits moves ({@link plotOf}). A plot on ground still to clear waits for the plan's review, which
- *  searches it again, and plots a never-cut step with no plot, its building lost or no ground found before. */
+ *  searches it again, and plots a never-cut step with no plot, its building lost or no ground found
+ *  before. */
 function reviewPlots(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
   const { world, ctx, terrain, tribe } = seat;
   const plan = world.get(carrier, GroundPlan);

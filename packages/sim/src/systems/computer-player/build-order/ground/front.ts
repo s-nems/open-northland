@@ -286,7 +286,8 @@ export function frontLine(
   };
 }
 
-/** `a / b` rounded half up for integers and `b > 0`, exact where a float quotient could land beside a half. */
+/** `a / b` rounded half up for integers and `b > 0`, exact where a float quotient could land beside a
+ *  half. */
 function nearestQuotient(a: number, b: number): number {
   return Math.floor((2 * a + b) / (2 * b));
 }

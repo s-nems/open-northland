@@ -257,7 +257,8 @@ describe('a colony sails', () => {
 });
 
 describe('a failed voyage', () => {
-  /** The seat's colony back home after `failures` failed voyages, with `ship` claimed for the party or none. */
+  /** The seat's colony back home after `failures` failed voyages, with `ship` claimed for the party or
+   *  none. */
   function failedOnce(ship: 'claimed' | 'none', failures = 1) {
     const sim = colonyWorld();
     stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);

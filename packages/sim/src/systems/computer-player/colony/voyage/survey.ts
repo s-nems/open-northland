@@ -373,10 +373,10 @@ function storeFits(
 }
 
 /**
- * The best site `seat` may settle now, skipping the `rejected` zones and whatever `accepts` turns down: of the
- * `candidates` best, the first clear of every threat with room for a store, or a block of its land ranked alike
- * with more room for homes. Null when none is. Costs the believed buildings and, per clear candidate, up to a
- * block of placement probes.
+ * The best site `seat` may settle now, skipping the `rejected` zones and whatever `accepts` turns down: of
+ * the `candidates` best, the first clear of every threat with room for a store, or a block of its land ranked
+ * alike with more room for homes. Null when none is. Costs the believed buildings and, per clear candidate,
+ * up to a block of placement probes.
  */
 export function surveyColonySite(
   world: World,

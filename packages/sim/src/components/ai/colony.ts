@@ -133,7 +133,8 @@ export interface ComputerColonyState {
 }
 
 /** A computer seat's colonies over the sea, held on its {@link AiControl} carrier: absent until a site is
- *  chosen, and dropped when the colony controller stops. What it says about who and what is colony is read from it on demand, so a restored game agrees. */
+ *  chosen, and dropped when the colony controller stops. What it says about who and what is colony is read
+ *  from it on demand, so a restored game agrees. */
 export const ComputerColony = defineComponent<ComputerColonyState>('ComputerColony', 'players', {
   simOnly: true,
 });

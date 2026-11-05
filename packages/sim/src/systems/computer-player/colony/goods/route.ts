@@ -145,7 +145,8 @@ function claimShip(env: ColonyEnv, colony: ColonyView, slot: RouteSlot): void {
   if (ship !== null) takeRouteShip(env, ship, slot);
 }
 
-/** Bring an unpinned ship home: riders off where it lies at home, else a helm aboard sails it to the berth. */
+/** Bring an unpinned ship home: riders off where it lies at home, else a helm aboard sails it to the
+ *  berth. */
 function shipHome(env: ColonyEnv, colony: ColonyView, ship: Entity): PlayerCommand[] {
   const { world } = env;
   const state = world.get(ship, Vehicle);
@@ -407,7 +408,8 @@ function cartOrder(env: ColonyEnv, trader: Entity, ship: Entity): PlayerCommand[
   return best === null ? [] : [{ kind: 'attachToVehicle', entity: trader, vehicle: best.e }];
 }
 
-/** The houses `slot`'s trader already plies between, then the first route's: a relief takes the same stops. */
+/** The houses `slot`'s trader already plies between, then the first route's: a relief takes the same
+ *  stops. */
 function heldStops(env: ColonyEnv, slot: RouteSlot, trader: Entity): Entity[] {
   const { world, colony } = env;
   const own = (world.tryGet(trader, TradeRoute)?.stops ?? []).map((s) => s.house);

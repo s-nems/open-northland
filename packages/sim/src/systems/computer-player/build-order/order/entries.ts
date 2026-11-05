@@ -5,9 +5,9 @@ import type { JoineryRole } from '../../joinery-role.js';
  *  each kind to a node. `resource` is the good's nearest live deposit, or the seat's store holding the
  *  most of the good once none stands. `front` is the settlement's own edge toward the nearest enemy seat,
  *  its headquarters before any other building, and toward the map centre while no enemy has a building
- *  standing; the base itself while enemies surround the seat (`../ground/front.ts`). `shore` is the nearest water beside the seat's land a ship can sail, a body that also
- *  touches the enemy's continent first; unlike the others it is a hard rule, the spot landing close
- *  enough to that water for the workshop's ship yard. */
+ *  standing; the base itself while enemies surround the seat (`../ground/front.ts`). `shore` is the nearest
+ *  water beside the seat's land a ship can sail, a body that also touches the enemy's continent first; unlike
+ *  the others it is a hard rule, the spot landing close enough to that water for the workshop's ship yard. */
 export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
   | { readonly kind: 'resource'; readonly good: string }
@@ -29,7 +29,8 @@ export type PlacementAffinity =
  * - `deadline`: the clock reaches `leadTicks` before the seat's military deadline
  *   (`../../military/deadline.ts`), lifted at once while its defence comes first;
  * - `tick`: the clock reaches `tick`;
- * - `filledGround`: the seat's land is built up and its store spares a lower tower (`../towers/filled-towers.ts`);
+ * - `filledGround`: the seat's land is built up and its store spares a lower tower
+ *   (`../towers/filled-towers.ts`);
  * - `all` / `any`: every one, or any one, of `holds`.
  * A hold the seat can never meet (a building or good missing from the content, a discovery it can never
  * make, a building or the good's maker no unskipped step raises) lets the step act; within `all` only that
@@ -66,20 +67,20 @@ export type BuildOrderEntry =
    *  `radius` world-metric nodes, or while the seat has none of those; a `near` affinity on the same id
    *  then pulls the spot toward the first one lacking. `onlyWhen: 'needsShips'` skips the entry while
    *  the seat needs no ships, its rival reached by land and no colony kept (`../../sea-route.ts`),
-   *  `'grassScarce'` while the seat has grass enough (`../ground/grass-reserve.ts`), `'livestock'` while the seat
-   *  keeps no pair of either species (`../../herd.ts`). An entry of a grass building with no grass left
+   *  `'grassScarce'` while the seat has grass enough (`../ground/grass-reserve.ts`), `'livestock'` while the
+   *  seat keeps no pair of either species (`../../herd.ts`). An entry of a grass building with no grass left
    *  for it is passed over unless `essential`, which holds its line until it stands. `belowTier` stops the
-   *  count below that tier of the chain, so buildings placed straight at it never meet the entry. `role` counts only the
-   *  joineries of the counted tiers holding that role (`../../joinery-role.ts`). `holdUntil` holds the line on the unmet entry,
-   *  acting on nothing, until its {@link StepHold} is met. `aheadOfCrews` places the copy without waiting
-   *  for the crews of those standing (`../steps/holds.ts`). `room` names the buildings that later stand
-   *  beside this one: the spot is scored by the free ground around it against their footprints
-   *  (`../ground/placement.ts`). `amongHomes` searches as a home does, on the far side of the base from the field
-   *  farms. `core` gives the step an earned workshop's turn while no food turn waits (`../turns.ts`).
-   *  `firstRank` keeps the turn of a first new kind, or the earned one, beside a rising site of its own
-   *  line and when the seat owns a building of its kind, so it goes up with the bread chain's first
-   *  buildings. `atUnlock` places the entry the moment its building unlocks, over the site pace and ahead
-   *  of the lanes and the other lines, unless the seat is attacked (`../turns.ts`).
+   *  count below that tier of the chain, so buildings placed straight at it never meet the entry. `role`
+   *  counts only the joineries of the counted tiers holding that role (`../../joinery-role.ts`). `holdUntil`
+   *  holds the line on the unmet entry, acting on nothing, until its {@link StepHold} is met. `aheadOfCrews`
+   *  places the copy without waiting for the crews of those standing (`../steps/holds.ts`). `room` names the
+   *  buildings that later stand beside this one: the spot is scored by the free ground around it against
+   *  their footprints (`../ground/placement.ts`). `amongHomes` searches as a home does, on the far side of
+   *  the base from the field farms. `core` gives the step an earned workshop's turn while no food turn waits
+   *  (`../turns.ts`). `firstRank` keeps the turn of a first new kind, or the earned one, beside a rising site
+   *  of its own line and when the seat owns a building of its kind, so it goes up with the bread chain's
+   *  first buildings. `atUnlock` places the entry the moment its building unlocks, over the site pace and
+   *  ahead of the lanes and the other lines, unless the seat is attacked (`../turns.ts`).
    *  `lockPasses` passes over the entry while its building's tier is locked instead of holding its line.
    *  `yieldsRoom` passes over an entry whose search finds no spot, a copy on a seat short of ground. */
   | {
@@ -132,13 +133,14 @@ export type BuildOrderEntry =
       readonly holdUntil?: StepHold;
       readonly stockedAt?: number;
     }
-  /** Keep the seat's defence at the `defence` wants (default `OPENING_DEFENCE`, `../towers/tower-defence.ts`): a
-   *  tower wherever the defence circles leave a building or the front short. Unlike the counted entries it
-   *  re-arms whenever a later building lands short, so the tower count is dynamic. A `lane` entry runs beside the lines once
-   *  every counted step before it in its line stands met, and the game clock reaches `fromTick`: it holds
-   *  one site of its building at a time, taken out of the clock's site count, never stalls the steps
-   *  behind it, and they never wait on it. `holdUntil` holds a line's ring as a placement's. `lowerTier`
-   *  raises only `building`'s own tier and lifts no standing tower. */
+  /** Keep the seat's defence at the `defence` wants (default `OPENING_DEFENCE`,
+   *  `../towers/tower-defence.ts`): a tower wherever the defence circles leave a building or the front short.
+   *  Unlike the counted entries it re-arms whenever a later building lands short, so the tower count is
+   *  dynamic. A `lane` entry runs beside the lines once every counted step before it in its line stands met,
+   *  and the game clock reaches `fromTick`: it holds one site of its building at a time, taken out of the
+   *  clock's site count, never stalls the steps behind it, and they never wait on it. `holdUntil` holds a
+   *  line's ring as a placement's. `lowerTier` raises only `building`'s own tier and lifts no standing
+   *  tower. */
   | {
       readonly kind: 'towerCoverage';
       readonly building: string;

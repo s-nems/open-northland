@@ -19,9 +19,9 @@ export interface OpenLane {
 }
 
 /** The lanes the lines have reached, in line priority and step order: every step before each in its line
- *  but the gatherer steps stands met or passed over, and the clock has reached the lane's `fromTick`; a housing lane also opens
- *  ahead of that while `housingEarly` holds. A lane's sites are the open sites of its building or a tier
- *  above it, whichever step placed them. */
+ *  but the gatherer steps stands met or passed over, and the clock has reached the lane's `fromTick`; a
+ *  housing lane also opens ahead of that while `housingEarly` holds. A lane's sites are the open sites of its
+ *  building or a tier above it, whichever step placed them. */
 export function openLanes(
   world: World,
   ctx: SystemContext,

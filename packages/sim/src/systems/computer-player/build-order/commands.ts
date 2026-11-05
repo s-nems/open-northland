@@ -27,9 +27,9 @@ import { towerPlan, towerSpot, towerToUpgrade } from './towers/tower-defence.js'
  * What a line makes of an unmet step this decision. A serving placement with no room beside what it
  * serves, a grass building with no grass left for it, or a coverage step with no target it can cover, is
  * passed over: the workshop still runs, slower, and the goods still travel, only farther, while a stalled
- * line would not, and gatherers felling trees free no grass where the map has none. A passed-over step holds neither its line nor the lanes and moves neither
- * the frontier nor the stall record. Every other unmet step acts, carrying the placement its search found
- * when it is one of those kinds.
+ * line would not, and gatherers felling trees free no grass where the map has none. A passed-over step holds
+ * neither its line nor the lanes and moves neither the frontier nor the stall record. Every other unmet step
+ * acts, carrying the placement its search found when it is one of those kinds.
  */
 export type Verdict =
   | { readonly kind: 'pass' }
@@ -184,8 +184,8 @@ export function coverageCommand(
   return spot === null ? null : siteCommand(type, spot, tribe, player);
 }
 
-/** A short tower ring's next command (`./towers/tower-defence.ts`): the upgrade of a lower tower that lifts its
- *  defence, while the ring `lifts` towers and the seat may start one, else a new tower of `type` where it
+/** A short tower ring's next command (`./towers/tower-defence.ts`): the upgrade of a lower tower that lifts
+ *  its defence, while the ring `lifts` towers and the seat may start one, else a new tower of `type` where it
  *  lifts the lowest covered target most. */
 function towerCommand(
   world: World,

@@ -162,8 +162,8 @@ function herdingUpgradeLeft(
 
 /** The home sites the lane may hold beyond the clock's `siteCap` at `stage`: its pace's sites but the one
  *  that is the clock's own, and never more than the clock's sites but one, so a one-site difficulty keeps
- *  its single site and a two-site one at most doubles it (`../../difficulty.ts`). With `apart` every home site
- *  stands beyond the clock, never more than the clock's sites. */
+ *  its single site and a two-site one at most doubles it (`../../difficulty.ts`). With `apart` every home
+ *  site stands beyond the clock, never more than the clock's sites. */
 export function housingExtraSites(stage: HousingStage, siteCap: number, apart: boolean): number {
   const counted = apart ? 0 : 1;
   return Math.max(0, Math.min(HOUSING_PACE[stage].sites - counted, siteCap - counted));

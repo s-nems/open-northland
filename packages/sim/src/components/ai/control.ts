@@ -93,8 +93,8 @@ export function isScriptedEconomySeat(world: World, player: number): boolean {
 }
 
 /** The toggles a computer seat's colony needs, all of them: it raises houses, gathers and posts its own
- *  signposts. A colony is no `[AIData]` toggle of its own, or every game's hashed {@link ComputerModuleEnables}
- *  would move. */
+ *  signposts. A colony is no `[AIData]` toggle of its own, or every game's hashed
+ *  {@link ComputerModuleEnables} would move. */
 export const COLONY_MODULES: readonly ComputerModuleId[] = ['houseBuild', 'collectResources', 'guideBuild'];
 
 /** Whether the computer player may run `module`; both master and module permission are required. */

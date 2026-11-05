@@ -4,7 +4,8 @@ import type { BuildLine, BuildOrderEntry, DefenceWants, StepHold } from './entri
 
 /** The settled ring's wants once the seat's economy is safe (owner ruling: later in the game towers cover
  *  the whole settlement): every building under an upper tower's garrison (20 in content), the front under
- *  two upper towers or the headquarters and a lower one, double the opening ring's (`../towers/tower-defence.ts`). */
+ *  two upper towers or the headquarters and a lower one, double the opening ring's
+ *  (`../towers/tower-defence.ts`). */
 const SETTLED_DEFENCE: DefenceWants = { village: 20, front: 40 };
 
 /** When the seat's economy is safe for the denser ring (owner ruling: towers over the whole settlement
@@ -35,8 +36,9 @@ const GROUND_FILLED: StepHold = { kind: 'all', holds: [ECONOMY_SAFE, { kind: 'fi
 /** How many of the seat's towers stand at the upper tier (authored): owner ruling, every tower goes up to
  *  the upper tier over time, the cheap lower ones the filled ring puts into the gaps too; twelve is more than
  *  the rings and the gaps were seen to hold together. A tower the rings raised straight at the upper tier
- *  counts, and a step with no lower tower left is passed over (`../commands.ts`), so the upgrades lift only the
- *  lower towers: those of a seat whose attacks came early (`../supply/direct-tier.ts`) and the filled ring's. */
+ *  counts, and a step with no lower tower left is passed over (`../commands.ts`), so the upgrades lift only
+ *  the lower towers: those of a seat whose attacks came early (`../supply/direct-tier.ts`) and the filled
+ *  ring's. */
 const UPGRADED_TOWERS = 12;
 
 /** One upgrade step per tower, so each upgrade is its own site and the line's lookahead paces them. */
@@ -127,9 +129,9 @@ export const MILITARY_LINE: BuildLine = {
     ...SHIP_JOINERY_STEPS,
     // The ring runs as a lane, so no later step of the line ever waits on it. Owner ruling: a tower rises at
     // the upper tier once the seat may raise it, the cheap lower one only while that tier is locked or
-    // unsourced, or where the attacks come early (`../supply/direct-tier.ts`). Owner ruling: the barracks goes up
-    // before the ring, since it shoots like a tower and trains the army, so the ring waits for its site
-    // past its own lead; a seat whose defence comes first raises its towers at once, the barracks beside
+    // unsourced, or where the attacks come early (`../supply/direct-tier.ts`). Owner ruling: the barracks
+    // goes up before the ring, since it shoots like a tower and trains the army, so the ring waits for its
+    // site past its own lead; a seat whose defence comes first raises its towers at once, the barracks beside
     // them.
     {
       kind: 'towerCoverage',
@@ -144,8 +146,8 @@ export const MILITARY_LINE: BuildLine = {
       },
     },
     // On the settlement's edge toward the nearest enemy, where the attacks come from, or by the base while
-    // enemies surround the seat (`../ground/front.ts`); the barracks also holds the line in defence. Owner ruling:
-    // it opens at its own lead, the economy growing until then.
+    // enemies surround the seat (`../ground/front.ts`); the barracks also holds the line in defence. Owner
+    // ruling: it opens at its own lead, the economy growing until then.
     {
       kind: 'place',
       building: 'barracks',

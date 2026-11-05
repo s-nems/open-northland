@@ -82,7 +82,8 @@ export function routedWorld(content?: ContentSet): {
   return { sim, ship, scout };
 }
 
-/** {@link IDLE_MEN} idle builders landed on the running colony, the first wed to a woman landed beside them. */
+/** {@link IDLE_MEN} idle builders landed on the running colony, the first wed to a woman landed beside
+ *  them. */
 export function idleBuilders(sim: Simulation): {
   readonly idle: readonly Entity[];
   readonly husband: Entity;

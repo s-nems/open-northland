@@ -1138,8 +1138,8 @@ describe('build-order placement - affinity and ground rules', () => {
       ]),
     ).run(sim.world, { ...ctxOf(sim), content }, SEAT);
     if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement beside the iron');
-    // No gatherer works the iron, so the seat may cover it (`build-order/ground/deposit-keep.ts`); the acceptor's
-    // own rule below keeps every scarce deposit.
+    // No gatherer works the iron, so the seat may cover it (`build-order/ground/deposit-keep.ts`); the
+    // acceptor's own rule below keeps every scarce deposit.
     expect(Math.abs(spot.x - ironX) + Math.abs(spot.y - ironY)).toBeLessThanOrEqual(
       DEPOSIT_NEIGHBOURHOOD_NODES,
     );

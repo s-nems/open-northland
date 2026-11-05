@@ -274,9 +274,9 @@ export function seatStockOf(world: World, player: number): SeatStock {
   return SeatStockLedger.of(world).stock(player);
 }
 
-/** The units by good `player`'s {@link SeatStock} counts at its `buildings`: their piles, what they keep aside
- *  to upgrade, and every ground heap in their reach that `onLand` admits: a reach crosses a narrow strait, a
- *  walker does not. Costs the buildings and the heaps around them. */
+/** The units by good `player`'s {@link SeatStock} counts at its `buildings`: their piles, what they keep
+ *  aside to upgrade, and every ground heap in their reach that `onLand` admits: a reach crosses a narrow
+ *  strait, a walker does not. Costs the buildings and the heaps around them. */
 export function stockAtBuildings(
   world: World,
   player: number,

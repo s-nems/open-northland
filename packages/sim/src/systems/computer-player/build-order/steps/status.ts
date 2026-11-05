@@ -340,8 +340,9 @@ export function collectorGoodStocked(
  * gatherers a reached step asks for: a step is reached while every step before it in its line is
  * satisfied or skipped, a lane running beside the lines never holding it, as the executor holds a line on
  * its first unmet step, a locked one included. An unmet collector step whose `fromTick` lies ahead, or
- * whose hold holds it (`heldCollectors`), holds its line unreached. Reached state is re-derived each decision, so a regressing earlier step drops a later
- * collector and returns its holder to the pool until its line re-reaches the step.
+ * whose hold holds it (`heldCollectors`), holds its line unreached. Reached state is re-derived each
+ * decision, so a regressing earlier step drops a later collector and returns its holder to the pool until its
+ * line re-reaches the step.
  */
 export function collectorGoodsWanted(
   order: BuildOrder,

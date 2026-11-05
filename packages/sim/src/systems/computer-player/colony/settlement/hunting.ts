@@ -13,7 +13,8 @@ import { playerSeesNode } from '../../../vision/gates.js';
 import { huntWorkLeft } from '../../workforce/hunter.js';
 import type { ColonyEnv } from '../env.js';
 
-/** {@link herdInReach} by seat and store, read once per tick as the posts' reads ask it again. Never hashed. */
+/** {@link herdInReach} by seat and store, read once per tick as the posts' reads ask it again. Never
+ *  hashed. */
 const herdMemo = new WeakMap<World, Map<string, { readonly tick: number; readonly seen: boolean }>>();
 
 /** Whether a wild animal of a livestock species the seat sees stands within the chase of the hunters `store`

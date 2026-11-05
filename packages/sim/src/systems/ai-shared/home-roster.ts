@@ -109,7 +109,8 @@ function sameClaims(a: ColonyClaims, b: ColonyClaims): boolean {
 
 /** The land of the colony `e` is held by, or undefined for one of home's: a building by the land of its door,
  *  a person when listed (a garrison's fighter too), riding a held ship, or standing on that land and no
- *  fighter. A walker stands on its step's node ({@link moverNode}), never on the water a shore step passes. */
+ *  fighter. A walker stands on its step's node ({@link moverNode}), never on the water a shore step
+ *  passes. */
 function colonyLandOf(
   world: World,
   ctx: MapContext,
@@ -185,10 +186,10 @@ function sameParts(a: RosterParts, b: RosterParts): boolean {
 
 /** A seat's reader of `roster` parted between home and its colonies, null with no colony. Derived from saved
  *  state in one pass over the roster and kept while the roster, the riders, the trades and the seat's colony
- *  claims stand: a person changes land only through {@link Rider}, a trade written in place on {@link Settler}
- *  turns one on colony land fighter or not, and a colony write that moves no land, list or held ship (a
- *  route's load, a ferry's leg) leaves the split as it was. Never hashed; the verifier named `name`
- *  re-derives each held split whose key still stands. */
+ *  claims stand: a person changes land only through {@link Rider}, a trade written in place on
+ *  {@link Settler} turns one on colony land fighter or not, and a colony write that moves no land, list or
+ *  held ship (a route's load, a ferry's leg) leaves the split as it was. Never hashed; the verifier named
+ *  `name` re-derives each held split whose key still stands. */
 function rosterSplitOf(
   roster: (world: World, player: number) => readonly Entity[],
   name: string,

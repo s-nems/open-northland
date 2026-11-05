@@ -64,7 +64,8 @@ const NEARER_FAR_STORE = 27;
 const HOME_AT_RANGE = 1 + HOME_ERRAND_RANGE_NODES / 2;
 /** Half a bar spent: under the drive trigger, over the level a served need sits at, so only the at-home
  *  chain answers it. */
-/** A one-cell strait between a settler on cell 1 and its home on cell 5, well inside the home errand range. */
+/** A one-cell strait between a settler on cell 1 and its home on cell 5, well inside the home errand
+ *  range. */
 const STRAIT_CELL = 3;
 const HALF_SPENT: Fixed = fx.div(ONE, fx.fromInt(2));
 

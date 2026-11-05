@@ -299,7 +299,8 @@ function runBuildOrder(
 
   let housing: HousingGate | undefined;
   const housingGateOf = (): HousingGate => (housing ??= housingGate(world, ctx, player, owned));
-  // A placing paper the seat holds turns the site it would open into a finished building (`./steps/papers.ts`).
+  // A placing paper the seat holds turns the site it would open into a finished building
+  // (`./steps/papers.ts`).
   const papered = (command: PlayerCommand, entry: Parameters<typeof stepTiers>[1]): PlayerCommand =>
     command.kind === 'placeBuilding'
       ? paperedPlacement(world, ctx, terrain, player, order, command, stepTiers(ctx, entry))

@@ -218,10 +218,10 @@ export function footprintOnGrass(
  * the pull toward `anchor`, or null to stall the entry. The reach radius and the pull are the seat's
  * archetype's ({@link seatTuning}), `BUILD_SEARCH_MAX_RADIUS_NODES` and `HQ_PULL_DIVISOR_NODES` on the
  * standard one, and an archetype keeping to its own land bounds every search to the base's land
- * component. The ring budget is twice the reach radius, so a centre inside one building's disc reaches every node of that disc. An
- * `unlessWithin` entry's spot must lie within that radius of the building it serves, or a well would go
- * up that serves nothing, and a `shore` entry's close enough to its ship water for the ship yard.
- * A home with no affinity, and an `amongHomes` entry, searches from the far side of the base from the
+ * component. The ring budget is twice the reach radius, so a centre inside one building's disc reaches every
+ * node of that disc. An `unlessWithin` entry's spot must lie within that radius of the building it serves, or
+ * a well would go up that serves nothing, and a `shore` entry's close enough to its ship water for the ship
+ * yard. A home with no affinity, and an `amongHomes` entry, searches from the far side of the base from the
  * seat's field farms and takes a spot near one only when nothing else is left ({@link homeFarSide}); a
  * deposit-pulled spot pays {@link FARM_ROOM_RESOURCE_PENALTY_RINGS} beside a farm. A `room` entry's spot
  * pays for the free ground it lacks around it ({@link roomPenalty}).

@@ -391,7 +391,8 @@ export function nearestLiveResource(
 }
 
 /** Whether a standing not-yet-empty `goodType` resource that `workable` accepts lies within `nodes`
- *  Manhattan nodes of `from`: one search of the box round that diamond, however far the good stands past it. */
+ *  Manhattan nodes of `from`: one search of the box round that diamond, however far the good stands past
+ *  it. */
 export function liveResourceWithin(
   world: World,
   goodType: number,

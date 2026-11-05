@@ -40,9 +40,9 @@ export function colonySchool(env: ColonyEnv): Entity | null {
 
 /**
  * The school the colony raises, as a plan row, while it has none and its store stands (owner ruling: every
- * colony gets its own school, right after its warehouse). It teaches every workshop trade the seat has discovered in a lesson
- * of seconds, where a trade earned by work takes ten cycles and a ferried tradesman a voyage; its bill is
- * the opening's goods, and it seats no crew.
+ * colony gets its own school, right after its warehouse). It teaches every workshop trade the seat has
+ * discovered in a lesson of seconds, where a trade earned by work takes ten cycles and a ferried tradesman a
+ * voyage; its bill is the opening's goods, and it seats no crew.
  */
 export function schoolLacking(env: ColonyEnv, buildings: readonly Entity[]): string[] {
   const { world, ctx, seat } = env;

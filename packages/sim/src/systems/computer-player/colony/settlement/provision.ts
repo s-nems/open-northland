@@ -36,9 +36,9 @@ export function colonyFoodHeld(env: ColonyEnv, buildings: readonly Entity[]): nu
 }
 
 /** The mouths one food hand feeds (authored from arabskie_wyspy_wolna_gra_mieszana: six fishers and hunters
- *  brought 3.3 food a game minute and a mouth eats about 0.18, so three by the catch alone; at three no colony
- *  had the men for its mill and bakery, at six a third did and the seats' totals rose past no colony), and a
- *  hand at a kitchen, whose baker made 4.7. */
+ *  brought 3.3 food a game minute and a mouth eats about 0.18, so three by the catch alone; at three no
+ *  colony had the men for its mill and bakery, at six a third did and the seats' totals rose past no colony),
+ *  and a hand at a kitchen, whose baker made 4.7. */
 export const MOUTHS_PER_FOOD_HAND = 6;
 export const MOUTHS_PER_KITCHEN_HAND = 30;
 

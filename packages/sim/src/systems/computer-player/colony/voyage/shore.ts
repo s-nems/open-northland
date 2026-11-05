@@ -50,7 +50,8 @@ const SHORE_GOOD_POINTS = 60;
  *  weighs heavily): worth more than a good in reach, so a cramped cove loses to a roomy shore (authored). */
 const SHORE_HOME_POINTS = 100;
 
-/** The homes past which a shore's room gains nothing (authored): a colony's homes and its industries' room. */
+/** The homes past which a shore's room gains nothing (authored): a colony's homes and its industries'
+ *  room. */
 const SHORE_HOMES_FULL = 12;
 
 const SHORE_FISH_POINTS = 20;

@@ -70,7 +70,8 @@ export function colonySmallShips(world: World, ctx: SystemContext, seat: number)
 }
 
 /** The ships `seat`'s colonies hold off the home fleet, less the scout of a colony with no carrying ship yet
- *  that may carry its party (a trade ship where the tribe builds one): it fills the slot the colony is owed. */
+ *  that may carry its party (a trade ship where the tribe builds one): it fills the slot the colony is
+ *  owed. */
 export function colonyFleetShips(world: World, ctx: SystemContext, seat: number): readonly Entity[] {
   const trade = mayBuildTradeShip(world, ctx, seat);
   const vehicles = contentIndex(ctx.content).vehicles;

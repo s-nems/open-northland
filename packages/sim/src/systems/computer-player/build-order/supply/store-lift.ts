@@ -11,10 +11,10 @@ import { suppliedUpgrade } from './upgrade-supply.js';
 /**
  * Owner ruling: the computer player never leaves a warehouse below the top tier. A paper or a lost base can
  * still stand one lower, the tier the rules allowed then: the first such home warehouse is upgraded
- * straight to the highest tier the seat has enabled, once the store backs that bill ({@link suppliedUpgrade}),
- * one warehouse at a time, from the late game, when the warehouse lane opens: earlier the site and its stone
- * blocks and bricks go to the economy's first buildings. The seat's base stays as it is: closed while it
- * rose, the seat would have no hub.
+ * straight to the highest tier the seat has enabled, once the store backs that bill
+ * ({@link suppliedUpgrade}), one warehouse at a time, from the late game, when the warehouse lane opens:
+ * earlier the site and its stone blocks and bricks go to the economy's first buildings. The seat's base stays
+ * as it is: closed while it rose, the seat would have no hub.
  */
 export function homeStoreLift(
   world: World,

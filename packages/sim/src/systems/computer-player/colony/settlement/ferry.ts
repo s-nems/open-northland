@@ -135,7 +135,8 @@ function outward(
   const wanted = handsWanted(env, colony);
   const room = colonyMenRoom(env);
   // Women sail for the colony's free home slots past the men's share, a wife with her husband: the share
-  // keeps home's hands, a married man is the last home drafts, and a roomy colony grows people (owner ruling).
+  // keeps home's hands, a married man is the last home drafts, and a roomy colony grows people (owner
+  // ruling).
   const lacking = { men: Math.min(wanted.men - men, room), women: wanted.women - women };
   const trades = tradesmenFor(env, people, home, seats);
   const tradesmen = [...trades.sailing];
@@ -265,10 +266,10 @@ function forgetLapsedDangers(env: ColonyEnv, colony: ColonyView): void {
 /**
  * What a colony's ferry does this decision. Boarding, it sails once every rider is aboard, or past
  * {@link FERRY_BOARD_TICKS} without the late ones, and is let go with nobody aboard. Sailing, it docks at the
- * colony's shore or home's berth, another shore of that land when refused, round known fire; late it is let go
- * where it lies moored, or turned back once every shore has refused it ({@link turnBack}), and lost at sea it
- * is let go. At the colony it lands its riders and takes the homeward men; at home everyone steps off and the
- * ship is free.
+ * colony's shore or home's berth, another shore of that land when refused, round known fire; late it is let
+ * go where it lies moored, or turned back once every shore has refused it ({@link turnBack}), and lost at sea
+ * it is let go. At the colony it lands its riders and takes the homeward men; at home everyone steps off and
+ * the ship is free.
  */
 export function runFerry(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx, seat } = env;
@@ -317,10 +318,10 @@ export function runFerry(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   return sailOrders(env, colony, ship, next);
 }
 
-/** Who the ferry owes the colony from home: the spare men of the trades no colonist among `people` has earned,
- *  in at most `seats`, and the lessons that make the next such man where home's school teaches the trade;
- *  none once the colony's own school stands. A workshop none of them reaches simply waits: home's line has
- *  moved on. */
+/** Who the ferry owes the colony from home: the spare men of the trades no colonist among `people` has
+ *  earned, in at most `seats`, and the lessons that make the next such man where home's school teaches the
+ *  trade; none once the colony's own school stands. A workshop none of them reaches simply waits: home's line
+ *  has moved on. */
 function tradesmenFor(
   env: ColonyEnv,
   people: readonly Entity[],

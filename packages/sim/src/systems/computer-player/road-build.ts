@@ -98,7 +98,8 @@ export interface RoadBuildPlan {
   readonly commands: PlayerCommand[];
 }
 
-/** A settlement the seat paves on its own: its hub, the land it stands on and the built buildings it links. */
+/** A settlement the seat paves on its own: its hub, the land it stands on and the built buildings it
+ *  links. */
 interface RoadHub {
   readonly hub: Entity;
   readonly land: number;

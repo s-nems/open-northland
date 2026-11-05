@@ -125,8 +125,8 @@ const SHIP_JOINERY_FIRST: StepHold = {
 };
 
 /** The tuning per archetype. A rich seat (room, iron and gold to spare) opens one site more and plays the
- *  rich steps (`./default-order.ts`) with every home of the housing lane; an island seat raises its ship joinery
- *  first and its army line right after the opening, and builds on its own land only. Authored. */
+ *  rich steps (`./default-order.ts`) with every home of the housing lane; an island seat raises its ship
+ *  joinery first and its army line right after the opening, and builds on its own land only. Authored. */
 export const ARCHETYPE_TUNING: Readonly<Record<EconomicArchetype, ArchetypeTuning>> = {
   standard: STANDARD,
   cramped: CRAMPED,
@@ -219,9 +219,9 @@ const NO_ROOM_COPY_CAPS: Readonly<Record<string, number>> = {
 
 /** What each side changes (authored): the steps it drops, the steps only the sides keeping them play, and
  *  copy caps under the archetype's. `fishing` changes the workforce (`workforce/fisher.ts`); `herbs` keeps
- *  the grass reserve rules as they are (`../ground/grass-reserve.ts`). Owner ruling: a seat with little iron forges
- *  weapons in two upper smithies and a seat with little gold strikes coins in one mint. `tightGround` lifts
- *  every step's `belowTier`, so a top-tier joinery meets the tools line, and lets a copy with no room
+ *  the grass reserve rules as they are (`../ground/grass-reserve.ts`). Owner ruling: a seat with little iron
+ *  forges weapons in two upper smithies and a seat with little gold strikes coins in one mint. `tightGround`
+ *  lifts every step's `belowTier`, so a top-tier joinery meets the tools line, and lets a copy with no room
  *  pass ({@link BuildOrderEntry} `yieldsRoom`). */
 interface SideRule {
   readonly drops?: StepMatch;
