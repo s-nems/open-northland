@@ -1,6 +1,13 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Female, JobAssignment, Marriage } from '../../../../src/components/index.js';
+import {
+  aiControlEntity,
+  Building,
+  ComputerColony,
+  Female,
+  JobAssignment,
+  Marriage,
+} from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../src/index.js';
 import { everySettlerOf } from '../../../../src/systems/ai-shared/home-roster.js';
@@ -9,10 +16,19 @@ import {
   PARTY_FROM_CIVILIANS,
   partyFor,
   pickParty,
+  spareMen,
+  sparePartyMen,
   topUpParty,
 } from '../../../../src/systems/computer-player/colony/party.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
-import { colonyContent, colonyWorld, FOOD, mooredShip, stepUntil } from '../../../fixtures/colony-islands.js';
+import {
+  blankColony,
+  colonyContent,
+  colonyWorld,
+  FOOD,
+  mooredShip,
+  stepUntil,
+} from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
 import { FARM_TYPE, HQ_TYPE, SEAT, VIKING } from '../support.js';
 
@@ -28,6 +44,8 @@ const SHIP_SEATS = 15;
 const TWO_SEATS = 2;
 const FARM_AT = { x: 40, y: 100 };
 const SEED = 7;
+/** A half-cell column on the island east of the strait. */
+const EAST_SHORE_NODE_X = 200;
 
 /** A seat whose every wife is wed, with each husband posted to `type`'s workplace. */
 function postedHusbands(type: number): { readonly sim: Simulation; readonly land: number } {
@@ -125,5 +143,29 @@ describe('a colony party', () => {
     const ship = mooredShip(sim);
     const orders = boardOrders(sim.world, party, ship);
     expect(orders.filter((c) => c.kind === 'attachToVehicle')).toHaveLength(party.length);
+  });
+});
+
+describe("a colony's spare men", () => {
+  it('leave out a jobless man a route has chosen as its trader, until the route lets him go', () => {
+    const sim = colonyWorld();
+    const ctx = ctxOf(sim);
+    const land = ctx.terrain?.componentOf(ctx.terrain.nodeAtClamped(60, 60)) ?? -1;
+    const across = ctx.terrain?.componentOf(ctx.terrain.nodeAtClamped(EAST_SHORE_NODE_X, 60)) ?? -1;
+    const carrier = aiControlEntity(sim.world, SEAT);
+    const trader = sparePartyMen(sim.world, ctx, SEAT, land).find((e) => !sim.world.has(e, JobAssignment));
+    if (carrier === null || trader === undefined) throw new Error('setup: no AI seat or jobless spare man');
+    const route = { trader, chosen: sim.tick, ship: null, hull: 0, load: 0, behindSince: null };
+    sim.world.add(carrier, ComputerColony, {
+      colonies: [blankColony(across, { route })],
+      rejected: [],
+      retryAt: 0,
+    });
+    expect(spareMen(sim.world, ctx, SEAT)).not.toContain(trader);
+    expect(sparePartyMen(sim.world, ctx, SEAT, land)).not.toContain(trader);
+    const held = sim.world.mut(carrier, ComputerColony).colonies[0]?.route;
+    if (held === null || held === undefined) throw new Error('setup: no route');
+    held.trader = null;
+    expect(sparePartyMen(sim.world, ctx, SEAT, land)).toContain(trader);
   });
 });

@@ -2,7 +2,7 @@ import { Building, BuildMode, Female, JobAssignment, Marriage, Settler } from '.
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
+import { homeBuildings, homeSettlers, seatColonies } from '../../ai-shared/home-roster.js';
 import { onErrand } from '../../ai-shared/military/errand.js';
 import {
   builderJobOf,
@@ -37,7 +37,7 @@ function apprenticesOf(world: World, ctx: SystemContext, seat: number): Readonly
 
 /** The men of `seat` a colony may take, in the order it takes them: no post, flag or trade first, then
  *  builders, then gatherers, unwed first within each, then ascending id. A man at a workplace, a scout, a
- *  fisher, an apprentice and a man on an errand stay. */
+ *  fisher, an apprentice, a man on an errand and one a route has chosen as its trader stay. */
 export function spareMen(
   world: World,
   ctx: SystemContext,
@@ -50,11 +50,25 @@ export function spareMen(
     const tier = liveWorkFlag(world, e) !== undefined ? 2 : world.get(e, Settler).jobType === builder ? 1 : 0;
     return 2 * tier + (mayMarry(world, ctx.content, e) ? 0 : 1);
   };
+  const traders = routeTraders(world, seat);
   return pool
-    .filter((e) => !apprentices.has(e) && !onErrand(world, e) && !world.has(e, BuildMode))
+    .filter((e) => !apprentices.has(e) && !onErrand(world, e) && !world.has(e, BuildMode) && !traders.has(e))
     .map((e) => ({ e, rank: rank(e) }))
     .sort((a, b) => a.rank - b.rank || a.e - b.e)
     .map((m) => m.e);
+}
+
+/** The men `seat`'s colony routes hold or have chosen as their traders: one still taking up the trade is
+ *  spare by his job alone, and a ferry taking him strands the route. */
+function routeTraders(world: World, seat: number): ReadonlySet<Entity> {
+  const traders = new Set<Entity>();
+  for (const colony of seatColonies(world, seat)) {
+    for (const route of [colony.route, colony.relief]) {
+      const trader = route?.trader ?? null;
+      if (trader !== null) traders.add(trader);
+    }
+  }
+  return traders;
 }
 
 // A colony's party, authored from the survey of arabskie_wyspy_wolna_gra_mieszana's seats.
