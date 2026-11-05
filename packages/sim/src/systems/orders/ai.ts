@@ -72,7 +72,6 @@ function applyAiControl(
   const carrier = aiControlEntity(world, command.player);
   if (!command.enabled) {
     if (carrier === null) return []; // never AI-driven: nothing standing to withdraw
-    const released = releaseColonies(world, ctx, command.player);
     disbandMilitia(world, ctx, command.player);
     withdrawAiOrders(world, ctx, command.player, () => true);
     retireComputerCampaign(world, command.player);
@@ -84,7 +83,8 @@ function applyAiControl(
     setAssistantSwitch(world, AssistantUpgradesTools, command.player, false);
     revokeAssistantGrants(world, command.player, settlementGrantGoods(ctx));
     standDownAlarms(world, command.player);
-    return released;
+    // Whoever takes the seat over inherits the colonies' routes as they stand.
+    return [];
   }
   const modules = computerModuleEnables(command.modules);
   const mapAiEnabled = command.mapAiEnabled ?? true;

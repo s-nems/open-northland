@@ -493,6 +493,16 @@ describe('a colony toggle turned off', () => {
     stepUntil(sim, AFTER_SAVE_TICKS, () => false);
     expect(colonyState(sim)).toBeUndefined();
   });
+
+  it('leaves the routes standing for whoever takes the seat when the whole AI turns off', () => {
+    const { sim, ship } = routedWorld();
+    const trader = standingTrader(sim);
+    sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: false });
+    sim.step();
+    expect(aiControlEntity(sim.world, SEAT)).toBeNull();
+    expect(sim.world.tryGet(trader, TradeShip)?.vehicle).toBe(ship);
+    expect(isTraderJob(sim.content, sim.world.get(trader, Settler).jobType)).toBe(true);
+  });
 });
 
 describe('a route under fire', () => {
