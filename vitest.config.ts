@@ -10,9 +10,10 @@ try {
 
 /** Bounded so several worktrees running suites at once do not oversubscribe one machine. */
 const MAX_WORKERS = 4;
-/** A hang guard only: a loaded four-core runner stretches a 6 s file past the 5 s default. */
+/** A hang guard only: a loaded four-core runner stretches a 6 s file past the 5 s default. Hooks that
+ *  build a shared scenario get the same guard. */
 const TEST_TIMEOUT_MS = 120_000;
-const SHARED = { isolate: false, testTimeout: TEST_TIMEOUT_MS };
+const SHARED = { isolate: false, testTimeout: TEST_TIMEOUT_MS, hookTimeout: TEST_TIMEOUT_MS };
 
 const APP_SETUP_FILES = [
   './packages/app/test/support/silence-diag.ts',
