@@ -195,6 +195,41 @@ function scriptTintOps(host: Pick<SessionHost, 'missions'>): ScriptedCycleProbe[
     );
 }
 
+/** Whether a map's scripts write a weather, whose whole-map tints then darken with it. */
+function scriptsSetWeather(host: Pick<SessionHost, 'missions'>): boolean {
+  return (host.missions?.missions ?? []).some((mission) =>
+    mission.results.some((op) => op.opcode === 'SetWeather'),
+  );
+}
+
+/** The light a map's whole-map tint writes give the scene: their own day and night cycle, a weather's
+ *  darkening, or a fixed tint. */
+type ScriptLight = 'cycle' | 'weather' | 'fixed';
+
+function scriptLightOf(
+  tintOps: readonly ScriptedCycleProbe[],
+  setsWeather: boolean,
+  palette: readonly number[],
+): ScriptLight {
+  const cycles = scriptsDayNightCycle(tintOps, (index) => {
+    const color = palette[index];
+    return color === undefined ? null : channels(color);
+  });
+  if (cycles) return 'cycle';
+  return setsWeather && scriptsWeatherTints(tintOps, palette) ? 'weather' : 'fixed';
+}
+
+/** Whether the match's rule or the player's settings hold a script's light at daylight: its own cycle
+ *  under a match without day and night or with the setting off, its weather with weather not shown. */
+function heldAtDaylight(
+  light: ScriptLight,
+  dayNight: DayNightMode,
+  cycleShown: boolean,
+  weatherShown: boolean,
+): boolean {
+  return (light === 'cycle' && (dayNight === 'off' || !cycleShown)) || (light === 'weather' && !weatherShown);
+}
+
 /** The palette indices the scene's tint can take, neutral left out: the pinned one alone, or the map's
  *  dominant one and every index its scripts write, since a local write may grow to cover the map. */
 function sceneTintCandidates(
@@ -210,23 +245,19 @@ function sceneTintCandidates(
   return [...indices];
 }
 
-/** Whether one of `candidates` lights the night lamps, unless the match turned off the script's own
- *  day and night, which holds the scene at daylight. */
+/** Whether one of `candidates` lights the night lamps, unless the scene is held at daylight. The day
+ *  and night setting is on here, and weather counts as shown, since it may be turned on mid-game. */
 function sceneTintReachesNight(
   candidates: readonly number[],
-  tintOps: readonly ScriptedCycleProbe[],
+  light: ScriptLight,
   pinnedIndex: number | null,
   dayNight: DayNightMode,
   palette: readonly number[],
 ): boolean {
-  const gradeOf = (index: number): LightGrade | null => {
-    const color = palette[index];
-    return color === undefined ? null : channels(color);
-  };
-  if (pinnedIndex === null && dayNight === 'off' && scriptsDayNightCycle(tintOps, gradeOf)) return false;
+  if (pinnedIndex === null && heldAtDaylight(light, dayNight, true, true)) return false;
   return candidates.some((index) => {
-    const grade = gradeOf(index);
-    return grade !== null && nightLevel(grade) > 0;
+    const color = palette[index];
+    return color !== undefined && nightLevel(channels(color)) > 0;
   });
 }
 
@@ -253,7 +284,9 @@ export async function worldCanShowNight(
     const candidates = sceneTintCandidates((await host.landscapeEdits()).tints, tintOps, pinnedIndex);
     if (candidates.length === 0) return false;
     const palette = await loadVertexPalette();
-    return palette !== null && sceneTintReachesNight(candidates, tintOps, pinnedIndex, dayNight, palette);
+    if (palette === null) return false;
+    const light = scriptLightOf(tintOps, scriptsSetWeather(host), palette);
+    return sceneTintReachesNight(candidates, light, pinnedIndex, dayNight, palette);
   } catch (err) {
     // Answered as no night: the first night then compiles its programs, as without the answer.
     diag.warn('boot', 'could not tell whether the world shows a night', err);
@@ -272,20 +305,12 @@ export async function mountScriptTints(
     tick = 0,
   }: ScriptTintOptions = {},
 ): Promise<ScriptTints> {
-  const results = (host.missions?.missions ?? []).flatMap((mission) => mission.results);
   const tintOps = scriptTintOps(host);
   const scripted = tintOps.length > 0;
-  const setsWeather = results.some((op) => op.opcode === 'SetWeather');
-  let light: 'cycle' | 'weather' | 'fixed' | null = null;
-  const scriptLight = (palette: readonly number[]): 'cycle' | 'weather' | 'fixed' => {
-    light ??= scriptsDayNightCycle(tintOps, (index) => {
-      const color = palette[index];
-      return color === undefined ? null : channels(color);
-    })
-      ? 'cycle'
-      : setsWeather && scriptsWeatherTints(tintOps, palette)
-        ? 'weather'
-        : 'fixed';
+  const setsWeather = scriptsSetWeather(host);
+  let light: ScriptLight | null = null;
+  const scriptLight = (palette: readonly number[]): ScriptLight => {
+    light ??= scriptLightOf(tintOps, setsWeather, palette);
     return light;
   };
   let cycleShown = dayNightShown;
@@ -320,8 +345,7 @@ export async function mountScriptTints(
       untinted = palette === null;
       if (palette === null || request !== asked || disposed) return;
       const lit = scriptLight(palette);
-      const held =
-        (lit === 'cycle' && (dayNight === 'off' || !cycleShown)) || (lit === 'weather' && !weatherOn);
+      const held = heldAtDaylight(lit, dayNight, cycleShown, weatherOn);
       const cycleColor =
         ownCycle && cycleShown && pinnedIndex === null && lit !== 'cycle' ? palette[step.index] : undefined;
       const split = splitScriptTints(
