@@ -19,8 +19,9 @@ import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import { firstRingNode } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../../footprint/geometry.js';
+import { seatBaseLand } from '../base.js';
 import { HOUSING_HOMES_CAP, overflowBuildReachNodes, STALLED_PLACEMENT_RETRY_DECISIONS } from './entries.js';
-import { baseComponent, buildReach } from './placement.js';
+import { buildReach } from './placement.js';
 import { seatSpotAcceptor } from './plots.js';
 import { seatHasSide, seatTuning } from './seat-order.js';
 
@@ -107,7 +108,7 @@ export function freeHomeZones(
     anchor,
     fan,
   );
-  const land = baseComponent(world, ctx, terrain, player);
+  const land = seatBaseLand(world, ctx, terrain, player);
   const taken = new Set<NodeId>();
   let fits = 0;
   // The walk never stops on a node: each fit is recorded and the walk goes on, so one pass counts them all.

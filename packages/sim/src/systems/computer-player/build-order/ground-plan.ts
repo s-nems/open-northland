@@ -17,6 +17,7 @@ import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf } from '../../footprint/geometry.js';
 import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js';
 import { placementProbe } from '../../footprint/placement/building.js';
+import { seatBaseLand } from '../base.js';
 import { minutesToTicks } from '../game-phase.js';
 import { clearingPatch } from '../workforce/collectors/clearing-aim.js';
 import {
@@ -25,7 +26,7 @@ import {
   overflowBuildReachNodes,
   STALLED_PLACEMENT_RETRY_DECISIONS,
 } from './entries.js';
-import { baseComponent, buildReach, placementPassesOver, placementSpot } from './placement.js';
+import { buildReach, placementPassesOver, placementSpot } from './placement.js';
 import { plottedNodes, seatSpotAcceptor } from './plots.js';
 import { type LineStatuses, upgradesInto } from './progress.js';
 import { FIT_PER_HOME, freeHomeZones, ROOM_HOME_BUILDING } from './room.js';
@@ -245,7 +246,7 @@ function packedOn(seat: Seat, type: BuildingType, spareGrass: boolean): HalfCell
   const { world, ctx, terrain, player, owned, anchor, tribe, decision } = seat;
   const fan = overflowBuildReachNodes(seatTuning(world, player).reachNodes);
   const reach = buildReach(world, owned, anchor, fan);
-  const land = baseComponent(world, ctx, terrain, player);
+  const land = seatBaseLand(world, ctx, terrain, player);
   const accept = seatSpotAcceptor(world, ctx, terrain, player, type.typeId, tribe).around(
     decision.underFire(),
     anchor,

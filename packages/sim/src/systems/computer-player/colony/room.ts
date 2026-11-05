@@ -6,10 +6,8 @@ import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf } from '../../footprint/geometry.js';
 import { placementProbe } from '../../footprint/placement/building.js';
+import { ROOM_HOME_BUILDING } from '../build-order/room.js';
 
-/** The home chain's base tier. Its reserved zone already spans the top tier's body, so a colony's room is
- *  counted in these whatever tier it raises. */
-const COLONY_HOME_ID = 'home_level_00';
 /** The step between the anchors tried, in half-cell nodes on each axis (authored, a cost trade): a home's
  *  reserved zone spans several nodes, so the even lattice still packs the room's homes, at a quarter of the
  *  probes. */
@@ -31,7 +29,9 @@ export function homesFitNear(
   radius: number,
   cap: number,
 ): number {
-  const home = buildingTypeByContentId(ctx.content, COLONY_HOME_ID);
+  // The base tier's reserved zone already spans the top tier's body, so a colony's room is counted in these
+  // whatever tier it raises.
+  const home = buildingTypeByContentId(ctx.content, ROOM_HOME_BUILDING);
   const footprint = home === undefined ? undefined : buildingFootprintOf(ctx.content, home.typeId, tribe);
   if (home === undefined || footprint === undefined) return 0;
   const probe = placementProbe(world, ctx.content, terrain, home.typeId, tribe);

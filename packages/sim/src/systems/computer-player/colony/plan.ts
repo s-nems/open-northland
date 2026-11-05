@@ -13,6 +13,7 @@ import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { mayMarry } from '../../family/eligibility.js';
 import { familiesOf } from '../../family/households.js';
+import { ROOM_HOME_BUILDING } from '../build-order/room.js';
 import { topEnabledTier } from '../top-tier.js';
 import { colonists } from './founding.js';
 import { type ChainStep, chainStepOf, nextIndustrySteps, type StepGround } from './industry.js';
@@ -57,8 +58,6 @@ export function siteFree(building: string, open: OpenSites): boolean {
     : open.industry < COLONY_INDUSTRY_SITES;
 }
 
-/** The home chain's base tier: a colony raises its homes at the top tier enabled ({@link topEnabledTier}). */
-const HOME_ID = 'home_level_00';
 /** What a colony's next home waits for. */
 export interface HomesRead {
   /** The families with no home there: wives, and the brides its grooms can marry. */
@@ -129,7 +128,7 @@ export function homeSlots(
 /** The home the colony raises next, if one is due ({@link homeStepDue}). */
 function homeStep(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity[]): string[] {
   const { world, ctx, seat } = env;
-  const base = buildingTypeByContentId(ctx.content, HOME_ID);
+  const base = buildingTypeByContentId(ctx.content, ROOM_HOME_BUILDING);
   const tribe = playerPlacementTribes(world, seat)?.[0];
   if (base === undefined || tribe === undefined) return [];
   // Owner ruling: a colony home goes to the top level at once, since the trader brings its materials.

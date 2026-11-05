@@ -12,6 +12,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { colonyLands, colonySettlersOn, homeSettlers } from '../../ai-shared/home-roster.js';
+import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { builderJobOf } from '../../ai-shared/workforce/pool.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
@@ -19,7 +20,6 @@ import { passengerJobAllowed } from '../../vehicles/crew.js';
 import { type Share, shareOf } from '../difficulty.js';
 import { minutesToTicks } from '../game-phase.js';
 import { freeShips, LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../military/operations/landing.js';
-import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { strandedShip } from '../sea-route.js';
 import { colonists } from './founding.js';
 import { garrisonOwed } from './garrison.js';
@@ -63,7 +63,7 @@ export function sailOrders(
   ship: Entity,
   to: DeepReadonly<HalfCellNode>,
 ): PlayerCommand[] {
-  const from = nodeOfEntity(env.world, ship);
+  const from = anchorNodeOf(env.world, ship);
   const way = from === null ? null : clearWay(env.terrain, colony.dangers, from, to);
   if (way === null || way.via === null) return [dock(ship, to)];
   const { hx: x, hy: y } = way.via;
@@ -269,7 +269,7 @@ function noteHull(env: ColonyEnv, colony: ColonyView, ferry: FerryView): void {
   const hull = env.world.tryGet(ferry.ship, Health)?.hitpoints ?? 0;
   if (hull === ferry.hull) return;
   if (hull < ferry.hull) {
-    const at = nodeOfEntity(env.world, ferry.ship);
+    const at = anchorNodeOf(env.world, ferry.ship);
     const dangers = at === null ? null : withDanger(colony.dangers, at, env.ctx.tick);
     if (dangers !== null) env.edit().dangers = dangers;
   }

@@ -18,17 +18,16 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../nav/terrain/index.js';
+import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { civilianCount } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { needLevel } from '../../lifecycle/needs/index.js';
-import { interactionCell } from '../../settlers/targets/index.js';
 import { mooringSpotsOf } from '../../vehicles/dock.js';
 import { isCargoHand, isLoaderRider } from '../../vehicles/stock.js';
-import { seatBaseOf } from '../base.js';
+import { seatBaseLand } from '../base.js';
 import { minutesToTicks } from '../game-phase.js';
 import { freeShips, LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../military/operations/landing.js';
 import { believedLand, underFire } from '../military/operations/landing-target.js';
-import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { SEA_SCOUT_TRIP_TIMEOUT_TICKS, scoutLoop } from '../military/operations/sea-scout.js';
 import { shorePoints } from '../sea-route.js';
 import {
@@ -116,9 +115,7 @@ const SHORE_CANDIDATES = 12;
 
 /** The land the seat's base stands on, or {@link NO_COMPONENT}. */
 export function homeLandOf(env: SeatEnv): number {
-  const { world, ctx, terrain, seat } = env;
-  const base = seatBaseOf(world, ctx, seat);
-  return base === null ? NO_COMPONENT : terrain.componentOf(interactionCell(world, ctx, terrain, base));
+  return seatBaseLand(env.world, env.ctx, env.terrain, env.seat);
 }
 
 function landOf(terrain: TerrainGraph, at: DeepReadonly<HalfCellNode> | null): number {
@@ -289,7 +286,7 @@ function fedHelm(env: ColonyEnv, home: number): Entity | undefined {
     const needs = world.tryGet(e, SettlerNeeds);
     return needs === undefined ? 0 : needLevel(needs, 'hunger', ctx.tick);
   };
-  const men = spareMen(world, ctx, seat).filter((e) => landOf(terrain, nodeOfEntity(world, e)) === home);
+  const men = spareMen(world, ctx, seat).filter((e) => landOf(terrain, anchorNodeOf(world, e)) === home);
   return men.reduce<Entity | undefined>(
     (best, e) => (best === undefined || hunger(e) < hunger(best) ? e : best),
     undefined,

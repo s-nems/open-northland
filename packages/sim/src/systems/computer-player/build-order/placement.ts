@@ -1,5 +1,6 @@
 import { BUILDING_KIND, type BuildingType, type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, Stockpile } from '../../../components/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
 import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween, nodeManhattan } from '../../../nav/halfcell.js';
@@ -24,8 +25,7 @@ import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf } from '../../footprint/geometry.js';
 import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js';
 import { shipYardProbe } from '../../footprint/placement/vehicle-site.js';
-import { interactionCell } from '../../settlers/targets/index.js';
-import { seatBaseOf } from '../base.js';
+import { seatBaseLand } from '../base.js';
 import { SHIP_JOINERY_SHORE_RINGS, smallestShipHouse } from '../joinery-role.js';
 import { knownResourceTest, nearestLiveResource } from '../live-resources.js';
 import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
@@ -103,18 +103,6 @@ const SHORE_SEARCH_RADIUS_NODES = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
  *  hex step moves two nodes across or one across and one row: 14 for 10 rings, found by enumeration. */
 const SHORE_SPOT_SPAN_NODES = Math.ceil((3 * SHORE_SPOT_RINGS) / 2);
 
-/** The static land component of the seat's base interaction cell, as {@link seaRouteOf} reads it, or
- *  {@link NO_COMPONENT} for a seat with no base. */
-export function baseComponent(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  player: number,
-): number {
-  const base = seatBaseOf(world, ctx, player);
-  return base === null ? NO_COMPONENT : terrain.componentOf(interactionCell(world, ctx, terrain, base));
-}
-
 /**
  * The `shore` target: the water node nearest `anchor` on the lattice's rings where a yard of the content's
  * smallest ship fits with its work point on the seat's home continent ({@link shipYardProbe}), in a body
@@ -134,7 +122,7 @@ function shoreTarget(
   accept: (x: number, y: number) => boolean,
 ): { readonly node: HalfCellNode; readonly home: number } | null {
   const route = seaRouteOf(world, ctx, player);
-  const home = route?.home ?? baseComponent(world, ctx, terrain, player);
+  const home = route?.home ?? seatBaseLand(world, ctx, terrain, player);
   const house = smallestShipHouse(contentIndex(ctx.content));
   const yardFits =
     house === null || home === NO_COMPONENT ? null : shipYardProbe(world, ctx, terrain, house, tribe, home);
@@ -756,7 +744,7 @@ function boundedSpot(
             : 0
       : null;
   const room = roomPenalty(world, ctx, terrain, type, tribe, entry);
-  const home = baseComponent(world, ctx, terrain, player);
+  const home = seatBaseLand(world, ctx, terrain, player);
   const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;
   if (tuning.homeLandOnly && home === NO_COMPONENT) return null;
   const anyLand = bothBounds(tuning.homeLandOnly ? onHomeLand : null, front);
@@ -869,4 +857,24 @@ function spotAround(
     },
     room ?? undefined,
   );
+}
+
+export type PlaceCommand = Extract<PlayerCommand, { kind: 'placeBuilding' }>;
+
+/** The seat's order to lay out a site of `type` at `spot`. */
+export function siteCommand(
+  type: BuildingType,
+  spot: HalfCellNode,
+  tribe: number,
+  player: number,
+): PlaceCommand {
+  return {
+    kind: 'placeBuilding',
+    buildingType: type.typeId,
+    x: spot.hx,
+    y: spot.hy,
+    tribe,
+    owner: player,
+    underConstruction: true,
+  };
 }

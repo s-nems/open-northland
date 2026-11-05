@@ -14,6 +14,7 @@ import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import { buildingEnabled, jobEnabled, needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isCarrierJob } from '../../stores/index.js';
+import { ROOM_HOME_BUILDING } from '../build-order/room.js';
 import { technologyTable } from '../technology/requirements.js';
 import { enabledTiersAbove, topEnabledTier } from '../top-tier.js';
 import { colonists, colonyOrigin } from './founding.js';
@@ -47,7 +48,6 @@ const GRASS_NODES = 6;
 /** The homes whose room a colony keeps from its industries (authored), at the top tier enabled: owner
  *  ruling, colony homes go straight to the top level. A site with no more grows people alone. */
 const HOMES_KEPT = 2;
-const HOME_ID = 'home_level_00';
 /** The units of a good home makes at which it holds plenty, and a colony makes none for it (authored: a
  *  wave's arms and more). */
 const HOME_PLENTY_UNITS = 30;
@@ -184,7 +184,7 @@ function plantableNear(
 /** The room the colony keeps for {@link HOMES_KEPT} homes at the top tier its tribe has enabled. */
 function homesRoom(env: ColonyEnv): number {
   const { world, ctx, seat } = env;
-  const base = buildingTypeByContentId(ctx.content, HOME_ID);
+  const base = buildingTypeByContentId(ctx.content, ROOM_HOME_BUILDING);
   const tribe = playerPlacementTribes(world, seat)?.[0];
   if (base === undefined || tribe === undefined) return 0;
   return HOMES_KEPT * roomOfType(env, topEnabledTier(world, ctx, seat, tribe, base));

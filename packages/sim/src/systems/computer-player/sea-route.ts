@@ -22,7 +22,7 @@ import { interactionCell } from '../settlers/targets/index.js';
 import { mooringSpotsOf } from '../vehicles/dock.js';
 import { fogHides, playerSeesNode } from '../vision/gates.js';
 import type { FogState } from '../vision/state.js';
-import { seatBaseOf } from './base.js';
+import { seatBaseLand, seatBaseOf } from './base.js';
 import { believedBuildings, rememberedBuildings } from './knowledge/intel/index.js';
 
 /** Another seat's building a seat measures its front or its sea route by. `seen` when the seat sees its
@@ -265,8 +265,7 @@ export function strandedShip(world: World, ctx: SystemContext, seat: number, shi
   const terrain = ctx.terrain;
   if (!state.moored || state.mooring === null || terrain === undefined) return !state.moored;
   const land = terrain.componentOf(terrain.nodeAtClamped(state.mooring.hx, state.mooring.hy));
-  const base = seatBaseOf(world, ctx, seat);
-  const home = base === null ? NO_COMPONENT : terrain.componentOf(interactionCell(world, ctx, terrain, base));
+  const home = seatBaseLand(world, ctx, terrain, seat);
   const route = seaRouteOf(world, ctx, seat);
   return land !== home && !liveColonyLands(world, seat).includes(land) && land !== route?.rival;
 }

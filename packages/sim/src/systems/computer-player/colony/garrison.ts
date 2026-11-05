@@ -22,11 +22,11 @@ import {
 } from '../../ai-shared/military/defence/index.js';
 import { type Raider, raidersNearAny } from '../../ai-shared/military/defence/threat.js';
 import { spokenFor } from '../../ai-shared/military/errand.js';
+import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { towerPostFor } from '../../conflict/tower-post.js';
 import { minutesToTicks } from '../game-phase.js';
 import { isFitSoldier } from '../military/fit.js';
-import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { ARMY_FLOOR_MIN, underAttack } from '../workforce/garrison.js';
 import { colonists, colonyOrigin } from './founding.js';
 import { standsOn } from './people.js';
@@ -211,7 +211,7 @@ function stationOrders(env: ColonyEnv, colony: ColonyView, men: readonly Entity[
   const origin = colonyOrigin(env, colony, colonyBuildings(env));
   if (origin === null) return [];
   return men.flatMap((e) => {
-    const at = nodeOfEntity(world, e);
+    const at = anchorNodeOf(world, e);
     if (at === null || spokenFor(world, e) || nodeManhattan(at, origin) <= STATION_NODES) return [];
     return [{ kind: 'moveUnit', entity: e, x: origin.hx, y: origin.hy } as const];
   });

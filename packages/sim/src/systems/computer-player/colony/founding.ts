@@ -17,6 +17,7 @@ import { routeRegions } from '../../footprint/index.js';
 import { herdOf, wildStockOf } from '../../livestock/index.js';
 import { isScoutJob, isTraderJob } from '../../readviews/index.js';
 import { playerSeesNode } from '../../vision/gates.js';
+import { siteCommand } from '../build-order/placement.js';
 import { HERD_PAIR } from '../herd.js';
 import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { SCOUT_CATCH_RADIUS_NODES, type ScoutDanger, scoutBusy, scoutDanger } from '../scout/index.js';
@@ -92,18 +93,6 @@ export function colonyOrigin(
   return at ?? (colony.shore === null ? null : { hx: colony.shore.hx, hy: colony.shore.hy });
 }
 
-function placementOf(type: number, spot: HalfCellNode, tribe: number, seat: number): PlayerCommand {
-  return {
-    kind: 'placeBuilding',
-    buildingType: type,
-    x: spot.hx,
-    y: spot.hy,
-    tribe,
-    owner: seat,
-    underConstruction: true,
-  };
-}
-
 /** The next build the colony lacks, placed while its kind has a site free ({@link siteFree}). The anchor is
  *  a real node on the land, the shore while no store stands, then the store, and a tower's own
  *  ({@link towerAnchor}). */
@@ -150,7 +139,7 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
     const row = live.builds.find((b) => b.building === building && !b.placed);
     if (row === undefined) live.builds.push({ building, placed: true });
     else row.placed = true;
-    return [placementOf(type.typeId, spot, tribe, seat)];
+    return [siteCommand(type, spot, tribe, seat)];
   }
   return plan.length === 0 && open.other < COLONY_OPEN_SITES ? secondStore(env, colony, read, tribe) : [];
 }
@@ -187,7 +176,7 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
   const spot = colonySpot(env, colony.land, type, tribe, at, COLONY_SPOT_NODES, 'any', supply);
   if (spot === null) return [];
   env.edit().builds.push({ building: type.id, placed: true });
-  return [placementOf(type.typeId, spot, tribe, seat)];
+  return [siteCommand(type, spot, tribe, seat)];
 }
 
 /** The nearest deposit of each good the land holds: a flag stands only inside the signposts, so a deposit

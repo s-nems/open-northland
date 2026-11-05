@@ -41,7 +41,6 @@ import { isCartType } from '../../vehicles/drag.js';
 import { canTakeHaulingCart } from '../../vehicles/hauling-cart.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { minutesToTicks } from '../game-phase.js';
-import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { strandedShip } from '../sea-route.js';
 import { sailOrders } from './ferry.js';
 import { colonists } from './founding.js';
@@ -140,7 +139,7 @@ function noteRoute(
   const load = routeLoad(world, ship, route.trader);
   if (hull === route.hull && load === route.load) return;
   if (hull < route.hull) {
-    const at = nodeOfEntity(world, ship);
+    const at = anchorNodeOf(world, ship);
     const dangers = at === null ? null : withDanger(colony.dangers, at, ctx.tick);
     if (dangers !== null) env.edit().dangers = dangers;
   }

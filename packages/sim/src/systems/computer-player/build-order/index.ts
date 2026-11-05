@@ -63,7 +63,7 @@ import {
   housingStage,
 } from './housing.js';
 import { holdsNamedPaper, paperedPlacement, paperedSteps, paperedStore, stepTiers } from './papers.js';
-import { placementPassesOver, placementSpot } from './placement.js';
+import { type PlaceCommand, placementPassesOver, placementSpot, siteCommand } from './placement.js';
 import { seatHomesCap } from './plots.js';
 import {
   type DecisionMemo,
@@ -899,8 +899,6 @@ function waitsOnFreeSite(
   return true;
 }
 
-type PlaceCommand = Extract<PlayerCommand, { kind: 'placeBuilding' }>;
-
 /**
  * What a line makes of an unmet step this decision. A serving placement with no room beside what it
  * serves, a grass building with no grass left for it, or a coverage step with no target it can cover, is
@@ -1364,18 +1362,6 @@ function paperedOpening(
   if (spot === null) return null;
   searches.acting(store.line.id, store.step);
   return { ...siteCommand(store.type, spot, tribe, player), paper: store.paper };
-}
-
-function siteCommand(type: BuildingType, spot: HalfCellNode, tribe: number, player: number): PlaceCommand {
-  return {
-    kind: 'placeBuilding',
-    buildingType: type.typeId,
-    x: spot.hx,
-    y: spot.hy,
-    tribe,
-    owner: player,
-    underConstruction: true,
-  };
 }
 
 /** The first of {@link BASE_REPLACEMENT_IDS} the seat may raise and has a source for every good of its

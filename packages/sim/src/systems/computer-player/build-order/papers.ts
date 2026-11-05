@@ -1,6 +1,5 @@
 import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
 import { type Paper, playerPaperSlots } from '../../../components/index.js';
-import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
@@ -15,9 +14,9 @@ import {
   linesByPriority,
 } from './entries.js';
 import { homeTiersOf } from './housing.js';
+import type { PlaceCommand } from './placement.js';
 import type { LineStatuses } from './progress.js';
 
-type PlaceCommand = Extract<PlayerCommand, { kind: 'placeBuilding' }>;
 type PlacingEntry = Extract<
   BuildOrderEntry,
   { kind: 'place' | 'towerCoverage' | 'storeCoverage' | 'housing' }

@@ -12,6 +12,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { onErrand } from '../../ai-shared/military/errand.js';
+import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import {
   builderJobOf,
@@ -28,7 +29,6 @@ import { DEFAULT_BUILD_ORDER } from '../build-order/entries.js';
 import { decisionMemo, lineStatuses } from '../build-order/progress.js';
 import { seatBuildOrder } from '../build-order/seat-order.js';
 import { computerProfileOf } from '../difficulty.js';
-import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { seatApprentices } from '../technology/apprentices.js';
 import { inFoodChain } from '../workforce/food.js';
 
@@ -111,7 +111,7 @@ function hasMinor(world: World, e: Entity): boolean {
 /** Whether `e` stands on `land`. */
 export function standsOn(world: World, ctx: SystemContext, e: Entity, land: number): boolean {
   const terrain = ctx.terrain;
-  const at = nodeOfEntity(world, e);
+  const at = anchorNodeOf(world, e);
   return (
     terrain !== undefined &&
     at !== null &&

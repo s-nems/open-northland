@@ -2,10 +2,12 @@ import { Building } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { NO_COMPONENT, type TerrainGraph } from '../../nav/terrain/index.js';
 import { homeBuildings } from '../ai-shared/home-roster.js';
 import { anchorCentroid, anchorNodeOf } from '../ai-shared/node-geometry.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID, isBarracks } from '../readviews/index.js';
+import { interactionCell } from '../settlers/targets/index.js';
 
 /**
  * The building the seat's economy anchors and gates on: its built headquarters, else the built storage
@@ -28,6 +30,13 @@ export function seatBaseOf(world: World, ctx: SystemContext, player: number): En
     if (type.kind === 'storage') storage.push(e);
   }
   return centralOf(world, owned, storage);
+}
+
+/** The static land component of the seat's base interaction cell, or {@link NO_COMPONENT} for a seat with
+ *  no base. */
+export function seatBaseLand(world: World, ctx: SystemContext, terrain: TerrainGraph, seat: number): number {
+  const base = seatBaseOf(world, ctx, seat);
+  return base === null ? NO_COMPONENT : terrain.componentOf(interactionCell(world, ctx, terrain, base));
 }
 
 /**
