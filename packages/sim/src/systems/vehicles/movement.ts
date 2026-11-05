@@ -20,7 +20,7 @@ import {
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { BlockOverlay } from '../../nav/block-overlay.js';
+import type { BlockLanes, BlockOverlay } from '../../nav/block-overlay.js';
 import {
   type HalfCellNode,
   hexagonRing,
@@ -48,7 +48,7 @@ import {
   vehicleBlockedCells,
   vehicleFootprintNodes,
 } from '../footprint/index.js';
-import { landVehicleFits, vehicleStandable } from '../footprint/vehicle-clearance.js';
+import { landVehicleFits, vehicleClearance, vehicleStandable } from '../footprint/vehicle-clearance.js';
 import { isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { walkTurnSteps } from '../movement/turning.js';
 import { recordAiOrder } from '../orders/ai-lifecycle.js';
@@ -119,6 +119,13 @@ function continentOf(terrain: TerrainGraph, node: NodeId): number {
   return terrain.componentOf(node);
 }
 
+/** Which nodes a vehicle's size passes: the test, and for the plain free-size class test the live lane
+ *  of the nodes it closes, which a route search reads as an array instead of calling the test. */
+interface SizePasses {
+  readonly fits: (node: NodeId) => boolean;
+  readonly closed: Uint8Array | undefined;
+}
+
 /** Whether `type` may pass a node by its size: a ship by the water's free-size class, a land vehicle by
  *  {@link landVehicleFits}. */
 function vehiclePasses(
@@ -126,9 +133,23 @@ function vehiclePasses(
   ctx: ContentContext,
   terrain: TerrainGraph,
   type: VehicleType,
-): (node: NodeId) => boolean {
-  if (vehicleTraversal(type) === 'land') return landVehicleFits(world, ctx, terrain, type.logicSize);
-  return vehicleStandable(world, ctx, terrain, type.logicSize);
+): SizePasses {
+  if (vehicleTraversal(type) === 'land') {
+    return { fits: landVehicleFits(world, ctx, terrain, type.logicSize), closed: undefined };
+  }
+  return standablePasses(world, ctx, terrain, type.logicSize);
+}
+
+function standablePasses(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  logicSize: number,
+): SizePasses {
+  return {
+    fits: vehicleStandable(world, ctx, terrain, logicSize),
+    closed: vehicleClearance(world, ctx, terrain).belowLane(logicSize),
+  };
 }
 
 /**
@@ -160,8 +181,14 @@ export function vehicleRestBlocks(
   vehicle: Entity,
   type: VehicleType,
 ): BlockOverlay {
-  const standable = vehicleStandable(world, ctx, terrain, type.logicSize);
-  return blocksUnder(world, ctx, terrain, vehicle, standable, 'rest');
+  return blocksUnder(
+    world,
+    ctx,
+    terrain,
+    vehicle,
+    standablePasses(world, ctx, terrain, type.logicSize),
+    'rest',
+  );
 }
 
 /** Another vehicle's disc that `vehicle`'s anchor stands in, and how far that anchor lies from its centre. */
@@ -271,8 +298,8 @@ export function vehicleGroundBlocks(
   vehicle: Entity,
   type: VehicleType,
 ): BlockOverlay {
-  const fits = vehiclePasses(world, ctx, terrain, type);
-  return blocksUnder(world, ctx, terrain, vehicle, fits, 'transit', undefined, NO_VEHICLE_CELLS);
+  const passes = vehiclePasses(world, ctx, terrain, type);
+  return blocksUnder(world, ctx, terrain, vehicle, passes, 'transit', undefined, NO_VEHICLE_CELLS);
 }
 
 function blocksUnder(
@@ -280,12 +307,13 @@ function blocksUnder(
   ctx: ContentContext,
   terrain: TerrainGraph,
   vehicle: Entity,
-  fits: (node: NodeId) => boolean,
+  passes: SizePasses,
   use: BlockUse,
   answers?: Map<NodeId, boolean>,
   vehicles: ReadonlyMap<NodeId, number> = vehicleBlockedCells(world, ctx, terrain),
 ): BlockOverlay {
   const ground = dynamicBlockOverlay(world, ctx, terrain);
+  const { fits, closed } = passes;
   const own = new Set(vehicleFootprintNodes(world, ctx.content, terrain, vehicle));
   const overlapped = use === 'transit' ? overlappedDiscs(world, ctx, terrain, vehicle) : NO_DISCS;
   const coveredByOthers = (node: NodeId): boolean => {
@@ -300,16 +328,36 @@ function blocksUnder(
     }
     return leaving < others;
   };
-  return {
-    has: (node) => {
-      const held = answers?.get(node);
-      if (held !== undefined) return held;
-      const answer = ground.has(node) || !fits(node) || coveredByOthers(node);
-      answers?.set(node, answer);
-      return answer;
-    },
-    size: ground.size + vehicles.size + 1, // never empty: the clearance term is not a set
+  const has = (node: NodeId): boolean => {
+    const held = answers?.get(node);
+    if (held !== undefined) return held;
+    const answer = ground.has(node) || !fits(node) || coveredByOthers(node);
+    answers?.set(node, answer);
+    return answer;
   };
+  const size = ground.size + vehicles.size + 1; // never empty: the clearance term is not a set
+  if (closed === undefined) return { has, size };
+  // The same membership as lanes: the size test's closed nodes, and the ground beside the cells another
+  // vehicle covers, the only nodes `coveredByOthers` can close. Copied once per world version.
+  let laneVersion = -1;
+  let lanes: BlockLanes | undefined;
+  const blockLanes = (): BlockLanes | undefined => {
+    if (lanes !== undefined && laneVersion === world.mutationVersion) return lanes;
+    const groundLanes = ground.blockLanes?.();
+    if (groundLanes === undefined || groundLanes.extra !== undefined || groundLanes.players !== undefined) {
+      return undefined;
+    }
+    let extra = groundLanes.bytes;
+    if (vehicles.size > 0 || overlapped.length > 0) {
+      extra = new Uint8Array(groundLanes.bytes);
+      for (const node of vehicles.keys()) if (coveredByOthers(node)) extra[node] = 1;
+      for (const node of own) if (coveredByOthers(node)) extra[node] = 1;
+    }
+    lanes = { bytes: closed, extra, players: undefined, hostile: 0 };
+    laneVersion = world.mutationVersion;
+    return lanes;
+  };
+  return { has, size, blockLanes };
 }
 
 /**
