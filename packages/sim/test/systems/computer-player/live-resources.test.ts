@@ -8,6 +8,7 @@ import {
   gathererReach,
   knownResourceTest,
   nearestLiveResource,
+  reachableResourceGate,
   reachableResourceTest,
 } from '../../../src/systems/computer-player/live-resources.js';
 import type { SystemContext } from '../../../src/systems/index.js';
@@ -143,5 +144,21 @@ describe('reachable resource test', () => {
     expect(reachable()).toBe(true);
     Object.assign(sim.world.mut(deposit, Position), positionOfNode(EAST_DEPOSIT.hx, EAST_DEPOSIT.hy));
     expect(reachable()).toBe(false);
+  });
+
+  it("gates out an anchor across the water and keeps one on the origin's bank", () => {
+    const map = waterColumnMap(BANKS_CELLS.width, BANKS_CELLS.height, BANKS_CELLS.river);
+    const sim = new Simulation({ seed: 1, content: aiContent(), map });
+    placeResources(sim, [{ ...RESOURCE_SPOTS.mud, ...WEST_DEPOSIT }]);
+    sim.step();
+    const terrain = sim.terrain;
+    const [deposit] = sim.world.query(Resource);
+    if (terrain === undefined || deposit === undefined) throw new Error('setup: a mapped sim with a deposit');
+    const ctx = ctxOf(sim);
+    const gate = reachableResourceGate(ctx, terrain, WEST_ORIGIN);
+    const reachable = reachableResourceTest(sim.world, ctx, terrain, WEST_ORIGIN, () => true);
+    const mud = sim.world.get(deposit, Resource).goodType;
+    expect(gate?.(EAST_DEPOSIT.hx, EAST_DEPOSIT.hy)).toBe(false);
+    expect(nearestLiveResource(sim.world, mud, WEST_ORIGIN, reachable, gate)).toBe(deposit);
   });
 });
