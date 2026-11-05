@@ -118,10 +118,10 @@ describe("a shore's score", () => {
       harvestAtomic: MUD_HARVEST,
     });
     sim.step();
-    const deposit = sim.world.nextEntityId - 1;
+    const deposit = [...sim.world.query(Resource)].find((e) => sim.world.get(e, Resource).goodType === MUD);
     // Fog of war over a seat that never looked across the strait; no step after, which would reset it.
     const fog = sim.fog;
-    if (fog === undefined || !sim.world.has(deposit, Resource)) throw new Error('setup');
+    if (fog === undefined || deposit === undefined) throw new Error('setup');
     fog.activeMode = FOG_MODE.CLASSIC_FOG_OF_WAR;
     const fogged = { ...env, ctx: { ...env.ctx, fog } };
     const score = () => shoreScore(fogged, land, EAST_SHORE, EAST_SHORE, VIKING);
