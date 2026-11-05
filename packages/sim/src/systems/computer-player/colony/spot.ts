@@ -14,7 +14,13 @@ import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { buildReach, footprintOnGrass } from '../build-order/placement.js';
 import { seatSpotAcceptor } from '../build-order/plots.js';
 import { seatSiege } from '../build-order/siege.js';
-import { nearestLiveResource } from '../live-resources.js';
+import {
+  knownAnd,
+  knownResourceTest,
+  nearestLiveResource,
+  reachableResourceTest,
+  workableResourceTest,
+} from '../live-resources.js';
 import type { StepGround } from './industry.js';
 import { LAND_GOOD_IDS } from './provision.js';
 import { homesFitNear } from './room.js';
@@ -144,14 +150,14 @@ const AHEAD_OF_LANDING: FarGround = { ahead: true };
 
 /** How a shore serves a colony (owner ruling): room for homes round the warehouse spot it gives first, then
  *  open ground, resources in gatherers' reach, grass and fish round the shore. */
-function shoreScore(
+export function shoreScore(
   env: ColonyEnv,
   land: number,
   at: HalfCellNode,
   store: HalfCellNode,
   tribe: number,
 ): number {
-  const { world, ctx, terrain } = env;
+  const { world, ctx, terrain, seat } = env;
   const homes = homesFitNear(world, ctx, terrain, tribe, land, store, SHORE_LOOK_NODES, SHORE_HOMES_FULL);
   const grid = placementBlockerGrid(world, ctx.content, terrain);
   let open = 0;
@@ -168,9 +174,12 @@ function shoreScore(
       if (terrain.isPlantable(node)) grass++;
     }
   }
+  // A deposit counts on the shore's own land and known to the seat: one over the water is no gatherer's.
+  const reachable = reachableResourceTest(world, ctx, terrain, at, workableResourceTest(world, ctx, terrain));
+  const known = knownAnd(knownResourceTest(world, ctx, seat), reachable);
   const goods = LAND_GOOD_IDS.filter((id) => {
     const good = goodTypeByContentId(ctx.content, id);
-    const near = good === undefined ? null : nearestLiveResource(world, good.typeId, at);
+    const near = good === undefined ? null : nearestLiveResource(world, good.typeId, at, known);
     const node = near === null ? null : anchorNodeOf(world, near);
     return node !== null && nodeManhattan(node, at) <= SHORE_LOOK_NODES;
   }).length;
