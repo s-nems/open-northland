@@ -16,7 +16,8 @@ export interface SeatEnv {
 }
 
 /** One colony's decision. `edit` and `editSeat` acquire the state for a change, and only then: each write
- *  drops the seat's home view. */
+ *  makes the seat's home view check the colonies' claims again, and one that moves a land, a list or a
+ *  held ship splits the roster afresh. */
 export interface ColonyEnv extends SeatEnv {
   /** The colony itself, read-only and live: an edit shows through it. */
   readonly colony: ColonyView;
