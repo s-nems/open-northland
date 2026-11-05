@@ -32,7 +32,7 @@ const RING_MIN_CANDIDATES = 256;
  * One pass's view of the shared {@link FoodSources}, caught up when the pass makes it: each seeker pays a
  * bounded ring search over it, with her own side, signpost gate and failed goals applied per query. A
  * placement mid-pass may destroy a listed pile; every read of a candidate tolerates that, and `accept`
- * rejects it through its missing stock before any other read.
+ * rejects it through its missing Position or stock.
  */
 export class ExternalFoodIndex {
   private readonly sources: FoodSources;
@@ -68,10 +68,11 @@ export class ExternalFoodIndex {
     const roomy = this.foodsWithRoomAt(home);
     // No store can then offer her a unit, so the scan over every candidate is skipped.
     if (roomy.length === 0) return null;
+    // The area test goes before the stock read: on islands most of a side's stores stand on other land.
     const accept = (e: Entity): boolean =>
       ownersCompatible(owner, ownerOf(this.world, e)) &&
-      this.liftableFood(e, roomy) !== null &&
       this.inArea(e, gate) &&
+      this.liftableFood(e, roomy) !== null &&
       !this.standRetired(e, from, avoid);
     const side = this.onSide(owner);
     const ringed = side.length > RING_MIN_CANDIDATES;
@@ -129,10 +130,12 @@ export class ExternalFoodIndex {
     return cell !== here && avoid(cell);
   }
 
-  /** Whether the store's own node lies inside the seeker's allowed area (no gate/terrain = everywhere). */
+  /** Whether the store's own node lies inside the seeker's allowed area (no gate/terrain = everywhere).
+   *  A pile displaced mid-pass has no Position and reads as outside, as its missing stock would reject it. */
   private inArea(e: Entity, gate: SpatialGate | null): boolean {
     if (gate === null || this.terrain === undefined) return true;
-    const p = this.world.get(e, Position);
+    const p = this.world.tryGet(e, Position);
+    if (p === undefined) return false;
     return gate.allowsNode(
       this.terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y)),
     );
