@@ -113,8 +113,10 @@ export function createScopeTabs(
           scope.key === ALL_SCOPE ? copy.allTooltip : formatMessage(copy.tabTooltip, { label: scope.label }),
         );
       });
-      // Measured only when a name or a count changed: the names show unless they overflow the line.
-      const text = scopes.map((scope) => `${scope.label} ${scope.ids.length}`).join('|');
+      // Measured only when a name or a count's length changed: the names show unless they overflow the
+      // line, and the counts' digits are tabular (foundation.css `.on-scope__count`), so a count that
+      // keeps its digits keeps the line's width. Measuring lays the line out in both modes.
+      const text = scopes.map((scope) => `${scope.label} ${String(scope.ids.length).length}`).join('|');
       if (text !== measured && !root.hidden) {
         measured = text;
         setClass(root, 'on-scopes--icons', false);
