@@ -15,10 +15,11 @@ import {
   Settler,
   Stance,
 } from '../../components/index.js';
-import type { Command } from '../../core/commands/index.js';
+import type { Command, PlayerCommand } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { disbandMilitia } from '../ai-shared/military/defence/militia.js';
 import { COMPUTER_PUBLISHED_COUNTERS } from '../computer-player/assistant-counters.js';
+import { releaseColonies } from '../computer-player/colony/index.js';
 import { soldierOutfitGoods } from '../computer-player/military/outfit.js';
 import { settlementGrantGoods } from '../computer-player/workforce/grants.js';
 import { forgetAllOffenders } from '../conflict/offenders.js';
@@ -37,15 +38,17 @@ import {
  * Update machine identity and controller permissions together with their standing orders.
  * Counter publications, recruitment settings and campaigns are withdrawn when their required
  * permissions close. Shared defence remains active while map AI or autonomous military can run.
+ * Returns the seat's orders that release what a stopped colony controller held; the caller applies them.
  */
 export function setAiControl(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'setAiControl' }>,
-): void {
+): readonly PlayerCommand[] {
   const wasLeft = seatLeftToMapAi(world, command.player);
-  applyAiControl(world, ctx, command);
+  const released = applyAiControl(world, ctx, command);
   if (!wasLeft && seatLeftToMapAi(world, command.player)) standFightersOnDefence(world, ctx, command.player);
+  return released;
 }
 
 /** Stand the seat's attacking fighters down to DEFEND, their places kept as the anchor, as the seat is left
@@ -65,10 +68,11 @@ function applyAiControl(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'setAiControl' }>,
-): void {
+): readonly PlayerCommand[] {
   const carrier = aiControlEntity(world, command.player);
   if (!command.enabled) {
-    if (carrier === null) return; // never AI-driven: nothing standing to withdraw
+    if (carrier === null) return []; // never AI-driven: nothing standing to withdraw
+    const released = releaseColonies(world, ctx, command.player);
     disbandMilitia(world, ctx, command.player);
     withdrawAiOrders(world, ctx, command.player, () => true);
     retireComputerCampaign(world, command.player);
@@ -80,7 +84,7 @@ function applyAiControl(
     setAssistantSwitch(world, AssistantUpgradesTools, command.player, false);
     revokeAssistantGrants(world, command.player, settlementGrantGoods(ctx));
     standDownAlarms(world, command.player);
-    return;
+    return released;
   }
   const modules = computerModuleEnables(command.modules);
   const mapAiEnabled = command.mapAiEnabled ?? true;
@@ -97,7 +101,7 @@ function applyAiControl(
       computerEnabled,
       difficulty,
     });
-    return;
+    return [];
   }
   const old = world.get(carrier, AiControl);
   const previous = computerModuleEnables(
@@ -121,7 +125,9 @@ function applyAiControl(
     return !next[source];
   });
   if (previous.military && !next.military) retireComputerCampaign(world, command.player);
-  if (runsColony(previous) && !runsColony(next)) world.remove(carrier, ComputerColony);
+  const colonyStops = runsColony(previous) && !runsColony(next);
+  const released = colonyStops ? releaseColonies(world, ctx, command.player) : [];
+  if (colonyStops) world.remove(carrier, ComputerColony);
   for (const entry of COMPUTER_PUBLISHED_COUNTERS) {
     if (publishes(previous, entry.modules) && !publishes(next, entry.modules)) {
       resetAssistantCounters(world, command.player, entry.kinds);
@@ -139,11 +145,12 @@ function applyAiControl(
   seat.computerEnabled = computerEnabled;
   if (!mapAiEnabled && !next.military) standDownAlarms(world, command.player);
   if (command.difficulty !== undefined) seat.difficulty = command.difficulty;
+  return released;
 }
 
-/** Whether `enables` let the colony controller run. Once it stops, its colonies are dropped, their ships, people,
- *  garrison and land the whole seat's again for whichever controller runs it; a colony toggle turned back on
- *  starts the seat's colonies over from a fresh survey. */
+/** Whether `enables` let the colony controller run. Once it stops, its routes are let go and its colonies
+ *  dropped, their ships, people, garrison and land the whole seat's again for whichever controller runs it; a
+ *  colony toggle turned back on starts the seat's colonies over from a fresh survey. */
 function runsColony(enables: ComputerModuleEnables): boolean {
   return COLONY_MODULES.every((module) => enables[module]);
 }

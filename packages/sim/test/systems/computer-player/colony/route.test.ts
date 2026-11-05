@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   AiControl,
@@ -6,8 +7,10 @@ import {
   Female,
   Health,
   Marriage,
+  prioritizesGood,
   Rider,
   Settler,
+  StorePriority,
   TRADE_LIMIT_NONE,
   TradeRoute,
   TradeShip,
@@ -24,7 +27,6 @@ import {
   serializeSaveGame,
 } from '../../../../src/index.js';
 import {
-  colonyHeldShips,
   everyBuildingOf,
   everySettlerOf,
   homeBuildings,
@@ -44,7 +46,6 @@ import { minutesToTicks } from '../../../../src/systems/computer-player/game-pha
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { strandedShip } from '../../../../src/systems/computer-player/sea-route.js';
 import { addStock, stockOf } from '../../../../src/systems/missions/stock.js';
-import { setAiControl } from '../../../../src/systems/orders/ai.js';
 import { isTraderJob } from '../../../../src/systems/readviews/index.js';
 import { interactionCell } from '../../../../src/systems/settlers/targets/index.js';
 import { stockAtBuildings } from '../../../../src/systems/stores/index.js';
@@ -109,8 +110,12 @@ function standingTrader(sim: Simulation): Entity {
 }
 
 /** A colony landed and its trade route standing. */
-function routedWorld(): { readonly sim: Simulation; readonly ship: Entity; readonly scout: Entity } {
-  const sim = colonyWorld();
+function routedWorld(content?: ContentSet): {
+  readonly sim: Simulation;
+  readonly ship: Entity;
+  readonly scout: Entity;
+} {
+  const sim = colonyWorld(undefined, content);
   stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
   const scout = mooredShip(sim);
   stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
@@ -455,18 +460,34 @@ describe('a ship left without a helm', () => {
   });
 });
 
+/** A building material home's stop store pulls for a colony, its content id the one the pull reads. */
+const BRICK = 47;
+
 describe('a colony toggle turned off', () => {
-  it('hands the colony back to the whole seat and stays off while the toggle does', () => {
-    const { sim } = routedWorld();
+  it('lets its routes go, lifts the stop pulls and hands the colony back to the whole seat', () => {
+    const base = colonyContent();
+    const content = parseContentSet({
+      ...base,
+      goods: [...base.goods, { typeId: BRICK, id: 'brick', weight: 1 }],
+    });
+    const { sim, ship } = routedWorld(content);
+    const trader = standingTrader(sim);
+    const homeStop = sim.world.get(trader, TradeRoute).stops[0]?.house;
+    if (homeStop === undefined) throw new Error('setup: no home stop');
+    sim.world.add(homeStop, StorePriority, { goods: [BRICK] });
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI seat');
     expect(homeSettlers(sim.world, ctxOf(sim), SEAT).length).toBeLessThan(
       everySettlerOf(sim.world, SEAT).length,
     );
     const modules = { ...sim.world.get(carrier, AiControl).modules, houseBuild: false };
-    setAiControl(sim.world, ctxOf(sim), { kind: 'setAiControl', player: SEAT, enabled: true, modules });
+    sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: true, modules });
+    sim.step();
     expect(colonyState(sim)).toBeUndefined();
-    expect(colonyHeldShips(sim.world, SEAT)).toEqual([]);
+    expect(sim.world.tryGet(trader, TradeShip)).toBeUndefined();
+    expect(isTraderJob(sim.content, sim.world.get(trader, Settler).jobType)).toBe(false);
+    expect(prioritizesGood(sim.world, homeStop, BRICK)).toBe(false);
+    expect(sim.world.get(ship, Vehicle).hauler).not.toBe(trader);
     expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).toEqual(everySettlerOf(sim.world, SEAT));
     expect(homeBuildings(sim.world, ctxOf(sim), SEAT)).toEqual(everyBuildingOf(sim.world, SEAT));
     stepUntil(sim, AFTER_SAVE_TICKS, () => false);

@@ -11,7 +11,7 @@ import { runFerry } from './ferry.js';
 import { foundColony } from './founding.js';
 import { defendColony } from './garrison.js';
 import { reviewOverflow } from './overflow.js';
-import { runRoute } from './route.js';
+import { releaseRoute, runRoute } from './route.js';
 import { stopPullOrders } from './stop-pull.js';
 import { recoverStrayShips, strayCrewsHome } from './stray-ships.js';
 import {
@@ -106,6 +106,19 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
   )
     openNextColony(env);
   return commands;
+}
+
+/** The orders that let the seat's colonies go as its colony controller stops, before their state is dropped:
+ *  each route released as an abandoned colony's is, and home's stop stores no longer pulling materials. */
+export function releaseColonies(world: World, ctx: SystemContext, seat: number): PlayerCommand[] {
+  const terrain = ctx.terrain;
+  const carrier = aiControlEntity(world, seat);
+  const state = carrier === null ? undefined : world.tryGet(carrier, ComputerColony);
+  if (terrain === undefined || carrier === null || state === undefined) return [];
+  const env: SeatEnv = { world, ctx, terrain, seat, carrier };
+  const routes = [...state.colonies].flatMap((colony) => releaseRoute(colonyEnv(env, colony), colony));
+  // With no route left standing, no store is wanted and every pull is lifted.
+  return [...routes, ...stopPullOrders(env)];
 }
 
 /** A seat's colonies over the sea. It writes no state and issues no command while a seat holds none. */

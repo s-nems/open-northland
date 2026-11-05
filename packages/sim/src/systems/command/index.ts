@@ -600,7 +600,8 @@ function applyCommand(
       setMatchParticipants(world, command.players, command.victory, command.goals, command.goalSeats);
       return;
     case 'setAiControl':
-      setAiControl(world, ctx, command);
+      for (const release of setAiControl(world, ctx, command))
+        applyCommand(world, ctx, release, pass, seatIssued);
       return;
     case 'debugKill':
       debugKill(world, ctx, command);
