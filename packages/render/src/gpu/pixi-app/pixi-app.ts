@@ -1,5 +1,6 @@
 import { Application, Assets, ImageSource, type Texture, type TextureSource } from 'pixi.js';
 import { type AtlasSheetLayout, markIndexedSource, markPixelArtSource } from '../pixel-art/registry.js';
+import { enableShaderExtensions } from '../shaders/program-source.js';
 import { keepAtlasPageResident, registerAtlasPageUploader } from '../textures/atlas-residency.js';
 import { registerHumanPaletteUploader } from '../textures/human-palette-lut.js';
 import { registerRecolouredPageUploader } from '../textures/recoloured-pages.js';
@@ -48,6 +49,7 @@ export async function createPixiApp(
   const app = new Application();
   await app.init({ canvas, width, height, ...APP_OPTIONS });
   inheritParentGroupUniforms(app.renderer);
+  enableShaderExtensions(app.renderer);
   return app;
 }
 
@@ -224,6 +226,7 @@ export async function createWindowPixiApp(
     autoDensity: true, // CSS-size the canvas to the logical size, so client px stay 1:1 with screen px
   });
   inheritParentGroupUniforms(app.renderer);
+  enableShaderExtensions(app.renderer);
   const upscale = worldUpscaleFor(density, resolutionScale);
   if (upscale !== null) worldUpscales.set(app, upscale);
   watchBackingResolution(app, resolutionScale, density);

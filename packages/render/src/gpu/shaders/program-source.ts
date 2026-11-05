@@ -1,4 +1,4 @@
-import { GlProgram } from 'pixi.js';
+import { GlProgram, type Renderer, WebGLRenderer } from 'pixi.js';
 
 /** The WebGL extension that blends with a second fragment output (`SRC1_COLOR` and its kin). */
 export const DUAL_SOURCE_BLEND = 'WEBGL_blend_func_extended';
@@ -44,6 +44,13 @@ export function glProgramFor(source: GlslProgramSource): GlProgram {
     text.fragment = hoistExtensions(text.fragment);
   }
   return program;
+}
+
+/** Enables on `renderer`'s context every extension a catalogue program may need, before its first
+ *  link: the browser's program cache keys on the enabled extensions, and the shader warm-up enables
+ *  the same ones in its own context. */
+export function enableShaderExtensions(renderer: Renderer): void {
+  if (renderer instanceof WebGLRenderer) renderer.gl.getExtension(DUAL_SOURCE_BLEND);
 }
 
 /** Whether `gl` compiles `source`, enabling its extension there. */

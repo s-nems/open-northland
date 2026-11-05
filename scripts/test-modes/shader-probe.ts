@@ -289,8 +289,8 @@ function compileIn(
   if (entry === undefined) throw new Error(`no catalogue entry ${index}`);
   const { vertex, fragment } = glProgramFor(entry);
   if (vertex === undefined || fragment === undefined) throw new Error(`Pixi dropped ${entry.name}'s source`);
-  if (!supportsProgram(context, entry))
-    return { status: 'skipped', name: entry.name, ms: 0, needs: entry.extension ?? '' };
+  if (entry.extension !== undefined && !supportsProgram(context, entry))
+    return { status: 'skipped', name: entry.name, ms: 0, needs: entry.extension };
   const textureUnits = declaredSamplers(fragment);
   if (textureUnits > context.getParameter(context.MAX_TEXTURE_IMAGE_UNITS))
     return { status: 'skipped', name: entry.name, ms: 0, needs: `${textureUnits} texture units` };
