@@ -45,6 +45,7 @@ export {
   VEHICLE_SITE_RINGS,
   type VehicleSiteVerdict,
   vehicleSiteRings,
+  vehicleSiteWorkPoint,
   workFlagBlockerVersion,
   workFlagPlacementBlocks,
   workFlagPlacementTest,

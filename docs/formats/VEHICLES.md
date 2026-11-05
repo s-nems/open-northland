@@ -50,14 +50,15 @@ type 6, the ox-less cart. The worker producing that good:
 1. reuses an unfinished vehicle site within hex rings `r < 20` of the work centre, otherwise picks a
    build point within `r < 10` (5 and 10 for jobs 18 and 29) where every footprint node has
    free-size class `>= logicsize`, house placement is allowed, and no parked vehicle stands inside;
-   with `logicignorecontinentsflag` the point's continent must differ from the worker's and the
-   house work point must lie on the worker's continent, which is how a ship site lands on the water
-   beside the shipyard (Open Northland reads the class at the anchor alone for a ship site, since
-   the hull's shoreward rows lie against the land its door stands on; approximation, the original's
-   per-node test is read for land sites only). Open Northland searches wider by design: one ring
-   bound for reuse and placement, `r < 20` for a land yard and `r < 40` for a ship yard, so a
-   crowded joinery still finds room and launched ships do not cap a shipyard's output; a reused
-   site's work point must lie on the worker's continent;
+   with `logicignorecontinentsflag` the point's continent must differ from the worker's and some cell
+   of the house's `LogicConstructionWorkArea` (the ring around the hull) must lie on the worker's
+   continent; the first such cell in the area's order is where the builder works from. This is how a
+   ship site lands on the water beside the shipyard on a shore of any heading (Open Northland reads
+   the class at the anchor alone for a ship site, since the hull's shoreward rows lie against the
+   land; approximation, the original's per-node test is read for land sites only). Open Northland
+   searches wider by design: one ring bound for reuse and placement, `r < 20` for a land yard and
+   `r < 40` for a ship yard, so a crowded joinery still finds room and launched ships do not cap a
+   shipyard's output; a reused site's work point must lie on the worker's continent;
 2. fetches and carries the house's construction goods like building materials (the IR's
    `construction` list of houses 42..46: handcart 2 wood, ox cart 5 wood, small ship 5 leather +
    10 wood, big ship 5 leather + 15 wood, catapult 9 wood + 1 iron), taking them from its own
@@ -77,10 +78,11 @@ cycle, and moves past it once the site launched; the site is a `SiteAssignment` 
 builder's, the yard's bill is fetched from the worker's own workshop first, its recipe inputs included,
 then through the ordinary site-supply rungs, and builders and haulers
 never serve a vehicle site. Approximations: which product a worker "currently" makes is the rotation
-cursor (the original's scheduling is not decoded); the work point is the house door for both hammering
-and the ship site's shore test, so "a water continent bordering the worker's continent" reduces to the
-door lying on the worker's land component; a ship site needs the water side of the shared free-size field to admit
-`logicsize` at every body node, all on one water body; a parked vehicle counts as reason 9 only when its disc overlaps the vehicle-site body;
+cursor (the original's scheduling is not decoded); a land site is worked from its door, a ship site
+from its first work-area cell on the worker's continent that no walk block covers (the original reads
+a per-cell flag there, approximated by the walk block); a ship site needs the water side of the shared
+free-size field to admit `logicsize` at every body node, all on one water body; a parked vehicle
+counts as reason 9 only when its disc overlaps the vehicle-site body;
 regular houses instead push vehicles off their body and out of newly sealed nooks, leaving vehicles in
 open reserved margins in place (project rule); a failed search skips the turn, so the rotation moves on to the
 workshop's other products, and the worker searches again only after the failed-goal memo's span; past its own workshop the fetch takes the nearest store

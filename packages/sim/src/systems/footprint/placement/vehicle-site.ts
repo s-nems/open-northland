@@ -2,19 +2,23 @@ import {
   type BuildingFootprint,
   type BuildingType,
   buildingFootprintFor,
+  footprintCellDx,
   type VehicleType,
 } from '@open-northland/data';
 import { Building, Owner, Position, UnderConstruction } from '../../../components/index.js';
 import { landscapeEditState } from '../../../components/landscape.js';
 import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { type HalfCellNode, hexagonRing, hexDistance, nodeOfPosition } from '../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../../context.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
-import { ANCHOR_ONLY, translatedCells } from '../geometry.js';
+import { ANCHOR_ONLY, houseFootprintOf, translatedCells } from '../geometry.js';
+import { interactionCellOf } from '../interaction.js';
 import { vehicleClearance } from '../vehicle-clearance.js';
 import { vehicleFootprintNodes } from '../vehicle-footprint.js';
+import { walkBlockMask } from '../walk-block-mask.js';
 import { canPlaceBuilding } from './building.js';
 
 // Where a workshop's worker raises the hidden site of a vehicle house (docs/formats/VEHICLES.md
@@ -120,6 +124,85 @@ function workPoint(
   return nodes[0] ?? null;
 }
 
+/**
+ * Where a builder on `workerContinent` stands to raise a ship house anchored at `(hx, hy)`: the first cell
+ * of the footprint's construction work area, in its canonical order, on that continent and under no walk
+ * block. Original behavior: the ship yard search takes a water point only where its work area reaches the
+ * worker's continent, and the builder works from that cell (the source lists both ship houses' areas in
+ * the canonical order; the free-cell test stands in for the original's per-cell flag). A footprint without
+ * a work area, as synthetic content has, keeps its {@link workPoint}.
+ */
+function shipWorkPoint(
+  terrain: TerrainGraph,
+  blocks: BlockOverlay,
+  footprint: BuildingFootprint | undefined,
+  hx: number,
+  hy: number,
+  workerContinent: number,
+): NodeId | null {
+  if (workerContinent === NO_COMPONENT) return null;
+  let found: NodeId | null = null;
+  visitWorkCells(terrain, blocks, footprint, hx, hy, (node, continent) => {
+    if (continent !== workerContinent) return false;
+    found = node;
+    return true;
+  });
+  return found;
+}
+
+/** Calls `visit` with each work-area cell of a ship house at `(hx, hy)` a builder may stand on, and its
+ *  continent, in order, until `visit` answers true; {@link shipWorkPoint}'s cells. */
+function visitWorkCells(
+  terrain: TerrainGraph,
+  blocks: BlockOverlay,
+  footprint: BuildingFootprint | undefined,
+  hx: number,
+  hy: number,
+  visit: (node: NodeId, continent: number) => boolean,
+): void {
+  const area = footprint?.workArea;
+  if (area === undefined || area.length === 0) {
+    const point = workPoint(terrain, footprint, hx, hy);
+    const continent = point === null ? NO_COMPONENT : terrain.componentOf(point);
+    if (point !== null && continent !== NO_COMPONENT) visit(point, continent);
+    return;
+  }
+  for (const cell of area) {
+    const x = hx + footprintCellDx(hy, cell);
+    const y = hy + cell.dy;
+    if (!terrain.inBounds(x, y)) continue;
+    const node = terrain.nodeAt(x, y);
+    const continent = terrain.componentOf(node);
+    if (continent === NO_COMPONENT || blocks.has(node)) continue;
+    if (visit(node, continent)) return;
+  }
+}
+
+/**
+ * The cell a builder on `workerContinent` works the unfinished vehicle site `site` from: a ship site's
+ * {@link shipWorkPoint}, else the site's door while it lies on that continent. Null when none does, so the
+ * site is out of that builder's walk.
+ */
+export function vehicleSiteWorkPoint(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  site: Entity,
+  workerContinent: number,
+): NodeId | null {
+  const building = world.tryGet(site, Building);
+  const p = world.tryGet(site, Position);
+  if (building === undefined || p === undefined) return null;
+  if (contentIndex(ctx.content).buildings.get(building.buildingType)?.ignoreContinents === true) {
+    const anchor = nodeOfPosition(p.x, p.y);
+    const blocks = walkBlockMask(world, ctx, terrain);
+    const footprint = houseFootprintOf(ctx.content, building);
+    return shipWorkPoint(terrain, blocks, footprint, anchor.hx, anchor.hy, workerContinent);
+  }
+  const door = interactionCellOf(world, ctx, terrain, site);
+  return door !== null && terrain.componentOf(door) === workerContinent ? door : null;
+}
+
 type Objection = 'none' | 'blocked' | 'occupied';
 
 /** The house a site is sought for, with the footprint its builder's tribe gives it. */
@@ -159,20 +242,17 @@ function landObjection(
 }
 
 /**
- * Why a ship house may not go at `(hx, hy)`: its body must lie on one water body, its anchor with the
- * free-size class the vehicle needs (the water side of the one clearance field; the anchor alone, as the
- * launched ship's movement reads it, since the hull's shoreward rows lie against the land its door
- * stands on), its work point on the worker's shore, and no ship parked there. The shore rule is what
- * "a water continent bordering the worker's continent" reduces to when the work point is a footprint
- * cell (approximation: the original's continent-adjacency test is not read).
+ * Why a ship house's body may not go at `(hx, hy)`, whoever builds it: the body must lie on one water body,
+ * its anchor with the free-size class the vehicle needs (the water side of the one clearance field; the
+ * anchor alone, as the original reads it and the launched ship's movement does), and no ship parked there.
+ * {@link waterObjection} adds the builder's work point.
  */
-function waterObjection(
+function waterBodyObjection(
   world: World,
   ctx: MapContext,
   terrain: TerrainGraph,
   site: SiteHouse,
   vehicle: VehicleType,
-  workerContinent: number,
   parked: ReadonlySet<NodeId>,
   hx: number,
   hy: number,
@@ -189,9 +269,28 @@ function waterObjection(
   for (const node of body) {
     if (forbidden.has(node) || terrain.componentOf(node) !== continent) return 'blocked';
   }
-  const point = workPoint(terrain, site.footprint, hx, hy);
-  if (point === null || terrain.componentOf(point) !== workerContinent) return 'blocked';
   return 'none';
+}
+
+/** Why a ship house may not go at `(hx, hy)` for a builder on `workerContinent`: its body's
+ *  {@link waterBodyObjection}, else no {@link shipWorkPoint} on that continent. */
+function waterObjection(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  site: SiteHouse,
+  vehicle: VehicleType,
+  workerContinent: number,
+  parked: ReadonlySet<NodeId>,
+  blocks: BlockOverlay,
+  hx: number,
+  hy: number,
+): Objection {
+  const body = waterBodyObjection(world, ctx, terrain, site, vehicle, parked, hx, hy);
+  if (body !== 'none') return body;
+  return shipWorkPoint(terrain, blocks, site.footprint, hx, hy, workerContinent) === null
+    ? 'blocked'
+    : 'none';
 }
 
 const NO_PARKED: ReadonlySet<NodeId> = new Set();
@@ -199,9 +298,9 @@ const NO_PARKED: ReadonlySet<NodeId> = new Set();
 /**
  * Whether ship water lies in `rings` of `centre` for a worker on `workerContinent`: one of `owner`'s
  * unfinished sites of the ship house `houseType` within the rings qualifies through `reachable`, or a
- * fresh one fits on some water node there, by the rule {@link shipYardProbe} applies. The shared core of
- * the computer player's joinery ruling and the placement hint's per-anchor verdict, so the two cannot
- * part. Approximation: the probe reads no parked ships, so water a standing ship covers still counts
+ * fresh one fits on some water node there, by the rule {@link shipYardProbe} applies. The computer
+ * player's joinery ruling reads it, and the placement hint's per-area grid answers the same question for
+ * every anchor at once. Approximation: the probe reads no parked ships, so water a standing ship covers still counts
  * until its hull moves or the site it blocks is found occupied in the yard's own search.
  */
 export function shipWaterWithin(
@@ -218,6 +317,7 @@ export function shipWaterWithin(
   reachable: (site: Entity) => boolean = () => true,
 ): boolean {
   if (reusableVehicleSite(world, reusable, houseType, owner, centre, rings, reachable) !== null) return true;
+  if (workerContinent === NO_COMPONENT) return false;
   const fits = shipYardProbe(world, ctx, terrain, houseType, tribe, workerContinent);
   if (fits === null) return false;
   for (let r = 0; r < rings; r++) {
@@ -260,6 +360,43 @@ export function chainShipHouse(index: ContentIndex, buildingType: number): numbe
   return least?.house ?? null;
 }
 
+/** A ship house's site rule for one builder tribe, every builder continent at once. */
+export interface ShipYardSites {
+  /** Whether a fresh site's body may go at `(hx, hy)`, whoever builds it ({@link waterBodyObjection}). */
+  fits(hx: number, hy: number): boolean;
+  /** Calls `visit` with each continent a builder could work a site anchored at `(hx, hy)` from: a fresh
+   *  one with this tribe's footprint, or a standing `site` with its own. */
+  workContinents(hx: number, hy: number, visit: (continent: number) => void, site?: Entity): void;
+}
+
+/** {@link ShipYardSites} for `tribe`'s `houseType`, with no ship parked anywhere; null for a type that is not
+ *  a ship house. */
+export function shipYardSites(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  houseType: number,
+  tribe: number,
+): ShipYardSites | null {
+  const index = contentIndex(ctx.content);
+  const house = index.buildings.get(houseType);
+  const vehicle = house?.vehicleType === undefined ? undefined : index.vehicles.get(house.vehicleType);
+  if (house === undefined || vehicle === undefined || !house.ignoreContinents) return null;
+  const site: SiteHouse = { house, tribe, footprint: buildingFootprintFor(house, tribe) };
+  const blocks = walkBlockMask(world, ctx, terrain);
+  return {
+    fits: (hx, hy) => waterBodyObjection(world, ctx, terrain, site, vehicle, NO_PARKED, hx, hy) === 'none',
+    workContinents: (hx, hy, visit, standing) => {
+      const building = standing === undefined ? undefined : world.tryGet(standing, Building);
+      const footprint = building === undefined ? site.footprint : houseFootprintOf(ctx.content, building);
+      visitWorkCells(terrain, blocks, footprint, hx, hy, (_node, continent) => {
+        visit(continent);
+        return false;
+      });
+    },
+  };
+}
+
 /**
  * Whether a fresh site of the ship house `houseType` fits anchored at a node for a worker on
  * `workerContinent`, by the water rule {@link findVehicleSite} applies with no ship parked there, so a
@@ -278,8 +415,9 @@ export function shipYardProbe(
   const vehicle = house?.vehicleType === undefined ? undefined : index.vehicles.get(house.vehicleType);
   if (house === undefined || vehicle === undefined || !house.ignoreContinents) return null;
   const site: SiteHouse = { house, tribe, footprint: buildingFootprintFor(house, tribe) };
+  const blocks = walkBlockMask(world, ctx, terrain);
   return (hx, hy) =>
-    waterObjection(world, ctx, terrain, site, vehicle, workerContinent, NO_PARKED, hx, hy) === 'none';
+    waterObjection(world, ctx, terrain, site, vehicle, workerContinent, NO_PARKED, blocks, hx, hy) === 'none';
 }
 
 /**
@@ -303,12 +441,24 @@ export function findVehicleSite(
   const site: SiteHouse = { house, tribe, footprint: buildingFootprintFor(house, tribe) };
   const workerContinent = terrain.componentOf(workerNode);
   const parked = parkedVehicleNodes(world, ctx, terrain);
+  const blocks = walkBlockMask(world, ctx, terrain);
   let occupied = false;
   for (let r = 0, rings = vehicleSiteRings(house); r < rings; r++) {
     for (const { point } of hexagonRing(centre, r)) {
       if (!terrain.inBounds(point.hx, point.hy)) continue;
       const objection = house.ignoreContinents
-        ? waterObjection(world, ctx, terrain, site, vehicle, workerContinent, parked, point.hx, point.hy)
+        ? waterObjection(
+            world,
+            ctx,
+            terrain,
+            site,
+            vehicle,
+            workerContinent,
+            parked,
+            blocks,
+            point.hx,
+            point.hy,
+          )
         : landObjection(world, ctx, terrain, site, vehicle, workerContinent, parked, point.hx, point.hy);
       if (objection === 'none') return { kind: 'site', node: point };
       if (objection === 'occupied') occupied = true;

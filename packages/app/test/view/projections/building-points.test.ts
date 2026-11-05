@@ -5,7 +5,7 @@ import { doorNode, workerIconNode } from '../../../src/view/projections/index.js
 
 /** A minimal footprint carrying just a door (the only field these helpers read). */
 function footprintWithDoor(dx: number, dy: number): BuildingFootprint {
-  return { blocked: [], familyBody: [], reserved: [], door: { dx, dy } };
+  return { blocked: [], familyBody: [], reserved: [], door: { dx, dy }, workArea: [] };
 }
 
 describe('doorNode', () => {
@@ -22,7 +22,7 @@ describe('doorNode', () => {
   });
 
   it('falls back to the anchor itself for a doorless type (mirrors the sim interactionNode)', () => {
-    const doorless: BuildingFootprint = { blocked: [], familyBody: [], reserved: [] };
+    const doorless: BuildingFootprint = { blocked: [], familyBody: [], reserved: [], workArea: [] };
     expect(doorNode(doorless, { hx: 4, hy: 6 })).toEqual({ hx: 4, hy: 6 });
     expect(doorNode(undefined, { hx: 4, hy: 6 })).toEqual({ hx: 4, hy: 6 });
   });

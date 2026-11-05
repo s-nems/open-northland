@@ -4,13 +4,22 @@
  * live probe the command gates on, so the two cannot disagree.
  */
 import type { ContentSet } from '@open-northland/data';
-import { Building, Owner, Palisade, ResourceFootprint, UnderConstruction } from '../components/index.js';
+import {
+  Building,
+  Owner,
+  Palisade,
+  PalisadeBlocking,
+  Position,
+  ResourceFootprint,
+  UnderConstruction,
+} from '../components/index.js';
 import { landscapeEditState, landscapePlacementRevision } from '../components/landscape.js';
 import { bioGroundWaived } from '../components/rules.js';
 import { contentIndex } from '../core/content-index.js';
 import type { Entity, World } from '../ecs/world.js';
-import type { HalfCellNode, NodeArea } from '../nav/halfcell.js';
-import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../nav/terrain/index.js';
+import { type HalfCellNode, type NodeArea, nodeOfPosition } from '../nav/halfcell.js';
+import { HEX_DX_EVEN, HEX_DX_ODD, HEX_DY } from '../nav/range-search.js';
+import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
 import { ownedBuildings } from '../systems/ai-shared/seat-roster.js';
 import { contestedGroundFor } from '../systems/conflict/contested-ground.js';
 import { buildingFootprintOf, doorNodeOf } from '../systems/footprint/geometry.js';
@@ -21,7 +30,6 @@ import {
   siteReachFor,
   workFlagBlockerVersion,
 } from '../systems/footprint/index.js';
-import { interactionCellOf } from '../systems/footprint/interaction.js';
 import {
   gridChangeKey,
   type PlacementGrid,
@@ -30,8 +38,10 @@ import {
 import {
   chainShipHouse,
   SHIP_SITE_RINGS,
-  shipWaterWithin,
+  type ShipYardSites,
+  shipYardSites,
 } from '../systems/footprint/placement/vehicle-site.js';
+import { walkBlockMask } from '../systems/footprint/walk-block-mask.js';
 import { peaceGroundWithin } from '../systems/match/peace.js';
 import { ownPalisadeNodeList, palisadePlacementProbe } from '../systems/palisades/index.js';
 import { buildingEnabled } from '../systems/progression/index.js';
@@ -404,27 +414,27 @@ export function ownPalisadeNodeSet(world: World, player: number): NodeSetAnswer 
   return packedNodeSet(ownPalisadeNodeList(world, player));
 }
 
-/** Whether a workshop placed at an anchor would find ship water in its yard search. */
-export interface ShipWaterAnswer {
-  readonly shipWater: boolean;
-  /** Changes whenever the verdict may, so a memo over the answers keys on it. */
-  readonly key: string;
-}
-
 /**
- * What the ship-water verdict reads: the walk-block and clearance inputs (buildings, walls, resources,
- * the scripted landscape), the ownership the seat's reusable yards follow, and the terrain the door's
- * continent and the water components read. Never a vehicle's position: the yard probe reads no parked
- * ships, so a hull drifting across the candidate water does not flip the verdict.
+ * What the ship-water verdict reads: which buildings, sites, walls and resources stand and who owns them,
+ * the walk-block mask a builder's work cell and an upgrade's grown body move, and the scripted landscape.
+ * A construction stroke moves none of them, so active sites do not churn the key. Never a vehicle's
+ * position: the yard probe reads no parked ships, so a hull drifting across the candidate water does not
+ * flip the verdict.
  */
-export function shipWaterVersionOf(world: World): string {
+export function shipWaterVersionOf(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph | undefined,
+): string {
   return [
     world.componentGeneration(Building),
-    world.componentValueGeneration(Building),
+    world.componentGeneration(UnderConstruction),
     world.componentGeneration(Palisade),
+    world.componentGeneration(PalisadeBlocking),
     world.componentGeneration(ResourceFootprint),
     world.componentGeneration(Owner),
     world.componentValueGeneration(Owner),
+    terrain === undefined ? '' : walkBlockMask(world, { content }, terrain).version,
     landscapePlacementRevision(world),
     landscapeEditState(world).topologyRevision,
   ].join('.');
@@ -445,54 +455,144 @@ export function shipWaterWorkshopsOf(content: ContentSet): ReadonlySet<number> {
 const workshopChains = new WeakMap<object, ReadonlySet<number>>();
 
 /**
- * Whether a workshop of `buildingType` (of `tribe`, whose footprint the door node reads) placed with its
- * anchor at half-cell node `(x, y)` would have ship water in its crew's yard search
- * ({@link SHIP_SITE_RINGS}, the search {@link shipWaterWithin} mirrors): a fresh yard of the chain's
- * smallest ship house fits on some water node in reach for a worker on the door's continent, or the
- * seat's unfinished yard of that house stands in reach on that shore. Null when the type's chain builds
- * no ships or the sim is mapless, so no verdict applies.
+ * Over `area`, 1 where a workshop of `buildingType` (of `tribe`, whose footprint the door reads) anchored at
+ * the node would find ship water in its crew's yard search, else 0: within {@link SHIP_SITE_RINGS} of the
+ * anchor a fresh yard of the chain's smallest ship house fits for a worker on the door's continent, or
+ * `player`'s unfinished yard of that house stands with a work point there. The per-anchor rule
+ * {@link shipWaterWithin} states, answered for every anchor at once: each continent's yard spots spread
+ * one ring per step over the area grown by the rings. Null when the type's chain builds no ships or the
+ * sim is mapless.
  */
-export function shipWaterAnswerFor(
+export function shipWaterGridFor(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph | undefined,
   buildingType: number,
   tribe: number | undefined,
-  x: number,
-  y: number,
+  area: NodeArea,
   player?: number,
-): ShipWaterAnswer | null {
+): NodeGridAnswer | null {
   if (terrain === undefined) return null;
-  const index = contentIndex(content);
-  const house = chainShipHouse(index, buildingType);
-  if (house === null) return null;
-  // The node the placed house's worker stands on: its door, or the anchor for a door-less footprint,
-  // the work point the yard search reads the worker's shore from.
+  const house = chainShipHouse(contentIndex(content), buildingType);
+  const yards = house === null ? null : shipYardSites(world, { content }, terrain, house, tribe ?? 0);
+  if (house === null || yards === null) return null;
+  const reach = SHIP_SITE_RINGS - 1;
+  // Every node within `reach` of an anchor in the area lies in the box, and so does every node of a
+  // shortest lattice path between them, so a spread confined to the box measures those distances exactly.
+  const box: NodeArea = {
+    minHx: area.minHx - reach,
+    minHy: area.minHy - reach,
+    maxHx: area.maxHx + reach,
+    maxHy: area.maxHy + reach,
+  };
+  const spots = new Map<number, number[]>();
+  const addSpot = (continent: number, hx: number, hy: number): void => {
+    const list = spots.get(continent) ?? [];
+    list.push(boxIndex(box, hx, hy));
+    spots.set(continent, list);
+  };
+  const version = shipWaterVersionOf(world, content, terrain);
+  const known = yardSpotsOf(world, `${house}:${tribe ?? 0}:${version}`);
+  for (let hy = Math.max(0, box.minHy); hy <= Math.min(terrain.height - 1, box.maxHy); hy++) {
+    for (let hx = Math.max(0, box.minHx); hx <= Math.min(terrain.width - 1, box.maxHx); hx++) {
+      const node = terrain.nodeAt(hx, hy);
+      if (!terrain.isWater(node)) continue;
+      let continents = known.get(node);
+      if (continents === undefined) {
+        continents = yards.fits(hx, hy) ? distinctWorkContinents(yards, hx, hy) : NO_CONTINENTS;
+        known.set(node, continents);
+      }
+      for (const continent of continents) addSpot(continent, hx, hy);
+    }
+  }
+  if (player !== undefined) {
+    for (const site of ownedBuildings(world, player)) {
+      if (world.tryGet(site, Building)?.buildingType !== house || !world.has(site, UnderConstruction))
+        continue;
+      const at = world.get(site, Position);
+      const { hx, hy } = nodeOfPosition(at.x, at.y);
+      if (hx < box.minHx || hx > box.maxHx || hy < box.minHy || hy > box.maxHy) continue;
+      for (const continent of distinctWorkContinents(yards, hx, hy, site)) addSpot(continent, hx, hy);
+    }
+  }
+  const reached = new Map<number, Uint8Array>();
+  for (const [continent, starts] of spots) reached.set(continent, spreadWithin(box, starts, reach));
   const footprint = tribe === undefined ? undefined : buildingFootprintOf(content, buildingType, tribe);
-  const shore = terrain.componentOf(doorNodeOf(terrain, footprint, x, y) ?? terrain.nodeAtClamped(x, y));
-  const reusable =
-    player === undefined
-      ? []
-      : ownedBuildings(world, player).filter(
-          (e) => world.tryGet(e, Building)?.buildingType === house && world.has(e, UnderConstruction),
-        );
-  const shipWater = shipWaterWithin(
-    world,
-    { content },
-    terrain,
-    house,
-    tribe ?? 0,
-    player,
-    { hx: x, hy: y },
-    shore,
-    SHIP_SITE_RINGS,
-    reusable,
-    // A yard across the water or on another shore is out of this crew's walk, however near it stands.
-    (site: Entity): boolean => {
-      if (shore === NO_COMPONENT) return false;
-      const cell = interactionCellOf(world, { content }, terrain, site);
-      return cell !== null && terrain.componentOf(cell) === shore;
+  const accepted = gridOver(area, (hx, hy) => {
+    if (!terrain.inBounds(hx, hy)) return false;
+    const shore = terrain.componentOf(doorNodeOf(terrain, footprint, hx, hy) ?? terrain.nodeAt(hx, hy));
+    return reached.get(shore)?.[boxIndex(box, hx, hy)] === 1;
+  });
+  return { area, accepted, key: version };
+}
+
+const NO_CONTINENTS: readonly number[] = [];
+
+/** Each water node's yard verdict under one ship house, tribe and {@link shipWaterVersionOf}: the
+ *  continents a fresh yard anchored there is worked from, empty where none fits. Neighbouring areas share
+ *  most of their grown boxes, so a cursor's areas test each water node once. */
+const yardSpotMemo = new WeakMap<
+  World,
+  { readonly key: string; readonly spots: Map<NodeId, readonly number[]> }
+>();
+
+function yardSpotsOf(world: World, key: string): Map<NodeId, readonly number[]> {
+  const held = yardSpotMemo.get(world);
+  if (held !== undefined && held.key === key) return held.spots;
+  const spots = new Map<NodeId, readonly number[]>();
+  yardSpotMemo.set(world, { key, spots });
+  return spots;
+}
+
+function distinctWorkContinents(yards: ShipYardSites, hx: number, hy: number, site?: Entity): number[] {
+  const continents: number[] = [];
+  yards.workContinents(
+    hx,
+    hy,
+    (continent) => {
+      if (!continents.includes(continent)) continents.push(continent);
     },
+    site,
   );
-  return { shipWater, key: shipWaterVersionOf(world) };
+  return continents;
+}
+
+function boxIndex(box: NodeArea, hx: number, hy: number): number {
+  return (hy - box.minHy) * nodeAreaWidth(box) + (hx - box.minHx);
+}
+
+/** 1 at every box node within `reach` lattice steps of a start (box indexes), else 0. One breadth-first
+ *  pass over a queue of box indexes, its distances held beside the marks. */
+function spreadWithin(box: NodeArea, starts: readonly number[], reach: number): Uint8Array {
+  const width = nodeAreaWidth(box);
+  const height = nodeAreaHeight(box);
+  const reached = new Uint8Array(width * height);
+  const steps = new Uint8Array(width * height);
+  const queue = new Int32Array(width * height);
+  let tail = 0;
+  for (const index of starts) {
+    if (reached[index] === 1) continue;
+    reached[index] = 1;
+    queue[tail++] = index;
+  }
+  for (let head = 0; head < tail; head++) {
+    const index = queue[head] ?? 0;
+    const step = (steps[index] ?? 0) + 1;
+    if (step > reach) continue;
+    const x = index % width;
+    const y = (index - x) / width;
+    // The lattice parity is the node's own row's, which the box's first row offsets.
+    const dxs = ((box.minHy + y) & 1) === 0 ? HEX_DX_EVEN : HEX_DX_ODD;
+    for (let k = 0; k < HEX_DY.length; k++) {
+      const nx = x + (dxs[k] ?? 0);
+      const ny = y + (HEX_DY[k] ?? 0);
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+      const at = ny * width + nx;
+      if (reached[at] === 1) continue;
+      reached[at] = 1;
+      steps[at] = step;
+      queue[tail++] = at;
+    }
+  }
+  return reached;
 }

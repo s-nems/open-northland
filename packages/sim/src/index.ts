@@ -255,7 +255,6 @@ export {
   nodeGridAccepts,
   nodeGridUpgradeReserve,
   nodeSetHas,
-  type ShipWaterAnswer,
   shipWaterWorkshopsOf,
 } from './simulation/probe-answers.js';
 export { fogViewOfMask } from './simulation/read-seams.js';

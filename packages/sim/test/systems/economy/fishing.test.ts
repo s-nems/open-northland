@@ -635,7 +635,7 @@ describe('workplaceShoreSearchRadius', () => {
   /** A door one node east and three rows south of the anchor: an odd row offset, which an odd anchor row
    *  pushes one more node east. */
   const DOOR = { dx: 1, dy: 3 };
-  const ANCHOR_ONLY = { blocked: [{ dx: 0, dy: 0 }], familyBody: [], reserved: [] };
+  const ANCHOR_ONLY = { blocked: [{ dx: 0, dy: 0 }], familyBody: [], reserved: [], workArea: [] };
 
   function doorContent(): ContentSet {
     const base = fishingContent();

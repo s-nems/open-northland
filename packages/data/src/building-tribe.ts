@@ -59,7 +59,7 @@ export function sameBuildingFootprintCells(
   return footprintKey(buildingFootprintFor(type, a, record)) === footprintKey(buildingFootprintFor(type, b));
 }
 
-/** Whether two footprints hold the same cells and door, in any order. */
+/** Whether two footprints hold the same cells, door and work area, in any order. */
 export function sameFootprintCells(a: BuildingFootprint, b: BuildingFootprint): boolean {
   return footprintKey(a) === footprintKey(b);
 }
@@ -72,7 +72,13 @@ function footprintKey(footprint: BuildingFootprint | undefined): string {
       .sort()
       .join(';');
   const door = footprint.door === undefined ? '' : `${footprint.door.dx},${footprint.door.dy}`;
-  return [cells(footprint.blocked), cells(footprint.familyBody), cells(footprint.reserved), door].join('|');
+  return [
+    cells(footprint.blocked),
+    cells(footprint.familyBody),
+    cells(footprint.reserved),
+    door,
+    cells(footprint.workArea),
+  ].join('|');
 }
 
 /** `tribe`'s variant of `type`, found without a per-call closure: this runs per building per tick. */

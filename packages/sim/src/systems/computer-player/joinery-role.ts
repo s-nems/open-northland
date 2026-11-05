@@ -1,7 +1,6 @@
 import { Building, UnderConstruction } from '../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { NO_COMPONENT } from '../../nav/terrain/index.js';
 import { countedTiers } from '../ai-shared/content-lookup.js';
 import { anchorNodeOf } from '../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../ai-shared/seat-roster.js';
@@ -53,7 +52,6 @@ function hasShipWater(
   const centre = anchorNodeOf(world, joinery);
   if (terrain === undefined || centre === null) return false;
   const shore = terrain.componentOf(interactionCell(world, ctx, terrain, joinery));
-  if (shore === NO_COMPONENT) return false;
   return shipWaterWithin(
     world,
     ctx,

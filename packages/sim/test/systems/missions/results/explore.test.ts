@@ -289,6 +289,7 @@ describe('ExploreArea object areas', () => {
         { dx: 0, dy: 0 },
         { dx: 8, dy: 0 },
       ],
+      workArea: [],
     };
     const sim = scriptedSim([firingMission([explore(OWNER, POINT, 1)])], content);
     sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });

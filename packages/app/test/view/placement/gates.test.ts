@@ -26,11 +26,7 @@ import {
 import { sandboxPalisadeTypes } from '../../../src/game/sandbox/palisades.js';
 import { createLineTool } from '../../../src/hud/tool-panel/line-tool.js';
 import { inlineSessionHost } from '../../../src/session/index.js';
-import {
-  createPlacementGates,
-  type PlacementGates,
-  SHIP_WATER_PREVIEW_REFRESH_MS,
-} from '../../../src/view/placement/gates.js';
+import { createPlacementGates, type PlacementGates } from '../../../src/view/placement/gates.js';
 import { makeLitOverlaySource, makeOverlayFrameSource } from '../../../src/view/placement/overlay.js';
 import { createFogGates } from '../../../src/view/projections/index.js';
 
@@ -463,16 +459,20 @@ describe('placement gates - the ship water a held joinery would get', () => {
     return { sim, gates: createPlacementGates(inlineSessionHost(sim), fog, HUMAN_PLAYER) };
   }
 
-  it("answers the held joinery per anchor once the sim's verdict lands", async () => {
+  it('answers every anchor of an area from one sim grid, the way the placement colour reads', async () => {
     const { sim, gates } = shoreGates();
-    const probe = vi.spyOn(sim, 'shipWaterAnswer');
+    const probe = vi.spyOn(sim, 'shipWaterGrid');
+    const beside = cellAnchorNode(9, 6);
     expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBeUndefined();
     await landed();
     expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
-    expect(probe.mock.calls[0]?.slice(0, 4)).toEqual([BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy]);
+    // A neighbouring anchor reads the landed area at once: a dragged cursor asks the sim nothing more.
+    expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, beside.hx, beside.hy)).toBe(true);
+    expect(probe).toHaveBeenCalledTimes(1);
+    expect(probe.mock.calls[0]?.slice(0, 2)).toEqual([BUILDING_JOINERY_03, VIKING]);
   });
 
-  it('asks a type that builds no ships nothing, and holds one answer per anchor while the version stands', async () => {
+  it('asks a type that builds no ships nothing, and holds one answer per area while the version stands', async () => {
     const sim = shoreSim();
     const host = inlineSessionHost(sim);
     const fog = createFogGates();
@@ -501,33 +501,5 @@ describe('placement gates - the ship water a held joinery would get', () => {
     sim.step();
     expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
     expect(probe.mock.calls.length).toBe(2);
-  });
-
-  it('gates a new anchor, so a cursor swept along the shore costs the sim two sweeps a second', async () => {
-    const { sim, gates } = shoreGates();
-    const probe = vi.spyOn(sim, 'shipWaterAnswer');
-    const clock = vi.spyOn(performance, 'now');
-    let now = 0;
-    clock.mockImplementation(() => now);
-    try {
-      const beside = cellAnchorNode(9, 6);
-      expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBeUndefined();
-      // A second node inside the gate window asks nothing: a dragged cursor launches no sweep per node.
-      expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, beside.hx, beside.hy)).toBeUndefined();
-      expect(probe.mock.calls.length).toBe(1);
-      // The anchor whose verdict landed answers at once, gate open or not.
-      await landed();
-      expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, SHORE.hx, SHORE.hy)).toBe(true);
-      expect(probe.mock.calls.length).toBe(1);
-      // Past the window the waiting anchor asks, and then holds its own landed verdict.
-      now += SHIP_WATER_PREVIEW_REFRESH_MS + 1;
-      expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, beside.hx, beside.hy)).toBeUndefined();
-      expect(probe.mock.calls.length).toBe(2);
-      await landed();
-      expect(gates.shipWaterAt(BUILDING_JOINERY_03, VIKING, beside.hx, beside.hy)).toBe(true);
-      expect(probe.mock.calls.length).toBe(2);
-    } finally {
-      clock.mockRestore();
-    }
   });
 });

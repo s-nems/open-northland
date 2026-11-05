@@ -12,7 +12,12 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import { assembleBuilding } from '../../../command/placement.js';
 import { advanceRotation, nextRotationPick, spendRotationPick } from '../../../economy/production.js';
-import { findVehicleSite, reusableVehicleSite, vehicleSiteRings } from '../../../footprint/index.js';
+import {
+  findVehicleSite,
+  reusableVehicleSite,
+  vehicleSiteRings,
+  vehicleSiteWorkPoint,
+} from '../../../footprint/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { vehicleHouseOfGood } from '../../../readviews/index.js';
 import { deliveredConstructionFraction, recipesByProductOf } from '../../../stores/index.js';
@@ -58,7 +63,9 @@ export function planVehicleYard(plan: PlannerContext, workplace: Entity, spacing
   if (assigned === undefined || assigned.site !== site || assigned.pinned) {
     world.add(e, SiteAssignment, { site, pinned: false });
   }
-  const workPoint = interactionCell(world, ctx, terrain, site, here);
+  const workPoint =
+    vehicleSiteWorkPoint(world, ctx, terrain, site, terrain.componentOf(here)) ??
+    interactionCell(world, ctx, terrain, site, here);
   if (world.get(site, UnderConstruction).labor < deliveredConstructionFraction(world, ctx, site)) {
     atOrWalk(world, e, here, workPoint, () =>
       startAtomic(
@@ -139,7 +146,7 @@ function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): En
   // A yard across the water or on another shore is out of this crew's walk, however near it stands.
   const shore = terrain.componentOf(here);
   const onShore = (candidate: Entity): boolean =>
-    terrain.componentOf(interactionCell(world, ctx, terrain, candidate, here)) === shore;
+    vehicleSiteWorkPoint(world, ctx, terrain, candidate, shore) !== null;
   const reused = reusableVehicleSite(
     world,
     targets.vehicleSites,

@@ -42,5 +42,6 @@ export function approximateFootprint(kind: string): BuildingFootprint {
     reserved: square(body + MARGIN),
     // The front-centre node of the body edge, where a settler stands to enter; `+dy` faces the viewer.
     door: { dx: 0, dy: body },
+    workArea: [],
   };
 }

@@ -25,6 +25,7 @@ const TYPES = new Map<number, GeometryBuildingInfo>([
         familyBody: [{ dx: 0, dy: 0 }],
         reserved: [{ dx: 1, dy: 1 }],
         door: { dx: 0, dy: 2 },
+        workArea: [],
       },
     },
   ],

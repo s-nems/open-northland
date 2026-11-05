@@ -157,7 +157,7 @@ import { createScriptPresentation } from '../script/presentation.js';
 import { mountScriptTints } from '../script/tints.js';
 import { patchStoredSettings, readStoredSettings } from '../settings/store.js';
 import { createShortfallLook } from '../speed-shortfall.js';
-import { createTooltip } from '../tooltip.js';
+import { createTooltip, TOOLTIP_Z_INDEX } from '../tooltip.js';
 import { type ControlGroupMembers, isControlGroupMember } from '../unit-controls/control-groups.js';
 import { createUnitControls, type UnitControls } from '../unit-controls/index.js';
 import { createWeatherFeed } from '../weather-feed.js';
@@ -340,6 +340,8 @@ const NO_PAPERS: readonly Paper[] = [];
 const NO_RESIDENTS: readonly ResidentRow[] = [];
 /** Above the world layers, below the HUD plane the tool panel and the minimap share. */
 const SCRIPT_OVERLAY_Z = 900;
+/** The ship-water warning chip stacks over the other cursor chips, so a hover tip never hides it. */
+const SHIP_WATER_TIP_Z_INDEX = TOOLTIP_Z_INDEX + 1;
 
 /** Mount the standard in-game HUD over the assembled world and start the session's frame loop. */
 export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle> {
@@ -648,7 +650,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     cleanup.push(() => assistantTip.destroy());
     // The held ship workshop's "no ship water here" chip, raised at the cursor by the frame loop while
     // the ghost sits on a spot whose coast builds no ships.
-    const shipWaterTip = createTooltip({ zIndex: 2001 });
+    const shipWaterTip = createTooltip({ zIndex: SHIP_WATER_TIP_Z_INDEX });
     cleanup.push(() => shipWaterTip.destroy());
     let escapeClaimed: (() => boolean) | null = null;
     let overviewPress: UnitControls['overviewPress'] | null = null;

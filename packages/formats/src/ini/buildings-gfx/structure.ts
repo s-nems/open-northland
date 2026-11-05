@@ -170,6 +170,19 @@ function canonicalCells(cells: Iterable<FootprintCell>): FootprintCell[] {
   return [...byKey.values()].sort((a, b) => a.dy - b.dy || a.dx - b.dx);
 }
 
+/** A per-level area key's cells (`<key> <sizeIdx> <x> <y> <run>`) by size level. */
+function levelAreaCells(rec: RuleSection, key: string): Map<number, FootprintCell[]> {
+  const byLevel = new Map<number, FootprintCell[]>();
+  for (const p of findProps(rec, key)) {
+    const [sizeIdx, x, y, run] = p.values.map((v) => Number.parseInt(v, 10));
+    if (sizeIdx === undefined || Number.isNaN(sizeIdx)) continue;
+    const cells = byLevel.get(sizeIdx) ?? [];
+    cells.push(...expandAreaRun(x ?? Number.NaN, y ?? Number.NaN, run ?? Number.NaN));
+    byLevel.set(sizeIdx, cells);
+  }
+  return byLevel;
+}
+
 /** One house record's footprint at one size level: the candidate both footprint tables rank. */
 interface RecordFootprintRow {
   readonly typeId: number;
@@ -180,10 +193,11 @@ interface RecordFootprintRow {
 }
 
 /**
- * Reads every house record's ground footprint per size level from three key families joined by the
+ * Reads every house record's ground footprint per size level from four key families joined by the
  * record's `LogicType <sizeIdx> <typeId>` table: `LogicWalkBlockArea <sizeIdx> <x> <y> <run>`,
- * `LogicDoorPoint <sizeIdx> <x> <y>`, and `LogicBuildBlockArea <x> <y> <run>`, which is defined once per
- * record with no level index, so every level's typeId gets the same build-exclusion zone.
+ * `LogicDoorPoint <sizeIdx> <x> <y>`, `LogicConstructionWorkArea <sizeIdx> <x> <y> <run>`, and
+ * `LogicBuildBlockArea <x> <y> <run>`, which is defined once per record with no level index, so every
+ * level's typeId gets the same build-exclusion zone.
  */
 function* recordFootprintRows(sections: readonly RuleSection[]): Generator<RecordFootprintRow> {
   for (const { rec, tribeType, typeByLevel } of gfxHouseLogicRecords(sections)) {
@@ -194,14 +208,8 @@ function* recordFootprintRows(sections: readonly RuleSection[]): Generator<Recor
       const [x, y, run] = p.values.map((v) => Number.parseInt(v, 10));
       buildZone.push(...expandAreaRun(x ?? Number.NaN, y ?? Number.NaN, run ?? Number.NaN));
     }
-    const blockedByLevel = new Map<number, FootprintCell[]>();
-    for (const p of findProps(rec, 'LogicWalkBlockArea')) {
-      const [sizeIdx, x, y, run] = p.values.map((v) => Number.parseInt(v, 10));
-      if (sizeIdx === undefined || Number.isNaN(sizeIdx)) continue;
-      const cells = blockedByLevel.get(sizeIdx) ?? [];
-      cells.push(...expandAreaRun(x ?? Number.NaN, y ?? Number.NaN, run ?? Number.NaN));
-      blockedByLevel.set(sizeIdx, cells);
-    }
+    const blockedByLevel = levelAreaCells(rec, 'LogicWalkBlockArea');
+    const workByLevel = levelAreaCells(rec, 'LogicConstructionWorkArea');
     const doorByLevel = new Map<number, FootprintCell>();
     for (const p of findProps(rec, 'LogicDoorPoint')) {
       const [sizeIdx, x, y] = p.values.map((v) => Number.parseInt(v, 10));
@@ -228,6 +236,7 @@ function* recordFootprintRows(sections: readonly RuleSection[]): Generator<Recor
           familyBody,
           reserved,
           door: doorByLevel.get(sizeIdx),
+          workArea: canonicalCells(workByLevel.get(sizeIdx) ?? []),
         },
       };
     }

@@ -41,8 +41,8 @@ export type PlacementGhost =
        *  type with no defence mode. */
       readonly defenceRangeNodes?: number;
       readonly blessingRangeNodes?: number;
-      /** The held ship workshop's spot builds no ships here (issue #42): the body tints lightly orange so
-       *  the warning reads on the house itself, beside the cursor chip the app raises over it. */
+      /** The held ship workshop builds no ships from this spot: the body takes a warning tint so the
+       *  warning reads on the house itself, beside the cursor chip the app raises over it. */
       readonly warn?: boolean;
     }
   | { readonly kind: 'signpost'; readonly col: number; readonly row: number; readonly player: number }
@@ -148,8 +148,9 @@ const GHOST_ALPHA = 0.55;
 const GATE_GHOST_ALPHA = 0.85;
 /** Placeholder tint when no atlas frame resolves (bare checkout / synthetic sheet without the type). */
 const PLACEHOLDER_COLOR = 0xc8a04a;
-/** A warned building ghost's light orange, tuned by eye against the cursor chip's warning (issue #42). */
-const BUILDING_WARN_TINT = 0xffb36b;
+/** A warned building ghost's golden orange, tuned by eye: plain to tell from the untinted ghost, yellow
+ *  enough not to read as the refused-placement red. */
+const BUILDING_WARN_TINT = 0xffc640;
 /** The ring on the ground under a started line's first node. */
 const ANCHOR_RING_RADIUS = { x: 9, y: 4.5 } as const;
 /** A planned road plot's outline, which sets the plan apart from the sites already ordered. Tuned by eye. */

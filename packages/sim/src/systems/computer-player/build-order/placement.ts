@@ -111,13 +111,11 @@ function baseComponent(world: World, ctx: SystemContext, terrain: TerrainGraph, 
 
 /**
  * The `shore` target: the water node nearest `anchor` on the lattice's rings where a yard of the content's
- * smallest ship fits with its door on the seat's home continent ({@link shipYardProbe}), in a body
+ * smallest ship fits with its work point on the seat's home continent ({@link shipYardProbe}), in a body
  * bordering that continent, with a spot `accept` takes inside the seat's reach within
- * {@link SHORE_SPOT_RINGS}. The yard's door stands south of its hull, so only shore with the water to its
- * north admits one. A body that also borders the
- * continent of the rival headquarters over the sea is taken first. The home continent is the sea route's
- * while one exists, else the base's, read the same way. Null when no such water lies within
- * {@link SHORE_SEARCH_RADIUS_NODES}.
+ * {@link SHORE_SPOT_RINGS}. A body that also borders the continent of the rival headquarters over the
+ * sea is taken first. The home continent is the sea route's while one exists, else the base's, read the
+ * same way. Null when no such water lies within {@link SHORE_SEARCH_RADIUS_NODES}.
  */
 function shoreTarget(
   world: World,

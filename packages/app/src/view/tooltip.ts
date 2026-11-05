@@ -9,6 +9,8 @@ const CURSOR_OFFSET = 14;
 const MAX_WIDTH = 300;
 /** Minimum gap kept between the chip and the viewport edges when clamping (CSS px). */
 const EDGE_MARGIN = 6;
+/** A chip's default stacking order, above the HUD. */
+export const TOOLTIP_Z_INDEX = 2000;
 
 /** Where a chip of `width` × `height` goes for a cursor at (`clientX`, `clientY`): below-right of it,
  *  pulled in from the right edge, and above the cursor when the bottom edge is too near. */
@@ -38,7 +40,7 @@ export function createTooltip(opts: { readonly zIndex?: number } = {}): Tooltip 
   const el = document.createElement('div');
   el.style.cssText = [
     'position:fixed',
-    `z-index:${opts.zIndex ?? 2000}`,
+    `z-index:${opts.zIndex ?? TOOLTIP_Z_INDEX}`,
     'pointer-events:none', // never eat a click meant for the canvas / HUD
     'display:none',
     'padding:2px 8px',

@@ -225,8 +225,8 @@ LogicType 1 99
 });
 
 // Mirrors the real footprint grammar: `LogicBuildBlockArea <x> <y> <run>` (record-wide, NO level
-// index), `LogicWalkBlockArea <sizeIdx> <x> <y> <run>` and `LogicDoorPoint <sizeIdx> <x> <y>` (per
-// level). The two-level "hut" grows its walk-block between levels while the build zone stays fixed.
+// index), `LogicWalkBlockArea <sizeIdx> <x> <y> <run>`,
+// `LogicConstructionWorkArea <sizeIdx> <x> <y> <run>` and `LogicDoorPoint <sizeIdx> <x> <y>` (per level). The two-level "hut" grows its walk-block between levels while the build zone stays fixed.
 const GFXHOUSE_FOOTPRINT_INI = `[GfxHouse]
 EditName "viking hut"
 LogicTribeType 1
@@ -242,6 +242,9 @@ LogicWalkBlockArea 0 -1 0 3
 LogicWalkBlockArea 1 -1 -1 3
 LogicWalkBlockArea 1 -1 0 3
 LogicWalkBlockArea 1 0 1 1
+LogicConstructionWorkArea 0 0 2 2
+LogicConstructionWorkArea 0 -2 -2 1
+LogicConstructionWorkArea 1 -3 0 1
 `;
 
 describe('extractBuildingFootprints', () => {
@@ -273,6 +276,13 @@ describe('extractBuildingFootprints', () => {
     // The door is per level.
     expect(level0?.door).toEqual({ dx: -1, dy: 1 });
     expect(level1?.door).toEqual({ dx: 0, dy: 1 });
+    // The construction work area is per level, its runs expanded in canonical order.
+    expect(level0?.workArea).toEqual([
+      { dx: -2, dy: -2 },
+      { dx: 0, dy: 2 },
+      { dx: 1, dy: 2 },
+    ]);
+    expect(level1?.workArea).toEqual([{ dx: -3, dy: 0 }]);
   });
 
   it('keeps each tribe its own footprint for a shared typeId', () => {
@@ -294,6 +304,7 @@ LogicDoorPoint 0 -9 -8
       familyBody: [{ dx: -9, dy: -9 }],
       reserved: [{ dx: -9, dy: -9 }],
       door: { dx: -9, dy: -8 },
+      workArea: [],
     });
   });
 

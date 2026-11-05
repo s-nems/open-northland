@@ -75,6 +75,7 @@ export const vehicleBuildingClearanceScene: SceneDefinition = {
           familyBody: BODY,
           reserved: BODY,
           door: { dx: -1, dy: 0 },
+          workArea: [],
         },
       ],
     ]),

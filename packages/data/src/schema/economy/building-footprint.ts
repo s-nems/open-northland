@@ -25,5 +25,8 @@ export const BuildingFootprint = z.strictObject({
   /** `LogicDoorPoint` for this size level: the cell settlers interact from. A defence wall's door sits
    *  inside its walk-block, the passable gate the sim's nav overlay carves out. */
   door: FootprintCell.optional(),
+  /** `LogicConstructionWorkArea` for this size level, ascending y then x: the ring a builder may stand on.
+   *  A ship site's work point is its first cell on the worker's continent. */
+  workArea: z.array(FootprintCell).default([]),
 });
 export type BuildingFootprint = z.infer<typeof BuildingFootprint>;

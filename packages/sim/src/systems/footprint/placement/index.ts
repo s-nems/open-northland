@@ -18,6 +18,7 @@ export {
   VEHICLE_SITE_RINGS,
   type VehicleSiteVerdict,
   vehicleSiteRings,
+  vehicleSiteWorkPoint,
 } from './vehicle-site.js';
 export {
   canPlaceWorkFlag,

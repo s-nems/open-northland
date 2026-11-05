@@ -1,4 +1,4 @@
-import { type ContentSet, parseContentSet } from '@open-northland/data';
+import { type ContentSet, footprintCellDx, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addPerson,
@@ -17,11 +17,18 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, ONE, Simulation, type TerrainMap } from '../../../../src/index.js';
-import { type HalfCellNode, hexagonRing, hexDistance, nodeOfPosition } from '../../../../src/nav/halfcell.js';
+import {
+  type HalfCellNode,
+  hexagonRing,
+  hexDistance,
+  nodeOfPosition,
+  positionOfNode,
+} from '../../../../src/nav/halfcell.js';
 import {
   findVehicleSite,
   SHIP_SITE_RINGS,
   VEHICLE_SITE_RINGS,
+  vehicleSiteWorkPoint,
 } from '../../../../src/systems/footprint/index.js';
 import { plannerSystem } from '../../../../src/systems/index.js';
 import { setBuildForbidden } from '../../../../src/systems/landscape/edits.js';
@@ -30,6 +37,7 @@ import { UNREACHABLE_GOAL_MEMO_TICKS } from '../../../../src/systems/settlers/un
 import { createVehicle } from '../../../../src/systems/vehicles/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import { ctxOf } from '../../../fixtures/context.js';
+import { SHIP_DOOR, SHIP_HULL, SHIP_WORK_AREA } from '../../../fixtures/ship-yard.js';
 import { grassCellMap, waterColumnMap } from '../../../fixtures/terrain.js';
 
 /**
@@ -51,28 +59,6 @@ const HANDCART_GOOD = 50;
 const SHIP_GOOD = 51;
 const HANDCART_YARD = 50;
 const SHIP_YARD = 51;
-/** The real small-ship yard body: rows -2..2, five wide at the middle. */
-const SHIP_HULL = [
-  [-1, -2],
-  [0, -2],
-  [1, -2],
-  [-2, -1],
-  [-1, -1],
-  [0, -1],
-  [1, -1],
-  [-2, 0],
-  [-1, 0],
-  [0, 0],
-  [1, 0],
-  [2, 0],
-  [-2, 1],
-  [-1, 1],
-  [0, 1],
-  [1, 1],
-  [-1, 2],
-  [0, 2],
-  [1, 2],
-].map(([dx, dy]) => ({ dx: dx as number, dy: dy as number }));
 const WAINWRIGHT = 52;
 const HEADQUARTERS = 1;
 const CARPENTER = 2;
@@ -151,8 +137,8 @@ function yardContent(): ContentSet {
       },
       {
         // The small-ship yard (the real house 44: `logicignorecontinentsflag 1`, a hull two rows deep
-        // either side of the anchor, the door three rows south on the shore): the hull's shoreward rows
-        // lie against the land, so only the anchor carries the ship's `logicSize` 2 clearance.
+        // either side of the anchor, its work area the ring around it): the hull's shoreward rows lie
+        // against the land, so only the anchor carries the ship's `logicSize` 2 clearance.
         typeId: SHIP_YARD,
         id: 'ship_yard',
         kind: 'vehicle',
@@ -164,7 +150,8 @@ function yardContent(): ContentSet {
           blocked: SHIP_HULL,
           familyBody: SHIP_HULL,
           reserved: SHIP_HULL,
-          door: { dx: -2, dy: 3 },
+          door: SHIP_DOOR,
+          workArea: SHIP_WORK_AREA,
         },
       },
       {
@@ -195,10 +182,12 @@ function sim(map: TerrainMap = grassCellMap(MAP_CELLS, MAP_CELLS)): Simulation {
   return new Simulation({ seed: 5, content: yardContent(), map });
 }
 
-/** The top `waterRows` cell rows open water on continent 1, land below; land nodes read continent 0. */
-function shoreMap(waterRows: number): TerrainMap {
+/** `waterRows` cell rows of open water on continent 1 along the map's top edge (or its bottom edge with
+ *  `south`), land elsewhere; land nodes read continent 0. */
+function shoreMap(waterRows: number, south = false): TerrainMap {
   const typeIds = new Array<number>(MAP_CELLS * MAP_CELLS).fill(GRASS);
-  for (let row = 0; row < waterRows; row++) {
+  const first = south ? MAP_CELLS - waterRows : 0;
+  for (let row = first; row < first + waterRows; row++) {
     for (let col = 0; col < MAP_CELLS; col++) typeIds[row * MAP_CELLS + col] = WATER;
   }
   const width = MAP_CELLS * 2;
@@ -281,6 +270,29 @@ function yardWorld(s: Simulation, select: readonly number[] = [HANDCART_GOOD]) {
   const worker = carpenterAt(s, 12, 13, shop);
   craftOnly(s, worker, select);
   return { shop, store, worker };
+}
+
+/** A wainwright three cell rows above a sea along the map's bottom, its carpenter asked for a ship, after
+ *  one plan; with `blocker`, a cart yard stands at that node from the start. */
+function southShoreYard(blocker?: HalfCellNode) {
+  const s = sim(shoreMap(MAP_CELLS / 2, true));
+  const terrain = s.terrain;
+  if (terrain === undefined) throw new Error('mapped sim');
+  if (blocker !== undefined) {
+    const yard = s.world.create();
+    s.world.add(yard, Position, positionOfNode(blocker.hx, blocker.hy));
+    s.world.add(yard, Building, { buildingType: HANDCART_YARD, tribe: VIKING, built: ONE, level: 0 });
+  }
+  const shop = buildingAt(s, WAINWRIGHT, 12, MAP_CELLS / 2 - 3);
+  const worker = carpenterAt(s, 12, MAP_CELLS / 2 - 2, shop);
+  craftOnly(s, worker, [SHIP_GOOD]);
+  plannerSystem(s.world, ctxOf(s));
+  const [site] = sitesOf(s, SHIP_YARD);
+  if (site === undefined) throw new Error('no ship yard opened');
+  const here = anchorOf(s, worker);
+  const shore = terrain.componentOf(terrain.nodeAt(here.hx, here.hy));
+  const workPoint = vehicleSiteWorkPoint(s.world, ctxOf(s), terrain, site, shore);
+  return { s, terrain, worker, site, at: anchorOf(s, site), shore, workPoint };
 }
 
 describe('the yard site search', () => {
@@ -425,14 +437,32 @@ describe('the yard site search', () => {
     const at = anchorOf(s, site);
     expect(terrain.isWalkable(terrain.nodeAt(at.hx, at.hy))).toBe(false);
     expect(hexDistance(anchorOf(s, shop), at)).toBeLessThan(SHIP_SITE_RINGS);
-    // The hull's last row lies against the shore and the door three rows south of the anchor, on the
-    // worker's continent.
+    // The hull's last row lies against the shore, and the builder works it from the land.
     expect(terrain.isWalkable(terrain.nodeAt(at.hx, at.hy + 2))).toBe(false);
     expect(terrain.isWalkable(terrain.nodeAt(at.hx, at.hy + 3))).toBe(true);
-    const door = terrain.nodeAt(at.hx - 2, at.hy + 3);
     const workerNode = terrain.nodeAt(anchorOf(s, worker).hx, anchorOf(s, worker).hy);
-    expect(terrain.isWalkable(door)).toBe(true);
-    expect(terrain.componentOf(door)).toBe(terrain.componentOf(workerNode));
+    const workPoint = vehicleSiteWorkPoint(s.world, ctxOf(s), terrain, site, terrain.componentOf(workerNode));
+    expect(workPoint === null ? false : terrain.isWalkable(workPoint)).toBe(true);
+  });
+
+  it('lands a ship yard on a shore with the water to its south, worked from its work area', () => {
+    const opened = southShoreYard();
+    const { s, terrain, at, shore, workPoint } = opened;
+    // The door, south of the hull, lies in the sea; the ring's first cell on the worker's land is worked.
+    expect(terrain.isWater(terrain.nodeAt(at.hx - 2, at.hy + 3))).toBe(true);
+    const firstOnShore = SHIP_WORK_AREA.map((cell) =>
+      terrain.nodeAt(at.hx + footprintCellDx(at.hy, cell), at.hy + cell.dy),
+    ).find((node) => terrain.componentOf(node) === shore);
+    expect(workPoint).toBe(firstOnShore);
+    expect(s.world.get(opened.worker, SiteAssignment).site).toBe(opened.site);
+
+    // A cart yard standing on that cell from the start moves the work point on to the next free one.
+    if (workPoint === null) throw new Error('no work point');
+    const blocked = southShoreYard({ hx: terrain.xOf(workPoint), hy: terrain.yOf(workPoint) });
+    expect(blocked.at).toEqual(at);
+    expect(blocked.workPoint).not.toBeNull();
+    expect(blocked.workPoint).not.toBe(workPoint);
+    expect(blocked.workPoint === null ? null : terrain.componentOf(blocked.workPoint)).toBe(shore);
   });
 
   it('lands a ship yard on water far past the original rings from the shipyard', () => {

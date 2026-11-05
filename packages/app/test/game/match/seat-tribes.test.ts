@@ -135,6 +135,7 @@ describe('seatTribeRemap', () => {
       blocked: cells(shift),
       familyBody: cells(shift),
       reserved: cells(shift),
+      workArea: [],
     });
     const withSaracenShift = (shift: number) =>
       seatTribeRemap(seatFlows({ seats: [seat(0, SARACEN), seat(2), mapAi(3), mapAi(4)] }, staged), {

@@ -6,7 +6,7 @@ import { buildingModels } from '../../../src/view/runtime/read-models.js';
 
 type ContentBuilding = Simulation['content']['buildings'][number];
 
-const FOOTPRINT = { blocked: [], familyBody: [], reserved: [] };
+const FOOTPRINT = { blocked: [], familyBody: [], reserved: [], workArea: [] };
 
 /** A content building with only the fields the index reads set; the rest are the empty defaults a
  *  building with no crew, stock, recipes or construction stage carries. */
@@ -77,7 +77,12 @@ describe('view building models', () => {
 
   it("resolves each tribe's own footprint for the same type, the base one for a tribe without a variant", () => {
     const PALACE = 20;
-    const SARACEN_BODY = { blocked: [{ dx: 0, dy: 0 }], familyBody: [{ dx: 0, dy: 0 }], reserved: [] };
+    const SARACEN_BODY = {
+      blocked: [{ dx: 0, dy: 0 }],
+      familyBody: [{ dx: 0, dy: 0 }],
+      reserved: [],
+      workArea: [],
+    };
     const palace = {
       ...building(PALACE, 'palace'),
       tribeVariants: [{ tribe: SARACEN, footprint: SARACEN_BODY }],

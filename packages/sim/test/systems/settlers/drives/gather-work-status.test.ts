@@ -87,7 +87,10 @@ describe('selected gatherer work diagnostics', () => {
       ...base,
       buildings: base.buildings.map((building) =>
         building.typeId === 9
-          ? { ...building, footprint: { blocked: [{ dx: 0, dy: 0 }], familyBody: [], reserved: [] } }
+          ? {
+              ...building,
+              footprint: { blocked: [{ dx: 0, dy: 0 }], familyBody: [], reserved: [], workArea: [] },
+            }
           : building,
       ),
     };
