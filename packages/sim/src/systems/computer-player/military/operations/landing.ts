@@ -92,6 +92,9 @@ export const LANDING_RETREAT_LOSS_PCT = 50;
 /** The most the ships lie at the shore to take the landed men back; past it they sail home and the men
  *  fight on alone. */
 export const LANDING_SHORE_STAY_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
+/** The most landed men fight on as the landing's own once its ships sailed home: past it they are let go
+ *  where they stand, so the seat may land again. */
+export const LANDING_ASHORE_ALONE_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
 /** The most the waiting ships wait for the men called back to walk aboard before they sail without the
  *  rest. */
 export const LANDING_REEMBARK_TICKS = 2 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
@@ -586,29 +589,47 @@ function sailWaitingHome(env: OperationEnv, op: SeaLanding, all: boolean): Playe
 
 /**
  * Acting: the landed men fight while the ships wait at the shore. Once they are {@link losing}, or the land
- * holds nothing more for them to strike ({@link landedOrders}: no building left, or for a relief no enemy
- * fighter in sight), they board the waiting ships
- * ({@link reembark}). Past {@link LANDING_SHORE_STAY_TICKS} the ships sail home and the men
- * fight on alone, let go where they stand once nothing is left to strike. Ends once no landed man is left
- * and every ship is home or lost: `wiped` when the landed men fell, `nothingToStrike` when the land holds
- * nothing more.
+ * holds nothing more for them to strike ({@link landedOrders}: no building left, or for a rescue no enemy
+ * fighter in sight), they board the waiting ships ({@link reembark}). Past {@link LANDING_SHORE_STAY_TICKS}
+ * a rescue's men board them too, on their own colony, where no ship comes back for them; a landing's ships
+ * sail home and its men fight on alone, let go where they stand once nothing is left to strike or past
+ * {@link LANDING_ASHORE_ALONE_TICKS} more. Ends once no landed man is left and every ship is home or lost:
+ * `wiped` when the landed men fell, `nothingToStrike` when the land holds nothing more, `timedOut` when its
+ * time ran out.
  */
 function acting(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
+  const { tick } = env.ctx;
   const stayEnd = op.since + LANDING_SHORE_STAY_TICKS;
+  const late = tick >= stayEnd;
   const homeward = [...homecoming(env, op), ...releaseStranded(env, op, stayEnd)];
-  if (env.ctx.tick >= stayEnd) homeward.push(...sailWaitingHome(env, op, true));
   const { landed, striking, fire, commands } = landedOrders(env, op);
   const waiting = op.ships.some((ship) => ship.leg === 'waiting');
-  if (waiting && landed.length > 0 && (!striking || losing(env, op, landed, fire)))
-    return [...homeward, ...reembark(env, op, landed, striking ? 'losses' : 'nothingToStrike')];
-  if (landed.length > 0 && striking) return [...homeward, ...commands];
-  // Nothing left to strike: the landed men are let go where they stand.
+  if (waiting && landed.length > 0) {
+    const reason = boardingReason(env, op, { landed, striking, fire }, late);
+    if (reason !== null) return [...homeward, ...reembark(env, op, landed, reason)];
+  }
+  if (late) homeward.push(...sailWaitingHome(env, op, true));
+  const alone = tick >= stayEnd + LANDING_ASHORE_ALONE_TICKS;
+  if (landed.length > 0 && striking && !alone) return [...homeward, ...commands];
+  // Nothing left to strike, or their time is up: the landed men are let go where they stand.
   const gone = new Set(landed);
   op.members = op.members.filter((e) => !gone.has(e));
   if (landed.length === 0) homeward.push(...sailWaitingHome(env, op, true));
   if (op.ships.every((ship) => ship.leg === 'home'))
-    enter(op, 'done', env.ctx.tick, landed.length === 0 ? 'wiped' : 'nothingToStrike');
+    enter(op, 'done', tick, landed.length === 0 ? 'wiped' : striking ? 'timedOut' : 'nothingToStrike');
   return homeward;
+}
+
+/** Why the landed men board the waiting ships now, or null while they fight on ({@link acting}). */
+function boardingReason(
+  env: OperationEnv,
+  op: SeaLanding,
+  { landed, striking, fire }: Pick<LandedOrders, 'landed' | 'striking' | 'fire'>,
+  late: boolean,
+): OperationEndReason | null {
+  if (!striking) return 'nothingToStrike';
+  if (losing(env, op, landed, fire)) return 'losses';
+  return late && isRescue(op) ? 'timedOut' : null;
 }
 
 /** Withdrawing: a waiting ship sails home once every man called to it is aboard, or past

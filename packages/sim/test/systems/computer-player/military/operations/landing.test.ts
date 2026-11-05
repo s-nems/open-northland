@@ -29,8 +29,10 @@ import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../../src/systems/ai-
 import { computerProfileOf } from '../../../../../src/systems/computer-player/difficulty.js';
 import { type OperationView, seatOperationsOf } from '../../../../../src/systems/computer-player/index.js';
 import {
+  LANDING_ASHORE_ALONE_TICKS,
   LANDING_FORM_TIMEOUT_TICKS,
   LANDING_SAIL_TIMEOUT_TICKS,
+  LANDING_SHORE_STAY_TICKS,
 } from '../../../../../src/systems/computer-player/military/operations/landing.js';
 import {
   COLONY_RAID_LEAST_MEN,
@@ -469,6 +471,20 @@ describe('landing operations', () => {
     for (const e of sim.world.query(Settler, Owner)) expect(sim.world.has(e, Rider)).toBe(false);
   });
 
+  it('lets its men go where they stand once they fought on alone past their time, the ships home', () => {
+    // The men fell no building here, so the headquarters outlasts them.
+    const { sim } = landingWorld();
+    let seen: OperationView | undefined;
+    runUntil(sim, LANDING_LIMIT_TICKS + LANDING_SHORE_STAY_TICKS + LANDING_ASHORE_ALONE_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return seen?.state === 'done';
+    });
+    expect(seen?.reason).toBe('timedOut');
+    expect(seen?.members).toEqual([]);
+    expect(foeHeadquarters(sim)).not.toBeNull();
+    expect(shipsHomeEmpty(sim)).toBe(true);
+  });
+
   it('takes the survivors home once half the men set ashore fell', () => {
     const { sim, fleet } = landingWorld();
     let seen: OperationView | undefined;
@@ -777,6 +793,31 @@ describe('landing operations', () => {
       expect(menOf(sim, SEAT, colonyLand).length).toBeLessThanOrEqual(garrison);
     },
   );
+
+  it('takes its rescue back aboard once its stay at the colony runs out with the band still there', () => {
+    // Bare men fell nobody, so the band outlasts the stay.
+    const { sim } = landingWorld({ colony: true });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
+    sim.world.add(carrier, ComputerColony, {
+      colonies: [blankColony(colonyLand, { threat })],
+      rejected: [],
+      retryAt: 0,
+    });
+    spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
+    let seen: OperationView | undefined;
+    runUntil(sim, LANDING_LIMIT_TICKS + LANDING_SHORE_STAY_TICKS, () => {
+      seen = rescues(sim)[0] ?? seen;
+      return seen?.state === 'done' && shipsHomeEmpty(sim);
+    });
+    expect(seen?.landing?.landed).toBeGreaterThan(0);
+    expect(seen?.reason).toBe('timedOut');
+    expect(menOf(sim, FOE, colonyLand).length).toBe(RAIDERS);
+    expect(menOf(sim, SEAT, colonyLand)).toEqual([]);
+  });
 
   it('rescues its colony while its posture holds the army home, and raids nothing', () => {
     const { sim } = landingWorld({ colony: true, foe: [{ buildingType: FARM_TYPE, at: FOE_FARM }] });
