@@ -11,6 +11,7 @@ import {
   systems,
 } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
+import { CIVILIZATIONS } from '../../catalog/civilizations.js';
 import { JOB_CARRIER, JOB_TRADER } from '../../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import {
@@ -20,7 +21,6 @@ import {
   VEHICLE_HANDCART,
   VEHICLE_OXCART,
 } from '../../game/sandbox/index.js';
-import { CIVILIZATIONS } from '../civilizations.js';
 import type { SceneDefinition } from '../types.js';
 
 const { Building, HaulingCart, Health, Position, Settler, Stockpile, UnderConstruction, WALK_DIRECTION } =

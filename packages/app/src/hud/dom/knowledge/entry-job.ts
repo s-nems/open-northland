@@ -23,7 +23,6 @@ import {
 } from '../../knowledge/entry-format.js';
 import type { KnowledgeJob, KnowledgeRequirement } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
-import { weaponLabel } from './entry-armour.js';
 import {
   articleLinks,
   buildingLink,
@@ -40,6 +39,7 @@ import {
   section,
   statusChip,
   textLink,
+  weaponLink,
 } from './entry-parts.js';
 
 /** Workplaces a trade names before the rest fold. */
@@ -161,7 +161,7 @@ function weaponBlock(context: KnowledgeContext, job: KnowledgeJob): EntryBlock |
     node: section(
       text.job.weapon,
       factList([
-        [text.job.weapon, weaponLabel(context, weapon)],
+        [text.job.weapon, weaponLink(context, weapon)],
         [text.strip.perSecond, perSecondText(landed(weapon, bare), weapon)],
         [text.strip.cadence, cadenceText(weapon)],
       ]),
@@ -179,7 +179,7 @@ function armsBlock(context: KnowledgeContext): EntryBlock {
     const damage = landed(weapon, bare);
     return [
       {
-        label: weaponLabel(context, weapon),
+        label: weaponLink(context, weapon),
         cells: [{ text: wholeText(damage), heat: damage }, { text: rangeText(weapon) }],
       },
     ];

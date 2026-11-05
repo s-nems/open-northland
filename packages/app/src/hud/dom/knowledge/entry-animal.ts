@@ -13,7 +13,6 @@ import { type AnimalBlock, animalBlocks, huntWeapons } from '../../knowledge/ent
 import { secondsText, speedText, ticksText, wholeText } from '../../knowledge/entry-format.js';
 import type { KnowledgeAnimal, KnowledgeWeapon } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
-import { weaponLabel } from './entry-armour.js';
 import {
   articleLinks,
   dataTable,
@@ -27,6 +26,7 @@ import {
   links,
   section,
   type TableRow,
+  weaponLink,
 } from './entry-parts.js';
 
 const HEAD_PICTURE_PX = 84;
@@ -38,7 +38,7 @@ function huntRow(context: KnowledgeContext, animal: KnowledgeAnimal, weapon: Kno
   const hits = hitsToKill(damage, animal.hitpoints);
   const time = hits === null ? null : secondsForHits(hits, weapon);
   return {
-    label: weaponLabel(context, weapon),
+    label: weaponLink(context, weapon),
     cells: [
       { text: wholeText(damage), heat: damage },
       { text: hits === null ? '-' : String(hits) },

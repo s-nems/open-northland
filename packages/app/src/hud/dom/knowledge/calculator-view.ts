@@ -29,7 +29,7 @@ import {
   HUMAN_HITPOINTS,
   takesStrengthAmulet,
 } from '../../knowledge/combat.js';
-import { formatFactNumber } from '../../knowledge/facts.js';
+import { durationText, formatFactNumber } from '../../knowledge/facts.js';
 import type { KnowledgeWeapon } from '../../knowledge/model.js';
 import { button, element, setHidden, setStyleVar, write } from '../parts/dom.js';
 import { type DropdownEntry, type DropdownHandle, dropdownControl } from '../parts/dropdown.js';
@@ -38,7 +38,6 @@ import type { KnowledgeContext } from './context.js';
 import './calculator.css';
 
 const SECONDS_DIGITS = 1;
-const SECONDS_PER_MINUTE = 60;
 const SELECT_SKIN = 'on-res-select';
 const TARGET_KINDS: readonly TargetKind[] = ['person', 'animal', 'building', 'vehicle'];
 const MODES = ['blow', 'duel'] as const;
@@ -65,18 +64,8 @@ export function focusCalculator(page: HTMLElement): void {
   page.querySelector<HTMLElement>('.kn-calc__weapon button')?.focus({ preventScroll: true });
 }
 
-function seconds(value: number | null): string {
-  if (value === null) return '-';
-  const copy = messages().knowledge.mechanics;
-  if (value < SECONDS_PER_MINUTE) {
-    return formatMessage(copy.seconds, { seconds: formatFactNumber(value, SECONDS_DIGITS) });
-  }
-  const whole = Math.round(value);
-  return formatMessage(copy.minutes, {
-    minutes: Math.floor(whole / SECONDS_PER_MINUTE),
-    seconds: whole % SECONDS_PER_MINUTE,
-  });
-}
+const seconds = (value: number | null): string =>
+  value === null ? '-' : durationText(value, SECONDS_DIGITS);
 
 const count = (value: number | null): string => (value === null ? '-' : formatFactNumber(value));
 
@@ -91,7 +80,7 @@ function field(label: string, control: HTMLElement, className = ''): HTMLElement
   return row;
 }
 
-function checkbox(
+export function checkbox(
   label: string,
   on: boolean,
   change: (next: boolean) => void,

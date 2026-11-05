@@ -1,6 +1,7 @@
 import type { Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, ONE } from '@open-northland/sim';
 import { grassTerrain, VIKING } from '../../catalog/buildings.js';
+import { FRANK } from '../../catalog/civilizations.js';
 import { JOB_BUILDER } from '../../catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import {
@@ -15,7 +16,6 @@ import {
   placeSandboxSite,
   spawnSandboxSettler,
 } from '../../game/sandbox/index.js';
-import { FRANK } from '../civilizations.js';
 import { goodBySlug } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
 

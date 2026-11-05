@@ -10,7 +10,6 @@ import {
 } from '../../knowledge/lanes.js';
 import type {
   EntryRef,
-  KnowledgeBase,
   KnowledgeBuilding,
   KnowledgeGood,
   KnowledgeStatus,

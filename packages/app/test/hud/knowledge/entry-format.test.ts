@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  amountText,
   cadenceText,
   equipDurability,
   equipEffects,
@@ -39,10 +38,6 @@ const weapon = (over: Partial<KnowledgeWeapon>): KnowledgeWeapon => ({
 });
 
 describe('entry formatting', () => {
-  it('writes an amount the way a recipe card does', () => {
-    expect(amountText(3)).toBe('x3');
-  });
-
   it('gives a range its unit and folds an equal pair', () => {
     expect(rangeText({ minRange: 4, maxRange: 23 })).toContain('4-23');
     expect(rangeText({ minRange: 1, maxRange: 1 })).toMatch(/^1 /);

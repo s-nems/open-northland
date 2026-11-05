@@ -482,8 +482,6 @@ export const ruKnowledge = {
     matrixCadence: 'Удар каждые',
     matrixFoot:
       'Здоровье человека: {hitpoints}. Животное считается в кожаных доспехах, но без вычета {blocking}.',
-    cadence: '{seconds} с',
-    cadenceBlows: '{blows} × удар каждые {seconds} с',
     directions: { front: 'Спереди', backSide: 'Сзади сбоку ×1,25', behind: 'Сзади ×1,5' },
     armourName: 'Доспехи',
     armourWeight: 'Вес',

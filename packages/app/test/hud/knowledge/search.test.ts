@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
-import { entrySearchItems, foldSearchText, searchItems } from '../../../src/hud/knowledge/search.js';
+import { entrySearchItems, searchItems } from '../../../src/hud/knowledge/search.js';
 import { knowledgeContent } from '../../support/knowledge-content.js';
 
 const items = [
@@ -10,10 +10,6 @@ const items = [
 ];
 
 describe('knowledge search', () => {
-  it('folds case and diacritics, the Polish ł included', () => {
-    expect(foldSearchText('Żółć ŁĄKA')).toBe('zolc laka');
-  });
-
   it('finds a name typed without its diacritics', () => {
     expect(searchItems(items, 'zelaz').map((i) => i.target)).toEqual([1]);
   });

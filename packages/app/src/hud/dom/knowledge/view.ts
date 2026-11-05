@@ -34,6 +34,8 @@ const ENTRY_KINDS: ReadonlySet<string> = new Set<EntryKind>([
 /** Rows a search group lists before it is cut; its heading still counts them all. */
 const GROUP_ROW_LIMIT = 12;
 const HIT_ICON_PX = 24;
+/** Steps Wróć remembers; the oldest falls away past this. */
+const PAST_LIMIT = 100;
 
 const isTree = (tab: KnowledgeTab): tab is KnowledgeTree => tab === 'goods' || tab === 'buildings';
 const isEntryKind = (kind: string): kind is EntryKind => ENTRY_KINDS.has(kind);
@@ -108,6 +110,10 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
     query: '',
   };
   const past: PastStep[] = [];
+  const remember = (): void => {
+    past.push({ place, scrolls: new Map(scrolls) });
+    if (past.length > PAST_LIMIT) past.shift();
+  };
   /** Scroll offsets by name, kept live, so a step and a reopen both land where the reader was. */
   const scrolls = new Map<string, readonly [left: number, top: number]>();
   const scales: TreeScales = { goods: SCALE_DEFAULT_PCT, buildings: SCALE_DEFAULT_PCT };
@@ -120,7 +126,7 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
   const go = (target: KnowledgeTarget): void => {
     const next = placeOf(place, target);
     if (samePlace(next, place)) return;
-    past.push({ place, scrolls: new Map(scrolls) });
+    remember();
     place = next;
     render();
   };
@@ -336,7 +342,7 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
 
   const setQuery = (query: string): void => {
     const wasSearching = place.query !== '';
-    if (!wasSearching && query !== '') past.push({ place, scrolls: new Map(scrolls) });
+    if (!wasSearching && query !== '') remember();
     place = { ...place, query };
     if (wasSearching && query === '') backOne();
     else render();

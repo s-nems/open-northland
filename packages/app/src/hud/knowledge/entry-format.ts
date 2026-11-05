@@ -13,12 +13,25 @@ const STATUS_NAME_LIMIT = 3;
 
 const copy = () => messages().knowledge.entry;
 
-function formatted(value: number, least: number, most: number): string {
-  return new Intl.NumberFormat(bcp47Tag(), {
-    minimumFractionDigits: least,
-    maximumFractionDigits: most,
-  }).format(value);
+const numberFormats = new Map<string, Intl.NumberFormat>();
+
+/** `value` as the reader's language writes it, through one cached formatter per locale and digits. */
+export function formatNumber(value: number, most: number, least = WHOLE_DIGITS, grouping = true): string {
+  const tag = bcp47Tag();
+  const key = `${tag}|${least}|${most}|${grouping}`;
+  let format = numberFormats.get(key);
+  if (format === undefined) {
+    format = new Intl.NumberFormat(tag, {
+      minimumFractionDigits: least,
+      maximumFractionDigits: most,
+      useGrouping: grouping,
+    });
+    numberFormats.set(key, format);
+  }
+  return format.format(value);
 }
+
+const formatted = (value: number, least: number, most: number): string => formatNumber(value, most, least);
 
 export const numberText = (value: number): string => formatted(value, WHOLE_DIGITS, NUMBER_DIGITS);
 export const preciseText = (value: number): string => formatted(value, PRECISE_DIGITS, PRECISE_DIGITS);

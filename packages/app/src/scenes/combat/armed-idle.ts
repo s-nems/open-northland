@@ -1,5 +1,6 @@
 import { cellAnchorNode, components, nodeOfPosition, type Simulation } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
+import { CIVILIZATIONS } from '../../catalog/civilizations.js';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
@@ -9,7 +10,6 @@ import {
   JOB_SOLDIER_SWORD,
 } from '../../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
-import { CIVILIZATIONS } from '../civilizations.js';
 import type { SceneDefinition } from '../types.js';
 
 const { Position, Settler } = components;

@@ -476,8 +476,6 @@ export const chsKnowledge = {
     matrixRange: '范围',
     matrixCadence: '攻击间隔',
     matrixFoot: '人有{hitpoints}点生命值。动物按皮甲计算，但不减去{blocking}。',
-    cadence: '{seconds}秒',
-    cadenceBlows: '每{seconds}秒{blows}击',
     directions: { front: '正面', backSide: '后侧 ×1.25', behind: '背后 ×1.5' },
     armourName: '护甲',
     armourWeight: '重量',

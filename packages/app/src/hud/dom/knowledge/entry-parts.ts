@@ -1,5 +1,5 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { shownJobName } from '../../knowledge/entry-blocks.js';
+import { shownJobName, weaponName } from '../../knowledge/entry-blocks.js';
 import { amountText, statusText } from '../../knowledge/entry-format.js';
 import { treeHolds } from '../../knowledge/lanes.js';
 import type {
@@ -8,6 +8,7 @@ import type {
   KnowledgeClip,
   KnowledgeGood,
   KnowledgeStatus,
+  KnowledgeWeapon,
 } from '../../knowledge/model.js';
 import { goodIconMarkup } from '../good-art.js';
 import { button, element, setStyleVar, write } from '../parts/dom.js';
@@ -294,3 +295,12 @@ export const emptyEntry = (text: string): HTMLElement => {
   write(page, text);
   return page;
 };
+
+/** A weapon's name in a table, a link to its page. */
+export function weaponLink(context: KnowledgeContext, weapon: KnowledgeWeapon): HTMLElement {
+  const name = weaponName(context.base, weapon);
+  const vehicle = context.base.vehicles.find((v) => v.jobType === weapon.jobType);
+  if (vehicle !== undefined) return textLink(`vehicle:${vehicle.id}`, name);
+  const good = weapon.goodType === null ? undefined : context.base.goodByType.get(weapon.goodType);
+  return good === undefined ? node('span', '', name) : goodLink(context, good);
+}

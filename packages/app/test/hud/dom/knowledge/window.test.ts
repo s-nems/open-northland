@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { KnowledgeTarget, KnowledgeView } from '../../../../src/hud/dom/knowledge/context.js';
-import { createKnowledgeWindow, knowledgeWindowWidth } from '../../../../src/hud/dom/knowledge/window.js';
+import { createKnowledgeWindow } from '../../../../src/hud/dom/knowledge/window.js';
 
 const settle = (): Promise<void> => new Promise((done) => setTimeout(done));
 
@@ -100,10 +100,5 @@ describe('the Knowledge window', () => {
     setLayers(1);
     expect(window.escape()).toBe(true);
     expect(window.escape()).toBe(false);
-  });
-
-  it('takes the design width, and leaves a gap on each side of a narrow screen', () => {
-    expect(knowledgeWindowWidth({ width: 1920, height: 1080 })).toBe(1080);
-    expect(knowledgeWindowWidth({ width: 1000, height: 768 })).toBe(976);
   });
 });

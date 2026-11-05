@@ -1,3 +1,4 @@
+import { hasWords, searchWords } from '../dom/parts/name-search.js';
 import { listedJobs, shownJobName } from './entry-blocks.js';
 import type { EntryRef, KnowledgeBase } from './model.js';
 
@@ -14,22 +15,11 @@ export interface EntrySearchTarget {
   readonly entry: EntryRef;
 }
 
-const COMBINING_MARKS = /\p{M}/gu;
-const WHITESPACE = /\s+/;
-
-/** `text` lowered with its diacritics gone; ł has no decomposition, so it folds by hand. */
-export function foldSearchText(text: string): string {
-  return text.toLowerCase().normalize('NFD').replace(COMBINING_MARKS, '').replaceAll('ł', 'l');
-}
-
 /** The items whose name holds every word of `query`, in list order; empty for a blank query. */
 export function searchItems<T>(items: readonly SearchItem<T>[], query: string): readonly SearchItem<T>[] {
-  const words = foldSearchText(query).split(WHITESPACE).filter(Boolean);
+  const words = searchWords(query);
   if (words.length === 0) return [];
-  return items.filter((item) => {
-    const name = foldSearchText(item.name);
-    return words.every((word) => name.includes(word));
-  });
+  return items.filter((item) => hasWords(item.name, words));
 }
 
 /** Every entry the search reaches, goods first; the caller appends article headings. */

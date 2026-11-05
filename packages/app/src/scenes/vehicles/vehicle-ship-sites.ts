@@ -1,5 +1,6 @@
 import type { Simulation } from '@open-northland/sim';
 import { type CellTerrainMap, components, fx } from '@open-northland/sim';
+import { CIVILIZATIONS } from '../../catalog/civilizations.js';
 import { TERRAIN_IMPASSABLE, TERRAIN_OPEN } from '../../catalog/terrain.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../../game/rules.js';
 import {
@@ -10,7 +11,6 @@ import {
   VEHICLE_SHIP_BIG,
   VEHICLE_SHIP_SMALL,
 } from '../../game/sandbox/index.js';
-import { CIVILIZATIONS } from '../civilizations.js';
 import type { SceneDefinition } from '../types.js';
 
 const { Building, Stockpile, UnderConstruction, Vehicle } = components;

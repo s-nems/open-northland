@@ -15,6 +15,7 @@ import {
   WALK_RANGE_NODES,
 } from '@open-northland/sim';
 import { VIKING } from '../../catalog/buildings.js';
+import { FRANK } from '../../catalog/civilizations.js';
 import {
   FARM_FIELD_RADIUS,
   FARM_MAX_FIELDS,
@@ -41,8 +42,7 @@ import {
   scaledWallRules,
   WALL_LOGIC_ID,
 } from '../../content/map/palisade-rows.js';
-import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
-import { FRANK } from '../../scenes/civilizations.js';
+import { formatMessage, messages } from '../../i18n/index.js';
 import { STAR_FULL, STAR_TIER_STEP } from '../../view/projections/experience-stars.js';
 import { SETTLEMENT_REACH_NODES } from '../tool-panel/messages/fight-areas.js';
 import {
@@ -66,6 +66,7 @@ import {
   type TargetId,
   takesStrengthAmulet,
 } from './combat.js';
+import { formatNumber } from './entry-format.js';
 import type { KnowledgeBase } from './model.js';
 
 const PERCENT = 100;
@@ -1152,19 +1153,19 @@ export const FACTS: Readonly<Record<string, Fact>> = {
 
 /** A number as the reader's language writes it. */
 export function formatFactNumber(value: number, maxFraction = MAX_FRACTION_DIGITS, minFraction = 0): string {
-  return new Intl.NumberFormat(bcp47Tag(), {
-    minimumFractionDigits: minFraction,
-    maximumFractionDigits: maxFraction,
-    useGrouping: false,
-  }).format(value);
+  return formatNumber(value, maxFraction, minFraction, false);
 }
 
-/** Seconds as the reader's language writes a time: "X s" under a minute, else "X min Y s". */
-function durationText(secondsTotal: number): string {
+/** Seconds as the reader's language writes a time: "X s" under a minute, with `digits` decimals, else
+ *  "X min Y s" in whole seconds. */
+export function durationText(secondsTotal: number, digits = 0): string {
   const copy = messages().knowledge.mechanics;
-  const rounded = Math.round(secondsTotal);
-  if (rounded < SECONDS_PER_MINUTE)
-    return formatMessage(copy.seconds, { seconds: formatFactNumber(rounded) });
+  const scale = 10 ** digits;
+  const shown = Math.round(secondsTotal * scale) / scale;
+  if (shown < SECONDS_PER_MINUTE) {
+    return formatMessage(copy.seconds, { seconds: formatFactNumber(shown, digits) });
+  }
+  const rounded = Math.round(shown);
   const minutes = formatFactNumber(minutePart(rounded));
   const rest = secondPart(rounded);
   if (rest === 0) return formatMessage(copy.wholeMinutes, { minutes });

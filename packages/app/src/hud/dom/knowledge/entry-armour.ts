@@ -7,9 +7,9 @@ import {
   perSecond,
   stepSeconds,
 } from '../../knowledge/combat.js';
-import { tribeWeapons, weaponName } from '../../knowledge/entry-blocks.js';
+import { tribeWeapons } from '../../knowledge/entry-blocks.js';
 import { perSecondText, slowdownPercent, wholeText } from '../../knowledge/entry-format.js';
-import type { KnowledgeGood, KnowledgeWeapon } from '../../knowledge/model.js';
+import type { KnowledgeGood } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
 import { goodStatusBlock, obtainBlock } from './entry-good.js';
 import {
@@ -20,27 +20,16 @@ import {
   factList,
   foot,
   goodHead,
-  goodLink,
-  node,
   originBlock,
   section,
-  textLink,
+  weaponLink,
 } from './entry-parts.js';
 
 const PERCENT = 100;
 
 const copy = () => messages().knowledge.entry;
 
-/** A weapon's name in a table, a link to its page. */
-export function weaponLabel(context: KnowledgeContext, weapon: KnowledgeWeapon): HTMLElement {
-  const name = weaponName(context.base, weapon);
-  const vehicle = context.base.vehicles.find((v) => v.jobType === weapon.jobType);
-  if (vehicle !== undefined) return textLink(`vehicle:${vehicle.id}`, name);
-  const good = weapon.goodType === null ? undefined : context.base.goodByType.get(weapon.goodType);
-  return good === undefined ? node('span', '', name) : goodLink(context, good);
-}
-
-function factsBlock(context: KnowledgeContext, weight: number): EntryBlock {
+function factsBlock(_context: KnowledgeContext, weight: number): EntryBlock {
   const text = copy().armour;
   const slower = slowdownPercent(stepSeconds(weight), stepSeconds(0));
   return {
@@ -60,7 +49,7 @@ function protectionBlock(context: KnowledgeContext, good: KnowledgeGood): EntryB
     const open = landed(weapon, bare);
     const hits = hitsToKill(damage);
     return {
-      label: weaponLabel(context, weapon),
+      label: weaponLink(context, weapon),
       cells: [
         { text: wholeText(damage), heat: damage },
         { text: hits === null ? '-' : String(hits) },

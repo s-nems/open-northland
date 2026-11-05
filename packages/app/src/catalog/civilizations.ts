@@ -1,6 +1,6 @@
-import { VIKING } from '../catalog/buildings.js';
-import { BYZANTINE } from '../catalog/unit-variants.js';
 import type { WorldTribes } from '../game/world-tribes.js';
+import { VIKING } from './buildings.js';
+import { BYZANTINE } from './unit-variants.js';
 
 /** The `TRIBE_TYPE_HUMAN_*` civilizations (`logicdefines.inc`), viking leading as the base. */
 export const FRANK = 2;

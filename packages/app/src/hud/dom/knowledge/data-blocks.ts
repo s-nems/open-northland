@@ -8,7 +8,6 @@ import {
   ANIMAL_TARGET,
   type BlowModifiers,
   type CombatTarget,
-  clipSeconds,
   combatTargets,
   HIT_DIRECTION,
   HUMAN_HITPOINTS,
@@ -17,13 +16,14 @@ import {
   perSecond,
   targetName,
 } from '../../knowledge/combat.js';
-import { rangeText, requirementText } from '../../knowledge/entry-format.js';
+import { cadenceText, rangeText, requirementText } from '../../knowledge/entry-format.js';
 import { formatFactNumber, lessonSeconds } from '../../knowledge/facts.js';
 import type { KnowledgeWeapon } from '../../knowledge/model.js';
 import { goodIconMarkup } from '../good-art.js';
 import { element, setStyleVar, write } from '../parts/dom.js';
 import { createSegmented } from '../parts/segmented.js';
 import { goLink, goodCell, plainTable } from './blocks.js';
+import { checkbox } from './calculator-view.js';
 import type { KnowledgeContext } from './context.js';
 
 const SECONDS_DIGITS = 1;
@@ -84,16 +84,6 @@ function cellValue(
   }
   const rate = perSecond(damage, weapon);
   return rate === null ? { value: 0, text: '-' } : { value: rate, text: formatFactNumber(Math.round(rate)) };
-}
-
-function cadenceText(weapon: KnowledgeWeapon): string {
-  const { cadence, cadenceBlows } = messages().knowledge.mechanics;
-  const clip = clipSeconds(weapon);
-  if (clip === null) return '-';
-  const seconds = formatFactNumber(clip, SECONDS_DIGITS);
-  return weapon.blows === 1
-    ? formatMessage(cadence, { seconds })
-    : formatMessage(cadenceBlows, { blows: weapon.blows, seconds });
 }
 
 function matrixTable(context: KnowledgeContext, state: MatrixState): HTMLElement {
@@ -164,16 +154,6 @@ function cellOf(text: string): HTMLElement {
   return cell;
 }
 
-function checkbox(label: string, on: boolean, change: (next: boolean) => void): HTMLElement {
-  const host = element('label', 'kn-check');
-  const box = element('input', '');
-  box.type = 'checkbox';
-  box.checked = on;
-  box.addEventListener('change', () => change(box.checked));
-  host.append(box, label);
-  return host;
-}
-
 function matrix(context: KnowledgeContext): HTMLElement {
   const copy = messages().knowledge.mechanics;
   const state = matrixState(context);
@@ -229,15 +209,15 @@ function matrix(context: KnowledgeContext): HTMLElement {
     checkbox(copy.strengthAmulet, state.strength, (on) => {
       state.strength = on;
       refresh();
-    }),
+    }).host,
     checkbox(copy.defenseAmulet, state.defense, (on) => {
       state.defense = on;
       refresh();
-    }),
+    }).host,
     checkbox(copy.heroes, state.heroes, (on) => {
       state.heroes = on;
       refresh();
-    }),
+    }).host,
   );
   const foot = element('p', 'kn-foot');
   const animalLike = combatTargets(context.base).find((target) => target.column === ANIMAL_TARGET.column);

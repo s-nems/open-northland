@@ -2,6 +2,7 @@ import { buildingFootprintFor, footprintCellDx } from '@open-northland/data';
 import type { Simulation } from '@open-northland/sim';
 import { buildingWalkBodyOf, components, nodeOfPosition } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
+import { CIVILIZATIONS } from '../../catalog/civilizations.js';
 import { JOB_CIVILIST, JOB_WOMAN } from '../../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import {
@@ -24,7 +25,6 @@ import {
   placeBuiltSandboxBuilding,
   spawnSettlerDirect,
 } from '../../game/sandbox/index.js';
-import { CIVILIZATIONS } from '../civilizations.js';
 import type { SceneDefinition } from '../types.js';
 
 const { Building, Chat, Marriage, MoveGoal, PathFollow, PathRequest, Position, Resting, Settler } =

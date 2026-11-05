@@ -1,9 +1,9 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { components, fx, systems } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
+import { CIVILIZATIONS } from '../../catalog/civilizations.js';
 import { JOB_SOLDIER_SWORD } from '../../catalog/jobs.js';
 import { spawnSettlerDirect } from '../../game/sandbox/index.js';
-import { CIVILIZATIONS } from '../civilizations.js';
 import { goodBySlug } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
 

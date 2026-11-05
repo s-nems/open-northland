@@ -1,10 +1,10 @@
 import { createHumanPaletteColours, createHumanPaletteIdentity } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
+import { CIVILIZATIONS } from '../../../src/catalog/civilizations.js';
 import { JOB_SOLDIER_SPEAR, JOB_SOLDIER_SPEAR_WOODEN } from '../../../src/catalog/jobs.js';
 import type { ContentIr } from '../../../src/content/ir/rows.js';
 import { tribeLooks } from '../../../src/content/settler-gfx/index.js';
 import { humanPaletteBook } from '../../../src/content/sprite-sheet/human-palettes.js';
-import { CIVILIZATIONS } from '../../../src/scenes/civilizations.js';
 import { hasRealIr, rawIrUnderTest } from '../helpers.js';
 
 /** The band the viking spear job-change recipes paint, which its body draws the spear in. */

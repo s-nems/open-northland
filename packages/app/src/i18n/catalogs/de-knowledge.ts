@@ -518,8 +518,6 @@ export const deKnowledge = {
     matrixCadence: 'Schlag alle',
     matrixFoot:
       'Ein Mensch hat {hitpoints} Gesundheit. Ein Tier zählt als Lederrüstung, aber ohne den Abzug von {blocking}.',
-    cadence: '{seconds} s',
-    cadenceBlows: '{blows} Schläge alle {seconds} s',
     directions: {
       front: 'Vorne',
       backSide: 'Hintere Flanke ×1,25',

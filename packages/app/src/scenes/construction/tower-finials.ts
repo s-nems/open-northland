@@ -1,5 +1,6 @@
 import { components, type Entity, type Simulation } from '@open-northland/sim';
 import { grassTerrain, VIKING } from '../../catalog/buildings.js';
+import { FRANK, SARACEN } from '../../catalog/civilizations.js';
 import { JOB_ARCHER } from '../../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import {
@@ -7,7 +8,6 @@ import {
   placeBuiltSandboxBuilding,
   spawnSettlerDirect,
 } from '../../game/sandbox/index.js';
-import { FRANK, SARACEN } from '../civilizations.js';
 import type { SceneDefinition } from '../types.js';
 
 const { Building, Garrison } = components;

@@ -10,7 +10,6 @@ import {
 import { cadenceText, perSecondText, wholeText } from '../../knowledge/entry-format.js';
 import type { KnowledgeTribe } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
-import { weaponLabel } from './entry-armour.js';
 import {
   articleLinks,
   buildingLink,
@@ -23,6 +22,7 @@ import {
   paragraph,
   section,
   type TableRow,
+  weaponLink,
 } from './entry-parts.js';
 
 /** Building rows that stay open; a longer list folds behind its count. */
@@ -85,7 +85,7 @@ function weaponFold(context: KnowledgeContext, tribe: KnowledgeTribe): EntryBloc
     const open = landed(weapon, bare);
     const armoured = landed(weapon, plate);
     return {
-      label: weaponLabel(context, weapon),
+      label: weaponLink(context, weapon),
       cells: [
         { text: wholeText(open), heat: open },
         { text: wholeText(armoured), heat: armoured },
