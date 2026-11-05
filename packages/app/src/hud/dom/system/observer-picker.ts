@@ -56,6 +56,18 @@ function keycap(label: string): HTMLElement {
   return key;
 }
 
+/** The mark a view without a seat leads with in place of a seat's swatch. */
+function modeMark(target: typeof PLAYERS_SIGHT | null): string {
+  return target === PLAYERS_SIGHT ? GLYPH.eye : GLYPH.map;
+}
+
+function modeGlyph(target: typeof PLAYERS_SIGHT | null): HTMLElement {
+  const span = document.createElement('span');
+  span.className = 'on-picker__mode';
+  span.innerHTML = modeMark(target);
+  return span;
+}
+
 function swatch(colour: string): HTMLElement {
   const span = document.createElement('span');
   span.className = 'on-seat__swatch';
@@ -76,8 +88,9 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   button.setAttribute('aria-expanded', 'false');
   button.setAttribute('aria-label', copy.observer.label);
   const chosenSwatch = swatch('transparent');
+  const chosenMode = modeGlyph(null);
   const chosenName = document.createElement('b');
-  button.append(chosenSwatch, chosenName);
+  button.append(chosenSwatch, chosenMode, chosenName);
   button.insertAdjacentHTML('beforeend', GLYPH.down);
 
   const list = document.createElement('div');
@@ -114,7 +127,7 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
     option.className = 'on-seat';
     option.setAttribute('role', 'option');
     option.setAttribute('aria-selected', 'false');
-    if (typeof seat === 'number') option.append(swatch(colourOf(seat)));
+    option.append(typeof seat === 'number' ? swatch(colourOf(seat)) : modeGlyph(seat));
     option.append(labelOf(seat));
     const key = keycap('');
     entryKeys.set(seat, key);
@@ -173,6 +186,8 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
       chosenName.textContent = labelOf(seat);
       chosenSwatch.style.background = colourOf(seat);
       chosenSwatch.hidden = typeof seat !== 'number';
+      chosenMode.hidden = typeof seat === 'number';
+      if (typeof seat !== 'number') chosenMode.innerHTML = modeMark(seat);
       for (const [entrySeat, option] of entries) {
         option.setAttribute('aria-selected', String(entrySeat === seat));
       }

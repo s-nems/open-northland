@@ -24,6 +24,10 @@ export const GLYPH = {
   /* A heater shield with an olive sprig: the lobby peace's countdown. */
   peace:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 3 5 5.5V11c0 4.6 3 8 7 10 4-2 7-5.4 7-10V5.5Z"/><path d="M12 17V8.5M12 11.5 9.5 9.5M12 14.5l2.5-2"/></svg>',
+  /* An open eye: a spectator's view under every watched seat's sight together. */
+  eye: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+  /* A folded map with a route across it: a spectator's view of the whole map uncovered. */
+  map: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20ZM9 4v13.5M15 6.5V20"/></svg>',
   /* A five-point star: a good its store marks as priority. */
   star: '<svg aria-hidden="true" class="on-glyph on-glyph--solid" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg>',
   banner:

@@ -2108,6 +2108,21 @@ body.on-drag-scroll.on-drag-scroll-free * {
 .on-hud .on-seat .on-key[hidden] {
   display: none;
 }
+.on-hud .on-picker__mode {
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+.on-hud .on-picker__button .on-picker__mode {
+  color: var(--bronze);
+}
+.on-hud .on-picker__mode[hidden] {
+  display: none;
+}
+.on-hud .on-picker__mode .on-glyph {
+  width: 15px;
+  height: 15px;
+}
 .on-hud .on-seat__swatch {
   flex: none;
   width: 11px;
