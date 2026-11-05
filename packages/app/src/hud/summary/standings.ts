@@ -191,7 +191,7 @@ function tally(state: ArmyTallies, e: EntitySnapshot, by: number): void {
   if (seat.soldiers === 0 && seat.vehicles.size === 0) state.delete(owner);
 }
 
-/** A change that moves no count: a need bar, a step's wear on the boots, a cart's task. */
+/** A change that moves no count: a need bar, a cart's task. */
 function sameTally(a: EntitySnapshot, b: EntitySnapshot): boolean {
   const was = a.components;
   const is = b.components;

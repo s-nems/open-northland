@@ -14,19 +14,21 @@ export function tipRow(label: string, className = ''): { row: HTMLElement; figur
   return { row, figure };
 }
 
-/** A row naming a good by its icon and label, the icon painted at `boxPx`. */
+/** A good's icon on a breakdown row, a little taller than the row's type so the art stays legible. */
+const TIP_GOOD_ICON_PX = 18;
+
+/** A row naming a good by its icon and label. */
 export function goodTipRow(
   label: string,
   goodId: string,
   paintGood: GoodIconPainter,
-  boxPx: number,
 ): { row: HTMLElement; figure: HTMLElement } {
   const made = tipRow(label, 'on-tip__row--good');
   const name = made.row.firstElementChild;
   if (name instanceof HTMLElement) {
-    name.insertAdjacentHTML('afterbegin', goodIconMarkup(boxPx));
+    name.insertAdjacentHTML('afterbegin', goodIconMarkup(TIP_GOOD_ICON_PX));
     const frame = name.querySelector('.on-good__frame');
-    if (frame instanceof HTMLElement) paintGood(frame, goodId, boxPx);
+    if (frame instanceof HTMLElement) paintGood(frame, goodId, TIP_GOOD_ICON_PX);
   }
   return made;
 }

@@ -157,7 +157,7 @@ import { createScriptMarkers } from '../script/markers.js';
 import { createScriptPresentation } from '../script/presentation.js';
 import { mountScriptTints } from '../script/tints.js';
 import { patchStoredSettings, readStoredSettings } from '../settings/store.js';
-import { installSpectatorKeys } from '../spectator/keys.js';
+import { installSpectatorKeys } from '../spectator-keys.js';
 import { createShortfallLook } from '../speed-shortfall.js';
 import { createTooltip, TOOLTIP_Z_INDEX } from '../tooltip.js';
 import { type ControlGroupMembers, isControlGroupMember } from '../unit-controls/control-groups.js';

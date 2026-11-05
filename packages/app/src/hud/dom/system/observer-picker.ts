@@ -14,7 +14,7 @@ export interface ObserverPickerDeps {
   /** Owner slot to team-colour slot for the swatches; absent = identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
   readonly onWatch: (target: WatchTarget) => void;
-  /** The spectator keys each entry and the fight jump show; absent, the list names no key. */
+  /** The spectator keys each entry shows; absent, the list names no key. */
   readonly bindings?: KeyBindings | undefined;
 }
 
@@ -53,6 +53,8 @@ export function observerSeatColour(seat: number, playerColourOf?: (player: numbe
 function keycap(label: string): HTMLElement {
   const key = document.createElement('kbd');
   key.className = 'on-key';
+  // The option's own label names it; a key read into the name would run into it ("Player 11").
+  key.setAttribute('aria-hidden', 'true');
   key.textContent = label;
   return key;
 }
@@ -128,12 +130,12 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
     option.className = 'on-seat';
     option.setAttribute('role', 'option');
     option.setAttribute('aria-selected', 'false');
+    option.setAttribute('aria-label', labelOf(seat));
     if (typeof seat === 'number') {
       option.append(swatch(colourOf(seat)), labelOf(seat));
     } else {
       option.classList.add('on-seat--mode');
       option.title = labelOf(seat);
-      option.setAttribute('aria-label', labelOf(seat));
       option.append(modeGlyph(seat));
     }
     const key = keycap('');

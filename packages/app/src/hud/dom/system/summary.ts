@@ -10,7 +10,7 @@ import {
 import { GOOD_ICON_BOX_PX, type GoodIconPainter, goodIconMarkup } from '../good-art.js';
 import { FIGURE } from '../icons.js';
 import { write } from '../parts/dom.js';
-import { keepTipOnScreen, tipRow } from './breakdown.js';
+import { goodTipRow, keepTipOnScreen, tipRow } from './breakdown.js';
 
 export interface HudSummaryDeps {
   /** Paints the counters' and the breakdown rows' good icons in the art this game draws with. */
@@ -29,9 +29,6 @@ export interface HudSummary {
   update(model: HudModel): void;
   dispose(): void;
 }
-
-/** The good icon on a breakdown row, sized to the row's 15 px type. */
-const ROW_ICON_PX = 18;
 
 /** The counters near the screen's right edge hang their breakdown to the left instead. */
 const FLIPPED_CATEGORIES: ReadonlySet<SummaryCategoryId> = new Set(['armament', 'equipment', 'other']);
@@ -189,13 +186,7 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
     if (!same) {
       column.host.replaceChildren();
       column.rows = rows.map(({ goodId }) => {
-        const made = tipRow(deps.goodLabel(goodId), 'on-tip__row--good');
-        const name = made.row.firstElementChild;
-        if (name instanceof HTMLElement) {
-          name.insertAdjacentHTML('afterbegin', goodIconMarkup(ROW_ICON_PX));
-          const frame = name.querySelector('.on-good__frame');
-          if (frame instanceof HTMLElement) deps.paintGood(frame, goodId, ROW_ICON_PX);
-        }
+        const made = goodTipRow(deps.goodLabel(goodId), goodId, deps.paintGood);
         column.host.append(made.row);
         return { goodId, ...made };
       });

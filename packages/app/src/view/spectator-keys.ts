@@ -1,6 +1,6 @@
-import type { WatchTarget } from '../../game/viewer-seat.js';
-import type { KeyBindings } from '../../hud/keybindings.js';
-import { spectatorKeyAction, watchTargetOf } from '../../hud/spectator-keys.js';
+import type { WatchTarget } from '../game/viewer-seat.js';
+import type { KeyBindings } from '../hud/keybindings.js';
+import { spectatorKeyAction, watchTargetOf } from '../hud/spectator-keys.js';
 
 export interface SpectatorKeysDeps {
   readonly bindings: KeyBindings;

@@ -10,13 +10,7 @@ import { seatPlacementProbe } from '../systems/conflict/contested-ground.js';
 import type { PlacementProbe } from '../systems/footprint/index.js';
 import { buildingEnabled } from '../systems/progression/index.js';
 import { type SignpostProbe, signpostProbe } from '../systems/signposts/index.js';
-import {
-  effectiveFogState,
-  FOG_STATE,
-  type FogState,
-  maskFogState,
-  viewedFogState,
-} from '../systems/vision/index.js';
+import { effectiveFogState, type FogState, maskFogState, viewedFogState } from '../systems/vision/index.js';
 
 /** One viewer's fog: plain data and one pure accessor over the live {@link FogState} or a mask copy. */
 export interface FogView {

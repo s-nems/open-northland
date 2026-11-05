@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
-import { PLAYERS_SIGHT, switchableViewerSeat } from '../../../src/game/viewer-seat.js';
-import { DEFAULT_KEY_BINDINGS } from '../../../src/hud/keybindings.js';
-import { installSpectatorKeys } from '../../../src/view/spectator/keys.js';
+import { PLAYERS_SIGHT, switchableViewerSeat } from '../../src/game/viewer-seat.js';
+import { DEFAULT_KEY_BINDINGS } from '../../src/hud/keybindings.js';
+import { installSpectatorKeys } from '../../src/view/spectator-keys.js';
 
 const uninstalls: (() => void)[] = [];
 afterEach(() => {

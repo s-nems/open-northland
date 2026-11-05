@@ -38,9 +38,6 @@ export interface ObserverStandings {
 /** Tip ids run across mounts, so no two strips on one page share an `aria-describedby` id. */
 let nextTipId = 0;
 
-/** A gear row's icon, sized to the breakdown's 14 px rows. */
-const GEAR_ICON_PX = 18;
-
 /** One row of a good list: a good's count, or a count under a plain label when no good names it. */
 interface ListedCount {
   readonly goodId: string | undefined;
@@ -128,7 +125,7 @@ export function createObserverStandings(deps: ObserverStandingsDeps): ObserverSt
           const made = counts.map(({ goodId }) =>
             goodId === undefined
               ? tipRow(unnamedLabel)
-              : goodTipRow(deps.goodLabel(goodId), goodId, deps.paintGood, GEAR_ICON_PX),
+              : goodTipRow(deps.goodLabel(goodId), goodId, deps.paintGood),
           );
           rows.replaceChildren(...made.map((m) => m.row));
           figures = made.map((m) => m.figure);

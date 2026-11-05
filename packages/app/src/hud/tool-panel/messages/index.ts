@@ -357,7 +357,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   let renderedVersion = -1;
   // A spectator over the whole map has nobody's notes to list; one that is nobody's (a setting that
   // needs a restart) still shows.
-  const showColumn = (): void => column.setShown(feeds.seat !== null || feeds.current.live().length > 0);
+  const showColumn = (): void => column.setShown(feeds.seat !== null || feeds.current.displayed().length > 0);
   showColumn();
   // The sources start over with the seat, since the idle streaks and the met seats they remember are
   // the last seat's.

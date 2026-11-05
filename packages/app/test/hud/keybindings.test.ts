@@ -25,16 +25,16 @@ describe('parseKeyBindings', () => {
 
   it('keeps valid stored codes and defaults the missing actions', () => {
     // Settings store only the changed bindings, so an action left out reads its default.
-    expect(parseKeyBindings({ pauseToggle: 'KeyU' })).toEqual({
+    expect(parseKeyBindings({ pauseToggle: 'KeyJ' })).toEqual({
       ...DEFAULT_KEY_BINDINGS,
-      pauseToggle: 'KeyU',
+      pauseToggle: 'KeyJ',
     });
   });
 
   it('keeps modifier chords distinct from their plain base key', () => {
-    const parsed = parseKeyBindings({ pauseToggle: 'Ctrl+KeyU', actionRing: 'KeyU' });
-    expect(parsed.pauseToggle).toBe('Ctrl+KeyU');
-    expect(parsed.actionRing).toBe('KeyU');
+    const parsed = parseKeyBindings({ pauseToggle: 'Ctrl+KeyJ', actionRing: 'KeyJ' });
+    expect(parsed.pauseToggle).toBe('Ctrl+KeyJ');
+    expect(parsed.actionRing).toBe('KeyJ');
   });
 
   it('drops an invalid or unbindable code to the default', () => {
@@ -67,8 +67,8 @@ describe('parseKeyBindings', () => {
   });
 
   it('gives a chord stored twice to the earlier action and unbinds the later one', () => {
-    const parsed = parseKeyBindings({ panLeft: 'KeyU', attackMove: 'KeyU' });
-    expect(parsed.panLeft).toBe('KeyU');
+    const parsed = parseKeyBindings({ panLeft: 'KeyJ', attackMove: 'KeyJ' });
+    expect(parsed.panLeft).toBe('KeyJ');
     expect(parsed.attackMove).toBeNull();
   });
 });
@@ -86,8 +86,8 @@ describe('defaults', () => {
 
 describe('assignBinding', () => {
   it('assigns a free code without touching other actions', () => {
-    const next = assignBinding(DEFAULT_KEY_BINDINGS, 'pauseToggle', 'KeyU');
-    expect(next.pauseToggle).toBe('KeyU');
+    const next = assignBinding(DEFAULT_KEY_BINDINGS, 'pauseToggle', 'KeyJ');
+    expect(next.pauseToggle).toBe('KeyJ');
     expect(next.attackMove).toBe('KeyA');
   });
 
