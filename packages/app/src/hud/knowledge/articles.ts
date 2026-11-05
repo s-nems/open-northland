@@ -1,7 +1,7 @@
 import { diag } from '../../diag/index.js';
 import { currentLocale, type Locale } from '../../i18n/index.js';
 
-export type ArticleDataBlock = 'armour' | 'animals' | 'experience' | 'homes' | 'jobs' | 'matrix' | 'vehicles';
+export type ArticleDataBlock = 'armour' | 'experience' | 'homes' | 'jobs' | 'matrix';
 
 export interface ArticleTable {
   readonly head: readonly string[];

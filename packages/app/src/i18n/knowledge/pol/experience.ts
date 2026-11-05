@@ -129,40 +129,13 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'W panelu osadnika to wiersze Walka - Miecz, Walka - Łuk i tak dalej. Trafienia mieczem nie pomagają włócznikowi i zostają po zmianie zawodu. Bohaterowi walka nie podnosi obrażeń, chyba że misja to włącza.',
         },
         {
-          h: 'Odkrycie broni',
-        },
-        {
-          table: {
-            head: ['Broń', 'Rzemieślnik', 'Wymóg'],
-            rows: [
-              ['[[good:spear_wooden|Drewniana Włócznia]]', '[[job:armorer|Płatnerz]]', 'brak'],
-              [
-                '[[good:spear_iron|Żelazna Włócznia]]',
-                '[[job:smith|Kowal]]',
-                'Kowalstwo: {{exp.ironSpearNeed}} razy',
-              ],
-              ['[[good:sword_shord|Krótki Miecz]]', '[[job:smith|Kowal]]', 'brak'],
-              [
-                '[[good:sword_long|Długi Miecz]]',
-                '[[job:smith|Kowal]]',
-                'Kowalstwo: {{exp.longSwordNeed}} razy',
-              ],
-              ['[[good:bow_short|Krótki Łuk]]', '[[job:armorer|Płatnerz]]', 'brak'],
-              [
-                '[[good:bow_long|Długi Łuk]]',
-                '[[job:armorer|Płatnerz]]',
-                'Wyrób Broni: {{exp.longBowNeed}} razy',
-              ],
-            ],
-          },
-        },
-        {
-          p: 'Do wzięcia broni trafienia nie są potrzebne: żołnierz bierze każdą broń z magazynu w zasięgu i od razu walczy jako Miecznik, Włócznik czy Łucznik.',
+          p: 'Lepszą broń odkrywa się wyrobem, nie walką. Wymóg podaje karta broni, np. [[good:sword_long|Długi Miecz]]. Kto jaką broń nosi: [[article:equip|Wyposażanie żołnierzy]].',
         },
       ],
       see: [
         'article:damage',
         'article:aim',
+        'article:equip',
         'article:heroes',
         'article:exp-work',
         'article:trades',

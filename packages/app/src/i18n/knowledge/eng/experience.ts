@@ -129,40 +129,13 @@ export const EXPERIENCE: ArticleGroup = {
           p: "In the settler panel these are the rows Fighting - Sword, Fighting - Bow and so on. Sword hits don't help a spearman, and they stay after a change of profession. Fighting doesn't raise a hero's damage, unless the mission turns it on.",
         },
         {
-          h: 'Discovering weapons',
-        },
-        {
-          table: {
-            head: ['Weapon', 'Craftsman', 'Requirement'],
-            rows: [
-              ['[[good:spear_wooden|Wooden Spear]]', '[[job:armorer|Armourer]]', 'none'],
-              [
-                '[[good:spear_iron|Iron Spear]]',
-                '[[job:smith|Blacksmith]]',
-                'Forging: {{exp.ironSpearNeed}} times',
-              ],
-              ['[[good:sword_shord|Shortsword]]', '[[job:smith|Blacksmith]]', 'none'],
-              [
-                '[[good:sword_long|Longsword]]',
-                '[[job:smith|Blacksmith]]',
-                'Forging: {{exp.longSwordNeed}} times',
-              ],
-              ['[[good:bow_short|Short Bow]]', '[[job:armorer|Armourer]]', 'none'],
-              [
-                '[[good:bow_long|Longbow]]',
-                '[[job:armorer|Armourer]]',
-                'Arms Production: {{exp.longBowNeed}} times',
-              ],
-            ],
-          },
-        },
-        {
-          p: 'A soldier needs no hits to take a weapon: he takes any weapon from a store in reach and fights as a Swordsman, Spearman or Archer on the spot.',
+          p: 'Better weapons are unlocked by making them, not by fighting. The weapon card gives the requirement, e.g. [[good:sword_long|Longsword]]. Who carries which weapon: [[article:equip|Equipping Soldiers]].',
         },
       ],
       see: [
         'article:damage',
         'article:aim',
+        'article:equip',
         'article:heroes',
         'article:exp-work',
         'article:trades',

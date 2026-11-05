@@ -75,7 +75,7 @@ export const WORLD: ArticleGroup = {
       lead: 'Pojazd bez dowódcy nigdzie nie pojedzie. Statek zabiera więcej ludzi, Statek handlowy więcej towaru.',
       blocks: [
         {
-          data: 'vehicles',
+          p: 'Ładownię, miejsca dla pasażerów, zdrowie i koszt każdego pojazdu podaje jego karta: [[vehicle:handcart|Wózek Ręczny]], [[vehicle:oxcart|Zaprzęg]], [[vehicle:ship_small|Statek]], [[vehicle:ship_big|Statek handlowy]], [[vehicle:catapult|Katapulta]]. Który warsztat co robi, podają karty [[building:work_joinery_02|Warsztatu ciesielskiego 3]] i [[building:work_joinery_03|4]].',
         },
         {
           table: {
@@ -92,7 +92,8 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Kolumna "Pasażerowie" nie liczy dowódcy. Dowódcą zostaje pierwszy przydzielony, a gdy odejdzie, dowodzi kolejny pasażer.',
+            'Liczba pasażerów na karcie nie obejmuje dowódcy. Dowódcą zostaje pierwszy przydzielony, a gdy odejdzie, dowodzi kolejny pasażer.',
+            '[[job:joiner|Cieśla]] stawia pojazd na placu obok warsztatu, a statek na wodzie przy brzegu.',
             'Kto wsiada, traci miejsce pracy. Tylko Tragarz z miejscem pracy i Kupiec ciągną wóz sami i zachowują pracę.',
             'Towar ładuje dowódca i każdy dorosły mężczyzna na pokładzie, ale żołnierze, bohaterowie, [[job:scout|Zwiadowcy]] i [[job:druid|Druidzi]] tylko wtedy, gdy dowodzą. Gdy nie ma komu ładować, pojawia się "Brak tragarza".',
           ],
@@ -102,42 +103,14 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: [
-              'Pojazd',
-              'Wolniej przy pełnym',
-              'Droga: pusty',
-              'Droga: pełny',
-              'Ląd: pusty',
-              'Ląd: pełny',
-            ],
+            head: ['Pojazd', 'Droga: pusty', 'Droga: pełny'],
             rows: [
-              [
-                '[[good:handcart|Wózek Ręczny]]',
-                '{{vehicle.handcartLossPct}}%',
-                '{{pace.cartRoad}}',
-                '{{pace.handcartRoadFull}}',
-                '{{pace.cartLand}}',
-                '{{pace.handcartLandFull}}',
-              ],
-              [
-                '[[good:oxcart|Zaprzęg]]',
-                '{{vehicle.oxcartLossPct}}%',
-                '{{pace.cartRoad}}',
-                '{{pace.oxcartRoadFull}}',
-                '{{pace.cartLand}}',
-                '{{pace.oxcartLandFull}}',
-              ],
-              [
-                '[[good:catapult|Katapulta]]',
-                '-',
-                '{{pace.catapultRoad}}',
-                '-',
-                '{{pace.catapultLand}}',
-                '-',
-              ],
+              ['[[good:handcart|Wózek Ręczny]]', '{{pace.cartRoad}}', '{{pace.handcartRoadFull}}'],
+              ['[[good:oxcart|Zaprzęg]]', '{{pace.cartRoad}}', '{{pace.oxcartRoadFull}}'],
+              ['[[good:catapult|Katapulta]]', '{{pace.catapultRoad}}', '-'],
             ],
-            num: [1, 2, 3, 4, 5],
-            foot: 'Hexy na sekundę. Pełny to {{haul.handcart}} sztuk na Wózku i {{haul.oxcart}} na Zaprzęgu. Ile zwalnia częściowo pełny wóz, pokazuje tabela niżej. Wybór wozu na trasę: [[article:trade|Handel]].',
+            num: [1, 2],
+            foot: 'Hexy na sekundę. Pełny to {{haul.handcart}} sztuk na Wózku i {{haul.oxcart}} na Zaprzęgu. Po lądzie: tabela niżej. Wybór wozu na trasę: [[article:trade|Handel]].',
           },
         },
         {
@@ -196,45 +169,10 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'Tak jedzie wóz z dowódcą. Buty nic tu nie zmieniają.',
-            'Tragarz i Kupiec, którzy ciągną wóz sami, idą własnym tempem, a w butach szybciej. Ładunek spowalnia ich o ten sam procent.',
+            'Tragarz i Kupiec, którzy ciągną wóz sami, idą własnym tempem, a w butach szybciej. Ładunek spowalnia ich o ten sam procent: Kupiec w butach z pełnym Wózkiem Ręcznym robi krok po lądzie w {{step.traderFullCart}} s.',
+            '[[good:catapult|Katapulta]] jedzie po lądzie {{pace.catapultLand}} hexów/s.',
             'Statek z ładunkiem nie zwalnia i płynie około {{pace.ship}} hexów/s.',
           ],
-        },
-        {
-          h: 'Budowa',
-        },
-        {
-          table: {
-            head: ['Pojazd', 'Warsztat', 'Koszt'],
-            rows: [
-              [
-                '[[good:handcart|Wózek Ręczny]]',
-                '[[building:work_joinery_02|Warsztat ciesielski 3]] i [[building:work_joinery_03|4]]',
-                '{{cost.handcartWood}} [[good:wood|Drewno]]',
-              ],
-              [
-                '[[good:oxcart|Zaprzęg]]',
-                '[[building:work_joinery_02|Warsztat ciesielski 3]] i [[building:work_joinery_03|4]]',
-                '{{cost.oxcartWood}} [[good:wood|Drewno]]',
-              ],
-              [
-                '[[good:ship_small|Statek]]',
-                '[[building:work_joinery_03|Warsztat ciesielski 4]]',
-                '{{cost.shipWood}} [[good:wood|Drewno]], {{cost.shipLeather}} [[good:leather|Skóra]]',
-              ],
-              [
-                '[[good:ship_big|Statek handlowy]]',
-                '[[building:work_joinery_03|Warsztat ciesielski 4]]',
-                '{{cost.bigShipWood}} [[good:wood|Drewno]], {{cost.bigShipLeather}} [[good:leather|Skóra]]',
-              ],
-              [
-                '[[good:catapult|Katapulta]]',
-                '[[building:work_joinery_03|Warsztat ciesielski 4]]',
-                '{{catapult.wood}} [[good:wood|Drewno]], {{catapult.iron}} [[good:iron|Żelazo]]',
-              ],
-            ],
-            foot: '[[job:joiner|Cieśla]] stawia pojazd na placu obok warsztatu, statek na wodzie przy brzegu.',
-          },
         },
         {
           h: 'Wół do Zaprzęgu',
@@ -456,7 +394,7 @@ export const WORLD: ArticleGroup = {
       lead: 'Agresywne stado rzuca się na ludzi do {{wild.aggro}} hexów od miejsca, w którym się pasie. Goni najdalej {{wild.giveUp}} hexów, potem wraca.',
       blocks: [
         {
-          data: 'animals',
+          p: 'Zdrowie, wielkość stada i to, czy zwierzę da się oswoić, podaje jego karta w Encyklopedii.',
         },
         {
           h: 'Agresja',
@@ -486,7 +424,7 @@ export const WORLD: ArticleGroup = {
           h: 'Przyrost stada',
         },
         {
-          p: 'Rośnie tylko mniej więcej 1 stado na {{wild.breedingShare}}. Takie stado zyskuje 1 dorosłe zwierzę co {{wild.growthMinutes}} min, jeśli ma co najmniej 2 sztuki i mniej, niż podaje kolumna "Stado".',
+          p: 'Rośnie tylko mniej więcej 1 stado na {{wild.breedingShare}}. Takie stado zyskuje 1 dorosłe zwierzę co {{wild.growthMinutes}} min, jeśli ma co najmniej 2 sztuki i mniej, niż podaje "Stado" na karcie zwierzęcia.',
         },
         {
           h: 'Na co poluje Myśliwy',
@@ -498,22 +436,14 @@ export const WORLD: ArticleGroup = {
             'Strzał Myśliwego zabiera zwierzęciu {{wild.hunterShot}} zdrowia i sięga od {{hunterBow.min}} do {{hunterBow.max}} hexów.',
             'Na dorosłą Dziką Kozę sam nie zapoluje, na jej młode tak.',
             'Nie poluje na zwierzęta, które do kogoś należą, ani na te z innego lądu.',
-            'W kolumnie "Myśliwy" "sam" oznacza zwierzynę, na którą poluje sam, a "na rozkaz" taką, którą zaatakuje tylko na twój rozkaz.',
+            'Na karcie zwierzęcia "Myśliwy: sam" oznacza zwierzynę, na którą poluje sam, a "na rozkaz" taką, którą zaatakuje tylko na twój rozkaz.',
           ],
         },
         {
           h: 'Zdobycz',
         },
         {
-          table: {
-            head: ['Zwierzę', 'Zabił Myśliwy', 'Zabił ktoś inny'],
-            rows: [
-              ['Dorosłe', '2 [[good:leather|Skóra]], 2 [[good:meat|Mięso]]', '1 [[good:meat|Mięso]]'],
-              ['Młode', '1 [[good:leather|Skóra]], 1 [[good:meat|Mięso]]', 'nic'],
-              ['Koń dorosły', '1 [[good:leather|Skóra]], 1 [[good:meat|Mięso]]', '1 [[good:meat|Mięso]]'],
-              ['Koń młody', '1 [[good:leather|Skóra]]', 'nic'],
-            ],
-          },
+          p: 'Co zostawia dorosłe zwierzę, podaje jego karta. Młode upolowane przez Myśliwego daje połowę tego, Koń młody tylko 1 [[good:leather|Skórę]]. Młode zabite przez kogoś innego nie zostawia nic.',
         },
       ],
       see: ['article:damage', 'article:gathering', 'article:livestock', 'job:hunter'],
@@ -555,20 +485,18 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Zwierzę', 'Młode kosztuje', 'Ubój daje'],
+            head: ['Zwierzę', 'Ubój daje'],
             rows: [
               [
                 '[[good:sheep|Owca]]',
-                '{{livestock.calfWater}} [[good:water|Woda]], {{livestock.calfWheat}} [[good:wheat|Pszenica]]',
                 '{{livestock.sheepWool}} [[good:wool|Wełna]], {{livestock.sheepMeat}} [[good:meat|Mięso]]',
               ],
               [
                 '[[good:cattle|Wół]]',
-                '{{livestock.calfWater}} [[good:water|Woda]], {{livestock.calfWheat}} [[good:wheat|Pszenica]]',
                 '{{livestock.cattleLeather}} [[good:leather|Skóra]], {{livestock.cattleMeat}} [[good:meat|Mięso]]',
               ],
             ],
-            foot: 'Młode i ubój trwają około {{livestock.cycleSeconds}} s. Gatunek wybierasz w produkcji Hodowcy. Na Fermie mieści się po {{livestock.farmShelf}} sztuk Mięsa, Wełny i Skóry.',
+            foot: 'Gatunek wybierasz w produkcji Hodowcy. Ile kosztuje i trwa młode oraz ile towaru mieści Ferma, podaje karta [[building:work_animal_farm|Fermy bydła]].',
           },
         },
         {
@@ -627,7 +555,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Poniżej {{need.drivePct}}% [[job:joiner|Cieśla]], Płatnerz, Kowal i Krawiec sami idą się modlić. Gdy nie mają gdzie, przy {{need.criticalPct}}% pojawia się komunikat "Chce się modlić".',
+            'Poniżej {{need.drivePct}}% Płatnerz, Kowal i Krawiec sami idą się modlić. Gdy nie mają gdzie, przy {{need.criticalPct}}% pojawia się komunikat "Chce się modlić".',
             'Zaczętą sztukę dokończą nawet przy 0%.',
           ],
         },

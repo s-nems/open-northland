@@ -104,7 +104,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Ударов на 1 шт. материала. [[job:builder|Строитель]] доходит до 100% за {{exp.build.repeatsFull}} ударов, но считаются только те, что продвинули стройку.',
+            foot: 'Ударов на 1 шт. материала. Опыт [[job:builder|Строителя]] растёт только от ударов, которые продвинули стройку: [[article:exp-work|Опыт в работе]].',
           },
         },
         {
@@ -132,16 +132,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Ремонт',
         },
         {
-          table: {
-            head: ['Цель', 'Здоровье за удар', 'Строителей сразу'],
-            rows: [
-              ['Здание', '{{repair.minPerSwing}}-{{repair.maxPerSwing}}', '{{repair.crew}}'],
-              ['Секция частокола', '{{wall.segmentRepair}}', '{{repair.wallCrew}}'],
-              ['Ворота', '{{wall.gateRepair}}', '{{repair.wallCrew}}'],
-            ],
-            num: [1, 2],
-            foot: 'Ремонт не тратит материалы. На частоколе и воротах опыт и инструмент ничего не меняют.',
-          },
+          p: 'Строитель возвращает зданию {{repair.minPerSwing}}-{{repair.maxPerSwing}} здоровья за удар, а одно здание чинят сразу не больше {{repair.crew}} Строителей. Ремонт не тратит материалы. Частокол и ворота чинятся иначе, опыт и инструмент там ничего не меняют: [[article:walls|Частоколы и ворота]].',
         },
         {
           p: 'Строитель сам не чинит {{repair.calmSeconds}} с после последнего попадания и пока в пределах {{alert.standTo}} гексов идёт бой. По вашему приказу он пойдёт сразу.',
@@ -367,25 +358,13 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Здание', 'Поля', 'Радиус', 'Работники', 'Запас'],
+            head: ['Здание', 'Поля', 'Радиус'],
             rows: [
-              [
-                '[[building:work_farm_00|Ферма]]',
-                '{{field.max}}',
-                'гексов: {{field.radius}}',
-                'Фермеры: {{farm.farmers}}, Носильщики: {{farm.carriers}}',
-                '{{farm.stock}}',
-              ],
-              [
-                '[[building:work_herb_hut|Хижина Трав]]',
-                '{{field.max}}',
-                'гексов: {{field.radius}}',
-                'Сборщики Трав: {{herbHut.herbalists}}, Носильщики: {{herbHut.carriers}}',
-                '{{herbHut.stock}}',
-              ],
+              ['[[building:work_farm_00|Ферма]]', '{{field.max}}', 'гексов: {{field.radius}}'],
+              ['[[building:work_herb_hut|Хижина Трав]]', '{{field.max}}', 'гексов: {{field.radius}}'],
             ],
-            num: [1, 4],
-            foot: 'По диагонали радиус около {{field.diagonal}} гексов. Лимит полей у здания, а не у работника, так что больше людей дают более быстрый урожай, но не больше полей.',
+            num: [1],
+            foot: 'По диагонали радиус около {{field.diagonal}} гексов. Лимит полей у здания, а не у работника, так что больше людей дают более быстрый урожай, но не больше полей. Работников и запас показывает карточка здания.',
           },
         },
         {
@@ -452,7 +431,10 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:collector|Добытчик]]', 'Меньше ударов, кроме грибов'],
               ['[[job:farmer|Фермер]], [[job:herb_mush_guy|Сборщик Трав]]', 'Меньше ударов при жатве'],
               ['[[job:fisher|Рыбак]]', 'Меньше забросов'],
-              ['[[job:builder|Строитель]]', 'Меньше ударов на штуку материала'],
+              [
+                '[[job:builder|Строитель]]',
+                'Меньше ударов на штуку материала: [[article:construction|Постройка]]',
+              ],
               ['[[job:hunter|Охотник]], [[job:carrier|Носильщик]]', 'Ничего'],
               ['Солдаты, герои', 'Инструментов не носят'],
             ],
@@ -463,36 +445,13 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Опыт', 'Без инструмента', 'Деревянный', 'Железный'],
+            head: ['Без опыта', 'Без инструмента', 'Деревянный', 'Железный'],
             rows: [
-              ['0%', '{{tool.strokes.0.bare}}', '{{tool.strokes.0.wooden}}', '{{tool.strokes.0.iron}}'],
-              ['20%', '{{tool.strokes.20.bare}}', '{{tool.strokes.20.wooden}}', '{{tool.strokes.20.iron}}'],
-              ['40%', '{{tool.strokes.40.bare}}', '{{tool.strokes.40.wooden}}', '{{tool.strokes.40.iron}}'],
-              ['60%', '{{tool.strokes.60.bare}}', '{{tool.strokes.60.wooden}}', '{{tool.strokes.60.iron}}'],
-              ['80%', '{{tool.strokes.80.bare}}', '{{tool.strokes.80.wooden}}', '{{tool.strokes.80.iron}}'],
-              [
-                '100%',
-                '{{tool.strokes.100.bare}}',
-                '{{tool.strokes.100.wooden}}',
-                '{{tool.strokes.100.iron}}',
-              ],
+              ['Удары', '{{tool.strokes.bare}}', '{{tool.strokes.wooden}}', '{{tool.strokes.iron}}'],
+              ['Забросы на 1 рыбу', '{{tool.casts.bare}}', '{{tool.casts.wooden}}', '{{tool.casts.iron}}'],
             ],
             num: [1, 2, 3],
-            foot: 'У дерева, скалы, залежи и поля трав.',
-          },
-        },
-        {
-          table: {
-            head: ['Опыт', 'Без инструмента', 'Деревянный', 'Железный'],
-            rows: [
-              ['0%', '{{tool.casts.0.bare}}', '{{tool.casts.0.wooden}}', '{{tool.casts.0.iron}}'],
-              ['20%', '{{tool.casts.20.bare}}', '{{tool.casts.20.wooden}}', '{{tool.casts.20.iron}}'],
-              ['40%', '{{tool.casts.40.bare}}', '{{tool.casts.40.wooden}}', '{{tool.casts.40.iron}}'],
-              ['60%', '{{tool.casts.60.bare}}', '{{tool.casts.60.wooden}}', '{{tool.casts.60.iron}}'],
-              ['80-100%', '{{tool.casts.80.bare}}', '{{tool.casts.80.wooden}}', '{{tool.casts.80.iron}}'],
-            ],
-            num: [1, 2, 3],
-            foot: 'Забросов на 1 рыбу.',
+            foot: 'Удары у дерева, скалы, залежи и поля трав. Опыт вычитает из этого свои удары, но всегда остаётся хотя бы 1: [[article:exp-work|Опыт в работе]].',
           },
         },
         {
@@ -502,19 +461,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Штуки с цикла в мастерской',
         },
         {
-          table: {
-            head: ['Опыт', 'Без инструмента', 'Деревянный', 'Железный'],
-            rows: [
-              ['0%', '{{tool.output.0.bare}}', '{{tool.output.0.wooden}}', '{{tool.output.0.iron}}'],
-              ['20%', '{{tool.output.20.bare}}', '{{tool.output.20.wooden}}', '{{tool.output.20.iron}}'],
-              ['40%', '{{tool.output.40.bare}}', '{{tool.output.40.wooden}}', '{{tool.output.40.iron}}'],
-              ['60%', '{{tool.output.60.bare}}', '{{tool.output.60.wooden}}', '{{tool.output.60.iron}}'],
-              ['80%', '{{tool.output.80.bare}}', '{{tool.output.80.wooden}}', '{{tool.output.80.iron}}'],
-              ['100%', '{{tool.output.100.bare}}', '{{tool.output.100.wooden}}', '{{tool.output.100.iron}}'],
-            ],
-            num: [1, 2, 3],
-            foot: 'Для рецепта на 1 шт., при рецепте на 2 шт. прибавка вдвое больше. Сырьё и время работы не меняются. Опыт действует и при забое.',
-          },
+          p: 'Инструмент добавляет к каждому циклу постоянную прибавку: Деревянный +{{tool.bonus.wooden}}, Железный +{{tool.bonus.iron}} шт. Она складывается с прибавкой от опыта, которую показывает [[article:exp-work|Опыт в работе]]. При рецепте на 2 шт. прибавка вдвое больше. Сырьё и время работы не меняются.',
         },
         {
           p: 'Доли штук складываются. Как только набирается целая штука, она ложится на полку, даже сверх вместимости.',
@@ -540,20 +487,7 @@ export const ECONOMY: ArticleGroup = {
       lead: 'Носильщик без повозки несёт {{haul.carry}} шт. за раз. В одной точке на земле помещается до {{haul.groundStack}} шт. одного товара.',
       blocks: [
         {
-          h: 'Вместимость',
-        },
-        {
-          table: {
-            head: ['Здание', 'Штук одного товара'],
-            rows: [
-              ['[[building:stock_00|Склад 1]]', '{{haul.store1}}'],
-              ['[[building:stock_01|Склад 2]]', '{{haul.store2}}'],
-              ['[[building:stock_02|Склад 3]]', '{{haul.store3}}'],
-              ['[[building:headquarters|Центр]]', '{{haul.hq}}'],
-            ],
-            num: [1],
-            foot: 'Каждое из этих зданий принимает по {{haul.storeSeats}} [[job:carrier|Носильщиков]], Добытчиков, Рыбаков и Охотников.',
-          },
+          p: 'Сколько вмещает склад и сколько людей в нём работает, показывают карточки [[building:stock_00|Склада 1]], [[building:stock_01|2]], [[building:stock_02|3]] и [[building:headquarters|Центра]].',
         },
         {
           h: 'Приоритет',
@@ -574,16 +508,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Повозка',
         },
         {
-          table: {
-            head: ['Носильщик', 'Штук за рейс', 'Медленнее с полным грузом'],
-            rows: [
-              ['Без повозки', '{{haul.carry}}', '-'],
-              ['С [[good:handcart|Ручной Тележкой]]', '{{haul.handcart}}', '{{haul.handcartLossPct}}%'],
-              ['С [[good:oxcart|Бычьей Повозкой]]', '{{haul.oxcart}}', '{{haul.oxcartLossPct}}%'],
-            ],
-            num: [1, 2],
-            foot: 'Чем меньше груз, тем меньше повозка замедляет. Повозки [[job:trader|Купца]] работают так же.',
-          },
+          p: 'С повозкой Носильщик берёт за рейс столько, сколько она вмещает: [[vehicle:handcart|Ручная Тележка]], [[vehicle:oxcart|Бычья Повозка]]. Насколько повозка замедляется с грузом: [[article:vehicles|Машины и корабли]].',
         },
         {
           list: [
@@ -596,7 +521,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Кучи на земле',
         },
         {
-          p: 'Куча на земле ничья, взять её может любой. Носильщик подбирает кучи в пределах {{flag.radius}} гексов от своего здания, а если у него есть рабочий флажок, то в пределах {{flag.radius}} гексов от флажка.',
+          p: 'Куча на земле ничья, взять её может любой. Откуда Носильщик собирает кучи: [[article:work-flag|Рабочий флажок]].',
         },
       ],
       see: [
@@ -816,16 +741,16 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Местность', 'В обуви', 'Босиком', 'Шагов на пару обуви'],
+            head: ['Местность', 'Босиком', 'Шагов на пару обуви'],
             rows: [
-              ['Дорога, мостовая', '{{step.road}} с', '{{step.roadBare}} с', '{{shoes.road}}'],
-              ['Земля', '{{step.land}} с', '{{step.landBare}} с', '{{shoes.land}}'],
-              ['Песок, пляж, каменистая пустыня', '{{step.sand}} с', '{{step.sandBare}} с', '{{shoes.sand}}'],
-              ['Горы', '{{step.mountain}} с', '{{step.mountainBare}} с', '{{shoes.mountain}}'],
-              ['Снег', '{{step.snow}} с', '{{step.snowBare}} с', '{{shoes.snow}}'],
+              ['Дорога, мостовая', '{{step.roadBare}} с', '{{shoes.road}}'],
+              ['Земля', '{{step.landBare}} с', '{{shoes.land}}'],
+              ['Песок, пляж, каменистая пустыня', '{{step.sandBare}} с', '{{shoes.sand}}'],
+              ['Горы', '{{step.mountainBare}} с', '{{shoes.mountain}}'],
+              ['Снег', '{{step.snowBare}} с', '{{shoes.snow}}'],
             ],
-            num: [1, 2, 3],
-            foot: 'С грузом в руках обувь изнашивается в {{shoes.carryWear}} раза быстрее. Сколько энергии стоит ходьба босиком: [[article:needs|Потребности]].',
+            num: [1, 2],
+            foot: 'Шаг в обуви по каждой местности показывает [[article:roads|Дороги и знаки]]. С грузом в руках обувь изнашивается в {{shoes.carryWear}} раза быстрее. Сколько энергии стоит ходьба босиком: [[article:needs|Потребности]].',
           },
         },
         {
@@ -842,10 +767,8 @@ export const ECONOMY: ArticleGroup = {
               ['Оружие и доспехи весят вместе 2-3', '+{{step.weightLowExtra}} с'],
               ['Оружие и доспехи весят вместе 4-5', '+{{step.weightHighExtra}} с'],
               ['[[good:amulet_speed|Амулет Ветра]]', '-{{step.amuletSaved}} с'],
-              ['Полная [[good:handcart|Ручная Тележка]]', 'на {{haul.handcartLossPct}}% медленнее'],
-              ['Полная [[good:oxcart|Бычья Повозка]]', 'на {{haul.oxcartLossPct}}% медленнее'],
             ],
-            foot: 'Шаг никогда не бывает короче {{step.shortest}} с. Чем меньше груз, тем меньше повозка замедляет. Героев вес не замедляет.',
+            foot: 'Шаг никогда не бывает короче {{step.shortest}} с. Героев вес не замедляет. Насколько замедляется повозка: [[article:vehicles|Машины и корабли]].',
           },
         },
         {
@@ -863,11 +786,8 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:spear_iron|Железное Копье]], [[good:sword_long|Длинный Меч]]', '{{weight.ironSpear}}'],
             ],
             num: [1],
-            foot: 'Одинаково для всех племён. Прибавьте вес оружия к весу доспехов из таблицы ниже.',
+            foot: 'Одинаково для всех племён. Прибавьте вес оружия к весу доспехов из таблицы Доспехи: [[article:damage|Оружие, доспехи и урон]].',
           },
-        },
-        {
-          data: 'armour',
         },
         {
           h: 'Примеры',
@@ -882,13 +802,19 @@ export const ECONOMY: ArticleGroup = {
                 'Земля',
                 '{{step.plateSoldierOnLand}} с',
               ],
-              ['Купец, в обуви, полная Ручная Тележка', 'Земля', '{{step.traderFullCart}} с'],
             ],
             num: [2],
           },
         },
       ],
-      see: ['good:shoes', 'good:amulet_speed', 'article:roads', 'article:needs', 'article:vehicles'],
+      see: [
+        'good:shoes',
+        'good:amulet_speed',
+        'article:roads',
+        'article:needs',
+        'article:vehicles',
+        'article:damage',
+      ],
     },
     {
       id: 'trade',
@@ -907,7 +833,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:oxcart|Бычья Повозка]]', '{{trade.oxcartSeconds}} с'],
             ],
             num: [1],
-            foot: 'Вместимость и замедление: [[article:hauling|Носильщики и склады]].',
+            foot: 'Вместимость повозки показывает её карточка, а замедление [[article:vehicles|Машины и корабли]].',
           },
         },
         {

@@ -50,7 +50,6 @@ export const SETTLERS: ArticleGroup = {
               ['{{need.satedPct}}%', '居民在家先補耐力，再補體力，補到此值後出門。'],
               ['{{need.overfillPct}}%', '需求條最多到這裡。在家進餐和在家用傢俱睡覺可以存下超過100%的部分。'],
             ],
-            foot: '[[job:armorer|武器匠]]、[[job:smith|鐵匠]]和[[job:sewer|裁縫]]會自己去禱告。',
           },
         },
         {
@@ -100,14 +99,12 @@ export const SETTLERS: ArticleGroup = {
           h: '信仰與社交',
         },
         {
+          p: '居民會一直禱告，直到信仰到100%，或體力、耐力降到{{need.drivePct}}%。誰會禱告、在哪裡禱告、能回多少：[[article:religion|信仰與神廟]]。',
+        },
+        {
           table: {
             head: ['活動', '時長', '效果'],
             rows: [
-              [
-                '禱告',
-                '{{pray.seconds}}秒',
-                '信仰+{{pray.pct}}%。重複到100%，除非體力或耐力降到{{need.drivePct}}%。',
-              ],
               ['交談', '{{talk.shortSeconds}}-{{talk.longSeconds}}秒', '社交最多+{{talk.pct}}%。'],
               ['有配偶的居民留在家裡', '-', '社交100%。'],
             ],
@@ -206,7 +203,6 @@ export const SETTLERS: ArticleGroup = {
                 '距[[building:work_temple|神廟]]{{aura.range}}格',
                 '{{aura.wholeMin}}分{{aura.restSec}}秒',
               ],
-              ['治療藥水', '每口+{{draught.healSip}}', '受傷後將低於{{draught.healBelow}}', '-'],
               [
                 '飢餓',
                 '-{{health.starvePerSecond}}/秒',
@@ -236,43 +232,6 @@ export const SETTLERS: ArticleGroup = {
       see: ['article:draughts', 'article:needs', 'article:religion', 'good:potion_heal_small'],
     },
     {
-      id: 'life',
-      name: '成長',
-      lead: '兒童出生{{age.adultMinutes}}分鐘後成年。沒有人會老死。',
-      blocks: [
-        {
-          h: '人生階段',
-        },
-        {
-          table: {
-            head: ['階段', '年齡', '出生後', '備註'],
-            rows: [
-              [
-                '嬰兒',
-                '0-{{age.babyLastYear}}歲',
-                '0-{{age.childWholeMin}}分{{age.childRestSec}}秒',
-                '步速慢一倍。',
-              ],
-              [
-                '兒童',
-                '{{age.childYears}}-{{age.childLastYear}}歲',
-                '{{age.childWholeMin}}分{{age.childRestSec}}秒-{{age.adultMinutes}}分',
-                '每步慢{{step.childExtra}}秒。在家附近活動。',
-              ],
-              [
-                '成人',
-                '{{age.adultYears}}歲起',
-                '{{age.adultMinutes}}分鐘起',
-                '男孩成為[[job:civilist|平民]]，女孩成為[[job:woman|婦女]]。',
-              ],
-            ],
-            foot: '一歲等於{{age.yearSeconds}}秒。',
-          },
-        },
-      ],
-      see: ['article:family', 'article:health', 'article:trades'],
-    },
-    {
       id: 'family',
       name: '家庭與住所',
       lead: '生一個孩子需要{{family.childFood}}份食物。',
@@ -298,6 +257,24 @@ export const SETTLERS: ArticleGroup = {
             '士兵、英雄、偵察兵，以及被派往[[building:barracks|兵營]]或[[building:school|學校]]的居民不能結婚。',
             '夫妻住在妻子家。妻子沒有住所時住在丈夫家。',
           ],
+        },
+        {
+          h: '成長',
+        },
+        {
+          table: {
+            head: ['階段', '年齡', '出生後'],
+            rows: [
+              ['嬰兒', '0-{{age.babyLastYear}}歲', '0-{{age.childWholeMin}}分{{age.childRestSec}}秒'],
+              [
+                '兒童',
+                '{{age.childYears}}-{{age.childLastYear}}歲',
+                '{{age.childWholeMin}}分{{age.childRestSec}}秒-{{age.adultMinutes}}分',
+              ],
+              ['成人', '{{age.adultYears}}歲起', '{{age.adultMinutes}}分鐘起'],
+            ],
+            foot: '一歲等於{{age.yearSeconds}}秒。兒童在家附近活動。成年後男孩成為[[job:civilist|平民]]，女孩成為[[job:woman|婦女]]。沒有人會老死。',
+          },
         },
         {
           h: '住所等級',
@@ -366,7 +343,6 @@ export const SETTLERS: ArticleGroup = {
         },
       ],
       see: [
-        'article:life',
         'article:food',
         'article:religion',
         'article:assistant',
@@ -463,7 +439,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: '旗幟旁的資源用完時，助手會把旗幟移到下一處資源附近，與其相距{{assistant.flagMin}}-{{assistant.flagMax}}格：[[article:work-flag|工作旗幟]]。',
+          p: '採集者如何自己移動旗幟：[[article:work-flag|工作旗幟]]。',
         },
         {
           p: '「臣民」視窗顯示有多少居民缺少住所、工作、工具、鞋子、伴侶、孩子、武器或蜂蜜酒。',
@@ -508,14 +484,9 @@ export const SETTLERS: ArticleGroup = {
                 '耐力+{{draught.potionPct}}%',
                 '耐力降到{{need.drivePct}}%',
               ],
-              [
-                '[[good:potion_heal_small|小型]] / [[good:potion_heal_big|大型治療藥水]]',
-                '{{draught.smallUses}} / {{draught.bigUses}}',
-                '生命值+{{draught.healSip}}',
-                '受傷後生命值將低於{{draught.healBelow}}',
-              ],
             ],
             num: [1],
+            foot: '治療藥水：[[article:health|生命與治療]]。',
           },
         },
         {
@@ -564,13 +535,13 @@ export const SETTLERS: ArticleGroup = {
             head: ['對象', '可攜帶'],
             rows: [
               ['成年男性', '飲品和護符共{{amulet.slots}}個欄位，任何職業都一樣。'],
-              ['[[article:heroes|英雄]]', '治療藥水以及力量、精準、防禦、疾風護符。'],
               ['婦女、兒童', '無。'],
             ],
+            foot: '英雄能帶什麼：[[article:heroes|英雄]]。',
           },
         },
       ],
-      see: ['article:needs', 'article:health', 'article:damage', 'article:walking'],
+      see: ['article:needs', 'article:health', 'article:heroes', 'article:damage', 'article:walking'],
     },
   ],
 };

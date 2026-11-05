@@ -30,14 +30,8 @@ export const MILITARY: ArticleGroup = {
               ],
               ['Schlag von der hinteren Flanke', '×{{combat.backSideFactor}}'],
               ['Schlag von hinten', '×{{combat.behindFactor}}'],
-              ['[[good:amulet_strength|Stärkeamulett]] des Angreifers', '×{{amulet.strengthFactor}}'],
-              [
-                '[[good:amulet_crithit|Trefferamulett]] des Angreifers',
-                '{{amulet.critChancePct}}% Chance auf ×{{amulet.critFactor}}',
-              ],
-              ['[[good:amulet_defense|Verteidigungsamulett]] des Ziels', '×{{amulet.defenseFactor}}'],
             ],
-            foot: 'Ein Schlag von vorne oder von der vorderen Flanke ändert den Schaden nicht.',
+            foot: 'Ein Schlag von vorne oder von der vorderen Flanke ändert den Schaden nicht. Stärke-, Treffer- und Verteidigungsamulett: [[article:draughts|Getränke und Amulette]].',
           },
         },
         {
@@ -53,11 +47,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Unterschiede der Stämme',
         },
         {
-          list: [
-            'Bei den Sarazenen macht der [[good:bow_short|Kurzbogen]] gegen Waffenrock {{saracen.bowOnWool}} statt {{viking.bowOnWool}}, gegen Kettenhemd und Plattenrüstung {{saracen.bowOnChain}} statt {{viking.bowOnChain}}.',
-            'Bei den Byzantinern zeigt die Tabelle in der Zeile [[good:spear_wooden|Holzspeer]] den Drachen der Karte. Er hat {{dragon.hitpoints}} Gesundheit, Reichweite {{dragon.min}}-{{dragon.max}} und macht {{dragon.blows}} Schläge alle {{dragon.seconds}} s, je {{dragon.bare}} Schaden ohne Rüstung. Ein ausgebildeter Speerträger kämpft wie bei den anderen Stämmen.',
-            'Alle übrigen Waffen wirken bei allen Stämmen gleich.',
-          ],
+          p: 'Die Tabelle rechnet mit den Waffen des Stammes, dessen Wappen du oben im Fenster wählst. Der Drache, den die Zeile [[good:spear_wooden|Holzspeer]] bei den Byzantinern zeigt, hat {{dragon.hitpoints}} Gesundheit.',
         },
         {
           h: 'Rüstungen',
@@ -85,31 +75,7 @@ export const MILITARY: ArticleGroup = {
       lead: 'Das Heer bewaffnest du mit den Zählern im Fenster Assistent. Die Ausrüstung eines einzelnen Siedlers änderst du in seinem Panel.',
       blocks: [
         {
-          h: 'Zähler',
-        },
-        {
-          table: {
-            head: ['Zähler', 'Was er tut', 'Wann er sinkt'],
-            rows: [
-              [
-                '„Unbewaffnete Soldaten“',
-                'Bildet in der Kaserne aus, gibt keine Waffe aus',
-                'Nach der Ausbildung',
-              ],
-              [
-                '„Schwertkämpfer“, „Speerträger“, „Bogenschützen“',
-                'Bewaffnet zuerst einen unbewaffneten Soldaten, bildet dann einen neuen aus',
-                'Wenn der Kämpfer die Waffe nimmt',
-              ],
-            ],
-            foot: 'Wen er in die Kaserne schickt: [[article:assistant|Assistent]].',
-          },
-        },
-        {
-          list: [
-            'Solange ein unbewaffneter Soldat auf eine Waffe wartet, bildet der Zähler niemand Neuen aus, auch wenn lange keine Waffe kommt.',
-            'Ein unbewaffneter Soldat holt sich eine Waffe, wenn eine dieser Art in Reichweite liegt und niemand sonst darauf wartet.',
-          ],
+          p: 'Die Zähler für das Heer und die Einberufung in die Kaserne beschreibt [[article:assistant|Assistent]].',
         },
         {
           h: 'Waffen- und Rüstungsleisten',
@@ -152,7 +118,7 @@ export const MILITARY: ArticleGroup = {
               ['[[good:coin|Münze]]', '{{barracks.coinStock}}'],
             ],
             num: [1],
-            foot: 'Die Kaserne hat {{barracks.carriers}} Trägerplätze. Ware, der du Vorrang gibst, holen diese Träger selbst aus den Lagern: [[article:hauling|Träger und Lager]].',
+            foot: 'Ware, der du Vorrang gibst, holen die Träger der Kaserne selbst aus den Lagern: [[article:hauling|Träger und Lager]].',
           },
         },
         {
@@ -174,14 +140,13 @@ export const MILITARY: ArticleGroup = {
             'Eine neue Waffe ändert sofort die Soldatenart. Legt er die Waffe ab, wird er ein einfacher [[job:soldier_unarmed|Soldat]].',
             'Beim Tauschen oder Ablegen gehen abgetragene Schuhe, gebrauchte Werkzeuge und angebrochene Flaschen verloren. Unbenutzte kehren ins Lager zurück.',
             'Waffen, Rüstungen und Amulette nutzen sich nicht ab und kehren immer ins Lager zurück.',
-            'Dein Befehl an eine einzelne Person geht den Einstellungen des Assistenten vor.',
           ],
         },
         {
           h: 'Wer bessere Waffen tragen darf',
         },
         {
-          p: 'Jeder Soldat nimmt jede Waffe aus dem Lager, egal wie erfahren er ist. Die Grenze liegt bei der Herstellung: [[good:spear_iron|Eisenspeer]] und [[good:sword_long|Langschwert]] macht nur ein erfahrener [[job:smith|Schmied]], den [[good:bow_long|Langbogen]] nur ein erfahrener [[job:armorer|Waffenbauer]]. Wie viel Erfahrung nötig ist: [[article:exp-combat|Kampferfahrung]].',
+          p: 'Jeder Soldat nimmt jede Waffe aus dem Lager, egal wie erfahren er ist. Die Grenze liegt bei der Herstellung: [[good:spear_iron|Eisenspeer]] und [[good:sword_long|Langschwert]] macht nur ein erfahrener [[job:smith|Schmied]], den [[good:bow_long|Langbogen]] nur ein erfahrener [[job:armorer|Waffenbauer]]. Wie viel Erfahrung nötig ist, steht auf der Karte jeder dieser Waffen.',
         },
       ],
       see: [
@@ -202,46 +167,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Waffe', 'Reichweite', 'Reichweite im Turm', 'Geht ans Ziel heran auf', 'Schuss alle'],
+            head: ['Waffe', 'Reichweite im Turm', 'Geht ans Ziel heran auf'],
             rows: [
-              [
-                '[[good:bow_short|Kurzbogen]]',
-                '{{shortBow.min}}-{{shortBow.max}}',
-                '0-{{shortBow.towerMax}}',
-                '{{shortBow.standoff}}',
-                '{{shortBow.seconds}} s',
-              ],
-              [
-                '[[good:bow_long|Langbogen]]',
-                '{{longBow.min}}-{{longBow.max}}',
-                '0-{{longBow.towerMax}}',
-                '{{longBow.standoff}}',
-                '{{longBow.seconds}} s',
-              ],
-              [
-                '[[job:hunter|Jäger]]',
-                '{{hunterBow.min}}-{{hunterBow.max}}',
-                '-',
-                '-',
-                '{{hunterBow.seconds}} s',
-              ],
-              [
-                '[[job:heroine_bow_xena|Cyra]]',
-                '{{heroBow.min}}-{{heroBow.max}}',
-                '-',
-                '{{heroBow.standoff}}',
-                '{{heroBow.seconds}} s',
-              ],
-              [
-                '[[building:catapult|Katapult]]',
-                '{{catapult.min}}-{{catapult.max}}',
-                '-',
-                '{{catapult.bandMin}}-{{catapult.max}}',
-                '{{catapult.seconds}} s',
-              ],
+              ['[[good:bow_short|Kurzbogen]]', '0-{{shortBow.towerMax}}', '{{shortBow.standoff}}'],
+              ['[[good:bow_long|Langbogen]]', '0-{{longBow.towerMax}}', '{{longBow.standoff}}'],
+              ['[[job:heroine_bow_xena|Cyra]]', '-', '{{heroBow.standoff}}'],
             ],
-            num: [1, 2, 3, 4],
-            foot: 'Reichweite in Hexfeldern. Auf Ziele näher als die untere Grenze der Reichweite schießt der Bogenschütze nicht.',
+            num: [1, 2],
+            foot: 'Reichweite in Hexfeldern. Die normale Reichweite und das Schusstempo, auch für Jägerbogen und Katapult, zeigt die Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]]. Auf Ziele näher als die untere Grenze der Reichweite schießt der Bogenschütze nicht.',
           },
         },
         {
@@ -426,56 +359,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Held', 'Waffe', 'Rüstung', 'Reichweite'],
+            head: ['Held', 'Waffe', 'Rüstung'],
             rows: [
-              [
-                '[[job:hero_spear_siegfried|Sigurd]]',
-                'Speer',
-                '[[good:armor_plate|Plattenrüstung]]',
-                '{{hero.spearMin}}-{{hero.spearMax}}',
-              ],
-              [
-                '[[job:hero_sword_bjarni|Bjarni]]',
-                'Schwert',
-                '[[good:armor_chain|Kettenhemd]]',
-                '{{hero.swordReach}}',
-              ],
-              [
-                '[[job:hero_saber_hatschi|Hatschi]]',
-                'Säbel',
-                '[[good:armor_chain|Kettenhemd]]',
-                '{{hero.saberReach}}',
-              ],
-              [
-                '[[job:heroine_bow_xena|Cyra]]',
-                'Bogen',
-                '[[good:armor_leather|Lederrüstung]]',
-                '{{heroBow.min}}-{{heroBow.max}}',
-              ],
+              ['[[job:hero_spear_siegfried|Sigurd]]', 'Speer', '[[good:armor_plate|Plattenrüstung]]'],
+              ['[[job:hero_sword_bjarni|Bjarni]]', 'Schwert', '[[good:armor_chain|Kettenhemd]]'],
+              ['[[job:hero_saber_hatschi|Hatschi]]', 'Säbel', '[[good:armor_chain|Kettenhemd]]'],
+              ['[[job:heroine_bow_xena|Cyra]]', 'Bogen', '[[good:armor_leather|Lederrüstung]]'],
             ],
-            num: [3],
-            foot: 'Ein Held schlägt alle {{hero.blowSeconds}} s zu. Den Schaden zeigt die Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]], wenn du dort die Helden einschaltest.',
-          },
-        },
-        {
-          h: 'Unterschiede der Stämme',
-        },
-        {
-          table: {
-            head: ['Held', 'Stamm', 'Unterschied'],
-            rows: [
-              ['Sigurd', 'Ägypter', 'Macht gegen Kettenhemd {{hero.sigurdEgyptChain}}'],
-              [
-                'Hatschi',
-                'Sarazene',
-                '{{hero.hatchieSaracenBlows}} Schläge alle {{hero.hatchieSaracenSeconds}} s',
-              ],
-              [
-                'Cyra',
-                'Franke',
-                'Reichweite {{frankHeroBow.min}}-{{frankHeroBow.max}}, Schuss alle {{frankHeroBow.seconds}} s. Schaden: ohne Rüstung {{hero.frankBowBare}}, Waffenrock und Lederrüstung {{hero.frankBowWool}}, Kettenhemd und Plattenrüstung {{hero.frankBowChain}}, Gebäude und Fahrzeug {{hero.frankBowVehicle}}',
-              ],
-            ],
+            foot: 'Reichweite, Schlagtempo und Schaden zeigt die Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]], wenn du dort die Helden einschaltest. Helden eines anderen Stammes kämpfen etwas anders: wähle oben im Fenster sein Wappen.',
           },
         },
         {
@@ -522,44 +413,22 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Gebäude', 'Plätze', 'Schüsse pro Sekunde', 'Posten'],
+            head: ['Gebäude', 'Plätze', 'Schüsse pro Sekunde'],
             rows: [
-              ['[[building:headquarters|Hauptquartier]]', '{{shelter.hq}}', '{{shelter.hqShots}}', '-'],
-              [
-                '[[building:tower_01|Wachturm 2]]',
-                '{{shelter.tower2}}',
-                '{{shelter.tower2Shots}}',
-                '{{tower2.posts}} Kurzbogen, {{tower2.longPosts}} Langbogen',
-              ],
-              [
-                '[[building:tower_00|Wachturm 1]]',
-                '{{shelter.tower1}}',
-                '{{shelter.tower1Shots}}',
-                '{{tower1.posts}} Kurzbogen, {{tower1.longPosts}} Langbogen',
-              ],
-              ['[[building:barracks|Kaserne]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}', '-'],
+              ['[[building:headquarters|Hauptquartier]]', '{{shelter.hq}}', '{{shelter.hqShots}}'],
+              ['[[building:tower_01|Wachturm 2]]', '{{shelter.tower2}}', '{{shelter.tower2Shots}}'],
+              ['[[building:tower_00|Wachturm 1]]', '{{shelter.tower1}}', '{{shelter.tower1Shots}}'],
+              ['[[building:barracks|Kaserne]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}'],
             ],
             num: [1, 2],
-            foot: 'Schüsse pro Sekunde bei vollem Gebäude. Posten belegen keine Plätze zum Verstecken. Ein im Turm beschäftigter Bogenschütze schießt von selbst, ohne Verteidigungsmodus: [[article:aim|Treffen und Schießen]].',
+            foot: 'Schüsse pro Sekunde bei vollem Gebäude. Die Posten der Bogenschützen, die die Karte des Turms zeigt, belegen keine Plätze zum Verstecken. Ein im Turm beschäftigter Bogenschütze schießt von selbst, ohne Verteidigungsmodus: [[article:aim|Treffen und Schießen]].',
           },
         },
         {
           h: 'Pfeile aus Gebäuden',
         },
         {
-          table: {
-            head: ['Ziel', 'Pfeil'],
-            rows: [
-              ['Ohne Rüstung', '{{arrow.bare}}'],
-              ['Waffenrock', '{{arrow.wool}}'],
-              ['Lederrüstung', '{{arrow.leather}}'],
-              ['Kettenhemd, Plattenrüstung', '{{arrow.chain}}'],
-              ['Fahrzeug', '{{arrow.vehicle}}'],
-              ['Gebäude', '{{arrow.building}}'],
-            ],
-            num: [1],
-            foot: 'Bei jedem Stamm gleich. Schlagrichtung und Verteidigungsamulett können das ändern: [[article:damage|Waffen, Rüstung und Schaden]].',
-          },
+          p: 'Wie viel ein Pfeil abzieht, zeigt die Zeile „Pfeile aus Gebäuden“ in der Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]].',
         },
         {
           list: [
@@ -574,24 +443,13 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Turm', 'Trägerplätze', 'Met', 'Nahrung', 'Je Waffenart'],
+            head: ['Turm', 'Met', 'Nahrung', 'Je Waffenart'],
             rows: [
-              [
-                '[[building:tower_00|Wachturm 1]]',
-                '{{tower1.carriers}}',
-                '{{tower1.mead}}',
-                '{{tower1.food}}',
-                '{{tower1.weapon}}',
-              ],
-              [
-                '[[building:tower_01|Wachturm 2]]',
-                '{{tower2.carriers}}',
-                '{{tower2.mead}}',
-                '{{tower2.food}}',
-                '{{tower2.weapon}}',
-              ],
+              ['[[building:tower_00|Wachturm 1]]', '{{tower1.mead}}', '{{tower1.food}}', '{{tower1.weapon}}'],
+              ['[[building:tower_01|Wachturm 2]]', '{{tower2.mead}}', '{{tower2.food}}', '{{tower2.weapon}}'],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
+            foot: 'Posten und Trägerplätze zeigt die Karte des Turms.',
           },
         },
         {
@@ -740,7 +598,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Mauer',
         },
         {
-          p: 'Die [[building:work_pottery_02|Mauer]] ist ein normales Gebäude: {{wall.defenceHp}} Gesundheit, Schaden aus der Spalte Gebäude. Ein Soldat behandelt sie wie eine Palisade.',
+          p: 'Die [[building:work_pottery_02|Mauer]] ist ein normales Gebäude und bekommt Schaden aus der Spalte Gebäude. Ein Soldat behandelt sie wie eine Palisade.',
         },
       ],
       see: [
@@ -763,38 +621,13 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
-          table: {
-            head: ['Eigenschaft', 'Wert'],
-            rows: [
-              ['Reichweite', '{{catapult.min}}-{{catapult.max}} Hexfelder'],
-              ['Schuss alle', '{{catapult.seconds}} s'],
-              ['Gesundheit', '{{catapult.hitpoints}}'],
-              ['Besatzung', '1 Soldat oder Held, mit beliebiger Waffe'],
-              [
-                'Kosten',
-                '[[building:catapult|Katapult]]: {{catapult.wood}} [[good:wood|Holz]], {{catapult.iron}} [[good:iron|Eisen]]',
-              ],
-            ],
-            foot: 'Ohne Kommandant bewegt sich das Katapult nicht und schießt nicht. Steine kosten nichts.',
-          },
+          p: 'Ein Katapult führt 1 Soldat oder Held, mit beliebiger Waffe. Ohne Kommandant bewegt es sich nicht und schießt nicht. Steine kosten nichts. Gesundheit, Reichweite, Schusstempo und Kosten zeigt die Karte des [[building:catapult|Katapults]].',
         },
         {
           h: 'Stein',
         },
         {
-          table: {
-            head: ['Ziel', 'Schaden', 'Steine zum Zerstören'],
-            rows: [
-              ['Ohne Rüstung', '{{stone.bare}}', '{{stone.bareKills}}'],
-              ['Lederrüstung', '{{stone.leather}}', '{{stone.leatherKills}}'],
-              ['Waffenrock', '{{stone.wool}}', '{{stone.woolKills}}'],
-              ['Kettenhemd, Plattenrüstung', '{{stone.chain}}', '{{stone.chainKills}}'],
-              ['Katapult', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
-              ['Gebäude', '{{stone.building}}', '{{stone.tower1}}-{{stone.frankHq}}'],
-            ],
-            num: [2],
-            foot: 'Schaden an einem von vorne getroffenen Menschen, ohne Amulette. Palisade: [[article:walls|Palisaden und Tore]].',
-          },
+          p: 'Wie viel ein Stein Menschen, Fahrzeugen und Gebäuden abzieht, zeigt die Zeile Katapult in der Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]]. Palisaden rechnen das anders: [[article:walls|Palisaden und Tore]].',
         },
         {
           table: {

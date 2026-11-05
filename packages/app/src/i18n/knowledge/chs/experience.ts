@@ -129,28 +129,13 @@ export const EXPERIENCE: ArticleGroup = {
           p: '在居民面板里是“战斗 - 剑”“战斗 - 弓”这样的行。剑的命中帮不了矛兵，换职业后也不丢。英雄的伤害不随战斗增长，除非任务开启了这一点。',
         },
         {
-          h: '解锁武器',
-        },
-        {
-          table: {
-            head: ['武器', '工匠', '条件'],
-            rows: [
-              ['[[good:spear_wooden|木矛]]', '[[job:armorer|武器匠]]', '无'],
-              ['[[good:spear_iron|铁矛]]', '[[job:smith|铁匠]]', '锻造：{{exp.ironSpearNeed}} 次'],
-              ['[[good:sword_shord|短剑]]', '[[job:smith|铁匠]]', '无'],
-              ['[[good:sword_long|长剑]]', '[[job:smith|铁匠]]', '锻造：{{exp.longSwordNeed}} 次'],
-              ['[[good:bow_short|短弓]]', '[[job:armorer|武器匠]]', '无'],
-              ['[[good:bow_long|长弓]]', '[[job:armorer|武器匠]]', '武器制造：{{exp.longBowNeed}} 次'],
-            ],
-          },
-        },
-        {
-          p: '拿武器不需要命中次数：士兵能拿范围内仓库的任何武器，拿到就以剑兵、矛兵或弓箭手的身份作战。',
+          p: '更好的武器靠制造解锁，不靠战斗。要求写在武器卡片上，例如[[good:sword_long|长剑]]。谁拿什么武器：[[article:equip|士兵装备]]。',
         },
       ],
       see: [
         'article:damage',
         'article:aim',
+        'article:equip',
         'article:heroes',
         'article:exp-work',
         'article:trades',

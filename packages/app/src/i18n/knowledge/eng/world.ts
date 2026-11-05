@@ -83,7 +83,7 @@ export const WORLD: ArticleGroup = {
       lead: 'A vehicle with no commander goes nowhere. A Ship carries more people, a Big Ship more goods.',
       blocks: [
         {
-          data: 'vehicles',
+          p: "Each vehicle's card gives its hold, passenger places, health and cost: [[vehicle:handcart|Handcart]], [[vehicle:oxcart|Ox Cart]], [[vehicle:ship_small|Ship]], [[vehicle:ship_big|Big Ship]], [[vehicle:catapult|Catapult]]. Which workshop makes what is on the cards of [[building:work_joinery_02|Carpenter's Shop 3]] and [[building:work_joinery_03|4]].",
         },
         {
           table: {
@@ -100,7 +100,8 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'The "Passengers" column does not count the commander. The first one assigned becomes commander, and when he leaves the next passenger takes over.',
+            'The passenger count on the card does not include the commander. The first one assigned becomes commander, and when he leaves the next passenger takes over.',
+            'The [[job:joiner|Carpenter]] puts a vehicle up on a site next to the workshop, and a ship on the water by the shore.',
             'Whoever boards loses his workplace. Only a Carrier with a workplace and a Merchant pull the cart themselves and keep their work.',
             'The commander and any adult man aboard load the goods, but soldiers, heroes, [[job:scout|Scouts]] and [[job:druid|Druids]] only when they are in command. With nobody to load you get "No carrier".',
           ],
@@ -110,28 +111,14 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Vehicle', 'Slower when full', 'Road: empty', 'Road: full', 'Land: empty', 'Land: full'],
+            head: ['Vehicle', 'Road: empty', 'Road: full'],
             rows: [
-              [
-                '[[good:handcart|Handcart]]',
-                '{{vehicle.handcartLossPct}}%',
-                '{{pace.cartRoad}}',
-                '{{pace.handcartRoadFull}}',
-                '{{pace.cartLand}}',
-                '{{pace.handcartLandFull}}',
-              ],
-              [
-                '[[good:oxcart|Ox Cart]]',
-                '{{vehicle.oxcartLossPct}}%',
-                '{{pace.cartRoad}}',
-                '{{pace.oxcartRoadFull}}',
-                '{{pace.cartLand}}',
-                '{{pace.oxcartLandFull}}',
-              ],
-              ['[[good:catapult|Catapult]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
+              ['[[good:handcart|Handcart]]', '{{pace.cartRoad}}', '{{pace.handcartRoadFull}}'],
+              ['[[good:oxcart|Ox Cart]]', '{{pace.cartRoad}}', '{{pace.oxcartRoadFull}}'],
+              ['[[good:catapult|Catapult]]', '{{pace.catapultRoad}}', '-'],
             ],
-            num: [1, 2, 3, 4, 5],
-            foot: 'Hexes per second. Full means {{haul.handcart}} pieces on the Handcart and {{haul.oxcart}} on the Ox Cart. The table below shows partly loaded carts. Picking a cart for a route: [[article:trade|Trade]].',
+            num: [1, 2],
+            foot: 'Hexes per second. Full means {{haul.handcart}} pieces on the Handcart and {{haul.oxcart}} on the Ox Cart. Over land: the table below. Picking a cart for a route: [[article:trade|Trade]].',
           },
         },
         {
@@ -184,45 +171,10 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             "That's how a cart with a commander moves. Shoes change nothing here.",
-            'A Carrier or Merchant pulling a cart himself goes at his own pace, faster in shoes. The load slows him by the same percentage.',
+            'A Carrier or Merchant pulling a cart himself goes at his own pace, faster in shoes. The load slows him by the same percentage: a shod Merchant with a full Handcart takes {{step.traderFullCart}} s per step on land.',
+            'A [[good:catapult|Catapult]] moves over land at {{pace.catapultLand}} hexes/s.',
             "A loaded Ship doesn't slow down and sails about {{pace.ship}} hexes/s.",
           ],
-        },
-        {
-          h: 'Construction',
-        },
-        {
-          table: {
-            head: ['Vehicle', 'Workshop', 'Cost'],
-            rows: [
-              [
-                '[[good:handcart|Handcart]]',
-                "[[building:work_joinery_02|Carpenter's Shop 3]] and [[building:work_joinery_03|4]]",
-                '{{cost.handcartWood}} [[good:wood|Wood]]',
-              ],
-              [
-                '[[good:oxcart|Ox Cart]]',
-                "[[building:work_joinery_02|Carpenter's Shop 3]] and [[building:work_joinery_03|4]]",
-                '{{cost.oxcartWood}} [[good:wood|Wood]]',
-              ],
-              [
-                '[[good:ship_small|Ship]]',
-                "[[building:work_joinery_03|Carpenter's Shop 4]]",
-                '{{cost.shipWood}} [[good:wood|Wood]], {{cost.shipLeather}} [[good:leather|Leather]]',
-              ],
-              [
-                '[[good:ship_big|Big Ship]]',
-                "[[building:work_joinery_03|Carpenter's Shop 4]]",
-                '{{cost.bigShipWood}} [[good:wood|Wood]], {{cost.bigShipLeather}} [[good:leather|Leather]]',
-              ],
-              [
-                '[[good:catapult|Catapult]]',
-                "[[building:work_joinery_03|Carpenter's Shop 4]]",
-                '{{catapult.wood}} [[good:wood|Wood]], {{catapult.iron}} [[good:iron|Iron]]',
-              ],
-            ],
-            foot: 'The [[job:joiner|Carpenter]] puts a vehicle up on a site next to the workshop, a ship on the water by the shore.',
-          },
         },
         {
           h: 'An Ox for the Ox Cart',
@@ -447,7 +399,7 @@ export const WORLD: ArticleGroup = {
       lead: 'An aggressive herd rushes people within {{wild.aggro}} hexes of where it grazes. It chases at most {{wild.giveUp}} hexes, then turns back.',
       blocks: [
         {
-          data: 'animals',
+          p: "An animal's card in the Encyclopedia gives its health, herd size and whether it can be tamed.",
         },
         {
           h: 'Aggression',
@@ -477,7 +429,7 @@ export const WORLD: ArticleGroup = {
           h: 'Herd growth',
         },
         {
-          p: 'Only about 1 herd in {{wild.breedingShare}} grows. Such a herd gains 1 adult every {{wild.growthMinutes}} min, if it has at least 2 animals and fewer than the "Herd" column says.',
+          p: 'Only about 1 herd in {{wild.breedingShare}} grows. Such a herd gains 1 adult every {{wild.growthMinutes}} min, if it has at least 2 animals and fewer than "Herd" on the animal card says.',
         },
         {
           h: 'What a Hunter hunts',
@@ -489,22 +441,14 @@ export const WORLD: ArticleGroup = {
             "The Hunter's shot takes {{wild.hunterShot}} health from an animal and reaches from {{hunterBow.min}} to {{hunterBow.max}} hexes.",
             "He won't hunt an adult Ibex on his own, but he will hunt its young.",
             "He doesn't hunt animals that belong to someone, or those on another landmass.",
-            'In the "Auto-hunted" column, "on his own" is game he hunts by himself, "on orders" is game he attacks only when you order it.',
+            'On an animal card, "Hunter: on his own" is game he hunts by himself, and "on orders" is game he attacks only when you order it.',
           ],
         },
         {
           h: 'Kill',
         },
         {
-          table: {
-            head: ['Animal', "Hunter's kill", 'Killed by anyone else'],
-            rows: [
-              ['Adult', '2 [[good:leather|Leather]], 2 [[good:meat|Meat]]', '1 [[good:meat|Meat]]'],
-              ['Young', '1 [[good:leather|Leather]], 1 [[good:meat|Meat]]', 'nothing'],
-              ['Adult Horse', '1 [[good:leather|Leather]], 1 [[good:meat|Meat]]', '1 [[good:meat|Meat]]'],
-              ['Young Horse', '1 [[good:leather|Leather]]', 'nothing'],
-            ],
-          },
+          p: 'What an adult animal leaves is on its card. A young one killed by a Hunter gives half of that, a young Horse just 1 [[good:leather|Leather]]. A young one killed by anyone else leaves nothing.',
         },
       ],
       see: ['article:damage', 'article:gathering', 'article:livestock', 'job:hunter'],
@@ -546,20 +490,18 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Animal', 'Young costs', 'Slaughter gives'],
+            head: ['Animal', 'Slaughter gives'],
             rows: [
               [
                 '[[good:sheep|Sheep]]',
-                '{{livestock.calfWater}} [[good:water|Water]], {{livestock.calfWheat}} [[good:wheat|Wheat]]',
                 '{{livestock.sheepWool}} [[good:wool|Wool]], {{livestock.sheepMeat}} [[good:meat|Meat]]',
               ],
               [
                 '[[good:cattle|Ox]]',
-                '{{livestock.calfWater}} [[good:water|Water]], {{livestock.calfWheat}} [[good:wheat|Wheat]]',
                 '{{livestock.cattleLeather}} [[good:leather|Leather]], {{livestock.cattleMeat}} [[good:meat|Meat]]',
               ],
             ],
-            foot: "Young and slaughter take about {{livestock.cycleSeconds}} s. You pick the species in the Stock Farmer's production. A Cattle Farm holds {{livestock.farmShelf}} pieces each of Meat, Wool and Leather.",
+            foot: "You pick the species in the Stock Farmer's production. What a young animal costs and takes, and how many goods the farm holds, is on the [[building:work_animal_farm|Cattle Farm]] card.",
           },
         },
         {
@@ -618,7 +560,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Below {{need.drivePct}}% the [[job:joiner|Carpenter]], Armourer, Blacksmith and Tailor go to pray on their own. When they have nowhere to go, you get "Wants to pray" at {{need.criticalPct}}%.',
+            'Below {{need.drivePct}}% the Armourer, Blacksmith and Tailor go to pray on their own. When they have nowhere to go, you get "Wants to pray" at {{need.criticalPct}}%.',
             'They finish an item already started, even at 0%.',
           ],
         },

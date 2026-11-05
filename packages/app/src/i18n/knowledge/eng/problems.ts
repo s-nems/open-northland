@@ -19,7 +19,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               "The Armourer, Blacksmith or Tailor won't work",
-              'Most likely his Religion under "Wellbeing" is at 0%. Each weapon or armour costs {{piety.lowPct}}% or {{piety.highPct}}% Religion, and a prayer gives {{pray.pct}}%. "Wants to pray" means there is nowhere to pray: you need a [[building:work_temple|Temple]], [[building:headquarters|Headquarters]] or a holy fire in the dwelling. More: [[article:religion|Religion and the Temple]].',
+              'Most likely his Religion under "Wellbeing" is at 0%, because weapons and armour cost Religion. "Wants to pray" means there is nowhere to pray: you need a [[building:work_temple|Temple]], [[building:headquarters|Headquarters]] or a holy fire in the dwelling. What each item costs: [[article:religion|Religion and the Temple]].',
             ],
             [
               "Carriers aren't carrying",
@@ -42,7 +42,7 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'No children are being born',
-              'A couple needs a shared dwelling and {{family.childFood}} pieces of food in the larder. A message says what is missing: "No dwelling", "Dwelling unbuilt", "Living apart", "No food stock". "Husband away" means the husband is a Merchant, Scout, soldier or hero and does not come home. You can also order children with the "Births" counter in the Assistant. More: [[article:family|Family and Home]].',
+              'A couple needs a shared dwelling and {{family.childFood}} pieces of food in the larder. A message says what is missing: "No dwelling", "Dwelling unbuilt", "Living apart", "No food stock". "Husband away" means the husband is a Merchant, Scout, soldier or hero and does not come home. You can also order children with the "Daughters" and "Sons" counters in the [[article:assistant|Assistant]]. More: [[article:family|Family and Home]].',
             ],
             [
               'Hungry with a full store',

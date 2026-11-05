@@ -104,7 +104,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Uderzenia na 1 sztukę materiału. [[job:builder|Budowniczy]] dochodzi do 100% po {{exp.build.repeatsFull}} uderzeniach, ale liczą się tylko te, które posunęły budowę.',
+            foot: 'Uderzenia na 1 sztukę materiału. Doświadczenie [[job:builder|Budowniczego]] rośnie tylko z uderzeń, które posunęły budowę: [[article:exp-work|Doświadczenie w pracy]].',
           },
         },
         {
@@ -132,16 +132,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Naprawa',
         },
         {
-          table: {
-            head: ['Cel', 'Zdrowie na uderzenie', 'Budowniczych naraz'],
-            rows: [
-              ['Budynek', '{{repair.minPerSwing}}-{{repair.maxPerSwing}}', '{{repair.crew}}'],
-              ['Odcinek palisady', '{{wall.segmentRepair}}', '{{repair.wallCrew}}'],
-              ['Brama', '{{wall.gateRepair}}', '{{repair.wallCrew}}'],
-            ],
-            num: [1, 2],
-            foot: 'Naprawa nie kosztuje materiału. Przy palisadzie i bramie doświadczenie i narzędzie nic nie zmieniają.',
-          },
+          p: 'Budowniczy przywraca budynkowi {{repair.minPerSwing}}-{{repair.maxPerSwing}} zdrowia na uderzenie, a jeden budynek naprawia naraz najwyżej {{repair.crew}} Budowniczych. Naprawa nie kosztuje materiału. Palisadę i bramę naprawia się inaczej, doświadczenie i narzędzie nic tam nie zmieniają: [[article:walls|Palisady i bramy]].',
         },
         {
           p: 'Budowniczy sam nie naprawia przez {{repair.calmSeconds}} s od ostatniego trafienia ani wtedy, gdy w promieniu {{alert.standTo}} hexów trwa walka. Na twój rozkaz pójdzie od razu.',
@@ -370,25 +361,13 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Budynek', 'Pola', 'Promień', 'Załoga', 'Zapas'],
+            head: ['Budynek', 'Pola', 'Promień'],
             rows: [
-              [
-                '[[building:work_farm_00|Farma]]',
-                '{{field.max}}',
-                '{{field.radius}} hexów',
-                '{{farm.farmers}} Farmerów, {{farm.carriers}} Tragarz',
-                '{{farm.stock}}',
-              ],
-              [
-                '[[building:work_herb_hut|Chatka zielarza]]',
-                '{{field.max}}',
-                '{{field.radius}} hexów',
-                '{{herbHut.herbalists}} Zbieraczy Ziół, {{herbHut.carriers}} Tragarz',
-                '{{herbHut.stock}}',
-              ],
+              ['[[building:work_farm_00|Farma]]', '{{field.max}}', '{{field.radius}} hexów'],
+              ['[[building:work_herb_hut|Chatka zielarza]]', '{{field.max}}', '{{field.radius}} hexów'],
             ],
-            num: [1, 4],
-            foot: 'Po skosie promień to około {{field.diagonal}} hexów. Limit pól jest na budynek, nie na pracownika, więc więcej ludzi daje szybsze zbiory, ale nie więcej pól.',
+            num: [1],
+            foot: 'Po skosie promień to około {{field.diagonal}} hexów. Limit pól jest na budynek, nie na pracownika, więc więcej ludzi daje szybsze zbiory, ale nie więcej pól. Załogę i zapas podaje karta budynku.',
           },
         },
         {
@@ -455,7 +434,10 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:collector|Zbieracz]]', 'Mniej uderzeń, oprócz grzybów'],
               ['[[job:farmer|Farmer]], [[job:herb_mush_guy|Zbieracz Ziół]]', 'Mniej uderzeń przy ścinaniu'],
               ['[[job:fisher|Rybak]]', 'Mniej rzutów'],
-              ['[[job:builder|Budowniczy]]', 'Mniej uderzeń na sztukę materiału'],
+              [
+                '[[job:builder|Budowniczy]]',
+                'Mniej uderzeń na sztukę materiału: [[article:construction|Budowa]]',
+              ],
               ['[[job:hunter|Myśliwy]], [[job:carrier|Tragarz]]', 'Nic'],
               ['Żołnierze, bohaterowie', 'Nie noszą narzędzi'],
             ],
@@ -466,36 +448,13 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Doświadczenie', 'Bez narzędzia', 'Drewniane', 'Żelazne'],
+            head: ['Bez doświadczenia', 'Bez narzędzia', 'Drewniane', 'Żelazne'],
             rows: [
-              ['0%', '{{tool.strokes.0.bare}}', '{{tool.strokes.0.wooden}}', '{{tool.strokes.0.iron}}'],
-              ['20%', '{{tool.strokes.20.bare}}', '{{tool.strokes.20.wooden}}', '{{tool.strokes.20.iron}}'],
-              ['40%', '{{tool.strokes.40.bare}}', '{{tool.strokes.40.wooden}}', '{{tool.strokes.40.iron}}'],
-              ['60%', '{{tool.strokes.60.bare}}', '{{tool.strokes.60.wooden}}', '{{tool.strokes.60.iron}}'],
-              ['80%', '{{tool.strokes.80.bare}}', '{{tool.strokes.80.wooden}}', '{{tool.strokes.80.iron}}'],
-              [
-                '100%',
-                '{{tool.strokes.100.bare}}',
-                '{{tool.strokes.100.wooden}}',
-                '{{tool.strokes.100.iron}}',
-              ],
+              ['Uderzenia', '{{tool.strokes.bare}}', '{{tool.strokes.wooden}}', '{{tool.strokes.iron}}'],
+              ['Rzuty na 1 rybę', '{{tool.casts.bare}}', '{{tool.casts.wooden}}', '{{tool.casts.iron}}'],
             ],
             num: [1, 2, 3],
-            foot: 'Przy drzewie, skale, złożu i polu ziół.',
-          },
-        },
-        {
-          table: {
-            head: ['Doświadczenie', 'Bez narzędzia', 'Drewniane', 'Żelazne'],
-            rows: [
-              ['0%', '{{tool.casts.0.bare}}', '{{tool.casts.0.wooden}}', '{{tool.casts.0.iron}}'],
-              ['20%', '{{tool.casts.20.bare}}', '{{tool.casts.20.wooden}}', '{{tool.casts.20.iron}}'],
-              ['40%', '{{tool.casts.40.bare}}', '{{tool.casts.40.wooden}}', '{{tool.casts.40.iron}}'],
-              ['60%', '{{tool.casts.60.bare}}', '{{tool.casts.60.wooden}}', '{{tool.casts.60.iron}}'],
-              ['80-100%', '{{tool.casts.80.bare}}', '{{tool.casts.80.wooden}}', '{{tool.casts.80.iron}}'],
-            ],
-            num: [1, 2, 3],
-            foot: 'Rzutów na 1 rybę.',
+            foot: 'Uderzenia przy drzewie, skale, złożu i polu ziół. Doświadczenie odejmuje od tego swoje uderzenia, ale zawsze zostaje co najmniej 1: [[article:exp-work|Doświadczenie w pracy]].',
           },
         },
         {
@@ -505,19 +464,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Sztuki z cyklu w warsztacie',
         },
         {
-          table: {
-            head: ['Doświadczenie', 'Bez narzędzia', 'Drewniane', 'Żelazne'],
-            rows: [
-              ['0%', '{{tool.output.0.bare}}', '{{tool.output.0.wooden}}', '{{tool.output.0.iron}}'],
-              ['20%', '{{tool.output.20.bare}}', '{{tool.output.20.wooden}}', '{{tool.output.20.iron}}'],
-              ['40%', '{{tool.output.40.bare}}', '{{tool.output.40.wooden}}', '{{tool.output.40.iron}}'],
-              ['60%', '{{tool.output.60.bare}}', '{{tool.output.60.wooden}}', '{{tool.output.60.iron}}'],
-              ['80%', '{{tool.output.80.bare}}', '{{tool.output.80.wooden}}', '{{tool.output.80.iron}}'],
-              ['100%', '{{tool.output.100.bare}}', '{{tool.output.100.wooden}}', '{{tool.output.100.iron}}'],
-            ],
-            num: [1, 2, 3],
-            foot: 'Dla przepisu na 1 sztukę, przy przepisie na 2 sztuki premia jest podwójna. Składniki i czas pracy się nie zmieniają. Doświadczenie działa też przy uboju.',
-          },
+          p: 'Narzędzie dodaje do każdego cyklu stałą premię: Drewniane +{{tool.bonus.wooden}}, Żelazne +{{tool.bonus.iron}} sztuki. Sumuje się z premią z doświadczenia, którą podaje [[article:exp-work|Doświadczenie w pracy]]. Przy przepisie na 2 sztuki premia jest podwójna. Składniki i czas pracy się nie zmieniają.',
         },
         {
           p: 'Ułamki sztuk się sumują. Gdy uzbiera się pełna sztuka, trafia do zapasu, nawet ponad jego pojemność.',
@@ -543,20 +490,7 @@ export const ECONOMY: ArticleGroup = {
       lead: 'Tragarz bez wozu niesie {{haul.carry}} sztukę naraz. Na jednym miejscu na ziemi zmieści się do {{haul.groundStack}} sztuk jednego towaru.',
       blocks: [
         {
-          h: 'Pojemność',
-        },
-        {
-          table: {
-            head: ['Budynek', 'Sztuk jednego towaru'],
-            rows: [
-              ['[[building:stock_00|Magazyn 1]]', '{{haul.store1}}'],
-              ['[[building:stock_01|Magazyn 2]]', '{{haul.store2}}'],
-              ['[[building:stock_02|Magazyn 3]]', '{{haul.store3}}'],
-              ['[[building:headquarters|Kwatera główna]]', '{{haul.hq}}'],
-            ],
-            num: [1],
-            foot: 'Każdy z tych budynków przyjmuje po {{haul.storeSeats}} [[job:carrier|Tragarzy]], Zbieraczy, Rybaków i Myśliwych.',
-          },
+          p: 'Ile mieści magazyn i ilu ludzi w nim pracuje, podają karty [[building:stock_00|Magazynu 1]], [[building:stock_01|2]], [[building:stock_02|3]] i [[building:headquarters|Kwatery głównej]].',
         },
         {
           h: 'Priorytet',
@@ -577,16 +511,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Wóz',
         },
         {
-          table: {
-            head: ['Tragarz', 'Sztuk na kurs', 'Wolniej, gdy pełny'],
-            rows: [
-              ['Bez wozu', '{{haul.carry}}', '-'],
-              ['Z [[good:handcart|Wózkiem Ręcznym]]', '{{haul.handcart}}', '{{haul.handcartLossPct}}%'],
-              ['Z [[good:oxcart|Zaprzęgiem]]', '{{haul.oxcart}}', '{{haul.oxcartLossPct}}%'],
-            ],
-            num: [1, 2],
-            foot: 'Im mniejszy ładunek, tym mniej wóz zwalnia. Wozy [[job:trader|Kupca]] działają tak samo.',
-          },
+          p: 'Z wozem Tragarz zabiera na kurs tyle, ile wóz mieści: [[vehicle:handcart|Wózek Ręczny]], [[vehicle:oxcart|Zaprzęg]]. Ile wóz zwalnia z ładunkiem: [[article:vehicles|Pojazdy i statki]].',
         },
         {
           list: [
@@ -599,7 +524,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Stosy na ziemi',
         },
         {
-          p: 'Stos na ziemi jest niczyj, może go wziąć każdy. Tragarz podnosi stosy do {{flag.radius}} hexów od swojego budynku, a jeśli ma flagę roboczą, do {{flag.radius}} hexów od flagi.',
+          p: 'Stos na ziemi jest niczyj, może go wziąć każdy. Skąd Tragarz zbiera stosy: [[article:work-flag|Flaga robocza]].',
         },
       ],
       see: [
@@ -819,21 +744,16 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Teren', 'W butach', 'Boso', 'Kroków z pary butów'],
+            head: ['Teren', 'Boso', 'Kroków z pary butów'],
             rows: [
-              ['Droga, bruk', '{{step.road}} s', '{{step.roadBare}} s', '{{shoes.road}}'],
-              ['Ląd', '{{step.land}} s', '{{step.landBare}} s', '{{shoes.land}}'],
-              [
-                'Piasek, plaża, kamienista pustynia',
-                '{{step.sand}} s',
-                '{{step.sandBare}} s',
-                '{{shoes.sand}}',
-              ],
-              ['Góry', '{{step.mountain}} s', '{{step.mountainBare}} s', '{{shoes.mountain}}'],
-              ['Śnieg', '{{step.snow}} s', '{{step.snowBare}} s', '{{shoes.snow}}'],
+              ['Droga, bruk', '{{step.roadBare}} s', '{{shoes.road}}'],
+              ['Ląd', '{{step.landBare}} s', '{{shoes.land}}'],
+              ['Piasek, plaża, kamienista pustynia', '{{step.sandBare}} s', '{{shoes.sand}}'],
+              ['Góry', '{{step.mountainBare}} s', '{{shoes.mountain}}'],
+              ['Śnieg', '{{step.snowBare}} s', '{{shoes.snow}}'],
             ],
-            num: [1, 2, 3],
-            foot: 'Z ładunkiem w rękach buty zużywają się {{shoes.carryWear}} razy szybciej. Ile energii kosztuje chodzenie boso: [[article:needs|Potrzeby]].',
+            num: [1, 2],
+            foot: 'Krok w butach na każdym terenie podaje [[article:roads|Drogi i drogowskazy]]. Z ładunkiem w rękach buty zużywają się {{shoes.carryWear}} razy szybciej. Ile energii kosztuje chodzenie boso: [[article:needs|Potrzeby]].',
           },
         },
         {
@@ -850,10 +770,8 @@ export const ECONOMY: ArticleGroup = {
               ['Broń i pancerz ważą razem 2-3', '+{{step.weightLowExtra}} s'],
               ['Broń i pancerz ważą razem 4-5', '+{{step.weightHighExtra}} s'],
               ['[[good:amulet_speed|Amulet Wiatru]]', '-{{step.amuletSaved}} s'],
-              ['Pełny [[good:handcart|Wózek Ręczny]]', '{{haul.handcartLossPct}}% wolniej'],
-              ['Pełny [[good:oxcart|Zaprzęg]]', '{{haul.oxcartLossPct}}% wolniej'],
             ],
-            foot: 'Krok nigdy nie trwa krócej niż {{step.shortest}} s. Im mniejszy ładunek, tym mniej wóz zwalnia. Bohaterów ciężar nie spowalnia.',
+            foot: 'Krok nigdy nie trwa krócej niż {{step.shortest}} s. Bohaterów ciężar nie spowalnia. Ile zwalnia wóz: [[article:vehicles|Pojazdy i statki]].',
           },
         },
         {
@@ -874,11 +792,8 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1],
-            foot: 'Tak samo u wszystkich plemion. Dodaj ciężar broni do ciężaru pancerza z tabeli niżej.',
+            foot: 'Tak samo u wszystkich plemion. Dodaj ciężar broni do ciężaru pancerza z tabeli Pancerze: [[article:damage|Broń, pancerz i obrażenia]].',
           },
-        },
-        {
-          data: 'armour',
         },
         {
           h: 'Przykłady',
@@ -889,13 +804,19 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               ['Tragarz, w butach, z towarem', 'Droga', '{{step.carrierOnRoad}} s'],
               ['Żołnierz, Długi Miecz, Zbroja Płytowa, w butach', 'Ląd', '{{step.plateSoldierOnLand}} s'],
-              ['Kupiec, w butach, pełny Wózek Ręczny', 'Ląd', '{{step.traderFullCart}} s'],
             ],
             num: [2],
           },
         },
       ],
-      see: ['good:shoes', 'good:amulet_speed', 'article:roads', 'article:needs', 'article:vehicles'],
+      see: [
+        'good:shoes',
+        'good:amulet_speed',
+        'article:roads',
+        'article:needs',
+        'article:vehicles',
+        'article:damage',
+      ],
     },
     {
       id: 'trade',
@@ -914,7 +835,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:oxcart|Zaprzęg]]', '{{trade.oxcartSeconds}} s'],
             ],
             num: [1],
-            foot: 'Pojemność i spowolnienie: [[article:hauling|Tragarze i magazyny]].',
+            foot: 'Pojemność wozu podaje jego karta, a spowolnienie [[article:vehicles|Pojazdy i statki]].',
           },
         },
         {

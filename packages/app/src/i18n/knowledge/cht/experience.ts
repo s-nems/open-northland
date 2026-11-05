@@ -129,28 +129,13 @@ export const EXPERIENCE: ArticleGroup = {
           p: '在居民面板裡，這些是「戰鬥 - 劍」「戰鬥 - 弓」等行。劍的命中對矛兵沒有幫助，換職業也不會丟失。戰鬥不會提高英雄的傷害，除非任務開啟了這一點。',
         },
         {
-          h: '解鎖武器',
-        },
-        {
-          table: {
-            head: ['武器', '工匠', '條件'],
-            rows: [
-              ['[[good:spear_wooden|木矛]]', '[[job:armorer|武器匠]]', '無'],
-              ['[[good:spear_iron|鐵矛]]', '[[job:smith|鐵匠]]', '鍛造：{{exp.ironSpearNeed}} 次'],
-              ['[[good:sword_shord|短劍]]', '[[job:smith|鐵匠]]', '無'],
-              ['[[good:sword_long|長劍]]', '[[job:smith|鐵匠]]', '鍛造：{{exp.longSwordNeed}} 次'],
-              ['[[good:bow_short|短弓]]', '[[job:armorer|武器匠]]', '無'],
-              ['[[good:bow_long|長弓]]', '[[job:armorer|武器匠]]', '武器製造：{{exp.longBowNeed}} 次'],
-            ],
-          },
-        },
-        {
-          p: '拿武器不需要命中次數：士兵能拿範圍內倉庫的任何武器，拿到就成為劍兵、矛兵或弓手。',
+          p: '更好的武器靠製造解鎖，不靠戰鬥。要求寫在武器卡片上，例如[[good:sword_long|長劍]]。誰拿什麼武器：[[article:equip|士兵裝備]]。',
         },
       ],
       see: [
         'article:damage',
         'article:aim',
+        'article:equip',
         'article:heroes',
         'article:exp-work',
         'article:trades',

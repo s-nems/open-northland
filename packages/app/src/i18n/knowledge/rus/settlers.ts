@@ -65,7 +65,6 @@ export const SETTLERS: ArticleGroup = {
                 'Больше шкала не вмещает. Еда дома и сон дома с Мебелью создают запас сверх 100%.',
               ],
             ],
-            foot: 'Сами идут молиться [[job:armorer|Оружейник]], [[job:smith|Кузнец]] и [[job:sewer|Портной]].',
           },
         },
         {
@@ -115,14 +114,12 @@ export const SETTLERS: ArticleGroup = {
           h: 'Религия и Социальная Мотивация',
         },
         {
+          p: 'Поселенец молится, пока Религия не дойдёт до 100% или Энергия либо Стамина не упадёт до {{need.drivePct}}%. Кто молится, где и что это даёт: [[article:religion|Религия и храм]].',
+        },
+        {
           table: {
             head: ['Действие', 'Время', 'Даёт'],
             rows: [
-              [
-                'Молитва',
-                '{{pray.seconds}} с',
-                '+{{pray.pct}}% Религии. Повторяет до 100%, пока Энергия или Стамина не упадёт до {{need.drivePct}}%.',
-              ],
               [
                 'Разговор',
                 '{{talk.shortSeconds}}-{{talk.longSeconds}} с',
@@ -226,12 +223,6 @@ export const SETTLERS: ArticleGroup = {
                 '{{aura.wholeMin}} мин {{aura.restSec}} с',
               ],
               [
-                'Целебное Зелье',
-                '+{{draught.healSip}} за глоток',
-                'рана опустила бы ниже {{draught.healBelow}}',
-                '-',
-              ],
-              [
                 'Голод',
                 '-{{health.starvePerSecond}}/с',
                 'Энергия 0%',
@@ -260,43 +251,6 @@ export const SETTLERS: ArticleGroup = {
       see: ['article:draughts', 'article:needs', 'article:religion', 'good:potion_heal_small'],
     },
     {
-      id: 'life',
-      name: 'Взросление',
-      lead: 'Ребёнок вырастает через {{age.adultMinutes}} мин после рождения. От старости никто не умирает.',
-      blocks: [
-        {
-          h: 'Этапы жизни',
-        },
-        {
-          table: {
-            head: ['Этап', 'Возраст', 'От рождения', 'Заметки'],
-            rows: [
-              [
-                'Младенец',
-                'лет: 0-{{age.babyLastYear}}',
-                '0-{{age.childWholeMin}} мин {{age.childRestSec}} с',
-                'Шаг вдвое медленнее.',
-              ],
-              [
-                'Ребёнок',
-                'лет: {{age.childYears}}-{{age.childLastYear}}',
-                '{{age.childWholeMin}} мин {{age.childRestSec}} с-{{age.adultMinutes}} мин',
-                'Шаг медленнее на {{step.childExtra}} с. Ходит вокруг дома.',
-              ],
-              [
-                'Взрослый',
-                'лет: от {{age.adultYears}}',
-                'от {{age.adultMinutes}} мин',
-                'Мальчик становится [[job:civilist|Гражданином]], девочка [[job:woman|Женщиной]].',
-              ],
-            ],
-            foot: 'Год жизни длится {{age.yearSeconds}} с.',
-          },
-        },
-      ],
-      see: ['article:family', 'article:health', 'article:trades'],
-    },
-    {
       id: 'family',
       name: 'Семья и жилище',
       lead: 'Для рождения ребёнка нужно {{family.childFood}} шт. еды.',
@@ -322,6 +276,28 @@ export const SETTLERS: ArticleGroup = {
             'В брак не вступают солдаты, герои, Разведчики и поселенец, отправленный в [[building:barracks|Казармы]] или [[building:school|Школу]].',
             'Пара живёт в жилище жены, а если его нет, в жилище мужа.',
           ],
+        },
+        {
+          h: 'Взросление',
+        },
+        {
+          table: {
+            head: ['Этап', 'Возраст', 'От рождения'],
+            rows: [
+              [
+                'Младенец',
+                'лет: 0-{{age.babyLastYear}}',
+                '0-{{age.childWholeMin}} мин {{age.childRestSec}} с',
+              ],
+              [
+                'Ребёнок',
+                'лет: {{age.childYears}}-{{age.childLastYear}}',
+                '{{age.childWholeMin}} мин {{age.childRestSec}} с-{{age.adultMinutes}} мин',
+              ],
+              ['Взрослый', 'лет: от {{age.adultYears}}', 'от {{age.adultMinutes}} мин'],
+            ],
+            foot: 'Год жизни длится {{age.yearSeconds}} с. Ребёнок ходит вокруг дома. Повзрослев, мальчик становится [[job:civilist|Гражданином]], девочка [[job:woman|Женщиной]]. От старости никто не умирает.',
+          },
         },
         {
           h: 'Уровни жилища',
@@ -390,7 +366,6 @@ export const SETTLERS: ArticleGroup = {
         },
       ],
       see: [
-        'article:life',
         'article:food',
         'article:religion',
         'article:assistant',
@@ -512,7 +487,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'Когда у флажка кончается ресурс, Помощник переносит его ближе к следующему, в {{assistant.flagMin}}-{{assistant.flagMax}} гексах от него: [[article:work-flag|Рабочий флажок]].',
+          p: 'Как Добытчики сами переносят флажок: [[article:work-flag|Рабочий флажок]].',
         },
         {
           p: 'Окно «Жители» показывает, скольким поселенцам не хватает жилища, работы, инструментов, обуви, пары, детей, оружия или медовухи.',
@@ -557,14 +532,9 @@ export const SETTLERS: ArticleGroup = {
                 '+{{draught.potionPct}}% Стамины',
                 'Стамина опустится до {{need.drivePct}}%',
               ],
-              [
-                '[[good:potion_heal_small|S]] / [[good:potion_heal_big|L Целебное Зелье]]',
-                '{{draught.smallUses}} / {{draught.bigUses}}',
-                'здоровье +{{draught.healSip}}',
-                'рана опустила бы здоровье ниже {{draught.healBelow}}',
-              ],
             ],
             num: [1],
+            foot: 'Целебные зелья: [[article:health|Здоровье и лечение]].',
           },
         },
         {
@@ -621,13 +591,13 @@ export const SETTLERS: ArticleGroup = {
             head: ['Кто', 'Что носит'],
             rows: [
               ['Взрослый мужчина', 'Мест для напитков и амулетов: {{amulet.slots}}, в любой профессии.'],
-              ['[[article:heroes|Герой]]', 'Целебные зелья и амулеты Силы, Точности, Защиты и Ветра.'],
               ['Женщина, ребёнок', 'Ничего.'],
             ],
+            foot: 'Что носит герой: [[article:heroes|Герои]].',
           },
         },
       ],
-      see: ['article:needs', 'article:health', 'article:damage', 'article:walking'],
+      see: ['article:needs', 'article:health', 'article:heroes', 'article:damage', 'article:walking'],
     },
   ],
 };

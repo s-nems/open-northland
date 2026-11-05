@@ -19,7 +19,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               '武器匠、鐵匠或裁縫不工作',
-              '多半是「身心狀態」裡信仰為0%。每件武器或護甲花{{piety.lowPct}}%或{{piety.highPct}}%信仰，禱告回{{pray.pct}}%。提示「想要禱告」表示沒有禱告場所：需要[[building:work_temple|神廟]]、[[building:headquarters|大本營]]或家中聖火。詳見[[article:religion|信仰與神廟]]。',
+              '多半是「身心狀態」裡信仰為0%，因為做武器和護甲要花信仰。提示「想要禱告」表示沒有禱告場所：需要[[building:work_temple|神廟]]、[[building:headquarters|大本營]]或家中聖火。每件花多少：[[article:religion|信仰與神廟]]。',
             ],
             [
               '搬運工不搬東西',
@@ -42,7 +42,7 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               '不生孩子',
-              '夫妻需要共同的住所和{{family.childFood}}份存糧。提示會說缺什麼：「沒有住所」「民居未完工」「分居」「沒有存糧」。「丈夫不在家」表示丈夫是商人、偵察兵、士兵或英雄，不回家。也可以用助手的「生育」計數器預訂孩子。詳見[[article:family|家庭與住所]]。',
+              '夫妻需要共同的住所和{{family.childFood}}份存糧。提示會說缺什麼：「沒有住所」「民居未完工」「分居」「沒有存糧」。「丈夫不在家」表示丈夫是商人、偵察兵、士兵或英雄，不回家。也可以用[[article:assistant|助手]]的「女兒」和「兒子」計數器預訂孩子。詳見[[article:family|家庭與住所]]。',
             ],
             [
               '倉庫滿著卻挨餓',

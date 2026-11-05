@@ -65,7 +65,6 @@ export const SETTLERS: ArticleGroup = {
                 'Tyle najwyżej mieści pasek. Posiłek w domu i sen w domu z meblami odkładają zapas ponad 100%.',
               ],
             ],
-            foot: 'Sami idą się modlić [[job:armorer|Płatnerz]], [[job:smith|Kowal]] i [[job:sewer|Krawiec]].',
           },
         },
         {
@@ -115,14 +114,12 @@ export const SETTLERS: ArticleGroup = {
           h: 'Religia i Towarzystwo',
         },
         {
+          p: 'Osadnik modli się, aż Religia dojdzie do 100% albo Energia lub Wytrzymałość spadnie do {{need.drivePct}}%. Kto się modli, gdzie i ile to daje: [[article:religion|Religia i świątynia]].',
+        },
+        {
           table: {
             head: ['Czynność', 'Czas', 'Daje'],
             rows: [
-              [
-                'Modlitwa',
-                '{{pray.seconds}} s',
-                '+{{pray.pct}}% Religii. Powtarza do 100%, chyba że Energia lub Wytrzymałość spadnie do {{need.drivePct}}%.',
-              ],
               ['Rozmowa', '{{talk.shortSeconds}}-{{talk.longSeconds}} s', 'Do +{{talk.pct}}% Towarzystwa.'],
               ['Pobyt w domu, gdy osadnik ma małżonka', '-', 'Towarzystwo 100%.'],
             ],
@@ -222,12 +219,6 @@ export const SETTLERS: ArticleGroup = {
                 '{{aura.wholeMin}} min {{aura.restSec}} s',
               ],
               [
-                'Mikstura lecznicza',
-                '+{{draught.healSip}} za łyk',
-                'rana zeszłaby poniżej {{draught.healBelow}}',
-                '-',
-              ],
-              [
                 'Głód',
                 '-{{health.starvePerSecond}}/s',
                 'Energia 0%',
@@ -256,43 +247,6 @@ export const SETTLERS: ArticleGroup = {
       see: ['article:draughts', 'article:needs', 'article:religion', 'good:potion_heal_small'],
     },
     {
-      id: 'life',
-      name: 'Dorastanie',
-      lead: 'Dziecko dorasta {{age.adultMinutes}} minuty po narodzinach. Nikt nie umiera ze starości.',
-      blocks: [
-        {
-          h: 'Etapy życia',
-        },
-        {
-          table: {
-            head: ['Etap', 'Wiek', 'Od narodzin', 'Uwagi'],
-            rows: [
-              [
-                'Niemowlę',
-                '0-{{age.babyLastYear}} lata',
-                '0-{{age.childWholeMin}} min {{age.childRestSec}} s',
-                'Krok dwa razy wolniejszy.',
-              ],
-              [
-                'Dziecko',
-                '{{age.childYears}}-{{age.childLastYear}} lat',
-                '{{age.childWholeMin}} min {{age.childRestSec}} s-{{age.adultMinutes}} min',
-                'Krok wolniejszy o {{step.childExtra}} s. Chodzi wokół domu.',
-              ],
-              [
-                'Dorosły',
-                'od {{age.adultYears}} lat',
-                'od {{age.adultMinutes}} min',
-                'Chłopiec zostaje [[job:civilist|Cywilem]], dziewczynka [[job:woman|Kobietą]].',
-              ],
-            ],
-            foot: 'Rok życia trwa {{age.yearSeconds}} s.',
-          },
-        },
-      ],
-      see: ['article:family', 'article:health', 'article:trades'],
-    },
-    {
       id: 'family',
       name: 'Rodzina i dom',
       lead: 'Do narodzin dziecka potrzebne są {{family.childFood}} sztuki jedzenia.',
@@ -318,6 +272,28 @@ export const SETTLERS: ArticleGroup = {
             'Ślubu nie biorą żołnierze, bohaterowie, Zwiadowcy ani osadnik wysłany do [[building:barracks|Koszar]] lub [[building:school|Szkoły]].',
             'Para mieszka w domu żony, a gdy żona go nie ma, w domu męża.',
           ],
+        },
+        {
+          h: 'Dorastanie',
+        },
+        {
+          table: {
+            head: ['Etap', 'Wiek', 'Od narodzin'],
+            rows: [
+              [
+                'Niemowlę',
+                '0-{{age.babyLastYear}} lata',
+                '0-{{age.childWholeMin}} min {{age.childRestSec}} s',
+              ],
+              [
+                'Dziecko',
+                '{{age.childYears}}-{{age.childLastYear}} lat',
+                '{{age.childWholeMin}} min {{age.childRestSec}} s-{{age.adultMinutes}} min',
+              ],
+              ['Dorosły', 'od {{age.adultYears}} lat', 'od {{age.adultMinutes}} min'],
+            ],
+            foot: 'Rok życia trwa {{age.yearSeconds}} s. Dziecko chodzi wokół domu. Po dorośnięciu chłopiec zostaje [[job:civilist|Cywilem]], a dziewczynka [[job:woman|Kobietą]]. Nikt nie umiera ze starości.',
+          },
         },
         {
           h: 'Poziomy domu',
@@ -389,7 +365,6 @@ export const SETTLERS: ArticleGroup = {
         },
       ],
       see: [
-        'article:life',
         'article:food',
         'article:religion',
         'article:assistant',
@@ -511,7 +486,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'Gdy przy fladze kończy się surowiec, Asystent przenosi ją bliżej następnego, na {{assistant.flagMin}}-{{assistant.flagMax}} hexów od niego: [[article:work-flag|Flaga robocza]].',
+          p: 'Jak Zbieracze sami przenoszą flagę: [[article:work-flag|Flaga robocza]].',
         },
         {
           p: 'Okno "Poddani" pokazuje, ilu osadnikom brakuje domu, pracy, narzędzi, butów, pary, dzieci, broni lub miodu pitnego.',
@@ -556,14 +531,9 @@ export const SETTLERS: ArticleGroup = {
                 '+{{draught.potionPct}}% Wytrzymałości',
                 'Wytrzymałość spadnie do {{need.drivePct}}%',
               ],
-              [
-                '[[good:potion_heal_small|Mała]] / [[good:potion_heal_big|Duża Lecznicza Mikstura]]',
-                '{{draught.smallUses}} / {{draught.bigUses}}',
-                '+{{draught.healSip}} zdrowia',
-                'rana zeszłaby poniżej {{draught.healBelow}} zdrowia',
-              ],
             ],
             num: [1],
+            foot: 'Mikstury lecznicze: [[article:health|Zdrowie i leczenie]].',
           },
         },
         {
@@ -620,16 +590,13 @@ export const SETTLERS: ArticleGroup = {
             head: ['Kto', 'Co nosi'],
             rows: [
               ['Dorosły mężczyzna', '{{amulet.slots}} miejsca na napoje i amulety, w każdym zawodzie.'],
-              [
-                '[[article:heroes|Bohater]]',
-                'Mikstury lecznicze oraz amulety Siły, Precyzji, Obrony i Wiatru.',
-              ],
               ['Kobieta, dziecko', 'Nic.'],
             ],
+            foot: 'Co nosi bohater: [[article:heroes|Bohaterowie]].',
           },
         },
       ],
-      see: ['article:needs', 'article:health', 'article:damage', 'article:walking'],
+      see: ['article:needs', 'article:health', 'article:heroes', 'article:damage', 'article:walking'],
     },
   ],
 };

@@ -27,14 +27,8 @@ export const MILITARY: ArticleGroup = {
               ['[[article:exp-combat|該武器的經驗]]（僅近戰）', '最高×{{combat.fightCapFactor}}'],
               ['從後側攻擊', '×{{combat.backSideFactor}}'],
               ['從背後攻擊', '×{{combat.behindFactor}}'],
-              ['攻擊者的[[good:amulet_strength|力量護符]]', '×{{amulet.strengthFactor}}'],
-              [
-                '攻擊者的[[good:amulet_crithit|精準護符]]',
-                '{{amulet.critChancePct}}%機率×{{amulet.critFactor}}',
-              ],
-              ['目標的[[good:amulet_defense|防禦護符]]', '×{{amulet.defenseFactor}}'],
             ],
-            foot: '從正面和前側攻擊不改變傷害。',
+            foot: '從正面和前側攻擊不改變傷害。 力量、精準和防禦護符見[[article:draughts|飲品與護符]]。',
           },
         },
         {
@@ -50,11 +44,7 @@ export const MILITARY: ArticleGroup = {
           h: '民族差異',
         },
         {
-          list: [
-            '撒拉遜人的[[good:bow_short|短弓]]對布甲{{saracen.bowOnWool}}（他族{{viking.bowOnWool}}），對鎖甲和板甲{{saracen.bowOnChain}}（他族{{viking.bowOnChain}}）。',
-            '拜占庭人那裡，表中[[good:spear_wooden|木矛]]這一行顯示的是地圖上的龍。牠有{{dragon.hitpoints}}點生命值，射程{{dragon.min}}-{{dragon.max}}，每{{dragon.seconds}}秒攻擊{{dragon.blows}}次，對無甲每次{{dragon.bare}}傷害。訓練出的矛兵和其他民族一樣。',
-            '其餘武器在所有民族中效果相同。',
-          ],
+          p: '表格按你在視窗頂部選中徽章的民族計算武器。拜占庭人那裡，[[good:spear_wooden|木矛]]這一行顯示的龍有{{dragon.hitpoints}}點生命值。',
         },
         {
           h: '護甲',
@@ -82,23 +72,7 @@ export const MILITARY: ArticleGroup = {
       lead: '軍隊用助手視窗裡的計數器來武裝。單個居民的裝備在他自己的面板裡更換。',
       blocks: [
         {
-          h: '計數器',
-        },
-        {
-          table: {
-            head: ['計數器', '作用', '何時減少'],
-            rows: [
-              ['「徒手士兵」', '在兵營訓練，不發武器', '訓練完成後'],
-              ['「劍兵」「矛兵」「弓手」', '先武裝徒手士兵，再訓練新兵', '士兵拿到武器時'],
-            ],
-            foot: '派誰去兵營：[[article:assistant|助手]]。',
-          },
-        },
-        {
-          list: [
-            '只要還有徒手士兵在等武器，計數器就不會訓練新兵，哪怕武器遲遲不來。',
-            '範圍內有這種武器且沒有別人在等時，徒手士兵才去拿。',
-          ],
+          p: '軍隊計數器和兵營徵兵見[[article:assistant|助手]]。',
         },
         {
           h: '武器和護甲排序欄',
@@ -141,7 +115,7 @@ export const MILITARY: ArticleGroup = {
               ['[[good:coin|金幣]]', '{{barracks.coinStock}}'],
             ],
             num: [1],
-            foot: '兵營有{{barracks.carriers}}個搬運工職位。你設為優先的貨物，他們會自己從倉庫運來：[[article:hauling|搬運工與倉庫]]。',
+            foot: '你設為優先的貨物，兵營的搬運工會自己從倉庫運來：[[article:hauling|搬運工與倉庫]]。',
           },
         },
         {
@@ -163,14 +137,13 @@ export const MILITARY: ArticleGroup = {
             '換上新武器會立即改變士兵的兵種。卸下武器後，他就成為普通[[job:soldier_unarmed|士兵]]。',
             '用過的鞋子、工具和開過封的瓶子在更換和卸下時消失。沒用過的回到倉庫。',
             '武器、護甲和護符不會耗損，總會回到倉庫。',
-            '你對單人下的命令優先於助手的設定。',
           ],
         },
         {
           h: '誰能用更好的武器',
         },
         {
-          p: '不管經驗多少，士兵都能拿倉庫裡的任何武器。限制在生產環節：[[good:spear_iron|鐵矛]]和[[good:sword_long|長劍]]只有有經驗的[[job:smith|鐵匠]]做得出，[[good:bow_long|長弓]]只有有經驗的[[job:armorer|武器匠]]做得出。需要多少經驗見[[article:exp-combat|戰鬥經驗]]。',
+          p: '不管經驗多少，士兵都能拿倉庫裡的任何武器。限制在生產環節：[[good:spear_iron|鐵矛]]和[[good:sword_long|長劍]]只有有經驗的[[job:smith|鐵匠]]做得出，[[good:bow_long|長弓]]只有有經驗的[[job:armorer|武器匠]]做得出。需要多少經驗，寫在這幾種武器各自的卡片上。',
         },
       ],
       see: [
@@ -191,46 +164,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['武器', '射程', '塔上射程', '接近目標至', '射擊間隔'],
+            head: ['武器', '塔上射程', '接近目標至'],
             rows: [
-              [
-                '[[good:bow_short|短弓]]',
-                '{{shortBow.min}}-{{shortBow.max}}',
-                '0-{{shortBow.towerMax}}',
-                '{{shortBow.standoff}}',
-                '{{shortBow.seconds}}秒',
-              ],
-              [
-                '[[good:bow_long|長弓]]',
-                '{{longBow.min}}-{{longBow.max}}',
-                '0-{{longBow.towerMax}}',
-                '{{longBow.standoff}}',
-                '{{longBow.seconds}}秒',
-              ],
-              [
-                '[[job:hunter|獵人]]',
-                '{{hunterBow.min}}-{{hunterBow.max}}',
-                '-',
-                '-',
-                '{{hunterBow.seconds}}秒',
-              ],
-              [
-                '[[job:heroine_bow_xena|希拉]]',
-                '{{heroBow.min}}-{{heroBow.max}}',
-                '-',
-                '{{heroBow.standoff}}',
-                '{{heroBow.seconds}}秒',
-              ],
-              [
-                '[[building:catapult|投石機]]',
-                '{{catapult.min}}-{{catapult.max}}',
-                '-',
-                '{{catapult.bandMin}}-{{catapult.max}}',
-                '{{catapult.seconds}}秒',
-              ],
+              ['[[good:bow_short|短弓]]', '0-{{shortBow.towerMax}}', '{{shortBow.standoff}}'],
+              ['[[good:bow_long|長弓]]', '0-{{longBow.towerMax}}', '{{longBow.standoff}}'],
+              ['[[job:heroine_bow_xena|希拉]]', '-', '{{heroBow.standoff}}'],
             ],
-            num: [1, 2, 3, 4],
-            foot: '射程單位為格。目標比射程下限更近時，弓手不射擊。',
+            num: [1, 2],
+            foot: '射程單位為格。普通射程和射擊間隔，包括獵人的弓和投石機，見[[article:damage|武器、護甲與傷害]]裡的表。目標近於射程下限時，弓手不射擊。',
           },
         },
         {
@@ -399,42 +340,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['英雄', '武器', '護甲', '範圍'],
+            head: ['英雄', '武器', '護甲'],
             rows: [
-              [
-                '[[job:hero_spear_siegfried|西格德]]',
-                '矛',
-                '[[good:armor_plate|板甲]]',
-                '{{hero.spearMin}}-{{hero.spearMax}}',
-              ],
-              ['[[job:hero_sword_bjarni|比亞尼]]', '劍', '[[good:armor_chain|鎖甲]]', '{{hero.swordReach}}'],
-              ['[[job:hero_saber_hatschi|哈奇]]', '彎刀', '[[good:armor_chain|鎖甲]]', '{{hero.saberReach}}'],
-              [
-                '[[job:heroine_bow_xena|希拉]]',
-                '弓',
-                '[[good:armor_leather|皮甲]]',
-                '{{heroBow.min}}-{{heroBow.max}}',
-              ],
+              ['[[job:hero_spear_siegfried|西格德]]', '矛', '[[good:armor_plate|板甲]]'],
+              ['[[job:hero_sword_bjarni|比亞尼]]', '劍', '[[good:armor_chain|鎖甲]]'],
+              ['[[job:hero_saber_hatschi|哈奇]]', '彎刀', '[[good:armor_chain|鎖甲]]'],
+              ['[[job:heroine_bow_xena|希拉]]', '弓', '[[good:armor_leather|皮甲]]'],
             ],
-            num: [3],
-            foot: '英雄每{{hero.blowSeconds}}秒攻擊一次。傷害見[[article:damage|武器、護甲與傷害]]裡的表，打開「英雄」即可。',
-          },
-        },
-        {
-          h: '民族差異',
-        },
-        {
-          table: {
-            head: ['英雄', '民族', '差異'],
-            rows: [
-              ['西格德', '埃及人', '對鎖甲{{hero.sigurdEgyptChain}}'],
-              ['哈奇', '撒拉遜人', '每{{hero.hatchieSaracenSeconds}}秒{{hero.hatchieSaracenBlows}}擊'],
-              [
-                '希拉',
-                '法蘭克人',
-                '射程{{frankHeroBow.min}}-{{frankHeroBow.max}}，每{{frankHeroBow.seconds}}秒一箭。傷害：對無甲{{hero.frankBowBare}}，對布甲和皮甲{{hero.frankBowWool}}，對鎖甲和板甲{{hero.frankBowChain}}，對建築和載具{{hero.frankBowVehicle}}',
-              ],
-            ],
+            foot: '射程、攻擊間隔和傷害見[[article:damage|武器、護甲與傷害]]裡的表，打開「英雄」即可。其他民族的英雄打法略有不同：在視窗頂部選擇該民族的徽章。',
           },
         },
         {
@@ -481,44 +394,22 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['建築', '名額', '每秒箭數', '職位'],
+            head: ['建築', '名額', '每秒箭數'],
             rows: [
-              ['[[building:headquarters|大本營]]', '{{shelter.hq}}', '{{shelter.hqShots}}', '-'],
-              [
-                '[[building:tower_01|二級箭塔]]',
-                '{{shelter.tower2}}',
-                '{{shelter.tower2Shots}}',
-                '短弓{{tower2.posts}}個，長弓{{tower2.longPosts}}個',
-              ],
-              [
-                '[[building:tower_00|一級箭塔]]',
-                '{{shelter.tower1}}',
-                '{{shelter.tower1Shots}}',
-                '短弓{{tower1.posts}}個，長弓{{tower1.longPosts}}個',
-              ],
-              ['[[building:barracks|兵營]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}', '-'],
+              ['[[building:headquarters|大本營]]', '{{shelter.hq}}', '{{shelter.hqShots}}'],
+              ['[[building:tower_01|二級箭塔]]', '{{shelter.tower2}}', '{{shelter.tower2Shots}}'],
+              ['[[building:tower_00|一級箭塔]]', '{{shelter.tower1}}', '{{shelter.tower1Shots}}'],
+              ['[[building:barracks|兵營]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}'],
             ],
             num: [1, 2],
-            foot: '每秒箭數按建築滿員計算。職位不佔避難名額。箭塔裡任職的弓手自己射擊，無需防禦模式：[[article:aim|命中與射擊]]。',
+            foot: '每秒箭數按建築住滿計算。弓手職位見箭塔卡片，不佔避難名額。箭塔裡雇用的弓手自己射擊，無需防禦模式：[[article:aim|命中與射擊]]。',
           },
         },
         {
           h: '建築射出的箭',
         },
         {
-          table: {
-            head: ['目標', '箭矢'],
-            rows: [
-              ['無甲', '{{arrow.bare}}'],
-              ['布甲', '{{arrow.wool}}'],
-              ['皮甲', '{{arrow.leather}}'],
-              ['鎖甲、板甲', '{{arrow.chain}}'],
-              ['載具', '{{arrow.vehicle}}'],
-              ['建築', '{{arrow.building}}'],
-            ],
-            num: [1],
-            foot: '所有民族相同。攻擊方向和防禦護符可以改變這個數值：[[article:damage|武器、護甲與傷害]]。',
-          },
+          p: '一支箭造成多少傷害，見[[article:damage|武器、護甲與傷害]]表中「建築射出的箭」這一行。',
         },
         {
           list: [
@@ -533,24 +424,13 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['箭塔', '搬運工職位', '蜂蜜酒', '食物', '每種武器'],
+            head: ['箭塔', '蜂蜜酒', '食物', '每種武器'],
             rows: [
-              [
-                '[[building:tower_00|一級箭塔]]',
-                '{{tower1.carriers}}',
-                '{{tower1.mead}}',
-                '{{tower1.food}}',
-                '{{tower1.weapon}}',
-              ],
-              [
-                '[[building:tower_01|二級箭塔]]',
-                '{{tower2.carriers}}',
-                '{{tower2.mead}}',
-                '{{tower2.food}}',
-                '{{tower2.weapon}}',
-              ],
+              ['[[building:tower_00|一級箭塔]]', '{{tower1.mead}}', '{{tower1.food}}', '{{tower1.weapon}}'],
+              ['[[building:tower_01|二級箭塔]]', '{{tower2.mead}}', '{{tower2.food}}', '{{tower2.weapon}}'],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
+            foot: '職位和搬運工名額見箭塔卡片。',
           },
         },
         {
@@ -696,7 +576,7 @@ export const MILITARY: ArticleGroup = {
           h: '防禦牆',
         },
         {
-          p: '[[building:work_pottery_02|防禦牆]]是普通建築：{{wall.defenceHp}}點生命值，傷害看「建築」列。士兵把它當木柵欄對待。',
+          p: '[[building:work_pottery_02|防禦牆]]是普通建築，傷害看「建築」列。士兵把它當木柵欄對待。',
         },
       ],
       see: [
@@ -719,38 +599,13 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
-          table: {
-            head: ['項目', '數值'],
-            rows: [
-              ['射程', '{{catapult.min}}-{{catapult.max}}格'],
-              ['射擊間隔', '{{catapult.seconds}}秒'],
-              ['生命值', '{{catapult.hitpoints}}'],
-              ['乘員', '1名士兵或英雄，武器不限'],
-              [
-                '成本',
-                '[[building:catapult|投石機]]：[[good:wood|木材]]{{catapult.wood}}份，[[good:iron|鐵礦]]{{catapult.iron}}份',
-              ],
-            ],
-            foot: '沒有指揮官的投石機不能移動也不能射擊。石彈不耗材料。',
-          },
+          p: '投石機由1名士兵或英雄指揮，拿什麼武器都行。沒有指揮官就不能移動也不能射擊。石彈不耗材料。生命值、射程、射擊間隔和造價見[[building:catapult|投石機]]卡片。',
         },
         {
           h: '石彈',
         },
         {
-          table: {
-            head: ['目標', '傷害', '摧毀所需石彈'],
-            rows: [
-              ['無甲', '{{stone.bare}}', '{{stone.bareKills}}'],
-              ['皮甲', '{{stone.leather}}', '{{stone.leatherKills}}'],
-              ['布甲', '{{stone.wool}}', '{{stone.woolKills}}'],
-              ['鎖甲、板甲', '{{stone.chain}}', '{{stone.chainKills}}'],
-              ['投石機', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
-              ['建築', '{{stone.building}}', '{{stone.tower1}}-{{stone.frankHq}}'],
-            ],
-            num: [2],
-            foot: '對人的傷害按正面命中、不含護符計算。木柵欄見[[article:walls|木柵欄與柵門]]。',
-          },
+          p: '石彈對人、載具和建築的傷害，見[[article:damage|武器、護甲與傷害]]表中投石機這一行。木柵欄另算：[[article:walls|木柵欄與柵門]]。',
         },
         {
           table: {

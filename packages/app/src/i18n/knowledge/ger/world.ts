@@ -83,7 +83,7 @@ export const WORLD: ArticleGroup = {
       lead: 'Ohne Kommandant fährt ein Fahrzeug nirgendwohin. Ein Schiff nimmt mehr Leute mit, ein Großes Schiff mehr Ware.',
       blocks: [
         {
-          data: 'vehicles',
+          p: 'Laderaum, Passagierplätze, Gesundheit und Kosten jedes Fahrzeugs stehen auf seiner Karte: [[vehicle:handcart|Handkarren]], [[vehicle:oxcart|Ochsenkarren]], [[vehicle:ship_small|Schiff]], [[vehicle:ship_big|Großes Schiff]], [[vehicle:catapult|Katapult]]. Welche Werkstatt was baut, steht auf den Karten von [[building:work_joinery_02|Schreinerei 3]] und [[building:work_joinery_03|4]].',
         },
         {
           table: {
@@ -100,7 +100,8 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Die Spalte „Passagiere“ zählt den Kommandanten nicht mit. Der zuerst Zugewiesene wird Kommandant. Geht er, übernimmt der nächste Passagier.',
+            'Die Passagierzahl auf der Karte zählt den Kommandanten nicht mit. Der zuerst Zugewiesene wird Kommandant. Geht er, übernimmt der nächste Passagier.',
+            'Der [[job:joiner|Schreiner]] baut ein Fahrzeug auf einer Baustelle neben der Werkstatt, ein Schiff auf dem Wasser am Ufer.',
             'Wer einsteigt, verliert seinen Arbeitsplatz. Nur Träger mit Arbeitsplatz und Händler ziehen den Karren selbst und behalten die Arbeit.',
             'Die Ware laden der Kommandant und jeder erwachsene Mann an Bord, Soldaten, Helden, [[job:scout|Kundschafter]] und [[job:druid|Druiden]] aber nur, wenn sie das Kommando haben. Lädt niemand, erscheint „Kein Träger“.',
           ],
@@ -110,28 +111,14 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Fahrzeug', 'Langsamer, voll', 'Straße: leer', 'Straße: voll', 'Land: leer', 'Land: voll'],
+            head: ['Fahrzeug', 'Straße: leer', 'Straße: voll'],
             rows: [
-              [
-                '[[good:handcart|Handkarren]]',
-                '{{vehicle.handcartLossPct}}%',
-                '{{pace.cartRoad}}',
-                '{{pace.handcartRoadFull}}',
-                '{{pace.cartLand}}',
-                '{{pace.handcartLandFull}}',
-              ],
-              [
-                '[[good:oxcart|Ochsenkarren]]',
-                '{{vehicle.oxcartLossPct}}%',
-                '{{pace.cartRoad}}',
-                '{{pace.oxcartRoadFull}}',
-                '{{pace.cartLand}}',
-                '{{pace.oxcartLandFull}}',
-              ],
-              ['[[good:catapult|Katapult]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
+              ['[[good:handcart|Handkarren]]', '{{pace.cartRoad}}', '{{pace.handcartRoadFull}}'],
+              ['[[good:oxcart|Ochsenkarren]]', '{{pace.cartRoad}}', '{{pace.oxcartRoadFull}}'],
+              ['[[good:catapult|Katapult]]', '{{pace.catapultRoad}}', '-'],
             ],
-            num: [1, 2, 3, 4, 5],
-            foot: 'Hexfelder pro Sekunde. Voll heißt {{haul.handcart}} Stück auf dem Handkarren und {{haul.oxcart}} auf dem Ochsenkarren. Teilweise beladene Karren zeigt die Tabelle unten. Welcher Karren für eine Route: [[article:trade|Handel]].',
+            num: [1, 2],
+            foot: 'Hexfelder pro Sekunde. Voll heißt {{haul.handcart}} Stück auf dem Handkarren und {{haul.oxcart}} auf dem Ochsenkarren. Auf Land: Tabelle unten. Welcher Karren für eine Route: [[article:trade|Handel]].',
           },
         },
         {
@@ -190,45 +177,10 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'So fährt ein Karren mit Kommandant. Schuhe ändern hier nichts.',
-            'Träger und Händler, die den Karren selbst ziehen, gehen ihr eigenes Tempo, mit Schuhen schneller. Die Ladung bremst sie um denselben Prozentsatz.',
+            'Träger und Händler, die den Karren selbst ziehen, gehen ihr eigenes Tempo, mit Schuhen schneller. Die Ladung bremst sie um denselben Prozentsatz: Ein Händler mit Schuhen und vollem Handkarren braucht für einen Schritt auf Land {{step.traderFullCart}} s.',
+            'Das [[good:catapult|Katapult]] fährt auf Land {{pace.catapultLand}} Hexfelder/s.',
             'Ein beladenes Schiff wird nicht langsamer und fährt etwa {{pace.ship}} Hexfelder/s.',
           ],
-        },
-        {
-          h: 'Bau',
-        },
-        {
-          table: {
-            head: ['Fahrzeug', 'Werkstatt', 'Kosten'],
-            rows: [
-              [
-                '[[good:handcart|Handkarren]]',
-                '[[building:work_joinery_02|Schreinerei 3]] und [[building:work_joinery_03|4]]',
-                '{{cost.handcartWood}} [[good:wood|Holz]]',
-              ],
-              [
-                '[[good:oxcart|Ochsenkarren]]',
-                '[[building:work_joinery_02|Schreinerei 3]] und [[building:work_joinery_03|4]]',
-                '{{cost.oxcartWood}} [[good:wood|Holz]]',
-              ],
-              [
-                '[[good:ship_small|Schiff]]',
-                '[[building:work_joinery_03|Schreinerei 4]]',
-                '{{cost.shipWood}} [[good:wood|Holz]], {{cost.shipLeather}} [[good:leather|Leder]]',
-              ],
-              [
-                '[[good:ship_big|Großes Schiff]]',
-                '[[building:work_joinery_03|Schreinerei 4]]',
-                '{{cost.bigShipWood}} [[good:wood|Holz]], {{cost.bigShipLeather}} [[good:leather|Leder]]',
-              ],
-              [
-                '[[good:catapult|Katapult]]',
-                '[[building:work_joinery_03|Schreinerei 4]]',
-                '{{catapult.wood}} [[good:wood|Holz]], {{catapult.iron}} [[good:iron|Eisen]]',
-              ],
-            ],
-            foot: 'Der [[job:joiner|Schreiner]] baut ein Fahrzeug auf einer Baustelle neben der Werkstatt, ein Schiff auf dem Wasser am Ufer.',
-          },
         },
         {
           h: 'Ochse für den Ochsenkarren',
@@ -461,7 +413,7 @@ export const WORLD: ArticleGroup = {
       lead: 'Eine aggressive Herde stürzt sich auf Menschen bis {{wild.aggro}} Hexfelder um ihren Weideplatz. Sie jagt höchstens {{wild.giveUp}} Hexfelder weit und kehrt dann um.',
       blocks: [
         {
-          data: 'animals',
+          p: 'Gesundheit, Herdengröße und ob sich ein Tier zähmen lässt, stehen auf seiner Karte in der Enzyklopädie.',
         },
         {
           h: 'Aggression',
@@ -495,7 +447,7 @@ export const WORLD: ArticleGroup = {
           h: 'Herdenwachstum',
         },
         {
-          p: 'Nur etwa 1 von {{wild.breedingShare}} Herden wächst. So eine Herde gewinnt alle {{wild.growthMinutes}} Min. 1 erwachsenes Tier, wenn sie mindestens 2 Tiere und weniger hat, als die Spalte „Herde“ angibt.',
+          p: 'Nur etwa 1 von {{wild.breedingShare}} Herden wächst. So eine Herde gewinnt alle {{wild.growthMinutes}} Min. 1 erwachsenes Tier, wenn sie mindestens 2 Tiere und weniger hat, als „Herde“ auf der Karte des Tiers angibt.',
         },
         {
           h: 'Was der Jäger jagt',
@@ -507,30 +459,14 @@ export const WORLD: ArticleGroup = {
             'Ein Schuss des Jägers nimmt dem Tier {{wild.hunterShot}} Gesundheit und reicht {{hunterBow.min}} bis {{hunterBow.max}} Hexfelder weit.',
             'Erwachsene Wildziegen jagt er nicht von selbst, ihre Jungtiere schon.',
             'Tiere, die jemandem gehören, und Tiere auf einer anderen Landmasse jagt er nicht.',
-            'In der Spalte „Jäger“ heißt „von selbst“ Wild, das er von sich aus jagt, und „auf Befehl“ Wild, das er nur auf deinen Befehl angreift.',
+            '„Jäger: von selbst“ auf der Karte des Tiers heißt Wild, das er von sich aus jagt, und „auf Befehl“ Wild, das er nur auf deinen Befehl angreift.',
           ],
         },
         {
           h: 'Beute',
         },
         {
-          table: {
-            head: ['Tier', 'Vom Jäger erlegt', 'Von anderen getötet'],
-            rows: [
-              [
-                'Ausgewachsen',
-                '2 [[good:leather|Leder]], 2 [[good:meat|Fleisch]]',
-                '1 [[good:meat|Fleisch]]',
-              ],
-              ['Jungtier', '1 [[good:leather|Leder]], 1 [[good:meat|Fleisch]]', 'nichts'],
-              [
-                'Pferd, ausgewachsen',
-                '1 [[good:leather|Leder]], 1 [[good:meat|Fleisch]]',
-                '1 [[good:meat|Fleisch]]',
-              ],
-              ['Fohlen', '1 [[good:leather|Leder]]', 'nichts'],
-            ],
-          },
+          p: 'Was ein erwachsenes Tier hinterlässt, steht auf seiner Karte. Ein vom Jäger erlegtes Jungtier bringt die Hälfte davon, ein Fohlen nur 1 [[good:leather|Leder]]. Ein Jungtier, das jemand anderes tötet, hinterlässt nichts.',
         },
       ],
       see: ['article:damage', 'article:gathering', 'article:livestock', 'job:hunter'],
@@ -572,20 +508,18 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Tier', 'Jungtier kostet', 'Schlachtung bringt'],
+            head: ['Tier', 'Schlachtung bringt'],
             rows: [
               [
                 '[[good:sheep|Schaf]]',
-                '{{livestock.calfWater}} [[good:water|Wasser]], {{livestock.calfWheat}} [[good:wheat|Weizen]]',
                 '{{livestock.sheepWool}} [[good:wool|Wolle]], {{livestock.sheepMeat}} [[good:meat|Fleisch]]',
               ],
               [
                 '[[good:cattle|Ochse]]',
-                '{{livestock.calfWater}} [[good:water|Wasser]], {{livestock.calfWheat}} [[good:wheat|Weizen]]',
                 '{{livestock.cattleLeather}} [[good:leather|Leder]], {{livestock.cattleMeat}} [[good:meat|Fleisch]]',
               ],
             ],
-            foot: 'Jungtier und Schlachtung dauern etwa {{livestock.cycleSeconds}} s. Die Art wählst du in der Produktion des Viehzüchters. In der Viehzüchterei lagern je {{livestock.farmShelf}} Stück Fleisch, Wolle und Leder.',
+            foot: 'Die Art wählst du in der Produktion des Viehzüchters. Was ein Jungtier kostet, wie lange es dauert und wie viel Ware die Viehzüchterei fasst, steht auf der Karte der [[building:work_animal_farm|Viehzüchterei]].',
           },
         },
         {
@@ -644,7 +578,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Unter {{need.drivePct}}% gehen [[job:joiner|Schreiner]], Waffenbauer, Schmied und Näher von selbst beten. Finden sie keinen Ort dafür, kommt bei {{need.criticalPct}}% die Meldung „Will beten“.',
+            'Unter {{need.drivePct}}% gehen Waffenbauer, Schmied und Näher von selbst beten. Finden sie keinen Ort dafür, kommt bei {{need.criticalPct}}% die Meldung „Will beten“.',
             'Ein begonnenes Stück beenden sie auch bei 0%.',
           ],
         },

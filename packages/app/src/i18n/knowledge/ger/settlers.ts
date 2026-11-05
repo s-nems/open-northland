@@ -71,7 +71,6 @@ export const SETTLERS: ArticleGroup = {
                 'Obergrenze. Eine Mahlzeit zu Hause und Schlaf zu Hause mit Möbeln legen Vorrat über 100% an.',
               ],
             ],
-            foot: 'Von selbst beten gehen [[job:armorer|Waffenbauer]], [[job:smith|Schmied]] und [[job:sewer|Näher]].',
           },
         },
         {
@@ -124,14 +123,12 @@ export const SETTLERS: ArticleGroup = {
           h: 'Religion und Soziale Motivation',
         },
         {
+          p: 'Ein Siedler betet, bis die Religion 100% erreicht oder Energie oder Kondition auf {{need.drivePct}}% fallen. Wer betet, wo und was es bringt: [[article:religion|Religion und Tempel]].',
+        },
+        {
           table: {
             head: ['Tätigkeit', 'Dauer', 'Bringt'],
             rows: [
-              [
-                'Gebet',
-                '{{pray.seconds}} s',
-                '+{{pray.pct}}% Religion. Wiederholt bis 100%, außer Energie oder Kondition fallen auf {{need.drivePct}}%.',
-              ],
               [
                 'Gespräch',
                 '{{talk.shortSeconds}}-{{talk.longSeconds}} s',
@@ -235,12 +232,6 @@ export const SETTLERS: ArticleGroup = {
                 '{{aura.wholeMin}} Min. {{aura.restSec}} s',
               ],
               [
-                'Heiltrank',
-                '+{{draught.healSip}} je Schluck',
-                'Wunde senkt unter {{draught.healBelow}}',
-                '-',
-              ],
-              [
                 'Hunger',
                 '-{{health.starvePerSecond}}/s',
                 'Energie 0%',
@@ -269,43 +260,6 @@ export const SETTLERS: ArticleGroup = {
       see: ['article:draughts', 'article:needs', 'article:religion', 'good:potion_heal_small'],
     },
     {
-      id: 'life',
-      name: 'Aufwachsen',
-      lead: 'Ein Kind ist {{age.adultMinutes}} Minuten nach der Geburt erwachsen. Niemand stirbt an Altersschwäche.',
-      blocks: [
-        {
-          h: 'Lebensabschnitte',
-        },
-        {
-          table: {
-            head: ['Abschnitt', 'Alter', 'Seit Geburt', 'Hinweise'],
-            rows: [
-              [
-                'Baby',
-                '0-{{age.babyLastYear}} Jahre',
-                '0-{{age.childWholeMin}} Min. {{age.childRestSec}} s',
-                'Schritt doppelt so langsam.',
-              ],
-              [
-                'Kind',
-                '{{age.childYears}}-{{age.childLastYear}} Jahre',
-                '{{age.childWholeMin}} Min. {{age.childRestSec}} s-{{age.adultMinutes}} Min.',
-                'Schritt {{step.childExtra}} s langsamer. Läuft ums Haus.',
-              ],
-              [
-                'Erwachsen',
-                'ab {{age.adultYears}} Jahren',
-                'ab {{age.adultMinutes}} Min.',
-                'Ein Junge wird [[job:civilist|Zivilist]], ein Mädchen [[job:woman|Frau]].',
-              ],
-            ],
-            foot: 'Ein Lebensjahr dauert {{age.yearSeconds}} s.',
-          },
-        },
-      ],
-      see: ['article:family', 'article:health', 'article:trades'],
-    },
-    {
       id: 'family',
       name: 'Familie und Wohnhaus',
       lead: 'Für die Geburt eines Kindes braucht es {{family.childFood}} Stück Essen.',
@@ -331,6 +285,24 @@ export const SETTLERS: ArticleGroup = {
             'Soldaten, Helden, Kundschafter und Siedler auf dem Weg in [[building:barracks|Kaserne]] oder [[building:school|Schule]] heiraten nicht.',
             'Das Paar wohnt im Haus der Frau. Hat sie keines, im Haus des Mannes.',
           ],
+        },
+        {
+          h: 'Aufwachsen',
+        },
+        {
+          table: {
+            head: ['Abschnitt', 'Alter', 'Seit Geburt'],
+            rows: [
+              ['Baby', '0-{{age.babyLastYear}} Jahre', '0-{{age.childWholeMin}} Min. {{age.childRestSec}} s'],
+              [
+                'Kind',
+                '{{age.childYears}}-{{age.childLastYear}} Jahre',
+                '{{age.childWholeMin}} Min. {{age.childRestSec}} s-{{age.adultMinutes}} Min.',
+              ],
+              ['Erwachsen', 'ab {{age.adultYears}} Jahren', 'ab {{age.adultMinutes}} Min.'],
+            ],
+            foot: 'Ein Lebensjahr dauert {{age.yearSeconds}} s. Ein Kind läuft ums Haus. Erwachsen wird ein Junge [[job:civilist|Zivilist]], ein Mädchen [[job:woman|Frau]]. Niemand stirbt an Altersschwäche.',
+          },
         },
         {
           h: 'Stufen des Wohnhauses',
@@ -402,7 +374,6 @@ export const SETTLERS: ArticleGroup = {
         },
       ],
       see: [
-        'article:life',
         'article:food',
         'article:religion',
         'article:assistant',
@@ -520,7 +491,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'Geht der Rohstoff an einer Fahne zur Neige, setzt der Assistent sie näher an den nächsten, {{assistant.flagMin}}-{{assistant.flagMax}} Hexfelder davon entfernt: [[article:work-flag|Arbeitsfahne]].',
+          p: 'Wie Abbauer ihre Fahne selbst versetzen: [[article:work-flag|Arbeitsfahne]].',
         },
         {
           p: 'Das Fenster „Untertanen“ zeigt, wie vielen Siedlern ein Wohnhaus, Arbeit, Werkzeug, Schuhe, ein Partner, Kinder, Waffen oder Met fehlen.',
@@ -565,14 +536,9 @@ export const SETTLERS: ArticleGroup = {
                 '+{{draught.potionPct}}% Kondition',
                 'Kondition fällt auf {{need.drivePct}}%',
               ],
-              [
-                '[[good:potion_heal_small|Kleiner]] / [[good:potion_heal_big|Großer Heiltrank]]',
-                '{{draught.smallUses}} / {{draught.bigUses}}',
-                '+{{draught.healSip}} Gesundheit',
-                'Wunde senkt unter {{draught.healBelow}} Gesundheit',
-              ],
             ],
             num: [1],
+            foot: 'Heiltränke: [[article:health|Gesundheit und Heilung]].',
           },
         },
         {
@@ -633,16 +599,13 @@ export const SETTLERS: ArticleGroup = {
             head: ['Wer', 'Was er trägt'],
             rows: [
               ['Erwachsener Mann', '{{amulet.slots}} Plätze für Getränke und Amulette, in jedem Beruf.'],
-              [
-                '[[article:heroes|Held]]',
-                'Heiltränke sowie Stärke-, Treffer-, Verteidigungs- und Windamulett.',
-              ],
               ['Frau, Kind', 'Nichts.'],
             ],
+            foot: 'Was ein Held trägt: [[article:heroes|Helden]].',
           },
         },
       ],
-      see: ['article:needs', 'article:health', 'article:damage', 'article:walking'],
+      see: ['article:needs', 'article:health', 'article:heroes', 'article:damage', 'article:walking'],
     },
   ],
 };

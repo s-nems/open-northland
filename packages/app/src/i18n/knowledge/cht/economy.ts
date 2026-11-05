@@ -95,7 +95,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: '每1份材料的敲擊數。[[job:builder|建築工人]]敲{{exp.build.repeatsFull}}次後經驗到100%，但只算推進了工程的敲擊。',
+            foot: '每1份材料的敲擊數。[[job:builder|建築工人]]的經驗只從推進了工程的敲擊中增長：[[article:exp-work|工作經驗]]。',
           },
         },
         {
@@ -123,16 +123,7 @@ export const ECONOMY: ArticleGroup = {
           h: '修理',
         },
         {
-          table: {
-            head: ['目標', '每擊回復生命值', '同時工作的工人數'],
-            rows: [
-              ['建築', '{{repair.minPerSwing}}-{{repair.maxPerSwing}}', '{{repair.crew}}'],
-              ['木柵欄段', '{{wall.segmentRepair}}', '{{repair.wallCrew}}'],
-              ['柵門', '{{wall.gateRepair}}', '{{repair.wallCrew}}'],
-            ],
-            num: [1, 2],
-            foot: '修理不花材料。修木柵欄和柵門時，經驗和工具沒有作用。',
-          },
+          p: '建築工人每敲一下為建築回復{{repair.minPerSwing}}-{{repair.maxPerSwing}}點生命值，一座建築最多{{repair.crew}}名建築工人同時修理。修理不花材料。木柵欄和柵門的修理方式不同，經驗和工具在那裡沒有作用：[[article:walls|木柵欄與柵門]]。',
         },
         {
           p: '最後一次挨打後{{repair.calmSeconds}}秒內，或{{alert.standTo}}格內有戰鬥時，建築工人不會自己去修理。你下命令的話他馬上就去。',
@@ -337,25 +328,13 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['建築', '田數', '半徑', '人手', '庫存'],
+            head: ['建築', '田數', '半徑'],
             rows: [
-              [
-                '[[building:work_farm_00|農場]]',
-                '{{field.max}}',
-                '{{field.radius}}格',
-                '農夫{{farm.farmers}}名，搬運工{{farm.carriers}}名',
-                '{{farm.stock}}',
-              ],
-              [
-                '[[building:work_herb_hut|草藥屋]]',
-                '{{field.max}}',
-                '{{field.radius}}格',
-                '草藥師{{herbHut.herbalists}}名，搬運工{{herbHut.carriers}}名',
-                '{{herbHut.stock}}',
-              ],
+              ['[[building:work_farm_00|農場]]', '{{field.max}}', '{{field.radius}}格'],
+              ['[[building:work_herb_hut|草藥屋]]', '{{field.max}}', '{{field.radius}}格'],
             ],
-            num: [1, 4],
-            foot: '斜向半徑約{{field.diagonal}}格。田數上限按建築算，不按工人算，所以人多只是收得快，田不會變多。',
+            num: [1],
+            foot: '斜向半徑約{{field.diagonal}}格。田數上限按建築算，不按工人算，所以人多只是收得快，田不會變多。人手和庫存見建築卡片。',
           },
         },
         {
@@ -422,7 +401,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:collector|採集者]]', '少敲幾下，蘑菇除外'],
               ['[[job:farmer|農夫]]、[[job:herb_mush_guy|草藥師]]', '收割少敲幾下'],
               ['[[job:fisher|漁夫]]', '少拋幾竿'],
-              ['[[job:builder|建築工人]]', '每份材料少敲幾下'],
+              ['[[job:builder|建築工人]]', '每份材料少敲幾下：[[article:construction|建造、升級與修理]]'],
               ['[[job:hunter|獵人]]、[[job:carrier|搬運工]]', '無'],
               ['士兵、英雄', '不帶工具'],
             ],
@@ -433,36 +412,13 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['經驗', '無工具', '木質', '鐵質'],
+            head: ['無經驗', '無工具', '木質', '鐵質'],
             rows: [
-              ['0%', '{{tool.strokes.0.bare}}', '{{tool.strokes.0.wooden}}', '{{tool.strokes.0.iron}}'],
-              ['20%', '{{tool.strokes.20.bare}}', '{{tool.strokes.20.wooden}}', '{{tool.strokes.20.iron}}'],
-              ['40%', '{{tool.strokes.40.bare}}', '{{tool.strokes.40.wooden}}', '{{tool.strokes.40.iron}}'],
-              ['60%', '{{tool.strokes.60.bare}}', '{{tool.strokes.60.wooden}}', '{{tool.strokes.60.iron}}'],
-              ['80%', '{{tool.strokes.80.bare}}', '{{tool.strokes.80.wooden}}', '{{tool.strokes.80.iron}}'],
-              [
-                '100%',
-                '{{tool.strokes.100.bare}}',
-                '{{tool.strokes.100.wooden}}',
-                '{{tool.strokes.100.iron}}',
-              ],
+              ['敲擊數', '{{tool.strokes.bare}}', '{{tool.strokes.wooden}}', '{{tool.strokes.iron}}'],
+              ['每1條魚的拋竿數', '{{tool.casts.bare}}', '{{tool.casts.wooden}}', '{{tool.casts.iron}}'],
             ],
             num: [1, 2, 3],
-            foot: '適用於樹、岩石、礦床和草藥田。',
-          },
-        },
-        {
-          table: {
-            head: ['經驗', '無工具', '木質', '鐵質'],
-            rows: [
-              ['0%', '{{tool.casts.0.bare}}', '{{tool.casts.0.wooden}}', '{{tool.casts.0.iron}}'],
-              ['20%', '{{tool.casts.20.bare}}', '{{tool.casts.20.wooden}}', '{{tool.casts.20.iron}}'],
-              ['40%', '{{tool.casts.40.bare}}', '{{tool.casts.40.wooden}}', '{{tool.casts.40.iron}}'],
-              ['60%', '{{tool.casts.60.bare}}', '{{tool.casts.60.wooden}}', '{{tool.casts.60.iron}}'],
-              ['80-100%', '{{tool.casts.80.bare}}', '{{tool.casts.80.wooden}}', '{{tool.casts.80.iron}}'],
-            ],
-            num: [1, 2, 3],
-            foot: '每條魚的拋竿次數。',
+            foot: '敲擊數適用於樹、岩石、礦床和草藥田。經驗會從中減去相應的敲擊數，但至少還要1下：[[article:exp-work|工作經驗]]。',
           },
         },
         {
@@ -472,19 +428,7 @@ export const ECONOMY: ArticleGroup = {
           h: '工坊每批產量',
         },
         {
-          table: {
-            head: ['經驗', '無工具', '木質', '鐵質'],
-            rows: [
-              ['0%', '{{tool.output.0.bare}}', '{{tool.output.0.wooden}}', '{{tool.output.0.iron}}'],
-              ['20%', '{{tool.output.20.bare}}', '{{tool.output.20.wooden}}', '{{tool.output.20.iron}}'],
-              ['40%', '{{tool.output.40.bare}}', '{{tool.output.40.wooden}}', '{{tool.output.40.iron}}'],
-              ['60%', '{{tool.output.60.bare}}', '{{tool.output.60.wooden}}', '{{tool.output.60.iron}}'],
-              ['80%', '{{tool.output.80.bare}}', '{{tool.output.80.wooden}}', '{{tool.output.80.iron}}'],
-              ['100%', '{{tool.output.100.bare}}', '{{tool.output.100.wooden}}', '{{tool.output.100.iron}}'],
-            ],
-            num: [1, 2, 3],
-            foot: '按產出1份的配方計算，產出2份的配方加成翻倍。原料和工作時長不變。經驗對屠宰同樣有效。',
-          },
+          p: '工具為每批固定加成：木質+{{tool.bonus.wooden}}份，鐵質+{{tool.bonus.iron}}份。它與經驗加成相加，經驗加成見[[article:exp-work|工作經驗]]。產出2份的配方加成翻倍。原料和工作時長不變。',
         },
         {
           p: '不足一份的部分會累加，湊滿1份就入庫，可超過容量。',
@@ -510,20 +454,7 @@ export const ECONOMY: ArticleGroup = {
       lead: '沒有車的搬運工每次搬{{haul.carry}}份。地面同一處最多堆{{haul.groundStack}}份同種貨物。',
       blocks: [
         {
-          h: '容量',
-        },
-        {
-          table: {
-            head: ['建築', '每種貨物份數'],
-            rows: [
-              ['[[building:stock_00|一級倉庫]]', '{{haul.store1}}'],
-              ['[[building:stock_01|二級倉庫]]', '{{haul.store2}}'],
-              ['[[building:stock_02|三級倉庫]]', '{{haul.store3}}'],
-              ['[[building:headquarters|大本營]]', '{{haul.hq}}'],
-            ],
-            num: [1],
-            foot: '這些建築可容納[[job:carrier|搬運工]]、採集者、漁夫和獵人各{{haul.storeSeats}}名。',
-          },
+          p: '倉庫能存多少、有多少人在裡面工作，見[[building:stock_00|一級倉庫]]、[[building:stock_01|二級倉庫]]、[[building:stock_02|三級倉庫]]和[[building:headquarters|大本營]]的卡片。',
         },
         {
           h: '優先',
@@ -544,16 +475,7 @@ export const ECONOMY: ArticleGroup = {
           h: '車輛',
         },
         {
-          table: {
-            head: ['搬運工', '每趟份數', '滿載減速'],
-            rows: [
-              ['無車', '{{haul.carry}}', '-'],
-              ['[[good:handcart|手推車]]', '{{haul.handcart}}', '{{haul.handcartLossPct}}%'],
-              ['[[good:oxcart|牛車]]', '{{haul.oxcart}}', '{{haul.oxcartLossPct}}%'],
-            ],
-            num: [1, 2],
-            foot: '載重越小，車減速越少。[[job:trader|商人]]的車也一樣。',
-          },
+          p: '有車時，搬運工每趟搬的份數等於車的容量：[[vehicle:handcart|手推車]]、[[vehicle:oxcart|牛車]]。車載貨後減速多少：[[article:vehicles|載具與船隻]]。',
         },
         {
           list: [
@@ -566,7 +488,7 @@ export const ECONOMY: ArticleGroup = {
           h: '地面貨堆',
         },
         {
-          p: '地上的貨堆不屬於任何人，誰都能拿。搬運工在自己建築{{flag.radius}}格內拾取貨堆，有工作旗幟時則在旗幟{{flag.radius}}格內。',
+          p: '地上的貨堆不屬於任何人，誰都能拿。搬運工從哪裡拾取貨堆：[[article:work-flag|工作旗幟]]。',
         },
       ],
       see: [
@@ -776,16 +698,16 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['地形', '穿鞋', '赤腳', '一雙鞋可走步數'],
+            head: ['地形', '赤腳', '一雙鞋可走步數'],
             rows: [
-              ['道路、鋪石路', '{{step.road}}秒', '{{step.roadBare}}秒', '{{shoes.road}}'],
-              ['陸地', '{{step.land}}秒', '{{step.landBare}}秒', '{{shoes.land}}'],
-              ['沙地、海灘、石漠', '{{step.sand}}秒', '{{step.sandBare}}秒', '{{shoes.sand}}'],
-              ['山地', '{{step.mountain}}秒', '{{step.mountainBare}}秒', '{{shoes.mountain}}'],
-              ['雪地', '{{step.snow}}秒', '{{step.snowBare}}秒', '{{shoes.snow}}'],
+              ['道路、鋪石路', '{{step.roadBare}}秒', '{{shoes.road}}'],
+              ['陸地', '{{step.landBare}}秒', '{{shoes.land}}'],
+              ['沙地、海灘、石漠', '{{step.sandBare}}秒', '{{shoes.sand}}'],
+              ['山地', '{{step.mountainBare}}秒', '{{shoes.mountain}}'],
+              ['雪地', '{{step.snowBare}}秒', '{{shoes.snow}}'],
             ],
-            num: [1, 2, 3],
-            foot: '手上拿貨時鞋子磨損更快：×{{shoes.carryWear}}。赤腳走路消耗多少體力見[[article:needs|需求]]。',
+            num: [1, 2],
+            foot: '各地形穿鞋的步速見[[article:roads|道路與路標]]。手上拿貨時鞋子磨損更快：×{{shoes.carryWear}}。赤腳走路消耗多少體力見[[article:needs|需求]]。',
           },
         },
         {
@@ -802,10 +724,8 @@ export const ECONOMY: ArticleGroup = {
               ['武器和護甲合計重量2-3', '+{{step.weightLowExtra}}秒'],
               ['武器和護甲合計重量4-5', '+{{step.weightHighExtra}}秒'],
               ['[[good:amulet_speed|疾風護符]]', '-{{step.amuletSaved}}秒'],
-              ['滿載[[good:handcart|手推車]]', '慢{{haul.handcartLossPct}}%'],
-              ['滿載[[good:oxcart|牛車]]', '慢{{haul.oxcartLossPct}}%'],
             ],
-            foot: '每步至少{{step.shortest}}秒。載重越小，車輛減速越少。英雄不受重量減速。',
+            foot: '每步至少{{step.shortest}}秒。英雄不受重量減速。車輛減速多少：[[article:vehicles|載具與船隻]]。',
           },
         },
         {
@@ -820,11 +740,8 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:spear_iron|鐵矛]]、[[good:sword_long|長劍]]', '{{weight.ironSpear}}'],
             ],
             num: [1],
-            foot: '所有民族相同。把武器重量加上下表的護甲重量。',
+            foot: '所有民族相同。把武器重量加上護甲表中的護甲重量：[[article:damage|武器、護甲與傷害]]。',
           },
-        },
-        {
-          data: 'armour',
         },
         {
           h: '示例',
@@ -835,13 +752,19 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               ['搬運工，穿鞋，手上拿貨', '道路', '{{step.carrierOnRoad}}秒'],
               ['士兵，長劍，板甲，穿鞋', '陸地', '{{step.plateSoldierOnLand}}秒'],
-              ['商人，穿鞋，滿載手推車', '陸地', '{{step.traderFullCart}}秒'],
             ],
             num: [2],
           },
         },
       ],
-      see: ['good:shoes', 'good:amulet_speed', 'article:roads', 'article:needs', 'article:vehicles'],
+      see: [
+        'good:shoes',
+        'good:amulet_speed',
+        'article:roads',
+        'article:needs',
+        'article:vehicles',
+        'article:damage',
+      ],
     },
     {
       id: 'trade',
@@ -860,7 +783,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:oxcart|牛車]]', '{{trade.oxcartSeconds}}秒'],
             ],
             num: [1],
-            foot: '容量和減速：[[article:hauling|搬運工與倉庫]]。',
+            foot: '車的容量見其卡片，減速見[[article:vehicles|載具與船隻]]。',
           },
         },
         {

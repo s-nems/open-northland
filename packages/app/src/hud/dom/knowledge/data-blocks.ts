@@ -331,37 +331,6 @@ function homes(context: KnowledgeContext): HTMLElement {
   );
 }
 
-function vehicles({ base }: KnowledgeContext): HTMLElement {
-  const copy = messages().knowledge.mechanics;
-  return plainTable(
-    [copy.vehicleName, copy.vehicleHold, copy.vehiclePassengers, copy.health],
-    base.vehicles.map((v) => [
-      goLink(`vehicle:${v.id}`, v.name),
-      v.stockSlots,
-      v.passengerSlots,
-      v.hitpoints,
-    ]),
-  );
-}
-
-function animals({ base }: KnowledgeContext): HTMLElement {
-  const copy = messages().knowledge.mechanics;
-  const yesNo = (on: boolean): string => (on ? copy.yes : copy.no);
-  return plainTable(
-    [copy.animalName, copy.health, copy.animalAttacks, copy.animalHerd, copy.animalTame, copy.animalHunter],
-    [...base.animals]
-      .sort((a, b) => b.hitpoints - a.hitpoints)
-      .map((a) => [
-        goLink(`animal:${a.tribe}`, a.name),
-        a.hitpoints,
-        a.aggressive ? copy.animalAttacksSelf : a.getAngry ? copy.animalAttacksAngered : copy.no,
-        a.groupSize,
-        yesNo(a.catchable),
-        yesNo(a.huntable),
-      ]),
-  );
-}
-
 const EXPERIENCE_POINTS: readonly number[] = [1, 2, 3, 4, 5, 10, 25, 50, 100, 162];
 /** Percent of experience that saves one stroke of ten. */
 const PERCENT_PER_SAVED_STROKE = 20;
@@ -388,13 +357,11 @@ function experience(): HTMLElement {
 }
 
 const DATA_BLOCKS: Readonly<Record<ArticleDataBlock, (context: KnowledgeContext) => HTMLElement>> = {
-  animals,
   armour,
   experience,
   homes,
   jobs,
   matrix,
-  vehicles,
 };
 
 export function renderDataBlock(context: KnowledgeContext, name: ArticleDataBlock): HTMLElement {

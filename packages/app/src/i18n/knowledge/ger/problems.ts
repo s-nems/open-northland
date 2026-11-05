@@ -19,7 +19,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Waffenbauer, Schmied oder Näher arbeitet nicht',
-              'Wahrscheinlich steht seine Religion unter „Wohlbefinden“ auf 0%. Jede Waffe und Rüstung kostet {{piety.lowPct}}% oder {{piety.highPct}}% Religion, ein Gebet bringt {{pray.pct}}%. „Will beten“ heißt, dass ein Ort zum Beten fehlt: Nötig sind ein [[building:work_temple|Tempel]], das [[building:headquarters|Hauptquartier]] oder Heiliges Feuer im Wohnhaus. Mehr: [[article:religion|Religion und Tempel]].',
+              'Wahrscheinlich steht seine Religion unter „Wohlbefinden“ auf 0%, denn Waffen und Rüstungen kosten Religion. „Will beten“ heißt, dass ein Ort zum Beten fehlt: Nötig sind ein [[building:work_temple|Tempel]], das [[building:headquarters|Hauptquartier]] oder Heiliges Feuer im Wohnhaus. Was jedes Stück kostet: [[article:religion|Religion und Tempel]].',
             ],
             [
               'Träger tragen nichts',
@@ -42,7 +42,7 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Es werden keine Kinder geboren',
-              'Ein Paar braucht ein gemeinsames Wohnhaus und {{family.childFood}} Stück Essen in der Speisekammer. Die Meldung sagt, was fehlt: „Kein Familienheim“, „Haus nicht fertig“, „Getrennte Haushalte“, „Keine Nahrung vorrätig“. „Ehemann abwesend“ heißt, dass der Mann Händler, Kundschafter, Soldat oder Held ist und nicht nach Hause kommt. Kinder kannst du auch mit dem Zähler „Geburten“ im Assistenten bestellen. Mehr: [[article:family|Familie und Wohnhaus]].',
+              'Ein Paar braucht ein gemeinsames Wohnhaus und {{family.childFood}} Stück Essen in der Speisekammer. Die Meldung sagt, was fehlt: „Kein Familienheim“, „Haus nicht fertig“, „Getrennte Haushalte“, „Keine Nahrung vorrätig“. „Ehemann abwesend“ heißt, dass der Mann Händler, Kundschafter, Soldat oder Held ist und nicht nach Hause kommt. Kinder kannst du auch mit den Zählern „Töchter“ und „Söhne“ im [[article:assistant|Assistenten]] bestellen. Mehr: [[article:family|Familie und Wohnhaus]].',
             ],
             [
               'Hunger trotz vollem Lager',

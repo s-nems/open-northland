@@ -129,40 +129,13 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Im Siedlerpanel sind das die Zeilen Kämpfen - Schwert, Kämpfen - Bogen und so weiter. Schwerttreffer helfen dem Speerträger nicht und bleiben beim Berufswechsel erhalten. Einem Helden bringt der Kampf keinen Schaden dazu, außer die Mission schaltet es ein.',
         },
         {
-          h: 'Waffen entdecken',
-        },
-        {
-          table: {
-            head: ['Waffe', 'Handwerker', 'Voraussetzung'],
-            rows: [
-              ['[[good:spear_wooden|Holzspeer]]', '[[job:armorer|Waffenbauer]]', 'keine'],
-              [
-                '[[good:spear_iron|Eisenspeer]]',
-                '[[job:smith|Schmied]]',
-                'Schmieden: {{exp.ironSpearNeed}} Mal',
-              ],
-              ['[[good:sword_shord|Kurzschwert]]', '[[job:smith|Schmied]]', 'keine'],
-              [
-                '[[good:sword_long|Langschwert]]',
-                '[[job:smith|Schmied]]',
-                'Schmieden: {{exp.longSwordNeed}} Mal',
-              ],
-              ['[[good:bow_short|Kurzbogen]]', '[[job:armorer|Waffenbauer]]', 'keine'],
-              [
-                '[[good:bow_long|Langbogen]]',
-                '[[job:armorer|Waffenbauer]]',
-                'Waffenbau: {{exp.longBowNeed}} Mal',
-              ],
-            ],
-          },
-        },
-        {
-          p: 'Um eine Waffe zu nehmen, braucht man keine Treffer: Ein Soldat nimmt jede Waffe aus einem Lager in Reichweite und kämpft sofort als Schwertkämpfer, Speerträger oder Bogenschütze.',
+          p: 'Bessere Waffen schaltet die Herstellung frei, nicht der Kampf. Die Bedingung steht auf der Karte der Waffe, z. B. [[good:sword_long|Langschwert]]. Wer welche Waffe trägt: [[article:equip|Soldaten ausrüsten]].',
         },
       ],
       see: [
         'article:damage',
         'article:aim',
+        'article:equip',
         'article:heroes',
         'article:exp-work',
         'article:trades',

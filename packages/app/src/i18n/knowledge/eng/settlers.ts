@@ -62,7 +62,6 @@ export const SETTLERS: ArticleGroup = {
                 'The most a bar holds. A meal at home or sleep at home with Furniture stores a reserve above 100%.',
               ],
             ],
-            foot: '[[job:armorer|Armourers]], [[job:smith|Blacksmiths]] and [[job:sewer|Tailors]] go to pray on their own.',
           },
         },
         {
@@ -115,14 +114,12 @@ export const SETTLERS: ArticleGroup = {
           h: 'Religion and Social Motivation',
         },
         {
+          p: 'A settler prays until Religion reaches 100% or Energy or Stamina drops to {{need.drivePct}}%. Who prays, where, and what it gives: [[article:religion|Religion and the Temple]].',
+        },
+        {
           table: {
             head: ['Activity', 'Time', 'Gives'],
             rows: [
-              [
-                'Prayer',
-                '{{pray.seconds}} s',
-                '+{{pray.pct}}% Religion. Repeats to 100% unless Energy or Stamina drops to {{need.drivePct}}%.',
-              ],
               [
                 'Talking',
                 '{{talk.shortSeconds}}-{{talk.longSeconds}} s',
@@ -226,12 +223,6 @@ export const SETTLERS: ArticleGroup = {
                 '{{aura.wholeMin}} min {{aura.restSec}} s',
               ],
               [
-                'Healing Potion',
-                '+{{draught.healSip}} per sip',
-                'a wound would drop him below {{draught.healBelow}}',
-                '-',
-              ],
-              [
                 'Hunger',
                 '-{{health.starvePerSecond}}/s',
                 'Energy 0%',
@@ -260,43 +251,6 @@ export const SETTLERS: ArticleGroup = {
       see: ['article:draughts', 'article:needs', 'article:religion', 'good:potion_heal_small'],
     },
     {
-      id: 'life',
-      name: 'Growing Up',
-      lead: 'A child grows up {{age.adultMinutes}} minutes after birth. Nobody dies of old age.',
-      blocks: [
-        {
-          h: 'Life stages',
-        },
-        {
-          table: {
-            head: ['Stage', 'Age', 'Since birth', 'Notes'],
-            rows: [
-              [
-                'Baby',
-                '0-{{age.babyLastYear}} years',
-                '0-{{age.childWholeMin}} min {{age.childRestSec}} s',
-                'Steps take twice as long.',
-              ],
-              [
-                'Child',
-                '{{age.childYears}}-{{age.childLastYear}} years',
-                '{{age.childWholeMin}} min {{age.childRestSec}} s-{{age.adultMinutes}} min',
-                'Steps take {{step.childExtra}} s longer. Walks around the dwelling.',
-              ],
-              [
-                'Adult',
-                'from {{age.adultYears}} years',
-                'from {{age.adultMinutes}} min',
-                'A boy becomes a [[job:civilist|Civilian]], a girl a [[job:woman|Woman]].',
-              ],
-            ],
-            foot: 'A year of life lasts {{age.yearSeconds}} s.',
-          },
-        },
-      ],
-      see: ['article:family', 'article:health', 'article:trades'],
-    },
-    {
       id: 'family',
       name: 'Family and Home',
       lead: 'A child needs {{family.childFood}} pieces of food to be born.',
@@ -322,6 +276,24 @@ export const SETTLERS: ArticleGroup = {
             'Soldiers, heroes, Scouts and anyone sent to the [[building:barracks|Barracks]] or [[building:school|School]] do not marry.',
             "A couple lives in the wife's dwelling, or the husband's if she has none.",
           ],
+        },
+        {
+          h: 'Growing Up',
+        },
+        {
+          table: {
+            head: ['Stage', 'Age', 'Since birth'],
+            rows: [
+              ['Baby', '0-{{age.babyLastYear}} years', '0-{{age.childWholeMin}} min {{age.childRestSec}} s'],
+              [
+                'Child',
+                '{{age.childYears}}-{{age.childLastYear}} years',
+                '{{age.childWholeMin}} min {{age.childRestSec}} s-{{age.adultMinutes}} min',
+              ],
+              ['Adult', 'from {{age.adultYears}} years', 'from {{age.adultMinutes}} min'],
+            ],
+            foot: 'A year of life lasts {{age.yearSeconds}} s. A child walks around the dwelling. Once grown, a boy becomes a [[job:civilist|Civilian]] and a girl a [[job:woman|Woman]]. Nobody dies of old age.',
+          },
         },
         {
           h: 'Dwelling levels',
@@ -393,7 +365,6 @@ export const SETTLERS: ArticleGroup = {
         },
       ],
       see: [
-        'article:life',
         'article:food',
         'article:religion',
         'article:assistant',
@@ -511,7 +482,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'When the resource by a flag runs out, the Assistant moves the flag closer to the next one, {{assistant.flagMin}}-{{assistant.flagMax}} hexes from it: [[article:work-flag|Work flag]].',
+          p: 'How Extractors move their own flag: [[article:work-flag|Work flag]].',
         },
         {
           p: 'The "Subjects" window shows how many settlers lack a dwelling, a job, tools, shoes, a partner, children, weapons or mead.',
@@ -556,14 +527,9 @@ export const SETTLERS: ArticleGroup = {
                 '+{{draught.potionPct}}% Stamina',
                 'Stamina drops to {{need.drivePct}}%',
               ],
-              [
-                '[[good:potion_heal_small|S]] / [[good:potion_heal_big|L Healing Potion]]',
-                '{{draught.smallUses}} / {{draught.bigUses}}',
-                '+{{draught.healSip}} health',
-                'a wound would drop him below {{draught.healBelow}} health',
-              ],
             ],
             num: [1],
+            foot: 'Healing Potions: [[article:health|Health and Healing]].',
           },
         },
         {
@@ -620,16 +586,13 @@ export const SETTLERS: ArticleGroup = {
             head: ['Who', 'What he carries'],
             rows: [
               ['Adult man', '{{amulet.slots}} slots for potions and amulets, in any profession.'],
-              [
-                '[[article:heroes|Hero]]',
-                'Healing Potions and the Amulets of Strength, Precision, Defence and Wind.',
-              ],
               ['Woman, child', 'Nothing.'],
             ],
+            foot: 'What a hero carries: [[article:heroes|Heroes]].',
           },
         },
       ],
-      see: ['article:needs', 'article:health', 'article:damage', 'article:walking'],
+      see: ['article:needs', 'article:health', 'article:heroes', 'article:damage', 'article:walking'],
     },
   ],
 };

@@ -63,7 +63,7 @@ export const WORLD: ArticleGroup = {
       lead: '沒有指揮官，載具哪裡也去不了。船載人更多，大船載貨更多。',
       blocks: [
         {
-          data: 'vehicles',
+          p: '每種載具的貨艙、乘客座位、生命值和成本見其卡片：[[vehicle:handcart|手推車]]、[[vehicle:oxcart|牛車]]、[[vehicle:ship_small|船]]、[[vehicle:ship_big|大船]]、[[vehicle:catapult|投石機]]。哪座工坊造什麼，見[[building:work_joinery_02|三級木匠坊]]和[[building:work_joinery_03|四級木匠坊]]的卡片。',
         },
         {
           table: {
@@ -80,7 +80,8 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            '「乘客」列不含指揮官。第一個被指派的人成為指揮官，他離開後由下一名乘客接任。',
+            '卡片上的乘客數不含指揮官。第一個被指派的人成為指揮官，他離開後由下一名乘客接任。',
+            '[[job:joiner|木匠]]在工坊旁的工場造載具，在岸邊水面造船。',
             '上載具的人失去工作地點。只有有工作地點的搬運工和商人自己拉車，保留工作。',
             '指揮官和船上每名成年男性都會裝貨，但士兵、英雄、[[job:scout|偵察兵]]和[[job:druid|德魯伊]]只在當指揮官時才裝。沒人裝貨時顯示「沒有搬運工」。',
           ],
@@ -90,28 +91,14 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['載具', '滿載減速', '道路：空載', '道路：滿載', '陸地：空載', '陸地：滿載'],
+            head: ['載具', '道路：空載', '道路：滿載'],
             rows: [
-              [
-                '[[good:handcart|手推車]]',
-                '{{vehicle.handcartLossPct}}%',
-                '{{pace.cartRoad}}',
-                '{{pace.handcartRoadFull}}',
-                '{{pace.cartLand}}',
-                '{{pace.handcartLandFull}}',
-              ],
-              [
-                '[[good:oxcart|牛車]]',
-                '{{vehicle.oxcartLossPct}}%',
-                '{{pace.cartRoad}}',
-                '{{pace.oxcartRoadFull}}',
-                '{{pace.cartLand}}',
-                '{{pace.oxcartLandFull}}',
-              ],
-              ['[[good:catapult|投石機]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
+              ['[[good:handcart|手推車]]', '{{pace.cartRoad}}', '{{pace.handcartRoadFull}}'],
+              ['[[good:oxcart|牛車]]', '{{pace.cartRoad}}', '{{pace.oxcartRoadFull}}'],
+              ['[[good:catapult|投石機]]', '{{pace.catapultRoad}}', '-'],
             ],
-            num: [1, 2, 3, 4, 5],
-            foot: '單位為格/秒。滿載指手推車{{haul.handcart}}份、牛車{{haul.oxcart}}份。部分裝載的情況見下表。路線選車見[[article:trade|貿易]]。',
+            num: [1, 2],
+            foot: '單位為格/秒。滿載指手推車{{haul.handcart}}份、牛車{{haul.oxcart}}份。陸地上的速度見下表。路線選車見[[article:trade|貿易]]。',
           },
         },
         {
@@ -164,45 +151,10 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             '這是有指揮官時車的速度。鞋子在這裡沒有作用。',
-            '自己拉車的搬運工和商人按自己的步速走，穿鞋更快。載重讓他們減速的百分比相同。',
+            '自己拉車的搬運工和商人按自己的步速走，穿鞋更快。載重讓他們減速的百分比相同：穿鞋的商人拉滿載手推車在陸地上每步{{step.traderFullCart}}秒。',
+            '[[good:catapult|投石機]]在陸地上的速度為{{pace.catapultLand}}格/秒。',
             '船裝了貨也不減速，約{{pace.ship}}格/秒。',
           ],
-        },
-        {
-          h: '建造',
-        },
-        {
-          table: {
-            head: ['載具', '工坊', '成本'],
-            rows: [
-              [
-                '[[good:handcart|手推車]]',
-                '[[building:work_joinery_02|三級木匠坊]]、[[building:work_joinery_03|四級木匠坊]]',
-                '[[good:wood|木材]]{{cost.handcartWood}}份',
-              ],
-              [
-                '[[good:oxcart|牛車]]',
-                '[[building:work_joinery_02|三級木匠坊]]、[[building:work_joinery_03|四級木匠坊]]',
-                '[[good:wood|木材]]{{cost.oxcartWood}}份',
-              ],
-              [
-                '[[good:ship_small|船]]',
-                '[[building:work_joinery_03|四級木匠坊]]',
-                '[[good:wood|木材]]{{cost.shipWood}}份，[[good:leather|皮革]]{{cost.shipLeather}}份',
-              ],
-              [
-                '[[good:ship_big|大船]]',
-                '[[building:work_joinery_03|四級木匠坊]]',
-                '[[good:wood|木材]]{{cost.bigShipWood}}份，[[good:leather|皮革]]{{cost.bigShipLeather}}份',
-              ],
-              [
-                '[[good:catapult|投石機]]',
-                '[[building:work_joinery_03|四級木匠坊]]',
-                '[[good:wood|木材]]{{catapult.wood}}份，[[good:iron|鐵礦]]{{catapult.iron}}份',
-              ],
-            ],
-            foot: '[[job:joiner|木匠]]在工坊旁的工場造載具，在岸邊水面造船。',
-          },
         },
         {
           h: '牛車用牛',
@@ -409,7 +361,7 @@ export const WORLD: ArticleGroup = {
       lead: '攻擊性獸群會撲向其吃草處{{wild.aggro}}格內的人。最多追{{wild.giveUp}}格，然後返回。',
       blocks: [
         {
-          data: 'animals',
+          p: '動物的生命值、獸群大小以及能否馴服，見百科中該動物的卡片。',
         },
         {
           h: '攻擊性',
@@ -436,7 +388,7 @@ export const WORLD: ArticleGroup = {
           h: '獸群增長',
         },
         {
-          p: '大約每{{wild.breedingShare}}群只有1群會增長。這樣的獸群只要至少有2隻，且少於「獸群」列的數量，每{{wild.growthMinutes}}分鐘增加1隻成年動物。',
+          p: '大約每{{wild.breedingShare}}群只有1群會增長。這樣的獸群只要至少有2隻，且少於動物卡片上「獸群」的數量，每{{wild.growthMinutes}}分鐘增加1隻成年動物。',
         },
         {
           h: '獵人的獵物',
@@ -448,22 +400,14 @@ export const WORLD: ArticleGroup = {
             '獵人每箭扣動物{{wild.hunterShot}}生命值，射程{{hunterBow.min}}-{{hunterBow.max}}格。',
             '他不會主動獵成年野山羊，但會獵牠的幼崽。',
             '他不獵有主人的動物，也不獵其他陸地上的動物。',
-            '「獵人」列中，「自動」是他自己會去獵的，「需下令」是只有你下令才會打的。',
+            '動物卡片上「獵人：自動」是他自己會去獵的，「需下令」是只有你下令才會打的。',
           ],
         },
         {
           h: '獵物產出',
         },
         {
-          table: {
-            head: ['動物', '獵人殺死', '其他人殺死'],
-            rows: [
-              ['成年', '2份[[good:leather|皮革]]，2份[[good:meat|肉]]', '1份[[good:meat|肉]]'],
-              ['幼崽', '1份[[good:leather|皮革]]，1份[[good:meat|肉]]', '無'],
-              ['成年馬', '1份[[good:leather|皮革]]，1份[[good:meat|肉]]', '1份[[good:meat|肉]]'],
-              ['幼馬', '1份[[good:leather|皮革]]', '無'],
-            ],
-          },
+          p: '成年動物留下什麼，見其卡片。獵人獵到的幼崽產出減半，幼馬只有1份[[good:leather|皮革]]。被其他人殺死的幼崽什麼都不留。',
         },
       ],
       see: ['article:damage', 'article:gathering', 'article:livestock', 'job:hunter'],
@@ -505,20 +449,18 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['牲畜', '幼崽成本', '屠宰產出'],
+            head: ['牲畜', '屠宰產出'],
             rows: [
               [
                 '[[good:sheep|綿羊]]',
-                '[[good:water|水]]{{livestock.calfWater}}份，[[good:wheat|小麥]]{{livestock.calfWheat}}份',
                 '[[good:wool|羊毛]]{{livestock.sheepWool}}份，[[good:meat|肉]]{{livestock.sheepMeat}}份',
               ],
               [
                 '[[good:cattle|牛]]',
-                '[[good:water|水]]{{livestock.calfWater}}份，[[good:wheat|小麥]]{{livestock.calfWheat}}份',
                 '[[good:leather|皮革]]{{livestock.cattleLeather}}份，[[good:meat|肉]]{{livestock.cattleMeat}}份',
               ],
             ],
-            foot: '幼崽和屠宰約需{{livestock.cycleSeconds}}秒。畜牧師的生產選擇決定養哪種牲畜。畜牧場肉、羊毛和皮革各存{{livestock.farmShelf}}份。',
+            foot: '畜牧師的生產選擇決定養哪種牲畜。幼崽的成本和時長，以及畜牧場能存多少貨物，見[[building:work_animal_farm|畜牧場]]的卡片。',
           },
         },
         {
@@ -573,7 +515,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            '低於{{need.drivePct}}%時，[[job:joiner|木匠]]、武器匠、鐵匠和裁縫會自己去禱告。無處可去時，到{{need.criticalPct}}%顯示「想要禱告」。',
+            '低於{{need.drivePct}}%時，武器匠、鐵匠和裁縫會自己去禱告。無處可去時，到{{need.criticalPct}}%顯示「想要禱告」。',
             '已經開始的那件在0%時也會做完。',
           ],
         },

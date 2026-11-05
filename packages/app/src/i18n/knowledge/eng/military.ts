@@ -30,14 +30,8 @@ export const MILITARY: ArticleGroup = {
               ],
               ['Blow from the rear flank', '×{{combat.backSideFactor}}'],
               ['Blow from behind', '×{{combat.behindFactor}}'],
-              ["Attacker's [[good:amulet_strength|Amulet of Strength]]", '×{{amulet.strengthFactor}}'],
-              [
-                "Attacker's [[good:amulet_crithit|Amulet of Precision]]",
-                '{{amulet.critChancePct}}% chance of ×{{amulet.critFactor}}',
-              ],
-              ["Target's [[good:amulet_defense|Amulet of Defence]]", '×{{amulet.defenseFactor}}'],
             ],
-            foot: "A blow from the front or front flank doesn't change the damage.",
+            foot: "A blow from the front or front flank doesn't change the damage. Amulets of Strength, Precision and Defence: [[article:draughts|Potions and Amulets]].",
           },
         },
         {
@@ -53,11 +47,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Tribe differences',
         },
         {
-          list: [
-            'For the Saracens the [[good:bow_short|Short Bow]] deals {{saracen.bowOnWool}} to a Tunic instead of {{viking.bowOnWool}}, {{saracen.bowOnChain}} to Chain Mail and Plate instead of {{viking.bowOnChain}}.',
-            'For the Byzantines the table shows the Dragon from the map in the [[good:spear_wooden|Wooden Spear]] row. It has {{dragon.hitpoints}} health, range {{dragon.min}}-{{dragon.max}}, and deals {{dragon.blows}} blows every {{dragon.seconds}} s, {{dragon.bare}} each against no armour. A trained Spearman fights the same as in the other tribes.',
-            'All other weapons are the same in every tribe.',
-          ],
+          p: 'The table counts the weapons of the tribe whose emblem you pick at the top of the window. The Dragon that the [[good:spear_wooden|Wooden Spear]] row shows for the Byzantines has {{dragon.hitpoints}} health.',
         },
         {
           h: 'Armour',
@@ -85,27 +75,7 @@ export const MILITARY: ArticleGroup = {
       lead: "You arm your army with the counters in the Assistant window. You change one settler's equipment in his own panel.",
       blocks: [
         {
-          h: 'Counters',
-        },
-        {
-          table: {
-            head: ['Counter', 'What it does', 'When it goes down'],
-            rows: [
-              ['"Soldiers without weapons"', 'Trains at the Barracks, hands out no weapon', 'After drill'],
-              [
-                '"Sword fighters", "Spearmen", "Archers"',
-                'Arms an unarmed soldier first, then trains a new one',
-                'When the fighter takes a weapon',
-              ],
-            ],
-            foot: 'Who gets sent to the Barracks: [[article:assistant|Assistant]].',
-          },
-        },
-        {
-          list: [
-            'While an unarmed soldier is waiting for a weapon, the counter trains no new one, even if no weapon turns up for a long time.',
-            'An unarmed soldier goes for a weapon when one of that kind lies in his reach and nobody else is waiting for it.',
-          ],
+          p: 'Army counters and the call-up to the Barracks are covered in [[article:assistant|Assistant]].',
         },
         {
           h: 'Weapon and Armour strips',
@@ -148,7 +118,7 @@ export const MILITARY: ArticleGroup = {
               ['[[good:coin|Coin]]', '{{barracks.coinStock}}'],
             ],
             num: [1],
-            foot: 'The Barracks has {{barracks.carriers}} Carrier places. They fetch goods you give priority from the warehouses themselves: [[article:hauling|Carriers and Warehouses]].',
+            foot: "The Barracks' Carriers fetch goods you give priority from the warehouses themselves: [[article:hauling|Carriers and Warehouses]].",
           },
         },
         {
@@ -170,14 +140,13 @@ export const MILITARY: ArticleGroup = {
             'A new weapon changes the kind of soldier at once. With the weapon removed, he becomes a plain [[job:soldier_unarmed|Soldier]].',
             'When replaced or removed, worn Shoes, used tools and opened bottles are lost. Unused ones go back to the store.',
             "Weapons, armour and amulets don't wear out and always go back to the store.",
-            "Your order to one person takes priority over the Assistant's settings.",
           ],
         },
         {
           h: 'Who can carry a better weapon',
         },
         {
-          p: 'Any soldier takes any weapon from a store, whatever his experience. The limit is on making it: only an experienced [[job:smith|Blacksmith]] makes the [[good:spear_iron|Iron Spear]] and [[good:sword_long|Longsword]], and only an experienced [[job:armorer|Armourer]] the [[good:bow_long|Longbow]]. How much experience it takes: [[article:exp-combat|Combat Experience]].',
+          p: "Any soldier takes any weapon from a store, whatever his experience. The limit is on making it: only an experienced [[job:smith|Blacksmith]] makes the [[good:spear_iron|Iron Spear]] and [[good:sword_long|Longsword]], and only an experienced [[job:armorer|Armourer]] the [[good:bow_long|Longbow]]. Each of these weapons' cards says how much experience it takes.",
         },
       ],
       see: [
@@ -198,46 +167,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Weapon', 'Range', 'Range on tower', 'Walks up to', 'Shot every'],
+            head: ['Weapon', 'Range on tower', 'Walks up to'],
             rows: [
-              [
-                '[[good:bow_short|Short Bow]]',
-                '{{shortBow.min}}-{{shortBow.max}}',
-                '0-{{shortBow.towerMax}}',
-                '{{shortBow.standoff}}',
-                '{{shortBow.seconds}} s',
-              ],
-              [
-                '[[good:bow_long|Longbow]]',
-                '{{longBow.min}}-{{longBow.max}}',
-                '0-{{longBow.towerMax}}',
-                '{{longBow.standoff}}',
-                '{{longBow.seconds}} s',
-              ],
-              [
-                '[[job:hunter|Hunter]]',
-                '{{hunterBow.min}}-{{hunterBow.max}}',
-                '-',
-                '-',
-                '{{hunterBow.seconds}} s',
-              ],
-              [
-                '[[job:heroine_bow_xena|Cyra]]',
-                '{{heroBow.min}}-{{heroBow.max}}',
-                '-',
-                '{{heroBow.standoff}}',
-                '{{heroBow.seconds}} s',
-              ],
-              [
-                '[[building:catapult|Catapult]]',
-                '{{catapult.min}}-{{catapult.max}}',
-                '-',
-                '{{catapult.bandMin}}-{{catapult.max}}',
-                '{{catapult.seconds}} s',
-              ],
+              ['[[good:bow_short|Short Bow]]', '0-{{shortBow.towerMax}}', '{{shortBow.standoff}}'],
+              ['[[good:bow_long|Longbow]]', '0-{{longBow.towerMax}}', '{{longBow.standoff}}'],
+              ['[[job:heroine_bow_xena|Cyra]]', '-', '{{heroBow.standoff}}'],
             ],
-            num: [1, 2, 3, 4],
-            foot: "Range in hexes. An archer won't shoot at a target closer than the lower end of his range.",
+            num: [1, 2],
+            foot: "Range in hexes. Normal range and shot rate, also for the Hunter's bow and the Catapult, are in the table in [[article:damage|Weapons, Armour and Damage]]. An archer won't shoot at a target closer than the lower end of his range.",
           },
         },
         {
@@ -412,56 +349,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Hero', 'Weapon', 'Armour', 'Range'],
+            head: ['Hero', 'Weapon', 'Armour'],
             rows: [
-              [
-                '[[job:hero_spear_siegfried|Sigurd]]',
-                'Spear',
-                '[[good:armor_plate|Plate Armour]]',
-                '{{hero.spearMin}}-{{hero.spearMax}}',
-              ],
-              [
-                '[[job:hero_sword_bjarni|Bjarni]]',
-                'Sword',
-                '[[good:armor_chain|Chain Mail]]',
-                '{{hero.swordReach}}',
-              ],
-              [
-                '[[job:hero_saber_hatschi|Hatchie]]',
-                'Sabre',
-                '[[good:armor_chain|Chain Mail]]',
-                '{{hero.saberReach}}',
-              ],
-              [
-                '[[job:heroine_bow_xena|Cyra]]',
-                'Bow',
-                '[[good:armor_leather|Leather Armour]]',
-                '{{heroBow.min}}-{{heroBow.max}}',
-              ],
+              ['[[job:hero_spear_siegfried|Sigurd]]', 'Spear', '[[good:armor_plate|Plate Armour]]'],
+              ['[[job:hero_sword_bjarni|Bjarni]]', 'Sword', '[[good:armor_chain|Chain Mail]]'],
+              ['[[job:hero_saber_hatschi|Hatchie]]', 'Sabre', '[[good:armor_chain|Chain Mail]]'],
+              ['[[job:heroine_bow_xena|Cyra]]', 'Bow', '[[good:armor_leather|Leather Armour]]'],
             ],
-            num: [3],
-            foot: 'A hero strikes every {{hero.blowSeconds}} s. For damage, turn on Heroes in the table in [[article:damage|Weapons, Armour and Damage]].',
-          },
-        },
-        {
-          h: 'Tribe differences',
-        },
-        {
-          table: {
-            head: ['Hero', 'Tribe', 'Difference'],
-            rows: [
-              ['Sigurd', 'Egyptian', 'Deals {{hero.sigurdEgyptChain}} to Chain Mail'],
-              [
-                'Hatchie',
-                'Saracen',
-                '{{hero.hatchieSaracenBlows}} blows every {{hero.hatchieSaracenSeconds}} s',
-              ],
-              [
-                'Cyra',
-                'Frank',
-                'Range {{frankHeroBow.min}}-{{frankHeroBow.max}}, a shot every {{frankHeroBow.seconds}} s. Damage: no armour {{hero.frankBowBare}}, Tunic and Leather {{hero.frankBowWool}}, Chain Mail and Plate {{hero.frankBowChain}}, building and vehicle {{hero.frankBowVehicle}}',
-              ],
-            ],
+            foot: 'Range, blow rate and damage are in the table in [[article:damage|Weapons, Armour and Damage]] with Heroes turned on. Heroes of another tribe fight a little differently: pick its emblem at the top of the window.',
           },
         },
         {
@@ -508,44 +403,22 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Building', 'Places', 'Arrows per second', 'Posts'],
+            head: ['Building', 'Places', 'Arrows per second'],
             rows: [
-              ['[[building:headquarters|Headquarters]]', '{{shelter.hq}}', '{{shelter.hqShots}}', '-'],
-              [
-                '[[building:tower_01|Defence Tower 2]]',
-                '{{shelter.tower2}}',
-                '{{shelter.tower2Shots}}',
-                '{{tower2.posts}} Short Bow, {{tower2.longPosts}} Longbow',
-              ],
-              [
-                '[[building:tower_00|Defence Tower 1]]',
-                '{{shelter.tower1}}',
-                '{{shelter.tower1Shots}}',
-                '{{tower1.posts}} Short Bow, {{tower1.longPosts}} Longbow',
-              ],
-              ['[[building:barracks|Barracks]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}', '-'],
+              ['[[building:headquarters|Headquarters]]', '{{shelter.hq}}', '{{shelter.hqShots}}'],
+              ['[[building:tower_01|Defence Tower 2]]', '{{shelter.tower2}}', '{{shelter.tower2Shots}}'],
+              ['[[building:tower_00|Defence Tower 1]]', '{{shelter.tower1}}', '{{shelter.tower1Shots}}'],
+              ['[[building:barracks|Barracks]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}'],
             ],
             num: [1, 2],
-            foot: "Arrows per second with the building full. Posts don't use up hiding places. An archer employed in a tower shoots by himself, no alarm needed: [[article:aim|Hitting and Shooting]].",
+            foot: "Arrows per second with the building full. Archer posts, shown on the tower's card, don't use up hiding places. An archer employed in a tower shoots by himself, no alarm needed: [[article:aim|Hitting and Shooting]].",
           },
         },
         {
           h: 'Arrows from a building',
         },
         {
-          table: {
-            head: ['Target', 'Arrow'],
-            rows: [
-              ['No armour', '{{arrow.bare}}'],
-              ['Tunic', '{{arrow.wool}}'],
-              ['Leather', '{{arrow.leather}}'],
-              ['Chain Mail, Plate', '{{arrow.chain}}'],
-              ['Vehicle', '{{arrow.vehicle}}'],
-              ['Building', '{{arrow.building}}'],
-            ],
-            num: [1],
-            foot: 'The same in every tribe. Blow direction and the Amulet of Defence can change this: [[article:damage|Weapons, Armour and Damage]].',
-          },
+          p: 'How much one arrow takes is in the "Arrows from a building" row of the table in [[article:damage|Weapons, Armour and Damage]].',
         },
         {
           list: [
@@ -560,24 +433,23 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Tower', 'Carrier places', 'Mead', 'Food', 'Of each weapon'],
+            head: ['Tower', 'Mead', 'Food', 'Of each weapon'],
             rows: [
               [
                 '[[building:tower_00|Defence Tower 1]]',
-                '{{tower1.carriers}}',
                 '{{tower1.mead}}',
                 '{{tower1.food}}',
                 '{{tower1.weapon}}',
               ],
               [
                 '[[building:tower_01|Defence Tower 2]]',
-                '{{tower2.carriers}}',
                 '{{tower2.mead}}',
                 '{{tower2.food}}',
                 '{{tower2.weapon}}',
               ],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
+            foot: "Posts and Carrier places are on the tower's card.",
           },
         },
         {
@@ -726,7 +598,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Defence wall',
         },
         {
-          p: 'The [[building:work_pottery_02|Defence wall]] is an ordinary building: {{wall.defenceHp}} health, damage from the Building column. A soldier treats it like a stockade.',
+          p: 'The [[building:work_pottery_02|Defence wall]] is an ordinary building and takes damage from the Building column. A soldier treats it like a stockade.',
         },
       ],
       see: [
@@ -749,38 +621,13 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
-          table: {
-            head: ['Trait', 'Value'],
-            rows: [
-              ['Range', '{{catapult.min}}-{{catapult.max}} hexes'],
-              ['Shot every', '{{catapult.seconds}} s'],
-              ['Health', '{{catapult.hitpoints}}'],
-              ['Crew', '1 soldier or hero, any weapon'],
-              [
-                'Cost',
-                '[[building:catapult|Catapult]]: {{catapult.wood}} [[good:wood|Wood]], {{catapult.iron}} [[good:iron|Iron]]',
-              ],
-            ],
-            foot: 'Without a commander a Catapult neither moves nor shoots. Stones cost nothing.',
-          },
+          p: 'A Catapult is led by 1 soldier or hero, with any weapon. Without a commander it neither moves nor shoots. Stones cost nothing. Health, range, shot rate and cost are on the [[building:catapult|Catapult]] card.',
         },
         {
           h: 'Stone',
         },
         {
-          table: {
-            head: ['Target', 'Damage', 'Stones to destroy'],
-            rows: [
-              ['No armour', '{{stone.bare}}', '{{stone.bareKills}}'],
-              ['Leather', '{{stone.leather}}', '{{stone.leatherKills}}'],
-              ['Tunic', '{{stone.wool}}', '{{stone.woolKills}}'],
-              ['Chain Mail, Plate', '{{stone.chain}}', '{{stone.chainKills}}'],
-              ['Catapult', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
-              ['Building', '{{stone.building}}', '{{stone.tower1}}-{{stone.frankHq}}'],
-            ],
-            num: [2],
-            foot: 'Damage to a person hit from the front, no amulets. Stockades: [[article:walls|Stockades and Gates]].',
-          },
+          p: 'What a stone takes from people, vehicles and buildings is in the Catapult row of the table in [[article:damage|Weapons, Armour and Damage]]. A stockade counts it differently: [[article:walls|Stockades and Gates]].',
         },
         {
           table: {

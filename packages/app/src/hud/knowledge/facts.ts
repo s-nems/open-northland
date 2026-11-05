@@ -23,12 +23,8 @@ import {
 } from '../../catalog/farming.js';
 import { WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import {
-  JOB_ARCHER,
-  JOB_ARCHER_LONG,
   JOB_ARMORER,
-  JOB_BREEDER,
   JOB_BUILDER,
-  JOB_CARRIER,
   JOB_CIVILIST,
   JOB_COLLECTOR,
   JOB_FARMER,
@@ -37,7 +33,7 @@ import {
   JOB_SOLDIER_UNARMED,
   JOB_WOMAN,
 } from '../../catalog/jobs.js';
-import { BYZANTINE, BYZANTINE_SPEAR_VARIANTS } from '../../catalog/unit-variants.js';
+import { BYZANTINE_SPEAR_VARIANTS } from '../../catalog/unit-variants.js';
 import {
   CLOSED_GATE_LOGIC_ID,
   POST_STRENGTH,
@@ -46,7 +42,7 @@ import {
   WALL_LOGIC_ID,
 } from '../../content/map/palisade-rows.js';
 import { bcp47Tag } from '../../i18n/index.js';
-import { EGYPTIAN, FRANK, SARACEN } from '../../scenes/civilizations.js';
+import { FRANK } from '../../scenes/civilizations.js';
 import { STAR_FULL, STAR_TIER_STEP } from '../../view/projections/experience-stars.js';
 import { SETTLEMENT_REACH_NODES } from '../tool-panel/messages/fight-areas.js';
 import {
@@ -77,20 +73,16 @@ const SECONDS_PER_MINUTE = TICKS_PER_MINUTE / TICKS_PER_SECOND;
 const DIAGONAL_STEP_COST = 1.5;
 /** The experience percent the articles quote as the first useful level of a track. */
 const QUOTED_EXPERIENCE_PCT = 51;
-/** The hits, the experience percents and the hours the articles' sample rows stand on. */
+/** The hits the articles' sample rows stand on. */
 const FIGHT_SAMPLE_HITS = [10, 25, 50, 75] as const;
 const AIM_SAMPLE_HITS = 50;
 const STONE_SAMPLE_HITS = [0, 25, 50] as const;
-const EXPERIENCE_SAMPLES_PCT = [0, 20, 40, 60, 80, 100] as const;
-const CAST_SAMPLES_PCT = [0, 20, 40, 60, 80] as const;
 /** The experience percents a builder's swing gains a point at, the rows of the construction table. */
 const BUILD_SAMPLES_PCT = [0, 10, 22, 50, 79, 90] as const;
 /** A cart's unit is lifted twice: into the cart and out of it. */
 const LIFTS_PER_UNIT = 2;
-const WAVE_SAMPLE_HOURS = [0, 1, 2, 3] as const;
 /** The hold fills, in percent, the cart load table shows a row of. */
 const CART_FILL_SAMPLES_PCT = [0, 25, 50, 75, 100] as const;
-const TICKS_PER_HOUR = TICKS_PER_MINUTE * SECONDS_PER_MINUTE;
 /** The value the fight-experience table shows a blow of. */
 const SAMPLE_BLOW = 1000;
 const PER_MILLE = 1000;
@@ -144,9 +136,6 @@ function stockOf(base: KnowledgeBase, building: string, good: string): FactValue
   return buildingOf(base, building)?.stock.find((slot) => slot.goodType === goodType)?.capacity;
 }
 
-const crewOf = (base: KnowledgeBase, building: string, job: number): FactValue =>
-  buildingOf(base, building)?.workers.find((slot) => slot.jobType === job)?.count;
-
 const amountOf = (
   base: KnowledgeBase,
   rows: readonly GoodQuantity[] | undefined,
@@ -155,9 +144,6 @@ const amountOf = (
   const goodType = goodTypeOf(base, good);
   return rows?.find((row) => row.goodType === goodType)?.amount;
 };
-
-const costOf = (base: KnowledgeBase, building: string, good: string): FactValue =>
-  amountOf(base, buildingOf(base, building)?.cost, good);
 
 const vehicleOf = (base: KnowledgeBase, id: string) => base.vehicles.find((row) => row.id === id);
 const trackOf = (base: KnowledgeBase, id: string) => base.content.jobExperience.find((row) => row.id === id);
@@ -187,11 +173,6 @@ function clipNeedPct(base: KnowledgeBase, atomicId: number, jobType: number, cha
 
 const produceAtomic = (base: KnowledgeBase, good: string): FactValue =>
   base.content.goods.find((row) => row.id === good)?.atomics.produce;
-
-function produceSeconds(base: KnowledgeBase, good: string, jobType: number): FactValue {
-  const atomic = produceAtomic(base, good);
-  return atomic === undefined ? undefined : clipSeconds(base, atomic, jobType);
-}
 
 /** The Religion one run of `good` costs its maker, in percent. */
 function pietyCost(base: KnowledgeBase, good: string, jobType: number): FactValue {
@@ -280,17 +261,12 @@ function standoffOf(base: KnowledgeBase, tribe: number, id: string): FactValue {
 const WEAPON_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
   (
     [
-      ['shortBow', VIKING, 'short_bow'],
-      ['longBow', VIKING, 'long_bow'],
-      ['hunterBow', VIKING, 'hunter_bow'],
-      ['heroBow', VIKING, 'hero_bow'],
-      ['frankHeroBow', FRANK, 'hero_bow'],
-      ['catapult', VIKING, 'catapult'],
+      ['hunterBow', 'hunter_bow'],
+      ['catapult', 'catapult'],
     ] as const
-  ).flatMap(([name, tribe, id]) => [
-    [`${name}.min`, whole((base) => weaponRow(base, tribe, id)?.minRange)],
-    [`${name}.max`, whole((base) => weaponRow(base, tribe, id)?.maxRange)],
-    [`${name}.seconds`, oneDecimal((base) => clipOfWeapon(base, tribe, id))],
+  ).flatMap(([name, id]) => [
+    [`${name}.min`, whole((base) => weaponRow(base, VIKING, id)?.minRange)],
+    [`${name}.max`, whole((base) => weaponRow(base, VIKING, id)?.maxRange)],
   ]),
 );
 
@@ -392,10 +368,9 @@ function strokes(base: KnowledgeBase, track: string, pct: number, tool: string |
     : systems.strokesPerUnit(repeats, pct, factor);
 }
 
-function batchOutput(base: KnowledgeBase, pct: number, tool: string | null): number {
-  const toolPct = tool === null ? 0 : (equipOf(base, tool)?.productionBonusPct ?? 0);
-  const tenths = systems.experienceBonusTenths(pct) + systems.toolBonusTenths(toolPct);
-  return 1 + tenths / systems.OUTPUT_TENTHS_PER_UNIT;
+function toolBonus(base: KnowledgeBase, tool: string): number {
+  const toolPct = equipOf(base, tool)?.productionBonusPct ?? 0;
+  return systems.toolBonusTenths(toolPct) / systems.OUTPUT_TENTHS_PER_UNIT;
 }
 
 /** How long `repeats` plays of `good`'s harvest clip take `jobType`. */
@@ -462,22 +437,13 @@ const BUILD_TABLE_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
   ),
 );
 
-const TOOL_TABLE_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
-  EXPERIENCE_SAMPLES_PCT.flatMap((pct) =>
-    TOOLS.flatMap(([name, tool]) => [
-      [`tool.strokes.${pct}.${name}`, whole((base) => strokes(base, 'collector_wood', pct, tool))],
-      [`tool.output.${pct}.${name}`, fixedOneDecimal((base) => batchOutput(base, pct, tool))],
-    ]),
-  ),
-);
-
-const CAST_TABLE_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
-  CAST_SAMPLES_PCT.flatMap((pct) =>
-    TOOLS.map(([name, tool]) => [
-      `tool.casts.${pct}.${name}`,
-      whole((base) => strokes(base, 'fisher_general', pct, tool)),
-    ]),
-  ),
+/** A novice's strokes and casts per unit with each tool, and the pieces a tool adds to every cycle. */
+const TOOL_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
+  TOOLS.flatMap(([name, tool]) => [
+    [`tool.strokes.${name}`, whole((base) => strokes(base, 'collector_wood', 0, tool))],
+    [`tool.casts.${name}`, whole((base) => strokes(base, 'fisher_general', 0, tool))],
+    ...(tool === null ? [] : [[`tool.bonus.${name}`, fixedOneDecimal((base) => toolBonus(base, tool))]]),
+  ]),
 );
 
 function buildPoints(base: KnowledgeBase, pct: number, tool: string | null): FactValue {
@@ -538,16 +504,6 @@ const CART_LOAD_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
   }),
 );
 
-const WAVE_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
-  WAVE_SAMPLE_HOURS.flatMap((hours) => {
-    const band = systems.waveBandAt(hours * TICKS_PER_HOUR);
-    return [
-      [`ai.wave.${hours}.min`, whole(band.min)],
-      [`ai.wave.${hours}.max`, whole(band.max)],
-    ];
-  }),
-);
-
 const FIGHT_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
   FIGHT_SAMPLE_HITS.flatMap((hits) => {
     const blow = systems.withFightExperience(SAMPLE_BLOW, hits);
@@ -575,14 +531,6 @@ const chestAnimals = (tribe: string): number | undefined => {
 const chestSettlers: FactReader = () => {
   const reward = [...systems.CHEST_CONTENTS.values()].find((row) => row.kind === 'settlers');
   return reward?.kind === 'settlers' ? reward.count : undefined;
-};
-
-/** What the farm's recipe for a calf takes. */
-const calfInputs = (base: KnowledgeBase): readonly GoodQuantity[] | undefined => {
-  const cattle = goodTypeOf(base, 'cattle');
-  return buildingOf(base, 'work_animal_farm')?.recipes.find((row) =>
-    row.outputs.some((output) => output.goodType === cattle),
-  )?.inputs;
 };
 
 const pctFactor = (pct: FactValue): FactValue => (pct === undefined ? undefined : pct / PERCENT);
@@ -683,7 +631,6 @@ const HEALTH_FACTS: Readonly<Record<string, Fact>> = {
     systems.REGENERATION_HITPOINTS_PER_TICK * TICKS_PER_SECOND + systems.TEMPLE_AURA_HITPOINTS,
   ),
   'aura.pietyPct': oneDecimal(needPct(systems.TEMPLE_AURA_PIETY_UNITS)),
-  'draught.healSip': whole(healSip),
   'draught.healBelow': whole((HUMAN_HITPOINTS * systems.HEALING_DRAUGHT_BELOW_PCT) / PERCENT),
   'draught.healSmallTotal': whole((base) =>
     scaled(healSip, equipOf(base, 'potion_heal_small')?.uses ?? 0)(base),
@@ -832,7 +779,6 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
     return points === undefined ? undefined : points * systems.HITPOINTS_PER_REPAIR_STEP;
   }),
   'repair.crew': whole(systems.REPAIR_CREW_LIMIT),
-  'repair.wallCrew': whole(systems.WALL_REPAIR_CREW_LIMIT),
   'repair.calmSeconds': whole(seconds(systems.REPAIR_CALM_TICKS)),
   'workshop.counterMax': whole(PRODUCTION_COUNT_MAX),
   'gather.treeYield': whole(WOOD_YIELD_PER_NODE),
@@ -861,12 +807,6 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'field.radius': whole(FARM_FIELD_RADIUS),
   'field.diagonal': whole(diagonal(FARM_FIELD_RADIUS)),
   'field.reclaimSeconds': whole(seconds(systems.STRANDED_FIELD_RECLAIM_TICKS)),
-  'farm.farmers': whole((base) => crewOf(base, 'work_farm_00', JOB_FARMER)),
-  'farm.carriers': whole((base) => crewOf(base, 'work_farm_00', JOB_CARRIER)),
-  'farm.stock': whole((base) => stockOf(base, 'work_farm_00', 'wheat')),
-  'herbHut.herbalists': whole((base) => crewOf(base, 'work_herb_hut', JOB_HERBALIST)),
-  'herbHut.carriers': whole((base) => crewOf(base, 'work_herb_hut', JOB_CARRIER)),
-  'herbHut.stock': whole((base) => stockOf(base, 'work_herb_hut', 'herb')),
   'well.stock': whole((base) => stockOf(base, 'work_well_00', 'water')),
   'hive.stock': whole((base) => stockOf(base, 'work_hive_00', 'honey')),
   'bush.regrowSeconds': whole(seconds(systems.BERRY_REGROW_TICKS)),
@@ -877,16 +817,9 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'tool.ironTrees': whole(ironToolTrees),
   'haul.carry': whole(components.CARRY_CAPACITY),
   'haul.groundStack': whole(systems.MAX_GROUND_STACK),
-  'haul.store1': whole((base) => stockOf(base, 'stock_00', 'wood')),
-  'haul.store2': whole((base) => stockOf(base, 'stock_01', 'wood')),
-  'haul.store3': whole((base) => stockOf(base, 'stock_02', 'wood')),
-  'haul.hq': whole((base) => stockOf(base, 'headquarters', 'wood')),
-  'haul.storeSeats': whole((base) => crewOf(base, 'stock_00', JOB_CARRIER)),
   'haul.minimumMax': whole(components.STORAGE_MINIMUM_MAX),
   'haul.handcart': whole((base) => vehicleOf(base, 'handcart')?.stockSlots),
   'haul.oxcart': whole((base) => vehicleOf(base, 'oxcart')?.stockSlots),
-  'haul.handcartLossPct': whole(systems.HANDCART_FULL_SPEED_LOSS_PERCENT),
-  'haul.oxcartLossPct': whole(systems.DRAWN_CART_FULL_SPEED_LOSS_PERCENT),
   'haul.cartTopUp': whole(systems.CART_TOP_UP_REACH),
   'flag.radius': whole(components.DEFAULT_WORK_FLAG_RADIUS),
   'flag.diagonal': whole(diagonal(components.DEFAULT_WORK_FLAG_RADIUS)),
@@ -912,16 +845,12 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'star.full': whole(STAR_FULL),
   'exp.carrierTrader': whole((base) => jobNeed(base, 'trader')),
   'exp.furnitureNeed': whole((base) => goodNeed(base, 'furniture')),
-  'exp.ironSpearNeed': whole((base) => goodNeed(base, 'spear_iron')),
-  'exp.longSwordNeed': whole((base) => goodNeed(base, 'sword_long')),
-  'exp.longBowNeed': whole((base) => goodNeed(base, 'bow_long')),
   'school.seats': whole((base) => buildingOf(base, 'school')?.schoolSize),
   'barracks.seats': whole((base) => buildingOf(base, 'barracks')?.schoolSize),
   'barracks.drillSeconds': oneDecimal((base) => drillSeconds(base, systems.BARRACKS_DRILL_TICKS)),
   'barracks.gearStock': whole((base) => stockOf(base, 'barracks', 'sword_long')),
   'barracks.foodStock': whole((base) => stockOf(base, 'barracks', 'food_simple')),
   'barracks.coinStock': whole((base) => stockOf(base, 'barracks', 'coin')),
-  'barracks.carriers': whole((base) => crewOf(base, 'barracks', JOB_CARRIER)),
   'course.shortSeconds': oneDecimal((base) => courseSeconds(base, 'armor_leather')),
   'course.commonSeconds': oneDecimal((base) => courseSeconds(base, 'bow_long')),
   'course.healSeconds': oneDecimal((base) => courseSeconds(base, 'potion_heal_big')),
@@ -1073,7 +1002,6 @@ const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'peace.noticeLastMinutes': whole(systems.PEACE_NOTICE_MINUTES[1]),
   'wall.gateEnemyNear': whole(systems.GATE_ENEMY_NEAR_POINTS),
   'wall.damagePerPoint': whole(systems.HOUSE_DAMAGE_PER_WALL_VALENCY),
-  'wall.defenceHp': whole((base) => buildingHp(base, 'work_pottery_02')),
   'shelter.hq': whole((base) => buildingOf(base, 'headquarters')?.shelterCapacity),
   'shelter.tower2': whole((base) => buildingOf(base, 'tower_01')?.shelterCapacity),
   'shelter.tower1': whole((base) => buildingOf(base, 'tower_00')?.shelterCapacity),
@@ -1084,65 +1012,21 @@ const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'shelter.tower1Shots': whole((base) => shelterShots(base, 'tower_00')),
   'shelter.barracksShots': whole((base) => shelterShots(base, 'barracks')),
   'shelter.range': whole((base) => weaponRow(base, VIKING, 'house_bow')?.maxRange),
-  'arrow.bare': hit(VIKING, 'house_bow', 'bare'),
-  'arrow.wool': hit(VIKING, 'house_bow', 'wool'),
-  'arrow.leather': hit(VIKING, 'house_bow', 'leather'),
-  'arrow.chain': hit(VIKING, 'house_bow', 'chain'),
   'arrow.vehicle': hit(VIKING, 'house_bow', 'vehicle'),
-  'arrow.building': hit(VIKING, 'house_bow', 'building'),
-  'tower1.posts': whole((base) => crewOf(base, 'tower_00', JOB_ARCHER)),
-  'tower1.longPosts': whole((base) => crewOf(base, 'tower_00', JOB_ARCHER_LONG)),
-  'tower2.posts': whole((base) => crewOf(base, 'tower_01', JOB_ARCHER)),
-  'tower2.longPosts': whole((base) => crewOf(base, 'tower_01', JOB_ARCHER_LONG)),
-  'tower1.carriers': whole((base) => crewOf(base, 'tower_00', JOB_CARRIER)),
-  'tower2.carriers': whole((base) => crewOf(base, 'tower_01', JOB_CARRIER)),
   'tower1.mead': whole((base) => stockOf(base, 'tower_00', 'mead')),
   'tower1.food': whole((base) => stockOf(base, 'tower_00', 'food_simple')),
   'tower1.weapon': whole((base) => stockOf(base, 'tower_00', 'bow_short')),
   'tower2.mead': whole((base) => stockOf(base, 'tower_01', 'mead')),
   'tower2.food': whole((base) => stockOf(base, 'tower_01', 'food_simple')),
   'tower2.weapon': whole((base) => stockOf(base, 'tower_01', 'bow_short')),
-  'saracen.bowOnWool': hit(SARACEN, 'short_bow', 'wool'),
-  'saracen.bowOnChain': hit(SARACEN, 'short_bow', 'chain'),
-  'viking.bowOnWool': hit(VIKING, 'short_bow', 'wool'),
-  'viking.bowOnChain': hit(VIKING, 'short_bow', 'chain'),
   'dragon.hitpoints': whole(BYZANTINE_SPEAR_VARIANTS.find((row) => row.form === 'native')?.hitpoints ?? 0),
-  'dragon.min': whole((base) => weaponRow(base, BYZANTINE, 'wooden_spear')?.minRange),
-  'dragon.max': whole((base) => weaponRow(base, BYZANTINE, 'wooden_spear')?.maxRange),
-  'dragon.blows': whole((base) => weaponRow(base, BYZANTINE, 'wooden_spear')?.blows),
-  'dragon.seconds': oneDecimal((base) => clipOfWeapon(base, BYZANTINE, 'wooden_spear')),
-  'dragon.bare': hit(BYZANTINE, 'wooden_spear', 'bare'),
-  'hero.blowSeconds': oneDecimal((base) => clipOfWeapon(base, VIKING, 'hero_sword')),
-  'hero.spearMin': whole((base) => weaponRow(base, VIKING, 'hero_spear')?.minRange),
-  'hero.spearMax': whole((base) => weaponRow(base, VIKING, 'hero_spear')?.maxRange),
-  'hero.swordReach': whole((base) => weaponRow(base, VIKING, 'hero_sword')?.maxRange),
-  'hero.saberReach': whole((base) => weaponRow(base, VIKING, 'hero_saber')?.maxRange),
-  'hero.sigurdEgyptChain': hit(EGYPTIAN, 'hero_spear', 'chain'),
-  'hero.hatchieSaracenBlows': whole((base) => weaponRow(base, SARACEN, 'hero_saber')?.blows),
-  'hero.hatchieSaracenSeconds': oneDecimal((base) => clipOfWeapon(base, SARACEN, 'hero_saber')),
-  'hero.frankBowBare': hit(FRANK, 'hero_bow', 'bare'),
-  'hero.frankBowWool': hit(FRANK, 'hero_bow', 'wool'),
-  'hero.frankBowChain': hit(FRANK, 'hero_bow', 'chain'),
-  'hero.frankBowVehicle': hit(FRANK, 'hero_bow', 'vehicle'),
-  'catapult.hitpoints': whole(catapultHp),
-  'catapult.wood': whole((base) => costOf(base, 'catapult', 'wood')),
-  'catapult.iron': whole((base) => costOf(base, 'catapult', 'iron')),
   'catapult.searchRadius': whole(systems.VEHICLE_SCAN_RADIUS_POINTS),
   'catapult.leash': whole(systems.VEHICLE_DEFENCE_LEASH_POINTS),
   'catapult.bandMin': whole((base) => {
     const max = weaponRow(base, VIKING, 'catapult')?.maxRange;
     return max === undefined ? undefined : max - systems.APPROACH_BAND_DEPTH;
   }),
-  'stone.bare': whole(catapultStone('bare')),
-  'stone.leather': whole(catapultStone('leather')),
-  'stone.wool': whole(catapultStone('wool')),
-  'stone.chain': whole(catapultStone('chain')),
   'stone.vehicle': whole(catapultStone('vehicle')),
-  'stone.building': whole(catapultStone('building')),
-  'stone.bareKills': killedBy(catapultStone('bare'), () => HUMAN_HITPOINTS),
-  'stone.leatherKills': killedBy(catapultStone('leather'), () => HUMAN_HITPOINTS),
-  'stone.woolKills': killedBy(catapultStone('wool'), () => HUMAN_HITPOINTS),
-  'stone.chainKills': killedBy(catapultStone('chain'), () => HUMAN_HITPOINTS),
   'stone.vehicleKills': killedBy(catapultStone('vehicle'), catapultHp),
   'stone.tower1': killedBy(catapultStone('building'), (base) => buildingHp(base, 'tower_00')),
   'stone.tower2': killedBy(catapultStone('building'), (base) => buildingHp(base, 'tower_01')),
@@ -1166,21 +1050,12 @@ const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
 };
 
 const WORLD_FACTS: Readonly<Record<string, Fact>> = {
-  'vehicle.handcartLossPct': whole(systems.HANDCART_FULL_SPEED_LOSS_PERCENT),
-  'vehicle.oxcartLossPct': whole(systems.DRAWN_CART_FULL_SPEED_LOSS_PERCENT),
   'pace.cartRoad': fixedOneDecimal(vehiclePace(ROAD_RESISTANCE, false, 0)),
-  'pace.cartLand': fixedOneDecimal(vehiclePace(DEFAULT_NODE_ROUGHNESS, false, 0)),
   'pace.handcartRoadFull': fixedOneDecimal(
     vehiclePace(ROAD_RESISTANCE, false, systems.HANDCART_FULL_SPEED_LOSS_PERCENT),
   ),
-  'pace.handcartLandFull': fixedOneDecimal(
-    vehiclePace(DEFAULT_NODE_ROUGHNESS, false, systems.HANDCART_FULL_SPEED_LOSS_PERCENT),
-  ),
   'pace.oxcartRoadFull': fixedOneDecimal(
     vehiclePace(ROAD_RESISTANCE, false, systems.DRAWN_CART_FULL_SPEED_LOSS_PERCENT),
-  ),
-  'pace.oxcartLandFull': fixedOneDecimal(
-    vehiclePace(DEFAULT_NODE_ROUGHNESS, false, systems.DRAWN_CART_FULL_SPEED_LOSS_PERCENT),
   ),
   'pace.catapultRoad': fixedOneDecimal(vehiclePace(ROAD_RESISTANCE, true, 0)),
   'pace.catapultLand': twoDecimals(vehiclePace(DEFAULT_NODE_ROUGHNESS, true, 0)),
@@ -1188,12 +1063,6 @@ const WORLD_FACTS: Readonly<Record<string, Fact>> = {
     const ticks = vehicleOf(base, 'ship_small')?.moveTicks;
     return ticks === undefined ? undefined : TICKS_PER_SECOND / ticks;
   }),
-  'cost.handcartWood': whole((base) => costOf(base, 'handcart', 'wood')),
-  'cost.oxcartWood': whole((base) => costOf(base, 'oxcart', 'wood')),
-  'cost.shipWood': whole((base) => costOf(base, 'ship_small', 'wood')),
-  'cost.shipLeather': whole((base) => costOf(base, 'ship_small', 'leather')),
-  'cost.bigShipWood': whole((base) => costOf(base, 'ship_big', 'wood')),
-  'cost.bigShipLeather': whole((base) => costOf(base, 'ship_big', 'leather')),
   'vehicle.mooringDistance': whole((base) => {
     return base.content.vehicles.find((row) => row.id === 'ship_small')?.passengerVector?.distance;
   }),
@@ -1204,11 +1073,7 @@ const WORLD_FACTS: Readonly<Record<string, Fact>> = {
   'livestock.captureRange': whole(systems.LIVESTOCK_CAPTURE_RANGE),
   'livestock.scatterRange': whole(systems.SCATTER_RANGE),
   'livestock.growMinutes': whole(minutes(systems.ANIMAL_ADULT_AGE_TICKS)),
-  'livestock.cycleSeconds': whole((base) => produceSeconds(base, 'sheep', JOB_BREEDER)),
   'livestock.farmHerd': whole((base) => stockOf(base, 'work_animal_farm', 'sheep')),
-  'livestock.farmShelf': whole((base) => stockOf(base, 'work_animal_farm', 'meat')),
-  'livestock.calfWater': whole((base) => amountOf(base, calfInputs(base), 'water')),
-  'livestock.calfWheat': whole((base) => amountOf(base, calfInputs(base), 'wheat')),
   'livestock.sheepWool': whole((base) => amountOf(base, base.goodById.get('sheep')?.slaughterYield, 'wool')),
   'livestock.sheepMeat': whole((base) => amountOf(base, base.goodById.get('sheep')?.slaughterYield, 'meat')),
   'livestock.cattleLeather': whole((base) =>
@@ -1273,9 +1138,7 @@ export const FACTS: Readonly<Record<string, Fact>> = {
   ...WORLD_FACTS,
   ...WEAPON_FACTS,
   ...BUILD_TABLE_FACTS,
-  ...TOOL_TABLE_FACTS,
-  ...CAST_TABLE_FACTS,
-  ...WAVE_FACTS,
+  ...TOOL_FACTS,
   ...CART_LOAD_FACTS,
   ...FIGHT_FACTS,
 };

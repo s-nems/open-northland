@@ -107,7 +107,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Arbeitsschläge je 1 Stück Baustoff. Ein [[job:builder|Bauarbeiter]] erreicht 100% nach {{exp.build.repeatsFull}} Arbeitsschlägen, aber es zählen nur die, die den Bau vorangebracht haben.',
+            foot: 'Arbeitsschläge je 1 Stück Baustoff. Erfahrung bekommt ein [[job:builder|Bauarbeiter]] nur für Arbeitsschläge, die den Bau vorangebracht haben: [[article:exp-work|Arbeitserfahrung]].',
           },
         },
         {
@@ -135,16 +135,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Reparatur',
         },
         {
-          table: {
-            head: ['Ziel', 'Gesundheit je Arbeitsschlag', 'Bauarbeiter zugleich'],
-            rows: [
-              ['Gebäude', '{{repair.minPerSwing}}-{{repair.maxPerSwing}}', '{{repair.crew}}'],
-              ['Palisadenabschnitt', '{{wall.segmentRepair}}', '{{repair.wallCrew}}'],
-              ['Tor', '{{wall.gateRepair}}', '{{repair.wallCrew}}'],
-            ],
-            num: [1, 2],
-            foot: 'Reparatur kostet kein Material. Bei Palisade und Tor ändern Erfahrung und Werkzeug nichts.',
-          },
+          p: 'Ein Bauarbeiter gibt einem Gebäude {{repair.minPerSwing}}-{{repair.maxPerSwing}} Gesundheit je Arbeitsschlag zurück, an einem Gebäude reparieren höchstens {{repair.crew}} Bauarbeiter zugleich. Reparatur kostet kein Material. Palisade und Tor werden anders repariert, Erfahrung und Werkzeug ändern dort nichts: [[article:walls|Palisaden und Tore]].',
         },
         {
           p: 'Von selbst repariert ein Bauarbeiter {{repair.calmSeconds}} s lang nach dem letzten Treffer nicht, und auch nicht, solange im Umkreis von {{alert.standTo}} Hexfeldern gekämpft wird. Auf deinen Befehl geht er sofort.',
@@ -373,25 +364,13 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Gebäude', 'Felder', 'Radius', 'Besatzung', 'Vorrat'],
+            head: ['Gebäude', 'Felder', 'Radius'],
             rows: [
-              [
-                '[[building:work_farm_00|Farm]]',
-                '{{field.max}}',
-                '{{field.radius}} Hexfelder',
-                '{{farm.farmers}} Farmer, {{farm.carriers}} Träger',
-                '{{farm.stock}}',
-              ],
-              [
-                '[[building:work_herb_hut|Kräuterhütte]]',
-                '{{field.max}}',
-                '{{field.radius}} Hexfelder',
-                '{{herbHut.herbalists}} Kräutergärtner, {{herbHut.carriers}} Träger',
-                '{{herbHut.stock}}',
-              ],
+              ['[[building:work_farm_00|Farm]]', '{{field.max}}', '{{field.radius}} Hexfelder'],
+              ['[[building:work_herb_hut|Kräuterhütte]]', '{{field.max}}', '{{field.radius}} Hexfelder'],
             ],
-            num: [1, 4],
-            foot: 'Schräg beträgt der Radius etwa {{field.diagonal}} Hexfelder. Die Feldgrenze gilt fürs Gebäude, nicht für den Arbeiter, also ernten mehr Leute schneller, haben aber nicht mehr Felder.',
+            num: [1],
+            foot: 'Schräg beträgt der Radius etwa {{field.diagonal}} Hexfelder. Die Feldgrenze gilt fürs Gebäude, nicht für den Arbeiter, also ernten mehr Leute schneller, haben aber nicht mehr Felder. Besatzung und Vorrat stehen auf der Karte des Gebäudes.',
           },
         },
         {
@@ -461,7 +440,10 @@ export const ECONOMY: ArticleGroup = {
                 'Weniger Arbeitsschläge bei der Ernte',
               ],
               ['[[job:fisher|Fischer]]', 'Weniger Würfe'],
-              ['[[job:builder|Bauarbeiter]]', 'Weniger Arbeitsschläge je Stück Baustoff'],
+              [
+                '[[job:builder|Bauarbeiter]]',
+                'Weniger Arbeitsschläge je Stück Baustoff: [[article:construction|Bau]]',
+              ],
               ['[[job:hunter|Jäger]], [[job:carrier|Träger]]', 'Nichts'],
               ['Soldaten, Helden', 'Tragen kein Werkzeug'],
             ],
@@ -472,36 +454,13 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Erfahrung', 'Ohne Werkzeug', 'Holz', 'Eisen'],
+            head: ['Ohne Erfahrung', 'Ohne Werkzeug', 'Holz', 'Eisen'],
             rows: [
-              ['0%', '{{tool.strokes.0.bare}}', '{{tool.strokes.0.wooden}}', '{{tool.strokes.0.iron}}'],
-              ['20%', '{{tool.strokes.20.bare}}', '{{tool.strokes.20.wooden}}', '{{tool.strokes.20.iron}}'],
-              ['40%', '{{tool.strokes.40.bare}}', '{{tool.strokes.40.wooden}}', '{{tool.strokes.40.iron}}'],
-              ['60%', '{{tool.strokes.60.bare}}', '{{tool.strokes.60.wooden}}', '{{tool.strokes.60.iron}}'],
-              ['80%', '{{tool.strokes.80.bare}}', '{{tool.strokes.80.wooden}}', '{{tool.strokes.80.iron}}'],
-              [
-                '100%',
-                '{{tool.strokes.100.bare}}',
-                '{{tool.strokes.100.wooden}}',
-                '{{tool.strokes.100.iron}}',
-              ],
+              ['Arbeitsschläge', '{{tool.strokes.bare}}', '{{tool.strokes.wooden}}', '{{tool.strokes.iron}}'],
+              ['Würfe je 1 Fisch', '{{tool.casts.bare}}', '{{tool.casts.wooden}}', '{{tool.casts.iron}}'],
             ],
             num: [1, 2, 3],
-            foot: 'An Baum, Fels, Lagerstätte und Kräuterfeld.',
-          },
-        },
-        {
-          table: {
-            head: ['Erfahrung', 'Ohne Werkzeug', 'Holz', 'Eisen'],
-            rows: [
-              ['0%', '{{tool.casts.0.bare}}', '{{tool.casts.0.wooden}}', '{{tool.casts.0.iron}}'],
-              ['20%', '{{tool.casts.20.bare}}', '{{tool.casts.20.wooden}}', '{{tool.casts.20.iron}}'],
-              ['40%', '{{tool.casts.40.bare}}', '{{tool.casts.40.wooden}}', '{{tool.casts.40.iron}}'],
-              ['60%', '{{tool.casts.60.bare}}', '{{tool.casts.60.wooden}}', '{{tool.casts.60.iron}}'],
-              ['80-100%', '{{tool.casts.80.bare}}', '{{tool.casts.80.wooden}}', '{{tool.casts.80.iron}}'],
-            ],
-            num: [1, 2, 3],
-            foot: 'Würfe je 1 Fisch.',
+            foot: 'Arbeitsschläge an Baum, Fels, Lagerstätte und Kräuterfeld. Erfahrung zieht davon ihre Arbeitsschläge ab, aber mindestens 1 bleibt immer: [[article:exp-work|Arbeitserfahrung]].',
           },
         },
         {
@@ -511,19 +470,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Stücke je Charge in der Werkstatt',
         },
         {
-          table: {
-            head: ['Erfahrung', 'Ohne Werkzeug', 'Holz', 'Eisen'],
-            rows: [
-              ['0%', '{{tool.output.0.bare}}', '{{tool.output.0.wooden}}', '{{tool.output.0.iron}}'],
-              ['20%', '{{tool.output.20.bare}}', '{{tool.output.20.wooden}}', '{{tool.output.20.iron}}'],
-              ['40%', '{{tool.output.40.bare}}', '{{tool.output.40.wooden}}', '{{tool.output.40.iron}}'],
-              ['60%', '{{tool.output.60.bare}}', '{{tool.output.60.wooden}}', '{{tool.output.60.iron}}'],
-              ['80%', '{{tool.output.80.bare}}', '{{tool.output.80.wooden}}', '{{tool.output.80.iron}}'],
-              ['100%', '{{tool.output.100.bare}}', '{{tool.output.100.wooden}}', '{{tool.output.100.iron}}'],
-            ],
-            num: [1, 2, 3],
-            foot: 'Für ein Rezept mit 1 Stück, bei einem Rezept mit 2 Stück verdoppelt sich der Bonus. Zutaten und Arbeitszeit bleiben gleich. Erfahrung wirkt auch beim Schlachten.',
-          },
+          p: 'Werkzeug gibt jeder Charge einen festen Bonus: Holzwerkzeug +{{tool.bonus.wooden}}, Eisenwerkzeug +{{tool.bonus.iron}} Stück. Er kommt zum Bonus aus der Erfahrung hinzu, den [[article:exp-work|Arbeitserfahrung]] zeigt. Bei einem Rezept mit 2 Stück verdoppelt sich der Bonus. Zutaten und Arbeitszeit bleiben gleich.',
         },
         {
           p: 'Bruchteile von Stücken summieren sich. Sobald ein volles Stück zusammen ist, kommt es in den Vorrat, auch über die Kapazität hinaus.',
@@ -549,20 +496,7 @@ export const ECONOMY: ArticleGroup = {
       lead: 'Ein Träger ohne Karren trägt {{haul.carry}} Stück auf einmal. An einer Stelle am Boden passen bis zu {{haul.groundStack}} Stück einer Ware.',
       blocks: [
         {
-          h: 'Kapazität',
-        },
-        {
-          table: {
-            head: ['Gebäude', 'Stück je Ware'],
-            rows: [
-              ['[[building:stock_00|Lagerhaus 1]]', '{{haul.store1}}'],
-              ['[[building:stock_01|Lagerhaus 2]]', '{{haul.store2}}'],
-              ['[[building:stock_02|Lagerhaus 3]]', '{{haul.store3}}'],
-              ['[[building:headquarters|Hauptquartier]]', '{{haul.hq}}'],
-            ],
-            num: [1],
-            foot: 'Jedes dieser Gebäude nimmt je {{haul.storeSeats}} [[job:carrier|Träger]], Abbauer, Fischer und Jäger auf.',
-          },
+          p: 'Wie viel ein Lager fasst und wie viele Leute darin arbeiten, steht auf den Karten von [[building:stock_00|Lagerhaus 1]], [[building:stock_01|2]], [[building:stock_02|3]] und [[building:headquarters|Hauptquartier]].',
         },
         {
           h: 'Vorrang',
@@ -583,16 +517,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Karren',
         },
         {
-          table: {
-            head: ['Träger', 'Stück je Fahrt', 'Langsamer, wenn voll'],
-            rows: [
-              ['Ohne Karren', '{{haul.carry}}', '-'],
-              ['Mit [[good:handcart|Handkarren]]', '{{haul.handcart}}', '{{haul.handcartLossPct}}%'],
-              ['Mit [[good:oxcart|Ochsenkarren]]', '{{haul.oxcart}}', '{{haul.oxcartLossPct}}%'],
-            ],
-            num: [1, 2],
-            foot: 'Je kleiner die Ladung, desto weniger bremst der Karren. Die Karren des [[job:trader|Händlers]] verhalten sich genauso.',
-          },
+          p: 'Mit Karren nimmt ein Träger je Fahrt so viel mit, wie der Karren fasst: [[vehicle:handcart|Handkarren]], [[vehicle:oxcart|Ochsenkarren]]. Wie stark Ladung den Karren bremst: [[article:vehicles|Fahrzeuge und Schiffe]].',
         },
         {
           list: [
@@ -605,7 +530,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Haufen am Boden',
         },
         {
-          p: 'Ein Haufen am Boden gehört niemandem, jeder darf ihn nehmen. Ein Träger sammelt Haufen bis {{flag.radius}} Hexfelder um sein Gebäude auf, mit Arbeitsfahne bis {{flag.radius}} Hexfelder um die Fahne.',
+          p: 'Ein Haufen am Boden gehört niemandem, jeder darf ihn nehmen. Wo ein Träger Haufen aufsammelt: [[article:work-flag|Arbeitsfahne]].',
         },
       ],
       see: [
@@ -825,16 +750,16 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Gelände', 'Mit Schuhen', 'Barfuß', 'Schritte je Paar Schuhe'],
+            head: ['Gelände', 'Barfuß', 'Schritte je Paar Schuhe'],
             rows: [
-              ['Straße, Pflaster', '{{step.road}} s', '{{step.roadBare}} s', '{{shoes.road}}'],
-              ['Land', '{{step.land}} s', '{{step.landBare}} s', '{{shoes.land}}'],
-              ['Sand, Strand, Steinwüste', '{{step.sand}} s', '{{step.sandBare}} s', '{{shoes.sand}}'],
-              ['Gebirge', '{{step.mountain}} s', '{{step.mountainBare}} s', '{{shoes.mountain}}'],
-              ['Schnee', '{{step.snow}} s', '{{step.snowBare}} s', '{{shoes.snow}}'],
+              ['Straße, Pflaster', '{{step.roadBare}} s', '{{shoes.road}}'],
+              ['Land', '{{step.landBare}} s', '{{shoes.land}}'],
+              ['Sand, Strand, Steinwüste', '{{step.sandBare}} s', '{{shoes.sand}}'],
+              ['Gebirge', '{{step.mountainBare}} s', '{{shoes.mountain}}'],
+              ['Schnee', '{{step.snowBare}} s', '{{shoes.snow}}'],
             ],
-            num: [1, 2, 3],
-            foot: 'Mit Last in den Händen nutzen sich Schuhe {{shoes.carryWear}} Mal schneller ab. Wie viel Energie Barfußgehen kostet: [[article:needs|Bedürfnisse]].',
+            num: [1, 2],
+            foot: 'Den Schritt mit Schuhen auf jedem Gelände zeigt [[article:roads|Straßen und Wegweiser]]. Mit Last in den Händen nutzen sich Schuhe {{shoes.carryWear}} Mal schneller ab. Wie viel Energie Barfußgehen kostet: [[article:needs|Bedürfnisse]].',
           },
         },
         {
@@ -851,10 +776,8 @@ export const ECONOMY: ArticleGroup = {
               ['Waffe und Rüstung wiegen zusammen 2-3', '+{{step.weightLowExtra}} s'],
               ['Waffe und Rüstung wiegen zusammen 4-5', '+{{step.weightHighExtra}} s'],
               ['[[good:amulet_speed|Windamulett]]', '-{{step.amuletSaved}} s'],
-              ['Voller [[good:handcart|Handkarren]]', '{{haul.handcartLossPct}}% langsamer'],
-              ['Voller [[good:oxcart|Ochsenkarren]]', '{{haul.oxcartLossPct}}% langsamer'],
             ],
-            foot: 'Ein Schritt dauert nie weniger als {{step.shortest}} s. Je kleiner die Ladung, desto weniger bremst der Karren. Helden bremst das Gewicht nicht.',
+            foot: 'Ein Schritt dauert nie weniger als {{step.shortest}} s. Helden bremst das Gewicht nicht. Wie stark ein Karren bremst: [[article:vehicles|Fahrzeuge und Schiffe]].',
           },
         },
         {
@@ -869,11 +792,8 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:spear_iron|Eisenspeer]], [[good:sword_long|Langschwert]]', '{{weight.ironSpear}}'],
             ],
             num: [1],
-            foot: 'Bei allen Stämmen gleich. Rechne das Waffengewicht zum Rüstungsgewicht aus der Tabelle unten hinzu.',
+            foot: 'Bei allen Stämmen gleich. Rechne das Waffengewicht zum Rüstungsgewicht aus der Tabelle Rüstungen hinzu: [[article:damage|Waffen, Rüstung und Schaden]].',
           },
-        },
-        {
-          data: 'armour',
         },
         {
           h: 'Beispiele',
@@ -884,13 +804,19 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               ['Träger, mit Schuhen, mit Ware', 'Straße', '{{step.carrierOnRoad}} s'],
               ['Soldat, Langschwert, Plattenrüstung, mit Schuhen', 'Land', '{{step.plateSoldierOnLand}} s'],
-              ['Händler, mit Schuhen, voller Handkarren', 'Land', '{{step.traderFullCart}} s'],
             ],
             num: [2],
           },
         },
       ],
-      see: ['good:shoes', 'good:amulet_speed', 'article:roads', 'article:needs', 'article:vehicles'],
+      see: [
+        'good:shoes',
+        'good:amulet_speed',
+        'article:roads',
+        'article:needs',
+        'article:vehicles',
+        'article:damage',
+      ],
     },
     {
       id: 'trade',
@@ -909,7 +835,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:oxcart|Ochsenkarren]]', '{{trade.oxcartSeconds}} s'],
             ],
             num: [1],
-            foot: 'Kapazität und Tempoverlust: [[article:hauling|Träger und Lager]].',
+            foot: 'Wie viel ein Karren fasst, steht auf seiner Karte, wie stark er bremst, unter [[article:vehicles|Fahrzeuge und Schiffe]].',
           },
         },
         {

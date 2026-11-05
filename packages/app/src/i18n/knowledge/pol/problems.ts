@@ -19,7 +19,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Płatnerz, Kowal albo Krawiec nie pracuje',
-              'Pewnie ma 0% Religii w "Samopoczucie". Każda broń i zbroja kosztuje {{piety.lowPct}}% albo {{piety.highPct}}% Religii, a modlitwa daje {{pray.pct}}%. Komunikat "Chce się modlić" znaczy, że nie ma gdzie się modlić: potrzebna [[building:work_temple|Świątynia]], [[building:headquarters|Kwatera główna]] albo święty ogień w domu. Więcej: [[article:religion|Religia i świątynia]].',
+              'Pewnie ma 0% Religii w "Samopoczucie", bo broń i zbroja kosztują Religię. Komunikat "Chce się modlić" znaczy, że nie ma gdzie się modlić: potrzebna [[building:work_temple|Świątynia]], [[building:headquarters|Kwatera główna]] albo święty ogień w domu. Ile kosztuje każdy wyrób: [[article:religion|Religia i świątynia]].',
             ],
             [
               'Tragarze nic nie noszą',
@@ -42,7 +42,7 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Nie rodzą się dzieci',
-              'Para potrzebuje wspólnego domu i {{family.childFood}} sztuk jedzenia w spiżarni. Komunikat mówi, czego brak: "Para bez domu", "Dom w budowie", "Osobne domy", "Brak jedzenia". "Mąż nie wraca" oznacza, że mąż jest Kupcem, Zwiadowcą, żołnierzem albo bohaterem i nie wraca do domu. Dzieci możesz też zamówić licznikiem "Narodziny" w Asystencie. Więcej: [[article:family|Rodzina i dom]].',
+              'Para potrzebuje wspólnego domu i {{family.childFood}} sztuk jedzenia w spiżarni. Komunikat mówi, czego brak: "Para bez domu", "Dom w budowie", "Osobne domy", "Brak jedzenia". "Mąż nie wraca" oznacza, że mąż jest Kupcem, Zwiadowcą, żołnierzem albo bohaterem i nie wraca do domu. Dzieci możesz też zamówić licznikami "Córki" i "Synowie" w [[article:assistant|Asystencie]]. Więcej: [[article:family|Rodzina i dom]].',
             ],
             [
               'Głód przy pełnym magazynie',

@@ -30,14 +30,8 @@ export const MILITARY: ArticleGroup = {
               ],
               ['Cios w bok z tyłu', '×{{combat.backSideFactor}}'],
               ['Cios od tyłu', '×{{combat.behindFactor}}'],
-              ['[[good:amulet_strength|Amulet Siły]] atakującego', '×{{amulet.strengthFactor}}'],
-              [
-                '[[good:amulet_crithit|Amulet Precyzji]] atakującego',
-                '{{amulet.critChancePct}}% szans na ×{{amulet.critFactor}}',
-              ],
-              ['[[good:amulet_defense|Amulet Obrony]] celu', '×{{amulet.defenseFactor}}'],
             ],
-            foot: 'Cios z przodu i w bok z przodu nie zmienia obrażeń.',
+            foot: 'Cios z przodu i w bok z przodu nie zmienia obrażeń. Amulety Siły, Precyzji i Obrony: [[article:draughts|Napoje i amulety]].',
           },
         },
         {
@@ -53,11 +47,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Różnice plemion',
         },
         {
-          list: [
-            'U Saracenów [[good:bow_short|Krótki Łuk]] zadaje Tunice {{saracen.bowOnWool}} zamiast {{viking.bowOnWool}}, Kolczudze i Płytowej {{saracen.bowOnChain}} zamiast {{viking.bowOnChain}}.',
-            'U Bizantyjczyków w wierszu [[good:spear_wooden|Drewnianej Włóczni]] tabela pokazuje Smoka z mapy. Ma {{dragon.hitpoints}} zdrowia, zasięg {{dragon.min}}-{{dragon.max}} i zadaje {{dragon.blows}} ciosów co {{dragon.seconds}} s, po {{dragon.bare}} bez pancerza. Wyszkolony Włócznik walczy tak samo jak w innych plemionach.',
-            'Pozostała broń działa tak samo we wszystkich plemionach.',
-          ],
+          p: 'Tabela liczy broń plemienia, którego herb wybierzesz u góry okna. Smok, którego u Bizantyjczyków pokazuje wiersz [[good:spear_wooden|Drewnianej Włóczni]], ma {{dragon.hitpoints}} zdrowia.',
         },
         {
           h: 'Pancerze',
@@ -85,27 +75,7 @@ export const MILITARY: ArticleGroup = {
       lead: 'Wojsko uzbrajasz licznikami w oknie Asystenta. Pojedynczemu osadnikowi zmieniasz wyposażenie w jego panelu.',
       blocks: [
         {
-          h: 'Liczniki',
-        },
-        {
-          table: {
-            head: ['Licznik', 'Co robi', 'Kiedy maleje'],
-            rows: [
-              ['"Żołnierze bez broni"', 'Szkoli w Koszarach, broni nie wydaje', 'Po szkoleniu'],
-              [
-                '"Miecznicy", "Włócznicy", "Łucznicy"',
-                'Najpierw uzbraja żołnierza bez broni, potem szkoli nowego',
-                'Gdy wojownik weźmie broń',
-              ],
-            ],
-            foot: 'Kogo wysyła do Koszar: [[article:assistant|Asystent]].',
-          },
-        },
-        {
-          list: [
-            'Dopóki żołnierz bez broni czeka na broń, licznik nie szkoli nowego, nawet gdy broni długo nie ma.',
-            'Żołnierz bez broni idzie po nią, gdy broń tego rodzaju leży w jego zasięgu i nikt inny na nią nie czeka.',
-          ],
+          p: 'Liczniki wojska i pobór do Koszar opisuje [[article:assistant|Asystent]].',
         },
         {
           h: 'Paski Broń i Zbroja',
@@ -148,7 +118,7 @@ export const MILITARY: ArticleGroup = {
               ['[[good:coin|Moneta]]', '{{barracks.coinStock}}'],
             ],
             num: [1],
-            foot: 'Koszary mają {{barracks.carriers}} miejsca dla Tragarzy. Towar, któremu nadasz priorytet, sami przywożą z magazynów: [[article:hauling|Tragarze i magazyny]].',
+            foot: 'Towar, któremu nadasz priorytet, Tragarze Koszar sami przywożą z magazynów: [[article:hauling|Tragarze i magazyny]].',
           },
         },
         {
@@ -170,14 +140,13 @@ export const MILITARY: ArticleGroup = {
             'Nowa broń od razu zmienia rodzaj żołnierza. Po zdjęciu broni zostaje zwykłym [[job:soldier_unarmed|Żołnierzem]].',
             'Przy wymianie albo zdjęciu znoszone Buty, używane narzędzia i napoczęte butelki przepadają. Nieużywane wracają do magazynu.',
             'Broń, pancerz i amulety się nie zużywają i zawsze wracają do magazynu.',
-            'Twój rozkaz dla jednej osoby ma pierwszeństwo przed ustawieniami Asystenta.',
           ],
         },
         {
           h: 'Kto może nosić lepszą broń',
         },
         {
-          p: 'Każdy żołnierz weźmie z magazynu każdą broń, bez względu na doświadczenie. Ograniczenie dotyczy wyrobu: [[good:spear_iron|Żelazną Włócznię]] i [[good:sword_long|Długi Miecz]] zrobi tylko doświadczony [[job:smith|Kowal]], a [[good:bow_long|Długi Łuk]] tylko doświadczony [[job:armorer|Płatnerz]]. Ile doświadczenia potrzeba: [[article:exp-combat|Doświadczenie w walce]].',
+          p: 'Każdy żołnierz weźmie z magazynu każdą broń, bez względu na doświadczenie. Ograniczenie dotyczy wyrobu: [[good:spear_iron|Żelazną Włócznię]] i [[good:sword_long|Długi Miecz]] zrobi tylko doświadczony [[job:smith|Kowal]], a [[good:bow_long|Długi Łuk]] tylko doświadczony [[job:armorer|Płatnerz]]. Ile doświadczenia potrzeba, podaje karta każdej z tych broni.',
         },
       ],
       see: [
@@ -198,46 +167,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Broń', 'Zasięg', 'Zasięg na wieży', 'Podchodzi do celu na', 'Strzał co'],
+            head: ['Broń', 'Zasięg na wieży', 'Podchodzi do celu na'],
             rows: [
-              [
-                '[[good:bow_short|Krótki Łuk]]',
-                '{{shortBow.min}}-{{shortBow.max}}',
-                '0-{{shortBow.towerMax}}',
-                '{{shortBow.standoff}}',
-                '{{shortBow.seconds}} s',
-              ],
-              [
-                '[[good:bow_long|Długi Łuk]]',
-                '{{longBow.min}}-{{longBow.max}}',
-                '0-{{longBow.towerMax}}',
-                '{{longBow.standoff}}',
-                '{{longBow.seconds}} s',
-              ],
-              [
-                '[[job:hunter|Myśliwy]]',
-                '{{hunterBow.min}}-{{hunterBow.max}}',
-                '-',
-                '-',
-                '{{hunterBow.seconds}} s',
-              ],
-              [
-                '[[job:heroine_bow_xena|Cyra]]',
-                '{{heroBow.min}}-{{heroBow.max}}',
-                '-',
-                '{{heroBow.standoff}}',
-                '{{heroBow.seconds}} s',
-              ],
-              [
-                '[[building:catapult|Katapulta]]',
-                '{{catapult.min}}-{{catapult.max}}',
-                '-',
-                '{{catapult.bandMin}}-{{catapult.max}}',
-                '{{catapult.seconds}} s',
-              ],
+              ['[[good:bow_short|Krótki Łuk]]', '0-{{shortBow.towerMax}}', '{{shortBow.standoff}}'],
+              ['[[good:bow_long|Długi Łuk]]', '0-{{longBow.towerMax}}', '{{longBow.standoff}}'],
+              ['[[job:heroine_bow_xena|Cyra]]', '-', '{{heroBow.standoff}}'],
             ],
-            num: [1, 2, 3, 4],
-            foot: 'Zasięg w hexach. Do celu bliżej niż dolna granica zasięgu łucznik nie strzela.',
+            num: [1, 2],
+            foot: 'Zasięg w hexach. Zwykły zasięg i tempo strzałów, także Łuku myśliwego i Katapulty, pokazuje tabela w [[article:damage|Broń, pancerz i obrażenia]]. Do celu bliżej niż dolna granica zasięgu łucznik nie strzela.',
           },
         },
         {
@@ -412,56 +349,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Bohater', 'Broń', 'Pancerz', 'Zasięg'],
+            head: ['Bohater', 'Broń', 'Pancerz'],
             rows: [
-              [
-                '[[job:hero_spear_siegfried|Sigurd]]',
-                'Włócznia',
-                '[[good:armor_plate|Zbroja Płytowa]]',
-                '{{hero.spearMin}}-{{hero.spearMax}}',
-              ],
-              [
-                '[[job:hero_sword_bjarni|Bjarni]]',
-                'Miecz',
-                '[[good:armor_chain|Kolczuga]]',
-                '{{hero.swordReach}}',
-              ],
-              [
-                '[[job:hero_saber_hatschi|Hatchie]]',
-                'Szabla',
-                '[[good:armor_chain|Kolczuga]]',
-                '{{hero.saberReach}}',
-              ],
-              [
-                '[[job:heroine_bow_xena|Cyra]]',
-                'Łuk',
-                '[[good:armor_leather|Skórzana Zbroja]]',
-                '{{heroBow.min}}-{{heroBow.max}}',
-              ],
+              ['[[job:hero_spear_siegfried|Sigurd]]', 'Włócznia', '[[good:armor_plate|Zbroja Płytowa]]'],
+              ['[[job:hero_sword_bjarni|Bjarni]]', 'Miecz', '[[good:armor_chain|Kolczuga]]'],
+              ['[[job:hero_saber_hatschi|Hatchie]]', 'Szabla', '[[good:armor_chain|Kolczuga]]'],
+              ['[[job:heroine_bow_xena|Cyra]]', 'Łuk', '[[good:armor_leather|Skórzana Zbroja]]'],
             ],
-            num: [3],
-            foot: 'Bohater uderza co {{hero.blowSeconds}} s. Obrażenia pokazuje tabela w [[article:damage|Broń, pancerz i obrażenia]] po włączeniu Bohaterów.',
-          },
-        },
-        {
-          h: 'Różnice plemion',
-        },
-        {
-          table: {
-            head: ['Bohater', 'Plemię', 'Różnica'],
-            rows: [
-              ['Sigurd', 'Egipcjanin', 'Na Kolczugę zadaje {{hero.sigurdEgyptChain}}'],
-              [
-                'Hatchie',
-                'Saracen',
-                '{{hero.hatchieSaracenBlows}} ciosy co {{hero.hatchieSaracenSeconds}} s',
-              ],
-              [
-                'Cyra',
-                'Frank',
-                'Zasięg {{frankHeroBow.min}}-{{frankHeroBow.max}}, strzał co {{frankHeroBow.seconds}} s. Obrażenia: bez pancerza {{hero.frankBowBare}}, Tunika i Skórzana {{hero.frankBowWool}}, Kolczuga i Płytowa {{hero.frankBowChain}}, budynek i pojazd {{hero.frankBowVehicle}}',
-              ],
-            ],
+            foot: 'Zasięg, tempo ciosów i obrażenia pokazuje tabela w [[article:damage|Broń, pancerz i obrażenia]] po włączeniu Bohaterów. Bohaterowie innego plemienia walczą trochę inaczej: wybierz jego herb u góry okna.',
           },
         },
         {
@@ -508,44 +403,22 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Budynek', 'Miejsca', 'Strzały na sekundę', 'Posterunki'],
+            head: ['Budynek', 'Miejsca', 'Strzały na sekundę'],
             rows: [
-              ['[[building:headquarters|Kwatera główna]]', '{{shelter.hq}}', '{{shelter.hqShots}}', '-'],
-              [
-                '[[building:tower_01|Wieża obronna 2]]',
-                '{{shelter.tower2}}',
-                '{{shelter.tower2Shots}}',
-                '{{tower2.posts}} Krótki Łuk, {{tower2.longPosts}} Długi Łuk',
-              ],
-              [
-                '[[building:tower_00|Wieża obronna 1]]',
-                '{{shelter.tower1}}',
-                '{{shelter.tower1Shots}}',
-                '{{tower1.posts}} Krótki Łuk, {{tower1.longPosts}} Długi Łuk',
-              ],
-              ['[[building:barracks|Koszary]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}', '-'],
+              ['[[building:headquarters|Kwatera główna]]', '{{shelter.hq}}', '{{shelter.hqShots}}'],
+              ['[[building:tower_01|Wieża obronna 2]]', '{{shelter.tower2}}', '{{shelter.tower2Shots}}'],
+              ['[[building:tower_00|Wieża obronna 1]]', '{{shelter.tower1}}', '{{shelter.tower1Shots}}'],
+              ['[[building:barracks|Koszary]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}'],
             ],
             num: [1, 2],
-            foot: 'Strzały na sekundę przy pełnym budynku. Posterunki nie zajmują miejsc dla schowanych. Łucznik zatrudniony w wieży strzela sam, bez alarmu: [[article:aim|Trafienie i strzelanie]].',
+            foot: 'Strzały na sekundę przy pełnym budynku. Posterunki łuczników, które pokazuje karta wieży, nie zajmują miejsc dla schowanych. Łucznik zatrudniony w wieży strzela sam, bez alarmu: [[article:aim|Trafienie i strzelanie]].',
           },
         },
         {
           h: 'Strzały z budynku',
         },
         {
-          table: {
-            head: ['Cel', 'Strzała'],
-            rows: [
-              ['Bez pancerza', '{{arrow.bare}}'],
-              ['Tunika', '{{arrow.wool}}'],
-              ['Skórzana', '{{arrow.leather}}'],
-              ['Kolczuga, Płytowa', '{{arrow.chain}}'],
-              ['Pojazd', '{{arrow.vehicle}}'],
-              ['Budynek', '{{arrow.building}}'],
-            ],
-            num: [1],
-            foot: 'Tak samo w każdym plemieniu. Kierunek ciosu i Amulet Obrony mogą to zmienić: [[article:damage|Broń, pancerz i obrażenia]].',
-          },
+          p: 'Ile zabiera jedna strzała, pokazuje wiersz "Strzały z budynku" w tabeli [[article:damage|Broń, pancerz i obrażenia]].',
         },
         {
           list: [
@@ -560,24 +433,23 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Wieża', 'Miejsca Tragarzy', 'Miód Pitny', 'Żywność', 'Każdej broni'],
+            head: ['Wieża', 'Miód Pitny', 'Żywność', 'Każdej broni'],
             rows: [
               [
                 '[[building:tower_00|Wieża obronna 1]]',
-                '{{tower1.carriers}}',
                 '{{tower1.mead}}',
                 '{{tower1.food}}',
                 '{{tower1.weapon}}',
               ],
               [
                 '[[building:tower_01|Wieża obronna 2]]',
-                '{{tower2.carriers}}',
                 '{{tower2.mead}}',
                 '{{tower2.food}}',
                 '{{tower2.weapon}}',
               ],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
+            foot: 'Posterunki i miejsca Tragarzy pokazuje karta wieży.',
           },
         },
         {
@@ -726,7 +598,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Mur obronny',
         },
         {
-          p: '[[building:work_pottery_02|Mur obronny]] to zwykły budynek: {{wall.defenceHp}} zdrowia, obrażenia z kolumny Budynek. Żołnierz traktuje go jak palisadę.',
+          p: '[[building:work_pottery_02|Mur obronny]] to zwykły budynek i dostaje obrażenia z kolumny Budynek. Żołnierz traktuje go jak palisadę.',
         },
       ],
       see: [
@@ -749,38 +621,13 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
-          table: {
-            head: ['Cecha', 'Wartość'],
-            rows: [
-              ['Zasięg', '{{catapult.min}}-{{catapult.max}} hexy'],
-              ['Strzał co', '{{catapult.seconds}} s'],
-              ['Zdrowie', '{{catapult.hitpoints}}'],
-              ['Załoga', '1 żołnierz albo bohater, z dowolną bronią'],
-              [
-                'Koszt',
-                '[[building:catapult|Katapulta]]: {{catapult.wood}} [[good:wood|Drewno]], {{catapult.iron}} [[good:iron|Żelazo]]',
-              ],
-            ],
-            foot: 'Bez dowódcy Katapulta nie rusza się i nie strzela. Kamienie nic nie kosztują.',
-          },
+          p: 'Katapultę prowadzi 1 żołnierz albo bohater, z dowolną bronią. Bez dowódcy nie rusza się i nie strzela. Kamienie nic nie kosztują. Zdrowie, zasięg, tempo strzałów i koszt pokazuje karta [[building:catapult|Katapulty]].',
         },
         {
           h: 'Kamień',
         },
         {
-          table: {
-            head: ['Cel', 'Obrażenia', 'Kamienie do zniszczenia'],
-            rows: [
-              ['Bez pancerza', '{{stone.bare}}', '{{stone.bareKills}}'],
-              ['Skórzana', '{{stone.leather}}', '{{stone.leatherKills}}'],
-              ['Tunika', '{{stone.wool}}', '{{stone.woolKills}}'],
-              ['Kolczuga, Płytowa', '{{stone.chain}}', '{{stone.chainKills}}'],
-              ['Katapulta', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
-              ['Budynek', '{{stone.building}}', '{{stone.tower1}}-{{stone.frankHq}}'],
-            ],
-            num: [2],
-            foot: 'Obrażenia dla człowieka trafionego z przodu, bez amuletów. Palisada: [[article:walls|Palisady i bramy]].',
-          },
+          p: 'Ile kamień zabiera ludziom, pojazdom i budynkom, pokazuje wiersz Katapulty w tabeli [[article:damage|Broń, pancerz i obrażenia]]. Palisada liczy to inaczej: [[article:walls|Palisady i bramy]].',
         },
         {
           table: {
