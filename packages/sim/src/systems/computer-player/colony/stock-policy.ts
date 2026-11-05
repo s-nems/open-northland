@@ -11,6 +11,7 @@ import { toolHelpsJob } from '../../settlers/planner/assistant-grants.js';
 import { stockAtBuildings } from '../../stores/index.js';
 import { sitesShortfalls } from '../build-order/upgrade-supply.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER, FOOD_SHORT_UNITS_PER_SETTLER } from '../workforce/food.js';
+import type { SeatSupply } from '../workforce/supply.js';
 import { colonists, colonyOrigin } from './founding.js';
 import { foodGood, homeSpare, homeSupply, workshopShelves } from './home-supply.js';
 import { chainStepOf } from './industry.js';
@@ -347,10 +348,12 @@ function heldByForm(env: ColonyEnv, buildings: readonly Entity[]): Map<number, n
  * before home's reaches comfort; a managed good at its comfort line past its sites, a settler good for its
  * own people who lack it, and a workshop input its own shelves.
  */
-function homeKeepOf(env: SeatEnv): (good: number) => number {
+function homeKeepOf(
+  env: SeatEnv,
+  supply: SeatSupply,
+  spare: (good: number) => number,
+): (good: number) => number {
   const { world, ctx, seat } = env;
-  const supply = homeSupply(env);
-  const spare = homeSpare(env, supply);
   const food = foodGood(ctx);
   const people = homeSettlers(world, ctx, seat);
   let shelves: Map<number, number> | undefined;
@@ -390,7 +393,8 @@ export function colonyStockReadsOf(env: ColonyEnv): ColonyStockReads {
   const plainFloor = byType(ctx, Object.entries(COLONY_BUILDING_FLOOR));
   const buildingFloor = new Map(plainFloor);
   raise(buildingFloor, owed);
-  const spare = homeSpare(env, homeSupply(env));
+  const supply = homeSupply(env);
+  const spare = homeSpare(env, supply);
   const held = heldByForm(env, buildings);
   return {
     buildingFloor,
@@ -401,7 +405,7 @@ export function colonyStockReadsOf(env: ColonyEnv): ColonyStockReads {
     makes: colonyMade(env, buildings, people),
     held,
     keptOnColony: keptOnColony(env, buildings),
-    homeKeep: homeKeepOf(env),
+    homeKeep: homeKeepOf(env, supply, spare),
     homeWants: homeWantsOf(env),
     siteLack: lacking,
   };

@@ -76,10 +76,18 @@ function stepOf(env: ColonyEnv, stall: DeepReadonly<ColonyStall>): BuildOrderEnt
   return order.lines.find((line) => line.id === stall.line)?.steps[stall.step];
 }
 
+/** What home can spare of a good, read once per review however many stalls ask. */
+type HomeSpareRead = () => (good: number) => number;
+
 /** Whether every input of one of `type`'s recipes has a source: a deposit in the colony's reach or home's
  *  surplus. */
-function inputsSourced(env: ColonyEnv, origin: HalfCellNode, type: BuildingType): boolean {
-  const spare = homeSpare(env, homeSupply(env));
+function inputsSourced(
+  env: ColonyEnv,
+  origin: HalfCellNode,
+  type: BuildingType,
+  homeSpareNow: HomeSpareRead,
+): boolean {
+  const spare = homeSpareNow();
   const sourced = (good: number): boolean => spare(good) > 0 || landHolds(env, origin, good);
   return type.recipes.length === 0 || type.recipes.some((r) => r.inputs.every((i) => sourced(i.goodType)));
 }
@@ -89,6 +97,7 @@ function handedType(
   env: ColonyEnv,
   colony: ColonyView,
   entry: BuildOrderEntry | undefined,
+  homeSpareNow: HomeSpareRead,
 ): BuildingType | undefined {
   if (entry?.kind !== 'place' || entry.role !== undefined || entry.ground !== undefined) return undefined;
   if (!OVERFLOW_BUILDING_IDS.has(entry.building)) return undefined;
@@ -98,7 +107,7 @@ function handedType(
   const origin = colonyOrigin(env, colony, colonyBuildings(env));
   const tribe = playerPlacementTribes(env.world, env.seat)?.[0];
   if (type === undefined || origin === null || tribe === undefined) return undefined;
-  if (!inputsSourced(env, origin, type)) return undefined;
+  if (!inputsSourced(env, origin, type, homeSpareNow)) return undefined;
   return workshopSpot(env, colony.land, type, tribe, origin) === null ? undefined : type;
 }
 
@@ -117,9 +126,11 @@ function takenBySibling(env: ColonyEnv, stall: DeepReadonly<ColonyStall>): boole
 function handOver(env: ColonyEnv, colony: ColonyView): void {
   const { ctx } = env;
   if (colony.builds.some((b) => !b.placed && OVERFLOW_BUILDING_IDS.has(b.building))) return;
+  let spare: ((good: number) => number) | undefined;
+  const homeSpareNow: HomeSpareRead = () => (spare ??= homeSpare(env, homeSupply(env)));
   for (const stall of colony.stalls) {
     if (ctx.tick - stall.since < HELD_FOR_GROUND_TICKS || takenBySibling(env, stall)) continue;
-    const type = handedType(env, colony, stepOf(env, stall));
+    const type = handedType(env, colony, stepOf(env, stall), homeSpareNow);
     if (type === undefined) continue;
     const live = env.edit();
     live.overflow.push({ line: stall.line, step: stall.step, building: type.id });
