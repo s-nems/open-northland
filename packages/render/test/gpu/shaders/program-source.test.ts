@@ -9,6 +9,7 @@ useHeadlessShaderContext();
 // backend without the extension, so only this test sees the merged weather pass's compiled text.
 it('keeps an extension directive right under the version line, however often the program is asked for', () => {
   const first = glProgramFor(WEATHER_AIR_SOURCE).fragment;
+  if (first === undefined) throw new Error('expected the merged pass’s fragment text');
   expect(first.startsWith('#version 300 es\n#extension GL_EXT_blend_func_extended : require\n')).toBe(true);
   expect(first.match(/#extension/g)).toHaveLength(1);
   expect(glProgramFor(WEATHER_AIR_SOURCE).fragment).toBe(first);
