@@ -44,6 +44,7 @@ export function seatSpotAcceptor(
   player: number,
   buildingTypeId: number,
   tribe: number,
+  withinReach = true,
 ): SpotAcceptor {
   const acceptor = spotAcceptor(
     world,
@@ -53,6 +54,7 @@ export function seatSpotAcceptor(
     buildingTypeId,
     tribe,
     seatDepositKept(world, ctx, player),
+    withinReach,
   );
   const plotted = plottedNodes(world, ctx, terrain, player, buildingTypeId);
   if (plotted === null) return acceptor;

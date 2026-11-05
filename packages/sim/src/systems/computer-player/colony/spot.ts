@@ -36,11 +36,13 @@ export function colonyBuildings(env: ColonyEnv): readonly Entity[] {
 const WORKSHOP_SPOT_NODES = 100;
 
 /** A search other than the walk range's: its reach of what stands, the signposts that make it walkable,
- *  and the goods search of the store its builders fetch the bill from. */
+ *  the goods search of the store its builders fetch the bill from, and `ahead` for land the seat's people
+ *  have not landed on, judged without the site reach their landing brings. */
 interface FarGround {
   readonly reachNodes?: number;
   readonly limit?: NavigationLimit | null;
   readonly supply?: NavigationLimit | null;
+  readonly ahead?: boolean;
 }
 
 /** The goods search from the store at `at`: builders fetch a site's bill only from a store whose search
@@ -83,7 +85,7 @@ export function colonySpot(
   const owned = colonyBuildings(env);
   const reach = buildReach(world, owned, anchor, far?.reachNodes ?? COLONY_REACH_NODES);
   const { underFire } = seatSiege(world, ctx, terrain, seat, owned);
-  const acceptor = seatSpotAcceptor(world, ctx, terrain, seat, type.typeId, tribe);
+  const acceptor = seatSpotAcceptor(world, ctx, terrain, seat, type.typeId, tribe, far?.ahead !== true);
   const regions = routeRegions(world, ctx, terrain);
   const from = terrain.nodeAtClamped(anchor.hx, anchor.hy);
   const walled = regions.pocketed(from) ? null : regions;
@@ -136,6 +138,8 @@ const SHORE_GRASS_DIVISOR = 8;
  *  carry cargo into a warehouse only that near the door. */
 export const STORE_SHORE_NODES = VEHICLE_CARGO_SEARCH_RADIUS;
 
+const AHEAD_OF_LANDING: FarGround = { ahead: true };
+
 /** How a shore serves a colony (owner ruling): room for homes round the warehouse spot it gives first, then
  *  open ground, resources in gatherers' reach, grass and fish round the shore. */
 function shoreScore(
@@ -180,7 +184,8 @@ function shoreScore(
 
 /** The best of `shores` with room for a store within {@link STORE_SHORE_NODES}, its room counted round the
  *  nearest such spot, where the founding places the store. The first best on a tie. Null also for a seat
- *  with no tribe or a content with no store. */
+ *  with no tribe or a content with no store. Judged before the party lands, so without the site reach: the
+ *  store is placed once its people stand on the shore, well inside their reach. */
 export function shoreWithStore(
   env: ColonyEnv,
   land: number,
@@ -193,7 +198,7 @@ export function shoreWithStore(
   let best: HalfCellNode | null = null;
   let bestScore = -1;
   for (const at of shores) {
-    const store = colonySpot(env, land, type, tribe, at, STORE_SHORE_NODES);
+    const store = colonySpot(env, land, type, tribe, at, STORE_SHORE_NODES, 'any', AHEAD_OF_LANDING);
     if (store === null) continue;
     const score = shoreScore(env, land, at, store, tribe);
     if (score <= bestScore) continue;

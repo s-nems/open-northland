@@ -60,6 +60,8 @@ export type DepositKept = (goodType: number, remaining: number) => boolean;
 
 const EVERY_DEPOSIT_KEPT: DepositKept = () => true;
 
+/** `withinReach` off judges a spot without the seat's site reach, for ground none of its people stand on
+ *  yet: a placement there is refused until they do. */
 export function spotAcceptor(
   world: World,
   ctx: SystemContext,
@@ -68,6 +70,7 @@ export function spotAcceptor(
   buildingTypeId: number,
   tribe: number,
   depositKept: DepositKept = EVERY_DEPOSIT_KEPT,
+  withinReach = true,
 ): SpotAcceptor {
   const span = wallSpan(ctx, buildingTypeId, tribe);
   const occupied = new Set<NodeId>(); // an off-grid anchor can never match a candidate, so it is left out
@@ -75,7 +78,16 @@ export function spotAcceptor(
     const node = anchorNodeOf(world, e);
     if (node !== null && terrain.inBounds(node.hx, node.hy)) occupied.add(terrain.nodeAt(node.hx, node.hy));
   }
-  const probe = seatPlacementProbe(world, ctx.content, terrain, ctx.fog, buildingTypeId, tribe, player);
+  const probe = seatPlacementProbe(
+    world,
+    ctx.content,
+    terrain,
+    ctx.fog,
+    buildingTypeId,
+    tribe,
+    player,
+    withinReach,
+  );
   const reserved = buildingFootprintOf(ctx.content, buildingTypeId, tribe)?.reserved;
   const zone = reserved !== undefined && reserved.length > 0 ? reserved : ANCHOR_ONLY;
   const deposits = new Set<number>();
