@@ -5,7 +5,10 @@ import type { Entity } from '../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../src/index.js';
 import { colonyBuildingsOn } from '../../../../src/systems/ai-shared/home-roster.js';
 import { colonyIndustries } from '../../../../src/systems/computer-player/colony/industry-read.js';
-import { colonyStockPolicyOf } from '../../../../src/systems/computer-player/colony/stock-policy.js';
+import {
+  colonyStockPolicy,
+  colonyStockReadsOf,
+} from '../../../../src/systems/computer-player/colony/stock-policy.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { seatArmsStock } from '../../../../src/systems/computer-player/military/outfit.js';
 import {
@@ -179,7 +182,9 @@ describe('a colony with wood and room', () => {
     const env = looseColonyEnv(sim, colony);
     const chosen = colonyIndustries(env, colony, colonyBuildingsOf(sim));
     expect(chosen?.choices.map((c) => c.industry)).toEqual(expect.arrayContaining(['armoury', 'temple']));
-    const oil = colonyStockPolicyOf(env, new Set()).inbound.find((m) => m.good === HOLY_OIL);
+    const oil = colonyStockPolicy({ ...colonyStockReadsOf(env), outboundNow: new Set() }).inbound.find(
+      (m) => m.good === HOLY_OIL,
+    );
     expect(oil?.upTo).toBe(TEMPLE_OIL_UNITS);
   });
 });

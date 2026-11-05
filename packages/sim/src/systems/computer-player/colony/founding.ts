@@ -1,12 +1,4 @@
-import {
-  Building,
-  Livestock,
-  ownerOf,
-  Position,
-  playerPlacementTribes,
-  Rider,
-  Settler,
-} from '../../../components/index.js';
+import { Building, Position, playerPlacementTribes, Rider, Settler } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
@@ -22,7 +14,7 @@ import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { routeRegions } from '../../footprint/index.js';
-import { herdOf } from '../../livestock/index.js';
+import { herdOf, wildStockOf } from '../../livestock/index.js';
 import { isScoutJob, isTraderJob } from '../../readviews/index.js';
 import { playerSeesNode } from '../../vision/gates.js';
 import { HERD_PAIR } from '../herd.js';
@@ -213,10 +205,9 @@ function herdToClaim(env: ColonyEnv, scout: Entity, read: FoundingRead): Entity 
   const sealed = regions.pocketed(from) ? null : regions;
   let danger: ScoutDanger | null = null;
   let best: { readonly animal: Entity; readonly distance: number } | null = null;
-  for (const animal of world.query(Livestock, Position)) {
+  for (const animal of wildStockOf(world)) {
     const node = anchorNodeOf(world, animal);
-    if (node === null || !terrain.inBounds(node.hx, node.hy) || ownerOf(world, animal) !== undefined)
-      continue;
+    if (node === null || !terrain.inBounds(node.hx, node.hy)) continue;
     const cell = terrain.nodeAt(node.hx, node.hy);
     if (terrain.componentOf(cell) !== env.colony.land) continue;
     if (nodeManhattan(node, read.origin) > SCOUT_CATCH_RADIUS_NODES) continue;

@@ -50,7 +50,12 @@ import { storesHeld } from './provision.js';
 import { lineWayClear, withDanger } from './sea-danger.js';
 import { colonyBuildings } from './spot.js';
 import { homeStockOf } from './stock.js';
-import { type ColonyStockPolicy, colonyStockPolicyOf } from './stock-policy.js';
+import {
+  type ColonyStockPolicy,
+  type ColonyStockReads,
+  colonyStockPolicy,
+  colonyStockReadsOf,
+} from './stock-policy.js';
 import {
   type ColonyEnv,
   type ColonyView,
@@ -82,6 +87,14 @@ export type RouteView = DeepReadonly<NonNullable<ColonyView['route']>>;
 
 /** Which of a colony's routes a decision works: its first, or the relief raised once that cannot keep up. */
 type RouteSlot = 'route' | 'relief';
+
+/** What a colony's two routes share within one decision. */
+interface RouteDecision {
+  /** The men already spoken for: the other route's trader and the helpers seated so far. */
+  readonly taken: Set<Entity>;
+  /** The colony's stock reads, read once for both routes' marks. */
+  readonly stockReads: () => ColonyStockReads;
+}
 
 /** One trader round on arabskie_wyspy_wolna_gra_mieszana, home to colony and back (measured: about 15
  *  game minutes, as the colony's food per mouth assumes). A route that unloaded within it is working. */
@@ -352,7 +365,13 @@ export function routeMarks(
 }
 
 /** Sync the marks on the stops with the colony's policy, on its beat or while the colony's stop has none. */
-function syncMarks(env: ColonyEnv, trader: Entity, home: Entity, away: Entity): PlayerCommand[] {
+function syncMarks(
+  env: ColonyEnv,
+  decision: RouteDecision,
+  trader: Entity,
+  home: Entity,
+  away: Entity,
+): PlayerCommand[] {
   const { world, ctx, seat } = env;
   const route = world.tryGet(trader, TradeRoute);
   const homeStop = route?.stops.find((s) => s.house === home);
@@ -360,7 +379,8 @@ function syncMarks(env: ColonyEnv, trader: Entity, home: Entity, away: Entity): 
   if (homeStop === undefined || awayStop === undefined) return [];
   const due = moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, MARKS_EVERY_DECISIONS);
   if (!due && awayStop.imports.length > 0) return [];
-  const policy = colonyStockPolicyOf(env, new Set(homeStop.imports.map((m) => m.good)));
+  const outboundNow = new Set(homeStop.imports.map((m) => m.good));
+  const policy = colonyStockPolicy({ ...decision.stockReads(), outboundNow });
   const bands = heldBands(world, ctx, env.terrain);
   const holding = (good: number) => {
     const band = bands.holding(good);
@@ -431,10 +451,11 @@ function heldStops(env: ColonyEnv, slot: RouteSlot, trader: Entity): Entity[] {
  * comes home and lets its riders off; a home man who has earned the trade takes it; the ship is pinned to
  * him, his route runs from home's store to the colony's level-3 warehouse, both standing for their
  * settlements, with the marks of the colony's stock policy, issued only as they change; on the workforce
- * beat carriers are seated as helpers and a cart goes to the trader. `taken` holds the men already spoken
- * for this decision, which this route leaves alone.
+ * beat carriers are seated as helpers and a cart goes to the trader. The route leaves alone the men the
+ * decision has already spoken for.
  */
-function runRouteSlot(env: ColonyEnv, slot: RouteSlot, taken: Set<Entity>): PlayerCommand[] {
+function runRouteSlot(env: ColonyEnv, slot: RouteSlot, decision: RouteDecision): PlayerCommand[] {
+  const { taken } = decision;
   const { world, ctx, seat, colony } = env;
   const route = colony[slot];
   if (route === null || route.ship === null) {
@@ -463,7 +484,7 @@ function runRouteSlot(env: ColonyEnv, slot: RouteSlot, taken: Set<Entity>): Play
     ...stopOrders(trader, world.tryGet(trader, TradeRoute), stops.home, stops.colony),
   ];
   if (orders.length > 0) return orders;
-  orders.push(...syncMarks(env, trader, stops.home, stops.colony));
+  orders.push(...syncMarks(env, decision, trader, stops.home, stops.colony));
   if (slot === 'route') noteBehind(env, trader, ship, stops.home, stops.colony);
   if (moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS))
     orders.push(...seatHelpers(env, trader, ship, taken), ...cartOrder(env, trader, ship));
@@ -474,15 +495,17 @@ function runRouteSlot(env: ColonyEnv, slot: RouteSlot, taken: Set<Entity>): Play
  *  other's trader, held or chosen just now, nor a helper the other seated this decision. */
 export function runRoute(env: ColonyEnv): PlayerCommand[] {
   const taken = new Set<Entity>();
+  let reads: ColonyStockReads | null = null;
+  const decision: RouteDecision = { taken, stockReads: () => (reads ??= colonyStockReadsOf(env)) };
   const reliefTrader = env.colony.relief?.trader ?? null;
   if (reliefTrader !== null) taken.add(reliefTrader);
-  const orders = runRouteSlot(env, 'route', taken);
+  const orders = runRouteSlot(env, 'route', decision);
   if (env.colony.relief === null) return orders;
   // The relief may choose its own trader again; the first route left him alone.
   if (reliefTrader !== null) taken.delete(reliefTrader);
   const firstTrader = env.colony.route?.trader ?? null;
   if (firstTrader !== null) taken.add(firstTrader);
-  orders.push(...runRouteSlot(env, 'relief', taken));
+  orders.push(...runRouteSlot(env, 'relief', decision));
   return orders;
 }
 

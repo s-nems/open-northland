@@ -9,7 +9,7 @@ import {
   type ColonyStockPolicy,
   chainIntermediates,
   colonyStockPolicy,
-  colonyStockPolicyOf,
+  colonyStockReadsOf,
   type StockPolicyRead,
   WORKSHOP_INPUT_FLOOR,
 } from '../../../../src/systems/computer-player/colony/stock-policy.js';
@@ -348,7 +348,10 @@ describe("a colony's own chain", () => {
       (e) => sim.world.get(e, Building).buildingType === STOCK_TOP_TYPE,
     ) as Entity;
     addStock(sim.world, store, WHEAT, GRAIN_HELD);
-    const policy = colonyStockPolicyOf(looseColonyEnv(sim, editColony(sim)), new Set());
+    const policy = colonyStockPolicy({
+      ...colonyStockReadsOf(looseColonyEnv(sim, editColony(sim))),
+      outboundNow: new Set(),
+    });
 
     expect(outboundOf(policy, WHEAT)).toBeUndefined();
   });
@@ -385,7 +388,7 @@ describe("a colony's larder", () => {
     const env = looseColonyEnv(sim, editColony(sim));
     expect(colonists(env)).toHaveLength(MOUTHS);
 
-    const policy = colonyStockPolicyOf(env, new Set());
+    const policy = colonyStockPolicy({ ...colonyStockReadsOf(env), outboundNow: new Set() });
 
     expect(inboundOf(policy, FOOD)?.upTo).toBe(FOOD_PER_MOUTH_ROUND * MOUTHS);
   });

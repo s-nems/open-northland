@@ -367,8 +367,11 @@ function homeKeepOf(env: SeatEnv): (good: number) => number {
   };
 }
 
-/** The colony's policy now; `outboundNow` the goods its carrier sends home as marked. */
-export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<number>): ColonyStockPolicy {
+/** A colony's reads but the goods a route's trader sends home now, which each route adds of its own. */
+export type ColonyStockReads = Omit<StockPolicyRead, 'outboundNow'>;
+
+/** The colony's reads now, for {@link colonyStockPolicy} once a route adds its `outboundNow`. */
+export function colonyStockReadsOf(env: ColonyEnv): ColonyStockReads {
   const { world, ctx } = env;
   const buildings = colonyBuildings(env);
   const people = colonists(env);
@@ -389,7 +392,7 @@ export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<num
   raise(buildingFloor, owed);
   const spare = homeSpare(env, homeSupply(env));
   const held = heldByForm(env, buildings);
-  return colonyStockPolicy({
+  return {
     buildingFloor,
     plainFloor,
     settlerReserve: settlerReserve(env, people, spare),
@@ -398,9 +401,8 @@ export function colonyStockPolicyOf(env: ColonyEnv, outboundNow: ReadonlySet<num
     makes: colonyMade(env, buildings, people),
     held,
     keptOnColony: keptOnColony(env, buildings),
-    outboundNow,
     homeKeep: homeKeepOf(env),
     homeWants: homeWantsOf(env),
     siteLack: lacking,
-  });
+  };
 }
