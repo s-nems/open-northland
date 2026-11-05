@@ -1,4 +1,4 @@
-export type RelayRegionId = 'eu' | 'ap';
+export type RelayRegionId = 'eu' | 'na' | 'ap';
 
 export interface RelayRegion {
   readonly id: RelayRegionId;
@@ -6,10 +6,11 @@ export interface RelayRegion {
 }
 
 const EUROPE: RelayRegion = { id: 'eu', url: 'wss://relay-eu.opennorthland.org' };
+const NORTH_AMERICA: RelayRegion = { id: 'na', url: 'wss://relay-na.opennorthland.org' };
 const ASIA: RelayRegion = { id: 'ap', url: 'wss://relay-ap.opennorthland.org' };
 
 /** The official relays in the order the menu lists them; the first serves until a ping answers. */
-export const RELAY_REGIONS: readonly RelayRegion[] = [EUROPE, ASIA];
+export const RELAY_REGIONS: readonly RelayRegion[] = [EUROPE, NORTH_AMERICA, ASIA];
 export const DEFAULT_RELAY_REGION = EUROPE;
 
 /** The official region `address` names, or undefined for a custom server. */

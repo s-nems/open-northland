@@ -3,7 +3,7 @@ export const ruNetwork = {
   customServer: 'Свой сервер',
   officialServer: 'Open Northland · Официальный сервер',
   serverRegion: 'Сервер',
-  regions: { eu: 'Европа', ap: 'Азия' },
+  regions: { eu: 'Европа', na: 'Сев. Америка', ap: 'Азия' },
   pingMeasuring: 'Измерение…',
   pingUnavailable: 'Недоступен',
   pingMs: '{ms} ms',

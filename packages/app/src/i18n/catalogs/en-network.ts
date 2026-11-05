@@ -3,7 +3,7 @@ export const enNetwork = {
   customServer: 'Custom server',
   officialServer: 'Open Northland · Official server',
   serverRegion: 'Server',
-  regions: { eu: 'Europe', ap: 'Asia' },
+  regions: { eu: 'Europe', na: 'North America', ap: 'Asia' },
   pingMeasuring: 'Measuring…',
   pingUnavailable: 'Unreachable',
   pingMs: '{ms} ms',

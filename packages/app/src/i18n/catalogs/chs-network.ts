@@ -3,7 +3,7 @@ export const chsNetwork = {
   customServer: '自定义服务器',
   officialServer: 'Open Northland · 官方服务器',
   serverRegion: '服务器',
-  regions: { eu: '欧洲', ap: '亚洲' },
+  regions: { eu: '欧洲', na: '北美', ap: '亚洲' },
   pingMeasuring: '测量中…',
   pingUnavailable: '无法连接',
   pingMs: '{ms} ms',

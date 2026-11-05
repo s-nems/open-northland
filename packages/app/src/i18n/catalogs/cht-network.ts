@@ -3,7 +3,7 @@ export const chtNetwork = {
   customServer: '自訂伺服器',
   officialServer: 'Open Northland · 官方伺服器',
   serverRegion: '伺服器',
-  regions: { eu: '歐洲', ap: '亞洲' },
+  regions: { eu: '歐洲', na: '北美', ap: '亞洲' },
   pingMeasuring: '測量中…',
   pingUnavailable: '無法連線',
   pingMs: '{ms} ms',

@@ -3,7 +3,7 @@ export const deNetwork = {
   customServer: 'Benutzerdefinierter Server',
   officialServer: 'Open Northland · Offizieller Server',
   serverRegion: 'Server',
-  regions: { eu: 'Europa', ap: 'Asien' },
+  regions: { eu: 'Europa', na: 'Nordamerika', ap: 'Asien' },
   pingMeasuring: 'Messung…',
   pingUnavailable: 'Nicht erreichbar',
   pingMs: '{ms} ms',

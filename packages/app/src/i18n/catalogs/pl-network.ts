@@ -4,7 +4,7 @@ export const plNetwork = {
   customServer: 'Serwer niestandardowy',
   officialServer: 'Open Northland · Serwer oficjalny',
   serverRegion: 'Serwer',
-  regions: { eu: 'Europa', ap: 'Azja' },
+  regions: { eu: 'Europa', na: 'Ameryka Płn.', ap: 'Azja' },
   pingMeasuring: 'Pomiar…',
   pingUnavailable: 'Niedostępny',
   pingMs: '{ms} ms',
