@@ -818,14 +818,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
     const [joinery] = joineries;
     if (joinery === undefined) throw new Error('setup: one joinery');
     expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
-    const carrier = sim.world.create();
-    sim.world.add(carrier, AiControl, {
-      player: SEAT,
-      computerEnabled: true,
-      modules: computerModuleEnables({}),
-      mapAiEnabled: true,
-      difficulty: 'hard',
-    });
+    const carrier = seatCarrier(sim);
     const scout = fleetShip(sim, 0);
     sim.world.add(
       carrier,
@@ -843,25 +836,8 @@ describe('workforce - the top-tier joineries’ roles', () => {
     const [joinery] = joineries;
     if (joinery === undefined) throw new Error('setup: one joinery');
     tuned(sim);
-    const carrier = sim.world.create();
-    sim.world.add(carrier, AiControl, {
-      player: SEAT,
-      computerEnabled: true,
-      modules: computerModuleEnables({}),
-      mapAiEnabled: true,
-      difficulty: 'hard',
-    });
-    const held = createVehicle(sim.world, fleetCtx(sim), {
-      vehicleType: SHIP_BIG,
-      x: (SEA_WEST + SEA_EAST) / 2,
-      y: FLEET_SPACING,
-      tribe: VIKING,
-      owner: SEAT,
-    });
-    if (held === null) throw new Error('setup: no trade ship');
-    const hull = sim.world.mut(held, Vehicle);
-    hull.moored = true;
-    hull.mooring = { hx: FLEET_ROW.x, hy: FLEET_ROW.y };
+    const carrier = seatCarrier(sim);
+    const held = tradeShip(sim);
     const route = (ship: Entity | null): ColonyRoute => ({
       trader: null,
       chosen: 0,
@@ -880,6 +856,21 @@ describe('workforce - the top-tier joineries’ roles', () => {
     expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
     sim.world.mut(carrier, ComputerColony).colonies.push(blankColony(NO_COMPONENT, { route: route(null) }));
     expect(tuned(sim)).toEqual(new Map([[joinery, all(TRADE_SHIP_GOOD)]]));
+  });
+
+  it('builds no second trade ship while the first one scouts the site it will carry the party to', () => {
+    const { sim, joineries } = crewedJoineries(seaMap(), [AWAY], fleetContent());
+    const [joinery] = joineries;
+    if (joinery === undefined) throw new Error('setup: one joinery');
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
+    const scout = { ship: tradeShip(sim), helm: joinery, waypoints: [], leg: 0 };
+    sim.world.add(seatCarrier(sim), ComputerColony, {
+      colonies: [blankColony(NO_COMPONENT, { phase: 'scouting', scout })],
+      rejected: [],
+      retryAt: 0,
+    });
+    // The scout fills the trade ship the colony is owed: the crew stays on the landing fleet.
+    expect(tuned(sim)).toEqual(new Map());
   });
 
   it('keeps the hides the missing ships of the landing fleet take out of every craft', () => {
@@ -951,6 +942,34 @@ describe('workforce - the top-tier joineries’ roles', () => {
     });
     if (e === null) throw new Error('setup: no catapult');
     return e;
+  }
+  /** The seat's trade ship, moored at the home shore at the head of the column {@link fleetShip} fills. */
+  function tradeShip(sim: Simulation): Entity {
+    const e = createVehicle(sim.world, fleetCtx(sim), {
+      vehicleType: SHIP_BIG,
+      x: (SEA_WEST + SEA_EAST) / 2,
+      y: FLEET_SPACING,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    if (e === null) throw new Error('setup: no trade ship');
+    const hull = sim.world.mut(e, Vehicle);
+    hull.moored = true;
+    hull.mooring = { hx: FLEET_ROW.x, hy: FLEET_ROW.y };
+    return e;
+  }
+
+  /** The seat's computer-player carrier, which holds its colonies. */
+  function seatCarrier(sim: Simulation): Entity {
+    const carrier = sim.world.create();
+    sim.world.add(carrier, AiControl, {
+      player: SEAT,
+      computerEnabled: true,
+      modules: computerModuleEnables({}),
+      mapAiEnabled: true,
+      difficulty: 'hard',
+    });
+    return carrier;
   }
   const FLEET_ROW = { x: 4, y: 52 };
   const FLEET_SPACING = 6;

@@ -1,7 +1,13 @@
-import { type ColonyState, colonyRuns, playerPlacementTribes } from '../../../../components/index.js';
-import type { DeepReadonly, World } from '../../../../ecs/world.js';
+import {
+  type ColonyState,
+  colonyRuns,
+  playerPlacementTribes,
+  Vehicle,
+} from '../../../../components/index.js';
+import { contentIndex } from '../../../../core/content-index.js';
+import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
 import { goodTypeByContentId } from '../../../ai-shared/content-lookup.js';
-import { seatColonies } from '../../../ai-shared/home-roster.js';
+import { colonyHeldShips, seatColonies } from '../../../ai-shared/home-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { goodEnabled } from '../../../progression/index.js';
 import { seatArchetype } from '../../build-order/order/seat-order.js';
@@ -61,4 +67,20 @@ export function colonyTradeShips(world: World, ctx: SystemContext, seat: number)
  *  ship. */
 export function colonySmallShips(world: World, ctx: SystemContext, seat: number): number {
   return mayBuildTradeShip(world, ctx, seat) ? 0 : shipsOwed(world, ctx, seat);
+}
+
+/** The ships `seat`'s colonies hold off the home fleet, less the scout of a colony with no carrying ship yet
+ *  that may carry its party (a trade ship where the tribe builds one): it fills the slot the colony is owed. */
+export function colonyFleetShips(world: World, ctx: SystemContext, seat: number): readonly Entity[] {
+  const trade = mayBuildTradeShip(world, ctx, seat);
+  const vehicles = contentIndex(ctx.content).vehicles;
+  const carriers = new Set<Entity>();
+  for (const colony of seatColonies(world, seat)) {
+    const scout = colony.scout?.ship;
+    if (colony.ship !== null || scout === undefined) continue;
+    const type = world.tryGet(scout, Vehicle)?.vehicleType;
+    if (!trade || (type !== undefined && vehicles.get(type)?.id === TRADE_SHIP_ID)) carriers.add(scout);
+  }
+  const held = colonyHeldShips(world, seat);
+  return carriers.size === 0 ? held : held.filter((e) => !carriers.has(e));
 }

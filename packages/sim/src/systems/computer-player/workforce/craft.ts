@@ -21,7 +21,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
-import { colonyHeldShips, everySettlerOf, homeBuildings } from '../../ai-shared/home-roster.js';
+import { everySettlerOf, homeBuildings } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
@@ -31,7 +31,7 @@ import { vehicleHouseOfGood } from '../../readviews/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { militaryWaits, seatArchetype, seatHasSide } from '../build-order/order/seat-order.js';
-import { colonySmallShips, colonyTradeShips } from '../colony/sea/fleet.js';
+import { colonyFleetShips, colonySmallShips, colonyTradeShips } from '../colony/sea/fleet.js';
 import { TRADE_SHIP_ID } from '../colony/sea/trade-ship.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
@@ -780,14 +780,15 @@ export function tuneCraftCounters(
       const sails = seatNeedsShips(world, ctx, player);
       landing =
         (sails ? Math.max(fleet, landingFewestShips(fleet) + SEA_SCOUT_SHIPS) : fleet) +
-        colonyShipsOf(world, player, smallShipVehicle(ctx)) +
+        colonyShipsOf(world, ctx, player, smallShipVehicle(ctx)) +
         colonySmallShips(world, ctx, player);
     }
     return landing;
   };
   let trade: number | undefined;
   const tradeShips = (): number =>
-    (trade ??= colonyTradeShips(world, ctx, player) + colonyShipsOf(world, player, tradeShipVehicle(ctx)));
+    (trade ??=
+      colonyTradeShips(world, ctx, player) + colonyShipsOf(world, ctx, player, tradeShipVehicle(ctx)));
   const tribe = playerPlacementTribes(world, player)?.[0];
   const ownedTypes = new Map<string, boolean>();
   const owns = (buildingId: string, siteOnly: boolean): boolean => {
@@ -1379,10 +1380,16 @@ function stockReads(
 
 /** The ships of `vehicleType` `player`'s colonies hold off the home fleet: the joinery builds that many
  *  more. */
-function colonyShipsOf(world: World, player: number, vehicleType: number | undefined): number {
+function colonyShipsOf(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  vehicleType: number | undefined,
+): number {
   if (vehicleType === undefined) return 0;
-  return colonyHeldShips(world, player).filter((e) => world.tryGet(e, Vehicle)?.vehicleType === vehicleType)
-    .length;
+  return colonyFleetShips(world, ctx, player).filter(
+    (e) => world.tryGet(e, Vehicle)?.vehicleType === vehicleType,
+  ).length;
 }
 
 /** The vehicle type of the smallest ship, the landing fleet's. */
