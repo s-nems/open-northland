@@ -12,12 +12,14 @@ import {
   decisionIndex,
   moduleBeatDue,
 } from '../../../../src/systems/ai-shared/cadence.js';
-import type { BuildOrderEntry } from '../../../../src/systems/computer-player/build-order/entries.js';
+import {
+  type BuildOrderEntry,
+  HOUSING_HOMES_CAP,
+} from '../../../../src/systems/computer-player/build-order/entries.js';
 import { GROUND_PLAN_FROM_TICKS } from '../../../../src/systems/computer-player/build-order/ground-plan.js';
 import {
   FIT_PER_HOME,
   nextRoomReviewTick,
-  ROOM_HOMES_CAP,
   ROOM_REVIEW_EVERY_DECISIONS,
   roomHomesCap,
 } from '../../../../src/systems/computer-player/build-order/room.js';
@@ -128,7 +130,7 @@ describe('seat room', () => {
     expect(roomHomesCap(sim.world, SEAT, CAP)).toBe((CAP * 3) / 2);
     setFreeZones(sim, FIT_PER_HOME - 1, CAP);
     expect(roomHomesCap(sim.world, SEAT, CAP)).toBe(CAP);
-    setFreeZones(sim, 4 * ROOM_HOMES_CAP, CAP);
-    expect(roomHomesCap(sim.world, SEAT, CAP)).toBe(ROOM_HOMES_CAP);
+    setFreeZones(sim, 4 * HOUSING_HOMES_CAP, CAP);
+    expect(roomHomesCap(sim.world, SEAT, CAP)).toBe(HOUSING_HOMES_CAP);
   });
 });

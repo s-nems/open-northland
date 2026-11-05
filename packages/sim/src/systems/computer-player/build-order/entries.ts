@@ -196,9 +196,10 @@ const HIVE_REACH_NODES = 18;
  *  warehouse serves carriers rather than bows, and the base is a store too. */
 const STORE_COVERAGE_RADIUS_NODES = 32;
 
-/** The most homes the housing lane raises (owner ruling): about fourteen top-tier homes on a rich seat;
- *  the other archetypes cap it lower (`./seat-order.ts`). */
-const HOUSING_HOMES_CAP = 14;
+/** The most homes the housing lane raises (owner ruling): about fourteen top-tier homes on a rich seat.
+ *  The other archetypes cap it lower (`./seat-order.ts`), and the room their land holds lifts them up to
+ *  it (`./room.ts`): a bigger settlement makes a stronger player on every plan. */
+export const HOUSING_HOMES_CAP = 14;
 
 /** The two deposits a joinery or a smithy draws on, in the order its recipes weigh them. */
 const WOOD_AND_IRON: readonly PlacementAffinity[] = [

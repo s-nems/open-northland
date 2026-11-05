@@ -19,7 +19,7 @@ import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import { firstRingNode } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../../footprint/geometry.js';
-import { overflowBuildReachNodes, STALLED_PLACEMENT_RETRY_DECISIONS } from './entries.js';
+import { HOUSING_HOMES_CAP, overflowBuildReachNodes, STALLED_PLACEMENT_RETRY_DECISIONS } from './entries.js';
 import { baseComponent, buildReach } from './placement.js';
 import { seatSpotAcceptor } from './plots.js';
 import { seatHasSide, seatTuning } from './seat-order.js';
@@ -31,18 +31,14 @@ export const ROOM_HOME_BUILDING = 'home_level_00';
  *  what else grows there. */
 export const FIT_PER_HOME = 2;
 
-/** The most homes room lifts a seat's housing lane to (owner ruling: about fourteen top-tier homes on a rich
- *  seat, and a bigger settlement makes a stronger player on every plan). */
-export const ROOM_HOMES_CAP = 14;
-
 /**
  * How many free zones a review counts at most, `homes` standing against a housing cap of `cap`: what its
  * readers can tell apart and no more, so a settlement with room stops its walk early. The filled tower ring
  * asks whether a home still fits ({@link FIT_PER_HOME}), and the homes lift, once homes reach a cap below
- * {@link ROOM_HOMES_CAP}, how many more homes fit up to it.
+ * {@link HOUSING_HOMES_CAP}, how many more homes fit up to it.
  */
 function zonesCounted(homes: number, cap: number): number {
-  const lift = homes >= cap && cap < ROOM_HOMES_CAP ? FIT_PER_HOME * ROOM_HOMES_CAP - homes : 0;
+  const lift = homes >= cap && cap < HOUSING_HOMES_CAP ? FIT_PER_HOME * HOUSING_HOMES_CAP - homes : 0;
   return Math.max(FIT_PER_HOME, lift);
 }
 
@@ -184,13 +180,13 @@ function seatRoomOf(world: World, player: number): Readonly<SeatRoomState> | nul
 /**
  * The most homes the housing lane raises: `cap`, lifted once the homes counted at the last review reach it
  * to the homes the room then held, those standing and the free zones together, {@link FIT_PER_HOME} zones a
- * home, as the ground plan sizes its homes; never past {@link ROOM_HOMES_CAP} by room alone. Both counts
+ * home, as the ground plan sizes its homes; never past {@link HOUSING_HOMES_CAP} by room alone. Both counts
  * come from one review, so the cap holds still until the next.
  */
 export function roomHomesCap(world: World, player: number, cap: number): number {
   const room = seatRoomOf(world, player);
   if (room === null || room.homes < cap) return cap;
-  return Math.max(cap, Math.min(ROOM_HOMES_CAP, Math.floor((room.homes + room.freeZones) / FIT_PER_HOME)));
+  return Math.max(cap, Math.min(HOUSING_HOMES_CAP, Math.floor((room.homes + room.freeZones) / FIT_PER_HOME)));
 }
 
 /** Whether the seat's land is built up: measured, and too little room left for another home, so the homes
