@@ -52,16 +52,16 @@
     "table": "goods",
     "id": 44,
     "from": "S Целебное Зелье",
-    "to": "S Питательное Зелье",
-    "reason": "Towary 44, 45 i 50 to mikstury i amulet odżywcze; \"Целебн-\" znaczy leczniczy, a lecznicze są towary 48 i 49."
+    "to": "Малое Питательное Зелье",
+    "reason": "Towary 44, 45 i 50 to mikstury i amulet odżywcze; \"Целебн-\" znaczy leczniczy, a lecznicze są towary 48 i 49. Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Малое\" i \"Большое\", jak w pozostałych językach."
   },
   {
     "lang": "rus",
     "table": "goods",
     "id": 45,
     "from": "L Целебное Зелье",
-    "to": "L Питательное Зелье",
-    "reason": "Towary 44, 45 i 50 to mikstury i amulet odżywcze; \"Целебн-\" znaczy leczniczy, a lecznicze są towary 48 i 49."
+    "to": "Большое Питательное Зелье",
+    "reason": "Towary 44, 45 i 50 to mikstury i amulet odżywcze; \"Целебн-\" znaczy leczniczy, a lecznicze są towary 48 i 49. Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Малое\" i \"Большое\", jak w pozostałych językach."
   },
   {
     "lang": "rus",
@@ -1052,16 +1052,16 @@
     "table": "goods",
     "id": 48,
     "from": "S Зелье Здоровья",
-    "to": "S Целебное Зелье",
-    "reason": "\"Целебное зелье\" lepiej oddaje miksturę leczniczą niż \"Зелье Здоровья\"."
+    "to": "Малое Целебное Зелье",
+    "reason": "\"Целебное зелье\" lepiej oddaje miksturę leczniczą niż \"Зелье Здоровья\". Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Малое\" i \"Большое\", jak w pozostałych językach."
   },
   {
     "lang": "rus",
     "table": "goods",
     "id": 49,
     "from": "L Зелье Здоровья",
-    "to": "L Целебное Зелье",
-    "reason": "\"Целебное зелье\" lepiej oddaje miksturę leczniczą niż \"Зелье Здоровья\"."
+    "to": "Большое Целебное Зелье",
+    "reason": "\"Целебное зелье\" lepiej oddaje miksturę leczniczą niż \"Зелье Здоровья\". Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Малое\" i \"Большое\", jak w pozostałych językach."
   },
   {
     "lang": "rus",
@@ -2654,5 +2654,69 @@
     "from": "мастерская",
     "to": "столярная мастерская, мастерская",
     "reason": "Błogosławieństwo świątyni działa na ludzi jej właściciela w zasięgu, nie na budynki, a motywacji wymagają trzy zawody: cieśla, płatnerz i kowal."
+  },
+  {
+    "lang": "rus",
+    "table": "goods",
+    "id": 46,
+    "from": "S Зелье Жизненной Силы",
+    "to": "Малое Зелье Жизненной Силы",
+    "reason": "Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Малое\" i \"Большое\", jak w pozostałych językach."
+  },
+  {
+    "lang": "rus",
+    "table": "goods",
+    "id": 47,
+    "from": "L Зелье Жизненной Силы",
+    "to": "Большое Зелье Жизненной Силы",
+    "reason": "Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Малое\" i \"Большое\", jak w pozostałych językach."
+  },
+  {
+    "lang": "eng",
+    "table": "goods",
+    "id": 44,
+    "from": "S Nourishing Potion",
+    "to": "Small Nourishing Potion",
+    "reason": "Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Small\" i \"Large\", żeby nazwa czytała się bez zgadywania."
+  },
+  {
+    "lang": "eng",
+    "table": "goods",
+    "id": 45,
+    "from": "L Nourishing Potion",
+    "to": "Large Nourishing Potion",
+    "reason": "Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Small\" i \"Large\", żeby nazwa czytała się bez zgadywania."
+  },
+  {
+    "lang": "eng",
+    "table": "goods",
+    "id": 46,
+    "from": "S Stamina Potion",
+    "to": "Small Stamina Potion",
+    "reason": "Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Small\" i \"Large\", żeby nazwa czytała się bez zgadywania."
+  },
+  {
+    "lang": "eng",
+    "table": "goods",
+    "id": 47,
+    "from": "L Stamina Potion",
+    "to": "Large Stamina Potion",
+    "reason": "Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Small\" i \"Large\", żeby nazwa czytała się bez zgadywania."
+  },
+  {
+    "lang": "eng",
+    "table": "goods",
+    "id": 48,
+    "from": "S Healing Potion",
+    "to": "Small Healing Potion",
+    "reason": "Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Small\" i \"Large\", żeby nazwa czytała się bez zgadywania."
+  },
+  {
+    "lang": "eng",
+    "table": "goods",
+    "id": 49,
+    "from": "L Healing Potion",
+    "to": "Large Healing Potion",
+    "reason": "Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Small\" i \"Large\", żeby nazwa czytała się bez zgadywania."
   }
 ]

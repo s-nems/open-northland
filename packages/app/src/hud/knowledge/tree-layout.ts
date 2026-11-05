@@ -5,7 +5,8 @@ import { BUILDING_LANES, type LaneNode } from './lanes.js';
 import type { KnowledgeBase, KnowledgeBuilding } from './model.js';
 
 export const CARD_WIDTH = 166;
-export const GOOD_CARD_HEIGHT = 46;
+/** Fits a two-line name above the row of inputs. */
+export const GOOD_CARD_HEIGHT = 52;
 export const BUILDING_CARD_HEIGHT = 50;
 const GUTTER = 36;
 const ROW_GAP = 8;

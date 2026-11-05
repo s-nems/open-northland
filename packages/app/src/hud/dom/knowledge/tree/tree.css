@@ -159,6 +159,10 @@
   min-width: 0;
 }
 .on-hud .kn-card__text b {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font: 700 12.5px / 1.05 var(--font-body);
 }
 .on-hud .kn-card__from {
