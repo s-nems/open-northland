@@ -10,7 +10,13 @@ import { herdOf, wildStockOf } from '../../../livestock/index.js';
 import { isScoutJob } from '../../../readviews/index.js';
 import { playerSeesNode } from '../../../vision/gates.js';
 import { HERD_PAIR } from '../../herd.js';
-import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../../live-resources.js';
+import {
+  knownAnd,
+  knownResourceTest,
+  nearestLiveResource,
+  reachableResourceTest,
+  workableResourceTest,
+} from '../../live-resources.js';
 import { SCOUT_CATCH_RADIUS_NODES, type ScoutDanger, scoutBusy, scoutDanger } from '../../scout/index.js';
 import { corridorSamples, signpostTargetAround } from '../../scout/signpost-coverage.js';
 import type { ColonyEnv } from '../env.js';
@@ -20,15 +26,16 @@ import type { FoundingRead } from './posts.js';
 /** The animal farm whose herd the colony's scout rounds up. */
 const ANIMAL_FARM_ID = 'work_animal_farm';
 
-/** The nearest deposit of each good the land holds: a flag stands only inside the signposts, so a deposit
- *  past the store's walk range stays out of work until the lattice reaches it. */
+/** The nearest known deposit of each good the land holds: a flag stands only inside the signposts, so a
+ *  deposit past the store's walk range stays out of work until the lattice reaches it. */
 function depositsOf(env: ColonyEnv, origin: HalfCellNode): HalfCellNode[] {
-  const { world, ctx, terrain } = env;
+  const { world, ctx, terrain, seat } = env;
   const workable = workableResourceTest(world, ctx, terrain);
   const reachable = reachableResourceTest(world, ctx, terrain, origin, workable);
+  const known = knownAnd(knownResourceTest(world, ctx, seat), reachable);
   return LAND_GOOD_IDS.flatMap((id) => {
     const good = goodTypeByContentId(ctx.content, id);
-    const near = good === undefined ? null : nearestLiveResource(world, good.typeId, origin, reachable);
+    const near = good === undefined ? null : nearestLiveResource(world, good.typeId, origin, known);
     return near === null ? [] : (anchorNodeOf(world, near) ?? []);
   });
 }

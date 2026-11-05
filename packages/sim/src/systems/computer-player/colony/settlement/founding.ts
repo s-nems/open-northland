@@ -8,7 +8,13 @@ import { isBuilt } from '../../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../../ai-shared/workforce/pool.js';
 import { liveWorkFlag } from '../../../economy/work-flag.js';
 import { siteCommand } from '../../build-order/ground/placement.js';
-import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../../live-resources.js';
+import {
+  knownAnd,
+  knownResourceTest,
+  nearestLiveResource,
+  reachableResourceTest,
+  workableResourceTest,
+} from '../../live-resources.js';
 import type { ColonyEnv, ColonyView } from '../env.js';
 import { colonists, colonyBuildings, colonyOrigin, storeOf, storeTiers } from '../roster.js';
 import { colonySpot, storeSupply, workshopSpot } from '../spot.js';
@@ -101,7 +107,7 @@ function buildOrLift(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Pl
   return build.length > 0 ? build : liftColony(env, colony, read);
 }
 
-/** A second store by the wood when the nearest stands past {@link SECOND_STORE_NODES} of the first. */
+/** A second store by the wood when the nearest known stands past {@link SECOND_STORE_NODES} of the first. */
 function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tribe: number): PlayerCommand[] {
   const { world, ctx, terrain, seat } = env;
   const type = colonyStoreType(world, ctx, seat);
@@ -118,7 +124,8 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
     read.origin,
     workableResourceTest(world, ctx, terrain),
   );
-  const near = nearestLiveResource(world, wood.typeId, read.origin, reachable);
+  const known = knownAnd(knownResourceTest(world, ctx, seat), reachable);
+  const near = nearestLiveResource(world, wood.typeId, read.origin, known);
   const at = near === null ? null : anchorNodeOf(world, near);
   if (at === null || nodeManhattan(at, read.origin) <= SECOND_STORE_NODES) return [];
   // Its builders fetch its bill from the first store, so it stands inside that store's goods search: one
