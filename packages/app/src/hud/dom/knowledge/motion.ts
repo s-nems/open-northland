@@ -9,7 +9,8 @@ import { servedAtlas } from '../../../content/sprite-good-icons.js';
 import { humanPaletteBook } from '../../../content/sprite-sheet/human-palettes.js';
 import { diag } from '../../../diag/index.js';
 import { type FilmLayer, type KnowledgeFilm, knowledgeFilm } from '../../knowledge/film.js';
-import type { KnowledgeClip, KnowledgeMotion } from './context.js';
+import type { KnowledgeClip } from '../../knowledge/model.js';
+import type { KnowledgeMotion } from './context.js';
 
 /** A coloured page nobody draws is closed this long after its last film, so a tab flicked back and forth
  *  decodes once and a closed window holds none. */

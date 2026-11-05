@@ -1,11 +1,5 @@
 import { messages } from '../../i18n/index.js';
-import {
-  buildingHitpoints,
-  type KnowledgeBase,
-  type KnowledgeBuilding,
-  type KnowledgeWeapon,
-  SECONDS_PER_TICK,
-} from './base.js';
+import { buildingHitpoints, SECONDS_PER_TICK } from './base.js';
 import {
   ANIMAL_TARGET,
   type BlowModifiers,
@@ -25,6 +19,7 @@ import {
   takesStrengthAmulet,
   weaponsOf,
 } from './combat.js';
+import type { KnowledgeBase, KnowledgeBuilding, KnowledgeWeapon } from './model.js';
 
 export type CalculatorMode = 'blow' | 'duel';
 export type TargetKind = 'animal' | 'building' | 'person' | 'vehicle';

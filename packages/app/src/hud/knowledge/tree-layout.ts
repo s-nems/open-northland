@@ -1,8 +1,8 @@
-import type { KnowledgeBase, KnowledgeBuilding } from './base.js';
 import { materialBuildings } from './build-cost.js';
 import { downstreamOf, inputsOf, outputsOf, upstreamOf } from './chains.js';
 import { levelChain } from './entry-blocks.js';
 import { BUILDING_LANES, type LaneNode } from './lanes.js';
+import type { KnowledgeBase, KnowledgeBuilding } from './model.js';
 
 export const CARD_WIDTH = 166;
 export const GOOD_CARD_HEIGHT = 46;

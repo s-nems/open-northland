@@ -51,7 +51,7 @@ import {
 } from '../tool-panel/messages/from-snapshot.js';
 import { STORAGE_FULL_GRACE_TICKS } from '../tool-panel/messages/storage-full.js';
 import { PRODUCTION_STALL_GRACE_TICKS } from '../tool-panel/messages/workshop-stalls.js';
-import { buildingHitpoints, type KnowledgeBase } from './base.js';
+import { buildingHitpoints } from './base.js';
 import {
   ANIMAL_TARGET,
   CAP_HITS,
@@ -66,6 +66,7 @@ import {
   type TargetId,
   takesStrengthAmulet,
 } from './combat.js';
+import type { KnowledgeBase } from './model.js';
 
 const PERCENT = 100;
 const MAX_FRACTION_DIGITS = 2;
@@ -261,7 +262,7 @@ const clipOfWeapon = (base: KnowledgeBase, tribe: number, id: string): FactValue
 /** A ranged weapon's standoff, the band's far edge a chaser closes to. */
 function standoffOf(base: KnowledgeBase, tribe: number, id: string): FactValue {
   const weapon = weaponRow(base, tribe, id);
-  return weapon === undefined ? undefined : Math.floor((2 * weapon.maxRange - weapon.minRange) / 2);
+  return weapon === undefined ? undefined : systems.rangedStandoff(weapon.minRange, weapon.maxRange);
 }
 
 const WEAPON_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
@@ -322,11 +323,16 @@ function drillSeconds(base: KnowledgeBase, ticks: number): FactValue {
   return clip === undefined ? undefined : seconds(Math.ceil(ticks / clip) * clip);
 }
 
+/** A school course of `lessons`, in seconds. */
+export function lessonSeconds(base: KnowledgeBase, lessons: number): FactValue {
+  return drillSeconds(base, lessons * systems.SCHOOL_LESSON_TICKS);
+}
+
 function courseSeconds(base: KnowledgeBase, good: string): FactValue {
   const goodType = goodTypeOf(base, good);
   if (goodType === undefined) return undefined;
   const amount = base.goodRequirements.get(goodType)?.find((row) => row.route === 'train')?.amount;
-  return amount === undefined ? undefined : drillSeconds(base, amount * systems.SCHOOL_LESSON_TICKS);
+  return amount === undefined ? undefined : lessonSeconds(base, amount);
 }
 
 /** A good's or a job's practice requirement, in repeats of its track. */
@@ -577,8 +583,6 @@ function goodsReach(base: KnowledgeBase, ground: string): FactValue {
   const roughness = groundRoughness(base, ground);
   return roughness === undefined ? undefined : Math.floor(components.SIGNPOST_LINK_STEPS / roughness);
 }
-
-const aimPct = (hits: number): number => systems.AIM_TRUE_BASE + 1 + hits;
 
 const shotsPerSeat = TICKS_PER_SECOND / systems.SHELTER_SHOT_PERIOD_TICKS;
 
@@ -866,10 +870,7 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
 /** The farthest a stray shot of `hits` strikes from its mark over `range` nodes: the highest roll's spread
  *  on both axes at once, in hexes. */
 function strayReach(range: number, hits: number): number {
-  const highest = systems.AIM_ROLL_SPAN - 1;
-  const quarter = Math.floor(range / systems.SCATTER_RANGE_DIVISOR);
-  const margin = Math.max(0, highest - hits - systems.AIM_TRUE_BASE);
-  const side = Math.ceil(Math.floor((margin * quarter) / highest) / 2);
+  const side = systems.widestScatterOffset(systems.widestMarksmanSpread(range, hits));
   return hexDistanceBetween(0, 0, side, side);
 }
 
@@ -991,8 +992,8 @@ const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'combat.sampleBlow': whole(SAMPLE_BLOW),
   'combat.backSideFactor': twoDecimals(HIT_DIRECTION.backSide / PERCENT),
   'combat.behindFactor': twoDecimals(HIT_DIRECTION.behind / PERCENT),
-  'aim.basePct': whole(aimPct(0)),
-  'aim.samplePct': whole(aimPct(AIM_SAMPLE_HITS)),
+  'aim.basePct': whole(systems.trueShotPct(0)),
+  'aim.samplePct': whole(systems.trueShotPct(AIM_SAMPLE_HITS)),
   'stance.search': whole(systems.DEFEND_RADIUS_NODES),
   'stance.defendLeash': whole(systems.DEFEND_LEASH_NODES),
   'stance.ignoreLeash': whole(systems.IGNORE_LEASH_NODES),

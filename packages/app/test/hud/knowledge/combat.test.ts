@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createKnowledgeBase, type KnowledgeWeapon } from '../../../src/hud/knowledge/base.js';
+import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
 import {
   ANIMAL_TARGET,
   CAP_HITS,
@@ -19,6 +19,7 @@ import {
   type TargetId,
   weaponOf,
 } from '../../../src/hud/knowledge/combat.js';
+import type { KnowledgeWeapon } from '../../../src/hud/knowledge/model.js';
 import { knowledgeContent, VIKING } from '../../support/knowledge-content.js';
 
 const SPEAR = 2;

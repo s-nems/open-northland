@@ -1,6 +1,6 @@
 import { formatMessage, type Messages, messages } from '../../i18n/index.js';
-import type { KnowledgeBase } from './base.js';
 import { edges } from './chains.js';
+import type { EntryRef, KnowledgeBase, KnowledgeTree } from './model.js';
 
 export type LaneId = keyof Messages['knowledge']['lanes'];
 
@@ -195,4 +195,19 @@ export function checkLanes(base: KnowledgeBase): readonly string[] {
     if (!base.buildingById.has(node.id)) problems.push(`building lane names unknown building ${node.id}`);
   });
   return problems;
+}
+
+function laneIds(lanes: readonly Lane[]): ReadonlySet<string> {
+  const ids = new Set<string>();
+  walkNodes(lanes, (node) => ids.add(node.id));
+  return ids;
+}
+
+const GOOD_IDS = laneIds(GOOD_LANES);
+const BUILDING_IDS = laneIds(BUILDING_LANES);
+
+/** Whether `tree` shows a card for `ref`, mounted or not. */
+export function treeHolds(base: KnowledgeBase, tree: KnowledgeTree, ref: EntryRef): boolean {
+  if (tree === 'goods') return ref.kind === 'good' && GOOD_IDS.has(ref.id) && base.goodById.has(ref.id);
+  return ref.kind === 'building' && BUILDING_IDS.has(ref.id) && base.buildingById.has(ref.id);
 }

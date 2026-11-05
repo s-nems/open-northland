@@ -1,6 +1,5 @@
-import type { KnowledgeBase } from './base.js';
 import { listedJobs, shownJobName } from './entry-blocks.js';
-import type { EntryRef } from './model.js';
+import type { EntryRef, KnowledgeBase } from './model.js';
 
 /** One row a search can land on; `T` is what the caller opens. */
 export interface SearchItem<T> {

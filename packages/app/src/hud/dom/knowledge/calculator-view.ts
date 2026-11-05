@@ -1,6 +1,5 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { FIELD_KEYS_ATTRIBUTE } from '../../hotkeys.js';
-import type { KnowledgeWeapon } from '../../knowledge/base.js';
 import {
   ARMOUR_IDS,
   type ArmourId,
@@ -31,6 +30,7 @@ import {
   takesStrengthAmulet,
 } from '../../knowledge/combat.js';
 import { formatFactNumber } from '../../knowledge/facts.js';
+import type { KnowledgeWeapon } from '../../knowledge/model.js';
 import { button, element, setHidden, setStyleVar, write } from '../parts/dom.js';
 import { type DropdownEntry, type DropdownHandle, dropdownControl } from '../parts/dropdown.js';
 import { createSegmented } from '../parts/segmented.js';

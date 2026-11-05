@@ -1,6 +1,5 @@
 import { systems } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import type { KnowledgeGood, KnowledgeWeapon } from '../../knowledge/base.js';
 import {
   CAP_HITS,
   CRITICAL_CHANCE_PCT,
@@ -28,6 +27,7 @@ import {
   weaponClassText,
   wholeText,
 } from '../../knowledge/entry-format.js';
+import type { KnowledgeGood, KnowledgeWeapon } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
 import { goodStatusBlock, obtainBlock } from './entry-good.js';
 import {

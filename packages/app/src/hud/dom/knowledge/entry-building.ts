@@ -3,7 +3,7 @@ import { systems } from '@open-northland/sim';
 import { JOB_SOLDIER_UNARMED } from '../../../catalog/jobs.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { fillTokens } from '../../knowledge/articles.js';
-import { buildingHitpoints, type KnowledgeBuilding } from '../../knowledge/base.js';
+import { buildingHitpoints } from '../../knowledge/base.js';
 import { materialBuildings, totalCost } from '../../knowledge/build-cost.js';
 import {
   type BuildingBlock,
@@ -19,6 +19,7 @@ import {
 } from '../../knowledge/entry-blocks.js';
 import { counted, stepsText, wholeText } from '../../knowledge/entry-format.js';
 import { factText } from '../../knowledge/facts.js';
+import type { KnowledgeBuilding } from '../../knowledge/model.js';
 import { button } from '../parts/dom.js';
 import type { KnowledgeContext } from './context.js';
 import { recipeTable } from './entry-good.js';

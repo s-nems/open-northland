@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createKnowledgeBase, type KnowledgeBuilding } from '../../../src/hud/knowledge/base.js';
+import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
 import {
   animalBlocks,
   buildingBlocks,
@@ -19,7 +19,12 @@ import {
   tribeWeapons,
   vehicleHolds,
 } from '../../../src/hud/knowledge/entry-blocks.js';
-import type { KnowledgeAnimal, KnowledgeBase, KnowledgeGood } from '../../../src/hud/knowledge/model.js';
+import type {
+  KnowledgeAnimal,
+  KnowledgeBase,
+  KnowledgeBuilding,
+  KnowledgeGood,
+} from '../../../src/hud/knowledge/model.js';
 import { FRANK, knowledgeContent, VIKING } from '../../support/knowledge-content.js';
 
 const HERO_UNARMED = 42;

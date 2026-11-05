@@ -55,7 +55,7 @@ export function landedDamage(
   const dealtBy = (raw: number): number => (strikerAmulets ? damageDealtBy(world, ctx, attacker, raw) : raw);
   if (world.has(target, Building) || world.has(target, Palisade)) return base === 0 ? 0 : dealtBy(base);
   if (isWildlife(world, target) || world.has(target, Vehicle)) return dealtBy(base);
-  const directed = Math.trunc((base * hitDirectionPct(world, target, from)) / PERCENT);
+  const directed = directedDamage(base, hitDirectionPct(world, target, from));
   const blocked = directed - targetBlocking(world, ctx, target);
   return damageTakenBy(world, ctx, target, dealtBy(blocked));
 }
@@ -78,6 +78,15 @@ function hitDirectionPct(
     nodeHxOfPosition(from.x, from.y),
     nodeHyOfPosition(from.x, from.y),
   );
-  const apart = Math.abs(toward - hexHeadingOfWalk(facing));
-  return HIT_DIRECTION_PCT[Math.min(apart, HEX_HEADING_COUNT - apart)] ?? PERCENT;
+  return HIT_DIRECTION_PCT[hitDirectionBin(Math.abs(toward - hexHeadingOfWalk(facing)))] ?? PERCENT;
+}
+
+/** The {@link HIT_DIRECTION_PCT} bin of a blow whose heading lies `apart` hex headings from the victim's. */
+export function hitDirectionBin(apart: number): number {
+  return Math.min(apart, HEX_HEADING_COUNT - apart);
+}
+
+/** A blow of `base` from a side worth `directionPct`. */
+export function directedDamage(base: number, directionPct: number): number {
+  return Math.trunc((base * directionPct) / PERCENT);
 }

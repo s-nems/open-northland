@@ -1,5 +1,5 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { type KnowledgeGood, SECONDS_PER_TICK } from '../../knowledge/base.js';
+import { SECONDS_PER_TICK } from '../../knowledge/base.js';
 import {
   buildingsCosting,
   producersOf,
@@ -18,7 +18,7 @@ import {
   preciseSecondsText,
   ticksText,
 } from '../../knowledge/entry-format.js';
-import type { KnowledgeRecipe } from '../../knowledge/model.js';
+import type { KnowledgeGood, KnowledgeRecipe } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
 import {
   articleLinks,

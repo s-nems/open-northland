@@ -1,6 +1,6 @@
 import { systems, TICKS_PER_MINUTE } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../../i18n/index.js';
-import type { KnowledgeGood } from '../../../knowledge/base.js';
+import type { KnowledgeGood } from '../../../knowledge/model.js';
 import { goodIconMarkup } from '../../good-art.js';
 import { element } from '../../parts/dom.js';
 import type { KnowledgeContext } from '../context.js';

@@ -60,7 +60,7 @@ export function damageDealtBy(world: World, ctx: SystemContext, attacker: Entity
   if (health !== undefined && health.hitpoints <= 0) return damage;
   let dealt = damage;
   const dealtPct = carriedEffect(world, ctx.content, attacker, 'damageDealtPct');
-  if (dealtPct !== undefined) dealt = Math.floor((dealt * dealtPct) / PERCENT);
+  if (dealtPct !== undefined) dealt = scaledDealtDamage(dealt, dealtPct);
   const critical = carriedEffect(world, ctx.content, attacker, 'criticalHit');
   if (critical !== undefined && ctx.rng.int(PERCENT) < critical.chancePct) {
     dealt = Math.floor((dealt * critical.damagePct) / PERCENT);
@@ -68,11 +68,21 @@ export function damageDealtBy(world: World, ctx: SystemContext, attacker: Entity
   return dealt;
 }
 
+/** `damage` raised by a striker's `damageDealtPct`, rounding down. */
+export function scaledDealtDamage(damage: number, dealtPct: number): number {
+  return Math.floor((damage * dealtPct) / PERCENT);
+}
+
+/** `damage` cut by a target's `damageTakenPct`, truncating. */
+export function scaledTakenDamage(damage: number, takenPct: number): number {
+  return Math.trunc((damage * takenPct) / PERCENT);
+}
+
 /** The share of a blow's damage its target takes. Original behavior: the defense amulet halves it,
  *  truncating, after the striker's effects. */
 export function damageTakenBy(world: World, ctx: SystemContext, target: Entity, damage: number): number {
   const takenPct = carriedEffect(world, ctx.content, target, 'damageTakenPct');
-  return takenPct === undefined ? damage : Math.trunc((damage * takenPct) / PERCENT);
+  return takenPct === undefined ? damage : scaledTakenDamage(damage, takenPct);
 }
 
 /** The fight effects `e`'s misc row carries, each as {@link damageDealtBy} and {@link damageTakenBy} read

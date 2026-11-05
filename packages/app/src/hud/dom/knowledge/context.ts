@@ -1,8 +1,12 @@
-import type { EntryRef, KnowledgeBase } from '../../knowledge/model.js';
+import type {
+  EntryRef,
+  KnowledgeBase,
+  KnowledgeClip,
+  KnowledgeSettlement,
+  KnowledgeTab,
+  KnowledgeTree,
+} from '../../knowledge/model.js';
 import type { GoodIconPainter } from '../good-art.js';
-
-export type KnowledgeTab = 'goods' | 'buildings' | 'encyclopedia' | 'mechanics';
-export type KnowledgeTree = Extract<KnowledgeTab, 'goods' | 'buildings'>;
 
 /** Where a link, a contextual "?" or the menu sends the reader. */
 export type KnowledgeTarget =
@@ -12,28 +16,6 @@ export type KnowledgeTarget =
   | { readonly entry: EntryRef }
   | { readonly article: string }
   | { readonly calculator: string };
-
-/** A house, good or trade as the seat stands now; a map's ban is told apart from an unmet requirement. */
-export type KnowledgeStatus =
-  | { readonly kind: 'available' }
-  | { readonly kind: 'locked'; readonly missing: readonly string[] }
-  | { readonly kind: 'mapForbidden' };
-
-/** The running game, read when a tab renders, never per tick. Absent in the main menu. */
-export interface KnowledgeSettlement {
-  readonly tribe: number;
-  status(kind: 'building' | 'good' | 'job', typeId: number): KnowledgeStatus;
-}
-
-/** One looping preview: a fighter's blow or march, a worker at his trade, an animal. */
-export type KnowledgeClip =
-  | {
-      readonly kind: 'job';
-      readonly jobType: number;
-      readonly tribe: number;
-      readonly action: 'attack' | 'walk' | 'work';
-    }
-  | { readonly kind: 'animal'; readonly animalTribe: number; readonly action: 'attack' | 'walk' };
 
 export interface KnowledgeMotion {
   /** Plays `clip` in `host` until the returned stop runs; false-like absence leaves `host` empty. */

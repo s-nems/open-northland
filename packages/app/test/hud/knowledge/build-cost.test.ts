@@ -1,7 +1,8 @@
 import type { BuildingType, ContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { createKnowledgeBase, type KnowledgeBase } from '../../../src/hud/knowledge/base.js';
+import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
 import { materialBuildings, totalCost } from '../../../src/hud/knowledge/build-cost.js';
+import type { KnowledgeBase } from '../../../src/hud/knowledge/model.js';
 import { FRANK, GOOD, HOUSE, knowledgeContent, VIKING } from '../../support/knowledge-content.js';
 
 const FLOUR = { goodType: GOOD.flour, amount: 1 };

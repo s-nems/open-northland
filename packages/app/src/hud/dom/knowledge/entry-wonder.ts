@@ -1,5 +1,5 @@
 import { messages } from '../../../i18n/index.js';
-import type { KnowledgeBuilding } from '../../knowledge/base.js';
+import type { KnowledgeBuilding } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
 import { buildingPicture, entryPage, originBlock, paragraph, section } from './entry-parts.js';
 

@@ -1,5 +1,7 @@
 // Cross-package simulation surface used by app/render. Per-tick systems and implementation helpers
 // stay package-private; scenes consume authored-setup constructors, read views, and shared constants.
+// The Knowledge window reads balance figures, radii and pure rules here, so its articles and calculator
+// follow the sim instead of copying it; those exports carry no note of their own.
 
 // The scripted handlers' round, so a real-content probe can step to a seat's turn.
 export { AI_HANDLER_ROUND_TICKS } from './ai-shared/cadence.js';
@@ -7,7 +9,6 @@ export { AI_HANDLER_ROUND_TICKS } from './ai-shared/cadence.js';
 export { SCOUT_CHASERS_PER_SCOUT } from './ai-shared/military/defence/militia.js';
 // The band the assistant's flag follow keeps a gatherer's flag in.
 export { FOLLOW_FLAG_BAND } from './assistant/flag-follow.js';
-export { ASSISTANT_DECISION_PERIOD_TICKS, TRAIN_DISPATCHES_PER_DECISION } from './assistant/index.js';
 export {
   CHEST_CONTENTS,
   type ChestReward,
@@ -57,7 +58,6 @@ export {
 export { SOLDIER_OUTFIT_GOOD_IDS, TOWER_GARRISON_ARCHERS } from './computer-player/military/index.js';
 // A seat's military operations (the marching wave, raids) as plain data, for a debug view.
 export { type OperationView, seatOperationsOf } from './computer-player/military/operations/index.js';
-export { WAVE_GATHER_TICKS, waveBandAt } from './computer-player/military/plan.js';
 // A seat's strategy (economy, military plan and posture) and the seat brief it was chosen from, and its
 // army, strongest believed enemy and next forecast attack, for a debug view.
 export {
@@ -84,10 +84,8 @@ export {
 } from './computer-player/workforce/index.js';
 // The battle alert's rest clearance, so the details panel captions a unit standing to on the same radius
 // the drive ladder holds it at.
-// The balance figures the reference window's articles name.
 export { REST_CLEARANCE_NODES, STAND_TO_RADIUS_NODES } from './conflict/battle-alert.js';
-// The radii and ranges the reference window's figures draw.
-export { ATTACK_RETURN_SLACK_NODES } from './conflict/chase.js';
+export { ATTACK_RETURN_SLACK_NODES, rangedStandoff } from './conflict/chase.js';
 export { CONTESTED_GROUND_RADIUS_NODES } from './conflict/contested-ground.js';
 export {
   APPROACH_BAND_DEPTH,
@@ -106,7 +104,7 @@ export { HUNT_CHASE_SLACK_NODES } from './conflict/hunting/ground.js';
 export { HUNT_PREY_SCORE_CEILING } from './conflict/hunting/index.js';
 // The ground a defence-capable building covers, drawn when it is selected or placed.
 export { SHELTER_SHOT_PERIOD_TICKS, shelterFireRadius } from './conflict/shelter-fire.js';
-export { AIM_ROLL_SPAN, AIM_TRUE_BASE, SCATTER_RANGE_DIVISOR } from './conflict/shot-aim.js';
+export { trueShotPct, widestMarksmanSpread, widestScatterOffset } from './conflict/shot-aim.js';
 export {
   ANIMAL_ACQUIRE_RANGE_NODES,
   ANIMAL_AGGRO_RADIUS_NODES,
@@ -131,7 +129,6 @@ export {
 } from './economy/fish.js';
 // The gather gate, so the app's right-click on a resource names the same gatherers `setGatherGood` accepts.
 export { heldGatherGood, jobGatherGoods, jobGathersGood } from './economy/gather-goods.js';
-export { DROPS_AS_NEW_WEAR_DIVISOR } from './economy/goods-spill.js';
 export { createGroundGoods, type GroundGoodsSpec } from './economy/ground-goods.js';
 export {
   postCollectsAroundWorkplace,
@@ -146,13 +143,12 @@ export {
 } from './economy/production/bonus-output.js';
 export { BREEDING_PAIR } from './economy/production/cycles.js';
 // The repair crew cap, so the app's right-click and site pick fall through where assignBuilder refuses.
-export { HITPOINTS_PER_REPAIR_STEP, REPAIR_CREW_LIMIT, WALL_REPAIR_CREW_LIMIT } from './economy/repair.js';
+export { HITPOINTS_PER_REPAIR_STEP, REPAIR_CREW_LIMIT } from './economy/repair.js';
 export { insideBuildingReservedZone } from './economy/reserved-decor.js';
 export { jobUsesWorkFlag } from './economy/work-flag.js';
 export { HEALING_DRAUGHT_BELOW_PCT } from './equipment/draughts.js';
-export { BARE_HANDS_WORK_FACTOR_PCT } from './equipment/effects.js';
+export { BARE_HANDS_WORK_FACTOR_PCT, scaledDealtDamage, scaledTakenDamage } from './equipment/effects.js';
 export { CARRYING_WEAR_FACTOR } from './equipment/wear.js';
-export { MAKE_LOVE_ATOMIC_ID } from './family/children/make-love.js';
 export { isOnMission } from './family/eligibility.js';
 export type { HouseKey } from './footprint/geometry.js';
 export { footprintCellsOf } from './footprint/resource-footprint-cells.js';
@@ -202,10 +198,8 @@ export {
 export { FARM_HERD_LEASH_NODES, LIVESTOCK_GRAZE_RANGE_NODES } from './livestock/assignment.js';
 export { LIVESTOCK_CAPTURE_RANGE } from './livestock/capture.js';
 export { ANIMAL_ADULT_AGE_TICKS } from './livestock/growth.js';
-export { BIRTH_PARENT_RANGE } from './livestock/herd.js';
 export { SCATTER_RANGE } from './livestock/scatter.js';
 export { slayDepositGoods, slayYield } from './livestock/slay-clip.js';
-export { REBUILD_NEAR_POINTS } from './map-ai/rebuild.js';
 // The match cadence, so an acceptance scene can run past the first verdict without restating it.
 export {
   MATCH_DEATH_CHECK_INTERVAL_TICKS,
@@ -233,7 +227,6 @@ export {
 // So the school dialog offers exactly the courses the `learn` command accepts.
 export { knowsCourse, SCHOOL_LESSON_TICKS } from './orders/education.js';
 export { EXPLORE_MAX_FAILED_LEGS } from './orders/explore.js';
-export { MEAL_BREAK_RETRY_TICKS } from './orders/meal-break.js';
 export { WORK_FLAG_SNAP_MAX_RADIUS } from './orders/work/selection.js';
 export { GATE_ENEMY_NEAR_POINTS } from './palisades/gate-control.js';
 export { createPalisade, GATE_MIN_HEALTH_PCT, GATE_SPAN_OFFSETS, palisadeType } from './palisades/index.js';
@@ -326,11 +319,12 @@ export {
 export { awaitsDraughtAnimal, isShipVehicle, isSiegeVehicle } from './readviews/vehicles.js';
 // The laid road count, which the road scene's acceptance reads.
 export { roadNodeCount } from './roads/index.js';
-// What a blow and a meal are worth, for the reference window's own arithmetic.
 export {
   BACK_SIDE_HIT_PCT,
   BEHIND_HIT_PCT,
+  directedDamage,
   HIT_DIRECTION_PCT,
+  hitDirectionBin,
 } from './settlers/atomics/effects/combat/hit/damage.js';
 export { KIN_ALARM_RADIUS_NODES } from './settlers/atomics/effects/combat/hit/reactions.js';
 export { SPILL_MAX_RADIUS } from './settlers/atomics/effects/goods/piles.js';

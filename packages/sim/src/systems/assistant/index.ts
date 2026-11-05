@@ -64,7 +64,7 @@ export const ASSISTANT_DECISION_PERIOD_TICKS = TICKS_PER_SECOND;
 
 /** Drill orders and arming bookings issued per player per beat, the trickle brake: an infinite counter
  *  empties the village into the barracks over minutes, not in one tick. Authored balance. */
-export const TRAIN_DISPATCHES_PER_DECISION = 2;
+const TRAIN_DISPATCHES_PER_DECISION = 2;
 
 export const assistantSystem: System = (world, ctx) => {
   if (ctx.tick % ASSISTANT_DECISION_PERIOD_TICKS !== 0) return;

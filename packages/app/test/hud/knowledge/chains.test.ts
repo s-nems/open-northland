@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createKnowledgeBase, type KnowledgeBase } from '../../../src/hud/knowledge/base.js';
+import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
 import {
   billOf,
   buildingsCosting,
@@ -14,6 +14,7 @@ import {
   upstreamOf,
   usesOf,
 } from '../../../src/hud/knowledge/chains.js';
+import type { KnowledgeBase } from '../../../src/hud/knowledge/model.js';
 import { GOOD, knowledgeContent } from '../../support/knowledge-content.js';
 
 const base = (): KnowledgeBase => createKnowledgeBase(knowledgeContent());

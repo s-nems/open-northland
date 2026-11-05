@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createKnowledgeBase, type KnowledgeWeapon } from '../../../src/hud/knowledge/base.js';
+import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
 import {
   blowResult,
   breakdown,
@@ -21,6 +21,7 @@ import {
   HUMAN_HITPOINTS,
   landed,
 } from '../../../src/hud/knowledge/combat.js';
+import type { KnowledgeWeapon } from '../../../src/hud/knowledge/model.js';
 import {
   FRANK,
   FRANK_SMITHY_HITPOINTS,

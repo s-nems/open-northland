@@ -44,8 +44,6 @@ import type {
   KnowledgeWorkerName,
 } from './model.js';
 
-export type * from './model.js';
-
 /** Seconds one sim tick lasts at normal speed. */
 export const SECONDS_PER_TICK = 1 / TICKS_PER_SECOND;
 

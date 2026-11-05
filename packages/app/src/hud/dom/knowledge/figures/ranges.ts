@@ -1,8 +1,8 @@
 import { hexNeighboursOf, systems } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../../i18n/index.js';
-import type { KnowledgeWeapon } from '../../../knowledge/base.js';
 import { weaponLabel } from '../../../knowledge/calculator.js';
 import { isCatapult, shownWeapons } from '../../../knowledge/combat.js';
+import type { KnowledgeWeapon } from '../../../knowledge/model.js';
 import type { KnowledgeContext } from '../context.js';
 import { fitScale, GROUND_SQUASH, hexRing, NODE_PX, NODE_ROW_PX, nodePoint, type Point } from './geometry.js';
 import { groundMesh } from './ground.js';

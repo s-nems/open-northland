@@ -1,6 +1,6 @@
 import type { GoodQuantity } from '@open-northland/data';
 import { systems } from '@open-northland/sim';
-import type { KnowledgeBase, KnowledgeBuilding, KnowledgeGood, KnowledgeRecipe } from './base.js';
+import type { KnowledgeBase, KnowledgeBuilding, KnowledgeGood, KnowledgeRecipe } from './model.js';
 
 export interface RecipeSource {
   readonly building: KnowledgeBuilding;

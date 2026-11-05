@@ -482,8 +482,6 @@ export const ruKnowledge = {
     matrixCadence: 'Удар каждые',
     matrixFoot:
       'Здоровье человека: {hitpoints}. Животное считается в кожаных доспехах, но без вычета {blocking}.',
-    matrixDragon:
-      'Деревянное Копье здесь показывает дракона с карты. Обученный Византиец дерётся обычным Деревянным Копьем.',
     cadence: '{seconds} с',
     cadenceBlows: '{blows} × удар каждые {seconds} с',
     directions: { front: 'Спереди', backSide: 'Сзади сбоку ×1,25', behind: 'Сзади ×1,5' },

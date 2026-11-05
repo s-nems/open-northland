@@ -1,9 +1,8 @@
 import type { EquipClass } from '@open-northland/data';
 import { bcp47Tag, formatMessage, messages, type PluralForms, pluralForm } from '../../i18n/index.js';
-import type { KnowledgeStatus } from '../dom/knowledge/context.js';
 import { SECONDS_PER_TICK } from './base.js';
 import { clipSeconds, isRanged, perSecond } from './combat.js';
-import type { KnowledgeMeal, KnowledgeRequirement, KnowledgeWeapon } from './model.js';
+import type { KnowledgeMeal, KnowledgeRequirement, KnowledgeStatus, KnowledgeWeapon } from './model.js';
 
 const PERCENT = 100;
 const WHOLE_DIGITS = 0;

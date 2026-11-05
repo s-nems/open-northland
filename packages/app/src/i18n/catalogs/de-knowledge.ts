@@ -518,8 +518,6 @@ export const deKnowledge = {
     matrixCadence: 'Schlag alle',
     matrixFoot:
       'Ein Mensch hat {hitpoints} Gesundheit. Ein Tier zählt als Lederrüstung, aber ohne den Abzug von {blocking}.',
-    matrixDragon:
-      'Der Holzspeer zeigt hier den Drachen der Karte. Ein ausgebildeter Byzantiner kämpft mit dem gewöhnlichen Holzspeer.',
     cadence: '{seconds} s',
     cadenceBlows: '{blows} Schläge alle {seconds} s',
     directions: {

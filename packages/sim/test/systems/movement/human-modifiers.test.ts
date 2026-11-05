@@ -28,8 +28,8 @@ describe('human walk modifiers', () => {
       JobType.parse({ typeId: 104, id: 'hero_bjarni' }),
     ],
     tribes: [
-      TribeType.parse({ typeId: 201, id: 'restricted' }),
-      TribeType.parse({ typeId: 202, id: 'unrestricted' }),
+      TribeType.parse({ typeId: 201, id: 'tribe_a' }),
+      TribeType.parse({ typeId: 202, id: 'tribe_b' }),
     ],
     weapons: [
       WeaponType.parse({ typeId: 1, id: 'light', tribeType: 201, jobType: 103, goodType: 501, weight: 1 }),

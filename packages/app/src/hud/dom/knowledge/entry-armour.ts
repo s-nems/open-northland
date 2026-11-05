@@ -1,5 +1,4 @@
 import { messages } from '../../../i18n/index.js';
-import type { KnowledgeGood } from '../../knowledge/base.js';
 import {
   armourOf,
   combatTargets,
@@ -10,7 +9,7 @@ import {
 } from '../../knowledge/combat.js';
 import { tribeWeapons, weaponName } from '../../knowledge/entry-blocks.js';
 import { perSecondText, slowdownPercent, wholeText } from '../../knowledge/entry-format.js';
-import type { KnowledgeWeapon } from '../../knowledge/model.js';
+import type { KnowledgeGood, KnowledgeWeapon } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
 import { goodStatusBlock, obtainBlock } from './entry-good.js';
 import {

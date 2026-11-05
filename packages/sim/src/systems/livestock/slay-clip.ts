@@ -20,13 +20,7 @@ export function slayDepositGoods(
   settler: SettlerIdentity,
   speciesGood: number,
 ): readonly number[] {
-  const atomicId = slayAtomicOfSpecies(ctx.content, speciesGood);
-  if (atomicId === null) return [];
-  const goods: number[] = [];
-  for (const good of stockEventGoods(ctx, settler, atomicId)) {
-    if (!goods.includes(good)) goods.push(good);
-  }
-  return goods;
+  return [...slayYield(ctx, settler, speciesGood).keys()];
 }
 
 /** One slaughter's whole yield by good: every unit the clip deposits, in clip order. */

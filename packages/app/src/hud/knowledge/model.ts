@@ -217,3 +217,28 @@ export interface KnowledgeBase {
   readonly jobById: ReadonlyMap<string, KnowledgeJob>;
   readonly jobByType: ReadonlyMap<number, KnowledgeJob>;
 }
+
+export type KnowledgeTab = 'goods' | 'buildings' | 'encyclopedia' | 'mechanics';
+export type KnowledgeTree = Extract<KnowledgeTab, 'goods' | 'buildings'>;
+
+/** A house, good or trade as the seat stands now; a map's ban is told apart from an unmet requirement. */
+export type KnowledgeStatus =
+  | { readonly kind: 'available' }
+  | { readonly kind: 'locked'; readonly missing: readonly string[] }
+  | { readonly kind: 'mapForbidden' };
+
+/** The running game, read when a tab renders, never per tick. Absent in the main menu. */
+export interface KnowledgeSettlement {
+  readonly tribe: number;
+  status(kind: 'building' | 'good' | 'job', typeId: number): KnowledgeStatus;
+}
+
+/** One looping preview: a fighter's blow or march, a worker at his trade, an animal. */
+export type KnowledgeClip =
+  | {
+      readonly kind: 'job';
+      readonly jobType: number;
+      readonly tribe: number;
+      readonly action: 'attack' | 'walk' | 'work';
+    }
+  | { readonly kind: 'animal'; readonly animalTribe: number; readonly action: 'attack' | 'walk' };

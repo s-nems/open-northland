@@ -482,8 +482,6 @@ export const plKnowledge = {
     matrixCadence: 'Cios co',
     matrixFoot:
       'Człowiek ma {hitpoints} zdrowia. Zwierzę liczy się jak skórzana zbroja, ale bez odjęcia {blocking}.',
-    matrixDragon:
-      'Drewniana włócznia pokazuje tu smoka z mapy. Wyszkolony Bizantyjczyk walczy zwykłą drewnianą włócznią.',
     cadence: '{seconds} s',
     cadenceBlows: '{blows} × cios co {seconds} s',
     directions: { front: 'Przód', backSide: 'Bok z tyłu ×1,25', behind: 'Tył ×1,5' },

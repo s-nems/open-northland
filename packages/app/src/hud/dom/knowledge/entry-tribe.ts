@@ -1,6 +1,5 @@
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import type { KnowledgeTribe } from '../../knowledge/base.js';
 import { combatTargets, landed, perSecond } from '../../knowledge/combat.js';
 import {
   type TribeDifference,
@@ -9,6 +8,7 @@ import {
   tribeWeapons,
 } from '../../knowledge/entry-blocks.js';
 import { cadenceText, perSecondText, wholeText } from '../../knowledge/entry-format.js';
+import type { KnowledgeTribe } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
 import { weaponLabel } from './entry-armour.js';
 import {

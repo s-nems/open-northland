@@ -1,5 +1,4 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
-import type { KnowledgeAnimal, KnowledgeWeapon } from '../../knowledge/base.js';
 import { SECONDS_PER_TICK } from '../../knowledge/base.js';
 import {
   ANIMAL_TARGET,
@@ -12,6 +11,7 @@ import {
 } from '../../knowledge/combat.js';
 import { type AnimalBlock, animalBlocks, huntWeapons } from '../../knowledge/entry-blocks.js';
 import { secondsText, speedText, ticksText, wholeText } from '../../knowledge/entry-format.js';
+import type { KnowledgeAnimal, KnowledgeWeapon } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
 import { weaponLabel } from './entry-armour.js';
 import {

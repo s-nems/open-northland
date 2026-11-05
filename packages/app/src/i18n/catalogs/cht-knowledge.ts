@@ -476,7 +476,6 @@ export const chtKnowledge = {
     matrixRange: '範圍',
     matrixCadence: '攻擊間隔',
     matrixFoot: '人有{hitpoints}點生命值。動物按皮甲計算，但不減去{blocking}。',
-    matrixDragon: '此處木矛顯示的是地圖上的龍。訓練出的拜占庭士兵使用普通木矛。',
     cadence: '{seconds}秒',
     cadenceBlows: '每{seconds}秒{blows}擊',
     directions: { front: '正面', backSide: '後側 ×1.25', behind: '背後 ×1.5' },

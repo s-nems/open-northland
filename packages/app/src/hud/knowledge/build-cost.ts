@@ -1,7 +1,7 @@
 import type { GoodQuantity } from '@open-northland/data';
-import type { KnowledgeBase, KnowledgeBuilding } from './base.js';
 import { producersOf, recipesOf } from './chains.js';
 import { levelChain } from './entry-blocks.js';
+import type { KnowledgeBase, KnowledgeBuilding } from './model.js';
 
 /** What the whole line costs from its first level through `building`, merged per good in first-seen order. */
 export function totalCost(base: KnowledgeBase, building: KnowledgeBuilding): readonly GoodQuantity[] {

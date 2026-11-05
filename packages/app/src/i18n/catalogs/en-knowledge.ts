@@ -483,8 +483,6 @@ export const enKnowledge = {
     matrixCadence: 'Blow every',
     matrixFoot:
       'A person has {hitpoints} health. An animal counts as leather armour, but without the {blocking} taken off.',
-    matrixDragon:
-      'The Wooden Spear row shows the map Dragon here. A trained Byzantine fights with a plain Wooden Spear.',
     cadence: '{seconds} s',
     cadenceBlows: '{blows} blows every {seconds} s',
     directions: { front: 'Front', backSide: 'Rear flank ×1.25', behind: 'Behind ×1.5' },

@@ -69,12 +69,13 @@ export function leadPoint(
 }
 
 /** A shot's scatter reaches up to a quarter of its range. Original behavior. */
-export const SCATTER_RANGE_DIVISOR = 4;
+const SCATTER_RANGE_DIVISOR = 4;
 
 /** A settler's aim roll spans 0..99. A roll at or under its bow hits plus this base shoots true; a higher one
  *  scatters the more the further it overshoots. Original behavior. */
-export const AIM_ROLL_SPAN = 100;
-export const AIM_TRUE_BASE = 10;
+const AIM_ROLL_SPAN = 100;
+const AIM_TRUE_BASE = 10;
+const PERCENT = 100;
 
 /**
  * The scatter of a settler's shot over `distance` nodes, by the hits it has landed with a bow. A novice's
@@ -82,10 +83,23 @@ export const AIM_TRUE_BASE = 10;
  * count for any ranged weapon; the caller spares a hero, who always shoots true.
  */
 export function marksmanSpread(ctx: SystemContext, distance: number, bowHits: number): number {
-  const roll = ctx.rng.int(AIM_ROLL_SPAN);
+  return spreadForRoll(distance, bowHits, ctx.rng.int(AIM_ROLL_SPAN));
+}
+
+function spreadForRoll(distance: number, bowHits: number, roll: number): number {
   const threshold = bowHits + AIM_TRUE_BASE;
   if (roll <= threshold) return 0;
   return Math.floor(((roll - threshold) * Math.floor(distance / SCATTER_RANGE_DIVISOR)) / roll);
+}
+
+/** The percent of a settler's shots with `bowHits` that fly true: the rolls at or under its threshold. */
+export function trueShotPct(bowHits: number): number {
+  return (Math.min(AIM_ROLL_SPAN, bowHits + AIM_TRUE_BASE + 1) * PERCENT) / AIM_ROLL_SPAN;
+}
+
+/** The widest {@link marksmanSpread} a settler with `bowHits` can draw over `distance` nodes: its worst roll. */
+export function widestMarksmanSpread(distance: number, bowHits: number): number {
+  return spreadForRoll(distance, bowHits, AIM_ROLL_SPAN - 1);
 }
 
 /** A defence-mode building's scatter divides its reach by a roll of 1..30. Original behavior. */
@@ -99,6 +113,13 @@ export function shelterSpread(ctx: SystemContext, distance: number): number {
   );
 }
 
+const scatterHalf = (spread: number): number => Math.floor(spread / 2);
+
+/** The farthest {@link scatteredNode} shifts a mark along one axis for `spread`. */
+export function widestScatterOffset(spread: number): number {
+  return spread <= 0 ? 0 : spread - scatterHalf(spread);
+}
+
 /** `mark` shifted by a draw of up to `spread` nodes in each axis, centred on it. Original behavior. */
 export function scatteredNode(
   ctx: SystemContext,
@@ -107,7 +128,7 @@ export function scatteredNode(
   spread: number,
 ): NodeId {
   if (spread <= 0) return mark;
-  const half = Math.floor(spread / 2);
+  const half = scatterHalf(spread);
   const dx = ctx.rng.int(spread + 1) - half;
   const dy = ctx.rng.int(spread + 1) - half;
   return terrain.nodeAtClamped(terrain.xOf(mark) + dx, terrain.yOf(mark) + dy);

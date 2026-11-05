@@ -479,8 +479,13 @@ function chaseTargetOf(
 function approachBand(weapon: ArmedWith): ApproachBand {
   const { minRange, maxRange } = weapon;
   if (!isRangedWeapon(weapon.weapon)) return { minRange, maxRange, contact: true };
-  if (minRange >= maxRange) return { minRange, maxRange, contact: false };
-  return { minRange, maxRange: (2 * maxRange - minRange) >> 1, contact: false };
+  return { minRange, maxRange: rangedStandoff(minRange, maxRange), contact: false };
+}
+
+/** The far edge of a ranged weapon's approach band: `(2 * max - min) / 2`, or its whole reach when it has no
+ *  band. Original behavior. */
+export function rangedStandoff(minRange: number, maxRange: number): number {
+  return minRange >= maxRange ? maxRange : (2 * maxRange - minRange) >> 1;
 }
 
 /** Whether `cell` lies on the ground chaser `e` standing on `here` can walk to: its structural region for a

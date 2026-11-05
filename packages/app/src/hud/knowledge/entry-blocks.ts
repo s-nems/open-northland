@@ -6,13 +6,14 @@ import {
   JOB_WOMAN,
 } from '../../catalog/jobs.js';
 import { messages } from '../../i18n/index.js';
-import { buildingHitpoints, type KnowledgeBase } from './base.js';
+import { buildingHitpoints } from './base.js';
 import { rawCost, recipesOf } from './chains.js';
 import { combatTargets, isCatapult, isNamedHeroWeapon, landed, shownWeapons, weaponsOf } from './combat.js';
 import { cadenceText, rangeText, wholeText } from './entry-format.js';
 import type {
   EntryRef,
   KnowledgeAnimal,
+  KnowledgeBase,
   KnowledgeBuilding,
   KnowledgeGood,
   KnowledgeJob,

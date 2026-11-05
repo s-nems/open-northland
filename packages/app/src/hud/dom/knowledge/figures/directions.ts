@@ -61,7 +61,7 @@ function soldier(): SVGElement {
 /** One heading's wedge, what a blow from there is worth and its name. */
 function headingWedge(heading: number): SVGElement[] {
   const t = messages().knowledge.figures.direction;
-  const bin = Math.min(heading, HEX_HEADING_COUNT - heading);
+  const bin = systems.hitDirectionBin(heading);
   const name = BIN_NAMES[bin];
   const pct = systems.HIT_DIRECTION_PCT[bin];
   if (name === undefined || pct === undefined) return [];

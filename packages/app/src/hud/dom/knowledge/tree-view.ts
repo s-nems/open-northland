@@ -8,7 +8,14 @@ import {
   laneCaption,
   laneName,
 } from '../../knowledge/lanes.js';
-import type { EntryRef, KnowledgeBase, KnowledgeBuilding, KnowledgeGood } from '../../knowledge/model.js';
+import type {
+  EntryRef,
+  KnowledgeBase,
+  KnowledgeBuilding,
+  KnowledgeGood,
+  KnowledgeStatus,
+  KnowledgeTree,
+} from '../../knowledge/model.js';
 import {
   BUILDING_CARD_HEIGHT,
   buildingKey,
@@ -26,7 +33,7 @@ import {
   treeNodeOf,
 } from '../../knowledge/tree-layout.js';
 import { goodIconMarkup } from '../good-art.js';
-import type { KnowledgeContext, KnowledgeStatus, KnowledgeTree } from './context.js';
+import type { KnowledgeContext } from './context.js';
 import { createTreePane } from './tree-pane.js';
 import './tree.css';
 
@@ -207,25 +214,6 @@ function shapeOf(context: KnowledgeContext, tree: KnowledgeTree): TreeShape {
     },
     relate: (key) => relateBuilding(base, key, context.tribe()),
   };
-}
-
-function laneIds(lanes: readonly Lane[]): ReadonlySet<string> {
-  const ids = new Set<string>();
-  const walk = (node: LaneNode): void => {
-    ids.add(node.id);
-    node.kids.forEach(walk);
-  };
-  for (const lane of lanes) lane.roots.forEach(walk);
-  return ids;
-}
-
-const GOOD_IDS = laneIds(GOOD_LANES);
-const BUILDING_IDS = laneIds(BUILDING_LANES);
-
-/** Whether `tree` shows a card for `ref`, mounted or not. */
-export function treeHolds(base: KnowledgeBase, tree: KnowledgeTree, ref: EntryRef): boolean {
-  if (tree === 'goods') return ref.kind === 'good' && GOOD_IDS.has(ref.id) && base.goodById.has(ref.id);
-  return ref.kind === 'building' && BUILDING_IDS.has(ref.id) && base.buildingById.has(ref.id);
 }
 
 interface DrawnLine {

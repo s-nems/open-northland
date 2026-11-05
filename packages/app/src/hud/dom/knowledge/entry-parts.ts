@@ -1,12 +1,17 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
-import type { KnowledgeBuilding, KnowledgeGood } from '../../knowledge/base.js';
 import { shownJobName } from '../../knowledge/entry-blocks.js';
 import { amountText, statusText } from '../../knowledge/entry-format.js';
-import type { EntryRef } from '../../knowledge/model.js';
+import { treeHolds } from '../../knowledge/lanes.js';
+import type {
+  EntryRef,
+  KnowledgeBuilding,
+  KnowledgeClip,
+  KnowledgeGood,
+  KnowledgeStatus,
+} from '../../knowledge/model.js';
 import { goodIconMarkup } from '../good-art.js';
 import { button, element, setStyleVar, write } from '../parts/dom.js';
-import type { KnowledgeClip, KnowledgeContext, KnowledgeStatus } from './context.js';
-import { treeHolds } from './tree-view.js';
+import type { KnowledgeContext } from './context.js';
 
 const LINK_ICON_PX = 22;
 const HEAD_ICON_PX = 48;

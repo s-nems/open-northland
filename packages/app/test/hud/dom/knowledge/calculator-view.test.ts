@@ -5,7 +5,8 @@ import {
   selectCalculatorWeapon,
 } from '../../../../src/hud/dom/knowledge/calculator-view.js';
 import type { KnowledgeContext } from '../../../../src/hud/dom/knowledge/context.js';
-import { createKnowledgeBase, type KnowledgeWeapon } from '../../../../src/hud/knowledge/base.js';
+import { createKnowledgeBase } from '../../../../src/hud/knowledge/base.js';
+import type { KnowledgeWeapon } from '../../../../src/hud/knowledge/model.js';
 import { knowledgeContent, VIKING } from '../../../support/knowledge-content.js';
 
 const weapon = (id: string, bare: number): KnowledgeWeapon => ({

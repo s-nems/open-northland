@@ -1,8 +1,8 @@
-import { systems, TICKS_PER_SECOND } from '@open-northland/sim';
+import { systems } from '@open-northland/sim';
 import { JOB_HERO_UNARMED, SOLDIER_JOB_MAX, SOLDIER_JOB_MIN } from '../../../catalog/jobs.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { ArticleDataBlock } from '../../knowledge/articles.js';
-import { buildingHitpoints, type KnowledgeWeapon, SECONDS_PER_TICK } from '../../knowledge/base.js';
+import { buildingHitpoints } from '../../knowledge/base.js';
 import { weaponGroups, weaponLabel } from '../../knowledge/calculator.js';
 import {
   ANIMAL_TARGET,
@@ -18,14 +18,14 @@ import {
   targetName,
 } from '../../knowledge/combat.js';
 import { rangeText, requirementText } from '../../knowledge/entry-format.js';
-import { formatFactNumber } from '../../knowledge/facts.js';
+import { formatFactNumber, lessonSeconds } from '../../knowledge/facts.js';
+import type { KnowledgeWeapon } from '../../knowledge/model.js';
 import { goodIconMarkup } from '../good-art.js';
 import { element, setStyleVar, write } from '../parts/dom.js';
 import { createSegmented } from '../parts/segmented.js';
 import { goLink, goodCell, plainTable } from './blocks.js';
 import type { KnowledgeContext } from './context.js';
 
-const BYZANTINE = 3;
 const SECONDS_DIGITS = 1;
 const MATRIX_ICON_PX = 24;
 const HEAT_DIGITS = 2;
@@ -249,11 +249,6 @@ function matrix(context: KnowledgeContext): HTMLElement {
     }),
   );
   host.append(controls, slot, foot);
-  if (context.tribe() === BYZANTINE) {
-    const dragon = element('p', 'kn-foot');
-    write(dragon, copy.matrixDragon);
-    host.append(dragon);
-  }
   refresh();
   return host;
 }
@@ -268,11 +263,6 @@ function armour(context: KnowledgeContext): HTMLElement {
   const blocking = base.armor.find((row) => row.blockingValue > 0)?.blockingValue ?? 0;
   return plainTable([copy.armourName, copy.armourWeight], rows, formatMessage(copy.armourFoot, { blocking }));
 }
-
-/** One school exercise; a course rounds up to whole exercises. */
-const EXERCISE_TICKS = 28;
-const courseSeconds = (lessons: number): number =>
-  Math.ceil((lessons * TICKS_PER_SECOND) / EXERCISE_TICKS) * EXERCISE_TICKS * SECONDS_PER_TICK;
 
 /** The value most rows share. */
 function mostCommon(values: readonly number[]): number | undefined {
@@ -290,7 +280,7 @@ function jobs({ base }: KnowledgeContext): HTMLElement {
   );
   const course = mostCommon(
     rows.flatMap((j) =>
-      j.requirements.filter((r) => r.route === 'train').map((r) => courseSeconds(r.amount)),
+      j.requirements.flatMap((r) => (r.route === 'train' ? (lessonSeconds(base, r.amount) ?? []) : [])),
     ),
   );
   return plainTable(
@@ -321,12 +311,6 @@ function homes(context: KnowledgeContext): HTMLElement {
 }
 
 const EXPERIENCE_POINTS: readonly number[] = [1, 2, 3, 4, 5, 10, 25, 50, 100, 162];
-/** Percent of experience that saves one stroke of ten. */
-const PERCENT_PER_SAVED_STROKE = 20;
-/** At 100% a batch yields 1.5 extra pieces, kept in tenths. */
-const EXTRA_TENTHS_AT_FULL = 15;
-const PERCENT = 100;
-const TENTHS = 10;
 
 function experience(): HTMLElement {
   const copy = messages().knowledge.mechanics;
@@ -334,11 +318,11 @@ function experience(): HTMLElement {
     [copy.expPoints, copy.expPercent, copy.expStrokes, copy.expExtra],
     EXPERIENCE_POINTS.map((points) => {
       const percent = systems.experiencePercent(points);
-      const extra = Math.trunc((percent * EXTRA_TENTHS_AT_FULL) / PERCENT) / TENTHS;
+      const extra = systems.experienceBonusTenths(percent) / systems.OUTPUT_TENTHS_PER_UNIT;
       return [
         points,
         `${percent}%`,
-        Math.trunc(percent / PERCENT_PER_SAVED_STROKE),
+        Math.trunc(percent / systems.EXPERIENCE_PCT_PER_SAVED_STROKE),
         formatMessage(copy.expPieces, { amount: formatFactNumber(extra) }),
       ];
     }),

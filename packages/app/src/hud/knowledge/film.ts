@@ -55,7 +55,7 @@ import {
   programFrameLists,
   type TribeLook,
 } from '../../content/settler-gfx/index.js';
-import type { KnowledgeClip } from '../dom/knowledge/context.js';
+import type { KnowledgeClip } from './model.js';
 
 /** One sheet's share of a film: the served stems that can draw it, best first, and its bob per step. */
 export interface FilmLayer {

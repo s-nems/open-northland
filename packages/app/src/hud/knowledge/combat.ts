@@ -1,7 +1,8 @@
 import { DEFAULT_NODE_ROUGHNESS, systems } from '@open-northland/sim';
 import { EQUIP_CLASS_BY_SLUG } from '../../game/sandbox/combat.js';
 import { type Messages, messages } from '../../i18n/index.js';
-import { type KnowledgeBase, type KnowledgeGood, type KnowledgeWeapon, SECONDS_PER_TICK } from './base.js';
+import { SECONDS_PER_TICK } from './base.js';
+import type { KnowledgeBase, KnowledgeGood, KnowledgeWeapon } from './model.js';
 
 const PERCENT = 100;
 const { ARMOR_MATERIAL, WEAPON_MAIN_TYPE } = systems;
@@ -174,11 +175,12 @@ export function blowSteps(
   const raised = gainsFightExperience(weapon, target)
     ? systems.withFightExperience(base, modifiers.hits)
     : base;
-  const directed = person ? Math.trunc((raised * modifiers.direction) / PERCENT) : raised;
+  const directed = person ? systems.directedDamage(raised, modifiers.direction) : raised;
   const blocked = person ? directed - target.blocking : directed;
   const amulet = modifiers.strength && takesStrengthAmulet(weapon);
-  const strong = amulet ? Math.floor((blocked * STRENGTH_PCT) / PERCENT) : blocked;
-  const shielded = person && modifiers.defense ? Math.trunc((strong * DEFENSE_TAKEN_PCT) / PERCENT) : strong;
+  const strong = amulet ? systems.scaledDealtDamage(blocked, STRENGTH_PCT) : blocked;
+  const shielded =
+    person && modifiers.defense ? systems.scaledTakenDamage(strong, DEFENSE_TAKEN_PCT) : strong;
   return [
     { id: 'base', value: base, applies: true },
     { id: 'experience', value: raised, applies: gainsFightExperience(weapon, target) },
