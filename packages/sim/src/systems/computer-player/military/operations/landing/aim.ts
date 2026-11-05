@@ -3,17 +3,19 @@ import {
   MAX_PLAYERS,
   mapBriefOf,
   playerPlacementTribes,
-} from '../../../../components/index.js';
-import { isPlayerDead } from '../../../../components/match.js';
-import type { Entity, World } from '../../../../ecs/world.js';
-import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
-import { NO_COMPONENT } from '../../../../nav/terrain/index.js';
-import { buildingCombatClass } from '../../../readviews/index.js';
-import type { Share } from '../../difficulty.js';
-import { peakFighterPoints, rememberedLandPoints } from '../../knowledge/intel/index.js';
-import { landOfPoint } from '../../sea-route.js';
-import { knownDefendingPoints, ownArmyPoints } from '../enemy-strength.js';
-import { launchRatioReached } from '../plan.js';
+} from '../../../../../components/index.js';
+import { isPlayerDead } from '../../../../../components/match.js';
+import type { Entity, World } from '../../../../../ecs/world.js';
+import { type HalfCellNode, nodeManhattan } from '../../../../../nav/halfcell.js';
+import { NO_COMPONENT } from '../../../../../nav/terrain/index.js';
+import { buildingCombatClass } from '../../../../readviews/index.js';
+import type { Share } from '../../../difficulty.js';
+import { peakFighterPoints, rememberedLandPoints } from '../../../knowledge/intel/index.js';
+import { landOfPoint } from '../../../sea-route.js';
+import { knownDefendingPoints, ownArmyPoints } from '../../enemy-strength.js';
+import { launchRatioReached } from '../../plan.js';
+import type { OperationEnv } from '../lifecycle.js';
+import { defenceAt, RAID_TOWER_DEFENCE, visibleEnemyFighters } from '../raid-target.js';
 import {
   type BelievedLand,
   type BelievedTarget,
@@ -21,9 +23,7 @@ import {
   believedLands,
   landingObjective,
   towersReaching,
-} from './landing-target.js';
-import type { OperationEnv } from './lifecycle.js';
-import { defenceAt, RAID_TOWER_DEFENCE, visibleEnemyFighters } from './raid-target.js';
+} from './target.js';
 
 // Where a landing sails and whom it takes (owner ruling): every land the seat believes holds an enemy
 // building is a candidate, the lands of a rival's headquarters first, where the whole wave goes, then his

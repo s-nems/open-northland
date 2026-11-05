@@ -1,23 +1,23 @@
 import { buildingHitpointsFor } from '@open-northland/data';
-import { Building, diplomacyStance, Health, ownerOf } from '../../../../components/index.js';
-import { contentIndex } from '../../../../core/content-index.js';
-import type { Entity } from '../../../../ecs/world.js';
-import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
-import type { NodeId } from '../../../../nav/terrain/index.js';
-import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
-import type { SystemContext } from '../../../context.js';
+import { Building, diplomacyStance, Health, ownerOf } from '../../../../../components/index.js';
+import { contentIndex } from '../../../../../core/content-index.js';
+import type { Entity } from '../../../../../ecs/world.js';
+import { type HalfCellNode, nodeManhattan } from '../../../../../nav/halfcell.js';
+import type { NodeId } from '../../../../../nav/terrain/index.js';
+import { anchorNodeOf } from '../../../../ai-shared/node-geometry.js';
+import type { SystemContext } from '../../../../context.js';
 import {
   ARMOR_MATERIAL,
   type BuildingCombatClass,
   buildingCombatClass,
   houseBow,
   shelterCapacityOf,
-} from '../../../readviews/index.js';
-import { interactionCell } from '../../../settlers/targets/index.js';
-import { believedBuildings, rememberedBuildings } from '../../knowledge/intel/index.js';
-import { fighterPoints } from '../points.js';
-import type { OperationEnv } from './lifecycle.js';
-import { RAID_TOWER_CLEARANCE_NODES } from './raid-target.js';
+} from '../../../../readviews/index.js';
+import { interactionCell } from '../../../../settlers/targets/index.js';
+import { believedBuildings, rememberedBuildings } from '../../../knowledge/intel/index.js';
+import { fighterPoints } from '../../points.js';
+import type { OperationEnv } from '../lifecycle.js';
+import { RAID_TOWER_CLEARANCE_NODES } from '../raid-target.js';
 
 // What a landing strikes once ashore and what it keeps clear of: the rival's towers and the buildings
 // his people shelter in on alarm, which shoot every landed man in reach and fall only to a siege. Read
@@ -168,7 +168,7 @@ const STORM_RANK: Readonly<Record<BuildingCombatClass, number>> = { hq: 0, tower
  * on a tie. A `storm` strikes covered ground too: the headquarters, else the nearest tower, else the
  * nearest building. Null once none is left. Authored: observed on arabskie_wyspy_wolna_gra_mieszana,
  * waves sent on a headquarters beside a large tower lost most of their dead near it while it fell, so only
- * a landing that clearly outweighs the cover storms it (`landing-aim.ts`).
+ * a landing that clearly outweighs the cover storms it (`aim.ts`).
  */
 export function landingObjective(
   ctx: SystemContext,

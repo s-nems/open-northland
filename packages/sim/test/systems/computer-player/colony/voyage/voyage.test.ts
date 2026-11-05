@@ -34,8 +34,8 @@ import { holdLoad } from '../../../../../src/systems/computer-player/colony/sea/
 import { surveyColonySite } from '../../../../../src/systems/computer-player/colony/voyage/survey.js';
 import { fittingOut, returning } from '../../../../../src/systems/computer-player/colony/voyage/voyage.js';
 import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
-import { freeShips } from '../../../../../src/systems/computer-player/military/operations/landing.js';
 import { seatNeedsShips } from '../../../../../src/systems/computer-player/sea-route.js';
+import { freeShips } from '../../../../../src/systems/computer-player/sea-ships.js';
 import { isFighterJob } from '../../../../../src/systems/readviews/index.js';
 import {
   BIG_SHIP,

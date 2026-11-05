@@ -22,8 +22,8 @@ import { needLevel } from '../../../lifecycle/needs/index.js';
 import { mooringSpotsOf } from '../../../vehicles/dock.js';
 import { isCargoHand, isLoaderRider } from '../../../vehicles/stock.js';
 import { minutesToTicks } from '../../game-phase.js';
-import { freeShips, LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../../military/operations/landing.js';
 import { SEA_SCOUT_TRIP_TIMEOUT_TICKS, scoutLoop } from '../../military/operations/sea-scout.js';
+import { freeShips, otherShore, SHIP_SAIL_TIMEOUT_TICKS } from '../../sea-ships.js';
 import { type ColonyEnv, type ColonyView, homeLandOf, type SeatEnv } from '../env.js';
 import { boardOrders, PARTY_FROM_CIVILIANS, pickParty, spareMen } from '../party.js';
 import {
@@ -68,7 +68,7 @@ const COLONY_FIT_OUT_TICKS = minutesToTicks(20);
  *  arabskie_wyspy_wolna_gra_mieszana, a party's hands bring most of a hold in it. */
 const COLONY_LOAD_TICKS = minutesToTicks(6);
 /** How long a ship may sail out (authored: a landing's sail limit). */
-const COLONY_SAIL_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
+const COLONY_SAIL_TICKS = SHIP_SAIL_TIMEOUT_TICKS;
 /** The men kept aboard beside the helm to empty the hold. */
 const COLONY_LANDING_HANDS = 5;
 /** How long they get before they step ashore and leave what is left aboard (authored). */

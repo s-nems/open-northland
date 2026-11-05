@@ -1,7 +1,7 @@
 import { type ColonyRoute, Health, Vehicle } from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity } from '../../../../ecs/world.js';
-import { freeShips } from '../../military/operations/landing.js';
+import { freeShips } from '../../sea-ships.js';
 import { type ColonyEnv, homeLandOf } from '../env.js';
 import { mayBuildTradeShip } from './fleet.js';
 import { TRADE_SHIP_ID } from './trade-ship.js';

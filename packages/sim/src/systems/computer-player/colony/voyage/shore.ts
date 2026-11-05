@@ -12,7 +12,7 @@ import {
   reachableResourceTest,
   workableResourceTest,
 } from '../../live-resources.js';
-import { believedLand, underFire } from '../../military/operations/landing-target.js';
+import { believedLand, underFire } from '../../military/operations/landing/target.js';
 import { shorePoints } from '../../sea-route.js';
 import type { ColonyEnv } from '../env.js';
 import { LAND_GOOD_IDS } from '../land.js';

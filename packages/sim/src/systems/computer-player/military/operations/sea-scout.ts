@@ -20,9 +20,10 @@ import { mooringSpotsOf } from '../../../vehicles/dock.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
 import { computerProfileOf } from '../../difficulty.js';
 import { LANDING_SHORE_SPACING_NODES, type SeaRoute, seaRouteOf } from '../../sea-route.js';
+import { freeShips } from '../../sea-ships.js';
 import { landingFewestShips, landingFleetShips } from '../../workforce/craft.js';
 import { unitPoints } from '../points.js';
-import { freeShips, LANDING_FORM_TIMEOUT_TICKS } from './landing.js';
+import { LANDING_FORM_TIMEOUT_TICKS } from './landing/landing.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import { believedTowers, nodeOfEntity, towerInReach } from './raid-target.js';
 

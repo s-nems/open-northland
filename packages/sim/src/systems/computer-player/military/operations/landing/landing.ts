@@ -5,7 +5,6 @@ import {
   type LandingOperation,
   type LandingShip,
   type OperationEndReason,
-  Position,
   type RescueOperation,
   Rider,
   type SeaLanding,
@@ -14,55 +13,46 @@ import {
   VehicleDrive,
   vehicleCommander,
   vehiclePassengers,
-} from '../../../../components/index.js';
-import type { PlayerCommand } from '../../../../core/commands/index.js';
-import { contentIndex } from '../../../../core/content-index.js';
-import { TICKS_PER_SECOND } from '../../../../core/loop.js';
-import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
-import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
-import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../../nav/terrain/index.js';
-import { colonyHeldShips } from '../../../ai-shared/home-roster.js';
-import { onErrand, spokenFor } from '../../../ai-shared/military/errand.js';
-import { isShipVehicle } from '../../../readviews/vehicles.js';
-import { type MooringSpots, mooringSpotsOf } from '../../../vehicles/dock.js';
-import { crewInside } from '../../../vehicles/movement.js';
-import { vehicleIndex } from '../../../vehicles/registry.js';
-import { computerProfileOf } from '../../difficulty.js';
-import { LANDING_SHORE_SPACING_NODES, landOfPoint, shorePoints } from '../../sea-route.js';
+} from '../../../../../components/index.js';
+import type { PlayerCommand } from '../../../../../core/commands/index.js';
+import { TICKS_PER_SECOND } from '../../../../../core/loop.js';
+import type { DeepReadonly, Entity, World } from '../../../../../ecs/world.js';
+import { type HalfCellNode, nodeManhattan } from '../../../../../nav/halfcell.js';
+import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../../../nav/terrain/index.js';
+import { onErrand, spokenFor } from '../../../../ai-shared/military/errand.js';
+import { type MooringSpots, mooringSpotsOf } from '../../../../vehicles/dock.js';
+import { crewInside } from '../../../../vehicles/movement.js';
+import { computerProfileOf } from '../../../difficulty.js';
+import { landOfPoint, shorePoints } from '../../../sea-route.js';
+import { freeShips, otherShore, SHIP_SAIL_TIMEOUT_TICKS } from '../../../sea-ships.js';
 import {
   LANDING_FLEET_MIN_SHIPS,
   landingFewestShips,
   landingFleetShips,
   SOLDIERS_PER_SHIP,
-} from '../../workforce/craft.js';
-import { underAttack } from '../../workforce/garrison.js';
-import { ownArmyPoints } from '../enemy-strength.js';
-import { marchOrders } from '../muster.js';
-import { unitPoints } from '../points.js';
-import { homeOf } from './band.js';
-import {
-  type LandingAim,
-  type LandingRoom,
-  landingAim,
-  type RankedMan,
-  stormObjective,
-} from './landing-aim.js';
-import { isRescue, mayRescue, ownPointsOnLand, rescueAim, rescueObjective } from './landing-relief.js';
-import { believedLand, type FireSource, landingObjective, underFire } from './landing-target.js';
-import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
+} from '../../../workforce/craft.js';
+import { underAttack } from '../../../workforce/garrison.js';
+import { ownArmyPoints } from '../../enemy-strength.js';
+import { marchOrders } from '../../muster.js';
+import { unitPoints } from '../../points.js';
+import { homeOf } from '../band.js';
+import { enter, type Opened, type OperationEnv, type OperationHandler } from '../lifecycle.js';
 import {
   believedEnemyTowers,
   nodeOfEntity,
   RAID_DEFENCE_RADIUS_NODES,
   RAID_TOWER_CLEARANCE_NODES,
   visibleEnemyFighters,
-} from './raid-target.js';
+} from '../raid-target.js';
+import { type LandingAim, type LandingRoom, landingAim, type RankedMan, stormObjective } from './aim.js';
+import { isRescue, mayRescue, ownPointsOnLand, rescueAim, rescueObjective } from './rescue.js';
+import { believedLand, type FireSource, landingObjective, underFire } from './target.js';
 
 // A naval landing (owner ruling): a seat fills its moored ships with soldiers at home and sails them
-// together to the shore of the land it aims at (`landing-aim.ts`), outside the reach of the towers and
+// together to the shore of the land it aims at (`aim.ts`), outside the reach of the towers and
 // shelters it believes stand there where it can, sets every man but each ship's commander ashore once the
 // fleet lies there and marches the landed men on their objective: a rival's buildings. A rescue
-// (`landing-relief.ts`) sails the same way to the enemy band on one of the seat's colonies. The ships lie
+// (`rescue.ts`) sails the same way to the enemy band on one of the seat's colonies. The ships lie
 // at the shore meanwhile and take the survivors home once the landing is losing or has nothing left to
 // strike.
 // Every figure below is authored unless it says otherwise.
@@ -75,15 +65,13 @@ export const LANDING_COOLDOWN_TICKS = 5 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 export const LANDING_QUICK_COOLDOWN_TICKS = SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 /** The most a landing waits for its men to walk to their ships and board. */
 export const LANDING_FORM_TIMEOUT_TICKS = 4 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
-/** The most its ships sail out before it turns back, and sail home before it lets the crews go. */
-export const LANDING_SAIL_TIMEOUT_TICKS = 12 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 /** The most the first ship moored at its shore keeps its men aboard waiting for the rest of the fleet,
  *  so the wave lands together. Authored: on arabskie_wyspy_wolna_gra_mieszana a wave whose ships cast
  *  off one by one landed in parts a minute or more apart, and the first men ashore fell alone. */
 export const LANDING_SHORE_WAIT_TICKS = SECONDS_PER_MINUTE * TICKS_PER_SECOND;
-/** How long past {@link LANDING_SAIL_TIMEOUT_TICKS} a ship still at sea keeps its landing open on its way
+/** How long past {@link SHIP_SAIL_TIMEOUT_TICKS} a ship still at sea keeps its landing open on its way
  *  home before the landing lets it go with its crew aboard. */
-export const LANDING_STRANDED_GRACE_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
+export const LANDING_STRANDED_GRACE_TICKS = SHIP_SAIL_TIMEOUT_TICKS;
 /** The share of its ships, in percent, a landing may lose before setting anyone ashore and still sail on. */
 export const LANDING_SHIP_LOSS_PCT = 50;
 /** The share of the men set ashore, in percent, a landing may lose before the survivors board the waiting
@@ -92,10 +80,10 @@ export const LANDING_SHIP_LOSS_PCT = 50;
 export const LANDING_RETREAT_LOSS_PCT = 50;
 /** The most the ships lie at the shore to take the landed men back; past it they sail home and the men
  *  fight on alone. */
-export const LANDING_SHORE_STAY_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
+export const LANDING_SHORE_STAY_TICKS = SHIP_SAIL_TIMEOUT_TICKS;
 /** The most landed men fight on as the landing's own once its ships sailed home: past it they are let go
  *  where they stand, so the seat may land again. */
-export const LANDING_ASHORE_ALONE_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
+export const LANDING_ASHORE_ALONE_TICKS = SHIP_SAIL_TIMEOUT_TICKS;
 /** The most the waiting ships wait for the men called back to walk aboard before they sail without the
  *  rest. */
 export const LANDING_REEMBARK_TICKS = 2 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
@@ -106,28 +94,6 @@ const PERCENT = 100;
 function standingNode(world: World, terrain: TerrainGraph, e: Entity): NodeId | null {
   const at = nodeOfEntity(world, e);
   return at === null || !terrain.inBounds(at.hx, at.hy) ? null : terrain.nodeAt(at.hx, at.hy);
-}
-
-/** What a read of a seat's ships takes, a landing's or a colony's. */
-export type ShipEnv = Pick<OperationEnv, 'world' | 'ctx' | 'terrain' | 'seat'>;
-
-/** The seat's ships a landing may take, ascending id: on the map, moored at a shore of `home`, crewless,
- *  not under way, riding no carrier and held by no colony. */
-export function freeShips(env: ShipEnv, home: number): Entity[] {
-  const { world, ctx, terrain, seat } = env;
-  const vehicles = contentIndex(ctx.content).vehicles;
-  const held = colonyHeldShips(world, seat);
-  const ships: Entity[] = [];
-  for (const e of vehicleIndex(world).ownedBy(seat)) {
-    if (held.includes(e)) continue;
-    const state = world.get(e, Vehicle);
-    const type = vehicles.get(state.vehicleType);
-    if (type === undefined || !isShipVehicle(type) || type.passengerVector === undefined) continue;
-    if (!world.has(e, Position) || world.has(e, VehicleDrive) || state.carrier !== null) continue;
-    if (!state.moored || state.mooring === null || vehiclePassengers(state).length > 0) continue;
-    if (landOfPoint(terrain, state.mooring) === home) ships.push(e);
-  }
-  return ships.sort((a, b) => a - b);
 }
 
 /**
@@ -260,19 +226,19 @@ function freeCrew(ship: LandingShip, mooring: DeepReadonly<HalfCellNode>): Playe
 
 /**
  * The ships sailing back a landing is done waiting for, counted `from` the tick they turned home: past
- * {@link LANDING_SAIL_TIMEOUT_TICKS} a ship moored anywhere sets its crew ashore where it lies, so no man
+ * {@link SHIP_SAIL_TIMEOUT_TICKS} a ship moored anywhere sets its crew ashore where it lies, so no man
  * stays aboard a ship the seat no longer counts free; past {@link LANDING_STRANDED_GRACE_TICKS} more, a ship
  * still at sea is let go.
  */
 function releaseStranded(env: OperationEnv, op: SeaLanding, from: number): PlayerCommand[] {
   const waited = env.ctx.tick - from;
-  if (waited < LANDING_SAIL_TIMEOUT_TICKS) return [];
+  if (waited < SHIP_SAIL_TIMEOUT_TICKS) return [];
   const commands: PlayerCommand[] = [];
   for (const ship of op.ships) {
     if (ship.leg !== 'back' && ship.leg !== 'out') continue;
     const state = shipState(env.world, ship);
     if (state?.moored === true && state.mooring !== null) commands.push(...freeCrew(ship, state.mooring));
-    else if (waited >= LANDING_SAIL_TIMEOUT_TICKS + LANDING_STRANDED_GRACE_TICKS) ship.leg = 'home';
+    else if (waited >= SHIP_SAIL_TIMEOUT_TICKS + LANDING_STRANDED_GRACE_TICKS) ship.leg = 'home';
   }
   return commands;
 }
@@ -351,7 +317,7 @@ function forming(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
 /**
  * Sailing out: once every ship still out lies moored at its shore, or {@link LANDING_SHORE_WAIT_TICKS}
  * after the first did, each moored one sets every man but its commander ashore and waits there; a ship
- * mooring later lands its men on arrival, or turns home with them {@link LANDING_SAIL_TIMEOUT_TICKS}
+ * mooring later lands its men on arrival, or turns home with them {@link SHIP_SAIL_TIMEOUT_TICKS}
  * after the fleet cast off. While nobody is ashore yet, the enemy the seat sees at the shores outweighing
  * the men aboard turns the whole landing back. A ship that stopped short docks at another shore of that
  * land ({@link otherShore}). Once no ship is out the landed men fight.
@@ -361,7 +327,7 @@ function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   if (op.landed === 0) {
     const reason = abortReason(env, op);
     if (reason !== null) return withdraw(env, op, reason);
-    if (ctx.tick - op.since >= LANDING_SAIL_TIMEOUT_TICKS) return withdraw(env, op, 'timedOut');
+    if (ctx.tick - op.since >= SHIP_SAIL_TIMEOUT_TICKS) return withdraw(env, op, 'timedOut');
   }
   // The ships already sailing back are seen to first, so one turned home below is not sent twice.
   const commands = homecoming(env, op);
@@ -390,7 +356,7 @@ function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
         op.landed++;
       }
       ship.leg = 'waiting';
-    } else if (op.landed > 0 && ctx.tick - op.since >= LANDING_SAIL_TIMEOUT_TICKS) {
+    } else if (op.landed > 0 && ctx.tick - op.since >= SHIP_SAIL_TIMEOUT_TICKS) {
       ship.leg = 'back';
       commands.push(dockAt(ship, ship.home));
     } else if (stoppedShort(world, ship, ship.shore)) {
@@ -421,42 +387,6 @@ function homecoming(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
     }
   }
   return commands;
-}
-
-/**
- * Another shore point on the land of `refused` for a ship lying still short of it, the way hulls moored
- * there since or lying across its berth refuse its dock order: the mooring spot nearest the ship, the
- * lowest node on a tie, at least {@link LANDING_SHORE_SPACING_NODES} from `refused`, from each of `tried`
- * and from every other ship of the seat's mooring. Null when that land has none. Costs the ship's mooring
- * spots.
- */
-export function otherShore(
-  env: ShipEnv,
-  ship: Entity,
-  refused: HalfCellNode,
-  tried: readonly DeepReadonly<HalfCellNode>[] = [],
-): HalfCellNode | null {
-  const { world, ctx, terrain, seat } = env;
-  const at = nodeOfEntity(world, ship);
-  const spots = mooringSpotsOf(world, ctx, terrain, ship);
-  const land = landOfPoint(terrain, refused);
-  if (at === null || spots === null || land === NO_COMPONENT) return null;
-  const taken: DeepReadonly<HalfCellNode>[] = [refused, ...tried];
-  for (const e of vehicleIndex(world).ownedBy(seat)) {
-    const mooring = e === ship ? null : world.get(e, Vehicle).mooring;
-    if (mooring !== null) taken.push(mooring);
-  }
-  let best: { readonly at: HalfCellNode; readonly node: NodeId; readonly distance: number } | null = null;
-  for (const node of spots.spots) {
-    if (terrain.componentOf(node) !== land) continue;
-    const { x, y } = terrain.coordsOf(node);
-    const spot = { hx: x, hy: y };
-    if (taken.some((t) => nodeManhattan(t, spot) < LANDING_SHORE_SPACING_NODES)) continue;
-    const distance = nodeManhattan(spot, at);
-    if (best === null || distance < best.distance || (distance === best.distance && node < best.node))
-      best = { at: spot, node, distance };
-  }
-  return best?.at ?? null;
 }
 
 /** The land the men were set ashore on: the target's component, read at the spot the landing aimed at. */

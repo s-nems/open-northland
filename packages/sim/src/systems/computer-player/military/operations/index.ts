@@ -19,7 +19,7 @@ import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
 import { mapAiSoldierClaims } from '../../../ai-shared/military/ownership.js';
 import { assaultHandler } from './assault.js';
 import { holdHandler } from './hold.js';
-import { landingHandler, rescueHandler } from './landing.js';
+import { landingHandler, rescueHandler } from './landing/landing.js';
 import { type OperationEnv, type OperationHandler, UNDRAWN_READY_AT } from './lifecycle.js';
 import { raidHandler } from './raid.js';
 import { seaScoutHandler } from './sea-scout.js';

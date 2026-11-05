@@ -15,50 +15,50 @@ import {
   Settler,
   Vehicle,
   vehiclePassengers,
-} from '../../../../../src/components/index.js';
-import type { DeepReadonly, Entity } from '../../../../../src/ecs/world.js';
+} from '../../../../../../src/components/index.js';
+import type { DeepReadonly, Entity } from '../../../../../../src/ecs/world.js';
 import {
   halfCellMapFromCells,
   nodeOfPosition,
   Simulation,
   type TerrainMap,
-} from '../../../../../src/index.js';
-import { type HalfCellNode, hexagonRing } from '../../../../../src/nav/halfcell.js';
-import type { TerrainGraph } from '../../../../../src/nav/terrain/index.js';
-import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../../src/systems/ai-shared/cadence.js';
-import { computerProfileOf } from '../../../../../src/systems/computer-player/difficulty.js';
-import { type OperationView, seatOperationsOf } from '../../../../../src/systems/computer-player/index.js';
+} from '../../../../../../src/index.js';
+import { type HalfCellNode, hexagonRing } from '../../../../../../src/nav/halfcell.js';
+import type { TerrainGraph } from '../../../../../../src/nav/terrain/index.js';
+import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../../../src/systems/ai-shared/cadence.js';
+import { computerProfileOf } from '../../../../../../src/systems/computer-player/difficulty.js';
+import { type OperationView, seatOperationsOf } from '../../../../../../src/systems/computer-player/index.js';
+import {
+  COLONY_RAID_LEAST_MEN,
+  LANDING_EDGE,
+} from '../../../../../../src/systems/computer-player/military/operations/landing/aim.js';
 import {
   LANDING_ASHORE_ALONE_TICKS,
   LANDING_COOLDOWN_TICKS,
   LANDING_FORM_TIMEOUT_TICKS,
-  LANDING_SAIL_TIMEOUT_TICKS,
   LANDING_SHORE_STAY_TICKS,
   landingHandler,
-} from '../../../../../src/systems/computer-player/military/operations/landing.js';
-import {
-  COLONY_RAID_LEAST_MEN,
-  LANDING_EDGE,
-} from '../../../../../src/systems/computer-player/military/operations/landing-aim.js';
+} from '../../../../../../src/systems/computer-player/military/operations/landing/landing.js';
 import {
   nodeOfEntity,
   RAID_TOWER_DEFENCE,
-} from '../../../../../src/systems/computer-player/military/operations/raid-target.js';
-import { everyFighterPoints } from '../../../../../src/systems/computer-player/military/points.js';
-import { militaryOrdersOf } from '../../../../../src/systems/computer-player/strategy/military.js';
+} from '../../../../../../src/systems/computer-player/military/operations/raid-target.js';
+import { everyFighterPoints } from '../../../../../../src/systems/computer-player/military/points.js';
+import { SHIP_SAIL_TIMEOUT_TICKS } from '../../../../../../src/systems/computer-player/sea-ships.js';
+import { militaryOrdersOf } from '../../../../../../src/systems/computer-player/strategy/military.js';
 import {
   LANDING_BIG_SHIPS,
   LANDING_FLEET_MIN_SHIPS,
   landingFleetShips,
   SOLDIERS_PER_SHIP,
-} from '../../../../../src/systems/computer-player/workforce/craft.js';
-import { ownedFightersOf } from '../../../../../src/systems/movement/collision/owned-fighters.js';
-import { spawnSettler } from '../../../../../src/systems/spawn/index.js';
-import { createVehicle } from '../../../../../src/systems/vehicles/index.js';
-import { crewInside } from '../../../../../src/systems/vehicles/movement.js';
-import { aiContent } from '../../../../fixtures/ai-content.js';
-import { blankColony } from '../../../../fixtures/colony-islands.js';
-import { ctxOf } from '../../../../fixtures/context.js';
+} from '../../../../../../src/systems/computer-player/workforce/craft.js';
+import { ownedFightersOf } from '../../../../../../src/systems/movement/collision/owned-fighters.js';
+import { spawnSettler } from '../../../../../../src/systems/spawn/index.js';
+import { createVehicle } from '../../../../../../src/systems/vehicles/index.js';
+import { crewInside } from '../../../../../../src/systems/vehicles/movement.js';
+import { aiContent } from '../../../../../fixtures/ai-content.js';
+import { blankColony } from '../../../../../fixtures/colony-islands.js';
+import { ctxOf } from '../../../../../fixtures/context.js';
 
 const VIKING = 1;
 const SEAT = 2;
@@ -132,7 +132,7 @@ const GARRISON_POST = { x: 130, y: 114 };
 const OUTMATCHING_FOES = 120;
 const FOE_ARMY = { x: 110, y: 0 };
 /** The most a landing may take to board, cross and sail home: a run ending sooner stops at once. */
-const LANDING_LIMIT_TICKS = LANDING_FORM_TIMEOUT_TICKS + 2 * LANDING_SAIL_TIMEOUT_TICKS;
+const LANDING_LIMIT_TICKS = LANDING_FORM_TIMEOUT_TICKS + 2 * SHIP_SAIL_TIMEOUT_TICKS;
 /** The most a landing may take besides to walk on each building it strikes. */
 const STRIKE_LIMIT_TICKS = 2 * LANDING_LIMIT_TICKS;
 /** Twice the decisions a full fleet with its full band takes to open its landing here. */

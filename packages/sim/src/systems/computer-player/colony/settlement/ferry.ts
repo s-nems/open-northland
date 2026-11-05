@@ -23,8 +23,8 @@ import { CIVILIST_JOB } from '../../../lifecycle/ageclass.js';
 import { passengerJobAllowed } from '../../../vehicles/crew.js';
 import { type Share, shareOf } from '../../difficulty.js';
 import { minutesToTicks } from '../../game-phase.js';
-import { freeShips, LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../../military/operations/landing.js';
 import { strandedShip } from '../../sea-route.js';
+import { freeShips, otherShore, SHIP_SAIL_TIMEOUT_TICKS } from '../../sea-ships.js';
 import { Schooling } from '../../technology/schooling.js';
 import { type ColonyEnv, type ColonyView, homeLandOf } from '../env.js';
 import { boardOrders, homeMaySpare, sparePartyMen, topUpParty } from '../party.js';
@@ -47,7 +47,7 @@ type FerryView = DeepReadonly<NonNullable<ColonyView['ferry']>>;
 const FERRY_BOARD_TICKS = minutesToTicks(4);
 /** How long a crossing may take before the ship is let go at its next mooring (authored: a landing's sail
  *  limit). */
-const FERRY_SAIL_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
+const FERRY_SAIL_TICKS = SHIP_SAIL_TIMEOUT_TICKS;
 /** The passengers a ferry takes once fire has found its colony's ships (authored): what a sunk hull may
  *  cost. */
 const RIDERS_NEAR_FIRE = 2;

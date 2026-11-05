@@ -8,7 +8,7 @@ import { everySettlerOf, homeSettlers } from '../../../../../src/systems/ai-shar
 import { isAllocatableMan } from '../../../../../src/systems/ai-shared/workforce/pool.js';
 import { runFerry } from '../../../../../src/systems/computer-player/colony/settlement/ferry.js';
 import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
-import { LANDING_SAIL_TIMEOUT_TICKS } from '../../../../../src/systems/computer-player/military/operations/landing.js';
+import { SHIP_SAIL_TIMEOUT_TICKS } from '../../../../../src/systems/computer-player/sea-ships.js';
 import { attachToVehicle, boardRider } from '../../../../../src/systems/vehicles/crew.js';
 import { mooringSpotsOf } from '../../../../../src/systems/vehicles/dock.js';
 import {
@@ -131,7 +131,7 @@ describe('a colony ferry refused its dock', () => {
     state.mooring = null;
     const hull = sim.world.get(ship, Health).hitpoints;
     const berth = { hx: SHIP_AT.x, hy: SHIP_AT.y };
-    const since = sim.tick - LANDING_SAIL_TIMEOUT_TICKS;
+    const since = sim.tick - SHIP_SAIL_TIMEOUT_TICKS;
     const colony = blankColony(land, {
       shore: { hx: shore.hx, hy: shore.hy },
       berth,

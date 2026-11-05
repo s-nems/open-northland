@@ -1,16 +1,23 @@
-import type { ColonyPhase, ColonyState, RescueOperation, SeaLanding } from '../../../../components/index.js';
-import type { DeepReadonly, Entity } from '../../../../ecs/world.js';
-import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
-import type { NodeId } from '../../../../nav/terrain/index.js';
-import { colonyBuildingsOn, seatColonies } from '../../../ai-shared/home-roster.js';
-import { insideBox, settlementBox } from '../../../ai-shared/military/defence/threat.js';
-import { ownedFightersOf } from '../../../movement/collision/owned-fighters.js';
-import { minutesToTicks } from '../../game-phase.js';
-import { visibleEnemyMooredShips } from '../../knowledge/intel/index.js';
-import { landOfPoint } from '../../sea-route.js';
-import { SOLDIERS_PER_SHIP } from '../../workforce/craft.js';
-import { launchRatioReached } from '../plan.js';
-import { isLiveFighter, unitPoints } from '../points.js';
+import type {
+  ColonyPhase,
+  ColonyState,
+  RescueOperation,
+  SeaLanding,
+} from '../../../../../components/index.js';
+import type { DeepReadonly, Entity } from '../../../../../ecs/world.js';
+import { type HalfCellNode, nodeManhattan } from '../../../../../nav/halfcell.js';
+import type { NodeId } from '../../../../../nav/terrain/index.js';
+import { colonyBuildingsOn, seatColonies } from '../../../../ai-shared/home-roster.js';
+import { insideBox, settlementBox } from '../../../../ai-shared/military/defence/threat.js';
+import { ownedFightersOf } from '../../../../movement/collision/owned-fighters.js';
+import { minutesToTicks } from '../../../game-phase.js';
+import { visibleEnemyMooredShips } from '../../../knowledge/intel/index.js';
+import { landOfPoint } from '../../../sea-route.js';
+import { SOLDIERS_PER_SHIP } from '../../../workforce/craft.js';
+import { launchRatioReached } from '../../plan.js';
+import { isLiveFighter, unitPoints } from '../../points.js';
+import type { OperationEnv } from '../lifecycle.js';
+import { nodeOfEntity, visibleEnemyFighters } from '../raid-target.js';
 import {
   LANDING_EDGE,
   type LandingAim,
@@ -18,10 +25,8 @@ import {
   pointsAshore,
   prefixPoints,
   type RankedMan,
-} from './landing-aim.js';
-import { believedLand } from './landing-target.js';
-import type { OperationEnv } from './lifecycle.js';
-import { nodeOfEntity, visibleEnemyFighters } from './raid-target.js';
+} from './aim.js';
+import { believedLand } from './target.js';
 
 // A rescue (owner ruling): an enemy band on one of the seat's colonies sends men from home over the sea to
 // fight it, sized to outweigh what the seat sees there beside the colony's own fighters; an enemy ship

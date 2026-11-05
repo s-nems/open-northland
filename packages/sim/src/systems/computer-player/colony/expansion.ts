@@ -13,7 +13,7 @@ import { needLevel } from '../../lifecycle/needs/index.js';
 import { NEED_CRITICAL_THRESHOLD } from '../../lifecycle/needs/scale.js';
 import { seatBaseOf } from '../base.js';
 import { LATE_GAME_FROM_TICKS, minutesToTicks } from '../game-phase.js';
-import { freeShips } from '../military/operations/landing.js';
+import { freeShips } from '../sea-ships.js';
 import { evacuated } from './abandon.js';
 import { type ColonyEnv, type ColonyView, colonyEnv, homeLandOf, type SeatEnv } from './env.js';
 import { homeSupply } from './home-supply.js';

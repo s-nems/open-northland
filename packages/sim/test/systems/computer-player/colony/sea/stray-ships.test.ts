@@ -5,7 +5,7 @@ import { homeSettlers } from '../../../../../src/systems/ai-shared/home-roster.j
 import { seatBaseOf } from '../../../../../src/systems/computer-player/base.js';
 import { strayCrewsHome } from '../../../../../src/systems/computer-player/colony/sea/stray-ships.js';
 import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
-import { freeShips } from '../../../../../src/systems/computer-player/military/operations/landing.js';
+import { freeShips } from '../../../../../src/systems/computer-player/sea-ships.js';
 import { interactionCell } from '../../../../../src/systems/settlers/targets/index.js';
 import { attachToVehicle, boardRider } from '../../../../../src/systems/vehicles/crew.js';
 import {
