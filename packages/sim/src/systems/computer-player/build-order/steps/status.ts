@@ -11,7 +11,7 @@ import {
 } from '../../../ai-shared/content-lookup.js';
 import { colonyOverflow, homeBuildings } from '../../../ai-shared/home-roster.js';
 import type { SystemContext } from '../../../context.js';
-import { homeStockOf } from '../../colony/stock.js';
+import { homeStockOf } from '../../home-stock.js';
 import { anyLiveResource, knownResourceTest } from '../../live-resources.js';
 import { technologyReach } from '../../technology/reach.js';
 import { unservedAnchor } from '../ground/affinity.js';

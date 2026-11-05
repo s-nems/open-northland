@@ -40,6 +40,7 @@ import { isCartType } from '../../../vehicles/drag.js';
 import { canTakeHaulingCart } from '../../../vehicles/hauling-cart.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
 import { minutesToTicks } from '../../game-phase.js';
+import { homeStockOf } from '../../home-stock.js';
 import { strandedShip } from '../../sea-route.js';
 import { type ColonyEnv, type ColonyView, homeLandOf } from '../env.js';
 import { sparePartyMen } from '../party.js';
@@ -48,7 +49,6 @@ import { carryingShip, newRoute, type RouteSlot, takeRouteShip } from '../sea/fl
 import { lyingStill, mooredOn, mooringOf, unloadAt } from '../sea/moorings.js';
 import { lineWayClear, sailOrders, withDanger } from '../sea/sea-danger.js';
 import { storesHeld } from '../settlement/provision.js';
-import { homeStockOf } from '../stock.js';
 import {
   type ColonyStockPolicy,
   type ColonyStockReads,

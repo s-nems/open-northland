@@ -71,7 +71,7 @@
     {
       "includes": [
         "packages/sim/src/systems/computer-player/**",
-        "!packages/sim/src/systems/computer-player/colony/stock.ts"
+        "!packages/sim/src/systems/computer-player/home-stock.ts"
       ],
       "linter": {
         "rules": {
@@ -88,7 +88,7 @@
                   {
                     "group": ["**/stores/index.js"],
                     "importNamePattern": "seatStockOf",
-                    "message": "A computer seat budgets its home stock: read homeStockOf in colony/stock.js."
+                    "message": "A computer seat budgets its home stock: read homeStockOf in home-stock.js."
                   }
                 ]
               }

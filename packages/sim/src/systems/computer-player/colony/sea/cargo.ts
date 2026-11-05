@@ -12,9 +12,9 @@ import { homeBuildings } from '../../../ai-shared/home-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { edibleClassOf } from '../../../readviews/food.js';
 import { mayFetchGoodFrom } from '../../../stores/workplace.js';
+import { homeStockOf } from '../../home-stock.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../../workforce/food.js';
 import { foodGood } from '../home-supply.js';
-import { homeStockOf } from '../stock.js';
 import { colonyStoreType } from '../store-type.js';
 
 /** Food per member of the founding party (authored: the comfort line home keeps a mouth), what it eats

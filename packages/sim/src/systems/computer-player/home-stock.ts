@@ -1,7 +1,7 @@
-import type { World } from '../../../ecs/world.js';
-import { colonyLands, everyBuildingOf, homeBuildings } from '../../ai-shared/home-roster.js';
-import type { SystemContext } from '../../context.js';
-import { type SeatStock, seatStockOf, stockAtBuildings } from '../../stores/index.js';
+import type { World } from '../../ecs/world.js';
+import { colonyLands, everyBuildingOf, homeBuildings } from '../ai-shared/home-roster.js';
+import type { SystemContext } from '../context.js';
+import { type SeatStock, seatStockOf, stockAtBuildings } from '../stores/index.js';
 
 interface HomeStock {
   readonly tick: number;

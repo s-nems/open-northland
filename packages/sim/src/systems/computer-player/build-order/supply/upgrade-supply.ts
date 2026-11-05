@@ -10,7 +10,7 @@ import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { constructionBillOf } from '../../../stores/index.js';
-import { homeStockOf } from '../../colony/stock.js';
+import { homeStockOf } from '../../home-stock.js';
 
 const NO_CLAIMS: ReadonlyMap<number, number> = new Map();
 

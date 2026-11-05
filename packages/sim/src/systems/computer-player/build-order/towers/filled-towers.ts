@@ -4,7 +4,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { buildingTypeByContentId, goodTypeByContentId } from '../../../ai-shared/content-lookup.js';
 import { isBuilt } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
-import { homeStockOf } from '../../colony/stock.js';
+import { homeStockOf } from '../../home-stock.js';
 import { TOWER_CONTENT_IDS } from '../ground/front.js';
 import { roomFilled } from '../ground/room.js';
 import { FILLED_TOWER_BUILDING } from '../order/military-line.js';

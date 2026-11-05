@@ -10,10 +10,10 @@ import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { DEFAULT_BUILD_ORDER } from '../build-order/order/default-order.js';
 import { seatBuildOrder } from '../build-order/order/seat-order.js';
 import { computerProfileOf } from '../difficulty.js';
+import { homeStockOf } from '../home-stock.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER, storedFoodUnits } from '../workforce/food.js';
 import { SeatSupply } from '../workforce/supply.js';
 import type { SeatEnv } from './env.js';
-import { homeStockOf } from './stock.js';
 
 /** The edible class food travels as between home and a colony. */
 export const FOOD_GOOD_ID = 'food_simple';

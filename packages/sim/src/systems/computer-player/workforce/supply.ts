@@ -15,8 +15,8 @@ import {
 } from '../build-order/index.js';
 import { homeTiersOf } from '../build-order/steps/housing.js';
 import { sitesShortfalls } from '../build-order/supply/upgrade-supply.js';
-import { homeStockOf } from '../colony/stock.js';
 import { type GamePhase, gamePhase, HOARD_UNITS_BY_PHASE } from '../game-phase.js';
+import { homeStockOf } from '../home-stock.js';
 import { COLLECTED_GOOD_IDS } from './collectors/index.js';
 import { plannedOperators } from './staffing-rows.js';
 

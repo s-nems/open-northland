@@ -3,7 +3,7 @@ import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { buildingTypeByContentId } from '../../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../../context.js';
-import { homeStockOf } from '../../colony/stock.js';
+import { homeStockOf } from '../../home-stock.js';
 import type { BuildOrderEntry } from '../order/entries.js';
 import { ownProductsLacking } from './upgrade-supply.js';
 

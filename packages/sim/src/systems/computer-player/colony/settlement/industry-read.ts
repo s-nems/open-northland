@@ -15,12 +15,12 @@ import { isAllocatableMan } from '../../../ai-shared/workforce/pool.js';
 import { buildingEnabled, jobEnabled, needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import { isCarrierJob } from '../../../stores/index.js';
 import { ROOM_HOME_BUILDING } from '../../build-order/ground/room.js';
+import { homeStockOf } from '../../home-stock.js';
 import { technologyTable } from '../../technology/requirements.js';
 import { enabledTiersAbove, topEnabledTier } from '../../top-tier.js';
 import type { ColonyEnv, ColonyView } from '../env.js';
 import { landHolds } from '../land.js';
 import { colonists, colonyOrigin } from '../roster.js';
-import { homeStockOf } from '../stock.js';
 import { siteRoom } from '../voyage/survey.js';
 import {
   ALL_STEPS,

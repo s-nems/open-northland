@@ -27,8 +27,8 @@ import {
   isOverflowBuilding,
   reviewOverflow,
 } from '../../../../../src/systems/computer-player/colony/settlement/overflow.js';
-import { homeStockOf } from '../../../../../src/systems/computer-player/colony/stock.js';
 import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
+import { homeStockOf } from '../../../../../src/systems/computer-player/home-stock.js';
 import { stockAtBuildings } from '../../../../../src/systems/stores/index.js';
 import {
   ARMORY_TYPE,

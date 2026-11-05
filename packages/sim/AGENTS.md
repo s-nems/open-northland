@@ -151,9 +151,10 @@ A new computer-player read of another seat's entities goes through those seams, 
 query. The scripted map AI keeps its own reads.
 
 `computer-player/colony/` owns a seat's colonies over the sea. The rest of the computer player runs the
-home settlement: it reads its own seat through `ai-shared/home-roster.ts` and `colony/stock.ts`, Biome
-refuses the bare rosters and `seatStockOf` in its folder, and a read of another seat or of everything a
-seat holds asks for `everyBuildingOf` or `everySettlerOf` by name.
+home settlement: it reads its own seat through `ai-shared/home-roster.ts` and `computer-player/home-stock.ts`
+and the ships its colonies are owed through `colony/sea/fleet.ts`, Biome refuses the bare rosters and
+`seatStockOf` in its folder, and a read of another seat or of everything a seat holds asks for
+`everyBuildingOf` or `everySettlerOf` by name.
 
 Map AI, computer player, and common unit rules must remain distinct in names, state, tests and debug
 output. `systems/map-escalation` spawns, equips and
