@@ -89,21 +89,21 @@ function shipJoinery(world: World, ctx: SystemContext, player: number): Entity |
 
 /**
  * One decision's reader of each joinery's role, read off where the seat's joineries stand so no state is
- * kept. While `overSea` holds, the lowest-id top-tier joinery with ship water in its yard rings builds
+ * kept. While `needsShips` holds, the lowest-id top-tier joinery with ship water in its yard rings builds
  * ships, or with none the lowest-id lower tier of its chain by the water, the one the seat lifts to the top;
  * every other one catapults; otherwise all build catapults. Lowest id rather than nearest the water, so a
- * joinery raised later never takes over a crew already on ships. `overSea` and the ship joinery are
+ * joinery raised later never takes over a crew already on ships. `needsShips` and the ship joinery are
  * looked up once, on the first joinery asked about.
  */
 export function joineryRoles(
   world: World,
   ctx: SystemContext,
   player: number,
-  overSea: () => boolean,
+  needsShips: () => boolean,
 ): (joinery: Entity) => JoineryRole {
   let ship: Entity | null | undefined;
   return (joinery) => {
-    if (ship === undefined) ship = overSea() ? shipJoinery(world, ctx, player) : null;
+    if (ship === undefined) ship = needsShips() ? shipJoinery(world, ctx, player) : null;
     return joinery === ship ? 'ship' : 'catapult';
   };
 }

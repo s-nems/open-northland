@@ -49,7 +49,7 @@ export interface ArchetypeTuning {
    *  standard spread (`workforce/collectors/wanted-goods.ts`). */
   readonly clearGroundPct: number;
   /** Whether a step whose `onlyWhen` names this leads its line, ahead of the steps declared before it. */
-  readonly leadOnlyWhen: 'rivalOverSea' | null;
+  readonly leadOnlyWhen: 'needsShips' | null;
   /** Whether every placement stays on the base's own land component, not only the overflow search. */
   readonly homeLandOnly: boolean;
   /** Steps of the order the archetype leaves out. */
@@ -148,7 +148,7 @@ export const ARCHETYPE_TUNING: Readonly<Record<EconomicArchetype, ArchetypeTunin
       'tools',
       ...STANDARD_PRIORITY.filter((l) => l !== 'opening' && l !== 'military' && l !== 'tools'),
     ],
-    leadOnlyWhen: 'rivalOverSea',
+    leadOnlyWhen: 'needsShips',
     homeLandOnly: true,
     afterShipJoinery: ['work_smithy_00', 'work_armory_00', 'work_sewery_00'],
   },

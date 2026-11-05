@@ -32,7 +32,8 @@ export type PlacementAffinity =
  * - `wanted`: a step heading another line wants the good (it holds on nothing of its own, its tier is open
  *   to the seat and its bill takes the good);
  * - `noneDue`: no step heading another line is ready to place one of `buildings` (`./progress.ts`);
- * - `shipPath`: the seat sails for a rival (`../sea-route.ts`) and its defence does not come first;
+ * - `shipPath`: the seat needs ships, for a rival over the sea or its colony (`../sea-route.ts`), and its
+ *   defence does not come first;
  * - `settlers`: the seat counts `count` settlers;
  * - `deadline`: the clock reaches `leadTicks` before the seat's military deadline
  *   (`../military/deadline.ts`), lifted at once while its defence comes first;
@@ -72,10 +73,10 @@ export type BuildOrderEntry =
    *  none of any one of them, like a collector entry. `unlessWithin` skips the entry while every one of
    *  the seat's named buildings (at that tier or above) has one of the buildings the entry counts within
    *  `radius` world-metric nodes, or while the seat has none of those; a `near` affinity on the same id
-   *  then pulls the spot toward the first one lacking. `onlyWhen: 'rivalOverSea'` skips the entry while
-   *  the headquarters the seat sails for (`../sea-route.ts`) can be reached by land, `'grassScarce'` while
-   *  the seat has grass enough (`./grass-reserve.ts`), `'livestock'` while the seat keeps no pair of
-   *  either species (`../herd.ts`). An entry of a grass building with no grass left
+   *  then pulls the spot toward the first one lacking. `onlyWhen: 'needsShips'` skips the entry while
+   *  the seat needs no ships, its rival reached by land and no colony kept (`../sea-route.ts`),
+   *  `'grassScarce'` while the seat has grass enough (`./grass-reserve.ts`), `'livestock'` while the seat
+   *  keeps no pair of either species (`../herd.ts`). An entry of a grass building with no grass left
    *  for it is passed over unless `essential`, which holds its line until it stands. `belowTier` stops the
    *  count below that tier of the chain, so buildings placed straight at it never meet the entry. `role` counts only the
    *  joineries of the counted tiers holding that role (`../joinery-role.ts`). `holdUntil` holds the line on the unmet entry,
@@ -98,7 +99,7 @@ export type BuildOrderEntry =
       readonly ground?: 'plantable';
       readonly needsResources?: readonly string[];
       readonly unlessWithin?: { readonly building: string; readonly radius: number };
-      readonly onlyWhen?: 'rivalOverSea' | 'grassScarce' | 'livestock';
+      readonly onlyWhen?: 'needsShips' | 'grassScarce' | 'livestock';
       readonly essential?: true;
       readonly belowTier?: string;
       readonly role?: JoineryRole;
@@ -121,7 +122,7 @@ export type BuildOrderEntry =
       readonly count: number;
       readonly belowTier?: string;
       readonly role?: JoineryRole;
-      readonly onlyWhen?: 'rivalOverSea' | 'livestock';
+      readonly onlyWhen?: 'needsShips' | 'livestock';
       readonly holdUntil?: StepHold;
       readonly lockPasses?: true;
       readonly firstRank?: true;

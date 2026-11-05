@@ -716,8 +716,8 @@ export function tuneCraftCounters(
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
   const plans = seatCraftPlans(world, ctx, player, profile);
-  let overSea: boolean | undefined;
-  const needsShips = (): boolean => (overSea ??= seatNeedsShips(world, ctx, player));
+  let shipsNeeded: boolean | undefined;
+  const needsShips = (): boolean => (shipsNeeded ??= seatNeedsShips(world, ctx, player));
   const roleOf = joineryRoles(world, ctx, player, needsShips);
   const rolePlans = seatHasSide(world, player, 'noRoom') ? NO_CATAPULT_ROLE_PLANS : profile.joineryRolePlans;
   const fleets = new Map<string, number>();

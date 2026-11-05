@@ -68,11 +68,11 @@ export function upgradesInto(index: ContentIndex, from: BuildingType, target: Bu
 }
 
 /** One decision's answers, so the entries that ask the same question work it out once: whether the map
- *  holds a live resource, per good type, whether a rival lies over the sea, whether the seat is short of
+ *  holds a live resource, per good type, whether the seat needs ships, whether the seat is short of
  *  grass, and the top-tier joineries' roles. */
 export interface DecisionMemo {
   readonly live: Map<number, boolean>;
-  rivalOverSea: boolean | undefined;
+  needsShips: boolean | undefined;
   grassScarce: boolean | undefined;
   /** Whether the seat keeps no pair of either livestock species (`../herd.ts`). */
   herdless: boolean | undefined;
@@ -145,7 +145,7 @@ function becomingCounted(tally: OwnedTally, tiers: ReadonlySet<number>): number 
 export function decisionMemo(): DecisionMemo {
   return {
     live: new Map(),
-    rivalOverSea: undefined,
+    needsShips: undefined,
     grassScarce: undefined,
     herdless: undefined,
     roleOf: undefined,
@@ -188,9 +188,9 @@ function memoGrassScarce(world: World, ctx: SystemContext, player: number, memo:
   return memo.grassScarce;
 }
 
-function memoOverSea(world: World, ctx: SystemContext, player: number, memo: DecisionMemo): boolean {
-  memo.rivalOverSea ??= seatNeedsShips(world, ctx, player);
-  return memo.rivalOverSea;
+function memoNeedsShips(world: World, ctx: SystemContext, player: number, memo: DecisionMemo): boolean {
+  memo.needsShips ??= seatNeedsShips(world, ctx, player);
+  return memo.needsShips;
 }
 
 /** The owned buildings an upgrade `entry` may lift: every one, or with a `role` only the joineries holding
@@ -213,7 +213,7 @@ function memoRoles(
   player: number,
   memo: DecisionMemo,
 ): (joinery: Entity) => JoineryRole {
-  memo.roleOf ??= joineryRoles(world, ctx, player, () => memoOverSea(world, ctx, player, memo));
+  memo.roleOf ??= joineryRoles(world, ctx, player, () => memoNeedsShips(world, ctx, player, memo));
   return memo.roleOf;
 }
 
@@ -264,7 +264,7 @@ export function entryStatus(
             ? seatHomesCap(world, player, entry.count)
             : entry.count;
       if (have >= wanted) return 'satisfied';
-      if (entry.onlyWhen === 'rivalOverSea' && !memoOverSea(world, ctx, player, memo)) return 'skip';
+      if (entry.onlyWhen === 'needsShips' && !memoNeedsShips(world, ctx, player, memo)) return 'skip';
       if (entry.onlyWhen === 'grassScarce' && !memoGrassScarce(world, ctx, player, memo)) return 'skip';
       if (entry.onlyWhen === 'livestock' && memoHerdless(world, ctx, player, memo)) return 'skip';
       if (
@@ -301,7 +301,7 @@ export function entryStatus(
       }
       have += handedOverCount(index, world, player, done);
       if (have >= entry.count) return 'satisfied';
-      if (entry.onlyWhen === 'rivalOverSea' && !memoOverSea(world, ctx, player, memo)) return 'skip';
+      if (entry.onlyWhen === 'needsShips' && !memoNeedsShips(world, ctx, player, memo)) return 'skip';
       if (entry.onlyWhen === 'livestock' && memoHerdless(world, ctx, player, memo)) return 'skip';
       return technologyReach(world, ctx, player, memo)?.house(target.typeId) === false ? 'skip' : 'unmet';
     }
@@ -557,7 +557,7 @@ function holdOpen(
     case 'noneDue':
       return scope.due(hold.buildings);
     case 'shipPath':
-      return !seatDefenceFirst(world, ctx, player) && memoOverSea(world, ctx, player, memo);
+      return !seatDefenceFirst(world, ctx, player) && memoNeedsShips(world, ctx, player, memo);
     case 'settlers':
       return homeSettlers(world, ctx, player).length < hold.count;
     case 'deadline':
