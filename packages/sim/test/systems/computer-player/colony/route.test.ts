@@ -8,6 +8,7 @@ import {
   Marriage,
   Rider,
   Settler,
+  TRADE_LIMIT_NONE,
   TradeRoute,
   TradeShip,
   Vehicle,
@@ -156,7 +157,7 @@ const colonyPeople = (sim: Simulation): number => {
 describe('a colony trade route', () => {
   it('pins the colony ship to a home trader between two settlements, and moves goods both ways', () => {
     const { sim, ship } = routedWorld();
-    const trader = routeTrader(sim) as Entity;
+    const trader = standingTrader(sim);
     expect(colonyState(sim)?.route?.ship).toBe(ship);
     expect(isTraderJob(ctxOf(sim).content, sim.world.get(trader, Settler).jobType)).toBe(true);
     expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).toContain(trader);
@@ -185,7 +186,7 @@ describe('a colony trade route', () => {
 
   it('keeps its home stop when home raises a warehouse nearer the berth, so no voyage starts over', () => {
     const { sim } = routedWorld();
-    const trader = routeTrader(sim) as Entity;
+    const trader = standingTrader(sim);
     const homeStop = () => sim.world.get(trader, TradeRoute).stops[0]?.house;
     const raise = (at: { readonly x: number; readonly y: number }): void =>
       sim.enqueueSetup({
@@ -245,7 +246,7 @@ const ROUTE_HELPERS = 3;
 describe('a colony route that cannot keep up', () => {
   it('counts what its marks ask past what the giving side keeps, each way', () => {
     const atColony = [{ good: STONE, upTo: 20, keep: 5 }];
-    const atHome = [{ good: MUD, upTo: -1, keep: 10 }];
+    const atHome = [{ good: MUD, upTo: TRADE_LIMIT_NONE, keep: 10 }];
     const colony = (good: number) => (good === STONE ? 4 : 30);
     // The colony lacks 16 stone and home spares 7 past its keep; the colony holds 20 mud past its keep.
     expect(routeBacklog(atColony, atHome, colony, () => 12)).toBe(7 + 20);
@@ -271,14 +272,15 @@ describe('a colony route that cannot keep up', () => {
     const { sim } = routedWorld();
     const store = colonyBuildingsOf(sim).find(
       (e) => sim.world.get(e, Building).buildingType === STOCK_TOP_TYPE,
-    ) as Entity;
+    );
+    if (store === undefined) throw new Error('setup: no colony warehouse');
     /** Tops the colony's stone up, then reads `done`: the route stays behind on every tick asked. */
     const piled = (done: () => boolean) => (): boolean => {
       const held = stockOf(sim.world, store, STONE);
       if (held < STONE_TOPPED_BELOW) addStock(sim.world, store, STONE, STONE_PILED - held);
       return done();
     };
-    const first = routeTrader(sim) as Entity;
+    const first = standingTrader(sim);
     const stoneHome = () =>
       sim.world.get(first, TradeRoute).stops[0]?.imports.some((m) => m.good === STONE) === true;
     expect(stepUntil(sim, LEG_DUE_TICKS, piled(stoneHome))).toBe(true);
@@ -303,7 +305,8 @@ describe('a colony route that cannot keep up', () => {
         piled(() => reliefTrader() !== null),
       ),
     ).toBe(true);
-    const second = reliefTrader() as Entity;
+    const second = reliefTrader();
+    if (second === null) throw new Error('setup: no relief trader');
     expect(second).not.toBe(first);
     const stopsOf = (trader: Entity) =>
       (sim.world.tryGet(trader, TradeRoute)?.stops ?? []).map((stop) => stop.house);
@@ -455,7 +458,8 @@ describe('a ship left without a helm', () => {
 describe('a colony toggle turned off', () => {
   it('hands the colony back to the whole seat and stays off while the toggle does', () => {
     const { sim } = routedWorld();
-    const carrier = aiControlEntity(sim.world, SEAT) as Entity;
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
     expect(homeSettlers(sim.world, ctxOf(sim), SEAT).length).toBeLessThan(
       everySettlerOf(sim.world, SEAT).length,
     );
@@ -491,7 +495,7 @@ describe('a route under fire', () => {
 describe('an abandoned route', () => {
   it('lets go of the helpers seated on its ship, so the ship lies free at the colony', () => {
     const { sim, ship } = routedWorld();
-    const trader = routeTrader(sim) as Entity;
+    const trader = standingTrader(sim);
     const helpers = (): Entity[] =>
       vehiclePassengers(sim.world.get(ship, Vehicle))
         .map((seat) => seat.entity)
@@ -517,7 +521,7 @@ describe('an abandoned route', () => {
     const { sim, ship } = routedWorld();
     const seats = () => vehiclePassengers(sim.world.get(ship, Vehicle));
     // The trader and a helper at least, all inside, under way.
-    const trader = routeTrader(sim) as Entity;
+    const trader = standingTrader(sim);
     const atSea = (): boolean =>
       sim.world.has(ship, VehicleDrive) &&
       sim.world.get(trader, TradeRoute).current === COLONY_STOP &&
@@ -536,7 +540,7 @@ describe('an overrun colony', () => {
     const { sim } = routedWorld();
     const site = colonyState(sim)?.site;
     if (site === undefined) throw new Error('no site');
-    const trader = routeTrader(sim) as Entity;
+    const trader = standingTrader(sim);
     const ctx = ctxOf(sim);
     const home = new Set(homeSettlers(sim.world, ctx, SEAT));
     const settlers = everySettlerOf(sim.world, SEAT).filter((e) => !home.has(e) && e !== trader);

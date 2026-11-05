@@ -1,7 +1,6 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { aiControlEntity, Building, ComputerColony } from '../../../../src/components/index.js';
-import type { Entity } from '../../../../src/ecs/world.js';
 import { NO_COMPONENT } from '../../../../src/nav/terrain/index.js';
 import { everyBuildingOf } from '../../../../src/systems/ai-shared/home-roster.js';
 import { colonists } from '../../../../src/systems/computer-player/colony/founding.js';
@@ -346,7 +345,8 @@ describe("a colony's own chain", () => {
     sim.step();
     const store = everyBuildingOf(sim.world, SEAT).find(
       (e) => sim.world.get(e, Building).buildingType === STOCK_TOP_TYPE,
-    ) as Entity;
+    );
+    if (store === undefined) throw new Error('setup: no warehouse');
     addStock(sim.world, store, WHEAT, GRAIN_HELD);
     const policy = colonyStockPolicy({
       ...colonyStockReadsOf(looseColonyEnv(sim, editColony(sim))),
