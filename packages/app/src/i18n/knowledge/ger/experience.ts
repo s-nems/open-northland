@@ -31,53 +31,33 @@ export const EXPERIENCE: ArticleGroup = {
         },
         {
           table: {
-            head: ['Arbeit', 'Was zählt', 'Faktor', 'Mal bis {{exp.quotedPct}}%', 'Mal bis 100%'],
+            head: ['Arbeit', 'Was zählt', 'Mal bis zur Hälfte ({{exp.quotedPct}}%)', 'Mal bis 100%'],
             rows: [
-              [
-                'Holz',
-                'gefällter Baum',
-                '×{{exp.wood.points}}',
-                '{{exp.wood.repeatsQuoted}}',
-                '{{exp.wood.repeatsFull}}',
-              ],
-              [
-                'Jagd',
-                'Stück vom Kadaver',
-                '×{{exp.hunt.points}}',
-                '{{exp.hunt.repeatsQuoted}}',
-                '{{exp.hunt.repeatsFull}}',
-              ],
-              [
-                'Fischfang',
-                'Fisch',
-                '×{{exp.fish.points}}',
-                '{{exp.fish.repeatsQuoted}}',
-                '{{exp.fish.repeatsFull}}',
-              ],
+              ['Holz', 'gefällter Baum', '{{exp.wood.repeatsQuoted}}', '{{exp.wood.repeatsFull}}'],
+              ['Jagd', 'Stück vom Kadaver', '{{exp.hunt.repeatsQuoted}}', '{{exp.hunt.repeatsFull}}'],
+              ['Fischfang', 'Fisch', '{{exp.fish.repeatsQuoted}}', '{{exp.fish.repeatsFull}}'],
               [
                 'Lehm, Bruchstein, Eisen, Gold, Pilze, Kräuter, Weizen, Schlachtung, Werkstatt',
                 'Stück, beim Schlachten das Tier, in der Werkstatt die Charge',
-                '×{{exp.craft.points}}',
                 '{{exp.craft.repeatsQuoted}}',
                 '{{exp.craft.repeatsFull}}',
               ],
               [
                 'Bau, Reparatur',
                 'Hammerschlag auf der Baustelle',
-                '×{{exp.build.points}}',
                 '{{exp.build.repeatsQuoted}}',
                 '{{exp.build.repeatsFull}}',
               ],
             ],
-            num: [2, 3, 4],
-            foot: 'Die letzten Spalten zählen Bäume, Stücke, Chargen oder Arbeitsschläge. Ab {{exp.quotedPct}}% braucht ein [[job:builder|Bauarbeiter]] ohne Werkzeug nur noch halb so viele Arbeitsschläge je Stück Baustoff. Im Siedlerpanel steht auf der Seite Erfahrung jede Fähigkeit in einer eigenen Zeile, zum Beispiel Abbau - Eisen: {{exp.craft.repeatsQuoted}} Mal, Ertrag +{{exp.quotedPct}}%.',
+            num: [2, 3],
+            foot: 'Die letzten Spalten zählen Bäume, Stücke, Chargen oder Arbeitsschläge. Ab {{build.bareGainPct}}% braucht ein [[job:builder|Bauarbeiter]] ohne Werkzeug nur noch halb so viele Arbeitsschläge je Stück Baustoff. Im Siedlerpanel steht auf der Seite Erfahrung jede Fähigkeit in einer eigenen Zeile, zum Beispiel Abbau - Eisen: {{exp.craft.repeatsQuoted}} Mal, Ertrag +{{exp.quotedPct}}%.',
           },
         },
         {
           p: 'Jeder Baum, jedes Stück und jede Charge zählt auch für die allgemeine Fähigkeit des Berufs, zum Beispiel Ackerbau. Einen neuen Beruf schaltet entweder diese allgemeine Fähigkeit frei oder die Fähigkeit für eine einzelne Ware: Ackerbau schaltet den [[job:miller|Müller]] frei, Abbau - Holz den [[job:joiner|Schreiner]]. Die Voraussetzungen stehen unter [[article:trades|Berufe und Schule]]. Bei einer Ware ohne eigene Fähigkeit zählt die allgemeine. Erfahrung bleibt beim Berufswechsel erhalten.',
         },
         {
-          h: 'Wer nichts davon hat',
+          h: 'Erfahrung, die die Arbeit nicht beschleunigt',
         },
         {
           list: [

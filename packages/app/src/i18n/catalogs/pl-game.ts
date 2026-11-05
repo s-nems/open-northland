@@ -1482,7 +1482,7 @@ export const plGame = {
         },
         moveFlags: {
           label: 'Zbieracze automatycznie przenoszą flagę',
-          tip: 'Gdy surowiec przy fladze się kończy, flaga przesuwa się za nim, 3-5 pól od niego.',
+          tip: 'Gdy surowiec przy fladze się kończy, flaga przesuwa się za nim, {min}-{max} hexów od niego.',
         },
       },
       notes: {

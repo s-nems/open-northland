@@ -1454,7 +1454,7 @@ export const chsGame = {
         },
         moveFlags: {
           label: '采集者自动移动旗帜',
-          tip: '旗帜旁的资源耗尽时，旗帜会跟着资源移动，与其相距 3-5 格。',
+          tip: '旗帜旁的资源耗尽时，旗帜会跟着资源移动，与其相距 {min}-{max} 格。',
         },
       },
       notes: {

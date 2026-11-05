@@ -164,14 +164,29 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['武器', '塔上射程', '接近目標至'],
+            head: ['武器', '普通射程', '塔上射程', '停下射擊的距離'],
             rows: [
-              ['[[good:bow_short|短弓]]', '0-{{shortBow.towerMax}}', '{{shortBow.standoff}}'],
-              ['[[good:bow_long|長弓]]', '0-{{longBow.towerMax}}', '{{longBow.standoff}}'],
-              ['[[job:heroine_bow_xena|希拉]]', '-', '{{heroBow.standoff}}'],
+              [
+                '[[good:bow_short|短弓]]',
+                '{{shortBow.min}}-{{shortBow.max}}',
+                '0-{{shortBow.towerMax}}',
+                '{{shortBow.min}}-{{shortBow.standoff}}',
+              ],
+              [
+                '[[good:bow_long|長弓]]',
+                '{{longBow.min}}-{{longBow.max}}',
+                '0-{{longBow.towerMax}}',
+                '{{longBow.min}}-{{longBow.standoff}}',
+              ],
+              [
+                '[[job:heroine_bow_xena|希拉]]',
+                '{{heroBow.min}}-{{heroBow.max}}',
+                '-',
+                '{{heroBow.min}}-{{heroBow.standoff}}',
+              ],
             ],
-            num: [1, 2],
-            foot: '射程單位為格。普通射程和射擊間隔，包括獵人的弓和投石機，見[[article:damage|武器、護甲與傷害]]裡的表。目標近於射程下限時，弓手不射擊。',
+            num: [1, 2, 3],
+            foot: '射程單位為格。弓手走向目標時會停在比射程稍近的地方，免得目標跑出射程。目標近於射程下限時，弓手不射擊，站在箭塔上時除外。射擊間隔，包括獵人的弓和投石機，見[[article:damage|武器、護甲與傷害]]裡的表。',
           },
         },
         {
@@ -219,6 +234,9 @@ export const MILITARY: ArticleGroup = {
             id: 'leash',
             caption: '追擊距離',
           },
+        },
+        {
+          p: '無視姿態下，目標離駐守點超過{{stance.ignoreLeash}}格時，士兵就放過它。',
         },
         {
           table: {
@@ -307,9 +325,9 @@ export const MILITARY: ArticleGroup = {
             head: ['附近情況', '格數', '士兵'],
             rows: [
               ['戰鬥', '{{alert.restClearance}}以內', '不睡覺、不禱告、不交談'],
-              ['視野內有敵人', '{{alert.standTo}}以內', '同上'],
+              ['進攻或防禦姿態的敵方士兵，地圖上可見', '{{alert.standTo}}以內', '同上'],
             ],
-            foot: '體力降到{{need.criticalPct}}%時才去吃飯。無視姿態下不適用。',
+            foot: '體力降到{{need.criticalPct}}%時才去吃飯。無視姿態下士兵照常休息。',
           },
         },
       ],
@@ -420,11 +438,11 @@ export const MILITARY: ArticleGroup = {
           ],
         },
         {
-          h: '箭塔駐軍',
+          h: '箭塔儲備',
         },
         {
           table: {
-            head: ['箭塔', '蜂蜜酒', '食物', '每種武器'],
+            head: ['箭塔', '可存蜂蜜酒', '可存食物', '每種武器可存'],
             rows: [
               ['[[building:tower_00|一級箭塔]]', '{{tower1.mead}}', '{{tower1.food}}', '{{tower1.weapon}}'],
               ['[[building:tower_01|二級箭塔]]', '{{tower2.mead}}', '{{tower2.food}}', '{{tower2.weapon}}'],
@@ -432,6 +450,9 @@ export const MILITARY: ArticleGroup = {
             num: [1, 2, 3],
             foot: '職位和搬運工名額見箭塔卡片。',
           },
+        },
+        {
+          h: '箭塔駐軍',
         },
         {
           list: [
@@ -500,74 +521,81 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['武器', '每擊生命值', '擊數：柵欄段', '擊數：柵門', '用時：柵欄段'],
+            head: ['武器', '每擊生命值', '帶力量護符', '擊數：柵欄段', '擊數：柵門', '用時：柵欄段'],
             rows: [
               [
                 '[[building:catapult|投石機]]',
                 '{{wall.catapult.blow}}',
+                '{{wall.catapult.strongBlow}}',
                 '{{wall.catapult.segmentHits}}',
                 '{{wall.catapult.gateHits}}',
-                '{{wall.catapult.segmentSeconds}}秒',
+                '{{wall.catapult.segmentSeconds}}',
               ],
               [
                 '英雄近戰',
                 '{{wall.hero.blow}}',
+                '{{wall.hero.strongBlow}}',
                 '{{wall.hero.segmentHits}}',
                 '{{wall.hero.gateHits}}',
-                '{{wall.hero.segmentSeconds}}秒',
+                '{{wall.hero.segmentSeconds}}',
               ],
               [
                 '[[good:spear_iron|鐵矛]]',
                 '{{wall.ironSpear.blow}}',
+                '{{wall.ironSpear.strongBlow}}',
                 '{{wall.ironSpear.segmentHits}}',
                 '{{wall.ironSpear.gateHits}}',
-                '{{wall.ironSpear.segmentSeconds}}秒',
+                '{{wall.ironSpear.segmentSeconds}}',
               ],
               [
                 '[[good:sword_long|長劍]]',
                 '{{wall.longSword.blow}}',
+                '{{wall.longSword.strongBlow}}',
                 '{{wall.longSword.segmentHits}}',
                 '{{wall.longSword.gateHits}}',
-                '{{wall.longSword.segmentSeconds}}秒',
+                '{{wall.longSword.segmentSeconds}}',
               ],
               [
                 '[[good:sword_shord|短劍]]',
                 '{{wall.shortSword.blow}}',
+                '{{wall.shortSword.strongBlow}}',
                 '{{wall.shortSword.segmentHits}}',
                 '{{wall.shortSword.gateHits}}',
-                '{{wall.shortSword.segmentSeconds}}秒',
+                '{{wall.shortSword.segmentSeconds}}',
               ],
               [
                 '[[good:spear_wooden|木矛]]',
                 '{{wall.woodenSpear.blow}}',
+                '{{wall.woodenSpear.strongBlow}}',
                 '{{wall.woodenSpear.segmentHits}}',
                 '{{wall.woodenSpear.gateHits}}',
-                '{{wall.woodenSpear.segmentSeconds}}秒',
+                '{{wall.woodenSpear.segmentSeconds}}',
               ],
               [
                 '[[good:bow_short|短弓]]',
                 '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.strongBlow}}',
                 '{{wall.shortBow.segmentHits}}',
                 '{{wall.shortBow.gateHits}}',
-                '{{wall.shortBow.segmentSeconds}}秒',
+                '{{wall.shortBow.segmentSeconds}}',
               ],
               [
                 '[[good:bow_long|長弓]]',
                 '{{wall.longBow.blow}}',
+                '{{wall.longBow.strongBlow}}',
                 '{{wall.longBow.segmentHits}}',
                 '{{wall.longBow.gateHits}}',
-                '{{wall.longBow.segmentSeconds}}秒',
+                '{{wall.longBow.segmentSeconds}}',
               ],
-              ['拳頭、建築射出的箭', '0', '-', '-', '-'],
+              ['拳頭、建築射出的箭', '0', '0', '-', '-', '-'],
             ],
-            num: [1, 2, 3, 4],
-            foot: '用時按一名士兵計算。希拉打掉{{wall.heroBow.blow}}點，法蘭克人的希拉{{wall.frankHeroBow.blow}}點。',
+            num: [1, 2, 3, 4, 5],
+            foot: '用時按一名士兵計算。指揮者的護符不加強投石機的石彈。希拉每箭打掉柵欄{{wall.heroBow.blow}}點生命值，法蘭克人的希拉{{wall.frankHeroBow.blow}}點。',
           },
         },
         {
           list: [
             '戰鬥經驗不會加強對木柵欄的攻擊。',
-            '力量護符會加強攻擊：{{wall.ironSpear.blow}}變{{wall.ironSpear.strongBlow}}，{{wall.shortSword.blow}}變{{wall.shortSword.strongBlow}}，{{wall.shortBow.blow}}還是{{wall.shortBow.strongBlow}}。',
             '士兵不會主動攻擊木柵欄。只有下令或柵欄擋住去敵人的路時才會砍。',
             '一段柵欄倒下後，士兵會穿過缺口，不再砍旁邊的柵欄。',
           ],
@@ -609,29 +637,29 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['建築', '生命值', '石彈數', '用時'],
+            head: ['建築', '生命值', '摧毀所需石彈', '1台投石機用時'],
             rows: [
               [
                 '[[building:tower_00|一級箭塔]]',
                 '{{hp.tower1}}',
                 '{{stone.tower1}}',
-                '{{stone.tower1Seconds}}秒',
+                '{{stone.tower1Seconds}}',
               ],
               [
                 '[[building:tower_01|二級箭塔]]',
                 '{{hp.tower2}}',
                 '{{stone.tower2}}',
-                '{{stone.tower2Seconds}}秒',
+                '{{stone.tower2Seconds}}',
               ],
               [
                 '[[building:headquarters|大本營]]，維京人',
                 '{{hp.hq}}',
                 '{{stone.hq}}',
-                '{{stone.hqSeconds}}秒',
+                '{{stone.hqSeconds}}',
               ],
             ],
             num: [1, 2, 3],
-            foot: '法蘭克人大本營：{{hp.frankHq}}點生命值，{{stone.frankHq}}發石彈，{{stone.frankHqSeconds}}秒。',
+            foot: '法蘭克人大本營：{{hp.frankHq}}點生命值，{{stone.frankHq}}發石彈，{{stone.frankHqSeconds}}。',
           },
         },
         {
@@ -665,7 +693,7 @@ export const MILITARY: ArticleGroup = {
             head: ['姿態', '索敵位置', '半徑', '是否移動'],
             rows: [
               ['進攻', '自身周圍', '{{catapult.searchRadius}}', '是'],
-              ['防禦', '駐守位置周圍', '{{catapult.searchRadius}}', '是，離駐守位置最多{{catapult.leash}}'],
+              ['防禦', '駐守位置周圍', '{{catapult.searchRadius}}', '是，離駐守位置最多{{catapult.leash}}格'],
               ['無視', '駐守位置周圍', '{{catapult.min}}-{{catapult.max}}', '否'],
             ],
             foot: '新投石機為無視姿態。它只會主動攻擊看得見的目標。攻擊命令在任何姿態下都有效。',

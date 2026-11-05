@@ -71,6 +71,9 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
+          h: 'Arbeitsschläge je 1 Stück Baustoff',
+        },
+        {
           table: {
             head: ['Erfahrung', 'Ohne Werkzeug', 'Holz', 'Eisen'],
             rows: [
@@ -107,7 +110,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Arbeitsschläge je 1 Stück Baustoff. Erfahrung bekommt ein [[job:builder|Bauarbeiter]] nur für Arbeitsschläge, die den Bau vorangebracht haben: [[article:exp-work|Arbeitserfahrung]].',
+            foot: 'Erfahrung bekommt ein [[job:builder|Bauarbeiter]] nur für Arbeitsschläge, die den Bau vorangebracht haben: [[article:exp-work|Arbeitserfahrung]].',
           },
         },
         {
@@ -276,7 +279,14 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Vorkommen', 'Wer', 'Liefert', 'Arbeitsschläge ohne Erfahrung', 'Dauer', 'Werkzeug hilft'],
+            head: [
+              'Vorkommen',
+              'Wer',
+              'Liefert',
+              'Arbeitsschläge ohne Erfahrung',
+              'Dauer je Baum, Stück oder Feld',
+              'Werkzeug hilft',
+            ],
             rows: [
               [
                 'Baum',
@@ -345,7 +355,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Eisen und Gold',
         },
         {
-          p: 'Um [[good:iron|Eisen]] oder [[good:gold|Gold]] abzubauen, muss ein Abbauer zuerst selbst {{gather.oreNeed}} Stück [[good:mud|Lehm]] und [[good:stone|Bruchstein]] zusammen abbauen, getrennt für jede der beiden Waren. Der Erste, dem das gelingt, entdeckt die Ware fürs ganze Dorf, danach kann man sie auch in der [[building:school|Schule]] lernen. Bis dahin zeigt das Panel „gesperrt“.',
+          p: '[[good:iron|Eisen]] und [[good:gold|Gold]] entdeckt ein Abbauer, der selbst insgesamt {{gather.oreNeed}} Stück [[good:mud|Lehm]] und [[good:stone|Bruchstein]] abbaut, zum Beispiel 4 Lehm und 6 Bruchstein. Dieselbe Voraussetzung schaltet beide Waren frei. Der Erste, dem das gelingt, entdeckt sie fürs ganze Dorf, danach kann man sie auch in der [[building:school|Schule]] lernen. Bis dahin zeigt das Panel „gesperrt“.',
         },
         {
           h: 'Feld',
@@ -424,7 +434,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Woher ein Siedler Werkzeug bekommt',
         },
         {
-          p: 'Werkzeug verteilt der [[article:assistant|Assistent]], der von Spielbeginn an eingeschaltet ist, oder du per Befehl. Ein Siedler ohne Werkzeug holt sich selbst eines aus dem Lager und nimmt Eisenwerkzeug oder, wenn keins da ist, Holzwerkzeug. Holzwerkzeug tauscht er nicht von selbst gegen besseres.',
+          p: 'Werkzeug verteilt der [[article:assistant|Assistent]], der von Spielbeginn an eingeschaltet ist, oder du per Befehl. Ein Siedler ohne Werkzeug holt sich selbst eines aus dem Lager und nimmt Eisenwerkzeug oder, wenn keins da ist, Holzwerkzeug. Holzwerkzeug gegen Eisenwerkzeug tauscht der Assistent, wenn seine Schalter „Eisenwerkzeug“ und „Holzwerkzeug ersetzen“ an sind und ein Lager freies Eisenwerkzeug hat. Angebrauchtes Holzwerkzeug geht beim Tausch verloren, unbenutztes kommt zurück ins Lager.',
         },
         {
           h: 'Wer es nutzt',
@@ -454,9 +464,14 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Ohne Erfahrung', 'Ohne Werkzeug', 'Holz', 'Eisen'],
+            head: ['Siedler ohne Erfahrung', 'Ohne Werkzeug', 'Holz', 'Eisen'],
             rows: [
-              ['Arbeitsschläge', '{{tool.strokes.bare}}', '{{tool.strokes.wooden}}', '{{tool.strokes.iron}}'],
+              [
+                'Arbeitsschläge je Baum oder je Stück Stein, Lehm oder Erz',
+                '{{tool.strokes.bare}}',
+                '{{tool.strokes.wooden}}',
+                '{{tool.strokes.iron}}',
+              ],
               ['Würfe je 1 Fisch', '{{tool.casts.bare}}', '{{tool.casts.wooden}}', '{{tool.casts.iron}}'],
             ],
             num: [1, 2, 3],
@@ -663,7 +678,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'Zwei Wegweiser verbinden sich, wenn sie näher als {{reach.link}} Hexfelder stehen und der Weg zwischen ihnen höchstens {{reach.linkRoute}} Hexfelder lang ist.',
+            'Zwei Wegweiser verbinden sich, wenn sie näher als {{reach.link}} Hexfelder stehen und der Fußweg zwischen ihnen höchstens {{reach.linkRoute}} Hexfelder lang ist.',
             'Dein neuer Wegweiser muss mindestens {{reach.spacing}} Hexfelder vom nächsten entfernt stehen.',
             'Ware sucht ein Siedler näher als {{reach.goods}} Hexfelder von sich oder von Wegweisern in dieser Reichweite.',
             'Ein Gebäude auf einem Wegweiser rückt ihn bis zu {{reach.displace}} Hexfelder beiseite, und geht das nicht, ist der Wegweiser weg.',
@@ -712,15 +727,15 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Gelände unter der Straße', 'Schritt ohne Straße', 'Schritt auf Straße', 'Ersparnis'],
+            head: ['Gelände unter der Straße', 'Schritt auf der Straße kürzer um'],
             rows: [
-              ['Land', '{{step.land}} s', '{{step.road}} s', '{{step.roadSavedOnLandPct}}%'],
-              ['Sand', '{{step.sand}} s', '{{step.road}} s', '{{step.roadSavedOnSandPct}}%'],
-              ['Gebirge', '{{step.mountain}} s', '{{step.road}} s', '{{step.roadSavedOnMountainPct}}%'],
-              ['Schnee', '{{step.snow}} s', '{{step.road}} s', '{{step.roadSavedOnSnowPct}}%'],
+              ['Land', '{{step.roadSavedOnLandPct}}%'],
+              ['Sand', '{{step.roadSavedOnSandPct}}%'],
+              ['Gebirge', '{{step.roadSavedOnMountainPct}}%'],
+              ['Schnee', '{{step.roadSavedOnSnowPct}}%'],
             ],
-            num: [1, 2, 3],
-            foot: 'Siedler mit Schuhen, ohne Last. Auf der Straße nutzen sich Schuhe {{shoes.roadWear}} Mal langsamer ab als auf Land.',
+            num: [1],
+            foot: 'Siedler mit Schuhen, ohne Last. Den Schritt auf jedem Gelände zeigt [[article:walking|Gehtempo]]. Auf der Straße nutzen sich Schuhe {{shoes.roadWear}} Mal langsamer ab als auf Land.',
           },
         },
         {
@@ -746,20 +761,23 @@ export const ECONOMY: ArticleGroup = {
       lead: 'Ein Schritt auf Land dauert {{step.landBrief}} s mit Schuhen und {{step.landBare}} s barfuß.',
       blocks: [
         {
+          p: 'Ein Hexfeld ist die kleinste Einheit der Bewegung: Ein Siedler geht 1 Hexfeld in 1 Schritt.',
+        },
+        {
           h: 'Schritt je Gelände',
         },
         {
           table: {
-            head: ['Gelände', 'Barfuß', 'Schritte je Paar Schuhe'],
+            head: ['Gelände', 'Schritt mit Schuhen', 'Schritt barfuß', 'Schritte je Paar Schuhe'],
             rows: [
-              ['Straße, Pflaster', '{{step.roadBare}} s', '{{shoes.road}}'],
-              ['Land', '{{step.landBare}} s', '{{shoes.land}}'],
-              ['Sand, Strand, Steinwüste', '{{step.sandBare}} s', '{{shoes.sand}}'],
-              ['Gebirge', '{{step.mountainBare}} s', '{{shoes.mountain}}'],
-              ['Schnee', '{{step.snowBare}} s', '{{shoes.snow}}'],
+              ['Straße, Pflaster', '{{step.road}} s', '{{step.roadBare}} s', '{{shoes.road}}'],
+              ['Land', '{{step.land}} s', '{{step.landBare}} s', '{{shoes.land}}'],
+              ['Sand, Strand, Steinwüste', '{{step.sand}} s', '{{step.sandBare}} s', '{{shoes.sand}}'],
+              ['Gebirge', '{{step.mountain}} s', '{{step.mountainBare}} s', '{{shoes.mountain}}'],
+              ['Schnee', '{{step.snow}} s', '{{step.snowBare}} s', '{{shoes.snow}}'],
             ],
-            num: [1, 2],
-            foot: 'Den Schritt mit Schuhen auf jedem Gelände zeigt [[article:roads|Straßen und Wegweiser]]. Mit Last in den Händen nutzen sich Schuhe {{shoes.carryWear}} Mal schneller ab. Wie viel Energie Barfußgehen kostet: [[article:needs|Bedürfnisse]].',
+            num: [1, 2, 3],
+            foot: 'Mit Last in den Händen nutzen sich Schuhe {{shoes.carryWear}} Mal schneller ab. Wie viel Energie Barfußgehen kostet: [[article:needs|Bedürfnisse]]. Was eine Straße bringt: [[article:roads|Straßen und Wegweiser]].',
           },
         },
         {

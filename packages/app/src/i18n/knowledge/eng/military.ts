@@ -167,14 +167,29 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Weapon', 'Range on tower', 'Walks up to'],
+            head: ['Weapon', 'Normal range', 'Range on tower', 'Stops to shoot at'],
             rows: [
-              ['[[good:bow_short|Short Bow]]', '0-{{shortBow.towerMax}}', '{{shortBow.standoff}}'],
-              ['[[good:bow_long|Longbow]]', '0-{{longBow.towerMax}}', '{{longBow.standoff}}'],
-              ['[[job:heroine_bow_xena|Cyra]]', '-', '{{heroBow.standoff}}'],
+              [
+                '[[good:bow_short|Short Bow]]',
+                '{{shortBow.min}}-{{shortBow.max}}',
+                '0-{{shortBow.towerMax}}',
+                '{{shortBow.min}}-{{shortBow.standoff}}',
+              ],
+              [
+                '[[good:bow_long|Longbow]]',
+                '{{longBow.min}}-{{longBow.max}}',
+                '0-{{longBow.towerMax}}',
+                '{{longBow.min}}-{{longBow.standoff}}',
+              ],
+              [
+                '[[job:heroine_bow_xena|Cyra]]',
+                '{{heroBow.min}}-{{heroBow.max}}',
+                '-',
+                '{{heroBow.min}}-{{heroBow.standoff}}',
+              ],
             ],
-            num: [1, 2],
-            foot: "Range in hexes. Normal range and shot rate, also for the Hunter's bow and the Catapult, are in the table in [[article:damage|Weapons, Armour and Damage]]. An archer won't shoot at a target closer than the lower end of his range.",
+            num: [1, 2, 3],
+            foot: "Range in hexes. An archer walking up to a target stops a little closer than he can reach, so the target doesn't slip out of range. He won't shoot at a target closer than the lower end of his range unless he stands on a tower. Shot rate, also for the Hunter's bow and the Catapult, is in the table in [[article:damage|Weapons, Armour and Damage]].",
           },
         },
         {
@@ -222,6 +237,9 @@ export const MILITARY: ArticleGroup = {
             id: 'leash',
             caption: 'How far he chases',
           },
+        },
+        {
+          p: 'On Ignorant a soldier lets a target go once it moves more than {{stance.ignoreLeash}} hexes from his standing point.',
         },
         {
           table: {
@@ -316,9 +334,13 @@ export const MILITARY: ArticleGroup = {
             head: ['What is close', 'Hexes', 'The soldier'],
             rows: [
               ['Fight', 'up to {{alert.restClearance}}', "Doesn't sleep, pray or talk"],
-              ['Enemy in sight', 'up to {{alert.standTo}}', 'The same'],
+              [
+                'Enemy soldier on Attack or Defence, visible on the map',
+                'up to {{alert.standTo}}',
+                'The same',
+              ],
             ],
-            foot: "He goes to eat only once Energy drops to {{need.criticalPct}}%. On Ignorant this doesn't apply.",
+            foot: 'He goes to eat only once Energy drops to {{need.criticalPct}}%. On Ignorant a soldier rests as usual.',
           },
         },
       ],
@@ -429,11 +451,11 @@ export const MILITARY: ArticleGroup = {
           ],
         },
         {
-          h: 'Tower crew',
+          h: 'Tower stock',
         },
         {
           table: {
-            head: ['Tower', 'Mead', 'Food', 'Of each weapon'],
+            head: ['Tower', 'Holds Mead', 'Holds Food', 'Holds of each weapon'],
             rows: [
               [
                 '[[building:tower_00|Defence Tower 1]]',
@@ -451,6 +473,9 @@ export const MILITARY: ArticleGroup = {
             num: [1, 2, 3],
             foot: "Posts and Carrier places are on the tower's card.",
           },
+        },
+        {
+          h: 'Tower crew',
         },
         {
           list: [
@@ -522,74 +547,88 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Weapon', 'Health per blow', 'Blows per segment', 'Blows per gate', 'Time per segment'],
+            head: [
+              'Weapon',
+              'Health per blow',
+              'With Amulet of Strength',
+              'Blows per segment',
+              'Blows per gate',
+              'Time per segment',
+            ],
             rows: [
               [
                 '[[building:catapult|Catapult]]',
                 '{{wall.catapult.blow}}',
+                '{{wall.catapult.strongBlow}}',
                 '{{wall.catapult.segmentHits}}',
                 '{{wall.catapult.gateHits}}',
-                '{{wall.catapult.segmentSeconds}} s',
+                '{{wall.catapult.segmentSeconds}}',
               ],
               [
                 'Hero, melee',
                 '{{wall.hero.blow}}',
+                '{{wall.hero.strongBlow}}',
                 '{{wall.hero.segmentHits}}',
                 '{{wall.hero.gateHits}}',
-                '{{wall.hero.segmentSeconds}} s',
+                '{{wall.hero.segmentSeconds}}',
               ],
               [
                 '[[good:spear_iron|Iron Spear]]',
                 '{{wall.ironSpear.blow}}',
+                '{{wall.ironSpear.strongBlow}}',
                 '{{wall.ironSpear.segmentHits}}',
                 '{{wall.ironSpear.gateHits}}',
-                '{{wall.ironSpear.segmentSeconds}} s',
+                '{{wall.ironSpear.segmentSeconds}}',
               ],
               [
                 '[[good:sword_long|Longsword]]',
                 '{{wall.longSword.blow}}',
+                '{{wall.longSword.strongBlow}}',
                 '{{wall.longSword.segmentHits}}',
                 '{{wall.longSword.gateHits}}',
-                '{{wall.longSword.segmentSeconds}} s',
+                '{{wall.longSword.segmentSeconds}}',
               ],
               [
                 '[[good:sword_shord|Shortsword]]',
                 '{{wall.shortSword.blow}}',
+                '{{wall.shortSword.strongBlow}}',
                 '{{wall.shortSword.segmentHits}}',
                 '{{wall.shortSword.gateHits}}',
-                '{{wall.shortSword.segmentSeconds}} s',
+                '{{wall.shortSword.segmentSeconds}}',
               ],
               [
                 '[[good:spear_wooden|Wooden Spear]]',
                 '{{wall.woodenSpear.blow}}',
+                '{{wall.woodenSpear.strongBlow}}',
                 '{{wall.woodenSpear.segmentHits}}',
                 '{{wall.woodenSpear.gateHits}}',
-                '{{wall.woodenSpear.segmentSeconds}} s',
+                '{{wall.woodenSpear.segmentSeconds}}',
               ],
               [
                 '[[good:bow_short|Short Bow]]',
                 '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.strongBlow}}',
                 '{{wall.shortBow.segmentHits}}',
                 '{{wall.shortBow.gateHits}}',
-                '{{wall.shortBow.segmentSeconds}} s',
+                '{{wall.shortBow.segmentSeconds}}',
               ],
               [
                 '[[good:bow_long|Longbow]]',
                 '{{wall.longBow.blow}}',
+                '{{wall.longBow.strongBlow}}',
                 '{{wall.longBow.segmentHits}}',
                 '{{wall.longBow.gateHits}}',
-                '{{wall.longBow.segmentSeconds}} s',
+                '{{wall.longBow.segmentSeconds}}',
               ],
-              ['Fists, arrows from a building', '0', '-', '-', '-'],
+              ['Fists, arrows from a building', '0', '0', '-', '-', '-'],
             ],
-            num: [1, 2, 3, 4],
-            foot: 'Time for one soldier. Cyra takes {{wall.heroBow.blow}}, with the Franks {{wall.frankHeroBow.blow}}.',
+            num: [1, 2, 3, 4, 5],
+            foot: "Time for one soldier. The commander's amulet doesn't strengthen Catapult stones. Cyra takes {{wall.heroBow.blow}} stockade health per shot, the Franks' Cyra {{wall.frankHeroBow.blow}}.",
           },
         },
         {
           list: [
             "Combat experience doesn't strengthen blows on a stockade.",
-            'The Amulet of Strength strengthens the blow: {{wall.ironSpear.blow}} becomes {{wall.ironSpear.strongBlow}}, {{wall.shortSword.blow}} becomes {{wall.shortSword.strongBlow}}, and {{wall.shortBow.blow}} stays {{wall.shortBow.strongBlow}}.',
             "A soldier doesn't attack a stockade on his own. He strikes it on orders or when it blocks his way to an enemy.",
             'Once one segment falls, soldiers go through the breach and leave the neighbouring ones standing.',
           ],
@@ -631,29 +670,29 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Building', 'Health', 'Stones', 'Time'],
+            head: ['Building', 'Health', 'Stones to destroy', 'Time for 1 Catapult'],
             rows: [
               [
                 '[[building:tower_00|Defence Tower 1]]',
                 '{{hp.tower1}}',
                 '{{stone.tower1}}',
-                '{{stone.tower1Seconds}} s',
+                '{{stone.tower1Seconds}}',
               ],
               [
                 '[[building:tower_01|Defence Tower 2]]',
                 '{{hp.tower2}}',
                 '{{stone.tower2}}',
-                '{{stone.tower2Seconds}} s',
+                '{{stone.tower2Seconds}}',
               ],
               [
                 '[[building:headquarters|Headquarters]], Viking',
                 '{{hp.hq}}',
                 '{{stone.hq}}',
-                '{{stone.hqSeconds}} s',
+                '{{stone.hqSeconds}}',
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Frankish Headquarters: {{hp.frankHq}} health, {{stone.frankHq}} stones, {{stone.frankHqSeconds}} s.',
+            foot: 'Frankish Headquarters: {{hp.frankHq}} health, {{stone.frankHq}} stones, {{stone.frankHqSeconds}}.',
           },
         },
         {
@@ -691,7 +730,7 @@ export const MILITARY: ArticleGroup = {
                 'Defence',
                 'Around its position',
                 '{{catapult.searchRadius}}',
-                'Yes, up to {{catapult.leash}} from its position',
+                'Yes, up to {{catapult.leash}} hexes from its position',
               ],
               ['Ignorant', 'Around its position', '{{catapult.min}}-{{catapult.max}}', 'No'],
             ],

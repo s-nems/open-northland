@@ -9,7 +9,6 @@ import {
   NODE_PX,
   NODE_ROW_PX,
   nodePoint,
-  sightRows,
 } from '../../../../../src/hud/dom/knowledge/figures/geometry.js';
 
 describe('figure geometry', () => {
@@ -22,16 +21,10 @@ describe('figure geometry', () => {
     }
   });
 
-  it('stretches sight along rows by the projection, a circle on screen', () => {
-    const radius = systems.SCOUT_VISION_NODES;
-    expect(sightRows(radius) * NODE_ROW_PX).toBe(radius * NODE_PX);
-    expect(sightRows(radius)).toBeGreaterThan(radius);
-  });
-
   it('scales every ring by one factor so the widest fills the room', () => {
-    const scale = fitScale(sightRows(systems.SCOUT_VISION_NODES), 150);
-    expect(sightRows(systems.SCOUT_VISION_NODES) * scale).toBeCloseTo(150);
-    expect(sightRows(systems.CHILD_VISION_NODES) * scale).toBeCloseTo(
+    const scale = fitScale(systems.SCOUT_VISION_NODES * NODE_PX, 150);
+    expect(systems.SCOUT_VISION_NODES * NODE_PX * scale).toBeCloseTo(150);
+    expect(systems.CHILD_VISION_NODES * NODE_PX * scale).toBeCloseTo(
       (150 * systems.CHILD_VISION_NODES) / systems.SCOUT_VISION_NODES,
     );
   });

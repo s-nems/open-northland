@@ -59,6 +59,9 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
+          h: '每1份材料的敲擊數',
+        },
+        {
           table: {
             head: ['經驗', '無工具', '木質', '鐵質'],
             rows: [
@@ -95,7 +98,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: '每1份材料的敲擊數。[[job:builder|建築工人]]的經驗只從推進了工程的敲擊中增長：[[article:exp-work|工作經驗]]。',
+            foot: '[[job:builder|建築工人]]的經驗只從推進了工程的敲擊中增長：[[article:exp-work|工作經驗]]。',
           },
         },
         {
@@ -240,7 +243,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['資源', '誰來採', '產出', '無經驗敲擊數', '用時', '工具有用'],
+            head: ['資源', '誰來採', '產出', '無經驗敲擊數', '每棵樹、每份或每塊田的用時', '工具有用'],
             rows: [
               [
                 '樹',
@@ -309,7 +312,7 @@ export const ECONOMY: ArticleGroup = {
           h: '鐵礦與金礦',
         },
         {
-          p: '要開採[[good:iron|鐵礦]]或[[good:gold|金礦]]，採集者得先自己採夠[[good:mud|黏土]]和[[good:stone|毛石]]合計{{gather.oreNeed}}份，兩種礦分開算。第一個做到的人為全聚落發現這種貨物，之後也能在[[building:school|學校]]學會。在那之前面板顯示「已鎖定」。',
+          p: '採集者自己採到[[good:mud|黏土]]和[[good:stone|毛石]]合計{{gather.oreNeed}}份，例如4份黏土和6份毛石，就會發現[[good:iron|鐵礦]]和[[good:gold|金礦]]。兩種礦是同一個條件，一起開放。第一個做到的人為全聚落發現它們，之後也能在[[building:school|學校]]學會。在那之前面板顯示「已鎖定」。',
         },
         {
           h: '田地',
@@ -388,7 +391,7 @@ export const ECONOMY: ArticleGroup = {
           h: '居民從哪裡拿工具',
         },
         {
-          p: '工具由[[article:assistant|助手]]發放，它開局就是開著的，你也可以下命令發。沒有工具的居民會自己去倉庫拿，有鐵質的拿鐵質，沒有就拿木質。拿了木質工具的人不會自己去換更好的。',
+          p: '工具由[[article:assistant|助手]]發放，它開局就是開著的，你也可以下命令發。沒有工具的居民會自己去倉庫拿，有鐵質的拿鐵質，沒有就拿木質。助手的「鐵質工具」和「替換木質工具」開關都開著、倉庫裡又有多餘的鐵質工具時，助手會把木質工具換成鐵質的。用過的木質工具在更換時遺失，沒用過的放回倉庫。',
         },
         {
           h: '誰能受益',
@@ -412,9 +415,14 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['無經驗', '無工具', '木質', '鐵質'],
+            head: ['無經驗的居民', '無工具', '木質', '鐵質'],
             rows: [
-              ['敲擊數', '{{tool.strokes.bare}}', '{{tool.strokes.wooden}}', '{{tool.strokes.iron}}'],
+              [
+                '每棵樹或每份石頭、黏土、礦石的敲擊數',
+                '{{tool.strokes.bare}}',
+                '{{tool.strokes.wooden}}',
+                '{{tool.strokes.iron}}',
+              ],
               ['每1條魚的拋竿數', '{{tool.casts.bare}}', '{{tool.casts.wooden}}', '{{tool.casts.iron}}'],
             ],
             num: [1, 2, 3],
@@ -617,7 +625,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            '兩個路標相距小於{{reach.link}}格、之間路線不超過{{reach.linkRoute}}格時相連。',
+            '兩個路標相距小於{{reach.link}}格、之間步行路線不超過{{reach.linkRoute}}格時相連。',
             '你的新路標要離別的路標至少{{reach.spacing}}格。',
             '居民在離自己或這個距離內的路標小於{{reach.goods}}格的範圍內找貨物。',
             '建築蓋在路標上時，路標最多被移開{{reach.displace}}格，移不開就消失。',
@@ -660,15 +668,15 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['路下地形', '無路每步', '有路每步', '節省'],
+            head: ['路下地形', '走道路每步縮短'],
             rows: [
-              ['陸地', '{{step.land}}秒', '{{step.road}}秒', '{{step.roadSavedOnLandPct}}%'],
-              ['沙地', '{{step.sand}}秒', '{{step.road}}秒', '{{step.roadSavedOnSandPct}}%'],
-              ['山地', '{{step.mountain}}秒', '{{step.road}}秒', '{{step.roadSavedOnMountainPct}}%'],
-              ['雪地', '{{step.snow}}秒', '{{step.road}}秒', '{{step.roadSavedOnSnowPct}}%'],
+              ['陸地', '{{step.roadSavedOnLandPct}}%'],
+              ['沙地', '{{step.roadSavedOnSandPct}}%'],
+              ['山地', '{{step.roadSavedOnMountainPct}}%'],
+              ['雪地', '{{step.roadSavedOnSnowPct}}%'],
             ],
-            num: [1, 2, 3],
-            foot: '穿鞋、空手的居民。鞋子走道路的磨損比走陸地慢：×{{shoes.roadWear}}。',
+            num: [1],
+            foot: '穿鞋、空手的居民。各地形的步速見[[article:walking|步速]]。鞋子走道路的磨損比走陸地慢：×{{shoes.roadWear}}。',
           },
         },
         {
@@ -694,20 +702,23 @@ export const ECONOMY: ArticleGroup = {
       lead: '陸地上穿鞋每步{{step.landBrief}}秒，赤腳{{step.landBare}}秒。',
       blocks: [
         {
+          p: '格是最小的移動單位：居民每走1步過1格。',
+        },
+        {
           h: '各地形的步速',
         },
         {
           table: {
-            head: ['地形', '赤腳', '一雙鞋可走步數'],
+            head: ['地形', '穿鞋每步', '赤腳每步', '一雙鞋可走步數'],
             rows: [
-              ['道路、鋪石路', '{{step.roadBare}}秒', '{{shoes.road}}'],
-              ['陸地', '{{step.landBare}}秒', '{{shoes.land}}'],
-              ['沙地、海灘、石漠', '{{step.sandBare}}秒', '{{shoes.sand}}'],
-              ['山地', '{{step.mountainBare}}秒', '{{shoes.mountain}}'],
-              ['雪地', '{{step.snowBare}}秒', '{{shoes.snow}}'],
+              ['道路、鋪石路', '{{step.road}}秒', '{{step.roadBare}}秒', '{{shoes.road}}'],
+              ['陸地', '{{step.land}}秒', '{{step.landBare}}秒', '{{shoes.land}}'],
+              ['沙地、海灘、石漠', '{{step.sand}}秒', '{{step.sandBare}}秒', '{{shoes.sand}}'],
+              ['山地', '{{step.mountain}}秒', '{{step.mountainBare}}秒', '{{shoes.mountain}}'],
+              ['雪地', '{{step.snow}}秒', '{{step.snowBare}}秒', '{{shoes.snow}}'],
             ],
-            num: [1, 2],
-            foot: '各地形穿鞋的步速見[[article:roads|道路與路標]]。手上拿貨時鞋子磨損更快：×{{shoes.carryWear}}。赤腳走路消耗多少體力見[[article:needs|需求]]。',
+            num: [1, 2, 3],
+            foot: '手上拿貨時鞋子磨損更快：×{{shoes.carryWear}}。赤腳走路消耗多少體力見[[article:needs|需求]]。道路的好處見[[article:roads|道路與路標]]。',
           },
         },
         {

@@ -126,7 +126,13 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Load', 'Handcart: slower', 'Handcart: land', 'Ox Cart: slower', 'Ox Cart: land'],
+            head: [
+              'Load',
+              'Handcart: speed loss',
+              'Handcart: hexes/s on land',
+              'Ox Cart: speed loss',
+              'Ox Cart: hexes/s on land',
+            ],
             rows: [
               [
                 '{{vehicle.fill.0}}%',
@@ -165,7 +171,7 @@ export const WORLD: ArticleGroup = {
               ],
             ],
             num: [0, 1, 2, 3, 4],
-            foot: "Load is the share of the cart's hold in use. The speed loss grows evenly with the load: a full cart loses all of it, a half-full cart half. Speed in hexes per second on plain land.",
+            foot: "Load is the share of the cart's hold in use. The loss grows evenly with the load: a full Handcart goes {{vehicle.handcartLoss.100}}% slower, a half-full one {{vehicle.handcartLoss.50}}%. A full Ox Cart loses {{vehicle.oxcartLoss.100}}%. For comparison: a settler in shoes walks {{pace.walkerLand}} hexes/s on land (a step every {{step.landBrief}} s).",
           },
         },
         {
@@ -486,7 +492,7 @@ export const WORLD: ArticleGroup = {
           },
         },
         {
-          h: 'Young and slaughter',
+          h: 'Slaughter',
         },
         {
           table: {
@@ -537,7 +543,11 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Profession', '{{piety.lowPct}}%', '{{piety.highPct}}%'],
+            head: [
+              'Profession',
+              'Costs {{piety.lowPct}}% Religion per piece',
+              'Costs {{piety.highPct}}% Religion per piece',
+            ],
             rows: [
               [
                 '[[job:armorer|Armourer]]',
@@ -584,7 +594,7 @@ export const WORLD: ArticleGroup = {
           h: 'Holy fire',
         },
         {
-          p: 'You can light it in Dwelling 3 and up. 1 [[good:holy_oil|Oil]] lasts {{oil.burnMinutes}} min, a full stock in the dwelling {{oil.fullBurnMinutes}} min. The fire burns even when nobody is praying.',
+          p: 'You can light it in Dwelling 3 and up. 1 [[good:holy_oil|Oil]] lasts {{oil.burnTime}}, a full stock in the dwelling {{oil.fullBurnTime}}. The fire burns even when nobody is praying.',
         },
         {
           h: 'Temple aura',

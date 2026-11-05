@@ -31,53 +31,38 @@ export const EXPERIENCE: ArticleGroup = {
         },
         {
           table: {
-            head: ['Work', 'Counted per', 'Multiplier', 'Times to {{exp.quotedPct}}%', 'Times to 100%'],
+            head: ['Work', 'Counted per', 'Times to half ({{exp.quotedPct}}%)', 'Times to 100%'],
             rows: [
-              [
-                'Wood',
-                'tree felled',
-                '×{{exp.wood.points}}',
-                '{{exp.wood.repeatsQuoted}}',
-                '{{exp.wood.repeatsFull}}',
-              ],
+              ['Wood', 'tree felled', '{{exp.wood.repeatsQuoted}}', '{{exp.wood.repeatsFull}}'],
               [
                 'Hunting',
                 'piece taken from a carcass',
-                '×{{exp.hunt.points}}',
                 '{{exp.hunt.repeatsQuoted}}',
                 '{{exp.hunt.repeatsFull}}',
               ],
-              [
-                'Fishing',
-                'fish',
-                '×{{exp.fish.points}}',
-                '{{exp.fish.repeatsQuoted}}',
-                '{{exp.fish.repeatsFull}}',
-              ],
+              ['Fishing', 'fish', '{{exp.fish.repeatsQuoted}}', '{{exp.fish.repeatsFull}}'],
               [
                 'Clay, quarrystone, iron, gold, mushrooms, herbs, wheat, slaughter, workshop',
                 'piece, animal at slaughter, cycle in a workshop',
-                '×{{exp.craft.points}}',
                 '{{exp.craft.repeatsQuoted}}',
                 '{{exp.craft.repeatsFull}}',
               ],
               [
                 'Building, repairs',
                 'hammer stroke on a building site',
-                '×{{exp.build.points}}',
                 '{{exp.build.repeatsQuoted}}',
                 '{{exp.build.repeatsFull}}',
               ],
             ],
-            num: [2, 3, 4],
-            foot: 'The last columns count trees, pieces, cycles or strokes. From {{exp.quotedPct}}% a [[job:builder|Builder]] with no tool needs half as many strokes per piece of material. In the settler panel, on the Experience tab, each skill has its own row, e.g. Extraction - Iron: {{exp.craft.repeatsQuoted}} times, output +{{exp.quotedPct}}%.',
+            num: [2, 3],
+            foot: 'The last columns count trees, pieces, cycles or strokes. From {{build.bareGainPct}}% a [[job:builder|Builder]] with no tool needs half as many strokes per piece of material. In the settler panel, on the Experience tab, each skill has its own row, e.g. Extraction - Iron: {{exp.craft.repeatsQuoted}} times, output +{{exp.quotedPct}}%.',
           },
         },
         {
           p: "Each tree, piece and cycle also counts toward the profession's general skill, e.g. Agriculture. A new profession opens through that general skill or through the skill of one good: Agriculture opens the [[job:miller|Miller]], and Extraction - Wood the [[job:joiner|Carpenter]]. The requirements are in [[article:trades|Professions and School]]. For a good with no skill of its own, the general skill counts. Experience stays through a change of profession.",
         },
         {
-          h: 'Who gains nothing',
+          h: "Experience that doesn't speed up work",
         },
         {
           list: [

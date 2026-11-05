@@ -1,5 +1,5 @@
 import { systems } from '@open-northland/sim';
-import { formatMessage, messages } from '../../../../i18n/index.js';
+import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../../i18n/index.js';
 import type { Point } from './geometry.js';
 import { drawing, FIGURE_WIDTH, line, number, shape, text } from './svg.js';
 
@@ -132,7 +132,10 @@ export function expCurveFigure(): SVGElement {
       shape('circle', { cx: at.x, cy: at.y, r: CURVE_MARK, class: 'kn-fig__curve-mark' }),
       text(
         { x: at.x + 2 * SIDE_GAP, y: at.y + 2 * LABEL_BASELINE + 2 },
-        formatMessage(t.mark, { points: number(points), percent: number(value) }),
+        formatMessage(pluralForm(points, t.mark, bcp47Tag()), {
+          points: number(points),
+          percent: number(value),
+        }),
         'kn-fig__t--small',
       ),
     ];
@@ -144,6 +147,11 @@ export function expCurveFigure(): SVGElement {
     ...labelled,
     ...xTicks,
     text({ x: FIGURE_WIDTH, y: PLOT_TOP / 2 }, t.fewerStrokes, 'kn-fig__t--small', 'end'),
-    text({ x: (PLOT_LEFT + PLOT_RIGHT) / 2, y: AXIS_LABEL_Y }, t.points, 'kn-fig__t--small', 'middle'),
+    text(
+      { x: (PLOT_LEFT + PLOT_RIGHT) / 2, y: AXIS_LABEL_Y },
+      messages().knowledge.mechanics.expPoints,
+      'kn-fig__t--small',
+      'middle',
+    ),
   );
 }

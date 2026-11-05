@@ -23,9 +23,15 @@ export const SETTLERS: ArticleGroup = {
                 '100% in {{need.drainMinutes}} min',
                 'yes',
                 '[[article:food|a meal]]',
-                '[[article:health|dies in {{need.starveMinutes}} min]]',
+                '[[article:health|dies after {{health.starveTime}}]]',
               ],
-              ['Stamina', '100% in {{need.drainMinutes}} min', 'yes', 'sleep', 'only a slower step'],
+              [
+                'Stamina',
+                '100% in {{need.drainMinutes}} min',
+                'yes',
+                'sleep',
+                'nothing more, the step already slows from {{need.drivePct}}%',
+              ],
               ['Social Motivation', '100% in {{need.drainMinutes}} min', 'no', 'talking', 'no penalty'],
               [
                 'Religion',
@@ -35,7 +41,7 @@ export const SETTLERS: ArticleGroup = {
                 'makes no weapons or armour',
               ],
             ],
-            foot: 'At map start each bar is random, {{need.startMinPct}}-100%. Without [[good:shoes|Shoes]] each step costs {{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}% Energy depending on the ground, double that under load.',
+            foot: 'At map start each bar is random, {{need.startMinPct}}-100%. Without [[good:shoes|Shoes]], {{need.barefootSampleSteps}} steps cost {{need.barefootRoadPct}}% Energy on a road, {{need.barefootLandPct}}% on land and up to {{need.barefootMaxPct}}% on the hardest ground, double that under load.',
           },
         },
         {
@@ -69,7 +75,13 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Who', 'Sleep time', 'Away from home', 'At home', 'At home with Furniture'],
+            head: [
+              'Who',
+              'Sleep time',
+              'Stamina per sleep: away from home',
+              'at home',
+              'at home with Furniture',
+            ],
             rows: [
               [
                 'Man',
@@ -85,8 +97,20 @@ export const SETTLERS: ArticleGroup = {
                 '+{{sleep.womanHomePct}}%',
                 '+{{sleep.womanFurnishedPct}}%',
               ],
-              ['Merchant, Scout', '{{sleep.manSeconds}} s', '+{{sleep.manHomePct}}%', '-', '-'],
-              ['Soldier', '{{sleep.soldierSeconds}} s', '+{{sleep.soldierPct}}%', '-', '-'],
+              [
+                'Merchant, Scout (always as at home)',
+                '{{sleep.manSeconds}} s',
+                '+{{sleep.manHomePct}}%',
+                '-',
+                '-',
+              ],
+              [
+                'Soldier (wherever he sleeps)',
+                '{{sleep.soldierSeconds}} s',
+                '+{{sleep.soldierPct}}%',
+                '-',
+                '-',
+              ],
             ],
             num: [1, 2, 3, 4],
           },
@@ -208,26 +232,21 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Source', 'Change', 'Condition', 'Full health in'],
+            head: ['Source', 'Change', 'Condition', 'Time for {{health.human}} health'],
             rows: [
               [
                 'Regeneration',
                 '+{{health.regenPerSecond}}/s',
                 'Energy above 0%, in combat too',
-                '{{health.regenWholeMin}} min {{health.regenRestSec}} s',
+                '{{health.regenTime}}',
               ],
               [
                 '[[article:religion|Temple aura]]',
                 '+{{aura.perSecond}}/s',
                 '{{aura.range}} hexes from a [[building:work_temple|Temple]]',
-                '{{aura.wholeMin}} min {{aura.restSec}} s',
+                '{{aura.time}}',
               ],
-              [
-                'Hunger',
-                '-{{health.starvePerSecond}}/s',
-                'Energy 0%',
-                '{{health.starveWholeMin}} min {{health.starveRestSec}} s',
-              ],
+              ['Hunger', '-{{health.starvePerSecond}}/s', 'Energy 0%', '{{health.starveTime}}'],
             ],
             num: [1, 3],
             foot: 'Regeneration and aura add up to {{aura.totalPerSecond}} per second. Regeneration stops at {{health.human}}, but the aura heals past normal, up to {{aura.ceiling}}.',
@@ -241,8 +260,8 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            '[[good:potion_heal_small|S Healing Potion]] has {{draught.smallUses}} sips, {{draught.healSmallTotal}} total. [[good:potion_heal_big|L Healing Potion]] has {{draught.bigUses}} sips, {{draught.healBigTotal}} total.',
-            'A settler drinks sip after sip until the wound leaves him at least {{draught.healBelow}} health.',
+            '[[good:potion_heal_small|S Healing Potion]] has {{draught.smallUses}} sips, {{draught.healSmallTotal}} health in total. [[good:potion_heal_big|L Healing Potion]] has {{draught.bigUses}} sips, {{draught.healBigTotal}} health in total.',
+            'When a blow would take his health below {{draught.healBelow}}, a settler drinks sip after sip at once, until he has at least {{draught.healBelow}} again or the potion runs out.',
             "Even a killing blow doesn't kill, if the sips cover the wound.",
             'A settler also drinks when hunger takes his health below {{draught.healBelow}}.',
           ],
@@ -270,7 +289,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'A wedding takes the Marry order.',
+            'A wedding takes the "Marry" order.',
             'The order pairs the settler with the nearest adult of the opposite sex, same tribe, same player.',
             'The candidate must be within the settler\'s [[article:roads|signpost]] reach. With no candidate the order is lost and the game shows "No match".',
             'Soldiers, heroes, Scouts and anyone sent to the [[building:barracks|Barracks]] or [[building:school|School]] do not marry.',
@@ -284,13 +303,13 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Stage', 'Age', 'Since birth'],
             rows: [
-              ['Baby', '0-{{age.babyLastYear}} years', '0-{{age.childWholeMin}} min {{age.childRestSec}} s'],
+              ['Baby', '0-{{age.babyLastYear}} years', '0-{{age.childTime}}'],
               [
                 'Child',
                 '{{age.childYears}}-{{age.childLastYear}} years',
-                '{{age.childWholeMin}} min {{age.childRestSec}} s-{{age.adultMinutes}} min',
+                '{{age.childTime}}-{{age.adultTime}}',
               ],
-              ['Adult', 'from {{age.adultYears}} years', 'from {{age.adultMinutes}} min'],
+              ['Adult', 'from {{age.adultYears}} years', 'from {{age.adultTime}}'],
             ],
             foot: 'A year of life lasts {{age.yearSeconds}} s. A child walks around the dwelling. Once grown, a boy becomes a [[job:civilist|Civilian]] and a girl a [[job:woman|Woman]]. Nobody dies of old age.',
           },
@@ -335,7 +354,7 @@ export const SETTLERS: ArticleGroup = {
                 '[[good:holy_oil|Oil]]',
                 'Dwelling 3',
                 '[[article:religion|Holy fire]]: prayer outside the dwelling',
-                '{{oil.wholeMin}} min {{oil.restSec}} s',
+                '{{oil.burnTime}}',
                 '{{home.oilFetchBelow}}',
               ],
             ],
@@ -376,14 +395,14 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'assistant',
       name: 'Assistant',
-      lead: 'Counters set how many children and recruits you want, switches hand out equipment from the stores.',
+      lead: 'With counters you order how many more children should be born and how many recruits trained. A counter goes down as the order is filled. Switches hand out equipment from the stores.',
       blocks: [
         {
           h: 'Counters',
         },
         {
           table: {
-            head: ['Counter', 'Gives', 'Who does it', 'Counts down', 'No limit'],
+            head: ['Counter', 'Gives', 'Who does it', 'Counts down', 'Can be set to ∞'],
             rows: [
               ['Daughters', 'a girl', 'married woman with a dwelling', 'at birth', 'no'],
               ['Sons', 'a boy', 'married woman with a dwelling', 'at birth', 'yes'],
@@ -411,6 +430,11 @@ export const SETTLERS: ArticleGroup = {
                 'Iron tools, Wooden tools',
                 'on',
                 'anyone with a job except soldiers, [[job:scout|Scouts]] and Civilians',
+              ],
+              [
+                'Iron tools: Replace wooden ones',
+                'on',
+                'a worker with a Wooden Tool, while Iron tools is on',
               ],
               ['[[good:mead|Mead]]', 'on', 'Civilians, Soldiers'],
               ['Nourishing potions, Stamina potions, Healing potions', 'off', 'Civilians, Soldiers'],
@@ -468,7 +492,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             "The Assistant doesn't equip women, children, [[article:heroes|heroes]] or tower crews.",
             "The Assistant doesn't hand out stock below the [[article:hauling|storage minimum]].",
-            'It only fills empty slots and never swaps an item for a better one. Iron tools come before wooden ones.',
+            'It fills empty slots, and Iron tools come before wooden ones. With "Replace wooden ones" it also sends a worker holding a Wooden Tool for an Iron one: [[article:tools|Tools]]. It swaps nothing else for something better.',
             'A settler has {{amulet.slots}} slots for potions and amulets: [[article:draughts|Potions and Amulets]].',
           ],
         },

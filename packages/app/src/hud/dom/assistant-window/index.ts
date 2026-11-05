@@ -1,6 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HudModel } from '@open-northland/render';
-import type { components } from '@open-northland/sim';
+import { type components, systems } from '@open-northland/sim';
 import {
   type AssistantGrantId,
   AUDIENCE_SWITCH_IDS,
@@ -55,6 +55,8 @@ type GrantAudience = components.AssistantGrantAudience;
 type GearKind = 'weapons' | 'armor';
 
 const ROW_ICON_PX = 24;
+/** The flag follow's band, which the switch tips name in hexes. */
+const FLAG_BAND = { min: systems.FOLLOW_FLAG_BAND.min, max: systems.FOLLOW_FLAG_BAND.max };
 
 /** The sim's counter block for the watched seat, and the command that sets one counter. */
 export interface AssistantCountersSeam {
@@ -380,8 +382,9 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
   const switchRow = (id: AssistantGrantId, art: HTMLElement): { row: HTMLElement; on: () => boolean } => {
     const row = element('div', 'on-asst-row');
     const text = copy.switches[id];
-    const control = createSwitch(text.label, text.tip, (next) => pressSwitch(id, next));
-    row.append(art, label(text.label, text.tip, element('span', 'on-asst-marks')), control.element);
+    const tip = formatMessage(text.tip, FLAG_BAND);
+    const control = createSwitch(text.label, tip, (next) => pressSwitch(id, next));
+    row.append(art, label(text.label, tip, element('span', 'on-asst-marks')), control.element);
     updates.push(() => {
       const on = switchNow(id);
       control.update(on, writable);

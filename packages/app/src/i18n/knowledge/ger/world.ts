@@ -128,10 +128,10 @@ export const WORLD: ArticleGroup = {
           table: {
             head: [
               'Ladung',
-              'Handkarren: langsamer',
-              'Handkarren: Land',
-              'Ochsenkarren: langsamer',
-              'Ochsenkarren: Land',
+              'Handkarren: Tempoverlust',
+              'Handkarren: Hexfelder/s auf Land',
+              'Ochsenkarren: Tempoverlust',
+              'Ochsenkarren: Hexfelder/s auf Land',
             ],
             rows: [
               [
@@ -171,7 +171,7 @@ export const WORLD: ArticleGroup = {
               ],
             ],
             num: [0, 1, 2, 3, 4],
-            foot: 'Ladung ist der belegte Anteil des Laderaums. Der Tempoverlust wächst gleichmäßig mit der Ladung: ein voller Karren verliert ihn ganz, ein halb voller zur Hälfte. Tempo in Hexfeldern pro Sekunde auf normalem Land.',
+            foot: 'Ladung ist der belegte Anteil des Laderaums. Der Verlust wächst gleichmäßig mit der Ladung: ein voller Handkarren fährt {{vehicle.handcartLoss.100}}% langsamer, ein halb voller {{vehicle.handcartLoss.50}}%. Ein voller Ochsenkarren verliert {{vehicle.oxcartLoss.100}}%. Zum Vergleich: ein Siedler mit Schuhen geht auf Land {{pace.walkerLand}} Hexfelder/s (ein Schritt alle {{step.landBrief}} s).',
           },
         },
         {
@@ -504,7 +504,7 @@ export const WORLD: ArticleGroup = {
           },
         },
         {
-          h: 'Jungtiere und Schlachtung',
+          h: 'Schlachtung',
         },
         {
           table: {
@@ -555,7 +555,11 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Beruf', '{{piety.lowPct}}%', '{{piety.highPct}}%'],
+            head: [
+              'Beruf',
+              'Kostet {{piety.lowPct}}% Religion pro Stück',
+              'Kostet {{piety.highPct}}% Religion pro Stück',
+            ],
             rows: [
               [
                 '[[job:armorer|Waffenbauer]]',
@@ -602,7 +606,7 @@ export const WORLD: ArticleGroup = {
           h: 'Heiliges Feuer',
         },
         {
-          p: 'Du entzündest es ab Wohnhaus 3. 1 [[good:holy_oil|Öl]] reicht für {{oil.burnMinutes}} Min., der volle Vorrat im Haus für {{oil.fullBurnMinutes}} Min. Das Feuer brennt auch, wenn niemand betet.',
+          p: 'Du entzündest es ab Wohnhaus 3. 1 [[good:holy_oil|Öl]] reicht für {{oil.burnTime}}, der volle Vorrat im Haus für {{oil.fullBurnTime}}. Das Feuer brennt auch, wenn niemand betet.',
         },
         {
           h: 'Tempelaura',

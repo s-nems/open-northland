@@ -46,7 +46,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Głód przy pełnym magazynie',
-              'Sprawdź "Minimum w magazynach": poniżej tej ilości nikt nie weźmie towaru, także na posiłek. Obniż je przy jedzeniu. Może być też za daleko: magazyn musi leżeć do {{reach.walk}} hexów od osadnika albo w sieci drogowskazów.',
+              'Sprawdź "Minimum w magazynach": poniżej tej ilości nikt nie weźmie towaru, także na posiłek. Obniż je przy jedzeniu. Może być też za daleko: magazyn musi leżeć do {{reach.goods}} hexów od osadnika albo od drogowskazu w jego sieci.',
             ],
             [
               'Zawodu nie ma na liście w Szkole',
@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Pole nie rośnie',
-              'Rośnie tylko od podlewania przez [[job:farmer|Farmera]] z miejscem pracy na [[building:work_farm_00|Farmie]]. Farmer najpierw sieje, a podlewa dopiero przy {{field.max}} polach albo gdy nie ma gdzie siać. Pole dojrzewa po {{field.waterings}} podlewaniach, a jedno podlewanie obejmuje też 6 sąsiednich pól. Sieje tylko na trawie, poza drogami, do {{field.radius}} hexów od Farmy.',
+              'Rośnie tylko od podlewania. Pole podlewa [[job:farmer|Farmer]] na [[building:work_farm_00|Farmie]] albo [[job:herb_mush_guy|Zbieracz Ziół]] w [[building:work_herb_hut|Chatce zielarza]], jeśli ma tam miejsce pracy. Najpierw sieje, a podlewa dopiero przy {{field.max}} polach albo gdy nie ma gdzie siać. Pole dojrzewa po {{field.waterings}} podlewaniach, a jedno podlewanie obejmuje też 6 sąsiednich pól. Pola nie zasieje na piasku ani na drodze, a sieje do {{field.radius}} hexów od budynku.',
             ],
             [
               'Czy deszcz, śnieg albo noc coś zmieniają?',
@@ -332,7 +332,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Stoi na alarmie"',
                 '-',
-                'Żołnierz w postawie Atak lub Obrona nie odpoczywa, gdy do {{alert.restClearance}} hexów trwa walka albo do {{alert.standTo}} hexów widać wrogiego żołnierza',
+                'Żołnierz w postawie Atak lub Obrona nie odpoczywa, gdy do {{alert.restClearance}} hexów trwa walka albo do {{alert.standTo}} hexów stoi wrogi żołnierz',
                 'Wydaj mu rozkaz "Jedz" albo "Śpij"',
               ],
               [

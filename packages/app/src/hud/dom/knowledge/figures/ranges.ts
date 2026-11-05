@@ -1,6 +1,8 @@
 import { hexNeighboursOf, systems } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../../i18n/index.js';
-import { shownWeapons } from '../../../knowledge/combat.js';
+import type { KnowledgeWeapon } from '../../../knowledge/base.js';
+import { weaponLabel } from '../../../knowledge/calculator.js';
+import { isCatapult, shownWeapons } from '../../../knowledge/combat.js';
 import type { KnowledgeContext } from '../context.js';
 import { fitScale, GROUND_SQUASH, hexRing, NODE_PX, NODE_ROW_PX, nodePoint, type Point } from './geometry.js';
 import { groundMesh } from './ground.js';
@@ -36,9 +38,13 @@ function stancePoint(at: Point): SVGElement {
   );
 }
 
-function longestReach(context: KnowledgeContext): number {
-  const reaches = shownWeapons(context.base, context.tribe()).map((w) => w.maxRange);
-  return Math.max(0, ...reaches);
+/** The soldier's weapon that reaches farthest, the example the Ignore panel names. */
+function longestReach(context: KnowledgeContext): KnowledgeWeapon | undefined {
+  const soldiers = shownWeapons(context.base, context.tribe()).filter((w) => !isCatapult(w));
+  return soldiers.reduce<KnowledgeWeapon | undefined>(
+    (best, w) => (best === undefined || w.maxRange > best.maxRange ? w : best),
+    undefined,
+  );
 }
 
 export function leashFigure(context: KnowledgeContext): SVGElement {
@@ -47,7 +53,8 @@ export function leashFigure(context: KnowledgeContext): SVGElement {
   const release = systems.DEFEND_LEASH_NODES;
   const ignoreRelease = systems.IGNORE_LEASH_NODES;
   const back = systems.ATTACK_RETURN_SLACK_NODES;
-  const reach = longestReach(context);
+  const longest = longestReach(context);
+  const reach = longest?.maxRange ?? 0;
   const scale = fitScale(2 * release * NODE_PX, PANEL_ROOM);
   const centre = (panel: number): Point => ({ x: PANEL_WIDTH * (panel + 1 / 2), y: RING_Y });
   const notes = (panel: number, lines: readonly string[]): SVGElement[] =>
@@ -87,7 +94,10 @@ export function leashFigure(context: KnowledgeContext): SVGElement {
     outline(hexRing(reach), centre(2), scale, 'kn-fig__zone'),
     stancePoint(centre(2)),
     ...notes(2, [
-      formatMessage(t.weaponOnly, { nodes: number(reach) }),
+      formatMessage(t.weaponOnly, {
+        weapon: longest === undefined ? '' : weaponLabel(longest),
+        nodes: number(reach),
+      }),
       formatMessage(t.releases, { nodes: number(ignoreRelease) }),
     ]),
   );
@@ -159,7 +169,7 @@ export function catapultSplashFigure(context: KnowledgeContext): SVGElement | nu
     text({ x: arrowEnd.x - NOTE_STEP, y: arrowEnd.y - NOTE_STEP }, t.landing, 'kn-fig__t--small', 'middle'),
     text(
       { x: LENS_CENTRE.x, y: NOTE_Y - NOTE_STEP / 2 },
-      formatMessage(t.points, { count: number(struck.length) }),
+      formatMessage(t.hexes, { count: number(struck.length) }),
       'kn-fig__t--strong',
       'middle',
     ),

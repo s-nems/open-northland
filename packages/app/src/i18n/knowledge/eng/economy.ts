@@ -71,6 +71,9 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
+          h: 'Strokes per 1 piece of material',
+        },
+        {
           table: {
             head: ['Experience', 'No tool', 'Wooden', 'Iron'],
             rows: [
@@ -107,7 +110,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: "Strokes per 1 piece of material. A [[job:builder|Builder]]'s experience grows only from strokes that moved the work on: [[article:exp-work|Work Experience]].",
+            foot: "A [[job:builder|Builder]]'s experience grows only from strokes that moved the work on: [[article:exp-work|Work Experience]].",
           },
         },
         {
@@ -276,7 +279,14 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Resource', 'Who', 'Gives', 'Strokes with no experience', 'Time', 'Tool helps'],
+            head: [
+              'Resource',
+              'Who',
+              'Gives',
+              'Strokes with no experience',
+              'Time per tree, piece or field',
+              'Tool helps',
+            ],
             rows: [
               [
                 'Tree',
@@ -345,7 +355,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Iron and Gold',
         },
         {
-          p: 'To mine [[good:iron|Iron]] or [[good:gold|Gold]], an Extractor first has to gather {{gather.oreNeed}} pieces of [[good:mud|Clay]] and [[good:stone|Quarrystone]] combined himself, separately for each of the two. The first one to manage it discovers the good for the whole settlement, and after that it can also be taught at the [[building:school|School]]. Until then the panel shows "locked".',
+          p: 'An Extractor discovers [[good:iron|Iron]] and [[good:gold|Gold]] by mining {{gather.oreNeed}} pieces of [[good:mud|Clay]] and [[good:stone|Quarrystone]] himself, counted together, e.g. 4 Clay and 6 Quarrystone. The same requirement opens both goods. The first one to manage it discovers them for the whole settlement, and after that they can also be learned at the [[building:school|School]]. Until then the panel shows "locked".',
         },
         {
           h: 'Field',
@@ -424,7 +434,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Where a settler gets a tool',
         },
         {
-          p: "Tools are handed out by the [[article:assistant|Assistant]], which is on from the start of the game, or by your own order. A settler with no tool goes to a store for one by himself and takes an Iron one, or a Wooden one if there is no Iron. He won't swap a Wooden one for a better one on his own.",
+          p: 'Tools are handed out by the [[article:assistant|Assistant]], which is on from the start of the game, or by your own order. A settler with no tool goes to a store for one by himself and takes an Iron one, or a Wooden one if there is no Iron. The Assistant swaps a Wooden one for an Iron one when its "Iron tools" and "Replace wooden ones" switches are on and a store has a spare Iron one. A part-used Wooden tool is lost in the swap, an unused one goes back to the store.',
         },
         {
           h: 'Who benefits',
@@ -451,9 +461,14 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['No experience', 'No tool', 'Wooden', 'Iron'],
+            head: ['Settler with no experience', 'No tool', 'Wooden', 'Iron'],
             rows: [
-              ['Strokes', '{{tool.strokes.bare}}', '{{tool.strokes.wooden}}', '{{tool.strokes.iron}}'],
+              [
+                'Strokes per tree, or per piece of stone, clay or ore',
+                '{{tool.strokes.bare}}',
+                '{{tool.strokes.wooden}}',
+                '{{tool.strokes.iron}}',
+              ],
               ['Casts per 1 fish', '{{tool.casts.bare}}', '{{tool.casts.wooden}}', '{{tool.casts.iron}}'],
             ],
             num: [1, 2, 3],
@@ -660,7 +675,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'Two signposts link when they stand closer than {{reach.link}} hexes and the route between them is at most {{reach.linkRoute}} hexes.',
+            'Two signposts link when they stand closer than {{reach.link}} hexes and the walk between them is at most {{reach.linkRoute}} hexes.',
             'Your new signpost has to stand at least {{reach.spacing}} hexes from another one.',
             'A settler looks for goods closer than {{reach.goods}} hexes from himself or from signposts within that reach.',
             "A building placed on a signpost moves it up to {{reach.displace}} hexes aside, and if that isn't possible, the signpost is gone.",
@@ -709,15 +724,15 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Terrain under the road', 'Step, no road', 'Step on road', 'Saved'],
+            head: ['Terrain under the road', 'Road step shorter by'],
             rows: [
-              ['Land', '{{step.land}} s', '{{step.road}} s', '{{step.roadSavedOnLandPct}}%'],
-              ['Sand', '{{step.sand}} s', '{{step.road}} s', '{{step.roadSavedOnSandPct}}%'],
-              ['Mountains', '{{step.mountain}} s', '{{step.road}} s', '{{step.roadSavedOnMountainPct}}%'],
-              ['Snow', '{{step.snow}} s', '{{step.road}} s', '{{step.roadSavedOnSnowPct}}%'],
+              ['Land', '{{step.roadSavedOnLandPct}}%'],
+              ['Sand', '{{step.roadSavedOnSandPct}}%'],
+              ['Mountains', '{{step.roadSavedOnMountainPct}}%'],
+              ['Snow', '{{step.roadSavedOnSnowPct}}%'],
             ],
-            num: [1, 2, 3],
-            foot: 'A shod settler with no load. Shoes wear {{shoes.roadWear}} times slower on road than on land.',
+            num: [1],
+            foot: 'A shod settler with no load. The step on each terrain: [[article:walking|Walking Speed]]. Shoes wear {{shoes.roadWear}} times slower on road than on land.',
           },
         },
         {
@@ -743,20 +758,23 @@ export const ECONOMY: ArticleGroup = {
       lead: 'A step on land takes {{step.landBrief}} s in shoes and {{step.landBare}} s barefoot.',
       blocks: [
         {
+          p: 'A hex is the smallest cell of movement: a settler crosses 1 hex in 1 step.',
+        },
+        {
           h: 'Step by terrain',
         },
         {
           table: {
-            head: ['Terrain', 'Barefoot', 'Steps per pair of shoes'],
+            head: ['Terrain', 'Step in shoes', 'Step barefoot', 'Steps per pair of shoes'],
             rows: [
-              ['Road, paving', '{{step.roadBare}} s', '{{shoes.road}}'],
-              ['Land', '{{step.landBare}} s', '{{shoes.land}}'],
-              ['Sand, beach, stony desert', '{{step.sandBare}} s', '{{shoes.sand}}'],
-              ['Mountains', '{{step.mountainBare}} s', '{{shoes.mountain}}'],
-              ['Snow', '{{step.snowBare}} s', '{{shoes.snow}}'],
+              ['Road, paving', '{{step.road}} s', '{{step.roadBare}} s', '{{shoes.road}}'],
+              ['Land', '{{step.land}} s', '{{step.landBare}} s', '{{shoes.land}}'],
+              ['Sand, beach, stony desert', '{{step.sand}} s', '{{step.sandBare}} s', '{{shoes.sand}}'],
+              ['Mountains', '{{step.mountain}} s', '{{step.mountainBare}} s', '{{shoes.mountain}}'],
+              ['Snow', '{{step.snow}} s', '{{step.snowBare}} s', '{{shoes.snow}}'],
             ],
-            num: [1, 2],
-            foot: 'The step in shoes on each terrain is in [[article:roads|Roads and Signposts]]. With a load in hand, shoes wear {{shoes.carryWear}} times faster. How much energy walking barefoot costs: [[article:needs|Needs]].',
+            num: [1, 2, 3],
+            foot: 'With a load in hand, shoes wear {{shoes.carryWear}} times faster. How much Energy walking barefoot costs: [[article:needs|Needs]]. What a road gives: [[article:roads|Roads and Signposts]].',
           },
         },
         {

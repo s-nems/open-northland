@@ -167,14 +167,29 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Waffe', 'Reichweite im Turm', 'Geht ans Ziel heran auf'],
+            head: ['Waffe', 'Normale Reichweite', 'Reichweite im Turm', 'Bleibt zum Schuss stehen auf'],
             rows: [
-              ['[[good:bow_short|Kurzbogen]]', '0-{{shortBow.towerMax}}', '{{shortBow.standoff}}'],
-              ['[[good:bow_long|Langbogen]]', '0-{{longBow.towerMax}}', '{{longBow.standoff}}'],
-              ['[[job:heroine_bow_xena|Cyra]]', '-', '{{heroBow.standoff}}'],
+              [
+                '[[good:bow_short|Kurzbogen]]',
+                '{{shortBow.min}}-{{shortBow.max}}',
+                '0-{{shortBow.towerMax}}',
+                '{{shortBow.min}}-{{shortBow.standoff}}',
+              ],
+              [
+                '[[good:bow_long|Langbogen]]',
+                '{{longBow.min}}-{{longBow.max}}',
+                '0-{{longBow.towerMax}}',
+                '{{longBow.min}}-{{longBow.standoff}}',
+              ],
+              [
+                '[[job:heroine_bow_xena|Cyra]]',
+                '{{heroBow.min}}-{{heroBow.max}}',
+                '-',
+                '{{heroBow.min}}-{{heroBow.standoff}}',
+              ],
             ],
-            num: [1, 2],
-            foot: 'Reichweite in Hexfeldern. Die normale Reichweite und das Schusstempo, auch für Jägerbogen und Katapult, zeigt die Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]]. Auf Ziele näher als die untere Grenze der Reichweite schießt der Bogenschütze nicht.',
+            num: [1, 2, 3],
+            foot: 'Reichweite in Hexfeldern. Ein Bogenschütze, der auf ein Ziel zugeht, bleibt etwas näher stehen, als er reicht, damit ihm das Ziel nicht aus der Reichweite läuft. Auf Ziele näher als die untere Grenze der Reichweite schießt er nicht, außer er steht im Turm. Das Schusstempo, auch für Jägerbogen und Katapult, zeigt die Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]].',
           },
         },
         {
@@ -224,6 +239,9 @@ export const MILITARY: ArticleGroup = {
             id: 'leash',
             caption: 'Wie weit er verfolgt',
           },
+        },
+        {
+          p: 'Im Modus Ignorant lässt ein Soldat ein Ziel los, das sich mehr als {{stance.ignoreLeash}} Hexfelder von seinem Haltepunkt entfernt hat.',
         },
         {
           table: {
@@ -322,9 +340,13 @@ export const MILITARY: ArticleGroup = {
             head: ['Was in der Nähe ist', 'Hexfelder', 'Der Soldat'],
             rows: [
               ['Kampf', 'bis {{alert.restClearance}}', 'Schläft, betet und redet nicht'],
-              ['Feind in Sicht', 'bis {{alert.standTo}}', 'Ebenso'],
+              [
+                'Feindlicher Soldat im Angriff oder in der Verteidigung, auf der Karte sichtbar',
+                'bis {{alert.standTo}}',
+                'Ebenso',
+              ],
             ],
-            foot: 'Essen geht er erst, wenn die Energie auf {{need.criticalPct}}% sinkt. Im Modus Ignorant gilt das nicht.',
+            foot: 'Essen geht er erst, wenn die Energie auf {{need.criticalPct}}% sinkt. Im Modus Ignorant ruht ein Soldat ganz normal.',
           },
         },
       ],
@@ -439,11 +461,11 @@ export const MILITARY: ArticleGroup = {
           ],
         },
         {
-          h: 'Turmbesatzung',
+          h: 'Turmvorrat',
         },
         {
           table: {
-            head: ['Turm', 'Met', 'Nahrung', 'Je Waffenart'],
+            head: ['Turm', 'Fasst Met', 'Fasst Nahrung', 'Fasst je Waffenart'],
             rows: [
               ['[[building:tower_00|Wachturm 1]]', '{{tower1.mead}}', '{{tower1.food}}', '{{tower1.weapon}}'],
               ['[[building:tower_01|Wachturm 2]]', '{{tower2.mead}}', '{{tower2.food}}', '{{tower2.weapon}}'],
@@ -451,6 +473,9 @@ export const MILITARY: ArticleGroup = {
             num: [1, 2, 3],
             foot: 'Posten und Trägerplätze zeigt die Karte des Turms.',
           },
+        },
+        {
+          h: 'Turmbesatzung',
         },
         {
           list: [
@@ -522,74 +547,88 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Waffe', 'Gesundheit je Schlag', 'Schläge: Abschnitt', 'Schläge: Tor', 'Dauer: Abschnitt'],
+            head: [
+              'Waffe',
+              'Gesundheit je Schlag',
+              'Mit Stärkeamulett',
+              'Schläge: Abschnitt',
+              'Schläge: Tor',
+              'Dauer: Abschnitt',
+            ],
             rows: [
               [
                 '[[building:catapult|Katapult]]',
                 '{{wall.catapult.blow}}',
+                '{{wall.catapult.strongBlow}}',
                 '{{wall.catapult.segmentHits}}',
                 '{{wall.catapult.gateHits}}',
-                '{{wall.catapult.segmentSeconds}} s',
+                '{{wall.catapult.segmentSeconds}}',
               ],
               [
                 'Held im Nahkampf',
                 '{{wall.hero.blow}}',
+                '{{wall.hero.strongBlow}}',
                 '{{wall.hero.segmentHits}}',
                 '{{wall.hero.gateHits}}',
-                '{{wall.hero.segmentSeconds}} s',
+                '{{wall.hero.segmentSeconds}}',
               ],
               [
                 '[[good:spear_iron|Eisenspeer]]',
                 '{{wall.ironSpear.blow}}',
+                '{{wall.ironSpear.strongBlow}}',
                 '{{wall.ironSpear.segmentHits}}',
                 '{{wall.ironSpear.gateHits}}',
-                '{{wall.ironSpear.segmentSeconds}} s',
+                '{{wall.ironSpear.segmentSeconds}}',
               ],
               [
                 '[[good:sword_long|Langschwert]]',
                 '{{wall.longSword.blow}}',
+                '{{wall.longSword.strongBlow}}',
                 '{{wall.longSword.segmentHits}}',
                 '{{wall.longSword.gateHits}}',
-                '{{wall.longSword.segmentSeconds}} s',
+                '{{wall.longSword.segmentSeconds}}',
               ],
               [
                 '[[good:sword_shord|Kurzschwert]]',
                 '{{wall.shortSword.blow}}',
+                '{{wall.shortSword.strongBlow}}',
                 '{{wall.shortSword.segmentHits}}',
                 '{{wall.shortSword.gateHits}}',
-                '{{wall.shortSword.segmentSeconds}} s',
+                '{{wall.shortSword.segmentSeconds}}',
               ],
               [
                 '[[good:spear_wooden|Holzspeer]]',
                 '{{wall.woodenSpear.blow}}',
+                '{{wall.woodenSpear.strongBlow}}',
                 '{{wall.woodenSpear.segmentHits}}',
                 '{{wall.woodenSpear.gateHits}}',
-                '{{wall.woodenSpear.segmentSeconds}} s',
+                '{{wall.woodenSpear.segmentSeconds}}',
               ],
               [
                 '[[good:bow_short|Kurzbogen]]',
                 '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.strongBlow}}',
                 '{{wall.shortBow.segmentHits}}',
                 '{{wall.shortBow.gateHits}}',
-                '{{wall.shortBow.segmentSeconds}} s',
+                '{{wall.shortBow.segmentSeconds}}',
               ],
               [
                 '[[good:bow_long|Langbogen]]',
                 '{{wall.longBow.blow}}',
+                '{{wall.longBow.strongBlow}}',
                 '{{wall.longBow.segmentHits}}',
                 '{{wall.longBow.gateHits}}',
-                '{{wall.longBow.segmentSeconds}} s',
+                '{{wall.longBow.segmentSeconds}}',
               ],
-              ['Fäuste, Pfeile aus Gebäuden', '0', '-', '-', '-'],
+              ['Fäuste, Pfeile aus Gebäuden', '0', '0', '-', '-', '-'],
             ],
-            num: [1, 2, 3, 4],
-            foot: 'Dauer für einen Soldaten. Cyra nimmt {{wall.heroBow.blow}}, bei den Franken {{wall.frankHeroBow.blow}}.',
+            num: [1, 2, 3, 4, 5],
+            foot: 'Dauer für einen Soldaten. Das Amulett des Lenkers verstärkt die Steine des Katapults nicht. Cyra nimmt der Palisade {{wall.heroBow.blow}} Gesundheit pro Schuss, die Cyra der Franken {{wall.frankHeroBow.blow}}.',
           },
         },
         {
           list: [
             'Kampferfahrung verstärkt Schläge gegen Palisaden nicht.',
-            'Das Stärkeamulett verstärkt den Schlag: {{wall.ironSpear.blow}} wird {{wall.ironSpear.strongBlow}}, {{wall.shortSword.blow}} wird {{wall.shortSword.strongBlow}}, und {{wall.shortBow.blow}} bleibt {{wall.shortBow.strongBlow}}.',
             'Ein Soldat greift eine Palisade nicht von selbst an. Er schlägt sie auf Befehl oder wenn sie ihm den Weg zum Feind versperrt.',
             'Fällt ein Abschnitt, gehen die Soldaten durch die Bresche und lassen die Nachbarabschnitte stehen.',
           ],
@@ -631,29 +670,29 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Gebäude', 'Gesundheit', 'Steine', 'Dauer'],
+            head: ['Gebäude', 'Gesundheit', 'Steine bis zur Zerstörung', 'Dauer für 1 Katapult'],
             rows: [
               [
                 '[[building:tower_00|Wachturm 1]]',
                 '{{hp.tower1}}',
                 '{{stone.tower1}}',
-                '{{stone.tower1Seconds}} s',
+                '{{stone.tower1Seconds}}',
               ],
               [
                 '[[building:tower_01|Wachturm 2]]',
                 '{{hp.tower2}}',
                 '{{stone.tower2}}',
-                '{{stone.tower2Seconds}} s',
+                '{{stone.tower2Seconds}}',
               ],
               [
                 '[[building:headquarters|Hauptquartier]], Wikinger',
                 '{{hp.hq}}',
                 '{{stone.hq}}',
-                '{{stone.hqSeconds}} s',
+                '{{stone.hqSeconds}}',
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Hauptquartier der Franken: {{hp.frankHq}} Gesundheit, {{stone.frankHq}} Steine, {{stone.frankHqSeconds}} s.',
+            foot: 'Hauptquartier der Franken: {{hp.frankHq}} Gesundheit, {{stone.frankHq}} Steine, {{stone.frankHqSeconds}}.',
           },
         },
         {
@@ -691,7 +730,7 @@ export const MILITARY: ArticleGroup = {
                 'Verteidigung',
                 'Um seine Position',
                 '{{catapult.searchRadius}}',
-                'Ja, bis {{catapult.leash}} von der Position',
+                'Ja, bis {{catapult.leash}} Hexfelder von der Position',
               ],
               ['Ignorant', 'Um seine Position', '{{catapult.min}}-{{catapult.max}}', 'Nein'],
             ],

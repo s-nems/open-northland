@@ -23,13 +23,19 @@ export const SETTLERS: ArticleGroup = {
                 '{{need.drainMinutes}}分鐘掉100%',
                 '是',
                 '[[article:food|進餐]]',
-                '[[article:health|{{need.starveMinutes}}分鐘後死亡]]',
+                '[[article:health|{{health.starveTime}}後死亡]]',
               ],
-              ['耐力', '{{need.drainMinutes}}分鐘掉100%', '是', '睡覺', '只是步子變慢'],
+              [
+                '耐力',
+                '{{need.drainMinutes}}分鐘掉100%',
+                '是',
+                '睡覺',
+                '沒有別的影響，步子從{{need.drivePct}}%起就已變慢',
+              ],
               ['社交', '{{need.drainMinutes}}分鐘掉100%', '否', '交談', '無懲罰'],
               ['信仰', '否', '僅武器和護甲', '[[article:religion|禱告]]', '不製作武器和護甲'],
             ],
-            foot: '開局時每條需求隨機為{{need.startMinPct}}-100%。沒有[[good:shoes|鞋子]]時，每走一步按地面不同扣{{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}%體力，負重時翻倍。',
+            foot: '開局時每條需求隨機為{{need.startMinPct}}-100%。沒有[[good:shoes|鞋子]]時，走{{need.barefootSampleSteps}}步在道路上扣{{need.barefootRoadPct}}%體力，在陸地上扣{{need.barefootLandPct}}%，在最難走的地形上最多扣{{need.barefootMaxPct}}%，負重時翻倍。',
           },
         },
         {
@@ -57,7 +63,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['對象', '睡眠時長', '在外', '在家', '在家有傢俱'],
+            head: ['對象', '睡眠時長', '每次睡眠恢復耐力：在外', '在家', '在家有傢俱'],
             rows: [
               [
                 '男性',
@@ -73,8 +79,8 @@ export const SETTLERS: ArticleGroup = {
                 '+{{sleep.womanHomePct}}%',
                 '+{{sleep.womanFurnishedPct}}%',
               ],
-              ['商人、偵察兵', '{{sleep.manSeconds}}秒', '+{{sleep.manHomePct}}%', '-', '-'],
-              ['士兵', '{{sleep.soldierSeconds}}秒', '+{{sleep.soldierPct}}%', '-', '-'],
+              ['商人、偵察兵（總按在家算）', '{{sleep.manSeconds}}秒', '+{{sleep.manHomePct}}%', '-', '-'],
+              ['士兵（無論睡在哪裡）', '{{sleep.soldierSeconds}}秒', '+{{sleep.soldierPct}}%', '-', '-'],
             ],
             num: [1, 2, 3, 4],
           },
@@ -189,26 +195,21 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['來源', '變化', '條件', '回滿生命值所需時間'],
+            head: ['來源', '變化', '條件', '{{health.human}}點生命值所需時間'],
             rows: [
               [
                 '自動恢復',
                 '+{{health.regenPerSecond}}/秒',
                 '體力高於0%，戰鬥中也有效',
-                '{{health.regenWholeMin}}分{{health.regenRestSec}}秒',
+                '{{health.regenTime}}',
               ],
               [
                 '[[article:religion|神廟光環]]',
                 '+{{aura.perSecond}}/秒',
                 '距[[building:work_temple|神廟]]{{aura.range}}格',
-                '{{aura.wholeMin}}分{{aura.restSec}}秒',
+                '{{aura.time}}',
               ],
-              [
-                '飢餓',
-                '-{{health.starvePerSecond}}/秒',
-                '體力0%',
-                '{{health.starveWholeMin}}分{{health.starveRestSec}}秒',
-              ],
+              ['飢餓', '-{{health.starvePerSecond}}/秒', '體力0%', '{{health.starveTime}}'],
             ],
             num: [1, 3],
             foot: '合計{{aura.totalPerSecond}}/秒。自動恢復到{{health.human}}為止，但光環可超過上限治療到{{aura.ceiling}}。',
@@ -222,8 +223,8 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            '[[good:potion_heal_small|小型治療藥水]]有{{draught.smallUses}}口，共{{draught.healSmallTotal}}點。[[good:potion_heal_big|大型治療藥水]]有{{draught.bigUses}}口，共{{draught.healBigTotal}}點。',
-            '居民一口接一口地喝，直到扣除傷害後至少還剩{{draught.healBelow}}點。',
+            '[[good:potion_heal_small|小型治療藥水]]有{{draught.smallUses}}口，共{{draught.healSmallTotal}}點生命值。[[good:potion_heal_big|大型治療藥水]]有{{draught.bigUses}}口，共{{draught.healBigTotal}}點生命值。',
+            '一擊會讓生命值降到{{draught.healBelow}}以下時，居民會立刻一口接一口地喝，直到生命值重新至少有{{draught.healBelow}}點，或者藥水喝完。',
             '只要喝下的口數夠抵消傷害，致命一擊也殺不死。',
             '餓到生命值低於{{draught.healBelow}}時也會喝。',
           ],
@@ -265,13 +266,9 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['階段', '年齡', '出生後'],
             rows: [
-              ['嬰兒', '0-{{age.babyLastYear}}歲', '0-{{age.childWholeMin}}分{{age.childRestSec}}秒'],
-              [
-                '兒童',
-                '{{age.childYears}}-{{age.childLastYear}}歲',
-                '{{age.childWholeMin}}分{{age.childRestSec}}秒-{{age.adultMinutes}}分',
-              ],
-              ['成人', '{{age.adultYears}}歲起', '{{age.adultMinutes}}分鐘起'],
+              ['嬰兒', '0-{{age.babyLastYear}}歲', '0-{{age.childTime}}'],
+              ['兒童', '{{age.childYears}}-{{age.childLastYear}}歲', '{{age.childTime}}-{{age.adultTime}}'],
+              ['成人', '{{age.adultYears}}歲起', '{{age.adultTime}}起'],
             ],
             foot: '一歲等於{{age.yearSeconds}}秒。兒童在家附近活動。成年後男孩成為[[job:civilist|平民]]，女孩成為[[job:woman|婦女]]。沒有人會老死。',
           },
@@ -316,7 +313,7 @@ export const SETTLERS: ArticleGroup = {
                 '[[good:holy_oil|油]]',
                 '3級民居',
                 '[[article:religion|聖火]]：可在屋前禱告',
-                '{{oil.wholeMin}}分{{oil.restSec}}秒',
+                '{{oil.burnTime}}',
                 '{{home.oilFetchBelow}}',
               ],
             ],
@@ -354,14 +351,14 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'assistant',
       name: '助手',
-      lead: '計數器設定要多少孩子和新兵，開關把庫存裝備發下去。',
+      lead: '計數器用來下訂單：還要生幾個孩子、再訓練幾名新兵。訂單每完成一次，計數器就減少。開關把庫存裝備發下去。',
       blocks: [
         {
           h: '計數器',
         },
         {
           table: {
-            head: ['計數器', '帶來', '執行者', '何時減少', '可設無限'],
+            head: ['計數器', '帶來', '執行者', '何時減少', '可設為∞'],
             rows: [
               ['女兒', '女孩', '有住所的已婚婦女', '出生時', '否'],
               ['兒子', '男孩', '有住所的已婚婦女', '出生時', '是'],
@@ -380,6 +377,7 @@ export const SETTLERS: ArticleGroup = {
             rows: [
               ['[[good:shoes|鞋子]]', '開', '成年男性'],
               ['鐵質工具、木質工具', '開', '除士兵、[[job:scout|偵察兵]]和平民外的所有在職者'],
+              ['鐵質工具：替換木質工具', '開', '拿著木質工具的在職者，前提是鐵質工具開關已開'],
               ['[[good:mead|蜂蜜酒]]', '開', '平民、士兵'],
               ['營養藥水、耐力藥水、治療藥水', '關', '平民、士兵'],
               ['護符：營養、耐力、力量、防禦、精準、疾風', '關', '平民、士兵'],
@@ -425,7 +423,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             '助手不給婦女、兒童、[[article:heroes|英雄]]和箭塔駐軍發裝備。',
             '低於[[article:hauling|最低庫存]]的貨物助手不會發放。',
-            '它只補空位，不會把東西換成更好的。鐵質工具先於木質工具。',
+            '它會補空位，鐵質工具先於木質工具。開了「替換木質工具」後，它還會讓拿著木質工具的在職者去換鐵質工具：[[article:tools|工具]]。其他東西它不會換成更好的。',
             '每個居民有{{amulet.slots}}個飲品和護符欄位：[[article:draughts|飲品與護符]]。',
           ],
         },

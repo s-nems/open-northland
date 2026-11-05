@@ -106,7 +106,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['装载', '手推车：减速', '手推车：陆地', '牛车：减速', '牛车：陆地'],
+            head: ['装载', '手推车：速度损失', '手推车：陆地格/秒', '牛车：速度损失', '牛车：陆地格/秒'],
             rows: [
               [
                 '{{vehicle.fill.0}}%',
@@ -145,7 +145,7 @@ export const WORLD: ArticleGroup = {
               ],
             ],
             num: [0, 1, 2, 3, 4],
-            foot: '装载指货舱占用的比例。减速随装载均匀增加：满载减速全部，半载减速一半。速度为普通陆地上的格/秒。',
+            foot: '装载指货舱占用的比例。速度损失随装载均匀增加：满载的手推车慢{{vehicle.handcartLoss.100}}%，半载慢{{vehicle.handcartLoss.50}}%。满载的牛车慢{{vehicle.oxcartLoss.100}}%。作为对比：穿鞋的居民在陆地上每秒走{{pace.walkerLand}}格（每步{{step.landBrief}}秒）。',
           },
         },
         {
@@ -445,7 +445,7 @@ export const WORLD: ArticleGroup = {
           },
         },
         {
-          h: '幼崽与屠宰',
+          h: '屠宰',
         },
         {
           table: {
@@ -496,7 +496,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['职业', '{{piety.lowPct}}%', '{{piety.highPct}}%'],
+            head: ['职业', '每件消耗{{piety.lowPct}}%信仰', '每件消耗{{piety.highPct}}%信仰'],
             rows: [
               [
                 '[[job:armorer|武器匠]]',
@@ -536,7 +536,7 @@ export const WORLD: ArticleGroup = {
           h: '圣火',
         },
         {
-          p: '三级及以上民居可以点燃。1份[[good:holy_oil|油]]能烧{{oil.burnMinutes}}分钟，满油能烧{{oil.fullBurnMinutes}}分钟。没人祈祷时火也一直烧着。',
+          p: '三级及以上民居可以点燃。1份[[good:holy_oil|油]]能烧{{oil.burnTime}}，满油能烧{{oil.fullBurnTime}}。没人祈祷时火也一直烧着。',
         },
         {
           h: '神庙光环',

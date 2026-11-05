@@ -31,53 +31,28 @@ export const EXPERIENCE: ArticleGroup = {
         },
         {
           table: {
-            head: ['工作', '计数单位', '倍率', '到{{exp.quotedPct}}%的次数', '到100%的次数'],
+            head: ['工作', '计数单位', '到一半（{{exp.quotedPct}}%）的次数', '到100%的次数'],
             rows: [
-              [
-                '木材',
-                '砍倒的树',
-                '×{{exp.wood.points}}',
-                '{{exp.wood.repeatsQuoted}}',
-                '{{exp.wood.repeatsFull}}',
-              ],
-              [
-                '狩猎',
-                '从猎物身上取的每份',
-                '×{{exp.hunt.points}}',
-                '{{exp.hunt.repeatsQuoted}}',
-                '{{exp.hunt.repeatsFull}}',
-              ],
-              [
-                '捕鱼',
-                '鱼',
-                '×{{exp.fish.points}}',
-                '{{exp.fish.repeatsQuoted}}',
-                '{{exp.fish.repeatsFull}}',
-              ],
+              ['木材', '砍倒的树', '{{exp.wood.repeatsQuoted}}', '{{exp.wood.repeatsFull}}'],
+              ['狩猎', '从猎物身上取的每份', '{{exp.hunt.repeatsQuoted}}', '{{exp.hunt.repeatsFull}}'],
+              ['捕鱼', '鱼', '{{exp.fish.repeatsQuoted}}', '{{exp.fish.repeatsFull}}'],
               [
                 '黏土、毛石、铁矿、金矿、蘑菇、草药、小麦、屠宰、工坊',
                 '按份，屠宰按头，工坊按批',
-                '×{{exp.craft.points}}',
                 '{{exp.craft.repeatsQuoted}}',
                 '{{exp.craft.repeatsFull}}',
               ],
-              [
-                '建造、修理',
-                '在工地上敲一锤',
-                '×{{exp.build.points}}',
-                '{{exp.build.repeatsQuoted}}',
-                '{{exp.build.repeatsFull}}',
-              ],
+              ['建造、修理', '在工地上敲一锤', '{{exp.build.repeatsQuoted}}', '{{exp.build.repeatsFull}}'],
             ],
-            num: [2, 3, 4],
-            foot: '后两列数的是树、份、批或敲击。经验到{{exp.quotedPct}}%后，无工具的[[job:builder|建筑工人]]每份材料少敲一半。居民面板的“经验”页里，每项技能占一行，例如“采集 - 铁矿：{{exp.craft.repeatsQuoted}} 次，产量 +{{exp.quotedPct}}%”。',
+            num: [2, 3],
+            foot: '后两列数的是树、份、批或敲击。经验到{{build.bareGainPct}}%后，无工具的[[job:builder|建筑工人]]每份材料少敲一半。居民面板的“经验”页里，每项技能占一行，例如“采集 - 铁矿：{{exp.craft.repeatsQuoted}} 次，产量 +{{exp.quotedPct}}%”。',
           },
         },
         {
           p: '每棵树、每份、每批也计入职业的通用技能，例如“农业”。新职业由这个通用技能或某项物资的技能解锁：“农业”解锁[[job:miller|磨坊工]]，“采集 - 木材”解锁[[job:joiner|木匠]]。条件见[[article:trades|职业与学校]]。没有专属技能的物资按通用技能计算。换职业后经验还在。',
         },
         {
-          h: '谁得不到好处',
+          h: '不加快工作的经验',
         },
         {
           list: [

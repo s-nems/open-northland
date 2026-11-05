@@ -1499,7 +1499,7 @@ export const enGame = {
         },
         moveFlags: {
           label: 'Extractors move their flag automatically',
-          tip: 'When the resource by a flag runs out, the flag follows it, 3-5 tiles away.',
+          tip: 'When the resource by a flag runs out, the flag follows it, {min}-{max} hexes away.',
         },
       },
       notes: {

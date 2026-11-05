@@ -31,53 +31,33 @@ export const EXPERIENCE: ArticleGroup = {
         },
         {
           table: {
-            head: ['Praca', 'Liczy się', 'Mnożnik', 'Razy do {{exp.quotedPct}}%', 'Razy do 100%'],
+            head: ['Praca', 'Liczy się', 'Razy do połowy ({{exp.quotedPct}}%)', 'Razy do 100%'],
             rows: [
-              [
-                'Drewno',
-                'ścięte drzewo',
-                '×{{exp.wood.points}}',
-                '{{exp.wood.repeatsQuoted}}',
-                '{{exp.wood.repeatsFull}}',
-              ],
-              [
-                'Polowanie',
-                'sztuka z truchła',
-                '×{{exp.hunt.points}}',
-                '{{exp.hunt.repeatsQuoted}}',
-                '{{exp.hunt.repeatsFull}}',
-              ],
-              [
-                'Połów',
-                'ryba',
-                '×{{exp.fish.points}}',
-                '{{exp.fish.repeatsQuoted}}',
-                '{{exp.fish.repeatsFull}}',
-              ],
+              ['Drewno', 'ścięte drzewo', '{{exp.wood.repeatsQuoted}}', '{{exp.wood.repeatsFull}}'],
+              ['Polowanie', 'sztuka z truchła', '{{exp.hunt.repeatsQuoted}}', '{{exp.hunt.repeatsFull}}'],
+              ['Połów', 'ryba', '{{exp.fish.repeatsQuoted}}', '{{exp.fish.repeatsFull}}'],
               [
                 'Glina, kamień, żelazo, złoto, grzyby, zioła, pszenica, ubój, warsztat',
                 'sztuka, przy uboju zwierzę, w warsztacie cykl',
-                '×{{exp.craft.points}}',
                 '{{exp.craft.repeatsQuoted}}',
                 '{{exp.craft.repeatsFull}}',
               ],
               [
                 'Budowa, naprawa',
                 'uderzenie młotka w plac budowy',
-                '×{{exp.build.points}}',
                 '{{exp.build.repeatsQuoted}}',
                 '{{exp.build.repeatsFull}}',
               ],
             ],
-            num: [2, 3, 4],
-            foot: 'Ostatnie kolumny liczą drzewa, sztuki, cykle lub uderzenia. Od {{exp.quotedPct}}% [[job:builder|Budowniczy]] bez narzędzia potrzebuje o połowę mniej uderzeń na sztukę materiału. W panelu osadnika, na karcie Doświadczenie, każda umiejętność ma swój wiersz, np. Wydobywanie - Żelazo: {{exp.craft.repeatsQuoted}} razy, wydajność +{{exp.quotedPct}}%.',
+            num: [2, 3],
+            foot: 'Ostatnie kolumny liczą drzewa, sztuki, cykle lub uderzenia. Od {{build.bareGainPct}}% [[job:builder|Budowniczy]] bez narzędzia potrzebuje o połowę mniej uderzeń na sztukę materiału. W panelu osadnika, na karcie Doświadczenie, każda umiejętność ma swój wiersz, np. Wydobywanie - Żelazo: {{exp.craft.repeatsQuoted}} razy, wydajność +{{exp.quotedPct}}%.',
           },
         },
         {
           p: 'Każde drzewo, sztuka i cykl liczy się też do ogólnej umiejętności zawodu, np. Rolnictwa. Nowy zawód otwiera albo ta ogólna umiejętność, albo umiejętność jednego towaru: Rolnictwo otwiera [[job:miller|Młynarza]], a Zbieranie - Drewno [[job:joiner|Cieślę]]. Wymogi są w artykule [[article:trades|Zawody i szkoła]]. Przy towarze bez własnej umiejętności liczy się ogólna. Doświadczenie zostaje przy zmianie zawodu.',
         },
         {
-          h: 'Kto nic nie zyskuje',
+          h: 'Doświadczenie, które nie przyspiesza pracy',
         },
         {
           list: [

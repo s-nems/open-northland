@@ -114,6 +114,30 @@ export function practiceText(
     : formatMessage(text.practiceAs, { amount: requirement.amount, experience, job: jobs.join(', ') });
 }
 
+/** Where a skill's name splits its trade from its good: "Wydobywanie - Żelazo". */
+const SKILL_SEPARATOR = ' - ';
+
+/** Skill names joined as a list, a trade they all share written once: "Wydobywanie - Żelazo i Złoto". */
+function skillList(names: readonly string[]): string {
+  const list = new Intl.ListFormat(bcp47Tag(), { type: 'conjunction' });
+  const parts = names.map((name) => name.split(SKILL_SEPARATOR));
+  const trade = parts[0]?.[0];
+  const goods = parts.flatMap((part) => (part.length === 2 && part[0] === trade ? [part[1] ?? ''] : []));
+  return trade !== undefined && goods.length === names.length
+    ? `${trade}${SKILL_SEPARATOR}${list.format(goods)}`
+    : list.format(names);
+}
+
+/** A practice requirement as a count of repeats, summed over its skills when it names several. */
+export function requirementText(requirement: KnowledgeRequirement): string {
+  const text = messages().knowledge.mechanics;
+  const forms = requirement.experience.length > 1 ? text.practiceSum : text.practice;
+  return formatMessage(pluralForm(requirement.amount, forms, bcp47Tag()), {
+    skills: skillList(requirement.experience),
+    amount: requirement.amount,
+  });
+}
+
 /** What a good does for its bearer, one clause each; `stepSeconds` is what the ticks a good saves come to. */
 export function equipEffects(equip: EquipClass, stepSeconds: (ticks: number) => number): readonly string[] {
   const text = copy().equip;

@@ -404,8 +404,7 @@ export const deKnowledge = {
       cart: 'Karren',
       adult: 'Erwachsener',
       child: 'Kind',
-      across: 'Hexfelder waagerecht',
-      along: 'senkrecht',
+      radius: 'Reichweite, Hexfelder',
     },
     reach: {
       signpost: 'Wegweiser',
@@ -427,8 +426,11 @@ export const deKnowledge = {
       percent: '{value}%',
       savedStrokes: '-{strokes}',
       fewerStrokes: 'Schläge weniger',
-      mark: '{points} Pkt.: {percent}%',
-      points: 'Erfahrungspunkte',
+      mark: {
+        one: '{points}-mal: {percent}%',
+        few: '{points}-mal: {percent}%',
+        many: '{points}-mal: {percent}%',
+      },
     },
     leash: {
       attack: 'Angriff',
@@ -436,7 +438,7 @@ export const deKnowledge = {
       ignore: 'Ignorant',
       searchesSelf: 'Sucht um sich herum: {nodes}',
       searchesPoint: 'Sucht um seinen Punkt: {nodes}',
-      weaponOnly: 'Nur Waffenreichweite: bis {nodes}',
+      weaponOnly: 'Waffenreichweite, z. B. {weapon} {nodes}',
       returns: 'Kehrt ab {nodes} vom Punkt zurück',
       releases: 'Lässt das Ziel ab {nodes} los',
     },
@@ -444,7 +446,7 @@ export const deKnowledge = {
       catapult: 'Katapult',
       band: 'Reichweite: {min}-{max} Hexfelder',
       landing: 'Einschlag',
-      points: '{count} Punkte',
+      hexes: '{count} Hexfelder',
       full: 'Jeder bekommt den vollen Treffer',
     },
     fieldStages: {
@@ -470,7 +472,7 @@ export const deKnowledge = {
       feed: 'Futter',
       born: 'bringt zur Welt',
       young: 'Jungtier',
-      grows: 'wächst {seconds} s',
+      grows: 'wächst {minutes} Min.',
       grown: 'wächst heran',
       adult: 'Ausgewachsen',
       slaughter: 'Schlachtung',
@@ -489,6 +491,7 @@ export const deKnowledge = {
     filterEmpty: 'Keine passenden Einträge.',
     seconds: '{seconds} s',
     minutes: '{minutes} Min. {seconds} s',
+    wholeMinutes: '{minutes} Min.',
     health: 'Gesundheit',
     weapons: {
       fist: 'Fäuste',
@@ -511,7 +514,8 @@ export const deKnowledge = {
     matrixWeapon: 'Waffe',
     matrixRange: 'Reichweite',
     matrixCadence: 'Schlag alle',
-    matrixFoot: 'Ein Mensch hat {hitpoints} Gesundheit. Ein Tier zählt als Lederrüstung.',
+    matrixFoot:
+      'Ein Mensch hat {hitpoints} Gesundheit. Ein Tier zählt als Lederrüstung, aber ohne den Abzug von {blocking}.',
     matrixDragon:
       'Der Holzspeer zeigt hier den Drachen der Karte. Ein ausgebildeter Byzantiner kämpft mit dem gewöhnlichen Holzspeer.',
     cadence: '{seconds} s',
@@ -522,12 +526,21 @@ export const deKnowledge = {
       behind: 'Hinten ×1,5',
     },
     armourName: 'Rüstung',
-    armourBlock: 'Block',
     armourWeight: 'Gewicht',
-    armourStep: 'Schritt mit Schuhen auf Land',
-    armourFoot: 'Block {blocking} ist in der Schadenstabelle schon eingerechnet.',
+    armourFoot:
+      'Jede Rüstung zieht von jedem Schlag {blocking} ab, die Schadenstabelle rechnet das schon ein.',
     jobName: 'Beruf',
     jobRequirement: 'Voraussetzung',
+    practice: {
+      one: '{skills}: {amount}-mal',
+      few: '{skills}: {amount}-mal',
+      many: '{skills}: {amount}-mal',
+    },
+    practiceSum: {
+      one: '{skills}: zusammen {amount}-mal',
+      few: '{skills}: zusammen {amount}-mal',
+      many: '{skills}: zusammen {amount}-mal',
+    },
     jobSchoolFoot: 'Ein Schulkurs statt Praxis dauert meist {seconds} s.',
     homeLevel: 'Stufe',
     homeFamilies: 'Familien',

@@ -23,9 +23,15 @@ export const SETTLERS: ArticleGroup = {
                 '100% in {{need.drainMinutes}} Min.',
                 'ja',
                 '[[article:food|Mahlzeit]]',
-                '[[article:health|stirbt in {{need.starveMinutes}} Min.]]',
+                '[[article:health|stirbt nach {{health.starveTime}}]]',
               ],
-              ['Kondition', '100% in {{need.drainMinutes}} Min.', 'ja', 'Schlaf', 'nur langsamerer Schritt'],
+              [
+                'Kondition',
+                '100% in {{need.drainMinutes}} Min.',
+                'ja',
+                'Schlaf',
+                'nichts weiter, der Schritt wird schon ab {{need.drivePct}}% langsamer',
+              ],
               [
                 'Soziale Motivation',
                 '100% in {{need.drainMinutes}} Min.',
@@ -41,7 +47,7 @@ export const SETTLERS: ArticleGroup = {
                 'stellt keine Waffen und Rüstungen her',
               ],
             ],
-            foot: 'Beim Kartenstart steht jeder Balken zufällig auf {{need.startMinPct}}-100%. Ohne [[good:shoes|Schuhe]] kostet jeder Schritt je nach Boden {{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}% Energie, mit Last doppelt so viel.',
+            foot: 'Beim Kartenstart steht jeder Balken zufällig auf {{need.startMinPct}}-100%. Ohne [[good:shoes|Schuhe]] kosten {{need.barefootSampleSteps}} Schritte {{need.barefootRoadPct}}% Energie auf der Straße, {{need.barefootLandPct}}% auf Land und bis zu {{need.barefootMaxPct}}% auf dem schwierigsten Gelände, mit Last doppelt so viel.',
           },
         },
         {
@@ -78,7 +84,13 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Wer', 'Schlafdauer', 'Außer Haus', 'Zu Hause', 'Zu Hause mit Möbeln'],
+            head: [
+              'Wer',
+              'Schlafdauer',
+              'Kondition je Schlaf: außer Haus',
+              'zu Hause',
+              'zu Hause mit Möbeln',
+            ],
             rows: [
               [
                 'Mann',
@@ -94,8 +106,20 @@ export const SETTLERS: ArticleGroup = {
                 '+{{sleep.womanHomePct}}%',
                 '+{{sleep.womanFurnishedPct}}%',
               ],
-              ['Händler, Kundschafter', '{{sleep.manSeconds}} s', '+{{sleep.manHomePct}}%', '-', '-'],
-              ['Soldat', '{{sleep.soldierSeconds}} s', '+{{sleep.soldierPct}}%', '-', '-'],
+              [
+                'Händler, Kundschafter (immer wie zu Hause)',
+                '{{sleep.manSeconds}} s',
+                '+{{sleep.manHomePct}}%',
+                '-',
+                '-',
+              ],
+              [
+                'Soldat (wo immer er schläft)',
+                '{{sleep.soldierSeconds}} s',
+                '+{{sleep.soldierPct}}%',
+                '-',
+                '-',
+              ],
             ],
             num: [1, 2, 3, 4],
           },
@@ -217,26 +241,21 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Quelle', 'Änderung', 'Bedingung', 'Volle Gesundheit in'],
+            head: ['Quelle', 'Änderung', 'Bedingung', 'Zeit für {{health.human}} Gesundheit'],
             rows: [
               [
                 'Regeneration',
                 '+{{health.regenPerSecond}}/s',
                 'Energie über 0%, auch im Kampf',
-                '{{health.regenWholeMin}} Min. {{health.regenRestSec}} s',
+                '{{health.regenTime}}',
               ],
               [
                 '[[article:religion|Tempelaura]]',
                 '+{{aura.perSecond}}/s',
                 '{{aura.range}} Hexfelder vom [[building:work_temple|Tempel]]',
-                '{{aura.wholeMin}} Min. {{aura.restSec}} s',
+                '{{aura.time}}',
               ],
-              [
-                'Hunger',
-                '-{{health.starvePerSecond}}/s',
-                'Energie 0%',
-                '{{health.starveWholeMin}} Min. {{health.starveRestSec}} s',
-              ],
+              ['Hunger', '-{{health.starvePerSecond}}/s', 'Energie 0%', '{{health.starveTime}}'],
             ],
             num: [1, 3],
             foot: 'Zusammen ergibt das {{aura.totalPerSecond}} pro Sekunde. Regeneration endet bei {{health.human}}, die Aura heilt aber darüber hinaus bis {{aura.ceiling}}.',
@@ -250,8 +269,8 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Der [[good:potion_heal_small|Kleine Heiltrank]] hat {{draught.smallUses}} Schlucke, zusammen {{draught.healSmallTotal}}. Der [[good:potion_heal_big|Große Heiltrank]] hat {{draught.bigUses}} Schlucke, zusammen {{draught.healBigTotal}}.',
-            'Der Siedler trinkt Schluck für Schluck, bis ihm die Wunde mindestens {{draught.healBelow}} Gesundheit lässt.',
+            'Der [[good:potion_heal_small|Kleine Heiltrank]] hat {{draught.smallUses}} Schlucke, zusammen {{draught.healSmallTotal}} Gesundheit. Der [[good:potion_heal_big|Große Heiltrank]] hat {{draught.bigUses}} Schlucke, zusammen {{draught.healBigTotal}} Gesundheit.',
+            'Würde ein Treffer die Gesundheit unter {{draught.healBelow}} drücken, trinkt der Siedler sofort Schluck für Schluck, bis er wieder mindestens {{draught.healBelow}} hat oder der Trank leer ist.',
             'Ein tödlicher Schlag tötet nicht, wenn die Schlucke die Wunde abdecken.',
             'Auch Hunger löst das Trinken aus, sobald die Gesundheit unter {{draught.healBelow}} fällt.',
           ],
@@ -279,7 +298,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Geheiratet wird nur auf den Befehl Heirate.',
+            'Geheiratet wird nur auf den Befehl „Heirate“.',
             'Der Befehl verbindet den Siedler mit der nächsten erwachsenen Person des anderen Geschlechts, vom selben Stamm und Spieler.',
             'Der Partner muss in der [[article:roads|Wegweiser]]-Reichweite des Siedlers sein. Sonst verfällt der Befehl, und das Spiel meldet „Kein Partner“.',
             'Soldaten, Helden, Kundschafter und Siedler auf dem Weg in [[building:barracks|Kaserne]] oder [[building:school|Schule]] heiraten nicht.',
@@ -293,13 +312,13 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Abschnitt', 'Alter', 'Seit Geburt'],
             rows: [
-              ['Baby', '0-{{age.babyLastYear}} Jahre', '0-{{age.childWholeMin}} Min. {{age.childRestSec}} s'],
+              ['Baby', '0-{{age.babyLastYear}} Jahre', '0-{{age.childTime}}'],
               [
                 'Kind',
                 '{{age.childYears}}-{{age.childLastYear}} Jahre',
-                '{{age.childWholeMin}} Min. {{age.childRestSec}} s-{{age.adultMinutes}} Min.',
+                '{{age.childTime}}-{{age.adultTime}}',
               ],
-              ['Erwachsen', 'ab {{age.adultYears}} Jahren', 'ab {{age.adultMinutes}} Min.'],
+              ['Erwachsen', 'ab {{age.adultYears}} Jahren', 'ab {{age.adultTime}}'],
             ],
             foot: 'Ein Lebensjahr dauert {{age.yearSeconds}} s. Ein Kind läuft ums Haus. Erwachsen wird ein Junge [[job:civilist|Zivilist]], ein Mädchen [[job:woman|Frau]]. Niemand stirbt an Altersschwäche.',
           },
@@ -344,7 +363,7 @@ export const SETTLERS: ArticleGroup = {
                 '[[good:holy_oil|Öl]]',
                 'Wohnhaus 3',
                 '[[article:religion|Heiliges Feuer]]: Gebet vor dem Haus',
-                '{{oil.wholeMin}} Min. {{oil.restSec}} s',
+                '{{oil.burnTime}}',
                 '{{home.oilFetchBelow}}',
               ],
             ],
@@ -385,14 +404,14 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'assistant',
       name: 'Assistent',
-      lead: 'Mit Zählern legst du fest, wie viele Kinder und Rekruten es geben soll, Schalter verteilen Ausrüstung aus dem Lager.',
+      lead: 'Mit Zählern bestellst du, wie viele Kinder noch geboren und wie viele Rekruten ausgebildet werden sollen. Ein Zähler sinkt, sobald die Bestellung erfüllt ist. Schalter verteilen Ausrüstung aus dem Lager.',
       blocks: [
         {
           h: 'Zähler',
         },
         {
           table: {
-            head: ['Zähler', 'Bringt', 'Wer es tut', 'Sinkt', 'Endlos'],
+            head: ['Zähler', 'Bringt', 'Wer es tut', 'Sinkt', 'Auf ∞ stellbar'],
             rows: [
               ['Töchter', 'Mädchen', 'Ehefrau mit Wohnhaus', 'bei der Geburt', 'nein'],
               ['Söhne', 'Jungen', 'Ehefrau mit Wohnhaus', 'bei der Geburt', 'ja'],
@@ -420,6 +439,11 @@ export const SETTLERS: ArticleGroup = {
                 'Eisenwerkzeug, Holzwerkzeug',
                 'an',
                 'alle Berufstätigen außer Soldat, [[job:scout|Kundschafter]] und Zivilist',
+              ],
+              [
+                'Eisenwerkzeug: Holzwerkzeug ersetzen',
+                'an',
+                'Berufstätige mit Holzwerkzeug, solange Eisenwerkzeug an ist',
               ],
               ['[[good:mead|Met]]', 'an', 'Zivilisten, Soldaten'],
               ['Nahrungstränke, Wachtränke, Heiltränke', 'aus', 'Zivilisten, Soldaten'],
@@ -477,7 +501,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Der Assistent rüstet Frauen, Kinder, [[article:heroes|Helden]] und die Turmbesatzung nicht aus.',
             'Vorrat unter dem [[article:hauling|Lagerminimum]] verteilt der Assistent nicht.',
-            'Er füllt nur leere Plätze und tauscht nichts gegen Besseres. Eisenwerkzeug geht vor Holzwerkzeug.',
+            'Er füllt leere Plätze, Eisenwerkzeug geht vor Holzwerkzeug. Mit „Holzwerkzeug ersetzen“ schickt er außerdem Berufstätige mit Holzwerkzeug nach Eisenwerkzeug: [[article:tools|Werkzeug]]. Sonst tauscht er nichts gegen Besseres.',
             'Ein Siedler hat {{amulet.slots}} Plätze für Getränke und Amulette: [[article:draughts|Getränke und Amulette]].',
           ],
         },

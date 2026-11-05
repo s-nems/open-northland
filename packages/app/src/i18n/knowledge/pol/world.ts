@@ -120,10 +120,10 @@ export const WORLD: ArticleGroup = {
           table: {
             head: [
               'Ładunek',
-              'Wózek Ręczny: wolniej',
-              'Wózek Ręczny: ląd',
-              'Zaprzęg: wolniej',
-              'Zaprzęg: ląd',
+              'Wózek: strata prędkości',
+              'Wózek: hexy/s po lądzie',
+              'Zaprzęg: strata prędkości',
+              'Zaprzęg: hexy/s po lądzie',
             ],
             rows: [
               [
@@ -163,7 +163,7 @@ export const WORLD: ArticleGroup = {
               ],
             ],
             num: [0, 1, 2, 3, 4],
-            foot: 'Ładunek to część pojemności wozu. Strata prędkości rośnie równo z ładunkiem: pełny wóz traci całą, do połowy pełny połowę. Prędkość w hexach na sekundę po zwykłym lądzie.',
+            foot: 'Ładunek to część pojemności wozu. Strata rośnie równo z ładunkiem: pełny Wózek Ręczny jedzie o {{vehicle.handcartLoss.100}}% wolniej, w połowie pełny o {{vehicle.handcartLoss.50}}%. Pełny Zaprzęg traci {{vehicle.oxcartLoss.100}}%. Dla porównania: osadnik w butach na lądzie idzie {{pace.walkerLand}} hexy/s (krok {{step.landBrief}} s).',
           },
         },
         {
@@ -481,7 +481,7 @@ export const WORLD: ArticleGroup = {
           },
         },
         {
-          h: 'Młode i ubój',
+          h: 'Ubój',
         },
         {
           table: {
@@ -532,7 +532,11 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Zawód', '{{piety.lowPct}}%', '{{piety.highPct}}%'],
+            head: [
+              'Zawód',
+              'Kosztuje {{piety.lowPct}}% Religii za sztukę',
+              'Kosztuje {{piety.highPct}}% Religii za sztukę',
+            ],
             rows: [
               [
                 '[[job:armorer|Płatnerz]]',
@@ -579,7 +583,7 @@ export const WORLD: ArticleGroup = {
           h: 'Święty ogień',
         },
         {
-          p: 'Rozpalisz go w Domu 3 i wyższych. 1 [[good:holy_oil|Oliwa]] starcza na {{oil.burnMinutes}} min, pełny zapas w domu na {{oil.fullBurnMinutes}} min. Ogień płonie także wtedy, gdy nikt się nie modli.',
+          p: 'Rozpalisz go w Domu 3 i wyższych. 1 [[good:holy_oil|Oliwa]] starcza na {{oil.burnTime}}, pełny zapas w domu na {{oil.fullBurnTime}}. Ogień płonie także wtedy, gdy nikt się nie modli.',
         },
         {
           h: 'Aura Świątyni',

@@ -1455,7 +1455,7 @@ export const chtGame = {
         },
         moveFlags: {
           label: '採集者自動移動旗幟',
-          tip: '旗幟旁的資源用完時，旗幟會跟著資源移動，距離 3 到 5 格。',
+          tip: '旗幟旁的資源用完時，旗幟會跟著資源移動，距離 {min} 到 {max} 格。',
         },
       },
       notes: {

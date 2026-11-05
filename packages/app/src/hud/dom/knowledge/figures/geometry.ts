@@ -45,12 +45,6 @@ export function hexRing(radius: number): readonly Point[] {
   ];
 }
 
-/** How many node rows a sight of `radius` nodes spans: sight is a circle on screen, and a row is
- *  shorter than a node is wide. */
-export function sightRows(radius: number): number {
-  return (radius * NODE_PX) / NODE_ROW_PX;
-}
-
 /** The viewBox units per unit that fit `extent` into `room`. */
 export function fitScale(extent: number, room: number): number {
   return room / extent;

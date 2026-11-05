@@ -46,7 +46,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Hungry with a full store',
-              'Check "Storage minimum": nobody takes a good below that amount, not even for a meal. Lower it on food. The store may also be too far: it must lie within {{reach.walk}} hexes of the settler or in the signpost network.',
+              'Check "Storage minimum": nobody takes a good below that amount, not even for a meal. Lower it on food. The store may also be too far: it must lie within {{reach.goods}} hexes of the settler or of a signpost in his network.',
             ],
             [
               'A profession is missing from the School list',
@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               "A field isn't growing",
-              'It grows only when watered by a [[job:farmer|Farmer]] with a workplace at a [[building:work_farm_00|Farm]]. The Farmer sows first and waters only at {{field.max}} fields or when there is nowhere left to sow. A field ripens after {{field.waterings}} waterings, and one watering also covers 6 neighbouring fields. He sows only on grass, off roads, within {{field.radius}} hexes of the Farm.',
+              "It grows only when watered. A [[job:farmer|Farmer]] at a [[building:work_farm_00|Farm]] or a [[job:herb_mush_guy|Herb Gatherer]] at a [[building:work_herb_hut|Herb Hut]] waters it, if he has his workplace there. He sows first and waters only at {{field.max}} fields or when there is nowhere left to sow. A field ripens after {{field.waterings}} waterings, and one watering also covers 6 neighbouring fields. He won't sow a field on sand or on a road, and sows within {{field.radius}} hexes of the building.",
             ],
             [
               'Do rain, snow or night change anything?',
@@ -337,7 +337,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Standing to"',
                 '-',
-                'A soldier on Attack or Defence does not rest while there is a fight within {{alert.restClearance}} hexes or an enemy soldier in sight within {{alert.standTo}} hexes',
+                'A soldier on Attack or Defence does not rest while there is a fight within {{alert.restClearance}} hexes or an enemy soldier stands within {{alert.standTo}} hexes',
                 'Give him an "Eat" or "Sleep" order',
               ],
               [

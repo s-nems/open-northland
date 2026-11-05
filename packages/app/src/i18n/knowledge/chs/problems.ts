@@ -46,7 +46,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               '仓库满着却挨饿',
-              '检查“最低库存”：低于这个数量没人能取，吃饭也一样。把食物的最低库存调低。也可能是太远：仓库必须在居民{{reach.walk}}格内或路标网络里。',
+              '检查“最低库存”：低于这个数量没人能取，吃饭也一样。把食物的最低库存调低。也可能是太远：仓库必须在居民或其路标网络中某个路标的{{reach.goods}}格内。',
             ],
             [
               '学校列表里没有这个职业',
@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               '田不长',
-              '田地只靠[[building:work_farm_00|农场]]里有工作场所的[[job:farmer|农夫]]浇水才长。农夫先播种，满{{field.max}}块田或无处可播时才浇水。田地浇{{field.waterings}}次成熟，一次浇水覆盖6块相邻田地。只在草地上播种，不在路上，距农场{{field.radius}}格以内。',
+              '田地只靠浇水才长。在[[building:work_farm_00|农场]]工作的[[job:farmer|农夫]]或在[[building:work_herb_hut|草药屋]]工作的[[job:herb_mush_guy|草药师]]会浇水。他先播种，满{{field.max}}块田或无处可播时才浇水。田地浇{{field.waterings}}次成熟，一次浇水覆盖6块相邻田地。沙地和道路上不能播种，播种范围在建筑{{field.radius}}格以内。',
             ],
             [
               '雨、雪或黑夜有影响吗？',
@@ -227,7 +227,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '“戒备中”',
                 '-',
-                '进攻或防御姿态的士兵在{{alert.restClearance}}格内有战斗、或{{alert.standTo}}格内看得见敌兵时不休息',
+                '进攻或防御姿态的士兵在{{alert.restClearance}}格内有战斗、或{{alert.standTo}}格内站着敌兵时不休息',
                 '给他下“进食”或“睡觉”命令',
               ],
               ['“原料太远”', '重要', '只有路标范围外的建筑有原料', '用路标连接或就近建仓库'],

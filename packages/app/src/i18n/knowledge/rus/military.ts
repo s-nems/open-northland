@@ -167,14 +167,29 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Оружие', 'Дальность на башне', 'Подходит к цели на'],
+            head: ['Оружие', 'Обычная дальность', 'Дальность на башне', 'Встаёт для выстрела на расстоянии'],
             rows: [
-              ['[[good:bow_short|Короткий Лук]]', '0-{{shortBow.towerMax}}', '{{shortBow.standoff}}'],
-              ['[[good:bow_long|Длинный Лук]]', '0-{{longBow.towerMax}}', '{{longBow.standoff}}'],
-              ['[[job:heroine_bow_xena|Кира]]', '-', '{{heroBow.standoff}}'],
+              [
+                '[[good:bow_short|Короткий Лук]]',
+                '{{shortBow.min}}-{{shortBow.max}}',
+                '0-{{shortBow.towerMax}}',
+                '{{shortBow.min}}-{{shortBow.standoff}}',
+              ],
+              [
+                '[[good:bow_long|Длинный Лук]]',
+                '{{longBow.min}}-{{longBow.max}}',
+                '0-{{longBow.towerMax}}',
+                '{{longBow.min}}-{{longBow.standoff}}',
+              ],
+              [
+                '[[job:heroine_bow_xena|Кира]]',
+                '{{heroBow.min}}-{{heroBow.max}}',
+                '-',
+                '{{heroBow.min}}-{{heroBow.standoff}}',
+              ],
             ],
-            num: [1, 2],
-            foot: 'Дальность в гексах. Обычную дальность и темп стрельбы, в том числе Лука охотника и Катапульты, показывает таблица в [[article:damage|Оружие, доспехи и урон]]. По цели ближе нижней границы дальности лучник не стреляет.',
+            num: [1, 2, 3],
+            foot: 'Дальность в гексах. Лучник, который идёт к цели, встаёт чуть ближе, чем достаёт, чтобы цель не ушла из зоны выстрела. По цели ближе нижней границы дальности он не стреляет, если не стоит на башне. Темп стрельбы, в том числе Лука охотника и Катапульты, показывает таблица в [[article:damage|Оружие, доспехи и урон]].',
           },
         },
         {
@@ -222,6 +237,9 @@ export const MILITARY: ArticleGroup = {
             id: 'leash',
             caption: 'Как далеко преследует',
           },
+        },
+        {
+          p: 'В Игнорировании солдат отпускает цель, которая ушла дальше чем на {{stance.ignoreLeash}} гексов от точки стоянки.',
         },
         {
           table: {
@@ -316,9 +334,13 @@ export const MILITARY: ArticleGroup = {
             head: ['Что рядом', 'Гексов', 'Солдат'],
             rows: [
               ['Бой', 'до {{alert.restClearance}}', 'Не спит, не молится и не разговаривает'],
-              ['Враг в поле зрения', 'до {{alert.standTo}}', 'То же самое'],
+              [
+                'Вражеский солдат в Атаке или Обороне, видимый на карте',
+                'до {{alert.standTo}}',
+                'То же самое',
+              ],
             ],
-            foot: 'Есть он идёт, только когда Энергия упадёт до {{need.criticalPct}}%. В Игнорировании это не действует.',
+            foot: 'Есть он идёт, только когда Энергия упадёт до {{need.criticalPct}}%. В Игнорировании солдат отдыхает как обычно.',
           },
         },
       ],
@@ -433,11 +455,11 @@ export const MILITARY: ArticleGroup = {
           ],
         },
         {
-          h: 'Гарнизон башни',
+          h: 'Запас башни',
         },
         {
           table: {
-            head: ['Башня', 'Медовуха', 'Пища', 'Каждого оружия'],
+            head: ['Башня', 'Вмещает Медовухи', 'Вмещает Пищи', 'Вмещает каждого оружия'],
             rows: [
               [
                 '[[building:tower_00|Защитная Башня 1]]',
@@ -455,6 +477,9 @@ export const MILITARY: ArticleGroup = {
             num: [1, 2, 3],
             foot: 'Посты и места Носильщиков показывает карточка башни.',
           },
+        },
+        {
+          h: 'Гарнизон башни',
         },
         {
           list: [
@@ -526,74 +551,88 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Оружие', 'Здоровья за удар', 'Ударов на секцию', 'Ударов на ворота', 'Время на секцию'],
+            head: [
+              'Оружие',
+              'Здоровья за удар',
+              'С Амулетом Силы',
+              'Ударов на секцию',
+              'Ударов на ворота',
+              'Время на секцию',
+            ],
             rows: [
               [
                 '[[building:catapult|Катапульта]]',
                 '{{wall.catapult.blow}}',
+                '{{wall.catapult.strongBlow}}',
                 '{{wall.catapult.segmentHits}}',
                 '{{wall.catapult.gateHits}}',
-                '{{wall.catapult.segmentSeconds}} с',
+                '{{wall.catapult.segmentSeconds}}',
               ],
               [
                 'Герой в ближнем бою',
                 '{{wall.hero.blow}}',
+                '{{wall.hero.strongBlow}}',
                 '{{wall.hero.segmentHits}}',
                 '{{wall.hero.gateHits}}',
-                '{{wall.hero.segmentSeconds}} с',
+                '{{wall.hero.segmentSeconds}}',
               ],
               [
                 '[[good:spear_iron|Железное Копье]]',
                 '{{wall.ironSpear.blow}}',
+                '{{wall.ironSpear.strongBlow}}',
                 '{{wall.ironSpear.segmentHits}}',
                 '{{wall.ironSpear.gateHits}}',
-                '{{wall.ironSpear.segmentSeconds}} с',
+                '{{wall.ironSpear.segmentSeconds}}',
               ],
               [
                 '[[good:sword_long|Длинный Меч]]',
                 '{{wall.longSword.blow}}',
+                '{{wall.longSword.strongBlow}}',
                 '{{wall.longSword.segmentHits}}',
                 '{{wall.longSword.gateHits}}',
-                '{{wall.longSword.segmentSeconds}} с',
+                '{{wall.longSword.segmentSeconds}}',
               ],
               [
                 '[[good:sword_shord|Короткий Меч]]',
                 '{{wall.shortSword.blow}}',
+                '{{wall.shortSword.strongBlow}}',
                 '{{wall.shortSword.segmentHits}}',
                 '{{wall.shortSword.gateHits}}',
-                '{{wall.shortSword.segmentSeconds}} с',
+                '{{wall.shortSword.segmentSeconds}}',
               ],
               [
                 '[[good:spear_wooden|Деревянное Копье]]',
                 '{{wall.woodenSpear.blow}}',
+                '{{wall.woodenSpear.strongBlow}}',
                 '{{wall.woodenSpear.segmentHits}}',
                 '{{wall.woodenSpear.gateHits}}',
-                '{{wall.woodenSpear.segmentSeconds}} с',
+                '{{wall.woodenSpear.segmentSeconds}}',
               ],
               [
                 '[[good:bow_short|Короткий Лук]]',
                 '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.strongBlow}}',
                 '{{wall.shortBow.segmentHits}}',
                 '{{wall.shortBow.gateHits}}',
-                '{{wall.shortBow.segmentSeconds}} с',
+                '{{wall.shortBow.segmentSeconds}}',
               ],
               [
                 '[[good:bow_long|Длинный Лук]]',
                 '{{wall.longBow.blow}}',
+                '{{wall.longBow.strongBlow}}',
                 '{{wall.longBow.segmentHits}}',
                 '{{wall.longBow.gateHits}}',
-                '{{wall.longBow.segmentSeconds}} с',
+                '{{wall.longBow.segmentSeconds}}',
               ],
-              ['Кулаки, стрелы из здания', '0', '-', '-', '-'],
+              ['Кулаки, стрелы из здания', '0', '0', '-', '-', '-'],
             ],
-            num: [1, 2, 3, 4],
-            foot: 'Время для одного солдата. Кира снимает {{wall.heroBow.blow}}, у Франков {{wall.frankHeroBow.blow}}.',
+            num: [1, 2, 3, 4, 5],
+            foot: 'Время для одного солдата. Амулет командира не усиливает камни Катапульты. Кира снимает с частокола {{wall.heroBow.blow}} здоровья за выстрел, Кира Франков {{wall.frankHeroBow.blow}}.',
           },
         },
         {
           list: [
             'Боевой опыт не усиливает удар по частоколу.',
-            'Амулет Силы усиливает удар: {{wall.ironSpear.blow}} превращается в {{wall.ironSpear.strongBlow}}, {{wall.shortSword.blow}} в {{wall.shortSword.strongBlow}}, а {{wall.shortBow.blow}} остаётся {{wall.shortBow.strongBlow}}.',
             'Солдат сам не атакует частокол. Бьёт его по приказу или когда тот преграждает путь к врагу.',
             'Когда падает одна секция, солдаты идут через пролом и не трогают соседние.',
           ],
@@ -635,29 +674,24 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Здание', 'Здоровье', 'Камни', 'Время'],
+            head: ['Здание', 'Здоровье', 'Камней до разрушения', 'Время для 1 Катапульты'],
             rows: [
               [
                 '[[building:tower_00|Защитная Башня 1]]',
                 '{{hp.tower1}}',
                 '{{stone.tower1}}',
-                '{{stone.tower1Seconds}} с',
+                '{{stone.tower1Seconds}}',
               ],
               [
                 '[[building:tower_01|Защитная Башня 2]]',
                 '{{hp.tower2}}',
                 '{{stone.tower2}}',
-                '{{stone.tower2Seconds}} с',
+                '{{stone.tower2Seconds}}',
               ],
-              [
-                '[[building:headquarters|Центр]], Викинг',
-                '{{hp.hq}}',
-                '{{stone.hq}}',
-                '{{stone.hqSeconds}} с',
-              ],
+              ['[[building:headquarters|Центр]], Викинг', '{{hp.hq}}', '{{stone.hq}}', '{{stone.hqSeconds}}'],
             ],
             num: [1, 2, 3],
-            foot: 'Центр Франков: здоровье {{hp.frankHq}}, камней {{stone.frankHq}}, время {{stone.frankHqSeconds}} с.',
+            foot: 'Центр Франков: здоровье {{hp.frankHq}}, камней {{stone.frankHq}}, время {{stone.frankHqSeconds}}.',
           },
         },
         {
@@ -695,7 +729,7 @@ export const MILITARY: ArticleGroup = {
                 'Оборона',
                 'Вокруг своей позиции',
                 '{{catapult.searchRadius}}',
-                'Да, до {{catapult.leash}} от позиции',
+                'Да, до {{catapult.leash}} гексов от позиции',
               ],
               ['Игнорирование', 'Вокруг своей позиции', '{{catapult.min}}-{{catapult.max}}', 'Нет'],
             ],

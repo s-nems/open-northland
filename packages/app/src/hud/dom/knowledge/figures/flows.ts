@@ -1,4 +1,4 @@
-import { systems, TICKS_PER_SECOND } from '@open-northland/sim';
+import { systems, TICKS_PER_MINUTE } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../../i18n/index.js';
 import type { KnowledgeGood } from '../../../knowledge/base.js';
 import { goodIconMarkup } from '../../good-art.js';
@@ -138,14 +138,14 @@ export function livestockCycleFigure(context: KnowledgeContext): HTMLElement | n
     return row === undefined ? [] : [goodPicture(context, row.id, quantity.amount)];
   };
   const pair = Array.from({ length: systems.BREEDING_PAIR }, () => picture(ANIMAL_BOX_PX));
-  const growSeconds = systems.ANIMAL_ADULT_AGE_TICKS / TICKS_PER_SECOND;
+  const growMinutes = systems.ANIMAL_ADULT_AGE_TICKS / TICKS_PER_MINUTE;
   return flow(
     'kn-fig__flow',
     step(pair, formatMessage(t.pair, { count: number(systems.BREEDING_PAIR) }), t.pairNote),
     flowArrow(t.plus),
     step(recipe.inputs.flatMap(good), t.feed),
     flowArrow(t.born),
-    step([picture(YOUNG_BOX_PX)], t.young, formatMessage(t.grows, { seconds: number(growSeconds) })),
+    step([picture(YOUNG_BOX_PX)], t.young, formatMessage(t.grows, { minutes: number(growMinutes) })),
     flowArrow(t.grown),
     step([picture(ANIMAL_BOX_PX)], t.adult),
     flowArrow(t.slaughter),

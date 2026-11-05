@@ -5,7 +5,7 @@ import {
   WALK_RANGE_NODES,
 } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../../i18n/index.js';
-import { fitScale, hexRing, NODE_PX, NODE_ROW_PX, nodePoint, type Point, sightRows } from './geometry.js';
+import { fitScale, hexRing, NODE_PX, NODE_ROW_PX, nodePoint, type Point } from './geometry.js';
 import { groundMesh } from './ground.js';
 import { arrow, dot, drawing, FIGURE_WIDTH, line, number, outline, shape, text } from './svg.js';
 
@@ -40,8 +40,7 @@ const VISION_GROUND_MARGIN = 14;
 const VISION_ROWS_TOP = 54;
 const VISION_ROW_STEP = 31;
 const VISION_NAME_X = 334;
-const VISION_ACROSS_X = 486;
-const VISION_ALONG_X = 552;
+const VISION_RADIUS_X = 552;
 const VISION_HEAD_Y = 26;
 const UNIT_DOT = 4;
 
@@ -65,8 +64,7 @@ export function visionFigure(): SVGElement {
       line({ x, y }, { x: VISION_NAME_X - LABEL_GAP, y }, 'kn-fig__guide'),
       dot({ x, y }, 2, 'kn-fig__mark'),
       text({ x: VISION_NAME_X, y: baseline }, name),
-      text({ x: VISION_ACROSS_X, y: baseline }, number(radius), 'kn-fig__t--strong', 'end'),
-      text({ x: VISION_ALONG_X, y: baseline }, number(Math.round(sightRows(radius))), '', 'end'),
+      text({ x: VISION_RADIUS_X, y: baseline }, number(radius), 'kn-fig__t--strong', 'end'),
     ];
   });
   return drawing(
@@ -74,8 +72,7 @@ export function visionFigure(): SVGElement {
     groundMesh(VISION_CENTRE, ground, ground, scale),
     ...rings,
     dot(VISION_CENTRE, UNIT_DOT, 'kn-fig__mark'),
-    text({ x: VISION_ACROSS_X, y: VISION_HEAD_Y }, t.across, 'kn-fig__t--small', 'end'),
-    text({ x: VISION_ALONG_X, y: VISION_HEAD_Y }, t.along, 'kn-fig__t--small', 'end'),
+    text({ x: VISION_RADIUS_X, y: VISION_HEAD_Y }, t.radius, 'kn-fig__t--small', 'end'),
     ...listed,
   );
 }

@@ -1631,7 +1631,7 @@ export const deGame = {
         },
         moveFlags: {
           label: 'Abbauer versetzen ihre Fahne automatisch',
-          tip: 'Wenn der Rohstoff bei einer Fahne erschöpft ist, wird die Fahne zu einem neuen Vorkommen versetzt, mit 3–5 Feldern Abstand zum Vorkommen.',
+          tip: 'Wenn der Rohstoff bei einer Fahne erschöpft ist, wird die Fahne zu einem neuen Vorkommen versetzt, mit {min}–{max} Hexfeldern Abstand zum Vorkommen.',
         },
       },
       notes: {

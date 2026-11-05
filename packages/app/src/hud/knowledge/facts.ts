@@ -41,7 +41,7 @@ import {
   scaledWallRules,
   WALL_LOGIC_ID,
 } from '../../content/map/palisade-rows.js';
-import { bcp47Tag } from '../../i18n/index.js';
+import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
 import { FRANK } from '../../scenes/civilizations.js';
 import { STAR_FULL, STAR_TIER_STEP } from '../../view/projections/experience-stars.js';
 import { SETTLEMENT_REACH_NODES } from '../tool-panel/messages/fight-areas.js';
@@ -64,6 +64,7 @@ import {
   landed,
   STRENGTH_PCT,
   type TargetId,
+  takesStrengthAmulet,
 } from './combat.js';
 
 const PERCENT = 100;
@@ -89,6 +90,8 @@ const PER_MILLE = 1000;
 /** The combined weights the walking table's two rows open at: every second point costs a tick. */
 const LOW_STEP_WEIGHT = 2;
 const HIGH_STEP_WEIGHT = 4;
+/** The walk the needs article states a barefoot Energy cost over: a step alone costs a hundredth of a percent. */
+const BAREFOOT_SAMPLE_STEPS = 1000;
 
 type FactValue = number | undefined;
 type FactReader = (base: KnowledgeBase) => FactValue;
@@ -98,6 +101,8 @@ interface Fact {
   readonly read: FactReader;
   readonly minFraction: number;
   readonly maxFraction: number;
+  /** A length of time in seconds, written as minutes and seconds once it reaches a minute. */
+  readonly duration?: boolean;
 }
 
 const formatted =
@@ -113,6 +118,7 @@ const oneDecimal = formatted(0, 1);
 const twoDecimals = formatted(0, 2);
 const fixedOneDecimal = formatted(1, 1);
 const fixedTwoDecimals = formatted(2, 2);
+const duration = (value: FactReader | number): Fact => ({ ...whole(value), duration: true });
 
 const seconds = (ticks: number): number => ticks / TICKS_PER_SECOND;
 const minutes = (ticks: number): number => ticks / TICKS_PER_MINUTE;
@@ -263,6 +269,9 @@ const WEAPON_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
     [
       ['hunterBow', 'hunter_bow'],
       ['catapult', 'catapult'],
+      ['shortBow', 'short_bow'],
+      ['longBow', 'long_bow'],
+      ['heroBow', 'hero_bow'],
     ] as const
   ).flatMap(([name, id]) => [
     [`${name}.min`, whole((base) => weaponRow(base, VIKING, id)?.minRange)],
@@ -346,7 +355,6 @@ const repeatsTo = (base: KnowledgeBase, id: string, points: number): FactValue =
 };
 
 const trackFacts = (name: string, id: string): Readonly<Record<string, Fact>> => ({
-  [`exp.${name}.points`]: twoDecimals((base) => trackPoints(base, id)),
   [`exp.${name}.repeatsQuoted`]: whole((base) => repeatsTo(base, id, pointsToPct(QUOTED_EXPERIENCE_PCT))),
   [`exp.${name}.repeatsFull`]: whole((base) => repeatsTo(base, id, systems.EXPERIENCE_MASTERY_POINTS)),
 });
@@ -449,6 +457,14 @@ const TOOL_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
 function buildPoints(base: KnowledgeBase, pct: number, tool: string | null): FactValue {
   const factor = workFactor(base, tool);
   return factor === undefined ? undefined : systems.buildStepsPerSwing(pct, factor);
+}
+
+/** The first experience percent at which a bare-handed builder's swing installs more than a novice's. */
+function bareSwingGainPct(base: KnowledgeBase): FactValue {
+  const novice = buildPoints(base, 0, null);
+  if (novice === undefined) return undefined;
+  for (let pct = 1; pct <= PERCENT; pct++) if ((buildPoints(base, pct, null) ?? 0) > novice) return pct;
+  return undefined;
 }
 
 /** The points a first home's bill comes to. */
@@ -578,9 +594,10 @@ const NEED_FACTS: Readonly<Record<string, Fact>> = {
   'need.overfillPct': whole(needPct(systems.NEED_RESERVE_UNITS + systems.NEED_OVERFILL_UNITS)),
   'need.startMinPct': whole(needPct(systems.NEED_RESERVE_UNITS - systems.NEED_INIT_SPREAD_UNITS)),
   'need.drainMinutes': whole(minutes(ONE / systems.DRAIN_RISE)),
-  'need.starveMinutes': oneDecimal(minutes(HUMAN_HITPOINTS / systems.STARVATION_HITPOINTS_PER_TICK)),
-  'need.barefootStepMinPct': twoDecimals(needPct(ROAD_RESISTANCE)),
-  'need.barefootStepMaxPct': twoDecimals(needPct(systems.ROUGHNESS_MAX_ON_MAPS)),
+  'need.barefootSampleSteps': whole(BAREFOOT_SAMPLE_STEPS),
+  'need.barefootRoadPct': whole(needPct(ROAD_RESISTANCE * BAREFOOT_SAMPLE_STEPS)),
+  'need.barefootLandPct': whole(needPct(DEFAULT_NODE_ROUGHNESS * BAREFOOT_SAMPLE_STEPS)),
+  'need.barefootMaxPct': whole(needPct(systems.ROUGHNESS_MAX_ON_MAPS * BAREFOOT_SAMPLE_STEPS)),
   'sleep.manSeconds': oneDecimal((base) => clipSeconds(base, systems.SLEEP_ATOMIC_ID, JOB_CIVILIST)),
   'sleep.womanSeconds': oneDecimal((base) => clipSeconds(base, systems.SLEEP_ATOMIC_ID, JOB_WOMAN)),
   'sleep.soldierSeconds': oneDecimal((base) =>
@@ -616,16 +633,13 @@ const HEALTH_FACTS: Readonly<Record<string, Fact>> = {
   'health.human': whole(HUMAN_HITPOINTS),
   'health.regenPerSecond': whole(systems.REGENERATION_HITPOINTS_PER_TICK * TICKS_PER_SECOND),
   'health.regenMinutes': whole(minutes(regenTicks)),
-  'health.regenWholeMin': whole(minutePart(seconds(regenTicks))),
-  'health.regenRestSec': whole(secondPart(seconds(regenTicks))),
+  'health.regenTime': duration(seconds(regenTicks)),
   'health.starvePerSecond': whole(systems.STARVATION_HITPOINTS_PER_TICK * TICKS_PER_SECOND),
-  'health.starveWholeMin': whole(minutePart(seconds(starveTicks))),
-  'health.starveRestSec': whole(secondPart(seconds(starveTicks))),
+  'health.starveTime': duration(seconds(starveTicks)),
   'health.nearDeath': whole((HUMAN_HITPOINTS * systems.NEAR_DEATH_PER_MILLE) / PER_MILLE),
   'aura.range': whole(systems.TEMPLE_AURA_RANGE),
   'aura.perSecond': whole(systems.TEMPLE_AURA_HITPOINTS),
-  'aura.wholeMin': whole(minutePart(auraSeconds)),
-  'aura.restSec': whole(secondPart(auraSeconds)),
+  'aura.time': duration(auraSeconds),
   'aura.ceiling': whole(systems.blessedHitpointCeiling(HUMAN_HITPOINTS)),
   'aura.totalPerSecond': whole(
     systems.REGENERATION_HITPOINTS_PER_TICK * TICKS_PER_SECOND + systems.TEMPLE_AURA_HITPOINTS,
@@ -661,9 +675,8 @@ const LIFE_FACTS: Readonly<Record<string, Fact>> = {
   'age.babyLastYear': whole(systems.CHILD_AGE_TICKS / systems.TICKS_PER_AGE_YEAR - 1),
   'age.adultYears': whole(systems.ADULT_AGE_TICKS / systems.TICKS_PER_AGE_YEAR),
   'age.childLastYear': whole(systems.ADULT_AGE_TICKS / systems.TICKS_PER_AGE_YEAR - 1),
-  'age.childWholeMin': whole(minutePart(seconds(systems.CHILD_AGE_TICKS))),
-  'age.childRestSec': whole(secondPart(seconds(systems.CHILD_AGE_TICKS))),
-  'age.adultMinutes': whole(minutes(systems.ADULT_AGE_TICKS)),
+  'age.childTime': duration(seconds(systems.CHILD_AGE_TICKS)),
+  'age.adultTime': duration(seconds(systems.ADULT_AGE_TICKS)),
   'family.childFood': whole(components.CHILD_FOOD_UNITS),
   'home.larder': whole((base) => stockOf(base, 'home_level_00', 'food_simple')),
   'home.candyLarder': whole((base) => stockOf(base, 'home_level_00', 'food_extra')),
@@ -677,22 +690,11 @@ const LIFE_FACTS: Readonly<Record<string, Fact>> = {
   'home.crockeryFetchBelow': whole((base) => wareRatio(base, 'crockery', 'fetchBelow')),
   'home.furnitureFetchBelow': whole((base) => wareRatio(base, 'furniture', 'fetchBelow')),
   'home.oilFetchBelow': whole((base) => wareRatio(base, 'holy_oil', 'fetchBelow')),
-  'oil.wholeMin': whole((base) => {
-    const burn = oilBurnSeconds(base);
-    return burn === undefined ? undefined : minutePart(burn);
-  }),
-  'oil.restSec': whole((base) => {
-    const burn = oilBurnSeconds(base);
-    return burn === undefined ? undefined : secondPart(burn);
-  }),
-  'oil.burnMinutes': oneDecimal((base) => {
-    const burn = oilBurnSeconds(base);
-    return burn === undefined ? undefined : burn / SECONDS_PER_MINUTE;
-  }),
-  'oil.fullBurnMinutes': whole((base) => {
+  'oil.burnTime': duration(oilBurnSeconds),
+  'oil.fullBurnTime': duration((base) => {
     const burn = oilBurnSeconds(base);
     const units = wareRatio(base, 'holy_oil', 'capacity');
-    return burn === undefined || units === undefined ? undefined : (burn * units) / SECONDS_PER_MINUTE;
+    return burn === undefined || units === undefined ? undefined : burn * units;
   }),
   'assistant.counterMax': whole(components.ASSISTANT_COUNTER_MAX),
   'assistant.flagMin': whole(systems.FOLLOW_FLAG_BAND.min),
@@ -715,6 +717,7 @@ const WALK_FACTS: Readonly<Record<string, Fact>> = {
   'step.road': fixedTwoDecimals(stepAt(ROAD_RESISTANCE) ?? 0),
   'step.land': fixedTwoDecimals(stepAt(DEFAULT_NODE_ROUGHNESS) ?? 0),
   'step.landBrief': twoDecimals(stepAt(DEFAULT_NODE_ROUGHNESS) ?? 0),
+  'pace.walkerLand': oneDecimal(1 / (stepAt(DEFAULT_NODE_ROUGHNESS) ?? Number.POSITIVE_INFINITY)),
   'step.sand': fixedTwoDecimals((base) => stepAt(groundRoughness(base, 'sand'))),
   'step.mountain': fixedTwoDecimals((base) => stepAt(groundRoughness(base, 'mountain'))),
   'step.snow': fixedTwoDecimals((base) => stepAt(groundRoughness(base, 'snow'))),
@@ -763,6 +766,7 @@ const WALK_FACTS: Readonly<Record<string, Fact>> = {
 
 const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'build.homeUnits': whole(homeBillPoints),
+  'build.bareGainPct': whole(bareSwingGainPct),
   'build.swingSeconds': twoDecimals(swingSeconds),
   'build.noviceSwings': whole((base) => homeSwings(base, 0, null)),
   'build.noviceIronSwings': whole((base) => homeSwings(base, 0, 'tool_iron')),
@@ -931,8 +935,11 @@ const wallBlow = (base: KnowledgeBase, tribe: number, id: string): FactValue => 
   return blow === undefined ? undefined : Math.floor(blow / systems.HOUSE_DAMAGE_PER_WALL_VALENCY);
 };
 
-const strongWallBlow = (id: string): Fact =>
-  whole(scaledDown((base) => wallBlow(base, VIKING, id), STRENGTH_PCT));
+/** A blow under the Amulet of Strength; a shot no amulet raises keeps its plain blow. */
+const strongWallBlow = (tribe: number, id: string): Fact => {
+  const blow: FactReader = (base) => wallBlow(base, tribe, id);
+  return whole(takesStrengthAmulet({ id }) ? scaledDown(blow, STRENGTH_PCT) : blow);
+};
 
 const WALL_FACTS: Readonly<Record<string, Fact>> = {
   'wall.segmentHp': whole((base) => segmentRules(base)?.maxHitpoints),
@@ -943,9 +950,6 @@ const WALL_FACTS: Readonly<Record<string, Fact>> = {
   'wall.gateMinHealthPct': whole(systems.GATE_MIN_HEALTH_PCT),
   'wall.heroBow.blow': whole((base) => wallBlow(base, VIKING, 'hero_bow')),
   'wall.frankHeroBow.blow': whole((base) => wallBlow(base, FRANK, 'hero_bow')),
-  'wall.ironSpear.strongBlow': strongWallBlow('iron_spear'),
-  'wall.shortSword.strongBlow': strongWallBlow('short_sword'),
-  'wall.shortBow.strongBlow': strongWallBlow('short_bow'),
   ...Object.fromEntries(
     WALL_WEAPONS.flatMap(([name, tribe, id]) => {
       const blow: FactReader = (base) => wallBlow(base, tribe, id);
@@ -955,11 +959,12 @@ const WALL_FACTS: Readonly<Record<string, Fact>> = {
           rules(base)?.maxHitpoints;
       return [
         [`wall.${name}.blow`, whole(blow)],
+        [`wall.${name}.strongBlow`, strongWallBlow(tribe, id)],
         [`wall.${name}.segmentHits`, killedBy(blow, pool(segmentRules))],
         [`wall.${name}.gateHits`, killedBy(blow, pool(gateRules))],
         [
           `wall.${name}.segmentSeconds`,
-          whole((base) => {
+          duration((base) => {
             const blows = blow(base);
             const hitpoints = pool(segmentRules)(base);
             const clip = clipOfWeapon(base, tribe, id);
@@ -1032,10 +1037,10 @@ const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'stone.tower2': killedBy(catapultStone('building'), (base) => buildingHp(base, 'tower_01')),
   'stone.hq': killedBy(catapultStone('building'), (base) => buildingHp(base, 'headquarters')),
   'stone.frankHq': killedBy(catapultStone('building'), (base) => buildingHp(base, 'headquarters', FRANK)),
-  'stone.tower1Seconds': whole((base) => stoneSeconds(base, buildingHp(base, 'tower_00'))),
-  'stone.tower2Seconds': whole((base) => stoneSeconds(base, buildingHp(base, 'tower_01'))),
-  'stone.hqSeconds': whole((base) => stoneSeconds(base, buildingHp(base, 'headquarters'))),
-  'stone.frankHqSeconds': whole((base) => stoneSeconds(base, buildingHp(base, 'headquarters', FRANK))),
+  'stone.tower1Seconds': duration((base) => stoneSeconds(base, buildingHp(base, 'tower_00'))),
+  'stone.tower2Seconds': duration((base) => stoneSeconds(base, buildingHp(base, 'tower_01'))),
+  'stone.hqSeconds': duration((base) => stoneSeconds(base, buildingHp(base, 'headquarters'))),
+  'stone.frankHqSeconds': duration((base) => stoneSeconds(base, buildingHp(base, 'headquarters', FRANK))),
   'hp.tower1': whole((base) => buildingHp(base, 'tower_00')),
   'hp.tower2': whole((base) => buildingHp(base, 'tower_01')),
   'hp.hq': whole((base) => buildingHp(base, 'headquarters')),
@@ -1152,10 +1157,23 @@ export function formatFactNumber(value: number, maxFraction = MAX_FRACTION_DIGIT
   }).format(value);
 }
 
+/** Seconds as the reader's language writes a time: "X s" under a minute, else "X min Y s". */
+function durationText(secondsTotal: number): string {
+  const copy = messages().knowledge.mechanics;
+  const rounded = Math.round(secondsTotal);
+  if (rounded < SECONDS_PER_MINUTE)
+    return formatMessage(copy.seconds, { seconds: formatFactNumber(rounded) });
+  const minutes = formatFactNumber(minutePart(rounded));
+  const rest = secondPart(rounded);
+  if (rest === 0) return formatMessage(copy.wholeMinutes, { minutes });
+  return formatMessage(copy.minutes, { minutes, seconds: formatFactNumber(rest) });
+}
+
 export function factText(name: string, base: KnowledgeBase): string | undefined {
   const fact = Object.hasOwn(FACTS, name) ? FACTS[name] : undefined;
   const value = fact?.read(base);
-  return fact === undefined || value === undefined
-    ? undefined
+  if (fact === undefined || value === undefined) return undefined;
+  return fact.duration === true
+    ? durationText(value)
     : formatFactNumber(value, fact.maxFraction, fact.minFraction);
 }

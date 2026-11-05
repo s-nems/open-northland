@@ -46,7 +46,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Hunger trotz vollem Lager',
-              'Prüfe das „Lagerminimum“: Unter dieser Menge nimmt niemand Ware heraus, auch nicht zum Essen. Senke das Minimum bei Essen. Vielleicht ist es auch zu weit: Das Lager muss bis {{reach.walk}} Hexfelder vom Siedler entfernt sein oder im Wegweisernetz liegen.',
+              'Prüfe das „Lagerminimum“: Unter dieser Menge nimmt niemand Ware heraus, auch nicht zum Essen. Senke das Minimum bei Essen. Vielleicht ist es auch zu weit: Das Lager muss bis {{reach.goods}} Hexfelder vom Siedler oder von einem Wegweiser in seinem Netz entfernt sein.',
             ],
             [
               'Der Beruf fehlt auf der Schulliste',
@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Das Feld wächst nicht',
-              'Es wächst nur, wenn ein [[job:farmer|Farmer]] mit Arbeitsplatz auf der [[building:work_farm_00|Farm]] es gießt. Der Farmer sät zuerst und gießt erst bei {{field.max}} Feldern oder wenn er nirgends mehr säen kann. Ein Feld reift nach {{field.waterings}} Mal Gießen, und einmal Gießen erfasst auch 6 Nachbarfelder. Gesät wird nur auf Gras, abseits von Straßen, bis {{field.radius}} Hexfelder von der Farm.',
+              'Es wächst nur, wenn es gegossen wird. Das tut ein [[job:farmer|Farmer]] auf der [[building:work_farm_00|Farm]] oder ein [[job:herb_mush_guy|Kräutergärtner]] in der [[building:work_herb_hut|Kräuterhütte]], wenn er dort seinen Arbeitsplatz hat. Er sät zuerst und gießt erst bei {{field.max}} Feldern oder wenn er nirgends mehr säen kann. Ein Feld reift nach {{field.waterings}} Mal Gießen, und einmal Gießen erfasst auch 6 Nachbarfelder. Auf Sand und auf Straßen sät er kein Feld, und er sät bis {{field.radius}} Hexfelder vom Gebäude.',
             ],
             [
               'Ändern Regen, Schnee oder Nacht etwas?',
@@ -347,7 +347,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„In Alarmbereitschaft“',
                 '-',
-                'Ein Soldat im Modus Angriff oder Verteidigung ruht nicht, solange bis {{alert.restClearance}} Hexfelder gekämpft wird oder bis {{alert.standTo}} Hexfelder ein feindlicher Soldat zu sehen ist',
+                'Ein Soldat im Modus Angriff oder Verteidigung ruht nicht, solange bis {{alert.restClearance}} Hexfelder gekämpft wird oder bis {{alert.standTo}} Hexfelder ein feindlicher Soldat steht',
                 'Gib ihm den Befehl „Iss“ oder „Schlaf“',
               ],
               [

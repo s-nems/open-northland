@@ -23,9 +23,15 @@ export const SETTLERS: ArticleGroup = {
                 '100% за {{need.drainMinutes}} мин',
                 'да',
                 '[[article:food|еда]]',
-                '[[article:health|смерть за {{need.starveMinutes}} мин]]',
+                '[[article:health|смерть через {{health.starveTime}}]]',
               ],
-              ['Стамина', '100% за {{need.drainMinutes}} мин', 'да', 'сон', 'только медленнее шаг'],
+              [
+                'Стамина',
+                '100% за {{need.drainMinutes}} мин',
+                'да',
+                'сон',
+                'больше ничего, шаг замедляется уже с {{need.drivePct}}%',
+              ],
               ['Социальная Мотивация', '100% за {{need.drainMinutes}} мин', 'нет', 'разговор', 'без штрафа'],
               [
                 'Религия',
@@ -35,7 +41,7 @@ export const SETTLERS: ArticleGroup = {
                 'не делает оружие и доспехи',
               ],
             ],
-            foot: 'На старте карты каждая шкала случайна: {{need.startMinPct}}-100%. Без [[good:shoes|Обуви]] каждый шаг снимает {{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}% Энергии в зависимости от почвы, с грузом вдвое больше.',
+            foot: 'На старте карты каждая шкала случайна: {{need.startMinPct}}-100%. Без [[good:shoes|Обуви]] {{need.barefootSampleSteps}} шагов снимают {{need.barefootRoadPct}}% Энергии на дороге, {{need.barefootLandPct}}% на земле и до {{need.barefootMaxPct}}% на самой трудной местности, с грузом вдвое больше.',
           },
         },
         {
@@ -72,7 +78,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Кто', 'Время сна', 'Вне дома', 'Дома', 'Дома с Мебелью'],
+            head: ['Кто', 'Время сна', 'Стамина за сон: вне дома', 'дома', 'дома с Мебелью'],
             rows: [
               [
                 'Мужчина',
@@ -88,8 +94,14 @@ export const SETTLERS: ArticleGroup = {
                 '+{{sleep.womanHomePct}}%',
                 '+{{sleep.womanFurnishedPct}}%',
               ],
-              ['Купец, Разведчик', '{{sleep.manSeconds}} с', '+{{sleep.manHomePct}}%', '-', '-'],
-              ['Солдат', '{{sleep.soldierSeconds}} с', '+{{sleep.soldierPct}}%', '-', '-'],
+              [
+                'Купец, Разведчик (всегда как дома)',
+                '{{sleep.manSeconds}} с',
+                '+{{sleep.manHomePct}}%',
+                '-',
+                '-',
+              ],
+              ['Солдат (где бы ни спал)', '{{sleep.soldierSeconds}} с', '+{{sleep.soldierPct}}%', '-', '-'],
             ],
             num: [1, 2, 3, 4],
           },
@@ -208,26 +220,21 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Источник', 'Изменение', 'Условие', 'Всё здоровье за'],
+            head: ['Источник', 'Изменение', 'Условие', 'Время на {{health.human}} здоровья'],
             rows: [
               [
                 'Восстановление',
                 '+{{health.regenPerSecond}}/с',
                 'Энергия выше 0%, в том числе в бою',
-                '{{health.regenWholeMin}} мин {{health.regenRestSec}} с',
+                '{{health.regenTime}}',
               ],
               [
                 '[[article:religion|Аура Храма]]',
                 '+{{aura.perSecond}}/с',
                 '{{aura.range}} гексов от [[building:work_temple|Храма]]',
-                '{{aura.wholeMin}} мин {{aura.restSec}} с',
+                '{{aura.time}}',
               ],
-              [
-                'Голод',
-                '-{{health.starvePerSecond}}/с',
-                'Энергия 0%',
-                '{{health.starveWholeMin}} мин {{health.starveRestSec}} с',
-              ],
+              ['Голод', '-{{health.starvePerSecond}}/с', 'Энергия 0%', '{{health.starveTime}}'],
             ],
             num: [1, 3],
             foot: 'Вместе это даёт {{aura.totalPerSecond}} в секунду. Восстановление останавливается на {{health.human}}, а аура лечит сверх нормы, до {{aura.ceiling}}.',
@@ -241,8 +248,8 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            '[[good:potion_heal_small|S Целебное Зелье]]: глотков {{draught.smallUses}}, всего {{draught.healSmallTotal}}. [[good:potion_heal_big|L Целебное Зелье]]: глотков {{draught.bigUses}}, всего {{draught.healBigTotal}}.',
-            'Поселенец пьёт глоток за глотком, пока после раны у него не останется хотя бы {{draught.healBelow}} здоровья.',
+            '[[good:potion_heal_small|S Целебное Зелье]]: глотков {{draught.smallUses}}, всего {{draught.healSmallTotal}} здоровья. [[good:potion_heal_big|L Целебное Зелье]]: глотков {{draught.bigUses}}, всего {{draught.healBigTotal}} здоровья.',
+            'Если удар опустил бы здоровье ниже {{draught.healBelow}}, поселенец сразу пьёт глоток за глотком, пока у него снова не будет хотя бы {{draught.healBelow}} или пока не кончится зелье.',
             'Смертельный удар не убивает, если глотки покрывают рану.',
             'Поселенец пьёт и тогда, когда голод опускает здоровье ниже {{draught.healBelow}}.',
           ],
@@ -284,17 +291,13 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Этап', 'Возраст', 'От рождения'],
             rows: [
-              [
-                'Младенец',
-                'лет: 0-{{age.babyLastYear}}',
-                '0-{{age.childWholeMin}} мин {{age.childRestSec}} с',
-              ],
+              ['Младенец', 'лет: 0-{{age.babyLastYear}}', '0-{{age.childTime}}'],
               [
                 'Ребёнок',
                 'лет: {{age.childYears}}-{{age.childLastYear}}',
-                '{{age.childWholeMin}} мин {{age.childRestSec}} с-{{age.adultMinutes}} мин',
+                '{{age.childTime}}-{{age.adultTime}}',
               ],
-              ['Взрослый', 'лет: от {{age.adultYears}}', 'от {{age.adultMinutes}} мин'],
+              ['Взрослый', 'лет: от {{age.adultYears}}', 'от {{age.adultTime}}'],
             ],
             foot: 'Год жизни длится {{age.yearSeconds}} с. Ребёнок ходит вокруг дома. Повзрослев, мальчик становится [[job:civilist|Гражданином]], девочка [[job:woman|Женщиной]]. От старости никто не умирает.',
           },
@@ -339,7 +342,7 @@ export const SETTLERS: ArticleGroup = {
                 '[[good:holy_oil|Масло]]',
                 'Жилище 3',
                 '[[article:religion|Священный огонь]]: молитва перед домом',
-                '{{oil.wholeMin}} мин {{oil.restSec}} с',
+                '{{oil.burnTime}}',
                 '{{home.oilFetchBelow}}',
               ],
             ],
@@ -377,14 +380,14 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'assistant',
       name: 'Помощник',
-      lead: 'Счётчиками задаёшь, сколько нужно детей и новобранцев, а переключатели раздают снаряжение со склада.',
+      lead: 'Счётчиками ты заказываешь, сколько ещё детей должно родиться и сколько новобранцев обучить. Счётчик убывает, когда заказ выполнен. Переключатели раздают снаряжение со склада.',
       blocks: [
         {
           h: 'Счётчики',
         },
         {
           table: {
-            head: ['Счётчик', 'Даёт', 'Кто', 'Убывает', 'Без конца'],
+            head: ['Счётчик', 'Даёт', 'Кто', 'Убывает', 'Можно поставить ∞'],
             rows: [
               ['Дочери', 'девочку', 'замужняя с жилищем', 'при рождении', 'нет'],
               ['Сыновья', 'мальчика', 'замужняя с жилищем', 'при рождении', 'да'],
@@ -412,6 +415,11 @@ export const SETTLERS: ArticleGroup = {
                 'Железные инструменты, Деревянные инструменты',
                 'вкл.',
                 'любой работающий, кроме солдата, [[job:scout|Разведчика]] и Гражданина',
+              ],
+              [
+                'Железные инструменты: Заменять деревянные',
+                'вкл.',
+                'работающий с Деревянным Инструментом, пока включены Железные инструменты',
               ],
               ['[[good:mead|Медовуха]]', 'вкл.', 'Гражданские, Солдаты'],
               ['Питательные зелья, Зелья жизненной силы, Целебные зелья', 'выкл.', 'Гражданские, Солдаты'],
@@ -473,7 +481,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Помощник не снаряжает женщин, детей, [[article:heroes|героев]] и гарнизон башни.',
             'Запас ниже [[article:hauling|минимума на складах]] Помощник не раздаёт.',
-            'Он заполняет только пустые места и не меняет вещи на лучшие. Железные инструменты идут раньше деревянных.',
+            'Он заполняет пустые места, а Железные инструменты идут раньше деревянных. С переключателем «Заменять деревянные» он ещё отправляет работающего с Деревянным Инструментом за Железным: [[article:tools|Инструменты]]. Другие вещи на лучшие он не меняет.',
             'У поселенца {{amulet.slots}} места для напитков и амулетов: [[article:draughts|Напитки и амулеты]].',
           ],
         },

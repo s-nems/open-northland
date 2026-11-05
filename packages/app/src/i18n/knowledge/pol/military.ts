@@ -167,14 +167,29 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Broń', 'Zasięg na wieży', 'Podchodzi do celu na'],
+            head: ['Broń', 'Zasięg zwykły', 'Zasięg na wieży', 'Staje do strzału w odległości'],
             rows: [
-              ['[[good:bow_short|Krótki Łuk]]', '0-{{shortBow.towerMax}}', '{{shortBow.standoff}}'],
-              ['[[good:bow_long|Długi Łuk]]', '0-{{longBow.towerMax}}', '{{longBow.standoff}}'],
-              ['[[job:heroine_bow_xena|Cyra]]', '-', '{{heroBow.standoff}}'],
+              [
+                '[[good:bow_short|Krótki Łuk]]',
+                '{{shortBow.min}}-{{shortBow.max}}',
+                '0-{{shortBow.towerMax}}',
+                '{{shortBow.min}}-{{shortBow.standoff}}',
+              ],
+              [
+                '[[good:bow_long|Długi Łuk]]',
+                '{{longBow.min}}-{{longBow.max}}',
+                '0-{{longBow.towerMax}}',
+                '{{longBow.min}}-{{longBow.standoff}}',
+              ],
+              [
+                '[[job:heroine_bow_xena|Cyra]]',
+                '{{heroBow.min}}-{{heroBow.max}}',
+                '-',
+                '{{heroBow.min}}-{{heroBow.standoff}}',
+              ],
             ],
-            num: [1, 2],
-            foot: 'Zasięg w hexach. Zwykły zasięg i tempo strzałów, także Łuku myśliwego i Katapulty, pokazuje tabela w [[article:damage|Broń, pancerz i obrażenia]]. Do celu bliżej niż dolna granica zasięgu łucznik nie strzela.',
+            num: [1, 2, 3],
+            foot: 'Zasięg w hexach. Łucznik, który idzie do celu, staje trochę bliżej, niż sięga, żeby cel nie uciekł mu z zasięgu. Do celu bliżej niż dolna granica zasięgu nie strzela, chyba że stoi na wieży. Tempo strzałów, także Łuku myśliwego i Katapulty, pokazuje tabela w [[article:damage|Broń, pancerz i obrażenia]].',
           },
         },
         {
@@ -222,6 +237,9 @@ export const MILITARY: ArticleGroup = {
             id: 'leash',
             caption: 'Jak daleko goni',
           },
+        },
+        {
+          p: 'W Ignorowaniu żołnierz puszcza cel, który odszedł dalej niż {{stance.ignoreLeash}} hexów od miejsca postoju.',
         },
         {
           table: {
@@ -316,9 +334,9 @@ export const MILITARY: ArticleGroup = {
             head: ['Co jest blisko', 'Hexów', 'Żołnierz'],
             rows: [
               ['Walka', 'do {{alert.restClearance}}', 'Nie śpi, nie modli się i nie rozmawia'],
-              ['Wróg w zasięgu wzroku', 'do {{alert.standTo}}', 'Tak samo'],
+              ['Wrogi żołnierz w Ataku lub Obronie, widoczny na mapie', 'do {{alert.standTo}}', 'Tak samo'],
             ],
-            foot: 'Jeść idzie dopiero, gdy Energia spadnie do {{need.criticalPct}}%. W Ignorowaniu to nie działa.',
+            foot: 'Jeść idzie dopiero, gdy Energia spadnie do {{need.criticalPct}}%. W Ignorowaniu żołnierz odpoczywa normalnie.',
           },
         },
       ],
@@ -429,11 +447,11 @@ export const MILITARY: ArticleGroup = {
           ],
         },
         {
-          h: 'Załoga wieży',
+          h: 'Zapas wieży',
         },
         {
           table: {
-            head: ['Wieża', 'Miód Pitny', 'Żywność', 'Każdej broni'],
+            head: ['Wieża', 'Mieści Miodu Pitnego', 'Mieści Żywności', 'Mieści każdej broni'],
             rows: [
               [
                 '[[building:tower_00|Wieża obronna 1]]',
@@ -451,6 +469,9 @@ export const MILITARY: ArticleGroup = {
             num: [1, 2, 3],
             foot: 'Posterunki i miejsca Tragarzy pokazuje karta wieży.',
           },
+        },
+        {
+          h: 'Załoga wieży',
         },
         {
           list: [
@@ -522,74 +543,88 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Broń', 'Zdrowia za cios', 'Ciosów na odcinek', 'Ciosów na bramę', 'Czas na odcinek'],
+            head: [
+              'Broń',
+              'Zdrowia za cios',
+              'Z Amuletem Siły',
+              'Ciosów na odcinek',
+              'Ciosów na bramę',
+              'Czas na odcinek',
+            ],
             rows: [
               [
                 '[[building:catapult|Katapulta]]',
                 '{{wall.catapult.blow}}',
+                '{{wall.catapult.strongBlow}}',
                 '{{wall.catapult.segmentHits}}',
                 '{{wall.catapult.gateHits}}',
-                '{{wall.catapult.segmentSeconds}} s',
+                '{{wall.catapult.segmentSeconds}}',
               ],
               [
                 'Bohater wręcz',
                 '{{wall.hero.blow}}',
+                '{{wall.hero.strongBlow}}',
                 '{{wall.hero.segmentHits}}',
                 '{{wall.hero.gateHits}}',
-                '{{wall.hero.segmentSeconds}} s',
+                '{{wall.hero.segmentSeconds}}',
               ],
               [
                 '[[good:spear_iron|Żelazna Włócznia]]',
                 '{{wall.ironSpear.blow}}',
+                '{{wall.ironSpear.strongBlow}}',
                 '{{wall.ironSpear.segmentHits}}',
                 '{{wall.ironSpear.gateHits}}',
-                '{{wall.ironSpear.segmentSeconds}} s',
+                '{{wall.ironSpear.segmentSeconds}}',
               ],
               [
                 '[[good:sword_long|Długi Miecz]]',
                 '{{wall.longSword.blow}}',
+                '{{wall.longSword.strongBlow}}',
                 '{{wall.longSword.segmentHits}}',
                 '{{wall.longSword.gateHits}}',
-                '{{wall.longSword.segmentSeconds}} s',
+                '{{wall.longSword.segmentSeconds}}',
               ],
               [
                 '[[good:sword_shord|Krótki Miecz]]',
                 '{{wall.shortSword.blow}}',
+                '{{wall.shortSword.strongBlow}}',
                 '{{wall.shortSword.segmentHits}}',
                 '{{wall.shortSword.gateHits}}',
-                '{{wall.shortSword.segmentSeconds}} s',
+                '{{wall.shortSword.segmentSeconds}}',
               ],
               [
                 '[[good:spear_wooden|Drewniana Włócznia]]',
                 '{{wall.woodenSpear.blow}}',
+                '{{wall.woodenSpear.strongBlow}}',
                 '{{wall.woodenSpear.segmentHits}}',
                 '{{wall.woodenSpear.gateHits}}',
-                '{{wall.woodenSpear.segmentSeconds}} s',
+                '{{wall.woodenSpear.segmentSeconds}}',
               ],
               [
                 '[[good:bow_short|Krótki Łuk]]',
                 '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.strongBlow}}',
                 '{{wall.shortBow.segmentHits}}',
                 '{{wall.shortBow.gateHits}}',
-                '{{wall.shortBow.segmentSeconds}} s',
+                '{{wall.shortBow.segmentSeconds}}',
               ],
               [
                 '[[good:bow_long|Długi Łuk]]',
                 '{{wall.longBow.blow}}',
+                '{{wall.longBow.strongBlow}}',
                 '{{wall.longBow.segmentHits}}',
                 '{{wall.longBow.gateHits}}',
-                '{{wall.longBow.segmentSeconds}} s',
+                '{{wall.longBow.segmentSeconds}}',
               ],
-              ['Pięści, strzały z budynku', '0', '-', '-', '-'],
+              ['Pięści, strzały z budynku', '0', '0', '-', '-', '-'],
             ],
-            num: [1, 2, 3, 4],
-            foot: 'Czas dla jednego żołnierza. Cyra zabiera {{wall.heroBow.blow}}, u Franków {{wall.frankHeroBow.blow}}.',
+            num: [1, 2, 3, 4, 5],
+            foot: 'Czas dla jednego żołnierza. Amulet dowódcy nie wzmacnia kamieni Katapulty. Cyra zabiera {{wall.heroBow.blow}} zdrowia palisady na strzał, Cyra Franków {{wall.frankHeroBow.blow}}.',
           },
         },
         {
           list: [
             'Doświadczenie w walce nie wzmacnia ciosów w palisadę.',
-            'Amulet Siły wzmacnia cios: {{wall.ironSpear.blow}} zmienia się w {{wall.ironSpear.strongBlow}}, {{wall.shortSword.blow}} w {{wall.shortSword.strongBlow}}, a {{wall.shortBow.blow}} zostaje {{wall.shortBow.strongBlow}}.',
             'Żołnierz sam nie atakuje palisady. Bije ją na rozkaz albo wtedy, gdy zagradza mu drogę do wroga.',
             'Gdy padnie jeden odcinek, żołnierze idą przez wyłom i nie burzą sąsiednich.',
           ],
@@ -631,29 +666,29 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Budynek', 'Zdrowie', 'Kamienie', 'Czas'],
+            head: ['Budynek', 'Zdrowie', 'Kamieni do zniszczenia', 'Czas dla 1 Katapulty'],
             rows: [
               [
                 '[[building:tower_00|Wieża obronna 1]]',
                 '{{hp.tower1}}',
                 '{{stone.tower1}}',
-                '{{stone.tower1Seconds}} s',
+                '{{stone.tower1Seconds}}',
               ],
               [
                 '[[building:tower_01|Wieża obronna 2]]',
                 '{{hp.tower2}}',
                 '{{stone.tower2}}',
-                '{{stone.tower2Seconds}} s',
+                '{{stone.tower2Seconds}}',
               ],
               [
                 '[[building:headquarters|Kwatera główna]], Wiking',
                 '{{hp.hq}}',
                 '{{stone.hq}}',
-                '{{stone.hqSeconds}} s',
+                '{{stone.hqSeconds}}',
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Kwatera główna Franków: {{hp.frankHq}} zdrowia, {{stone.frankHq}} kamieni, {{stone.frankHqSeconds}} s.',
+            foot: 'Kwatera główna Franków: {{hp.frankHq}} zdrowia, {{stone.frankHq}} kamieni, {{stone.frankHqSeconds}}.',
           },
         },
         {
@@ -691,7 +726,7 @@ export const MILITARY: ArticleGroup = {
                 'Obrona',
                 'Wokół swojej pozycji',
                 '{{catapult.searchRadius}}',
-                'Tak, do {{catapult.leash}} od pozycji',
+                'Tak, do {{catapult.leash}} hexów od pozycji',
               ],
               ['Ignorowanie', 'Wokół swojej pozycji', '{{catapult.min}}-{{catapult.max}}', 'Nie'],
             ],

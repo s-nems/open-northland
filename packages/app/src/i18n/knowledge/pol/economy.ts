@@ -68,6 +68,9 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
+          h: 'Uderzeń na 1 sztukę materiału',
+        },
+        {
           table: {
             head: ['Doświadczenie', 'Bez narzędzia', 'Drewniane', 'Żelazne'],
             rows: [
@@ -104,7 +107,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Uderzenia na 1 sztukę materiału. Doświadczenie [[job:builder|Budowniczego]] rośnie tylko z uderzeń, które posunęły budowę: [[article:exp-work|Doświadczenie w pracy]].',
+            foot: 'Doświadczenie [[job:builder|Budowniczego]] rośnie tylko z uderzeń, które posunęły budowę: [[article:exp-work|Doświadczenie w pracy]].',
           },
         },
         {
@@ -273,7 +276,14 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Zasób', 'Kto', 'Daje', 'Uderzenia bez doświadczenia', 'Czas', 'Narzędzie pomaga'],
+            head: [
+              'Zasób',
+              'Kto',
+              'Daje',
+              'Uderzenia bez doświadczenia',
+              'Czas na drzewo, sztukę lub pole',
+              'Narzędzie pomaga',
+            ],
             rows: [
               [
                 'Drzewo',
@@ -342,7 +352,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Żelazo i Złoto',
         },
         {
-          p: 'Żeby wydobywać [[good:iron|Żelazo]] albo [[good:gold|Złoto]], Zbieracz musi najpierw sam zebrać {{gather.oreNeed}} sztuk [[good:mud|Gliny]] i [[good:stone|Kamienia]] razem, osobno dla każdego z tych dwóch towarów. Pierwszy, któremu się to uda, odkrywa towar dla całej osady, a potem można go też nauczyć w [[building:school|Szkole]]. Do tego czasu panel pokazuje "zablokowane".',
+          p: '[[good:iron|Żelazo]] i [[good:gold|Złoto]] odkrywa Zbieracz, który sam wydobędzie łącznie {{gather.oreNeed}} sztuk [[good:mud|Gliny]] i [[good:stone|Kamienia]], np. 4 Gliny i 6 Kamienia. Ten sam wymóg otwiera oba towary. Pierwszy, któremu się to uda, odkrywa je dla całej osady, a potem można się ich też nauczyć w [[building:school|Szkole]]. Do tego czasu panel pokazuje "zablokowane".',
         },
         {
           h: 'Pole',
@@ -421,7 +431,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Skąd osadnik ma narzędzie',
         },
         {
-          p: 'Narzędzia rozdaje [[article:assistant|Asystent]], który jest włączony od początku gry, albo ty swoim rozkazem. Osadnik bez narzędzia sam idzie po nie do magazynu i bierze Żelazne, a jeśli ich nie ma, Drewniane. Drewnianego sam nie wymieni na lepsze.',
+          p: 'Narzędzia rozdaje [[article:assistant|Asystent]], który jest włączony od początku gry, albo ty swoim rozkazem. Osadnik bez narzędzia sam idzie po nie do magazynu i bierze Żelazne, a jeśli ich nie ma, Drewniane. Drewniane na Żelazne wymienia Asystent, gdy włączone są przełączniki "Żelazne narzędzia" i "Wymieniaj drewniane", a w magazynie leżą wolne Żelazne. Częściowo zużyte Drewniane przepada przy wymianie, nieużywane wraca do magazynu.',
         },
         {
           h: 'Kto korzysta',
@@ -448,10 +458,15 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Bez doświadczenia', 'Bez narzędzia', 'Drewniane', 'Żelazne'],
+            head: ['Osadnik bez doświadczenia', 'Bez narzędzia', 'Drewniane', 'Żelazne'],
             rows: [
-              ['Uderzenia', '{{tool.strokes.bare}}', '{{tool.strokes.wooden}}', '{{tool.strokes.iron}}'],
-              ['Rzuty na 1 rybę', '{{tool.casts.bare}}', '{{tool.casts.wooden}}', '{{tool.casts.iron}}'],
+              [
+                'Uderzeń na drzewo albo na sztukę kamienia, gliny lub rudy',
+                '{{tool.strokes.bare}}',
+                '{{tool.strokes.wooden}}',
+                '{{tool.strokes.iron}}',
+              ],
+              ['Rzutów na 1 rybę', '{{tool.casts.bare}}', '{{tool.casts.wooden}}', '{{tool.casts.iron}}'],
             ],
             num: [1, 2, 3],
             foot: 'Uderzenia przy drzewie, skale, złożu i polu ziół. Doświadczenie odejmuje od tego swoje uderzenia, ale zawsze zostaje co najmniej 1: [[article:exp-work|Doświadczenie w pracy]].',
@@ -657,7 +672,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'Dwa drogowskazy łączą się, gdy stoją bliżej niż {{reach.link}} hexów, a droga między nimi ma najwyżej {{reach.linkRoute}} hexów.',
+            'Dwa drogowskazy łączą się, gdy stoją bliżej niż {{reach.link}} hexów, a dojście między nimi ma najwyżej {{reach.linkRoute}} hexów.',
             'Twój nowy drogowskaz musi stać co najmniej {{reach.spacing}} hexów od innego.',
             'Towaru osadnik szuka bliżej niż {{reach.goods}} hexów od siebie albo od drogowskazów w tym zasięgu.',
             'Budynek postawiony na drogowskazie przesuwa go najwyżej o {{reach.displace}} hexów, a jeśli się nie da, drogowskaz znika.',
@@ -706,15 +721,15 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Teren pod drogą', 'Krok bez drogi', 'Krok drogą', 'Oszczędność'],
+            head: ['Teren pod drogą', 'Krok drogą krótszy o'],
             rows: [
-              ['Ląd', '{{step.land}} s', '{{step.road}} s', '{{step.roadSavedOnLandPct}}%'],
-              ['Piasek', '{{step.sand}} s', '{{step.road}} s', '{{step.roadSavedOnSandPct}}%'],
-              ['Góry', '{{step.mountain}} s', '{{step.road}} s', '{{step.roadSavedOnMountainPct}}%'],
-              ['Śnieg', '{{step.snow}} s', '{{step.road}} s', '{{step.roadSavedOnSnowPct}}%'],
+              ['Ląd', '{{step.roadSavedOnLandPct}}%'],
+              ['Piasek', '{{step.roadSavedOnSandPct}}%'],
+              ['Góry', '{{step.roadSavedOnMountainPct}}%'],
+              ['Śnieg', '{{step.roadSavedOnSnowPct}}%'],
             ],
-            num: [1, 2, 3],
-            foot: 'Osadnik w butach, bez ładunku. Buty na drodze zużywają się {{shoes.roadWear}} razy wolniej niż na lądzie.',
+            num: [1],
+            foot: 'Osadnik w butach, bez ładunku. Krok na każdym terenie: [[article:walking|Szybkość chodu]]. Buty na drodze zużywają się {{shoes.roadWear}} razy wolniej niż na lądzie.',
           },
         },
         {
@@ -740,20 +755,28 @@ export const ECONOMY: ArticleGroup = {
       lead: 'Krok na lądzie trwa {{step.landBrief}} s w butach i {{step.landBare}} s boso.',
       blocks: [
         {
+          p: 'Hex to najmniejsza kratka ruchu: osadnik przechodzi 1 hex w 1 kroku.',
+        },
+        {
           h: 'Krok według terenu',
         },
         {
           table: {
-            head: ['Teren', 'Boso', 'Kroków z pary butów'],
+            head: ['Teren', 'Krok w butach', 'Krok boso', 'Kroków z pary butów'],
             rows: [
-              ['Droga, bruk', '{{step.roadBare}} s', '{{shoes.road}}'],
-              ['Ląd', '{{step.landBare}} s', '{{shoes.land}}'],
-              ['Piasek, plaża, kamienista pustynia', '{{step.sandBare}} s', '{{shoes.sand}}'],
-              ['Góry', '{{step.mountainBare}} s', '{{shoes.mountain}}'],
-              ['Śnieg', '{{step.snowBare}} s', '{{shoes.snow}}'],
+              ['Droga, bruk', '{{step.road}} s', '{{step.roadBare}} s', '{{shoes.road}}'],
+              ['Ląd', '{{step.land}} s', '{{step.landBare}} s', '{{shoes.land}}'],
+              [
+                'Piasek, plaża, kamienista pustynia',
+                '{{step.sand}} s',
+                '{{step.sandBare}} s',
+                '{{shoes.sand}}',
+              ],
+              ['Góry', '{{step.mountain}} s', '{{step.mountainBare}} s', '{{shoes.mountain}}'],
+              ['Śnieg', '{{step.snow}} s', '{{step.snowBare}} s', '{{shoes.snow}}'],
             ],
-            num: [1, 2],
-            foot: 'Krok w butach na każdym terenie podaje [[article:roads|Drogi i drogowskazy]]. Z ładunkiem w rękach buty zużywają się {{shoes.carryWear}} razy szybciej. Ile energii kosztuje chodzenie boso: [[article:needs|Potrzeby]].',
+            num: [1, 2, 3],
+            foot: 'Z ładunkiem w rękach buty zużywają się {{shoes.carryWear}} razy szybciej. Ile Energii kosztuje chodzenie boso: [[article:needs|Potrzeby]]. Co daje droga: [[article:roads|Drogi i drogowskazy]].',
           },
         },
         {

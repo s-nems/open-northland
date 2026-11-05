@@ -5,6 +5,7 @@ import type { ArticleDataBlock } from '../../knowledge/articles.js';
 import { buildingHitpoints, type KnowledgeWeapon, SECONDS_PER_TICK } from '../../knowledge/base.js';
 import { weaponGroups, weaponLabel } from '../../knowledge/calculator.js';
 import {
+  ANIMAL_TARGET,
   type BlowModifiers,
   type CombatTarget,
   clipSeconds,
@@ -14,10 +15,9 @@ import {
   hitsToKill,
   landed,
   perSecond,
-  stepSeconds,
   targetName,
 } from '../../knowledge/combat.js';
-import { rangeText } from '../../knowledge/entry-format.js';
+import { rangeText, requirementText } from '../../knowledge/entry-format.js';
 import { formatFactNumber } from '../../knowledge/facts.js';
 import { goodIconMarkup } from '../good-art.js';
 import { element, setStyleVar, write } from '../parts/dom.js';
@@ -26,7 +26,6 @@ import { goLink, goodCell, plainTable } from './blocks.js';
 import type { KnowledgeContext } from './context.js';
 
 const BYZANTINE = 3;
-const STEP_DIGITS = 2;
 const SECONDS_DIGITS = 1;
 const MATRIX_ICON_PX = 24;
 const HEAT_DIGITS = 2;
@@ -241,7 +240,14 @@ function matrix(context: KnowledgeContext): HTMLElement {
     }),
   );
   const foot = element('p', 'kn-foot');
-  write(foot, formatMessage(copy.matrixFoot, { hitpoints: formatFactNumber(HUMAN_HITPOINTS) }));
+  const animalLike = combatTargets(context.base).find((target) => target.column === ANIMAL_TARGET.column);
+  write(
+    foot,
+    formatMessage(copy.matrixFoot, {
+      hitpoints: formatFactNumber(HUMAN_HITPOINTS),
+      blocking: animalLike?.blocking ?? 0,
+    }),
+  );
   host.append(controls, slot, foot);
   if (context.tribe() === BYZANTINE) {
     const dragon = element('p', 'kn-foot');
@@ -257,24 +263,10 @@ function armour(context: KnowledgeContext): HTMLElement {
   const copy = messages().knowledge.mechanics;
   const rows = base.armor.flatMap((row) => {
     const good = row.goodType === null ? undefined : base.goodByType.get(row.goodType);
-    if (good === undefined) return [];
-    return [
-      [
-        goodCell(context, good.id),
-        row.blockingValue,
-        row.weight,
-        formatMessage(copy.seconds, {
-          seconds: formatFactNumber(stepSeconds(row.weight), STEP_DIGITS, STEP_DIGITS),
-        }),
-      ],
-    ];
+    return good === undefined ? [] : [[goodCell(context, good.id), row.weight]];
   });
   const blocking = base.armor.find((row) => row.blockingValue > 0)?.blockingValue ?? 0;
-  return plainTable(
-    [copy.armourName, copy.armourBlock, copy.armourWeight, copy.armourStep],
-    rows,
-    formatMessage(copy.armourFoot, { blocking }),
-  );
+  return plainTable([copy.armourName, copy.armourWeight], rows, formatMessage(copy.armourFoot, { blocking }));
 }
 
 /** One school exercise; a course rounds up to whole exercises. */
@@ -305,10 +297,7 @@ function jobs({ base }: KnowledgeContext): HTMLElement {
     [copy.jobName, copy.jobRequirement],
     rows.map((job) => {
       const need = job.requirements.find((r) => r.route === 'need');
-      return [
-        goLink(`job:${job.id}`, job.name),
-        need === undefined ? '-' : `${need.amount} × ${need.experience.join(' + ')}`,
-      ];
+      return [goLink(`job:${job.id}`, job.name), need === undefined ? '-' : requirementText(need)];
     }),
     course === undefined
       ? ''
