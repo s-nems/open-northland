@@ -25,7 +25,7 @@ import {
 import { type PaperCard, paperCards, paperCardsKey, plansCount } from '../tool-panel/paper-cards.js';
 import type { ToolWindow } from '../tool-panel/window-shell.js';
 import type { BuildingThumbs } from './building-thumb.js';
-import { goodIconMarkup, goodIconSource, goodIconStyle } from './good-art.js';
+import { goodIconMarkup, goodIconPicture, goodIconStyle } from './good-art.js';
 import { GLYPH, paintedIcon } from './icons.js';
 import { escapeHtml } from './parts/dom.js';
 import { hasWords, searchWords } from './parts/name-search.js';
@@ -442,7 +442,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       const frame = slot.querySelector('.on-good__frame');
       const goodId = deps.goodIdOf(line.goodType);
       if (frame instanceof HTMLElement && goodId !== undefined) {
-        void goodIconSource(goodId, deps.pack, null).then((source) => {
+        void goodIconPicture(goodId, deps.pack, null).then((source) => {
           if (!disposed && source !== null) frame.style.cssText = goodIconStyle(source, COST_ICON_BOX_PX);
         });
       }

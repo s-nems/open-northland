@@ -9,6 +9,7 @@ import {
 } from '../../content/sprite-good-icons.js';
 import { diag } from '../../diag/index.js';
 import type { GoodIconSource, PresentationPack } from '../../presentation/pack.js';
+import { createStaticPictures } from './static-picture.js';
 
 /**
  * A good's icon for a DOM surface, drawn as a CSS background crop of its sheet: the presentation pack's
@@ -50,6 +51,71 @@ export async function goodIconSource(
     sheet: { width: atlas.width, height: atlas.height },
     rect: frame.rect,
   };
+}
+
+/** Sheets being decoded, shared by the icons one panel asks for together; a decoded sheet is not kept. */
+const decoding = new Map<string, Promise<HTMLImageElement>>();
+const pictures = createStaticPictures();
+/** Each frame's crop by its sheet and rect, so a sheet is decoded only for a frame not yet cut. */
+const crops = new Map<string, Promise<GoodIconSource>>();
+
+function loadSheet(url: string): Promise<HTMLImageElement> {
+  let pending = decoding.get(url);
+  if (pending === undefined) {
+    const image = new Image();
+    image.src = url;
+    pending = image
+      .decode()
+      .then(() => image)
+      .finally(() => decoding.delete(url));
+    decoding.set(url, pending);
+  }
+  return pending;
+}
+
+/**
+ * `source`'s frame cut out once into a picture of its own. A row that crops a whole sheet with CSS makes
+ * the GPU upload that sheet, and a window of goods icons spans dozens of them, tens of megabytes on each
+ * open. A sheet the page may not read back keeps the sheet source.
+ */
+function croppedIcon(source: GoodIconSource): Promise<GoodIconSource> {
+  const { rect } = source;
+  const key = `${source.url}#${rect.x},${rect.y},${rect.width},${rect.height}`;
+  let cropped = crops.get(key);
+  if (cropped === undefined) {
+    cropped = cropIcon(source, key);
+    crops.set(key, cropped);
+  }
+  return cropped;
+}
+
+async function cropIcon(source: GoodIconSource, key: string): Promise<GoodIconSource> {
+  const { rect } = source;
+  try {
+    const sheet = await loadSheet(source.url);
+    const picture = pictures.picture(key, rect.width, rect.height, (ctx) =>
+      ctx.drawImage(sheet, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height),
+    );
+    if (picture === null) return source;
+    return {
+      url: picture.url,
+      sheet: { width: rect.width, height: rect.height },
+      rect: { x: 0, y: 0, width: rect.width, height: rect.height },
+    };
+  } catch (error) {
+    diag.warn('hud', `good icon crop ${source.url}: ${String(error)}`);
+    return source;
+  }
+}
+
+/** {@link goodIconSource} as a DOM surface shows it: the frame alone, not its sheet. */
+export async function goodIconPicture(
+  goodId: string,
+  pack: PresentationPack | null,
+  content: ContentSet | null,
+): Promise<GoodIconSource | null> {
+  const source = await goodIconSource(goodId, pack, content);
+  return source === null ? null : croppedIcon(source);
 }
 
 /**
@@ -94,7 +160,7 @@ export function createGoodIconPainter(
   return (frame, goodId, boxPx) => {
     let pending = sources.get(goodId);
     if (pending === undefined) {
-      pending = goodIconSource(goodId, pack, content);
+      pending = goodIconPicture(goodId, pack, content);
       sources.set(goodId, pending);
     }
     pending
