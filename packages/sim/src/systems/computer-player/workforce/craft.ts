@@ -59,9 +59,10 @@ import type { SeatSupply, SupplyLine } from './supply.js';
  * each of its `goods` while the seat holds at least that many units of it (the summary bar's figure:
  * stores, workshop shelves, hands and the heaps in reach), and takes it back once the stock has fallen its
  * `band` (default {@link CRAFT_GLUT_BAND_UNITS}) under the glut; while every capped good is dropped it
- * works `otherwise`, or the whole list when there is none. With `spareOnly` it also drops a good whose
- * inputs the sites cannot spare ({@link inputsSpare}), an apprentice's too. A `firstFed` seat works the first of its lines whose `input` the
- * seat holds a unit of, and every line while it holds none of them. A good with supply lines
+ * works `otherwise`, or the whole list when there is none. With `spareOnly` it also drops, for an
+ * apprentice too, a good whose inputs the sites cannot spare ({@link inputsSpare}). A `firstFed` seat
+ * works the first of its lines whose `input` the seat holds a unit of, and every line while it holds none
+ * of them. A good with supply lines
  * ({@link SeatSupply}) takes no authored glut: {@link SeatCraftPlan.sink} covers it. A `firstEnabled` seat
  * works the first of its seats that names a good the seat may make right now, so a better product
  * replaces weaker ones once earned. An `until` seat works `works` until the seat has earned the good it
