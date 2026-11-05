@@ -47,10 +47,16 @@ export function glProgramFor(source: GlslProgramSource): GlProgram {
 }
 
 /** Enables on `renderer`'s context every extension a catalogue program may need, before its first
- *  link: the browser's program cache keys on the enabled extensions, and the shader warm-up enables
- *  the same ones in its own context. */
+ *  link and again on a restored context, which starts with none: the browser's program cache keys on
+ *  the enabled extensions, and the shader warm-up enables the same ones in its own context. */
 export function enableShaderExtensions(renderer: Renderer): void {
-  if (renderer instanceof WebGLRenderer) renderer.gl.getExtension(DUAL_SOURCE_BLEND);
+  if (!(renderer instanceof WebGLRenderer)) return;
+  const enable = (gl: WebGL2RenderingContext): void => {
+    gl.getExtension(DUAL_SOURCE_BLEND);
+  };
+  enable(renderer.gl);
+  // Pixi takes its own extensions before it runs these, so the order of the link-time state holds.
+  renderer.runners.contextChange.add({ contextChange: enable });
 }
 
 /** Whether `gl` compiles `source`, enabling its extension there. */
