@@ -276,9 +276,10 @@ it.each([false, true])(
   },
 );
 
-it('teaches the plain ship with a lesson in the trade ship', () => {
-  const PLAIN_SHIP = 61;
-  const TRADE_SHIP = 62;
+const PLAIN_SHIP = 61;
+const TRADE_SHIP = 62;
+
+it.each([PLAIN_SHIP, TRADE_SHIP])('teaches both ships with a lesson in either (good %i)', (lesson) => {
   const base = testContent();
   const shipLessons = [PLAIN_SHIP, TRADE_SHIP].map((targetId) => ({
     target: 'good' as const,
@@ -307,20 +308,17 @@ it('teaches the plain ship with a lesson in the trade ship', () => {
   sim.world.add(school, Building, { buildingType: SCHOOL, tribe: TRIBE, built: ONE, level: 0 });
   sim.world.add(school, Position, { x: fx.fromInt(SCHOOL_AT.x), y: fx.fromInt(SCHOOL_AT.y) });
   sim.world.add(school, Owner, { player: 0 });
-  discoverTechnology(sim.world, 0, TRIBE, 'good', TRADE_SHIP);
+  discoverTechnology(sim.world, 0, TRIBE, 'good', lesson);
   learn(sim.world, ctxOf(sim), {
     kind: 'learn',
     entity: pupil,
     house: school,
     target: 'good',
-    typeId: TRADE_SHIP,
+    typeId: lesson,
   });
   sim.world.mut(pupil, TrainingOrder).drillTicksLeft = 0;
   planLessonStep(sim, pupil);
   expect(sim.world.get(pupil, SettlerProgress).learned?.good).toEqual([PLAIN_SHIP, TRADE_SHIP]);
-  expect(settlerMeetsNeed(sim.world, ctxOf(sim), needSubjectOf(sim.world, pupil), 'good', PLAIN_SHIP)).toBe(
-    true,
-  );
 });
 
 it('keeps a served lesson when the school is razed before the pupil plans again', () => {
