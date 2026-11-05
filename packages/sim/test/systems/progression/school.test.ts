@@ -276,6 +276,53 @@ it.each([false, true])(
   },
 );
 
+it('teaches the plain ship with a lesson in the trade ship', () => {
+  const PLAIN_SHIP = 61;
+  const TRADE_SHIP = 62;
+  const base = testContent();
+  const shipLessons = [PLAIN_SHIP, TRADE_SHIP].map((targetId) => ({
+    target: 'good' as const,
+    targetId,
+    requirement: 'train' as const,
+    amount: 1,
+    experienceTypes: [TRAINING_EXPERIENCE_TYPE],
+  }));
+  const content = parseContentSet({
+    ...base,
+    goods: [...base.goods, { typeId: PLAIN_SHIP, id: 'ship_small' }, { typeId: TRADE_SHIP, id: 'ship_big' }],
+    buildings: [...base.buildings, { typeId: SCHOOL, id: 'school', kind: 'training', schoolSize: 1 }],
+    tribes: base.tribes.map((tribe) => ({
+      ...tribe,
+      jobEnables: [
+        { jobType: CARPENTER, kind: 'good', targetId: PLAIN_SHIP },
+        { jobType: CARPENTER, kind: 'good', targetId: TRADE_SHIP },
+      ],
+      jobRequirements: shipLessons,
+    })),
+  });
+  const sim = new Simulation({ seed: 6, content, map: grassCellMap(12, 12) });
+  const pupil = settlerAt(sim, { jobType: CARPENTER, tribe: TRIBE });
+  sim.world.add(pupil, Owner, { player: 0 });
+  const school = sim.world.create();
+  sim.world.add(school, Building, { buildingType: SCHOOL, tribe: TRIBE, built: ONE, level: 0 });
+  sim.world.add(school, Position, { x: fx.fromInt(SCHOOL_AT.x), y: fx.fromInt(SCHOOL_AT.y) });
+  sim.world.add(school, Owner, { player: 0 });
+  discoverTechnology(sim.world, 0, TRIBE, 'good', TRADE_SHIP);
+  learn(sim.world, ctxOf(sim), {
+    kind: 'learn',
+    entity: pupil,
+    house: school,
+    target: 'good',
+    typeId: TRADE_SHIP,
+  });
+  sim.world.mut(pupil, TrainingOrder).drillTicksLeft = 0;
+  planLessonStep(sim, pupil);
+  expect(sim.world.get(pupil, SettlerProgress).learned?.good).toEqual([PLAIN_SHIP, TRADE_SHIP]);
+  expect(settlerMeetsNeed(sim.world, ctxOf(sim), needSubjectOf(sim.world, pupil), 'good', PLAIN_SHIP)).toBe(
+    true,
+  );
+});
+
 it('keeps a served lesson when the school is razed before the pupil plans again', () => {
   const base = testContent();
   const content = parseContentSet({

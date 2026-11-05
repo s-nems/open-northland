@@ -1,3 +1,4 @@
+import { type ContentSet, LEARNED_GOOD_INCLUDES } from '@open-northland/data';
 import {
   AssistantRecruit,
   consumeAssistantCounter,
@@ -14,6 +15,7 @@ import {
   TrainingOrder,
   UnderConstruction,
 } from '../../../components/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -45,6 +47,18 @@ import { planDelivery } from './economy/delivery.js';
 import { deliveryTargetFor } from './economy/delivery-targets.js';
 import { fetchNeededMaterial } from './economy/site-supply.js';
 import { loiterCell } from './spacing.js';
+
+/** The goods a school lesson in `good` teaches: the good and those {@link LEARNED_GOOD_INCLUDES} adds
+ *  that the content defines. */
+function lessonGoods(content: ContentSet, good: number): number[] {
+  const goods = [good];
+  const slug = contentIndex(content).goods.get(good)?.id;
+  for (const included of (slug === undefined ? undefined : LEARNED_GOOD_INCLUDES.get(slug)) ?? []) {
+    const id = contentIndex(content).goodTypeBySlug.get(included);
+    if (id !== undefined) goods.push(id);
+  }
+  return goods;
+}
 
 /**
  * How long a recruit stays inside the barracks before it comes back out a soldier: 15 s of game time,
@@ -108,7 +122,9 @@ export function planTraining(
       const progress = world.mut(e, SettlerProgress);
       progress.learned ??= { job: [], good: [] };
       const ids = progress.learned[order.lesson.kind];
-      if (!ids.includes(order.lesson.typeId)) ids.push(order.lesson.typeId);
+      const taught =
+        order.lesson.kind === 'good' ? lessonGoods(ctx.content, order.lesson.typeId) : [order.lesson.typeId];
+      for (const id of taught) if (!ids.includes(id)) ids.push(id);
       ids.sort((a, b) => a - b);
       noteSettlerProgress(world, e);
       const job =
