@@ -56,13 +56,29 @@ export function colonists(env: ColonyEnv): Entity[] {
   );
 }
 
+/** The store chain's tiers a colony raises, by type id. */
+function storeTiers(env: ColonyEnv): ReadonlySet<number> {
+  const store = buildingTypeByContentId(env.ctx.content, COLONY_STORE_BUILDING_ID);
+  return store === undefined ? new Set() : tiersAtOrAbove(contentIndex(env.ctx.content), store);
+}
+
 /** The colony's first store at any tier, standing, upgrading or a site. */
 export function storeOf(env: ColonyEnv, buildings: readonly Entity[]): Entity | null {
-  const { world, ctx } = env;
-  const store = buildingTypeByContentId(ctx.content, COLONY_STORE_BUILDING_ID);
-  if (store === undefined) return null;
-  const tiers = tiersAtOrAbove(contentIndex(ctx.content), store);
-  return buildings.find((e) => tiers.has(world.get(e, Building).buildingType)) ?? null;
+  const tiers = storeTiers(env);
+  return buildings.find((e) => tiers.has(env.world.get(e, Building).buildingType)) ?? null;
+}
+
+/** A colony with no store and none queued, its first one lost, queues one again: no other building of its
+ *  plan goes up without one, and no trader calls there. */
+function queueLostStore(env: ColonyEnv, colony: ColonyView): void {
+  const { world, ctx, seat } = env;
+  const type = colonyStoreType(world, ctx, seat);
+  const index = contentIndex(ctx.content);
+  const tiers = storeTiers(env);
+  const queued = colony.builds.some(
+    (b) => !b.placed && tiers.has(index.buildingTypeBySlug.get(b.building) ?? -1),
+  );
+  if (type !== undefined && !queued) env.edit().builds.push({ building: type.id, placed: false });
 }
 
 /** A real node on the colony's land its work starts from: its store once placed, else the shore. */
@@ -108,10 +124,16 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
   // The first store goes up alone: another site would take the bill the founding ship brought for it, and
   // the trader that brings the rest waits for that store.
   if (colony.phase === 'founding' && read.store !== null && !isBuilt(world, read.store)) return [];
-  for (const building of read.store === null ? plan.slice(0, 1) : plan) {
+  // With none standing, the store goes up first and past the site budget: every open site waits on its goods.
+  const tiers = storeTiers(env);
+  const steps =
+    read.store === null
+      ? plan.filter((b) => tiers.has(index.buildingTypeBySlug.get(b) ?? -1)).slice(0, 1)
+      : plan;
+  for (const building of steps) {
     const typeId = index.buildingTypeBySlug.get(building);
     const type = typeId === undefined ? undefined : index.buildings.get(typeId);
-    if (type === undefined || !siteFree(building, open)) continue;
+    if (type === undefined || (read.store !== null && !siteFree(building, open))) continue;
     // An industry's site opens once the colony's stores hold its bill: one waiting on a good locks what it
     // was brought, while the plan's bills still have the trader bring the rest.
     if (chainStepOf(building) !== undefined && !billHeld(type.typeId)) continue;
@@ -145,10 +167,9 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
   const type = colonyStoreType(world, ctx, seat);
   const wood = goodTypeByContentId(ctx.content, 'wood');
   if (type === undefined || wood === undefined || read.store === null) return [];
-  const index = contentIndex(ctx.content);
-  const base = buildingTypeByContentId(ctx.content, COLONY_STORE_BUILDING_ID);
-  const tiers = base === undefined ? new Set<number>() : tiersAtOrAbove(index, base);
-  const stores = colony.builds.filter((b) => tiers.has(index.buildingTypeBySlug.get(b.building) ?? -1));
+  const tiers = storeTiers(env);
+  // Counted where they stand, so a lost one is raised again.
+  const stores = read.buildings.filter((e) => tiers.has(world.get(e, Building).buildingType));
   if (stores.length > 1) return [];
   const reachable = reachableResourceTest(
     world,
@@ -247,6 +268,7 @@ export function foundColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[]
   const origin = colonyOrigin(env, colony, buildings);
   if (origin === null) return [];
   const store = storeOf(env, buildings);
+  if (store === null) queueLostStore(env, colony);
   const read: FoundingRead = { buildings, store, origin, plan: colonyPlan(env, colony, buildings) };
   const people = colonists(env);
   const men = people.filter((e) => isAllocatableMan(world, ctx, e));
