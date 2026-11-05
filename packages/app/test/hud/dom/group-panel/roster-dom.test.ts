@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import type { GroupMemberModel } from '../../../../src/hud/details-panel/model/index.js';
-import { createMemberRoster } from '../../../../src/hud/dom/group-panel/members.js';
+import { createMemberRoster, layChildren } from '../../../../src/hud/dom/group-panel/members.js';
 
 afterEach(() => document.body.replaceChildren());
 
@@ -74,5 +74,64 @@ describe('member roster on the page', () => {
     roster.element.dispatchEvent(new Event('scroll'));
     expect(roster.element.contains(first ?? null)).toBe(false);
     expect(roster.hovered()).toBeNull();
+  });
+
+  it('moves only the well of a member whose place in the order changed', () => {
+    const roster = createMemberRoster(
+      () => {},
+      () => {},
+    );
+    roster.element.style.gridAutoRows = `${ROW_PX}px`;
+    roster.element.style.rowGap = `${GAP_PX}px`;
+    document.body.append(roster.element);
+    const members = Array.from({ length: MEMBERS }, (_, n) => settler(n + 1));
+    roster.update(members, members);
+    roster.setRows(VIEW_ROWS);
+    const watch = new MutationObserver(() => {});
+    watch.observe(roster.element, { childList: true });
+
+    // The second member grew up and now sorts after the next five.
+    const [first, grown, ...rest] = members;
+    const later = 5;
+    if (first === undefined || grown === undefined) throw new Error('no members');
+    const reordered = [first, ...rest.slice(0, later), grown, ...rest.slice(later)];
+    roster.update(reordered, reordered);
+    const moved = watch.takeRecords().flatMap((record) => [...record.removedNodes]);
+    watch.disconnect();
+
+    expect(moved).toHaveLength(1);
+    const wells = [...roster.element.querySelectorAll('.on-roster__well')];
+    expect(wells.indexOf(moved[0] as Element)).toBe(1 + later);
+  });
+});
+
+describe('laying children in place', () => {
+  const nodes = (names: string): HTMLElement[] =>
+    [...names].map((name) => {
+      const node = document.createElement('i');
+      node.id = name;
+      return node;
+    });
+  const order = (parent: Element): string => [...parent.children].map((child) => child.id).join('');
+
+  it('ends in the order asked for whatever moved, joined or left', () => {
+    const pool = new Map(nodes('abcdefgh').map((node) => [node.id, node]));
+    const pick = (names: string): HTMLElement[] =>
+      [...names].map((name) => pool.get(name)).filter((node) => node !== undefined);
+    for (const [from, to] of [
+      ['abcdef', 'abcdef'],
+      ['abcdef', 'bcdeaf'],
+      ['abcdef', 'eabcdf'],
+      ['abcdef', 'fedcba'],
+      ['abcdef', 'cdefgh'],
+      ['abcdef', 'hbadg'],
+      ['abc', ''],
+      ['', 'abc'],
+    ] as const) {
+      const parent = document.createElement('div');
+      parent.append(...pick(from));
+      layChildren(parent, pick(to));
+      expect(order(parent), `${from} to ${to}`).toBe(to);
+    }
   });
 });

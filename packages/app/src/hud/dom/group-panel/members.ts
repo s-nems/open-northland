@@ -112,6 +112,25 @@ export function rowsInView(
   return { first, last };
 }
 
+/** Make `nodes` the children of `parent` in order, moving only the ones out of place: a member that
+ *  changed kind or a scroll by a row moves a few wells, and every other well keeps its layout box,
+ *  which replacing the children would tear down and build again. */
+export function layChildren(parent: Element, nodes: readonly Element[]): void {
+  const kept = new Set(nodes);
+  for (const child of [...parent.children]) if (!kept.has(child)) child.remove();
+  let at = parent.firstElementChild;
+  for (const node of nodes) {
+    // The node here is wanted further on, as when a member moved down the list: it leaves until its
+    // place comes, instead of every node before that place moving up past it.
+    if (at !== null && node !== at && node === at.nextElementSibling) {
+      at.remove();
+      at = node;
+    }
+    if (node === at) at = node.nextElementSibling;
+    else parent.insertBefore(node, at);
+  }
+}
+
 /** Ms a press waits for a second one before it selects the member alone, so a double press can bring the
  *  member into view without the panel giving way under the cursor first. Shorter than the platforms'
  *  double-click default, which would make every single press feel late. */
@@ -326,7 +345,8 @@ export function createMemberRoster(
   };
   const spanRows = (pad: HTMLElement, rows: number): HTMLElement | null => {
     if (rows <= 0) return null;
-    pad.style.gridRow = `span ${rows}`;
+    const span = `span ${rows}`;
+    if (pad.style.gridRow !== span) pad.style.gridRow = span;
     return pad;
   };
 
@@ -355,7 +375,7 @@ export function createMemberRoster(
     nodes.push(figures.canvas);
     // Laying a well again drops its focus; hand it back without moving the scroll.
     const focused = document.activeElement;
-    root.replaceChildren(...nodes);
+    layChildren(root, nodes);
     if (focused instanceof HTMLElement && focused !== document.activeElement && root.contains(focused))
       focused.focus({ preventScroll: true });
     // A well detached under the cursor gets no mouseleave, so its hover ends here.
