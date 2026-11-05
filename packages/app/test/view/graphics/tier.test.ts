@@ -47,6 +47,8 @@ describe('bundled GPU benchmark detection', () => {
     ['AMD Radeon RX 9070 XT', 3],
     ['Intel UHD Graphics 620', 1],
     ['Intel HD Graphics 4000', 1],
+    // A model-less Ryzen APU, which recommendGraphics caps by its device id.
+    ['ANGLE (AMD, AMD Radeon(TM) Graphics (0x0000164E) Direct3D11 vs_5_0 ps_5_0, D3D11)', 3],
   ] as const)('classifies %s using the installed library and its database', async (renderer, tier) => {
     vi.spyOn(hardware, 'detectedWebglRenderer').mockReturnValue(renderer);
     const detection = await detectGraphicsTier();

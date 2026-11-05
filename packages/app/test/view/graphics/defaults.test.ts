@@ -56,4 +56,46 @@ describe('first-launch graphics policy', () => {
   it.each([-1, 4, Number.NaN])('uses conservative defaults for an unsupported tier %s', (tier) => {
     expect(recommendGraphics({ type: 'BENCHMARK', tier }).profile).toBe('performance');
   });
+
+  it.each([
+    [
+      'a two-unit Raphael',
+      'ANGLE (AMD, AMD Radeon(TM) Graphics (0x0000164E) Direct3D11 vs_5_0 ps_5_0, D3D11)',
+      'balanced',
+    ],
+    [
+      'a two-unit Mendocino',
+      'ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001506) Direct3D11 vs_5_0 ps_5_0, D3D11)',
+      'balanced',
+    ],
+    [
+      'a seven-unit Renoir',
+      'ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001636) Direct3D11 vs_5_0 ps_5_0, D3D11)',
+      'quality',
+    ],
+    ['a Radeon without a device id', 'AMD Radeon(TM) Graphics', 'quality'],
+    [
+      'a named discrete card',
+      'ANGLE (AMD, AMD Radeon RX 6600 (0x000073FF) Direct3D11 vs_5_0 ps_5_0, D3D11)',
+      'quality',
+    ],
+  ] as const)(
+    'caps the tier 3 profile of %s at Balanced only for a two-unit device id',
+    (_, renderer, profile) => {
+      const result = recommendGraphics({ type: 'BENCHMARK', tier: 3 }, renderer);
+      expect(result).toMatchObject({ profile, cap: profile === 'balanced' ? 'two-unit-radeon' : null });
+      if (profile === 'balanced') {
+        expect(result.settings).toEqual(recommendGraphics({ type: 'BENCHMARK', tier: 2 }).settings);
+      }
+    },
+  );
+
+  it('never raises a lower tier for a two-unit device id', () => {
+    const renderer = 'ANGLE (AMD, AMD Radeon(TM) Graphics (0x0000164E) Direct3D11 vs_5_0 ps_5_0, D3D11)';
+    expect(recommendGraphics({ type: 'BENCHMARK', tier: 1 }, renderer)).toMatchObject({
+      profile: 'performance',
+      cap: null,
+    });
+    expect(recommendGraphics({ type: 'FALLBACK', tier: 3 }, renderer).profile).toBe('performance');
+  });
 });

@@ -17,6 +17,7 @@ database. The game owns only the mapping in
 | Library result | Game profile | Original art filter | Other optional world enhancements |
 | --- | --- | --- | --- |
 | `BENCHMARK`, tier 3 | Quality | xBR | All enabled |
+| `BENCHMARK`, tier 3, a two-unit Radeon APU (below) | Balanced | Off | All enabled |
 | `BENCHMARK`, tier 2 | Balanced | Off | All enabled |
 | `BENCHMARK`, tier 0 or 1 | Performance | Off | Enhanced shadows, water, environment motion, building grounding, detailed building damage, day and night, weather and post effects disabled |
 | Missing, blocked, failed or fallback detection | Performance | Off | Same as above |
@@ -39,7 +40,11 @@ HD 4000 match tier 1. These are tested library outputs, not performance measurem
 
 Ryzen APUs report `AMD Radeon(TM) Graphics` with a PCI device id and no model. The database matches that
 name to an unrelated discrete card (`intel radeong 0.4 on amd tonga` at 119 fps with the id,
-`amd radeon polaris` at 60 fps without), so every such APU gets tier 3 whatever its size.
+`amd radeon polaris` at 60 fps without), so every such APU gets tier 3 whatever its size. Quality fits
+the seven-unit Vega 7 ([laptop GPUs](#laptop-gpus-at-19201080)). The device ids whose every part is a
+two-unit Radeon 610M in the published PCI ID list (Granite Ridge `0x13C0`, Mendocino `0x1506`, Raphael
+`0x164E`) start on Balanced instead: by unit count and clock they have under a third of its throughput,
+an estimate rather than a measurement. Other ids, and a name without one, keep the library's tier.
 
 ## Cost basis
 
