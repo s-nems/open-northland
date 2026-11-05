@@ -22,8 +22,8 @@ import type { ColonyEnv } from './voyage.js';
 
 // A colony's gatherers set what they dig down by their flags, and the store's porters take it in: one
 // porter keeps the store's own round, and one more holds a flag at each dig past that round (our own
-// choice for the computer player, through the player's flag order). The trader loads from buildings
-// alone, so a heap no porter reaches never sails home.
+// choice for the computer player, through the player's flag order). The colony's stock policy counts only
+// what its stores hold and the heaps in their reach, so a heap no porter brings in reads as missing.
 
 /** How far inside a porter's reach a dig must lie, in Manhattan nodes (authored): a gatherer's heaps spread
  *  up to about nine nodes off its flag on the real map, and the flag order snaps a porter's flag a few nodes
