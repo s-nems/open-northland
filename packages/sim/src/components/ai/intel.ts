@@ -70,5 +70,13 @@ export interface IntelScout {
   zone: number;
 }
 
+/** The seat's scouting memory, which stays with the sim: read views show what it knows of the others. */
+const INTEL_SCOUTING_FIELDS = ['scout', 'scoutLostAt', 'scoutTurnedBackAt'] as const;
+
+/** {@link ComputerIntelState} as a snapshot carries it. */
+export type ComputerIntelSnapshot = Omit<ComputerIntelState, (typeof INTEL_SCOUTING_FIELDS)[number]>;
+
 /** Held on the seat's `AiControl` carrier, so it dies with the seat (`systems/computer-player/knowledge/intel`). */
-export const ComputerIntel = defineComponent<ComputerIntelState>('ComputerIntel', 'players');
+export const ComputerIntel = defineComponent<ComputerIntelState>('ComputerIntel', 'players', {
+  simOnlyFields: INTEL_SCOUTING_FIELDS,
+});

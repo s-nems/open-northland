@@ -1,6 +1,7 @@
 import {
   aiControlEntity,
   ComputerIntel,
+  type ComputerIntelSnapshot,
   type ComputerIntelState,
   diplomacyStance,
   type IntelBuilding,
@@ -169,9 +170,9 @@ export interface SeatIntelSummary {
   readonly zones: number;
 }
 
-/** A plain-data digest of one seat's memory at `tick`; takes the `ComputerIntel` component itself, so a
- *  debug view can feed it a snapshot's copy. */
-export function summarizeIntel(intel: IntelView, tick: number): SeatIntelSummary {
+/** A plain-data digest of one seat's memory at `tick`; takes the `ComputerIntel` component as a snapshot
+ *  carries it, so a debug view can feed it a snapshot's copy. */
+export function summarizeIntel(intel: DeepReadonly<ComputerIntelSnapshot>, tick: number): SeatIntelSummary {
   const owners = new Map<number, { buildings: number; unseenBuildings: number; posts: number }>();
   const tally = (owner: number) => {
     let held = owners.get(owner);

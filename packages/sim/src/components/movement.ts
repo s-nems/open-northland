@@ -85,10 +85,12 @@ export const AnimalRunning = defineComponent<Record<string, never>>('AnimalRunni
 export const WALK_DIRECTION = { E: 0, SE: 1, SW: 2, W: 3, NW: 4, NE: 5, N: 6, S: 7 } as const;
 export type WalkDirection = (typeof WALK_DIRECTION)[keyof typeof WALK_DIRECTION];
 
-/** Retained between routes; turning is simulation state, not a render interpolation. */
+/** Retained between routes; turning is simulation state, not a render interpolation. Read views carry
+ *  only the heading drawn, not the one the turn steps toward. */
 export const WalkFacing = defineComponent<{ direction: WalkDirection; target: WalkDirection }>(
   'WalkFacing',
   'movement',
+  { simOnlyFields: ['target'] },
 );
 
 /** One stop of a route: a fixed-point position and the lattice node the walker stands on there, whose

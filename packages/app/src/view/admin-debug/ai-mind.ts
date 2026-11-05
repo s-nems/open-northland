@@ -76,7 +76,7 @@ export function readSeatMind(
   scripts: AiScriptInputs | null,
   pupils: ReadonlyMap<number, number> | undefined,
 ): SeatMind {
-  const intel = carrier.components.ComputerIntel as components.ComputerIntelState | undefined;
+  const intel = carrier.components.ComputerIntel as components.ComputerIntelSnapshot | undefined;
   const territory = systems.seatTerritoryOf(brief, player);
   return {
     tick,
@@ -107,7 +107,7 @@ export function readSeatMind(
 /** The other seats' start zones, never seen first, then the longest unseen; ties to the lower slot. */
 function staleStartZones(
   brief: components.MapBriefView,
-  intel: components.ComputerIntelState,
+  intel: components.ComputerIntelSnapshot,
   player: number,
   tick: number,
 ): StaleZone[] {
