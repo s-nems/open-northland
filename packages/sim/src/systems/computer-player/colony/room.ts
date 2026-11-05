@@ -9,7 +9,7 @@ import { placementProbe } from '../../footprint/placement/building.js';
 
 /** The home chain's base tier. Its reserved zone already spans the top tier's body, so a colony's room is
  *  counted in these whatever tier it raises. */
-export const COLONY_HOME_ID = 'home_level_00';
+const COLONY_HOME_ID = 'home_level_00';
 
 /**
  * How many homes fit side by side within `radius` Manhattan nodes of `at` on `land` as the map stands now,

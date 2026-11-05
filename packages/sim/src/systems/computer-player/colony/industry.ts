@@ -23,7 +23,7 @@ export type DepositFact = 'wood' | 'iron' | 'gold' | 'mushroom';
 
 /** How the colony earns the trade of a step its seat has not discovered: its men gathering a deposit of its
  *  land, or the crew of the chain's step before it at work. */
-export type EarnedBy = { readonly gathering: DepositFact } | { readonly workAt: string };
+export type EarnedBy = { readonly gathering: DepositFact } | 'crewBefore';
 
 export interface ChainStep {
   /** The base tier's stable content id: a building at any tier of its chain counts as this step. */
@@ -102,7 +102,7 @@ const CHAINS: Readonly<Record<Exclude<Industry, 'temple'>, readonly ChainStep[]>
       after: [WELL, HERB_HUT, MINT],
       top: DRUID_TOP,
       far: true,
-      earnedBy: { workAt: HERB_HUT },
+      earnedBy: 'crewBefore',
     },
   ],
   amulets: [{ building: MINT, ground: 'any', after: [], far: true }],
@@ -246,7 +246,7 @@ function fed(industry: Exclude<Industry, 'temple'>, site: SiteFacts, seat: SeatR
  *  chain's earlier step's crew works it. */
 function earnable(step: ChainStep, site: SiteFacts): boolean {
   if (step.earnedBy === undefined) return false;
-  return 'gathering' in step.earnedBy ? site[step.earnedBy.gathering] : true;
+  return step.earnedBy === 'crewBefore' || site[step.earnedBy.gathering];
 }
 
 /** Whether a building of `steps` of its own stands on the colony, or its site. */
@@ -347,15 +347,6 @@ export function nextIndustrySteps(chosen: readonly IndustryChoice[], read: StepR
   return next;
 }
 
-/** The steps of `chosen` not raised yet, whatever the moment: what the colony keeps goods for. */
-export function stepsAhead(chosen: readonly IndustryChoice[], raised: ReadonlySet<string>): ChainStep[] {
-  const ahead: ChainStep[] = [];
-  for (const { steps } of chosen)
-    for (const step of steps)
-      if (!raised.has(step.building) && !ahead.some((s) => s.building === step.building)) ahead.push(step);
-  return ahead;
-}
-
 /** The deposits `chosen` asks the colony's men to gather to earn a trade its steps wait on, by stable
  *  content id: the steps not open yet whose trade is earned by gathering. */
 export function earningDeposits(
@@ -365,7 +356,7 @@ export function earningDeposits(
   const deposits: DepositFact[] = [];
   for (const { steps } of chosen)
     for (const step of steps)
-      if (step.earnedBy !== undefined && 'gathering' in step.earnedBy && !open(step))
+      if (step.earnedBy !== undefined && step.earnedBy !== 'crewBefore' && !open(step))
         deposits.push(step.earnedBy.gathering);
   return deposits;
 }

@@ -199,17 +199,17 @@ export function reviewOverflow(env: ColonyEnv, colony: ColonyView): void {
   if (colony.phase === 'running') handOver(env, colony);
 }
 
-export interface CraftSeat {
+export interface WorkshopSeat {
   readonly building: Entity;
   readonly job: number;
 }
 
 /** The craftsmen's seats the colony's standing workshops lack; a carrier any man can be, a gatherer's seat
  *  stays open. */
-export function openCraftSeats(env: ColonyEnv, buildings: readonly Entity[]): CraftSeat[] {
+export function openCraftSeats(env: ColonyEnv, buildings: readonly Entity[]): WorkshopSeat[] {
   const { world, ctx, seat } = env;
   const index = contentIndex(ctx.content);
-  const seats: CraftSeat[] = [];
+  const seats: WorkshopSeat[] = [];
   for (const building of buildings) {
     const type = workshopType(env, building);
     if (type === undefined || !isBuilt(world, building)) continue;

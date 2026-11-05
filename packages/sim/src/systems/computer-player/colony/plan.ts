@@ -15,7 +15,7 @@ import { mayMarry } from '../../family/eligibility.js';
 import { familiesOf } from '../../family/households.js';
 import { topEnabledTier } from '../top-tier.js';
 import { colonists } from './founding.js';
-import { type ChainStep, chainStepOf, nextIndustrySteps, type StepGround, stepsAhead } from './industry.js';
+import { type ChainStep, chainStepOf, nextIndustrySteps, type StepGround } from './industry.js';
 import { colonyIndustries, roomFor, stepType } from './industry-read.js';
 import { colonyFed } from './provision.js';
 import { schoolLacking } from './school.js';
@@ -147,19 +147,6 @@ function homeStep(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity
     ahead: type.homeSize,
   });
   return due ? [type.id] : [];
-}
-
-/** The buildings the colony's industries still hold, whatever the moment: what it keeps goods for though
- *  no step is due. */
-export function ladderAhead(
-  env: ColonyEnv,
-  colony: ColonyView,
-  buildings: readonly Entity[],
-): readonly string[] {
-  const industries = colonyIndustries(env, colony, buildings);
-  return industries === null
-    ? []
-    : stepsAhead(industries.choices, industries.read.raised).map((step) => placedId(env, step));
 }
 
 /** What the colony means to raise, in order: its unplaced rows; then its school (`./school.ts`), the next
