@@ -17,7 +17,7 @@ import { seatSiege } from './towers/siege.js';
 
 /** The first of {@link BASE_REPLACEMENT_IDS} the seat may raise and has a source for every good of its
  *  bill ({@link billSourced}), else the lowest tier the content has. */
-export function baseReplacementType(
+function baseReplacementType(
   world: World,
   ctx: SystemContext,
   player: number,
@@ -42,7 +42,7 @@ export function baseReplacementType(
 }
 
 /** Where the seat's start headquarters stood, as the map brief recorded it, or null. */
-export function startHeadquartersNode(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
+function startHeadquartersNode(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
   const hq = buildingTypeByContentId(ctx.content, HEADQUARTERS_BUILDING_ID);
   if (hq === undefined) return null;
   const start = mapBriefOf(world)?.seats.find((seat) => seat.player === player);

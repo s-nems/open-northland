@@ -321,7 +321,7 @@ export function runFerry(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
  *  in at most `seats`, and the lessons that make the next such man where home's school teaches the trade;
  *  none once the colony's own school stands. A workshop none of them reaches simply waits: home's line has
  *  moved on. */
-export function tradesmenFor(
+function tradesmenFor(
   env: ColonyEnv,
   people: readonly Entity[],
   home: number,

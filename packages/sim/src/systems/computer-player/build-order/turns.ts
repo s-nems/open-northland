@@ -82,20 +82,20 @@ export function deadlineStep(entry: BuildOrderEntry): boolean {
   return entry.kind === 'place' && entry.holdUntil !== undefined && waitsOnDeadline(entry.holdUntil);
 }
 
-export function waitsOnDeadline(hold: StepHold): boolean {
+function waitsOnDeadline(hold: StepHold): boolean {
   if (hold.kind === 'all' || hold.kind === 'any') return hold.holds.some(waitsOnDeadline);
   return hold.kind === 'deadline';
 }
 
 /** What the food rule asks of {@link turnOrder}: whether the seat's food fails ({@link seatFoodFailing}),
  *  and whether a step is ready for a site rather than held or waiting on a discovery. */
-export interface FoodTurn {
+interface FoodTurn {
   readonly foodFailing: boolean;
   readonly ready: (entry: BuildOrderEntry) => boolean;
 }
 
 /** A line's {@link TURN}, and whether it may take the earned workshops' site over the pace. */
-export interface LineTurn {
+interface LineTurn {
   readonly line: BuildLine;
   readonly turn: number;
   readonly extraSite: boolean;
@@ -188,7 +188,7 @@ export function turnOrder(
  * tower ring took the two opening sites for five to twenty game minutes after the mill, animal farm and
  * smithy were discovered. A locked step still holds its line, so the turn only matters once it opens.
  */
-export function earnedWorkshop(gated: TechnologyTable | null, type: BuildingType): boolean {
+function earnedWorkshop(gated: TechnologyTable | null, type: BuildingType): boolean {
   if (gated === null || type.kind !== BUILDING_KIND.workplace) return false;
   const row = gated.houses.get(type.typeId);
   return row !== undefined && row.jobs.length + row.goods.length > 0;

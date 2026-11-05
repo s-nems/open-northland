@@ -187,7 +187,7 @@ export function coverageCommand(
 /** A short tower ring's next command (`./towers/tower-defence.ts`): the upgrade of a lower tower that lifts its
  *  defence, while the ring `lifts` towers and the seat may start one, else a new tower of `type` where it
  *  lifts the lowest covered target most. */
-export function towerCommand(
+function towerCommand(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
