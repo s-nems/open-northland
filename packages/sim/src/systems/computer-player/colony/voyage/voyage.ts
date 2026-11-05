@@ -37,8 +37,8 @@ import {
   storeBill,
   wantManifest,
 } from '../sea/cargo.js';
-import { carryingShip, shipId, takeRouteShip } from '../sea/fleet.js';
 import { dock, landOf, lyingStill, mooredOn, mooringOf, unloadAt } from '../sea/moorings.js';
+import { carryingShip, shipId, takeRouteShip } from '../sea/ship-claims.js';
 import { TRADE_SHIP_ID } from '../sea/trade-ship.js';
 import { colonyStoreType } from '../store-type.js';
 import { colonyShores, shoreWithStore } from './shore.js';
