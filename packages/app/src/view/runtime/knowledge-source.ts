@@ -11,6 +11,7 @@ export interface KnowledgeSourceDeps {
   readonly content: ContentSet;
   readonly tribe: number;
   readonly seat: () => number | null;
+  readonly tribeOf: (player: number) => number;
   readonly unlockStatus: (
     kind: UnlockKind,
     typeId: number,
@@ -23,13 +24,14 @@ export interface KnowledgeSourceDeps {
 
 /** Knowledge as a running game feeds it. The reference and its view load on the first open. */
 export function createKnowledgeSource(deps: KnowledgeSourceDeps): KnowledgeSource {
-  const { content, tribe } = deps;
+  const { content } = deps;
   const settlement = createKnowledgeSettlement({
     content,
-    tribe,
+    tribe: deps.tribe,
     seat: deps.seat,
+    tribeOf: deps.tribeOf,
     unlockStatus: deps.unlockStatus,
-    progressOf: (player) => discoveryProgressOf(content, deps.snapshot(), player, tribe),
+    progressOf: (player, tribe) => discoveryProgressOf(content, deps.snapshot(), player, tribe),
   });
   return {
     createView: async (thumbs) => {

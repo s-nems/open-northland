@@ -41,6 +41,7 @@ describe('the settlement Knowledge reads', () => {
       content,
       tribe: VIKING,
       seat: () => SEAT,
+      tribeOf: () => VIKING,
       unlockStatus,
       progressOf: () => () => null,
     });
@@ -52,12 +53,32 @@ describe('the settlement Knowledge reads', () => {
     expect(unlockStatus).toHaveBeenCalledTimes(asked);
   });
 
+  it('reads a watched seat by its own people, and says which people it read', async () => {
+    const OTHER_TRIBE = VIKING + 1;
+    const unlockStatus = vi.fn(() => Promise.resolve(OPEN));
+    const progressOf = vi.fn(() => () => null);
+    const settlement = createKnowledgeSettlement({
+      content,
+      tribe: VIKING,
+      seat: () => SEAT,
+      tribeOf: () => OTHER_TRIBE,
+      unlockStatus,
+      progressOf,
+    });
+    expect(settlement.tribe).toBe(VIKING);
+    await settlement.refresh();
+    expect(settlement.tribe).toBe(OTHER_TRIBE);
+    expect(unlockStatus).toHaveBeenCalledWith('house', HOUSE.druid, OTHER_TRIBE, SEAT);
+    expect(progressOf).toHaveBeenCalledWith(SEAT, OTHER_TRIBE);
+  });
+
   it('a watcher with no seat reads everything open', async () => {
     const unlockStatus = vi.fn(() => Promise.resolve(BANNED));
     const settlement = createKnowledgeSettlement({
       content,
       tribe: VIKING,
       seat: () => null,
+      tribeOf: () => VIKING,
       unlockStatus,
       progressOf: () => () => null,
     });

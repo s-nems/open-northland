@@ -3,13 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   KnowledgeArt,
   KnowledgeContext,
-  KnowledgeSettlement,
-  KnowledgeStatus,
   KnowledgeView,
 } from '../../../../src/hud/dom/knowledge/context.js';
 import { createKnowledgeView } from '../../../../src/hud/dom/knowledge/view.js';
 import { createKnowledgeBase } from '../../../../src/hud/knowledge/base.js';
-import type { EntryRef } from '../../../../src/hud/knowledge/model.js';
+import type { EntryRef, KnowledgeSettlement, KnowledgeStatus } from '../../../../src/hud/knowledge/model.js';
 import { knowledgeContent } from '../../../support/knowledge-content.js';
 
 /** What the stub entries still hold, by the page that took it. */
@@ -242,6 +240,19 @@ describe('the Knowledge view', () => {
     press();
     expect(outside).toHaveBeenCalledOnce();
     document.body.removeEventListener('keydown', outside);
+  });
+
+  it('hears Esc in the search box after the game window lifts the bar out of the view', () => {
+    mount();
+    click(card('good:wood'));
+    document.body.append(view.head);
+    const search = view.head.querySelector('.kn-search input') as HTMLInputElement;
+    search.focus();
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(pinned()).toEqual([]);
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(document.activeElement).not.toBe(search);
+    view.head.remove();
   });
 
   it('opens a target as a step, and keeps its place when reopened without one', () => {

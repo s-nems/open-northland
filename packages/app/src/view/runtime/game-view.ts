@@ -767,6 +767,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         content: host.content,
         tribe: seatTribeOf(localPlayer),
         seat: () => viewer.seat(),
+        tribeOf: seatTribeOf,
         unlockStatus: (kind, typeId, tribe, player) => host.unlockStatus(kind, typeId, tribe, player),
         snapshot: () => host.snapshot(),
         goodIcon: goodIcons,

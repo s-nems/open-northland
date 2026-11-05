@@ -1,21 +1,15 @@
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { messages } from '../../../i18n/index.js';
 import { type ArticleGroup, loadArticles } from '../../knowledge/articles.js';
-import type { EntryKind, EntryRef } from '../../knowledge/model.js';
+import { treeHolds } from '../../knowledge/lanes.js';
+import type { EntryKind, EntryRef, KnowledgeTab, KnowledgeTree } from '../../knowledge/model.js';
 import { entrySearchItems, type SearchItem, searchItems } from '../../knowledge/search.js';
 import { goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
 import { button, element, write } from '../parts/dom.js';
 import { tribeEmblem } from '../tribe-emblems.js';
 import { articleGroups, CALCULATOR_ARTICLE, renderArticle } from './article-view.js';
-import type {
-  KnowledgeContext,
-  KnowledgeDeps,
-  KnowledgeTab,
-  KnowledgeTarget,
-  KnowledgeTree,
-  KnowledgeView,
-} from './context.js';
+import type { KnowledgeContext, KnowledgeDeps, KnowledgeTarget, KnowledgeView } from './context.js';
 import { ENCYCLOPEDIA_LIST_SCROLL, firstEntry, renderEncyclopedia } from './encyclopedia-view.js';
 import {
   createTreeView,
@@ -25,7 +19,6 @@ import {
   SCALE_STEP_PCT,
   type TreeScales,
   type TreeView,
-  treeHolds,
 } from './tree-view.js';
 import './knowledge.css';
 
@@ -189,15 +182,20 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
     item.append(tribeEmblem(known.typeId, 'kn-tribes__emblem'));
     item.addEventListener('click', () => {
       if (known.typeId === tribe) return;
-      tribe = known.typeId;
-      for (const [index, row] of deps.base.tribes.entries()) {
-        tribeButtons[index]?.setAttribute('aria-pressed', String(row.typeId === tribe));
-      }
-      dropTree();
+      showTribe(known.typeId);
       render();
     });
     return item;
   });
+  const showTribe = (next: number): void => {
+    tribe = next;
+    for (const [index, row] of deps.base.tribes.entries()) {
+      tribeButtons[index]?.setAttribute('aria-pressed', String(row.typeId === tribe));
+    }
+    dropTree();
+  };
+  /** The watched seat's people as of the last open; a change of seat turns the page to its people. */
+  let seatTribe = deps.settlement?.tribe;
   tribes.append(...tribeButtons);
 
   const searchBox = element('label', 'on-res-field on-res-field--search kn-search');
@@ -399,19 +397,27 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
     },
     { capture: true, passive: true },
   );
-  root.addEventListener('keydown', (event) => {
+  const onKey = (event: KeyboardEvent): void => {
     if (event.key !== 'Escape') return;
     if (dropLayer()) {
       event.preventDefault();
       event.stopPropagation();
     } else if (event.target === search) search.blur();
-  });
+  };
+  root.addEventListener('keydown', onKey);
+  // The game window lifts the bar out of the view into its own head, beyond the view's listener.
+  head.addEventListener('keydown', onKey);
 
   return {
     element: root,
     head,
     open: (target) => {
       dropTree();
+      const watched = deps.settlement?.tribe;
+      if (watched !== seatTribe) {
+        seatTribe = watched;
+        if (watched !== undefined && watched !== tribe) showTribe(watched);
+      }
       const next = target === undefined ? place : placeOf(place, target);
       if (samePlace(next, place)) render();
       else if (target !== undefined) go(target);

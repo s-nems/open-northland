@@ -1,7 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import type { UnlockKind, UnlockStatus } from '@open-northland/sim';
 import { type DiscoveryProgressRead, technologyMissing } from '../../game/technology.js';
-import type { KnowledgeSettlement, KnowledgeStatus } from '../dom/knowledge/context.js';
+import type { KnowledgeSettlement, KnowledgeStatus } from './model.js';
 
 type StatusKind = Parameters<KnowledgeSettlement['status']>[0];
 
@@ -15,15 +15,17 @@ const AVAILABLE: KnowledgeStatus = { kind: 'available' };
 /** Only reads: the window holds no way to submit a command. */
 export interface KnowledgeSeatDeps {
   readonly content: ContentSet;
+  /** The people read before the first refresh, and while no seat is watched. */
   readonly tribe: number;
   readonly seat: () => number | null;
+  readonly tribeOf: (player: number) => number;
   readonly unlockStatus: (
     kind: UnlockKind,
     typeId: number,
     tribe: number,
     player: number,
   ) => Promise<UnlockStatus>;
-  readonly progressOf: (player: number) => DiscoveryProgressRead;
+  readonly progressOf: (player: number, tribe: number) => DiscoveryProgressRead;
 }
 
 /** The seat's statuses as of the last `refresh`, which the window runs before it renders. */
@@ -42,10 +44,13 @@ export function knowledgeStatusOf(
 }
 
 export function createKnowledgeSettlement(deps: KnowledgeSeatDeps): LiveKnowledgeSettlement {
-  const { content, tribe } = deps;
+  const { content } = deps;
+  let tribe = deps.tribe;
   let statuses: ReadonlyMap<string, KnowledgeStatus> = new Map();
   return {
-    tribe,
+    get tribe() {
+      return tribe;
+    },
     status: (kind, typeId) => statuses.get(`${kind}:${typeId}`) ?? AVAILABLE,
     refresh: async () => {
       const player = deps.seat();
@@ -53,7 +58,8 @@ export function createKnowledgeSettlement(deps: KnowledgeSeatDeps): LiveKnowledg
         statuses = new Map();
         return;
       }
-      const progress = deps.progressOf(player);
+      tribe = deps.tribeOf(player);
+      const progress = deps.progressOf(player, tribe);
       const ask = async (kind: StatusKind, typeId: number): Promise<[string, KnowledgeStatus]> => {
         const status = await deps.unlockStatus(UNLOCK_KIND[kind], typeId, tribe, player);
         return [`${kind}:${typeId}`, knowledgeStatusOf(content, status, progress)];
