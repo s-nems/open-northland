@@ -33,6 +33,8 @@ export const deKnowledge = {
     mapForbidden: 'auf dieser Karte gesperrt',
     mapForbiddenLong: 'Diese Karte erlaubt dieses Gebäude nicht',
     closePane: 'Eintrag schließen',
+    hidePane: 'Eintrag ausblenden',
+    showPane: 'Eintrag',
   },
   lanes: {
     food: 'Nahrung',

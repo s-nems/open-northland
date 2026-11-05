@@ -5,7 +5,7 @@ export const MILITARY: ArticleGroup = {
   items: [
     {
       id: 'damage',
-      name: 'Broń, pancerz i obrażenia',
+      name: 'Kalkulator obrażeń',
       lead: 'Człowiek ma {{health.human}} zdrowia. Tabela pokazuje, ile zabiera jeden cios.',
       blocks: [
         {
@@ -38,7 +38,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             'Doświadczenie nie działa na strzały, kamienie, pojazdy i palisady.',
             'Kierunek ciosu i Amulet Obrony liczą się tylko przy ludziach. Przy strzale kierunek liczy się od miejsca, z którego strzelano.',
-            'Amulety dowódcy Katapulty nie wzmacniają kamieni.',
+            'Katapulta nie może mieć Amuletu Siły.',
             'Palisada liczy obrażenia inaczej: [[article:walls|Palisady i bramy]].',
             'Dziecka nie da się zranić.',
           ],
@@ -189,7 +189,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Zasięg w hexach. Łucznik, który idzie do celu, staje trochę bliżej, niż sięga, żeby cel nie uciekł mu z zasięgu. Do celu bliżej niż dolna granica zasięgu nie strzela, chyba że stoi na wieży. Tempo strzałów, także Łuku myśliwego i Katapulty, pokazuje tabela w [[article:damage|Broń, pancerz i obrażenia]].',
+            foot: 'Zasięg w hexach. Łucznik, który idzie do celu, staje trochę bliżej, niż sięga, żeby cel nie uciekł mu z zasięgu. Do celu bliżej niż dolna granica zasięgu nie strzela, chyba że stoi na wieży. Tempo strzałów, także Łuku myśliwego i Katapulty, pokazuje tabela w [[article:damage|Kalkulator obrażeń]].',
           },
         },
         {
@@ -374,7 +374,7 @@ export const MILITARY: ArticleGroup = {
               ['[[job:hero_saber_hatschi|Hatchie]]', 'Szabla', '[[good:armor_chain|Kolczuga]]'],
               ['[[job:heroine_bow_xena|Cyra]]', 'Łuk', '[[good:armor_leather|Skórzana Zbroja]]'],
             ],
-            foot: 'Zasięg, tempo ciosów i obrażenia pokazuje tabela w [[article:damage|Broń, pancerz i obrażenia]] po włączeniu Bohaterów. Bohaterowie innego plemienia walczą trochę inaczej: wybierz jego herb u góry okna.',
+            foot: 'Zasięg, tempo ciosów i obrażenia pokazuje tabela w [[article:damage|Kalkulator obrażeń]] po włączeniu Bohaterów. Bohaterowie innego plemienia walczą trochę inaczej: wybierz jego herb u góry okna.',
           },
         },
         {
@@ -436,7 +436,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Strzały z budynku',
         },
         {
-          p: 'Ile zabiera jedna strzała, pokazuje wiersz "Strzały z budynku" w tabeli [[article:damage|Broń, pancerz i obrażenia]].',
+          p: 'Ile zabiera jedna strzała, pokazuje wiersz "Strzały z budynku" w tabeli [[article:damage|Kalkulator obrażeń]].',
         },
         {
           list: [
@@ -555,7 +555,7 @@ export const MILITARY: ArticleGroup = {
               [
                 '[[building:catapult|Katapulta]]',
                 '{{wall.catapult.blow}}',
-                '{{wall.catapult.strongBlow}}',
+                '-',
                 '{{wall.catapult.segmentHits}}',
                 '{{wall.catapult.gateHits}}',
                 '{{wall.catapult.segmentSeconds}}',
@@ -619,7 +619,7 @@ export const MILITARY: ArticleGroup = {
               ['Pięści, strzały z budynku', '0', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Czas dla jednego żołnierza. Amulet dowódcy nie wzmacnia kamieni Katapulty. Cyra zabiera {{wall.heroBow.blow}} zdrowia palisady na strzał, Cyra Franków {{wall.frankHeroBow.blow}}.',
+            foot: 'Czas dla jednego żołnierza. Katapulta nie może mieć Amuletu Siły. Cyra zabiera {{wall.heroBow.blow}} zdrowia palisady na strzał, Cyra Franków {{wall.frankHeroBow.blow}}.',
           },
         },
         {
@@ -662,7 +662,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Kamień',
         },
         {
-          p: 'Ile kamień zabiera ludziom, pojazdom i budynkom, pokazuje wiersz Katapulty w tabeli [[article:damage|Broń, pancerz i obrażenia]]. Palisada liczy to inaczej: [[article:walls|Palisady i bramy]].',
+          p: 'Ile kamień zabiera ludziom, pojazdom i budynkom, pokazuje wiersz Katapulty w tabeli [[article:damage|Kalkulator obrażeń]]. Palisada liczy to inaczej: [[article:walls|Palisady i bramy]].',
         },
         {
           table: {

@@ -27,6 +27,8 @@ export const chtKnowledge = {
     mapForbidden: '本圖停用',
     mapForbiddenLong: '此地圖禁止這種建築',
     closePane: '關閉詞條',
+    hidePane: '隱藏詞條',
+    showPane: '詞條',
   },
   lanes: {
     food: '食物',

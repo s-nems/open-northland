@@ -28,6 +28,8 @@ export const plKnowledge = {
     mapForbidden: 'poza mapą',
     mapForbiddenLong: 'Ta mapa nie pozwala na ten budynek',
     closePane: 'Zamknij hasło',
+    hidePane: 'Schowaj opis',
+    showPane: 'Opis',
   },
   lanes: {
     food: 'Żywność',

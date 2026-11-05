@@ -810,7 +810,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:spear_iron|Eisenspeer]], [[good:sword_long|Langschwert]]', '{{weight.ironSpear}}'],
             ],
             num: [1],
-            foot: 'Bei allen Stämmen gleich. Rechne das Waffengewicht zum Rüstungsgewicht aus der Tabelle Rüstungen hinzu: [[article:damage|Waffen, Rüstung und Schaden]].',
+            foot: 'Bei allen Stämmen gleich. Rechne das Waffengewicht zum Rüstungsgewicht aus der Tabelle Rüstungen hinzu: [[article:damage|Schadensrechner]].',
           },
         },
         {

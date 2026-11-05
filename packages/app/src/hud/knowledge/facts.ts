@@ -959,7 +959,8 @@ const WALL_FACTS: Readonly<Record<string, Fact>> = {
           rules(base)?.maxHitpoints;
       return [
         [`wall.${name}.blow`, whole(blow)],
-        [`wall.${name}.strongBlow`, strongWallBlow(tribe, id)],
+        // A Catapult cannot take an Amulet of Strength, so its stones have no strong blow.
+        ...(name === 'catapult' ? [] : [[`wall.${name}.strongBlow`, strongWallBlow(tribe, id)] as const]),
         [`wall.${name}.segmentHits`, killedBy(blow, pool(segmentRules))],
         [`wall.${name}.gateHits`, killedBy(blow, pool(gateRules))],
         [

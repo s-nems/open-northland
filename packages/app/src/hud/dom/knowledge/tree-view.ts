@@ -361,6 +361,7 @@ export function createTreeView(context: KnowledgeContext, tree: KnowledgeTree, d
   treeSide.className = 'kn-treeside';
   treeSide.append(scroller);
   const pane = createTreePane(context, deps.onClosePane);
+  treeSide.append(pane.opener);
   element.append(treeSide, pane.element);
 
   const drawnPairs = new Set(lit.lines.map((l) => `${l.from}>${l.to}`));

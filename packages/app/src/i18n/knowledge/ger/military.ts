@@ -5,7 +5,7 @@ export const MILITARY: ArticleGroup = {
   items: [
     {
       id: 'damage',
-      name: 'Waffen, Rüstung und Schaden',
+      name: 'Schadensrechner',
       lead: 'Ein Mensch hat {{health.human}} Gesundheit. Die Tabelle zeigt, was ein Schlag davon abzieht.',
       blocks: [
         {
@@ -38,7 +38,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             'Erfahrung wirkt nicht bei Pfeilen und Steinen und nicht gegen Fahrzeuge und Palisaden.',
             'Schlagrichtung und Verteidigungsamulett zählen nur bei Menschen. Beim Pfeil richtet sich die Richtung nach dem Ort, von dem er abgeschossen wurde.',
-            'Die Amulette des Katapultkommandanten verstärken die Steine nicht.',
+            'Ein Katapult kann kein Amulett der Stärke tragen.',
             'Palisaden rechnen Schaden anders: [[article:walls|Palisaden und Tore]].',
             'Kinder lassen sich nicht verwunden.',
           ],
@@ -189,7 +189,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: 'Reichweite in Hexfeldern. Ein Bogenschütze, der auf ein Ziel zugeht, bleibt etwas näher stehen, als er reicht, damit ihm das Ziel nicht aus der Reichweite läuft. Auf Ziele näher als die untere Grenze der Reichweite schießt er nicht, außer er steht im Turm. Das Schusstempo, auch für Jägerbogen und Katapult, zeigt die Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]].',
+            foot: 'Reichweite in Hexfeldern. Ein Bogenschütze, der auf ein Ziel zugeht, bleibt etwas näher stehen, als er reicht, damit ihm das Ziel nicht aus der Reichweite läuft. Auf Ziele näher als die untere Grenze der Reichweite schießt er nicht, außer er steht im Turm. Das Schusstempo, auch für Jägerbogen und Katapult, zeigt die Tabelle unter [[article:damage|Schadensrechner]].',
           },
         },
         {
@@ -388,7 +388,7 @@ export const MILITARY: ArticleGroup = {
               ['[[job:hero_saber_hatschi|Hatschi]]', 'Säbel', '[[good:armor_chain|Kettenhemd]]'],
               ['[[job:heroine_bow_xena|Cyra]]', 'Bogen', '[[good:armor_leather|Lederrüstung]]'],
             ],
-            foot: 'Reichweite, Schlagtempo und Schaden zeigt die Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]], wenn du dort die Helden einschaltest. Helden eines anderen Stammes kämpfen etwas anders: wähle oben im Fenster sein Wappen.',
+            foot: 'Reichweite, Schlagtempo und Schaden zeigt die Tabelle unter [[article:damage|Schadensrechner]], wenn du dort die Helden einschaltest. Helden eines anderen Stammes kämpfen etwas anders: wähle oben im Fenster sein Wappen.',
           },
         },
         {
@@ -450,7 +450,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Pfeile aus Gebäuden',
         },
         {
-          p: 'Wie viel ein Pfeil abzieht, zeigt die Zeile „Pfeile aus Gebäuden“ in der Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]].',
+          p: 'Wie viel ein Pfeil abzieht, zeigt die Zeile „Pfeile aus Gebäuden“ in der Tabelle unter [[article:damage|Schadensrechner]].',
         },
         {
           list: [
@@ -559,7 +559,7 @@ export const MILITARY: ArticleGroup = {
               [
                 '[[building:catapult|Katapult]]',
                 '{{wall.catapult.blow}}',
-                '{{wall.catapult.strongBlow}}',
+                '-',
                 '{{wall.catapult.segmentHits}}',
                 '{{wall.catapult.gateHits}}',
                 '{{wall.catapult.segmentSeconds}}',
@@ -623,7 +623,7 @@ export const MILITARY: ArticleGroup = {
               ['Fäuste, Pfeile aus Gebäuden', '0', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Dauer für einen Soldaten. Das Amulett des Lenkers verstärkt die Steine des Katapults nicht. Cyra nimmt der Palisade {{wall.heroBow.blow}} Gesundheit pro Schuss, die Cyra der Franken {{wall.frankHeroBow.blow}}.',
+            foot: 'Dauer für einen Soldaten. Ein Katapult kann kein Amulett der Stärke tragen. Cyra nimmt der Palisade {{wall.heroBow.blow}} Gesundheit pro Schuss, die Cyra der Franken {{wall.frankHeroBow.blow}}.',
           },
         },
         {
@@ -666,7 +666,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Stein',
         },
         {
-          p: 'Wie viel ein Stein Menschen, Fahrzeugen und Gebäuden abzieht, zeigt die Zeile Katapult in der Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]]. Palisaden rechnen das anders: [[article:walls|Palisaden und Tore]].',
+          p: 'Wie viel ein Stein Menschen, Fahrzeugen und Gebäuden abzieht, zeigt die Zeile Katapult in der Tabelle unter [[article:damage|Schadensrechner]]. Palisaden rechnen das anders: [[article:walls|Palisaden und Tore]].',
         },
         {
           table: {

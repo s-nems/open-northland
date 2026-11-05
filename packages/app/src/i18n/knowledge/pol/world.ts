@@ -99,6 +99,16 @@ export const WORLD: ArticleGroup = {
           ],
         },
         {
+          h: 'Który wóz wybrać',
+        },
+        {
+          list: [
+            '[[good:handcart|Wózek Ręczny]] jest dobry na krótkie trasy, [[good:oxcart|Zaprzęg]] na długie: wiezie {{haul.oxcart}} sztuk i z ładunkiem prawie nie zwalnia.',
+            '[[job:carrier|Tragarzom]] dawaj Wózki Ręczne: na krótkich kursach między budynkami przewiozą więcej w tym samym czasie.',
+            '[[job:trader|Kupcom]] dawaj Zaprzęgi: na długich trasach handlowych przewiozą więcej. Od jakiej długości trasy: [[article:trade|Handel]].',
+          ],
+        },
+        {
           h: 'Szybkość z ładunkiem',
         },
         {

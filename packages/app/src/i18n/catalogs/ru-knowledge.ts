@@ -28,6 +28,8 @@ export const ruKnowledge = {
     mapForbidden: 'не на этой карте',
     mapForbiddenLong: 'На этой карте такое здание запрещено',
     closePane: 'Закрыть статью',
+    hidePane: 'Скрыть статью',
+    showPane: 'Статья',
   },
   lanes: {
     food: 'Пища',

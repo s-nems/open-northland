@@ -5,7 +5,7 @@ export const MILITARY: ArticleGroup = {
   items: [
     {
       id: 'damage',
-      name: '武器、護甲與傷害',
+      name: '傷害計算器',
       lead: '人有{{health.human}}點生命值。表中是一次攻擊扣除的數值。',
       blocks: [
         {
@@ -35,7 +35,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             '經驗對箭矢、石彈、載具和木柵欄無效。',
             '攻擊方向和防禦護符只對人起作用。箭矢的方向按射出的位置計算。',
-            '投石機指揮官的護符不會加強石彈。',
+            '投石機不能使用力量護符。',
             '木柵欄的傷害另算：[[article:walls|木柵欄與柵門]]。',
             '兒童不會受傷。',
           ],
@@ -186,7 +186,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: '射程單位為格。弓手走向目標時會停在比射程稍近的地方，免得目標跑出射程。目標近於射程下限時，弓手不射擊，站在箭塔上時除外。射擊間隔，包括獵人的弓和投石機，見[[article:damage|武器、護甲與傷害]]裡的表。',
+            foot: '射程單位為格。弓手走向目標時會停在比射程稍近的地方，免得目標跑出射程。目標近於射程下限時，弓手不射擊，站在箭塔上時除外。射擊間隔，包括獵人的弓和投石機，見[[article:damage|傷害計算器]]裡的表。',
           },
         },
         {
@@ -365,7 +365,7 @@ export const MILITARY: ArticleGroup = {
               ['[[job:hero_saber_hatschi|哈奇]]', '彎刀', '[[good:armor_chain|鎖甲]]'],
               ['[[job:heroine_bow_xena|希拉]]', '弓', '[[good:armor_leather|皮甲]]'],
             ],
-            foot: '射程、攻擊間隔和傷害見[[article:damage|武器、護甲與傷害]]裡的表，打開「英雄」即可。其他民族的英雄打法略有不同：在視窗頂部選擇該民族的徽章。',
+            foot: '射程、攻擊間隔和傷害見[[article:damage|傷害計算器]]裡的表，打開「英雄」即可。其他民族的英雄打法略有不同：在視窗頂部選擇該民族的徽章。',
           },
         },
         {
@@ -427,7 +427,7 @@ export const MILITARY: ArticleGroup = {
           h: '建築射出的箭',
         },
         {
-          p: '一支箭造成多少傷害，見[[article:damage|武器、護甲與傷害]]表中「建築射出的箭」這一行。',
+          p: '一支箭造成多少傷害，見[[article:damage|傷害計算器]]表中「建築射出的箭」這一行。',
         },
         {
           list: [
@@ -526,7 +526,7 @@ export const MILITARY: ArticleGroup = {
               [
                 '[[building:catapult|投石機]]',
                 '{{wall.catapult.blow}}',
-                '{{wall.catapult.strongBlow}}',
+                '-',
                 '{{wall.catapult.segmentHits}}',
                 '{{wall.catapult.gateHits}}',
                 '{{wall.catapult.segmentSeconds}}',
@@ -590,7 +590,7 @@ export const MILITARY: ArticleGroup = {
               ['拳頭、建築射出的箭', '0', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: '用時按一名士兵計算。指揮者的護符不加強投石機的石彈。希拉每箭打掉柵欄{{wall.heroBow.blow}}點生命值，法蘭克人的希拉{{wall.frankHeroBow.blow}}點。',
+            foot: '用時按一名士兵計算。投石機不能使用力量護符。希拉每箭打掉柵欄{{wall.heroBow.blow}}點生命值，法蘭克人的希拉{{wall.frankHeroBow.blow}}點。',
           },
         },
         {
@@ -633,7 +633,7 @@ export const MILITARY: ArticleGroup = {
           h: '石彈',
         },
         {
-          p: '石彈對人、載具和建築的傷害，見[[article:damage|武器、護甲與傷害]]表中投石機這一行。木柵欄另算：[[article:walls|木柵欄與柵門]]。',
+          p: '石彈對人、載具和建築的傷害，見[[article:damage|傷害計算器]]表中投石機這一行。木柵欄另算：[[article:walls|木柵欄與柵門]]。',
         },
         {
           table: {

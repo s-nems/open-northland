@@ -28,6 +28,8 @@ export const enKnowledge = {
     mapForbidden: 'not on this map',
     mapForbiddenLong: 'This map does not allow this building',
     closePane: 'Close entry',
+    hidePane: 'Hide entry',
+    showPane: 'Entry',
   },
   lanes: {
     food: 'Food',

@@ -253,11 +253,39 @@
   overflow: auto;
   pointer-events: auto;
 }
-.on-hud .kn-pane__close {
+.on-hud .kn-pane__tools {
   position: absolute;
   top: 6px;
   right: 10px;
   z-index: 1;
+  display: flex;
+  gap: 6px;
   pointer-events: auto;
+}
+/* A folded entry leaves this tab on the tree's right edge. */
+.on-hud .kn-pane__open {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 10px 5px 6px;
+  border: 1px solid var(--wood-lo);
+  border-right: 0;
+  border-radius: 4px 0 0 4px;
+  background: linear-gradient(var(--wood-hi), var(--wood-lo));
+  color: #f0e6cf;
+  font: 700 12px var(--font-caps);
+  pointer-events: auto;
+  cursor: pointer;
+}
+.on-hud .kn-pane__open[hidden] {
+  display: none;
+}
+.on-hud .kn-pane__open .on-glyph {
+  width: 16px;
+  height: 16px;
 }
 /* The legend and the scale share what the pane leaves of the tree. */

@@ -751,7 +751,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:spear_iron|鐵矛]]、[[good:sword_long|長劍]]', '{{weight.ironSpear}}'],
             ],
             num: [1],
-            foot: '所有民族相同。把武器重量加上護甲表中的護甲重量：[[article:damage|武器、護甲與傷害]]。',
+            foot: '所有民族相同。把武器重量加上護甲表中的護甲重量：[[article:damage|傷害計算器]]。',
           },
         },
         {

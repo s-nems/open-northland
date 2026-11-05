@@ -87,6 +87,16 @@ export const WORLD: ArticleGroup = {
           ],
         },
         {
+          h: '选哪种车',
+        },
+        {
+          list: [
+            '[[good:handcart|手推车]]适合短途，[[good:oxcart|牛车]]适合长途：它能装{{haul.oxcart}}件，装满后几乎不减速。',
+            '给[[job:carrier|搬运工]]配手推车：在建筑之间的短途往返中，同样时间能运更多。',
+            '给[[job:trader|商人]]配牛车：在长途贸易路线上能运更多。路线多长才划算：[[article:trade|贸易]]。',
+          ],
+        },
+        {
           h: '载重与速度',
         },
         {

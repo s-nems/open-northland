@@ -5,7 +5,7 @@ export const MILITARY: ArticleGroup = {
   items: [
     {
       id: 'damage',
-      name: 'Weapons, Armour and Damage',
+      name: 'Damage calculator',
       lead: 'A person has {{health.human}} health. The table shows how much one blow takes.',
       blocks: [
         {
@@ -38,7 +38,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             "Experience doesn't work on arrows, stones, vehicles or stockades.",
             'Blow direction and the Amulet of Defence count only against people. For an arrow, direction is taken from where it was fired.',
-            "A Catapult commander's amulets don't strengthen its stones.",
+            'A Catapult cannot take an Amulet of Strength.',
             'A stockade counts damage its own way: [[article:walls|Stockades and Gates]].',
             "Children can't be hurt.",
           ],
@@ -189,7 +189,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3],
-            foot: "Range in hexes. An archer walking up to a target stops a little closer than he can reach, so the target doesn't slip out of range. He won't shoot at a target closer than the lower end of his range unless he stands on a tower. Shot rate, also for the Hunter's bow and the Catapult, is in the table in [[article:damage|Weapons, Armour and Damage]].",
+            foot: "Range in hexes. An archer walking up to a target stops a little closer than he can reach, so the target doesn't slip out of range. He won't shoot at a target closer than the lower end of his range unless he stands on a tower. Shot rate, also for the Hunter's bow and the Catapult, is in the table in [[article:damage|Damage calculator]].",
           },
         },
         {
@@ -378,7 +378,7 @@ export const MILITARY: ArticleGroup = {
               ['[[job:hero_saber_hatschi|Hatchie]]', 'Sabre', '[[good:armor_chain|Chain Mail]]'],
               ['[[job:heroine_bow_xena|Cyra]]', 'Bow', '[[good:armor_leather|Leather Armour]]'],
             ],
-            foot: 'Range, blow rate and damage are in the table in [[article:damage|Weapons, Armour and Damage]] with Heroes turned on. Heroes of another tribe fight a little differently: pick its emblem at the top of the window.',
+            foot: 'Range, blow rate and damage are in the table in [[article:damage|Damage calculator]] with Heroes turned on. Heroes of another tribe fight a little differently: pick its emblem at the top of the window.',
           },
         },
         {
@@ -440,7 +440,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Arrows from a building',
         },
         {
-          p: 'How much one arrow takes is in the "Arrows from a building" row of the table in [[article:damage|Weapons, Armour and Damage]].',
+          p: 'How much one arrow takes is in the "Arrows from a building" row of the table in [[article:damage|Damage calculator]].',
         },
         {
           list: [
@@ -559,7 +559,7 @@ export const MILITARY: ArticleGroup = {
               [
                 '[[building:catapult|Catapult]]',
                 '{{wall.catapult.blow}}',
-                '{{wall.catapult.strongBlow}}',
+                '-',
                 '{{wall.catapult.segmentHits}}',
                 '{{wall.catapult.gateHits}}',
                 '{{wall.catapult.segmentSeconds}}',
@@ -623,7 +623,7 @@ export const MILITARY: ArticleGroup = {
               ['Fists, arrows from a building', '0', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: "Time for one soldier. The commander's amulet doesn't strengthen Catapult stones. Cyra takes {{wall.heroBow.blow}} stockade health per shot, the Franks' Cyra {{wall.frankHeroBow.blow}}.",
+            foot: "Time for one soldier. A Catapult cannot take an Amulet of Strength. Cyra takes {{wall.heroBow.blow}} stockade health per shot, the Franks' Cyra {{wall.frankHeroBow.blow}}.",
           },
         },
         {
@@ -666,7 +666,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Stone',
         },
         {
-          p: 'What a stone takes from people, vehicles and buildings is in the Catapult row of the table in [[article:damage|Weapons, Armour and Damage]]. A stockade counts it differently: [[article:walls|Stockades and Gates]].',
+          p: 'What a stone takes from people, vehicles and buildings is in the Catapult row of the table in [[article:damage|Damage calculator]]. A stockade counts it differently: [[article:walls|Stockades and Gates]].',
         },
         {
           table: {

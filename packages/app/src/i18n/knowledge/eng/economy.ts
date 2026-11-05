@@ -807,7 +807,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[good:spear_iron|Iron Spear]], [[good:sword_long|Longsword]]', '{{weight.ironSpear}}'],
             ],
             num: [1],
-            foot: 'The same for all tribes. Add the weapon weight to the armour weight from the Armour table: [[article:damage|Weapons, Armour and Damage]].',
+            foot: 'The same for all tribes. Add the weapon weight to the armour weight from the Armour table: [[article:damage|Damage calculator]].',
           },
         },
         {

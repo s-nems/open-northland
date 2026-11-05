@@ -793,8 +793,6 @@ export function createCalculator(context: KnowledgeContext): HTMLElement {
   root.setAttribute(FIELD_KEYS_ATTRIBUTE, '');
   root.setAttribute('aria-label', copy.calculatorTitle);
   const head = element('div', 'kn-calc__head');
-  const title = element('h3', 'kn-h');
-  write(title, copy.calculatorTitle);
   const slot = element('div', '');
   let refreshBlow: (() => void) | undefined;
   const read = (): CalculatorState => stateOf(context);
@@ -821,7 +819,7 @@ export function createCalculator(context: KnowledgeContext): HTMLElement {
     slot.replaceChildren(pane.element);
   }
   show();
-  head.append(title, mode.element, hint);
+  head.append(mode.element, hint);
   root.append(head, slot);
   return root;
 }

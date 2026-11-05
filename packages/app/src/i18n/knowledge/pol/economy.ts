@@ -815,7 +815,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1],
-            foot: 'Tak samo u wszystkich plemion. Dodaj ciężar broni do ciężaru pancerza z tabeli Pancerze: [[article:damage|Broń, pancerz i obrażenia]].',
+            foot: 'Tak samo u wszystkich plemion. Dodaj ciężar broni do ciężaru pancerza z tabeli Pancerze: [[article:damage|Kalkulator obrażeń]].',
           },
         },
         {

@@ -107,6 +107,16 @@ export const WORLD: ArticleGroup = {
           ],
         },
         {
+          h: 'Which cart to choose',
+        },
+        {
+          list: [
+            'The [[good:handcart|Handcart]] suits short routes, the [[good:oxcart|Ox Cart]] long ones: it carries {{haul.oxcart}} pieces and hardly slows down when loaded.',
+            'Give [[job:carrier|Carriers]] Handcarts: on short runs between buildings they move more goods in the same time.',
+            'Give [[job:trader|Merchants]] Ox Carts: on long trade routes they carry more. Where the line lies: [[article:trade|Trade]].',
+          ],
+        },
+        {
           h: 'Speed with a load',
         },
         {

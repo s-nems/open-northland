@@ -107,6 +107,16 @@ export const WORLD: ArticleGroup = {
           ],
         },
         {
+          h: 'Welcher Wagen wofür',
+        },
+        {
+          list: [
+            'Der [[good:handcart|Handkarren]] taugt für kurze Wege, das [[good:oxcart|Ochsenkarren]] für lange: Er fasst {{haul.oxcart}} Stück und wird beladen kaum langsamer.',
+            'Gib [[job:carrier|Trägern]] Handkarren: Auf kurzen Wegen zwischen Gebäuden schaffen sie in derselben Zeit mehr.',
+            'Gib [[job:trader|Händlern]] Ochsenkarren: Auf langen Handelswegen transportieren sie mehr. Ab welcher Weglänge: [[article:trade|Handel]].',
+          ],
+        },
+        {
           h: 'Tempo mit Ladung',
         },
         {

@@ -27,6 +27,8 @@ export const chsKnowledge = {
     mapForbidden: '本图禁用',
     mapForbiddenLong: '此地图禁止这种建筑',
     closePane: '关闭词条',
+    hidePane: '隐藏词条',
+    showPane: '词条',
   },
   lanes: {
     food: '食物',
