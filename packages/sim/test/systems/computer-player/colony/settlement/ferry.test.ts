@@ -1,23 +1,42 @@
 import { describe, expect, it } from 'vitest';
-import { Health, Vehicle } from '../../../../../src/components/index.js';
+import { Health, Resource, Rider, Settler, Vehicle } from '../../../../../src/components/index.js';
 import type { PlayerCommand } from '../../../../../src/core/commands/index.js';
+import type { Entity } from '../../../../../src/ecs/world.js';
+import type { Simulation } from '../../../../../src/index.js';
 import { nodeManhattan } from '../../../../../src/nav/halfcell.js';
-import { everySettlerOf } from '../../../../../src/systems/ai-shared/home-roster.js';
+import { everySettlerOf, homeSettlers } from '../../../../../src/systems/ai-shared/home-roster.js';
+import { isAllocatableMan } from '../../../../../src/systems/ai-shared/workforce/pool.js';
 import { runFerry } from '../../../../../src/systems/computer-player/colony/settlement/ferry.js';
+import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
 import { LANDING_SAIL_TIMEOUT_TICKS } from '../../../../../src/systems/computer-player/military/operations/landing.js';
 import { attachToVehicle, boardRider } from '../../../../../src/systems/vehicles/crew.js';
 import { mooringSpotsOf } from '../../../../../src/systems/vehicles/dock.js';
 import {
   blankColony,
+  colonySettlersOf,
+  colonyState,
   colonyWorld,
   looseColonyEnv,
   mooredShip,
   SHIP_AT,
   SMALL_SHIP,
+  stepUntil,
 } from '../../../../fixtures/colony-islands.js';
+import { idleBuilders, routedWorld, runningWorld } from '../../../../fixtures/colony-scenarios.js';
 import { ctxOf } from '../../../../fixtures/context.js';
-import { CIVILIST, SEAT, VIKING } from '../../support.js';
+import { BUILDER, CIVILIST, SEAT, VIKING } from '../../support.js';
 
+const HOME_DUE_TICKS = minutesToTicks(45);
+
+/** Who stands on the colony or rides for it. */
+const colonyPeople = (sim: Simulation): number => {
+  const home = new Set(homeSettlers(sim.world, ctxOf(sim), SEAT));
+  return everySettlerOf(sim.world, SEAT).filter((e) => !home.has(e)).length;
+};
+
+const ROUND_DUE_TICKS = minutesToTicks(30);
+/** The builders a colony keeps at rest once nothing is left to raise. */
+const BUILDERS_KEPT = 2;
 /** Off the colony's shore: a ship made here lies moored on the east island. */
 const COLONY_SHORE_AT = { x: 138, y: 60 };
 /** Where a man of home stands before he is seated on the ship. */
@@ -124,5 +143,54 @@ describe('a colony ferry refused its dock', () => {
 
     expect(colony.ferry?.side).toBe('home');
     expect(dockedAt(orders)).toEqual(berth);
+  });
+});
+
+describe('a colony ferry', () => {
+  it('brings the hands a colony lacks over on a free ship', () => {
+    const { sim } = routedWorld();
+    const before = colonyPeople(sim);
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyPeople(sim) > before)).toBe(true);
+  });
+
+  it("sends men with no work left home as civilians, but keeps its posted men and a wife's husband", () => {
+    const { sim } = routedWorld();
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const posted = colonySettlersOf(sim).filter((e) => {
+      const job = sim.world.get(e, Settler).jobType;
+      return job !== BUILDER && job !== CIVILIST && isAllocatableMan(sim.world, ctxOf(sim), e);
+    });
+    expect(posted.length).toBeGreaterThan(0);
+    const { idle, husband } = idleBuilders(sim);
+    const landed = (): Entity[] => {
+      const home = homeSettlers(sim.world, ctxOf(sim), SEAT);
+      return idle.filter((e) => home.includes(e) && !sim.world.has(e, Rider));
+    };
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => landed().length > 0)).toBe(true);
+    expect(landed().map((e) => sim.world.get(e, Settler).jobType)).toEqual(landed().map(() => CIVILIST));
+    stepUntil(sim, ROUND_DUE_TICKS, () => false);
+    // The colony keeps a pair of builders at rest, which a fresh idle man may fill, and a fresh man it gave
+    // another post stays at it.
+    expect(landed()).not.toContain(husband);
+    const colony = colonySettlersOf(sim);
+    const reposted = idle.filter(
+      (e) => e !== husband && colony.includes(e) && sim.world.get(e, Settler).jobType !== BUILDER,
+    );
+    expect(landed().length).toBeGreaterThanOrEqual(idle.length - 1 - BUILDERS_KEPT - reposted.length);
+    expect(colony).toContain(husband);
+    expect(posted.filter((e) => sim.world.isAlive(e) && !colony.includes(e))).toEqual([]);
+  });
+
+  it('sails men home once the colony has no work left', () => {
+    const { sim } = runningWorld('barracks');
+    const ctx = ctxOf(sim);
+    const home = new Set(homeSettlers(sim.world, ctx, SEAT));
+    const colonists = everySettlerOf(sim.world, SEAT).filter((e) => !home.has(e));
+    for (const e of sim.world.canonicalQuery(Resource)) sim.world.destroy(e);
+    const back = (): Entity[] => {
+      const now = new Set(homeSettlers(sim.world, ctxOf(sim), SEAT));
+      return colonists.filter((e) => now.has(e));
+    };
+    expect(stepUntil(sim, HOME_DUE_TICKS, () => back().length > 0)).toBe(true);
   });
 });

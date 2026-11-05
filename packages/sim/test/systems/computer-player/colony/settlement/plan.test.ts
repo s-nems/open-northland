@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { noteSettlerProgress, Settler, SettlerProgress } from '../../../../../src/components/index.js';
+import {
+  Building,
+  noteSettlerProgress,
+  Settler,
+  SettlerProgress,
+} from '../../../../../src/components/index.js';
 import type { ColonyEnv } from '../../../../../src/systems/computer-player/colony/env.js';
 import { homeTeaches } from '../../../../../src/systems/computer-player/colony/settlement/industry-read.js';
 import {
@@ -7,14 +12,25 @@ import {
   homeStepDue,
   siteFree,
 } from '../../../../../src/systems/computer-player/colony/settlement/plan.js';
+import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
+import {
+  colonyBuildingsOf,
+  colonyState,
+  colonyWorld,
+  mooredShip,
+  SMALL_SHIP,
+  stepUntil,
+} from '../../../../fixtures/colony-islands.js';
+import { ctxOf } from '../../../../fixtures/context.js';
 import {
   aiSim,
   CIVILIST,
-  ctxOf,
   entityOfBuilding,
   FARM_TYPE,
   FARMER,
   FARMER_TRACK,
+  HOME_TOP_TYPE,
+  HOME_TYPE,
   HQ_X,
   HQ_Y,
   MILLER,
@@ -28,6 +44,16 @@ import {
 } from '../../support.js';
 
 const SCHOOL_OFF = 8;
+const SITE_DUE_TICKS = minutesToTicks(2);
+const SCOUT_DUE_TICKS = minutesToTicks(12);
+const SECOND_SHIP_AT = { x: 90, y: 100 };
+const FOUND_DUE_TICKS = minutesToTicks(16);
+const HOMES_DUE_TICKS = minutesToTicks(20);
+const FARM_ID = 'work_farm_00';
+const LADDER_DUE_TICKS = minutesToTicks(14);
+/** The fixture's home chain, base tier to top. */
+const HOME_MID_TYPE = HOME_TYPE + 1;
+const HOME_TYPES = [HOME_TYPE, HOME_MID_TYPE, HOME_TOP_TYPE];
 /** A top-tier home's family slots. */
 const HOME_SLOTS = 5;
 const FARM_OFF = 6;
@@ -110,5 +136,36 @@ describe('a colony trade', () => {
     });
     sim.step();
     expect(homeTeaches(env(), MILLER)).toBe(true);
+  });
+});
+
+describe('a running colony', () => {
+  it('raises its homes straight at the top tier the tribe has', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    const homes = (): number[] =>
+      colonyBuildingsOf(sim)
+        .map((e) => sim.world.get(e, Building).buildingType)
+        .filter((type) => HOME_TYPES.includes(type));
+    expect(stepUntil(sim, FOUND_DUE_TICKS + HOMES_DUE_TICKS, () => homes().length > 0)).toBe(true);
+    expect(homes().every((type) => type === HOME_TOP_TYPE)).toBe(true);
+  });
+
+  it('raises a farm on the colony once the fishers do not meet its hunger', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    const farmRow = (): boolean => colonyState(sim)?.builds.some((b) => b.building === FARM_ID) === true;
+    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    expect(farmRow()).toBe(false);
+    expect(stepUntil(sim, LADDER_DUE_TICKS, farmRow)).toBe(true);
+    sim.step();
+    const farm = colonyBuildingsOf(sim).find((e) => sim.world.get(e, Building).buildingType === FARM_TYPE);
+    expect(farm).toBeDefined();
   });
 });

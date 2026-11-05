@@ -1,16 +1,8 @@
-import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
-  AiControl,
-  aiControlEntity,
   Building,
-  Female,
   Health,
-  Marriage,
-  prioritizesGood,
-  Rider,
   Settler,
-  StorePriority,
   TRADE_LIMIT_NONE,
   TradeRoute,
   TradeShip,
@@ -26,14 +18,7 @@ import {
   type Simulation,
   serializeSaveGame,
 } from '../../../../../src/index.js';
-import {
-  everyBuildingOf,
-  everySettlerOf,
-  homeBuildings,
-  homeSettlers,
-} from '../../../../../src/systems/ai-shared/home-roster.js';
-import { isAllocatableMan } from '../../../../../src/systems/ai-shared/workforce/pool.js';
-import { seatBaseOf } from '../../../../../src/systems/computer-player/base.js';
+import { homeBuildings, homeSettlers } from '../../../../../src/systems/ai-shared/home-roster.js';
 import {
   RELIEF_AFTER_TICKS,
   routeBacklog,
@@ -41,110 +26,38 @@ import {
   routeMarks,
 } from '../../../../../src/systems/computer-player/colony/goods/route.js';
 import { colonySmallShips } from '../../../../../src/systems/computer-player/colony/sea/fleet.js';
-import { menPastWork } from '../../../../../src/systems/computer-player/colony/settlement/posts.js';
 import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
-import { freeShips } from '../../../../../src/systems/computer-player/military/operations/landing.js';
-import { strandedShip } from '../../../../../src/systems/computer-player/sea-route.js';
 import { addStock, stockOf } from '../../../../../src/systems/missions/stock.js';
 import { isTraderJob } from '../../../../../src/systems/readviews/index.js';
-import { interactionCell } from '../../../../../src/systems/settlers/targets/index.js';
 import { stockAtBuildings } from '../../../../../src/systems/stores/index.js';
 import { removeVehicle } from '../../../../../src/systems/vehicles/index.js';
 import {
   colonyBuildingsOf,
   colonyContent,
   colonyIslands,
-  colonySettlersOf,
   colonyState,
-  colonyWorld,
   editColony,
   FOOD,
-  looseColonyEnv,
   mooredShip,
   SMALL_SHIP,
   stepUntil,
 } from '../../../../fixtures/colony-islands.js';
+import { routedWorld, routeTrader, standingTrader } from '../../../../fixtures/colony-scenarios.js';
 import { ctxOf } from '../../../../fixtures/context.js';
-import {
-  BUILDER,
-  CIVILIST,
-  MUD,
-  SEAT,
-  STOCK_TOP_TYPE,
-  STONE,
-  UNARMED,
-  VIKING,
-  WOMAN,
-} from '../../support.js';
+import { CIVILIST, MUD, SEAT, STOCK_TOP_TYPE, STONE, VIKING } from '../../support.js';
 
-const SITE_DUE_TICKS = minutesToTicks(2);
-const SCOUT_DUE_TICKS = minutesToTicks(12);
-const ROUTE_DUE_TICKS = minutesToTicks(20);
 const LEG_DUE_TICKS = minutesToTicks(8);
 const ROUND_DUE_TICKS = minutesToTicks(30);
 const AFTER_SAVE_TICKS = minutesToTicks(3);
-const SECOND_SHIP_AT = { x: 90, y: 100 };
 const THIRD_SHIP_AT = { x: 90, y: 20 };
-/** Off the colony's shore. */
-const STRAY_AT = { x: 138, y: 60 };
-const SITE_NEAR = 4;
-/** Several of the colony's workforce beats. */
-const HELD_TICKS = minutesToTicks(2);
 const HULL_HIT = 100;
 const STRAIT_MID_HX = 114;
 const STRAIT_ACROSS = [30, 60, 90];
 const DANGER_LAPSED_TICKS = minutesToTicks(40);
-const ENEMY = 5;
 /** Home's first warehouse of the route's tier, south of the headquarters. */
 const FAR_STORE_AT = { x: 72, y: 84 };
 /** A warehouse home raises by the berth later, nearer it than the route's home stop. */
 const BERTH_STORE_AT = { x: 86, y: 64 };
-/** Idle builders few enough that every one is past the colony's work. */
-const IDLE_MEN = 8;
-/** The builders a colony keeps at rest once nothing is left to raise. */
-const BUILDERS_KEPT = 2;
-const IDLE_STEP = 2;
-
-/** The colony's trader once the route stands: a trader with the ship pinned and both stops on its route. */
-function routeTrader(sim: Simulation): Entity | null {
-  const route = colonyState(sim)?.route;
-  const trader = route?.trader ?? null;
-  if (trader === null || route?.ship == null) return null;
-  const pinned = sim.world.tryGet(trader, TradeShip)?.vehicle === route.ship;
-  return pinned && (sim.world.tryGet(trader, TradeRoute)?.stops.length ?? 0) === 2 ? trader : null;
-}
-
-/** The colony's trader once the route stands, which the test needs to go on. */
-function standingTrader(sim: Simulation): Entity {
-  const trader = routeTrader(sim);
-  if (trader === null) throw new Error('setup: no route trader');
-  return trader;
-}
-
-/** A colony landed and its trade route standing. */
-function routedWorld(content?: ContentSet): {
-  readonly sim: Simulation;
-  readonly ship: Entity;
-  readonly scout: Entity;
-} {
-  const sim = colonyWorld(undefined, content);
-  stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
-  const scout = mooredShip(sim);
-  stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
-  const ship = mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
-  if (!stepUntil(sim, ROUTE_DUE_TICKS, () => routeTrader(sim) !== null)) throw new Error('setup: no route');
-  return { sim, ship, scout };
-}
-
-/** The land under the seat's headquarters. */
-function homeLandOfSeat(sim: Simulation): number {
-  const ctx = ctxOf(sim);
-  const terrain = ctx.terrain;
-  const base = seatBaseOf(sim.world, ctx, SEAT);
-  if (terrain === undefined || base === null) throw new Error('setup: no base');
-  return terrain.componentOf(interactionCell(sim.world, ctx, terrain, base));
-}
-
 /** The colony's stop on a colony route, home's being the first. */
 const COLONY_STOP = 1;
 /** A colony route's marks: the food a colony is filled up to and home keeps, the stone a colony site lacks,
@@ -164,12 +77,6 @@ function abandon(sim: Simulation): void {
   live.rest = [];
   live.ship = null;
 }
-
-/** Who stands on the colony or rides for it. */
-const colonyPeople = (sim: Simulation): number => {
-  const home = new Set(homeSettlers(sim.world, ctxOf(sim), SEAT));
-  return everySettlerOf(sim.world, SEAT).filter((e) => !home.has(e)).length;
-};
 
 describe('a colony trade route', () => {
   it('pins the colony ship to a home trader between two settlements, and moves goods both ways', () => {
@@ -378,145 +285,6 @@ describe("a colony route's marks", () => {
   });
 });
 
-/** {@link IDLE_MEN} idle builders landed on the running colony, the first wed to a woman landed beside them. */
-function idleBuilders(sim: Simulation): { readonly idle: readonly Entity[]; readonly husband: Entity } {
-  const site = colonyState(sim)?.site;
-  if (site === undefined) throw new Error('setup: no site');
-  const before = new Set(everySettlerOf(sim.world, SEAT));
-  const spawn = (jobType: number, x: number): void =>
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y: site.hy, tribe: VIKING, owner: SEAT });
-  for (let i = 0; i < IDLE_MEN; i++) spawn(BUILDER, site.hx + IDLE_STEP * i);
-  spawn(WOMAN, site.hx);
-  sim.step();
-  const fresh = colonySettlersOf(sim).filter((e) => !before.has(e));
-  const wife = fresh.find((e) => sim.world.has(e, Female));
-  const idle = fresh.filter((e) => !sim.world.has(e, Female));
-  const husband = idle[0];
-  if (wife === undefined || husband === undefined) throw new Error('setup: no couple on the colony');
-  sim.world.add(wife, Marriage, { spouse: husband, child: null });
-  sim.world.add(husband, Marriage, { spouse: wife, child: null });
-  return { idle, husband };
-}
-
-describe('a colony ferry', () => {
-  it('brings the hands a colony lacks over on a free ship', () => {
-    const { sim } = routedWorld();
-    const before = colonyPeople(sim);
-    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyPeople(sim) > before)).toBe(true);
-  });
-
-  it("sends men with no work left home as civilians, but keeps its posted men and a wife's husband", () => {
-    const { sim } = routedWorld();
-    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    const posted = colonySettlersOf(sim).filter((e) => {
-      const job = sim.world.get(e, Settler).jobType;
-      return job !== BUILDER && job !== CIVILIST && isAllocatableMan(sim.world, ctxOf(sim), e);
-    });
-    expect(posted.length).toBeGreaterThan(0);
-    const { idle, husband } = idleBuilders(sim);
-    const landed = (): Entity[] => {
-      const home = homeSettlers(sim.world, ctxOf(sim), SEAT);
-      return idle.filter((e) => home.includes(e) && !sim.world.has(e, Rider));
-    };
-    expect(stepUntil(sim, ROUND_DUE_TICKS, () => landed().length > 0)).toBe(true);
-    expect(landed().map((e) => sim.world.get(e, Settler).jobType)).toEqual(landed().map(() => CIVILIST));
-    stepUntil(sim, ROUND_DUE_TICKS, () => false);
-    // The colony keeps a pair of builders at rest, which a fresh idle man may fill, and a fresh man it gave
-    // another post stays at it.
-    expect(landed()).not.toContain(husband);
-    const colony = colonySettlersOf(sim);
-    const reposted = idle.filter(
-      (e) => e !== husband && colony.includes(e) && sim.world.get(e, Settler).jobType !== BUILDER,
-    );
-    expect(landed().length).toBeGreaterThanOrEqual(idle.length - 1 - BUILDERS_KEPT - reposted.length);
-    expect(colony).toContain(husband);
-    expect(posted.filter((e) => sim.world.isAlive(e) && !colony.includes(e))).toEqual([]);
-  });
-});
-
-describe("a colony's men past work", () => {
-  it('are its unwed builders first, past the crew it keeps, so a wed man stays', () => {
-    const { sim } = routedWorld();
-    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    const { idle, husband } = idleBuilders(sim);
-    const colony = editColony(sim);
-    const past = menPastWork(looseColonyEnv(sim, colony), colony);
-    expect(past.some((e) => idle.includes(e) && e !== husband)).toBe(true);
-    expect(past).not.toContain(husband);
-  });
-});
-
-describe('a ship left without a helm', () => {
-  it('is brought home from the colony by a man of the colony, who steps off there', () => {
-    const { sim } = routedWorld();
-    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    const stray = mooredShip(sim, SMALL_SHIP, STRAY_AT);
-    const land = colonyState(sim)?.land;
-    const ctx = ctxOf(sim);
-    const terrain = ctx.terrain;
-    const mooring = sim.world.get(stray, Vehicle).mooring;
-    if (land === undefined || terrain === undefined || mooring === null) throw new Error('setup: unmoored');
-    expect(terrain.componentOf(terrain.nodeAt(mooring.hx, mooring.hy))).toBe(land);
-    const env = { world: sim.world, ctx, terrain, seat: SEAT };
-    const home = homeLandOfSeat(sim);
-    expect(stepUntil(sim, ROUND_DUE_TICKS, () => freeShips(env, home).includes(stray))).toBe(true);
-  });
-
-  it('counts out of the fleet once it lies adrift with nobody aboard', () => {
-    const sim = colonyWorld();
-    sim.step();
-    const ship = mooredShip(sim);
-    expect(strandedShip(sim.world, ctxOf(sim), SEAT, ship)).toBe(false);
-    sim.world.mut(ship, Vehicle).moored = false;
-    expect(strandedShip(sim.world, ctxOf(sim), SEAT, ship)).toBe(true);
-  });
-});
-
-/** A building material home's stop store pulls for a colony, its content id the one the pull reads. */
-const BRICK = 47;
-
-describe('a colony toggle turned off', () => {
-  it('lets its routes go, lifts the stop pulls and hands the colony back to the whole seat', () => {
-    const base = colonyContent();
-    const content = parseContentSet({
-      ...base,
-      goods: [...base.goods, { typeId: BRICK, id: 'brick', weight: 1 }],
-    });
-    const { sim, ship } = routedWorld(content);
-    const trader = standingTrader(sim);
-    const homeStop = sim.world.get(trader, TradeRoute).stops[0]?.house;
-    if (homeStop === undefined) throw new Error('setup: no home stop');
-    sim.world.add(homeStop, StorePriority, { goods: [BRICK] });
-    const carrier = aiControlEntity(sim.world, SEAT);
-    if (carrier === null) throw new Error('setup: no AI seat');
-    expect(homeSettlers(sim.world, ctxOf(sim), SEAT).length).toBeLessThan(
-      everySettlerOf(sim.world, SEAT).length,
-    );
-    const modules = { ...sim.world.get(carrier, AiControl).modules, houseBuild: false };
-    sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: true, modules });
-    sim.step();
-    expect(colonyState(sim)).toBeUndefined();
-    expect(sim.world.tryGet(trader, TradeShip)).toBeUndefined();
-    expect(isTraderJob(sim.content, sim.world.get(trader, Settler).jobType)).toBe(false);
-    expect(prioritizesGood(sim.world, homeStop, BRICK)).toBe(false);
-    expect(sim.world.get(ship, Vehicle).hauler).not.toBe(trader);
-    expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).toEqual(everySettlerOf(sim.world, SEAT));
-    expect(homeBuildings(sim.world, ctxOf(sim), SEAT)).toEqual(everyBuildingOf(sim.world, SEAT));
-    stepUntil(sim, AFTER_SAVE_TICKS, () => false);
-    expect(colonyState(sim)).toBeUndefined();
-  });
-
-  it('leaves the routes standing for whoever takes the seat when the whole AI turns off', () => {
-    const { sim, ship } = routedWorld();
-    const trader = standingTrader(sim);
-    sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: false });
-    sim.step();
-    expect(aiControlEntity(sim.world, SEAT)).toBeNull();
-    expect(sim.world.tryGet(trader, TradeShip)?.vehicle).toBe(ship);
-    expect(isTraderJob(sim.content, sim.world.get(trader, Settler).jobType)).toBe(true);
-  });
-});
-
 describe('a route under fire', () => {
   it('marks where its hull fell and owes no ship while no way is clear, until the fire lapses', () => {
     const { sim, ship } = routedWorld();
@@ -575,44 +343,5 @@ describe('an abandoned route', () => {
     expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.route === null)).toBe(true);
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => seats().length === 0)).toBe(true);
     expect(sim.world.get(trader, Settler).jobType).toBe(CIVILIST);
-  });
-});
-
-describe('an overrun colony', () => {
-  it('is abandoned with no store standing once the enemy in sight outnumbers its men, lets its route go and its survivors sail home', () => {
-    const { sim } = routedWorld();
-    const site = colonyState(sim)?.site;
-    if (site === undefined) throw new Error('no site');
-    const trader = standingTrader(sim);
-    const ctx = ctxOf(sim);
-    const home = new Set(homeSettlers(sim.world, ctx, SEAT));
-    const settlers = everySettlerOf(sim.world, SEAT).filter((e) => !home.has(e) && e !== trader);
-    for (const e of [...colonyBuildingsOf(sim)]) sim.world.destroy(e);
-    const enemies = (count: number): void => {
-      for (let i = 0; i < count; i++)
-        sim.enqueueSetup({
-          kind: 'spawnSettler',
-          jobType: UNARMED,
-          x: site.hx + SITE_NEAR,
-          y: site.hy + i,
-          tribe: VIKING,
-          owner: ENEMY,
-        });
-    };
-    enemies(1);
-    expect(stepUntil(sim, HELD_TICKS, () => colonyState(sim)?.phase === 'abandoned')).toBe(false);
-    enemies(settlers.length);
-    expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.phase === 'abandoned')).toBe(true);
-    expect(colonyState(sim)?.people).toEqual([]);
-    expect(stepUntil(sim, LEG_DUE_TICKS, () => sim.world.get(trader, Settler).jobType === CIVILIST)).toBe(
-      true,
-    );
-    expect(colonyState(sim)?.route).toBeNull();
-    const back = (): boolean =>
-      homeSettlers(sim.world, ctxOf(sim), SEAT).some((e) => settlers.includes(e) && e !== trader);
-    expect(stepUntil(sim, ROUND_DUE_TICKS, back)).toBe(true);
-    const placed = colonyState(sim)?.builds.filter((b) => b.placed).length;
-    stepUntil(sim, AFTER_SAVE_TICKS, () => false);
-    expect(colonyState(sim)?.builds.filter((b) => b.placed).length).toBe(placed);
   });
 });

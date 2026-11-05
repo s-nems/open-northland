@@ -4,16 +4,12 @@ import {
   Building,
   ComputerColony,
   Female,
-  JobAssignment,
-  Livestock,
   mapBriefOf,
   Position,
-  Resource,
   Rider,
   Settler,
   SettlerNeeds,
   setStockAmount,
-  UnderConstruction,
   Vehicle,
   VehicleStock,
   zoneOfNode,
@@ -40,41 +36,22 @@ import { fittingOut, returning } from '../../../../../src/systems/computer-playe
 import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../../src/systems/computer-player/military/operations/landing.js';
 import { seatNeedsShips } from '../../../../../src/systems/computer-player/sea-route.js';
-import { addFishSwarms } from '../../../../../src/systems/economy/fish.js';
-import { liveWorkFlag } from '../../../../../src/systems/economy/work-flag.js';
-import { isFighterJob, isFisherJob } from '../../../../../src/systems/readviews/index.js';
+import { isFighterJob } from '../../../../../src/systems/readviews/index.js';
 import {
   BIG_SHIP,
-  colonyBuildingsOf,
   colonyContent,
   colonyIslands,
-  colonySettlersOf,
   colonyState,
   colonyWorld,
   editColony,
   FOOD,
-  fishingColonyContent,
-  huntingColonyContent,
   mooredShip,
   SHIP_AT,
   SMALL_SHIP,
   stepUntil,
 } from '../../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../../fixtures/context.js';
-import {
-  BUILDER,
-  COW_TRIBE,
-  FARM_TYPE,
-  HOME_TOP_TYPE,
-  HOME_TYPE,
-  HUNTER,
-  JOINERY_TYPE,
-  SEAT,
-  STOCK_TOP_TYPE,
-  STOCK_TYPE,
-  VIKING,
-  WOOD,
-} from '../../support.js';
+import { JOINERY_TYPE, SEAT, STOCK_TYPE, VIKING, WOOD } from '../../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 /** The failed voyages a seat gives one colony. */
@@ -91,25 +68,9 @@ const UNLOAD_DUE_TICKS = minutesToTicks(6);
 const PARTY_LEAST = 8;
 const SHORE_DX = 8;
 const SEED = 7;
-const FOUND_DUE_TICKS = minutesToTicks(16);
-const GATHER_DUE_TICKS = minutesToTicks(4);
-/** A cow this far south of the colony's site grazes inside its store hunters' ground. */
-const COW_DY = 6;
-/** The sites a running colony places once its store stands, and their building, before it rests. */
-const REST_DUE_TICKS = minutesToTicks(8);
-const LADDER_DUE_TICKS = minutesToTicks(14);
-const FARM_ID = 'work_farm_00';
-const HOMES_DUE_TICKS = minutesToTicks(20);
-/** The fixture's home chain, base tier to top. */
-const HOME_MID_TYPE = HOME_TYPE + 1;
-const HOME_TYPES = [HOME_TYPE, HOME_MID_TYPE, HOME_TOP_TYPE];
-const BUILDERS_AT_REST = 2;
 const TRADE_SHIP_SEATS = 10;
 const AFTER_SAVE_TICKS = minutesToTicks(4);
 const SECOND_SHIP_AT = { x: 90, y: 100 };
-/** A swarm in the strait off the east island's shore, and its fish. */
-const EAST_FISH_AT = { hx: 134, hy: 60 };
-const FISH_IN_SWARM = 40;
 /** A home warehouse site on the west island, south of the headquarters. */
 const HOME_SITE_AT = { x: 72, y: 84 };
 /** A joinery beside it. */
@@ -292,136 +253,6 @@ describe('a colony sails', () => {
     }
     expect(colonyState(copy)?.phase).toBe('running');
     expect(copy.hashState()).toBe(sim.hashState());
-  });
-
-  it('founds a level-3 store on the far land, houses its families and sets gatherers to work there', () => {
-    const sim = colonyWorld();
-    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
-    mooredShip(sim);
-    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
-    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
-    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    const ctx = ctxOf(sim);
-    const away = colonyBuildingsOf(sim);
-    const standing = away.filter((e) => !sim.world.has(e, UnderConstruction));
-    expect(standing.map((e) => sim.world.get(e, Building).buildingType)).toContain(STOCK_TOP_TYPE);
-    const left = (): number => {
-      let units = 0;
-      for (const e of sim.world.query(Resource)) units += sim.world.get(e, Resource).remaining;
-      return units;
-    };
-    const before = left();
-    expect(stepUntil(sim, GATHER_DUE_TICKS, () => left() < before)).toBe(true);
-    expect(homeBuildings(sim.world, ctx, SEAT).some((e) => away.includes(e))).toBe(false);
-  });
-
-  it('raises its homes straight at the top tier the tribe has', () => {
-    const sim = colonyWorld();
-    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
-    mooredShip(sim);
-    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
-    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
-    const homes = (): number[] =>
-      colonyBuildingsOf(sim)
-        .map((e) => sim.world.get(e, Building).buildingType)
-        .filter((type) => HOME_TYPES.includes(type));
-    expect(stepUntil(sim, FOUND_DUE_TICKS + HOMES_DUE_TICKS, () => homes().length > 0)).toBe(true);
-    expect(homes().every((type) => type === HOME_TOP_TYPE)).toBe(true);
-  });
-
-  it('raises a farm on the colony once the fishers do not meet its hunger', () => {
-    const sim = colonyWorld();
-    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
-    mooredShip(sim);
-    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
-    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
-    const farmRow = (): boolean => colonyState(sim)?.builds.some((b) => b.building === FARM_ID) === true;
-    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    expect(farmRow()).toBe(false);
-    expect(stepUntil(sim, LADDER_DUE_TICKS, farmRow)).toBe(true);
-    sim.step();
-    const farm = colonyBuildingsOf(sim).find((e) => sim.world.get(e, Building).buildingType === FARM_TYPE);
-    expect(farm).toBeDefined();
-  });
-
-  it('sets its builders past a pair digging once nothing is left to raise', () => {
-    const sim = colonyWorld();
-    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
-    mooredShip(sim);
-    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
-    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
-    const builders = (): number => {
-      return colonySettlersOf(sim).filter(
-        (e) => !sim.world.has(e, Rider) && sim.world.get(e, Settler).jobType === BUILDER,
-      ).length;
-    };
-    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    for (const e of [...colonyBuildingsOf(sim)])
-      if (sim.world.has(e, UnderConstruction)) sim.world.destroy(e);
-    for (const build of editColony(sim).builds) build.placed = true;
-    // It still raises the home it keeps ahead of its families, and rests once that stands.
-    const resting = () =>
-      (colonyState(sim)?.builds.every((b) => b.placed) ?? false) && builders() <= BUILDERS_AT_REST;
-    expect(stepUntil(sim, REST_DUE_TICKS + HOMES_DUE_TICKS, resting)).toBe(true);
-  });
-
-  it('puts no man on the hunter seat where no game is left, and sets him to other work', () => {
-    const sim = colonyWorld(SEED, huntingColonyContent());
-    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
-    mooredShip(sim);
-    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
-    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
-    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    stepUntil(sim, GATHER_DUE_TICKS, () => false);
-    expect(colonySettlersOf(sim).filter((e) => sim.world.get(e, Settler).jobType === HUNTER)).toEqual([]);
-  });
-
-  it('puts no man on the hunter seat while a wild cow grazes within the hunt and fish feed it, so the cow lives', () => {
-    const sim = colonyWorld(SEED, huntingColonyContent());
-    const terrain = sim.terrain;
-    if (terrain === undefined) throw new Error('setup: no terrain');
-    addFishSwarms(sim.world, terrain, [{ ...EAST_FISH_AT, count: FISH_IN_SWARM, continent: 0 }]);
-    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
-    mooredShip(sim);
-    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
-    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
-    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    const site = colonyState(sim)?.site;
-    if (site === undefined) throw new Error('setup: no site');
-    sim.enqueueSetup({
-      kind: 'spawnAnimalHerd',
-      tribe: COW_TRIBE,
-      x: site.hx,
-      y: site.hy + COW_DY,
-      count: 1,
-    });
-    sim.step();
-    const [cow] = sim.world.query(Livestock);
-    if (cow === undefined) throw new Error('setup: no cow');
-    stepUntil(sim, GATHER_DUE_TICKS, () => false);
-    expect(colonySettlersOf(sim).filter((e) => sim.world.get(e, Settler).jobType === HUNTER)).toEqual([]);
-    expect(sim.world.isAlive(cow)).toBe(true);
-  });
-
-  it('sets its fishers by the shore with a flag of their own, not at the store, so each catch is set down there', () => {
-    const sim = colonyWorld(SEED, fishingColonyContent());
-    const terrain = sim.terrain;
-    if (terrain === undefined) throw new Error('setup: no terrain');
-    addFishSwarms(sim.world, terrain, [{ ...EAST_FISH_AT, count: FISH_IN_SWARM, continent: 0 }]);
-    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
-    mooredShip(sim);
-    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
-    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
-    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    const fishers = (): Entity[] => {
-      const ctx = ctxOf(sim);
-      return colonySettlersOf(sim).filter((e) => isFisherJob(ctx.content, sim.world.get(e, Settler).jobType));
-    };
-    expect(stepUntil(sim, GATHER_DUE_TICKS, () => fishers().length > 0)).toBe(true);
-    for (const e of fishers()) {
-      expect(sim.world.has(e, JobAssignment)).toBe(false);
-      expect(liveWorkFlag(sim.world, e)).toBeDefined();
-    }
   });
 });
 

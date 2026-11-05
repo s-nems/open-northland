@@ -1,8 +1,31 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { colonySeats } from '../../../../../src/systems/computer-player/colony/settlement/posts.js';
+import { JobAssignment, Rider, Settler, UnderConstruction } from '../../../../../src/components/index.js';
+import type { Entity } from '../../../../../src/ecs/world.js';
+import {
+  colonySeats,
+  menPastWork,
+} from '../../../../../src/systems/computer-player/colony/settlement/posts.js';
+import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
+import { addFishSwarms } from '../../../../../src/systems/economy/fish.js';
+import { liveWorkFlag } from '../../../../../src/systems/economy/work-flag.js';
+import { isFisherJob } from '../../../../../src/systems/readviews/index.js';
 import { aiContent } from '../../../../fixtures/ai-content.js';
-import { aiSim, BAKER, CARRIER, COLLECTOR, ctxOf, FARMER, MILLER } from '../../support.js';
+import {
+  colonyBuildingsOf,
+  colonySettlersOf,
+  colonyState,
+  colonyWorld,
+  editColony,
+  fishingColonyContent,
+  looseColonyEnv,
+  mooredShip,
+  SMALL_SHIP,
+  stepUntil,
+} from '../../../../fixtures/colony-islands.js';
+import { idleBuilders, routedWorld } from '../../../../fixtures/colony-scenarios.js';
+import { ctxOf } from '../../../../fixtures/context.js';
+import { aiSim, BAKER, BUILDER, CARRIER, COLLECTOR, FARMER, MILLER } from '../../support.js';
 
 const GOLD = 90;
 const COIN = 91;
@@ -10,6 +33,20 @@ const MINT_TYPE = 90;
 const COIN_MAKER = 90;
 const WOOD = 1;
 const IRON = 5;
+const ROUND_DUE_TICKS = minutesToTicks(30);
+const SITE_DUE_TICKS = minutesToTicks(2);
+const SCOUT_DUE_TICKS = minutesToTicks(12);
+const SECOND_SHIP_AT = { x: 90, y: 100 };
+const FOUND_DUE_TICKS = minutesToTicks(16);
+const SEED = 7;
+/** A swarm in the strait off the east island's shore, and its fish. */
+const EAST_FISH_AT = { hx: 134, hy: 60 };
+const FISH_IN_SWARM = 40;
+const GATHER_DUE_TICKS = minutesToTicks(4);
+/** The sites a running colony places once its store stands, and their building, before it rests. */
+const REST_DUE_TICKS = minutesToTicks(8);
+const HOMES_DUE_TICKS = minutesToTicks(20);
+const BUILDERS_AT_REST = 2;
 /** Seats past one a workshop offers its gatherers. */
 const GATHERER_SLOTS = 2;
 
@@ -80,5 +117,61 @@ describe('a colony workshop gatherer', () => {
   it('works for a good no digger of the colony digs, as gold, and leaves the diggers theirs', () => {
     expect(gatherers(GOLD)).toBe(1);
     expect(gatherers(IRON)).toBe(0);
+  });
+});
+
+describe("a colony's men past work", () => {
+  it('are its unwed builders first, past the crew it keeps, so a wed man stays', () => {
+    const { sim } = routedWorld();
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const { idle, husband } = idleBuilders(sim);
+    const colony = editColony(sim);
+    const past = menPastWork(looseColonyEnv(sim, colony), colony);
+    expect(past.some((e) => idle.includes(e) && e !== husband)).toBe(true);
+    expect(past).not.toContain(husband);
+  });
+});
+
+describe('a running colony', () => {
+  it('sets its builders past a pair digging once nothing is left to raise', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    const builders = (): number => {
+      return colonySettlersOf(sim).filter(
+        (e) => !sim.world.has(e, Rider) && sim.world.get(e, Settler).jobType === BUILDER,
+      ).length;
+    };
+    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    for (const e of [...colonyBuildingsOf(sim)])
+      if (sim.world.has(e, UnderConstruction)) sim.world.destroy(e);
+    for (const build of editColony(sim).builds) build.placed = true;
+    // It still raises the home it keeps ahead of its families, and rests once that stands.
+    const resting = () =>
+      (colonyState(sim)?.builds.every((b) => b.placed) ?? false) && builders() <= BUILDERS_AT_REST;
+    expect(stepUntil(sim, REST_DUE_TICKS + HOMES_DUE_TICKS, resting)).toBe(true);
+  });
+
+  it('sets its fishers by the shore with a flag of their own, not at the store, so each catch is set down there', () => {
+    const sim = colonyWorld(SEED, fishingColonyContent());
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    addFishSwarms(sim.world, terrain, [{ ...EAST_FISH_AT, count: FISH_IN_SWARM, continent: 0 }]);
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const fishers = (): Entity[] => {
+      const ctx = ctxOf(sim);
+      return colonySettlersOf(sim).filter((e) => isFisherJob(ctx.content, sim.world.get(e, Settler).jobType));
+    };
+    expect(stepUntil(sim, GATHER_DUE_TICKS, () => fishers().length > 0)).toBe(true);
+    for (const e of fishers()) {
+      expect(sim.world.has(e, JobAssignment)).toBe(false);
+      expect(liveWorkFlag(sim.world, e)).toBeDefined();
+    }
   });
 });

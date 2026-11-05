@@ -1,12 +1,18 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
+import { Vehicle } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { halfCellMapFromCells, Simulation } from '../../../src/index.js';
 import type { HalfCellNode } from '../../../src/nav/halfcell.js';
 import { nodeManhattan } from '../../../src/nav/halfcell.js';
-import { LANDING_SHORE_SPACING_NODES, shorePoints } from '../../../src/systems/computer-player/sea-route.js';
+import {
+  LANDING_SHORE_SPACING_NODES,
+  shorePoints,
+  strandedShip,
+} from '../../../src/systems/computer-player/sea-route.js';
 import { createVehicle, mooringSpotsOf } from '../../../src/systems/vehicles/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
+import { colonyWorld, mooredShip } from '../../fixtures/colony-islands.js';
 import { ctxOf } from '../../fixtures/context.js';
 
 const VIKING = 1;
@@ -94,5 +100,16 @@ describe('shorePoints', () => {
     const picked = pick(ship, (at) => !barred(at));
     expect(picked.length).toBeGreaterThan(0);
     expect(picked.some(barred)).toBe(false);
+  });
+});
+
+describe('a ship left without a helm', () => {
+  it('counts out of the fleet once it lies adrift with nobody aboard', () => {
+    const sim = colonyWorld();
+    sim.step();
+    const ship = mooredShip(sim);
+    expect(strandedShip(sim.world, ctxOf(sim), SEAT, ship)).toBe(false);
+    sim.world.mut(ship, Vehicle).moored = false;
+    expect(strandedShip(sim.world, ctxOf(sim), SEAT, ship)).toBe(true);
   });
 });

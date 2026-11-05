@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { Building } from '../../../../../src/components/index.js';
+import { Building, Resource, UnderConstruction } from '../../../../../src/components/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../../src/index.js';
+import { homeBuildings } from '../../../../../src/systems/ai-shared/home-roster.js';
 import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
 import {
   colonyBuildingsOf,
@@ -11,11 +12,14 @@ import {
   SMALL_SHIP,
   stepUntil,
 } from '../../../../fixtures/colony-islands.js';
-import { STOCK_TOP_TYPE, STOCK_TYPE } from '../../support.js';
+import { ctxOf } from '../../../../fixtures/context.js';
+import { SEAT, STOCK_TOP_TYPE, STOCK_TYPE } from '../../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
 const LANDING_DUE_TICKS = minutesToTicks(8);
+const FOUND_DUE_TICKS = minutesToTicks(16);
+const GATHER_DUE_TICKS = minutesToTicks(4);
 /** A few workforce beats. */
 const REPLACE_DUE_TICKS = minutesToTicks(2);
 const SECOND_SHIP_AT = { x: 90, y: 100 };
@@ -38,5 +42,26 @@ describe('a founding colony', () => {
     for (const e of storesOf(sim)) sim.world.destroy(e);
     expect(stepUntil(sim, REPLACE_DUE_TICKS, () => storesOf(sim).length > 0)).toBe(true);
     expect(colonyState(sim)?.phase).not.toBe('abandoned');
+  });
+
+  it('founds a level-3 store on the far land, houses its families and sets gatherers to work there', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const ctx = ctxOf(sim);
+    const away = colonyBuildingsOf(sim);
+    const standing = away.filter((e) => !sim.world.has(e, UnderConstruction));
+    expect(standing.map((e) => sim.world.get(e, Building).buildingType)).toContain(STOCK_TOP_TYPE);
+    const left = (): number => {
+      let units = 0;
+      for (const e of sim.world.query(Resource)) units += sim.world.get(e, Resource).remaining;
+      return units;
+    };
+    const before = left();
+    expect(stepUntil(sim, GATHER_DUE_TICKS, () => left() < before)).toBe(true);
+    expect(homeBuildings(sim.world, ctx, SEAT).some((e) => away.includes(e))).toBe(false);
   });
 });

@@ -4,11 +4,8 @@ import {
   aiControlEntity,
   Building,
   ComputerColony,
-  type EconomicSide,
   JobAssignment,
   ProductionCounters,
-  Resource,
-  StalledPlacements,
   UnderConstruction,
 } from '../../../../../src/components/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
@@ -25,21 +22,12 @@ import {
   homeBuildings,
   homeSettlers,
 } from '../../../../../src/systems/ai-shared/home-roster.js';
-import {
-  type BuildLineId,
-  DEFAULT_BUILD_ORDER,
-  type StepKey,
-  stepKey,
-} from '../../../../../src/systems/computer-player/build-order/entries.js';
 import { entryStatuses } from '../../../../../src/systems/computer-player/build-order/progress.js';
-import { seatBuildOrder } from '../../../../../src/systems/computer-player/build-order/seat-order.js';
-import { colonists } from '../../../../../src/systems/computer-player/colony/roster.js';
 import {
   isOverflowBuilding,
   reviewOverflow,
 } from '../../../../../src/systems/computer-player/colony/settlement/overflow.js';
 import { homeStockOf } from '../../../../../src/systems/computer-player/colony/stock.js';
-import { computerProfileOf } from '../../../../../src/systems/computer-player/difficulty.js';
 import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
 import { stockAtBuildings } from '../../../../../src/systems/stores/index.js';
 import {
@@ -50,12 +38,11 @@ import {
   colonyWorld,
   editColony,
   looseColonyEnv,
-  mooredShip,
   overflowContent,
-  SMALL_SHIP,
   SPEAR,
   stepUntil,
 } from '../../../../fixtures/colony-islands.js';
+import { runningWorld } from '../../../../fixtures/colony-scenarios.js';
 import { ctxOf } from '../../../../fixtures/context.js';
 import { SEAT, VIKING } from '../../support.js';
 
@@ -65,17 +52,11 @@ const MATERIAL_WORKSHOP_IDS = [
   'work_mason_hut_00',
   'work_mason_hut_01',
 ];
-
-const SITE_DUE_TICKS = minutesToTicks(2);
-const SCOUT_DUE_TICKS = minutesToTicks(12);
-const RUNNING_DUE_TICKS = minutesToTicks(30);
 const WORKSHOP_DUE_TICKS = minutesToTicks(30);
 const GOODS_DUE_TICKS = minutesToTicks(45);
 const HOME_DUE_TICKS = minutesToTicks(45);
 const REVIEWED_TICKS = minutesToTicks(12);
 const AFTER_SAVE_TICKS = minutesToTicks(3);
-const SECOND_SHIP_AT = { x: 90, y: 100 };
-const NEVER_RETRY_TICK = Number.MAX_SAFE_INTEGER;
 const ARMORY_ID = 'work_armory_00';
 /** The armory's next tier, in {@link armoryChainContent}. */
 const ARMORY_TOP_TYPE = 51;
@@ -96,41 +77,6 @@ function armoryChainContent(): ContentSet {
       { ...armory, typeId: ARMORY_TOP_TYPE, id: 'work_armory_01' },
     ],
   });
-}
-
-/** Mark the step that places `building` as holding its line for ground, as a failed search leaves it. */
-function holdForGround(sim: Simulation, building: string): StepKey {
-  const carrier = aiControlEntity(sim.world, SEAT);
-  if (carrier === null) throw new Error('setup: no carrier');
-  const ctx = ctxOf(sim);
-  const order = seatBuildOrder(sim.world, ctx, SEAT, DEFAULT_BUILD_ORDER, computerProfileOf(sim.world, SEAT));
-  for (const line of order.lines) {
-    const step = line.steps.findIndex((entry) => 'building' in entry && entry.building === building);
-    if (step < 0) continue;
-    const key = stepKey(line.id, step);
-    sim.world.add(carrier, StalledPlacements, {
-      retryTicks: new Map([[key, NEVER_RETRY_TICK]]),
-      holding: new Map<BuildLineId, StepKey>([[line.id, key]]),
-    });
-    return key;
-  }
-  throw new Error(`setup: no step places ${building}`);
-}
-
-/** A seat whose colony runs, with `building`'s step held since before the colony landed. */
-function runningWorld(
-  building = ARMORY_ID,
-  sides: readonly EconomicSide[] = ['noRoom'],
-): { readonly sim: Simulation; readonly ship: Entity } {
-  const sim = colonyWorld(7, overflowContent(), sides);
-  holdForGround(sim, building);
-  stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
-  mooredShip(sim);
-  stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
-  const ship = mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
-  if (!stepUntil(sim, RUNNING_DUE_TICKS, () => colonyState(sim)?.phase === 'running'))
-    throw new Error('setup: no running colony');
-  return { sim, ship };
 }
 
 const handedOver = (sim: Simulation): readonly string[] =>
@@ -188,30 +134,6 @@ describe('overflow production', () => {
 
     const home = (): number => homeStockOf(sim.world, ctxOf(sim), SEAT).units(SPEAR);
     expect(stepUntil(sim, HOME_DUE_TICKS, () => home() > 0)).toBe(true);
-  });
-
-  it('sails men home once the colony has no work left', () => {
-    const { sim } = runningWorld('barracks');
-    const ctx = ctxOf(sim);
-    const home = new Set(homeSettlers(sim.world, ctx, SEAT));
-    const colonists = everySettlerOf(sim.world, SEAT).filter((e) => !home.has(e));
-    for (const e of sim.world.canonicalQuery(Resource)) sim.world.destroy(e);
-    const back = (): Entity[] => {
-      const now = new Set(homeSettlers(sim.world, ctxOf(sim), SEAT));
-      return colonists.filter((e) => now.has(e));
-    };
-    expect(stepUntil(sim, HOME_DUE_TICKS, () => back().length > 0)).toBe(true);
-  });
-
-  it('counts a man listed for the line no colonist until he lands', () => {
-    const { sim } = runningWorld('barracks');
-    const ctx = ctxOf(sim);
-    const walking = homeSettlers(sim.world, ctx, SEAT)[0] as Entity;
-    const colony = editColony(sim);
-    colony.rest.push(walking);
-    const env = looseColonyEnv(sim, colony);
-    expect(homeSettlers(sim.world, ctx, SEAT)).not.toContain(walking);
-    expect(colonists(env)).not.toContain(walking);
   });
 
   it('gives the step back once the colony is lost', () => {
