@@ -5,7 +5,7 @@ import { moduleBeatDue, POPULATION_PHASE, WORKFORCE_EVERY_DECISIONS } from '../.
 import type { SystemContext } from '../../context.js';
 import { seatArchetype } from '../build-order/seat-order.js';
 import type { ComputerModule } from '../index.js';
-import { abandonColony, evacuate, overrun } from './abandon.js';
+import { abandonColony, evacuate, evacuated, overrun } from './abandon.js';
 import { openNextColony } from './expansion.js';
 import { runFerry } from './ferry.js';
 import { foundColony } from './founding.js';
@@ -86,9 +86,10 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
   const carrier = aiControlEntity(world, seat);
   if (terrain === undefined || carrier === null) return [];
   const env: SeatEnv = { world, ctx, terrain, seat, carrier };
+  const surveyDue = moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, SURVEY_EVERY_DECISIONS);
   const state = world.tryGet(carrier, ComputerColony);
   if (state === undefined) {
-    if (moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, SURVEY_EVERY_DECISIONS)) chooseSite(env);
+    if (surveyDue) chooseSite(env);
     return [];
   }
   // A copy: a voyage that fails for good drops its colony off the list.
@@ -100,11 +101,11 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
     const berth = held.colonies.find((colony) => colony.berth !== null)?.berth ?? null;
     if (berth !== null) commands.push(...strayCrewsHome(env, berth));
   }
-  if (
-    world.has(carrier, ComputerColony) &&
-    moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, SURVEY_EVERY_DECISIONS)
-  )
-    openNextColony(env);
+  // A seat with none under way, its colonies all lost and wound up, looks for a first one again.
+  if (held !== undefined && surveyDue) {
+    if (held.colonies.every(evacuated)) chooseSite(env);
+    else openNextColony(env);
+  }
   return commands;
 }
 

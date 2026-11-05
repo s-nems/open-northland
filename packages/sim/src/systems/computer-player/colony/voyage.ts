@@ -88,9 +88,10 @@ const SCOUTING_GROWTH_CIVILIANS = 4;
  *  ({@link PARTY_FROM_CIVILIANS}) about when the scout comes home, rather than starting the scouting only
  *  then. */
 const COLONY_FROM_CIVILIANS = PARTY_FROM_CIVILIANS - SCOUTING_GROWTH_CIVILIANS;
-/** How long a failed voyage holds the seat's next one (authored): time for the home stores to refill. A
- *  voyage that failed before it claimed its carrying ship, a scouting turned back, took nothing from them. */
-const COLONY_RETRY_TICKS = minutesToTicks(10);
+/** How long a failed voyage or a lost colony holds the seat's next one (authored): time for the home stores to
+ *  refill. A voyage that failed before it claimed its carrying ship, a scouting turned back, took nothing from
+ *  them. */
+export const COLONY_RETRY_TICKS = minutesToTicks(10);
 /** The failed voyages a seat gives its colony (authored): past them it stays at home. */
 const COLONY_MAX_FAILURES = 2;
 /** How long a helm may take to board (authored: a landing's forming time). */
@@ -213,13 +214,20 @@ function settledOn(
   };
 }
 
-/** A seat with no colony and civilians enough takes the survey's best site, or stays as it is. */
+/** A seat with no colony under way and civilians enough takes the survey's best site, or stays as it is. A
+ *  seat whose colonies were all lost waits out its retry and looks past their lands and the sites it gave up
+ *  on (owner ruling: a seat is not limited to one colony). */
 export function chooseSite(env: SeatEnv): void {
   const { world, ctx, seat, carrier } = env;
+  const state = world.tryGet(carrier, ComputerColony);
+  if (state !== undefined && ctx.tick < state.retryAt) return;
   if (civilianCount(world, ctx, seat) < COLONY_FROM_CIVILIANS) return;
-  const site = surveyColonySite(world, ctx, seat, []);
-  if (site !== null)
+  const lost = new Set(state?.colonies.map((colony) => colony.land));
+  const site = surveyColonySite(world, ctx, seat, state?.rejected ?? [], (next) => !lost.has(next.land));
+  if (site === null) return;
+  if (state === undefined)
     world.add(carrier, ComputerColony, { colonies: [settledOn(env, site, 0)], rejected: [], retryAt: 0 });
+  else openColony(env, site);
 }
 
 /** The seat takes `site` as one colony more. */
@@ -227,11 +235,10 @@ export function openColony(env: SeatEnv, site: ColonySite): void {
   env.world.mut(env.carrier, ComputerColony).colonies.push(settledOn(env, site, 0));
 }
 
-/** The seat lets the colony's plan go, and with it, when it was the last, what its survey learned. */
+/** The seat lets the colony's plan go; what its survey learned stays. */
 function dropColony(env: ColonyEnv): void {
   const state = env.editSeat();
   state.colonies = state.colonies.filter((held) => held !== env.colony);
-  if (state.colonies.length === 0) env.world.remove(env.carrier, ComputerColony);
 }
 
 /** Move on from a site the seat lost: past {@link COLONY_MAX_FAILURES} the colony is abandoned where it
@@ -239,6 +246,7 @@ function dropColony(env: ColonyEnv): void {
 function nextSite(env: ColonyEnv, colony: ColonyView): void {
   const { world, ctx, seat, carrier } = env;
   if (colony.failures >= COLONY_MAX_FAILURES) {
+    env.editSeat().retryAt = ctx.tick + COLONY_RETRY_TICKS;
     const live = env.edit();
     live.phase = 'abandoned';
     live.since = ctx.tick;
@@ -255,8 +263,7 @@ function nextSite(env: ColonyEnv, colony: ColonyView): void {
     dropColony(env);
     return;
   }
-  const spent = colony.failures > 0 && colony.ship !== null;
-  env.editSeat().retryAt = spent ? ctx.tick + COLONY_RETRY_TICKS : 0;
+  if (colony.failures > 0 && colony.ship !== null) env.editSeat().retryAt = ctx.tick + COLONY_RETRY_TICKS;
   Object.assign(env.edit(), settledOn(env, site, colony.failures));
 }
 

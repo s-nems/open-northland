@@ -27,7 +27,7 @@ export function colonyStoreType(world: World, ctx: SystemContext, seat: number):
 /** Owner ruling: no warehouse stays below the top tier. A store placed lower, before the top tier was
  *  enabled, goes straight up to it once the colony runs and the store's own pile holds the whole upgrade
  *  bill: it then stands closed only while its builders work, and never with raiders about, since a colony
- *  with no standing store is overrun at the first enemy seen (`./abandon.ts`). */
+ *  with no standing store is overrun by a band that outnumbers its men (`./abandon.ts`). */
 export function liftStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead): PlayerCommand[] {
   const { world, ctx, seat } = env;
   if (colony.phase !== 'running' || recentThreat(colony, ctx.tick) > 0) return [];

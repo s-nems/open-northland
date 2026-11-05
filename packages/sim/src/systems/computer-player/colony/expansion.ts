@@ -14,6 +14,7 @@ import { NEED_CRITICAL_THRESHOLD } from '../../lifecycle/needs/scale.js';
 import { seatBaseOf } from '../base.js';
 import { LATE_GAME_FROM_TICKS, minutesToTicks } from '../game-phase.js';
 import { freeShips } from '../military/operations/landing.js';
+import { evacuated } from './abandon.js';
 import { colonists, colonyOrigin } from './founding.js';
 import { homeSupply } from './home-supply.js';
 import { pickParty } from './people.js';
@@ -92,7 +93,7 @@ export function mayLookFurther(read: NextColonyRead): boolean {
 function settled(colonies: readonly ColonyView[]): boolean {
   return colonies.every((colony) =>
     colony.phase === 'abandoned'
-      ? colony.route === null && colony.ferry === null && colony.scout === null
+      ? evacuated(colony)
       : colony.phase === 'running' &&
         (colony.route?.ship ?? null) !== null &&
         colony.scout === null &&

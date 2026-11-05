@@ -78,6 +78,8 @@ const THIRD_SHIP_AT = { x: 90, y: 20 };
 /** Off the colony's shore. */
 const STRAY_AT = { x: 138, y: 60 };
 const SITE_NEAR = 4;
+/** Several of the colony's workforce beats. */
+const HELD_TICKS = minutesToTicks(2);
 const HULL_HIT = 100;
 const STRAIT_MID_HX = 114;
 const STRAIT_ACROSS = [30, 60, 90];
@@ -567,7 +569,7 @@ describe('an abandoned route', () => {
 });
 
 describe('an overrun colony', () => {
-  it('is abandoned with no store standing and an enemy in sight, lets its route go and its survivors sail home', () => {
+  it('is abandoned with no store standing once the enemy in sight outnumbers its men, lets its route go and its survivors sail home', () => {
     const { sim } = routedWorld();
     const site = colonyState(sim)?.site;
     if (site === undefined) throw new Error('no site');
@@ -576,14 +578,20 @@ describe('an overrun colony', () => {
     const home = new Set(homeSettlers(sim.world, ctx, SEAT));
     const settlers = everySettlerOf(sim.world, SEAT).filter((e) => !home.has(e) && e !== trader);
     for (const e of [...colonyBuildingsOf(sim)]) sim.world.destroy(e);
-    sim.enqueueSetup({
-      kind: 'spawnSettler',
-      jobType: UNARMED,
-      x: site.hx + SITE_NEAR,
-      y: site.hy,
-      tribe: VIKING,
-      owner: ENEMY,
-    });
+    const enemies = (count: number): void => {
+      for (let i = 0; i < count; i++)
+        sim.enqueueSetup({
+          kind: 'spawnSettler',
+          jobType: UNARMED,
+          x: site.hx + SITE_NEAR,
+          y: site.hy + i,
+          tribe: VIKING,
+          owner: ENEMY,
+        });
+    };
+    enemies(1);
+    expect(stepUntil(sim, HELD_TICKS, () => colonyState(sim)?.phase === 'abandoned')).toBe(false);
+    enemies(settlers.length);
     expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.phase === 'abandoned')).toBe(true);
     expect(colonyState(sim)?.people).toEqual([]);
     expect(stepUntil(sim, LEG_DUE_TICKS, () => sim.world.get(trader, Settler).jobType === CIVILIST)).toBe(

@@ -6,6 +6,7 @@ import {
   Female,
   JobAssignment,
   Livestock,
+  mapBriefOf,
   Position,
   Resource,
   Rider,
@@ -15,6 +16,7 @@ import {
   UnderConstruction,
   Vehicle,
   VehicleStock,
+  zoneOfNode,
 } from '../../../../src/components/index.js';
 import { ONE } from '../../../../src/core/fixed.js';
 import type { Entity } from '../../../../src/ecs/world.js';
@@ -29,8 +31,10 @@ import {
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../src/systems/ai-shared/cadence.js';
 import { colonyHeldShips, homeBuildings } from '../../../../src/systems/ai-shared/home-roster.js';
 import { seatBaseOf } from '../../../../src/systems/computer-player/base.js';
+import { abandonColony } from '../../../../src/systems/computer-player/colony/abandon.js';
 import { holdLoad } from '../../../../src/systems/computer-player/colony/cargo.js';
 import { spareMen } from '../../../../src/systems/computer-player/colony/people.js';
+import { surveyColonySite } from '../../../../src/systems/computer-player/colony/survey.js';
 import { colonyEnv, fittingOut, returning } from '../../../../src/systems/computer-player/colony/voyage.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
@@ -72,6 +76,8 @@ import {
 } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
+/** Past one survey beat. */
+const SURVEY_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
 const UNLOAD_TICKS = 4;
 const DECISION_TICKS = COMPUTER_DECISION_INTERVAL_TICKS + 1;
@@ -441,6 +447,47 @@ describe('a failed voyage', () => {
 
   it('lets the next scouting go at once when it turned back before that', () => {
     expect(failedOnce('none').retryAt).toBe(0);
+  });
+
+  it('keeps the sites it gave up on once it holds no colony, and chooses none of them again', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    const brief = mapBriefOf(sim.world);
+    const carrier = aiControlEntity(sim.world, SEAT);
+    const ctx = ctxOf(sim);
+    if (brief === null || carrier === null || ctx.terrain === undefined) throw new Error('setup: no seat');
+    const rejected = sim.world.mut(carrier, ComputerColony).rejected;
+    for (let site = surveyColonySite(sim.world, ctx, SEAT, rejected); site !== null; ) {
+      rejected.push(zoneOfNode(brief, site.centre.hx, site.centre.hy));
+      site = surveyColonySite(sim.world, ctx, SEAT, rejected);
+    }
+    const given = editColony(sim);
+    given.phase = 'returning';
+    given.failures = 1;
+    returning(colonyEnv({ world: sim.world, ctx, terrain: ctx.terrain, seat: SEAT, carrier }, given), given);
+    expect(colonyState(sim)).toBeUndefined();
+    stepUntil(sim, SURVEY_TICKS, () => false);
+    expect(colonyState(sim)).toBeUndefined();
+  });
+});
+
+describe('a seat whose colonies are all lost', () => {
+  it('chooses a site on another land once its retry has passed', () => {
+    const sim = colonyWorld(SEED, colonyContent(), [], true);
+    expect(stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined)).toBe(true);
+    const ctx = ctxOf(sim);
+    const carrier = aiControlEntity(sim.world, SEAT);
+    const lost = colonyState(sim);
+    if (ctx.terrain === undefined || carrier === null || lost === undefined)
+      throw new Error('setup: no colony');
+    abandonColony(colonyEnv({ world: sim.world, ctx, terrain: ctx.terrain, seat: SEAT, carrier }, lost));
+    const retryAt = sim.world.get(carrier, ComputerColony).retryAt;
+    expect(retryAt).toBeGreaterThan(sim.tick);
+    const chosen = (): boolean => colonyState(sim, 1) !== undefined;
+    expect(stepUntil(sim, SURVEY_TICKS, chosen)).toBe(false);
+    sim.world.mut(carrier, ComputerColony).retryAt = sim.tick;
+    expect(stepUntil(sim, SURVEY_TICKS, chosen)).toBe(true);
+    expect(colonyState(sim, 1)?.land).not.toBe(lost.land);
   });
 });
 
