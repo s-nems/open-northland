@@ -256,12 +256,10 @@ export function nearestStoreHolding(
   avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
   if (sideLendsNone(bands, world, owner, goodType)) return null;
-  const holders = bands.holding(goodType);
   // An empty band answers null whatever the gate, so its goods limit is never asked.
-  if (!holders.hasCandidates()) return null;
-  return nearestHolderIn(
+  if (!bands.holding(goodType).hasCandidates()) return null;
+  return nearestStoreHoldingWithin(
     bands,
-    holders,
     world,
     here,
     goodType,
