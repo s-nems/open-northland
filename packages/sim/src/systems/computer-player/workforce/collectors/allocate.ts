@@ -10,7 +10,12 @@ import type { SpareForce } from '../../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from '../../build-order/index.js';
-import { gathererReach, nearestLiveResource, type WorkableTest } from '../../live-resources.js';
+import {
+  type AnchorGate,
+  gathererReach,
+  nearestLiveResource,
+  type WorkableTest,
+} from '../../live-resources.js';
 import {
   claimFlagNode,
   collectorSpot,
@@ -125,6 +130,8 @@ export interface CollectorGround {
   readonly baseNode: HalfCellNode;
   readonly flags: FlagGround;
   readonly workable: WorkableTest;
+  /** {@link workable}'s anchor gate, when it has one; it holds for every test narrowing it. */
+  readonly gate?: AnchorGate | undefined;
   /** The deposits the seat may know of (`knownResourceTest`), already part of {@link workable};
    *  absent or null when it knows every one. */
   readonly known?: WorkableTest | null;
@@ -210,7 +217,16 @@ export function allocateCollectors(
     if (!menQualify && steal === null) continue;
     const band =
       holders.length === 0 && COLLECTED_GOOD_IDS.includes(w.good.id) ? FIRST_POST_FLAG_BAND : undefined;
-    const spot = collectorSpot(world, ground.flags, anchor, w.good.typeId, taken, workable, band);
+    const spot = collectorSpot(
+      world,
+      ground.flags,
+      anchor,
+      w.good.typeId,
+      taken,
+      workable,
+      band,
+      ground.gate,
+    );
     if (spot === null) continue; // no reachable free spot beside a live node of this good
     if (holders.length > 0 && builderJob !== null)
       builders ??= seatBuilders(world, ctx, player, force, builderJob);
@@ -283,7 +299,16 @@ export function topUpCollectors(
     while (holders.length < w.target) {
       const anchor = free.shift();
       if (anchor === undefined || !force.any(qualifies)) break;
-      const spot = collectorSpot(world, ground.flags, anchor, w.good.typeId, taken, ground.workable);
+      const spot = collectorSpot(
+        world,
+        ground.flags,
+        anchor,
+        w.good.typeId,
+        taken,
+        ground.workable,
+        undefined,
+        ground.gate,
+      );
       if (spot === null) break;
       const spare = force.take(qualifies, veteranFirst);
       if (spare === null) break;
@@ -342,6 +367,7 @@ export function allocateGenericCollectors(
         ctx,
         baseNode,
         (e) => workable(e) && open(e) && clearOfFlags(world, e, flags, g),
+        ground.gate,
       );
     if (!patchWorked(world, reach, g, flagNode, flag.radius, harvests)) {
       // The flag follow moves a worked-out flag; the upkeep only retires a hopeless post.
@@ -374,8 +400,14 @@ export function allocateGenericCollectors(
     if (!force.any()) break;
     const resource =
       aimed(everyResource) ??
-      clearingResource(world, ctx, baseNode, (e) => workable(e) && clearOfFlags(world, e, flags, null)) ??
-      clearingResource(world, ctx, baseNode, workable); // every clearing good stands by a post: double up
+      clearingResource(
+        world,
+        ctx,
+        baseNode,
+        (e) => workable(e) && clearOfFlags(world, e, flags, null),
+        ground.gate,
+      ) ??
+      clearingResource(world, ctx, baseNode, workable, ground.gate); // every clearing good stands by a post: double up
     if (resource === null) break; // no clearing good stands anywhere - no generic post
     const spot = flagSpotNear(world, ground.flags, resource, baseNode, taken);
     if (spot === null) break;
@@ -423,12 +455,13 @@ function clearingResource(
   ctx: SystemContext,
   baseNode: HalfCellNode,
   workable: WorkableTest,
+  gate?: AnchorGate,
 ): Entity | null {
   let best: { resource: Entity; dist: number } | null = null;
   for (const goodId of CLEARING_GOOD_IDS) {
     const good = goodTypeByContentId(ctx.content, goodId);
     if (good === undefined) continue;
-    const resource = nearestLiveResource(world, good.typeId, baseNode, workable);
+    const resource = nearestLiveResource(world, good.typeId, baseNode, workable, gate);
     if (resource === null) continue;
     const node = anchorNodeOf(world, resource);
     if (node === null) continue;

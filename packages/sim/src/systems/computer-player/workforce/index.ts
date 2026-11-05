@@ -442,7 +442,13 @@ function collectorGround(
   const judged = (e: Entity): boolean => verdicts.judged(e, epoch, judge);
   const known = knownResourceTest(world, ctx, player);
   const workable = known === null ? judged : (e: Entity): boolean => known(e) && judged(e);
-  return { anchors: collectorAnchors(world, ctx, owned, baseNode), baseNode, flags, workable, known };
+  // `mayWorkInside` on the indexed anchor, which is the node of the resource's Position.
+  const mayAllowNear = limit?.mayAllowNear?.bind(limit);
+  const gate =
+    mayAllowNear === undefined
+      ? undefined
+      : (hx: number, hy: number): boolean => !terrain.inBounds(hx, hy) || mayAllowNear(hx, hy, maxWorkOffset);
+  return { anchors: collectorAnchors(world, ctx, owned, baseNode), baseNode, flags, workable, known, gate };
 }
 
 /** False only when `limit` provably refuses `e`'s work cell: a resource's work cell lies at most

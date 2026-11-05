@@ -212,13 +212,16 @@ export interface RegionIndex<Extra> {
   extra(world: World): Extra;
 }
 
+/** A pure member filter, handed the member's indexed anchor node. */
+export type AnchoredFilter = (e: Entity, hx: number, hy: number) => boolean;
+
 /** A region index whose members also sit in per-key buckets, so a search for one key reads only its own
  *  members. The key is read at insert, so a change to it must re-add the component. */
 export interface PartitionedRegionIndex<Extra> extends RegionIndex<Extra> {
   /** The `accept`ed member of partition `part` with the least `(Manhattan node distance, entity id)`
    *  inside the box `reach` nodes around `(hx, hy)` and past the inner box `skipReach`, or null. An
    *  unbounded `reach` folds the whole partition. `accept` runs only on a member that would win, so it
-   *  must be a pure filter. */
+   *  must be a pure filter; it is handed the member's anchor node. */
   nearestOf(
     world: World,
     part: number,
@@ -226,7 +229,7 @@ export interface PartitionedRegionIndex<Extra> extends RegionIndex<Extra> {
     hy: number,
     reach: number | undefined,
     skipReach: number | undefined,
-    accept: (e: Entity) => boolean,
+    accept: AnchoredFilter,
   ): RegionNearest | null;
   /** {@link RegionIndex.boxHoldsAll} for the members of partition `part` alone. */
   partitionBoxHoldsAll(world: World, part: number, hx: number, hy: number, reach: number): boolean;
@@ -461,7 +464,7 @@ function foldNearest(
   hy: number,
   reach: number | undefined,
   skipReach: number | undefined,
-  accept: (e: Entity) => boolean,
+  accept: AnchoredFilter,
   acc: NearestFold,
 ): void {
   const { records, fields } = bucket;
@@ -475,7 +478,7 @@ function foldNearest(
     if (distance > acc.distance) continue;
     const e = (records[at + ID] ?? 0) as Entity;
     if (distance === acc.distance && acc.best !== null && e > acc.best) continue;
-    if (!accept(e)) continue;
+    if (!accept(e, mx, my)) continue;
     acc.best = e;
     acc.distance = distance;
   }

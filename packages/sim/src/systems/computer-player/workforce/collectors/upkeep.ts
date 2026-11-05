@@ -65,7 +65,7 @@ export function upkeepHolders(
     const anchor = anchors[rank];
     if (anchor === undefined) continue;
     const nearest = (open: WorkableTest): Entity | null =>
-      nearestLiveResource(world, w.good.typeId, anchor, (e) => workable(e) && open(e));
+      nearestLiveResource(world, w.good.typeId, anchor, (e) => workable(e) && open(e), ground.gate);
     if (!patchWorked(world, reach, holder, flagNode, flag.radius, ofGood)) {
       if (builderJob !== null && hopelessPost(world, holder, flagNode, nearest))
         retireToBuilder(world, holder, builderJob, commands);

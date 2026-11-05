@@ -1,6 +1,6 @@
 import { Resource } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { createPartitionedRegionIndex, type RegionNearest } from './region.js';
+import { type AnchoredFilter, createPartitionedRegionIndex, type RegionNearest } from './region.js';
 
 /**
  * The per-world resource spatial index over {@link Resource} nodes, plus the distinct-harvest-atomics
@@ -114,7 +114,8 @@ export function resourceBoxHoldsAll(world: World, hx: number, hy: number, reach:
 
 /** The `accept`ed `goodType` resource with the least `(Manhattan node distance, entity id)` inside the box
  *  `reach` nodes around `(hx, hy)` and past the inner box `skipReach`, or null; an unbounded `reach`
- *  covers the map. `accept` runs only on a node that would win, so it must be a pure filter. */
+ *  covers the map. `accept` runs only on a node that would win, so it must be a pure filter; it is handed
+ *  the resource's anchor node. */
 export function nearestResourceOfGood(
   world: World,
   goodType: number,
@@ -122,7 +123,7 @@ export function nearestResourceOfGood(
   hy: number,
   reach: number | undefined,
   skipReach: number | undefined,
-  accept: (e: Entity) => boolean,
+  accept: AnchoredFilter,
 ): RegionNearest | null {
   return index.nearestOf(world, goodType, hx, hy, reach, skipReach, accept);
 }

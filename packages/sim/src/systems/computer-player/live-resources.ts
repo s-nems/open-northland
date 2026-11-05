@@ -41,6 +41,11 @@ const RESOURCE_BOX_REACH_MAX = 512;
 /** Whether a gatherer can still stand to work a resource. */
 export type WorkableTest = (e: Entity) => boolean;
 
+/** False only when no resource anchored on node `(hx, hy)`, a building aside, passes the
+ *  {@link WorkableTest} it is paired with: a search tests it on the indexed anchor before reading the
+ *  resource, so far candidates cost no component reads. */
+export type AnchorGate = (hx: number, hy: number) => boolean;
+
 /**
  * The deposits `seat` may know of, or null when it knows every one: a seat whose computer controller runs
  * under a fog that hides anything accepts a deposit on ground its own sight has reached (a RECON map's known
@@ -357,16 +362,20 @@ function isLiveResource(world: World, e: Entity, goodType: number): boolean {
  * The standing not-yet-empty resource of `goodType` nearest to `from` (Manhattan node distance,
  * ties to the lower entity id) that `workable` accepts, or null when the map holds none. Expanding boxes
  * over the good's own region buckets, so a decision near a stocked neighbourhood never walks the whole
- * map and a good that stands only far away never pays for the others.
+ * map and a good that stands only far away never pays for the others. `gate` is `workable`'s
+ * {@link AnchorGate}, when it has one.
  */
 export function nearestLiveResource(
   world: World,
   goodType: number,
   from: HalfCellNode,
   workable?: WorkableTest,
+  gate?: AnchorGate,
 ): Entity | null {
-  const accept = (e: Entity): boolean =>
-    world.get(e, Resource).remaining > 0 && (workable === undefined || workable(e));
+  const accept = (e: Entity, hx: number, hy: number): boolean =>
+    (gate === undefined || gate(hx, hy) || world.has(e, Building)) &&
+    world.get(e, Resource).remaining > 0 &&
+    (workable === undefined || workable(e));
   let searched: number | undefined; // the largest box that held no candidate; later boxes skip its members
   for (let reach = RESOURCE_BOX_REACH_START; reach <= RESOURCE_BOX_REACH_MAX; reach *= 2) {
     const hit = nearestResourceOfGood(world, goodType, from.hx, from.hy, reach, searched, accept);

@@ -9,7 +9,12 @@ import { resourceStanceCells, routeRegions, workFlagPlacementTest } from '../../
 import { walkBlockMask } from '../../footprint/walk-block-mask.js';
 import type { NavigationLimit } from '../../signposts/index.js';
 import { heldFloodsOf } from '../held-floods.js';
-import { type GathererReach, nearestLiveResource, type WorkableTest } from '../live-resources.js';
+import {
+  type AnchorGate,
+  type GathererReach,
+  nearestLiveResource,
+  type WorkableTest,
+} from '../live-resources.js';
 import {
   type SeedWalkAnswers,
   SeedWalks,
@@ -285,7 +290,7 @@ export function unsealedResourceTest(
 }
 
 /** The flag spot beside the good's workable live resource nearest `anchor`, or null when the map holds
- *  none (or no legal flag node stands near it). */
+ *  none (or no legal flag node stands near it). `gate` is `workable`'s anchor gate, when it has one. */
 export function collectorSpot(
   world: World,
   ground: FlagGround,
@@ -294,8 +299,9 @@ export function collectorSpot(
   taken: TakenFlagNodes,
   workable: WorkableTest,
   band: FlagBand = COLLECTOR_FLAG_BAND,
+  gate?: AnchorGate,
 ): HalfCellNode | null {
-  const resource: Entity | null = nearestLiveResource(world, goodType, anchor, workable);
+  const resource: Entity | null = nearestLiveResource(world, goodType, anchor, workable, gate);
   return resource === null ? null : flagSpotNear(world, ground, resource, anchor, taken, band);
 }
 
