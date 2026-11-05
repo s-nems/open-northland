@@ -549,6 +549,7 @@ export const chtGame = {
       costLine: '{name} ×{amount}',
       costShort: '{name}：你有 {have} / {amount}',
       placeHint: '在地圖上指定位置，按住 Shift 可放置多座',
+      shipWater: '附近沒有可供建造船隻的水域：在這裡無法造船',
       placeWallHint: '點擊木柵欄的起點',
       placeWallLineHint: '左鍵鋪設木柵欄，按住 Ctrl/Cmd 可繼續延伸，Shift 保持筆直，右鍵放棄這條線',
       placeGateHint: '指向一段由五節已完工木柵欄組成的筆直區段',

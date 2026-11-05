@@ -560,6 +560,7 @@ export const plGame = {
       costLine: '{name} ×{amount}',
       costShort: '{name}: masz {have} z {amount}',
       placeHint: 'wskaż miejsce na mapie, z Shift postawisz kilka',
+      shipWater: 'Brak wody nadającej się na budowę statków w zasięgu: tutaj nie powstaną statki',
       placeWallHint: 'kliknij, gdzie ma się zacząć palisada',
       placeWallLineHint:
         'lewy przycisk stawia palisadę, z Ctrl/Cmd ciągnie dalej, Shift trzyma prostą, prawy anuluje linię',

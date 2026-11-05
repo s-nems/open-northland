@@ -36,8 +36,11 @@ it.each([false, true])(
         return { close: acquire('sound') } as unknown as SoundDriver;
       },
     );
+    // The mount owns more than one cursor chip (the assistant's and the placement hint's), and every
+    // one of them must be released before the next attempt mounts its own.
+    let chipId = 0;
     vi.spyOn(tooltips, 'createTooltip').mockImplementation(() => {
-      const release = acquire('tooltip');
+      const release = acquire(`tooltip-${++chipId}`);
       return { show() {}, hide() {}, destroy: release };
     });
     // The DOM plane mounts before the tool panel; the node environment has no document for it. Its

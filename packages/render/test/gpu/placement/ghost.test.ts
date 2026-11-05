@@ -157,6 +157,24 @@ describe('PlacementGhostLayer', () => {
     expect(refused.tint).not.toBe(0xffffff);
   });
 
+  it("tints a warned building's body lightly orange and rebuilds the plain one without the warning", () => {
+    const layer = new PlacementGhostLayer(sheet, new TextureCache());
+    layer.set(
+      { kind: 'building', col: 4, row: 6, buildingType: HOUSE_TYPE, tribe: VIKING, warn: true },
+      FLAT,
+    );
+    const warned = layer.container.children[0];
+    if (!(warned instanceof Sprite)) throw new Error('expected a sprite');
+    expect(warned.tint).toBe(0xffb36b);
+
+    // Back on a coast that builds ships, the same body draws untinted anew.
+    layer.set({ kind: 'building', col: 4, row: 6, buildingType: HOUSE_TYPE, tribe: VIKING }, FLAT);
+    const plain = layer.container.children[0];
+    if (!(plain instanceof Sprite)) throw new Error('expected a sprite');
+    expect(plain.tint).toBe(0xffffff);
+    expect(warned.destroyed).toBe(true);
+  });
+
   it('stakes the open and blocked nodes of a line and lets the string pass the built ones', () => {
     const stakes = { open: new Texture(), blocked: new Texture(), ring: new Texture() };
     const layer = new PlacementGhostLayer(sheet, new TextureCache(), stakes);

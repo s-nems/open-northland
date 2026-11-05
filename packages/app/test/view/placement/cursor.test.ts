@@ -114,6 +114,50 @@ describe('placement cursor', () => {
     expect(asks).toEqual([[HOUSE, SARACEN, TILE.col, TILE.row]]);
   });
 
+  it('rings the held building ghost with its ship-water warn where the verdict refuses the coast', () => {
+    const asks: Array<readonly [number, number, number, number]> = [];
+    const f = frame({
+      building: HELD,
+      shipWaterAt: (type, tribe, col, row) => {
+        asks.push([type, tribe, col, row]);
+        return false;
+      },
+    });
+
+    expect(f.cursor().ghost).toEqual({
+      kind: 'building',
+      col: TILE.col,
+      row: TILE.row,
+      buildingType: HOUSE,
+      tribe: SARACEN,
+      warn: true,
+    });
+    expect(asks).toEqual([[HOUSE, SARACEN, TILE.col, TILE.row]]);
+
+    // A coast that builds ships, a verdict still on its way and a type without a verdict stay untinted.
+    for (const verdict of [true, undefined, null] as const) {
+      expect(frame({ building: HELD, shipWaterAt: () => verdict }).cursor().ghost).toEqual({
+        kind: 'building',
+        col: TILE.col,
+        row: TILE.row,
+        buildingType: HOUSE,
+        tribe: SARACEN,
+      });
+    }
+  });
+
+  it('asks no ship-water verdict for a ghost the ground hides', () => {
+    let asks = 0;
+    const f = frame({
+      building: HELD,
+      canPlaceAt: () => false,
+      shipWaterAt: () => (asks++, false),
+    });
+
+    expect(f.cursor().ghost).toBe(null);
+    expect(asks).toBe(0);
+  });
+
   it('keeps the wash but hides the ghost over rejecting ground', () => {
     const f = frame({ building: HELD, canPlaceAt: () => false });
 

@@ -6,6 +6,8 @@ import {
   nodeGridAccepts,
   nodeSetHas,
   type PalisadeGateProbeResult,
+  type ShipWaterAnswer,
+  shipWaterWorkshopsOf,
 } from '@open-northland/sim';
 import type { GateSites, PalisadeGateProbeView } from '../../hud/tool-panel/placement.js';
 import {
@@ -100,6 +102,17 @@ export interface PlacementGates extends PlacementClickGates {
   readonly canPlaceRoadAt: (col: number, row: number, overUpgradeGround?: boolean) => boolean;
   /** Changes whenever `canPlaceRoadAt` may answer differently. */
   readonly roadAnswersKey: () => string;
+  /** Whether a workshop of the type placed at the node would find ship water in its crew's yard search:
+   *  `false` warns of a shop that builds no ships there, `null` says the type takes no verdict, and
+   *  `undefined` while the node's answer is on its way or a new anchor waits for the read gate. An
+   *  anchor asked before answers at once. */
+  readonly shipWaterAt: (
+    typeId: number,
+    tribe: number,
+    col: number,
+    row: number,
+    owner?: number,
+  ) => boolean | null | undefined;
   readonly probes: PlacementProbeViews;
   /** {@link PlacementClickGates.askMooring}'s last answer; undefined while it is being answered. */
   readonly mooring: (vehicle: number) => MooringRule | null | undefined;
@@ -112,6 +125,13 @@ export interface PlacementGates extends PlacementClickGates {
 const GATE_SPAN_CENTER = 2;
 /** How often a selected fleet's berth preview asks its ships' mooring rules again while vehicles move. */
 const MOORING_PREVIEW_REFRESH_MS = 500;
+/** How long a genuinely new anchor waits before its ship-water read asks the sim: the yard sweep one
+ *  answer costs runs per anchor over the ship rings, so a cursor dragged along the shore must not
+ *  launch one per node it crosses. An anchor whose verdict already landed answers without the gate. */
+export const SHIP_WATER_PREVIEW_REFRESH_MS = 500;
+/** The anchors a session's ship-water reads asked before, so a revisit reads live. Capped: past it the
+ *  set forgets, and the next visit waits for the window once, as a first one would. */
+const SHIP_WATER_ASKED_CAPACITY = 512;
 
 type IndexedGateSites = GateSites & { readonly isCenter: (col: number, row: number) => boolean };
 
@@ -140,6 +160,17 @@ export function createPlacementGates(
   const siteLists = createLastAnswerCache<readonly PalisadeGateProbeResult[]>({ tick, same: samePlainData });
   const gateProbes = createLastAnswerCache<PalisadeGateProbeResult | null>({ tick, same: samePlainData });
   const moorings = createLastAnswerCache<MooringProbe | null>({ tick, same: sameMooring });
+  const shipWaters = createLastAnswerCache<ShipWaterAnswer | null>({
+    tick,
+    same: (held, landed) => (held === null || landed === null ? held === landed : held.key === landed.key),
+  });
+  // The types a ship-water verdict applies to, so a held house that builds no ships asks the host
+  // nothing. Content-only, fixed for the session.
+  const shipWorkshops = shipWaterWorkshopsOf(host.content);
+  // When the last new anchor's ship-water read launched, and the anchors it asked already (in flight
+  // or landed), which read live without the gate.
+  let shipWaterAskedAt = Number.NEGATIVE_INFINITY;
+  const shipWaterAsked = new Set<string>();
   const blockerVersion = (): string => host.placementBlockerVersion();
 
   const gridProbes = new Map<string, NodeGridProbe>();
@@ -293,6 +324,26 @@ export function createPlacementGates(
     canPlaceRoadAt: (col, row, overUpgradeGround) =>
       fogGates.seesNode(col, row) && road().at(col, row, overUpgradeGround) === true,
     roadAnswersKey: () => `${grids.version}:${fogKey()}`,
+    shipWaterAt: (typeId, tribe, col, row, owner) => {
+      if (!shipWorkshops.has(typeId)) return null;
+      const seat = owner ?? localPlayer;
+      const key = `${typeId}:${tribe}:${seat}:${col},${row}`;
+      // An anchor asked before reads live, so its verdict lands and stays current without the gate;
+      // only a genuinely new anchor waits for the window, so sweeping the shore costs the sim two yard
+      // sweeps a second, not one per node.
+      if (!shipWaterAsked.has(key)) {
+        const now = performance.now();
+        if (now - shipWaterAskedAt < SHIP_WATER_PREVIEW_REFRESH_MS) return undefined;
+        shipWaterAskedAt = now;
+        if (shipWaterAsked.size >= SHIP_WATER_ASKED_CAPACITY) shipWaterAsked.clear();
+        shipWaterAsked.add(key);
+      }
+      return shipWaters.read(
+        key,
+        () => host.shipWaterProbe(typeId, tribe, col, row, seat),
+        host.shipWaterVersion(),
+      )?.shipWater;
+    },
     askPlaceAt: (typeId, tribe, col, row, techWaived, owner) =>
       fogGates.seesNode(col, row)
         ? building(typeId, tribe, techWaived, owner)
@@ -336,7 +387,8 @@ export function createPlacementGates(
       mooring,
     },
     dispose: () => {
-      for (const cache of [grids, ownNodes, siteLists, gateProbes, moorings]) cache.dispose();
+      for (const cache of [grids, ownNodes, siteLists, gateProbes, moorings, shipWaters]) cache.dispose();
+      shipWaterAsked.clear();
     },
   };
 }

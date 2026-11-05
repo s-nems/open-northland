@@ -615,6 +615,7 @@ export const deGame = {
       costLine: '{name} ×{amount}',
       costShort: '{name}: {have} von {amount} vorhanden',
       placeHint: 'Zeige auf eine Stelle auf der Karte; halte Shift gedrückt, um mehrere zu platzieren',
+      shipWater: 'Kein Schiffsufer in Reichweite: hier entstehen keine Schiffe',
       placeWallHint: 'Klicke auf den Anfangspunkt der Palisade',
       placeWallLineHint:
         'Linksklick legt die Palisade fest, mit Ctrl/Cmd ziehst du sie weiter, Shift hält sie gerade, Rechtsklick verwirft die Linie',

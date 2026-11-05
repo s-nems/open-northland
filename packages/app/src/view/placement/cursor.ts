@@ -48,6 +48,16 @@ export interface PlacementCursorInput {
   /** How far a held building would shoot in defence mode from a node, undefined for a type without one. */
   readonly defenceRangeAt?: (typeId: number, tribe: number, col: number, row: number) => number | undefined;
   readonly blessingRangeFor?: (typeId: number) => number | undefined;
+  /** The held workshop's ship-water verdict at the hovered node, as the placement gates read it: `false`
+   *  warns of a shop that builds no ships there and tints the ghost, `undefined` while the answer is on
+   *  its way, `null` for a type that takes no verdict. Absent, the ghost asks for no verdict. */
+  readonly shipWaterAt?: (
+    typeId: number,
+    tribe: number,
+    col: number,
+    row: number,
+    owner?: number,
+  ) => boolean | null | undefined;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly palisadePreview?: (tile: {
     readonly col: number;
@@ -126,6 +136,8 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
       return { overlay, ghost: null };
     const defenceRangeNodes = input.defenceRangeAt?.(typeId, tribe, tile.col, tile.row);
     const blessingRangeNodes = input.blessingRangeFor?.(typeId);
+    // The verdict rides the ghost that shows it: `false` tints the body and raises the chip beside it.
+    const shipWater = input.shipWaterAt?.(typeId, tribe, tile.col, tile.row, probeOwner(building));
     const ghost: PlacementGhost = {
       kind: 'building',
       col: tile.col,
@@ -134,6 +146,7 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
       tribe,
       ...(defenceRangeNodes === undefined ? {} : { defenceRangeNodes }),
       ...(blessingRangeNodes === undefined ? {} : { blessingRangeNodes }),
+      ...(shipWater === false ? { warn: true } : {}),
     };
     return { overlay, ghost };
   }

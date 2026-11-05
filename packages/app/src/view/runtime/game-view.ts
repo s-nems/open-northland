@@ -646,6 +646,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const assistantTip = createTooltip();
     const goodIcons = createGoodIconPainter(pack, host.content);
     cleanup.push(() => assistantTip.destroy());
+    // The held ship workshop's "no ship water here" chip, raised at the cursor by the frame loop while
+    // the ghost sits on a spot whose coast builds no ships.
+    const shipWaterTip = createTooltip({ zIndex: 2001 });
+    cleanup.push(() => shipWaterTip.destroy());
     let escapeClaimed: (() => boolean) | null = null;
     let overviewPress: UnitControls['overviewPress'] | null = null;
     // Assigned once every HUD part it hides has mounted.
@@ -1550,6 +1554,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       lifeHeartsFor,
       experienceStarsFor,
       canPlaceAt,
+      shipWaterAt: placementGates.shipWaterAt,
+      onShipWaterHint: (at) => {
+        if (at === null) shipWaterTip.hide();
+        else shipWaterTip.show(at.clientX, at.clientY, messages().hud.construction.shipWater);
+      },
       defenceRangeAt: (typeId, tribe, col, row) =>
         systems.shelterFireRadius(host.content, { buildingType: typeId, tribe }, col, row),
       blessingRangeFor: (typeId) => templeAuraRadius(host.content, typeId),

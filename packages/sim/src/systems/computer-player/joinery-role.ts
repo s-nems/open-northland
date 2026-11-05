@@ -1,13 +1,12 @@
 import { Building, UnderConstruction } from '../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { hexagonRing } from '../../nav/halfcell.js';
 import { NO_COMPONENT } from '../../nav/terrain/index.js';
 import { countedTiers } from '../ai-shared/content-lookup.js';
 import { anchorNodeOf } from '../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../ai-shared/seat-roster.js';
 import type { SystemContext } from '../context.js';
-import { reusableVehicleSite, SHIP_SITE_RINGS, shipYardProbe } from '../footprint/placement/vehicle-site.js';
+import { SHIP_SITE_RINGS, shipWaterWithin } from '../footprint/placement/vehicle-site.js';
 import { interactionCell } from '../settlers/targets/index.js';
 
 /** The top-tier joinery, whose crew builds a {@link JoineryRole}'s vehicles. Every joinery of its chain
@@ -41,7 +40,7 @@ export const SHIP_JOINERY_SHORE_RINGS = SHIP_SITE_RINGS / 2;
 
 /** Whether `joinery` stands by ship water: within {@link SHIP_JOINERY_SHORE_RINGS}, one of the seat's
  *  unfinished `yards` stands or a fresh yard of the ship house fits for a worker at its door
- *  ({@link shipYardProbe}). The standing yard counts because its own body blocks the water. */
+ *  ({@link shipWaterWithin}). The standing yard counts because its own body blocks the water. */
 function hasShipWater(
   world: World,
   ctx: SystemContext,
@@ -53,20 +52,20 @@ function hasShipWater(
   const terrain = ctx.terrain;
   const centre = anchorNodeOf(world, joinery);
   if (terrain === undefined || centre === null) return false;
-  if (reusableVehicleSite(world, yards, house, player, centre, SHIP_JOINERY_SHORE_RINGS) !== null)
-    return true;
   const shore = terrain.componentOf(interactionCell(world, ctx, terrain, joinery));
   if (shore === NO_COMPONENT) return false;
-  const fits = shipYardProbe(world, ctx, terrain, house, world.get(joinery, Building).tribe, shore);
-  if (fits === null) return false;
-  for (let r = 0; r < SHIP_JOINERY_SHORE_RINGS; r++) {
-    for (const { point } of hexagonRing(centre, r)) {
-      if (!terrain.inBounds(point.hx, point.hy) || !terrain.isWater(terrain.nodeAt(point.hx, point.hy)))
-        continue;
-      if (fits(point.hx, point.hy)) return true;
-    }
-  }
-  return false;
+  return shipWaterWithin(
+    world,
+    ctx,
+    terrain,
+    house,
+    world.get(joinery, Building).tribe,
+    player,
+    centre,
+    shore,
+    SHIP_JOINERY_SHORE_RINGS,
+    yards,
+  );
 }
 
 /** The seat's ship joinery ({@link joineryRoles}): a top-tier one by the water, else one of a lower tier of

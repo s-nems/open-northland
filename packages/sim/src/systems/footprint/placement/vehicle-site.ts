@@ -6,11 +6,11 @@ import {
 } from '@open-northland/data';
 import { Building, Owner, Position, UnderConstruction } from '../../../components/index.js';
 import { landscapeEditState } from '../../../components/landscape.js';
-import { contentIndex } from '../../../core/content-index.js';
+import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexagonRing, hexDistance, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
+import type { MapContext, SystemContext } from '../../context.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { ANCHOR_ONLY, translatedCells } from '../geometry.js';
 import { vehicleClearance } from '../vehicle-clearance.js';
@@ -168,7 +168,7 @@ function landObjection(
  */
 function waterObjection(
   world: World,
-  ctx: SystemContext,
+  ctx: MapContext,
   terrain: TerrainGraph,
   site: SiteHouse,
   vehicle: VehicleType,
@@ -197,13 +197,77 @@ function waterObjection(
 const NO_PARKED: ReadonlySet<NodeId> = new Set();
 
 /**
+ * Whether ship water lies in `rings` of `centre` for a worker on `workerContinent`: one of `owner`'s
+ * unfinished sites of the ship house `houseType` within the rings qualifies through `reachable`, or a
+ * fresh one fits on some water node there, by the rule {@link shipYardProbe} applies. The shared core of
+ * the computer player's joinery ruling and the placement hint's per-anchor verdict, so the two cannot
+ * part. Approximation: the probe reads no parked ships, so water a standing ship covers still counts
+ * until its hull moves or the site it blocks is found occupied in the yard's own search.
+ */
+export function shipWaterWithin(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  houseType: number,
+  tribe: number,
+  owner: number | undefined,
+  centre: HalfCellNode,
+  workerContinent: number,
+  rings: number,
+  reusable: readonly Entity[],
+  reachable: (site: Entity) => boolean = () => true,
+): boolean {
+  if (reusableVehicleSite(world, reusable, houseType, owner, centre, rings, reachable) !== null) return true;
+  const fits = shipYardProbe(world, ctx, terrain, houseType, tribe, workerContinent);
+  if (fits === null) return false;
+  for (let r = 0; r < rings; r++) {
+    for (const { point } of hexagonRing(centre, r)) {
+      if (!terrain.inBounds(point.hx, point.hy) || !terrain.isWater(terrain.nodeAt(point.hx, point.hy)))
+        continue;
+      if (fits(point.hx, point.hy)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * The house of the smallest ship `buildingType`'s upgrade chain can produce - a tier's recipes naming a
+ * good whose `vehicleHouse` raises on water (`ignoreContinents`) - least `logicSize` first, lowest type
+ * id on a tie, the ordering the computer player's content-wide `smallestShipHouse` keeps. Null when no
+ * tier builds a ship, so a placement of the type takes no ship-water verdict.
+ */
+export function chainShipHouse(index: ContentIndex, buildingType: number): number | null {
+  let least: { readonly house: number; readonly size: number } | null = null;
+  const visited = new Set<number>();
+  for (let typeId: number | undefined = buildingType; typeId !== undefined; ) {
+    if (visited.has(typeId)) break;
+    visited.add(typeId);
+    for (const output of index.mergedRecipeByBuilding.get(typeId)?.outputs ?? []) {
+      const house = index.goods.get(output.goodType)?.vehicleHouse;
+      if (house === undefined) continue;
+      const row = index.buildings.get(house);
+      if (row === undefined || !row.ignoreContinents) continue;
+      const size = row.vehicleType === undefined ? undefined : index.vehicles.get(row.vehicleType)?.logicSize;
+      if (
+        size === undefined ||
+        (least !== null && (size > least.size || (size === least.size && house > least.house)))
+      )
+        continue;
+      least = { house, size };
+    }
+    typeId = index.buildings.get(typeId)?.upgradeTarget;
+  }
+  return least?.house ?? null;
+}
+
+/**
  * Whether a fresh site of the ship house `houseType` fits anchored at a node for a worker on
  * `workerContinent`, by the water rule {@link findVehicleSite} applies with no ship parked there, so a
  * placement can pick ground whose yard search will succeed. Null for a type that is not a ship house.
  */
 export function shipYardProbe(
   world: World,
-  ctx: SystemContext,
+  ctx: MapContext,
   terrain: TerrainGraph,
   houseType: number,
   tribe: number,

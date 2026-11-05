@@ -4,12 +4,16 @@
  * live probe the command gates on, so the two cannot disagree.
  */
 import type { ContentSet } from '@open-northland/data';
+import { Building, Owner, Palisade, ResourceFootprint, UnderConstruction } from '../components/index.js';
+import { landscapeEditState, landscapePlacementRevision } from '../components/landscape.js';
 import { bioGroundWaived } from '../components/rules.js';
+import { contentIndex } from '../core/content-index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { HalfCellNode, NodeArea } from '../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
+import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../nav/terrain/index.js';
+import { ownedBuildings } from '../systems/ai-shared/seat-roster.js';
 import { contestedGroundFor } from '../systems/conflict/contested-ground.js';
-import { buildingFootprintOf } from '../systems/footprint/geometry.js';
+import { buildingFootprintOf, doorNodeOf } from '../systems/footprint/geometry.js';
 import {
   type PlacementProbe,
   placementBlockerVersion,
@@ -17,11 +21,17 @@ import {
   siteReachFor,
   workFlagBlockerVersion,
 } from '../systems/footprint/index.js';
+import { interactionCellOf } from '../systems/footprint/interaction.js';
 import {
   gridChangeKey,
   type PlacementGrid,
   placementBlockerGrid,
 } from '../systems/footprint/placement/blocker-grid.js';
+import {
+  chainShipHouse,
+  SHIP_SITE_RINGS,
+  shipWaterWithin,
+} from '../systems/footprint/placement/vehicle-site.js';
 import { peaceGroundWithin } from '../systems/match/peace.js';
 import { ownPalisadeNodeList, palisadePlacementProbe } from '../systems/palisades/index.js';
 import { buildingEnabled } from '../systems/progression/index.js';
@@ -392,4 +402,97 @@ export function mooringAnswerFor(
 /** The nodes `player`'s walls, gates and wall sites stand on. */
 export function ownPalisadeNodeSet(world: World, player: number): NodeSetAnswer {
   return packedNodeSet(ownPalisadeNodeList(world, player));
+}
+
+/** Whether a workshop placed at an anchor would find ship water in its yard search. */
+export interface ShipWaterAnswer {
+  readonly shipWater: boolean;
+  /** Changes whenever the verdict may, so a memo over the answers keys on it. */
+  readonly key: string;
+}
+
+/**
+ * What the ship-water verdict reads: the walk-block and clearance inputs (buildings, walls, resources,
+ * the scripted landscape), the ownership the seat's reusable yards follow, and the terrain the door's
+ * continent and the water components read. Never a vehicle's position: the yard probe reads no parked
+ * ships, so a hull drifting across the candidate water does not flip the verdict.
+ */
+export function shipWaterVersionOf(world: World): string {
+  return [
+    world.componentGeneration(Building),
+    world.componentValueGeneration(Building),
+    world.componentGeneration(Palisade),
+    world.componentGeneration(ResourceFootprint),
+    world.componentGeneration(Owner),
+    world.componentValueGeneration(Owner),
+    landscapePlacementRevision(world),
+    landscapeEditState(world).topologyRevision,
+  ].join('.');
+}
+
+/** The building types a ship-water verdict applies to, memoized per content index: those whose upgrade
+ *  chain can produce a good whose vehicle house raises on water. */
+export function shipWaterWorkshopsOf(content: ContentSet): ReadonlySet<number> {
+  const index = contentIndex(content);
+  let held = workshopChains.get(index);
+  if (held === undefined) {
+    held = new Set([...index.buildings.keys()].filter((typeId) => chainShipHouse(index, typeId) !== null));
+    workshopChains.set(index, held);
+  }
+  return held;
+}
+
+const workshopChains = new WeakMap<object, ReadonlySet<number>>();
+
+/**
+ * Whether a workshop of `buildingType` (of `tribe`, whose footprint the door node reads) placed with its
+ * anchor at half-cell node `(x, y)` would have ship water in its crew's yard search
+ * ({@link SHIP_SITE_RINGS}, the search {@link shipWaterWithin} mirrors): a fresh yard of the chain's
+ * smallest ship house fits on some water node in reach for a worker on the door's continent, or the
+ * seat's unfinished yard of that house stands in reach on that shore. Null when the type's chain builds
+ * no ships or the sim is mapless, so no verdict applies.
+ */
+export function shipWaterAnswerFor(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph | undefined,
+  buildingType: number,
+  tribe: number | undefined,
+  x: number,
+  y: number,
+  player?: number,
+): ShipWaterAnswer | null {
+  if (terrain === undefined) return null;
+  const index = contentIndex(content);
+  const house = chainShipHouse(index, buildingType);
+  if (house === null) return null;
+  // The node the placed house's worker stands on: its door, or the anchor for a door-less footprint,
+  // the work point the yard search reads the worker's shore from.
+  const footprint = tribe === undefined ? undefined : buildingFootprintOf(content, buildingType, tribe);
+  const shore = terrain.componentOf(doorNodeOf(terrain, footprint, x, y) ?? terrain.nodeAtClamped(x, y));
+  const reusable =
+    player === undefined
+      ? []
+      : ownedBuildings(world, player).filter(
+          (e) => world.tryGet(e, Building)?.buildingType === house && world.has(e, UnderConstruction),
+        );
+  const shipWater = shipWaterWithin(
+    world,
+    { content },
+    terrain,
+    house,
+    tribe ?? 0,
+    player,
+    { hx: x, hy: y },
+    shore,
+    SHIP_SITE_RINGS,
+    reusable,
+    // A yard across the water or on another shore is out of this crew's walk, however near it stands.
+    (site: Entity): boolean => {
+      if (shore === NO_COMPONENT) return false;
+      const cell = interactionCellOf(world, { content }, terrain, site);
+      return cell !== null && terrain.componentOf(cell) === shore;
+    },
+  );
+  return { shipWater, key: shipWaterVersionOf(world) };
 }
