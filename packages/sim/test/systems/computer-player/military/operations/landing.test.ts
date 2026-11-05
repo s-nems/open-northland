@@ -809,6 +809,44 @@ describe('landing operations', () => {
     });
   });
 
+  it('sails on and lands when its posture turns to defence against a far army while the fleet is out', () => {
+    const { sim } = landingWorld();
+    let seen: OperationView | undefined;
+    let mustered = false;
+    let defending = false;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      if (!mustered && seen?.state === 'moving') {
+        mustered = true;
+        spawnBand(sim, OUTMATCHING_FOES, FOE_ARMY, GUARD_RANK, FOE);
+      }
+      if (mustered && militaryOrdersOf(sim.world, SEAT).launchRatio === null) defending = true;
+      return (seen?.landing?.landed ?? 0) > 0 || seen?.state === 'withdrawing' || seen?.state === 'done';
+    });
+    expect(defending).toBe(true);
+    expect(seen?.reason).toBeNull();
+    expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it('turns the fleet home without landing once a band raids home', () => {
+    const { sim } = landingWorld();
+    let seen: OperationView | undefined;
+    let raided = false;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      if (seen?.state === 'done') return shipsHomeEmpty(sim);
+      if (!raided && seen?.state === 'moving') {
+        raided = true;
+        spawnBand(sim, RAIDERS, { x: SEAT_HQ.x + GUARD_OFFSET, y: SEAT_HQ.y }, GUARD_RANK, FOE);
+      }
+      return false;
+    });
+    expect(raided).toBe(true);
+    expect(seen?.reason).toBe('defenceMode');
+    expect(seen?.landing?.landed).toBe(0);
+    expect(menAcross(sim)).toEqual([]);
+  });
+
   it('turns back without landing when the enemy at the shore outweighs the wave', () => {
     const { sim, fleet } = landingWorld();
     let seen: OperationView | undefined;

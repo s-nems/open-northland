@@ -245,14 +245,13 @@ function releaseStranded(env: OperationEnv, op: LandingOperation, from: number):
   return commands;
 }
 
-/** Why the landing should turn back before setting anyone ashore, or null: its posture no longer
- *  attacks (a relief sails whatever the posture, but not once home is raided), the target's owner is no
- *  enemy, or it lost {@link LANDING_SHIP_LOSS_PCT} of its ships. */
+/** Why the landing should turn back before setting anyone ashore, or null: home is raided, the target's
+ *  owner is no enemy, or it lost {@link LANDING_SHIP_LOSS_PCT} of its ships. A posture turning to defence
+ *  for any other reason lets it sail on: the wave was weighed when it cast off, and turning a fleet round
+ *  on every swing of the army's count keeps the army home. */
 function abortReason(env: OperationEnv, op: LandingOperation): OperationEndReason | null {
   const owner = op.target.owner;
-  if (isRelief(op)) {
-    if (underAttack(env.world, env.seat)) return 'defenceMode';
-  } else if (env.orders.launchRatio === null) return 'postureChanged';
+  if (underAttack(env.world, env.seat)) return 'defenceMode';
   if (owner === null || diplomacyStance(env.world, env.seat, owner) !== 'enemy') return 'targetLost';
   if ((op.startShips - op.ships.length) * PERCENT >= op.startShips * LANDING_SHIP_LOSS_PCT) return 'losses';
   return null;
