@@ -13,6 +13,7 @@ import {
   Owner,
   Position,
   Resource,
+  Settler,
   UnderConstruction,
 } from '../../../src/components/index.js';
 import { CommandQueue } from '../../../src/core/command-queue.js';
@@ -111,6 +112,8 @@ export const SHEEP = 11;
 export const CATTLE = 12;
 /** The joinery's iron-tool product (fixture) - the craft restriction's one selected good. */
 export const TOOL_IRON = 7;
+/** The joinery's wooden-tool product (fixture), its joiners' work while the seat gathers no iron. */
+export const TOOL_WOODEN = 6;
 /** The stone-collector XP track (fixture = real track id 5) iron's `needforgood` measures. */
 export const STONE_XP_TRACK = 5;
 /** Raw XP clearing iron's `needforgood` gate: 10 repeats × the stone track's factor 100. */
@@ -183,6 +186,28 @@ export function spawnMen(sim: Simulation, count: number, jobType = CIVILIST): vo
     const y = 4 + 2 * Math.floor(i / 28);
     sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y, tribe: VIKING, owner: SEAT });
   }
+}
+
+/** Where {@link postGatherer} spawns its collector and plants his flag. */
+const GATHERER_SPAWN = { x: 12, y: 24 };
+const GATHERER_FLAG = { x: 14, y: 26 };
+
+/** Spawn a collector of the seat on a flag held to `good`, so the seat gathers it. */
+export function postGatherer(sim: Simulation, good: number): Entity {
+  sim.enqueueSetup({
+    kind: 'spawnSettler',
+    jobType: COLLECTOR,
+    ...GATHERER_SPAWN,
+    tribe: VIKING,
+    owner: SEAT,
+  });
+  sim.step();
+  const gatherer = [...sim.world.query(Settler)].at(-1);
+  if (gatherer === undefined) throw new Error('setup: the gatherer did not spawn');
+  sim.enqueueSetup({ kind: 'setWorkFlag', entity: gatherer, ...GATHERER_FLAG });
+  sim.enqueueSetup({ kind: 'setGatherGood', entity: gatherer, goodType: good });
+  sim.step();
+  return gatherer;
 }
 
 export function placeResources(

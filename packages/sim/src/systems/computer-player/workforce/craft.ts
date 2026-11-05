@@ -24,6 +24,8 @@ import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { colonyHeldShips, everySettlerOf, homeBuildings } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
+import { heldGatherGood } from '../../economy/gather-goods.js';
+import { liveWorkFlag } from '../../economy/work-flag.js';
 import { goodEnabled } from '../../progression/index.js';
 import { vehicleHouseOfGood } from '../../readviews/index.js';
 import { isCarrierJob } from '../../stores/index.js';
@@ -63,7 +65,9 @@ import type { SeatSupply, SupplyLine } from './supply.js';
  * replaces weaker ones once earned. An `until` seat works `works` until the seat has earned the good it
  * names and `otherwise` from then on. A `whileOwned` seat works `works` while the seat owns a building of
  * that type, standing or a site (with `siteOnly`, a site still under construction), and `otherwise`
- * meanwhile. A `rest` seat stops every product of its operator.
+ * meanwhile. A `whileGathered` seat works `works` while a gatherer of the seat, at home or on a colony, is
+ * held to the good it names ({@link seatGathers}), and `otherwise` meanwhile. A `rest` seat stops every
+ * product of its operator.
  * Over every kind, a seat whose goods all lack their inputs ({@link inputsInStock}) works the next seat's in
  * the plan with one that has them, {@link SeatCraftPlan.unfed} last, and its own while none has.
  */
@@ -84,6 +88,7 @@ export type CraftSeat =
       readonly works: CraftSeat;
       readonly otherwise: CraftSeat;
     }
+  | { readonly whileGathered: string; readonly works: CraftSeat; readonly otherwise: CraftSeat }
   | typeof REST_SEAT
   | FleetSeat;
 
@@ -194,13 +199,22 @@ const NO_IRON_SEAT: CraftSeat = {
 /** The goods only spare wood goes into. */
 const WOODEN_TOOLS: readonly string[] = ['tool_wooden'];
 
+/** Owner ruling: a joiner turns to iron tools only while the seat gathers iron, at home or on a colony,
+ *  and works {@link NO_IRON_SEAT} meanwhile: the iron a seat starts with is the smithy's, and a joiner
+ *  waiting on iron no gatherer brings stands idle. */
+const IRON_GOOD_ID = 'iron';
+
 /** Owner ruling: a joiner makes wooden tools only to earn the iron tool, from then on iron tools alone and
- *  never furniture, or {@link NO_IRON_SEAT} with no iron; he rests while the iron tools lie at
- *  {@link JOINERY_TOOL_GLUT_UNITS}. */
+ *  never furniture while iron comes in ({@link IRON_GOOD_ID}), or {@link NO_IRON_SEAT} without; he rests
+ *  while the iron tools lie at {@link JOINERY_TOOL_GLUT_UNITS}. */
 const JOINERY_SEAT: CraftSeat = {
   until: 'tool_iron',
   works: ['tool_wooden'],
-  otherwise: { goods: ['tool_iron'], glut: { tool_iron: JOINERY_TOOL_GLUT_UNITS }, otherwise: REST_SEAT },
+  otherwise: {
+    whileGathered: IRON_GOOD_ID,
+    works: { goods: ['tool_iron'], glut: { tool_iron: JOINERY_TOOL_GLUT_UNITS }, otherwise: REST_SEAT },
+    otherwise: NO_IRON_SEAT,
+  },
 };
 
 /** The handcarts standing free at which the seat stops building more (authored): a
@@ -482,8 +496,12 @@ const ISLAND_CRAFT_PLANS: Readonly<Record<string, CraftPlan>> = {
       {
         until: 'ship_small',
         works: {
-          goods: ['tool_iron', 'tool_wooden'],
-          glut: { tool_iron: JOINERY_TOOL_GLUT_UNITS, tool_wooden: WOODEN_TOOL_GLUT_UNITS },
+          whileGathered: IRON_GOOD_ID,
+          works: {
+            goods: ['tool_iron', 'tool_wooden'],
+            glut: { tool_iron: JOINERY_TOOL_GLUT_UNITS, tool_wooden: WOODEN_TOOL_GLUT_UNITS },
+          },
+          otherwise: NO_IRON_SEAT,
         },
         otherwise: JOINERY_SEAT,
       },
@@ -786,6 +804,16 @@ export function tuneCraftCounters(
     }
     return known;
   };
+  const gatheredIds = new Map<string, boolean>();
+  const gathers = (id: string): boolean => {
+    let known = gatheredIds.get(id);
+    if (known === undefined) {
+      const good = goodTypeByContentId(ctx.content, id)?.typeId;
+      known = good !== undefined && seatGathers(world, ctx, player, good);
+      gatheredIds.set(id, known);
+    }
+    return known;
+  };
   const reads = stockReads(world, ctx, player, supply, earned);
   const reserve = fleetReserve(world, ctx, player, roleOf, landingShips, tradeShips);
   for (const { type, plan, crew, workplaces } of [...crews.values()].flatMap((byType) => [
@@ -793,7 +821,17 @@ export function tuneCraftCounters(
   ])) {
     const products = enabledProducts(world, ctx, player, tribe, type);
     const recipeProducts = recipeProductsOf(ctx, type);
-    const choice: SeatChoice = { ctx, supply, fleetOf, landingShips, tradeShips, owns, earned, products };
+    const choice: SeatChoice = {
+      ctx,
+      supply,
+      fleetOf,
+      landingShips,
+      tradeShips,
+      owns,
+      earned,
+      gathers,
+      products,
+    };
     const counters = crew.map((e) => world.tryGet(e, ProductionCounters));
     const current = counters.map((selection) => selectedGoods(selection, recipeProducts));
     const fed = (good: number, selected: boolean): boolean =>
@@ -1193,6 +1231,8 @@ interface SeatChoice {
   readonly owns: (buildingId: string, siteOnly: boolean) => boolean;
   /** Whether the seat may make the good with this stable content id ({@link goodEnabled}). */
   readonly earned: (id: string) => boolean;
+  /** Whether the seat gathers the good with this stable content id ({@link seatGathers}). */
+  readonly gathers: (id: string) => boolean;
   /** The goods the type makes that the seat may make ({@link enabledProducts}). */
   readonly products: readonly number[];
   /** Read a glutted goods list as still wanted rather than handing over to its `otherwise`, and an `until`
@@ -1241,6 +1281,8 @@ function seatProducts(
     const owned = choice.owns(seat.whileOwned, seat.siteOnly === true);
     return seatProducts(choice, current, owned ? seat.works : seat.otherwise);
   }
+  if ('whileGathered' in seat)
+    return seatProducts(choice, current, choice.gathers(seat.whileGathered) ? seat.works : seat.otherwise);
   if ('firstEnabled' in seat) {
     for (const option of seat.firstEnabled) {
       const goods = seatProducts(choice, current, option);
@@ -1265,6 +1307,14 @@ function seatProducts(
   });
   if (kept.length > 0 || choice.pastGlut === true) return kept.length > 0 ? kept : seat.goods;
   return seat.otherwise === undefined ? seat.goods : seatProducts(choice, current, seat.otherwise);
+}
+
+/** Whether a settler of `player`, at home or on a colony, works a live flag held to `good`: a colony ships
+ *  its dug surplus home. */
+function seatGathers(world: World, ctx: SystemContext, player: number, good: number): boolean {
+  return everySettlerOf(world, player).some(
+    (e) => liveWorkFlag(world, e) !== undefined && heldGatherGood(world, ctx, e) === good,
+  );
 }
 
 /** Whether `selection` stops every one of `recipeProducts`: a worker the tuner rested. */

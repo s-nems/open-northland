@@ -67,6 +67,7 @@ import {
   PAST_HQ_DEFENCE_DX,
   placeHq,
   placeResources,
+  postGatherer,
   RESOURCE_SPOTS,
   SCHOOL_TYPE,
   SEAT,
@@ -747,25 +748,9 @@ describe('build-order module (houseBuild)', () => {
         { kind: 'place', building: 'work_farm_00', count: 1 },
       ]),
     );
-    const flagIronGatherer = (): void => {
-      sim.enqueueSetup({
-        kind: 'spawnSettler',
-        jobType: COLLECTOR,
-        x: 12,
-        y: 24,
-        tribe: VIKING,
-        owner: SEAT,
-      });
-      sim.step();
-      const settler = [...sim.world.query(Settler)].at(-1);
-      if (settler === undefined) throw new Error('setup: collector missing');
-      sim.enqueueSetup({ kind: 'setWorkFlag', entity: settler, x: 14, y: 26 });
-      sim.enqueueSetup({ kind: 'setGatherGood', entity: settler, goodType: IRON });
-      sim.step();
-    };
-    flagIronGatherer();
+    postGatherer(sim, IRON);
     expect([...order.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]); // one of two: still waiting
-    flagIronGatherer();
+    postGatherer(sim, IRON);
     const placed = [...order.run(sim.world, ctxOf(sim), SEAT)][0];
     if (placed?.kind !== 'placeBuilding') throw new Error('expected the farm placement');
     expect(placed.buildingType).toBe(FARM_TYPE);

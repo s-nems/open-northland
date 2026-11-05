@@ -60,10 +60,12 @@ import {
   ctxOf,
   entityOfBuilding,
   HQ_TYPE,
+  IRON,
   JOINER,
   JOINERY_TYPE,
   MILL_TYPE,
   oneLine,
+  postGatherer,
   SEAT,
   spawnMen,
   TOOL_IRON,
@@ -709,6 +711,8 @@ describe('workforce - the top-tier joineries’ roles', () => {
     );
     const joineries = spots.map((at) => topJoineryAt(sim, at));
     for (const joinery of joineries) crew(sim, joinery);
+    // Iron comes in, so a crew past its fleet turns to iron tools.
+    postGatherer(sim, IRON);
     return { sim, joineries };
   }
 

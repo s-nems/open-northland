@@ -128,6 +128,7 @@ import {
   makeAiSeat,
   placeHq,
   placeResources,
+  postGatherer,
   SEAT,
   SPEAR,
   SPEARMAN,
@@ -1556,6 +1557,7 @@ describe('workforce module - the barracks and craft selections', () => {
     });
     spawnMen(sim, 2, BUILDER);
     sim.step();
+    postGatherer(sim, IRON);
 
     // The min pass assigns the joiner; its craft selection only exists once the binding stands.
     const first = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
@@ -1695,6 +1697,7 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('keeps both joiners on iron tools to their stock line and rests them there, never on furniture', () => {
     const seat = crewedWorkshop(furnitureContent(), 2);
+    postGatherer(seat.sim, IRON);
     expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
     seat.stock(TOOL_IRON, JOINERY_TOOL_GLUT_UNITS - 1);
     expect(seat.products()).toEqual([]);
@@ -1710,6 +1713,7 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('turns joiners with no iron to wooden tools up to their line, and back once iron comes', () => {
     const seat = crewedWorkshop(furnitureContent(), 2);
+    postGatherer(seat.sim, IRON);
     seat.stock(WOOD, JOINERY_WOOD_UNITS);
     expect(seat.products()).toEqual([[TOOL_WOODEN], [TOOL_WOODEN]]);
     seat.stock(IRON, JOINERY_WOOD_UNITS);
@@ -1727,6 +1731,15 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(decisions(tuned)).toEqual([[TOOL_WOODEN], [TOOL_WOODEN]]);
   });
 
+  it('keeps joiners on wooden tools while the seat gathers no iron, whatever iron it holds', () => {
+    const seat = crewedWorkshop(furnitureContent(), 2);
+    seat.stock(WOOD, JOINERY_WOOD_UNITS);
+    seat.stock(IRON, JOINERY_WOOD_UNITS);
+    expect(seat.products()).toEqual([[TOOL_WOODEN], [TOOL_WOODEN]]);
+    postGatherer(seat.sim, IRON);
+    expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
+  });
+
   it('works wooden and iron tools together on an island seat until the small ship is earned', () => {
     const SHIP_SMALL = 28;
     const base = furnitureContent();
@@ -1739,6 +1752,7 @@ describe('workforce module - the barracks and craft selections', () => {
     );
     const seat = crewedWorkshop(content, 1);
     seatEconomy(seat.sim, 'islands');
+    postGatherer(seat.sim, IRON);
     seat.stock(WOOD, JOINERY_WOOD_UNITS);
     expect(seat.products()).toEqual([[TOOL_IRON, TOOL_WOODEN].sort((a, b) => a - b)]);
     // At the wooden tools' line, and with the sites short of wood, only the iron tools stay.
@@ -2235,6 +2249,7 @@ describe('workforce module - the barracks and craft selections', () => {
       [HANDCART],
     );
     const joiners = crewedWorkshops(content, 1, 1);
+    postGatherer(joiners.sim, IRON);
     joiners.hire(0, 1);
     expect(joiners.products()).toEqual([[TOOL_IRON]]);
   });

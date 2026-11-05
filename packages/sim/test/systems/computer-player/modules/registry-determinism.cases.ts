@@ -24,7 +24,7 @@ import {
   RESOURCE_SPOTS,
   SEAT,
   spawnMen,
-  TOOL_IRON,
+  TOOL_WOODEN,
   VIKING,
   WELL_TYPE,
   WOMAN,
@@ -107,8 +107,8 @@ describe('the full strategic registry - replay', () => {
       ].sort((a, b) => a - b),
     );
     // The crew clears the reserve, so the farm reaches its target-tier hands and the bakery keeps
-    // its carrier; the joinery's joiner was locked onto iron tools; and the builder crew never exceeds
-    // its reserve.
+    // its carrier; the joinery's joiner, the seat gathering no iron, was locked onto wooden tools; and the
+    // builder crew never exceeds its reserve.
     const farm = entityOfBuilding(sim, FARM_TYPE);
     const posts = [...sim.world.query(Settler, JobAssignment)].map((e) => ({
       workplace: sim.world.get(e, JobAssignment).workplace,
@@ -123,7 +123,7 @@ describe('the full strategic registry - replay', () => {
     expect(bakeries.some((b) => posts.some((p) => p.workplace === b && p.jobType === CARRIER))).toBe(true);
     const log = sim.commands.log.map((c) => c.command);
     expect(
-      log.some((c) => c.kind === 'setProductionGoods' && c.goods.length === 1 && c.goods[0] === TOOL_IRON),
+      log.some((c) => c.kind === 'setProductionGoods' && c.goods.length === 1 && c.goods[0] === TOOL_WOODEN),
     ).toBe(true);
     const builders = [...sim.world.query(Settler)].filter(
       (e) => sim.world.get(e, Settler).jobType === BUILDER && !sim.world.has(e, JobAssignment),

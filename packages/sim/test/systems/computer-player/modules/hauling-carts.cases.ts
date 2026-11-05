@@ -22,9 +22,11 @@ import {
   ctxOf,
   entityOfBuilding,
   HQ_TYPE,
+  IRON,
   JOINER,
   JOINERY_TYPE,
   placeHq,
+  postGatherer,
   SEAT,
   spawnMen,
   TOOL_IRON,
@@ -84,7 +86,8 @@ function cartContent(): ContentSet {
   });
 }
 
-/** The upgraded joinery with `joiners` of `crew` builders hired as joiners and the rest as its carrier. */
+/** The upgraded joinery with `joiners` of `crew` builders hired as joiners and the rest as its carrier, on a
+ *  seat that gathers iron. */
 function joinery(crew: number, joiners: number) {
   const content = cartContent();
   const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
@@ -112,6 +115,7 @@ function joinery(crew: number, joiners: number) {
     if (i < joiners) sim.enqueueSetup({ kind: 'setProductionGoods', entity: man, goods: [] });
   });
   sim.step();
+  postGatherer(sim, IRON);
   const ctx = { ...ctxOf(sim), content };
   const apply = (commands: readonly PlayerCommand[]): readonly PlayerCommand[] => {
     for (const c of commands) sim.enqueueSetup(c);
