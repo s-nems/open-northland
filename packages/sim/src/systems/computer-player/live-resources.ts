@@ -390,6 +390,21 @@ export function nearestLiveResource(
   );
 }
 
+/** Whether a standing not-yet-empty `goodType` resource that `workable` accepts lies within `nodes`
+ *  Manhattan nodes of `from`: one search of the box round that diamond, however far the good stands past it. */
+export function liveResourceWithin(
+  world: World,
+  goodType: number,
+  from: HalfCellNode,
+  nodes: number,
+  workable?: WorkableTest,
+): boolean {
+  const accept = (e: Entity): boolean =>
+    world.get(e, Resource).remaining > 0 && (workable === undefined || workable(e));
+  const hit = nearestResourceOfGood(world, goodType, from.hx, from.hy, nodes, undefined, accept);
+  return hit !== null && hit.distance <= nodes;
+}
+
 /** {@link nearestLiveResource} over several goods: the nearest of the goods' winners, ties to the lower
  *  entity id. */
 export function nearestLiveResourceOfGoods(

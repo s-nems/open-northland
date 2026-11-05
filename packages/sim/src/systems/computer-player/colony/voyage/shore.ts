@@ -1,15 +1,14 @@
 import { playerPlacementTribes } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
-import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
+import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import { goodTypeByContentId } from '../../../ai-shared/content-lookup.js';
-import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import { placementBlockerGrid } from '../../../footprint/placement/blocker-grid.js';
 import { VEHICLE_CARGO_SEARCH_RADIUS } from '../../../settlers/drives/economy/vehicle-cargo.js';
 import { fishSwarmsNearNode } from '../../../spatial/fish.js';
 import {
   knownAnd,
   knownResourceTest,
-  nearestLiveResource,
+  liveResourceWithin,
   reachableResourceTest,
   workableResourceTest,
 } from '../../live-resources.js';
@@ -96,9 +95,7 @@ export function shoreScore(
   const known = knownAnd(knownResourceTest(world, ctx, seat), reachable);
   const goods = LAND_GOOD_IDS.filter((id) => {
     const good = goodTypeByContentId(ctx.content, id);
-    const near = good === undefined ? null : nearestLiveResource(world, good.typeId, at, known);
-    const node = near === null ? null : anchorNodeOf(world, near);
-    return node !== null && nodeManhattan(node, at) <= SHORE_LOOK_NODES;
+    return good !== undefined && liveResourceWithin(world, good.typeId, at, SHORE_LOOK_NODES, known);
   }).length;
   const fish = fishSwarmsNearNode(world, at.hx, at.hy, SHORE_LOOK_NODES).length;
   return (
