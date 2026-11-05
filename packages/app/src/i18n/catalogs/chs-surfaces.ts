@@ -430,7 +430,6 @@ export const chsSurfaces = {
         watchSeat9: '观战：观看列表中第 9 位玩家',
         watchPlayersSight: '观战：玩家视野',
         watchRevealedMap: '观战：全图',
-        jumpToFight: '观战：跳到最近的战斗',
         cancel: '取消 / 关闭 / 取消选择',
         toggleSelection: '加入或移出选择',
         queueOrder: '在当前命令之后排队下一条命令',
@@ -459,7 +458,6 @@ export const chsSurfaces = {
         '点击后按下新的按键或组合键；此处也可以分配 Esc。点击其他位置取消。Esc 会先关闭当前打开的内容，没有可关闭的内容时才打开菜单。',
       recallSelectedTip: '编队已被选中时再次按下，会将视角对准该编队。',
       spectatorKeyTip: '仅在观战时生效，因此可以与编队共用按键。',
-      fightKeyTip: '视角移动之前再次按下，会跳到更早的一场战斗。',
       hudToggleTip: '隐藏界面，便于截图和录像。界面隐藏时打开的窗口仍会显示。',
       pointerBindingRebindTip:
         '点击后按住 Ctrl、Shift、Alt 或 Cmd 并按下鼠标按键。Shift + 左键点击仍用于加入或移出选择，Shift + 右键点击仍用于将命令加入队列。Esc 取消。',

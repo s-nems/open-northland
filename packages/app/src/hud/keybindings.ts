@@ -44,7 +44,6 @@ export const SPECTATOR_ACTIONS = [
   ...SPECTATOR_SEAT_ACTIONS,
   'watchPlayersSight',
   'watchRevealedMap',
-  'jumpToFight',
 ] as const;
 
 export type SpectatorAction = (typeof SPECTATOR_ACTIONS)[number];
@@ -179,7 +178,6 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   ...spectatorSeatDefaults,
   watchPlayersSight: 'Digit0',
   watchRevealedMap: 'Backquote',
-  jumpToFight: 'KeyJ',
 };
 
 const SPECTATOR_ACTION_SET: ReadonlySet<string> = new Set(SPECTATOR_ACTIONS);

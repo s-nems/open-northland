@@ -17,7 +17,6 @@ export function spectatorKeyAction(e: KeyboardEvent, bindings: KeyBindings): Spe
 export function watchTargetOf(action: SpectatorAction, seats: readonly number[]): WatchTarget | undefined {
   if (action === 'watchPlayersSight') return PLAYERS_SIGHT;
   if (action === 'watchRevealedMap') return null;
-  if (action === 'jumpToFight') return undefined;
   return seats[SPECTATOR_SEAT_ACTIONS.indexOf(action)];
 }
 

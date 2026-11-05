@@ -443,7 +443,6 @@ export const enSurfaces = {
         watchSeat9: 'Spectator: watch listed player 9',
         watchPlayersSight: "Spectator: players' sight",
         watchRevealedMap: 'Spectator: revealed map',
-        jumpToFight: 'Spectator: jump to the latest fight',
         cancel: 'Cancel / close / deselect',
         toggleSelection: 'Add to or remove from selection',
         queueOrder: 'Queue an order after the current one',
@@ -472,7 +471,6 @@ export const enSurfaces = {
         'Click, then press the new key or combination; Esc can be assigned here. Clicking elsewhere cancels. Esc first closes whatever is open and opens the menu once nothing is left to close.',
       recallSelectedTip: 'Pressed while the group is already selected, it centres the view on the group.',
       spectatorKeyTip: 'Works only while spectating a match, so it may share its key with a control group.',
-      fightKeyTip: 'Pressed again before the view moves, it steps to the fight before.',
       hudToggleTip:
         'Hides the interface for screenshots and recordings. A window opened while it is hidden still shows.',
       pointerBindingRebindTip:

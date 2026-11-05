@@ -443,7 +443,6 @@ export const plSurfaces = {
         watchSeat9: 'Obserwator: gracz 9 z listy',
         watchPlayersSight: 'Obserwator: wizja graczy',
         watchRevealedMap: 'Obserwator: odkryta mapa',
-        jumpToFight: 'Obserwator: skok do ostatniej walki',
         cancel: 'Anuluj / zamknij / odznacz',
         toggleSelection: 'Dodawanie do zaznaczenia i usuwanie z niego',
         queueOrder: 'Dodanie polecenia do kolejki po bieżącym',
@@ -473,7 +472,6 @@ export const plSurfaces = {
       recallSelectedTip: 'Naciśnięty, gdy grupa jest już zaznaczona, wyśrodkowuje widok na grupie.',
       spectatorKeyTip:
         'Działa tylko podczas obserwowania meczu, więc może dzielić klawisz z grupą jednostek.',
-      fightKeyTip: 'Wciśnięty ponownie, zanim widok się przesunie, przenosi do wcześniejszej walki.',
       hudToggleTip:
         'Ukrywa interfejs do zrzutów ekranu i nagrań. Okno otwarte, gdy interfejs jest ukryty, nadal się pokazuje.',
       pointerBindingRebindTip:

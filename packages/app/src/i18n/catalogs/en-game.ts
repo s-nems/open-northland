@@ -1593,7 +1593,6 @@ export const enGame = {
       buildings: 'Buildings',
       status: { won: 'Victorious', defeated: 'Defeated', empty: 'Nothing left' },
       watchHint: 'Click to watch this player',
-      latestFight: 'Latest fight',
     },
     stats: {
       playerTick: 'Player {player} · tick {tick}',

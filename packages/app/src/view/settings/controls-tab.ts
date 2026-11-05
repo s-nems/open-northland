@@ -115,7 +115,6 @@ export function createControlsTab(opts: {
           ...(RECALL_ACTIONS.has(action) ? [text.recallSelectedTip] : []),
           ...(action === 'hudToggle' ? [text.hudToggleTip] : []),
           ...(isSpectatorAction(action) ? [text.spectatorKeyTip] : []),
-          ...(action === 'jumpToFight' ? [text.fightKeyTip] : []),
           ...(opts.deferredTip === undefined ? [] : [opts.deferredTip]),
         ].join(' '),
       });

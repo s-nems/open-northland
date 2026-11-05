@@ -129,11 +129,6 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   entry(PLAYERS_SIGHT);
   entry(null);
   for (const seat of deps.seats) entry(seat.player);
-  const fightHint = document.createElement('p');
-  fightHint.className = 'on-picker__hint';
-  const fightKey = keycap('');
-  fightHint.append(fightKey, copy.observer.latestFight);
-  list.append(fightHint);
   // Read on every open, since the bindings object is rebound in place from the settings.
   const showKeys = (): void => {
     for (const [seat, key] of entryKeys) {
@@ -141,9 +136,6 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
       key.hidden = label === null;
       key.textContent = label ?? '';
     }
-    const fightBinding = deps.bindings?.jumpToFight ?? null;
-    fightHint.hidden = fightBinding === null;
-    fightKey.textContent = fightBinding === null ? '' : keyDisplayLabel(fightBinding);
   };
 
   // Escape closes the open list from wherever focus sits, since a clicked button holds no focus in

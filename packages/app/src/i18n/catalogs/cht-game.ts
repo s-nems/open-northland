@@ -1548,7 +1548,6 @@ export const chtGame = {
       buildings: '建築',
       status: { won: '勝利', defeated: '戰敗', empty: '一無所有' },
       watchHint: '點擊觀看該玩家',
-      latestFight: '最近的戰鬥',
     },
     stats: {
       playerTick: '玩家 {player} · 邏輯幀 {tick}',

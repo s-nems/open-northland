@@ -167,8 +167,7 @@ Group code by user-facing concern, one feature folder each:
   panel tools and catalogs), assistant (builder assistant orders in flight), camera (pan, zoom and
   drag), cursors (cursor theme and hotspots), map-overlays (signpost reach overlay), escalation (a map
   variant's siege notices, attack night, mode mark and countdown), projections (per-frame snapshot
-  projections for labels, badges and markers), spectator (a watching spectator's keys and the latest
-  fights they jump to);
+  projections for labels, badges and markers), spectator (a watching spectator's keys);
 - `content/`: generated-content loaders and pure joins by kind: map, object-gfx, gui, audio and the
   `*-gfx` sprite joins;
 - `catalog/` and `game/sandbox/`: fallback content and rules; `game/snapshot/`, `game/map/`,

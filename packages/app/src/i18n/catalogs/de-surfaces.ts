@@ -483,7 +483,6 @@ export const deSurfaces = {
         watchSeat9: 'Zuschauer: Spieler 9 der Liste beobachten',
         watchPlayersSight: 'Zuschauer: Sicht der Spieler',
         watchRevealedMap: 'Zuschauer: Aufgedeckte Karte',
-        jumpToFight: 'Zuschauer: Zum letzten Kampf springen',
         cancel: 'Abbrechen / schließen / Auswahl aufheben',
         toggleSelection: 'Zur Auswahl hinzufügen oder daraus entfernen',
         queueOrder: 'Befehl nach dem aktuellen einreihen',
@@ -513,7 +512,6 @@ export const deSurfaces = {
       recallSelectedTip:
         'Ist die Gruppe bereits ausgewählt, zentriert ein weiterer Tastendruck die Ansicht auf die Gruppe.',
       spectatorKeyTip: 'Wirkt nur beim Zuschauen, darum darf die Taste mit einer Gruppe geteilt werden.',
-      fightKeyTip: 'Erneut gedrückt, bevor sich die Ansicht bewegt, springt sie zum Kampf davor.',
       hudToggleTip:
         'Blendet die Oberfläche für Bildschirmfotos und Aufnahmen aus. Ein danach geöffnetes Fenster bleibt sichtbar.',
       pointerBindingRebindTip:

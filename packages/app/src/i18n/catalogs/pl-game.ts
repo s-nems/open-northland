@@ -1570,7 +1570,6 @@ export const plGame = {
       buildings: 'Budynki',
       status: { won: 'Zwycięstwo', defeated: 'Porażka', empty: 'Nic nie zostało' },
       watchHint: 'Kliknij, aby obserwować tego gracza',
-      latestFight: 'Ostatnia walka',
     },
     stats: {
       playerTick: 'Gracz {player} · krok {tick}',

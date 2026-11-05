@@ -58,8 +58,8 @@ describe('parseKeyBindings', () => {
   });
 
   it('lets a spectator key share a control group chord, never another chord', () => {
-    const parsed = parseKeyBindings({ jumpToFight: 'Digit2', watchSeat1: 'KeyB' });
-    expect(parsed.jumpToFight).toBe('Digit2');
+    const parsed = parseKeyBindings({ watchRevealedMap: 'Digit2', watchSeat1: 'KeyB' });
+    expect(parsed.watchRevealedMap).toBe('Digit2');
     expect(parsed.controlGroup2).toBe('Digit2');
     expect(parsed.watchSeat2).toBeNull();
     expect(parsed.watchSeat1).toBe('KeyB');
@@ -98,7 +98,7 @@ describe('assignBinding', () => {
   });
 
   it('keeps a control group beside a spectator key given its chord, and unbinds both for another action', () => {
-    const spectator = assignBinding(DEFAULT_KEY_BINDINGS, 'jumpToFight', 'Digit3');
+    const spectator = assignBinding(DEFAULT_KEY_BINDINGS, 'watchRevealedMap', 'Digit3');
     expect(spectator.controlGroup3).toBe('Digit3');
     expect(spectator.watchSeat3).toBeNull();
     const pause = assignBinding(DEFAULT_KEY_BINDINGS, 'pauseToggle', 'Digit3');
