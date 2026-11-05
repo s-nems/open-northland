@@ -10,12 +10,7 @@ import {
 
 /** Ordered expiry and node budgets change only with impacts/removals; queries visit visible buckets. */
 export class BloodHistory {
-  /** Each live mark's ingest order. */
   private readonly live = new Map<BloodMark, number>();
-  /** Each live mark's bucket id, reused once its mark goes: the buckets hold records in an array by id,
-   *  which an ever-growing id would stretch by a slot per mark ever made. */
-  private readonly bucketIds = new Map<BloodMark, number>();
-  private readonly freeBucketIds: number[] = [];
   private readonly perNode = new Map<string, Set<BloodMark>>();
   private buckets = new TileBuckets<BloodMark>();
   private readonly wanted = new Set<BloodMark>();
@@ -52,11 +47,9 @@ export class BloodHistory {
         if (oldest !== undefined) this.remove(oldest);
       }
       sameNode.add(mark);
-      this.live.set(mark, this.nextId++);
-      // Without a freed id, the ids in use are exactly 0 to size - 1.
-      const bucketId = this.freeBucketIds.pop() ?? this.bucketIds.size;
-      this.bucketIds.set(mark, bucketId);
-      this.buckets.set(bucketId, mark, mark.hx, mark.hy / 2);
+      const id = this.nextId++;
+      this.live.set(mark, id);
+      this.buckets.set(id, mark, mark.hx, mark.hy / 2);
       this.revision++;
       if (this.live.size > MAX_BLOOD_MARKS) {
         const oldest = this.live.keys().next().value;
@@ -83,7 +76,7 @@ export class BloodHistory {
       },
       out,
     );
-    // The live map iterates in ingest order, so walking it sorts a large share of the marks for free.
+    // Ids follow insertion, so walking the live list in order sorts a large share of it for free.
     if (out.length * Math.log2(out.length + 1) < this.live.size) {
       out.sort((a, b) => (this.live.get(a) ?? 0) - (this.live.get(b) ?? 0));
       return;
@@ -100,8 +93,6 @@ export class BloodHistory {
   clear(): void {
     for (const mark of this.live.keys()) this.removed(mark);
     this.live.clear();
-    this.bucketIds.clear();
-    this.freeBucketIds.length = 0;
     this.perNode.clear();
     this.buckets = new TileBuckets();
     this.nextId = 0;
@@ -109,12 +100,10 @@ export class BloodHistory {
   }
 
   private remove(mark: BloodMark): void {
-    const bucketId = this.bucketIds.get(mark);
-    if (bucketId === undefined) return;
+    const id = this.live.get(mark);
+    if (id === undefined) return;
     this.live.delete(mark);
-    this.bucketIds.delete(mark);
-    this.buckets.delete(bucketId);
-    this.freeBucketIds.push(bucketId);
+    this.buckets.delete(id);
     const key = nodeKey(mark);
     const sameNode = this.perNode.get(key);
     sameNode?.delete(mark);

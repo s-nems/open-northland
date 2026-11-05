@@ -28,34 +28,28 @@ interface BucketRecord<T> {
  * Query order is arbitrary; a consumer that needs a stable order sorts the result.
  */
 export class TileBuckets<T> {
-  /** The records by id. A mirror's index meets every touched entity per delta, mostly ones it does not
-   *  hold, and an array answers that miss and a hit several times faster than a map's hashed lookup. */
-  private readonly records: (BucketRecord<T> | undefined)[] = [];
-  private count = 0;
+  private readonly records = new Map<number, BucketRecord<T>>();
   private readonly buckets = new Map<number, BucketRecord<T>[]>();
 
   get size(): number {
-    return this.count;
+    return this.records.size;
   }
 
   has(id: number): boolean {
-    return this.records[id] !== undefined;
+    return this.records.has(id);
   }
 
   get(id: number): T | undefined {
-    return this.records[id]?.item;
+    return this.records.get(id)?.item;
   }
 
   /** Place `item` under `id` at the tile position, moving it when `id` sits in another bucket. */
   set(id: number, item: T, tileX: number, tileY: number): void {
     const key = bucketKey(tileX, tileY);
-    const held = this.records[id];
+    const held = this.records.get(id);
     if (held === undefined) {
       const record: BucketRecord<T> = { id, item, key, slot: 0 };
-      // Grown slot by slot: a store far past the end would turn the array into a dictionary.
-      while (this.records.length < id) this.records.push(undefined);
-      this.records[id] = record;
-      this.count++;
+      this.records.set(id, record);
       this.insert(record, key);
       return;
     }
@@ -65,16 +59,15 @@ export class TileBuckets<T> {
   /** {@link set} for an id already held, a no-op for any other: a caller walking every touched item
    *  needs no membership test first. */
   move(id: number, item: T, tileX: number, tileY: number): void {
-    const held = this.records[id];
+    const held = this.records.get(id);
     if (held !== undefined) this.rekey(held, item, bucketKey(tileX, tileY));
   }
 
   delete(id: number): boolean {
-    const held = this.records[id];
+    const held = this.records.get(id);
     if (held === undefined) return false;
     this.removeFromBucket(held);
-    this.records[id] = undefined;
-    this.count--;
+    this.records.delete(id);
     return true;
   }
 
@@ -117,14 +110,13 @@ export class TileBuckets<T> {
   /** Where these buckets place an item otherwise than `other` does, or null: the same items under the
    *  same ids in the same buckets, whatever order their history left inside a bucket. */
   differenceFrom(other: TileBuckets<T>): string | null {
-    if (this.count !== other.count) return `size ${this.count} against ${other.count}`;
+    if (this.records.size !== other.records.size)
+      return `size ${this.records.size} against ${other.records.size}`;
     let bucketed = 0;
     for (const bucket of this.buckets.values()) bucketed += bucket.length;
-    if (bucketed !== this.count) return `${bucketed} bucketed against ${this.count} held`;
-    for (const record of this.records) {
-      if (record === undefined) continue;
-      const { id } = record;
-      const theirs = other.records[id];
+    if (bucketed !== this.records.size) return `${bucketed} bucketed against ${this.records.size} held`;
+    for (const [id, record] of this.records) {
+      const theirs = other.records.get(id);
       if (theirs === undefined || theirs.item !== record.item) return `id ${id}`;
       if (theirs.key !== record.key || this.buckets.get(record.key)?.[record.slot] !== record) {
         return `id ${id}'s bucket`;
