@@ -26,14 +26,23 @@ interface CargoLine {
   readonly amount: number;
 }
 
-/** What a colony sails with: the whole bill of its first store, placed at that tier, and food for its
- *  `party`. */
-export function colonyManifest(world: World, ctx: SystemContext, seat: number, party: number): CargoLine[] {
+/** The whole bill of the colony's first store, placed at that tier, one line per good. */
+export function storeBill(world: World, ctx: SystemContext, seat: number): CargoLine[] {
+  return [...storeBillByGood(world, ctx, seat)].map(([goodType, amount]) => ({ goodType, amount }));
+}
+
+function storeBillByGood(world: World, ctx: SystemContext, seat: number): Map<number, number> {
   const store = colonyStoreType(world, ctx, seat);
   const bill =
     store === undefined ? [] : (contentIndex(ctx.content).constructionBillByBuilding.get(store.typeId) ?? []);
   const lines = new Map<number, number>();
   for (const line of bill) lines.set(line.goodType, (lines.get(line.goodType) ?? 0) + line.amount);
+  return lines;
+}
+
+/** What a colony's hold is asked to take: the {@link storeBill} and food for its `party`. */
+export function colonyManifest(world: World, ctx: SystemContext, seat: number, party: number): CargoLine[] {
+  const lines = storeBillByGood(world, ctx, seat);
   const food = foodGood(ctx);
   if (food !== null) lines.set(food, (lines.get(food) ?? 0) + FOUNDING_FOOD_PER_COLONIST * party);
   return [...lines].map(([goodType, amount]) => ({ goodType, amount }));

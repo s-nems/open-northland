@@ -108,8 +108,6 @@ const JOINERY_AT = { x: 84, y: 84 };
 /** The wood a colony's first store costs, by the fixture, both warehouse tiers it is raised through: the
  *  manifest's only wood. */
 const STORE_BILL_WOOD = 4;
-/** How long a ready ship waits for the party's food, by the voyage's rule. */
-const FOOD_WAIT_TICKS = minutesToTicks(10);
 
 function freeShipsOf(sim: Simulation): Entity[] {
   const ctx = ctxOf(sim);
@@ -449,13 +447,12 @@ describe('a failed voyage', () => {
 describe('a colony fitting out', () => {
   /** The phase after one fitting-out decision beside a new home warehouse site holding `siteWood` of its
    *  bill, with `storeWood` in the headquarters, `shelfWood` kept for its recipe by a built joinery beside it
-   *  and no wood anywhere else at home. With `food`, home holds that much food alone, in the headquarters,
-   *  and the ship has lain ready for `waited` ticks. */
+   *  and no wood anywhere else at home. With `food`, home holds that much food alone, in the headquarters. */
   function fitOutBesideSite(
     storeWood: number,
     siteWood: number,
     shelfWood = 0,
-    food?: { readonly units: number; readonly waited: number },
+    food?: number,
   ): string | undefined {
     const sim = colonyWorld();
     stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
@@ -493,10 +490,10 @@ describe('a colony fitting out', () => {
       );
     if (food !== undefined)
       for (const e of homeBuildings(sim.world, ctxOf(sim), SEAT))
-        setStockAmount(sim.world, e, FOOD, e === base ? food.units : 0);
+        setStockAmount(sim.world, e, FOOD, e === base ? food : 0);
     const live = editColony(sim);
     live.phase = 'fittingOut';
-    live.since = sim.tick - (food?.waited ?? 0);
+    live.since = sim.tick;
     live.ship = mooredShip(sim);
     const ctx = ctxOf(sim);
     const carrier = aiControlEntity(sim.world, SEAT);
@@ -522,9 +519,7 @@ describe('a colony fitting out', () => {
     expect(fitOutBesideSite(STORE_BILL_WOOD, 0)).toBe('loading');
   });
 
-  it("waits a while for the party's food, then sails with the store's bill and what food home spares", () => {
-    const short = { units: 0, waited: 0 };
-    expect(fitOutBesideSite(STORE_BILL_WOOD, 0, 0, short)).toBe('fittingOut');
-    expect(fitOutBesideSite(STORE_BILL_WOOD, 0, 0, { ...short, waited: FOOD_WAIT_TICKS })).toBe('loading');
+  it("sails with the store's bill without waiting for the party's food", () => {
+    expect(fitOutBesideSite(STORE_BILL_WOOD, 0, 0, 0)).toBe('loading');
   });
 });
