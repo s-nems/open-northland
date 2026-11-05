@@ -401,7 +401,8 @@ function splitParty(
  * party to be spared and for home to hold the store's bill where hands fetch it, the party at work, which
  * costs a moored ship and never fails the voyage. The party's food never holds it (owner ruling: its fishers
  * catch their own): the hands load what home spares. Then the site is looked at once more and loading
- * starts. A scout ship the party does not need goes free here.
+ * starts. A scout ship the party does not need goes free here, and at the claim when the carrying ship is no
+ * trade ship, which takes no scout ship along.
  */
 export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx, seat } = env;
@@ -414,7 +415,7 @@ export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] 
     const live = env.edit();
     live.ship = ship;
     live.since = ctx.tick;
-    if (ship === colony.scout?.ship) live.scout = null;
+    if (ship === colony.scout?.ship || shipId(env, ship) !== TRADE_SHIP_ID) live.scout = null;
     return [];
   }
   const ship = colony.ship;

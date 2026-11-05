@@ -162,7 +162,7 @@ describe('a colony scouts its site', () => {
     expect(freeShips({ world: sim.world, ctx, terrain, seat: SEAT }, home)).toEqual([]);
   });
 
-  it('claims the second free ship for the colony, or at the fit-out limit carries on in the first', () => {
+  it('claims the second free ship for the colony and lets the scout ship go, or at the fit-out limit carries on in the first', () => {
     const scouted = () => {
       const sim = colonyWorld();
       stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
@@ -174,7 +174,8 @@ describe('a colony scouts its site', () => {
     const second = mooredShip(twoShips.sim, SMALL_SHIP, SECOND_SHIP_AT);
     stepUntil(twoShips.sim, DECISION_TICKS, () => colonyState(twoShips.sim)?.ship !== null);
     expect(colonyState(twoShips.sim)?.ship).toBe(second);
-    expect(colonyState(twoShips.sim)?.scout?.ship).toBe(twoShips.ship);
+    expect(colonyState(twoShips.sim)?.scout).toBeNull();
+    expect(colonyHeldShips(twoShips.sim.world, SEAT)).toEqual([second]);
     const oneShip = scouted();
     const { sim } = oneShip;
     expect(stepUntil(sim, FIT_OUT_TICKS, () => colonyState(sim)?.ship !== null)).toBe(true);
