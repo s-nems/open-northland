@@ -19,7 +19,8 @@ export interface ObserverPickerDeps {
 }
 
 /** The spectator's seat picker: one button naming the watched seat, over a list of the whole map
- *  (uncovered or under the players' sight) and every seat it may watch. */
+ *  (uncovered or under the players' sight, shown by icon alone and named on hover) and every seat
+ *  it may watch. */
 export interface ObserverPicker {
   readonly element: HTMLElement;
   /** Show the viewer's current choice; the same choice twice costs nothing. */
@@ -121,14 +122,20 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
 
   const entries = new Map<WatchTarget, HTMLButtonElement>();
   const entryKeys = new Map<WatchTarget, HTMLElement>();
-  const entry = (seat: WatchTarget): void => {
+  const entry = (seat: WatchTarget, parent: HTMLElement): void => {
     const option = document.createElement('button');
     option.type = 'button';
     option.className = 'on-seat';
     option.setAttribute('role', 'option');
     option.setAttribute('aria-selected', 'false');
-    option.append(typeof seat === 'number' ? swatch(colourOf(seat)) : modeGlyph(seat));
-    option.append(labelOf(seat));
+    if (typeof seat === 'number') {
+      option.append(swatch(colourOf(seat)), labelOf(seat));
+    } else {
+      option.classList.add('on-seat--mode');
+      option.title = labelOf(seat);
+      option.setAttribute('aria-label', labelOf(seat));
+      option.append(modeGlyph(seat));
+    }
     const key = keycap('');
     entryKeys.set(seat, key);
     option.append(key);
@@ -137,11 +144,14 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
       deps.onWatch(seat);
     });
     entries.set(seat, option);
-    list.append(option);
+    parent.append(option);
   };
-  entry(PLAYERS_SIGHT);
-  entry(null);
-  for (const seat of deps.seats) entry(seat.player);
+  const modes = document.createElement('div');
+  modes.className = 'on-picker__modes';
+  list.append(modes);
+  entry(PLAYERS_SIGHT, modes);
+  entry(null, modes);
+  for (const seat of deps.seats) entry(seat.player, list);
   // Read on every open, since the bindings object is rebound in place from the settings.
   const showKeys = (): void => {
     for (const [seat, key] of entryKeys) {
@@ -183,11 +193,14 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
       const seat = watchedOf(deps.viewer);
       if (seat === shown) return;
       shown = seat;
-      chosenName.textContent = labelOf(seat);
+      const watchesSeat = typeof seat === 'number';
+      chosenName.textContent = watchesSeat ? labelOf(seat) : '';
+      chosenName.hidden = !watchesSeat;
+      button.title = watchesSeat ? '' : labelOf(seat);
       chosenSwatch.style.background = colourOf(seat);
-      chosenSwatch.hidden = typeof seat !== 'number';
-      chosenMode.hidden = typeof seat === 'number';
-      if (typeof seat !== 'number') chosenMode.innerHTML = modeMark(seat);
+      chosenSwatch.hidden = !watchesSeat;
+      chosenMode.hidden = watchesSeat;
+      if (!watchesSeat) chosenMode.innerHTML = modeMark(seat);
       for (const [entrySeat, option] of entries) {
         option.setAttribute('aria-selected', String(entrySeat === seat));
       }

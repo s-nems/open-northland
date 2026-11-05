@@ -2108,6 +2108,24 @@ body.on-drag-scroll.on-drag-scroll-free * {
 .on-hud .on-seat .on-key[hidden] {
   display: none;
 }
+.on-hud .on-picker__button b[hidden] {
+  display: none;
+}
+/* The two whole-map views share one row, each an icon named by its hover title. */
+.on-hud .on-picker__modes {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 3px;
+}
+.on-hud .on-seat.on-seat--mode {
+  flex: 1;
+  width: auto;
+  justify-content: center;
+}
+.on-hud .on-seat.on-seat--mode .on-key,
+.on-hud .on-seat.on-seat--mode[aria-selected="true"]::after {
+  margin-left: 0;
+}
 .on-hud .on-picker__mode {
   display: grid;
   flex: none;
