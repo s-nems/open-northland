@@ -7,8 +7,9 @@ import type { NavigationLimit } from '../../../signposts/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { atOrWalk } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
-import type { IdleStands } from '../../planner/idle-replan.js';
+import { type IdleStands, ownedByMachine } from '../../planner/idle-replan.js';
 import { interactionCell } from '../../targets/index.js';
+import { isUnreachableGoal, unreachableGoals } from '../../unreachable-goals.js';
 
 /** Where a flagged carrier lifts loose goods: ranked from its flag, within the flag's Manhattan radius as a
  *  gatherer's work area is, and still inside the carrier's signpost confinement. */
@@ -45,10 +46,16 @@ export function workAreaGate(
   };
 }
 
-/** Walk to the flag and wait there: a flagged worker with nothing to do stays at its post in the field. */
+/**
+ * Walk to the flag and wait there: a flagged worker with nothing to do stays at its post in the field. A
+ * machine seat's worker whose walk there failed waits where it stands until its failed-goal memo lapses,
+ * rather than asking for the same refused route on every stranded retry. A cost cut, not fidelity.
+ */
 export function waitAtHaulFlag(plan: PlannerContext, flag: Entity): void {
   const { world, ctx, terrain, entity, here } = plan;
-  atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, flag, here), () => {});
+  const post = interactionCell(world, ctx, terrain, flag, here);
+  if (ownedByMachine(world, entity) && isUnreachableGoal(unreachableGoals(world, ctx, entity), post)) return;
+  atOrWalk(world, entity, here, post, () => {});
 }
 
 /** A posted gatherer, hunter or fisher that found no work waits at its flag, as a flagged carrier does. */

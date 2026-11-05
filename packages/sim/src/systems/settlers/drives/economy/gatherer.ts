@@ -27,6 +27,7 @@ import {
 import { collectorStanceGates, type WorkBound } from '../../targets/resource-stances.js';
 import { isUnreachableGoal, unreachableGoals } from '../../unreachable-goals.js';
 import type { HarvestClaims } from './harvest-claims.js';
+import { waitAtHaulFlag } from './haul-flag-area.js';
 
 /**
  * HARVEST / COLLECT - the gatherer drive. A flag-bound gatherer harvests inside its flag's radius; an
@@ -174,7 +175,7 @@ function planFlagGatherer(
 
   // Nothing in reach: stand idle beside the flag.
   idle.stand(e, false);
-  atOrWalk(world, e, here, flagCell, () => {});
+  waitAtHaulFlag(plan, flag.flag);
   return true;
 }
 

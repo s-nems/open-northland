@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Felling, Owner, Position, Resource } from '../../../../../src/components/index.js';
+import {
+  AiControl,
+  COMPUTER_MODULE_IDS,
+  CurrentAtomic,
+  computerModuleEnables,
+  Felling,
+  IdleStand,
+  MoveGoal,
+  Owner,
+  PathRequest,
+  Position,
+  Resource,
+} from '../../../../../src/components/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../../../src/index.js';
 import {
@@ -8,6 +20,10 @@ import {
   setGatherGood,
   stampResourceFootprintData,
 } from '../../../../../src/systems/index.js';
+import {
+  noteUnreachableGoal,
+  UNREACHABLE_GOAL_MEMO_TICKS,
+} from '../../../../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../../../../fixtures/content.js';
 import { gatherPick } from '../../../../fixtures/production-counters.js';
 import {
@@ -131,5 +147,43 @@ describe('flag-bound gatherer - never targets a tree it cannot reach (mosty na r
     // The gatherer never crossed the river - it stayed on its own (left) bank.
     expect(fx.toInt(sim.world.get(gatherer, Position).x)).toBeLessThanOrEqual(5);
     expect(violations).toEqual([]);
+  });
+});
+
+describe('flag-bound gatherer - a refused walk back to its flag', () => {
+  it("a computer seat's gatherer waits where it stands while the walk is remembered refused, then walks", () => {
+    const PLAYER = 0;
+    const walksBack = (computer: boolean): readonly [refused: boolean, lapsed: boolean] => {
+      const sim = new Simulation({ seed: 2, content: testContent(), map: grassMap(8, 1) });
+      const gatherer = makeWoodcutter(sim, 1, 0);
+      sim.world.add(gatherer, Owner, { player: PLAYER });
+      bindToFlag(sim, gatherer, 6, 0, NARROW_RADIUS);
+      if (computer) {
+        sim.world.add(sim.world.create(), AiControl, {
+          player: PLAYER,
+          modules: computerModuleEnables(Object.fromEntries(COMPUTER_MODULE_IDS.map((id) => [id, false]))),
+          computerEnabled: true,
+          mapAiEnabled: false,
+          difficulty: 'hard',
+        });
+      }
+      // No tree: the first pass sends it back to its flag; that walk is then refused.
+      plannerSystem(sim.world, ctxOf(sim));
+      const post = sim.world.get(gatherer, MoveGoal).cell;
+      sim.world.remove(gatherer, MoveGoal);
+      sim.world.remove(gatherer, PathRequest);
+      sim.world.remove(gatherer, IdleStand);
+      noteUnreachableGoal(sim.world, ctxOf(sim), gatherer, post);
+
+      plannerSystem(sim.world, ctxOf(sim));
+      const refused = sim.world.tryGet(gatherer, MoveGoal)?.cell === post;
+      // Once the memo lapses, its next plan asks for the walk again.
+      sim.world.remove(gatherer, IdleStand);
+      const lapsedCtx = ctxOf(sim);
+      plannerSystem(sim.world, { ...lapsedCtx, tick: lapsedCtx.tick + UNREACHABLE_GOAL_MEMO_TICKS });
+      return [refused, sim.world.tryGet(gatherer, MoveGoal)?.cell === post];
+    };
+    expect(walksBack(false)).toEqual([true, true]);
+    expect(walksBack(true)).toEqual([false, true]);
   });
 });
