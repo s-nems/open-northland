@@ -21,6 +21,7 @@ import {
   fieldAt,
   GroundDrop,
   grassMap,
+  mapWithBarren,
   PICKUP_ATOMIC,
   Position,
   plotAtCap,
@@ -303,6 +304,38 @@ describe('planFarmer - the drive ladder', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(farmer, components.FarmTask).sow).toBe(true);
+  });
+
+  it("waits inside with nothing to tend, a computer seat's farmer until its short idle beat", () => {
+    const PLAYER = 0;
+    const waitAfterPass = (computer: boolean): { inside: boolean; stand: unknown } => {
+      // All barren and no fields: nothing to sow, water or reap.
+      const sim = new Simulation({ seed: 1, content: testContent(), map: mapWithBarren(8, 8, () => false) });
+      const farm = farmAt(sim, 4, 4);
+      const farmer = farmerAt(sim, 4, 4, farm);
+      sim.world.add(farm, components.Owner, { player: PLAYER });
+      sim.world.add(farmer, components.Owner, { player: PLAYER });
+      if (computer) {
+        sim.world.add(sim.world.create(), components.AiControl, {
+          player: PLAYER,
+          modules: components.computerModuleEnables(
+            Object.fromEntries(components.COMPUTER_MODULE_IDS.map((id) => [id, false])),
+          ),
+          computerEnabled: true,
+          mapAiEnabled: false,
+          difficulty: 'hard',
+        });
+      }
+
+      plannerSystem(sim.world, ctxOf(sim));
+
+      return {
+        inside: sim.world.tryGet(farmer, components.Resting)?.at === farm,
+        stand: sim.world.tryGet(farmer, components.IdleStand),
+      };
+    };
+    expect(waitAfterPass(false)).toEqual({ inside: true, stand: undefined });
+    expect(waitAfterPass(true)).toEqual({ inside: true, stand: { standing: false, shortBeat: true } });
   });
 
   it('a farm still under construction fields no crew (jobtypes.ini mustHaveFinishedWorkHouseFlag 1)', () => {

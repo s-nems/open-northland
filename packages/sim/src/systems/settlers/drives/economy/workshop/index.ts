@@ -204,7 +204,7 @@ export function planProducer(
   if (recipe === undefined) return;
 
   // A vehicle turn is worked outside on a yard site, so it comes before any seat is claimed.
-  if (planVehicleYard(plan, workplace, spacing)) return;
+  if (planVehicleYard(plan, workplace, spacing, idle)) return;
 
   const own = operatorRecipes(world, ctx, workplace, plan.entity);
   const seats = seatClaims.seatsAt(workplace);
@@ -404,7 +404,7 @@ function holdInsideWorkplace(
  * the craft nor hides indoors, and may strike up an idle chat with a nearby idler. One that drives the
  * craft by its presence stands on the door in view, where the operator gate counts it. Unowned fixtures
  * keep the wait-inside behaviour so their state hashes stay byte-identical. With `idle`, a machine seat's
- * loiterer beside the door waits for its idle beat.
+ * loiterer beside the door, or chatting, waits for its idle beat.
  */
 function loiterByDoor(
   plan: PlannerContext,
@@ -423,8 +423,12 @@ function loiterByDoor(
     atOrWalk(world, entity, here, door, () => {});
     return;
   }
-  // A pastime chat is as idle as loitering, so one it walked off to join is not cut short by the walk back.
-  if (inPastimeChat(world, entity)) return;
+  // A pastime chat is as idle as loitering, so one it walked off to join is not cut short by the walk back;
+  // a machine seat's chatter waits for its idle beat, as one in the idle tail does.
+  if (inPastimeChat(world, entity)) {
+    if (idle !== undefined && ownedByMachine(world, entity)) idle.stand(entity, false);
+    return;
+  }
   const stand = loiterCell(world, terrain, entity, here, door, spacing);
   atOrWalk(world, entity, here, stand, () => {
     const onBeat = idle !== undefined && ownedByMachine(world, entity);

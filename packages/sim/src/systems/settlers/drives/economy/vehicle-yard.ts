@@ -23,6 +23,7 @@ import { vehicleHouseOfGood } from '../../../readviews/index.js';
 import { deliveredConstructionFraction, recipesByProductOf } from '../../../stores/index.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, startAtomic } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
+import { type IdleStands, standsStillForMachine } from '../../planner/idle-replan.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { interactionCell } from '../../targets/index.js';
 import { UNREACHABLE_GOAL_MEMO_TICKS } from '../../unreachable-goals.js';
@@ -39,9 +40,15 @@ import { fetchNeededMaterial } from './site-supply.js';
  *
  * Returns whether the operator's turn was a vehicle's. A search that finds nowhere raises the refusal
  * once per refusal span of the workshop and skips the turn; while the refusal holds, every workmate skips
- * that house's turn unsearched.
+ * that house's turn unsearched. With `idle`, a machine seat's worker waiting at the work point waits for
+ * its idle beat.
  */
-export function planVehicleYard(plan: PlannerContext, workplace: Entity, spacing: PlannerSpacing): boolean {
+export function planVehicleYard(
+  plan: PlannerContext,
+  workplace: Entity,
+  spacing: PlannerSpacing,
+  idle?: IdleStands,
+): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const recipes = recipesByProductOf(world, ctx, workplace);
   if (recipes === undefined) return false;
@@ -81,7 +88,9 @@ export function planVehicleYard(plan: PlannerContext, workplace: Entity, spacing
   }
   if (fetchNeededMaterial(plan, spacing, site, workplace)) return true;
   // Nothing to install and nothing to fetch: wait at the work point for a delivery.
-  atOrWalk(world, e, here, workPoint, () => {});
+  atOrWalk(world, e, here, workPoint, () => {
+    if (idle !== undefined && standsStillForMachine(world, e)) idle.stand(e, false, true);
+  });
   return true;
 }
 

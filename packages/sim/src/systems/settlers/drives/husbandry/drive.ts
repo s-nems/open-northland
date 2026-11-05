@@ -45,6 +45,7 @@ import { buildingWorkerJobs, recipesByProductOf, stockCapacity } from '../../../
 import { startAtomic, walkPickupBatch } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
 import type { PlannerContext } from '../../planner/context.js';
+import { type IdleStands, standsStillForMachine } from '../../planner/idle-replan.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { interactionCell, jobAtomics, unclaimedStockOf } from '../../targets/index.js';
 import { deliverableGoodProbe } from '../economy/delivery-targets.js';
@@ -72,6 +73,7 @@ export function planBreeder(
   plan: PlannerContext,
   seatClaims: WorkSeatClaims,
   spacing: PlannerSpacing,
+  idle?: IdleStands,
 ): boolean {
   const { world, ctx, entity: e } = plan;
   const farm = boundBreederFarm(world, ctx, e, plan.jobType, plan.tribe);
@@ -89,9 +91,11 @@ export function planBreeder(
       return true;
     }
   }
-  // Nothing to tend this cycle: wait inside the farm.
+  // Nothing to tend this cycle: wait inside the farm, a machine seat's breeder until its idle beat.
   const { terrain, here } = plan;
-  enterBuilding(world, e, farm, here, interactionCell(world, ctx, terrain, farm, here));
+  enterBuilding(world, e, farm, here, interactionCell(world, ctx, terrain, farm, here), () => {
+    if (idle !== undefined && standsStillForMachine(world, e)) idle.stand(e, false, true);
+  });
   return true;
 }
 

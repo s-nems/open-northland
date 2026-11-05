@@ -27,6 +27,7 @@ import { buildingWorkerJobs } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
 import type { PlannerContext } from '../../planner/context.js';
+import { type IdleStands, standsStillForMachine } from '../../planner/idle-replan.js';
 import { interactionCell, jobAtomics, unreachableWorkCell, type WorkCellGates } from '../../targets/index.js';
 import { unreachableGoals } from '../../unreachable-goals.js';
 import type { FarmClaims } from './claims.js';
@@ -71,9 +72,10 @@ const NO_FIELDS: readonly Entity[] = [];
  * demand for, else a free plantable spot while fewer than the cap stand, else a ripe field, else the lowest
  * field. Approximations: the original picks the ripe field by worker id and the thirsty one at random among
  * the lowest, where this takes the nearest; and it keeps reaping into a full store until a flush trip, where
- * reap and carry pause while no store can take the crop.
+ * reap and carry pause while no store can take the crop. With `idle`, a machine seat's farmer waiting
+ * inside waits for its idle beat.
  */
-export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
+export function planFarmer(plan: PlannerContext, claims: FarmClaims, idle?: IdleStands): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
   const bound = boundFarmTarget(world, ctx, e, settler.jobType, settler.tribe);
@@ -234,6 +236,8 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   }
 
   // Nothing to tend this tick: wait inside the farm.
-  enterBuilding(world, e, farm, here, interactionCell(world, ctx, terrain, farm, here));
+  enterBuilding(world, e, farm, here, interactionCell(world, ctx, terrain, farm, here), () => {
+    if (idle !== undefined && standsStillForMachine(world, e)) idle.stand(e, false, true);
+  });
   return true;
 }
