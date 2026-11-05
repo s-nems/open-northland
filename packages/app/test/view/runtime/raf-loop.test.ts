@@ -276,14 +276,21 @@ describe('createFrameLimiter', () => {
     expect(frames.length).toBeLessThanOrEqual(61);
   });
 
-  it.each([119.88, 120.5])('draws every second refresh of a %s Hz display under a 60 FPS cap', (hz) => {
+  // 240 and 360 Hz refresh within the early tolerance of the grid, so a whole refresh early is let in;
+  // the first gap is the grid settling on the display after the first frame anchored it.
+  it.each([
+    [119.88, 2],
+    [120.5, 2],
+    [240, 4],
+    [360, 6],
+  ])('draws every n-th refresh of a %s Hz display under a 60 FPS cap', (hz, refreshes) => {
     const limiter = createFrameLimiter(60);
     const refreshMs = 1000 / hz;
     const frames = admitted(limiter, refreshMs, Math.round(hz * 10));
     const refreshesApart = frames
       .slice(1)
       .map((nowMs, i) => Math.round((nowMs - (frames[i] ?? Number.NaN)) / refreshMs));
-    expect(new Set(refreshesApart)).toEqual(new Set([2]));
+    expect(new Set(refreshesApart.slice(1))).toEqual(new Set([refreshes]));
   });
 
   it('admits every frame on a display slower than the cap', () => {

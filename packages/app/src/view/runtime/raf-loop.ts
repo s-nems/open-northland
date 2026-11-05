@@ -26,12 +26,16 @@ const EARLY_FRAME_TOLERANCE_MS = 4;
  *  instead of drifting through the grid and drawing one refresh early, then one late, every second; the
  *  admitted rate stays within 0.6% of the cap. */
 const GRID_SLEW_MS = 0.1;
+/** Only a frame this close to the grid slews it: the display's own refresh there, jitter included. A
+ *  frame further off is a neighbouring refresh the tolerance let in, a whole refresh early where the
+ *  display runs at 240 Hz or more, and pulling the grid toward it would walk the grid off the cadence. */
+const GRID_SLEW_REACH_MS = 1;
 
 /**
  * Wall-clock gate for a drawn-frame cap: `null` admits every animation frame. Due times advance
  * along the cap's own grid rather than from each admitted timestamp, so the admitted rate averages
- * the cap even when the display rate is not a multiple of it; each admitted frame slews the grid by
- * at most {@link GRID_SLEW_MS} toward itself. Given the last frame drawn before it, the grid starts one
+ * the cap even when the display rate is not a multiple of it; an admitted frame near the grid slews it
+ * by at most {@link GRID_SLEW_MS} toward itself. Given the last frame drawn before it, the grid starts one
  * interval after that frame; without one, the first frame draws and anchors it.
  */
 export function createFrameLimiter(
@@ -46,6 +50,8 @@ export function createFrameLimiter(
     if (nextDueMs === null || nowMs - nextDueMs > intervalMs) {
       // More than a whole interval past due is a stall: re-anchor the grid instead of replaying it.
       nextDueMs = nowMs + intervalMs;
+    } else if (Math.abs(nowMs - nextDueMs) > GRID_SLEW_REACH_MS) {
+      nextDueMs += intervalMs;
     } else {
       const slewedMs = Math.min(nextDueMs + GRID_SLEW_MS, Math.max(nextDueMs - GRID_SLEW_MS, nowMs));
       nextDueMs = slewedMs + intervalMs;
