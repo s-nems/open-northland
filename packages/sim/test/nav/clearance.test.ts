@@ -158,12 +158,13 @@ describe('ClearanceField', () => {
     expectMatchesDefinition(graph, field, open);
   });
 
-  it('lands every batch of a long run of local recomputes on the fresh build, on land and water', () => {
+  it('lands every batch of a long run of local recomputes on the fresh build and its lanes, on land and water', () => {
     // 30x30 cells, a water column at cell 12: two banks and a strait, so posts hem across components.
     const graph = buildTerrainGraph(testContent(), waterColumnMap(30, 30, 12));
     const blocked = new Set<NodeId>();
     const open = (n: NodeId): boolean => (graph.isWalkable(n) || graph.isWater(n)) && !blocked.has(n);
     const field = new ClearanceField(graph, open);
+    const lane = field.belowLane(LANE_HULL_SIZE);
     // A fixed Lehmer walk, exact in doubles, so the run is the same on every machine.
     let state = RANDOM_SEED;
     const nextNode = (): NodeId => {
@@ -180,10 +181,17 @@ describe('ClearanceField', () => {
       }
       field.recompute(open, changed);
       expectMatchesFreshBuild(graph, field, open);
+      for (let node = 0; node < graph.nodeCount; node++) {
+        if ((lane[node] === 1) !== field.classOf(node as NodeId) < LANE_HULL_SIZE) {
+          expect.fail(`node ${node}'s lane disagrees with its class ${field.classOf(node as NodeId)}`);
+        }
+      }
     }
   });
 });
 
+/** The hull size whose below-class lane the long run keeps beside the classes. */
+const LANE_HULL_SIZE = 2;
 const RANDOM_SEED = 12345;
 const LEHMER_MULTIPLIER = 48271;
 const LEHMER_MODULUS = 2 ** 31 - 1;

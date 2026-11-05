@@ -6,7 +6,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { MAX_CLEARANCE_CLASS } from '../../nav/clearance.js';
-import { type HalfCellNode, hexagonRing } from '../../nav/halfcell.js';
+import { type HalfCellNode, hexagonRing, hexRingHx, hexRingHy, hexRingLength } from '../../nav/halfcell.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
@@ -374,9 +374,10 @@ function mooringMemoOf(
 
 /**
  * The walkable land nodes at exactly `doorDistance` from a node of the `reach` regions, and those of
- * the nodes with such land on their ring that a ship of `logicSize` may park on. A node whose free-size
- * class is at least the door distance has no other continent within it (the class is the radius of its
- * own open component around it), so only the coastal band is scanned.
+ * the nodes with such land on their ring that a ship of `logicSize` may park on, each set in the order the
+ * nodes and their {@link hexagonRing} walks first meet it. A node whose free-size class is at least the
+ * door distance has no other continent within it (the class is the radius of its own open component
+ * around it), so only the coastal band is scanned.
  */
 function mooringSpots(
   world: World,
@@ -389,19 +390,67 @@ function mooringSpots(
 ): Pick<MooringSpots, 'spots' | 'docks'> {
   const clearance = vehicleClearance(world, ctx, terrain);
   const inland = doorDistance <= MAX_CLEARANCE_CLASS ? doorDistance : Number.POSITIVE_INFINITY;
+  const { nodeCount, width, height } = terrain;
+  const evenRing = ringOffsets(doorDistance, EVEN_ROW, width);
+  const oddRing = ringOffsets(doorDistance, ODD_ROW, width);
+  const spotted = new Uint8Array(nodeCount);
   const spots = new Set<NodeId>();
   const docks = new Set<NodeId>();
-  for (let n = 0; n < terrain.nodeCount; n++) {
+  for (let n = 0; n < nodeCount; n++) {
     const node = n as NodeId;
-    if (!reach.includes(regions.regionOf(node)) || clearance.classOf(node) >= inland) continue;
-    const { x, y } = terrain.coordsOf(node);
-    for (const { point } of hexagonRing({ hx: x, hy: y }, doorDistance)) {
-      if (!terrain.inBounds(point.hx, point.hy)) continue;
-      const shore = terrain.nodeAt(point.hx, point.hy);
-      if (!terrain.isWalkable(shore)) continue;
-      spots.add(shore);
-      if (clearance.classOf(node) >= logicSize) docks.add(node);
+    const nodeClass = clearance.classOf(node);
+    if (nodeClass >= inland || !reach.includes(regions.regionOf(node))) continue;
+    const x = terrain.xOf(node);
+    const y = terrain.yOf(node);
+    const ring = (y & 1) === EVEN_ROW ? evenRing : oddRing;
+    const inside = x >= ring.reach && y >= ring.reach && x < width - ring.reach && y < height - ring.reach;
+    let shore = false;
+    for (let i = 0; i < ring.ids.length; i++) {
+      let spot: NodeId;
+      if (inside) spot = (n + (ring.ids[i] ?? 0)) as NodeId;
+      else {
+        const sx = x + (ring.dx[i] ?? 0);
+        const sy = y + (ring.dy[i] ?? 0);
+        if (!terrain.inBounds(sx, sy)) continue;
+        spot = terrain.nodeAt(sx, sy);
+      }
+      if (!terrain.isWalkable(spot)) continue;
+      shore = true;
+      if (spotted[spot] === 1) continue;
+      spotted[spot] = 1;
+      spots.add(spot);
     }
+    if (shore && nodeClass >= logicSize) docks.add(node);
   }
   return { spots, docks };
+}
+
+const EVEN_ROW = 0;
+const ODD_ROW = 1;
+
+/** A {@link hexagonRing} walk of `radius` around a centre on a row of `parity`, in its order: each
+ *  point's offset in columns and rows, and as a node id step on a map of the given width. */
+interface RingOffsets {
+  readonly dx: Int32Array;
+  readonly dy: Int32Array;
+  readonly ids: Int32Array;
+  /** The largest column or row offset, so a centre this far inside the map has its whole ring on it. */
+  readonly reach: number;
+}
+
+function ringOffsets(radius: number, parity: number, width: number): RingOffsets {
+  const length = hexRingLength(radius);
+  const dx = new Int32Array(length);
+  const dy = new Int32Array(length);
+  const ids = new Int32Array(length);
+  let reach = 0;
+  for (let i = 0; i < length; i++) {
+    const column = hexRingHx(0, parity, radius, i);
+    const row = hexRingHy(parity, radius, i) - parity;
+    dx[i] = column;
+    dy[i] = row;
+    ids[i] = row * width + column;
+    reach = Math.max(reach, Math.abs(column), Math.abs(row));
+  }
+  return { dx, dy, ids, reach };
 }

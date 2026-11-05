@@ -92,6 +92,8 @@ export class ClearanceField {
   /** Per class `k`, how many times a water node's class crossed `k`: went from below it to at least it,
    *  or back. */
   private readonly waterCrossings = new Uint32Array(MAX_CLEARANCE_CLASS + 1);
+  /** Per hull size asked for, 1 on every node whose class is below it, kept by {@link write}. */
+  private readonly belowLanes = new Map<number, Uint8Array>();
 
   constructor(
     private readonly graph: TerrainGraph,
@@ -115,6 +117,18 @@ export class ClearanceField {
     const value = this.classes[node];
     if (value === undefined) throw new Error(`node id ${node} out of range (0..${this.graph.nodeCount - 1})`);
     return value;
+  }
+
+  /** 1 on every node whose class is below `logicSize`, 0 elsewhere: the {@link classOf} test a route
+   *  search or a flood reads as an array. Live, kept by every recompute; never written by a reader. */
+  belowLane(logicSize: number): Uint8Array {
+    const held = this.belowLanes.get(logicSize);
+    if (held !== undefined) return held;
+    const { classes } = this;
+    const lane = new Uint8Array(classes.length);
+    for (let node = 0; node < classes.length; node++) lane[node] = (classes[node] ?? 0) < logicSize ? 1 : 0;
+    this.belowLanes.set(logicSize, lane);
+    return lane;
   }
 
   /** Changes whenever a water node's class crosses `logicSize`, which is all a hull of that size reads
@@ -229,6 +243,9 @@ export class ClearanceField {
     const held = this.classes[node] ?? 0;
     if (held === value) return;
     this.classes[node] = value;
+    this.belowLanes.forEach((lane, logicSize) => {
+      lane[node] = value < logicSize ? 1 : 0;
+    });
     if (!this.graph.isWater(node)) return;
     for (let k = Math.min(held, value) + 1; k <= Math.max(held, value); k++) {
       this.waterCrossings[k] = (this.waterCrossings[k] ?? 0) + 1;

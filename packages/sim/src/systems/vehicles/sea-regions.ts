@@ -1,7 +1,13 @@
 import type { World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { ClearanceField } from '../../nav/clearance.js';
-import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
+import {
+  NO_READMITTED,
+  type NodeId,
+  StepBuffer,
+  StepGate,
+  type TerrainGraph,
+} from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
 import { vehicleClearance } from '../footprint/vehicle-clearance.js';
 
@@ -80,6 +86,13 @@ export function seaRegions(
 function verifyLabels(memo: WorldLabels): string[] {
   const errors: string[] = [];
   for (const [logicSize, held] of memo.bySize) {
+    const below = held.field.belowLane(logicSize);
+    for (let node = 0; node < held.terrain.nodeCount; node++) {
+      if ((below[node] === 1) !== held.field.classOf(node as NodeId) < logicSize) {
+        errors.push(`the below-${logicSize} class lane disagrees with node ${node}'s class`);
+        break;
+      }
+    }
     if (held.field.waterRevision(logicSize) !== held.waterRevision) continue; // relabelled on the next read
     const fresh = labelSea(held.terrain, held.field, logicSize);
     if (fresh.some((region, node) => held.labels[node] !== region)) {
@@ -92,31 +105,38 @@ function verifyLabels(memo: WorldLabels): string[] {
 }
 
 function closedTo(field: ClearanceField, logicSize: number): BlockOverlay {
-  return { has: (node) => field.classOf(node) < logicSize, size: 1 };
+  const below = field.belowLane(logicSize);
+  return { has: (node) => below[node] === 1, size: 1 };
 }
 
 /** Region labels in ascending node order of each region's first node, so a labelling is a pure function
- *  of the classes. */
+ *  of the classes. A region is the set its first node reaches, so the flood's visiting order is free. */
 function labelSea(terrain: TerrainGraph, field: ClearanceField, logicSize: number): Int32Array {
-  const closed = closedTo(field, logicSize);
-  const labels = new Int32Array(terrain.nodeCount).fill(NO_REGION);
-  const queue: NodeId[] = [];
-  const edges = new StepBuffer();
+  const closed = field.belowLane(logicSize);
+  const gate = new StepGate();
+  terrain.resetGate(gate, 'water', undefined, NO_READMITTED);
+  const lane = gate.lane;
+  const { nodeCount, width } = terrain;
+  const labels = new Int32Array(nodeCount).fill(NO_REGION);
+  // Each node is labelled, and so pushed, once.
+  const stack = new Int32Array(nodeCount);
   let next = 0;
-  for (let n = 0; n < terrain.nodeCount; n++) {
-    const seed = n as NodeId;
-    if (labels[seed] !== NO_REGION || !terrain.isWater(seed) || closed.has(seed)) continue;
+  for (let seed = 0; seed < nodeCount; seed++) {
+    if (labels[seed] !== NO_REGION || closed[seed] === 1 || !terrain.isWater(seed as NodeId)) continue;
     labels[seed] = next;
-    queue.length = 0;
-    queue.push(seed);
-    // The array iterator re-reads `length`, so `queue` is a live breadth-first queue.
-    for (const current of queue) {
-      terrain.stepsInto(current, closed, edges, 'water');
-      for (let i = 0; i < edges.length; i++) {
-        const { node } = edges.at(i);
-        if (labels[node] !== NO_REGION) continue;
-        labels[node] = next;
-        queue.push(node);
+    let top = 0;
+    stack[top++] = seed;
+    while (top > 0) {
+      const current = stack[--top] ?? 0;
+      const open = lane[current] ?? 0;
+      if (open === 0) continue;
+      const offsets = terrain.stepOffsets(Math.floor(current / width));
+      for (let edge = 0; edge < offsets.length; edge++) {
+        if ((open & (1 << edge)) === 0) continue;
+        const neighbour = current + (offsets[edge] ?? 0);
+        if (closed[neighbour] === 1 || labels[neighbour] !== NO_REGION) continue;
+        labels[neighbour] = next;
+        stack[top++] = neighbour;
       }
     }
     next += 1;
