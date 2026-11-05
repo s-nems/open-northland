@@ -1,9 +1,17 @@
-import { Building, Carrying, playerPlacementTribes } from '../../../components/index.js';
+import {
+  Building,
+  Carrying,
+  Female,
+  playerPlacementTribes,
+  TrainingOrder,
+} from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
-import type { Entity } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
-import { SpareForce } from '../../ai-shared/workforce/pool.js';
+import { isAllocatableMan, SpareForce } from '../../ai-shared/workforce/pool.js';
+import type { SystemContext } from '../../context.js';
+import { isAdultSettler } from '../../family/eligibility.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { isSchoolType } from '../../readviews/index.js';
 import { Schooling } from '../technology/schooling.js';
@@ -12,6 +20,14 @@ import { fitsTrade, openCraftSeats } from './overflow.js';
 import { atWorkshop } from './posts.js';
 import { colonyBuildings } from './spot.js';
 import type { ColonyEnv } from './voyage.js';
+
+/** Whether `e` is one of a colony's men at work or in a school lesson: a pupil is back within seconds, so
+ *  the ferry brings no man from home in his place. */
+export function colonyHand(world: World, ctx: SystemContext, e: Entity): boolean {
+  if (isAllocatableMan(world, ctx, e)) return true;
+  const lesson = world.tryGet(e, TrainingOrder)?.lesson;
+  return lesson !== undefined && lesson !== null && !world.has(e, Female) && isAdultSettler(world, e);
+}
 
 /** Whether `e` is a school, standing or a site. */
 function isSchool(env: ColonyEnv, e: Entity): boolean {

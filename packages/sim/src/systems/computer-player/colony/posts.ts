@@ -57,6 +57,7 @@ import {
   storesHeld,
   workableFrom,
 } from './provision.js';
+import { colonyHand } from './school.js';
 import { colonyBuildings } from './spot.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
@@ -496,7 +497,8 @@ export function menPastWork(env: ColonyEnv, colony: ColonyView): Entity[] {
   const { world, ctx } = env;
   if (colony.phase !== 'running') return [];
   const men = colonists(env).filter((e) => isAllocatableMan(world, ctx, e));
-  const past = men.length - handsWanted(env, colony).men - HANDS_SLACK;
+  const hands = colonists(env).filter((e) => colonyHand(world, ctx, e)).length;
+  const past = hands - handsWanted(env, colony).men - HANDS_SLACK;
   if (past <= 0) return [];
   const builder = builderJobOf(ctx);
   return men

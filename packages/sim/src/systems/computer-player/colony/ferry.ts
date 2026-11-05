@@ -12,7 +12,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { colonyLands, colonySettlersOn, homeSettlers } from '../../ai-shared/home-roster.js';
-import { builderJobOf, isAllocatableMan } from '../../ai-shared/workforce/pool.js';
+import { builderJobOf } from '../../ai-shared/workforce/pool.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import { passengerJobAllowed } from '../../vehicles/crew.js';
@@ -26,6 +26,7 @@ import { garrisonOwed } from './garrison.js';
 import { tradesmenFor } from './overflow.js';
 import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
 import { handsWanted, menPastWork } from './posts.js';
+import { colonyHand } from './school.js';
 import { clearWay, lineWayClear, withDanger, withoutLapsed } from './sea-danger.js';
 import {
   type ColonyEnv,
@@ -136,7 +137,7 @@ function colonyMenRoom(env: ColonyEnv): number {
   const home = homeSettlers(world, ctx, seat).filter(man).length;
   let away = 0;
   for (const land of colonyLands(world, seat))
-    away += colonySettlersOn(world, ctx, seat, land).filter((e) => isAllocatableMan(world, ctx, e)).length;
+    away += colonySettlersOn(world, ctx, seat, land).filter((e) => colonyHand(world, ctx, e)).length;
   return shareOf(home, COLONY_MEN_SHARE) - away;
 }
 
@@ -150,7 +151,7 @@ function outward(
   const { world, ctx, seat } = env;
   const home = homeLandOf(env);
   const people = colonists(env);
-  const men = people.filter((e) => isAllocatableMan(world, ctx, e)).length;
+  const men = people.filter((e) => colonyHand(world, ctx, e)).length;
   const women = people.filter((e) => world.has(e, Female) && isAdultSettler(world, e)).length;
   const wanted = handsWanted(env, colony);
   const room = colonyMenRoom(env);
