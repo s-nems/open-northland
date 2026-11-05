@@ -1,16 +1,9 @@
 import { buildingHitpointsFor } from '@open-northland/data';
-import {
-  Building,
-  fightsPlayer,
-  Health,
-  Owner,
-  ownerOf,
-  Person,
-  Position,
-} from '../../../components/index.js';
+import { Building, fightsPlayer, Health, MAX_PLAYERS, ownerOf, Position } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { everySettlerOf } from '../../ai-shared/home-roster.js';
 import type { SystemContext } from '../../context.js';
 import { type BuildingCombatClass, buildingCombatClass } from '../../readviews/index.js';
 import { interactionCell } from '../../settlers/targets/index.js';
@@ -93,12 +86,14 @@ export function campaignObjective(
     if (winner !== null) return winner;
   }
 
-  // The Person key is what keeps a claimed herd out: it is loot, not a war aim.
+  // The people rosters hold Person entities alone: a claimed herd is loot, not a war aim.
   const people: Candidate[] = [];
-  for (const e of world.canonicalQuery(Person, Owner)) {
-    const owner = liveEnemyOwner(world, e, player);
-    if (owner !== null && playerSeesEntity(world, ctx.fog, player, e))
-      people.push({ entity: e, owner, anchor: null });
+  for (let owner = 0; owner < MAX_PLAYERS; owner++) {
+    if (owner === player || !fightsPlayer(world, player, owner)) continue;
+    for (const e of everySettlerOf(world, owner)) {
+      if (standsToFall(world, e) && playerSeesEntity(world, ctx.fog, player, e))
+        people.push({ entity: e, owner, anchor: null });
+    }
   }
   return nearestReachable(terrain, people, rally, home, approachOf);
 }
@@ -152,9 +147,14 @@ function liveEnemyOwner(world: World, e: Entity, player: number): number | null 
   const owner = ownerOf(world, e);
   if (owner === undefined || owner === player) return null;
   if (!fightsPlayer(world, player, owner)) return null;
-  if (!world.has(e, Position)) return null;
+  return standsToFall(world, e) ? owner : null;
+}
+
+/** Whether `e` stands on the map with hitpoints left to strike. */
+function standsToFall(world: World, e: Entity): boolean {
+  if (!world.has(e, Position)) return false;
   const health = world.tryGet(e, Health);
-  return health !== undefined && health.hitpoints > 0 ? owner : null;
+  return health !== undefined && health.hitpoints > 0;
 }
 
 /** Whether a building of `buildingType` carries hitpoints, a static content fact a remembered building is
