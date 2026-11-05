@@ -47,9 +47,13 @@ function apprenticesOf(world: World, ctx: SystemContext, seat: number): Readonly
 /** The men of `seat` a colony may take, in the order it takes them: no post, flag or trade first, then
  *  builders, then gatherers, unwed first within each, then ascending id. A man at a workplace, a scout, a
  *  fisher, an apprentice and a man on an errand stay. */
-export function spareMen(world: World, ctx: SystemContext, seat: number): Entity[] {
+export function spareMen(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  apprentices: ReadonlySet<Entity> = apprenticesOf(world, ctx, seat),
+): Entity[] {
   const { pool } = classifyWorkforce(world, ctx, seat, [], 0);
-  const apprentices = apprenticesOf(world, ctx, seat);
   const builder = builderJobOf(ctx);
   const rank = (e: Entity): number => {
     const tier = liveWorkFlag(world, e) !== undefined ? 2 : world.get(e, Settler).jobType === builder ? 1 : 0;
@@ -117,8 +121,16 @@ export function standsOn(world: World, ctx: SystemContext, e: Entity, land: numb
 }
 
 /** The spare men on `land` who leave no growing child behind. */
-export function sparePartyMen(world: World, ctx: SystemContext, seat: number, land: number): Entity[] {
-  return spareMen(world, ctx, seat).filter((e) => standsOn(world, ctx, e, land) && !hasMinor(world, e));
+export function sparePartyMen(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  land: number,
+  apprentices: ReadonlySet<Entity> = apprenticesOf(world, ctx, seat),
+): Entity[] {
+  return spareMen(world, ctx, seat, apprentices).filter(
+    (e) => standsOn(world, ctx, e, land) && !hasMinor(world, e),
+  );
 }
 
 /** Whether `e` puts food on the seat's table: a hunter, a fisher, or a hand in a food chain's workshop. */
@@ -163,8 +175,9 @@ interface PartyWant {
  * married ones alone. No parent of a growing child sails.
  */
 function gather(world: World, ctx: SystemContext, seat: number, land: number, want: PartyWant): Entity[] {
-  const spare = sparePartyMen(world, ctx, seat, land);
-  const wives = homeSettlers(world, ctx, seat).filter(
+  const apprentices = apprenticesOf(world, ctx, seat);
+  const spare = sparePartyMen(world, ctx, seat, land, apprentices);
+  const women = homeSettlers(world, ctx, seat).filter(
     (e) =>
       world.has(e, Female) &&
       isAdultSettler(world, e) &&
@@ -172,10 +185,11 @@ function gather(world: World, ctx: SystemContext, seat: number, land: number, wa
       !onErrand(world, e) &&
       !hasMinor(world, e),
   );
-  const women: Entity[] = wives.filter((e) => unwed(world, e)).slice(0, Math.min(want.women, want.seats));
+  const womenTaken: Entity[] = women
+    .filter((e) => unwed(world, e))
+    .slice(0, Math.min(want.women, want.seats));
   const men: Entity[] = [];
-  const apprentices = apprenticesOf(world, ctx, seat);
-  const couples = wives.flatMap((wife) => {
+  const couples = women.flatMap((wife) => {
     const husband = world.tryGet(wife, Marriage)?.spouse;
     if (husband === undefined) return [];
     const free = spare.includes(husband);
@@ -184,10 +198,10 @@ function gather(world: World, ctx: SystemContext, seat: number, land: number, wa
     return follows ? [{ wife, husband, free }] : [];
   });
   couples.sort((a, b) => Number(b.free) - Number(a.free) || a.wife - b.wife);
-  const room = (): number => want.seats - men.length - women.length;
+  const room = (): number => want.seats - men.length - womenTaken.length;
   for (const { wife, husband } of couples) {
-    if (women.length >= want.women || room() < COUPLE_SEATS) break;
-    women.push(wife);
+    if (womenTaken.length >= want.women || room() < COUPLE_SEATS) break;
+    womenTaken.push(wife);
     men.push(husband);
   }
   const byUnwed = [...spare].sort((a, b) => Number(unwed(world, b)) - Number(unwed(world, a)));
@@ -195,7 +209,7 @@ function gather(world: World, ctx: SystemContext, seat: number, land: number, wa
     if (men.length >= want.men || room() <= 0) break;
     if (!men.includes(man)) men.push(man);
   }
-  return [...men, ...women];
+  return [...men, ...womenTaken];
 }
 
 /** The party of a seat ({@link gather}), empty when that makes fewer than {@link PARTY_LEAST}. */
