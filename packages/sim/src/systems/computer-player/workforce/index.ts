@@ -65,7 +65,7 @@ import {
   wantedCollectorGoods,
 } from './collectors/index.js';
 import { tuneCraftCounters } from './craft.js';
-import { demobilizeStartSoldiers } from './demobilize.js';
+import { demobilizeEarlySoldiers } from './demobilize.js';
 import { allocateFishers, fishersWanted, fisherTarget, fishingPlan } from './fisher.js';
 import { flagGround, type TakenFlagNodes, unsealedResourceTest } from './flag-spots.js';
 import {
@@ -600,7 +600,7 @@ export function workforceModule(order: BuildOrder): ComputerModule {
   return {
     id: 'collectResources',
     run: (world, ctx, player) => [
-      ...demobilizeStartSoldiers(world, ctx, player, builderJobOf(ctx)),
+      ...demobilizeEarlySoldiers(world, ctx, player, builderJobOf(ctx)),
       ...runWorkforce(world, ctx, player, order),
     ],
     everyDecisions: WORKFORCE_EVERY_DECISIONS,
