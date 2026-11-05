@@ -30,6 +30,10 @@ const PRIMARY_OUT_DIR = PRIMARY_ROOT === repoRoot ? undefined : resolve(PRIMARY_
 const PRIMARY_CACHE_DIR = PRIMARY_ROOT === repoRoot ? undefined : resolve(PRIMARY_ROOT, '.cache', 'data');
 const UNPACKED_DIR_NAME = 'unpacked';
 const UNPACKED_STAMP_NAME = 'unpacked.sha256';
+const CONTENT_STAGING_PREFIX = 'content-';
+/** A staging tree untouched this long was left by an interrupted build: a copy or an extraction ends
+ *  within minutes, and a build that stops between steps never runs its cleanup. */
+const STALE_STAGING_MS = 60 * 60 * 1000;
 /** Records which archive and IR version a content tree was converted from; `--if-stale` compares it. */
 const BUILD_STAMP_NAME = 'build-stamp.json';
 // Read from source: the pipeline compiles packages/data itself, so dist/ may not exist yet.
@@ -285,7 +289,8 @@ export async function cloneTree(source, target) {
     await rm(target, { recursive: true, force: true });
   }
   try {
-    await cp(source, target, { recursive: true });
+    // Links stay as they are, as a clone keeps them, rather than pointing into `source`.
+    await cp(source, target, { recursive: true, verbatimSymlinks: true });
     return 'copy';
   } catch {
     await rm(target, { recursive: true, force: true });
@@ -305,6 +310,19 @@ export async function cloneSettledTree(source, target, clone) {
   return false;
 }
 
+/** Remove the staging trees in `dir` named from `prefix` that an interrupted build left, keeping any a
+ *  running build may still be filling. */
+export async function sweepStaleStaging(dir, prefix, nowMs = Date.now()) {
+  const names = await readdir(dir).catch(() => []);
+  for (const name of names) {
+    if (!name.startsWith(prefix)) continue;
+    const path = join(dir, name);
+    const info = await lstat(path).catch(() => undefined);
+    if (info?.isDirectory() && nowMs - info.mtimeMs > STALE_STAGING_MS)
+      await rm(path, { recursive: true, force: true });
+  }
+}
+
 /** Fill a fresh staging tree beside `outDir` with `fill`, then swap it in for the previous tree. */
 async function replaceContent(outDir, fill) {
   if (existsSync(outDir) && (await lstat(outDir)).isSymbolicLink())
@@ -312,7 +330,8 @@ async function replaceContent(outDir, fill) {
   // Staged beside the output: a rename across drives (EXDEV) cannot swap the trees.
   const stagingRoot = join(dirname(resolve(outDir)), '.cache');
   await mkdir(stagingRoot, { recursive: true });
-  const staging = await mkdtemp(join(stagingRoot, 'content-'));
+  await sweepStaleStaging(stagingRoot, CONTENT_STAGING_PREFIX);
+  const staging = await mkdtemp(join(stagingRoot, CONTENT_STAGING_PREFIX));
   const previous = `${staging}-previous`;
   try {
     if (!(await fill(staging))) return false;
@@ -486,7 +505,9 @@ export async function obtainPinnedDataRoot(
   await mkdir(outDir, { recursive: true });
   const unpackedDir = unpackedCachePath(outDir);
   const stampPath = unpackedStampPath(outDir);
-  const partialDir = await mkdtemp(join(outDir, `${UNPACKED_DIR_NAME}.part-`));
+  const partialPrefix = `${UNPACKED_DIR_NAME}.part-`;
+  await sweepStaleStaging(outDir, partialPrefix);
+  const partialDir = await mkdtemp(join(outDir, partialPrefix));
   const primary =
     primaryOutDir === undefined ? undefined : await cachedDataRoot(primaryOutDir, expectedDigest);
   try {

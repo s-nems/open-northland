@@ -2,7 +2,18 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readlink,
+  rename,
+  rm,
+  symlink,
+  utimes,
+  writeFile,
+} from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
@@ -20,6 +31,7 @@ import {
   main,
   obtainPinnedArchive,
   obtainPinnedDataRoot,
+  sweepStaleStaging,
   translationsDigest,
 } from '../../content/build-content.mjs';
 import { hash, syntheticPack } from '../support/data-pack.mjs';
@@ -475,6 +487,35 @@ test('cloneTree clones or copies a tree, or leaves nothing behind', async (t) =>
   assert.equal(await readFile(join(target, 'nested', 'file.txt'), 'utf8'), 'bytes');
   assert.equal(await cloneTree(join(dir, 'missing'), join(dir, 'nothing')), false);
   assert.equal(existsSync(join(dir, 'nothing')), false);
+});
+
+test('cloneTree keeps a relative link as a link', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'clone-link-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(join(dir, 'source'), { recursive: true });
+  await writeFile(join(dir, 'source', 'file.txt'), 'bytes');
+  await symlink('file.txt', join(dir, 'source', 'link.txt'));
+  assert.ok(await cloneTree(join(dir, 'source'), join(dir, 'target')));
+  assert.equal(await readlink(join(dir, 'target', 'link.txt')), 'file.txt');
+});
+
+test('sweepStaleStaging removes an interrupted build’s trees and keeps a fresh one', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'sweep-staging-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const HOUR_S = 60 * 60;
+  const nowS = Date.now() / 1000;
+  for (const name of ['content-old', 'content-old-previous', 'content-fresh', 'data']) {
+    await mkdir(join(dir, name, 'nested'), { recursive: true });
+  }
+  for (const name of ['content-old', 'content-old-previous', 'data']) {
+    await utimes(join(dir, name), nowS - 2 * HOUR_S, nowS - 2 * HOUR_S);
+  }
+  await sweepStaleStaging(dir, 'content-');
+  assert.equal(existsSync(join(dir, 'content-old')), false);
+  assert.equal(existsSync(join(dir, 'content-old-previous')), false);
+  assert.equal(existsSync(join(dir, 'content-fresh')), true);
+  assert.equal(existsSync(join(dir, 'data')), true);
+  await sweepStaleStaging(join(dir, 'missing'), 'content-');
 });
 
 test('cloneSettledTree keeps a clone of a settled tree and drops one the source swapped meanwhile', async (t) => {
