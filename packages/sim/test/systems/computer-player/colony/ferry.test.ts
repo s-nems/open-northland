@@ -4,12 +4,15 @@ import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import { nodeManhattan } from '../../../../src/nav/halfcell.js';
 import { everySettlerOf } from '../../../../src/systems/ai-shared/home-roster.js';
 import { runFerry } from '../../../../src/systems/computer-player/colony/ferry.js';
+import { LANDING_SAIL_TIMEOUT_TICKS } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { attachToVehicle, boardRider } from '../../../../src/systems/vehicles/crew.js';
+import { mooringSpotsOf } from '../../../../src/systems/vehicles/dock.js';
 import {
   blankColony,
   colonyWorld,
   looseColonyEnv,
   mooredShip,
+  SHIP_AT,
   SMALL_SHIP,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
@@ -90,5 +93,36 @@ describe('a colony ferry refused its dock', () => {
     expect(nodeManhattan(first, shore)).toBeGreaterThanOrEqual(SHORE_SPACING_NODES);
     expect(nodeManhattan(second, shore)).toBeGreaterThanOrEqual(SHORE_SPACING_NODES);
     expect(nodeManhattan(second, first)).toBeGreaterThanOrEqual(SHORE_SPACING_NODES);
+  });
+
+  it('sails its riders home once every shore of the colony refused it past the crossing time', () => {
+    const sim = colonyWorld();
+    const { ship, rider } = shipWithRider(sim, COLONY_SHORE_AT);
+    const ctx = ctxOf(sim);
+    const terrain = ctx.terrain;
+    const shore = sim.world.get(ship, Vehicle).mooring;
+    const spots = terrain === undefined ? null : mooringSpotsOf(sim.world, ctx, terrain, ship);
+    if (terrain === undefined || shore === null || spots === null) throw new Error('setup');
+    const land = terrain.componentOf(terrain.nodeAt(shore.hx, shore.hy));
+    const tried = [...spots.spots]
+      .filter((node) => terrain.componentOf(node) === land)
+      .map((node) => ({ hx: terrain.coordsOf(node).x, hy: terrain.coordsOf(node).y }));
+    const state = sim.world.mut(ship, Vehicle);
+    state.moored = false;
+    state.mooring = null;
+    const hull = sim.world.get(ship, Health).hitpoints;
+    const berth = { hx: SHIP_AT.x, hy: SHIP_AT.y };
+    const since = sim.tick - LANDING_SAIL_TIMEOUT_TICKS;
+    const colony = blankColony(land, {
+      shore: { hx: shore.hx, hy: shore.hy },
+      berth,
+      rest: [rider],
+      ferry: { ship, side: 'colony', leg: 'sail', since, helm: null, hull, tried },
+    });
+
+    const orders = runFerry(looseColonyEnv(sim, colony), colony);
+
+    expect(colony.ferry?.side).toBe('home');
+    expect(dockedAt(orders)).toEqual(berth);
   });
 });

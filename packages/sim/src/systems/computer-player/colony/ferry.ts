@@ -230,6 +230,14 @@ function enterLeg(env: ColonyEnv, leg: 'board' | 'sail', side: 'home' | 'colony'
   live.tried = [];
 }
 
+/** A ferry every shore refused past its crossing's time: one bound for the colony sails its riders home, one
+ *  bound home is let go where it lies, its civilians brought in with the seat's stray crews. */
+function turnBack(env: ColonyEnv, colony: ColonyView, ferry: FerryView): PlayerCommand[] {
+  if (ferry.side === 'home' || colony.berth === null) return releaseFerry(env, colony, ferry.ship);
+  enterLeg(env, 'sail', 'home');
+  return sailOrders(env, colony, ferry.ship, colony.berth);
+}
+
 /** Arrived at the colony: everyone but the helm steps ashore and the homeward men board; with no helm the
  *  crossing ends there. */
 function landAtColony(env: ColonyEnv, colony: ColonyView, ferry: FerryView): PlayerCommand[] {
@@ -278,9 +286,10 @@ function forgetLapsedDangers(env: ColonyEnv, colony: ColonyView): void {
 /**
  * What a colony's ferry does this decision. Boarding, it sails once every rider is aboard, or past
  * {@link FERRY_BOARD_TICKS} without the late ones, and is let go with nobody aboard. Sailing, it docks at the
- * colony's shore or home's berth, another shore of that land when refused, round known fire; late or lost at
- * sea it is let go where it lies moored. At the colony it lands its riders and takes the homeward men; at home
- * everyone steps off and the ship is free.
+ * colony's shore or home's berth, another shore of that land when refused, round known fire; late it is let go
+ * where it lies moored, or turned back once every shore has refused it ({@link turnBack}), and lost at sea it
+ * is let go. At the colony it lands its riders and takes the homeward men; at home everyone steps off and the
+ * ship is free.
  */
 export function runFerry(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx, seat } = env;
@@ -315,11 +324,12 @@ export function runFerry(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   if (mooredOn(env, ship, land))
     return arriving ? landAtColony(env, colony, ferry) : landAtHome(env, colony, ferry);
   const moored = mooringOf(world, ship) !== null;
-  if ((ctx.tick - ferry.since >= FERRY_SAIL_TICKS && moored) || strandedShip(world, ctx, seat, ship))
-    return releaseFerry(env, colony, ship);
+  const late = ctx.tick - ferry.since >= FERRY_SAIL_TICKS;
+  if ((late && moored) || strandedShip(world, ctx, seat, ship)) return releaseFerry(env, colony, ship);
   const at = arriving ? colony.shore : colony.berth;
   if (!lyingStill(world, ship) || at === null) return [];
   const next = otherShore(env, ship, at, ferry.tried);
+  if (next === null && late) return turnBack(env, colony, ferry);
   if (next === null) return sailOrders(env, colony, ship, at);
   // The colony's shore stays by its store, where its trader stops and its first tower looks: a refused dock
   // there sends this leg elsewhere and moves nothing.
