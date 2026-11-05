@@ -1,9 +1,10 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { aiControlEntity, Building, ComputerColony, Stockpile } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../src/index.js';
 import { liftColony } from '../../../../src/systems/computer-player/colony/lifts.js';
-import { blankColony, colonyWorld, looseColonyEnv } from '../../../fixtures/colony-islands.js';
+import { blankColony, colonyContent, colonyWorld, looseColonyEnv } from '../../../fixtures/colony-islands.js';
 import {
   BAKERY_TOP_TYPE,
   BAKERY_TYPE,
@@ -11,6 +12,7 @@ import {
   HQ_TYPE,
   SEAT,
   STOCK_TOP_TYPE,
+  TOWER_TYPE,
   VIKING,
   WOOD,
 } from '../support.js';
@@ -18,12 +20,33 @@ import {
 /** A store and a bakery on the east island, clear of its deposits and of each other. */
 const COLONY_STORE = { x: 160, y: 64 };
 const COLONY_BAKERY = { x: 160, y: 84 };
+const COLONY_TOWER = { x: 184, y: 64 };
 const ORIGIN = { hx: COLONY_STORE.x, hy: COLONY_STORE.y };
 /** A home site on the home island, beside its headquarters. */
 const HOME_SITE = { x: 72, y: 84 };
 /** The fixture's upper bakery's bill: two wood. */
 const LIFT_WOOD = 2;
 const RAIDERS = 2;
+/** A lower tower tier for the fixture's level-2 tower to lift from. */
+const TOWER_BASE_TYPE = 97;
+
+/** {@link colonyContent} with a level-1 tower whose lift to the level-2 tower costs that tower's bill. */
+function towerContent(): ContentSet {
+  const base = colonyContent();
+  return parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: TOWER_BASE_TYPE,
+        id: 'tower_00',
+        kind: 'tower',
+        upgradeTarget: TOWER_TYPE,
+        construction: [{ goodType: WOOD, amount: LIFT_WOOD }],
+      },
+    ],
+  });
+}
 
 function placed(sim: Simulation, buildingType: number, at: { x: number; y: number }): Entity {
   sim.enqueueSetup({
@@ -44,8 +67,11 @@ function placed(sim: Simulation, buildingType: number, at: { x: number; y: numbe
 }
 
 /** A running colony of the seat round a top-tier store holding `wood` and a lower-tier bakery. */
-function colonyWithBakery(wood: number): { sim: Simulation; store: Entity; bakery: Entity } {
-  const sim = colonyWorld(7);
+function colonyWithBakery(
+  wood: number,
+  content = colonyContent(),
+): { sim: Simulation; store: Entity; bakery: Entity } {
+  const sim = colonyWorld(7, content);
   const store = placed(sim, STOCK_TOP_TYPE, COLONY_STORE);
   const bakery = placed(sim, BAKERY_TYPE, COLONY_BAKERY);
   const terrain = sim.terrain;
@@ -72,6 +98,17 @@ describe('a colony lift', () => {
       { kind: 'upgradeBuilding', building: bakery, target: BAKERY_TOP_TYPE },
     ]);
     expect(lift(sim, [store, bakery], RAIDERS)).toEqual([]);
+  });
+
+  it('raises a tower to the upper tier once no workshop waits on a lift', () => {
+    const { sim, store, bakery } = colonyWithBakery(LIFT_WOOD, towerContent());
+    const tower = placed(sim, TOWER_BASE_TYPE, COLONY_TOWER);
+    expect(lift(sim, [store, bakery, tower])).toEqual([
+      { kind: 'upgradeBuilding', building: bakery, target: BAKERY_TOP_TYPE },
+    ]);
+    expect(lift(sim, [store, tower])).toEqual([
+      { kind: 'upgradeBuilding', building: tower, target: TOWER_TYPE },
+    ]);
   });
 
   it('waits for the bill in the colony’s stores', () => {
