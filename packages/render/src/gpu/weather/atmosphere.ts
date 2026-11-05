@@ -211,7 +211,8 @@ const VEIL_FRAGMENT = `#version 300 es
  * Both in one draw under {@link AIR_BLEND}: the first source is the veil, the second what the frame
  * below is multiplied by first, the grade times what the veil leaves of it. The two-pass picture
  * rounds the graded frame to the target's precision before the veil goes over; this one rounds once,
- * so a channel may differ by one level.
+ * and the second source's factor is quantised before it blends, so a channel may differ by up to two
+ * levels (measured on ANGLE D3D11).
  */
 const AIR_FRAGMENT = `#version 300 es
   #extension GL_EXT_blend_func_extended : require

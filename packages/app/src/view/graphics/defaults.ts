@@ -26,10 +26,10 @@ export interface GraphicsRecommendation {
 
 /** Ryzen APUs report no model, only `AMD Radeon(TM) Graphics` and, through ANGLE, the PCI device id. */
 const MODEL_LESS_RADEON = /AMD Radeon\(TM\) Graphics \(0x([0-9a-f]+)\)/i;
-/** Device ids every part of which is a two-compute-unit Radeon 610M, from the published PCI ID list:
- *  Granite Ridge, Mendocino and Raphael. The library matches their model-less name to a discrete card
- *  at tier 3; by unit count and clock they have under a third of the seven-unit Vega 7 that Quality was
- *  measured to fit, an estimate (docs/GRAPHICS.md). */
+/** Device ids, from the published PCI ID list, of AMD's two-compute-unit RDNA 2 iGPUs: Granite Ridge,
+ *  Mendocino and Raphael, sold as Radeon 610M or AMD Radeon Graphics. The library matches their
+ *  model-less name to a discrete card at tier 3; by unit count and clock they have under a third of the
+ *  seven-unit Vega 7 that Quality was measured to fit, an estimate (docs/GRAPHICS.md). */
 const TWO_UNIT_RADEON_DEVICE_IDS: ReadonlySet<number> = new Set([0x13c0, 0x1506, 0x164e]);
 const HEX_RADIX = 16;
 
