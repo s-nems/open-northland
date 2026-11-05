@@ -225,8 +225,10 @@ export class SiteSupplyReach {
       lift.anyByGood.set(goodType, any);
     }
     if (!any) return false;
+    // The builder's reach first: one distance and a coverage read, where the site's spots test every work
+    // cell and serving post, and most of the side's sources lie outside a builder's reach.
     return band.anyFiledIn(
-      (hx, hy) => spots(hx, hy) && (reach.mayAllowNear?.(hx, hy, slack) ?? true),
+      (hx, hy) => (reach.mayAllowNear?.(hx, hy, slack) ?? true) && spots(hx, hy),
       ownSide,
     );
   }

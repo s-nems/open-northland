@@ -62,6 +62,11 @@ export function hexNodeBox(x: number, y: number, range: number): NodeBox {
   return { minX: x - range, maxX: x + range, minY: y - range, maxY: y + range };
 }
 
+/** Whether node `(x, y)` lies inside `box`, edges included. */
+export function inNodeBox(box: NodeBox, x: number, y: number): boolean {
+  return x >= box.minX && x <= box.maxX && y >= box.minY && y <= box.maxY;
+}
+
 /** The smallest {@link NodeBox} containing every box given. */
 export function unionNodeBoxes(boxes: readonly NodeBox[]): NodeBox {
   let minX = Number.POSITIVE_INFINITY;

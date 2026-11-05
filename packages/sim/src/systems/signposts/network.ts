@@ -22,7 +22,13 @@ import {
   nodeHyOfPosition,
   nodeOfPosition,
 } from '../../nav/halfcell.js';
-import { hexNodeBox, type NodeBox, type SpatialGate, unionNodeBoxes } from '../../nav/node-circle.js';
+import {
+  hexNodeBox,
+  inNodeBox,
+  type NodeBox,
+  type SpatialGate,
+  unionNodeBoxes,
+} from '../../nav/node-circle.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { isCarrierJobRow, isDruidJob, isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
 import { goodsSearchLimitAt } from './reach.js';
@@ -415,22 +421,33 @@ export function spotsReaching(
   const landsOfGroup = goalLandsByGroup(terrain, posts, goals, goalLands, range);
   const serving = landsOfGroup.size === 0 ? NO_SITES : posts.filter((s) => landsOfGroup.has(s.group));
   const judgeGround = slack === 0;
+  // Boxes round the goals and the serving posts turn away a far spot before any distance test.
+  const reachOf = range + slack;
+  const goalBox =
+    goals.length === 0
+      ? null
+      : unionNodeBoxes(goals.map((g) => hexNodeBox(terrain.xOf(g), terrain.yOf(g), reachOf)));
+  const postBox =
+    serving.length === 0 ? null : unionNodeBoxes(serving.map((s) => hexNodeBox(s.hx, s.hy, reachOf)));
   // Indexed loops: the test runs per candidate spot, and an array iterator here is not always elided.
   return (hx, hy) => {
+    const nearGoals = goalBox !== null && inNodeBox(goalBox, hx, hy);
+    const nearPosts = postBox !== null && inNodeBox(postBox, hx, hy);
+    if (!nearGoals && !nearPosts) return false;
     const land = judgeGround ? landComponentAt(terrain, hx, hy) : null;
-    for (let i = 0; i < goals.length; i++) {
+    for (let i = 0; nearGoals && i < goals.length; i++) {
       const goal = goals[i] as NodeId;
       if (
-        hexDistanceBetween(hx, hy, terrain.xOf(goal), terrain.yOf(goal)) <= range + slack &&
+        hexDistanceBetween(hx, hy, terrain.xOf(goal), terrain.yOf(goal)) <= reachOf &&
         sameLand(land, goalLands[i] as number | null)
       )
         return true;
     }
     const here = judgeGround ? componentAt(terrain, hx, hy) : null;
-    for (let i = 0; i < serving.length; i++) {
+    for (let i = 0; nearPosts && i < serving.length; i++) {
       const s = serving[i] as SignpostSite;
       if (
-        hexDistanceBetween(hx, hy, s.hx, s.hy) < range + slack &&
+        hexDistanceBetween(hx, hy, s.hx, s.hy) < reachOf &&
         (here === null || componentAt(terrain, s.hx, s.hy) === here) &&
         (land === null || coversLand(landsOfGroup.get(s.group), land))
       )
