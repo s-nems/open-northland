@@ -94,6 +94,29 @@ function firstDockNode(
 }
 
 /**
+ * The nodes the dock order for `point` would sail `vehicle` through, the first next, judged now as
+ * {@link startDock} judges it, or null when it finds no dock node it can reach: for a planner weighing a
+ * course before it gives the order. Empty for a ship already lying on a dock node. Costs a route search per
+ * dock node tried.
+ */
+export function dockRoute(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  point: HalfCellNode,
+): HalfCellNode[] | null {
+  const anchor = vehicleAnchor(world, vehicle);
+  if (anchor === null || !terrain.inBounds(anchor.hx, anchor.hy)) return null;
+  let route: HalfCellNode[] | null = null;
+  const node = firstDockNode(world, ctx, terrain, vehicle, anchor, point, null, (candidate) => {
+    route = vehicleRouteTo(world, ctx, terrain, vehicle, candidate);
+    return route !== null;
+  });
+  return node === null ? null : (route ?? []);
+}
+
+/**
  * Sail `vehicle`, its crew inside, to the first dock node around `point` it finds a route to, `dock`
  * tried first when it is one, and remember the point as the shore it moors at. False, with the `vehicleNoPath` note, when no ring
  * node takes it. Approximation: the original leaves a ship already standing on a ring node as it is;

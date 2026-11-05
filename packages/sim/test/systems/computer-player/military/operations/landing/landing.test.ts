@@ -23,7 +23,7 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../../../../../src/index.js';
-import { type HalfCellNode, hexagonRing } from '../../../../../../src/nav/halfcell.js';
+import { type HalfCellNode, hexagonRing, nodeManhattan } from '../../../../../../src/nav/halfcell.js';
 import type { TerrainGraph } from '../../../../../../src/nav/terrain/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../../../src/systems/ai-shared/cadence.js';
 import { computerProfileOf } from '../../../../../../src/systems/computer-player/difficulty.js';
@@ -41,6 +41,7 @@ import {
 } from '../../../../../../src/systems/computer-player/military/operations/landing/landing.js';
 import {
   nodeOfEntity,
+  RAID_TOWER_CLEARANCE_NODES,
   RAID_TOWER_DEFENCE,
 } from '../../../../../../src/systems/computer-player/military/operations/raid-target.js';
 import { everyFighterPoints } from '../../../../../../src/systems/computer-player/military/points.js';
@@ -356,6 +357,8 @@ function runUntil(sim: Simulation, ticks: number, watch: () => boolean): void {
 /** The men's worth of the foe's garrison the seat remembers on his colony, more than its least raid
  *  outweighs half again. */
 const REMEMBERED_GARRISON = 12;
+/** A foe tower on his island's west coast, by the shores nearest the seat. */
+const COAST_TOWER = { x: 90, y: 30 };
 /** A foe tower on his island far from his headquarters, covering none of it. */
 const FOE_FAR_OFF_TOWER = { x: 128, y: 110 };
 /** The towers' weight the storm wave's men ashore make: past twice one tower, short of twice two. */
@@ -660,6 +663,27 @@ describe('landing operations', () => {
       return (seen?.landing?.landed ?? 0) > 0;
     });
     expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it('sails and moors out of the reach of the tower it believes guards the coast', () => {
+    const { sim } = landingWorld({ foe: [{ buildingType: TOWER_TYPE, at: COAST_TOWER }] });
+    const tower = foeBuildingAt(sim, COAST_TOWER);
+    const at = tower === null ? null : nodeOfEntity(sim.world, tower);
+    if (at === null) throw new Error('setup: no coast tower');
+    let seen: OperationView | undefined;
+    let nearest = Number.POSITIVE_INFINITY;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      for (const ship of seen?.landing?.ships ?? []) {
+        const node = nodeOfEntity(sim.world, ship.vehicle);
+        if (node !== null) nearest = Math.min(nearest, nodeManhattan(node, at));
+      }
+      return (seen?.landing?.landed ?? 0) > 0;
+    });
+    expect(seen?.landing?.landed).toBeGreaterThan(0);
+    for (const ship of seen?.landing?.ships ?? [])
+      expect(nodeManhattan(ship.shore, at)).toBeGreaterThan(RAID_TOWER_CLEARANCE_NODES);
+    expect(nearest).toBeGreaterThan(RAID_TOWER_CLEARANCE_NODES);
   });
 
   it('holds the landing back against the most it ever saw of the army, though it saw only a few since', () => {
