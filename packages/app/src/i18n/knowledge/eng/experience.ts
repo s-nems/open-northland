@@ -185,11 +185,11 @@ export const EXPERIENCE: ArticleGroup = {
             head: ['Courses', 'Time'],
             rows: [
               [
-                '[[good:armor_leather|Leather Armour]], [[good:potion_food_small|S Nourishing Potion]], [[good:potion_stamina_small|S Stamina Potion]]',
+                '[[good:armor_leather|Leather Armour]], [[good:potion_food_small|Small Nourishing Potion]], [[good:potion_stamina_small|Small Stamina Potion]]',
                 '{{course.shortSeconds}} s',
               ],
               ['professions and most products', '{{course.commonSeconds}} s'],
-              ['[[good:potion_heal_big|L Healing Potion]]', '{{course.healSeconds}} s'],
+              ['[[good:potion_heal_big|Large Healing Potion]]', '{{course.healSeconds}} s'],
               ['[[good:handcart|Handcart]]', '{{course.handcartSeconds}} s'],
               ['[[good:oxcart|Ox Cart]]', '{{course.oxcartSeconds}} s'],
               [

@@ -40,9 +40,9 @@ describe('spectator keys', () => {
     const { viewer, reached, press } = setup(() => true);
     press('Digit2');
     expect(viewer.target()).toBe(2);
-    press('Backquote');
-    expect(viewer.target()).toBeNull();
     press('Digit0');
+    expect(viewer.target()).toBeNull();
+    press('Backquote');
     expect(viewer.target()).toBe(PLAYERS_SIGHT);
     // Past the list: nothing to watch, and still no control group.
     press('Digit4');

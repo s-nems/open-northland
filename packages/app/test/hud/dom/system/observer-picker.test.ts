@@ -49,7 +49,7 @@ describe('observer picker', () => {
     const [sight, revealed] = options;
     expect(sight?.parentElement?.classList.contains('on-picker__modes')).toBe(true);
     expect(revealed?.parentElement).toBe(sight?.parentElement);
-    expect([sight?.title, sight?.textContent]).toEqual([copy.playersSight, '0']);
+    expect([sight?.title, sight?.textContent]).toEqual([copy.playersSight, '`']);
     for (const key of document.querySelectorAll('.on-key'))
       expect(key.getAttribute('aria-hidden')).toBe('true');
   });

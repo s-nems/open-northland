@@ -390,7 +390,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'В сумку герой берёт только: [[good:amulet_strength|Амулет Силы]], [[good:amulet_defense|Амулет Защиты]], [[good:amulet_crithit|Амулет Точности]], [[good:amulet_speed|Амулет Ветра]], [[good:potion_heal_small|S Целебное Зелье]], [[good:potion_heal_big|L Целебное Зелье]].',
+            'В сумку герой берёт только: [[good:amulet_strength|Амулет Силы]], [[good:amulet_defense|Амулет Защиты]], [[good:amulet_crithit|Амулет Точности]], [[good:amulet_speed|Амулет Ветра]], [[good:potion_heal_small|Малое Целебное Зелье]], [[good:potion_heal_big|Большое Целебное Зелье]].',
           ],
         },
       ],

@@ -185,11 +185,11 @@ export const EXPERIENCE: ArticleGroup = {
             head: ['Курсы', 'Время'],
             rows: [
               [
-                '[[good:armor_leather|Кожаные Доспехи]], [[good:potion_food_small|S Питательное Зелье]], [[good:potion_stamina_small|S Зелье Жизненной Силы]]',
+                '[[good:armor_leather|Кожаные Доспехи]], [[good:potion_food_small|Малое Питательное Зелье]], [[good:potion_stamina_small|Малое Зелье Жизненной Силы]]',
                 '{{course.shortSeconds}} с',
               ],
               ['профессии и большинство изделий', '{{course.commonSeconds}} с'],
-              ['[[good:potion_heal_big|L Целебное Зелье]]', '{{course.healSeconds}} с'],
+              ['[[good:potion_heal_big|Большое Целебное Зелье]]', '{{course.healSeconds}} с'],
               ['[[good:handcart|Ручная Тележка]]', '{{course.handcartSeconds}} с'],
               ['[[good:oxcart|Бычья Повозка]]', '{{course.oxcartSeconds}} с'],
               [

@@ -386,7 +386,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'A hero puts only these in his bag: [[good:amulet_strength|Amulet of Strength]], [[good:amulet_defense|Amulet of Defence]], [[good:amulet_crithit|Amulet of Precision]], [[good:amulet_speed|Wind Amulet]], [[good:potion_heal_small|S Healing Potion]], [[good:potion_heal_big|L Healing Potion]].',
+            'A hero puts only these in his bag: [[good:amulet_strength|Amulet of Strength]], [[good:amulet_defense|Amulet of Defence]], [[good:amulet_crithit|Amulet of Precision]], [[good:amulet_speed|Wind Amulet]], [[good:potion_heal_small|Small Healing Potion]], [[good:potion_heal_big|Large Healing Potion]].',
           ],
         },
       ],

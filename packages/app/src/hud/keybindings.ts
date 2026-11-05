@@ -173,11 +173,11 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   keepHeroes: 'KeyX',
   keepSoldiers: 'KeyY',
   ...controlGroupDefaults,
-  // A spectator's digits pick the seats, 0 the players' sight beside them, the key left of 1 the
-  // revealed map.
+  // A spectator's digits pick the seats, 0 the revealed map beside them, the key left of 1 the
+  // players' sight.
   ...spectatorSeatDefaults,
-  watchPlayersSight: 'Digit0',
-  watchRevealedMap: 'Backquote',
+  watchPlayersSight: 'Backquote',
+  watchRevealedMap: 'Digit0',
 };
 
 const SPECTATOR_ACTION_SET: ReadonlySet<string> = new Set(SPECTATOR_ACTIONS);

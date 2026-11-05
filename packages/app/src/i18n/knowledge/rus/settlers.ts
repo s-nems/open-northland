@@ -248,7 +248,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            '[[good:potion_heal_small|S Целебное Зелье]]: глотков {{draught.smallUses}}, всего {{draught.healSmallTotal}} здоровья. [[good:potion_heal_big|L Целебное Зелье]]: глотков {{draught.bigUses}}, всего {{draught.healBigTotal}} здоровья.',
+            '[[good:potion_heal_small|Малое Целебное Зелье]]: глотков {{draught.smallUses}}, всего {{draught.healSmallTotal}} здоровья. [[good:potion_heal_big|Большое Целебное Зелье]]: глотков {{draught.bigUses}}, всего {{draught.healBigTotal}} здоровья.',
             'Если удар опустил бы здоровье ниже {{draught.healBelow}}, поселенец сразу пьёт глоток за глотком, пока у него снова не будет хотя бы {{draught.healBelow}} или пока не кончится зелье.',
             'Смертельный удар не убивает, если глотки покрывают рану.',
             'Поселенец пьёт и тогда, когда голод опускает здоровье ниже {{draught.healBelow}}.',
@@ -529,13 +529,13 @@ export const SETTLERS: ArticleGroup = {
                 'Энергия или Стамина опустится до {{need.drivePct}}%',
               ],
               [
-                '[[good:potion_food_small|S]] / [[good:potion_food_big|L Питательное Зелье]]',
+                '[[good:potion_food_small|Малое]] / [[good:potion_food_big|Большое Питательное Зелье]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '+{{draught.potionPct}}% Энергии',
                 'Энергия опустится до {{need.drivePct}}%',
               ],
               [
-                '[[good:potion_stamina_small|S]] / [[good:potion_stamina_big|L Зелье Жизненной Силы]]',
+                '[[good:potion_stamina_small|Малое]] / [[good:potion_stamina_big|Большое Зелье Жизненной Силы]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '+{{draught.potionPct}}% Стамины',
                 'Стамина опустится до {{need.drivePct}}%',

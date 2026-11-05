@@ -260,7 +260,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            '[[good:potion_heal_small|S Healing Potion]] has {{draught.smallUses}} sips, {{draught.healSmallTotal}} health in total. [[good:potion_heal_big|L Healing Potion]] has {{draught.bigUses}} sips, {{draught.healBigTotal}} health in total.',
+            '[[good:potion_heal_small|Small Healing Potion]] has {{draught.smallUses}} sips, {{draught.healSmallTotal}} health in total. [[good:potion_heal_big|Large Healing Potion]] has {{draught.bigUses}} sips, {{draught.healBigTotal}} health in total.',
             'When a blow would take his health below {{draught.healBelow}}, a settler drinks sip after sip at once, until he has at least {{draught.healBelow}} again or the potion runs out.',
             "Even a killing blow doesn't kill, if the sips cover the wound.",
             'A settler also drinks when hunger takes his health below {{draught.healBelow}}.',
@@ -536,13 +536,13 @@ export const SETTLERS: ArticleGroup = {
                 'Energy or Stamina drops to {{need.drivePct}}%',
               ],
               [
-                '[[good:potion_food_small|S]] / [[good:potion_food_big|L Nourishing Potion]]',
+                '[[good:potion_food_small|Small]] / [[good:potion_food_big|Large Nourishing Potion]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '+{{draught.potionPct}}% Energy',
                 'Energy drops to {{need.drivePct}}%',
               ],
               [
-                '[[good:potion_stamina_small|S]] / [[good:potion_stamina_big|L Stamina Potion]]',
+                '[[good:potion_stamina_small|Small]] / [[good:potion_stamina_big|Large Stamina Potion]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '+{{draught.potionPct}}% Stamina',
                 'Stamina drops to {{need.drivePct}}%',
