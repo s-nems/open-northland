@@ -298,6 +298,23 @@ describe('snapshot delta stream', () => {
     );
   });
 
+  it('carries no entity whose write changed only sim-only fields', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const walker = bareResource(sim, 5);
+    sim.world.add(walker, CountedStep, { index: 0, steps: 0 });
+    const deltas = sim.snapshotDeltas();
+    nonNull(deltas.next());
+    const before = sim.world.revisionOf(walker, CountedStep);
+    sim.world.mutUnseen(walker, CountedStep).steps = 1;
+    expect(sim.world.revisionOf(walker, CountedStep)).not.toBe(before);
+    expect([...touchedIds(nonNull(deltas.next()))]).toStrictEqual([]);
+    sim.snapshot();
+    expect(sim.world.verifyCaches()).toStrictEqual([]);
+    // A read-view field written through it is a stale clone the verifier names.
+    sim.world.mutUnseen(walker, CountedStep).index = 1;
+    expect(sim.world.verifyCaches()).toHaveLength(1);
+  });
+
   it('carries records of numbers, booleans, strings and null as scalars, and repeats a layout in a later delta', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { SettlerNeeds, Stance } = components;

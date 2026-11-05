@@ -1076,7 +1076,9 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     live.increment = vehicleProgressPerTick(period);
     // Written on every node entered, a ship holding its heading included: the blocker caches learn
     // that a vehicle's cells moved from the `Vehicle` store's value writes (`footprint/vehicle-anchors.ts`).
-    const vehicle = world.mut(e, Vehicle);
+    // A read view sees the write only when a land vehicle turns.
+    const vehicle =
+      live.helm === null && state.facing !== facing ? world.mut(e, Vehicle) : world.mutUnseen(e, Vehicle);
     if (live.helm !== null) {
       live.helm.heading = course;
       live.progress = 0;

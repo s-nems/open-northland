@@ -74,6 +74,12 @@ export class TouchedLog {
     return this.mutations;
   }
 
+  /** Count a mutation no read view sees and return its revision, logging no entity: a write of only a
+   *  component's sim-only fields leaves every snapshot clone current. */
+  recordUnlisted(): number {
+    return ++this.mutations;
+  }
+
   /** Whether `entity` has a recorded mutation the next {@link drain} will deliver. After an overflow every
    *  entity counts as pending, since the individual names were lost. */
   pending(entity: Entity): boolean {

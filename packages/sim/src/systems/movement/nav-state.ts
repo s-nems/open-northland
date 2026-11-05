@@ -52,7 +52,7 @@ export function restartLeg(world: World, e: Entity): void {
   const target = index === undefined ? undefined : world.tryGet(e, PathRoute)?.waypoints[index];
   const position = world.tryGet(e, Position);
   if (target === undefined || position === undefined) return;
-  const follow = world.mut(e, PathFollow);
+  const follow = world.mutUnseen(e, PathFollow);
   follow.legElapsed = 0;
   follow.legStartedAt = undefined;
   follow.legCost = 0;

@@ -173,6 +173,24 @@ export class World {
     return v;
   }
 
+  /**
+   * {@link mut} for a write no read view sees: of `component`'s `simOnlyFields` alone, or none at all for
+   * the value channels' sake. Logged on the revision, value and digest channels but not the touched log,
+   * so no snapshot delta carries it. A read-view field written through it leaves snapshot clones stale,
+   * which `verifyCaches` reports.
+   */
+  mutUnseen<T>(entity: Entity, component: Component<T>): T {
+    const store = this.storeOf(component);
+    const slot = store === undefined ? -1 : store.slotOf(entity);
+    const v = store === undefined || slot < 0 ? undefined : store.valueAt(slot);
+    if (store === undefined || v === undefined)
+      throw new Error(`entity ${entity} has no component ${component.name}`);
+    store.setRevisionAt(slot, this.touched.recordUnlisted());
+    this.mutations?.componentWritten(component as Component<unknown>, entity);
+    this.recordValueWrite(component as Component<unknown>, entity);
+    return v;
+  }
+
   /** The value-write channels {@link tryMut} logs beside the revision and touch. */
   private recordValueWrite(component: Component<unknown>, entity: Entity): void {
     this.componentValueGenerations[component.id] = (this.componentValueGenerations[component.id] ?? 0) + 1;

@@ -144,7 +144,9 @@ export const movementSystem: System = (world, ctx) => {
         world.remove(e, AnimalRunning);
         break;
       }
-      const next = writableFollow(world, e, write);
+      // The waypoint index is the one field here a read view carries, so this write is logged for them.
+      const next = world.mut(e, PathFollow);
+      write.follow = next;
       next.index += 1;
       next.legElapsed = 0;
       next.legStartedAt = undefined;
@@ -189,13 +191,14 @@ type FollowState = NonNullable<(typeof PathFollow)['__value']>;
 type WalkFacingState = NonNullable<(typeof WalkFacing)['__value']>;
 
 /** A walker's {@link PathFollow} write handle for the tick, acquired at its first change, so the tick's
- *  field updates log one write. */
+ *  field updates log one write. A leg-counter change acquires it unseen, since no read view carries
+ *  those; a waypoint advance swaps in the logged handle, which later changes that tick reuse. */
 interface FollowWrite {
   follow: FollowState | undefined;
 }
 
 function writableFollow(world: World, e: Entity, write: FollowWrite): FollowState {
-  write.follow ??= world.mut(e, PathFollow);
+  write.follow ??= world.mutUnseen(e, PathFollow);
   return write.follow;
 }
 

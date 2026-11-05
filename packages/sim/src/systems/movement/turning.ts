@@ -87,7 +87,7 @@ export function beginWalkTurn(world: World, e: Entity, from: Point, to: Point): 
   const target = headingToward(from, to);
   if (target === undefined) return facing;
   if (facing === undefined) return world.add(e, WalkFacing, { direction: INITIAL_WALK_DIRECTION, target });
-  if (facing.target !== target) world.mut(e, WalkFacing).target = target;
+  if (facing.target !== target) world.mutUnseen(e, WalkFacing).target = target;
   return facing;
 }
 
