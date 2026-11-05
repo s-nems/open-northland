@@ -539,25 +539,17 @@ function decideDomestic(
   }
 
   if (hold.room <= 0) return NEXT;
-  for (const good of loadOrder(scope, hold, other, ownGoodsOf(ctx, hereType), markOf)) {
-    const wantedThere = markOf(other, good);
-    if (wantedThere === undefined || isFoodKeptAtHome(world, ctx, stop.house, good)) continue;
-    const carried = edibleGoodFormOf(ctx.content, good);
-    if (!hold.carries(carried)) continue;
-    const slot = storableFormAt(world, ctx, other.house, carried);
-    if (slot === undefined) continue;
-    const aboard = hold.amount(carried);
-    // A full other stop still takes a good marked only there, onto the ground by its door.
+  for (const candidate of loadOrder(scope, hold, other, ownGoodsOf(ctx, hereType), markOf)) {
+    const { good, carried, mark: wantedThere, filled } = candidate;
+    // An open mark has no ceiling to reach.
     if (
-      roomFor(world, ctx, other.house, slot) - aboard <= 0 &&
-      (markOf(stop, good) !== undefined || heapRoomAt(scope, other.house, carried) - aboard <= 0)
+      filled !== null &&
+      reachesCeiling(scope, wantedThere, other.house, carried, filled, scope.otherCountsSettlement)
     )
-      continue;
-    const bound = otherStockOf(scope, other, carried) + hold.amount(carried);
-    if (reachesCeiling(scope, wantedThere, other.house, carried, bound, scope.otherCountsSettlement))
       continue;
     const leaving = helpers.toLift(carried);
     if (markOf(stop, good) !== undefined) {
+      const bound = filled ?? otherStockOf(scope, other, carried) + candidate.aboard;
       if (scope.countsSettlement) {
         // A balanced good weighs the two settlements, so the load may come out of any of this one's houses.
         if (Math.floor((homeStockOf(scope, good) - leaving - bound) / 2) <= 0) continue;
@@ -745,11 +737,25 @@ function ownGoodsOf(ctx: ContentContext, buildingType: number): number[] {
   return [...stored].filter((good) => countsAsOwnStock(ctx, buildingType, good)).sort((a, b) => a - b);
 }
 
+/** A good the stop may load for the other: its mark there, the form the hold carries, the units of that
+ *  aboard, and for a mark with a ceiling the other stop's stock plus those units (null for an open mark). */
+interface LoadCandidate {
+  readonly good: number;
+  readonly carried: number;
+  readonly mark: DeepReadonly<TradeImportMark>;
+  readonly aboard: number;
+  readonly filled: number | null;
+  /** The mark's ceiling as the rank's denominator, one for an open mark. */
+  readonly of: number;
+}
+
 /**
- * The goods marked at `other` among `goods`, the emptiest mark first: by the other stop's stock plus what is
- * aboard over the mark's `upTo`, a mark with no ceiling counting as empty; then the fewest aboard, then the
- * lowest id. So a site's lack outranks a full larder's top-up, and one plentiful good does not fill every
- * trip while another marked good waits (our own rule, as the emptiest workshop input is fetched first).
+ * The goods marked at `other` among `goods` that the hold carries and the other stop has a slot and room
+ * for, the emptiest mark first: by the other stop's stock plus what is aboard over the mark's `upTo`, a mark
+ * with no ceiling counting as empty; then the fewest aboard, then the lowest id. So a site's lack outranks
+ * a full larder's top-up, and one plentiful good does not fill every trip while another marked good waits
+ * (our own rule, as the emptiest workshop input is fetched first). The cheap checks come first, so the
+ * other stop's stock is read only for a good that may still load.
  */
 function loadOrder(
   scope: LoadScope,
@@ -757,20 +763,32 @@ function loadOrder(
   other: DeepReadonly<TradeStop>,
   goods: readonly number[],
   markOf: (at: DeepReadonly<TradeStop>, good: number) => DeepReadonly<TradeImportMark> | undefined,
-): number[] {
-  const ranked: { good: number; filled: number; of: number; aboard: number }[] = [];
+): LoadCandidate[] {
+  const { world, ctx, stop } = scope;
+  const ranked: LoadCandidate[] = [];
   for (const good of goods) {
     const mark = markOf(other, good);
-    if (mark === undefined) continue;
-    const carried = edibleGoodFormOf(scope.ctx.content, good);
+    if (mark === undefined || isFoodKeptAtHome(world, ctx, stop.house, good)) continue;
+    const carried = edibleGoodFormOf(ctx.content, good);
+    if (!hold.carries(carried)) continue;
+    const slot = storableFormAt(world, ctx, other.house, carried);
+    if (slot === undefined) continue;
     const aboard = hold.amount(carried);
+    // A full other stop still takes a good marked only there, onto the ground by its door.
+    if (
+      roomFor(world, ctx, other.house, slot) - aboard <= 0 &&
+      (markOf(stop, good) !== undefined || heapRoomAt(scope, other.house, carried) - aboard <= 0)
+    )
+      continue;
     const open = mark.upTo === TRADE_LIMIT_NONE;
-    const filled = open ? 0 : otherStockOf(scope, other, carried) + aboard;
-    ranked.push({ good, filled, of: open ? 1 : Math.max(1, mark.upTo), aboard });
+    const filled = open ? null : otherStockOf(scope, other, carried) + aboard;
+    ranked.push({ good, carried, mark, aboard, filled, of: open ? 1 : Math.max(1, mark.upTo) });
   }
   // Fill fractions compared by cross-multiplication, so the rank stays in integers.
-  ranked.sort((a, b) => a.filled * b.of - b.filled * a.of || a.aboard - b.aboard || a.good - b.good);
-  return ranked.map(({ good }) => good);
+  ranked.sort(
+    (a, b) => (a.filled ?? 0) * b.of - (b.filled ?? 0) * a.of || a.aboard - b.aboard || a.good - b.good,
+  );
+  return ranked;
 }
 
 /** The units of `good` a house can give up: its own stock, none of it while its recipe consumes the
