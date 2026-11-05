@@ -30,21 +30,27 @@ import { computerProfileOf } from '../../../../../src/systems/computer-player/di
 import { type OperationView, seatOperationsOf } from '../../../../../src/systems/computer-player/index.js';
 import {
   LANDING_ASHORE_ALONE_TICKS,
+  LANDING_COOLDOWN_TICKS,
   LANDING_FORM_TIMEOUT_TICKS,
   LANDING_SAIL_TIMEOUT_TICKS,
   LANDING_SHORE_STAY_TICKS,
+  landingHandler,
 } from '../../../../../src/systems/computer-player/military/operations/landing.js';
 import {
   COLONY_RAID_LEAST_MEN,
   LANDING_EDGE,
 } from '../../../../../src/systems/computer-player/military/operations/landing-aim.js';
-import { nodeOfEntity } from '../../../../../src/systems/computer-player/military/operations/raid-target.js';
+import {
+  nodeOfEntity,
+  RAID_TOWER_DEFENCE,
+} from '../../../../../src/systems/computer-player/military/operations/raid-target.js';
 import { everyFighterPoints } from '../../../../../src/systems/computer-player/military/points.js';
 import { militaryOrdersOf } from '../../../../../src/systems/computer-player/strategy/military.js';
 import {
   LANDING_BIG_SHIPS,
   LANDING_FLEET_MIN_SHIPS,
   landingFleetShips,
+  SOLDIERS_PER_SHIP,
 } from '../../../../../src/systems/computer-player/workforce/craft.js';
 import { ownedFightersOf } from '../../../../../src/systems/movement/collision/owned-fighters.js';
 import { spawnSettler } from '../../../../../src/systems/spawn/index.js';
@@ -350,6 +356,13 @@ function runUntil(sim: Simulation, ticks: number, watch: () => boolean): void {
 /** The men's worth of the foe's garrison the seat remembers on his colony, more than its least raid
  *  outweighs half again. */
 const REMEMBERED_GARRISON = 12;
+/** A foe tower on his island far from his headquarters, covering none of it. */
+const FOE_FAR_OFF_TOWER = { x: 128, y: 110 };
+/** The towers' weight the storm wave's men ashore make: past twice one tower, short of twice two. */
+const STORM_WAVE_TOWERS = 3;
+/** How many times the fleet's seats the army in the cooldown test is, and how many men it spawns abreast. */
+const OUTGROWN = 2;
+const WIDE_RANK = 16;
 /** The fighter points the seat remembers seeing of the foe's army at once: a token band. */
 const SEEN_FOE_POINTS = 1;
 
@@ -357,12 +370,17 @@ const SEEN_FOE_POINTS = 1;
  *  each, `faded` when the aged peak has worn off since. */
 interface FoeMemory {
   readonly most: number;
+  /** The aged peak's points, `most` by default. */
+  readonly recent?: number;
   readonly lands?: readonly { readonly land: number; readonly points: number }[];
   readonly faded?: boolean;
 }
 
 /** Give the seat the memory `memory` of the foe's army, its own army as it stands. */
-function rememberFoeArmy(sim: Simulation, { most, lands = [], faded = false }: FoeMemory): void {
+function rememberFoeArmy(
+  sim: Simulation,
+  { most, recent = most, lands = [], faded = false }: FoeMemory,
+): void {
   const carrier = aiControlEntity(sim.world, SEAT);
   if (carrier === null) throw new Error('setup: no AI seat');
   runUntil(sim, COMPUTER_DECISION_INTERVAL_TICKS, () => sim.world.has(carrier, ComputerIntel));
@@ -371,7 +389,7 @@ function rememberFoeArmy(sim: Simulation, { most, lands = [], faded = false }: F
     player: FOE,
     peak: faded ? 0 : 1,
     peakAt: sim.tick,
-    peakPoints: faded ? 0 : most,
+    peakPoints: faded ? 0 : recent,
     peakPointsAt: sim.tick,
     mostPoints: most,
     ownPointsAtMost: own,
@@ -387,7 +405,10 @@ function manPoints(sim: Simulation): number {
   return everyFighterPoints(sim.world, ctxOf(sim), SEAT) / own.length;
 }
 
-/** The foe's building standing nearest `at`, or null. */
+/** How far a placed building's anchor may lie from the spot it was placed at. */
+const PLACED_SLACK_NODES = 4;
+
+/** The foe's building standing at `at`, or null once it fell. */
 function foeBuildingAt(sim: Simulation, at: { x: number; y: number }): Entity | null {
   let best: { readonly e: Entity; readonly distance: number } | null = null;
   for (const e of sim.world.query(Building, Owner)) {
@@ -395,7 +416,7 @@ function foeBuildingAt(sim: Simulation, at: { x: number; y: number }): Entity | 
     const node = nodeOfEntity(sim.world, e);
     if (node === null) continue;
     const distance = Math.abs(node.hx - at.x) + Math.abs(node.hy - at.y);
-    if (best === null || distance < best.distance) best = { e, distance };
+    if (distance <= PLACED_SLACK_NODES && (best === null || distance < best.distance)) best = { e, distance };
   }
   return best?.e ?? null;
 }
@@ -641,6 +662,58 @@ describe('landing operations', () => {
     expect(seen?.landing?.landed).toBeGreaterThan(0);
   });
 
+  it('holds the landing back against the most it ever saw of the army, though it saw only a few since', () => {
+    const { sim } = landingWorld({ fog: FOG_MODE.CLASSIC_FOG_OF_WAR });
+    // Lately it saw a token band; once it saw an army that outweighs its own.
+    rememberFoeArmy(sim, { most: OUTMATCHING_FOES * manPoints(sim), recent: SEEN_FOE_POINTS });
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      expect(landings(sim)).toEqual([]);
+      return false;
+    });
+    expect(militaryOrdersOf(sim.world, SEAT).launchRatio).not.toBeNull();
+  });
+
+  it('storms past a tower that does not cover its objective, weighing only the one that does', () => {
+    const { sim } = landingWorld({
+      armed: true,
+      seats: STORM_SHIP_SEATS,
+      men: 0,
+      foe: [
+        { buildingType: TOWER_TYPE, at: FOE_TOWER },
+        { buildingType: TOWER_TYPE, at: FOE_FAR_OFF_TOWER },
+      ],
+    });
+    // A wave that outweighs one tower twice ashore but not two, each ship's helm staying aboard.
+    const one = { x: BARRACKS.x - 6, y: BARRACKS.y + 8 };
+    spawnBand(sim, 1, one, ARMY_RANK, SEAT);
+    const ashore = Math.ceil((STORM_WAVE_TOWERS * RAID_TOWER_DEFENCE) / manPoints(sim));
+    const men = ashore + Math.ceil(ashore / STORM_SHIP_SEATS);
+    spawnBand(sim, men - 1, { x: one.x, y: one.y + 2 }, ARMY_RANK, SEAT);
+    let seen: OperationView | undefined;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return (seen?.landing?.landed ?? 0) > 0;
+    });
+    expect(seen?.target.entity).toBe(foeHeadquarters(sim));
+    expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it('waits less between landings the more its army outgrows the seats of its landing fleet', () => {
+    const { sim, fleet } = landingWorld({ ships: 0, men: 0 });
+    const fleetSeats = fleet * SOLDIERS_PER_SHIP;
+    spawnBand(sim, OUTGROWN * fleetSeats, { x: 4, y: 60 }, WIDE_RANK, SEAT);
+    const terrain = terrainOf(sim);
+    const env = {
+      world: sim.world,
+      ctx: ctxOf(sim),
+      terrain,
+      seat: SEAT,
+      home: terrain.nodeAtClamped(BARRACKS.x, BARRACKS.y),
+      orders: militaryOrdersOf(sim.world, SEAT),
+    };
+    expect(landingHandler.cooldownTicks(env)).toBe(LANDING_COOLDOWN_TICKS / OUTGROWN);
+  });
+
   it.each([
     ['in plain sight', FOG_MODE.OFF],
     ['under fog, knowing only the start layout and the small army it saw', FOG_MODE.CLASSIC_FOG_OF_WAR],
@@ -690,22 +763,22 @@ describe('landing operations', () => {
     });
   });
 
-  it('raids a rival colony with a band sized to it while too few ships lie free for his headquarters', () => {
+  it('raids a rival colony with a band sized to it while too few ships lie free for his headquarters, and comes home', () => {
     const ships = LANDING_BIG_SHIPS - 1;
     const { sim } = landingWorld({ ships, colony: true, foe: [{ buildingType: FARM_TYPE, at: FOE_FARM }] });
     const terrain = terrainOf(sim);
     const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
-    let seen: OperationView | undefined;
-    runUntil(sim, LANDING_LIMIT_TICKS, () => {
-      seen = landings(sim)[0] ?? seen;
-      return (seen?.landing?.landed ?? 0) > 0;
-    });
-    const target = seen?.target;
+    const struck = strikeInTurn(sim, [FOE_FARM]);
+    const target = struck.seen?.target;
     expect(
       target === undefined ? null : terrain.componentOf(terrain.nodeAtClamped(target.hx, target.hy)),
     ).toBe(colonyLand);
-    expect(seen?.landing?.startMen).toBe(COLONY_RAID_LEAST_MEN);
-    expect(seen?.landing?.landed).toBeGreaterThan(0);
+    expect(struck.seen?.landing?.startMen).toBe(COLONY_RAID_LEAST_MEN);
+    // The band strikes the farm, and with nothing left there comes home.
+    expect(struck.order).toEqual([FOE_FARM]);
+    expect(struck.seen?.reason).toBe('nothingToStrike');
+    expect(menOf(sim, SEAT, colonyLand)).toEqual([]);
+    expect(shipsHomeEmpty(sim)).toBe(true);
   });
 
   it("raids a rival colony while every shore of his headquarters' land lies under his towers' fire", () => {
