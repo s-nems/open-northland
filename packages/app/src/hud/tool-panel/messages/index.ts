@@ -357,7 +357,10 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   let renderedVersion = -1;
   // The sources start over with the seat, since the idle streaks and the met seats they remember are
   // the last seat's.
+  // A spectator over the whole map has nobody's notes to list.
+  column.setShown(feeds.seat !== null);
   const switchSeat = (seat: number | null): void => {
+    column.setShown(seat !== null);
     if (!feeds.switchTo(seat)) return;
     snapshotSource = snapshotSourceOf(seat);
     diplomacySource = createDiplomacyMessageSource(deps.metSeats);

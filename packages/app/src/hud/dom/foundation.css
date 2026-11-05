@@ -1028,6 +1028,9 @@ body.on-drag-scroll.on-drag-scroll-free * {
 /* The column: frameless, so the map shows between the cards; only its controls take the pointer. */
 /* `--thumb-edge`: where a card's thumbnail box ends and its slate begins, from the card's left.
    `--seal-gap`: the clear space on either side of a card's seal, between the thumbnail and the text. */
+.on-hud .on-notices[hidden] {
+  display: none;
+}
 .on-hud .on-notices {
   --thumb-edge: 44px;
   --seal-size: 12px;

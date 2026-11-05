@@ -95,6 +95,8 @@ export interface NoticeColumn {
   figures(): NoticeFigureSlots;
   /** Swap a figure canvas whose subject is no longer drawn for the scroll glyph. */
   unpicture(canvas: HTMLCanvasElement): void;
+  /** Show or hide the whole column. */
+  setShown(shown: boolean): void;
   dispose(): void;
 }
 
@@ -704,6 +706,10 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     unpicture: (canvas): void => {
       canvas.outerHTML = glyphMarkup('scroll', false);
       figureSlotsStale = true;
+    },
+    setShown: (shown: boolean): void => {
+      if (column.hidden === !shown) return;
+      column.hidden = !shown;
     },
     dispose: (): void => {
       hover.dispose();
