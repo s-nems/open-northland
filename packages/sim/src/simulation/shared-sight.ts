@@ -15,8 +15,8 @@ interface FoldedGroup {
 /**
  * Several players' fog as one mask, for a spectator watching them all: each cell reads the most any of
  * them knows of it (mask bytes rank by knowledge, the script-revealed byte above VISIBLE). It keeps a
- * copy of every watched group's mask, so a vision rebuild re-folds only the cells whose bytes changed
- * in the groups that changed, never the whole map per group.
+ * copy of every watched group's mask, so a vision rebuild compares each changed group's mask word by
+ * word and re-folds only the cells that differ.
  */
 export class SharedSightMask {
   private seatsKey: string | null = null;

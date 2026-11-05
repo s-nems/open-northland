@@ -71,8 +71,8 @@ export interface SiegeCount {
   readonly count: number;
 }
 
-/** A seat's army as its standing's breakdown lists it. Gear rows run in content order, so a row keeps its
- *  place while the counts move. */
+/** A seat's army as its standing's breakdown lists it. Gear rows run ascending by good type, so a row keeps
+ *  its place while the counts move. */
 export interface SeatArmy {
   /** The soldiers the standing counts: the men in a soldier or hero job. */
   readonly soldiers: number;

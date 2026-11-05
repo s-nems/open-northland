@@ -12,8 +12,7 @@ export function spectatorKeyAction(e: KeyboardEvent, bindings: KeyBindings): Spe
   return SPECTATOR_ACTIONS.find((action) => isActionHotkey(e, bindings, action)) ?? null;
 }
 
-/** What a watch key shows over `seats`, in the picker's order; undefined for a seat key past the list
- *  and for a key that watches nothing. */
+/** What a watch key shows over `seats`, in the picker's order; undefined for a seat key past the list. */
 export function watchTargetOf(action: SpectatorAction, seats: readonly number[]): WatchTarget | undefined {
   if (action === 'watchPlayersSight') return PLAYERS_SIGHT;
   if (action === 'watchRevealedMap') return null;

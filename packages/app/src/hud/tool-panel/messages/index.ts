@@ -355,12 +355,13 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const unpictured = (slot: NoticeFigureSlot): void => column.unpicture(slot.canvas);
   let previous: WorldSnapshot | null = null;
   let renderedVersion = -1;
+  // A spectator over the whole map has nobody's notes to list; one that is nobody's (a setting that
+  // needs a restart) still shows.
+  const showColumn = (): void => column.setShown(feeds.seat !== null || feeds.current.live().length > 0);
+  showColumn();
   // The sources start over with the seat, since the idle streaks and the met seats they remember are
   // the last seat's.
-  // A spectator over the whole map has nobody's notes to list.
-  column.setShown(feeds.seat !== null);
   const switchSeat = (seat: number | null): void => {
-    column.setShown(seat !== null);
     if (!feeds.switchTo(seat)) return;
     snapshotSource = snapshotSourceOf(seat);
     diplomacySource = createDiplomacyMessageSource(deps.metSeats);
@@ -466,6 +467,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       for (const refusal of tradeRefusals)
         take(tradeRefusedNote(refusal.player, refusal.at, naming), snapshot.tick);
       tradeRefusals = [];
+      showColumn();
       if (
         feeds.current.version() !== renderedVersion ||
         (openKey !== null && snapshot.tick >= ageChangeTick)

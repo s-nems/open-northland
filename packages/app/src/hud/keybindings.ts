@@ -174,7 +174,7 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   keepSoldiers: 'KeyY',
   ...controlGroupDefaults,
   // A spectator's digits pick the seats, 0 the players' sight beside them, the key left of 1 the
-  // revealed map, and J jumps to the latest fight.
+  // revealed map.
   ...spectatorSeatDefaults,
   watchPlayersSight: 'Digit0',
   watchRevealedMap: 'Backquote',
