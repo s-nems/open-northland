@@ -99,14 +99,14 @@ export const atomicSystem: System = (world, ctx) => {
     emitAtomicSoundCues(world, ctx, e, running, elapsed, clip);
 
     if (elapsed < duration) continue;
-    const atomic = world.mut(e, CurrentAtomic);
-
-    const completedAtomicId = atomic.atomicId;
-    if (atomic.effect.kind === 'pray' && continuesPrayer(world, ctx, e, atomic.atomicId)) {
+    const completedAtomicId = running.atomicId;
+    // A prayer that goes on restarts its clock alone: its record stays as it is, so it is not acquired.
+    if (running.effect.kind === 'pray' && continuesPrayer(world, ctx, e, completedAtomicId)) {
       world.add(e, AtomicClock, { startedAt: ctx.tick });
       ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: completedAtomicId });
       continue;
     }
+    const atomic = world.mut(e, CurrentAtomic);
     if (atomic.effect.kind === 'fish') {
       const continues = advanceFishingAtomic(world, ctx, e, atomic, atomic.effect);
       ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: completedAtomicId });

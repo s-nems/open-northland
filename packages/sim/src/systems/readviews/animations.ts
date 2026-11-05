@@ -246,10 +246,20 @@ export interface ClipEventFacts {
 export const NO_PIETY_SPEND_TICK = 0;
 
 const clipEventFacts = new WeakMap<AtomicAnimation, ClipEventFacts>();
+/** The clip asked last and its facts: one running atomic's religion, need and sound reads ask for the
+ *  same clip in a row, so they share one weak-map lookup. Holds that clip alive until another is asked. */
+let lastFactsClip: AtomicAnimation | undefined;
+let lastFacts: ClipEventFacts | undefined;
 
 export function clipEventFactsOf(anim: AtomicAnimation): ClipEventFacts {
-  let facts = clipEventFacts.get(anim);
-  if (facts !== undefined) return facts;
+  if (anim === lastFactsClip && lastFacts !== undefined) return lastFacts;
+  const facts = clipEventFacts.get(anim) ?? deriveClipEventFacts(anim);
+  lastFactsClip = anim;
+  lastFacts = facts;
+  return facts;
+}
+
+function deriveClipEventFacts(anim: AtomicAnimation): ClipEventFacts {
   const needFrames = new Set<number>();
   const soundCues: ClipSoundCue[] = [];
   let lastPietySpendTick = NO_PIETY_SPEND_TICK;
@@ -262,7 +272,7 @@ export function clipEventFactsOf(anim: AtomicAnimation): ClipEventFacts {
     if (event.type === ATOMIC_EVENT_CHANNEL.PIETY && value < 0)
       lastPietySpendTick = Math.max(lastPietySpendTick, eventTick(event.at));
   }
-  facts = { needFrames, soundCues, lastPietySpendTick };
+  const facts = { needFrames, soundCues, lastPietySpendTick };
   clipEventFacts.set(anim, facts);
   return facts;
 }
