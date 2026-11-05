@@ -73,8 +73,6 @@ export interface GatheringRefs {
   readonly flag?: GatheringLoopRef;
   /** Work flags keyed by zero-based colour slot, as authored in `landscapes.cif`. */
   readonly flagsByPlayer?: Readonly<Record<number, GatheringLoopRef>>;
-  readonly roadMarkersByPlayer?: Readonly<Record<number, GatheringLoopRef>>;
-  readonly wallMarkersByPlayer?: Readonly<Record<number, GatheringLoopRef>>;
 }
 
 /**
@@ -229,22 +227,13 @@ export function resolveGatheringRefs(
   }
 
   const flagsByPlayer: Record<number, GatheringLoopRef> = {};
-  const roadMarkersByPlayer: Record<number, GatheringLoopRef> = {};
-  const wallMarkersByPlayer: Record<number, GatheringLoopRef> = {};
   for (const record of gfx) {
-    const match = /^player(0[1-9]|10) (work extern 01|marker road|marker wall)$/.exec(record.editName ?? '');
+    const match = /^player(0[1-9]|10) work extern 01$/.exec(record.editName ?? '');
     if (match === null) continue;
     const ref = loopRefFrom(record);
-    const target =
-      match[2] === 'marker road'
-        ? roadMarkersByPlayer
-        : match[2] === 'marker wall'
-          ? wallMarkersByPlayer
-          : flagsByPlayer;
-    if (ref !== undefined) target[Number(match[1]) - 1] = ref;
+    if (ref !== undefined) flagsByPlayer[Number(match[1]) - 1] = ref;
   }
-  for (const byPlayer of [flagsByPlayer, roadMarkersByPlayer, wallMarkersByPlayer])
-    lendTemplateFrames(byPlayer);
+  lendTemplateFrames(flagsByPlayer);
   const flag = flagsByPlayer[0];
 
   return {
@@ -253,8 +242,6 @@ export function resolveGatheringRefs(
     trunksByGood,
     pilesByGood,
     flagsByPlayer,
-    roadMarkersByPlayer,
-    wallMarkersByPlayer,
     ...(flag !== undefined ? { flag } : {}),
   };
 }
@@ -288,8 +275,6 @@ export function gatheringAtlasStems(refs: GatheringRefs): Set<string> {
   for (const pile of Object.values(refs.pilesByGood)) stems.add(pile.stem);
   if (refs.flag !== undefined) stems.add(refs.flag.stem);
   for (const flag of Object.values(refs.flagsByPlayer ?? {})) stems.add(flag.stem);
-  for (const marker of Object.values(refs.roadMarkersByPlayer ?? {})) stems.add(marker.stem);
-  for (const marker of Object.values(refs.wallMarkersByPlayer ?? {})) stems.add(marker.stem);
   return stems;
 }
 

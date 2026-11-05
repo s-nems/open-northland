@@ -95,8 +95,6 @@ export function buildStockpileBinding(refs: GatheringRefs, loaded: ReadonlySet<s
     byGood,
     flag,
     flagsByPlayer: loadedMarkerLoops(refs.flagsByPlayer, loaded),
-    roadMarkersByPlayer: loadedMarkerLoops(refs.roadMarkersByPlayer, loaded),
-    wallMarkersByPlayer: loadedMarkerLoops(refs.wallMarkersByPlayer, loaded),
     default: STOCKPILE_PLACEHOLDER_BOB,
   };
 }

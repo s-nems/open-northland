@@ -135,8 +135,6 @@ const STOCKPILE_FIELDS: { readonly [K in keyof StockpileBinding]-?: 'lists' | 'l
   byGood: 'lists',
   flag: 'list',
   flagsByPlayer: 'lists',
-  roadMarkersByPlayer: 'lists',
-  wallMarkersByPlayer: 'lists',
   default: 'ref',
 };
 const SIGNPOST_FIELDS: { readonly [K in keyof SignpostBinding]-?: 'list' | 'ref' | 'bindings' } = {

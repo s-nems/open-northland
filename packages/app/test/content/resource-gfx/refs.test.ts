@@ -250,23 +250,6 @@ describe('buildResourceBinding - the default-vs-family layer decision + drop-unl
 });
 
 describe('buildStockpileBinding - per-good heap frames + the flag, drop-unloaded', () => {
-  it('loads dedicated road and wall marker records separately from work flags', () => {
-    const records = ['marker road', 'marker wall'].map((name, index) => ({
-      ...FLAG,
-      index: 401 + index,
-      editName: `player03 ${name}`,
-      paletteName: 'human_player03',
-      frames: [{ state: 1, bobIds: [91 + index] }],
-    }));
-    const refs = resolveGatheringRefs([], { landscapeGfx: records });
-    expect([...gatheringAtlasStems(refs)]).toEqual(['ls_temp.human_player03']);
-    const binding = buildStockpileBinding(refs, new Set(['ls_temp.human_player03']));
-    expect(binding.flagsByPlayer).toEqual({});
-    expect(binding.roadMarkersByPlayer?.[2]).toEqual([{ layer: 'ls_temp.human_player03', bob: 91 }]);
-    expect(binding.wallMarkersByPlayer?.[2]).toEqual([{ layer: 'ls_temp.human_player03', bob: 92 }]);
-    expect(buildStockpileBinding(refs, new Set()).roadMarkersByPlayer).toEqual({});
-  });
-
   it('loads each authored player flag and omits unavailable colour families', () => {
     const second = {
       ...FLAG,

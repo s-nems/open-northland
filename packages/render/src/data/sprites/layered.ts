@@ -337,16 +337,6 @@ export function resolveStockpileDraw(
 ): BuildingDraw {
   if (typeof binding === 'number') return { bob: binding };
   if (item.goodType === undefined) {
-    const markers =
-      item.kind === 'roadsite'
-        ? binding.roadMarkersByPlayer
-        : item.kind === 'palisade'
-          ? binding.wallMarkersByPlayer
-          : undefined;
-    if (markers !== undefined) {
-      const marker = markers[item.player ?? 0];
-      return unwrapBobRef(marker === undefined ? binding.default : waveFrameAt(marker, tick));
-    }
     const flag =
       item.player === undefined || binding.flagsByPlayer === undefined
         ? binding.flag

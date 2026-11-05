@@ -162,7 +162,7 @@ describe('resolveStockpileDraw - per-good ground piles + delivery flag', () => {
     default: 0,
   };
 
-  it('uses distinct work, wall and road markers in the same colour slot without recolouring goods', () => {
+  it('plants the same work flag in a pile, a wall site and a road site of one colour slot', () => {
     const coloured = {
       ...binding,
       flagsByPlayer: {
@@ -171,17 +171,11 @@ describe('resolveStockpileDraw - per-good ground piles + delivery flag', () => {
           { layer: 'team-four', bob: 34 },
         ] as const,
       },
-      roadMarkersByPlayer: { 4: [{ layer: 'team-four', bob: 41 }] as const },
-      wallMarkersByPlayer: { 4: [{ layer: 'team-four', bob: 42 }] as const },
     };
-    for (const [kind, bob] of [
-      ['stockpile', 34],
-      ['palisade', 42],
-      ['roadsite', 41],
-    ] as const) {
+    for (const kind of ['stockpile', 'palisade', 'roadsite'] as const) {
       expect(
         resolveStockpileDraw(coloured, { ...pile(), kind, player: 4 }, FLAG_WAVE_TICKS_PER_FRAME),
-      ).toEqual({ layer: 'team-four', bob });
+      ).toEqual({ layer: 'team-four', bob: 34 });
       expect(resolveStockpileDraw(coloured, { ...pile(), kind, player: 2 }, 0)).toEqual({ bob: 0 });
     }
     expect(resolveStockpileDraw(coloured, { ...pile(5, 3), player: 4 }, 0)).toEqual({
