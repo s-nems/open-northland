@@ -12,6 +12,7 @@ import { guardEntry, pushEntryUrl, releaseDocument } from './view/platform/navig
 import { originalGameRedirect } from './view/platform/original-game-check.js';
 
 let cursorsInstalled = false;
+let colorBlindInstalled = false;
 
 /** Leaves the running entry for the one `search` names. */
 export type LaunchEntry = (search: string) => void;
@@ -56,6 +57,11 @@ export async function runEntry(
       const { installCursorTheme } = await import('./view/cursors/theme.js');
       installCursorTheme();
       cursorsInstalled = true;
+    }
+    if (!colorBlindInstalled) {
+      const { installColorBlindFilter } = await import('./view/accessibility/colorblind-filter.js');
+      installColorBlindFilter();
+      colorBlindInstalled = true;
     }
     onLoaded();
     // Only now: the screen this replaces, a world with its full overlay, draws until `onLoaded`.
