@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   aiControlEntity,
   ComputerColony,
+  PathFollow,
+  PathRoute,
   Position,
   Settler,
   Stockpile,
   setSettlerJob,
 } from '../../../src/components/index.js';
+import { fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
   exportSaveGame,
@@ -16,7 +19,8 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../../src/index.js';
-import { positionOfNode } from '../../../src/nav/halfcell.js';
+import { nodeOfPosition, positionOfNode } from '../../../src/nav/halfcell.js';
+import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
 import {
   colonyBuildingsOn,
   colonySettlersOn,
@@ -89,9 +93,8 @@ function seatOverSea(): Simulation {
 
 function foundColony(sim: Simulation): void {
   const carrier = aiControlEntity(sim.world, SEAT);
-  const terrain = sim.terrain;
-  if (carrier === null || terrain === undefined) throw new Error('setup: no carrier or terrain');
-  const land = terrain.componentOf(terrain.nodeAt(COLONY_STORE.x, COLONY_STORE.y));
+  if (carrier === null) throw new Error('setup: no carrier');
+  const land = colonyLand(sim);
   const site = { hx: COLONY_STORE.x, hy: COLONY_STORE.y };
   sim.world.add(carrier, ComputerColony, {
     colonies: [blankColony(land, { site })],
@@ -124,6 +127,38 @@ function seatWithTwoColonies(): { readonly sim: Simulation; readonly lands: read
     retryAt: 0,
   });
   return { sim, lands: [near, far] };
+}
+
+function colonyLand(sim: Simulation): number {
+  const terrain = sim.terrain;
+  if (terrain === undefined) throw new Error('setup: no terrain');
+  return terrain.componentOf(terrain.nodeAt(COLONY_STORE.x, COLONY_STORE.y));
+}
+
+/** Samples along a column step at which its position is read. */
+const STEP_SAMPLES = 16;
+
+/** A column step on `land` beside the strait, with a point on it whose position alone reads off `land`. */
+function shoreColumnStep(terrain: TerrainGraph, land: number) {
+  const onLand = (hx: number, hy: number) => terrain.componentOf(terrain.nodeAt(hx, hy)) === land;
+  const shore = 2 * STRAIT_TO;
+  for (let hx = shore - 1; hx <= shore + 1; hx++) {
+    for (let hy = COLONIST_AT.y; hy < COLONIST_AT.y + 2; hy++) {
+      if (!onLand(hx, hy) || !onLand(hx, hy + 2)) continue;
+      const from = positionOfNode(hx, hy);
+      const to = positionOfNode(hx, hy + 2);
+      for (let i = 1; i < STEP_SAMPLES; i++) {
+        const y = fx.add(
+          from.y,
+          fx.div(fx.mul(fx.sub(to.y, from.y), fx.fromInt(i)), fx.fromInt(STEP_SAMPLES)),
+        );
+        const read = nodeOfPosition(from.x, y);
+        if (!onLand(read.hx, read.hy))
+          return { from: { hx, hy }, to: { hx, hy: hy + 2 }, between: { x: from.x, y } };
+      }
+    }
+  }
+  throw new Error('setup: no column step passing over the water');
 }
 
 function storeOnColony(sim: Simulation): Entity {
@@ -167,6 +202,44 @@ describe('the home view of a seat', () => {
     const copy = restoreSimulation(saved, { content: aiContent(), map: islandMap() });
     expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).not.toContain(soldier);
     expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).toEqual(homeSettlers(copy.world, ctxOf(copy), SEAT));
+  });
+
+  it('keeps a colonist on the colony while a column step along its shore passes over the water', () => {
+    const sim = seatOverSea();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    const land = colonyLand(sim);
+    const colonist = ownedSettlers(sim.world, SEAT).find((e) => {
+      const { hx, hy } = nodeOfPosition(sim.world.get(e, Position).x, sim.world.get(e, Position).y);
+      return (
+        sim.world.get(e, Settler).jobType === CIVILIST && terrain.componentOf(terrain.nodeAt(hx, hy)) === land
+      );
+    });
+    if (colonist === undefined) throw new Error('setup: no colonist');
+    const step = shoreColumnStep(terrain, land);
+    sim.world.add(colonist, PathRoute, {
+      waypoints: [step.from, step.to].map(({ hx, hy }) => ({
+        ...positionOfNode(hx, hy),
+        node: terrain.nodeAt(hx, hy),
+      })),
+    });
+    sim.world.add(colonist, PathFollow, { index: 1, legElapsed: 0, legCost: 0 });
+    Object.assign(sim.world.mut(colonist, Position), step.between);
+    foundColony(sim);
+    expect(colonySettlersOn(sim.world, ctxOf(sim), SEAT, land)).toContain(colonist);
+  });
+
+  it('reports a split its key missed under the cache check', () => {
+    const sim = seatOverSea();
+    foundColony(sim);
+    const colonist = colonySettlersOn(sim.world, ctxOf(sim), SEAT, colonyLand(sim))[0];
+    if (colonist === undefined) throw new Error('setup: no colonist');
+    expect(sim.world.verifyCaches()).toEqual([]);
+    // A move by no ship, which the split's key never sees.
+    Object.assign(sim.world.mut(colonist, Position), positionOfNode(HOME_HQ.x, HOME_HQ.y));
+    expect(sim.world.verifyCaches()).toEqual([
+      `homeSettlerSplit of seat ${SEAT} disagrees with a fresh derivation: its key missed a change`,
+    ]);
   });
 
   it('never elects a colony store as the seat base', () => {
