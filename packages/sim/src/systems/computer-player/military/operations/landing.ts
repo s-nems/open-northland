@@ -39,7 +39,7 @@ import { marchOrders } from '../muster.js';
 import { unitPoints } from '../points.js';
 import { homeOf } from './band.js';
 import { type LandingAim, landingAim, stormObjective } from './landing-aim.js';
-import { isRelief, mayRelieve, reliefAim, reliefObjective } from './landing-relief.js';
+import { isRelief, mayRelieve, ownPointsOnLand, reliefAim, reliefObjective } from './landing-relief.js';
 import { believedLand, type FireSource, landingObjective, underFire } from './landing-target.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import {
@@ -259,18 +259,31 @@ function abortReason(env: OperationEnv, op: LandingOperation): OperationEndReaso
 }
 
 /** Whether the enemy fighters the seat sees near any of the ships' shores, each counted once, weigh at
- *  least the men aboard: read from the first ship's mooring on, while the wave waits aboard for the rest,
- *  for the whole wave. Costs the enemies' fighters. */
+ *  least the men aboard who go ashore, a ship's commander staying at its helm, and for a relief the seat's
+ *  own fighters on that land ({@link besideAshore}): read from the first ship's mooring on, while the wave
+ *  waits aboard for the rest, for the whole wave. Costs the enemies' fighters. */
 function outmatchedAshore(env: OperationEnv, op: LandingOperation): boolean {
   const { world, ctx, seat } = env;
-  let own = 0;
-  for (const e of op.members) own += unitPoints(world, ctx, e);
+  const helms = new Set<Entity>();
+  for (const ship of op.ships) {
+    const state = shipState(world, ship);
+    const commander = state === undefined ? null : vehicleCommander(state);
+    if (commander !== null) helms.add(commander);
+  }
+  let own = besideAshore(env, op);
+  for (const e of op.members) if (!helms.has(e)) own += unitPoints(world, ctx, e);
   let enemy = 0;
   for (const f of visibleEnemyFighters(world, ctx, seat)) {
     if (op.ships.some((ship) => nodeManhattan(f.at, ship.shore) <= RAID_DEFENCE_RADIUS_NODES))
       enemy += f.points;
   }
   return enemy > 0 && enemy >= own;
+}
+
+/** The points of the seat's own fighters a relief finds on the colony it sails for, its own men left out,
+ *  who fight the band beside it as its sizing counted them ({@link reliefAim}); 0 for any other landing. */
+function besideAshore(env: OperationEnv, op: LandingOperation): number {
+  return isRelief(op) ? ownPointsOnLand(env, rivalComponent(env, op), new Set(op.members)) : 0;
 }
 
 /**
@@ -478,7 +491,7 @@ function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
 
 /**
  * Whether the landed men are losing: the enemy fighters the seat sees within
- * {@link RAID_DEFENCE_RADIUS_NODES} of them outweigh them, or they lost {@link LANDING_RETREAT_LOSS_PCT} of
+ * {@link RAID_DEFENCE_RADIUS_NODES} of them outweigh them, with a relief's {@link besideAshore}, or they lost {@link LANDING_RETREAT_LOSS_PCT} of
  * the men set ashore and one of them stands in the reach of a tower or shelter of `fire` ({@link underFire}).
  */
 function losing(
@@ -489,7 +502,7 @@ function losing(
 ): boolean {
   const { world, ctx, seat } = env;
   const spots = landed.flatMap((e) => nodeOfEntity(world, e) ?? []);
-  let own = 0;
+  let own = besideAshore(env, op);
   for (const e of landed) own += unitPoints(world, ctx, e);
   // A fighter outside the band's box grown by the radius stands farther than the radius from every man.
   const box = boundsOf(spots, RAID_DEFENCE_RADIUS_NODES);
@@ -693,15 +706,20 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
   const seatsOf = (ship: Entity): number => world.get(ship, Vehicle).passengers.length;
   let least = 0;
   for (const ship of moored.slice(0, LANDING_FLEET_MIN_SHIPS)) least += seatsOf(ship);
+  const shipSeats = moored.map(seatsOf);
   let seats = 0;
-  for (const ship of moored) seats += seatsOf(ship);
+  for (const room of shipSeats) seats += room;
   const ranked = men
     .map((entity) => ({ entity, points: unitPoints(world, ctx, entity) }))
     .sort((a, b) => b.points - a.points || a.entity - b.entity);
-  const bigLanding = moored.length >= landingFewestShips(fleet) && men.length >= least;
+  const room = {
+    ships: shipSeats,
+    seats,
+    bigLanding: moored.length >= landingFewestShips(fleet) && men.length >= least,
+  };
   const aim =
-    (underAttack(world, seat) ? null : reliefAim(env, ranked, seats)) ??
-    (ratio === null ? null : landingAim(env, home, homeOf(env), ranked, ratio, { seats, bigLanding }));
+    (underAttack(world, seat) ? null : reliefAim(env, ranked, room)) ??
+    (ratio === null ? null : landingAim(env, home, homeOf(env), ranked, ratio, room));
   if (aim === null) return null;
   // The fewest ships, in id order, that seat the wave.
   const ships: Entity[] = [];

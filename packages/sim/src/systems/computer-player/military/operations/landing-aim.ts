@@ -68,7 +68,9 @@ export interface LandingAim {
 
 /** What the ships the landing may take hold. */
 export interface LandingRoom {
-  /** The seats of every free ship. */
+  /** The seats of each free ship, its helm's included, in the order the landing fills them. */
+  readonly ships: readonly number[];
+  /** Their seats together. */
   readonly seats: number;
   /** Enough ships and men for a big landing on a headquarters (`landing.ts`). */
   readonly bigLanding: boolean;
@@ -161,6 +163,29 @@ function candidatesOf(env: OperationEnv, home: number, from: HalfCellNode): Cand
   }
   const group = (c: Candidate): number => (c.headquarters === null ? 1 : 0);
   return candidates.sort((a, b) => group(a) - group(b) || a.distance - b.distance || a.land - b.land);
+}
+
+/** The points of the strongest `i` of `ranked` at index `i`, 0 at 0. */
+export function prefixPoints(ranked: readonly RankedMan[]): number[] {
+  const prefix = [0];
+  for (const m of ranked) prefix.push((prefix.at(-1) ?? 0) + m.points);
+  return prefix;
+}
+
+/**
+ * The points ashore of a wave of the strongest `count` men of `prefix` ({@link prefixPoints}) aboard the
+ * fewest of `ships` ({@link LandingRoom.ships}) that seat them: every such ship keeps its weakest man aboard
+ * at the helm (`crewsOf` in `landing.ts`), so the rest go ashore.
+ */
+export function pointsAshore(prefix: readonly number[], count: number, ships: readonly number[]): number {
+  let seats = 0;
+  let hulls = 0;
+  for (const room of ships) {
+    if (seats >= count) break;
+    seats += room;
+    hulls++;
+  }
+  return prefix[Math.max(0, count - hulls)] ?? 0;
 }
 
 function pointsOf(men: readonly RankedMan[]): number {

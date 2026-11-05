@@ -16,7 +16,14 @@ import { playerSeesNode } from '../../../vision/gates.js';
 import { minutesToTicks } from '../../game-phase.js';
 import { SOLDIERS_PER_SHIP } from '../../workforce/craft.js';
 import { isLiveFighter, unitPoints } from '../points.js';
-import { LANDING_EDGE, type LandingAim, type RankedMan } from './landing-aim.js';
+import {
+  LANDING_EDGE,
+  type LandingAim,
+  type LandingRoom,
+  pointsAshore,
+  prefixPoints,
+  type RankedMan,
+} from './landing-aim.js';
 import { believedLand } from './landing-target.js';
 import type { OperationEnv } from './lifecycle.js';
 import { nodeOfEntity, visibleEnemyFighters } from './raid-target.js';
@@ -42,6 +49,8 @@ interface ColonyThreatSeen {
   readonly points: number;
 }
 
+const NOBODY: ReadonlySet<Entity> = new Set();
+
 /** The colony phases in which the colony stands on its land, so there is something to relieve. */
 const STANDING_PHASES: ReadonlySet<ColonyPhase> = new Set(['landing', 'founding', 'running']);
 
@@ -60,17 +69,20 @@ export function isRelief(op: DeepReadonly<LandingOperation>): boolean {
  * with a band its garrison saw lately or an enemy ship moored there, and enemy fighters in sight on that
  * land, the enemy points seen there (a moored ship adds {@link SOLDIERS_PER_SHIP} men of the `ranked` men's
  * mean, an approximation of a load the seat cannot see) past {@link LANDING_EDGE} of the seat's own fighters
- * on that land; the strongest of `ranked` that outweigh the gap by that edge, at least
- * {@link RELIEF_LEAST_MEN}, within `seats`. Costs the enemies' ships and, with a colony to weigh, their
- * fighters and the seat's own.
+ * on that land; the strongest of `ranked` whose men ashore ({@link pointsAshore}, the helms stay aboard)
+ * outweigh the gap by that edge, at least {@link RELIEF_LEAST_MEN}, within `room`. Costs the enemies' ships
+ * and, with a colony to weigh, their fighters and the seat's own.
  */
-export function reliefAim(env: OperationEnv, ranked: readonly RankedMan[], seats: number): LandingAim | null {
+export function reliefAim(
+  env: OperationEnv,
+  ranked: readonly RankedMan[],
+  room: LandingRoom,
+): LandingAim | null {
   const { world, ctx, seat } = env;
   const colonies = seatColonies(world, seat).filter((c) => STANDING_PHASES.has(c.phase));
   if (colonies.length === 0 || ranked.length === 0) return null;
-  let total = 0;
-  for (const m of ranked) total += m.points;
-  const shipPoints = Math.floor((total * SOLDIERS_PER_SHIP) / ranked.length);
+  const prefix = prefixPoints(ranked);
+  const shipPoints = Math.floor(((prefix.at(-1) ?? 0) * SOLDIERS_PER_SHIP) / ranked.length);
   const ships = enemyShipsAt(env, new Set(colonies.map((c) => c.land)), shipPoints);
   const watched = colonies.filter(
     (c) =>
@@ -91,15 +103,14 @@ export function reliefAim(env: OperationEnv, ranked: readonly RankedMan[], seats
     if (gap > 0 && (best === null || gap > best.gap)) best = { land: colony.land, gap, first };
   }
   if (best === null) return null;
-  const men: Entity[] = [];
-  let points = 0;
-  for (const m of ranked) {
-    if (men.length >= RELIEF_LEAST_MEN && points * LANDING_EDGE.den >= best.gap) break;
-    if (men.length >= seats) return null;
-    men.push(m.entity);
-    points += m.points;
+  const { gap } = best;
+  const reached = (count: number): boolean =>
+    count >= RELIEF_LEAST_MEN && pointsAshore(prefix, count, room.ships) * LANDING_EDGE.den >= gap;
+  let count = 0;
+  while (!reached(count)) {
+    if (count >= Math.min(ranked.length, room.seats)) return null;
+    count++;
   }
-  if (men.length < RELIEF_LEAST_MEN || points * LANDING_EDGE.den < best.gap) return null;
   return {
     land: best.land,
     owner: best.first.owner,
@@ -108,7 +119,7 @@ export function reliefAim(env: OperationEnv, ranked: readonly RankedMan[], seats
     entity: null,
     believed: believedLand(env, best.land),
     storm: false,
-    men,
+    men: ranked.slice(0, count).map((m) => m.entity),
   };
 }
 
@@ -161,12 +172,21 @@ function enemyFightersOn(env: OperationEnv, lands: ReadonlySet<number>): ColonyT
   return seen;
 }
 
-/** The seat's own fighters' points by the land of `lands` they stand on. */
-function ownPointsOn(env: OperationEnv, lands: ReadonlySet<number>): Map<number, number> {
+/** The points of the seat's own fighters standing on `land` but `except`: what a relief finds there. */
+export function ownPointsOnLand(env: OperationEnv, land: number, except: ReadonlySet<Entity>): number {
+  return ownPointsOn(env, new Set([land]), except).get(land) ?? 0;
+}
+
+/** The seat's own fighters' points by the land of `lands` they stand on, but `except`. */
+function ownPointsOn(
+  env: OperationEnv,
+  lands: ReadonlySet<number>,
+  except: ReadonlySet<Entity> = NOBODY,
+): Map<number, number> {
   const { world, ctx, seat } = env;
   const byLand = new Map<number, number>();
   for (const e of ownedFightersOf(world, ctx.content, seat)) {
-    if (!isLiveFighter(world, e)) continue;
+    if (except.has(e) || !isLiveFighter(world, e)) continue;
     const at = nodeOfEntity(world, e);
     if (at === null) continue;
     const land = landOf(env, at);

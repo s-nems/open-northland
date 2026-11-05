@@ -35,7 +35,7 @@ import {
   COLONY_RAID_LEAST_MEN,
   LANDING_EDGE,
 } from '../../../../../src/systems/computer-player/military/operations/landing-aim.js';
-import { RELIEF_LEAST_MEN } from '../../../../../src/systems/computer-player/military/operations/landing-relief.js';
+import { nodeOfEntity } from '../../../../../src/systems/computer-player/military/operations/raid-target.js';
 import { everyFighterPoints } from '../../../../../src/systems/computer-player/military/points.js';
 import { militaryOrdersOf } from '../../../../../src/systems/computer-player/strategy/military.js';
 import {
@@ -95,6 +95,9 @@ const GUARD_OFFSET = 6;
 const ARMY_RANK = 6;
 /** The foe's band that lands on the seat's colony. */
 const RAIDERS = 6;
+/** The seat's own men standing on the colony a relief sails for, at a post out of the band's reach. */
+const GARRISON = 5;
+const GARRISON_POST = { x: 130, y: 114 };
 /** A foe army that outweighs the seat's whole fleet load several times over. */
 const OUTMATCHING_FOES = 120;
 const FOE_ARMY = { x: 110, y: 0 };
@@ -280,6 +283,16 @@ function menAcross(sim: Simulation): Entity[] {
     const p = sim.world.get(e, Position);
     const node = nodeOfPosition(p.x, p.y);
     return terrain.componentOf(terrain.nodeAtClamped(node.hx, node.hy)) === across;
+  });
+}
+
+/** `owner`'s live men standing on `land`. */
+function menOf(sim: Simulation, owner: number, land: number): Entity[] {
+  const terrain = terrainOf(sim);
+  return [...sim.world.query(Settler, Owner, Position)].filter((e) => {
+    if (sim.world.get(e, Owner).player !== owner) return false;
+    const node = nodeOfEntity(sim.world, e);
+    return node !== null && terrain.componentOf(terrain.nodeAtClamped(node.hx, node.hy)) === land;
   });
 }
 
@@ -611,30 +624,49 @@ describe('landing operations', () => {
     expect(militaryOrdersOf(sim.world, SEAT).launchRatio).not.toBeNull();
   });
 
-  it('relieves its colony from home with a band sized to the enemy it sees there', () => {
-    const { sim } = landingWorld({ colony: true });
-    const terrain = terrainOf(sim);
-    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
-    const carrier = aiControlEntity(sim.world, SEAT);
-    if (carrier === null) throw new Error('setup: no AI seat');
-    // The colony's garrison saw the band land, as its own defence notes it.
-    const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
-    const colony = blankColony(colonyLand, { threat });
-    sim.world.add(carrier, ComputerColony, { colonies: [colony], rejected: [], retryAt: 0 });
-    spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
-    let seen: OperationView | undefined;
-    runUntil(sim, LANDING_LIMIT_TICKS, () => {
-      seen = landings(sim)[0] ?? seen;
-      return (seen?.landing?.landed ?? 0) > 0;
-    });
-    const target = seen?.target;
-    expect(
-      target === undefined ? null : terrain.componentOf(terrain.nodeAtClamped(target.hx, target.hy)),
-    ).toBe(colonyLand);
-    expect(seen?.landing?.startMen).toBeGreaterThanOrEqual(RELIEF_LEAST_MEN);
-    expect(seen?.landing?.startMen).toBeLessThan(RAIDERS * 2 + RELIEF_LEAST_MEN);
-    expect(seen?.landing?.landed).toBeGreaterThan(0);
-  });
+  it.each([
+    ['', 0],
+    [' beside its garrison', GARRISON],
+  ])(
+    'relieves its colony%s with men ashore that outweigh the band, beats it and sails home',
+    (_, garrison) => {
+      const { sim } = landingWorld({ colony: true, armed: true });
+      const terrain = terrainOf(sim);
+      const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
+      const carrier = aiControlEntity(sim.world, SEAT);
+      if (carrier === null) throw new Error('setup: no AI seat');
+      // The colony's garrison saw the band land, as its own defence notes it.
+      const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
+      const colony = blankColony(colonyLand, { threat });
+      sim.world.add(carrier, ComputerColony, { colonies: [colony], rejected: [], retryAt: 0 });
+      spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
+      spawnBand(sim, garrison, GARRISON_POST, GUARD_RANK, SEAT);
+      let seen: OperationView | undefined;
+      let joined = false;
+      runUntil(sim, LANDING_LIMIT_TICKS, () => {
+        seen = landings(sim)[0] ?? seen;
+        // The garrison, posted out of the band's reach, comes up beside the relief as it lands.
+        if (!joined && (seen?.landing?.landed ?? 0) > 0) {
+          joined = true;
+          const posted = menOf(sim, SEAT, colonyLand).filter((e) => !seen?.members.includes(e));
+          for (const e of posted) sim.world.destroy(e);
+          spawnBand(sim, posted.length, { x: FOE_FARM.x, y: FOE_FARM.y + GUARD_OFFSET }, GUARD_RANK, SEAT);
+        }
+        return seen?.state === 'done' && shipsHomeEmpty(sim);
+      });
+      const target = seen?.target;
+      expect(
+        target === undefined ? null : terrain.componentOf(terrain.nodeAtClamped(target.hx, target.hy)),
+      ).toBe(colonyLand);
+      // Every man weighs the same: the fewest set ashore that, with the garrison, outweigh the band by the
+      // landing's edge.
+      const ashore = Math.max(0, Math.ceil((RAIDERS * LANDING_EDGE.num) / LANDING_EDGE.den) - garrison);
+      expect(seen?.landing?.landed).toBe(ashore);
+      expect(seen?.reason).toBe('nothingToStrike');
+      expect(menOf(sim, FOE, colonyLand)).toEqual([]);
+      expect(menOf(sim, SEAT, colonyLand).length).toBeLessThanOrEqual(garrison);
+    },
+  );
 
   it('relieves its colony while its posture holds the army home, and raids nothing', () => {
     const { sim } = landingWorld({ colony: true, foe: [{ buildingType: FARM_TYPE, at: FOE_FARM }] });
