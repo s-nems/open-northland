@@ -117,7 +117,10 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     return goods;
   };
 
-  for (const e of dueThisBeat(world, ctx.tick)) {
+  // Indexed loops: on this every-tick pass a for-of costs an iterator result per step.
+  const due = dueThisBeat(world, ctx.tick);
+  for (let d = 0; d < due.length; d++) {
+    const e = due[d] as Entity;
     if (!world.has(e, Position)) continue; // the pass plans positioned settlers only
     const owner = ownerOf(world, e);
     if (owner === undefined) continue;
@@ -150,7 +153,8 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     const upgrade = upgradesOf(owner) && upgradeDue(ctx.content, e, ctx.tick, eq);
     // Resolved once, and only when a grant has both a free slot and spare stock.
     let route: GrantRoute | undefined;
-    for (const spec of wanted) {
+    for (let w = 0; w < wanted.length; w++) {
+      const spec = wanted[w] as GrantSpec;
       const slot = grantSlotFor(ctx.content, spec, eq, toolless, kept, upgrade);
       if (slot === null) continue;
       const underway = (heldAtStart?.get(spec.goodType) ?? 0) + stampedHere.of(owner, spec.goodType);

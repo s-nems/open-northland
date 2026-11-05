@@ -26,8 +26,9 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
     const stock = accessibleStockAmounts(world, e);
     if (stock === undefined) continue;
     if (isPassiveStore(world, ctx, e)) continue;
-    for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
-      if (amount > 0 && isWorkplaceOutput(world, ctx, e, goodType)) return true;
+    // An existence test is order-free, so it reads the stock in its own order, unsorted.
+    for (const goodType of stock.keys()) {
+      if ((stock.get(goodType) ?? 0) > 0 && isWorkplaceOutput(world, ctx, e, goodType)) return true;
     }
   }
   return false;

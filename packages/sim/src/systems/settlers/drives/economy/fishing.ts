@@ -1,6 +1,13 @@
+import { footprintCellDx } from '@open-northland/data';
 import { FishSwarm, JobAssignment, Position } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
-import { hexDistance, hexNeighboursOf, nodeOfPosition } from '../../../../nav/halfcell.js';
+import {
+  HEX_NEIGHBOUR_OFFSETS,
+  hexDistance,
+  nodeHxOfPosition,
+  nodeHyOfPosition,
+  nodeOfPosition,
+} from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { FISH_CAST_ATOMIC, FISH_SHORE_SEARCH_RADIUS, fishGoodOf } from '../../../economy/fish.js';
 import { gatherGoodOpen } from '../../../economy/gather-goods.js';
@@ -11,7 +18,7 @@ import { jobExperiencePercent, strokesPerUnit, workRepeatsFor } from '../../../p
 import { atomicDuration } from '../../../readviews/animations.js';
 import { edibleGoodFormOf } from '../../../readviews/food.js';
 import { isFisherJob } from '../../../readviews/index.js';
-import { fishSwarmsNearNode } from '../../../spatial/fish.js';
+import { fishSwarmsNearNode, visitFishSwarmsNear } from '../../../spatial/fish.js';
 import { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { atOrWalk, startAtomic } from '../../atomics/start.js';
@@ -100,6 +107,7 @@ function nearbyFishingTargets(
   const from = shoreSearchOrigin(plan);
   const origin = terrain.coordsOf(from);
   const found: FishingTarget[] = [];
+  const edge = new WaterEdgeSwarm(plan);
   for (let radius = 0; radius <= FISH_SHORE_SEARCH_RADIUS; radius++) {
     const count = ringOffsetCount(radius);
     for (let i = 0; i < count; i++) {
@@ -110,7 +118,7 @@ function nearbyFishingTargets(
       if (!terrain.isWalkable(shore)) continue;
       if (plan.limit !== null && !plan.limit.allowsNode(shore)) continue;
       if (unreachableWorkCell(gates, here, shore) || regions.unroutable(here, shore)) continue;
-      const target = fishAtWaterEdge(plan, x, y);
+      const target = edge.at(x, y);
       if (target !== null) {
         found.push({ ...target, shore, dist: manhattan(terrain, from, shore) });
         if (found.length === 8) return found;
@@ -120,36 +128,62 @@ function nearbyFishingTargets(
   return found;
 }
 
-function fishAtWaterEdge(
-  plan: PlannerContext,
-  shoreX: number,
-  shoreY: number,
-): Pick<FishingTarget, 'entity' | 'water'> | null {
-  const { world, terrain } = plan;
-  let best: { entity: Entity; water: NodeId; distance: number; swarmNode: NodeId } | null = null;
-  for (const water of hexNeighboursOf(shoreX, shoreY)) {
-    if (!terrain.inBounds(water.hx, water.hy)) continue;
-    const waterNode = terrain.nodeAt(water.hx, water.hy);
-    if (!terrain.isWater(waterNode)) continue;
-    const continent = terrain.waterContinents?.[waterNode];
-    for (const entity of fishSwarmsNearNode(world, water.hx, water.hy, FISH_SHORE_SEARCH_RADIUS - 1)) {
-      const swarm = world.get(entity, FishSwarm);
-      if (swarm.count <= 0 || (continent !== undefined && swarm.continent !== continent)) continue;
-      const at = world.get(entity, Position);
-      const point = nodeOfPosition(at.x, at.y);
-      const distance = hexDistance(water, point);
-      if (distance >= FISH_SHORE_SEARCH_RADIUS) continue;
-      const swarmNode = terrain.nodeAtClamped(point.hx, point.hy);
-      if (
-        best === null ||
-        closer(distance, swarmNode, best.distance, best.swarmNode) ||
-        (distance === best.distance && swarmNode === best.swarmNode && entity < best.entity)
-      ) {
-        best = { entity, water: waterNode, distance, swarmNode };
-      }
+/**
+ * The swarm a shore node fishes: the nearest live one of its water's continent within the search radius of
+ * a water node beside it, by (distance, swarm node, id), a total order, so the visit order is free.
+ */
+class WaterEdgeSwarm {
+  private readonly water: { hx: number; hy: number } = { hx: 0, hy: 0 };
+  private readonly point: { hx: number; hy: number } = { hx: 0, hy: 0 };
+  private waterNode = 0 as NodeId;
+  private continent: number | undefined;
+  private entity: Entity | null = null;
+  private bestWater = 0 as NodeId;
+  private distance = 0;
+  private swarmNode = 0 as NodeId;
+
+  constructor(private readonly plan: PlannerContext) {}
+
+  at(shoreX: number, shoreY: number): Pick<FishingTarget, 'entity' | 'water'> | null {
+    const { world, terrain } = this.plan;
+    this.entity = null;
+    for (const offset of HEX_NEIGHBOUR_OFFSETS) {
+      const hx = shoreX + footprintCellDx(shoreY, offset);
+      const hy = shoreY + offset.dy;
+      if (!terrain.inBounds(hx, hy)) continue;
+      const waterNode = terrain.nodeAt(hx, hy);
+      if (!terrain.isWater(waterNode)) continue;
+      this.water.hx = hx;
+      this.water.hy = hy;
+      this.waterNode = waterNode;
+      this.continent = terrain.waterContinents?.[waterNode];
+      visitFishSwarmsNear(world, hx, hy, FISH_SHORE_SEARCH_RADIUS - 1, this.visit);
     }
+    return this.entity === null ? null : { entity: this.entity, water: this.bestWater };
   }
-  return best === null ? null : { entity: best.entity, water: best.water };
+
+  private readonly visit = (entity: Entity): void => {
+    const { world, terrain } = this.plan;
+    const swarm = world.get(entity, FishSwarm);
+    if (swarm.count <= 0 || (this.continent !== undefined && swarm.continent !== this.continent)) return;
+    const at = world.get(entity, Position);
+    this.point.hx = nodeHxOfPosition(at.x, at.y);
+    this.point.hy = nodeHyOfPosition(at.x, at.y);
+    const distance = hexDistance(this.water, this.point);
+    if (distance >= FISH_SHORE_SEARCH_RADIUS) return;
+    const swarmNode = terrain.nodeAtClamped(this.point.hx, this.point.hy);
+    // Strict, so a swarm another water already reached at the same rank keeps that water.
+    if (
+      this.entity === null ||
+      closer(distance, swarmNode, this.distance, this.swarmNode) ||
+      (distance === this.distance && swarmNode === this.swarmNode && entity < this.entity)
+    ) {
+      this.entity = entity;
+      this.bestWater = this.waterNode;
+      this.distance = distance;
+      this.swarmNode = swarmNode;
+    }
+  };
 }
 
 /** Compatibility path for mapless/synthetic terrain fixtures which author swarms without water lanes. */

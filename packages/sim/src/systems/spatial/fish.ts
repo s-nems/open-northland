@@ -12,3 +12,14 @@ const index = createRegionIndex(
 export function fishSwarmsNearNode(world: World, hx: number, hy: number, reach: number): Entity[] {
   return index.near(world, hx, hy, reach);
 }
+
+/** The swarms {@link fishSwarmsNearNode} lists, handed to `visit` in no particular order. */
+export function visitFishSwarmsNear(
+  world: World,
+  hx: number,
+  hy: number,
+  reach: number,
+  visit: (e: Entity) => void,
+): void {
+  index.visitNear(world, hx, hy, reach, visit);
+}
