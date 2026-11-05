@@ -10,12 +10,16 @@ import { placementProbe } from '../../footprint/placement/building.js';
 /** The home chain's base tier. Its reserved zone already spans the top tier's body, so a colony's room is
  *  counted in these whatever tier it raises. */
 const COLONY_HOME_ID = 'home_level_00';
+/** The step between the anchors tried, in half-cell nodes on each axis (authored, a cost trade): a home's
+ *  reserved zone spans several nodes, so the even lattice still packs the room's homes, at a quarter of the
+ *  probes. */
+const HOME_ANCHOR_STEP = 2;
 
 /**
  * How many homes fit side by side within `radius` Manhattan nodes of `at` on `land` as the map stands now,
- * placed greedily nearest first with their reserved zones kept apart, at most `cap`: the free room a
- * colony founded there has for homes, workshops and towers alike. Costs a placement probe per node of the
- * diamond until `cap` is reached.
+ * placed greedily nearest first on the even node lattice with their reserved zones kept apart, at most
+ * `cap`: the free room a colony founded there has for homes, workshops and towers alike. Costs a placement
+ * probe per lattice node of the diamond, a quarter of its nodes, until `cap` is reached.
  */
 export function homesFitNear(
   world: World,
@@ -41,8 +45,8 @@ export function homesFitNear(
     for (const slot of slots) taken.add(slot);
     homes++;
   };
-  for (let r = 0; r <= radius && homes < cap; r++) {
-    for (let dy = -r; dy <= r && homes < cap; dy++) {
+  for (let r = 0; r <= radius && homes < cap; r += HOME_ANCHOR_STEP) {
+    for (let dy = -r; dy <= r && homes < cap; dy += HOME_ANCHOR_STEP) {
       const span = r - Math.abs(dy);
       tryAt(at.hx - span, at.hy + dy);
       if (span > 0) tryAt(at.hx + span, at.hy + dy);

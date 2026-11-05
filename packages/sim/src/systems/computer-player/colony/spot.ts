@@ -120,7 +120,9 @@ export function colonySpot(
 /** How far round a shore its colony's first buildings and gatherers look, in Manhattan nodes (authored: the
  *  store's walk range). */
 const SHORE_LOOK_NODES = 50;
-/** Sampling step of a shore's open ground, so a look costs a few hundred node reads. */
+/** Sampling step of a shore's open ground, so its open count costs a few hundred node reads; the room for
+ *  homes beside it ({@link homesFitNear}) costs a placement probe per lattice node of the same diamond, up to
+ *  about thirteen hundred, until {@link SHORE_HOMES_FULL} fit. */
 const SHORE_LOOK_STEP = 3;
 /** A shore's score per {@link LAND_GOOD_IDS} good in reach and per live swarm, against one per open node
  *  sampled: a good nobody can reach costs a colony more than a corner of room (authored). */
