@@ -377,6 +377,42 @@ describe('world batcher palette LUT', () => {
     batcher.destroy();
   });
 
+  it('starts a batch for a paletted element whose LUT differs from its batch’s, in the same draw run', () => {
+    const WorldBatcher = installWorldBatcher();
+    // Three page slots plus the LUT's: every page fits one batch, so only the LUTs split it.
+    const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT + 2 });
+    const humans = new TextureSource({ width: 256, height: 4 });
+    const vehicles = new TextureSource({ width: 256, height: 4 });
+    const walker = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    markPalettedTexture(walker, humans);
+    const site = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    markPalettedTexture(site, vehicles);
+    const house = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    const elements = [quad(walker, 1), quad(house), quad(site, 2), quad(house), quad(walker, 3)];
+
+    batcher.begin();
+    for (const element of elements) batcher.add(element);
+    const instructions = new InstructionSet();
+    batcher.break(instructions);
+
+    const batches = batcher.batches.slice(0, batcher.batchIndex);
+    expect(batches.map(({ textures }) => textures.textures.slice(0, textures.count))).toEqual([
+      [walker.source, house.source, humans, humans],
+      [site.source, house.source, vehicles, vehicles],
+      [walker.source, humans, humans, humans],
+    ]);
+    expect(elements.map((element) => batches.indexOf(element._batch))).toEqual([0, 0, 1, 1, 2]);
+    expect(batches.map(({ start, size }) => [start, size])).toEqual([
+      [0, 12],
+      [12, 12],
+      [24, 6],
+    ]);
+    // Only the first batch binds the program and geometry, as when pages alone split a run.
+    expect(batches.map(({ action }) => action)).toEqual(['startBatch', 'renderBatch', 'renderBatch']);
+    expect(instructions.instructionSize).toBe(batches.length);
+    batcher.destroy();
+  });
+
   /** Pixi's own WebGL batch pipe and adaptor over a renderer that records texture binds and draws. */
   function recordingPipe() {
     const bound: [TextureSource, number][] = [];

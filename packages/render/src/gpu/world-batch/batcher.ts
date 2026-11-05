@@ -585,6 +585,11 @@ function defineWorldBatcher(): WorldBatcherClass {
     /** Paletted elements packed by the running {@link break}, before their batch's texture list is final. */
     private readonly paletted: BatchableElement[] = [];
     private breaking = false;
+    /** The LUT of the paletted elements added since the last {@link break}, once one is added. */
+    private runLut: TextureSource | undefined;
+    /** Where an added element reads another LUT than the paletted ones before it: each such element
+     *  starts a run of its own, which Pixi splits further by pages. */
+    private readonly lutRunStarts: number[] = [];
     /** Pages elements left since the last build, which their batches may still list. */
     private readonly leftPages = new Set<TextureSource>();
     /** The render group whose instructions this batcher builds; Pixi keeps one batcher per group. */
@@ -664,7 +669,22 @@ function defineWorldBatcher(): WorldBatcherClass {
     override begin(): void {
       this.forgetLeftPages();
       this.texelsPerUnit = Number.POSITIVE_INFINITY;
+      this.endLutRuns();
       super.begin();
+    }
+
+    override add(element: BatchableElement): void {
+      const lut = palettedLutOf(element.texture);
+      if (lut !== undefined) {
+        if (this.runLut !== undefined && this.runLut !== lut) this.lutRunStarts.push(this.elementSize);
+        this.runLut = lut;
+      }
+      super.add(element);
+    }
+
+    private endLutRuns(): void {
+      this.runLut = undefined;
+      this.lutRunStarts.length = 0;
     }
 
     /** The sampling the draw starting now needs: unmagnified while no element this batcher packed can be
@@ -726,13 +746,23 @@ function defineWorldBatcher(): WorldBatcherClass {
 
     /** Pixi lists a batch's pages in the order its elements first use them, contiguous from slot 0,
      *  which `bindWorldBatchPagesAndLut` relies on. Keeping a page in one slot across batches cut binds
-     *  by a third but cost 2 to 13% GPU time. */
+     *  by a third but cost 2 to 13% GPU time. Each LUT run of the added elements breaks on its own, so
+     *  a batch never meets a second LUT. */
     override break(instructionSet: InstructionSet): void {
+      const end = this.elementSize;
+      const firstBatch = this.batchIndex;
       this.breaking = true;
       try {
-        super.break(instructionSet);
+        for (const runStart of this.lutRunStarts) {
+          this.elementSize = runStart;
+          this.breakRun(instructionSet, firstBatch);
+        }
+        this.elementSize = end;
+        this.breakRun(instructionSet, firstBatch);
       } finally {
+        this.elementSize = end;
         this.breaking = false;
+        this.endLutRuns();
       }
       for (const element of this.paletted) {
         const lut = palettedLutOf(element.texture);
@@ -741,6 +771,15 @@ function defineWorldBatcher(): WorldBatcherClass {
         }
       }
       this.paletted.length = 0;
+    }
+
+    /** Breaks the added elements up to `elementSize`. A run after the first continues the draws its
+     *  break started, with the program and geometry still bound, as a batch Pixi splits for pages does. */
+    private breakRun(instructionSet: InstructionSet, firstBatch: number): void {
+      const run = this.batchIndex;
+      super.break(instructionSet);
+      const batch = this.batches[run];
+      if (run > firstBatch && run < this.batchIndex && batch !== undefined) batch.action = 'renderBatch';
     }
 
     /** Lists `lut` at the batch's LUT slot, filling the page slots up to it with the LUT as well so the
