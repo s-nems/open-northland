@@ -43,8 +43,9 @@ name to an unrelated discrete card (`intel radeong 0.4 on amd tonga` at 119 fps 
 `amd radeon polaris` at 60 fps without), so every such APU gets tier 3 whatever its size. Quality fits
 the seven-unit Vega 7 ([laptop GPUs](#laptop-gpus-at-19201080)). The device ids of AMD's
 two-unit RDNA 2 iGPUs in the published PCI ID list (Granite Ridge `0x13C0`, Mendocino `0x1506`, Raphael
-`0x164E`, sold as Radeon 610M or AMD Radeon Graphics) start on Balanced instead: by unit count and clock they have under a third of its throughput,
-an estimate rather than a measurement. Other ids, and a name without one, keep the library's tier.
+`0x164E`, sold as Radeon 610M or AMD Radeon Graphics) start on Balanced instead: by unit count and
+clock they have under a third of its throughput, an estimate rather than a measurement. Other ids, and
+a name without one, keep the library's tier.
 
 ## Cost basis
 
@@ -53,7 +54,7 @@ an estimate rather than a measurement. Other ids, and a name without one, keep t
 | xBR / enhanced sampling | Multi-tap sprite/palette sampling and edge arithmetic; also enhanced terrain sampling and building minification. Cost depends on covered pixels, DPR and zoom. | See [laptop GPUs](#laptop-gpus-at-19201080) |
 | xBRZ / Super-xBR / MMPX | One GPU redraw of each plain page a view draws at twice its size, at most 1 Mi texels a frame, then the twins' memory: up to a 1.5 GiB budget against 433 MB for the pages themselves on `magiczny_las` late game. Characters, flat decor (trees, rocks, grass), construction sites and damage overlays keep xBR, terrain filtering or the sharp path. | See the magnifier scenarios of `npm run bench:gpu`; a dense 1440×900 view holds 1.45 GB of twins |
 | Enhanced shadows | Cached blur baking and uploads; flat decor uses a 6×6 sampling footprint. | None at zoom 1; on is cheaper than off below zoom 1 and on a DPR 2 display (14% of the frame there), because a soft bake samples once where the authored silhouette goes through the magnifier |
-| Weather | Screen-covering procedural atmosphere, precipitation, ground reactions and cover updates. | See the weather scenarios of `npm run bench:gpu` |
+| Weather | Screen-covering procedural atmosphere, precipitation, ground reactions and cover updates. | See [laptop GPUs](#laptop-gpus-at-19201080) |
 | Environment motion | Per-frame vegetation updates; visible shore waves also draw a lift map over the waves' rectangle, copy the ground under them and redraw the wave quads. | No GPU cost above noise on the M2; shore waves in view at ×3 cost 0.65 ms at 1080p and 3.4 ms at 4K on an Intel UHD 770 |
 | Enhanced water | Terrain shader swell and domain-warped noise shimmer on water pixels, and the swash on the coast band; shore waves are owned by environment motion. | On an Apple M2 Pro at 1440×900, a coast view on `arabskie_wyspy_wolna_gra_mieszana` with half the screen sea: 0.2 ms of a 0.95 ms frame at zoom 1 and 0.16 ms of 0.9 ms at zoom 2, the swash about 0.07 ms of it; zoomed out to 0.35, 0.13-0.15 ms of 1.1-1.4 ms |
 | Building grounding / damage | Cached source-pixel analysis, baking and uploads; extra overlays or detailed smoke/flame/debris sprites. | Grounding: on an Intel UHD 770 at 1080p, 1.0 to 1.1 ms of a 13.4 ms dense-town frame with xBR at zoom 1 and 0.35 ms of 6 ms with the filter off, nearly all of it the shade and cover overlays' fill; damage: none above noise without fires in view |
@@ -64,12 +65,13 @@ an estimate rather than a measurement. Other ids, and a name without one, keep t
 | Render scale | Every world pixel at the scale squared, and at zoom 1 every sprite magnified. | 1.5 costs about 3.6 times the frame and 2 about 6.5 times; a DPR 2 display at scale 1 about 7 times |
 | Dense displays (`backingDensity`, default `auto`) | From 1.5 device pixels per CSS pixel times render scale, the world draws at one texel per CSS pixel and one pass upscales it: xBR with enhanced sampling on, sharp-bilinear with it off; the HUD, minimap and portraits stay native. `native` keeps every device pixel. | Intel UHD 770 at 3840x2160 (DPR 2), dense `magiczny_las` town at zoom 1 with xBR: 98.6 ms native, 15.9 ms sharp, 19.5 ms xbr; Apple M2 Pro at 1440x900 DPR 2: 18.8 ms native, 2.9 ms sharp, 3.5 ms xbr |
 
-The measured column comes from an Apple M2 Pro at 1440×900 with every other option on, `magiczny_las`
-(six hard AI) and `piec_dolin` (fifteen) at tick 100000: GPU time of the paused, GPU-bound
-[per-setting loop](PERFORMANCE.md#per-setting-gpu-cost) with the option on against off, interleaved,
-and renderer CPU time at ×3. It ranks the options; it does
-not predict a weak GPU's milliseconds, validate the tier-to-settings mapping or quantify weather.
-Weak-device weather defaults are precautionary.
+A cell that names no GPU comes from an Apple M2 Pro at 1440×900 with every other option on,
+`magiczny_las` (six hard AI) and `piec_dolin` (fifteen) at tick 100000: GPU time of an earlier hand-run
+form of the paused, GPU-bound [per-setting loop](PERFORMANCE.md#per-setting-gpu-cost) with the option
+on against off, interleaved, and renderer CPU time at ×3. The cells that point to the laptop table come
+from `npm run bench:gpu-settings`, the others name their GPU and tool. The column ranks the options; it
+does not predict another GPU's milliseconds or validate the tier-to-settings mapping. Weak-device
+weather defaults are precautionary.
 
 ### Laptop GPUs at 1920×1080
 

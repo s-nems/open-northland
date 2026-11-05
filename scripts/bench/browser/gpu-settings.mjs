@@ -36,8 +36,8 @@ const SETTLE_FRAMES = 30;
 const PRIMING_FRAMES = 15;
 /** Redraws per timed state; the span over them is the state's milliseconds per frame. */
 const TIMED_FRAMES = 60;
-/** A paused water clock still steps the shore waves at the base tick rate: 12 a second, every fifth
- *  frame at the default 60 fps cap, so the loop redraws their lift map as often. */
+/** Play steps the shore waves at the base tick rate, 12 a second: every fifth frame at the default
+ *  60 fps cap. The paused water clock holds them, so the loop redraws their lift map that often itself. */
 const WAVE_STEP_FRAMES = 5;
 /** A prescaled art filter redraws the pages in view over the following frames; its state waits this long. */
 const PRESCALE_SETTLE_MS = 60000;

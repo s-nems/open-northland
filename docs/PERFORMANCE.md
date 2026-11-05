@@ -291,7 +291,8 @@ ON_BENCH_SETTINGS_ROWS=day-town-z1-control,day-town-z1-softShadows npm run bench
 ```
 
 Arguments: checkpoint, origin, output directory (default `bench-out/gpu-settings`), cycles (default 10).
-The measured column of the cost basis in [GRAPHICS.md](GRAPHICS.md#cost-basis) comes from it.
+New cells of the cost basis in [GRAPHICS.md](GRAPHICS.md#cost-basis) come from it; older cells name the
+GPU and tool they were read with.
 
 1. Each session restores the checkpoint with every graphics option on and xBR, the FPS counter off so
    no timer query runs. Each view jumps the camera, runs ten seconds at ×3 so bakes and caches
@@ -303,9 +304,11 @@ The measured column of the cost basis in [GRAPHICS.md](GRAPHICS.md#cost-basis) c
 3. Time one state: 15 unmeasured redraws, a 1x1 `gl.readPixels` to drain the GPU, 60 redraws with
    `gl.flush()` after each, a second `readPixels`. The wall-clock span over 60 is that state's
    milliseconds per frame. A redraw is the GPU half of a frame, replaying the last real frame's
-   arguments: the scene light's light map, the shore waves' lift map every fifth redraw (a paused
-   water clock still steps them 12 times a second, every fifth frame at the 60 fps cap), the world
-   into its texture while it composites, and the stage.
+   arguments: the scene light's light map, the shore waves' lift map every fifth redraw (play steps
+   them 12 times a second, every fifth frame at the 60 fps cap, where the paused water clock holds
+   them), the world into its texture while it composites, and the stage. The stage includes the
+   pause's sepia wash, a screen-covering multiply quad play does not draw: it cancels in every cost,
+   but a frame time carries it.
 4. The cost is the median of the per-cycle on-minus-off differences, reported with their range. The
    `control` row sets nothing: its on and off give the view's frame time, its range the loop's noise.
 
