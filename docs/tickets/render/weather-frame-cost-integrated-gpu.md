@@ -2,28 +2,34 @@
 
 **Area:** render · **Focus:** weather · **Priority:** P2
 
-After the graphics pass, weather still adds a quarter to a third of the frame on the UHD 770 at
-1920x1080 with xBR, dense `magiczny_las` town at tick 100000, speed 3 (`bench:gpu`, min of three p50s):
-clear 9.8 ms; rain 13.1; thunderstorm 13.4; sandstorm 14.7; snow 14.8; blizzard 15.1. The pass attributed
-only part of it at 1080p: the sky passes 1.3-1.6 ms (grade 0.4, veil 0.75-0.8, precipitation 0.15-0.4),
-and in the sandstorm the wisps 2.47 ms (`PUFF_SHARE` of the sand particles in
-`gpu/weather/precipitation-shader.ts`: quads up to 110 x 286 px, about four times screen overdraw, an
-`atan` and two `sin` per fragment). The remaining 1.7-3.5 ms per weather kind is unattributed; the lying
-snow and sand ground cover and the ground reactions (`gpu/weather/ground-weather.ts`,
-`ground-cover-shading.ts`, `ground-reactions.ts`) are the untested candidates.
+Weather adds a quarter to a third of the frame on integrated GPUs at 1920x1080 with xBR, dense
+`magiczny_las` town at tick 100000. On the UHD 770 (`bench:gpu`, speed 3, min of three p50s): clear
+9.8 ms; rain 13.1; thunderstorm 13.4; sandstorm 14.7; snow 14.8; blizzard 15.1, measured before the
+sand wisps moved to a half-resolution target. On a Radeon Vega 7 (paused GPU-bound loop, weather on
+minus off, the whole clear scene about 4.7-4.9 ms) weather costs 3.2-3.4 ms in rain, 3.8-4.1 in snow
+and 3.4-3.7 in sand, and splits as:
 
-Already measured on this GPU and not a win: zero-alpha `discard`, the vignette folded into the grade, a
-half-resolution grade or veil.
+| part | rain | snow | sand |
+| --- | --- | --- | --- |
+| terrain cover hook (`gpu/weather/ground-cover-shading.ts`, `ground-weather.ts`) | 2.1 | 2.25 | 1.3-1.4 |
+| grade pass (full-screen multiply) | 0.48 | 0.48-0.52 | 0.50 |
+| veil pass (full-screen over) | 0.51 | 0.46-0.57 | 0.42 |
+| particles | 0.25-0.3 | 0.1-0.3 | 1.1-1.3 |
+| decor cover and ground reactions | 0.16 or less | 0.13 or less | 0.1 or less |
+
+In snow the cover hook's neighbourhood taps cost 0.34 ms and its drift noise at least 0.73 ms; the
+rest is shading arithmetic.
 
 ## Scope
 
-Attribute the remainder by hiding each ground-side part in turn, interleaved with `weather-clear-x3`
-on the Intel, then make one bounded change per found cost. For the wisps the options are fewer or
-smaller puffs (the 2.47 ms scales with their area, pixels change) or plain round puffs (-0.74 ms,
-max 15/255, visibly smoother); both need the owner's picture sign-off before merging.
+- Merge the grade and the veil into one full-screen pass with dual-source blending
+  (`WEBGL_blend_func_extended`, exposed by Chrome on ANGLE D3D11), keeping today's two passes where the
+  extension is missing; about 0.47 ms in every weather on the Vega 7. The picture stays the same.
+- Find a cut for the terrain cover hook's drift noise and taps; a change to its picture needs the
+  owner's sign-off before merging.
 
 ## Verify
 
-`bench:gpu` `weather-rain-x3,weather-snow-x3,weather-sand-x3,weather-storm-x3,weather-blizzard-x3,weather-clear-x3`
-on the UHD 770 in one session, before and after; a pixel diff of each weather view against the current
-pictures with the changed parts named.
+`npm run bench:gpu-settings` rain and snow rows plus a `?weather=sand` paused loop on the Vega 7 or the
+UHD 770, base and branch, two runs each; a pixel diff of each weather view against the current pictures
+with every changed part named.

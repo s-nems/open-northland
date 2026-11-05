@@ -9,6 +9,11 @@ leads it (`collectBand` 3.7 ms, `place` 3.5 ms, CPU profile). A walker crossing 
 (`DepthBand.sortByDepth` sets `structureDidChange`), which rebuilds the band's whole instruction list
 even when every displayed child is a mesh member and its draws, tables and run boundaries stay the same.
 
+Unthrottled at 1920x1080 on a Radeon Vega 7 (Windows Chrome, ANGLE D3D11), zoom 0.35, x3, 55 to 64 of
+142 bands rebuild per frame and `collectBand` takes 4.1-4.5 ms. Per frame about 21 bands only re-sort,
+about 20 children cross a band edge and dirty both bands (about 35 band dirties), and about 5 bands
+refuse a retexture whose page does not fit the draw's table; the re-sorts are what this ticket removes.
+
 ## Scope
 
 - When a band whose displayed children are all mesh members only re-sorts (nothing added, removed,
