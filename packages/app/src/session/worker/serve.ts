@@ -14,7 +14,7 @@ import { profiledInstrument, SystemProfile } from '../../diag/system-profile.js'
 import { type SaveFile, saveFileOf } from '../../view/runtime/save-load/codec.js';
 import type { SessionHost } from '../host.js';
 import { inlineSessionHost } from '../inline-host.js';
-import { changedFacts, readWorldFacts } from './facts.js';
+import { changedFacts, WorldFactsReader } from './facts.js';
 import { FogPosts } from './fog-posts.js';
 import type { SessionPort } from './port.js';
 import {
@@ -206,6 +206,7 @@ export class ServedSession<E> {
   private droppedMs = 0;
   /** The calls being answered; a replacement rejects them. */
   private readonly answering = new Set<number>();
+  private readonly facts: WorldFactsReader;
   private lastFacts: WorldFacts;
   private fogSeats: readonly number[] | null;
   private lastFogKey: string;
@@ -262,7 +263,8 @@ export class ServedSession<E> {
     this.deltas = this.openDeltas();
     this.fogSeats = options.fogSeat === null ? null : [options.fogSeat];
     this.recordedTick = sim.tick;
-    this.lastFacts = readWorldFacts(sim);
+    this.facts = new WorldFactsReader(sim);
+    this.lastFacts = this.facts.read();
     const delta = this.deltas.next();
     if (delta === null) throw new Error('a fresh delta stream opens with a rebuild');
     const fog = this.fogSeats === null ? null : sim.sharedFogMaskAnswer(this.fogSeats);
@@ -561,7 +563,7 @@ export class ServedSession<E> {
     const last = ticks[ticks.length - 1];
     const delta = this.deltas.next();
     if (last === undefined || delta === null) throw new Error('a batch needs a stepped tick');
-    const facts = readWorldFacts(this.sim);
+    const facts = this.facts.read();
     const changed = changedFacts(this.lastFacts, facts);
     this.lastFacts = facts;
     const spans = this.spans;

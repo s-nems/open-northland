@@ -13,12 +13,14 @@ import {
   assistantGrantedGoods,
   assistantMovesFlags,
   assistantPostsGraduatesEntity,
+  assistantSettingsVersion,
   assistantSoldierOnlyGoods,
   assistantUpgradesTools,
   assistantWeaponOrder,
   atPeace,
   Building,
   buildTribes,
+  DiplomacyRules,
   type DiplomacyState,
   defaultAssistantCounters,
   diplomacyLocked,
@@ -35,6 +37,7 @@ import {
   missionBriefingPage,
   needsEnabled,
   type Paper,
+  PlayerContacts,
   Position,
   peaceHoldsUntilTick,
   playerGoodList,
@@ -738,6 +741,11 @@ export class Simulation {
     return assistantUpgradesTools(this.world, player);
   }
 
+  /** Changes whenever an `assistant*` read of any seat may answer differently. */
+  assistantVersion(): number {
+    return assistantSettingsVersion(this.world);
+  }
+
   /** `player`'s assistant production counters as a detached copy; all-default when the carrier is absent. */
   assistantCounters(player: number): Readonly<AssistantCounterValues> {
     const carrier = assistantCountersEntity(this.world, player);
@@ -764,6 +772,18 @@ export class Simulation {
    *  command sets; a pair never set reads `enemy`. */
   diplomacyStance(from: number, to: number): DiplomacyState {
     return diplomacyStance(this.world, from, to);
+  }
+
+  /** Changes whenever {@link diplomacyStance} or {@link hasMetPlayer} of any pair may answer differently:
+   *  the stance and contact tables' write generations, which only grow, and the fog's active mode. */
+  diplomacyVersion(): string {
+    const w = this.world;
+    const tables =
+      w.componentGeneration(DiplomacyRules) +
+      w.componentValueGeneration(DiplomacyRules) +
+      w.componentGeneration(PlayerContacts) +
+      w.componentValueGeneration(PlayerContacts);
+    return `${tables}:${this.fog?.activeMode ?? 'none'}`;
   }
 
   /** Whether the lobby peace the `setPeaceTime` command opened still binds `a` and `b`. */

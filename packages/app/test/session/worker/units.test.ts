@@ -2,7 +2,7 @@ import { MessageChannel } from 'node:worker_threads';
 import { FOG_MODE, type FogMaskAnswer, MS_PER_TICK } from '@open-northland/sim';
 import { describe, expect, it, vi } from 'vitest';
 import { createSceneSim, SCENES } from '../../../src/scenes/index.js';
-import { changedFacts, readWorldFacts } from '../../../src/session/worker/facts.js';
+import { changedFacts, WorldFactsReader } from '../../../src/session/worker/facts.js';
 import { FogPosts } from '../../../src/session/worker/fog-posts.js';
 import type { SessionPort } from '../../../src/session/worker/port.js';
 import type { FromWorker, TickBatch, ToWorker } from '../../../src/session/worker/protocol.js';
@@ -146,11 +146,30 @@ describe('world facts', () => {
   it('posts only what changed, the plots by identity', () => {
     const sim = createSceneSim(sandbox());
     sim.run(2);
-    const first = readWorldFacts(sim);
-    expect(changedFacts(first, readWorldFacts(sim))).toEqual({});
+    const reader = new WorldFactsReader(sim);
+    const first = reader.read();
+    expect(changedFacts(first, reader.read())).toEqual({});
     sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: !first.needsEnabled });
     sim.step();
-    expect(changedFacts(first, readWorldFacts(sim))).toMatchObject({ needsEnabled: !first.needsEnabled });
+    expect(changedFacts(first, reader.read())).toMatchObject({ needsEnabled: !first.needsEnabled });
+  });
+
+  it('re-reads the seat tables when a stance or an assistant setting moves', () => {
+    const sim = createSceneSim(sandbox());
+    sim.run(2);
+    const reader = new WorldFactsReader(sim);
+    const first = reader.read();
+    sim.step();
+    const idle = reader.read();
+    expect(idle.assistants).toBe(first.assistants);
+    expect(idle.stances).toBe(first.stances);
+    const moves = !first.assistants[1]?.movesFlags;
+    sim.enqueueSetup({ kind: 'setAssistantMoveFlags', player: 1, enabled: moves });
+    sim.enqueueSetup({ kind: 'setDiplomacy', from: 1, to: 2, state: 'friend' });
+    sim.step();
+    const changed = changedFacts(idle, reader.read());
+    expect(changed.assistants?.[1]?.movesFlags).toBe(moves);
+    expect(changed.stances).toBeDefined();
   });
 });
 

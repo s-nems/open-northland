@@ -350,3 +350,27 @@ export function assistantMovesFlags(world: World, player: number): boolean {
 export function assistantUpgradesTools(world: World, player: number): boolean {
   return assistantSwitchEntity(world, AssistantUpgradesTools, player) !== null;
 }
+
+/** Every per-player carrier the assistant views read: its lists, orders, counters and switches. */
+const ASSISTANT_SETTING_COMPONENTS: readonly Component<unknown>[] = [
+  AssistantGrants,
+  AssistantSoldierOnlyGrants,
+  AssistantCivilianOnlyGrants,
+  AssistantWeaponVetoes,
+  AssistantArmorOrders,
+  AssistantWeaponOrders,
+  AssistantCounters,
+  AssistantPostsGraduates,
+  AssistantMovesFlags,
+  AssistantUpgradesTools,
+];
+
+/** A token that changes whenever any seat's assistant settings may read differently: the sum of the
+ *  carriers' membership and value-write generations, which only ever grow within one world. */
+export function assistantSettingsVersion(world: World): number {
+  let version = 0;
+  for (const component of ASSISTANT_SETTING_COMPONENTS) {
+    version += world.componentGeneration(component) + world.componentValueGeneration(component);
+  }
+  return version;
+}

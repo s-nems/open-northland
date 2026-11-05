@@ -13,7 +13,7 @@ import {
   SnapshotMirror,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { changedFacts, readWorldFacts } from '../src/session/worker/facts.js';
+import { changedFacts, WorldFactsReader } from '../src/session/worker/facts.js';
 import type { FromWorker, TickBatch, TickRecord, WorldFacts } from '../src/session/worker/protocol.js';
 import { type AppFrameIndexReader, FRAME_INDEX_READERS } from '../src/view/projections/frame-indexes.js';
 import { DeltaBreakdown } from './mirror-breakdown.js';
@@ -97,6 +97,7 @@ export class MirrorProbe {
   private records: TickRecord[] = [];
   /** The event cloning of the ticks the batch in the making holds. */
   private heldEventsUs = 0;
+  private readonly facts: WorldFactsReader;
   private lastFacts: WorldFacts;
   private serializeUs: number[] = [];
   private deserializeUs: number[] = [];
@@ -122,7 +123,8 @@ export class MirrorProbe {
       },
       { digest: options.digest },
     );
-    this.lastFacts = readWorldFacts(sim);
+    this.facts = new WorldFactsReader(sim);
+    this.lastFacts = this.facts.read();
     this.truth = options.digest ? new MirrorTruth() : null;
     this.breakdown = options.breakdown ? new DeltaBreakdown() : null;
     // The seat's reach as the host answers it: the same view until the sim's reach changes.
@@ -167,7 +169,7 @@ export class MirrorProbe {
     const delta = this.deltas.next();
     const t1 = performance.now();
     if (delta === null || last === undefined) return;
-    const facts = readWorldFacts(this.sim);
+    const facts = this.facts.read();
     const changed = changedFacts(this.lastFacts, facts);
     this.lastFacts = facts;
     const tFacts = performance.now();
