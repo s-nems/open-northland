@@ -8,15 +8,20 @@ import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
-import { sourcedTiers } from './bill-sources.js';
-import { directTier } from './direct-tier.js';
-import type { BuildOrderEntry } from './entries.js';
-import { towerUpgradeWaits } from './front.js';
-import { housingPick } from './housing.js';
-import { placementPassesOver, placementSpot, siteCommand } from './placement.js';
-import { coverageOf, coverageSpotSearch, firstUncovered, type TowerCoverage } from './tower-coverage.js';
-import { towerPlan, towerSpot, towerToUpgrade } from './tower-defence.js';
-import { suppliedUpgrade } from './upgrade-supply.js';
+import { towerUpgradeWaits } from './ground/front.js';
+import { placementPassesOver, placementSpot, siteCommand } from './ground/placement.js';
+import type { BuildOrderEntry } from './order/entries.js';
+import { housingPick } from './steps/housing.js';
+import { sourcedTiers } from './supply/bill-sources.js';
+import { directTier } from './supply/direct-tier.js';
+import { suppliedUpgrade } from './supply/upgrade-supply.js';
+import {
+  coverageOf,
+  coverageSpotSearch,
+  firstUncovered,
+  type TowerCoverage,
+} from './towers/tower-coverage.js';
+import { towerPlan, towerSpot, towerToUpgrade } from './towers/tower-defence.js';
 
 /**
  * What a line makes of an unmet step this decision. A serving placement with no room beside what it
@@ -179,7 +184,7 @@ export function coverageCommand(
   return spot === null ? null : siteCommand(type, spot, tribe, player);
 }
 
-/** A short tower ring's next command (`./tower-defence.ts`): the upgrade of a lower tower that lifts its
+/** A short tower ring's next command (`./towers/tower-defence.ts`): the upgrade of a lower tower that lifts its
  *  defence, while the ring `lifts` towers and the seat may start one, else a new tower of `type` where it
  *  lifts the lowest covered target most. */
 export function towerCommand(

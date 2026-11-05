@@ -46,7 +46,7 @@ export const BUILDING_GOODS_GROW_FROM_TICKS = minutesToTicks(10);
 export const BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS = minutesToTicks(30);
 
 /** From when the build order opens a third construction site and looks one entry further ahead
- *  (authored; the late game adds a fourth, `build-order/entries.ts`): by then the reserve and the
+ *  (authored; the late game adds a fourth, `build-order/order/limits.ts`): by then the reserve and the
  *  building goods carry more than the opening's two sites. */
 export const SITES_GROW_FROM_TICKS = minutesToTicks(45);
 

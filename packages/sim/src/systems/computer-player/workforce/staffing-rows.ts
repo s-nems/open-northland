@@ -64,7 +64,7 @@ export interface StaffingRow extends StaffingTiers {
   readonly islandMasterUntil?: DiscoveryTarget;
   /** The tiers on an island seat, over the rest of the row. */
   readonly islandSeat?: Partial<BuildingStaffing>;
-  /** The tiers on a seat dressing its army in tunics (`TUNIC_SIDES`, `../build-order/seat-order.ts`), over the rest of the row. */
+  /** The tiers on a seat dressing its army in tunics (`TUNIC_SIDES`, `../build-order/order/seat-order.ts`), over the rest of the row. */
   readonly tunicSeat?: Partial<BuildingStaffing>;
   /** A workplace of the livestock industry: it employs nobody while the seat keeps no pair of either
    *  species (owner ruling, `../herd.ts`). */

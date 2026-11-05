@@ -1,7 +1,7 @@
 import { AiControl, aiControlEntity, type ComputerDifficulty } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
-import type { BuildOrder, BuildOrderEntry } from './build-order/entries.js';
-import { BUILD_ORDER_LOOKAHEAD_ENTRIES, SITE_PACE_STEPS, type SitePace } from './build-order/limits.js';
+import type { BuildOrder, BuildOrderEntry } from './build-order/order/entries.js';
+import { BUILD_ORDER_LOOKAHEAD_ENTRIES, SITE_PACE_STEPS, type SitePace } from './build-order/order/limits.js';
 import {
   LATE_GAME_FROM_TICKS,
   MID_GAME_FROM_TICKS,
@@ -38,7 +38,7 @@ export function shareOf(whole: number, share: Share): number {
  */
 export interface ComputerProfile {
   readonly difficulty: ComputerDifficulty;
-  /** Open construction sites and build-order lookahead by game clock (`build-order/entries.ts`). */
+  /** Open construction sites and build-order lookahead by game clock (`build-order/order/limits.ts`). */
   readonly sitePace: readonly SitePace[];
   /** How long a construction site the seat's pace frees stays empty before the build order starts the
    *  next site or upgrade on it. */
@@ -93,7 +93,7 @@ export const BUILDER_CAP = 12;
 const GROWN_SEAT_BUILDER_CAP = 14;
 
 /** A hard seat's reserve from the late game on, whatever the head count (authored): the build order then
- *  keeps four sites open (`build-order/entries.ts`). */
+ *  keeps four sites open (`build-order/order/limits.ts`). */
 export const LATE_GAME_BUILDER_CAP = 16;
 
 /** The share of a hard seat's civilians past the grown head count it adds to its builder reserve (owner

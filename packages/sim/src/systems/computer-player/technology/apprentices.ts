@@ -15,9 +15,9 @@ import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { goodEnabled, jobEnabled, requirementRepeats } from '../../progression/index.js';
 import { seatBaseOf } from '../base.js';
-import type { LineStatuses } from '../build-order/entries.js';
-import { type BuildOrder, type BuildOrderEntry, isLaneEntry } from '../build-order/entries.js';
 import { DEFAULT_BUILD_ORDER, lineStatuses, seatBuildOrder } from '../build-order/index.js';
+import type { LineStatuses } from '../build-order/order/entries.js';
+import { type BuildOrder, type BuildOrderEntry, isLaneEntry } from '../build-order/order/entries.js';
 import { computerProfileOf } from '../difficulty.js';
 import { technologyReach } from './reach.js';
 import {

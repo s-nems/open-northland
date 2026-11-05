@@ -23,9 +23,9 @@ export const BARRACKS_STANDS_BEFORE_TICKS = minutesToTicks(15);
 const BARRACKS_SITE_TICKS = minutesToTicks(7);
 
 /** How long before its deadline the seat places its barracks, and its defence lines go first ahead of a
- *  forecast attack (`build-order/seat-order.ts`): the barracks then stands about
+ *  forecast attack (`build-order/order/seat-order.ts`): the barracks then stands about
  *  {@link BARRACKS_STANDS_BEFORE_TICKS} ahead of it, and the first tower ring follows its site
- *  (`build-order/military-line.ts`). */
+ *  (`build-order/order/military-line.ts`). */
 export const BARRACKS_LEAD_TICKS = BARRACKS_STANDS_BEFORE_TICKS + BARRACKS_SITE_TICKS;
 
 /** How long before its deadline the seat raises its first tower ring (measured, owner ruling: towers
@@ -35,7 +35,7 @@ export const BARRACKS_LEAD_TICKS = BARRACKS_STANDS_BEFORE_TICKS + BARRACKS_SITE_
 export const TOWER_LEAD_TICKS = minutesToTicks(20);
 
 /** {@link TOWER_LEAD_TICKS} for a ring that rises at the upper tier, a seat whose attacks come late
- *  (`build-order/direct-tier.ts`; measured): on magiczny_las under a 60-minute peace upper towers placed at
+ *  (`build-order/supply/direct-tier.ts`; measured): on magiczny_las under a 60-minute peace upper towers placed at
  *  minute 40 stood at minutes 59-69, one seat's not by minute 90. */
 export const UPPER_TOWER_LEAD_TICKS = minutesToTicks(30);
 

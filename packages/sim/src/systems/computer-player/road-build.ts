@@ -16,7 +16,7 @@ import { ownedRoadSites, roadSitesByNode } from '../roads/site-index.js';
 import { roadSitePlacementProbe } from '../roads/sites.js';
 import { networkLimitAt } from '../signposts/network.js';
 import { seatBaseOf } from './base.js';
-import { plottedNodes } from './build-order/plots.js';
+import { plottedNodes } from './build-order/ground/plots.js';
 import type { ComputerModule } from './index.js';
 import { type RoadStepCost, roadRoute } from './road-route.js';
 import {

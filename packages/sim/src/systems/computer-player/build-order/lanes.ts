@@ -3,10 +3,10 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { buildingTypeByContentId, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
-import type { LineStatuses } from './entries.js';
-import { type BuildLine, type BuildLineId, type BuildOrderEntry, isLaneEntry } from './entries.js';
-import { homeTiersOf } from './housing.js';
-import { coverageLaneSites } from './tower-coverage.js';
+import type { LineStatuses } from './order/entries.js';
+import { type BuildLine, type BuildLineId, type BuildOrderEntry, isLaneEntry } from './order/entries.js';
+import { homeTiersOf } from './steps/housing.js';
+import { coverageLaneSites } from './towers/tower-coverage.js';
 
 /** One lane of a line ({@link isLaneEntry}) and the sites of its building the seat has open. */
 export interface OpenLane {

@@ -14,12 +14,12 @@ import {
   type EntryStatus,
   isLaneEntry,
   type StepHold,
-} from './entries.js';
-import { foodChainStep, seatFoodFailing } from './food-first.js';
-import type { DecisionMemo } from './memo.js';
-import { DEFENCE_LINES } from './seat-order.js';
-import { entryStatus, upgradeCandidate, upgradeFilter } from './status.js';
-import { upgradeReach } from './upgrade-reach.js';
+} from './order/entries.js';
+import { DEFENCE_LINES } from './order/seat-order.js';
+import { foodChainStep, seatFoodFailing } from './steps/food-first.js';
+import type { DecisionMemo } from './steps/memo.js';
+import { entryStatus, upgradeCandidate, upgradeFilter } from './steps/status.js';
+import { upgradeReach } from './supply/upgrade-reach.js';
 
 /** A line's turn, the lower first: a defence line ({@link DEFENCE_LINES}) with no rising site of its own
  *  while the seat's defence comes first; a next placement waiting on the military deadline

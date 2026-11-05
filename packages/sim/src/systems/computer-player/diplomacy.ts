@@ -10,7 +10,7 @@ import {
 import type { World } from '../../ecs/world.js';
 import { handlerTurn, machineSeatOnTurn } from '../ai-shared/cadence.js';
 import type { System } from '../context.js';
-import { seatArchetype } from './build-order/seat-order.js';
+import { seatArchetype } from './build-order/order/seat-order.js';
 
 /** The player slots the original's per-seat cursor walks, one per handler turn, whatever the map seats. */
 const ORIGINAL_PLAYER_SLOTS = 20;

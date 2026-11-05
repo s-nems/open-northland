@@ -2,7 +2,7 @@ import { defineComponent, type Entity } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
 import type { AttackLeash } from '../combat.js';
 
-/** The build order's independent lines (authored, `systems/computer-player/build-order/entries.ts`). Each is
+/** The build order's independent lines (authored, `systems/computer-player/build-order/order/default-order.ts`). Each is
  *  an ordered list of steps: a step waits for the step before it in its line, never for another line. */
 export type BuildLineId =
   | 'opening'
@@ -122,7 +122,7 @@ export interface SeatRoomState {
 
 /**
  * How much building room a computer seat's own land still holds, held on its {@link AiControl} carrier and
- * measured on a slow cadence (`systems/computer-player/build-order/room.ts`), so felled forest or mined-out
+ * measured on a slow cadence (`systems/computer-player/build-order/ground/room.ts`), so felled forest or mined-out
  * ground is built on as it opens.
  */
 export const SeatRoom = defineComponent<SeatRoomState>('SeatRoom', 'players', { simOnly: true });

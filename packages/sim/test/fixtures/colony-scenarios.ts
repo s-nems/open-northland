@@ -11,13 +11,13 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import type { Simulation } from '../../src/index.js';
 import { everySettlerOf } from '../../src/systems/ai-shared/home-roster.js';
-import { DEFAULT_BUILD_ORDER } from '../../src/systems/computer-player/build-order/default-order.js';
+import { DEFAULT_BUILD_ORDER } from '../../src/systems/computer-player/build-order/order/default-order.js';
 import {
   type BuildLineId,
   type StepKey,
   stepKey,
-} from '../../src/systems/computer-player/build-order/entries.js';
-import { seatBuildOrder } from '../../src/systems/computer-player/build-order/seat-order.js';
+} from '../../src/systems/computer-player/build-order/order/entries.js';
+import { seatBuildOrder } from '../../src/systems/computer-player/build-order/order/seat-order.js';
 import { surveyColonySite } from '../../src/systems/computer-player/colony/voyage/survey.js';
 import { openColony } from '../../src/systems/computer-player/colony/voyage/voyage.js';
 import { computerProfileOf } from '../../src/systems/computer-player/difficulty.js';

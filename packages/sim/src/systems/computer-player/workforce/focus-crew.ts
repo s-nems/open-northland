@@ -11,7 +11,7 @@ import type { WantedGood } from './collectors/index.js';
 import type { SeatSupply } from './supply.js';
 
 /**
- * Pin the seat's `builders` to its focus `site` (`../build-order/food-first.ts`) with the player's
+ * Pin the seat's `builders` to its focus `site` (`../build-order/steps/food-first.ts`) with the player's
  * `assignBuilder` order, the nearest first and ties to the lower id, up to one builder per unit of the
  * site's bill: each unit is one haul and its hammer steps, so a builder past them would only wait beside
  * the site while the other sites keep their crews (authored: the mill's bill is five units, the

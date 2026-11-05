@@ -8,9 +8,9 @@ no seat-wide bound. Posted men leave the field census (`ai-shared/military/censu
 `computer-player` rule never releases them; only the `map-ai` rule sends surplus posts back out.
 
 Tower count has no fixed cap either. The two `towerCoverage` lanes in
-`computer-player/build-order/military-line.ts` (the opening ring, then `SETTLED_DEFENCE` once
+`computer-player/build-order/order/military-line.ts` (the opening ring, then `SETTLED_DEFENCE` once
 `ECONOMY_SAFE` holds) keep placing towers until the defence wants, scaled per seat by
-`seatDefenceWants` (`build-order/tower-defence.ts`), are met. The draft
+`seatDefenceWants` (`build-order/towers/tower-defence.ts`), are met. The draft
 (`computer-player/workforce/garrison.ts`) counts only unposted men as the field army and drafts one
 archer per empty tower ahead of the field share, so posted men are replaced from the seat's spare men.
 Where the profile drafts to its army cap (`draftCeiling`), the towers instead eat into that capped army:

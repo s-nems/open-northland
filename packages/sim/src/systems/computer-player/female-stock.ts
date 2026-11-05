@@ -17,7 +17,7 @@ export function femaleStockOf(world: World, ctx: SystemContext, settlers: readon
 }
 
 /** Every family slot the seat's women and daughters will want: its {@link femaleStockOf} and the daughters
- *  the assistant booked. The housing lane (`build-order/housing.ts`) keeps the homes ahead of it. */
+ *  the assistant booked. The housing lane (`build-order/steps/housing.ts`) keeps the homes ahead of it. */
 export function femaleDemand(world: World, ctx: SystemContext, player: number): number {
   return femaleStockOf(world, ctx, homeSettlers(world, ctx, player)) + bookedBirths(world, player).daughters;
 }

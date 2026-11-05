@@ -10,10 +10,10 @@ import { anchorCentroid } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { HEADQUARTERS_BUILDING_ID } from '../../readviews/index.js';
-import { billSourced, goodsMadeBy } from './bill-sources.js';
-import { BASE_REPLACEMENT_ENTRY, BASE_REPLACEMENT_IDS, BASELESS_CONSTRUCTION_SITES } from './limits.js';
-import { placementSpot, siteCommand } from './placement.js';
-import { seatSiege } from './siege.js';
+import { placementSpot, siteCommand } from './ground/placement.js';
+import { BASE_REPLACEMENT_ENTRY, BASE_REPLACEMENT_IDS, BASELESS_CONSTRUCTION_SITES } from './order/limits.js';
+import { billSourced, goodsMadeBy } from './supply/bill-sources.js';
+import { seatSiege } from './towers/siege.js';
 
 /** The first of {@link BASE_REPLACEMENT_IDS} the seat may raise and has a source for every good of its
  *  bill ({@link billSourced}), else the lowest tier the content has. */

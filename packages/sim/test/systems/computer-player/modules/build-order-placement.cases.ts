@@ -14,15 +14,15 @@ import { positionOfNode, Simulation, type TerrainMap } from '../../../../src/ind
 import { GRASS_BESIDE_NODES, spotAcceptor } from '../../../../src/systems/ai-shared/building-spot.js';
 import { bestRingNode } from '../../../../src/systems/ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
-import { FRONT_EDGE_STEP_NODES } from '../../../../src/systems/computer-player/build-order/affinity.js';
-import { FRONT_LINE_DEPTH_NODES } from '../../../../src/systems/computer-player/build-order/front.js';
-import { grassScarce } from '../../../../src/systems/computer-player/build-order/grass-reserve.js';
+import { FRONT_EDGE_STEP_NODES } from '../../../../src/systems/computer-player/build-order/ground/affinity.js';
+import { FRONT_LINE_DEPTH_NODES } from '../../../../src/systems/computer-player/build-order/ground/front.js';
+import { grassScarce } from '../../../../src/systems/computer-player/build-order/ground/grass-reserve.js';
 import {
   CHAIN_ROOM_RADIUS_NODES,
   FARM_ROOM_RESOURCE_PENALTY_RINGS,
   HOME_FARM_MARGIN_NODES,
-} from '../../../../src/systems/computer-player/build-order/placement.js';
-import { buildReach } from '../../../../src/systems/computer-player/build-order/reach.js';
+} from '../../../../src/systems/computer-player/build-order/ground/placement.js';
+import { buildReach } from '../../../../src/systems/computer-player/build-order/ground/reach.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
   type BuildOrder,
@@ -1138,7 +1138,7 @@ describe('build-order placement - affinity and ground rules', () => {
       ]),
     ).run(sim.world, { ...ctxOf(sim), content }, SEAT);
     if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement beside the iron');
-    // No gatherer works the iron, so the seat may cover it (`build-order/deposit-keep.ts`); the acceptor's
+    // No gatherer works the iron, so the seat may cover it (`build-order/ground/deposit-keep.ts`); the acceptor's
     // own rule below keeps every scarce deposit.
     expect(Math.abs(spot.x - ironX) + Math.abs(spot.y - ironY)).toBeLessThanOrEqual(
       DEPOSIT_NEIGHBOURHOOD_NODES,

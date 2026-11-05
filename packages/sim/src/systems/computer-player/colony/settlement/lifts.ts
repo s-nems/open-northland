@@ -6,7 +6,7 @@ import type { Entity } from '../../../../ecs/world.js';
 import { tiersAtOrAbove } from '../../../ai-shared/content-lookup.js';
 import { homeBuildings } from '../../../ai-shared/home-roster.js';
 import { isBuilt } from '../../../ai-shared/seat-roster.js';
-import { sitesShortfalls } from '../../build-order/upgrade-supply.js';
+import { sitesShortfalls } from '../../build-order/supply/upgrade-supply.js';
 import { holdsUpgradeBill, liftCommand, liftTarget } from '../../top-tier.js';
 import type { ColonyEnv, ColonyView } from '../env.js';
 import { homeStockOf } from '../stock.js';

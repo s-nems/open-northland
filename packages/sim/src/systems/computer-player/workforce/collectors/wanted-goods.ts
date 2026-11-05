@@ -30,7 +30,7 @@ import {
   type LineStatuses,
   sitePace,
 } from '../../build-order/index.js';
-import { seatHasSide } from '../../build-order/seat-order.js';
+import { seatHasSide } from '../../build-order/order/seat-order.js';
 import { type ComputerProfile, computerProfileOf } from '../../difficulty.js';
 import {
   BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS,

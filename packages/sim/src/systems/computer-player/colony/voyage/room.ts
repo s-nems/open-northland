@@ -6,7 +6,7 @@ import { buildingTypeByContentId } from '../../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../../context.js';
 import { buildingFootprintOf } from '../../../footprint/geometry.js';
 import { placementProbe } from '../../../footprint/placement/building.js';
-import { ROOM_HOME_BUILDING } from '../../build-order/room.js';
+import { ROOM_HOME_BUILDING } from '../../build-order/ground/room.js';
 
 /** The step between the anchors tried, in half-cell nodes on each axis (authored, a cost trade): a home's
  *  reserved zone spans several nodes, so the even lattice still packs the room's homes, at a quarter of the

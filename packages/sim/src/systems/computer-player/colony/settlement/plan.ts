@@ -13,7 +13,7 @@ import { buildingTypeByContentId } from '../../../ai-shared/content-lookup.js';
 import { isBuilt } from '../../../ai-shared/seat-roster.js';
 import { mayMarry } from '../../../family/eligibility.js';
 import { familiesOf } from '../../../family/households.js';
-import { ROOM_HOME_BUILDING } from '../../build-order/room.js';
+import { ROOM_HOME_BUILDING } from '../../build-order/ground/room.js';
 import { topEnabledTier } from '../../top-tier.js';
 import type { ColonyEnv, ColonyView } from '../env.js';
 import { colonists } from '../roster.js';

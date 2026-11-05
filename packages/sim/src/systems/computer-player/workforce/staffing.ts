@@ -12,7 +12,7 @@ import { isUnwed } from '../../family/eligibility.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isServedConstructionSite } from '../../settlers/targets/index.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { earnedTradeWorkshop } from '../build-order/food-first.js';
+import { earnedTradeWorkshop } from '../build-order/steps/food-first.js';
 import { type ComputerProfile, shareOf } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
 import type { Promotions } from '../technology/promotion.js';

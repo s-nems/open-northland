@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_BUILD_ORDER } from '../../../../../src/systems/computer-player/build-order/default-order.js';
-import { orderSteps } from '../../../../../src/systems/computer-player/build-order/entries.js';
+import { DEFAULT_BUILD_ORDER } from '../../../../../src/systems/computer-player/build-order/order/default-order.js';
+import { orderSteps } from '../../../../../src/systems/computer-player/build-order/order/entries.js';
 import {
   ALL_STEPS,
   type ChainStep,

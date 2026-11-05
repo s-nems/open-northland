@@ -3,7 +3,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { World } from '../../../ecs/world.js';
 import { moduleBeatDue, POPULATION_PHASE, WORKFORCE_EVERY_DECISIONS } from '../../ai-shared/cadence.js';
 import type { SystemContext } from '../../context.js';
-import { seatArchetype } from '../build-order/seat-order.js';
+import { seatArchetype } from '../build-order/order/seat-order.js';
 import type { ComputerModule } from '../index.js';
 import { abandonColony, evacuate, evacuated, overrun } from './abandon.js';
 import { type ColonyEnv, colonyEnv, type SeatEnv } from './env.js';

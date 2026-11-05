@@ -7,13 +7,13 @@ import type { SystemContext } from '../../context.js';
 import { isServedConstructionSite } from '../../settlers/targets/index.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import { SITES_GROW_FROM_TICKS } from '../game-phase.js';
-import { type BuildOrder, type BuildOrderEntry, isLaneEntry, orderSteps } from './entries.js';
-import { TOWER_CONTENT_IDS } from './front.js';
-import { HOUSING_PACE, homeTiersOf, housingExtraSites, housingStage } from './housing.js';
-import { sitePace } from './limits.js';
-import type { DecisionMemo } from './memo.js';
-import { seatHomesCap } from './plots.js';
-import { entryStatus } from './status.js';
+import { TOWER_CONTENT_IDS } from './ground/front.js';
+import { seatHomesCap } from './ground/plots.js';
+import { type BuildOrder, type BuildOrderEntry, isLaneEntry, orderSteps } from './order/entries.js';
+import { sitePace } from './order/limits.js';
+import { HOUSING_PACE, homeTiersOf, housingExtraSites, housingStage } from './steps/housing.js';
+import type { DecisionMemo } from './steps/memo.js';
+import { entryStatus } from './steps/status.js';
 
 /** The most homes the seat's housing lane raises before room lifts it, under its ground plan's cut. */
 export function housingCap(world: World, player: number, order: BuildOrder): number {

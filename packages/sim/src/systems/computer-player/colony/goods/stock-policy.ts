@@ -9,7 +9,7 @@ import { heldGatherGood } from '../../../economy/gather-goods.js';
 import { edibleGoodFormOf, mayChangeEquipment } from '../../../readviews/index.js';
 import { toolHelpsJob } from '../../../settlers/planner/assistant-grants.js';
 import { stockAtBuildings } from '../../../stores/index.js';
-import { sitesShortfalls } from '../../build-order/upgrade-supply.js';
+import { sitesShortfalls } from '../../build-order/supply/upgrade-supply.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER, FOOD_SHORT_UNITS_PER_SETTLER } from '../../workforce/food.js';
 import type { SeatSupply } from '../../workforce/supply.js';
 import type { ColonyEnv, SeatEnv } from '../env.js';

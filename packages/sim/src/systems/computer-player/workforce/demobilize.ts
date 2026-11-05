@@ -13,7 +13,7 @@ import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { isBarracksOrFoundation, isSoldierJob } from '../../readviews/index.js';
-import { militaryWaits } from '../build-order/seat-order.js';
+import { militaryWaits } from '../build-order/order/seat-order.js';
 import { gamePhase, minutesToTicks } from '../game-phase.js';
 import { BARRACKS_LEAD_TICKS } from '../military/deadline.js';
 

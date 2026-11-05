@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Stockpile } from '../../../../src/components/index.js';
 import type { Command } from '../../../../src/core/commands/index.js';
 import type { Simulation } from '../../../../src/index.js';
-import { goodsMadeBy } from '../../../../src/systems/computer-player/build-order/bill-sources.js';
+import { goodsMadeBy } from '../../../../src/systems/computer-player/build-order/supply/bill-sources.js';
 import {
   type BuildOrderEntry,
   buildOrderModule,

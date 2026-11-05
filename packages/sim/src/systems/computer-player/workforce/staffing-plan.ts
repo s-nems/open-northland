@@ -9,8 +9,8 @@ import {
 import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/fields.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { breadChainSupplier } from '../build-order/food-first.js';
-import { seatArchetype, seatHasSide, TUNIC_SIDES } from '../build-order/seat-order.js';
+import { seatArchetype, seatHasSide, TUNIC_SIDES } from '../build-order/order/seat-order.js';
+import { breadChainSupplier } from '../build-order/steps/food-first.js';
 import type { ComputerProfile } from '../difficulty.js';
 import {
   CORE_CREW_FROM_TICKS,
@@ -88,7 +88,7 @@ export interface SeatStaffing {
   readonly profile: ComputerProfile;
   /** The men pinned on the work earning a discovery (`technology/apprentices.ts`), never released. */
   readonly apprentices?: ReadonlySet<Entity>;
-  /** Whether the seat's bread chain is open and unfinished (`../build-order/food-first.ts`). */
+  /** Whether the seat's bread chain is open and unfinished (`../build-order/steps/food-first.ts`). */
   readonly breadChainOpen?: boolean;
 }
 

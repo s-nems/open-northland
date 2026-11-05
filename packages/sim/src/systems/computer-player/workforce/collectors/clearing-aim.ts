@@ -15,6 +15,7 @@ import { buildingFootprintOf } from '../../../footprint/geometry.js';
 import { placementBlockerGrid } from '../../../footprint/placement/blocker-grid.js';
 import { OBSTACLE, resourceBlockerCells } from '../../../footprint/placement/blockers.js';
 import { forEachResourceNear } from '../../../spatial/resources.js';
+import { plottedNodes } from '../../build-order/ground/plots.js';
 import {
   type BuildLineId,
   type BuildOrder,
@@ -24,7 +25,6 @@ import {
   seatTuning,
   stepKey,
 } from '../../build-order/index.js';
-import { plottedNodes } from '../../build-order/plots.js';
 import { CLEARING_GOOD_IDS } from './wanted-goods.js';
 
 /** How far from a tree or rock's anchor its walk body may block ground, in Manhattan half-cell nodes
@@ -83,7 +83,7 @@ interface ClearingPatch {
 }
 
 /** {@link ClearingPatch} for the seat, off ground another building's plot keeps
- *  (`../../build-order/plots.ts`) and, on an archetype keeping to its own land, on the base's land; null
+ *  (`../../build-order/ground/plots.ts`) and, on an archetype keeping to its own land, on the base's land; null
  *  when the type has no zone or no patch would ever take it. */
 export function clearingPatch(
   world: World,

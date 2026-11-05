@@ -4,10 +4,10 @@ import { bestRingNode } from '../../ai-shared/node-geometry.js';
 import { routeRegions } from '../../footprint/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { goodsSearchLimitAt } from '../../signposts/reach.js';
-import { footprintOnGrass } from '../build-order/placement.js';
-import { seatSpotAcceptor } from '../build-order/plots.js';
-import { buildReach } from '../build-order/reach.js';
-import { seatSiege } from '../build-order/siege.js';
+import { footprintOnGrass } from '../build-order/ground/placement.js';
+import { seatSpotAcceptor } from '../build-order/ground/plots.js';
+import { buildReach } from '../build-order/ground/reach.js';
+import { seatSiege } from '../build-order/towers/siege.js';
 import type { ColonyEnv } from './env.js';
 import { colonyBuildings } from './roster.js';
 

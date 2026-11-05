@@ -12,7 +12,7 @@ import { goodTypeByContentId } from '../../../ai-shared/content-lookup.js';
 import { seatColonies } from '../../../ai-shared/home-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { goodEnabled } from '../../../progression/index.js';
-import { seatArchetype } from '../../build-order/seat-order.js';
+import { seatArchetype } from '../../build-order/order/seat-order.js';
 import { freeShips } from '../../military/operations/landing.js';
 import { type ColonyEnv, homeLandOf } from '../env.js';
 import { lineWayClear } from './sea-danger.js';

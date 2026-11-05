@@ -14,7 +14,7 @@ import { isBuilt } from '../../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../../ai-shared/workforce/pool.js';
 import { buildingEnabled, jobEnabled, needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import { isCarrierJob } from '../../../stores/index.js';
-import { ROOM_HOME_BUILDING } from '../../build-order/room.js';
+import { ROOM_HOME_BUILDING } from '../../build-order/ground/room.js';
 import { technologyTable } from '../../technology/requirements.js';
 import { enabledTiersAbove, topEnabledTier } from '../../top-tier.js';
 import type { ColonyEnv, ColonyView } from '../env.js';

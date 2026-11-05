@@ -62,7 +62,7 @@ const JOINERY = 'work_joinery_00';
  *  carpenter's is the level-4 joinery, which builds carts. */
 const DRUID_TOP = 'work_druid_01';
 const JOINERY_TOP = 'work_joinery_03';
-/** The levels home's build plan lifts these workshops to (`../build-order/entries.ts`). */
+/** The levels home's build plan lifts these workshops to (`../../build-order/order/default-order.ts`). */
 const BAKERY_TOP = 'work_bakery_01';
 const SEWERY_TOP = 'work_sewery_01';
 const ARMORY_TOP = 'work_armory_01';

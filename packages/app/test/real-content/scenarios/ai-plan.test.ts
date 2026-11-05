@@ -75,7 +75,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     const { merge } = await loadContentUnderTest();
     const content = merge.content;
     const buildingById = new Map(content.buildings.map((b) => [b.id, b]));
-    // The executor holds a step until its bill has a source (`build-order/bill-sources.ts`), so a good
+    // The executor holds a step until its bill has a source (`build-order/supply/bill-sources.ts`), so a good
     // nothing in the order makes would hold that step's line for good.
     // Seeded with every harvestable good rather than the plan's own collector list - an upper bound on
     // gathered income, since a farm declares no recipe and its wheat can only enter through `harvest`.

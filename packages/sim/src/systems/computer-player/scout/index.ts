@@ -24,7 +24,7 @@ import { interactionNode } from '../../footprint/index.js';
 import { isHeroJob, isScoutJob } from '../../readviews/index.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
 import { seatBaseOf } from '../base.js';
-import type { BuildOrder } from '../build-order/entries.js';
+import type { BuildOrder } from '../build-order/order/entries.js';
 import { minutesToTicks } from '../game-phase.js';
 import type { ComputerModule } from '../index.js';
 import { recordScoutTurnBack } from '../knowledge/intel/index.js';

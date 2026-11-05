@@ -49,7 +49,7 @@ export interface PlanTuning {
   /** Of the difficulty's army cap, the part a seat that drafts to its cap drafts to. */
   readonly draftCapShare: Share;
   /** What the tower ring's defence wants divide by, in percent: below 100 rings more towers
-   *  (`build-order/tower-defence.ts`). */
+   *  (`build-order/towers/tower-defence.ts`). */
   readonly towerWantDivisorPct: number;
 }
 

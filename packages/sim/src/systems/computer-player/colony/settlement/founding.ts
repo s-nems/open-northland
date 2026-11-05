@@ -7,7 +7,7 @@ import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../../ai-shared/workforce/pool.js';
 import { liveWorkFlag } from '../../../economy/work-flag.js';
-import { siteCommand } from '../../build-order/placement.js';
+import { siteCommand } from '../../build-order/ground/placement.js';
 import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../../live-resources.js';
 import type { ColonyEnv, ColonyView } from '../env.js';
 import { colonists, colonyBuildings, colonyOrigin, storeOf, storeTiers } from '../roster.js';

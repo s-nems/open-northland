@@ -2,8 +2,8 @@
 
 **Area:** sim, data · **Priority:** P3
 
-`DEFAULT_BUILD_ORDER` (`packages/sim/src/systems/computer-player/build-order/entries.ts`) and the tables
-that shape it per seat (`build-order/seat-order.ts`: the archetype tuning, the side rules, the phase and
+`DEFAULT_BUILD_ORDER` (`packages/sim/src/systems/computer-player/build-order/order/default-order.ts`) and the tables
+that shape it per seat (`build-order/order/seat-order.ts`: the archetype tuning, the side rules, the phase and
 defence raises) are const tables of stable content ids inside the sim: data in shape, but not authorable
 per map or scenario. A validated IR profile would allow map and difficulty variants. No extraction source
 exists for the original strategic AI's internals, so this is authored content, not pipeline output.

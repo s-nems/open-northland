@@ -32,7 +32,7 @@ import {
 import { fishSwarmsNearNode } from '../../../spatial/fish.js';
 import { assignedWorkers } from '../../../stores/assigned-workers.js';
 import { isCarrierJob } from '../../../stores/workplace.js';
-import { sitesShortfalls } from '../../build-order/upgrade-supply.js';
+import { sitesShortfalls } from '../../build-order/supply/upgrade-supply.js';
 import { genericCollectorJob } from '../../workforce/collectors/wanted-goods.js';
 import { FISHER_FLAG_MAX_DISTANCE_NODES, FISHING_TRIP_RADIUS_NODES } from '../../workforce/fisher.js';
 import {

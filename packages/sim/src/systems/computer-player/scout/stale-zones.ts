@@ -8,7 +8,7 @@ import { anchorNodeOf, firstRingNode } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { fogHides, playerSeesNode } from '../../vision/gates.js';
 import { seatBaseOf } from '../base.js';
-import type { BuildOrder } from '../build-order/entries.js';
+import type { BuildOrder } from '../build-order/order/entries.js';
 import { zoneStaleness } from '../knowledge/intel/index.js';
 import { type ScoutDanger, scoutDanger } from './danger.js';
 import { scoutLostZones, scoutTurnedBackZones } from './lost-zones.js';

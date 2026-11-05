@@ -30,7 +30,7 @@ import { goodEnabled } from '../../progression/index.js';
 import { vehicleHouseOfGood } from '../../readviews/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
-import { militaryWaits, seatArchetype, seatHasSide } from '../build-order/seat-order.js';
+import { militaryWaits, seatArchetype, seatHasSide } from '../build-order/order/seat-order.js';
 import { colonySmallShips, colonyTradeShips } from '../colony/sea/fleet.js';
 import { TRADE_SHIP_ID } from '../colony/sea/trade-ship.js';
 import type { ComputerProfile } from '../difficulty.js';

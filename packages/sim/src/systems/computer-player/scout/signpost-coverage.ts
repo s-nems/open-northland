@@ -9,7 +9,7 @@ import { liveWorkFlag } from '../../economy/work-flag.js';
 import { interactionNode, routeRegions } from '../../footprint/index.js';
 import { signpostNetwork, signpostProbe } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
-import { type BuildOrder, orderSteps } from '../build-order/entries.js';
+import { type BuildOrder, orderSteps } from '../build-order/order/entries.js';
 import {
   knownAnd,
   knownResourceTest,

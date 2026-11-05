@@ -4,7 +4,7 @@ import { fighterWeaponClass } from '../../ai-shared/military/census.js';
 import { towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { armorGoodsByProtection, mayChangeEquipSlot } from '../../readviews/index.js';
-import { seatHasSide } from '../build-order/seat-order.js';
+import { seatHasSide } from '../build-order/order/seat-order.js';
 import { seatArmsStock } from './outfit.js';
 
 /** The arms sides whose seat dresses its army: chain and plate on `ironArms`, tunics on the other two. */

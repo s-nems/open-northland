@@ -2,7 +2,7 @@ import { type FootprintCell, parseContentSet } from '@open-northland/data';
 import type { EconomicSide } from '../../src/components/index.js';
 import type { PlayerCommand } from '../../src/core/commands/index.js';
 import { Simulation, type TerrainMap } from '../../src/index.js';
-import { GROUND_PLAN_FROM_TICKS } from '../../src/systems/computer-player/build-order/ground-plan.js';
+import { GROUND_PLAN_FROM_TICKS } from '../../src/systems/computer-player/build-order/ground/ground-plan.js';
 import { type BuildOrderEntry, buildOrderModule } from '../../src/systems/computer-player/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import {

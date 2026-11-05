@@ -7,14 +7,14 @@ import type { SystemContext } from '../../context.js';
 import { ownedRoadSites } from '../../roads/site-index.js';
 import { roadConstructionBill } from '../../roads/sites.js';
 import type { SeatStock } from '../../stores/index.js';
-import { homeTiersOf } from '../build-order/housing.js';
 import {
   BUILD_ORDER_LOOKAHEAD_ENTRIES,
   type BuildOrder,
   MAX_ACTIVE_CONSTRUCTION_SITES,
   orderSteps,
 } from '../build-order/index.js';
-import { sitesShortfalls } from '../build-order/upgrade-supply.js';
+import { homeTiersOf } from '../build-order/steps/housing.js';
+import { sitesShortfalls } from '../build-order/supply/upgrade-supply.js';
 import { homeStockOf } from '../colony/stock.js';
 import { type GamePhase, gamePhase, HOARD_UNITS_BY_PHASE } from '../game-phase.js';
 import { COLLECTED_GOOD_IDS } from './collectors/index.js';

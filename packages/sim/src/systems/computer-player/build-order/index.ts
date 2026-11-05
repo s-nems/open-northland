@@ -16,8 +16,11 @@ import { computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
 import { technologyReach } from '../technology/reach.js';
 import { technologyTable } from '../technology/requirements.js';
-import { billSourced, goodsMadeBy, sourcedTiers } from './bill-sources.js';
-import { directTier } from './direct-tier.js';
+import { towerUpgradeWaits } from './ground/front.js';
+import { grassReserved } from './ground/grass-reserve.js';
+import { keepGroundPlan } from './ground/ground-plan.js';
+import { placementSpot, siteCommand } from './ground/placement.js';
+import { keepSeatRoom } from './ground/room.js';
 import {
   type BuildLine,
   type BuildLineId,
@@ -30,32 +33,35 @@ import {
   type StepHold,
   type StepKey,
   stepKey,
-} from './entries.js';
-import { seatFoodFailing } from './food-first.js';
-import { towerUpgradeWaits } from './front.js';
-import { grassReserved } from './grass-reserve.js';
-import { keepGroundPlan } from './ground-plan.js';
-import { stepHeld } from './holds.js';
-import { daughtersBlocked, type HousingGate, housingGate } from './housing.js';
-import { REBUILD_DELAY_TICKS, sitePace } from './limits.js';
-import { decisionMemo } from './memo.js';
-import { holdsNamedPaper, paperedOpening, paperedPlacement, stepTiers } from './papers.js';
-import { placementSpot, siteCommand } from './placement.js';
-import { keepSeatRoom } from './room.js';
-import { seatBuildOrder, seatDefenceFirst, seatSitePace } from './seat-order.js';
-import { type Siege, seatSiege } from './siege.js';
-import { keyedStatuses, StalledSearches } from './stalled-searches.js';
-import { entryStatus, lineStatuses, nothingToUpgrade, upgradeCandidate, upgradeFilter } from './status.js';
-import { homeStoreLift } from './store-lift.js';
-import { coverageLaneSites, towerRingSites } from './tower-coverage.js';
-import { upgradeReach } from './upgrade-reach.js';
-import { starvedUpgrade, suppliedUpgrade } from './upgrade-supply.js';
+} from './order/entries.js';
+import { REBUILD_DELAY_TICKS, sitePace } from './order/limits.js';
+import { seatBuildOrder, seatDefenceFirst, seatSitePace } from './order/seat-order.js';
+import { seatFoodFailing } from './steps/food-first.js';
+import { stepHeld } from './steps/holds.js';
+import { daughtersBlocked, type HousingGate, housingGate } from './steps/housing.js';
+import { decisionMemo } from './steps/memo.js';
+import { holdsNamedPaper, paperedOpening, paperedPlacement, stepTiers } from './steps/papers.js';
+import { keyedStatuses, StalledSearches } from './steps/stalled-searches.js';
+import {
+  entryStatus,
+  lineStatuses,
+  nothingToUpgrade,
+  upgradeCandidate,
+  upgradeFilter,
+} from './steps/status.js';
+import { billSourced, goodsMadeBy, sourcedTiers } from './supply/bill-sources.js';
+import { directTier } from './supply/direct-tier.js';
+import { homeStoreLift } from './supply/store-lift.js';
+import { upgradeReach } from './supply/upgrade-reach.js';
+import { starvedUpgrade, suppliedUpgrade } from './supply/upgrade-supply.js';
+import { type Siege, seatSiege } from './towers/siege.js';
+import { coverageLaneSites, towerRingSites } from './towers/tower-coverage.js';
 
-export * from './default-order.js';
-export type { EntryStatus, LineStatuses } from './entries.js';
-export * from './entries.js';
-export { TOWER_CONTENT_IDS } from './front.js';
-export * from './limits.js';
+export { TOWER_CONTENT_IDS } from './ground/front.js';
+export * from './order/default-order.js';
+export type { EntryStatus, LineStatuses } from './order/entries.js';
+export * from './order/entries.js';
+export * from './order/limits.js';
 export {
   ARCHETYPE_TUNING,
   defenceFirst,
@@ -63,11 +69,11 @@ export {
   seatSitePace,
   seatTuning,
   shapeBuildOrder,
-} from './seat-order.js';
-export { type Siege, seatSiege } from './siege.js';
+} from './order/seat-order.js';
 export { crewSiteCap, EARNED_WORKSHOP_EXTRA_SITES, MEN_PER_OPEN_SITE } from './site-budget.js';
-export { collectorGoodStocked, collectorGoodsWanted, entryStatuses, lineStatuses } from './status.js';
-export { DEFENCE_FIRST_WANT_PCT, OPENING_DEFENCE } from './tower-defence.js';
+export { collectorGoodStocked, collectorGoodsWanted, entryStatuses, lineStatuses } from './steps/status.js';
+export { type Siege, seatSiege } from './towers/siege.js';
+export { DEFENCE_FIRST_WANT_PCT, OPENING_DEFENCE } from './towers/tower-defence.js';
 
 import { replaceMissingBase } from './base-replacement.js';
 import {
@@ -79,7 +85,6 @@ import {
   searchVerdict,
   type Verdict,
 } from './commands.js';
-import { advanceFrontier, awaitingRebuild, holdRebuildUnderAttack } from './frontier.js';
 import { laneSiteOpen, laneTiers, type OpenLane, openLanes } from './lanes.js';
 import {
   constructionSites,
@@ -94,6 +99,7 @@ import {
   ringTowerSite,
   waitsOnFreeSite,
 } from './site-budget.js';
+import { advanceFrontier, awaitingRebuild, holdRebuildUnderAttack } from './steps/frontier.js';
 import {
   atUnlockPending,
   atUnlockStep,
@@ -293,7 +299,7 @@ function runBuildOrder(
 
   let housing: HousingGate | undefined;
   const housingGateOf = (): HousingGate => (housing ??= housingGate(world, ctx, player, owned));
-  // A placing paper the seat holds turns the site it would open into a finished building (`./papers.ts`).
+  // A placing paper the seat holds turns the site it would open into a finished building (`./steps/papers.ts`).
   const papered = (command: PlayerCommand, entry: Parameters<typeof stepTiers>[1]): PlayerCommand =>
     command.kind === 'placeBuilding'
       ? paperedPlacement(world, ctx, terrain, player, order, command, stepTiers(ctx, entry))

@@ -13,8 +13,8 @@ import {
   scheduledTowers,
   TOWER_UPGRADE_QUIET_TICKS,
   towerUpgradeWaits,
-} from '../../../../src/systems/computer-player/build-order/front.js';
-import { coverageSpotSearch } from '../../../../src/systems/computer-player/build-order/tower-coverage.js';
+} from '../../../../src/systems/computer-player/build-order/ground/front.js';
+import { coverageSpotSearch } from '../../../../src/systems/computer-player/build-order/towers/tower-coverage.js';
 import {
   defenceAt,
   defenceCircleOf,
@@ -25,7 +25,7 @@ import {
   towerPlan,
   towerSpot,
   towerToUpgrade,
-} from '../../../../src/systems/computer-player/build-order/tower-defence.js';
+} from '../../../../src/systems/computer-player/build-order/towers/tower-defence.js';
 import { LATE_GAME_FROM_TICKS, minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
