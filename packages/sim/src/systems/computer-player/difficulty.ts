@@ -1,12 +1,7 @@
 import { AiControl, aiControlEntity, type ComputerDifficulty } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
-import {
-  BUILD_ORDER_LOOKAHEAD_ENTRIES,
-  type BuildOrder,
-  type BuildOrderEntry,
-  SITE_PACE_STEPS,
-  type SitePace,
-} from './build-order/entries.js';
+import type { BuildOrder, BuildOrderEntry } from './build-order/entries.js';
+import { BUILD_ORDER_LOOKAHEAD_ENTRIES, SITE_PACE_STEPS, type SitePace } from './build-order/limits.js';
 import {
   LATE_GAME_FROM_TICKS,
   MID_GAME_FROM_TICKS,

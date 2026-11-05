@@ -14,15 +14,15 @@ import { positionOfNode, Simulation, type TerrainMap } from '../../../../src/ind
 import { GRASS_BESIDE_NODES, spotAcceptor } from '../../../../src/systems/ai-shared/building-spot.js';
 import { bestRingNode } from '../../../../src/systems/ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
+import { FRONT_EDGE_STEP_NODES } from '../../../../src/systems/computer-player/build-order/affinity.js';
 import { FRONT_LINE_DEPTH_NODES } from '../../../../src/systems/computer-player/build-order/front.js';
 import { grassScarce } from '../../../../src/systems/computer-player/build-order/grass-reserve.js';
 import {
-  buildReach,
   CHAIN_ROOM_RADIUS_NODES,
   FARM_ROOM_RESOURCE_PENALTY_RINGS,
-  FRONT_EDGE_STEP_NODES,
   HOME_FARM_MARGIN_NODES,
 } from '../../../../src/systems/computer-player/build-order/placement.js';
+import { buildReach } from '../../../../src/systems/computer-player/build-order/reach.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
   type BuildOrder,

@@ -3,9 +3,8 @@ import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
-import type { BuildOrder, BuildOrderEntry } from './entries.js';
-import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
-import type { LineStatuses } from './progress.js';
+import type { BuildOrder, BuildOrderEntry, LineStatuses } from './entries.js';
+import { BUILD_SEARCH_MAX_RADIUS_NODES } from './limits.js';
 
 /** A seat with fewer buildable grass nodes than this within {@link BUILD_SEARCH_MAX_RADIUS_NODES} of its
  *  base is short of grass (authored): about the reserved zones of the full list's farm, wells, hives and

@@ -19,8 +19,8 @@ import { militaryOrdersOf } from '../strategy/military.js';
 import type { DefenceWants } from './entries.js';
 import { scheduledTowers, seatFrontLine, TOWER_CONTENT_IDS } from './front.js';
 import { grassBound } from './grass-reserve.js';
-import { type BuildReach, buildReach } from './placement.js';
 import { seatSpotAcceptor } from './plots.js';
+import { type BuildReach, buildReach } from './reach.js';
 import { seatDefenceFirst, seatTuning } from './seat-order.js';
 import { baseWalkTest } from './spot-walk.js';
 

@@ -11,14 +11,8 @@ import { type ComputerProfile, profileBuildOrder } from '../difficulty.js';
 import { type GamePhase, gamePhase, minutesToTicks } from '../game-phase.js';
 import { BARRACKS_LEAD_TICKS, beforeDeadlineLead } from '../military/deadline.js';
 import {
-  BUILD_SEARCH_MAX_RADIUS_NODES,
-  type BuildLine,
-  type BuildLineId,
-  type BuildOrder,
-  type BuildOrderEntry,
   DEFAULT_BUILD_ORDER,
   EARLY_SECOND_TAILOR,
-  HQ_PULL_DIVISOR_NODES,
   LATE_SMITHIES,
   LATER_MINTS,
   RICH_STEPS,
@@ -26,10 +20,9 @@ import {
   SECOND_ANIMAL_FARM,
   SECOND_ANIMAL_FARM_WELL,
   SECOND_UPPER_TAILOR,
-  type SitePace,
-  type StepHold,
-  sitePace,
-} from './entries.js';
+} from './default-order.js';
+import type { BuildLine, BuildLineId, BuildOrder, BuildOrderEntry, StepHold } from './entries.js';
+import { BUILD_SEARCH_MAX_RADIUS_NODES, HQ_PULL_DIVISOR_NODES, type SitePace, sitePace } from './limits.js';
 import { CATAPULT_JOINERY } from './military-line.js';
 
 /** What an economic archetype changes about the build order and its placements (authored). */

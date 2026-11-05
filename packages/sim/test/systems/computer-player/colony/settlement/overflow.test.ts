@@ -22,7 +22,7 @@ import {
   homeBuildings,
   homeSettlers,
 } from '../../../../../src/systems/ai-shared/home-roster.js';
-import { entryStatuses } from '../../../../../src/systems/computer-player/build-order/progress.js';
+import { entryStatuses } from '../../../../../src/systems/computer-player/build-order/status.js';
 import {
   isOverflowBuilding,
   reviewOverflow,

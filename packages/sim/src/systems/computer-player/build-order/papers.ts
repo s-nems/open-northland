@@ -1,21 +1,29 @@
-import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
-import { type Paper, playerPaperSlots } from '../../../components/index.js';
+import type { BuildingType } from '@open-northland/data';
+import { BUILDING_KIND } from '@open-northland/data';
+import { type Paper, playerPaperSlots, playerPlacementTribes } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
-import type { World } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { buildingTypeByContentId, countedTiers, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
+import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
+import type { LineStatuses } from './entries.js';
 import {
   type BuildLine,
+  type BuildLineId,
   type BuildOrder,
   type BuildOrderEntry,
   isLaneEntry,
   linesByPriority,
 } from './entries.js';
+import { awaitingRebuild } from './frontier.js';
+import { grassReserved } from './grass-reserve.js';
 import { homeTiersOf } from './housing.js';
-import type { PlaceCommand } from './placement.js';
-import type { LineStatuses } from './progress.js';
+import { type PlaceCommand, placementSpot, siteCommand } from './placement.js';
+import { type Siege, seatSiege } from './siege.js';
+import { keyedStatuses, StalledSearches } from './stalled-searches.js';
+import { coverageSpotSearch, firstUncovered } from './tower-coverage.js';
 
 type PlacingEntry = Extract<
   BuildOrderEntry,
@@ -193,4 +201,91 @@ export function paperedStore(
     }
   }
   return null;
+}
+
+/** The placement spending a named paper on the first step {@link paperedSteps} finds a spot for, a line
+ *  whose papered step finds none passing to the next line, else a warehouse paper ({@link paperedStore})
+ *  where the seat's store coverage is short; null under attack or with nothing to place. */
+export function paperedOpening(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  owned: readonly Entity[],
+  base: Entity,
+  order: BuildOrder,
+  statuses: LineStatuses,
+): PlaceCommand | null {
+  const tribe = playerPlacementTribes(world, player)?.[0];
+  const anchor = anchorNodeOf(world, base);
+  if (tribe === undefined || anchor === null) return null;
+  const searches = new StalledSearches(world, player, keyedStatuses(order, statuses));
+  let siege: Siege | null = null;
+  let reserveGrass: boolean | undefined;
+  const stalledLines = new Set<BuildLineId>();
+  for (const { line, step, entry, tier, paper } of paperedSteps(world, ctx, player, order, statuses)) {
+    if (stalledLines.has(line.id) || searches.waits(line.id, step, ctx.tick)) {
+      stalledLines.add(line.id);
+      continue;
+    }
+    const type = contentIndex(ctx.content).buildings.get(tier);
+    if (type === undefined) continue;
+    siege ??= seatSiege(world, ctx, terrain, player, owned);
+    if (siege.attacked) return null;
+    if (awaitingRebuild(world, player, line.id, step, entry, ctx.tick)) {
+      stalledLines.add(line.id);
+      continue;
+    }
+    reserveGrass ??= grassReserved(ctx, terrain, anchor, order, statuses);
+    const spot = placementSpot(
+      world,
+      ctx,
+      terrain,
+      player,
+      owned,
+      anchor,
+      type,
+      tribe,
+      entry,
+      siege.underFire,
+      reserveGrass,
+    );
+    searches.searched(line.id, step, ctx.tick, spot !== null, true);
+    if (spot === null) {
+      stalledLines.add(line.id);
+      continue;
+    }
+    searches.acting(line.id, step);
+    return { ...siteCommand(type, spot, tribe, player), paper };
+  }
+  const store = paperedStore(world, ctx, player, order, statuses);
+  if (store === null || searches.waits(store.line.id, store.step, ctx.tick)) return null;
+  siege ??= seatSiege(world, ctx, terrain, player, owned);
+  if (siege.attacked) return null;
+  reserveGrass ??= grassReserved(ctx, terrain, anchor, order, statuses);
+  const coverage = { by: 'store', radius: store.entry.radius } as const;
+  const spot = firstUncovered(
+    world,
+    ctx,
+    player,
+    owned,
+    coverage,
+    coverageSpotSearch(
+      world,
+      ctx,
+      terrain,
+      player,
+      owned,
+      anchor,
+      store.type,
+      tribe,
+      coverage,
+      siege.underFire,
+      reserveGrass,
+    ),
+  );
+  searches.searched(store.line.id, store.step, ctx.tick, spot !== null, true);
+  if (spot === null) return null;
+  searches.acting(store.line.id, store.step);
+  return { ...siteCommand(store.type, spot, tribe, player), paper: store.paper };
 }

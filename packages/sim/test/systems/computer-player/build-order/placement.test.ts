@@ -3,10 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { Position } from '../../../../src/components/index.js';
 import { World } from '../../../../src/ecs/world.js';
 import { positionOfNode, Simulation, type TerrainMap } from '../../../../src/index.js';
-import {
-  buildReach,
-  HOME_FARM_MARGIN_NODES,
-} from '../../../../src/systems/computer-player/build-order/placement.js';
+import { HOME_FARM_MARGIN_NODES } from '../../../../src/systems/computer-player/build-order/placement.js';
+import { buildReach } from '../../../../src/systems/computer-player/build-order/reach.js';
 import { buildOrderModule } from '../../../../src/systems/computer-player/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { ctxOf, FARM_TYPE, oneLine, placeHq, SEAT, STOCK_TYPE, VIKING } from '../support.js';

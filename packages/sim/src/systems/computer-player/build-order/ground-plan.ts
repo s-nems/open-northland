@@ -11,7 +11,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../ai-shared/cadence.js';
-import { buildingTypeByContentId, countedTiers } from '../../ai-shared/content-lookup.js';
+import { buildingTypeByContentId, countedTiers, upgradesInto } from '../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf } from '../../footprint/geometry.js';
@@ -20,15 +20,11 @@ import { placementProbe } from '../../footprint/placement/building.js';
 import { seatBaseLand } from '../base.js';
 import { minutesToTicks } from '../game-phase.js';
 import { clearingPatch } from '../workforce/collectors/clearing-aim.js';
-import {
-  type BuildOrder,
-  type BuildOrderEntry,
-  overflowBuildReachNodes,
-  STALLED_PLACEMENT_RETRY_DECISIONS,
-} from './entries.js';
-import { buildReach, placementPassesOver, placementSpot } from './placement.js';
+import type { BuildOrder, BuildOrderEntry, LineStatuses } from './entries.js';
+import { overflowBuildReachNodes, STALLED_PLACEMENT_RETRY_DECISIONS } from './limits.js';
+import { placementPassesOver, placementSpot } from './placement.js';
 import { plottedNodes, seatSpotAcceptor } from './plots.js';
-import { type LineStatuses, upgradesInto } from './progress.js';
+import { buildReach } from './reach.js';
 import { FIT_PER_HOME, freeHomeZones, ROOM_HOME_BUILDING } from './room.js';
 import { NO_ROOM_HOMES, seatHasSide, seatTuning } from './seat-order.js';
 import { baseWalkTest } from './spot-walk.js';

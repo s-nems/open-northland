@@ -12,10 +12,8 @@ import {
   decisionIndex,
   moduleBeatDue,
 } from '../../../../src/systems/ai-shared/cadence.js';
-import {
-  type BuildOrderEntry,
-  HOUSING_HOMES_CAP,
-} from '../../../../src/systems/computer-player/build-order/entries.js';
+import { HOUSING_HOMES_CAP } from '../../../../src/systems/computer-player/build-order/default-order.js';
+import type { BuildOrderEntry } from '../../../../src/systems/computer-player/build-order/entries.js';
 import { GROUND_PLAN_FROM_TICKS } from '../../../../src/systems/computer-player/build-order/ground-plan.js';
 import {
   FIT_PER_HOME,

@@ -10,12 +10,8 @@ import type { DeepReadonly } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import { tiersAtOrAbove } from '../../../ai-shared/content-lookup.js';
 import { seatColonies } from '../../../ai-shared/home-roster.js';
-import {
-  type BuildLineId,
-  type BuildOrderEntry,
-  DEFAULT_BUILD_ORDER,
-  stepKey,
-} from '../../build-order/entries.js';
+import { DEFAULT_BUILD_ORDER } from '../../build-order/default-order.js';
+import { type BuildLineId, type BuildOrderEntry, stepKey } from '../../build-order/entries.js';
 import { seatBuildOrder, seatHasSide } from '../../build-order/seat-order.js';
 import { computerProfileOf } from '../../difficulty.js';
 import { minutesToTicks } from '../../game-phase.js';

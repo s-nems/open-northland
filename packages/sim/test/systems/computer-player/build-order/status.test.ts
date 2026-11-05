@@ -3,19 +3,19 @@ import { describe, expect, it, vi } from 'vitest';
 import { aiControlEntity, ComputerStrategy, StalledPlacements } from '../../../../src/components/index.js';
 import type { Simulation } from '../../../../src/index.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
+import { MATERIAL_TIERS_DUE } from '../../../../src/systems/computer-player/build-order/default-order.js';
 import {
   type BuildOrder,
   type BuildOrderEntry,
-  MATERIAL_TIERS_DUE,
   stepKey,
 } from '../../../../src/systems/computer-player/build-order/entries.js';
+import { stepHeld } from '../../../../src/systems/computer-player/build-order/holds.js';
+import { decisionMemo } from '../../../../src/systems/computer-player/build-order/memo.js';
 import {
   collectorGoodsWanted,
-  decisionMemo,
   entryStatuses,
   lineStatuses,
-  stepHeld,
-} from '../../../../src/systems/computer-player/build-order/progress.js';
+} from '../../../../src/systems/computer-player/build-order/status.js';
 import {
   ASSUMED_PEACE_TICKS,
   TOWER_LEAD_TICKS,

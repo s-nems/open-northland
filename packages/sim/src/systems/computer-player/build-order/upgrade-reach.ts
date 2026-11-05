@@ -4,8 +4,8 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { buildingTypeByContentId, countedTiers } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
+import type { EntryStatus } from './entries.js';
 import { type BuildOrderEntry, isLaneEntry } from './entries.js';
-import type { EntryStatus } from './progress.js';
 
 /**
  * The tiers the upgrade step at `entryIndex` of its line's `steps` may raise `candidate` to, ascending

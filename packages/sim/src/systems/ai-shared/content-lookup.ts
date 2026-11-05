@@ -73,3 +73,16 @@ export function countedTiers(
   byCap.set(belowTier, counted);
   return counted;
 }
+
+/** Whether `from` sits strictly below `target` on the `upgradeTarget` chain. The visited guard bounds
+ *  a malformed cyclic chain. */
+export function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingType): boolean {
+  const visited = new Set<number>();
+  let step: BuildingType | undefined = from;
+  while (step !== undefined && !visited.has(step.typeId)) {
+    visited.add(step.typeId);
+    if (step.typeId === target.typeId) return step !== from;
+    step = step.upgradeTarget === undefined ? undefined : index.buildings.get(step.upgradeTarget);
+  }
+  return false;
+}

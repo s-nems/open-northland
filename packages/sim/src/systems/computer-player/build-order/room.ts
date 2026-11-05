@@ -20,9 +20,10 @@ import { firstRingNode } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../../footprint/geometry.js';
 import { seatBaseLand } from '../base.js';
-import { HOUSING_HOMES_CAP, overflowBuildReachNodes, STALLED_PLACEMENT_RETRY_DECISIONS } from './entries.js';
-import { buildReach } from './placement.js';
+import { HOUSING_HOMES_CAP } from './default-order.js';
+import { overflowBuildReachNodes, STALLED_PLACEMENT_RETRY_DECISIONS } from './limits.js';
 import { seatSpotAcceptor } from './plots.js';
+import { buildReach } from './reach.js';
 import { seatHasSide, seatTuning } from './seat-order.js';
 
 /** The stable content id of the home chain's base tier, whose zone is the unit room is measured in. */

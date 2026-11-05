@@ -4,7 +4,6 @@ import { setStockAmount } from '../../../../src/components/index.js';
 import type { Command } from '../../../../src/core/commands/index.js';
 import type { Simulation } from '../../../../src/index.js';
 import type { BuildOrderEntry } from '../../../../src/systems/computer-player/build-order/entries.js';
-import { sitePace } from '../../../../src/systems/computer-player/build-order/entries.js';
 import {
   FOOD_RICH_UNITS_PER_SETTLER,
   HERDING_TOP_HOMES,
@@ -12,6 +11,7 @@ import {
   HOUSING_PACE,
   HOUSING_WOMEN_PER_FOOD_SOURCE,
 } from '../../../../src/systems/computer-player/build-order/housing.js';
+import { sitePace } from '../../../../src/systems/computer-player/build-order/limits.js';
 import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
 import { SITES_GROW_FROM_TICKS } from '../../../../src/systems/computer-player/game-phase.js';
 import { buildOrderModule } from '../../../../src/systems/computer-player/index.js';

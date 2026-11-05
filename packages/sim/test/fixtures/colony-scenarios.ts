@@ -11,9 +11,9 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import type { Simulation } from '../../src/index.js';
 import { everySettlerOf } from '../../src/systems/ai-shared/home-roster.js';
+import { DEFAULT_BUILD_ORDER } from '../../src/systems/computer-player/build-order/default-order.js';
 import {
   type BuildLineId,
-  DEFAULT_BUILD_ORDER,
   type StepKey,
   stepKey,
 } from '../../src/systems/computer-player/build-order/entries.js';

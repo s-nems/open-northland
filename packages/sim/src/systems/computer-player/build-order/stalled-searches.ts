@@ -1,8 +1,9 @@
 import { aiControlEntity, StalledPlacements } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../ai-shared/cadence.js';
-import { type BuildLineId, STALLED_PLACEMENT_RETRY_DECISIONS, type StepKey, stepKey } from './entries.js';
-import type { EntryStatus } from './progress.js';
+import type { EntryStatus, LineStatuses } from './entries.js';
+import { type BuildLineId, type BuildOrder, type StepKey, stepKey } from './entries.js';
+import { STALLED_PLACEMENT_RETRY_DECISIONS } from './limits.js';
 
 /**
  * The seat's {@link StalledPlacements} record over one decision: which steps' spot searches wait, and the
@@ -84,4 +85,22 @@ export class StalledSearches {
     live.retryTicks.delete(key);
     for (const [line, held] of live.holding) if (held === key) live.holding.delete(line);
   }
+}
+
+/** Every step's status by its {@link StepKey}, built only when a stalled-search record asks. */
+export function keyedStatuses(
+  order: BuildOrder,
+  statuses: LineStatuses,
+): (key: StepKey) => EntryStatus | undefined {
+  let byKey: Map<StepKey, EntryStatus> | undefined;
+  return (key) => {
+    if (byKey === undefined) {
+      byKey = new Map();
+      for (const line of order.lines) {
+        for (const [step, status] of (statuses.get(line.id) ?? []).entries())
+          byKey.set(stepKey(line.id, step), status);
+      }
+    }
+    return byKey.get(key);
+  };
 }
