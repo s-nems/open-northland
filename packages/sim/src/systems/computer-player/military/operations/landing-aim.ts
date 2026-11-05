@@ -1,11 +1,11 @@
-import { Building, diplomacyStance, MAX_PLAYERS } from '../../../../components/index.js';
+import { Building, diplomacyStance, MAX_PLAYERS, mapBriefOf } from '../../../../components/index.js';
 import { isPlayerDead } from '../../../../components/match.js';
-import type { Entity } from '../../../../ecs/world.js';
+import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import { TOWER_POST_STRENGTH } from '../../../ai-shared/military/census.js';
 import { buildingCombatClass } from '../../../readviews/index.js';
 import type { Share } from '../../difficulty.js';
-import { peakFighterPoints } from '../../knowledge/intel/index.js';
+import { peakFighterPoints, rememberedLandPoints } from '../../knowledge/intel/index.js';
 import { knownDefendingPoints, ownArmyPoints } from '../enemy-strength.js';
 import { launchRatioReached } from '../plan.js';
 import {
@@ -269,6 +269,11 @@ function armyWeights(env: OperationEnv): ArmyWeights {
   };
 }
 
+/** The land component `owner` started the match on, known to every seat from the map's start layout. */
+function startLandOf(world: World, owner: number): number | null {
+  return mapBriefOf(world)?.seats.find((s) => s.player === owner)?.component ?? null;
+}
+
 /** The points of the enemy fighters the seat sees, by the land they stand on. */
 type LandFighters = ReadonlyMap<number, number>;
 
@@ -286,10 +291,12 @@ function landFighters(env: OperationEnv): LandFighters {
 type Objective = NonNullable<ReturnType<typeof landingObjective>>;
 
 /**
- * What the seat believes defends `goal` on `believed`, the fire there included: on a land holding a
- * headquarters, its owner's army ({@link ArmyWeights}) and {@link STORM_TOWER_POINTS} for each tower
- * covering the objective; on a colony, those towers with the posts last seen on them and the enemy fighters
- * it sees on the land. `fighters` is read when absent.
+ * What the seat believes defends `goal` on `believed`, the fire there included. On a land holding a
+ * headquarters, or `owner`'s start land, where his army stands even once it fell: his army
+ * ({@link ArmyWeights}) and {@link STORM_TOWER_POINTS} for each tower covering the objective. On a colony:
+ * those towers with the posts last seen on them, and the enemy fighters it sees on the land, at least the
+ * most of `owner`'s it ever saw there at once ({@link rememberedLandPoints}), so a raid that met the
+ * garrison and turned back weighs it next time. `fighters` is read when absent.
  */
 function stormDefence(
   env: OperationEnv,
@@ -300,15 +307,16 @@ function stormDefence(
   armies: ArmyWeights,
   fighters?: LandFighters,
 ): number {
-  const { ctx } = env;
+  const { world, ctx, seat } = env;
   const towers = towersReaching(believed.sources, goal.at);
   const headquarters =
     believed.targets.find((t) => buildingCombatClass(ctx, t.buildingType) === 'hq') ?? null;
   let army = 0;
-  if (headquarters !== null && owner !== null) {
+  if (owner !== null && (headquarters !== null || startLandOf(world, owner) === land)) {
     army = armies(owner) + towers.length * STORM_TOWER_POINTS;
   } else {
-    army = (fighters ?? landFighters(env)).get(land) ?? 0;
+    const remembered = owner === null ? 0 : rememberedLandPoints(world, seat, owner, land);
+    army = Math.max((fighters ?? landFighters(env)).get(land) ?? 0, remembered);
     for (const t of towers) army += STORM_TOWER_POINTS + t.postedPoints * TOWER_POST_STRENGTH;
   }
   const target = believed.targets.find((t) => t.entity === goal.entity) ?? null;
@@ -317,7 +325,7 @@ function stormDefence(
 
 /**
  * A raid on a rival's colony: the strongest of `ranked`, as many as reach {@link LANDING_EDGE} (or `ratio`
- * when larger) over the enemy fighters seen on the land and the fire at a clear objective, or
+ * when larger) over the {@link stormDefence} of a clear objective, or
  * {@link LANDING_STORM_EDGE} over the {@link stormDefence} of a covered one, at least
  * {@link COLONY_RAID_LEAST_MEN}, all within `seats`; null when the men at home cannot.
  */
@@ -334,7 +342,7 @@ function colonyAim(
   const goal = clear ?? landingObjective(env.ctx, c.believed, c.towards.at, true);
   if (goal === null) return null;
   const edge = atLeast(ratio, clear === null ? LANDING_STORM_EDGE : LANDING_EDGE);
-  const opposing = stormDefence(env, c.believed, c.land, null, goal, armies, fighters);
+  const opposing = stormDefence(env, c.believed, c.land, c.owner, goal, armies, fighters);
   const wave: Entity[] = [];
   let points = 0;
   for (const m of ranked) {

@@ -5,6 +5,7 @@ import {
   type ComputerIntelState,
   computerControllerRuns,
   type IntelBuilding,
+  type IntelLandForces,
   MAX_PLAYERS,
   type MapBriefView,
   mapBriefOf,
@@ -151,6 +152,8 @@ function observeForces(
   let seen = 0;
   let seenPoints = 0;
   const byZone = new Map<number, number>();
+  const byLand = new Map<number, number>();
+  const terrain = ctx.terrain;
   for (const e of ownedFightersOf(world, ctx.content, other)) {
     if (!isLiveFighter(world, e)) continue;
     const pos = world.tryGet(e, Position);
@@ -163,6 +166,10 @@ function observeForces(
     seenPoints += points;
     const zone = zoneOfNode(brief, hx, hy);
     byZone.set(zone, (byZone.get(zone) ?? 0) + 1);
+    if (terrain?.inBounds(hx, hy) === true) {
+      const land = terrain.componentOf(terrain.nodeAt(hx, hy));
+      byLand.set(land, (byLand.get(land) ?? 0) + points);
+    }
     const post = mannedPostOf(world, ctx, e);
     if (post === null) continue;
     const sighting = posted.get(post);
@@ -183,6 +190,7 @@ function observeForces(
       peakPointsAt: ctx.tick,
       mostPoints: 0,
       ownPointsAtMost: 0,
+      lands: [],
       lastSeenAt: ctx.tick,
       lastZone: 0,
     };
@@ -201,8 +209,19 @@ function observeForces(
     record.mostPoints = seenPoints;
     record.ownPointsAtMost = everyFighterPoints(world, ctx, seat);
   }
+  rememberLands(record.lands, byLand);
   record.lastSeenAt = ctx.tick;
   record.lastZone = busiestZone(byZone);
+}
+
+/** Raise each land's remembered most to the points seen on it now, kept ascending land. */
+function rememberLands(lands: IntelLandForces[], byLand: ReadonlyMap<number, number>): void {
+  for (const [land, points] of byLand) {
+    const held = lands.find((l) => l.land === land);
+    if (held === undefined) lands.push({ land, points });
+    else held.points = Math.max(held.points, points);
+  }
+  lands.sort((a, b) => a.land - b.land);
 }
 
 /** The zone holding the most of the sighting, the lowest index on a tie. */

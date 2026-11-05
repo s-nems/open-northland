@@ -32,9 +32,17 @@ export interface IntelForces {
   /** The most fighter points ever seen at once, never aged, and the seat's own fighter points then. */
   mostPoints: number;
   ownPointsAtMost: number;
+  /** Per land it was seen on, ascending land: the most of its fighter points seen there at once. */
+  lands: IntelLandForces[];
   /** The last tick any of its fighters was seen, and the zone most of them stood in then. */
   lastSeenAt: number;
   lastZone: number;
+}
+
+/** The most fighter points of one seat seen at once standing on one land component, never aged. */
+export interface IntelLandForces {
+  land: number;
+  points: number;
 }
 
 /** One computer seat's memory of the others, fed only by its own sight. */

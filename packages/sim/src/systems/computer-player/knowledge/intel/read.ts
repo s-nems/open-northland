@@ -92,6 +92,13 @@ export function peakFighterPoints(
   return ownPointsAtMost <= 0 ? limit : Math.min(limit, Math.floor((mostPoints * own) / ownPointsAtMost));
 }
 
+/** The most fighter points of `owner` that `seat` saw at once standing on `land`, never aged; 0 when it
+ *  saw none there. */
+export function rememberedLandPoints(world: World, seat: number, owner: number, land: number): number {
+  const forces = intelOf(world, seat)?.forces.find((f) => f.player === owner);
+  return forces?.lands.find((l) => l.land === land)?.points ?? 0;
+}
+
 function peakOrUnknown(forces: DeepReadonly<IntelForces>, tick: number): number | null {
   const peak = decayedPeak(forces.peak, forces.peakAt, tick);
   return peak > 0 ? peak : null;

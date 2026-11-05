@@ -31,7 +31,10 @@ import {
   LANDING_FORM_TIMEOUT_TICKS,
   LANDING_SAIL_TIMEOUT_TICKS,
 } from '../../../../../src/systems/computer-player/military/operations/landing.js';
-import { COLONY_RAID_LEAST_MEN } from '../../../../../src/systems/computer-player/military/operations/landing-aim.js';
+import {
+  COLONY_RAID_LEAST_MEN,
+  LANDING_EDGE,
+} from '../../../../../src/systems/computer-player/military/operations/landing-aim.js';
 import { RELIEF_LEAST_MEN } from '../../../../../src/systems/computer-player/military/operations/landing-relief.js';
 import { everyFighterPoints } from '../../../../../src/systems/computer-player/military/points.js';
 import { militaryOrdersOf } from '../../../../../src/systems/computer-player/strategy/military.js';
@@ -40,6 +43,7 @@ import {
   LANDING_FLEET_MIN_SHIPS,
   landingFleetShips,
 } from '../../../../../src/systems/computer-player/workforce/craft.js';
+import { ownedFightersOf } from '../../../../../src/systems/movement/collision/owned-fighters.js';
 import { spawnSettler } from '../../../../../src/systems/spawn/index.js';
 import { createVehicle } from '../../../../../src/systems/vehicles/index.js';
 import { crewInside } from '../../../../../src/systems/vehicles/movement.js';
@@ -50,6 +54,8 @@ import { ctxOf } from '../../../../fixtures/context.js';
 const VIKING = 1;
 const SEAT = 2;
 const FOE = 3;
+/** A second rival, whose headquarters stands on the colony island south of the foe's. */
+const SECOND_FOE = 4;
 const HQ_TYPE = 1;
 const BARRACKS_TYPE = 12;
 const SPEARMAN = 32;
@@ -72,6 +78,8 @@ const FARM_TYPE = 5;
 /** A foe tower whose reach covers his headquarters, and a farm out of reach of both. */
 const FOE_TOWER = { x: 120, y: 54 };
 const FOE_FARM = { x: 104, y: 100 };
+/** A farm of the foe's on his own start land, out of his headquarters' reach. */
+const FOE_HOME_FARM = { x: 104, y: 16 };
 /** The farm's life pool here, so a landing can strike it. */
 const FARM_HITPOINTS = 300;
 /** The strait column beside the west shore where the seat's ships lie moored, a ship every
@@ -197,7 +205,12 @@ function landingWorld({
   /** Cut the east island in two ({@link islands}). */
   colony?: boolean;
   /** More foe buildings on the east island. */
-  foe?: readonly { readonly buildingType: number; readonly at: { x: number; y: number } }[];
+  foe?: readonly {
+    readonly buildingType: number;
+    readonly at: { x: number; y: number };
+    /** {@link FOE} by default. */
+    readonly owner?: number;
+  }[];
 } = {}): LandingWorld {
   const sim = new Simulation({
     seed: 7,
@@ -220,7 +233,7 @@ function landingWorld({
   place(HQ_TYPE, SEAT_HQ, SEAT);
   place(BARRACKS_TYPE, BARRACKS, SEAT);
   place(HQ_TYPE, FOE_HQ, FOE);
-  for (const b of foe) place(b.buildingType, b.at, FOE);
+  for (const b of foe) place(b.buildingType, b.at, b.owner ?? FOE);
   sim.step();
   const fleet = landingFleetShips(sim.world, SEAT, computerProfileOf(sim.world, SEAT));
   for (let i = 0; i < (ships ?? fleet); i++) {
@@ -284,26 +297,44 @@ function runUntil(sim: Simulation, ticks: number, watch: () => boolean): void {
   }
 }
 
+/** The men's worth of the foe's garrison the seat remembers on his colony, more than its least raid
+ *  outweighs half again. */
+const REMEMBERED_GARRISON = 12;
 /** The fighter points the seat remembers seeing of the foe's army at once: a token band. */
 const SEEN_FOE_POINTS = 1;
 
-/** Give the seat the memory of having seen `points` of the foe's army at once, its own army as it stands. */
-function rememberFoeArmy(sim: Simulation, points: number): void {
+/** What the seat remembers seeing of the foe's army: `most` points at once, `on` lands the most seen on
+ *  each, `faded` when the aged peak has worn off since. */
+interface FoeMemory {
+  readonly most: number;
+  readonly lands?: readonly { readonly land: number; readonly points: number }[];
+  readonly faded?: boolean;
+}
+
+/** Give the seat the memory `memory` of the foe's army, its own army as it stands. */
+function rememberFoeArmy(sim: Simulation, { most, lands = [], faded = false }: FoeMemory): void {
   const carrier = aiControlEntity(sim.world, SEAT);
   if (carrier === null) throw new Error('setup: no AI seat');
   runUntil(sim, COMPUTER_DECISION_INTERVAL_TICKS, () => sim.world.has(carrier, ComputerIntel));
   const own = everyFighterPoints(sim.world, ctxOf(sim), SEAT);
   sim.world.mut(carrier, ComputerIntel).forces.push({
     player: FOE,
-    peak: 1,
+    peak: faded ? 0 : 1,
     peakAt: sim.tick,
-    peakPoints: points,
+    peakPoints: faded ? 0 : most,
     peakPointsAt: sim.tick,
-    mostPoints: points,
+    mostPoints: most,
     ownPointsAtMost: own,
+    lands: lands.map((l) => ({ ...l })),
     lastSeenAt: sim.tick,
     lastZone: 0,
   });
+}
+
+/** The points of one of the seat's men: every man of the fixture weighs the same. */
+function manPoints(sim: Simulation): number {
+  const own = ownedFightersOf(sim.world, sim.content, SEAT);
+  return everyFighterPoints(sim.world, ctxOf(sim), SEAT) / own.length;
 }
 
 /** Whether every one of the seat's ships lies moored empty. */
@@ -487,7 +518,7 @@ describe('landing operations', () => {
       seats: STORM_SHIP_SEATS,
       foe: [{ buildingType: TOWER_TYPE, at: FOE_TOWER }],
     });
-    if (fog !== FOG_MODE.OFF) rememberFoeArmy(sim, SEEN_FOE_POINTS);
+    if (fog !== FOG_MODE.OFF) rememberFoeArmy(sim, { most: SEEN_FOE_POINTS });
     let seen: OperationView | undefined;
     runUntil(sim, LANDING_LIMIT_TICKS, () => {
       seen = landings(sim)[0] ?? seen;
@@ -529,6 +560,55 @@ describe('landing operations', () => {
     ).toBe(colonyLand);
     expect(seen?.landing?.startMen).toBe(COLONY_RAID_LEAST_MEN);
     expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it('sizes a colony raid on the most it ever saw of the garrison there, out of sight now', () => {
+    const { sim } = landingWorld({
+      ships: LANDING_BIG_SHIPS - 1,
+      seats: STORM_SHIP_SEATS,
+      colony: true,
+      foe: [{ buildingType: FARM_TYPE, at: FOE_FARM }],
+    });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
+    const points = REMEMBERED_GARRISON * manPoints(sim);
+    rememberFoeArmy(sim, { most: points, lands: [{ land: colonyLand, points }] });
+    let seen: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return seen !== undefined;
+    });
+    // The fewest men that outweigh the remembered garrison half again.
+    const men = Math.ceil((REMEMBERED_GARRISON * LANDING_EDGE.num) / LANDING_EDGE.den);
+    expect(men).toBeGreaterThan(COLONY_RAID_LEAST_MEN);
+    expect(seen?.landing?.startMen).toBe(men);
+  });
+
+  it("weighs a rival's start land as his army once it believes his headquarters fell", () => {
+    const { sim } = landingWorld({
+      fog: FOG_MODE.CLASSIC_FOG_OF_WAR,
+      ships: LANDING_BIG_SHIPS - 1,
+      // Seats enough for the least raid beside the ship a sea scout takes.
+      seats: STORM_SHIP_SEATS,
+      colony: true,
+      foe: [
+        { buildingType: FARM_TYPE, at: FOE_HOME_FARM },
+        { buildingType: HQ_TYPE, at: FOE_FARM, owner: SECOND_FOE },
+      ],
+    });
+    const hq = foeHeadquarters(sim);
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (hq === null || carrier === null) throw new Error('setup: no foe headquarters or AI seat');
+    // His army, seen long ago, outweighs the seat's whole army; the seat believes his headquarters fell.
+    rememberFoeArmy(sim, { most: OUTMATCHING_FOES * manPoints(sim), faded: true });
+    const intel = sim.world.mut(carrier, ComputerIntel);
+    intel.buildings = intel.buildings.filter((b) => b.entity !== hq);
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      expect(landings(sim)).toEqual([]);
+      return false;
+    });
+    // The seat would land: its posture attacks the second rival.
+    expect(militaryOrdersOf(sim.world, SEAT).launchRatio).not.toBeNull();
   });
 
   it('relieves its colony from home with a band sized to the enemy it sees there', () => {
