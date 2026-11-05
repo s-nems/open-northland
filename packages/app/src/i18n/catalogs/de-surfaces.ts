@@ -220,6 +220,7 @@ export const deSurfaces = {
         audio: 'Ton',
         gameplay: 'Spiel',
         controls: 'Steuerung',
+        accessibility: 'Barrierefreiheit',
       },
       displayMode: 'Anzeigemodus',
       displayFullscreen: 'Vollbild',
@@ -273,6 +274,18 @@ export const deSurfaces = {
       groupNumbers: 'Gruppennummern',
       groupNumbersTip:
         'Eine winzige Gruppennummer an jeder Einheit in einer Gruppe. Eine Einheit in mehreren Gruppen zeigt bis zu drei, etwa 1,2,3.',
+      accessibilityHeading: 'Barrierefreiheit',
+      teamColorStrength: 'Stärke der Spielerfarben',
+      teamColorStrengthTip:
+        'Schiebt jede Spielerfarbe für farbenschwache Spieler zu einer kräftigeren Version ihrer selbst. Stufe 1 ist die ursprüngliche Palette; Stufe 10 ist die kräftigste, ohne zu ändern, welche Farbe ein Spieler hat.',
+      colorBlindFilter: 'Farbblindfilter',
+      colorBlindFilterTip:
+        'Ein bildschirmweiter Korrekturfilter für farbblinde Spieler; bei Ausstellt bleibt das Bild unverändert.',
+      colorBlindFilterOff: 'Aus',
+      colorBlindFilterDeuteranopia: 'Rot-Grün (Deuteranopie)',
+      colorBlindFilterProtanopia: 'Rotblind (Protanopie)',
+      colorBlindFilterTritanopia: 'Blau-Gelb (Tritanopie)',
+      colorBlindFilterGeneric: 'Allgemein',
       fpsCounter: 'FPS-Anzeige',
       fpsCounterTip:
         'Die Bildrate in der oberen Leiste. Mit der Maus darüber zeigt sie, was das Spiel bremst: die Simulation, der Prozessor beim Zeichnen oder die Grafikkarte.',

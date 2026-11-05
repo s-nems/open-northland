@@ -183,6 +183,7 @@ export const plSurfaces = {
         audio: 'Dźwięk',
         gameplay: 'Rozgrywka',
         controls: 'Sterowanie',
+        accessibility: 'Ułatwienia dostępu',
       },
       displayMode: 'Tryb wyświetlania',
       displayFullscreen: 'Pełny ekran',
@@ -234,6 +235,18 @@ export const plSurfaces = {
       groupNumbers: 'Numery grup',
       groupNumbersTip:
         'Malutki numer grupy przy każdej jednostce przypisanej do grupy. Jednostka w kilku grupach pokazuje do trzech, np. 1,2,3.',
+      accessibilityHeading: 'Dostępność',
+      teamColorStrength: 'Natężenie kolorów graczy',
+      teamColorStrengthTip:
+        'Przesuwa każdy kolor gracza w stronę bardziej wyrazistej wersji samego siebie dla graczy z wadami widzenia barw. Poziom 1 to oryginalna paleta; poziom 10 jest najbardziej wyrazisty i nie zmienia tego, jaki kolor ma gracz.',
+      colorBlindFilter: 'Filtr daltonizmu',
+      colorBlindFilterTip:
+        'Obejmujący cały ekran filtr korekcyjny dla daltonistów; wyłączenie pozostawia obraz bez zmian.',
+      colorBlindFilterOff: 'Wył.',
+      colorBlindFilterDeuteranopia: 'Czerwono-zielony (deuteranopia)',
+      colorBlindFilterProtanopia: 'Ślepota na czerwień (protanopia)',
+      colorBlindFilterTritanopia: 'Niebiesko-żółty (tritanopia)',
+      colorBlindFilterGeneric: 'Ogólny',
       fpsCounter: 'Licznik FPS',
       fpsCounterTip:
         'Liczba klatek na sekundę na górnym pasku. Najedź na nią, aby zobaczyć, co hamuje grę: symulacja, procesor rysujący klatkę czy karta graficzna.',

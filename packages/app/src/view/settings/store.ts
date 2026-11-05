@@ -70,6 +70,20 @@ export const RENDER_SCALE_MIN = 0.5;
 export const RENDER_SCALE_MAX = 2;
 const DEFAULT_RENDER_SCALE = 1;
 
+/** Player colour boldness for colour-vision-deficient players; 1 = retail palette, 10 = boldest. Local only. */
+export const TEAM_COLOR_STRENGTH_MIN = 1;
+export const TEAM_COLOR_STRENGTH_MAX = 10;
+
+/** A whole-viewport colour-blindness correction filter; `off` leaves the image uncorrected. Local only. */
+export type ColorBlindFilter = 'off' | 'deuteranopia' | 'protanopia' | 'tritanopia' | 'generic';
+export const COLOR_BLIND_FILTERS: readonly ColorBlindFilter[] = [
+  'off',
+  'deuteranopia',
+  'protanopia',
+  'tritanopia',
+  'generic',
+] as const;
+
 export const SCROLL_SPEED_MIN = 0.5;
 export const SCROLL_SPEED_MAX = 3;
 export const DEFAULT_SCROLL_SPEED = 1.5;
@@ -116,6 +130,10 @@ export interface MenuSettings {
   readonly cursorHints: boolean;
   /** A small label of its control groups' numbers by each unit bound to one. */
   readonly groupNumbers: boolean;
+  /** Player colour boldness for colour-vision-deficient players; 1 = retail palette, 10 = boldest. Local only. */
+  readonly teamColorStrength: number;
+  /** A whole-viewport colour-blindness correction filter; `off` leaves the image uncorrected. Local only. */
+  readonly colorBlindFilter: ColorBlindFilter;
   readonly minimapFrame: MinimapFrame;
   /** The minimap's marker layers and owner scope, set from its filters popover. */
   readonly minimapFilters: MinimapFilters;
@@ -209,6 +227,8 @@ export function defaultSettings(): MenuSettings {
     hoverOutline: true,
     cursorHints: true,
     groupNumbers: false,
+    teamColorStrength: TEAM_COLOR_STRENGTH_MIN,
+    colorBlindFilter: 'off',
     minimapFrame: DEFAULT_MINIMAP_FRAME,
     minimapFilters: DEFAULT_MINIMAP_FILTERS,
     soundEnabled: true,
@@ -306,6 +326,11 @@ function clampRenderScale(value: unknown): number {
   return Math.min(RENDER_SCALE_MAX, Math.max(RENDER_SCALE_MIN, value));
 }
 
+function clampTeamColorStrength(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return TEAM_COLOR_STRENGTH_MIN;
+  return Math.min(TEAM_COLOR_STRENGTH_MAX, Math.max(TEAM_COLOR_STRENGTH_MIN, Math.round(value)));
+}
+
 function clampScrollSpeed(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_SCROLL_SPEED;
   return Math.min(SCROLL_SPEED_MAX, Math.max(SCROLL_SPEED_MIN, value));
@@ -385,6 +410,9 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     hoverOutline: typeof record.hoverOutline === 'boolean' ? record.hoverOutline : defaults.hoverOutline,
     cursorHints: typeof record.cursorHints === 'boolean' ? record.cursorHints : defaults.cursorHints,
     groupNumbers: typeof record.groupNumbers === 'boolean' ? record.groupNumbers : defaults.groupNumbers,
+    teamColorStrength: clampTeamColorStrength(record.teamColorStrength),
+    colorBlindFilter:
+      COLOR_BLIND_FILTERS.find((filter) => filter === record.colorBlindFilter) ?? defaults.colorBlindFilter,
     minimapFrame: parseMinimapFrame(record.minimapFrame),
     minimapFilters: parseMinimapFilters(record.minimapFilters),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,

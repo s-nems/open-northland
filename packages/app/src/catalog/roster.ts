@@ -2,6 +2,7 @@ import { clipDirs, GALLERY_DIRS } from '@open-northland/render';
 import type { BobSeqRow } from '../content/ir/rows.js';
 import { lookStem } from '../content/settler-gfx/index.js';
 import { formatMessage, type Messages, messages } from '../i18n/index.js';
+import { currentTeamColorStrength, enhancePlayerColor } from './player-color.js';
 
 /**
  * The viking character roster the `?anim` gallery plays: one body bob set plus the head looks that
@@ -97,9 +98,18 @@ export function playerSignAtlasStem(colorId: number): string {
   return `ls_temp.human_player${String(colorId + 1).padStart(2, '0')}`;
 }
 
-/** A player swatch as a CSS hex colour; unknown ids fall to black. */
+/** A player swatch as a CSS hex colour; unknown ids fall to black. The colour is pushed toward a
+ *  bolder version of itself by the live team-colour-strength setting (level 1 is the retail colour). */
 export function playerSwatchHex(colorId: number): string {
-  return `#${(PLAYER_SWATCH_COLORS[colorId] ?? 0).toString(16).padStart(6, '0')}`;
+  return `#${enhancedPlayerSwatch(colorId, 0).toString(16).padStart(6, '0')}`;
+}
+
+/** The player swatch for `colorId` as a packed `0xRRGGBB`, pushed toward a bolder version of itself by
+ *  the live team-colour-strength setting. `fallback` stands in when the slot is out of range, so the
+ *  result at strength 1 matches the plain palette byte for byte. */
+export function enhancedPlayerSwatch(colorId: number, fallback: number): number {
+  const raw = PLAYER_SWATCH_COLORS[colorId % PLAYER_SWATCH_COLORS.length] ?? fallback;
+  return enhancePlayerColor(raw, currentTeamColorStrength());
 }
 
 /** Every look bound to `cr_hum_body_00`: civilist (`head_00..03`), scout (`head_80..83`) and druid

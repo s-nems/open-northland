@@ -26,6 +26,7 @@ import {
 } from '../../game/snapshot/index.js';
 import type { MinimapFilters, MinimapScope } from './filters.js';
 import { MINIMAP_PLAYER_COLOURS, STANCE_COLOURS, STANCE_SELF_COLOUR } from './palette.js';
+import { currentTeamColorStrength, enhancePlayerColor } from '../../catalog/player-color.js';
 import type { MinimapMark, MinimapStampPart } from './stamps.js';
 
 /** Fallback dot colour for a player outside the swatch table. */
@@ -464,12 +465,15 @@ export class MinimapDotPlot {
     let colour = this.colours.get(player);
     if (colour === undefined) {
       // Without a seat there is no stance to paint, so a whole-map view keeps the team colours.
-      if (ctx.filters.colours === 'stance' && ctx.viewer !== null)
+      if (ctx.filters.colours === 'stance' && ctx.viewer !== null) {
         colour = player === ctx.viewer ? STANCE_SELF_COLOUR : STANCE_COLOURS[this.stanceToward(ctx, player)];
-      else
-        colour =
+      } else {
+        // The base team colour, then pushed toward a bolder version of itself by the live setting.
+        const base =
           MINIMAP_PLAYER_COLOURS[(ctx.playerColourOf?.(player) ?? player) % MINIMAP_PLAYER_COLOURS.length] ??
           UNKNOWN_PLAYER_DOT_COLOUR;
+        colour = enhancePlayerColor(base, currentTeamColorStrength());
+      }
       this.colours.set(player, colour);
     }
     return colour;

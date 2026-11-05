@@ -1,6 +1,6 @@
 import type { MapRelationFlag } from '@open-northland/data';
 import type { DiplomacyState, OpenTribute, TradeOffer } from '@open-northland/sim';
-import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
+import { enhancedPlayerSwatch } from '../../catalog/roster.js';
 import type {
   DeclarationBlock,
   DiplomacyGood,
@@ -131,7 +131,7 @@ export function diplomacyPanelRows(sim: DiplomacySimView, opts: DiplomacyRosterO
       player: other,
       ...(name !== undefined ? { name } : {}),
       ...(tribe !== undefined ? { tribe } : {}),
-      colour: PLAYER_SWATCH_COLORS[colourOf(other)] ?? 0,
+      colour: enhancedPlayerSwatch(colourOf(other), 0),
       towardYou,
       yourStance,
       ...(friends ? { goodsTraded: sim.goodsTradedWith(local, other) } : {}),

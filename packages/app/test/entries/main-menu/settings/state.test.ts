@@ -13,6 +13,8 @@ import {
   RENDER_SCALE_MIN,
   SCROLL_SPEED_MAX,
   SCROLL_SPEED_MIN,
+  TEAM_COLOR_STRENGTH_MAX,
+  TEAM_COLOR_STRENGTH_MIN,
 } from '../../../../src/view/settings/store.js';
 
 // The default language, and so the param the URL elides, comes from the browser rather than a constant.
@@ -57,6 +59,8 @@ describe('parseStoredSettings', () => {
       hoverOutline: false,
       cursorHints: false,
       groupNumbers: true,
+      teamColorStrength: 1,
+      colorBlindFilter: 'off',
       minimapFrame: 'urnes',
       minimapFilters: {
         layers: {
@@ -301,6 +305,30 @@ describe('persistSettings', () => {
       renderScale: 1.5,
       volumes: { music: 25 },
     });
+  });
+});
+
+describe('accessibility settings', () => {
+  it('ships at the retail palette and no filter by default', () => {
+    expect(defaultSettings()).toMatchObject({
+      teamColorStrength: TEAM_COLOR_STRENGTH_MIN,
+      colorBlindFilter: 'off',
+    });
+  });
+
+  it('clamps the team-colour strength into 1–10 and rounds it', () => {
+    expect(parseStoredSettings('{"teamColorStrength":0}').teamColorStrength).toBe(TEAM_COLOR_STRENGTH_MIN);
+    expect(parseStoredSettings('{"teamColorStrength":99}').teamColorStrength).toBe(TEAM_COLOR_STRENGTH_MAX);
+    expect(parseStoredSettings('{"teamColorStrength":4.6}').teamColorStrength).toBe(5);
+    expect(parseStoredSettings('{}').teamColorStrength).toBe(TEAM_COLOR_STRENGTH_MIN);
+    expect(parseStoredSettings('{"teamColorStrength":"bold"}').teamColorStrength).toBe(TEAM_COLOR_STRENGTH_MIN);
+  });
+
+  it('accepts a known colour-blind filter and rejects an unknown one', () => {
+    expect(parseStoredSettings('{"colorBlindFilter":"deuteranopia"}').colorBlindFilter).toBe('deuteranopia');
+    expect(parseStoredSettings('{"colorBlindFilter":"tritanopia"}').colorBlindFilter).toBe('tritanopia');
+    expect(parseStoredSettings('{}').colorBlindFilter).toBe('off');
+    expect(parseStoredSettings('{"colorBlindFilter":"daltonism"}').colorBlindFilter).toBe('off');
   });
 });
 

@@ -184,6 +184,7 @@ export const enSurfaces = {
         audio: 'Sound',
         gameplay: 'Gameplay',
         controls: 'Controls',
+        accessibility: 'Accessibility',
       },
       displayMode: 'Display mode',
       displayFullscreen: 'Fullscreen',
@@ -236,6 +237,18 @@ export const enSurfaces = {
       groupNumbers: 'Group numbers',
       groupNumbersTip:
         'A tiny group number by each unit bound to a group. A unit in several groups shows up to three, such as 1,2,3.',
+      accessibilityHeading: 'Accessibility',
+      teamColorStrength: 'Team colour strength',
+      teamColorStrengthTip:
+        'Pushes each player colour toward a bolder version of itself for colour-vision-deficient players. Level 1 is the original palette; level 10 is the boldest, without changing which colour a player is.',
+      colorBlindFilter: 'Colour-blind filter',
+      colorBlindFilterTip:
+        'A screen-wide correction filter for colour-blind players; turning it off leaves the image unchanged.',
+      colorBlindFilterOff: 'Off',
+      colorBlindFilterDeuteranopia: 'Red-green (deuteranopia)',
+      colorBlindFilterProtanopia: 'Red-blind (protanopia)',
+      colorBlindFilterTritanopia: 'Blue-yellow (tritanopia)',
+      colorBlindFilterGeneric: 'Generic',
       fpsCounter: 'FPS counter',
       fpsCounterTip:
         'The frame rate on the top bar. Hover it to see what holds the game back: the simulation, the processor drawing the frame, or the graphics card.',

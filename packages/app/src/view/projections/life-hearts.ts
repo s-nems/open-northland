@@ -11,7 +11,7 @@ import {
   TileBuckets,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
+import { enhancedPlayerSwatch } from '../../catalog/roster.js';
 import {
   healthOf,
   isSettler,
@@ -64,7 +64,7 @@ export function computeLifeHearts(
     const pos = positionOf(e);
     if (pos === undefined) continue;
     const slot = inputs.playerColourOf?.(player) ?? player;
-    const colour = PLAYER_SWATCH_COLORS[slot % PLAYER_SWATCH_COLORS.length] ?? UNKNOWN_PLAYER_HEART_COLOUR;
+    const colour = enhancedPlayerSwatch(slot, UNKNOWN_PLAYER_HEART_COLOUR);
     out.push({ id: e.id, x: pos.x, y: pos.y, colour, life });
   }
   return box === undefined ? out : out.sort((a, b) => a.id - b.id);

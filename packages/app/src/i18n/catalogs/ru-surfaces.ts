@@ -219,6 +219,7 @@ export const ruSurfaces = {
         audio: 'Звук',
         gameplay: 'Игра',
         controls: 'Управление',
+        accessibility: 'Специальные возможности',
       },
       displayMode: 'Режим экрана',
       displayFullscreen: 'Полный экран',
@@ -270,6 +271,18 @@ export const ruSurfaces = {
       groupNumbers: 'Номера групп',
       groupNumbersTip:
         'Крошечный номер группы у каждого юнита в группе. Юнит в нескольких группах показывает до трёх, например 1,2,3.',
+      accessibilityHeading: 'Доступность',
+      teamColorStrength: 'Насыщенность цветов игроков',
+      teamColorStrengthTip:
+        'Делает каждый цвет игрока более яркой версией себя для игроков с нарушениями цветовосприятия. Уровень 1 — исходная палитра; уровень 10 — самый яркий, при этом цвет игрока не меняется.',
+      colorBlindFilter: 'Фильтр для дальтоников',
+      colorBlindFilterTip:
+        'Полноэкранный корректирующий фильтр для дальтоников; при отключении изображение не меняется.',
+      colorBlindFilterOff: 'Выкл.',
+      colorBlindFilterDeuteranopia: 'Красно-зелёный (дейтеранопия)',
+      colorBlindFilterProtanopia: 'Краснослепота (протанопия)',
+      colorBlindFilterTritanopia: 'Сине-жёлтый (тританопия)',
+      colorBlindFilterGeneric: 'Общий',
       fpsCounter: 'Счётчик FPS',
       fpsCounterTip:
         'Частота кадров на верхней панели. Наведите на неё курсор, чтобы увидеть, что тормозит игру: симуляция, процессор при отрисовке кадра или видеокарта.',
