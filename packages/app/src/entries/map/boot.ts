@@ -76,6 +76,7 @@ export const MAP_BOOT_PHASES = [
   'objects',
   'minimap',
   'shaders',
+  'nightShaders',
   'hud',
 ] as const satisfies readonly BootPhase[];
 

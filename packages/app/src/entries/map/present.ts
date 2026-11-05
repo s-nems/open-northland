@@ -32,14 +32,16 @@ import { currentLocale, messages } from '../../i18n/index.js';
 import { ambientWeatherFor } from '../../view/ambient-weather.js';
 import { cameraCenteredOnTile, createCameraController } from '../../view/camera/index.js';
 import { mapZoomParam } from '../../view/camera/map-zoom.js';
+import { drawNightShaders } from '../../view/graphics/night-shaders.js';
 import { linkGameRenderer } from '../../view/graphics/shader-warmup.js';
 import { bindStaticLayer } from '../../view/map-objects/static-layer.js';
 import type { NetReadout } from '../../view/net/readout.js';
-import { formatSearch } from '../../view/params.js';
+import { formatSearch, tintParam } from '../../view/params.js';
 import { type GameViewDeps, type GameViewHandle, startGameView } from '../../view/runtime/game-view.js';
 import { decodeClientMemory, encodeClientMemory } from '../../view/runtime/save-load/client-memory.js';
 import { terrainColourOption } from '../../view/runtime/world-bootstrap.js';
 import { bindScriptLandscapes } from '../../view/script/landscapes.js';
+import { worldCanShowNight } from '../../view/script/tints.js';
 import { readStoredSettings } from '../../view/settings/store.js';
 import type { AssembledMapWorld } from './boot.js';
 import { mapSubMissionLoader, validateSavedMap } from './sub-missions.js';
@@ -199,8 +201,19 @@ export async function presentMapWorld(
   // Every program links before the first frame, so a cold Direct3D compile shows as this step, not as
   // a frozen interface.
   await boot.begin('shaders');
-  await world.shaders.done;
-  await linkGameRenderer(app.renderer);
+  const warmed = await world.shaders.done;
+  const linked = await linkGameRenderer(app.renderer);
+  // The night's programs build their variant writing the lit mask at their first draw, a compile of
+  // seconds on Direct3D that would freeze the first night instead of showing as this step.
+  if (
+    await worldCanShowNight(host, {
+      pinnedIndex: tintParam(params),
+      dayNight: session.rules.dayNight ?? DEFAULT_DAY_NIGHT_MODE,
+      dayNightShown: readStoredSettings().dayNight,
+    })
+  ) {
+    await drawNightShaders(app.renderer, { warmed, linked }, () => boot.begin('nightShaders'));
+  }
   await boot.begin('hud');
   let markShown: () => void = () => undefined;
   const shown = new Promise<true>((resolve) => {

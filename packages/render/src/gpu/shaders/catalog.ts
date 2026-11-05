@@ -128,3 +128,17 @@ export function bootShaderPrograms(
     ...(selection.weather ? weatherPrograms() : []),
   ];
 }
+
+/** The programs of {@link bootShaderPrograms} that write the night's lit mask beside their colour
+ *  (`lighting/night-mask.ts`), each drawing a light-bearer in the lit layer. */
+export function nightMaskPrograms(
+  maxBatchTextures: number,
+  selection: ShaderSelection,
+): readonly GlslProgramSource[] {
+  const slots = Math.min(maxBatchTextures, WORLD_BATCH_MAX_TEXTURES);
+  return [
+    ...worldBatchPrograms(slots, worldMagnifyModeNumber(selection.magnification), selection.shadow),
+    PALETTED_SPRITE_SOURCE,
+    DISMANTLE_SOURCE,
+  ];
+}

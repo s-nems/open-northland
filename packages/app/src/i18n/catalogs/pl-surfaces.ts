@@ -573,6 +573,7 @@ export const plSurfaces = {
     world: 'Budowanie świata…',
     minimap: 'Rysowanie minimapy…',
     shaders: 'Kompilowanie programów graficznych…',
+    nightShaders: 'Kompilowanie programów graficznych nocy…',
     hud: 'Przygotowywanie interfejsu…',
     players: 'Czekanie na pozostałych graczy…',
   },

@@ -558,6 +558,7 @@ export const chsSurfaces = {
     world: '正在构建世界…',
     minimap: '正在绘制小地图…',
     shaders: '正在编译图形程序…',
+    nightShaders: '正在编译夜晚的图形程序…',
     hud: '正在准备界面…',
     players: '正在等待其他玩家…',
   },

@@ -277,6 +277,8 @@ export {
   type TargetFlashTone,
   type TargetTone,
 } from './gpu/selection/style.js';
+export { drawNightMaskPrograms, type NightMaskDraws, nightMaskSources } from './gpu/shaders/night-links.js';
+export type { GlslProgramSource } from './gpu/shaders/program-source.js';
 export { linkRendererPrograms, type RendererLink } from './gpu/shaders/renderer-links.js';
 export {
   forgetShaderLinks,

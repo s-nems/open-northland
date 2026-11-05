@@ -4,7 +4,12 @@ import { type LandscapeEditView, TICKS_PER_SECOND } from '@open-northland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vertexPalette from '../../../src/content/vertex-palette.js';
 import type { SessionHost } from '../../../src/session/index.js';
-import { cellColorsToCorners, mountScriptTints, splitScriptTints } from '../../../src/view/script/tints.js';
+import {
+  cellColorsToCorners,
+  mountScriptTints,
+  splitScriptTints,
+  worldCanShowNight,
+} from '../../../src/view/script/tints.js';
 
 /** 40 minutes past daybreak: the cycle's long night. */
 const NIGHT_TICK = 2400 * TICKS_PER_SECOND;
@@ -365,5 +370,62 @@ describe('mountScriptTints', () => {
     expect(landscapeEdits).toHaveBeenCalledTimes(1);
     expect(loadVertexPalette).not.toHaveBeenCalled();
     expect(drawn.lights).toEqual([]);
+  });
+});
+
+describe('worldCanShowNight', () => {
+  const WHOLE_MAP = 900;
+  const LOCAL = 3;
+  const scripted = (tintState: Uint8Array, writes: readonly [range: number, index: number][]) => ({
+    missions: {
+      missions: [{ results: writes.map(([range, amount]) => ({ opcode: 'SetVertexColor', range, amount })) }],
+    } as unknown as SessionHost['missions'],
+    landscapeEdits: () => Promise.resolve(edits(tintState)),
+    mapEscalation: () => null,
+  });
+  const clear = new Uint8Array(10);
+  const warm = new Uint8Array(10).fill(WARM);
+
+  it('answers whether a tint the world can take lights the lamps, where the lit mask draws', async () => {
+    const cases: [string, ReturnType<typeof scripted>, Parameters<typeof worldCanShowNight>[1], boolean][] = [
+      ['a plain map under its own rule', scripted(clear, []), {}, false],
+      ["the game's own cycle", scripted(clear, []), { dayNight: 'on' }, true],
+      ["a cave's static dark, whatever the rule", scripted(tints, []), { dayNight: 'off' }, true],
+      ['a whole-map sun and nothing darker', scripted(warm, []), {}, false],
+      ['a local dark write that may grow', scripted(clear, [[LOCAL, DIM]]), {}, true],
+      [
+        'a scripted cycle under its own rule',
+        scripted(clear, [
+          [WHOLE_MAP, DARK],
+          [WHOLE_MAP, WARM],
+        ]),
+        {},
+        true,
+      ],
+      [
+        'a scripted cycle the match turned off',
+        scripted(tints, [
+          [WHOLE_MAP, DARK],
+          [WHOLE_MAP, WARM],
+        ]),
+        { dayNight: 'off' },
+        false,
+      ],
+      ['a pinned dim tint', scripted(clear, []), { pinnedIndex: DIM }, true],
+      ['a pinned neutral tint over a dark map', scripted(tints, []), { pinnedIndex: NEUTRAL }, false],
+      ['a dark map with day and night turned off', scripted(tints, []), { dayNightShown: false }, false],
+    ];
+    const answers = await Promise.all(cases.map(([, host, options]) => worldCanShowNight(host, options)));
+    expect(cases.map(([name], index) => [name, answers[index]])).toEqual(
+      cases.map(([name, , , expected]) => [name, expected]),
+    );
+  });
+
+  it("counts a siege's attack night, and fetches no palette for a map without tints", async () => {
+    loadVertexPalette.mockClear();
+    const siege = { ...scripted(clear, []), mapEscalation: () => ({}) as never };
+    expect(await worldCanShowNight(siege, {})).toBe(true);
+    expect(await worldCanShowNight(scripted(clear, []), {})).toBe(false);
+    expect(loadVertexPalette).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,7 @@
 import {
   forgetShaderLinks,
   linkRendererPrograms,
+  type RendererLink,
   type ShaderWarmup,
   startShaderWarmup,
   type WarmedProgram,
@@ -75,7 +76,7 @@ export function graphicsShaderWarmup(): ShaderWarmup {
 
 /** Links the stored settings' programs in a game's renderer before its first frame, naming slow links:
  *  a slow one compiled where the warm-up should have answered it. */
-export async function linkGameRenderer(renderer: Renderer): Promise<void> {
+export async function linkGameRenderer(renderer: Renderer): Promise<readonly RendererLink[]> {
   const startedAt = performance.now();
   const links = await linkRendererPrograms(renderer, readStoredSettings());
   diag.info('boot', 'renderer programs linked', {
@@ -84,6 +85,7 @@ export async function linkGameRenderer(renderer: Renderer): Promise<void> {
       .filter((link) => link.ms >= SLOW_LINK_MS)
       .map((link) => `${link.name} ${Math.round(link.ms)} ms`),
   });
+  return links;
 }
 
 /** The warm-up again, every program linked anew, for a game canvas whose WebGL context came back: a

@@ -1,8 +1,15 @@
 import { VERTEX_PALETTE_ENTRIES, type VertexPalette } from '@open-northland/data';
 import type { DayNightMode } from '@open-northland/lockstep';
-import { gradeLuma, type LightGrade, NEUTRAL_GRADE, shownGrade } from '@open-northland/render/data';
+import {
+  gradeLuma,
+  type LightGrade,
+  NEUTRAL_GRADE,
+  nightLevel,
+  shownGrade,
+} from '@open-northland/render/data';
 import type { SimEvent } from '@open-northland/sim';
 import { loadVertexPalette } from '../../content/vertex-palette.js';
+import { diag } from '../../diag/index.js';
 import type { SessionHost } from '../../session/index.js';
 import {
   cycleStepAtTick,
@@ -177,6 +184,82 @@ export interface ScriptTintOptions {
   readonly tick?: number;
 }
 
+/** The whole-map tint writes of the host's map scripts. */
+function scriptTintOps(host: Pick<SessionHost, 'missions'>): ScriptedCycleProbe[] {
+  return (host.missions?.missions ?? [])
+    .flatMap((mission) => mission.results)
+    .flatMap((op): ScriptedCycleProbe[] =>
+      op.opcode === 'SetVertexColor' || op.opcode === 'SetVertexColorOnLand'
+        ? [{ range: op.range, index: op.amount }]
+        : [],
+    );
+}
+
+/** The palette indices the scene's tint can take, neutral left out: the pinned one alone, or the map's
+ *  dominant one and every index its scripts write, since a local write may grow to cover the map. */
+function sceneTintCandidates(
+  tints: Uint8Array,
+  tintOps: readonly ScriptedCycleProbe[],
+  pinnedIndex: number | null,
+): readonly number[] {
+  if (pinnedIndex !== null) return pinnedIndex === NEUTRAL_INDEX ? [] : [pinnedIndex];
+  const dominant = dominantIndex(tints);
+  const indices = new Set(tintOps.map((op) => op.index));
+  if (dominant !== null) indices.add(dominant);
+  indices.delete(NEUTRAL_INDEX);
+  return [...indices];
+}
+
+/** Whether one of `candidates` lights the night lamps, unless the match turned off the script's own
+ *  day and night, which holds the scene at daylight. */
+function sceneTintReachesNight(
+  candidates: readonly number[],
+  tintOps: readonly ScriptedCycleProbe[],
+  pinnedIndex: number | null,
+  dayNight: DayNightMode,
+  palette: readonly number[],
+): boolean {
+  const gradeOf = (index: number): LightGrade | null => {
+    const color = palette[index];
+    return color === undefined ? null : channels(color);
+  };
+  if (pinnedIndex === null && dayNight === 'off' && scriptsDayNightCycle(tintOps, gradeOf)) return false;
+  return candidates.some((index) => {
+    const grade = gradeOf(index);
+    return grade !== null && nightLevel(grade) > 0;
+  });
+}
+
+/**
+ * Whether this world's scene light can fall to a night, where it composites the world through the lit
+ * mask (`gpu/lighting/scene-light.ts`): the player's setting shows day and night, and the game's own
+ * cycle runs, a siege can bring its attack night, or a whole-map tint the map holds or its scripts
+ * write is dark enough to light the lamps. A cave's static dark counts, as does a weather darkening.
+ * Turning the setting on mid-game is not foreseen.
+ */
+export async function worldCanShowNight(
+  host: Pick<SessionHost, 'missions' | 'landscapeEdits' | 'mapEscalation'>,
+  {
+    pinnedIndex = null,
+    dayNight = 'map',
+    dayNightShown = true,
+  }: Pick<ScriptTintOptions, 'pinnedIndex' | 'dayNight' | 'dayNightShown'>,
+): Promise<boolean> {
+  if (!dayNightShown) return false;
+  if (dayNight === 'on' || host.mapEscalation() !== null) return true;
+  try {
+    const tintOps = scriptTintOps(host);
+    const candidates = sceneTintCandidates((await host.landscapeEdits()).tints, tintOps, pinnedIndex);
+    if (candidates.length === 0) return false;
+    const palette = await loadVertexPalette();
+    return palette !== null && sceneTintReachesNight(candidates, tintOps, pinnedIndex, dayNight, palette);
+  } catch (err) {
+    // Answered as no night: the first night then compiles its programs, as without the answer.
+    diag.warn('boot', 'could not tell whether the world shows a night', err);
+    return false;
+  }
+}
+
 export async function mountScriptTints(
   host: Pick<SessionHost, 'missions' | 'landscapeEdits'>,
   surface: ScriptTintSurface,
@@ -189,11 +272,7 @@ export async function mountScriptTints(
   }: ScriptTintOptions = {},
 ): Promise<ScriptTints> {
   const results = (host.missions?.missions ?? []).flatMap((mission) => mission.results);
-  const tintOps = results.flatMap((op): ScriptedCycleProbe[] =>
-    op.opcode === 'SetVertexColor' || op.opcode === 'SetVertexColorOnLand'
-      ? [{ range: op.range, index: op.amount }]
-      : [],
-  );
+  const tintOps = scriptTintOps(host);
   const scripted = tintOps.length > 0;
   const setsWeather = results.some((op) => op.opcode === 'SetWeather');
   let light: 'cycle' | 'weather' | 'fixed' | null = null;

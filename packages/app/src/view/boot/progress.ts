@@ -23,6 +23,7 @@ export const BOOT_PHASES = [
   'world',
   'minimap',
   'shaders',
+  'nightShaders',
   'hud',
   'players',
 ] as const;

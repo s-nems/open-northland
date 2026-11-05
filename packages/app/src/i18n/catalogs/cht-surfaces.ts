@@ -558,6 +558,7 @@ export const chtSurfaces = {
     world: '正在建立世界…',
     minimap: '正在繪製小地圖…',
     shaders: '正在編譯圖形程式…',
+    nightShaders: '正在編譯夜晚的圖形程式…',
     hud: '正在準備介面…',
     players: '正在等待其他玩家…',
   },

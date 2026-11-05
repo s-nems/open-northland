@@ -615,6 +615,7 @@ export const deSurfaces = {
     world: 'Spielwelt wird aufgebaut…',
     minimap: 'Minikarte wird gezeichnet…',
     shaders: 'Grafikprogramme werden kompiliert…',
+    nightShaders: 'Grafikprogramme der Nacht werden kompiliert…',
     hud: 'Oberfläche wird vorbereitet…',
     players: 'Warten auf die anderen Spieler…',
   },
