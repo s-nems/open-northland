@@ -47,6 +47,8 @@ export function pickHint(snapshot: WorldSnapshot, aim: PickAim | null): PlanHint
       return either(aim.fits, 'board', 'cannotBoard');
     case 'loadAboard':
       return either(aim.fits, 'loadAboard', 'cannotLoadAboard');
+    case 'pinShip':
+      return either(aim.fits, 'pinShip', 'cannotPinShip');
     case 'building': {
       const words = BUILDING_PICK_WORDS[aim.pick];
       if (!aim.fits) return refusal(words.refusal);

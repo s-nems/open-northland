@@ -35,6 +35,12 @@ export type AtomicEffect =
   /** A trader sets one unit of `goodType` out of its hold onto `store`'s shelf, or onto the ground at
    *  its feet with `store` null. */
   | { readonly kind: 'tradeUnload'; readonly store: Entity | null; readonly goodType: number }
+  /** A trader moves one unit of `goodType` from its hauling cart or hands into `vehicle`, its pinned
+   *  ship, at the door. */
+  | { readonly kind: 'tradeShipStow'; readonly vehicle: Entity; readonly goodType: number }
+  /** A trader moves one unit of `goodType` out of `vehicle`, its pinned ship, into its hauling cart or
+   *  hands at the door. */
+  | { readonly kind: 'tradeShipFetch'; readonly vehicle: Entity; readonly goodType: number }
   /** A posted carrier lifts one unit of `goodType` off `from` into the hauling cart standing beside it. */
   | { readonly kind: 'haulLoad'; readonly from: Entity; readonly goodType: number }
   /** A posted carrier sets one unit out of the hauling cart standing beside it into `store`. */

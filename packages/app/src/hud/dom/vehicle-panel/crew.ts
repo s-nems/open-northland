@@ -21,8 +21,9 @@ import {
 import { createFigureWell, type FigureWell, showInWell, type WellFigureFit } from '../parts/figure-well.js';
 import { createLedger } from '../parts/ledger.js';
 import { createSection } from '../parts/section.js';
+import type { SettlerPanelActions } from '../settler-panel/actions.js';
 import { seatButton } from '../settler-panel/work.js';
-import type { VehiclePanelDeps, VehiclePick } from './actions.js';
+import type { VehiclePanelActions, VehiclePanelDeps, VehiclePick } from './actions.js';
 
 /** The badge on the commander's well: what it commands. */
 const ROLE_GLYPH: Readonly<Record<VehicleClass, string>> = {
@@ -79,7 +80,8 @@ export function wellPress(
   if (well.kind === 'add') return 'seat';
   if (well.kind === 'free') return null;
   if (!ctrl) return 'select';
-  return model.crew.leave === true ? 'leave' : 'refuse';
+  const { commander, leave, leaveCommander } = model.crew;
+  return (well.rider.entity === commander?.entity ? leaveCommander : leave) === true ? 'leave' : 'refuse';
 }
 
 /** The seat pick's well lights while its pick waits for a settler. */
@@ -114,10 +116,14 @@ export interface CrewSection {
   wells(): readonly FigureWell[];
 }
 
-export function createCrewSection(
-  deps: VehiclePanelDeps,
-  current: () => VehiclePanelModel | null,
-): CrewSection {
+/** What the crew rows press: a rider or the trader to select, the unpin, and the crew orders. */
+interface CrewDeps {
+  readonly actions: Pick<SettlerPanelActions, 'select' | 'unpinTradeShip'>;
+  readonly vehicle: VehiclePanelActions;
+  readonly cue: VehiclePanelDeps['cue'];
+}
+
+export function createCrewSection(deps: CrewDeps, current: () => VehiclePanelModel | null): CrewSection {
   const { actions, vehicle } = deps;
   const count = element('span', 'on-section__count');
   const unload = button('on-more');
@@ -151,8 +157,19 @@ export function createCrewSection(
       else vehicle.loadVehicle(model.entityId);
     },
   });
+  const pin = createLedger({
+    buttons: 1,
+    onLink: () => {
+      const trader = current()?.tradePin;
+      if (trader != null) actions.select(trader.entity);
+    },
+    onButton: () => {
+      const trader = current()?.tradePin;
+      if (trader != null) actions.unpinTradeShip(trader.entity);
+    },
+  });
   const root = element('div', '');
-  root.append(title.element, row, deck.element);
+  root.append(title.element, row, deck.element, pin.element);
 
   let helmSeat: SeatWell = { kind: 'free' };
   let wells: FigureWell[] = [];
@@ -212,7 +229,7 @@ export function createCrewSection(
       rider !== null
         ? riderTooltip(rider, model.foreign, role)
         : seat.kind === 'add'
-          ? `${seatLabel} · ${copy.assignTooltip}`
+          ? `${seatLabel} · ${model.tradePin === null ? copy.assignTooltip : copy.assignHelperTooltip}`
           : typeof model.crew.assign === 'string'
             ? `${empty} · ${model.crew.assign}`
             : empty;
@@ -294,6 +311,16 @@ export function createCrewSection(
                   formatMessage(copy.deckUnload, { vehicle: carried.label }),
                 ),
           ],
+        });
+      }
+      const trader = model.tradePin;
+      setHidden(pin.element, trader === null);
+      if (trader !== null) {
+        const unpin = messages().hud.settlerPanel.tradeUnpinShip;
+        pin.update({
+          label: copy.tradeMerchant,
+          value: [{ text: trader.name, link: true, tooltip: copy.tradeMerchantSelect }],
+          buttons: [{ face: { glyph: GLYPH.close }, label: unpin, tooltip: unpin }],
         });
       }
     },

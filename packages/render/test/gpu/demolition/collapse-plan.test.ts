@@ -2,6 +2,7 @@ import { Rectangle, Texture, TextureSource } from 'pixi.js';
 import { afterEach, expect, it } from 'vitest';
 import type { DrawItem } from '../../../src/data/scene/index.js';
 import { collapsePlan } from '../../../src/gpu/demolition/collapse-plan.js';
+import { markIndexedSource } from '../../../src/gpu/pixel-art/registry.js';
 import { resolveLayers } from '../../../src/gpu/sprite-pool/layers/resolve.js';
 import type { ResolvedLayer } from '../../../src/gpu/sprite-pool/layers/resolved-layer.js';
 import type { SpriteSheet } from '../../../src/gpu/textures/sprite-sheet.js';
@@ -147,4 +148,49 @@ it('exposes the same backing as damage cavities, excluding another finished tier
   const plan = collapsePlan(tiers, item, undefined);
   expect(plan.map((part) => part.construction.frame.x)).toEqual([0, 40]);
   expect(plan.map((part) => part.introduced)).toEqual([true, false]);
+});
+
+it('leaves a ship yard site no body to unwind, as its hull reads through a LUT the collapse lacks', () => {
+  const { sheet } = fixture();
+  const SHIP_YARD = 44;
+  const SHIP = 3;
+  const HULL_BOB = 1;
+  const indexed = new TextureSource({ width: 20, height: 20 });
+  sources.push(indexed);
+  markIndexedSource(indexed);
+  const hull = { layer: 'ship', idle: { start: 0, frameLists: [[HULL_BOB]], loop: true }, indexed: true };
+  const shipSheet: SpriteSheet = {
+    ...sheet,
+    families: {
+      ...sheet.families,
+      ship: {
+        source: indexed,
+        atlas: {
+          width: 20,
+          height: 20,
+          frames: new Map([[HULL_BOB, { x: 0, y: 0, width: 20, height: 20, offsetX: -10, offsetY: -20 }]]),
+        },
+      },
+    },
+    bindings: {
+      ...sheet.bindings,
+      vehicle: {
+        byTribe: { 1: { [SHIP]: hull } },
+        fallbackTribe: 1,
+        shipYards: { vehicleByHouse: { [SHIP_YARD]: SHIP }, facing: 0 },
+      },
+    },
+  };
+  const site: DrawItem = {
+    kind: 'building',
+    typeId: SHIP_YARD,
+    builtPct: 35,
+    ref: 2,
+    tribe: 1,
+    x: 0,
+    y: 0,
+    depth: 0,
+  };
+  expect(resolveLayers(shipSheet, site, 0)?.[0]?.source).toBe(indexed);
+  expect(collapsePlan(shipSheet, site, undefined)).toEqual([]);
 });

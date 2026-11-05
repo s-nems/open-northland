@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { jsonFingerprint } from '../../fingerprint/json.js';
 import { LANGUAGES, SOURCE_LANGUAGES } from '../../languages.js';
+import { PersonalNamePoolId } from '../actors/personal-names.js';
 
 /**
  * The repository's translation overlays, `translations/<lang>/...`: text the data pack and the
@@ -157,3 +158,21 @@ export const CampaignOverlay = z.strictObject({
   title: z.string().min(1),
 });
 export type CampaignOverlay = z.infer<typeof CampaignOverlay>;
+
+/**
+ * `translations/<lang>/names/<pool>.json`: one personal-name pool's localized names, by the raw spelling
+ * the pool gives the settler. `<pool>` is the pool id of `PERSONAL_NAMES`, which the overlay's `pool`
+ * field repeats; a name the overlay lacks keeps the raw one. The raw name is the lockstep sync key, so
+ * this dictionary is display-only data that no system reads. It carries no `basis`: the pools are the
+ * project's own independently selected names, not text the pack ships, so there is no source-language
+ * text a digest could pin it to.
+ */
+export const PersonalNameOverlay = z.strictObject({
+  version: z.literal(OVERLAY_VERSION),
+  /** The personal-name pool the overlay translates, which its file name repeats. */
+  pool: PersonalNamePoolId,
+  names: z.record(z.string().min(1), z.string().min(1)),
+  /** As on `MapOverlay`: set on a file a tool converted from the named language's file of the same name. */
+  derived: z.enum(LANGUAGES).optional(),
+});
+export type PersonalNameOverlay = z.infer<typeof PersonalNameOverlay>;

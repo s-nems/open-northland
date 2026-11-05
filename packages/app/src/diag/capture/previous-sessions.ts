@@ -101,7 +101,7 @@ async function previousShellRun(faults: DesktopFaults): Promise<PreviousShellRun
   }
 }
 
-/** The shell run that served the marker's page, when it ended without quitting. */
+/** The shell run that served the marker's page. */
 function shellRunOf(marker: SessionMarker, run: PreviousShellRun | null): PreviousShellRun | null {
   if (run === null) return null;
   return Date.parse(run.from) <= marker.startedAt && marker.startedAt < Date.parse(run.until) ? run : null;

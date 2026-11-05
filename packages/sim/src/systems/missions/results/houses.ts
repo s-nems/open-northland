@@ -45,18 +45,23 @@ export function placeScriptedHouse(
     pass.reportFailed(mission, op.opcode);
     return;
   }
-  placeBuilding(world, ctx, {
-    kind: 'placeBuilding',
-    buildingType: typeId,
-    tribe,
-    x: spot.hx,
-    y: spot.hy,
-    owner: op.player,
-    underConstruction: !op.built,
-    force: true,
-    missionId: op.objectId,
-    ...(record !== undefined ? { record } : {}),
-  });
+  placeBuilding(
+    world,
+    ctx,
+    {
+      kind: 'placeBuilding',
+      buildingType: typeId,
+      tribe,
+      x: spot.hx,
+      y: spot.hy,
+      owner: op.player,
+      underConstruction: !op.built,
+      force: true,
+      missionId: op.objectId,
+      ...(record !== undefined ? { record } : {}),
+    },
+    false,
+  );
 }
 
 /**

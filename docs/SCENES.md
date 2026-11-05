@@ -94,6 +94,28 @@ with a unit in its hands a trip, the lower one pulling a handcart it stands by e
 while it loads and unloads. The view checks the walker's carry gait and the cart set down and taken
 up again.
 
+`?scene=trade-sea` runs a trader with a handcart between warehouses on two islands on a small ship
+pinned to its route: it ferries the wood aboard in two cart loads, sails with the cart in the ship's
+vehicle slot and ferries the load ashore. `?scene=trade-sea-pin` is the same world with no ship pinned.
+Select the trader, read the note beside "Pin a ship", press it and pick the lit ship.
+
+`?scene=trade-sea-agreement` is the same crossing on a trade agreement: a friendly nation's warehouse
+on the east island offers iron and wood for coins, and the trader takes six coins over on the pinned
+big ship and brings 24 iron home. The iron outweighs one handcart load, so the cart ferries between ship
+and warehouse on both shores. Select the trader for the ship and the offer in its Trade section, and
+open the diplomacy window for both offers and how a stance other than friendly greys them out.
+
+`?scene=trade-sea-carriers` is the `trade-sea` route with 60 wood and three carriers assigned to the
+pinned ship. On both shores they carry a unit a trip between the warehouse and the ship's door beside the
+trader's cart and ride along in between, 48 wood across in the 2220 ticks the trader alone lands 15.
+Select the ship for their seats, the captain's well still the trader's, and Ctrl click a seat to step one out.
+
+`?scene=trade-sea-settlements` holds stock levels between two islands. Each island has two warehouses
+under one signpost, and both stops of the route stand for their whole settlement ("osada"). The east
+island is filled up to 20 bricks and 20 stone out of both west warehouses, and its wood goes west until 30
+are left over its two warehouses; the levels settle by tick 2806 and hold. Select the trader for both lit
+"osada" chips.
+
 `?scene=cart-drivers` hands a handcart to a trader to pull and crews an ox cart with a carrier for
 each civilization, in rows: viking, frank, byzantine, saracen, egyptian, and sends them east. Every
 driver wears his own civilization's head, standing and driving.
@@ -178,6 +200,11 @@ starts on it.
 `?scene=gatherer-flag-follow` turns on the assistant's "gatherers move flags to resources" switch for a
 collector with two trees beside his flag. Once both are felled the flag moves 3-5 tiles from a tree of
 the grove to the east, between the grove and the headquarters, and he goes on felling there.
+
+`?scene=tool-upgrade` hands out both tools with the assistant's "replace wooden ones" switch on.
+Three extractors holding wooden tools walk to the headquarters for its three iron ones. The two part-used
+wooden tools are lost in the swap, the fresh one goes back into the store, and the extractor already
+holding iron stays where he is.
 
 `?scene=porter-flag` puts a stone miner at a quarry far east of the headquarters. The headquarters
 porter holds a pickup flag beside the miner's yard: he carries the quarry stone and the flour of an

@@ -38,11 +38,10 @@ export {
   fogSettings,
   peaceHoldsUntilTick,
 } from './components/rules.js';
-export {
-  type NeedDrain,
-  type NeedLevels,
-  SETTLER_NAME_MAX_CHARS,
-  type SettlerNeedsView,
+export type {
+  NeedDrain,
+  NeedLevels,
+  SettlerNeedsView,
 } from './components/settler.js';
 export { WALK_RANGE_NODES } from './components/signpost.js';
 export { TRADE_LIMIT_NONE, TRADE_ROUTE_HOUSES, type TradeImportMark } from './components/trade.js';
@@ -94,6 +93,7 @@ export { type Fixed, fx, ONE } from './core/fixed.js';
 export { FixedTimestep, MS_PER_TICK, TICKS_PER_MINUTE, TICKS_PER_SECOND } from './core/loop.js';
 export { PersonalNames } from './core/personal-names.js';
 export { Rng } from './core/rng.js';
+export { codePointLength, hasControlCharacter } from './core/untrusted.js';
 export type { Component, Entity, MutationSink, SyncDomain } from './ecs/world.js';
 export { SYNC_DOMAINS, World } from './ecs/world.js';
 export { CORE_INVARIANTS, checkInvariants, type Invariant } from './harness/invariants.js';
@@ -146,12 +146,14 @@ export {
   type SnapshotDeltaStreamOptions,
 } from './inspect/snapshot-clones.js';
 export {
+  deltaChanges,
   type EntityChange,
   type EntityDelta,
   type EntitySnapshotDelta,
   entityDeltas,
   packSnapshotDelta,
   type SnapshotDelta,
+  touchedIds,
 } from './inspect/snapshot-delta.js';
 export {
   type ChangedEntity,
@@ -313,6 +315,6 @@ export type { WorkStatus } from './systems/readviews/work-status.js';
 export type { SignpostProbe } from './systems/signposts/index.js';
 export type { SignpostReachPost, SignpostReachView } from './systems/signposts/reach.js';
 export { heapReach } from './systems/stores/seat-stock.js';
-export type { TradeOffer, TraderView, TradeStopView } from './systems/trade/index.js';
+export type { TradeOffer, TraderShipState, TraderView, TradeStopView } from './systems/trade/index.js';
 export type { MooringProbe, VehicleStockView, VehicleView } from './systems/vehicles/index.js';
 export { FOG_STATE } from './systems/vision/index.js';

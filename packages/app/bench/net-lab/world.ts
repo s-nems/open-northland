@@ -154,6 +154,7 @@ export function roomRules(): RoomSettings['rules'] {
     progression: options.professionProgression,
     needs: options.settlerNeeds,
     weather: options.weather,
+    dayNight: options.dayNight,
     alliedVision: options.alliedVision,
     peace: options.peace,
   };

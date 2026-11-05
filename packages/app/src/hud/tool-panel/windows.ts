@@ -81,6 +81,7 @@ export interface ToolWindows {
     readonly menu: ConstructionWindow;
     readonly residents: ResidentsWindow;
     readonly assistant: AssistantWindow;
+    readonly diplomacy: DiplomacyWindow;
   };
   /** The mission book itself, for the page a script opens it on. */
   readonly mission: MissionBook;

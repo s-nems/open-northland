@@ -62,10 +62,13 @@ function paperCoversPlacement(paper: Paper, buildingType: number): boolean {
   return paper.kind === 'placeAny' || paper.param === buildingType;
 }
 
+/** Puts the command's building down once its gates pass; `withinReach` holds a seat's own order to its
+ *  site reach, which map setup, the admin tools and a mission's forced house skip. */
 export function placeBuilding(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'placeBuilding' }>,
+  withinReach: boolean,
 ): void {
   const type = contentIndex(ctx.content).commandBuildings.get(command.buildingType);
   if (type === undefined) return;
@@ -98,6 +101,7 @@ export function placeBuilding(
         command.buildingType,
         command.tribe,
         command.owner,
+        withinReach,
       ).canPlace(command.x, command.y)
     ) {
       return;

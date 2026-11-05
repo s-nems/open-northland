@@ -1,0 +1,108 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDiplomacyWindow } from '../../../../src/hud/dom/diplomacy-window/index.js';
+import type { DiplomacyPanelRow } from '../../../../src/hud/dom/diplomacy-window/model.js';
+import * as noticeArt from '../../../../src/hud/dom/notices/art.js';
+
+const FIRST = 1;
+const SECOND = 2;
+const UNLISTED = 7;
+
+const row = (player: number): DiplomacyPanelRow => ({
+  player,
+  colour: 0,
+  towardYou: 'neutral',
+  yourStance: 'neutral',
+  canDeclare: true,
+  tributes: [],
+  tradeOffers: [],
+});
+
+// jsdom images cannot decode the stance art; the window draws its glyphs without it.
+beforeEach(() => {
+  vi.spyOn(noticeArt, 'createNoticeArt').mockReturnValue(null);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  document.body.replaceChildren();
+});
+
+function mount(onOpenMap: () => boolean = () => true, mapKey: string | null = 'O') {
+  let viewer = 0;
+  const plane = document.createElement('div');
+  document.body.append(plane);
+  const rows = [row(FIRST), row(SECOND)];
+  const window = createDiplomacyWindow({
+    plane,
+    source: {
+      rows: () => rows,
+      tick: () => 0,
+      viewer: () => viewer,
+      declare: async () => true,
+      pay: async () => true,
+    },
+    art: '',
+    paintGood: () => undefined,
+    paintEmblem: () => false,
+    tooltip: { show: () => undefined, hide: () => undefined },
+    cue: () => undefined,
+    onOpenMap,
+    mapKey: () => mapKey,
+  });
+  const shownPlayer = (): string | undefined =>
+    plane.querySelector<HTMLElement>('.on-dip-nation[aria-current="true"]')?.dataset.player;
+  return { plane, window, shownPlayer, switchSeat: (seat: number) => (viewer = seat) };
+}
+
+describe('diplomacy window map button', () => {
+  it('shuts the window once the map has opened', () => {
+    const onOpenMap = vi.fn(() => true);
+    const { plane, window } = mount(onOpenMap);
+    window.toggle();
+    plane.querySelector<HTMLButtonElement>('.on-dip-map')?.click();
+    expect(onOpenMap).toHaveBeenCalledOnce();
+    expect(window.isOpen()).toBe(false);
+  });
+
+  it('stays open when the map refuses', () => {
+    const { plane, window } = mount(() => false);
+    window.toggle();
+    plane.querySelector<HTMLButtonElement>('.on-dip-map')?.click();
+    expect(window.isOpen()).toBe(true);
+  });
+
+  it('names the key in its tip, and has no tip for an unbound key', () => {
+    const bound = mount();
+    bound.window.toggle();
+    expect(bound.plane.querySelector('.on-dip-map')?.getAttribute('data-tip')).toContain('O');
+    const unbound = mount(() => true, null);
+    unbound.window.toggle();
+    expect(unbound.plane.querySelector('.on-dip-map')?.hasAttribute('data-tip')).toBe(false);
+  });
+
+  it('keeps the asked nation through a seat change made while it was shut', () => {
+    const { window, shownPlayer, switchSeat } = mount();
+    switchSeat(1);
+    window.showNation(SECOND);
+    expect(shownPlayer()).toBe(String(SECOND));
+  });
+});
+
+describe('diplomacy window showNation', () => {
+  it("opens on that nation's page, and turns an open window to it", () => {
+    const { window, shownPlayer } = mount();
+    window.showNation(SECOND);
+    expect(window.isOpen()).toBe(true);
+    expect(shownPlayer()).toBe(String(SECOND));
+    window.showNation(FIRST);
+    expect(shownPlayer()).toBe(String(FIRST));
+  });
+
+  it('falls back to the first row for a player the window does not list', () => {
+    const { window, shownPlayer } = mount();
+    window.showNation(UNLISTED);
+    expect(window.isOpen()).toBe(true);
+    expect(shownPlayer()).toBe(String(FIRST));
+  });
+});

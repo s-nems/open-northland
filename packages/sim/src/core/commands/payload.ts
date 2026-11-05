@@ -17,7 +17,6 @@ import { GATE_MODES } from '../../components/palisade.js';
 import { MAX_PLAYERS } from '../../components/players/ownership.js';
 import { PAPER_KINDS } from '../../components/players/papers.js';
 import { DIPLOMACY_STATES } from '../../components/rules.js';
-import { SETTLER_NAME_MAX_CHARS } from '../../components/settler.js';
 import { VEHICLE_STANCES } from '../../components/vehicle.js';
 import { assertNever } from '../brand.js';
 import { asRecord, codePointLength, hasControlCharacter, typeName } from '../untrusted.js';
@@ -203,6 +202,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   setTradeSettlement: { required: { entity: 'integer', house: 'integer', on: 'boolean' } },
   clearTradeImports: { required: { entity: 'integer' } },
+  setTradeShip: { required: { entity: 'integer', ship: { nullOr: 'integer' } } },
   setTradeAgreement: { required: { entity: 'integer', agreement: 'integer' } },
   setTradeAgreementLimits: { required: { entity: 'integer', giveKeep: 'count', takeUpTo: 'count' } },
   addTradeAgreement: {
@@ -292,6 +292,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   debugCompleteConstruction: { required: { target: 'integer' } },
   debugFillStockpile: { required: { target: 'integer' }, optional: { goodType: 'integer' } },
+  debugErase: { required: { target: 'integer' } },
   debugKill: { required: { target: 'integer' } },
   debugSetHealth: { required: { target: 'integer', percent: 'integer' } },
   debugSetNeeds: {
@@ -322,7 +323,6 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
     required: { vehicle: 'integer', ...NODE },
     optional: { ...QUEUED, dock: { fields: { required: NODE } } },
   },
-  renameSettler: { required: { entity: 'integer', name: { string: SETTLER_NAME_MAX_CHARS } } },
   openChest: { required: { entity: 'integer', chest: 'integer' }, optional: QUEUED },
   claimAnimal: { required: { entity: 'integer', animal: 'integer' }, optional: QUEUED },
   placeBuilding: {
@@ -398,6 +398,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   setAssistantPostGraduates: { required: { player: 'integer', enabled: 'boolean' } },
   setAssistantMoveFlags: { required: { player: 'integer', enabled: 'boolean' } },
+  setAssistantUpgradeTools: { required: { player: 'integer', enabled: 'boolean' } },
   setProductionGoods: {
     required: { entity: 'integer', goods: { arrayOf: 'integer', maxLength: GOOD_TYPE_SPACE } },
   },

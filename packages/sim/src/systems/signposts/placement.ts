@@ -22,14 +22,15 @@ import {
 import { peaceGroundFor, peaceGroundWithin } from '../match/peace.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
 import { settleSignpostLinks, unlinkSignpost } from './links.js';
-import { signpostNetwork } from './network.js';
+import { landComponentAt, sameLand, signpostNetwork } from './network.js';
 import { plannedSignposts, type SignpostSpot } from './planned.js';
 
 /**
  * Whether `player` may erect a signpost at `node`: open walkable ground under the work-flag rule, off any
- * existing signpost's cell, not inside {@link SIGNPOST_SPACING_NODES} of a same-player signpost, and off
- * the ground a lobby peace keeps the seat off. Signposts do not block walking, so walkability is a
- * ground-quality gate only.
+ * existing signpost's cell, not inside {@link SIGNPOST_SPACING_NODES} of a same-player signpost, and off the
+ * ground a lobby peace keeps the seat off. The original spaces same-player posts; our own rule waives that
+ * for a post on another land, which never links with it. Signposts do not block walking, so walkability is
+ * a ground-quality gate only.
  */
 export function canPlaceSignpost(
   world: World,
@@ -39,10 +40,10 @@ export function canPlaceSignpost(
   player: number,
 ): boolean {
   // canPlaceWorkFlag already covers ground quality, standing bodies, markers, and existing signpost
-  // cells; the spacing is the signpost-specific extra gate, same-player only as in the original.
+  // cells; the spacing is the signpost-specific extra gate.
   if (!canPlaceWorkFlag(world, ctx, terrain, node)) return false;
   const c = terrain.coordsOf(node);
-  if (insideSpacing(signpostNetwork(world).get(player) ?? [], c.x, c.y)) return false;
+  if (insideSpacing(terrain, signpostNetwork(world).get(player) ?? [], c.x, c.y)) return false;
   return !(peaceGroundFor(world, player)?.bars(c.x, c.y) ?? false);
 }
 
@@ -58,9 +59,13 @@ function gapOutside(value: number, min: number, max: number): number {
   return value < min ? min - value : value > max ? value - max : 0;
 }
 
-function insideSpacing(posts: readonly SignpostSpot[], x: number, y: number): boolean {
+function insideSpacing(terrain: TerrainGraph, posts: readonly SignpostSpot[], x: number, y: number): boolean {
   for (const s of posts) {
-    if (hexDistanceBetween(s.hx, s.hy, x, y) < SIGNPOST_SPACING_NODES) return true;
+    if (
+      hexDistanceBetween(s.hx, s.hy, x, y) < SIGNPOST_SPACING_NODES &&
+      sameLand(landComponentAt(terrain, s.hx, s.hy), landComponentAt(terrain, x, y))
+    )
+      return true;
   }
   return false;
 }
@@ -100,7 +105,7 @@ export function signpostProbe(
     canPlace: (x, y) =>
       terrain.inBounds(x, y) &&
       placeable(terrain.nodeAt(x, y)) &&
-      !insideSpacing(posts, x, y) &&
+      !insideSpacing(terrain, posts, x, y) &&
       !(peace?.bars(x, y) ?? false),
   };
 }

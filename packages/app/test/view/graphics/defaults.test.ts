@@ -14,7 +14,7 @@ describe('first-launch graphics policy', () => {
       environmentMotion: true,
       groundedBuildings: true,
       buildingDamage: true,
-      nightLights: true,
+      dayNight: true,
       weather: true,
       postFxEnabled: true,
     });
@@ -40,7 +40,7 @@ describe('first-launch graphics policy', () => {
       environmentMotion: false,
       groundedBuildings: false,
       buildingDamage: false,
-      nightLights: false,
+      dayNight: false,
       weather: false,
       postFxEnabled: false,
     });

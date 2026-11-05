@@ -390,6 +390,28 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     return { row, on: () => switchNow(id) };
   };
 
+  /** A switch that refines `parent`'s row, indented under it: it keeps its own state but greys out and
+   *  locks while the parent is off, since it acts only through the parent's grant. */
+  const subSwitchRow = (id: AssistantGrantId, parent: GiveSwitchId): HTMLElement => {
+    const row = element('div', 'on-asst-row on-asst-row--sub');
+    const text = copy.switches[id];
+    // Named with its parent row, since the indent that ties them is visual only.
+    const name = `${copy.switches[parent].label}: ${text.label}`;
+    const control = createSwitch(name, text.tip, (next) => pressSwitch(id, next));
+    row.append(
+      element('span', 'on-asst-branch'),
+      label(text.label, text.tip, element('span', 'on-asst-marks')),
+      control.element,
+    );
+    updates.push(() => {
+      const live = switchNow(parent);
+      const on = switchNow(id);
+      control.update(on, writable && live);
+      row.classList.toggle('on-asst-row--off', !on || !live);
+    });
+    return row;
+  };
+
   const access = element('div', 'on-asst__access');
   const columns = element('div', 'on-asst__cols');
   const orders = element('div', 'on-asst__col');
@@ -523,11 +545,17 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
   };
 
   standing.append(columnHead(copy.standing, copy.standingTip), standingColumns);
-  wear.append(section(copy.equipment, copy.equipmentTip), ...GEAR_ORDER.map(giveRow));
+  wear.append(
+    section(copy.equipment, copy.equipmentTip),
+    ...GEAR_ORDER.flatMap((id) =>
+      id === 'giveIronTools' ? [giveRow(id), subSwitchRow('upgradeTools', id)] : [giveRow(id)],
+    ),
+  );
   wear.append(section(copy.drinks, copy.drinksTip, audienceHead()), ...DRINK_ORDER.map(giveRow));
   carry.append(section(copy.charms, copy.charmsTip, audienceHead()), ...CHARM_ORDER.map(giveRow));
-  carry.append(section(copy.work, copy.workTip));
-  carry.append(
+  // Under the military in the orders column, which is otherwise the shorter one.
+  orders.append(section(copy.work, copy.workTip));
+  orders.append(
     switchRow('postGraduates', glyphArt(GLYPH.scroll)).row,
     switchRow('moveFlags', glyphArt(GLYPH.pin)).row,
   );

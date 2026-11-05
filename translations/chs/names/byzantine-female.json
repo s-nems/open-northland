@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "pool": "byzantine-female",
+  "names": {
+    "Anastasia": "阿纳斯塔西娅",
+    "Anna": "安娜",
+    "Athanasia": "阿塔纳西娅",
+    "Damiane": "达米安内",
+    "Epiphania": "埃皮法尼娅",
+    "Eugenia": "尤金尼娅",
+    "Euphemia": "尤菲米娅",
+    "Euphrasia": "尤弗拉西娅",
+    "Eusebia": "尤西比娅",
+    "Georgia": "乔治娅",
+    "Gregoria": "格里戈里娅",
+    "Kleopatra": "克利奥帕特拉",
+    "Leontia": "莱昂提亚",
+    "Melissa": "梅丽莎",
+    "Sara": "萨拉",
+    "Sophia": "索菲娅",
+    "Theodora": "狄奥多拉",
+    "Theodosia": "狄奥多西娅",
+    "Theophano": "狄奥法诺"
+  }
+}

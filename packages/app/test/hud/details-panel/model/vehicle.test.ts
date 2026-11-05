@@ -1,5 +1,8 @@
 import {
   type Entity,
+  type EntitySnapshot,
+  entityById,
+  ONE,
   type PlayerCommand,
   playerCommand,
   type Simulation,
@@ -8,7 +11,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_TRADER } from '../../../../src/catalog/jobs.js';
+import { JOB_CARRIER, JOB_TRADER } from '../../../../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
 import {
   spawnSettlerDirect,
@@ -25,7 +28,11 @@ import type {
   VehiclePanelModel,
   VehicleRiderModel,
 } from '../../../../src/hud/details-panel/model/index.js';
-import { vehicleStatus } from '../../../../src/hud/details-panel/model/vehicle.js';
+import {
+  vehicleOrders,
+  vehiclePanelModel,
+  vehicleStatus,
+} from '../../../../src/hud/details-panel/model/vehicle.js';
 import { createCargoState } from '../../../../src/hud/dom/vehicle-panel/cargo.js';
 import {
   commanderCaption,
@@ -46,7 +53,7 @@ import {
   vehiclePeersOf,
 } from '../../../../src/view/unit-controls/panels/vehicle.js';
 import type { PickMode } from '../../../../src/view/unit-controls/pick-mode.js';
-import { ctxOf } from '../../../support/sandbox.js';
+import { ctxOf, sandboxCtx, snapshotOf } from '../../../support/sandbox.js';
 
 /** The panel context with the sim's trader seam, which the Trade section reads. */
 const tradeCtxOf = (sim: Simulation): UnitPanelModelContext => ({
@@ -233,6 +240,7 @@ describe('vehicle status', () => {
     hauler: null,
     commanded: true,
     foreign: false,
+    pinned: false,
     driving: false,
     moored: false,
     cargo: null,
@@ -253,6 +261,10 @@ describe('vehicle status', () => {
     expect(vehicleStatus({ ...base, commanded: false, task: 'attacks' }).label).toBe(status.attacks);
     // Another seat's vehicle is nobody's trouble.
     expect(vehicleStatus({ ...base, commanded: false, foreign: true }).tone).toBe('neutral');
+    // A pinned ship waits for its trader at every shore, which is no trouble either.
+    expect(vehicleStatus({ ...base, vehicleClass: 'ship', commanded: false, pinned: true }).tone).toBe(
+      'neutral',
+    );
   });
 });
 
@@ -368,6 +380,7 @@ describe('vehicle crew', () => {
     deck: null,
     assign: true,
     leave: true,
+    leaveCommander: true,
     unload: true,
     load: null,
     unloadVehicle: null,
@@ -411,6 +424,12 @@ describe('vehicle crew', () => {
     expect(wellPress({ kind: 'add' }, own, true)).toBe('seat');
     expect(wellPress({ kind: 'free' }, own, false)).toBeNull();
     expect(wellPress(riderWell, { foreign: true, crew: crew({ leave: null }) }, false)).toBeNull();
+  });
+
+  it('steps a helper out on a Ctrl click while the commander of a pinned ship refuses it', () => {
+    const pinned = { foreign: false, crew: crew({ leaveCommander: 'pinned' }) };
+    expect(wellPress(commanderWell(pinned.crew), pinned, true)).toBe('refuse');
+    expect(wellPress({ kind: 'rider', rider: rider(2) }, pinned, true)).toBe('leave');
   });
 
   it('names the commander by role and name, an ordinary rider by name, a foreign one by trade', () => {
@@ -482,5 +501,120 @@ describe('vehicle hold', () => {
     expect(cargoLineTooltip({ ...row(1, 3, 6, 5), pinned: false }, true)).not.toContain(
       copy.rowWanted.replace('{count}', '6'),
     );
+  });
+});
+
+describe('a hauling cart riding a ship', () => {
+  it('refuses to leave the ship, moored or not: it comes off with its puller', () => {
+    const orders = vehicleOrders({
+      vehicleClass: 'cart',
+      commanded: false,
+      carried: true,
+      carrierMoored: true,
+      animalMissing: false,
+      hauled: true,
+    }).orders;
+    expect(orders.find((row) => row.order === 'leaveShip')?.control).toBe(
+      messages().hud.vehiclePanel.refusals.hauled,
+    );
+  });
+});
+
+describe('a ship pinned to a trader', () => {
+  const ctx = sandboxCtx();
+  const SHIP = 1;
+  const TRADER = 2;
+  const HELPER = 3;
+  const shipRow = ctx.vehicles.find((row) => row.typeId === VEHICLE_SHIP_SMALL);
+  if (shipRow === undefined) throw new Error('the sandbox has no small ship');
+  const commanderSlot = shipRow.passengerSlots;
+  const deckSlots = shipRow.vehicleSlots;
+
+  /** The small ship, pinned to the trader unless `pinned` is false; `aboard` seats the trader in the
+   *  commander's slot, `helper` a carrier in the first ordinary seat. */
+  function shipPanel({ pinned = true, moored = true, aboard = false, helper = false } = {}) {
+    const passengers: ({ entity: number; inside: boolean } | null)[] = new Array(commanderSlot + 1).fill(
+      null,
+    );
+    if (aboard) passengers[commanderSlot] = { entity: TRADER, inside: true };
+    if (helper) passengers[0] = { entity: HELPER, inside: true };
+    const settler = (id: number, jobType: number, extra: Record<string, unknown>): EntitySnapshot => ({
+      id,
+      components: { Settler: { tribe: 1, jobType }, Owner: { player: HUMAN_PLAYER }, ...extra },
+    });
+    const at = { Position: { x: ONE, y: ONE } };
+    const snapshot = snapshotOf([
+      {
+        id: SHIP,
+        components: {
+          Vehicle: {
+            vehicleType: VEHICLE_SHIP_SMALL,
+            tribe: 1,
+            moored,
+            passengers,
+            vehicles: new Array(deckSlots).fill(null),
+            carrier: null,
+            hauler: pinned ? TRADER : null,
+          },
+          Owner: { player: HUMAN_PLAYER },
+          Position: { x: 2 * ONE, y: 2 * ONE },
+        },
+      },
+      settler(TRADER, JOB_TRADER, {
+        ...(pinned ? { TradeShip: { vehicle: SHIP } } : {}),
+        ...(aboard ? { Rider: { vehicle: SHIP } } : at),
+      }),
+      settler(HELPER, JOB_CARRIER, helper ? { Rider: { vehicle: SHIP } } : at),
+    ]);
+    const ship = entityById(snapshot, SHIP);
+    if (ship === undefined) throw new Error('expected the ship');
+    return vehiclePanelModel(ctx, snapshot, ship);
+  }
+
+  it('names its trader as the commander and reads as no pulled cart', () => {
+    const model = shipPanel();
+    expect(model.tradePin?.entity).toBe(TRADER);
+    expect(model.crew.commander).toMatchObject({ entity: TRADER, name: model.tradePin?.name });
+    expect(model.hauler).toBeNull();
+    expect(model.trade).toBeNull();
+  });
+
+  it("shows the trader ashore in the captain's well, outside, and a Ctrl click refuses", () => {
+    const model = shipPanel();
+    expect(model.crew.commander?.inside).toBe(false);
+    expect(model.crew.leaveCommander).toBe(messages().hud.vehiclePanel.refusals.pinned);
+    expect(wellPress(commanderWell(model.crew), model, true)).toBe('refuse');
+  });
+
+  it('takes go to and dock while it lies moored for the trader ashore, and refuses them at sea', () => {
+    const control = (moored: boolean, order: string) =>
+      shipPanel({ moored }).orders.find((row) => row.order === order)?.control;
+    expect(control(true, 'goTo')).toBe(true);
+    expect(control(true, 'dock')).toBe(true);
+    expect(control(false, 'goTo')).toBe(messages().hud.vehiclePanel.refusals.noCommander.ship);
+  });
+
+  it('leaves its hold, its captain and its deck to the route, its seats open to helpers', () => {
+    const { hold, crew } = shipPanel();
+    const { pinned } = messages().hud.vehiclePanel.refusals;
+    expect(hold?.routed).toBe(true);
+    expect([crew.leaveCommander, crew.load, crew.unloadVehicle]).toEqual([pinned, pinned, pinned]);
+    expect([crew.assign, crew.leave]).toEqual([true, true]);
+  });
+
+  it('unloads its helpers, but not while the trader is aboard, whom the order would land too', () => {
+    expect(shipPanel().crew.unload).toBeNull();
+    expect(shipPanel({ helper: true }).crew.unload).toBe(true);
+    expect(shipPanel({ helper: true, aboard: true }).crew.unload).toBe(
+      messages().hud.vehiclePanel.refusals.pinned,
+    );
+  });
+
+  it('frees all of that on a ship nobody pinned', () => {
+    const { tradePin, hold, crew } = shipPanel({ pinned: false });
+    expect(tradePin).toBeNull();
+    expect(hold?.routed).toBe(false);
+    expect(crew.assign).toBe(true);
+    expect(crew.load).toBe(true);
   });
 });

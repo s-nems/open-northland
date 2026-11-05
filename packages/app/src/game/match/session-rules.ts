@@ -1,5 +1,7 @@
 import { isMultiplayerMapType } from '@open-northland/data';
 import {
+  DAY_NIGHT_MODES,
+  type DayNightMode,
   PEACE_MINUTES,
   type PeaceMinutes,
   type SessionRules,
@@ -17,10 +19,16 @@ export function onOffParam(params: URLSearchParams, name: string): boolean | nul
   return null;
 }
 
-/** `?weathermode=<map|variable|winter>`; null for absent or unrecognized, which plays the default. */
+/** `?weathermode=<map|variable|winter|off>`; null for absent or unrecognized, which plays the default. */
 export function weatherModeParam(params: URLSearchParams): WeatherMode | null {
   const value = params.get('weathermode');
   return WEATHER_MODES.find((mode) => mode === value) ?? null;
+}
+
+/** `?daynight=<map|on|off>`; null for absent or unrecognized, which plays the default. */
+export function dayNightModeParam(params: URLSearchParams): DayNightMode | null {
+  const value = params.get('daynight');
+  return DAY_NIGHT_MODES.find((mode) => mode === value) ?? null;
 }
 
 /** `?peace=<minutes>`, one of `PEACE_MINUTES`; null for absent or unrecognized, which opens no peace. */
@@ -29,7 +37,7 @@ export function peaceParam(params: URLSearchParams): PeaceMinutes | null {
   return PEACE_MINUTES.find((minutes) => String(minutes) === value) ?? null;
 }
 
-/** The `?fog=`, `?progression=`, `?needs=`, `?weathermode=`, `?alliedvision=` and `?peace=` flags as the
+/** The `?fog=`, `?progression=`, `?needs=`, `?weathermode=`, `?daynight=`, `?alliedvision=` and `?peace=` flags as the
  *  session's rule overrides. */
 export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
   return {
@@ -37,13 +45,14 @@ export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
     progression: onOffParam(params, 'progression'),
     needs: onOffParam(params, 'needs'),
     weather: weatherModeParam(params),
+    dayNight: dayNightModeParam(params),
     alliedVision: onOffParam(params, 'alliedvision'),
     peace: peaceParam(params),
   };
 }
 
-/** The rules the sim applies; weather is presentation only. */
-export type SimSessionRules = Omit<SessionRules, 'weather'>;
+/** The rules the sim applies; weather and day and night are presentation only. */
+export type SimSessionRules = Omit<SessionRules, 'weather' | 'dayNight'>;
 
 /**
  * Apply the overrides to a freshly built sim. The queue is FIFO and these land after the world's own

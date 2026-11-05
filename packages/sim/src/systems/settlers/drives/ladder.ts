@@ -30,9 +30,10 @@ import { isFisherJob, MILITARY_MODE } from '../../readviews/index.js';
 import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { planTrader } from '../../trade/index.js';
+import { planShipHelper, planTrader } from '../../trade/index.js';
 import { planRider } from '../../vehicles/boarding.js';
 import { abandonCargoRun } from '../../vehicles/cargo.js';
+import { pinnedTraderOf } from '../../vehicles/crew.js';
 import { parkHaulingCart } from '../../vehicles/hauling-cart.js';
 import { heldOffEconomy } from '../action-owner.js';
 import { jobCanBuild } from '../atomics/start.js';
@@ -41,7 +42,7 @@ import { forgetWorkTried, noteWorkTaken } from '../lost-way.js';
 import type { PlannerContext } from '../planner/context.js';
 import { idleReplanPeriodOf, standsStillForMachine, waitsHoldOnBeat } from '../planner/idle-replan.js';
 import type { PlannerPass } from '../planner/pass.js';
-import { combatOwnsFeet } from '../planner/replan.js';
+import { combatOwnsFeet, shelterHasRoom } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
 import { planHomeTopUp } from './at-home.js';
 import { cutOffCheckDue, reconcileCutOff, strandedPost } from './cut-off.js';
@@ -92,6 +93,8 @@ export function planChild(pass: PlannerPass, e: Entity, settler: SettlerView): v
 export function planShelterRung(pass: PlannerPass, e: Entity, settler: SettlerView): boolean {
   if (pass.shelters.size === 0) return false;
   const { world, ctx, terrain } = pass;
+  // Without a held shelter, the rung only claims a place its owner still has: refuse before the reads.
+  if (!world.has(e, Sheltering) && !shelterHasRoom(pass.shelters, ownerOf(world, e))) return false;
   const p = world.get(e, Position);
   const hx = nodeHxOfPosition(p.x, p.y);
   const hy = nodeHyOfPosition(p.x, p.y);
@@ -130,6 +133,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // most once per settler per tick, and only by a rung whose answer it changes, which each rung does after
   // its own cheap refusals - the presence sweep behind it is the pass's one expensive read.
   const alert = pass.alert.of(e);
+  dropEmptyHandedShipRun(world, e, load);
   if (planBreak(pass, plan, settler, load, hx, hy, alert)) {
     // Whatever took the carrier off its trade parks its hauling cart where it stands; the rung below
     // takes the cart up again once the trade is back on. A meal from its own hands is eaten on the spot
@@ -141,6 +145,21 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // free; a hold that no longer stands sets the cart down here, whatever the carrier does next.
   if (planHaulingCart(plan, load !== undefined && load.amount > 0)) return;
   planEconomy(plan, pass, settler, load, hx, hy, alert);
+}
+
+/** A pinned ship's helper with empty hands holds no unit of its run, so a need or an order taking it
+ *  gives the run back rather than keep the trader waiting; the helper rung books afresh if it still
+ *  works the ship. A loaded helper keeps its booking to finish the trip. Other cargo hands keep theirs. */
+function dropEmptyHandedShipRun(
+  world: World,
+  e: Entity,
+  load: { goodType: number; amount: number } | undefined,
+): void {
+  if (load !== undefined && load.amount > 0) return;
+  const ship = world.tryGet(e, Rider)?.vehicle;
+  if (ship === undefined) return;
+  const trader = pinnedTraderOf(world, ship);
+  if (trader !== null && trader !== e) abandonCargoRun(world, e);
 }
 
 /** A settler eating a unit it carries, the one break that spends what is in its hands. */
@@ -204,13 +223,13 @@ function planBreak(
   // deviation from the original's pending-need gate on the board request): the order is a forced
   // boarding, and a need waits for the ride. Any cargo booking is given back first, and a rider with a
   // unit on its back runs the ladder down to the delivery rung before it answers, so nothing rides
-  // aboard in its hands. Whatever the rider waited in, it steps out of.
-  if (world.tryGet(e, Rider)?.boarding === true) {
-    abandonCargoRun(world, e);
-    if (
-      (load === undefined || load.amount <= 0) &&
-      planRider(world, ctx, terrain, e, pass.spacing, pass.idle)
-    ) {
+  // aboard in its hands; a helper of a pinned ship keeps its booking and finishes that trip on its own
+  // rung. Whatever the rider waited in, it steps out of.
+  const seat = world.tryGet(e, Rider);
+  if (seat?.boarding === true) {
+    const loaded = load !== undefined && load.amount > 0;
+    if (!loaded || pinnedTraderOf(world, seat.vehicle) === null) abandonCargoRun(world, e);
+    if (!loaded && planRider(world, ctx, terrain, e, pass.spacing, pass.idle)) {
       stepOut(world, e);
       return true;
     }
@@ -270,7 +289,8 @@ function planBreak(
   // A vehicle's crew, above every errand and trade: a cargo hand serves its vehicle's hold and places a
   // unit the hold will not take; any rider walks to the door and steps in when asked. A rider of no hold
   // work holding a load runs the ladder down to the delivery rung first, so it is not parked at the door
-  // with its hands full.
+  // with its hands full. A pinned ship's carrier helps its trader first; the rung below refuses it.
+  if (planShipHelper(plan, load)) return true;
   if (planVehicleCargo(plan, load)) return true;
   if (
     (load === undefined || load.amount <= 0) &&

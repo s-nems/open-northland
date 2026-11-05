@@ -81,12 +81,14 @@ export function headingToward(from: Point, to: Point): WalkDirection | undefined
           : NW;
 }
 
-export function beginWalkTurn(world: World, e: Entity, from: Point, to: Point): void {
-  const target = headingToward(from, to);
-  if (target === undefined) return;
+/** Aim `e`'s turn from `from` toward `to`; returns its {@link WalkFacing} after the aim. */
+export function beginWalkTurn(world: World, e: Entity, from: Point, to: Point): WalkFacingView | undefined {
   const facing = world.tryGet(e, WalkFacing);
-  if (facing === undefined) world.add(e, WalkFacing, { direction: INITIAL_WALK_DIRECTION, target });
-  else if (facing.target !== target) world.mut(e, WalkFacing).target = target;
+  const target = headingToward(from, to);
+  if (target === undefined) return facing;
+  if (facing === undefined) return world.add(e, WalkFacing, { direction: INITIAL_WALK_DIRECTION, target });
+  if (facing.target !== target) world.mut(e, WalkFacing).target = target;
+  return facing;
 }
 
 /**

@@ -119,8 +119,10 @@ export function driveOrder(
   }
 
   const home = world.tryGet(woman, Residence)?.home;
-  const blocked = childOrderBlocker(world, ctx, woman, husband);
-  if (world.get(woman, ChildOrder).blocked !== blocked) world.mut(woman, ChildOrder).blocked = blocked;
+  // The live record: a `mut` below edits this same object.
+  const order = world.get(woman, ChildOrder);
+  const blocked = home === undefined ? 'noHome' : blockerAt(world, ctx, woman, husband, home);
+  if (order.blocked !== blocked) world.mut(woman, ChildOrder).blocked = blocked;
   if (home === undefined || blocked !== undefined) {
     if (home !== undefined) standDown(world, woman, husband, home);
     return;
@@ -132,7 +134,7 @@ export function driveOrder(
     claimDuty(world, husband, pass);
     world.mut(home, MakingLove).elapsed += 1;
     if (love.elapsed >= love.duration) {
-      birth(world, ctx, woman, husband, home, world.get(woman, ChildOrder).child);
+      birth(world, ctx, woman, husband, home, order.child);
     }
     return;
   }
@@ -140,12 +142,11 @@ export function driveOrder(
   // Nothing is held back: residents eat the larder freely, so the cost is re-checked every tick and only
   // taken at the session start below.
   if (storedFoodUnits(world, ctx, home) < CHILD_FOOD_UNITS) {
-    haulFood(world, ctx, terrain, woman, home, pass);
+    haulFood(world, ctx, terrain, woman, home, order.foodSearchMissed === true, pass);
     return;
   }
   // The larder holds the cost, whoever filled it, so a search that once found nothing is no longer news.
-  if (world.get(woman, ChildOrder).foodSearchMissed === true)
-    world.mut(woman, ChildOrder).foodSearchMissed = undefined;
+  if (order.foodSearchMissed === true) world.mut(woman, ChildOrder).foodSearchMissed = undefined;
 
   claimDuty(world, woman, pass);
   if (!ensureInside(world, ctx, terrain, woman, home)) return;
@@ -174,14 +175,27 @@ export function childOrderBlocker(
   husband: Entity,
 ): ChildOrderBlocker | undefined {
   const home = world.tryGet(woman, Residence)?.home;
-  if (home === undefined) return 'noHome';
+  return home === undefined ? 'noHome' : blockerAt(world, ctx, woman, husband, home);
+}
+
+/** {@link childOrderBlocker} for the couple whose wife lives in `home`. */
+function blockerAt(
+  world: World,
+  ctx: SystemContext,
+  woman: Entity,
+  husband: Entity,
+  home: Entity,
+): ChildOrderBlocker | undefined {
   // An upgrade must not interrupt the couple's already-paid hearts phase (owner ruling).
-  const continuingDuringUpgrade =
-    world.has(home, Upgrading) && world.tryGet(home, MakingLove)?.wife === woman;
-  if (builtHomeType(world, ctx, home) === undefined && !continuingDuringUpgrade) return 'homeUnbuilt';
+  if (builtHomeType(world, ctx, home) === undefined && !upgradeSparesSession(world, woman, home))
+    return 'homeUnbuilt';
   if (jobIgnoresHomeHouse(ctx.content, world.get(husband, Settler).jobType)) return 'husbandAway';
   if (world.tryGet(husband, Residence)?.home !== home) return 'livesApart';
   return undefined;
+}
+
+function upgradeSparesSession(world: World, woman: Entity, home: Entity): boolean {
+  return world.has(home, Upgrading) && world.tryGet(home, MakingLove)?.wife === woman;
 }
 
 /** Drop an order that can never complete, and let its holder out of the house. */
@@ -206,16 +220,20 @@ function haulFood(
   terrain: TerrainGraph | undefined,
   woman: Entity,
   home: Entity,
+  missed: boolean,
   pass: ChildOrderPass,
 ): void {
   claimDuty(world, woman, pass);
   leaveHome(world, woman, home);
-  if (!isDrivable(world, woman)) return;
   const load = world.tryGet(woman, Carrying);
+  const loaded = load !== undefined && load.amount > 0;
+  // Empty-handed between retries she has nothing to do, whether or not she is free.
+  if (!loaded && missed && (ctx.tick + woman) % FOOD_SEARCH_RETRY_TICKS !== 0) return;
+  if (!isDrivable(world, woman)) return;
   const womanView = world.get(woman, Settler);
   const p = world.get(woman, Position);
   const hereNode = nodeOfPosition(p.x, p.y);
-  if (load !== undefined && load.amount > 0) {
+  if (loaded) {
     if (!isFood(ctx, load.goodType)) {
       startDrop(world, ctx, woman); // free her hands of a non-food load first
       return;
@@ -224,8 +242,6 @@ function haulFood(
     deliverHome(world, ctx, terrain, woman, womanView, home, hereNode);
     return;
   }
-  const missed = world.get(woman, ChildOrder).foodSearchMissed === true;
-  if (missed && (ctx.tick + woman) % FOOD_SEARCH_RETRY_TICKS !== 0) return;
   // This pass runs before the planner releases her last trip's claim, which must not hide its unit from her.
   pass.supply.releasePickupClaim(woman);
   // Null when navigation is unlimited; otherwise she sees only sources inside her allowed area.
@@ -295,13 +311,15 @@ function ensureInside(
   e: Entity,
   home: Entity,
 ): boolean {
-  if (anyNeedPressing(world, ctx, e)) return false;
-  if (isInside(world, e, home)) return true;
+  if (isInside(world, e, home)) return !anyNeedPressing(world, ctx, e);
+  // A walk home is issued only to a drivable settler with no need pulling it away.
+  if (!isDrivable(world, e) || anyNeedPressing(world, ctx, e)) return false;
   enterHome(world, ctx, terrain, e, home);
   return false;
 }
 
-/** Walk to the home's door and step inside; mapless fixtures step in directly (no cells to walk). */
+/** Walk a drivable `e` to the home's door and step inside; mapless fixtures step in directly (no cells
+ *  to walk). */
 function enterHome(
   world: World,
   ctx: SystemContext,
@@ -309,7 +327,6 @@ function enterHome(
   e: Entity,
   home: Entity,
 ): void {
-  if (!isDrivable(world, e)) return;
   // Shed a workplace rest marker so the walk home is visible; the arrival re-stamps it at the home.
   stepOut(world, e);
   // A clip left on a drivable settler holds nothing (a workshop's craft display), but plays on and

@@ -3,6 +3,7 @@ import {
   buildingTypeOf,
   isAdult,
   isFemale,
+  num,
   residenceHomeOf,
   settlerJobType,
   vehicleSeatsOf,
@@ -13,7 +14,13 @@ import { homeHasFamilyRoom, staffingOf } from '../highlights/index.js';
 import { schoolStudents } from '../panels/school-dialog.js';
 import type { BuildingIntent, BuildingWorker } from '../right-click/building-rungs.js';
 import { contentLookups, type RightClickContext } from '../right-click/context.js';
-import { type RightClickInput, type RightClickOrders, resolveRightClick } from '../right-click/press.js';
+import {
+  type BoardOrOrdersPlan,
+  type RightClickInput,
+  type RightClickOrders,
+  resolveBoardOrOrders,
+  resolveRightClick,
+} from '../right-click/press.js';
 import type { RiderPlan } from '../right-click/riders.js';
 import type { SettlerGroup } from '../right-click/settler-ladder.js';
 import { isShip, type VehicleGroup, type VehiclePlan } from '../right-click/vehicles.js';
@@ -43,6 +50,8 @@ export type HintAction =
   | 'repair'
   | 'board'
   | 'loadAboard'
+  | 'pinShip'
+  | 'unpinShip'
   | 'workArea'
   | 'placeSignpost'
   | 'bombard';
@@ -60,6 +69,7 @@ export type HintRefusal =
   | 'cannotTrainHere'
   | 'cannotBoard'
   | 'cannotLoadAboard'
+  | 'cannotPinShip'
   | 'cannotMoorHere'
   | 'cannotPlaceSignpost';
 
@@ -87,6 +97,7 @@ export type PlanHint =
 export interface HintAnswers {
   readonly tradeHouseAttach: (trader: number, house: number) => boolean | undefined;
   readonly vehicleAttach: (settler: number, vehicle: number) => boolean | undefined;
+  readonly tradeShipPin: (trader: number, ship: number) => boolean | undefined;
   readonly jobChoice: (entity: number, jobType: number) => boolean | undefined;
   /** Whether a right click there moors any of `ships` at the shore, as the berth preview reads it. */
   readonly docks: (ships: readonly number[], tile: Tile) => boolean;
@@ -124,24 +135,37 @@ export function planHint(ctx: HintContext, input: RightClickInput): PlanHint | n
       return null;
     case 'orderLimit':
       return refusal('tooManyUnits');
-    case 'attach': {
-      const { vehicle, settlers } = plan.attach;
-      if (vehicleFull(ctx, vehicle, settlers)) return refusal('noRoom');
-      const refused = settlers.every((settler) => ctx.answers.vehicleAttach(settler, vehicle) === false);
-      return refused ? refusal('cannotBoard') : action('board');
+    case 'pinShip': {
+      const { trader, ship, unpins } = plan.pin;
+      if (unpins) return action('unpinShip');
+      if (ctx.answers.tradeShipPin(trader, ship) !== false) return action('pinShip');
+      return boardOrOrdersHint(ctx, resolveBoardOrOrders(ctx, input, plan.onBuilding));
     }
+    case 'attach':
     case 'orders':
-      return ordersHint(ctx, plan);
+      return boardOrOrdersHint(ctx, plan);
   }
 }
 
-/** A vehicle with every seat taken refuses each settler not already riding it. */
+function boardOrOrdersHint(ctx: HintContext, plan: BoardOrOrdersPlan): PlanHint | null {
+  if (plan.kind === 'orders') return ordersHint(ctx, plan);
+  const { vehicle, settlers } = plan.attach;
+  if (vehicleFull(ctx, vehicle, settlers)) return refusal('noRoom');
+  const refused = settlers.every((settler) => ctx.answers.vehicleAttach(settler, vehicle) === false);
+  return refused ? refusal('cannotBoard') : action('board');
+}
+
+/** A vehicle with every seat taken refuses each settler not already riding it; a pinned ship's commander
+ *  slot, its trader's, offers no seat. */
 function vehicleFull(ctx: HintContext, vehicle: number, settlers: readonly number[]): boolean {
-  const state = entityById(ctx.snapshot, vehicle)?.components.Vehicle as { passengers?: unknown } | undefined;
+  const e = entityById(ctx.snapshot, vehicle);
+  const state = e?.components.Vehicle as { passengers?: unknown; hauler?: unknown } | undefined;
   const slots = state?.passengers;
-  if (!Array.isArray(slots)) return false;
+  if (e === undefined || !Array.isArray(slots)) return false;
   const seated = vehicleSeatsOf(slots);
-  if (seated.length < slots.length) return false;
+  const pinned = isShip(ctx.content, e) && num(state?.hauler) !== undefined;
+  const open = pinned ? slots.slice(0, -1) : slots;
+  if (vehicleSeatsOf(open).length < open.length) return false;
   return settlers.every((settler) => !seated.some((seat) => seat.entity === settler));
 }
 

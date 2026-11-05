@@ -36,6 +36,12 @@ export const enGame = {
       },
     },
     armyOrderLimit: 'Select at most {limit} units for one order. No units received this order.',
+    diplomacyMap: {
+      title: 'Diplomacy map',
+      own: 'Your tribe',
+      unknown: 'Location unknown:',
+      openDiplomacy: 'Open diplomacy',
+    },
     mapOverlays: {
       label: 'Main map overlays',
       signposts: 'Signposts',
@@ -44,6 +50,7 @@ export const enGame = {
     },
     minimap: {
       label: 'Minimap',
+      overview: 'Diplomacy map',
       interaction:
         'Click or drag to move the camera. Scroll to zoom the minimap. Drag with the middle mouse button to pan the zoomed map.',
       zoomIn: 'Zoom in',
@@ -215,6 +222,7 @@ export const enGame = {
       enemy: 'hostile',
     },
     diplomacyWindow: {
+      map: 'Diplomacy map',
       nations: 'Tribes',
       attitude: 'Attitude',
       theirs: 'Their attitude',
@@ -451,6 +459,8 @@ export const enGame = {
       repair: 'Repair',
       board: 'Board',
       loadAboard: 'Load aboard',
+      pinShip: 'Pin to the route',
+      unpinShip: 'Unpin the ship',
       workArea: 'Work area',
       placeSignpost: 'Place signpost',
       bombard: 'Bombard',
@@ -464,6 +474,7 @@ export const enGame = {
       cannotTrainHere: 'They cannot train here',
       cannotBoard: 'They cannot board',
       cannotLoadAboard: 'Cannot load aboard here',
+      cannotPinShip: 'Cannot pin this ship',
       cannotMoorHere: 'Cannot moor here',
       cannotPlaceSignpost: 'No signpost here',
     },
@@ -484,6 +495,7 @@ export const enGame = {
       awaitingWorkplace: 'Waiting for the workshop',
       awaitingTraining: 'Waiting for construction',
       awaitingSeat: 'Waiting for a free place',
+      sailingRoute: 'Sailing the route',
       standingTo: 'Standing to',
       lost: { he: 'Lost', she: 'Lost' },
       idle: 'Idle',
@@ -745,12 +757,24 @@ export const enGame = {
       tradeHeading: 'The merchant is heading here now',
       tradeAddStop: 'Add a trade post',
       tradeConfigure: 'Set up trade',
+      tradePinShip: 'Pin a ship',
+      tradePinShipHint:
+        'Click, then pick a lit ship of yours lying at this shore, empty of crew, or right click the ship with the merchant selected. The merchant sails its route on it.',
+      tradeUnpinShip: 'Unpin the ship',
+      tradeShipNeeded: 'across the sea',
+      tradeShipNeededTooltip: 'The stops lie on different shores: pin a ship so the merchant can cross',
+      tradeShipUnreachable: 'out of reach',
+      tradeShipUnreachableTooltip:
+        'This ship cannot serve the route: it sails another sea, or lies at another shore than the merchant',
       tradeSettlement: 'settlement',
       tradeSettlementOn:
-        'Loads from the whole settlement: this storehouse first, then the storehouses and workshops its signpost network reaches. What it brings back goes into this storehouse · click: this storehouse only',
+        'Stands for the whole settlement: the storehouses and workshops its signpost network reaches. It loads from them, this storehouse first, and the "up to" and "keep" limits count their stock. What it brings back goes into this storehouse · click: this storehouse only',
       tradeSettlementOff:
-        'Click: load from the whole settlement, this storehouse first, then the storehouses and workshops its signpost network reaches',
-      tradeSettlementTaken: 'The other stop already loads from the settlement',
+        'Click: stand for the whole settlement. It loads from every storehouse and workshop its signpost network reaches, and the "up to" and "keep" limits count their stock',
+      tradeSettlementShared:
+        "Its settlement shares a house with the other stop's, which already stands for its whole settlement",
+      tradeSettlementSuspended:
+        "Its settlement shares a house with the other stop's, so for now it counts this storehouse only · click: this storehouse only",
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: 'up to {count}',
@@ -788,6 +812,8 @@ export const enGame = {
       centre: 'Centre the view on the vehicle',
       health: 'Durability {hitpoints} / {max}',
       carrierTooltip: 'Select the ship',
+      tradeMerchant: 'Merchant',
+      tradeMerchantSelect: 'Select the merchant whose route this ship sails',
       haulerTooltip: 'Select who pulls it',
       status: {
         aboard: 'On a ship',
@@ -841,6 +867,7 @@ export const enGame = {
         noSeat: 'No free seats',
         notMoored: 'Moor at the shore first',
         deckFull: 'The deck is taken',
+        pinned: "This ship sails a merchant's route",
       },
       stances: { attack: 'Attack', defence: 'Defence', hold: 'Ignorant' },
       stanceTooltips: {
@@ -852,6 +879,7 @@ export const enGame = {
       roles: { cart: 'Commander', ship: 'Commander', siege: 'Commander' },
       assignRole: { cart: 'Assign a commander', ship: 'Assign a commander', siege: 'Assign a commander' },
       assignTooltip: 'Pick one of your settlers on the map · Esc cancels',
+      assignHelperTooltip: 'Pick one of your carriers on the map to help the merchant · Esc cancels',
       seatCount: 'Seats taken / all',
       walking: 'walking',
       seat: 'Seat a settler',
@@ -1464,6 +1492,10 @@ export const enGame = {
           label: 'Wind Amulet',
           tip: 'Every man without one fetches one from the store. Its bearer walks faster.',
         },
+        upgradeTools: {
+          label: 'Replace wooden ones',
+          tip: 'A worker holding a wooden tool fetches an iron one from the store. A part-used tool is lost in the swap. Works while iron tools are handed out.',
+        },
         postGraduates: {
           label: 'School graduates assigned to workshops automatically',
           tip: 'A school graduate goes straight to the nearest free workplace in his profession.',
@@ -1764,6 +1796,7 @@ export const enGame = {
       starve: 'Exhaust all needs',
       fill: 'Fill stockpile',
       finish: 'Finish construction',
+      erase: 'Erase resources',
       teleport: 'Move settler',
     },
     actionHints: {
@@ -1773,6 +1806,7 @@ export const enGame = {
       starve: 'Click a settler: every need turns urgent at once',
       fill: 'Click a building: fills its storage',
       finish: 'Click a construction site: the building stands finished',
+      erase: 'Click a resource, berry bush or goods pile; hold to wipe what passes under the cursor',
       teleport: 'Click a settler, then its destination',
     },
     healthPercent: 'Target health in percent',

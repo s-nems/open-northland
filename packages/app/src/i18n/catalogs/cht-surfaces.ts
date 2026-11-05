@@ -172,6 +172,13 @@ export const chtSurfaces = {
         map: { label: '地圖', detail: '只有地圖本身設定的天氣。' },
         variable: { label: '多變', detail: '地圖的天氣，再加上遊戲本身不時出現的天氣。' },
         winter: { label: '冬季', detail: '白雪皚皚的一局。' },
+        off: { label: '關閉', detail: '沒有天氣，地圖設定的天氣也不出現。' },
+      },
+      dayNightLabel: '晝夜循環',
+      dayNightModes: {
+        map: { label: '地圖', detail: '只有地圖本身設定的晝夜。' },
+        on: { label: '開啟', detail: '每張地圖都有晝夜循環。自帶循環的地圖保留自己的循環。' },
+        off: { label: '關閉', detail: '始終白天，自帶循環的地圖也一樣。' },
       },
       start: '開始遊戲',
       startNeedsSeat: '請先入座',
@@ -260,9 +267,6 @@ export const chtSurfaces = {
       buildingDamage: '建築損壞',
       buildingDamageTip:
         '破損的屋頂、外露的樑柱、煙霧、火焰與飛散的碎片。停用後會改用較簡單的煙霧，減輕圖形負擔。',
-      nightLights: '夜間光照',
-      nightLightsTip:
-        '夜晚時，篝火、房屋與居民照亮地圖：篝火周圍有溫暖的光暈，人物與房屋保留部分白天的色彩。停用後夜晚均勻變暗，減輕圖形負擔。',
       environmentMotion: '環境動態',
       environmentMotionTip:
         '原版只畫成單一靜止影格的樹木會連同陰影隨風搖曳，魚會流暢地游動，本專案植被中的微風也會更平順。居民與動物保留原版的步伐，原版動畫不會增加影格。在讀取的存檔中，樹木保持靜止。',
@@ -277,6 +281,9 @@ export const chtSurfaces = {
       weather: '天氣',
       weatherTip:
         '在地圖需要的地方下雨、下雪與颳沙塵暴：落下的雨滴與雪花、霧氣與暴風雨的光線、潮濕與積雪的地面、水花、風聲與雷聲。天氣絕不會改變遊戲本身。關閉時天空晴朗，也聽不到天氣的聲音。',
+      dayNight: '晝夜循環',
+      dayNightTip:
+        '在地圖或遊戲規則執行晝夜的地方顯示：太陽、黃昏，以及篝火、房屋與居民照亮地圖的夜晚。晝夜循環不會改變遊戲本身。關閉後始終是白天，圖形負擔更輕；黑暗地圖與夜襲則均勻變暗。',
       uiScale: '遊戲內介面比例',
       uiScaleTip: '遊戲中面板與按鈕的大小；不會改變世界的清晰度。',
       uiScalePinnedTip: '此工作階段使用固定的診斷用 ?uiscale 值。',
@@ -353,6 +360,7 @@ export const chtSurfaces = {
         statistics: '統計視窗',
         mission: '任務視窗',
         diplomacy: '外交視窗',
+        diplomacyMap: '外交地圖',
         knowledge: '知識視窗',
         network: '網路視窗（多人遊戲）',
         actionRing: '單位動作環',
@@ -575,6 +583,9 @@ export const chtSurfaces = {
     loadFailedTitle: '載入存檔失敗',
     loadFailedDetail:
       '這個世界無法接受該存檔。這通常表示存檔是在不同的遊戲內容或較舊的地圖上建立的；再次載入也會以同樣方式失敗。',
+    graphicsUnavailableTitle: '圖形無法使用',
+    graphicsUnavailableDetail:
+      '瀏覽器目前無法為遊戲提供圖形功能（WebGL），通常是在顯示卡驅動程式出錯之後。請完全關閉遊戲或瀏覽器後重新啟動；如果再次發生，請更新顯示卡驅動程式。',
     availableScenes: '可用的世界：',
     unknownScene: '未知的世界：「{id}」',
     copied: '已複製',

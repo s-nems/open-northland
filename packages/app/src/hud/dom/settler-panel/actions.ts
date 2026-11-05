@@ -64,6 +64,9 @@ export interface SettlerPanelActions {
   readonly setRegeneration: (id: number, allowed: boolean) => void;
   readonly attachTradeHouse: (id: number) => void;
   readonly detachTradeHouse: (id: number, house: number) => void;
+  /** Arm the pick of the ship to pin to the trader's route. */
+  readonly pinTradeShip: (id: number) => void;
+  readonly unpinTradeShip: (id: number) => void;
   /** Set or clear import marks on the trader's route, in order, as one press. */
   readonly setTradeMarks: (id: number, changes: readonly TradeMarkChange[]) => void;
   /** The fill ceiling and source reserve of an existing mark, in units (`TRADE_LIMIT_NONE`: none). */

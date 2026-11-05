@@ -2325,6 +2325,7 @@ describe('workforce module (collectResources)', () => {
     const scout = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === SCOUT);
     expect(commands).toEqual([
       { kind: 'setAssistantMoveFlags', player: SEAT, enabled: true },
+      { kind: 'setAssistantUpgradeTools', player: SEAT, enabled: true },
       { kind: 'setJob', entity: scout, jobType: BUILDER },
     ]);
   });

@@ -40,4 +40,19 @@ export type VehicleTribeLooks = Readonly<Record<number, VehicleLook>>;
 export interface VehicleBinding {
   readonly byTribe: Readonly<Record<number, VehicleTribeLooks>>;
   readonly fallbackTribe: number;
+  /** The yards whose construction site draws the ship it launches; see {@link ShipYardSites}. */
+  readonly shipYards?: ShipYardSites;
+}
+
+/**
+ * The ship yard houses whose site rises as the finished ship rather than the house's own stage art: the
+ * data gives every tribe's yard one viking longship stage, which matches only some tribes' ships. The
+ * site draws its tribe's moored ship at the facing it launches in, in its owner's colour, and takes no
+ * damage paint (approximation, owner's choice).
+ */
+export interface ShipYardSites {
+  /** The vehicle type each yard house type launches. */
+  readonly vehicleByHouse: Readonly<Record<number, number>>;
+  /** The render facing a launched vehicle takes. */
+  readonly facing: number;
 }

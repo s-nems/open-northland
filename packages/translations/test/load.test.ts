@@ -185,11 +185,52 @@ describe('loadTranslationOverlays', () => {
     );
   });
 
+  it('keys personal-name overlays by language then pool, and reads a converted one as derived', async () => {
+    await put('chs/names/viking-male.json', {
+      version: OVERLAY_VERSION,
+      pool: 'viking-male',
+      names: { Bjarni: '比亚尔尼' },
+    });
+    await put('cht/names/viking-male.json', {
+      version: OVERLAY_VERSION,
+      pool: 'viking-male',
+      names: { Bjarni: '比亞爾尼' },
+      derived: 'chs',
+    });
+
+    const overlays = await loadTranslationOverlays(root);
+
+    expect(overlays.names.get('chs')?.get('viking-male')?.names).toEqual({ Bjarni: '比亚尔尼' });
+    expect(overlays.names.get('cht')?.get('viking-male')?.derived).toBe('chs');
+    expect(overlays.names.has('eng')).toBe(false);
+  });
+
+  it('refuses a personal-name overlay whose entry or pool the schema rejects', async () => {
+    await put('chs/names/viking-male.json', {
+      version: OVERLAY_VERSION,
+      pool: 'viking-male',
+      names: { Bjarni: '' },
+    });
+    await expect(loadTranslationOverlays(root)).rejects.toThrow(
+      new RegExp(`${pathPattern('chs/names/viking-male.json')}: invalid names overlay at names\\.Bjarni`),
+    );
+    await put('chs/names/viking-male.json', {
+      version: OVERLAY_VERSION,
+      pool: 'Viking Male',
+      names: {},
+    });
+    await expect(loadTranslationOverlays(root)).rejects.toThrow(/invalid names overlay at pool/);
+  });
+
   it('holds no overlays for a missing root, and resolves the repository folder by default', async () => {
     const overlays = await loadTranslationOverlays(join(root, 'absent'));
-    expect([overlays.maps.size, overlays.objects.size, overlays.books.size, overlays.campaigns.size]).toEqual(
-      [0, 0, 0, 0],
-    );
+    expect([
+      overlays.maps.size,
+      overlays.objects.size,
+      overlays.books.size,
+      overlays.campaigns.size,
+      overlays.names.size,
+    ]).toEqual([0, 0, 0, 0, 0]);
     expect(TRANSLATIONS_ROOT).toMatch(/[\\/]translations[\\/]$/);
   });
 });

@@ -11,7 +11,7 @@ import {
   ONE,
   positionOfNode,
 } from '../../src/index.js';
-import { nodeWorldX, positionXOfWorld } from '../../src/nav/halfcell.js';
+import { insideNodeCore, nodeWorldX, positionXOfWorld, positionYOfNode } from '../../src/nav/halfcell.js';
 import { ROW_STEP } from '../../src/nav/world-metric.js';
 
 /**
@@ -260,5 +260,46 @@ describe('nodeOfPosition', () => {
   it('floors a row above the map, so an off-map transient reads row -1', () => {
     const y = fx.fromFloat(-0.1);
     expect(nodeOfPosition(positionXOfWorld(nodeWorldX(4, -1), y), y).hy).toBe(-1);
+  });
+});
+
+describe('insideNodeCore', () => {
+  /** Nodes of both row parities, the map's corner and an off-map transient. */
+  const NODES: readonly HalfCellNode[] = [
+    { hx: 0, hy: 0 },
+    { hx: 7, hy: 3 },
+    { hx: 12, hy: 6 },
+    { hx: -3, hy: -5 },
+  ];
+  /** Raw world-column and row offsets swept around a node: past the core's reach, an odd stride so the
+   *  sweep lands on unaligned positions. */
+  const REACH = fx.div(ONE, fx.fromInt(4));
+  const STRIDE = 97;
+
+  it('holds only positions that read the node', () => {
+    for (const node of NODES) {
+      const centreWx = nodeWorldX(node.hx, node.hy);
+      const centreY = positionYOfNode(node.hy);
+      let inside = 0;
+      for (let dy = -2 * REACH; dy <= 2 * REACH; dy += STRIDE) {
+        for (let dwx = -REACH; dwx <= REACH; dwx += STRIDE) {
+          const y = fx.add(centreY, dy as Fixed);
+          const x = positionXOfWorld(fx.add(centreWx, dwx as Fixed), y);
+          if (!insideNodeCore(x, y, node.hx, node.hy)) continue;
+          inside++;
+          expect(nodeOfPosition(x, y)).toEqual(node);
+        }
+      }
+      expect(inside).toBeGreaterThan(0);
+    }
+  });
+
+  it('holds the centre and a position a fifth of a column east of it, not one past a neighbour', () => {
+    const at = positionOfNode(7, 3);
+    expect(insideNodeCore(at.x, at.y, 7, 3)).toBe(true);
+    const fifth = positionXOfWorld(fx.add(nodeWorldX(7, 3), fx.div(ONE, fx.fromInt(6))), at.y);
+    expect(insideNodeCore(fifth, at.y, 7, 3)).toBe(true);
+    const east = positionOfNode(8, 3);
+    expect(insideNodeCore(east.x, east.y, 7, 3)).toBe(false);
   });
 });

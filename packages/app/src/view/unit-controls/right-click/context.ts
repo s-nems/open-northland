@@ -16,8 +16,9 @@ export interface RightClickContext {
 
 /**
  * The host answers the click can wait on. Without the trade-stop rule no trader puts a house on its
- * route, without the equip pick list a goods heap is ground, and without the mooring rule a ship's
- * group drives in formation; the others only decide whether the order waits.
+ * route, without the equip pick list a goods heap is ground, without the mooring rule a ship's group
+ * drives in formation, and without the pin rule a right click pins no ship; the others only decide
+ * whether the order waits.
  */
 export interface RightClickAsks {
   readonly tradeHouse: boolean;
@@ -25,6 +26,7 @@ export interface RightClickAsks {
   readonly mooring: boolean;
   readonly attach: boolean;
   readonly formation: boolean;
+  readonly pinShip: boolean;
 }
 
 /** The modifier keys of the press. */
@@ -57,6 +59,7 @@ export type PendingAnswer = 'attach' | 'tradeAttach' | 'equip' | 'mooring' | 'fo
 
 interface ContentLookups {
   readonly goods: ReadonlyMap<number, ContentSet['goods'][number]>;
+  readonly jobs: ReadonlyMap<number, ContentSet['jobs'][number]>;
   readonly buildings: ReadonlyMap<number, ContentSet['buildings'][number]>;
   readonly vehicles: ReadonlyMap<number, ContentSet['vehicles'][number]>;
 }
@@ -69,6 +72,7 @@ export function contentLookups(content: ContentSet): ContentLookups {
   if (found === undefined) {
     found = {
       goods: lastByTypeId(content.goods),
+      jobs: lastByTypeId(content.jobs),
       buildings: lastByTypeId(content.buildings),
       vehicles: lastByTypeId(content.vehicles),
     };

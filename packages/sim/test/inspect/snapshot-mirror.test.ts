@@ -17,6 +17,7 @@ import {
   SnapshotMirror,
   type WorldSnapshot,
 } from '../../src/index.js';
+import { deltaLayouts, touchedIds } from '../../src/inspect/snapshot-delta.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/stances.js';
 import { testContent } from '../fixtures/content.js';
 import { expectSameWorld, keepSettlersWalking } from '../fixtures/snapshot-parity.js';
@@ -74,6 +75,15 @@ function bareResource(sim: Simulation, remaining: number): Entity {
   sim.world.add(e, Position, { x: 0, y: 0 });
   sim.world.add(e, Resource, { goodType: 1, remaining, harvestAtomic: 24 });
   return e;
+}
+
+function layoutKeys(delta: SnapshotDelta): (readonly string[])[] {
+  return deltaLayouts(delta).map((layout) => layout.keys);
+}
+
+/** Each layout's field kinds as one letter apiece: number, boolean, string, null, record, array, float. */
+function layoutFields(delta: SnapshotDelta): string[] {
+  return deltaLayouts(delta).map((layout) => layout.kinds.map((kind) => 'nbszraf'[kind]).join(''));
 }
 
 function ids(snapshot: WorldSnapshot): number[] {
@@ -138,7 +148,7 @@ describe('snapshot mirror parity over a settlement run', () => {
         }
         for (const id of delta.removed) expect(entityById(mirrored, id)).toBeUndefined();
       }
-      if (delta.touched.length > 0) touchedTicks++;
+      if (delta.changeOf.length > 0) touchedTicks++;
       if (delta.removed.length > 0) removedTicks++;
       // The mirror edits its list in place, so a snapshot kept past the tick copies it.
       previous = { ...mirrored, entities: mirrored.entities.slice() };
@@ -227,13 +237,13 @@ describe('snapshot delta stream', () => {
     const deltas = sim.snapshotDeltas();
     const first = nonNull(deltas.next());
     expect(first.rebuild).toBe(true);
-    expect([...first.touched]).toEqual([1]);
+    expect([...touchedIds(first)]).toEqual([1]);
     expect(first.removed).toEqual([]);
     expect(deltas.next()).toBeNull();
     sim.step();
     const stepped = nonNull(deltas.next());
     expect(stepped).toMatchObject({ tick: 1, sequence: 1, rebuild: false, removed: [] });
-    expect(stepped.touched).toHaveLength(0);
+    expect(stepped.changeOf).toHaveLength(0);
     expect(deltas.next()).toBeNull();
   });
 
@@ -247,7 +257,7 @@ describe('snapshot delta stream', () => {
     expect(entityById(mirror.snapshot(), held)?.components).not.toHaveProperty(SimOnlyMark.name);
     sim.world.mut(held, SimOnlyMark).until = 8;
     const markOnly = nonNull(deltas.next());
-    expect(markOnly.touched).toHaveLength(0);
+    expect(markOnly.changeOf).toHaveLength(0);
     mirror.apply(markOnly);
     expect(entityById(sim.snapshot(), held)?.components).not.toHaveProperty(SimOnlyMark.name);
     expect(entityById(mirror.snapshot(), held)?.components).toStrictEqual(
@@ -267,7 +277,7 @@ describe('snapshot delta stream', () => {
     const delta = nonNull(deltas.next());
     mirror.apply(delta);
     expect(entityById(mirror.snapshot(), hidden)?.components).toStrictEqual({});
-    expect([...delta.touched]).toStrictEqual([hidden]);
+    expect([...touchedIds(delta)]).toStrictEqual([hidden]);
   });
 
   it('leaves sim-only fields out of deltas, snapshots and the mirror', () => {
@@ -280,7 +290,7 @@ describe('snapshot delta stream', () => {
     mirror.apply(nonNull(deltas.next()));
     sim.world.mut(walker, CountedStep).steps = 1;
     const stepped = nonNull(deltas.next());
-    expect(stepped.recordKeys).toStrictEqual([['index']]);
+    expect(layoutKeys(stepped)).toStrictEqual([['index']]);
     mirror.apply(stepped);
     expect(entityById(mirror.snapshot(), walker)?.components[CountedStep.name]).toStrictEqual({ index: 0 });
     expect(entityById(mirror.snapshot(), walker)?.components).toStrictEqual(
@@ -315,12 +325,12 @@ describe('snapshot delta stream', () => {
     sim.world.add(walker, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
     const first = nonNull(deltas.next());
     expect(first.values).toEqual([]);
-    expect(first.recordFields).toEqual(expect.arrayContaining(['nnnb', 'nnnnns', 'nz']));
+    expect(layoutFields(first)).toEqual(expect.arrayContaining(['nnnb', 'nnnnns', 'nz']));
     mirror.apply(first);
     sim.world.mut(walker, StepMark).index = 3;
     const second = nonNull(deltas.next());
     expect(second.values).toEqual([]);
-    expect(second.recordKeys).toEqual([['index', 'legElapsed', 'legCost', 'departureCharged']]);
+    expect(layoutKeys(second)).toEqual([['index', 'legElapsed', 'legCost', 'departureCharged']]);
     mirror.apply(second);
     const held = entityById(mirror.snapshot(), walker)?.components;
     expect(held?.[StepMark.name]).toStrictEqual({
@@ -367,17 +377,17 @@ describe('snapshot delta stream', () => {
     expect(delta.removed).toEqual([other]);
   });
 
-  it('lists touched ids ascending in an Int32Array, which a structured clone copies as bytes', () => {
+  it('lists touched ids ascending as 16-bit gaps, which a structured clone copies as bytes', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const nodes = [bareResource(sim, 5), bareResource(sim, 3), bareResource(sim, 2)];
     const deltas = sim.snapshotDeltas();
     deltas.next();
     for (const node of nodes.reverse()) sim.world.mut(node, Resource).remaining = 1;
-    const { touched, changeOf, valueKinds } = nonNull(deltas.next());
-    expect(touched).toBeInstanceOf(Int32Array);
-    expect(changeOf).toBeInstanceOf(Int16Array);
-    expect(valueKinds).toBeInstanceOf(Int16Array);
-    expect([...touched]).toEqual([...nodes].reverse());
+    const delta = nonNull(deltas.next());
+    expect(delta.touchedGaps).toBeInstanceOf(Int16Array);
+    expect(delta.changeOf).toBeInstanceOf(Int16Array);
+    expect(delta.changes).toBeInstanceOf(Int16Array);
+    expect([...touchedIds(delta)]).toEqual([...nodes].reverse());
   });
 
   it('numbers two deltas of one tick apart, so a mirror given only the second refuses it', () => {
@@ -459,7 +469,7 @@ describe('snapshot delta stream', () => {
     const shortLived = bareResource(sim, 1);
     sim.world.destroy(shortLived);
     const delta = nonNull(deltas.next());
-    expect(delta.touched).toHaveLength(0);
+    expect(delta.changeOf).toHaveLength(0);
     expect(delta.removed).toEqual([shortLived]);
     mirror.apply(delta);
     expect(ids(mirror.snapshot())).toEqual([1]);

@@ -683,12 +683,14 @@ function faceApproach(
   mine: OwnClaims,
   onOurBank: (cell: NodeId) => boolean,
 ): Approach {
+  // The open faces are the held band's cells the walk block leaves, tested lazily rather than copied out.
+  const openOnBank = (cell: NodeId): boolean => slots.isOpen(cell) && onOurBank(cell);
   const free = (cell: NodeId): boolean =>
-    onOurBank(cell) && !slots.isTaken(cell, mine.goal, mine.standingOn, mine.chaser);
-  const faces = slots.encircleCandidates(target.entity, target.body, weapon);
+    openOnBank(cell) && !slots.isTaken(cell, mine.goal, mine.standingOn, mine.chaser);
+  const faces = slots.encircleCells(target.entity, target.body, weapon);
   const face = nearestHexCell(terrain, faces, here, free);
   if (face !== null) return { cell: face, waiting: false };
-  if (!faces.some(onOurBank)) return { cell: target.node, waiting: false };
+  if (!faces.some(openOnBank)) return { cell: target.node, waiting: false };
   return { cell: slots.waitingCell(here, target, weapon, mine), waiting: true };
 }
 

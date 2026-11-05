@@ -9,8 +9,10 @@ import { resolveSettlerRightClick, type SettlerPlan } from './settler-ladder.js'
 import {
   type AttachPlan,
   resolveAttachSelected,
+  resolveShipPin,
   resolveVehicleRightClick,
   rightClickShips,
+  type ShipPinPlan,
   selectedVehicle,
   type VehiclePlan,
 } from './vehicles.js';
@@ -39,6 +41,9 @@ export type RightClickPlan =
   | { readonly kind: 'doorSettler'; readonly settler: number }
   /** A whole mixed gesture past the order cap is refused before anyone submits anything. */
   | { readonly kind: 'orderLimit' }
+  /** The lone trader pins the ship or lets it go; once the sim refused a pin, the press boards or
+   *  orders as it would without one (`resolveBoardOrOrders`). */
+  | { readonly kind: 'pinShip'; readonly pin: ShipPinPlan; readonly onBuilding: number | null }
   /** The selected settlers board the vehicle; once its rule refused every one, the press is resolved
    *  again without this step and takes its `orders`. */
   | { readonly kind: 'attach'; readonly attach: AttachPlan; readonly onBuilding: number | null }
@@ -81,12 +86,25 @@ export function resolveRightClick(ctx: RightClickContext, input: RightClickInput
   if (hit.ownSettler === null && unitCount(ctx, selected) > MAX_UNIT_ORDER_MEMBERS)
     return { kind: 'orderLimit' };
   const onBuilding = marker?.kind === 'building' ? marker.ref : null;
-  const attach = resolveAttachSelected(ctx, settlers, hit);
-  if (attach !== null) return { kind: 'attach', attach, onBuilding };
-  return resolveRightClickOrders(ctx, input, onBuilding);
+  const pin = resolveShipPin(ctx, settlers, hit, input.mods.queued);
+  if (pin !== null) return { kind: 'pinShip', pin, onBuilding };
+  return resolveBoardOrOrders(ctx, input, onBuilding);
 }
 
 export type RightClickOrders = Extract<RightClickPlan, { kind: 'orders' }>;
+export type BoardOrOrdersPlan = Extract<RightClickPlan, { kind: 'attach' | 'orders' }>;
+
+/** The selection boards the vehicle under the press, else takes its orders: every press past a ship pin,
+ *  and a refused pin's fallback. */
+export function resolveBoardOrOrders(
+  ctx: RightClickContext,
+  input: Pick<RightClickInput, 'hit' | 'selected' | 'settlers' | 'mods'>,
+  onBuilding: number | null,
+): BoardOrOrdersPlan {
+  const attach = resolveAttachSelected(ctx, input.settlers, input.hit);
+  if (attach !== null) return { kind: 'attach', attach, onBuilding };
+  return resolveRightClickOrders(ctx, input, onBuilding);
+}
 
 /** The press past the vehicle boarding: what a refused boarding falls back to. */
 export function resolveRightClickOrders(

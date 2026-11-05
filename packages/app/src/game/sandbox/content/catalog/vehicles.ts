@@ -36,6 +36,7 @@ export function buildSandboxVehicles(
   const fighters = jobTypes.filter((job) => job >= JOB_SOLDIER_UNARMED && job <= JOB_HEROINE_BOW);
   const haulers = jobTypes.filter((job) => job === JOB_TRADER || job === JOB_CARRIER);
   const jobOf = (typeId: number): number => typeId + VEHICLE_JOB_OFFSET;
+  const cartJobs = [jobOf(VEHICLE_HANDCART), jobOf(VEHICLE_OXCART)];
   /** A cart with a crew list also names the trader as its script captain; the ox-less one has neither. */
   const cart = (typeId: number, id: string, stockSlots: number, crew: number[] | null): VehicleType => ({
     typeId,
@@ -56,6 +57,7 @@ export function buildSandboxVehicles(
     stockSlots: number,
     passengerSlots: number,
     vehicleSlots: number,
+    carriedJobs: readonly number[],
   ) =>
     ({
       typeId,
@@ -66,7 +68,7 @@ export function buildSandboxVehicles(
       logicSize: SHIP_SIZE,
       cargoGoods,
       // The ship rows also admit the vehicle jobs they carry, which is how a cart is loaded aboard.
-      passengerJobs: [...adults, jobOf(VEHICLE_HANDCART), jobOf(VEHICLE_OXCART), jobOf(VEHICLE_CATAPULT)],
+      passengerJobs: [...adults, ...carriedJobs],
       commanderJob: JOB_CARRIER,
       vehicleSlots,
       passengerVector: SHIP_DOOR,
@@ -80,8 +82,12 @@ export function buildSandboxVehicles(
       transformVehicleType: VEHICLE_OXCART,
     },
     cart(VEHICLE_OXCART, 'oxcart', OXCART_SLOTS, haulers),
-    ship(VEHICLE_SHIP_SMALL, 'ship_small', SHIP_SMALL_SLOTS, SHIP_SMALL_PASSENGERS, 1),
-    ship(VEHICLE_SHIP_BIG, 'ship_big', SHIP_BIG_SLOTS, SHIP_BIG_PASSENGERS, 0),
+    ship(VEHICLE_SHIP_SMALL, 'ship_small', SHIP_SMALL_SLOTS, SHIP_SMALL_PASSENGERS, 1, [
+      ...cartJobs,
+      jobOf(VEHICLE_CATAPULT),
+    ]),
+    // Owner's choice, as the pipeline's rule: the big ship carries one cart, never a catapult.
+    ship(VEHICLE_SHIP_BIG, 'ship_big', SHIP_BIG_SLOTS, SHIP_BIG_PASSENGERS, 1, cartJobs),
     {
       typeId: VEHICLE_CATAPULT,
       id: 'catapult',

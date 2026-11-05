@@ -181,6 +181,20 @@ describe('allowedActions - one settler', () => {
     expect(set.has('removeVehicle')).toBe(false);
   });
 
+  it('offers no way off a pinned ship, where the order would act on the ship and not the cart', () => {
+    const rider = settler(1, JOB_COLLECTOR, { rider: true });
+    const ship = (rider.components.Rider as { vehicle: number }).vehicle;
+    const aboard = {
+      ...rider,
+      components: {
+        ...rider.components,
+        TradeShip: { vehicle: ship },
+        HaulingCart: { vehicle: CART },
+      },
+    };
+    expect(allowedActions(content, snapshotOf([aboard]), [1]).has('removeVehicle')).toBe(false);
+  });
+
   it('keeps the trade and the equipment orders from a woman', () => {
     const snapshot = snapshotOf([settler(1, JOB_WOMAN, { female: true })]);
     expect(allowed(snapshot, [1])).toEqual(

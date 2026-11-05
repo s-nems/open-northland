@@ -14,6 +14,7 @@ import {
   assistantMovesFlags,
   assistantPostsGraduatesEntity,
   assistantSoldierOnlyGoods,
+  assistantUpgradesTools,
   assistantWeaponOrder,
   atPeace,
   Building,
@@ -159,6 +160,7 @@ import type { SignpostProbe } from './systems/signposts/index.js';
 import { type SignpostReachView, signpostReachKey, signpostReachView } from './systems/signposts/reach.js';
 import {
   canAttachTradeHouse,
+  canPinTradeShip,
   type TradeOffer,
   type TraderView,
   tradeOffersAt,
@@ -484,13 +486,15 @@ export class Simulation {
     return formationSlotsFor(this.world, this.content, this.terrain, target, members, rowSpacing, order);
   }
 
-  /** {@link placementProbe}'s verdict over every node of `area`, as plain data. */
+  /** {@link placementProbe}'s verdict over every node of `area`, as plain data; `withinReach` off drops
+   *  the seat's site reach, for a placement that enters through the admin channel. */
   placementAnswer(
     buildingType: number,
     area: NodeArea,
     player?: number,
     tribe?: number,
     gated = true,
+    withinReach = true,
   ): NodeGridAnswer | null {
     return placementAnswerFor(
       this.world,
@@ -502,6 +506,7 @@ export class Simulation {
       player,
       tribe,
       gated,
+      withinReach,
     );
   }
 
@@ -727,6 +732,11 @@ export class Simulation {
     return assistantMovesFlags(this.world, player);
   }
 
+  /** Whether `player`'s workers swap their tools for better granted ones. */
+  assistantUpgradesTools(player: number): boolean {
+    return assistantUpgradesTools(this.world, player);
+  }
+
   /** `player`'s assistant production counters as a detached copy; all-default when the carrier is absent. */
   assistantCounters(player: number): Readonly<AssistantCounterValues> {
     const carrier = assistantCountersEntity(this.world, player);
@@ -803,7 +813,7 @@ export class Simulation {
 
   /** A trader's route, cart and agreement choice as a detached copy; undefined for any other unit. */
   traderView(trader: Entity): TraderView | undefined {
-    return traderView(this.world, { content: this.content }, trader);
+    return traderView(this.world, this.mapContext(), trader);
   }
 
   /** The map agreements a house offers a visiting trader, as detached copies. */
@@ -834,6 +844,19 @@ export class Simulation {
   /** Whether the `attachTradeHouse` command would put `house` on the trader's route right now. */
   canAttachTradeHouse(trader: Entity, house: Entity): boolean {
     return canAttachTradeHouse(this.world, this.mapContext(), trader, house);
+  }
+
+  /** Whether the `setTradeShip` command would pin `ship` to `trader` right now. */
+  canPinTradeShip(trader: Entity, ship: Entity): boolean {
+    return canPinTradeShip(this.world, this.mapContext(), trader, ship);
+  }
+
+  /** Every ship {@link canPinTradeShip} admits for `trader`, ascending by id. */
+  tradeShipsPinnableBy(trader: Entity): Entity[] {
+    const ctx = this.mapContext();
+    return this.world
+      .canonicalQuery(Vehicle)
+      .filter((ship) => canPinTradeShip(this.world, ctx, trader, ship));
   }
 
   /** Whether the `attachToVehicle` command would seat `settler` on `vehicle` right now, or hand it the

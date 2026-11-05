@@ -169,6 +169,7 @@ export function sessionSearch(
   }
   if (session.rules.needs !== null) params.set('needs', session.rules.needs ? 'on' : 'off');
   if (session.rules.weather !== null) params.set('weathermode', session.rules.weather);
+  if (session.rules.dayNight !== null) params.set('daynight', session.rules.dayNight);
   if (session.rules.alliedVision !== null)
     params.set('alliedvision', session.rules.alliedVision ? 'on' : 'off');
   if (session.rules.peace !== null) params.set('peace', String(session.rules.peace));

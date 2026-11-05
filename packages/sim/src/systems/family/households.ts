@@ -23,10 +23,12 @@ export function isHome(world: World, ctx: SystemContext, house: Entity): boolean
 
 /** The `home`-kind {@link BuildingType} of a house entity, including one still under construction. */
 function homeType(world: World, ctx: SystemContext, house: Entity): BuildingType | undefined {
-  if (!world.isAlive(house)) return undefined;
-  const b = world.tryGet(house, Building);
-  if (b === undefined) return undefined;
-  const type = contentIndex(ctx.content).buildings.get(b.buildingType);
+  const b = world.isAlive(house) ? world.tryGet(house, Building) : undefined;
+  return b === undefined ? undefined : homeKindOf(ctx, b.buildingType);
+}
+
+function homeKindOf(ctx: SystemContext, buildingType: number): BuildingType | undefined {
+  const type = contentIndex(ctx.content).buildings.get(buildingType);
   return type?.kind === 'home' ? type : undefined;
 }
 
@@ -51,9 +53,8 @@ export function homeUsedBy(world: World, ctx: SystemContext, e: Entity): Entity 
 
 /** The `home`-kind {@link BuildingType} of a completed house entity. */
 export function builtHomeType(world: World, ctx: SystemContext, house: Entity): BuildingType | undefined {
-  const type = homeType(world, ctx, house);
-  if (type === undefined || world.get(house, Building).built < ONE) return undefined;
-  return type;
+  const b = world.isAlive(house) ? world.tryGet(house, Building) : undefined;
+  return b === undefined || b.built < ONE ? undefined : homeKindOf(ctx, b.buildingType);
 }
 
 /** The settlers living in `house`, ascending entity id. */

@@ -1,10 +1,12 @@
 import type { DrawItem } from '../../data/scene/index.js';
 import { resolveConstructionDraws } from '../../data/sprites/index.js';
 import type { FallenBody } from '../building-damage/building-damage.js';
+import { isIndexedSource } from '../pixel-art/registry.js';
 import { resolveLayers } from '../sprite-pool/index.js';
 import { damageScaffoldLayers } from '../sprite-pool/layers/building.js';
 import { layeredLayerFor } from '../sprite-pool/layers/layered.js';
 import type { ResolvedLayer } from '../sprite-pool/layers/resolved-layer.js';
+import { RecolouredPageSource } from '../textures/recoloured-pages.js';
 import type { SpriteSheet } from '../textures/sprite-sheet.js';
 
 export interface CollapsePart {
@@ -17,7 +19,12 @@ export interface CollapsePart {
   readonly shade: number;
 }
 
-const bodyLayer = (layer: ResolvedLayer): boolean => layer.shadow !== true && layer.groundFoot !== 'cover';
+/** A body the collapse can colour: an indexed page reads through a player LUT the collapse has none
+ *  of (a ship yard site's hull), unless the page recolours itself. */
+const bodyLayer = (layer: ResolvedLayer): boolean =>
+  layer.shadow !== true &&
+  layer.groundFoot !== 'cover' &&
+  (!isIndexedSource(layer.source) || layer.source instanceof RecolouredPageSource);
 const sameFrame = (a: ResolvedLayer, b: ResolvedLayer): boolean =>
   a.source === b.source && a.frame === b.frame;
 

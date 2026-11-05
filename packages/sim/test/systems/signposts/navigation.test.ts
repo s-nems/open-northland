@@ -28,13 +28,15 @@ import {
 import { fx, ONE } from '../../../src/core/fixed.js';
 import { TICKS_PER_SECOND } from '../../../src/core/loop.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { hexDistanceBetween, Simulation } from '../../../src/index.js';
+import { cellAnchorNode, hexDistanceBetween, Simulation } from '../../../src/index.js';
 import { nodeOfPosition, positionOfNode } from '../../../src/nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
 import {
   createSignpost,
   navigationLimitFor,
   networkLimitAt,
   signpostNetwork,
+  spotsReaching,
 } from '../../../src/systems/index.js';
 import { CUT_OFF_CHECK_TICKS } from '../../../src/systems/settlers/drives/cut-off.js';
 import { LOST_GUIDE_DELAY_TICKS } from '../../../src/systems/settlers/drives/lost-guide.js';
@@ -305,7 +307,145 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     // Node 70 lies 42 from the post, inside its range, but 66 from the settler.
     expect(limit?.allowsNode(terrain.nodeAt(70, 4))).toBe(false);
   });
+
+  describe('two islands across a one-cell strait', () => {
+    const STRAIT_CELL_COLUMN = 20;
+    const WEST_CELL = { x: 17, y: 5 };
+    const EAST_CELL = { x: 23, y: 5 };
+    const FAR_EAST_CELL = { x: 25, y: 5 };
+    const STRAIT_CELL = { x: STRAIT_CELL_COLUMN, y: 5 };
+
+    function islandsSim(
+      widthCells = 40,
+      column = STRAIT_CELL_COLUMN,
+    ): { sim: Simulation; terrain: TerrainGraph } {
+      const sim = new Simulation({
+        seed: 5,
+        content: testContent(),
+        map: waterColumnMap(widthCells, 8, column),
+      });
+      sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+      sim.step();
+      const terrain = sim.terrain;
+      if (terrain === undefined) throw new Error('mapped sim');
+      return { sim, terrain };
+    }
+
+    it('ON: the walk range stops at the water, though the far bank lies inside it', () => {
+      const { sim, terrain } = islandsSim();
+      const u = unitOnCell(sim, EAST_CELL, WOODCUTTER);
+      const limit = navigationLimitFor(sim.world, sim.content, terrain, u);
+      expect(rangeBetween(EAST_CELL, WEST_CELL)).toBeLessThan(WALK_RANGE_NODES);
+      expect(limit?.allowsNode(cellNode(terrain, WEST_CELL))).toBe(false);
+      expect(limit?.allowsNode(cellNode(terrain, FAR_EAST_CELL))).toBe(true);
+      // An unwalkable goal is not judged by land: the water itself stays inside the range.
+      expect(limit?.allowsNode(cellNode(terrain, STRAIT_CELL))).toBe(true);
+    });
+
+    it('ON: a settler standing on the water is confined by range alone', () => {
+      const { sim, terrain } = islandsSim();
+      const u = unitOnCell(sim, STRAIT_CELL, WOODCUTTER);
+      const limit = navigationLimitFor(sim.world, sim.content, terrain, u);
+      expect(limit?.allowsNode(cellNode(terrain, WEST_CELL))).toBe(true);
+      expect(limit?.allowsNode(cellNode(terrain, EAST_CELL))).toBe(true);
+    });
+
+    it('ON: a caught post covers its own island only, though its range spans the strait', () => {
+      const WIDE_STRAIT_COLUMN = 30; // far enough east that a caught post's range reaches past the own range
+      const SETTLER_CELL = { x: 2, y: 3 };
+      const POST_CELL = { x: 26, y: 3 };
+      const OWN_BANK_CELL = { x: 28, y: 3 };
+      const FAR_BANK_CELL = { x: 34, y: 3 };
+      const { sim, terrain } = islandsSim(64, WIDE_STRAIT_COLUMN);
+      const u = unitOnCell(sim, SETTLER_CELL, WOODCUTTER);
+      stampPost(sim, POST_CELL.x, POST_CELL.y);
+      for (const beyondOwnRange of [OWN_BANK_CELL, FAR_BANK_CELL]) {
+        expect(rangeBetween(SETTLER_CELL, beyondOwnRange)).toBeGreaterThan(WALK_RANGE_NODES);
+        expect(rangeBetween(POST_CELL, beyondOwnRange)).toBeLessThan(WALK_RANGE_NODES);
+      }
+      const limit = navigationLimitFor(sim.world, sim.content, terrain, u);
+      expect(limit?.allowsNode(cellNode(terrain, OWN_BANK_CELL))).toBe(true);
+      expect(limit?.allowsNode(cellNode(terrain, FAR_BANK_CELL))).toBe(false);
+    });
+
+    it('a worker whose only building stands across the strait is cut off', () => {
+      const { sim } = islandsSim();
+      const BUILDING_CELL = { x: 16, y: 5 };
+      const anchor = cellAnchorNode(BUILDING_CELL.x, BUILDING_CELL.y);
+      const e = sim.world.create();
+      sim.world.add(e, Position, positionOfNode(anchor.hx, anchor.hy));
+      sim.world.add(e, Building, { buildingType: 1, tribe: VIKING, built: ONE, level: 0 });
+      sim.world.add(e, Owner, { player: P0 });
+      const across = unitOnCell(sim, EAST_CELL, WOODCUTTER);
+      for (let i = 0; i < CUT_OFF_CHECK_TICKS; i++) sim.step();
+      expect(sim.world.tryGet(across, LostWay)?.cutOff).toBe(true);
+    });
+
+    it('spotsReaching answers exactly the spots whose confinement allows a goal, and its slack widens that', () => {
+      const SLACK_NODES = 2;
+      const { sim, terrain } = islandsSim();
+      // Posts on both banks, so both the own range and the caught groups are asked across the strait.
+      stampPost(sim, 4, 3);
+      stampPost(sim, WEST_CELL.x, WEST_CELL.y);
+      stampPost(sim, EAST_CELL.x, EAST_CELL.y);
+      // Single goals, and goal sets on both banks, as a site's work cells can straddle the strait.
+      const goalSets = [
+        [WEST_CELL],
+        [FAR_EAST_CELL],
+        [STRAIT_CELL],
+        [WEST_CELL, FAR_EAST_CELL],
+        [STRAIT_CELL, EAST_CELL],
+      ];
+      const ranges = [
+        { job: WOODCUTTER, range: WALK_RANGE_NODES },
+        { job: CARRIER, range: CARRIER_WALK_RANGE_NODES },
+      ];
+      for (const { job, range } of ranges) {
+        for (const cells of goalSets) {
+          const goals = cells.map((cell) => cellNode(terrain, cell));
+          const reaching = spotsReaching(sim.world, sim.content, terrain, job, P0, goals);
+          const widened = spotsReaching(sim.world, sim.content, terrain, job, P0, goals, SLACK_NODES);
+          if (reaching === null || widened === null) throw new Error('the job is confined');
+          for (let hy = 0; hy < terrain.height; hy++) {
+            for (let hx = 0; hx < terrain.width; hx++) {
+              const limit = networkLimitAt(sim.world, terrain, P0, hx, hy, range);
+              const allowed = goals.some((goal) => limit?.allowsNode(goal) === true);
+              expect(reaching(hx, hy), `job ${job} spot (${hx},${hy})`).toBe(allowed);
+              if (!allowed) continue;
+              for (let dy = -SLACK_NODES; dy <= SLACK_NODES; dy++) {
+                const across = SLACK_NODES - Math.abs(dy);
+                for (let dx = -across; dx <= across; dx++) {
+                  expect(widened(hx + dx, hy + dy), `job ${job} spot (${hx + dx},${hy + dy})`).toBe(true);
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+  });
 });
+
+function unitOnCell(sim: Simulation, cell: { x: number; y: number }, jobType: number): Entity {
+  const e = ownedUnit(sim, 0, 0, jobType);
+  const anchor = cellAnchorNode(cell.x, cell.y);
+  const at = positionOfNode(anchor.hx, anchor.hy);
+  const p = sim.world.mut(e, Position);
+  p.x = at.x;
+  p.y = at.y;
+  return e;
+}
+
+function cellNode(terrain: TerrainGraph, cell: { x: number; y: number }): NodeId {
+  const anchor = cellAnchorNode(cell.x, cell.y);
+  return terrain.nodeAt(anchor.hx, anchor.hy);
+}
+
+function rangeBetween(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  const from = cellAnchorNode(a.x, a.y);
+  const to = cellAnchorNode(b.x, b.y);
+  return hexDistanceBetween(from.hx, from.hy, to.hx, to.hy);
+}
 
 describe('the cut-off mark', () => {
   function building(sim: Simulation, x: number, y: number, player: number | null = P0): void {

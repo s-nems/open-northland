@@ -15,8 +15,7 @@ import { type SpilledStock, scatterSpilledStock } from '../economy/goods-spill.j
 import { vehicleAnchor, vehicleFootprintNodes } from '../footprint/index.js';
 import { reap } from '../lifecycle/death.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
-import { releaseCarried } from './boarding.js';
-import { landingOf, landRider, placeOnNode, releaseRider } from './crew.js';
+import { landingOf, landRider, placeOnNode, releaseCarried, releaseRider } from './crew.js';
 import { dropHauler } from './hauling-cart.js';
 import { vehicleIndex } from './registry.js';
 

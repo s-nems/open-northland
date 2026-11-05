@@ -8,6 +8,9 @@ export { LOOPBACK_DELAY_TICKS, LoopbackTransport } from './loopback.js';
 export {
   absentSeatsOf,
   type ComputerDifficulty,
+  DAY_NIGHT_MODES,
+  type DayNightMode,
+  DEFAULT_DAY_NIGHT_MODE,
   DEFAULT_LOCAL_PLAYER,
   DEFAULT_WEATHER_MODE,
   type GameSession,

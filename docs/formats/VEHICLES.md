@@ -439,7 +439,8 @@ Crew: one soldier or hero (jobs 31..47); the crewman gains experience for weapon
 (`weapons.ini`, equal for all tribes): range 8..24, munition type 2, speed 3, `hitself 1`,
 `createsmoke 1` lifetime 20, damage `0:8000 1:4000 2:6000 3:2000 4:2000 6:350 7:3625`, hit
 sound 90. No ammunition and no reload counter; cadence is the attack clip job 54 binds to atomic 81
-(`viking_catapult_attack`: `length 48`, the shot at its `event 1 25`), read from content.
+(`viking_catapult_attack`: `length 48`, the shot at its `event 1 25`, not interruptible), read from
+content.
 
 The original's goto never scans while the vehicle drives. Open Northland adds an attack-move
 (`moveVehicle` with `attackMove`: the attack-move key with a catapult selected, or its commander's own
@@ -682,7 +683,10 @@ while the Frank one has hulls but no gait; the ox-less cart has records for Viki
 yards' `[GfxHouse]` records have two holes the `houses-graphics` correction fixes: the Egyptian and
 Byzantine catapult yards name bob 32 of `CR_Veh_Body_00.bmd`, an ox-cart frame, where the other
 tribes name bob 32 of `ls_vehicles.bmd`, the catapult; every ship yard names `ls_houses_viking_s.bmd`
-as its shadow, whose bob 4 is empty, where `ls_houses_vehicles_s.bmd` holds that bob's shadow.
+as its shadow, whose bob 4 is empty, where `ls_houses_vehicles_s.bmd` holds that bob's shadow. Every
+ship yard draws the same single stage, bob 4 of `ls_houses_vehicles.bmd`, a viking longship rising by its
+time mask: the small yard for all five tribes (the Viking record in palette `Ship_house`, the other four
+in `caves`, the Frank record written twice) and the big yard, which only the Vikings have a record for.
 
 Open Northland draws a vehicle as one `vehicle` draw item bound per `(tribe, vehicleType)` from the
 lane (`packages/app/src/content/vehicle-gfx`, `packages/render/src/data/sprites/vehicle.ts`), with

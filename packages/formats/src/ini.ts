@@ -90,4 +90,8 @@ export {
   extractTrianglePatternTypes,
 } from './ini/types/landscape.js';
 export { extractParticleGraphics, extractParticles } from './ini/types/particles.js';
-export { vehicleHouseByGood } from './ini/vehicle-type-codes.js';
+export {
+  VEHICLE_JOB_ID_OFFSET,
+  VEHICLE_TYPE_CODES,
+  vehicleHouseByGood,
+} from './ini/vehicle-type-codes.js';

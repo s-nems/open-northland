@@ -14,6 +14,7 @@ import {
   pinnedSiteOf,
   regeneratesInWorld,
   residenceHomeOf,
+  ridesPinnedShip,
   type SnapshotEntity,
   settlerJobType,
   settlersIn,
@@ -126,9 +127,13 @@ function allows(
     case 'assignVehicle':
       return isAdult(e);
     // The explicit way off a vehicle, since a commander's walk order drives the vehicle instead; a posted
-    // carrier or a trader sets its hauling cart down by it.
+    // carrier or a trader sets its hauling cart down by it. Aboard its pinned ship the order would
+    // act on the ship.
     case 'removeVehicle':
-      return e.components.Rider !== undefined || e.components.HaulingCart !== undefined;
+      return (
+        !ridesPinnedShip(e.components) &&
+        (e.components.Rider !== undefined || e.components.HaulingCart !== undefined)
+      );
     case 'eat':
     case 'sleep':
       return !systems.isHeroJob(content, job);

@@ -53,11 +53,12 @@ export function vehicleIsFullSoon(type: VehicleType, stock: HoldView): boolean {
 /**
  * Whether `rider` works `vehicle`'s hold: a rider of a loading trade in any seat, or the vehicle's
  * commander, whatever its trade (owner's choice: a trader's cart and a ship's crew load and unload
- * without a loader seated beside them).
+ * without a loader seated beside them). A pinned ship's hold is its route's alone, trader and helpers
+ * included, so a meal aboard never sends anyone ashore to restock.
  */
 export function isCargoHand(world: World, content: ContentSet, vehicle: Entity, rider: Entity): boolean {
   const state = world.tryGet(vehicle, Vehicle);
-  if (state === undefined) return false;
+  if (state === undefined || state.hauler !== null) return false;
   if (vehicleCommander(state) === rider) return true;
   if (!state.passengers.some((seat) => seat !== null && seat.entity === rider)) return false;
   return isLoaderRider(world, content, rider);

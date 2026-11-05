@@ -81,7 +81,7 @@ export type SimEvent =
        * A crew order on a vehicle was refused: `noRoom` when no slot is free for a rider or a carried
        * vehicle's crew, `cannotAttach` when a carrier will not take the vehicle, `cannotNearShip` when a
        * carried vehicle cannot reach its carrier's door, `cannotLeave` when it may not leave a carrier at
-       * sea, `noCarrier` when a wanted-amount order finds no carrier attached to serve it (the order
+       * sea or is a hauling cart riding with its puller, `noCarrier` when a wanted-amount order finds no carrier attached to serve it (the order
        * itself still applies). The player's `vehicleNoPassengerRoom`, `cannotAttachVehicle`,
        * `vehicleCannotNearShip`, `cannotLeaveVehicle` and `vehicleNoCarrier` notes about the vehicle.
        */
@@ -395,7 +395,7 @@ export type SimEvent =
     }
   | {
       /**
-       * A wild berry bush was razed this tick because a building was placed over it. Unlike
+       * A wild berry bush was razed this tick, by a building placed over it or the debug eraser. Unlike
        * `berryForaged` the bush entity is gone by the snapshot.
        */
       readonly kind: 'berryBushRazed';

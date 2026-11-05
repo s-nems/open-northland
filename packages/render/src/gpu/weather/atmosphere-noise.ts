@@ -31,6 +31,8 @@ const BAKE_VERTEX = `#version 300 es
 
 const BAKE_FRAGMENT = `#version 300 es
   precision highp float;
+  // A fragment int defaults to mediump, which some drivers run in 16 bits: the 24-bit fraction needs more.
+  precision highp int;
   out vec4 finalColor;
   const float PERIOD = ${ATMOSPHERE_NOISE_PERIOD}.0;
   float hash(vec2 cell) {

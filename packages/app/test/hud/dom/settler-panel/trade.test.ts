@@ -40,23 +40,23 @@ describe('the settler panel’s Handel summary', () => {
     expect([slotState(onlyB, 0).kind, slotState(onlyB, 1).kind]).toEqual(['attach', 'stop']);
   });
 
-  it('offers "osada" on an own storehouse stop, refused while the other stop already loads from one', () => {
-    const route = ownRoute();
-    const [storehouse, barracks] = route.stops;
+  it('offers "osada" on an own storehouse stop, refused while the other stop stands for a shared settlement', () => {
+    const [storehouse, barracks] = ownRoute().stops;
     if (storehouse === undefined || barracks === undefined) throw new Error('route has two stops');
-    expect(settlementToggle(route, storehouse)).toEqual({ shown: true, enabled: true });
-    expect(settlementToggle(route, barracks).shown).toBe(false);
-    const bothStores: TradePanelModel = {
-      ...route,
-      stops: [
-        { ...storehouse, settlement: true },
-        { ...barracks, settles: true },
-      ],
-    };
-    const [settled, other] = bothStores.stops;
-    if (settled === undefined || other === undefined) throw new Error('route has two stops');
-    expect(settlementToggle(bothStores, other)).toEqual({ shown: true, enabled: false });
-    expect(settlementToggle(bothStores, settled)).toEqual({ shown: true, enabled: true });
+    expect(settlementToggle(storehouse)).toEqual({ shown: true, enabled: true, pressed: 'false' });
+    expect(settlementToggle(barracks).shown).toBe(false);
+    expect(settlementToggle({ ...storehouse, sharesSettlement: true })).toMatchObject({ enabled: false });
+    expect(settlementToggle({ ...storehouse, settlement: true, sharesSettlement: true })).toMatchObject({
+      enabled: true,
+      pressed: 'true',
+    });
+  });
+
+  it('draws a flag held aside unlit, still set and clickable', () => {
+    const [storehouse] = ownRoute().stops;
+    if (storehouse === undefined) throw new Error('route has a stop');
+    const held = { ...storehouse, settlement: true, sharesSettlement: true, settlementSuspended: true };
+    expect(settlementToggle(held)).toEqual({ shown: true, enabled: true, pressed: 'mixed' });
   });
 
   it('writes a transfer as its direction and its limits, and says it in words in the tooltip', () => {

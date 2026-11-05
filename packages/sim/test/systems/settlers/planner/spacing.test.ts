@@ -22,9 +22,11 @@ import {
   Simulation,
 } from '../../../../src/index.js';
 import { hexNeighboursOf } from '../../../../src/nav/halfcell.js';
+import type { NodeId } from '../../../../src/nav/terrain/index.js';
 import { constructionWorkCells, dynamicBlockOverlay } from '../../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../../src/systems/readviews/index.js';
 import { PlannerSpacing } from '../../../../src/systems/settlers/planner/spacing.js';
+import { openWorkCells } from '../../../../src/systems/settlers/planner/work-cells.js';
 import { TEST_MANIFEST, testContent } from '../../../fixtures/content.js';
 import { ctxOf } from '../../../fixtures/context.js';
 import { settlerAt as spawnSettler } from '../../../fixtures/settler.js';
@@ -371,6 +373,28 @@ describe('builder work slots (claimWorkCell)', () => {
     const blocked = dynamicBlockOverlay(s.world, ctxOf(s), terrain);
 
     expect(constructionWorkCells(s.world, ctxOf(s), terrain, site, blocked)).toEqual([]);
+  });
+
+  it('re-derives the held work cells of a building site once a block lands beside its body', () => {
+    const s = builderSim();
+    const site = stockedSiteAt(s, 12, 6);
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapped builder sim expected');
+    const cellsOf = (): readonly NodeId[] =>
+      PlannerSpacing.forTick(s.world, ctxOf(s), terrain).workCells(site);
+    const before = cellsOf();
+    expect(cellsOf()).toBe(before); // a later pass is served the held cells
+    const east = terrain.nodeAt(15, 6);
+    expect(before).toContain(east);
+
+    stockedSiteAt(s, 15, 6); // its body covers the east work cell
+    const after = cellsOf();
+
+    expect(after).not.toContain(east);
+    expect(after).toEqual(
+      openWorkCells(s.world, ctxOf(s), terrain, dynamicBlockOverlay(s.world, ctxOf(s), terrain), site),
+    );
+    expect(s.world.verifyCaches()).toEqual([]);
   });
 
   it('keeps the anchor-only perimeter for a footprint-less site in the map interior', () => {

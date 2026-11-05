@@ -10,6 +10,7 @@ import {
 import { WEAPON_XP_KEY_BY_TYPE } from '../../../catalog/weapon-experience.js';
 import {
   num,
+  ridesPinnedShip,
   type SnapshotEntity,
   settlerExperienceOf,
   settlerNeedsOf,
@@ -164,6 +165,7 @@ export type SettlerState =
   | 'awaitingWorkplace'
   | 'awaitingTraining'
   | 'awaitingSeat'
+  | 'sailingRoute'
   | 'standingTo'
   | 'lost'
   | 'idle';
@@ -193,6 +195,8 @@ const ATOMIC_STATE: Readonly<Record<AtomicEffect['kind'], SettlerState>> = {
   drop: 'working',
   tradeLoad: 'working',
   tradeUnload: 'working',
+  tradeShipStow: 'working',
+  tradeShipFetch: 'working',
   haulLoad: 'working',
   haulUnload: 'working',
   vehicleLoad: 'working',
@@ -250,6 +254,8 @@ function liveSettlerState(
   if (awaitsItsTrainingHouse(snapshot, components)) return 'awaitingTraining';
   // Sent to a full school or barracks, it waits in the yard for a seat to free.
   if ((components.TrainingOrder as { seated?: unknown } | undefined)?.seated === false) return 'awaitingSeat';
+  // A trader aboard its pinned ship is on its route, however long the crossing.
+  if (ridesPinnedShip(components)) return 'sailingRoute';
   // A unit holding its ground under the battle alert takes no work and no rest, which without its own
   // caption reads as a soldier that has simply stopped caring about its empty bars.
   if (ctx.standsTo?.(entityId) === true) return 'standingTo';

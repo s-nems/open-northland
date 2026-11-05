@@ -515,7 +515,7 @@
   padding: calc(var(--u) * 10) calc(var(--u) * 12);
 }
 
-.main-menu__lobby-map-field[data-tip]::after {
+.main-menu__lobby-option-row[data-tip]::after {
   max-width: 100%;
 }
 

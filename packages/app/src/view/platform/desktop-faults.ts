@@ -14,16 +14,19 @@ export interface DesktopFault {
   readonly stack: string | null;
   /** The page's URL when it happened. */
   readonly url: string | null;
+  /** Chromium's GPU feature status when the GPU process died, else null. */
+  readonly gpuStatus: Readonly<Record<string, string>> | null;
 }
 
-/** How the shell's previous run ended without quitting: the system ended the session, it never woke
- *  from sleep, a native crash left a dump, or none of these (killed, or the power went). */
+/** How the shell's previous run ended: it quit the ordinary way, the system ended the session, it
+ *  never woke from sleep, a native crash left a dump, or none of these (killed, or the power went). */
 export interface PreviousShellRun {
   /** ISO times bounding the pages that run served. */
   readonly from: string;
   readonly until: string;
-  readonly end: 'shutdown' | 'asleep' | 'crash' | 'unknown';
-  /** When the session ended, the system went to sleep or the dump was written; null for `unknown`. */
+  readonly end: 'quit' | 'shutdown' | 'asleep' | 'crash' | 'unknown';
+  /** When the shell quit, the session ended, the system went to sleep or the dump was written; null
+   *  for `unknown`. */
   readonly endedAt: string | null;
 }
 
@@ -32,8 +35,8 @@ export interface DesktopFaults {
   /** Faults recorded and not yet cleared, oldest first. */
   pending(): Promise<readonly DesktopFault[]>;
   clear(ids: readonly string[]): Promise<void>;
-  /** App, Electron, Chrome and OS versions, for a report's build facts. */
+  /** App, Electron, Chrome and OS versions, x64 translation and system memory, for a report. */
   versions(): Promise<Readonly<Record<string, string>>>;
-  /** The previous run, when it ended without quitting. */
+  /** The previous run; null on a first start or when the shell could not read its record. */
   previousRun(): Promise<PreviousShellRun | null>;
 }

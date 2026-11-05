@@ -104,15 +104,16 @@ function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed
  * alarm, which only a player order, an existing shelter or buildings with no place left keep it from.
  */
 function seeksShelterEnRoute(world: World, ctx: SystemContext, e: Entity, shelters: ShelterSites): boolean {
+  // The owner's room first: it refuses nearly every walker, and it implies the owner has shelters.
+  if (ctx.terrain === undefined || world.has(e, Sheltering) || !shelterHasRoom(shelters, ownerOf(world, e))) {
+    return false;
+  }
   const settler = world.tryGet(e, Settler);
   if (
     settler === undefined ||
     !takesCoverFrom(world, ctx.content, e, shelters) ||
-    ctx.terrain === undefined ||
-    world.has(e, Sheltering) ||
     world.has(e, PlayerOrder) ||
-    !(isTravelling(world, e) || world.has(e, Fleeing)) ||
-    !shelterHasRoom(shelters, ownerOf(world, e))
+    !(isTravelling(world, e) || world.has(e, Fleeing))
   ) {
     return false;
   }

@@ -19,13 +19,13 @@ export function lobbyOptionsCard(
   title.className = 'main-menu__lobby-card-title';
   title.textContent = lobby.settingsTitle;
   const controls = gameRuleControls({
-    presentation: 'compact',
     map: { label: lobby.mapLabel, modes: lobby.mapModes },
     fogOfWar: { label: lobby.fogOfWarLabel, ...lobby.fogOfWarModes },
     progression: { label: lobby.progressionLabel, ...lobby.progressionModes },
     needs: { label: lobby.needsLabel, ...lobby.needsModes },
     alliedVision: { label: lobby.alliedVisionLabel, ...lobby.alliedVisionModes },
     weather: { label: lobby.weatherLabel, modes: lobby.weatherModes },
+    dayNight: { label: lobby.dayNightLabel, modes: lobby.dayNightModes },
     ...(offersPeace ? { peace: lobby.peace } : {}),
     onChange(change) {
       if (change.fog != null) {
@@ -36,6 +36,7 @@ export function lobbyOptionsCard(
       if (change.needs != null) options.settlerNeeds = change.needs;
       if (change.alliedVision != null) options.alliedVision = change.alliedVision;
       if (change.weather != null) options.weather = change.weather;
+      if (change.dayNight != null) options.dayNight = change.dayNight;
       if (change.peace !== undefined) options.peace = change.peace;
       paint();
     },
@@ -47,6 +48,7 @@ export function lobbyOptionsCard(
         progression: options.professionProgression,
         needs: options.settlerNeeds,
         weather: options.weather,
+        dayNight: options.dayNight,
         alliedVision: options.alliedVision,
         peace: options.peace,
       },

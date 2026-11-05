@@ -57,6 +57,8 @@ export function planShelter(
   return walkInto(world, ctx, terrain, e, settler, shelter.entity, here, limit);
 }
 
+const NO_SHELTERS: readonly ShelterSite[] = [];
+
 /**
  * The nearest of the player's shelters that still has room and whose door this settler may head for. Ties
  * break on the ascending entity id the ledger is already sorted by.
@@ -73,15 +75,17 @@ function nearestShelterWithRoom(
   limit: NavigationLimit | null,
   shelters: ShelterSites,
 ): ShelterSite | null {
-  const failed = unreachableGoals(world, ctx, e);
+  // Read at the first door asked about: most asks find no site with room.
+  let failed: ReturnType<typeof unreachableGoals> | undefined;
   let best: ShelterSite | null = null;
   let bestDistance = 0;
-  for (const site of shelters.get(player) ?? []) {
+  for (const site of shelters.get(player) ?? NO_SHELTERS) {
     if (site.free <= 0) continue;
     // Rank on straight-line distance and resolve a door only for a candidate that beats the running best:
     // the door resolve walks the footprint's approach cells, too much to pay for every site on the list.
     const distance = Math.abs(site.hx - fromHx) + Math.abs(site.hy - fromHy);
     if (best !== null && distance >= bestDistance) continue;
+    if (failed === undefined) failed = unreachableGoals(world, ctx, e);
     if (!doorIsWalkable(interactionCell(world, ctx, terrain, site.entity, here), limit, failed)) continue;
     best = site;
     bestDistance = distance;

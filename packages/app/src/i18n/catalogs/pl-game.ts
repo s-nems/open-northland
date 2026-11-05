@@ -34,6 +34,12 @@ export const plGame = {
     },
     armyOrderLimit:
       'Zaznacz najwyżej {limit} jednostek do jednego rozkazu. Żadna jednostka nie otrzymała tego rozkazu.',
+    diplomacyMap: {
+      title: 'Mapa Dyplomacji',
+      own: 'Twoje plemię',
+      unknown: 'Położenie nieznane:',
+      openDiplomacy: 'Otwórz Dyplomację',
+    },
     mapOverlays: {
       label: 'Nakładki mapy głównej',
       signposts: 'Drogowskazy',
@@ -42,6 +48,7 @@ export const plGame = {
     },
     minimap: {
       label: 'Minimapa',
+      overview: 'Mapa Dyplomacji',
       interaction:
         'Kliknij lub przeciągnij, aby przesunąć kamerę. Kółko zmienia skalę minimapy. Przeciągnij środkowym przyciskiem, aby przesunąć powiększony wycinek mapy.',
       zoomIn: 'Przybliż',
@@ -209,6 +216,7 @@ export const plGame = {
       enemy: 'wrogi',
     },
     diplomacyWindow: {
+      map: 'Mapa Dyplomacji',
       nations: 'Plemiona',
       attitude: 'Stosunek',
       theirs: 'Ich stosunek',
@@ -444,6 +452,8 @@ export const plGame = {
       repair: 'Naprawiaj',
       board: 'Wsiądź',
       loadAboard: 'Załaduj na statek',
+      pinShip: 'Przypnij statek',
+      unpinShip: 'Odepnij statek',
       workArea: 'Obszar pracy',
       placeSignpost: 'Postaw drogowskaz',
       bombard: 'Ostrzelaj',
@@ -457,6 +467,7 @@ export const plGame = {
       cannotTrainHere: 'Nie mogą się tu szkolić',
       cannotBoard: 'Nie mogą wsiąść',
       cannotLoadAboard: 'Nie da się tu załadować',
+      cannotPinShip: 'Tego statku nie da się przypiąć',
       cannotMoorHere: 'Nie da się tu przybić',
       cannotPlaceSignpost: 'Tu nie stanie drogowskaz',
     },
@@ -477,6 +488,7 @@ export const plGame = {
       awaitingWorkplace: 'Czeka na budowę warsztatu',
       awaitingTraining: 'Czeka na koniec budowy',
       awaitingSeat: 'Czeka na wolne miejsce',
+      sailingRoute: 'Płynie swoją trasą',
       standingTo: 'Stoi na alarmie',
       lost: { he: 'Zgubił się', she: 'Zgubiła się' },
       idle: 'Bezczynny',
@@ -729,12 +741,25 @@ export const plGame = {
       tradeHeading: 'Kupiec jedzie teraz tutaj',
       tradeAddStop: 'Dodaj punkt handlowy',
       tradeConfigure: 'Konfiguruj handel',
+      tradePinShip: 'Przypnij statek',
+      tradePinShipHint:
+        'Kliknij, potem wskaż podświetlony własny statek przy tym brzegu, bez załogi, albo kliknij statek prawym przyciskiem myszy przy wybranym kupcu. Kupiec popłynie nim swoją trasą.',
+      tradeUnpinShip: 'Odepnij statek',
+      tradeShipNeeded: 'przez morze',
+      tradeShipNeededTooltip:
+        'Punkty trasy leżą na różnych brzegach: przypnij statek, żeby kupiec mógł przepłynąć',
+      tradeShipUnreachable: 'poza zasięgiem',
+      tradeShipUnreachableTooltip:
+        'Ten statek nie obsłuży trasy: pływa po innym morzu albo stoi przy innym brzegu niż kupiec',
       tradeSettlement: 'osada',
       tradeSettlementOn:
-        'Ładuje z całej osady: najpierw z tego magazynu, potem z magazynów i warsztatów w zasięgu jego sieci drogowskazów. Co przywiezie, trafia do tego magazynu · kliknij: tylko ten magazyn',
+        'Liczy całą osadę: magazyny i warsztaty w zasięgu jego sieci drogowskazów. Ładuje z nich, najpierw z tego magazynu, a limity „do” i „zostaw” liczą ich zapasy. Co przywiezie, trafia do tego magazynu · kliknij: tylko ten magazyn',
       tradeSettlementOff:
-        'Kliknij: ładuj z całej osady, najpierw z tego magazynu, potem z magazynów i warsztatów w zasięgu jego sieci drogowskazów',
-      tradeSettlementTaken: 'Z całej osady ładuje już drugi punkt',
+        'Kliknij: licz całą osadę. Ładuje z każdego magazynu i warsztatu w zasięgu sieci drogowskazów, a limity „do” i „zostaw” liczą ich zapasy',
+      tradeSettlementShared:
+        'Ta osada ma wspólny budynek z osadą drugiego punktu, a tamten punkt już liczy całą osadę',
+      tradeSettlementSuspended:
+        'Ta osada ma wspólny budynek z osadą drugiego punktu, więc na razie liczy się tylko ten magazyn · kliknij: tylko ten magazyn',
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: 'do {count}',
@@ -772,6 +797,8 @@ export const plGame = {
       centre: 'Centruj widok na wehikule',
       health: 'Wytrzymałość {hitpoints} / {max}',
       carrierTooltip: 'Zaznacz statek',
+      tradeMerchant: 'Kupiec',
+      tradeMerchantSelect: 'Zaznacz kupca, którego trasą płynie ten statek',
       haulerTooltip: 'Zaznacz, kto go ciągnie',
       status: {
         aboard: 'Na statku',
@@ -821,6 +848,7 @@ export const plGame = {
         noSeat: 'Brak wolnych miejsc',
         notMoored: 'Najpierw zacumuj przy brzegu',
         deckFull: 'Pokład jest zajęty',
+        pinned: 'Ten statek pływa trasą kupca',
       },
       stances: { attack: 'Atak', defence: 'Obrona', hold: 'Ignorowanie' },
       stanceTooltips: {
@@ -832,6 +860,7 @@ export const plGame = {
       roles: { cart: 'Dowódca', ship: 'Dowódca', siege: 'Dowódca' },
       assignRole: { cart: 'Przydziel dowódcę', ship: 'Przydziel dowódcę', siege: 'Przydziel dowódcę' },
       assignTooltip: 'Wskaż swojego osadnika na mapie · Esc anuluje',
+      assignHelperTooltip: 'Wskaż swojego tragarza na mapie, pomoże kupcowi · Esc anuluje',
       seatCount: 'Miejsca zajęte / wszystkie',
       walking: 'idzie',
       seat: 'Wsadź osadnika',
@@ -1446,6 +1475,10 @@ export const plGame = {
           label: 'Amulet wiatru',
           tip: 'Każdy bez niego pójdzie po niego do magazynu. Noszący chodzi szybciej.',
         },
+        upgradeTools: {
+          label: 'Wymieniaj drewniane',
+          tip: 'Pracownik z drewnianym narzędziem pójdzie do magazynu po żelazne. Częściowo zużyte narzędzie przepada przy wymianie. Działa, gdy żelazne narzędzia są rozdawane.',
+        },
         postGraduates: {
           label: 'Absolwenci szkół automatycznie przydzielani do warsztatów',
           tip: 'Absolwent szkoły idzie od razu do najbliższego wolnego miejsca pracy w swoim zawodzie.',
@@ -1755,6 +1788,7 @@ export const plGame = {
       starve: 'Wyczerp wszystkie potrzeby',
       fill: 'Napełnij magazyn',
       finish: 'Dokończ budowę',
+      erase: 'Wymaż surowce',
       teleport: 'Przenieś osadnika',
     },
     actionHints: {
@@ -1764,6 +1798,7 @@ export const plGame = {
       starve: 'Kliknij osadnika: każda potrzeba od razu pilna',
       fill: 'Kliknij budynek: zapełnia jego magazyn',
       finish: 'Kliknij plac budowy: budynek od razu gotowy',
+      erase: 'Kliknij złoże, krzak jagód lub stos towarów; przytrzymaj, by wymazywać pod kursorem',
       teleport: 'Kliknij osadnika, potem miejsce docelowe',
     },
     healthPercent: 'Zdrowie celu w procentach',

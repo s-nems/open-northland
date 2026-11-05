@@ -62,7 +62,7 @@ describe('snapshot delta is structured-cloneable (Web-Worker boundary)', () => {
       sim.step();
       const delta = deltas.next();
       if (delta === null) throw new Error('a stepped tick must yield a delta');
-      touchedAcrossRun += delta.touched.length;
+      touchedAcrossRun += delta.changeOf.length;
       const cloned = structuredClone(delta);
       expect(cloned).toEqual(delta);
       expect(JSON.stringify(cloned)).toBe(JSON.stringify(delta));

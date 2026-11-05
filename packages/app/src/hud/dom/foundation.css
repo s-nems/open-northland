@@ -204,7 +204,7 @@ body.on-drag-scroll.on-drag-scroll-free * {
   display: flex;
   flex-direction: column;
   border: 7px solid var(--wood);
-  border-image: linear-gradient(160deg, #6f5539, #3a2c1e 28%, #5a4631 52%, #2e2418 78%, #6f5539) 7;
+  border-image: var(--window-rails) 7;
   border-radius: 0;
   box-shadow:
     0 14px 30px #000a,
@@ -4050,8 +4050,29 @@ body.on-drag-scroll.on-drag-scroll-free * {
   background: linear-gradient(#e8c479, #b58a3f);
   color: var(--ink);
 }
+/* A flag held aside: still set, drawn unlit with a dashed border. */
+.on-hud button.on-stop__settlement--held {
+  border-style: dashed;
+}
 .on-hud button.on-stop__settlement[aria-disabled="true"] {
   opacity: 0.45;
+}
+/* The ship row under the stops, as tall as a stop whatever it shows, so the section keeps its height:
+   the anchor badge, the ship or the pin link with the route's note, and the detach. */
+.on-hud .on-trade-ship {
+  --stop-row: 22px;
+}
+.on-hud .on-stop__badge .on-glyph {
+  width: 11px;
+  height: 11px;
+}
+.on-hud .on-stop__note {
+  flex-shrink: 0;
+  color: var(--warning);
+  font-size: 11px;
+}
+.on-hud .on-stop__note[hidden] {
+  display: none;
 }
 /* The stop rows with, while both stops are own houses, the joint at their right: a bracket from the two
    rows' detach buttons to "Konfiguruj handel", the one way into the trade window. Without it the rows
@@ -7187,6 +7208,22 @@ body.on-drag-scroll.on-drag-scroll-free * {
 .on-hud .on-asst-row--off .on-asst-row__label {
   color: var(--muted);
 }
+/* A sub-row refines the row above it: an elbow in the art column ties it to that row's icon. */
+.on-hud .on-asst-row--sub {
+  padding-top: 0;
+}
+.on-hud .on-asst-row--sub .on-asst-row__label {
+  font-size: 12.5px;
+}
+.on-hud .on-asst-branch {
+  justify-self: end;
+  align-self: start;
+  width: 12px;
+  height: 14px;
+  border-bottom-left-radius: 4px;
+  border-bottom: 1.5px solid var(--muted);
+  border-left: 1.5px solid var(--muted);
+}
 /* A row's art: a figure, a glyph, or a good with the seat's stock of it on a tag at its foot and the men
    still without it on a tag at its head. */
 .on-hud .on-asst-art {
@@ -7777,6 +7814,11 @@ body.on-drag-scroll.on-drag-scroll-free * {
   cursor: var(--cursor-not-allowed, not-allowed);
   filter: grayscale(0.9) brightness(0.8);
   opacity: 0.65;
+}
+.on-hud .on-dip-map {
+  flex: none;
+  margin-left: auto;
+  margin-right: 12px;
 }
 .on-hud .on-dip-feedback {
   flex: none;

@@ -74,8 +74,8 @@ const SCATTER_DISTANCE_DIVISOR = 4;
 
 /**
  * Resolve one vehicle's fight this tick: an unarmed, carried or uncommanded vehicle does nothing; an
- * armed one with its crew aboard runs its clip, holds its target and acts on the distance to it, or
- * scans for one by its stance.
+ * armed one with its crew aboard plays its clip out, holds its target and acts on the distance to it,
+ * or scans for one by its stance.
  */
 export function engageVehicle(
   world: World,
@@ -94,6 +94,7 @@ export function engageVehicle(
   // A march held for the same boarding waits too; one whose crew stepped out or lost its commander is
   // over, so it neither drives off on its own once a new crew boards nor keeps the pass awake.
   if (state.carrier !== null || !crewInside(state) || vehicleCommander(state) === null) {
+    endClip(world, e);
     const boarding = state.task === 'waitsForHuman';
     if (!(boarding && state.attack?.ordered === true)) dropTarget(world, e);
     if (!boarding) endMarch(world, e);
@@ -104,16 +105,18 @@ export function engageVehicle(
   const identity = vehicleIdentity(type, state.tribe);
   const here = entityNode(world, terrain, e);
 
-  if (state.attack !== null && state.attack.clipStart !== null) {
-    const elapsed = ctx.tick - state.attack.clipStart;
-    // A mark reaped or taken off the map since the clip began is not shot at: the clip ends and the
-    // target is judged again below (the original checks the target's validity before the roll).
-    if (!targetStands(world, ctx, e, identity, state.attack)) endClip(world, e, state);
-    else {
-      const clip = attackClipTiming(ctx.content, identity);
+  if (state.attackClipStart !== null) {
+    const elapsed = ctx.tick - state.attackClipStart;
+    const clip = attackClipTiming(ctx.content, identity);
+    // A clip with no stone loosed yet ends without one when its aim is gone, reaped, out of the band or
+    // ordered away, and the target is judged again below (the original checks the target's validity
+    // before the roll). Past the shot only its end frees the weapon: the clip is not interruptible.
+    if (elapsed <= clip.shotAt && !canLoose(world, ctx, terrain, e, identity, weapon, here)) {
+      endClip(world, e);
+    } else {
       if (elapsed === clip.shotAt) fire(world, ctx, terrain, e, state, weapon.weapon, here);
       if (elapsed < clip.length) return;
-      endClip(world, e, state); // the clip is over; the target is judged again below, this tick
+      endClip(world, e); // the clip is over; the target is judged again below, this tick
     }
   }
 
@@ -145,7 +148,7 @@ export function engageVehicle(
     return;
   }
   if (held === null || !sameTarget(held.target, target) || held.ordered !== ordered) {
-    world.mut(e, Vehicle).attack = { target, ordered, clipStart: null };
+    world.mut(e, Vehicle).attack = { target, ordered };
     // A find cuts the march short on the node it is crossing, so the next judgement closes or fires.
     if (march !== null) finishLeg(world, e);
   }
@@ -184,9 +187,26 @@ function finishLeg(world: World, e: Entity): boolean {
   return cutRoute(world, e);
 }
 
-function sameTarget(a: VehicleAttackTarget, b: VehicleAttackTarget): boolean {
+export function sameTarget(a: VehicleAttackTarget, b: VehicleAttackTarget): boolean {
   if (a.kind === 'entity') return b.kind === 'entity' && a.entity === b.entity;
   return b.kind === 'ground' && a.hx === b.hx && a.hy === b.hy;
+}
+
+/** Whether the vehicle, standing still, holds a target it may shoot at from here. */
+function canLoose(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  identity: SettlerIdentity,
+  weapon: { minRange: number; maxRange: number },
+  here: NodeId,
+): boolean {
+  const { attack } = world.get(e, Vehicle);
+  if (attack === null || world.has(e, VehicleDrive)) return false;
+  if (!targetStands(world, ctx, e, identity, attack)) return false;
+  const dist = hexNodeDistance(terrain, here, aimNode(world, ctx, terrain, here, attack.target));
+  return dist >= weapon.minRange && dist <= weapon.maxRange;
 }
 
 /** Whether a held target still stands and may be fought: a map point always does. An entity must
@@ -339,7 +359,7 @@ function actOnTarget(
     const live = world.mut(e, Vehicle);
     live.facing = facingOfStep(pointOf(terrain, here), pointOf(terrain, targetNode));
     live.task = 'attacks';
-    if (live.attack !== null) live.attack.clipStart = ctx.tick;
+    live.attackClipStart = ctx.tick;
     return;
   }
   if (!ordered && stance === 'hold' && !stacked) {
@@ -353,9 +373,11 @@ function actOnTarget(
       : [Math.max(weapon.minRange, weapon.maxRange - APPROACH_BAND_DEPTH), weapon.maxRange];
   const goal = firingNode(world, ctx, terrain, e, here, targetNode, band);
   if (goal !== null && startVehicleDrive(world, ctx, terrain, e, goal)) return;
-  // Without the memo an unreachable enemy in sight is found, judged and dropped again every pass; a
-  // march also rests, since the memo's few entries cannot hold a bank lined with such enemies.
-  if (target.kind === 'entity' && !ordered) {
+  if (ordered) {
+    refuseMove(world, ctx, e, 'noPath');
+  } else if (target.kind === 'entity') {
+    // Without the memo an unreachable enemy in sight is found, judged and dropped again every pass; a
+    // march also rests, since the memo's few entries cannot hold a bank lined with such enemies.
     noteUnreachableTarget(world, ctx, e, target.entity);
     if (state.march !== null)
       world.mut(e, Vehicle).march = { ...state.march, restUntil: ctx.tick + MARCH_REST_TICKS };
@@ -536,11 +558,11 @@ function pointOf(terrain: TerrainGraph, node: NodeId): HalfCellNode {
   return { hx: x, hy: y };
 }
 
-/** Stop a running clip without touching the target: the vehicle judges it afresh next pass. */
-function endClip(world: World, e: Entity, state: VehicleStateView): void {
-  if (state.attack === null || state.attack.clipStart === null) return;
+/** End a clip without touching the target: the vehicle judges it afresh next pass. */
+function endClip(world: World, e: Entity): void {
+  if (world.get(e, Vehicle).attackClipStart === null) return;
   const live = world.mut(e, Vehicle);
-  if (live.attack !== null) live.attack.clipStart = null;
+  live.attackClipStart = null;
   if (live.task === 'attacks') live.task = 'none';
 }
 
@@ -571,5 +593,5 @@ export function ownAttackTarget(target: VehicleAttackTarget): VehicleAttackTarge
 
 /** The attack a fresh player order stands for. */
 export function orderedAttack(target: VehicleAttackTarget): VehicleAttack {
-  return { target: ownAttackTarget(target), ordered: true, clipStart: null };
+  return { target: ownAttackTarget(target), ordered: true };
 }

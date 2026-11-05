@@ -7,6 +7,7 @@ import { palettedLutOf } from '../../../src/gpu/pixel-art/registry.js';
 import { type BindFrame, LayerBinder } from '../../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool, settlerPalette } from '../../../src/gpu/sprite-pool/index.js';
 import { HumanPaletteRow } from '../../../src/gpu/sprite-pool/layers/human-palette-row.js';
+import { resolveLayers } from '../../../src/gpu/sprite-pool/layers/resolve.js';
 import type { ResolvedLayer } from '../../../src/gpu/sprite-pool/layers/resolved-layer.js';
 import { createPooled } from '../../../src/gpu/sprite-pool/pooled-entity.js';
 import { HUMAN_HEAD_ROW_OFFSET } from '../../../src/gpu/textures/human-palette-lut.js';
@@ -559,5 +560,108 @@ describe('LayerBinder - a fog ghost casts no shadow', () => {
 
     binder.bind(pe, house, layers, bindFrame, 1);
     expect(drawnWidths(pe)).toEqual([24, SHADE_WIDTH, 16]);
+  });
+});
+
+describe('LayerBinder - a ship yard site rises as its indexed ship through the vehicle LUT', () => {
+  const SHIP_YARD = 44;
+  const SHIP = 3;
+  const TRIBE = 1;
+  const OWNER = 3;
+  const HULL_BOB = 7;
+  const HULL_HEIGHT = 32;
+  const lut = { source: new TextureSource({ width: 256, height: 4 }), colours: 4 };
+  const indexed = new TextureSource({ width: 64, height: 64 });
+  const hull = {
+    layer: 'ship',
+    idle: { start: 0, frameLists: [[HULL_BOB]], loop: true },
+    indexed: true,
+  } as const;
+  const shipSheet: SpriteSheet = {
+    ...sheet,
+    vehiclePalette: lut,
+    families: {
+      ship: {
+        source: indexed,
+        atlas: {
+          width: 64,
+          height: 64,
+          frames: new Map([
+            [HULL_BOB, { x: 0, y: 0, width: 16, height: HULL_HEIGHT, offsetX: -8, offsetY: -32 }],
+          ]),
+        },
+      },
+    },
+    bindings: {
+      ...sheet.bindings,
+      vehicle: {
+        byTribe: { [TRIBE]: { [SHIP]: hull } },
+        fallbackTribe: TRIBE,
+        shipYards: { vehicleByHouse: { [SHIP_YARD]: SHIP }, facing: 0 },
+      },
+    },
+  };
+  const site = (builtPct: number): DrawItem => ({
+    kind: 'building',
+    ref: 1,
+    x: 0,
+    y: 0,
+    depth: 0,
+    tribe: TRIBE,
+    typeId: SHIP_YARD,
+    builtPct,
+    player: OWNER,
+  });
+
+  it('pools only a ship yard site paletted, on the vehicle LUT', () => {
+    const binder = new LayerBinder(new TextureCache(), shipSheet);
+    const pe = binder.create('building', site(25));
+    expect(pe.paletted && pe.palette).toBe(lut);
+    expect(binder.create('building', { ...site(25), typeId: SHIP_YARD + 1 }).paletted).toBe(false);
+  });
+
+  it("draws a scene-built site on its owner's row", () => {
+    const HALF_BUILT = 1 << 15; // half of the sim's fixed-point one
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), shipSheet);
+    const yard = entity(1, 0, 0, {
+      Building: { buildingType: SHIP_YARD, tribe: TRIBE, built: HALF_BUILT, level: 0 },
+      UnderConstruction: { labor: HALF_BUILT },
+      Owner: { player: OWNER },
+    });
+
+    pool.reconcile(poolFrame(snapshotOf([yard])));
+
+    const quad = (layer.children[0] as Container).children.find((c) => c instanceof PalettedQuad);
+    if (!(quad instanceof PalettedQuad)) throw new Error('a ship yard site must bind a PalettedQuad');
+    expect(quad.lutRow).toBe(OWNER);
+  });
+
+  it("keeps the built bottom rows on the owner's row and hides the hull before any is built", () => {
+    const binder = new LayerBinder(new TextureCache(), shipSheet);
+    const bindAt = (builtPct: number) => {
+      const item = site(builtPct);
+      const pe = binder.create('building', item);
+      if (!pe.paletted) throw new Error('a ship yard site must pool paletted');
+      pe.reveal = builtPct / 100;
+      binder.bind(
+        pe,
+        item,
+        resolveLayers(shipSheet, item, 0),
+        { camera: CAMERA, screenW: 800, screenH: 600 },
+        1,
+      );
+      const quad = pe.sprites[0];
+      if (!(quad instanceof PalettedQuad)) throw new Error('a ship yard site must bind a PalettedQuad');
+      return quad;
+    };
+
+    const quarter = bindAt(25);
+    const hidden = HULL_HEIGHT * 0.75;
+    expect(quarter.texture.frame).toMatchObject({ y: hidden, height: HULL_HEIGHT - hidden });
+    expect(quarter.offsetY).toBe(-32 + hidden);
+    expect(quarter.lutRow).toBe(OWNER);
+    expect(palettedLutOf(quarter.texture)).toBe(lut.source);
+    expect(bindAt(0).visible).toBe(false);
   });
 });

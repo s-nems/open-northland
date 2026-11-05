@@ -88,6 +88,7 @@ describe('building over signposts', () => {
   it('lets every placer cover a post', () => {
     const sim = mappedSim();
     post(sim, ANCHOR.x, ANCHOR.y, P0);
+    post(sim, NEIGHBOUR.x, NEIGHBOUR.y, P1); // the rival's own post, whose build reach covers the anchor
 
     expect(sim.placementProbe(HUT, P0)?.canPlace(ANCHOR.x, ANCHOR.y)).toBe(true);
     expect(sim.placementProbe(HUT, P1)?.canPlace(ANCHOR.x, ANCHOR.y)).toBe(true);

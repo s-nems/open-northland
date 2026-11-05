@@ -106,6 +106,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setCursorHints = vi.fn();
   const setGroupNumbersShown = vi.fn();
   const setWeatherEnabled = vi.fn();
+  const setDayNightShown = vi.fn();
   const setBloodEnabled = vi.fn();
   const setBonesFade = vi.fn();
   const setFpsCounterShown = vi.fn();
@@ -137,6 +138,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setGroupNumbersShown,
     setMinimapFrame,
     setWeatherEnabled,
+    setDayNightShown,
     setBloodEnabled,
     setBonesFade,
     setFpsCounterShown,
@@ -164,6 +166,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setGroupNumbersShown,
     setMinimapFrame,
     setWeatherEnabled,
+    setDayNightShown,
     setBloodEnabled,
     setBonesFade,
     setFpsCounterShown,

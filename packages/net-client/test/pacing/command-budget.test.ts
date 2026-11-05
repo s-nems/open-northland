@@ -11,13 +11,22 @@ import {
 import { MAX_UNIT_ORDER_MEMBERS, parseCommandEnvelope, playerCommand, Simulation } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { testContent } from '../../../sim/test/fixtures/content.js';
+import { orderOfSize } from '../../../sim/test/fixtures/sized-order.js';
 
 const SESSION: GameSession = {
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 3,
   seats: [{ player: 0, mode: 'human', color: 0 }],
   localSeat: 0,
-  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+  rules: {
+    fog: null,
+    progression: null,
+    needs: null,
+    weather: null,
+    dayNight: null,
+    alliedVision: null,
+    peace: null,
+  },
   speed: 1,
 };
 const jsonBytes = (value: unknown): number => new TextEncoder().encode(JSON.stringify(value)).byteLength;
@@ -87,36 +96,22 @@ it('refuses a valid oversized army gesture atomically without sending it or dist
   expect(client.tick).toBe(2);
 });
 
-it.each(['x', 'ą', '兵', '🚩'])(
-  'checks the exact serialized UTF-8 boundary with %s before the envelope reaches transport validation',
-  async (character) => {
-    const { client, sim, sent, observed } = await runningClient();
-    // The budget gate is independent of the sim's name-length validation: use one string to place
-    // ASCII, two/three-byte characters and surrogate pairs exactly at the transport boundary.
-    const entity = sim.world.create();
-    const renamed = (name: string) => playerCommand(0, { kind: 'renameSettler', entity, name });
-    const available = MAX_ENVELOPE_BYTES - jsonBytes(renamed(''));
-    const width = new TextEncoder().encode(character).byteLength;
-    const name = character.repeat(Math.floor(available / width)) + 'x'.repeat(available % width);
-    const exact = renamed(name);
-    const over = renamed(`${name}x`);
-    expect(jsonBytes(exact)).toBe(MAX_ENVELOPE_BYTES);
-    expect(jsonBytes(over)).toBe(MAX_ENVELOPE_BYTES + 1);
-    client.submit(exact);
-    client.submit(over);
-    expect(sent).toEqual([{ kind: 'command', envelope: exact, fromTick: 0 }]);
-    expect(jsonBytes(sent[0])).toBeLessThanOrEqual(MAX_CLIENT_MESSAGE_BYTES);
-    expect(observed).toEqual([{ kind: 'rejected', of: 'command', reason: { code: 'envelopeTooLarge' } }]);
-  },
-);
+it('checks the exact serialized boundary before the envelope reaches transport validation', async () => {
+  const { client, sim, sent, observed } = await runningClient();
+  const exact = orderOfSize(MAX_ENVELOPE_BYTES, sim.world.create());
+  const over = orderOfSize(MAX_ENVELOPE_BYTES + 1, sim.world.create());
+  expect(jsonBytes(exact)).toBe(MAX_ENVELOPE_BYTES);
+  expect(jsonBytes(over)).toBe(MAX_ENVELOPE_BYTES + 1);
+  client.submit(exact);
+  client.submit(over);
+  expect(sent).toEqual([{ kind: 'command', envelope: exact, fromTick: 0 }]);
+  expect(jsonBytes(sent[0])).toBeLessThanOrEqual(MAX_CLIENT_MESSAGE_BYTES);
+  expect(observed).toEqual([{ kind: 'rejected', of: 'command', reason: { code: 'envelopeTooLarge' } }]);
+});
 
 it('holds a large gesture back while the ones in flight would push its tick past the byte budget', async () => {
   const { client, sim, sent } = await runningClient();
-  const entity = sim.world.create();
-  const renamed = (name: string) => playerCommand(0, { kind: 'renameSettler', entity, name });
-  const largest = (mark: string) =>
-    renamed(mark + 'x'.repeat(MAX_ENVELOPE_BYTES - jsonBytes(renamed('')) - mark.length));
-  const orders = ['a', 'b', 'c'].map(largest);
+  const orders = [0, 1, 2].map(() => orderOfSize(MAX_ENVELOPE_BYTES, sim.world.create()));
   for (const order of orders) expect(jsonBytes(order)).toBe(MAX_ENVELOPE_BYTES);
   const fitting = Math.floor(MAX_COMMAND_BYTES_PER_TICK / MAX_ENVELOPE_BYTES);
   for (const order of orders) client.submit(order);

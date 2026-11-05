@@ -46,9 +46,14 @@ export function equipSlotValue(eq: EquipmentData, group: EquipCategory, slot: nu
   return eq[group];
 }
 
-/** The degree of use of the boots `e` wears now, or null when it wears none. */
-export function bootsDegreeOfUse(world: World, e: Entity): Fixed | null {
-  const boots = world.tryGet(e, Equipment)?.boots ?? null;
+/** The degree of use of the boots `e` wears now, or null when it wears none. `equipment` is `e`'s
+ *  {@link Equipment} for a caller that already read it. */
+export function bootsDegreeOfUse(
+  world: World,
+  e: Entity,
+  equipment: Readonly<EquipmentData> | undefined = world.tryGet(e, Equipment),
+): Fixed | null {
+  const boots = equipment?.boots ?? null;
   if (boots === null) return null;
   return world.tryGet(e, PathFollow)?.bootsDegree ?? boots.degreeOfUse;
 }

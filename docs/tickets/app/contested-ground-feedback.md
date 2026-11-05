@@ -1,4 +1,4 @@
-# Contested ground: reason hint and acceptance scene
+# Placement refusals: reason hint and acceptance scene
 
 **Area:** app · **Priority:** P3
 
@@ -6,20 +6,21 @@
 see (`packages/sim/src/systems/conflict/contested-ground.ts`). The build-mode wash dims the disc and the
 ghost hides, but the refusal gives the same signal as a tree or fogged ground: a vanished ghost and a
 swallowed click. A house refused over clear grass eight cells from a soldier the player has not noticed
-is not self-explaining.
+is not self-explaining. A site past the seat's site reach (`systems/footprint/placement/site-reach.ts`)
+is refused just as silently.
 
 ## Scope
 
-- Extend the seat placement probe with a refusal reason (`'footprint' | 'contested'`), the two halves
-  `seatPlacementProbe` already computes separately, and show a localized held-item banner line while the
-  hovered tile is refused for the contested reason.
+- Extend the seat placement probe with a refusal reason (`'footprint' | 'reach' | 'contested'`), the
+  parts `seatPlacementProbe` already computes separately, and show a localized held-item banner line while
+  the hovered tile is refused for the reach or contested reason.
 - Register a `contested-ground` scene: a hostile band camped beside the player's town, headless checks on
   the probe inside and outside the disc, and the human pass below.
 
 ## Verify
 
 - Headless: the scene's predicates pass; the banner model reports the contested reason at a node inside
-  the disc and none outside.
+  the disc and none outside, and the reach reason past the town's reach.
 - Browser: pick a house while an enemy band stands near the town. The wash dims a diamond around each
   enemy soldier and hero, not around civilians or a tower archer at his post; the ghost vanishes inside
   and returns outside; the banner names the reason; the diamond slides with a walking soldier without

@@ -47,13 +47,24 @@ export type SessionWorld =
   | { readonly kind: 'scene'; readonly sceneId: string };
 
 /** How a match's weather is drawn: `map` shows only what the map authors, `variable` adds the game's
- *  own occasional weather, and `winter` plays a snowy game. Presentation only; the sim never reads it. */
-export type WeatherMode = 'map' | 'variable' | 'winter';
+ *  own occasional weather, `winter` plays a snowy game and `off` draws none, the map's included.
+ *  Presentation only; the sim never reads it. */
+export type WeatherMode = 'map' | 'variable' | 'winter' | 'off';
 
-export const WEATHER_MODES = ['map', 'variable', 'winter'] as const satisfies readonly WeatherMode[];
+export const WEATHER_MODES = ['map', 'variable', 'winter', 'off'] as const satisfies readonly WeatherMode[];
 
 /** The weather mode a session with no choice of its own plays. */
 export const DEFAULT_WEATHER_MODE: WeatherMode = 'map';
+
+/** How a match's day and night are drawn: `map` keeps what the map's script does, `on` runs the game's
+ *  own cycle on a map without one, and `off` holds a scripted cycle at daylight. Presentation only; the
+ *  sim never reads it. */
+export type DayNightMode = 'map' | 'on' | 'off';
+
+export const DAY_NIGHT_MODES = ['map', 'on', 'off'] as const satisfies readonly DayNightMode[];
+
+/** The day and night mode a session with no choice of its own plays. */
+export const DEFAULT_DAY_NIGHT_MODE: DayNightMode = 'map';
 
 /** The lengths of a lobby peace a session may choose, in minutes of match time. */
 export const PEACE_MINUTES = [30, 45, 60, 75, 90] as const;
@@ -70,6 +81,8 @@ export interface SessionRules {
   readonly needs: boolean | null;
   /** Null plays {@link DEFAULT_WEATHER_MODE}. */
   readonly weather: WeatherMode | null;
+  /** Null plays {@link DEFAULT_DAY_NIGHT_MODE}. */
+  readonly dayNight: DayNightMode | null;
   /** Sets `AlliedVisionRules.enabled`, which defines who shares a fog mask. */
   readonly alliedVision: boolean | null;
   /** How long the lobby seats keep a peace from the match start (`setPeaceTime`); null opens none. */
@@ -254,6 +267,7 @@ function parseRules(value: unknown): SessionRules {
     progression: nullableBoolean(raw.progression, 'rules.progression'),
     needs: nullableBoolean(raw.needs, 'rules.needs'),
     weather: parseWeather(raw.weather),
+    dayNight: parseDayNight(raw.dayNight),
     alliedVision: nullableBoolean(raw.alliedVision, 'rules.alliedVision'),
     peace: parsePeace(raw.peace),
   };
@@ -270,6 +284,13 @@ function parseWeather(value: unknown): WeatherMode | null {
   if (value === null) return null;
   const mode = WEATHER_MODES.find((known) => known === value);
   if (mode === undefined) throw new Error('rules.weather must name a weather mode or be null');
+  return mode;
+}
+
+function parseDayNight(value: unknown): DayNightMode | null {
+  if (value === null) return null;
+  const mode = DAY_NIGHT_MODES.find((known) => known === value);
+  if (mode === undefined) throw new Error('rules.dayNight must name a day and night mode or be null');
   return mode;
 }
 

@@ -39,6 +39,7 @@ import {
 import { BASE_BUILDING_GRAPHICS_FILE, BUILDING_GRAPHICS_FILE } from '../../data-layout.js';
 import { readSourceFile, type SourceRoots } from '../../roots.js';
 import { loadBaseOnlyHouseRecords } from '../base-houses.js';
+import { withBigShipCartSlot } from './big-ship-cart-slot.js';
 import type { BuildingGraphicsOverlays } from './building-overlays.js';
 import type { IniSource } from './sources.js';
 
@@ -179,7 +180,7 @@ export async function extractIniTables(roots: SourceRoots, sources: readonly Ini
     weapons,
     armor,
     animals,
-    vehicles,
+    vehicles: vehicles.map(withBigShipCartSlot),
     bobSequences,
     gfxAtomics,
     gfxWalkAtomics,

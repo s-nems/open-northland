@@ -64,7 +64,7 @@ export interface SceneLightFrame {
   /** Renders the light map; without it the night is drawn without lights. */
   readonly renderer?: Renderer;
   /** False draws a night as a flat grade, as the player's graphics settings may ask. */
-  readonly nightLights?: boolean;
+  readonly dayNight?: boolean;
 }
 
 function packColour(r: number, g: number, b: number): number {
@@ -196,7 +196,7 @@ export class SceneLight {
     }
     shownGrade(this.lit, this.shown);
     const [r, g, b] = this.shown;
-    const level = frame.nightLights === false ? 0 : nightLevel(this.lit);
+    const level = frame.dayNight === false ? 0 : nightLevel(this.lit);
     if (r === 1 && g === 1 && b === 1) {
       this.container.visible = false;
       this.night = null;

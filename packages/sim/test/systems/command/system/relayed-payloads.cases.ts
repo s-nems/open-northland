@@ -160,6 +160,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     setTradeImportLimits: [{ entity: t.carrier, house: t.hq, good: WOOD, upTo: 5, keep: 1 }],
     setTradeSettlement: [{ entity: t.carrier, house: t.hq, on: true }],
     clearTradeImports: [{ entity: t.carrier }],
+    setTradeShip: [{ entity: t.carrier, ship: null }],
     setTradeAgreement: [{ entity: t.carrier, agreement: 0 }],
     setTradeAgreementLimits: [{ entity: t.carrier, giveKeep: 2, takeUpTo: 10 }],
     cancelTraining: [{ entity: t.worker }],
@@ -290,7 +291,6 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
       { vehicle: t.ship, ...node, queued: true },
       { vehicle: t.ship, ...node, dock: { x: node.x + 4, y: node.y } },
     ],
-    renameSettler: [{ entity: t.worker, name: 'Ragna' }],
     openChest: [
       { entity: t.worker, chest: t.hq },
       { entity: t.worker, chest: t.hq, queued: true },
@@ -316,6 +316,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     setAssistantGrantAudience: [{ player: SEAT, goodType: SHOES, audience: 'soldiers' }],
     setAssistantPostGraduates: [{ player: SEAT, enabled: true }],
     setAssistantMoveFlags: [{ player: SEAT, enabled: true }],
+    setAssistantUpgradeTools: [{ player: SEAT, enabled: true }],
     setAssistantWeaponVeto: [{ player: SEAT, goodType: SWORD, vetoed: true }],
     setAssistantWeaponOrder: [{ player: SEAT, intent: 'trainSword', order: [SWORD] }],
     setAssistantArmorOrder: [{ player: SEAT, intent: 'trainBow', order: [SHOES, WOOD], off: [WOOD] }],

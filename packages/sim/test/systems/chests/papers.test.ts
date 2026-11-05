@@ -29,6 +29,7 @@ const HQ = 1;
 const SAWMILL = 2;
 /** The fixture's smithy: placeable only once the tribe has a carpenter (`jobEnables`). */
 const GATED_SMITHY = 4;
+const CIVILIST = 6;
 const WOOD = 1;
 const PLANK = 2;
 const SAWMILL_CAPACITY = 20;
@@ -39,6 +40,8 @@ const sawmillPaper: Paper = { kind: 'placeHouse', param: SAWMILL };
 function fresh(): Simulation {
   const sim = new Simulation({ seed: 5, content: testContent(), map: grassCellMap(16, 16) });
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: P0, tribes: [VIKING] });
+  // One of the seat's people, whose build reach spans the whole map.
+  sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 2, y: 2, tribe: VIKING, owner: P0 });
   return sim;
 }
 

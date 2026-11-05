@@ -3,8 +3,10 @@ import { clonePlain } from '../../src/inspect/plain-clone.js';
 import {
   DeltaColumns,
   DeltaShapes,
+  deltaChanges,
   deltaValues,
   type SnapshotDelta,
+  touchedIds,
 } from '../../src/inspect/snapshot-delta.js';
 
 const ENTITY = 1;
@@ -132,23 +134,24 @@ describe('delta column element types', () => {
     events: [],
   });
 
-  it('carry 32-bit integer numbers in an Int32Array and any other in a Float64Array', () => {
+  it('carry 32-bit integer numbers in an Int32Array and any other beside them in a Float64Array', () => {
     const whole = columnsOf((columns) => columns.writeLive('P', { x: 2 ** 31 - 1, y: -(2 ** 31), on: true }));
-    expect(whole.numbers).toBeInstanceOf(Int32Array);
-    for (const odd of [2 ** 31, 0.5, -0]) {
+    expect(Array.from(whole.numbers)).toEqual([2 ** 31 - 1, -(2 ** 31), 1]);
+    expect(whole.floats).toHaveLength(0);
+    for (const odd of [2 ** 31, 0.5, -0, Number.NaN]) {
       const columns = new DeltaColumns();
       columns.begin(ENTITY);
-      columns.writeLive('P', { x: 1, y: odd });
+      columns.writeLive('P', { x: 1, y: odd, list: [2, odd], only: [odd, odd] });
       columns.end();
       const delta = deltaOf(columns);
-      expect(delta.numbers).toBeInstanceOf(Float64Array);
-      expect(deltaValues(delta)).toStrictEqual([{ x: 1, y: odd }]);
+      expect(delta.floats).toHaveLength(4);
+      expect(deltaValues(delta)).toStrictEqual([{ x: 1, y: odd, list: [2, odd], only: [odd, odd] }]);
     }
   });
 
   it('widen the per-entity and per-value columns once an entry passes 16 bits', () => {
     const narrow = columnsOf((columns) => columns.writeLive('P', { x: 1 }));
-    expect(narrow.valueKinds).toBeInstanceOf(Int16Array);
+    expect(narrow.changes).toBeInstanceOf(Int16Array);
     expect(narrow.changeOf).toBeInstanceOf(Int16Array);
     // Each entity writes a component of its own, so the change entries pass 16 bits.
     const CHANGES = 1 << 15;
@@ -161,6 +164,24 @@ describe('delta column element types', () => {
     const wide = deltaOf(columns);
     expect(wide.changeOf).toBeInstanceOf(Int32Array);
     expect(wide.changeOf[CHANGES]).toBe(CHANGES);
+  });
+
+  it('read touched ids back across gaps past 16 bits, in 16 bits until a gap passes 2^30 + 2^15', () => {
+    const idsOf = (ids: readonly number[]): SnapshotDelta => {
+      const columns = new DeltaColumns();
+      for (const id of ids) {
+        columns.begin(id);
+        columns.end();
+      }
+      return deltaOf(columns);
+    };
+    const near = [0, 1, 40_000, 40_001, 2 ** 30 - 1];
+    expect(idsOf(near).touchedGaps).toBeInstanceOf(Int16Array);
+    expect(Array.from(touchedIds(idsOf(near)))).toEqual(near);
+    const far = [5, 2 ** 31 - 1];
+    expect(idsOf(far).touchedGaps).toBeInstanceOf(Int32Array);
+    expect(Array.from(touchedIds(idsOf(far)))).toEqual(far);
+    expect(() => idsOf([3, 3])).toThrow(/must ascend/);
   });
 });
 
@@ -190,7 +211,7 @@ describe('delta shapes', () => {
     second.end();
     const secondDelta = deltaOf(second);
     expect(deltaValues(secondDelta)).toEqual([{ x: 70, y: 71 }]);
-    expect(Array.from(secondDelta.touched)).toEqual([7]);
+    expect(Array.from(touchedIds(secondDelta))).toEqual([7]);
     const values = deltaValues(firstDelta);
     expect(values).toHaveLength(ENTITIES);
     expect(values[0]).toEqual({ x: 1, y: -1 });
@@ -213,10 +234,8 @@ describe('delta shapes', () => {
     next.begin(1);
     next.writeLive('C1', { v: 7, on: true });
     next.end();
-    const columns = next.columns();
-    expect(
-      deltaValues({ ...columns, tick: 0, sequence: 0, rebuild: false, removed: [], events: [] }),
-    ).toEqual([{ v: 7, on: true }]);
-    expect(columns.changes).toEqual([{ written: ['C1'], removed: [] }]);
+    const delta = { ...next.columns(), tick: 0, sequence: 0, rebuild: false, removed: [], events: [] };
+    expect(deltaValues(delta)).toEqual([{ v: 7, on: true }]);
+    expect(deltaChanges(delta)).toEqual([{ written: ['C1'], kinds: [0], removed: [] }]);
   });
 });

@@ -3,7 +3,6 @@ export {
   leaveCarrier,
   loadIntoVehicle,
   planRider,
-  releaseCarried,
   riderSystem,
   vehicleBoardingSystem,
 } from './boarding.js';
@@ -40,6 +39,7 @@ export {
   orderAttachToVehicle,
   releaseHaulingCart,
   releasesHaulingCart,
+  releaseTradeShip,
 } from './hauling-cart.js';
 export { facingOfStep, VEHICLE_TURN_TICKS_PER_DIRECTION } from './helm.js';
 export {

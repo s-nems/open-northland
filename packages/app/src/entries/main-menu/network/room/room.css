@@ -101,6 +101,10 @@
   min-width: 0;
 }
 /* A field the seat does not use keeps its cell, so every row's columns line up. */
+.network-room__field[data-tip]::after {
+  max-width: 100%;
+}
+
 .network-room__field.is-unused {
   visibility: hidden;
 }

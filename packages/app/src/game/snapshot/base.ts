@@ -215,6 +215,13 @@ export function vehicleSeatsOf(slots: unknown): VehicleSeatSnapshot[] {
   return seats;
 }
 
+/** Whether a trader rides the ship pinned to its route. */
+export function ridesPinnedShip(components: Readonly<Record<string, unknown>>): boolean {
+  const pinned = num((components.TradeShip as { vehicle?: unknown } | undefined)?.vehicle);
+  const rides = num((components.Rider as { vehicle?: unknown } | undefined)?.vehicle);
+  return pinned !== undefined && pinned === rides;
+}
+
 /** The vehicle `e` commands and that stands on the map: the one its `Rider` names when `e` holds the
  *  commander seat, both have one owner, the vehicle rides no carrier and the rider is not aboard a moored ship (the sim's `commandedVehicleOf`). */
 export function commandedVehicleOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {

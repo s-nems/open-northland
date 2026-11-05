@@ -373,6 +373,31 @@ export const enContent = {
       summary:
         'A neutral warehouse offers four iron for a coin; the merchant carts coins over from the home warehouse, brings the iron back, and the goods traded turn the tribe friendly. Select the merchant for its Trade section, and the far warehouse for its trade offers.',
     },
+    'trade-sea': {
+      title: 'Trade across the sea',
+      summary:
+        'A merchant with a handcart and a small ship pinned to its route carries wood between warehouses on two islands. It ferries the load to the ship in several trips, sails across with the cart aboard, and ferries it into the far warehouse. Select the merchant for the ship row in its Trade section, or the ship for its read-only hold.',
+    },
+    'trade-sea-pin': {
+      title: 'Pin a ship to a route',
+      summary:
+        "The same two islands with no ship pinned: the merchant's route needs one and its Trade section says so. Select the merchant, press Pin a ship and pick the lit ship; the merchant then loads it and sails.",
+    },
+    'trade-sea-agreement': {
+      title: 'A trade agreement across the sea',
+      summary:
+        "A friendly tribe's warehouse on the east island offers iron and wood for coins. A merchant with the big ship pinned to its route takes coins over and brings iron back, four for a coin, and its handcart ferries between ship and warehouse on both shores. Select the merchant to see the ship and the chosen offer in its Trade section. Open the diplomacy window to see the offers: with a stance other than friendly they are greyed out.",
+    },
+    'trade-sea-carriers': {
+      title: 'The carriers help the merchant',
+      summary:
+        "Three carriers assigned to the ship help a merchant move wood between warehouses on two islands: on each shore they carry a unit a trip between the warehouse and the ship's door beside the merchant's handcart, and ride along in between. They help only between your own warehouses. Select the ship to see them in its seats, with the captain's seat still the merchant's. Ctrl click a carrier's seat to step it out.",
+    },
+    'trade-sea-settlements': {
+      title: 'Holding stock levels between islands',
+      summary:
+        'Each island has two warehouses in one signpost network, and both stops of the merchant\'s route stand for their whole settlement. The east island is kept at 20 bricks and 20 stone, taken out of both west warehouses, and its wood goes west until 30 are left over its two warehouses. Select the merchant to see the lit "settlement" chip on both stops.',
+    },
     'trade-domestic': {
       title: 'Trade between own warehouses',
       summary:
@@ -442,6 +467,11 @@ export const enContent = {
       title: 'Shipyard',
       summary:
         "A level-4 carpenter's shop on a shore whose carpenters are set to the ship and the catapult in turn: the ship yard opens on the water beside the shop with the carpenter working from the shore, the catapult yard on the land. The launched ship lies moored at the shore with its sails furled.",
+    },
+    'vehicle-ship-sites': {
+      title: 'Ship yards of every tribe',
+      summary:
+        "Each civilization's two ship yards, one column per tribe: the ship's yard above the big ship's, each with sites at 30% and 90% built over the ship such a site launches, moored at a shore. A site rises as the very ship it launches.",
     },
     'vehicle-ox-yard': {
       title: 'Building an ox cart',
@@ -527,6 +557,11 @@ export const enContent = {
       title: 'Flags for a posted extractor, hunter and fisherman',
       summary:
         "An extractor, a hunter and a fisherman work for the headquarters, which has one tree beside it and no game or water in reach. The extractor holds a flag in a grove to the south-east, the hunter one by a hare meadow far east and the fisherman one on the shore of a pond. All three work at their flag and carry the haul home, where meat and fish are stored as food, and the tree by the headquarters stays standing. Select any of them to move or take away the flag in the settler panel's Area row; without it the extractor fells the near tree and the other two stand idle by the headquarters.",
+    },
+    'tool-upgrade': {
+      title: 'Swapping tools for better ones',
+      summary:
+        'Three extractors holding wooden tools walk to the headquarters for its iron tools, because the assistant replaces wooden tools. The part-used wooden tools are lost, the fresh one goes back into the store, and the extractor already holding iron stays put.',
     },
     'gatherer-flag-follow': {
       title: 'Flags follow the resources',

@@ -3,6 +3,7 @@ import { Relay } from '@open-northland/net-server';
 import { playerCommand, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { testContent } from '../../../sim/test/fixtures/content.js';
+import { orderOfSize } from '../../../sim/test/fixtures/sized-order.js';
 import { HeadlessClient } from '../support/headless-client.js';
 import { assembleRoom, relink, runFor, type Stage } from '../support/session-run.js';
 import { restoreTestWorld } from '../support/test-world.js';
@@ -13,7 +14,15 @@ const settings: RoomSettings = {
   name: 'command budget',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: SEED,
-  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+  rules: {
+    fog: null,
+    progression: null,
+    needs: null,
+    weather: null,
+    dayNight: null,
+    alliedVision: null,
+    peace: null,
+  },
   speed: 1,
 };
 /** A wall line of twenty edges: its anchor and twenty nodes, one gesture each, in one click. */
@@ -140,13 +149,9 @@ describe('gestures past the relay per-tick budget', () => {
   it('lands large orders over successive ticks instead of crossing the byte budget of one', async () => {
     const { stage, clients } = await room();
     const [ania, bartek] = clients;
-    // An id no world holds: the rename changes nothing, only its size matters.
+    // An id no world holds: the orders change nothing, only their size matters.
     const entity = new Simulation({ seed: SEED, content: testContent() }).world.create();
-    const renamed = (name: string) => playerCommand(0, { kind: 'renameSettler', entity, name });
-    const jsonBytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
-    const largest = (mark: string) =>
-      renamed(mark + 'x'.repeat(MAX_ENVELOPE_BYTES - jsonBytes(renamed('')) - mark.length));
-    const orders = ['a', 'b', 'c'].map(largest);
+    const orders = [0, 1, 2].map(() => orderOfSize(MAX_ENVELOPE_BYTES, entity));
     for (const order of orders) ania.submit(order);
     await runFor(stage, clients, RUN_MS);
     expect(ania.rejections).toEqual([]);

@@ -53,7 +53,7 @@ import { atomicSystem } from './settlers/atomics/system.js';
 import { plannerSystem } from './settlers/planner/system.js';
 import { signpostLinksSystem } from './signposts/links.js';
 import { gossipSystem } from './social/index.js';
-import { tradePartnerStockSystem, traderTakesUpCartSystem } from './trade/index.js';
+import { tradePartnerStockSystem, traderTakesUpCartSystem, tradeVoyageSystem } from './trade/index.js';
 import {
   cargoHandDisembarkSystem,
   draughtAnimalSystem,
@@ -134,6 +134,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // After the boarding pass, so a trader seated in a cart this tick steps out before the planner.
   { name: 'traderTakesUpCart', system: traderTakesUpCartSystem },
   { name: 'cargoHandDisembark', system: cargoHandDisembarkSystem },
+  // Before the planner, so a trader its ship lands plans the same tick and the ship's next order is seen
+  // only once the movement pass ended the last.
+  { name: 'tradeVoyage', system: tradeVoyageSystem },
   { name: 'planner', system: plannerSystem },
   // A local map-AI response may not carry yesterday's chase beyond its camp.
   { name: 'mapDefenceLeash', system: mapDefenceLeashSystem },

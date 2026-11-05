@@ -122,12 +122,13 @@ describe('initialLobbyOptions', () => {
       professionProgression: true,
       settlerNeeds: true,
       weather: 'map',
+      dayNight: 'map',
       alliedVision: true,
       peace: null,
     });
     expect(
       initialLobbyOptions(
-        new URLSearchParams('fog=recon-fow&progression=off&needs=off&weathermode=winter'),
+        new URLSearchParams('fog=recon-fow&progression=off&needs=off&weathermode=winter&daynight=on'),
         true,
       ),
     ).toEqual({
@@ -135,6 +136,7 @@ describe('initialLobbyOptions', () => {
       professionProgression: false,
       settlerNeeds: false,
       weather: 'winter',
+      dayNight: 'on',
       alliedVision: true,
       peace: null,
     });
@@ -165,6 +167,7 @@ const OPTIONS = {
   professionProgression: true,
   settlerNeeds: true,
   weather: 'winter',
+  dayNight: 'map',
   alliedVision: true,
   peace: null,
 } as const;
@@ -360,6 +363,7 @@ describe('lobbyStartEntry', () => {
           professionProgression: false,
           settlerNeeds: false,
           weather: 'map',
+          dayNight: 'map',
           alliedVision: false,
           peace: 45,
         },
@@ -386,6 +390,7 @@ describe('lobbyStartEntry', () => {
     expect(params.get('needs')).toBe('off');
     expect(params.get('alliedvision')).toBe('off');
     expect(params.get('weathermode')).toBe('map');
+    expect(params.get('daynight')).toBe('map');
     expect(params.get('peace')).toBe('45');
   });
 

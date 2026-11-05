@@ -1,7 +1,7 @@
-/** The assistant's switch rows: the "give …" grants (gear, drinks and charms), one that sends school
- *  graduates straight to a free workplace and one that lets gatherers move their flags after the
- *  resources. */
-export type AssistantGrantId = GiveSwitchId | 'postGraduates' | 'moveFlags';
+/** The assistant's switch rows: the "give …" grants (gear, drinks and charms), one that swaps held tools
+ *  for better granted ones, one that sends school graduates straight to a free workplace and one that lets
+ *  gatherers move their flags after the resources. */
+export type AssistantGrantId = GiveSwitchId | 'upgradeTools' | 'postGraduates' | 'moveFlags';
 
 export type GiveSwitchId =
   | 'giveBoots'
@@ -32,6 +32,7 @@ export const GRANT_IDS: readonly AssistantGrantId[] = [
   'giveDefenseAmulet',
   'giveCriticalHitAmulet',
   'giveSpeedAmulet',
+  'upgradeTools',
   'postGraduates',
   'moveFlags',
 ];

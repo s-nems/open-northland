@@ -21,7 +21,14 @@ const UNTRUSTED_NOISE_BAND_PCT = 20;
 /** Below this a percentage is meaningless: a 300% swing on a 3 us system is nothing. */
 const NOISE_FLOOR_MS = 0.01;
 
-export type DeltaVerdict = 'slower' | 'faster' | 'within-noise' | 'below-floor' | 'added' | 'removed';
+export type DeltaVerdict =
+  | 'slower'
+  | 'faster'
+  | 'within-noise'
+  | 'below-floor'
+  | 'added'
+  | 'removed'
+  | 'unmeasured';
 
 export interface DeltaRow {
   readonly name: string;
@@ -36,7 +43,8 @@ export interface Comparison {
   readonly noiseBandPct: number;
   readonly untrusted: boolean;
   readonly stateHashIdentical: boolean;
-  /** Per-system mean rows heaviest first, then the `tick mean`, `tick total` (median) and `tick p99` rows. */
+  /** Per-system mean rows heaviest first, then the whole-run rows: `tick mean`, `tick total` (median),
+   *  `tick p99`, `cpu ms/tick` and `alloc KB/tick`. */
   readonly rows: readonly DeltaRow[];
   /** Per-window tick deltas; empty when the two runs were cut into different window counts. */
   readonly windowRows: readonly DeltaRow[];
@@ -84,6 +92,17 @@ export function worldIdentity(world: BenchWorld): string {
   }
 }
 
+/** The whole-run rows appended after the per-system rows; `alloc KB/tick` is in KiB, not ms, and null on a
+ *  runtime without the allocation counter. */
+const WHOLE_RUN_ROWS: readonly (readonly [string, (report: BenchReport) => number | null])[] = [
+  ['tick mean', (r) => r.tickMs.meanMs],
+  ['tick total', (r) => r.tickMs.medianMs],
+  ['tick p99', (r) => r.tickMs.p99Ms],
+  ['cpu ms/tick', (r) => r.cpuMsPerTick],
+  ['alloc KB/tick', (r) => r.allocKbPerTick],
+];
+export const WHOLE_RUN_ROW_COUNT = WHOLE_RUN_ROWS.length;
+
 function delta(name: string, beforeMs: number | null, afterMs: number | null, bandPct: number): DeltaRow {
   if (beforeMs === null) return { name, beforeMs, afterMs, deltaPct: null, verdict: 'added' };
   if (afterMs === null) return { name, beforeMs, afterMs, deltaPct: null, verdict: 'removed' };
@@ -94,6 +113,13 @@ function delta(name: string, beforeMs: number | null, afterMs: number | null, ba
   const deltaPct = ((afterMs - beforeMs) / beforeMs) * 100;
   const verdict = Math.abs(deltaPct) <= bandPct ? 'within-noise' : deltaPct > 0 ? 'slower' : 'faster';
   return { name, beforeMs, afterMs, deltaPct, verdict };
+}
+
+/** A whole-run row: a side that did not measure the metric makes it unmeasured, never added or removed. */
+function wholeRunDelta(name: string, before: number | null, after: number | null, bandPct: number): DeltaRow {
+  if (before === null || after === null)
+    return { name, beforeMs: before, afterMs: after, deltaPct: null, verdict: 'unmeasured' };
+  return delta(name, before, after, bandPct);
 }
 
 /** Means, not medians: a system that works one tick in many would otherwise compare as free. */
@@ -138,9 +164,8 @@ export function compareReports(before: BenchReport, after: BenchReport): Compari
         (b.beforeMs ?? b.afterMs ?? 0) - (a.beforeMs ?? a.afterMs ?? 0) ||
         (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
     );
-  rows.push(delta('tick mean', before.tickMs.meanMs, after.tickMs.meanMs, noiseBandPct));
-  rows.push(delta('tick total', before.tickMs.medianMs, after.tickMs.medianMs, noiseBandPct));
-  rows.push(delta('tick p99', before.tickMs.p99Ms, after.tickMs.p99Ms, noiseBandPct));
+  for (const [name, value] of WHOLE_RUN_ROWS)
+    rows.push(wholeRunDelta(name, value(before), value(after), noiseBandPct));
 
   let windowRows: readonly DeltaRow[] = [];
   if (before.windows.length !== after.windows.length) {

@@ -22,10 +22,17 @@ import { soldierWeaponFamily } from '../../../game/unit-kind.js';
 import { pickableSeat } from '../../../game/viewer-seat.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
 import { pctRatio, remainingPct } from './bars.js';
-import { type Comp, goodDef, goodLabel, jobDisplayName, type UnitPanelModelContext } from './context.js';
+import {
+  type Comp,
+  goodDef,
+  goodLabel,
+  jobDisplayName,
+  type UnitPanelModelContext,
+  vehicleTitle,
+} from './context.js';
 import { satisfactionBars } from './settler.js';
 import { type SettlerRole, settlerRole } from './settler-household.js';
-import { vehicleClassOf, vehicleTitle } from './vehicle.js';
+import { vehicleClassOf } from './vehicle.js';
 
 type GroupCopy = ReturnType<typeof messages>['hud']['groupPanel'];
 

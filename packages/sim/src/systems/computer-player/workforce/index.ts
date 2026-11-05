@@ -1,5 +1,6 @@
 import {
   assistantMovesFlags,
+  assistantUpgradesTools,
   Building,
   CurrentAtomic,
   ErectSignpostOrder,
@@ -38,6 +39,7 @@ import type { ComputerModule } from '../index.js';
 import { knownResourceTest, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import {
   nextLivestockCatch,
+  nextScoutChest,
   nextSignpostTarget,
   nextStaleZoneTarget,
   scoutHeldForBuilders,
@@ -360,6 +362,7 @@ function runWorkforce(
   const undrafted = (c: PlayerCommand): boolean => !('entity' in c && drafted.has(c.entity));
   return [
     ...flagFollowSwitch(world, player),
+    ...toolUpgradeSwitch(world, player),
     ...settlementGrantOrders(world, ctx, player),
     ...wild.commands,
     ...posted.filter(undrafted),
@@ -384,6 +387,14 @@ function runWorkforce(
  *  flags move by the same assistant feature a player switches on. */
 function flagFollowSwitch(world: World, player: number): PlayerCommand[] {
   return assistantMovesFlags(world, player) ? [] : [{ kind: 'setAssistantMoveFlags', player, enabled: true }];
+}
+
+/** The command turning the seat's "upgrade to better tools" switch on, until it is: its iron tools replace
+ *  the wooden ones its workers already hold, as for a player who switches it on. */
+function toolUpgradeSwitch(world: World, player: number): PlayerCommand[] {
+  return assistantUpgradesTools(world, player)
+    ? []
+    : [{ kind: 'setAssistantUpgradeTools', player, enabled: true }];
 }
 
 /** The decision's {@link CollectorGround}, or null on a mapless sim or a base with no node. A resource
@@ -557,6 +568,7 @@ function allocateScout(
   const hasScoutWork = (): boolean => {
     scoutWork ??=
       nextLivestockCatch(world, ctx, player) !== null ||
+      nextScoutChest(world, ctx, player) !== null ||
       (scoutingOpen(world, ctx, player) && nextStaleZoneTarget(world, ctx, player, order) !== null) ||
       nextSignpostTarget(world, ctx, player, order) !== null;
     return scoutWork;

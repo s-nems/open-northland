@@ -190,8 +190,8 @@ export function graphicsSettingsRows(
       'environmentMotion',
       'groundedBuildings',
       'buildingDamage',
-      'nightLights',
       'weather',
+      'dayNight',
       'blood',
       'bonesFade',
     ] as const

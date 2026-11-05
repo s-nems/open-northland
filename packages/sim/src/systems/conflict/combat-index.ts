@@ -211,9 +211,9 @@ export class CombatIndex {
 
   /**
    * Uncounted {@link nearestFew} for each of several disjoint kinds in one scan: per kind, the acceptors of
-   * that kind out to `tailRings` past its own first hit, exactly what asking kind by kind returns.
-   * `kindOf(e)` names `e`'s kind below `kinds`, or -1 for none; it and `accept` must be total and pure, and
-   * each is asked at most once per member.
+   * that kind out to `tailRings` past its own first hit, exactly what asking kind by kind returns, in
+   * (distance, id) order. `kindOf(e)` names `e`'s kind below `kinds`, or -1 for none; it and `accept` must
+   * be total and pure, and each is asked at most once per member.
    */
   nearestOfEachKind(
     fromX: number,
@@ -226,10 +226,10 @@ export class CombatIndex {
     seeker: number | null,
     tailRings: number,
     metric: SearchMetric = 'manhattan',
-  ): readonly (readonly { entity: Entity; distance: number }[])[] {
+  ): readonly (readonly Entity[])[] {
     const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
     const { keys, count } = scan;
-    const found: { entity: Entity; distance: number }[][] = [];
+    const found: Entity[][] = [];
     const lastRings: number[] = [];
     for (let k = 0; k < kinds; k++) {
       found.push([]);
@@ -250,9 +250,10 @@ export class CombatIndex {
         const take = found[kind];
         const lastRing = lastRings[kind];
         if (take === undefined || lastRing === undefined || distance > lastRing || !accept(entity)) continue;
-        take.push({ entity, distance });
+        take.push(entity);
         lastRings[kind] = Math.min(lastRing, distance + tailRings);
-        open = Math.max(...lastRings);
+        open = 0;
+        for (const ring of lastRings) open = Math.max(open, ring);
       }
       return found;
     } finally {

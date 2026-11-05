@@ -74,12 +74,14 @@ export type {
   SpriteFrameRef,
 } from './settler-bindings.js';
 export {
+  resolveShipYardSiteDraw,
   resolveVehicleDraw,
   VEHICLE_ATTACK_TICKS,
   type VehicleAfloat,
+  type VehicleDraw,
   vehicleAfloat,
   vehicleLookFor,
   vehicleMovingRef,
 } from './vehicle.js';
-export type { VehicleBinding, VehicleLook, VehicleTribeLooks } from './vehicle-bindings.js';
+export type { ShipYardSites, VehicleBinding, VehicleLook, VehicleTribeLooks } from './vehicle-bindings.js';
 export { FLAG_WAVE_TICKS_PER_FRAME, type WaveLoop, waveFrameAt } from './wave-loop.js';

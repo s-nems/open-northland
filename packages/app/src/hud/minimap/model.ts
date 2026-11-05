@@ -7,7 +7,7 @@ import {
 import { FOG_STATE, scanChangedBytes } from '@open-northland/sim';
 import { contains, type Rect } from '../geometry.js';
 import { navBeamRect } from '../nav-beam.js';
-import { SELECTION_PANEL_W } from '../regions.js';
+import { centralRegion, SELECTION_PANEL_W, TOP_BAR_HEIGHT } from '../regions.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 
 /**
@@ -27,6 +27,14 @@ const MAX_FRAME_ASPECT = 1.5;
 const NAV_GAP = 6;
 const TOP_SAFE = 70;
 const SELECTION_GAP = 12;
+/** Design px between the top bar and the overview's frame, whose title rises above it. */
+const OVERVIEW_TOP_GAP = 14;
+/** Design px of the overview's band round the map: a window's slim frame. */
+const OVERVIEW_BORDER = 8;
+/** The overview's share of the screen's width: large, with the world still in view around it. */
+const OVERVIEW_WIDTH_SHARE = 0.8;
+/** Design px the unknown-location strip hangs below the overview's frame. */
+const OVERVIEW_STRIP_OVERHANG = 24;
 
 /** Outer geometry in screen px; an impossibly small screen collapses the available map area. */
 function atlasPanel(
@@ -90,8 +98,38 @@ export function minimapLayout(
   screenW: number = Number.POSITIVE_INFINITY,
 ): MinimapLayout {
   const artScale = Math.max(MIN_UI_SCALE, uiscale);
-  const panel = atlasPanel(bounds, screenH, screenW, artScale, size);
-  const border = Math.min(BORDER * artScale, panel.w / 2);
+  return framedLayout(atlasPanel(bounds, screenH, screenW, artScale, size), bounds, artScale, BORDER);
+}
+
+/**
+ * The largest frame hugging the whole map under the top bar and above the navigation beam, within its
+ * share of the screen's width, on the beam's axis. It stands over the HUD's columns and the corner map,
+ * like a window; the world keeps showing around it.
+ */
+export function overviewLayout(
+  bounds: WorldBounds,
+  screenH: number,
+  uiscale: number,
+  screenW: number,
+): MinimapLayout {
+  const artScale = Math.max(MIN_UI_SCALE, uiscale);
+  const region = centralRegion({ width: screenW, height: screenH }, artScale);
+  const border = 2 * OVERVIEW_BORDER * artScale;
+  const top = (TOP_BAR_HEIGHT + OVERVIEW_TOP_GAP) * artScale;
+  const roomH = region.y + region.h - OVERVIEW_STRIP_OVERHANG * artScale - top;
+  const fit = Math.min(
+    (screenW * OVERVIEW_WIDTH_SHARE - border) / bounds.width,
+    (roomH - border) / bounds.height,
+  );
+  if (fit <= 0) return framedLayout({ x: 0, y: screenH, w: 0, h: 0 }, bounds, artScale, OVERVIEW_BORDER);
+  const w = bounds.width * fit + border;
+  const h = bounds.height * fit + border;
+  const panel = { x: (screenW - w) / 2, y: top + (roomH - h) / 2, w, h };
+  return framedLayout(panel, bounds, artScale, OVERVIEW_BORDER);
+}
+
+function framedLayout(panel: Rect, bounds: WorldBounds, artScale: number, rail: number): MinimapLayout {
+  const border = Math.min(rail * artScale, panel.w / 2);
   const inner: Rect = {
     x: panel.x + border,
     y: panel.y + border,

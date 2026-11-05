@@ -74,6 +74,7 @@ export const HOST_REQUESTS = [
   'tradeOffersAt',
   'traderView',
   'tradeHousesAttachableBy',
+  'tradeShipsPinnableBy',
   'vehiclesAttachableBy',
   'missionBriefingHistory',
   'missionBriefingPage',
@@ -189,6 +190,7 @@ export interface AssistantFacts {
   readonly weaponOrders: Readonly<Record<AssistantArmingIntent, readonly number[]>>;
   readonly postsGraduates: boolean;
   readonly movesFlags: boolean;
+  readonly upgradesTools: boolean;
 }
 
 /** One stepped tick as the worker saw it. */

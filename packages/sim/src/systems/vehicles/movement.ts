@@ -63,6 +63,7 @@ import { stationaryOwnedSettlers } from '../settlers/planner/spacing.js';
 import { endChat } from '../social/index.js';
 import type { NodeBuckets } from '../spatial/nodes.js';
 import { leaveCarrier } from './boarding.js';
+import { pinnedTraderAshore, turnToVehicle } from './crew.js';
 import { cartDragTicks, cartSpeedLossPercent } from './drag.js';
 import {
   facingOfStep,
@@ -807,9 +808,10 @@ function abandonDock(world: World, vehicle: Entity): void {
 /**
  * The goto order (`e`): refused with `vehicleNoAnimal` for a cart still waiting on its draught animal,
  * with `vehicleNoCommander` while nobody commands the vehicle and with `vehicleNoPath` when the target
- * snaps to nothing on the vehicle's continent or has no route. A crew still outside is boarded first:
- * the goal is held under the `waitsForHuman` task and the drive starts once everyone is inside (the
- * original boards its crew ahead of any target). Approximation: the original ignores an off-continent
+ * snaps to nothing on the vehicle's continent or has no route. A pinned trader who can reach its ship
+ * commands it from ashore. A crew still outside is boarded first: the goal is held under the
+ * `waitsForHuman` task and the drive starts once everyone is inside (the original boards its crew ahead
+ * of any target). Approximation: the original ignores an off-continent
  * target silently and raises `vehicleNoPath` only from its pathfinder. Returns whether a drive or a held
  * goal now stands.
  */
@@ -834,7 +836,7 @@ export function moveVehicle(
     refuseMove(world, ctx, e, 'noAnimal'); // before the commander gate: nobody can attach to such a cart
     return false;
   }
-  if (vehicleCommander(state) === null) {
+  if (vehicleCommander(state) === null && pinnedTraderAshore(world, ctx, e) === null) {
     refuseMove(world, ctx, e, 'noCommander');
     return false;
   }
@@ -853,8 +855,8 @@ export function moveVehicle(
 }
 
 /**
- * Drive `vehicle` to `goal`, a snapped node, or hold the goal under `waitsForHuman` while the crew is
- * outside. The route is judged now in either case, so an order nobody could drive is refused with
+ * Drive `vehicle` to `goal`, a snapped node, or hold the goal under `waitsForHuman` while the crew or
+ * the pinned trader is outside, the trader turning to its ship at once. The route is judged now in either case, so an order nobody could drive is refused with
  * `vehicleNoPath` at once instead of after the boarding (approximation: the original's pathfinder runs
  * after the boarding). Returns whether a drive or a held goal now stands.
  */
@@ -866,7 +868,8 @@ export function sendVehicleTo(
   goal: NodeId,
   orders?: VehicleOrderRoutes,
 ): boolean {
-  if (!crewInside(world.get(vehicle, Vehicle))) {
+  const trader = pinnedTraderAshore(world, ctx, vehicle);
+  if (trader !== null || !crewInside(world.get(vehicle, Vehicle))) {
     const route = vehicleRouteTo(world, ctx, terrain, vehicle, goal, orders);
     if (route === null) {
       refuseMove(world, ctx, vehicle, 'noPath');
@@ -882,6 +885,7 @@ export function sendVehicleTo(
       if (world.has(vehicle, VehicleRoute)) world.mut(vehicle, VehicleRoute).nodes = route;
       else world.add(vehicle, VehicleRoute, { nodes: route });
     }
+    if (trader !== null) turnToVehicle(world, trader);
     return true;
   }
   if (!startVehicleDrive(world, ctx, terrain, vehicle, goal, orders)) {
@@ -914,11 +918,16 @@ export function vacateSeat(world: World, vehicle: Entity, rider: Entity): void {
  *  stays. */
 function dropAttack(world: World, e: Entity): void {
   endMarch(world, e);
+  if (world.get(e, Vehicle).attack === null) return;
+  world.mut(e, Vehicle).attack = null;
+  settleAttackTask(world, e);
+}
+
+/** A vehicle whose target changed stops reading as attacking unless a clip still plays out; the combat
+ *  pass ends that one. A drive's own start clears the task, so a clip goes on as a bare reload there. */
+export function settleAttackTask(world: World, e: Entity): void {
   const state = world.get(e, Vehicle);
-  if (state.attack === null) return;
-  const live = world.mut(e, Vehicle);
-  live.attack = null;
-  if (live.task === 'attacks') live.task = 'none';
+  if (state.task === 'attacks' && state.attackClipStart === null) world.mut(e, Vehicle).task = 'none';
 }
 
 /** End an attack-move, the route a fight kept for it with it. */
@@ -969,6 +978,14 @@ export function stopVehicle(world: World, command: Extract<Command, { kind: 'sto
   const live = world.mut(e, Vehicle);
   live.task = 'interrupted';
   if (!live.moored) live.mooring = null;
+}
+
+/** Drop an order held for boarding that nobody can answer, with the no-commander note. */
+export function lapseHeldOrder(world: World, ctx: SystemContext, e: Entity): void {
+  stopAskingCrewIn(world, world.get(e, Vehicle));
+  dropHeldGoal(world, e);
+  world.mut(e, Vehicle).task = 'none';
+  refuseMove(world, ctx, e, 'noCommander');
 }
 
 /** Clear the boarding request on every rider still outside, so a lapsed order stops pulling them in. */

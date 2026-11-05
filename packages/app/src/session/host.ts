@@ -147,6 +147,8 @@ export interface SessionHost {
   assistantArmorOrder(player: number, intent: AssistantArmingIntent): AssistantArmorOrder;
   /** The order `player`'s `intent` class shops its weapon goods in. */
   assistantWeaponOrder(player: number, intent: AssistantArmingIntent): readonly number[];
+  /** Whether `player`'s workers swap their tools for better granted ones. */
+  assistantUpgradesTools(player: number): boolean;
   /** Whether `player`'s assistant sends graduates straight to a free workplace. */
   assistantPostsGraduates(player: number): boolean;
   /** Whether `player`'s gatherers move their own flags after the resources. */
@@ -174,7 +176,8 @@ export interface SessionHost {
 
   // Probes: the placement rules as data over a node area, or null for a mapless world.
 
-  /** The `placeBuilding` rule; with a `player` it also refuses the ground a hostile army contests, and a
+  /** The `placeBuilding` rule; with a `player` it also refuses the ground a hostile army contests and,
+   *  while `withinReach`, the ground past the seat's site reach (an admin placement skips it), and a
    *  `tribe` picks the footprint and, while `gated`, adds the seat's technology gate (a paper waives it). */
   placementProbe(
     buildingType: number,
@@ -182,6 +185,7 @@ export interface SessionHost {
     player?: number,
     tribe?: number,
     gated?: boolean,
+    withinReach?: boolean,
   ): Promise<NodeGridAnswer | null>;
   /** Changes whenever a ship-water answer may, movers aside; see {@link shipWaterProbe}. */
   shipWaterVersion(): string;
@@ -256,6 +260,8 @@ export interface SessionHost {
   traderView(trader: Entity): Promise<TraderView | undefined>;
   /** The houses the `attachTradeHouse` command would put on the trader's route now, ascending. */
   tradeHousesAttachableBy(trader: Entity): Promise<readonly Entity[]>;
+  /** The ships the `setTradeShip` command would pin to the trader now, ascending. */
+  tradeShipsPinnableBy(trader: Entity): Promise<readonly Entity[]>;
   /** The vehicles the `attachToVehicle` command would seat the settler on now, ascending. */
   vehiclesAttachableBy(settler: Entity): Promise<readonly Entity[]>;
   missionBriefingHistory(): Promise<readonly number[]>;

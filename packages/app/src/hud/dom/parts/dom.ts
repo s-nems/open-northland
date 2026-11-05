@@ -56,6 +56,13 @@ export function setStyleVar(node: HTMLElement, name: `--${string}`, value: strin
   if (node.style.getPropertyValue(name) !== value) node.style.setProperty(name, value);
 }
 
+const RGB_HEX_DIGITS = 6;
+
+/** A CSS custom property holding a 0xRRGGBB colour. */
+export function setColourVar(node: HTMLElement, name: `--${string}`, colour: number): void {
+  setStyleVar(node, name, `#${colour.toString(16).padStart(RGB_HEX_DIGITS, '0')}`);
+}
+
 export function setTitle(node: HTMLElement, text: string): void {
   if (node.title !== text) node.title = text;
 }

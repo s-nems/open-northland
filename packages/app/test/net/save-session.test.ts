@@ -13,7 +13,15 @@ it('captures the current public roster and refuses an old world after resync', a
     seed: 7,
     localSeat: 0,
     speed: 1,
-    rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+    rules: {
+      fog: null,
+      progression: null,
+      needs: null,
+      weather: null,
+      dayNight: null,
+      alliedVision: null,
+      peace: null,
+    },
     seats: [
       { player: 0, mode: 'human', color: 3 },
       { player: 1, mode: 'human', color: 4 },

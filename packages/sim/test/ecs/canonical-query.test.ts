@@ -53,10 +53,10 @@ describe('World.canonicalQuery', () => {
     };
     let jointSettledInsideNote = false;
     const joints = Reflect.get(Reflect.get(w, 'canonicalQueries'), 'joints') as Array<{
-      pending: Entity[];
+      pendingCount: number;
     }>;
     for (let step = 0; step < 3000; step++) {
-      const pendingBefore = joints.map((j) => j.pending.length);
+      const pendingBefore = joints.map((j) => j.pendingCount);
       const roll = rng.int(10);
       if (roll < 2 || entities.length === 0) {
         entities.push(w.create());
@@ -72,7 +72,7 @@ describe('World.canonicalQuery', () => {
         expect(hold(w.canonicalQuery(P))).toEqual(sortedQuery(w, P));
         expect(hold(w.canonicalQuery(Q, P))).toEqual(sortedQuery(w, Q, P));
         expect(hold(w.canonicalQuery(P, Q, R))).toEqual(sortedQuery(w, P, Q, R));
-      } else if (joints.some((j, i) => j.pending.length < (pendingBefore[i] ?? 0))) {
+      } else if (joints.some((j, i) => j.pendingCount < (pendingBefore[i] ?? 0))) {
         jointSettledInsideNote = true;
       }
     }
@@ -139,8 +139,9 @@ describe('World.canonicalQuery', () => {
     }
     const members = Reflect.get(Reflect.get(w, 'canonicalQueries'), 'members') as Map<
       unknown,
-      { pending: Entity[] }
+      { pending: Entity[]; pendingCount: number }
     >;
+    expect(members.get(P)?.pendingCount).toBeLessThanOrEqual(100);
     expect(members.get(P)?.pending.length).toBeLessThanOrEqual(100);
     expect(w.canonicalQuery(P)).toEqual([e]);
   });

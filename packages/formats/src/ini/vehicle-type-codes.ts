@@ -3,7 +3,7 @@ import { HOUSE_TYPE_CODES } from './house-type-codes.js';
 
 /** The `#define VEHICLE_TYPE_*` codes of `Data/GameSourceIncludes/logicdefines.inc`; the codes are the
  *  `VehicleType.typeId`s. */
-const VEHICLE_TYPE_CODES = {
+export const VEHICLE_TYPE_CODES = {
   VEHICLE_TYPE_NONE: 0,
   VEHICLE_TYPE_CART_HAND: 1,
   VEHICLE_TYPE_CART_OX: 2,

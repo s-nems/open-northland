@@ -1,6 +1,8 @@
 .on-hud .on-minimap-chrome {
   /* Midpoint between the frame’s outer edge (-6px) and the map hole (20px). */
   --minimap-rail-center: 7px;
+  /* The band of the panel round the map hole, which the rails claim from the map. */
+  --minimap-rail: 20px;
   position: absolute;
   pointer-events: none;
   isolation: isolate;
@@ -27,6 +29,31 @@
 }
 .on-hud .on-minimap-chrome[data-frame="urnes"] .on-minimap-chrome__frame {
   border-image: url("../../assets/ui/minimap/frames/urnes.webp") 141 / 39px stretch;
+}
+/* The overview is a window over the HUD and wears a window's slim frame, whatever the corner map's
+   setting. It is first in the plane: the windows, on its z-index, stand over it, the HUD regions under. */
+.on-hud .on-minimap-chrome[data-place="overview"] {
+  --minimap-rail: 8px;
+  --minimap-rail-center: 4px;
+  z-index: 1;
+}
+.on-hud .on-minimap-chrome[data-place="overview"] .on-minimap-chrome__frame {
+  inset: 0;
+  border: 7px solid var(--wood);
+  border-image: var(--window-rails) 7;
+  box-shadow:
+    0 14px 30px #000a,
+    0 0 0 1px #0d100d,
+    inset 0 0 0 1px var(--bronze);
+  filter: none;
+}
+.on-hud .on-minimap-chrome__canvas {
+  position: absolute;
+  top: var(--map-y);
+  left: var(--map-x);
+  width: var(--map-w);
+  height: var(--map-h);
+  pointer-events: auto;
 }
 /* Starts under the frame's rails, so no gap shows between the wood and the frame. */
 .on-hud .on-minimap-backing {
@@ -71,19 +98,19 @@
 }
 .on-hud .on-minimap-chrome__rail--top {
   inset: 0 0 auto;
-  height: 20px;
+  height: var(--minimap-rail);
 }
 .on-hud .on-minimap-chrome__rail--left {
-  inset: 20px auto 20px 0;
-  width: 20px;
+  inset: var(--minimap-rail) auto var(--minimap-rail) 0;
+  width: var(--minimap-rail);
 }
 .on-hud .on-minimap-chrome__rail--right {
-  inset: 20px 0 20px auto;
-  width: 20px;
+  inset: var(--minimap-rail) 0 var(--minimap-rail) auto;
+  width: var(--minimap-rail);
 }
 .on-hud .on-minimap-chrome__rail--bottom {
   inset: auto 0 0;
-  height: 20px;
+  height: var(--minimap-rail);
 }
 .on-hud .on-minimap-chrome__controls {
   position: absolute;
@@ -377,6 +404,44 @@
 }
 .on-hud .on-minimap-tip[hidden] {
   display: none;
+}
+
+/* The way into the overview: a seal on the top rail, standing above the frame, clear of the corner's
+   controls column at every size. */
+.on-hud .on-minimap-chrome__overview {
+  position: absolute;
+  z-index: 1;
+  top: -13px;
+  right: 30px;
+  width: 36px;
+  height: 36px;
+}
+.on-hud .on-minimap-chrome__overview svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 1.1;
+}
+.on-hud .on-minimap-chrome[data-place="overview"] .on-minimap-chrome__button--size {
+  display: none;
+}
+/* In a row on a plate astride the top rail, which is too slim to hold them. */
+.on-hud .on-minimap-chrome[data-place="overview"] .on-minimap-chrome__controls {
+  top: var(--minimap-rail-center);
+  right: auto;
+  left: 32px;
+  flex-direction: row;
+  padding: 3px 5px;
+  border: 1px solid var(--bronze);
+  border-radius: 3px;
+  background:
+    url("../../assets/ui/minimap/wood.webp") 0 0 / 160px 160px,
+    #9c8c7c;
+  background-blend-mode: multiply;
+  box-shadow:
+    0 3px 7px #000a,
+    inset 0 0 0 1px #ead9a533;
+  transform: translateY(-50%);
+  pointer-events: auto;
 }
 
 .on-hud .on-map-overlays {

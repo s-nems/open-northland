@@ -82,3 +82,54 @@ describe('selection panel placement', () => {
     panel.dispose();
   });
 });
+
+describe('selection panel rename', () => {
+  beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.replaceChildren();
+  });
+
+  it("opens the field on the player's own name, not the title that shows the generated one beside it", async () => {
+    const { createSelectionPanel } = await import('../../../src/hud/dom/selection-panel.js');
+    const renamed: string[] = [];
+    const panel = createSelectionPanel(
+      plane(1920, 1080),
+      {
+        onBrowse: () => {},
+        onOrders: () => {},
+        onKickerDoubleClick: () => {},
+        onRename: (name) => renamed.push(name),
+        onClose: () => {},
+      },
+      { show: () => {}, hide: () => {} },
+    );
+    panel.updateHead({
+      kicker: '',
+      browse: null,
+      title: 'Ada (Harald)',
+      rename: { tooltip: 'Rename', maxLength: 24, current: 'Ada' },
+      meta: null,
+      orders: null,
+      labels: { close: 'Close', prev: 'Prev', next: 'Next' },
+    });
+    const pen = panel.element.querySelector<HTMLElement>('.on-rename');
+    const field = panel.element.querySelector<HTMLInputElement>('.on-rename-field');
+    if (pen === null || field === null) throw new Error('no rename controls');
+    const submit = (): void => {
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    };
+    pen.click();
+    expect(field.value).toBe('Ada');
+    // An unchanged name is no rename.
+    submit();
+    expect(renamed).toEqual([]);
+    pen.click();
+    field.value = 'Adam';
+    submit();
+    expect(renamed).toEqual(['Adam']);
+    panel.dispose();
+  });
+});

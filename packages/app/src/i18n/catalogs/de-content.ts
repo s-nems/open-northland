@@ -375,6 +375,31 @@ export const deContent = {
       summary:
         'Ein neutrales Lagerhaus bietet vier Eisen für eine Münze. Der Händler fährt Münzen vom heimischen Lagerhaus dorthin und bringt das Eisen zurück. Durch den Warenaustausch wird der Stamm freundlich. Wähle den Händler für den Bereich „Handel“ aus und das entfernte Lagerhaus für dessen Handelsangebote.',
     },
+    'trade-sea': {
+      title: 'Handel über das Meer',
+      summary:
+        'Ein Händler mit Handkarren und einem kleinen Schiff auf seiner Route bringt Holz zwischen Lagerhäusern auf zwei Inseln. Er trägt die Ladung in mehreren Gängen zum Schiff, fährt mit dem Karren an Bord hinüber und bringt sie ins ferne Lagerhaus. Wähle den Händler für die Schiffszeile im Handelsbereich oder das Schiff für seinen schreibgeschützten Laderaum.',
+    },
+    'trade-sea-pin': {
+      title: 'Ein Schiff einer Route zuweisen',
+      summary:
+        'Dieselben zwei Inseln ohne zugewiesenes Schiff: Die Route des Händlers braucht eines, und sein Handelsbereich sagt es. Wähle den Händler, drücke Schiff zuweisen und wähle das hervorgehobene Schiff. Der Händler belädt es und legt ab.',
+    },
+    'trade-sea-agreement': {
+      title: 'Handelsabkommen über das Meer',
+      summary:
+        'Das Lagerhaus eines befreundeten Stammes auf der Ostinsel bietet Eisen und Holz für Münzen. Ein Händler mit dem großen Schiff auf seiner Route bringt Münzen hinüber und holt Eisen zurück, vier für eine Münze. Sein Handkarren pendelt an beiden Ufern zwischen Schiff und Lagerhaus. Wähle den Händler, um im Handelsbereich das Schiff und das gewählte Handelsangebot zu sehen. Öffne das Diplomatiefenster für die Handelsangebote: Ist das Verhältnis nicht freundlich, sind sie ausgegraut.',
+    },
+    'trade-sea-carriers': {
+      title: 'Träger helfen dem Händler',
+      summary:
+        'Drei dem Schiff zugewiesene Träger helfen einem Händler, Holz zwischen Lagerhäusern auf zwei Inseln zu bringen: An jedem Ufer tragen sie neben seinem Handkarren je eine Einheit zwischen Lagerhaus und Schiffstür und fahren dazwischen mit. Sie helfen nur zwischen deinen eigenen Lagerhäusern. Wähle das Schiff, um sie auf ihren Plätzen zu sehen, der Kapitänsplatz bleibt der des Händlers. Strg und Klick auf den Platz eines Trägers lässt ihn aussteigen.',
+    },
+    'trade-sea-settlements': {
+      title: 'Vorräte zwischen Inseln ausgleichen',
+      summary:
+        'Auf jeder Insel stehen zwei Lager in einem Wegweisernetz, und beide Stationen der Route des Händlers stehen für ihre ganze Siedlung. Die Ostinsel wird auf 20 Ziegel und 20 Steine gehalten, geholt aus beiden Lagern im Westen, und ihr Holz geht nach Westen, bis in ihren zwei Lagern 30 bleiben. Wähle den Händler, um an beiden Stationen den aktiven Schalter „Siedlung“ zu sehen.',
+    },
     'trade-domestic': {
       title: 'Handel zwischen eigenen Lagerhäusern',
       summary:
@@ -444,6 +469,11 @@ export const deContent = {
       title: 'Werft',
       summary:
         'Eine Schreinerei der Stufe 4 am Ufer, deren Schreiner nacheinander das Schiff und das Katapult bauen sollen: Der Schiffsbauplatz entsteht im Wasser neben der Werkstatt, wobei der Schreiner vom Ufer aus arbeitet; der Katapultbauplatz entsteht an Land. Das zu Wasser gelassene Schiff liegt mit eingeholten Segeln am Ufer.',
+    },
+    'vehicle-ship-sites': {
+      title: 'Werften aller Völker',
+      summary:
+        'Die beiden Werften jedes Volkes, eine Spalte pro Volk: die Werft des Schiffs über der des großen Schiffs, jeweils mit Bauplätzen bei 30 % und 90 % über dem Schiff, das ein solcher Bauplatz vom Stapel lässt, am Ufer vertäut. Ein Bauplatz wächst als genau das Schiff, das er vom Stapel lässt.',
     },
     'vehicle-ox-yard': {
       title: 'Bau eines Ochsenkarrens',
@@ -529,6 +559,11 @@ export const deContent = {
       title: 'Fahnen für Abbauer, Jäger und Fischer mit Arbeitsplatz',
       summary:
         'Ein Abbauer, ein Jäger und ein Fischer arbeiten für das Hauptquartier, neben dem ein einzelner Baum steht und in dessen Nähe es weder Wild noch Wasser gibt. Der Abbauer hat eine Fahne in einem Wäldchen im Südosten, der Jäger eine an einer Hasenwiese weit im Osten, der Fischer eine am Ufer eines Teichs. Alle drei arbeiten an ihrer Fahne und bringen den Ertrag zum Hauptquartier, wo Fleisch und Fisch als Nahrung lagern, und der Baum am Hauptquartier bleibt stehen. Wähle einen von ihnen, um die Fahne in der Zeile „Arbeitsbereich“ im Siedlerfenster zu versetzen oder zu entfernen; ohne sie fällt der Abbauer den nahen Baum und die anderen stehen untätig am Hauptquartier.',
+    },
+    'tool-upgrade': {
+      title: 'Werkzeuge gegen bessere tauschen',
+      summary:
+        'Drei Abbauer mit Holzwerkzeug gehen zum Hauptquartier und holen sich dessen Eisenwerkzeug, weil der Assistent Holzwerkzeug ersetzt. Die angebrauchten Holzwerkzeuge gehen verloren, das unbenutzte kommt zurück ins Lager, und der Abbauer mit Eisenwerkzeug bleibt stehen.',
     },
     'gatherer-flag-follow': {
       title: 'Fahnen folgen den Rohstoffen',

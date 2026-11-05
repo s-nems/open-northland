@@ -53,10 +53,12 @@ import { type PresentationPack, presentationPack } from '../../presentation/pack
 import type { SessionHost } from '../../session/index.js';
 import { type BootPhase, type BootProgress, mountBootProgress } from '../../view/boot/progress.js';
 import { graphicsShaderWarmup } from '../../view/graphics/shader-warmup.js';
+import { webglAvailable } from '../../view/platform/browser-support.js';
 import {
   createWorldRenderer,
   haltOnFailedRestore,
   haltOnMissingContent,
+  haltOnMissingGraphics,
   loadLocalizedRealContent,
 } from '../../view/runtime/world-bootstrap.js';
 import { readStoredSettings, windowBacking } from '../../view/settings/store.js';
@@ -240,6 +242,10 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     plan.onBootProgress,
   );
   await boot.begin('graphics');
+  if (!webglAvailable()) {
+    haltOnMissingGraphics();
+    return null;
+  }
   // Before the renderer starts, so a map opened by its link compiles through every loading step.
   const shaders = graphicsShaderWarmup();
   const app = await createWindowPixiApp(canvas, windowBacking(readStoredSettings(), window.devicePixelRatio));

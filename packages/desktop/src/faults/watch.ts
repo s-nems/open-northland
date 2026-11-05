@@ -1,5 +1,13 @@
 import { release } from 'node:os';
-import { app, type BrowserWindow, dialog, type IpcMainInvokeEvent, ipcMain, powerMonitor } from 'electron';
+import {
+  app,
+  type BrowserWindow,
+  dialog,
+  type IpcMainInvokeEvent,
+  ipcMain,
+  powerMonitor,
+  session,
+} from 'electron';
 import {
   CLEAR_FAULTS_CHANNEL,
   FAULT_VERSIONS_CHANNEL,
@@ -8,6 +16,7 @@ import {
 } from './channels.js';
 import { crashPromptFor } from './crash-prompt.js';
 import { hungStack } from './hung-stack.js';
+import { machineFacts } from './machine-facts.js';
 import { createCrashReloadGuard } from './reload-guard.js';
 import type { ShellRun } from './shell-run.js';
 import type { FaultStore, FaultUpdate, NewFault, ShellFault } from './store.js';
@@ -35,6 +44,7 @@ function errorFault(error: unknown): NewFault {
     durationMs: null,
     stack: named ? (error.stack ?? `${error.name}: ${error.message}`) : String(error),
     url: null,
+    gpuStatus: null,
   };
 }
 
@@ -44,7 +54,13 @@ function errorFault(error: unknown): NewFault {
  * unhandled rejection, and a listener silences that warning, so this one prints it instead.
  */
 export function recordProcessFaults(store: FaultStore, run: ShellRun): void {
-  app.on('will-quit', () => run.quit());
+  app.on('will-quit', () => {
+    run.quit();
+    // Chromium writes localStorage to disk on a delay. The windows have closed by now, so this pushes
+    // their last writes (a setting, a session marker's removal) out before the process ends; whether
+    // that delay is what left markers after an ordinary quit on Windows is unconfirmed.
+    if (app.isReady()) session.defaultSession.flushStorageData();
+  });
   app.on('render-process-gone', (_event, _contents, details) => {
     if (details.reason !== 'clean-exit') run.childGone();
   });
@@ -65,12 +81,17 @@ export function recordProcessFaults(store: FaultStore, run: ShellRun): void {
         durationMs: null,
         stack: null,
         url: null,
+        // Tells a GPU process Chromium gave up on (WebGL off or in software) from one it restarts.
+        gpuStatus: { ...app.getGPUFeatureStatus() },
       }),
     );
   });
 }
 
-/** Build facts for a report; `osRelease` is the kernel's, `osVersion` the system's own number. */
+/**
+ * Build and machine facts for a report; `osRelease` is the kernel's, `osVersion` the system's own
+ * number. Free memory is read when the page builds the report, the moment the player saw the problem.
+ */
 function shellVersions(): Readonly<Record<string, string>> {
   return {
     app: app.getVersion(),
@@ -81,6 +102,11 @@ function shellVersions(): Readonly<Record<string, string>> {
     arch: process.arch,
     osRelease: release(),
     osVersion: process.getSystemVersion(),
+    ...machineFacts({
+      // Electron declares it only on macOS and Windows.
+      arm64Translation: app.runningUnderARM64Translation === true,
+      memoryKib: process.getSystemMemoryInfo(),
+    }),
   };
 }
 
@@ -115,6 +141,7 @@ export function watchWindowFaults(
         durationMs: null,
         stack: null,
         url,
+        gpuStatus: null,
       }),
     );
     if (win.isDestroyed()) return;
@@ -149,6 +176,7 @@ export function watchWindowFaults(
         durationMs: null,
         stack: null,
         url: contents.getURL(),
+        gpuStatus: null,
       }),
     );
     if (fault === undefined) return;

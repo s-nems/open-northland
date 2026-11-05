@@ -256,6 +256,7 @@ export interface ContentIr {
     footprint?: BuildingFootprint;
     prayerSite?: string;
     upgradeTarget?: number;
+    vehicleType?: number;
   }[];
   /** `baseJob` is the `jobtypes.ini` parent a job's animation lookups fall back through. */
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string; baseJob?: number }[];

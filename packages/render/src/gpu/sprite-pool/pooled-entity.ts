@@ -55,11 +55,11 @@ interface PooledEntityBase extends PresentationTrack {
   readonly bound: BindStamp;
 }
 
-/** One team-coloured layer: a character's batched {@link PalettedQuad}, or a vehicle's self-placing
+/** One team-coloured layer: a character's or ship yard site's batched {@link PalettedQuad}, or a vehicle's self-placing
  *  {@link PalettedSprite} mesh, whose shader also rolls the hull and blows wind through the sail. */
 export type PalettedLayerSprite = PalettedQuad | PalettedSprite;
 
-/** A settler or an indexed vehicle, drawing its layers through its LUT. */
+/** A settler, an indexed vehicle or a ship yard site, drawing its layers through its LUT. */
 export interface PalettedPooledEntity extends PooledEntityBase {
   readonly paletted: true;
   readonly sprites: PalettedLayerSprite[];

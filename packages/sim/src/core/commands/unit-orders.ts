@@ -223,9 +223,10 @@ export type UnitOrderCommand =
        * Aim one owned siege vehicle at `target`: an enemy unit, house or vehicle it keeps after (the
        * original's `h`, `i`, `k`), or a map point it batters (`l`). Outside the `hold` stance the
        * vehicle backs off, closes in or repositions as its weapon band demands; holding, it fires only
-       * on a target already inside the band and lets any other go. A goto under way stops at its next
-       * node when the target already lies inside the band, and otherwise finishes first. The order lapses when the target is gone. Refused with `vehicleMoveRefused` `noCommander`
-       * while nobody commands it.
+       * on a target already inside the band and lets any other go. A drive under way stops at its next
+       * node, unless it already chases this target. The order lapses when the target is gone. Refused
+       * with `vehicleMoveRefused`: `noCommander` while nobody commands it, `noPath` when no firing node
+       * reaches the target.
        */
       readonly kind: 'attackWithVehicle';
       readonly vehicle: Entity;
@@ -565,16 +566,6 @@ export type UnitOrderCommand =
        */
       readonly kind: 'marry';
       readonly entity: Entity;
-    }
-  | {
-      /**
-       * Give one owned settler the player's own name for it (`GivenName`). The name is trimmed; an empty
-       * one removes the given name, and one longer than `SETTLER_NAME_MAX_CHARS` code points or carrying
-       * a control character is refused. A hero keeps the name its job carries.
-       */
-      readonly kind: 'renameSettler';
-      readonly entity: Entity;
-      readonly name: string;
     }
   | {
       /**

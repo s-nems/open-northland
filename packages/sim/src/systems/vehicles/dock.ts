@@ -13,6 +13,7 @@ import { vehicleAnchor } from '../footprint/index.js';
 import { vehicleClearance } from '../footprint/vehicle-clearance.js';
 import { recordAiOrder } from '../orders/ai-lifecycle.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
+import { pinnedTraderAshore, turnToVehicle } from './crew.js';
 import {
   crewInside,
   dropHeldGoal,
@@ -21,6 +22,7 @@ import {
   refuseMove,
   startVehicleDrive,
   vehicleGroundBlocks,
+  vehicleRouteTo,
   vehicleWalkBlocks,
 } from './movement.js';
 import { type SeaRegions, seaRegions } from './sea-regions.js';
@@ -60,6 +62,37 @@ function dockCandidates(
   return out;
 }
 
+/** The first dock node around `point`, `dock` tried first when it is one, that `sails` finds a route to;
+ *  the ship's own node needs none. */
+function firstDockNode(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  anchor: HalfCellNode,
+  point: HalfCellNode,
+  dock: HalfCellNode | null,
+  sails: (node: NodeId) => boolean,
+): NodeId | null {
+  const type = contentIndex(ctx.content).vehicles.get(world.get(vehicle, Vehicle).vehicleType);
+  if (type === undefined) return null;
+  const here = terrain.nodeAt(anchor.hx, anchor.hy);
+  // After one candidate finds no route, the water the ship can reach is flooded once and only the
+  // candidates in it are searched, instead of a sea-wide search per ring node out of reach. Other ships
+  // are no wall, as a route passes through them where it cannot go around.
+  let reached: Uint8Array | undefined;
+  const ring = dockCandidates(world, ctx, terrain, vehicle, type, anchor, point);
+  const named = dock !== null && terrain.inBounds(dock.hx, dock.hy) ? terrain.nodeAt(dock.hx, dock.hy) : null;
+  const candidates =
+    named !== null && ring.includes(named) ? [named, ...ring.filter((n) => n !== named)] : ring;
+  for (const node of candidates) {
+    if (reached !== undefined && reached[node] !== REACHED) continue;
+    if (node === here || sails(node)) return node;
+    reached ??= reachableWater(terrain, vehicleGroundBlocks(world, ctx, terrain, vehicle, type), here);
+  }
+  return null;
+}
+
 /**
  * Sail `vehicle`, its crew inside, to the first dock node around `point` it finds a route to, `dock`
  * tried first when it is one, and remember the point as the shore it moors at. False, with the `vehicleNoPath` note, when no ring
@@ -74,25 +107,13 @@ export function startDock(
   point: HalfCellNode,
   dock: HalfCellNode | null = null,
 ): boolean {
-  const state = world.get(vehicle, Vehicle);
   const anchor = vehicleAnchor(world, vehicle);
-  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
-  if (anchor === null || type === undefined) return false;
+  if (anchor === null) return false;
   const here = terrain.nodeAt(anchor.hx, anchor.hy);
-  // After one candidate finds no route, the water the ship can reach is flooded once and only the
-  // candidates in it are searched, instead of a sea-wide search per ring node out of reach. Other ships
-  // are no wall, as a route passes through them where it cannot go around.
-  let reached: Uint8Array | undefined;
-  const ring = dockCandidates(world, ctx, terrain, vehicle, type, anchor, point);
-  const named = dock !== null && terrain.inBounds(dock.hx, dock.hy) ? terrain.nodeAt(dock.hx, dock.hy) : null;
-  const candidates =
-    named !== null && ring.includes(named) ? [named, ...ring.filter((n) => n !== named)] : ring;
-  for (const node of candidates) {
-    if (reached !== undefined && reached[node] !== REACHED) continue;
-    if (node !== here && !startVehicleDrive(world, ctx, terrain, vehicle, node)) {
-      reached ??= reachableWater(terrain, vehicleGroundBlocks(world, ctx, terrain, vehicle, type), here);
-      continue;
-    }
+  const node = firstDockNode(world, ctx, terrain, vehicle, anchor, point, dock, (candidate) =>
+    startVehicleDrive(world, ctx, terrain, vehicle, candidate),
+  );
+  if (node !== null) {
     if (node === here) endDrive(world, vehicle); // a goto under way ends here, moored
     dropHeldGoal(world, vehicle);
     const live = world.mut(vehicle, Vehicle);
@@ -132,9 +153,10 @@ function reachableWater(terrain: TerrainGraph, blocked: BlockOverlay, start: Nod
 
 /**
  * The dock order (`g`) - see the command doc. Refused with `vehicleNoCommander` while nobody commands
- * the ship. A crew still outside is boarded first: the point is held under the `docks` task and the
- * sail starts once everyone is inside (the original retries the order behind the crew's boarding).
- * Returns whether a dock drive or a held point now stands.
+ * the ship; a pinned trader who can reach its ship commands it from ashore, its route judged at once as
+ * a goto's is so it does not board for nothing. A crew still outside is boarded first: the point is held
+ * under the `docks` task and the sail starts once everyone is inside (the original retries the order
+ * behind the crew's boarding). Returns whether a dock drive or a held point now stands.
  */
 export function dockVehicle(
   world: World,
@@ -151,17 +173,35 @@ export function dockVehicle(
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (type === undefined || !isShipVehicle(type)) return false;
   dropVehicleOrderQueue(world, e);
-  if (vehicleCommander(state) === null) {
+  const trader = pinnedTraderAshore(world, ctx, e);
+  if (vehicleCommander(state) === null && trader === null) {
     refuseMove(world, ctx, e, 'noCommander');
     return false;
   }
   const point = { hx: command.x, hy: command.y };
   const dock = command.dock === undefined ? null : { hx: command.dock.x, hy: command.dock.y };
-  if (!crewInside(state)) {
+  if (
+    trader !== null &&
+    firstDockNode(
+      world,
+      ctx,
+      terrain,
+      e,
+      anchor,
+      point,
+      dock,
+      (node) => vehicleRouteTo(world, ctx, terrain, e, node) !== null,
+    ) === null
+  ) {
+    refuseMove(world, ctx, e, 'noPath');
+    return false;
+  }
+  if (trader !== null || !crewInside(state)) {
     const live = world.mut(e, Vehicle);
     live.heldGoal = point;
     live.heldDock = dock;
     live.task = 'docks';
+    if (trader !== null) turnToVehicle(world, trader);
     recordAiOrder(world, e, origin);
     return true;
   }
@@ -199,8 +239,8 @@ interface MooringMemo extends MooringSpots {
 }
 
 /** A few entries per world, by key, so a selected fleet spread over different waters does not evict
- *  one ship's answer with another's. A read-path cache feeding the overlay, the berth preview and the
- *  click gate, never a sim decision, so it is not hashed. */
+ *  one ship's answer with another's. It feeds the overlay, the berth preview, the click gate and a
+ *  trader's voyage; the spots are a function of the key alone, so it changes no result and is not hashed. */
 const mooringMemo = new WeakMap<World, Map<string, MooringMemo>>();
 /** The memo entries a world keeps, the least recently built dropped first. */
 const MOORING_MEMO_ENTRIES = 4;

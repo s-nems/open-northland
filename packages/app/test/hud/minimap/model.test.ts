@@ -14,6 +14,7 @@ import {
   minimapLayout,
   minimapToWorld,
   nextMinimapSize,
+  overviewLayout,
   pointOverMinimap,
   pointOverMinimapHole,
   refillChangedFogCells,
@@ -24,6 +25,7 @@ import {
   zoomMinimapLayout,
 } from '../../../src/hud/minimap/model.js';
 import { navBeamRect } from '../../../src/hud/nav-beam.js';
+import { TOP_BAR_HEIGHT } from '../../../src/hud/regions.js';
 import { MIN_UI_SCALE } from '../../../src/hud/ui-scale.js';
 import { cameraCenteredOnWorld } from '../../../src/view/camera/index.js';
 
@@ -185,6 +187,56 @@ describe('minimapLayout', () => {
     expect(tall.panel.w).toBe(short.panel.w);
     expect(tall.panel.h).toBe(short.panel.h);
     expect(tall.panel.y - short.panel.y).toBeCloseTo(300);
+  });
+});
+
+describe('overviewLayout', () => {
+  const SCREEN_W = 1920;
+  const SCREEN_H = 1080;
+  const UI = 1;
+  const ZOOM = 2;
+  const CASES = [
+    { shape: 'wide', bounds: terrainWorldBounds(128, 32) },
+    { shape: 'tall', bounds: terrainWorldBounds(16, 128) },
+  ] as const;
+  const screen = { width: SCREEN_W, height: SCREEN_H };
+
+  it.each(CASES)('stands a $shape map on the beam axis, between the top bar and the beam', ({ bounds }) => {
+    const { panel, inner, map } = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W);
+    expect(panel.x + panel.w / 2).toBeCloseTo(SCREEN_W / 2);
+    expect(panel.y).toBeGreaterThanOrEqual(TOP_BAR_HEIGHT);
+    expect(panel.y + panel.h).toBeLessThan(navBeamRect(screen, UI).y);
+    expect(panel.w).toBeLessThan(SCREEN_W);
+    expect(map.w / map.h).toBeCloseTo(bounds.width / bounds.height);
+    expect(map.w).toBeCloseTo(inner.w);
+    expect(map.h).toBeCloseTo(inner.h);
+  });
+
+  it.each(CASES)('zooms a $shape map inside the fixed frame, covering the hole', ({ bounds }) => {
+    const base = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W);
+    const center = { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2 };
+    const zoomed = zoomMinimapLayout(base, bounds, ZOOM, center);
+    expect(zoomed.panel).toBe(base.panel);
+    expect(zoomed.map.w).toBeCloseTo(base.map.w * ZOOM);
+    const shown = visibleMinimapRect(zoomed);
+    expect(shown.w).toBeCloseTo(base.inner.w);
+    expect(shown.h).toBeCloseTo(base.inner.h);
+  });
+
+  it('collapses on a screen too small to hold a map, without a negative size or NaN', () => {
+    const TINY_SIDE = 30;
+    const { bounds } = CASES[0];
+    const base = overviewLayout(bounds, TINY_SIDE, UISCALE, TINY_SIDE);
+    const zoomed = zoomMinimapLayout(base, bounds, ZOOM, { x: 0, y: 0 });
+    expect(base.scaleX).toBe(0);
+    expect(base.panel.w).toBe(0);
+    for (const layout of [base, zoomed]) {
+      for (const rect of [layout.panel, layout.inner, layout.map]) {
+        expect(Object.values(rect).every(Number.isFinite)).toBe(true);
+        expect(rect.w).toBeGreaterThanOrEqual(0);
+        expect(rect.h).toBeGreaterThanOrEqual(0);
+      }
+    }
   });
 });
 

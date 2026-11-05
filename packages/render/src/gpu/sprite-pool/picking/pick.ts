@@ -1,6 +1,6 @@
 import { Sprite } from 'pixi.js';
 import type { SelectionEllipse } from '../../../data/sprites/atlas.js';
-import { PalettedSprite } from '../../paletted-sprite/index.js';
+import { PalettedQuad, PalettedSprite } from '../../paletted-sprite/index.js';
 import type {
   EntityBounds,
   PalettedPooledEntity,
@@ -130,11 +130,18 @@ function plainSpritesHit(pe: PlainPooledEntity, wx: number, wy: number): boolean
 }
 
 /** {@link pixelHit} over a vehicle's self-placing meshes, whose frame sits at its draw offset from the feet
- *  anchor. */
+ *  anchor, or a ship yard site's quads. */
 function palettedPixelHit(pe: PalettedPooledEntity, wx: number, wy: number): boolean | undefined {
   let sampledEveryLayer = false;
   for (let i = 0; i < pe.sprites.length; i++) {
     const spr = pe.sprites[i];
+    if (spr instanceof PalettedQuad) {
+      const hit = quadHit(spr, pe.motion.drawX, pe.motion.drawY, wx, wy);
+      if (hit === undefined) return undefined;
+      sampledEveryLayer = true;
+      if (hit) return true;
+      continue;
+    }
     // A vehicle's meshes; its silhouettes live in `pe.shadows`, never here.
     if (!(spr instanceof PalettedSprite) || !spr.visible) continue;
     const frame = spr.frame;
@@ -157,6 +164,27 @@ function palettedPixelHit(pe: PalettedPooledEntity, wx: number, wy: number): boo
     if (maskSolidAt(mask, frame.x + lx, frame.y + ly)) return true;
   }
   return sampledEveryLayer ? false : undefined;
+}
+
+/** Whether the point lands on a solid texel of a visible quad's bound texture, whose crop already
+ *  excludes unbuilt rows; `false` for a hidden quad, `undefined` when its pixels are unreadable. */
+function quadHit(
+  spr: PalettedQuad,
+  drawX: number,
+  drawY: number,
+  wx: number,
+  wy: number,
+): boolean | undefined {
+  if (!spr.visible) return false;
+  const scale = spr.scale.x;
+  if (!(scale > 0)) return undefined;
+  const frame = spr.texture.frame;
+  const lx = Math.floor((wx - drawX - spr.offsetX) / scale);
+  const ly = Math.floor((wy - drawY - spr.offsetY) / scale);
+  if (lx < 0 || ly < 0 || lx >= frame.width || ly >= frame.height) return false;
+  const mask = alphaMaskOf(spr.texture.source);
+  if (mask === null) return undefined;
+  return maskSolidAt(mask, frame.x + lx, frame.y + ly);
 }
 
 /** The feet position an entity was drawn at this frame, not its raw snapshot tile, so an overlay reading

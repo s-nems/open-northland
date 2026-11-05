@@ -11,6 +11,7 @@ import {
   write,
 } from '../dom/parts/dom.js';
 import { attachTipLayer } from '../dom/parts/tip-layer.js';
+import { WINDOW_CORNERS } from '../dom/symbols.js';
 import type { Rect } from '../geometry.js';
 import { createMapOverlayToolbar, type MapOverlayControls } from '../map-overlays.js';
 import { createMinimapBacking } from './backing.js';
@@ -48,6 +49,8 @@ export interface MinimapChromeCallbacks {
   readonly onGround: (ground: MinimapGroundMode) => void;
   readonly onMarkerSize: (markerSize: MinimapMarkerSize) => void;
   readonly onColours: (colours: MinimapColourMode) => void;
+  /** Absent, the frame has no overview button: the overview's own frame. */
+  readonly onOverview?: () => void;
 }
 
 export interface MinimapChrome {
@@ -56,8 +59,18 @@ export interface MinimapChrome {
   setState(state: MinimapChromeState): void;
   setHidden(hidden: boolean): void;
   setFrame(frame: MinimapFrame): void;
+  /** Name the key of the overview button in its tip; `null` when the player left it unbound. */
+  setOverviewKey(key: string | null): void;
+  focusOverviewButton(): void;
+  /** Where a view drawn over the framed map mounts, inside the frame's stacking order. */
+  readonly root: HTMLElement;
   dispose(): void;
 }
+
+/** Design px between the frame's outer edge and a filter drawer opened over the overview. */
+const OVERVIEW_DRAWER_INSET = 34;
+
+const tipWithKey = (text: string, key: string | null): string => (key === null ? text : `${text} · ${key}`);
 
 const icon = (paths: string): string =>
   `<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">${paths}</svg>`;
@@ -66,6 +79,11 @@ const ICONS = {
   plus: icon('<path d="M5 10h10M10 5v10"/>'),
   reset: icon('<path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/><rect x="7" y="7" width="6" height="6"/>'),
   filters: icon('<path d="M3 5h14M3 10h14M3 15h14"/><path d="M7 3v4M13 8v4M8 13v4"/>'),
+  // A compass star over a sheet of map folded in three.
+  overview: icon(
+    '<path d="M2 5.2 7 3l6 2.2L18 3v11.8L13 17l-6-2.2L2 17z"/><path d="M7 3v2.4m0 7V14.8M13 5.2v2.2m0 7.2V17" stroke-width="1"/>' +
+      '<path d="m10 5.2 1.4 3.4L14.8 10l-3.4 1.4L10 14.8l-1.4-3.4L5.2 10l3.4-1.4z" fill="currentColor" stroke-width="0.6"/>',
+  ),
   colours: icon('<circle cx="10" cy="10" r="7"/><path d="M10 3a7 7 0 0 0 0 14z" fill="currentColor"/>'),
 };
 const LAYER_ICONS: Readonly<Record<MinimapLayer, string>> = {
@@ -149,13 +167,15 @@ export function createMinimapChrome(
   plane: HTMLElement,
   callbacks: MinimapChromeCallbacks,
   initialFrame: MinimapFrame,
+  place: 'corner' | 'overview',
   overlays?: MapOverlayControls,
 ): MinimapChrome {
   const copy = messages().hud.minimap;
   const root = element('section', 'on-minimap-chrome');
-  root.setAttribute('aria-label', copy.label);
+  root.dataset.place = place;
+  root.setAttribute('aria-label', place === 'corner' ? copy.label : copy.overview);
   root.setAttribute('aria-description', copy.interaction);
-  root.dataset.frame = initialFrame;
+  if (place === 'corner') root.dataset.frame = initialFrame;
   const backing = createMinimapBacking(root);
   const overlayToolbar = overlays === undefined ? null : createMapOverlayToolbar(root, overlays);
   let uiScale = 1;
@@ -186,9 +206,17 @@ export function createMinimapChrome(
     rail.setAttribute('aria-hidden', 'true');
     root.append(rail);
   }
-  const frame = element('div', 'on-minimap-chrome__frame');
+  const frame = element('div', 'on-minimap-chrome__frame', place === 'overview' ? WINDOW_CORNERS : '');
   frame.setAttribute('aria-hidden', 'true');
   root.append(frame);
+  let overviewButton: HTMLButtonElement | null = null;
+  if (callbacks.onOverview !== undefined) {
+    overviewButton = button('on-minimap-chrome__button on-minimap-chrome__overview', ICONS.overview);
+    overviewButton.setAttribute('aria-label', copy.overview);
+    setTip(overviewButton, copy.overview);
+    overviewButton.addEventListener('click', callbacks.onOverview);
+    root.append(overviewButton);
+  }
   const controls = element('div', 'on-minimap-chrome__controls');
   const control = (name: string, label: string, content: string, action: () => void): HTMLButtonElement => {
     const node = button(`on-minimap-chrome__button on-minimap-chrome__button--${name}`, content);
@@ -221,7 +249,7 @@ export function createMinimapChrome(
   const filtersOpen = (): boolean => popover.dataset.open === 'true';
   const head = element('div', 'on-minimap-chrome__filters-head');
   const legend = element('h3', 'on-minimap-chrome__legend');
-  legend.id = 'on-minimap-layers-legend';
+  legend.id = `on-minimap-${place}-layers-legend`;
   legend.textContent = copy.filters;
   let allShown = true;
   const allToggle = button('on-minimap-chrome__all');
@@ -246,7 +274,7 @@ export function createMinimapChrome(
     filterInputs.set(layer, input);
   }
   const scopeLegend = element('h3', 'on-minimap-chrome__legend on-minimap-chrome__legend--scope');
-  scopeLegend.id = 'on-minimap-scope-legend';
+  scopeLegend.id = `on-minimap-${place}-scope-legend`;
   scopeLegend.textContent = copy.scope;
   setTip(scopeLegend, copy.scopeNote);
   const scopes = radioChoices(MINIMAP_SCOPES, scopeLegend.id, copy.scopes, copy.scopeTips, callbacks.onScope);
@@ -255,7 +283,7 @@ export function createMinimapChrome(
   noSeatNote.textContent = copy.scopeNoSeat;
   noSeatNote.hidden = true;
   const groundLegend = element('h3', 'on-minimap-chrome__legend on-minimap-chrome__legend--section');
-  groundLegend.id = 'on-minimap-ground-legend';
+  groundLegend.id = `on-minimap-${place}-ground-legend`;
   groundLegend.textContent = copy.ground;
   const grounds = radioChoices(
     MINIMAP_GROUND_MODES,
@@ -265,7 +293,7 @@ export function createMinimapChrome(
     callbacks.onGround,
   );
   const markersLegend = element('h3', 'on-minimap-chrome__legend on-minimap-chrome__legend--section');
-  markersLegend.id = 'on-minimap-markers-legend';
+  markersLegend.id = `on-minimap-${place}-markers-legend`;
   markersLegend.textContent = copy.markerSize;
   const markers = radioChoices(
     MINIMAP_MARKER_SIZES,
@@ -276,7 +304,7 @@ export function createMinimapChrome(
     true,
   );
   const coloursLegend = element('h3', 'on-minimap-chrome__legend on-minimap-chrome__legend--follow');
-  coloursLegend.id = 'on-minimap-colours-legend';
+  coloursLegend.id = `on-minimap-${place}-colours-legend`;
   coloursLegend.textContent = copy.colours;
   const colours = radioChoices(
     MINIMAP_COLOUR_MODES,
@@ -306,9 +334,15 @@ export function createMinimapChrome(
     const height = bounds.height / uiScale;
     const drawerWidth = popover.offsetWidth;
     const drawerHeight = popover.offsetHeight;
-    const right = root.offsetLeft + root.offsetWidth + 8;
-    const x = Math.max(4, Math.min(right, width - drawerWidth - 4));
-    let y = root.offsetTop + (root.offsetHeight - drawerHeight) / 2;
+    // The overview has the HUD at its sides, so its drawer opens over the map, under its controls.
+    const x =
+      place === 'overview'
+        ? root.offsetLeft + OVERVIEW_DRAWER_INSET
+        : Math.max(4, Math.min(root.offsetLeft + root.offsetWidth + 8, width - drawerWidth - 4));
+    let y =
+      place === 'overview'
+        ? root.offsetTop + OVERVIEW_DRAWER_INSET
+        : root.offsetTop + (root.offsetHeight - drawerHeight) / 2;
     const beam = plane.querySelector<HTMLElement>('.on-beam');
     if (beam?.checkVisibility()) {
       const beamBounds = beam.getBoundingClientRect();
@@ -357,10 +391,13 @@ export function createMinimapChrome(
     if (event.relatedTarget instanceof Node && !root.contains(event.relatedTarget)) showFilters(false);
   });
   root.append(controls, popover);
-  plane.append(root);
+  // First in the plane, under the windows sharing its z-index.
+  if (place === 'overview') plane.prepend(root);
+  else plane.append(root);
 
   let lastLayout = '';
   return {
+    root,
     setLayout: (panel, visibleMap, scale) => {
       uiScale = scale;
       backing.setLayout(panel, visibleMap, scale);
@@ -433,6 +470,10 @@ export function createMinimapChrome(
     setFrame: (next) => {
       root.dataset.frame = next;
     },
+    setOverviewKey: (key) => {
+      if (overviewButton !== null) setTip(overviewButton, tipWithKey(copy.overview, key));
+    },
+    focusOverviewButton: () => overviewButton?.focus({ preventScroll: true }),
     dispose: () => {
       showFilters(false);
       document.removeEventListener('pointerdown', onOutsidePress, true);

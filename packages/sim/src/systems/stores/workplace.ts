@@ -188,7 +188,7 @@ export function workplaceStocksGood(
  * never operates a craft. Approximation: the readable rule files carry no transport flag, so this keys on
  * the content job's stable `'carrier'` id slug.
  */
-export function isCarrierJob(ctx: SystemContext, jobType: number): boolean {
+export function isCarrierJob(ctx: ContentContext, jobType: number): boolean {
   const job = contentIndex(ctx.content).jobs.get(jobType);
   return job !== undefined && isCarrierJobId(job.id);
 }

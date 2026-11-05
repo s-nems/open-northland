@@ -1,5 +1,5 @@
 import { type EntitySnapshot, systems, TRADE_LIMIT_NONE, type TraderView } from '@open-northland/sim';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   JOB_BUILDER,
   JOB_CARRIER,
@@ -13,6 +13,7 @@ import {
   JOB_TRADER,
   JOB_WOMAN,
 } from '../../../../src/catalog/jobs.js';
+import { installPetNames, petNamesOf } from '../../../../src/game/character-names/pet-names.js';
 import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
 import {
   BUILDING_HOME_00,
@@ -103,14 +104,22 @@ function workshop(ctx: UnitPanelModelContext): { type: number; operator: number;
 }
 
 describe('the settler panel model', () => {
-  it('names a settler by the player-given name over the generated one, and the map name over both', () => {
+  afterEach(() => installPetNames(petNamesOf()));
+
+  it('names a settler by the player’s own name over the generated one, and the map name over both', () => {
+    const pet = petNamesOf();
+    installPetNames(pet);
+    pet.set({ entity: SETTLER, pool: 'viking-female', raw: 'Ragna' }, 'Bjorn');
     const named = settlerModel([
       {
         id: SETTLER,
-        components: owned({ Settler: { tribe: 1, jobType: JOB_COLLECTOR }, GivenName: { name: 'Bjorn' } }),
+        components: owned({
+          Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+          NameIdentity: { pool: 'viking-female', name: 'Ragna' },
+        }),
       },
     ]);
-    expect(named.name).toBe('Bjorn');
+    expect(named.name).toBe('Bjorn (Ragna)');
 
     const scripted = settlerModel(
       [
@@ -118,7 +127,7 @@ describe('the settler panel model', () => {
           id: SETTLER,
           components: owned({
             Settler: { tribe: 1, jobType: JOB_COLLECTOR },
-            GivenName: { name: 'Bjorn' },
+            NameIdentity: { pool: 'viking-female', name: 'Ragna' },
             ScriptedName: { stringId: 7 },
           }),
         },
@@ -126,6 +135,24 @@ describe('the settler panel model', () => {
       { ...sandboxCtx(), mapText: (id) => (id === 7 ? 'Ykol' : undefined) },
     );
     expect(scripted.name).toBe('Ykol');
+  });
+
+  it('offers a rename for the seat’s own person alone, not a hero, a scripted character or a kept animal', () => {
+    // The sandbox declares no hero, so one is added the way a mission map's content carries it.
+    const base = sandboxCtx();
+    const soldier = base.jobs.find((job) => job.typeId === JOB_SOLDIER);
+    if (soldier === undefined) throw new Error('the sandbox has no soldier');
+    const ctx = {
+      ...base,
+      jobs: [...base.jobs, { ...soldier, id: 'hero_sword_bjarni', typeId: JOB_HERO_SWORD }],
+    };
+    const person = { Settler: { tribe: 1, jobType: JOB_COLLECTOR }, Person: { person: true } };
+    const renameOf = (components: Record<string, unknown>) =>
+      settlerModel([{ id: SETTLER, components: owned(components) }], ctx).rename;
+    expect(renameOf(person)).toEqual({ given: '' });
+    expect(renameOf({ ...person, Settler: { tribe: 1, jobType: JOB_HERO_SWORD } })).toBeNull();
+    expect(renameOf({ ...person, ScriptedName: { stringId: 7 } })).toBeNull();
+    expect(renameOf({ Settler: { tribe: 1, jobType: JOB_COLLECTOR } })).toBeNull();
   });
 
   it('links the workplace, the home, the spouse and the growing child by entity id', () => {
@@ -522,7 +549,7 @@ describe('the settler panel model', () => {
       { ...sandboxCtx(), diplomacyStance: () => 'neutral' },
     );
     expect(model.foreign).toBe(true);
-    expect(model.renamable).toBe(false);
+    expect(model.rename).toBeNull();
     expect(model.bars.map((bar) => bar.label)).toEqual([messages().hud.health]);
     expect(model.workplace).toMatchObject({ target: { id: WORKSHOP }, assign: null, remove: null });
     expect(model.home).toBeNull();
@@ -564,6 +591,8 @@ describe('the settler panel model', () => {
           offers: [],
           settlement: true,
           settles: true,
+          sharesSettlement: false,
+          settlementSuspended: false,
         },
         {
           slot: 1,
@@ -575,6 +604,8 @@ describe('the settler panel model', () => {
           ],
           settlement: false,
           settles: false,
+          sharesSettlement: false,
+          settlementSuspended: false,
         },
       ],
       current: 1,
@@ -586,6 +617,9 @@ describe('the settler panel model', () => {
       takeUpTo: AGREEMENT_UP_TO,
       cart: null,
       cargo: [],
+      ship: null,
+      shipCargo: [],
+      shipState: 'notNeeded',
     };
     const model = settlerModel(
       [
@@ -638,6 +672,8 @@ describe('the settler panel model', () => {
           offers: [],
           settlement: false,
           settles: false,
+          sharesSettlement: false,
+          settlementSuspended: false,
         },
         {
           slot: 1,
@@ -647,6 +683,8 @@ describe('the settler panel model', () => {
           offers: [],
           settlement: false,
           settles: false,
+          sharesSettlement: false,
+          settlementSuspended: false,
         },
       ],
       current: 0,
@@ -658,6 +696,9 @@ describe('the settler panel model', () => {
       takeUpTo: TRADE_LIMIT_NONE,
       cart: null,
       cargo: [],
+      ship: null,
+      shipCargo: [],
+      shipState: 'notNeeded',
     };
     // Wood marked at A too: balanced, so it carries no limits.
     const both: TraderView = {

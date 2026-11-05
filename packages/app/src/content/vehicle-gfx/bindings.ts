@@ -2,6 +2,7 @@ import { UNLOADED_GOOD_TYPE, type VehicleGraphics } from '@open-northland/data';
 import {
   type ClothIndexRanges,
   type FrameListAnim,
+  type ShipYardSites,
   VEHICLE_ATTACK_TICKS,
   type VehicleBinding,
   type VehicleLook,
@@ -205,6 +206,7 @@ export function buildVehicleBinding(
     readonly ships?: ReadonlySet<number>;
     /** The palette family whose LUT loaded; its rows bind the indexed body. */
     readonly ownerFamily?: string;
+    readonly shipYards?: ShipYardSites;
   } = {},
 ): VehicleBinding | undefined {
   const byTribe: Record<number, Record<number, VehicleLook>> = {};
@@ -220,5 +222,9 @@ export function buildVehicleBinding(
   if (!any) return undefined;
   borrowBaseDrives(byTribe, fallbackTribe);
   const tribes: Record<number, VehicleTribeLooks> = byTribe;
-  return { byTribe: tribes, fallbackTribe };
+  return {
+    byTribe: tribes,
+    fallbackTribe,
+    ...(options.shipYards !== undefined ? { shipYards: options.shipYards } : {}),
+  };
 }

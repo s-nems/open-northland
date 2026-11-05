@@ -2,15 +2,21 @@ import type { VehicleType } from '@open-northland/data';
 import {
   AttackOrder,
   Engagement,
+  Fleeing,
+  HaulingCart,
   HuntFocus,
+  hasFreeOrdinarySeat,
   hasFreeSeat,
   ownerOf,
+  PlayerOrder,
   Position,
   Rider,
   Settler,
   seatPassenger,
   setSeatInside,
+  TradeShip,
   Vehicle,
+  vehicleCommander,
   vehiclePassengers,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
@@ -29,13 +35,17 @@ import {
   vehicleDoorNode,
 } from '../footprint/index.js';
 import { clearNavState } from '../movement/nav-state.js';
+import { recordAiOrder } from '../orders/ai-lifecycle.js';
 import { anchorAtFeet } from '../orders/combat.js';
 import { isOrderableSettler } from '../orders/guards.js';
 import { sendUnit } from '../orders/movement.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
+import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { stepOut } from '../settlers/indoors.js';
+import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { endChat } from '../social/gossip/drive.js';
+import { isCarrierJob } from '../stores/workplace.js';
 import { abandonCargoRun } from './cargo.js';
 import { dropHeldGoal, endMarch, vacateSeat } from './movement.js';
 
@@ -49,8 +59,8 @@ export function passengerJobAllowed(type: VehicleType, jobType: number | null): 
 
 /**
  * Whether the attach order would seat `settler` on `vehicle`: the settler's own vehicle, an own vehicle
- * whose type admits the settler's job with a seat free, and a door the settler can walk to: on the
- * settler's own continent, a moored ship's shore or a land vehicle's node (a ship at sea has none). The
+ * whose type admits the settler's job with a seat free ({@link seatOpenTo}), and a door the settler can
+ * walk to: on the settler's own continent, a moored ship's shore or a land vehicle's node (a ship at sea has none). The
  * ring's "Assign Vehicle" pick lights vehicles by it. {@link attachToVehicle} applies the same gates but
  * the walk, which the boarding judges after the attach as the original does, detaching a rider that
  * cannot reach the door.
@@ -62,12 +72,24 @@ export function canAttachToVehicle(world: World, ctx: MapContext, settler: Entit
   if (world.tryGet(settler, Rider)?.vehicle === vehicle) return true;
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (type === undefined || !passengerJobAllowed(type, world.get(settler, Settler).jobType)) return false;
-  return state.hauler === null && hasFreeSeat(state) && doorReachable(world, ctx, settler, vehicle);
+  return seatOpenTo(world, ctx, vehicle, settler) && doorReachable(world, ctx, settler, vehicle);
+}
+
+/** Whether the vehicle's lock leaves `settler` a seat: any free seat on a vehicle nobody holds, an ordinary
+ *  one for a carrier on a pinned ship. */
+function seatOpenTo(world: World, ctx: ContentContext, vehicle: Entity, settler: Entity): boolean {
+  const state = world.get(vehicle, Vehicle);
+  if (state.hauler === null) return hasFreeSeat(state);
+  const jobType = world.get(settler, Settler).jobType;
+  if (jobType === null || !isCarrierJob(ctx, jobType)) return false;
+  return pinnedTraderOf(world, vehicle) !== null && hasFreeOrdinarySeat(state);
 }
 
 /**
  * Whether `settler` stands on the continent of `vehicle`'s door. A vehicle riding a carrier or a
- * settler aboard one is judged where it would step out. True without a map, where nothing walks.
+ * settler aboard one is judged where it would step out. A walker mid-step can round onto the unwalkable
+ * node beside its leg, which on a one-node strip of shore is the sea; it counts as reachable until it
+ * stands on ground. True without a map, where nothing walks.
  */
 export function doorReachable(world: World, ctx: MapContext, settler: Entity, vehicle: Entity): boolean {
   const terrain = ctx.terrain;
@@ -83,10 +105,44 @@ export function doorReachable(world: World, ctx: MapContext, settler: Entity, ve
         ? null
         : landingOf(world, ctx, rider.vehicle);
   if (from === null || !terrain.inBounds(from.hx, from.hy)) return false;
+  const at = terrain.nodeAt(from.hx, from.hy);
   return (
-    terrain.componentOf(terrain.nodeAt(from.hx, from.hy)) ===
-    terrain.componentOf(terrain.nodeAt(door.hx, door.hy))
+    !terrain.isWalkable(at) ||
+    terrain.componentOf(at) === terrain.componentOf(terrain.nodeAt(door.hx, door.hy))
   );
+}
+
+/** The trader `vehicle` is pinned to, by both ends of the pin; null for a hauled cart or any other vehicle. */
+export function pinnedTraderOf(world: World, vehicle: Entity): Entity | null {
+  const hauler = world.tryGet(vehicle, Vehicle)?.hauler ?? null;
+  return hauler !== null && world.tryGet(hauler, TradeShip)?.vehicle === vehicle ? hauler : null;
+}
+
+/**
+ * The trader pinned to `vehicle` who answers for its commander from ashore: nobody holds the commander
+ * seat, the trader rides no vehicle and can walk to the door. A ship holds an order for it as for a crew
+ * still outside. Null for anything else; a cart's hauler has no `TradeShip` naming the cart.
+ */
+export function pinnedTraderAshore(world: World, ctx: MapContext, vehicle: Entity): Entity | null {
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined || state.hauler === null || vehicleCommander(state) !== null) return null;
+  const trader = state.hauler;
+  if (world.tryGet(trader, TradeShip)?.vehicle !== vehicle || world.has(trader, Rider)) return null;
+  return doorReachable(world, ctx, trader, vehicle) ? trader : null;
+}
+
+/** Turn `e`, standing on the map, to its vehicle: free to move, it drops its own walk and its fight as
+ *  the ordinary walk order does; held by an atomic, it finishes it first, so a unit it is moving lands. */
+export function turnToVehicle(world: World, e: Entity): void {
+  if (!world.has(e, Position) || atomicHoldsSettler(world, e)) return;
+  recordAiOrder(world, e);
+  clearNavState(world, e);
+  world.remove(e, PlayerOrder);
+  world.remove(e, Engagement);
+  world.remove(e, AttackOrder);
+  world.remove(e, HuntFocus);
+  world.remove(e, Fleeing);
+  wakeIdle(world, e);
 }
 
 /** Whether `vehicle` is a ship lying at sea: its riders may neither step in nor out. */
@@ -145,7 +201,7 @@ export function attachToVehicle(
     refuseRider(world, ctx, e, 'cannotEnter');
     return false;
   }
-  if (state.hauler !== null || !seatPassenger(world, vehicle, e)) {
+  if (!seatOpenTo(world, ctx, vehicle, e) || !seatPassenger(world, vehicle, e)) {
     refuseCrew(world, ctx, vehicle, 'noRoom');
     return false;
   }
@@ -254,10 +310,31 @@ export function placeOnNode(world: World, e: Entity, point: HalfCellNode): void 
   }
 }
 
-/** {@link setDownRider}, anchoring a fighter where it lands so it does not walk back to where it boarded. */
+/** Clear the slot `vehicle` holds on `carrier` and the vehicle's link back. */
+export function releaseCarried(world: World, carrier: Entity, vehicle: Entity): void {
+  const carrierState = world.tryGet(carrier, Vehicle);
+  if (carrierState !== undefined) {
+    const slot = carrierState.vehicles.findIndex((seat) => seat !== null && seat.entity === vehicle);
+    if (slot >= 0) world.mut(carrier, Vehicle).vehicles[slot] = null;
+  }
+  const live = world.tryMut(vehicle, Vehicle);
+  if (live !== undefined) {
+    live.carrier = null;
+    if (live.task === 'boardsShip') live.task = 'none';
+  }
+}
+
+/** {@link setDownRider}, anchoring a fighter where it lands so it does not walk back to where it boarded;
+ *  a rider's own hauling cart carried on the same ship comes off with it and stands on `point`. */
 export function landRider(world: World, ctx: SystemContext, rider: Entity, point: HalfCellNode): void {
+  const vehicle = world.tryGet(rider, Rider)?.vehicle;
+  const cart = world.tryGet(rider, HaulingCart)?.vehicle;
   setDownRider(world, rider, point);
   anchorAtFeet(world, ctx, rider);
+  if (cart === undefined || vehicle === undefined) return;
+  if (world.tryGet(cart, Vehicle)?.carrier !== vehicle) return;
+  placeOnNode(world, cart, point);
+  releaseCarried(world, vehicle, cart);
 }
 
 /** Put a rider back on the map at `point`, its seat now outside. */

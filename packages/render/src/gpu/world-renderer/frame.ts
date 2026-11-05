@@ -44,7 +44,7 @@ export interface WorldEnhancements {
   /** Structural scars, fire, embers and impact debris on damaged buildings. */
   readonly buildingDamage: boolean;
   /** A map script's night lit by its fires, houses and settlers; off, the night is a flat grade. */
-  readonly nightLights: boolean;
+  readonly dayNight: boolean;
 }
 
 /** The baseline renderer: every enhancement off. */
@@ -56,7 +56,7 @@ export const BASELINE_ENHANCEMENTS: WorldEnhancements = {
   environmentMotion: false,
   groundedBuildings: false,
   buildingDamage: false,
-  nightLights: false,
+  dayNight: false,
 };
 
 export interface WorldRendererOptions {

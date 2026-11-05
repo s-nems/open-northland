@@ -1,8 +1,15 @@
 import { VERTEX_PALETTE_ENTRIES, type VertexPalette } from '@open-northland/data';
+import type { DayNightMode } from '@open-northland/lockstep';
 import { gradeLuma, type LightGrade, NEUTRAL_GRADE, shownGrade } from '@open-northland/render/data';
 import type { SimEvent } from '@open-northland/sim';
 import { loadVertexPalette } from '../../content/vertex-palette.js';
 import type { SessionHost } from '../../session/index.js';
+import {
+  cycleStepAtTick,
+  type ScriptedCycleProbe,
+  scriptsDayNightCycle,
+  scriptsWeatherTints,
+} from './day-night.js';
 
 /** Share of the map's cells one palette index must cover to be the scene's tint rather than a local one. */
 export const WHOLE_MAP_SHARE = 0.6;
@@ -20,9 +27,9 @@ const LOCAL_GLOW_SHARE = 0.2;
 export interface ScriptTintSplit {
   /** The palette colour the whole-map tint asks for; null for daylight or no whole-map tint. */
   readonly scene: LightGrade | null;
-  /** RGB terrain multipliers per map cell over the scene's multiply, which is {@link scene} as the
-   *  scene light shows it, clamped to 1; a cell of the whole-map tint is 1, so the ground brightens
-   *  only as the scene pass does. */
+  /** RGB terrain multipliers per map cell over the scene's multiply: the map's tint as the scene
+   *  light shows it, clamped to 1; a cell of the whole-map tint is 1, so the ground brightens only as
+   *  the scene pass does. */
   readonly colors: Float32Array;
 }
 
@@ -32,6 +39,16 @@ function channels(color: number): LightGrade {
     ((color >>> 8) & 255) / NEUTRAL_CHANNEL,
     (color & 255) / NEUTRAL_CHANNEL,
   ];
+}
+
+const shown = (grade: LightGrade | null): LightGrade =>
+  grade === null ? NEUTRAL_GRADE : shownGrade(grade, [1, 1, 1]);
+
+/** `cycle` under `tint`'s darkening, or null for plain daylight. */
+function darkenedBy(cycle: LightGrade, tint: LightGrade | null): LightGrade | null {
+  const dark = (c: number): number => (cycle[c] ?? 1) * Math.min(1, tint?.[c] ?? 1);
+  const scene: LightGrade = [dark(0), dark(1), dark(2)];
+  return scene.every((channel) => channel === 1) ? null : scene;
 }
 
 /** The palette index covering at least {@link WHOLE_MAP_SHARE} of `tints`, or null. */
@@ -49,25 +66,37 @@ function dominantIndex(tints: Uint8Array): number | null {
  * is the colour the script asked for. Under a darkening scene a brightening local tint (a fire's glow)
  * keeps {@link LOCAL_GLOW_SHARE} of its excess instead: the night lights brighten it again, and divided
  * it would blow out under them. The dominant index and the neutral entry leave the ground at 1.
- * `pinned` replaces the dominant index (`?tint=`); `out` is reused when it fits.
+ * `sceneFor` picks the scene index from the dominant one; the neutral entry holds a daylight the
+ * dominant index does not reach the ground under. `cycle` is a light of the game's own under the map's
+ * tint: the tint darkens it and cannot brighten it, so a clearing's sun never shines at night. No
+ * script cleared the ground for that light, so local tints are divided by the map's tint alone and
+ * darken with the cycle. `out` is reused when it fits.
  */
 export function splitScriptTints(
   tints: Uint8Array,
   palette: readonly number[],
   out?: Float32Array,
-  pinned: number | null = null,
+  sceneFor: (dominant: number | null) => number | null = (dominant) => dominant,
+  cycle: LightGrade | null = null,
 ): ScriptTintSplit {
   const colors = out?.length === tints.length * RGB ? out : new Float32Array(tints.length * RGB);
-  const sceneIndex = pinned ?? dominantIndex(tints);
-  const sceneColor = sceneIndex === null ? undefined : palette[sceneIndex];
-  const scene = sceneIndex !== NEUTRAL_INDEX && sceneColor !== undefined ? channels(sceneColor) : null;
-  const grade = scene === null ? NEUTRAL_GRADE : shownGrade(scene, [1, 1, 1]);
-  const darkened = gradeLuma(grade) < 1;
+  const dominant = dominantIndex(tints);
+  const chosen = sceneFor(dominant);
+  const writtenColor = chosen === null ? undefined : palette[chosen];
+  const written = chosen !== NEUTRAL_INDEX && writtenColor !== undefined ? channels(writtenColor) : null;
+  const scene = cycle === null ? written : darkenedBy(cycle, written);
+  const divisor = shown(written);
+  const darkened = gradeLuma(shown(scene)) < 1;
   const byIndex = new Float32Array(VERTEX_PALETTE_ENTRIES * RGB);
   for (let index = 0; index < VERTEX_PALETTE_ENTRIES; index++) {
     const color = palette[index];
     const local =
-      index === NEUTRAL_INDEX || index === sceneIndex || color === undefined ? null : channels(color);
+      index === NEUTRAL_INDEX ||
+      index === chosen ||
+      (index === dominant && chosen === NEUTRAL_INDEX) ||
+      color === undefined
+        ? null
+        : channels(color);
     const glows = darkened && local !== null && gradeLuma(local) > 1;
     for (let c = 0; c < RGB; c++) {
       const want = local?.[c] ?? 1;
@@ -76,7 +105,7 @@ export function splitScriptTints(
           ? 1
           : glows
             ? 1 + (want - 1) * LOCAL_GLOW_SHARE
-            : want / Math.max(MIN_SCENE_CHANNEL, Math.min(1, grade[c] ?? 1));
+            : want / Math.max(MIN_SCENE_CHANNEL, Math.min(1, divisor[c] ?? 1));
     }
   }
   for (let cell = 0; cell < tints.length; cell++) {
@@ -125,28 +154,70 @@ interface ScriptTintSurface {
  *  and never after `dispose`. */
 export interface ScriptTints {
   readonly onEvents: (events: readonly SimEvent[]) => void;
+  /** Per rendered frame: moves the game's own cycle on when its step changes. */
+  readonly frame: (tick: number) => void;
+  /** The player's day and night setting; off holds the cycle at daylight. */
+  readonly setDayNightShown: (shown: boolean) => void;
+  /** Whether weather shows: the match's rule and the player's setting. Off clears the tints of a
+   *  script's weather. */
+  readonly setWeatherShown: (shown: boolean) => void;
   readonly dispose: () => void;
 }
 
 export interface ScriptTintOptions {
   /** `?tint=`: the palette index held as the whole-map tint in this view. */
   readonly pinnedIndex?: number | null;
+  /** The match's day and night rule. */
+  readonly dayNight?: DayNightMode;
+  /** The player's day and night setting. */
+  readonly dayNightShown?: boolean;
+  /** Whether weather shows: the match's rule and the player's setting. */
+  readonly weatherShown?: boolean;
+  /** The match tick the world was loaded at, which places the game's own cycle. */
+  readonly tick?: number;
 }
 
 export async function mountScriptTints(
   host: Pick<SessionHost, 'missions' | 'landscapeEdits'>,
   surface: ScriptTintSurface,
-  { pinnedIndex = null }: ScriptTintOptions = {},
+  {
+    pinnedIndex = null,
+    dayNight = 'map',
+    dayNightShown = true,
+    weatherShown = true,
+    tick = 0,
+  }: ScriptTintOptions = {},
 ): Promise<ScriptTints> {
-  const scripted =
-    host.missions?.missions.some((mission) =>
-      mission.results.some((op) => op.opcode === 'SetVertexColor' || op.opcode === 'SetVertexColorOnLand'),
-    ) === true;
-  // The palette is fetched once, and only for a map whose author or script tints a cell.
+  const results = (host.missions?.missions ?? []).flatMap((mission) => mission.results);
+  const tintOps = results.flatMap((op): ScriptedCycleProbe[] =>
+    op.opcode === 'SetVertexColor' || op.opcode === 'SetVertexColorOnLand'
+      ? [{ range: op.range, index: op.amount }]
+      : [],
+  );
+  const scripted = tintOps.length > 0;
+  const setsWeather = results.some((op) => op.opcode === 'SetWeather');
+  let light: 'cycle' | 'weather' | 'fixed' | null = null;
+  const scriptLight = (palette: readonly number[]): 'cycle' | 'weather' | 'fixed' => {
+    light ??= scriptsDayNightCycle(tintOps, (index) => {
+      const color = palette[index];
+      return color === undefined ? null : channels(color);
+    })
+      ? 'cycle'
+      : setsWeather && scriptsWeatherTints(tintOps, palette)
+        ? 'weather'
+        : 'fixed';
+    return light;
+  };
+  let cycleShown = dayNightShown;
+  let weatherOn = weatherShown;
+  let step = cycleStepAtTick(tick);
+  const ownCycle = dayNight === 'on';
+  // The palette is fetched once, and only for a map with a tint or a light of the game's own to show.
   let paletteLoad: Promise<VertexPalette | null> | null = null;
   const paletteFor = (tints: Uint8Array): Promise<VertexPalette | null> => {
     if (paletteLoad === null) {
-      const tinted = scripted || pinnedIndex !== null || tints.some((index) => index !== NEUTRAL_INDEX);
+      const tinted =
+        scripted || ownCycle || pinnedIndex !== null || tints.some((index) => index !== NEUTRAL_INDEX);
       paletteLoad = tinted ? loadVertexPalette() : Promise.resolve(null);
     }
     return paletteLoad;
@@ -168,7 +239,18 @@ export async function mountScriptTints(
       const palette = await paletteFor(edits.tints);
       untinted = palette === null;
       if (palette === null || request !== asked || disposed) return;
-      const split = splitScriptTints(edits.tints, palette, cellColors, pinnedIndex);
+      const lit = scriptLight(palette);
+      const held =
+        (lit === 'cycle' && (dayNight === 'off' || !cycleShown)) || (lit === 'weather' && !weatherOn);
+      const cycleColor =
+        ownCycle && cycleShown && pinnedIndex === null && lit !== 'cycle' ? palette[step.index] : undefined;
+      const split = splitScriptTints(
+        edits.tints,
+        palette,
+        cellColors,
+        (dominant) => pinnedIndex ?? (held ? NEUTRAL_INDEX : dominant),
+        cycleColor === undefined ? null : channels(cycleColor),
+      );
       cellColors = split.colors;
       nodeColors = cellColorsToCorners(cellColors, edits.tintColumns, nodeColors);
       surface.setSceneLight(split.scene, !applied);
@@ -180,6 +262,23 @@ export async function mountScriptTints(
   return {
     onEvents: (events) => {
       if (events.some((event) => event.kind === 'missionVertexColor')) sync();
+    },
+    frame: (now) => {
+      if (!ownCycle) return;
+      const next = cycleStepAtTick(now);
+      if (next === step) return;
+      step = next;
+      sync();
+    },
+    setDayNightShown: (next) => {
+      if (next === cycleShown) return;
+      cycleShown = next;
+      sync();
+    },
+    setWeatherShown: (next) => {
+      if (next === weatherOn) return;
+      weatherOn = next;
+      sync();
     },
     dispose: () => {
       disposed = true;

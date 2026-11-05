@@ -48,6 +48,7 @@ describe('mapSession', () => {
       progression: null,
       needs: false,
       weather: null,
+      dayNight: null,
       alliedVision: null,
       peace: null,
     });
@@ -66,6 +67,7 @@ describe('mapSession', () => {
       progression: null,
       needs: null,
       weather: null,
+      dayNight: null,
       alliedVision: null,
       peace: null,
     });
@@ -167,6 +169,7 @@ describe('sceneSession', () => {
       progression: false,
       needs: null,
       weather: null,
+      dayNight: null,
       alliedVision: null,
       peace: null,
     });
@@ -237,6 +240,9 @@ describe('sessionSearch', () => {
     expect(sessionSearch(parsed, ROSTER).get('weathermode')).toBe('map');
     expect(session('map=zatoka&weathermode=rain').rules.weather).toBeNull();
     expect(sessionSearch(session('map=zatoka'), ROSTER).has('weathermode')).toBe(false);
+    expect(sessionSearch(session('map=zatoka&daynight=on'), ROSTER).get('daynight')).toBe('on');
+    expect(session('map=zatoka&daynight=dusk').rules.dayNight).toBeNull();
+    expect(sessionSearch(session('map=zatoka'), ROSTER).has('daynight')).toBe(false);
   });
 });
 

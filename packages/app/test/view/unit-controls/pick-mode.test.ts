@@ -1,12 +1,14 @@
+import type { UiCue } from '@open-northland/audio';
 import { halfCellToScreen } from '@open-northland/render';
 import { type Command, fx, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { sandboxContent } from '../../../src/game/sandbox/index.js';
+import { sandboxContent, VEHICLE_HANDCART, VEHICLE_SHIP_SMALL } from '../../../src/game/sandbox/index.js';
 import type { Pickable } from '../../../src/view/picking.js';
 import { createAnsweredOrders } from '../../../src/view/unit-controls/orders/answered.js';
 import { createUnitOrderController } from '../../../src/view/unit-controls/orders/controller.js';
 import type { VehicleOrderController } from '../../../src/view/unit-controls/orders/vehicle.js';
 import { createPickModeController, type PickModeDeps } from '../../../src/view/unit-controls/pick-mode.js';
+import type { ShipPinPlan } from '../../../src/view/unit-controls/right-click/vehicles.js';
 import { createUnitSelection } from '../../../src/view/unit-controls/selection.js';
 import { NO_TARGETS } from '../../support/pick-mode.js';
 import { snapshotOf } from '../../support/snapshot.js';
@@ -30,6 +32,8 @@ const WORLD: WorldSnapshot = snapshotOf([
     id: SOLDIER,
     components: { Settler: { jobType: null }, Position: { x: fx.fromInt(2), y: fx.fromInt(2) } },
   },
+  { id: SHIP, components: { Vehicle: { vehicleType: VEHICLE_SHIP_SMALL } } },
+  { id: CART, components: { Vehicle: { vehicleType: VEHICLE_HANDCART } } },
 ]);
 const drawnHere = (ref: number, kind: NonNullable<Pickable['kind']>): Pickable => ({
   ref,
@@ -43,7 +47,12 @@ function harness(
   vehicleOrders: Partial<VehicleOrderController> = {},
   answers: Pick<
     PickModeDeps,
-    'signpostAnswerAt' | 'tradeHouseAttachAnswer' | 'vehicleAttachAnswer' | 'askAttachTradeHouse'
+    | 'signpostAnswerAt'
+    | 'tradeHouseAttachAnswer'
+    | 'vehicleAttachAnswer'
+    | 'askAttachTradeHouse'
+    | 'tradeShipPinAnswer'
+    | 'cue'
   > = {},
 ) {
   const issued: Command[] = [];
@@ -177,6 +186,52 @@ describe('an armed pick aims as its press orders', () => {
     const h = harness({ vehicles: [drawnHere(CART, 'vehicle')] }, { loadsInto: () => false });
     h.pickMode.arm({ kind: 'vehicle-deck', vehicle: SHIP });
     expect(h.aim()).toEqual({ kind: 'loadAboard', fits: false });
+  });
+
+  it('pins the ship under the press through the vehicle order, with its cue for each verdict', () => {
+    for (const [admits, cue] of [
+      [true, 'confirm'],
+      [false, 'fail'],
+    ] as const) {
+      const cues: UiCue[] = [];
+      const pins: ShipPinPlan[] = [];
+      const h = harness(
+        { vehicles: [drawnHere(SHIP, 'vehicle')] },
+        {
+          issueShipPin: (plan, onSet, onRefused) => {
+            pins.push(plan);
+            (admits ? onSet : onRefused)();
+          },
+        },
+        { tradeShipPinAnswer: () => admits, cue: (played) => cues.push(played) },
+      );
+      h.pickMode.arm({ kind: 'trade-ship', trader: SOLDIER });
+      expect(h.aim()).toEqual({ kind: 'pinShip', fits: admits });
+      expect(h.press()).toBe('pending');
+      expect(pins).toEqual([{ trader: SOLDIER, ship: SHIP, unpins: false }]);
+      expect(cues).toEqual([cue]);
+    }
+  });
+
+  it('judges the ship under a trade-ship press, not a cart drawn over it', () => {
+    for (const vehicles of [
+      [drawnHere(SHIP, 'vehicle'), drawnHere(CART, 'vehicle')],
+      [drawnHere(CART, 'vehicle'), drawnHere(SHIP, 'vehicle')],
+    ]) {
+      const ships: number[] = [];
+      const h = harness({ vehicles }, { issueShipPin: (plan) => ships.push(plan.ship) });
+      h.pickMode.arm({ kind: 'trade-ship', trader: SOLDIER });
+      expect(h.press()).toBe('pending');
+      expect(ships).toEqual([SHIP]);
+    }
+  });
+
+  it('misses and disarms where no ship lies under the trade-ship pick', () => {
+    const h = harness({ vehicles: [drawnHere(CART, 'vehicle')] });
+    h.pickMode.arm({ kind: 'trade-ship', trader: SOLDIER });
+    expect(h.aim()).toBeNull();
+    expect(h.press()).toBe('missed');
+    expect(h.pickMode.isArmed()).toBe(false);
   });
 
   it('lands the crew of a dock aimed with the primary modifier held where a berth fits', () => {

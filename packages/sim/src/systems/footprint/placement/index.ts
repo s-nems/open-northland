@@ -10,6 +10,7 @@ export {
   type PlacementProbe,
   placementProbe,
 } from './building.js';
+export { SITE_REACH_RADIUS_NODES, type SiteReach, siteReachFor } from './site-reach.js';
 export {
   findVehicleSite,
   reusableVehicleSite,

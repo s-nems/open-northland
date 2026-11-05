@@ -371,6 +371,31 @@ export const plContent = {
       summary:
         'Neutralny magazyn oferuje cztery żelaza za monetę; kupiec wozi monety z własnego magazynu, przywozi żelazo, a wymienione towary zmieniają stosunek plemienia na przyjazny. Zaznacz kupca, żeby zobaczyć sekcję Handel, a daleki magazyn, żeby zobaczyć oferty handlowe.',
     },
+    'trade-sea': {
+      title: 'Handel przez morze',
+      summary:
+        'Kupiec z wózkiem ręcznym i małym statkiem przypiętym do trasy wozi drewno między magazynami na dwóch wyspach. Przenosi ładunek na statek w kilku kursach, płynie z wózkiem na pokładzie i przenosi ładunek do dalekiego magazynu. Zaznacz kupca, by zobaczyć wiersz statku w sekcji Handel, albo statek, by zobaczyć ładownię tylko do odczytu.',
+    },
+    'trade-sea-pin': {
+      title: 'Przypinanie statku do trasy',
+      summary:
+        'Te same dwie wyspy, ale bez przypiętego statku: trasa kupca go potrzebuje i sekcja Handel o tym mówi. Zaznacz kupca, naciśnij Przypnij statek i wskaż podświetlony statek. Kupiec załaduje go i wypłynie.',
+    },
+    'trade-sea-agreement': {
+      title: 'Umowa handlowa przez morze',
+      summary:
+        'Magazyn przyjaznego plemienia na wschodniej wyspie oferuje żelazo i drewno za monety. Kupiec ze statkiem handlowym przypiętym do trasy zawozi monety i wraca z żelazem, po cztery sztuki za monetę, a jego wózek kursuje między statkiem a magazynem na obu brzegach. Zaznacz kupca, by w sekcji Handel zobaczyć statek i wybraną ofertę. Otwórz okno dyplomacji, by zobaczyć oferty: gdy stosunek nie jest przyjazny, są wyszarzone.',
+    },
+    'trade-sea-carriers': {
+      title: 'Tragarze pomagają kupcowi',
+      summary:
+        'Trzech tragarzy przypisanych do statku pomaga kupcowi przewozić drewno między magazynami na dwóch wyspach: na każdym brzegu noszą po sztuce między magazynem a drzwiami statku obok wózka kupca, a między brzegami płyną razem z nim. Pomagają tylko między twoimi magazynami. Zaznacz statek, by zobaczyć ich na miejscach, a miejsce kapitana nadal zajęte przez kupca. Ctrl i kliknięcie miejsca tragarza wysadza go ze statku.',
+    },
+    'trade-sea-settlements': {
+      title: 'Wyrównywanie zapasów między wyspami',
+      summary:
+        'Na każdej wyspie stoją dwa magazyny w jednej sieci drogowskazów, a oba punkty trasy kupca liczą całą osadę. Wschodnia wyspa trzyma 20 cegieł i 20 kamieni, dowożonych z obu zachodnich magazynów, a jej drewno płynie na zachód, aż w jej dwóch magazynach zostanie 30. Zaznacz kupca, by zobaczyć włączony przycisk „osada” przy obu punktach.',
+    },
     'trade-domestic': {
       title: 'Handel między własnymi magazynami',
       summary:
@@ -440,6 +465,11 @@ export const plContent = {
       title: 'Stocznia',
       summary:
         'Warsztat ciesielski czwartego poziomu na brzegu, którego cieśle mają robić na zmianę statek i katapultę: plac statku otwiera się na wodzie obok warsztatu, a cieśla pracuje z brzegu; plac katapulty na lądzie. Zwodowany statek stoi zacumowany przy brzegu ze zwiniętymi żaglami.',
+    },
+    'vehicle-ship-sites': {
+      title: 'Stocznie wszystkich nacji',
+      summary:
+        'Dwie stocznie każdej nacji, po jednej kolumnie na nację: stocznia statku nad stocznią statku handlowego, w każdej place budowy na 30% i 90% nad statkiem, który z takiego placu schodzi, zacumowanym przy brzegu. Plac budowy rośnie jako ten sam statek, który z niego zejdzie.',
     },
     'vehicle-ox-yard': {
       title: 'Budowa zaprzęgu',
@@ -525,6 +555,11 @@ export const plContent = {
       title: 'Chorągiewki zbieracza, myśliwego i rybaka z kwatery',
       summary:
         'Zbieracz, myśliwy i rybak pracują dla kwatery głównej, przy której stoi jedno drzewo, a w pobliżu nie ma ani zwierzyny, ani wody. Zbieracz ma chorągiewkę w zagajniku na południowym wschodzie, myśliwy przy łące z zającami daleko na wschodzie, rybak na brzegu stawu. Wszyscy trzej pracują przy swoich chorągiewkach i noszą do kwatery drewno, skóry, mięso i ryby, a mięso i ryby trafiają tam do zapasów jako jedzenie. Drzewo przy kwaterze stoi nietknięte. Zaznacz któregoś, by przenieść lub zabrać chorągiewkę w wierszu „Obszar” panelu osadnika; bez niej zbieracz ścina pobliskie drzewo, a pozostali stoją bezczynnie przy kwaterze.',
+    },
+    'tool-upgrade': {
+      title: 'Wymiana narzędzi na lepsze',
+      summary:
+        'Trzech zbieraczy z drewnianymi narzędziami idzie do kwatery głównej po żelazne, bo asystent wymienia narzędzia na lepsze. Częściowo zużyte drewniane przepadają, nieużywane wraca do magazynu, a zbieracz z żelaznym zostaje na miejscu.',
     },
     'gatherer-flag-follow': {
       title: 'Flagi idą za surowcami',

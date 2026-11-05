@@ -63,6 +63,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     assistantWeaponOrder: (player, intent) => sim.assistantWeaponOrder(player, intent),
     assistantPostsGraduates: (player) => sim.assistantPostsGraduates(player),
     assistantMovesFlags: (player) => sim.assistantMovesFlags(player),
+    assistantUpgradesTools: (player) => sim.assistantUpgradesTools(player),
     needsEnabled: () => sim.needsEnabled(),
     fogMode: () => sim.fogMode(),
     matchOutcome: (player) => sim.matchOutcome(player),
@@ -83,8 +84,8 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     },
     hashState: () => Promise.resolve({ tick: sim.tick, hash: sim.hashState() }),
 
-    placementProbe: (buildingType, area, player, tribe, gated) =>
-      Promise.resolve(sim.placementAnswer(buildingType, area, player, tribe, gated)),
+    placementProbe: (buildingType, area, player, tribe, gated, withinReach) =>
+      Promise.resolve(sim.placementAnswer(buildingType, area, player, tribe, gated, withinReach)),
     shipWaterVersion: () => sim.shipWaterVersion(),
     shipWaterProbe: (buildingType, tribe, hx, hy, player) =>
       Promise.resolve(sim.shipWaterAnswer(buildingType, tribe, hx, hy, player)),
@@ -118,6 +119,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     tradeOffersAt: (house) => Promise.resolve(sim.tradeOffersAt(house)),
     traderView: (trader) => Promise.resolve(sim.traderView(trader)),
     tradeHousesAttachableBy: (trader) => Promise.resolve(sim.tradeHousesAttachableBy(trader)),
+    tradeShipsPinnableBy: (trader) => Promise.resolve(sim.tradeShipsPinnableBy(trader)),
     vehiclesAttachableBy: (settler) => Promise.resolve(sim.vehiclesAttachableBy(settler)),
     missionBriefingHistory: () => Promise.resolve(sim.missionBriefingHistory()),
     missionBriefingPage: () => Promise.resolve(sim.missionBriefingPage()),

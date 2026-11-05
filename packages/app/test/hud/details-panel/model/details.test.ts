@@ -825,7 +825,7 @@ describe('selection details panel model', () => {
 
   it('shows a minor its age in years off the sim rate, and shows an adult none', () => {
     const snapshot = snapshotOf([
-      // A four-year-old: exactly on the baby→child boundary, so the ramp must read a whole 4.
+      // Exactly on the baby→child boundary, tick 1441: the original's 270-tick years read a whole 5.
       {
         id: 1,
         components: {
@@ -847,13 +847,13 @@ describe('selection details panel model', () => {
       { id: 3, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR } } },
     ]);
 
-    const four = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
-    if (four.kind !== 'settler') throw new Error('expected a settler model');
-    expect(four.meta).toContain('Wiek: 4');
+    const five = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    if (five.kind !== 'settler') throw new Error('expected a settler model');
+    expect(five.meta).toContain('Wiek: 5');
 
-    const eleven = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
-    if (eleven.kind !== 'settler') throw new Error('expected a settler model');
-    expect(eleven.meta).toContain('Wiek: 11');
+    const ten = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
+    if (ten.kind !== 'settler') throw new Error('expected a settler model');
+    expect(ten.meta).toContain('Wiek: 10');
 
     const adult = buildUnitPanelModel(snapshot, new Set([3]), sandboxCtx());
     if (adult.kind !== 'settler') throw new Error('expected a settler model');

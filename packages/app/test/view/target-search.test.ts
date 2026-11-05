@@ -5,18 +5,18 @@ describe('targetSearch', () => {
   it('carries only player-facing game settings into the selected entry', () => {
     // `uiscale=1.75` is dropped with the other diagnostics: the pin must not outlive its entry.
     const current = new URLSearchParams(
-      'lang=eng&uiscale=1.75&speed=6&fog=recon-fow&progression=off&needs=off&weathermode=winter&weather=snow&debug=geometry&zoom=2&sound=off&atlas=none&terrain=off&objects=off&nosuchparam=1',
+      'lang=eng&uiscale=1.75&speed=6&fog=recon-fow&progression=off&needs=off&weathermode=winter&daynight=off&weather=snow&debug=geometry&zoom=2&sound=off&atlas=none&terrain=off&objects=off&nosuchparam=1',
     );
 
     expect(targetSearch('?map=blekiny_nurt', current)).toBe(
-      '?lang=eng&speed=6&fog=recon-fow&progression=off&needs=off&weathermode=winter&sound=off&debug=geometry&map=blekiny_nurt',
+      '?lang=eng&speed=6&fog=recon-fow&progression=off&needs=off&weathermode=winter&daynight=off&sound=off&debug=geometry&map=blekiny_nurt',
     );
   });
 
   it('never carries a stale rule choice into a scene', () => {
     // A quit-to-menu carries the last game's rules; a scene's authored fixture owns all.
     const current = new URLSearchParams(
-      'lang=pol&fog=classic&progression=off&needs=off&weathermode=map&speed=2',
+      'lang=pol&fog=classic&progression=off&needs=off&weathermode=map&daynight=on&speed=2',
     );
     expect(targetSearch('?scene=goods-catalog', current)).toBe('?lang=pol&speed=2&scene=goods-catalog');
     // An explicit fog in the entry itself still wins (hand-typed URLs bypass the menu).

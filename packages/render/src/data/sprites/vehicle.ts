@@ -18,8 +18,35 @@ export function attackPhase(tick: number, clipStart?: number): number {
 /** The look of `item`'s tribe and type, the fallback tribe's when its own tribe binds none. */
 export function vehicleLookFor(binding: VehicleBinding, item: DrawItem): VehicleLook | undefined {
   if (item.typeId === undefined) return undefined;
-  const own = item.tribe !== undefined ? binding.byTribe[item.tribe]?.[item.typeId] : undefined;
-  return own ?? binding.byTribe[binding.fallbackTribe]?.[item.typeId];
+  return vehicleLookOf(binding, item.tribe, item.typeId);
+}
+
+function vehicleLookOf(
+  binding: VehicleBinding,
+  tribe: number | undefined,
+  vehicleType: number,
+): VehicleLook | undefined {
+  const own = tribe !== undefined ? binding.byTribe[tribe]?.[vehicleType] : undefined;
+  return own ?? binding.byTribe[binding.fallbackTribe]?.[vehicleType];
+}
+
+/**
+ * The ship an under-construction yard building rises as (`VehicleBinding.shipYards`): the first frame of
+ * its tribe's moored hull at the launch facing, the look the launched ship stands in. `null` for any
+ * other building or a ship no tribe binds.
+ */
+export function resolveShipYardSiteDraw(
+  binding: VehicleBinding | undefined,
+  item: DrawItem,
+): VehicleDraw | null {
+  const yards = binding?.shipYards;
+  if (binding === undefined || yards === undefined || item.builtPct === undefined) return null;
+  const vehicleType = item.typeId === undefined ? undefined : yards.vehicleByHouse[item.typeId];
+  if (vehicleType === undefined) return null;
+  const look = vehicleLookOf(binding, item.tribe, vehicleType);
+  if (look === undefined) return null;
+  const bob = frameOf(look.mooredIdle ?? look.idle, yards.facing, 0);
+  return { bob, layer: look.layer, sway: 'none', indexed: look.indexed === true };
 }
 
 /** The drive clip a moving vehicle plays: per hauled good, then any-cargo, then empty, then the wait.

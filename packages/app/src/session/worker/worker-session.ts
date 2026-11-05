@@ -527,6 +527,7 @@ class WorkerClient<E> {
       assistantWeaponOrder: (player, intent) => assistantFacts(facts(), player).weaponOrders[intent],
       assistantPostsGraduates: (player) => assistantFacts(facts(), player).postsGraduates,
       assistantMovesFlags: (player) => assistantFacts(facts(), player).movesFlags,
+      assistantUpgradesTools: (player) => assistantFacts(facts(), player).upgradesTools,
       needsEnabled: () => facts().needsEnabled,
       fogMode: () => facts().fogMode,
       matchOutcome: (player) => facts().matchOutcomes[player] ?? 'undecided',
@@ -570,6 +571,7 @@ class WorkerClient<E> {
       tradeOffersAt: (...args) => this.ask('tradeOffersAt', args),
       traderView: (...args) => this.ask('traderView', args),
       tradeHousesAttachableBy: (...args) => this.ask('tradeHousesAttachableBy', args),
+      tradeShipsPinnableBy: (...args) => this.ask('tradeShipsPinnableBy', args),
       vehiclesAttachableBy: (...args) => this.ask('vehiclesAttachableBy', args),
       missionBriefingHistory: (...args) => this.ask('missionBriefingHistory', args),
       missionBriefingPage: (...args) => this.ask('missionBriefingPage', args),
@@ -662,6 +664,7 @@ function assistantFacts(facts: WorldFacts, player: number): AssistantFacts {
       armorOrders: { trainSword: NO_ARMOR, trainSpear: NO_ARMOR, trainBow: NO_ARMOR },
       postsGraduates: false,
       movesFlags: false,
+      upgradesTools: false,
     }
   );
 }

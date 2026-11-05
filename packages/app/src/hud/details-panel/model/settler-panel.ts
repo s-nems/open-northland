@@ -1,7 +1,7 @@
 import { jobCanPray } from '@open-northland/data';
 import { indoorHouseOf } from '@open-northland/render';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
-import { settlerName } from '../../../game/character-names/index.js';
+import { givenNameOf, isRenamable, settlerName } from '../../../game/character-names/index.js';
 import {
   childAgeYearsOf,
   childOrderWaitOf,
@@ -107,7 +107,9 @@ export interface SettlerPanelModel {
   readonly inside: number | null;
   /** The vehicle the person rides, which the portrait frames instead; null on foot. */
   readonly aboard: SettlerAboard | null;
-  readonly renamable: boolean;
+  /** The name the player gave the person, empty for none, when they may rename it; null keeps the
+   *  name read-only. */
+  readonly rename: { readonly given: string } | null;
   /** The owner line: another seat's owner and stance, or a child's age; null when it says nothing. */
   readonly meta: string | null;
   readonly status: SettlerStatusModel;
@@ -281,7 +283,7 @@ export function settlerPanelModel(
   if (foreign) {
     return {
       ...base,
-      renamable: false,
+      rename: null,
       workplace:
         work.place === null
           ? null
@@ -304,7 +306,7 @@ export function settlerPanelModel(
   const workArea = role === 'worker' ? workAreaRow(ctx, snapshot, ent, control) : null;
   return {
     ...base,
-    renamable: !hero && comps.ScriptedName === undefined,
+    rename: isRenamable(ctx, ent) ? { given: givenNameOf(ent) } : null,
     workplace: role === 'worker' ? workplaceRow(ctx, ent, work.place, control, workArea !== null) : null,
     workArea,
     buildRun: buildRunOf(comps),

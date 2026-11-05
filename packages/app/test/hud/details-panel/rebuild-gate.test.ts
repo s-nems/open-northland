@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import { TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { UnitPanelModel } from '../../../src/hud/details-panel/index.js';
 import { createPanelRebuildGate } from '../../../src/hud/details-panel/rebuild-gate.js';
@@ -28,6 +28,10 @@ function group(pct: number, ids: readonly number[] = [1, 2]): UnitPanelModel {
 }
 /** The gate's own throttle: a value rebuild is refused until this much wall clock has passed. */
 const VALUE_GAP_MS = 250;
+/** Ticks after a panel command in which the gate re-derives every new snapshot and answer. */
+const COMMAND_ECHO_TICKS = TICKS_PER_SECOND * 2;
+/** The tick the scripted panel command is issued on. */
+const COMMAND_TICK = 10;
 
 /** A gate over a scripted model and a hand-cranked clock: `derive` answers with the model the test set,
  *  and each frame gets a fresh snapshot object unless the case is about snapshot identity. */
@@ -207,6 +211,39 @@ describe('details panel rebuild gate', () => {
       model: { kind: 'signpost', entityId: 7, postCount: 1, stock: [], canDemolish: true },
       structural: false,
     });
+  });
+
+  it("shows a panel command's effect as soon as its snapshot or answer lands, then throttles again", () => {
+    const g = gateOver(group(2));
+    const at = (tick: number): WorldSnapshot => ({ ...snapshotOf([]), tick });
+    g.frame(at(COMMAND_TICK));
+    g.gate.commanded(COMMAND_TICK);
+
+    // The command's tick lands, the read it changes still on its way.
+    expect(g.frame(at(COMMAND_TICK + 1))).toBeNull();
+    g.land(group(3));
+    expect(g.frame(at(COMMAND_TICK + 1))).toEqual({ model: group(3), structural: false });
+    // Frames without a new snapshot or answer derive nothing.
+    const snapshot = at(COMMAND_TICK + 2);
+    g.frame(snapshot);
+    const derives = g.derives();
+    for (let frame = 0; frame < 10; frame++) g.frame(snapshot);
+    expect(g.derives()).toBe(derives);
+
+    g.advance(VALUE_GAP_MS);
+    g.show(group(4));
+    expect(g.frame(at(COMMAND_TICK + COMMAND_ECHO_TICKS + 1))).not.toBeNull();
+    g.show(group(5));
+    expect(g.frame(at(COMMAND_TICK + COMMAND_ECHO_TICKS + 2))).toBeNull();
+  });
+
+  it('re-derives at once under the same snapshot when a command changes what the model reads', () => {
+    const g = gateOver(group(2));
+    const snapshot = snapshotOf([]);
+    g.frame(snapshot);
+    g.gate.commanded(snapshot.tick);
+    g.show(group(3));
+    expect(g.frame(snapshot)).toEqual({ model: group(3), structural: false });
   });
 
   it('forces a structural rebuild for a re-selection of the same entity', () => {

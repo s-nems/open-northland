@@ -312,6 +312,16 @@ export const AssistantMovesFlags = defineComponent<{
   player: number;
 }>('AssistantMovesFlags', 'players');
 
+/**
+ * The per-player "upgrade to better tools" switch, on while the carrier exists: a worker holding a tool
+ * is sent to swap it for a granted one with a higher production bonus while a store holds spare stock.
+ * Off by default for a player; a computer seat keeps it on.
+ */
+export const AssistantUpgradesTools = defineComponent<{
+  /** The player slot the switch belongs to (`[0, MAX_PLAYERS)`). */
+  player: number;
+}>('AssistantUpgradesTools', 'players');
+
 /** An on/off assistant switch: the per-player carrier exists while the switch is on. */
 export type AssistantSwitch = Component<{ player: number }>;
 
@@ -334,4 +344,9 @@ export function assistantPostsGraduatesEntity(world: World, player: number): Ent
 /** Whether `player`'s gatherers move their own flags ({@link AssistantMovesFlags}). */
 export function assistantMovesFlags(world: World, player: number): boolean {
   return assistantSwitchEntity(world, AssistantMovesFlags, player) !== null;
+}
+
+/** Whether `player`'s workers swap their tools for better granted ones ({@link AssistantUpgradesTools}). */
+export function assistantUpgradesTools(world: World, player: number): boolean {
+  return assistantSwitchEntity(world, AssistantUpgradesTools, player) !== null;
 }

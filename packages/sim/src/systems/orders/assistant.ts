@@ -11,6 +11,7 @@ import {
   AssistantPostsGraduates,
   AssistantSoldierOnlyGrants,
   type AssistantSwitch,
+  AssistantUpgradesTools,
   AssistantWeaponOrders,
   AssistantWeaponVetoes,
   assistantArmorOrdersEntity,
@@ -82,6 +83,14 @@ export function setAssistantMoveFlags(
   command: Extract<Command, { kind: 'setAssistantMoveFlags' }>,
 ): void {
   setAssistantSwitch(world, AssistantMovesFlags, command.player, command.enabled);
+}
+
+/** Switch whether `player`'s workers swap their tools for better ones - see the command doc. */
+export function setAssistantUpgradeTools(
+  world: World,
+  command: Extract<Command, { kind: 'setAssistantUpgradeTools' }>,
+): void {
+  setAssistantSwitch(world, AssistantUpgradesTools, command.player, command.enabled);
 }
 
 /** Turn `player`'s `toggle` on or off: the carrier exists while it is on. */

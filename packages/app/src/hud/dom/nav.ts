@@ -1,3 +1,7 @@
+import { createTooltip } from '../../view/tooltip.js';
+import { setTip } from './parts/dom.js';
+import { attachTipLayer } from './parts/tip-layer.js';
+
 export interface HudNavEntry<Id extends string> {
   readonly id: Id;
   readonly label: string;
@@ -10,6 +14,8 @@ export interface HudNav<Id extends string> {
   setActive(id: Id | null): void;
   /** A wax seal on the entry for news waiting behind it, named `label` for assistive tech. */
   setMarked(id: Id, marked: boolean, label: string): void;
+  /** The entry's tip: its label and `key`, the binding that toggles it; null (unbound) leaves the label. */
+  setKey(id: Id, key: string | null): void;
   focus(id: Id): void;
   dispose(): void;
 }
@@ -38,6 +44,10 @@ export function createHudNav<Id extends string>(
     nav.append(button);
   }
   plane.append(nav);
+  // Its own chip: the frame loop hides the world's tooltip whenever the pointer is over the HUD.
+  const chip = createTooltip();
+  const tips = attachTipLayer(nav, chip);
+  const labels = new Map(entries.map((entry) => [entry.id, entry.label]));
   let active: Id | null = null;
   const marks = new Map<Id, HTMLElement>();
   return {
@@ -61,7 +71,17 @@ export function createHudNav<Id extends string>(
       button.append(seal);
       marks.set(id, seal);
     },
+    setKey: (id, key) => {
+      const button = buttons.get(id);
+      const label = labels.get(id);
+      if (button === undefined || label === undefined) return;
+      setTip(button, key === null ? label : `${label} · ${key}`);
+    },
     focus: (id) => buttons.get(id)?.focus(),
-    dispose: () => nav.remove(),
+    dispose: () => {
+      tips.dispose();
+      chip.destroy();
+      nav.remove();
+    },
   };
 }

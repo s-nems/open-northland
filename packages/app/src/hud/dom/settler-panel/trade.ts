@@ -5,6 +5,7 @@ import { button, element, setAttribute, setHidden, setTip, write } from '../part
 import { createSection } from '../parts/section.js';
 import type { SettlerPanelDeps } from './actions.js';
 import { createTradeAgreement } from './trade-agreement.js';
+import { createTradeShipRow } from './trade-ship.js';
 import { createTradeStops } from './trade-stops.js';
 import { createTradeTransfers, fitTransferLines } from './trade-transfers.js';
 
@@ -22,11 +23,11 @@ export function bodyOf(trade: TradePanelModel): TradeBody {
 
 /**
  * Trade: the route's two slot rows, joined at the right by the configure button while both stops are
- * own houses, then the transfers as read-only lines, or the agreement. Open for every person; when
- * the panel would run past the plane with the other foldable sections folded, it lists only the
- * transfer lines that fit, the last one kept linking to the trade window for the rest. With no room
- * even for that link, or for the agreements, it folds to the stop rows behind "jeszcze N" in its
- * title, and opens again on a click or for another person.
+ * own houses, the ship row, then the transfers as read-only lines, or the agreement. Open for every
+ * person; when the panel would run past the plane with the other foldable sections folded, it lists
+ * only the transfer lines that fit, the last one kept linking to the trade window for the rest. With
+ * no room even for that link, or for the agreements, it folds to the stop rows behind "jeszcze N" in
+ * its title, and opens again on a click or for another person.
  */
 export interface TradeSection {
   readonly element: HTMLElement;
@@ -55,10 +56,11 @@ export function createTradeSection(
   joint.append(configure);
   const route = element('div', 'on-trade-route');
   route.append(stops.element, joint);
+  const ship = createTradeShipRow(deps.actions, current);
   const lines = createTradeTransfers(deps, onConfigure);
   const agreement = createTradeAgreement(deps, current);
   const root = element('div', '');
-  root.append(title.element, route, lines.element, agreement.element);
+  root.append(title.element, route, ship.element, lines.element, agreement.element);
   let open = true;
   /** The section had to fold for this person, so the toggle stays offered while it is open again. */
   let folded = false;
@@ -105,6 +107,7 @@ export function createTradeSection(
       title.update(copy.trade);
       body = bodyOf(trade);
       stops.update(trade);
+      ship.update(trade);
       setTip(configure, copy.settlerPanel.tradeConfigure);
       setAttribute(configure, 'aria-label', copy.settlerPanel.tradeConfigure);
       if (body.own) lines.update(trade.transfers);

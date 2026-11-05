@@ -45,6 +45,7 @@ import {
 
 /** The seat the player-placement cases issue from. */
 const SEAT = 0;
+const CIVILIST = 6;
 
 /** A tree whose trunk fills just its anchor node: one walk cell, so a building's reserved ring may not
  *  cover that node and nothing else. */
@@ -149,6 +150,7 @@ describe('canPlaceBuilding - the free-placement collision rule', () => {
   it('refuses a seat placement off the map instead of failing the tick', () => {
     const sim = mappedSim();
     sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 5, y: 9, tribe: VIKING, owner: SEAT });
     sim.step();
     // A relayed payload may carry any safe integer, and an anchor past the fixed-point range throws once
     // it reaches assembly, stopping every client of the room.

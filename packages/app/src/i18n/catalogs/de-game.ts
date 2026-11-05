@@ -40,6 +40,12 @@ export const deGame = {
     },
     armyOrderLimit:
       'Wähle höchstens {limit} Einheiten für einen Befehl aus. Keine Einheit hat diesen Befehl erhalten.',
+    diplomacyMap: {
+      title: 'Diplomatiekarte',
+      own: 'Dein Stamm',
+      unknown: 'Position unbekannt:',
+      openDiplomacy: 'Diplomatie öffnen',
+    },
     mapOverlays: {
       label: 'Einblendungen auf der Hauptkarte',
       signposts: 'Wegweiser',
@@ -48,6 +54,7 @@ export const deGame = {
     },
     minimap: {
       label: 'Minikarte',
+      overview: 'Diplomatiekarte',
       interaction:
         'Klicke oder ziehe, um die Kamera zu bewegen. Scrolle, um den Zoom der Minikarte zu ändern. Ziehe mit der mittleren Maustaste, um den vergrößerten Kartenausschnitt zu verschieben.',
       zoomIn: 'Vergrößern',
@@ -238,6 +245,7 @@ export const deGame = {
       enemy: 'feindlich',
     },
     diplomacyWindow: {
+      map: 'Diplomatiekarte',
       nations: 'Stämme',
       attitude: 'Verhältnis',
       theirs: 'Verhältnis zu dir',
@@ -486,6 +494,8 @@ export const deGame = {
       repair: 'Reparieren',
       board: 'Einsteigen',
       loadAboard: 'Auf das Schiff laden',
+      pinShip: 'Der Route zuweisen',
+      unpinShip: 'Schiff lösen',
       workArea: 'Arbeitsbereich',
       placeSignpost: 'Wegweiser setzen',
       bombard: 'Beschießen',
@@ -499,6 +509,7 @@ export const deGame = {
       cannotTrainHere: 'Sie können hier nicht üben',
       cannotBoard: 'Sie können nicht einsteigen',
       cannotLoadAboard: 'Hier kann nichts verladen werden',
+      cannotPinShip: 'Dieses Schiff lässt sich nicht zuweisen',
       cannotMoorHere: 'Hier kann nicht angelegt werden',
       cannotPlaceSignpost: 'Hier passt kein Wegweiser',
     },
@@ -519,6 +530,7 @@ export const deGame = {
       awaitingWorkplace: 'Wartet auf die Werkstatt',
       awaitingTraining: 'Wartet auf den Bau',
       awaitingSeat: 'Wartet auf einen freien Platz',
+      sailingRoute: 'Fährt seine Route',
       standingTo: 'In Alarmbereitschaft',
       lost: {
         he: 'Verirrt',
@@ -793,12 +805,25 @@ export const deGame = {
       tradeHeading: 'Der Händler ist gerade hierher unterwegs',
       tradeAddStop: 'Handelshaus hinzufügen',
       tradeConfigure: 'Handel einrichten',
+      tradePinShip: 'Schiff zuweisen',
+      tradePinShipHint:
+        'Klicken, dann ein hervorgehobenes eigenes Schiff ohne Besatzung an dieser Küste wählen, oder bei gewähltem Händler das Schiff per Rechtsklick wählen. Der Händler fährt seine Route damit.',
+      tradeUnpinShip: 'Schiff lösen',
+      tradeShipNeeded: 'über das Meer',
+      tradeShipNeededTooltip:
+        'Die Stationen liegen an verschiedenen Küsten: Weise ein Schiff zu, damit der Händler übersetzen kann',
+      tradeShipUnreachable: 'außer Reichweite',
+      tradeShipUnreachableTooltip:
+        'Dieses Schiff kann die Route nicht bedienen: Es fährt auf einem anderen Meer oder liegt an einer anderen Küste als der Händler',
       tradeSettlement: 'Siedlung',
       tradeSettlementOn:
-        'Lädt aus der ganzen Siedlung: zuerst aus diesem Lager, dann aus den Lagern und Werkstätten, die sein Wegweisernetz erreicht. Was er zurückbringt, kommt in dieses Lager · Klicken: nur dieses Lager',
+        'Steht für die ganze Siedlung: die Lager und Werkstätten, die sein Wegweisernetz erreicht. Er lädt aus ihnen, zuerst aus diesem Lager, und die Grenzen „bis zu“ und „zurückbehalten“ zählen ihren Bestand. Was er zurückbringt, kommt in dieses Lager · Klicken: nur dieses Lager',
       tradeSettlementOff:
-        'Klicken: aus der ganzen Siedlung laden, zuerst aus diesem Lager, dann aus den Lagern und Werkstätten, die sein Wegweisernetz erreicht',
-      tradeSettlementTaken: 'Die andere Station lädt bereits aus der Siedlung',
+        'Klicken: für die ganze Siedlung stehen. Er lädt aus allen Lagern und Werkstätten, die sein Wegweisernetz erreicht, und die Grenzen „bis zu“ und „zurückbehalten“ zählen ihren Bestand',
+      tradeSettlementShared:
+        'Diese Siedlung teilt ein Gebäude mit der Siedlung der anderen Station, die schon für ihre ganze Siedlung steht',
+      tradeSettlementSuspended:
+        'Diese Siedlung teilt ein Gebäude mit der Siedlung der anderen Station, daher zählt vorerst nur dieses Lager · Klicken: nur dieses Lager',
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: 'bis zu {count}',
@@ -840,6 +865,8 @@ export const deGame = {
       centre: 'Ansicht auf das Fahrzeug zentrieren',
       health: 'Haltbarkeit {hitpoints} / {max}',
       carrierTooltip: 'Schiff auswählen',
+      tradeMerchant: 'Händler',
+      tradeMerchantSelect: 'Den Händler auswählen, dessen Route dieses Schiff fährt',
       haulerTooltip: 'Auswählen, wer ihn zieht',
       status: {
         aboard: 'An Bord eines Schiffs',
@@ -895,6 +922,7 @@ export const deGame = {
         noSeat: 'Keine freien Plätze',
         notMoored: 'Zuerst am Ufer anlegen',
         deckFull: 'Das Deck ist belegt',
+        pinned: 'Dieses Schiff fährt die Route eines Händlers',
       },
       stances: {
         attack: 'Angriff',
@@ -918,6 +946,8 @@ export const deGame = {
         siege: 'Kommandanten zuweisen',
       },
       assignTooltip: 'Einen deiner Siedler auf der Karte auswählen · Esc zum Abbrechen',
+      assignHelperTooltip:
+        'Einen deiner Träger auf der Karte auswählen, er hilft dem Händler · Esc zum Abbrechen',
       seatCount: 'Plätze belegt / gesamt',
       walking: 'zu Fuß unterwegs',
       seat: 'Siedler einsteigen lassen',
@@ -1594,6 +1624,10 @@ export const deGame = {
           label: 'Windamulett',
           tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Sein Träger geht schneller.',
         },
+        upgradeTools: {
+          label: 'Holzwerkzeug ersetzen',
+          tip: 'Ein Arbeiter mit Holzwerkzeug holt sich ein eisernes aus dem Lager. Ein angebrauchtes Werkzeug geht beim Tausch verloren. Wirkt, solange Eisenwerkzeug ausgegeben wird.',
+        },
         postGraduates: {
           label: 'Schulabgänger automatisch Werkstätten zuweisen',
           tip: 'Ein Schulabgänger geht direkt zum nächsten freien Arbeitsplatz seines Berufs.',
@@ -1902,6 +1936,7 @@ export const deGame = {
       starve: 'Alle Bedürfnisse erschöpfen',
       fill: 'Vorräte auffüllen',
       finish: 'Bau abschließen',
+      erase: 'Rohstoffe löschen',
       teleport: 'Siedler versetzen',
     },
     actionHints: {
@@ -1911,6 +1946,7 @@ export const deGame = {
       starve: 'Siedler anklicken: jedes Bedürfnis wird sofort dringend',
       fill: 'Gebäude anklicken: füllt sein Lager',
       finish: 'Baustelle anklicken: das Gebäude steht fertig',
+      erase: 'Rohstoff, Beerenstrauch oder Warenhaufen anklicken; halten löscht, was unter den Zeiger kommt',
       teleport: 'Siedler anklicken, dann das Ziel',
     },
     healthPercent: 'Lebenspunkte des Ziels in Prozent',

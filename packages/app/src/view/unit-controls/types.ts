@@ -82,6 +82,7 @@ export interface UnitControlsOptions {
    *  cursor reads them, and names the action optimistically without them. */
   readonly jobChoiceAnswer?: (entity: number, jobType: number) => boolean | undefined;
   readonly tradeHouseAttachAnswer?: (trader: number, house: number) => boolean | undefined;
+  readonly tradeShipPinAnswer?: (trader: number, ship: number) => boolean | undefined;
   readonly vehicleAttachAnswer?: (settler: number, vehicle: number) => boolean | undefined;
   /** Whether the label beside the cursor yields to a placement mode or a hidden HUD. */
   readonly hintSuppressed?: () => boolean;
@@ -108,6 +109,8 @@ export interface UnitControlsOptions {
   /** Owner slot to team-colour slot; absent means identity. */
   readonly playerColourOf?: (player: number) => number;
   readonly enqueue: (command: PlayerCommand) => void;
+  /** The session drops every command `enqueue` takes (a spectator); absent, it issues them. */
+  readonly readOnly?: () => boolean;
   /** The map's own string by id, for the names a map gives its settlers. */
   readonly mapText?: (stringId: number) => string | undefined;
   /** Re-centre the main view on a world-px point at the current zoom; the hud layer never reaches the
@@ -141,6 +144,11 @@ export interface UnitControlsOptions {
   /** The same rule asked as a click lands, which gates the pick's click and a trader's right-click on a
    *  house; absent, neither puts a house on a route. */
   readonly askAttachTradeHouse?: (trader: number, house: number) => Promise<boolean>;
+  /** The sim's ship pin rule (`SessionHost.tradeShipsPinnableBy`) as its last answer, which lights the
+   *  trade-ship pick's targets; absent, the pick lights nothing. */
+  readonly canPinTradeShip?: (trader: number, ship: number) => boolean;
+  /** The same rule asked as the pick's click lands; absent, the pick pins nothing. */
+  readonly askPinTradeShip?: (trader: number, ship: number) => Promise<boolean>;
   /** The viewer's stance toward `owner` and `owner`'s back, which explain a refused foreign trade stop;
    *  absent, the refusal is silent. */
   readonly tradeStances?: (owner: number) => TradeStances;
@@ -242,6 +250,8 @@ export interface UnitControls {
   readonly workFlagPlacementActive: () => boolean;
   /** True while an Escape would land here: the job list is open, a pick is armed or units are selected. */
   readonly claimsEscape: () => boolean;
+  /** True while the trade window stands, which these controls close on Escape. */
+  readonly windowOpen: () => boolean;
   /** The ship whose dock pick is armed, whose mooring spots the frame loop washes onto the map. */
   readonly dockPickVehicle: () => number | null;
   /** Where a dock click at `tile` would moor the ships it orders: the armed dock pick's ship, or the

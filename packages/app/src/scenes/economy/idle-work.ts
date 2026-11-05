@@ -7,6 +7,7 @@ import {
   spawnSettlerDirect,
   spawnWorkersAtDoor,
 } from '../../game/sandbox/index.js';
+import { labelledSceneSettler, labelSceneSettler } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
 
 export const IDLE_WORK_NAMES = {
@@ -17,10 +18,7 @@ export const IDLE_WORK_NAMES = {
 } as const;
 
 export function idleWorkWorker(sim: Simulation, name: string): Entity | undefined {
-  for (const entity of sim.world.query(components.GivenName)) {
-    if (sim.world.get(entity, components.GivenName).name === name) return entity;
-  }
-  return undefined;
+  return labelledSceneSettler(sim, name);
 }
 
 export function idleWorkBakery(
@@ -34,7 +32,7 @@ export function idleWorkBakery(
   spawnWorkersAtDoor(sim, building, 1);
   for (const worker of sim.world.query(components.JobAssignment)) {
     if (sim.world.get(worker, components.JobAssignment).workplace !== building) continue;
-    sim.world.add(worker, components.GivenName, { name });
+    labelSceneSettler(sim, name, worker);
     return { building, worker };
   }
   throw new Error('The bakery has no assigned worker');
@@ -68,7 +66,7 @@ export const idleWorkScene: SceneDefinition = {
     const stock = sim.world.mut(full.building, components.Stockpile);
     for (const slot of idleWorkBakeryDefinition(sim).stock) stock.amounts.set(slot.goodType, slot.capacity);
     const collector = spawnSettlerDirect(sim, JOB_COLLECTOR, 26, 20);
-    sim.world.add(collector, components.GivenName, { name: IDLE_WORK_NAMES.resources });
+    labelSceneSettler(sim, IDLE_WORK_NAMES.resources, collector);
   },
   runTicks: 120,
   checks: [

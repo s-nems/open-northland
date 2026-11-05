@@ -4,6 +4,8 @@ import {
   TRADE_ROUTE_HOUSES,
   type TradeImportMark,
   type TradeOffer,
+  type TraderShipState,
+  type TraderView,
   type TradeStopView,
   type WorldSnapshot,
 } from '@open-northland/sim';
@@ -11,7 +13,15 @@ import { num } from '../../../game/snapshot/index.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { goodCategoryTab } from '../../good-categories.js';
 import { stockRows } from './building-materials.js';
-import { buildingDef, buildingTitle, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
+import {
+  buildingDef,
+  buildingTitle,
+  goodDef,
+  goodLabel,
+  holdLoadLine,
+  type UnitPanelModelContext,
+  vehicleTitle,
+} from './context.js';
 
 export { TRADE_LIMIT_NONE, TRADE_ROUTE_HOUSES };
 
@@ -33,10 +43,14 @@ export interface TradeStopModel {
   readonly foreign: boolean;
   /** The stop the trader serves now. */
   readonly heading: boolean;
-  /** The stop loads out of its whole settlement. */
+  /** The stop carries the flag to stand for its whole settlement. */
   readonly settlement: boolean;
-  /** The stop is an own storehouse, so it may load out of its settlement. */
+  /** The stop is an own storehouse, so it may stand for its settlement. */
   readonly settles: boolean;
+  /** The other stop carries the flag and the two settlements share a house. */
+  readonly sharesSettlement: boolean;
+  /** The flag is set but held aside while the two settlements share a house. */
+  readonly settlementSuspended: boolean;
 }
 
 /** One good an own stop's house stores: its stock table's line with the units it holds now. */
@@ -92,6 +106,21 @@ export interface TradeOfferModel {
   readonly progress: { readonly given: number; readonly received: number } | null;
 }
 
+/** The ship pinned to the route: the link, with its hold in the tooltip. */
+export interface TradeShipLink {
+  readonly entity: number;
+  readonly label: string;
+  /** "Small ship: 3 wood, 2 iron", or "Small ship: empty". */
+  readonly load: string;
+}
+
+/** The Ship row under the stops: the pinned ship or the pick that pins one, and why the route cannot
+ *  sail as it stands, in a short word and a tooltip. */
+export interface TradeShipModel {
+  readonly ship: TradeShipLink | null;
+  readonly note: { readonly label: string; readonly tooltip: string } | null;
+}
+
 /** The trader a Trade section and the trade window act for: the selected person, or the one riding
  *  the selected cart. */
 export interface TraderSubject {
@@ -124,6 +153,7 @@ export interface TradePanelModel {
    *  at home and the take good home is filled up to. */
   readonly giveKeep: number;
   readonly takeUpTo: number;
+  readonly ship: TradeShipModel;
 }
 
 /** One side of an agreement: so many units of a good. */
@@ -231,6 +261,29 @@ function freeSlot(stops: readonly TradeStopView[]): number | null {
   return null;
 }
 
+function shipNote(state: TraderShipState): TradeShipModel['note'] {
+  const copy = messages().hud.settlerPanel;
+  switch (state) {
+    case 'needed':
+      return { label: copy.tradeShipNeeded, tooltip: copy.tradeShipNeededTooltip };
+    case 'unreachable':
+      return { label: copy.tradeShipUnreachable, tooltip: copy.tradeShipUnreachableTooltip };
+    case 'ready':
+    case 'notNeeded':
+      return null;
+  }
+}
+
+function shipModel(ctx: UnitPanelModelContext, view: TraderView): TradeShipModel {
+  const note = shipNote(view.shipState);
+  if (view.ship === null) return { ship: null, note };
+  const label = vehicleTitle(ctx, view.ship.vehicleType);
+  return {
+    ship: { entity: view.ship.entity, label, load: holdLoadLine(ctx, label, view.shipCargo) },
+    note,
+  };
+}
+
 /** The Trade model of one settler, or null for anything that is no trader. */
 export function tradePanelModel(
   ctx: UnitPanelModelContext,
@@ -248,6 +301,8 @@ export function tradePanelModel(
     heading: index === view.current,
     settlement: stop.settlement,
     settles: stop.settles,
+    sharesSettlement: stop.sharesSettlement,
+    settlementSuspended: stop.settlementSuspended,
   }));
   const a = view.stops.find((stop) => stop.slot === TRADE_SLOT_A);
   const b = view.stops.find((stop) => stop.slot === TRADE_SLOT_B);
@@ -276,5 +331,6 @@ export function tradePanelModel(
     agreementHolds: view.agreementHolds,
     giveKeep: view.giveKeep,
     takeUpTo: view.takeUpTo,
+    ship: shipModel(ctx, view),
   };
 }

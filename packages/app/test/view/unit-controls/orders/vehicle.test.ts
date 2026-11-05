@@ -20,10 +20,14 @@ import { fixedViewerSeat } from '../../../../src/game/viewer-seat.js';
 import { type Pickable, type Tile, worldToTile } from '../../../../src/view/picking.js';
 import { createAnsweredOrders } from '../../../../src/view/unit-controls/orders/answered.js';
 import type { MooringRule } from '../../../../src/view/unit-controls/orders/berths.js';
-import { createPendingGroundOrders } from '../../../../src/view/unit-controls/orders/pending-ground.js';
+import {
+  createPendingGroundOrders,
+  type PendingGroundOrders,
+} from '../../../../src/view/unit-controls/orders/pending-ground.js';
 import { issueRingCommand } from '../../../../src/view/unit-controls/orders/ring-commands.js';
 import {
   createVehicleOrderController,
+  type VehicleOrderController,
   type VehicleOrderDeps,
 } from '../../../../src/view/unit-controls/orders/vehicle.js';
 import { createPickModeController } from '../../../../src/view/unit-controls/pick-mode.js';
@@ -151,6 +155,8 @@ interface Arms {
   /** The sim's vehicle rules, absent by default: every spot moors and every own vehicle takes a rider. */
   readonly canMoorAt?: (vehicle: number, x: number, y: number) => boolean;
   readonly canAttachToVehicle?: (settler: number, vehicle: number) => boolean;
+  readonly canPinTradeShip?: (trader: number, ship: number) => boolean;
+  readonly pendingGroundOrders?: PendingGroundOrders;
   /** The selected settlers standing on the map, for the right-click attach. */
   readonly settlers?: readonly number[];
   /** Own settlers drawn under the cursor, which take the right-click ahead of a vehicle beneath them. */
@@ -219,6 +225,8 @@ function harness(selected: readonly number[], arms: Arms) {
     enqueue: (command) => issued.push(command),
     askMooring: mooringOf(arms.canMoorAt),
     askAttachToVehicle: answering(arms.canAttachToVehicle),
+    askPinTradeShip: answering(arms.canPinTradeShip),
+    pendingGroundOrders: arms.pendingGroundOrders,
     markOrder: (node, kind) => marked.push([node, kind]),
     flashTarget: (entity, tone) => flashed.push([entity, tone]),
   } satisfies VehicleOrderDeps;
@@ -243,6 +251,17 @@ function harness(selected: readonly number[], arms: Arms) {
     canAttachToVehicle: arms.canAttachToVehicle,
   });
   return { issued, controller, click, attach, pickMode, marked, flashed };
+}
+
+/** Issues the lone trader's pin of the ship; the outcomes it reports land in the returned list. */
+function pinOutcomes(controller: VehicleOrderController, unpins: boolean): string[] {
+  const outcomes: string[] = [];
+  controller.issueShipPin(
+    { trader: OWN_SETTLER, ship: SHIP, unpins },
+    () => outcomes.push('set'),
+    () => outcomes.push('refused'),
+  );
+  return outcomes;
 }
 
 const rightClick = { clientX: CLICK.x, clientY: CLICK.y, button: 2 } as MouseEvent;
@@ -783,6 +802,51 @@ describe('vehicle picks', () => {
     pickMode.arm({ kind: 'vehicle', settler: OWN_SETTLER });
     expect(pickMode.handleMouseDown({ ...leftClick, clientX: CLICK.x + 500 } as MouseEvent)).toBe('missed');
     expect(issued.length).toBe(1);
+  });
+
+  it('pins a ship the sim admits with one flash, and hands a refused pin on with no order', async () => {
+    const pinning = async (admits: boolean) => {
+      const h = harness([OWN_SETTLER], { canPinTradeShip: () => admits });
+      const outcomes = pinOutcomes(h.controller, false);
+      expect(outcomes).toEqual([]);
+      await landed();
+      return { issued: h.issued, flashed: h.flashed, outcomes };
+    };
+    expect(await pinning(true)).toEqual({
+      issued: [{ kind: 'setTradeShip', entity: OWN_SETTLER, ship: SHIP }],
+      flashed: [[SHIP, 'assign']],
+      outcomes: ['set'],
+    });
+    expect(await pinning(false)).toEqual({ issued: [], flashed: [], outcomes: ['refused'] });
+  });
+
+  it('calls a refused pin off once a newer order took the trader', async () => {
+    const pendingGroundOrders = createPendingGroundOrders();
+    const h = harness([OWN_SETTLER], { canPinTradeShip: () => false, pendingGroundOrders });
+    const outcomes = pinOutcomes(h.controller, false);
+    pendingGroundOrders.begin([OWN_SETTLER], false);
+    await landed();
+    expect(outcomes).toEqual([]);
+  });
+
+  it("drops a panel pick's pin once a newer order took the trader, as a right click's pin drops", async () => {
+    const pendingGroundOrders = createPendingGroundOrders();
+    const h = harness([OWN_SETTLER], {
+      canPinTradeShip: () => true,
+      pendingGroundOrders,
+      vehicles: [under(SHIP, 'vehicle')],
+    });
+    h.pickMode.arm({ kind: 'trade-ship', trader: OWN_SETTLER });
+    expect(h.pickMode.handleMouseDown(leftClick)).toBe('pending');
+    pendingGroundOrders.begin([OWN_SETTLER], false);
+    await landed();
+    expect(h.issued).toEqual([]);
+  });
+
+  it('lets a pinned ship go at once, without asking', () => {
+    const h = harness([OWN_SETTLER], { canPinTradeShip: () => false });
+    expect(pinOutcomes(h.controller, true)).toEqual(['set']);
+    expect(h.issued).toEqual([{ kind: 'setTradeShip', entity: OWN_SETTLER, ship: null }]);
   });
 
   it("seats the own settler a vehicle panel's pick clicks, and drives an own cart onto a ship's deck", async () => {

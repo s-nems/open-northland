@@ -1,5 +1,11 @@
 import type { ContentSet, EquipClass } from '@open-northland/data';
-import { Equipment, type EquipmentSlot, Health, Settler } from '../../components/index.js';
+import {
+  Equipment,
+  type EquipmentData,
+  type EquipmentSlot,
+  Health,
+  Settler,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -33,8 +39,9 @@ function carriedEffect<K extends CarriedEffect>(
   content: ContentSet,
   e: Entity,
   effect: K,
+  equipment: Readonly<EquipmentData> | undefined = world.tryGet(e, Equipment),
 ): EquipClass[K] | undefined {
-  const misc = world.tryGet(e, Equipment)?.misc;
+  const misc = equipment?.misc;
   if (misc === undefined) return undefined;
   for (const held of misc) {
     const value = liveEquipOf(content, held)?.[effect];
@@ -104,9 +111,15 @@ export function healingReserveOf(world: World, content: ContentSet, e: Entity, m
   return reserve;
 }
 
-/** Ticks `e`'s carried items take off each walked step (the speed amulet's 2). */
-export function carriedStepTicksSaved(world: World, content: ContentSet, e: Entity): number {
-  return carriedEffect(world, content, e, 'walkStepTicksSaved') ?? 0;
+/** Ticks `e`'s carried items take off each walked step (the speed amulet's 2). `equipment` is `e`'s
+ *  {@link Equipment} for a caller that already read it. */
+export function carriedStepTicksSaved(
+  world: World,
+  content: ContentSet,
+  e: Entity,
+  equipment: Readonly<EquipmentData> | undefined = world.tryGet(e, Equipment),
+): number {
+  return carriedEffect(world, content, e, 'walkStepTicksSaved', equipment) ?? 0;
 }
 
 /** Whether `operator` crafts for itself: a non-carrier with a trade. The shared gate for the tool credit

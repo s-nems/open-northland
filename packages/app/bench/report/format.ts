@@ -31,6 +31,8 @@ const WINDOW_COLUMNS: readonly Column[] = [
   { header: 'settlers', width: 10 },
   { header: 'fighters', width: 10 },
   { header: 'buildings', width: 11 },
+  { header: 'cpu ms', width: 9 },
+  { header: 'alloc KB', width: 10 },
   { header: 'gc ms', width: 9 },
   { header: 'gc n', width: 7 },
   { header: 'gc max', width: 9 },
@@ -50,6 +52,11 @@ const GROWTH_COLUMNS: readonly Column[] = [
 
 function ms(value: number): string {
   return value.toFixed(3);
+}
+
+/** KiB per tick, or `n/a` from a runtime without the allocation counter. */
+function kb(value: number | null): string {
+  return value === null ? 'n/a' : value.toFixed(1);
 }
 
 function worldHeadline(world: BenchWorld): string {
@@ -166,6 +173,8 @@ function windowSection(windows: readonly BenchWindow[]): readonly string[] {
         `${w.population.settlers}`,
         `${w.population.fighters}`,
         `${w.population.buildings}`,
+        ms(w.cpuMsPerTick),
+        kb(w.allocKbPerTick),
         w.gc.ms.toFixed(1),
         `${w.gc.count}`,
         w.gc.maxMs.toFixed(1),
@@ -193,6 +202,7 @@ export function formatReport(report: BenchReport): string {
     trustLine(report),
     `tick total: mean ${ms(tickMs.meanMs)} ms   median ${ms(tickMs.medianMs)} ms   p95 ${ms(tickMs.p95Ms)} ms   ` +
       `p99 ${ms(tickMs.p99Ms)} ms   max ${ms(tickMs.maxMs)} ms`,
+    `per tick: main-thread cpu ${ms(report.cpuMsPerTick)} ms   allocated ${kb(report.allocKbPerTick)} KB`,
     ...gcLine(report.windows),
     '',
     ...table(SYSTEM_COLUMNS, systemRows(report.systems)),

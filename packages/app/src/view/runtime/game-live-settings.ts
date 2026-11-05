@@ -31,6 +31,7 @@ export interface LiveGameSettingsDeps {
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
   readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
   readonly setWeatherEnabled: (enabled: boolean) => void;
+  readonly setDayNightShown: (shown: boolean) => void;
   readonly setBloodEnabled: (enabled: boolean) => void;
   readonly setBonesFade: (fades: boolean) => void;
   readonly setFpsCounterShown: (shown: boolean) => void;
@@ -112,6 +113,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setGraphicsEnhancements: deps.setGraphicsEnhancements,
     setMinimapFrame: deps.minimap.setFrame,
     setWeatherEnabled: deps.setWeatherEnabled,
+    setDayNightShown: deps.setDayNightShown,
     setBloodEnabled: deps.setBloodEnabled,
     setBonesFade: deps.setBonesFade,
     setFpsCounterShown: deps.setFpsCounterShown,

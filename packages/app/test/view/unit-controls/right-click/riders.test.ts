@@ -18,6 +18,7 @@ const PULLED_CREW = 6;
 const CART = 10;
 const SHIP = 11;
 const PULLED_CART = 12;
+const PINNED_SHIP = 13;
 const HOUSE = 20;
 const MARKED_HOUSE = 21;
 const TILE = { col: 6, row: 8 };
@@ -64,6 +65,7 @@ const WORLD = snapshotOf([
   vehicle(CART, VEHICLE_HANDCART, CART_TRADER),
   vehicle(SHIP, VEHICLE_SHIP_SMALL, SHIP_TRADER),
   vehicle(PULLED_CART, VEHICLE_HANDCART, PULLED_CREW, PULLER),
+  vehicle(PINNED_SHIP, VEHICLE_SHIP_SMALL, SHIP_TRADER, ROUTED),
 ]);
 
 const OVER_HOUSE: RightClickHit = {
@@ -123,6 +125,10 @@ describe("the riders' trade-route toggle", () => {
   it("toggles for a selected cart's crew, never a ship's, which takes the click itself", () => {
     expect(resolve([CART])).toMatchObject({ kind: 'tradeHouse', ask: [CART_TRADER] });
     expect(resolve([SHIP])).toEqual({ kind: 'none' });
+  });
+
+  it('leaves the trader of a selected pinned ship alone: no route window speaks for it', () => {
+    expect(resolve([PINNED_SHIP])).toEqual({ kind: 'none' });
   });
 
   it('toggles for the trader pulling a selected cart beside its crew', () => {

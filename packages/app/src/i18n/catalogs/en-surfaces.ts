@@ -174,6 +174,13 @@ export const enSurfaces = {
         map: { label: 'Map', detail: 'Only the weather the map itself sets.' },
         variable: { label: 'Variable', detail: "The map's weather plus the game's own occasional weather." },
         winter: { label: 'Winter', detail: 'A snowy game.' },
+        off: { label: 'Off', detail: 'No weather, not even the weather the map sets.' },
+      },
+      dayNightLabel: 'Day and night',
+      dayNightModes: {
+        map: { label: 'Map', detail: 'Only the day and night the map itself sets.' },
+        on: { label: 'On', detail: 'A day and night cycle on every map. A map with its own cycle keeps it.' },
+        off: { label: 'Off', detail: 'Always daytime, even on a map with its own cycle.' },
       },
       start: 'Start game',
       startNeedsSeat: 'Take a seat first',
@@ -267,9 +274,6 @@ export const enSurfaces = {
       buildingDamage: 'Building damage',
       buildingDamageTip:
         'Broken roofs, exposed beams, smoke, fire and flying fragments. Disable for simpler smoke with less graphics work.',
-      nightLights: 'Night lights',
-      nightLightsTip:
-        'At night fires, houses and settlers light the map: a warm glow round each fire, and figures and houses keep part of their daylight colours. Disable for an evenly darkened night with less graphics work.',
       environmentMotion: 'Environment motion',
       environmentMotionTip:
         "Trees the original draws as one still frame sway in the wind together with their shadow, fish swim smoothly, and the breeze in the project's own vegetation is smoothed. Settlers and animals keep the original stepping, and original animations gain no extra frames. Trees stand still in a restored save.",
@@ -285,6 +289,9 @@ export const enSurfaces = {
       weather: 'Weather',
       weatherTip:
         'Rain, snow and sandstorms where the map calls for them: falling drops and flakes, mist and storm light, wet and snowy ground, splashes, wind and thunder. Weather never changes the game itself. Off shows clear skies and silences the weather.',
+      dayNight: 'Day and night cycle',
+      dayNightTip:
+        'Day and night where the map or the game rule runs them: sun, dusk and a night when fires, houses and settlers light the map. The cycle never changes the game itself. Off keeps it daytime with less graphics work; dark maps and attack nights are then evenly darkened.',
       uiScale: 'In-game interface scale',
       uiScaleTip: 'Size of in-game panels and buttons; does not change world sharpness.',
       uiScalePinnedTip: 'This session has a fixed diagnostic ?uiscale value.',
@@ -366,6 +373,7 @@ export const enSurfaces = {
         statistics: 'Statistics window',
         mission: 'Mission window',
         diplomacy: 'Diplomacy window',
+        diplomacyMap: 'Diplomacy map',
         knowledge: 'Knowledge window',
         network: 'Network window (multiplayer)',
         actionRing: 'Unit action ring',
@@ -594,6 +602,9 @@ export const enSurfaces = {
     loadFailedTitle: 'Loading the save failed',
     loadFailedDetail:
       'This world could not take the saved game. It usually means the save was made on different game content or an older map; loading it again will fail the same way.',
+    graphicsUnavailableTitle: 'The graphics are not available',
+    graphicsUnavailableDetail:
+      'The browser gives the game no graphics (WebGL) right now, often after the graphics driver failed. Close the game or the browser completely and start it again; if it happens again, update the graphics driver.',
     availableScenes: 'Available worlds:',
     unknownScene: 'Unknown world: "{id}"',
     copied: 'copied',

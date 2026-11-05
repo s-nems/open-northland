@@ -25,6 +25,8 @@ export function reportFrom(options: RunOptions): BenchReport {
     world: options.world,
     ticks: { ...options.ticks, windows: measurement.windows.length },
     firstTick: measurement.firstTick,
+    cpuMsPerTick: measurement.cpuMsPerTick,
+    allocKbPerTick: measurement.allocKbPerTick,
     windows: measurement.windows,
     environment: captureEnvironment({
       knobs: options.knobs,

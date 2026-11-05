@@ -22,6 +22,8 @@ const CATAPULT = 1;
 const CART = 2;
 const SHIP = 3;
 const SHIP_AT_SEA = 4;
+const PINNED_SHIP = 7;
+const TRADER = 8;
 const COMMANDER = 5;
 const PASSENGER = 6;
 const ENEMY_SOLDIER = 20;
@@ -59,11 +61,21 @@ const aboard = (id: number, vehicleRef: number): Ent => ({
   },
 });
 
+/** The ship with `Vehicle.hauler` naming the trader it is pinned to. */
+const pinned = (ship: Ent, trader: number): Ent => ({
+  ...ship,
+  components: {
+    ...ship.components,
+    Vehicle: { ...(ship.components.Vehicle as object), hauler: trader },
+  },
+});
+
 const WORLD = snapshotOf([
   vehicle(CATAPULT, VEHICLE_CATAPULT, false, [PASSENGER, COMMANDER]),
   vehicle(CART, VEHICLE_HANDCART),
   vehicle(SHIP, VEHICLE_SHIP_SMALL, true),
   vehicle(SHIP_AT_SEA, VEHICLE_SHIP_SMALL),
+  pinned(vehicle(PINNED_SHIP, VEHICLE_SHIP_SMALL, true), TRADER),
   aboard(COMMANDER, CATAPULT),
   aboard(PASSENGER, CATAPULT),
 ]);
@@ -125,6 +137,10 @@ describe("a single vehicle's right click", () => {
   it('boards only an own moored ship, never one at sea, and a ship never boards', () => {
     expect(groupOf(resolve(CART, { ownVehicle: SHIP_AT_SEA })).intent).toMatchObject({ kind: 'drive' });
     expect(groupOf(resolve(SHIP_AT_SEA, { ownVehicle: SHIP })).intent).toMatchObject({ kind: 'drive' });
+  });
+
+  it('drives past a moored ship pinned to a trader, whose slot the route keeps', () => {
+    expect(groupOf(resolve(CART, { ownVehicle: PINNED_SHIP })).intent).toMatchObject({ kind: 'drive' });
   });
 
   it("waits on a ship's mooring rule and carries the crew landing; a land vehicle drives at once", () => {

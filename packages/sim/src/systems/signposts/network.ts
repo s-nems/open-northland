@@ -23,7 +23,7 @@ import {
   nodeOfPosition,
 } from '../../nav/halfcell.js';
 import { hexNodeBox, type NodeBox, type SpatialGate, unionNodeBoxes } from '../../nav/node-circle.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { isCarrierJobRow, isDruidJob, isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
 import { goodsSearchLimitAt } from './reach.js';
 
@@ -244,8 +244,9 @@ function verifyNetwork(world: World): string[] {
  * Source basis: the original's guided pathfinder: a leg is planned within the walk range of the current
  * position, or through a guide within that range of the start and one within it of the goal, both in one
  * link system. Approximations: the original floods walkable ground to catch a guide and to cover a goal,
- * and weighs only the two nearest guides on each side, where this gate tests hex distance (plus the
- * static terrain component for the catch) and opens every group with a post in range.
+ * and weighs only the two nearest guides on each side, where this gate tests hex distance and opens
+ * every group with a post in range. Project rule, which keeps it closer to the flood: a caught post and
+ * an allowed node lie on the spot's static land component when both stand on walkable land.
  */
 export type NavigationLimit = SpatialGate;
 
@@ -393,10 +394,10 @@ function computeNavigationLimit(
 /**
  * The spots from which a settler of `jobType` and `player` would be allowed one of `goals`: the reverse of
  * the confinement it carries standing there, within its walk range of a goal or catching a signpost group
- * whose posts cover one. A search over many candidate spots tests each with a few distance checks instead
- * of deriving every spot's confinement. A `slack` widens both ranges and drops the catch's ground test,
- * so the answer also admits every spot within that many Manhattan nodes of one that qualifies, hex
- * distance never exceeding Manhattan. Null when nothing confines the job.
+ * whose posts cover one, on the goal's land. A search over many candidate spots tests each with a few
+ * distance checks instead of deriving every spot's confinement. A `slack` widens both ranges and drops
+ * the ground tests, so the answer also admits every spot within that many Manhattan nodes of one that
+ * qualifies, hex distance never exceeding Manhattan. Null when nothing confines the job.
  */
 export function spotsReaching(
   world: World,
@@ -410,19 +411,28 @@ export function spotsReaching(
   if (!signpostNavigationEnabled(world) || !confinedJob(content, jobType)) return null;
   const range = walkRangeOf(content, jobType);
   const posts = refreshedMemo(world).byPlayer.get(player) ?? [];
-  const serving = servingPosts(terrain, posts, goals, range);
+  const goalLands = goals.map((goal) => landComponentOf(terrain, goal));
+  const landsOfGroup = goalLandsByGroup(terrain, posts, goals, goalLands, range);
+  const serving = landsOfGroup.size === 0 ? NO_SITES : posts.filter((s) => landsOfGroup.has(s.group));
+  const judgeGround = slack === 0;
   // Indexed loops: the test runs per candidate spot, and an array iterator here is not always elided.
   return (hx, hy) => {
+    const land = judgeGround ? landComponentAt(terrain, hx, hy) : null;
     for (let i = 0; i < goals.length; i++) {
       const goal = goals[i] as NodeId;
-      if (hexDistanceBetween(hx, hy, terrain.xOf(goal), terrain.yOf(goal)) <= range + slack) return true;
+      if (
+        hexDistanceBetween(hx, hy, terrain.xOf(goal), terrain.yOf(goal)) <= range + slack &&
+        sameLand(land, goalLands[i] as number | null)
+      )
+        return true;
     }
-    const here = slack === 0 ? componentAt(terrain, hx, hy) : null;
+    const here = judgeGround ? componentAt(terrain, hx, hy) : null;
     for (let i = 0; i < serving.length; i++) {
       const s = serving[i] as SignpostSite;
       if (
         hexDistanceBetween(hx, hy, s.hx, s.hy) < range + slack &&
-        (here === null || componentAt(terrain, s.hx, s.hy) === here)
+        (here === null || componentAt(terrain, s.hx, s.hy) === here) &&
+        (land === null || coversLand(landsOfGroup.get(s.group), land))
       )
         return true;
     }
@@ -430,31 +440,36 @@ export function spotsReaching(
   };
 }
 
-/** The posts of every group with a post strictly inside `range` of one of `goals`, in network order. */
-function servingPosts(
+/** The lands of the goals each group covers with a post strictly inside `range`, by group label (null for
+ *  a goal off walkable land, which any spot may claim). */
+function goalLandsByGroup(
   terrain: TerrainGraph,
   posts: readonly SignpostSite[],
   goals: readonly NodeId[],
+  goalLands: readonly (number | null)[],
   range: number,
-): readonly SignpostSite[] {
-  groupScratch.length = 0;
+): Map<number, (number | null)[]> {
+  const landsOfGroup = new Map<number, (number | null)[]>();
   for (const s of posts) {
-    if (groupScratch.includes(s.group)) continue;
-    for (const goal of goals) {
-      if (hexDistanceBetween(s.hx, s.hy, terrain.xOf(goal), terrain.yOf(goal)) < range) {
-        groupScratch.push(s.group);
-        break;
+    let lands = landsOfGroup.get(s.group);
+    for (let i = 0; i < goals.length; i++) {
+      const goal = goals[i] as NodeId;
+      const land = goalLands[i] as number | null;
+      if (lands?.includes(land) === true) continue;
+      if (hexDistanceBetween(s.hx, s.hy, terrain.xOf(goal), terrain.yOf(goal)) >= range) continue;
+      if (lands === undefined) {
+        lands = [];
+        landsOfGroup.set(s.group, lands);
       }
+      lands.push(land);
     }
   }
-  if (groupScratch.length === 0) return NO_SITES;
-  const serving: SignpostSite[] = [];
-  for (const s of posts) if (groupScratch.includes(s.group)) serving.push(s);
-  return serving;
+  return landsOfGroup;
 }
 
-/** The group labels {@link servingPosts} collects; a goal set catches a handful, so a scan beats a set. */
-const groupScratch: number[] = [];
+function coversLand(lands: readonly (number | null)[] | undefined, land: number): boolean {
+  return lands !== undefined && (lands.includes(land) || lands.includes(null));
+}
 
 /** Whether signposts confine `jobType`. The original routes soldiers, heroes, scouts, hunters and druids
  *  over its global walk sectors instead. */
@@ -478,7 +493,22 @@ function walkRangeOf(content: ContentSet, jobType: number | null): number {
 function componentAt(terrain: TerrainGraph, x: number, y: number): number | null {
   if (!terrain.inBounds(x, y)) return null;
   const component = terrain.componentOf(terrain.nodeAt(x, y));
-  return component === -1 ? null : component;
+  return component === NO_COMPONENT ? null : component;
+}
+
+/** The static land component of a walkable node, or null for one off the map or off walkable land (water,
+ *  a trunk, a rock), where the island rules below do not judge. */
+export function landComponentAt(terrain: TerrainGraph, x: number, y: number): number | null {
+  return terrain.inBounds(x, y) ? landComponentOf(terrain, terrain.nodeAt(x, y)) : null;
+}
+
+function landComponentOf(terrain: TerrainGraph, node: NodeId): number | null {
+  return terrain.isWalkable(node) ? terrain.componentOf(node) : null;
+}
+
+/** Whether two {@link landComponentAt} answers may lie on one island: equal, or either unjudged. */
+export function sameLand(a: number | null, b: number | null): boolean {
+  return a === null || b === null || a === b;
 }
 
 /** The posts of the signpost groups one catch opens, shared by every settler of the player whose catch
@@ -639,9 +669,10 @@ function samePostNodes(a: readonly SignpostSite[], b: readonly SignpostSite[]): 
 }
 
 /** A spot's confinement: the walk range around the spot itself, inclusive, plus whatever its caught
- *  posts cover. */
+ *  posts cover, on the spot's land when it stands on land. */
 class SignpostConfinement implements NavigationLimit {
   readonly bounds: NodeBox;
+  private readonly land: number | null;
 
   constructor(
     private readonly terrain: TerrainGraph,
@@ -652,13 +683,16 @@ class SignpostConfinement implements NavigationLimit {
   ) {
     const own = hexNodeBox(hx, hy, range);
     this.bounds = caught === null ? own : unionNodeBoxes([own, caught.bounds]);
+    this.land = landComponentAt(terrain, hx, hy);
   }
 
   allowsNode(node: NodeId): boolean {
     const x = this.terrain.xOf(node);
     const y = this.terrain.yOf(node);
-    if (hexDistanceBetween(this.hx, this.hy, x, y) <= this.range) return true;
-    return this.caught?.covers(x, y) === true;
+    const reached =
+      hexDistanceBetween(this.hx, this.hy, x, y) <= this.range || this.caught?.covers(x, y) === true;
+    if (!reached || this.land === null) return reached;
+    return sameLand(this.land, landComponentOf(this.terrain, node));
   }
 
   /** The own range widened by `radius` on the same grounds as {@link CaughtPosts.coversNear}. */

@@ -45,6 +45,22 @@ describe('construction pixel picking', () => {
     expect(pixelHit(pe, 2, 101, 197)).toBeUndefined(); // a culled previous frame
   });
 
+  it('picks a ship yard site on its cropped LUT quad the same way', () => {
+    const { binder, pe: plain, layer } = fixture();
+    const lut = { source: new TextureSource({ width: 256, height: 1 }), colours: 1 };
+    const pe = createPooled('building', lut);
+    pe.motion.drawX = plain.motion.drawX;
+    pe.motion.drawY = plain.motion.drawY;
+    cleanup.push(() => {
+      pe.container.destroy({ children: true });
+      lut.source.destroy();
+    });
+    pe.reveal = 0.5;
+    binder.bind(pe, drawItem('building', { builtPct: 50 }), [layer], VIEW, 1);
+    expect(pixelHit(pe, 1, 101, 187)).toBe(false);
+    expect(pixelHit(pe, 1, 101, 197)).toBe(true);
+  });
+
   it('does not restore the full box hit when every construction layer is still hidden', () => {
     const { binder, pe, layer } = fixture();
     pe.reveal = 0;

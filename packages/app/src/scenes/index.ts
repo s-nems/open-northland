@@ -76,6 +76,11 @@ import { tradeScene } from './economy/trade.js';
 import { tradeBreadScene } from './economy/trade-bread.js';
 import { tradeDomesticScene } from './economy/trade-domestic.js';
 import { tradeOnFootScene } from './economy/trade-on-foot.js';
+import { tradeSeaScene } from './economy/trade-sea.js';
+import { tradeSeaAgreementScene } from './economy/trade-sea-agreement.js';
+import { tradeSeaCarriersScene } from './economy/trade-sea-carriers.js';
+import { tradeSeaPinScene } from './economy/trade-sea-pin.js';
+import { tradeSeaSettlementsScene } from './economy/trade-sea-settlements.js';
 import { warehouseScene } from './economy/warehouse.js';
 import { workshopProductsScene } from './economy/workshop-products.js';
 import { berriesScene } from './gathering/berries.js';
@@ -115,6 +120,7 @@ import { schoolQueueScene } from './settlers/school-queue.js';
 import { scoutClaimScene } from './settlers/scout-claim.js';
 import { scoutExploreScene } from './settlers/scout-explore.js';
 import { templeAuraScene } from './settlers/temple-aura.js';
+import { toolUpgradeScene } from './settlers/tool-upgrade.js';
 import type { SceneDefinition } from './types.js';
 import { cartDriversScene } from './vehicles/cart-drivers.js';
 import { haulingCartScene } from './vehicles/hauling-cart.js';
@@ -130,6 +136,7 @@ import { vehicleOxScene } from './vehicles/vehicle-ox.js';
 import { vehicleOxYardScene } from './vehicles/vehicle-ox-yard.js';
 import { vehicleShipCargoScene } from './vehicles/vehicle-ship-cargo.js';
 import { vehicleShipColumnScene } from './vehicles/vehicle-ship-column.js';
+import { vehicleShipSitesScene } from './vehicles/vehicle-ship-sites.js';
 import { vehicleShipVoyageScene } from './vehicles/vehicle-ship-voyage.js';
 import { vehicleShipsScene } from './vehicles/vehicle-ships.js';
 import { vehicleShipyardScene } from './vehicles/vehicle-shipyard.js';
@@ -253,6 +260,11 @@ export const SCENES: readonly SceneDefinition[] = [
   tradeDomesticScene,
   tradeBreadScene,
   tradeOnFootScene,
+  tradeSeaScene,
+  tradeSeaPinScene,
+  tradeSeaAgreementScene,
+  tradeSeaCarriersScene,
+  tradeSeaSettlementsScene,
   tributeScene,
   presentationScene,
   terrainEditsScene,
@@ -262,6 +274,7 @@ export const SCENES: readonly SceneDefinition[] = [
   schoolGraduatesScene,
   schoolQueueScene,
   gathererFlagFollowScene,
+  toolUpgradeScene,
   porterFlagScene,
   fieldPostFlagsScene,
   gathererGoodsScene,
@@ -278,6 +291,7 @@ export const SCENES: readonly SceneDefinition[] = [
   vehicleDockFleetScene,
   shipWakesScene,
   vehicleShipyardScene,
+  vehicleShipSitesScene,
   vehicleCargoScene,
   vehicleShipCargoScene,
   haulingCartScene,

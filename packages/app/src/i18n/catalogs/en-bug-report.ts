@@ -21,7 +21,7 @@ export const enBugReport = {
     'renderer-unresponsive': 'The game page stopped responding for a while.',
     desync: "Your game no longer matches the other players' games, so the match cannot continue reliably.",
     'context-lost':
-      'The browser took away the graphics and did not give them back. Reloading the page usually helps.',
+      'The browser took away the graphics and did not give them back. Reload the page; if that does not help, close the game or the browser completely and start it again.',
     'gpu-gone':
       'The graphics part of the game stopped and was started again. The game has recovered; the report helps find out why it happened.',
   },

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "pool": "saracen-male",
+  "names": {
+    "Ali": "阿里",
+    "Amr": "阿姆鲁",
+    "Arif": "阿里夫",
+    "Fadl": "法德勒",
+    "Farid": "法里德",
+    "Faris": "法里斯",
+    "Faruq": "法鲁克",
+    "Hanif": "哈尼夫",
+    "Harith": "哈里斯",
+    "Jamal": "贾迈勒",
+    "Jamil": "贾米勒",
+    "Kamil": "卡米勒",
+    "Karim": "卡里姆",
+    "Masud": "马苏德",
+    "Rabi": "拉比",
+    "Rafi": "拉菲",
+    "Rida": "里达",
+    "Riyad": "利雅得",
+    "Sami": "萨米",
+    "Sharif": "谢里夫",
+    "Thabit": "萨比特",
+    "Umar": "欧麦尔",
+    "Yazid": "亚齐德"
+  }
+}

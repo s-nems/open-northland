@@ -146,6 +146,7 @@ export {
   resolveSettlerBobId,
   resolveStockpileDraw,
   type SettlerStateBinding,
+  type ShipYardSites,
   type SpriteAtlas,
   type SpriteBindings,
   type SpriteFrameRef,

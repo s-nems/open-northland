@@ -115,28 +115,49 @@ export function landscapeTypes(terrain: TerrainGraph): ReadonlyMap<number, Scrip
   return authoredLandscapes(terrain).types;
 }
 
-/** The entities standing in for resource-backed placements, kept in step with the store's membership
- *  journal: a felled tree replays one entity instead of re-reading every resource on the map. */
-interface LiveResources {
-  generation: number;
-  /** Buckets in store order; a bucket array is replaced, never edited, so a held one stays valid. */
-  readonly byId: Map<number, readonly Entity[]>;
+/** The entities standing in for resource-backed placements, by placement id. Read again after a
+ *  resource is created or reaped: an index held across that may be stale or patched. */
+export interface ResourceIndex {
+  has(id: number): boolean;
+  /** The entities standing in for placement `id` in store order, empty for none; never edited later. */
+  entitiesOf(id: number): readonly Entity[];
+}
+
+const NO_ENTITIES: readonly Entity[] = [];
+
+/** {@link ResourceIndex} kept in step with the store's membership journal: a felled tree replays one
+ *  entity instead of re-reading every resource on the map. */
+class LiveResources implements ResourceIndex {
+  /** Per placement id its one entity, or the entities in store order when several stand for it: nearly
+   *  every id has one, so it holds no list. A list is replaced, never edited, so a held one stays valid. */
+  readonly byId = new Map<number, Entity | readonly Entity[]>();
   /** The placement id each indexed entity stands for, to find its bucket once its component is gone. */
-  readonly idOf: Map<Entity, number>;
+  readonly idOf = new Map<Entity, number>();
+
+  constructor(public generation: number) {}
+
+  has(id: number): boolean {
+    return this.byId.has(id);
+  }
+
+  entitiesOf(id: number): readonly Entity[] {
+    const held = this.byId.get(id);
+    return held === undefined ? NO_ENTITIES : typeof held === 'number' ? [held] : held;
+  }
 }
 const liveResources = new WeakMap<World, LiveResources>();
 
 function indexResources(world: World): LiveResources {
-  const byId = new Map<number, Entity[]>();
-  const idOf = new Map<Entity, number>();
+  const live = new LiveResources(world.componentGeneration(LandscapeResource));
+  const { byId, idOf } = live;
   for (const entity of world.query(LandscapeResource)) {
     const id = world.get(entity, LandscapeResource).id;
     idOf.set(entity, id);
     const held = byId.get(id);
-    if (held === undefined) byId.set(id, [entity]);
-    else held.push(entity);
+    if (held === undefined) byId.set(id, entity);
+    else byId.set(id, typeof held === 'number' ? [held, entity] : [...held, entity]);
   }
-  return { generation: world.componentGeneration(LandscapeResource), byId, idOf };
+  return live;
 }
 
 /** Apply one journaled entity: false when its bucket holds another entity too, whose order against it
@@ -144,7 +165,7 @@ function indexResources(world: World): LiveResources {
 function replayResource(world: World, live: LiveResources, entity: Entity): boolean {
   const before = live.idOf.get(entity);
   const after = world.tryGet(entity, LandscapeResource)?.id;
-  if (before !== undefined && (live.byId.get(before)?.length ?? 0) > 1) return false;
+  if (before !== undefined && typeof live.byId.get(before) === 'object') return false;
   if (after !== undefined && after !== before && live.byId.has(after)) return false;
   if (before === after) return true;
   if (before !== undefined) {
@@ -152,18 +173,16 @@ function replayResource(world: World, live: LiveResources, entity: Entity): bool
     live.idOf.delete(entity);
   }
   if (after !== undefined) {
-    live.byId.set(after, [entity]);
+    live.byId.set(after, entity);
     live.idOf.set(entity, after);
   }
   return true;
 }
 
-/** The entities standing in for resource-backed placements, by placement id. Read again after a
- *  resource is created or reaped: a map held across that may be stale or patched. */
-export function landscapeResources(world: World): ReadonlyMap<number, readonly Entity[]> {
+export function landscapeResources(world: World): ResourceIndex {
   const generation = world.componentGeneration(LandscapeResource);
   let live = liveResources.get(world);
-  if (live?.generation === generation) return live.byId;
+  if (live?.generation === generation) return live;
   if (live !== undefined) {
     const held = live;
     let exact = true;
@@ -172,7 +191,7 @@ export function landscapeResources(world: World): ReadonlyMap<number, readonly E
     });
     if (replayed && exact) {
       held.generation = generation;
-      return held.byId;
+      return held;
     }
   }
   world.journalMembership(LandscapeResource);
@@ -180,7 +199,7 @@ export function landscapeResources(world: World): ReadonlyMap<number, readonly E
   if (live === undefined) world.registerCacheVerifier('landscapeResources', () => verifyResources(world));
   live = fresh;
   liveResources.set(world, live);
-  return live.byId;
+  return live;
 }
 
 /** The {@link landscapeResources} coherence verifier (`verifyCaches`): a cold read of the store must
@@ -192,9 +211,10 @@ function verifyResources(world: World): string[] {
   if (fresh.byId.size !== live.byId.size) {
     return [`landscapeResources holds ${live.byId.size} ids but re-derived ${fresh.byId.size}`];
   }
-  for (const [id, entities] of fresh.byId) {
-    const held = live.byId.get(id);
-    if (held === undefined || held.length !== entities.length || held.some((e, k) => e !== entities[k])) {
+  for (const id of fresh.byId.keys()) {
+    const entities = fresh.entitiesOf(id);
+    const held = live.entitiesOf(id);
+    if (held.length !== entities.length || held.some((e, k) => e !== entities[k])) {
       return [`landscapeResources bucket ${id} disagrees with the store`];
     }
   }
@@ -222,7 +242,7 @@ function standing(
   id: number,
   resourceBacked: boolean,
   removed: ReadonlySet<number>,
-  resources: () => ReadonlyMap<number, readonly Entity[]>,
+  resources: () => ResourceIndex,
 ): boolean {
   if (removed.has(id)) return false;
   return !resourceBacked || resources().has(id);
@@ -243,8 +263,8 @@ export function landscapesWithin(
   const authored = authoredLandscapes(terrain);
   const placements = authored.placements;
   const removed = removedIds(world);
-  let resourceIndex: ReadonlyMap<number, readonly Entity[]> | undefined;
-  const resources = (): ReadonlyMap<number, readonly Entity[]> => {
+  let resourceIndex: ResourceIndex | undefined;
+  const resources = (): ResourceIndex => {
     resourceIndex ??= landscapeResources(world);
     return resourceIndex;
   };

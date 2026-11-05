@@ -27,6 +27,7 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../../src/index.js';
+import { vehicleBlockedCells } from '../../../src/systems/footprint/index.js';
 import { reap } from '../../../src/systems/lifecycle/death.js';
 import { atomicDuration } from '../../../src/systems/readviews/animations.js';
 import { MEAL_UNITS } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
@@ -35,6 +36,7 @@ import { cartLiftTicks, HANDCART_FULL_SPEED_LOSS_PERCENT } from '../../../src/sy
 import {
   carryCapacityOf,
   haulingCartSpeedLossPercent,
+  parkHaulingCart,
   releasesHaulingCart,
   unloadHaulingCart,
 } from '../../../src/systems/vehicles/hauling-cart.js';
@@ -295,6 +297,20 @@ describe('hauling with the cart', () => {
 });
 
 describe('setting the cart down', () => {
+  it('a park keeps the cells standing vehicles cover true', () => {
+    const s = sim();
+    const hq = placeHouse(s, HQ_AT);
+    const { porter } = postedPorterWithCart(s, hq);
+    expect(runUntil(s, TAKE_TICKS, () => s.world.get(porter, HaulingCart).taken)).toBeGreaterThan(0);
+    const ctx = ctxOf(s);
+    if (ctx.terrain === undefined) throw new Error('mapless sim');
+    vehicleBlockedCells(s.world, ctx, ctx.terrain);
+
+    parkHaulingCart(s.world, ctx, porter);
+
+    expect(checkInvariants(s.world, s.content)).toEqual([]);
+  });
+
   it('detach stands the cart beside the carrier with its load in the hold', () => {
     const s = sim();
     const hq = placeHouse(s, HQ_AT);

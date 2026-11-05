@@ -130,7 +130,7 @@ describe('SceneLight at night', () => {
     const renderer = { resolution: 1, render } as unknown as Renderer;
     const light = new SceneLight();
     light.setTarget(NIGHT, true);
-    light.update({ ...frameAt(0), camera, lights: lights.sites, renderer, nightLights: false });
+    light.update({ ...frameAt(0), camera, lights: lights.sites, renderer, dayNight: false });
     const [shade, , flares] = quads(light);
     expect(render).not.toHaveBeenCalled();
     expect(light.composite()).toBeNull();

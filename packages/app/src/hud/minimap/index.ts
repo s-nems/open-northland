@@ -6,6 +6,7 @@ import {
   type SceneTerrain,
   type SeenRoadNetwork,
   terrainWorldBounds,
+  type WorldBounds,
 } from '@open-northland/render';
 import type { DiplomacyState, FogView, HalfCellNode, WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
@@ -27,14 +28,17 @@ import type { MinimapFrame } from './frames.js';
 import { createGoalMarks, type GoalNode } from './goal-marks.js';
 import { createMinimapInput } from './input.js';
 import {
+  type MinimapLayout,
   type MinimapSize,
   minimapLayout,
   nextMinimapSize,
+  overviewLayout,
   pointOverMinimap,
   viewportRectOnMinimap,
   visibleMinimapRect,
   zoomMinimapLayout,
 } from './model.js';
+import { createOverviewCanvas, type OverviewCanvas } from './overview-canvas.js';
 import { createDotReplotGate } from './replot-gate.js';
 import { createRoadLayer } from './road-layer.js';
 import { MARKER_SIZE_SCALES, stampMark } from './stamps.js';
@@ -79,6 +83,14 @@ export interface MinimapOptions {
   readonly onJump: (worldX: number, worldY: number) => void;
   readonly onOrder?: (worldX: number, worldY: number, event: MouseEvent) => boolean;
   readonly toScreenPx: (clientX: number, clientY: number) => { x: number; y: number };
+  /** The button over the corner frame was pressed. */
+  readonly onOverviewButton: () => void;
+}
+
+/** Where a map stands on the screen, for what is drawn over it; a new `layout` object means it moved. */
+export interface MinimapPlacement {
+  readonly layout: MinimapLayout;
+  readonly bounds: WorldBounds;
 }
 
 export interface MinimapHandle {
@@ -91,11 +103,114 @@ export interface MinimapHandle {
   setHidden(hidden: boolean): void;
   setUiScale(uiscale: number): Promise<void>;
   setFrame(frame: MinimapFrame): void;
+  /** Name the overview's key in its button's tip; `null` when unbound. */
+  setOverviewKey(key: string | null): void;
+  /** Show or shut the overview, the second map that stands in the screen's centre as a window. */
+  setOverview(open: boolean): void;
+  /** Where the overview stands. */
+  placement(): MinimapPlacement;
+  /** Where a view drawn over the overview mounts, inside its frame's stacking order. */
+  readonly overviewHost: HTMLElement;
+  /** The overview's map input listens here. */
+  readonly overviewCanvas: HTMLCanvasElement;
+  /** Hand the keyboard to the button that opens the overview. */
+  focusOverviewButton(): void;
   dispose(): void;
 }
 
-/** The retained whole-map layers share one transform and one clip, including the fog. */
+/** One map on the screen, in its own place and with its own zoom and pan. */
+interface MinimapView {
+  claimsPointer(clientX: number, clientY: number): boolean;
+  dragging(): boolean;
+  update: MinimapHandle['update'];
+  ping(at: HalfCellNode): void;
+  setHidden(hidden: boolean): void;
+  setUiScale(uiscale: number): void;
+  setFrame(frame: MinimapFrame): void;
+  setOverviewKey(key: string | null): void;
+  /** Take a choice made on the other map. */
+  setFilters(filters: MinimapFilters): void;
+  /** The shown part of the map, in screen px. */
+  visibleMap(): Rect;
+  placement(): MinimapPlacement;
+  readonly host: HTMLElement;
+  focusOverviewButton(): void;
+  dispose(): void;
+}
+
+/**
+ * The corner map and the overview. The overview is a whole second map on its own canvas, so it stands
+ * over the HUD; it stays hidden from the start, its ground baked ahead on a worker, so it opens at once.
+ */
 export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle> {
+  const overviewCanvas = await createOverviewCanvas();
+  try {
+    return mountBothMaps(opts, overviewCanvas);
+  } catch (error) {
+    overviewCanvas.dispose();
+    throw error;
+  }
+}
+
+function mountBothMaps(opts: MinimapOptions, overviewCanvas: OverviewCanvas): MinimapHandle {
+  let overviewOpen = false;
+  const chose = (next: MinimapFilters, peer: MinimapView): void => {
+    peer.setFilters(next);
+    opts.onFiltersChange?.(next);
+  };
+  const overview: MinimapView = mountMinimapView(
+    opts,
+    'overview',
+    (next) => chose(next, corner),
+    overviewCanvas,
+  );
+  overview.host.prepend(overviewCanvas.canvas);
+  const corner: MinimapView = mountMinimapView(opts, 'corner', (next) => chose(next, overview), {
+    canvas: opts.canvas,
+    stage: opts.app.stage,
+  });
+  return {
+    claimsPointer: (x, y) => corner.claimsPointer(x, y) || overview.claimsPointer(x, y),
+    dragging: () => corner.dragging() || overview.dragging(),
+    update: (snapshot, fog, lostGoals) => {
+      corner.update(snapshot, fog, lostGoals);
+      overview.update(snapshot, fog, lostGoals);
+      if (overviewOpen) overviewCanvas.render(overview.visibleMap(), opts.app.renderer.resolution);
+    },
+    ping: (at) => {
+      corner.ping(at);
+      if (overviewOpen) overview.ping(at);
+    },
+    setHidden: corner.setHidden,
+    setUiScale: async (next) => {
+      corner.setUiScale(next);
+      overview.setUiScale(next);
+    },
+    setFrame: corner.setFrame,
+    setOverviewKey: corner.setOverviewKey,
+    setOverview: (open) => {
+      overviewOpen = open;
+      overview.setHidden(!open);
+    },
+    placement: overview.placement,
+    overviewHost: overview.host,
+    overviewCanvas: overviewCanvas.canvas,
+    focusOverviewButton: corner.focusOverviewButton,
+    dispose: () => {
+      overview.dispose();
+      overviewCanvas.dispose();
+      corner.dispose();
+    },
+  };
+}
+
+/** The retained whole-map layers share one transform and one clip, including the fog. */
+function mountMinimapView(
+  opts: MinimapOptions,
+  place: 'corner' | 'overview',
+  onFilters: (filters: MinimapFilters) => void,
+  drawing: { readonly canvas: HTMLCanvasElement; readonly stage: Container },
+): MinimapView {
   const { app, terrain, plane } = opts;
   const bounds = terrainWorldBounds(terrain.width, terrain.height);
   let uiScale = opts.uiscale;
@@ -104,10 +219,16 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   let center = { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2 };
   let zoomFocus = center;
   let filters: MinimapFilters = opts.filters ?? DEFAULT_MINIMAP_FILTERS;
-  let hidden = false;
+  let hidden = place === 'overview';
+  /** Whether the hidden overview has asked for its ground. */
+  let groundAsked = false;
   let hasSeat = opts.viewer() !== null;
   let dirtyDots = true;
-  let base = minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width);
+  const placedLayout = (): MinimapLayout =>
+    place === 'corner'
+      ? minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width)
+      : overviewLayout(bounds, app.screen.height, uiScale, app.screen.width);
+  let base = placedLayout();
   let layout = zoomMinimapLayout(base, bounds, zoom, center);
   /** The shown part of the dot raster, in raster px. */
   let visibleRaster: Rect = { x: 0, y: 0, w: 0, h: 0 };
@@ -127,7 +248,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   container.addChild(backdrop, world, clip, view, goalGraphics, unclippedWorld);
   const goalMarks = createGoalMarks(goalGraphics);
   world.mask = clip;
-  app.stage.addChild(container);
+  drawing.stage.addChild(container);
   // Fixed raster space avoids terrain uploads during resize, zoom and pan.
   const rasterScale = 660 / Math.max(bounds.width, bounds.height);
   const raster: Rect = {
@@ -212,22 +333,27 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       onGround: (ground) => setFilters({ ...filters, ground }),
       onMarkerSize: (markerSize) => setFilters({ ...filters, markerSize }),
       onColours: (colours) => setFilters({ ...filters, colours }),
+      ...(place === 'corner' ? { onOverview: opts.onOverviewButton } : {}),
     },
     opts.frame,
-    opts.overlays,
+    place,
+    place === 'corner' ? opts.overlays : undefined,
   );
-  function setFilters(next: MinimapFilters): void {
+  function applyFilters(next: MinimapFilters): void {
     filters = next;
     dirtyDots = true;
     chrome.setState({ size, zoom, filters, hasSeat });
-    opts.onFiltersChange?.(next);
+  }
+  function setFilters(next: MinimapFilters): void {
+    applyFilters(next);
+    onFilters(next);
   }
   let lastPanel = '';
   let lastView = '';
   let screenKey = '';
   function refreshLayout(): void {
     screenKey = `${app.screen.width},${app.screen.height}`;
-    base = minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width);
+    base = placedLayout();
     layout = zoomMinimapLayout(base, bounds, zoom, center);
     // Keep the effective clamped center: reversing a drag at the boundary moves immediately.
     if (layout.scaleX > 0 && layout.scaleY > 0)
@@ -241,7 +367,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       const { inner } = base;
       backdrop.clear().rect(inner.x, inner.y, inner.w, inner.h).fill(BACKDROP_COLOUR);
       clip.clear().rect(inner.x, inner.y, inner.w, inner.h).fill(0xffffff);
-      setMinimapReserve(plane, hidden ? null : base.panel, uiScale);
+      reserveCorner();
       dirtyDots = true;
     }
     const shown = visibleMinimapRect(layout);
@@ -261,9 +387,13 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     chrome.setHidden(!visible);
     chrome.setState({ zoom, size, filters, hasSeat });
   }
+  /** The HUD regions keep clear of the corner map; the overview stands over them. */
+  function reserveCorner(): void {
+    if (place === 'corner') setMinimapReserve(plane, hidden ? null : base.panel, uiScale);
+  }
   refreshLayout();
   const input = createMinimapInput({
-    canvas: opts.canvas,
+    canvas: drawing.canvas,
     bounds,
     layout: () => layout,
     enabled: () => !hidden && layout.scaleX > 0 && layout.scaleY > 0,
@@ -294,7 +424,13 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     },
     dragging: input.dragging,
     update: (snapshot, fog = null, lostGoals = NO_GOALS) => {
-      if (hidden) return;
+      if (hidden) {
+        if (place === 'overview' && !groundAsked) {
+          groundAsked = true;
+          surface.sync(snapshot, fog);
+        }
+        return;
+      }
       if (screenKey !== `${app.screen.width},${app.screen.height}`) refreshLayout();
       if (layout.scaleX <= 0 || layout.scaleY <= 0) {
         view.clear();
@@ -354,20 +490,28 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     ping: (at) => alarms.add(at, performance.now()),
     setHidden: (next) => {
       hidden = next;
+      // A hidden map plots nothing, so one shown again starts from the world as it stands.
+      dirtyDots = true;
       container.visible = !next && layout.scaleX > 0 && layout.scaleY > 0;
       chrome.setHidden(!container.visible);
       input.cancel();
-      setMinimapReserve(plane, next ? null : base.panel, uiScale);
+      reserveCorner();
     },
-    setUiScale: async (next) => {
+    setUiScale: (next) => {
       uiScale = next;
       refreshLayout();
     },
     setFrame: (frame) => chrome.setFrame(frame),
+    setOverviewKey: (key) => chrome.setOverviewKey(key),
+    setFilters: applyFilters,
+    visibleMap: () => visibleMinimapRect(layout),
+    placement: () => ({ layout, bounds }),
+    host: chrome.root,
+    focusOverviewButton: chrome.focusOverviewButton,
     dispose: () => {
       input.dispose();
       chrome.dispose();
-      setMinimapReserve(plane, null, uiScale);
+      if (place === 'corner') setMinimapReserve(plane, null, uiScale);
       surface.dispose();
       fogMask.dispose();
       roads.dispose();

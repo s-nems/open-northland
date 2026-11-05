@@ -2,6 +2,7 @@ import type { ContentSet } from '@open-northland/data';
 import { Building, Palisade, PalisadeBlocking, Position, ResourceFootprint } from '../../components/index.js';
 import { landscapeEditState } from '../../components/landscape.js';
 import type { ChangeFeed } from '../../ecs/change-feed.js';
+import { EntityIntLists } from '../../ecs/entity-int-lists.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import { ClearanceField, type ClearanceProbe } from '../../nav/clearance.js';
 import { hexDistanceBetween, nodeOfPosition } from '../../nav/halfcell.js';
@@ -38,8 +39,11 @@ interface ClearanceMemo {
   landscapes: LandscapeBlocks;
   readonly landscapeCells: Set<NodeId>;
   /** The cells each blocker last contributed, so its removal knows what region to re-derive. */
-  readonly records: Map<Entity, readonly NodeId[]>;
+  readonly records: EntityIntLists<NodeId>;
 }
+
+/** A blocker's held cells, copied out of {@link ClearanceMemo.records}. */
+const heldCells: NodeId[] = [];
 
 const memoByWorld = new WeakMap<World, ClearanceMemo>();
 const resourceFeeds = new WeakMap<World, ChangeFeed>();
@@ -93,7 +97,8 @@ function blockerCellsOf(world: World, content: ContentSet, terrain: TerrainGraph
 
 /** Replay one journal entry into `changed`: the cells the entity held and the cells it holds now. */
 function resyncEntity(world: World, memo: ClearanceMemo, e: Entity, changed: Set<NodeId>): void {
-  for (const node of memo.records.get(e) ?? []) changed.add(node);
+  memo.records.read(e, heldCells);
+  for (let i = 0; i < heldCells.length; i++) changed.add(heldCells[i] as NodeId);
   memo.records.delete(e);
   const building = world.tryGet(e, Building);
   if (building === undefined) memo.buildingTypes.delete(e);
@@ -125,7 +130,7 @@ function rebuild(world: World, ctx: ContentContext, terrain: TerrainGraph): Clea
     landscapeRevision: landscapeEditState(world).topologyRevision,
     landscapes,
     landscapeCells: new Set(landscapes.walk),
-    records: new Map(),
+    records: new EntityIntLists(),
   };
   const ignored = new Set<NodeId>(); // the field was just built over the live overlay
   for (const source of SOURCES) {

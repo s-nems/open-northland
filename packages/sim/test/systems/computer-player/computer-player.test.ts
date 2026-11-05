@@ -268,20 +268,25 @@ describe('setAiControl - the AI seat flag', () => {
     expect(sim.assistantGrants(AI_SEAT)).toEqual([]);
   });
 
-  it('switches the flag follow off on disable, and when the workforce module turns off', () => {
+  it('switches the flag follow and the tool upgrade off on disable, and when the workforce module turns off', () => {
     const sim = fresh();
     sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: true });
     sim.enqueueSetup({ kind: 'setAssistantMoveFlags', player: AI_SEAT, enabled: true });
+    sim.enqueueSetup({ kind: 'setAssistantUpgradeTools', player: AI_SEAT, enabled: true });
     sim.step();
     expect(sim.assistantMovesFlags(AI_SEAT)).toBe(true);
+    expect(sim.assistantUpgradesTools(AI_SEAT)).toBe(true);
     sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: false });
     sim.step();
     expect(sim.assistantMovesFlags(AI_SEAT)).toBe(false);
+    expect(sim.assistantUpgradesTools(AI_SEAT)).toBe(false);
 
     sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: true });
     sim.enqueueSetup({ kind: 'setAssistantMoveFlags', player: AI_SEAT, enabled: true });
+    sim.enqueueSetup({ kind: 'setAssistantUpgradeTools', player: AI_SEAT, enabled: true });
     sim.step();
     expect(sim.assistantMovesFlags(AI_SEAT)).toBe(true);
+    expect(sim.assistantUpgradesTools(AI_SEAT)).toBe(true);
     sim.enqueueSetup({
       kind: 'setAiControl',
       player: AI_SEAT,
@@ -291,6 +296,7 @@ describe('setAiControl - the AI seat flag', () => {
     });
     sim.step();
     expect(sim.assistantMovesFlags(AI_SEAT)).toBe(false);
+    expect(sim.assistantUpgradesTools(AI_SEAT)).toBe(false);
   });
 
   it("leaves a never-AI seat's counters alone on a redundant disable", () => {

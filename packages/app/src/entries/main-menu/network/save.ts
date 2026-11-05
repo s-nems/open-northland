@@ -17,7 +17,7 @@ import { decodeSaveText, type SaveBytes } from '../../../view/runtime/save-load/
 import { evaluateSaveDocument } from '../../../view/runtime/save-load/evaluate.js';
 import { restoreMapWorld } from '../../map/world.js';
 import { authoredVacantMode, vacantOffers } from '../lobby/roster-state.js';
-import { restoreSavedSeats, savedMapWorld, savedWeatherMode } from './saved-roster.js';
+import { restoreSavedSeats, savedDayNightMode, savedMapWorld, savedWeatherMode } from './saved-roster.js';
 
 export async function readNetworkSave(bytes: SaveBytes): Promise<SaveGame> {
   const result = evaluateSaveDocument(await decodeSaveText(bytes));
@@ -60,6 +60,7 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
     progression: components.professionProgressionEnabled(sim.world),
     needs: components.needsEnabled(sim.world),
     weather: savedWeatherMode(save),
+    dayNight: savedDayNightMode(save),
     alliedVision: components.alliedVisionEnabled(sim.world),
     peace: savedPeace(sim),
   };

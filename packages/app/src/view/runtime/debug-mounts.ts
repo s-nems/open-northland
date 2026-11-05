@@ -1,6 +1,6 @@
 import { BUILDING_KIND } from '@open-northland/data';
 import type { SessionClock } from '@open-northland/lockstep';
-import type { ElevationField, WorldRenderer } from '@open-northland/render';
+import type { ElevationField, EntityBounds, WorldRenderer } from '@open-northland/render';
 import type { Command, systems } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
@@ -46,6 +46,9 @@ export interface DebugMountsOptions {
   readonly elevation?: ElevationField;
   readonly geometryOf: GeometryBuildingInfoOf;
   readonly clientToScreen: (clientX: number, clientY: number) => { x: number; y: number };
+  /** Exact bounds and solid-texel test of an entity, the map's static layer included. */
+  readonly boundsOf: (ref: number) => EntityBounds | undefined;
+  readonly pixelHitOf: (ref: number, wx: number, wy: number) => boolean | undefined;
   readonly clientToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The trusted admin channel: every debug poke is a world edit, not a seat's order. */
   readonly enqueue: (command: Command) => void;
@@ -152,7 +155,7 @@ function mountAdminPanel(
   setGeometryEnabled: (enabled: boolean) => void,
   zoomOut: { readonly unlocked: () => boolean; readonly setUnlocked: (unlocked: boolean) => void },
 ): AdminDebugHandle {
-  const { app, canvas, host, renderer } = opts;
+  const { app, canvas, host } = opts;
   // The AI tab's apprentice read, asked again once the tick moved; the tab reads it once a second.
   const apprentices = createLastAnswerCache<readonly systems.ApprenticeView[]>({
     tick: () => host.tick,
@@ -168,9 +171,10 @@ function mountAdminPanel(
     pickEntity: createAdminEntityPicker({
       app,
       host,
-      renderer,
       camera: opts.cameraCtl,
       toScreen: opts.clientToScreen,
+      boundsOf: opts.boundsOf,
+      pixelHitOf: opts.pixelHitOf,
       ...(opts.elevation !== undefined ? { elevation: opts.elevation } : {}),
     }),
     claimPointer: (x, y) => opts.claimPointer(x, y),

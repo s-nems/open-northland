@@ -1,10 +1,15 @@
 import type { VehicleType } from '@open-northland/data';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
-import { num, type SnapshotEntity, settlerJobType } from '../../../game/snapshot/index.js';
-import { formatMessage, messages } from '../../../i18n/index.js';
-import { type Comp, goodLabel, isCarrierJob, type UnitPanelModelContext } from './context.js';
+import { num, ridesPinnedShip, type SnapshotEntity, settlerJobType } from '../../../game/snapshot/index.js';
+import {
+  type Comp,
+  holdLoadLine,
+  isCarrierJob,
+  type UnitPanelModelContext,
+  vehicleTitle,
+} from './context.js';
 import type { SeatControl, SettlerRole } from './settler-household.js';
-import { readStockLines, vehicleTitle, withCarriedLoad } from './vehicle.js';
+import { readStockLines, withCarriedLoad } from './vehicle.js';
 
 /** The vehicle a person rides or walks to board. */
 export interface SettlerVehicleLink {
@@ -43,26 +48,18 @@ function holdLine(
   puller: SnapshotEntity | undefined,
 ): string {
   if (type === undefined || type.stockSlots === 0) return title;
-  const copy = messages().hud.settlerPanel;
-  const goods: string[] = [];
   const own = readStockLines(ent.components.VehicleStock);
   const lines = puller === undefined ? own : withCarriedLoad(own, puller);
-  for (const line of lines.values()) {
-    if (line.current > 0) {
-      goods.push(
-        formatMessage(copy.vehicleLoadGood, { amount: line.current, good: goodLabel(ctx, line.good) }),
-      );
-    }
-  }
-  return formatMessage(copy.vehicleLoad, {
-    vehicle: title,
-    goods: goods.length === 0 ? copy.vehicleEmpty : goods.join(', '),
-  });
+  const goods = [...lines.values()].flatMap((line) =>
+    line.current > 0 ? [{ good: line.good, amount: line.current }] : [],
+  );
+  return holdLoadLine(ctx, title, goods);
 }
 
 /** The Vehicle row of an own grown person of a vehicle trade, else null. `Rider` names the vehicle from
  *  the attach on, while the person still walks to its door, and `HaulingCart` the cart a posted carrier
- *  or a trader pulls or walks to take. */
+ *  or a trader pulls or walks to take. A trader aboard its pinned ship shows its cart, the ship having its
+ *  own row in the Trade section, and no remove: the order would act on the ship. */
 export function vehicleRow(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -73,8 +70,11 @@ export function vehicleRow(
   const jobType = settlerJobType(ent);
   if (role === 'child' || jobType === undefined || !takesVehicle(ctx, jobType)) return null;
   const held = ent.components.HaulingCart as { vehicle?: unknown; taken?: unknown } | undefined;
-  const riding =
-    num((ent.components.Rider as { vehicle?: unknown } | undefined)?.vehicle) ?? num(held?.vehicle);
+  const onRoute = ridesPinnedShip(ent.components);
+  const rides = onRoute
+    ? undefined
+    : num((ent.components.Rider as { vehicle?: unknown } | undefined)?.vehicle);
+  const riding = rides ?? num(held?.vehicle);
   const vehicle = riding === undefined ? undefined : entityById(snapshot, riding);
   const puller = held?.taken === true ? ent : undefined;
   const typeId = num((vehicle?.components.Vehicle as Comp | undefined)?.vehicleType);
@@ -86,6 +86,6 @@ export function vehicleRow(
         ? null
         : { id: vehicle.id, label, load: holdLine(ctx, vehicle, type, label, puller) },
     assign: control,
-    remove: riding === undefined ? null : control,
+    remove: riding === undefined || onRoute ? null : control,
   };
 }

@@ -206,12 +206,7 @@ function fireFrom(
       TARGET_SPREAD_NODES + 2 * pad,
       'hex',
     )
-    .map((band) =>
-      band
-        .map(({ entity }) => ({ entity, distance: reach(entity) }))
-        .sort((p, q) => p.distance - q.distance || p.entity - q.entity)
-        .slice(0, TARGET_CANDIDATES),
-    );
+    .map((band) => nearestByReach(band, reach));
   let left = shots;
   let fired = true;
   while (left > 0 && fired) {
@@ -227,6 +222,32 @@ function fireFrom(
       fired = true;
     }
   }
+}
+
+/** The {@link TARGET_CANDIDATES} of `band` nearest by `reach`, then by id, in that order. */
+function nearestByReach(
+  band: readonly Entity[],
+  reach: (t: Entity) => number,
+): { entity: Entity; distance: number }[] {
+  const nearest: { entity: Entity; distance: number }[] = [];
+  for (const entity of band) {
+    const distance = reach(entity);
+    let at = nearest.length;
+    while (at > 0) {
+      const ahead = nearest[at - 1];
+      if (
+        ahead === undefined ||
+        ahead.distance < distance ||
+        (ahead.distance === distance && ahead.entity < entity)
+      )
+        break;
+      at--;
+    }
+    if (at >= TARGET_CANDIDATES) continue;
+    nearest.splice(at, 0, { entity, distance });
+    if (nearest.length > TARGET_CANDIDATES) nearest.pop();
+  }
+  return nearest;
 }
 
 function shoot(

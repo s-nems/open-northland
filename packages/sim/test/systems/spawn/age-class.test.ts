@@ -5,7 +5,7 @@ import { PersonalNames } from '../../../src/core/personal-names.js';
 import { Rng } from '../../../src/core/rng.js';
 import { World } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
-import { ADULT_AGE_TICKS, CHILD_AGE_TICKS, CHILD_FEMALE, WOMAN_JOB } from '../../../src/systems/index.js';
+import { ADULT_AGE_TICKS, CHILD_FEMALE, WOMAN_JOB } from '../../../src/systems/index.js';
 import { createSettler } from '../../../src/systems/spawn/index.js';
 
 /**
@@ -48,7 +48,7 @@ function collidingContent(): ContentSet {
 const spec = (jobType: number) => ({ jobType, x: 0, y: 0, tribe: VIKING });
 
 describe('createSettler stamps Age on the baby/child job slugs', () => {
-  it('a baby spawns at the start of its stage (ticks 0), a child at the start of its stage', () => {
+  it('a baby and a child both spawn at age 0', () => {
     const world = new World();
     const content = ageClassContent();
     const baby = createSettler(world, content, new Rng(1), spec(2), new PersonalNames(1, [])); // baby_male
@@ -56,9 +56,8 @@ describe('createSettler stamps Age on the baby/child job slugs', () => {
     if (baby === null || child === null) throw new Error('spawn failed');
     expect(world.get(baby, Age)).toEqual({ ticks: 0, asOf: null });
     expect(world.has(baby, Female)).toBe(false);
-    // A child starts at the baby→child boundary, so growth neither demotes it to a baby nor
-    // stretches its remaining childhood.
-    expect(world.get(child, Age)).toEqual({ ticks: CHILD_AGE_TICKS, asOf: null });
+    // Original behavior: a placed child's age starts at 0 too, so it lives the whole span to adulthood.
+    expect(world.get(child, Age)).toEqual({ ticks: 0, asOf: null });
     expect(world.has(child, Female)).toBe(true);
   });
 
@@ -77,13 +76,13 @@ describe('createSettler stamps Age on the baby/child job slugs', () => {
     expect(world.has(heroine, Age)).toBe(false);
   });
 
-  it('a map-spawned girl grows into the adult woman role after her remaining childhood', () => {
+  it('a map-spawned girl stays a child until her age reaches adulthood, then becomes a woman', () => {
     const sim = new Simulation({ seed: 1, content: ageClassContent() });
     const girl = createSettler(sim.world, ageClassContent(), new Rng(1), spec(3), new PersonalNames(1, [])); // child_female
     if (girl === null) throw new Error('spawn failed');
     expect(sim.world.get(girl, Settler).jobType).toBe(CHILD_FEMALE);
 
-    sim.run(ADULT_AGE_TICKS - CHILD_AGE_TICKS - 1); // one short of adulthood: still a child
+    sim.run(ADULT_AGE_TICKS - 1); // one short of adulthood: still a child, never demoted to a baby
     expect(sim.world.get(girl, Settler).jobType).toBe(CHILD_FEMALE);
 
     sim.run(1); // crosses ADULT_AGE_TICKS of lifetime: grown up

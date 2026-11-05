@@ -4,7 +4,8 @@ import { ONE } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { NodeId } from '../../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../../context.js';
-import { craftablePool, startableCycleCount } from '../../../../economy/production.js';
+import { craftablePoolInto } from '../../../../economy/production/rotation.js';
+import { startableCycleCount } from '../../../../economy/production.js';
 import { religionAllowsAtomic } from '../../../../lifecycle/needs/religion.js';
 import { productionAtomic } from '../../../../readviews/production-atomic.js';
 import {
@@ -44,7 +45,10 @@ export function operatorRecipes(
   const recipes = recipesByProductOf(world, ctx, workplace);
   if (recipes === undefined) return [];
   const own: Recipe[] = [];
-  for (const good of craftablePool(world, ctx, operator, recipes)) {
+  const pool = poolScratch;
+  const size = craftablePoolInto(world, ctx, operator, recipes, pool);
+  for (let i = 0; i < size; i++) {
+    const good = pool[i] as number;
     const recipe = recipes.get(good);
     if (
       recipe !== undefined &&
@@ -59,6 +63,9 @@ export function operatorRecipes(
   }
   return own;
 }
+
+/** The craftable pool {@link operatorRecipes} walks, rewritten per call. */
+const poolScratch: number[] = [];
 
 /** Additional batches this operator could start. Existing batches are claimed individually by the
  * planner, so suspended work cannot take a seat from a free recipe. The max across products is an

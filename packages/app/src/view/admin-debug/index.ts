@@ -343,6 +343,15 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     if (ref !== null) deps.enqueue(action.command(ref as Entity, healthPercent));
   };
 
+  /** One beat of a press that repeats while held: a spawn, or a sweeping action on what is under it. */
+  const actAtPointer = (clientX: number, clientY: number): void => {
+    if (armed?.kind !== 'action') {
+      spawnAtPointer(clientX, clientY);
+      return;
+    }
+    if (!deps.claimPointer(clientX, clientY)) applyActionAt(clientX, clientY, armed.action);
+  };
+
   /** First click picks the settler, the next sends it to the clicked node and re-arms for another pick.
    *  The sim drops a destination on unwalkable ground, so a miss there leaves the settler where it was. */
   const teleportAt = (clientX: number, clientY: number, target: Entity | null): void => {
@@ -371,15 +380,15 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     if (e.target !== canvas) return; // a click on the panel itself, not the map
     if (deps.claimPointer(e.clientX, e.clientY)) return;
     // Consume the armed left-press even when it hits nothing, so it never clears the unit selection.
-    if (armed.kind === 'action') {
-      applyActionAt(e.clientX, e.clientY, armed.action);
-    } else if (armed.kind === 'teleport') {
+    if (armed.kind === 'teleport') {
       teleportAt(e.clientX, e.clientY, armed.target);
+    } else if (armed.kind === 'action' && armed.action.sweeps !== true) {
+      applyActionAt(e.clientX, e.clientY, armed.action);
     } else {
-      spawnAtPointer(e.clientX, e.clientY);
+      actAtPointer(e.clientX, e.clientY);
       heldAt = { clientX: e.clientX, clientY: e.clientY, onCanvas: true };
       hold.start(() => {
-        if (heldAt?.onCanvas === true) spawnAtPointer(heldAt.clientX, heldAt.clientY);
+        if (heldAt?.onCanvas === true) actAtPointer(heldAt.clientX, heldAt.clientY);
       });
     }
     e.preventDefault();

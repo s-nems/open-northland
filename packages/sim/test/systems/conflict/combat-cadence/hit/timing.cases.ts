@@ -1,11 +1,15 @@
 import { parseContentSet, WERESNAKE_TRIBE } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   CurrentAtomic,
+  Engagement,
   Health,
+  Owner,
   Position,
   ResourceFootprint,
   Settler,
+  Stance,
   WALK_DIRECTION,
   type WalkDirection,
   WalkFacing,
@@ -14,6 +18,7 @@ import type { Entity } from '../../../../../src/ecs/world.js';
 import {
   exportSaveGame,
   nodeOfPosition,
+  playerCommand,
   positionOfNode,
   restoreSimulation,
   Simulation,
@@ -31,6 +36,7 @@ import {
   ATOMIC_EVENT_TYPE_MOVE_FORWARD,
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
 } from '../../../../../src/systems/readviews/animations.js';
+import { MILITARY_MODE } from '../../../../../src/systems/readviews/index.js';
 import { lungeForward } from '../../../../../src/systems/settlers/atomics/effects/combat/index.js';
 import { fixtureTick, nextTickCtxOf } from '../../../../fixtures/context.js';
 import {
@@ -46,12 +52,16 @@ import {
   IRON_SPEAR_DAMAGE,
   OTHER,
   QUIET_FORM_JOB,
+  SAXON,
+  SOLDIER_BOW,
   SOLDIER_SILENT,
   SOLDIER_SPEAR,
+  SOLDIER_SWORD_LONG,
   SOLDIER_UNARMED,
   startSwing,
   VIKING,
   WOLF_TRIBE,
+  WOMAN,
 } from '../support.js';
 
 /** The sound-bank group the synthetic clips cue. */
@@ -462,5 +472,83 @@ describe("atomicSystem - an animal attack clip's forward event", () => {
     expect(nodeOf(sim, wolf)).toEqual([3, 2]);
     lungeForward(sim.world, ctxOf(sim), wolf, WALK_DIRECTION.NE); // a person stands at (3, 1)
     expect(nodeOf(sim, wolf)).toEqual([3, 1]);
+  });
+});
+
+describe('the same attack order repeated', () => {
+  const ROW = 4;
+  const TICKS = 300;
+  const TOUGH_HITPOINTS = 100_000_000;
+
+  /** The hitpoints a target `distance` nodes off loses over the run when the attacker is ordered at it
+   *  every `every` ticks, 0 for the one order; plus the node the attacker ends on. */
+  function fight(job: number, distance: number, every: number): { lost: number; x: number } {
+    const s = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(30, 6) });
+    const attacker = fighterAtNode(s, 4, ROW, VIKING, job);
+    s.world.add(attacker, Owner, { player: 1 });
+    s.world.add(attacker, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
+    const target = fighterAtNode(s, 4 + distance, ROW, SAXON, WOMAN, { hitpoints: TOUGH_HITPOINTS });
+    s.world.add(target, Owner, { player: 2 });
+    s.world.add(target, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
+    for (let tick = 0; tick < TICKS; tick++) {
+      if (tick === 0 || (every > 0 && tick % every === 0)) {
+        s.enqueue(playerCommand(1, { kind: 'attackUnit', entity: attacker, target }));
+      }
+      s.step();
+    }
+    return {
+      lost: TOUGH_HITPOINTS - s.world.get(target, Health).hitpoints,
+      x: s.world.get(attacker, Position).x,
+    };
+  }
+
+  it('lands every blow a single order would, in melee and at range', () => {
+    for (const [job, distance] of [
+      [SOLDIER_SWORD_LONG, 2],
+      [SOLDIER_BOW, 8],
+    ] as const) {
+      const once = fight(job, distance, 0);
+      expect(once.lost).toBeGreaterThan(0);
+      expect(fight(job, distance, 1)).toEqual(once);
+    }
+  });
+
+  it('leaves the swing of a target the fighter engaged on its own alone', () => {
+    const s = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(30, 6) });
+    const soldier = fighterAtNode(s, 4, ROW, VIKING, SOLDIER_SWORD_LONG);
+    s.world.add(soldier, Owner, { player: 1 });
+    s.world.add(soldier, Stance, { mode: MILITARY_MODE.ATTACK, anchorCell: null });
+    const target = fighterAtNode(s, 6, ROW, SAXON, WOMAN, { hitpoints: TOUGH_HITPOINTS });
+    s.world.add(target, Owner, { player: 2 });
+    s.world.add(target, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
+    const swinging = (): boolean => s.world.tryGet(soldier, CurrentAtomic)?.effect.kind === 'attack';
+    for (let tick = 0; tick < TICKS && !swinging(); tick++) s.step();
+    const swing = s.world.get(soldier, CurrentAtomic);
+    s.enqueue(playerCommand(1, { kind: 'attackUnit', entity: soldier, target }));
+    s.step();
+    expect(s.world.get(soldier, CurrentAtomic)).toBe(swing);
+  });
+
+  it('still cuts a clip that is no swing', () => {
+    const s = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(30, 6) });
+    const soldier = fighterAtNode(s, 4, ROW, VIKING, SOLDIER_SWORD_LONG);
+    s.world.add(soldier, Owner, { player: 1 });
+    const target = fighterAtNode(s, 6, ROW, SAXON, WOMAN);
+    s.world.add(soldier, Engagement, { repathAt: s.tick, target });
+    addCurrentAtomic(s.world, soldier, {
+      atomicId: ATTACK_ATOMIC,
+      duration: TICKS,
+      effect: { kind: 'exercise' },
+      targetEntity: null,
+      targetTile: null,
+    });
+    s.enqueue(playerCommand(1, { kind: 'attackUnit', entity: soldier, target }));
+    s.step();
+    expect(s.world.tryGet(soldier, CurrentAtomic)?.effect.kind).not.toBe('exercise');
+  });
+
+  it('keeps walking the chase', () => {
+    const FAR = 30;
+    expect(fight(SOLDIER_SWORD_LONG, FAR, 1)).toEqual(fight(SOLDIER_SWORD_LONG, FAR, 0));
   });
 });

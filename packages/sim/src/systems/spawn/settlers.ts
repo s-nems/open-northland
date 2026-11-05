@@ -32,7 +32,7 @@ import type { SystemContext } from '../context.js';
 import { holdToGatherGood } from '../economy/gather-goods.js';
 import { jobCanHarvestGood, syncWorkFlagToJob } from '../economy/work-flag.js';
 import { isFemaleJobId } from '../family/eligibility.js';
-import { spawnAgeTicks } from '../lifecycle/ageclass.js';
+import { ageClassOfJobId } from '../lifecycle/ageclass.js';
 import { rollInitialNeed } from '../lifecycle/needs/index.js';
 import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
 import { anchorAtFeet, stampDefaultStance } from '../orders/index.js';
@@ -124,12 +124,11 @@ export function createSettler(
     world.add(e, Female, { female: true });
   }
   names.assign(world, e, spec.tribe, world.has(e, Female) ? 'female' : 'male');
-  // A settler spawned directly into a baby/child job (an authored map's `sethuman` children) starts at its
-  // stage's tick like a born baby; `Age` is what makes the GrowthSystem mature it. Slug-matched, like
-  // `Female` above.
-  const ageTicks = spawnAgeTicks(jobId);
-  if (ageTicks !== null) {
-    world.add(e, Age, { ticks: ageTicks, asOf: null });
+  // A settler spawned directly into a baby/child job (an authored map's `sethuman` children) starts its age
+  // at 0 like a born baby, whatever its stage; `Age` is what makes the GrowthSystem mature it.
+  // Slug-matched, like `Female` above.
+  if (ageClassOfJobId(jobId) !== 'adult') {
+    world.add(e, Age, { ticks: 0, asOf: null });
   }
   // An explicit positive `hitpoints` wins over the person's pool.
   const hitpoints =

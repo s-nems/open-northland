@@ -284,6 +284,16 @@ describe("lobby peace - orders and placements at a partner's door", () => {
 
   it("refuses a member's house and signpost at a partner's door, as the probes show, with a note", () => {
     const { sim } = partnerSim();
+    // The bystander's man near the door, whose build reach covers it.
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: CIVILIST,
+      x: DOOR.x,
+      y: DOOR.y + 4,
+      tribe: VIKING,
+      owner: P2,
+    });
+    sim.step();
 
     expect(sim.placementProbe(HOME_TYPE, P0)?.canPlace(DOOR.x, DOOR.y)).toBe(false);
     expect(sim.placementProbe(HOME_TYPE, P2)?.canPlace(DOOR.x, DOOR.y)).toBe(true);

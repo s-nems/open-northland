@@ -3,7 +3,7 @@ import { ChangeFeed } from '../../ecs/change-feed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
 import { HeldNodes, NO_NODE } from './held-nodes.js';
-import { moverNode } from './mover-node.js';
+import { moverNode, moverNodeNear } from './mover-node.js';
 
 /** The read side of a {@link NodeMoves} subscription: a {@link ChangeFeed} of node changes. */
 export interface NodeMoveFeed {
@@ -31,15 +31,18 @@ class NodeMoves {
   /** The pump's per-write consumer, a field rather than a method so the drain calls it directly. */
   private readonly compare = (e: Entity): void => {
     const p = this.world.tryGet(e, Position);
+    const nodes = this.nodes;
+    const heldHx = nodes.hx(e);
+    const heldHy = nodes.hy(e);
     let hx = NO_NODE;
     let hy = 0;
     if (p !== undefined) {
-      const node = moverNode(this.world, e, p);
+      const node =
+        heldHx === NO_NODE ? moverNode(this.world, e, p) : moverNodeNear(this.world, e, p, heldHx, heldHy);
       hx = node.hx;
       hy = node.hy;
     }
-    const nodes = this.nodes;
-    if (nodes.hx(e) === hx && nodes.hy(e) === hy) return;
+    if (heldHx === hx && heldHy === hy) return;
     nodes.set(e, hx, hy, this.world.nextEntityId);
     const subscribers = this.subscribers;
     for (let i = 0; i < subscribers.length; i++) subscribers[i]?.record(e);

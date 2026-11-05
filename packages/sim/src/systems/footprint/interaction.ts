@@ -91,7 +91,7 @@ function resolveInteractionNode(world: World, ctx: MapContext, building: Entity)
  *  node - the in-bounds fallback covers a terrain passed via `ctx`; this guards a caller's own graph. */
 export function interactionNodeId(
   world: World,
-  ctx: SystemContext,
+  ctx: MapContext,
   terrain: TerrainGraph,
   building: Entity,
 ): NodeId | null {

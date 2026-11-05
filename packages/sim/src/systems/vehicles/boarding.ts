@@ -34,8 +34,10 @@ import {
   landingOf,
   landRider,
   passengerJobAllowed,
+  pinnedTraderAshore,
   placeOnNode,
   refuseCrew,
+  releaseCarried,
   releaseRider,
 } from './crew.js';
 import { startDock } from './dock.js';
@@ -67,7 +69,8 @@ function standsOnGround(terrain: TerrainGraph, point: HalfCellNode): boolean {
 /**
  * One pass of the crew's boarding: every rider still outside is asked in when it stands on the door's
  * continent, and detached where it stands when on another continent. Returns whether the whole crew is
- * inside; a carried vehicle counts once it rides inside too. Deviation (owner's choice): the original skips a
+ * inside; a carried vehicle counts once it rides inside too, and a ship's pinned trader still on its way
+ * keeps the crew outside. Deviation (owner's choice): the original skips a
  * rider with a pending need; here the vehicle's order is a forced boarding, and the rider rung answers
  * it over the need, which stands still aboard.
  */
@@ -99,7 +102,7 @@ export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): bo
   for (const seat of carriedVehicles(state)) {
     if (!seat.inside && world.isAlive(seat.entity)) allInside = false;
   }
-  return allInside;
+  return allInside && pinnedTraderAshore(world, ctx, vehicle) === null;
 }
 
 /**
@@ -239,20 +242,6 @@ function canRideInside(
   return 'ok';
 }
 
-/** Clear the slot `vehicle` holds on `carrier` and the vehicle's link back. */
-export function releaseCarried(world: World, carrier: Entity, vehicle: Entity): void {
-  const carrierState = world.tryGet(carrier, Vehicle);
-  if (carrierState !== undefined) {
-    const slot = carrierState.vehicles.findIndex((seat) => seat !== null && seat.entity === vehicle);
-    if (slot >= 0) world.mut(carrier, Vehicle).vehicles[slot] = null;
-  }
-  const live = world.tryMut(vehicle, Vehicle);
-  if (live !== undefined) {
-    live.carrier = null;
-    if (live.task === 'boardsShip') live.task = 'none';
-  }
-}
-
 /** The load order - see the command doc. `CanVehicleBeAttached`: same owner, the vehicle's job in the
  *  carrier's list, a free vehicle slot; the drive then starts on the next boarding pass. */
 export function loadIntoVehicle(
@@ -266,8 +255,9 @@ export function loadIntoVehicle(
   if (state === undefined || carrierState === undefined || vehicle === carrier) return false;
   dropVehicleOrderQueue(world, vehicle);
   if (state.carrier === carrier) return true;
-  if (state.hauler !== null) {
-    refuseCrew(world, ctx, vehicle, 'cannotAttach'); // a carrier's hauling cart goes nowhere without it
+  if (state.hauler !== null || carrierState.hauler !== null) {
+    // A carrier's hauling cart goes nowhere without it, and a trader's pinned ship keeps its slot.
+    refuseCrew(world, ctx, vehicle, 'cannotAttach');
     return false;
   }
   if (state.carrier !== null && !leaveCarrier(world, ctx, { kind: 'leaveCarrier', vehicle })) return false;
@@ -303,6 +293,10 @@ export function leaveCarrier(
   const vehicle = command.vehicle;
   const state = world.tryGet(vehicle, Vehicle);
   if (state === undefined || state.carrier === null) return true;
+  if (state.hauler !== null) {
+    refuseCrew(world, ctx, vehicle, 'cannotLeave'); // a hauling cart comes off with its puller (`landRider`)
+    return false;
+  }
   const carrier = state.carrier;
   if (vehicleAnchor(world, vehicle) === null) {
     const landing = landingOf(world, ctx, carrier);

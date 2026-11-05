@@ -23,6 +23,12 @@ export const chtGame = {
       },
     },
     armyOrderLimit: '一道命令最多只能選取 {limit} 個單位。沒有任何單位收到這道命令。',
+    diplomacyMap: {
+      title: '外交地圖',
+      own: '你的民族',
+      unknown: '位置未知:',
+      openDiplomacy: '開啟外交',
+    },
     mapOverlays: {
       label: '主地圖疊加層',
       signposts: '路標',
@@ -31,6 +37,7 @@ export const chtGame = {
     },
     minimap: {
       label: '小地圖',
+      overview: '外交地圖',
       interaction: '點擊或拖曳以移動鏡頭。捲動滾輪以縮放小地圖。按住滑鼠中鍵拖曳可平移放大後的地圖。',
       zoomIn: '放大',
       zoomOut: '縮小',
@@ -200,6 +207,7 @@ export const chtGame = {
       enemy: '敵對',
     },
     diplomacyWindow: {
+      map: '外交地圖',
       nations: '民族',
       attitude: '態度',
       theirs: '對方的態度',
@@ -432,6 +440,8 @@ export const chtGame = {
       repair: '修理',
       board: '登上',
       loadAboard: '裝上船',
+      pinShip: '指定給路線',
+      unpinShip: '取消指定船隻',
       workArea: '工作區域',
       placeSignpost: '放置路標',
       bombard: '砲擊',
@@ -445,6 +455,7 @@ export const chtGame = {
       cannotTrainHere: '他們不能在此訓練',
       cannotBoard: '他們無法登乘',
       cannotLoadAboard: '無法在此裝載',
+      cannotPinShip: '無法指定這艘船',
       cannotMoorHere: '無法在此靠岸',
       cannotPlaceSignpost: '此處不能放置路標',
     },
@@ -465,6 +476,7 @@ export const chtGame = {
       awaitingWorkplace: '等待工坊建成',
       awaitingTraining: '等待建造完成',
       awaitingSeat: '等待空位',
+      sailingRoute: '正沿路線航行',
       standingTo: '戒備中',
       lost: { he: '迷路了', she: '迷路了' },
       idle: '閒置',
@@ -713,11 +725,22 @@ export const chtGame = {
       tradeHeading: '商人正前往這裡',
       tradeAddStop: '新增貿易站',
       tradeConfigure: '設定貿易',
+      tradePinShip: '指定船隻',
+      tradePinShipHint:
+        '點擊，然後選擇此岸邊一艘高亮的、無船員的己方船隻，或在選中商人時右鍵點擊該船。商人將乘它走這條路線。',
+      tradeUnpinShip: '取消指定船隻',
+      tradeShipNeeded: '需跨海',
+      tradeShipNeededTooltip: '停靠站位於不同的海岸：請指定一艘船，商人才能渡海',
+      tradeShipUnreachable: '無法到達',
+      tradeShipUnreachableTooltip: '這艘船無法服務此路線：它在另一片海上，或停靠在與商人不同的海岸',
       tradeSettlement: '聚落',
       tradeSettlementOn:
-        '從整個聚落裝貨：先從這座倉庫，再從其路標網路所及的倉庫與工坊。運回的貨物會存進這座倉庫 · 點擊：只用這座倉庫',
-      tradeSettlementOff: '點擊：從整個聚落裝貨，先從這座倉庫，再從其路標網路所及的倉庫與工坊',
-      tradeSettlementTaken: '另一個停靠站已經從聚落裝貨',
+        '代表整個聚落：其路標網路所及的倉庫與工坊。從這些建築裝貨，先從這座倉庫，「最多」與「保留」限額按它們的庫存計算。運回的貨物會存進這座倉庫 · 點擊：只用這座倉庫',
+      tradeSettlementOff:
+        '點擊：代表整個聚落。從路標網路所及的所有倉庫與工坊裝貨，「最多」與「保留」限額按它們的庫存計算',
+      tradeSettlementShared: '此聚落與另一個停靠站的聚落共有建築，而該站已代表整個聚落',
+      tradeSettlementSuspended:
+        '此聚落與另一個停靠站的聚落共有建築，因此暫時只計算這座倉庫 · 點擊：只用這座倉庫',
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: '最多 {count}',
@@ -755,6 +778,8 @@ export const chtGame = {
       centre: '將視角置中於載具',
       health: '耐久度 {hitpoints} / {max}',
       carrierTooltip: '選取船隻',
+      tradeMerchant: '商人',
+      tradeMerchantSelect: '選取這艘船所服務路線的商人',
       haulerTooltip: '選取拉車的人',
       status: {
         aboard: '在船上',
@@ -808,6 +833,7 @@ export const chtGame = {
         noSeat: '沒有空位',
         notMoored: '請先在岸邊靠岸',
         deckFull: '甲板已被佔用',
+        pinned: '這艘船正在走商人的路線',
       },
       stances: { attack: '進攻', defence: '防禦', hold: '無視' },
       stanceTooltips: {
@@ -819,6 +845,7 @@ export const chtGame = {
       roles: { cart: '指揮官', ship: '指揮官', siege: '指揮官' },
       assignRole: { cart: '指派指揮官', ship: '指派指揮官', siege: '指派指揮官' },
       assignTooltip: '在地圖上選擇你的一名居民 · Esc 取消',
+      assignHelperTooltip: '在地圖上選擇你的一名搬運工來協助商人 · Esc 取消',
       seatCount: '已佔座位 / 全部座位',
       walking: '步行中',
       seat: '安排居民入座',
@@ -1421,6 +1448,10 @@ export const chtGame = {
           label: '疾風護符',
           tip: '每位沒有的男性都會去倉庫領一個。它讓配戴者走得更快。',
         },
+        upgradeTools: {
+          label: '替換木質工具',
+          tip: '拿著木質工具的工人會去倉庫換取鐵質工具。用過的工具在更換時會遺失。僅在發放鐵質工具時生效。',
+        },
         postGraduates: {
           label: '學校畢業生自動分派到工坊',
           tip: '學校畢業生會直接前往其職業最近的空缺工作地點。',
@@ -1720,6 +1751,7 @@ export const chtGame = {
       starve: '耗盡所有需求',
       fill: '填滿庫存',
       finish: '完成建造',
+      erase: '抹除資源',
       teleport: '移動居民',
     },
     actionHints: {
@@ -1729,6 +1761,7 @@ export const chtGame = {
       starve: '點擊一名居民：所有需求立即變得急迫',
       fill: '點擊一座建築：填滿其倉儲',
       finish: '點擊一處工地：建築立即完工',
+      erase: '點擊資源、漿果叢或貨物堆；按住可抹除游標經過之處',
       teleport: '點擊一名居民，再點擊其目的地',
     },
     healthPercent: '目標生命值百分比',

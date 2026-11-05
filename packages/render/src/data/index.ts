@@ -10,7 +10,7 @@
 export { type FrameIndexReader, RENDER_FRAME_INDEX_READERS } from './frame-indexes.js';
 export { empireInventoryContains, empireInventoryOf, networkInventoryOf } from './hud/inventory.js';
 export { stockCounts } from './hud/model.js';
-export { gradeLuma, shownGrade } from './lighting/grade.js';
+export { gradeLuma, nightLevel, shownGrade } from './lighting/grade.js';
 export { type LightGrade, NEUTRAL_GRADE } from './lighting/types.js';
 export { buildMinimapCellField } from './minimap/cells.js';
 export {

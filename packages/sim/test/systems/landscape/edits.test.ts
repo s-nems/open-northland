@@ -366,14 +366,14 @@ describe('script landscape state and blockers', () => {
     const first = spawn(1);
     const second = spawn(1);
     const index = landscapeResources(sim.world);
-    expect(index.get(1)).toEqual([first, second]);
+    expect(index.entitiesOf(1)).toEqual([first, second]);
     sim.world.destroy(lone);
     const replacement = spawn(2);
     expect(landscapeResources(sim.world)).toBe(index);
     expect(index.has(0)).toBe(false);
-    expect(index.get(2)).toEqual([replacement]);
+    expect(index.entitiesOf(2)).toEqual([replacement]);
     sim.world.destroy(first);
-    expect(landscapeResources(sim.world).get(1)).toEqual([second]);
+    expect(landscapeResources(sim.world).entitiesOf(1)).toEqual([second]);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 

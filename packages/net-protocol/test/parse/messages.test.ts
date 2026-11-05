@@ -38,7 +38,15 @@ const settings: RoomSettings = {
   name: 'Zatoka o świcie',
   world: { kind: 'map', mapId: 'zatoka' },
   seed: 7,
-  rules: { fog: 1, progression: null, needs: false, weather: 'winter', alliedVision: null, peace: null },
+  rules: {
+    fog: 1,
+    progression: null,
+    needs: false,
+    weather: 'winter',
+    dayNight: null,
+    alliedVision: null,
+    peace: null,
+  },
   speed: 1,
 };
 

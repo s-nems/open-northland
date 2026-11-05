@@ -27,6 +27,12 @@ Imported:
   `tutorial_007` and seven community maps). The other 56 XMLs name maps the pack does not ship.
 - `<lang>/objects/`: the `goods`, `houses`, `jobs`, `experiences` and `tribes` name tables. House 22
   and tribe 18 are left out: the localization's German names another object under those ids.
+- `<lang>/names/`: the `Name` lines of `strings/gameobjects/humannames.ini`, one file per
+  personal-name pool, keyed by the raw name the pool generates. `Name 0` and `Name 1` mark the sex
+  the line's tribe gives the name, which settles a name that both a male and a female pool carry.
+  The pools generate 2341 names and this table translates 282 of them; the rest show their raw
+  spelling. Only `humannames.ini` is read: the term table's `人名` rows name the campaign's cast,
+  and a row matched to a pool by spelling alone was a guess, not the pool's own text.
 - Some entries translate German that `tools/asset-pipeline/corrections/` or our `ger/maps/` overlays
   fix (the tutorials' control instructions, a few goals and object names); the import lists them. The
   project's Chinese for those keys lives in the `<name>.edit.json` files beside the imported files

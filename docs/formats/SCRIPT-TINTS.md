@@ -75,8 +75,8 @@ settler in daylight. We read the author's intent instead:
   by one through the dusk; their walls hold steady while their pools flicker slightly. The house
   palettes draw windows and doors with the same wood and plaster ramps as the beams and walls, so the
   glow follows the whole figure rather than its openings.
-- The graphics setting "Night lights" (`nightLights`) turns the composite off: the night then draws
-  as the flat shown grade, with no pools, flames or lit figures.
+- The graphics setting "Day and night cycle" (`dayNight`) turns the composite off: what night remains
+  (a cave's mood, a siege attack) draws as the flat shown grade, with no pools, flames or lit figures.
 - Every other index stays on the terrain as its palette colour divided by the scene's multiply, so
   the product on screen is what the script asked for. Under a darkening grade a brightening local
   tint (the glow under a fire) keeps a fifth of its excess instead (`LOCAL_GLOW_SHARE`): the fire's
@@ -86,6 +86,27 @@ settler in daylight. We read the author's intent instead:
   scene it is divided by. An approximation: fading the ground too would be a per-frame pass over the
   map's nodes.
 - `?tint=<index>` holds an index as the whole-map tint for review (`docs/DEVELOPMENT.md`).
+
+## Day and night rule
+
+The match rule `dayNight` (`map`, `on`, `off`, `?daynight=`) and the player's graphics setting choose
+what the scene grade does (`packages/app/src/view/script/tints.ts`, `day-night.ts`). Presentation
+only: the sim's tint state and the script keep running either way.
+
+- A script runs a cycle when its whole-map writes (`WHOLE_MAP_RANGE`) reach both a full night
+  (`FULL_NIGHT`, `nightLevel` 1) and a sun brighter than plain day: cn_2_dni, przekleta_kraina,
+  straznicypolnocy and wielka_inwazja. A lone dark write is a static mood, and a weather ramp
+  (bogata_kotlina's rain reaches 58) has no sun.
+- A script that sets weather and writes more than one whole-map colour moves its tint with the
+  weather (magiczny_las, krwawa_rzeka). The weather rule's `off`, or the player's weather setting off,
+  clears that tint as well. A colour written once is the map's look and stays.
+- `off`, or the player's setting off, holds a cycling script at daylight. A static mood, a weather
+  ramp and a siege attack's night stay.
+- `on` runs the game's own cycle on a map without one. It is straznicypolnocy's chain, step for step
+  (50 minutes), read from the match tick, so a save and every client agree. The map's whole-map tint
+  lies over it: a weather ramp or a static mood darkens the cycle, and what it would brighten is
+  dropped, so rain at night is darker than either alone. Local tints are divided by that tint alone
+  and darken with the cycle.
 
 The tint state crosses the sim worker as one `Uint8Array` over map cells; the app spreads it over the
 mesh nodes and the renderer rewrites only the nodes whose colour changed.

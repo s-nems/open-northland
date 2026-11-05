@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { isActionHotkey, isFieldKey } from '../hotkeys.js';
 import { isFunctionKeyCode, type KeyBindings, type KeybindingAction } from '../keybindings.js';
-import { NAV_ENTRY_IDS, type NavEntryId } from './nav-effects.js';
+import { NAV_ENTRY_IDS, NAV_KEYS, type NavEntryId } from './nav-effects.js';
 
 /** Every branch here that consumes a press stops it reaching world picking behind the panel. */
 
@@ -27,17 +27,6 @@ export interface HeldMode {
   toggleUpgradeGround?(): boolean;
 }
 
-/** The action whose key toggles each beam entry. */
-const NAV_KEYS: Readonly<Record<NavEntryId, KeybindingAction>> = {
-  build: 'construction',
-  residents: 'residents',
-  assistant: 'assistant',
-  statistics: 'statistics',
-  mission: 'mission',
-  diplomacy: 'diplomacy',
-  knowledge: 'knowledge',
-};
-
 export interface ToolPanelInputDeps {
   readonly canvas: HTMLCanvasElement;
   readonly held: readonly HeldMode[];
@@ -61,6 +50,7 @@ export interface ToolPanelInputDeps {
   readonly toggleHud: () => void;
   /** Open or close the network window; absent outside a relayed game, which leaves its key alone. */
   readonly toggleNetwork?: () => void;
+  readonly toggleDiplomacyMap: () => void;
   /** Hold the road tool; absent where the game offers none, which leaves its key to the page. */
   readonly roadTool?: () => void;
   /** Hold the palisade wall tool; absent where the game offers none. */
@@ -84,7 +74,12 @@ function platformCtrlClickIsRightButton(): boolean {
   return typeof navigator !== 'undefined' && /Macintosh|Mac OS X/.test(navigator.userAgent);
 }
 
+type ButtonPress = Pick<MouseEvent, 'button' | 'ctrlKey'>;
+
 export interface ToolPanelInput {
+  /** A right press on a surface that is not the game canvas, as the map overview: true when it called a
+   *  held mode off, one rung, so it orders nothing. */
+  callOffHeld(press: ButtonPress): boolean;
   dispose(): void;
 }
 
@@ -96,6 +91,15 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   const cancelOneRung = (): void => {
     if (held.some((m) => m.isActive() && m.stepBack?.() === true)) return;
     for (const mode of held) mode.cancel();
+  };
+  // Where Ctrl+left-click arrives as button 2, a Ctrl press counts as the primary press, so a wall tool
+  // stays armed for the next line.
+  const isRightPress = (e: ButtonPress): boolean => e.button === 2 && !(e.ctrlKey && ctrlClickIsRightButton);
+  const callOffHeld = (e: ButtonPress): boolean => {
+    if (!isRightPress(e) || !anyHeld()) return false;
+    deps.cue('fail');
+    cancelOneRung();
+    return true;
   };
 
   // Every pointer event reports Shift and Alt too, so one pressed while another window had focus still
@@ -128,18 +132,11 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     };
 
     // Right button cancels an active placement or held paper; otherwise it is a world order for unit controls.
-    // Where Ctrl+left-click arrives as button 2, a Ctrl press falls through as the primary press, so a
-    // wall tool stays armed for the next line.
-    const primaryWithCtrl = e.button === 2 && e.ctrlKey && ctrlClickIsRightButton;
-    if (e.button === 2 && !primaryWithCtrl) {
-      if (anyHeld()) {
-        // Order-independent with unit controls: when it runs first the still-held claim makes it
-        // defer; when it runs later, stopping the event keeps the now-clear claim from reading the
-        // press as a world move order.
-        consume();
-        deps.cue('fail');
-        cancelOneRung();
-      }
+    if (isRightPress(e)) {
+      // Order-independent with unit controls: when it runs first the still-held claim makes it
+      // defer; when it runs later, stopping the event keeps the now-clear claim from reading the
+      // press as a world move order.
+      if (callOffHeld(e)) consume();
       return;
     }
     if (e.button !== 0 && e.button !== 2) return;
@@ -228,6 +225,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       ['loadGame', deps.openLoad],
       ['saveGame', deps.openSave],
       ['network', deps.toggleNetwork],
+      ['diplomacyMap', deps.toggleDiplomacyMap],
     ];
     for (const [action, run] of pressed) {
       if (run === undefined || !isActionHotkey(e, deps.bindings, action)) continue;
@@ -268,6 +266,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   window.addEventListener('blur', onBlur);
 
   return {
+    callOffHeld,
     dispose(): void {
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);

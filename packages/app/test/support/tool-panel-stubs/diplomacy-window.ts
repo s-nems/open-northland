@@ -10,6 +10,9 @@ export function stubDiplomacyWindow(): DiplomacyWindow {
     close: () => {
       open = false;
     },
+    showNation: () => {
+      open = true;
+    },
     refresh: () => undefined,
     onDismiss: () => undefined,
     dispose: () => undefined,

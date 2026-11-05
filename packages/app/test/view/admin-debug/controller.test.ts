@@ -3,6 +3,7 @@ import type { Command } from '@open-northland/sim';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JOB_ARCHER_LONG, JOB_CIVILIST, JOB_SOLDIER_SWORD } from '../../../src/catalog/jobs.js';
 import { messages } from '../../../src/i18n/index.js';
+import { HOLD_REPEAT_DELAY_MS, HOLD_REPEAT_INTERVAL_MS } from '../../../src/view/admin-debug/hold-repeat.js';
 import { mountAdminDebug } from '../../../src/view/admin-debug/index.js';
 
 const copy = messages().admin;
@@ -215,6 +216,21 @@ describe('debug tools controller', () => {
     press(canvas);
     expect(sent).toEqual([{ kind: 'debugTeleport', target: PICKED, x: TILE.col, y: TILE.row }]);
     expect(hint()).toBe(copy.actionHints.teleport);
+  });
+
+  it('keeps erasing under a held press, and acts once on a plain click', () => {
+    vi.useFakeTimers();
+    const { handle, tile, canvas, sent } = mount();
+    handle.toggle.click();
+    tile(copy.actions.erase).click();
+    canvas.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true }));
+    expect(sent).toEqual([{ kind: 'debugErase', target: PICKED }]);
+    vi.advanceTimersByTime(HOLD_REPEAT_DELAY_MS + HOLD_REPEAT_INTERVAL_MS);
+    expect(sent).toHaveLength(3);
+    window.dispatchEvent(new MouseEvent('mouseup', { button: 0 }));
+    vi.advanceTimersByTime(HOLD_REPEAT_INTERVAL_MS);
+    expect(sent).toHaveLength(3);
+    vi.useRealTimers();
   });
 
   it('takes its DOM and window listeners down on dispose', () => {

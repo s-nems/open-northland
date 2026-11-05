@@ -17,7 +17,6 @@ import {
   Settler,
   setSettlerJob,
 } from '../../components/index.js';
-import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { parentsByChild, releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
@@ -53,22 +52,15 @@ export function isNonWorkingAge(jobType: number | null): boolean {
 }
 
 /**
- * Growth cadence, observed on the running original: a baby becomes a child at 4 years and an adult at 12,
- * with those 12 years running in 4 minutes of 1x play. No readable rule file carries any of it, and the
- * tick counts below additionally rest on the approximated `TICKS_PER_SECOND`.
+ * Original behavior: every human's age counter starts at 0 and gains one per game tick while it is not
+ * ageless. A baby turns child once the counter reaches 1441 and a child turns adult at 2881, one stage per
+ * tick; a child placed by the map starts at 0 too. No readable rule file carries these numbers.
  */
-const CHILD_AGE_YEARS = 4;
-const ADULT_AGE_YEARS = 12;
-const CHILDHOOD_SECONDS_AT_1X = 4 * 60;
+export const CHILD_AGE_TICKS = 1441;
+export const ADULT_AGE_TICKS = 2881;
 
-/** Sim ticks per year of a settler's age: 240, one year every 20 s at 1x. The sim has no other calendar. */
-export const TICKS_PER_AGE_YEAR = (CHILDHOOD_SECONDS_AT_1X * TICKS_PER_SECOND) / ADULT_AGE_YEARS;
-
-/** The `Age.ticks` at which a baby becomes a child - an age on the `Age.ticks` axis, not a stage length. */
-export const CHILD_AGE_TICKS = CHILD_AGE_YEARS * TICKS_PER_AGE_YEAR;
-
-/** The `Age.ticks` at which a child becomes an adult and stops carrying an {@link Age}. */
-export const ADULT_AGE_TICKS = ADULT_AGE_YEARS * TICKS_PER_AGE_YEAR;
+/** The age counter's ticks per year the original's selection panel shows a growing settler's age in. */
+export const TICKS_PER_AGE_YEAR = 270;
 
 /** A settler's life stage, the distinction the original draws over `JobType`. */
 export type AgeClass = 'adult' | 'baby' | 'child';
@@ -87,18 +79,6 @@ export function ageClassOfJobId(jobId: string | undefined): AgeClass {
       return 'child';
     default:
       return 'adult';
-  }
-}
-
-/** The `Age.ticks` a settler spawned directly into an age-class job starts with, or null for an adult. */
-export function spawnAgeTicks(jobId: string | undefined): number | null {
-  switch (ageClassOfJobId(jobId)) {
-    case 'baby':
-      return 0;
-    case 'child':
-      return CHILD_AGE_TICKS;
-    default:
-      return null;
   }
 }
 
@@ -154,15 +134,21 @@ export const growthSystem: System = (world, ctx) => {
       continue;
     }
     const ticks = countGrowthPass(world, e, ctx.tick);
-    const settler = world.get(e, Settler);
-    if (ticks >= ADULT_AGE_TICKS) {
-      setSettlerJob(world, e, isMaleStage(settler.jobType) ? CIVILIST_JOB : WOMAN_JOB);
+    const jobType = world.get(e, Settler).jobType;
+    const line = nextStageAge(jobType);
+    if (line === null) continue;
+    if (ticks < line) {
+      schedule.wakeAt(e, ctx.tick + (line - ticks));
+      continue;
+    }
+    const male = isMaleStage(jobType);
+    if (isChild(jobType)) {
+      setSettlerJob(world, e, male ? CIVILIST_JOB : WOMAN_JOB);
       graduated.push(e);
       continue;
     }
-    const target = ageClassAt(ticks, isMaleStage(settler.jobType));
-    if (target !== settler.jobType) setSettlerJob(world, e, target);
-    schedule.wakeAt(e, ctx.tick + (nextStageAge(ticks) - ticks));
+    setSettlerJob(world, e, male ? CHILD_MALE : CHILD_FEMALE);
+    schedule.wakeAt(e, ctx.tick + Math.max(1, ADULT_AGE_TICKS - ticks));
   }
   const parents = graduated.length > 1 ? parentsByChild(world, graduated) : undefined;
   for (const e of graduated) {
@@ -179,9 +165,10 @@ export const growthSystem: System = (world, ctx) => {
   schedule.settle(ctx.tick);
 };
 
-/** The `Age.ticks` of the next stage line above `ticks`. */
-function nextStageAge(ticks: number): number {
-  return ticks < CHILD_AGE_TICKS ? CHILD_AGE_TICKS : ADULT_AGE_TICKS;
+/** The `Age.ticks` at which a settler of `jobType` moves up a stage, or null for a job no age promotes. */
+function nextStageAge(jobType: number | null): number | null {
+  if (isBaby(jobType)) return CHILD_AGE_TICKS;
+  return isChild(jobType) ? ADULT_AGE_TICKS : null;
 }
 
 /**
@@ -254,9 +241,11 @@ class GrowthSchedule {
         if (world.get(e, Age).asOf !== null) stale++;
         continue;
       }
+      const line = nextStageAge(world.get(e, Settler).jobType);
+      if (line === null) continue;
       const ticks = ageTicksAt(world.get(e, Age), passed + 1);
       const due = this.dueOf.get(e);
-      const expected = passed + 1 + (nextStageAge(ticks - 1) - ticks);
+      const expected = passed + Math.max(1, line - ticks + 1);
       if (world.get(e, Age).asOf === null || due === undefined || due !== expected) stale++;
     }
     return stale === 0 ? [] : [`growthSchedule: ${stale} children are not scheduled at their next stage`];
@@ -285,13 +274,4 @@ function growthScheduleOf(world: World): GrowthSchedule {
     schedule = created;
   }
   return schedule;
-}
-
-/**
- * The age-class `jobType` a settler that has lived `ticks`, still short of adulthood, should currently
- * hold for the given sex.
- */
-function ageClassAt(ticks: number, male: boolean): number {
-  if (ticks < CHILD_AGE_TICKS) return male ? BABY_MALE : BABY_FEMALE;
-  return male ? CHILD_MALE : CHILD_FEMALE;
 }

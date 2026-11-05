@@ -5,6 +5,7 @@ import type { Application } from 'pixi.js';
 import { loadBerthPostArt } from '../../content/gui/berth-post-art.js';
 import { loadGuiStrings } from '../../content/gui/gfx.js';
 import { installOriginalNames } from '../../content/gui/original-names.js';
+import { installPersonalNames } from '../../content/gui/personal-names.js';
 import { loadPlanRoadArt } from '../../content/gui/plan-road-art.js';
 import { loadPlanStakeArt } from '../../content/gui/plan-stake-art.js';
 import {
@@ -13,6 +14,7 @@ import {
   type RealContentMerge,
 } from '../../content/real-content.js';
 import { diag } from '../../diag/index.js';
+import { reportProblem } from '../../diag/report/problem.js';
 import { localeParam, messages } from '../../i18n/index.js';
 import { dismissBootProgress } from '../boot/progress.js';
 import { enhancementsOf } from '../graphics/enhancements.js';
@@ -29,7 +31,11 @@ import type { GameViewDeps } from './game-view.js';
  */
 export async function loadLocalizedRealContent(params: URLSearchParams): Promise<RealContentMerge | null> {
   const locale = localeParam(params);
-  const [realContent, strings] = await Promise.all([loadRuntimeRealContent(), loadGuiStrings(locale)]);
+  const [realContent, strings] = await Promise.all([
+    loadRuntimeRealContent(),
+    loadGuiStrings(locale),
+    installPersonalNames(locale),
+  ]);
   if (realContent === null) return null;
   logRealContentGaps(realContent);
   if (strings !== null) installOriginalNames(locale, strings, realContent.content);
@@ -78,6 +84,19 @@ export function haltOnMissingContent(err: Error): void {
   dismissBootProgress();
   releaseDocument();
   mountMessage(copy.missingContentTitle, stale ? copy.staleContentDetail : copy.missingTerrainDetail, [
+    navButton(copy.backToMenu, false, ''),
+  ]);
+}
+
+/** Halt a boot that gets no WebGL context, which a browser refuses after a GPU driver failure until it
+ *  restarts. Reported, since a lost context the page saw may have been missed. */
+export function haltOnMissingGraphics(): void {
+  const copy = messages().common;
+  diag.error('gpu', 'no webgl context for a new world');
+  reportProblem({ trigger: 'context-lost', facts: { freshContext: false, atBoot: true } });
+  dismissBootProgress();
+  releaseDocument();
+  mountMessage(copy.graphicsUnavailableTitle, copy.graphicsUnavailableDetail, [
     navButton(copy.backToMenu, false, ''),
   ]);
 }

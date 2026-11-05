@@ -183,7 +183,7 @@ export function isIndexedSource(source: TextureSource): boolean {
 }
 
 /**
- * Frames of palette-indexed character sheets and the palette LUT each draws through. The world batch
+ * Frames of palette-indexed sheets (characters, ship yard sites) and the palette LUT each draws through. The world batch
  * shader reads such a texel's red channel as a palette index and its green as coverage, and looks the
  * colour up in the sprite's `lutRow` of that LUT, which rides in the batch's own texture list.
  */

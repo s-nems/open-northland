@@ -2,7 +2,7 @@ import type { Command } from '../core/commands/index.js';
 import { type DeepReadonly, defineComponent, type Entity, type World } from '../ecs/world.js';
 import type { HalfCellNode } from '../nav/halfcell.js';
 import type { AiOrderOrigin } from './ai/order.js';
-import { Position, type WalkDirection } from './movement.js';
+import { Position, WALK_DIRECTION, type WalkDirection } from './movement.js';
 
 /** The tasks the original's vehicle window shows, in its numbering 0..6. */
 export const VEHICLE_TASKS = [
@@ -16,6 +16,9 @@ export const VEHICLE_TASKS = [
 ] as const;
 export type VehicleTask = (typeof VEHICLE_TASKS)[number];
 
+/** The facing a fresh vehicle takes. Approximation: neither `setvehicle` nor a yard authors one. */
+export const VEHICLE_SPAWN_FACING: WalkDirection = WALK_DIRECTION.E;
+
 /** A siege vehicle's stances, the original's 1 attack / 2 defence / 3 hold; a fresh vehicle holds. */
 export const VEHICLE_STANCES = ['attack', 'defence', 'hold'] as const;
 export type VehicleStance = (typeof VEHICLE_STANCES)[number];
@@ -27,14 +30,11 @@ export type VehicleAttackTarget =
 
 /**
  * A vehicle's standing attack: `ordered` is a player's `attackWithVehicle`, kept until the target is
- * gone; an auto-acquired one is re-judged every scan. `clipStart` is the tick the current attack clip
- * began, null between clips, so the shot's release and the clip's end are ticks counted from it and
- * nothing writes the vehicle each tick.
+ * gone; an auto-acquired one is re-judged every scan.
  */
 export interface VehicleAttack {
   target: VehicleAttackTarget;
   ordered: boolean;
-  clipStart: number | null;
 }
 
 /**
@@ -78,7 +78,8 @@ export const Vehicle = defineComponent<{
   /** The ship carrying this vehicle, or null while it stands on the map. */
   carrier: Entity | null;
   /** The posted carrier or trader this cart is the hauling cart of ({@link HaulingCart}), set from the order so
-   *  nobody else takes or boards it meanwhile; null for a cart nobody pulls. */
+   *  nobody else takes or boards it meanwhile, or the trader this ship is pinned to ({@link TradeShip});
+   *  null for a vehicle nobody holds. */
   hauler: Entity | null;
   passengers: (VehicleSeat | null)[];
   vehicles: (VehicleSeat | null)[];
@@ -94,6 +95,12 @@ export const Vehicle = defineComponent<{
    *  writes it is not read. */
   guard: HalfCellNode | null;
   attack: VehicleAttack | null;
+  /** The tick the attack clip under way began, null between clips: the shot's release and the clip's end
+   *  are ticks counted from it, so nothing writes the vehicle each tick. It stands apart from `attack`
+   *  because the clip is the weapon's only reload: a new order or a lost target must not restart it.
+   *  Approximation: a goto starts at once, the rest of the clip a reload without its frames, though the
+   *  clip is not interruptible. */
+  attackClipStart: number | null;
   march: VehicleMarch | null;
 }>('Vehicle', 'movement');
 
@@ -177,6 +184,18 @@ export const HaulingCart = defineComponent<{
   parked: boolean;
   lift: HaulingLift | null;
 }>('HaulingCart', 'economy');
+
+/**
+ * The ship a player pinned to a trader's sea route (owner's choice; the original's sea trader job is an
+ * empty stub), the ship's `Vehicle.hauler` naming the trader back so nobody boards or loads it but the
+ * carriers assigned to help (`trade/helpers.ts`). The route owns the ship's hold. `dockRetryAt` is the tick before which a failed voyage is not tried again,
+ * `failedDock` the mooring point that last failed, so a ship already on that shore stays where it lies.
+ */
+export const TradeShip = defineComponent<{
+  vehicle: Entity;
+  dockRetryAt: number;
+  failedDock: HalfCellNode | null;
+}>('TradeShip', 'economy');
 
 /**
  * An animal a cart recruited as its draught animal, from the pick until it is consumed at the cart's
@@ -266,7 +285,8 @@ export const VEHICLE_STOCK_BYTE_MAX = 255;
 /**
  * A carrier's booking on its vehicle's hold: `load` means one unit of `goodType` (the hold's canonical
  * good) is counted in `reserved` for the unit on the carrier's back, `unload` that one unit was taken
- * off `reserved` for the unit it is about to lift out. Cleared when the atomic at the door applies.
+ * off `reserved` for the unit it is about to lift out. Cleared when the atomic at the door applies. A
+ * pinned ship's helpers touch no `reserved`: on such a ship the run alone books the unit (`ferryHoldOf`).
  */
 export const CargoRun = defineComponent<{
   vehicle: Entity;
@@ -332,14 +352,22 @@ export function hasFreeSeat(vehicle: VehicleStateView): boolean {
   return vehicle.passengers.some((seat) => seat === null);
 }
 
+/** Whether an ordinary passenger slot is free, the commander's left out. */
+export function hasFreeOrdinarySeat(vehicle: VehicleStateView): boolean {
+  const commander = commanderSlotOf(vehicle.passengers.length - 1);
+  return vehicle.passengers.some((seat, i) => i !== commander && seat === null);
+}
+
 /**
  * Seat `rider` on `vehicle`: the commander slot first, then the lowest free ordinary slot, the original's
- * attach order. False when every slot is taken; the caller has already checked the job gate.
+ * attach order; a held vehicle keeps the commander slot for its hauler, whom a ship's helpers leave it to.
+ * False when every open slot is taken; the caller has already checked the job gate.
  */
 export function seatPassenger(world: World, vehicle: Entity, rider: Entity): boolean {
   const current = world.get(vehicle, Vehicle);
   const commander = commanderSlotOf(current.passengers.length - 1);
-  let slot = current.passengers[commander] === null ? commander : -1;
+  const open = current.hauler === null || current.hauler === rider;
+  let slot = open && current.passengers[commander] === null ? commander : -1;
   if (slot < 0) slot = current.passengers.findIndex((seat, i) => i !== commander && seat === null);
   if (slot < 0) return false;
   world.mut(vehicle, Vehicle).passengers[slot] = { entity: rider, inside: false };
@@ -357,23 +385,29 @@ export function setSeatInside(world: World, vehicle: Entity, rider: Entity, insi
   return true;
 }
 
+/** Move the first ordinary passenger into a free commander slot, if any rides. */
+export function fillCommanderSeat(world: World, vehicle: Entity): void {
+  const current = world.get(vehicle, Vehicle);
+  const commander = commanderSlotOf(current.passengers.length - 1);
+  if (current.passengers[commander] !== null) return;
+  const next = current.passengers.findIndex((seat, i) => i !== commander && seat !== null);
+  if (next < 0) return;
+  const live = world.mut(vehicle, Vehicle);
+  live.passengers[commander] = live.passengers[next] ?? null;
+  live.passengers[next] = null;
+}
+
 /**
  * Free `rider`'s slot. A departing commander is replaced by the first ordinary passenger (the original
- * promotes the first remaining rider whose job the type allows; the caller applies that gate). False
- * when the rider was not aboard.
+ * promotes the first remaining rider whose job the type allows; the caller applies that gate), but a held
+ * vehicle's slot waits for its hauler. False when the rider was not aboard.
  */
 export function unseatPassenger(world: World, vehicle: Entity, rider: Entity): boolean {
   const current = world.get(vehicle, Vehicle);
   const slot = current.passengers.findIndex((seat) => seat !== null && seat.entity === rider);
   if (slot < 0) return false;
   const commander = commanderSlotOf(current.passengers.length - 1);
-  const live = world.mut(vehicle, Vehicle);
-  live.passengers[slot] = null;
-  if (slot !== commander) return true;
-  const next = live.passengers.findIndex((seat, i) => i !== commander && seat !== null);
-  if (next >= 0) {
-    live.passengers[commander] = live.passengers[next] ?? null;
-    live.passengers[next] = null;
-  }
+  world.mut(vehicle, Vehicle).passengers[slot] = null;
+  if (slot === commander && current.hauler === null) fillCommanderSeat(world, vehicle);
   return true;
 }

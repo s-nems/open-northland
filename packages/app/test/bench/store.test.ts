@@ -25,6 +25,8 @@ function report(startedAt: string, overrides: Partial<BenchReport> = {}): BenchR
     },
     ticks: { warmup: 60, measured: 600, windows: 1 },
     tickMs: { meanMs: 6, medianMs: 6, p95Ms: 12, p99Ms: 18, maxMs: 30 },
+    cpuMsPerTick: 5.5,
+    allocKbPerTick: 80,
     systems: [{ name: 'computer', meanMs: 4, medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 100 }],
     slowestTicks: [],
     stutterSources: [],

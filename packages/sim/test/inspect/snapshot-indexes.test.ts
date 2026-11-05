@@ -162,7 +162,7 @@ describe('snapshot indexes over a mirror', () => {
       // The list object is the same one across deltas: maintained, not rebuilt per snapshot.
       if (settlers !== null) expect(current).toBe(settlers);
       settlers = current;
-      if (delta.touched.length > 0) touchedTicks++;
+      if (delta.changeOf.length > 0) touchedTicks++;
     }
     expect(touchedTicks).toBeGreaterThan(100);
     expect(nonNull(settlers).length).toBe(2);

@@ -1,10 +1,16 @@
 import type { SceneryObject, SoundStatsView, UiCue, VoiceCall } from '@open-northland/audio';
 import type { Campaign, MapVariant } from '@open-northland/data';
 import { BUILDING_KIND, jobCanPray, type MapRelationFlag } from '@open-northland/data';
-import type { SessionDriver } from '@open-northland/lockstep';
+import {
+  type DayNightMode,
+  DEFAULT_DAY_NIGHT_MODE,
+  type SessionDriver,
+  type WeatherMode,
+} from '@open-northland/lockstep';
 import type {
   DoorBadge,
   ElevationField,
+  EntityBounds,
   MapObjectSprite,
   SceneTerrain,
   SpriteSheet,
@@ -42,15 +48,16 @@ import { loadGuiArt } from '../../content/gui/art.js';
 import { type BriefingVoiceLoader, briefingVoicePlayer } from '../../content/map-source/briefing-voices.js';
 import type { FellingClips } from '../../content/object-gfx/felling-clips.js';
 import { hasDebugFlag } from '../../diag/debug-flags.js';
+import { logGpuContextLoss } from '../../diag/gpu-context.js';
 import {
   currentDiagGameSession,
   FrameStats,
   installSessionInstruments,
-  logGpuContextLoss,
   setDiagGameSession,
 } from '../../diag/index.js';
 import { setReportGameView } from '../../diag/report/view.js';
 import { settlerName } from '../../game/character-names/index.js';
+import { installPetNames, type PetNames, petNamesOf } from '../../game/character-names/pet-names.js';
 import { type MissionBriefSource, missionReader } from '../../game/map/mission-brief.js';
 import { mapStartFocus } from '../../game/map/start.js';
 import type { ObserverSeatEntry } from '../../game/match/observer-seats.js';
@@ -66,6 +73,7 @@ import {
 } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { createProductSelectionCache } from '../../hud/details-panel/model/settler-work.js';
+import { createDiplomacyMap, type DiplomacyMap } from '../../hud/diplomacy-map/index.js';
 import type { DiplomacyPanelRow } from '../../hud/dom/diplomacy-window/model.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
@@ -82,6 +90,7 @@ import type { HoverOwnerContext } from '../../hud/hover-card/owner.js';
 import { palisadeHoverModel, wallHovers } from '../../hud/hover-card/palisade.js';
 import { type SettlerHoverContext, settlerHoverModel } from '../../hud/hover-card/settler.js';
 import { vehicleHoverModel } from '../../hud/hover-card/vehicle.js';
+import { keyDisplayLabel } from '../../hud/keybindings.js';
 import type { MapOverlayControls } from '../../hud/map-overlays.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { minimapFeatureOfGoodTypes } from '../../hud/minimap/live-objects.js';
@@ -134,6 +143,7 @@ import { nodeBounds } from '../picking.js';
 import { createPlacementGates } from '../placement/gates.js';
 import {
   createFogGates,
+  diplomacyMapNations,
   diplomacyMetSeats,
   diplomacyPanelRows,
   entityAnchor,
@@ -220,8 +230,12 @@ export interface GameViewDeps {
   readonly parentSave?: SaveGame;
   /** The loaded save's `view` header, whose control groups return when the same seat loads it. */
   readonly restoredView?: unknown;
-  /** The presentation memory a save keeps (the viewer's fog memory); the entry restores it. */
+  /** The presentation memory a save keeps (the viewer's fog memory and given names); the entry
+   *  restores it. */
   readonly presentation?: () => string | null;
+  /** The names the player gives in this world, starting from what its save kept; absent, it starts
+   *  with none. */
+  readonly petNames?: PetNames;
   readonly prepareSubMission?: PrepareSubMission;
   readonly validateSavedMap?: (save: SaveGame) => Promise<void>;
   readonly cameraCtl: CameraController;
@@ -234,6 +248,10 @@ export interface GameViewDeps {
   readonly mapSize: { readonly width: number; readonly height: number };
   /** Ambient weather for a map that authors none; absent, the sky stays as the map wrote it. */
   readonly ambientWeather?: AmbientWeather | null;
+  /** The match's weather rule; `off` draws no weather whatever the player's setting. */
+  readonly weatherMode?: WeatherMode;
+  /** The match's day and night rule. */
+  readonly dayNightMode?: DayNightMode;
   /** Terrain-height field, so clicks on lifted hills resolve to the tile drawn there. */
   readonly elevation?: ElevationField;
   /** The static quad still drawing a harvestable the sprite pool skips, so a click on a virgin tree or
@@ -325,6 +343,8 @@ const SCRIPT_OVERLAY_Z = 900;
 
 /** Mount the standard in-game HUD over the assembled world and start the session's frame loop. */
 export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle> {
+  // Before anything can read or save a name: no name outlives the world it was given in.
+  installPetNames(deps.petNames ?? petNamesOf());
   const { app, canvas, params, renderer, host, driver, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
   // Shared players start on their own seat and may switch to observation after a result.
@@ -477,12 +497,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     );
 
     // A checkout without a decoded sound bank degrades to silence.
+    const weatherAllowed = deps.weatherMode !== 'off';
     const soundDriver = await mountGamePresentation(
       params,
       renderer,
       host.content.jobs,
       deps.musicType,
       lifetime.signal,
+      weatherAllowed,
     );
     cleanup.push(() => soundDriver?.close());
     if (deps.soundScenery !== undefined) soundDriver?.setLandscapeScenery(deps.soundScenery);
@@ -492,7 +514,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
     const fogGates = createFogGates();
 
-    const placementGates = createPlacementGates(host, fogGates, localPlayer);
+    const placementGates = createPlacementGates(host, fogGates, localPlayer, deps.observer === true);
     cleanup.push(() => placementGates.dispose());
     const {
       canPlaceAt,
@@ -512,6 +534,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Assigned right after the tool panel mounts: stage order is draw order, and the minimap window
     // draws over the strip's lower buttons on a short screen.
     let minimap: MinimapHandle | undefined;
+    // Stands on the minimap, so it mounts after it; the panel and the minimap's button reach it here.
+    let diplomacyMap: DiplomacyMap | undefined;
+    let unitWindowOpen: (() => boolean) | undefined;
 
     // Client coords, null off-canvas. Tracked persistently so the frame loop reads it instead of probing
     // the sim on every mousemove.
@@ -698,6 +723,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           submit: issueCommand,
         }),
       },
+      diplomacyMap: {
+        open: () => diplomacyMap?.open() === true,
+        // A window of the unit controls stands over the map, and its own Escape comes first.
+        close: () => {
+          if (diplomacyMap?.isOpen() !== true || unitWindowOpen?.() === true) return false;
+          diplomacyMap.close();
+          return true;
+        },
+        toggle: () => diplomacyMap?.toggle(),
+      },
       metSeats,
       fogView: fogViewOf,
       canPlaceAt,
@@ -878,7 +913,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       });
     }
     // Assembled below, once the controls and the camera it steers exist.
-    const scriptTints = await mountScriptTints(host, renderer, { pinnedIndex: tintParam(params) });
+    const scriptTints = await mountScriptTints(host, renderer, {
+      pinnedIndex: tintParam(params),
+      dayNight: deps.dayNightMode ?? DEFAULT_DAY_NIGHT_MODE,
+      dayNightShown: storedSettings.dayNight,
+      weatherShown: storedSettings.weather && weatherAllowed,
+      tick: host.tick,
+    });
     cleanup.push(() => scriptTints.dispose());
     const siege = mountSiegePresentation({
       host,
@@ -1014,14 +1055,46 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       frame: storedSettings.minimapFrame,
       camera: () => cameraCtl.camera(),
       onJump: jumpToWorld,
-      onOrder: (worldX, worldY, event) => overviewPress?.(worldX, worldY, event) ?? false,
+      // The overview has its own canvas, so a held mode's right press does not stop on the game canvas.
+      onOrder: (worldX, worldY, event) =>
+        toolPanel.controller.callOffHeld(event) || (overviewPress?.(worldX, worldY, event) ?? false),
       toScreenPx: clientToScreen,
+      onOverviewButton: () => diplomacyMap?.toggle(),
     });
 
     // The minimap and the DOM regions, open windows among them, keep the wheel from zooming under them
     // and narrow the edge-scroll band over them.
     const mountedMinimap = minimap;
     cleanup.push(() => mountedMinimap.dispose());
+    const showDiplomacyMapKey = (): void => {
+      const binding = keyBindings.diplomacyMap;
+      mountedMinimap.setOverviewKey(binding === null ? null : keyDisplayLabel(binding));
+    };
+    showDiplomacyMapKey();
+    const mountedDiplomacyMap = createDiplomacyMap({
+      minimap: mountedMinimap,
+      nations: () =>
+        diplomacyMapNations(diplomacyView, {
+          localPlayer: viewerPlayer(),
+          rosterPlayers: deps.rosterPlayers ?? [],
+          observer: viewer.wholeMap(),
+          tribeOf: seatTribeOf,
+          ...(deps.relationFlags !== undefined ? { relationFlags: deps.relationFlags } : {}),
+          ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+          ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+        }),
+      snapshot: () => host.snapshot(),
+      fog: fogViewOf,
+      memory: deps.renderer.fogMemory,
+      paintEmblem: toolPanel.controller.paintNationEmblem,
+      uiScale: hudDom.currentScale,
+      unavailable: () => hudHidden,
+      onNation: toolPanel.controller.showNation,
+      cue: uiCue,
+      now: () => performance.now(),
+    });
+    diplomacyMap = mountedDiplomacyMap;
+    cleanup.push(() => mountedDiplomacyMap.dispose());
     const hudClaims = (clientX: number, clientY: number): boolean =>
       mountedMinimap.claimsPointer(clientX, clientY) || hudDom.claims(clientX, clientY);
     cameraCtl.setPointerGuard(hudClaims);
@@ -1032,6 +1105,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;
 
     const restoredGroups = restoredControlGroups(deps.restoredView, pickableSeat(viewer));
+    const boundsOf = (ref: number): EntityBounds | undefined => {
+      const sprite = deps.staticHarvestableSprite?.(ref);
+      return sprite === undefined ? renderer.entityBounds(ref) : mapObjectBounds(sprite, host.tick);
+    };
+    const pixelHitOf = (ref: number, wx: number, wy: number): boolean | undefined => {
+      const sprite = deps.staticHarvestableSprite?.(ref);
+      return sprite === undefined
+        ? renderer.entityPixelHit(ref, wx, wy)
+        : mapObjectPixelHit(sprite, host.tick, wx, wy);
+    };
     const controls = await createUnitControls({
       requestFormationSlots: (...args) => host.formationSlots(...args),
       technologyStatus: answers.technologyStatus,
@@ -1059,6 +1142,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       mapText,
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
       enqueue: issueCommand,
+      readOnly,
       centerOn: jumpToWorld,
       drawnItems: () => renderer.drawnItems(),
       resourceVisible: (tileX, tileY) => {
@@ -1074,6 +1158,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       tradeOffersAt: answers.tradeOffersAt,
       canAttachTradeHouse: answers.canAttachTradeHouse,
       askAttachTradeHouse: answers.askAttachTradeHouse,
+      canPinTradeShip: answers.canPinTradeShip,
+      askPinTradeShip: answers.askPinTradeShip,
       tradeStances: (owner) => ({
         yours: host.diplomacyStance(viewerPlayer(), owner),
         theirs: host.diplomacyStance(owner, viewerPlayer()),
@@ -1083,6 +1169,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       canAttachToVehicle: answers.canAttachToVehicle,
       tradeHouseAttachAnswer: answers.tradeHouseAttachAnswer,
       vehicleAttachAnswer: answers.vehicleAttachAnswer,
+      tradeShipPinAnswer: answers.tradeShipPinAnswer,
       hintSuppressed: () =>
         hudHidden ||
         toolPanel.controller.placementBuilding() !== null ||
@@ -1095,16 +1182,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       askPlaceSignpostAt: placementGates.askPlaceSignpostAt,
       signpostAnswerAt: placementGates.signpostAnswerAt,
       placementAnswersVersion: placementGates.answersVersion,
-      boundsOf: (ref) => {
-        const sprite = deps.staticHarvestableSprite?.(ref);
-        return sprite === undefined ? renderer.entityBounds(ref) : mapObjectBounds(sprite, host.tick);
-      },
-      pixelHitOf: (ref, wx, wy) => {
-        const sprite = deps.staticHarvestableSprite?.(ref);
-        return sprite === undefined
-          ? renderer.entityPixelHit(ref, wx, wy)
-          : mapObjectPixelHit(sprite, host.tick, wx, wy);
-      },
+      boundsOf,
+      pixelHitOf,
       siteFlagHitOf: (ref, wx, wy) => renderer.siteFlagHit(ref, wx, wy),
       claimPointer: (x: number, y: number) => toolPanel.claimPointer() || mountedMinimap.claimsPointer(x, y),
       onUiCue: uiCue,
@@ -1137,6 +1216,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     unitSelection = controls;
     residentsProducts = createProductSelectionCache(controls.panelModelContext, answers.versions.technology);
     escapeClaimed = controls.claimsEscape;
+    unitWindowOpen = controls.windowOpen;
     overviewPress = controls.overviewPress;
 
     const {
@@ -1224,6 +1304,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
       geometryOf: buildingGeometry,
       clientToScreen,
+      boundsOf,
+      pixelHitOf,
       clientToTile: (x, y) => toolPanel.clientToTile(x, y),
       claimPointer: (x, y) => controls.claimsPointer(x, y),
       goodLabel,
@@ -1344,12 +1426,17 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         perfReadout.setCapFps(limit);
       },
       setWeatherEnabled: (enabled) => {
-        setWeatherDrawn(enabled);
-        soundDriver?.setWeatherEnabled(enabled);
+        const drawn = enabled && weatherAllowed;
+        setWeatherDrawn(drawn);
+        soundDriver?.setWeatherEnabled(drawn);
+        scriptTints.setWeatherShown(drawn);
       },
+      setDayNightShown: (shown) => scriptTints.setDayNightShown(shown),
       setKeyBindings: (next) => {
         Object.assign(keyBindings, next);
         cameraCtl.setBindings(next);
+        showDiplomacyMapKey();
+        toolPanel.controller.showKeys();
       },
     });
     cleanup.push(() => liveSettings.dispose());
@@ -1433,6 +1520,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         onFrame: (snapshot) => {
           autosave.update(snapshot.tick, liveSettings.settings.current());
           siege.frame();
+          scriptTints.frame(snapshot.tick);
           netOverlays?.refresh();
           followLink?.();
           deps.onFrame?.(snapshot);
@@ -1450,6 +1538,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       fogGates,
       toolPanel,
       minimap: mountedMinimap,
+      diplomacyMap: mountedDiplomacyMap,
       mapOverlay,
       controls,
       worldHover,

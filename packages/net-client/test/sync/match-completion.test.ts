@@ -13,7 +13,15 @@ const session: GameSession = {
     { player: 1, mode: 'human', color: 1 },
   ],
   localSeat: 0,
-  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+  rules: {
+    fog: null,
+    progression: null,
+    needs: null,
+    weather: null,
+    dayNight: null,
+    alliedVision: null,
+    peace: null,
+  },
   speed: 1,
 };
 

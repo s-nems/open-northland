@@ -14,7 +14,6 @@ export function roomSettings(deps: NetworkRoomDeps) {
   const hint = node('p', 'network-room__muted', copy.creatorSettings);
   root.append(node('h3', '', copy.settings), hint, fields);
   const rules = gameRuleControls({
-    presentation: 'compact',
     inheritedLabel: copy.authored,
     fieldClassName: 'network-room__field',
     map: { label: lobby.mapLabel, modes: lobby.mapModes, revealed: messages().admin.fogModes.off },
@@ -38,6 +37,7 @@ export function roomSettings(deps: NetworkRoomDeps) {
       off: copy.disabled,
     },
     weather: { label: lobby.weatherLabel, modes: lobby.weatherModes },
+    dayNight: { label: lobby.dayNightLabel, modes: lobby.dayNightModes },
     // A room plays a map with a multiplayer lobby, so it always offers the peace.
     peace: lobby.peace,
     onChange(change) {

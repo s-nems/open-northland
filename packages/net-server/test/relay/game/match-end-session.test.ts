@@ -14,7 +14,15 @@ const SETTINGS: RoomSettings = {
   name: 'result',
   world: { kind: 'scene', sceneId: 'result' },
   seed: 7,
-  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+  rules: {
+    fog: null,
+    progression: null,
+    needs: null,
+    weather: null,
+    dayNight: null,
+    alliedVision: null,
+    peace: null,
+  },
   speed: 1,
 };
 const SEATS = [

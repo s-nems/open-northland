@@ -30,7 +30,15 @@ function session(seats: GameSession['seats']): GameSession {
     seed: 1,
     seats,
     localSeat: OBSERVER_SEAT,
-    rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+    rules: {
+      fog: null,
+      progression: null,
+      needs: null,
+      weather: null,
+      dayNight: null,
+      alliedVision: null,
+      peace: null,
+    },
     speed: 1,
   };
 }

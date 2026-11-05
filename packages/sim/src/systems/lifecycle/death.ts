@@ -27,7 +27,7 @@ import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js
 import { setLandscape } from '../landscape/edits.js';
 import { animalRecord, firstLandscapeGfxOf, isSoldierJob, MEAT_LANDSCAPE_SLUG } from '../readviews/index.js';
 import { abandonCargoRun } from '../vehicles/cargo.js';
-import { abandonHaulingCart, releaseHaulingCart } from '../vehicles/hauling-cart.js';
+import { abandonHaulingCart, releaseHaulingCart, releaseTradeShip } from '../vehicles/hauling-cart.js';
 import { vacateSeat } from '../vehicles/movement.js';
 import { needLevel } from './needs/levels.js';
 
@@ -115,6 +115,7 @@ export function removeSettlerSilently(world: World, e: Entity): void {
   const rider = world.tryGet(e, Rider);
   if (rider !== undefined && world.has(rider.vehicle, Vehicle)) vacateSeat(world, rider.vehicle, e);
   abandonCargoRun(world, e);
+  releaseTradeShip(world, e);
   abandonHaulingCart(world, e);
   const marriage = world.tryGet(e, Marriage);
   const wedding = world.tryGet(e, Wedding);

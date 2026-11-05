@@ -70,11 +70,41 @@ export function settlerMeetsNeed(
   ) {
     return true;
   }
-  for (const req of tribeType.jobRequirements) {
-    if (req.requirement !== 'need' || req.target !== target || req.targetId !== targetId) continue;
+  const rows = needRowsOf(tribeType.jobRequirements)[target].get(targetId);
+  if (rows === undefined) return true;
+  for (const req of rows) {
     if (!experienceRequirementMet(ctx, experience, req)) return false;
   }
   return true;
+}
+
+/** A tribe's `needfor*` rows by target table and target id, in content order, indexed from the first
+ *  `indexed` rows of its requirement list. */
+interface NeedRows {
+  readonly indexed: number;
+  readonly job: ReadonlyMap<number, readonly JobRequirement[]>;
+  readonly good: ReadonlyMap<number, readonly JobRequirement[]>;
+}
+
+/** Keyed by the content-owned requirement list. Re-indexed when the list's length changes, since a fixture
+ *  may append rows to a loaded tribe. */
+const needRowsByRequirements = new WeakMap<readonly JobRequirement[], NeedRows>();
+
+function needRowsOf(requirements: readonly JobRequirement[]): NeedRows {
+  const held = needRowsByRequirements.get(requirements);
+  if (held !== undefined && held.indexed === requirements.length) return held;
+  const job = new Map<number, JobRequirement[]>();
+  const good = new Map<number, JobRequirement[]>();
+  for (const req of requirements) {
+    if (req.requirement !== 'need') continue;
+    const byId = req.target === 'job' ? job : good;
+    const list = byId.get(req.targetId);
+    if (list === undefined) byId.set(req.targetId, [req]);
+    else list.push(req);
+  }
+  const rows: NeedRows = { indexed: requirements.length, job, good };
+  needRowsByRequirements.set(requirements, rows);
+  return rows;
 }
 
 /**

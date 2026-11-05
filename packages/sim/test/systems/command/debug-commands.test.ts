@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   addPerson,
+  BerryBush,
   Building,
   Damaged,
   Health,
   Position,
+  Resource,
+  ResourceFootprint,
   Stockpile,
+  Stump,
   UnderConstruction,
   Upgrading,
 } from '../../../src/components/index.js';
@@ -14,7 +18,11 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { adminCommand, fx, ONE, Simulation } from '../../../src/index.js';
 import { type HalfCellNode, nodeOfPosition, positionOfNode } from '../../../src/nav/halfcell.js';
 import { commandSystem } from '../../../src/systems/command/index.js';
+import { createBerryBush } from '../../../src/systems/economy/berries.js';
+import { createResourceNode } from '../../../src/systems/footprint/index.js';
+import { dropGroundPile } from '../../../src/systems/settlers/atomics/effects/goods/piles.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
+import { aiContent } from '../../fixtures/ai-content.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, nextTickCtxOf } from '../../fixtures/context.js';
 import { needsOf } from '../../fixtures/settler.js';
@@ -37,6 +45,8 @@ const WORKPLACE_STOCK: readonly [number, number][] = [
 ];
 const GRANARY = 6; // fixture building kind 'storage' - used as a construction-site body (no home upgrade)
 const GRANARY_MAX_HP = 100;
+const RESOURCE_GOOD = 1; // a gathered good with a footprint in the AI fixture content
+const HARVEST_ATOMIC = 24;
 
 /** The test content's cart type. */
 const HANDCART = 1;
@@ -88,6 +98,73 @@ function settlerWithNeeds(sim: Simulation, level: Fixed): Entity {
 function destroyed(sim: Simulation, building: Entity): boolean {
   return sim.events.current().some((ev) => ev.kind === 'buildingDestroyed' && ev.entity === building);
 }
+
+describe('debugErase', () => {
+  /** A map-style node with a stamped footprint, as harvesting would leave worked. */
+  function standingNode(sim: Simulation): Entity {
+    const node = createResourceNode(sim.world, sim.content, {
+      good: RESOURCE_GOOD,
+      x: 8,
+      y: 8,
+      remaining: 5,
+      harvestAtomic: HARVEST_ATOMIC,
+    });
+    if (node === null) throw new Error('the test content ships a footprint for this good');
+    return node;
+  }
+
+  it('takes a resource node off the map with its footprint and retires its static sprite', () => {
+    const sim = new Simulation({ seed: 1, content: aiContent() });
+    const node = standingNode(sim);
+    expect(sim.world.has(node, ResourceFootprint)).toBe(true);
+    const { x, y } = sim.world.get(node, Position);
+    const drop = dropGroundPile(sim.world, x, y, RESOURCE_GOOD, 2);
+
+    sim.enqueueSetup({ kind: 'debugErase', target: node });
+    sim.step();
+
+    expect(sim.world.has(node, Resource)).toBe(false);
+    expect(sim.world.isAlive(drop)).toBe(false);
+    expect(sim.events.current()).toContainEqual({
+      kind: 'resourceDepleted',
+      node,
+      goodType: RESOURCE_GOOD,
+      at: { hx: 8, hy: 8 },
+    });
+  });
+
+  it('removes a berry bush and a loose pile, but never a building store', () => {
+    const sim = fresh();
+    const bush = createBerryBush(sim.world, { x: 6, y: 6, gfxIndex: 0 });
+    const pile = dropGroundPile(sim.world, fx.fromInt(3), fx.fromInt(3), RESOURCE_GOOD, 2);
+    const store = sim.world.create();
+    sim.world.add(store, Position, { x: fx.fromInt(5), y: fx.fromInt(5) });
+    sim.world.add(store, Building, { buildingType: GRANARY, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(store, Stockpile, { amounts: new Map([[RESOURCE_GOOD, 2]]) });
+
+    for (const target of [bush, pile, store]) sim.enqueueSetup({ kind: 'debugErase', target });
+    sim.step();
+
+    expect(sim.world.has(bush, BerryBush)).toBe(false);
+    expect(sim.events.current().some((ev) => ev.kind === 'berryBushRazed' && ev.bush === bush)).toBe(true);
+    expect(sim.world.has(pile, Stockpile)).toBe(false);
+    expect(sim.world.has(store, Stockpile)).toBe(true);
+  });
+
+  it('leaves a settler and a stump standing', () => {
+    const sim = fresh();
+    const settler = unitWithHealth(sim, 50);
+    const stump = sim.world.create();
+    sim.world.add(stump, Position, { x: fx.fromInt(4), y: fx.fromInt(4) });
+    sim.world.add(stump, Stump, { goodType: RESOURCE_GOOD });
+
+    for (const target of [settler, stump]) sim.enqueueSetup({ kind: 'debugErase', target });
+    sim.step();
+
+    expect(sim.world.isAlive(settler)).toBe(true);
+    expect(sim.world.isAlive(stump)).toBe(true);
+  });
+});
 
 describe('debugKill', () => {
   it('drains a Health pool to 0 so the CleanupSystem reaps the entity with a settlerDied event', () => {

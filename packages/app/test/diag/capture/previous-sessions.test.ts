@@ -61,6 +61,7 @@ function shellFault(id: string, trigger: DesktopFault['trigger'], atMs: number):
     durationMs: null,
     stack: null,
     url: null,
+    gpuStatus: null,
   };
 }
 

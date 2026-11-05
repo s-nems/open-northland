@@ -87,6 +87,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
           progression: options.professionProgression,
           needs: options.settlerNeeds,
           weather: options.weather,
+          dayNight: options.dayNight,
           alliedVision: options.alliedVision,
           peace: options.peace,
         }

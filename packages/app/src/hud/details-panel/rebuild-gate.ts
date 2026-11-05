@@ -1,9 +1,12 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import { TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import type { UnitPanelModel } from './model/index.js';
 
 /** Minimum wall-clock gap in ms between rebuilds a new snapshot calls for; a selection change (a forced pass)
  *  rebuilds immediately, and so do answers landing under the snapshot that selection was baked from. */
 const VALUE_REBUILD_MIN_MS = 250;
+/** Ticks after the player's own panel command in which every new snapshot or landed answer re-derives
+ *  unthrottled: past a relayed session's largest input delay plus the answer's trip back. */
+const COMMAND_ECHO_TICKS = TICKS_PER_SECOND * 2;
 
 export interface PanelRebuild {
   readonly model: UnitPanelModel;
@@ -21,6 +24,9 @@ export interface PanelRebuildGate {
   ): PanelRebuild | null;
   /** Report a rebuild the gate did not decide, which restarts the throttle window. */
   rebuilt(): void;
+  /** The player issued a command from the panel on session tick `tick`: its effect shows as soon as it
+   *  lands. */
+  commanded(tick: number): void;
 }
 
 export interface PanelRebuildGateDeps {
@@ -49,8 +55,8 @@ const structureKeyOf = (model: UnitPanelModel): string => {
 };
 
 /** Gates the panel's model re-derive and re-bake: `decide` runs every frame, the model build at most once
- *  per snapshot, and both at most once per throttle window unless forced or an answer landed. A group's
- *  model costs its members, and the snapshot changes every tick. */
+ *  per snapshot, and both at most once per throttle window unless forced, an answer landed or a panel
+ *  command's echo is due. A group's model costs its members, and the snapshot changes every tick. */
 export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuildGate {
   /** Keyed on snapshot identity, not `snapshot.tick`: a same-tick world mutation hands out a new snapshot
    *  object under an unchanged tick, and a paused tick never advances to heal a stale model. */
@@ -65,6 +71,8 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
    *  answers version the last rebuild read. */
   let structuralSnapshot: WorldSnapshot | null = null;
   let rebuiltAnswers = 0;
+  /** The last session tick a command's echo skips the throttle on. */
+  let echoUntilTick = Number.NEGATIVE_INFINITY;
 
   const modelFor = (
     snapshot: WorldSnapshot,
@@ -86,8 +94,13 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
       // Within the window nothing is derived but a new selection's landing answers; a resize or an
       // unforced change of kind waits for the window's end. A member leaving the world is a forced pass.
       const checked = now - Math.max(lastRebuildAt, lastUnchangedAt) < VALUE_REBUILD_MIN_MS;
-      const mayLand = snapshot === structuralSnapshot && (deps.answersVersion?.() ?? 0) !== rebuiltAnswers;
-      if (!force && checked && !mayLand) return null;
+      const answersNow = deps.answersVersion?.() ?? 0;
+      const mayLand = snapshot === structuralSnapshot && answersNow !== rebuiltAnswers;
+      // Within a command's echo only a new snapshot or answer derives, so the cost stays per tick.
+      const echo =
+        snapshot.tick <= echoUntilTick &&
+        (derived === null || derived.snapshot !== snapshot || derived.answers !== answersNow);
+      if (!force && checked && !mayLand && !echo) return null;
       const { model, json, answers } = modelFor(snapshot, force);
       // The screen size joins the value key so a resize re-anchors the panel.
       const key = `${json}|${screen.width}x${screen.height}`;
@@ -103,7 +116,7 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
       // selection's answers landing under the snapshot it was baked from are not throttled: they fill in
       // what the first bake had to refuse.
       const landing = snapshot === structuralSnapshot && answers !== rebuiltAnswers;
-      if (!structural && !landing && throttled) return null;
+      if (!structural && !landing && !echo && throttled) return null;
       if (structural) structuralSnapshot = snapshot;
       rebuiltAnswers = answers;
       lastModelKey = key;
@@ -112,6 +125,11 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
     },
     rebuilt(): void {
       lastRebuildAt = deps.now();
+    },
+    commanded(tick): void {
+      echoUntilTick = tick + COMMAND_ECHO_TICKS;
+      // A press the panel shows before the sim answers changes the model under the same snapshot.
+      derived = null;
     },
   };
 }

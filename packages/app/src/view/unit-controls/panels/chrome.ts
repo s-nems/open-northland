@@ -1,6 +1,16 @@
 import type { UiCue } from '@open-northland/audio';
 import { projectNode } from '@open-northland/render';
-import { type Entity, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
+import {
+  type Entity,
+  entityById,
+  type PlayerCommand,
+  systems,
+  type UnlockStatus,
+  type WorldSnapshot,
+} from '@open-northland/sim';
+import { diag } from '../../../diag/index.js';
+import { isRenamable, namedSettlerOf } from '../../../game/character-names/index.js';
+import { petNames } from '../../../game/character-names/pet-names.js';
 import { nodeOfId } from '../../../game/node-id.js';
 import { postFlagTradeOf } from '../../../game/snapshot/index.js';
 import { discoveryProgressOf, technologyReason } from '../../../game/technology.js';
@@ -43,6 +53,7 @@ import type { UnitControlsOptions } from '../types.js';
 import { buildingPanelActions, buildingPeers } from './building.js';
 import type { EquipPickController } from './equip-picker.js';
 import { groupPanelActions } from './group.js';
+import { createPendingTradeMarks } from './pending-trade-marks.js';
 import { type SettlerContractCommands, settlerPanelActions } from './settler.js';
 import { armedVehiclePick, vehiclePanelActions, vehiclePeersOf } from './vehicle.js';
 
@@ -70,6 +81,7 @@ export interface UnitChromeCallbacks {
   readonly assignWorkplace: (id: number) => void;
   readonly assignHome: (id: number) => void;
   readonly attachTradeHouse: (id: number) => void;
+  readonly pinTradeShip: (id: number) => void;
   readonly selectEntity: (id: number) => void;
   /** Arm a pick for a vehicle panel control, and read which one waits for its target. */
   readonly armPick: (mode: PickMode) => void;
@@ -125,11 +137,33 @@ export async function createUnitChrome(
   equipPicker: EquipPickController | null,
   callbacks: UnitChromeCallbacks,
 ): Promise<UnitChromeHandle> {
-  // The settler panel's commands of the sim contract (`ProductionCounters.counters`, `renameSettler`).
+  // A command from the panels or the ring skips the panel throttle: its effect shows once it lands, and a
+  // trade mark at once.
+  const pendingTrade = createPendingTradeMarks();
+  const enqueue = (command: PlayerCommand): void => {
+    opts.enqueue(command);
+    if (opts.readOnly?.() === true) return;
+    const tick = opts.snapshot().tick;
+    pendingTrade.record(command, tick);
+    panel.commanded(tick);
+  };
+  const panelOpts = { snapshot: opts.snapshot, viewer: opts.viewer, content: opts.content, enqueue };
+  // The settler panel's commands: `setProductionCount` is the sim's, while a rename is the player's
+  // own and stays on this client, where no other seat's screen can be made to show it.
+  const rename = (id: number, name: string): void => {
+    const ent = entityById(opts.snapshot(), id);
+    if (ent === undefined || !isRenamable({ jobs: opts.content.jobs, mapText: opts.mapText }, ent)) return;
+    if (petNames().set(namedSettlerOf(ent), name) === 'refused') {
+      diag.warn('hud', `refused the name ${JSON.stringify(name)} for settler ${id}`);
+      return;
+    }
+    // No snapshot follows a rename, and a paused game sends none: the panel shows the name now.
+    panel.render(opts.snapshot(), panelIds());
+  };
   const contract: SettlerContractCommands = {
-    rename: (id, name) => opts.enqueue({ kind: 'renameSettler', entity: id as Entity, name }),
+    rename,
     setProductionCount: (id, goodType, count) =>
-      opts.enqueue({ kind: 'setProductionCount', entity: id as Entity, goodType, count }),
+      enqueue({ kind: 'setProductionCount', entity: id as Entity, goodType, count }),
   };
 
   // Approximation: centring uses a building's base, so a tall house sits above the midpoint.
@@ -182,7 +216,7 @@ export async function createUnitChrome(
   // exactly where this one must stay shown.
   const panelChip = createTooltip();
   const settlerActions = settlerPanelActions(
-    opts,
+    panelOpts,
     {
       selectEntity: callbacks.selectEntity,
       selectGroup: callbacks.selectGroup,
@@ -198,6 +232,7 @@ export async function createUnitChrome(
       assignWorkplace: callbacks.assignWorkplace,
       assignHome: callbacks.assignHome,
       attachTradeHouse: callbacks.attachTradeHouse,
+      pinTradeShip: callbacks.pinTradeShip,
       ringCommand: callbacks.ringCommand,
       cue: callbacks.cue,
     },
@@ -235,14 +270,14 @@ export async function createUnitChrome(
     vehicle: vehiclePanelActions({
       snapshot: opts.snapshot,
       viewer: opts.viewer,
-      enqueue: opts.enqueue,
+      enqueue,
       arm: callbacks.armPick,
       cue: callbacks.cue,
     }),
     vehiclePeers: (vehicle) => vehiclePeersOf(opts.snapshot(), opts.content, vehicle),
     armedPick: (vehicle) => armedVehiclePick(callbacks.armedPick(), vehicle),
   });
-  const groupActions = groupPanelActions(opts, {
+  const groupActions = groupPanelActions(panelOpts, {
     onOrderLimit: callbacks.onOrderLimit,
     selectEntity: callbacks.selectEntity,
     selectGroup: callbacks.selectGroup,
@@ -278,7 +313,7 @@ export async function createUnitChrome(
       snapshot: opts.snapshot,
       content: opts.content,
       viewer: opts.viewer,
-      enqueue: opts.enqueue,
+      enqueue,
       cue: callbacks.cue,
       selectGroup: callbacks.selectGroup,
       confirm: createHudConfirm(opts.domHud.plane),
@@ -296,15 +331,15 @@ export async function createUnitChrome(
     close: () => settlerActions.clearSelection(),
     mode: (id, mode) => {
       callbacks.cue('confirm');
-      opts.enqueue({ kind: 'setPalisadeGateMode', palisade: id as Entity, mode });
+      enqueue({ kind: 'setPalisadeGateMode', palisade: id as Entity, mode });
     },
     demolish: (id) => {
       callbacks.cue('confirm');
-      opts.enqueue({ kind: 'demolishPalisade', palisade: id as Entity });
+      enqueue({ kind: 'demolishPalisade', palisade: id as Entity });
     },
     cancelRoadSite: (id) => {
       callbacks.cue('confirm');
-      opts.enqueue({ kind: 'cancelRoadSite', roadSite: id as Entity });
+      enqueue({ kind: 'cancelRoadSite', roadSite: id as Entity });
     },
   });
   const signpostPanel = createSignpostPanel({
@@ -316,7 +351,7 @@ export async function createUnitChrome(
       opts.snapshot,
       opts.viewer,
       callbacks.cue,
-    )((id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity })),
+    )((id) => enqueue({ kind: 'demolishSignpost', signpost: id as Entity })),
   });
   const figures = opts.domHud.figures;
   const wellFigures =
@@ -386,6 +421,7 @@ export async function createUnitChrome(
     return portraitsMemo.list;
   };
 
+  const traderView = opts.traderView;
   const modelContext: UnitPanelModelContext = {
     viewer: opts.viewer,
     technologyReason:
@@ -417,7 +453,9 @@ export async function createUnitChrome(
     isTraderJob: (jobType) => systems.isTraderJob(opts.content, jobType),
     ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
     ...(opts.signpostReach !== undefined ? { signpostReach: opts.signpostReach } : {}),
-    ...(opts.traderView !== undefined ? { traderView: opts.traderView } : {}),
+    ...(traderView !== undefined
+      ? { traderView: (id: number) => pendingTrade.view(id, traderView(id), opts.snapshot().tick) }
+      : {}),
     ...(opts.tradeOffersAt !== undefined ? { tradeOffersAt: opts.tradeOffersAt } : {}),
     ...(opts.workStatus !== undefined ? { workStatus: opts.workStatus } : {}),
     ...(opts.diplomacyStance !== undefined ? { diplomacyStance: opts.diplomacyStance } : {}),
@@ -458,7 +496,7 @@ export async function createUnitChrome(
         technologyStatus: opts.technologyStatus,
         answered: callbacks.answered,
         onOrderLimit: callbacks.onOrderLimit,
-        enqueue: opts.enqueue,
+        enqueue,
       }),
       jobAnswersVersion: () => opts.jobChoicesVersion() + (opts.technologyVersion?.() ?? 0),
       onCommand: callbacks.ringCommand,

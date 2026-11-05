@@ -47,7 +47,7 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     foreign: false,
     inside: null,
     aboard: null,
-    renamable: true,
+    rename: { given: '' },
     meta: 'Warm',
     status: {
       state: 'idle',
@@ -81,7 +81,17 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     military: { stance: null, regeneration: true },
     trade: {
       stops: [
-        { slot: 0, house: 1, label: 'Warm', foreign: false, heading: true, settlement: true, settles: true },
+        {
+          slot: 0,
+          house: 1,
+          label: 'Warm',
+          foreign: false,
+          heading: true,
+          settlement: true,
+          settles: true,
+          sharesSettlement: false,
+          settlementSuspended: false,
+        },
         {
           slot: 1,
           house: 2,
@@ -90,6 +100,8 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
           heading: false,
           settlement: false,
           settles: false,
+          sharesSettlement: false,
+          settlementSuspended: false,
         },
       ],
       attachSlot: null,
@@ -110,6 +122,10 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
       agreementHolds: true,
       giveKeep: 2,
       takeUpTo: 10,
+      ship: {
+        ship: { entity: 3, label: 'Warm', load: 'Warm' },
+        note: { label: 'Warm', tooltip: 'Warm' },
+      },
     },
     experience: [
       { label: 'Warm', repeats: 1, bonusPct: 5, own: true },

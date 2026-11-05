@@ -22,7 +22,15 @@ function room(id: string, compatibility: LobbyCompatibility | null = null): Room
       name: id,
       world: { kind: 'map', mapId: id },
       seed: 1,
-      rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null, peace: null },
+      rules: {
+        fog: null,
+        progression: null,
+        needs: null,
+        weather: null,
+        dayNight: null,
+        alliedVision: null,
+        peace: null,
+      },
       speed: 1,
     },
     seats: [

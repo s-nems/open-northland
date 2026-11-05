@@ -38,10 +38,10 @@ export function makeOverlayFrameSource(
   owner?: number,
 ) => PlacementOverlayFrame | null {
   const band = makeBandProber(host, mapSize, player);
-  return (buildingType, tribe, camera, screenW, screenH, techWaived = false, owner = player) => {
+  return (buildingType, tribe, camera, screenW, screenH, techWaived = false, owner) => {
     const probe = probes.building(buildingType, tribe, techWaived, owner);
     return band(
-      gridBandProbe(probe, `b${buildingType}:${tribe}:${techWaived ? 'waived' : 'tech'}:${owner}`),
+      gridBandProbe(probe, `b${buildingType}:${tribe}:${techWaived ? 'waived' : 'tech'}:${owner ?? 'own'}`),
       camera,
       screenW,
       screenH,

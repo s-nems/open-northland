@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -33,11 +32,31 @@ async function dumpAt(atMs: number): Promise<void> {
 const clockAt = (date: Date) => (): Date => date;
 
 describe('startShellRun', () => {
-  it('knows no previous run after a quit, and removes its file on quit', () => {
-    expect(startShellRun(runFile, dumpsRoot, clockAt(FIRST_START)).previous).toBeNull();
-    startShellRun(runFile, dumpsRoot, clockAt(FIRST_START)).quit();
-    expect(existsSync(runFile)).toBe(false);
-    expect(startShellRun(runFile, dumpsRoot, clockAt(SECOND_START)).previous).toBeNull();
+  it('knows no previous run on a first start, and tells a quit with its time', () => {
+    const quitAt = new Date(FIRST_START.getTime() + MINUTE_MS);
+    let clock = FIRST_START;
+    const first = startShellRun(runFile, dumpsRoot, () => clock);
+    expect(first.previous).toBeNull();
+    clock = quitAt;
+    first.quit();
+    expect(startShellRun(runFile, dumpsRoot, clockAt(SECOND_START)).previous).toEqual({
+      from: FIRST_START.toISOString(),
+      until: SECOND_START.toISOString(),
+      end: 'quit',
+      endedAt: quitAt.toISOString(),
+    });
+  });
+
+  it('takes a quit over a dump, a shutdown or a sleep notice before it: the shell outlived them', async () => {
+    let clock = FIRST_START;
+    const run = startShellRun(runFile, dumpsRoot, () => clock);
+    clock = new Date(FIRST_START.getTime() + MINUTE_MS);
+    run.shuttingDown();
+    run.suspended();
+    await dumpAt(clock.getTime() + MINUTE_MS);
+    clock = new Date(clock.getTime() + 2 * MINUTE_MS);
+    run.quit();
+    expect(startShellRun(runFile, dumpsRoot, clockAt(SECOND_START)).previous?.end).toBe('quit');
   });
 
   it('tells a shutdown, a crash dump and an end without either apart', async () => {

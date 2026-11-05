@@ -38,6 +38,8 @@ export interface ExperienceStarFrame extends MarkAnchorFrame {
 
 /** Feet→head estimate (world px), used only by the anchor's fallback. */
 const HEAD_ABOVE_FEET = 40;
+/** Horizontal sprite anchor that puts the star's middle on the column's axis. */
+const STAR_ANCHOR_CENTRE_X = 0.5;
 
 interface StarNode {
   readonly sprite: Sprite;
@@ -109,8 +111,9 @@ export class ExperienceStarLayer {
     }
     if (node.tier !== tier) {
       node.sprite.texture = gfx.textures.get(gfx.source, frame);
-      // The bob's own hot spot.
-      node.sprite.anchor.set(-frame.offsetX / frame.width, -frame.offsetY / frame.height);
+      // Centred on the column's axis like the heart; the bob's hot spot sits off the star's centre
+      // and would shift each size sideways. The hot spot still sets the height.
+      node.sprite.anchor.set(STAR_ANCHOR_CENTRE_X, -frame.offsetY / frame.height);
       node.tier = tier;
     }
     node.sprite.position.set(x, y);

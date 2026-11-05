@@ -42,8 +42,9 @@ export interface SelectionHeadModel {
     readonly kickerTooltip: string;
   } | null;
   readonly title: string;
-  /** The pen's tooltip and the longest name the field takes; null keeps the title read-only. */
-  readonly rename: { readonly tooltip: string; readonly maxLength: number } | null;
+  /** The pen's tooltip, the longest name the field takes and the name the field opens on (the player's
+   *  own, not the title it shows beside the generated one); null keeps the title read-only. */
+  readonly rename: { readonly tooltip: string; readonly maxLength: number; readonly current: string } | null;
   readonly meta: string | null;
   /** The orders medallion's tooltip, which names the ring's hotkey; null blanks its place. */
   readonly orders: { readonly tooltip: string } | null;
@@ -158,18 +159,18 @@ export function createSelectionPanel(
   const tips = attachTipLayer(root, chip);
 
   let editing = false;
-  let shownTitle = '';
+  let currentName = '';
   const endRename = (commit: boolean): void => {
     if (!editing) return;
     editing = false;
     const name = field.value.trim();
     setHidden(field, true);
     setHidden(renameButton, false);
-    if (commit && name !== shownTitle) handlers.onRename(name);
+    if (commit && name !== currentName) handlers.onRename(name);
   };
   renameButton.addEventListener('click', () => {
     editing = true;
-    field.value = shownTitle;
+    field.value = currentName;
     setHidden(renameButton, true);
     setHidden(field, false);
     field.focus();
@@ -246,7 +247,7 @@ export function createSelectionPanel(
       } else setTip(kickerText, '');
       setAttribute(prev, 'aria-label', model.labels.prev);
       setAttribute(next, 'aria-label', model.labels.next);
-      shownTitle = model.title;
+      currentName = model.rename?.current ?? '';
       write(plainName, model.title);
       write(renameText, model.title);
       if (model.rename === null) endRename(false);

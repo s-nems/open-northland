@@ -13,7 +13,6 @@ import {
   vehicleCommanderOf,
   vehicleSeatsOf,
 } from '../../../game/snapshot/index.js';
-import { vehicleLabel } from '../../../game/technology.js';
 import { ownedByAnotherSeat, pickableSeat } from '../../../game/viewer-seat.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { goodCategoryTab } from '../../good-categories.js';
@@ -25,6 +24,7 @@ import {
   isCarrierJob,
   jobDisplayName,
   type UnitPanelModelContext,
+  vehicleTitle,
 } from './context.js';
 import type { SeatControl } from './settler-household.js';
 import { type TradePanelModel, type TraderSubject, tradePanelModel } from './trade.js';
@@ -91,11 +91,15 @@ export interface VehicleCrewModel {
   readonly capacity: number;
   /** The carried vehicles and the deck's slot count; null for a type without one. */
   readonly deck: { readonly capacity: number; readonly vehicles: readonly VehicleDeckModel[] } | null;
-  /** The pick that seats a person: the commander's seat first, then a free ordinary one. */
+  /** The pick that seats a person: the commander's seat first, then a free ordinary one; a pinned
+   *  ship's commander seat is its trader's, so the pick seats a helper. */
   readonly assign: SeatControl | null;
-  /** One rider stepping out. */
+  /** A rider of an ordinary seat stepping out. */
   readonly leave: SeatControl | null;
-  /** "Unload everyone"; null while nobody rides. */
+  /** The commander stepping out, which a pinned ship's trader does for its route alone. */
+  readonly leaveCommander: SeatControl | null;
+  /** "Unload everyone"; null while nobody rides. The order lands every rider, so a pinned ship refuses it
+   *  while its trader is aboard, as it refuses the trader's own step out. */
   readonly unload: SeatControl | null;
   /** The pick that drives an own land vehicle onto the deck; null without a deck or on a foreign ship. */
   readonly load: SeatControl | null;
@@ -129,7 +133,8 @@ export interface VehicleHoldModel {
   readonly rows: readonly VehicleCargoRow[];
   /** Everything the type may carry, in its list order. */
   readonly goods: readonly VehicleCargoGood[];
-  /** A trader rides or pulls it: the route writes the wanted amounts, so the hold is read-only. */
+  /** A trader rides or pulls it, or has it pinned: the route writes the wanted amounts, so the hold is
+   *  read-only. */
   readonly routed: boolean;
   /** Someone works the hold: the commander, a loader in any seat (`hasCargoHand`), or the carrier
    *  pulling it. */
@@ -148,6 +153,12 @@ export interface VehicleHaulerModel {
   readonly entity: number;
   readonly name: string;
   readonly hold: HaulingCartHold;
+}
+
+/** The trader a ship is pinned to (`Vehicle.hauler`, `TradeShip` on the trader). */
+export interface VehicleTradePinModel {
+  readonly entity: number;
+  readonly name: string;
 }
 
 /** The status words naming the puller, with `{porter}` where its name goes. */
@@ -180,6 +191,8 @@ export interface VehiclePanelModel {
   readonly status: VehicleStatusModel;
   /** The carrier pulling the cart; null for a vehicle no carrier holds. */
   readonly hauler: VehicleHaulerModel | null;
+  /** The trader an own ship is pinned to; null for every other vehicle. */
+  readonly tradePin: VehicleTradePinModel | null;
   readonly health: { readonly hitpoints: number; readonly max: number } | null;
   /** The movement orders, then a siege engine's attack orders; empty for another seat's vehicle. */
   readonly orders: readonly VehicleOrderModel[];
@@ -223,12 +236,6 @@ function vehicleTypeOf(ctx: UnitPanelModelContext, typeId: number | undefined): 
   return typeId === undefined ? undefined : ctx.vehicles.find((v) => v.typeId === typeId);
 }
 
-/** The type name the panel titles a vehicle by, the content's own name when the catalog lacks one. */
-export function vehicleTitle(ctx: UnitPanelModelContext, typeId: number | undefined): string {
-  if (typeId === undefined) return messages().hud.vehicle;
-  return vehicleLabel({ vehicles: ctx.vehicles }, typeId) ?? messages().hud.vehicle;
-}
-
 export function vehicleClassOf(type: VehicleType | undefined): VehicleClass {
   if (type === undefined) return 'cart';
   if (systems.isShipVehicle(type)) return 'ship';
@@ -267,6 +274,8 @@ interface StatusInputs {
   readonly hauler: { readonly name: string; readonly hold: HaulingCartHold } | null;
   readonly commanded: boolean;
   readonly foreign: boolean;
+  /** Pinned to a trader, whose route empties the commander's seat at every shore. */
+  readonly pinned: boolean;
   readonly driving: boolean;
   readonly moored: boolean;
   readonly cargo: 'load' | 'unload' | null;
@@ -276,7 +285,7 @@ interface StatusInputs {
  * The status strip's words, the first that holds: riding a ship, pulled, parked or fetched by a carrier,
  * boarding a ship, fighting, under way, waiting for the animal, the commander or the crew, loading,
  * moored, then stopped or standing. A standing vehicle of the viewer's without its commander is in
- * trouble: it neither moves nor loads.
+ * trouble, unless a trader's route holds it: it neither moves nor loads.
  */
 export function vehicleStatus(inputs: StatusInputs): VehicleStatusModel {
   const copy = messages().hud.vehiclePanel.status;
@@ -294,7 +303,8 @@ export function vehicleStatus(inputs: StatusInputs): VehicleStatusModel {
   if (inputs.task === 'docks') return status(copy.docks, 'ok');
   if (inputs.driving) return status(inputs.vehicleClass === 'ship' ? copy.sails : copy.drives, 'ok');
   if (inputs.task === 'waitsForAnimal') return status(copy.waitsForAnimal, 'trouble');
-  if (!inputs.commanded && !inputs.foreign) return status(copy.noCommander[inputs.vehicleClass], 'trouble');
+  if (!inputs.commanded && !inputs.foreign && !inputs.pinned)
+    return status(copy.noCommander[inputs.vehicleClass], 'trouble');
   if (inputs.task === 'waitsForHuman') return status(copy.waitsForCrew, 'neutral');
   if (inputs.cargo !== null) return status(inputs.cargo === 'load' ? copy.loads : copy.unloads, 'ok');
   if (inputs.moored) return status(copy.moored, 'neutral');
@@ -303,6 +313,7 @@ export function vehicleStatus(inputs: StatusInputs): VehicleStatusModel {
 
 interface OrderInputs {
   readonly vehicleClass: VehicleClass;
+  /** A seated commander, or a pinned trader who answers from ashore. */
   readonly commanded: boolean;
   readonly carried: boolean;
   /** The carrying ship lies moored, so a carried vehicle may drive off it. */
@@ -339,7 +350,8 @@ export function vehicleOrders(inputs: OrderInputs): {
   ];
   if (inputs.vehicleClass === 'ship') orders.push({ order: 'dock', control: moves });
   else if (inputs.carried) {
-    orders.push({ order: 'leaveShip', control: inputs.carrierMoored ? true : copy.carrierAtSea });
+    const leaves = inputs.hauled ? copy.hauled : inputs.carrierMoored ? true : copy.carrierAtSea;
+    orders.push({ order: 'leaveShip', control: leaves });
   } else orders.push({ order: 'boardShip', control: moves });
   const attackOrders: VehicleOrderModel[] =
     inputs.vehicleClass === 'siege'
@@ -389,6 +401,8 @@ interface CrewInputs {
   readonly carried: boolean;
   /** The carrier or trader whose cart this is, which refuses crew meanwhile; null for any other vehicle. */
   readonly hauler: VehicleHaulerModel | null;
+  /** The trader whose route holds the ship: its commander's seat and deck are the route's. */
+  readonly tradePin: VehicleTradePinModel | null;
   /** A ship lying at sea: nobody steps in or out. */
   readonly atSea: boolean;
   readonly moored: boolean;
@@ -405,14 +419,18 @@ function crewModel(
   const passengers = vehicleSeatsOf(v.passengers);
   const lead = passengers.find((seat) => seat.entity === commanderId);
   const hauled = inputs.hauler !== null;
+  const pinned = inputs.tradePin !== null;
   // The puller who holds an own cart stands in the commander's seat without taking a passenger slot;
-  // he never sits in it, so he counts as at his post rather than walking to the door.
+  // he never sits in it, so he counts as at his post rather than walking to the door. A pinned trader
+  // commands its ship from ashore too, and reads as outside there.
   const commander =
     lead !== undefined
       ? riderModel(ctx, snapshot, lead)
       : hauled && !inputs.foreign
         ? riderModel(ctx, snapshot, { entity: inputs.hauler.entity, inside: true })
-        : null;
+        : pinned
+          ? riderModel(ctx, snapshot, { entity: inputs.tradePin.entity, inside: false })
+          : null;
   const seats = ordinarySeats(v.passengers).map((seat) =>
     seat === null ? null : riderModel(ctx, snapshot, seat),
   );
@@ -434,7 +452,7 @@ function crewModel(
   const atSea: SeatControl = copy.atSea;
   const carried: SeatControl = copy.carried;
   const doorless = inputs.atSea ? atSea : inputs.carried ? carried : true;
-  const full = passengers.length >= capacity;
+  const full = pinned ? seats.every((seat) => seat !== null) : passengers.length >= capacity;
   return {
     commander,
     seats,
@@ -443,16 +461,24 @@ function crewModel(
     deck,
     assign: own ? (hauled ? copy.hauled : full ? copy.noSeat : doorless) : null,
     leave: own ? (hauled ? copy.hauled : doorless) : null,
-    unload: own && passengers.length > 0 ? doorless : null,
+    leaveCommander: own ? (hauled ? copy.hauled : pinned ? copy.pinned : doorless) : null,
+    unload:
+      own && passengers.length > 0
+        ? passengers.some((seat) => seat.entity === inputs.tradePin?.entity)
+          ? copy.pinned
+          : doorless
+        : null,
     load:
       own && deck !== null
-        ? !inputs.moored
-          ? copy.notMoored
-          : carriedSeats.length >= deckCapacity
-            ? copy.deckFull
-            : true
+        ? pinned
+          ? copy.pinned
+          : !inputs.moored
+            ? copy.notMoored
+            : carriedSeats.length >= deckCapacity
+              ? copy.deckFull
+              : true
         : null,
-    unloadVehicle: own && deck !== null ? (inputs.moored ? true : atSea) : null,
+    unloadVehicle: own && deck !== null ? (pinned ? copy.pinned : inputs.moored ? true : atSea) : null,
   };
 }
 
@@ -540,6 +566,18 @@ function haulerOf(
   return { model: { entity: carrier.id, name: settlerName(ctx, carrier), hold }, carrier };
 }
 
+function tradePinOf(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  ship: SnapshotEntity,
+): VehicleTradePinModel | null {
+  const id = num(vehicleComp(ship).hauler);
+  const trader = id === undefined ? undefined : entityById(snapshot, id);
+  const pin = trader?.components.TradeShip as { vehicle?: unknown } | undefined;
+  if (trader === undefined || num(pin?.vehicle) !== ship.id) return null;
+  return { entity: trader.id, name: settlerName(ctx, trader) };
+}
+
 /** A taken cart's load: its own hold plus what its carrier has in hand, which rides in the cart. */
 export function withCarriedLoad(
   lines: ReadonlyMap<number, StockLineSnapshot>,
@@ -592,13 +630,18 @@ export function vehiclePanelModel(
   const hauling = haulerOf(ctx, snapshot, ent);
   const hauler = hauling?.model ?? null;
   const hauled = hauler !== null;
+  const tradePin = foreign ? null : tradePinOf(ctx, snapshot, ent);
+  const pinned = tradePin !== null;
+  // The snapshot cannot tell continents apart: the sim still refuses a trader across the sea.
+  const traderAnswers =
+    tradePin !== null && moored && entityById(snapshot, tradePin.entity)?.components.Rider === undefined;
   const ownLines = readStockLines(ent.components.VehicleStock);
   const lines = hauling?.model.hold === 'pulled' ? withCarriedLoad(ownLines, hauling.carrier) : ownLines;
   const trade = foreign ? null : vehicleTrade(ctx, snapshot, vehicleClass, passengers, hauling?.carrier.id);
   const hold =
     foreign || type === undefined || type.stockSlots === 0
       ? null
-      : holdModel(ctx, snapshot, type, lines, passengers, commanderId, trade !== null, hauler);
+      : holdModel(ctx, snapshot, type, lines, passengers, commanderId, trade !== null || pinned, hauler);
   const health = healthOf(ent);
   const animalMissing =
     type !== undefined && systems.awaitsDraughtAnimal(type, { harnessed: v.harnessed === true });
@@ -606,7 +649,7 @@ export function vehiclePanelModel(
     ? { orders: [], attackOrders: [] }
     : vehicleOrders({
         vehicleClass,
-        commanded,
+        commanded: commanded || traderAnswers,
         carried,
         carrierMoored: carrierEntity !== undefined && vehicleComp(carrierEntity).moored === true,
         animalMissing,
@@ -627,11 +670,13 @@ export function vehiclePanelModel(
       hauler: hauler === null ? null : { name: hauler.name, hold: hauler.hold },
       commanded,
       foreign,
+      pinned,
       driving: ent.components.VehicleDrive !== undefined,
       moored,
       cargo: hold === null || !hold.cargoHand ? null : cargoMoving(lines),
     }),
     hauler,
+    tradePin,
     health: health === undefined || health.max <= 0 ? null : health,
     orders,
     attackOrders,
@@ -642,6 +687,7 @@ export function vehiclePanelModel(
       foreign,
       carried,
       hauler,
+      tradePin,
       atSea: vehicleClass === 'ship' && !moored,
       moored,
     }),

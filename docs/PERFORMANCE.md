@@ -51,6 +51,11 @@ same map world builder and seat rules as the browser, including the map's reserv
 Reports include system mean/median/p95/max, the tick mean (the fast-forward throughput) and quantiles, entity counts, GC pauses, heap/RSS and
 the ten slowest ticks. Rank occasional work by its mean: a system's median can be zero despite real cost.
 
+| Metric | Meaning |
+| --- | --- |
+| `cpuMsPerTick` | Main-thread CPU time (user + system) per tick, per window and whole run, read at window bounds. Moves less with machine load than the wall tick; includes the harness hooks, excludes GC on helper threads |
+| `allocKbPerTick` | V8 KiB allocated per tick, per window and whole run, from the isolate's cumulative counter. Nearly load-independent; the target for allocation and GC work. `null` (`n/a`) on a runtime whose V8 lacks the counter |
+
 ### Profiles
 
 ```bash

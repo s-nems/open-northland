@@ -1,4 +1,5 @@
 import { installOriginalTribeNames } from '../../../content/gui/original-names.js';
+import { installPersonalNames } from '../../../content/gui/personal-names.js';
 import { defaultLocale, localeParam, setActiveLocale } from '../../../i18n/index.js';
 import { replaceEntryUrl } from '../../../view/platform/navigation-guard.js';
 import { type MenuSettings, persistSettings, readStoredSettings } from '../../../view/settings/store.js';
@@ -67,7 +68,7 @@ export async function updateSettings(patch: Partial<MenuSettings>): Promise<Menu
   syncCarriedParams(patch, next);
   if (patch.language !== undefined) {
     setActiveLocale(next.language);
-    await installOriginalTribeNames(next.language);
+    await Promise.all([installOriginalTribeNames(next.language), installPersonalNames(next.language)]);
     if (menuSettings().language !== next.language) return menuSettings();
   }
   // A later update may have landed during the install; the listeners hear the settings as they stand.

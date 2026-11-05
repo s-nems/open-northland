@@ -97,9 +97,12 @@ export interface MenuSettings {
   readonly environmentMotion: boolean;
   readonly groundedBuildings: boolean;
   readonly buildingDamage: boolean;
-  readonly nightLights: boolean;
-  /** Rain, snow and sandstorms: their sky, ground and sound. Presentation only, the sim never reads it. */
+  /** Rain, snow and sandstorms: their sky, ground and sound, and the tints a script moves with them.
+   *  Presentation only, the sim never reads it. */
   readonly weather: boolean;
+  /** Off holds a scripted or game cycle at daylight and draws any remaining night flat, without its
+   *  lights. Presentation only, the sim never reads it. */
+  readonly dayNight: boolean;
   /** Hit sprays and ground stains; local presentation only. */
   readonly blood: boolean;
   /** Bone piles fade out with age; off keeps them for good. Local presentation only. */
@@ -197,8 +200,8 @@ export function defaultSettings(): MenuSettings {
     environmentMotion: true,
     groundedBuildings: true,
     buildingDamage: true,
-    nightLights: true,
     weather: true,
+    dayNight: true,
     blood: true,
     bonesFade: true,
     fpsLimit: DEFAULT_FPS_LIMIT,
@@ -373,8 +376,8 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
       typeof record.groundedBuildings === 'boolean' ? record.groundedBuildings : defaults.groundedBuildings,
     buildingDamage:
       typeof record.buildingDamage === 'boolean' ? record.buildingDamage : defaults.buildingDamage,
-    nightLights: typeof record.nightLights === 'boolean' ? record.nightLights : defaults.nightLights,
     weather: typeof record.weather === 'boolean' ? record.weather : defaults.weather,
+    dayNight: typeof record.dayNight === 'boolean' ? record.dayNight : defaults.dayNight,
     blood: typeof record.blood === 'boolean' ? record.blood : defaults.blood,
     bonesFade: typeof record.bonesFade === 'boolean' ? record.bonesFade : defaults.bonesFade,
     fpsLimit: parseFpsLimit(record.fpsLimit),

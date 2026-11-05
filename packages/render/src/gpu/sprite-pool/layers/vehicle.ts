@@ -1,11 +1,16 @@
+import { clamp01 } from '../../../data/math.js';
 import type { DrawItem } from '../../../data/scene/index.js';
-import { resolveVehicleDraw } from '../../../data/sprites/index.js';
+import {
+  resolveShipYardSiteDraw,
+  resolveVehicleDraw,
+  type VehicleDraw,
+} from '../../../data/sprites/index.js';
 import type { WindSway } from '../../../data/weather/climate.js';
 import { sailWind } from '../../sway/cloth-wind.js';
 import { shipSway } from '../../sway/ship.js';
 import type { SpriteSheet } from '../../textures/sprite-sheet.js';
 import { cartDriveLook, pushCartDriveLayers } from './cart-drive.js';
-import { hasLoadedFamily, pushLayeredWithShadow } from './layered.js';
+import { hasLoadedFamily, layeredLayerFor, pushLayeredWithShadow } from './layered.js';
 import { LayerBuffer } from './resolved-layer.js';
 
 /** Scratch for {@link pushVehicleLayers}: the `[shadow, body]` before the swell. */
@@ -48,4 +53,25 @@ export function pushVehicleLayers(
     );
   }
   return true;
+}
+
+/**
+ * Append a ship yard site's ship, rising from the bottom with its build progress like a stage without a
+ * time sheet; false when `item` is no such site. Like the other construction stages it casts no shadow.
+ */
+export function pushShipYardSiteLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem): boolean {
+  const draw = shipYardSiteDraw(sheet, item);
+  if (draw === null) return false;
+  const resolved = layeredLayerFor(sheet, 'vehicle', draw);
+  if (resolved === null) return false;
+  out.push({ ...resolved, reveal: clamp01((item.builtPct ?? 0) / 100) });
+  return true;
+}
+
+/** The ship `item` rises as when it is a ship yard site whose ship atlas loaded, which both its layers
+ *  and its pool class go by. */
+export function shipYardSiteDraw(sheet: SpriteSheet | undefined, item: DrawItem): VehicleDraw | null {
+  if (sheet === undefined) return null;
+  const draw = resolveShipYardSiteDraw(sheet.bindings.vehicle, item);
+  return draw !== null && hasLoadedFamily(sheet, draw) ? draw : null;
 }

@@ -557,6 +557,11 @@
   transition-delay: var(--tip-delay);
 }
 
+/* An open list stands where the row's tip would. */
+.main-menu__tip-host[data-tip]:has([aria-expanded="true"])::after {
+  display: none;
+}
+
 /* A choice with its own tip speaks for itself; the row's tip then stays hidden. */
 .main-menu__tip-host[data-tip]:has(.main-menu__tip-host[data-tip]:hover)::after,
 .main-menu__tip-host[data-tip]:has(.main-menu__tip-host[data-tip]:focus-within)::after {

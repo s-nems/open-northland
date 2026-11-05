@@ -29,7 +29,7 @@ import type { MooringRule } from '../unit-controls/orders/berths.js';
 export interface PlacementProbeViews {
   /** The held building's rule for the local seat in `tribe`, whose footprint and technology gate it
    *  takes; `techWaived` (a paper, the admin tool) skips the gate, and `owner` (the admin tool's) asks
-   *  that seat's ground rule instead. */
+   *  that seat's ground rule instead, past its site reach as the admin channel places. */
   readonly building: (typeId: number, tribe: number, techWaived?: boolean, owner?: number) => NodeGridProbe;
   readonly signpost: () => NodeGridProbe;
   /** The wall and road line tools' rules, which their lit washes wait on; a wall's for the seat it
@@ -148,6 +148,8 @@ export function createPlacementGates(
   host: SessionHost,
   fogGates: FogGates,
   localPlayer: number,
+  /** The local seat's orders enter through the admin channel (the overseer), which skips the site reach. */
+  trusted = false,
 ): PlacementGates {
   const closedGates = host.landscapeTypes
     .filter((type) => type.wall?.gate?.open === false)
@@ -184,17 +186,19 @@ export function createPlacementGates(
     typeId: number,
     tribe: number,
     techWaived = false,
-    owner = localPlayer,
+    standingFor?: number,
   ): NodeGridProbe => {
     // The tribe still picks the footprint of a house waived past the technology gate.
     const gated = !techWaived;
-    const family = `b${typeId}:${tribe}:${gated}:${owner}`;
+    const owner = standingFor ?? localPlayer;
+    const withinReach = !trusted && standingFor === undefined;
+    const family = `b${typeId}:${tribe}:${gated}:${owner}:${withinReach}`;
     // Asked every tick besides: a hostile fighter's step and a technology unlock move no blocker version.
     return gridProbe(family, () =>
       nodeGridProbe(
         grids,
         family,
-        (area) => host.placementProbe(typeId, area, owner, tribe, gated),
+        (area) => host.placementProbe(typeId, area, owner, tribe, gated, withinReach),
         blockerVersion,
         true,
       ),
