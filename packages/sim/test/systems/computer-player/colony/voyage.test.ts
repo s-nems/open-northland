@@ -76,6 +76,8 @@ import {
 } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
+/** The failed voyages a seat gives one colony. */
+const FAILURES_ALLOWED = 2;
 /** Past one survey beat. */
 const SURVEY_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -423,13 +425,13 @@ describe('a colony sails', () => {
 });
 
 describe('a failed voyage', () => {
-  /** The seat's colony back home after one failed voyage, with `ship` claimed for the party or none. */
-  function failedOnce(ship: 'claimed' | 'none') {
+  /** The seat's colony back home after `failures` failed voyages, with `ship` claimed for the party or none. */
+  function failedOnce(ship: 'claimed' | 'none', failures = 1) {
     const sim = colonyWorld();
     stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
     const live = editColony(sim);
     live.phase = 'returning';
-    live.failures = 1;
+    live.failures = failures;
     live.ship = ship === 'claimed' ? mooredShip(sim) : null;
     const ctx = ctxOf(sim);
     const carrier = aiControlEntity(sim.world, SEAT);
@@ -438,7 +440,7 @@ describe('a failed voyage', () => {
     const colony = sim.world.get(carrier, ComputerColony).colonies[0];
     if (colony === undefined) throw new Error('setup: no colony');
     returning(colonyEnv(env, colony), colony);
-    return { retryAt: sim.world.get(carrier, ComputerColony).retryAt, tick: ctx.tick };
+    return { retryAt: sim.world.get(carrier, ComputerColony).retryAt, tick: ctx.tick, phase: colony.phase };
   }
 
   it('holds the next one while the stores refill once it took a carrying ship', () => {
@@ -448,6 +450,12 @@ describe('a failed voyage', () => {
 
   it('lets the next scouting go at once when it turned back before that', () => {
     expect(failedOnce('none').retryAt).toBe(0);
+  });
+
+  it('gives the colony up at its last allowed failure and holds the next voyage', () => {
+    const { retryAt, tick, phase } = failedOnce('none', FAILURES_ALLOWED);
+    expect(phase).toBe('abandoned');
+    expect(retryAt).toBeGreaterThan(tick);
   });
 
   it('keeps the sites it gave up on once it holds no colony, and chooses none of them again', () => {
