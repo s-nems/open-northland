@@ -2,7 +2,7 @@
 
 Where each imported overlay set comes from. Imported overlays are regenerated from their source, never
 edited by hand ([contract](AGENTS.md)). The `pol`, `eng`, `ger` and `rus` map overlays are not imported:
-they are the project's own edits of community maps.
+they are the project's own edits and translations of community maps.
 
 ## CulturesGameLocalization: Simplified and Traditional Chinese
 
@@ -71,6 +71,9 @@ Overlays the project wrote itself, edited in place:
 - `chs/maps/` files for community maps the import did not cover: the project's translation from the
   Polish text, machine-translated with the glossary and edited by a reviewer; unreviewed by a native
   speaker. Their `cht/maps/` twins are OpenCC conversions (`npm run translations:derive-cht`).
+- `eng/maps/`, `ger/maps/` and `rus/maps/` files for community maps that ship only Polish: the
+  project's machine translation from the Polish text with the glossary, reusing the earlier version's
+  shipped translation where the text is unchanged; unreviewed by a native speaker.
 
 
 ## Campaign film subtitles

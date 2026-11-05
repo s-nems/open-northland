@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "map": "wyspa_egejska",
+  "basis": {
+    "lang": "pol",
+    "digest": "bbabdaecf40fb0f39e5b5bfa8b0ceca9befc0c2ed2503dfb487945787601225e"
+  },
+  "strings": {
+    "0": "愛琴海之島",
+    "1": "兩個維京部族登上了一座小島，誰也不打算和對方分享。一對一地圖，另設一個觀戰者席位。",
+    "50": "北方",
+    "51": "南方",
+    "52": "觀戰者",
+    "100": "@擊敗對手。"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\n愛琴海之島\n<font:$local$\\fonts\\font12.fnt>\n\n兩個維京部族碰巧在同一時間來到了地中海上一座小而富饒的島嶼。這裡有發展所需的一切資源。\n\n可是島太小，容不下兩座城鎮。維京人無意容忍島嶼另一頭的同族兄弟，想把整座島據為己有。對面多半也打著同樣的主意。\n\n這只意味著一件事：戰爭。用不了多久，我們就會看到雙方建起食物鏈和生產鏈、訓練軍隊，直到島上最後只剩下一個民族。\n\n擊敗對手！\n\n作者：StachuMMV\n獻給 culturesnation.pl"
+  },
+  "derived": "chs"
+}
