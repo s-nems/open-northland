@@ -10,8 +10,9 @@ export interface NightMaskDraws {
   /** Wall time from the draws to the GPU having run them: seconds where they compiled, and where the
    *  program cache held the variants up to half a second of driver work on a Radeon Vega 7. */
   readonly ms: number;
-  /** The GPU had not run them when the wait ended; they still finish, but a later call may wait on them. */
-  readonly timedOut: boolean;
+  /** Whether the GPU ran them: `ran`; or the wait ended first, and they still finish but a later call
+   *  may wait on them; or the context was lost, which may have dropped the variants they built. */
+  readonly outcome: 'ran' | 'timed-out' | 'lost';
 }
 
 /** How often the draws' fence is asked whether the GPU has passed it. */
@@ -88,27 +89,30 @@ export async function drawNightMaskPrograms(
     gl.deleteTexture(mask);
     renderer.resetState();
   }
-  const timedOut = !(await fencePassed(gl, fence));
+  const outcome = await fenceOutcome(gl, fence);
   if (fence !== null) gl.deleteSync(fence);
-  return { programs: programs.length, ms: performance.now() - startedAt, timedOut };
+  return { programs: programs.length, ms: performance.now() - startedAt, outcome };
 }
 
-/** Whether the GPU passed `fence` within {@link FENCE_LIMIT_MS}; a lost context ends the wait as
- *  passed, since it runs nothing more. WebGL reports a fence's status between tasks without blocking. */
-function fencePassed(gl: WebGL2RenderingContext, fence: WebGLSync | null): Promise<boolean> {
+/** Whether the GPU passed `fence` within {@link FENCE_LIMIT_MS}, or the context was lost first (no fence
+ *  at all is a lost context's). WebGL reports a fence's status between tasks without blocking. */
+function fenceOutcome(
+  gl: WebGL2RenderingContext,
+  fence: WebGLSync | null,
+): Promise<NightMaskDraws['outcome']> {
   const startedAt = performance.now();
   return new Promise((resolve) => {
     const poll = (): void => {
-      if (
-        fence === null ||
-        gl.isContextLost() ||
-        gl.getSyncParameter(fence, gl.SYNC_STATUS) === gl.SIGNALED
-      ) {
-        resolve(true);
+      if (fence === null || gl.isContextLost()) {
+        resolve('lost');
+        return;
+      }
+      if (gl.getSyncParameter(fence, gl.SYNC_STATUS) === gl.SIGNALED) {
+        resolve('ran');
         return;
       }
       if (performance.now() - startedAt > FENCE_LIMIT_MS) {
-        resolve(false);
+        resolve('timed-out');
         return;
       }
       setTimeout(poll, FENCE_POLL_MS);

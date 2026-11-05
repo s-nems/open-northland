@@ -36,7 +36,8 @@ let drawnThisPage: string | null = null;
  * from the cache now. Drawn again wherever a link compiled, since a cache cleared or replaced (another
  * browser version, driver or GPU) lost the variants the stored fingerprint vouches for. A failure is
  * logged and the boot goes on: the first night then compiles them as it would have. `announce` runs
- * before draws that are due, so the loading card names what its stopped frames wait for.
+ * before draws that are due, so the loading card names what its stopped frames wait for. Programs a
+ * graphics change links mid-game, and a restored context's, are linked without these draws.
  */
 export async function drawNightShaders(
   renderer: Renderer,
@@ -58,8 +59,9 @@ export async function drawNightShaders(
     const drawn = await drawNightMaskPrograms(renderer, sources);
     if (drawn === null) return;
     diag.info('boot', 'night programs drawn', { programs: drawn.programs, ms: Math.round(drawn.ms) });
-    if (drawn.timedOut) {
-      diag.warn('boot', 'night program draws still with the GPU when the boot went on');
+    if (drawn.outcome !== 'ran') {
+      // Unstored, the next boot draws them again.
+      diag.warn('boot', 'night program draws unfinished when the boot went on', { outcome: drawn.outcome });
       return;
     }
     drawnThisPage = fingerprint;

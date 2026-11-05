@@ -234,8 +234,9 @@ function sceneTintReachesNight(
  * Whether this world's scene light can fall to a night, where it composites the world through the lit
  * mask (`gpu/lighting/scene-light.ts`): the player's setting shows day and night, and the game's own
  * cycle runs, a siege can bring its attack night, or a whole-map tint the map holds or its scripts
- * write is dark enough to light the lamps. A cave's static dark counts, as does a weather darkening.
- * Turning the setting on mid-game is not foreseen.
+ * write is dark enough to light the lamps. A cave's static dark counts, as does a weather darkening
+ * whether weather shows or not, since the player may turn weather on mid-game. Turning day and night
+ * on mid-game is not foreseen.
  */
 export async function worldCanShowNight(
   host: Pick<SessionHost, 'missions' | 'landscapeEdits' | 'mapEscalation'>,

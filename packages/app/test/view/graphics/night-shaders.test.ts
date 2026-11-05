@@ -11,7 +11,7 @@ const CACHED_MS = 40;
 const gpu = vi.hoisted(() => ({
   sources: [] as GlslProgramSource[],
   draws: 0,
-  answer: 'drawn' as 'drawn' | 'timed out' | 'throws',
+  answer: 'ran' as NightMaskDraws['outcome'] | 'throws',
 }));
 
 vi.mock('@open-northland/render', async (original) => ({
@@ -20,7 +20,7 @@ vi.mock('@open-northland/render', async (original) => ({
   drawNightMaskPrograms: async (): Promise<NightMaskDraws> => {
     gpu.draws++;
     if (gpu.answer === 'throws') throw new Error('createFramebuffer failed');
-    return { programs: gpu.sources.length, ms: 1, timedOut: gpu.answer === 'timed out' };
+    return { programs: gpu.sources.length, ms: 1, outcome: gpu.answer };
   },
 }));
 
@@ -48,7 +48,7 @@ beforeEach(() => {
   storage.clear();
   gpu.sources = nightPrograms('xbr');
   gpu.draws = 0;
-  gpu.answer = 'drawn';
+  gpu.answer = 'ran';
   vi.stubGlobal('window', {
     localStorage: {
       getItem: (key: string) => storage.get(key) ?? null,
@@ -79,12 +79,12 @@ it('skips a later boot that linked from the cache what an earlier one drew, but 
   expect(gpu.draws).toBe(3);
 });
 
-it('takes a failed or unfinished draw as not drawn, without throwing into the boot', async () => {
-  for (const answer of ['throws', 'timed out'] as const) {
+it('takes a failed, unfinished or lost draw as not drawn, without throwing into the boot', async () => {
+  for (const answer of ['throws', 'timed-out', 'lost'] as const) {
     gpu.answer = answer;
     await expect((await page())(renderer, linksAt(COMPILED_MS), announced)).resolves.toBeUndefined();
   }
-  gpu.answer = 'drawn';
+  gpu.answer = 'ran';
   await (await page())(renderer, linksAt(CACHED_MS), announced);
-  expect(gpu.draws).toBe(3);
+  expect(gpu.draws).toBe(4);
 });

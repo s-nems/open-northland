@@ -136,7 +136,7 @@ it('draws each night program once with the mask beside the colour, frees its tar
     expect(draw.buffers).toEqual([COLOR_ATTACHMENT0, COLOR_ATTACHMENT0 + NIGHT_LIT_LOCATION]);
     expect(draw.attached.every((texture) => texture !== null)).toBe(true);
   }
-  expect(drawn).toMatchObject({ programs: expected.length, timedOut: false });
+  expect(drawn).toMatchObject({ programs: expected.length, outcome: 'ran' });
   // Settled only once the GPU had passed the draws' fence.
   expect(context.polls()).toBe(POLLS_BEFORE_SIGNAL + 1);
   expect(context.live.size).toBe(0);
@@ -153,7 +153,7 @@ it('draws nothing on a lost context, and ends the wait when the context goes mid
   const losingRenderer = rendererOn(losing.gl).renderer;
   const pending = drawNightMaskPrograms(losingRenderer, nightMaskSources(losingRenderer, settings));
   gone = true;
-  expect(await pending).toMatchObject({ timedOut: false });
+  expect(await pending).toMatchObject({ outcome: 'lost' });
   expect(losing.polls()).toBe(0);
   expect(losing.live.size).toBe(0);
 });
