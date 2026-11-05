@@ -14,7 +14,11 @@ import {
   waitForLinks,
   worldShaderSettings,
 } from '../../../src/gpu/shaders/warmup.js';
-import { WEATHER_GRADE_SOURCE, WEATHER_VEIL_SOURCE } from '../../../src/gpu/weather/atmosphere.js';
+import {
+  WEATHER_AIR_SOURCE,
+  WEATHER_GRADE_SOURCE,
+  WEATHER_VEIL_SOURCE,
+} from '../../../src/gpu/weather/atmosphere.js';
 import { ATMOSPHERE_NOISE_BAKE_SOURCE } from '../../../src/gpu/weather/atmosphere-noise.js';
 import { GROUND_REACTIONS_SOURCE } from '../../../src/gpu/weather/ground-reactions.js';
 import { precipitationSource, WISP_UPSCALE_SOURCE } from '../../../src/gpu/weather/precipitation-shader.js';
@@ -155,6 +159,7 @@ describe('boot shader programs', () => {
         ATMOSPHERE_NOISE_BAKE_SOURCE,
         WEATHER_GRADE_SOURCE,
         WEATHER_VEIL_SOURCE,
+        WEATHER_AIR_SOURCE,
         GROUND_REACTIONS_SOURCE,
         ...WEATHER_KINDS.map((kind) => precipitationSource(kind)),
         WISP_UPSCALE_SOURCE,

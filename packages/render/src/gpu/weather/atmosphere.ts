@@ -8,15 +8,17 @@ import {
   UniformGroup,
 } from 'pixi.js';
 import type { PrecipitationTravel } from '../../data/weather/precipitation.js';
-import { type GlslProgramSource, glProgramFor } from '../shaders/program-source.js';
+import { DUAL_SOURCE_BLEND, type GlslProgramSource, glProgramFor } from '../shaders/program-source.js';
+import { AIR_BLEND, type AirBlend, registerAirBlend } from './air-blend.js';
 import type { AtmosphereLook } from './atmosphere-look.js';
 import { ATMOSPHERE_NOISE_PERIOD, bakeAtmosphereNoise } from './atmosphere-noise.js';
 import { WEATHER_REACH_GLSL, type WeatherReach } from './weather-reach.js';
 
 /**
  * The air over the world: a multiply mesh (grade, drifting cloud shadows, storm vignette) under a
- * premultiplied veil mesh (haze with moving mist banks, plus the lightning flash added on top). Screen
- * meshes above the world layer, never a `Filter` on it. The noise is world-anchored and drifts with the
+ * premultiplied veil mesh (haze with moving mist banks, plus the lightning flash added on top), drawn as
+ * one mesh where the GPU blends with two sources. Screen meshes above the world layer, never a `Filter`
+ * on it. The noise is world-anchored and drifts with the
  * wind; its alpha is quantized with an ordered dither in 2 px blocks so the veil never bands. Constants are tuned by eye.
  *
  * The noise is evaluated per vertex of a screen grid {@link NOISE_GRID_PX} apart and interpolated, the
@@ -88,84 +90,82 @@ const BAYER = `
   }
 `;
 
-const GRADE_VERTEX = `#version 300 es
+const VERTEX_HEAD = `#version 300 es
   in vec2 aPosition;
   out vec2 vScreen;
-  out float vCloud;
   ${MATRICES}
   uniform vec2 uScreen;
   uniform vec3 uCamera;
+  ${NOISE}
+`;
+
+const CLOUD_VERTEX = `
+  out float vCloud;
   // Drift in noise lattice cells, wrapped on the period.
   uniform vec2 uCloudDrift;
   // Cloud shadow depth, vignette strength.
   uniform vec2 uShade;
-  ${NOISE}
   const float CLOUD_SCALE = ${CLOUD_SCALE_PX}.0;
-  void main(void) {
-    ${PLACE}
-    vCloud = 0.0;
-    if (uShade.x > 0.0) {
-      vec2 world = (vScreen - uCamera.xy) / uCamera.z;
-      vCloud = smoothstep(0.42, 0.72, fbm(world / CLOUD_SCALE + uCloudDrift));
-    }
+  float cloudCover(vec2 world) {
+    if (uShade.x <= 0.0) return 0.0;
+    return smoothstep(0.42, 0.72, fbm(world / CLOUD_SCALE + uCloudDrift));
   }
 `;
 
-const GRADE_FRAGMENT = `#version 300 es
-  precision highp float;
-  in vec2 vScreen;
-  in float vCloud;
-  out vec4 finalColor;
-  uniform vec2 uScreen;
-  uniform vec3 uGrade;
-  uniform vec2 uShade;
-  void main(void) {
-    float shade = 1.0 - uShade.x * vCloud;
-    vec2 centred = (vScreen / uScreen - 0.5) * vec2(uScreen.x / uScreen.y, 1.0);
-    float vignette = 1.0 - uShade.y * smoothstep(0.35, 1.0, length(centred));
-    finalColor = vec4(uGrade * shade * vignette, 1.0);
-  }
-`;
-
-const VEIL_VERTEX = `#version 300 es
-  in vec2 aPosition;
-  out vec2 vScreen;
+const MIST_VERTEX = `
   out float vMist;
-  ${MATRICES}
-  uniform vec2 uScreen;
-  uniform vec3 uCamera;
   // Mist and streak drift in their noise lattice cells, wrapped on the period.
   uniform vec4 uDrift;
   // Mist unevenness, streak share (blowing dust or snow).
   uniform vec2 uMist;
-  ${NOISE}
   const vec2 MIST_CELL = vec2(${MIST_SCALE_PX * MIST_STRETCH_X}.0, ${MIST_SCALE_PX}.0);
   const vec2 STREAK_CELL = vec2(${STREAK_CELL_PX[0]}.0, ${STREAK_CELL_PX[1]}.0);
-  void main(void) {
-    ${PLACE}
-    vMist = 0.0;
+  float mistOf(vec2 world) {
     // Flat haze (or none) skips the noise: the mist term only reshapes a veil that lies in banks.
-    if (uMist.x > 0.0) {
-      vec2 world = (vScreen - uCamera.xy) / uCamera.z;
-      vec2 p = world / MIST_CELL + uDrift.xy;
-      float banks = fbm(p);
-      float wisps = fbm(p * 2.0 + vec2(banks * 1.5, 0.0));
-      vMist = mix(banks, wisps, 0.4);
-      if (uMist.y > 0.0) {
-        // Streaks only show inside the banks, so they break up instead of banding the screen.
-        float streaks = fbm(world / STREAK_CELL + uDrift.zw) * smoothstep(0.25, 0.7, banks);
-        vMist = mix(vMist, 0.5 + 1.2 * (streaks - 0.3), uMist.y);
-      }
+    if (uMist.x <= 0.0) return 0.0;
+    vec2 p = world / MIST_CELL + uDrift.xy;
+    float banks = fbm(p);
+    float wisps = fbm(p * 2.0 + vec2(banks * 1.5, 0.0));
+    float mist = mix(banks, wisps, 0.4);
+    if (uMist.y > 0.0) {
+      // Streaks only show inside the banks, so they break up instead of banding the screen.
+      float streaks = fbm(world / STREAK_CELL + uDrift.zw) * smoothstep(0.25, 0.7, banks);
+      mist = mix(mist, 0.5 + 1.2 * (streaks - 0.3), uMist.y);
     }
+    return mist;
   }
 `;
 
-const VEIL_FRAGMENT = `#version 300 es
+const vertexSource = (terms: string, body: string): string => `${VERTEX_HEAD}${terms}
+  void main(void) {
+    ${PLACE}
+    vec2 world = (vScreen - uCamera.xy) / uCamera.z;
+    ${body}
+  }
+`;
+
+const FRAGMENT_HEAD = `
   precision highp float;
   in vec2 vScreen;
-  in float vMist;
-  out vec4 finalColor;
+  uniform vec2 uScreen;
   uniform vec3 uCamera;
+`;
+
+const GRADE_TERMS = `
+  in float vCloud;
+  uniform vec3 uGrade;
+  uniform vec2 uShade;
+  // The multiply the grade lays over the frame below.
+  vec3 grade() {
+    float shade = 1.0 - uShade.x * vCloud;
+    vec2 centred = (vScreen / uScreen - 0.5) * vec2(uScreen.x / uScreen.y, 1.0);
+    float vignette = 1.0 - uShade.y * smoothstep(0.35, 1.0, length(centred));
+    return uGrade * shade * vignette;
+  }
+`;
+
+const VEIL_TERMS = `
+  in float vMist;
   uniform vec4 uHaze;
   uniform vec2 uMist;
   uniform vec3 uFlash;
@@ -176,7 +176,8 @@ const VEIL_FRAGMENT = `#version 300 es
   const float FLASH_FLOOR = ${FLASH_FLOOR};
   // Veil alpha posterization steps; the dither between them stays below what reads as a pattern.
   const float STEPS = 64.0;
-  void main(void) {
+  // The premultiplied veil laid over the frame below.
+  vec4 veil() {
     vec2 world = (vScreen - uCamera.xy) / uCamera.z;
     // The veil keeps off the void and unexplored ground, which stay black.
     float a = uHaze.a > 0.0 ? uHaze.a * weatherReach(world) : 0.0;
@@ -184,14 +185,57 @@ const VEIL_FRAGMENT = `#version 300 es
     a = clamp(floor(a * STEPS + bayer(vScreen)) / STEPS, 0.0, 1.0);
     vec2 fromStrike = (vScreen - uFlashAt.xy) / uFlashAt.z;
     float lit = FLASH_FLOOR + (1.0 - FLASH_FLOOR) * exp(-dot(fromStrike, fromStrike));
-    finalColor = vec4(uHaze.rgb * a + uFlash * lit, a);
+    return vec4(uHaze.rgb * a + uFlash * lit, a);
   }
 `;
 
-type GradeUniforms = UniformGroup & {
+const GRADE_FRAGMENT = `#version 300 es
+  ${FRAGMENT_HEAD}
+  ${GRADE_TERMS}
+  out vec4 finalColor;
+  void main(void) {
+    finalColor = vec4(grade(), 1.0);
+  }
+`;
+
+const VEIL_FRAGMENT = `#version 300 es
+  ${FRAGMENT_HEAD}
+  ${VEIL_TERMS}
+  out vec4 finalColor;
+  void main(void) {
+    finalColor = veil();
+  }
+`;
+
+/**
+ * Both in one draw under {@link AIR_BLEND}: the first source is the veil, the second what the frame
+ * below is multiplied by first, the grade times what the veil leaves of it. The two-pass picture
+ * rounds the graded frame to the target's precision before the veil goes over; this one rounds once,
+ * so a channel may differ by one level.
+ */
+const AIR_FRAGMENT = `#version 300 es
+  #extension GL_EXT_blend_func_extended : require
+  ${FRAGMENT_HEAD}
+  ${GRADE_TERMS}
+  ${VEIL_TERMS}
+  layout(location = 0, index = 0) out vec4 finalColor;
+  layout(location = 0, index = 1) out vec4 belowFactor;
+  void main(void) {
+    vec4 over = veil();
+    finalColor = vec4(over.rgb, 1.0);
+    belowFactor = vec4(grade() * (1.0 - over.a), 0.0);
+  }
+`;
+
+type FrameUniforms = UniformGroup & {
   readonly uniforms: {
     readonly uScreen: Float32Array;
     readonly uCamera: Float32Array;
+  };
+};
+
+type GradeUniforms = UniformGroup & {
+  readonly uniforms: {
     readonly uCloudDrift: Float32Array;
     readonly uGrade: Float32Array;
     readonly uShade: Float32Array;
@@ -200,8 +244,6 @@ type GradeUniforms = UniformGroup & {
 
 type VeilUniforms = UniformGroup & {
   readonly uniforms: {
-    readonly uScreen: Float32Array;
-    readonly uCamera: Float32Array;
     readonly uDrift: Float32Array;
     readonly uHaze: Float32Array;
     readonly uMist: Float32Array;
@@ -212,13 +254,20 @@ type VeilUniforms = UniformGroup & {
 
 export const WEATHER_GRADE_SOURCE: GlslProgramSource = {
   name: 'weather-grade',
-  vertex: GRADE_VERTEX,
+  vertex: vertexSource(CLOUD_VERTEX, 'vCloud = cloudCover(world);'),
   fragment: GRADE_FRAGMENT,
 };
 export const WEATHER_VEIL_SOURCE: GlslProgramSource = {
   name: 'weather-veil',
-  vertex: VEIL_VERTEX,
+  vertex: vertexSource(MIST_VERTEX, 'vMist = mistOf(world);'),
   fragment: VEIL_FRAGMENT,
+};
+/** The grade and the veil in one pass, where the GPU blends with two sources. */
+export const WEATHER_AIR_SOURCE: GlslProgramSource = {
+  name: 'weather-air',
+  vertex: vertexSource(CLOUD_VERTEX + MIST_VERTEX, 'vCloud = cloudCover(world);\n    vMist = mistOf(world);'),
+  fragment: AIR_FRAGMENT,
+  extension: DUAL_SOURCE_BLEND,
 };
 
 /** A unit square cut into `columns` by `rows` cells, which the mesh scales to the screen. */
@@ -275,27 +324,18 @@ const latticeDrift = (travel: number, share: number, cellPx: number): number => 
   return ((cells % ATMOSPHERE_NOISE_PERIOD) + ATMOSPHERE_NOISE_PERIOD) % ATMOSPHERE_NOISE_PERIOD;
 };
 
-function writeScreenAndCamera(
-  uniforms: { readonly uScreen: Float32Array; readonly uCamera: Float32Array },
-  frame: AtmosphereFrame,
-): void {
-  uniforms.uScreen[0] = frame.screenW;
-  uniforms.uScreen[1] = frame.screenH;
-  uniforms.uCamera[0] = frame.offsetX;
-  uniforms.uCamera[1] = frame.offsetY;
-  uniforms.uCamera[2] = frame.zoom;
-}
-
 export class WeatherAtmosphere {
   readonly grade: Mesh<Geometry, Shader>;
   readonly veil: Mesh<Geometry, Shader>;
+  /** The grade and the veil in one draw, where the context blends with two sources; null elsewhere. */
+  readonly air: Mesh<Geometry, Shader> | null;
+  private readonly frameUniforms: FrameUniforms;
   private readonly gradeUniforms: GradeUniforms;
   private readonly veilUniforms: VeilUniforms;
-  private readonly gradeShader: Shader;
-  private readonly veilShader: Shader;
+  private readonly airBlend: AirBlend | null;
   /** Baked as the map loads: the readback stalls the GPU, which a live frame would show as a hitch. */
   private readonly noise: TextureSource;
-  /** The grid both meshes share, and its cells across and down. */
+  /** The grid the meshes share, and its cells across and down. */
   private grid: Geometry;
   private columns = 1;
   private rows = 1;
@@ -305,16 +345,16 @@ export class WeatherAtmosphere {
     private readonly reach: WeatherReach,
     renderer: Renderer,
   ) {
-    this.gradeUniforms = new UniformGroup({
+    this.frameUniforms = new UniformGroup({
       uScreen: { value: new Float32Array(2), type: 'vec2<f32>' },
       uCamera: { value: new Float32Array([0, 0, 1]), type: 'vec3<f32>' },
+    }) as FrameUniforms;
+    this.gradeUniforms = new UniformGroup({
       uCloudDrift: { value: new Float32Array(2), type: 'vec2<f32>' },
       uGrade: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
       uShade: { value: new Float32Array(2), type: 'vec2<f32>' },
     }) as GradeUniforms;
     this.veilUniforms = new UniformGroup({
-      uScreen: { value: new Float32Array(2), type: 'vec2<f32>' },
-      uCamera: { value: new Float32Array([0, 0, 1]), type: 'vec3<f32>' },
       uDrift: { value: new Float32Array(4), type: 'vec4<f32>' },
       uHaze: { value: new Float32Array(4), type: 'vec4<f32>' },
       uMist: { value: new Float32Array(2), type: 'vec2<f32>' },
@@ -323,23 +363,16 @@ export class WeatherAtmosphere {
     }) as VeilUniforms;
     this.noise = bakeAtmosphereNoise(renderer);
     this.grid = screenGrid(this.columns, this.rows);
-    this.gradeShader = new Shader({
-      glProgram: glProgramFor(WEATHER_GRADE_SOURCE),
-      resources: { weatherGrade: this.gradeUniforms, uNoise: this.noise },
-    });
-    this.grade = new Mesh({ geometry: this.grid, shader: this.gradeShader });
+    this.grade = this.mesh(WEATHER_GRADE_SOURCE, { weatherGrade: this.gradeUniforms });
     this.grade.blendMode = 'multiply';
-    this.veilShader = new Shader({
-      glProgram: glProgramFor(WEATHER_VEIL_SOURCE),
-      resources: {
-        weatherVeil: this.veilUniforms,
-        weatherReach: reach.uniforms,
-        uReachFog: reach.fogSource,
-        uNoise: this.noise,
-      },
-    });
-    this.veil = new Mesh({ geometry: this.grid, shader: this.veilShader });
-    parent.addChild(this.grade, this.veil);
+    this.veil = this.mesh(WEATHER_VEIL_SOURCE, this.veilResources());
+    this.airBlend = registerAirBlend(renderer);
+    this.air =
+      this.airBlend === null
+        ? null
+        : this.mesh(WEATHER_AIR_SOURCE, { weatherGrade: this.gradeUniforms, ...this.veilResources() });
+    if (this.air !== null) this.air.blendMode = AIR_BLEND;
+    for (const mesh of this.meshes()) parent.addChild(mesh);
   }
 
   update(look: AtmosphereLook, frame: AtmosphereFrame): void {
@@ -349,21 +382,23 @@ export class WeatherAtmosphere {
     }
     const { screenW, screenH, travel } = frame;
     this.fitGrid(screenW, screenH);
+    const s = this.frameUniforms.uniforms;
+    s.uScreen[0] = screenW;
+    s.uScreen[1] = screenH;
+    s.uCamera[0] = frame.offsetX;
+    s.uCamera[1] = frame.offsetY;
+    s.uCamera[2] = frame.zoom;
+    this.frameUniforms.update();
+
     const g = this.gradeUniforms.uniforms;
-    writeScreenAndCamera(g, frame);
     g.uCloudDrift[0] = latticeDrift(travel.windX, CLOUD_DRIFT_SHARE, CLOUD_SCALE_PX);
     g.uCloudDrift[1] = latticeDrift(travel.windY, CLOUD_DRIFT_SHARE, CLOUD_SCALE_PX);
     g.uGrade.set(look.grade);
     g.uShade[0] = look.cloudShadow;
     g.uShade[1] = look.vignette;
     this.gradeUniforms.update();
-    const { grade, flash } = look;
-    this.grade.visible =
-      look.cloudShadow > 0 || look.vignette > 0 || grade[0] !== 1 || grade[1] !== 1 || grade[2] !== 1;
-    this.grade.scale.set(screenW, screenH);
 
     const v = this.veilUniforms.uniforms;
-    writeScreenAndCamera(v, frame);
     v.uDrift[0] = latticeDrift(travel.windX, MIST_DRIFT_SHARE, MIST_SCALE_PX * MIST_STRETCH_X);
     v.uDrift[1] = latticeDrift(travel.windY, MIST_DRIFT_SHARE, MIST_SCALE_PX);
     v.uDrift[2] = latticeDrift(travel.windX, STREAK_DRIFT_SHARE, STREAK_CELL_PX[0]);
@@ -377,27 +412,60 @@ export class WeatherAtmosphere {
     v.uFlashAt[1] = frame.flashY * screenH;
     v.uFlashAt[2] = FLASH_REACH_SHARE * Math.max(screenW, screenH);
     this.veilUniforms.update();
-    this.veil.visible = look.hazeAlpha > 0 || flash[0] > 0 || flash[1] > 0 || flash[2] > 0;
-    this.veil.scale.set(screenW, screenH);
+
+    const { grade, flash } = look;
+    const graded =
+      look.cloudShadow > 0 || look.vignette > 0 || grade[0] !== 1 || grade[1] !== 1 || grade[2] !== 1;
+    const veiled = look.hazeAlpha > 0 || flash[0] > 0 || flash[1] > 0 || flash[2] > 0;
+    // One draw only where both show: alone, either pass is already one draw.
+    const merged = graded && veiled && this.air !== null && this.airBlend?.ready === true;
+    this.grade.visible = graded && !merged;
+    this.veil.visible = veiled && !merged;
+    if (this.air !== null) this.air.visible = merged;
+    for (const mesh of this.meshes()) mesh.scale.set(screenW, screenH);
   }
 
   /** Re-bind the fog texture after the reach replaced it. */
   bindReach(): void {
-    this.veilShader.resources.uReachFog = this.reach.fogSource;
+    for (const mesh of [this.veil, this.air]) {
+      if (mesh?.shader) mesh.shader.resources.uReachFog = this.reach.fogSource;
+    }
   }
 
   hide(): void {
-    this.grade.visible = false;
-    this.veil.visible = false;
+    for (const mesh of this.meshes()) mesh.visible = false;
   }
 
   destroy(): void {
-    for (const mesh of [this.grade, this.veil]) {
+    for (const mesh of this.meshes()) {
       mesh.shader?.destroy();
       mesh.destroy();
     }
     this.grid.destroy(true);
     this.noise.destroy();
+  }
+
+  private meshes(): readonly Mesh<Geometry, Shader>[] {
+    return this.air === null ? [this.grade, this.veil] : [this.grade, this.veil, this.air];
+  }
+
+  private veilResources(): Record<string, UniformGroup | TextureSource> {
+    return {
+      weatherVeil: this.veilUniforms,
+      weatherReach: this.reach.uniforms,
+      uReachFog: this.reach.fogSource,
+    };
+  }
+
+  private mesh(
+    source: GlslProgramSource,
+    resources: Record<string, UniformGroup | TextureSource>,
+  ): Mesh<Geometry, Shader> {
+    const shader = new Shader({
+      glProgram: glProgramFor(source),
+      resources: { weatherFrame: this.frameUniforms, uNoise: this.noise, ...resources },
+    });
+    return new Mesh({ geometry: this.grid, shader });
   }
 
   /** Rebuilds the grid when the screen's size calls for another cell count. */
@@ -409,8 +477,7 @@ export class WeatherAtmosphere {
     this.columns = columns;
     this.rows = rows;
     this.grid = screenGrid(columns, rows);
-    this.grade.geometry = this.grid;
-    this.veil.geometry = this.grid;
+    for (const mesh of this.meshes()) mesh.geometry = this.grid;
     retired.destroy(true);
   }
 }

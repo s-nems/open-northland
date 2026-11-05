@@ -4,7 +4,7 @@
 // program that hangs the compiler is named by the caller instead of lost inside one long evaluation.
 import { GlProgram } from 'pixi.js';
 import { shaderCatalog } from '../../packages/render/src/gpu/shaders/catalog.js';
-import { glProgramFor } from '../../packages/render/src/gpu/shaders/program-source.js';
+import { glProgramFor, supportsProgram } from '../../packages/render/src/gpu/shaders/program-source.js';
 
 export interface ProbeDevice {
   readonly renderer: string;
@@ -36,13 +36,14 @@ export interface CompiledProgram {
   readonly translated?: { readonly vertex: string; readonly fragment: string };
 }
 
-/** The fragment stage declares more samplers than the device has units: the game never compiles that
- *  variant there, and GL refuses to link it. */
+/** The fragment stage declares more samplers than the device has units, or the program needs an
+ *  extension the device lacks: the game never compiles that variant there, and GL refuses to. */
 export interface SkippedProgram {
   readonly status: 'skipped';
   readonly name: string;
   readonly ms: 0;
-  readonly textureUnits: number;
+  /** What the device lacks, as `needs <what>` reads it. */
+  readonly needs: string;
 }
 
 const WARM_UP_SOURCE = {
@@ -60,6 +61,12 @@ let context: WebGL2RenderingContext | null = null;
  *  since a dual-GPU machine may put another preference on another adapter. */
 let relinkContext: WebGL2RenderingContext | null = null;
 const RENDERER_CONTEXT: WebGLContextAttributes = { antialias: false, powerPreference: 'high-performance' };
+
+/** Every extension the catalogue needs, enabled before the first compile as the game's renderer does:
+ *  the program cache keys on the enabled extensions. */
+function enableProgramExtensions(context: WebGL2RenderingContext): void {
+  for (const entry of catalogue) supportsProgram(context, entry);
+}
 
 function gl(): WebGL2RenderingContext {
   if (context === null) throw new Error('describe() creates the WebGL 2 context first');
@@ -242,6 +249,7 @@ function describe(): ProbeDevice {
   const canvas = document.createElement('canvas');
   context = canvas.getContext('webgl2');
   if (context === null) throw new Error('this browser gives the page no WebGL 2 context');
+  enableProgramExtensions(context);
   const debug = context.getExtension('WEBGL_debug_renderer_info');
   // Pixi probes the fragment precision with a context of its own on first use; that stays out of the timings.
   const { vertex, fragment } = new GlProgram({ ...WARM_UP_SOURCE, name: 'warm-up' });
@@ -281,9 +289,11 @@ function compileIn(
   if (entry === undefined) throw new Error(`no catalogue entry ${index}`);
   const { vertex, fragment } = glProgramFor(entry);
   if (vertex === undefined || fragment === undefined) throw new Error(`Pixi dropped ${entry.name}'s source`);
+  if (!supportsProgram(context, entry))
+    return { status: 'skipped', name: entry.name, ms: 0, needs: entry.extension ?? '' };
   const textureUnits = declaredSamplers(fragment);
   if (textureUnits > context.getParameter(context.MAX_TEXTURE_IMAGE_UNITS))
-    return { status: 'skipped', name: entry.name, ms: 0, textureUnits };
+    return { status: 'skipped', name: entry.name, ms: 0, needs: `${textureUnits} texture units` };
   return compileAndLink(context, entry.name, vertex, fragment, draw, translate);
 }
 
@@ -296,8 +306,11 @@ function compile(index: number, translate: boolean): CompiledProgram | SkippedPr
  *  cache still holds the first link once the whole catalogue has compiled, which is what the game's
  *  shader warm-up relies on. */
 function relink(index: number): CompiledProgram | SkippedProgram {
-  relinkContext ??= document.createElement('canvas').getContext('webgl2', RENDERER_CONTEXT);
-  if (relinkContext === null) throw new Error('no second WebGL 2 context for the relink');
+  if (relinkContext === null) {
+    relinkContext = document.createElement('canvas').getContext('webgl2', RENDERER_CONTEXT);
+    if (relinkContext === null) throw new Error('no second WebGL 2 context for the relink');
+    enableProgramExtensions(relinkContext);
+  }
   return compileIn(relinkContext, index, false);
 }
 

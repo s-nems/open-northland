@@ -136,9 +136,7 @@ function printReport(report) {
   console.log(`\n${'program'.padEnd(width)}  compile+link ms   first draw ms${relink ? '  relink ms' : ''}`);
   for (const program of sorted) {
     if (program.status === 'skipped') {
-      console.log(
-        `${program.name.padEnd(width)}  ${'skipped'.padStart(15)}  needs ${program.textureUnits} texture units`,
-      );
+      console.log(`${program.name.padEnd(width)}  ${'skipped'.padStart(15)}  needs ${program.needs}`);
       continue;
     }
     const flag =
@@ -163,7 +161,7 @@ function printReport(report) {
   const compiled = report.programs.filter((program) => program.status === 'compiled').length;
   console.log(
     `total:     ${report.totalMs.toFixed(1)} ms over ${compiled} programs` +
-      `, ${report.programs.length - compiled} skipped for this device's texture units` +
+      `, ${report.programs.length - compiled} skipped for this device` +
       `; limits ${maxMs} ms each, ${maxTotalMs} ms total`,
   );
 }

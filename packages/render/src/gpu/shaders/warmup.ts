@@ -3,7 +3,7 @@ import type { WorldMagnification } from '../pixel-art/registry.js';
 import { DEFAULT_SHADOW_STYLE, type ShadowStyle } from '../world-batch/shadow-style.js';
 import type { WorldEnhancements } from '../world-renderer/frame.js';
 import { bootShaderPrograms, type ShaderSelection } from './catalog.js';
-import { type GlslProgramSource, glProgramFor } from './program-source.js';
+import { DUAL_SOURCE_BLEND, type GlslProgramSource, glProgramFor } from './program-source.js';
 
 /**
  * Links the programs a world will draw with in a context of its own, ahead of the renderer. The browser
@@ -122,6 +122,15 @@ let batchTextureLimit: number | null = null;
 const SETTLED: ShaderWarmup = { done: Promise.resolve([]) };
 /** Whether the first probed context offered parallel links; every context of one browser answers alike. */
 let parallelLinks: boolean | null = null;
+/** Whether the last context blended with two sources, which a program with that extension needs. */
+let dualSourceBlend = false;
+
+/** The programs for `selection` the device compiles. */
+function devicePrograms(selection: ShaderSelection, maxBatchTextures: number): readonly GlslProgramSource[] {
+  return bootShaderPrograms(maxBatchTextures, selection).filter(
+    (program) => program.extension === undefined || dualSourceBlend,
+  );
+}
 
 /** Forgets every link requested so far, so the next warm-up links its programs again: a GPU process
  *  that restarted holds none of them, and a restored renderer would link them all in its first frame. */
@@ -134,7 +143,7 @@ export function startShaderWarmup(settings: WarmupSettings): ShaderWarmup | null
   if (parallelLinks === false) return null;
   const selection = shaderSelection(settings);
   if (batchTextureLimit !== null) {
-    const programs = bootShaderPrograms(batchTextureLimit, selection);
+    const programs = devicePrograms(selection, batchTextureLimit);
     if (programs.every((program) => requested.has(program.name))) return warmupOf(programs);
   }
   const gl =
@@ -149,12 +158,14 @@ export function startShaderWarmup(settings: WarmupSettings): ShaderWarmup | null
     release();
     return null;
   }
+  // Enabled as the renderer enables it, before any link: the cache key covers it.
+  dualSourceBlend = gl.getExtension(DUAL_SOURCE_BLEND) !== null;
   batchTextureLimit ??= probeBatchTextureLimit(gl);
   if (batchTextureLimit === null) {
     release();
     return SETTLED;
   }
-  const programs = bootShaderPrograms(batchTextureLimit, selection);
+  const programs = devicePrograms(selection, batchTextureLimit);
   const fresh = programs.filter((program) => !requested.has(program.name));
   for (const [name, link] of linkPrograms(gl, fresh, release)) {
     requested.set(

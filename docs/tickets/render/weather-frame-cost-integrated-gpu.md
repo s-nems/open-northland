@@ -12,8 +12,7 @@ and 3.4-3.7 in sand, and splits as:
 | part | rain | snow | sand |
 | --- | --- | --- | --- |
 | terrain cover hook (`gpu/weather/ground-cover-shading.ts`, `ground-weather.ts`) | 2.1 | 2.25 | 1.3-1.4 |
-| grade pass (full-screen multiply) | 0.48 | 0.48-0.52 | 0.50 |
-| veil pass (full-screen over) | 0.51 | 0.46-0.57 | 0.42 |
+| grade and veil, one dual-source pass | 0.64 | 0.52 | 0.60 |
 | particles | 0.25-0.3 | 0.1-0.3 | 1.1-1.3 |
 | decor cover and ground reactions | 0.16 or less | 0.13 or less | 0.1 or less |
 
@@ -22,14 +21,11 @@ rest is shading arithmetic.
 
 ## Scope
 
-- Merge the grade and the veil into one full-screen pass with dual-source blending
-  (`WEBGL_blend_func_extended`, exposed by Chrome on ANGLE D3D11), keeping today's two passes where the
-  extension is missing; about 0.47 ms in every weather on the Vega 7. The picture stays the same.
 - Find a cut for the terrain cover hook's drift noise and taps; a change to its picture needs the
   owner's sign-off before merging.
 
 ## Verify
 
-`npm run bench:gpu-settings` rain and snow rows plus a `?weather=sand` paused loop on the Vega 7 or the
-UHD 770, base and branch, two runs each; a pixel diff of each weather view against the current pictures
-with every changed part named.
+`npm run bench:gpu-settings` snow row plus a `?weather=sand` paused loop on the Vega 7 or the UHD 770,
+base and branch, two runs each; a pixel diff of each weather view against the current pictures with
+every changed part named.

@@ -1,6 +1,6 @@
 import { type Renderer, WebGLRenderer } from 'pixi.js';
 import { bootShaderPrograms } from './catalog.js';
-import { glProgramFor } from './program-source.js';
+import { glProgramFor, supportsProgram } from './program-source.js';
 import { shaderSelection, type WarmupSettings } from './warmup.js';
 
 /** A catalogue program the renderer linked ahead of its first frame. */
@@ -21,7 +21,9 @@ export async function linkRendererPrograms(
   settings: WarmupSettings,
 ): Promise<readonly RendererLink[]> {
   if (!(renderer instanceof WebGLRenderer)) return [];
-  const programs = bootShaderPrograms(renderer.limits.maxBatchableTextures, shaderSelection(settings));
+  const programs = bootShaderPrograms(renderer.limits.maxBatchableTextures, shaderSelection(settings)).filter(
+    (source) => supportsProgram(renderer.gl, source),
+  );
   const links: RendererLink[] = [];
   for (const source of programs) {
     await new Promise((resolve) => setTimeout(resolve, 0));

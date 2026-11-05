@@ -15,7 +15,7 @@ import {
   worldMagnifyModeNumber,
 } from '../pixel-art/registry.js';
 import { SHADED_DECOR_SOURCE, SHADED_TERRAIN_SOURCE, TINTED_TERRAIN_SOURCE } from '../terrain/shading.js';
-import { WEATHER_GRADE_SOURCE, WEATHER_VEIL_SOURCE } from '../weather/atmosphere.js';
+import { WEATHER_AIR_SOURCE, WEATHER_GRADE_SOURCE, WEATHER_VEIL_SOURCE } from '../weather/atmosphere.js';
 import { ATMOSPHERE_NOISE_BAKE_SOURCE } from '../weather/atmosphere-noise.js';
 import { GROUND_REACTIONS_SOURCE } from '../weather/ground-reactions.js';
 import { precipitationSource, WISP_UPSCALE_SOURCE } from '../weather/precipitation-shader.js';
@@ -44,13 +44,14 @@ function unconditionalPrograms(): readonly GlslProgramSource[] {
   ];
 }
 
-/** The sky grade, veil and their noise bake, ground reactions, precipitation and the sand wisps'
- *  upscale the weather setting turns off. */
+/** The sky grade, veil, both in one pass and their noise bake, ground reactions, precipitation and the
+ *  sand wisps' upscale the weather setting turns off. */
 function weatherPrograms(): readonly GlslProgramSource[] {
   return [
     ATMOSPHERE_NOISE_BAKE_SOURCE,
     WEATHER_GRADE_SOURCE,
     WEATHER_VEIL_SOURCE,
+    WEATHER_AIR_SOURCE,
     GROUND_REACTIONS_SOURCE,
     ...WEATHER_KINDS.map((kind) => precipitationSource(kind)),
     WISP_UPSCALE_SOURCE,
@@ -110,7 +111,8 @@ export interface ShaderSelection {
 }
 
 /** What a world can draw with: the one batch variant for the device's batch limit and the player's
- *  settings, and every other program those settings leave on. */
+ *  settings, and every other program those settings leave on. A program that needs an extension is listed
+ *  whatever the device has; a linker keeps those its context compiles. */
 export function bootShaderPrograms(
   maxBatchTextures: number,
   selection: ShaderSelection,
