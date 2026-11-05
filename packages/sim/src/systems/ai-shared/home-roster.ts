@@ -94,6 +94,19 @@ function claimsOf(colonies: readonly ColonyView[]): ColonyClaims {
   return { lands, listed, ships };
 }
 
+function sameMap<K, V>(a: ReadonlyMap<K, V>, b: ReadonlyMap<K, V>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [key, value] of a) if (b.get(key) !== value) return false;
+  return true;
+}
+
+/** Whether two claims part a roster alike. */
+function sameClaims(a: ColonyClaims, b: ColonyClaims): boolean {
+  if (a.lands.size !== b.lands.size) return false;
+  for (const land of a.lands) if (!b.lands.has(land)) return false;
+  return sameMap(a.listed, b.listed) && sameMap(a.ships, b.ships);
+}
+
 /** The land of the colony `e` is held by, or undefined for one of home's: a building by the land of its door,
  *  a person when listed (a garrison's fighter too), riding a held ship, or standing on that land and no
  *  fighter. A walker stands on its step's node ({@link moverNode}), never on the water a shore step passes. */
@@ -130,12 +143,13 @@ interface RosterParts {
   readonly byLand: ReadonlyMap<number, readonly Entity[]>;
 }
 
-/** {@link RosterParts} with the key it stands on and the map it was read against. */
+/** {@link RosterParts} with the key it stands on, the claims it parted by and the map it was read against. */
 interface RosterSplit extends RosterParts {
   readonly roster: readonly Entity[];
   readonly riders: number;
   readonly trades: number;
   readonly colonyRevision: number;
+  readonly claims: ColonyClaims;
   readonly map: MapContext;
 }
 
@@ -143,10 +157,9 @@ function partsOf(
   world: World,
   map: MapContext,
   terrain: TerrainGraph,
-  seat: number,
+  claims: ColonyClaims,
   owned: readonly Entity[],
 ): RosterParts {
-  const claims = claimsOf(seatColonies(world, seat));
   const home: Entity[] = [];
   const byLand = new Map<number, Entity[]>();
   for (const e of owned) {
@@ -171,10 +184,11 @@ function sameParts(a: RosterParts, b: RosterParts): boolean {
 }
 
 /** A seat's reader of `roster` parted between home and its colonies, null with no colony. Derived from saved
- *  state in one pass over the roster and kept while the roster, the riders, the trades and the seat's colonies
- *  stand: a person changes land only through {@link Rider}, a trade written in place on {@link Settler} turns
- *  one on colony land fighter or not, and another seat's colony write leaves this one's. Never hashed; the
- *  verifier named `name` re-derives each held split whose key still stands. */
+ *  state in one pass over the roster and kept while the roster, the riders, the trades and the seat's colony
+ *  claims stand: a person changes land only through {@link Rider}, a trade written in place on {@link Settler}
+ *  turns one on colony land fighter or not, and a colony write that moves no land, list or held ship (a
+ *  route's load, a ferry's leg) leaves the split as it was. Never hashed; the verifier named `name`
+ *  re-derives each held split whose key still stands. */
 function rosterSplitOf(
   roster: (world: World, player: number) => readonly Entity[],
   name: string,
@@ -184,25 +198,20 @@ function rosterSplitOf(
     const carrier = aiControlEntity(world, seat);
     return carrier === null ? undefined : world.revisionOf(carrier, ComputerColony);
   };
-  const standing = (
-    world: World,
-    held: RosterSplit,
-    owned: readonly Entity[],
-    colonyRevision: number,
-  ): boolean =>
+  /** Whether `held` still answers for `owned` with the riders and trades as they are, colonies aside. */
+  const rosterStands = (world: World, held: RosterSplit, owned: readonly Entity[]): boolean =>
     held.roster === owned &&
     held.riders === world.componentGeneration(Rider) &&
-    held.trades === world.componentValueGeneration(Settler) &&
-    held.colonyRevision === colonyRevision;
+    held.trades === world.componentValueGeneration(Settler);
   const verify = (world: World): string[] => {
     const faults: string[] = [];
     for (const [seat, held] of views.get(world) ?? []) {
       // A stale key is not a fault: the next read derives the split again.
       const terrain = held.map.terrain;
-      const colonyRevision = colonyRevisionOf(world, seat);
-      if (terrain === undefined || colonyRevision === undefined) continue;
-      if (!standing(world, held, roster(world, seat), colonyRevision)) continue;
-      if (!sameParts(held, partsOf(world, held.map, terrain, seat, held.roster)))
+      if (terrain === undefined || colonyRevisionOf(world, seat) !== held.colonyRevision) continue;
+      if (!rosterStands(world, held, roster(world, seat))) continue;
+      const claims = claimsOf(seatColonies(world, seat));
+      if (!sameParts(held, partsOf(world, held.map, terrain, claims, held.roster)))
         faults.push(`${name} of seat ${seat} disagrees with a fresh derivation: its key missed a change`);
     }
     return faults;
@@ -211,6 +220,8 @@ function rosterSplitOf(
     const colonyRevision = colonyRevisionOf(world, seat);
     const terrain = ctx.terrain;
     if (colonyRevision === undefined || terrain === undefined) return null;
+    const colonies = seatColonies(world, seat);
+    if (colonies.length === 0) return null;
     let bySeat = views.get(world);
     if (bySeat === undefined) {
       // Registered on the first read only: the verifier closes over `world` alone.
@@ -220,15 +231,23 @@ function rosterSplitOf(
     }
     const owned = roster(world, seat);
     const held = bySeat.get(seat);
-    if (held !== undefined && standing(world, held, owned, colonyRevision)) return held;
+    const kept = held !== undefined && rosterStands(world, held, owned);
+    if (kept && held.colonyRevision === colonyRevision) return held;
+    const claims = claimsOf(colonies);
+    if (kept && sameClaims(held.claims, claims)) {
+      const same: RosterSplit = { ...held, colonyRevision };
+      bySeat.set(seat, same);
+      return same;
+    }
     const map: MapContext = { content: ctx.content, terrain };
     const split: RosterSplit = {
       roster: owned,
       riders: world.componentGeneration(Rider),
       trades: world.componentValueGeneration(Settler),
       colonyRevision,
+      claims,
       map,
-      ...partsOf(world, map, terrain, seat, owned),
+      ...partsOf(world, map, terrain, claims, owned),
     };
     bySeat.set(seat, split);
     return split;

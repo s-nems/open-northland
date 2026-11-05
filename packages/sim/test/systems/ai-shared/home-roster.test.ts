@@ -189,6 +189,22 @@ describe('the home view of a seat', () => {
     expect(homeSettlers(sim.world, ctx, SEAT)).toHaveLength(2);
   });
 
+  it('keeps its split through a colony write that moves no land, list or ship, and redoes it for one that does', () => {
+    const sim = seatOverSea();
+    foundColony(sim);
+    const ctx = ctxOf(sim);
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no carrier');
+    const colony = () => sim.world.mut(carrier, ComputerColony).colonies[0] ?? blankColony(0);
+    const home = homeSettlers(sim.world, ctx, SEAT);
+    colony().delivered = sim.tick;
+    expect(homeSettlers(sim.world, ctx, SEAT)).toBe(home);
+    const listed = home[0];
+    if (listed === undefined) throw new Error('setup: nobody at home');
+    colony().rest.push(listed);
+    expect(homeSettlers(sim.world, ctx, SEAT)).not.toContain(listed);
+  });
+
   it('reads a trade change on colony land as a restored game reads it', () => {
     const sim = seatOverSea();
     foundColony(sim);
@@ -308,15 +324,11 @@ describe('the home view of a seat', () => {
   it('keeps a colony write off another seat', () => {
     const { sim } = seatWithTwoColonies();
     const ctx = ctxOf(sim);
-    const carrier = aiControlEntity(sim.world, SEAT);
-    if (carrier === null) throw new Error('setup: no carrier');
     const before = homeSettlers(sim.world, ctx, SEAT);
     const other = sim.world.create();
     sim.world.add(other, ComputerColony, { colonies: [], rejected: [], retryAt: 0 });
     sim.world.mut(other, ComputerColony).retryAt = 1;
     expect(homeSettlers(sim.world, ctx, SEAT)).toBe(before);
-    sim.world.mut(carrier, ComputerColony).retryAt = 1;
-    expect(homeSettlers(sim.world, ctx, SEAT)).not.toBe(before);
   });
 
   it('takes every colony out of the stock', () => {
