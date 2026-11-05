@@ -116,7 +116,7 @@ const GIRL_JOBS: ReadonlySet<number> = new Set([JOB_BABY_FEMALE, JOB_CHILD_FEMAL
 const BOY_JOBS: ReadonlySet<number> = new Set([JOB_BABY_MALE, JOB_CHILD_MALE]);
 
 /** The `jobtypes.ini` soldier band and the named heroes: the people the original lists under its army. */
-const isMilitaryJob = (jobType: number): boolean =>
+export const isMilitaryJob = (jobType: number): boolean =>
   (jobType >= SOLDIER_JOB_MIN && jobType <= SOLDIER_JOB_MAX) ||
   (jobType >= JOB_HERO_UNARMED && jobType <= JOB_HEROINE_BOW);
 

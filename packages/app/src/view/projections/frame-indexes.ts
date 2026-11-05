@@ -31,7 +31,7 @@ import {
 } from '../../game/snapshot/index.js';
 import { readMinimapIndexes } from '../../hud/minimap/dots.js';
 import { standingNodesRevision } from '../../hud/minimap/live-objects.js';
-import { seatStandings } from '../../hud/summary/standings.js';
+import { armyTalliesOf, seatStandings } from '../../hud/summary/standings.js';
 import { restingBuildingsOf } from '../../hud/tool-panel/messages/workshop-stalls.js';
 import { assistantBookingsOf } from '../assistant/bookings.js';
 import { gearTalliesOf } from '../assistant/shortages.js';
@@ -84,6 +84,13 @@ export const FRAME_INDEX_READERS: readonly AppFrameIndexReader[] = [
     name: 'observer standings',
     read: (snapshot, seat) => {
       if (seat === null) seatStandings(snapshot, [NO_SEAT], () => 'undecided');
+    },
+  },
+  {
+    // A seat's army in the standings breakdown, read every frame while it is open.
+    name: 'observer army',
+    read: (snapshot, seat) => {
+      if (seat === null) armyTalliesOf(snapshot);
     },
   },
   { name: 'needs rule', read: (snapshot) => needsRuleEnabled(snapshot) },

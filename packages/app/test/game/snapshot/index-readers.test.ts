@@ -41,6 +41,7 @@ import { buildingPeersOf, ownedBuildingsOfType } from '../../../src/hud/details-
 import { raisingCrew, shelteringIn } from '../../../src/hud/details-panel/model/building-staff.js';
 import type { MinimapDotContext } from '../../../src/hud/minimap/dots.js';
 import { DEFAULT_MINIMAP_FILTERS, withAllMinimapLayers } from '../../../src/hud/minimap/filters.js';
+import { armyTalliesOf } from '../../../src/hud/summary/standings.js';
 import { restingBuildingsOf } from '../../../src/hud/tool-panel/messages/workshop-stalls.js';
 import { createSceneSim, getScene } from '../../../src/scenes/index.js';
 import { gearTalliesOf } from '../../../src/view/assistant/shortages.js';
@@ -109,6 +110,7 @@ function expectReadersMatchWalk(live: WorldSnapshot): void {
   expect(actorsOf(live).every((e, i) => e === actorsOf(walked)[i])).toBe(true);
   expect(needsRuleEnabled(live)).toBe(needsRuleEnabled(walked));
   expect(gearTalliesOf(live)).toEqual(gearTalliesOf(walked));
+  expect(armyTalliesOf(live)).toEqual(armyTalliesOf(walked));
   expect(flagHoldingsOf(live).byHolder).toEqual(flagHoldingsOf(walked).byHolder);
   for (const seat of SEATS) {
     expect(ids(settlersOwnedBy(live, seat))).toEqual(ids(settlersOwnedBy(walked, seat)));

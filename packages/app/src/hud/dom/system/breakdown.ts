@@ -1,3 +1,5 @@
+import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
+
 /** Design px a breakdown keeps from the screen's side edges. */
 const TIP_EDGE_MARGIN_PX = 6;
 
@@ -10,6 +12,23 @@ export function tipRow(label: string, className = ''): { row: HTMLElement; figur
   const figure = document.createElement('b');
   row.append(name, figure);
   return { row, figure };
+}
+
+/** A row naming a good by its icon and label, the icon painted at `boxPx`. */
+export function goodTipRow(
+  label: string,
+  goodId: string,
+  paintGood: GoodIconPainter,
+  boxPx: number,
+): { row: HTMLElement; figure: HTMLElement } {
+  const made = tipRow(label, 'on-tip__row--good');
+  const name = made.row.firstElementChild;
+  if (name instanceof HTMLElement) {
+    name.insertAdjacentHTML('afterbegin', goodIconMarkup(boxPx));
+    const frame = name.querySelector('.on-good__frame');
+    if (frame instanceof HTMLElement) paintGood(frame, goodId, boxPx);
+  }
+  return made;
 }
 
 /** A breakdown hangs under its counter, and on a narrow screen a wide one would run past the edge.

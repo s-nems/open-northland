@@ -2,7 +2,7 @@ import type { HudModel } from '@open-northland/render';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { createTooltip } from '../../../view/tooltip.js';
 import { formatPeaceLeft, formatSimClock } from '../../summary/model.js';
-import type { SeatStanding } from '../../summary/standings.js';
+import type { SeatArmy, SeatStanding } from '../../summary/standings.js';
 import {
   DEV_GAME_SPEED_STATES,
   GAME_SPEED_STATES,
@@ -37,6 +37,8 @@ export function sameSpeedBarLook(a: SpeedBarLook | null, b: SpeedBarLook | null)
 export interface ObserverBarDeps extends ObserverPickerDeps {
   /** Each watched seat's standing over the snapshot shown; read only while no single seat is watched. */
   readonly standings: () => readonly SeatStanding[];
+  /** A seat's army over the snapshot shown; read only while its standing's breakdown is open. */
+  readonly army: (player: number) => SeatArmy;
 }
 
 export interface HudSystemBarDeps {
@@ -88,6 +90,9 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
           seats: observer.seats,
           playerColourOf: observer.playerColourOf,
           onWatch: observer.onWatch,
+          army: observer.army,
+          paintGood: deps.summary.paintGood,
+          goodLabel: deps.summary.goodLabel,
         });
   const summary = createHudSummary(deps.summary);
 

@@ -59,7 +59,7 @@ import { FigureFrames } from '../figures/figure-frames.js';
 import { LiveFigures } from '../figures/live-figures.js';
 import { type KeyBindings, keyDisplayLabel } from '../keybindings.js';
 import type { NetPanelSource } from '../network/model.js';
-import type { SeatStanding } from '../summary/standings.js';
+import type { SeatArmy, SeatStanding } from '../summary/standings.js';
 import { CONSTRUCTION_TOOLS, type ConstructionTool, type MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
 import type { GameSpeedChangeCause, GameSpeedControl, GameSpeedStateSpec } from './game-speed.js';
@@ -153,6 +153,8 @@ export interface ToolPanelOptions {
     readonly onWatch: (target: WatchTarget) => void;
     /** Each seat's standing, shown on the bar while no single seat is watched. */
     readonly standings: () => readonly SeatStanding[];
+    /** A seat's army, read while its standing's breakdown is open. */
+    readonly army: (player: number) => SeatArmy;
   };
   /** Submit a seat command into the sim. */
   readonly enqueue: (command: PlayerCommand) => void;
@@ -764,6 +766,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
               playerColourOf: opts.playerColourOf,
               onWatch: opts.observer.onWatch,
               standings: opts.observer.standings,
+              army: opts.observer.army,
               bindings: opts.bindings,
             },
           }

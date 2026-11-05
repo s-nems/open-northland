@@ -1592,6 +1592,23 @@ export const enGame = {
       standing: '{name}: {people} people, {soldiers} soldiers',
       buildings: 'Buildings',
       status: { won: 'Victorious', defeated: 'Defeated', empty: 'Nothing left' },
+      /** The standings breakdown's army section: head-counts, then the soldiers' gear. */
+      army: 'Army',
+      soldiers: 'Soldiers',
+      /** A siege vehicle type no good names. */
+      siegeEngines: 'Siege engines',
+      weapons: 'Weapons',
+      unarmed: 'No weapon',
+      armour: 'Armour',
+      unarmoured: 'No armour',
+      /** The potions, mead and amulets the soldiers carry. */
+      carried: 'Carried',
+      /** The standings breakdown's section for everyone outside the army, and the buildings. */
+      settlement: 'Settlement',
+      /** The men outside the army, idle ones included. */
+      workers: 'Workers',
+      /** Every person of the seat, the soldiers included. */
+      population: 'All people',
       watchHint: 'Click to watch this player',
     },
     stats: {

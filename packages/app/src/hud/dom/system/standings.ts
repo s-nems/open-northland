@@ -1,9 +1,10 @@
 import type { ObserverSeatEntry } from '../../../game/match/observer-seats.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import type { SeatStanding, SeatStatus } from '../../summary/standings.js';
+import type { SeatArmy, SeatStanding, SeatStatus } from '../../summary/standings.js';
+import type { GoodIconPainter } from '../good-art.js';
 import { GLYPH } from '../icons.js';
-import { setAttribute, write } from '../parts/dom.js';
-import { keepTipOnScreen, tipRow } from './breakdown.js';
+import { element, setAttribute, setHidden, setStyleVar, write } from '../parts/dom.js';
+import { goodTipRow, keepTipOnScreen, tipRow } from './breakdown.js';
 import { observerSeatColour, observerSeatLabels } from './observer-picker.js';
 
 export interface ObserverStandingsDeps {
@@ -11,12 +12,19 @@ export interface ObserverStandingsDeps {
   /** Owner slot to team-colour slot for the swatches; absent = identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
   readonly onWatch: (player: number) => void;
+  /** A seat's army over the snapshot shown; asked only while its breakdown is open. */
+  readonly army: (player: number) => SeatArmy;
+  /** Paints the breakdown's gear icons in the art this game draws with. */
+  readonly paintGood: GoodIconPainter;
+  /** A good's localized name by string id. */
+  readonly goodLabel: (goodId: string) => string;
 }
 
 /**
- * The spectator's standings strip, shown while it watches no single seat: one chip per seat with its
- * people over its soldiers, read against the strip's leading legend, and the seat's breakdown under
- * the chip on hover or focus. A click on a chip watches that seat.
+ * The spectator's standings strip, shown while it watches no single seat: one chip per seat, tinted and
+ * topped with the seat's colour, with its people over its soldiers, read against the strip's leading
+ * legend. On hover or focus the seat's breakdown opens under the chip, its army beside its settlement.
+ * A click on a chip watches that seat.
  */
 export interface ObserverStandings {
   readonly element: HTMLElement;
@@ -29,6 +37,23 @@ export interface ObserverStandings {
 
 /** Tip ids run across mounts, so no two strips on one page share an `aria-describedby` id. */
 let nextTipId = 0;
+
+/** A gear row's icon, sized to the breakdown's 14 px rows. */
+const GEAR_ICON_PX = 18;
+
+/** One row of a good list: a good's count, or a count under a plain label when no good names it. */
+interface ListedCount {
+  readonly goodId: string | undefined;
+  readonly count: number;
+}
+
+/** A labelled list of good rows in the breakdown, with an optional muted remainder after them ("no
+ *  armour"); the rows are rebuilt only when the listed goods change. */
+interface GoodList {
+  readonly root: HTMLElement;
+  /** Show `counts` and the remainder; the list hides when it shows nothing. */
+  fill(counts: readonly ListedCount[], rest: number): void;
+}
 
 interface Chip {
   readonly player: number;
@@ -65,7 +90,7 @@ export function createObserverStandings(deps: ObserverStandingsDeps): ObserverSt
   root.append(legend);
 
   const tip = document.createElement('div');
-  tip.className = 'on-tip on-standings__tip';
+  tip.className = 'on-tip on-tip--wide on-standings__tip';
   tip.id = `on-standings-tip-${nextTipId++}`;
   tip.setAttribute('role', 'tooltip');
   tip.hidden = true;
@@ -75,29 +100,86 @@ export function createObserverStandings(deps: ObserverStandingsDeps): ObserverSt
   titleSwatch.className = 'on-seat__swatch';
   const titleName = document.createElement('span');
   title.append(titleSwatch, titleName);
-  const SUB = 'on-tip__row--sub';
-  const menRow = tipRow(summaryCopy.men);
-  const soldiersRow = tipRow(summaryCopy.soldiers, SUB);
+
+  const goodList = (
+    className: string,
+    label: string | null,
+    restLabel: string | null,
+    unnamedLabel = '',
+  ): GoodList => {
+    const root = element('div', className);
+    if (label !== null) {
+      const heading = element('p', 'on-standings__group-label');
+      heading.textContent = label;
+      root.append(heading);
+    }
+    const rows = element('div', '');
+    root.append(rows);
+    const rest = restLabel === null ? null : tipRow(restLabel, 'on-standings__rest');
+    if (rest !== null) root.append(rest.row);
+    let keys: readonly (string | undefined)[] = [];
+    let figures: HTMLElement[] = [];
+    return {
+      root,
+      fill: (counts, left) => {
+        const same = keys.length === counts.length && counts.every((c, i) => c.goodId === keys[i]);
+        if (!same) {
+          keys = counts.map((c) => c.goodId);
+          const made = counts.map(({ goodId }) =>
+            goodId === undefined
+              ? tipRow(unnamedLabel)
+              : goodTipRow(deps.goodLabel(goodId), goodId, deps.paintGood, GEAR_ICON_PX),
+          );
+          rows.replaceChildren(...made.map((m) => m.row));
+          figures = made.map((m) => m.figure);
+        }
+        counts.forEach((c, i) => {
+          const figure = figures[i];
+          if (figure !== undefined) write(figure, String(c.count));
+        });
+        if (rest !== null) {
+          write(rest.figure, String(left));
+          setHidden(rest.row, left === 0);
+        }
+        setHidden(root, counts.length === 0 && left === 0);
+      },
+    };
+  };
+  const section = (heading: string): HTMLElement => {
+    const root = element('section', 'on-standings__section');
+    const label = element('h5', 'on-standings__heading');
+    label.textContent = heading;
+    root.append(label);
+    return root;
+  };
+
+  // The army: the head-counts first, then what the soldiers wield, wear and carry.
+  const army = section(observerCopy.army);
+  const soldiersRow = tipRow(observerCopy.soldiers, 'on-standings__lead');
+  const GEAR = 'on-standings__group';
+  const siege = goodList('on-standings__units', null, null, observerCopy.siegeEngines);
+  const weapons = goodList(GEAR, observerCopy.weapons, observerCopy.unarmed);
+  const armour = goodList(GEAR, observerCopy.armour, observerCopy.unarmoured);
+  const carried = goodList(GEAR, observerCopy.carried, null);
+  army.append(soldiersRow.row, siege.root, weapons.root, armour.root, carried.root);
+
+  // The settlement: the people outside the army, everyone together, and the buildings.
+  const settlement = section(observerCopy.settlement);
+  const workersRow = tipRow(observerCopy.workers);
   const womenRow = tipRow(summaryCopy.women);
   const childrenRow = tipRow(summaryCopy.children);
-  const totalRow = tipRow(summaryCopy.total, 'on-tip__row--total');
+  const totalRow = tipRow(observerCopy.population, 'on-tip__row--total');
   const buildingsRow = tipRow(observerCopy.buildings);
+  settlement.append(workersRow.row, womenRow.row, childrenRow.row, totalRow.row, buildingsRow.row);
+
+  const columns = element('div', 'on-tip__columns on-standings__columns');
+  columns.append(army, settlement);
   const status = document.createElement('p');
   status.className = 'on-standings__status';
   const hint = document.createElement('p');
   hint.className = 'on-standings__hint';
   hint.textContent = observerCopy.watchHint;
-  tip.append(
-    title,
-    menRow.row,
-    soldiersRow.row,
-    womenRow.row,
-    childrenRow.row,
-    totalRow.row,
-    buildingsRow.row,
-    status,
-    hint,
-  );
+  tip.append(title, columns, status, hint);
 
   let open: Chip | null = null;
   const fillTip = (chip: Chip): void => {
@@ -106,8 +188,13 @@ export function createObserverStandings(deps: ObserverStandingsDeps): ObserverSt
     const standing = chip.standing;
     if (standing === null) return;
     const { people } = standing;
-    write(menRow.figure, String(people.men));
-    write(soldiersRow.figure, String(people.soldiers));
+    const forces = deps.army(chip.player);
+    write(soldiersRow.figure, String(forces.soldiers));
+    siege.fill(forces.siege, 0);
+    weapons.fill(forces.weapons, forces.unarmed);
+    armour.fill(forces.armour, forces.unarmoured);
+    carried.fill(forces.carried, 0);
+    write(workersRow.figure, String(people.workers));
     write(womenRow.figure, String(people.women));
     write(childrenRow.figure, String(people.children));
     write(totalRow.figure, String(people.total));
@@ -140,9 +227,9 @@ export function createObserverStandings(deps: ObserverStandingsDeps): ObserverSt
     button.className = 'on-standing';
     button.setAttribute('aria-expanded', 'false');
     button.setAttribute('aria-describedby', tip.id);
+    setStyleVar(button, '--seat', observerSeatColour(player, deps.playerColourOf));
     const swatch = document.createElement('span');
     swatch.className = 'on-standing__swatch';
-    swatch.style.background = observerSeatColour(player, deps.playerColourOf);
     const figures = document.createElement('span');
     figures.className = 'on-standing__figures';
     const people = document.createElement('b');

@@ -2139,13 +2139,15 @@ body.on-drag-scroll.on-drag-scroll-free * {
   display: none;
 }
 /* The spectator's standings strip in the counters' place: a legend naming the two figures once, then
-   a chip per seat, its colour edge beside its people over its soldiers. Narrow enough for every seat a
-   map holds; the rest of a seat's figures open under its chip. */
+   a chip per seat, its people over its soldiers. The chip is a tile tinted with its seat's colour
+   (`--seat`) under a band of it, so the colour belongs to the figures it covers, never to the gap
+   between two chips. Narrow enough for every seat a map holds; the rest of a seat's figures open
+   under its chip. */
 .on-hud .on-standings {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
 }
 .on-hud .on-standings__legend {
   display: flex;
@@ -2160,34 +2162,39 @@ body.on-drag-scroll.on-drag-scroll-free * {
   filter: drop-shadow(0 1px 1px #000c);
 }
 .on-hud .on-standing {
+  position: relative;
   display: flex;
-  align-items: stretch;
-  gap: 5px;
+  align-items: center;
+  gap: 2px;
   min-height: 30px;
-  padding: 2px 6px 2px 3px;
-  border: 0;
+  padding: 5px 5px 2px;
+  border: 1px solid color-mix(in srgb, var(--seat) 55%, var(--bronze-lo));
   border-radius: 3px;
-  background: transparent;
+  background: color-mix(in srgb, var(--seat) 16%, transparent);
   cursor: var(--cursor-pointer, pointer);
 }
 .on-hud .on-standing:hover,
 .on-hud .on-standing:focus-visible,
 .on-hud .on-standing[aria-expanded="true"] {
-  background: #c9a26222;
+  background: color-mix(in srgb, var(--seat) 30%, transparent);
   box-shadow: inset 0 -2px var(--bronze);
 }
 .on-hud .on-standing__swatch {
-  flex: none;
-  width: 5px;
-  border: 1px solid #0009;
-  border-radius: 2px;
-  box-shadow: inset 0 0 0 1px #fff5;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: var(--seat);
+  /* The light rim keeps a black seat's band apart from the dark bar. */
+  box-shadow: inset 0 0 0 1px #fff4;
 }
 .on-hud .on-standing__figures {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-end;
+  align-items: center;
   gap: 3px;
   min-width: 20px;
   font-variant-numeric: tabular-nums;
@@ -2225,6 +2232,9 @@ body.on-drag-scroll.on-drag-scroll-free * {
   .on-standing:is([data-status="defeated"], [data-status="empty"])
   :is(.on-standing__swatch, .on-standing__figures) {
   opacity: 0.45;
+}
+.on-hud .on-standing:is([data-status="defeated"], [data-status="empty"]):not(:hover, :focus-visible) {
+  background: color-mix(in srgb, var(--seat) 6%, transparent);
 }
 .on-hud .on-standings__title {
   display: flex;
@@ -2448,6 +2458,44 @@ body.on-drag-scroll.on-drag-scroll-free * {
 }
 .on-hud .on-tip__row--zero .on-good {
   opacity: 0.45;
+}
+/* The standings breakdown's two sections side by side, the army and the settlement, on tighter rows
+   than a counter's breakdown. */
+.on-hud .on-standings__columns {
+  align-items: start;
+}
+.on-hud .on-standings__heading {
+  margin: 0 0 4px;
+  font: 700 12px var(--font-caps);
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+}
+.on-hud .on-standings__tip .on-tip__row {
+  margin: 4px 0;
+  font-size: 14px;
+}
+.on-hud .on-standings__lead {
+  font-weight: 700;
+}
+/* A labelled run of gear rows under the soldiers' count, indented so it reads as theirs. */
+.on-hud .on-standings__group {
+  margin-top: 6px;
+  padding-left: 8px;
+}
+.on-hud .on-standings__group[hidden],
+.on-hud .on-standings__units[hidden],
+.on-hud .on-standings__rest[hidden] {
+  display: none;
+}
+.on-hud .on-standings__group-label {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ink-muted);
+}
+.on-hud .on-standings__tip .on-standings__rest {
+  font-style: italic;
+  color: var(--ink-muted);
 }
 
 /* The label under the cursor naming what a right click there does: small type with no frame, a soft

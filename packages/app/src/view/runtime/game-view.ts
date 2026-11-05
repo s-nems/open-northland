@@ -95,7 +95,7 @@ import type { MapOverlayControls } from '../../hud/map-overlays.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { minimapFeatureOfGoodTypes } from '../../hud/minimap/live-objects.js';
 import type { NetPanelSource } from '../../hud/network/model.js';
-import { seatStandings } from '../../hud/summary/standings.js';
+import { seatArmy, seatStandings } from '../../hud/summary/standings.js';
 import { type MetSeat, NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
 import { soundShownNote } from '../../hud/tool-panel/messages/sounds.js';
 import { storageLayoutOf } from '../../hud/tool-panel/messages/storage-full.js';
@@ -785,6 +785,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
                 if (watching) switchableSeat.watch(seat);
               },
               standings: () => standingsFor(host.snapshot()),
+              army: (seat) => seatArmy(host.snapshot(), seat, host.content),
             },
           }
         : {}),
