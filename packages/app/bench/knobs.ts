@@ -14,6 +14,15 @@ export function intEnv(name: string, fallback: number, min: number): number {
   return value;
 }
 
+/** A finite non-negative number env knob, or null when unset/blank. */
+export function numberEnv(name: string): number | null {
+  const raw = process.env[name]?.trim();
+  if (raw === undefined || raw === '') return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) throw new Error(`${name} must be a number >= 0, got '${raw}'`);
+  return value;
+}
+
 /** An on/off env knob: `on` or `1` enable it, `off`, `0` and unset leave it off. */
 export function boolEnv(name: string): boolean {
   const raw = process.env[name]?.trim();

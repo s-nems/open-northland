@@ -10,6 +10,7 @@ untrustworthy and rerun. Profiled timings include overhead: never use them as co
 | Which function allocates memory? | `ON_BENCH_PROFILE=alloc npm run bench:profile` |
 | How does cost scale with settlers/fighters? | `npm run bench:sim` |
 | Did a change make the same world slower? | `npm run bench:compare` |
+| Is checkout B faster than checkout A on a shared machine? | `npm run bench:pair` |
 | Does a restored world match continuous play? | `npm run bench:parity` |
 | Is a live frame limited by simulation or rendering? | `?debug=profile` and `await window.__opennorthland.perf()` |
 | How does a checkpoint render at different speeds/zooms? | `npm run bench:browser` |
@@ -139,6 +140,34 @@ npm run bench:compare -- before.json after.json
 Without arguments, compares the two latest compatible reports in untracked `bench-out/`.
 It rejects different worlds/report formats, including real-map runs of different canonical sessions,
 and reports changed state hashes as behavior changes.
+
+### Side-by-side pairs
+
+```bash
+ON_BENCH_SESSION='?map=...' ON_BENCH_CHECKPOINT=bench-out/late.t43200.checkpoint ON_BENCH_TICKS=2000 \
+  ON_BENCH_WINDOWS=1 ON_BENCH_PAIR_LOAD=0.5 npm run bench:pair -- ../base-checkout . 3
+```
+
+Runs the `bench:map` program of checkout A and checkout B at the same time, as many repeats as the
+third argument says (default 3), alternating which side launches first. Running both at once cancels
+the machine drift that two sequential runs on a shared machine measure instead of the code. Nothing is
+rebuilt: each checkout must have run `npx tsc --build`. Every `bench:map` knob in the environment
+reaches both sides; both read this checkout's content (or `ON_CONTENT_DIR`) and the same checkpoint,
+which must already exist. `ON_BENCH_JSON` and `ON_BENCH_CHECKPOINTS` are refused, since both sides
+would write the same files. When one side fails, the other is stopped and the pair ends with that
+side's error and log path.
+
+Reports and logs land in `bench-out/pair/<name>/` as `r<repeat>-a.json` and `r<repeat>-b.json`. The
+summary prints each repeat's B/A ratio of tick mean, CPU ms/tick and alloc KB/tick, their median and
+spread, and whether A and B ended in the same state. Reports of different worlds, run lengths or
+report formats are refused as `bench:compare` refuses them. Decide on the median, and only when it lies
+outside the spread of a same-code pair.
+
+| Variable | Meaning |
+| --- | --- |
+| `ON_BENCH_PAIR_NAME` | Output directory name under `bench-out/pair/`; default the start time. An existing non-empty directory is refused |
+| `ON_BENCH_PAIR_LOAD` | Before each repeat, wait until the 1-minute load per CPU is below this; unset or `0` runs at once |
+| `ON_BENCH_PAIR_LOAD_WAIT` | Longest wait for that load in seconds, default 600; the repeat then runs anyway and says so |
 
 ## Browser benchmark
 

@@ -1,87 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import type { BenchReport, BenchWindow } from '../../bench/report/index.js';
+import type { BenchReport } from '../../bench/report/index.js';
 import {
   BENCH_REPORT_VERSION,
   compareReports,
   formatComparison,
   readReport,
 } from '../../bench/report/index.js';
+import { report, window } from '../support/bench-report.js';
 
 /**
  * The A/B comparison (`npm run bench:compare`). Its job is to turn two reports into a verdict, so the
  * cases that matter are the ones where it must REFUSE: different worlds, different run lengths, or
  * numbers too small for a percentage to mean anything.
  */
-
-function window(index: number, medianMs: number): BenchWindow {
-  return {
-    index,
-    fromTick: index * 100 + 1,
-    toTick: index * 100 + 100,
-    tickMs: { meanMs: medianMs, medianMs, p95Ms: medianMs * 2, p99Ms: medianMs * 3, maxMs: medianMs * 4 },
-    systems: [
-      {
-        name: 'ai',
-        meanMs: medianMs,
-        medianMs,
-        p95Ms: medianMs * 2,
-        maxMs: medianMs * 4,
-        sharePct: 100,
-      },
-    ],
-    population: { settlers: 100, fighters: 20, buildings: 10, resourceNodes: 500 },
-    rssMb: 200,
-    heapUsedMb: 120,
-    gc: { count: 4, ms: 3, maxMs: 1 },
-    cpuMsPerTick: medianMs,
-    allocKbPerTick: 80,
-  };
-}
-
-function report(overrides: Partial<BenchReport> = {}): BenchReport {
-  return {
-    version: BENCH_REPORT_VERSION,
-    world: {
-      kind: 'realMap',
-      mapId: 'magiczny_las',
-      machineSeats: [0, 1, 2, 3, 4, 5, 6],
-      session: 'map=magiczny_las&player=observer&computer=0,1,2,3,4,5&seed=7&fog=classic',
-      mapCells: { width: 240, height: 190 },
-      settlersAtStart: 628,
-      settlersAtEnd: 628,
-      buildings: 21,
-    },
-    ticks: { warmup: 60, measured: 600, windows: 2 },
-    tickMs: { meanMs: 6, medianMs: 6, p95Ms: 12, p99Ms: 18, maxMs: 30 },
-    cpuMsPerTick: 5.5,
-    allocKbPerTick: 80,
-    systems: [
-      { name: 'ai', meanMs: 4, medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 80 },
-      { name: 'movement', meanMs: 1, medianMs: 1, p95Ms: 2, maxMs: 4, sharePct: 20 },
-    ],
-    slowestTicks: [],
-    stutterSources: [],
-    windows: [window(0, 5), window(1, 7)],
-    environment: {
-      node: 'v22.14.0',
-      platform: 'darwin-arm64',
-      cpuModel: 'Apple M3',
-      cpuCount: 8,
-      loadPerCpu: 0.3,
-      totalMemMb: 16384,
-      peakRssMb: 342,
-      startedAt: '2026-07-27T09:11:00.000Z',
-      wallSeconds: 42,
-      rev: '9ab7c02',
-      dirty: false,
-      knobs: {},
-      calibrationMs: { beforeMs: 1, afterMs: 1 },
-    },
-    trust: { trustworthy: true, warnings: [] },
-    stateHash: 'abc123',
-    ...overrides,
-  };
-}
 
 function systemsOf(medians: Readonly<Record<string, number>>): BenchReport['systems'] {
   return Object.entries(medians).map(([name, medianMs]) => ({

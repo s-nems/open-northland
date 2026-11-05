@@ -10,6 +10,7 @@ export {
   worldIdentity,
 } from './compare.js';
 export { formatReport } from './format.js';
+export { formatPairs, type PairMetric, type PairRepeat, type PairSummary, summarizePairs } from './pair.js';
 export { formatProfile } from './profile.js';
 export { readReport } from './read.js';
 export { percentile, type SystemGrowth, summarize, summarizeSegment, systemGrowth } from './summarize.js';
