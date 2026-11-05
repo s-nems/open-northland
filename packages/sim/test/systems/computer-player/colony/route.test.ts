@@ -98,6 +98,13 @@ function routeTrader(sim: Simulation): Entity | null {
   return pinned && (sim.world.tryGet(trader, TradeRoute)?.stops.length ?? 0) === 2 ? trader : null;
 }
 
+/** The colony's trader once the route stands, which the test needs to go on. */
+function standingTrader(sim: Simulation): Entity {
+  const trader = routeTrader(sim);
+  if (trader === null) throw new Error('setup: no route trader');
+  return trader;
+}
+
 /** A colony landed and its trade route standing. */
 function routedWorld(): { readonly sim: Simulation; readonly ship: Entity; readonly scout: Entity } {
   const sim = colonyWorld();
@@ -230,6 +237,8 @@ const SMALL_HOLD = 50;
 const ROUND_TICKS = minutesToTicks(15);
 /** What is left of the span a route must stay behind for, when the test takes it over. */
 const BEHIND_LEFT_TICKS = minutesToTicks(1);
+/** The carriers a route seats on its ship as the trader's helpers. */
+const ROUTE_HELPERS = 3;
 
 describe('a colony route that cannot keep up', () => {
   it('counts what its marks ask past what the giving side keeps, each way', () => {
@@ -298,6 +307,33 @@ describe('a colony route that cannot keep up', () => {
       (sim.world.tryGet(trader, TradeRoute)?.stops ?? []).map((stop) => stop.house);
     expect(stepUntil(sim, LEG_DUE_TICKS, () => stopsOf(second).length === 2)).toBe(true);
     expect(stopsOf(second)).toEqual(stopsOf(first));
+  });
+
+  it('never shares a trader or a helper with its relief, even when both choose in one decision', () => {
+    const { sim, ship } = routedWorld();
+    const first = standingTrader(sim);
+    const third = mooredShip(sim, SMALL_SHIP, THIRD_SHIP_AT);
+    const live = editColony(sim);
+    const hull = sim.world.get(third, Health).hitpoints;
+    live.relief = { trader: null, chosen: sim.tick, ship: third, hull, load: 0, behindSince: null };
+    // The first route's trader falls as the relief is raised: the next decision chooses a trader for both.
+    sim.world.mut(first, Health).hitpoints = 0;
+    const helpersOn = (vessel: Entity, trader: Entity | null): Entity[] =>
+      vehiclePassengers(sim.world.get(vessel, Vehicle))
+        .map((seat) => seat.entity)
+        .filter((e) => e !== trader);
+    let shared = false;
+    const seating = stepUntil(sim, ROUND_DUE_TICKS, () => {
+      const routeTrader = colonyState(sim)?.route?.trader ?? null;
+      const reliefTrader = colonyState(sim)?.relief?.trader ?? null;
+      shared ||= routeTrader !== null && routeTrader === reliefTrader;
+      return helpersOn(ship, routeTrader).length > 0 || helpersOn(third, reliefTrader).length > 0;
+    });
+    expect(shared).toBe(false);
+    expect(seating).toBe(true);
+    // Both ships lie at home wanting helpers on the same workforce beat: each takes a full crew of its own.
+    expect(helpersOn(ship, colonyState(sim)?.route?.trader ?? null)).toHaveLength(ROUTE_HELPERS);
+    expect(helpersOn(third, colonyState(sim)?.relief?.trader ?? null)).toHaveLength(ROUTE_HELPERS);
   });
 });
 

@@ -189,14 +189,15 @@ function livesAtHome(world: World, homes: ReadonlySet<Entity>, e: Entity): boole
 }
 
 /** The man at home who takes the trade: a spare man or a carrier who has earned it, standing on home's land
- *  and living there, a wed man first, then a spare one, then ascending id. */
-function traderFor(env: ColonyEnv, trader: number): Entity | null {
+ *  and living there and not in `taken`, a wed man first, then a spare one, then ascending id. */
+function traderFor(env: ColonyEnv, trader: number, taken: ReadonlySet<Entity>): Entity | null {
   const { world, ctx, seat } = env;
   const home = homeLandOf(env);
   const spare = new Set(sparePartyMen(world, ctx, seat, home));
   const homes = new Set(homeBuildings(world, ctx, seat));
   const able = homeSettlers(world, ctx, seat).filter(
     (e) =>
+      !taken.has(e) &&
       canHelm(env, e) &&
       livesAtHome(world, homes, e) &&
       !isTraderJob(ctx.content, world.get(e, Settler).jobType) &&
@@ -211,11 +212,12 @@ function traderFor(env: ColonyEnv, trader: number): Entity | null {
 }
 
 /** Keep the route's trader: a dead one, or one who has not taken the trade in time, is let go and the next
- *  is chosen; null while none is a trader yet. */
+ *  is chosen outside `taken`; null while none is a trader yet. */
 function keepTrader(
   env: ColonyEnv,
   route: RouteView,
   slot: RouteSlot,
+  taken: ReadonlySet<Entity>,
 ): { trader: Entity | null; commands: PlayerCommand[] } {
   const { world, ctx } = env;
   const job = jobWhere(ctx, isTraderJobId);
@@ -226,7 +228,7 @@ function keepTrader(
       return { trader: held, commands: [] };
     if (ctx.tick - route.chosen < TRADE_TAKE_UP_TICKS) return { trader: null, commands: [] };
   }
-  const next = traderFor(env, job);
+  const next = traderFor(env, job, taken);
   const live = env.edit()[slot];
   if (live !== null) {
     live.trader = next;
@@ -374,9 +376,9 @@ function syncMarks(env: ColonyEnv, trader: Entity, home: Entity, away: Entity): 
   ];
 }
 
-/** Carriers seated on the ship as the trader's helpers while it lies at home: spare men of home, each taking
- *  the carrier's trade first. */
-function seatHelpers(env: ColonyEnv, trader: Entity, ship: Entity): PlayerCommand[] {
+/** Carriers seated on the ship as the trader's helpers while it lies at home: spare men of home outside
+ *  `taken`, each taking the carrier's trade first. Those chosen join `taken`. */
+function seatHelpers(env: ColonyEnv, trader: Entity, ship: Entity, taken: Set<Entity>): PlayerCommand[] {
   const { world, ctx, seat } = env;
   const carrier = jobWhere(ctx, isCarrierJobId);
   const home = homeLandOf(env);
@@ -386,15 +388,16 @@ function seatHelpers(env: ColonyEnv, trader: Entity, ship: Entity): PlayerComman
   const free = state.passengers.length - vehiclePassengers(state).length;
   const want = Math.min(ROUTE_HELPERS - seated, free - (world.has(trader, Position) ? 1 : 0));
   if (want <= 0) return [];
-  return sparePartyMen(world, ctx, seat, home)
-    .filter((e) => e !== trader)
-    .slice(0, want)
-    .flatMap((e): PlayerCommand[] => [
-      ...(world.get(e, Settler).jobType === carrier
-        ? []
-        : [{ kind: 'setJob', entity: e, jobType: carrier } as const]),
-      { kind: 'attachToVehicle', entity: e, vehicle: ship },
-    ]);
+  const chosen = sparePartyMen(world, ctx, seat, home)
+    .filter((e) => e !== trader && !taken.has(e))
+    .slice(0, want);
+  for (const e of chosen) taken.add(e);
+  return chosen.flatMap((e): PlayerCommand[] => [
+    ...(world.get(e, Settler).jobType === carrier
+      ? []
+      : [{ kind: 'setJob', entity: e, jobType: carrier } as const]),
+    { kind: 'attachToVehicle', entity: e, vehicle: ship },
+  ]);
 }
 
 /** A cart of the seat's for a trader ashore with none, while the ship has a vehicle slot free: the largest
@@ -428,9 +431,10 @@ function heldStops(env: ColonyEnv, slot: RouteSlot, trader: Entity): Entity[] {
  * comes home and lets its riders off; a home man who has earned the trade takes it; the ship is pinned to
  * him, his route runs from home's store to the colony's level-3 warehouse, both standing for their
  * settlements, with the marks of the colony's stock policy, issued only as they change; on the workforce
- * beat carriers are seated as helpers and a cart goes to the trader.
+ * beat carriers are seated as helpers and a cart goes to the trader. `taken` holds the men already spoken
+ * for this decision, which this route leaves alone.
  */
-function runRouteSlot(env: ColonyEnv, slot: RouteSlot): PlayerCommand[] {
+function runRouteSlot(env: ColonyEnv, slot: RouteSlot, taken: Set<Entity>): PlayerCommand[] {
   const { world, ctx, seat, colony } = env;
   const route = colony[slot];
   if (route === null || route.ship === null) {
@@ -444,7 +448,7 @@ function runRouteSlot(env: ColonyEnv, slot: RouteSlot): PlayerCommand[] {
     return [];
   }
   noteRoute(env, colony, route, ship, slot);
-  const { trader, commands } = keepTrader(env, env.colony[slot] ?? route, slot);
+  const { trader, commands } = keepTrader(env, env.colony[slot] ?? route, slot, taken);
   const pinned = trader !== null && world.tryGet(trader, TradeShip)?.vehicle === ship;
   if (!pinned) {
     const home = shipHome(env, colony, ship);
@@ -462,14 +466,23 @@ function runRouteSlot(env: ColonyEnv, slot: RouteSlot): PlayerCommand[] {
   orders.push(...syncMarks(env, trader, stops.home, stops.colony));
   if (slot === 'route') noteBehind(env, trader, ship, stops.home, stops.colony);
   if (moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS))
-    orders.push(...seatHelpers(env, trader, ship), ...cartOrder(env, trader, ship));
+    orders.push(...seatHelpers(env, trader, ship, taken), ...cartOrder(env, trader, ship));
   return orders;
 }
 
-/** What a colony's routes do this decision: the first, and the relief once raised. */
+/** What a colony's routes do this decision: the first, and the relief once raised. Neither takes the
+ *  other's trader, held or chosen just now, nor a helper the other seated this decision. */
 export function runRoute(env: ColonyEnv): PlayerCommand[] {
-  const orders = runRouteSlot(env, 'route');
-  if (env.colony.relief !== null) orders.push(...runRouteSlot(env, 'relief'));
+  const taken = new Set<Entity>();
+  const reliefTrader = env.colony.relief?.trader ?? null;
+  if (reliefTrader !== null) taken.add(reliefTrader);
+  const orders = runRouteSlot(env, 'route', taken);
+  if (env.colony.relief === null) return orders;
+  // The relief may choose its own trader again; the first route left him alone.
+  if (reliefTrader !== null) taken.delete(reliefTrader);
+  const firstTrader = env.colony.route?.trader ?? null;
+  if (firstTrader !== null) taken.add(firstTrader);
+  orders.push(...runRouteSlot(env, 'relief', taken));
   return orders;
 }
 
