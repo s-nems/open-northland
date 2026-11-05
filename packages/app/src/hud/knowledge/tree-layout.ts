@@ -1,5 +1,7 @@
 import type { KnowledgeBase, KnowledgeBuilding } from './base.js';
+import { materialBuildings } from './build-cost.js';
 import { downstreamOf, inputsOf, outputsOf, upstreamOf } from './chains.js';
+import { levelChain } from './entry-blocks.js';
 import { BUILDING_LANES, type LaneNode } from './lanes.js';
 
 export const CARD_WIDTH = 166;
@@ -14,6 +16,9 @@ const ARROW = 7;
 const ARROW_SPREAD = ARROW - 2;
 /** The shortest control arm of a link that leaves its lane. */
 const MIN_SPOT_SPAN = 40;
+/** A bow under or over a row dips by its width over this, within `MIN_SPOT_SPAN` and `MAX_ARCH_SAG`. */
+const ARCH_SAG_DIVISOR = 6;
+const MAX_ARCH_SAG = 90;
 /** Past this many outputs a pointed card draws only its inputs: the rest would hide the tree. */
 const MANY_OUTPUTS = 6;
 
@@ -71,6 +76,8 @@ export interface TreeRelation {
 export interface PlaneRect {
   readonly left: number;
   readonly right: number;
+  readonly top: number;
+  readonly bottom: number;
   readonly mid: number;
 }
 
@@ -136,8 +143,23 @@ function linePath(x1: number, y1: number, x2: number, y2: number): string {
   return `M${x1} ${y1}H${bus - CORNER}Q${bus} ${y1} ${bus} ${y1 + CORNER}V${y2 - CORNER}Q${bus} ${y2} ${bus + CORNER} ${y2}H${x2}`;
 }
 
-function arrowHead(x: number, y: number): string {
-  return `M${x} ${y}l-${ARROW} -${ARROW_SPREAD}v${ARROW_SPREAD * 2}z`;
+/** The way an arrow head points, as a unit step in screen axes. */
+interface Heading {
+  readonly dx: number;
+  readonly dy: number;
+}
+
+const RIGHTWARD: Heading = { dx: 1, dy: 0 };
+const UPWARD: Heading = { dx: 0, dy: -1 };
+const DOWNWARD: Heading = { dx: 0, dy: 1 };
+
+/** A head with its tip at (x, y), pointing along `heading`. */
+function arrowHead(x: number, y: number, heading: Heading = RIGHTWARD): string {
+  const backX = -heading.dx * ARROW;
+  const backY = -heading.dy * ARROW;
+  const sideX = -heading.dy * ARROW_SPREAD;
+  const sideY = heading.dx * ARROW_SPREAD;
+  return `M${x} ${y}l${backX - sideX} ${backY - sideY}l${sideX * 2} ${sideY * 2}z`;
 }
 
 /** One lane's plane: where its cards stand and how its lines run. A line only ever joins a card to its
@@ -172,14 +194,65 @@ export function layoutLane(roots: readonly TreeNode[], cardHeight: number): Tree
   };
 }
 
-/** A link between cards of different lanes, with its arrow head. */
-export function spotLine(from: PlaneRect, to: PlaneRect): { readonly path: string; readonly head: string } {
-  const span = Math.max(MIN_SPOT_SPAN, Math.abs(to.left - from.right) / 2);
+export interface SpotLine {
+  readonly path: string;
+  readonly head: string;
+}
+
+const centreOf = (rect: PlaneRect): number => (rect.left + rect.right) / 2;
+
+/** Side to side, for a target clear to the right with no row of cards between. */
+function sideLine(from: PlaneRect, to: PlaneRect): SpotLine {
+  const span = Math.max(MIN_SPOT_SPAN, (to.left - from.right) / 2);
   const end = to.left - ARROW;
   return {
     path: `M${from.right} ${from.mid}C${from.right + span} ${from.mid},${end - span} ${to.mid},${end} ${to.mid}`,
     head: arrowHead(to.left, to.mid),
   };
+}
+
+/** Bottom edge to top edge or the reverse, for a target mostly above or below. */
+function verticalLine(from: PlaneRect, to: PlaneRect): SpotLine {
+  const down = to.top >= from.bottom;
+  const sign = down ? 1 : -1;
+  const startY = down ? from.bottom : from.top;
+  const tipY = down ? to.top : to.bottom;
+  const endY = tipY - sign * ARROW;
+  const span = sign * Math.max(MIN_SPOT_SPAN, Math.abs(endY - startY) / 2);
+  const x1 = centreOf(from);
+  const x2 = centreOf(to);
+  return {
+    path: `M${x1} ${startY}C${x1} ${startY + span},${x2} ${endY - span},${x2} ${endY}`,
+    head: arrowHead(x2, tipY, down ? DOWNWARD : UPWARD),
+  };
+}
+
+/** A bow under both cards, or over them when the target is higher, so it never runs through the cards
+ *  of their row. */
+function archLine(from: PlaneRect, to: PlaneRect): SpotLine {
+  const under = to.mid >= from.mid;
+  const sign = under ? 1 : -1;
+  const startY = under ? from.bottom : from.top;
+  const tipY = under ? to.bottom : to.top;
+  const endY = tipY + sign * ARROW;
+  const x1 = centreOf(from);
+  const x2 = centreOf(to);
+  const sag = Math.min(MAX_ARCH_SAG, Math.max(MIN_SPOT_SPAN, Math.abs(x2 - x1) / ARCH_SAG_DIVISOR));
+  const bowY = under ? Math.max(startY, endY) + sag : Math.min(startY, endY) - sag;
+  return {
+    path: `M${x1} ${startY}C${x1} ${bowY},${x2} ${bowY},${x2} ${endY}`,
+    head: arrowHead(x2, tipY, under ? UPWARD : DOWNWARD),
+  };
+}
+
+/** A link between cards of different lanes, with its arrow head pointing into the target's nearest edge. */
+export function spotLine(from: PlaneRect, to: PlaneRect): SpotLine {
+  const gap = to.left - from.right;
+  const sameRow = to.top < from.bottom && to.bottom > from.top;
+  if (gap >= 0 && !(sameRow && gap > CARD_WIDTH)) return sideLine(from, to);
+  const across = Math.abs(centreOf(to) - centreOf(from));
+  const along = Math.abs(to.mid - from.mid);
+  return across >= along ? archLine(from, to) : verticalLine(from, to);
 }
 
 export const goodKey = (id: string): string => `${GOOD_KEY_PREFIX}${id}`;
@@ -244,19 +317,37 @@ function buildingParents(): ReadonlyMap<string, string> {
 
 const PARENT_OF_BUILDING = buildingParents();
 
-/** A building's card chain: the steps before it, what its discoveries wait on, and what it opens. */
-export function relateBuilding(base: KnowledgeBase, key: string): TreeRelation {
+/**
+ * A building's card chain: the steps before it, the houses that make its construction goods for `tribe`
+ * with their line's lower levels, the workplace of each discovery it waits on, and what it opens. A
+ * discovery's workplace is left out when a house of its upgrade line is already linked: that house is the
+ * level the goods ask for.
+ */
+export function relateBuilding(base: KnowledgeBase, key: string, tribe: number): TreeRelation {
   const id = key.slice(BUILDING_KEY_PREFIX.length);
+  const building = base.buildingById.get(id);
   const up = new Set<string>();
   const links: TreeLink[] = [];
   for (let at = PARENT_OF_BUILDING.get(id); at !== undefined; at = PARENT_OF_BUILDING.get(at)) {
     up.add(buildingKey(at));
   }
-  for (const job of base.buildingById.get(id)?.tech?.jobs ?? []) {
-    const place = base.buildings.find((b) => tradeOf(base, b)?.jobType === job.id);
-    if (place === undefined || place.id === id) continue;
+  const linkedLines = new Set<number>();
+  const link = (place: KnowledgeBuilding): void => {
     up.add(buildingKey(place.id));
     links.push({ from: buildingKey(place.id), to: key, kind: 'up' });
+  };
+  for (const house of building === undefined ? [] : materialBuildings(base, building, tribe)) {
+    const line = levelChain(base, house);
+    const through = line.findIndex((level) => level.typeId === house.typeId);
+    for (const level of line.slice(0, through)) up.add(buildingKey(level.id));
+    for (const level of line) linkedLines.add(level.typeId);
+    link(house);
+  }
+  for (const job of building?.tech?.jobs ?? []) {
+    const place = base.buildings.find((b) => tradeOf(base, b)?.jobType === job.id);
+    if (place === undefined || place.id === id || linkedLines.has(place.typeId)) continue;
+    for (const level of levelChain(base, place)) linkedLines.add(level.typeId);
+    link(place);
   }
   const down = new Set<string>();
   const collect = (parent: string): void => {

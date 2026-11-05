@@ -16,6 +16,7 @@ import {
   GOOD_CARD_HEIGHT,
   goodKey,
   layoutLane,
+  type PlaneRect,
   relateBuilding,
   relateGood,
   spotLine,
@@ -204,7 +205,7 @@ function shapeOf(context: KnowledgeContext, tree: KnowledgeTree): TreeShape {
       const building = base.buildingById.get(id);
       return building === undefined ? null : buildingCard(context, building);
     },
-    relate: (key) => relateBuilding(base, key),
+    relate: (key) => relateBuilding(base, key, context.tribe()),
   };
 }
 
@@ -306,12 +307,16 @@ function shownNodes(roots: readonly LaneNode[], has: (id: string) => boolean): r
 }
 
 /** Where a card sits in the tree plane, in unzoomed pixels: client rects carry the HUD scale and the zoom. */
-function planeRect(card: HTMLElement, plane: DOMRect, scale: number) {
+function planeRect(card: HTMLElement, plane: DOMRect, scale: number): PlaneRect {
   const box = card.getBoundingClientRect();
+  const top = (box.top - plane.top) / scale;
+  const bottom = (box.bottom - plane.top) / scale;
   return {
     left: (box.left - plane.left) / scale,
     right: (box.right - plane.left) / scale,
-    mid: ((box.top + box.bottom) / 2 - plane.top) / scale,
+    top,
+    bottom,
+    mid: (top + bottom) / 2,
   };
 }
 
