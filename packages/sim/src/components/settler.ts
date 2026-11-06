@@ -343,8 +343,9 @@ export const PlayerOrder = defineComponent<{
  * An adult whose drive ladder last found it nothing to do, so it re-plans only on its staggered due ticks
  * (`settlers/planner/idle-replan.ts`). Removed once anything moves it or a command addresses it.
  * `standing` is true when the ladder ended in its idle tail, false for a flag gatherer waiting by its flag.
+ * `shortBeat` keeps a machine seat's settler on the human idle period instead of its seat's longer one.
  */
-export const IdleStand = defineComponent<{ standing: boolean }>('IdleStand', 'settlers');
+export const IdleStand = defineComponent<{ standing: boolean; shortBeat?: true }>('IdleStand', 'settlers');
 
 /**
  * The march an attack-move order walks out - the original's "Attack Position" (`misclogic/48`). Unlike a

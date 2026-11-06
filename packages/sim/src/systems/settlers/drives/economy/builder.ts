@@ -31,6 +31,7 @@ import {
   startAtomic,
 } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
+import { type IdleStands, standsStillForMachine } from '../../planner/idle-replan.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { FILED_STRIDE } from '../../targets/cell-index.js';
 import {
@@ -59,7 +60,8 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
  * distance. At the site, delivered material is hammered before more is fetched, and a covered site keeps
  * a finishing crew waiting for its last loads. The last builder at a site with a task stays, unless it
  * has no step to hammer there and the site it would go to has nobody. With no task anywhere the builder
- * waits beside a site, unless only its signposts keep it from one. A road or wall run the player started
+ * waits beside a site, unless only its signposts keep it from one; a machine seat's builder waiting there
+ * re-plans on the short idle beat. A road or wall run the player started
  * ({@link BuildMode}) goes before all of that. New wall segments wait while a building site holds a task
  * the builder can do, and road sites wait while a building or a wall site holds one. Player pins and
  * unfinished workplace bindings are strict: their builders stay with that site even while another has
@@ -69,7 +71,8 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
  * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the
  * builder is already on included, where the original recruits only builders with no site, the repair
  * order gates, buildings, walls (owner ruling), new walls after buildings, then roads last (owner
- * ruling), the site ranking and the finishing crew (owner ruling), and hammering ahead of hauling.
+ * ruling), the site ranking and the finishing crew (owner ruling), hammering ahead of hauling, and the
+ * machine seat's short beat, a cost cut that takes up new work up to that idle period late.
  */
 export function planBuilder(
   plan: PlannerContext,
@@ -77,6 +80,7 @@ export function planBuilder(
   claims: ConstructionTaskClaims,
   repairs: RepairCrews,
   supply: SiteSupplyReach,
+  idle: IdleStands,
 ): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
@@ -320,6 +324,9 @@ export function planBuilder(
       stampAssignment(plan, claims, staging, false);
       if (!holdSegment(plan, claims, staging)) return false;
       waitAtSite(plan, spacing, staging);
+      // A machine seat's builder standing ready with no task waits for the short idle beat, or the
+      // cut-off check tick, which runs the gate above.
+      if (standsStillForMachine(world, e)) idle.stand(e, false, true);
       return true;
     }
   }

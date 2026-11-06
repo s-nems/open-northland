@@ -26,7 +26,11 @@ export const CUT_OFF_CHECK_TICKS = 5 * TICKS_PER_SECOND;
 
 /** Whether this tick runs the seat-reach check for every idle worker. */
 export function cutOffCheckDue(ctx: SystemContext): boolean {
-  return ctx.tick % CUT_OFF_CHECK_TICKS === 0;
+  return cutOffCheckTick(ctx.tick);
+}
+
+export function cutOffCheckTick(tick: number): boolean {
+  return tick % CUT_OFF_CHECK_TICKS === 0;
 }
 
 /** Each seat's building doors, built on the first cadence tick that asks, so a tick with no idle

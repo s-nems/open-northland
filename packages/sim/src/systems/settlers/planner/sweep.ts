@@ -18,7 +18,7 @@ import {
   IDLE_REPLAN_PERIOD_TICKS,
   idleBeatOf,
   idleBeatOfTick,
-  idleReplanPeriodOf,
+  idleStandPeriodOf,
 } from './idle-replan.js';
 import {
   type IdleRelease,
@@ -35,9 +35,9 @@ const byId = (e: Entity): number => e;
 /** The idle beats of both cadences as one index space: a human seat's beats, then a computer seat's. */
 const IDLE_SLOTS = IDLE_REPLAN_PERIOD_TICKS + COMPUTER_IDLE_REPLAN_PERIOD_TICKS;
 
-/** The slot idle `e` is filed on: its seat's period and the beat of {@link beatKeyOf} within it. */
+/** The slot idle `e` is filed on: its stand's period and the beat of {@link beatKeyOf} within it. */
 function idleSlotOf(world: World, e: Entity): number {
-  const period = idleReplanPeriodOf(world, e);
+  const period = idleStandPeriodOf(world, e);
   const beat = idleBeatOf(beatKeyOf(world, e), period);
   return period === IDLE_REPLAN_PERIOD_TICKS ? beat : IDLE_REPLAN_PERIOD_TICKS + beat;
 }

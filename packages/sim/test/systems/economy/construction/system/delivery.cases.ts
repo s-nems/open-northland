@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AiControl,
   addCurrentAtomic,
   Building,
   Carrying,
+  COMPUTER_MODULE_IDS,
   CurrentAtomic,
+  computerModuleEnables,
   Fleeing,
+  IdleStand,
   JobAssignment,
   MoveGoal,
   OrderQueue,
@@ -25,6 +29,12 @@ import { type Fixed, fx, nodeOfPosition, ONE, positionOfNode, Simulation } from 
 import { remainingConstructionSteps } from '../../../../../src/systems/economy/construction.js';
 import { plannerSystem } from '../../../../../src/systems/index.js';
 import { pickupFromStore } from '../../../../../src/systems/settlers/atomics/effects/goods/index.js';
+import { cutOffCheckTick } from '../../../../../src/systems/settlers/drives/cut-off.js';
+import {
+  COMPUTER_IDLE_REPLAN_PERIOD_TICKS,
+  IDLE_REPLAN_PERIOD_TICKS,
+  waitsIdle,
+} from '../../../../../src/systems/settlers/planner/idle-replan.js';
 import { PlannerSpacing } from '../../../../../src/systems/settlers/planner/spacing.js';
 import {
   collectSupplyTally,
@@ -511,6 +521,40 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     sim.step();
 
     expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: supplied, pinned: false });
+  });
+
+  it("a computer seat's parked builder waits for the short idle beat; a human seat's re-plans every tick", () => {
+    const parked = (computer: boolean): { readonly stand: unknown; readonly dueTicks: number } => {
+      const sim = new Simulation({ seed: 26, content: constructionContent(), map: grassMap(12, 5) });
+      if (computer) {
+        sim.world.add(sim.world.create(), AiControl, {
+          player: 0,
+          modules: computerModuleEnables(Object.fromEntries(COMPUTER_MODULE_IDS.map((id) => [id, false]))),
+          computerEnabled: true,
+          mapAiEnabled: false,
+          difficulty: 'hard',
+        });
+      }
+      const site = siteAt(sim, HOUSE, 6, 1); // no stone or wood anywhere: no task
+      sim.world.add(site, Owner, { player: 0 });
+      const builder = builderAt(sim, 3, 3);
+      sim.world.add(builder, Owner, { player: 0 });
+      for (let tick = 0; tick < 200; tick++) sim.step();
+      expect(sim.world.get(builder, SiteAssignment)).toEqual({ site, pinned: false });
+      expect(sim.world.has(builder, MoveGoal)).toBe(false);
+      const dueTicks = ticksOffCheck.filter((tick) => !waitsIdle(sim.world, tick, builder)).length;
+      return { stand: sim.world.tryGet(builder, IdleStand), dueTicks };
+    };
+    // A short-beat stand also re-plans on every cut-off check tick, so those are left out.
+    const ticksOffCheck = Array.from({ length: COMPUTER_IDLE_REPLAN_PERIOD_TICKS }, (_, t) => t).filter(
+      (tick) => !cutOffCheckTick(tick),
+    );
+    expect(parked(false)).toEqual({ stand: undefined, dueTicks: ticksOffCheck.length });
+    // The seat's other idlers wait out the computer period; this one re-plans on every short beat.
+    expect(parked(true)).toEqual({
+      stand: { standing: false, shortBeat: true },
+      dueTicks: COMPUTER_IDLE_REPLAN_PERIOD_TICKS / IDLE_REPLAN_PERIOD_TICKS,
+    });
   });
 
   it('lets the crew at the site take the last strikes while another builder is still walking in', () => {

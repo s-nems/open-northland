@@ -24,7 +24,10 @@ describe('an overrun colony', () => {
     const ctx = ctxOf(sim);
     const home = new Set(homeSettlers(sim.world, ctx, SEAT));
     const settlers = everySettlerOf(sim.world, SEAT).filter((e) => !home.has(e) && e !== trader);
-    for (const e of [...colonyBuildingsOf(sim)]) sim.world.destroy(e);
+    const razeColony = (): void => {
+      for (const e of [...colonyBuildingsOf(sim)]) sim.world.destroy(e);
+    };
+    razeColony();
     const enemies = (count: number): void => {
       for (let i = 0; i < count; i++)
         sim.enqueueSetup({
@@ -38,6 +41,7 @@ describe('an overrun colony', () => {
     };
     enemies(1);
     expect(stepUntil(sim, HELD_TICKS, () => colonyState(sim)?.phase === 'abandoned')).toBe(false);
+    razeColony(); // the store its builders raised again meanwhile, so the band finds none standing
     enemies(settlers.length);
     expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.phase === 'abandoned')).toBe(true);
     expect(colonyState(sim)?.people).toEqual([]);

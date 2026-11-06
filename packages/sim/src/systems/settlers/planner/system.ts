@@ -40,7 +40,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // fetch the same tick; arming first, so a recruit's weapon outranks its pair of boots.
   dispatchRecruitArming(pass);
   dispatchAssistantGrants(pass);
-  // Off its beat an idler's visit only runs the standing cut-off check, so that tick visits every idler.
+  // The cut-off check tick visits every idler: a standing one off its beat runs only that check, a
+  // short-beat stand its whole ladder.
   const sweep = sweepOrder(world, ctx.content, pass.shelters, cutOffCheckDue(ctx) ? undefined : ctx.tick);
   for (let e = sweep.next(); e !== undefined; e = sweep.next()) {
     const idleWait = waitsIdle(world, ctx.tick, e);

@@ -1,6 +1,12 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { JobAssignment, Rider, Settler, UnderConstruction } from '../../../../../src/components/index.js';
+import {
+  JobAssignment,
+  Marriage,
+  Rider,
+  Settler,
+  UnderConstruction,
+} from '../../../../../src/components/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
 import {
   colonySeats,
@@ -124,11 +130,18 @@ describe("a colony's men past work", () => {
   it('are its unwed builders first, past the crew it keeps, so a wed man stays', () => {
     const { sim } = routedWorld();
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    const { idle, husband } = idleBuilders(sim);
+    const { husband } = idleBuilders(sim);
+    const wife = sim.world.get(husband, Marriage).spouse;
+    sim.world.remove(husband, Marriage); // unwed, then wed the man who goes first
     const colony = editColony(sim);
+    const unwed = menPastWork(looseColonyEnv(sim, colony), colony);
+    const first = unwed[0];
+    if (first === undefined) throw new Error('setup: no man past work');
+    sim.world.add(first, Marriage, { spouse: wife, child: null });
+    sim.world.add(wife, Marriage, { spouse: first, child: null });
     const past = menPastWork(looseColonyEnv(sim, colony), colony);
-    expect(past.some((e) => idle.includes(e) && e !== husband)).toBe(true);
-    expect(past).not.toContain(husband);
+    expect(past).not.toContain(first);
+    expect(past).toHaveLength(unwed.length);
   });
 });
 

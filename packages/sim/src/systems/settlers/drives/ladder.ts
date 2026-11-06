@@ -466,7 +466,7 @@ function planTrade(plan: PlannerContext, pass: PlannerPass, hx: number, hy: numb
     return true;
   }
 
-  if (planBuilder(plan, pass.spacing, pass.constructionClaims, pass.repairCrews, pass.siteSupply))
+  if (planBuilder(plan, pass.spacing, pass.constructionClaims, pass.repairCrews, pass.siteSupply, pass.idle))
     return true;
 
   if (planSiteStaff(plan, pass.spacing, hx, hy)) return true;

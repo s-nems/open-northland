@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AiControl,
   Carrying,
+  COMPUTER_MODULE_IDS,
+  computerModuleEnables,
+  IdleStand,
   LostWay,
   Owner,
   PickupClaim,
+  SiteAssignment,
   Stockpile,
   SupplyRun,
 } from '../../../src/components/index.js';
@@ -228,5 +233,42 @@ describe('a builder whose signposts reach its work', () => {
     expect(notes).toBe(0);
     expect(fetched).toBe(true);
     expect(sim.world.has(builder, LostWay)).toBe(false);
+  });
+});
+
+describe("a machine seat's builder standing ready at a site in reach that nothing supplies", () => {
+  it('drops that site and stands lost at the cut-off check when its only work lies beyond its signposts', () => {
+    const sim = new Simulation({ seed: 3, content: constructionContent(), map: grassCellMap(128, 8) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    sim.step();
+    sim.world.add(builtBuildingAt(sim, HEADQUARTERS, STORE_X, ROW, []), Owner, { player: P0 });
+    const builder = builderAt(sim, STORE_X + 2, ROW);
+    sim.world.add(builder, Owner, { player: P0 });
+    const waiting = placeSite(sim, STORE_X + 8);
+    // Hammering is the only task, and only at the supplied site past the walk range.
+    const supplied = placeSite(sim, FAR_SITE_X);
+    sim.world.mut(supplied, Stockpile).amounts.set(STONE, 2).set(WOOD, 1);
+    sim.world.add(sim.world.create(), AiControl, {
+      player: P0,
+      modules: computerModuleEnables(Object.fromEntries(COMPUTER_MODULE_IDS.map((id) => [id, false]))),
+      computerEnabled: true,
+      mapAiEnabled: false,
+      difficulty: 'hard',
+    });
+    // Its short beat never lands on a check tick, so only the check tick can find the work beyond.
+    const beatMeetsCheck = Array.from(
+      { length: CUT_OFF_CHECK_TICKS * IDLE_REPLAN_PERIOD_TICKS },
+      (_, t) => t,
+    ).some((t) => t % CUT_OFF_CHECK_TICKS === 0 && idleReplanDue(t, builder, IDLE_REPLAN_PERIOD_TICKS));
+    expect(beatMeetsCheck).toBe(false);
+    const standingReady = (): boolean =>
+      sim.world.tryGet(builder, IdleStand)?.shortBeat === true &&
+      sim.world.tryGet(builder, SiteAssignment)?.site === waiting;
+    for (let t = 0; t < WALK_THERE_TICKS && !standingReady(); t++) sim.step();
+    expect(standingReady()).toBe(true);
+    for (let t = 0; t < CUT_OFF_CHECK_TICKS && !cutOff(sim, builder); t++) sim.step();
+    expect(cutOff(sim, builder)).toBe(true);
+    expect(sim.world.has(builder, SiteAssignment)).toBe(false);
   });
 });

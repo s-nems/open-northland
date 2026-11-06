@@ -13,6 +13,7 @@ import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { ECONOMY_HOLD_MARKERS } from '../action-owner.js';
+import { cutOffCheckTick } from '../drives/cut-off.js';
 
 /**
  * How often an idle adult, or one waiting inside a building, re-runs its drive ladder, staggered by the id
@@ -34,6 +35,14 @@ export function idleReplanPeriodOf(world: World, e: Entity): number {
   return owner !== undefined && computerControllerRuns(world, owner)
     ? COMPUTER_IDLE_REPLAN_PERIOD_TICKS
     : IDLE_REPLAN_PERIOD_TICKS;
+}
+
+/** The period idle `e` re-plans on: its seat's, unless its {@link IdleStand} asked for the short beat.
+ *  Reads only IdleStand, re-added whenever its fields change, and AiControl, both watched by the sweep. */
+export function idleStandPeriodOf(world: World, e: Entity): number {
+  return world.tryGet(e, IdleStand)?.shortBeat === true
+    ? IDLE_REPLAN_PERIOD_TICKS
+    : idleReplanPeriodOf(world, e);
 }
 
 /** Whether `e`, held off the economy, waits its hold out on its idle beat instead of re-planning every
@@ -90,9 +99,14 @@ export function idleBeatOfTick(tick: number, period: number): number {
 }
 
 /** Whether idle `e` skips its full ladder on `tick`. An alarm does not shorten the wait: between beats
- *  the sweep still visits an idler its owner's shelters may draw, for the shelter rung. */
+ *  the sweep still visits an idler its owner's shelters may draw, for the shelter rung. A short-beat stand
+ *  also re-plans on each cut-off check tick, when the sweep visits every idler, so its work beyond its
+ *  signposts is found on that cadence. */
 export function waitsIdle(world: World, tick: number, e: Entity): boolean {
-  return world.has(e, IdleStand) && !idleReplanDue(tick, beatKeyOf(world, e), idleReplanPeriodOf(world, e));
+  const stand = world.tryGet(e, IdleStand);
+  if (stand === undefined) return false;
+  if (stand.shortBeat === true && cutOffCheckTick(tick)) return false;
+  return !idleReplanDue(tick, beatKeyOf(world, e), idleStandPeriodOf(world, e));
 }
 
 /** End `e`'s idle wait, so it re-plans on the next pass: something moved it, or an order or errand
@@ -120,11 +134,14 @@ export function wakeCrewInside(world: World, workplace: Entity): void {
 export class IdleStands {
   private entity: Entity | undefined;
   private standing = false;
+  private shortBeat = false;
 
-  /** Record that `e`'s ladder left it idle; `standing` says it reached the idle tail. */
-  stand(e: Entity, standing: boolean): void {
+  /** Record that `e`'s ladder left it idle; `standing` says it reached the idle tail, `shortBeat` that it
+   *  waits on {@link IDLE_REPLAN_PERIOD_TICKS} whatever its seat's period. */
+  stand(e: Entity, standing: boolean, shortBeat = false): void {
     this.entity = e;
     this.standing = standing;
+    this.shortBeat = shortBeat;
   }
 
   /** Mark `e` idle after its ladder ran, or wake it when the ladder found it something. */
@@ -134,7 +151,11 @@ export class IdleStands {
       return;
     }
     this.entity = undefined;
-    const standing = this.standing;
-    if (world.tryGet(e, IdleStand)?.standing !== standing) world.add(e, IdleStand, { standing });
+    const { standing, shortBeat } = this;
+    const prior = world.tryGet(e, IdleStand);
+    // A re-add, unlike an in-place write, reaches the sweep's feed, which files the idler by its period.
+    if (prior?.standing !== standing || (prior.shortBeat === true) !== shortBeat) {
+      world.add(e, IdleStand, shortBeat ? { standing, shortBeat } : { standing });
+    }
   }
 }
