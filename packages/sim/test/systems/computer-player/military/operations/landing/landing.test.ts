@@ -740,7 +740,7 @@ describe('landing operations', () => {
         // Hulls of the seat's own on every water node the ship could moor from at its shore, and along
         // the whole coast of the colony island, so every other berth is taken.
         const terrain = terrainOf(sim);
-        const ring = hexagonRing(ship.shore, SHIP_DOOR_DISTANCE)
+        const ring = [...hexagonRing(ship.shore, SHIP_DOOR_DISTANCE)]
           .map(({ point }) => ({ x: point.hx, y: point.hy }))
           .filter(({ x, y }) => terrain.inBounds(x, y) && terrain.isWater(terrain.nodeAt(x, y)));
         for (const at of [...ring, ...COLONY_COAST_WATER])
