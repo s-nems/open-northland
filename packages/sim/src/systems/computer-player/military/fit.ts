@@ -28,8 +28,12 @@ export const NO_ARMOUR_WAIT: ReadonlySet<Entity> = new Set();
  * the seat's fighters at home outside every operation ({@link homeFighters}), the men a dressing errand may
  * send, as there are pieces of armour in the stock those errands can fetch ({@link seatArmsStock}) wait,
  * the lowest ids first; the rest fight as they are, no piece being there for them. A man holding a tower
- * post and one whose trade wears no armour never wait, since no errand dresses either. Costs the men while
- * the seat has armour to give.
+ * post and one whose trade wears no armour never wait, since no errand dresses either. Approximation: the
+ * errands draw only on the men the settlement's defence leaves free this decision, while the strategy and
+ * the garrison read the waiters without that plan, so a siege crew, a man answering an intruder or claimed
+ * by a map task, or any man at home while it is raided may hold a piece's place: he counts out of the army
+ * undressed, and a man the errands could dress goes as he is. Costs the men while the seat has armour to
+ * give.
  */
 export function armourWaiters(world: World, ctx: SystemContext, player: number): ReadonlySet<Entity> {
   if (!seatDressesArmy(world, ctx, player)) return NO_ARMOUR_WAIT;
