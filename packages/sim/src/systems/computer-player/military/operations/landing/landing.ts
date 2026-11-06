@@ -513,24 +513,26 @@ function sailWaitingHome(env: OperationEnv, op: SeaLanding, all: boolean): Playe
  * fighter in sight), they board the waiting ships ({@link reembark}). Past {@link LANDING_SHORE_STAY_TICKS}
  * a rescue's men board them too, on their own colony, where no ship comes back for them; a landing's ships
  * sail home and its men fight on alone, let go where they stand once nothing is left to strike or past
- * {@link LANDING_ASHORE_ALONE_TICKS} more. A man still aboard a waiting ship is set ashore again
- * ({@link stillAboard}). Ends once no landed man is left and every ship is home or lost: `wiped` when the
- * landed men fell, `arrivedHome` when they came home aboard ({@link endedAshore}), `nothingToStrike` when
- * the land holds nothing more, `timedOut` when its time ran out.
+ * {@link LANDING_ASHORE_ALONE_TICKS} more. A man still aboard a waiting ship is set ashore again while the
+ * landed men fight on ({@link stillAboard}). Ends once no landed man is left and every ship is home or
+ * lost: `wiped` when the landed men fell, `arrivedHome` when they came home aboard ({@link endedAshore}),
+ * `nothingToStrike` when the land holds nothing more, `timedOut` when its time ran out.
  */
 function acting(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const { tick } = env.ctx;
   const stayEnd = op.since + LANDING_SHORE_STAY_TICKS;
   const late = tick >= stayEnd;
-  // A man the door did not let off is sent ashore again beside the orders of the men already there.
-  const left = late ? [] : stillAboard(env, op);
-  const homeward = [...left, ...homecoming(env, op), ...releaseStranded(env, op, stayEnd)];
+  const returning = [...homecoming(env, op), ...releaseStranded(env, op, stayEnd)];
   const { landed, striking, fire, commands } = landedOrders(env, op);
   const waiting = op.ships.some((ship) => ship.leg === 'waiting');
   if (waiting && landed.length > 0) {
     const reason = boardingReason(env, op, { landed, striking, fire }, late);
-    if (reason !== null) return [...homeward, ...reembark(env, op, landed, reason)];
+    // A man still aboard stays aboard as the landed men are called back.
+    if (reason !== null) return [...returning, ...reembark(env, op, landed, reason)];
   }
+  // A man the door did not let off is sent ashore again beside the orders of the men already there.
+  const left = late ? [] : stillAboard(env, op);
+  const homeward = [...left, ...returning];
   if (late) homeward.push(...sailWaitingHome(env, op, true));
   const alone = tick >= stayEnd + LANDING_ASHORE_ALONE_TICKS;
   if (landed.length > 0 && striking && !alone) return [...homeward, ...commands];

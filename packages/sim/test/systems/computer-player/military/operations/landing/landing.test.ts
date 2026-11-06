@@ -640,6 +640,33 @@ describe('landing operations', () => {
     expect(sim.world.has(boarder, Rider)).toBe(false);
   });
 
+  it('keeps a man still aboard a waiting ship aboard once the landed men are called back', () => {
+    const { sim } = landingWorld();
+    let seen: OperationView | undefined;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return seen?.state === 'acting' && menAcross(sim).length > 0;
+    });
+    const [boarder] = menAcross(sim);
+    const ship = seen?.landing?.ships.find((s) => s.leg === 'waiting');
+    if (boarder === undefined || ship === undefined)
+      throw new Error('setup: no man ashore or no waiting ship');
+    sim.enqueueSetup({ kind: 'attachToVehicle', entity: boarder, vehicle: ship.vehicle });
+    const inside = (): boolean =>
+      vehiclePassengers(sim.world.get(ship.vehicle, Vehicle)).some((p) => p.entity === boarder && p.inside);
+    runUntil(sim, COMPUTER_DECISION_INTERVAL_TICKS, inside);
+    expect(inside()).toBe(true);
+    // Nothing is left to strike: the next decision calls the landed men back.
+    const hq = foeHeadquarters(sim);
+    if (hq !== null) sim.world.destroy(hq);
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return seen?.state === 'done' && shipsHomeEmpty(sim);
+    });
+    expect(seen?.reason).toBe('nothingToStrike');
+    expect(menAcross(sim)).toEqual([]);
+  });
+
   it('takes the survivors home once half the men set ashore fell', () => {
     const { sim, fleet } = landingWorld();
     let seen: OperationView | undefined;
