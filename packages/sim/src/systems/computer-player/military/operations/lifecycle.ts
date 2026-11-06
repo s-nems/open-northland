@@ -26,8 +26,11 @@ export interface OperationEnv {
  */
 export interface OperationHandler<O extends Operation = Operation> {
   readonly phase: 'beforeCampaign' | 'afterCampaign';
-  /** Ticks after one ends, on the decision it ends, before the kind may open again. */
-  readonly cooldownTicks: (env: OperationEnv) => number;
+  /** Ticks after one ends, on the decision it ends, before the kind may open again, given why it ended. */
+  readonly cooldownTicks: (
+    env: OperationEnv,
+    ended: { readonly reason: OperationEndReason | null },
+  ) => number;
   /** For a kind whose first opening is drawn: on each decision while none is drawn, the first tick it may
    *  open, {@link NEVER_READY} when the seat never opens one, or null while the draw is not yet due. */
   readonly firstReadyAt?: (env: OperationEnv) => number | null;

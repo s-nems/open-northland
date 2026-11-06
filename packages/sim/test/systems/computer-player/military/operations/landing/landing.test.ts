@@ -151,6 +151,12 @@ const BOTH_OPEN_AT = 200;
 const TOWER_INLAND = 8;
 /** A spot on the colony island past the watch of its building ({@link COLONY_STORE}), by the channel. */
 const BEYOND_WATCH = { x: 96, y: 78 };
+/** The colony island's channel shore west of {@link BEYOND_WATCH}, and how many men abreast stand on the
+ *  strip of it beyond the watch. */
+const CHANNEL_SHORE = { x: 88, y: 76 };
+const BEYOND_WATCH_RANK = 24;
+/** A spot just inside the watch of the colony's building, nearer the channel shore than the strait one. */
+const WATCH_EDGE_BAND = { x: 100, y: 84 };
 /** The ships beyond the landing fleet a rescue may sail in. */
 const RESCUE_SHIPS = 3;
 /** The seat's own men standing on the colony a rescue sails for, at a post out of the band's reach. */
@@ -1110,7 +1116,9 @@ describe('landing operations', () => {
       home: terrain.nodeAtClamped(BARRACKS.x, BARRACKS.y),
       orders: militaryOrdersOf(sim.world, SEAT),
     };
-    expect(landingHandler.cooldownTicks(env)).toBe(LANDING_COOLDOWN_TICKS / OUTGROWN);
+    expect(landingHandler.cooldownTicks(env, { reason: 'nothingToStrike' })).toBe(
+      LANDING_COOLDOWN_TICKS / OUTGROWN,
+    );
   });
 
   it.each([
@@ -1474,6 +1482,28 @@ describe('landing operations', () => {
       return seen !== undefined;
     });
     expect(seen).toBeDefined();
+  });
+
+  it("waits before it sends again a rescue that turned back from a rival's men at its shore", () => {
+    const { sim } = landingWorld({ colony: true, armed: true });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(COLONY_STORE.x, COLONY_STORE.y));
+    // The band stands inside the watch by the channel; more of the rival's men, outweighing the rescue, stand
+    // on the shore just beyond it, where its sizing does not look.
+    const threat = { men: RAIDERS, at: { hx: WATCH_EDGE_BAND.x, hy: WATCH_EDGE_BAND.y }, since: sim.tick };
+    settleColony(sim, colonyLand, threat);
+    spawnBand(sim, RAIDERS, WATCH_EDGE_BAND, GUARD_RANK, FOE);
+    spawnBand(sim, 2 * BEYOND_WATCH_RANK, CHANNEL_SHORE, BEYOND_WATCH_RANK, FOE);
+    let first: OperationView | undefined;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      first = rescues(sim)[0] ?? first;
+      return first?.state === 'done';
+    });
+    expect(first?.reason).toBe('outmatched');
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      expect(rescues(sim).filter((op) => op.id !== first?.id)).toEqual([]);
+      return false;
+    });
   });
 
   it("sends no rescue at a rival's men on the colony's island beyond its watch", () => {

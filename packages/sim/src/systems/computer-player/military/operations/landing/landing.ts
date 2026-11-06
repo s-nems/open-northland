@@ -850,10 +850,16 @@ export const landingHandler: OperationHandler<LandingOperation> = {
   open: openLanding,
 };
 
-/** A rescue opens again on the decision after one ends: each is sized afresh on what the seat sees. */
+/** How long after a rescue turned back from the enemy at its shore before the next one forms (authored):
+ *  its sizing weighs the band inside the colony's watch, not the rival's men by the shore beyond it, so a
+ *  rescue sent again at once would sail into the same men and turn back again. */
+export const RESCUE_OUTMATCHED_COOLDOWN_TICKS = minutesToTicks(5);
+
+/** A rescue opens again on the decision after one ends, sized afresh on what the seat sees, unless it
+ *  turned back outmatched ({@link RESCUE_OUTMATCHED_COOLDOWN_TICKS}). */
 export const rescueHandler: OperationHandler<RescueOperation> = {
   phase: 'beforeCampaign',
-  cooldownTicks: () => 0,
+  cooldownTicks: (_, ended) => (ended.reason === 'outmatched' ? RESCUE_OUTMATCHED_COOLDOWN_TICKS : 0),
   step,
   open: openRescue,
 };

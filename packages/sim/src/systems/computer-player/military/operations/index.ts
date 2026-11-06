@@ -96,7 +96,7 @@ export function runOperations(
       if (released.length > 0) commands.push(...(HANDLERS[op.kind].release?.(world, released) ?? []));
       op.members = op.members.filter((e) => !claimed.has(e) && ownLive(world, seat, e));
       commands.push(...stepOf(env, op, pool));
-      if (!isOperationOpen(op)) state.readyAt[op.kind] = ctx.tick + HANDLERS[op.kind].cooldownTicks(env);
+      if (!isOperationOpen(op)) state.readyAt[op.kind] = ctx.tick + HANDLERS[op.kind].cooldownTicks(env, op);
     }
   }
   const members = operationMembersOf(world, seat);
