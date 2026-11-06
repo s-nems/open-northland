@@ -783,9 +783,11 @@ describe('workforce - the top-tier joineries’ roles', () => {
   it('sizes the landing fleet to the planned army in ship loads, within the fleet band', () => {
     const sim = world(seaMap());
     const withArmy = (cap: number) => ({ ...AI_PROFILES.hard, army: { ...AI_PROFILES.hard.army, cap } });
-    expect(landingFleetShips(sim.world, SEAT, withArmy(4 * SOLDIERS_PER_SHIP + 1))).toBe(5);
-    expect(landingFleetShips(sim.world, SEAT, withArmy(SOLDIERS_PER_SHIP))).toBe(LANDING_FLEET_MIN_SHIPS);
-    expect(landingFleetShips(sim.world, SEAT, withArmy(100 * SOLDIERS_PER_SHIP))).toBe(
+    expect(landingFleetShips(sim.world, fleetCtx(sim), SEAT, withArmy(4 * SOLDIERS_PER_SHIP + 1))).toBe(5);
+    expect(landingFleetShips(sim.world, fleetCtx(sim), SEAT, withArmy(SOLDIERS_PER_SHIP))).toBe(
+      LANDING_FLEET_MIN_SHIPS,
+    );
+    expect(landingFleetShips(sim.world, fleetCtx(sim), SEAT, withArmy(100 * SOLDIERS_PER_SHIP))).toBe(
       LANDING_FLEET_MAX_SHIPS,
     );
   });
@@ -801,7 +803,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
         (e) => sim.world.get(e, Building).buildingType === SHIP_HOUSE_TYPE,
       ),
     ).toBe(true);
-    const target = landingFleetShips(sim.world, SEAT, AI_PROFILES.hard);
+    const target = landingFleetShips(sim.world, fleetCtx(sim), SEAT, AI_PROFILES.hard);
     const fleet = Array.from({ length: target - 1 }, (_, i) => fleetShip(sim, i));
     expect(tuned(sim)).toEqual(new Map());
     fleet.push(fleetShip(sim, fleet.length));
@@ -910,7 +912,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
     };
     // No ship stands yet: the whole landing fleet's hides are held back, so the catapult crew past its
     // cap rests instead of making iron tools out of them, and takes them up once a hide is spare.
-    const missing = landingFleetShips(sim.world, SEAT, AI_PROFILES.hard);
+    const missing = landingFleetShips(sim.world, fleetCtx(sim), SEAT, AI_PROFILES.hard);
     expect(catapultCrewOn(missing)).toEqual(['rest', 'rest', 'rest']);
     expect(catapultCrewOn(missing + 1)).toEqual(all(TOOL_IRON));
   });

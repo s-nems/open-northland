@@ -200,7 +200,9 @@ describe('sea scouting', () => {
 
   it('keeps home the ship that completes the landing fleet, and sails once one more lies free', () => {
     const { sim } = scoutWorld();
-    const fewest = landingFewestShips(landingFleetShips(sim.world, SEAT, computerProfileOf(sim.world, SEAT)));
+    const fewest = landingFewestShips(
+      landingFleetShips(sim.world, ctxOf(sim), SEAT, computerProfileOf(sim.world, SEAT)),
+    );
     const moor = (i: number) =>
       createVehicle(sim.world, ctxOf(sim), {
         vehicleType: SHIP,

@@ -854,7 +854,7 @@ function musterOf(env: OperationEnv, free: readonly Entity[]): Muster | null {
   const { world, ctx, terrain, seat } = env;
   const home = terrain.componentOf(env.home);
   if (home === NO_COMPONENT) return null;
-  const fleet = landingFleetShips(world, seat, computerProfileOf(world, seat));
+  const fleet = landingFleetShips(world, ctx, seat, computerProfileOf(world, seat));
   const held = heldShips(world, seat);
   const moored = freeShips(env, home)
     .filter((ship) => !held.has(ship))
@@ -1005,7 +1005,7 @@ function openRescue(env: OperationEnv, free: readonly Entity[], id: number): Ope
  */
 function cooldownTicks(env: OperationEnv): number {
   const { world, ctx, seat } = env;
-  const fleetSeats = landingFleetShips(world, seat, computerProfileOf(world, seat)) * SOLDIERS_PER_SHIP;
+  const fleetSeats = landingFleetShips(world, ctx, seat, computerProfileOf(world, seat)) * SOLDIERS_PER_SHIP;
   const men = ownArmyPoints(world, ctx, seat).men;
   if (men <= fleetSeats) return LANDING_COOLDOWN_TICKS;
   return Math.max(LANDING_QUICK_COOLDOWN_TICKS, Math.floor((LANDING_COOLDOWN_TICKS * fleetSeats) / men));

@@ -318,7 +318,9 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<Se
   if (diplomacyStance(world, seat, owner) !== 'enemy') return null;
   const ships = freeShips(env, route.home);
   // The ship that completes the landing's fewest stays home for it.
-  if (ships.length === landingFewestShips(landingFleetShips(world, seat, computerProfileOf(world, seat))))
+  if (
+    ships.length === landingFewestShips(landingFleetShips(world, ctx, seat, computerProfileOf(world, seat)))
+  )
     return null;
   const ship = ships.at(-1);
   const mooring = ship === undefined ? null : world.get(ship, Vehicle).mooring;

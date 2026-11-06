@@ -62,6 +62,7 @@ import { SHIP_SAIL_TIMEOUT_TICKS } from '../../../../../../src/systems/computer-
 import { militaryOrdersOf } from '../../../../../../src/systems/computer-player/strategy/military.js';
 import {
   LANDING_BIG_SHIPS,
+  LANDING_FLEET_MAX_SHIPS,
   LANDING_FLEET_MIN_SHIPS,
   landingFleetShips,
   SOLDIERS_PER_SHIP,
@@ -292,7 +293,7 @@ function landingWorld({
   place(HQ_TYPE, FOE_HQ, FOE);
   for (const b of foe) place(b.buildingType, b.at, b.owner ?? FOE);
   sim.step();
-  const fleet = landingFleetShips(sim.world, SEAT, computerProfileOf(sim.world, SEAT));
+  const fleet = landingFleetShips(sim.world, ctxOf(sim), SEAT, computerProfileOf(sim.world, SEAT));
   launchShips(sim, ships ?? fleet);
   spawnBand(sim, men ?? fleet * (seats + 1), { x: BARRACKS.x - 6, y: BARRACKS.y + 8 }, ARMY_RANK, SEAT);
   return { sim, fleet };
@@ -912,9 +913,21 @@ describe('landing operations', () => {
     expect(seen?.landing?.landed).toBeGreaterThan(0);
   });
 
-  it('waits less between landings the more its army outgrows the seats of its landing fleet', () => {
+  it('grows its landing fleet with an army past its plan, up to the most ships', () => {
     const { sim, fleet } = landingWorld({ ships: 0, men: 0 });
-    const fleetSeats = fleet * SOLDIERS_PER_SHIP;
+    const ctx = ctxOf(sim);
+    const profile = computerProfileOf(sim.world, SEAT);
+    expect(landingFleetShips(sim.world, ctx, SEAT, profile)).toBe(fleet);
+    spawnBand(sim, (fleet + 1) * SOLDIERS_PER_SHIP, { x: 4, y: 60 }, WIDE_RANK, SEAT);
+    expect(landingFleetShips(sim.world, ctx, SEAT, profile)).toBe(
+      Math.min(LANDING_FLEET_MAX_SHIPS, fleet + 1),
+    );
+  });
+
+  it('waits less between landings the more its army outgrows the seats of its landing fleet', () => {
+    const { sim } = landingWorld({ ships: 0, men: 0 });
+    // The fleet grows with the army up to its most ships; an army twice those seats outgrows it.
+    const fleetSeats = LANDING_FLEET_MAX_SHIPS * SOLDIERS_PER_SHIP;
     spawnBand(sim, OUTGROWN * fleetSeats, { x: 4, y: 60 }, WIDE_RANK, SEAT);
     const terrain = terrainOf(sim);
     const env = {

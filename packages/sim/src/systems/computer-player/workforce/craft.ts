@@ -6,6 +6,7 @@ import {
   Building,
   CompletedCycles,
   type EconomicSide,
+  Health,
   JobAssignment,
   PRODUCTION_UNLIMITED,
   ProductionCounters,
@@ -23,9 +24,10 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { everySettlerOf, homeBuildings } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
-import type { SystemContext } from '../../context.js';
+import type { ContentContext, SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
+import { ownedFightersOf } from '../../movement/collision/owned-fighters.js';
 import { goodEnabled } from '../../progression/index.js';
 import { vehicleHouseOfGood } from '../../readviews/index.js';
 import { isCarrierJob } from '../../stores/index.js';
@@ -145,15 +147,33 @@ export function landingFewestShips(fleet: number): number {
  *  can scout while the landing's fewest ({@link landingFewestShips}) lie free. */
 export const SEA_SCOUT_SHIPS = 1;
 
-/** The ships a seat's landing takes: its planned army, the army at which its barracks sends the whole band
- *  scaled by its plan's draft share (`strategy/military.ts`), in {@link SOLDIERS_PER_SHIP}, within the
- *  owner's fleet band. */
-export function landingFleetShips(world: World, player: number, profile: ComputerProfile): number {
+/**
+ * The ships a seat's landing takes, and its joinery builds toward: the larger of its planned army, the army
+ * at which its barracks sends the whole band scaled by its plan's draft share (`strategy/military.ts`), and
+ * the fighters it holds now, in {@link SOLDIERS_PER_SHIP}, within the owner's fleet band. So an army grown
+ * past its plan gets the ships to land as a whole, at most {@link LANDING_FLEET_MAX_SHIPS}. Costs the seat's
+ * fighters.
+ */
+export function landingFleetShips(
+  world: World,
+  ctx: ContentContext,
+  player: number,
+  profile: ComputerProfile,
+): number {
   // The share by hand: the difficulty table imports this module's plans.
   const { num, den } = militaryOrdersOf(world, player).draftCapShare;
-  const army = Math.floor((profile.army.cap * num) / den);
+  const planned = Math.floor((profile.army.cap * num) / den);
+  const army = Math.max(planned, liveFighters(world, ctx, player));
   const ships = Math.ceil(army / SOLDIERS_PER_SHIP);
   return Math.min(LANDING_FLEET_MAX_SHIPS, Math.max(LANDING_FLEET_MIN_SHIPS, ships));
+}
+
+/** The live fighters of `player`'s, a colony's and an operation's included. */
+function liveFighters(world: World, ctx: ContentContext, player: number): number {
+  let men = 0;
+  for (const e of ownedFightersOf(world, ctx.content, player))
+    if ((world.tryGet(e, Health)?.hitpoints ?? 0) > 0) men++;
+  return men;
 }
 
 /** A workplace type's product plan by fixed operator seats, by stable content ids (authored). */
@@ -776,7 +796,7 @@ export function tuneCraftCounters(
   let landing: number | undefined;
   const landingShips = (): number => {
     if (landing === undefined) {
-      const fleet = landingFleetShips(world, player, profile);
+      const fleet = landingFleetShips(world, ctx, player, profile);
       const sails = seatNeedsShips(world, ctx, player);
       landing =
         (sails ? Math.max(fleet, landingFewestShips(fleet) + SEA_SCOUT_SHIPS) : fleet) +
