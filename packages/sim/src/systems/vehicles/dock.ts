@@ -95,7 +95,7 @@ function firstDockNode(
 
 /**
  * The nodes the dock order for `point` would sail `vehicle` through, the first next, judged now as
- * {@link startDock} judges it, or null when it finds no dock node it can reach: for a planner weighing a
+ * {@link startDock} judges it, or null when it finds no dock node it can reach: for a planner checking a
  * course before it gives the order. Empty for a ship already lying on a dock node. Costs a route search per
  * dock node tried.
  */
@@ -114,6 +114,38 @@ export function dockRoute(
     return route !== null;
   });
   return node === null ? null : (route ?? []);
+}
+
+/**
+ * Which of `points` `vehicle` can dock at through water `closed` never refuses: one flood from the ship over
+ * the nodes it may sail, `closed` ones left out (the ship's own node counts), then for each point whether
+ * one of its dock nodes ({@link dockCandidates}) was reached. For a planner weighing courses before it
+ * orders one. Costs the flood of the water the ship reaches.
+ */
+export function docksReachedThrough(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  points: readonly HalfCellNode[],
+  closed: (node: NodeId) => boolean,
+): boolean[] {
+  const anchor = vehicleAnchor(world, vehicle);
+  const type = contentIndex(ctx.content).vehicles.get(world.get(vehicle, Vehicle).vehicleType);
+  if (anchor === null || type === undefined || !terrain.inBounds(anchor.hx, anchor.hy))
+    return points.map(() => false);
+  const here = terrain.nodeAt(anchor.hx, anchor.hy);
+  const reached = reachableWater(
+    terrain,
+    vehicleGroundBlocks(world, ctx, terrain, vehicle, type),
+    here,
+    closed,
+  );
+  return points.map((point) =>
+    dockCandidates(world, ctx, terrain, vehicle, type, anchor, point).some(
+      (node) => reached[node] === REACHED,
+    ),
+  );
 }
 
 /**
@@ -153,10 +185,16 @@ export function startDock(
 }
 
 const REACHED = 1;
+const NONE_CLOSED = (): boolean => false;
 
 /** The nodes a ship on `start` can sail to under `blocked`, marked {@link REACHED}; the start counts,
  *  as the pathfinder lets a vehicle leave a node that closed under it. */
-function reachableWater(terrain: TerrainGraph, blocked: BlockOverlay, start: NodeId): Uint8Array {
+function reachableWater(
+  terrain: TerrainGraph,
+  blocked: BlockOverlay,
+  start: NodeId,
+  closed: (node: NodeId) => boolean = NONE_CLOSED,
+): Uint8Array {
   const reached = new Uint8Array(terrain.nodeCount);
   reached[start] = REACHED;
   const queue: NodeId[] = [start];
@@ -166,7 +204,7 @@ function reachableWater(terrain: TerrainGraph, blocked: BlockOverlay, start: Nod
     terrain.stepsInto(current, blocked, edges, 'water');
     for (let i = 0; i < edges.length; i++) {
       const { node } = edges.at(i);
-      if (reached[node] === REACHED) continue;
+      if (reached[node] === REACHED || closed(node)) continue;
       reached[node] = REACHED;
       queue.push(node);
     }

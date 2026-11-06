@@ -23,7 +23,12 @@ import type { DeepReadonly, Entity, World } from '../../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../../../nav/terrain/index.js';
 import { onErrand, spokenFor } from '../../../../ai-shared/military/errand.js';
-import { dockRoute, type MooringSpots, mooringSpotsOf } from '../../../../vehicles/dock.js';
+import {
+  dockRoute,
+  docksReachedThrough,
+  type MooringSpots,
+  mooringSpotsOf,
+} from '../../../../vehicles/dock.js';
 import { crewInside } from '../../../../vehicles/movement.js';
 import { computerProfileOf } from '../../../difficulty.js';
 import { landOfPoint, shorePoints } from '../../../sea-route.js';
@@ -41,7 +46,6 @@ import { unitPoints } from '../../points.js';
 import { homeOf } from '../band.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from '../lifecycle.js';
 import {
-  believedEnemyTowers,
   nodeOfEntity,
   RAID_DEFENCE_RADIUS_NODES,
   RAID_TOWER_CLEARANCE_NODES,
@@ -49,7 +53,7 @@ import {
 } from '../raid-target.js';
 import { type LandingAim, type LandingRoom, landingAim, type RankedMan, stormObjective } from './aim.js';
 import { isRescue, mayRescue, ownPointsOnLand, rescueAim, rescueObjective } from './rescue.js';
-import { believedLand, type FireSource, landingObjective, underFire } from './target.js';
+import { believedLand, believedLands, type FireSource, landingObjective, underFire } from './target.js';
 
 // A naval landing (owner ruling): a seat fills its moored ships with soldiers at home and sails them
 // together to the shore of the land it aims at (`aim.ts`), outside the reach of the towers and
@@ -137,50 +141,100 @@ function fireKeyOf(sources: readonly FireSource[]): string {
     .join(';');
 }
 
-/** The clear shores a landing looks for per ship, so a ship whose course to the nearest passes a tower
- *  has others to try. */
+/** The clear shores a landing looks for per ship, so ships whose way to the nearest passes a tower have
+ *  others to take. */
 const SHORES_PER_SHIP = 2;
-/** The most courses a landing judges per ship ({@link courseClear}), each a route search. */
-const COURSES_PER_SHIP = 4;
 
 /**
- * Each crew's shore of `shores`, nearest first: the first one no other crew took whose course from its
- * ship passes no tower the seat believes stands ({@link courseClear}), judging at most
- * {@link COURSES_PER_SHIP} courses; with none, the first one left, else its share of them. Authored:
+ * Each crew's shore of `shores`, nearest first, among those its fleet reaches through water outside the
+ * reach of every tower and shelter the seat believes stands on any land ({@link fireMaskOf}), judged by one
+ * flood from the first ship ({@link docksReachedThrough}): the first one no other crew took, else its share of them.
+ * Null when the fleet reaches none that way, so the landing tries another land. Approximation: the fleet's
+ * ships moor side by side at home, so the first ship's water stands for theirs, and each sails its dock
+ * order's own course, which a clear way proves possible but may still bend nearer the fire. Authored:
  * observed on arabskie_wyspy_wolna_gra_mieszana, fleets sailing past coastal towers lost most hulls before
- * they reached the shore, and a ship sank on its way home past a tower its seat knew, its shore far from it.
+ * they reached the shore, and ships sank on their way home past a tower their seat knew, their shore far
+ * from it.
  */
 function shoresOf(
   env: OperationEnv,
   crews: readonly { readonly ship: Entity }[],
   shores: readonly HalfCellNode[],
-): (HalfCellNode | undefined)[] {
-  const towers = believedEnemyTowers(env.world, env.ctx, env.seat).map((t) => t.at);
-  const taken = new Set<HalfCellNode>();
-  return crews.map((crew, i) => {
-    const left = shores.filter((shore) => !taken.has(shore));
-    const pick =
-      left.slice(0, COURSES_PER_SHIP).find((shore) => courseClear(env, crew.ship, shore, towers)) ??
-      left[0] ??
-      shores[i % shores.length];
-    if (pick !== undefined) taken.add(pick);
-    return pick;
+): (HalfCellNode | undefined)[] | null {
+  const first = crews[0];
+  if (first === undefined) return [];
+  const { world, ctx, terrain } = env;
+  const sources = [...believedLands(env).values()].flatMap((land) => land.sources);
+  let open: readonly HalfCellNode[] = shores;
+  if (sources.length > 0) {
+    // A flood that found no way is skipped while the ship's water, the shores and the fire stay the same.
+    const spots = mooringSpotsOf(world, ctx, terrain, first.ship);
+    const key = `${shores.map((at) => `${at.hx},${at.hy}`).join(';')}|${fireKeyOf(sources)}`;
+    if (spots !== null && cutOff.get(spots)?.has(key) === true) return null;
+    const fire = fireMaskOf(terrain, sources);
+    const closed = (node: NodeId): boolean => fire[node] === UNDER_FIRE;
+    const reached = docksReachedThrough(world, ctx, terrain, first.ship, shores, closed);
+    open = shores.filter((_, i) => reached[i] === true);
+    if (open.length === 0) {
+      if (spots !== null) cutOff.set(spots, (cutOff.get(spots) ?? new Set()).add(key));
+      return null;
+    }
+    return clearCourses(env, crews, open, closed);
+  }
+  return crews.map((_, i) => open[i] ?? open[i % open.length]);
+}
+
+/**
+ * Each crew's shore of `open` once the course its dock order would sail there is checked against `closed`
+ * ({@link dockRoute}), one route search a ship: a crew whose course to its own shore passes the fire shares
+ * the shore of a crew whose course did not. Null when no course is clear.
+ */
+function clearCourses(
+  env: OperationEnv,
+  crews: readonly { readonly ship: Entity }[],
+  open: readonly HalfCellNode[],
+  closed: (node: NodeId) => boolean,
+): (HalfCellNode | undefined)[] | null {
+  const { world, ctx, terrain } = env;
+  const own = crews.map((_, i) => open[i] ?? open[i % open.length]);
+  const clear = crews.map((crew, i) => {
+    const shore = own[i];
+    const route = shore === undefined ? null : dockRoute(world, ctx, terrain, crew.ship, shore);
+    return route?.every((at) => !closed(terrain.nodeAtClamped(at.hx, at.hy))) ?? false;
+  });
+  const safe = own.filter((shore, i): shore is HalfCellNode => shore !== undefined && clear[i] === true);
+  if (safe.length === 0) return null;
+  let next = 0;
+  return own.map((shore, i) => {
+    if (shore !== undefined && clear[i] === true) return shore;
+    const shared = safe[next % safe.length];
+    next++;
+    return shared;
   });
 }
 
-/** Whether the course the dock order would sail `ship` to `shore` ({@link dockRoute}) keeps out of every one
- *  of `towers`' reach ({@link RAID_TOWER_CLEARANCE_NODES}). Costs a route search. */
-function courseClear(
-  env: OperationEnv,
-  ship: Entity,
-  shore: HalfCellNode,
-  towers: readonly HalfCellNode[],
-): boolean {
-  if (towers.length === 0) return true;
-  const route = dockRoute(env.world, env.ctx, env.terrain, ship, shore);
-  return (
-    route?.every((at) => towers.every((t) => nodeManhattan(t, at) > RAID_TOWER_CLEARANCE_NODES)) ?? false
-  );
+/** Per set of mooring spots a fleet's first ship reaches, the shores and believed fire ({@link shoresOf})
+ *  its flood found no way to: a derived cache like {@link shoreless}. */
+const cutOff = new WeakMap<MooringSpots, Set<string>>();
+
+const UNDER_FIRE = 1;
+
+/** The nodes within {@link RAID_TOWER_CLEARANCE_NODES} of one of `sources`, the towers and shelters the
+ *  seat believes stand, marked {@link UNDER_FIRE}. Costs the reach of each. */
+function fireMaskOf(terrain: TerrainGraph, sources: readonly FireSource[]): Uint8Array {
+  const mask = new Uint8Array(terrain.nodeCount);
+  const reach = RAID_TOWER_CLEARANCE_NODES;
+  for (const { at } of sources) {
+    for (let dy = -reach; dy <= reach; dy++) {
+      const span = reach - Math.abs(dy);
+      for (let dx = -span; dx <= span; dx++) {
+        const hx = at.hx + dx;
+        const hy = at.hy + dy;
+        if (terrain.inBounds(hx, hy)) mask[terrain.nodeAt(hx, hy)] = UNDER_FIRE;
+      }
+    }
+  }
+  return mask;
 }
 
 /** The tick from which the seat may land: its peace over and its difficulty's first wave due. */
@@ -339,7 +393,8 @@ function forming(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
  * mooring later lands its men on arrival, or turns home with them {@link SHIP_SAIL_TIMEOUT_TICKS}
  * after the fleet cast off. While nobody is ashore yet, the enemy the seat sees at the shores outweighing
  * the men aboard turns the whole landing back. A ship that stopped short docks at another shore of that
- * land ({@link otherShore}). Once no ship is out the landed men fight.
+ * land clear of the fire the seat believes stands ({@link redockClear}). Once no ship is out the landed
+ * men fight.
  */
 function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const { world, ctx } = env;
@@ -379,7 +434,7 @@ function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
       ship.leg = 'back';
       commands.push(dockAt(ship, ship.home));
     } else if (stoppedShort(world, ship, ship.shore)) {
-      ship.shore = otherShore(env, ship.vehicle, ship.shore) ?? ship.shore;
+      ship.shore = otherShore(env, ship.vehicle, ship.shore, [], redockClear(env, ship)) ?? ship.shore;
       commands.push(dockAt(ship, ship.shore));
     }
   }
@@ -388,6 +443,32 @@ function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
     else enter(op, 'acting', ctx.tick);
   }
   return [...commands, ...landedOrders(env, op).commands];
+}
+
+/** How often the straight way to a shore is tested for fire, in nodes along it. */
+const REDOCK_STEP_NODES = 4;
+
+/**
+ * Whether a shore suits `ship` stopped short of its own on the way out: clear of every tower and shelter
+ * the seat believes stands, and so is the straight way there from where the ship lies. Approximation: a
+ * ship this near the coast sails about straight to the next shore along it.
+ */
+function redockClear(env: OperationEnv, ship: LandingShip): (at: HalfCellNode) => boolean {
+  const from = nodeOfEntity(env.world, ship.vehicle);
+  const fire = [...believedLands(env).values()].flatMap((land) => land.sources);
+  return (to) => {
+    if (underFire(fire, to)) return false;
+    if (from === null) return true;
+    const steps = Math.max(1, Math.ceil(nodeManhattan(from, to) / REDOCK_STEP_NODES));
+    for (let i = 1; i < steps; i++) {
+      const at = {
+        hx: from.hx + Math.floor(((to.hx - from.hx) * i) / steps),
+        hy: from.hy + Math.floor(((to.hy - from.hy) * i) / steps),
+      };
+      if (underFire(fire, at)) return false;
+    }
+    return true;
+  };
 }
 
 /** The ships sailing back: one moored on home land frees its commander, one stopped short docks at
@@ -763,6 +844,7 @@ function launch(env: OperationEnv, aim: LandingAim, moored: readonly Entity[], i
     first === undefined ? [] : landingShores(env, first.ship, aim, crews.length * SHORES_PER_SHIP);
   if (found.length === 0) return null;
   const shores = shoresOf(env, crews, found);
+  if (shores === null) return null;
   const commands: PlayerCommand[] = [];
   const landingShips: LandingShip[] = [];
   crews.forEach((crew, i) => {
