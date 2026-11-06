@@ -1294,6 +1294,54 @@ describe('landing operations', () => {
     expect(seen).toBeDefined();
   });
 
+  it('rescues its other threatened colony while the worse threatened one has no clear way to it', () => {
+    const { sim } = landingWorld({ colony: true, armed: true });
+    const terrain = terrainOf(sim);
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    const landOf = (at: { x: number; y: number }) => terrain.componentOf(terrain.nodeAtClamped(at.x, at.y));
+    const worse = landOf(FOE_FARM);
+    const other = landOf(FOE_HOME_FARM);
+    // A colony on each island east, each with a band its garrison saw, the worse band twice the other.
+    for (const at of [COLONY_STORE, FOE_HOME_FARM])
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: FARM_TYPE,
+        ...at,
+        tribe: VIKING,
+        owner: SEAT,
+        force: true,
+        underConstruction: false,
+      });
+    sim.step();
+    const threatAt = (at: { x: number; y: number }, men: number) => ({
+      men,
+      at: { hx: at.x, hy: at.y },
+      since: sim.tick,
+    });
+    sim.world.add(carrier, ComputerColony, {
+      colonies: [
+        blankColony(worse, { threat: threatAt(FOE_FARM, 2 * RAIDERS) }),
+        blankColony(other, { threat: threatAt(FOE_HOME_FARM, RAIDERS) }),
+      ],
+      rejected: [],
+      retryAt: 0,
+    });
+    spawnBand(sim, 2 * RAIDERS, FOE_FARM, GUARD_RANK, FOE);
+    spawnBand(sim, RAIDERS, { x: FOE_HOME_FARM.x, y: FOE_HOME_FARM.y + GUARD_OFFSET }, GUARD_RANK, FOE);
+    // The seat lately found no clear way to the worse colony.
+    sim.world.add(carrier, ComputerNoWay, {
+      lands: [{ kind: 'rescue', land: worse, until: sim.tick + LANDING_LIMIT_TICKS }],
+    });
+    let seen: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      seen = rescues(sim)[0] ?? seen;
+      return seen !== undefined;
+    });
+    const target = seen?.target;
+    expect(target === undefined ? null : landOf({ x: target.hx, y: target.hy })).toBe(other);
+  });
+
   it('rescues its colony while its posture holds the army home, and raids nothing', () => {
     const { sim } = landingWorld({ colony: true, foe: [{ buildingType: FARM_TYPE, at: FOE_FARM }] });
     const terrain = terrainOf(sim);

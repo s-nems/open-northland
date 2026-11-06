@@ -44,7 +44,7 @@ import { enter, type Opened, type OperationEnv, type OperationHandler } from '..
 import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleEnemyFighters } from '../raid-target.js';
 import { type LandingAim, type LandingRoom, landingAim, type RankedMan, stormObjective } from './aim.js';
 import { type CourseJudge, crewShores, noWayTo } from './course.js';
-import { isRescue, mayRescue, ownPointsOnLand, rescueAim, rescueObjective } from './rescue.js';
+import { isRescue, ownPointsOnLand, rescueAim, rescueObjective, threatenedColonies } from './rescue.js';
 import { believedLand, believedLands, type FireSource, landingObjective, underFire } from './target.js';
 
 // A naval landing (owner ruling): a seat fills its moored ships with soldiers at home and sails them
@@ -811,18 +811,20 @@ function openLanding(
 
 /**
  * A rescue of the seat's colony an enemy band reaches ({@link rescueAim}) once the seat's peace is over,
- * whatever its posture, its first wave and its other landings, unless home itself is raided.
+ * whatever its posture, its first wave and its other landings, unless home itself is raided: the
+ * threatened colonies in turn, past those it found no clear way to.
  */
 function openRescue(env: OperationEnv, free: readonly Entity[], id: number): Opened<RescueOperation> | null {
   const { world, ctx, seat } = env;
-  if (ctx.tick < seatPeaceEndTick(world, seat) || underAttack(world, seat) || !mayRescue(env)) return null;
+  if (ctx.tick < seatPeaceEndTick(world, seat) || underAttack(world, seat)) return null;
+  const threats = threatenedColonies(env);
+  if (threats === null) return null;
   const muster = musterOf(env, free);
   if (muster === null) return null;
-  const aim = rescueAim(env, muster.ranked, muster.room);
-  const voyage =
-    aim === null || noWayTo(env, 'rescue', aim.land)
-      ? null
-      : launch(env, 'rescue', aim, muster.moored, id, { judged: false });
+  const judge: CourseJudge = { judged: false };
+  const voyage = rescueAim(env, threats, muster.ranked, muster.room, (aim) =>
+    noWayTo(env, 'rescue', aim.land) ? null : launch(env, 'rescue', aim, muster.moored, id, judge),
+  );
   return voyage === null ? null : { op: { ...voyage.op, kind: 'rescue' }, commands: voyage.commands };
 }
 

@@ -42,7 +42,7 @@ import { believedLand } from './target.js';
 /** The fewest men a rescue sails with. */
 export const RESCUE_LEAST_MEN = 5;
 
-/** An enemy ship the seat sees moored at a colony's land, or an enemy fighter it sees there. */
+/** An enemy fighter the seat sees inside a colony's watch. */
 interface ColonyThreatSeen {
   readonly land: number;
   readonly owner: number;
@@ -50,15 +50,24 @@ interface ColonyThreatSeen {
   readonly points: number;
 }
 
+/** An enemy ship the seat sees moored inside the watch of its colony on `land`. */
+interface MooredThreat {
+  readonly land: number;
+  readonly owner: number;
+  readonly at: HalfCellNode;
+}
+
+/** The seat's colonies a rescue may sail for on this decision ({@link threatenedColonies}), and the enemy
+ *  ships moored inside their watch. */
+export interface ColonyThreats {
+  readonly colonies: readonly DeepReadonly<ColonyState>[];
+  readonly ships: readonly MooredThreat[];
+}
+
 const NOBODY: ReadonlySet<Entity> = new Set();
 
 /** The colony phases in which the colony stands on its land, so there is something to rescue. */
 const STANDING_PHASES: ReadonlySet<ColonyPhase> = new Set(['landing', 'founding', 'running']);
-
-/** Whether the seat has a colony standing on its land, which a rescue may sail for. */
-export function mayRescue(env: OperationEnv): boolean {
-  return seatColonies(env.world, env.seat).some((c) => STANDING_PHASES.has(c.phase));
-}
 
 /** Whether `op` is a rescue rather than a landing at a rival. */
 export function isRescue(op: DeepReadonly<SeaLanding>): op is DeepReadonly<RescueOperation> {
@@ -66,44 +75,55 @@ export function isRescue(op: DeepReadonly<SeaLanding>): op is DeepReadonly<Rescu
 }
 
 /**
- * The rescue of the colony the seat sees most threatened, or null: for each colony standing on its land
- * with a band its garrison remembers ({@link recentThreat}, though it shrank since) or an enemy ship moored
- * there, and enemy fighters in sight on that land, the enemy points seen there, or the load the moored ships
- * may carry when larger
- * ({@link SOLDIERS_PER_SHIP} men of the `ranked` men's mean a ship, an approximation of a load the seat
- * cannot see), the one the seat's own fighters there fall furthest short of by {@link LANDING_EDGE}; the
- * strongest of `ranked` whose men ashore ({@link pointsAshore}, the helms stay aboard) reach that edge
- * beside them, at least {@link RESCUE_LEAST_MEN}, within `room`.
- * Costs the enemies' ships and, with a colony to weigh, their fighters and the seat's own.
+ * The seat's colonies standing on their land with a band their garrison remembers ({@link recentThreat},
+ * though it shrank since) or an enemy ship the seat sees moored inside their watch, or null with none, so a
+ * seat at peace on its colonies musters nobody for a rescue. Costs the enemies' ships while a colony stands.
  */
-export function rescueAim(
-  env: OperationEnv,
-  ranked: readonly RankedMan[],
-  room: LandingRoom,
-): LandingAim | null {
+export function threatenedColonies(env: OperationEnv): ColonyThreats | null {
   const { world, ctx, seat } = env;
-  const colonies = seatColonies(world, seat).filter((c) => STANDING_PHASES.has(c.phase));
-  if (colonies.length === 0 || ranked.length === 0) return null;
-  const prefix = prefixPoints(ranked);
-  const shipPoints = Math.floor(((prefix.at(-1) ?? 0) * SOLDIERS_PER_SHIP) / ranked.length);
-  const ships = enemyShipsAt(env, colonies, shipPoints);
-  const watched = colonies.filter(
+  const standing = seatColonies(world, seat).filter((c) => STANDING_PHASES.has(c.phase));
+  if (standing.length === 0) return null;
+  const ships = enemyShipsAt(env, standing);
+  const colonies = standing.filter(
     (c) => ships.some((s) => s.land === c.land) || recentThreat(c, ctx.tick) > 0,
   );
-  if (watched.length === 0) return null;
-  const fighters = enemyFightersOn(
-    env,
-    watched.map((c) => c.land),
-  );
-  const own = ownPointsOn(env, new Set(watched.map((c) => c.land)));
-  let best: {
-    readonly land: number;
-    readonly enemy: number;
-    readonly own: number;
-    readonly short: number;
-    readonly first: ColonyThreatSeen;
-  } | null = null;
-  for (const colony of watched) {
+  return colonies.length === 0 ? null : { colonies, ships };
+}
+
+/** One threatened colony as a rescue weighs it: the enemy points there, the seat's own fighters' beside them
+ *  and how far those fall short of {@link LANDING_EDGE}, and the first enemy fighter seen. */
+interface Shortfall {
+  readonly land: number;
+  readonly enemy: number;
+  readonly own: number;
+  readonly short: number;
+  readonly first: ColonyThreatSeen;
+}
+
+/**
+ * The first rescue `launch` makes of the `threats`' colonies, or null: for each with enemy fighters in sight
+ * inside its watch, the enemy points seen there, or the load the moored ships may carry when larger
+ * ({@link SOLDIERS_PER_SHIP} men of the `ranked` men's mean a ship, an approximation of a load the seat
+ * cannot see), offered in turn as the seat's own fighters there fall furthest short of {@link LANDING_EDGE},
+ * the earlier colony on a tie; each with the strongest of `ranked` whose men ashore ({@link pointsAshore},
+ * the helms stay aboard) reach that edge beside them, at least {@link RESCUE_LEAST_MEN}, within `room`.
+ * Costs the enemies' fighters and the seat's own.
+ */
+export function rescueAim<T>(
+  env: OperationEnv,
+  threats: ColonyThreats,
+  ranked: readonly RankedMan[],
+  room: LandingRoom,
+  launch: (aim: LandingAim) => T | null,
+): T | null {
+  if (ranked.length === 0) return null;
+  const prefix = prefixPoints(ranked);
+  const shipPoints = Math.floor(((prefix.at(-1) ?? 0) * SOLDIERS_PER_SHIP) / ranked.length);
+  const lands = threats.colonies.map((c) => c.land);
+  const fighters = enemyFightersOn(env, lands);
+  const own = ownPointsOn(env, new Set(lands));
+  const shortfalls: Shortfall[] = [];
+  for (const colony of threats.colonies) {
     const band = fighters.filter((t) => t.land === colony.land);
     const first = band[0];
     if (first === undefined) continue;
@@ -111,32 +131,49 @@ export function rescueAim(
     let seen = 0;
     for (const t of band) seen += t.points;
     let carried = 0;
-    for (const t of ships) if (t.land === colony.land) carried += t.points;
+    for (const t of threats.ships) if (t.land === colony.land) carried += shipPoints;
     const enemy = Math.max(seen, carried);
     const there = own.get(colony.land) ?? 0;
     if (launchRatioReached(there, enemy, LANDING_EDGE)) continue;
     const short = enemy * LANDING_EDGE.num - there * LANDING_EDGE.den;
-    if (best === null || short > best.short) best = { land: colony.land, enemy, own: there, short, first };
+    shortfalls.push({ land: colony.land, enemy, own: there, short, first });
   }
-  if (best === null) return null;
-  const { enemy, own: beside } = best;
+  // A stable sort: colonies equally short keep their order.
+  shortfalls.sort((a, b) => b.short - a.short);
+  for (const colony of shortfalls) {
+    const count = rescueMen(prefix, ranked.length, room, colony);
+    if (count === null) continue;
+    const launched = launch({
+      land: colony.land,
+      owner: colony.first.owner,
+      towards: colony.first.at,
+      entity: null,
+      believed: believedLand(env, colony.land),
+      storm: false,
+      men: ranked.slice(0, count).map((m) => m.entity),
+    });
+    if (launched !== null) return launched;
+  }
+  return null;
+}
+
+/** How many of the strongest men of `prefix` ({@link prefixPoints}) a rescue of `colony` takes, or null
+ *  when all `men` within `room` cannot reach its edge. */
+function rescueMen(
+  prefix: readonly number[],
+  men: number,
+  room: LandingRoom,
+  colony: Shortfall,
+): number | null {
   const reached = (count: number): boolean =>
     count >= RESCUE_LEAST_MEN &&
-    launchRatioReached(pointsAshore(prefix, count, room.ships) + beside, enemy, LANDING_EDGE);
+    launchRatioReached(pointsAshore(prefix, count, room.ships) + colony.own, colony.enemy, LANDING_EDGE);
   let count = 0;
   while (!reached(count)) {
-    if (count >= Math.min(ranked.length, room.seats)) return null;
+    if (count >= Math.min(men, room.seats)) return null;
     count++;
   }
-  return {
-    land: best.land,
-    owner: best.first.owner,
-    towards: best.first.at,
-    entity: null,
-    believed: believedLand(env, best.land),
-    storm: false,
-    men: ranked.slice(0, count).map((m) => m.entity),
-  };
+  return count;
 }
 
 /**
@@ -154,21 +191,17 @@ export function rescueObjective(env: OperationEnv, land: number, from: HalfCellN
   return best === null ? null : terrain.nodeAtClamped(best.at.hx, best.at.hy);
 }
 
-/** The enemy ships the seat sees moored at one of `colonies`, each weighed `points`, inside the colony's
- *  watch ({@link colonyWatch}). Costs the enemies' vehicles and the colonies' buildings. */
-function enemyShipsAt(
-  env: OperationEnv,
-  colonies: readonly DeepReadonly<ColonyState>[],
-  points: number,
-): ColonyThreatSeen[] {
+/** The enemy ships the seat sees moored at one of `colonies`, inside the colony's watch
+ *  ({@link colonyWatch}). Costs the enemies' vehicles and the colonies' buildings. */
+function enemyShipsAt(env: OperationEnv, colonies: readonly DeepReadonly<ColonyState>[]): MooredThreat[] {
   const { world, ctx, seat } = env;
   const ships = visibleEnemyMooredShips(world, ctx, seat);
   if (ships.length === 0) return [];
-  const seen: ColonyThreatSeen[] = [];
+  const seen: MooredThreat[] = [];
   for (const colony of colonies) {
     const watches = colonyWatch(env, colony.land);
     for (const ship of ships)
-      if (watches(ship.at)) seen.push({ land: colony.land, owner: ship.owner, at: ship.at, points });
+      if (watches(ship.at)) seen.push({ land: colony.land, owner: ship.owner, at: ship.at });
   }
   return seen;
 }
