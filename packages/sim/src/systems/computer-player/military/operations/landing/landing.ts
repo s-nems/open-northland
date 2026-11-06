@@ -428,8 +428,8 @@ function forming(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
  * mooring later lands its men on arrival, or turns home with them {@link SHIP_SAIL_TIMEOUT_TICKS}
  * after the fleet cast off. While nobody is ashore yet, the enemy the seat sees at the shores outweighing
  * the men aboard turns the whole landing back. A ship that stopped short docks at another shore of that
- * land clear of the fire the seat believes stands ({@link redockClear}). Once no ship is out the landed
- * men fight.
+ * land clear of the fire the seat believes stands ({@link redockClear}), or with none turns home. Once no
+ * ship is out the landed men fight.
  */
 function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const { world, ctx } = env;
@@ -454,6 +454,7 @@ function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
     moored.length === out.length ||
     (op.firstMooredAt !== null && ctx.tick - op.firstMooredAt >= LANDING_SHORE_WAIT_TICKS) ||
     mooredUnderFire(env, op, moored);
+  let fire: readonly FireSource[] | undefined;
   for (const ship of out) {
     const state = shipState(world, ship);
     if (state === undefined) continue;
@@ -470,8 +471,12 @@ function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
       ship.leg = 'back';
       commands.push(dockAt(ship, ship.home));
     } else if (stoppedShort(world, ship, ship.shore)) {
-      ship.shore = otherShore(env, ship.vehicle, ship.shore, [], redockClear(env, ship)) ?? ship.shore;
-      commands.push(dockAt(ship, ship.shore));
+      fire ??= [...believedLands(env).values()].flatMap((land) => land.sources);
+      const next = otherShore(env, ship.vehicle, ship.shore, [], redockClear(env, ship, fire));
+      // With no other shore to try the ship turns home, not back to the berth that refused it.
+      if (next === null) ship.leg = 'back';
+      else ship.shore = next;
+      commands.push(dockAt(ship, next === null ? ship.home : next));
     }
   }
   if (op.ships.every((ship) => ship.leg !== 'out')) {
@@ -494,13 +499,16 @@ function mooredUnderFire(env: OperationEnv, op: SeaLanding, moored: readonly Lan
 const REDOCK_STEP_NODES = 4;
 
 /**
- * Whether a shore suits `ship` stopped short of its own on the way out: clear of every tower and shelter
- * the seat believes stands, and so is the straight way there from where the ship lies. Approximation: a
+ * Whether a shore suits `ship` stopped short of its own on the way out: clear of `fire`, the towers and
+ * shelters the seat believes stand, and so is the straight way there from where the ship lies. Approximation: a
  * ship this near the coast sails about straight to the next shore along it.
  */
-function redockClear(env: OperationEnv, ship: LandingShip): (at: HalfCellNode) => boolean {
+function redockClear(
+  env: OperationEnv,
+  ship: LandingShip,
+  fire: readonly FireSource[],
+): (at: HalfCellNode) => boolean {
   const from = nodeOfEntity(env.world, ship.vehicle);
-  const fire = [...believedLands(env).values()].flatMap((land) => land.sources);
   return (to) => {
     if (underFire(fire, to)) return false;
     if (from === null) return true;
