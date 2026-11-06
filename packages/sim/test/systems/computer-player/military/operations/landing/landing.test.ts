@@ -854,6 +854,39 @@ describe('landing operations', () => {
     expect(restored.hashState()).toBe(sim.hashState());
   });
 
+  it('plays a game restored on the tick a land was found no way to as the one it was saved from', () => {
+    const { sim } = landingWorld({
+      colony: true,
+      foe: [
+        ...BLOCKING_TOWERS.map((at) => ({ buildingType: TOWER_TYPE, at })),
+        { buildingType: FARM_TYPE, at: FAR_COLONY_FARM },
+      ],
+    });
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    runUntil(
+      sim,
+      DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS,
+      () => (sim.world.tryGet(carrier, ComputerNoWay)?.lands.length ?? 0) > 0,
+    );
+    expect(sim.world.tryGet(carrier, ComputerNoWay)?.lands.length).toBeGreaterThan(0);
+    const save = parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(sim))));
+    const restored = restoreSimulation(save, { content: sim.content, map: islands(true) });
+    expect(restored.hashState()).toBe(sim.hashState());
+    let opened: OperationView | undefined;
+    let reopened: OperationView | undefined;
+    for (let i = 0; i < DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS; i++) {
+      sim.step();
+      restored.step();
+      opened ??= landings(sim)[0];
+      reopened ??= landings(restored)[0];
+    }
+    expect(restored.hashState()).toBe(sim.hashState());
+    expect(opened).toBeDefined();
+    expect(reopened?.since).toBe(opened?.since);
+    expect(reopened?.target).toEqual(opened?.target);
+  });
+
   it('raids a colony once no clear way leads to the clear shores of the headquarters land', () => {
     const { sim } = landingWorld({
       colony: true,
