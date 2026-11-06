@@ -37,6 +37,7 @@ import {
   LANDING_COOLDOWN_TICKS,
   LANDING_FORM_TIMEOUT_TICKS,
   LANDING_SHORE_STAY_TICKS,
+  LANDING_SHORE_WAIT_TICKS,
   landingHandler,
 } from '../../../../../../src/systems/computer-player/military/operations/landing/landing.js';
 import {
@@ -126,6 +127,8 @@ const NEAR_BERTH = { water: { x: 80, y: 104 }, landed: { x: 92, y: 100 } };
 const FAR_BERTH = { water: { x: 134, y: 72 }, landed: { x: 130, y: 82 } };
 /** A tick just before the decision a full fleet's landing opens on here. */
 const BOTH_OPEN_AT = 200;
+/** How far inland of a ship's shore a tower turns up in its reach. */
+const TOWER_INLAND = 8;
 /** A spot on the colony island past the watch of its building ({@link COLONY_STORE}), by the channel. */
 const BEYOND_WATCH = { x: 96, y: 78 };
 /** The ships beyond the landing fleet a rescue may sail in. */
@@ -1207,6 +1210,46 @@ describe('landing operations', () => {
     expect(seen?.reason).toBe('defenceMode');
     expect(seen?.landing?.landed).toBe(0);
     expect(menAcross(sim)).toEqual([]);
+  });
+
+  it('lands the men of a ship waiting at its shore once a tower is seen in reach of it', () => {
+    const { sim } = landingWorld();
+    let seen: OperationView | undefined;
+    let toweredAt: number | null = null;
+    let landedAt: number | null = null;
+    let outWhenLanded = false;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      if (seen?.state !== 'moving') return seen?.state === 'acting';
+      const ships = seen.landing?.ships ?? [];
+      const moored = ships.find((ship) => {
+        const state = sim.world.get(ship.vehicle, Vehicle);
+        return state.moored && state.mooring?.hx === ship.shore.hx && state.mooring.hy === ship.shore.hy;
+      });
+      if (toweredAt === null && moored !== undefined) {
+        toweredAt = sim.tick;
+        // The tower turns up on the first ship's arrival, inland of its shore.
+        const at = { x: moored.shore.hx + TOWER_INLAND, y: moored.shore.hy };
+        sim.enqueueSetup({
+          kind: 'placeBuilding',
+          buildingType: TOWER_TYPE,
+          ...at,
+          tribe: VIKING,
+          owner: FOE,
+          force: true,
+          underConstruction: false,
+        });
+      }
+      if (landedAt === null && (seen.landing?.landed ?? 0) > 0) {
+        landedAt = sim.tick;
+        outWhenLanded = ships.some((ship) => ship.leg === 'out');
+      }
+      return landedAt !== null;
+    });
+    if (toweredAt === null || landedAt === null) throw new Error('the fleet never moored and landed');
+    // It lands before the wait for the rest of the fleet runs out, while ships are still under way.
+    expect(landedAt - toweredAt).toBeLessThan(LANDING_SHORE_WAIT_TICKS);
+    expect(outWhenLanded).toBe(true);
   });
 
   it('turns back without landing when the enemy at the shore outweighs the wave', () => {

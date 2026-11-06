@@ -391,8 +391,9 @@ function forming(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
 }
 
 /**
- * Sailing out: once every ship still out lies moored at its shore, or {@link LANDING_SHORE_WAIT_TICKS}
- * after the first did, each moored one sets every man but its commander ashore and waits there; a ship
+ * Sailing out: once every ship still out lies moored at its shore, {@link LANDING_SHORE_WAIT_TICKS} after
+ * the first did, or once a moored one lies under believed fire ({@link mooredUnderFire}), each moored one
+ * sets every man but its commander ashore and waits there; a ship
  * mooring later lands its men on arrival, or turns home with them {@link SHIP_SAIL_TIMEOUT_TICKS}
  * after the fleet cast off. While nobody is ashore yet, the enemy the seat sees at the shores outweighing
  * the men aboard turns the whole landing back. A ship that stopped short docks at another shore of that
@@ -420,7 +421,8 @@ function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const lands =
     op.landed > 0 ||
     moored.length === out.length ||
-    (op.firstMooredAt !== null && ctx.tick - op.firstMooredAt >= LANDING_SHORE_WAIT_TICKS);
+    (op.firstMooredAt !== null && ctx.tick - op.firstMooredAt >= LANDING_SHORE_WAIT_TICKS) ||
+    mooredUnderFire(env, op, moored);
   for (const ship of out) {
     const state = shipState(world, ship);
     if (state === undefined) continue;
@@ -446,6 +448,15 @@ function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
     else enter(op, 'acting', ctx.tick);
   }
   return [...commands, ...landedOrders(env, op).commands];
+}
+
+/** Whether one of the `moored` ships waiting aboard for the rest lies in the reach of a tower or shelter
+ *  the seat believes stands on the land by now ({@link underFire}): its men land at once rather than wait
+ *  aboard to be shot, and the rest land as they moor. */
+function mooredUnderFire(env: OperationEnv, op: SeaLanding, moored: readonly LandingShip[]): boolean {
+  if (moored.length === 0) return false;
+  const fire = believedLand(env, op.land).sources;
+  return moored.some((ship) => underFire(fire, ship.shore));
 }
 
 /** How often the straight way to a shore is tested for fire, in nodes along it. */
