@@ -165,6 +165,7 @@ function shoresOf(
   land: number,
   crews: readonly { readonly ship: Entity }[],
   shores: readonly HalfCellNode[],
+  judge: CourseJudge,
 ): (HalfCellNode | undefined)[] | null {
   const first = crews[0];
   if (first === undefined) return [];
@@ -176,10 +177,8 @@ function shoresOf(
     .filter((source) => !berths.some((at) => nodeManhattan(source.at, at) <= RAID_TOWER_CLEARANCE_NODES));
   if (sources.length === 0) return crews.map((_, i) => shores[i] ?? shores[i % shores.length]);
   // One land's courses are judged a decision; the next land waits for the next decision.
-  const judged = judgedAt.get(world) ?? new Map<string, number>();
-  const judge = `${env.seat}:${kind}`;
-  if (judged.get(judge) === ctx.tick) return null;
-  judgedAt.set(world, judged.set(judge, ctx.tick));
+  if (judge.judged) return null;
+  judge.judged = true;
   const fire = fireMaskOf(terrain, sources);
   const closed = (node: NodeId): boolean => fire[node] === UNDER_FIRE;
   const reached = docksReachedThrough(world, ctx, terrain, first.ship, shores, closed);
@@ -213,10 +212,11 @@ function noteNoWay(env: OperationEnv, kind: SeaLanding['kind'], land: number): v
   ].sort((a, b) => OPERATION_KINDS.indexOf(a.kind) - OPERATION_KINDS.indexOf(b.kind) || a.land - b.land);
 }
 
-/** Per world, the tick each seat's landing and rescue last judged a land's courses ({@link shoresOf}), so a
- *  decision floods and searches courses for one land of each: a derived record of the current tick, which a
- *  restored game, saved between ticks, never needs. */
-const judgedAt = new WeakMap<World, Map<string, number>>();
+/** Whether one opening's decision has judged a land's courses ({@link shoresOf}), so it floods and searches
+ *  courses for one land: each opener mints its own. */
+interface CourseJudge {
+  judged: boolean;
+}
 
 /** The most crews of a landing whose dock course {@link clearCourses} checks, each a route search. */
 const COURSE_CHECKS = 3;
@@ -924,6 +924,7 @@ function launch(
   aim: LandingAim,
   moored: readonly Entity[],
   id: number,
+  judge: CourseJudge,
 ): Voyage | null {
   const { world, ctx } = env;
   const ships: Entity[] = [];
@@ -938,7 +939,7 @@ function launch(
   const found =
     first === undefined ? [] : landingShores(env, first.ship, aim, crews.length * SHORES_PER_SHIP);
   if (found.length === 0) return null;
-  const shores = shoresOf(env, kind, aim.land, crews, found);
+  const shores = shoresOf(env, kind, aim.land, crews, found, judge);
   if (shores === null) return null;
   const commands: PlayerCommand[] = [];
   const landingShips: LandingShip[] = [];
@@ -990,8 +991,9 @@ function openLanding(
   if (ratio === null || ctx.tick < landingFromTick(world, seat)) return null;
   const muster = musterOf(env, free);
   if (muster === null) return null;
+  const judge: CourseJudge = { judged: false };
   const voyage = landingAim(env, muster.home, homeOf(env), muster.ranked, ratio, muster.room, (aim) =>
-    noWayTo(env, 'landing', aim.land) ? null : launch(env, 'landing', aim, muster.moored, id),
+    noWayTo(env, 'landing', aim.land) ? null : launch(env, 'landing', aim, muster.moored, id, judge),
   );
   return voyage === null ? null : { op: { ...voyage.op, kind: 'landing' }, commands: voyage.commands };
 }
@@ -1007,7 +1009,9 @@ function openRescue(env: OperationEnv, free: readonly Entity[], id: number): Ope
   if (muster === null) return null;
   const aim = rescueAim(env, muster.ranked, muster.room);
   const voyage =
-    aim === null || noWayTo(env, 'rescue', aim.land) ? null : launch(env, 'rescue', aim, muster.moored, id);
+    aim === null || noWayTo(env, 'rescue', aim.land)
+      ? null
+      : launch(env, 'rescue', aim, muster.moored, id, { judged: false });
   return voyage === null ? null : { op: { ...voyage.op, kind: 'rescue' }, commands: voyage.commands };
 }
 
