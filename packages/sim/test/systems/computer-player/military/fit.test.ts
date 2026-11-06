@@ -128,24 +128,45 @@ describe('the fit soldier - the army the computer seat counts and sends', () => 
   });
 
   it('holds back only as many undressed men as the armour its errands can fetch dresses', () => {
-    const sim = seatSim(armouredContent(), grassNodeMap(STORE_MAP.width, STORE_MAP.height));
-    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
-    for (const [buildingType, at] of [
-      [BARRACKS_TYPE, BARRACKS_AT],
-      [STOCK_TYPE, STORE_AT],
-    ] as const) {
-      sim.enqueueSetup({ kind: 'placeBuilding', buildingType, ...at, tribe: VIKING, owner: SEAT });
-    }
-    sim.step();
-    seatEconomy(sim, 'rich', ['ironArms']);
+    const sim = armouredSeat();
     for (let i = 0; i < UNDRESSED; i++) fighterAt(sim, 1 + i, SWORDSMAN, false);
     expect(ownArmyPoints(sim.world, ctxOf(sim), SEAT).men).toBe(UNDRESSED);
-    const store = ownedBuildings(sim.world, SEAT).find(
-      (e) => sim.world.get(e, Building).buildingType === STOCK_TYPE,
-    );
-    if (store === undefined) throw new Error('setup: no store');
-    sim.world.mut(store, Stockpile).amounts.set(ARMOR_CHAIN, 1);
+    stockArmour(sim, 1);
     expect(armourWaiters(sim.world, ctxOf(sim), SEAT).size).toBe(1);
     expect(ownArmyPoints(sim.world, ctxOf(sim), SEAT).men).toBe(UNDRESSED - 1);
   });
+
+  it('holds back an undressed man at home for the armour, not one away whom no errand reaches', () => {
+    const sim = armouredSeat();
+    // The lowest id rides aboard, away from the stores.
+    const away = fighterAt(sim, 1, SWORDSMAN, false);
+    sim.world.remove(away, Position);
+    const home = fighterAt(sim, 2, SWORDSMAN, false);
+    stockArmour(sim, 1);
+    expect([...armourWaiters(sim.world, ctxOf(sim), SEAT)]).toEqual([home]);
+  });
 });
+
+/** A dressing seat with a barracks and a store its errands reach, and no men yet. */
+function armouredSeat(): Simulation {
+  const sim = seatSim(armouredContent(), grassNodeMap(STORE_MAP.width, STORE_MAP.height));
+  sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
+  for (const [buildingType, at] of [
+    [BARRACKS_TYPE, BARRACKS_AT],
+    [STOCK_TYPE, STORE_AT],
+  ] as const) {
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType, ...at, tribe: VIKING, owner: SEAT });
+  }
+  sim.step();
+  seatEconomy(sim, 'rich', ['ironArms']);
+  return sim;
+}
+
+/** Put `pieces` of chain into the seat's store. */
+function stockArmour(sim: Simulation, pieces: number): void {
+  const store = ownedBuildings(sim.world, SEAT).find(
+    (e) => sim.world.get(e, Building).buildingType === STOCK_TYPE,
+  );
+  if (store === undefined) throw new Error('setup: no store');
+  sim.world.mut(store, Stockpile).amounts.set(ARMOR_CHAIN, pieces);
+}

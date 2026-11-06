@@ -105,7 +105,7 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
     raid,
   );
   // Only fit soldiers go out; the rest wait at the door to be armed and dressed (`fit.ts`).
-  const waiting = armourWaiters(world, ctx, player);
+  const waiting = armourWaiters(world, ctx, player, available);
   const fit: Entity[] = [];
   const unfit: Entity[] = [];
   for (const e of available) {
@@ -142,7 +142,8 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
       world,
       ctx,
       player,
-      [...field, ...unfit].filter((e) => !sent.has(e)),
+      // The men waiting for armour first, so the pieces go to the men held back for them.
+      [...unfit, ...field].filter((e) => !sent.has(e)),
     ),
   ];
 }
