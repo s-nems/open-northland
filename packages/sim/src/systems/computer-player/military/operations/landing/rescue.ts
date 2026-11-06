@@ -16,7 +16,7 @@ import {
   threatWatchNodes,
 } from '../../../../ai-shared/military/defence/threat.js';
 import { ownedFightersOf } from '../../../../movement/collision/owned-fighters.js';
-import { minutesToTicks } from '../../../game-phase.js';
+import { recentThreat } from '../../../colony/settlement/garrison.js';
 import { visibleEnemyMooredShips } from '../../../knowledge/intel/index.js';
 import { landOfPoint } from '../../../sea-route.js';
 import { SOLDIERS_PER_SHIP } from '../../../workforce/craft.js';
@@ -41,10 +41,6 @@ import { believedLand } from './target.js';
 
 /** The fewest men a rescue sails with. */
 export const RESCUE_LEAST_MEN = 5;
-
-/** How long a band seen about a colony keeps it worth rescuing after the colony last saw it: the colony's
- *  own threat memory is longer, but a rescue sails for a band still there. */
-const RESCUE_THREAT_TICKS = minutesToTicks(5);
 
 /** An enemy ship the seat sees moored at a colony's land, or an enemy fighter it sees there. */
 interface ColonyThreatSeen {
@@ -71,8 +67,9 @@ export function isRescue(op: DeepReadonly<SeaLanding>): op is DeepReadonly<Rescu
 
 /**
  * The rescue of the colony the seat sees most threatened, or null: for each colony standing on its land
- * with a band its garrison saw lately or an enemy ship moored there, and enemy fighters in sight on that
- * land, the enemy points seen there, or the load the moored ships may carry when larger
+ * with a band its garrison remembers ({@link recentThreat}, though it shrank since) or an enemy ship moored
+ * there, and enemy fighters in sight on that land, the enemy points seen there, or the load the moored ships
+ * may carry when larger
  * ({@link SOLDIERS_PER_SHIP} men of the `ranked` men's mean a ship, an approximation of a load the seat
  * cannot see), the one the seat's own fighters there fall furthest short of by {@link LANDING_EDGE}; the
  * strongest of `ranked` whose men ashore ({@link pointsAshore}, the helms stay aboard) reach that edge
@@ -91,9 +88,7 @@ export function rescueAim(
   const shipPoints = Math.floor(((prefix.at(-1) ?? 0) * SOLDIERS_PER_SHIP) / ranked.length);
   const ships = enemyShipsAt(env, colonies, shipPoints);
   const watched = colonies.filter(
-    (c) =>
-      ships.some((s) => s.land === c.land) ||
-      (c.threat !== null && ctx.tick - c.threat.since < RESCUE_THREAT_TICKS),
+    (c) => ships.some((s) => s.land === c.land) || recentThreat(c, ctx.tick) > 0,
   );
   if (watched.length === 0) return null;
   const fighters = enemyFightersOn(

@@ -40,6 +40,7 @@ import {
 import type { TerrainGraph } from '../../../../../../src/nav/terrain/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../../../src/systems/ai-shared/cadence.js';
 import { computerProfileOf } from '../../../../../../src/systems/computer-player/difficulty.js';
+import { minutesToTicks } from '../../../../../../src/systems/computer-player/game-phase.js';
 import { type OperationView, seatOperationsOf } from '../../../../../../src/systems/computer-player/index.js';
 import {
   COLONY_RAID_LEAST_MEN,
@@ -133,6 +134,11 @@ const GUARD_OFFSET = 6;
 const ARMY_RANK = 6;
 /** The foe's band that lands on the seat's colony. */
 const RAIDERS = 6;
+/** How many of the band the colony's garrison felled since it saw the band at its largest. */
+const SHRUNK_BY = 3;
+/** How long the seat's ships are out on other work after the band was seen at its largest: past a few
+ *  minutes, inside the garrison's memory of the band. */
+const SHIPS_BUSY_TICKS = minutesToTicks(6);
 /** The seat's building on its colony island, by its west shore. */
 const COLONY_STORE = { x: 96, y: 108 };
 /** Where an enemy ship lies off the colony island and its men stand ashore: in the strait by the colony,
@@ -1268,6 +1274,24 @@ describe('landing operations', () => {
     expect(seen?.reason).toBe('timedOut');
     expect(menOf(sim, FOE, colonyLand).length).toBe(RAIDERS);
     expect(menOf(sim, SEAT, colonyLand)).toEqual([]);
+  });
+
+  it('rescues its colony from a band its garrison saw larger minutes before its ships came free', () => {
+    const { sim, fleet } = landingWorld({ colony: true, armed: true, ships: 0 });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
+    // The garrison saw the band at its largest; it has shrunk since and stays in sight.
+    const threat = { men: RAIDERS + SHRUNK_BY, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
+    settleColony(sim, colonyLand, threat);
+    spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
+    runUntil(sim, SHIPS_BUSY_TICKS, () => false);
+    launchShips(sim, fleet);
+    let seen: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      seen = rescues(sim)[0] ?? seen;
+      return seen !== undefined;
+    });
+    expect(seen).toBeDefined();
   });
 
   it('rescues its colony while its posture holds the army home, and raids nothing', () => {
