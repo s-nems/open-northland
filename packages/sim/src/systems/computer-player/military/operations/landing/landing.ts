@@ -1,12 +1,14 @@
 import {
   AttackOrder,
   aiControlEntity,
+  ComputerNoWay,
   ComputerOperations,
   diplomacyStance,
   Engagement,
   isOperationOpen,
   type LandingOperation,
   type LandingShip,
+  OPERATION_KINDS,
   type OperationEndReason,
   type RescueOperation,
   Rider,
@@ -159,33 +161,55 @@ const SHORES_PER_SHIP = 2;
 function shoresOf(
   env: OperationEnv,
   kind: SeaLanding['kind'],
+  land: number,
   crews: readonly { readonly ship: Entity }[],
   shores: readonly HalfCellNode[],
 ): (HalfCellNode | undefined)[] | null {
   const first = crews[0];
   if (first === undefined) return [];
   const { world, ctx, terrain } = env;
-  const sources = [...believedLands(env).values()].flatMap((land) => land.sources);
-  let open: readonly HalfCellNode[] = shores;
-  if (sources.length > 0) {
-    // A flood that found no way is skipped while the ship's water, the shores and the fire stay the same.
-    const spots = mooringSpotsOf(world, ctx, terrain, first.ship);
-    const key = `${shores.map((at) => `${at.hx},${at.hy}`).join(';')}|${fireKeyOf(sources)}`;
-    if (spots !== null && cutOff.get(spots)?.has(key) === true) return null;
-    // One land's courses are judged a decision; the next land waits for the next decision.
-    const judged = judgedAt.get(world) ?? new Map<string, number>();
-    const judge = `${env.seat}:${kind}`;
-    if (judged.get(judge) === ctx.tick) return null;
-    judgedAt.set(world, judged.set(judge, ctx.tick));
-    const fire = fireMaskOf(terrain, sources);
-    const closed = (node: NodeId): boolean => fire[node] === UNDER_FIRE;
-    const reached = docksReachedThrough(world, ctx, terrain, first.ship, shores, closed);
-    open = shores.filter((_, i) => reached[i] === true);
-    const picked = open.length === 0 ? null : clearCourses(env, crews, open, closed);
-    if (picked === null && spots !== null) cutOff.set(spots, (cutOff.get(spots) ?? new Set()).add(key));
-    return picked;
-  }
-  return crews.map((_, i) => open[i] ?? open[i % open.length]);
+  // The fire about the fleet's own berths it must sail out of anyway: only the fire beyond closes the sea.
+  const berths = crews.flatMap((crew) => world.get(crew.ship, Vehicle).mooring ?? []);
+  const sources = [...believedLands(env).values()]
+    .flatMap((believed) => believed.sources)
+    .filter((source) => !berths.some((at) => nodeManhattan(source.at, at) <= RAID_TOWER_CLEARANCE_NODES));
+  if (sources.length === 0) return crews.map((_, i) => shores[i] ?? shores[i % shores.length]);
+  // One land's courses are judged a decision; the next land waits for the next decision.
+  const judged = judgedAt.get(world) ?? new Map<string, number>();
+  const judge = `${env.seat}:${kind}`;
+  if (judged.get(judge) === ctx.tick) return null;
+  judgedAt.set(world, judged.set(judge, ctx.tick));
+  const fire = fireMaskOf(terrain, sources);
+  const closed = (node: NodeId): boolean => fire[node] === UNDER_FIRE;
+  const reached = docksReachedThrough(world, ctx, terrain, first.ship, shores, closed);
+  const open = shores.filter((_, i) => reached[i] === true);
+  const picked = open.length === 0 ? null : clearCourses(env, crews, open, closed);
+  if (picked === null) noteNoWay(env, kind, land);
+  return picked;
+}
+
+/** How long a land a landing or rescue found no clear way to waits before it is judged again (authored): two
+ *  game minutes, so the other lands get their turn and a changed fire is seen soon. */
+export const NO_WAY_RECHECK_TICKS = 2 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+
+/** Whether the seat's `kind` found no clear way to `land` within {@link NO_WAY_RECHECK_TICKS}. */
+function noWayTo(env: OperationEnv, kind: SeaLanding['kind'], land: number): boolean {
+  const carrier = aiControlEntity(env.world, env.seat);
+  const lands = carrier === null ? undefined : env.world.tryGet(carrier, ComputerNoWay)?.lands;
+  return lands?.some((l) => l.kind === kind && l.land === land && env.ctx.tick < l.until) ?? false;
+}
+
+/** Remember that the seat's `kind` found no clear way to `land` now, dropping the lapsed entries. */
+function noteNoWay(env: OperationEnv, kind: SeaLanding['kind'], land: number): void {
+  const { world, ctx, seat } = env;
+  const carrier = aiControlEntity(world, seat);
+  if (carrier === null) return;
+  if (!world.has(carrier, ComputerNoWay)) world.add(carrier, ComputerNoWay, { lands: [] });
+  const live = world.mut(carrier, ComputerNoWay);
+  live.lands = [
+    ...live.lands.filter((l) => ctx.tick < l.until && !(l.kind === kind && l.land === land)),
+    { kind, land, until: ctx.tick + NO_WAY_RECHECK_TICKS },
+  ].sort((a, b) => OPERATION_KINDS.indexOf(a.kind) - OPERATION_KINDS.indexOf(b.kind) || a.land - b.land);
 }
 
 /** Per world, the tick each seat's landing and rescue last judged a land's courses ({@link shoresOf}), so a
@@ -226,10 +250,6 @@ function clearCourses(
     return shared;
   });
 }
-
-/** Per set of mooring spots a fleet's first ship reaches, the shores and believed fire ({@link shoresOf})
- *  its flood or checked courses found no way to: a derived cache like {@link shoreless}. */
-const cutOff = new WeakMap<MooringSpots, Set<string>>();
 
 const UNDER_FIRE = 1;
 
@@ -905,7 +925,7 @@ function launch(
   const found =
     first === undefined ? [] : landingShores(env, first.ship, aim, crews.length * SHORES_PER_SHIP);
   if (found.length === 0) return null;
-  const shores = shoresOf(env, kind, crews, found);
+  const shores = shoresOf(env, kind, aim.land, crews, found);
   if (shores === null) return null;
   const commands: PlayerCommand[] = [];
   const landingShips: LandingShip[] = [];
@@ -957,7 +977,7 @@ function openLanding(
   const muster = musterOf(env, free);
   if (muster === null) return null;
   const voyage = landingAim(env, muster.home, homeOf(env), muster.ranked, ratio, muster.room, (aim) =>
-    launch(env, 'landing', aim, muster.moored, id),
+    noWayTo(env, 'landing', aim.land) ? null : launch(env, 'landing', aim, muster.moored, id),
   );
   return voyage === null ? null : { op: { ...voyage.op, kind: 'landing' }, commands: voyage.commands };
 }
@@ -972,7 +992,8 @@ function openRescue(env: OperationEnv, free: readonly Entity[], id: number): Ope
   const muster = musterOf(env, free);
   if (muster === null) return null;
   const aim = rescueAim(env, muster.ranked, muster.room);
-  const voyage = aim === null ? null : launch(env, 'rescue', aim, muster.moored, id);
+  const voyage =
+    aim === null || noWayTo(env, 'rescue', aim.land) ? null : launch(env, 'rescue', aim, muster.moored, id);
   return voyage === null ? null : { op: { ...voyage.op, kind: 'rescue' }, commands: voyage.commands };
 }
 

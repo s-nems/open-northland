@@ -166,6 +166,18 @@ export interface ComputerOperationsState {
 /** Held on the seat's `AiControl` carrier, so it dies with the seat. */
 export const ComputerOperations = defineComponent<ComputerOperationsState>('ComputerOperations', 'players');
 
+/** A land a seat's landing or rescue found no clear way to, and the tick it may be judged again. */
+export interface NoWayLand {
+  kind: SeaLanding['kind'];
+  land: number;
+  until: number;
+}
+
+/** The lands a seat's sea landings found no way to lately, by kind in {@link OPERATION_KINDS} order then
+ *  ascending land: saved, so a restored game skips the same lands the continuous one does. Held on the
+ *  seat's `AiControl` carrier. */
+export const ComputerNoWay = defineComponent<{ lands: NoWayLand[] }>('ComputerNoWay', 'players');
+
 /** Whether `op` still runs: not `done` or `failed`. */
 export function isOperationOpen(op: DeepReadonly<Operation>): boolean {
   return op.state !== 'done' && op.state !== 'failed';

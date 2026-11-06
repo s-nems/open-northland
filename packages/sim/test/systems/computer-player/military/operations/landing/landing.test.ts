@@ -7,6 +7,7 @@ import {
   ComputerColony,
   ComputerIntel,
   type ComputerModuleEnables,
+  ComputerNoWay,
   FOG_MODE,
   Owner,
   PlayerOrder,
@@ -18,9 +19,13 @@ import {
 } from '../../../../../../src/components/index.js';
 import type { DeepReadonly, Entity } from '../../../../../../src/ecs/world.js';
 import {
+  exportSaveGame,
   halfCellMapFromCells,
   nodeOfPosition,
+  parseSaveGame,
+  restoreSimulation,
   Simulation,
+  serializeSaveGame,
   type TerrainMap,
 } from '../../../../../../src/index.js';
 import { type HalfCellNode, hexagonRing, nodeManhattan } from '../../../../../../src/nav/halfcell.js';
@@ -390,6 +395,19 @@ function runUntil(sim: Simulation, ticks: number, watch: () => boolean): void {
 /** The men's worth of the foe's garrison the seat remembers on his colony, more than its least raid
  *  outweighs half again. */
 const REMEMBERED_GARRISON = 12;
+/** A foe tower on the seat's own island, in reach of its first ships' berths, and the few men the seat
+ *  sends past it. */
+const BERTH_TOWER = { x: 30, y: 4 };
+const BERTH_TOWER_MEN = 8;
+/** Foe towers that cover his west coast and the channel's mouth, so the only shores of his land clear of
+ *  fire lie deep in the channel with no clear way to them, and a farm on his colony far from them. */
+const BLOCKING_TOWERS = [
+  { x: 96, y: 14 },
+  { x: 96, y: 50 },
+  { x: 100, y: 58 },
+  { x: 100, y: 78 },
+];
+const FAR_COLONY_FARM = { x: 120, y: 110 };
 /** A foe tower on his island's west coast, by the shores nearest the seat. */
 const COAST_TOWER = { x: 90, y: 30 };
 /** A foe tower on his island far from his headquarters, covering none of it. */
@@ -702,6 +720,64 @@ describe('landing operations', () => {
       return (seen?.landing?.landed ?? 0) > 0;
     });
     expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it('sails out of the reach of a tower that stands over its own berth', () => {
+    const { sim } = landingWorld({
+      men: BERTH_TOWER_MEN,
+      foe: [{ buildingType: TOWER_TYPE, at: BERTH_TOWER }],
+    });
+    let seen: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return seen !== undefined;
+    });
+    expect(seen).toBeDefined();
+  });
+
+  it('plays a restored game as the one it was saved from, its berth tower and shore choices included', () => {
+    const { sim } = landingWorld({
+      men: BERTH_TOWER_MEN,
+      foe: [{ buildingType: TOWER_TYPE, at: BERTH_TOWER }],
+    });
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => false);
+    // The ship nearest the tower leaves the fleet, and the game is saved and restored.
+    const first = seatShips(sim).sort((a, b) => a - b)[0];
+    if (first !== undefined) sim.world.destroy(first);
+    sim.step();
+    const save = parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(sim))));
+    const restored = restoreSimulation(save, { content: sim.content, map: islands(false) });
+    expect(restored.hashState()).toBe(sim.hashState());
+    for (let i = 0; i < DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS; i++) {
+      sim.step();
+      restored.step();
+    }
+    expect(restored.hashState()).toBe(sim.hashState());
+  });
+
+  it('raids a colony once no clear way leads to the clear shores of the headquarters land', () => {
+    const { sim } = landingWorld({
+      colony: true,
+      foe: [
+        ...BLOCKING_TOWERS.map((at) => ({ buildingType: TOWER_TYPE, at })),
+        { buildingType: FARM_TYPE, at: FAR_COLONY_FARM },
+      ],
+    });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FAR_COLONY_FARM.x, FAR_COLONY_FARM.y));
+    const hqLand = terrain.componentOf(terrain.nodeAtClamped(FOE_HQ.x, FOE_HQ.y));
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    let seen: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return seen !== undefined;
+    });
+    const target = seen?.target;
+    expect(
+      target === undefined ? null : terrain.componentOf(terrain.nodeAtClamped(target.hx, target.hy)),
+    ).toBe(colonyLand);
+    expect(sim.world.tryGet(carrier, ComputerNoWay)?.lands.map((l) => l.land)).toContain(hqLand);
   });
 
   it('sails and moors out of the reach of the tower it believes guards the coast', () => {
