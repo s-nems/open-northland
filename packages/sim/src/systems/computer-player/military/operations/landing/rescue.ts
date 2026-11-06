@@ -126,6 +126,7 @@ export function rescueAim(
     towards: best.first.at,
     entity: null,
     believed: believedLand(env, best.land),
+    storm: false,
     men: ranked.slice(0, count).map((m) => m.entity),
   };
 }

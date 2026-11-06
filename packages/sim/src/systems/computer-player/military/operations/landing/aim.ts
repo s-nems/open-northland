@@ -35,8 +35,9 @@ import {
  *  men to the towers on the way in still holds its edge. */
 export const LANDING_STORM_EDGE: Share = { num: 2, den: 1 };
 
-/** The least the men a storm set ashore keep outweighing what defends their objective to storm on: half
- *  {@link LANDING_STORM_EDGE}, the losses on the way in its margin allows for. */
+/** The least the men of a storm keep outweighing what defends their objective to storm on: half
+ *  {@link LANDING_STORM_EDGE}, the losses on the way in its margin allows for. A wave that launched on a
+ *  clear objective needs the whole edge to begin a storm ashore. */
 export const LANDING_STORM_HOLD_EDGE: Share = { num: 1, den: 1 };
 
 /** The least a landing outweighs the believed defence of a target clear of every tower, and a rescue the
@@ -64,6 +65,8 @@ export interface LandingAim {
   /** The building at {@link towards}, null for a rescue, which heads for a band. */
   readonly entity: Entity | null;
   readonly believed: BelievedLand;
+  /** No building there lies clear: the wave launched to storm covered ground. */
+  readonly storm: boolean;
   /** The wave, strongest first. */
   readonly men: readonly Entity[];
 }
@@ -234,24 +237,25 @@ function headquartersAim(
   const wave = room.ranked.slice(0, room.seats);
   if (wave.length === 0) return null;
   const points = pointsAshore(room.prefix, wave.length, room.ships);
-  const aim: LandingAim = {
+  const aim = (storm: boolean): LandingAim => ({
     land: c.land,
     owner: c.owner,
     towards: c.towards.at,
     entity: c.towards.entity,
     believed: c.believed,
+    storm,
     men: wave.map((m) => m.entity),
-  };
+  });
   const clear = landingObjective(ctx, c.believed, c.towards.at);
   if (clear !== null) {
     const fire = fireAt(env, c.believed, clear.at, tribeOf(env, c.headquarters));
     const opposing = armies(c.owner) + fire;
-    return launchRatioReached(points, opposing, atLeast(ratio, LANDING_EDGE)) ? aim : null;
+    return launchRatioReached(points, opposing, atLeast(ratio, LANDING_EDGE)) ? aim(false) : null;
   }
   const storm = landingObjective(ctx, c.believed, c.towards.at, true);
   if (storm === null) return null;
   const opposing = stormDefence(env, c.believed, c.land, c.owner, storm, armies);
-  return launchRatioReached(points, opposing, atLeast(ratio, LANDING_STORM_EDGE)) ? aim : null;
+  return launchRatioReached(points, opposing, atLeast(ratio, LANDING_STORM_EDGE)) ? aim(true) : null;
 }
 
 /**
@@ -389,14 +393,16 @@ function colonyAim(
     towards: c.towards.at,
     entity: c.towards.entity,
     believed: c.believed,
+    storm: clear === null,
     men: room.ranked.slice(0, count).map((m) => m.entity),
   };
 }
 
 /**
  * The objective men landed on `believed` and standing at `from` storm when nothing there lies clear, or
- * null: the storm's objective while their `points` hold {@link LANDING_STORM_HOLD_EDGE} over its
- * {@link stormDefence}.
+ * null: the storm's objective while their `points` reach {@link LANDING_STORM_EDGE} over its
+ * {@link stormDefence}, or hold {@link LANDING_STORM_HOLD_EDGE} once `storming` (a wave that launched on a
+ * storm or began one ashore).
  */
 export function stormObjective(
   env: OperationEnv,
@@ -405,9 +411,11 @@ export function stormObjective(
   owner: number | null,
   from: HalfCellNode,
   points: number,
+  storming: boolean,
 ): Objective | null {
   const goal = landingObjective(env.ctx, believed, from, true);
   if (goal === null) return null;
   const defence = stormDefence(env, believed, land, owner, goal, armyWeights(env));
-  return launchRatioReached(points, defence, LANDING_STORM_HOLD_EDGE) ? goal : null;
+  const edge = storming ? LANDING_STORM_HOLD_EDGE : LANDING_STORM_EDGE;
+  return launchRatioReached(points, defence, edge) ? goal : null;
 }

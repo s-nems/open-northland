@@ -363,6 +363,8 @@ const REMEMBERED_GARRISON = 12;
 const COAST_TOWER = { x: 90, y: 30 };
 /** A foe tower on his island far from his headquarters, covering none of it. */
 const FOE_FAR_OFF_TOWER = { x: 128, y: 110 };
+/** The towers' weight a clear landing's men ashore make: past one tower, short of the storm's twice. */
+const CLEAR_WAVE_TOWERS = { num: 3, den: 2 };
 /** The towers' weight the storm wave's men ashore make: past twice one tower, short of twice two. */
 const STORM_WAVE_TOWERS = 3;
 /** How many times the fleet's seats the army in the cooldown test is, and how many men it spawns abreast. */
@@ -697,6 +699,28 @@ describe('landing operations', () => {
       return false;
     });
     expect(militaryOrdersOf(sim.world, SEAT).launchRatio).not.toBeNull();
+  });
+
+  it('starts no storm ashore with a wave that launched on a clear objective and falls short of the storm edge', () => {
+    const { sim } = landingWorld({
+      armed: true,
+      men: 0,
+      foe: [
+        { buildingType: TOWER_TYPE, at: FOE_TOWER },
+        { buildingType: FARM_TYPE, at: FOE_FARM },
+      ],
+    });
+    // Men ashore that outweigh the covering tower at parity, short of twice.
+    const one = { x: BARRACKS.x - 6, y: BARRACKS.y + 8 };
+    spawnBand(sim, 1, one, ARMY_RANK, SEAT);
+    const tower = (CLEAR_WAVE_TOWERS.num * RAID_TOWER_DEFENCE) / CLEAR_WAVE_TOWERS.den;
+    const ashore = Math.ceil(tower / manPoints(sim));
+    const men = ashore + Math.ceil(ashore / SHIP_SEATS);
+    spawnBand(sim, men - 1, { x: one.x, y: one.y + 2 }, ARMY_RANK, SEAT);
+    const struck = strikeInTurn(sim, [FOE_FARM]);
+    expect(struck.order).toEqual([FOE_FARM]);
+    expect(struck.seen?.reason).toBe('nothingToStrike');
+    expect(foeHeadquarters(sim)).not.toBeNull();
   });
 
   it('storms past a tower that does not cover its objective, weighing only the one that does', () => {

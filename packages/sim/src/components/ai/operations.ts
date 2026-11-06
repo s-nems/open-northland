@@ -112,6 +112,9 @@ interface SeaLandingBase extends OperationBase {
   landed: number;
   /** The tick its first ship lay moored at its shore with the men still aboard, or null before. */
   firstMooredAt: number | null;
+  /** Its men storm covered ground: it launched on a storm, or its landed men began one at the storm's
+   *  edge, so they hold on at the lower edge a storm keeps. */
+  storming: boolean;
 }
 
 /** A wave sailing at a rival's land: `target` is the building it heads for. */

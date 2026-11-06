@@ -539,7 +539,8 @@ function landedOrders(env: OperationEnv, op: SeaLanding): LandedOrders {
   if (goal === null) {
     let points = 0;
     for (const e of landed) points += unitPoints(world, ctx, e);
-    goal = stormObjective(env, believed, land, op.target.owner, from, points);
+    goal = stormObjective(env, believed, land, op.target.owner, from, points, op.storming);
+    if (goal !== null) op.storming = true;
   }
   if (goal === null) return { landed, striking: false, fire: believed.sources, commands: [] };
   return {
@@ -872,6 +873,7 @@ function launch(env: OperationEnv, aim: LandingAim, moored: readonly Entity[], i
     startMen: wave.length,
     landed: 0,
     firstMooredAt: null,
+    storming: aim.storm,
   };
   return { op, commands };
 }
