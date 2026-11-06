@@ -134,18 +134,12 @@ export function docksReachedThrough(
   const type = contentIndex(ctx.content).vehicles.get(world.get(vehicle, Vehicle).vehicleType);
   if (anchor === null || type === undefined || !terrain.inBounds(anchor.hx, anchor.hy))
     return points.map(() => false);
+  const docks = points.map((point) => dockCandidates(world, ctx, terrain, vehicle, type, anchor, point));
+  const sought = new Set(docks.flat());
   const here = terrain.nodeAt(anchor.hx, anchor.hy);
-  const reached = reachableWater(
-    terrain,
-    vehicleGroundBlocks(world, ctx, terrain, vehicle, type),
-    here,
-    closed,
-  );
-  return points.map((point) =>
-    dockCandidates(world, ctx, terrain, vehicle, type, anchor, point).some(
-      (node) => reached[node] === REACHED,
-    ),
-  );
+  const blocked = vehicleGroundBlocks(world, ctx, terrain, vehicle, type);
+  const reached = reachableWater(terrain, blocked, here, closed, sought);
+  return docks.map((nodes) => nodes.some((node) => reached[node] === REACHED));
 }
 
 /**
@@ -194,18 +188,23 @@ function reachableWater(
   blocked: BlockOverlay,
   start: NodeId,
   closed: (node: NodeId) => boolean = NONE_CLOSED,
+  sought?: ReadonlySet<NodeId>,
 ): Uint8Array {
   const reached = new Uint8Array(terrain.nodeCount);
   reached[start] = REACHED;
+  // With `sought`, the flood stops once it has reached every node of it.
+  let left = sought === undefined ? Number.POSITIVE_INFINITY : sought.size - (sought.has(start) ? 1 : 0);
   const queue: NodeId[] = [start];
   const edges = new StepBuffer();
   // The array iterator re-reads `length`, so `queue` is a live breadth-first queue.
   for (const current of queue) {
+    if (left <= 0) break;
     terrain.stepsInto(current, blocked, edges, 'water');
     for (let i = 0; i < edges.length; i++) {
       const { node } = edges.at(i);
       if (reached[node] === REACHED || closed(node)) continue;
       reached[node] = REACHED;
+      if (sought?.has(node) === true) left--;
       queue.push(node);
     }
   }

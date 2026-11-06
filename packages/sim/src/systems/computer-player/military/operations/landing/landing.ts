@@ -149,9 +149,9 @@ const SHORES_PER_SHIP = 2;
  * Each crew's shore of `shores`, nearest first, among those its fleet reaches through water outside the
  * reach of every tower and shelter the seat believes stands on any land ({@link fireMaskOf}), judged by one
  * flood from the first ship ({@link docksReachedThrough}): the first one no other crew took, else its share of them.
- * Null when the fleet reaches none that way, so the landing tries another land. Approximation: the fleet's
- * ships moor side by side at home, so the first ship's water stands for theirs, and each sails its dock
- * order's own course, which a clear way proves possible but may still bend nearer the fire. Authored:
+ * Null when the fleet reaches none that way, or no course checked is clear ({@link clearCourses}), so the
+ * landing tries another land. Approximation: the fleet's ships moor side by side at home, so the first
+ * ship's water stands for theirs. Authored:
  * observed on arabskie_wyspy_wolna_gra_mieszana, fleets sailing past coastal towers lost most hulls before
  * they reached the shore, and ships sank on their way home past a tower their seat knew, their shore far
  * from it.
@@ -175,19 +175,21 @@ function shoresOf(
     const closed = (node: NodeId): boolean => fire[node] === UNDER_FIRE;
     const reached = docksReachedThrough(world, ctx, terrain, first.ship, shores, closed);
     open = shores.filter((_, i) => reached[i] === true);
-    if (open.length === 0) {
-      if (spots !== null) cutOff.set(spots, (cutOff.get(spots) ?? new Set()).add(key));
-      return null;
-    }
-    return clearCourses(env, crews, open, closed);
+    const picked = open.length === 0 ? null : clearCourses(env, crews, open, closed);
+    if (picked === null && spots !== null) cutOff.set(spots, (cutOff.get(spots) ?? new Set()).add(key));
+    return picked;
   }
   return crews.map((_, i) => open[i] ?? open[i % open.length]);
 }
 
+/** The most crews of a landing whose dock course {@link clearCourses} checks, each a route search. */
+const COURSE_CHECKS = 4;
+
 /**
  * Each crew's shore of `open` once the course its dock order would sail there is checked against `closed`
- * ({@link dockRoute}), one route search a ship: a crew whose course to its own shore passes the fire shares
- * the shore of a crew whose course did not. Null when no course is clear.
+ * ({@link dockRoute}) for the first {@link COURSE_CHECKS} crews, one route search each: a crew whose course
+ * passes the fire, or one past those checked, shares the shore of a crew whose course was clear. Null when
+ * no checked course is clear.
  */
 function clearCourses(
   env: OperationEnv,
@@ -199,7 +201,8 @@ function clearCourses(
   const own = crews.map((_, i) => open[i] ?? open[i % open.length]);
   const clear = crews.map((crew, i) => {
     const shore = own[i];
-    const route = shore === undefined ? null : dockRoute(world, ctx, terrain, crew.ship, shore);
+    if (i >= COURSE_CHECKS || shore === undefined) return false;
+    const route = dockRoute(world, ctx, terrain, crew.ship, shore);
     return route?.every((at) => !closed(terrain.nodeAtClamped(at.hx, at.hy))) ?? false;
   });
   const safe = own.filter((shore, i): shore is HalfCellNode => shore !== undefined && clear[i] === true);
@@ -214,7 +217,7 @@ function clearCourses(
 }
 
 /** Per set of mooring spots a fleet's first ship reaches, the shores and believed fire ({@link shoresOf})
- *  its flood found no way to: a derived cache like {@link shoreless}. */
+ *  its flood or checked courses found no way to: a derived cache like {@link shoreless}. */
 const cutOff = new WeakMap<MooringSpots, Set<string>>();
 
 const UNDER_FIRE = 1;
