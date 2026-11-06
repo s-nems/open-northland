@@ -90,7 +90,10 @@ export function rescueAim(
       (c.threat !== null && ctx.tick - c.threat.since < RESCUE_THREAT_TICKS),
   );
   if (watched.length === 0) return null;
-  const fighters = enemyFightersOn(env, new Set(watched.map((c) => c.land)));
+  const fighters = enemyFightersOn(
+    env,
+    watched.map((c) => c.land),
+  );
   const own = ownPointsOn(env, new Set(watched.map((c) => c.land)));
   let best: {
     readonly land: number;
@@ -132,49 +135,55 @@ export function rescueAim(
 }
 
 /**
- * Where the men a rescue set ashore on `land` go: the enemy fighter the seat sees there nearest `from`, the
- * first in sighting order on a tie, or null once it sees none.
+ * Where the men a rescue set ashore on `land` go: the enemy fighter the seat sees within the watch of the
+ * colony there ({@link enemyFightersOn}) nearest `from`, the first in sighting order on a tie, or null once
+ * it sees none.
  */
 export function rescueObjective(env: OperationEnv, land: number, from: HalfCellNode): NodeId | null {
   const { terrain } = env;
   let best: { readonly at: HalfCellNode; readonly distance: number } | null = null;
-  for (const t of enemyFightersOn(env, new Set([land]))) {
+  for (const t of enemyFightersOn(env, [land])) {
     const distance = nodeManhattan(t.at, from);
     if (best === null || distance < best.distance) best = { at: t.at, distance };
   }
   return best === null ? null : terrain.nodeAtClamped(best.at.hx, best.at.hy);
 }
 
-/** The enemy ships the seat sees moored at one of `colonies`, each weighed `points`: on its land, inside
- *  the watch of its buildings ({@link settlementBox}), the reach its garrison notes a band in. Costs the
- *  enemies' vehicles and the colonies' buildings. */
+/** The enemy ships the seat sees moored at one of `colonies`, each weighed `points`, inside the colony's
+ *  watch ({@link colonyWatch}). Costs the enemies' vehicles and the colonies' buildings. */
 function enemyShipsAt(
   env: OperationEnv,
   colonies: readonly DeepReadonly<ColonyState>[],
   points: number,
 ): ColonyThreatSeen[] {
-  const { world, ctx, terrain, seat } = env;
+  const { world, ctx, seat } = env;
   const ships = visibleEnemyMooredShips(world, ctx, seat);
   if (ships.length === 0) return [];
   const seen: ColonyThreatSeen[] = [];
   for (const colony of colonies) {
-    const box = settlementBox(world, ctx, terrain, colonyBuildingsOn(world, ctx, seat, colony.land));
-    if (box === null) continue;
-    for (const ship of ships) {
-      if (landOfPoint(env.terrain, ship.at) !== colony.land || !insideBox(box, ship.at.hx, ship.at.hy))
-        continue;
-      seen.push({ land: colony.land, owner: ship.owner, at: ship.at, points });
-    }
+    const watches = colonyWatch(env, colony.land);
+    for (const ship of ships)
+      if (watches(ship.at)) seen.push({ land: colony.land, owner: ship.owner, at: ship.at, points });
   }
   return seen;
 }
 
-/** The enemy fighters the seat sees standing on one of `lands`. */
-function enemyFightersOn(env: OperationEnv, lands: ReadonlySet<number>): ColonyThreatSeen[] {
+/** Whether a spot lies on the colony's `land` inside the watch of its buildings ({@link settlementBox}), the
+ *  reach its garrison notes a band in; never, for a land with no building of the seat's. */
+function colonyWatch(env: OperationEnv, land: number): (at: HalfCellNode) => boolean {
+  const { world, ctx, terrain, seat } = env;
+  const box = settlementBox(world, ctx, terrain, colonyBuildingsOn(world, ctx, seat, land));
+  return (at) => box !== null && landOfPoint(terrain, at) === land && insideBox(box, at.hx, at.hy);
+}
+
+/** The enemy fighters the seat sees inside the watch of its colony on one of `lands` ({@link colonyWatch}),
+ *  so a rival's own men far off on a shared island are no band of the colony's. */
+function enemyFightersOn(env: OperationEnv, lands: readonly number[]): ColonyThreatSeen[] {
+  const watches = lands.map((land) => ({ land, watches: colonyWatch(env, land) }));
   const seen: ColonyThreatSeen[] = [];
   for (const f of visibleEnemyFighters(env.world, env.ctx, env.seat)) {
-    const land = landOfPoint(env.terrain, f.at);
-    if (lands.has(land)) seen.push({ land, owner: f.owner, at: f.at, points: f.points });
+    const colony = watches.find((w) => w.watches(f.at));
+    if (colony !== undefined) seen.push({ land: colony.land, owner: f.owner, at: f.at, points: f.points });
   }
   return seen;
 }

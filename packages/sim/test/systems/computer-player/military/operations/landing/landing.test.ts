@@ -126,6 +126,8 @@ const NEAR_BERTH = { water: { x: 80, y: 104 }, landed: { x: 92, y: 100 } };
 const FAR_BERTH = { water: { x: 134, y: 72 }, landed: { x: 130, y: 82 } };
 /** A tick just before the decision a full fleet's landing opens on here. */
 const BOTH_OPEN_AT = 200;
+/** A spot on the colony island past the watch of its building ({@link COLONY_STORE}), by the channel. */
+const BEYOND_WATCH = { x: 96, y: 78 };
 /** The ships beyond the landing fleet a rescue may sail in. */
 const RESCUE_SHIPS = 3;
 /** The seat's own men standing on the colony a rescue sails for, at a post out of the band's reach. */
@@ -279,6 +281,32 @@ function landingWorld({
   launchShips(sim, ships ?? fleet);
   spawnBand(sim, men ?? fleet * (seats + 1), { x: BARRACKS.x - 6, y: BARRACKS.y + 8 }, ARMY_RANK, SEAT);
   return { sim, fleet };
+}
+
+/** The seat's colony on `land` with its one building ({@link COLONY_STORE}) and the band its garrison
+ *  noted, if any. */
+function settleColony(
+  sim: Simulation,
+  land: number,
+  threat: { men: number; at: HalfCellNode; since: number } | null,
+): void {
+  const carrier = aiControlEntity(sim.world, SEAT);
+  if (carrier === null) throw new Error('setup: no AI seat');
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: FARM_TYPE,
+    ...COLONY_STORE,
+    tribe: VIKING,
+    owner: SEAT,
+    force: true,
+    underConstruction: false,
+  });
+  sim.step();
+  sim.world.add(carrier, ComputerColony, {
+    colonies: [blankColony(land, { threat })],
+    rejected: [],
+    retryAt: 0,
+  });
 }
 
 /** `count` of the seat's ships moored down the strait beside the west shore. */
@@ -935,8 +963,7 @@ describe('landing operations', () => {
       if (carrier === null) throw new Error('setup: no AI seat');
       // The colony's garrison saw the band land, as its own defence notes it.
       const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
-      const colony = blankColony(colonyLand, { threat });
-      sim.world.add(carrier, ComputerColony, { colonies: [colony], rejected: [], retryAt: 0 });
+      settleColony(sim, colonyLand, threat);
       spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
       spawnBand(sim, garrison, GARRISON_POST, GUARD_RANK, SEAT);
       let seen: OperationView | undefined;
@@ -974,11 +1001,7 @@ describe('landing operations', () => {
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI seat');
     const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
-    sim.world.add(carrier, ComputerColony, {
-      colonies: [blankColony(colonyLand, { threat })],
-      rejected: [],
-      retryAt: 0,
-    });
+    settleColony(sim, colonyLand, threat);
     spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
     let seen: OperationView | undefined;
     runUntil(sim, LANDING_LIMIT_TICKS + LANDING_SHORE_STAY_TICKS, () => {
@@ -1009,11 +1032,7 @@ describe('landing operations', () => {
     expect(seen).toBeUndefined();
     expect(militaryOrdersOf(sim.world, SEAT).launchRatio).toBeNull();
     const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
-    sim.world.add(carrier, ComputerColony, {
-      colonies: [blankColony(colonyLand, { threat })],
-      rejected: [],
-      retryAt: 0,
-    });
+    settleColony(sim, colonyLand, threat);
     spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
     runUntil(sim, LANDING_LIMIT_TICKS, () => {
       seen = rescues(sim)[0] ?? seen;
@@ -1021,6 +1040,20 @@ describe('landing operations', () => {
     });
     expect(seen?.kind).toBe('rescue');
     expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it("sends no rescue at a rival's men on the colony's island beyond its watch", () => {
+    const { sim } = landingWorld({ colony: true, armed: true });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(COLONY_STORE.x, COLONY_STORE.y));
+    // The garrison noted a band lately, and a rival's men stand on the island's north shore.
+    const threat = { men: RAIDERS, at: { hx: COLONY_STORE.x, hy: COLONY_STORE.y }, since: sim.tick };
+    settleColony(sim, colonyLand, threat);
+    spawnBand(sim, RAIDERS, BEYOND_WATCH, GUARD_RANK, FOE);
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      expect(rescues(sim)).toEqual([]);
+      return false;
+    });
   });
 
   it('crews a rescue and a landing that open on one decision with ships and men of their own', () => {
@@ -1034,11 +1067,7 @@ describe('landing operations', () => {
     // The band lands on the colony just before the decision the landing opens on.
     runUntil(sim, BOTH_OPEN_AT, () => sim.tick >= BOTH_OPEN_AT);
     const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
-    sim.world.add(carrier, ComputerColony, {
-      colonies: [blankColony(colonyLand, { threat })],
-      rejected: [],
-      retryAt: 0,
-    });
+    settleColony(sim, colonyLand, threat);
     spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
     let attack: OperationView | undefined;
     let rescue: OperationView | undefined;
@@ -1065,18 +1094,8 @@ describe('landing operations', () => {
     const colonyLand = terrain.componentOf(terrain.nodeAtClamped(COLONY_STORE.x, COLONY_STORE.y));
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI seat');
-    sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: FARM_TYPE,
-      ...COLONY_STORE,
-      tribe: VIKING,
-      owner: SEAT,
-      force: true,
-      underConstruction: false,
-    });
-    sim.step();
     // No band noted by the colony's garrison: the ship and the men off it are all the seat sees.
-    sim.world.add(carrier, ComputerColony, { colonies: [blankColony(colonyLand)], rejected: [], retryAt: 0 });
+    settleColony(sim, colonyLand, null);
     const berth = near ? NEAR_BERTH : FAR_BERTH;
     createVehicle(sim.world, ctxOf(sim), { vehicleType: SHIP, ...berth.water, tribe: VIKING, owner: FOE });
     spawnBand(sim, RAIDERS, berth.landed, GUARD_RANK, FOE);
@@ -1106,11 +1125,7 @@ describe('landing operations', () => {
       if (!raided && attack?.state === 'moving') {
         raided = true;
         const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
-        sim.world.add(carrier, ComputerColony, {
-          colonies: [blankColony(colonyLand, { threat })],
-          rejected: [],
-          retryAt: 0,
-        });
+        settleColony(sim, colonyLand, threat);
         spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
       }
       return rescue !== undefined;
