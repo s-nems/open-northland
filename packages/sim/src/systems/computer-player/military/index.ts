@@ -105,7 +105,7 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
     raid,
   );
   // Only fit soldiers go out; the rest wait at the door to be armed and dressed (`fit.ts`).
-  const waiting = armourWaiters(world, ctx, player, available);
+  const waiting = armourWaiters(world, ctx, player);
   const fit: Entity[] = [];
   const unfit: Entity[] = [];
   for (const e of available) {
