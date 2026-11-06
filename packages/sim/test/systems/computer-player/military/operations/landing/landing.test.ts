@@ -17,6 +17,7 @@ import {
   Rider,
   Settler,
   Vehicle,
+  VehicleDrive,
   vehiclePassengers,
 } from '../../../../../../src/components/index.js';
 import type { DeepReadonly, Entity } from '../../../../../../src/ecs/world.js';
@@ -406,6 +407,21 @@ const REMEMBERED_GARRISON = 12;
 /** Each ship's seats besides the commander's for the load-or-band rescue: the fleet sets 32 men ashore,
  *  past half again over a 20-man load, short of half again over the load and the 6-man band. */
 const LOAD_OR_BAND_SEATS = 4;
+/** Water nodes off the colony island's coast, the strait side and the channel side, a hull's breadth
+ *  apart: the strait side from its north end, the channel side from the strait. */
+const COAST_HULL_SPACING = 6;
+const STRAIT_SIDE = { x: 80, from: 78, hulls: 8 };
+const CHANNEL_SIDE = { y: 72, from: 88, hulls: 9 };
+const COLONY_COAST_WATER = [
+  ...Array.from({ length: STRAIT_SIDE.hulls }, (_, i) => ({
+    x: STRAIT_SIDE.x,
+    y: STRAIT_SIDE.from + COAST_HULL_SPACING * i,
+  })),
+  ...Array.from({ length: CHANNEL_SIDE.hulls }, (_, i) => ({
+    x: CHANNEL_SIDE.from + COAST_HULL_SPACING * i,
+    y: CHANNEL_SIDE.y,
+  })),
+];
 /** A lobby peace's length in the fleet test, a few decisions. */
 const PEACE_TICKS = 4 * COMPUTER_DECISION_INTERVAL_TICKS;
 /** A spot on the foe's island far from his headquarters, where a landed man stands with no order. */
@@ -702,6 +718,46 @@ describe('landing operations', () => {
       terrain.componentOf(terrain.nodeAt(cast.home.hx, cast.home.hy)),
     );
     expect(vehiclePassengers(state)).toEqual([]);
+  });
+
+  it('docks once more at a shore it was refused at with no other to try, then sails home', () => {
+    const { sim } = landingWorld({
+      ships: LANDING_BIG_SHIPS - 1,
+      seats: STORM_SHIP_SEATS,
+      colony: true,
+      foe: [{ buildingType: FARM_TYPE, at: FOE_FARM }],
+    });
+    let seen: OperationView | undefined;
+    let walled = false;
+    let refusedAt: number | null = null;
+    let retried = false;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      const ship = seen?.landing?.ships[0];
+      if (ship === undefined) return false;
+      if (!walled && seen?.state === 'moving') {
+        walled = true;
+        // Hulls of the seat's own on every water node the ship could moor from at its shore, and along
+        // the whole coast of the colony island, so every other berth is taken.
+        const terrain = terrainOf(sim);
+        const ring = hexagonRing(ship.shore, SHIP_DOOR_DISTANCE)
+          .map(({ point }) => ({ x: point.hx, y: point.hy }))
+          .filter(({ x, y }) => terrain.inBounds(x, y) && terrain.isWater(terrain.nodeAt(x, y)));
+        for (const at of [...ring, ...COLONY_COAST_WATER])
+          createVehicle(sim.world, ctxOf(sim), { vehicleType: SHIP, ...at, tribe: VIKING, owner: SEAT });
+      }
+      const state = sim.world.get(ship.vehicle, Vehicle);
+      const atShore =
+        state.moored && state.mooring?.hx === ship.shore.hx && state.mooring.hy === ship.shore.hy;
+      const still = !sim.world.has(ship.vehicle, VehicleDrive) && state.heldGoal === null && !atShore;
+      if (walled && refusedAt === null && ship.leg === 'out' && still) refusedAt = sim.tick;
+      if (refusedAt !== null && sim.tick === refusedAt + COMPUTER_DECISION_INTERVAL_TICKS)
+        retried = ship.leg === 'out';
+      return ship.leg === 'back';
+    });
+    expect(refusedAt).not.toBeNull();
+    expect(retried).toBe(true);
+    expect(seen?.landing?.ships[0]?.leg).toBe('back');
   });
 
   it('sails every man in as few ships as seat him when they are fewer than the whole fleet', () => {

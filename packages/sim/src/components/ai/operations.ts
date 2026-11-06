@@ -98,6 +98,8 @@ export interface LandingShip {
   /** The shore point on the rival's land it docks at to set its men ashore. */
   shore: HalfCellNode;
   leg: LandingLeg;
+  /** It was refused at its shore once with no other shore to try, and docked there again. */
+  retried: boolean;
 }
 
 /** Men carried over the sea and set ashore: the members are the men aboard or set ashore and each ship's

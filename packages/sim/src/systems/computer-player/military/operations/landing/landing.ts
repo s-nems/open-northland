@@ -425,12 +425,12 @@ function forming(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
 /**
  * Sailing out: once every ship still out lies moored at its shore, {@link LANDING_SHORE_WAIT_TICKS} after
  * the first did, or once a moored one lies under believed fire ({@link mooredUnderFire}), each moored one
- * sets every man but its commander ashore and waits there; a ship
- * mooring later lands its men on arrival, or turns home with them {@link SHIP_SAIL_TIMEOUT_TICKS}
- * after the fleet cast off. While nobody is ashore yet, the enemy the seat sees at the shores outweighing
- * the men aboard turns the whole landing back. A ship that stopped short docks at another shore of that
- * land clear of the fire the seat believes stands ({@link redockClear}), or with none turns home. Once no
- * ship is out the landed men fight.
+ * sets every man but its commander ashore and waits there; a ship mooring later lands its men on arrival,
+ * or turns home with them {@link SHIP_SAIL_TIMEOUT_TICKS} after the fleet cast off. While nobody is ashore
+ * yet, the enemy the seat sees at the shores outweighing the men aboard turns the whole landing back. A
+ * ship that stopped short docks at another shore of that land clear of the fire the seat believes stands
+ * ({@link redockClear}), or with none docks at its own once more and turns home on a second refusal. Once
+ * no ship is out the landed men fight.
  */
 function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const { world, ctx } = env;
@@ -474,10 +474,13 @@ function sailing(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
     } else if (stoppedShort(world, ship, ship.shore)) {
       fire ??= [...believedLands(env).values()].flatMap((land) => land.sources);
       const next = otherShore(env, ship.vehicle, ship.shore, [], redockClear(env, ship, fire));
-      // With no other shore to try the ship turns home, not back to the berth that refused it.
-      if (next === null) ship.leg = 'back';
-      else ship.shore = next;
-      commands.push(dockAt(ship, next === null ? ship.home : next));
+      // With no other shore to try the ship docks at its own once more, a passing hull may have refused
+      // it, and turns home on a second refusal.
+      const home = next === null && ship.retried;
+      if (next !== null) ship.shore = next;
+      ship.retried = next === null;
+      if (home) ship.leg = 'back';
+      commands.push(dockAt(ship, home ? ship.home : ship.shore));
     }
   }
   if (op.ships.every((ship) => ship.leg !== 'out')) {
@@ -949,6 +952,7 @@ function launch(
       home: { hx: mooring.hx, hy: mooring.hy },
       shore: { hx: shore.hx, hy: shore.hy },
       leg: 'out',
+      retried: false,
     });
   });
   const wave = crews.flatMap((crew) => crew.men);
