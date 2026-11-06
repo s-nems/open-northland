@@ -404,6 +404,8 @@ const SEEN_FOE_POINTS = 1;
 /** What the seat remembers seeing of the foe's army: `most` points at once, `on` lands the most seen on
  *  each, `faded` when the aged peak has worn off since. */
 interface FoeMemory {
+  /** {@link FOE} by default. */
+  readonly player?: number;
   readonly most: number;
   /** The aged peak's points, `most` by default. */
   readonly recent?: number;
@@ -414,14 +416,15 @@ interface FoeMemory {
 /** Give the seat the memory `memory` of the foe's army, its own army as it stands. */
 function rememberFoeArmy(
   sim: Simulation,
-  { most, recent = most, lands = [], faded = false }: FoeMemory,
+  { player = FOE, most, recent = most, lands = [], faded = false }: FoeMemory,
 ): void {
   const carrier = aiControlEntity(sim.world, SEAT);
   if (carrier === null) throw new Error('setup: no AI seat');
   runUntil(sim, COMPUTER_DECISION_INTERVAL_TICKS, () => sim.world.has(carrier, ComputerIntel));
   const own = everyFighterPoints(sim.world, ctxOf(sim), SEAT);
-  sim.world.mut(carrier, ComputerIntel).forces.push({
-    player: FOE,
+  const forces = sim.world.mut(carrier, ComputerIntel).forces;
+  forces.push({
+    player,
     peak: faded ? 0 : 1,
     peakAt: sim.tick,
     peakPoints: faded ? 0 : recent,
@@ -432,6 +435,7 @@ function rememberFoeArmy(
     lastSeenAt: sim.tick,
     lastZone: 0,
   });
+  forces.sort((a, b) => a.player - b.player);
 }
 
 /** The points of one of the seat's men: every man of the fixture weighs the same. */
@@ -716,6 +720,22 @@ describe('landing operations', () => {
     for (const ship of seen?.landing?.ships ?? [])
       expect(nodeManhattan(ship.shore, at)).toBeGreaterThan(RAID_TOWER_CLEARANCE_NODES);
     expect(nearest).toBeGreaterThan(RAID_TOWER_CLEARANCE_NODES);
+  });
+
+  it('weighs a rival it glimpsed only a few of at least as the strongest army it saw of any', () => {
+    const { sim } = landingWorld({
+      fog: FOG_MODE.CLASSIC_FOG_OF_WAR,
+      colony: true,
+      foe: [{ buildingType: HQ_TYPE, at: FOE_FARM, owner: SECOND_FOE }],
+    });
+    // Long ago it saw the foe's army outweigh its own; of the second rival it glimpsed a token band.
+    rememberFoeArmy(sim, { most: OUTMATCHING_FOES * manPoints(sim), faded: true });
+    rememberFoeArmy(sim, { player: SECOND_FOE, most: SEEN_FOE_POINTS });
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      expect(landings(sim)).toEqual([]);
+      return false;
+    });
+    expect(militaryOrdersOf(sim.world, SEAT).launchRatio).not.toBeNull();
   });
 
   it('holds the landing back against the most it ever saw of the army, though it saw only a few since', () => {

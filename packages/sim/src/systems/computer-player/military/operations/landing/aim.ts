@@ -276,10 +276,12 @@ function landingArmy(env: OperationEnv, owner: number): number | null {
 type ArmyWeights = (owner: number) => number;
 
 /**
- * The {@link ArmyWeights} of one decision: a rival's {@link landingArmy}; one the seat never saw, the
- * strongest army it believes of any living enemy, else its own army's points. Approximation: seats of one
- * map arm at about one pace, so an unseen army is weighed like the strongest seen, or at parity, never as
- * nothing; the same weight holds a clear landing and a storm. Costs the enemies' fighters once.
+ * The {@link ArmyWeights} of one decision: a rival's {@link landingArmy}, at least the strongest army the
+ * seat believes of any living enemy; with none believed, its own army's points. Approximation: seats of one
+ * map arm at about one pace, and a glimpse of a few of a rival's men is no measure of his army, so every
+ * rival weighs at least the strongest army seen, an unseen one too, or parity, never less; a headquarters
+ * landing sails once the wave outgrows that. The same weight holds a clear landing and a storm. Costs the
+ * enemies' fighters once.
  */
 function armyWeights(env: OperationEnv): ArmyWeights {
   const { world, ctx, seat } = env;
@@ -288,11 +290,9 @@ function armyWeights(env: OperationEnv): ArmyWeights {
     if (!known.has(owner)) known.set(owner, landingArmy(env, owner));
     return known.get(owner) ?? null;
   };
-  let unseen: number | null = null;
+  let floor: number | null = null;
   return (owner) => {
-    const army = knownOf(owner);
-    if (army !== null) return army;
-    if (unseen === null) {
+    if (floor === null) {
       let strongest: number | null = null;
       for (let other = 0; other < MAX_PLAYERS; other++) {
         if (other === seat || diplomacyStance(world, seat, other) !== 'enemy' || isPlayerDead(world, other))
@@ -300,9 +300,9 @@ function armyWeights(env: OperationEnv): ArmyWeights {
         const seen = knownOf(other);
         if (seen !== null && (strongest === null || seen > strongest)) strongest = seen;
       }
-      unseen = strongest ?? ownArmyPoints(world, ctx, seat).points;
+      floor = strongest ?? ownArmyPoints(world, ctx, seat).points;
     }
-    return unseen;
+    return Math.max(knownOf(owner) ?? 0, floor);
   };
 }
 
