@@ -825,6 +825,19 @@ describe('landing operations', () => {
     expect(seen?.landing?.startMen).toBe(men);
   });
 
+  it('sails no ship with only its helm aboard, leaving home the one man past its ships', () => {
+    const men = LANDING_BIG_SHIPS * MEN_PER_SHIP + 1;
+    const { sim, fleet } = landingWorld({ men });
+    expect(fleet).toBeGreaterThan(LANDING_BIG_SHIPS);
+    let seen: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return seen !== undefined;
+    });
+    expect(seen?.landing?.startShips).toBe(LANDING_BIG_SHIPS);
+    expect(seen?.landing?.startMen).toBe(men - 1);
+  });
+
   it('holds the landing back while the fire of the shelters it believes the foe holds outweighs it', () => {
     const { sim } = landingWorld({ men: LANDING_BIG_SHIPS * MEN_PER_SHIP, shelterFire: true });
     runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {

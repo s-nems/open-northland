@@ -728,9 +728,10 @@ interface Voyage {
 }
 
 /**
- * The voyage sailing `aim`'s men in as few of the `moored` ships as seat them, in id order: the men fill
- * the ships by {@link crewsOf}; each ship docks at its own shore point ({@link crewShores}). Null when
- * that land offers no shore.
+ * The voyage sailing `aim`'s men in as few of the `moored` ships as seat them, in id order, and none that
+ * would carry only its helm: the men fill the ships by {@link crewsOf}, a man past their seats staying home,
+ * as `pointsAshore` (`aim.ts`) counts the men ashore; each ship docks at its own shore point
+ * ({@link crewShores}). Null when that land offers no shore.
  */
 function launch(
   env: OperationEnv,
@@ -744,7 +745,8 @@ function launch(
   const ships: Entity[] = [];
   let capacity = 0;
   for (const ship of moored) {
-    if (capacity >= aim.men.length) break;
+    // A ship for the one man past the seats would carry its helm alone, so he stays home.
+    if (capacity + 1 >= aim.men.length) break;
     ships.push(ship);
     capacity += seatsOf(world, ship);
   }
