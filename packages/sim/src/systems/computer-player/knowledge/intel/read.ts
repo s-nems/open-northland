@@ -10,7 +10,7 @@ import {
 import type { DeepReadonly, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { everyFighterPoints } from '../../military/points.js';
-import { decayedPeak } from './update.js';
+import { decayedPeak, LAND_FORCES_HALF_LIFE_TICKS } from './update.js';
 
 type IntelView = DeepReadonly<ComputerIntelState>;
 type IntelBuildingView = DeepReadonly<IntelBuilding>;
@@ -92,11 +92,19 @@ export function peakFighterPoints(
   return ownPointsAtMost <= 0 ? limit : Math.min(limit, Math.floor((mostPoints * own) / ownPointsAtMost));
 }
 
-/** The most fighter points of `owner` that `seat` saw at once standing on `land`, never aged; 0 when it
- *  saw none there. */
-export function rememberedLandPoints(world: World, seat: number, owner: number, land: number): number {
-  const forces = intelOf(world, seat)?.forces.find((f) => f.player === owner);
-  return forces?.lands.find((l) => l.land === land)?.points ?? 0;
+/** The most fighter points of `owner` that `seat` saw at once standing on `land`, aged to `tick` by
+ *  {@link LAND_FORCES_HALF_LIFE_TICKS}; 0 when it saw none there. */
+export function rememberedLandPoints(
+  world: World,
+  seat: number,
+  owner: number,
+  land: number,
+  tick: number,
+): number {
+  const held = intelOf(world, seat)
+    ?.forces.find((f) => f.player === owner)
+    ?.lands.find((l) => l.land === land);
+  return held === undefined ? 0 : decayedPeak(held.points, held.seenAt, tick, LAND_FORCES_HALF_LIFE_TICKS);
 }
 
 function peakOrUnknown(forces: DeepReadonly<IntelForces>, tick: number): number | null {

@@ -328,12 +328,12 @@ type Objective = NonNullable<ReturnType<typeof landingObjective>>;
 
 /**
  * What the seat believes defends `goal` on `believed`, the fire there included. On a land holding a
- * headquarters, or `owner`'s start land, where his army stands even once it fell: his army
- * ({@link ArmyWeights}) and {@link RAID_TOWER_DEFENCE} for each tower covering the objective. On a colony:
- * those towers with the posts last seen on them ({@link defenceAt}), and the enemy fighters it sees on the
- * land, at least the
- * most of `owner`'s it ever saw there at once ({@link rememberedLandPoints}), so a raid that met the
- * garrison and turned back weighs it next time. `fighters` is read when absent.
+ * headquarters, or `owner`'s start land while the seat believes he holds buildings there, where his army
+ * stands even once the headquarters fell: his army ({@link ArmyWeights}) and {@link RAID_TOWER_DEFENCE} for
+ * each tower covering the objective. On a colony: those towers with the posts last seen on them
+ * ({@link defenceAt}), and the enemy fighters it sees on the land, at least the most of `owner`'s it saw
+ * there at once, aged ({@link rememberedLandPoints}), so a raid that met the garrison and turned back
+ * weighs it next time. `fighters` is read when absent.
  */
 function stormDefence(
   env: OperationEnv,
@@ -349,10 +349,12 @@ function stormDefence(
   const headquarters =
     believed.targets.find((t) => buildingCombatClass(ctx, t.buildingType) === 'hq') ?? null;
   let army = 0;
-  if (owner !== null && (headquarters !== null || startLandOf(world, owner) === land)) {
+  const startHeld =
+    owner !== null && startLandOf(world, owner) === land && believed.targets.some((t) => t.owner === owner);
+  if (owner !== null && (headquarters !== null || startHeld)) {
     army = armies(owner) + towers.length * RAID_TOWER_DEFENCE;
   } else {
-    const remembered = owner === null ? 0 : rememberedLandPoints(world, seat, owner, land);
+    const remembered = owner === null ? 0 : rememberedLandPoints(world, seat, owner, land, ctx.tick);
     army = Math.max((fighters ?? landFighters(env)).get(land) ?? 0, remembered);
     army += defenceAt({ towers, fighters: [] }, goal.at);
   }

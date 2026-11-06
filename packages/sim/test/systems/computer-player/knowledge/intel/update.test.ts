@@ -25,6 +25,7 @@ import {
   computerDecisionDue,
   FORCE_PEAK_HALF_LIFE_TICKS,
   INTEL_DECISION_PHASE,
+  LAND_FORCES_HALF_LIFE_TICKS,
   peakFighterPoints,
   rememberedLandPoints,
   SCOUT_LOSS_MEMORY_TICKS,
@@ -270,18 +271,22 @@ describe('computer seat intel', () => {
     expect(peakFighterPoints(sim.world, ctxOf(sim), SEAT, OTHER)).toBe(most);
   });
 
-  it('remembers the most fighter points seen at once on a land after fewer stand there', () => {
+  it('remembers the most fighter points seen at once on a land after fewer stand there, fading with age', () => {
     const sim = intelSim();
     spawnFighters(sim, OTHER, FIGHTERS, OTHER_START);
     const first = intelTick(sim.tick);
     observeAt(sim, first);
     const most = everyFighterPoints(sim.world, ctxOf(sim), OTHER);
     for (const e of ownedFightersOf(sim.world, sim.content, OTHER).slice(1)) sim.world.destroy(e);
-    observeAt(sim, intelTick(first + 1));
+    const later = intelTick(first + 1);
+    observeAt(sim, later);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('setup: a mapped sim has terrain');
     const land = terrain.componentOf(terrain.nodeAt(OTHER_START.x, OTHER_START.y));
-    expect(rememberedLandPoints(sim.world, SEAT, OTHER, land)).toBe(most);
+    expect(rememberedLandPoints(sim.world, SEAT, OTHER, land, later)).toBe(most);
+    expect(rememberedLandPoints(sim.world, SEAT, OTHER, land, first + LAND_FORCES_HALF_LIFE_TICKS)).toBe(
+      most >> 1,
+    );
   });
 
   it("grows the most seen of an army as the seat's own grew since, within the growth limit", () => {

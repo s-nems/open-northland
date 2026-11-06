@@ -209,17 +209,21 @@ function observeForces(
     record.mostPoints = seenPoints;
     record.ownPointsAtMost = everyFighterPoints(world, ctx, seat);
   }
-  rememberLands(record.lands, byLand);
+  rememberLands(record.lands, byLand, ctx.tick);
   record.lastSeenAt = ctx.tick;
   record.lastZone = busiestZone(byZone);
 }
 
-/** Raise each land's remembered most to the points seen on it now, kept ascending land. */
-function rememberLands(lands: IntelLandForces[], byLand: ReadonlyMap<number, number>): void {
+/** Renew each land's remembered most where the points seen on it now reach its aged value, kept ascending
+ *  land. */
+function rememberLands(lands: IntelLandForces[], byLand: ReadonlyMap<number, number>, tick: number): void {
   for (const [land, points] of byLand) {
     const held = lands.find((l) => l.land === land);
-    if (held === undefined) lands.push({ land, points });
-    else held.points = Math.max(held.points, points);
+    if (held === undefined) lands.push({ land, points, seenAt: tick });
+    else if (points >= decayedPeak(held.points, held.seenAt, tick, LAND_FORCES_HALF_LIFE_TICKS)) {
+      held.points = points;
+      held.seenAt = tick;
+    }
   }
   lands.sort((a, b) => a.land - b.land);
 }
@@ -243,9 +247,19 @@ export const FORCE_PEAK_HALF_LIFE_TICKS = 1440;
 /** Halvings past which any peak a map can field reads 0. */
 const PEAK_FORGOTTEN_HALVINGS = 31;
 
-/** `peak` aged from `peakAt` to `tick`, halved per {@link FORCE_PEAK_HALF_LIFE_TICKS}. */
-export function decayedPeak(peak: number, peakAt: number, tick: number): number {
-  const halvings = Math.floor((tick - peakAt) / FORCE_PEAK_HALF_LIFE_TICKS);
+/** Ticks over which the fighters remembered on one land halve (authored): ten game minutes, so a garrison a
+ *  raid met still weighs on the next raid a pause or two later, while a band that passed through, a wiped
+ *  garrison or a fallen army fades within the half hour. */
+export const LAND_FORCES_HALF_LIFE_TICKS = 5 * FORCE_PEAK_HALF_LIFE_TICKS;
+
+/** `peak` aged from `peakAt` to `tick`, halved per `halfLife` ticks. */
+export function decayedPeak(
+  peak: number,
+  peakAt: number,
+  tick: number,
+  halfLife: number = FORCE_PEAK_HALF_LIFE_TICKS,
+): number {
+  const halvings = Math.floor((tick - peakAt) / halfLife);
   return halvings >= PEAK_FORGOTTEN_HALVINGS ? 0 : peak >> halvings;
 }
 

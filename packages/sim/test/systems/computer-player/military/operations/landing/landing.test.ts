@@ -400,7 +400,7 @@ function rememberFoeArmy(
     peakPointsAt: sim.tick,
     mostPoints: most,
     ownPointsAtMost: own,
-    lands: lands.map((l) => ({ ...l })),
+    lands: lands.map((l) => ({ ...l, seenAt: sim.tick })),
     lastSeenAt: sim.tick,
     lastZone: 0,
   });
