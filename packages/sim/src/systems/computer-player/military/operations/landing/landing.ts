@@ -695,10 +695,9 @@ function acting(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const { tick } = env.ctx;
   const stayEnd = op.since + LANDING_SHORE_STAY_TICKS;
   const late = tick >= stayEnd;
-  const homeward = [...homecoming(env, op), ...releaseStranded(env, op, stayEnd)];
-  // A man the door did not let off is sent ashore again while the ships wait.
+  // A man the door did not let off is sent ashore again beside the orders of the men already there.
   const left = late ? [] : stillAboard(env, op);
-  if (left.length > 0) return [...homeward, ...left];
+  const homeward = [...left, ...homecoming(env, op), ...releaseStranded(env, op, stayEnd)];
   const { landed, striking, fire, commands } = landedOrders(env, op);
   const waiting = op.ships.some((ship) => ship.leg === 'waiting');
   if (waiting && landed.length > 0) {
@@ -708,6 +707,8 @@ function acting(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   if (late) homeward.push(...sailWaitingHome(env, op, true));
   const alone = tick >= stayEnd + LANDING_ASHORE_ALONE_TICKS;
   if (landed.length > 0 && striking && !alone) return [...homeward, ...commands];
+  // Nobody ashore yet but men still to land: the ships wait for them.
+  if (landed.length === 0 && left.length > 0) return homeward;
   // Nothing left to strike, or their time is up: the landed men are let go where they stand.
   const gone = new Set(landed);
   op.members = op.members.filter((e) => !gone.has(e));

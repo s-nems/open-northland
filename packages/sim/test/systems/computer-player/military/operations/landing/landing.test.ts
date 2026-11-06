@@ -9,7 +9,9 @@ import {
   type ComputerModuleEnables,
   ComputerNoWay,
   FOG_MODE,
+  MoveGoal,
   Owner,
+  PathFollow,
   PlayerOrder,
   Position,
   Rider,
@@ -28,7 +30,12 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../../../../../src/index.js';
-import { type HalfCellNode, hexagonRing, nodeManhattan } from '../../../../../../src/nav/halfcell.js';
+import {
+  type HalfCellNode,
+  hexagonRing,
+  nodeManhattan,
+  positionOfNode,
+} from '../../../../../../src/nav/halfcell.js';
 import type { TerrainGraph } from '../../../../../../src/nav/terrain/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../../../src/systems/ai-shared/cadence.js';
 import { computerProfileOf } from '../../../../../../src/systems/computer-player/difficulty.js';
@@ -395,6 +402,8 @@ function runUntil(sim: Simulation, ticks: number, watch: () => boolean): void {
 /** The men's worth of the foe's garrison the seat remembers on his colony, more than its least raid
  *  outweighs half again. */
 const REMEMBERED_GARRISON = 12;
+/** A spot on the foe's island far from his headquarters, where a landed man stands with no order. */
+const STRAGGLER_AT = { x: 100, y: 100 };
 /** A foe tower on the seat's own island, in reach of its first ships' berths, and the few men the seat
  *  sends past it. */
 const BERTH_TOWER = { x: 30, y: 4 };
@@ -573,6 +582,34 @@ describe('landing operations', () => {
     expect(seen?.members).toEqual([]);
     expect(foeHeadquarters(sim)).not.toBeNull();
     expect(shipsHomeEmpty(sim)).toBe(true);
+  });
+
+  it('sets ashore again a man back aboard a waiting ship, and orders the rest the while', () => {
+    const { sim } = landingWorld();
+    let seen: OperationView | undefined;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return seen?.state === 'acting' && menAcross(sim).length > 1;
+    });
+    const [boarder, straggler] = menAcross(sim);
+    const ship = seen?.landing?.ships.find((s) => s.leg === 'waiting');
+    if (boarder === undefined || straggler === undefined || ship === undefined)
+      throw new Error('setup: no men ashore or no waiting ship');
+    sim.enqueueSetup({ kind: 'attachToVehicle', entity: boarder, vehicle: ship.vehicle });
+    const inside = (): boolean =>
+      vehiclePassengers(sim.world.get(ship.vehicle, Vehicle)).some((p) => p.entity === boarder && p.inside);
+    runUntil(sim, LANDING_LIMIT_TICKS, inside);
+    expect(inside()).toBe(true);
+    // A man far off the objective with no order left, who the next decision must order on.
+    sim.world.mut(straggler, Position).x = positionOfNode(STRAGGLER_AT.x, STRAGGLER_AT.y).x;
+    sim.world.mut(straggler, Position).y = positionOfNode(STRAGGLER_AT.x, STRAGGLER_AT.y).y;
+    sim.world.remove(straggler, PlayerOrder);
+    sim.world.remove(straggler, MoveGoal);
+    sim.world.remove(straggler, PathFollow);
+    runUntil(sim, COMPUTER_DECISION_INTERVAL_TICKS, () => false);
+    expect(sim.world.tryGet(straggler, PlayerOrder)?.attackMove).toBeDefined();
+    runUntil(sim, 2 * COMPUTER_DECISION_INTERVAL_TICKS, () => false);
+    expect(sim.world.has(boarder, Rider)).toBe(false);
   });
 
   it('takes the survivors home once half the men set ashore fell', () => {
