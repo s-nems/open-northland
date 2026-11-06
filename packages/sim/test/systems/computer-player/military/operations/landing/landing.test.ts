@@ -1370,17 +1370,24 @@ describe('landing operations', () => {
     expect(seen?.landing?.landed).toBeGreaterThan(0);
   });
 
-  it('rescues a colony still founding, before its first building, from a band at its site', () => {
-    const { sim } = landingWorld({ colony: true, armed: true });
+  it('rescues a colony still founding, before its first building, from a ship and band at its site', () => {
+    // As for the moored ship by a standing colony, the seats carry men enough to outweigh its load.
+    const { sim } = landingWorld({ colony: true, armed: true, shelterFire: true, seats: STORM_SHIP_SEATS });
     const terrain = terrainOf(sim);
     const colonyLand = terrain.componentOf(terrain.nodeAtClamped(COLONY_STORE.x, COLONY_STORE.y));
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI seat');
+    // With no building yet, the garrison notes no band: the enemy ship moored by the site is the trigger.
     const site = { hx: COLONY_STORE.x, hy: COLONY_STORE.y };
-    const threat = { men: RAIDERS, at: site, since: sim.tick };
-    const colony = blankColony(colonyLand, { phase: 'founding', site, threat });
+    const colony = blankColony(colonyLand, { phase: 'founding', site, threat: null });
     sim.world.add(carrier, ComputerColony, { colonies: [colony], rejected: [], retryAt: 0 });
-    spawnBand(sim, RAIDERS, { x: COLONY_STORE.x + GUARD_OFFSET, y: COLONY_STORE.y }, GUARD_RANK, FOE);
+    createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: SHIP,
+      ...NEAR_BERTH.water,
+      tribe: VIKING,
+      owner: FOE,
+    });
+    spawnBand(sim, RAIDERS, NEAR_BERTH.landed, GUARD_RANK, FOE);
     let seen: OperationView | undefined;
     runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
       seen = rescues(sim)[0] ?? seen;
