@@ -150,7 +150,7 @@ const SHORES_PER_SHIP = 2;
  * reach of every tower and shelter the seat believes stands on any land ({@link fireMaskOf}), judged by one
  * flood from the first ship ({@link docksReachedThrough}): the first one no other crew took, else its share of them.
  * Null when the fleet reaches none that way, or no course checked is clear ({@link clearCourses}), so the
- * landing tries another land. Approximation: the fleet's ships moor side by side at home, so the first
+ * landing tries another land, on a later decision once one land's courses were judged on this one. Approximation: the fleet's ships moor side by side at home, so the first
  * ship's water stands for theirs. Authored:
  * observed on arabskie_wyspy_wolna_gra_mieszana, fleets sailing past coastal towers lost most hulls before
  * they reached the shore, and ships sank on their way home past a tower their seat knew, their shore far
@@ -158,6 +158,7 @@ const SHORES_PER_SHIP = 2;
  */
 function shoresOf(
   env: OperationEnv,
+  kind: SeaLanding['kind'],
   crews: readonly { readonly ship: Entity }[],
   shores: readonly HalfCellNode[],
 ): (HalfCellNode | undefined)[] | null {
@@ -171,6 +172,11 @@ function shoresOf(
     const spots = mooringSpotsOf(world, ctx, terrain, first.ship);
     const key = `${shores.map((at) => `${at.hx},${at.hy}`).join(';')}|${fireKeyOf(sources)}`;
     if (spots !== null && cutOff.get(spots)?.has(key) === true) return null;
+    // One land's courses are judged a decision; the next land waits for the next decision.
+    const judged = judgedAt.get(world) ?? new Map<string, number>();
+    const judge = `${env.seat}:${kind}`;
+    if (judged.get(judge) === ctx.tick) return null;
+    judgedAt.set(world, judged.set(judge, ctx.tick));
     const fire = fireMaskOf(terrain, sources);
     const closed = (node: NodeId): boolean => fire[node] === UNDER_FIRE;
     const reached = docksReachedThrough(world, ctx, terrain, first.ship, shores, closed);
@@ -182,8 +188,13 @@ function shoresOf(
   return crews.map((_, i) => open[i] ?? open[i % open.length]);
 }
 
+/** Per world, the tick each seat's landing and rescue last judged a land's courses ({@link shoresOf}), so a
+ *  decision floods and searches courses for one land of each: a derived record of the current tick, which a
+ *  restored game, saved between ticks, never needs. */
+const judgedAt = new WeakMap<World, Map<string, number>>();
+
 /** The most crews of a landing whose dock course {@link clearCourses} checks, each a route search. */
-const COURSE_CHECKS = 4;
+const COURSE_CHECKS = 3;
 
 /**
  * Each crew's shore of `open` once the course its dock order would sail there is checked against `closed`
@@ -874,7 +885,13 @@ interface Voyage {
  * the ships by {@link crewsOf}; each ship docks at its own shore point ({@link landingShores}). Null when
  * that land offers no shore.
  */
-function launch(env: OperationEnv, aim: LandingAim, moored: readonly Entity[], id: number): Voyage | null {
+function launch(
+  env: OperationEnv,
+  kind: SeaLanding['kind'],
+  aim: LandingAim,
+  moored: readonly Entity[],
+  id: number,
+): Voyage | null {
   const { world, ctx } = env;
   const ships: Entity[] = [];
   let capacity = 0;
@@ -888,7 +905,7 @@ function launch(env: OperationEnv, aim: LandingAim, moored: readonly Entity[], i
   const found =
     first === undefined ? [] : landingShores(env, first.ship, aim, crews.length * SHORES_PER_SHIP);
   if (found.length === 0) return null;
-  const shores = shoresOf(env, crews, found);
+  const shores = shoresOf(env, kind, crews, found);
   if (shores === null) return null;
   const commands: PlayerCommand[] = [];
   const landingShips: LandingShip[] = [];
@@ -940,7 +957,7 @@ function openLanding(
   const muster = musterOf(env, free);
   if (muster === null) return null;
   const voyage = landingAim(env, muster.home, homeOf(env), muster.ranked, ratio, muster.room, (aim) =>
-    launch(env, aim, muster.moored, id),
+    launch(env, 'landing', aim, muster.moored, id),
   );
   return voyage === null ? null : { op: { ...voyage.op, kind: 'landing' }, commands: voyage.commands };
 }
@@ -955,7 +972,7 @@ function openRescue(env: OperationEnv, free: readonly Entity[], id: number): Ope
   const muster = musterOf(env, free);
   if (muster === null) return null;
   const aim = rescueAim(env, muster.ranked, muster.room);
-  const voyage = aim === null ? null : launch(env, aim, muster.moored, id);
+  const voyage = aim === null ? null : launch(env, 'rescue', aim, muster.moored, id);
   return voyage === null ? null : { op: { ...voyage.op, kind: 'rescue' }, commands: voyage.commands };
 }
 
