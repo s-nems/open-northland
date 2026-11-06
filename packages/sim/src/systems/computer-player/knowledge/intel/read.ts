@@ -87,9 +87,10 @@ export function peakFighterPoints(
   const forces = intelOf(world, seat)?.forces.find((f) => f.player === owner);
   if (forces === undefined || forces.mostPoints <= 0) return null;
   const { mostPoints, ownPointsAtMost } = forces;
-  if (own <= ownPointsAtMost) return mostPoints;
-  const limit = mostPoints * UNSEEN_ARMY_GROWTH_LIMIT;
-  return ownPointsAtMost <= 0 ? limit : Math.min(limit, Math.floor((mostPoints * own) / ownPointsAtMost));
+  // A sighting made while the seat had no fighter gives no base to grow from, so it reads as seen.
+  if (own <= ownPointsAtMost || ownPointsAtMost <= 0) return mostPoints;
+  const grown = Math.floor((mostPoints * own) / ownPointsAtMost);
+  return Math.min(mostPoints * UNSEEN_ARMY_GROWTH_LIMIT, grown);
 }
 
 /** The most fighter points of `owner` that `seat` saw at once standing on `land`, aged to `tick` by

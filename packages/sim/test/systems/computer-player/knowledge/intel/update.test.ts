@@ -306,6 +306,16 @@ describe('computer seat intel', () => {
     expect(grown()).toBe(most * UNSEEN_ARMY_GROWTH_LIMIT);
   });
 
+  it('reads an army seen while the seat had no fighter as seen, once the seat has one', () => {
+    const sim = intelSim();
+    spawnFighters(sim, OTHER, FIGHTERS, OTHER_START);
+    expect(everyFighterPoints(sim.world, ctxOf(sim), SEAT)).toBe(0);
+    observeAt(sim, intelTick(sim.tick));
+    const most = everyFighterPoints(sim.world, ctxOf(sim), OTHER);
+    spawnFighters(sim, SEAT, 1, { x: HQ_X, y: HQ_Y + 6 });
+    expect(peakFighterPoints(sim.world, ctxOf(sim), SEAT, OTHER)).toBe(most);
+  });
+
   it('keeps no memory for a seat whose computer controller does not run', () => {
     const sim = intelSim(false);
     const due = intelTick(sim.tick);
