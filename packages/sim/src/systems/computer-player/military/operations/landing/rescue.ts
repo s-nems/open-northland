@@ -1,14 +1,20 @@
-import type {
-  ColonyPhase,
-  ColonyState,
-  RescueOperation,
-  SeaLanding,
+import {
+  type ColonyPhase,
+  type ColonyState,
+  playerPlacementTribes,
+  type RescueOperation,
+  type SeaLanding,
 } from '../../../../../components/index.js';
 import type { DeepReadonly, Entity } from '../../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../../nav/terrain/index.js';
 import { colonyBuildingsOn, seatColonies } from '../../../../ai-shared/home-roster.js';
-import { insideBox, settlementBox } from '../../../../ai-shared/military/defence/threat.js';
+import {
+  insideBox,
+  type SettlementBox,
+  settlementBox,
+  threatWatchNodes,
+} from '../../../../ai-shared/military/defence/threat.js';
 import { ownedFightersOf } from '../../../../movement/collision/owned-fighters.js';
 import { minutesToTicks } from '../../../game-phase.js';
 import { visibleEnemyMooredShips } from '../../../knowledge/intel/index.js';
@@ -169,11 +175,26 @@ function enemyShipsAt(
 }
 
 /** Whether a spot lies on the colony's `land` inside the watch of its buildings ({@link settlementBox}), the
- *  reach its garrison notes a band in; never, for a land with no building of the seat's. */
+ *  reach its garrison notes a band in, or before its first building stands, the watch of a building at its
+ *  site ({@link siteBox}); never, for a land the seat holds no colony on. */
 function colonyWatch(env: OperationEnv, land: number): (at: HalfCellNode) => boolean {
   const { world, ctx, terrain, seat } = env;
-  const box = settlementBox(world, ctx, terrain, colonyBuildingsOn(world, ctx, seat, land));
+  const box =
+    settlementBox(world, ctx, terrain, colonyBuildingsOn(world, ctx, seat, land)) ?? siteBox(env, land);
   return (at) => box !== null && landOfPoint(terrain, at) === land && insideBox(box, at.hx, at.hy);
+}
+
+/** The watch box round the site of the seat's colony on `land`, a building's watch of the seat's tribe
+ *  ({@link threatWatchNodes}) every way, the shape {@link settlementBox} gives one building; null with no
+ *  colony there or no tribe. */
+function siteBox(env: OperationEnv, land: number): SettlementBox | null {
+  const { world, ctx, seat } = env;
+  const colony = seatColonies(world, seat).find((c) => c.land === land);
+  const tribe = playerPlacementTribes(world, seat)?.[0];
+  if (colony === undefined || tribe === undefined) return null;
+  const band = threatWatchNodes(ctx, tribe);
+  const { hx, hy } = colony.site;
+  return { minX: hx - band - 1, maxX: hx + band + 1, minY: hy - band, maxY: hy + band };
 }
 
 /** The enemy fighters the seat sees inside the watch of its colony on one of `lands` ({@link colonyWatch}),

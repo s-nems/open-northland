@@ -1141,6 +1141,25 @@ describe('landing operations', () => {
     expect(seen?.landing?.landed).toBeGreaterThan(0);
   });
 
+  it('rescues a colony still founding, before its first building, from a band at its site', () => {
+    const { sim } = landingWorld({ colony: true, armed: true });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(COLONY_STORE.x, COLONY_STORE.y));
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    const site = { hx: COLONY_STORE.x, hy: COLONY_STORE.y };
+    const threat = { men: RAIDERS, at: site, since: sim.tick };
+    const colony = blankColony(colonyLand, { phase: 'founding', site, threat });
+    sim.world.add(carrier, ComputerColony, { colonies: [colony], rejected: [], retryAt: 0 });
+    spawnBand(sim, RAIDERS, { x: COLONY_STORE.x + GUARD_OFFSET, y: COLONY_STORE.y }, GUARD_RANK, FOE);
+    let seen: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      seen = rescues(sim)[0] ?? seen;
+      return seen !== undefined;
+    });
+    expect(seen).toBeDefined();
+  });
+
   it("sends no rescue at a rival's men on the colony's island beyond its watch", () => {
     const { sim } = landingWorld({ colony: true, armed: true });
     const terrain = terrainOf(sim);
