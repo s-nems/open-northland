@@ -612,6 +612,25 @@ describe('landing operations', () => {
     expect(shipsHomeEmpty(sim)).toBe(true);
   });
 
+  it('ends with nothing to strike once its men fighting alone took the last building, its ships at sea', () => {
+    const { sim } = landingWorld();
+    let seen: OperationView | undefined;
+    let struck = false;
+    runUntil(sim, LANDING_LIMIT_TICKS + LANDING_SHORE_STAY_TICKS + LANDING_ASHORE_ALONE_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      const ships = seen?.landing?.ships ?? [];
+      // The ships sailed home past their stay; the men strike on alone and fell the headquarters.
+      if (!struck && seen?.state === 'acting' && ships.length > 0 && ships.every((s) => s.leg === 'back')) {
+        struck = true;
+        const hq = foeHeadquarters(sim);
+        if (hq !== null) sim.world.destroy(hq);
+      }
+      return seen?.state === 'done';
+    });
+    expect(struck).toBe(true);
+    expect(seen?.reason).toBe('nothingToStrike');
+  });
+
   it('sets ashore again a man back aboard a waiting ship, and orders the rest the while', () => {
     const { sim } = landingWorld();
     let seen: OperationView | undefined;

@@ -516,7 +516,7 @@ function sailWaitingHome(env: OperationEnv, op: SeaLanding, all: boolean): Playe
  * {@link LANDING_ASHORE_ALONE_TICKS} more. A man still aboard a waiting ship is set ashore again while the
  * landed men fight on ({@link stillAboard}). Ends once no landed man is left and every ship is home or
  * lost: `wiped` when the landed men fell, `arrivedHome` when they came home aboard ({@link endedAshore}),
- * `nothingToStrike` when the land holds nothing more, `timedOut` when its time ran out.
+ * `nothingToStrike` or `timedOut` when they were let go with nothing more to strike or their time run out.
  */
 function acting(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const { tick } = env.ctx;
@@ -538,17 +538,14 @@ function acting(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   if (landed.length > 0 && striking && !alone) return [...homeward, ...commands];
   // Nobody ashore yet but men still to land: the ships wait for them.
   if (landed.length === 0 && left.length > 0) return homeward;
-  // Nothing left to strike, or their time is up: the landed men are let go where they stand.
+  // Nothing left to strike, or their time is up: the landed men are let go where they stand, and why
+  // stands for the landing's end, though its ships are still on their way home.
   const gone = new Set(landed);
   op.members = op.members.filter((e) => !gone.has(e));
+  if (landed.length > 0) op.reason ??= striking ? 'timedOut' : 'nothingToStrike';
   if (landed.length === 0) homeward.push(...sailWaitingHome(env, op, true));
   if (op.ships.every((ship) => ship.leg === 'home'))
-    enter(
-      op,
-      'done',
-      tick,
-      landed.length > 0 ? (striking ? 'timedOut' : 'nothingToStrike') : endedAshore(env, op),
-    );
+    enter(op, 'done', tick, op.reason ?? endedAshore(env, op));
   return homeward;
 }
 
