@@ -124,6 +124,8 @@ const COLONY_STORE = { x: 96, y: 108 };
  *  and in the channel at the island's far corner. */
 const NEAR_BERTH = { water: { x: 80, y: 104 }, landed: { x: 92, y: 100 } };
 const FAR_BERTH = { water: { x: 134, y: 72 }, landed: { x: 130, y: 82 } };
+/** A tick just before the decision a full fleet's landing opens on here. */
+const BOTH_OPEN_AT = 200;
 /** The ships beyond the landing fleet a rescue may sail in. */
 const RESCUE_SHIPS = 3;
 /** The seat's own men standing on the colony a rescue sails for, at a post out of the band's reach. */
@@ -995,6 +997,37 @@ describe('landing operations', () => {
     });
     expect(seen?.kind).toBe('rescue');
     expect(seen?.landing?.landed).toBeGreaterThan(0);
+  });
+
+  it('crews a rescue and a landing that open on one decision with ships and men of their own', () => {
+    const { sim, fleet } = landingWorld({ colony: true, armed: true, ships: 0 });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(FOE_FARM.x, FOE_FARM.y));
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    launchShips(sim, fleet + RESCUE_SHIPS);
+    spawnBand(sim, RESCUE_SHIPS * MEN_PER_SHIP, { x: BARRACKS.x - 6, y: BARRACKS.y - 8 }, ARMY_RANK, SEAT);
+    // The band lands on the colony just before the decision the landing opens on.
+    runUntil(sim, BOTH_OPEN_AT, () => sim.tick >= BOTH_OPEN_AT);
+    const threat = { men: RAIDERS, at: { hx: FOE_FARM.x, hy: FOE_FARM.y }, since: sim.tick };
+    sim.world.add(carrier, ComputerColony, {
+      colonies: [blankColony(colonyLand, { threat })],
+      rejected: [],
+      retryAt: 0,
+    });
+    spawnBand(sim, RAIDERS, FOE_FARM, GUARD_RANK, FOE);
+    let attack: OperationView | undefined;
+    let rescue: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      attack = landings(sim)[0] ?? attack;
+      rescue = rescues(sim)[0] ?? rescue;
+      return attack !== undefined || rescue !== undefined;
+    });
+    if (attack === undefined || rescue === undefined) throw new Error('both must open on one decision');
+    expect(attack.since).toBe(rescue.since);
+    const rescueShips = new Set(rescue.landing?.ships.map((ship) => ship.vehicle));
+    expect(attack.landing?.ships.filter((ship) => rescueShips.has(ship.vehicle))).toEqual([]);
+    expect(attack.members.filter((e) => rescue?.members.includes(e))).toEqual([]);
   });
 
   it.each([

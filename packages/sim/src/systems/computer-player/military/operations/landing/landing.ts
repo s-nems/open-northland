@@ -1,7 +1,10 @@
 import {
   AttackOrder,
+  aiControlEntity,
+  ComputerOperations,
   diplomacyStance,
   Engagement,
+  isOperationOpen,
   type LandingOperation,
   type LandingShip,
   type OperationEndReason,
@@ -694,7 +697,10 @@ function musterOf(env: OperationEnv, free: readonly Entity[]): Muster | null {
   const home = terrain.componentOf(env.home);
   if (home === NO_COMPONENT) return null;
   const fleet = landingFleetShips(world, seat, computerProfileOf(world, seat));
-  const moored = freeShips(env, home).slice(0, fleet);
+  const held = heldShips(world, seat);
+  const moored = freeShips(env, home)
+    .filter((ship) => !held.has(ship))
+    .slice(0, fleet);
   if (moored.length === 0) return null;
   const men = free.filter((e) => {
     const node = standingNode(world, terrain, e);
@@ -710,6 +716,21 @@ function musterOf(env: OperationEnv, free: readonly Entity[]): Muster | null {
     .sort((a, b) => b.points - a.points || a.entity - b.entity);
   const bigLanding = moored.length >= landingFewestShips(fleet) && men.length >= least;
   return { home, moored, ranked, room: { ships, seats, bigLanding } };
+}
+
+/** The ships the seat's open operations hold, a landing's or rescue's once home let go. One opened earlier
+ *  this decision has not taken its men aboard yet, so its ships still read free ({@link freeShips}). */
+function heldShips(world: World, seat: number): ReadonlySet<Entity> {
+  const carrier = aiControlEntity(world, seat);
+  const held = new Set<Entity>();
+  for (const op of (carrier === null ? undefined : world.tryGet(carrier, ComputerOperations))?.operations ??
+    []) {
+    if (!isOperationOpen(op)) continue;
+    if (op.kind === 'seaScout') held.add(op.ship);
+    else if (op.kind === 'landing' || op.kind === 'rescue')
+      for (const ship of op.ships) if (ship.leg !== 'home') held.add(ship.vehicle);
+  }
+  return held;
 }
 
 function seatsOf(world: World, ship: Entity): number {
