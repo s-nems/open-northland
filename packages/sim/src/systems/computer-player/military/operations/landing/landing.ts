@@ -151,13 +151,13 @@ const SHORES_PER_SHIP = 2;
 /**
  * Each crew's shore of `shores`, nearest first, among those its fleet reaches through water outside the
  * reach of every tower and shelter the seat believes stands on any land ({@link fireMaskOf}), judged by one
- * flood from the first ship ({@link docksReachedThrough}): the first one no other crew took, else its share of them.
- * Null when the fleet reaches none that way, or no course checked is clear ({@link clearCourses}), so the
- * landing tries another land, on a later decision once one land's courses were judged on this one. Approximation: the fleet's ships moor side by side at home, so the first
- * ship's water stands for theirs. Authored:
- * observed on arabskie_wyspy_wolna_gra_mieszana, fleets sailing past coastal towers lost most hulls before
- * they reached the shore, and ships sank on their way home past a tower their seat knew, their shore far
- * from it.
+ * flood from the first ship ({@link docksReachedThrough}): the first one no other crew took, else its share
+ * of them. Null when the fleet reaches none that way or no course checked is clear ({@link clearCourses}),
+ * and null for every land after the first `judge` saw this decision: the landing tries another land on a
+ * later decision. Approximation: the fleet's ships moor side by side at home, so the first ship's water
+ * stands for theirs. Authored: observed on arabskie_wyspy_wolna_gra_mieszana, fleets sailing past coastal
+ * towers lost most hulls before they reached the shore, and ships sank on their way home past a tower
+ * their seat knew, their shore far from it.
  */
 function shoresOf(
   env: OperationEnv,
@@ -504,8 +504,8 @@ const REDOCK_STEP_NODES = 4;
 
 /**
  * Whether a shore suits `ship` stopped short of its own on the way out: clear of `fire`, the towers and
- * shelters the seat believes stand, and so is the straight way there from where the ship lies. Approximation: a
- * ship this near the coast sails about straight to the next shore along it.
+ * shelters the seat believes stand, and so is the straight way there from where the ship lies.
+ * Approximation: a ship this near the coast sails about straight to the next shore along it.
  */
 function redockClear(
   env: OperationEnv,
