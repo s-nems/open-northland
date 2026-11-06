@@ -928,9 +928,8 @@ describe('landing operations', () => {
   });
 
   it('waits less between landings the more its army outgrows the seats of its landing fleet', () => {
-    const { sim } = landingWorld({ ships: 0, men: 0 });
-    // The fleet grows with the army up to its most ships; an army twice those seats outgrows it.
-    const fleetSeats = LANDING_FLEET_MAX_SHIPS * SOLDIERS_PER_SHIP;
+    const { sim, fleet } = landingWorld({ ships: 0, men: 0 });
+    const fleetSeats = fleet * SOLDIERS_PER_SHIP;
     spawnBand(sim, OUTGROWN * fleetSeats, { x: 4, y: 60 }, WIDE_RANK, SEAT);
     const terrain = terrainOf(sim);
     const env = {

@@ -39,6 +39,7 @@ import {
   LANDING_FLEET_MIN_SHIPS,
   landingFewestShips,
   landingFleetShips,
+  plannedFleetShips,
   SOLDIERS_PER_SHIP,
 } from '../../../workforce/craft.js';
 import { underAttack } from '../../../workforce/garrison.js';
@@ -1008,12 +1009,13 @@ function openRescue(env: OperationEnv, free: readonly Entity[], id: number): Ope
 
 /**
  * How long after a landing ends before the next one forms: {@link LANDING_COOLDOWN_TICKS}, shortened in
- * proportion as the seat's fit army outgrows the seats of its landing fleet, down to
- * {@link LANDING_QUICK_COOLDOWN_TICKS}, so a bigger army lands more often. Costs the seat's fighters.
+ * proportion as the seat's fit army outgrows the seats of its planned fleet ({@link plannedFleetShips}),
+ * down to {@link LANDING_QUICK_COOLDOWN_TICKS}, so a bigger army lands more often. Costs the seat's
+ * fighters.
  */
 function cooldownTicks(env: OperationEnv): number {
   const { world, ctx, seat } = env;
-  const fleetSeats = landingFleetShips(world, ctx, seat, computerProfileOf(world, seat)) * SOLDIERS_PER_SHIP;
+  const fleetSeats = plannedFleetShips(world, seat, computerProfileOf(world, seat)) * SOLDIERS_PER_SHIP;
   const men = ownArmyPoints(world, ctx, seat).men;
   if (men <= fleetSeats) return LANDING_COOLDOWN_TICKS;
   return Math.max(LANDING_QUICK_COOLDOWN_TICKS, Math.floor((LANDING_COOLDOWN_TICKS * fleetSeats) / men));
