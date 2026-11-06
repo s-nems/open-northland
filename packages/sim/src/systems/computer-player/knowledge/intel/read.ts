@@ -75,18 +75,18 @@ export const UNSEEN_ARMY_GROWTH_LIMIT = 8;
  * {@link UNSEEN_ARMY_GROWTH_LIMIT} times and never shrunk; null when none is remembered. For a decision that
  * cannot be taken back, where a faded memory would undercount an army out of sight. Approximation: seats
  * of one map arm at about one pace, so an army unseen since grows like the seat's own. Costs the seat's
- * fighters.
+ * fighters unless the caller passes their points as `own`.
  */
 export function peakFighterPoints(
   world: World,
   ctx: SystemContext,
   seat: number,
   owner: number,
+  own: number = everyFighterPoints(world, ctx, seat),
 ): number | null {
   const forces = intelOf(world, seat)?.forces.find((f) => f.player === owner);
   if (forces === undefined || forces.mostPoints <= 0) return null;
   const { mostPoints, ownPointsAtMost } = forces;
-  const own = everyFighterPoints(world, ctx, seat);
   if (own <= ownPointsAtMost) return mostPoints;
   const limit = mostPoints * UNSEEN_ARMY_GROWTH_LIMIT;
   return ownPointsAtMost <= 0 ? limit : Math.min(limit, Math.floor((mostPoints * own) / ownPointsAtMost));

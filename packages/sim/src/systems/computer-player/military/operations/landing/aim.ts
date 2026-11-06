@@ -14,6 +14,7 @@ import { peakFighterPoints, rememberedLandPoints } from '../../../knowledge/inte
 import { landOfPoint } from '../../../sea-route.js';
 import { knownDefendingPoints, ownArmyPoints } from '../../enemy-strength.js';
 import { launchRatioReached } from '../../plan.js';
+import { everyFighterPoints } from '../../points.js';
 import type { OperationEnv } from '../lifecycle.js';
 import { defenceAt, RAID_TOWER_DEFENCE, visibleEnemyFighters } from '../raid-target.js';
 import {
@@ -262,12 +263,13 @@ function headquartersAim(
  * What `owner`'s army weighs against a landing on his headquarters land: what the seat believes defends
  * him ({@link knownDefendingPoints}), at least the most it ever saw of his army at once, grown since as
  * its own army grew ({@link peakFighterPoints}): landed men cannot fall back, and a memory faded while his
- * army was out of sight undercounts it. Null when the seat knows nothing of it.
+ * army was out of sight undercounts it, `own` being the seat's fighter points. Null when the seat knows
+ * nothing of it.
  */
-function landingArmy(env: OperationEnv, owner: number): number | null {
+function landingArmy(env: OperationEnv, owner: number, own: number): number | null {
   const { world, ctx, seat } = env;
   const known = knownDefendingPoints(world, ctx, seat, owner);
-  const peak = peakFighterPoints(world, ctx, seat, owner);
+  const peak = peakFighterPoints(world, ctx, seat, owner, own);
   if (known === null) return peak;
   return peak === null ? known : Math.max(known, peak);
 }
@@ -281,13 +283,15 @@ type ArmyWeights = (owner: number) => number;
  * map arm at about one pace, and a glimpse of a few of a rival's men is no measure of his army, so every
  * rival weighs at least the strongest army seen, an unseen one too, or parity, never less; a headquarters
  * landing sails once the wave outgrows that. The same weight holds a clear landing and a storm. Costs the
- * enemies' fighters once.
+ * enemies' fighters and the seat's own once.
  */
 function armyWeights(env: OperationEnv): ArmyWeights {
   const { world, ctx, seat } = env;
   const known = new Map<number, number | null>();
+  let own: number | null = null;
   const knownOf = (owner: number): number | null => {
-    if (!known.has(owner)) known.set(owner, landingArmy(env, owner));
+    own ??= everyFighterPoints(world, ctx, seat);
+    if (!known.has(owner)) known.set(owner, landingArmy(env, owner, own));
     return known.get(owner) ?? null;
   };
   let floor: number | null = null;
