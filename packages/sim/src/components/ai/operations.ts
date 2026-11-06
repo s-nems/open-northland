@@ -103,6 +103,8 @@ export interface LandingShip {
 /** Men carried over the sea and set ashore: the members are the men aboard or set ashore and each ship's
  *  commander until his ship is home. */
 interface SeaLandingBase extends OperationBase {
+  /** The land component it sets its men ashore on and strikes on. */
+  land: number;
   /** Ascending vehicle id; a sunk ship is dropped. */
   ships: LandingShip[];
   /** The ships and men it set out with, for its losses. */

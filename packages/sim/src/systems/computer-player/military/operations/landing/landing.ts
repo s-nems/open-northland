@@ -356,7 +356,7 @@ function outmatchedAshore(env: OperationEnv, op: SeaLanding): boolean {
 /** The points of the seat's own fighters a rescue finds on the colony it sails for, its own men left out,
  *  who fight the band beside it as its sizing counted them ({@link rescueAim}); 0 for any other landing. */
 function besideAshore(env: OperationEnv, op: SeaLanding): number {
-  return isRescue(op) ? ownPointsOnLand(env, rivalComponent(env, op), new Set(op.members)) : 0;
+  return isRescue(op) ? ownPointsOnLand(env, op.land, new Set(op.members)) : 0;
 }
 
 /**
@@ -492,15 +492,10 @@ function homecoming(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   return commands;
 }
 
-/** The land the men were set ashore on: the target's component, read at the spot the landing aimed at. */
-function rivalComponent(env: OperationEnv, op: SeaLanding): number {
-  return landOfPoint(env.terrain, { hx: op.target.hx, hy: op.target.hy });
-}
-
 /** The men set ashore: members on the target's land, no longer aboard. */
 function landedMen(env: OperationEnv, op: SeaLanding): Entity[] {
   const { world, terrain } = env;
-  const rival = rivalComponent(env, op);
+  const rival = op.land;
   return op.members.filter((e) => {
     if (world.has(e, Rider)) return false;
     const node = standingNode(world, terrain, e);
@@ -528,7 +523,7 @@ function landedOrders(env: OperationEnv, op: SeaLanding): LandedOrders {
   const first = landed[0];
   const from = first === undefined ? null : nodeOfEntity(world, first);
   if (from === null) return { landed, striking: false, fire: [], commands: [] };
-  const land = rivalComponent(env, op);
+  const land = op.land;
   const free = landed.filter(
     (e) => !spokenFor(world, e) && !world.has(e, Engagement) && !world.has(e, AttackOrder),
   );
@@ -649,15 +644,19 @@ function sailWaitingHome(env: OperationEnv, op: SeaLanding, all: boolean): Playe
  * fighter in sight), they board the waiting ships ({@link reembark}). Past {@link LANDING_SHORE_STAY_TICKS}
  * a rescue's men board them too, on their own colony, where no ship comes back for them; a landing's ships
  * sail home and its men fight on alone, let go where they stand once nothing is left to strike or past
- * {@link LANDING_ASHORE_ALONE_TICKS} more. Ends once no landed man is left and every ship is home or lost:
- * `wiped` when the landed men fell, `nothingToStrike` when the land holds nothing more, `timedOut` when its
- * time ran out.
+ * {@link LANDING_ASHORE_ALONE_TICKS} more. A man still aboard a waiting ship is set ashore again
+ * ({@link stillAboard}). Ends once no landed man is left and every ship is home or lost: `wiped` when the
+ * landed men fell, `arrivedHome` when they came home aboard ({@link endedAshore}), `nothingToStrike` when
+ * the land holds nothing more, `timedOut` when its time ran out.
  */
 function acting(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   const { tick } = env.ctx;
   const stayEnd = op.since + LANDING_SHORE_STAY_TICKS;
   const late = tick >= stayEnd;
   const homeward = [...homecoming(env, op), ...releaseStranded(env, op, stayEnd)];
+  // A man the door did not let off is sent ashore again while the ships wait.
+  const left = late ? [] : stillAboard(env, op);
+  if (left.length > 0) return [...homeward, ...left];
   const { landed, striking, fire, commands } = landedOrders(env, op);
   const waiting = op.ships.some((ship) => ship.leg === 'waiting');
   if (waiting && landed.length > 0) {
@@ -672,8 +671,39 @@ function acting(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
   op.members = op.members.filter((e) => !gone.has(e));
   if (landed.length === 0) homeward.push(...sailWaitingHome(env, op, true));
   if (op.ships.every((ship) => ship.leg === 'home'))
-    enter(op, 'done', tick, landed.length === 0 ? 'wiped' : striking ? 'timedOut' : 'nothingToStrike');
+    enter(
+      op,
+      'done',
+      tick,
+      landed.length > 0 ? (striking ? 'timedOut' : 'nothingToStrike') : endedAshore(env, op),
+    );
   return homeward;
+}
+
+/** The orders setting ashore every man but its commander still aboard a ship waiting at its shore. */
+function stillAboard(env: OperationEnv, op: SeaLanding): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
+  for (const ship of op.ships) {
+    const state = shipState(env.world, ship);
+    if (ship.leg !== 'waiting' || state === undefined || !mooredAt(state, ship.shore)) continue;
+    const commander = vehicleCommander(state);
+    for (const seat of vehiclePassengers(state))
+      if (seat.inside && seat.entity !== commander)
+        commands.push({ kind: 'detachFromVehicle', entity: seat.entity });
+  }
+  return commands;
+}
+
+/** Why a landing with nobody ashore ends: `wiped` once none of its men but the commanders is alive, else
+ *  `arrivedHome`, its men brought home aboard. */
+function endedAshore(env: OperationEnv, op: SeaLanding): OperationEndReason {
+  const helms = new Set<Entity>();
+  for (const ship of op.ships) {
+    const state = shipState(env.world, ship);
+    const commander = state === undefined ? null : vehicleCommander(state);
+    if (commander !== null) helms.add(commander);
+  }
+  return op.members.some((e) => !helms.has(e) && env.world.isAlive(e)) ? 'arrivedHome' : 'wiped';
 }
 
 /** Why the landed men board the waiting ships now, or null while they fight on ({@link acting}). */
@@ -871,6 +901,7 @@ function launch(env: OperationEnv, aim: LandingAim, moored: readonly Entity[], i
     members: [...wave].sort((a, b) => a - b),
     target: { hx: aim.towards.hx, hy: aim.towards.hy, entity: aim.entity, owner: aim.owner },
     reason: null,
+    land: aim.land,
     ships: landingShips,
     startShips: landingShips.length,
     startMen: wave.length,
