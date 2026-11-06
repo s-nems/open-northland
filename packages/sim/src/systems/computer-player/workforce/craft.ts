@@ -171,8 +171,13 @@ export function landingFleetShips(
   profile: ComputerProfile,
 ): number {
   const planned = plannedFleetShips(world, player, profile);
-  const mayLand = ctx.tick >= Math.max(seatPeaceEndTick(world, player), profile.army.firstWaveFromTick);
+  const mayLand = ctx.tick >= landingFromTick(world, player, profile);
   return mayLand ? Math.max(planned, fleetFor(liveFighters(world, ctx, player))) : planned;
+}
+
+/** The tick from which `player` may land: its peace over and its difficulty's first wave due. */
+export function landingFromTick(world: World, player: number, profile: ComputerProfile): number {
+  return Math.max(seatPeaceEndTick(world, player), profile.army.firstWaveFromTick);
 }
 
 function fleetFor(men: number): number {

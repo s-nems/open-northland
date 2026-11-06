@@ -5,7 +5,7 @@
 Owner ruling: a computer seat with a big army attacks, sails back and attacks again instead of hoarding.
 On island maps its headquarters landings stop early. A landing sails only on a course whose water stays out
 of reach of every tower and shelter the seat believes stands (the flood and dock routes in
-`landing/landing.ts`). A rival home island ringed by known towers has no such course, so its land goes into
+`landing/course.ts`). A rival home island ringed by known towers has no such course, so its land goes into
 `ComputerNoWay` and is judged again every `NO_WAY_RECHECK_TICKS`, failing each time, to the end of the game.
 Its colonies stay open to raids, and the big army stays at home.
 

@@ -1,14 +1,12 @@
 import {
   AttackOrder,
   aiControlEntity,
-  ComputerNoWay,
   ComputerOperations,
   diplomacyStance,
   Engagement,
   isOperationOpen,
   type LandingOperation,
   type LandingShip,
-  OPERATION_KINDS,
   type OperationEndReason,
   type RescueOperation,
   Rider,
@@ -20,25 +18,20 @@ import {
   vehiclePassengers,
 } from '../../../../../components/index.js';
 import type { PlayerCommand } from '../../../../../core/commands/index.js';
-import { TICKS_PER_SECOND } from '../../../../../core/loop.js';
 import type { DeepReadonly, Entity, World } from '../../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../../../nav/terrain/index.js';
 import { onErrand, spokenFor } from '../../../../ai-shared/military/errand.js';
-import {
-  dockRoute,
-  docksReachedThrough,
-  type MooringSpots,
-  mooringSpotsOf,
-} from '../../../../vehicles/dock.js';
 import { crewInside } from '../../../../vehicles/movement.js';
 import { computerProfileOf } from '../../../difficulty.js';
-import { landOfPoint, shorePoints } from '../../../sea-route.js';
+import { minutesToTicks } from '../../../game-phase.js';
+import { landOfPoint } from '../../../sea-route.js';
 import { freeShips, otherShore, SHIP_SAIL_TIMEOUT_TICKS } from '../../../sea-ships.js';
 import {
   LANDING_FLEET_MIN_SHIPS,
   landingFewestShips,
   landingFleetShips,
+  landingFromTick,
   plannedFleetShips,
   SOLDIERS_PER_SHIP,
 } from '../../../workforce/craft.js';
@@ -48,37 +41,30 @@ import { marchOrders } from '../../muster.js';
 import { unitPoints } from '../../points.js';
 import { homeOf } from '../band.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from '../lifecycle.js';
-import {
-  nodeOfEntity,
-  RAID_DEFENCE_RADIUS_NODES,
-  RAID_TOWER_CLEARANCE_NODES,
-  visibleEnemyFighters,
-} from '../raid-target.js';
+import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleEnemyFighters } from '../raid-target.js';
 import { type LandingAim, type LandingRoom, landingAim, type RankedMan, stormObjective } from './aim.js';
+import { type CourseJudge, crewShores, noWayTo } from './course.js';
 import { isRescue, mayRescue, ownPointsOnLand, rescueAim, rescueObjective } from './rescue.js';
 import { believedLand, believedLands, type FireSource, landingObjective, underFire } from './target.js';
 
 // A naval landing (owner ruling): a seat fills its moored ships with soldiers at home and sails them
-// together to the shore of the land it aims at (`aim.ts`), outside the reach of the towers and
-// shelters it believes stand there where it can, sets every man but each ship's commander ashore once the
+// together to the shore of the land it aims at (`aim.ts`), outside the reach of the towers and shelters it
+// believes stand there where it can (`course.ts`), sets every man but each ship's commander ashore once the
 // fleet lies there and marches the landed men on their objective: a rival's buildings. A rescue
-// (`rescue.ts`) sails the same way to the enemy band on one of the seat's colonies. The ships lie
-// at the shore meanwhile and take the survivors home once the landing is losing or has nothing left to
-// strike.
+// (`rescue.ts`) sails the same way to the enemy band on one of the seat's colonies. The ships lie at the
+// shore meanwhile and take the survivors home once the landing is losing or has nothing left to strike.
 // Every figure below is authored unless it says otherwise.
 
-const SECONDS_PER_MINUTE = 60;
-
 /** How long after a landing ends before the next one forms, for an army its landing fleet seats. */
-export const LANDING_COOLDOWN_TICKS = 5 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+export const LANDING_COOLDOWN_TICKS = minutesToTicks(5);
 /** The shortest such pause, for an army far bigger than its fleet seats (`cooldownTicks`). */
-export const LANDING_QUICK_COOLDOWN_TICKS = SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+export const LANDING_QUICK_COOLDOWN_TICKS = minutesToTicks(1);
 /** The most a landing waits for its men to walk to their ships and board. */
-export const LANDING_FORM_TIMEOUT_TICKS = 4 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+export const LANDING_FORM_TIMEOUT_TICKS = minutesToTicks(4);
 /** The most the first ship moored at its shore keeps its men aboard waiting for the rest of the fleet,
  *  so the wave lands together. Authored: on arabskie_wyspy_wolna_gra_mieszana a wave whose ships cast
  *  off one by one landed in parts a minute or more apart, and the first men ashore fell alone. */
-export const LANDING_SHORE_WAIT_TICKS = SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+export const LANDING_SHORE_WAIT_TICKS = minutesToTicks(1);
 /** How long past {@link SHIP_SAIL_TIMEOUT_TICKS} a ship still at sea keeps its landing open on its way
  *  home before the landing lets it go with its crew aboard. */
 export const LANDING_STRANDED_GRACE_TICKS = SHIP_SAIL_TIMEOUT_TICKS;
@@ -96,7 +82,7 @@ export const LANDING_SHORE_STAY_TICKS = SHIP_SAIL_TIMEOUT_TICKS;
 export const LANDING_ASHORE_ALONE_TICKS = SHIP_SAIL_TIMEOUT_TICKS;
 /** The most the waiting ships wait for the men called back to walk aboard before they sail without the
  *  rest. */
-export const LANDING_REEMBARK_TICKS = 2 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+export const LANDING_REEMBARK_TICKS = minutesToTicks(2);
 
 const PERCENT = 100;
 
@@ -104,177 +90,6 @@ const PERCENT = 100;
 function standingNode(world: World, terrain: TerrainGraph, e: Entity): NodeId | null {
   const at = nodeOfEntity(world, e);
   return at === null || !terrain.inBounds(at.hx, at.hy) ? null : terrain.nodeAt(at.hx, at.hy);
-}
-
-/**
- * The shore points of a landing's ships ({@link shorePoints}) on the `aim`'s land, nearest where it heads,
- * outside the reach of every tower and shelter the seat believes stands there ({@link underFire}), so the
- * hulls waiting at the shore are not shot; a storm too lands clear of them and walks in. Authored: observed
- * on arabskie_wyspy_wolna_gra_mieszana, ships moored beside a rival's headquarters, its people shooting
- * from inside, lost most hulls and every man aboard before the last one moored.
- */
-function landingShores(env: OperationEnv, ship: Entity, aim: LandingAim, count: number): HalfCellNode[] {
-  const { world, ctx, terrain } = env;
-  const spots = mooringSpotsOf(world, ctx, terrain, ship);
-  if (spots === null) return [];
-  const fire = fireKeyOf(aim.believed.sources);
-  const failed = shoreless.get(spots);
-  if (failed?.get(aim.land) === fire) return [];
-  const clear = (at: HalfCellNode): boolean => !underFire(aim.believed.sources, at);
-  const shores = shorePoints(world, ctx, terrain, ship, aim.land, aim.towards, clear, count);
-  if (shores.length === 0) {
-    if (failed === undefined) shoreless.set(spots, new Map([[aim.land, fire]]));
-    else failed.set(aim.land, fire);
-  }
-  return shores;
-}
-
-/**
- * Per set of mooring spots a ship reaches ({@link mooringSpotsOf}), the lands whose search found no shore
- * clear of the fire believed there, with that fire ({@link fireKeyOf}): a pure function of the two, so the
- * search is skipped until either changes. A derived cache: a restored game finds the same answers anew.
- */
-const shoreless = new WeakMap<MooringSpots, Map<number, string>>();
-
-/** The believed towers' and shelters' spots, in a key that changes when any of them does. */
-function fireKeyOf(sources: readonly FireSource[]): string {
-  return sources
-    .map((s) => `${s.at.hx},${s.at.hy}`)
-    .sort()
-    .join(';');
-}
-
-/** The clear shores a landing looks for per ship, so ships whose way to the nearest passes a tower have
- *  others to take. */
-const SHORES_PER_SHIP = 2;
-
-/**
- * Each crew's shore of `shores`, nearest first, among those its fleet reaches through water outside the
- * reach of every tower and shelter the seat believes stands on any land ({@link fireMaskOf}), judged by one
- * flood from the first ship ({@link docksReachedThrough}): the first one no other crew took, else its share
- * of them. Null when the fleet reaches none that way or no course checked is clear ({@link clearCourses}),
- * and null for every land after the first `judge` saw this decision: the landing tries another land on a
- * later decision. Approximation: the fleet's ships moor side by side at home, so the first ship's water
- * stands for theirs. Authored: observed on arabskie_wyspy_wolna_gra_mieszana, fleets sailing past coastal
- * towers lost most hulls before they reached the shore, and ships sank on their way home past a tower
- * their seat knew, their shore far from it.
- */
-function shoresOf(
-  env: OperationEnv,
-  kind: SeaLanding['kind'],
-  land: number,
-  crews: readonly { readonly ship: Entity }[],
-  shores: readonly HalfCellNode[],
-  judge: CourseJudge,
-): (HalfCellNode | undefined)[] | null {
-  const first = crews[0];
-  if (first === undefined) return [];
-  const { world, ctx, terrain } = env;
-  // The fire about the fleet's own berths it must sail out of anyway: only the fire beyond closes the sea.
-  const berths = crews.flatMap((crew) => world.get(crew.ship, Vehicle).mooring ?? []);
-  const sources = [...believedLands(env).values()]
-    .flatMap((believed) => believed.sources)
-    .filter((source) => !berths.some((at) => nodeManhattan(source.at, at) <= RAID_TOWER_CLEARANCE_NODES));
-  if (sources.length === 0) return crews.map((_, i) => shores[i] ?? shores[i % shores.length]);
-  // One land's courses are judged a decision; the next land waits for the next decision.
-  if (judge.judged) return null;
-  judge.judged = true;
-  const fire = fireMaskOf(terrain, sources);
-  const closed = (node: NodeId): boolean => fire[node] === UNDER_FIRE;
-  const reached = docksReachedThrough(world, ctx, terrain, first.ship, shores, closed);
-  const open = shores.filter((_, i) => reached[i] === true);
-  const picked = open.length === 0 ? null : clearCourses(env, crews, open, closed);
-  if (picked === null) noteNoWay(env, kind, land);
-  return picked;
-}
-
-/** How long a land a landing or rescue found no clear way to waits before it is judged again (authored): two
- *  game minutes, so the other lands get their turn and a changed fire is seen soon. */
-export const NO_WAY_RECHECK_TICKS = 2 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
-
-/** Whether the seat's `kind` found no clear way to `land` within {@link NO_WAY_RECHECK_TICKS}. */
-function noWayTo(env: OperationEnv, kind: SeaLanding['kind'], land: number): boolean {
-  const carrier = aiControlEntity(env.world, env.seat);
-  const lands = carrier === null ? undefined : env.world.tryGet(carrier, ComputerNoWay)?.lands;
-  return lands?.some((l) => l.kind === kind && l.land === land && env.ctx.tick < l.until) ?? false;
-}
-
-/** Remember that the seat's `kind` found no clear way to `land` now, dropping the lapsed entries. */
-function noteNoWay(env: OperationEnv, kind: SeaLanding['kind'], land: number): void {
-  const { world, ctx, seat } = env;
-  const carrier = aiControlEntity(world, seat);
-  if (carrier === null) return;
-  if (!world.has(carrier, ComputerNoWay)) world.add(carrier, ComputerNoWay, { lands: [] });
-  const live = world.mut(carrier, ComputerNoWay);
-  live.lands = [
-    ...live.lands.filter((l) => ctx.tick < l.until && !(l.kind === kind && l.land === land)),
-    { kind, land, until: ctx.tick + NO_WAY_RECHECK_TICKS },
-  ].sort((a, b) => OPERATION_KINDS.indexOf(a.kind) - OPERATION_KINDS.indexOf(b.kind) || a.land - b.land);
-}
-
-/** Whether one opening's decision has judged a land's courses ({@link shoresOf}), so it floods and searches
- *  courses for one land: each opener mints its own. */
-interface CourseJudge {
-  judged: boolean;
-}
-
-/** The most crews of a landing whose dock course {@link clearCourses} checks, each a route search. */
-const COURSE_CHECKS = 3;
-
-/**
- * Each crew's shore of `open` once the course its dock order would sail there is checked against `closed`
- * ({@link dockRoute}) for the first {@link COURSE_CHECKS} crews, one route search each: a crew whose course
- * passes the fire, or one past those checked, shares the shore of a crew whose course was clear. Null when
- * no checked course is clear.
- */
-function clearCourses(
-  env: OperationEnv,
-  crews: readonly { readonly ship: Entity }[],
-  open: readonly HalfCellNode[],
-  closed: (node: NodeId) => boolean,
-): (HalfCellNode | undefined)[] | null {
-  const { world, ctx, terrain } = env;
-  const own = crews.map((_, i) => open[i] ?? open[i % open.length]);
-  const clear = crews.map((crew, i) => {
-    const shore = own[i];
-    if (i >= COURSE_CHECKS || shore === undefined) return false;
-    const route = dockRoute(world, ctx, terrain, crew.ship, shore);
-    return route?.every((at) => !closed(terrain.nodeAtClamped(at.hx, at.hy))) ?? false;
-  });
-  const safe = own.filter((shore, i): shore is HalfCellNode => shore !== undefined && clear[i] === true);
-  if (safe.length === 0) return null;
-  let next = 0;
-  return own.map((shore, i) => {
-    if (shore !== undefined && clear[i] === true) return shore;
-    const shared = safe[next % safe.length];
-    next++;
-    return shared;
-  });
-}
-
-const UNDER_FIRE = 1;
-
-/** The nodes within {@link RAID_TOWER_CLEARANCE_NODES} of one of `sources`, the towers and shelters the
- *  seat believes stand, marked {@link UNDER_FIRE}. Costs the reach of each. */
-function fireMaskOf(terrain: TerrainGraph, sources: readonly FireSource[]): Uint8Array {
-  const mask = new Uint8Array(terrain.nodeCount);
-  const reach = RAID_TOWER_CLEARANCE_NODES;
-  for (const { at } of sources) {
-    for (let dy = -reach; dy <= reach; dy++) {
-      const span = reach - Math.abs(dy);
-      for (let dx = -span; dx <= span; dx++) {
-        const hx = at.hx + dx;
-        const hy = at.hy + dy;
-        if (terrain.inBounds(hx, hy)) mask[terrain.nodeAt(hx, hy)] = UNDER_FIRE;
-      }
-    }
-  }
-  return mask;
-}
-
-/** The tick from which the seat may land: its peace over and its difficulty's first wave due. */
-function landingFromTick(world: World, seat: number): number {
-  return Math.max(seatPeaceEndTick(world, seat), computerProfileOf(world, seat).army.firstWaveFromTick);
 }
 
 function shipState(world: World, ship: LandingShip) {
@@ -915,7 +730,7 @@ interface Voyage {
 
 /**
  * The voyage sailing `aim`'s men in as few of the `moored` ships as seat them, in id order: the men fill
- * the ships by {@link crewsOf}; each ship docks at its own shore point ({@link landingShores}). Null when
+ * the ships by {@link crewsOf}; each ship docks at its own shore point ({@link crewShores}). Null when
  * that land offers no shore.
  */
 function launch(
@@ -935,11 +750,7 @@ function launch(
     capacity += seatsOf(world, ship);
   }
   const crews = crewsOf(env, ships, aim.men);
-  const first = crews[0];
-  const found =
-    first === undefined ? [] : landingShores(env, first.ship, aim, crews.length * SHORES_PER_SHIP);
-  if (found.length === 0) return null;
-  const shores = shoresOf(env, kind, aim.land, crews, found, judge);
+  const shores = crewShores(env, kind, aim, crews, judge);
   if (shores === null) return null;
   const commands: PlayerCommand[] = [];
   const landingShips: LandingShip[] = [];
@@ -988,7 +799,7 @@ function openLanding(
 ): Opened<LandingOperation> | null {
   const { world, ctx, seat, orders } = env;
   const ratio = orders.launchRatio;
-  if (ratio === null || ctx.tick < landingFromTick(world, seat)) return null;
+  if (ratio === null || ctx.tick < landingFromTick(world, seat, computerProfileOf(world, seat))) return null;
   const muster = musterOf(env, free);
   if (muster === null) return null;
   const judge: CourseJudge = { judged: false };

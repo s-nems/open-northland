@@ -1,6 +1,5 @@
 import { Position, Vehicle, VehicleDrive, vehiclePassengers } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
@@ -10,16 +9,15 @@ import type { SystemContext } from '../context.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { mooringSpotsOf } from '../vehicles/dock.js';
 import { vehicleIndex } from '../vehicles/registry.js';
+import { minutesToTicks } from './game-phase.js';
 import { LANDING_SHORE_SPACING_NODES, landOfPoint } from './sea-route.js';
 
 // A seat's own ships as its landings and its colonies use them: which lie free at home, and where one
 // refused at its berth docks instead.
 
-const SECONDS_PER_MINUTE = 60;
-
 /** The most a seat's ship sails out on a landing or a colony's errand before it turns back, and sails home
  *  before it lets the crew go (authored). */
-export const SHIP_SAIL_TIMEOUT_TICKS = 12 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+export const SHIP_SAIL_TIMEOUT_TICKS = minutesToTicks(12);
 
 /** What a read of a seat's ships takes, a landing's or a colony's. */
 export interface ShipEnv {
