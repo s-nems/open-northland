@@ -176,9 +176,11 @@ export interface NoWayLand {
 }
 
 /** The lands a seat's sea landings found no way to lately, by kind in {@link OPERATION_KINDS} order then
- *  ascending land: saved, so a restored game skips the same lands the continuous one does. Held on the
- *  seat's `AiControl` carrier. */
-export const ComputerNoWay = defineComponent<{ lands: NoWayLand[] }>('ComputerNoWay', 'players');
+ *  ascending land: saved, so a restored game skips the same lands the continuous one does, and read by no
+ *  snapshot. Held on the seat's `AiControl` carrier. */
+export const ComputerNoWay = defineComponent<{ lands: NoWayLand[] }>('ComputerNoWay', 'players', {
+  simOnly: true,
+});
 
 /** Whether `op` still runs: not `done` or `failed`. */
 export function isOperationOpen(op: DeepReadonly<Operation>): boolean {
