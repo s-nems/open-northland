@@ -72,11 +72,11 @@ export function isRescue(op: DeepReadonly<SeaLanding>): op is DeepReadonly<Rescu
 /**
  * The rescue of the colony the seat sees most threatened, or null: for each colony standing on its land
  * with a band its garrison saw lately or an enemy ship moored there, and enemy fighters in sight on that
- * land, the enemy points seen there (a moored ship adds {@link SOLDIERS_PER_SHIP} men of the `ranked` men's
- * mean, an approximation of a load the seat cannot see), the one the seat's own fighters there fall
- * furthest short of by {@link LANDING_EDGE}; the strongest of `ranked` whose men ashore
- * ({@link pointsAshore}, the helms stay aboard) reach that edge beside them, at least
- * {@link RESCUE_LEAST_MEN}, within `room`.
+ * land, the enemy points seen there, or the load the moored ships may carry when larger
+ * ({@link SOLDIERS_PER_SHIP} men of the `ranked` men's mean a ship, an approximation of a load the seat
+ * cannot see), the one the seat's own fighters there fall furthest short of by {@link LANDING_EDGE}; the
+ * strongest of `ranked` whose men ashore ({@link pointsAshore}, the helms stay aboard) reach that edge
+ * beside them, at least {@link RESCUE_LEAST_MEN}, within `room`.
  * Costs the enemies' ships and, with a colony to weigh, their fighters and the seat's own.
  */
 export function rescueAim(
@@ -112,8 +112,12 @@ export function rescueAim(
     const band = fighters.filter((t) => t.land === colony.land);
     const first = band[0];
     if (first === undefined) continue;
-    let enemy = 0;
-    for (const t of [...band, ...ships.filter((t) => t.land === colony.land)]) enemy += t.points;
+    // The men a moored ship carried are aboard still or ashore in the band, so the larger of the two.
+    let seen = 0;
+    for (const t of band) seen += t.points;
+    let carried = 0;
+    for (const t of ships) if (t.land === colony.land) carried += t.points;
+    const enemy = Math.max(seen, carried);
     const there = own.get(colony.land) ?? 0;
     if (launchRatioReached(there, enemy, LANDING_EDGE)) continue;
     const short = enemy * LANDING_EDGE.num - there * LANDING_EDGE.den;

@@ -403,6 +403,9 @@ function runUntil(sim: Simulation, ticks: number, watch: () => boolean): void {
 /** The men's worth of the foe's garrison the seat remembers on his colony, more than its least raid
  *  outweighs half again. */
 const REMEMBERED_GARRISON = 12;
+/** Each ship's seats besides the commander's for the load-or-band rescue: the fleet sets 32 men ashore,
+ *  past half again over a 20-man load, short of half again over the load and the 6-man band. */
+const LOAD_OR_BAND_SEATS = 4;
 /** A spot on the foe's island far from his headquarters, where a landed man stands with no order. */
 const STRAGGLER_AT = { x: 100, y: 100 };
 /** A foe tower on the seat's own island, in reach of its first ships' berths, and the few men the seat
@@ -1202,6 +1205,27 @@ describe('landing operations', () => {
     const colony = blankColony(colonyLand, { phase: 'founding', site, threat });
     sim.world.add(carrier, ComputerColony, { colonies: [colony], rejected: [], retryAt: 0 });
     spawnBand(sim, RAIDERS, { x: COLONY_STORE.x + GUARD_OFFSET, y: COLONY_STORE.y }, GUARD_RANK, FOE);
+    let seen: OperationView | undefined;
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      seen = rescues(sim)[0] ?? seen;
+      return seen !== undefined;
+    });
+    expect(seen).toBeDefined();
+  });
+
+  it('weighs a moored ship by its load or by the band it set ashore, not by both', () => {
+    // Seats for men ashore that outweigh one ship's load half again, short of the load and the band together.
+    const { sim } = landingWorld({ colony: true, armed: true, shelterFire: true, seats: LOAD_OR_BAND_SEATS });
+    const terrain = terrainOf(sim);
+    const colonyLand = terrain.componentOf(terrain.nodeAtClamped(COLONY_STORE.x, COLONY_STORE.y));
+    settleColony(sim, colonyLand, null);
+    createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: SHIP,
+      ...NEAR_BERTH.water,
+      tribe: VIKING,
+      owner: FOE,
+    });
+    spawnBand(sim, RAIDERS, NEAR_BERTH.landed, GUARD_RANK, FOE);
     let seen: OperationView | undefined;
     runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
       seen = rescues(sim)[0] ?? seen;
