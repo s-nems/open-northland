@@ -37,8 +37,7 @@ about a third of the tick. A machine seat's settler that holds still otherwise w
 ## Verify
 
 - The checkpoint run above and one at minute 124 of the same session with `seed=21`: the road-site
-  search's share at least halved in both,
-  and total CPU per tick reported with the machine's load.
+  search's share at least halved in both, and total CPU per tick reported with the machine's load.
 - Roads paved by minute 150 on the same map, seeds 7, 13 and 21, at most a small drop against the base
   (report the counts), and no seat's population or fighters worse beyond the seeds' usual spread.
 - `npm test`, `npm run check`, `npm run build`.
