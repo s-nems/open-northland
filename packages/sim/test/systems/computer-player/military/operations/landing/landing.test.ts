@@ -406,6 +406,8 @@ const REMEMBERED_GARRISON = 12;
 /** Each ship's seats besides the commander's for the load-or-band rescue: the fleet sets 32 men ashore,
  *  past half again over a 20-man load, short of half again over the load and the 6-man band. */
 const LOAD_OR_BAND_SEATS = 4;
+/** A lobby peace's length in the fleet test, a few decisions. */
+const PEACE_TICKS = 4 * COMPUTER_DECISION_INTERVAL_TICKS;
 /** A spot on the foe's island far from his headquarters, where a landed man stands with no order. */
 const STRAGGLER_AT = { x: 100, y: 100 };
 /** A foe tower on the seat's own island, in reach of its first ships' berths, and the few men the seat
@@ -923,6 +925,20 @@ describe('landing operations', () => {
     expect(landingFleetShips(sim.world, ctx, SEAT, profile)).toBe(fleet);
     spawnBand(sim, (fleet + 1) * SOLDIERS_PER_SHIP, { x: 4, y: 60 }, WIDE_RANK, SEAT);
     expect(landingFleetShips(sim.world, ctx, SEAT, profile)).toBe(
+      Math.min(LANDING_FLEET_MAX_SHIPS, fleet + 1),
+    );
+  });
+
+  it('builds toward no more than its planned fleet while a lobby peace holds', () => {
+    const { sim, fleet } = landingWorld({ ships: 0, men: 0 });
+    const until = sim.tick + PEACE_TICKS;
+    sim.enqueueSetup({ kind: 'setPeaceTime', untilTick: until, players: [SEAT, FOE] });
+    sim.step();
+    spawnBand(sim, (fleet + 1) * SOLDIERS_PER_SHIP, { x: 4, y: 60 }, WIDE_RANK, SEAT);
+    const profile = computerProfileOf(sim.world, SEAT);
+    expect(landingFleetShips(sim.world, ctxOf(sim), SEAT, profile)).toBe(fleet);
+    runUntil(sim, PEACE_TICKS, () => sim.tick > until);
+    expect(landingFleetShips(sim.world, ctxOf(sim), SEAT, profile)).toBe(
       Math.min(LANDING_FLEET_MAX_SHIPS, fleet + 1),
     );
   });

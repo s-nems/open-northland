@@ -158,10 +158,11 @@ export function plannedFleetShips(world: World, player: number, profile: Compute
 }
 
 /**
- * The ships a seat's landing takes, and its joinery builds toward: its {@link plannedFleetShips}, at least
- * the fighters it holds now, in {@link SOLDIERS_PER_SHIP}, within the owner's fleet band. So an army grown
- * past its plan gets the ships to land as a whole, at most {@link LANDING_FLEET_MAX_SHIPS}. Costs the
- * seat's fighters.
+ * The ships a seat's landing takes, and its joinery builds toward: its {@link plannedFleetShips}, and once
+ * the seat may land (its peace over and its difficulty's first wave due) at least the fighters it holds
+ * now, in {@link SOLDIERS_PER_SHIP}, within the owner's fleet band. So an army grown past its plan gets the
+ * ships to land as a whole, at most {@link LANDING_FLEET_MAX_SHIPS}, and no seat builds for it while it may
+ * not land. Costs the seat's fighters once it may land.
  */
 export function landingFleetShips(
   world: World,
@@ -169,7 +170,9 @@ export function landingFleetShips(
   player: number,
   profile: ComputerProfile,
 ): number {
-  return Math.max(plannedFleetShips(world, player, profile), fleetFor(liveFighters(world, ctx, player)));
+  const planned = plannedFleetShips(world, player, profile);
+  const mayLand = ctx.tick >= Math.max(seatPeaceEndTick(world, player), profile.army.firstWaveFromTick);
+  return mayLand ? Math.max(planned, fleetFor(liveFighters(world, ctx, player))) : planned;
 }
 
 function fleetFor(men: number): number {
