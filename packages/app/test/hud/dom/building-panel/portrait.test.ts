@@ -23,6 +23,7 @@ function setup(model: BuildingPanelModel) {
       windows: { residentsFor: vi.fn(), knowledge: vi.fn() },
     } as unknown as BuildingPanelDeps,
     () => current,
+    document.createElement('button'),
   );
   section.update(model);
   return {

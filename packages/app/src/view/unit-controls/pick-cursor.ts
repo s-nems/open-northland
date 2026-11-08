@@ -5,6 +5,7 @@ const PICK_CURSORS: Readonly<Record<PickMode['kind'], CursorState>> = {
   workplace: 'work',
   'workplace-or-flag': 'work',
   'work-area': 'work',
+  'rally-point': 'work',
   home: 'crosshair',
   'building-site': 'build',
   'learning-place': 'crosshair',

@@ -1,9 +1,15 @@
-import { entityById, MAX_UNIT_ORDER_MEMBERS } from '@open-northland/sim';
-import { isSettler, isVehicle } from '../../../game/snapshot/index.js';
+import { entityById, MAX_UNIT_ORDER_MEMBERS, ONE, systems } from '@open-northland/sim';
+import { buildingTypeOf, isSettler, isVehicle, num, ownerPlayerOf } from '../../../game/snapshot/index.js';
+import { ownedByAnotherSeat, pickableSeat } from '../../../game/viewer-seat.js';
 import type { Tile } from '../../picking.js';
 import type { DoorMarkerHit } from '../click-hits.js';
 import type { FormationUnit } from '../orders/formation.js';
-import type { RightClickContext, RightClickHit, RightClickMods } from './context.js';
+import {
+  contentLookups,
+  type RightClickContext,
+  type RightClickHit,
+  type RightClickMods,
+} from './context.js';
 import { type RiderPlan, resolveRiderTrade } from './riders.js';
 import { resolveSettlerRightClick, type SettlerPlan } from './settler-ladder.js';
 import {
@@ -39,6 +45,8 @@ export type RightClickPlan =
     }
   /** A door marker stands for the person inside, so it takes the right click the figure would. */
   | { readonly kind: 'doorSettler'; readonly settler: number }
+  /** The lone selected barracks plants or moves its rally flag on the ground the press names. */
+  | { readonly kind: 'rallyPoint'; readonly building: number; readonly tile: Tile }
   /** A whole mixed gesture past the order cap is refused before anyone submits anything. */
   | { readonly kind: 'orderLimit' }
   /** The lone trader pins the ship or lets it go; once the sim refused a pin, the press boards or
@@ -83,6 +91,12 @@ export function resolveRightClick(ctx: RightClickContext, input: RightClickInput
   }
   const marker = input.doorMarker;
   if (marker?.kind === 'settler') return { kind: 'doorSettler', settler: marker.ref };
+  // The rally pick comes before the unit orders: with a barracks selected they would all be no-ops, so
+  // the ground press is free to plant the flag - only a person under the press keeps its select.
+  if (hit.ownSettler === null) {
+    const rally = selectedRallyBuilding(ctx, selected);
+    if (rally !== null) return { kind: 'rallyPoint', building: rally, tile: hit.tile };
+  }
   if (hit.ownSettler === null && unitCount(ctx, selected) > MAX_UNIT_ORDER_MEMBERS)
     return { kind: 'orderLimit' };
   const onBuilding = marker?.kind === 'building' ? marker.ref : null;
@@ -134,4 +148,24 @@ function unitCount(ctx: Pick<RightClickContext, 'snapshot'>, selected: ReadonlyS
     if (entity !== undefined && (isSettler(entity) || isVehicle(entity))) count++;
   }
   return count;
+}
+
+/** The lone finished barracks the selection holds, when it is the viewer's own, whose ground right click
+ *  plants its rally flag; null for any other selection. A mixed selection keeps the usual orders, as the
+ *  rally order is a building's alone. */
+function selectedRallyBuilding(
+  ctx: Pick<RightClickContext, 'snapshot' | 'content' | 'viewer'>,
+  selected: ReadonlySet<number>,
+): number | null {
+  if (selected.size !== 1) return null;
+  const id = selected.values().next().value;
+  const entity = id === undefined ? undefined : entityById(ctx.snapshot, id);
+  if (entity === undefined) return null;
+  if (ownedByAnotherSeat(ownerPlayerOf(entity), pickableSeat(ctx.viewer))) return null;
+  const building = entity.components.Building as { built?: unknown } | undefined;
+  if (building === undefined || entity.components.UnderConstruction !== undefined) return null;
+  const built = num(building.built);
+  if (built === undefined || built < ONE) return null;
+  const def = contentLookups(ctx.content).buildings.get(buildingTypeOf(entity) ?? -1);
+  return def !== undefined && systems.isBarracksType(def) ? entity.id : null;
 }

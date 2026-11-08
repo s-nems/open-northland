@@ -54,6 +54,8 @@ export type PickMode =
   | { readonly kind: 'workplace-or-flag'; readonly units: readonly number[] }
   | { readonly kind: ScoutPickKind; readonly scout: number }
   | { readonly kind: SpotPickKind; readonly units: readonly number[] }
+  /** A barracks' rally flag: the next click on the ground plants it there. */
+  | { readonly kind: 'rally-point'; readonly building: number }
   | { readonly kind: 'attack-move'; readonly units: readonly number[]; readonly vehicles: readonly number[] }
   | { readonly kind: StrikePickKind; readonly units: readonly number[] }
   | { readonly kind: 'vehicle'; readonly settler: number }
@@ -95,7 +97,15 @@ export type VehicleTargetPickKind =
  *  can resolve it. */
 type SpotMode = Extract<
   PickMode,
-  { readonly kind: SpotPickKind | 'attack-move' | ScoutPickKind | VehicleSpotPickKind | 'vehicle-dock' }
+  {
+    readonly kind:
+      | SpotPickKind
+      | 'rally-point'
+      | 'attack-move'
+      | ScoutPickKind
+      | VehicleSpotPickKind
+      | 'vehicle-dock';
+  }
 >;
 
 interface BuildingPick {
@@ -180,10 +190,11 @@ const buildingPickOf = (mode: PickMode): BuildingPickKind | null => {
 };
 
 const SPOT_MODES: ReadonlySet<PickMode['kind']> = new Set<
-  SpotPickKind | 'attack-move' | ScoutPickKind | VehicleSpotPickKind | 'vehicle-dock'
+  SpotPickKind | 'rally-point' | 'attack-move' | ScoutPickKind | VehicleSpotPickKind | 'vehicle-dock'
 >([
   'destination',
   'work-area',
+  'rally-point',
   'attack-move',
   'signpost',
   'vehicle-destination',
@@ -240,7 +251,7 @@ export type PickAim =
  *  at once. */
 type QueueableKind = Exclude<
   PickMode['kind'],
-  'workplace' | 'workplace-or-flag' | 'home' | 'trade-house' | 'trade-ship' | 'work-area'
+  'workplace' | 'workplace-or-flag' | 'home' | 'trade-house' | 'trade-ship' | 'work-area' | 'rally-point'
 >;
 
 const QUEUEABLE_MODES: ReadonlySet<PickMode['kind']> = new Set<QueueableKind>([
@@ -353,6 +364,9 @@ export interface PickModeController {
   /** A pick that plants a work flag is armed (a flag trade's workplace pick or the work-area pick), so
    *  the flag ghost follows the cursor. */
   flagActive(): boolean;
+  /** The barracks rally-point pick is armed, so the flag ghost follows the cursor tinted as the rally
+   *  flag, not the plain work one. */
+  rallyActive(): boolean;
   /** Non-null when a mode was armed: the press resolved or cancelled it, so the caller must not fall
    *  through to selection or an order. */
   handleMouseDown(event: MouseEvent): PickPress | null;
@@ -533,6 +547,8 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         return deps.orders().issueMoveTo(target, mode.units, queued);
       case 'work-area':
         return deps.orders().issueSetWorkFlag(target, mode.units);
+      case 'rally-point':
+        return deps.orders().issueRallyPoint(mode.building, target);
       case 'attack-move': {
         if (mode.units.length + mode.vehicles.length > MAX_UNIT_ORDER_MEMBERS) {
           deps.onOrderLimit?.();
@@ -857,6 +873,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       case 'destination':
         return { kind: 'walk' };
       case 'work-area':
+      case 'rally-point':
         return { kind: 'workArea' };
       case 'attack-move': {
         const prey = mode.units.length > 0 ? strikeAim(preyAt(deps.targets, world), true) : null;
@@ -936,7 +953,11 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     signpostActive: () => pickMode?.kind === 'signpost',
     dockVehicle: () => (pickMode?.kind === 'vehicle-dock' ? (pickMode.vehicles[0] ?? null) : null),
     dockShips: () => (pickMode?.kind === 'vehicle-dock' ? pickMode.vehicles : []),
-    flagActive: () => pickMode?.kind === 'workplace-or-flag' || pickMode?.kind === 'work-area',
+    flagActive: () =>
+      pickMode?.kind === 'workplace-or-flag' ||
+      pickMode?.kind === 'work-area' ||
+      pickMode?.kind === 'rally-point',
+    rallyActive: () => pickMode?.kind === 'rally-point',
     handleMouseDown,
     handleOverviewPress,
     endShiftChain: () => {

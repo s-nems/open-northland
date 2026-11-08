@@ -23,6 +23,8 @@ export interface BuildingPanelHost {
   readonly enqueue: (command: PlayerCommand) => void;
   readonly cue: (cue: UiCue) => void;
   readonly selectGroup: (ids: readonly number[]) => void;
+  /** Arm the planting of `building`'s rally flag. */
+  readonly armRallyPoint: (building: number) => void;
   /** The question a demolition asks first. */
   readonly confirm: (copy: SystemConfirmCopy) => Promise<boolean>;
 }
@@ -50,6 +52,8 @@ export function buildingPanelActions(host: BuildingPanelHost): BuildingPanelActi
           if (confirmed) send({ kind: 'demolish', building: id as Entity });
         });
     }),
+    armRallyPoint: order((id) => host.armRallyPoint(id)),
+    clearRallyPoint: order((id) => send({ kind: 'clearRallyPoint', building: id as Entity })),
     setAlarm: order((id, enabled: boolean) =>
       send({ kind: 'setDefenceMode', building: id as Entity, enabled }),
     ),

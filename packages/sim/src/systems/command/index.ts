@@ -80,6 +80,7 @@ import {
 } from '../orders/index.js';
 import { obeyDespiteHunger } from '../orders/meal-break.js';
 import { isQueuedOrder, queueBehindCurrentOrder } from '../orders/queue.js';
+import { clearRallyPoint, setRallyPoint } from '../orders/rally-point.js';
 import { setStorageMinimum } from '../orders/storage-minimum.js';
 import { setStorePriority } from '../orders/store-priority.js';
 import { setPalisadeGateMode } from '../palisades/gate-control.js';
@@ -480,6 +481,12 @@ function applyCommand(
       return;
     case 'setConstructionPriority':
       setConstructionPriority(world, ctx, command);
+      return;
+    case 'setRallyPoint':
+      setRallyPoint(world, ctx, command);
+      return;
+    case 'clearRallyPoint':
+      clearRallyPoint(world, command);
       return;
     case 'placeSignpost':
       obeyDespiteHunger(world, ctx, command.entity, () => placeSignpost(world, ctx, command, origin));

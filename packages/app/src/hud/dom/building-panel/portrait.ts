@@ -131,6 +131,7 @@ export interface PortraitSection {
 export function createPortraitSection(
   deps: BuildingPanelDeps,
   current: () => BuildingPanelModel | null,
+  rallyButton: HTMLButtonElement,
 ): PortraitSection {
   const row = element('div', 'on-portrait');
   const shot = element('div', 'on-portrait-shot');
@@ -202,9 +203,11 @@ export function createPortraitSection(
         node.addEventListener('click', () => press(view.order));
         return { order: view.order, element: node };
       });
-      orders.replaceChildren(
-        ...tiles.map((entry) => (entry.order === 'upgrade' ? levels.slot(entry.element) : entry.element)),
-      );
+      const nodes = tiles.flatMap((entry) => {
+        const node = entry.order === 'upgrade' ? levels.slot(entry.element) : entry.element;
+        return entry.order === 'demolish' ? [node, rallyButton] : [node];
+      });
+      orders.replaceChildren(...nodes);
     }
     views.forEach((view, index) => {
       const node = tiles[index]?.element;

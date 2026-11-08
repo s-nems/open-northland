@@ -30,6 +30,9 @@ export interface PlacementCursorInput {
   /** A pick that plants a work flag is armed: the flag follows the cursor until the click plants it or,
    *  for a flag trade's workplace pick, names a building. */
   readonly flagActive: boolean;
+  /** The barracks rally-point pick is armed ({@link flagActive} is too): the flag ghost follows the
+   *  cursor tinted as the rally flag, not the plain work one. */
+  readonly rallyActive?: boolean;
   /** Viewport-memoized band probes; each runs only when its own mode wins, so a frame never walks a
    *  band it would discard. */
   readonly buildingOverlay: (building: BuildingPick) => PlacementOverlayFrame | null;
@@ -109,7 +112,16 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
     const tile = input.tileAt();
     return {
       overlay: null,
-      ghost: tile === null ? null : { kind: 'flag', col: tile.col, row: tile.row, player: input.localPlayer },
+      ghost:
+        tile === null
+          ? null
+          : {
+              kind: 'flag',
+              col: tile.col,
+              row: tile.row,
+              player: input.localPlayer,
+              ...(input.rallyActive === true ? { rally: true } : {}),
+            },
     };
   }
   const signpostFrame = building === null && palisadeGfxIndex === null ? input.signpostOverlay() : null;

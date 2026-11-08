@@ -50,6 +50,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
       },
       cancelUpgrade: false,
       alarm: { on: true },
+      rally: null,
       hire: { jobType: 0, label: 'Warm' },
     },
     construction: {

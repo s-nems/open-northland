@@ -288,7 +288,11 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   const visiblePlots = createVisiblePlots(() => host.constructionPlots(), fogGates.seesNode);
   // The sprite pool withholds both the felling presenter's refs and the flags other seats' settlers hold.
-  const foreignFlags = createForeignFlags(loop.viewer);
+  // A rally flag also hides unless its barracks stands in the selection, which the controls version.
+  const foreignFlags = createForeignFlags(loop.viewer, {
+    ids: () => controls.selectedIds(),
+    version: () => controls.selectionVersion(),
+  });
   let fellingRefs: ReadonlySet<number> = new Set();
   let hiddenFlags: ReadonlySet<number> = new Set();
   const withhold = (): void => {
@@ -420,6 +424,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
               .berthPreview(tile)
               .map((berth) => ({ col: berth.col, row: berth.row, hull: berth.dock })),
       flagActive: controls.workFlagPlacementActive(),
+      rallyActive: controls.rallyPickActive(),
       buildingOverlay,
       signpostOverlay,
       dockOverlay,

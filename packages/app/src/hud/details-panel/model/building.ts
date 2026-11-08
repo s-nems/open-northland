@@ -133,6 +133,8 @@ export interface BuildingOrdersModel {
   readonly cancelUpgrade: boolean;
   /** The alarm toggle of a house that shelters civilians, and whether it is up. */
   readonly alarm: { readonly on: boolean } | null;
+  /** The rally flag of a finished barracks, and whether one stands; null for any other house. */
+  readonly rally: { readonly set: boolean } | null;
   /** Workers: the trade the residents window lists candidates for; null for a house employing
    *  nobody. */
   readonly hire: { readonly jobType: number; readonly label: string } | null;
@@ -356,6 +358,10 @@ function ordersModel(
     cancelUpgrade: ent.components.Upgrading !== undefined,
     // `shelterCapacity` is the gate the sim's `setDefenceMode` reads, so the toggle is never refused.
     alarm: shelters && finished ? { on: ent.components.DefenceMode !== undefined } : null,
+    rally:
+      def !== undefined && finished && systems.isBarracksType(def)
+        ? { set: ent.components.RallyPoint !== undefined }
+        : null,
     hire: hire === null ? null : { jobType: hire, label: jobDisplayName(ctx, hire) },
   };
 }

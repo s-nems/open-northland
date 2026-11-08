@@ -33,6 +33,7 @@ function harness(): {
     dockVehicle: () => null,
     dockShips: () => [],
     flagActive: () => false,
+    rallyActive: () => false,
     handleMouseDown: () => null,
     handleOverviewPress: () => null,
     endShiftChain: () => {},

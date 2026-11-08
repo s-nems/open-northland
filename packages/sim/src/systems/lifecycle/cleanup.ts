@@ -6,6 +6,7 @@ import type { System, SystemContext } from '../context.js';
 import { razedStockOf, scatterSpilledStock, spilledStockOf } from '../economy/goods-spill.js';
 import { evictResidentsOf } from '../family/households.js';
 import { retryFailedRoutes } from '../landscape/routes.js';
+import { dropRallyPoint } from '../orders/rally-point.js';
 import { releaseWallBreaches } from '../palisades/breach.js';
 import { removePalisade } from '../palisades/index.js';
 import { razeSalvageOf } from '../stores/index.js';
@@ -114,6 +115,7 @@ export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void 
  *  The razing path layers the event and the spilled stock on top of this. */
 export function removeBuildingSilently(world: World, ctx: SystemContext, e: Entity): void {
   releaseWallBreaches(world, ctx, e);
+  dropRallyPoint(world, e);
   unbindWorkersOf(world, ctx, e);
   evictResidentsOf(world, e);
   world.destroy(e);

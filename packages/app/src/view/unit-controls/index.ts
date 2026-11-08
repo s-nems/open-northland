@@ -575,6 +575,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         chrome.actions().open({ x: e.clientX, y: e.clientY });
         cue('confirm');
         return;
+      case 'rallyPoint':
+        orders.issueRallyPoint(plan.building, plan.tile);
+        cue('confirm');
+        return;
       case 'orderLimit':
         refuseOrderLimit();
         return;
@@ -789,7 +793,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     toggleMapPing,
     select: (ids) => applySelection(ids, false),
     portraits: () => chrome.portraits(),
-    flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
+    flaggedFlagIds: () => selection.flagIds(opts.snapshot()),
     focusedIds: () => chrome.focusedIds(),
     groupNumbers: controlGroups.numbers,
     controlGroupMembers: controlGroups.members,
@@ -813,6 +817,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     },
     signpostPlacementActive: pickMode.signpostActive,
     workFlagPlacementActive: pickMode.flagActive,
+    rallyPickActive: pickMode.rallyActive,
     windowOpen: chrome.windowOpen,
     claimsEscape: () =>
       chrome.actions().state().mode !== 'closed' ||

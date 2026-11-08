@@ -1,5 +1,5 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
-import { memoBySnapshot, selectedWorkFlags } from '../projections/index.js';
+import { memoBySnapshot, selectedFlags } from '../projections/index.js';
 
 /** Shared empty id set, so an empty selection allocates nothing per call. */
 const EMPTY_IDS: ReadonlySet<number> = new Set();
@@ -51,7 +51,7 @@ export interface UnitSelection {
    *  once per snapshot and selection change. */
   readonly dropGone: (snapshot: WorldSnapshot) => boolean;
   /** Memoized per tick and change: the renderer reads these every frame. */
-  readonly workFlagIds: (snapshot: WorldSnapshot) => ReadonlySet<number>;
+  readonly flagIds: (snapshot: WorldSnapshot) => ReadonlySet<number>;
 }
 
 export function createUnitSelection(isUnit: IsUnit): UnitSelection {
@@ -60,8 +60,8 @@ export function createUnitSelection(isUnit: IsUnit): UnitSelection {
   /** The selection version each snapshot was last checked for gone members under. */
   const checkedAt = new WeakMap<WorldSnapshot, number>();
 
-  const workFlagsFor = memoBySnapshot(
-    (snapshot: WorldSnapshot) => (selected.size === 0 ? EMPTY_IDS : selectedWorkFlags(snapshot, selected)),
+  const flagsFor = memoBySnapshot(
+    (snapshot: WorldSnapshot) => (selected.size === 0 ? EMPTY_IDS : selectedFlags(snapshot, selected)),
     () => version,
   );
 
@@ -89,6 +89,6 @@ export function createUnitSelection(isUnit: IsUnit): UnitSelection {
       checkedAt.set(snapshot, version);
       return gone;
     },
-    workFlagIds: (snapshot) => workFlagsFor(snapshot),
+    flagIds: (snapshot) => flagsFor(snapshot),
   };
 }

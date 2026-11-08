@@ -2,7 +2,7 @@ import { type EntitySnapshot, systems, type WorldSnapshot } from '@open-northlan
 import { type ElevationField, terrainLiftAt } from '../../terrain/index.js';
 import { spriteDepth } from '../depth.js';
 import { type EntityKind, type MutableSpriteDrawItem, newDrawItem } from '../draw-item.js';
-import { flagOwnerOf } from '../flag-owner.js';
+import { flagOwnerOf, isRallyFlagOf } from '../flag-owner.js';
 import { assignPalisadeFields, type PalisadeLayout } from '../palisades/connections.js';
 import type { SettlerPose } from '../settler-pose.js';
 import {
@@ -45,11 +45,12 @@ export function assembleItem(
   const { components } = entity;
   // Read here, not in the stockpile branch below, so it folds into the depth key.
   const isFlag = 'DeliveryFlag' in components;
+  const isRally = isFlag && isRallyFlagOf(build.snapshot, entity.id);
   const lift = terrainLiftAt(build.elevation, tileX, tileY);
   // A projectile's ballistic height rides the same lift channel as terrain lift: a draw offset the
   // depth key never sees, so neither can reshuffle occlusion.
   let arcLift = 0;
-  const depth = spriteDepth(tileX, tileY, kind, isFlag);
+  const depth = spriteDepth(tileX, tileY, kind, isFlag, false, 0, isRally);
   const item = newDrawItem(kind, entity.id, screen.x, screen.y, depth, pose.state);
   switch (kind) {
     case 'settler':
@@ -106,6 +107,7 @@ export function assembleItem(
       if (isFlag) {
         const player = flagOwnerOf(build.snapshot, entity.id);
         if (player !== undefined) item.player = player;
+        if (isRally) item.rally = true;
       }
       break;
     default: {

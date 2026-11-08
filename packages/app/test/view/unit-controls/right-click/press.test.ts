@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { JOB_CARRIER, JOB_COLLECTOR, JOB_TRADER } from '../../../../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
 import {
+  BUILDING_BARRACKS,
   sandboxContent,
   VEHICLE_CATAPULT,
   VEHICLE_HANDCART,
@@ -42,6 +43,9 @@ const DOOR_SETTLER = 21;
 const RESOURCE = 30;
 const GOOD = 4;
 const TILE = { col: 6, row: 8 };
+const OWN_BARRACKS = 40;
+const FOREIGN_BARRACKS = 41;
+const BARRACKS_FOUNDATION = 42;
 
 const vehicle = (id: number, vehicleType: number, hauler: number | null = null): Ent => ({
   id,
@@ -59,6 +63,17 @@ const trader = (id: number, components: Record<string, unknown> = {}): Ent => ({
     Owner: { player: HUMAN_PLAYER },
     Position: { x: ONE, y: ONE },
     ...components,
+  },
+});
+
+/** A standing barracks of `owner`, finished unless it carries an `extra` component such as the site's. */
+const barracks = (id: number, owner: number, extra: Record<string, unknown> = {}): Ent => ({
+  id,
+  components: {
+    Building: { buildingType: BUILDING_BARRACKS, tribe: 1, built: ONE, level: 0 },
+    Owner: { player: owner },
+    Position: { x: 5 * ONE, y: 5 * ONE },
+    ...extra,
   },
 });
 
@@ -95,6 +110,9 @@ const WORLD = snapshotOf([
     },
   },
   vehicle(TRADERS_SHIP, VEHICLE_SHIP_SMALL, TRADER),
+  barracks(OWN_BARRACKS, HUMAN_PLAYER),
+  barracks(FOREIGN_BARRACKS, 2),
+  barracks(BARRACKS_FOUNDATION, HUMAN_PLAYER, { UnderConstruction: { labor: 0 } }),
   ((ship: Ent): Ent => ({
     ...ship,
     components: {
@@ -320,6 +338,17 @@ describe('a right press', () => {
       kind: 'orders',
       settlers: { groups: [{ intent: { kind: 'walk', tile: TILE } }] },
     });
+  });
+
+  it("plants the lone selected barracks' rally flag on the ground the press names", () => {
+    expect(press([OWN_BARRACKS])).toEqual({ kind: 'rallyPoint', building: OWN_BARRACKS, tile: TILE });
+  });
+
+  it('keeps the ground rally for the barracks alone: a person, a mixed, foreign or building selection goes as before', () => {
+    expect(press([OWN_BARRACKS], { ownSettler: COLLECTOR })).toMatchObject({ kind: 'orders' });
+    expect(press([OWN_BARRACKS, COLLECTOR]).kind).not.toBe('rallyPoint');
+    expect(press([FOREIGN_BARRACKS]).kind).not.toBe('rallyPoint');
+    expect(press([BARRACKS_FOUNDATION]).kind).not.toBe('rallyPoint');
   });
 
   it('splits a vehicle group: the armed strike, the land vehicles drive, the ships wait on their berths', () => {

@@ -73,8 +73,11 @@ function harness(under: number | null): {
     unassignFirst?: boolean | undefined;
   }[];
   flagActive: () => boolean;
+  rallies: { building: number; col: number; row: number }[];
+  armRally: (building: number) => string | null;
 } {
   const issued: Command[] = [];
+  const rallies: { building: number; col: number; row: number }[] = [];
   const flags: {
     col: number;
     row: number;
@@ -88,6 +91,10 @@ function harness(under: number | null): {
       unassignFirst?: boolean,
     ) => {
       flags.push({ ...target, units, ...(unassignFirst ? { unassignFirst } : {}) });
+      return true;
+    },
+    issueRallyPoint: (building: number, target: { col: number; row: number }) => {
+      rallies.push({ building, ...target });
       return true;
     },
   } as Partial<UnitOrderController> as UnitOrderController;
@@ -116,6 +123,11 @@ function harness(under: number | null): {
     issued,
     flags,
     flagActive: pickMode.flagActive,
+    rallies,
+    armRally: (building) => {
+      pickMode.arm({ kind: 'rally-point', building });
+      return pickMode.handleMouseDown({ clientX: 0, clientY: 0, button: 0, shiftKey: false } as MouseEvent);
+    },
   };
 }
 
@@ -184,4 +196,12 @@ it('floats the flag under the cursor for the work-area pick too, and plants it o
   h.pick([GATHERER], 'work-area');
   expect(h.flags).toEqual([{ ...SPOT, units: [GATHERER] }]);
   expect(h.flagActive()).toBe(false);
+});
+
+it("plants a barracks' rally flag where the press lands and ends the pick", () => {
+  const h = harness(null);
+  expect(h.armRally(HUT)).toBe('ordered');
+  expect(h.rallies).toEqual([{ building: HUT, ...SPOT }]);
+  expect(h.flags).toEqual([]);
+  expect(h.armed()).toBe(false);
 });

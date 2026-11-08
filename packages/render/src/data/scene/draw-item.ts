@@ -122,6 +122,9 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** For a stockpile: a designated delivery flag rather than a loose pile - a marker holding no
    *  goods. */
   readonly isFlag?: boolean;
+  /** For an {@link isFlag} marker: the barracks' rally point, which draws over the soldiers standing
+   *  on it. */
+  readonly rally?: boolean;
   /** For a `signpost` board item: an index into the binding's 20°-step board frames around the post
    *  top. Omitted for the post itself. */
   readonly boardIndex?: number;
@@ -289,6 +292,7 @@ export function newDrawItem(
     player: undefined,
     swarmCount: undefined,
     isFlag: undefined,
+    rally: undefined,
     boardIndex: undefined,
     atomicId: undefined,
     elapsed: undefined,

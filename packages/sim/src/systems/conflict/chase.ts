@@ -1,7 +1,9 @@
 import {
+  AssistantRecruit,
   AttackOrder,
   Building,
   Engagement,
+  Equipment,
   EquipOrder,
   engagementRecord,
   Garrison,
@@ -19,6 +21,7 @@ import {
   Settler,
   Stance,
   StandIn,
+  Weapon,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { forEachRingNode, hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
@@ -31,7 +34,7 @@ import { standingFighterPosts } from '../movement/collision/index.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { structureRouteSealed } from '../movement/structure-route.js';
 import { breakThroughWall } from '../palisades/breach.js';
-import { isRangedWeapon, MILITARY_MODE, stanceMode } from '../readviews/index.js';
+import { isRangedWeapon, isSoldierJob, MILITARY_MODE, stanceMode } from '../readviews/index.js';
 import { anyNeedPressing } from '../settlers/drives/needs.js';
 import { markLostWay } from '../settlers/lost-way.js';
 import { closer, hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
@@ -99,15 +102,29 @@ function marchRestTicks(world: World, e: Entity): number {
   return player !== undefined && isMachinePlayer(world, player) ? MACHINE_MARCH_REST_TICKS : REPATH_CADENCE;
 }
 
+/** Whether `e` is an assistant-booked soldier still owed the weapon his class fights by: no combat
+ *  {@link Weapon} stamped and no weapon good worn. The arming errand owns the walk that first ends on his
+ *  post (`recruit-arming.ts`), so the walk-back holds until then. A soldier drilled by hand has no booking
+ *  and walks to his post bare. */
+export function awaitsRecruitWeapon(world: World, ctx: SystemContext, e: Entity): boolean {
+  if (world.tryGet(e, AssistantRecruit)?.armed !== false) return false;
+  const { jobType } = world.get(e, Settler);
+  if (!isSoldierJob(ctx.content, jobType)) return false;
+  if (world.has(e, Weapon)) return false;
+  return (world.tryGet(e, Equipment)?.weapon ?? null) === null;
+}
+
 /** Send a DEFEND guard, or an ATTACK fighter that strayed, back to its anchor when nothing is left to
  *  fight. The {@link Engagement} always drops here, or the planner's Engagement gate would bench the unit for
  *  good; the walk home defers to a live equip errand, whose end re-holds the unchanged anchor, and to a
  *  pressing need, which the planner answers above the DEFEND hold. Without that, a guard facing an enemy it
- *  cannot reach is turned back from every meal and starves beside the store. */
+ *  cannot reach is turned back from every meal and starves beside the store. It defers to a booked recruit
+ *  still owed his weapon too ({@link awaitsRecruitWeapon}), or the walk-back would march him there bare. */
 function returnToAnchor(world: World, ctx: SystemContext, e: Entity, here: NodeId, anchorCell: NodeId): void {
   world.remove(e, Engagement);
   world.remove(e, HuntFocus); // a post-holder holds no prey
   if (world.has(e, EquipOrder) || anyNeedPressing(world, ctx, e)) return;
+  if (awaitsRecruitWeapon(world, ctx, e)) return;
   if (holdsStandIn(world, ctx, e, here, anchorCell)) return;
   clearNavState(world, e);
   const post = ctx.terrain === undefined ? anchorCell : guardPost(world, ctx, ctx.terrain, anchorCell, here);
