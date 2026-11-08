@@ -24,3 +24,13 @@ export const TrainingOrder = defineComponent<{
  * does the school's loss. Owner's ruling after the original, where graduates gather beside their school.
  */
 export const GraduateWait = defineComponent<{ school: Entity }>('GraduateWait', 'settlers');
+
+/**
+ * The flag a barracks sends the soldiers it trains to: a {@link DeliveryFlag} marker the owner planted, the
+ * same flag a gatherer's work area uses. A recruit that finishes its drill takes the flag's node as its
+ * guard anchor, so it walks there from the door and holds it. Soldiers already trained keep their own
+ * anchors. The flag is minted and moved by the owner's order and destroyed with the barracks; our own
+ * rule, not the original's. Absent while the barracks keeps no rally point, and its recruits then stay
+ * where they step out.
+ */
+export const RallyPoint = defineComponent<{ flag: Entity }>('RallyPoint', 'settlers');

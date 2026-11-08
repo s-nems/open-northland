@@ -6,6 +6,7 @@ import {
   hasMissionBehaviour,
   JobAssignment,
   MISSION_BEHAVIOUR,
+  MoveGoal,
   noteSettlerProgress,
   ownerOf,
   Settler,
@@ -20,10 +21,13 @@ import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { postGraduate } from '../../assistant/graduates.js';
+import { guardPost } from '../../conflict/chase.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood, holdToGatherGood, jobGathersGood } from '../../economy/gather-goods.js';
+import { moveAnchor } from '../../orders/combat.js';
 import { isSchoolOrFoundation, schoolMethodJob } from '../../orders/education.js';
 import { keepingOrderQueue } from '../../orders/guards.js';
+import { rallyNodeOf } from '../../orders/rally-point.js';
 import { takeTrainingSeat } from '../../orders/training-seats.js';
 import { reidleAsJob } from '../../orders/work/index.js';
 import { typeAllowed } from '../../progression/unlocks.js';
@@ -35,6 +39,7 @@ import {
   jobChangesProduction,
 } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
+import { entityNode } from '../../spatial/nodes.js';
 import { atOrWalk, EXERCISE_ATOMIC_ID, startAtomic } from '../atomics/start.js';
 import { enterBuilding, stepOut } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
@@ -105,8 +110,13 @@ export function planTraining(
     abandonDrill(world, e);
     if (order.lesson === undefined) {
       const jobType = keepingOrderQueue(world, e, () => {
+        // A plain-soldier counter's recruit is enlisted naked on purpose: the class counters own the
+        // arming, so the enlist beat shops for nobody whose booking asked plain soldiers.
+        const plain = world.tryGet(e, AssistantRecruit)?.intent === 'trainSoldiers';
         const enlisted = enlist(world, ctx, e);
-        armRecruitInPlace(plan, e, order.house);
+        // Arming first: the rally walk would only fight the fetch errand a booking still owes.
+        if (!plain) armRecruitInPlace(plan, e, order.house);
+        if (enlisted !== null) sendToRallyPoint(world, ctx, e, order.house);
         return enlisted;
       });
       if (jobType !== null)
@@ -261,6 +271,25 @@ function abandonDrill(world: World, e: Entity): boolean {
   world.remove(e, TrainingOrder);
   stepOut(world, e);
   return false;
+}
+
+/**
+ * Post a fresh soldier at its barracks' rally point: the point becomes the anchor its guard walk-back holds,
+ * so it leaves the door for the point instead of standing where it stepped out. A barracks with no rally
+ * point leaves the soldier anchored at its feet. An assistant recruit starts no walk here: the fetch
+ * errand his booking dispatches owns him, and its outing ends on the post (`recruit-arming.ts`). A soldier
+ * the player drilled by hand walks to the post at once, armed or not (owner's ruling).
+ */
+function sendToRallyPoint(world: World, ctx: SystemContext, e: Entity, barracks: Entity): void {
+  if (ctx.terrain === undefined) return;
+  const rally = rallyNodeOf(world, ctx.terrain, barracks);
+  if (rally === undefined) return;
+  moveAnchor(world, ctx.content, e, rally);
+  if (world.has(e, AssistantRecruit)) return;
+  // The post is the anchor, or the open node beside it when something stands on the anchor.
+  const here = entityNode(world, ctx.terrain, e);
+  const post = guardPost(world, ctx, ctx.terrain, rally, here);
+  if (post !== here) world.add(e, MoveGoal, { cell: post });
 }
 
 /**

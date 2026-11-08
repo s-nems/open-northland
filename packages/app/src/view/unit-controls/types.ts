@@ -257,6 +257,8 @@ export interface UnitControls {
   readonly signpostPlacementActive: () => boolean;
   /** A flag trade's workplace pick is armed: the placement ghost shows its flag under the cursor. */
   readonly workFlagPlacementActive: () => boolean;
+  /** A barracks' rally-point pick is armed: the ghost shows the tinted rally flag, not the work one. */
+  readonly rallyPickActive: () => boolean;
   /** True while an Escape would land here: the job list is open, a pick is armed or units are selected. */
   readonly claimsEscape: () => boolean;
   /** True while the trade window stands, which these controls close on Escape. */

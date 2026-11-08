@@ -215,6 +215,7 @@ function pooledDepth(pe: PooledEntity, item: DrawItem): number {
     item.isFlag === true,
     item.roadSite === 'unclaimed',
     item.boardIndex === undefined ? 0 : signpostBoardSteps(item.boardIndex),
+    item.rally === true,
   );
 }
 

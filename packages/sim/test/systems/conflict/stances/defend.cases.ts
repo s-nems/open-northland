@@ -171,6 +171,7 @@ describe('DEFEND - hold an anchor, don’t chase past the leash', () => {
     const [anchorX, row] = [15, 1];
     const anchor = cell(sim, anchorX, row);
     const guard = combatant(sim, anchorX - 7, row, P0, MILITARY_MODE.DEFEND, { jobType: SOLDIER });
+    sim.world.add(guard, Weapon, { weaponTypeId: TEST_AXE }); // armed, as a walking-back class soldier is
     sim.world.mut(guard, Stance).anchorCell = anchor;
     // A deposit on the anchor, as a map places a unit on one: no route can end there.
     const deposit = sim.world.create();
@@ -305,6 +306,7 @@ describe('DEFEND - hold an anchor, don’t chase past the leash', () => {
     ] as const;
     for (const [hx, hy] of covered) block(hx, hy);
     const guard = combatantAtNode(sim, 8, ay, P0, MILITARY_MODE.DEFEND, { jobType: SOLDIER });
+    sim.world.add(guard, Weapon, { weaponTypeId: TEST_AXE }); // armed, as a walking-back class soldier is
     const anchor = terrain.nodeAt(ax, ay);
     sim.world.mut(guard, Stance).anchorCell = anchor;
 

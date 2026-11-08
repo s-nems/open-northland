@@ -565,6 +565,11 @@ export function workFlagOf(e: SnapshotEntity): number | undefined {
   return num(flagBindingOf(e)?.flag);
 }
 
+/** The rally flag marker a finished barracks planted, or undefined while it keeps none. */
+export function rallyFlagOf(e: SnapshotEntity): number | undefined {
+  return num((e.components.RallyPoint as { flag?: unknown } | undefined)?.flag);
+}
+
 /** A work-area binding: the flag the settler works around and that area's radius in half-cell nodes. */
 export function workAreaOf(e: SnapshotEntity): { flag: number; radius: number } | undefined {
   const wf = flagBindingOf(e);

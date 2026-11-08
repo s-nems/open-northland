@@ -15,6 +15,10 @@ export interface BuildingPanelActions {
   readonly cancelUpgrade: (building: number) => void;
   /** Ask the player whether to raze the building named `name`, then raze it. */
   readonly demolish: (building: number, name: string) => void;
+  /** Arm the planting of `building`'s rally flag: the next click on the ground plants or moves it. */
+  readonly armRallyPoint: (building: number) => void;
+  /** Take `building`'s rally flag away. */
+  readonly clearRallyPoint: (building: number) => void;
   readonly setAlarm: (building: number, on: boolean) => void;
   /** Raise or call off the alarm in every shelter of `building`'s owner. */
   readonly setAlarmEverywhere: (building: number, on: boolean) => void;

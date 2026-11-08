@@ -172,6 +172,8 @@ export const COMMAND_ISSUER: {
   setStorageMinimum: 'seat',
   setStorePriority: 'seat',
   setConstructionPriority: 'seat',
+  setRallyPoint: 'seat',
+  clearRallyPoint: 'seat',
   setJob: 'seat',
   setMatchParticipants: 'trusted',
   setUnplayedSeats: 'trusted',

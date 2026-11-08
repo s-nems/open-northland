@@ -121,6 +121,9 @@ export interface UnitOrderController {
   /** Move the selected gatherers' work flags to `target`; a resource's `goodType` there also narrows their
    *  gathering filter to it. `units` narrows the order as in `issueSetWorkFlag`. */
   issueWorkFlagAt(target: Tile, goodType: number | null, units?: readonly number[]): boolean;
+  /** Plant or move `building`'s rally flag at `target`, which the sim snaps to legal ground or refuses.
+   *  Always true: the sim judges the click. */
+  issueRallyPoint(building: number, target: Tile): boolean;
   /** The ground orders name a half-cell node rather than a cursor, so the map overview can issue them
    *  for a spot the camera is nowhere near. Off-map nodes clamp into the map here. `units`, when given,
    *  narrows these orders to the selected settlers an armed order was issued for. A `queued` walk waits
@@ -667,8 +670,16 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   const issueWorkFlagAt = (target: Tile, goodType: number | null, units?: readonly number[]): boolean =>
     setWorkFlags(commandedAmong(units), target, goodType ?? undefined);
 
+  const issueRallyPoint = (building: number, target: Tile): boolean => {
+    const { width, height } = nodeBounds(deps.mapSize);
+    const point = clampTile(target, width, height);
+    deps.enqueue({ kind: 'setRallyPoint', building: building as Entity, x: point.col, y: point.row });
+    return true;
+  };
+
   return {
     refresh: () => school?.refresh(),
+    issueRallyPoint,
     setUiScale: async (scale) => {
       uiScale = scale;
       await school?.setUiScale(scale);

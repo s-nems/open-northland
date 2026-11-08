@@ -55,7 +55,8 @@ export type HintAction =
   | 'unpinShip'
   | 'workArea'
   | 'placeSignpost'
-  | 'bombard';
+  | 'bombard'
+  | 'rallyPoint';
 
 /** Why a right click or an armed pick's press would do nothing or be refused, each exactly as the sim or
  *  the pick enforces it. */
@@ -139,6 +140,8 @@ export function planHint(ctx: HintContext, input: RightClickInput): PlanHint | n
       return plan.units.length === 0 ? null : action('workArea');
     case 'doorSettler':
       return null;
+    case 'rallyPoint':
+      return action('rallyPoint');
     case 'orderLimit':
       return refusal('tooManyUnits');
     case 'pinShip': {

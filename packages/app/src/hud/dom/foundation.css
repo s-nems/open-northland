@@ -7062,6 +7062,29 @@ body.on-drag-scroll.on-drag-scroll-free * {
   width: 14px;
   height: 14px;
 }
+.on-hud .on-rally[hidden] {
+  display: none;
+}
+.on-hud .on-rally {
+  justify-content: center;
+  gap: 5px;
+}
+.on-hud .on-rally .on-glyph {
+  width: 14px;
+  height: 14px;
+}
+/* A flag stands: the same amber the flag wears on the map (the ghost's and the outline's 0xffc020). */
+.on-hud .on-rally--on {
+  border-color: #7a5c22;
+  background: radial-gradient(circle at 45% 35%, #6e5322, #4d3a17 60%, #2a1f0c 95%);
+  box-shadow:
+    inset 0 1px #fff1,
+    0 0 6px #c2a53b55;
+  color: #f3e6c4;
+}
+.on-hud .on-rally--on .on-glyph {
+  color: #ffc020;
+}
 .on-hud .on-alarm--on {
   border-color: #9a3f2c;
   background: radial-gradient(circle at 45% 35%, #6e3527, #47201a 60%, #26110d 95%);

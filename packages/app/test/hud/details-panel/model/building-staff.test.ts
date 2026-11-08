@@ -142,6 +142,13 @@ describe('building staff readers', () => {
     expect(hq.staff?.garrison).toBeNull();
   });
 
+  it('offers the rally flag on a finished barracks only, and says whether one stands', () => {
+    expect(buildingModel([buildingEntity(1, BUILDING_BARRACKS)], 1).orders?.rally).toEqual({ set: false });
+    const flagged = buildingEntity(1, BUILDING_BARRACKS, { components: { RallyPoint: { flag: 9 } } });
+    expect(buildingModel([flagged], 1).orders?.rally).toEqual({ set: true });
+    expect(buildingModel([buildingEntity(1, BUILDING_HEADQUARTERS)], 1).orders?.rally).toBeNull();
+  });
+
   it('lists a worker who shelters where it works on its trade line only', () => {
     const model = buildingModel(
       [
@@ -582,6 +589,7 @@ describe('building orders', () => {
     },
     cancelUpgrade: false,
     alarm: null,
+    rally: null,
     hire: { jobType: JOB_CARRIER, label: 'Tragarz' },
     ...patch,
   });
@@ -633,6 +641,7 @@ describe('building orders', () => {
       enqueue: (command) => sent.push(command),
       cue: (cue) => cues.push(cue),
       selectGroup: (ids) => selected.push(ids),
+      armRallyPoint: () => {},
       confirm: (question) => {
         asked.push(`${question.title}: ${question.message}`);
         return Promise.resolve(answers.shift() ?? false);
@@ -681,6 +690,35 @@ describe('building orders', () => {
       'fail',
       'confirm',
     ]);
+  });
+});
+
+describe('building rally orders', () => {
+  it('arms the planting for an own barracks and clears its flag, and refuses a stranger’s', () => {
+    const sent: PlayerCommand[] = [];
+    const armed: number[] = [];
+    const cues: string[] = [];
+    const snapshot = panelSnapshotOf([
+      buildingEntity(1, BUILDING_BARRACKS),
+      buildingEntity(2, BUILDING_BARRACKS, { components: { Owner: { player: 1 } } }),
+    ]);
+    const actions = buildingPanelActions({
+      snapshot: () => snapshot,
+      content: createSceneSim(sandboxScene).content,
+      viewer: fixedViewerSeat(HUMAN_PLAYER),
+      enqueue: (command) => sent.push(command),
+      cue: (cue) => cues.push(cue),
+      selectGroup: () => {},
+      armRallyPoint: (building) => armed.push(building),
+      confirm: () => Promise.resolve(false),
+    });
+    actions.armRallyPoint(1);
+    actions.armRallyPoint(2);
+    actions.clearRallyPoint(1);
+    actions.clearRallyPoint(2);
+    expect(armed).toEqual([1]);
+    expect(sent).toEqual([{ kind: 'clearRallyPoint', building: 1 as Entity }]);
+    expect(cues).toEqual(['confirm', 'fail', 'confirm', 'fail']);
   });
 });
 

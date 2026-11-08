@@ -12,6 +12,7 @@ const SCHOOL = FIRST_BUILDING + 1;
 const isUnit = (id: number): boolean => id < FIRST_BUILDING;
 
 const gatherer = (id: number, flag: number): Ent => ({ id, components: { WorkFlag: { flag } } });
+const barracks = (id: number, flag: number): Ent => ({ id, components: { RallyPoint: { flag } } });
 const idle = (id: number): Ent => ({ id, components: { Settler: { jobType: 8 } } });
 
 describe('unit selection set', () => {
@@ -55,21 +56,29 @@ describe('unit selection set', () => {
   });
 });
 
-describe('unit selection work flags', () => {
-  const world = snapshotOf([gatherer(1, 101), gatherer(2, 102), idle(3)]);
+describe('unit selection flags', () => {
+  const world = snapshotOf([gatherer(1, 101), gatherer(2, 102), barracks(4, 103), idle(3)]);
 
   it('resolves the flags of the selected gatherers only', () => {
     const selection = createUnitSelection(ALL_UNITS);
     selection.apply([1, 3], false);
-    expect([...selection.workFlagIds(world)]).toEqual([101]);
+    expect([...selection.flagIds(world)]).toEqual([101]);
     selection.apply([2], true);
-    expect([...selection.workFlagIds(world)]).toEqual([101, 102]);
+    expect([...selection.flagIds(world)]).toEqual([101, 102]);
+  });
+
+  it("resolves a selected barracks' rally flag beside the gatherers' work flags", () => {
+    const selection = createUnitSelection(ALL_UNITS);
+    selection.apply([4], false);
+    expect([...selection.flagIds(world)]).toEqual([103]);
+    selection.apply([1, 4], false);
+    expect([...selection.flagIds(world)]).toEqual([101, 103]);
   });
 
   it('answers an empty selection from one shared set, allocating nothing per frame', () => {
     const selection = createUnitSelection(ALL_UNITS);
-    expect(selection.workFlagIds(world).size).toBe(0);
-    expect(selection.workFlagIds(snapshotOf([gatherer(1, 101)]))).toBe(selection.workFlagIds(world));
+    expect(selection.flagIds(world).size).toBe(0);
+    expect(selection.flagIds(snapshotOf([gatherer(1, 101)]))).toBe(selection.flagIds(world));
   });
 
   it('reads the snapshot once per tick, and again when the selection changes inside that tick', () => {
@@ -77,16 +86,16 @@ describe('unit selection work flags', () => {
     const selection = createUnitSelection(ALL_UNITS);
 
     selection.apply([1], false);
-    expect([...selection.workFlagIds(snapshot)]).toEqual([101]);
+    expect([...selection.flagIds(snapshot)]).toEqual([101]);
     const afterFirst = visits();
     expect(afterFirst).toBeGreaterThan(0);
 
-    expect([...selection.workFlagIds(snapshot)]).toEqual([101]); // same tick, same selection: memoized
+    expect([...selection.flagIds(snapshot)]).toEqual([101]); // same tick, same selection: memoized
     expect(visits()).toBe(afterFirst);
 
     // A click re-selects inside one tick, so snapshot identity alone must not hold the stale answer.
     selection.apply([2], false);
-    expect([...selection.workFlagIds(snapshot)]).toEqual([102]);
+    expect([...selection.flagIds(snapshot)]).toEqual([102]);
     expect(visits()).toBeGreaterThan(afterFirst);
   });
 });

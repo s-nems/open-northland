@@ -3,6 +3,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { hasOpenSide } from '../../../nav/nearest.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { awaitsRecruitWeapon } from '../../conflict/chase.js';
 import type { SystemContext } from '../../context.js';
 import { builtHomeType } from '../../family/households.js';
 import { moveAnchor } from '../../orders/combat.js';
@@ -48,7 +49,8 @@ export function deStackIdle(
  * {@link deStackIdle} for a DEFEND guard, whose hold ends the ladder before the idle tail: a guard standing
  * on its own anchor moves the post to the free node it steps to, or the combat walk-back would lead it
  * straight back onto the stack. Recruits leaving one barracks door fan out this way. A guard off its
- * anchor is left to that walk-back. Source basis: authored.
+ * anchor is left to that walk-back, except a recruit still owed his weapon, whom the walk-back holds
+ * by the door: he spreads where he waits and keeps his post. Source basis: authored.
  */
 export function deStackGuard(
   world: World,
@@ -60,7 +62,10 @@ export function deStackGuard(
   spacing: PlannerSpacing,
 ): void {
   const here = terrain.nodeAtClamped(hx, hy);
-  if ((world.tryGet(e, Stance)?.anchorCell ?? here) !== here) return;
+  if ((world.tryGet(e, Stance)?.anchorCell ?? here) !== here) {
+    if (awaitsRecruitWeapon(world, ctx, e)) deStackIdle(world, terrain, e, hx, hy, spacing);
+    return;
+  }
   const free = deStackIdle(world, terrain, e, hx, hy, spacing);
   if (free !== null) moveAnchor(world, ctx.content, e, free);
 }

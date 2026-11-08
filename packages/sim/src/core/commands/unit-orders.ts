@@ -699,6 +699,20 @@ export type UnitOrderCommand =
       readonly kind: 'setConstructionPriority';
       readonly building: Entity;
       readonly priority: ConstructionPriority;
+    }
+  | {
+      /** Send the soldiers an owned finished barracks trains from now on to the half-cell node (x,y), where
+       *  each takes its guard post. A blocked node resolves to the nearest free one beside it when they
+       *  walk. A building that is no barracks, or not finished, skips the command. */
+      readonly kind: 'setRallyPoint';
+      readonly building: Entity;
+      readonly x: number;
+      readonly y: number;
+    }
+  | {
+      /** Take a barracks' rally point away: its recruits stay where they step out again. */
+      readonly kind: 'clearRallyPoint';
+      readonly building: Entity;
     };
 
 /**

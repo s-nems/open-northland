@@ -5,12 +5,14 @@ import {
   type SnapshotIndexSpec,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { ownerPlayerOf, workFlagOf } from '../game/snapshot/index.js';
+import { ownerPlayerOf, rallyFlagOf, workFlagOf } from '../game/snapshot/index.js';
 import { ownedByAnotherSeat, pickableSeat, type ViewerSeat } from '../game/viewer-seat.js';
 
 interface FlagHolding {
   readonly flag: number;
   readonly owner: number | undefined;
+  /** The holder is a barracks and the flag its rally point, which shows only while the barracks is. */
+  readonly rally: boolean;
 }
 
 /** Each flag holder's flag and owner; `version` bumps on every change, so a reader rebuilds per change. */
@@ -20,13 +22,15 @@ interface FlagHoldings {
 }
 
 function holdingOf(e: EntitySnapshot): FlagHolding | undefined {
-  const flag = workFlagOf(e);
-  return flag === undefined ? undefined : { flag, owner: ownerPlayerOf(e) };
+  const flag = workFlagOf(e) ?? rallyFlagOf(e);
+  return flag === undefined
+    ? undefined
+    : { flag, owner: ownerPlayerOf(e), rally: rallyFlagOf(e) !== undefined };
 }
 
 const FLAG_HOLDINGS: SnapshotIndexSpec<FlagHoldings> = {
   name: 'flag holdings',
-  reads: { values: ['WorkFlag', 'HaulFlag', 'Owner'] },
+  reads: { values: ['WorkFlag', 'HaulFlag', 'RallyPoint', 'Owner'] },
   empty: () => ({ byHolder: new Map(), version: 0 }),
   add: (state, e) => {
     const holding = holdingOf(e);
@@ -40,7 +44,8 @@ const FLAG_HOLDINGS: SnapshotIndexSpec<FlagHoldings> = {
   replace: (state, _previous, next) => {
     const holding = holdingOf(next);
     const held = state.byHolder.get(next.id);
-    if (holding?.flag === held?.flag && holding?.owner === held?.owner) return;
+    if (holding?.flag === held?.flag && holding?.owner === held?.owner && holding?.rally === held?.rally)
+      return;
     if (holding === undefined) state.byHolder.delete(next.id);
     else state.byHolder.set(next.id, holding);
     state.version++;
@@ -52,27 +57,51 @@ export function flagHoldingsOf(snapshot: WorldSnapshot): FlagHoldings {
   return indexesOf(snapshot).get(FLAG_HOLDINGS);
 }
 
+/** The selection a rally flag's visibility follows, as the unit controls hold it. */
+export interface FlagSelection {
+  readonly ids: () => ReadonlySet<number>;
+  readonly version: () => number;
+}
+
+const NO_SELECTION: ReadonlySet<number> = new Set();
+
 /**
- * The work flags hidden from `viewer`: a gatherer's, hunter's, fisher's or carrier's flag shows only to
- * its own seat, and the whole map shows every flag. Owner ruling. Answers the same set until a holding
- * or the viewer changes.
+ * The flags hidden from `viewer`: a gatherer's, hunter's, fisher's or carrier's flag shows only to its
+ * own seat, and a barracks' rally flag only to its owner and only while the owner keeps the barracks
+ * selected - the `selection` the game view holds, whose absence hides every owner's rally flag (owner
+ * ruling; a projection without a selection has none to show it by). The whole map shows every other
+ * flag. Answers the same set until a holding, the viewer or the selection changes.
  */
-export function createForeignFlags(viewer: ViewerSeat): (snapshot: WorldSnapshot) => ReadonlySet<number> {
+export function createForeignFlags(
+  viewer: ViewerSeat,
+  selection?: FlagSelection,
+): (snapshot: WorldSnapshot) => ReadonlySet<number> {
   let holdings: FlagHoldings | undefined;
   let version = -1;
   let seat: number | null = null;
+  let selectionVersion = -1;
   let hidden: ReadonlySet<number> = new Set();
   return (snapshot) => {
     const current = flagHoldingsOf(snapshot);
     const currentSeat = pickableSeat(viewer);
-    if (current === holdings && current.version === version && currentSeat === seat) return hidden;
+    const currentSelection = selection?.version() ?? -1;
+    if (
+      current === holdings &&
+      current.version === version &&
+      currentSeat === seat &&
+      currentSelection === selectionVersion
+    )
+      return hidden;
     holdings = current;
     version = current.version;
     seat = currentSeat;
+    selectionVersion = currentSelection;
+    const shown = selection?.ids() ?? NO_SELECTION;
     const foreign = new Set<number>();
     const own = new Set<number>();
-    for (const { flag, owner } of current.byHolder.values()) {
-      (ownedByAnotherSeat(owner, currentSeat) ? foreign : own).add(flag);
+    for (const [holder, holding] of current.byHolder) {
+      const conceal = ownedByAnotherSeat(holding.owner, currentSeat) || (holding.rally && !shown.has(holder));
+      (conceal ? foreign : own).add(holding.flag);
     }
     for (const flag of own) foreign.delete(flag);
     hidden = foreign;

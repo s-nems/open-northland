@@ -316,6 +316,7 @@ export async function createUnitChrome(
       enqueue,
       cue: callbacks.cue,
       selectGroup: callbacks.selectGroup,
+      armRallyPoint: (building) => callbacks.armPick({ kind: 'rally-point', building }),
       confirm: createHudConfirm(opts.domHud.plane),
     }),
     windows: {
