@@ -20,7 +20,7 @@ import { displayViewOf, uiScaleFor } from '../../../hud/ui-scale.js';
 import { currentLocale, mapTextLanguage, messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { replaceEntryUrl } from '../../../view/platform/navigation-guard.js';
-import { targetSearch } from '../../../view/target-search.js';
+import { missionTargetSearch } from '../../../view/target-search.js';
 import { node } from '../dom.js';
 import type { MountedScreen } from '../model.js';
 import { campaignMap } from './map.js';
@@ -286,7 +286,7 @@ export function campaignTabBody(launch: LaunchEntry, silenceMusic: MusicSilencer
       if (mapId === undefined || busy || asking) return;
       const chosen = launchTribe(tribe);
       launch(
-        targetSearch(
+        missionTargetSearch(
           campaignMissionQuery(
             chosen === undefined ? { mapId, language } : { mapId, language, tribe: chosen },
           ),

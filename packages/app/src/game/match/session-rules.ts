@@ -1,4 +1,3 @@
-import { isMultiplayerMapType } from '@open-northland/data';
 import {
   DAY_NIGHT_MODES,
   type DayNightMode,
@@ -68,10 +67,4 @@ export function applySessionRuleOverrides(sim: WorldSetup, overrides: Omit<SimSe
   if (overrides.alliedVision !== null) {
     sim.enqueueSetup({ kind: 'setAlliedVision', enabled: overrides.alliedVision });
   }
-}
-
-/** The allied-vision rule a local game starts a map with: on for a multiplayer map, off for a
- *  single-player one. A network room always starts with it on. */
-export function localAlliedVision(mapTypes: readonly number[]): boolean {
-  return isMultiplayerMapType(mapTypes);
 }

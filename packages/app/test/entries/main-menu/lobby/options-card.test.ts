@@ -30,4 +30,17 @@ describe('lobbyOptionsCard', () => {
     expect(options.dayNight).toBe('on');
     expect(options.weather).toBe('off');
   });
+
+  it('offers the map setting only on a multiplayer map', () => {
+    const { mapModes } = messages().mainMenu.lobby;
+    const offered = (multiplayerMap: boolean): boolean =>
+      [
+        ...lobbyOptionsCard(
+          initialLobbyOptions(new URLSearchParams(), false),
+          multiplayerMap,
+        ).querySelectorAll('button'),
+      ].some((button) => button.textContent === mapModes.recon.label);
+    expect(offered(true)).toBe(true);
+    expect(offered(false)).toBe(false);
+  });
 });

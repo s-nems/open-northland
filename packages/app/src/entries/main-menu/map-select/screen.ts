@@ -1,11 +1,10 @@
 import type { MusicSilencer } from '../../../campaign/movie.js';
-import { localAlliedVision } from '../../../game/match/session-rules.js';
 import { drawSessionSeed } from '../../../game/match/session-url.js';
 import { messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { targetSearch } from '../../../view/target-search.js';
 import { campaignTabBody } from '../campaign/screen.js';
-import { initialLobbyOptions, initialLobbyState, lobbyStartEntry } from '../lobby/model.js';
+import { initialLobbyState, lobbyStartEntry, localLobbyOptions } from '../lobby/model.js';
 import type { MenuScreen, MountedScreen } from '../model.js';
 import { screenHead } from '../screen-head.js';
 import { type MapContentTab, type MapSelectItem, type MapSelectMemory, singlePlayerTabs } from './model.js';
@@ -38,10 +37,7 @@ export function mapSelectScreen(
       if (item.kind === 'scene') launch(targetSearch(`?scene=${encodeURIComponent(item.id)}`));
       else if (item.tutorialStep !== undefined) {
         const state = initialLobbyState(item.players);
-        const options = initialLobbyOptions(
-          new URLSearchParams(window.location.search),
-          localAlliedVision(item.types),
-        );
+        const options = localLobbyOptions(new URLSearchParams(window.location.search), item.types);
         launch(targetSearch(lobbyStartEntry(item.id, state, item.players, options, drawSessionSeed())));
       } else openLobby(item);
     },

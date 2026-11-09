@@ -1,6 +1,5 @@
 import { isMultiplayerMapType, type MapVariantKind } from '@open-northland/data';
 import { chosenMapVariantParam } from '../../../game/map/variant.js';
-import { localAlliedVision } from '../../../game/match/session-rules.js';
 import { drawSessionSeed } from '../../../game/match/session-url.js';
 import { messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
@@ -12,11 +11,11 @@ import type { MenuScreen, MountedScreen } from '../model.js';
 import { screenHead } from '../screen-head.js';
 import { localSeatElements } from './local-seats.js';
 import {
-  initialLobbyOptions,
   initialLobbyState,
   lobbyPlayers,
   lobbySlotRows,
   lobbyStartEntry,
+  localLobbyOptions,
 } from './model.js';
 import { lobbyOptionsCard } from './options-card.js';
 import {
@@ -96,7 +95,7 @@ export function lobbyScreen(
   launchPanel.className = 'main-menu__lobby-launch';
 
   const search = new URLSearchParams(window.location.search);
-  const options = initialLobbyOptions(search, localAlliedVision(item.types));
+  const options = localLobbyOptions(search, item.types);
   let variant: MapVariantKind | null = chosenMapVariantParam(search, item.id);
   let players = lobbyPlayers(item.id, item.players, variant);
   // A variant can open seats the authored map reserves, so each map mode keeps its own roster.

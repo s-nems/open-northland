@@ -7,6 +7,7 @@ import {
   lobbySession,
   lobbySlotRows,
   lobbyStartEntry,
+  localLobbyOptions,
 } from '../../../../src/entries/main-menu/lobby/model.js';
 import {
   claimSeat,
@@ -18,7 +19,6 @@ import {
   setSlotTribe,
   setVacantMode,
 } from '../../../../src/entries/main-menu/lobby/roster-state.js';
-import { localAlliedVision } from '../../../../src/game/match/session-rules.js';
 import { mapSession } from '../../../../src/game/match/session-url.js';
 
 /** `TRIBE_TYPE_HUMAN_*` codes the rosters below name. */
@@ -147,12 +147,21 @@ describe('initialLobbyOptions', () => {
   });
 
   it('starts a local game with allied vision on for a multiplayer map and off for a single-player one', () => {
-    expect(localAlliedVision([MAP_TYPE.SINGLE_PLAYER_FREE])).toBe(false);
-    expect(localAlliedVision([])).toBe(false);
-    expect(localAlliedVision([MAP_TYPE.MULTI_PLAYER_FREE])).toBe(true);
-    expect(localAlliedVision([MAP_TYPE.USER_MULTI_PLAYER_FREE])).toBe(true);
+    const none = new URLSearchParams();
+    expect(localLobbyOptions(none, [MAP_TYPE.SINGLE_PLAYER_FREE]).alliedVision).toBe(false);
+    expect(localLobbyOptions(none, []).alliedVision).toBe(false);
+    expect(localLobbyOptions(none, [MAP_TYPE.MULTI_PLAYER_FREE]).alliedVision).toBe(true);
+    expect(localLobbyOptions(none, [MAP_TYPE.USER_MULTI_PLAYER_FREE]).alliedVision).toBe(true);
     // Not carried: a stray launch flag cannot override the caller's pick.
     expect(initialLobbyOptions(new URLSearchParams('alliedvision=off'), true).alliedVision).toBe(true);
+  });
+
+  it('plays a single-player map on the classic map, keeping the carried fog of war', () => {
+    // A known-terrain map would preview the authored map; a multiplayer map keeps the carried pick.
+    const carried = new URLSearchParams('fog=recon-fow');
+    expect(localLobbyOptions(carried, [MAP_TYPE.SINGLE_PLAYER_FREE]).fog).toBe('classic-fow');
+    expect(localLobbyOptions(new URLSearchParams('fog=recon'), []).fog).toBe('classic');
+    expect(localLobbyOptions(carried, [MAP_TYPE.MULTI_PLAYER_FREE]).fog).toBe('recon-fow');
   });
 
   it('starts every lobby without a peace, whatever the launch URL says', () => {

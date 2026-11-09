@@ -4,12 +4,12 @@ import { gameRuleControls } from '../lobby-controls/rules.js';
 import type { LobbyOptions } from './model.js';
 
 /**
- * `offersPeace` shows the peace choice, which only a multiplayer map has. `variants` are the
- * toggles of the variants the map ships, listed last.
+ * A multiplayer map offers the map setting and the peace choice; a single-player one plays the
+ * classic map. `variants` are the toggles of the variants the map ships, listed last.
  */
 export function lobbyOptionsCard(
   options: LobbyOptions,
-  offersPeace: boolean,
+  multiplayerMap: boolean,
   variants: readonly HTMLElement[] = [],
 ): HTMLElement {
   const lobby = messages().mainMenu.lobby;
@@ -19,14 +19,14 @@ export function lobbyOptionsCard(
   title.className = 'main-menu__lobby-card-title';
   title.textContent = lobby.settingsTitle;
   const controls = gameRuleControls({
-    map: { label: lobby.mapLabel, modes: lobby.mapModes },
+    ...(multiplayerMap ? { map: { label: lobby.mapLabel, modes: lobby.mapModes } } : {}),
     fogOfWar: { label: lobby.fogOfWarLabel, ...lobby.fogOfWarModes },
     progression: { label: lobby.progressionLabel, ...lobby.progressionModes },
     needs: { label: lobby.needsLabel, ...lobby.needsModes },
     alliedVision: { label: lobby.alliedVisionLabel, ...lobby.alliedVisionModes },
     weather: { label: lobby.weatherLabel, modes: lobby.weatherModes },
     dayNight: { label: lobby.dayNightLabel, modes: lobby.dayNightModes },
-    ...(offersPeace ? { peace: lobby.peace } : {}),
+    ...(multiplayerMap ? { peace: lobby.peace } : {}),
     onChange(change) {
       if (change.fog != null) {
         const name = fogModeName(change.fog);

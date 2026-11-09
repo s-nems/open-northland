@@ -1,4 +1,9 @@
-import { applyMapVariantSlots, findMapVariant, type MapVariantKind } from '@open-northland/data';
+import {
+  applyMapVariantSlots,
+  findMapVariant,
+  isMultiplayerMapType,
+  type MapVariantKind,
+} from '@open-northland/data';
 import {
   type ComputerDifficulty,
   type DayNightMode,
@@ -67,6 +72,23 @@ export function initialLobbyOptions(params: URLSearchParams, alliedVision: boole
     alliedVision,
     peace: null,
   };
+}
+
+/** A known-terrain map previews the whole of an authored single-player map, so a local lobby on one
+ *  plays the classic map, keeping only the fog-of-war choice. */
+const CLASSIC_MAP_FOG: Readonly<Record<LobbyFogModeName, LobbyFogModeName>> = {
+  classic: 'classic',
+  'classic-fow': 'classic-fow',
+  recon: 'classic',
+  'recon-fow': 'classic-fow',
+};
+
+/** The options a local lobby opens `mapTypes` with: a multiplayer map offers the map setting and
+ *  starts with allied vision, a single-player one plays the classic map without it. */
+export function localLobbyOptions(params: URLSearchParams, mapTypes: readonly number[]): LobbyOptions {
+  const multiplayer = isMultiplayerMapType(mapTypes);
+  const options = initialLobbyOptions(params, multiplayer);
+  return multiplayer ? options : { ...options, fog: CLASSIC_MAP_FOG[options.fog] };
 }
 
 /** A fresh lobby pre-seats the player in the first claimable listed slot; all-AI maps stay seatless. */

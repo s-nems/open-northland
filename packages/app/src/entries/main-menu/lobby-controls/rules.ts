@@ -41,7 +41,8 @@ export interface GameRuleControlOptions {
   readonly inheritedLabel?: string;
   /** A dropdown rule's field; absent stands it in the lobby's label-and-control row. */
   readonly fieldClassName?: string;
-  readonly map: {
+  /** The map setting; absent offers none, so the game plays the map the rules already hold. */
+  readonly map?: {
     readonly label: string;
     readonly modes: Readonly<Record<MapModeName, RuleText>>;
     /** What a saved rule with no fog at all reads as; absent leaves the map unselected. */
@@ -193,27 +194,27 @@ export function gameRuleControls(options: GameRuleControlOptions) {
   }
 
   const fog = fogRuleComposer();
-  const mapChoices: Choice<MapModeName>[] = MAP_MODES.map((mode) => ({
-    value: mode,
-    ...options.map.modes[mode],
-  }));
   const map = (() => {
+    const text = options.map;
+    if (text === undefined) return null;
+    const mapChoices: Choice<MapModeName>[] = MAP_MODES.map((mode) => ({ value: mode, ...text.modes[mode] }));
     const change = (mode: ShownMap) => {
       if (mode !== null && isMapMode(mode))
         options.onChange({ fog: fog.request({ terrainKnown: mode === 'recon' }) });
     };
-    const control = segmentedRule<MapModeName>(options.map.label, mapChoices, change);
+    const control = segmentedRule<MapModeName>(text.label, mapChoices, change);
     const inheritedMap = document.createElement('p');
     inheritedMap.className = 'main-menu__rule-note';
     return {
       elements: [...control.elements, inheritedMap],
       update(shown: ShownMap, disabled: boolean): void {
         control.update(shown === 'revealed' ? null : shown, disabled);
-        inheritedMap.textContent = shown === 'revealed' ? (options.map.revealed ?? '') : (inherited ?? '');
+        inheritedMap.textContent = shown === 'revealed' ? (text.revealed ?? '') : (inherited ?? '');
         inheritedMap.hidden = shown !== null && shown !== 'revealed';
       },
     };
   })();
+  const mapElements = map?.elements ?? [];
   const fogOfWar = booleanRule(options.fogOfWar, false, (value) => {
     options.onChange({ fog: fog.request({ fogOfWar: value === true }) });
   });
@@ -255,7 +256,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
   })();
   const peaceElements = peace?.elements ?? [];
   return {
-    environmentElements: [...map.elements, ...weather.elements, ...dayNight.elements],
+    environmentElements: [...mapElements, ...weather.elements, ...dayNight.elements],
     gameplayElements: [
       ...fogOfWar.elements,
       ...alliedVision.elements,
@@ -264,7 +265,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       ...needs.elements,
     ],
     elements: [
-      ...map.elements,
+      ...mapElements,
       ...fogOfWar.elements,
       ...alliedVision.elements,
       ...peaceElements,
@@ -275,7 +276,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     ],
     update(rules: GameRules, disabled: boolean): void {
       const settings = fog.show(rules.fog);
-      map.update(shownMapOf(rules.fog, settings), disabled);
+      map?.update(shownMapOf(rules.fog, settings), disabled);
       fogOfWar.update(settings?.fogOfWar ?? null, disabled);
       progression.update(rules.progression, disabled);
       needs.update(rules.needs, disabled);

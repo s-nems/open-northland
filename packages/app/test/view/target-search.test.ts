@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { targetSearch } from '../../src/view/target-search.js';
+import { missionTargetSearch, targetSearch } from '../../src/view/target-search.js';
 
 describe('targetSearch', () => {
   it('carries only player-facing game settings into the selected entry', () => {
@@ -22,6 +22,16 @@ describe('targetSearch', () => {
     // An explicit fog in the entry itself still wins (hand-typed URLs bypass the menu).
     expect(targetSearch('?scene=goods-catalog&fog=off', current)).toBe(
       '?lang=pol&speed=2&scene=goods-catalog&fog=off',
+    );
+  });
+
+  it("starts a campaign mission on its own rules, never the last game's", () => {
+    // A quit from a recon room leaves its rules in the menu URL; the mission must not inherit them.
+    const current = new URLSearchParams(
+      'lang=pol&speed=2&fog=recon-fow&progression=off&needs=off&weathermode=winter&daynight=off&sound=off',
+    );
+    expect(missionTargetSearch('?map=campaign_1&missions=on&lang=pol', current)).toBe(
+      '?lang=pol&speed=2&sound=off&map=campaign_1&missions=on&fog=classic',
     );
   });
 
