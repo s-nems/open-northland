@@ -19,6 +19,10 @@ export interface StaticLayerObjects<Sprite> {
 /** What working a harvestable moves: a node's `Resource.remaining`, a bush's `BerryBush.stage`. */
 export type HarvestState = number | string | null;
 
+/** The saved state of a held quad whose change still waits for the viewer's sight, as a tree grown in
+ *  the fog: it matches no live state, so the restored layer retires the quad once seen. */
+const CHANGED_UNSEEN = 'changedUnseen';
+
 /**
  * What the viewer last saw of the static layer, for a save to carry: the placements whose quad left the
  * layer, and the harvestables still drawn as quads with their {@link HarvestState} then. A held node whose
@@ -160,12 +164,13 @@ export function bindStaticLayer<Sprite>(
     onSight: () => deferral.flush(),
     memory: () => {
       const now = snapshot();
+      const unseen = new Set(deferral.pending());
       return {
         removed: [...removed],
         held: (handover?.held() ?? []).map(([entity, placement]) => [
           entity,
           placement,
-          harvestStateOf(now, entity) ?? null,
+          unseen.has(placement) ? CHANGED_UNSEEN : (harvestStateOf(now, entity) ?? null),
         ]),
       };
     },

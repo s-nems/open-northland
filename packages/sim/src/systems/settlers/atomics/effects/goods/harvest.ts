@@ -19,6 +19,7 @@ import type { NodeId } from '../../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../../context.js';
 import { stampCarcassFootprint } from '../../../../economy/carcasses.js';
 import { landStrandedDrops } from '../../../../economy/goods-evict.js';
+import { scheduleTreeRegrow } from '../../../../economy/tree-regrow.js';
 import { toolWorkFactorPct } from '../../../../equipment/index.js';
 import { stampResourceFootprintOrFallback, unstampResourceFootprint } from '../../../../footprint/index.js';
 import { jobExperiencePercent, strokesPerUnit, workRepeatsFor } from '../../../../progression/index.js';
@@ -191,9 +192,9 @@ function reapField(world: World, node: Entity, res: { goodType: number; remainin
 
 /**
  * Fell a {@link Felling} node struck by a siege shot, as a woodcutter's last stroke would, and return the
- * node it stood on, or null when `node` is no standing tree. Original behavior: the shot topples a grown
- * tree outright. Approximation: a young tree vanishes there without a trunk, but trees here carry no
- * growth stage, so every one stands grown. The caller lands the drops the fall leaves stranded.
+ * node it stood on, or null when `node` is no standing tree. Original behavior: the shot topples a tree
+ * old enough to fell outright, and a younger one vanishes without a trunk or a regrowth. The caller lands
+ * the drops the fall leaves stranded.
  */
 export function fellStruckTree(world: World, ctx: SystemContext, node: Entity): NodeId | null {
   const res = world.tryGet(node, Resource);
@@ -201,14 +202,21 @@ export function fellStruckTree(world: World, ctx: SystemContext, node: Entity): 
   if (res === undefined || terrain === undefined || !world.has(node, Felling)) return null;
   const pos = world.get(node, Position);
   const at = nodeOfPosition(pos.x, pos.y);
-  fellNode(world, ctx, node, res.goodType, res.remaining, undefined);
+  if (res.remaining > 0) {
+    fellNode(world, ctx, node, res.goodType, res.remaining, undefined);
+  } else {
+    const goodType = res.goodType;
+    removeResourceNode(world, node);
+    ctx.events.emit({ kind: 'resourceDepleted', node, goodType, at: eventAt(pos.x, pos.y) });
+  }
   return terrain.nodeAtClamped(at.hx, at.hy);
 }
 
 /**
  * Fell a {@link Felling} node: drop its whole yield as a ground trunk pile, leave a {@link Stump} where it
- * stood, and remove the node, carrying the drops it leaves stranded to `stance`. `goodType` and
- * `yieldAmount` are passed in because `world.destroy` drops the component object from its store.
+ * stood, schedule the sapling it may seed, and remove the node, carrying the drops it leaves stranded to
+ * `stance`. `goodType` and `yieldAmount` are passed in because `world.destroy` drops the component object
+ * from its store.
  */
 function fellNode(
   world: World,
@@ -228,6 +236,7 @@ function fellNode(
   const stump = world.create();
   world.add(stump, Position, { x, y });
   world.add(stump, Stump, { goodType });
+  scheduleTreeRegrow(world, ctx, node);
   removeWorkedNode(world, ctx, node, stance);
   ctx.events.emit({
     kind: 'resourceFelled',

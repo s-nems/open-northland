@@ -15,6 +15,8 @@ import { fieldReclaimSystem } from './economy/field-reclaim.js';
 import { fishReproductionSystem } from './economy/fish.js';
 import { productionSystem } from './economy/production.js';
 import { selfFillingStockSystem } from './economy/self-filling.js';
+import { treeGrowthSystem } from './economy/tree-growth.js';
+import { treeRegrowSystem } from './economy/tree-regrow.js';
 import { familySystem } from './family/index.js';
 import { growthSystem } from './lifecycle/ageclass.js';
 import { cleanupSystem } from './lifecycle/cleanup.js';
@@ -164,6 +166,8 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'selfFillingStock', system: selfFillingStockSystem },
   { name: 'fieldReclaim', system: fieldReclaimSystem },
   { name: 'berryGrowth', system: berryGrowthSystem },
+  { name: 'treeGrowth', system: treeGrowthSystem },
+  { name: 'treeRegrow', system: treeRegrowSystem },
   { name: 'fishReproduction', system: fishReproductionSystem },
   { name: 'construction', system: constructionSystem },
   // Vision rebuilds after movement and before combat, so a fresh fog mode is honoured this tick.

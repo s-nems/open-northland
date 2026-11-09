@@ -409,7 +409,12 @@ export const ECONOMY: ArticleGroup = {
                 '1 Mahlzeit',
               ],
               ['Fischschwarm', '+1 Fisch alle {{fish.regrowSeconds}} s', '{{fish.swarmMax}} Fische'],
-              ['Baum, Fels, Lagerstätte, Pilz', 'Wachsen nicht nach', '-'],
+              [
+                'Baum',
+                'Ein gefällter Baum sät in {{tree.regrowInTen}} von 10 Fällen nach {{tree.regrowMinMinutes}}-{{tree.regrowMaxMinutes}} Min. einen Setzling in der Nähe, auf einem freien Platz mit mindestens {{tree.forestTrees}} Bäumen ringsum. Der Setzling wächst alle {{tree.growMinutes}} Min. eine Stufe',
+                '1 Setzling je gefälltem Baum, fällbar erst ausgewachsen',
+              ],
+              ['Fels, Lagerstätte, Pilz', 'Wachsen nicht nach', '-'],
             ],
           },
         },

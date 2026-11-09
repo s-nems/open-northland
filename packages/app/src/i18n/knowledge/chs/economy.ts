@@ -366,7 +366,12 @@ export const ECONOMY: ArticleGroup = {
                 '1餐',
               ],
               ['鱼群', '每{{fish.regrowSeconds}}秒+1条鱼', '{{fish.swarmMax}}条'],
-              ['树、岩石、矿藏、蘑菇', '不再生', '-'],
+              [
+                '树',
+                '树被砍倒后，有{{tree.regrowInTen}}/10的几率在{{tree.regrowMinMinutes}}-{{tree.regrowMaxMinutes}}分钟后于附近空地长出树苗，该处周围须至少有{{tree.forestTrees}}棵树。树苗每{{tree.growMinutes}}分钟长大一阶',
+                '每棵砍倒的树1棵树苗，长成后才能砍伐',
+              ],
+              ['岩石、矿藏、蘑菇', '不再生', '-'],
             ],
           },
         },

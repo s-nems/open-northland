@@ -659,6 +659,10 @@ export const enContent = {
       title: 'Wild berries',
       summary: 'Foragers eat from wild bushes and the harvested plants regrow.',
     },
+    'tree-regrowth': {
+      title: 'Regrowing trees',
+      summary: 'A felled tree seeds a sapling in the forest, and young trees grow until they can be felled.',
+    },
     chests: {
       title: 'Chests and papers',
       summary:

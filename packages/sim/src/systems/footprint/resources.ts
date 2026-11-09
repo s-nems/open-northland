@@ -22,8 +22,8 @@ import {
 
 // Resource footprints are the `[GfxLandscape]` walk, build and work areas a standing resource occupies.
 
-/** The key of a good's resource node footprint: its harvest-stage record `gfxIndex` at `level`, or
- *  without one the stage's first record, full-grown. */
+/** The key of a good's resource node footprint: its harvest-stage record `gfxIndex`, or without one the
+ *  stage's first record, at `level` or full-grown. */
 export function resourceFootprintForGood(
   content: ContentSet,
   goodType: number,
@@ -34,11 +34,12 @@ export function resourceFootprintForGood(
   const stage = pipeline?.harvest ?? pipeline?.pickup;
   if (stage === undefined) return null;
   const byIndex = contentIndex(content).landscapeGfxByIndex;
+  const keyed = (gfx: number): ResourceFootprintRecordKey => (level === undefined ? { gfx } : { gfx, level });
   if (gfxIndex !== undefined) {
     if (!stage.gfxIndices.includes(gfxIndex) || !byIndex.has(gfxIndex)) return null;
-    return level === undefined ? { gfx: gfxIndex } : { gfx: gfxIndex, level };
+    return keyed(gfxIndex);
   }
-  for (const index of stage.gfxIndices) if (byIndex.has(index)) return { gfx: index };
+  for (const index of stage.gfxIndices) if (byIndex.has(index)) return keyed(index);
   return null;
 }
 
@@ -125,10 +126,7 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
     ...(spec.gfxIndex !== undefined ? { gfxIndex: spec.gfxIndex } : {}),
   });
   // A map placement blocks as its own record at its own level; without one, as the good's first record.
-  const own =
-    spec.gfxIndex === undefined
-      ? null
-      : resourceFootprintForGood(content, spec.good, spec.gfxIndex, spec.blockLevel);
+  const own = resourceFootprintForGood(content, spec.good, spec.gfxIndex, spec.blockLevel);
   if (own === null) stampResourceFootprint(world, content, e, spec.good);
   else stampResourceFootprintData(world, e, own, content);
   if (spec.felling === true) world.add(e, Felling, { chops: 0 });

@@ -23,6 +23,7 @@ import { cadaverGoodCycle } from './content-index/cadaver.js';
 import { civilianJobTypes, militaryGoodTypes } from './content-index/combat.js';
 import { constructionBills, upgradeBills } from './content-index/construction.js';
 import { jobRoleSets } from './content-index/jobs.js';
+import { type LandscapeGrowth, landscapeGrowthByGfx } from './content-index/landscape-growth.js';
 import { livestockTables } from './content-index/livestock.js';
 import {
   mergedRecipes,
@@ -143,6 +144,8 @@ export interface ContentIndex {
   readonly gatheringPipelinesByGood: ReadonlyMap<number, GatheringPipeline>;
   /** Landscape gfx by their `index`, the gathering pipeline's join key; last-wins on a duplicate. */
   readonly landscapeGfxByIndex: ReadonlyMap<number, LandscapeGfx>;
+  /** How each record that grows in place grows ({@link landscapeGrowthByGfx}). */
+  readonly landscapeGrowthByGfx: ReadonlyMap<number, LandscapeGrowth>;
   /** Per job type: the atomic ids the job may run - the `jobtypes` permission gate. */
   readonly atomicsByJob: ReadonlyMap<number, ReadonlySet<number>>;
   /** The flag-gathering trades: jobs whose {@link atomicsByJob} include a non-farmed good's harvest
@@ -241,6 +244,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     atomicBindingsByTribe: atomicBindings,
     gatheringPipelinesByGood: byKey(content.gatheringPipeline, (p) => p.goodType),
     landscapeGfxByIndex: new Map(content.landscapeGfx.map((g) => [g.index, g])), // last-wins
+    landscapeGrowthByGfx: landscapeGrowthByGfx(content),
     atomicsByJob: resolveJobAtomics(content.jobs),
     constructionBillByBuilding: constructionBills(content),
     upgradeBillByTarget: upgradeBills(content.buildings),

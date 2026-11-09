@@ -155,10 +155,11 @@ export function depositVisualLevel(remaining: number, initial: number, levels: n
 }
 
 /**
- * A mined node's or crop's visual ladder - the current `level` and the `levels` denominator it is out
- * of, returned together so the two can never drift - or `undefined` for a plain node. A sown `Crop`
- * uses its growth stage as the level directly: stage `k` draws gfx state `k` (the wheat record's 5
- * states are authored smallest-at-1 to ripe-at-5, exactly the stage numbering).
+ * A mined node's, crop's or growing tree's visual ladder - the current `level` and the `levels`
+ * denominator it is out of, returned together so the two can never drift - or `undefined` for a plain
+ * node. A sown `Crop` and a growing tree use their growth stage as the level directly: stage `k` draws gfx
+ * state `k` (the wheat record's 5 states are authored smallest-at-1 to ripe-at-5, a tree's sapling-at-1
+ * to full-at-3).
  */
 function readResourceLadder(
   components: Readonly<Record<string, unknown>>,
@@ -166,6 +167,10 @@ function readResourceLadder(
   const crop = components.Crop as { stage?: unknown; stages?: unknown } | undefined;
   if (crop !== undefined && typeof crop.stage === 'number' && typeof crop.stages === 'number') {
     return { level: clamp(crop.stage, 1, crop.stages), levels: crop.stages };
+  }
+  const tree = components.TreeGrowth as { level?: unknown; levels?: unknown } | undefined;
+  if (tree !== undefined && typeof tree.level === 'number' && typeof tree.levels === 'number') {
+    return { level: clamp(tree.level, 1, tree.levels), levels: tree.levels };
   }
   const deposit = components.MineDeposit as { initial?: unknown; levels?: unknown } | undefined;
   const res = components.Resource as { remaining?: unknown } | undefined;

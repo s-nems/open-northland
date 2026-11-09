@@ -662,6 +662,11 @@ export const deContent = {
       title: 'Wilde Beeren',
       summary: 'Abbauer essen von wilden Beerensträuchern, und die abgeernteten Pflanzen wachsen nach.',
     },
+    'tree-regrowth': {
+      title: 'Nachwachsende Bäume',
+      summary:
+        'Ein gefällter Baum hinterlässt im Wald einen Setzling, und junge Bäume wachsen, bis man sie fällen kann.',
+    },
     chests: {
       title: 'Kisten und Briefe',
       summary:

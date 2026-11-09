@@ -19,6 +19,7 @@ import {
   Stump,
   setMissionBehaviour,
   setPeaceTime,
+  TreeRegrow,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../../src/index.js';
@@ -691,6 +692,19 @@ describe('projectiles - area shots', () => {
     expect(sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW)).toBe(
       MARKSMAN_BOW_HITS,
     );
+  });
+
+  it('clears a tree too young to fell without a trunk, a stump or a regrowth', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 6) });
+    const shooter = marksmanAt(sim, 0, 0);
+    const sapling = treeOn(sim, AIM);
+    sim.world.mut(sapling, Resource).remaining = 0;
+    stone(sim, shooter, sapling, false);
+    sim.step();
+    expect(sim.world.isAlive(sapling)).toBe(false);
+    expect([...sim.world.query(GroundDrop, Stockpile)]).toHaveLength(0);
+    expect([...sim.world.query(Stump)]).toHaveLength(0);
+    expect([...sim.world.query(TreeRegrow)]).toHaveLength(0);
   });
 
   it('leaves trees standing under a shot that is not an area shot', () => {

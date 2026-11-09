@@ -2,6 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   BerryBush,
+  Felling,
   OpenedChest,
   PathFollow,
   PathRequest,
@@ -10,6 +11,7 @@ import {
   Resource,
   type ResourceFootprintData,
   Stump,
+  TreeGrowth,
 } from '../../../../src/components/index.js';
 import {
   adminCommand,
@@ -527,6 +529,37 @@ describe('placement razes opened chests in the reserved zone', () => {
     expect(buildingsPlaced(sim)).toBe(1);
     expect(sim.world.isAlive(inside)).toBe(false);
     expect(sim.world.isAlive(outside)).toBe(true);
+  });
+});
+
+describe('placement razes young trees in the reserved zone', () => {
+  const WOOD = 1;
+  const CHOP_ATOMIC = 24;
+  /** A tree still growing, too young to block placement, at a node. */
+  function placeSapling(sim: Simulation, x: number, y: number) {
+    const e = sim.world.create();
+    sim.world.add(e, Position, positionOfNode(x, y));
+    sim.world.add(e, Resource, { goodType: WOOD, remaining: 0, harvestAtomic: CHOP_ATOMIC });
+    stampResourceFootprintData(sim.world, e, { walk: [], build: [], work: [] });
+    sim.world.add(e, Felling, { chops: 0 });
+    sim.world.add(e, TreeGrowth, { level: 1, levels: 3, wood: 3 });
+    return e;
+  }
+
+  it('destroys a growing tree inside the reserved zone and spares one outside it', () => {
+    const sim = mappedSim();
+    // The stump case's HUT reserved ring: (6,6) sits inside it, (12,12) well clear.
+    const inside = placeSapling(sim, 6, 6);
+    const outside = placeSapling(sim, 12, 12);
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    sim.step();
+    expect(buildingsPlaced(sim)).toBe(1);
+    expect(sim.world.isAlive(inside)).toBe(false);
+    expect(sim.world.isAlive(outside)).toBe(true);
+    // The static layer still draws a map-authored sapling, so its clearing is announced.
+    expect(sim.events.current()).toContainEqual(
+      expect.objectContaining({ kind: 'resourceDepleted', node: inside }),
+    );
   });
 });
 

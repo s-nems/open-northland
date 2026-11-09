@@ -41,6 +41,7 @@ import {
   formatted,
   goodTypeOf,
   lessonSeconds,
+  minutes,
   oneDecimal,
   PERCENT,
   QUOTED_EXPERIENCE_PCT,
@@ -73,6 +74,9 @@ const HIGH_ROW_TICKS = 2;
 const LOW_STEP_WEIGHT = LOW_ROW_TICKS * systems.EQUIPMENT_WEIGHT_PER_STEP_TICK;
 
 const HIGH_STEP_WEIGHT = HIGH_ROW_TICKS * systems.EQUIPMENT_WEIGHT_PER_STEP_TICK;
+
+/** Felled trees that regrow are told as so many out of ten. */
+const IN_TEN = 10;
 
 /** The heaviest load of a walking table row that opens at `from`: the next row's opening, less one. */
 const rowTop = (from: number): number => from + systems.EQUIPMENT_WEIGHT_PER_STEP_TICK - 1;
@@ -408,6 +412,13 @@ export const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'bush.stageSeconds': whole(seconds(systems.BERRY_STAGE_TICKS)),
   'fish.regrowSeconds': whole(seconds(systems.FISH_REPRODUCTION_TICKS)),
   'fish.swarmMax': whole(systems.MAX_FISH_PER_SWARM),
+  'tree.regrowMinMinutes': whole(minutes(systems.TREE_REGROW_DELAY_MIN_TICKS)),
+  'tree.regrowMaxMinutes': whole(
+    minutes(systems.TREE_REGROW_DELAY_MIN_TICKS + systems.TREE_REGROW_DELAY_SPREAD_TICKS),
+  ),
+  'tree.growMinutes': whole(minutes(systems.TREE_GROWTH_PERIOD_TICKS)),
+  'tree.forestTrees': whole(systems.TREE_REGROW_FOREST_TREES),
+  'tree.regrowInTen': whole((PERCENT - systems.TREE_REGROW_FAIL_PERCENT) / IN_TEN),
   'tool.uses': whole((base) => equipOf(base, 'tool_iron')?.uses),
   'tool.ironTrees': whole(ironToolTrees),
   'haul.carry': whole(components.CARRY_CAPACITY),

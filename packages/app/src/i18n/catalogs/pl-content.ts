@@ -656,6 +656,10 @@ export const plContent = {
       title: 'Dzikie jagody',
       summary: 'Zbieracze jedzą dzikie owoce, a ogołocone krzewy odrastają.',
     },
+    'tree-regrowth': {
+      title: 'Odrastające drzewa',
+      summary: 'Ścięte drzewo zostawia w lesie sadzonkę, a młode drzewa rosną, aż będzie można je ściąć.',
+    },
     chests: {
       title: 'Skrzynie i plany',
       summary:

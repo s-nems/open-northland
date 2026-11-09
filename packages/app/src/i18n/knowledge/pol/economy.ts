@@ -406,7 +406,12 @@ export const ECONOMY: ArticleGroup = {
                 '1 posiłek',
               ],
               ['Ławica', '+1 ryba co {{fish.regrowSeconds}} s', '{{fish.swarmMax}} ryb'],
-              ['Drzewo, skała, złoże, grzyb', 'Nie odrastają', '-'],
+              [
+                'Drzewo',
+                'Ścięte drzewo w {{tree.regrowInTen}} na 10 przypadków po {{tree.regrowMinMinutes}}-{{tree.regrowMaxMinutes}} min zasiewa sadzonkę obok, jeśli znajdzie wolne miejsce z co najmniej {{tree.forestTrees}} drzewami wokół. Sadzonka rośnie o stopień co {{tree.growMinutes}} min',
+                '1 sadzonka na ścięte drzewo, ścinać można dopiero dorosłe',
+              ],
+              ['Skała, złoże, grzyb', 'Nie odrastają', '-'],
             ],
           },
         },

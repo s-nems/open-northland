@@ -23,9 +23,13 @@ const MEAT_PILE_GFX_INDEX = 215;
 const CADAVER_LEATHER_TYPE = 79;
 const CADAVER_MEAT_TYPE = 80;
 const HARVEST_TRANSITION_EVENT = 3;
+/** A transition tuple's size-change mode that adds its valency step. */
+const SIZE_CHANGE_ADD = 2;
+/** A transition that yields no good. */
+const NO_GOOD = 0;
 const PLUCK_VALENCY_STEP = -1;
 function cadaverPluck(next: number, good: number): number[] {
-  return [HARVEST_TRANSITION_EVENT, next, 2, PLUCK_VALENCY_STEP, good];
+  return [HARVEST_TRANSITION_EVENT, next, SIZE_CHANGE_ADD, PLUCK_VALENCY_STEP, good];
 }
 const CADAVER_LANDSCAPE_TYPES = [
   {
@@ -57,6 +61,19 @@ const BIO_LANDSCAPE_STATES = 3;
 
 function landscapeState(g: GathererSpec): number {
   return Math.max(1, g.depositLevels ?? BIO_LANDSCAPE_STATES);
+}
+
+/** The growth trigger and its valency step, as `landscapetypes.ini`'s tree row grows (`transition 7 4 2 1
+ *  0`): a felled resource's sapling grows through its states like a real tree. */
+const GROWTH_TRANSITION_EVENT = 7;
+const GROWTH_VALENCY_STEP = 1;
+function growth(g: GathererSpec): { maxValency?: number; transitions?: number[][] } {
+  if (g.mode !== 'fell') return {};
+  const type = resourceLandscapeType(g.good);
+  return {
+    maxValency: landscapeState(g),
+    transitions: [[GROWTH_TRANSITION_EVENT, type, SIZE_CHANGE_ADD, GROWTH_VALENCY_STEP, NO_GOOD]],
+  };
 }
 
 // The areas below are authored in the real block-area grammar: half-cell node offsets of
@@ -101,6 +118,7 @@ export function sandboxLandscape(map?: TerrainTypeIds): Array<{
   walkable: boolean;
   buildable: boolean;
   plantable?: boolean;
+  maxValency?: number;
   transitions?: number[][];
 }> {
   const base = [
@@ -113,6 +131,7 @@ export function sandboxLandscape(map?: TerrainTypeIds): Array<{
       id: `${g.id}_harvest_node`,
       walkable: true,
       buildable: true,
+      ...growth(g),
     })),
   ];
   if (map === undefined) return base;

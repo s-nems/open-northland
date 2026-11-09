@@ -235,7 +235,8 @@ function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly
 
 /**
  * Topple every tree anchored on area shot `proj`'s landing point or its six neighbours. Original behavior:
- * one catapult stone fells each such tree outright, whoever's ground it stands on; a falling tree is no
+ * one catapult stone fells each full-grown such tree outright and clears a young one, whoever's ground it
+ * stands on; a falling tree is no
  * hit, so it neither trains the shooter nor keeps the shot from thudding. The original keys this on the
  * catapult's weapon type, the content's only area weapon. The drops a fall leaves cut off are carried to
  * the landing point once every tree is down, since a tree felled first is still hemmed in by the rest.

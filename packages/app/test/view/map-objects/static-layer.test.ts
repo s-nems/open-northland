@@ -122,4 +122,24 @@ describe('bindStaticLayer', () => {
     expect(razedSince.removed).toEqual(['grass', 'bush']);
     expect([...razedSince.refs()]).toEqual([]);
   });
+
+  it('keeps a change made in the fog before the save waiting for sight after the restore', () => {
+    let watching = false;
+    const fresh = bind(
+      { kind: 'fresh', placementByEntity: [[BUSH, 1]], pooledPlacements: [] },
+      () => watching,
+      [BUSH_ENTITY],
+    );
+    fresh.onEvents([{ kind: 'berryForaged', bush: BUSH, at: { hx: 9, hy: 8 } }]);
+    const saved = fresh.memory();
+
+    const restored = bind({ kind: 'restored', placements: [1], memory: saved }, () => watching, [
+      BUSH_ENTITY,
+    ]);
+    restored.look();
+    expect(restored.harvestableSpriteOf(BUSH)).toBe('bush');
+    watching = true;
+    restored.look();
+    expect(restored.harvestableSpriteOf(BUSH)).toBeUndefined();
+  });
 });

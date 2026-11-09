@@ -13,6 +13,8 @@ export * from './economy/gather-goods.js';
 export * from './economy/goods-evict.js';
 export * from './economy/jobs/index.js';
 export * from './economy/production.js';
+export * from './economy/tree-growth.js';
+export * from './economy/tree-regrow.js';
 export * from './economy/work-flag.js';
 export * from './family/index.js';
 export * from './footprint/index.js';

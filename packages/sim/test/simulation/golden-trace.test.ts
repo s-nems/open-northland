@@ -243,35 +243,35 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     '304:8:22',
     '315:5:24',
     '318:5:24',
-    '322:5:2',
+    '322:5:3',
     '325:5:24',
     '328:5:24',
     '330:8:23',
-    '332:5:3',
+    '332:5:2',
     '335:5:24',
     '338:5:24',
-    '342:5:2',
+    '342:5:4',
     '345:5:24',
     '348:5:24',
     '352:5:3',
     '355:5:24',
     '358:5:24',
     '359:7:23',
-    '362:5:3',
+    '362:5:4',
     '365:5:24',
     '368:5:24',
     '372:5:4',
     '374:8:22',
     '375:5:24',
     '378:5:24',
-    '382:5:2',
+    '382:5:3',
     '385:5:24',
     '388:5:24',
     '392:5:2',
     '395:5:24',
     '398:5:24',
     '400:8:23',
-    '402:5:4',
+    '402:5:2',
     '405:5:24',
     '409:5:22',
     '441:8:22',
@@ -311,7 +311,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     const run = runSlice(SEED, TICKS);
     // The hash covers every component on every entity, so it moves on any intentional mechanic change;
     // each move is named in its own completing commit (`git log -S` this literal for the history).
-    expect(run.hash).toBe('4fb85931');
+    expect(run.hash).toBe('8febad15');
   });
 
   it('matches the golden atomic-action trace', () => {

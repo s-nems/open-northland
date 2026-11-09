@@ -365,9 +365,9 @@ export type SimEvent =
     }
   | {
       /**
-       * A resource node was exhausted and removed this tick: a mined deposit whose last unit was chipped
-       * off, or a direct-pickup node after its single harvest. Unlike `resourceFelled` it leaves nothing
-       * standing behind.
+       * A resource node was exhausted or cleared and removed this tick: a mined deposit whose last unit
+       * was chipped off, a direct-pickup node after its single harvest, or a young tree a siege stone or a
+       * building plot cleared. Unlike `resourceFelled` it leaves nothing standing behind.
        */
       readonly kind: 'resourceDepleted';
       readonly node: Entity;
@@ -391,6 +391,12 @@ export type SimEvent =
        */
       readonly kind: 'berryForaged';
       readonly bush: Entity;
+      readonly at: HalfCellNode;
+    }
+  | {
+      /** A growing tree `node` reached its next valency this tick. */
+      readonly kind: 'treeGrew';
+      readonly node: Entity;
       readonly at: HalfCellNode;
     }
   | {

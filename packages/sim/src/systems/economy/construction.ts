@@ -49,6 +49,7 @@ import { scatterSpilledStock, spilledStockOf } from './goods-spill.js';
 import { destroyInertDecorInReserved } from './inert-decor.js';
 import { clearRepairedDamage } from './repair.js';
 import { dropLapsedClaim, holdsSiteClaim, isSoloSite } from './site-claim.js';
+import { destroySaplingsInReserved } from './tree-growth.js';
 import { clearUpgradeGround } from './upgrade-ground.js';
 
 /**
@@ -294,6 +295,7 @@ function settleFootprint(world: World, ctx: SystemContext, e: Entity): void {
   evictCarcassesFromFootprint(world, ctx, e);
   destroyBerryBushesInReserved(world, ctx, e);
   destroyInertDecorInReserved(world, ctx, e);
+  destroySaplingsInReserved(world, ctx, e);
   destroyFieldsUnderBuilding(world, ctx, e);
   cancelRoadSitesUnder(world, ctx, e, true);
 }

@@ -111,9 +111,8 @@ export function spawnMapFields(sim: Simulation, objects: TerrainObjects, ir: Con
 
 /**
  * Direct scene assembly, valid pre-tick-0 only. Nodes are created in the map's native placement order,
- * so ids mint deterministically. A tree authored as a sapling still spawns at the full wood yield,
- * because a tree's level is a growth stage rather than a stock. A placement whose good has no gatherer
- * trade or no footprint is skipped, not fatal.
+ * so ids mint deterministically. A tree authored below full growth starts growing from its authored
+ * valency. A placement whose good has no gatherer trade or no footprint is skipped, not fatal.
  */
 export function spawnMapResources(
   sim: Simulation,
@@ -137,6 +136,9 @@ export function spawnMapResources(
     };
     const e = systems.createResourceNode(sim.world, sim.content, spec);
     if (e !== null) {
+      if (spec.felling === true && blockLevel !== undefined) {
+        systems.startTreeGrowth(sim.world, sim.content, e, blockLevel);
+      }
       spawned++;
       placementByEntity.set(e, placement);
     } else {
@@ -177,11 +179,16 @@ export function spawnVariantLandscapeObjects(
       ...(growth !== undefined ? { growth } : {}),
       ...(ref.maxValency !== undefined ? { maxValency: ref.maxValency } : {}),
     });
+    // A tree laid below full growth grows from that valency and blocks as it.
+    const sapling = sized.felling === true ? growth?.level : undefined;
     const e = systems.createResourceNode(sim.world, sim.content, {
       ...withDepositYield(sized, depositYield[ref.goodId] ?? 1),
       gfxIndex: ref.gfxIndex,
+      ...(sapling !== undefined ? { blockLevel: sapling } : {}),
     });
-    if (e !== null) spawned.push(e);
+    if (e === null) continue;
+    if (sapling !== undefined) systems.startTreeGrowth(sim.world, sim.content, e, sapling);
+    spawned.push(e);
   }
   return spawned;
 }

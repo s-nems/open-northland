@@ -65,12 +65,12 @@ export interface StaticDrawFields {
   /** For a stockpile pile: units of {@link goodType} held, which grows the drawn heap with its
    *  contents. */
   fill?: number;
-  /** A mined deposit's or crop's visual fill level in `[1, levels]`, stepping down from `levels` as it
-   *  empties. Omitted for a plain node, which draws its full-state frame. For a building, its
-   *  `Building.level`. */
+  /** A mined deposit's, crop's or growing tree's visual level in `[1, levels]`: a deposit steps down from
+   *  `levels` as it empties, a crop or tree up as it grows. Omitted for a plain node, which draws its
+   *  full-state frame. For a building, its `Building.level`. */
   level?: number;
-  /** The {@link level} ladder's denominator (`MineDeposit.levels` or a crop's `stages`). Must travel
-   *  with {@link level}, which would otherwise redraw at a different frame. */
+  /** The {@link level} ladder's denominator (`MineDeposit.levels`, a crop's `stages`, a tree's
+   *  `levels`). Must travel with {@link level}, which would otherwise redraw at a different frame. */
   levels?: number;
   /** A resource node's `Resource.gfxIndex`: the exact `[GfxLandscape]` record it was spawned from, so a
    *  map keeps its species variety. Omitted for an admin/scene-spawned node. */

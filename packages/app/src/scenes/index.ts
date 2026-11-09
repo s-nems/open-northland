@@ -92,6 +92,7 @@ import { flagYardLayoutScene } from './gathering/flag-yard-layout.js';
 import { gathererFlagFollowScene } from './gathering/gatherer-flag-follow.js';
 import { gathererGoodsScene } from './gathering/gatherer-goods.js';
 import { porterFlagScene } from './gathering/porter-flag.js';
+import { treeRegrowthScene } from './gathering/tree-regrowth.js';
 import { audioMixScene } from './interface/audio-mix.js';
 import { groupPanelArmyScene, groupPanelScene, groupSelectionScene } from './interface/group-panel.js';
 import { netPanelScene } from './interface/net-panel.js';
@@ -184,6 +185,7 @@ export const SCENES: readonly SceneDefinition[] = [
   alliedVisionScene,
   goodsCatalogScene,
   berriesScene,
+  treeRegrowthScene,
   chestsScene,
   chestQueueScene,
   chainScene,

@@ -637,6 +637,10 @@ export const chtContent = {
       title: '野莓',
       summary: '採集的人從野生灌木叢取食，被採過的植物會重新長出。',
     },
+    'tree-regrowth': {
+      title: '再生的樹木',
+      summary: '砍倒的樹會在森林裡留下樹苗，幼樹會一直長大，直到可以砍伐。',
+    },
     chests: {
       title: '箱子與文書',
       summary:

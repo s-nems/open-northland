@@ -636,6 +636,10 @@ export const chsContent = {
       title: '野生浆果',
       summary: '觅食的居民吃野生灌木上的浆果，被采光的灌木会重新长出。',
     },
+    'tree-regrowth': {
+      title: '再生的树木',
+      summary: '砍倒的树会在森林里留下树苗，幼树会一直长大，直到可以砍伐。',
+    },
     chests: {
       title: '箱子与文书',
       summary:

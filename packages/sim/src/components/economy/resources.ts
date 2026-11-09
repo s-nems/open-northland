@@ -98,6 +98,32 @@ export const ResourceFootprint = defineComponent<ResourceFootprintData>('Resourc
 export const Felling = defineComponent<{ chops: number }>('Felling', 'economy');
 
 /**
+ * A {@link Felling} node still growing: its valency `level` climbs one growth step at a time up to
+ * `levels`, and the component leaves the node once it is full-grown. Below the fellable level the node
+ * holds no wood (`Resource.remaining` 0), so every harvest scan passes it by as it does a growing field.
+ * `wood` is the yield it holds full-grown.
+ */
+export const TreeGrowth = defineComponent<{ level: number; levels: number; wood: number }>(
+  'TreeGrowth',
+  'economy',
+);
+
+/**
+ * A felled tree's pending regrowth, on an entity of its own: at `dueAtTick` a sapling of the felled
+ * record `gfxIndex` may sprout near half-cell node `(hx, hy)`. `goodType`, `harvestAtomic` and the
+ * full-grown `wood` are the felled node's, which the sapling takes over.
+ */
+export const TreeRegrow = defineComponent<{
+  dueAtTick: number;
+  hx: number;
+  hy: number;
+  goodType: number;
+  harvestAtomic: number;
+  wood: number;
+  gfxIndex?: number | undefined;
+}>('TreeRegrow', 'economy', { simOnly: true });
+
+/**
  * Marks a {@link Resource} node that is mined one unit at a time, faithful to the original's
  * `mine -> ore -> pile` pipeline (a mined good has a distinct `landscapeToPickup` "ore" stage, unlike a
  * mushroom whose harvest is its pickup). Each chipped unit drains one off `Resource.remaining` and drops at
@@ -117,8 +143,8 @@ export const MineDeposit = defineComponent<{
 
 /**
  * A stump/debris decor entity left where a {@link Felling} node fell (`ls_trees_dead.bmd` "tree debris",
- * `landscapetype` logic 1: pure decor, non-blocking, not harvestable). It takes part in no sim decision;
- * `goodType` records which resource it is the remains of.
+ * `landscapetype` logic 1: pure decor, non-blocking, not harvestable). Like any landscape it keeps a
+ * sapling off its own node; `goodType` records which resource it is the remains of.
  */
 export const Stump = defineComponent<{ goodType: number }>('Stump', 'economy');
 

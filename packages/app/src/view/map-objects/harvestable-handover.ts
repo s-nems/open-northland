@@ -18,6 +18,7 @@ function retirements(event: SimEvent): readonly number[] {
     case 'resourceFelled':
     case 'resourceMined':
     case 'resourceDepleted':
+    case 'treeGrew':
       return [event.node];
     case 'berryForaged':
     case 'berryBushRazed':
