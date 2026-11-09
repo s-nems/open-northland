@@ -47,7 +47,7 @@ import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { endChat } from '../social/gossip/drive.js';
 import { isCarrierJob } from '../stores/workplace.js';
 import { abandonCargoRun } from './cargo.js';
-import { dropHeldGoal, endMarch, vacateSeat } from './movement.js';
+import { dropHeldGoal, endMarch, snapVehicleTarget, vacateSeat } from './movement.js';
 
 // The crew of docs/formats/VEHICLES.md "Crew": who may attach, where a rider boards and leaves, and what
 // a rider gives up when it joins. The boarding drives live in `boarding.ts`.
@@ -310,6 +310,19 @@ export function placeOnNode(world: World, e: Entity, point: HalfCellNode): void 
   }
 }
 
+/** Stand a vehicle coming off its carrier on `point`, or, where its disc does not fit there, on the
+ *  nearest node around it the vehicle may stand on ({@link snapVehicleTarget}): a ship's waterline door
+ *  holds a cart but no catapult. It stays on `point` when nothing near fits. */
+export function setDownCarried(world: World, ctx: SystemContext, vehicle: Entity, point: HalfCellNode): void {
+  placeOnNode(world, vehicle, point);
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return;
+  const stand = snapVehicleTarget(world, ctx, terrain, vehicle, point);
+  if (stand === null) return;
+  const at = terrain.coordsOf(stand);
+  if (at.x !== point.hx || at.y !== point.hy) placeOnNode(world, vehicle, { hx: at.x, hy: at.y });
+}
+
 /** Clear the slot `vehicle` holds on `carrier` and the vehicle's link back. */
 export function releaseCarried(world: World, carrier: Entity, vehicle: Entity): void {
   const carrierState = world.tryGet(carrier, Vehicle);
@@ -325,7 +338,7 @@ export function releaseCarried(world: World, carrier: Entity, vehicle: Entity): 
 }
 
 /** {@link setDownRider}, anchoring a fighter where it lands so it does not walk back to where it boarded;
- *  a rider's own hauling cart carried on the same ship comes off with it and stands on `point`. */
+ *  a rider's own hauling cart carried on the same ship comes off with it ({@link setDownCarried}). */
 export function landRider(world: World, ctx: SystemContext, rider: Entity, point: HalfCellNode): void {
   const vehicle = world.tryGet(rider, Rider)?.vehicle;
   const cart = world.tryGet(rider, HaulingCart)?.vehicle;
@@ -333,7 +346,7 @@ export function landRider(world: World, ctx: SystemContext, rider: Entity, point
   anchorAtFeet(world, ctx, rider);
   if (cart === undefined || vehicle === undefined) return;
   if (world.tryGet(cart, Vehicle)?.carrier !== vehicle) return;
-  placeOnNode(world, cart, point);
+  setDownCarried(world, ctx, cart, point);
   releaseCarried(world, vehicle, cart);
 }
 

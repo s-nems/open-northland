@@ -27,6 +27,7 @@ import {
   fx,
   type HalfCellNode,
   halfCellMapFromCells,
+  hexDistanceBetween,
   nodeOfPosition,
   parseSaveGame,
   playerCommand,
@@ -921,6 +922,29 @@ describe('carried vehicles', () => {
       s.step();
       if (++ticks > SAIL_TICKS) throw new Error('the cart did not reach the click');
     }
+  });
+
+  it('boards a catapult beside a waterline door its disc does not fit and sets it down beside it', () => {
+    const s = sim();
+    const ship = spawn(s, SHIP_SMALL, 22, 8);
+    const catapult = spawn(s, CATAPULT, 10, 12);
+    const soldier = spawnSettler(s, 10, 14, SOLDIER);
+    attach(s, soldier, catapult);
+    const mooring = s.world.get(ship, Vehicle).mooring;
+    if (mooring === null) throw new Error('the ship spawned unmoored');
+    s.enqueue(playerCommand(P0, { kind: 'loadIntoVehicle', vehicle: catapult, carrier: ship }));
+    s.run(SAIL_TICKS);
+    expect(crewRefusals(s)).toEqual([]);
+    expect(s.world.get(ship, Vehicle).vehicles).toEqual([{ entity: catapult, inside: true }]);
+    expect(s.world.has(catapult, Position)).toBe(false);
+    s.enqueue(playerCommand(P0, { kind: 'leaveCarrier', vehicle: catapult }));
+    s.step();
+    const landed = nodeOf(s, catapult);
+    if (landed === null) throw new Error('the catapult stayed aboard');
+    // The door lies on the waterline, under the sea side of a catapult's disc.
+    expect(landed).not.toEqual(mooring);
+    expect(hexDistanceBetween(landed.hx, landed.hy, mooring.hx, mooring.hy)).toBe(1);
+    expect(seatOf(s, catapult, soldier)?.inside).toBe(true);
   });
 
   it('a Shift-queued load waits for the drive ahead, then drives into the ship', () => {

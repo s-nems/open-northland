@@ -364,8 +364,7 @@ function blocksUnder(
  * Snap a clicked target to the node the vehicle may stand on: the target itself, else the first node in
  * hexagon-ring order out to `radius` ({@link VEHICLE_TARGET_SNAP_RADIUS} by default) that is on the map,
  * open under the vehicle's rest block ({@link vehicleRestBlocks}), on the vehicle's continent and not
- * `exclude`d. Null when nothing qualifies. Shared by the goto order, the map script's `SendVehicle` and
- * the trader's move near a house.
+ * `exclude`d. Null when nothing qualifies.
  */
 export function snapVehicleTarget(
   world: World,

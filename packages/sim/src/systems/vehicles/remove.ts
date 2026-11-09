@@ -15,7 +15,7 @@ import { type SpilledStock, scatterSpilledStock } from '../economy/goods-spill.j
 import { vehicleAnchor, vehicleFootprintNodes } from '../footprint/index.js';
 import { reap } from '../lifecycle/death.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
-import { landingOf, landRider, placeOnNode, releaseCarried, releaseRider } from './crew.js';
+import { landingOf, landRider, releaseCarried, releaseRider, setDownCarried } from './crew.js';
 import { dropHauler } from './hauling-cart.js';
 import { vehicleIndex } from './registry.js';
 
@@ -53,7 +53,7 @@ export function removeVehicle(world: World, ctx: SystemContext, e: Entity, cause
     if (!world.isAlive(seat.entity)) continue;
     if (seat.inside && landing === null) removeVehicle(world, ctx, seat.entity, cause);
     else {
-      if (seat.inside && landing !== null) placeOnNode(world, seat.entity, landing);
+      if (seat.inside && landing !== null) setDownCarried(world, ctx, seat.entity, landing);
       releaseCarried(world, e, seat.entity);
     }
   }

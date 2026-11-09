@@ -35,10 +35,10 @@ import {
   landRider,
   passengerJobAllowed,
   pinnedTraderAshore,
-  placeOnNode,
   refuseCrew,
   releaseCarried,
   releaseRider,
+  setDownCarried,
 } from './crew.js';
 import { startDock } from './dock.js';
 import {
@@ -46,6 +46,7 @@ import {
   endDrive,
   endMarch,
   refuseMove,
+  snapVehicleTarget,
   startHeldDrive,
   startVehicleDrive,
 } from './movement.js';
@@ -304,7 +305,7 @@ export function leaveCarrier(
       refuseCrew(world, ctx, vehicle, 'cannotLeave');
       return false;
     }
-    placeOnNode(world, vehicle, landing); // the crew stays seated inside it
+    setDownCarried(world, ctx, vehicle, landing); // the crew stays seated inside it
   }
   releaseCarried(world, carrier, vehicle);
   return true;
@@ -367,7 +368,9 @@ const boardingTask: VehicleWorkFilter = (_content, state) =>
  * starts, once every rider is inside; a dock point held under `docks` starts its sail the same way.
  * `boardsShip` boards the vehicle's own crew first, then drives to the carrier's door node and rides
  * inside on arrival; a carrier that cannot take it any more, or a door it cannot reach, drops the load
- * with the player's note.
+ * with the player's note. A vehicle whose disc does not fit on the door, such as a catapult on a ship's
+ * waterline mooring, drives to the nearest node near it that it may stand on and rides inside from there
+ * (approximation: the original's entry point is the door itself).
  */
 export const vehicleBoardingSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
@@ -404,8 +407,12 @@ export const vehicleBoardingSystem: System = (world, ctx) => {
       continue;
     }
     if (world.has(e, VehicleDrive)) continue; // still on its way to the door
-    const doorNode = terrain.nodeAtClamped(door.hx, door.hy);
-    if (!startVehicleDrive(world, ctx, terrain, e, doorNode)) {
+    const stand = snapVehicleTarget(world, ctx, terrain, e, door);
+    if (stand === terrain.nodeAt(anchor.hx, anchor.hy)) {
+      rideInside(world, carrier, e);
+      continue;
+    }
+    if (stand === null || !startVehicleDrive(world, ctx, terrain, e, stand)) {
       refuseCrew(world, ctx, e, 'cannotNearShip');
       releaseCarried(world, carrier, e);
     }

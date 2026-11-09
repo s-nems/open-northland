@@ -172,7 +172,10 @@ the commander and walks him off alone, leaving the cart standing. A commander ou
 walk to board at once, while one held by an atomic finishes it first. A moored ship is the exception: a selected crew member aboard, including its commander,
 walks ashore to the ordered destination. A selected carried vehicle likewise leaves a moored ship
 and drives to the destination with its own crew aboard; at sea it stays inside. Detach and unload
-people also leave a vehicle behind.
+people also leave a vehicle behind. A carried vehicle whose disc does not fit on the carrier's door, a
+catapult on a ship's waterline mooring, boards from the nearest node around the door it may stand on,
+within the goto's snap radius (`VEHICLE_TARGET_SNAP_RADIUS` rings), and is set down on such a node when
+it leaves (approximation: the original enters at the door itself).
 
 ## Cargo
 
@@ -395,7 +398,7 @@ arrival. No port building is involved. Unload people on a ship empties the crew 
 land; for a ship not moored the door cell, or a node beside it, counts, so unloading needs no
 mooring. When a vehicle leaves the map with its door on land, riders who are aboard are put on the door
 cell and riders still walking to it are only detached where they stand, and a carried vehicle is set
-down on the door cell; with the door at sea the
+down on the door cell, or beside it where its disc does not fit; with the door at sea the
 crew dies and a carried vehicle is removed with the ship. Ships leave no wreck and no cargo.
 
 Open Northland: a spawned ship's mooring point is the nearest walkable node in hexagon-ring order
