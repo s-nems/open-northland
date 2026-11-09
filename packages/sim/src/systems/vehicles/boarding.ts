@@ -118,11 +118,11 @@ function boardsUnasked(world: World, ctx: SystemContext, vehicle: Entity, e: Ent
 }
 
 /**
- * Whether `e` stands at `doorNode` for boarding: on it, or on a neighbour while another settler holds the
- * door or where the router stood it in for the door (approximation: the original boards only from the
- * door point, but its humans stand through each other, while a collider here can never share the door
- * with a bystander). The stand-in case matters for a crowd: riders crossing the door toward their own
- * stand-ins would otherwise keep the door taken and empty in turn, and no one would ever step in.
+ * Whether `e` stands at `doorNode` for boarding: on it, on a neighbour while another settler holds the
+ * door, or on the stand-in the router gave it for the door, however far a standing crowd pushed that
+ * (approximation: the original boards only from the door point, but its humans stand through each other,
+ * while a collider here can never share the door with a bystander). Without the stand-in case a crew
+ * idling round the door, such as one just landed, would hold every rider of the next crew off for good.
  */
 function standsAtDoor(
   world: World,
@@ -133,11 +133,11 @@ function standsAtDoor(
   doorNode: NodeId,
 ): boolean {
   if (here === doorNode) return true;
+  const stood = world.tryGet(e, StandIn);
+  if (stood !== undefined && stood.goal === doorNode && stood.at === here) return true;
   const door = terrain.coordsOf(doorNode);
   const at = terrain.coordsOf(here);
   if (hexDistance({ hx: at.x, hy: at.y }, { hx: door.x, hy: door.y }) !== 1) return false;
-  const stood = world.tryGet(e, StandIn);
-  if (stood !== undefined && stood.goal === doorNode && stood.at === here) return true;
   return spacing.occupancy.at(door.x, door.y).some((other) => other !== e);
 }
 

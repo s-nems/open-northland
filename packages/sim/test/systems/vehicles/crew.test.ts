@@ -11,6 +11,7 @@ import {
   Rider,
   Settler,
   StandIn,
+  seatPassenger,
   Vehicle,
   VehicleDrive,
   VehicleOrderQueue,
@@ -38,7 +39,12 @@ import {
 import { stepHex } from '../../../src/nav/halfcell.js';
 import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
 import { clearNavState } from '../../../src/systems/movement/nav-state.js';
-import { boardCrew, createVehicle, stockVehicleGoods } from '../../../src/systems/vehicles/index.js';
+import {
+  boardCrew,
+  boardRider,
+  createVehicle,
+  stockVehicleGoods,
+} from '../../../src/systems/vehicles/index.js';
 import { type VehicleWorkFilter, vehiclesAtWork } from '../../../src/systems/vehicles/registry.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
@@ -80,6 +86,13 @@ const CARRIER_WALK_TICKS = 300;
 /** The door of a handcart parked at (12, 6): the first open node of the ring around it, north-east. */
 const CART_DOOR = { hx: 12, hy: 5 } as const;
 const SAIL_TICKS = 300;
+/** The fixture ship's seats: 19 passengers and the captain. */
+const SHIP_SEATS = 20;
+/** Long enough for a landed crew to step off the door node onto nodes of its own. */
+const LANDED_SPREAD_TICKS = 100;
+/** A second crew, and time enough for its walk from the west edge with the crowd to pass. */
+const NEXT_CREW = 8;
+const CROWD_BOARD_TICKS = 400;
 
 /** The west grass, the east open water, at cell resolution. */
 function shoreMap(): TerrainMap {
@@ -553,6 +566,25 @@ describe('boarding', () => {
     s.enqueue(playerCommand(P0, { kind: 'boardVehicle', entity: soldier }));
     boardOut(s, ship, soldier, 2);
     expect(s.world.has(soldier, Position)).toBe(false);
+  });
+
+  it('boards a new crew through the landed crew idling round the door', () => {
+    const s = sim();
+    const ship = spawn(s, SHIP_SMALL, 22, 8);
+    const landed = Array.from({ length: SHIP_SEATS }, () => spawnSettler(s, 2, 2, SOLDIER));
+    for (const soldier of landed) {
+      seatPassenger(s.world, ship, soldier);
+      boardRider(s.world, soldier, ship);
+    }
+    s.enqueue(playerCommand(P0, { kind: 'unloadPeople', vehicle: ship }));
+    s.run(LANDED_SPREAD_TICKS);
+    const crew = Array.from({ length: NEXT_CREW }, (_, i) => spawnSettler(s, 2, 2 + 2 * i, SOLDIER));
+    for (const soldier of crew)
+      s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: soldier, vehicle: ship }));
+    s.run(CROWD_BOARD_TICKS);
+    // The landed soldiers fill every node beside the door, so the router stands most of the new crew in
+    // further out; each steps in from there.
+    expect(crew.filter((soldier) => seatOf(s, ship, soldier)?.inside !== true)).toEqual([]);
   });
 
   it('boardVehicle steps a rider standing on the door in without a goto', () => {

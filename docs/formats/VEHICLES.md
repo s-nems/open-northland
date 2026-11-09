@@ -138,10 +138,11 @@ land (owner's choice; whether the original serves a rider aboard is unconfirmed)
 unconfined walk order and ends any chat it was in; the rider rung of the drive ladder
 (`systems/vehicles/boarding.ts`) steps a passenger in as soon as it reaches the door, while a carrier,
 the crew that works its vehicle from outside, waits by the door until the vehicle asks
-(deviation, owner's choice: the original keeps every rider outside until asked). A rider on a neighbour of a
-door another settler holds boards from there (approximation: the original's humans stand through each
-other, a collider here cannot). The boarding drive judges a rider's continent only while its position
-rounds onto walkable ground: a walker mid-step on a one-node strip of shore can round onto the sea
+(deviation, owner's choice: the original keeps every rider outside until asked). A rider on a neighbour
+of a door another settler holds, or on the node the router stood it in at for a door a standing crowd
+covers, boards from there (approximation: the original's humans stand through each other, a collider
+here cannot). The boarding drive judges a rider's continent only while its position rounds onto walkable
+ground: a walker mid-step on a one-node strip of shore can round onto the sea
 beside its leg. A goto with anyone outside holds its goal under `waitsForHuman` and
 starts once the crew is inside, as the original boards its crew ahead of a target;
 the request is a forced boarding that outranks the rider's needs, which wait for the ride (deviation,
