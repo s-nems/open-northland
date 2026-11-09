@@ -255,7 +255,12 @@ export function overflowContent(): ContentSet {
       passengerJobs: [...ship.passengerJobs, ARMORER],
     })),
     buildings: [
-      ...base.buildings,
+      // The warehouses take spears as the game's do, so the colony's armory has a store to clear to.
+      ...base.buildings.map((b) =>
+        b.typeId === STOCK_TYPE || b.typeId === STOCK_TOP_TYPE
+          ? { ...b, stock: [...b.stock, { goodType: SPEAR, capacity: STORE_SLOT, initial: 0 }] }
+          : b,
+      ),
       {
         typeId: ARMORY_TYPE,
         id: 'work_armory_00',

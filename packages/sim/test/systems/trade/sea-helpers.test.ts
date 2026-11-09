@@ -32,8 +32,8 @@ import {
 import { hexDistance, nodeOfPosition } from '../../../src/nav/halfcell.js';
 import { interactionNode } from '../../../src/systems/footprint/index.js';
 import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
-import { DOOR_HEAP_RADIUS_NODES } from '../../../src/systems/settlers/drives/economy/workshop/door-heap.js';
 import { isLoosePile } from '../../../src/systems/stores/index.js';
+import { DOOR_HEAP_RADIUS_NODES } from '../../../src/systems/trade/door-heap.js';
 import { ferryHoldOf, traderHoldOf } from '../../../src/systems/trade/hold.js';
 import { canAttachToVehicle } from '../../../src/systems/vehicles/crew.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';

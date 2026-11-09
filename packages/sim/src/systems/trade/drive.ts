@@ -33,7 +33,6 @@ import {
   startRefillWait,
 } from '../settlers/atomics/start.js';
 import { fetchHaulingCart } from '../settlers/drives/economy/hauling-cart.js';
-import { doorHeapRoom, doorHeapUnits } from '../settlers/drives/economy/workshop/door-heap.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
 import { interactionCell, unclaimedStockOf } from '../settlers/targets/index.js';
 import { LendableTally, storageLendable } from '../settlers/targets/stores/storage-reserve.js';
@@ -41,6 +40,7 @@ import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goa
 import { lowestStockedGood, mayFetchGoodFrom, type SupplyTally } from '../stores/index.js';
 import { haulingCartLiftTicks, parkHaulingCart } from '../vehicles/hauling-cart.js';
 import { activeAgreement } from './agreements.js';
+import { doorHeapRoom, doorHeapUnits } from './door-heap.js';
 import { planCrossing, planShipOrder, seaLegOf, takeStopAtHand } from './ferry.js';
 import { sameFoodClass } from './goods.js';
 import { cartStands, NO_HELPERS, TRADE_CART_HOUSE_DISTANCE, type TraderHold, traderHoldOf } from './hold.js';

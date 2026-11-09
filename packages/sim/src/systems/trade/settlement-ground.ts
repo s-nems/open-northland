@@ -5,10 +5,10 @@ import type { SpatialGate } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
-import { DOOR_HEAP_RADIUS_NODES } from '../settlers/drives/economy/workshop/door-heap.js';
 import type { InteractionCellIndex } from '../settlers/targets/cell-index.js';
 import { settlementReachAt } from '../signposts/settlement-reach.js';
 import { isLoosePile } from '../stores/index.js';
+import { DOOR_HEAP_RADIUS_NODES } from './door-heap.js';
 import { sameFoodClass } from './goods.js';
 
 /** The holding band of a good: its holders a fetcher can reach, piles filed by their own node. */

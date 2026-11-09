@@ -105,21 +105,16 @@ export function outputRoomForCycles(
  * The stocked output goods whose full shelves stopped this workplace, one per blocked recipe, or none when
  * it can still start any cycle. Only a unit physically leaving frees a slot, so these are the goods an
  * unblocking haul may carry. Recipe iteration follows the type's fixed content order, so the list is
- * canonical. `among` narrows the question to one operator's recipes.
+ * canonical.
  */
-export function shelfBlockedOutputs(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  among?: Iterable<Recipe>,
-): readonly number[] {
+export function shelfBlockedOutputs(world: World, ctx: SystemContext, building: Entity): readonly number[] {
   const b = world.tryGet(building, Building);
   if (b === undefined || b.built < ONE) return NO_GOODS;
-  const recipes = among ?? recipesByProductOf(world, ctx, building)?.values();
+  const recipes = recipesByProductOf(world, ctx, building);
   if (recipes === undefined) return NO_GOODS;
   const stock = world.get(building, Stockpile).amounts;
   let blocked: number[] | null = null;
-  for (const recipe of recipes) {
+  for (const recipe of recipes.values()) {
     if (isYardBuilt(ctx, recipe)) continue; // built on a yard, never shelved
     if (!workplaceRecipeEnabled(world, ctx, building, recipe)) continue; // locked: shipping a unit would not help
     if (inputStockForCycles(world, building, recipe) < 1) continue; // starved: the fetch rung owns this one

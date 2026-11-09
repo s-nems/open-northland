@@ -64,10 +64,7 @@ export const idleWorkScene: SceneDefinition = {
     }
     const full = idleWorkBakery(sim, 10, 20, IDLE_WORK_NAMES.storage);
     const stock = sim.world.mut(full.building, components.Stockpile);
-    // Its product alone: with inputs on hand its baker would heap bread at the door before he stops.
-    const bakery = idleWorkBakeryDefinition(sim);
-    for (const slot of bakery.stock)
-      if (bakery.produces.includes(slot.goodType)) stock.amounts.set(slot.goodType, slot.capacity);
+    for (const slot of idleWorkBakeryDefinition(sim).stock) stock.amounts.set(slot.goodType, slot.capacity);
     const collector = spawnSettlerDirect(sim, JOB_COLLECTOR, 26, 20);
     labelSceneSettler(sim, IDLE_WORK_NAMES.resources, collector);
   },

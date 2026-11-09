@@ -37,10 +37,10 @@ import {
 import { hexDistance, nodeOfPosition } from '../../../src/nav/halfcell.js';
 import { AI_HANDLER_ROUND_TICKS } from '../../../src/systems/ai-shared/cadence.js';
 import { interactionNode, vehicleAnchor } from '../../../src/systems/footprint/index.js';
-import { DOOR_HEAP_RADIUS_NODES } from '../../../src/systems/settlers/drives/economy/workshop/door-heap.js';
 import { interactionCell } from '../../../src/systems/settlers/targets/index.js';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../src/systems/spatial/metric.js';
 import { isLoosePile, MAX_GROUND_STACK } from '../../../src/systems/stores/index.js';
+import { DOOR_HEAP_RADIUS_NODES } from '../../../src/systems/trade/door-heap.js';
 import {
   AI_STOCK_REFILL_LEVEL,
   AI_STOCK_REFILL_TURNS,

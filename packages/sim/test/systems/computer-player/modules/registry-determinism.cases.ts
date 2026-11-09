@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Building, JobAssignment, Settler, UnderConstruction } from '../../../../src/components/index.js';
+import {
+  Building,
+  JobAssignment,
+  ProductionCounters,
+  productionCountOf,
+  Settler,
+  UnderConstruction,
+} from '../../../../src/components/index.js';
 import { replay, type Simulation } from '../../../../src/index.js';
 import { BUILDER_CAP } from '../../../../src/systems/computer-player/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
@@ -17,6 +24,7 @@ import {
   HQ_TYPE,
   HQ_X,
   HQ_Y,
+  JOINER,
   JOINERY_TYPE,
   MILL_TYPE,
   placeHq,
@@ -24,6 +32,7 @@ import {
   RESOURCE_SPOTS,
   SEAT,
   spawnMen,
+  TOOL_IRON,
   TOOL_WOODEN,
   VIKING,
   WELL_TYPE,
@@ -107,10 +116,11 @@ describe('the full strategic registry - replay', () => {
       ].sort((a, b) => a - b),
     );
     // The crew clears the reserve, so the farm reaches its target-tier hands and the bakery keeps
-    // its carrier; the joinery's joiner, the seat gathering no iron, was locked onto wooden tools; and the
+    // its carrier; the joinery's joiners, the seat gathering no iron, make wooden tools only; and the
     // builder crew never exceeds its reserve.
     const farm = entityOfBuilding(sim, FARM_TYPE);
     const posts = [...sim.world.query(Settler, JobAssignment)].map((e) => ({
+      entity: e,
       workplace: sim.world.get(e, JobAssignment).workplace,
       jobType: sim.world.get(e, Settler).jobType,
     }));
@@ -121,10 +131,14 @@ describe('the full strategic registry - replay', () => {
       (e) => sim.world.get(e, Building).buildingType === BAKERY_TOP_TYPE,
     );
     expect(bakeries.some((b) => posts.some((p) => p.workplace === b && p.jobType === CARRIER))).toBe(true);
-    const log = sim.commands.log.map((c) => c.command);
-    expect(
-      log.some((c) => c.kind === 'setProductionGoods' && c.goods.length === 1 && c.goods[0] === TOOL_WOODEN),
-    ).toBe(true);
+    const joinery = entityOfBuilding(sim, JOINERY_TYPE);
+    const joiners = posts.filter((p) => p.workplace === joinery && p.jobType === JOINER);
+    expect(joiners.length).toBeGreaterThan(0);
+    for (const { entity } of joiners) {
+      const selection = sim.world.tryGet(entity, ProductionCounters);
+      expect(productionCountOf(selection, TOOL_IRON)).toBe(0);
+      expect(productionCountOf(selection, TOOL_WOODEN)).not.toBe(0);
+    }
     const builders = [...sim.world.query(Settler)].filter(
       (e) => sim.world.get(e, Settler).jobType === BUILDER && !sim.world.has(e, JobAssignment),
     );

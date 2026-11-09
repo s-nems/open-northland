@@ -21,7 +21,6 @@ import {
   startPickup,
 } from '../settlers/atomics/start.js';
 import { placeRefusedLoad } from '../settlers/drives/economy/vehicle-cargo.js';
-import { doorHeapRoom } from '../settlers/drives/economy/workshop/door-heap.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
@@ -29,6 +28,7 @@ import { isCarrierJob } from '../stores/index.js';
 import { abandonCargoRun } from '../vehicles/cargo.js';
 import { boardingNode, pinnedTraderOf } from '../vehicles/crew.js';
 import { vehicleStockGood } from '../vehicles/stock.js';
+import { doorHeapRoom } from './door-heap.js';
 import { decideForHelper, routeStandsFinished, storableFormAt } from './drive.js';
 import { isDeparting } from './ferry.js';
 import { type FerryHold, ferryHoldOf, traderHoldOf } from './hold.js';

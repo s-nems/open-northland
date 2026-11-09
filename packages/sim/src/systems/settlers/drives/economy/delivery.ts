@@ -24,7 +24,6 @@ import type { PlannerSpacing } from '../../planner/spacing.js';
 import { interactionCell, nearestFreeYardNode } from '../../targets/index.js';
 import { deliveryTargetFor } from './delivery-targets.js';
 import { isBoundToStorageSink } from './store-policy.js';
-import { setDownAtDoor } from './workshop/door-heap.js';
 
 /**
  * Drop a stamped yard route that no longer holds - the settler still carries the routed good, is still
@@ -92,8 +91,8 @@ export function planDelivery(
     world.remove(entity, YardDeliveryRoute);
     const workplace = world.tryGet(entity, JobAssignment)?.workplace;
     // A settler posted to a passive store sheds an undeliverable surplus through an instant set-down that
-    // costs no atomic; a producer sets its workshop's output down at the door, keeps any other load and
-    // waits inside, and so does a carrier with the load in its hauling cart, which no hand sets down.
+    // costs no atomic; producers keep their load and wait inside instead, and so does a carrier with the
+    // load in its hauling cart, which no hand sets down.
     if (
       workplace !== undefined &&
       isBoundToStorageSink(world, ctx, entity) &&
@@ -109,7 +108,6 @@ export function planDelivery(
       !world.has(workplace, UnderConstruction) &&
       world.has(workplace, Position)
     ) {
-      if (setDownAtDoor(plan, workplace, load.goodType)) return;
       enterBuilding(world, entity, workplace, here, interactionCell(world, ctx, terrain, workplace, here));
       return;
     }

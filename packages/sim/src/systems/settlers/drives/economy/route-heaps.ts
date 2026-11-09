@@ -1,9 +1,9 @@
 import { JobAssignment, Position, TradeRoute } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
+import { DOOR_HEAP_RADIUS_NODES } from '../../../trade/door-heap.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { interactionCell } from '../../targets/index.js';
-import { DOOR_HEAP_RADIUS_NODES } from './workshop/door-heap.js';
 
 /** The door of a trade stop and the goods a route fills it with from the porter's own store. */
 interface FilledDoor {

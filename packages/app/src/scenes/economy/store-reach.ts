@@ -32,9 +32,7 @@ export const storeReachScene: SceneDefinition = {
     const bakery = idleWorkBakeryDefinition(sim);
     const full = idleWorkBakery(sim, BAKERY_X, FULL_BAKERY_ROW, STORE_REACH_NAMES.output);
     const shelf = sim.world.mut(full.building, components.Stockpile);
-    // Its product alone: with inputs on hand its baker would heap bread at the door before he stops.
-    for (const slot of bakery.stock)
-      if (bakery.produces.includes(slot.goodType)) shelf.amounts.set(slot.goodType, slot.capacity);
+    for (const slot of bakery.stock) shelf.amounts.set(slot.goodType, slot.capacity);
     idleWorkBakery(sim, BAKERY_X, EMPTY_BAKERY_ROW, STORE_REACH_NAMES.input);
     const headquarters = placeBuiltSandboxBuilding(
       sim,
