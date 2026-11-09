@@ -3,6 +3,7 @@ import { MAP_TYPE } from '@open-northland/data';
 import { PROTOCOL_VERSION, type RoomView } from '@open-northland/net-protocol';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { type MapSelectItem, mapItem } from '../../../../../src/entries/main-menu/map-select/model.js';
+import { BAN_CONFIRM_MS } from '../../../../../src/entries/main-menu/network/room/ban-member.js';
 import {
   mountNetworkRoom,
   type NetworkRoomDeps,
@@ -20,6 +21,7 @@ function lobby(): RoomView {
   return {
     id: 'test',
     creator: 'Astrid',
+    locked: false,
     state: 'lobby',
     settings: {
       name: 'Expedition',
@@ -76,6 +78,7 @@ function mount(
     nick: 'Astrid',
     claimSeat: vi.fn(),
     moveMember: vi.fn(),
+    banMember: vi.fn(),
     setSeat: vi.fn(),
     setSettings: vi.fn(),
     setReady: vi.fn(),
@@ -163,6 +166,41 @@ describe('multiplayer entry', () => {
     expect(client.moveMember).toHaveBeenCalledWith('Astrid', 1);
     room.update({ ...seated, creator: 'Bjorn' }, true);
     expect(moves.filter((move) => !move.hidden)).toHaveLength(0);
+  });
+
+  it('bans another member only on a second press inside the confirm window, and only for the creator', () => {
+    vi.useFakeTimers();
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+    const { room, client } = mount();
+    const view = lobby();
+    const [host] = view.members;
+    const [open] = view.seats;
+    if (host === undefined || open === undefined) throw new Error('lobby fixture lost its member or seat');
+    const seated: RoomView = {
+      ...view,
+      seats: [{ ...open, nick: 'Bjorn', ready: true }],
+      members: [host, { ...host, nick: 'Bjorn', seat: 0 }],
+    };
+    room.update(seated, true);
+    const copy = messages().networkRoom;
+    const kicks = (): HTMLButtonElement[] => [
+      ...room.element.querySelectorAll<HTMLButtonElement>('.network-room__ban:not([hidden])'),
+    ];
+    const [kick, ...others] = kicks();
+    if (kick === undefined) throw new Error('no kick for the seated guest');
+    expect(others).toHaveLength(0);
+    kick.click();
+    expect(kick.textContent).toBe(copy.banConfirm);
+    vi.advanceTimersByTime(BAN_CONFIRM_MS);
+    expect(kick.textContent).toBe(copy.banMember);
+    kick.click();
+    expect(client.banMember).not.toHaveBeenCalled();
+    kick.click();
+    expect(client.banMember).toHaveBeenCalledExactlyOnceWith('Bjorn');
+    room.update({ ...seated, creator: 'Bjorn' }, true);
+    expect(kicks()).toHaveLength(0);
   });
 });
 

@@ -119,6 +119,8 @@ export interface RoomView {
   readonly state: RoomState;
   readonly creator: string;
   readonly settings: RoomSettings;
+  /** Whether joining asks a password; the password itself never leaves the relay. */
+  readonly locked: boolean;
   readonly seats: readonly RoomSeatView[];
   readonly members: readonly RoomMemberView[];
 }
@@ -131,6 +133,8 @@ export interface RoomSummary {
   readonly members: readonly string[];
   readonly seats: number;
   readonly world: SessionWorld;
+  /** Whether joining asks a password. */
+  readonly locked: boolean;
   /** Wall milliseconds the clock had run when the relay sent the summary; null before it runs. */
   readonly playedMs: number | null;
 }
@@ -272,8 +276,15 @@ export type ClientMessage =
   | { readonly kind: 'listRooms' }
   | { readonly kind: 'requestInitialSave' }
   | { readonly kind: 'requestMap' }
-  | { readonly kind: 'createRoom'; readonly settings: RoomSettings; readonly seats: readonly RoomSeatSetup[] }
-  | { readonly kind: 'joinRoom'; readonly roomId: string }
+  /** `password`, when given, is what every later `joinRoom` must name; it is not part of the settings,
+   *  since those go to every member. */
+  | {
+      readonly kind: 'createRoom';
+      readonly settings: RoomSettings;
+      readonly seats: readonly RoomSeatSetup[];
+      readonly password?: string;
+    }
+  | { readonly kind: 'joinRoom'; readonly roomId: string; readonly password?: string }
   | { readonly kind: 'leaveRoom' }
   | { readonly kind: 'claimSeat'; readonly player: number | null }
   | {
@@ -285,6 +296,8 @@ export type ClientMessage =
       readonly difficulty?: ComputerDifficulty;
     }
   | { readonly kind: 'moveMember'; readonly nick: string; readonly player: number | null }
+  /** The creator's, in the lobby: remove the member and keep it out of the room for the room's life. */
+  | { readonly kind: 'banMember'; readonly nick: string }
   | { readonly kind: 'setReady'; readonly ready: boolean }
   | { readonly kind: 'setCompatibility'; readonly compatibility: LobbyCompatibility | null }
   | { readonly kind: 'setSettings'; readonly settings: LobbySettings }

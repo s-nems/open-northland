@@ -92,12 +92,13 @@ export class RelayLobby {
     this.send({ kind: 'listRooms' });
   }
 
-  createRoom(settings: RoomSettings, seats: readonly RoomSeatSetup[]): void {
-    this.send({ kind: 'createRoom', settings, seats });
+  /** `password` locks the room: every later join must name it. */
+  createRoom(settings: RoomSettings, seats: readonly RoomSeatSetup[], password?: string): void {
+    this.send({ kind: 'createRoom', settings, seats, ...(password === undefined ? {} : { password }) });
   }
 
-  joinRoom(roomId: string): void {
-    this.send({ kind: 'joinRoom', roomId });
+  joinRoom(roomId: string, password?: string): void {
+    this.send({ kind: 'joinRoom', roomId, ...(password === undefined ? {} : { password }) });
   }
 
   leaveRoom(): void {
@@ -110,6 +111,11 @@ export class RelayLobby {
 
   moveMember(nick: string, player: number | null): void {
     this.send({ kind: 'moveMember', nick, player });
+  }
+
+  /** The creator's: remove the member and keep it out of the room. */
+  banMember(nick: string): void {
+    this.send({ kind: 'banMember', nick });
   }
 
   setSeat(player: number, change: SeatChange): void {

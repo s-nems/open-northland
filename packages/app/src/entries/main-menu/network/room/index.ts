@@ -30,7 +30,9 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
   const compatible = node('p', 'network-room__compatible', copy.compatible);
   compatible.setAttribute('role', 'status');
   compatible.hidden = true;
-  titleLine.append(title, compatible);
+  const locked = node('span', 'network-room__badge', messages().network.lockedRoom);
+  locked.hidden = true;
+  titleLine.append(title, locked, compatible);
   titleGroup.append(titleLine, identity);
   heading.append(titleGroup, button(copy.leave, deps.onLeave));
   const noticeLine = node('p', 'network-room__notice');
@@ -113,6 +115,7 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
       connected = online;
       const permissions = roomPermissions(room, client.nick, connected);
       title.textContent = room.settings.name;
+      locked.hidden = !room.locked;
       identity.textContent = `${copy.title} · ${room.id} · ${deps.worldTitle(room.settings.world)} · ${client.nick}`;
       linkLine.hidden = connected;
       seats.update(room, connected);

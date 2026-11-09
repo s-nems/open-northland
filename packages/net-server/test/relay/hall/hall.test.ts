@@ -1,13 +1,6 @@
 import { MAX_HALL_CHAT_LINES } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
-import {
-  ChatAllowance,
-  HALL_CHAT_BURST,
-  HALL_CHAT_KEPT_MS,
-  HALL_CHAT_REFILL_MS,
-  Hall,
-  SEEN_KEPT_MS,
-} from '../../../src/relay/hall/hall.js';
+import { HALL_CHAT_KEPT_MS, Hall, SEEN_KEPT_MS } from '../../../src/relay/hall/hall.js';
 import { HALL_RECORD_VERSION, parseHallRecord } from '../../../src/relay/hall/record.js';
 
 const NOW = Date.UTC(2026, 9, 25, 12);
@@ -100,16 +93,5 @@ describe('hall', () => {
         seen: [],
       }),
     ).toThrow(/chat\[0\]\.text/);
-  });
-});
-
-describe('hall chat allowance', () => {
-  it('lets a burst through, then one line per refill', () => {
-    const allowance = new ChatAllowance(0);
-    for (let i = 0; i < HALL_CHAT_BURST; i++) expect(allowance.take(0)).toBe(true);
-    expect(allowance.take(HALL_CHAT_REFILL_MS - 1)).toBe(false);
-    expect(allowance.take(HALL_CHAT_REFILL_MS)).toBe(true);
-    expect(allowance.take(HALL_CHAT_REFILL_MS)).toBe(false);
-    expect(allowance.take(HALL_CHAT_REFILL_MS * (HALL_CHAT_BURST + 10))).toBe(true);
   });
 });

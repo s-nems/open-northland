@@ -52,6 +52,7 @@ const ROOM: RoomView = {
   id: 'r1',
   state: 'running',
   creator: 'Ania',
+  locked: false,
   settings: {
     name: 'las',
     world: { kind: 'map', mapId: 'las' },

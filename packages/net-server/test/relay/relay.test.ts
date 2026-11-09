@@ -245,6 +245,7 @@ describe('relay rooms', () => {
         members: ['Ania'],
         seats: 3,
         world: SETTINGS.world,
+        locked: false,
         playedMs: null,
       },
     ]);

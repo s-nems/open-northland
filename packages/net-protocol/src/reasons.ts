@@ -36,6 +36,9 @@ export type RelayReason =
   | { readonly code: 'seatDifficultyUnavailable'; readonly player: number }
   | { readonly code: 'seatRequired' }
   | { readonly code: 'notMember'; readonly nick: string }
+  | { readonly code: 'wrongPassword' }
+  | { readonly code: 'banned' }
+  | { readonly code: 'banSelf' }
   | { readonly code: 'memberNotReady'; readonly nick: string }
   | ({ readonly code: 'incompatible' } & CompatibilityIssue)
   | { readonly code: 'initialSaveMissing' }

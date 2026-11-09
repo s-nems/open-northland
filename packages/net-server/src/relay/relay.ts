@@ -17,8 +17,9 @@ import {
   TICK_MS,
   withFlag,
 } from '@open-northland/net-protocol';
+import { Allowance } from './allowance.js';
 import { saveOrdersRequestId } from './game/save-orders.js';
-import { ChatAllowance, Hall } from './hall/hall.js';
+import { HALL_CHAT_BURST, HALL_CHAT_REFILL_MS, Hall } from './hall/hall.js';
 import type { HallRecord } from './hall/record.js';
 import { createMember, type Member, type Refusal } from './member.js';
 import { uniqueNick } from './nick.js';
@@ -29,8 +30,9 @@ import { type Farewell, Room } from './room/room.js';
 import { LatencyProbe } from './timing/input-delay.js';
 
 export interface Connection {
-  /** The peer's network address, which shares one hall chat allowance among its connections; absent
-   *  gives the connection its own. */
+  /** The peer's network address, which shares one hall chat allowance and one room password allowance
+   *  among its connections, and which a room's ban bars; absent gives the connection its own
+   *  allowances. */
   readonly address?: string;
   send(message: ServerMessage): void;
   /** Close the transport after `error` has been sent. */
@@ -72,6 +74,10 @@ export const SEEN_AFTER_MS = 15_000;
  *  process was busy or starved. */
 const LATE_POLL_MS = TICK_MS;
 const ROOM_ID_BYTES = 4;
+/** Wrong or missing room passwords one peer address may send at once; after that one more each
+ *  `JOIN_PASSWORD_REFILL_MS`. */
+export const JOIN_PASSWORD_BURST = 5;
+export const JOIN_PASSWORD_REFILL_MS = 5000;
 
 /** One connection as the relay sees it. Identity arrives with `hello`; before it, nothing else may. */
 class Client {
@@ -95,7 +101,8 @@ class Client {
   readonly probe: LatencyProbe;
   /** Since when this identity has been online, carried over when a newer connection replaces it. */
   onlineSince: number;
-  chatAllowance: ChatAllowance;
+  chatAllowance: Allowance;
+  passwordAllowance: Allowance;
 
   constructor(
     readonly connection: Connection,
@@ -104,7 +111,8 @@ class Client {
     this.heardAt = connectedAt;
     this.probe = new LatencyProbe(connectedAt);
     this.onlineSince = connectedAt;
-    this.chatAllowance = new ChatAllowance(connectedAt);
+    this.chatAllowance = new Allowance(HALL_CHAT_BURST, HALL_CHAT_REFILL_MS, connectedAt);
+    this.passwordAllowance = new Allowance(JOIN_PASSWORD_BURST, JOIN_PASSWORD_REFILL_MS, connectedAt);
   }
 }
 
@@ -139,8 +147,10 @@ export class Relay {
   private readonly build: { readonly build?: string };
   private readonly hostStatus: () => Readonly<Record<string, unknown>>;
   private readonly hall: Hall;
-  /** Hall chat allowances by peer address; an address whose allowance is full again is forgotten. */
-  private readonly chatAllowances = new Map<string, ChatAllowance>();
+  /** Hall chat and room password allowances by peer address; an address with no connection left is
+   *  forgotten once its allowance is full again. */
+  private readonly chatAllowances = new Map<string, Allowance>();
+  private readonly passwordAllowances = new Map<string, Allowance>();
   private nextHallAt: number;
   private nextHallArrivalAt: number;
   private lastAdvanceAt: number;
@@ -195,9 +205,8 @@ export class Relay {
     const client = new Client(connection, now);
     const { address } = connection;
     if (address !== undefined) {
-      const shared = this.chatAllowances.get(address);
-      if (shared === undefined) this.chatAllowances.set(address, client.chatAllowance);
-      else client.chatAllowance = shared;
+      client.chatAllowance = sharedAllowance(this.chatAllowances, address, client.chatAllowance);
+      client.passwordAllowance = sharedAllowance(this.passwordAllowances, address, client.passwordAllowance);
     }
     this.clients.add(client);
     return client;
@@ -439,7 +448,7 @@ export class Relay {
     if (!refresh && !arrive) return;
     if (refresh) {
       this.nextHallAt = now + HALL_REFRESH_MS;
-      this.forgetChatAllowances(now);
+      this.forgetAllowances(now);
     }
     if (arrive) this.nextHallArrivalAt = now + HALL_ARRIVAL_MS;
     const rooms = this.roomsMessage(now);
@@ -462,14 +471,16 @@ export class Relay {
     }
   }
 
-  /** Drop the allowance of each address with no connection left once it is whole again: a new
-   *  connection from there could not have said more anyway. */
-  private forgetChatAllowances(now: number): void {
+  /** Drop the allowances of each address with no connection left once they are whole again: a new
+   *  connection from there could not have done more anyway. */
+  private forgetAllowances(now: number): void {
     const live = new Set<string>();
     for (const client of this.clients)
       if (client.connection.address !== undefined) live.add(client.connection.address);
-    for (const [address, allowance] of this.chatAllowances) {
-      if (!live.has(address) && allowance.full(now)) this.chatAllowances.delete(address);
+    for (const allowances of [this.chatAllowances, this.passwordAllowances]) {
+      for (const [address, allowance] of allowances) {
+        if (!live.has(address) && allowance.full(now)) allowances.delete(address);
+      }
     }
   }
 
@@ -596,6 +607,7 @@ export class Relay {
           member,
           message.settings,
           message.seats,
+          message.password,
           this.hooks,
           this.now(),
         );
@@ -609,6 +621,15 @@ export class Relay {
         if (client.room !== null) return { code: 'alreadyInRoom' };
         const room = this.rooms.get(message.roomId);
         if (room === undefined) return { code: 'noRoom' };
+        if (client.token === null) throw new Error('a joining client must have introduced itself');
+        const entry = room.entryRefusal(
+          client.token,
+          client.connection.address,
+          message.password,
+          client.passwordAllowance,
+          this.now(),
+        );
+        if (entry !== null) return entry;
         const member = this.newMember(client, uniqueNick(client.nick, this.takenNicks(client)));
         const refusal = room.join(member);
         if (refusal !== null) return refusal;
@@ -688,6 +709,7 @@ export class Relay {
         this.dropIfEmpty(room);
       }
     },
+    addressOf: (member: Member): string | undefined => this.byToken.get(member.token)?.connection.address,
     wallClock: (): number => this.wallClock(),
     log: (event: string, fields?: Record<string, unknown>): void => this.log(event, fields),
   };
@@ -798,6 +820,14 @@ export class Relay {
     client.connection.close(reason.code);
     this.disconnect(client, { cause: reason.code });
   }
+}
+
+/** The allowance `address` already shares, or `own` as its first. */
+function sharedAllowance(byAddress: Map<string, Allowance>, address: string, own: Allowance): Allowance {
+  const shared = byAddress.get(address);
+  if (shared !== undefined) return shared;
+  byAddress.set(address, own);
+  return own;
 }
 
 /** A room summary as a change to the list: a running clock's advance is no change. */

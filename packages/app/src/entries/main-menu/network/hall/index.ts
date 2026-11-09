@@ -1,7 +1,13 @@
 import type { SessionWorld } from '@open-northland/lockstep';
 import type { RelayClientView } from '@open-northland/net-client';
-import { type HallChatLine, MAX_CHAT_LENGTH, type RoomSummary } from '@open-northland/net-protocol';
-import { quietTextField } from '../../../../hud/dom/parts/text-field.js';
+import {
+  type HallChatLine,
+  MAX_CHAT_LENGTH,
+  MAX_ROOM_PASSWORD_LENGTH,
+  type RelayReason,
+  type RoomSummary,
+} from '@open-northland/net-protocol';
+import { quietPasswordField, quietTextField } from '../../../../hud/dom/parts/text-field.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../../i18n/index.js';
 import { node } from '../../dom.js';
 import { nickWithFlag } from '../flags/catalog.js';
@@ -14,6 +20,9 @@ const CHAT_LOG_LINES = 200;
 const FOLLOW_SLACK_PX = 32;
 /** How often running clocks and "seen ago" times are rewritten. */
 const TICK_MS = 1000;
+/** The padlock beside a room that asks a password. */
+const LOCK_GLYPH =
+  '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3M12 15v2"/></svg>';
 
 export type HallClient = Pick<
   RelayClientView,
@@ -24,7 +33,7 @@ export interface HallDeps {
   /** The connected client, null while there is none. */
   readonly client: () => HallClient | null;
   readonly worldTitle: (world: SessionWorld) => string;
-  readonly join: (roomId: string) => void;
+  readonly join: (roomId: string, password?: string) => void;
 }
 
 /**
@@ -41,6 +50,11 @@ export function networkHall(deps: HallDeps) {
   /** The list `roomsAt` dates; the client holds a new array per `rooms` message. */
   let roomsShown: readonly RoomSummary[] | null = null;
   let ago: { readonly time: HTMLElement; readonly at: number }[] = [];
+  /** The room the last join asked for. */
+  let joining: string | null = null;
+  /** The open password field of a locked room's Join, kept by room id: the list is rebuilt on every
+   *  `rooms` message, and the field moves into the new row with its text. */
+  let asking: PasswordAsk | null = null;
 
   const openList = node('div', 'network-menu__rooms');
   const runningList = node('div', 'network-menu__rooms');
@@ -112,6 +126,57 @@ export function networkHall(deps: HallDeps) {
     return row;
   };
 
+  const join = (roomId: string, password?: string): void => {
+    joining = roomId;
+    deps.join(roomId, password);
+  };
+  const closePassword = (focus: HTMLElement | null): void => {
+    const closing = asking;
+    if (closing === null) return;
+    asking = null;
+    closing.form.remove();
+    closing.join?.setAttribute('aria-expanded', 'false');
+    focus?.focus();
+  };
+  const askPassword = (roomId: string): PasswordAsk => {
+    const form = node('form', 'network-hall__password');
+    const input = quietPasswordField(node('input'));
+    input.maxLength = MAX_ROOM_PASSWORD_LENGTH;
+    input.placeholder = copy.joinPassword;
+    input.setAttribute('aria-label', copy.joinPassword);
+    const confirm = button(copy.joinConfirm, () => undefined);
+    confirm.type = 'submit';
+    confirm.disabled = !enabled;
+    const refusal = node('p', 'network-hall__password-refusal');
+    refusal.setAttribute('role', 'status');
+    refusal.hidden = true;
+    form.append(input, confirm, refusal);
+    const ask: PasswordAsk = { roomId, form, input, confirm, refusal, join: null };
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const password = input.value.trim();
+      if (!enabled) return;
+      if (password === '') input.focus();
+      else join(roomId, password);
+    });
+    input.addEventListener('keydown', (event) => {
+      if (event.isComposing) {
+        if (event.key === 'Enter') event.preventDefault();
+        return;
+      }
+      if (event.key !== 'Escape') return;
+      // Escape here closes the field only, never the screen or the menu behind it.
+      event.preventDefault();
+      event.stopPropagation();
+      closePassword(ask.join);
+    });
+    input.addEventListener('input', () => {
+      refusal.hidden = true;
+      input.removeAttribute('aria-invalid');
+    });
+    return ask;
+  };
+
   const roomRow = (room: RoomSummary): HTMLElement => {
     const row = node('div', 'network-menu__room-row network-hall__room');
     const main = node('div', 'network-hall__room-main');
@@ -127,15 +192,41 @@ export function networkHall(deps: HallDeps) {
     );
     const nicks = node('ul', 'network-hall__nicks');
     nicks.append(...room.members.map((nick) => node('li', '', nick)));
-    main.append(node('strong', 'network-hall__room-name', room.name), meta, nicks);
+    const name = node('strong', 'network-hall__room-name', room.name);
+    if (room.locked) {
+      const lock = node('span', 'network-hall__lock');
+      lock.innerHTML = LOCK_GLYPH;
+      lock.setAttribute('role', 'img');
+      lock.setAttribute('aria-label', copy.lockedRoom);
+      lock.title = copy.lockedRoom;
+      name.append(lock);
+    }
+    main.append(name, meta, nicks);
     row.append(main);
     if (room.state === 'lobby') {
-      const join = button(copy.join, () => {
-        if (enabled) deps.join(room.id);
+      const press = button(copy.join, () => {
+        if (!enabled) return;
+        if (!room.locked) {
+          join(room.id);
+          return;
+        }
+        if (asking?.roomId !== room.id) {
+          closePassword(null);
+          asking = askPassword(room.id);
+          asking.join = press;
+          press.setAttribute('aria-expanded', 'true');
+          row.append(asking.form);
+        }
+        asking.input.focus();
       });
-      join.disabled = !enabled;
-      joins.push(join);
-      row.append(join);
+      press.disabled = !enabled;
+      joins.push(press);
+      row.append(press);
+      if (room.locked) press.setAttribute('aria-expanded', String(asking?.roomId === room.id));
+      if (asking?.roomId === room.id) {
+        asking.join = press;
+        row.append(asking.form);
+      }
     } else if (room.playedMs === null) {
       row.append(node('span', 'network-hall__badge', copy.gameLoading));
     } else {
@@ -221,7 +312,19 @@ export function networkHall(deps: HallDeps) {
       joins.length = 0;
       openCount.textContent = String(open.length);
       runningCount.textContent = String(running.length);
+      // Detaching the field drops its focus and caret, which the new row then gets back.
+      const field = asking?.input;
+      const typing =
+        field !== undefined && document.activeElement === field
+          ? { start: field.selectionStart, end: field.selectionEnd }
+          : null;
+      if (asking !== null && !open.some((room) => room.id === asking?.roomId))
+        closePassword(typing === null ? null : rooms);
       openList.replaceChildren(...open.map(roomRow));
+      if (typing !== null && asking !== null) {
+        asking.input.focus();
+        asking.input.setSelectionRange(typing.start, typing.end);
+      }
       if (open.length === 0) {
         const empty = node('div', 'network-menu__empty');
         empty.append(node('h3', '', copy.emptyTitle), node('p', '', copy.empty));
@@ -256,11 +359,44 @@ export function networkHall(deps: HallDeps) {
       input.disabled = !on;
       send.disabled = !on;
       for (const join of joins) join.disabled = !on;
+      if (asking !== null) asking.confirm.disabled = !on;
+    },
+    /** The relay refused the last join; true when the open password field shows why. Only a password
+     *  refusal stays there: any other closes the field, whose row may leave the list on the next
+     *  repaint and take the text with it. */
+    joinRefused(reason: RelayReason, text: string): boolean {
+      if (asking === null || asking.roomId !== joining) return false;
+      if (reason.code !== 'wrongPassword' && reason.code !== 'retryTooSoon') {
+        closePassword(rooms);
+        return false;
+      }
+      asking.refusal.textContent = text;
+      asking.refusal.hidden = false;
+      if (reason.code === 'wrongPassword') {
+        asking.input.setAttribute('aria-invalid', 'true');
+        asking.input.focus();
+        asking.input.select();
+      }
+      return true;
+    },
+    /** Closes the password field, as entering a room or leaving the server does. */
+    closePassword(): void {
+      closePassword(null);
     },
     dispose(): void {
       clearInterval(timer);
     },
   };
+}
+
+interface PasswordAsk {
+  readonly roomId: string;
+  readonly form: HTMLFormElement;
+  readonly input: HTMLInputElement;
+  readonly confirm: HTMLButtonElement;
+  readonly refusal: HTMLElement;
+  /** The room row's Join button, replaced with the row on every repaint. */
+  join: HTMLButtonElement | null;
 }
 
 function subhead(text: string, count: HTMLElement): HTMLElement {

@@ -235,6 +235,7 @@ export function parseRoomView(value: unknown, at: string): RoomView {
     state: asOneOf(raw.state, ROOM_STATES, `${at}.state`),
     creator: parseNick(raw.creator, `${at}.creator`),
     settings: parseRoomSettings(raw.settings, `${at}.settings`),
+    locked: asBoolean(raw.locked, `${at}.locked`),
     seats: asArray(raw.seats, `${at}.seats`).map((seat, i) => parseRoomSeatView(seat, `${at}.seats[${i}]`)),
     members: asArray(raw.members, `${at}.members`).map((member, i) =>
       parseRoomMemberView(member, `${at}.members[${i}]`),
@@ -336,6 +337,7 @@ export function parseRoomSummary(value: unknown, at: string): RoomSummary {
     members: asArray(raw.members, `${at}.members`).map((nick, i) => parseNick(nick, `${at}.members[${i}]`)),
     seats: asCount(raw.seats, `${at}.seats`),
     world: parseSessionWorld(raw.world, `${at}.world`),
+    locked: asBoolean(raw.locked, `${at}.locked`),
     playedMs: raw.playedMs === null ? null : asNonNegativeNumber(raw.playedMs, `${at}.playedMs`),
   };
 }

@@ -199,6 +199,9 @@ export class RelayClientMirror implements RelayClientView {
   moveMember(...args: Parameters<RelayLobby['moveMember']>): void {
     this.lobby('moveMember', args);
   }
+  banMember(...args: Parameters<RelayLobby['banMember']>): void {
+    this.lobby('banMember', args);
+  }
   setSettings(...args: Parameters<RelayLobby['setSettings']>): void {
     this.lobby('setSettings', args);
   }

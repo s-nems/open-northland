@@ -18,6 +18,7 @@ function room(id: string, compatibility: LobbyCompatibility | null = null): Room
     id,
     state: 'lobby',
     creator: 'Ania',
+    locked: false,
     settings: {
       name: id,
       world: { kind: 'map', mapId: id },

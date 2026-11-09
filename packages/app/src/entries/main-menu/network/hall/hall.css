@@ -48,6 +48,44 @@
   color: var(--text-hi);
   font-size: calc(var(--u) * 18);
 }
+/* Only a row with its password field open wraps, so a long member list never pushes Join down. */
+.network-hall__room:has(> .network-hall__password) {
+  flex-wrap: wrap;
+}
+.network-hall__lock {
+  display: inline-flex;
+  margin-inline-start: calc(var(--u) * 8);
+  color: var(--bronze);
+  vertical-align: -0.1em;
+}
+.network-hall__lock > svg {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* A locked room's password, on a line of its own under the room. */
+.network-hall__password {
+  display: flex;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+  gap: calc(var(--u) * 10);
+}
+.network-hall__password > input {
+  flex: 1;
+  min-width: 0;
+}
+.network-hall__password > input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.network-menu .network-hall__password-refusal {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--danger);
+}
 .network-menu .network-hall__room-meta {
   margin: 0;
 }

@@ -18,6 +18,7 @@ function room(id: string, name: string, state: RoomState = 'lobby'): RoomSummary
     members: ['Ania'],
     seats: 4,
     world: { kind: 'map', mapId: 'magiczny_las' },
+    locked: false,
     playedMs: null,
   };
 }

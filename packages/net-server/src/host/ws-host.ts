@@ -99,7 +99,8 @@ function byteLength(data: RawData): number {
 
 /** The player's address: the proxy's `X-Forwarded-For` when it set one, which the deployed proxies
  *  replace rather than extend, otherwise the socket's peer. A client reaching the relay directly can
- *  forge the header, which only gives it allowances of its own, as it would have per connection. */
+ *  forge the header, and with it escape the per-address chat and password allowances and a room's
+ *  address ban; its token ban still holds. */
 function peerAddress(request: IncomingMessage): string | undefined {
   const forwarded = request.headers['x-forwarded-for'];
   const last = (Array.isArray(forwarded) ? forwarded.join(',') : forwarded)?.split(',').at(-1)?.trim();

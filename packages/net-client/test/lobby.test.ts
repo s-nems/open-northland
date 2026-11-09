@@ -28,6 +28,7 @@ const ROOM: RoomView = {
   id: 'ab12',
   state: 'lobby',
   creator: 'Ania',
+  locked: false,
   settings: {
     name: 'Forest',
     world: { kind: 'map', mapId: 'forest' },
@@ -105,6 +106,7 @@ describe('RelayClient lobby API', () => {
         seats: 2,
         world: { kind: 'map', mapId: 'zatoka' },
         playedMs: null,
+        locked: false,
       },
     ] as const;
     client.receive({ kind: 'rooms', rooms });

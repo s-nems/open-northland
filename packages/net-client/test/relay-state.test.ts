@@ -29,6 +29,7 @@ const ROOM: RoomView = {
   id: 'room',
   state: 'running',
   creator: 'Ania',
+  locked: false,
   settings: { name: 'Game', world: SESSION.world, seed: 3, speed: 1, rules: SESSION.rules },
   seats: [
     { player: 0, mode: 'human', claimable: true, offers: ['idle'], color: 0, nick: 'Ania', ready: true },
@@ -88,6 +89,7 @@ it('brings a mirror fed the client’s messages to the client’s lobby and sess
           seats: 1,
           world: { kind: 'map', mapId: 'zatoka' },
           playedMs: null,
+          locked: false,
         },
       ],
     },

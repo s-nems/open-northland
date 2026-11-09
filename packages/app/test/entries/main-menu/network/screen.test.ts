@@ -22,6 +22,7 @@ function room(state: RoomView['state']): RoomView {
   return {
     id: 'room1',
     creator: NICK,
+    locked: false,
     state,
     settings: {
       name: 'Expedition',
@@ -71,6 +72,7 @@ function fakeConnection() {
     listRooms: vi.fn(),
     sayInHall: vi.fn(),
     leaveRoom: vi.fn(),
+    joinRoom: vi.fn(),
     requestMap: vi.fn(),
   };
   const connection = {
@@ -155,8 +157,26 @@ it('shows the games, players and chat the relay pushes to the hall, and says a l
   fake.relay({
     kind: 'rooms',
     rooms: [
-      { id: 'r1', name: 'Open', state: 'lobby', members: ['Bjorn'], seats: 4, world, playedMs: null },
-      { id: 'r2', name: 'Battle', state: 'running', members: ['Emil'], seats: 2, world, playedMs: 3_661_000 },
+      {
+        id: 'r1',
+        name: 'Open',
+        state: 'lobby',
+        members: ['Bjorn'],
+        seats: 4,
+        world,
+        locked: false,
+        playedMs: null,
+      },
+      {
+        id: 'r2',
+        name: 'Battle',
+        state: 'running',
+        members: ['Emil'],
+        seats: 2,
+        world,
+        locked: false,
+        playedMs: 3_661_000,
+      },
     ],
   });
   fake.relay({
@@ -240,5 +260,73 @@ it('words the relay refusal of the kept map instead of showing its code', async 
     expect(screen.element.textContent).toContain(messages().networkRelay.reasons.mapNotKept),
   );
   expect(screen.element.textContent).not.toContain('mapNotKept');
+  screen.dispose();
+});
+
+it("asks a locked room's password in its row, keeps the typing through a repaint and retypes after a refusal", () => {
+  const fake = fakeConnection();
+  const screen = connectedScreen(fake, vi.fn());
+  const copy = messages().network;
+  const rooms = (): RoomSummary[] => [
+    {
+      id: 'r1',
+      name: 'Fortress',
+      state: 'lobby',
+      members: ['Bjorn'],
+      seats: 4,
+      world: { kind: 'map', mapId: 'forest' },
+      locked: true,
+      playedMs: null,
+    },
+  ];
+  fake.relay({ kind: 'rooms', rooms: rooms() });
+  const join = [...screen.element.querySelectorAll('.network-hall__room button')].find(
+    (button) => button.textContent === copy.join,
+  );
+  if (!(join instanceof HTMLButtonElement)) throw new Error('no join button');
+  join.click();
+  expect(fake.client.joinRoom).not.toHaveBeenCalled();
+  const input = screen.element.querySelector<HTMLInputElement>('.network-hall__password input');
+  if (input === null) throw new Error('no password field');
+  input.value = ' tajne ';
+  fake.relay({ kind: 'rooms', rooms: rooms() });
+  expect(input.isConnected).toBe(true);
+  expect(input.value).toBe(' tajne ');
+  expect(document.activeElement).toBe(input);
+  input.form?.requestSubmit();
+  expect(fake.client.joinRoom).toHaveBeenCalledExactlyOnceWith('r1', 'tajne');
+  fake.relay({ kind: 'rejected', of: 'joinRoom', reason: { code: 'wrongPassword' } });
+  expect(input.isConnected).toBe(true);
+  expect(input.closest('form')?.textContent).toContain(messages().networkRelay.reasons.wrongPassword);
+  expect([input.selectionStart, input.selectionEnd]).toEqual([0, input.value.length]);
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  expect(input.isConnected).toBe(false);
+  expect(fake.client.leaveRoom).not.toHaveBeenCalled();
+  // A refusal no password answers closes the field and says why in the screen's notice.
+  const joinAgain = [...screen.element.querySelectorAll('.network-hall__room button')].find(
+    (button) => button.textContent === copy.join,
+  );
+  if (!(joinAgain instanceof HTMLButtonElement)) throw new Error('no join button');
+  joinAgain.click();
+  const reopened = screen.element.querySelector<HTMLInputElement>('.network-hall__password input');
+  if (reopened === null) throw new Error('no password field');
+  reopened.value = 'tajne';
+  reopened.form?.requestSubmit();
+  fake.relay({ kind: 'rejected', of: 'joinRoom', reason: { code: 'gameStarted' } });
+  expect(reopened.isConnected).toBe(false);
+  expect(screen.element.textContent).toContain(messages().networkRelay.reasons.gameStarted);
+  screen.dispose();
+});
+
+it('tells a member the host banned that the removal is for good, past the room it leaves', () => {
+  const fake = fakeConnection();
+  const screen = connectedScreen(fake, vi.fn());
+  fake.relay({ kind: 'room', room: room('lobby') });
+  fake.relay({ kind: 'error', reason: { code: 'banned' } });
+  fake.relay({ kind: 'left' });
+  const copy = messages().network;
+  expect(screen.element.querySelector('.network-room')).toBeNull();
+  expect(screen.element.textContent).toContain(copy.banned);
+  expect(screen.element.textContent).not.toContain(copy.left);
   screen.dispose();
 });

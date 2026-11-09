@@ -23,6 +23,8 @@ export function dispatchRoomMessage(room: Room, member: Member, message: RoomMes
       return room.setSettings(member, message.settings);
     case 'moveMember':
       return room.moveMember(member, message.nick, message.player);
+    case 'banMember':
+      return room.ban(member, message.nick);
     case 'setReady':
       return room.setReady(member, message.ready);
     case 'start':

@@ -39,6 +39,7 @@ it('captures the current public roster and refuses an old world after resync', a
     id: 'room',
     state: 'running',
     creator: 'Ania',
+    locked: false,
     settings: { name: 'Game', world: session.world, seed: 7, speed: 1, rules: session.rules },
     seats: [
       {

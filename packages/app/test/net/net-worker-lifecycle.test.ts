@@ -13,6 +13,7 @@ const LOBBY: RoomView = {
   id: 'r',
   state: 'lobby',
   creator: NICK,
+  locked: false,
   settings: {
     name: 'Room',
     world: { kind: 'map', mapId: 'forest' },

@@ -77,6 +77,7 @@ function runningRoom(fingerprint: string): RoomView {
     id: 'r',
     state: 'running',
     creator: 'Host',
+    locked: false,
     settings: {
       name: 'r',
       world: { kind: 'map', mapId: 'island' },

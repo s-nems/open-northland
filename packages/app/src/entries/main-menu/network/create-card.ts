@@ -1,8 +1,8 @@
 import type { MapVariantKind } from '@open-northland/data';
-import { MAX_ROOM_NAME_LENGTH } from '@open-northland/net-protocol';
+import { MAX_ROOM_NAME_LENGTH, MAX_ROOM_PASSWORD_LENGTH } from '@open-northland/net-protocol';
 import { errorText } from '../../../diag/error-text.js';
 import { type DropdownChoice, dropdownControl } from '../../../hud/dom/parts/dropdown.js';
-import { quietTextField } from '../../../hud/dom/parts/text-field.js';
+import { quietPasswordField, quietTextField } from '../../../hud/dom/parts/text-field.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { SaveBytes } from '../../../view/runtime/save-load/codec.js';
 import { pickSaveFile } from '../../../view/runtime/save-load/file-access.js';
@@ -15,14 +15,16 @@ import { metaLine, paintMapThumb } from '../map-select/card.js';
 import type { MapSelectItem } from '../map-select/model.js';
 import { button, field } from './parts.js';
 
-export type CreateChoice =
+/** `password`, trimmed, locks the room; it is left out for an open one. */
+export type CreateChoice = (
   | {
       readonly kind: 'map';
       readonly mapId: string;
       readonly variant: MapVariantKind | null;
       readonly name: string;
     }
-  | { readonly kind: 'save'; readonly bytes: SaveBytes; readonly name: string };
+  | { readonly kind: 'save'; readonly bytes: SaveBytes; readonly name: string }
+) & { readonly password?: string };
 
 type Source = 'map' | 'save';
 
@@ -39,6 +41,12 @@ export function createRoomCard(options: CreateCardOptions) {
   name.maxLength = MAX_ROOM_NAME_LENGTH;
   name.required = true;
   name.value = copy.defaultRoomName;
+  const password = quietPasswordField(node('input'));
+  password.maxLength = MAX_ROOM_PASSWORD_LENGTH;
+  const locked = (): { readonly password?: string } => {
+    const value = password.value.trim();
+    return value === '' ? {} : { password: value };
+  };
   let source: Source = 'map';
   const mode = segControl<Source>(
     [
@@ -104,7 +112,7 @@ export function createRoomCard(options: CreateCardOptions) {
     mapField.hidden = source !== 'map';
     variantField.hidden = source !== 'map';
     file.hidden = source !== 'save';
-    for (const input of [name, file, change]) input.disabled = !enabled || busy;
+    for (const input of [name, password, file, change]) input.disabled = !enabled || busy;
     save.setDisabled(!enabled || busy);
     for (const segment of mode.root.querySelectorAll('button')) segment.disabled = !enabled || busy;
     submit.disabled = !enabled || busy || (source === 'map' ? chosen === null : saves.length === 0);
@@ -128,7 +136,9 @@ export function createRoomCard(options: CreateCardOptions) {
   const file = button(copy.file, () => {
     void run(async () => {
       const picked = await pickSaveFile();
-      return picked === null ? null : { kind: 'save', bytes: picked.raw, name: name.value.trim() };
+      return picked === null
+        ? null
+        : { kind: 'save', bytes: picked.raw, name: name.value.trim(), ...locked() };
     });
   });
   const submit = node('button', 'main-menu__primary', copy.create);
@@ -139,15 +149,16 @@ export function createRoomCard(options: CreateCardOptions) {
       if (source === 'map')
         return chosen === null
           ? null
-          : { kind: 'map', mapId: chosen.id, variant: chosenVariant, name: name.value.trim() };
+          : { kind: 'map', mapId: chosen.id, variant: chosenVariant, name: name.value.trim(), ...locked() };
       const bytes = await store.read(chosenSave);
       if (bytes === null) throw new Error(copy.saveInvalid);
-      return { kind: 'save', bytes, name: name.value.trim() };
+      return { kind: 'save', bytes, name: name.value.trim(), ...locked() };
     });
   });
   element.append(
     node('h2', '', copy.create),
     field(copy.roomName, name),
+    field(copy.roomPassword, password),
     sourceField,
     mapField,
     variantField,

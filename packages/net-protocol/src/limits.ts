@@ -60,6 +60,8 @@ export const MIN_TOKEN_LENGTH = 16;
 export const MAX_TOKEN_LENGTH = 128;
 export const MAX_NICK_LENGTH = 24;
 export const MAX_ROOM_NAME_LENGTH = 48;
+/** A room password is one printable line; it is only ever compared, never shown to anyone. */
+export const MAX_ROOM_PASSWORD_LENGTH = 32;
 export const MAX_CHAT_LENGTH = 500;
 /** Chat lines a room keeps for members who join or return; the oldest go first. */
 export const MAX_CHAT_HISTORY_LINES = 500;

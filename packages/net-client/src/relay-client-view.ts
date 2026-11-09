@@ -24,6 +24,7 @@ const LOBBY_ACTIONS = [
   'claimSeat',
   'setSeat',
   'moveMember',
+  'banMember',
   'setSettings',
   'requestInitialSave',
   'requestMap',

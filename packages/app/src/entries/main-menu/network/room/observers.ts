@@ -2,6 +2,7 @@ import type { PlayerFlag, RoomView } from '@open-northland/net-protocol';
 import { messages } from '../../../../i18n/index.js';
 import { node } from '../../dom.js';
 import { nickWithFlag } from '../flags/catalog.js';
+import { banMemberControl } from './ban-member.js';
 import { button } from './controls.js';
 import { moveMemberControl } from './move-member.js';
 import type { NetworkRoomDeps } from './types.js';
@@ -27,13 +28,15 @@ export function roomObservers(deps: NetworkRoomDeps) {
     const you = node('span', 'network-room__badge network-room__badge--you', copy.you);
     const away = node('span', 'network-room__muted', copy.disconnected);
     const move = moveMemberControl(deps);
+    const ban = banMemberControl(deps);
     you.hidden = nick !== client.nick;
-    row.append(nickWithFlag('strong', '', nick, flag), you, away, move.root);
+    row.append(nickWithFlag('strong', '', nick, flag), you, away, move.root, ban.root);
     return {
       row,
       update(room: RoomView, connected: boolean, interactive: boolean): void {
         away.hidden = connected;
         move.update(room, nick, null, interactive);
+        ban.update(room, nick, interactive);
       },
     };
   }

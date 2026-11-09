@@ -16,6 +16,7 @@ import {
   type ServerMessage,
   withFlag,
 } from '@open-northland/net-protocol';
+import type { Allowance } from '../allowance.js';
 import { Game } from '../game/game.js';
 import { Lobby } from '../lobby/lobby.js';
 import { type SeatChange, SeatTable } from '../lobby/seats.js';
@@ -24,6 +25,7 @@ import { broadcast, type Deliver, figureFields, freshFigures, type Member, type 
 import { type RelayLog, wholeSeconds } from '../relay-log.js';
 import { Responsiveness } from '../timing/responsiveness.js';
 import { ChatLog } from './chat-log.js';
+import { RoomGate } from './gate.js';
 import { roomView, sessionForMember } from './view.js';
 
 /** Least wall time between two room views sent only because a member's load, boot progress, link
@@ -42,13 +44,15 @@ export interface RoomHooks {
   readonly deliver: Deliver;
   /** A member left, was dropped from the lobby, or was kicked; its token no longer belongs here. */
   readonly removed: (member: Member, farewell: Farewell | null) => void;
+  /** The peer address of the member's connection, when the transport knows it. */
+  readonly addressOf: (member: Member) => string | undefined;
   /** Unix epoch milliseconds. */
   readonly wallClock: () => number;
   readonly log: RelayLog;
 }
 
 /** Why a member's token stopped belonging to the room: a lobby socket loss counts as a departure. */
-type RemovalCause = DepartureCause | 'disconnected';
+type RemovalCause = DepartureCause | 'disconnected' | 'banned';
 
 /**
  * One room: its seats, the people in it, and once started its game. Settings belong to the creator
@@ -63,6 +67,7 @@ export class Room {
   /** Owns the settings and the start; passes to the next member when the creator leaves the lobby. */
   private creatorToken: string;
   private readonly hooks: RoomHooks;
+  private readonly gate: RoomGate;
   private game: Game | null = null;
   private joined = 0;
   /** The roster as every client built its world; fixed at the start, whatever the seats do after. */
@@ -89,6 +94,7 @@ export class Room {
     creator: Member,
     settings: RoomSettings,
     seats: readonly RoomSeatSetup[],
+    password: string | undefined,
     hooks: RoomHooks,
     now: number,
   ) {
@@ -98,6 +104,7 @@ export class Room {
     this.seats = new SeatTable(seats);
     this.creatorToken = creator.token;
     this.hooks = hooks;
+    this.gate = new RoomGate(password);
     this.lobby = new Lobby(
       settings,
       this.seats,
@@ -154,6 +161,24 @@ export class Room {
     this.broadcastView();
     this.deliver(member, this.chatLog.history());
     this.deliver(member, this.responsiveness.message());
+  }
+
+  /** Why a token from `address` may not join with `password`; a wrong or missing one spends one of
+   *  the address's `attempts`, and none left refuses even the right one. */
+  entryRefusal(
+    token: string,
+    address: string | undefined,
+    password: string | undefined,
+    attempts: Allowance,
+    now: number,
+  ): Refusal {
+    if (this.game !== null) return { code: 'gameStarted' };
+    if (this.gate.bars(token, address)) return { code: 'banned' };
+    if (!this.gate.locked) return null;
+    if (!attempts.has(now)) return { code: 'retryTooSoon' };
+    if (this.gate.opens(password)) return null;
+    attempts.take(now);
+    return { code: 'wrongPassword' };
   }
 
   join(member: Member): Refusal {
@@ -243,6 +268,22 @@ export class Room {
   moveMember(member: Member, nick: string, player: number | null): Refusal {
     if (this.game !== null) return { code: 'gameStarted' };
     return this.lobby.moveMember(member, nick, player);
+  }
+
+  /** The creator removes a lobby member as a leave would, and bars its token and address for the
+   *  room's life; the members still inside may come back through that address. */
+  ban(member: Member, nick: string): Refusal {
+    if (this.game !== null) return { code: 'gameStarted' };
+    if (member.token !== this.creatorToken) return { code: 'creatorOnly' };
+    const banned = [...this.members.values()].find((other) => other.nick === nick);
+    if (banned === undefined) return { code: 'notMember', nick };
+    if (banned === member) return { code: 'banSelf' };
+    const inside = [...this.members.values()].filter((other) => other !== banned).map((other) => other.token);
+    this.gate.ban(banned.token, this.hooks.addressOf(banned), inside);
+    this.log('room banned', { by: member.nick, nick });
+    this.deliver(banned, { kind: 'error', reason: { code: 'banned' } });
+    this.remove(banned, 'banned');
+    return null;
   }
 
   setReady(member: Member, ready: boolean): Refusal {
@@ -465,6 +506,7 @@ export class Room {
       this.state,
       this.creatorToken,
       this.lobby.settings,
+      this.gate.locked,
       this.seats,
       this.members,
       (member) => this.behindTicks(member),
@@ -480,6 +522,7 @@ export class Room {
       members: [...this.members.values()].flatMap((member) => (member.connected ? [member.nick] : [])),
       seats: this.seats.count,
       world: this.lobby.settings.world,
+      locked: this.gate.locked,
       playedMs: state === 'running' && this.runningAt !== null ? Math.round(now - this.runningAt) : null,
     };
   }

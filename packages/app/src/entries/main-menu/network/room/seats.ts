@@ -8,6 +8,7 @@ import { colorChip, colorPalette } from '../../lobby-controls/color.js';
 import { seatModeControl } from '../../lobby-controls/seat-mode.js';
 import { tribePicker } from '../../lobby-controls/tribe.js';
 import { flagBadge } from '../flags/catalog.js';
+import { banMemberControl } from './ban-member.js';
 import { button, selectControl } from './controls.js';
 import {
   canClaimSeat,
@@ -139,6 +140,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
     const take = button(copy.takeSeat, () => client.claimSeat(player));
     take.classList.add('network-room__claim');
     const move = moveMemberControl(deps);
+    const ban = banMemberControl(deps);
     const row = node('div', 'network-room__seat');
     row.setAttribute('role', 'group');
     row.tabIndex = -1;
@@ -156,7 +158,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
     nameLine.append(flagSlot, name, yours, host, detail);
     const identityText = node('div', 'network-room__seat-description');
     identityText.append(nameLine, faction);
-    identity.append(identityText, take, move.root);
+    identity.append(identityText, take, move.root, ban.root);
     const human = node('span', 'network-room__human', copy.human);
     human.append(readiness);
     row.append(
@@ -242,6 +244,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
         take.disabled = !canClaimSeat(room, seat, client.nick, connected);
         take.hidden = !seat.claimable || seat.nick !== null;
         move.update(room, seat.nick, player, permissions.interactive);
+        ban.update(room, seat.nick, permissions.interactive);
       },
     };
   }

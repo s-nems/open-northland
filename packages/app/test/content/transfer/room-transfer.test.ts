@@ -14,6 +14,7 @@ function room(): RoomView {
     id: 'room1',
     state: 'lobby',
     creator: 'Host',
+    locked: false,
     settings: {
       name: 'room',
       world: { kind: 'map', mapId: 'island' },

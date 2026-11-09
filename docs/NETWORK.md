@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 56` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 57` in
 `packages/net-protocol`. A change one side of the current version could not honour (a message shape, or
 the value set of a validated field such as the fog mode ids) bumps the version; the relay refuses a
 `hello` that names another.
@@ -68,12 +68,19 @@ so a client can answer it immediately.
 
 ## Rooms and seats
 
-`listRooms` returns `rooms { rooms: [{ id, name, state, members, seats, world, playedMs }] }`: `members`
-holds the nicks of the members connected now, `world` is the room's `settings.world`, and `playedMs` the
-wall milliseconds since the room's clock first ran, null before it runs and once the match ended. A client
+`listRooms` returns `rooms { rooms: [{ id, name, state, members, seats, world, locked, playedMs }] }`:
+`members` holds the nicks of the members connected now, `world` is the room's `settings.world`, `locked`
+whether joining asks a password, and `playedMs` the wall milliseconds since the room's clock first ran,
+null before it runs and once the match ended. A client
 outside a room also gets the list unasked, see [The hall](#the-hall).
-`createRoom { settings, seats }` makes a room with the sender in it as creator. `joinRoom { roomId }`
-joins a room in the lobby; a started room refuses. A duplicate nick within a room gets a numeric suffix
+`createRoom { settings, seats, password? }` makes a room with the sender in it as creator; a `password`
+(one printable line of at most `MAX_ROOM_PASSWORD_LENGTH`, trimmed) locks it. `joinRoom { roomId, password? }`
+joins a room in the lobby; a started room refuses, as does a room that banned the sender's token or peer
+address (`banned`). A locked room refuses a missing or wrong password with `wrongPassword`, and once the
+sender's peer address has spent `JOIN_PASSWORD_BURST` such attempts, one more each
+`JOIN_PASSWORD_REFILL_MS`, refuses any `joinRoom` to a locked room with `retryTooSoon`. An open room
+ignores a password. The relay keeps only a SHA-256 digest of the password, and no view, summary or log
+line carries it. A duplicate nick within a room gets a numeric suffix
 (`Ania`, `Ania2`). Observers occupy no map seat and have no slot limit; the lobby shows each observer and
 one more free observer row.
 
@@ -114,7 +121,7 @@ relay validates wire consistency without loading map content.
 ### The room view
 
 Every change to a room is broadcast to its members as `room { room }`, the whole view:
-`{ id, state, creator, settings, seats, members }`. A seat carries the fields above plus `nick` and
+`{ id, state, creator, settings, locked, seats, members }`, `locked` as in the room list. A seat carries the fields above plus `nick` and
 `ready`, with `authoredTribe` and its current `tribe` together or neither. A member is:
 
 | Field | Meaning |
@@ -147,6 +154,11 @@ a view: a link measurement is stored and shown with the next view, and progress 
 - `moveMember { nick, player }` is the creator's: it seats that member at a claimable seat, swapping it
   with the seat's occupant, who takes the mover's seat or joins the observers; `player: null` makes the
   member an observer. Unknown nicks are refused `notMember`.
+- `banMember { nick }` is the creator's: it removes that member as `leaveRoom` would and bars its token
+  and its connection's peer address from the room for the room's life, a later creator's included; the
+  members still inside, who may share that address, keep their way back. The banned member gets
+  `error { banned }` and `left`, and is in the hall again. The creator's own nick is refused `banSelf`,
+  an unknown one `notMember`.
 - `setSettings { settings }` is the creator's and replaces `{ name, seed, rules, speed, kickedSeatMode? }`
   in full; `world`, `initialSave`, `mapOrigin` and `catalogMap` are immutable and refused. A replacement
   that changes nothing produces no room update. A saved room also fixes its seed, rules, seat colors,
@@ -698,12 +710,13 @@ closes or the room ends). `RelayReason` holds each code's values.
 | --- | --- |
 | first message | `helloFirst` (not a `hello`), `helloOverdue`, `protocolUnsupported`; `replaced` to the older connection |
 | any | Closing: `messageTooLarge`, `malformed` (unknown kind or before `hello`), `trafficLimit`, `relayFault`, `serverRestart`. Refused: `malformed`, `alreadyIntroduced` (a second `hello`), `notInRoom` (a room message outside a room) |
-| `createRoom`, `joinRoom` | `alreadyInRoom`; `relayFull` to create; `noRoom`, `gameStarted` to join |
+| `createRoom`, `joinRoom` | `alreadyInRoom`; `relayFull` to create; `noRoom`, `gameStarted`, `banned`, `retryTooSoon`, `wrongPassword` to join, in that order |
 | `hallChat` | `alreadyInRoom`, `retryTooSoon` |
 | `leaveRoom` | `notInRoom` |
 | `claimSeat` | `noSeat`, `seatNotClaimable`, `seatTaken`; `gameStarted` for a seat after the start |
 | `setSeat` | `gameStarted`, `creatorOnly`, `savedSeatsFixed`, `noSeat`, `seatTribeUnavailable`, `seatDifficultyUnavailable`, `seatTaken` (a mode for a taken seat), `seatModeUnavailable` |
 | `moveMember` | `gameStarted`, `creatorOnly`, `notMember`, `noSeat`, `seatNotClaimable` |
+| `banMember` | `gameStarted`, `creatorOnly`, `notMember`, `banSelf` |
 | `setSettings` | `gameStarted`, `creatorOnly`, `savedRulesFixed`; an immutable field is `malformed` |
 | `setCompatibility`, `loading`, `responsiveness` | `gameStarted`; `gameNotStarted`; `seatRequired` |
 | `setReady` | `gameStarted`, `initialSaveMissing`, `seatRequired`, `noCreator`, `incompatible` |
@@ -720,6 +733,7 @@ closes or the room ends). `RelayReason` holds each code's values.
 | `saveOrders` | `gameNotStarted`, `saveUnsynced`, `saveOtherWorld`, `saveBeforeStart`, `saveUnacknowledged`, `saveExpired`, `saveTooLarge`, `retryTooSoon` |
 | `finish` | `gameNotStarted`, `notLoaded`, `resultTickUnacknowledged`, `matchEnded`, `resultAlreadyReported` |
 | room ended (`error`, `left`) | `historyBytes`, `historyAge`, `loadingTimedOut`, `leftBeforeStart`, `resultDisagreement`, `relayFault` |
+| banned from the lobby (`error`, `left`) | `banned` |
 | local `rejected { of: "command" }` | `commandBudget`, `envelopeTooLarge`, `notLoaded` ([The client](#the-client)) |
 
 ## Limits
@@ -769,6 +783,8 @@ Each value verified against its constant; the owning package is in brackets.
 | `MAX_NICK_LENGTH`, `MAX_ROOM_NAME_LENGTH`, `MAX_CHAT_LENGTH`, `MAX_CHAT_HISTORY_LINES` [protocol] | 24, 48, 500, 500 | Characters; chat lines kept per room. |
 | `MAX_HALL_CHAT_LINES`, `HALL_CHAT_KEPT_MS` [protocol, server] | 200, 14 days | Server chat lines kept and replayed. |
 | `HALL_CHAT_BURST`, `HALL_CHAT_REFILL_MS` [server] | 5, 2 s | Server chat lines per peer address. |
+| `MAX_ROOM_PASSWORD_LENGTH` [protocol] | 32 | Characters of a room password. |
+| `JOIN_PASSWORD_BURST`, `JOIN_PASSWORD_REFILL_MS` [server] | 5, 5 s | Wrong or missing room passwords per peer address. |
 | `MAX_PRESENCE_ENTRIES`, `SEEN_KEPT_MS`, `SEEN_AFTER_MS` [protocol, server, server] | 500, 7 days, 15 s | Entries of each `presence` list; how long a nick stays recent; how long a connection stays to be remembered. |
 | `HALL_REFRESH_MS`, `HALL_ARRIVAL_MS` [server] | 1 s, 100 ms | The hall's update cadence; how often arrivals in the hall are served. |
 | `MAX_ROOM_ID_LENGTH`, `MAX_WORLD_ID_LENGTH`, `MAX_COMMAND_KIND_LENGTH`, `MAX_REASON_LENGTH` [protocol] | 32, 128, 64, 200 | Characters; the last bounds `malformed`'s `detail`. |
@@ -913,8 +929,12 @@ case is designed around: the desktop build is the primary target.
 The relay accepts anonymous players. A client-generated token is a bearer secret for reconnecting, not an
 account or a ban-resistant identity. The official client generates 24 random bytes; the relay never
 publishes tokens in room views or logs. Protect tokens in transit with WSS. Room ids and nicknames are
-public, and anyone can enter an open lobby. A modified client can lie about its simulation or sabotage
-its own match; digest agreement is not an anti-cheat guarantee.
+public. Anyone can enter an open lobby; a locked one asks its password, and wrong guesses are bounded
+per peer address. A ban bars the token and the peer address, so a player who changes both still gets
+back in, and a newcomer behind the same address is barred with it; the members already inside are not.
+Each IPv6 address counts on its own, so a client holding a block of them escapes the per-address
+allowances and the address ban by switching addresses. A modified client can lie about its simulation
+or sabotage its own match; digest agreement is not an anti-cheat guarantee.
 
 The host bounds application and unsolicited WebSocket control traffic together by `MESSAGES_PER_SECOND`
 with a `MESSAGE_BURST` and `BYTES_PER_SECOND` with a `BYTE_BURST`. Recovery requests (`loaded`,
@@ -946,7 +966,10 @@ A public deployment needs an updated Node/container base, TLS, edge connection/u
 explicit process memory/CPU and log limits. Bind the relay only to the proxy's private network or
 loopback, block direct public access to its port, run it without root, and give it no host mounts,
 secrets or Docker socket. The image already runs as `node` and needs no writable game data; use a
-read-only filesystem and drop capabilities. The host does not trust `X-Forwarded-For`; per-address
-controls belong at the proxy with a correctly configured trusted-proxy chain. Reconnecting creates a new
+read-only filesystem and drop capabilities. The host takes the last `X-Forwarded-For` entry as the peer
+address, so the proxy must overwrite the header: a client that reaches the relay directly can forge it and
+escape the hall chat and password allowances and a room's address ban, leaving only the token ban.
+Connection and upgrade limits per address belong at the proxy with a correctly configured trusted-proxy
+chain. Reconnecting creates a new
 socket budget, so edge limits must also cover connection churn. Bandwidth DDoS protection belongs
 upstream.

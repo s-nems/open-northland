@@ -14,3 +14,12 @@ export function quietTextField(input: HTMLInputElement): HTMLInputElement {
   input.setAttribute('data-bwignore', '');
   return input;
 }
+
+/** A quiet password field. Browsers fill and save password inputs whatever `off` says; `new-password`
+ *  keeps a saved login out of it, which would otherwise lock a new room unseen. */
+export function quietPasswordField(input: HTMLInputElement): HTMLInputElement {
+  quietTextField(input);
+  input.type = 'password';
+  input.autocomplete = 'new-password';
+  return input;
+}

@@ -12,6 +12,7 @@ import {
   MAX_PRESENCE_ENTRIES,
   MAX_REPORTED_BUFFERED,
   MAX_REPORTED_TICK_MS,
+  MAX_ROOM_PASSWORD_LENGTH,
   MAX_TRIBE_ID,
   PROTOCOL_VERSION,
   parseClientMessage,
@@ -118,12 +119,15 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
     settings: { ...settings, world: { kind: 'map', mapId: 'specjalna_forteca', variant: 'ragnarok' } },
     seats: [{ player: 4, mode: 'computer', claimable: true, offers: ['computer', 'idle'], color: 7 }],
   },
+  { kind: 'createRoom', settings, seats: [], password: 'tajne hasło' },
   { kind: 'joinRoom', roomId: 'a1b2c3d4' },
+  { kind: 'joinRoom', roomId: 'a1b2c3d4', password: 'tajne hasło' },
   { kind: 'leaveRoom' },
   { kind: 'claimSeat', player: 2 },
   { kind: 'claimSeat', player: null },
   { kind: 'moveMember', nick: 'Bartek', player: 2 },
   { kind: 'moveMember', nick: 'Bartek', player: null },
+  { kind: 'banMember', nick: 'Bartek' },
   { kind: 'setSeat', player: 1, mode: 'computer', color: 4 },
   { kind: 'setSeat', player: 1 },
   { kind: 'setSeat', player: 1, tribe: 4 },
@@ -200,6 +204,18 @@ describe('client messages', () => {
     ['a moved nick with a newline', { kind: 'moveMember', nick: 'A\nB', player: 0 }, /control character/],
     ['a moved member without a seat', { kind: 'moveMember', nick: 'A' }, /moveMember\.player/],
     ['a move to a fractional seat', { kind: 'moveMember', nick: 'A', player: 0.5 }, /moveMember\.player/],
+    ['a banned nick with a newline', { kind: 'banMember', nick: 'A\nB' }, /control character/],
+    [
+      'a password past the cap',
+      { kind: 'joinRoom', roomId: 'a1b2', password: 'x'.repeat(MAX_ROOM_PASSWORD_LENGTH + 1) },
+      /joinRoom\.password/,
+    ],
+    ['an empty password', { kind: 'joinRoom', roomId: 'a1b2', password: '  ' }, /joinRoom\.password/],
+    [
+      'a password of two lines',
+      { kind: 'createRoom', settings, seats: [], password: 'a\nb' },
+      /createRoom\.password/,
+    ],
     ['a short token', { kind: 'hello', protocol: 1, token: 'short', nick: 'A' }, /hello\.token/],
     [
       'a nick with a newline',
@@ -425,6 +441,7 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
         seats: 4,
         world: settings.world,
         playedMs: null,
+        locked: false,
       },
     ],
   },
@@ -439,6 +456,7 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
         seats: 2,
         world: settings.world,
         playedMs: 61_500,
+        locked: true,
       },
     ],
   },
@@ -463,6 +481,7 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
       id: 'a1b2c3d4',
       state: 'lobby',
       creator: 'Ania',
+      locked: false,
       settings,
       seats: [
         {
@@ -604,6 +623,9 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
   { kind: 'rejected', of: 'claimSeat', reason: { code: 'seatNotClaimable', player: 2 } },
   { kind: 'rejected', of: 'claimSeat', reason: { code: 'seatTaken', player: 2, nick: 'Bartek' } },
   { kind: 'rejected', of: 'moveMember', reason: { code: 'notMember', nick: 'Bartek' } },
+  { kind: 'rejected', of: 'joinRoom', reason: { code: 'wrongPassword' } },
+  { kind: 'rejected', of: 'banMember', reason: { code: 'banSelf' } },
+  { kind: 'error', reason: { code: 'banned' } },
   {
     kind: 'rejected',
     of: 'setReady',
@@ -679,6 +701,7 @@ describe('server messages', () => {
         id: 'a1b2c3d4',
         state: 'lobby',
         creator: 'Ania',
+        locked: false,
         settings,
         seats: [
           {
@@ -801,6 +824,16 @@ describe('server messages', () => {
     expect(() => parseServerMessage(negative, parseSession)).toThrow(/playedMs/);
   });
 
+  it('refuses a room summary or a room view that does not say whether it is locked', () => {
+    const rooms = SERVER_MESSAGES.find((message) => message.kind === 'rooms');
+    const room = SERVER_MESSAGES.find((message) => message.kind === 'room');
+    if (rooms?.kind !== 'rooms' || room?.kind !== 'room') throw new Error('no room fixtures');
+    const { locked: _summaryLocked, ...summary } = rooms.rooms[0] ?? {};
+    expect(() => parseServerMessage({ ...rooms, rooms: [summary] }, parseSession)).toThrow(/locked/);
+    const { locked: _viewLocked, ...view } = room.room;
+    expect(() => parseServerMessage({ ...room, room: view }, parseSession)).toThrow(/locked/);
+  });
+
   it('refuses a room member whose link or lag figures are missing or out of range', () => {
     const room = SERVER_MESSAGES.find((message) => message.kind === 'room');
     if (room?.kind !== 'room') throw new Error('no room fixture');
@@ -903,6 +936,7 @@ describe('reserved map AI control', () => {
       id: 'a1b2c3d4',
       state: 'lobby',
       creator: 'Ania',
+      locked: false,
       settings,
       seats: [{ ...seatSetup(control), nick: null, ready: false }],
       members: [],

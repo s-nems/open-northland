@@ -32,6 +32,7 @@ function room(id = 'room'): RoomView {
     id,
     state: 'lobby',
     creator: 'Ania',
+    locked: false,
     settings: {
       name: 'Forest',
       world: { kind: 'map', mapId: MAP.mapId },

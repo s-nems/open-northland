@@ -21,6 +21,7 @@ function view(settings: LobbySettings = original): RoomView {
     id: 'first',
     state: 'lobby',
     creator: 'host',
+    locked: false,
     seats: [],
     members: [],
     settings: { ...settings, world: { kind: 'map', mapId: 'forest' }, mapOrigin: 'user' },

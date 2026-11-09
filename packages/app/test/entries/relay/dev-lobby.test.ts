@@ -30,6 +30,7 @@ function room(overrides: Partial<RoomView>): RoomView {
     id: 'r1',
     state: 'lobby',
     creator: 'Ania',
+    locked: false,
     settings: SETTINGS,
     seats: [
       {

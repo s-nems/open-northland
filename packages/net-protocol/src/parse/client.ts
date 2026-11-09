@@ -1,4 +1,4 @@
-import { MAX_CHAT_LENGTH, MAX_ROOM_ID_LENGTH, MAX_SPEED } from '../limits.js';
+import { MAX_CHAT_LENGTH, MAX_ROOM_ID_LENGTH, MAX_ROOM_PASSWORD_LENGTH, MAX_SPEED } from '../limits.js';
 import type { ClientMessage, ClientMessageKind } from '../messages.js';
 import { asBoolean, asCount, asOneOf, asPositiveNumber, asRecord, asString, keysOf } from '../untrusted.js';
 import { parseCompatibility } from './compatibility.js';
@@ -28,6 +28,7 @@ export const CLIENT_KINDS = keysOf<ClientMessageKind>({
   claimSeat: true,
   setSeat: true,
   moveMember: true,
+  banMember: true,
   setReady: true,
   setSettings: true,
   setCompatibility: true,
@@ -78,9 +79,14 @@ export function parseClientMessage(value: unknown): ClientMessage {
         kind,
         settings: parseRoomSettings(raw.settings, 'createRoom.settings'),
         seats: parseSeatSetups(raw.seats, 'createRoom.seats'),
+        ...parsePassword(raw, 'createRoom.password'),
       };
     case 'joinRoom':
-      return { kind, roomId: asString(raw.roomId, 'joinRoom.roomId', MAX_ROOM_ID_LENGTH) };
+      return {
+        kind,
+        roomId: asString(raw.roomId, 'joinRoom.roomId', MAX_ROOM_ID_LENGTH),
+        ...parsePassword(raw, 'joinRoom.password'),
+      };
     case 'claimSeat':
       return { kind, player: raw.player === null ? null : parseSeatIndex(raw.player, 'claimSeat.player') };
     case 'moveMember':
@@ -89,6 +95,8 @@ export function parseClientMessage(value: unknown): ClientMessage {
         nick: parseNick(raw.nick, 'moveMember.nick'),
         player: raw.player === null ? null : parseSeatIndex(raw.player, 'moveMember.player'),
       };
+    case 'banMember':
+      return { kind, nick: parseNick(raw.nick, 'banMember.nick') };
     case 'setSeat':
       return {
         kind,
@@ -187,6 +195,13 @@ export function parseClientMessage(value: unknown): ClientMessage {
     default:
       return assertNever(kind);
   }
+}
+
+/** `raw.password` when it is there: one printable line, left out for none. */
+function parsePassword(raw: Readonly<Record<string, unknown>>, at: string): { readonly password?: string } {
+  return raw.password === undefined
+    ? {}
+    : { password: parseLine(raw.password, at, MAX_ROOM_PASSWORD_LENGTH) };
 }
 
 function readableFlag(raw: Readonly<Record<string, unknown>>): ReturnType<typeof parseFlag> {

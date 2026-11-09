@@ -7,7 +7,7 @@ import type { MapSelectItem } from '../../map-select/model.js';
 export type NetworkRoomCopy = { readonly [Key in keyof typeof enNetworkRoom]: string };
 export type RoomClient = Pick<
   RelayClientView,
-  'nick' | 'claimSeat' | 'moveMember' | 'setSeat' | 'setSettings' | 'setReady' | 'start' | 'say'
+  'nick' | 'claimSeat' | 'moveMember' | 'banMember' | 'setSeat' | 'setSettings' | 'setReady' | 'start' | 'say'
 >;
 
 export interface NetworkRoomDeps {

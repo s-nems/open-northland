@@ -517,6 +517,17 @@
 .network-room__observer > .network-room__move {
   margin-left: 0;
 }
+/* Scoped under .network-menu to outrank the shared button look. */
+.network-menu .network-room__ban {
+  align-self: center;
+  flex: none;
+  padding: calc(var(--u) * 5) calc(var(--u) * 9);
+  color: var(--danger);
+}
+.network-menu .network-room__ban.is-armed {
+  border-color: var(--danger);
+  font-weight: 700;
+}
 .network-room__seat-flag:empty {
   display: none;
 }

@@ -15,6 +15,7 @@ export function roomView(
   state: RoomState,
   creatorToken: string,
   settings: RoomSettings,
+  locked: boolean,
   seats: SeatTable,
   members: ReadonlyMap<string, Member>,
   behindTicks: (member: Member) => number,
@@ -26,6 +27,7 @@ export function roomView(
     state,
     creator: creator.nick,
     settings,
+    locked,
     seats: seats.views(),
     members: [...members.values()].map((member) => ({
       nick: member.nick,

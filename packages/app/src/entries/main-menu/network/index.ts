@@ -77,6 +77,8 @@ export function networkScreen(
   let busy = false;
   let generation = 0;
   let enteredStartedRoom = false;
+  /** What the next `left` says instead of `copy.left`: the relay explains a removal just before it. */
+  let leftNotice: string | null = null;
 
   /** Map names for the room header; a room shown before the listing answers names its map by id. */
   let mapNames: ReadonlyMap<string, MapText | undefined> = new Map();
@@ -130,6 +132,8 @@ export function networkScreen(
     connection?.dispose();
     connection = null;
     create.resetMapList();
+    hall.closePassword();
+    leftNotice = null;
     resetRoom();
     notice(text);
     sync();
@@ -138,12 +142,12 @@ export function networkScreen(
   const hall = networkHall({
     client: () => connection?.client ?? null,
     worldTitle: (world) => worldTitle(world, mapNames),
-    join(roomId) {
+    join(roomId, password) {
       const current = connection;
       if (current === null || !current.connected || busy) return;
       busy = true;
       sync();
-      current.client.joinRoom(roomId);
+      current.client.joinRoom(roomId, password);
     },
   });
   const head = screenHead('multiplayer', open);
@@ -158,7 +162,7 @@ export function networkScreen(
         const creation = await prepareRoomCreation(choice, params);
         if (disposed || mine !== generation || connection !== current || !current.connected) return;
         assets?.prepare(creation.initial, creation.handle);
-        current.client.createRoom(creation.settings, creation.seats);
+        current.client.createRoom(creation.settings, creation.seats, choice.password);
       } finally {
         busy = false;
         sync();
@@ -257,6 +261,8 @@ export function networkScreen(
   /** Mounts the room screen afresh, a started room's with its way back into the game. */
   function showRoom(current: NetworkConnection, view: RoomView): void {
     room?.dispose();
+    hall.closePassword();
+    leftNotice = null;
     const shown = mountNetworkRoom({
       client: current.client,
       copy: messages().networkRoom,
@@ -342,7 +348,8 @@ export function networkScreen(
         mapRequest?.cancel();
         assets?.observe(null);
         resetRoom();
-        notice(copy.left);
+        notice(leftNotice ?? copy.left);
+        leftNotice = null;
         sync();
         hall.rooms.focus();
         break;
@@ -355,13 +362,22 @@ export function networkScreen(
         // the original does not separate the two).
         if (message.from !== current.client.nick) sound.cue('chat');
         break;
-      case 'rejected':
+      case 'rejected': {
         room?.rejected(message.of);
         busy = false;
-        notice(formatMessage(messages().net.refused, { reason: relayReasonText(message.reason) }));
+        const refusal = formatMessage(messages().net.refused, { reason: relayReasonText(message.reason) });
         sync();
+        // A refusal the hall's password field shows stays there, beside what the player retypes.
+        if (message.of === 'joinRoom' && hall.joinRefused(message.reason, refusal)) notice('');
+        else notice(refusal);
         break;
+      }
       case 'error':
+        if (message.reason.code === 'banned') {
+          leftNotice = copy.banned;
+          notice(copy.banned);
+          break;
+        }
         notice(
           formatMessage(messages().networkRelay.serverSays, { reason: relayReasonText(message.reason) }),
         );

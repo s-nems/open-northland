@@ -120,32 +120,3 @@ export class Hall {
     }
   }
 }
-
-/** An allowance of hall chat lines: a burst, then a steady trickle. */
-export class ChatAllowance {
-  private lines = HALL_CHAT_BURST;
-
-  constructor(private refilledAt: number) {}
-
-  /** Whether it is back to its whole burst. */
-  full(now: number): boolean {
-    this.refill(now);
-    return this.lines === HALL_CHAT_BURST;
-  }
-
-  take(now: number): boolean {
-    this.refill(now);
-    if (this.lines === 0) return false;
-    if (this.lines === HALL_CHAT_BURST) this.refilledAt = now;
-    this.lines--;
-    return true;
-  }
-
-  private refill(now: number): void {
-    const earned = Math.floor((now - this.refilledAt) / HALL_CHAT_REFILL_MS);
-    if (earned > 0) {
-      this.lines = Math.min(HALL_CHAT_BURST, this.lines + earned);
-      this.refilledAt += earned * HALL_CHAT_REFILL_MS;
-    }
-  }
-}
