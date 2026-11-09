@@ -98,12 +98,13 @@ export function spriteDepth(
   kind: DrawKind,
   isFlag = false,
   groundMarker = false,
+  extraSteps = 0,
 ): number {
   return (
     kindPassDepth(kind, groundMarker) +
     tileY * ROW_STRIDE +
     tileX +
-    paintOrderBias(kind, isFlag) * PAINT_ORDER_EPS
+    (paintOrderBias(kind, isFlag) + extraSteps) * PAINT_ORDER_EPS
   );
 }
 
@@ -118,8 +119,13 @@ export function screenDepth(
   kind: DrawKind,
   isFlag = false,
   groundMarker = false,
+  extraSteps = 0,
 ): number {
-  return kindPassDepth(kind, groundMarker) + depthKey(x, y) + paintOrderBias(kind, isFlag) * SCREEN_PAINT_EPS;
+  return (
+    kindPassDepth(kind, groundMarker) +
+    depthKey(x, y) +
+    (paintOrderBias(kind, isFlag) + extraSteps) * SCREEN_PAINT_EPS
+  );
 }
 
 /**

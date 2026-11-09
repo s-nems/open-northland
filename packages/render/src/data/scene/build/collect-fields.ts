@@ -6,7 +6,7 @@ import { spriteDepth } from '../depth.js';
 import { type MutableDrawItem, type MutableSpriteDrawItem, newDrawItem } from '../draw-item.js';
 import type { InHouseOverlay } from '../in-house.js';
 import { COVER_LAUNCH_HEIGHT_PX, projectileArc } from '../projectiles/arc.js';
-import { SIGNPOST_BOARD_FRAMES, signpostBoards } from '../signpost-boards.js';
+import { SIGNPOST_BOARD_FRAMES, signpostBoardSteps, signpostBoards } from '../signpost-boards.js';
 import {
   assignStaticFields,
   copyStaticFields,
@@ -155,7 +155,7 @@ export function pushSignpostItems(
       boardRef,
       item.x,
       item.y,
-      spriteDepth(tileX, tileY, 'signpost', true),
+      spriteDepth(tileX, tileY, 'signpost', false, false, signpostBoardSteps(bucket)),
       'idle',
     );
     board.boardIndex = bucket;

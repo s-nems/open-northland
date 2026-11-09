@@ -50,6 +50,20 @@ function boardBucket(from: { x: number; y: number }, to: { x: number; y: number 
   );
 }
 
+/** Paint steps a board may sort off its post: under half a step (`depth.ts`), so it stays between the
+ *  post's neighbours in the kind order. */
+const BOARD_PAINT_SPAN = 0.4;
+
+/**
+ * Paint steps a signpost board sorts off its post. Original behavior: the boards pointing up the screen
+ * paint before the post and the rest after it, each group from the most upward board to the most
+ * downward one. `-cos` of the board's bearing from screen-north gives both, and no bucket bearing is a
+ * right angle, so none ties the post.
+ */
+export function signpostBoardSteps(boardIndex: number): number {
+  return -Math.cos(boardIndex * BOARD_STEP) * BOARD_PAINT_SPAN;
+}
+
 function signpostLinks(components: Readonly<Record<string, unknown>>): readonly unknown[] | null {
   const signpost = components.Signpost as { links?: unknown } | undefined;
   return signpost !== undefined && Array.isArray(signpost.links) ? signpost.links : null;

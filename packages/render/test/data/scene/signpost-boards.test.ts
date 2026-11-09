@@ -1,6 +1,10 @@
 import type { EntitySnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { signpostBoards } from '../../../src/data/scene/signpost-boards.js';
+import {
+  SIGNPOST_BOARD_FRAMES,
+  signpostBoardSteps,
+  signpostBoards,
+} from '../../../src/data/scene/signpost-boards.js';
 import { entity, snapshotOf } from '../../support/fixtures.js';
 
 const PLAYER = 1;
@@ -40,5 +44,16 @@ describe('signpost direction boards', () => {
     const posts = [post(1, 0, 0, [2, 3]), post(2, 4, 0, [1]), post(3, 8, 0, [1])];
 
     expect(boardsOf(posts, 1)).toHaveLength(1);
+  });
+
+  it('paints the up-screen boards behind the post and the rest in front, back to front', () => {
+    const NORTH = 0;
+    const EAST_BY_NORTH = 4;
+    const EAST_BY_SOUTH = 5;
+    const SOUTH = SIGNPOST_BOARD_FRAMES / 2;
+    const order = [NORTH, EAST_BY_NORTH, EAST_BY_SOUTH, SOUTH].map(signpostBoardSteps);
+
+    expect(order.map(Math.sign)).toEqual([-1, -1, 1, 1]);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 });

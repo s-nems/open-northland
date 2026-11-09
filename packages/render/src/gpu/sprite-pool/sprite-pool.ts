@@ -24,6 +24,7 @@ import {
   type SpriteScene,
   screenDepth,
 } from '../../data/scene/index.js';
+import { signpostBoardSteps } from '../../data/scene/signpost-boards.js';
 import { DEFAULT_FACING, vehicleAfloat, vehicleLookFor } from '../../data/sprites/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { WindSway } from '../../data/weather/climate.js';
@@ -211,6 +212,7 @@ function pooledDepth(pe: PooledEntity, item: DrawItem): number {
     item.kind,
     item.isFlag === true,
     item.roadSite === 'unclaimed',
+    item.boardIndex === undefined ? 0 : signpostBoardSteps(item.boardIndex),
   );
 }
 
