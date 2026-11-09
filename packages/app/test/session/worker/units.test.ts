@@ -3,7 +3,7 @@ import { FOG_MODE, type FogMaskAnswer, MS_PER_TICK } from '@open-northland/sim';
 import { describe, expect, it, vi } from 'vitest';
 import { createSceneSim, SCENES } from '../../../src/scenes/index.js';
 import { changedFacts, WorldFactsReader } from '../../../src/session/worker/facts.js';
-import { FogPosts } from '../../../src/session/worker/fog-posts.js';
+import { FogGroups, FogPosts } from '../../../src/session/worker/fog-posts.js';
 import type { SessionPort } from '../../../src/session/worker/port.js';
 import type { FromWorker, TickBatch, ToWorker } from '../../../src/session/worker/protocol.js';
 import { ArrivalAlpha } from '../../../src/session/worker/render-alpha.js';
@@ -243,6 +243,30 @@ describe('fog posts', () => {
       mask: Uint8Array.from(bytes),
     };
   }
+
+  it('answers a seat group only when its own seats could have seen anew, a new group at once', () => {
+    const generations = new Map([
+      [VIEWER, 1],
+      [VIEWER + 1, 1],
+    ]);
+    const asked: number[][] = [];
+    const groups = new FogGroups({
+      fog: { viewGeneration: (seat) => generations.get(seat) ?? 0 },
+      fogMode: () => FOG_MODE.CLASSIC,
+      sharedFogMaskAnswer: (players) => {
+        asked.push([...players]);
+        return answer(generations.get(players[0] ?? VIEWER) ?? 0, [0, 1, 2, generations.get(VIEWER) ?? 0]);
+      },
+    });
+    groups.track([[VIEWER]]);
+    expect(groups.changes().map((update) => update.group)).toEqual([`${VIEWER}`]);
+    groups.track([[VIEWER], [VIEWER + 1]]);
+    expect(groups.changes().map((update) => update.group)).toEqual([`${VIEWER + 1}`]);
+    asked.length = 0;
+    generations.set(VIEWER + 1, 2);
+    groups.changes();
+    expect(asked).toEqual([[VIEWER + 1]]);
+  });
 
   it('passes on a mask only when its bytes, the seat or the fog itself changed', () => {
     const posts = new FogPosts();

@@ -1,4 +1,4 @@
-import { FOG_MODE, FOG_STATE, fogViewOfMask } from '@open-northland/sim';
+import { FOG_MODE, FOG_STATE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { ONE } from '../../../src/data/projection/index.js';
 import { type FogPoolFrame, WorldFog } from '../../../src/gpu/world-renderer/world-fog.js';
@@ -70,41 +70,6 @@ describe('WorldFog', () => {
     expect(ghostsOf(fog.update(WORLD, VIEWPORT))).toEqual([]);
   });
 
-  it('sees nothing before the first view, then everything with fog off, moving its sight revision', () => {
-    const fog = new WorldFog();
-    const before = fog.revision;
-    expect(fog.seesNode(0, 0)).toBe(false);
-    fog.setView(null);
-    expect(fog.seesNode(0, 0)).toBe(true);
-    expect(fog.revision).not.toBe(before);
-    const known = fog.revision;
-    fog.setView(null);
-    expect(fog.revision).toBe(known);
-  });
-
-  it('names the cells a mask step turned visible, and none it cannot diff', () => {
-    const CELLS_WIDE = 4;
-    const maskView = (visible: readonly number[], generation: number) => {
-      const mask = new Uint8Array(CELLS_WIDE * CELLS_WIDE).fill(FOG_STATE.EXPLORED);
-      for (const cell of visible) mask[cell] = FOG_STATE.VISIBLE;
-      return fogViewOfMask({
-        player: 0,
-        mode: FOG_MODE.CLASSIC_FOG_OF_WAR,
-        cellsWide: CELLS_WIDE,
-        cellsHigh: CELLS_WIDE,
-        generation,
-        mask,
-      });
-    };
-    const fog = new WorldFog();
-    fog.setView(maskView([1], 1));
-    expect(fog.newlyVisible).toBeNull(); // the first view says nothing about what was seen before
-    fog.setView(maskView([2, 5], 2));
-    expect(fog.newlyVisible).toEqual([2, 5]);
-    fog.setView(null);
-    expect(fog.newlyVisible).toBeNull();
-  });
-
   it('holds the fog epoch on a steady mask and bumps it on a generation or mode change', () => {
     const fog = new WorldFog();
     expect(fog.update(WORLD, VIEWPORT).fogEpoch).toBeUndefined(); // fog off: no cull, no key
@@ -121,7 +86,7 @@ describe('WorldFog', () => {
     expect(fog.update(WORLD, VIEWPORT).fogEpoch).not.toBe(rebuilt);
   });
 
-  it('bumps the epoch and starts the memory over when the viewer switches seat under one mask', () => {
+  it("bumps the epoch on a seat switch under one mask and draws the new seat's own memory", () => {
     const fog = new WorldFog();
     fog.setView(explored(HOUSE_CELL, 1));
     fog.update(WORLD, VIEWPORT);
@@ -131,11 +96,27 @@ describe('WorldFog', () => {
     const remembered = fog.update(WORLD, VIEWPORT);
     expect(ghostsOf(remembered)).toMatchObject([{ ref: HOUSE.id }]);
     // The other seat never saw the house: same generation and mode, a different perspective.
-    fog.setView({ ...explored(HOUSE_CELL, 3), player: 1 });
+    const otherSeat = { ...explored(HOUSE_CELL, 3), player: 1 };
+    fog.setView(otherSeat, [explored(HOUSE_CELL, 3)]);
     const switched = fog.update(WORLD, VIEWPORT);
     expect(switched.fogEpoch).not.toBe(remembered.fogEpoch);
     expect(switched.fogEpoch).not.toBe(seen.fogEpoch);
     expect(ghostsOf(switched)).toEqual([]);
+    // Switching back finds the first seat's memory as it was kept.
+    fog.setView(explored(HOUSE_CELL, 3), [otherSeat]);
+    expect(ghostsOf(fog.update(WORLD, VIEWPORT))).toMatchObject([{ ref: HOUSE.id }]);
+  });
+
+  it("advances a remembered seat's memory while another seat or the whole map is drawn", () => {
+    const fog = new WorldFog();
+    const ally = (view: ReturnType<typeof watching>) => ({ ...view, player: 1 });
+    fog.setView(explored(TREE_CELL, 1), [ally(watching(HOUSE_CELL, 1))]);
+    fog.update(WORLD, VIEWPORT);
+    // The whole map draws no fog, and the seats' memories go on under it.
+    fog.setView(null, [explored(TREE_CELL, 2), ally(explored(HOUSE_CELL, 2))]);
+    expect(fog.update(WORLD, VIEWPORT).ghosts).toBeUndefined();
+    fog.setView(ally(explored(HOUSE_CELL, 2)), [explored(TREE_CELL, 2)]);
+    expect(ghostsOf(fog.update(WORLD, VIEWPORT))).toMatchObject([{ ref: HOUSE.id, kind: 'building' }]);
   });
 
   it('reads the mask once per generation, not once per frame', () => {

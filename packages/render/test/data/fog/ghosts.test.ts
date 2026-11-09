@@ -1,5 +1,6 @@
 import { FOG_MODE, FOG_STATE, fogViewOfMask, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { startBuildingGhosts } from '../../../src/data/fog/ghosts.js';
 import { FogGhostStore } from '../../../src/data/fog/index.js';
 import { fogCellOfTile } from '../../../src/data/fog/mask.js';
 import { isVisible } from '../../../src/data/projection/index.js';
@@ -103,6 +104,20 @@ describe('FogGhostStore', () => {
     expect(drawn(store).map((g) => g.ref)).toEqual([HOUSE.id]);
   });
 
+  it('kept beside other seats, remembers a map-layer node and draws it once the layer lets it go', () => {
+    const store = new FogGhostStore();
+    store.recordStatics();
+    const layer = new Set([TREE.id]);
+    store.update(snapshotOf([TREE]), viewOf(new Map([[TREE_CELL, FOG_STATE.VISIBLE]]), 1), layer);
+    const explored = viewOf(new Map([[TREE_CELL, FOG_STATE.EXPLORED]]), 2);
+    store.update(snapshotOf([TREE]), explored, layer);
+    expect(drawn(store)).toEqual([]); // the layer's quad draws it
+    // Another seat saw the tree worked: the layer hands it over, and this seat's last sight shows.
+    layer.delete(TREE.id);
+    store.update(snapshotOf([]), explored, layer);
+    expect(drawn(store).map((g) => g.ref)).toEqual([TREE.id]);
+  });
+
   it('a RECON map seeds natural resources and chests (never buildings) sight-unseen, once per known-terrain stretch', () => {
     const stump = entity(3, 11, 4, { Stump: { goodType: 3 } });
     const chest = entity(5, 15, 4, { Chest: { kind: 'wooden', contents: 20, gfxIndex: 845 } });
@@ -139,11 +154,10 @@ describe('FogGhostStore', () => {
       Building: { buildingType: 7, tribe: 1, built: ONE, level: 0 },
       Owner: { player: 2 },
     });
+    const start = snapshotOf([foeHouse, TREE, wall]);
     const store = new FogGhostStore();
-    store.knowStartBuildings();
-    // Before the fog's first view the store is cleared each frame; the start knowledge waits.
-    store.clear();
-    store.update(snapshotOf([foeHouse, TREE, wall]), viewOf(new Map(), 1, FOG_MODE.RECON));
+    store.knowStartBuildings(startBuildingGhosts(start));
+    store.update(start, viewOf(new Map(), 1, FOG_MODE.RECON));
     expect(drawn(store).map((g) => g.ref)).toEqual([1, 2, 6]);
     expect(drawn(store).find((g) => g.ref === 1)).toMatchObject({ kind: 'building', owner: 2 });
     // The minimap marks the remembered building alone, never the wall or the nature beside it.
@@ -157,7 +171,7 @@ describe('FogGhostStore', () => {
 
   it('spends the start knowledge on a black map without remembering a building', () => {
     const store = new FogGhostStore();
-    store.knowStartBuildings();
+    store.knowStartBuildings(startBuildingGhosts(snapshotOf([HOUSE])));
     store.update(snapshotOf([HOUSE]), viewOf(new Map(), 1, FOG_MODE.CLASSIC));
     store.update(snapshotOf([HOUSE]), viewOf(new Map(), 2, FOG_MODE.RECON));
     expect(drawn(store)).toEqual([]);

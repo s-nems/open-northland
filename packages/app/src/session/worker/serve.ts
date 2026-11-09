@@ -1,7 +1,6 @@
 import type { SessionDriver } from '@open-northland/lockstep';
 import {
   cloneEvents,
-  FOG_MODE,
   MS_PER_TICK,
   type SimEvent,
   type Simulation,
@@ -15,7 +14,7 @@ import { type SaveFile, saveFileOf } from '../../view/runtime/save-load/codec.js
 import type { SessionHost } from '../host.js';
 import { inlineSessionHost } from '../inline-host.js';
 import { changedFacts, WorldFactsReader } from './facts.js';
-import { FogPosts } from './fog-posts.js';
+import { FogGroups } from './fog-posts.js';
 import type { SessionPort } from './port.js';
 import {
   type FogUpdate,
@@ -208,9 +207,7 @@ export class ServedSession<E> {
   private readonly answering = new Set<number>();
   private readonly facts: WorldFactsReader;
   private lastFacts: WorldFacts;
-  private fogSeats: readonly number[] | null;
-  private lastFogKey: string;
-  private readonly fogPosts = new FogPosts();
+  private readonly fogGroups: FogGroups;
   /** Cancels the pending wakeup; null while none is pending. */
   private cancelWakeup: (() => void) | null = null;
   /** The pending wakeup is a waiting driver's poll, which `wake` cuts short. */
@@ -261,15 +258,14 @@ export class ServedSession<E> {
     });
     this.answers = inlineSessionHost(sim, { snapshots: 'live' });
     this.deltas = this.openDeltas();
-    this.fogSeats = options.fogSeat === null ? null : [options.fogSeat];
+    this.fogGroups = new FogGroups(sim);
+    if (options.fogSeat !== null) this.fogGroups.track([[options.fogSeat]]);
     this.recordedTick = sim.tick;
     this.facts = new WorldFactsReader(sim);
     this.lastFacts = this.facts.read();
     const delta = this.deltas.next();
     if (delta === null) throw new Error('a fresh delta stream opens with a rebuild');
-    const fog = this.fogSeats === null ? null : sim.sharedFogMaskAnswer(this.fogSeats);
-    this.lastFogKey = this.fogKey();
-    this.fogPosts.changed(fog);
+    const fog = this.fogGroups.changes()[0]?.fog ?? null;
     this.post({
       kind: 'ready',
       ready: {
@@ -365,8 +361,8 @@ export class ServedSession<E> {
         this.resume();
         return;
       }
-      case 'fogSeats':
-        this.fogSeats = message.players;
+      case 'fogGroups':
+        this.fogGroups.track(message.groups);
         this.postFogChange();
         return;
       case 'instruments':
@@ -572,36 +568,16 @@ export class ServedSession<E> {
       delta: { ...delta, events: last.events },
       ticks,
       facts: changed,
-      fog: this.fogChange(),
+      fog: this.fogGroups.changes(),
       droppedTicks: this.driver.droppedTicks + Math.round(this.droppedMs / MS_PER_TICK),
       spans,
       leadTicks,
     };
   }
 
-  /** Moves only when the seats' own fog could have: another vision group's rebuild leaves it be, so
-   *  the seats' masks are neither copied nor compared then. */
-  private fogKey(): string {
-    const seats = this.fogSeats;
-    if (seats === null) return 'none';
-    const fog = this.sim.fog;
-    const mode = this.sim.fogMode();
-    if (fog === undefined || mode === FOG_MODE.OFF) return 'off';
-    return `${seats.join(',')}:${mode}:${seats.map((seat) => fog.viewGeneration(seat)).join(',')}`;
-  }
-
-  /** The seat's masks when they or the seat changed since the last post, else null. */
-  private fogChange(): FogUpdate | null {
-    const key = this.fogKey();
-    if (key === this.lastFogKey) return null;
-    this.lastFogKey = key;
-    const fog = this.fogSeats === null ? null : this.sim.sharedFogMaskAnswer(this.fogSeats);
-    return this.fogPosts.changed(fog) ? { fog } : null;
-  }
-
   private postFogChange(): void {
-    const update = this.fogChange();
-    if (update !== null) this.post({ kind: 'fog', update }, fogTransfer(update));
+    const updates = this.fogGroups.changes();
+    if (updates.length > 0) this.post({ kind: 'fog', updates }, fogTransfer(updates));
   }
 
   private instrument(profile: boolean, spans: boolean): void {
@@ -724,7 +700,11 @@ function replyTransfer(call: WorkerCall, value: unknown): readonly ArrayBuffer[]
   return call.method === 'captureSaveFile' ? [(value as SaveFile).bytes.buffer] : [];
 }
 
-function fogTransfer(update: FogUpdate | null): readonly ArrayBuffer[] {
-  const buffer = update?.fog?.mask?.buffer;
-  return buffer instanceof ArrayBuffer ? [buffer] : [];
+function fogTransfer(updates: readonly FogUpdate[]): readonly ArrayBuffer[] {
+  const buffers: ArrayBuffer[] = [];
+  for (const update of updates) {
+    const buffer = update.fog?.mask?.buffer;
+    if (buffer instanceof ArrayBuffer) buffers.push(buffer);
+  }
+  return buffers;
 }

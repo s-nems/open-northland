@@ -14,8 +14,9 @@ export {
   fogTileExplored,
   fogTileVisible,
 } from './mask.js';
+export { FogMemories, type ViewerFogMemory } from './memories.js';
 export { type SeenRoadNetwork, SeenRoads } from './seen-roads.js';
-export { type Sight, UnseenChanges } from './sight.js';
+export { type Sight, UnseenChanges, ViewSight } from './sight.js';
 export {
   ALPHA_BYTE,
   type FogWashLattice,

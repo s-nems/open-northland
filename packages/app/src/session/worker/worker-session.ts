@@ -5,12 +5,10 @@ import {
   type EntitySnapshot,
   type ExportSaveOptions,
   FOG_MODE,
-  type FogMaskAnswer,
   type FogView,
   fogViewOfMask,
   type MatchRulesView,
   type SaveGame,
-  SHARED_SIGHT_VIEWER,
   type SimEvent,
   SnapshotMirror,
 } from '@open-northland/sim';
@@ -24,7 +22,9 @@ import type { SessionPort } from './port.js';
 import {
   type AssistantFacts,
   errorFromWire,
+  type FogUpdate,
   type FromWorker,
+  fogGroupKey,
   type HostRequestName,
   type HostRequests,
   type TickBatch,
@@ -94,7 +94,7 @@ type Queued =
       readonly receiveMs: number;
       readonly arrivedMs: number;
     }
-  | { readonly kind: 'fog'; readonly fog: FogMaskAnswer | null };
+  | { readonly kind: 'fog'; readonly updates: readonly FogUpdate[] };
 
 interface PendingCall {
   resolve(answer: { readonly value: unknown; readonly tick: number }): void;
@@ -230,13 +230,15 @@ class WorkerClient<E> {
   private diagnostics: TickDiagnostics | null = null;
   private departed: readonly EntitySnapshot[] = [];
   private facts: WorldFacts;
-  private fog: FogView | null;
-  /** The seats whose sight the worker was last asked for, joined as their key. */
-  private fogSeats: string | null;
-  /** The last seat list asked for, so the same array asked again each frame costs no join. */
-  private fogSeatList: readonly number[] | null = null;
-  /** The {@link FogView.player} the asked-for seats' answers carry; null before any ask. */
-  private fogViewer: number | null;
+  /** Every asked seat group's fog by its {@link fogGroupKey}, as last received; absent until the
+   *  group's first answer lands. */
+  private readonly fogs = new Map<string, FogView | null>();
+  /** The seat groups the worker was asked to post, by key. */
+  private readonly fogGroups = new Map<string, readonly number[]>();
+  /** Each asked seat list's key by the list's identity, so a viewer asking with one array costs no join. */
+  private readonly fogKeys = new WeakMap<readonly number[], string>();
+  /** Each seat's one-seat group, so a seat's own fog is asked with one array. */
+  private readonly seatGroups = new Map<number, readonly number[]>();
   private paused: boolean;
   private speed: number;
   private droppedTicks = 0;
@@ -261,9 +263,11 @@ class WorkerClient<E> {
     this.truth?.applied(ready.delta);
     this.tick = ready.delta.tick;
     this.facts = ready.facts;
-    this.fog = ready.fog === null ? null : fogViewOfMask(ready.fog);
-    this.fogSeats = options.fogSeat === null ? null : String(options.fogSeat);
-    this.fogViewer = options.fogSeat;
+    if (options.fogSeat !== null) {
+      const key = fogGroupKey([options.fogSeat]);
+      this.fogGroups.set(key, [options.fogSeat]);
+      this.fogs.set(key, ready.fog === null ? null : fogViewOfMask(ready.fog));
+    }
     this.paused = options.paused;
     this.speed = options.speed;
     this.alpha = new ArrivalAlpha(options.speed, options.paused);
@@ -290,7 +294,7 @@ class WorkerClient<E> {
         this.queue.push({ kind: 'ticks', batch: message.batch, receiveMs, arrivedMs: nowMs });
         return;
       case 'fog':
-        this.queue.push({ kind: 'fog', fog: message.update.fog });
+        this.queue.push({ kind: 'fog', updates: message.updates });
         return;
       case 'reply': {
         const call = this.calls.get(message.id);
@@ -356,7 +360,7 @@ class WorkerClient<E> {
     // The worker keeps one batch in flight, spanning every tick it stepped meanwhile.
     for (let item = this.queue.shift(); item !== undefined; item = this.queue.shift()) {
       if (item.kind === 'fog') {
-        this.setFog(item.fog);
+        this.setFog(item.updates);
         continue;
       }
       const { batch } = item;
@@ -364,7 +368,7 @@ class WorkerClient<E> {
       this.mirror.apply(batch.delta);
       departed.push(...this.mirror.departed);
       if (Object.keys(batch.facts).length > 0) this.facts = { ...this.facts, ...batch.facts };
-      if (batch.fog !== null) this.setFog(batch.fog.fog);
+      this.setFog(batch.fog);
       this.droppedTicks = batch.droppedTicks;
       receiveMs += item.receiveMs + (performance.now() - applyStartMs);
       // Outside the receive figure, which reads the runtime's own cost of taking a batch in.
@@ -398,25 +402,34 @@ class WorkerClient<E> {
     return this.alpha.at(performance.now());
   }
 
-  private fogOf(players: readonly number[]): FogView | null {
-    if (players === this.fogSeatList) return this.fog;
-    const key = players.join(',');
-    if (key !== this.fogSeats) {
-      const [only] = players;
-      this.fogSeats = key;
-      this.fogViewer = players.length === 1 && only !== undefined ? only : SHARED_SIGHT_VIEWER;
-      this.post({ kind: 'fogSeats', players: [...players] });
+  private seatFog(player: number): FogView | null {
+    let group = this.seatGroups.get(player);
+    if (group === undefined) {
+      group = [player];
+      this.seatGroups.set(player, group);
     }
-    this.fogSeatList = players;
-    // Until the new seats' masks land the previous ones stay drawn: an unfogged frame would show the
-    // whole map for a moment.
-    return this.fog;
+    return this.fogOf(group);
   }
 
-  /** A backlog held since before a seat pick carries the previous seat's masks: they no longer apply. */
-  private setFog(answer: FogMaskAnswer | null): void {
-    if (answer !== null && answer.player !== this.fogViewer) return;
-    this.fog = answer === null ? null : fogViewOfMask(answer);
+  /** The group's fog as last received; null also while its first answer is on the way, after which
+   *  the worker posts the group whenever it changes. */
+  private fogOf(players: readonly number[]): FogView | null {
+    let key = this.fogKeys.get(players);
+    if (key === undefined) {
+      key = fogGroupKey(players);
+      this.fogKeys.set(players, key);
+    }
+    const view = this.fogs.get(key);
+    if (view !== undefined) return view;
+    if (!this.fogGroups.has(key)) {
+      this.fogGroups.set(key, [...players]);
+      this.post({ kind: 'fogGroups', groups: [...this.fogGroups.values()] });
+    }
+    return null;
+  }
+
+  private setFog(updates: readonly FogUpdate[]): void {
+    for (const { group, fog } of updates) this.fogs.set(group, fog === null ? null : fogViewOfMask(fog));
   }
 
   private emitSpans(spans: TickBatch['spans']): void {
@@ -513,7 +526,7 @@ class WorkerClient<E> {
       },
       snapshot: () => this.mirror.snapshot(),
       departed: () => this.departed,
-      fogView: (player) => this.fogOf([player]),
+      fogView: (player) => this.seatFog(player),
       sharedFogView: (players) => this.fogOf(players),
       constructionPlots: () => facts().constructionPlots,
       placementBlockerVersion: () => facts().placementBlockerVersion,

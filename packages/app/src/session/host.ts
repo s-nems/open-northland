@@ -116,9 +116,10 @@ export interface SessionHost {
   /** The entities that left the world between the previous `snapshot()` and the current one, ascending
    *  by id, as the previous snapshot held them: a settler reaped this frame is named from here. */
   departed(): readonly EntitySnapshot[];
-  /** The seat's fog masks, keyed by their `generation`; null with fog off. */
+  /** The seat's fog masks, keyed by their `generation`; null with fog off. A worker host answers null
+   *  until the seat's first masks land, and keeps every seat asked for current from then on. */
   fogView(player: number): FogView | null;
-  /** Several seats' sight as one view, the most any of them knows per cell; null with fog off. */
+  /** Several seats' sight as one view, the most any of them knows per cell; null as {@link fogView}. */
   sharedFogView(players: readonly number[]): FogView | null;
   constructionPlots(): readonly ConstructionPlot[];
   /** Changes when a placement blocker does, not per tick; building, wall and mooring answers follow it. */

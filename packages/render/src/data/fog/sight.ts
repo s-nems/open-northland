@@ -1,3 +1,5 @@
+import { FOG_STATE, type FogView, scanChangedBytes, systems } from '@open-northland/sim';
+
 /** The viewer's sight, as the memories of changes made in the fog ask it. */
 export interface Sight {
   /** Whether the viewer currently watches the cell of half-cell node (hx, hy). */
@@ -59,5 +61,77 @@ export class UnseenChanges<K> {
     const opened: K[] = [];
     for (const cell of cells) for (const key of this.byCell.get(cell) ?? []) opened.push(key);
     return opened;
+  }
+}
+
+/** The cell index of a node while no view gives the grid. */
+const NO_CELL = -1;
+
+/** The cells a step from view `was` to `view` turned visible, read off the two views' mask bytes; null
+ *  when the step cannot be diffed (fog turned on or off, another seat, mode or grid, a view over live
+ *  state), so every cell may have. */
+function openedCells(was: FogView | null, view: FogView | null): readonly number[] | null {
+  if (was === null || view === null || was.cells === undefined || view.cells === undefined) return null;
+  if (was.player !== view.player || was.mode !== view.mode || was.cellsWide !== view.cellsWide) return null;
+  if (was.cells.length !== view.cells.length) return null;
+  const opened: number[] = [];
+  const wide = view.cellsWide;
+  scanChangedBytes(was.cells, view.cells, (cell) => {
+    const cx = cell % wide;
+    if (view.stateAt(cx, (cell - cx) / wide) === FOG_STATE.VISIBLE) opened.push(cell);
+    return true;
+  });
+  return opened;
+}
+
+/** The sight of one viewer as its fog views follow one another; a null view is fog off, which sees
+ *  everything. */
+export class ViewSight implements Sight {
+  private view: FogView | null = null;
+  /** Whether a view was set: until then nothing reads as seen. */
+  private known = false;
+  private revisionValue = 0;
+  private opened: readonly number[] | null = null;
+
+  /** The view last set; null with fog off or before the first. */
+  get current(): FogView | null {
+    return this.view;
+  }
+
+  set(view: FogView | null): void {
+    const was = this.view;
+    const changed =
+      view === null || was === null
+        ? view !== was
+        : view.generation !== was.generation || view.player !== was.player || view.mode !== was.mode;
+    if (changed || !this.known) {
+      this.revisionValue++;
+      this.opened = this.known ? openedCells(was, view) : null;
+    }
+    this.known = true;
+    this.view = view;
+  }
+
+  /** Fog off watches everything, and nothing is watched before the first view is set, so a change
+   *  made then waits for it. */
+  seesNode(hx: number, hy: number): boolean {
+    if (!this.known) return false;
+    if (this.view === null) return true;
+    const { cx, cy } = systems.cellOfNode(hx, hy);
+    return this.view.stateAt(cx, cy) === FOG_STATE.VISIBLE;
+  }
+
+  cellOfNode(hx: number, hy: number): number {
+    if (this.view === null) return NO_CELL;
+    const { cx, cy } = systems.cellOfNode(hx, hy);
+    return cy * this.view.cellsWide + cx;
+  }
+
+  get revision(): number {
+    return this.revisionValue;
+  }
+
+  get newlyVisible(): readonly number[] | null {
+    return this.opened;
   }
 }

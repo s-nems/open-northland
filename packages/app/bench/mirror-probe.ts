@@ -177,7 +177,7 @@ export class MirrorProbe {
       delta: { ...delta, events: last.events },
       ticks,
       facts: changed,
-      fog: null,
+      fog: [],
       droppedTicks: 0,
       spans: null,
       leadTicks: ticks.length,

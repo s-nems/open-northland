@@ -66,6 +66,8 @@ export interface FrameLoopDeps {
   readonly fpsLimit: FpsLimit;
   /** The viewer's fog this frame draws through; null is fog off or a whole-map spectator. */
   readonly fogView: () => FogView | null;
+  /** The other views whose memories advance while not drawn (`rememberedFog`). */
+  readonly rememberedFog: () => readonly FogView[];
   /** The seat the music's mood and the life-event jingles follow; the whole map reads every seat as
    *  met, and no jingle rings for nobody's seat. */
   readonly viewer: ViewerSeat;
@@ -379,7 +381,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // disagree about a cell. `null` is fog off; a spectator gets it view-only, sim fog state untouched.
     const fogView = loop.fogView();
     fogGates.setFrame(fogView); // before anything below consults the predicates
-    renderer.updateFog(fogView);
+    renderer.updateFog(fogView, loop.rememberedFog());
     deps.onFogSight?.();
     // Presentation only: a fight in the fog must neither splatter blood nor ring audible clangs. Event
     // `at` coords are half-cell nodes. The entry's `onEvents` above keeps the unfiltered list, since a

@@ -32,7 +32,8 @@ import type { SessionHost, TickDiagnostics } from '../host.js';
 export interface WorkerSessionOptions {
   readonly speed: number;
   readonly paused: boolean;
-  /** The seat whose fog masks the worker posts until the runtime asks for another; null posts none. */
+  /** The seat whose fog masks the worker posts from the start; the runtime asks for more seat groups
+   *  as it reads them. Null posts none until then. */
   readonly fogSeat: number | null;
   /** Take the diag cadence's state hashes and invariant checks (`diagCadenceAt`). */
   readonly diagnostics: boolean;
@@ -119,8 +120,9 @@ export type ToWorker<B> =
   /** The runtime delivered this many more `ticks` messages, in a frame that followed the previous one
    *  by `frameMs`. */
   | { readonly kind: 'delivered'; readonly messages: number; readonly frameMs: number }
-  /** The seats whose sight the worker posts from now on, together; one seat is that seat's own fog. */
-  | { readonly kind: 'fogSeats'; readonly players: readonly number[] }
+  /** Every seat group whose sight the worker posts from now on, each when it changes: one seat is its
+   *  own fog, several their sight together. */
+  | { readonly kind: 'fogGroups'; readonly groups: readonly (readonly number[])[] }
   | { readonly kind: 'instruments'; readonly profile: boolean; readonly spans: boolean }
   | { readonly kind: 'profileReset' }
   | { readonly kind: 'ping' }
@@ -211,9 +213,16 @@ export interface SystemSpan {
   readonly endMs: number;
 }
 
-/** A fog change: the viewer seat's masks, or null for fog off. */
+/** A fog change: one seat group's masks, or null for fog off. */
 export interface FogUpdate {
+  /** The group's {@link fogGroupKey}. */
+  readonly group: string;
   readonly fog: FogMaskAnswer | null;
+}
+
+/** The key a seat group's fog crosses under. */
+export function fogGroupKey(players: readonly number[]): string {
+  return players.join(',');
 }
 
 /** The ticks the worker stepped since its last batch: one delta spanning them, and each tick's record
@@ -223,7 +232,8 @@ export interface TickBatch {
   readonly ticks: readonly TickRecord[];
   /** Only the facts that changed since the previous batch. */
   readonly facts: Partial<WorldFacts>;
-  readonly fog: FogUpdate | null;
+  /** The seat groups whose masks changed since the previous batch. */
+  readonly fog: readonly FogUpdate[];
   /** The worker's fixed timestep's monotonic total. */
   readonly droppedTicks: number;
   /** Present while the runtime asked for per-system spans. */
@@ -237,6 +247,7 @@ export interface TickBatch {
 export interface WorkerReady<E> {
   readonly delta: SnapshotDelta;
   readonly facts: WorldFacts;
+  /** The {@link WorkerSessionOptions.fogSeat}'s masks; null for fog off or no seat. */
   readonly fog: FogMaskAnswer | null;
   readonly content: ContentSet;
   readonly mapFingerprint: string | undefined;
@@ -260,7 +271,7 @@ export type FromWorker<E> =
   | { readonly kind: 'ready'; readonly ready: WorkerReady<E> }
   | { readonly kind: 'bootFailed'; readonly error: WireError; readonly log: readonly DiagEntry[] }
   | { readonly kind: 'ticks'; readonly batch: TickBatch }
-  | { readonly kind: 'fog'; readonly update: FogUpdate }
+  | { readonly kind: 'fog'; readonly updates: readonly FogUpdate[] }
   | {
       readonly kind: 'reply';
       readonly id: number;

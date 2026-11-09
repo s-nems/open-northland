@@ -187,7 +187,7 @@ import { otherWorldLoader } from './save-load/other-world.js';
 import { worldScreenshot, worldThumbnail } from './save-load/thumbnail.js';
 import { noteRestartOnLeave } from './settings-restart.js';
 import { createSubMissions, type PrepareSubMission } from './sub-missions.js';
-import { viewerFog } from './viewer-fog.js';
+import { rememberedFog, viewerFog } from './viewer-fog.js';
 import { createWorldEventHandler } from './world-events.js';
 import { createWorldTeardown } from './world-teardown.js';
 
@@ -355,6 +355,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   const viewerPlayer = (): number => viewer.seat() ?? localPlayer;
   const sightSeats = (deps.observerSeats ?? []).map((entry) => entry.player);
   const fogViewOf = viewerFog(host, viewer, sightSeats, deps.mapSize);
+  const rememberedFogOf = rememberedFog(host, sightSeats, () => watching);
   const seatTribeOf = deps.seatTribeOf ?? ((): number => PRIMARY_TRIBE);
   const sharedClock = deps.sharedClock === true;
   // A relay refuses a tempo past its cap, so a shared clock keeps the original's three.
@@ -1542,6 +1543,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       suspended: () => subMissions.isPending() || campaign?.isPending() === true,
       fpsLimit: liveSettings.settings.current().fpsLimit,
       fogView: fogViewOf,
+      rememberedFog: rememberedFogOf,
       viewer,
       onMatchEnd: () => verdict?.finish(watching ? 'undecided' : host.matchOutcome(localPlayer)),
       isDisposed: () => destroyed,
