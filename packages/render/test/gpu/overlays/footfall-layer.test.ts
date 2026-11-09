@@ -2,6 +2,7 @@ import { positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import { Container, type Sprite, type TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { FootfallGround } from '../../../src/data/effects/index.js';
+import { halfCellToScreen } from '../../../src/data/projection/index.js';
 import { FootfallLayer } from '../../../src/gpu/overlays/footfall-layer.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
 import type { SpriteSheet } from '../../../src/index.js';
@@ -78,7 +79,7 @@ function setup() {
 const bobOf = (node: Sprite | undefined) => frames[(node?.texture.frame.x ?? -4) / 4];
 
 describe('FootfallLayer', () => {
-  it('prints a step onto snow in the ground slot, turned to the step and fading out', () => {
+  it('prints a step on snow behind the walker, in the ground slot, turned to the step and fading out', () => {
     const { layer, sprites, step } = setup();
     step(4, 2, 10);
     expect(layer.container.children).toHaveLength(0);
@@ -89,6 +90,8 @@ describe('FootfallLayer', () => {
     // East is a quarter turn: valency 1 of 4.
     expect(bobOf(print)).toBe(221);
     expect(print.alpha).toBe(0.75);
+    // On the node left behind, not the one stepped onto.
+    expect(print.x).toBe(halfCellToScreen(4, 2).x);
     step(5, 2, 14 + 119);
     expect(layer.container.children[0]).toBe(print);
     step(5, 2, 14 + 120);
@@ -110,8 +113,8 @@ describe('FootfallLayer', () => {
 
   it('leaves nothing for a jump, a road, a stand or a body that is not a person', () => {
     const { layer, step } = setup();
-    step(ROAD_HX - 1, ROAD_HY, 8);
-    step(ROAD_HX, ROAD_HY, 9);
+    step(ROAD_HX, ROAD_HY, 8);
+    step(ROAD_HX + 1, ROAD_HY, 9);
     step(2, 2, 10);
     step(12, 2, 11);
     step(12, 2, 12);

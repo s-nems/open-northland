@@ -53,11 +53,13 @@ interface Footfall {
 /**
  * The prints and dust the drawn walkers leave as they step from node to node (`data/effects/footfall.ts`).
  * Prints lie in a ground container under the fog and every sprite, as the original draws them first; the
- * dust rises in the depth-sorted sprite layer at the step's node. A step is seen by comparing each drawn
- * walker's node across snapshots, so the work follows the walkers on screen; one off screen leaves none.
+ * dust rises in the depth-sorted sprite layer. A step is seen by comparing each drawn walker's nearest
+ * node across snapshots, so the work follows the walkers on screen; one off screen leaves none.
  *
- * Original behavior: a step onto a road leaves nothing, and the dust plays its frames once, a tick each,
- * from the node it was raised on. Its slow drift and five-unit start height are left out (approximation).
+ * Original behavior: a mark is raised on the node a human reaches, a road leaving nothing, and the dust
+ * plays its frames once, a tick each. The nearest node flips at half a step, so the mark goes on the node
+ * just left, behind the walker, and its ground and road are read there (approximation). The dust's slow
+ * drift and five-unit start height are left out (approximation).
  */
 export class FootfallLayer {
   readonly container = new Container();
@@ -131,12 +133,13 @@ export class FootfallLayer {
       const fromHy = last.hy;
       last.hx = hx;
       last.hy = hy;
-      if (hexDistanceBetween(fromHx, fromHy, hx, hy) > MAX_STEP_NODES || frame.roadAt(hx, hy)) continue;
-      const kind = footfallAt(ground, hx, hy);
+      if (hexDistanceBetween(fromHx, fromHy, hx, hy) > MAX_STEP_NODES || frame.roadAt(fromHx, fromHy))
+        continue;
+      const kind = footfallAt(ground, fromHx, fromHy);
       if (kind === undefined) continue;
       const count = this.sheet?.bindings.footfall?.[kind]?.valencies.length ?? 1;
       const valency = stepValency(stepHeadingDegrees(fromHx, fromHy, hx, hy), count);
-      this.marks.push({ key: this.nextKey++, kind, hx, hy, valency, tick });
+      this.marks.push({ key: this.nextKey++, kind, hx: fromHx, hy: fromHy, valency, tick });
     }
     for (const ref of this.lastNode.keys()) if (!this.walking.has(ref)) this.lastNode.delete(ref);
   }
