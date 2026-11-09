@@ -327,7 +327,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Pole ziół',
-                '[[job:herb_mush_guy|Zbieracz Ziół]]',
+                '[[job:herb_mush_guy|Zielarz]]',
                 '1 [[good:herb|Zioło]]',
                 '{{gather.herbStrokes}} na pole',
                 '{{gather.herbSeconds}} s',
@@ -442,7 +442,7 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               ['Rzemieślnik w warsztacie', 'Więcej sztuk z cyklu'],
               ['[[job:collector|Zbieracz]]', 'Mniej uderzeń, oprócz grzybów'],
-              ['[[job:farmer|Farmer]], [[job:herb_mush_guy|Zbieracz Ziół]]', 'Mniej uderzeń przy ścinaniu'],
+              ['[[job:farmer|Farmer]], [[job:herb_mush_guy|Zielarz]]', 'Mniej uderzeń przy ścinaniu'],
               ['[[job:fisher|Rybak]]', 'Mniej rzutów'],
               [
                 '[[job:builder|Budowniczy]]',
@@ -612,7 +612,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:hunter|Myśliwy]]', 'Flaga robocza', '{{flag.hunter}}', '{{flag.hunter}}'],
               ['[[job:fisher|Rybak]]', 'Flaga robocza', '{{flag.fisher}}', 'około {{flag.fisherDiagonal}}'],
               [
-                '[[job:farmer|Farmer]], [[job:herb_mush_guy|Zbieracz Ziół]]',
+                '[[job:farmer|Farmer]], [[job:herb_mush_guy|Zielarz]]',
                 'Budynek',
                 '{{field.radius}}',
                 'około {{field.diagonal}}',

@@ -214,7 +214,7 @@ export const EXPERIENCE: ArticleGroup = {
                 'do wyboru',
                 'Pracuje od [[article:work-flag|flagi roboczej]], która staje mu pod nogami przy objęciu zawodu.',
               ],
-              ['[[job:farmer|Farmer]], [[job:herb_mush_guy|Zbieracz Ziół]]', 'wymagany', 'Nie uprawia pola.'],
+              ['[[job:farmer|Farmer]], [[job:herb_mush_guy|Zielarz]]', 'wymagany', 'Nie uprawia pola.'],
               ['[[job:carrier|Tragarz]]', 'wymagany', 'Nic nie nosi.'],
               ['Pozostałe zawody cywilne', 'wymagany', 'Stoi bezczynnie.'],
             ],

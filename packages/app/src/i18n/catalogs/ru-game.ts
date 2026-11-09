@@ -1079,7 +1079,7 @@ export const ruGame = {
         brewer: 'Пивовары',
         fisher: 'Рыбаки',
         fisher_sea: 'Морские рыбаки',
-        herbalist: 'Сборщики трав',
+        herbalist: 'Травники',
         druid: 'Друиды',
         scout: 'Разведчики',
         trader: 'Купцы',

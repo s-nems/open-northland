@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               "A field isn't growing",
-              "It grows only when watered. A [[job:farmer|Farmer]] at a [[building:work_farm_00|Farm]] or a [[job:herb_mush_guy|Herb Gatherer]] at a [[building:work_herb_hut|Herb Hut]] waters it, if he has his workplace there. He sows first and waters only at {{field.max}} fields or when there is nowhere left to sow. A field ripens after {{field.waterings}} waterings, and one watering also covers 6 neighbouring fields. He won't sow a field on sand or on a road, and sows within {{field.radius}} hexes of the building.",
+              "It grows only when watered. A [[job:farmer|Farmer]] at a [[building:work_farm_00|Farm]] or a [[job:herb_mush_guy|Herbalist]] at a [[building:work_herb_hut|Herb Hut]] waters it, if he has his workplace there. He sows first and waters only at {{field.max}} fields or when there is nowhere left to sow. A field ripens after {{field.waterings}} waterings, and one watering also covers 6 neighbouring fields. He won't sow a field on sand or on a road, and sows within {{field.radius}} hexes of the building.",
             ],
             [
               'Do rain, snow or night change anything?',

@@ -18,7 +18,7 @@ export const enContent = {
     brewer: 'Brewer',
     fisher: 'Fisherman',
     fisher_sea: 'Sea Fisher',
-    herbalist: 'Herb Gatherer',
+    herbalist: 'Herbalist',
     druid: 'Druid',
     scout: 'Scout',
     trader: 'Merchant',

@@ -18,7 +18,7 @@ export const plContent = {
     brewer: 'Piwowar',
     fisher: 'Rybak',
     fisher_sea: 'Rybak morski',
-    herbalist: 'Zbieracz ziół',
+    herbalist: 'Zielarz',
     druid: 'Druid',
     scout: 'Zwiadowca',
     trader: 'Kupiec',

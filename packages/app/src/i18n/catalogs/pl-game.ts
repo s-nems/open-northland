@@ -985,7 +985,7 @@ export const plGame = {
         brewer: 'Piwowarzy',
         fisher: 'Rybacy',
         fisher_sea: 'Rybacy morscy',
-        herbalist: 'Zbieracze ziół',
+        herbalist: 'Zielarze',
         druid: 'Druidzi',
         scout: 'Zwiadowcy',
         trader: 'Kupcy',

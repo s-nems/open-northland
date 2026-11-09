@@ -330,7 +330,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Herb field',
-                '[[job:herb_mush_guy|Herb Gatherer]]',
+                '[[job:herb_mush_guy|Herbalist]]',
                 '1 [[good:herb|Herb]]',
                 '{{gather.herbStrokes}} per field',
                 '{{gather.herbSeconds}} s',
@@ -445,7 +445,7 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               ['Workshop craftsman', 'More pieces per cycle'],
               ['[[job:collector|Extractor]]', 'Fewer strokes, except mushrooms'],
-              ['[[job:farmer|Farmer]], [[job:herb_mush_guy|Herb Gatherer]]', 'Fewer harvest strokes'],
+              ['[[job:farmer|Farmer]], [[job:herb_mush_guy|Herbalist]]', 'Fewer harvest strokes'],
               ['[[job:fisher|Fisherman]]', 'Fewer casts'],
               [
                 '[[job:builder|Builder]]',
@@ -615,7 +615,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:hunter|Hunter]]', 'Work flag', '{{flag.hunter}}', '{{flag.hunter}}'],
               ['[[job:fisher|Fisherman]]', 'Work flag', '{{flag.fisher}}', 'about {{flag.fisherDiagonal}}'],
               [
-                '[[job:farmer|Farmer]], [[job:herb_mush_guy|Herb Gatherer]]',
+                '[[job:farmer|Farmer]], [[job:herb_mush_guy|Herbalist]]',
                 'Building',
                 '{{field.radius}}',
                 'about {{field.diagonal}}',

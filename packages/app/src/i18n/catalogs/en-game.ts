@@ -1004,7 +1004,7 @@ export const enGame = {
         brewer: 'Brewers',
         fisher: 'Fishermen',
         fisher_sea: 'Sea Fishers',
-        herbalist: 'Herb Gatherers',
+        herbalist: 'Herbalists',
         druid: 'Druids',
         scout: 'Scouts',
         trader: 'Merchants',

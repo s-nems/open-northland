@@ -219,7 +219,7 @@ export const EXPERIENCE: ArticleGroup = {
                 'optional',
                 'Works from a [[article:work-flag|work flag]] planted at his feet when he takes the profession.',
               ],
-              ['[[job:farmer|Farmer]], [[job:herb_mush_guy|Herb Gatherer]]', 'required', 'Tends no field.'],
+              ['[[job:farmer|Farmer]], [[job:herb_mush_guy|Herbalist]]', 'required', 'Tends no field.'],
               ['[[job:carrier|Carrier]]', 'required', 'Carries nothing.'],
               ['Other civilian professions', 'required', 'Stands idle.'],
             ],

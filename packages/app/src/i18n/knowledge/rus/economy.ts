@@ -324,7 +324,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Поле трав',
-                '[[job:herb_mush_guy|Сборщик Трав]]',
+                '[[job:herb_mush_guy|Травник]]',
                 '1 [[good:herb|Трава]]',
                 '{{gather.herbStrokes}} на поле',
                 '{{gather.herbSeconds}} с',
@@ -439,7 +439,7 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               ['Мастер в мастерской', 'Больше штук с цикла'],
               ['[[job:collector|Добытчик]]', 'Меньше ударов, кроме грибов'],
-              ['[[job:farmer|Фермер]], [[job:herb_mush_guy|Сборщик Трав]]', 'Меньше ударов при жатве'],
+              ['[[job:farmer|Фермер]], [[job:herb_mush_guy|Травник]]', 'Меньше ударов при жатве'],
               ['[[job:fisher|Рыбак]]', 'Меньше забросов'],
               [
                 '[[job:builder|Строитель]]',
@@ -609,7 +609,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:hunter|Охотник]]', 'Рабочий флажок', '{{flag.hunter}}', '{{flag.hunter}}'],
               ['[[job:fisher|Рыбак]]', 'Рабочий флажок', '{{flag.fisher}}', 'около {{flag.fisherDiagonal}}'],
               [
-                '[[job:farmer|Фермер]], [[job:herb_mush_guy|Сборщик Трав]]',
+                '[[job:farmer|Фермер]], [[job:herb_mush_guy|Травник]]',
                 'Здание',
                 '{{field.radius}}',
                 'около {{field.diagonal}}',
