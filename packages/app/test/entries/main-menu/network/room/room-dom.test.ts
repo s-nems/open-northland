@@ -460,9 +460,6 @@ it('always leaves one free observer row after the occupied rows', () => {
   expect(room.element.querySelectorAll('.network-room__observer')).toHaveLength(2);
   room.update({ ...view, members: [...view.members, { ...first, nick: 'Guest' }] }, true);
   expect(room.element.querySelectorAll('.network-room__observer')).toHaveLength(3);
-  expect(room.element.querySelector('.network-room__observers')?.textContent).not.toContain(
-    messages().mainMenu.lobby.overseerName,
-  );
   room.update({ ...view, members: [{ ...first, seat: 0 }] }, true);
   const join = room.element.querySelector<HTMLButtonElement>('.network-room__observers button');
   expect(join?.disabled).toBe(false);

@@ -1,4 +1,4 @@
-import { isReadOnlySpectator } from '@open-northland/lockstep';
+import { isSpectator } from '@open-northland/lockstep';
 import { FOG_MODE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
@@ -73,9 +73,8 @@ describe('mapSession', () => {
     });
   });
 
-  it('reads both spectator seats, which play no roster seat', () => {
+  it('reads the observer seat, which plays no roster seat', () => {
     expect(session('map=zatoka&player=observer').localSeat).toBe('observer');
-    expect(session('map=zatoka&player=overseer').localSeat).toBe('overseer');
   });
 
   it('gives each seat its mode and its colour, the claimed seat winning over `?computer=`', () => {
@@ -100,7 +99,7 @@ describe('mapSession', () => {
     ]);
     const reserved = mapSession(new URLSearchParams('map=forteca&player=6'), SCENARIO_ROSTER);
     expect(reserved.localSeat).toBe('observer');
-    expect(isReadOnlySpectator(reserved)).toBe(true);
+    expect(isSpectator(reserved)).toBe(true);
     expect(modes('map=forteca&player=6')).toEqual([
       [0, 'idle'],
       [1, 'idle'],

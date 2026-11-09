@@ -65,7 +65,6 @@ import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { technologyName, vehicleLabel } from '../../game/technology.js';
 import {
   fixedViewerSeat,
-  overseerViewerSeat,
   PLAYERS_SIGHT,
   pickableSeat,
   switchableViewerSeat,
@@ -271,12 +270,11 @@ export interface GameViewDeps {
   readonly seatTribeOf?: (player: number) => number;
   /** The civilizations this world fields - the tribes whose art the sheet loaded. */
   readonly tribes?: WorldTribes;
-  /** Spectator session: no fog view, and every player's entities are pickable as if owned. */
+  /** Spectator session: no fog view, every player's entities pickable, and the HUD's command seam a
+   *  no-op, so a selection can inspect but never re-task. */
   readonly observer?: boolean;
-  /** Read-only spectator: the interactive HUD's command seam is a no-op, so a selection can inspect but never re-task. */
-  readonly readOnly?: boolean;
   readonly onWatchAfterResult?: () => void;
-  /** The seats a read-only spectator may watch one at a time, which mounts the seat picker and starts
+  /** The seats a spectator may watch one at a time, which mounts the seat picker and starts
    *  the view on the whole map with nobody's figures; absent, a spectator keeps `localPlayer`'s. */
   readonly observerSeats?: readonly ObserverSeatEntry[];
   /** Owner slot to team-colour slot for player-coloured HUD bits. Default identity. */
@@ -354,12 +352,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   const { app, canvas, params, renderer, host, driver, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
   // Shared players start on their own seat and may switch to observation after a result.
-  let watching = deps.observer === true && deps.readOnly === true;
+  let watching = deps.observer === true;
   const switchableSeat =
     deps.observerSeats === undefined ? null : switchableViewerSeat(watching ? PLAYERS_SIGHT : localPlayer);
-  const viewer: ViewerSeat =
-    switchableSeat ??
-    (deps.observer === true ? overseerViewerSeat(localPlayer) : fixedViewerSeat(localPlayer));
+  const viewer: ViewerSeat = switchableSeat ?? fixedViewerSeat(localPlayer);
   /** The seat a read needing one answers for; watching the whole map reads as the fallback seat. */
   const viewerPlayer = (): number => viewer.seat() ?? localPlayer;
   const sightSeats = (deps.observerSeats ?? []).map((entry) => entry.player);
@@ -518,7 +514,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
     const fogGates = createFogGates();
 
-    const placementGates = createPlacementGates(host, fogGates, localPlayer, deps.observer === true);
+    const placementGates = createPlacementGates(host, fogGates, localPlayer);
     cleanup.push(() => placementGates.dispose());
     const {
       canPlaceAt,
@@ -546,11 +542,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // the sim on every mousemove.
     const pointerAt = trackCanvasPointer(canvas, lifetime.signal);
 
-    // A read-only spectator drops every HUD command here. Setup commands enqueue on the world's builder.
-    // The overseer seat commands every player, so its orders enter as trusted admin input instead of one
-    // seat reaching into another's units.
-    const readOnly = (): boolean => deps.readOnly === true || watching;
-    const overseer = deps.observer === true && !readOnly();
+    // A spectator drops every HUD command here. Setup commands enqueue on the world's builder.
+    const readOnly = (): boolean => watching;
     // A trusted command has no wire: a shared session drops it rather than hand it to the relay.
     const issueTrusted = (command: Command): void => {
       if (!sharedClock) driver.submit(adminCommand(command));
@@ -565,7 +558,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
     const issueCommand = (command: PlayerCommand): void => {
       if (readOnly()) return;
-      driver.submit(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
+      driver.submit(playerCommand(localPlayer, command));
       // The ordered settlers answer at once, as in the original, whatever the sim then makes of the order.
       const answer = orderAnswerOf(command);
       if (answer !== null) soundDriver?.respond(answer);

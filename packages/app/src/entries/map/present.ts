@@ -2,7 +2,6 @@ import { mapLobbySlots } from '@open-northland/data';
 import {
   DEFAULT_DAY_NIGHT_MODE,
   DEFAULT_WEATHER_MODE,
-  isReadOnlySpectator,
   isSpectator,
   localPlayerOf,
   type SessionDriver,
@@ -251,8 +250,7 @@ export async function presentMapWorld(
     terrainGrid,
     localPlayer,
     observer: isSpectator(session),
-    readOnly: isReadOnlySpectator(session),
-    ...(isReadOnlySpectator(session) || runtime.sharedClock === true
+    ...(isSpectator(session) || runtime.sharedClock === true
       ? { observerSeats: observerSeats(session, script, currentLocale()) }
       : {}),
     playerColourOf,

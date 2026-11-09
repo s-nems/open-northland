@@ -20,7 +20,7 @@ Common options:
 | --- | --- |
 | `lang=pol\|eng\|ger\|rus\|chs\|cht` | Language; a language tag also works (`pl`, `en-GB`, `zh-Hant`, `zh-TW`; a bare `zh` is Simplified) |
 | `seed=<n>` | Reproducible world seed; without it the app chooses one and adds it to the URL |
-| `player=<seat\|observer\|overseer>` | Player/view role |
+| `player=<seat\|observer>` | Player/view role |
 | `tribe=<id>` | Civilization of your own seat (1 viking, 2 frank, 3 byzantine, 4 saracen, 7 egypt) and of what the script hands it ([rule](formats/MISSIONS.md#seats-played-as-another-civilization)); computer seats keep theirs |
 | `computer=<seat,...>` | Give selectable seats to the computer |
 | `idle=<seat,...>` | Keep selectable seats' entities without AI control |

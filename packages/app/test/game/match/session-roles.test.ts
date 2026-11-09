@@ -1,4 +1,4 @@
-import { type GameSession, OBSERVER_SEAT, OVERSEER_SEAT } from '@open-northland/lockstep';
+import { type GameSession, OBSERVER_SEAT } from '@open-northland/lockstep';
 import { describe, expect, it } from 'vitest';
 import { sessionRoles } from '../../../src/game/match/session-roles.js';
 import { mapSession } from '../../../src/game/match/session-url.js';
@@ -38,14 +38,6 @@ describe('sessionRoles', () => {
     const scenario = mapSession(new URLSearchParams('map=las&player=0&computer=1'), roster);
     expect(sessionRoles(scenario, []).matchParticipants).toEqual([0, 1, 6]);
     expect(sessionRoles(scenario, [6]).matchParticipants).toEqual([0, 1]);
-  });
-
-  it('keeps the overseer’s default seat granted and out of the match', () => {
-    expect(sessionRoles(session(`map=las&player=${OVERSEER_SEAT}&computer=2`), [])).toEqual({
-      machineSeats: [2],
-      assistantSeats: [0, 2],
-      matchParticipants: [2],
-    });
   });
 
   it('grants and matches every human seat of a relayed session, whichever is local', () => {

@@ -43,7 +43,7 @@ function relayedSessionOptions(session: GameSession, params: URLSearchParams): W
   return {
     speed: session.speed,
     paused: false,
-    // The overseer sees the whole map; a spectator's seat pick asks for its masks.
+    // A spectator sees the whole map; its seat pick asks for its masks.
     fogSeat: isSpectator(session) ? null : localPlayerOf(session),
     diagnostics: hasDebugFlag(params, HASH_TRACE_DEBUG_FLAG),
     pauseOnSubMission: false,

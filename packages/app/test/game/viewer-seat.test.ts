@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   fixedViewerSeat,
-  overseerViewerSeat,
   PLAYERS_SIGHT,
   pickableSeat,
   switchableViewerSeat,
@@ -9,16 +8,8 @@ import {
 } from '../../src/game/viewer-seat.js';
 
 describe('viewer seats', () => {
-  it('a played seat is its own; the overseer keeps its figures but spans the whole map', () => {
-    const played = fixedViewerSeat(2);
-    expect([played.seat(), played.wholeMap()]).toEqual([2, false]);
-    const overseer = overseerViewerSeat(0);
-    expect([overseer.seat(), overseer.wholeMap()]).toEqual([0, true]);
-  });
-
   it('limits picking and group recall to the seat off the whole map, to nobody on it', () => {
     expect(pickableSeat(fixedViewerSeat(2))).toBe(2);
-    expect(pickableSeat(overseerViewerSeat(0))).toBeNull(); // every owner, its own figures aside
     const spectator = switchableViewerSeat(null);
     expect(pickableSeat(spectator)).toBeNull();
     spectator.watch(4);

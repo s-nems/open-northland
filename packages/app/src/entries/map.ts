@@ -61,7 +61,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       {
         speed: inputs.session.speed,
         paused: stagedSave !== null && !staged.resume,
-        // The overseer sees the whole map; a spectator's seat pick asks for its masks.
+        // A spectator sees the whole map; its seat pick asks for its masks.
         fogSeat: isSpectator(inputs.session) ? null : localPlayerOf(inputs.session),
         diagnostics: hasDebugFlag(params, HASH_TRACE_DEBUG_FLAG),
         pauseOnSubMission: true,

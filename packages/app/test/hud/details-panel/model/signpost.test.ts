@@ -1,11 +1,7 @@
 import { type EntitySnapshot, fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { GOOD_WOOD } from '../../../../src/game/sandbox/ids/index.js';
-import {
-  fixedViewerSeat,
-  overseerViewerSeat,
-  switchableViewerSeat,
-} from '../../../../src/game/viewer-seat.js';
+import { fixedViewerSeat, switchableViewerSeat } from '../../../../src/game/viewer-seat.js';
 import { signpostPanelModel } from '../../../../src/hud/details-panel/model/signpost.js';
 import { sandboxCtx, snapshotOf } from '../../../support/sandbox.js';
 
@@ -57,12 +53,11 @@ describe('signpost panel model', () => {
   });
 
   it('keeps whole-map viewing and demolition consistent with other panels', () => {
-    for (const viewer of [overseerViewerSeat(1), switchableViewerSeat(null)]) {
-      expect(signpostPanelModel({ ...sandboxCtx(), viewer }, snapshot, post)).toMatchObject({
-        kind: 'signpost',
-        canDemolish: true,
-        stock: [{ amount: 8 }],
-      });
-    }
+    const viewer = switchableViewerSeat(null);
+    expect(signpostPanelModel({ ...sandboxCtx(), viewer }, snapshot, post)).toMatchObject({
+      kind: 'signpost',
+      canDemolish: true,
+      stock: [{ amount: 8 }],
+    });
   });
 });

@@ -30,8 +30,7 @@ import { SIM_ASSERTS } from './sim-asserts.js';
  * The session is a browser `?map=` search, parsed by the entry's own URL adapter and built by the
  * entry's own world builder: `ON_BENCH_SESSION` names it whole, or the per-field knobs assemble
  * `?map=<id>&player=observer&computer=<seats>&seed=<n>&fog=classic`. The observer plays no seat, so
- * the only assistant grants are the AI seats' own: `player=overseer` builds the same world whenever
- * seat 0 is an AI seat, and grants seat 0's assistant as well when it is not. A checkpoint taken under
+ * the only assistant grants are the AI seats' own. A checkpoint taken under
  * another map, seed, session or content is refused by name rather than measured: the numbers would
  * describe a world nobody asked for.
  */

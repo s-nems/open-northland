@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { fixedViewerSeat, overseerViewerSeat, switchableViewerSeat } from '../../src/game/viewer-seat.js';
+import { fixedViewerSeat, switchableViewerSeat } from '../../src/game/viewer-seat.js';
 import { createForeignFlags } from '../../src/view/foreign-flags.js';
 
 const OWN = 0;
@@ -42,7 +42,7 @@ describe('foreign work flags', () => {
   });
 
   it('shows every flag on the whole map', () => {
-    expect(createForeignFlags(overseerViewerSeat(OWN))(snapshot()).size).toBe(0);
+    expect(createForeignFlags(switchableViewerSeat(null))(snapshot()).size).toBe(0);
   });
 
   it('keeps one set while nothing changes and follows a seat switch', () => {

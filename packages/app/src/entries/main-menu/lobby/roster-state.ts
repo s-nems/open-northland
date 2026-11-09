@@ -14,7 +14,7 @@ export type MapPlayerSlot = MapsIndexPlayerSlot;
  *  entities without AI control. Absent omits the seat’s starting entities. */
 export type VacantMode = 'map-ai' | 'idle' | 'computer' | 'absent';
 
-export { OBSERVER_SEAT, OVERSEER_SEAT } from '@open-northland/lockstep';
+export { OBSERVER_SEAT } from '@open-northland/lockstep';
 
 /** How hard a seat a network room hands to the computer plays until someone picks another level. */
 export const DEFAULT_COMPUTER_DIFFICULTY: ComputerDifficulty = 'medium';

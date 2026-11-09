@@ -5,7 +5,6 @@ import {
   type GameSession,
   type LocalSeat,
   OBSERVER_SEAT,
-  OVERSEER_SEAT,
   orderedSeats,
   type SeatMode,
   type SessionSeat,
@@ -177,10 +176,10 @@ export function sessionSearch(
   return params;
 }
 
-/** `?player=N|observer|overseer`; an unusable value falls back to the default seat. */
+/** `?player=N|observer`; an unusable value falls back to the default seat. */
 function localSeatParam(params: URLSearchParams): LocalSeat {
   const raw = params.get('player');
-  if (raw === OBSERVER_SEAT || raw === OVERSEER_SEAT) return raw;
+  if (raw === OBSERVER_SEAT) return raw;
   if (raw === null) return DEFAULT_LOCAL_PLAYER;
   const seat = Number.parseInt(raw, 10);
   return isValidPlayer(seat) ? seat : DEFAULT_LOCAL_PLAYER;

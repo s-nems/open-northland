@@ -32,12 +32,10 @@ export interface SessionSeat {
   readonly difficulty?: ComputerDifficulty;
 }
 
-/** The two spectator choices watch the whole map: `observer` issues no command, `overseer` commands
- *  every seat. */
+/** The spectator choice: watches the whole map and issues no command. */
 export const OBSERVER_SEAT = 'observer';
-export const OVERSEER_SEAT = 'overseer';
 
-export type LocalSeat = number | typeof OBSERVER_SEAT | typeof OVERSEER_SEAT;
+export type LocalSeat = number | typeof OBSERVER_SEAT;
 
 /** The world a session plays on; an empty `mapId` is the fallback strip a boot without a map draws. A
  *  map `variant` names one of the map's committed variants, which the world is built under; absent
@@ -117,13 +115,9 @@ export function localPlayerOf(session: GameSession): number {
   return typeof session.localSeat === 'number' ? session.localSeat : DEFAULT_LOCAL_PLAYER;
 }
 
-/** True while the local client watches rather than plays: no fog perspective, every seat pickable. */
+/** True while the local client watches rather than plays: no fog perspective, every seat pickable,
+ *  no command. */
 export function isSpectator(session: GameSession): boolean {
-  return typeof session.localSeat !== 'number';
-}
-
-/** True for the spectator that may not issue a command at all. */
-export function isReadOnlySpectator(session: GameSession): boolean {
   return session.localSeat === OBSERVER_SEAT;
 }
 
@@ -251,7 +245,7 @@ function parseDifficulty(value: unknown): ComputerDifficulty {
 }
 
 function parseLocalSeat(value: unknown, seats: readonly SessionSeat[]): LocalSeat {
-  if (value === OBSERVER_SEAT || value === OVERSEER_SEAT) return value;
+  if (value === OBSERVER_SEAT) return value;
   const player = integer(value, 'localSeat');
   if (!isValidPlayer(player)) throw new Error(`session localSeat ${player} is not a player slot`);
   if (seats.length > 0 && !seats.some((seat) => seat.player === player)) {

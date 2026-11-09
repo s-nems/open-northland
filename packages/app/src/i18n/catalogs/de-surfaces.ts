@@ -127,15 +127,12 @@ export const deSurfaces = {
       sit: 'Platz nehmen',
       footnote:
         'Die Karte legt die Spielerplätze fest. Es können keine hinzugefügt oder entfernt werden. Du kannst wechseln, indem du einen freien Platz einnimmst.',
-      watchTitle: 'Zuschauermodi',
+      watchTitle: 'Zuschauen',
       choose: 'Auswählen',
       observerName: 'Zuschauer',
       observerDetail:
         'Die Partie beobachten und alle Einheiten und Gebäude ansehen, ohne Befehle zu erteilen',
       observerTaken: 'Du schaust zu',
-      overseerName: 'Spielleiter',
-      overseerDetail: 'Sandbox-Modus: alle Spielerplätze beobachten und steuern',
-      overseerTaken: 'Du leitest das Spiel',
       teamColour: 'Teamfarbe',
       teamColourLocked: 'die Farben sind auf dieser Karte festgelegt',
       teamColourTaken: 'belegt von Spieler {seat}',

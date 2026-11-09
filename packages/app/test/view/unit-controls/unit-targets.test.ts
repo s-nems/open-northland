@@ -3,7 +3,7 @@ import { components, type WorldSnapshot } from '@open-northland/sim';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../../../src/game/rules.js';
 import { isSettler, ownerPlayerOf } from '../../../src/game/snapshot/index.js';
-import { fixedViewerSeat, overseerViewerSeat } from '../../../src/game/viewer-seat.js';
+import { fixedViewerSeat, switchableViewerSeat } from '../../../src/game/viewer-seat.js';
 import { createSceneSim, SCENES } from '../../../src/scenes/index.js';
 import { pickInRect, pickNearestAt, pickTopAt } from '../../../src/view/picking.js';
 import { createUnitTargets, type UnitTargetsDeps } from '../../../src/view/unit-controls/unit-targets.js';
@@ -70,7 +70,7 @@ describe('unit-controls targets over the renderer frame', () => {
     expect(targetsOver([enemy]).hasOwnedAt(100, 200)).toBe(false);
     const observer = createUnitTargets({
       snapshot: () => snapshot,
-      viewer: overseerViewerSeat(HUMAN_PLAYER),
+      viewer: switchableViewerSeat(null),
       hostileToward: () => true,
       animalCannotBeAttacked: () => false,
       drawnItems: () => [enemy],
@@ -219,7 +219,7 @@ describe('unit-controls targets over the renderer frame', () => {
     expect(targets.enemies()).toEqual([]);
     const observer = createUnitTargets({
       snapshot: () => snapshot,
-      viewer: overseerViewerSeat(HUMAN_PLAYER),
+      viewer: switchableViewerSeat(null),
       hostileToward: () => true,
       animalCannotBeAttacked: () => false,
       drawnItems: () => [wall],

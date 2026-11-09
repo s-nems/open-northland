@@ -29,7 +29,7 @@ These run plain Node over compiled packages, without a test runner. `bench:sim`,
 ```bash
 npm run bench:map
 ON_BENCH_MAP=magiczny_las ON_BENCH_TICKS=50000 npm run bench:map
-ON_BENCH_SESSION='?map=piec_dolin&player=overseer&difficulty=0:hard,1:hard&computer=0,1&seed=144792704&weathermode=map' npm run bench:map
+ON_BENCH_SESSION='?map=piec_dolin&player=observer&difficulty=0:hard,1:hard&computer=0,1&seed=144792704&weathermode=map' npm run bench:map
 ```
 
 Requires generated content; `ON_CONTENT_DIR` selects another directory. The benchmark uses the

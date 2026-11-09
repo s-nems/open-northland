@@ -3,7 +3,6 @@ import {
   DAY_NIGHT_MODES,
   type GameSession,
   humanSeatsOf,
-  isReadOnlySpectator,
   isSpectator,
   machineSeatsOf,
   orderedSeats,
@@ -51,8 +50,8 @@ describe('game session descriptor', () => {
     expect(roundTrip(session())).toEqual(session());
     const scene = session({ world: { kind: 'scene', sceneId: 'sandbox' }, seats: [] });
     expect(roundTrip(scene)).toEqual(scene);
-    const overseer = session({ localSeat: 'overseer' });
-    expect(roundTrip(overseer)).toEqual(overseer);
+    const observer = session({ localSeat: 'observer' });
+    expect(roundTrip(observer)).toEqual(observer);
   });
 
   it('holds the roster to the ascending order world assembly follows', () => {
@@ -226,11 +225,8 @@ describe('game session descriptor', () => {
     expect(machineSeatsOf(session())).toEqual([1]);
   });
 
-  it('tells the two spectator seats apart', () => {
+  it('tells the observer from a played seat', () => {
     expect(isSpectator(session({ localSeat: 'observer' }))).toBe(true);
-    expect(isReadOnlySpectator(session({ localSeat: 'observer' }))).toBe(true);
-    expect(isSpectator(session({ localSeat: 'overseer' }))).toBe(true);
-    expect(isReadOnlySpectator(session({ localSeat: 'overseer' }))).toBe(false);
     expect(isSpectator(session())).toBe(false);
   });
 });

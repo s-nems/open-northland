@@ -48,7 +48,7 @@ export type SeatEnvelope =
 
 /**
  * An envelope from a producer the sim trusts with any command: `setup` is authored pre-run assembly
- * (scenes, decoded map imports, fixtures) and `admin` the rules, debug, and overseer channel.
+ * (scenes, decoded map imports, fixtures) and `admin` the rules and debug channel.
  */
 export type TrustedEnvelope =
   | { readonly v: Version; readonly origin: 'setup'; readonly command: Command }

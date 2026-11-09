@@ -139,8 +139,6 @@ export function createPlacementGates(
   host: SessionHost,
   fogGates: FogGates,
   localPlayer: number,
-  /** The local seat's orders enter through the admin channel (the overseer), which skips the site reach. */
-  trusted = false,
 ): PlacementGates {
   const closedGates = host.landscapeTypes
     .filter((type) => type.wall?.gate?.open === false)
@@ -174,7 +172,7 @@ export function createPlacementGates(
     // The tribe still picks the footprint of a house waived past the technology gate.
     const gated = !techWaived;
     const owner = standingFor ?? localPlayer;
-    const withinReach = !trusted && standingFor === undefined;
+    const withinReach = standingFor === undefined;
     const family = `b${typeId}:${tribe}:${gated}:${owner}:${withinReach}`;
     // Asked every tick besides: a hostile fighter's step and a technology unlock move no blocker version.
     return gridProbe(family, () =>

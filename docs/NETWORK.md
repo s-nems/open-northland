@@ -75,7 +75,7 @@ outside a room also gets the list unasked, see [The hall](#the-hall).
 `createRoom { settings, seats }` makes a room with the sender in it as creator. `joinRoom { roomId }`
 joins a room in the lobby; a started room refuses. A duplicate nick within a room gets a numeric suffix
 (`Ania`, `Ania2`). Observers occupy no map seat and have no slot limit; the lobby shows each observer and
-one more free observer row. Multiplayer never offers the sandbox overseer role.
+one more free observer row.
 
 `settings` is `{ name, world, seed, rules, speed, kickedSeatMode?, initialSave?, mapOrigin?, catalogMap? }`;
 `world` and `rules` are the session descriptor's, and the world is fixed for the room's life. A map

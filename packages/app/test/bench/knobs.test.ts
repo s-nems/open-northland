@@ -6,7 +6,7 @@ import { knobRecord, mapBenchKnobs } from '../../bench/map-world.js';
 
 const MEASURED_TICKS = 100;
 const BROWSER_URL =
-  'http://localhost:5173/?lang=pol&fog=classic&map=piec_dolin&player=overseer&tribes=3:2' +
+  'http://localhost:5173/?lang=pol&fog=classic&map=piec_dolin&player=observer&tribes=3:2' +
   '&difficulty=0:hard,3:hard&computer=0,3&seed=144792704&progression=on&needs=on' +
   '&weathermode=map&alliedvision=on';
 
@@ -30,7 +30,7 @@ describe('ON_BENCH_SESSION', () => {
     const search = knobSearch();
     for (const pair of [
       'map=piec_dolin',
-      'player=overseer',
+      'player=observer',
       'difficulty=0:hard,3:hard',
       'seed=144792704',
       'fog=classic',

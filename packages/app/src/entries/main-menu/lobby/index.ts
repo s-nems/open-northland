@@ -23,7 +23,6 @@ import {
   claimSeat,
   hasClaimableSeat,
   OBSERVER_SEAT,
-  OVERSEER_SEAT,
   type RosterState,
   type SeatChoice,
   setSlotColor,
@@ -217,7 +216,6 @@ export function lobbyScreen(
     list.replaceChildren(...rows);
     watchList.replaceChildren(
       watchRow(OBSERVER_SEAT, lobby.observerName, lobby.observerDetail, lobby.observerTaken),
-      watchRow(OVERSEER_SEAT, lobby.overseerName, lobby.overseerDetail, lobby.overseerTaken),
     );
     if (key !== null) {
       const again = section.querySelector<HTMLElement>(`[data-focus="${key}"]`);

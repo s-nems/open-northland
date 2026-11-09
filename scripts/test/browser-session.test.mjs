@@ -11,7 +11,7 @@ import {
 } from '../browser/session.mjs';
 
 const SEARCH =
-  'map=krwawa_rzeka&player=overseer&tribes=1:2&difficulty=1:hard&computer=1,2&seed=7&fog=classic&needs=off';
+  'map=krwawa_rzeka&player=1&tribes=1:2&difficulty=1:hard&computer=1,2&seed=7&fog=classic&needs=off';
 
 function save(session = {}) {
   return {

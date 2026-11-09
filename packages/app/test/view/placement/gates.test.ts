@@ -156,11 +156,9 @@ describe('placement gates - the ground an enemy army contests', () => {
     expect(gates.canPlaceAt(BUILDING_HOME_00, VIKING, NEAR.hx, NEAR.hy, WAIVED)).toBe(false);
   });
 
-  it("refuses the seat's own house where none of its people reach, unless the overseer places it", async () => {
-    const { sim, fog, gates } = openField(false);
+  it("refuses the seat's own house where none of its people reach", async () => {
+    const { gates } = openField(false);
     await expect(gates.askPlaceAt(BUILDING_HOME_00, VIKING, FAR.hx, FAR.hy, WAIVED)).resolves.toBe(false);
-    const overseer = createPlacementGates(inlineSessionHost(sim), fog, HUMAN_PLAYER, true);
-    await expect(overseer.askPlaceAt(BUILDING_HOME_00, VIKING, FAR.hx, FAR.hy, WAIVED)).resolves.toBe(true);
   });
 
   it('stands an admin house for a seat with nobody on the map, as the admin channel places past its reach', async () => {

@@ -15,12 +15,7 @@ import {
   GOOD_STONE,
   GOOD_WOOD,
 } from '../../../src/game/sandbox/ids/index.js';
-import {
-  fixedViewerSeat,
-  overseerViewerSeat,
-  switchableViewerSeat,
-  type ViewerSeat,
-} from '../../../src/game/viewer-seat.js';
+import { fixedViewerSeat, switchableViewerSeat, type ViewerSeat } from '../../../src/game/viewer-seat.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../../../src/hud/hover-card/building.js';
 import { palisadeHoverModel } from '../../../src/hud/hover-card/palisade.js';
 import { type SettlerHoverContext, settlerHoverModel } from '../../../src/hud/hover-card/settler.js';
@@ -152,14 +147,14 @@ describe('building hover card model', () => {
     ]);
 
     const own = buildingHoverModel(snapshot, 8, hoverCtx());
-    const overseen = buildingHoverModel(snapshot, 9, hoverCtx(overseerViewerSeat(HUMAN_PLAYER)));
+    const watched = buildingHoverModel(snapshot, 9, hoverCtx(switchableViewerSeat(null)));
 
     expect(own?.owner).toBeNull();
     expect(own?.health).toEqual({ label: 'Zdrowie', pct: 25, hover: '30/120' });
     expect(own?.rows).toEqual([{ goodId: 'wood', label: 'Drewno', amount: 4 }]);
-    expect(overseen?.owner).toBeNull();
-    expect(overseen?.health).toEqual({ label: 'Zdrowie', pct: 50, hover: '60/120' });
-    expect(overseen?.rows).toEqual([{ goodId: 'stone', label: 'Kamień', amount: 1 }]);
+    expect(watched?.owner).toBeNull();
+    expect(watched?.health).toEqual({ label: 'Zdrowie', pct: 50, hover: '60/120' });
+    expect(watched?.rows).toEqual([{ goodId: 'stone', label: 'Kamień', amount: 1 }]);
   });
 
   it("lists the store of an ownerless building, which is nobody else's", () => {
@@ -316,9 +311,7 @@ describe('palisade hover card model', () => {
     const snapshot = snapshotOf([wall(1, HUMAN_PLAYER, 150, 150)]);
 
     expect(palisadeHoverModel(snapshot, 1, hoverCtx())).toBeNull();
-    expect(palisadeHoverModel(snapshot, 1, hoverCtx(overseerViewerSeat(HUMAN_PLAYER)))?.title).toBe(
-      'Palisada',
-    );
+    expect(palisadeHoverModel(snapshot, 1, hoverCtx(switchableViewerSeat(null)))?.title).toBe('Palisada');
   });
 
   it("reads another seat's wall site as being raised", () => {

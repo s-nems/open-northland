@@ -12,7 +12,6 @@ import {
   claimSeat,
   initialRosterState,
   OBSERVER_SEAT,
-  OVERSEER_SEAT,
   type RosterState,
   setSlotColor,
   setSlotDifficulty,
@@ -212,8 +211,6 @@ describe('lobbySession', () => {
     state = setVacantMode(state, 1, 'computer');
     expect(lobbySession('zatoka', state, players, OPTIONS, SEED).localSeat).toBe(OBSERVER_SEAT);
     expect(computerSeatsOfLobby(state, players)).toEqual([0, 1]);
-    const overseer = claimSeat(initialRosterState(players), OVERSEER_SEAT);
-    expect(lobbySession('zatoka', overseer, players, OPTIONS, SEED).localSeat).toBe(OVERSEER_SEAT);
   });
 
   it('lets a claimable authored-ai slot auto-play until it is toggled to idle', () => {

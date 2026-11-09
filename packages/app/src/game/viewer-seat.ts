@@ -46,12 +46,6 @@ export function fixedViewerSeat(seat: number): ViewerSeat {
   return { seat: () => seat, wholeMap: () => false, sharedSight: () => false, version: () => 0 };
 }
 
-/** The overseer's view: the whole map to see and pick, with `seat`'s figures, assistant and papers, since
- *  its orders and paper plans go out as that seat's. */
-export function overseerViewerSeat(seat: number): ViewerSeat {
-  return { seat: () => seat, wholeMap: () => true, sharedSight: () => false, version: () => 0 };
-}
-
 /** A spectator's switchable seat; watching no single seat is the whole map with nobody's figures. */
 export function switchableViewerSeat(initial: WatchTarget): SwitchableViewerSeat {
   let target = initial;
