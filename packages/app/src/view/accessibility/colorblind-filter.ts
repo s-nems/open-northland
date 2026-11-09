@@ -1,23 +1,12 @@
 import { diag } from '../../diag/index.js';
-import { onStoredSettingsChange, readStoredSettings, type ColorBlindFilter } from '../settings/store.js';
+import { type ColorBlindFilter, onStoredSettingsChange, readStoredSettings } from '../settings/store.js';
 
 /**
- * Whole-viewport colour-blindness *correction* (daltonization) as a single SVG `feColorMatrix`, applied
- * as a CSS `filter` over the whole document so it covers both the game world and the UI with no engine
- * change.
- *
- * Unlike a plain simulation matrix (which only shows what a colour-blind viewer already struggles with),
- * daltonization restores separability: it takes the colour error a deficient eye cannot recover —
- * `(I − M_sim)·source`, where `M_sim` is the standard RGB-space CVD *simulation* matrix — and shifts that
- * error into a channel the viewer *can* still tell apart. Red-green deficiencies (protanopia, deuteranopia)
- * push the error into blue (weight 0.7, matching the ReShade `Daltonize.fx` / Viénot-Brettel convention);
- * tritanopia pushes it into red/green. The closed form is a single matrix:
- *
- *     M_correct = M_sim + M_shift · (I − M_sim)
- *
- * which is exactly what `feColorMatrix` consumes. Hue will move (a red may read slightly magenta, a green
- * slightly cyan) — that is expected and, for a colour-blind player, visually consistent with the colours
- * they already perceive, so it is accepted.
+ * Whole-viewport colour-blindness correction (daltonization) as one SVG `feColorMatrix` behind a CSS
+ * `filter`, so it covers the world and the UI alike. The error a deficient eye loses, `(I - M_sim)`,
+ * is routed into channels it still separates: `M_correct = I + M_shift · (I - M_sim)`, the
+ * Fidaner-Lin-Ozguven daltonization. `M_sim` are published RGB simulation matrices; the tritanopia
+ * shift is our approximation.
  */
 type Vec3 = readonly [number, number, number];
 type Mat3 = readonly [Vec3, Vec3, Vec3];
@@ -64,21 +53,18 @@ function matMul(a: Mat3, b: Mat3): Mat3 {
   ];
 }
 
-/** Standard RGB-space CVD *simulation* matrices (ColorJack / Brettel simplified form). */
-const SIM: Record<'protanopia' | 'deuteranopia' | 'tritanopia', Mat3> = {
-  // Red-blind: red and green collapse toward the same yellow.
+/** RGB-space colour-vision-deficiency simulation matrices (simplified Brettel form). */
+const SIM: Record<Exclude<ColorBlindFilter, 'off'>, Mat3> = {
   protanopia: [
     [0.567, 0.433, 0],
     [0.558, 0.442, 0],
     [0, 0.242, 0.758],
   ],
-  // Red-green: the most common, ~6% of men.
   deuteranopia: [
     [0.625, 0.375, 0],
     [0.7, 0.3, 0],
     [0, 0.3, 0.7],
   ],
-  // Blue-yellow: rare, ~0.01%.
   tritanopia: [
     [0.95, 0.05, 0],
     [0, 0.433, 0.567],
@@ -100,31 +86,23 @@ const SHIFT_BLUE_YELLOW: Mat3 = [
   [0, 0, 0],
 ];
 
-/** Daltonization correction `M_sim + M_shift·(I − M_sim)` for one concrete deficiency. */
-function corrected3x3(type: 'protanopia' | 'deuteranopia' | 'tritanopia'): Mat3 {
+type Deficiency = Exclude<ColorBlindFilter, 'off'>;
+
+function corrected3x3(type: Deficiency): Mat3 {
   const sim = SIM[type];
   const shift = type === 'tritanopia' ? SHIFT_BLUE_YELLOW : SHIFT_RED_GREEN;
-  // `M_shift` left-multiplies the lost-error term `(I − M_sim)·source`: it is the matrix that
-  // routes that error into a channel the deficient eye can still separate.
-  return matAdd(sim, matMul(shift, matSub(IDENTITY3, sim)));
+  return matAdd(IDENTITY3, matMul(shift, matSub(IDENTITY3, sim)));
 }
 
-const CORRECTION: Record<Exclude<ColorBlindFilter, 'off'>, Mat3> = {
+const CORRECTION: Record<Deficiency, Mat3> = {
   protanopia: corrected3x3('protanopia'),
   deuteranopia: corrected3x3('deuteranopia'),
-  // Most common single case (red-green); the pragmatic default for an unspecified deficiency.
-  generic: corrected3x3('deuteranopia'),
   tritanopia: corrected3x3('tritanopia'),
 };
 
 /** Expand a 3×3 correction into the 20-value `feColorMatrix` form (alpha passes through unchanged). */
 function toColorMatrix(m: Mat3): number[] {
-  return [
-    m[0][0], m[0][1], m[0][2], 0, 0,
-    m[1][0], m[1][1], m[1][2], 0, 0,
-    m[2][0], m[2][1], m[2][2], 0, 0,
-    0, 0, 0, 1, 0,
-  ];
+  return [...m[0], 0, 0, ...m[1], 0, 0, ...m[2], 0, 0, 0, 0, 0, 1, 0];
 }
 
 /** The `feColorMatrix` values for a filter, or `undefined` when the filter is `off`. Pure. */
@@ -135,10 +113,9 @@ export function correctionMatrix(filter: ColorBlindFilter): number[] | undefined
 const FILTER_ID = 'open-northland-colorblind';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-/** Lazily-built `feColorMatrix`; created on first use so a toggle applies even before boot finished. */
 let svgMatrix: SVGFEColorMatrixElement | null = null;
 
-/** Build the hidden SVG carrying the single recolouring filter, returning its `feColorMatrix`. Idempotent. */
+/** The hidden SVG holding the filter, built once. */
 function ensureSvgFilter(): SVGFEColorMatrixElement {
   if (svgMatrix !== null) return svgMatrix;
   const svg = document.createElementNS(SVG_NS, 'svg');
@@ -152,25 +129,16 @@ function ensureSvgFilter(): SVGFEColorMatrixElement {
   filter.setAttribute('color-interpolation-filters', 'sRGB');
   const matrix = document.createElementNS(SVG_NS, 'feColorMatrix');
   matrix.setAttribute('type', 'matrix');
-  matrix.setAttribute('values', (correctionMatrix('deuteranopia') ?? []).join(' '));
   filter.appendChild(matrix);
   svg.appendChild(filter);
-  // The filter *definition* lives on <html>, outside the element we recolour, so it is never part of its
-  // own subtree. (Firefox silently ignores `filter: url(#…)` when applied to the root <html> element, so we
-  // apply the filter to <body> instead — see `applyColorBlindFilter`.)
+  // Defined outside <body>, the element it recolours, so the filter is not part of its own subtree.
   document.documentElement.appendChild(svg);
   svgMatrix = matrix;
   return matrix;
 }
 
-/**
- * Apply the chosen filter immediately; `off` clears it. Safe to call any time.
- *
- * The filter is attached to `<body>`, not `<html>`: Firefox silently ignores `filter: url(#…)` when it is
- * set on the root element, so the recolouring would do nothing there. `<body>` contains the whole UI and
- * the game canvas, so attaching here covers the entire viewport in every engine.
- */
-export function applyColorBlindFilter(filter: ColorBlindFilter): void {
+/** Apply a filter now; `off` clears it. On <body>, since Firefox ignores `filter: url(#...)` on <html>. */
+function applyColorBlindFilter(filter: ColorBlindFilter): void {
   const target = document.body;
   if (filter === 'off') {
     target.style.filter = '';
@@ -181,13 +149,8 @@ export function applyColorBlindFilter(filter: ColorBlindFilter): void {
   target.style.filter = `url(#${FILTER_ID})`;
 }
 
-/**
- * Install the viewport-wide colour-blind correction filter and keep it in step with the local setting.
- * Returns a teardown that stops listening and clears the filter. Presentation only: nothing here reaches
- * the simulation, the network or a replay, so two clients may disagree without a desync.
- */
+/** Keep the viewport filter in step with the local setting; presentation only, never part of the sim. */
 export function installColorBlindFilter(): () => void {
-  let unsubscribe: () => void;
   try {
     ensureSvgFilter();
   } catch (error) {
@@ -195,7 +158,7 @@ export function installColorBlindFilter(): () => void {
     return () => undefined;
   }
   const update = (): void => applyColorBlindFilter(readStoredSettings().colorBlindFilter);
-  unsubscribe = onStoredSettingsChange(update);
+  const unsubscribe = onStoredSettingsChange(update);
   update();
   return () => {
     unsubscribe();

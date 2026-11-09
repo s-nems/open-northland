@@ -1,7 +1,8 @@
 import type { DiplomacyState } from '@open-northland/sim';
-import { playerSwatchHex } from '../../catalog/roster.js';
+import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import { ownerPlayerOf, type SnapshotEntity } from '../../game/snapshot/index.js';
 import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
+import { teamColourHex } from '../../view/accessibility/team-colour.js';
 import type { HoverOwner } from './model.js';
 
 /** Whose the thing under the cursor is, read against the seat the view shows. */
@@ -27,6 +28,6 @@ export function foreignOwner(ent: SnapshotEntity, ctx: HoverOwnerContext): Hover
     player,
     ...(name !== undefined ? { name } : {}),
     stance: ctx.diplomacyStance?.(player) ?? null,
-    colour: playerSwatchHex(ctx.playerColourOf?.(player) ?? player),
+    colour: teamColourHex(PLAYER_SWATCH_COLORS[ctx.playerColourOf?.(player) ?? player] ?? 0),
   };
 }

@@ -24,9 +24,9 @@ import {
   settlerJobType,
   workFlagOf,
 } from '../../game/snapshot/index.js';
+import { teamColour } from '../../view/accessibility/team-colour.js';
 import type { MinimapFilters, MinimapScope } from './filters.js';
 import { MINIMAP_PLAYER_COLOURS, STANCE_COLOURS, STANCE_SELF_COLOUR } from './palette.js';
-import { currentTeamColorStrength, enhancePlayerColor } from '../../catalog/player-color.js';
 import type { MinimapMark, MinimapStampPart } from './stamps.js';
 
 /** Fallback dot colour for a player outside the swatch table. */
@@ -468,11 +468,9 @@ export class MinimapDotPlot {
       if (ctx.filters.colours === 'stance' && ctx.viewer !== null) {
         colour = player === ctx.viewer ? STANCE_SELF_COLOUR : STANCE_COLOURS[this.stanceToward(ctx, player)];
       } else {
-        // The base team colour, then pushed toward a bolder version of itself by the live setting.
         const base =
-          MINIMAP_PLAYER_COLOURS[(ctx.playerColourOf?.(player) ?? player) % MINIMAP_PLAYER_COLOURS.length] ??
-          UNKNOWN_PLAYER_DOT_COLOUR;
-        colour = enhancePlayerColor(base, currentTeamColorStrength());
+          MINIMAP_PLAYER_COLOURS[(ctx.playerColourOf?.(player) ?? player) % MINIMAP_PLAYER_COLOURS.length];
+        colour = base === undefined ? UNKNOWN_PLAYER_DOT_COLOUR : teamColour(base);
       }
       this.colours.set(player, colour);
     }

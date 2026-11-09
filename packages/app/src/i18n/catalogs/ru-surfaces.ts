@@ -228,7 +228,6 @@ export const ruSurfaces = {
         audio: 'Звук',
         gameplay: 'Игра',
         controls: 'Управление',
-        accessibility: 'Специальные возможности',
       },
       displayMode: 'Режим экрана',
       displayFullscreen: 'Полный экран',
@@ -291,7 +290,6 @@ export const ruSurfaces = {
       colorBlindFilterDeuteranopia: 'Красно-зелёный (дейтеранопия)',
       colorBlindFilterProtanopia: 'Краснослепота (протанопия)',
       colorBlindFilterTritanopia: 'Сине-жёлтый (тританопия)',
-      colorBlindFilterGeneric: 'Общий',
       fpsCounter: 'Счётчик FPS',
       fpsCounterTip:
         'Частота кадров на верхней панели. Наведите на неё курсор, чтобы увидеть, что тормозит игру: симуляция, процессор при отрисовке кадра или видеокарта.',

@@ -192,7 +192,6 @@ export const plSurfaces = {
         audio: 'Dźwięk',
         gameplay: 'Rozgrywka',
         controls: 'Sterowanie',
-        accessibility: 'Ułatwienia dostępu',
       },
       displayMode: 'Tryb wyświetlania',
       displayFullscreen: 'Pełny ekran',
@@ -255,7 +254,6 @@ export const plSurfaces = {
       colorBlindFilterDeuteranopia: 'Czerwono-zielony (deuteranopia)',
       colorBlindFilterProtanopia: 'Ślepota na czerwień (protanopia)',
       colorBlindFilterTritanopia: 'Niebiesko-żółty (tritanopia)',
-      colorBlindFilterGeneric: 'Ogólny',
       fpsCounter: 'Licznik FPS',
       fpsCounterTip:
         'Liczba klatek na sekundę na górnym pasku. Najedź na nią, aby zobaczyć, co hamuje grę: symulacja, procesor rysujący klatkę czy karta graficzna.',
