@@ -4,6 +4,9 @@ import {
   hexDistanceBetween,
   nodeHxOfPosition,
   nodeHyOfPosition,
+  ONE,
+  positionXOfNode,
+  positionYOfNode,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { Container, Sprite } from 'pixi.js';
@@ -41,6 +44,20 @@ export interface FootfallFrame {
   readonly renderTime: number;
 }
 
+/** A tracked walker: its nearest node at the last sighting and the step it is finishing, if any. */
+interface WalkerSteps {
+  hx: number;
+  hy: number;
+  /** The node the step came from; the step's node is `hx, hy`. */
+  fromHx: number;
+  fromHy: number;
+  stepping: boolean;
+}
+
+/** How near, per position axis, a walker counts as standing on the node it steps onto: an eighth of a
+ *  column step. */
+const ON_NODE_TOLERANCE = ONE / 16;
+
 interface Footfall {
   readonly key: number;
   readonly kind: FootfallKind;
@@ -58,15 +75,14 @@ interface Footfall {
  *
  * Original behavior: a mark is raised on the node a human reaches, a road leaving nothing, and the dust
  * plays its frames once, a tick each. A human in live boots also kicks up dust on every step, on any
- * ground and road, whatever its age or tribe; on sand an adult so shod raises two. The nearest node flips at half a step, so the mark goes on the node
- * just left, behind the walker, and its ground and road are read there (approximation). The dust's slow
- * drift and five-unit start height are left out (approximation).
+ * ground and road, whatever its age or tribe; on sand an adult so shod raises two. The dust's slow drift
+ * and five-unit start height are left out (approximation).
  */
 export class FootfallLayer {
   readonly container = new Container();
   private ground: FootfallGround | null = null;
   /** Each tracked walker's node at its last sighting, updated in place. */
-  private readonly lastNode = new Map<number, { hx: number; hy: number }>();
+  private readonly lastNode = new Map<number, WalkerSteps>();
   private readonly walking = new Set<number>();
   private readonly marks: Footfall[] = [];
   private nextKey = 0;
@@ -108,7 +124,8 @@ export class FootfallLayer {
   }
 
   /** Raise a mark for every drawn walker that reached a new node since the last snapshot, and drop the
-   *  marks that are gone. */
+   *  marks that are gone. A walker's nearest node turns at half a step, so the step is held until the
+   *  walker stands on its node, or turns to the next one, and its mark falls under the foot. */
   private track(frame: FootfallFrame, ground: FootfallGround | null): void {
     const snapshot = frame.snapshot;
     if (snapshot === this.lastSnapshot) return;
@@ -122,28 +139,51 @@ export class FootfallLayer {
       if (components === undefined || !('Person' in components)) continue;
       const position = readPosition(components);
       if (position === null) continue;
-      const hx = nodeHxOfPosition(position.x as Fixed, position.y as Fixed);
-      const hy = nodeHyOfPosition(position.x as Fixed, position.y as Fixed);
+      const x = position.x as Fixed;
+      const y = position.y as Fixed;
+      const hx = nodeHxOfPosition(x, y);
+      const hy = nodeHyOfPosition(x, y);
       this.walking.add(ref);
-      const last = this.lastNode.get(ref);
-      if (last === undefined) {
-        this.lastNode.set(ref, { hx, hy });
+      const steps = this.lastNode.get(ref);
+      if (steps === undefined) {
+        this.lastNode.set(ref, { hx, hy, fromHx: hx, fromHy: hy, stepping: false });
         continue;
       }
-      if (last.hx === hx && last.hy === hy) continue;
-      const fromHx = last.hx;
-      const fromHy = last.hy;
-      last.hx = hx;
-      last.hy = hy;
-      if (hexDistanceBetween(fromHx, fromHy, hx, hy) > MAX_STEP_NODES) continue;
-      if (readWearsLiveBoots(components)) this.raise('dust', fromHx, fromHy, 0, tick);
-      if (!walker.marksGround || frame.roadAt(fromHx, fromHy)) continue;
-      const kind = ground === null ? undefined : footfallAt(ground, fromHx, fromHy);
-      if (kind === undefined) continue;
-      const count = this.sheet?.bindings.footfall?.[kind]?.valencies.length ?? 1;
-      this.raise(kind, fromHx, fromHy, stepValency(stepHeadingDegrees(fromHx, fromHy, hx, hy), count), tick);
+      if (steps.hx !== hx || steps.hy !== hy) {
+        if (steps.stepping) this.land(steps, walker.marksGround, components, frame, ground, tick);
+        steps.stepping = hexDistanceBetween(steps.hx, steps.hy, hx, hy) <= MAX_STEP_NODES;
+        steps.fromHx = steps.hx;
+        steps.fromHy = steps.hy;
+        steps.hx = hx;
+        steps.hy = hy;
+      }
+      if (
+        steps.stepping &&
+        Math.abs(x - positionXOfNode(hx, hy)) <= ON_NODE_TOLERANCE &&
+        Math.abs(y - positionYOfNode(hy)) <= ON_NODE_TOLERANCE
+      )
+        this.land(steps, walker.marksGround, components, frame, ground, tick);
     }
     for (const ref of this.lastNode.keys()) if (!this.walking.has(ref)) this.lastNode.delete(ref);
+  }
+
+  /** Mark the node a step lands on: the boots' dust, then the ground's print or dust. */
+  private land(
+    steps: WalkerSteps,
+    marksGround: boolean,
+    components: Readonly<Record<string, unknown>>,
+    frame: FootfallFrame,
+    ground: FootfallGround | null,
+    tick: number,
+  ): void {
+    steps.stepping = false;
+    const { fromHx, fromHy, hx, hy } = steps;
+    if (readWearsLiveBoots(components)) this.raise('dust', hx, hy, 0, tick);
+    if (!marksGround || frame.roadAt(hx, hy)) return;
+    const kind = ground === null ? undefined : footfallAt(ground, hx, hy);
+    if (kind === undefined) return;
+    const count = this.sheet?.bindings.footfall?.[kind]?.valencies.length ?? 1;
+    this.raise(kind, hx, hy, stepValency(stepHeadingDegrees(fromHx, fromHy, hx, hy), count), tick);
   }
 
   private raise(kind: FootfallKind, hx: number, hy: number, valency: number, tick: number): void {

@@ -87,7 +87,7 @@ function setup(marksGround = true, footfallGround: FootfallGround | null = groun
 const bobOf = (node: Sprite | undefined) => frames[(node?.texture.frame.x ?? -4) / 4];
 
 describe('FootfallLayer', () => {
-  it('prints a step on snow behind the walker, in the ground slot, turned to the step and fading out', () => {
+  it('prints a step on snow under the foot, in the ground slot, turned to the step and fading out', () => {
     const { layer, sprites, step } = setup();
     step(4, 2, 10);
     expect(layer.container.children).toHaveLength(0);
@@ -98,8 +98,7 @@ describe('FootfallLayer', () => {
     // East is a quarter turn: valency 1 of 4.
     expect(bobOf(print)).toBe(221);
     expect(print.alpha).toBe(0.75);
-    // On the node left behind, not the one stepped onto.
-    expect(print.x).toBe(halfCellToScreen(4, 2).x);
+    expect(print.x).toBe(halfCellToScreen(5, 2).x);
     step(5, 2, 14 + 119);
     expect(layer.container.children[0]).toBe(print);
     step(5, 2, 14 + 120);
@@ -121,8 +120,8 @@ describe('FootfallLayer', () => {
 
   it('leaves nothing for a jump, a road, a stand or a body that is not a person', () => {
     const { layer, step } = setup();
-    step(ROAD_HX, ROAD_HY, 8);
-    step(ROAD_HX + 1, ROAD_HY, 9);
+    step(ROAD_HX - 1, ROAD_HY, 8);
+    step(ROAD_HX, ROAD_HY, 9);
     step(2, 2, 10);
     step(12, 2, 11);
     step(12, 2, 12);
@@ -173,5 +172,31 @@ describe('FootfallLayer', () => {
     step(4, 2, 10);
     step(5, 2, 11);
     expect(layer.container.children).toHaveLength(0);
+  });
+
+  it('holds a step past half way until the walker stands on its node', () => {
+    const { layer, draw, step } = setup();
+    step(4, 2, 10);
+    const from = positionOfNode(4, 2);
+    const to = positionOfNode(5, 2);
+    const past = { x: Math.round(0.4 * from.x + 0.6 * to.x), y: to.y };
+    draw(snapshotOf([{ id: WALKER, components: { Position: past, Person: {} } }], 11));
+    expect(layer.container.children).toHaveLength(0);
+    step(5, 2, 12);
+    expect(layer.container.children).toHaveLength(1);
+  });
+
+  it('lands a held step when the walker turns to the next node before standing on it', () => {
+    const { layer, draw, step } = setup();
+    step(4, 2, 10);
+    const a = positionOfNode(4, 2);
+    const b = positionOfNode(5, 2);
+    const c = positionOfNode(6, 2);
+    const between = (p: typeof a, q: typeof a) => ({ x: Math.round(0.4 * p.x + 0.6 * q.x), y: p.y });
+    draw(snapshotOf([{ id: WALKER, components: { Position: between(a, b), Person: {} } }], 11));
+    draw(snapshotOf([{ id: WALKER, components: { Position: between(b, c), Person: {} } }], 12));
+    const print = layer.container.children[0] as Sprite;
+    expect(layer.container.children).toHaveLength(1);
+    expect(print.x).toBe(halfCellToScreen(5, 2).x);
   });
 });

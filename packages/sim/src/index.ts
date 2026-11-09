@@ -200,6 +200,8 @@ export {
   nodeHyOfPosition,
   nodeOfPosition,
   positionOfNode,
+  positionXOfNode,
+  positionYOfNode,
 } from './nav/halfcell.js';
 export { findPath, type SearchStats } from './nav/pathfinding/index.js';
 export { type ReachArea, reachContains, unionReachAreas } from './nav/range-search.js';
