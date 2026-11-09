@@ -2718,5 +2718,125 @@
     "from": "L Healing Potion",
     "to": "Large Healing Potion",
     "reason": "Skróty \"S\" i \"L\" przed nazwą mikstury rozwinięte do pełnych słów \"Small\" i \"Large\", żeby nazwa czytała się bez zgadywania."
+  },
+  {
+    "lang": "pol",
+    "table": "jobs",
+    "id": 29,
+    "from": "Zbieracz Ziół",
+    "to": "Zielarz",
+    "reason": "Zawód z Chatki zielarza to jeden zielarz, a nie osobny zbieracz obok innych zbieraczy; nazwa zgadza się z nazwą budynku."
+  },
+  {
+    "lang": "pol",
+    "table": "jobsPlural",
+    "id": 29,
+    "from": "Zbieracze Ziół",
+    "to": "Zielarze",
+    "reason": "Zawód z Chatki zielarza to jeden zielarz, a nie osobny zbieracz obok innych zbieraczy; nazwa zgadza się z nazwą budynku."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 13,
+    "from": "zbieracza ziół",
+    "to": "zielarza",
+    "reason": "Zawód z Chatki zielarza to jeden zielarz, a nie osobny zbieracz obok innych zbieraczy; nazwa zgadza się z nazwą budynku."
+  },
+  {
+    "lang": "pol",
+    "table": "housesHelp",
+    "id": 34,
+    "from": "Zbieracz ziół",
+    "to": "Zielarz",
+    "reason": "Zawód z Chatki zielarza to jeden zielarz, a nie osobny zbieracz obok innych zbieraczy; nazwa zgadza się z nazwą budynku."
+  },
+  {
+    "lang": "eng",
+    "table": "jobs",
+    "id": 29,
+    "from": "Herb Gatherer",
+    "to": "Herbalist",
+    "reason": "Zawód z Chatki zielarza to jeden zielarz, a nie osobny zbieracz obok innych zbieraczy; nazwa zgadza się z nazwą budynku."
+  },
+  {
+    "lang": "eng",
+    "table": "jobsPlural",
+    "id": 29,
+    "from": "Herb Gatherers",
+    "to": "Herbalists",
+    "reason": "Zawód z Chatki zielarza to jeden zielarz, a nie osobny zbieracz obok innych zbieraczy; nazwa zgadza się z nazwą budynku."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 13,
+    "from": "herb gatherer",
+    "to": "herbalist",
+    "reason": "Zawód z Chatki zielarza to jeden zielarz, a nie osobny zbieracz obok innych zbieraczy; nazwa zgadza się z nazwą budynku."
+  },
+  {
+    "lang": "eng",
+    "table": "housesHelp",
+    "id": 34,
+    "from": "A herb gatherer",
+    "to": "A herbalist",
+    "reason": "Zawód z Chatki zielarza to jeden zielarz, a nie osobny zbieracz obok innych zbieraczy; nazwa zgadza się z nazwą budynku."
+  },
+  {
+    "lang": "eng",
+    "table": "housesHelp",
+    "id": 34,
+    "from": "herb gatherer's",
+    "to": "herbalist's",
+    "reason": "Zawód z Chatki zielarza to jeden zielarz, a nie osobny zbieracz obok innych zbieraczy; nazwa zgadza się z nazwą budynku."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 29,
+    "from": "Сборщик Трав",
+    "to": "Травник",
+    "reason": "Zawód z Chatki zielarza to травник (zielarz), a nie osobny zbieracz ziół; budynek nazywa się od niego."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 29,
+    "from": "Сборщики Трав",
+    "to": "Травники",
+    "reason": "Zawód z Chatki zielarza to травник (zielarz), a nie osobny zbieracz ziół; budynek nazywa się od niego."
+  },
+  {
+    "lang": "rus",
+    "table": "houses",
+    "id": 34,
+    "from": "Хижина Трав",
+    "to": "Хижина Травника",
+    "reason": "Zawód z Chatki zielarza to травник (zielarz), a nie osobny zbieracz ziół; budynek nazywa się od niego."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 13,
+    "from": "сушаться и хранятся сборщиком трав",
+    "to": "сушатся и хранятся травником",
+    "reason": "Zawód z Chatki zielarza to травник (zielarz), a nie osobny zbieracz ziół; budynek nazywa się od niego. Przy okazji literówka \"сушаться\"."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 34,
+    "from": "Сборщик трав обследуте",
+    "to": "Травник обследует",
+    "reason": "Zawód z Chatki zielarza to травник (zielarz), a nie osobny zbieracz ziół; budynek nazywa się od niego. Przy okazji literówka \"обследуте\"."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 34,
+    "from": "сборщика трав болжны",
+    "to": "травника должны",
+    "reason": "Zawód z Chatki zielarza to травник (zielarz), a nie osobny zbieracz ziół; budynek nazywa się od niego. Przy okazji literówka \"болжны\"."
   }
 ]
