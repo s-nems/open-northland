@@ -49,6 +49,7 @@ export type {
 } from './layered-bindings.js';
 export {
   type FamilyEffectsBinding,
+  type FootfallBinding,
   headingValency,
   type MunitionBinding,
   type ParticleRef,

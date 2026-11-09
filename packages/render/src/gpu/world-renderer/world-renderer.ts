@@ -1,5 +1,6 @@
 import { type FogView, type SimEvent, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, type ICanvas } from 'pixi.js';
+import type { FootfallGround } from '../../data/effects/index.js';
 import {
   type FogGhostMemory,
   type RememberedMarkers,
@@ -404,6 +405,11 @@ export class WorldRenderer {
     this.mapObjects.set(objects);
   }
 
+  /** Call once per map: the footfall each cell's ground leaves under a step. */
+  setFootfallGround(ground: FootfallGround | null): void {
+    this.marks.setFootfallGround(ground);
+  }
+
   /** Call once per map. The waves run only while environment motion is on. */
   setGroundWaves(waves: readonly GroundWave[]): void {
     this.groundWaves.set(waves);
@@ -630,6 +636,8 @@ export class WorldRenderer {
       fogVisible: fogFrame.fogVisible,
       fogExplored: this.fog.exploredGate,
       ships: this.pool.shipsAfloat(),
+      walkers: this.pool.walkersDrawn(),
+      roadAt: this.terrain.roadAt,
       water: this.terrain.waterField(),
       selection,
       flagged,

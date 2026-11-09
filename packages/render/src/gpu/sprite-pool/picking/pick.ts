@@ -35,6 +35,11 @@ export interface DamagedBuilding {
   readonly ghost?: boolean;
 }
 
+/** One drawn adult human on the map, the input of the prints its steps leave. */
+export interface DrawnWalker {
+  readonly ref: number;
+}
+
 /** One drawn ship, at sea or moored, the input of the wake it pushes. */
 export interface ShipAfloat {
   readonly ref: number;

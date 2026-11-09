@@ -1,4 +1,5 @@
 export type { TextureSource } from 'pixi.js';
+export { type FootfallGround, footfallGround } from './data/effects/footfall.js';
 export {
   FOG_EXPLORED_ALPHA,
   FOG_UNEXPLORED_ALPHA,
@@ -131,6 +132,7 @@ export {
   type FamilyEffectsBinding,
   type FishBinding,
   FLAG_WAVE_TICKS_PER_FRAME,
+  type FootfallBinding,
   type FrameListAnim,
   frameOf,
   GFX_DIR_TO_FACING,

@@ -3,7 +3,7 @@ export { settlerPalette } from './layers/character.js';
 export { resolveLayers } from './layers/resolve.js';
 export type { ResolvedLayer } from './layers/resolved-layer.js';
 export { vehiclePalette } from './layers/vehicle-palette.js';
-export type { DamagedBuilding, DrawnGeometry, ShipAfloat } from './picking/pick.js';
+export type { DamagedBuilding, DrawnGeometry, DrawnWalker, ShipAfloat } from './picking/pick.js';
 export { type PlaceholderBounds, placeholderBounds } from './placeholder.js';
 export type { EntityBounds } from './pooled-entity.js';
 export { type MotionTrack, trackMotion } from './presentation/motion.js';

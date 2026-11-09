@@ -14,6 +14,13 @@ export interface FamilyEffectsBinding {
   readonly stork?: ParticleRef | undefined;
 }
 
+/** What a walker's step leaves on the ground, per footfall kind (`data/effects/footfall.ts`). */
+export interface FootfallBinding {
+  readonly snowSteps?: ParticleRef | undefined;
+  readonly beachSteps?: ParticleRef | undefined;
+  readonly dust?: ParticleRef | undefined;
+}
+
 /** The sprites a shot draws: itself in flight per `munitionType`, what it leaves behind every flight tick,
  *  and the smoke a landing raises. */
 export interface MunitionBinding {

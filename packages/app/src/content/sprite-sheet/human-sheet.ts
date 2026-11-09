@@ -28,6 +28,7 @@ import {
 import { loadIr, loadLayer, MissingAtlasError } from '../ir/load.js';
 import { BODY_IMAGELIB } from '../ir/rows.js';
 import { loadedFamilyEffects, resolveFamilyEffects } from '../object-gfx/family-effects.js';
+import { loadedFootfall, resolveFootfall } from '../object-gfx/footfall.js';
 import { buildMunitionBinding, munitionAtlasStems, resolveMunitionRefs } from '../object-gfx/munitions.js';
 import { buildPalisadeBinding, palisadeAtlasStems, resolvePalisadeGfxRefs } from '../object-gfx/palisades.js';
 import {
@@ -163,6 +164,7 @@ export async function loadHumanSpriteSheet(
   // The shots in flight, their trails and landing smoke (`ls_smoke`, `test_arrow` under their palettes).
   const munitionRefs = resolveMunitionRefs(ir);
   const familyEffects = resolveFamilyEffects(ir);
+  const footfall = resolveFootfall(ir);
   const palisadeRefs = resolvePalisadeGfxRefs(ir);
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
@@ -171,7 +173,7 @@ export async function loadHumanSpriteSheet(
   for (const s of craftFxAtlasStems(craftFxRefs)) stems.add(s);
   for (const s of munitionAtlasStems(munitionRefs)) stems.add(s);
   for (const s of palisadeAtlasStems(palisadeRefs)) stems.add(s);
-  for (const ref of Object.values(familyEffects)) {
+  for (const ref of [...Object.values(familyEffects), ...Object.values(footfall)]) {
     if (ref !== undefined) stems.add(ref.layer);
   }
   stems.add(FISH_ATLAS);
@@ -245,6 +247,7 @@ export async function loadHumanSpriteSheet(
       }),
       ...signpostBinding,
       familyEffects: loadedFamilyEffects(familyEffects, gatheringLoaded),
+      footfall: loadedFootfall(footfall, gatheringLoaded),
       ...(craftFxBinding !== undefined ? { craftfx: craftFxBinding } : {}),
       ...(palisadeBinding !== undefined ? { palisade: palisadeBinding } : {}),
       ...(vehicles.binding !== undefined ? { vehicle: vehicles.binding } : {}),

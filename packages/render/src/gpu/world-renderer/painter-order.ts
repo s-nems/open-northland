@@ -22,6 +22,8 @@ export interface WorldSceneLayers {
   readonly orderMarkers: Container;
   /** Flat stains beneath fog, selection and every actor. */
   readonly bloodGround: Container;
+  /** Prints in snow and sand, over the stains and under the fog and every actor. */
+  readonly footprints: Container;
   readonly constructionSigns: Container;
   readonly bubbles: Container;
   readonly experienceStars: Container;
@@ -40,6 +42,7 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.roads,
     layers.groundResources,
     layers.bloodGround,
+    layers.footprints,
     layers.wakes,
     layers.weatherGround,
     layers.fog,

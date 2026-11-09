@@ -16,6 +16,7 @@ import { loadScriptLandscapeSprites } from '../../content/map/script-landscape-s
 import { mapBriefingPictures } from '../../content/map-source/briefing-pictures.js';
 import { mapBriefingVoices } from '../../content/map-source/briefing-voices.js';
 import { loadFellingClips } from '../../content/object-gfx/felling-clips.js';
+import { mapFootfallGround } from '../../content/object-gfx/footfall.js';
 import { petNamesOf } from '../../game/character-names/pet-names.js';
 import { briefingMatchObjectives, briefingPage, mapBriefFallback } from '../../game/map/mission-brief.js';
 import { playerNameMap, playerTribe } from '../../game/map/roster.js';
@@ -196,6 +197,7 @@ export async function presentMapWorld(
   await boot.begin('minimap');
   const minimapCells = pack !== null ? null : await loadMinimapCellColours(terrainGrid, world.terrain);
   renderer.setGroundColours(minimapCells, terrainGrid.width, terrainGrid.height);
+  renderer.setFootfallGround(mapFootfallGround(terrainGrid, ir?.gfxPatterns ?? []));
 
   // Every program links before the first frame, so a cold Direct3D compile shows as this step, not as
   // a frozen interface.

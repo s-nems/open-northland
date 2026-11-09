@@ -1,5 +1,6 @@
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
+import type { FootfallGround } from '../../data/effects/index.js';
 import type { Viewport } from '../../data/projection/index.js';
 import { type ImportMarker, importMarkersOf } from '../../data/scene/import-markers.js';
 import { OverheadColumn } from '../../data/scene/overhead-column.js';
@@ -8,6 +9,7 @@ import { BloodLayer } from '../blood/layer.js';
 import type { FallenBody } from '../building-damage/building-damage.js';
 import { CollapseLayer } from '../demolition/collapse-layer.js';
 import { FamilyEffectsLayer } from '../overlays/family-effects-layer.js';
+import { FootfallLayer } from '../overlays/footfall-layer.js';
 import {
   BadgeLayer,
   type BuildingSignGfx,
@@ -37,7 +39,7 @@ import {
 import { SelectionLayer } from '../selection/layer.js';
 import type { RangeRing } from '../selection/range-ring.js';
 import type { SelectionStyle } from '../selection/style.js';
-import type { DrawnGeometry, ShipAfloat } from '../sprite-pool/index.js';
+import type { DrawnGeometry, DrawnWalker, ShipAfloat } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../textures/sprite-sheet.js';
 import type { TextureCache } from '../textures/texture-cache.js';
 import type { CombatBonesGfx } from './frame.js';
@@ -54,6 +56,7 @@ export type MarkSlots = Pick<
   | 'orderMarkers'
   | 'bones'
   | 'bloodGround'
+  | 'footprints'
   | 'constructionSigns'
   | 'bubbles'
   | 'experienceStars'
@@ -79,6 +82,10 @@ export interface WorldMarksFrame {
   readonly renderTime: number;
   /** The drawn ships, off the pool's culled draw list. */
   readonly ships: readonly ShipAfloat[];
+  /** The drawn adult humans, off the pool's culled draw list. */
+  readonly walkers: readonly DrawnWalker[];
+  /** Whether a road runs over a node. */
+  readonly roadAt: (hx: number, hy: number) => boolean;
   /** The map's water mask the wakes fade off. */
   readonly water: WaterField;
   readonly selection: ReadonlySet<number>;
@@ -113,6 +120,8 @@ export class WorldMarks {
    *  front of a chain occludes it. */
   private readonly badges: BadgeLayer;
   private readonly familyEffects: FamilyEffectsLayer;
+  /** Prints in their own ground slot, dust in the depth-sorted sprite layer. */
+  private readonly footfall: FootfallLayer;
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
   private readonly hearts = new LifeHeartLayer();
@@ -139,6 +148,7 @@ export class WorldMarks {
     this.collapses = new CollapseLayer(spriteLayer, textures, sheet, captureDamage);
     this.shots = new ShotLayer(spriteLayer, textures, sheet);
     this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);
+    this.footfall = new FootfallLayer(spriteLayer, textures, sheet);
     this.badges = new BadgeLayer(spriteLayer, playerColourOf);
     this.constructionSigns = new ConstructionSignLayer(playerColourOf);
     this.slots = {
@@ -147,6 +157,7 @@ export class WorldMarks {
       orderMarkers: this.orderMarkers.container,
       bones: this.effects.groundContainer,
       bloodGround: this.blood.groundContainer,
+      footprints: this.footfall.container,
       constructionSigns: this.constructionSigns.container,
       bubbles: this.bubbles.container,
       experienceStars: this.experienceStars.container,
@@ -165,6 +176,11 @@ export class WorldMarks {
     this.collapses.ingest(events, tick);
     this.shots.ingest(events, tick);
     this.familyEffects.ingest(events, tick);
+  }
+
+  /** Call once per map; `null` leaves every step without a mark. */
+  setFootfallGround(ground: FootfallGround | null): void {
+    this.footfall.setGround(ground);
   }
 
   setBloodEnabled(enabled: boolean): void {
@@ -237,6 +253,14 @@ export class WorldMarks {
     this.shots.draw({ snapshot: frame.snapshot, drawn, elevation, viewport, renderTime });
     this.badges.draw(frame.doorBadges, elevation, viewport, renderTime);
     this.familyEffects.draw(frame);
+    this.footfall.draw({
+      snapshot: frame.snapshot,
+      walkers: frame.walkers,
+      roadAt: frame.roadAt,
+      elevation,
+      viewport,
+      renderTime,
+    });
     this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
     const column = this.column;
     column.clear();
@@ -276,6 +300,7 @@ export class WorldMarks {
     this.shots.destroy();
     this.badges.destroy();
     this.familyEffects.destroy();
+    this.footfall.destroy();
     this.constructionSigns.destroy();
     this.bubbles.destroy();
     this.hearts.destroy();

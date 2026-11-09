@@ -60,6 +60,7 @@ const SLOTS = [
   'roads',
   'groundResources',
   'bloodGround',
+  'footprints',
   'wakes',
   'weatherGround',
   'fog',

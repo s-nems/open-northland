@@ -66,6 +66,8 @@ export class TerrainLayer {
   private waveGroup: WaveUniforms | undefined;
   private hasWater = false;
   private terrainHeight = 0;
+  /** Half-cell nodes per row, the stride of the road node ids. */
+  private nodeWidth = 0;
   private water: WaterField = NO_WATER;
   private enhancedWater = false;
   private enhancedSampling = false;
@@ -143,6 +145,7 @@ export class TerrainLayer {
     this.coverUniforms = makeGroundCoverUniforms();
     this.coverTex = makeGroundCoverTexture(1, 1);
     this.terrainHeight = terrain.height;
+    this.nodeWidth = 2 * terrain.width;
     const lane: LaneShading = {
       brightnessTex: this.brightnessTex,
       laneTexWidth: this.laneTexWidth,
@@ -341,10 +344,15 @@ export class TerrainLayer {
     this.coverTex.destroy();
     this.coverSet = false;
     this.terrainHeight = 0;
+    this.nodeWidth = 0;
   }
 
   /** The current map's water mask; {@link NO_WATER} on a map whose ground paints none. */
   waterField(): WaterField {
     return this.water;
   }
+
+  /** Whether a road runs over node `(hx, hy)`. */
+  roadAt = (hx: number, hy: number): boolean =>
+    hx >= 0 && hx < this.nodeWidth && this.roadNodes.has(hy * this.nodeWidth + hx);
 }

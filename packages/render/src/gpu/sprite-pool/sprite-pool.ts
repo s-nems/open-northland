@@ -1,3 +1,4 @@
+import { WERESNAKE_TRIBE } from '@open-northland/data';
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { Container, type Sprite } from 'pixi.js';
 import { BloodCoats } from '../../data/effects/blood-coats.js';
@@ -59,6 +60,7 @@ import {
   anchorOf,
   boundsOf,
   type DamagedBuilding,
+  type DrawnWalker,
   keelOf,
   pixelHit,
   type ShipAfloat,
@@ -382,6 +384,7 @@ export class SpritePool {
     if (damageable && pe.attached && item !== undefined) this.applySelection(pe, item, frame, false);
   }
   private readonly ships: ShipAfloat[] = [];
+  private readonly walkers: DrawnWalker[] = [];
   /** Scratch {@link keelOf} answers in, valid until the next call. */
   private readonly keelScratch: number[] = [];
   private readonly portrait: PortraitSubject;
@@ -829,14 +832,17 @@ export class SpritePool {
     if (pe.held === -1) this.movingHeld.push(pe);
   }
 
-  /** Collect the drawn damaged buildings and ships off a new draw list. */
+  /** Collect the drawn damaged buildings, ships and walkers off a new draw list. */
   private collectOverlays(items: readonly SpriteDrawItem[]): void {
     this.damaged.length = 0;
     this.ships.length = 0;
+    this.walkers.length = 0;
     const vehicles = this.sheet?.bindings.vehicle;
     for (const item of items) {
       const kind = item.kind;
-      if (kind === 'building' || kind === 'palisade') {
+      if (kind === 'settler') {
+        if (leavesFootfall(item)) this.walkers.push({ ref: item.ref });
+      } else if (kind === 'building' || kind === 'palisade') {
         if (item.hpFrac !== undefined)
           this.damaged.push({
             ref: item.ref,
@@ -1042,6 +1048,12 @@ export class SpritePool {
     return this.ships;
   }
 
+  /** This frame's drawn adult humans on the map, valid until the next {@link reconcile}; off the culled
+   *  draw list like {@link shipsAfloat}. */
+  walkersDrawn(): readonly DrawnWalker[] {
+    return this.walkers;
+  }
+
   /** {@link keelOf} for `ref`, valid until the next call. */
   keelOf(ref: number): readonly number[] | undefined {
     const pe = this.pool.get(ref);
@@ -1242,4 +1254,16 @@ export class SpritePool {
     this.sceneCache.clear();
     this.incremental.clear();
   }
+}
+
+/** Original behavior: every adult human but a weresnake leaves footfall where it steps. A fog memory, a
+ *  portrait-only body and a worker shown inside a house stand on no map ground. */
+function leavesFootfall(item: SpriteDrawItem): boolean {
+  return (
+    item.young !== true &&
+    item.tribe !== WERESNAKE_TRIBE &&
+    item.ghost !== true &&
+    item.portraitOnly !== true &&
+    item.inHouse !== true
+  );
 }

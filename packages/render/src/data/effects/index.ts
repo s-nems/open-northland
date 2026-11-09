@@ -17,6 +17,17 @@ export {
   MAX_ACTIVE_COLLAPSES,
 } from './collapse.js';
 export {
+  type FootfallGround,
+  type FootfallKind,
+  footfallAt,
+  footfallGround,
+  MAX_STEP_NODES,
+  PRINT_SHOWN_TICKS,
+  printAlpha,
+  stepHeadingDegrees,
+  stepValency,
+} from './footfall.js';
+export {
   foldWreckMarks,
   MAX_ACTIVE_WRECKS,
   WRECK_LIFETIME_TICKS,
