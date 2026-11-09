@@ -10,6 +10,7 @@ import {
 } from '@open-northland/render';
 import type { DiplomacyState, FogView, HalfCellNode, WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { teamColourVersion } from '../../view/accessibility/team-colour.js';
 import { setMinimapReserve } from '../dom/minimap-reserve.js';
 import type { Rect } from '../geometry.js';
 import type { MapOverlayControls } from '../map-overlays.js';
@@ -224,6 +225,7 @@ function mountMinimapView(
   let groundAsked = false;
   let hasSeat = opts.viewer() !== null;
   let dirtyDots = true;
+  let dotColours = teamColourVersion();
   const placedLayout = (): MinimapLayout =>
     place === 'corner'
       ? minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width)
@@ -449,6 +451,10 @@ function mountMinimapView(
       const seat = fog?.player ?? viewer;
       // A spectator's seat switch changes the scope, colours and fog a plot under way was started with.
       if (plot.pending() && seat !== plotSeat) dirtyDots = true;
+      if (teamColourVersion() !== dotColours) {
+        dotColours = teamColourVersion();
+        dirtyDots = true;
+      }
       // A changed view starts over at once; otherwise a plot under way walks on before the gate is asked.
       if (dirtyDots || (!plot.pending() && claimDotReplot(snapshot, seat))) {
         plotSeat = seat;

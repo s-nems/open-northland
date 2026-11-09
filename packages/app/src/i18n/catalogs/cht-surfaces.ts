@@ -238,7 +238,7 @@ export const chtSurfaces = {
       accessibilityHeading: '無障礙',
       teamColorStrength: '隊伍顏色強度',
       teamColorStrengthTip:
-        '為色覺障礙玩家把每種玩家顏色推向更鮮明的自身版本。1 級為原始調色板，10 級最鮮明，且不會改變玩家對應的顏色。',
+        '為色覺障礙玩家增強小地圖、生命值心形、通知和面板中的玩家顏色。1 級為原始調色板，10 級最鮮明，且不會改變玩家對應的顏色。',
       colorBlindFilter: '色盲濾鏡',
       colorBlindFilterTip: '為色盲玩家提供的全螢幕校正濾鏡；關閉則畫面保持不變。',
       colorBlindFilterOff: '關閉',

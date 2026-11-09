@@ -1,5 +1,6 @@
 import type { ObserverSeatEntry } from '../../../game/match/observer-seats.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
+import { teamColourVersion } from '../../../view/accessibility/team-colour.js';
 import type { SeatArmy, SeatStanding, SeatStatus } from '../../summary/standings.js';
 import type { GoodIconPainter } from '../good-art.js';
 import { GLYPH } from '../icons.js';
@@ -285,9 +286,16 @@ export function createObserverStandings(deps: ObserverStandingsDeps): ObserverSt
   };
 
   let shown: readonly SeatStanding[] | null = null;
+  let colours = teamColourVersion();
   return {
     element: root,
     update: (standings) => {
+      if (teamColourVersion() !== colours) {
+        colours = teamColourVersion();
+        for (const chip of chips.values()) {
+          setStyleVar(chip.button, '--seat', observerSeatColour(chip.player, deps.playerColourOf));
+        }
+      }
       if (standings === shown) return;
       shown = standings;
       for (const standing of standings) {

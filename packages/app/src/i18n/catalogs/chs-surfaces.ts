@@ -239,7 +239,7 @@ export const chsSurfaces = {
       accessibilityHeading: '无障碍',
       teamColorStrength: '队伍颜色强度',
       teamColorStrengthTip:
-        '为色觉障碍玩家把每种玩家颜色推向更鲜明的自身版本。1 级为原始调色板，10 级最鲜明，且不会改变玩家对应的颜色。',
+        '为色觉障碍玩家增强小地图、生命值心形、通知和面板中的玩家颜色。1 级为原始调色板，10 级最鲜明，且不会改变玩家对应的颜色。',
       colorBlindFilter: '色盲滤镜',
       colorBlindFilterTip: '为色盲玩家提供的全屏校正滤镜；关闭则画面保持不变。',
       colorBlindFilterOff: '关闭',

@@ -1,8 +1,7 @@
-import { PLAYER_SWATCH_COLORS } from '../../../catalog/roster.js';
 import type { ObserverSeatEntry } from '../../../game/match/observer-seats.js';
 import { PLAYERS_SIGHT, type ViewerSeat, type WatchTarget } from '../../../game/viewer-seat.js';
 import { messages } from '../../../i18n/index.js';
-import { teamColourHex } from '../../../view/accessibility/team-colour.js';
+import { teamSwatchHex } from '../../../view/accessibility/team-colour.js';
 import { type KeyBindings, keyDisplayLabel } from '../../keybindings.js';
 import { watchActionOf } from '../../spectator-keys.js';
 import { GLYPH } from '../icons.js';
@@ -48,7 +47,7 @@ export function observerSeatLabels(seats: readonly ObserverSeatEntry[]): (seat: 
 
 /** A seat's swatch colour, through the owner-to-team-colour map when one is given. */
 export function observerSeatColour(seat: number, playerColourOf?: (player: number) => number): string {
-  return teamColourHex(PLAYER_SWATCH_COLORS[playerColourOf?.(seat) ?? seat] ?? 0);
+  return teamSwatchHex(playerColourOf?.(seat) ?? seat);
 }
 
 function keycap(label: string): HTMLElement {

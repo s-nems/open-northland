@@ -285,7 +285,7 @@ export const deSurfaces = {
       accessibilityHeading: 'Barrierefreiheit',
       teamColorStrength: 'Stärke der Spielerfarben',
       teamColorStrengthTip:
-        'Schiebt jede Spielerfarbe für farbenschwache Spieler zu einer kräftigeren Version ihrer selbst. Stufe 1 ist die ursprüngliche Palette; Stufe 10 ist die kräftigste, ohne zu ändern, welche Farbe ein Spieler hat.',
+        'Macht die Spielerfarben auf der Minikarte, den Lebensherzen, in Meldungen und Fenstern kräftiger, für farbenschwache Spieler. Stufe 1 ist die ursprüngliche Palette; Stufe 10 ist die kräftigste, ohne zu ändern, welche Farbe ein Spieler hat.',
       colorBlindFilter: 'Farbblindfilter',
       colorBlindFilterTip:
         'Ein bildschirmweiter Korrekturfilter für farbblinde Spieler; ausgeschaltet bleibt das Bild unverändert.',

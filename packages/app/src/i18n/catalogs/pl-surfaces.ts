@@ -246,7 +246,7 @@ export const plSurfaces = {
       accessibilityHeading: 'Dostępność',
       teamColorStrength: 'Natężenie kolorów graczy',
       teamColorStrengthTip:
-        'Przesuwa każdy kolor gracza w stronę bardziej wyrazistej wersji samego siebie dla graczy z wadami widzenia barw. Poziom 1 to oryginalna paleta; poziom 10 jest najbardziej wyrazisty i nie zmienia tego, jaki kolor ma gracz.',
+        'Wzmacnia kolory graczy na minimapie, serduszkach zdrowia, w powiadomieniach i panelach, dla graczy z wadami widzenia barw. Poziom 1 to oryginalna paleta, poziom 10 jest najbardziej wyrazisty i nie zmienia tego, jaki kolor ma gracz.',
       colorBlindFilter: 'Filtr daltonizmu',
       colorBlindFilterTip:
         'Obejmujący cały ekran filtr korekcyjny dla daltonistów; wyłączenie pozostawia obraz bez zmian.',

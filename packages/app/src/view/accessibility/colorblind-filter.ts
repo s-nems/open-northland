@@ -4,10 +4,13 @@ import { type ColorBlindFilter, onStoredSettingsChange, readStoredSettings } fro
 /**
  * Whole-viewport colour-blindness correction (daltonization) as one SVG `feColorMatrix` behind a CSS
  * `filter`, so it covers the world and the UI alike. The error a deficient eye loses, `(I - M_sim)`,
- * is routed into channels it still separates: `M_correct = I + M_shift · (I - M_sim)`, the
- * Fidaner-Lin-Ozguven daltonization. `M_sim` are published RGB simulation matrices; the tritanopia
- * shift is our approximation.
+ * is routed into channels it still separates: `M_correct = I + M_shift · (I - M_sim)`, after
+ * Fidaner, Lin and Ozguven's daltonization. An approximation: `M_sim` are the widely published
+ * single-matrix sRGB simulations (not Brettel's LMS projection), applied to gamma-encoded values, and
+ * the tritanopia shift is our own.
  */
+
+type Deficiency = Exclude<ColorBlindFilter, 'off'>;
 type Vec3 = readonly [number, number, number];
 type Mat3 = readonly [Vec3, Vec3, Vec3];
 
@@ -53,8 +56,8 @@ function matMul(a: Mat3, b: Mat3): Mat3 {
   ];
 }
 
-/** RGB-space colour-vision-deficiency simulation matrices (simplified Brettel form). */
-const SIM: Record<Exclude<ColorBlindFilter, 'off'>, Mat3> = {
+/** What each deficiency sees of an sRGB colour, as one matrix per deficiency. */
+const CVD_SIMULATION: Record<Deficiency, Mat3> = {
   protanopia: [
     [0.567, 0.433, 0],
     [0.558, 0.442, 0],
@@ -86,10 +89,8 @@ const SHIFT_BLUE_YELLOW: Mat3 = [
   [0, 0, 0],
 ];
 
-type Deficiency = Exclude<ColorBlindFilter, 'off'>;
-
 function corrected3x3(type: Deficiency): Mat3 {
-  const sim = SIM[type];
+  const sim = CVD_SIMULATION[type];
   const shift = type === 'tritanopia' ? SHIFT_BLUE_YELLOW : SHIFT_RED_GREEN;
   return matAdd(IDENTITY3, matMul(shift, matSub(IDENTITY3, sim)));
 }

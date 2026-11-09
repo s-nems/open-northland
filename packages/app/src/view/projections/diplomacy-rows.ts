@@ -1,6 +1,5 @@
 import type { MapRelationFlag } from '@open-northland/data';
 import type { DiplomacyState, OpenTribute, TradeOffer } from '@open-northland/sim';
-import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import type { DiplomacyMapNation } from '../../hud/diplomacy-map/labels.js';
 import type {
   DeclarationBlock,
@@ -11,10 +10,7 @@ import type {
 } from '../../hud/dom/diplomacy-window/model.js';
 import type { MetSeat } from '../../hud/tool-panel/messages/index.js';
 import type { SessionHost } from '../../session/index.js';
-import { teamColour } from '../accessibility/team-colour.js';
-
-/** A colour slot's swatch as the team-colour-strength setting shows it; an unknown slot is black. */
-const swatchColour = (slot: number): number => teamColour(PLAYER_SWATCH_COLORS[slot] ?? 0);
+import { teamSwatch } from '../accessibility/team-colour.js';
 
 /** The world reads the roster projection needs, answered synchronously: the stances and the met
  *  flags are per-frame host reads, the rest the last answers a `LastAnswerCache` holds. */
@@ -135,7 +131,7 @@ export function diplomacyMapNations(
       player,
       ...(name !== undefined ? { name } : {}),
       ...(tribe !== undefined ? { tribe } : {}),
-      colour: swatchColour(colourOf(player)),
+      colour: teamSwatch(colourOf(player)),
       own,
       hasPage: player !== local,
       ...(own || opts.observer
@@ -178,7 +174,7 @@ export function diplomacyPanelRows(sim: DiplomacySimView, opts: DiplomacyRosterO
       player: other,
       ...(name !== undefined ? { name } : {}),
       ...(tribe !== undefined ? { tribe } : {}),
-      colour: swatchColour(colourOf(other)),
+      colour: teamSwatch(colourOf(other)),
       towardYou,
       yourStance,
       ...(friends ? { goodsTraded: sim.goodsTradedWith(local, other) } : {}),
