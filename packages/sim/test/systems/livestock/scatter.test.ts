@@ -15,7 +15,7 @@ import { SCATTER_CALM_TICKS, SCATTER_RANGE } from '../../../src/systems/livestoc
 import { hexNodeDistance, manhattan } from '../../../src/systems/spatial/metric.js';
 import { entityNode } from '../../../src/systems/spatial/nodes.js';
 import { nextTickCtxOf } from '../../fixtures/context.js';
-import { COW_GOOD, cowAt, ctxOf, farmAt, livestockSim, scoutAt } from './support.js';
+import { breederAt, COW_GOOD, cowAt, ctxOf, farmAt, livestockSim, scoutAt } from './support.js';
 
 const P0 = 0;
 const P1 = 1;
@@ -135,6 +135,7 @@ describe('livestock scatter - owned stock runs from an enemy scout', () => {
     const sim = livestockSim();
     setDiplomacyStance(sim.world, P0, P1, 'enemy');
     const farm = farmAt(sim, 30, 30, { owner: P1, stock: [[COW_GOOD, 1]] });
+    breederAt(sim, 30, 30, farm);
     const cow = cowAt(sim, 30, 34, { owner: P1, farm });
     const scout = scoutAt(sim, 30, 34 + SCATTER_RANGE, P0);
     livestockCaptureSystem(sim.world, ctxOf(sim));

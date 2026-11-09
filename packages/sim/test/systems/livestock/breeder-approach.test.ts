@@ -118,6 +118,7 @@ describe('a breeder approaching moving livestock', () => {
     typeIds[19 * 64 + 26] = 1;
     const sim = new Simulation({ seed: 1, content: livestockContent(), map: { ...map, typeIds } });
     const farm = farmAt(sim, 20, 20, { owner: 0 });
+    breederAt(sim, 20, 20, farm);
     const animal = cowAt(sim, 26, 19, { owner: 0, farm });
 
     livestockAssignmentSystem(sim.world, ctxOf(sim));

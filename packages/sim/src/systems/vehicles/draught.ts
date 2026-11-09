@@ -10,6 +10,7 @@ import {
   Owner,
   ownerOf,
   Position,
+  ReleasedFrom,
   Resting,
   Settler,
   StayPoint,
@@ -46,7 +47,8 @@ export const DRAUGHT_BREEDING_PAIR = 2;
 /**
  * The owner's animal of `tribe` the cart takes: alive on the map, not inside a farm, booked by no visit
  * or other cart, grown up, not scattering, and on the door's continent. Each farm keeps its first
- * {@link DRAUGHT_BREEDING_PAIR} eligible adults by id; unassigned animals keep a separate pair. The
+ * {@link DRAUGHT_BREEDING_PAIR} eligible adults by id, an animal a farm let go counting with that farm;
+ * other unassigned animals keep a separate pair. The
  * nearest remaining animal by hexagon distance wins, ties to the lower id. The scan walks the owned
  * livestock only, since only a catchable species is ever owned and a wild animal carries no owner.
  * Null for an unowned cart.
@@ -75,7 +77,7 @@ export function pickDraughtAnimal(
     if (world.has(e, Frightened)) continue;
     const node = entityNode(world, terrain, e);
     if (terrain.componentOf(node) !== continent) continue;
-    const herd = farm?.farm ?? null;
+    const herd = farm?.farm ?? world.tryGet(e, ReleasedFrom)?.farm ?? null;
     const count = retained.get(herd) ?? 0;
     if (count < DRAUGHT_BREEDING_PAIR) {
       retained.set(herd, count + 1);

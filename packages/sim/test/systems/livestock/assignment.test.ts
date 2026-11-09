@@ -5,7 +5,11 @@ import {
   Livestock,
   MoveGoal,
   Owner,
+  Production,
+  ProductionCounters,
+  ReleasedFrom,
   StayPoint,
+  Stockpile,
 } from '../../../src/components/index.js';
 import { ZERO } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -16,7 +20,19 @@ import {
   livestockAssignmentSystem,
 } from '../../../src/systems/index.js';
 import { waterColumnMap } from '../../fixtures/terrain.js';
-import { BEAR_TRIBE, cowAt, ctxOf, farmAt, HEADQUARTERS, livestockContent, livestockSim } from './support.js';
+import {
+  BEAR_TRIBE,
+  BREED_TICKS,
+  breederAt,
+  cowAt,
+  ctxOf,
+  DEER_GOOD,
+  DEER_TRIBE,
+  farmAt,
+  HEADQUARTERS,
+  livestockContent,
+  livestockSim,
+} from './support.js';
 
 const P0 = 0;
 const P1 = 1;
@@ -44,6 +60,7 @@ describe('livestock assignment - a herd keeps to its farm, loose stock to the ba
   it("anchors a farm's animal on the farm door, the original's birth point for the herd", () => {
     const sim = livestockSim();
     const farm = farmAt(sim, 20, 20, { owner: P0 });
+    breederAt(sim, 20, 20, farm);
     const cow = cowAt(sim, 4, 4, { owner: P0, farm });
 
     livestockAssignmentSystem(sim.world, ctxOf(sim)); // tick 0 - the period fires
@@ -54,6 +71,7 @@ describe('livestock assignment - a herd keeps to its farm, loose stock to the ba
   it('walks a farm animal home to a spot beside the door, never into the doorway', () => {
     const sim = livestockSim();
     const farm = farmAt(sim, 20, 20, { owner: P0 });
+    breederAt(sim, 20, 20, farm);
     const cow = cowAt(sim, 4, 4, { owner: P0, farm });
 
     livestockAssignmentSystem(sim.world, ctxOf(sim));
@@ -69,6 +87,7 @@ describe('livestock assignment - a herd keeps to its farm, loose stock to the ba
   it('leaves a farm animal inside the 15-node leash where it grazes', () => {
     const sim = livestockSim();
     const farm = farmAt(sim, 20, 20, { owner: P0 });
+    breederAt(sim, 20, 20, farm);
     const grazing = cowAt(sim, 20 + FARM_HERD_LEASH_NODES, 20, { owner: P0, farm });
     const strayed = cowAt(sim, 20 + FARM_HERD_LEASH_NODES + 2, 20, { owner: P0, farm });
 
@@ -89,6 +108,68 @@ describe('livestock assignment - a herd keeps to its farm, loose stock to the ba
 
     expect(sim.world.has(cow, FarmAnimal)).toBe(false);
     expect(onRing(anchorDistance(sim, cow, 24, 24))).toBe(true);
+  });
+
+  it('lets go of a species no breeder there tends, and keeps it grazing beside that farm', () => {
+    const sim = livestockSim();
+    farmAt(sim, 40, 40, { owner: P0, buildingType: HEADQUARTERS });
+    const farm = farmAt(sim, 20, 20, { owner: P0 });
+    const breeder = breederAt(sim, 20, 20, farm);
+    sim.world.add(breeder, ProductionCounters, { counters: [[DEER_GOOD, 0]], cursor: 0 }); // cattle only
+    const cow = cowAt(sim, 22, 20, { owner: P0, farm });
+    const deer = cowAt(sim, 23, 20, { owner: P0, farm, tribe: DEER_TRIBE });
+
+    livestockAssignmentSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(cow, FarmAnimal).farm).toBe(farm);
+    expect(sim.world.has(deer, FarmAnimal)).toBe(false);
+    expect(sim.world.get(deer, ReleasedFrom).farm).toBe(farm);
+    expect(onRing(anchorDistance(sim, deer, 20, 20))).toBe(true);
+    expect(sim.world.get(farm, Stockpile).amounts.get(DEER_GOOD) ?? 0).toBe(0);
+  });
+
+  it('keeps a species while its breeding cycle runs, though the order that started it ran out', () => {
+    const sim = livestockSim();
+    const farm = farmAt(sim, 20, 20, { owner: P0 });
+    const breeder = breederAt(sim, 20, 20, farm);
+    sim.world.add(breeder, ProductionCounters, { counters: [[DEER_GOOD, 0]], cursor: 0 });
+    const deer = cowAt(sim, 23, 20, { owner: P0, farm, tribe: DEER_TRIBE });
+    sim.world.add(farm, Production, { cycles: [{ elapsed: 0, duration: BREED_TICKS, goodType: DEER_GOOD }] });
+
+    livestockAssignmentSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(deer, FarmAnimal).farm).toBe(farm);
+  });
+
+  it('forgets the farm that let an animal go once another player owns the animal', () => {
+    const sim = livestockSim();
+    farmAt(sim, 40, 40, { owner: P1, buildingType: HEADQUARTERS });
+    const farm = farmAt(sim, 20, 20, { owner: P0 });
+    const cow = cowAt(sim, 22, 20, { owner: P0, farm });
+    livestockAssignmentSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(cow, ReleasedFrom).farm).toBe(farm);
+
+    sim.world.mut(cow, Owner).player = P1; // a scout's capture
+    livestockAssignmentSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(cow, ReleasedFrom)).toBe(false);
+    expect(onRing(anchorDistance(sim, cow, 40, 40))).toBe(true);
+  });
+
+  it('lets a farm with no breeder go of its whole herd, which stays until the farm falls', () => {
+    const sim = livestockSim();
+    farmAt(sim, 40, 40, { owner: P0, buildingType: HEADQUARTERS });
+    const farm = farmAt(sim, 20, 20, { owner: P0 });
+    const cow = cowAt(sim, 22, 20, { owner: P0, farm });
+
+    livestockAssignmentSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(cow, FarmAnimal)).toBe(false);
+    expect(onRing(anchorDistance(sim, cow, 20, 20))).toBe(true);
+
+    sim.world.destroy(farm);
+    livestockAssignmentSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(cow, ReleasedFrom)).toBe(false);
+    expect(onRing(anchorDistance(sim, cow, 40, 40))).toBe(true);
   });
 
   it('rings the headquarters with the stock no farm holds; same-yard members take distinct spots', () => {

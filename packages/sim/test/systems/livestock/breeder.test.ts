@@ -8,6 +8,7 @@ import {
   MoveGoal,
   Position,
   Production,
+  ProductionCounters,
   SettlerProgress,
   Stockpile,
   setSignpostNavigation,
@@ -17,6 +18,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import {
   ANIMAL_ADULT_AGE_TICKS,
+  LIVESTOCK_ASSIGN_PERIOD_TICKS,
   livestockAssignmentSystem,
   livestockGrowthSystem,
   livestockSummonSystem,
@@ -35,6 +37,7 @@ import {
   COW_GOOD,
   cowAt,
   ctxOf,
+  DEER_GOOD,
   DEER_TRIBE,
   farmAt,
   HEADQUARTERS,
@@ -83,6 +86,22 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     expect(sim.world.tryGet(near, FarmAnimal)?.farm).toBe(farm);
     expect(sim.world.has(far, FarmAnimal)).toBe(false);
     expect(herdRow(sim, farm)).toBe(1);
+  });
+
+  it('hands a species its farm stopped tending to the farm whose breeder takes it', () => {
+    const sim = livestockSim();
+    const { farm: cattleFarm, breeder: cattleBreeder } = farmWithBreeder(sim);
+    sim.world.add(cattleBreeder, ProductionCounters, { counters: [[DEER_GOOD, 0]], cursor: 0 });
+    const deer = [0, 1].map((i) =>
+      cowAt(sim, 22 + i, 20, { owner: P0, farm: cattleFarm, tribe: DEER_TRIBE }),
+    );
+    const deerFarm = farmAt(sim, 30, 20, { owner: P0 });
+    const deerBreeder = breederAt(sim, 30, 20, deerFarm);
+    sim.world.add(deerBreeder, ProductionCounters, { counters: [[COW_GOOD, 0]], cursor: 0 });
+
+    for (let tick = 0; tick < 2 * LIVESTOCK_ASSIGN_PERIOD_TICKS; tick++) sim.step();
+
+    expect(deer.map((animal) => sim.world.tryGet(animal, FarmAnimal)?.farm)).toEqual([deerFarm, deerFarm]);
   });
 
   it("adopts for its own player's animal farm of another tribe", () => {
@@ -187,6 +206,7 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
   it('recounts a farm row when the herding pass lets an animal across water go', () => {
     const sim = new Simulation({ seed: 1, content: livestockContent(), map: waterColumnMap(32, 32, 16) });
     const farm = farmAt(sim, FARM_AT.hx, FARM_AT.hy, { owner: P0 });
+    breederAt(sim, FARM_AT.hx, FARM_AT.hy, farm);
     const stranded = cowAt(sim, 36, 20, { owner: P0, farm });
     cowAt(sim, 4, 4, { owner: P0, farm });
     recountHerdRows(sim.world, ctxOf(sim), farm);

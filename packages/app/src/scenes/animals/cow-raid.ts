@@ -18,6 +18,7 @@ import {
   placeBuiltSandboxBuilding,
   spawnAnimalHerdDirect,
   spawnSettlerDirect,
+  spawnWorkersAtDoor,
 } from '../../game/sandbox/index.js';
 import { holdsSometimeDuring } from '../runtime.js';
 import type { SceneDefinition } from '../types.js';
@@ -25,7 +26,8 @@ import type { SceneDefinition } from '../types.js';
 /**
  * A cow raid: a red scout runs at a blue animal farm's cattle and turns back short of them. The cows in his
  * reach run, each its own way, and none is his; the sheep grazing beyond his reach keep grazing. Once he is
- * gone and they have calmed, the cows walk back to the farm, still in its herd.
+ * gone and they have calmed, the cows walk back to the farm, still in its herd. A breeder works the farm, so
+ * it keeps its herd, and may thin each herd to its breeding pair meanwhile.
  */
 
 const MAP_W = 44;
@@ -70,6 +72,7 @@ function build(sim: Simulation): void {
     });
     for (const animal of animals) sim.world.add(animal, FarmAnimal, { farm, summoner: null });
   }
+  spawnWorkersAtDoor(sim, farm, 1);
   const from = fromDoor(SCOUT_FROM_DOOR);
   const scout = spawnSettlerDirect(sim, JOB_SCOUT, from.x, from.y, ENEMY_PLAYER);
   const turnCell = fromDoor(TURN_FROM_DOOR);
@@ -107,13 +110,15 @@ function sheepRan(sim: Simulation): boolean {
   return farmHerdOf(sim, ANIMAL_TRIBE_SHEEP).some((e) => sim.world.has(e, Frightened));
 }
 
-/** Whether both herds are whole, calm and inside their farm's leash. */
+/** Whether both herds keep at least their breeding pair, calm and inside their farm's leash. */
 function homeAgain(sim: Simulation): boolean {
   const door = buildingDoorNode(sim, BUILDING_ANIMAL_FARM, FARM.x, FARM.y);
-  const animals = [...farmHerdOf(sim, ANIMAL_TRIBE_CATTLE), ...farmHerdOf(sim, ANIMAL_TRIBE_SHEEP)];
+  const cattle = farmHerdOf(sim, ANIMAL_TRIBE_CATTLE);
+  const sheep = farmHerdOf(sim, ANIMAL_TRIBE_SHEEP);
   return (
-    animals.length === HERD_SIZE * 2 &&
-    animals.every((e) => {
+    cattle.length >= systems.BREEDING_PAIR &&
+    sheep.length >= systems.BREEDING_PAIR &&
+    [...cattle, ...sheep].every((e) => {
       if (sim.world.has(e, Frightened)) return false;
       const p = sim.world.get(e, Position);
       const at = nodeOfPosition(p.x, p.y);

@@ -6,22 +6,25 @@ import {
   Livestock,
   MoveGoal,
   Owner,
+  ownerOf,
   Position,
+  ReleasedFrom,
   Settler,
   StayPoint,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { System } from '../context.js';
+import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { interactionNodeId } from '../footprint/interaction.js';
 import { isTravelling } from '../movement/nav-state.js';
 import { stayPointRangeOf } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
-import { acrossWater, farmStands, recountHerdRows } from './herd.js';
+import { acrossWater, farmStands, recountHerdRows, speciesGoodOf } from './herd.js';
 import { nearestYardDoor, type StrayYards, strayYardOf } from './stray-yard.js';
+import { tendedSpeciesOf } from './tended.js';
 
 /** Re-anchoring cadence (ticks): a slow sweep, so claims, adoptions, new farms, and demolitions converge
  *  within a period. Approximated; the original's herding cadence is not readable. */
@@ -83,6 +86,11 @@ export function territoryRangeIn(world: World, content: ContentSet, e: Entity): 
  * held by no farm, onto a spot ringing its player's base door. An idle animal beyond its leash walks back
  * to a spot beside that door; inside the leash the grazing drive takes over.
  *
+ * A farm lets go of every animal whose species no breeder employed there tends, all of them when it
+ * employs none; the animal keeps grazing beside that farm's door, free for a farm whose breeder takes the
+ * species, until it is adopted or the farm falls (named addition: a farm holding a species it does not
+ * breed would keep a second farm of that species from ever starting).
+ *
  * A farm's animal standing across water from its door leaves the herd for the same yard, so the farm's
  * breeder neither chases nor counts a beast it can never reach, and a stray answers only to a yard on its
  * own land, so an island settlement keeps its strays and one with no building there leaves them be (named
@@ -100,6 +108,15 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
   // Grouped by the door each animal answers to, so the home spots around one door are handed out once.
   const byDoor = new Map<NodeId, Entity[]>();
   const strays: Entity[] = [];
+  const tendedByFarm = new Map<Entity, ReadonlySet<number>>();
+  const tendedAt = (farm: Entity): ReadonlySet<number> => {
+    let tended = tendedByFarm.get(farm);
+    if (tended === undefined) {
+      tended = tendedSpeciesOf(world, ctx, farm);
+      tendedByFarm.set(farm, tended);
+    }
+    return tended;
+  };
   for (const e of world.canonicalQuery(Livestock, Owner, Settler, Position)) {
     // A cart's recruit is walking to its cart: herding resumes on release.
     if (world.has(e, DraughtAnimal)) continue;
@@ -110,12 +127,25 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
       if (held.summoner !== null) continue; // the slaughter summon owns its feet
       const door = interactionNodeId(world, ctx, terrain, held.farm);
       if (door === null) continue;
+      const farm = held.farm;
       if (!acrossWater(world, terrain, e, door)) {
+        const good = speciesGoodOf(world, ctx, e);
+        if (good === null || !tendedAt(farm).has(good)) {
+          world.remove(e, FarmAnimal);
+          world.add(e, ReleasedFrom, { farm });
+          recountHerdRows(world, ctx, farm);
+        }
         push(byDoor, door, e);
         continue;
       }
       world.remove(e, FarmAnimal);
-      recountHerdRows(world, ctx, held.farm);
+      recountHerdRows(world, ctx, farm);
+    } else {
+      const door = releasingFarmDoor(world, ctx, terrain, e);
+      if (door !== null) {
+        push(byDoor, door, e);
+        continue;
+      }
     }
     strays.push(e);
   }
@@ -152,6 +182,26 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
     });
   }
 };
+
+/** The door of the farm that let `animal` go while that farm still stands, is its owner's and shares its
+ *  land; otherwise the release is forgotten and null sends the animal to the base yard. */
+function releasingFarmDoor(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  animal: Entity,
+): NodeId | null {
+  const released = world.tryGet(animal, ReleasedFrom);
+  if (released === undefined) return null;
+  const farm = released.farm;
+  const door =
+    farmStands(world, ctx, farm) && ownerOf(world, farm) === world.get(animal, Owner).player
+      ? interactionNodeId(world, ctx, terrain, farm)
+      : null;
+  if (door !== null && !acrossWater(world, terrain, animal, door)) return door;
+  world.remove(animal, ReleasedFrom);
+  return null;
+}
 
 function push(byDoor: Map<NodeId, Entity[]>, door: NodeId, e: Entity): void {
   const herd = byDoor.get(door);

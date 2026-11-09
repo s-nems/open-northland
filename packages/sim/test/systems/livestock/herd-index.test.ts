@@ -53,7 +53,7 @@ describe('the herd indexes', () => {
     expect(world.verifyCaches()).toEqual([]);
   });
 
-  it('stays coherent through live breeder cycles: adoption, take, births and slaughter', () => {
+  it('stays coherent through live breeder cycles: adoption, release, births and slaughter', () => {
     const sim = livestockSim();
     const world = sim.world;
     const farm = farmAt(sim, 20, 20, {
@@ -66,6 +66,7 @@ describe('the herd indexes', () => {
     breederAt(sim, 20, 20, farm);
     breederAt(sim, 20, 21, farm);
     cowAt(sim, 23, 20, { owner: 0 }); // a stray to adopt
+    // A farm employing no breeder, which lets its herd go to the farm that has one.
     const neighbour = farmAt(sim, 8, 8, { owner: 0 });
     for (let i = 0; i < 3; i++) cowAt(sim, 10 + i, 8, { owner: 0, farm: neighbour });
     // A farm past the pair, so its breeder slaughters.
@@ -79,9 +80,9 @@ describe('the herd indexes', () => {
       sim.step();
       expect(world.verifyCaches()).toEqual([]);
     }
-    // Adopted and taken to a pair, then bred past it; the abattoir killed one of its three.
+    // Adopted to a pair, then bred past it; the abattoir killed one of its three.
     expect(herdOf(world, farm).length).toBeGreaterThan(BREEDING_PAIR);
-    expect(herdOf(world, neighbour)).toHaveLength(BREEDING_PAIR);
+    expect(herdOf(world, neighbour)).toHaveLength(0);
     expect(doomed.filter((cow) => world.isAlive(cow))).toHaveLength(BREEDING_PAIR);
     expect(world.get(abattoir, Stockpile).amounts.get(MEAT)).toBeGreaterThan(0);
   });

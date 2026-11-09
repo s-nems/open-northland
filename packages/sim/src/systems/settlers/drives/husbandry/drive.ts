@@ -81,7 +81,7 @@ export function planBreeder(
   recountHerdRows(world, ctx, farm);
 
   const species = tendedSpecies(plan, farm);
-  if (adoptStray(plan, farm)) return true;
+  if (adoptStray(plan, farm, species)) return true;
   for (const good of species) {
     if (takeFromNeighbour(plan, farm, good)) return true;
     if (flushFullWare(plan, farm, good)) return true;
@@ -139,33 +139,37 @@ function contentProduceAtomic(ctx: SystemContext, good: number): number | null {
 }
 
 /** The species this breeder tends, in its own craft rotation's order: its production choice narrowed to
- *  the herds the farm breeds. */
+ *  the herds the farm breeds and its trade may produce, the test `tendedSpeciesOf` applies per farm. */
 function tendedSpecies(plan: PlannerContext, farm: Entity): readonly number[] {
   const { world, ctx, entity: e } = plan;
   const recipes = recipesByProductOf(world, ctx, farm);
   if (recipes === undefined) return [];
-  return craftablePool(world, ctx, e, recipes).filter(
-    (good) => livestockTribeOfGood(ctx.content, good) !== null,
-  );
+  const atomics = jobAtomics(ctx, plan.jobType);
+  return craftablePool(world, ctx, e, recipes).filter((good) => {
+    if (livestockTribeOfGood(ctx.content, good) === null) return false;
+    const produce = contentProduceAtomic(ctx, good);
+    return produce !== null && atomics.has(produce);
+  });
 }
 
 /**
- * Adopt the player's nearest unheld animal of either species into this herd, while the herd has room.
- * Instant, as the original's attachment is: the animal then walks itself to the farm on the herding sweep.
- * Only an animal inside the farm's settlement reach is taken: across water it could never walk in, and
- * from another settlement of the same player it would be marched away from its own (our own rule).
+ * Adopt the player's nearest unheld animal of a species this breeder tends into this herd, while the herd
+ * has room. Instant, as the original's attachment is: the animal then walks itself to the farm on the
+ * herding sweep. Only an animal inside the farm's settlement reach is taken: across water it could never
+ * walk in, and from another settlement of the same player it would be marched away from its own (our own
+ * rule). A species no breeder here tends is never taken, as the herding sweep would let it go again.
  *
  * Approximation: the original gates the adoption on the row of the breeder's own production species; with
  * a rotation over both species there is no single one, so each candidate answers to its own row.
  */
-function adoptStray(plan: PlannerContext, farm: Entity): boolean {
+function adoptStray(plan: PlannerContext, farm: Entity, species: readonly number[]): boolean {
   const { world, ctx, terrain } = plan;
   const owner = ownerOf(world, farm);
   if (owner === undefined) return false;
   // One herd count per species up front: the rows are a fact about the farm, not about each candidate.
   const room = new Map<number, boolean>();
   let anyRoom = false;
-  for (const good of breedableSpeciesOf(world, ctx, farm)) {
+  for (const good of species) {
     const roomy = hasRoomForAnother(world, ctx, farm, good);
     room.set(good, roomy);
     anyRoom ||= roomy;

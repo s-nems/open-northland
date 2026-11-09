@@ -1,4 +1,4 @@
-import { cellAnchorNode, components, type Simulation } from '@open-northland/sim';
+import { cellAnchorNode, components, type Entity, type Simulation } from '@open-northland/sim';
 import { ANIMAL_TRIBE_CATTLE } from '../../catalog/animal-tribes.js';
 import { grassTerrain } from '../../catalog/buildings.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
@@ -15,7 +15,7 @@ import {
 import { goodBySlug } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
 
-const { Building, FarmAnimal, JobAssignment, Stockpile } = components;
+const { Building, FarmAnimal, JobAssignment, ReleasedFrom, Settler, Stockpile } = components;
 
 function build(sim: Simulation): void {
   const joinery = placeBuiltSandboxBuilding(sim, BUILDING_JOINERY_02, 9, 12);
@@ -37,7 +37,8 @@ function build(sim: Simulation): void {
     const good = goodBySlug(sim, 'oxcart');
     sim.enqueueSetup({ kind: 'setProductionGoods', entity: worker, goods: [good] });
   }
-  // Only the first farm has a spare adult. Both must retain two cows after the first cart harnesses.
+  // Only the first farm has a spare adult. Both must retain two cows after the first cart harnesses. The
+  // farms employ no breeder, so they let their herds go, and each pair keeps to the farm it left.
   for (const [x, y, count] of [
     [23, 7, 3],
     [23, 17, 2],
@@ -76,16 +77,14 @@ export const vehicleOxYardScene: SceneDefinition = {
     {
       label: 'each farm kept its breeding pair',
       predicate: (sim) => {
+        const farmOf = (e: Entity): Entity | undefined =>
+          sim.world.tryGet(e, FarmAnimal)?.farm ?? sim.world.tryGet(e, ReleasedFrom)?.farm;
         const farms = [...sim.world.query(Building)].filter(
           (e) => sim.world.get(e, Building).buildingType === BUILDING_ANIMAL_FARM,
         );
         return (
           farms.length === 2 &&
-          farms.every(
-            (farm) =>
-              [...sim.world.query(FarmAnimal)].filter((e) => sim.world.get(e, FarmAnimal).farm === farm)
-                .length === 2,
-          )
+          farms.every((farm) => [...sim.world.query(Settler)].filter((e) => farmOf(e) === farm).length === 2)
         );
       },
     },

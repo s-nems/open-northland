@@ -5,6 +5,7 @@ import {
   Livestock,
   Owner,
   Person,
+  ReleasedFrom,
   Signpost,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -57,8 +58,8 @@ export function tearDownLoser(world: World, ctx: SystemContext, player: number):
   }
 }
 
-/** Drop the claim and whatever bound the animal to the seat: its farm, a summons to its door, a cart's
- *  recruitment. It takes a fresh wild range where it stands and grazes on from there. */
+/** Drop the claim and whatever bound the animal to the seat: its farm or the farm that let it go, a summons
+ *  to its door, a cart's recruitment. It takes a fresh wild range where it stands and grazes on from there. */
 function turnWild(world: World, ctx: SystemContext, e: Entity): void {
   world.remove(e, Owner);
   let walking = false;
@@ -66,6 +67,7 @@ function turnWild(world: World, ctx: SystemContext, e: Entity): void {
     walking = world.get(e, FarmAnimal).summoner !== null;
     world.remove(e, FarmAnimal);
   }
+  if (world.has(e, ReleasedFrom)) world.remove(e, ReleasedFrom);
   if (world.has(e, DraughtAnimal)) {
     world.remove(e, DraughtAnimal);
     walking = true;

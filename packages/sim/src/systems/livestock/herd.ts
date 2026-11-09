@@ -6,6 +6,7 @@ import {
   ownerOf,
   Position,
   Production,
+  ReleasedFrom,
   Settler,
   StayPoint,
   Stockpile,
@@ -110,8 +111,10 @@ export function herdRoom(world: World, ctx: SystemContext, farm: Entity, species
   return stockCapacity(world, ctx, farm, speciesGood) - held;
 }
 
-/** Attach `animal` to `farm`'s herd, dropping whatever summon its previous farm held it under. */
+/** Attach `animal` to `farm`'s herd, dropping whatever summon its previous farm held it under and the
+ *  farm that let it go. */
 export function attachToFarm(world: World, animal: Entity, farm: Entity): void {
+  if (world.has(animal, ReleasedFrom)) world.remove(animal, ReleasedFrom);
   const held = world.tryGet(animal, FarmAnimal);
   if (held === undefined) {
     world.add(animal, FarmAnimal, { farm, summoner: null });

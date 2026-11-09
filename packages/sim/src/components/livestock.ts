@@ -20,6 +20,13 @@ export const FarmAnimal = defineComponent<{
 }>('FarmAnimal', 'economy');
 
 /**
+ * A claimed animal its farm let go because no breeder employed there tends its species (named addition):
+ * it keeps grazing beside that farm's door, free for any farm whose breeder takes the species, until it is
+ * adopted or the farm falls. `systems/livestock` owns the lifecycle.
+ */
+export const ReleasedFrom = defineComponent<{ farm: Entity }>('ReleasedFrom', 'economy', { simOnly: true });
+
+/**
  * A bred animal still young (the original's `baby_animal` job 48): it counts in its farm's herd but
  * neither breeds nor is slaughtered before it grows up.
  */
