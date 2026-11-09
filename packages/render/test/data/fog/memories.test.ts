@@ -52,22 +52,48 @@ describe('FogMemories', () => {
     expect(memories.syncRoads(null)).toEqual({ added: [FAR], removed: [] });
   });
 
-  it("gives every seat's memory the start buildings, also one begun after a building fell", () => {
-    const house = entity(1, 5, 4, { Building: { buildingType: 7, tribe: 1, built: ONE, level: 0 } });
+  it("gives every seat's memory the start buildings, one begun later only those still standing", () => {
+    const building = { buildingType: 7, tribe: 1, built: ONE, level: 0 };
+    const house = entity(1, 5, 4, { Building: building });
+    const razed = entity(2, 9, 4, { Building: building });
     const memories = new FogMemories(NODE_WIDTH);
     memories.knowStartBuildings();
     const own = watchingNodes(OWN, [], 1);
     memories.setViews(own, [own]);
-    memories.updateGhosts(snapshotOf([house]), undefined, undefined);
+    memories.updateGhosts(snapshotOf([house, razed]), undefined, undefined);
     const drawn = () => {
       const ghosts = memories.drawnGhosts;
-      return ghosts === null ? [] : drawableGhosts(ghosts);
+      return ghosts === null ? [] : drawableGhosts(ghosts).map((g) => g.ref);
     };
-    expect(drawn().map((g) => g.ref)).toEqual([house.id]);
+    expect(drawn()).toEqual([house.id, razed.id]);
     const ally = watchingNodes(ALLY, [], 1);
     memories.setViews(ally, [own, ally]);
-    memories.updateGhosts(snapshotOf([]), undefined, undefined);
-    expect(drawn().map((g) => g.ref)).toEqual([house.id]);
+    memories.updateGhosts(snapshotOf([house]), undefined, undefined);
+    expect(drawn()).toEqual([house.id]);
+    // The first seat never saw the razing: it still remembers both.
+    memories.setViews(own, [own, ally]);
+    expect(drawn()).toEqual([house.id, razed.id]);
+  });
+
+  it("restores a save into its own seat's memory alone, its roads waiting for that seat's sight", () => {
+    const house = entity(1, 5, 4, { Building: { buildingType: 7, tribe: 1, built: ONE, level: 0 } });
+    const memories = new FogMemories(NODE_WIDTH);
+    const ghost = { ref: house.id, kind: 'building', tileX: 5, tileY: 4 } as const;
+    memories.restore({ statics: { player: OWN, ghosts: [ghost], reconSeeded: false }, roads: [START] });
+    const own = watchingNodes(OWN, [], 1);
+    const ally = watchingNodes(ALLY, [], 1);
+    memories.setViews(ally, [ally]);
+    memories.updateGhosts(snapshotOf([house]), undefined, undefined);
+    // The road the save never saw is laid out of sight: only the restored network shows.
+    expect(memories.syncRoads({ added: [START, FAR], removed: [] })).toEqual({
+      added: [START, FAR],
+      removed: [],
+    });
+    expect(memories.drawnGhosts?.has(house.id)).toBe(false);
+    memories.setViews(own, [own, ally]);
+    memories.updateGhosts(snapshotOf([house]), undefined, undefined);
+    expect(memories.drawnGhosts?.has(house.id)).toBe(true);
+    expect(memories.syncRoads(null)).toEqual({ added: [], removed: [FAR] });
   });
 
   it('starts every memory over when no view is given, the fog turned off', () => {

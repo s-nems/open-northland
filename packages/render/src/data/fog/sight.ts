@@ -93,11 +93,6 @@ export class ViewSight implements Sight {
   private revisionValue = 0;
   private opened: readonly number[] | null = null;
 
-  /** The view last set; null with fog off or before the first. */
-  get current(): FogView | null {
-    return this.view;
-  }
-
   set(view: FogView | null): void {
     const was = this.view;
     const changed =

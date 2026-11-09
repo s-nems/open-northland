@@ -17,8 +17,8 @@ interface MapSize {
 
 /**
  * The fog the viewer draws: none over the whole map, the watched seat's, or under the players' sight
- * the union of `sightSeats`. Until a worker's first answer for the seats lands, the view drawn before
- * stays, or nothing reads seen: an unfogged frame would show the map.
+ * the union of `sightSeats`. Until a worker's first answer for the seats lands, the last answered choice
+ * stays drawn, or nothing reads seen: an unfogged frame would show the map.
  */
 export function viewerFog(
   host: FogHost,
@@ -26,25 +26,29 @@ export function viewerFog(
   sightSeats: readonly number[],
   mapSize: MapSize,
 ): () => FogView | null {
-  let drawn: FogView | null = null;
+  /** The player of the last view a host answered for the drawn choice, re-read while a newly picked
+   *  choice waits for its first answer; null before any. */
+  let lastAnswered: number | null = null;
   let unseen: FogView | null = null;
-  const landed = (view: FogView | null, player: number): FogView | null => {
-    if (view !== null) return view;
+  const answerOf = (player: number): FogView | null =>
+    player === SHARED_SIGHT_VIEWER ? host.sharedFogView(sightSeats) : host.fogView(player);
+  const landed = (player: number): FogView | null => {
+    const view = answerOf(player);
+    if (view !== null) {
+      lastAnswered = player;
+      return view;
+    }
     const mode = host.fogMode();
     if (mode === FOG_MODE.OFF) return null;
-    if (drawn !== null) return drawn;
+    const previous = lastAnswered === null ? null : answerOf(lastAnswered);
+    if (previous !== null) return previous;
     if (unseen?.mode !== mode || unseen.player !== player) unseen = unseenFogView(player, mode, mapSize);
     return unseen;
   };
-  const next = (): FogView | null => {
-    if (viewer.sharedSight() && sightSeats.length > 0)
-      return landed(host.sharedFogView(sightSeats), SHARED_SIGHT_VIEWER);
-    const seat = viewer.seat();
-    return viewer.wholeMap() || seat === null ? null : landed(host.fogView(seat), seat);
-  };
   return () => {
-    drawn = next();
-    return drawn;
+    if (viewer.sharedSight() && sightSeats.length > 0) return landed(SHARED_SIGHT_VIEWER);
+    const seat = viewer.seat();
+    return viewer.wholeMap() || seat === null ? null : landed(seat);
   };
 }
 

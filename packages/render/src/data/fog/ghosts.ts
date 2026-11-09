@@ -1,6 +1,7 @@
 import {
   type EntitySnapshot,
   entitiesWith,
+  entityById,
   FOG_STATE,
   type FogView,
   fogSettings,
@@ -203,9 +204,10 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     return this.contentVersion;
   }
 
-  /** Remember a multiplayer map's start buildings ({@link startBuildingGhosts}) at the next update, if
-   *  that view knows the terrain. Spent by the next update under any mode, so a later switch to known
-   *  terrain shows no buildings raised since. */
+  /** Remember a multiplayer map's start buildings ({@link startBuildingGhosts}) still standing at the
+   *  next update, if that view knows the terrain: a memory begun later never shows one already gone.
+   *  Spent by the next update under any mode, so a later switch to known terrain shows no buildings
+   *  raised since. */
   knowStartBuildings(ghosts: readonly FogGhost[]): void {
     this.startBuildings = ghosts;
   }
@@ -286,7 +288,10 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
       this.reconSeeded = true;
     }
     if (this.startBuildings !== null) {
-      if (terrainKnown) for (const ghost of this.startBuildings) this.keep(ghost);
+      if (terrainKnown) {
+        for (const ghost of this.startBuildings)
+          if (entityById(snapshot, ghost.ref) !== undefined) this.keep(ghost);
+      }
       this.startBuildings = null;
     }
     this.lastGeneration = view.generation;

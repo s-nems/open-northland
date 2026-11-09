@@ -71,10 +71,6 @@ export class FogMemories implements SeenRoadNetwork {
     this.nodeWidthValue = nodeWidth;
   }
 
-  get nodeWidth(): number {
-    return this.nodeWidthValue;
-  }
-
   get revision(): number {
     return this.revisionValue;
   }
@@ -99,7 +95,8 @@ export class FogMemories implements SeenRoadNetwork {
     this.revisionValue++;
   }
 
-  /** Remember the start buildings at the first update; see {@link FogGhostStore.knowStartBuildings}. */
+  /** Capture a multiplayer map's start buildings at the first update, for every seat's memory to know;
+   *  see {@link FogGhostStore.knowStartBuildings}. */
   knowStartBuildings(): void {
     this.startBuildingsPending = true;
   }

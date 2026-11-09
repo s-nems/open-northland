@@ -305,17 +305,12 @@ describe('session worker host', () => {
       expect(view.generation).toBeLessThanOrEqual(live.generation);
       expect(fogCells(view)).toEqual(fogCells(live));
 
-      // Once the next seat's masks are drawn, the previous seat's never are again.
+      // A seat asked for next answers its own masks, once they land.
       session.driver.setPaused(false);
-      session.host.fogView(ALLY);
+      expect(session.host.fogView(ALLY)).toBeNull();
       const heldTo = (await session.host.hashState()).tick;
-      const seatsDrawn: number[] = [];
-      await pumpUntil(session, () => {
-        const drawn = session.host.fogView(ALLY)?.player;
-        if (drawn !== undefined && (drawn === ALLY || seatsDrawn.length > 0)) seatsDrawn.push(drawn);
-        return session.host.tick >= heldTo;
-      });
-      expect(new Set(seatsDrawn)).toEqual(new Set([ALLY]));
+      await pumpUntil(session, () => session.host.tick >= heldTo && session.host.fogView(ALLY) !== null);
+      expect(session.host.fogView(ALLY)?.player).toBe(ALLY);
       session.driver.setPaused(true);
       await pumpWhile(session, session.host.settled());
       sim.run(session.host.tick - sim.tick);
@@ -336,6 +331,13 @@ describe('session worker host', () => {
       const shared = session.host.sharedFogView(both);
       if (union === null || shared === null) throw new Error('the scene plays under fog');
       expect(fogCells(shared)).toEqual(fogCells(fogViewOfMask(union)));
+      // The seats asked for before stay current beside the union.
+      for (const seat of both) {
+        const view = session.host.fogView(seat);
+        const truth = sim.fogView(seat);
+        if (view === null || truth === null) throw new Error('the scene plays under fog');
+        expect(fogCells(view)).toEqual(fogCells(truth));
+      }
 
       // The human soldier's walk east reveals ground to the shared mask: a changed mask reaches the
       // runtime after the ones already drawn.

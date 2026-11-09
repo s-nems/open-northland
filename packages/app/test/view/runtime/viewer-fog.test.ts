@@ -27,7 +27,7 @@ describe('viewer fog', () => {
     expect(viewerFog(hostAnswering(null), switchableViewerSeat(null), SEATS, MAP)()).toBeNull();
   });
 
-  it("keeps the view drawn before while a switched-to seat's answer is on the way", () => {
+  it("draws the last answered seat's current view while a switched-to seat's answer is on the way", () => {
     const viewer = switchableViewerSeat(0);
     const answers = new Map<number, FogView>();
     const host = {
@@ -36,11 +36,16 @@ describe('viewer fog', () => {
       fogMode: () => FOG_MODE.CLASSIC,
     };
     const drawn = viewerFog(host, viewer, SEATS, MAP);
-    const first = drawn();
-    expect(first?.player).toBe(0); // nothing landed yet: the seat has seen nothing
+    const unseen = drawn();
+    expect(unseen?.player).toBe(0); // nothing landed yet: the seat has seen nothing
+    const own = { ...(unseen as FogView), generation: 2 };
+    answers.set(0, own);
+    expect(drawn()).toBe(own);
     viewer.watch(2);
-    expect(drawn()).toBe(first);
-    const landed = { ...(first as FogView), player: 2, generation: 3 };
+    const ownLater = { ...own, generation: 3 };
+    answers.set(0, ownLater);
+    expect(drawn()).toBe(ownLater);
+    const landed = { ...own, player: 2, generation: 3 };
     answers.set(2, landed);
     expect(drawn()).toBe(landed);
   });

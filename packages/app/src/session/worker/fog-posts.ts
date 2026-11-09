@@ -57,7 +57,7 @@ export class FogGroups {
 }
 
 /**
- * The viewer's fog as the runtime last received it. A change to the viewer's group can still leave
+ * One seat group's fog as the runtime last received it. A change to the group's vision can still leave
  * the mask as it was (a downgrade the same rebuild's stamps raise back); posting it would copy the
  * mask across and have every fog reader on the main thread rebuild for nothing.
  */
