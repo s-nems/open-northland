@@ -2,7 +2,8 @@ import {
   entityById,
   type Fixed,
   hexDistanceBetween,
-  nodeOfPosition,
+  nodeHxOfPosition,
+  nodeHyOfPosition,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { Container, Sprite } from 'pixi.js';
@@ -54,17 +55,17 @@ interface Footfall {
  * Prints lie in a ground container under the fog and every sprite, as the original draws them first; the
  * dust rises in the depth-sorted sprite layer at the step's node. A step is seen by comparing each drawn
  * walker's node across snapshots, so the work follows the walkers on screen; one off screen leaves none.
- * Original behavior: a step onto a road leaves nothing.
  *
- * Original behavior: the dust plays its frames once, a tick each, from the node it was raised on. Its
- * slow drift and five-unit start height are left out (approximation).
+ * Original behavior: a step onto a road leaves nothing, and the dust plays its frames once, a tick each,
+ * from the node it was raised on. Its slow drift and five-unit start height are left out (approximation).
  */
 export class FootfallLayer {
   readonly container = new Container();
   private ground: FootfallGround | null = null;
+  /** Each tracked walker's node at its last sighting, updated in place. */
   private readonly lastNode = new Map<number, { hx: number; hy: number }>();
   private readonly walking = new Set<number>();
-  private marks: Footfall[] = [];
+  private readonly marks: Footfall[] = [];
   private nextKey = 0;
   private lastSnapshot: WorldSnapshot | undefined;
   private readonly nodes = new Map<number, Sprite>();
@@ -81,7 +82,7 @@ export class FootfallLayer {
   setGround(ground: FootfallGround | null): void {
     this.ground = ground;
     this.lastNode.clear();
-    this.marks = [];
+    this.marks.length = 0;
   }
 
   draw(frame: FootfallFrame): void {
@@ -110,34 +111,41 @@ export class FootfallLayer {
     if (snapshot === this.lastSnapshot) return;
     this.lastSnapshot = snapshot;
     const tick = snapshot.tick;
-    this.marks = this.marks.filter((m) => tick - m.tick < lifeOf(m, this.sheet));
+    this.dropExpired(tick);
     this.walking.clear();
     for (const { ref } of frame.walkers) {
       const components = entityById(snapshot, ref)?.components;
       if (components === undefined || !('Person' in components)) continue;
       const position = readPosition(components);
       if (position === null) continue;
-      const node = nodeOfPosition(position.x as Fixed, position.y as Fixed);
+      const hx = nodeHxOfPosition(position.x as Fixed, position.y as Fixed);
+      const hy = nodeHyOfPosition(position.x as Fixed, position.y as Fixed);
       this.walking.add(ref);
       const last = this.lastNode.get(ref);
-      this.lastNode.set(ref, node);
-      if (last === undefined || (last.hx === node.hx && last.hy === node.hy)) continue;
-      if (hexDistanceBetween(last.hx, last.hy, node.hx, node.hy) > MAX_STEP_NODES) continue;
-      if (frame.roadAt(node.hx, node.hy)) continue;
-      const kind = footfallAt(ground, node.hx, node.hy);
+      if (last === undefined) {
+        this.lastNode.set(ref, { hx, hy });
+        continue;
+      }
+      if (last.hx === hx && last.hy === hy) continue;
+      const fromHx = last.hx;
+      const fromHy = last.hy;
+      last.hx = hx;
+      last.hy = hy;
+      if (hexDistanceBetween(fromHx, fromHy, hx, hy) > MAX_STEP_NODES || frame.roadAt(hx, hy)) continue;
+      const kind = footfallAt(ground, hx, hy);
       if (kind === undefined) continue;
       const count = this.sheet?.bindings.footfall?.[kind]?.valencies.length ?? 1;
-      const degrees = stepHeadingDegrees(last.hx, last.hy, node.hx, node.hy);
-      this.marks.push({
-        key: this.nextKey++,
-        kind,
-        hx: node.hx,
-        hy: node.hy,
-        valency: stepValency(degrees, count),
-        tick,
-      });
+      const valency = stepValency(stepHeadingDegrees(fromHx, fromHy, hx, hy), count);
+      this.marks.push({ key: this.nextKey++, kind, hx, hy, valency, tick });
     }
     for (const ref of this.lastNode.keys()) if (!this.walking.has(ref)) this.lastNode.delete(ref);
+  }
+
+  /** Drop the marks whose life is over, compacting the list in place. */
+  private dropExpired(tick: number): void {
+    let kept = 0;
+    for (const mark of this.marks) if (tick - mark.tick < lifeOf(mark, this.sheet)) this.marks[kept++] = mark;
+    this.marks.length = kept;
   }
 
   private place(mark: Footfall, ref: ParticleRef, frame: FootfallFrame): void {

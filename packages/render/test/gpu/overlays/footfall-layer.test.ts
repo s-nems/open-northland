@@ -1,4 +1,4 @@
-import { positionOfNode } from '@open-northland/sim';
+import { positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import { Container, type Sprite, type TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { FootfallGround } from '../../../src/data/effects/index.js';
@@ -61,16 +61,18 @@ function setup() {
   const sprites = new Container();
   const layer = new FootfallLayer(sprites, new TextureCache(), sheet);
   layer.setGround(ground);
-  const step = (hx: number, hy: number, tick: number, person = true) =>
+  const draw = (snapshot: WorldSnapshot, drawn = true) =>
     layer.draw({
-      snapshot: snapshotOf([walkerAt(hx, hy, person)], tick),
-      walkers: [{ ref: WALKER }],
+      snapshot,
+      walkers: drawn ? [{ ref: WALKER }] : [],
       roadAt: (hx: number, hy: number) => hx === ROAD_HX && hy === ROAD_HY,
       elevation: FLAT,
       viewport: VIEW_ALL,
-      renderTime: tick,
+      renderTime: snapshot.tick,
     });
-  return { sprites, layer, step };
+  const step = (hx: number, hy: number, tick: number, person = true) =>
+    draw(snapshotOf([walkerAt(hx, hy, person)], tick));
+  return { sprites, layer, step, draw };
 }
 
 const bobOf = (node: Sprite | undefined) => frames[(node?.texture.frame.x ?? -4) / 4];
@@ -114,6 +116,23 @@ describe('FootfallLayer', () => {
     step(12, 2, 11);
     step(12, 2, 12);
     step(13, 2, 13, false);
+    expect(layer.container.children).toHaveLength(0);
+  });
+
+  it('raises one mark per step however many frames draw its snapshot', () => {
+    const { layer, step, draw } = setup();
+    step(4, 2, 10);
+    const stepped = snapshotOf([walkerAt(5, 2)], 11);
+    draw(stepped);
+    draw(stepped);
+    expect(layer.container.children).toHaveLength(1);
+  });
+
+  it('forgets a walker that left the screen, so its return prints nothing', () => {
+    const { layer, step, draw } = setup();
+    step(4, 2, 10);
+    draw(snapshotOf([walkerAt(5, 2)], 11), false);
+    step(6, 2, 12);
     expect(layer.container.children).toHaveLength(0);
   });
 });

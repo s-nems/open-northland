@@ -6,9 +6,8 @@ import type { SceneGround } from '../scene/index.js';
  *
  * Original behavior: on every node a human reaches, an adult of any tribe but the weresnakes raises a
  * particle chosen by the `trianglepatterntypes` logic types of the cell's two triangles: triangle A snow
- * (7) leaves `SnowSteps`, both triangles beach (8) leave `beachSteps`, and triangle A sand (4, the mud,
- * brown desert, ice and buildable-snow patterns) kicks up `Smoke.org` dust. Every other ground leaves
- * nothing.
+ * (7) leaves `SnowSteps`, both triangles beach (8) leave `beachSteps`, and triangle A sand (4) kicks up
+ * `Smoke.org` dust. Every other ground leaves nothing.
  */
 export type FootfallKind = 'snowSteps' | 'beachSteps' | 'dust';
 
