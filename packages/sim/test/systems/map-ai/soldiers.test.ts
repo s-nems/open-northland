@@ -187,7 +187,10 @@ describe('ai program soldiers - an Attack task', () => {
     sim.run(TWO_TURNS);
     for (const e of band) expect(sim.world.get(e, Stance).mode).toBe(MILITARY_MODE.ATTACK);
     sim.run(WALK_TICKS);
-    expect(band.some((e) => sim.world.tryGet(e, AttackOrder)?.target === house)).toBe(true);
+    // An assault: the band answers the house's defenders first.
+    const onHouse = (e: Entity): boolean => sim.world.tryGet(e, AttackOrder)?.target === house;
+    expect(band.some(onHouse)).toBe(true);
+    for (const e of band.filter(onHouse)) expect(sim.world.get(e, AttackOrder).assault).toBe(true);
     for (const e of band) {
       const at = sim.world.get(e, Position);
       const node = nodeOfPosition(at.x, at.y);

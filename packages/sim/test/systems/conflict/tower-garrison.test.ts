@@ -746,28 +746,25 @@ describe('the tower garrison - a besieger it shoots', () => {
     expect(sim.world.get(besieger, Engagement).target).toBe(tower);
   });
 
-  it.each(['tower', 'fighter'] as const)(
-    'keeps an explicit attack on a %s when the nearer rival shoots',
-    (kind) => {
-      const { sim, tower, besieger, garrison } = siegeUnderTower();
-      const fighter = settlerAt(
-        sim,
-        SOLDIER_JOB,
-        kind === 'tower' ? BESIEGER_X + 1 : FAR_FIGHTER_X,
-        ROW,
-        HUMAN,
-        TOUGH,
-      );
-      const target = kind === 'tower' ? tower : fighter;
-      const striker = kind === 'tower' ? fighter : garrison;
-      sim.enqueueSetup({ kind: 'attackUnit', entity: besieger, target });
-      sim.step();
-      expect(sim.world.get(besieger, Engagement).target).toBe(target);
-      resolveCombatHit(sim.world, ctxOf(sim), striker, besieger, { damage: 1 }, [], 'projectile');
-      expect(sim.world.get(besieger, Engagement).target).toBe(target);
-      expect(sim.world.get(besieger, AttackOrder).target).toBe(target);
-    },
-  );
+  it.each(['tower', 'fighter'] as const)('keeps an assault on a %s when the nearer rival shoots', (kind) => {
+    const { sim, tower, besieger, garrison } = siegeUnderTower();
+    const fighter = settlerAt(
+      sim,
+      SOLDIER_JOB,
+      kind === 'tower' ? BESIEGER_X + 1 : FAR_FIGHTER_X,
+      ROW,
+      HUMAN,
+      TOUGH,
+    );
+    const target = kind === 'tower' ? tower : fighter;
+    const striker = kind === 'tower' ? fighter : garrison;
+    sim.enqueueSetup({ kind: 'attackUnit', entity: besieger, target, assault: true });
+    sim.step();
+    expect(sim.world.get(besieger, Engagement).target).toBe(target);
+    resolveCombatHit(sim.world, ctxOf(sim), striker, besieger, { damage: 1 }, [], 'projectile');
+    expect(sim.world.get(besieger, Engagement).target).toBe(target);
+    expect(sim.world.get(besieger, AttackOrder).target).toBe(target);
+  });
 
   it('keeps going for the shooting tower over a nearer headquarters that does not shoot', () => {
     const sim = simWithTower();

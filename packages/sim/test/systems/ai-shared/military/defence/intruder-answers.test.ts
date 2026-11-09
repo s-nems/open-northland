@@ -178,6 +178,7 @@ describe('computer defence - answering unarmed intruders', () => {
         at: entityNode(sim.world, terrain, e),
         radius: STRIKE_BACK_LEASH_NODES,
       });
+      expect(sim.world.get(e, AttackOrder).assault).toBe(true);
     }
   });
 

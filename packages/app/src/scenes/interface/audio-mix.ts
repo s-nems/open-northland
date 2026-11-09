@@ -3,7 +3,6 @@ import {
   components,
   type Entity,
   type GroupDestination,
-  nodeOfPosition,
   type Simulation,
   systems,
   type WorldSnapshot,
@@ -30,8 +29,9 @@ import {
   spawnSettlerDirect,
   staffBuildingFully,
 } from '../../game/sandbox/index.js';
-import { ownerPlayerOf, positionOf, settlerJobType } from '../../game/snapshot/base.js';
+import { ownerPlayerOf } from '../../game/snapshot/base.js';
 import { GATHERER_BY_GOOD, VILLAGE, WAREHOUSE_IDS } from '../sandbox/placements.js';
+import { membersOf } from '../sandbox-queries.js';
 import type { SceneDefinition, SceneStage, StageOrder } from '../types.js';
 
 /**
@@ -197,25 +197,6 @@ function build(sim: Simulation): void {
 }
 
 // ─── Stage orders, read off the world as it stands when a button is pressed ─────────────────────────
-
-interface Member {
-  readonly id: number;
-  readonly hx: number;
-  readonly hy: number;
-}
-
-/** The living settlers `owner` fields with `job`, where they stand on the half-cell lattice. */
-export function membersOf(snapshot: WorldSnapshot, owner: number, job: number): Member[] {
-  const out: Member[] = [];
-  for (const e of snapshot.entities) {
-    if (settlerJobType(e) !== job || ownerPlayerOf(e) !== owner) continue;
-    const p = positionOf(e);
-    if (p === undefined) continue;
-    const node = nodeOfPosition(p.x, p.y);
-    out.push({ id: e.id, hx: node.hx, hy: node.hy });
-  }
-  return out;
-}
 
 /** Half-cell nodes per tile along x. */
 const NODES_PER_TILE = 2;

@@ -1055,14 +1055,17 @@ describe('an attack-move against a sealed palisade', () => {
     }
   });
 
-  it('turns an ordered attack on a walled-in enemy into a breach, then back onto the enemy', () => {
+  it.each([
+    ['an attack order', false],
+    ['an assault', true],
+  ] as const)('turns %s on a walled-in enemy into a breach, then back onto the enemy', (_, assault) => {
     const sim = fresh();
     const gate = wallRow(sim, P1);
     sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
     sim.step();
     const enemy = fighter(sim, SOUTH, P1);
     const soldier = fighter(sim, NORTH, P0);
-    attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: soldier, target: enemy });
+    attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: soldier, target: enemy, assault });
     for (let tick = 0; tick < 20 && sim.world.get(soldier, AttackOrder).breach === undefined; tick++)
       sim.step();
     const order = sim.world.get(soldier, AttackOrder);
@@ -1071,7 +1074,8 @@ describe('an attack-move against a sealed palisade', () => {
 
     sim.world.mut(order.target, Health).hitpoints = 0;
     sim.step();
-    expect(sim.world.get(soldier, AttackOrder)).toEqual({ target: enemy });
+    // An assault stays one past its wall.
+    expect(sim.world.get(soldier, AttackOrder)).toEqual({ target: enemy, assault: assault || undefined });
   });
 
   it('keeps breaching through the same order repeated on the walled-in enemy', () => {

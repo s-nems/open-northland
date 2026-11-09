@@ -18,7 +18,8 @@ import {
   WEAPON_SWORD,
 } from '../../game/sandbox/index.js';
 import { buildingTypeOf, ownerPlayerOf } from '../../game/snapshot/base.js';
-import { membersOf } from '../interface/audio-mix.js';
+import { holdsSometimeDuring } from '../runtime.js';
+import { buildingOfType, membersOf } from '../sandbox-queries.js';
 import type { SceneDefinition, StageOrder } from '../types.js';
 
 /**
@@ -41,20 +42,14 @@ const TOWER_ARCHERS: readonly (readonly [number, number])[] = [
   [24, 5],
 ];
 /** Beside the archers' way to the temple, inside their bow's reach of it. */
-const PICKET: readonly (readonly [number, number])[] = [
-  [20, 7],
-  [20, 9],
-  [20, 11],
-];
+const PICKET_X = 20;
+const PICKET_ROWS: readonly number[] = [7, 9, 11];
 /** Tough enough that nobody falls inside the run, so the end state shows who was struck. */
 const ENDURANCE = 1_000_000;
 
-/** Half-cell nodes per tile along x. */
-const NODES_PER_TILE = 2;
-
 const RUN_TICKS = 500;
 
-const { AttackOrder, Building, Health, Owner, Settler, Stance } = components;
+const { AttackOrder, Engagement, Health, Owner, Settler, Stance } = components;
 
 function endure(sim: Simulation, e: Entity): void {
   const health = sim.world.mut(e, Health);
@@ -72,8 +67,8 @@ function build(sim: Simulation): void {
     endure(sim, guard);
     sim.enqueueSetup({ kind: 'assignWorker', entity: guard, building: tower, jobPriority: [JOB_ARCHER] });
   }
-  for (const [x, y] of PICKET) {
-    const swordsman = spawnSandboxSettlerDirect(sim, JOB_SOLDIER_SWORD, x, y, ENEMY_PLAYER, {
+  for (const y of PICKET_ROWS) {
+    const swordsman = spawnSandboxSettlerDirect(sim, JOB_SOLDIER_SWORD, PICKET_X, y, ENEMY_PLAYER, {
       weaponTypeId: WEAPON_SWORD,
     });
     endure(sim, swordsman);
@@ -113,32 +108,14 @@ function assault(snapshot: WorldSnapshot): StageOrder[] {
 }
 
 function retreat(snapshot: WorldSnapshot): StageOrder[] {
+  const home = cellAnchorNode(ARCHER_X, TEMPLE.y);
   const members = membersOf(snapshot, HUMAN_PLAYER, JOB_ARCHER).map((m) => ({
     entity: m.id as Entity,
-    x: ARCHER_X * NODES_PER_TILE,
+    x: home.hx,
     y: m.hy,
   }));
   if (members.length === 0) return [];
   return [{ by: 'viewer', command: { kind: 'moveUnitGroup', members } }];
-}
-
-/** The red settlers and buildings other than the temple, all of which a turned-aside archer would strike. */
-function bystanders(sim: Simulation): Entity[] {
-  const out: Entity[] = [];
-  for (const e of sim.world.query(Owner, Health)) {
-    if (sim.world.get(e, Owner).player !== ENEMY_PLAYER) continue;
-    const building = sim.world.tryGet(e, Building);
-    if (building?.buildingType === BUILDING_TEMPLE) continue;
-    if (building !== undefined || sim.world.has(e, Settler)) out.push(e);
-  }
-  return out;
-}
-
-function templeIn(sim: Simulation): Entity | undefined {
-  for (const e of sim.world.query(Building, Owner)) {
-    if (sim.world.get(e, Building).buildingType === BUILDING_TEMPLE) return e;
-  }
-  return undefined;
 }
 
 function blueArchers(sim: Simulation): Entity[] {
@@ -148,7 +125,17 @@ function blueArchers(sim: Simulation): Entity[] {
   );
 }
 
+/** Read off buildings and blue settlers only: the temple's blessing lifts a red person past its maximum. */
 const struck = (sim: Simulation, e: Entity): boolean => sim.world.get(e, Health).hitpoints < ENDURANCE;
+
+/** Whether an archer holds anything but the temple: the swordsmen in its way or the tower shooting it. */
+function turnedAside(sim: Simulation): boolean {
+  const temple = buildingOfType(sim, BUILDING_TEMPLE);
+  return blueArchers(sim).some((e) => {
+    const held = sim.world.tryGet(e, Engagement)?.target;
+    return held !== undefined && held !== temple;
+  });
+}
 
 export const focusFireScene: SceneDefinition = {
   id: 'focus-fire',
@@ -160,7 +147,8 @@ export const focusFireScene: SceneDefinition = {
   stages: [
     {
       id: 'field',
-      focus: { x: (ARCHER_X + TEMPLE.x) / 2, y: TEMPLE.y },
+      // The picket stands between the archers' firing line and the temple, so the view holds all three.
+      focus: { x: PICKET_X, y: TEMPLE.y },
       zoom: 0.8,
       actions: [
         { label: 'focus', kind: 'orders', orders: focus },
@@ -173,18 +161,18 @@ export const focusFireScene: SceneDefinition = {
     {
       label: 'the archers shoot the temple they were sent at',
       predicate: (sim) => {
-        const temple = templeIn(sim);
-        return temple !== undefined && struck(sim, temple);
+        const temple = buildingOfType(sim, BUILDING_TEMPLE);
+        return temple !== null && struck(sim, temple);
       },
     },
     {
-      label: 'no arrow of theirs falls on the swordsmen in their way or on the tower shooting them',
-      predicate: (sim) => bystanders(sim).every((e) => !struck(sim, e)),
+      label: 'no archer ever turns on the swordsmen in its way or on the tower shooting it',
+      predicate: () => !holdsSometimeDuring(focusFireScene, RUN_TICKS, turnedAside),
     },
     {
       label: 'the tower shoots at them, and every archer still holds the temple as its order',
       predicate: (sim) => {
-        const temple = templeIn(sim);
+        const temple = buildingOfType(sim, BUILDING_TEMPLE);
         const archers = blueArchers(sim);
         return (
           archers.some((e) => struck(sim, e)) &&

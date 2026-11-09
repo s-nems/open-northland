@@ -1,6 +1,14 @@
-import { components, type Entity, type Simulation, systems } from '@open-northland/sim';
+import {
+  components,
+  type Entity,
+  nodeOfPosition,
+  type Simulation,
+  systems,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { VEHICLE_SHIP_SMALL } from '../game/sandbox/index.js';
+import { ownerPlayerOf, positionOf, settlerJobType } from '../game/snapshot/base.js';
 
 const { Building, GroundDrop, Health, Owner, Position, Settler, Stockpile } = components;
 
@@ -20,6 +28,25 @@ export function labelSceneSettler(sim: Simulation, name: string, entity: Entity)
 /** The settler this sim's scene labelled `name`, or undefined before the label. */
 export function labelledSceneSettler(sim: Simulation, name: string): Entity | undefined {
   return sceneLabels.get(sim)?.get(name);
+}
+
+interface Member {
+  readonly id: number;
+  readonly hx: number;
+  readonly hy: number;
+}
+
+/** The living settlers `owner` fields with `job`, where they stand on the half-cell lattice. */
+export function membersOf(snapshot: WorldSnapshot, owner: number, job: number): Member[] {
+  const out: Member[] = [];
+  for (const e of snapshot.entities) {
+    if (settlerJobType(e) !== job || ownerPlayerOf(e) !== owner) continue;
+    const p = positionOf(e);
+    if (p === undefined) continue;
+    const node = nodeOfPosition(p.x, p.y);
+    out.push({ id: e.id, hx: node.hx, hy: node.hy });
+  }
+  return out;
 }
 
 /** The one placed building of `typeId`, or null before its placement command ran. */
