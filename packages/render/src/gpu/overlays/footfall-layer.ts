@@ -11,6 +11,8 @@ import {
 } from '@open-northland/sim';
 import { Container, Sprite } from 'pixi.js';
 import {
+  DUST_SCALE,
+  dustAlpha,
   type FootfallGround,
   type FootfallKind,
   footfallAt,
@@ -200,7 +202,7 @@ export class FootfallLayer {
   private place(mark: Footfall, ref: ParticleRef, frame: FootfallFrame): void {
     const age = frame.renderTime - mark.tick;
     const print = mark.kind !== 'dust';
-    const alpha = print ? printAlpha(age) : 1;
+    const alpha = print ? printAlpha(age) : dustAlpha(age, lifeOf(mark, this.sheet));
     const bob = print ? particleFrame(ref, 0, mark.valency) : particleFrame(ref, age);
     if (alpha <= 0 || bob === undefined) return;
     const ground = halfCellToScreen(mark.hx, mark.hy);
@@ -221,11 +223,9 @@ export class FootfallLayer {
       this.nodes.set(mark.key, node);
     }
     node.texture = this.textures.get(resolved.source, resolved.frame);
-    node.scale.set(resolved.scale);
-    node.position.set(
-      x + resolved.frame.offsetX * resolved.scale,
-      y + resolved.frame.offsetY * resolved.scale,
-    );
+    const scale = print ? resolved.scale : resolved.scale * DUST_SCALE;
+    node.scale.set(scale);
+    node.position.set(x + resolved.frame.offsetX * scale, y + resolved.frame.offsetY * scale);
     if (!print) node.zIndex = screenDepth(ground.x, ground.y, 'projectile');
     node.alpha = alpha;
     node.visible = true;

@@ -105,6 +105,19 @@ export function printAlpha(age: number): number {
 }
 
 /**
+ * Our choice, softer than the original's full-strength puff: a step's dust is drawn at this scale, starts
+ * at this opacity and fades out over its frames, so a busy village is not lost in it.
+ */
+export const DUST_SCALE = 0.6;
+const DUST_START_ALPHA = 0.35;
+
+/** A step's dust opacity `age` ticks after the step, over its `frames`; 0 once it is gone. */
+export function dustAlpha(age: number, frames: number): number {
+  if (age < 0 || age >= frames) return 0;
+  return DUST_START_ALPHA * (1 - age / frames);
+}
+
+/**
  * How far apart, in lattice steps, two sightings of a walker may lie and still be one walk. A walker
  * crosses a node in several ticks, so a drawn frame sees at most a step or two between snapshots; a
  * longer jump is a door, a boarding or a teleport, which leaves no print.

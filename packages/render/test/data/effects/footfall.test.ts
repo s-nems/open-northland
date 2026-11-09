@@ -1,6 +1,7 @@
 import { cellAnchorNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
+  dustAlpha,
   footfallAt,
   footfallGround,
   printAlpha,
@@ -65,5 +66,13 @@ describe('printAlpha', () => {
     expect(printAlpha(0)).toBe(0.75);
     expect(printAlpha(60)).toBe(0.375);
     expect(printAlpha(120)).toBe(0);
+  });
+});
+
+describe('dustAlpha', () => {
+  it('starts faint and fades out over its frames', () => {
+    expect(dustAlpha(0, 24)).toBe(0.35);
+    expect(dustAlpha(12, 24)).toBeCloseTo(0.175);
+    expect(dustAlpha(24, 24)).toBe(0);
   });
 });

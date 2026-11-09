@@ -17,6 +17,8 @@ export {
   MAX_ACTIVE_COLLAPSES,
 } from './collapse.js';
 export {
+  DUST_SCALE,
+  dustAlpha,
   type FootfallGround,
   type FootfallKind,
   footfallAt,
