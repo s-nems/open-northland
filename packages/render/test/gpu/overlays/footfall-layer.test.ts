@@ -1,4 +1,4 @@
-import { positionOfNode, type WorldSnapshot } from '@open-northland/sim';
+import { ONE, positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import { Container, type Sprite, type TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { FootfallGround } from '../../../src/data/effects/index.js';
@@ -54,18 +54,26 @@ const WALKER = 4;
 const ROAD_HX = 8;
 const ROAD_HY = 2;
 
-function walkerAt(hx: number, hy: number, person = true) {
-  return { id: WALKER, components: { Position: positionOfNode(hx, hy), ...(person ? { Person: {} } : {}) } };
+/** A pair of boots worn to `degreeOfUse`. */
+const bootsAt = (degreeOfUse: number) => ({
+  Equipment: { boots: { goodType: 1, degreeOfUse }, tool: null, weapon: null, armor: null, misc: [] },
+});
+
+function walkerAt(hx: number, hy: number, person = true, extra: Record<string, unknown> = {}) {
+  return {
+    id: WALKER,
+    components: { Position: positionOfNode(hx, hy), ...(person ? { Person: {} } : {}), ...extra },
+  };
 }
 
-function setup() {
+function setup(marksGround = true, footfallGround: FootfallGround | null = ground) {
   const sprites = new Container();
   const layer = new FootfallLayer(sprites, new TextureCache(), sheet);
-  layer.setGround(ground);
+  layer.setGround(footfallGround);
   const draw = (snapshot: WorldSnapshot, drawn = true) =>
     layer.draw({
       snapshot,
-      walkers: drawn ? [{ ref: WALKER }] : [],
+      walkers: drawn ? [{ ref: WALKER, marksGround }] : [],
       roadAt: (hx: number, hy: number) => hx === ROAD_HX && hy === ROAD_HY,
       elevation: FLAT,
       viewport: VIEW_ALL,
@@ -136,6 +144,34 @@ describe('FootfallLayer', () => {
     step(4, 2, 10);
     draw(snapshotOf([walkerAt(5, 2)], 11), false);
     step(6, 2, 12);
+    expect(layer.container.children).toHaveLength(0);
+  });
+
+  it('kicks up dust under live boots on every step, on any ground and road, even for a body that marks none', () => {
+    const { layer, sprites, draw } = setup(false, null);
+    const shod = (hx: number, tick: number, degree: number) =>
+      draw(snapshotOf([walkerAt(hx, ROAD_HY, true, bootsAt(degree))], tick));
+    shod(ROAD_HX, 10, 0);
+    shod(ROAD_HX + 1, 11, 0);
+    expect(layer.container.children).toHaveLength(0);
+    expect(sprites.children).toHaveLength(1);
+    // Worn-out boots kick up nothing.
+    shod(ROAD_HX + 2, 20, ONE);
+    expect(sprites.children).toHaveLength(0);
+  });
+
+  it('raises the ground mark beside the boots dust for a shod adult', () => {
+    const { layer, sprites, draw } = setup();
+    draw(snapshotOf([walkerAt(4, 2, true, bootsAt(0))], 10));
+    draw(snapshotOf([walkerAt(5, 2, true, bootsAt(0))], 11));
+    expect(layer.container.children).toHaveLength(1);
+    expect(sprites.children).toHaveLength(1);
+  });
+
+  it('leaves a body that marks no ground without prints', () => {
+    const { layer, step } = setup(false);
+    step(4, 2, 10);
+    step(5, 2, 11);
     expect(layer.container.children).toHaveLength(0);
   });
 });

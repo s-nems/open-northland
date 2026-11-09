@@ -35,9 +35,11 @@ export interface DamagedBuilding {
   readonly ghost?: boolean;
 }
 
-/** One drawn adult human on the map, the input of the prints its steps leave. */
+/** One drawn human on the map ground, the input of the prints and dust its steps leave. */
 export interface DrawnWalker {
   readonly ref: number;
+  /** An adult of any tribe but the weresnakes: its steps mark the ground they land on. */
+  readonly marksGround: boolean;
 }
 
 /** One drawn ship, at sea or moored, the input of the wake it pushes. */

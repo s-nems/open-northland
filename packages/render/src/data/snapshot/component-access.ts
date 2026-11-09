@@ -1,3 +1,5 @@
+import { ONE } from '@open-northland/sim';
+
 /**
  * The defensive component-access primitives every snapshot reader builds on. Each is total: a missing
  * or malformed component reads as its absent value (`null`/`undefined`), never a throw, because the
@@ -38,4 +40,14 @@ export function readNumFieldOrNull(
   field: string,
 ): number | null {
   return readNumField(components, component, field) ?? null;
+}
+
+/** Whether the components wear a live pair of boots: a boots slot whose wear, the walk under way's when
+ *  one is, has not reached ONE. */
+export function readWearsLiveBoots(components: Readonly<Record<string, unknown>>): boolean {
+  const boots = (components.Equipment as { boots?: { degreeOfUse?: unknown } | null } | undefined)?.boots;
+  if (boots === undefined || boots === null) return false;
+  const walked = readNumField(components, 'PathFollow', 'bootsDegree');
+  const degree = walked ?? boots.degreeOfUse;
+  return typeof degree === 'number' && degree < ONE;
 }

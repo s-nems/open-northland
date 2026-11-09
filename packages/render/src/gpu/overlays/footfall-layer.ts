@@ -19,7 +19,7 @@ import {
 } from '../../data/effects/index.js';
 import { halfCellToScreen, isVisible, type Viewport } from '../../data/projection/index.js';
 import { screenDepth } from '../../data/scene/index.js';
-import { readPosition } from '../../data/snapshot/index.js';
+import { readPosition, readWearsLiveBoots } from '../../data/snapshot/index.js';
 import { type ParticleRef, particleFrame } from '../../data/sprites/index.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/terrain/index.js';
 import type { DrawnWalker } from '../sprite-pool/index.js';
@@ -57,7 +57,8 @@ interface Footfall {
  * node across snapshots, so the work follows the walkers on screen; one off screen leaves none.
  *
  * Original behavior: a mark is raised on the node a human reaches, a road leaving nothing, and the dust
- * plays its frames once, a tick each. The nearest node flips at half a step, so the mark goes on the node
+ * plays its frames once, a tick each. A human in live boots also kicks up dust on every step, on any
+ * ground and road, whatever its age or tribe; on sand an adult so shod raises two. The nearest node flips at half a step, so the mark goes on the node
  * just left, behind the walker, and its ground and road are read there (approximation). The dust's slow
  * drift and five-unit start height are left out (approximation).
  */
@@ -80,7 +81,7 @@ export class FootfallLayer {
     private readonly sheet: SpriteSheet | undefined,
   ) {}
 
-  /** The map's footfall per cell; `null` leaves every step without a mark. */
+  /** The map's footfall per cell; `null` leaves no step a mark of its ground. */
   setGround(ground: FootfallGround | null): void {
     this.ground = ground;
     this.lastNode.clear();
@@ -90,7 +91,7 @@ export class FootfallLayer {
   draw(frame: FootfallFrame): void {
     this.seen.clear();
     const binding = this.sheet?.bindings.footfall;
-    if (binding !== undefined && this.ground !== null) {
+    if (binding !== undefined) {
       this.track(frame, this.ground);
       for (const mark of this.marks) {
         const ref = binding[mark.kind];
@@ -108,14 +109,15 @@ export class FootfallLayer {
 
   /** Raise a mark for every drawn walker that reached a new node since the last snapshot, and drop the
    *  marks that are gone. */
-  private track(frame: FootfallFrame, ground: FootfallGround): void {
+  private track(frame: FootfallFrame, ground: FootfallGround | null): void {
     const snapshot = frame.snapshot;
     if (snapshot === this.lastSnapshot) return;
     this.lastSnapshot = snapshot;
     const tick = snapshot.tick;
     this.dropExpired(tick);
     this.walking.clear();
-    for (const { ref } of frame.walkers) {
+    for (const walker of frame.walkers) {
+      const ref = walker.ref;
       const components = entityById(snapshot, ref)?.components;
       if (components === undefined || !('Person' in components)) continue;
       const position = readPosition(components);
@@ -133,15 +135,19 @@ export class FootfallLayer {
       const fromHy = last.hy;
       last.hx = hx;
       last.hy = hy;
-      if (hexDistanceBetween(fromHx, fromHy, hx, hy) > MAX_STEP_NODES || frame.roadAt(fromHx, fromHy))
-        continue;
-      const kind = footfallAt(ground, fromHx, fromHy);
+      if (hexDistanceBetween(fromHx, fromHy, hx, hy) > MAX_STEP_NODES) continue;
+      if (readWearsLiveBoots(components)) this.raise('dust', fromHx, fromHy, 0, tick);
+      if (!walker.marksGround || frame.roadAt(fromHx, fromHy)) continue;
+      const kind = ground === null ? undefined : footfallAt(ground, fromHx, fromHy);
       if (kind === undefined) continue;
       const count = this.sheet?.bindings.footfall?.[kind]?.valencies.length ?? 1;
-      const valency = stepValency(stepHeadingDegrees(fromHx, fromHy, hx, hy), count);
-      this.marks.push({ key: this.nextKey++, kind, hx: fromHx, hy: fromHy, valency, tick });
+      this.raise(kind, fromHx, fromHy, stepValency(stepHeadingDegrees(fromHx, fromHy, hx, hy), count), tick);
     }
     for (const ref of this.lastNode.keys()) if (!this.walking.has(ref)) this.lastNode.delete(ref);
+  }
+
+  private raise(kind: FootfallKind, hx: number, hy: number, valency: number, tick: number): void {
+    this.marks.push({ key: this.nextKey++, kind, hx, hy, valency, tick });
   }
 
   /** Drop the marks whose life is over, compacting the list in place. */

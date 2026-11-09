@@ -841,7 +841,7 @@ export class SpritePool {
     for (const item of items) {
       const kind = item.kind;
       if (kind === 'settler') {
-        if (leavesFootfall(item)) this.walkers.push({ ref: item.ref });
+        if (standsOnMapGround(item)) this.walkers.push({ ref: item.ref, marksGround: marksGround(item) });
       } else if (kind === 'building' || kind === 'palisade') {
         if (item.hpFrac !== undefined)
           this.damaged.push({
@@ -1256,14 +1256,12 @@ export class SpritePool {
   }
 }
 
-/** Original behavior: every adult human but a weresnake leaves footfall where it steps. A fog memory, a
- *  portrait-only body and a worker shown inside a house stand on no map ground. */
-function leavesFootfall(item: SpriteDrawItem): boolean {
-  return (
-    item.young !== true &&
-    item.tribe !== WERESNAKE_TRIBE &&
-    item.ghost !== true &&
-    item.portraitOnly !== true &&
-    item.inHouse !== true
-  );
+/** A fog memory, a portrait-only body and a worker shown inside a house stand on no map ground. */
+function standsOnMapGround(item: SpriteDrawItem): boolean {
+  return item.ghost !== true && item.portraitOnly !== true && item.inHouse !== true;
+}
+
+/** Original behavior: every adult human but a weresnake marks the ground where it steps. */
+function marksGround(item: SpriteDrawItem): boolean {
+  return item.young !== true && item.tribe !== WERESNAKE_TRIBE;
 }
