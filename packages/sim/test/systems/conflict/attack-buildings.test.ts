@@ -748,6 +748,8 @@ describe('a besieger turns to an enemy fighter', () => {
   const SIEGE_TICKS = 120;
   /** How often an archer behind a wall looses an arrow at the besieger. */
   const ARROW_TICKS = 20;
+  /** How often an enemy fighter beside the besieger strikes it. */
+  const BLOW_TICKS = 10;
   /** A home no siege window brings down. */
   const STURDY_HP = 1_000_000;
   /** Where an enemy walks off to, well past the leash a fighter turned aside keeps around its ordered
@@ -798,9 +800,22 @@ describe('a besieger turns to an enemy fighter', () => {
     expect(sim.world.get(soldier, Engagement).target).toBe(enemy);
   });
 
-  it('fights the fighter first under an attack order on the building, then takes the building up again', () => {
+  it('holds a plain attack order on the building through an enemy fighter beside it and its blows', () => {
     const { sim, soldier, home, enemy } = siege(0, SIDE_ROW);
     sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home });
+    for (let i = 0; i < TURN_TICKS; i++) {
+      sim.step();
+      if (i % BLOW_TICKS === 0)
+        resolveCombatHit(sim.world, ctxOf(sim), enemy, soldier, { damage: 1 }, [], 'melee');
+    }
+    expect(sim.world.get(soldier, Engagement).target).toBe(home);
+    expect(sim.world.get(soldier, AttackOrder).target).toBe(home);
+    expect(sim.world.get(enemy, Health).hitpoints).toBe(sim.world.get(enemy, Health).max);
+  });
+
+  it('fights the fighter first under an assault on the building, then takes the building up again', () => {
+    const { sim, soldier, home, enemy } = siege(0, SIDE_ROW);
+    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home, assault: true });
     for (let i = 0; i < TURN_TICKS; i++) sim.step();
     expect(sim.world.get(soldier, Engagement).target).toBe(enemy);
     expect(sim.world.get(soldier, AttackOrder).target).toBe(home);
@@ -810,9 +825,9 @@ describe('a besieger turns to an enemy fighter', () => {
     expect(sim.world.get(soldier, Engagement).target).toBe(home);
   });
 
-  it('turns on an archer that shoots it from afar under an attack order on the building, keeping the order', () => {
+  it('turns on an archer that shoots it from afar under an assault on the building, keeping the order', () => {
     const { sim, soldier, home, enemy } = siege(8, SIDE_ROW);
-    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home });
+    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home, assault: true });
     sim.step();
     resolveCombatHit(sim.world, ctxOf(sim), enemy, soldier, { damage: 1 }, [], 'projectile');
     expect(sim.world.get(soldier, Engagement).target).toBe(enemy);
@@ -837,7 +852,7 @@ describe('a besieger turns to an enemy fighter', () => {
     const home = buildingAt(sim, 1, 0, HOME, P2);
     const archer = warriorAt(sim, 4, 4, P2, ARCHER);
     sim.world.mut(archer, Stance).mode = MILITARY_MODE.IGNORE;
-    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home });
+    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home, assault: true });
     for (let i = 0; i < TURN_TICKS; i++) sim.step();
     const wallsBeforeArrows = [...sim.world.query(Palisade)];
     sim.world.add(home, Health, { hitpoints: STURDY_HP, max: STURDY_HP });
@@ -859,12 +874,12 @@ describe('a besieger turns to an enemy fighter', () => {
     expect([...sim.world.query(Palisade)]).toEqual(wallsBeforeArrows); // no wall broken for the archer
   });
 
-  it('lets a fighter it turned aside to go past a leash around the ordered building, and takes the building up again', () => {
+  it('lets a fighter it turned aside to go past a leash around the assaulted building, and takes the building up again', () => {
     const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(FAR_X + 2, 2) });
     const soldier = warriorAt(sim, 0, 0, P1);
     const home = buildingAt(sim, 1, 0, HOME, P2);
     sim.world.add(home, Health, { hitpoints: STURDY_HP, max: STURDY_HP });
-    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home });
+    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home, assault: true });
     for (let i = 0; i < TURN_TICKS; i++) sim.step();
     const enemy = warriorAt(sim, 0, SIDE_ROW, P2);
     sim.world.mut(enemy, Stance).mode = MILITARY_MODE.IGNORE;
@@ -890,7 +905,7 @@ describe('a besieger turns to an enemy fighter', () => {
     expect(sim.world.get(soldier, Engagement).target).toBe(enemy);
   });
 
-  it('keeps its order when the enemy it turned aside to falls while its route there is still asked', () => {
+  it('keeps its assault when the enemy it turned aside to falls while its route there is still asked', () => {
     const sim = new Simulation({ seed: 1, content: siegeContent(), map: walledOffSouth(10, 6) });
     for (let hx = 0; hx < 20; hx++) {
       sim.enqueueSetup({
@@ -907,7 +922,7 @@ describe('a besieger turns to an enemy fighter', () => {
     sim.world.add(home, Health, { hitpoints: STURDY_HP, max: STURDY_HP });
     const archer = warriorAt(sim, 4, 4, P2, ARCHER);
     sim.world.mut(archer, Stance).mode = MILITARY_MODE.IGNORE;
-    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home });
+    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home, assault: true });
     for (let i = 0; i < TURN_TICKS; i++) sim.step();
     resolveCombatHit(sim.world, ctxOf(sim), archer, soldier, { damage: 1 }, [], 'projectile');
     // The chase re-aims at the walled-off archer; the archer falls before the refused route is read.
@@ -921,9 +936,9 @@ describe('a besieger turns to an enemy fighter', () => {
     expect(sim.world.get(soldier, Engagement).target).toBe(home);
   });
 
-  it('answers a blow on a comrade near it under an attack order on the building, the order kept', () => {
+  it('answers a blow on a comrade near it under an assault on the building, the order kept', () => {
     const { sim, soldier, home, enemy } = siege(4, SIDE_ROW);
-    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home });
+    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home, assault: true });
     const comrade = warriorAt(sim, 3, SIDE_ROW, P1);
     sim.world.mut(comrade, Stance).mode = MILITARY_MODE.IGNORE;
     sim.step();

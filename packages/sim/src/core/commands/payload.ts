@@ -279,7 +279,10 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   boardVehicle: { required: { entity: 'integer' } },
   detachFromVehicle: { required: { entity: 'integer' } },
-  attackUnit: { required: { entity: 'integer', target: 'integer' }, optional: QUEUED },
+  attackUnit: {
+    required: { entity: 'integer', target: 'integer' },
+    optional: { ...QUEUED, assault: 'boolean' },
+  },
   attackWithVehicle: { required: { vehicle: 'integer', target: VEHICLE_ATTACK_TARGET }, optional: QUEUED },
   cancelUpgrade: { required: { building: 'integer' } },
   createVehicle: {

@@ -342,6 +342,17 @@ export const plContent = {
       summary:
         'Czerwony zwiadowca biegnie na bydło niebieskiej farmy i zawraca. Krowy w jego zasięgu uciekają, każda w swoją stronę, owce poza jego zasięgiem pasą się dalej, a stado wraca na farmę, gdy się uspokoi.',
     },
+    'focus-fire': {
+      title: 'Skupiony ostrzał',
+      summary:
+        'Niebiescy łucznicy wysłani na czerwoną świątynię strzelają tylko w nią, choć na ich drodze stoją miecznicy, a obsadzona wieża do nich strzela. Przyciski ponawiają ten rozkaz, posyłają ich do świątyni z atakiem po drodze, który najpierw bije obrońców, albo ich wycofują.',
+      stages: {
+        field: 'Pole',
+        focus: 'Strzelaj w świątynię',
+        assault: 'Atakuj po drodze do niej',
+        retreat: 'Wycofaj',
+      },
+    },
     'hit-alarm': {
       title: 'Alarm',
       summary:

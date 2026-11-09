@@ -19,6 +19,7 @@ import { battleScene } from './army/battle.js';
 import { battleWearyScene } from './army/battle-weary.js';
 import { collisionScene } from './army/collision.js';
 import { defenceWallScene } from './army/defence-wall.js';
+import { focusFireScene } from './army/focus-fire.js';
 import { hitAlarmScene } from './army/hit-alarm.js';
 import { meleeFrontScene } from './army/melee-front.js';
 import { openGateAttackScene } from './army/open-gate-attack.js';
@@ -175,6 +176,7 @@ export const SCENES: readonly SceneDefinition[] = [
   wallRepairScene,
   towerDefenceScene,
   attackMoveScene,
+  focusFireScene,
   hitAlarmScene,
   scoutVillageScene,
   meleeFrontScene,

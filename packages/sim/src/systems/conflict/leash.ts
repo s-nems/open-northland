@@ -36,7 +36,7 @@ export function leashedAttack(
   leash: AttackLeash,
   origin: AiOrderOrigin,
 ): boolean {
-  attackUnit(world, ctx, { kind: 'attackUnit', entity: e, target }, origin);
+  attackUnit(world, ctx, { kind: 'attackUnit', entity: e, target, assault: true }, origin);
   if (world.tryGet(e, AttackOrder)?.target !== target) return false;
   world.mut(e, AttackOrder).leash = leash;
   return true;

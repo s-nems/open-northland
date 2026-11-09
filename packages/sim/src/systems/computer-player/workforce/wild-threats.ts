@@ -101,7 +101,7 @@ export function defendAgainstWildlife(
     for (const e of nearestWithin(world, hunters, at, WILD_DEFENCE_CALL_NODES, busy)) {
       if (want <= 0) break;
       busy.add(e);
-      commands.push({ kind: 'attackUnit', entity: e, target: threat });
+      commands.push({ kind: 'attackUnit', entity: e, target: threat, assault: true });
       want--;
     }
     while (want > 0 && unposted < WILD_DEFENCE_HIRES_MAX) {
@@ -115,7 +115,7 @@ export function defendAgainstWildlife(
       want--;
       commands.push(
         { kind: 'setJob', entity: hire, jobType: hunterJob },
-        { kind: 'attackUnit', entity: hire, target: threat },
+        { kind: 'attackUnit', entity: hire, target: threat, assault: true },
       );
     }
   }

@@ -161,7 +161,10 @@ export function attackUnit(
   world.remove(e, OpenChestOrder); // and a walk to a chest
   world.remove(e, ClaimAnimalOrder); // or after an animal
   // A wall breached on the way to `target` stays this order's to finish.
-  if (world.tryGet(e, AttackOrder)?.breach?.resume !== target) world.add(e, AttackOrder, { target });
+  const assault = command.assault === true ? true : undefined;
+  const current = world.tryGet(e, AttackOrder);
+  if (current?.breach?.resume !== target) world.add(e, AttackOrder, { target, assault });
+  else if (current.assault !== assault) world.mut(e, AttackOrder).assault = assault;
   // Original behavior: a fighter ordered onto a unit takes the node it stood on as its anchor. A building
   // or vehicle target leaves the anchor alone, its body standing on nodes nobody walks to.
   if (world.has(target, Settler) && isFighterJob(ctx.content, world.get(e, Settler).jobType)) {

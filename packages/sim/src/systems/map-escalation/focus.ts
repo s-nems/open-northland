@@ -194,7 +194,7 @@ function bandOrders(
     const at = pointOf(world, e);
     let order: PlayerCommand;
     if (hexDistanceBetween(at.hx, at.hy, goal.hx, goal.hy) <= STRIKE_REACH) {
-      order = { kind: 'attackUnit', entity: e, target: aim };
+      order = { kind: 'attackUnit', entity: e, target: aim, assault: true };
     } else {
       const march = world.tryGet(e, PlayerOrder)?.attackMove;
       if (march !== undefined && nodeManhattan(nodeOfId(terrain, march.goal), goal) <= MARCH_SLACK) continue;

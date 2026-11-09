@@ -198,15 +198,21 @@ export function isPriorityCombatTarget(
 }
 
 /** Whether a fighter under `order` may turn aside to an enemy of a higher {@link STRIKE_RANK} than its
- *  target and take the target up again afterwards: an order on a target below the first combat tier,
- *  unless it is a breach, whose breaker stays on its wall (`palisades/breach.ts`). Owner rule. */
+ *  target and take the target up again afterwards: an assault on a target below the first combat tier,
+ *  unless it is a breach, whose breaker stays on its wall (`palisades/breach.ts`). A plain attack order
+ *  holds on its target through every blow and every enemy in reach, as RTS focus orders do: the player
+ *  who wants the defenders fought first sends an attack-move. Owner rule. */
 export function turnsAsideUnder(
   world: World,
   ctx: SystemContext,
-  order: { readonly target: Entity; readonly breach?: unknown },
+  order: { readonly target: Entity; readonly breach?: unknown; readonly assault?: true | undefined },
   firing: () => ReadonlySet<Entity>,
 ): boolean {
-  return order.breach === undefined && !isPriorityCombatTarget(world, ctx, order.target, firing);
+  return (
+    order.assault === true &&
+    order.breach === undefined &&
+    !isPriorityCombatTarget(world, ctx, order.target, firing)
+  );
 }
 
 /** How a fighter ranks the enemies it may turn between, first rank first: the first combat priority

@@ -442,7 +442,9 @@ export function resolveTarget(
     const x = terrain.xOf(here);
     const y = terrain.yOf(here);
     const rival =
-      order.breach === undefined ? null : breakerRival(world, ctx, pass, spec, weapon, x, y, order.breach);
+      order.breach === undefined
+        ? null
+        : breakerRival(world, ctx, pass, spec, weapon, x, y, order.breach, order.assault);
     if (rival !== null) return { target: rival.entity, dist: rival.distance };
     if (spec.hold !== undefined && turnsAsideUnder(world, ctx, order, index.firingNow)) {
       const aside = asideFromOrder(
@@ -519,12 +521,14 @@ function breakerRival(
   x: number,
   y: number,
   breach: { readonly resume: Entity | null; readonly enemy?: Entity | undefined },
+  assault: true | undefined,
 ): { entity: Entity; distance: number } | null {
   if (breach.enemy === undefined && !isRangedWeapon(weapon.weapon)) return null;
   const nearest = (accept: (t: Entity) => boolean): { entity: Entity; distance: number } | null =>
     pass.index.nearest(x, y, weapon.minRange, weapon.maxRange, accept, spec.player, SEARCH_METRIC);
   const ordered = breach.enemy === undefined && breach.resume !== null;
-  if (ordered && !turnsAsideUnder(world, ctx, { target: breach.resume }, pass.index.firingNow)) return null;
+  if (ordered && !turnsAsideUnder(world, ctx, { target: breach.resume, assault }, pass.index.firingNow))
+    return null;
   const priority = spec.hold === undefined ? null : nearest(spec.hold.priorityTarget);
   if (ordered) return priority;
   return priority ?? nearest((t) => !spec.lowPriority(t) && spec.accept(t));

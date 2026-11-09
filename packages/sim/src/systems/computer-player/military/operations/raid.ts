@@ -203,7 +203,7 @@ function strike(env: OperationEnv, op: RaidOperation): PlayerCommand[] {
     if (current !== undefined && hunted.has(current)) continue;
     const quarry = prey[next++ % prey.length];
     if (quarry === undefined) continue;
-    commands.push({ kind: 'attackUnit', entity: e, target: quarry });
+    commands.push({ kind: 'attackUnit', entity: e, target: quarry, assault: true });
     if (!op.struck.includes(quarry)) op.struck = [...op.struck, quarry].sort((a, b) => a - b);
   }
   return commands;

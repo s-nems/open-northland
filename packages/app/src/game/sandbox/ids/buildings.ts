@@ -40,6 +40,8 @@ export const BUILDING_SMITHY = 31;
 /** The druid's hut (`work_druid_00`) and its potion-brewing upgrade (`work_druid_01`). */
 export const BUILDING_DRUID_HUT = 35;
 export const BUILDING_DRUID_HUT_01 = 36;
+/** The temple (`work_temple`). */
+export const BUILDING_TEMPLE = 37;
 /** The barracks (`houses.ini` logictype 39). */
 export const BUILDING_BARRACKS = 39;
 /** The watchtower (`tower_00`); `tower_01` (41) is the chain's top. */

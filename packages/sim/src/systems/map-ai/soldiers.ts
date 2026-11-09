@@ -387,7 +387,7 @@ export function workOrders(
     }
     if (house !== null) {
       if (world.tryGet(e, AttackOrder)?.target !== house)
-        commands.push({ kind: 'attackUnit', entity: e, target: house });
+        commands.push({ kind: 'attackUnit', entity: e, target: house, assault: true });
       continue;
     }
     if (hexDistanceBetween(at.hx, at.hy, group.hx, group.hy) > Math.floor(group.range / 2)) {

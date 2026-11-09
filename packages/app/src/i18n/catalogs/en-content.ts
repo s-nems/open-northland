@@ -344,6 +344,17 @@ export const enContent = {
       summary:
         "A red scout runs at a blue farm's cattle and turns back. The cows in his reach run, each its own way, the sheep beyond his reach keep grazing, and the herd walks back to the farm once it calms.",
     },
+    'focus-fire': {
+      title: 'Focus fire',
+      summary:
+        'Blue archers sent at a red temple shoot the temple and nothing else, though swordsmen stand in their way and a manned tower shoots at them. The buttons repeat that order, send them to the temple attacking on the way, which fights the defenders first, and pull them back out.',
+      stages: {
+        field: 'Field',
+        focus: 'Shoot the temple',
+        assault: 'Attack on the way to it',
+        retreat: 'Pull back',
+      },
+    },
     'hit-alarm': {
       title: 'Alarm',
       summary:

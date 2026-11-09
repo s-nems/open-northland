@@ -327,7 +327,7 @@ function liveAttackOrder(
   if (isValidOrderedTarget(world, ctx, e, attacker, order.target)) return true;
   // A breach whose wall is down goes back to the target it was opened for.
   if (resume !== null) {
-    world.add(e, AttackOrder, { target: resume });
+    world.add(e, AttackOrder, { target: resume, assault: order.assault });
     return true;
   }
   world.remove(e, AttackOrder);

@@ -347,7 +347,7 @@ describe('engagement - which enemy it picks', () => {
 describe('engagement - a struck fighter turns on its attacker', () => {
   const blow = { damage: 10 };
 
-  it('only under ATTACK or DEFEND, and never against its attack order on a fighter', () => {
+  it('only under ATTACK or DEFEND, and never against a plain attack order, even on a civilian', () => {
     for (const [mode, turns] of [
       [MILITARY_MODE.ATTACK, true],
       [MILITARY_MODE.DEFEND, true],
@@ -362,7 +362,7 @@ describe('engagement - a struck fighter turns on its attacker', () => {
     }
     const s = sim();
     const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
-    const ordered = unit(s, 12, P1, MILITARY_MODE.IGNORE);
+    const ordered = unit(s, 12, P1, MILITARY_MODE.IGNORE, WOMAN);
     const attacker = unit(s, 2, P1, MILITARY_MODE.IGNORE);
     s.world.add(soldier, AttackOrder, { target: ordered });
     resolveCombatHit(s.world, ctxOf(s), attacker, soldier, blow, [], 'melee');
@@ -370,12 +370,12 @@ describe('engagement - a struck fighter turns on its attacker', () => {
     expect(s.world.get(soldier, AttackOrder).target).toBe(ordered);
   });
 
-  it('turns aside from its attack order on a civilian to a fighter striking it, the order kept', () => {
+  it('turns aside from its assault on a civilian to a fighter striking it, the order kept', () => {
     const s = sim();
     const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
     const ordered = unit(s, 12, P1, MILITARY_MODE.IGNORE, WOMAN);
     const attacker = unit(s, 2, P1, MILITARY_MODE.IGNORE);
-    s.world.add(soldier, AttackOrder, { target: ordered });
+    s.world.add(soldier, AttackOrder, { target: ordered, assault: true });
     resolveCombatHit(s.world, ctxOf(s), attacker, soldier, blow, [], 'melee');
     expect(held(s, soldier)).toBe(attacker);
     expect(s.world.get(soldier, AttackOrder).target).toBe(ordered);

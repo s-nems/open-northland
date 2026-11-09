@@ -345,6 +345,17 @@ export const deContent = {
       summary:
         'Ein roter Späher läuft auf die Rinder eines blauen Hofs zu und kehrt um. Die Kühe in seiner Reichweite fliehen, jede in ihre eigene Richtung, die Schafe außer seiner Reichweite grasen weiter, und die Herde kehrt zum Hof zurück, sobald sie sich beruhigt hat.',
     },
+    'focus-fire': {
+      title: 'Gezielter Beschuss',
+      summary:
+        'Blaue Bogenschützen, auf einen roten Tempel angesetzt, beschießen nur den Tempel, obwohl Schwertkämpfer ihnen im Weg stehen und ein besetzter Turm auf sie schießt. Die Knöpfe wiederholen diesen Befehl, schicken sie mit Angriff unterwegs zum Tempel, der zuerst die Verteidiger bekämpft, oder ziehen sie zurück.',
+      stages: {
+        field: 'Feld',
+        focus: 'Den Tempel beschießen',
+        assault: 'Unterwegs angreifen bis zu ihm',
+        retreat: 'Zurückziehen',
+      },
+    },
     'hit-alarm': {
       title: 'Alarm',
       summary:

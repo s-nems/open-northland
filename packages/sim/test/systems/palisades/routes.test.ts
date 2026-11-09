@@ -1178,30 +1178,36 @@ describe('a shooter breaking a wall', () => {
     expect(sim.world.get(bystander, Health).hitpoints).toBe(sim.world.get(bystander, Health).max);
   });
 
-  it('ordered at a civilian behind the wall, still shoots an enemy fighter in reach before the wall', () => {
-    const sim = new Simulation({ seed: 1, content: shooterContent(), map: deepSouthMap() });
-    const gate = wallRow(sim, P1);
-    sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
-    sim.step();
-    const archer = fighterAt(sim, 0, 0, VIKING, HUNTER, { owner: P0 });
-    sim.world.add(archer, Position, positionOfNode(NORTH.hx, NORTH.hy));
-    const target = fighter(sim, DEEP_SOUTH, P1);
-    attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: archer, target });
-    for (let tick = 0; tick < 200 && sim.world.tryGet(archer, AttackOrder)?.breach === undefined; tick++)
+  it.each([
+    ['an assault', true],
+    ['a plain attack order', false],
+  ] as const)(
+    'under %s at a civilian behind the wall, shoots an enemy fighter in reach before the wall: %s',
+    (_, assault) => {
+      const sim = new Simulation({ seed: 1, content: shooterContent(), map: deepSouthMap() });
+      const gate = wallRow(sim, P1);
+      sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
       sim.step();
-    const wall = sim.world.tryGet(archer, AttackOrder)?.target;
-    if (wall === undefined) throw new Error('expected the archer to go for the wall');
-    expect(sim.world.has(wall, Palisade)).toBe(true);
+      const archer = fighterAt(sim, 0, 0, VIKING, HUNTER, { owner: P0 });
+      sim.world.add(archer, Position, positionOfNode(NORTH.hx, NORTH.hy));
+      const target = fighter(sim, DEEP_SOUTH, P1);
+      attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: archer, target, assault });
+      for (let tick = 0; tick < 200 && sim.world.tryGet(archer, AttackOrder)?.breach === undefined; tick++)
+        sim.step();
+      const wall = sim.world.tryGet(archer, AttackOrder)?.target;
+      if (wall === undefined) throw new Error('expected the archer to go for the wall');
+      expect(sim.world.has(wall, Palisade)).toBe(true);
 
-    // Placed once the breach stands, or the archer shoots it on its way and never breaches.
-    const defender = fighterAt(sim, 0, 0, VIKING, UNARMED_SOLDIER, { owner: P1 });
-    sim.world.add(defender, Position, positionOfNode(NORTH.hx, WALL_ROW + 2));
-    const hurt = (): boolean =>
-      sim.world.get(defender, Health).hitpoints < sim.world.get(defender, Health).max;
-    for (let tick = 0; tick < 400 && !hurt(); tick++) sim.step();
-    expect(hurt()).toBe(true);
-    expect(sim.world.get(archer, AttackOrder).target).toBe(wall);
-  });
+      // Placed once the breach stands, or the archer shoots it on its way and never breaches.
+      const defender = fighterAt(sim, 0, 0, VIKING, UNARMED_SOLDIER, { owner: P1 });
+      sim.world.add(defender, Position, positionOfNode(NORTH.hx, WALL_ROW + 2));
+      const hurt = (): boolean =>
+        sim.world.get(defender, Health).hitpoints < sim.world.get(defender, Health).max;
+      for (let tick = 0; tick < 400 && !hurt(); tick++) sim.step();
+      expect(hurt()).toBe(assault);
+      expect(sim.world.get(archer, AttackOrder).target).toBe(wall);
+    },
+  );
 });
 
 describe('a fighter walled in with its enemy in sight', () => {

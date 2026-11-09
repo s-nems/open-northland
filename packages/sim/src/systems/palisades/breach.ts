@@ -75,6 +75,8 @@ export function breakThroughWall(
     world.add(e, AttackOrder, {
       target: breach.wall,
       breach: { resume: opener.resume, stand: breach.stand },
+      // An assault breaking through to its target stays an assault.
+      assault: world.tryGet(e, AttackOrder)?.assault,
     });
   }
   world.add(e, Engagement, { repathAt: ctx.tick });
@@ -96,20 +98,21 @@ export function releaseWallBreaches(world: World, ctx: SystemContext, fallen: En
   if (terrain === undefined || !(world.has(fallen, PalisadeBlocking) || isWallBuilding(world, ctx, fallen)))
     return;
   endMachineMarchRests(world, ctx.tick);
-  const breaches: { e: Entity; wall: Entity; resume: Entity | null }[] = [];
+  const breaches: { e: Entity; wall: Entity; resume: Entity | null; assault: true | undefined }[] = [];
   for (const e of world.query(AttackOrder)) {
     const order = world.get(e, AttackOrder);
-    if (order.breach !== undefined) breaches.push({ e, wall: order.target, resume: order.breach.resume });
+    if (order.breach !== undefined)
+      breaches.push({ e, wall: order.target, resume: order.breach.resume, assault: order.assault });
   }
   if (breaches.length === 0) return;
   // Marching breakers treat open gates as part of the wall. Their passage must join the run
   // when either the gate itself or a neighbouring segment falls, including retained outer posts.
   const wallAt = standingWallAt(world, ctx, terrain, () => true, { includeGatePassages: true });
   const line = joinedWalls(terrain, wallAt, wallCellsOf(wallAt), fallen);
-  for (const { e, wall, resume } of breaches) {
+  for (const { e, wall, resume, assault } of breaches) {
     if (!line.has(wall)) continue;
     if (resume !== null && world.isAlive(resume)) {
-      world.add(e, AttackOrder, { target: resume });
+      world.add(e, AttackOrder, { target: resume, assault });
       world.add(e, Engagement, { repathAt: ctx.tick });
     } else {
       world.remove(e, AttackOrder);
