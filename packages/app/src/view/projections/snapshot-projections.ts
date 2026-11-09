@@ -4,6 +4,7 @@ import type { SignpostReachView } from '@open-northland/sim';
 import { TILE_BUCKET_SIZE, type TileBox, type WorldSnapshot } from '@open-northland/sim';
 import type { WorkerRole } from '../../game/sandbox/index.js';
 import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
+import { teamColourVersion } from '../accessibility/team-colour.js';
 import { computeConstructionSigns } from './construction-signs.js';
 import { type BuildingDoorInfoOf, computeDoorBadges, type DoorBadgeCache } from './door-badges.js';
 import { computeExperienceStars, type ExperienceStarInputs } from './experience-stars.js';
@@ -159,8 +160,10 @@ export function createSnapshotProjections(
       },
       () => hearts.selection?.version() ?? 0,
     );
-  // The hearts key on the selection; a seat switch, rare beside a pick, replaces the memo instead.
+  // The hearts key on the selection; a seat switch or a team-colour change, rare beside a pick,
+  // replaces the memo instead.
   let heartsViewer = viewer.version();
+  let heartsColours = teamColourVersion();
   let lifeHearts = heartsMemo();
   const starRules = hearts.starRules;
   const experienceStarsFor = memoByScreen(
@@ -200,8 +203,9 @@ export function createSnapshotProjections(
     }, viewerVersion),
     experienceStarsFor,
     lifeHeartsFor: (snapshot, viewport) => {
-      if (viewer.version() !== heartsViewer) {
+      if (viewer.version() !== heartsViewer || teamColourVersion() !== heartsColours) {
         heartsViewer = viewer.version();
+        heartsColours = teamColourVersion();
         lifeHearts = heartsMemo();
       }
       return lifeHearts(snapshot, viewport);

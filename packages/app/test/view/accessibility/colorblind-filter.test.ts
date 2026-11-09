@@ -20,8 +20,6 @@ function matrix(filter: ColorBlindFilter): number[] {
   return m;
 }
 
-const IDENTITY = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0];
-
 describe('correctionMatrix (daltonization)', () => {
   it('returns undefined for the off filter', () => {
     expect(correctionMatrix('off')).toBeUndefined();
@@ -33,13 +31,6 @@ describe('correctionMatrix (daltonization)', () => {
     expect(m.slice(15)).toEqual([0, 0, 0, 1, 0]);
   });
 
-  it('is not the identity matrix (it actually recolours)', () => {
-    const m = matrix('deuteranopia');
-    expect(m).not.toEqual(IDENTITY);
-    const differs = m.some((v, i) => Math.abs(v - (IDENTITY[i] ?? 0)) > 1e-6);
-    expect(differs).toBe(true);
-  });
-
   it('leaves a neutral grey unchanged', () => {
     for (const filter of ['deuteranopia', 'protanopia', 'tritanopia'] as const) {
       const [r, g, b] = applyMatrix(matrix(filter), 0.5, 0.5, 0.5);
@@ -47,28 +38,21 @@ describe('correctionMatrix (daltonization)', () => {
     }
   });
 
-  it('separates red from green for red-green deficiency via the blue channel', () => {
-    const m = matrix('deuteranopia');
-    // Original red and green both have blue = 0, so a deutan confuses them.
-    const red = applyMatrix(m, 1, 0, 0);
-    const green = applyMatrix(m, 0, 1, 0);
-    // After correction the two colours must differ in blue (or green).
-    const blueGap = Math.abs(red[2] - green[2]);
-    const greenGap = Math.abs(red[1] - green[1]);
-    expect(Math.max(blueGap, greenGap)).toBeGreaterThan(0.05);
-    // Pure red gains blue it did not have before, while green stays blue-less.
-    expect(red[2]).toBeGreaterThan(0.05);
-    expect(green[2]).toBe(0);
-    // The correction adds to the source rather than replacing it with the simulated colour.
-    expect(red[0]).toBe(1);
-  });
+  for (const filter of ['deuteranopia', 'protanopia'] as const) {
+    it(`gives ${filter} a blue cue on red and keeps green blue-free, on top of the source`, () => {
+      const red = applyMatrix(matrix(filter), 1, 0, 0);
+      const green = applyMatrix(matrix(filter), 0, 1, 0);
+      expect(red[2]).toBeGreaterThan(0.1);
+      expect(green[2]).toBe(0);
+      expect(red[0]).toBe(1);
+    });
+  }
 
-  it('separates blue from yellow for tritanopia via the red/green channels', () => {
-    const m = matrix('tritanopia');
-    const blue = applyMatrix(m, 0, 0, 1);
-    const yellow = applyMatrix(m, 1, 1, 0);
-    const gap = Math.abs(blue[0] - yellow[0]) + Math.abs(blue[1] - yellow[1]) + Math.abs(blue[2] - yellow[2]);
-    expect(gap).toBeGreaterThan(0.05);
-    expect(m).not.toEqual(IDENTITY);
+  it('gives tritanopia a red cue on blue and takes red out of yellow', () => {
+    const blue = applyMatrix(matrix('tritanopia'), 0, 0, 1);
+    const yellow = applyMatrix(matrix('tritanopia'), 1, 1, 0);
+    expect(blue[0]).toBeGreaterThan(0.1);
+    expect(yellow[0]).toBeLessThan(0.9);
+    expect(yellow[1]).toBe(1);
   });
 });

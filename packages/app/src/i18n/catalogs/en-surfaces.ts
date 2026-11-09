@@ -245,7 +245,7 @@ export const enSurfaces = {
       accessibilityHeading: 'Accessibility',
       teamColorStrength: 'Team colour strength',
       teamColorStrengthTip:
-        'Pushes each player colour toward a bolder version of itself for colour-vision-deficient players. Level 1 is the original palette; level 10 is the boldest, without changing which colour a player is.',
+        'Makes player colours bolder on the minimap, health hearts, notices and panels, for colour-vision-deficient players. Level 1 is the original palette; level 10 is the boldest, without changing which colour a player is.',
       colorBlindFilter: 'Colour-blind filter',
       colorBlindFilterTip:
         'A screen-wide correction filter for colour-blind players; turning it off leaves the image unchanged.',
