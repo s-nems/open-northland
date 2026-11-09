@@ -52,8 +52,6 @@ export interface ArmorLayout {
   readonly bands: readonly ArmorBand[];
   /** Bands that keep the team ramp whatever the armor. */
   readonly team: readonly number[];
-  /** Bands that take the team ramp only while armor is worn, once the armor has covered the clothes. */
-  readonly wornTeam?: readonly number[];
 }
 
 /** One band the armor colours: a ramp for each armor tier, the team ramp where none is named. */
@@ -338,8 +336,6 @@ export class HumanPaletteBook {
       if (ramp !== null) bandPalette(out, band).set(ramp, bandStart(band));
     }
     for (const band of layout.team) bandPalette(out, band).set(this.team, bandStart(band));
-    if (tier === UNARMORED_TIER) return;
-    for (const band of layout.wornTeam ?? []) bandPalette(out, band).set(this.team, bandStart(band));
   }
 
   private armorRamp(armorRamp: ArmorRamp): Uint8Array | null {

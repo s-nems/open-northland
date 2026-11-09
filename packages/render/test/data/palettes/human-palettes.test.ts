@@ -375,14 +375,6 @@ describe('an armor layout', () => {
     expect(band(hero.head, HEAD_TEAM - 16)).toEqual(grey((HEAD_TEAM - 16) * 16));
   });
 
-  it('paints its worn-team bands in the team colour only under armor', () => {
-    const helmeted: CharacterPalette = { ...PLAIN, armor: { bands: [], team: [], wornTeam: [HEAD_TEAM] } };
-    const helmet = (tier: number) =>
-      band(compose(layoutBook(), identity(helmeted, { armorTier: tier })).head, HEAD_TEAM - 16);
-    expect(helmet(1)).toEqual(RED);
-    expect(helmet(0)).toEqual(grey((HEAD_TEAM - 16) * 16));
-  });
-
   it('leaves its bands alone for a tier past their lists, as the recipe does for a tier it lacks', () => {
     const out = compose(layoutBook(), identity(soldier, { armorTier: 2 }));
     expect(band(out.body, TUNIC)).toEqual(grey(TUNIC * 16));

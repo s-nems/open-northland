@@ -6,7 +6,6 @@ import { weaponLayout } from '../../../src/content/settler-gfx/weapon-bands.js';
 const HEAD_BAND_BASE = 16;
 const TURBAN = HEAD_BAND_BASE + 6;
 const SWORD_TURBAN = 9;
-const FRANKISH_HELMET = HEAD_BAND_BASE + 7;
 
 describe('soldier armor layouts', () => {
   it('retains garment and spear bands in numbered library variants', () => {
@@ -22,12 +21,6 @@ describe('soldier armor layouts', () => {
       SWORD_TURBAN,
       TURBAN,
     ]);
-  });
-
-  it('gives the Frankish helmet the team colour only under armor', () => {
-    const layout = armorLayout('cr_hum_body_32', ['cr_hum_head_33', 'cr_hum_head_34']);
-    expect(layout?.team).toEqual([]);
-    expect(layout?.wornTeam).toEqual([FRANKISH_HELMET]);
   });
 
   it('leaves a body without a layout to the armor recipe, whatever its heads', () => {

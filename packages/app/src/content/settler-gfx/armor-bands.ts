@@ -36,8 +36,8 @@ const STRIPES: TierRamps = MAIN.map((tier, index) => (index === CHAIN_TIER ? ram
 
 const band = (id: number, tiers: TierRamps): ArmorBand => ({ band: id, tiers });
 
-/** Tunic 10, shoulder pads and collar 5; gloves and boots (6), weapons and shield (14, 15) keep theirs.
- *  The helmet is drawn by the head overlay. */
+/** Tunic 10, shoulder pads and collar 5; gloves and boots (6), weapons and shield (14, 15) keep theirs,
+ *  and the helmet's rim keeps the team colour its random recipe gives it. */
 const FRANKISH_SOLDIER: ArmorLayout = { bands: [band(10, MAIN), band(5, TRIM)], team: [] };
 /** Shirt 10, sleeves 13; trousers (7, shared with the spear head), sash, boots and weapons keep theirs.
  *  The turban is drawn by the head overlay. */
@@ -63,22 +63,10 @@ const TEAM_BY_HEAD: Readonly<Record<string, readonly number[]>> = {
   cr_hum_head_43: [headPaletteBand(6)],
 };
 
-/** Soldier head stem → the head bands that take the team colour while armor covers the tunic. */
-const WORN_TEAM_BY_HEAD: Readonly<Record<string, readonly number[]>> = {
-  cr_hum_head_33: [headPaletteBand(7)], // Frankish helmet dome
-  cr_hum_head_34: [headPaletteBand(7)],
-};
-
 /** The armor layout of a look drawn on `body` with `heads`, if it has one. */
 export function armorLayout(body: string, heads: readonly string[]): ArmorLayout | undefined {
   const layout = ARMOR_BY_BODY[paletteLibrary(body)];
   if (layout === undefined) return undefined;
-  const libraries = heads.map(paletteLibrary);
-  const headTeam = libraries.flatMap((head) => TEAM_BY_HEAD[head] ?? []);
-  const wornTeam = [...new Set(libraries.flatMap((head) => WORN_TEAM_BY_HEAD[head] ?? []))];
-  return {
-    ...layout,
-    ...(headTeam.length === 0 ? {} : { team: [...new Set([...layout.team, ...headTeam])] }),
-    ...(wornTeam.length === 0 ? {} : { wornTeam }),
-  };
+  const headTeam = heads.flatMap((head) => TEAM_BY_HEAD[paletteLibrary(head)] ?? []);
+  return headTeam.length === 0 ? layout : { ...layout, team: [...new Set([...layout.team, ...headTeam])] };
 }
