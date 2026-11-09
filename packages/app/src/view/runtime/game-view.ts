@@ -58,7 +58,6 @@ import { setReportGameView } from '../../diag/report/view.js';
 import { settlerName } from '../../game/character-names/index.js';
 import { installPetNames, type PetNames, petNamesOf } from '../../game/character-names/pet-names.js';
 import { type MissionBriefSource, missionReader } from '../../game/map/mission-brief.js';
-import { mapStartFocus } from '../../game/map/start.js';
 import type { ObserverSeatEntry } from '../../game/match/observer-seats.js';
 import { replaySearch } from '../../game/match/session-url.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
@@ -116,11 +115,7 @@ import { assistantArmorSeam, assistantWeaponSeam } from '../assistant/gear-lines
 import { assistantGrantsSeam } from '../assistant/grants.js';
 import { assistantShortagesOf } from '../assistant/shortages.js';
 import type { CameraController } from '../camera/index.js';
-import {
-  cameraCenteredOnTile,
-  cameraCenteredOnWorld,
-  clientToScreen as clientToScreenPx,
-} from '../camera/index.js';
+import { cameraCenteredOnWorld, clientToScreen as clientToScreenPx } from '../camera/index.js';
 import { clearCanvasCursors } from '../cursors/element.js';
 import { createDiplomacyActions } from '../diplomacy-actions.js';
 import { ATTACK_MUSIC } from '../escalation/attack-music.js';
@@ -1394,18 +1389,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     cleanup.push(() => worldHover.destroy());
 
-    // A seat switch from the picker: the selection was the last seat's, and the view goes where the
-    // new seat's people are.
-    switchableSeat?.onSwitch((target) => {
+    // A seat switch from the picker: the selection was the last seat's. The camera stays put, so a
+    // spectator can compare both sides of the same fight.
+    switchableSeat?.onSwitch(() => {
       uiCue('confirm');
       // The gates follow at once, so a click before the next frame reads the new seat's fog.
       fogGates.setFrame(fogViewOf());
       controls.select([]);
-      if (typeof target !== 'number') return;
-      const seat = target;
-      const focus = mapStartFocus(host.snapshot(), deps.mapSize.width, deps.mapSize.height, seat);
-      const zoom = cameraCtl.camera().scale ?? 1;
-      cameraCtl.jumpTo(cameraCenteredOnTile(focus.x, focus.y, zoom, app.screen.width, app.screen.height));
     });
     if (switchableSeat !== null) {
       cleanup.push(
