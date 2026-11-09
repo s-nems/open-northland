@@ -252,17 +252,6 @@
   letter-spacing: 0.07em;
 }
 
-.main-menu__nav-item.is-exit {
-  color: rgba(219, 232, 227, 0.6);
-}
-
-.main-menu__nav-item.is-exit:hover,
-.main-menu__nav-item.is-exit:focus-visible {
-  color: var(--danger-text);
-  border-bottom-color: var(--danger-border);
-  letter-spacing: 0.04em;
-}
-
 /* ---- Sub-screen scaffold (shared header of frames 4a/4b/3c/5a) ---- */
 
 .main-menu__screen {

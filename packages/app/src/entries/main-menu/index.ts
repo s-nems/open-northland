@@ -48,7 +48,6 @@ function navButton(item: MainNavItem, open: (screen: MenuScreen) => void): HTMLB
   label.textContent = copy.items[item.id];
   button.append(label);
   if (item.kind === 'exit') {
-    button.classList.add('is-exit');
     // Quits without confirmation.
     button.addEventListener('click', () => window.close());
   } else {
