@@ -28,6 +28,7 @@ import {
   productionSystem,
   recountHerdRows,
 } from '../../../src/systems/index.js';
+import { isInside } from '../../../src/systems/settlers/indoors.js';
 import { grassCellMap, waterColumnMap } from '../../fixtures/terrain.js';
 import {
   BREED_TICKS,
@@ -405,7 +406,7 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     expect(new Set(summoners)).toEqual(new Set([breeder, colleague]));
   });
 
-  it('kills the summoned animal on the door tile and banks the clip’s wares in the farm', () => {
+  it('takes the summoned animal in from the door tile, kills it and banks the clip’s wares in the farm', () => {
     const sim = livestockSim();
     const { farm, breeder } = farmWithBreeder(sim);
     const doomed = cowAt(sim, FARM_AT.hx, FARM_AT.hy, { owner: P0, farm });
@@ -415,6 +416,7 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     plan(sim); // both stand on the door: the knife comes out
     expect(sim.world.isAlive(doomed)).toBe(false);
     expect(sim.world.get(breeder, CurrentAtomic).atomicId).toBe(SLAY_ATOMIC);
+    expect(isInside(sim.world, breeder, farm)).toBe(true); // the clip plays indoors
     expect(herdRow(sim, farm)).toBe(2);
 
     for (let i = 0; i < 20; i++) sim.step();

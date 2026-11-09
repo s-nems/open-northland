@@ -43,7 +43,7 @@ import { settlementReachAt } from '../../../signposts/settlement-reach.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { buildingWorkerJobs, recipesByProductOf, stockCapacity } from '../../../stores/index.js';
 import { startAtomic, walkPickupBatch } from '../../atomics/start.js';
-import { enterBuilding } from '../../indoors.js';
+import { enterBuilding, stepIn } from '../../indoors.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { type IdleStands, standsStillForMachine } from '../../planner/idle-replan.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
@@ -263,8 +263,8 @@ function flushFullWare(plan: PlannerContext, farm: Entity, good: number): boolea
 /**
  * Slaughter one grown animal past the breeding pair: the breeder walks up to the nearest one at the door,
  * takes it in hand from {@link SUMMON_RANGE} away and waits while it walks itself to the door, then steps
- * onto the door tile with it and plays the slay clip, whose own frame events put the wares in the house.
- * An animal another breeder already leads away is left to it, and neither counts toward the pair.
+ * onto the door tile with it, takes it in and plays the slay clip, whose own frame events put the wares in
+ * the house. An animal another breeder already leads away is left to it, and neither counts toward the pair.
  */
 function planSlay(plan: PlannerContext, farm: Entity, good: number): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
@@ -297,6 +297,8 @@ function planSlay(plan: PlannerContext, farm: Entity, good: number): boolean {
   }
   removeSettlerSilently(world, target);
   recountHerdRows(world, ctx, farm);
+  // The slay clips have no outdoor graphics, like the breed clips: the breeder works inside the house.
+  stepIn(world, e, farm);
   startAtomic(
     world,
     e,
