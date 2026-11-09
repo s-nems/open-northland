@@ -1,5 +1,6 @@
-import { enhancedPlayerSwatch } from '../../../catalog/roster.js';
+import { PLAYER_SWATCH_COLORS } from '../../../catalog/roster.js';
 import { uiFoundationArt } from '../../../content/gui/ui-foundation.js';
+import { teamColour } from '../../../view/accessibility/team-colour.js';
 import type { NoticeGlyph } from '../../tool-panel/messages/cards.js';
 import { createStaticPictures, showPicture } from '../static-picture.js';
 
@@ -11,7 +12,8 @@ const UNTINTED_KEY_COLOUR = 0xe6dcc3;
 export function noticeTint(seat: number | null, colourSlotOf?: (player: number) => number): number {
   if (seat === null) return UNTINTED_KEY_COLOUR;
   const slot = colourSlotOf?.(seat) ?? seat;
-  return enhancedPlayerSwatch(slot, UNTINTED_KEY_COLOUR);
+  const swatch = PLAYER_SWATCH_COLORS[slot % PLAYER_SWATCH_COLORS.length];
+  return swatch === undefined ? UNTINTED_KEY_COLOUR : teamColour(swatch);
 }
 
 /** A pixel belongs to the key while its green stays under this share of the red/blue peak. The atlas

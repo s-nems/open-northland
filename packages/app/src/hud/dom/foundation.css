@@ -9267,6 +9267,18 @@ body.on-drag-scroll.on-drag-scroll-free * {
   width: 200px;
   gap: 12px;
 }
+.on-hud .on-settings .main-menu__settings-stack {
+  flex-shrink: 0;
+  width: 200px;
+  gap: 6px;
+}
+.on-hud .on-settings .main-menu__team-swatches {
+  gap: 3px;
+}
+.on-hud .on-settings .main-menu__team-swatch {
+  height: 12px;
+  border-radius: 2px;
+}
 .on-hud .on-settings .main-menu__settings-range {
   min-width: 0;
   width: 100%;
@@ -9392,7 +9404,7 @@ body.on-drag-scroll.on-drag-scroll-free * {
     flex-direction: row;
     align-items: center;
   }
-  .on-hud .on-settings .main-menu__settings-slider {
+  .on-hud .on-settings :is(.main-menu__settings-slider, .main-menu__settings-stack) {
     width: 100%;
   }
   .on-hud .on-settings .main-menu__settings-key {

@@ -16,9 +16,8 @@ function hue(rgb: number): number {
   const min = Math.min(rn, gn, bn);
   const d = max - min;
   if (d === 0) return 0;
-  const sector =
-    max === rn ? ((gn - bn) / d) % 6 : max === gn ? (bn - rn) / d + 2 : (rn - gn) / d + 4;
-  return ((sector * 60) % 360 + 360) % 360;
+  const sector = max === rn ? ((gn - bn) / d) % 6 : max === gn ? (bn - rn) / d + 2 : (rn - gn) / d + 4;
+  return (((sector * 60) % 360) + 360) % 360;
 }
 
 describe('enhancePlayerColor', () => {

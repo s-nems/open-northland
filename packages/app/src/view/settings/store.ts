@@ -24,6 +24,7 @@ import {
   resolveBackingDensity,
   type SelectionStyle,
 } from '@open-northland/render';
+import { TEAM_COLOR_STRENGTH_MAX, TEAM_COLOR_STRENGTH_MIN } from '../../catalog/player-color.js';
 import {
   changedKeyBindings,
   DEFAULT_KEY_BINDINGS,
@@ -70,19 +71,14 @@ export const RENDER_SCALE_MIN = 0.5;
 export const RENDER_SCALE_MAX = 2;
 const DEFAULT_RENDER_SCALE = 1;
 
-/** Player colour boldness for colour-vision-deficient players; 1 = retail palette, 10 = boldest. Local only. */
-export const TEAM_COLOR_STRENGTH_MIN = 1;
-export const TEAM_COLOR_STRENGTH_MAX = 10;
-
 /** A whole-viewport colour-blindness correction filter; `off` leaves the image uncorrected. Local only. */
-export type ColorBlindFilter = 'off' | 'deuteranopia' | 'protanopia' | 'tritanopia' | 'generic';
+export type ColorBlindFilter = 'off' | 'deuteranopia' | 'protanopia' | 'tritanopia';
 export const COLOR_BLIND_FILTERS: readonly ColorBlindFilter[] = [
   'off',
   'deuteranopia',
   'protanopia',
   'tritanopia',
-  'generic',
-] as const;
+];
 
 export const SCROLL_SPEED_MIN = 0.5;
 export const SCROLL_SPEED_MAX = 3;
@@ -133,7 +129,7 @@ export interface MenuSettings {
   readonly cursorHints: boolean;
   /** A small label of its control groups' numbers by each unit bound to one. */
   readonly groupNumbers: boolean;
-  /** Player colour boldness for colour-vision-deficient players; 1 = retail palette, 10 = boldest. Local only. */
+  /** Player colour boldness for colour-vision-deficient players, minimum = retail palette. Local only. */
   readonly teamColorStrength: number;
   /** A whole-viewport colour-blindness correction filter; `off` leaves the image uncorrected. Local only. */
   readonly colorBlindFilter: ColorBlindFilter;

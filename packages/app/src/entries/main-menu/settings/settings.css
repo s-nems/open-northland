@@ -283,6 +283,30 @@ button.main-menu__settings-key:focus-visible {
   width: calc(var(--u) * 540);
 }
 
+/* A slider with a preview under it, such as the team-colour strip. */
+.main-menu__settings-stack {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 10);
+  width: calc(var(--u) * 420);
+}
+
+.main-menu__settings-stack .main-menu__settings-slider {
+  width: 100%;
+}
+
+.main-menu__team-swatches {
+  display: flex;
+  gap: calc(var(--u) * 6);
+}
+
+.main-menu__team-swatch {
+  flex: 1;
+  height: calc(var(--u) * 18);
+  border: 1px solid rgb(255 255 255 / 0.25);
+  border-radius: 3px;
+}
+
 .main-menu__settings-value {
   width: calc(var(--u) * 64);
   text-align: right;

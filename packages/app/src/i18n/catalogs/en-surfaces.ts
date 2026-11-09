@@ -190,7 +190,6 @@ export const enSurfaces = {
         audio: 'Sound',
         gameplay: 'Gameplay',
         controls: 'Controls',
-        accessibility: 'Accessibility',
       },
       displayMode: 'Display mode',
       displayFullscreen: 'Fullscreen',
@@ -254,7 +253,6 @@ export const enSurfaces = {
       colorBlindFilterDeuteranopia: 'Red-green (deuteranopia)',
       colorBlindFilterProtanopia: 'Red-blind (protanopia)',
       colorBlindFilterTritanopia: 'Blue-yellow (tritanopia)',
-      colorBlindFilterGeneric: 'Generic',
       fpsCounter: 'FPS counter',
       fpsCounterTip:
         'The frame rate on the top bar. Hover it to see what holds the game back: the simulation, the processor drawing the frame, or the graphics card.',

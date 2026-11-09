@@ -1,5 +1,6 @@
 import { DEFAULT_VOLUMES } from '@open-northland/audio';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TEAM_COLOR_STRENGTH_MAX, TEAM_COLOR_STRENGTH_MIN } from '../../../../src/catalog/player-color.js';
 import { adoptSettings, carriedSettingParams } from '../../../../src/entries/main-menu/settings/state.js';
 import { DEFAULT_KEY_BINDINGS } from '../../../../src/hud/keybindings.js';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN } from '../../../../src/hud/ui-scale.js';
@@ -13,8 +14,6 @@ import {
   RENDER_SCALE_MIN,
   SCROLL_SPEED_MAX,
   SCROLL_SPEED_MIN,
-  TEAM_COLOR_STRENGTH_MAX,
-  TEAM_COLOR_STRENGTH_MIN,
 } from '../../../../src/view/settings/store.js';
 
 // The default language, and so the param the URL elides, comes from the browser rather than a constant.
@@ -321,7 +320,9 @@ describe('accessibility settings', () => {
     expect(parseStoredSettings('{"teamColorStrength":99}').teamColorStrength).toBe(TEAM_COLOR_STRENGTH_MAX);
     expect(parseStoredSettings('{"teamColorStrength":4.6}').teamColorStrength).toBe(5);
     expect(parseStoredSettings('{}').teamColorStrength).toBe(TEAM_COLOR_STRENGTH_MIN);
-    expect(parseStoredSettings('{"teamColorStrength":"bold"}').teamColorStrength).toBe(TEAM_COLOR_STRENGTH_MIN);
+    expect(parseStoredSettings('{"teamColorStrength":"bold"}').teamColorStrength).toBe(
+      TEAM_COLOR_STRENGTH_MIN,
+    );
   });
 
   it('accepts a known colour-blind filter and rejects an unknown one', () => {

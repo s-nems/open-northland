@@ -8,22 +8,18 @@ import { dropdownControl } from '../../hud/dom/parts/dropdown.js';
 import { MINIMAP_FRAME_IMAGES, MINIMAP_FRAMES, type MinimapFrame } from '../../hud/minimap/frames.js';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, UI_SCALE_FACTOR_STEP } from '../../hud/ui-scale.js';
 import { messages } from '../../i18n/index.js';
+import { teamColourStrengthControl } from '../accessibility/team-colour-control.js';
 import { segControl, settingRow, settingsHeading, sliderControl, togglePill } from './controls.js';
 import { cursorSettingsRows } from './cursor-rows.js';
-import { enhancePlayerColor } from '../../catalog/player-color.js';
-import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
-import { applyColorBlindFilter, correctionMatrix } from '../accessibility/colorblind-filter.js';
 import type { DisplayMode } from './display-mode.js';
 import type { SettingsPageStore } from './page.js';
 import {
-  type ColorBlindFilter,
   COLOR_BLIND_FILTERS,
+  type ColorBlindFilter,
   type FpsLimit,
   type MenuSettings,
   RENDER_SCALE_MAX,
   RENDER_SCALE_MIN,
-  TEAM_COLOR_STRENGTH_MAX,
-  TEAM_COLOR_STRENGTH_MIN,
 } from './store.js';
 
 type FpsChoice = 'fps30' | 'fps60' | 'screen';
@@ -215,103 +211,29 @@ export function graphicsSettingsRows(
     toggle.dataset.settingsFocus = key;
     return settingRow(text[key], toggle, { tip: liveTip(text[`${key}Tip`]) });
   });
-  const teamColorStrength = sliderControl(text.teamColorStrength, {
-    min: TEAM_COLOR_STRENGTH_MIN,
-    max: TEAM_COLOR_STRENGTH_MAX,
-    step: 1,
-    value: settings.teamColorStrength,
-    live: true,
-    onCommit: (value) => {
+  const teamColours = teamColourStrengthControl(
+    text.teamColorStrength,
+    settings.teamColorStrength,
+    (value) => {
       void store.update({ teamColorStrength: value });
     },
-  });
-  // A live preview: the player-colour swatches grow bolder as the strength rises, so the effect is
-  // visible without leaving the settings screen. Hue is untouched; only saturation and value shift.
-  const TEAM_COLOR_SAMPLE = [0, 1, 2, 3, 4, 5, 6, 7];
-  const preview = document.createElement('div');
-  preview.style.display = 'flex';
-  preview.style.flexWrap = 'wrap';
-  preview.style.gap = '4px';
-  preview.style.marginTop = '6px';
-  const chips = TEAM_COLOR_SAMPLE.map((id) => {
-    const chip = document.createElement('span');
-    chip.style.width = '26px';
-    chip.style.height = '16px';
-    chip.style.borderRadius = '3px';
-    chip.style.border = '1px solid rgba(255, 255, 255, 0.25)';
-    preview.append(chip);
-    return chip;
-  });
-  const paintPreview = (strength: number): void => {
-    TEAM_COLOR_SAMPLE.forEach((id, i) => {
-      const hex = enhancePlayerColor(PLAYER_SWATCH_COLORS[id] ?? 0, strength);
-      chips[i]!.style.backgroundColor = `#${hex.toString(16).padStart(6, '0')}`;
-    });
-  };
-  paintPreview(settings.teamColorStrength);
-  const teamStrengthInput = teamColorStrength.querySelector<HTMLInputElement>('input');
-  teamStrengthInput?.addEventListener('input', () => paintPreview(Number(teamStrengthInput.value)));
-  // Full-width, left-aligned preview so it lines up with the colour-blind preview below.
-  preview.style.marginTop = '4px';
-  preview.style.marginBottom = '2px';
+  );
   const colorBlindLabels: Readonly<Record<ColorBlindFilter, string>> = {
     off: text.colorBlindFilterOff,
     deuteranopia: text.colorBlindFilterDeuteranopia,
     protanopia: text.colorBlindFilterProtanopia,
     tritanopia: text.colorBlindFilterTritanopia,
-    generic: text.colorBlindFilterGeneric,
   };
-  const colorBlindFilter = segControl<ColorBlindFilter>(
-    COLOR_BLIND_FILTERS.map((id) => ({ id, label: colorBlindLabels[id] })),
-    settings.colorBlindFilter,
-    (choice) => {
+  const colorBlindFilter = dropdownControl<ColorBlindFilter>({
+    label: text.colorBlindFilter,
+    className: 'main-menu__dropdown',
+    entries: COLOR_BLIND_FILTERS.map((id) => ({ id, label: colorBlindLabels[id] })),
+    active: settings.colorBlindFilter,
+    onPick: (choice) => {
       void store.update({ colorBlindFilter: choice });
       colorBlindFilter.setActive(choice);
-      applyColorBlindFilter(choice);
-      paintFilterPreview(choice);
     },
-  );
-  markSegment(colorBlindFilter.root, 'color-blind-filter');
-  // A live preview: how the chosen correction reshapes representative hues, visible without leaving the
-  // settings screen. `off` shows the raw colours; the screen-wide filter applies the same maths.
-  const applyCorrection = (hex: number, matrix: readonly number[]): number => {
-    const r = ((hex >> 16) & 0xff) / 0xff;
-    const g = ((hex >> 8) & 0xff) / 0xff;
-    const b = (hex & 0xff) / 0xff;
-    const clamp = (v: number): number => Math.max(0, Math.min(0xff, Math.round(v * 0xff)));
-    const at = (i: number): number => matrix[i] ?? 0;
-    return (
-      (clamp(r * at(0) + g * at(1) + b * at(2)) << 16) |
-      (clamp(r * at(5) + g * at(6) + b * at(7)) << 8) |
-      clamp(r * at(10) + g * at(11) + b * at(12))
-    );
-  };
-  const FILTER_SAMPLE = [0xff0000, 0x00c000, 0x0000ff, 0xffc000, 0xff8000, 0x00c0c0, 0x800080, 0x00e000];
-  const filterPreview = document.createElement('div');
-  filterPreview.style.display = 'flex';
-  filterPreview.style.flexWrap = 'wrap';
-  filterPreview.style.gap = '4px';
-  filterPreview.style.marginTop = '6px';
-  const filterChips = FILTER_SAMPLE.map(() => {
-    const chip = document.createElement('span');
-    chip.style.width = '26px';
-    chip.style.height = '16px';
-    chip.style.borderRadius = '3px';
-    chip.style.border = '1px solid rgba(255, 255, 255, 0.25)';
-    filterPreview.append(chip);
-    return chip;
   });
-  const paintFilterPreview = (filter: ColorBlindFilter): void => {
-    const matrix = correctionMatrix(filter);
-    FILTER_SAMPLE.forEach((hex, i) => {
-      const corrected = matrix === undefined ? hex : applyCorrection(hex, matrix);
-      filterChips[i]!.style.backgroundColor = `#${corrected.toString(16).padStart(6, '0')}`;
-    });
-  };
-  paintFilterPreview(settings.colorBlindFilter);
-  // Full-width, left-aligned preview so it lines up with the team-colour preview above.
-  filterPreview.style.marginTop = '4px';
-  filterPreview.style.marginBottom = '2px';
   return [
     settingsHeading(text.displayHeading),
     settingRow(text.displayMode, displaySeg.root),
@@ -335,9 +257,7 @@ export function graphicsSettingsRows(
     settingRow(text.spriteSmoothing, smoothing, { tip: deferredTip(text.spriteSmoothingTip) }),
     settingRow(text.postFx, postFx, { tip: deferredTip(text.postFxTip) }),
     settingsHeading(text.accessibilityHeading),
-    settingRow(text.teamColorStrength, teamColorStrength, { tip: liveTip(text.teamColorStrengthTip) }),
-    preview,
+    settingRow(text.teamColorStrength, teamColours, { tip: liveTip(text.teamColorStrengthTip) }),
     settingRow(text.colorBlindFilter, colorBlindFilter.root, { tip: liveTip(text.colorBlindFilterTip) }),
-    filterPreview,
   ];
 }

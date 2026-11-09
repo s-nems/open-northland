@@ -1,8 +1,10 @@
-import {
-  readStoredSettings,
-  TEAM_COLOR_STRENGTH_MAX,
-  TEAM_COLOR_STRENGTH_MIN,
-} from '../view/settings/store.js';
+/** The team-colour strength range: the minimum is the retail palette, the maximum the boldest. */
+export const TEAM_COLOR_STRENGTH_MIN = 1;
+export const TEAM_COLOR_STRENGTH_MAX = 10;
+
+/** Saturation gain at full strength (`s × (1 + gain)`) and the value gamma's gain (`v^(1 / (1 + gain))`). */
+const SATURATION_GAIN = 0.9;
+const VALUE_GAMMA_GAIN = 0.35;
 
 /** Packed `0xRRGGBB` → HSV with `h` in `[0, 360)`, `s` and `v` in `[0, 1]`. */
 function rgbToHsv(rgb: number): readonly [number, number, number] {
@@ -43,27 +45,16 @@ function hsvToRgb(h: number, s: number, v: number): number {
 }
 
 /**
- * Push a player colour toward a bolder version of itself for colour-vision-deficient players, after
- * Vera PR #3453 and StarCraft II's Team Colour Intensity. Saturation scales by `1 + 0.90 × fraction`
- * and value lifts along the gamma `v^(1 / (1 + 0.35 × fraction))`; hue is never touched, so a red team
- * stays red. `strength` is the 1–10 team-colour-strength setting; `1` returns `rgb` unchanged, byte
- * for byte. The boost is always applied from the retail colour, so the result depends only on
- * `strength` and never accumulates across changes (10 → 3 → 10 yields the same bytes as 10 directly).
+ * A player colour pushed toward a bolder version of itself for colour-vision-deficient players: hue
+ * stays, saturation and value rise with `strength`. The minimum returns `rgb` byte for byte. A project
+ * choice, not original behavior; the curve follows other games' team-colour intensity settings.
  */
 export function enhancePlayerColor(rgb: number, strength: number): number {
-  const clamped = Math.min(
-    TEAM_COLOR_STRENGTH_MAX,
-    Math.max(TEAM_COLOR_STRENGTH_MIN, Math.round(strength)),
-  );
+  const clamped = Math.min(TEAM_COLOR_STRENGTH_MAX, Math.max(TEAM_COLOR_STRENGTH_MIN, Math.round(strength)));
   const fraction = (clamped - TEAM_COLOR_STRENGTH_MIN) / (TEAM_COLOR_STRENGTH_MAX - TEAM_COLOR_STRENGTH_MIN);
   if (fraction <= 0) return rgb;
   const [h, s, v] = rgbToHsv(rgb);
-  const boostedS = Math.min(1, s * (1 + 0.9 * fraction));
-  const liftedV = Math.min(1, v ** (1 / (1 + 0.35 * fraction)));
+  const boostedS = Math.min(1, s * (1 + SATURATION_GAIN * fraction));
+  const liftedV = Math.min(1, v ** (1 / (1 + VALUE_GAMMA_GAIN * fraction)));
   return hsvToRgb(h, boostedS, liftedV);
-}
-
-/** The live team-colour-strength setting (1–10); `1` means the retail palette. */
-export function currentTeamColorStrength(): number {
-  return readStoredSettings().teamColorStrength;
 }
