@@ -34,7 +34,7 @@ export type AtomicEffect =
   | { readonly kind: 'tradeLoad'; readonly from: Entity; readonly goodType: number }
   /** A trader sets one unit of `goodType` out of its hold onto `store`'s shelf, or onto the ground at
    *  its feet with `store` null. */
-  | { readonly kind: 'tradeUnload'; readonly store: Entity | null; readonly goodType: number }
+  | { readonly kind: 'tradeUnload'; readonly store: Entity; readonly goodType: number }
   /** A trader moves one unit of `goodType` from its hauling cart or hands into `vehicle`, its pinned
    *  ship, at the door. */
   | { readonly kind: 'tradeShipStow'; readonly vehicle: Entity; readonly goodType: number }

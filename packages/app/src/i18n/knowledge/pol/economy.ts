@@ -906,7 +906,7 @@ export const ECONOMY: ArticleGroup = {
               ['zostaw N', 'W budynku źródłowym zostaje N sztuk'],
               [
                 'osada',
-                'Bierze towar z całej osady: najpierw z tego magazynu, potem z innych magazynów i warsztatów w jego sieci drogowskazów',
+                'Bierze towar z całej osady: najpierw z tego magazynu, potem z innych magazynów i warsztatów w jego sieci drogowskazów. Gdy ten magazyn jest pełny, zawozi towar do innego magazynu osady',
               ],
             ],
             foot: 'Opcję osada włączysz tylko w magazynie lub Kwaterze głównej. Na obu budynkach trasy naraz tylko wtedy, gdy ich osady nie mają wspólnego budynku, np. na dwóch wyspach. Kupiec nie zabierze towaru poniżej minimum w magazynach.',

@@ -29,11 +29,8 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../../src/index.js';
-import { hexDistance, nodeOfPosition } from '../../../src/nav/halfcell.js';
-import { interactionNode } from '../../../src/systems/footprint/index.js';
 import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
 import { isLoosePile } from '../../../src/systems/stores/index.js';
-import { DOOR_HEAP_RADIUS_NODES } from '../../../src/systems/trade/door-heap.js';
 import { ferryHoldOf, traderHoldOf } from '../../../src/systems/trade/hold.js';
 import { canAttachToVehicle } from '../../../src/systems/vehicles/crew.js';
 import { createVehicle } from '../../../src/systems/vehicles/index.js';
@@ -75,6 +72,8 @@ const FAR_SHIP_ROW = 2;
 /** Down the west shore, far from the ship up it. */
 const FAR_TRADER_ROW = 15;
 const WEST_HOUSE_CELL = 5;
+/** A second storehouse of the west settlement, behind its stop. */
+const WEST_MEMBER_CELL = 2;
 const EAST_HOUSE_CELL = 18;
 const HOUSE_ROW = 8;
 const TRADING_POST_ID = 700;
@@ -442,7 +441,7 @@ describe('helpers at work', () => {
     expect(stockOf(sim, west, WOOD)).toBe(UP_TO);
   });
 
-  it("set a good for a full stop down on the ground by the stop's door, not by the ship's", () => {
+  it('leave a good for a full stop aboard the ship, none of it on the ground', () => {
     const sim = newSim();
     const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, HEADQUARTERS_WOOD_ROOM]]);
     const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
@@ -454,19 +453,43 @@ describe('helpers at work', () => {
 
     sim.run(LONG_TICKS);
 
-    const door = interactionNode(sim.world, ctxOf(sim), west);
-    if (door === null) throw new Error('house with no door');
-    let heaped = 0;
-    let farthest = 0;
-    for (const pile of sim.world.query(Stockpile)) {
-      if (!isLoosePile(sim.world, pile)) continue;
-      heaped += sim.world.get(pile, Stockpile).amounts.get(WOOD) ?? 0;
-      const { x, y } = sim.world.get(pile, Position);
-      farthest = Math.max(farthest, hexDistance(nodeOfPosition(x, y), { hx: door.x, hy: door.y }));
-    }
-    expect(heaped).toBe(LOAD);
-    expect(farthest).toBeLessThanOrEqual(DOOR_HEAP_RADIUS_NODES);
-    expect(shipLine(sim, ship, WOOD).current).toBe(0);
+    let grounded = 0;
+    for (const pile of sim.world.query(Stockpile))
+      if (isLoosePile(sim.world, pile)) grounded += sim.world.get(pile, Stockpile).amounts.get(WOOD) ?? 0;
+    expect(grounded).toBe(0);
+    expect(shipLine(sim, ship, WOOD).current).toBe(LOAD);
+  });
+
+  it("leave a full settlement stop's spill to the trader, none of it on the ground", () => {
+    const sim = newSim();
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, HEADQUARTERS_WOOD_ROOM]]);
+    const member = houseAt(sim, WEST_MEMBER_CELL, HUMAN);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const { trader, ship, carriers } = crew(sim, HELPERS, false);
+    stockVehicleGoods(sim.world, ship, sim.content, WOOD, LOAD);
+    order(sim, { kind: 'attachTradeHouse', entity: trader, house: west });
+    order(sim, { kind: 'attachTradeHouse', entity: trader, house: east });
+    order(sim, { kind: 'setTradeImport', entity: trader, house: west, good: WOOD, on: true });
+    order(sim, { kind: 'setTradeSettlement', entity: trader, house: west, on: true });
+
+    let helperSpills = 0;
+    const intoMember = (carrier: Entity): boolean => {
+      const effect = sim.world.tryGet(carrier, CurrentAtomic)?.effect;
+      return effect?.kind === 'pileup' && effect.store === member;
+    };
+    runUntil(sim, LONG_TICKS, () => {
+      helperSpills += carriers.filter(intoMember).length;
+      return false;
+    });
+
+    expect(helperSpills).toBe(0);
+
+    let grounded = 0;
+    for (const pile of sim.world.query(Stockpile))
+      if (isLoosePile(sim.world, pile)) grounded += sim.world.get(pile, Stockpile).amounts.get(WOOD) ?? 0;
+    expect(grounded).toBe(0);
+    expect(stockOf(sim, member, WOOD)).toBeGreaterThan(0);
+    expect(stockOf(sim, member, WOOD) + shipLine(sim, ship, WOOD).current + inHands(sim, trader)).toBe(LOAD);
   });
 
   it('leaves the ship with no helper behind and no unit lost', () => {

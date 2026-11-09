@@ -39,7 +39,7 @@ const SHIP_DOOR_REACH = 1;
 /** A stop's next action as `drive.ts` decides it; the ferry owns only how it reaches the ship. */
 export type StopAction =
   | { readonly kind: 'load'; readonly good: number; readonly from: Entity }
-  | { readonly kind: 'unload'; readonly good: number; readonly into: Entity | null }
+  | { readonly kind: 'unload'; readonly good: number; readonly into: Entity }
   | { readonly kind: 'next' }
   | { readonly kind: 'wait' };
 

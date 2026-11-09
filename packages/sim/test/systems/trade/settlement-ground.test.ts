@@ -26,7 +26,6 @@ const HEADQUARTERS = 1;
 const MAP_W = 30;
 const MAP_H = 3;
 const ANCHOR_X = 1;
-const OTHER_X = 7;
 const PILE_X = 4;
 const LATER_PILE_X = 12;
 const GROUND_ROW = 2;
@@ -52,7 +51,6 @@ describe("a settlement stop's ground", () => {
   it('follows piles laid, emptied and taken up between reads', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(MAP_W, MAP_H) });
     const anchor = houseAt(sim, ANCHOR_X);
-    const other = houseAt(sim, OTHER_X);
     const first = pileAt(sim, PILE_X);
     const trader = sim.world.create();
     sim.world.add(trader, Position, { x: fx.fromInt(ANCHOR_X), y: fx.fromInt(1) });
@@ -71,7 +69,7 @@ describe("a settlement stop's ground", () => {
       const terrain = ctx.terrain;
       if (terrain === undefined) throw new Error('mapless sim');
       const targets = collectTargets(sim.world, ctx, terrain);
-      return settlementGround(sim.world, ctx, terrain, trader, anchor, other, WOOD, (good) =>
+      return settlementGround(sim.world, ctx, terrain, trader, anchor, WOOD, (good) =>
         targets.bands.holding(good),
       );
     };

@@ -19,7 +19,6 @@ import {
   StorePriority,
   SupplyRun,
   signpostNavigationEnabled,
-  TradeRoute,
   UnderConstruction,
   UnreachableGoals,
   Upgrading,
@@ -106,8 +105,6 @@ function porterScanVersion(world: World): number {
     world.componentGeneration(StorePriority) +
     world.componentValueGeneration(StorePriority) +
     world.componentGeneration(Owner) +
-    world.componentGeneration(TradeRoute) + // a route's import marks keep a stop's door heap where it lies
-    world.componentValueGeneration(TradeRoute) +
     landscapeTopologyRevision(world) +
     roadRevision(world) // the goods search reach floods over road resistance
   );

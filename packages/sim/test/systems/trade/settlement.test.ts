@@ -41,7 +41,8 @@ import { grassCellMap as grassMap, waterColumnMap } from '../../fixtures/terrain
 /**
  * A trader's own storehouse stop set to its whole settlement loads out of the storehouse first, then
  * out of the storehouses and producing workshops its goods search reaches, and keeps a reserve summed
- * over them; what the route brings back still goes into the storehouse. An agreement's limits keep the
+ * over them; what the route brings back goes into the storehouse, and once it is full into another of the
+ * settlement's storehouses. An agreement's limits keep the
  * give good back at home and stop new batches once home holds enough of the take good.
  */
 
@@ -69,7 +70,9 @@ const MAP_H = 3;
 const RUN_TICKS = 2000;
 const WOOD_HELD = 6;
 const WOOD_KEPT = 5;
-/** Wood lying loose on the ground between the stops, off both doors' heaps. */
+/** The wood a headquarters stores, by the fixture. */
+const HEADQUARTERS_WOOD_ROOM = 150;
+/** Wood lying loose on the ground between the stops. */
 const GROUND_WOOD = 3;
 /** The row below the houses. */
 const GROUND_ROW = 2;
@@ -221,6 +224,42 @@ describe('a settlement stop between own houses', () => {
       expect(stockOf(sim, other, WOOD)).toBe(settled ? WOOD_HELD : 0);
       expect(stockOf(sim, member, WOOD)).toBe(settled ? 0 : WOOD_HELD);
     }
+  });
+
+  it('carries into another storehouse of its settlement once its own is full, and only once set to it', () => {
+    for (const settled of [false, true]) {
+      const sim = newSim();
+      const anchor = houseAt(sim, ANCHOR_X, [[WOOD, HEADQUARTERS_WOOD_ROOM]]);
+      const member = houseAt(sim, MEMBER_X);
+      const other = houseAt(sim, OTHER_X, [[WOOD, WOOD_HELD]]);
+      const trader = traderAt(sim, OTHER_X);
+      route(sim, trader, anchor, other);
+      woodInto(sim, trader, anchor);
+      if (settled) settle(sim, trader, anchor);
+
+      sim.run(RUN_TICKS);
+
+      expect(stockOf(sim, member, WOOD)).toBe(settled ? WOOD_HELD : 0);
+      expect(stockOf(sim, other, WOOD)).toBe(settled ? 0 : WOOD_HELD);
+      expect(stockOf(sim, anchor, WOOD)).toBe(HEADQUARTERS_WOOD_ROOM);
+      expect(groundWood(sim)).toBe(0);
+    }
+  });
+
+  it('loads for a full settlement stop no more than its other storehouses take', () => {
+    const sim = newSim();
+    const anchor = houseAt(sim, ANCHOR_X, [[WOOD, HEADQUARTERS_WOOD_ROOM]]);
+    const member = houseAt(sim, MEMBER_X, [[WOOD, HEADQUARTERS_WOOD_ROOM - 1]]);
+    const other = houseAt(sim, OTHER_X, [[WOOD, WOOD_HELD]]);
+    const trader = traderAt(sim, OTHER_X);
+    route(sim, trader, anchor, other);
+    woodInto(sim, trader, anchor);
+    settle(sim, trader, anchor);
+
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, member, WOOD)).toBe(HEADQUARTERS_WOOD_ROOM);
+    expect(stockOf(sim, other, WOOD)).toBe(WOOD_HELD - 1);
   });
 
   it("counts the wood lying on its settlement's ground toward its mark's ceiling, and only once set to it", () => {

@@ -3,9 +3,11 @@ import {
   Carrying,
   dropFallenTradeStops,
   isForeignHouse,
+  ownerOf,
   Position,
   Rider,
   Stockpile,
+  sameSideAs,
   TRADE_LIMIT_NONE,
   TRADE_ROUTE_HOUSES,
   type TradeAgreement,
@@ -21,6 +23,7 @@ import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../nav/halfce
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { interactionNode, vehicleAnchor } from '../footprint/index.js';
+import { interactionNodeId } from '../footprint/interaction.js';
 import { countsAsOwnStock, roomFor, stockOf, typeStoresGood } from '../missions/stock.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { edibleGoodFormOf, isFoodKeptAtHome } from '../readviews/food.js';
@@ -34,26 +37,27 @@ import {
 } from '../settlers/atomics/start.js';
 import { fetchHaulingCart } from '../settlers/drives/economy/hauling-cart.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
+import { QUALIFIES } from '../settlers/targets/cell-index.js';
 import { interactionCell, unclaimedStockOf } from '../settlers/targets/index.js';
 import { LendableTally, storageLendable } from '../settlers/targets/stores/storage-reserve.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
+import { settlementReachAt } from '../signposts/settlement-reach.js';
 import { lowestStockedGood, mayFetchGoodFrom, type SupplyTally } from '../stores/index.js';
 import { haulingCartLiftTicks, parkHaulingCart } from '../vehicles/hauling-cart.js';
 import { activeAgreement } from './agreements.js';
-import { doorHeapRoom, doorHeapUnits } from './door-heap.js';
 import { planCrossing, planShipOrder, seaLegOf, takeStopAtHand } from './ferry.js';
 import { sameFoodClass } from './goods.js';
 import { cartStands, NO_HELPERS, TRADE_CART_HOUSE_DISTANCE, type TraderHold, traderHoldOf } from './hold.js';
 import { refillRestores } from './partner-stock.js';
-import { settlementHouses, standsForSettlement } from './settlement.js';
+import { isSettlementAnchor, settlementHouses, standsForSettlement } from './settlement.js';
 import { type HoldingBandOf, type SettlementGround, settlementGround } from './settlement-ground.js';
 import { routeCrossesSea, stopContinent } from './ship.js';
 
-/** A unit the trader moves at a stop: loaded out of `from`, the stop's house or a house of its
- *  settlement, or unloaded into the stop's house. */
+/** A unit the trader moves at a stop: loaded out of `from` or unloaded into `into`, the stop's house or
+ *  a house of its settlement. */
 type StopWork =
   | { readonly kind: 'load'; readonly good: number; readonly from: Entity }
-  | { readonly kind: 'unload'; readonly good: number; readonly into: Entity | null };
+  | { readonly kind: 'unload'; readonly good: number; readonly into: Entity };
 
 type NextStop = { readonly kind: 'next' };
 
@@ -80,6 +84,8 @@ interface LoadScope {
   readonly otherCountsSettlement: boolean;
   readonly supply: SupplyTally;
   readonly holding: HoldingBandOf;
+  /** The stores with room for a good, which a settlement stop's full house spills into. */
+  readonly sinks: HoldingBandOf;
   members: Map<string, readonly Entity[]> | undefined;
   grounds: Map<string, SettlementGround> | undefined;
 }
@@ -119,7 +125,7 @@ export function planTrader(plan: PlannerContext): boolean {
     return planCrossing(plan, leg, hold, {
       decide: (held) => decide(here(held), current, held, other),
       setsOut: (held) => setsOutForOtherStop(plan, held, stop, other),
-      work: (near, action) => workStop(plan, near, stop.house, action),
+      work: (near, action) => workStop(plan, near, action),
       wait: (near) => waitWithLoad(plan, near),
     });
   }
@@ -128,14 +134,14 @@ export function planTrader(plan: PlannerContext): boolean {
     // No ship is pinned to the crossing: what the hold carries for this island's stop still lands, but
     // nothing is loaded for a stop no walk reaches, and the trader idles.
     const onIsland = stopContinent(world, ctx, plan.terrain, stop) === plan.terrain.componentOf(plan.here);
-    return onIsland && action.kind === 'unload' && workStop(plan, hold, stop.house, action);
+    return onIsland && action.kind === 'unload' && workStop(plan, hold, action);
   }
   switch (action.kind) {
     case 'wait':
       return waitWithLoad(plan, hold);
     case 'load':
     case 'unload':
-      return workStop(plan, hold, stop.house, action);
+      return workStop(plan, hold, action);
     case 'next':
       break;
   }
@@ -145,7 +151,7 @@ export function planTrader(plan: PlannerContext): boolean {
     const there = decideDomestic(loadScope(plan, hold, other, stop), hold, stop);
     if (there.kind === 'next') return false;
     world.mut(e, TradeRoute).current = 1 - current.current;
-    return workStop(plan, hold, other.house, there);
+    return workStop(plan, hold, there);
   }
   // The cart goes along: one standing at this stop is taken up before the trader sets out.
   if (cartStands(world, hold)) return fetchHaulingCart(plan);
@@ -193,6 +199,7 @@ function scopeAt(
     terrain,
     supply,
     holding: (good) => targets.bands.holding(good),
+    sinks: (good) => targets.bands.sinksFor(good, true),
     trader,
     hold,
     stop,
@@ -218,11 +225,11 @@ function countsSettlement(
   return standsForSettlement(world, ctx, terrain, trader, stops, index);
 }
 
-/** Move one unit at the stop whose house is `stopHouse`, at the house the unit moves at: a cart standing
- *  away from that house is taken up first, one in hand is stood beside it on arrival. */
-function workStop(plan: PlannerContext, hold: TraderHold, stopHouse: Entity, work: StopWork): boolean {
+/** Move one unit at the house it moves at: a cart standing away from that house is taken up first, one
+ *  in hand is stood beside it on arrival. */
+function workStop(plan: PlannerContext, hold: TraderHold, work: StopWork): boolean {
   const { world, ctx, entity: e } = plan;
-  const house = work.kind === 'load' ? work.from : stopHouse;
+  const house = work.kind === 'load' ? work.from : work.into;
   if (cartStands(world, hold) && !holdNearHouse(world, ctx, e, hold, house)) return fetchHaulingCart(plan);
   if (failedToReach(plan, house)) return waitWithLoad(plan, hold);
   walkTo(plan, house, () => {
@@ -357,9 +364,8 @@ function shuttles(hold: TraderHold, agreement: DeepReadonly<TradeAgreement>): bo
  * space for the take goods every aboard batch will bring back. A {@link shuttles} hold loads what the
  * exchange still lacks as far as it fits, and leaves empty while take goods are still owed. The player's
  * two limits are this build's own (owner's choice): the give goods load only above `giveKeep`, and no
- * batch starts once the take goods at home plus what the batches aboard bring back reach `takeUpTo`. A
- * full home takes the rest onto the ground by its door; once no ground there has room no batch starts,
- * and what home cannot take waits aboard.
+ * batch starts once the take goods at home plus what the batches aboard bring back reach `takeUpTo`.
+ * What a full home cannot take waits aboard, and no batch starts while home has no room for the take good.
  */
 function decidePreparation(
   scope: LoadScope,
@@ -481,15 +487,16 @@ function resetExchange(world: World, trader: Entity): void {
  * - A good both stops mark is balanced: it is loaded while this stop holds more than the other plus
  *   what is aboard, and unloaded while the other stop holds more (score `(here - there - aboard) / 2`).
  * - A mark limits the flow into its own stop: nothing is unloaded there once the stop holds `upTo`
- *   units, nothing is loaded for it once its stock plus what is aboard reaches `upTo`, the heap by its
- *   door counted toward the ceiling, and loading for it leaves `keep` units in the other stop, each
- *   counting what a pinned ship's helpers have under way.
+ *   units, nothing is loaded for it once its stock plus what is aboard reaches `upTo`, and loading for
+ *   it leaves `keep` units in the other stop, each counting what a pinned ship's helpers have under way.
  *   A balanced good is two such flows, each limited by the mark at the stop it flows into.
  *   Approximation: `keep` stands in for the original's per-house minimum stock setting, and the `upTo`
  *   ceiling is this build's own addition (owner's choice).
  * - A stop standing for its settlement (our own extension) loads out of the whole settlement, and its
  *   stock in every rule above is the settlement's, the goods lying loose on its ground included (owner
- *   ruling); what it takes in still goes into its house.
+ *   ruling); what it takes in goes into its house, and once that is full into the settlement's
+ *   nearest storehouse with room ({@link storeTaking}).
+ * - A good no store of the stop takes stays aboard: a full store stops the flow into it (owner ruling).
  * - With no mark on either stop nothing moves. The original then balances every good; this build waits
  *   for the player's marks instead (owner's choice).
  * Food is never taken out of a home. Approximations: the original ranks candidates by the houses'
@@ -516,37 +523,25 @@ function decideDomestic(
     const wantedHere = markOf(stop, good);
     const wantedThere = markOf(other, good);
     if (wantedThere !== undefined && wantedHere === undefined) continue;
-    const full = roomFor(world, ctx, stop.house, slot) - coming <= 0;
-    // Owner ruling: a full store does not stop goods marked for it coming ashore; they go onto the ground by
-    // its door while the ground there has room, as a workshop's door heap. Not original behavior.
-    if (full && (wantedHere === undefined || wantedThere !== undefined)) continue;
-    if (full && heapRoomAt(scope, stop.house, good) - coming <= 0) continue;
     const held =
       (wantedHere !== undefined && scope.countsSettlement
         ? homeStockOf(scope, good)
         : stockOf(world, stop.house, slot)) + coming;
-    if (
-      wantedHere !== undefined &&
-      reachesCeiling(scope, wantedHere, stop.house, good, held, scope.countsSettlement)
-    )
-      continue;
+    if (wantedHere !== undefined && reachesCeiling(wantedHere, held)) continue;
     if (wantedHere !== undefined && wantedThere !== undefined) {
       const there = storableFormAt(world, ctx, other.house, good);
       const shortfall = (there === undefined ? 0 : otherStockOf(scope, other, good)) - held;
       if (there !== undefined && Math.floor((aboard + shortfall) / 2) <= 0) continue;
     }
-    return { kind: 'unload', good, into: full ? null : stop.house };
+    const into = storeTaking(scope, stop.house, scope.exclude, scope.countsSettlement, good, coming);
+    if (into !== null) return { kind: 'unload', good, into };
   }
 
   if (hold.room <= 0) return NEXT;
   for (const candidate of loadOrder(scope, hold, other, ownGoodsOf(ctx, hereType), markOf)) {
     const { good, carried, mark: wantedThere, filled } = candidate;
     // An open mark has no ceiling to reach.
-    if (
-      filled !== null &&
-      reachesCeiling(scope, wantedThere, other.house, carried, filled, scope.otherCountsSettlement)
-    )
-      continue;
+    if (filled !== null && reachesCeiling(wantedThere, filled)) continue;
     const leaving = helpers.toLift(carried);
     if (markOf(stop, good) !== undefined) {
       const bound = filled ?? otherStockOf(scope, other, carried) + candidate.aboard;
@@ -604,7 +599,7 @@ function loadSourceOf(scope: LoadScope, good: number, keep: number): LoadSource 
   const settlementSpare = new LendableTally(world, ctx);
   tallyStock(world, ctx, settlementSpare, stop.house, good);
   for (const house of members) tallyStock(world, ctx, settlementSpare, house, good);
-  const ground = groundOf(scope, stop.house, scope.exclude, good);
+  const ground = groundOf(scope, stop.house, good);
   // A ground pile holds no storehouse stock, so no storage minimum binds it.
   if (settlementSpare.total() + ground.units() - keep < 1) return undefined;
   if (homeSpare >= 1 && atHome) return fromHome;
@@ -664,7 +659,7 @@ function stockOfStop(
   for (const member of membersOf(scope, house, exclude, good)) {
     total += held(member, stockedFormAt(world, ctx, member, good));
   }
-  return total + groundOf(scope, house, exclude, good).units();
+  return total + groundOf(scope, house, good).units();
 }
 
 /** {@link settlementHouses} of `anchor` for `good`, walked once per decision. */
@@ -681,53 +676,64 @@ function membersOf(scope: LoadScope, anchor: Entity, exclude: Entity, good: numb
 }
 
 /** {@link settlementGround} of `anchor` for `good`, read once per decision. */
-function groundOf(scope: LoadScope, anchor: Entity, exclude: Entity, good: number): SettlementGround {
+function groundOf(scope: LoadScope, anchor: Entity, good: number): SettlementGround {
   const key = `${anchor}:${good}`;
   scope.grounds ??= new Map();
   let ground = scope.grounds.get(key);
   if (ground === undefined) {
     const { world, ctx, terrain, trader, holding } = scope;
-    ground = settlementGround(world, ctx, terrain, trader, anchor, exclude, good, holding);
+    ground = settlementGround(world, ctx, terrain, trader, anchor, good, holding);
     scope.grounds.set(key, ground);
   }
   return ground;
 }
 
-/** The units of `good` the ground by `house`'s door still takes. */
-function heapRoomAt(scope: LoadScope, house: Entity, good: number): number {
-  const { world, ctx, terrain } = scope;
-  return doorHeapRoom(world, ctx, terrain, interactionCell(world, ctx, terrain, house), good);
+/** Whether `units` in (or bound for) a mark's stop reach the mark's `upTo` ceiling. */
+function reachesCeiling(mark: DeepReadonly<TradeImportMark>, units: number): boolean {
+  return mark.upTo !== TRADE_LIMIT_NONE && units >= mark.upTo;
 }
 
-/** Whether `units` in (or bound for) a mark's stop at `house` reach the mark's `upTo` ceiling. A stop that
- *  counts its whole settlement has its ground in `units` already; another adds what of `good` lies heaped
- *  by the house's door, where the stop's goods go once its shelf is full. */
-function reachesCeiling(
+/**
+ * The store a unit of `good` for the stop at `house` goes into: the house while it has room past the
+ * `pending` units bound for it, else, at a stop standing for its settlement, the nearest to the house's
+ * door of the player's own storehouses in the settlement with that room too, `exclude` (the other stop's
+ * house) and those the trader failed to reach left out. Null with none: the unit stays aboard, as a full store never sends goods onto
+ * the ground (owner ruling).
+ */
+function storeTaking(
   scope: LoadScope,
-  mark: DeepReadonly<TradeImportMark>,
   house: Entity,
-  good: number,
-  units: number,
+  exclude: Entity,
   settlementWide: boolean,
-): boolean {
-  if (mark.upTo === TRADE_LIMIT_NONE) return false;
-  if (units >= mark.upTo) return true;
-  if (settlementWide) return false;
-  const { world, ctx, terrain } = scope;
-  const heaped = doorHeapUnits(world, terrain, interactionCell(world, ctx, terrain, house), good);
-  return units + heaped >= mark.upTo;
+  good: number,
+  pending: number,
+): Entity | null {
+  const { world, ctx, terrain, trader } = scope;
+  const slot = storableFormAt(world, ctx, house, good);
+  if (slot !== undefined && roomFor(world, ctx, house, slot) - pending > 0) return house;
+  if (!settlementWide) return null;
+  const player = ownerOf(world, trader);
+  const door = interactionNodeId(world, ctx, terrain, house);
+  if (player === undefined || door === null) return null;
+  const reach = settlementReachAt(world, ctx.content, terrain, player, door);
+  const failed = unreachableGoals(world, ctx, trader);
+  const takes = (e: Entity): boolean => {
+    if (e === house || e === exclude || ownerOf(world, e) !== player) return false;
+    if (!isSettlementAnchor(world, ctx, e)) return false;
+    const form = storableFormAt(world, ctx, e, good);
+    return form !== undefined && roomFor(world, ctx, e, form) - pending > 0;
+  };
+  const storehouse = (e: Entity) => (takes(e) ? QUALIFIES : null);
+  const nearest = scope
+    .sinks(good)
+    .nearest(door, storehouse, reach, (cell) => isUnreachableGoal(failed, cell), sameSideAs(world, player));
+  return nearest?.entity ?? null;
 }
 
-/** Unloading `good` at the stop's own house: onto its shelf while it has room, else onto the ground by its
- *  door while that has room (owner ruling: a full store does not block unloading, as a workshop's door
- *  heap); null once neither has. */
+/** Unloading `good` at the stop's own house, into the store {@link storeTaking} names; null with none. */
 function unloadAtHome(scope: LoadScope, good: number): StopWork | null {
-  const { world, ctx, stop } = scope;
-  const slot = storableFormAt(world, ctx, stop.house, good);
-  if (slot !== undefined && roomFor(world, ctx, stop.house, slot) > 0) {
-    return { kind: 'unload', good, into: stop.house };
-  }
-  return heapRoomAt(scope, stop.house, good) > 0 ? { kind: 'unload', good, into: null } : null;
+  const into = storeTaking(scope, scope.stop.house, scope.exclude, scope.countsSettlement, good, 0);
+  return into === null ? null : { kind: 'unload', good, into };
 }
 
 /** The goods a house type counts as its own stock, ascending: what a trader may take out of it. */
@@ -771,14 +777,9 @@ function loadOrder(
     if (mark === undefined || isFoodKeptAtHome(world, ctx, stop.house, good)) continue;
     const carried = edibleGoodFormOf(ctx.content, good);
     if (!hold.carries(carried)) continue;
-    const slot = storableFormAt(world, ctx, other.house, carried);
-    if (slot === undefined) continue;
+    if (storableFormAt(world, ctx, other.house, carried) === undefined) continue;
     const aboard = hold.amount(carried);
-    // A full other stop still takes a good marked only there, onto the ground by its door.
-    if (
-      roomFor(world, ctx, other.house, slot) - aboard <= 0 &&
-      (markOf(stop, good) !== undefined || heapRoomAt(scope, other.house, carried) - aboard <= 0)
-    )
+    if (storeTaking(scope, other.house, stop.house, scope.otherCountsSettlement, carried, aboard) === null)
       continue;
     const open = mark.upTo === TRADE_LIMIT_NONE;
     const filled = open ? null : otherStockOf(scope, other, carried) + aboard;

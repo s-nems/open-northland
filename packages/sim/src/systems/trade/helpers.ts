@@ -17,7 +17,6 @@ import {
   PICKUP_ATOMIC_ID,
   PILEUP_ATOMIC_ID,
   startAtomic,
-  startDrop,
   startPickup,
 } from '../settlers/atomics/start.js';
 import { placeRefusedLoad } from '../settlers/drives/economy/vehicle-cargo.js';
@@ -28,7 +27,6 @@ import { isCarrierJob } from '../stores/index.js';
 import { abandonCargoRun } from '../vehicles/cargo.js';
 import { boardingNode, pinnedTraderOf } from '../vehicles/crew.js';
 import { vehicleStockGood } from '../vehicles/stock.js';
-import { doorHeapRoom } from './door-heap.js';
 import { decideForHelper, routeStandsFinished, storableFormAt } from './drive.js';
 import { isDeparting } from './ferry.js';
 import { type FerryHold, ferryHoldOf, traderHoldOf } from './hold.js';
@@ -108,6 +106,9 @@ function setOut(
   const work = decideForHelper(plan, trader, { ...hold, entries }, shift.stop, shift.other);
   if (work.kind === 'next') return false;
   if (work.kind === 'load') return mayLoad && setOutToLoad(plan, hold, work.from, work.good);
+  // A unit the full stop spills into another storehouse of its settlement is the trader's to carry: a
+  // helper's trip ends at the stop's house.
+  if (work.into !== shift.stop.house) return false;
   return setOutToUnload(plan, ship, work.good);
 }
 
@@ -148,9 +149,8 @@ function setOutToUnload(plan: PlannerContext, ship: Entity, good: number): boole
 
 /**
  * The trip a unit in hand is on: a booked unit goes to the ship's door, any other to an own stop on this
- * shore, or onto the door heap of a full one that marks it, and one none of these takes to the nearest
- * storehouse or the ground, as a cargo hand places a refused load. False with no moored ship to anchor
- * that search: the delivery rung takes the unit.
+ * shore, and one neither takes to the nearest storehouse or the ground, as a cargo hand places a refused
+ * load. False with no moored ship to anchor that search: the delivery rung takes the unit.
  */
 function finishTrip(
   plan: PlannerContext,
@@ -190,30 +190,7 @@ function finishTrip(
     );
     return true;
   }
-  const heap = stopHeaping(plan, trader, load.goodType);
-  if (heap !== null) {
-    atOrWalk(world, e, here, heap, () => startDrop(world, ctx, e));
-    return true;
-  }
   return onShore && placeRefusedLoad(plan, door, load);
-}
-
-/** The door cell of the route's own stop on this shore that marks `good` for itself alone and whose door
- *  heap still takes it, where a unit for that full stop goes down, as the trader sets it down. */
-function stopHeaping(plan: PlannerContext, trader: Entity, good: number): NodeId | null {
-  const { world, ctx, terrain, here } = plan;
-  const stops = world.tryGet(trader, TradeRoute)?.stops ?? [];
-  const marks = (stop: DeepReadonly<TradeStop>): boolean =>
-    stop.imports.some((mark) => mark.good === good || mark.good === edibleGoodFormOf(ctx.content, good));
-  for (const stop of stops) {
-    if (!world.isAlive(stop.house) || isForeignHouse(world, trader, stop.house) || !marks(stop)) continue;
-    if (stops.some((other) => other !== stop && marks(other))) continue;
-    if (stopContinent(world, ctx, terrain, stop) !== terrain.componentOf(here)) continue;
-    const cell = interactionCell(world, ctx, terrain, stop.house, here);
-    if (failedToReach(plan, cell) || doorHeapRoom(world, ctx, terrain, cell, good) <= 0) continue;
-    return cell;
-  }
-  return null;
 }
 
 /** The route's own house on the planned settler's shore that has room for `good` and can be reached. */

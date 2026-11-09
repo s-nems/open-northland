@@ -901,7 +901,7 @@ export const ECONOMY: ArticleGroup = {
               ['behalten N', 'Im Quellgebäude bleiben N Stück'],
               [
                 'Siedlung',
-                'Holt Ware aus dem ganzen Dorf: erst aus diesem Lager, dann aus anderen Lagern und Werkstätten in seinem Wegweisernetz',
+                'Holt Ware aus dem ganzen Dorf: erst aus diesem Lager, dann aus anderen Lagern und Werkstätten in seinem Wegweisernetz. Ist dieses Lager voll, liefert er in ein anderes Lager des Dorfs',
               ],
             ],
             foot: 'Die Option Siedlung schaltest du nur in einem Lagerhaus oder Hauptquartier ein. In beiden Gebäuden der Route zugleich nur, wenn ihre Siedlungen kein Gebäude teilen, etwa auf zwei Inseln. Ware unter dem Lagerminimum nimmt der Händler nicht mit.',

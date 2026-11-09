@@ -46,7 +46,6 @@ import {
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { carriedGoodForm, deliverySinkProbe, homeBoundGoodProbe } from './delivery-targets.js';
 import { haulFlagArea, workAreaGate } from './haul-flag-area.js';
-import { routeReturnTest } from './route-heaps.js';
 import { isFarmCarrierHaulOutRole } from './store-policy.js';
 
 /**
@@ -59,10 +58,9 @@ import { isFarmCarrierHaulOutRole } from './store-policy.js';
  *
  * A ground pile is an {@link isLoosePile} heap not buried under a building's walls or out of every unit's
  * reach; a wall or road site's delivered material is never one. The good lifted is the pile's lowest-id
- * stocked one passing `deliverable` and not handed back to a trade route ({@link routeReturnTest}), and
- * the scan is canonical by Manhattan distance then ascending cell id. The tests run per candidate, so a
- * lift or claim earlier in the pass is seen by the next porter, and a good every unit of which a walker
- * already claimed is passed over.
+ * stocked one passing `deliverable`, and the scan is canonical by Manhattan distance then ascending cell
+ * id. The tests run per candidate, so a lift or claim earlier in the pass is seen by the next porter, and
+ * a good every unit of which a walker already claimed is passed over.
  */
 function nearestLoosePickup(
   plan: PlannerContext,
@@ -70,13 +68,12 @@ function nearestLoosePickup(
 ): { from: Entity; goodType: number } | null {
   const { world, ctx, terrain, here, targets, supply } = plan;
   const walls = buildingBlockedCells(world, ctx, terrain);
-  const returns = routeReturnTest(plan);
   const groundPileGood = (e: Entity): Qualified<number> | null => {
     if (!isLoosePile(world, e)) return null;
     const unclaimed = unclaimedGoodsAt(world, ctx, supply, e);
     const good = lowestStockedGood(
       world.get(e, Stockpile),
-      (g) => (unclaimed?.(g) ?? true) && deliverable(g) && !returns(e, g),
+      (g) => (unclaimed?.(g) ?? true) && deliverable(g),
     );
     if (good === null) return null;
     return strandedPile(world, ctx, terrain, walls, e) ? null : { payload: good };
@@ -128,10 +125,9 @@ function nearestMinimumRestock(
 
   let lifted = 0;
   const lifts = (goodType: number): boolean => goodType === lifted;
-  const returns = routeReturnTest(plan);
   const accept = (e: Entity): Qualified<number> | null => {
     if (world.has(e, Building)) return qualifiedGood(haulableOutputGood(world, ctx, supply, lifts, e));
-    return isLoosePile(world, e) && unclaimedStockOf(world, ctx, supply, e, lifted) > 0 && !returns(e, lifted)
+    return isLoosePile(world, e) && unclaimedStockOf(world, ctx, supply, e, lifted) > 0
       ? { payload: lifted }
       : null;
   };
@@ -193,14 +189,11 @@ function nearestPriorityRestock(
 
   let lifted = 0;
   const lifts = (goodType: number): boolean => goodType === lifted;
-  const returns = routeReturnTest(plan);
   const accept = (e: Entity): Qualified<number> | null => {
     if (e === home) return null;
     const type = world.tryGet(e, Building)?.buildingType;
     if (type === undefined) {
-      return isLoosePile(world, e) &&
-        unclaimedStockOf(world, ctx, supply, e, lifted) > 0 &&
-        !returns(e, lifted)
+      return isLoosePile(world, e) && unclaimedStockOf(world, ctx, supply, e, lifted) > 0
         ? { payload: lifted }
         : null;
     }

@@ -22,7 +22,7 @@ import type { ContentContext, SystemContext } from '../context.js';
 import { stockOf } from '../missions/stock.js';
 import { grantTradeExperience } from '../progression/index.js';
 import { edibleGoodFormOf } from '../readviews/food.js';
-import { addCarry, dropCarriedLoad, shrinkCarry } from '../settlers/atomics/effects/goods/carry.js';
+import { addCarry, shrinkCarry } from '../settlers/atomics/effects/goods/carry.js';
 import { reapEmptyLoosePile } from '../settlers/atomics/effects/goods/piles.js';
 import { cappedByStorageMinimum } from '../settlers/targets/stores/storage-reserve.js';
 import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '../stores/index.js';
@@ -345,40 +345,28 @@ export function loadTraderHold(
 
 /**
  * Resolve one completed `tradeUnload`: one unit of `goodType` leaves the trader's hold for `store`'s
- * shelf, on the slot the store banks it in; with no room left, or with no store, the unit goes onto the
- * ground at the trader's feet instead, or on the nearest tile with room once that one holds a full stack.
- * At a foreign stop the unit counts toward the agreement's give. A delivery that lands trains the trader.
+ * shelf, on the slot the store banks it in. A store gone or filled since the decision refuses it, and the
+ * unit stays aboard for the next one: a full store never sends goods onto the ground (owner ruling). At a
+ * foreign stop the unit counts toward the agreement's give. A delivery that lands trains the trader.
  */
 export function unloadTraderHold(
   world: World,
   ctx: SystemContext,
   trader: Entity,
-  store: Entity | null,
+  store: Entity,
   goodType: number,
 ): void {
   const route = world.tryGet(trader, TradeRoute);
-  if (route === undefined) return;
-  const cart = haulingCartOf(world, ctx, trader);
-  // A unit the store refuses goes onto the ground through the trader's hands, which must be free of
-  // any other good first; a load still held from an earlier refusal keeps this unit in the cart.
-  const held = world.tryGet(trader, Carrying);
-  if (cart !== null && held !== undefined && held.goodType !== goodType) return;
-  if (moveThroughHold(world, ctx, trader, goodType, -1) !== -1) return;
-  if (store !== null && world.isAlive(store)) {
-    const slot = bankedSlot(world, ctx, store, goodType);
-    const have = stockOf(world, store, slot.goodType);
-    if (have < slot.capacity) {
-      setAccessibleStockAmount(world, store, slot.goodType, have + 1);
-      grantTradeExperience(world, ctx, trader);
-      if (atForeignStop(world, trader, store)) {
-        const agreement = activeAgreement(world, trader, route);
-        if (agreement !== undefined && sameFoodClass(ctx, goodType, agreement.giveGood)) {
-          world.mut(trader, TradeRoute).given += 1;
-        }
-      }
-      return;
+  if (route === undefined || !world.isAlive(store)) return;
+  const slot = bankedSlot(world, ctx, store, goodType);
+  const have = stockOf(world, store, slot.goodType);
+  if (have >= slot.capacity || moveThroughHold(world, ctx, trader, goodType, -1) !== -1) return;
+  setAccessibleStockAmount(world, store, slot.goodType, have + 1);
+  grantTradeExperience(world, ctx, trader);
+  if (atForeignStop(world, trader, store)) {
+    const agreement = activeAgreement(world, trader, route);
+    if (agreement !== undefined && sameFoodClass(ctx, goodType, agreement.giveGood)) {
+      world.mut(trader, TradeRoute).given += 1;
     }
   }
-  addCarry(world, trader, goodType, 1);
-  dropCarriedLoad(world, ctx, trader);
 }

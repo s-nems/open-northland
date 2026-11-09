@@ -1,14 +1,13 @@
 import { Owner, ownerOf, Stockpile } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, hexDistance } from '../../nav/halfcell.js';
+import type { HalfCellNode } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-circle.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
 import type { InteractionCellIndex } from '../settlers/targets/cell-index.js';
 import { settlementReachAt } from '../signposts/settlement-reach.js';
 import { isLoosePile } from '../stores/index.js';
-import { DOOR_HEAP_RADIUS_NODES } from './door-heap.js';
 import { sameFoodClass } from './goods.js';
 
 /** The holding band of a good: its holders a fetcher can reach, piles filed by their own node. */
@@ -51,7 +50,6 @@ export class SettlementGround {
 interface HeldGround {
   readonly ground: SettlementGround;
   readonly reach: SpatialGate;
-  readonly away: NodeId | null;
   readonly bands: readonly InteractionCellIndex[];
   readonly versions: readonly number[];
   readonly owners: number;
@@ -64,10 +62,10 @@ const HELD_GROUNDS_CAP = 1024;
 
 /**
  * The loose ground piles of `anchor`'s settlement holding `good` or a dish of its edible class: unowned or
- * the trader's player's, in the anchor's settlement reach and off `exclude`'s door heap, which is the other
- * stop's. Read off the holding bands, so a pile no fetcher reaches (buried under walls, boxed in) stays out,
- * and only the piles filed in the reach's box are visited. Held until a band's candidates, the reach, the
- * other stop's door or an owner change, so the trader's scopes and its helpers share one read.
+ * the trader's player's, in the anchor's settlement reach. Read off the holding bands, so a pile no
+ * fetcher reaches (buried under walls, boxed in) stays out, and only the piles filed in the reach's box are
+ * visited. Held until a band's candidates, the reach or an owner change, so the trader's scopes and its
+ * helpers share one read.
  */
 export function settlementGround(
   world: World,
@@ -75,7 +73,6 @@ export function settlementGround(
   terrain: TerrainGraph,
   trader: Entity,
   anchor: Entity,
-  exclude: Entity,
   good: number,
   holding: HoldingBandOf,
 ): SettlementGround {
@@ -84,7 +81,6 @@ export function settlementGround(
   if (player === undefined || anchorDoor === null)
     return new SettlementGround(world, ctx, good, [], NO_NODES);
   const reach = settlementReachAt(world, ctx.content, terrain, player, anchorDoor);
-  const away = interactionNodeId(world, ctx, terrain, exclude);
   const bands: InteractionCellIndex[] = [];
   for (const { typeId: form } of ctx.content.goods)
     if (sameFoodClass(ctx, form, good)) bands.push(holding(form));
@@ -95,24 +91,22 @@ export function settlementGround(
     byKey = new Map();
     heldGrounds.set(world, byKey);
   }
-  const key = `${player}:${anchor}:${exclude}:${good}`;
+  const key = `${player}:${anchor}:${good}`;
   const held = byKey.get(key);
   if (
     held !== undefined &&
     held.reach === reach &&
-    held.away === away &&
     held.owners === owners &&
     held.ownerValues === ownerValues &&
     held.bands.length === bands.length &&
     held.bands.every((band, i) => band === bands[i] && band.version === held.versions[i])
   )
     return held.ground;
-  const ground = readGround(world, ctx, terrain, player, reach, away, good, bands);
+  const ground = readGround(world, ctx, terrain, player, reach, good, bands);
   if (held === undefined && byKey.size >= HELD_GROUNDS_CAP) byKey.clear();
   byKey.set(key, {
     ground,
     reach,
-    away,
     bands,
     versions: bands.map((band) => band.version),
     owners,
@@ -127,11 +121,9 @@ function readGround(
   terrain: TerrainGraph,
   player: number,
   reach: SpatialGate,
-  away: NodeId | null,
   good: number,
   bands: readonly InteractionCellIndex[],
 ): SettlementGround {
-  const awayNode = away === null ? null : { hx: terrain.xOf(away), hy: terrain.yOf(away) };
   const found = new Map<Entity, HalfCellNode>();
   for (const band of bands) {
     band.forEachLooseIn(reach.bounds, (pile, hx, hy) => {
@@ -139,9 +131,7 @@ function readGround(
       const owner = ownerOf(world, pile);
       if (owner !== undefined && owner !== player) return;
       if (!reach.allowsNode(terrain.nodeAt(hx, hy))) return;
-      const at = { hx, hy };
-      if (awayNode !== null && hexDistance(at, awayNode) <= DOOR_HEAP_RADIUS_NODES) return;
-      found.set(pile, at);
+      found.set(pile, { hx, hy });
     });
   }
   const piles = [...found.keys()].sort((a, b) => a - b);

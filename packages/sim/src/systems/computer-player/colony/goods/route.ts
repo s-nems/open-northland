@@ -360,7 +360,7 @@ function syncMarks(
     return band.index;
   };
   const { atColony, atHome } = routeMarks(policy, (good) =>
-    settlementGround(world, ctx, env.terrain, trader, home, away, good, holding).units(),
+    settlementGround(world, ctx, env.terrain, trader, home, good, holding).units(),
   );
   return [
     ...markOrders(trader, away, awayStop.imports, atColony),

@@ -898,7 +898,7 @@ export const ECONOMY: ArticleGroup = {
               ['keep N', 'N pieces stay in the source building'],
               [
                 'settlement',
-                'Takes goods from the whole settlement: this warehouse first, then other warehouses and workshops within its signpost network',
+                'Takes goods from the whole settlement: this warehouse first, then other warehouses and workshops within its signpost network. Once this warehouse is full, delivers into another warehouse of the settlement',
               ],
             ],
             foot: "You can turn on the settlement option only in a warehouse or Headquarters. Both route buildings can have it at once only when their settlements share no building, e.g. on two islands. The Merchant won't take goods below the storage minimum.",

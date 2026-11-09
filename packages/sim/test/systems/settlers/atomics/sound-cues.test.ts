@@ -173,8 +173,11 @@ describe('atomicSystem - authored sound cues', () => {
     expect(cuesOverSwing(COLLECTOR_JOB, CHOP_ATOMIC)).toHaveLength(1); // same clip, its own clock
   });
 
+  /** Any store: the cues read the lift's clip, never where the unit goes. */
+  const CART_LIFT_STORE = 0 as Entity;
+
   it("places a cart lift's cues on its clip shortened or stretched over the lift", () => {
-    const lift: AtomicEffect = { kind: 'tradeUnload', store: null, goodType: 1 };
+    const lift: AtomicEffect = { kind: 'tradeUnload', store: CART_LIFT_STORE, goodType: 1 };
     const half = CHOP_LENGTH / 2;
     const double = CHOP_LENGTH * 2;
     expect(cuesOverSwing(COLLECTOR_JOB, CHOP_ATOMIC, half, lift)).toEqual([{ tick: 3, soundType: AXE }]);
