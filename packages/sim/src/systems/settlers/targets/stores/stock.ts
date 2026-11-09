@@ -117,6 +117,9 @@ export function acceptsGood(
     for (const output of recipe.outputs) {
       if (output.goodType === slot.goodType) return false;
     }
+    // A ware the house makes outside its recipes (see `isWorkplaceOutput`) is output too: taken back in,
+    // the worker hauling it out would put it straight back.
+    if (buildingProduces(world, ctx, entity).includes(slot.goodType)) return false;
   } else if (
     refillsOwnStock(world, ctx, entity) &&
     buildingProduces(world, ctx, entity).includes(slot.goodType)

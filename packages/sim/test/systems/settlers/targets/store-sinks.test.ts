@@ -32,6 +32,12 @@ import {
   WHEAT,
   WOOD,
 } from '../../economy/production/producer-supply/support.js';
+import {
+  farmAt,
+  HEADQUARTERS as LIVESTOCK_HEADQUARTERS,
+  livestockSim,
+  WOOL,
+} from '../../livestock/support.js';
 
 /** testContent's HQ wood slot. */
 const HQ_WOOD_CAPACITY = 150;
@@ -58,6 +64,14 @@ describe('StoreSinks - the per-good delivery sink ledger kept across ticks', () 
     expect(sinksOf(sim, WHEAT)).toEqual([farm, granary]);
     expect(sinksOf(sim, WHEAT, STORAGE_ONLY)).toEqual([granary]);
     expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it("never takes back a ware a workplace makes outside its recipes, the animal farm's slaughter wool", () => {
+    const sim = livestockSim();
+    farmAt(sim, 20, 20, { owner: 0 });
+    const hq = farmAt(sim, 4, 4, { owner: 0, buildingType: LIVESTOCK_HEADQUARTERS });
+
+    expect(sinksOf(sim, WOOL)).toEqual([hq]);
   });
 
   it('follows stock writes, structure changes and destroyed stores without drifting', () => {
