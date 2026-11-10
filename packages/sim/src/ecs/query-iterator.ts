@@ -2,15 +2,16 @@ import type { Component, Entity } from './component.js';
 import { type ComponentStore, VACANT_SLOT } from './component-store.js';
 
 /**
- * Walks the smallest required store, yielding the entities present in every other required store. Reusing
- * one {@link result} object (rather than a generator's fresh `{value, done}` per entity) is safe because the
- * for-of / spread protocol reads `.value` before the next `next()` call, so no stale id escapes the loop.
- * Like a `Map` iterator it sees members added during the walk and skips removed ones.
+ * Walks the smallest required store, yielding the entities present in every other required store. The
+ * iterator is its own result (rather than a generator's fresh `{value, done}` per entity), which is safe
+ * because the for-of / spread protocol reads `.value` before the next `next()` call, so no stale id
+ * escapes the loop. Like a `Map` iterator it sees members added during the walk and skips removed ones.
  */
 export class QueryIterator implements IterableIterator<Entity> {
-  private readonly result: IteratorResult<Entity> = { done: false, value: 0 as Entity };
+  done = false;
+  value = 0 as Entity;
   /** The required stores other than {@link walked}, probed per candidate. */
-  private readonly others: Array<ComponentStore<unknown>> = [];
+  private others = NO_OTHERS;
   private walked: ComponentStore<unknown> | null = null;
   private slot = 0;
   /** The walked store's {@link ComponentStore.epoch} that {@link slot} indexes into. */
@@ -23,15 +24,19 @@ export class QueryIterator implements IterableIterator<Entity> {
     required: ReadonlyArray<Component<unknown>>,
   ) {
     let smallest: ComponentStore<unknown> | undefined;
-    for (const c of required) {
-      const s = storesById[c.id];
+    for (let i = 0; i < required.length; i++) {
+      const s = storesById[(required[i] as Component<unknown>).id];
       if (s === undefined) return;
       if (smallest === undefined || s.size < smallest.size) smallest = s;
     }
     if (smallest === undefined) return;
-    for (const c of required) {
-      const s = storesById[c.id];
-      if (s !== undefined && s !== smallest) this.others.push(s);
+    if (required.length > 1) {
+      const others: Array<ComponentStore<unknown>> = [];
+      for (let i = 0; i < required.length; i++) {
+        const s = storesById[(required[i] as Component<unknown>).id];
+        if (s !== undefined && s !== smallest) others.push(s);
+      }
+      this.others = others;
     }
     this.walked = smallest;
     this.epoch = smallest.epoch;
@@ -62,8 +67,8 @@ export class QueryIterator implements IterableIterator<Entity> {
       if (match) {
         this.slot = slot;
         this.lastSeq = store.seqs[slot - 1] ?? 0;
-        this.result.value = id as Entity;
-        return this.result;
+        this.value = id as Entity;
+        return this as IteratorResult<Entity>;
       }
     }
     return this.finish();
@@ -71,12 +76,14 @@ export class QueryIterator implements IterableIterator<Entity> {
 
   private finish(): IteratorResult<Entity> {
     this.walked = null;
-    this.result.done = true;
+    this.done = true;
     // The protocol ignores `value` once `done` is true, so the last yielded id is left in place.
-    return this.result;
+    return this as IteratorResult<Entity>;
   }
 
   [Symbol.iterator](): IterableIterator<Entity> {
     return this;
   }
 }
+
+const NO_OTHERS: ReadonlyArray<ComponentStore<unknown>> = [];
