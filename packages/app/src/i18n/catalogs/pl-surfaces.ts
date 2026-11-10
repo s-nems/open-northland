@@ -594,7 +594,7 @@ export const plSurfaces = {
       buildMany: 'Przytrzymaj {shift} przy stawianiu budynku, a postawisz kilka takich, po jednym na klik.',
       attackMove: '{key} to atak w ruchu: jednostki idą do celu i atakują wszystko po drodze.',
       dockShips:
-        '{key} cumuje zaznaczone statki przy wskazanym brzegu, każdy w swoim miejscu. Z Ctrl/Cmd (klik po {key} albo prawy klik przy brzegu) po zacumowaniu wysiadają wszyscy prócz dowódców, a statki mogą od razu odpłynąć.',
+        '{key} cumuje zaznaczone statki przy wskazanym brzegu, każdy w swoim miejscu. Z Ctrl/Cmd (klik po {key} albo prawy klik przy brzegu) po zacumowaniu wysiadają wszyscy prócz dowódców, a statki mogą od razu odpłynąć; z Alt wysiadają wszyscy.',
       postGraduates:
         'W oknie asystenta ({key}) opcja „{graduatesOption}” sama wysyła świeżo wyszkolonych osadników ze szkół do warsztatów.',
       moveFlags:

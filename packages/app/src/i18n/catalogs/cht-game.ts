@@ -419,7 +419,8 @@ export const chtGame = {
       drive: '駕駛',
       sail: '航行',
       moor: '靠岸',
-      moorAndLand: '靠岸並登陸',
+      moorAndLand: '靠岸並讓指揮官以外的人登陸',
+      moorAndLandAll: '靠岸並全員登陸',
       attack: '攻擊',
       attackMove: '沿途攻擊',
       hunt: '狩獵',
@@ -813,8 +814,10 @@ export const chtGame = {
         attackPosition: '攻擊位置',
       },
       armedTooltip: '{order} · 選擇目標 · Esc 取消',
-      dockTooltip: '{order}（{key}）· 選擇海岸 · Ctrl/Cmd + 點擊：停靠並讓指揮官以外的所有人上岸',
-      dockArmedTooltip: '{order} · 選擇海岸 · Ctrl/Cmd + 點擊：停靠並讓指揮官以外的所有人上岸 · Esc 取消',
+      dockTooltip:
+        '{order}（{key}）· 選擇海岸 · Ctrl/Cmd + 點擊：停靠並讓指揮官以外的所有人上岸 · Alt + 點擊：停靠並全員上岸',
+      dockArmedTooltip:
+        '{order} · 選擇海岸 · Ctrl/Cmd + 點擊：停靠並讓指揮官以外的所有人上岸 · Alt + 點擊：停靠並全員上岸 · Esc 取消',
       refusals: {
         carried: '載具停在船上',
         hauled: '這輛車被人當作工具拉著',

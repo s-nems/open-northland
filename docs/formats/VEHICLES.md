@@ -425,7 +425,8 @@ at sea. Unload people uses the ordinary boarding landing (`landingOf`, `crew.ts`
 board it again. The crew panel disables unloading while unmoored; rejected unload orders preserve
 an ongoing dock drive. An unload may queue behind the current order like a drive, so a dock followed by
 a queued unload lands the crew once the ship moors; the dock pick's Ctrl/Cmd click and a Ctrl/Cmd right-click of selected ships send that pair
-with `keepCommander`, which lands everyone but the commander so the ship can sail off at once (additions:
+with `keepCommander`, which lands everyone but the commander so the ship can sail off at once, and the
+same with Alt sends it without, landing everyone (additions:
 the original lands a crew only by its own order, and always the whole crew). The crew panel and a group of
 ships offer both unloads. Such an unload names the dock's shore point
 (`mooring`) and lands nobody from a ship moored anywhere else, so a dock refused or replaced on the way

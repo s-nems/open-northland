@@ -46,6 +46,7 @@ import { type EquipPickController, mountEquipPicker } from './panels/equip-picke
 import { pickCursor } from './pick-cursor.js';
 import { createPickModeController, pickPressCue } from './pick-mode.js';
 import {
+  dockLandingOf,
   type RightClickContext,
   type RightClickMods,
   rightClickHitAt,
@@ -440,7 +441,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     const selected = selection.ids();
     const hit = rightClickHitAt(unitTargets, world, opts.elevation);
     const hint = pickMode.isArmed()
-      ? pickHint(opts.snapshot(), pickMode.aimAt(clientX, clientY, mods.ctrlKey || mods.metaKey))
+      ? pickHint(opts.snapshot(), pickMode.aimAt(clientX, clientY, dockLandingOf(mods)))
       : selected.size === 0
         ? null
         : planHint(hintContext(), {

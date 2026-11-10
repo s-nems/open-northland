@@ -787,8 +787,20 @@ describe('vehicle picks', () => {
     // The same press on the map overview.
     const overview = harness([SHIP], ALL_UNDER);
     overview.pickMode.arm({ kind: 'vehicle-dock', vehicles: [SHIP] });
-    expect(overview.pickMode.handleOverviewPress(0, { col: 3, row: 3 }, false, true)).toBe('ordered');
+    expect(overview.pickMode.handleOverviewPress(0, { col: 3, row: 3 }, false, 'passengers')).toBe('ordered');
     expect(overview.issued.map((command) => command.kind)).toEqual(['dockVehicle', 'unloadPeople']);
+  });
+
+  it('lands everyone behind the dock on an Alt press of the dock pick, Ctrl held or not', () => {
+    for (const modifier of [{ altKey: true }, { altKey: true, ctrlKey: true }]) {
+      const { issued, pickMode } = harness([SHIP], ALL_UNDER);
+      pickMode.arm({ kind: 'vehicle-dock', vehicles: [SHIP] });
+      expect(pickMode.handleMouseDown({ ...leftClick, ...modifier } as MouseEvent)).toBe('ordered');
+      expect(issued).toEqual([
+        { kind: 'dockVehicle', vehicle: SHIP, x: 3, y: 3 },
+        { kind: 'unloadPeople', vehicle: SHIP, queued: true, mooring: { x: 3, y: 3 } },
+      ]);
+    }
   });
 
   it('names the ship of an armed dock pick, and drops a dock click on a spot the mooring rule rejects', async () => {

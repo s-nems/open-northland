@@ -464,7 +464,7 @@ export const plContent = {
     'vehicle-dock-fleet': {
       title: 'Flota przy postrzępionym brzegu',
       summary:
-        'Pięć obsadzonych statków stoi na morzu przy brzegu z zatoką i przylądkiem. Zaznacz jeden albo kilka i kliknij prawym przy brzegu, naciśnij Z albo użyj przycisku Zacumuj w panelu statku lub grupy: zaokrąglona poświata pokazuje brzeg, przy którym można zacumować, słupki cumownicze z linami pod kursorem pokazują, gdzie przybije każdy statek, a flota rozkłada się wzdłuż brzegu z wolną wodą między kadłubami. Z Ctrl/Cmd (klik po Z albo prawy klik przy brzegu) po zacumowaniu wysiadają wszyscy prócz dowódców, więc statki mogą od razu odpłynąć; panel grupy samych statków ma do tego przycisk Wysadź prócz dowódcy obok Wysadź wszystkich, który wysadza też dowódców.',
+        'Pięć obsadzonych statków stoi na morzu przy brzegu z zatoką i przylądkiem. Zaznacz jeden albo kilka i kliknij prawym przy brzegu, naciśnij Z albo użyj przycisku Zacumuj w panelu statku lub grupy: zaokrąglona poświata pokazuje brzeg, przy którym można zacumować, słupki cumownicze z linami pod kursorem pokazują, gdzie przybije każdy statek, a flota rozkłada się wzdłuż brzegu z wolną wodą między kadłubami. Z Ctrl/Cmd (klik po Z albo prawy klik przy brzegu) po zacumowaniu wysiadają wszyscy prócz dowódców, więc statki mogą od razu odpłynąć, a z Alt wysiadają wszyscy; panel grupy samych statków ma do tego przycisk Wysadź prócz dowódcy obok Wysadź wszystkich, który wysadza też dowódców.',
     },
     'ship-wakes': {
       title: 'Piana wokół statków',

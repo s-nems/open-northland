@@ -473,7 +473,8 @@ export const deGame = {
       drive: 'Fahren',
       sail: 'Segeln',
       moor: 'Anlegen',
-      moorAndLand: 'Anlegen und an Land',
+      moorAndLand: 'Anlegen, Passagiere absetzen',
+      moorAndLandAll: 'Anlegen, alle absetzen',
       attack: 'Angreifen',
       attackMove: 'Unterwegs angreifen',
       hunt: 'Jagen',
@@ -901,9 +902,9 @@ export const deGame = {
       },
       armedTooltip: '{order} · Ziel auswählen · Esc zum Abbrechen',
       dockTooltip:
-        '{order} ({key}) · Küste auswählen · Strg/Cmd + Klick: anlegen und alle außer dem Kommandanten an Land setzen',
+        '{order} ({key}) · Küste auswählen · Strg/Cmd + Klick: anlegen und alle außer dem Kommandanten an Land setzen · Alt + Klick: anlegen und alle an Land setzen',
       dockArmedTooltip:
-        '{order} · Küste auswählen · Strg/Cmd + Klick: anlegen und alle außer dem Kommandanten an Land setzen · Esc zum Abbrechen',
+        '{order} · Küste auswählen · Strg/Cmd + Klick: anlegen und alle außer dem Kommandanten an Land setzen · Alt + Klick: anlegen und alle an Land setzen · Esc zum Abbrechen',
       refusals: {
         carried: 'Das Fahrzeug befindet sich auf einem Schiff',
         hauled: 'Jemand zieht diesen Karren als Werkzeug',

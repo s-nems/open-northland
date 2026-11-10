@@ -2,6 +2,7 @@ import type { UiCue } from '@open-northland/audio';
 import { matchesMouseBinding } from '../../../hud/keybindings.js';
 import { type Tile, worldToTile } from '../../picking.js';
 import { type PickModeController, pickPressCue } from '../pick-mode.js';
+import { dockLandingOf } from '../right-click/context.js';
 import type { UnitOrderController } from './controller.js';
 import type { VehicleOrderController } from './vehicle.js';
 
@@ -38,7 +39,7 @@ export function createOverviewOrders(deps: OverviewOrderDeps): OverviewPress {
       event.button,
       target,
       event.shiftKey,
-      event.ctrlKey || event.metaKey,
+      dockLandingOf(event),
     );
     if (pick !== null) {
       const cue = pickPressCue(pick);

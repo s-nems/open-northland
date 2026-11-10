@@ -14,6 +14,7 @@ import type { Tile } from '../../picking.js';
 import type { FormationUnit } from '../orders/formation.js';
 import {
   contentLookups,
+  type DockLanding,
   type PendingAnswer,
   type RightClickAsks,
   type RightClickContext,
@@ -109,12 +110,12 @@ export type VehicleIntent =
   | { readonly kind: 'loadInto'; readonly carrier: number }
   /** The one selected vehicle drives there; a ship docks where its mooring rule accepts the shore within
    *  a right click's reach, and sails there otherwise. */
-  | { readonly kind: 'drive'; readonly tile: Tile; readonly lands: boolean }
+  | { readonly kind: 'drive'; readonly tile: Tile; readonly landing: DockLanding }
   /** A group drives to its own slots of a spaced formation there. */
   | { readonly kind: 'driveFormation'; readonly tile: Tile }
   /** A group's ships dock along the shore there, each at its own berth; one with no berth sails with
    *  the formation. */
-  | { readonly kind: 'dock'; readonly tile: Tile; readonly lands: boolean };
+  | { readonly kind: 'dock'; readonly tile: Tile; readonly landing: DockLanding };
 
 export interface VehicleGroup {
   readonly vehicles: readonly number[];
@@ -159,7 +160,7 @@ export function resolveVehicleRightClick(
   if (land && carrier !== null && carrier !== vehicle && isMooredShip(ctx, carrier))
     return one({ kind: 'loadInto', carrier });
   if (armed && hit.enemy !== null) return one({ kind: 'strike', enemy: hit.enemy });
-  const drive: VehicleIntent = { kind: 'drive', tile: hit.tile, lands: mods.landsCrew };
+  const drive: VehicleIntent = { kind: 'drive', tile: hit.tile, landing: mods.landing };
   return one(drive, !land && ctx.asks.mooring ? 'mooring' : undefined);
 }
 
@@ -195,7 +196,7 @@ function groupPlan(
   drive(driving.filter((e) => !isShip(ctx.content, e)));
   groups.push({
     vehicles: ships,
-    intent: { kind: 'dock', tile: hit.tile, lands: mods.landsCrew },
+    intent: { kind: 'dock', tile: hit.tile, landing: mods.landing },
     pending: 'mooring',
   });
   return { kind: 'orders', groups };

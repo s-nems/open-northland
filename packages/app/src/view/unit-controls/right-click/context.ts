@@ -29,12 +29,20 @@ export interface RightClickAsks {
   readonly pinShip: boolean;
 }
 
+/** Who a docking ship lands once it moors: nobody, everyone but its commander (Ctrl, Cmd on a Mac), so
+ *  it can sail straight off, or everyone (Alt, Option on a Mac). */
+export type DockLanding = 'none' | 'passengers' | 'everyone';
+
+export function dockLandingOf(event: Pick<MouseEvent, 'ctrlKey' | 'metaKey' | 'altKey'>): DockLanding {
+  if (event.altKey) return 'everyone';
+  return event.ctrlKey || event.metaKey ? 'passengers' : 'none';
+}
+
 /** The modifier keys of the press. */
 export interface RightClickMods {
   /** Shift: each order waits behind the current one; a standing setting walks there instead. */
   readonly queued: boolean;
-  /** Ctrl (Cmd on a Mac): a docking ship lands its crew once it moors. */
-  readonly landsCrew: boolean;
+  readonly landing: DockLanding;
 }
 
 /** What lies under the press: the point's targets and the half-cell node a ground order names. */
@@ -50,8 +58,10 @@ export function rightClickHitAt(
   return { ...targets.pointHits(world.x, world.y), tile: worldToTile(world.x, world.y, elevation) };
 }
 
-export function rightClickMods(event: Pick<MouseEvent, 'shiftKey' | 'ctrlKey' | 'metaKey'>): RightClickMods {
-  return { queued: event.shiftKey, landsCrew: event.ctrlKey || event.metaKey };
+export function rightClickMods(
+  event: Pick<MouseEvent, 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'>,
+): RightClickMods {
+  return { queued: event.shiftKey, landing: dockLandingOf(event) };
 }
 
 /** The pending answer a group's order waits on before it is issued. */

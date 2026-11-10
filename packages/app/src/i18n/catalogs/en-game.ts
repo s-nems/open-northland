@@ -438,7 +438,8 @@ export const enGame = {
       drive: 'Drive',
       sail: 'Sail',
       moor: 'Moor',
-      moorAndLand: 'Moor and land',
+      moorAndLand: 'Moor and land passengers',
+      moorAndLandAll: 'Moor and land everyone',
       attack: 'Attack',
       attackMove: 'Attack on the way',
       hunt: 'Hunt',
@@ -847,9 +848,10 @@ export const enGame = {
         attackPosition: 'Attack position',
       },
       armedTooltip: '{order} · pick the target · Esc cancels',
-      dockTooltip: '{order} ({key}) · pick the shore · Ctrl/Cmd + click: dock and land all but the commander',
+      dockTooltip:
+        '{order} ({key}) · pick the shore · Ctrl/Cmd + click: dock and land all but the commander · Alt + click: dock and land everyone',
       dockArmedTooltip:
-        '{order} · pick the shore · Ctrl/Cmd + click: dock and land all but the commander · Esc cancels',
+        '{order} · pick the shore · Ctrl/Cmd + click: dock and land all but the commander · Alt + click: dock and land everyone · Esc cancels',
       refusals: {
         carried: 'The vehicle stands on a ship',
         hauled: 'Someone pulls this cart as a tool',

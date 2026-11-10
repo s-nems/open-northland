@@ -1,6 +1,6 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import type { BuildingPickKind, PickAim } from '../pick-mode.js';
-import type { HintAction, HintRefusal, PlanHint } from './plan-hint.js';
+import { type HintAction, type HintRefusal, moorAction, type PlanHint } from './plan-hint.js';
 
 /** The verb a building pick's press is named by, and the refusal of a building it turns down. */
 const BUILDING_PICK_WORDS: Readonly<
@@ -40,7 +40,7 @@ export function pickHint(snapshot: WorldSnapshot, aim: PickAim | null): PlanHint
     case 'drive':
       return action(aim.ship ? 'sail' : 'drive');
     case 'dock':
-      return either(aim.fits, aim.lands ? 'moorAndLand' : 'moor', 'cannotMoorHere');
+      return either(aim.fits, moorAction(aim.landing), 'cannotMoorHere');
     case 'bombard':
       return action('bombard');
     case 'board':

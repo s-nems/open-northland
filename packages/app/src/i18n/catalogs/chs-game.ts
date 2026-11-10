@@ -419,7 +419,8 @@ export const chsGame = {
       drive: '驾驶',
       sail: '航行',
       moor: '靠岸',
-      moorAndLand: '靠岸并登陆',
+      moorAndLand: '靠岸并让指挥官以外的人登陆',
+      moorAndLandAll: '靠岸并全员登陆',
       attack: '攻击',
       attackMove: '沿途攻击',
       hunt: '狩猎',
@@ -812,8 +813,10 @@ export const chsGame = {
         attackPosition: '攻击位置',
       },
       armedTooltip: '{order} · 选择目标 · Esc 取消',
-      dockTooltip: '{order}（{key}）· 选择海岸 · Ctrl/Cmd + 点击：停靠并让指挥官以外的所有人上岸',
-      dockArmedTooltip: '{order} · 选择海岸 · Ctrl/Cmd + 点击：停靠并让指挥官以外的所有人上岸 · Esc 取消',
+      dockTooltip:
+        '{order}（{key}）· 选择海岸 · Ctrl/Cmd + 点击：停靠并让指挥官以外的所有人上岸 · Alt + 点击：停靠并全员上岸',
+      dockArmedTooltip:
+        '{order} · 选择海岸 · Ctrl/Cmd + 点击：停靠并让指挥官以外的所有人上岸 · Alt + 点击：停靠并全员上岸 · Esc 取消',
       refusals: {
         carried: '这辆载具在船上',
         hauled: '这辆车被人当作工具拉着',

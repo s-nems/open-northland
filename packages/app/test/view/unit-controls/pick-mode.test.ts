@@ -8,6 +8,7 @@ import { createAnsweredOrders } from '../../../src/view/unit-controls/orders/ans
 import { createUnitOrderController } from '../../../src/view/unit-controls/orders/controller.js';
 import type { VehicleOrderController } from '../../../src/view/unit-controls/orders/vehicle.js';
 import { createPickModeController, type PickModeDeps } from '../../../src/view/unit-controls/pick-mode.js';
+import type { DockLanding } from '../../../src/view/unit-controls/right-click/context.js';
 import type { ShipPinPlan } from '../../../src/view/unit-controls/right-click/vehicles.js';
 import { createUnitSelection } from '../../../src/view/unit-controls/selection.js';
 import { NO_TARGETS } from '../../support/pick-mode.js';
@@ -96,7 +97,7 @@ function harness(
     ...answers,
   });
   const press = () => pickMode.handleMouseDown({ clientX: AT, clientY: AT, button: 0 } as MouseEvent);
-  return { pickMode, issued, press, aim: (primary = false) => pickMode.aimAt(AT, AT, primary) };
+  return { pickMode, issued, press, aim: (landing: DockLanding = 'none') => pickMode.aimAt(AT, AT, landing) };
 }
 
 describe('an armed pick aims as its press orders', () => {
@@ -236,12 +237,12 @@ describe('an armed pick aims as its press orders', () => {
     expect(h.pickMode.isArmed()).toBe(false);
   });
 
-  it('lands the crew of a dock aimed with the primary modifier held where a berth fits', () => {
+  it('carries the landing of a dock aimed with a modifier held where a berth fits', () => {
     const h = harness(
       {},
       { previewBerths: () => [{ vehicle: SHIP, col: 1, row: 1, dock: { col: 1, row: 0 } }] },
     );
     h.pickMode.arm({ kind: 'vehicle-dock', vehicles: [SHIP] });
-    expect(h.aim(true)).toEqual({ kind: 'dock', fits: true, lands: true });
+    expect(h.aim('everyone')).toEqual({ kind: 'dock', fits: true, landing: 'everyone' });
   });
 });

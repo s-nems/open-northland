@@ -34,6 +34,7 @@ import type { UnitOrderController } from './orders/controller.js';
 import { enqueueUnitSelection } from './orders/group.js';
 import type { VehicleOrderController } from './orders/vehicle.js';
 import { enemyAt, ownSettlerAt, ownVehicleAt, preyAt } from './pick-targets.js';
+import { type DockLanding, dockLandingOf } from './right-click/context.js';
 import { isShip } from './right-click/vehicles.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
@@ -219,7 +220,7 @@ export type PickAim =
   | { readonly kind: 'workArea' }
   | { readonly kind: 'signpost'; readonly fits: boolean }
   | { readonly kind: 'drive'; readonly ship: boolean }
-  | { readonly kind: 'dock'; readonly fits: boolean; readonly lands: boolean }
+  | { readonly kind: 'dock'; readonly fits: boolean; readonly landing: DockLanding }
   | { readonly kind: 'bombard' }
   | {
       readonly kind: 'building';
@@ -359,7 +360,7 @@ export interface PickModeController {
    *  mode resolves; one that needs a picked unit or building stays armed, so scrolling the overview to
    *  find that target does not call it off. `shift` is a Shift press. Non-null when the armed mode took
    *  the press. */
-  handleOverviewPress(button: number, target: Tile, shift?: boolean, primary?: boolean): PickPress | null;
+  handleOverviewPress(button: number, target: Tile, shift?: boolean, landing?: DockLanding): PickPress | null;
   /** Shift was let go (or the window lost focus): a mode a Shift press kept armed ends with it. */
   endShiftChain(): void;
   /** The armed mode's verdicts on its targets: a building pick's candidate buildings, the "Assign
@@ -367,9 +368,9 @@ export interface PickModeController {
   highlight(): readonly TargetMark[] | null;
   /** The judged target a press at the client point would name, with its verdict; null off every one. */
   aimedAt(clientX: number, clientY: number): TargetMark | null;
-  /** What a left press at the client point would do; `primary` is a held Ctrl (Cmd on a Mac). Null
-   *  while nothing is armed or where the press names no target. */
-  aimAt(clientX: number, clientY: number, primary: boolean): PickAim | null;
+  /** What a left press at the client point would do, a dock landing whom `landing` names. Null while
+   *  nothing is armed or where the press names no target. */
+  aimAt(clientX: number, clientY: number, landing: DockLanding): PickAim | null;
   /** Bumped by every arm and cancel. */
   version(): number;
 }
@@ -518,12 +519,12 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     return 'pending';
   };
 
-  /** `queued` applies to the {@link QUEUEABLE_MODES}; `lands` has a dock land the crew once moored. */
+  /** `queued` applies to the {@link QUEUEABLE_MODES}; `landing` is whom a dock lands once moored. */
   const resolveSpot = (
     mode: Exclude<SpotMode, { readonly kind: 'signpost' }>,
     named: Tile,
     queued: boolean,
-    lands = false,
+    landing: DockLanding = 'none',
   ): boolean => {
     const { width, height } = nodeBounds(deps.mapSize);
     const target = clampTile(named, width, height);
@@ -546,7 +547,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       case 'vehicle-destination':
         return deps.vehicleOrders().issueMoveTo(mode.vehicle, target, queued);
       case 'vehicle-dock':
-        return deps.vehicleOrders().issueDock(mode.vehicles, target, queued, lands);
+        return deps.vehicleOrders().issueDock(mode.vehicles, target, queued, landing);
       case 'vehicle-attack-position':
         return deps.vehicleOrders().issueAttackPosition(mode.vehicle, target, queued);
       default: {
@@ -691,7 +692,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         mode,
         deps.nodeAt(event.clientX, event.clientY),
         event.shiftKey,
-        event.ctrlKey || event.metaKey,
+        dockLandingOf(event),
       );
     if (mode.kind === 'trade-ship') return pressTradeShip(mode.trader, event);
     return chained(mode, resolvePicked(mode, event, queued), queued);
@@ -716,18 +717,22 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     return pressOutcome(ordered);
   };
 
-  /** `primary` is a Ctrl (Cmd on a Mac) press, which has a dock land the crew once the ships moor. */
-  const resolveSpotPress = (mode: SpotMode, target: Tile, shift: boolean, primary = false): PickPress => {
+  const resolveSpotPress = (
+    mode: SpotMode,
+    target: Tile,
+    shift: boolean,
+    landing: DockLanding = 'none',
+  ): PickPress => {
     const queued = shift && QUEUEABLE_MODES.has(mode.kind);
     if (mode.kind === 'signpost') return resolveSignpostPress(mode, target, queued);
-    return chained(mode, resolveSpot(mode, target, queued, primary), queued);
+    return chained(mode, resolveSpot(mode, target, queued, landing), queued);
   };
 
   const handleOverviewPress = (
     button: number,
     target: Tile,
     shift = false,
-    primary = false,
+    landing: DockLanding = 'none',
   ): PickPress | null => {
     const mode = pickMode;
     if (mode === null || button === MIDDLE_BUTTON) return null;
@@ -737,7 +742,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     }
     if (!isSpotMode(mode)) return null;
     if (mode.kind !== 'signpost') cancel();
-    return resolveSpotPress(mode, target, shift, primary);
+    return resolveSpotPress(mode, target, shift, landing);
   };
 
   /** Read every frame, so the O(entities) pass is memoized on everything it reads: the snapshot instance
@@ -820,7 +825,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   const strikeAim = (target: number | null, creature = false): PickAim | null =>
     target === null ? null : { kind: 'strike', target, creature };
 
-  const aimAt = (clientX: number, clientY: number, primary: boolean): PickAim | null => {
+  const aimAt = (clientX: number, clientY: number, landing: DockLanding): PickAim | null => {
     const mode = pickMode;
     if (mode === null) return null;
     const world = deps.toWorld(clientX, clientY);
@@ -869,7 +874,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         const berths = deps
           .vehicleOrders()
           .previewBerths(mode.vehicles, clampedNode(clientX, clientY), DOCK_PICK_SNAP_NODES);
-        return { kind: 'dock', fits: berths.length > 0, lands: primary };
+        return { kind: 'dock', fits: berths.length > 0, landing };
       }
       case 'vehicle-attack-position':
         return { kind: 'bombard' };

@@ -431,7 +431,8 @@ export const plGame = {
       drive: 'Jedź',
       sail: 'Płyń',
       moor: 'Przybij do brzegu',
-      moorAndLand: 'Przybij i wysadź',
+      moorAndLand: 'Przybij, wysadź prócz dowódcy',
+      moorAndLandAll: 'Przybij i wysadź wszystkich',
       attack: 'Atakuj',
       attackMove: 'Atakuj po drodze',
       hunt: 'Poluj',
@@ -829,9 +830,9 @@ export const plGame = {
       },
       armedTooltip: '{order} · wskaż cel · Esc anuluje',
       dockTooltip:
-        '{order} ({key}) · wskaż brzeg · Ctrl/Cmd + klik: zacumuj i wysadź wszystkich prócz dowódcy',
+        '{order} ({key}) · wskaż brzeg · Ctrl/Cmd + klik: zacumuj i wysadź wszystkich prócz dowódcy · Alt + klik: zacumuj i wysadź wszystkich',
       dockArmedTooltip:
-        '{order} · wskaż brzeg · Ctrl/Cmd + klik: zacumuj i wysadź wszystkich prócz dowódcy · Esc anuluje',
+        '{order} · wskaż brzeg · Ctrl/Cmd + klik: zacumuj i wysadź wszystkich prócz dowódcy · Alt + klik: zacumuj i wysadź wszystkich · Esc anuluje',
       refusals: {
         carried: 'Wehikuł stoi na statku',
         hauled: 'Ktoś ciągnie ten wóz jako narzędzie',

@@ -14,7 +14,7 @@ import {
   type PlanHint,
   planHint,
 } from '../../../../src/view/unit-controls/action-hint/plan-hint.js';
-import type { RightClickHit } from '../../../../src/view/unit-controls/right-click/context.js';
+import type { DockLanding, RightClickHit } from '../../../../src/view/unit-controls/right-click/context.js';
 import { type Ent, snapshotOf } from '../../../support/snapshot.js';
 
 /** The label names what the click's own plan does: its largest order, the trade a post gives, or the
@@ -112,7 +112,7 @@ function hintOf(
   selected: readonly number[],
   hit: Partial<RightClickHit> = {},
   answers: Partial<HintAnswers> = {},
-  landsCrew = false,
+  landing: DockLanding = 'none',
 ): PlanHint | null {
   const snapshot = snapshotOf(entities);
   const settlers = selected
@@ -131,7 +131,7 @@ function hintOf(
       doorMarker: null,
       selected: new Set(selected),
       settlers,
-      mods: { queued: false, landsCrew },
+      mods: { queued: false, landing },
       workFlag: false,
     },
   );
@@ -156,7 +156,12 @@ describe('the right-click hint', () => {
     const ship = vehicle(SHIP, VEHICLE_SHIP_SMALL);
     expect(hintOf([ship], [SHIP])).toMatchObject(action('sail'));
     expect(hintOf([ship], [SHIP], {}, { docks: () => true })).toMatchObject(action('moor'));
-    expect(hintOf([ship], [SHIP], {}, { docks: () => true }, true)).toMatchObject(action('moorAndLand'));
+    expect(hintOf([ship], [SHIP], {}, { docks: () => true }, 'passengers')).toMatchObject(
+      action('moorAndLand'),
+    );
+    expect(hintOf([ship], [SHIP], {}, { docks: () => true }, 'everyone')).toMatchObject(
+      action('moorAndLandAll'),
+    );
   });
 
   it('names the trade a post gives only when every seated worker is known to take the same one', () => {

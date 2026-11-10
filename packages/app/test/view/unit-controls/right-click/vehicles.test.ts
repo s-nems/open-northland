@@ -8,7 +8,7 @@ import {
   VEHICLE_SHIP_SMALL,
 } from '../../../../src/game/sandbox/index.js';
 import { fixedViewerSeat } from '../../../../src/game/viewer-seat.js';
-import type { RightClickHit } from '../../../../src/view/unit-controls/right-click/context.js';
+import type { DockLanding, RightClickHit } from '../../../../src/view/unit-controls/right-click/context.js';
 import {
   resolveVehicleRightClick,
   type VehicleGroup,
@@ -100,13 +100,13 @@ const NOTHING: RightClickHit = {
 function resolve(
   selected: number,
   hit: Partial<RightClickHit>,
-  { mooring = true, landsCrew = false }: { mooring?: boolean; landsCrew?: boolean } = {},
+  { mooring = true, landing = 'none' }: { mooring?: boolean; landing?: DockLanding } = {},
 ): VehiclePlan {
   return resolveVehicleRightClick(
     { snapshot: WORLD, content: sandboxContent(), viewer: fixedViewerSeat(HUMAN_PLAYER), asks: { mooring } },
     new Set([selected]),
     { ...NOTHING, ...hit },
-    { queued: false, landsCrew },
+    { queued: false, landing },
   );
 }
 
@@ -144,9 +144,9 @@ describe("a single vehicle's right click", () => {
   });
 
   it("waits on a ship's mooring rule and carries the crew landing; a land vehicle drives at once", () => {
-    expect(groupOf(resolve(SHIP, {}, { landsCrew: true }))).toEqual({
+    expect(groupOf(resolve(SHIP, {}, { landing: 'everyone' }))).toEqual({
       vehicles: [SHIP],
-      intent: { kind: 'drive', tile: TILE, lands: true },
+      intent: { kind: 'drive', tile: TILE, landing: 'everyone' },
       pending: 'mooring',
     });
     expect(groupOf(resolve(SHIP, {}, { mooring: false }))).not.toHaveProperty('pending');

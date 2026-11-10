@@ -13,7 +13,7 @@ import type { Tile } from '../../picking.js';
 import { homeHasFamilyRoom, staffingOf } from '../highlights/index.js';
 import { schoolStudents } from '../panels/school-dialog.js';
 import type { BuildingIntent, BuildingWorker } from '../right-click/building-rungs.js';
-import { contentLookups, type RightClickContext } from '../right-click/context.js';
+import { contentLookups, type DockLanding, type RightClickContext } from '../right-click/context.js';
 import {
   type BoardOrOrdersPlan,
   type RightClickInput,
@@ -32,6 +32,7 @@ export type HintAction =
   | 'sail'
   | 'moor'
   | 'moorAndLand'
+  | 'moorAndLandAll'
   | 'attack'
   | 'attackMove'
   | 'hunt'
@@ -79,6 +80,11 @@ export type HintTarget =
   | { readonly kind: 'pile'; readonly ref: number }
   | { readonly kind: 'chest'; readonly ref: number }
   | { readonly kind: 'resource'; readonly ref: number };
+
+/** The verb of a dock order landing whom `landing` names once moored. */
+export function moorAction(landing: DockLanding): HintAction {
+  return landing === 'everyone' ? 'moorAndLandAll' : landing === 'passengers' ? 'moorAndLand' : 'moor';
+}
 
 export type PlanHint =
   | {
@@ -278,19 +284,19 @@ function vehicleHint(ctx: HintContext, { vehicles, intent }: VehicleGroup): Plan
     const self = entityById(ctx.snapshot, id);
     return self !== undefined && isShip(ctx.content, self);
   });
-  const moors = (tile: Tile, lands: boolean): PlanHint =>
-    ctx.answers.docks(ships, tile) ? action(lands ? 'moorAndLand' : 'moor') : action('sail');
+  const moors = (tile: Tile, landing: DockLanding): PlanHint =>
+    ctx.answers.docks(ships, tile) ? action(moorAction(landing)) : action('sail');
   switch (intent.kind) {
     case 'strike':
       return action('attack');
     case 'loadInto':
       return action('loadAboard');
     case 'drive':
-      return ships.length === 0 ? action('drive') : moors(intent.tile, intent.lands);
+      return ships.length === 0 ? action('drive') : moors(intent.tile, intent.landing);
     case 'driveFormation':
       return action(ships.length === vehicles.length ? 'sail' : 'drive');
     case 'dock':
-      return moors(intent.tile, intent.lands);
+      return moors(intent.tile, intent.landing);
   }
 }
 
