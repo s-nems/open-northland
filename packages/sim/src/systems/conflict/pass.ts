@@ -1,7 +1,7 @@
 import type { BattleFront } from './battle-alert.js';
 import type { CombatIndex } from './combat-index.js';
 import type { VehicleScan } from './engage-vehicle.js';
-import type { AskerScratch, CombatantStance, EngagementSpecs } from './engagement.js';
+import type { AskerScratch, CombatantStance, EngagementSpecs, FocusScratch } from './engagement.js';
 import type { MeleeSlots } from './melee-slots.js';
 
 /** The derived state one CombatSystem pass builds once and every combatant it resolves reads. */
@@ -14,6 +14,7 @@ export interface CombatPass {
   /** The stance of the combatant being resolved, refilled per combatant: no rung keeps it past its call. */
   readonly stance: Mutable<CombatantStance>;
   asker?: AskerScratch;
+  focus?: FocusScratch;
   vehicleScan?: VehicleScan;
 }
 

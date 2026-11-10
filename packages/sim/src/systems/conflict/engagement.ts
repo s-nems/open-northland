@@ -460,7 +460,12 @@ export function resolveTarget(
       order.breach === undefined
         ? null
         : breakerRival(world, ctx, pass, spec, weapon, x, y, order.breach, order.assault);
-    if (rival !== null) return { target: rival.entity, dist: rival.distance };
+    if (rival !== null) {
+      const { found } = focusOf(pass);
+      found.target = rival.entity;
+      found.dist = rival.distance;
+      return found;
+    }
     if (spec.hold !== undefined && turnsAsideUnder(world, ctx, order, index.firingNow)) {
       const aside = asideFromOrder(
         world,
@@ -476,7 +481,7 @@ export function resolveTarget(
       );
       if (aside !== null) return aside;
     }
-    return focusedOn(world, ctx, terrain, here, order.target);
+    return focusedOn(world, ctx, terrain, here, order.target, focusOf(pass).found);
   }
   if (spec.hold !== undefined) {
     return heldOrPicked(world, ctx, terrain, pass, self, here, spec, spec.hold, moving, travelling);
@@ -499,12 +504,12 @@ export function resolveTarget(
           SEARCH_METRIC,
         )
       : null;
-    if (preempt !== null) return focusedOn(world, ctx, terrain, here, preempt.entity);
+    if (preempt !== null) return focusedOn(world, ctx, terrain, here, preempt.entity, focusOf(pass).found);
     if (spec.animalSeeker === true && spec.searchCenter !== undefined) {
       const nearer = nearerWildVictim(world, ctx, terrain, pass, spec, spec.searchCenter, locked);
-      if (nearer !== null) return focusedOn(world, ctx, terrain, here, nearer);
+      if (nearer !== null) return focusedOn(world, ctx, terrain, here, nearer, focusOf(pass).found);
     }
-    return focusedOn(world, ctx, terrain, here, locked);
+    return focusedOn(world, ctx, terrain, here, locked, focusOf(pass).found);
   }
   // Idle early-out (perf-only): when the coarse presence grid proves no member of a player at war with the
   // seeker either way, and no unowned one but passive wildlife, can be in the search band, both tier searches
@@ -517,7 +522,7 @@ export function resolveTarget(
     spec.animalSeeker === true
       ? pickWildVictim(world, ctx, pass, spec, x, y)
       : (pickInBand(pass, spec, x, y, 'primary') ?? pickInBand(pass, spec, x, y, 'low'));
-  return found === null ? null : focusedOn(world, ctx, terrain, here, found.entity);
+  return found === null ? null : focusedOn(world, ctx, terrain, here, found.entity, focusOf(pass).found);
 }
 
 /**
@@ -597,7 +602,7 @@ function priorityTargetToTurnTo(
   const y = terrain.yOf(here);
   if (!pass.index.firstTierWithin(spec.player, x, y, spec.searchRadius)) return null;
   const found = pickByTier(world, ctx, terrain, pass, spec, asker, x, y, COMBAT_TIER);
-  return found === null ? null : focusedOn(world, ctx, terrain, here, found.entity);
+  return found === null ? null : focusedOn(world, ctx, terrain, here, found.entity, focusOf(pass).found);
 }
 
 /** The nearest first-tier enemy `spec` admits within `hold.look` of `here`: one small band scan. */
@@ -623,7 +628,7 @@ function priorityTargetInLook(
     SEARCH_METRIC,
     true,
   );
-  return found === null ? null : focusedOn(world, ctx, terrain, here, found.entity);
+  return found === null ? null : focusedOn(world, ctx, terrain, here, found.entity, focusOf(pass).found);
 }
 
 /**
@@ -654,7 +659,7 @@ function asideFromOrder(
     hold.keep(engaged) &&
     ranksAbove(world, ctx, pass, engaged, target)
   ) {
-    return focusedOn(world, ctx, terrain, here, engaged);
+    return focusedOn(world, ctx, terrain, here, engaged, focusOf(pass).found);
   }
   if (moving && !onStride(ctx.tick, self, REPATH_CADENCE)) return null;
   return priorityTargetInLook(world, ctx, terrain, pass, here, spec, hold);
@@ -693,7 +698,7 @@ function heldOrPicked(
   const heldTarget = world.tryGet(self, Engagement)?.target;
   const held =
     heldTarget !== undefined && world.isAlive(heldTarget) && hold.keep(heldTarget)
-      ? focusedOn(world, ctx, terrain, here, heldTarget)
+      ? focusedOn(world, ctx, terrain, here, heldTarget, focusOf(pass).held)
       : null;
   const asker = hold.contact
     ? askerOf(
@@ -741,7 +746,7 @@ function heldOrPicked(
   if (picked === null) return held;
   // A search hit lies at its distance to the nearest wall in the band; the reach check measures to the
   // nearest wall of all.
-  const pickedAt = focusedOn(world, ctx, terrain, here, picked.entity);
+  const pickedAt = focusedOn(world, ctx, terrain, here, picked.entity, focusOf(pass).found);
   if (held === null || heldTarget === undefined) return pickedAt;
   // Owner rule: a rescan never trades the held enemy for one of a lower rank, however nearer.
   if (ranksAbove(world, ctx, pass, heldTarget, picked.entity)) return held;
@@ -908,7 +913,7 @@ function lessCrowdedInReach(
       bestCrowd = crowd;
     }
   }
-  return best === null ? null : focusedOn(world, ctx, terrain, asker.here, best);
+  return best === null ? null : focusedOn(world, ctx, terrain, asker.here, best, focusOf(pass).found);
 }
 
 /**
@@ -1076,17 +1081,35 @@ function nearerWildVictim(
   return pickWildVictim(world, ctx, pass, spec, x, y, nearer)?.entity ?? null;
 }
 
+/** One focused target: the enemy and its real distance in map points. */
+export interface Focus {
+  target: Entity;
+  dist: number;
+}
+
+/** The pass's two {@link Focus} results, refilled per combatant: the enemy it holds, and the one a search
+ *  found. No rung keeps either past the combatant's turn. */
+export interface FocusScratch {
+  readonly held: Focus;
+  readonly found: Focus;
+}
+
+function focusOf(pass: CombatPass): FocusScratch {
+  pass.focus ??= { held: { target: 0 as Entity, dist: 0 }, found: { target: 0 as Entity, dist: 0 } };
+  return pass.focus;
+}
+
 /** A focused target and its real distance from `here`, uncapped by the search band - a building
- *  measured at the wall the chase closes on. */
+ *  measured at the wall the chase closes on. Written into `out`, which it returns. */
 function focusedOn(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   here: NodeId,
   target: Entity,
-): { target: Entity; dist: number } {
-  return {
-    target,
-    dist: hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, target)),
-  };
+  out: Focus,
+): Focus {
+  out.target = target;
+  out.dist = hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, target));
+  return out;
 }
