@@ -228,15 +228,16 @@ describe('a computer seat', () => {
   });
 
   it.each([
-    ['family duty', 'outdoors', false],
-    ['family duty', 'indoors', true],
-    ['company chat', 'outdoors', false],
+    ['family duty', 'outdoors', false, true],
+    ['family duty', 'indoors', true, true],
+    ['company chat', 'outdoors', false, true],
+    ['family duty', 'indoors under a human seat', true, false],
   ])(
     'returns to work after its %s ends %s: outdoors on its beat, indoors on the next pass',
-    (hold, _, indoors) => {
+    (hold, _, indoors, computer) => {
       // Planner passes run by hand, so no family or social system ends the hold early.
       const sim = newSim();
-      computerSeat(sim);
+      if (computer) computerSeat(sim);
       const held = woodcutterAt(sim, 10, 10);
       treeAt(sim, 16, 10);
       const partner = woodcutterAt(sim, 12, 10);
@@ -253,7 +254,7 @@ describe('a computer seat', () => {
       pass();
       expect(sim.world.get(held, IdleStand)).toEqual({ standing: false });
       // Released just after its beat: the longest wait outdoors.
-      while (!idleReplanDue(tick, key, COMPUTER)) pass();
+      while (!idleReplanDue(tick, key, computer ? COMPUTER : HUMAN)) pass();
       pass();
       if (hold === 'family duty') sim.world.remove(held, FamilyDuty);
       else sim.world.remove(held, Chat);
@@ -272,7 +273,7 @@ describe('a computer seat', () => {
   it.each([
     ['outdoors', false],
     ['indoors', true],
-  ])('waits a family duty out %s on its beat, where a human seat re-plans it every pass', (_, indoors) => {
+  ])('waits a family duty out %s on its beat, as a human seat does only indoors', (_, indoors) => {
     // Planner passes run by hand, since the family system drops a duty no child order claims.
     const heldPlans = (computer: boolean): { key: Entity; planned: number[] } => {
       const sim = newSim();
@@ -288,10 +289,16 @@ describe('a computer seat', () => {
         if (spy.mock.calls.length > before) planned.push(tick);
       }
       spy.mockRestore();
-      expect(sim.world.tryGet(held, IdleStand)).toEqual(computer ? { standing: false } : undefined);
+      expect(sim.world.tryGet(held, IdleStand)).toEqual(
+        computer || indoors ? { standing: false } : undefined,
+      );
       return { key: sim.world.tryGet(held, Resting)?.at ?? held, planned };
     };
-    expect(heldPlans(false).planned).toHaveLength(COMPUTER);
+    const human = heldPlans(false);
+    // Outdoors every pass; indoors the first pass, then each of its short beats.
+    const firstThenBeats = (tick: number): boolean => tick === 1 || idleReplanDue(tick, human.key, HUMAN);
+    const everyTick = Array.from({ length: COMPUTER }, (_, i) => i + 1);
+    expect(human.planned).toEqual(indoors ? everyTick.filter(firstThenBeats) : everyTick);
     const { key, planned } = heldPlans(true);
     expect(planned).toHaveLength(2); // the first pass, then its beat
     expect(idleReplanDue(planned[1] ?? -1, key, COMPUTER)).toBe(true);

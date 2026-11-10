@@ -45,15 +45,23 @@ export function idleStandPeriodOf(world: World, e: Entity): number {
     : idleReplanPeriodOf(world, e);
 }
 
-/** Whether `e`, held off the economy, waits its hold out on its idle beat instead of re-planning every
- *  tick: a computer seat's settler held only by a family duty or a company chat. The duty's and the
- *  chat's own systems still walk it, and a walk or clip they give it wakes it on its next visit. */
+/**
+ * Whether `e`, held off the economy, waits its hold out on its idle beat instead of re-planning every
+ * tick: a computer seat's settler held only by a family duty or a company chat, and a human seat's held
+ * by a family duty indoors. The duty's and the chat's own systems still walk it, and a walk or clip
+ * they give it wakes it on its next visit. A human seat's wait costs the player nothing he can see: an
+ * order, an alarm and a need turning pressing ({@link wakeIdleToNeed}) end it at once, and so does the
+ * end of the duty, since a settler indoors that no hold keeps there re-plans on its next visit. Only a
+ * pressing need that nothing could serve is tried again on the beat rather than every tick. Outdoors
+ * and in a company chat the end of the hold would go unseen until the beat, so those re-plan every tick.
+ */
 export function waitsHoldOnBeat(world: World, e: Entity): boolean {
-  return (
-    idleReplanPeriodOf(world, e) === COMPUTER_IDLE_REPLAN_PERIOD_TICKS &&
-    (world.has(e, FamilyDuty) || chatHoldsSettler(world, e)) &&
-    !heldByBeatBlockingHold(world, e)
-  );
+  if (heldByBeatBlockingHold(world, e)) return false;
+  const duty = world.has(e, FamilyDuty);
+  if (idleReplanPeriodOf(world, e) === COMPUTER_IDLE_REPLAN_PERIOD_TICKS) {
+    return duty || chatHoldsSettler(world, e);
+  }
+  return duty && world.has(e, Resting);
 }
 
 /** Whether `e` belongs to a machine seat, computer or map AI. */
