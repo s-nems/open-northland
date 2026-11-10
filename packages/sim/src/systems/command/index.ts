@@ -298,6 +298,7 @@ function applyCommand(
                 entity,
                 target: command.target,
                 ...(command.queued ? { queued: true } : {}),
+                ...(command.assault ? { assault: true } : {}),
               }
             : command.kind === 'setStanceGroup'
               ? { kind: 'setStance', entity, mode: command.mode }

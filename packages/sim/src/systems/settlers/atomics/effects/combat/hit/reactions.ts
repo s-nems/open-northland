@@ -104,6 +104,9 @@ export function provokeHostility(world: World, ctx: SystemContext, attacker: Ent
  * while it remembers that.
  * An attack order holds against the reaction unless it lets the fighter turn aside
  * ({@link turnsAsideUnder}) and the striker outranks its target, which it takes up again afterwards.
+ * Approximation: the original keeps a striker the order held against as the next target once the order
+ * ends; here the fighter's next pick takes the nearest enemy of the best tier in its search radius, the
+ * striker only if it is that one.
  * Original behavior: a walking soldier ignores a blow only for its first ten steps, then turns. Deviation:
  * a plain move order is the player's and holds for its whole walk; attack-move turns.
  */

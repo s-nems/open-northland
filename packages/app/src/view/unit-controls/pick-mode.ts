@@ -673,13 +673,14 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     // this mode was armed for.
     if (mode.kind !== 'signpost' || event.button !== 0) cancel();
     if (event.button !== 0) return 'calledOff'; // any other button just calls the mode off
-    // The march engages enemies only, never game, so an attack-move pressed on a wild animal strikes it;
-    // the selected vehicles still march to the spot.
+    // The march engages enemies only, never game, so an attack-move pressed on a wild animal strikes it,
+    // as an assault that still fights the enemy fighters it meets first; the selected vehicles still march
+    // to the spot.
     const queued = queuedPress(mode, event);
     if (
       mode.kind === 'attack-move' &&
       mode.units.length > 0 &&
-      deps.orders().issueAttackAnimal(event, mode.units, queued)
+      deps.orders().issueAttackAnimal(event, mode.units, queued, true)
     ) {
       if (mode.vehicles.length > 0)
         resolveSpot({ ...mode, units: [] }, deps.nodeAt(event.clientX, event.clientY), queued);

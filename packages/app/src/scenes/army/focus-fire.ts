@@ -25,16 +25,16 @@ import type { SceneDefinition, StageOrder } from '../types.js';
 /**
  * A player's attack order is a focus: blue archers sent at a red temple shoot the temple and nothing else,
  * though red swordsmen stand in their path and a manned tower shoots at them. The stage buttons repeat the
- * focus, send the same archers as an attack-move onto the temple, which fights the defenders first, and
+ * focus, send the same archers as an attack-move onto the temple, so they fight the defenders first, and
  * pull them back out, which they obey at once.
  */
 
 const MAP_W = 36;
 const MAP_H = 16;
 
+/** Far out of the tower's and the picket's reach, so a pull-back here ends the fight. */
 const ARCHER_X = 3;
 const ARCHER_ROWS: readonly number[] = [5, 6, 7, 8, 9, 10];
-/** Well past a fighter's sight of the archers, so nothing starts before an order. */
 const TEMPLE = { x: 25, y: 8 } as const;
 const TOWER = { x: 22, y: 4 } as const;
 const TOWER_ARCHERS: readonly (readonly [number, number])[] = [

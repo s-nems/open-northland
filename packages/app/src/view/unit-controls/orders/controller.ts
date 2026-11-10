@@ -145,8 +145,14 @@ export interface UnitOrderController {
     units?: readonly number[],
     queued?: boolean,
   ): boolean;
-  /** Strike the wild creature under the cursor; a click that hits none orders nothing. */
-  issueAttackAnimal(event: MouseEvent, units?: readonly number[], queued?: boolean): boolean;
+  /** Strike the wild creature under the cursor; a click that hits none orders nothing. An `assault`
+   *  fights the enemy fighters it meets first, as an attack-move does. */
+  issueAttackAnimal(
+    event: MouseEvent,
+    units?: readonly number[],
+    queued?: boolean,
+    assault?: boolean,
+  ): boolean;
   /** Offer `units` the courses of the school `house`; false when none of them may learn there. */
   openSchool(house: number, units: readonly number[]): boolean;
   refresh(): void;
@@ -565,13 +571,19 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return commanded.filter((unit) => eligible.has(unit.ref));
   };
 
-  const strike = (commanded: readonly FormationUnit[], enemy: number, queued = false): boolean => {
+  const strike = (
+    commanded: readonly FormationUnit[],
+    enemy: number,
+    queued = false,
+    assault = false,
+  ): boolean => {
     const accepted = enqueueArmyOrder(
       {
         kind: 'attackUnitGroup',
         members: commanded.map((unit) => ({ entity: unit.ref as Entity })),
         target: enemy as Entity,
         ...(queued ? { queued } : {}),
+        ...(assault ? { assault } : {}),
       },
       deps.enqueue,
       onOrderLimit,
@@ -591,9 +603,14 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return enemy !== null && strike(commandedAmong(units), enemy, queued);
   };
 
-  const issueAttackAnimal = (event: MouseEvent, units?: readonly number[], queued = false): boolean => {
+  const issueAttackAnimal = (
+    event: MouseEvent,
+    units?: readonly number[],
+    queued = false,
+    assault = false,
+  ): boolean => {
     const prey = preyAt(deps.targets, deps.toWorld(event.clientX, event.clientY));
-    return prey !== null && strike(commandedAmong(units), prey, queued);
+    return prey !== null && strike(commandedAmong(units), prey, queued, assault);
   };
 
   const issueMoveTo = (

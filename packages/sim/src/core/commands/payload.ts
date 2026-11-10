@@ -253,7 +253,10 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   moveUnitGroup: { required: { members: DESTINATION_GROUP }, optional: QUEUED },
   attackMoveUnitGroup: { required: { members: DESTINATION_GROUP }, optional: QUEUED },
-  attackUnitGroup: { required: { members: UNIT_GROUP, target: 'integer' }, optional: QUEUED },
+  attackUnitGroup: {
+    required: { members: UNIT_GROUP, target: 'integer' },
+    optional: { ...QUEUED, assault: 'boolean' },
+  },
   setStanceGroup: { required: { members: UNIT_GROUP, mode: 'integer' } },
   setRegenerationGroup: { required: { members: UNIT_GROUP, enabled: 'boolean' } },
   unitActionGroup: { required: { members: UNIT_GROUP, action: { variants: UNIT_SELECTION_ACTION_PAYLOAD } } },

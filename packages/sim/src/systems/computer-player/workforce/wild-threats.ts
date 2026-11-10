@@ -65,8 +65,9 @@ const NO_DEFENCE: WildDefence = { commands: [], held: new Set() };
  * {@link WILD_DEFENCE_CALL_NODES} first. While an animal still has too few, the nearest spare man of
  * `pool` who may take up the hunter's trade and its weapon is hired, until the seat holds
  * {@link WILD_DEFENCE_HIRES_MAX} unposted hunters. A hunter already on an animal stays on it, so the
- * order is not re-sent each decision. The men of `pool` sent or hired are held while their animal lasts,
- * so no other post takes them off the fight; once it is gone they are spare men again.
+ * order is not re-sent each decision, and as a plain one it holds past any enemy the hunter meets. The
+ * men of `pool` sent or hired are held while their animal lasts, so no other post takes them off the
+ * fight; once it is gone they are spare men again.
  *
  * Costs the seat's wildlife scan, plus its hunters and the pool per animal found.
  */
@@ -101,7 +102,7 @@ export function defendAgainstWildlife(
     for (const e of nearestWithin(world, hunters, at, WILD_DEFENCE_CALL_NODES, busy)) {
       if (want <= 0) break;
       busy.add(e);
-      commands.push({ kind: 'attackUnit', entity: e, target: threat, assault: true });
+      commands.push({ kind: 'attackUnit', entity: e, target: threat });
       want--;
     }
     while (want > 0 && unposted < WILD_DEFENCE_HIRES_MAX) {
@@ -115,7 +116,7 @@ export function defendAgainstWildlife(
       want--;
       commands.push(
         { kind: 'setJob', entity: hire, jobType: hunterJob },
-        { kind: 'attackUnit', entity: hire, target: threat, assault: true },
+        { kind: 'attackUnit', entity: hire, target: threat },
       );
     }
   }

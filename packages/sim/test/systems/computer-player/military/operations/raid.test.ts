@@ -314,6 +314,19 @@ describe('raid operations', () => {
     expect(raid.reason).toBe('outmatched');
   });
 
+  it('sends its men at the gatherer as assaults once it stands on the target', () => {
+    const { sim, prey } = raidWorld([EXPOSED], ARMY, SPEARMAN);
+    decide(sim, LOOK);
+    decide(sim, LOOK + DECISION);
+    const out = onlyRaid(sim);
+    expect(out.state).toBe('moving');
+    for (const e of out.members) teleport(sim, e, { hx: EXPOSED.x, hy: EXPOSED.y });
+    const commands = decide(sim, LOOK + 2 * DECISION);
+    expect(onlyRaid(sim).state).toBe('acting');
+    for (const e of out.members)
+      expect(commands).toContainEqual({ kind: 'attackUnit', entity: e, target: prey[0], assault: true });
+  });
+
   it('walks out in a stance that seeks no fight and never attack-moves', () => {
     const { sim } = raidWorld([EXPOSED], ARMY, SPEARMAN);
     const commands = [...decide(sim, LOOK)];

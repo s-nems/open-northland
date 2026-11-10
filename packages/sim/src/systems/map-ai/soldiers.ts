@@ -386,6 +386,8 @@ export function workOrders(
       houses.set(group, house);
     }
     if (house !== null) {
+      // Owner rule: an assault, which turns aside to first-tier enemies on the way; the original orders it
+      // plainly.
       if (world.tryGet(e, AttackOrder)?.target !== house)
         commands.push({ kind: 'attackUnit', entity: e, target: house, assault: true });
       continue;

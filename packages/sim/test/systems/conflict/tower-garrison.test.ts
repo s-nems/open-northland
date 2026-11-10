@@ -804,15 +804,15 @@ describe('the tower garrison - a besieger it shoots', () => {
   });
 
   it.each([
-    ['a plain attack order', false],
-    ['an assault', true],
-  ] as const)('under %s on the house, batters the shooting tower: %s, the order kept', (_, assault) => {
+    ['a plain attack order', false, 'spends its blows on the house alone'],
+    ['an assault', true, 'batters the shooting tower'],
+  ] as const)('under %s on the house, %s and keeps the order', (_, assault, _outcome) => {
     const { sim, tower, house, besieger } = siegeUnderTower();
     sim.enqueueSetup({ kind: 'attackUnit', entity: besieger, target: house, assault });
     run(sim, SIEGE_TICKS);
     const struck = (e: Entity): boolean => sim.world.get(e, Health).hitpoints < TOWER_HITPOINTS;
     expect(struck(tower)).toBe(assault);
-    expect(struck(assault ? tower : house)).toBe(true); // a plain order spends its blows on the house
+    if (!assault) expect(struck(house)).toBe(true);
     expect(sim.world.get(besieger, AttackOrder).target).toBe(house);
   });
 });

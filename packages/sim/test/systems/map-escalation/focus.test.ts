@@ -14,7 +14,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
-import { nodeManhattan, nodeOfPosition } from '../../../src/nav/halfcell.js';
+import { nodeManhattan, nodeOfPosition, positionOfNode } from '../../../src/nav/halfcell.js';
 import {
   coastWorld,
   distance,
@@ -28,6 +28,8 @@ import {
 
 /** As far from its aim as a march goal may lie and still be on it, in half-cell nodes. */
 const ON_AIM = 8;
+/** How far west of its aim a man stands idle, in half-cell nodes: inside the band's strike reach. */
+const IDLE_BY_AIM = 8;
 
 function playerHouseAt(sim: Simulation, at: { x: number; y: number }): Entity {
   const house = [...sim.world.query(Building, Owner, Position)].find(
@@ -85,6 +87,23 @@ describe('map escalation - the aim', () => {
     sim.world.remove(man, PlayerOrder);
     sim.world.remove(man, MoveGoal);
     expect(runUntil(sim, 2, () => onAim(sim, man, headquarters))).toBe(true);
+  });
+
+  it('strikes the aim as an assault once a man stands idle within reach of it', () => {
+    const sim = coastWorld();
+    runUntil(sim, LAUNCH_SECONDS + 1, () => false);
+    const headquarters = playerHouseAt(sim, TARGET);
+    const [man] = band(sim);
+    if (man === undefined) throw new Error('no band');
+    const by = positionOfNode(TARGET.x - IDLE_BY_AIM, TARGET.y);
+    const at = sim.world.mut(man, Position);
+    at.x = by.x;
+    at.y = by.y;
+    sim.world.remove(man, PlayerOrder);
+    sim.world.remove(man, MoveGoal);
+    sim.world.remove(man, Engagement);
+    expect(runUntil(sim, 3, () => sim.world.tryGet(man, AttackOrder)?.target === headquarters)).toBe(true);
+    expect(sim.world.get(man, AttackOrder).assault).toBe(true);
   });
 
   it('moves to another building once the headquarters falls, then to the seat’s people', () => {

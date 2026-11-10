@@ -122,9 +122,7 @@ describe('workforce module - hunters against wild animals', () => {
   it('sends its hunter at a wolf inside the settlement', () => {
     const { sim, wolves } = wolfSim(1, 0);
     const hunter = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === HUNTER);
-    expect(attacks(decide(sim))).toEqual([
-      { kind: 'attackUnit', entity: hunter, target: wolves[0], assault: true },
-    ]);
+    expect(attacks(decide(sim))).toEqual([{ kind: 'attackUnit', entity: hunter, target: wolves[0] }]);
   });
 
   it("answers a pack a map hands to an enemy player, and spares a friend's", () => {

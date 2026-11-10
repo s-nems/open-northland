@@ -345,7 +345,7 @@ export const plContent = {
     'focus-fire': {
       title: 'Skupiony ostrzał',
       summary:
-        'Niebiescy łucznicy wysłani na czerwoną świątynię strzelają tylko w nią, choć na ich drodze stoją miecznicy, a obsadzona wieża do nich strzela. Przyciski ponawiają ten rozkaz, posyłają ich do świątyni z atakiem po drodze, który najpierw bije obrońców, albo ich wycofują.',
+        'Niebiescy łucznicy wysłani na czerwoną świątynię strzelają tylko w nią, choć na ich drodze stoją miecznicy, a obsadzona wieża do nich strzela. Przyciski ponawiają ten rozkaz, posyłają ich do świątyni z atakiem po drodze, więc najpierw biją obrońców, albo ich wycofują.',
       stages: {
         field: 'Pole',
         focus: 'Strzelaj w świątynię',

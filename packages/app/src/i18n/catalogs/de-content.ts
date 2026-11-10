@@ -348,11 +348,11 @@ export const deContent = {
     'focus-fire': {
       title: 'Gezielter Beschuss',
       summary:
-        'Blaue Bogenschützen, auf einen roten Tempel angesetzt, beschießen nur den Tempel, obwohl Schwertkämpfer ihnen im Weg stehen und ein besetzter Turm auf sie schießt. Die Knöpfe wiederholen diesen Befehl, schicken sie mit Angriff unterwegs zum Tempel, der zuerst die Verteidiger bekämpft, oder ziehen sie zurück.',
+        'Blaue Bogenschützen, auf einen roten Tempel angesetzt, beschießen nur den Tempel, obwohl Schwertkämpfer ihnen im Weg stehen und ein besetzter Turm auf sie schießt. Die Knöpfe wiederholen diesen Befehl, schicken sie unterwegs angreifend zum Tempel, sodass sie zuerst die Verteidiger bekämpfen, oder ziehen sie zurück.',
       stages: {
         field: 'Feld',
         focus: 'Den Tempel beschießen',
-        assault: 'Unterwegs angreifen bis zu ihm',
+        assault: 'Unterwegs angreifen bis zum Tempel',
         retreat: 'Zurückziehen',
       },
     },

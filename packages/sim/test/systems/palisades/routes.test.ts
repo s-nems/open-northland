@@ -1055,10 +1055,8 @@ describe('an attack-move against a sealed palisade', () => {
     }
   });
 
-  it.each([
-    ['an attack order', false],
-    ['an assault', true],
-  ] as const)('turns %s on a walled-in enemy into a breach, then back onto the enemy', (_, assault) => {
+  /** A soldier sent at an enemy behind a closed wall line, once it has taken on the wall that bars it. */
+  function breachingAtWalledInEnemy(assault: boolean) {
     const sim = fresh();
     const gate = wallRow(sim, P1);
     sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
@@ -1071,12 +1069,37 @@ describe('an attack-move against a sealed palisade', () => {
     const order = sim.world.get(soldier, AttackOrder);
     expect(order.breach?.resume).toBe(enemy);
     expect(sim.world.has(order.target, Palisade)).toBe(true);
+    return { sim, enemy, soldier, wall: order.target };
+  }
 
-    sim.world.mut(order.target, Health).hitpoints = 0;
+  it.each([
+    ['an attack order', false],
+    ['an assault', true],
+  ] as const)('turns %s on a walled-in enemy into a breach, then back onto the enemy', (_, assault) => {
+    const { sim, enemy, soldier, wall } = breachingAtWalledInEnemy(assault);
+    sim.world.mut(wall, Health).hitpoints = 0;
     sim.step();
     // An assault stays one past its wall.
     expect(sim.world.get(soldier, AttackOrder)).toEqual({ target: enemy, assault: assault || undefined });
   });
+
+  it.each([
+    ['an attack order', false],
+    ['an assault', true],
+  ] as const)(
+    'takes %s back onto the walled-in enemy when the next post along its wall falls',
+    (_, assault) => {
+      const { sim, enemy, soldier, wall } = breachingAtWalledInEnemy(assault);
+      const along = (e: Entity): number => Math.abs(nodeRow(sim, e).hx - nodeRow(sim, wall).hx);
+      const [beside] = [...sim.world.query(Palisade)]
+        .filter((e) => e !== wall)
+        .sort((a, b) => along(a) - along(b));
+      if (beside === undefined) throw new Error('expected another post on the line');
+      sim.world.mut(beside, Health).hitpoints = 0;
+      sim.step();
+      expect(sim.world.get(soldier, AttackOrder)).toEqual({ target: enemy, assault: assault || undefined });
+    },
+  );
 
   it('keeps breaching through the same order repeated on the walled-in enemy', () => {
     const sim = fresh();
@@ -1183,35 +1206,32 @@ describe('a shooter breaking a wall', () => {
   });
 
   it.each([
-    ['an assault', true],
-    ['a plain attack order', false],
-  ] as const)(
-    'under %s at a civilian behind the wall, shoots an enemy fighter in reach before the wall: %s',
-    (_, assault) => {
-      const sim = new Simulation({ seed: 1, content: shooterContent(), map: deepSouthMap() });
-      const gate = wallRow(sim, P1);
-      sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
+    ['an assault', true, 'shoots an enemy fighter in reach before the wall'],
+    ['a plain attack order', false, 'keeps on the wall past an enemy fighter in reach'],
+  ] as const)('under %s at a civilian behind the wall, %s', (_, assault, _outcome) => {
+    const sim = new Simulation({ seed: 1, content: shooterContent(), map: deepSouthMap() });
+    const gate = wallRow(sim, P1);
+    sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
+    sim.step();
+    const archer = fighterAt(sim, 0, 0, VIKING, HUNTER, { owner: P0 });
+    sim.world.add(archer, Position, positionOfNode(NORTH.hx, NORTH.hy));
+    const target = fighter(sim, DEEP_SOUTH, P1);
+    attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: archer, target, assault });
+    for (let tick = 0; tick < 200 && sim.world.tryGet(archer, AttackOrder)?.breach === undefined; tick++)
       sim.step();
-      const archer = fighterAt(sim, 0, 0, VIKING, HUNTER, { owner: P0 });
-      sim.world.add(archer, Position, positionOfNode(NORTH.hx, NORTH.hy));
-      const target = fighter(sim, DEEP_SOUTH, P1);
-      attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: archer, target, assault });
-      for (let tick = 0; tick < 200 && sim.world.tryGet(archer, AttackOrder)?.breach === undefined; tick++)
-        sim.step();
-      const wall = sim.world.tryGet(archer, AttackOrder)?.target;
-      if (wall === undefined) throw new Error('expected the archer to go for the wall');
-      expect(sim.world.has(wall, Palisade)).toBe(true);
+    const wall = sim.world.tryGet(archer, AttackOrder)?.target;
+    if (wall === undefined) throw new Error('expected the archer to go for the wall');
+    expect(sim.world.has(wall, Palisade)).toBe(true);
 
-      // Placed once the breach stands, or the archer shoots it on its way and never breaches.
-      const defender = fighterAt(sim, 0, 0, VIKING, UNARMED_SOLDIER, { owner: P1 });
-      sim.world.add(defender, Position, positionOfNode(NORTH.hx, WALL_ROW + 2));
-      const hurt = (): boolean =>
-        sim.world.get(defender, Health).hitpoints < sim.world.get(defender, Health).max;
-      for (let tick = 0; tick < 400 && !hurt(); tick++) sim.step();
-      expect(hurt()).toBe(assault);
-      expect(sim.world.get(archer, AttackOrder).target).toBe(wall);
-    },
-  );
+    // Placed once the breach stands, or the archer shoots it on its way and never breaches.
+    const defender = fighterAt(sim, 0, 0, VIKING, UNARMED_SOLDIER, { owner: P1 });
+    sim.world.add(defender, Position, positionOfNode(NORTH.hx, WALL_ROW + 2));
+    const hurt = (): boolean =>
+      sim.world.get(defender, Health).hitpoints < sim.world.get(defender, Health).max;
+    for (let tick = 0; tick < 400 && !hurt(); tick++) sim.step();
+    expect(hurt()).toBe(assault);
+    expect(sim.world.get(archer, AttackOrder).target).toBe(wall);
+  });
 });
 
 describe('a fighter walled in with its enemy in sight', () => {

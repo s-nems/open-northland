@@ -94,6 +94,7 @@ export function enqueueArmyOrder(
         entity,
         target: command.target,
         ...(command.queued ? { queued: true } : {}),
+        ...(command.assault ? { assault: true } : {}),
       });
       break;
     case 'setStanceGroup':

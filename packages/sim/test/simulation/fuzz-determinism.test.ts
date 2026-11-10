@@ -699,11 +699,13 @@ function nextCommand(rng: Rng): Command {
     case 6:
       // An attack order at two random ids: hits owned combatants (obeyed → AttackOrder + chase),
       // non-combatant / unowned / dead issuers (skipped) and live/dead/non-combatant targets. Exercises
-      // the attackUnit skip paths + the combat engagement drive under a fuzzed stream.
+      // the attackUnit skip paths + the combat engagement drive under a fuzzed stream. Every other one is
+      // an assault, whose flag must save and replay with the order.
       return {
         kind: 'attackUnit',
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         target: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        ...(rng.int(2) === 0 ? { assault: true } : {}),
       };
     case 7:
       // A stance change at a random id: valid + out-of-range modes, owned/unowned/dead targets.

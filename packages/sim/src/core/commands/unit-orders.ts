@@ -125,6 +125,8 @@ export type UnitOrderCommand =
       readonly members: readonly GroupMember[];
       readonly target: Entity;
       readonly queued?: boolean;
+      /** As `attackUnit`'s, for every member. */
+      readonly assault?: boolean;
     }
   | {
       readonly kind: 'setStanceGroup';
@@ -206,9 +208,10 @@ export type UnitOrderCommand =
       readonly target: Entity;
       /** As `moveUnit`'s; the queue moves on once the order lapses with its target. */
       readonly queued?: boolean;
-      /** An assault instead of a focus: on a target below the first combat tier, the combatant fights the
-       *  first-tier enemies it meets near the target first and takes the target up again after them. The
-       *  computer's attack orders. */
+      /** An assault instead of a focus: on a target below the first combat tier, the combatant also
+       *  answers the first-tier enemies in its look and a striker that outranks the target, then takes the
+       *  target up again (`conflict/targeting.ts`). Sent by the computer's sieges, raids and leashed
+       *  defence, and by an attack-move pressed on game. */
       readonly assault?: boolean;
     }
   | {

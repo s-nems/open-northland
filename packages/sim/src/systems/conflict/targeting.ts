@@ -199,9 +199,12 @@ export function isPriorityCombatTarget(
 
 /** Whether a fighter under `order` may turn aside to an enemy of a higher {@link STRIKE_RANK} than its
  *  target and take the target up again afterwards: an assault on a target below the first combat tier,
- *  unless it is a breach, whose breaker stays on its wall (`palisades/breach.ts`). A plain attack order
- *  holds on its target through every blow and every enemy in reach, as RTS focus orders do: the player
- *  who wants the defenders fought first sends an attack-move. Owner rule. */
+ *  unless it is a breach, whose breaker stays on its wall (`palisades/breach.ts`). Any other attack order
+ *  holds its target through every blow, alarm and enemy in reach, as the original's does; an attack-move
+ *  fights the defenders first. Owner rule: the computer's sieges, strikes, raids and leashed defence send
+ *  assaults, where the original's computer sends the same plain order and picks each next target itself.
+ *  Approximation: in the original a blow whose ordered target is out of reach lands on the last striker in
+ *  reach. */
 export function turnsAsideUnder(
   world: World,
   ctx: SystemContext,

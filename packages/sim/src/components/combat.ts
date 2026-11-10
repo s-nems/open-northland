@@ -125,8 +125,8 @@ export const Garrison = defineComponent<{ post: Entity; returnTo: { x: Fixed; y:
  * stance still governs it. `stand` is the near-side node dealt to this breaker, null when none was free.
  * `leash` bounds a defender's chase: the order lets go once its target strays more than `radius` map
  * points from `at` (`conflict/leash.ts`); absent (never null) on every other order. `assault` marks an
- * order that lets its fighter answer the target's first-tier defenders first (`turnsAsideUnder`); a plain
- * attack order holds on its target alone. Absent (never false) on a plain one.
+ * order that lets its fighter turn aside to first-tier enemies on its way and take the target up again
+ * (`turnsAsideUnder`); absent (never false) on a plain one, which holds on its target alone.
  */
 export const AttackOrder = defineComponent<{
   target: Entity;

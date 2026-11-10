@@ -322,14 +322,16 @@ describe('a world press on an armed pick mode', () => {
     expect(issued).toEqual([{ kind: 'moveUnit', entity: SCOUT.id, x: 0, y: 0, queued: true }]);
   });
 
-  it('queues the strike at a wild animal a Shift-pressed attack-move lands on, staying armed', () => {
+  it('queues the assault at a wild animal a Shift-pressed attack-move lands on, staying armed', () => {
     const DEER = 40;
     const { pickMode, issued } = harness(DEFAULT_KEY_BINDINGS.workFlagOrder, () => [
       { ref: DEER, x: 10, y: 10, kind: 'settler' },
     ]);
     pickMode.arm({ kind: 'attack-move', units: [SCOUT.id], vehicles: [] });
     expect(pickMode.handleMouseDown({ ...click(0), shiftKey: true } as MouseEvent)).toBe('ordered');
-    expect(issued).toEqual([{ kind: 'attackUnit', entity: SCOUT.id, target: DEER, queued: true }]);
+    expect(issued).toEqual([
+      { kind: 'attackUnit', entity: SCOUT.id, target: DEER, queued: true, assault: true },
+    ]);
     expect(pickMode.isArmed()).toBe(true);
   });
 
@@ -358,13 +360,13 @@ describe('a world press on an armed pick mode', () => {
     expect(issued).toEqual([]);
   });
 
-  it('strikes a wild animal an attack-move is pressed on instead of marching past it', () => {
+  it('assaults a wild animal an attack-move is pressed on instead of marching past it', () => {
     const DEER = 40;
     const { pickMode, issued } = harness(DEFAULT_KEY_BINDINGS.workFlagOrder, () => [
       { ref: DEER, x: 10, y: 10, kind: 'settler' },
     ]);
     pickMode.arm({ kind: 'attack-move', units: [SCOUT.id], vehicles: [] });
     expect(pickMode.handleMouseDown(click(0))).toBe('ordered');
-    expect(issued).toEqual([{ kind: 'attackUnit', entity: SCOUT.id, target: DEER }]);
+    expect(issued).toEqual([{ kind: 'attackUnit', entity: SCOUT.id, target: DEER, assault: true }]);
   });
 });

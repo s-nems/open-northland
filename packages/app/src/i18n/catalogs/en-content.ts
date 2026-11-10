@@ -347,7 +347,7 @@ export const enContent = {
     'focus-fire': {
       title: 'Focus fire',
       summary:
-        'Blue archers sent at a red temple shoot the temple and nothing else, though swordsmen stand in their way and a manned tower shoots at them. The buttons repeat that order, send them to the temple attacking on the way, which fights the defenders first, and pull them back out.',
+        'Blue archers sent at a red temple shoot the temple and nothing else, though swordsmen stand in their way and a manned tower shoots at them. The buttons repeat that order, send them to the temple attacking on the way, so they fight the defenders first, and pull them back out.',
       stages: {
         field: 'Field',
         focus: 'Shoot the temple',

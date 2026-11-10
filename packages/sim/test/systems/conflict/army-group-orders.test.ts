@@ -147,6 +147,17 @@ describe('atomic army orders', () => {
     }
   });
 
+  it.each([false, true])('gives every selected fighter the group attack, an assault: %s', (assault) => {
+    const { sim, army } = armyWorld(SQUAD);
+    const target = fighterAt(sim, 98, 38, VIKING, WOODCUTTER, { owner: P1, hitpoints: 1_000_000 });
+    const members = army.map((entity) => ({ entity }));
+    sim.enqueue(
+      playerCommand(P0, { kind: 'attackUnitGroup', members, target, ...(assault ? { assault } : {}) }),
+    );
+    sim.step();
+    for (const entity of army) expect(sim.world.get(entity, AttackOrder).assault).toBe(assault || undefined);
+  });
+
   it.each(['hunger', 'fatigue', 'enjoyment'] as const)(
     'applies the %s need action to every selected soldier in one command',
     (need) => {
