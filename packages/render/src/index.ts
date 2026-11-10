@@ -14,9 +14,11 @@ export {
   fogTileVisible,
   type GhostSource,
   type RememberedMarkers,
+  type SeatFogMemory,
   type SeenRoadNetwork,
   type Sight,
   UnseenChanges,
+  type ViewerFogMemory,
 } from './data/fog/index.js';
 export {
   buildHud,

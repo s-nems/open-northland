@@ -1,3 +1,4 @@
+import { SHARED_SIGHT_VIEWER } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   decodeClientMemory,
@@ -8,23 +9,28 @@ import type { FogMemory } from '../../../../src/view/runtime/save-load/fog-memor
 const MEMORY: FogMemory = {
   mapId: 'magiczny_las',
   seat: 0,
-  statics: {
-    player: 0,
-    reconSeeded: true,
-    ghosts: [
-      { ref: 4, kind: 'building', tileX: 5, tileY: 4, typeId: 7, tribe: 1, builtPct: 40, owner: 2 },
-      {
-        ref: 9,
-        kind: 'palisade',
-        tileX: 8.5,
-        tileY: 6,
-        shiftX: -17,
-        palisadeSite: 'claimed',
-        palisadePosts: [{ dx: 3, dy: -2, gfxIndex: 11, variantStep: 1, builtPct: 80 }],
+  memories: [
+    {
+      statics: {
+        player: 0,
+        reconSeeded: true,
+        ghosts: [
+          { ref: 4, kind: 'building', tileX: 5, tileY: 4, typeId: 7, tribe: 1, builtPct: 40, owner: 2 },
+          {
+            ref: 9,
+            kind: 'palisade',
+            tileX: 8.5,
+            tileY: 6,
+            shiftX: -17,
+            palisadeSite: 'claimed',
+            palisadePosts: [{ dx: 3, dy: -2, gfxIndex: 11, variantStep: 1, builtPct: 80 }],
+          },
+        ],
       },
-    ],
-  },
-  roads: [33, 34],
+      roads: [33, 34],
+    },
+    { statics: { player: SHARED_SIGHT_VIEWER, reconSeeded: false, ghosts: [] }, roads: [33] },
+  ],
   layer: {
     removed: [1, 2],
     held: [
@@ -43,7 +49,7 @@ describe('client memory in a save', () => {
       fog: MEMORY,
       names: NAMES,
     });
-    const blank = { mapId: null, seat: null, statics: null, roads: [], layer: null };
+    const blank = { mapId: null, seat: null, memories: [], layer: null };
     expect(decodeClientMemory(encodeClientMemory({ fog: blank, names: [] }))).toEqual({
       fog: blank,
       names: [],
@@ -55,17 +61,18 @@ describe('client memory in a save', () => {
     expect(decodeClientMemory(null)).toEqual(none);
     expect(decodeClientMemory('not json')).toEqual(none);
     const raw = JSON.parse(encodeClientMemory({ fog: MEMORY, names: NAMES }));
-    expect(decodeClientMemory(JSON.stringify({ ...raw, version: 0 }))).toEqual(none);
+    expect(decodeClientMemory(JSON.stringify({ ...raw, version: raw.version - 1 }))).toEqual(none);
   });
 
   it('drops a malformed fog memory and keeps the names beside it', () => {
     const raw = JSON.parse(encodeClientMemory({ fog: MEMORY, names: NAMES }));
     const withFog = (fog: unknown) => decodeClientMemory(JSON.stringify({ ...raw, fog }));
-    expect(withFog({ ...raw.fog, roads: [-1] })).toEqual({ fog: null, names: NAMES });
-    const ghost = (extra: object) => ({
-      ...raw.fog,
-      statics: { ...raw.fog.statics, ghosts: [{ ...raw.fog.statics.ghosts[0], ...extra }] },
-    });
+    const [first, ...rest] = raw.fog.memories;
+    const seat = (memory: object) => ({ ...raw.fog, memories: [{ ...first, ...memory }, ...rest] });
+    expect(withFog(seat({ roads: [-1] }))).toEqual({ fog: null, names: NAMES });
+    expect(withFog(seat({ statics: { ...first.statics, player: SHARED_SIGHT_VIEWER - 1 } })).fog).toBeNull();
+    const ghost = (extra: object) =>
+      seat({ statics: { ...first.statics, ghosts: [{ ...first.statics.ghosts[0], ...extra }] } });
     expect(withFog(ghost({ kind: 'settler' })).fog).toBeNull();
     expect(withFog(ghost({ typeId: 'house' })).fog).toBeNull();
     expect(withFog(ghost({ unknownField: 1 })).fog).toBeNull();

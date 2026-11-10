@@ -11,11 +11,16 @@ import {
 import { type SeenRoadNetwork, SeenRoads } from './seen-roads.js';
 import { ViewSight } from './sight.js';
 
-/** The drawn fog memory as plain data: the remembered statics of the seat drawn (null while no seat's
- *  fog is) and the road nodes the ground draws. */
-export interface ViewerFogMemory {
-  readonly statics: FogGhostMemory | null;
+/** One seat's fog memory as plain data: its remembered statics, whose `player` names the seat (the
+ *  players' sight together as `SHARED_SIGHT_VIEWER`), and the road nodes it believes laid. */
+export interface SeatFogMemory {
+  readonly statics: FogGhostMemory;
   readonly roads: readonly number[];
+}
+
+/** The viewer's fog memory as plain data: every seat it remembers, drawn or not. */
+export interface ViewerFogMemory {
+  readonly memories: readonly SeatFogMemory[];
 }
 
 /** One seat's memory, keyed by its views' `FogView.player`. */
@@ -53,7 +58,8 @@ export class FogMemories implements SeenRoadNetwork {
   /** The road nodes the ground draws, which {@link nodes} answers. */
   private readonly shown = new Set<number>();
   private revisionValue = 0;
-  private pendingRestore: ViewerFogMemory | null = null;
+  /** Saved memories waiting for their seat's first view, by `FogView.player`. */
+  private readonly restored = new Map<number, SeatFogMemory>();
   private startBuildingsPending = false;
   /** A multiplayer map's start buildings, captured at the first update for every memory to know. */
   private startBuildings: readonly FogGhost[] | null = null;
@@ -84,11 +90,12 @@ export class FogMemories implements SeenRoadNetwork {
     return this.drawn?.ghosts ?? null;
   }
 
-  /** Another map's lattice starts every memory over; a terrain edit keeps them. */
+  /** Another map's lattice starts every memory over, a restored one too; a terrain edit keeps them. */
   setNodeWidth(nodeWidth: number): void {
     if (nodeWidth === this.nodeWidthValue) return;
     this.nodeWidthValue = nodeWidth;
     this.forget();
+    this.restored.clear();
     this.startBuildings = null;
     this.live.clear();
     this.shown.clear();
@@ -101,13 +108,20 @@ export class FogMemories implements SeenRoadNetwork {
     this.startBuildingsPending = true;
   }
 
-  /** Start the saved seat's memory from `memory`; call before the game's first frame. */
+  /** Start each saved seat's memory from `memory` at that seat's first view; call before the game's
+   *  first frame. */
   restore(memory: ViewerFogMemory): void {
-    this.pendingRestore = memory;
+    for (const seat of memory.memories) this.restored.set(seat.statics.player, seat);
   }
 
+  /** Every memory as plain data, a restored one whose seat was not viewed since as it was saved. */
   saved(): ViewerFogMemory {
-    return { statics: this.drawn?.ghosts.memory() ?? null, roads: [...this.shown] };
+    const memories: SeatFogMemory[] = [...this.restored.values()];
+    for (const memory of this.bySeat.values()) {
+      const statics = memory.ghosts.memory();
+      if (statics !== null) memories.push({ statics, roads: [...memory.roads.nodes] });
+    }
+    return { memories };
   }
 
   /**
@@ -189,9 +203,9 @@ export class FogMemories implements SeenRoadNetwork {
     };
     if (this.watching) memory.ghosts.recordStatics();
     if (this.startBuildings !== null) memory.ghosts.knowStartBuildings(this.startBuildings);
-    const restored = this.pendingRestore;
-    if (restored?.statics?.player === view.player) {
-      this.pendingRestore = null;
+    const restored = this.restored.get(view.player);
+    if (restored !== undefined) {
+      this.restored.delete(view.player);
       memory.ghosts.restore(restored.statics);
       memory.roads.restore(restored.roads);
     }

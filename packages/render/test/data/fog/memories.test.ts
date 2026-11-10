@@ -11,10 +11,17 @@ const NEAR = node(4, 2);
 const FAR = node(40, 40);
 const OWN = 0;
 const ALLY = 1;
+const HOUSE_TILE = { x: 5, y: 4 } as const;
+const HOUSE_CELL = `${HOUSE_TILE.x},${HOUSE_TILE.y}`;
 
-/** `player`'s view watching the cells of `nodes`; every other cell explored. */
-function watchingNodes(player: number, nodes: readonly number[], generation: number): FogView {
-  const cells = new Map<string, number>();
+/** `player`'s view watching the cells of `nodes` and `watched`; every other cell explored. */
+function watchingNodes(
+  player: number,
+  nodes: readonly number[],
+  generation: number,
+  watched: readonly string[] = [],
+): FogView {
+  const cells = new Map<string, number>(watched.map((cell) => [cell, FOG_STATE.VISIBLE]));
   for (const id of nodes) {
     const { cx, cy } = systems.cellOfNode(id % NODE_WIDTH, Math.floor(id / NODE_WIDTH));
     cells.set(`${cx},${cy}`, FOG_STATE.VISIBLE);
@@ -79,7 +86,8 @@ describe('FogMemories', () => {
     const house = entity(1, 5, 4, { Building: { buildingType: 7, tribe: 1, built: ONE, level: 0 } });
     const memories = new FogMemories(NODE_WIDTH);
     const ghost = { ref: house.id, kind: 'building', tileX: 5, tileY: 4 } as const;
-    memories.restore({ statics: { player: OWN, ghosts: [ghost], reconSeeded: false }, roads: [START] });
+    const statics = { player: OWN, ghosts: [ghost], reconSeeded: false };
+    memories.restore({ memories: [{ statics, roads: [START] }] });
     const own = watchingNodes(OWN, [], 1);
     const ally = watchingNodes(ALLY, [], 1);
     memories.setViews(ally, [ally]);
@@ -94,6 +102,46 @@ describe('FogMemories', () => {
     memories.updateGhosts(snapshotOf([house]), undefined, undefined);
     expect(memories.drawnGhosts?.has(house.id)).toBe(true);
     expect(memories.syncRoads(null)).toEqual({ added: [], removed: [FAR] });
+  });
+
+  it("saves every seat's memory and restores each into its own seat", () => {
+    const house = entity(1, HOUSE_TILE.x, HOUSE_TILE.y, {
+      Building: { buildingType: 7, tribe: 1, built: ONE, level: 0 },
+    });
+    const before = new FogMemories(NODE_WIDTH);
+    const ally = watchingNodes(ALLY, [], 1);
+    const seeing = watchingNodes(OWN, [NEAR], 1, [HOUSE_CELL]);
+    before.setViews(seeing, [seeing, ally]);
+    before.updateGhosts(snapshotOf([house]), undefined, undefined);
+    before.syncRoads({ added: [START], removed: [] });
+    before.syncRoads({ added: [NEAR], removed: [] }); // where only the first seat looks
+    const left = watchingNodes(OWN, [NEAR], 2); // the house's cell left its sight
+    before.setViews(left, [left, ally]);
+    before.updateGhosts(snapshotOf([house]), undefined, undefined);
+
+    const after = new FogMemories(NODE_WIDTH);
+    after.restore(before.saved());
+    const own = watchingNodes(OWN, [], 1);
+    after.setViews(ally, [own, ally]);
+    after.updateGhosts(snapshotOf([house]), undefined, undefined);
+    expect(after.syncRoads({ added: [START, NEAR], removed: [] })).toEqual({ added: [START], removed: [] });
+    expect(after.drawnGhosts?.has(house.id)).toBe(false);
+    after.setViews(own, [own, ally]);
+    expect(after.syncRoads(null)).toEqual({ added: [NEAR], removed: [] });
+    expect(after.drawnGhosts?.has(house.id)).toBe(true);
+  });
+
+  it('keeps a restored memory whose seat was not viewed since in the next save', () => {
+    const memories = new FogMemories(NODE_WIDTH);
+    const unviewed = { statics: { player: ALLY, ghosts: [], reconSeeded: true }, roads: [START] };
+    memories.restore({ memories: [unviewed] });
+    const own = watchingNodes(OWN, [], 1);
+    memories.setViews(own, [own]);
+    memories.updateGhosts(snapshotOf([]), undefined, undefined);
+    memories.syncRoads({ added: [START], removed: [] });
+    const saved = memories.saved().memories;
+    expect(saved.map((memory) => memory.statics.player).sort()).toEqual([OWN, ALLY]);
+    expect(saved.find((memory) => memory.statics.player === ALLY)).toEqual(unviewed);
   });
 
   it('starts every memory over when no view is given, the fog turned off', () => {

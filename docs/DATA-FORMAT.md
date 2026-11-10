@@ -248,15 +248,18 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
 - `presentation` is the saving client's caller-owned text or null, outside the header so a save list
   never reads it, at most 32 Mi UTF-16 units; restore never applies it to gameplay. The app writes its
   client memory there as versioned JSON, `{version, fog, names}`. `fog` is the fog memory,
-  `{mapId, seat, statics, roads, layer}`: the remembered statics of the viewed seat (their draw fields
-  as last seen), the road nodes the viewer believes laid, and the map's static layer (placements whose
-  quad left it, and harvestables still drawn by quad as `[entity, placement, state]`, the state being
-  the node's `Resource.remaining` or a bush's stage). A load restores it only into the same seat on the
-  same map; a held quad whose entity is gone or whose state moved since retires once the viewer sees
-  it. `names` holds the names the player gave settlers as `[entity, pool, rawName, name]`; a name shows
-  only on the entity that still carries that pool and raw name. Another layout is dropped whole, a
-  malformed part alone, and the load goes on. A network game started from a save uploads it without its
-  presentation, so no other seat sees a name the player gave.
+  `{mapId, seat, memories, layer}`. `seat` is the saving client's local seat. `memories` holds one
+  `{statics, roads}` per remembered seat, a spectator's for every seat it watched: the remembered
+  statics (their draw fields as last seen, `statics.player` naming the seat, `-1` for the players'
+  sight together) and the road nodes that seat believes laid. `layer` is the map's static layer as the
+  drawn seat last saw it (placements whose quad left it, and harvestables still drawn by quad as
+  `[entity, placement, state]`, the state being the node's `Resource.remaining` or a bush's stage). A
+  load restores it only into a client of the same local seat on the same map, each seat's memory at
+  that seat's first view; a held quad whose entity is gone or whose state moved since retires once the
+  viewer sees it. `names` holds the names the player gave settlers as `[entity, pool, rawName, name]`;
+  a name shows only on the entity that still carries that pool and raw name. Another layout is dropped
+  whole, a malformed part alone, and the load goes on. A network game started from a save uploads it
+  without its presentation, so no other seat sees a name the player gave.
 - Optional `parent` stores the suspended map save, with at most 16 parent envelopes.
 - `sections` is an array of string-identified sections in a fixed order: `entities` (the
   allocation counter plus the alive list), one `component` section per store in first-registration

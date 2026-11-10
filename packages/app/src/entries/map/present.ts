@@ -126,7 +126,8 @@ export async function presentMapWorld(
           ]
         : harvestablePlacementOrdinals(host.content, loaded.objects, ir);
 
-  // The fog memory a save keeps is its saving seat's in its own world; anything else starts blank.
+  // A save's fog memory restores into a client of the saving client's local seat in its own world, each
+  // seat's part at that seat's first view, so a played seat draws its own alone; anything else starts blank.
   const clientMemory = decodeClientMemory(stagedSave?.presentation ?? null);
   const savedMemory = clientMemory.fog;
   const givenNames = petNamesOf(clientMemory.names);
@@ -287,8 +288,8 @@ export async function presentMapWorld(
     ...(stagedSave !== null ? { restoredView: stagedSave.header.view } : {}),
     petNames: givenNames,
     presentation: () => {
-      const { statics, roads } = renderer.savedFogMemory();
-      const fog = { mapId, seat: localPlayer ?? null, statics, roads, layer: staticLayer?.memory() ?? null };
+      const { memories } = renderer.savedFogMemory();
+      const fog = { mapId, seat: localPlayer ?? null, memories, layer: staticLayer?.memory() ?? null };
       return encodeClientMemory({ fog, names: givenNames.records() });
     },
     ...(runtime.sharedClock

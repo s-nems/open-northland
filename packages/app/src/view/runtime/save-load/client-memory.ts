@@ -2,7 +2,7 @@ import type { PetNameRecord } from '../../../game/character-names/pet-names.js';
 import { type FogMemory, fogMemoryOf } from './fog-memory.js';
 
 /** The layout {@link encodeClientMemory} writes; a reader accepts exactly this one. */
-const CLIENT_MEMORY_VERSION = 1;
+const CLIENT_MEMORY_VERSION = 2;
 
 /**
  * What the saving client remembers beside the world, carried in a save's `presentation` text: its fog
