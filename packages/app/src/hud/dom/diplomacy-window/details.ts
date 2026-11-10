@@ -93,7 +93,7 @@ export function createOffers(paint: GoodIconPainter, onBefriend: () => void) {
       if (!blocked) return;
       setHidden(lockHint, locked.theirs === 'friend');
       setHidden(befriend, locked.yours === 'friend' || !locked.canBefriend);
-      befriend.disabled = locked.befriending;
+      if (befriend.disabled !== locked.befriending) befriend.disabled = locked.befriending;
     },
   };
 }
@@ -144,7 +144,8 @@ export function createTributes(paint: GoodIconPainter, onPay: (slot: number) => 
     setHidden(foot, tribute === undefined);
     if (tribute === undefined) return;
     const pending = paying(tribute.slot);
-    pay.disabled = readOnly || !tribute.payable || pending;
+    const unpayable = readOnly || !tribute.payable || pending;
+    if (pay.disabled !== unpayable) pay.disabled = unpayable;
     write(pay, pending ? copy.paying : copy.pay);
     setAttribute(
       pay,

@@ -274,7 +274,9 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     setAttribute(theirState, 'data-stance', row.towardYou);
     for (const [state, control] of stanceButtons) {
       setAttribute(control, 'aria-pressed', String(orders.stance(row) === state));
-      control.disabled = !row.canDeclare || orders.declaring(row.player);
+      const locked = !row.canDeclare || orders.declaring(row.player);
+      // Setting the flag again writes the attribute again; this runs every frame the window is open.
+      if (control.disabled !== locked) control.disabled = locked;
     }
     write(blocked, row.blocked === undefined ? '' : copy.blocked[row.blocked]);
     setHidden(blocked, row.blocked === undefined);
