@@ -165,11 +165,13 @@ class PathDrain {
     this.units = undefined;
     this.regions = undefined;
     this.hostile = undefined;
-    this.bodiesByPlayer.clear();
-    this.marchingBodiesByPlayer.clear();
-    this.besideTargetsByPlayer.clear();
-    this.occupiedViews.clear();
-    this.claimedStandIns.clear();
+    // Only the filled ones: a long-lived map or set allocates a fresh table on every clear, in the old
+    // generation, even when empty.
+    if (this.bodiesByPlayer.size > 0) this.bodiesByPlayer.clear();
+    if (this.marchingBodiesByPlayer.size > 0) this.marchingBodiesByPlayer.clear();
+    if (this.besideTargetsByPlayer.size > 0) this.besideTargetsByPlayer.clear();
+    if (this.occupiedViews.size > 0) this.occupiedViews.clear();
+    if (this.claimedStandIns.size > 0) this.claimedStandIns.clear();
     this.groupRoutes = undefined;
     this.groupReachability = undefined;
   }
