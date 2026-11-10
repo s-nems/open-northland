@@ -57,14 +57,8 @@ import { Rng } from './core/rng.js';
 import { bindWorldContent } from './core/world-content.js';
 import { type Entity, World } from './ecs/world.js';
 import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
-import { type HouseholdGoodPolicyView, householdGoodPolicyView } from './inspect/household-policy.js';
 import { type MapFingerprintInput, mapFingerprint, mapFingerprintInput } from './inspect/map-fingerprint.js';
-import {
-  type HomeQualityView,
-  homeQualityView,
-  takeSnapshot,
-  type WorldSnapshot,
-} from './inspect/snapshot.js';
+import { takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
 import { SnapshotDeltaStream, type SnapshotDeltaStreamOptions } from './inspect/snapshot-clones.js';
 import type { HalfCellNode, NodeArea } from './nav/halfcell.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
@@ -293,15 +287,6 @@ export class Simulation {
 
   missionPresentation(): MissionPresentationView {
     return missionPresentation(this.world);
-  }
-
-  /** Detached household-quality pools for a home, or null before it has received a household good. */
-  homeQuality(home: Entity): HomeQualityView | null {
-    return homeQualityView(this.snapshot(), home);
-  }
-
-  householdGoodPolicy(player: number): HouseholdGoodPolicyView {
-    return householdGoodPolicyView(this.snapshot(), player);
   }
 
   landscapeEdits(): LandscapeEditView {
