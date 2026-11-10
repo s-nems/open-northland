@@ -5,17 +5,18 @@ import {
   ownerOf,
   Person,
   Position,
+  Settler,
   WorkFlag,
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { hexDistanceBetween, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
+import type { ContentContext, SystemContext } from '../../context.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
 import { homeUsedBy } from '../../family/households.js';
 import { interactionNodeId } from '../../footprint/interaction.js';
-import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
+import { confinedJob, type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { jobCanBuild } from '../atomics/start.js';
 import { announceLostWay, clearLostWay, markCutOff } from '../lost-way.js';
@@ -69,8 +70,25 @@ function noDoorInReach(seatDoors: readonly NodeId[], limit: NavigationLimit): bo
 }
 
 /** A trade the economy ladder walks somewhere for. A woman or civilist has no work to be cut off from. */
-function hasWorkToReach(ctx: SystemContext, jobType: number): boolean {
+function hasWorkToReach(ctx: ContentContext, jobType: number): boolean {
   return jobCanBuild(ctx.content, jobType) || jobCanHarvest(ctx, jobType) || isCarrierJob(ctx, jobType);
+}
+
+/**
+ * Whether the standing idler's cut-off check ({@link reconcileCutOff}, then the lost guide) may do
+ * anything for `e`: false proves it marks, clears and leads nothing. It holds no mark to clear or follow,
+ * and either signposts never confine its trade, or it has no post of its own and no work to be cut off from.
+ */
+export function cutOffCheckMayAct(world: World, ctx: ContentContext, e: Entity): boolean {
+  if (world.has(e, LostWay)) return true;
+  const jobType = world.tryGet(e, Settler)?.jobType ?? null;
+  if (jobType === null || !confinedJob(ctx.content, jobType)) return false;
+  return (
+    hasWorkToReach(ctx, jobType) ||
+    world.has(e, JobAssignment) ||
+    world.has(e, WorkFlag) ||
+    world.has(e, HaulFlag)
+  );
 }
 
 /** The door of `e`'s own workplace when `limit` does not reach it, else null. */

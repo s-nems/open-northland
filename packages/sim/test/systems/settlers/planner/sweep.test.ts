@@ -37,6 +37,7 @@ import { type Entity, World } from '../../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../../src/index.js';
 import type { NodeId } from '../../../../src/nav/terrain/index.js';
 import type { ShelterSites } from '../../../../src/systems/defence/index.js';
+import { CUT_OFF_CHECK_TICKS } from '../../../../src/systems/settlers/drives/cut-off.js';
 import { collectFarmClaims } from '../../../../src/systems/settlers/drives/farming/index.js';
 import { IDLE_REPLAN_PERIOD_TICKS, wakeIdle } from '../../../../src/systems/settlers/planner/idle-replan.js';
 import {
@@ -76,7 +77,7 @@ function alarmWithRoom(free: number): ShelterSites {
   return new Map([[ALARMED, [{ entity: 0 as Entity, hx: 0, hy: 0, free }]]]);
 }
 
-/** The sweep's idle tick that lets every idler through. */
+/** The sweep's cut-off check tick, which visits every idler that check may act for. */
 const EVERY_IDLER = undefined;
 
 function atomic(effect: CurrentAtomicState['effect'], atomicId: number): CurrentAtomicState {
@@ -142,7 +143,14 @@ function swept(
   shelters: ShelterSites,
   idleTick: number | undefined,
 ): Entity[] {
-  const sweep = sweepOrder(world, content, shelters, idleTick, ownersWithShelterRoom(shelters));
+  const sweep = sweepOrder(
+    world,
+    content,
+    shelters,
+    idleTick ?? CUT_OFF_CHECK_TICKS,
+    idleTick === undefined,
+    ownersWithShelterRoom(shelters),
+  );
   const visited: Entity[] = [];
   for (let e = sweep.next(); e !== undefined; e = sweep.next()) visited.push(e);
   return visited;
@@ -168,7 +176,7 @@ describe('planner sweep order', () => {
     const first = settler(world);
     const walker = walking(world);
     const visited: Entity[] = [];
-    const sweep = sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER, new Set());
+    const sweep = sweepOrder(world, CONTENT, NO_SHELTERS, CUT_OFF_CHECK_TICKS, true, new Set());
     for (let e = sweep.next(); e !== undefined; e = sweep.next()) {
       visited.push(e);
       if (e === first) {

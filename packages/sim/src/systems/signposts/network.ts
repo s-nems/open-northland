@@ -490,7 +490,7 @@ function coversLand(lands: readonly (number | null)[] | undefined, land: number)
 
 /** Whether signposts confine `jobType`. The original routes soldiers, heroes, scouts, hunters and druids
  *  over its global walk sectors instead. */
-function confinedJob(content: ContentSet, jobType: number | null): boolean {
+export function confinedJob(content: ContentSet, jobType: number | null): boolean {
   return !(
     isScoutJob(content, jobType) ||
     isFighterJob(content, jobType) ||

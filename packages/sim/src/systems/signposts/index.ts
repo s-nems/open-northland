@@ -1,5 +1,6 @@
 export { relinkSignpost } from './links.js';
 export {
+  confinedJob,
   equipErrandConfinement,
   equipFetchLimitFor,
   type NavigationLimit,
