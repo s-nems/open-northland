@@ -335,13 +335,15 @@ export class CombatIndex {
     for (let cx = cx0; cx <= cx1; cx++) {
       for (let cy = cy0; cy <= cy1; cy++) {
         const cell = this.grid.cellAt(cx, cy);
-        if (cell === undefined || (cell.ownerMask & bit) === 0) continue;
-        count = appendOwned(scan, count, cell.bodies, bit, fromX, fromY, maxDist, metric);
-        count = appendOwned(scan, count, cell.units, bit, fromX, fromY, maxDist, metric);
+        if (cell === undefined) continue;
+        if (((cell.baseOwnerMask | cell.buildOwnerMask) & bit) !== 0)
+          count = appendOwned(scan, count, cell.bodies, bit, fromX, fromY, maxDist, metric);
+        if ((cell.unitOwnerMask & bit) !== 0)
+          count = appendOwned(scan, count, cell.units, bit, fromX, fromY, maxDist, metric);
       }
     }
-    const keys = scan.keys.subarray(0, count);
-    keys.sort();
+    sortKeys(scan.keys, count);
+    const { keys } = scan;
     scan.met.begin();
     const found: { entity: Entity; distance: number }[] = [];
     for (let i = 0; i < count; i++) {
@@ -428,13 +430,14 @@ export class CombatIndex {
     for (let cx = cx0; cx <= cx1; cx++) {
       for (let cy = cy0; cy <= cy1; cy++) {
         const cell = this.grid.cellAt(cx, cy);
-        if (cell === undefined || !holdsBandCandidate(cell, hostile)) continue;
-        count = appendBand(scan, count, cell.bodies, fromX, fromY, minDist, maxDist, hostile, metric);
-        count = appendBand(scan, count, cell.units, fromX, fromY, minDist, maxDist, hostile, metric);
+        if (cell === undefined) continue;
+        if (bodiesHoldBandCandidate(cell, hostile))
+          count = appendBand(scan, count, cell.bodies, fromX, fromY, minDist, maxDist, hostile, metric);
+        if (unitsHoldBandCandidate(cell, hostile))
+          count = appendBand(scan, count, cell.units, fromX, fromY, minDist, maxDist, hostile, metric);
       }
     }
-    // A typed array sorts numerically without a comparator call per compare.
-    scan.keys.subarray(0, count).sort();
+    sortKeys(scan.keys, count);
     scan.valid = true;
     scan.x = fromX;
     scan.y = fromY;
@@ -473,10 +476,21 @@ function passes(cell: CoarseCell, test: CellTest, hostile: number): boolean {
   }
 }
 
-/** Whether `cell` may hold a member a band scan for the `hostile` players keeps: one owned by such a player,
- *  or one with no player bit, which the tallies count as undiscounted or passive. */
-function holdsBandCandidate(cell: CoarseCell, hostile: number): boolean {
-  return (cell.ownerMask & hostile) !== 0 || cell.undiscounted > 0 || cell.passive > 0;
+/** Whether `cell`'s bodies hold one a band scan for the `hostile` players keeps: a building or vehicle
+ *  owned by such a player, or one with no player bit, which the tallies count as undiscounted. A seeker
+ *  among its own houses so skips their every wall node. */
+function bodiesHoldBandCandidate(cell: CoarseCell, hostile: number): boolean {
+  return (
+    ((cell.baseOwnerMask | cell.buildOwnerMask) & hostile) !== 0 ||
+    cell.baseUndiscounted > 0 ||
+    cell.buildUndiscounted > 0
+  );
+}
+
+/** {@link bodiesHoldBandCandidate} for `cell`'s units, whose members with no player bit the tallies count
+ *  as undiscounted or passive. */
+function unitsHoldBandCandidate(cell: CoarseCell, hostile: number): boolean {
+  return (cell.unitOwnerMask & hostile) !== 0 || cell.unitUndiscounted > 0 || cell.unitPassive > 0;
 }
 
 /** Append to `scan` from `count` every member of `list` within `minDist..maxDist` of (fromX, fromY) that
@@ -508,6 +522,24 @@ function appendBand(
     scan.keys[n++] = distance * CANDIDATE_ID_SPAN + (members[i] ?? 0);
   }
   return n;
+}
+
+/** The longest band sorted by insertion: a typed sort's view and call cost more than so few compares. */
+const INSERTION_SORT_MAX_KEYS = 16;
+
+/** Sort the first `count` of `keys` ascending, in place. */
+function sortKeys(keys: Float64Array, count: number): void {
+  if (count > INSERTION_SORT_MAX_KEYS) {
+    // A typed array sorts numerically without a comparator call per compare.
+    keys.subarray(0, count).sort();
+    return;
+  }
+  for (let i = 1; i < count; i++) {
+    const key = keys[i] ?? 0;
+    let at = i;
+    for (; at > 0 && (keys[at - 1] ?? 0) > key; at--) keys[at] = keys[at - 1] ?? 0;
+    keys[at] = key;
+  }
 }
 
 /** Double `scan`'s key buffer, keeping its keys. */
