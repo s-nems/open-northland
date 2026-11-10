@@ -120,6 +120,36 @@ describe('presentItem - a repeat within one tick', () => {
     });
   }
 
+  it('repeats a look with fractional frame times while its clock carries no frame alpha', () => {
+    const sheet = sheetWith({ binding: { idle: { ...IDLE, ticksPerFrame: 2.5 }, moving: IDLE } });
+    const walker: DrawItem = { ...idler, state: 'moving', facing: 0 };
+    const cases: readonly (readonly [DrawItem, boolean])[] = [
+      // A walk draws from the gait clock, an idle stance with the motion setting off from the tick.
+      [walker, true],
+      [idler, false],
+    ];
+    for (const [item, environmentMotion] of cases) {
+      const { track, resolves } = tracked();
+      // Two ticks apart, so the walker's motion track counts as travelling rather than stalled.
+      presentItem(track, { ...item, x: -8 }, TICK - 1, 1, sheet, environmentMotion);
+      presentItem(track, item, TICK, 0.25, sheet, environmentMotion);
+      const first = [...track.layers.finish()];
+      resolves.mockClear();
+      expect(presentItem(track, item, TICK, 0.75, sheet, environmentMotion)).toEqual(first);
+      expect(presentItem(track, item, TICK, 1, sheet, environmentMotion)).toEqual(first);
+      expect(resolves).not.toHaveBeenCalled();
+    }
+  });
+
+  it('resolves a walk inside a house on every present of a fractional look', () => {
+    const sheet = sheetWith({ binding: { idle: IDLE, moving: { ...IDLE, ticksPerFrame: 2.5 } } });
+    const indoors: DrawItem = { ...idler, state: 'moving', facing: 0, inHouse: true };
+    const { track, resolves } = tracked();
+    presentItem(track, indoors, TICK, 0.25, sheet, true);
+    presentItem(track, indoors, TICK, 0.75, sheet, true);
+    expect(resolves).toHaveBeenCalledTimes(2);
+  });
+
   it('resolves every present of a look that moves between tick anchors', () => {
     const sheet = sheetWith({ interpolateMotion: true });
     const { track, resolves } = tracked();

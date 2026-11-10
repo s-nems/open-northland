@@ -56,9 +56,10 @@ interface PresentedLook {
 }
 
 /**
- * A settler drawn at its tick anchor, on a look whose clips step on whole ticks, reads the frame alpha
- * only through the whole tick its animation clock stands on: another present of the same item in the
- * same tick resolves the same layers while that step holds.
+ * A settler drawn at its tick anchor reads the frame alpha through its animation clock at most, and on
+ * a look whose clips step on whole ticks only through the whole tick that clock stands on: another
+ * present of the same item in the same tick resolves the same layers while that step holds, or on every
+ * frame when the clock carries no alpha.
  */
 interface TickPresent {
   /** The item it presented; undefined when no later present may repeat it. */
@@ -190,20 +191,25 @@ export function presentItem(
     seaClock ?? clocks.animation,
   );
   const last = track.tickPresent;
+  // Mirrors `writeMotionClocks` for a figure drawn at its tick anchor: its animation clock carries the
+  // frame alpha only under the motion setting and outside an action, and a walk outside a house draws
+  // from the gait clock alone.
+  const readsAlpha =
+    environmentMotion &&
+    pose.state !== 'acting' &&
+    (displayed.state !== 'moving' || displayed.inHouse === true);
   const repeatable =
     track.kind === 'settler' &&
     look !== undefined &&
     !smooth &&
     !held &&
     track.reveal === undefined &&
-    characterStepsOnWholeTicks(look);
+    (!readsAlpha || characterStepsOnWholeTicks(look));
   last.item = repeatable ? item : undefined;
   last.tick = tick;
   last.sheet = sheet;
   last.environmentMotion = environmentMotion;
-  // Mirrors the clock `writeMotionClocks` picks for a figure drawn at its tick anchor.
-  last.clockStep =
-    environmentMotion && pose.state !== 'acting' ? Math.floor(tick + clamp01(frameAlpha)) : Number.NaN;
+  last.clockStep = readsAlpha ? Math.floor(tick + clamp01(frameAlpha)) : Number.NaN;
   last.layers = layers;
   return layers;
 }
