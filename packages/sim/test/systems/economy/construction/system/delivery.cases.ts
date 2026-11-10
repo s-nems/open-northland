@@ -524,6 +524,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
   });
 
   it("a computer seat's parked builder waits for the short idle beat; a human seat's re-plans every tick", () => {
+    const SEAT = 0;
     const parked = (computer: boolean): { readonly stand: unknown; readonly dueTicks: number } => {
       const sim = new Simulation({ seed: 26, content: constructionContent(), map: grassMap(12, 5) });
       if (computer) {
@@ -538,16 +539,16 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
       const site = siteAt(sim, HOUSE, 6, 1); // no stone or wood anywhere: no task
       sim.world.add(site, Owner, { player: 0 });
       const builder = builderAt(sim, 3, 3);
-      sim.world.add(builder, Owner, { player: 0 });
+      sim.world.add(builder, Owner, { player: SEAT });
       for (let tick = 0; tick < 200; tick++) sim.step();
       expect(sim.world.get(builder, SiteAssignment)).toEqual({ site, pinned: false });
       expect(sim.world.has(builder, MoveGoal)).toBe(false);
       const dueTicks = ticksOffCheck.filter((tick) => !waitsIdle(sim.world, tick, builder)).length;
       return { stand: sim.world.tryGet(builder, IdleStand), dueTicks };
     };
-    // A short-beat stand also re-plans on every cut-off check tick, so those are left out.
+    // A short-beat stand also re-plans on every cut-off check tick of its seat, so those are left out.
     const ticksOffCheck = Array.from({ length: COMPUTER_IDLE_REPLAN_PERIOD_TICKS }, (_, t) => t).filter(
-      (tick) => !cutOffCheckTick(tick),
+      (tick) => !cutOffCheckTick(tick, SEAT),
     );
     expect(parked(false)).toEqual({ stand: undefined, dueTicks: ticksOffCheck.length });
     // The seat's other idlers wait out the computer period; this one re-plans on every short beat.

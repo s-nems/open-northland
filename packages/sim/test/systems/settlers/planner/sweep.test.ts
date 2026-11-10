@@ -79,7 +79,7 @@ function alarmWithRoom(free: number): ShelterSites {
   return new Map([[ALARMED, [{ entity: 0 as Entity, hx: 0, hy: 0, free }]]]);
 }
 
-/** The sweep's cut-off check tick, which visits every idler that check may act for. */
+/** A tick on which every seat's cut-off check is due, which visits every idler that check may act for. */
 const EVERY_IDLER = undefined;
 
 function atomic(effect: CurrentAtomicState['effect'], atomicId: number): CurrentAtomicState {
@@ -150,7 +150,7 @@ function swept(
     content,
     shelters,
     idleTick ?? CUT_OFF_CHECK_TICKS,
-    idleTick === undefined,
+    () => idleTick === undefined,
     ownersWithShelterRoom(shelters),
   );
   const visited: Entity[] = [];
@@ -178,7 +178,7 @@ describe('planner sweep order', () => {
     const first = settler(world);
     const walker = walking(world);
     const visited: Entity[] = [];
-    const sweep = sweepOrder(world, CONTENT, NO_SHELTERS, CUT_OFF_CHECK_TICKS, true, new Set());
+    const sweep = sweepOrder(world, CONTENT, NO_SHELTERS, CUT_OFF_CHECK_TICKS, () => true, new Set());
     for (let e = sweep.next(); e !== undefined; e = sweep.next()) {
       visited.push(e);
       if (e === first) {

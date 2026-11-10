@@ -54,9 +54,9 @@ function idleSlotOf(world: World, e: Entity): number {
  * `acting` holds every one {@link idleRelease} does not pass by, wildlife included since the release
  * is the only failed-route recovery a parked creature has; `travellingByOwner` holds the quiet walkers
  * only an alarm can divert, by owner; `idle` holds the idlers whose visit does something only on their
- * re-plan beat, alarm or cut-off check, also split by {@link idleSlotOf} and by owner, and `checked`
- * those of them the cut-off check tick may do something for ({@link checkedOnCutOff}). The
- * owner split lets an alarm scan only its owner's settlers. Kept across ticks per world from a change feed,
+ * re-plan beat, alarm or cut-off check, also split by {@link idleSlotOf} and by owner, and
+ * `checkedLists` those of them their seat's cut-off check tick may do something for
+ * ({@link checkedOnCutOff}). The owner split lets an alarm scan only its owner's settlers. Kept across ticks per world from a change feed,
  * which also watches the flags of the yard routes passed by, since losing one makes its walkers act, and
  * rebuilt when the seats' AiControl moves, which picks each idler's period.
  */
@@ -64,7 +64,10 @@ class SweepCandidates {
   private readonly acting: Entity[] = [];
   private readonly travellingByOwner = new Map<number, Entity[]>();
   private readonly idleByOwner = new Map<number, Entity[]>();
-  private readonly checked: Entity[] = [];
+  /** One list per owner in {@link checkedOwners}, {@link NO_OWNER} for the unowned idlers: parallel
+   *  arrays, so the walk per visit allocates nothing. */
+  private readonly checkedLists: Entity[][] = [];
+  private readonly checkedOwners: number[] = [];
   private readonly idleBySlot: Entity[][] = Array.from({ length: IDLE_SLOTS }, () => []);
   /** How each positioned settler is filed, so a change that leaves its release, beat and owner as they
    *  were edits no list, and a re-owned or re-beaten one leaves its old lists. */
@@ -79,7 +82,6 @@ class SweepCandidates {
   private readonly actingAt = new ForwardIndex();
   private readonly idleAt = new ForwardIndex();
   private readonly computerIdleAt = new ForwardIndex();
-  private readonly checkedAt = new ForwardIndex();
   private aiControlGeneration = -1;
   private aiControlValueGeneration = -1;
 
@@ -99,8 +101,8 @@ class SweepCandidates {
 
   /**
    * The first settler above `cursor` to visit, caught up first, so one another's plan woke earlier in
-   * this pass is still reached in id order. An idler counts when it is due on `tick`, and on a
-   * `cutOffCheck` tick when that check may do something for it. With `shelters` on alarm a quiet walker or
+   * this pass is still reached in id order. An idler counts when it is due on `tick`, and when its
+   * seat's cut-off check is due (`checkDue`) and may do something for it. With `shelters` on alarm a quiet walker or
    * an idler of an alarmed owner counts too when
    * {@link takesCoverFrom} holds and it has no shelter yet, a walker only while its owner has a place
    * left; each is looked at about once per pass, since a scan stops at the next settler already chosen.
@@ -109,7 +111,7 @@ class SweepCandidates {
     cursor: number,
     shelters: ShelterSites,
     tick: number,
-    cutOffCheck: boolean,
+    checkDue: (owner: number | undefined) => boolean,
     shelterRoom: ReadonlySet<number>,
   ): Entity | undefined {
     this.catchUp();
@@ -118,8 +120,12 @@ class SweepCandidates {
       this.acting[this.actingAt.above(this.acting, cursor, this.edits)],
       this.firstIdlerDue(cursor, tick),
     );
-    if (cutOffCheck) {
-      next = earlier(next, this.checked[this.checkedAt.above(this.checked, cursor, this.edits)]);
+    for (let i = 0; i < this.checkedOwners.length; i++) {
+      const owner = this.checkedOwners[i];
+      const ids = this.checkedLists[i];
+      if (ids === undefined || ids.length === 0 || !checkDue(owner === NO_OWNER ? undefined : owner))
+        continue;
+      next = earlier(next, ids[indexAboveId(ids, cursor, byId)]);
     }
     if (shelters.size === 0) return next;
     for (const owner of shelters.keys()) {
@@ -192,8 +198,10 @@ class SweepCandidates {
     const priorRelease = filing?.release;
     const priorBeat = filing?.beat;
     const priorOwner = filing?.owner;
-    if (checked !== (filing?.checked === true)) {
-      this.editMember(this.checked, e, checked);
+    const priorChecked = filing?.checked === true;
+    if (checked !== priorChecked || (checked && owner !== priorOwner)) {
+      if (priorChecked) this.editMember(this.checkedOf(priorOwner), e, false);
+      if (checked) this.editMember(this.checkedOf(owner), e, true);
       if (filing !== undefined) filing.checked = checked;
     }
     // A change to a route's flag re-files the walkers it passes by.
@@ -260,7 +268,8 @@ class SweepCandidates {
     this.aiControlGeneration = this.world.componentGeneration(AiControl);
     this.aiControlValueGeneration = this.world.componentValueGeneration(AiControl);
     this.acting.length = 0;
-    this.checked.length = 0;
+    this.checkedLists.length = 0;
+    this.checkedOwners.length = 0;
     this.travellingByOwner.clear();
     this.idleByOwner.clear();
     this.filed.clear();
@@ -275,14 +284,25 @@ class SweepCandidates {
         beat = idleSlotOf(this.world, e);
         checked = checkedOnCutOff(this.world, this.ctx, e);
         this.idlersOn(beat).push(e);
-        if (checked) this.checked.push(e);
       }
       const owner = release === 'travelling' || release === 'idle' ? ownerOf(this.world, e) : undefined;
+      if (checked) this.checkedOf(owner).push(e);
       const routeFlag = routeFlagOf(this.world, e, release);
       this.filed.set(e, { release, beat, owner, routeFlag, checked });
       if (routeFlag !== undefined) this.route(routeFlag, e);
       if (owner !== undefined) this.ownerListOf(release, owner).push(e);
     }
+  }
+
+  /** The idlers of `owner`'s seat its cut-off check may act for. */
+  private checkedOf(owner: number | undefined): Entity[] {
+    const key = owner ?? NO_OWNER;
+    let at = this.checkedOwners.indexOf(key);
+    if (at < 0) {
+      at = this.checkedOwners.push(key) - 1;
+      this.checkedLists.push([]);
+    }
+    return this.checkedLists[at] as Entity[];
   }
 
   private idlersOn(slot: number): Entity[] {
@@ -304,12 +324,14 @@ class SweepCandidates {
       problems.push('plannerSweep filed releases diverge from a fresh scan');
     if (!sameIds(acting, this.acting))
       problems.push('plannerSweep acting settlers diverge from a fresh scan');
-    if (
-      !sameIds(
-        idle.filter((e) => checkedOnCutOff(this.world, this.ctx, e)),
-        this.checked,
-      )
-    ) {
+    const checked = new Map<number, Entity[]>();
+    for (const e of idle) {
+      if (checkedOnCutOff(this.world, this.ctx, e)) {
+        ownerList(checked, ownerOf(this.world, e) ?? NO_OWNER).push(e);
+      }
+    }
+    const held = new Map(this.checkedOwners.map((owner, i) => [owner, this.checkedLists[i] ?? []]));
+    if (!sameOwnerLists(checked, held)) {
       problems.push('plannerSweep idlers on the cut-off check diverge from a fresh scan');
     }
     this.idleBySlot.forEach((ids, slot) => {
@@ -342,6 +364,9 @@ class SweepCandidates {
   }
 }
 
+/** The key an unowned idler's cut-off list is filed under. */
+const NO_OWNER = -1;
+
 function ownerList(lists: Map<number, Entity[]>, owner: number): Entity[] {
   let ids = lists.get(owner);
   if (ids === undefined) {
@@ -363,7 +388,7 @@ function routeFlagOf(world: World, e: Entity, release: IdleRelease | null | unde
 }
 
 /**
- * Whether the cut-off check tick may do something for idler `e` off its beat: it stands on the short
+ * Whether its seat's cut-off check tick may do something for idler `e` off its beat: it stands on the short
  * beat, whose whole ladder runs on that tick, or it stands in the idle tail and
  * {@link cutOffCheckMayAct}. Reads only IdleStand, re-added whenever its fields change, the settler's
  * trade and markers whose membership the sweep watches.
@@ -421,8 +446,8 @@ const candidates = new WeakMap<World, SweepCandidates>();
 
 /**
  * The settlers the planner sweep visits this pass, in ascending id, read live between visits: the
- * ones whose {@link releaseStaleIntent} may change something, the idlers due on `tick`, and on a
- * `cutOffCheck` tick the idlers that check may do something for. The pass's claim maps hand out targets
+ * ones whose {@link releaseStaleIntent} may change something, the idlers due on `tick`, and the idlers
+ * their seat's cut-off check, due by `checkDue`, may do something for. The pass's claim maps hand out targets
  * first come, first served, so this order decides who wins. Only settlers positioned when the sweep
  * starts take part; a settler never loses either component while alive, so one created mid-pass is the
  * only newcomer.
@@ -432,7 +457,7 @@ export function sweepOrder(
   content: ContentSet,
   shelters: ShelterSites,
   tick: number,
-  cutOffCheck: boolean,
+  checkDue: (owner: number | undefined) => boolean,
   /** {@link ownersWithShelterRoom} of `shelters` as the pass began. */
   shelterRoom: ReadonlySet<number>,
 ): PlannerSweep {
@@ -443,7 +468,7 @@ export function sweepOrder(
     candidates.set(world, created);
     held = created;
   }
-  return new PlannerSweep(held, shelters, tick, cutOffCheck, shelterRoom, world.nextEntityId);
+  return new PlannerSweep(held, shelters, tick, checkDue, shelterRoom, world.nextEntityId);
 }
 
 function verifySweep(world: World): string[] {
@@ -460,7 +485,7 @@ class PlannerSweep {
     private readonly held: SweepCandidates,
     private readonly shelters: ShelterSites,
     private readonly tick: number,
-    private readonly cutOffCheck: boolean,
+    private readonly checkDue: (owner: number | undefined) => boolean,
     private readonly shelterRoom: ReadonlySet<number>,
     private readonly createdMidPass: number,
   ) {}
@@ -468,7 +493,7 @@ class PlannerSweep {
   /** The next settler to visit, or undefined once the sweep is over. */
   next(): Entity | undefined {
     if (this.done) return undefined;
-    const e = this.held.after(this.cursor, this.shelters, this.tick, this.cutOffCheck, this.shelterRoom);
+    const e = this.held.after(this.cursor, this.shelters, this.tick, this.checkDue, this.shelterRoom);
     if (e === undefined || e >= this.createdMidPass) {
       this.done = true;
       return undefined;

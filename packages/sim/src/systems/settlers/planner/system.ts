@@ -5,6 +5,7 @@ import {
   IdleStand,
   inPastimeChat,
   MoveGoal,
+  ownerOf,
   Position,
   Resting,
   Settler,
@@ -40,14 +41,14 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // fetch the same tick; arming first, so a recruit's weapon outranks its pair of boots.
   dispatchRecruitArming(pass);
   dispatchAssistantGrants(pass);
-  // The cut-off check tick also visits the idlers that check may act for: a standing one off its beat
-  // runs only that check, a short-beat stand its whole ladder.
+  // A seat's cut-off check tick also visits its idlers that check may act for: a standing one off its
+  // beat runs only that check, a short-beat stand its whole ladder.
   const sweep = sweepOrder(
     world,
     ctx.content,
     pass.shelters,
     ctx.tick,
-    cutOffCheckDue(ctx),
+    (owner) => cutOffCheckDue(ctx, owner),
     pass.shelterRoom,
   );
   for (let e = sweep.next(); e !== undefined; e = sweep.next()) {
@@ -76,7 +77,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
         !(takesCoverFrom(world, ctx.content, e, pass.shelters) && planShelterRung(pass, e, settler))
       ) {
         // Still standing, so it keeps any lost-way mark; the idle tail's seat-reach check keeps its cadence.
-        if (world.get(e, IdleStand).standing && cutOffCheckDue(ctx)) {
+        if (world.get(e, IdleStand).standing && cutOffCheckDue(ctx, ownerOf(world, e))) {
           const p = world.get(e, Position);
           const here = terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y));
           const limit = navigationLimitFor(world, ctx.content, terrain, e);

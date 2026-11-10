@@ -503,7 +503,7 @@ function standIdle(
 ): void {
   const { world, ctx, terrain, entity: e } = plan;
   pass.idle.stand(e, true);
-  if (cutOffCheckDue(ctx) && checkCutOff(pass, plan)) return;
+  if (cutOffCheckDue(ctx, plan.owner) && checkCutOff(pass, plan)) return;
   if (world.has(e, Chat) || staysPut(world, e)) return;
   // A lost settler stands where its note sends the player, so it is found there; it only chats in place.
   const lost = world.has(e, LostWay);

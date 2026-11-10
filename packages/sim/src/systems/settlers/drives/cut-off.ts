@@ -25,13 +25,18 @@ import { announceLostWay, clearLostWay, markCutOff } from '../lost-way.js';
  *  after every five failed walks to work, about this long apart. */
 export const CUT_OFF_CHECK_TICKS = 5 * TICKS_PER_SECOND;
 
-/** Whether this tick runs the seat-reach check for every idle worker. */
-export function cutOffCheckDue(ctx: SystemContext): boolean {
-  return cutOffCheckTick(ctx.tick);
+/** Ticks one seat's check tick comes before the next seat's, so one pass checks one seat's idle workers
+ *  and not the whole map's. Authored spacing: any stride that keeps the seats apart within the cadence. */
+const CUT_OFF_SEAT_STRIDE_TICKS = 7;
+
+/** Whether this tick runs the seat-reach check for the idle workers of `owner`'s seat. */
+export function cutOffCheckDue(ctx: SystemContext, owner: number | undefined): boolean {
+  return cutOffCheckTick(ctx.tick, owner);
 }
 
-export function cutOffCheckTick(tick: number): boolean {
-  return tick % CUT_OFF_CHECK_TICKS === 0;
+export function cutOffCheckTick(tick: number, owner: number | undefined): boolean {
+  const lead = owner === undefined ? 0 : owner * CUT_OFF_SEAT_STRIDE_TICKS;
+  return (tick + lead) % CUT_OFF_CHECK_TICKS === 0;
 }
 
 /** Each seat's building doors, built on the first cadence tick that asks, so a tick with no idle

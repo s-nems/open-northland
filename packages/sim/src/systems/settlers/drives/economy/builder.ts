@@ -319,7 +319,7 @@ export function planBuilder(
         : nearestInTurn(canStandAt, everyWall, () => null));
     if (
       staging !== null &&
-      !(cutOffCheckDue(ctx) && builderWorkBeyondReach(plan, spacing, claims, supply) !== null)
+      !(cutOffCheckDue(ctx, settler.owner) && builderWorkBeyondReach(plan, spacing, claims, supply) !== null)
     ) {
       stampAssignment(plan, claims, staging, false);
       if (!holdSegment(plan, claims, staging)) return false;

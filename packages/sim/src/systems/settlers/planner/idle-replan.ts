@@ -100,12 +100,12 @@ export function idleBeatOfTick(tick: number, period: number): number {
 
 /** Whether idle `e` skips its full ladder on `tick`. An alarm does not shorten the wait: between beats
  *  the sweep still visits an idler its owner's shelters may draw, for the shelter rung. A short-beat stand
- *  also re-plans on each cut-off check tick, when the sweep visits every idler, so its work beyond its
- *  signposts is found on that cadence. */
+ *  also re-plans on each cut-off check tick of its seat, so its work beyond its signposts is found on
+ *  that cadence. */
 export function waitsIdle(world: World, tick: number, e: Entity): boolean {
   const stand = world.tryGet(e, IdleStand);
   if (stand === undefined) return false;
-  if (stand.shortBeat === true && cutOffCheckTick(tick)) return false;
+  if (stand.shortBeat === true && cutOffCheckTick(tick, ownerOf(world, e))) return false;
   return !idleReplanDue(tick, beatKeyOf(world, e), idleStandPeriodOf(world, e));
 }
 
