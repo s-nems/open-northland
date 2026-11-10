@@ -1,5 +1,5 @@
 import { FNV_OFFSET_BASIS, fnvMixWord } from '@open-northland/data';
-import { type MixText, type MixWord, mixValue, stringWord } from '../core/hash-value.js';
+import { type MixText, type MixWord, mixValueKeyWords, stringWord } from '../core/hash-value.js';
 import type { Component, Entity, MutationSink, SyncDomain, World } from '../ecs/world.js';
 import type { FogState } from '../systems/vision/index.js';
 
@@ -272,9 +272,9 @@ export class SyncDigestRecorder implements MutationSink {
   private entityWord(world: World, component: Component<unknown>, entity: Entity): number {
     this.word = FNV_OFFSET_BASIS;
     this.mix(entity);
-    // A removed component (and every component of a destroyed entity) reads absent, which `mixValue`
+    // A removed component (and every component of a destroyed entity) reads absent, which the walk
     // folds as its own value - the removal itself is the state change.
-    mixValue(this.mix, this.mixText, world.tryGet(entity, component));
+    mixValueKeyWords(this.mix, this.mixText, world.tryGet(entity, component));
     return this.word;
   }
 }
