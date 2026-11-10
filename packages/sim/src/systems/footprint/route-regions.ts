@@ -123,6 +123,17 @@ export class RouteRegions {
     return true;
   }
 
+  /**
+   * Whether `node` is clear ground whose region provably holds more than {@link ROUTE_REGION_POCKET_CAP}
+   * nodes: the capped flood ran out before the region did. False for a blocked or unwalkable node.
+   */
+  outgrowsPocketCap(node: NodeId): boolean {
+    const cache = this.cache;
+    const blocked = this.refresh(cache);
+    if (!cache.terrain.isWalkable(node) || blocked.has(node)) return false;
+    return this.regionOf(node, blocked) === OPEN_REGION;
+  }
+
   /** Re-key the labels with the mask's flips since the last verdict, dropping them all when the mask
    *  lost track, and return the levelled mask. Ran per verdict, so a held instance never serves a stale
    *  label. */

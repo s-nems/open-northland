@@ -78,6 +78,10 @@ export const RACE_SLICE_EXPLORED = 256;
  * `goalSliceExplored` is the goal side's share of each race round, {@link RACE_SLICE_EXPLORED} by default.
  * It moves only the settle count, never the answer: the forward search's settle order is the same however
  * it is paused, and either side's verdict is exact.
+ *
+ * `goalOpen` is the caller's proof that more than {@link POCKET_PROBE_MAX_EXPLORED} nodes are reachable
+ * from the goal under `blocked`, so the pocket probe could not refute the goal and is skipped. Like the
+ * slice it moves only the settle count, so it must be a pure function of the query's terrain and overlay.
  */
 export function findPath(
   graph: TerrainGraph,
@@ -87,6 +91,7 @@ export function findPath(
   stats?: SearchStats,
   traversal: Traversal = 'land',
   goalSliceExplored = RACE_SLICE_EXPLORED,
+  goalOpen = false,
 ): NodeId[] | null {
   if (!graph.traversable(start, traversal) || !graph.traversable(goal, traversal)) return null;
   // Already-there wins over the overlay, consistent with the blocked-start exemption.
@@ -106,16 +111,20 @@ export function findPath(
   );
   // Without an overlay a shared static component means reachable, so the search can never flood.
   if (blocked === undefined || blocked.size === 0) return pathOf(forward.advance(UNCAPPED));
-  const reverse = goalSideSearch(graph, start, goal, blocked, stats, traversal);
-  const probe = reverse.advance(POCKET_PROBE_MAX_EXPLORED);
-  if (probe === 'unreachable') return null;
-  // Reverse costs are asymmetric, so a proved route still needs the forward search, with nothing left to
-  // guard against.
-  if (probe !== 'aborted') return pathOf(forward.advance(UNCAPPED));
+  let reverse: ResumableSearch | undefined;
+  if (!goalOpen) {
+    reverse = goalSideSearch(graph, start, goal, blocked, stats, traversal);
+    const probe = reverse.advance(POCKET_PROBE_MAX_EXPLORED);
+    if (probe === 'unreachable') return null;
+    // Reverse costs are asymmetric, so a proved route still needs the forward search, with nothing left to
+    // guard against.
+    if (probe !== 'aborted') return pathOf(forward.advance(UNCAPPED));
+  }
   // Pausing never changes a search's settle order, so every forward answer below is byte-identical to one
   // unguarded search, and a goal side exhausted first refutes the goal.
   const guarded = forward.advance(FLOOD_GUARD_MAX_EXPLORED);
   if (guarded !== 'aborted') return pathOf(guarded);
+  reverse ??= goalSideSearch(graph, start, goal, blocked, stats, traversal);
   for (;;) {
     const goalSide = reverse.advance(
       Math.min(reverse.explored + goalSliceExplored, GOAL_EXHAUST_MAX_EXPLORED),

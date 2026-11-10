@@ -64,21 +64,28 @@ export class SealedPockets {
     blocked: BlockOverlay,
     stats: SearchStats,
     goalSlice: number,
+    goalOpen = false,
   ): NodeId[] | null {
-    const settles = this.refusal(start, goal, blocked, goalSlice);
+    const settles = this.refusal(start, goal, blocked, goalSlice, goalOpen);
     if (settles !== null) {
       stats.explored += settles;
       return null;
     }
     const before = stats.explored;
-    const path = findPath(this.terrain, start, goal, blocked, stats, 'land', goalSlice);
+    const path = findPath(this.terrain, start, goal, blocked, stats, 'land', goalSlice, goalOpen);
     const charged = stats.explored - before;
     if (path === null && charged > FLOOD_GUARD_MAX_EXPLORED) this.remember(start, goal, blocked, charged);
     return path;
   }
 
   /** The settles {@link findPath} would charge refusing this request, or null to search instead. */
-  private refusal(start: NodeId, goal: NodeId, blocked: BlockOverlay, goalSlice: number): number | null {
+  private refusal(
+    start: NodeId,
+    goal: NodeId,
+    blocked: BlockOverlay,
+    goalSlice: number,
+    goalOpen: boolean,
+  ): number | null {
     const id = this.pocketAt[goal] ?? NO_POCKET;
     if (id === NO_POCKET) return null;
     const remembered = this.pockets[id];
@@ -95,7 +102,7 @@ export class SealedPockets {
       this.forget(id);
       return null;
     }
-    const forward = forwardSettles(size, goalSlice);
+    const forward = forwardSettles(size, goalSlice, goalOpen);
     if (forward === null || !this.outlasts(start, blocked, forward)) return null;
     return size + forward;
   }
@@ -163,7 +170,7 @@ export class SealedPockets {
     const seal: NodeId[] = [];
     const limit = Math.min(charged - FLOOD_GUARD_MAX_EXPLORED, GOAL_EXHAUST_MAX_EXPLORED);
     const size = this.goalRegion(start, goal, blocked, limit, seal);
-    if (size === null || forwardSettles(size, RACE_SLICE_EXPLORED) === null) return;
+    if (size === null || forwardSettles(size, RACE_SLICE_EXPLORED, false) === null) return;
     const region = this.queue.nodes.slice(0, size);
     if (this.pocketAt.length === 0) {
       this.pocketAt = new Uint8Array(this.terrain.nodeCount);
@@ -230,11 +237,12 @@ function floodStampsOf(terrain: TerrainGraph): FloodStamps {
 /**
  * The forward settles {@link findPath} spends refusing a goal sealed in a region of `size` nodes while the
  * start's region outlasts them: the flood guard, then one race slice per goal-side slice the region does
- * not exhaust. Null when the pocket probe refutes it alone or the goal side would stop at its cap.
+ * not exhaust. Null when the pocket probe refutes it alone or the goal side would stop at its cap. With
+ * `goalOpen` the search skipped the probe, so its goal side starts the race from nothing.
  */
-function forwardSettles(size: number, goalSlice: number): number | null {
+function forwardSettles(size: number, goalSlice: number, goalOpen: boolean): number | null {
   if (size <= POCKET_PROBE_MAX_EXPLORED) return null;
-  let goalSide = POCKET_PROBE_MAX_EXPLORED;
+  let goalSide = goalOpen ? 0 : POCKET_PROBE_MAX_EXPLORED;
   let forward = FLOOD_GUARD_MAX_EXPLORED;
   for (;;) {
     const target = Math.min(goalSide + goalSlice, GOAL_EXHAUST_MAX_EXPLORED);

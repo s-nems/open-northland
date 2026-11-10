@@ -28,6 +28,7 @@ import { positionXOfNode, positionYOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import {
   findPath,
+  POCKET_PROBE_MAX_EXPLORED,
   RACE_SLICE_EXPLORED,
   SealedPockets,
   type SearchStats,
@@ -37,6 +38,7 @@ import type { NodeId, TerrainGraph, Traversal } from '../../nav/terrain/index.js
 import { ROW_STEP, worldDistance, worldX } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
 import { buildingDoorwayNodes } from '../footprint/index.js';
+import { ROUTE_REGION_POCKET_CAP, type RouteRegions, routeRegions } from '../footprint/route-regions.js';
 import { type WalkBlockMask, walkBlockMask } from '../footprint/walk-block-mask.js';
 import { routeFound } from '../settlers/lost-way.js';
 import { isValidNodeId } from '../spatial/nodes.js';
@@ -70,6 +72,11 @@ const PATHFINDING_NODE_BUDGET_PER_TICK = 16384;
  */
 const OVER_BUDGET_GOAL_SLICE_EXPLORED = RACE_SLICE_EXPLORED / 4;
 
+// An open route region stands in for the search's pocket probe, which it must therefore outgrow.
+if (ROUTE_REGION_POCKET_CAP < POCKET_PROBE_MAX_EXPLORED) {
+  throw new Error('the route region cap must cover the pocket probe');
+}
+
 /**
  * Drains pending path requests into followable paths, lowest entity id first until the tick's node budget
  * is spent; player orders still route after it is spent. A route that cannot be found flags the request
@@ -97,6 +104,7 @@ class PathDrain {
   mask: WalkBlockMask | undefined;
   private dynamic: BlockOverlay | undefined;
   private units: UnitWalkBlocks | undefined;
+  private regions: RouteRegions | undefined;
   private hostile: readonly number[] | undefined;
   private readonly bodiesByPlayer = new Map<number, ColliderWalkBlocks>();
   private readonly marchingBodiesByPlayer = new Map<number, ColliderWalkBlocks>();
@@ -149,6 +157,7 @@ class PathDrain {
     this.mask = undefined;
     this.dynamic = undefined;
     this.units = undefined;
+    this.regions = undefined;
     this.hostile = undefined;
     this.bodiesByPlayer.clear();
     this.marchingBodiesByPlayer.clear();
@@ -165,6 +174,16 @@ class PathDrain {
       this.dynamic = this.mask.levelled();
     }
     return this.dynamic;
+  }
+
+  /**
+   * Whether the structures alone leave `goal` in a region too large for the search's pocket probe to
+   * exhaust, which lets a search under exactly that overlay skip the probe. A label is a pure function
+   * of terrain and overlay, so the settles the skip saves are the same on every client.
+   */
+  goalOutgrowsProbe(goal: NodeId): boolean {
+    this.regions ??= routeRegions(this.world, this.ctx, this.terrain);
+    return this.regions.outgrowsPocketCap(goal);
   }
 
   private unitBlocks(): UnitWalkBlocks {
@@ -233,6 +252,7 @@ class PathDrain {
     player: number,
     marching: boolean,
     traversal: Traversal,
+    goalOpen: boolean,
   ): NodeId[] | null {
     const { mask, spent } = this;
     if (group && mask !== undefined) {
@@ -250,6 +270,7 @@ class PathDrain {
       spent,
       traversal,
       this.goalSlice,
+      goalOpen,
     );
     // Only a searched route is offered: offering borrowed ones grows the list each member tries.
     if (path !== null && groupRoutes !== undefined) groupRoutes.offer(overlay, path);
@@ -348,12 +369,19 @@ export function drainPathRequests(
     const group =
       traversal === 'land' && playerOrdered && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
     if (group) drain.refreshGroup();
-    let path = drain.routeUnder(blocked, start, goal, group, player ?? -1, marching, traversal);
+    // The labels read the structures alone: an attack-move's walls and a hostile body are not in them.
+    const goalOpen =
+      traversal === 'land' &&
+      !marching &&
+      (bodies === null || bodies.posts === 0) &&
+      isValidNodeId(terrain, goal) &&
+      drain.goalOutgrowsProbe(goal);
+    let path = drain.routeUnder(blocked, start, goal, group, player ?? -1, marching, traversal, goalOpen);
     // An attack-move goes for what seals its goal off: the bodies it fights shape its route, never refuse it.
     if (path === null && bodies !== null && world.tryGet(e, PlayerOrder)?.attackMove !== undefined) {
       const through = drain.besideTargetsFor(player ?? -1, structures);
       if (through.posts < bodies.posts) {
-        path = drain.routeUnder(through, start, goal, group, player ?? -1, marching, traversal);
+        path = drain.routeUnder(through, start, goal, group, player ?? -1, marching, traversal, false);
       }
     }
     if (path !== null) {
@@ -592,10 +620,11 @@ function resolvePath(
   stats: SearchStats,
   traversal: Traversal,
   goalSlice: number,
+  goalOpen: boolean,
 ): NodeId[] | null {
   const { terrain } = pockets;
   if (!isValidNodeId(terrain, start) || !isValidNodeId(terrain, goal)) return null;
   return traversal === 'land'
-    ? pockets.findPath(start, goal, blocked, stats, goalSlice)
+    ? pockets.findPath(start, goal, blocked, stats, goalSlice, goalOpen)
     : findPath(terrain, start, goal, blocked, stats, traversal, goalSlice);
 }
