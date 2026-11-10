@@ -74,7 +74,9 @@ function leftAboard(world: World, vehicle: Entity, e: Entity): boolean {
  * Before the planner, so the hand is planned the tick it lands.
  */
 export const cargoHandDisembarkSystem: System = (world, ctx) => {
-  for (const e of world.canonicalQuery(Rider)) {
+  const riders = world.canonicalQuery(Rider);
+  for (let i = 0; i < riders.length; i++) {
+    const e = riders[i] as Entity;
     if (world.has(e, Position)) continue;
     const vehicle = world.get(e, Rider).vehicle;
     const state = world.tryGet(vehicle, Vehicle);

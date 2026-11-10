@@ -185,10 +185,17 @@ export function planRider(
  */
 export const riderSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
-  for (const e of world.canonicalQuery(Rider)) {
+  // By index and without a closure: every rider is asked every tick.
+  const riders = world.canonicalQuery(Rider);
+  for (let i = 0; i < riders.length; i++) {
+    const e = riders[i] as Entity;
     const rider = world.get(e, Rider);
     const state = world.tryGet(rider.vehicle, Vehicle);
-    const seated = state?.passengers.some((seat) => seat !== null && seat.entity === e) === true;
+    let seated = false;
+    const seats = state?.passengers;
+    if (seats !== undefined) {
+      for (let k = 0; k < seats.length && !seated; k++) seated = seats[k]?.entity === e;
+    }
     if (!seated) {
       if (!world.has(e, Position)) {
         const landing = landingOf(world, ctx, rider.vehicle) ?? vehicleAnchor(world, rider.vehicle);
