@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  Age,
   addCurrentAtomic,
   addWildlife,
   Carrying,
@@ -22,6 +23,7 @@ import {
   Resting,
   Rider,
   Settler,
+  Sheltering,
   Stranded,
   SupplyRun,
   setSettlerJob,
@@ -278,6 +280,21 @@ describe('planner sweep order', () => {
     wakeIdle(world, second);
     world.add(third, MoveGoal, { cell: GOAL }); // its visit wakes a walking idler
     expect(sweep(NO_SHELTERS)).toEqual([first, second, third, last]);
+    expect(world.verifyCaches()).toEqual([]);
+  });
+});
+
+describe('a growing settler with nothing to shed', () => {
+  it('is visited on its idle beat, and on every tick while it holds a shelter to walk into', () => {
+    const world = new World();
+    const child = settler(world);
+    world.add(child, Age, { ticks: 0, asOf: null });
+    const onBeat = idleReplanTick(world, child, 0);
+    expect(swept(world, CONTENT, NO_SHELTERS, onBeat)).toEqual([child]);
+    expect(swept(world, CONTENT, NO_SHELTERS, onBeat + 1)).toEqual([]);
+
+    world.add(child, Sheltering, { shelter: world.create() });
+    expect(swept(world, CONTENT, NO_SHELTERS, onBeat + 1)).toEqual([child]);
     expect(world.verifyCaches()).toEqual([]);
   });
 });

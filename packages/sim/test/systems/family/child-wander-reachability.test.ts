@@ -54,9 +54,13 @@ function setup(blocked = true, map: TerrainMap = grassNodeMap(24, 24)) {
   return { sim, child, wall, terrain };
 }
 
+/** A roll standing for a single idle tick. */
+const ONE_TICK = 1;
+
 function stroll(f: ReturnType<typeof setup>, tick = 0) {
   const ctx = { ...ctxOf(f.sim), tick };
-  planChildWander(f.sim.world, ctx, f.terrain, f.child, PlannerSpacing.forTick(f.sim.world, ctx, f.terrain));
+  const spacing = PlannerSpacing.forTick(f.sim.world, ctx, f.terrain);
+  planChildWander(f.sim.world, ctx, f.terrain, f.child, spacing, ONE_TICK);
   return f.sim.world.tryGet(f.child, c.MoveGoal)?.cell;
 }
 

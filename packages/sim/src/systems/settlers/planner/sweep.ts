@@ -1,5 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  Age,
   AiControl,
   DeliveryFlag,
   HaulFlag,
@@ -90,7 +91,7 @@ class SweepCandidates {
   ) {
     this.ctx = { content };
     this.feed = world.watchChanges(
-      [Settler, Position, Owner, DeliveryFlag, LostWay, HaulFlag, ...RELEASE_IDLE_MEMBERSHIP],
+      [Settler, Position, Owner, Age, DeliveryFlag, LostWay, HaulFlag, ...RELEASE_IDLE_MEMBERSHIP],
       RELEASE_IDLE_VALUES,
     );
     this.rebuild();

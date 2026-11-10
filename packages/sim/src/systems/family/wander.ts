@@ -16,11 +16,13 @@ import { navigationLimitFor } from '../signposts/index.js';
 
 /** How far from the home anchor a stroll may aim (half-cell nodes, so ~3 visual tiles). */
 const CHILD_WANDER_RADIUS_NODES = 6;
-/** Mean ticks between strolls; each idle tick rolls 1/N. */
+/** Mean idle ticks before a stroll. A roll made every `n` ticks succeeds `n` times in `N + n / 2`: the
+ *  half beat is the mean wait for the first roll, so the mean holds whatever the beat. */
 const CHILD_WANDER_PERIOD_TICKS = 90;
 
 /**
- * Maybe send the idle child `e` on a stroll near its home. Owned children only, following the
+ * Maybe send the idle child `e` on a stroll near its home, on a roll made every `beatTicks`. Owned
+ * children only, following the
  * {@link PlannerSpacing} Owner convention, and only onto a walkable node outside building footprints and
  * doorways that keeps an open side; an unlucky roll simply waits for the next one.
  */
@@ -30,13 +32,14 @@ export function planChildWander(
   terrain: TerrainGraph,
   e: Entity,
   spacing: PlannerSpacing,
+  beatTicks: number,
 ): void {
   if (!world.has(e, Owner)) return;
   const home = world.tryGet(e, Residence)?.home;
   if (home === undefined || !world.isAlive(home)) return;
   const homePos = world.tryGet(home, Position);
   if (homePos === undefined) return;
-  if (ctx.rng.int(CHILD_WANDER_PERIOD_TICKS) !== 0) return;
+  if (ctx.rng.int(CHILD_WANDER_PERIOD_TICKS + Math.floor(beatTicks / 2)) >= beatTicks) return;
   const anchor = nodeOfPosition(homePos.x, homePos.y);
   const dx = ctx.rng.int(2 * CHILD_WANDER_RADIUS_NODES + 1) - CHILD_WANDER_RADIUS_NODES;
   const dy = ctx.rng.int(2 * CHILD_WANDER_RADIUS_NODES + 1) - CHILD_WANDER_RADIUS_NODES;

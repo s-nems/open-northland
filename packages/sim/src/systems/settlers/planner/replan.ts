@@ -1,5 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  Age,
   Carrying,
   Chat,
   CurrentAtomic,
@@ -183,7 +184,8 @@ export type IdleRelease = 'held' | 'travelling' | 'jobless' | 'idle';
  * nothing) or the busy branch wakes, an errand
  * mattering only under an owner that walks it elsewhere ({@link divertsErrand}); or it has no trade and nothing to shed,
  * which an alarm never draws; or it stands idle carrying nothing that call sheds, or waits inside a
- * building ({@link waitsInside}, {@link waitsOutDutyIndoors}). Keep in step with that call's early-outs.
+ * building ({@link waitsInside}, {@link waitsOutDutyIndoors}); or it is a growing settler with nothing to
+ * shed, whose ladder only strolls on its idle beat. Keep in step with that call's early-outs.
  */
 export function idleRelease(world: World, e: Entity): IdleRelease | null {
   if (!yardRouteSettled(world, e) || world.has(e, UnreachableGoals) || world.has(e, UnreachableTargets)) {
@@ -195,6 +197,8 @@ export function idleRelease(world: World, e: Entity): IdleRelease | null {
   if (world.has(e, Garrison)) return null;
   if (atomicHoldsSettler(world, e)) return 'held';
   if (world.get(e, Settler).jobType === null && shedsNothing(world, e)) return 'jobless';
+  // A shelter it holds and has yet to enter is walked into on every visit.
+  if (world.has(e, Age) && !world.has(e, Sheltering) && shedsNothing(world, e)) return 'idle';
   const quiet =
     isTravelling(world, e) &&
     !(hasErrand(world, e) && divertsErrand(world, e)) &&

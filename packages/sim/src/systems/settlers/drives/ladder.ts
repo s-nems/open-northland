@@ -40,7 +40,12 @@ import { jobCanBuild } from '../atomics/start.js';
 import { isInside, stepOut } from '../indoors.js';
 import { forgetWorkTried, noteWorkTaken } from '../lost-way.js';
 import type { PlannerContext } from '../planner/context.js';
-import { idleReplanPeriodOf, standsStillForMachine, waitsHoldOnBeat } from '../planner/idle-replan.js';
+import {
+  idleReplanDue,
+  idleReplanPeriodOf,
+  standsStillForMachine,
+  waitsHoldOnBeat,
+} from '../planner/idle-replan.js';
 import type { PlannerPass } from '../planner/pass.js';
 import { combatOwnsFeet, shelterHasRoom } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
@@ -78,14 +83,18 @@ import { planTraining } from './training.js';
 // the settler for the tick, and the rung order is a behavior contract the state goldens cover.
 
 /**
- * Plan a growing settler: shelter first, else a stroll. It carries no needs of its own (approximation, see
- * `lifecycle/needs/system.ts`), so no needs rung runs for it. It still runs for cover like anyone else,
- * though it never mans the walls (`defence/manning.ts`).
+ * Plan a growing settler: shelter first, else a stroll, weighed on its seat's idle beat only, which is
+ * what lets the sweep pass an idle one by between beats. It carries no needs of its own (approximation,
+ * see `lifecycle/needs/system.ts`), so no needs rung runs for it. It still runs for cover like anyone
+ * else, though it never mans the walls (`defence/manning.ts`).
  */
 export function planChild(pass: PlannerPass, e: Entity, settler: SettlerView): void {
   if (planShelterRung(pass, e, settler)) return;
-  if (staysPut(pass.world, e)) return;
-  planChildWander(pass.world, pass.ctx, pass.terrain, e, pass.spacing);
+  const { world, ctx } = pass;
+  if (staysPut(world, e)) return;
+  const beat = idleReplanPeriodOf(world, e);
+  if (!idleReplanDue(ctx.tick, e, beat)) return;
+  planChildWander(world, ctx, pass.terrain, e, pass.spacing, beat);
 }
 
 /** The ladder's top rung alone, free while nothing is on alarm: what an idler runs between its idle beats,
