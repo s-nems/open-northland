@@ -291,6 +291,24 @@ export class World {
     return best === VACANT_SLOT ? null : (best as Entity);
   }
 
+  /** The value the lowest-id carrier of `component` holds, or undefined while nothing carries it:
+   *  {@link lowestEntityWith} and {@link get} in one walk of the store, for a world singleton's read. */
+  lowestValue<T>(component: Component<T>): DeepReadonly<T> | undefined {
+    const store = this.storeOf(component);
+    if (store === undefined || store.size === 0) return undefined;
+    let best: number = VACANT_SLOT;
+    let bestSlot: number = ABSENT_SLOT;
+    const { entities, length } = store;
+    for (let slot = 0; slot < length; slot++) {
+      const e = entities[slot] ?? VACANT_SLOT;
+      if (e !== VACANT_SLOT && (best === VACANT_SLOT || e < best)) {
+        best = e;
+        bestSlot = slot;
+      }
+    }
+    return store.valueAt(bestSlot) as DeepReadonly<T> | undefined;
+  }
+
   /** The entities carrying every `required` component in ascending id: {@link query} in canonical order,
    *  shared like {@link canonicalEntities}. A caller that reorders or edits the list copies it. */
   canonicalQuery(...required: Array<Component<unknown>>): readonly Entity[] {

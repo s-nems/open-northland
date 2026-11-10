@@ -28,8 +28,7 @@ export function defineWorldSingleton<T extends object>(
   return {
     component,
     read(world) {
-      const e = carrier(world);
-      return e === null ? absent : world.get(e, component);
+      return world.lowestValue(component) ?? absent;
     },
     write(world, apply) {
       const e = carrier(world);
