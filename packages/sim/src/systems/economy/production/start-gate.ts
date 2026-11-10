@@ -51,6 +51,20 @@ export function cycleStartable(
   // Only a keyable gate is remembered, and its answer keys on everything keyability reads (the crew
   // tribes, the house through its revision, and the recipes through its type).
   if (held !== undefined && answerCurrent(world, building, held, unlocks)) return held.open;
+  return retakeAnswer(world, ctx, building, recipes, memo, held, unlocks);
+}
+
+/** Ask the gate afresh and remember a keyable answer. Apart from {@link cycleStartable}, so the
+ *  remembered path stays small enough to inline into the production pass. */
+function retakeAnswer(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  recipes: ReadonlyMap<number, Recipe>,
+  memo: GateMemo,
+  held: GateAnswer | undefined,
+  unlocks: number,
+): boolean {
   if (!gateKeyable(world, ctx, building, recipes)) return anyCycleStartable(world, ctx, building, recipes);
   const open = anyCycleStartable(world, ctx, building, recipes);
   const answer = held ?? {
