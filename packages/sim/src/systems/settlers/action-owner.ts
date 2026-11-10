@@ -32,13 +32,19 @@ export function anotherSystemOwns(world: World, e: Entity): boolean {
 
 /** {@link anotherSystemOwns} without the vehicle crew: a rider's own rung still runs under these. */
 export function heldOffEconomy(world: World, e: Entity): boolean {
-  for (const marker of ECONOMY_HOLD_MARKERS) if (world.has(e, marker)) return true;
-  return chatHoldsSettler(world, e);
+  return hasAny(world, e, ECONOMY_HOLD_MARKERS) || chatHoldsSettler(world, e);
 }
 
 /** Whether an owner that walks `e` elsewhere holds it, so an errand it carries is stale. A rider keeps
  *  its cargo errand and a woman on family duty the fetch the child order planned. */
 export function divertsErrand(world: World, e: Entity): boolean {
-  for (const marker of ERRAND_DIVERTING_MARKERS) if (world.has(e, marker)) return true;
-  return chatHoldsSettler(world, e);
+  return hasAny(world, e, ERRAND_DIVERTING_MARKERS) || chatHoldsSettler(world, e);
+}
+
+/** Indexed: these lists are asked per settler per pass, where a for-of costs an iterator result a step. */
+function hasAny(world: World, e: Entity, markers: readonly Component<unknown>[]): boolean {
+  for (let i = 0; i < markers.length; i++) {
+    if (world.has(e, markers[i] as Component<unknown>)) return true;
+  }
+  return false;
 }

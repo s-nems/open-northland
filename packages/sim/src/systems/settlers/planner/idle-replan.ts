@@ -11,7 +11,7 @@ import {
   Resting,
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
-import type { Entity, World } from '../../../ecs/world.js';
+import type { Component, Entity, World } from '../../../ecs/world.js';
 import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { ECONOMY_HOLD_MARKERS } from '../action-owner.js';
 import { cutOffCheckTick } from '../drives/cut-off.js';
@@ -96,7 +96,9 @@ export function guardWaitsOnBeat(world: World, e: Entity): boolean {
 const BEAT_BLOCKING_HOLDS = ECONOMY_HOLD_MARKERS.filter((marker) => marker !== FamilyDuty);
 
 function heldByBeatBlockingHold(world: World, e: Entity): boolean {
-  for (const marker of BEAT_BLOCKING_HOLDS) if (world.has(e, marker)) return true;
+  for (let i = 0; i < BEAT_BLOCKING_HOLDS.length; i++) {
+    if (world.has(e, BEAT_BLOCKING_HOLDS[i] as Component<unknown>)) return true;
+  }
   return false;
 }
 

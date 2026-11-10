@@ -82,9 +82,11 @@ export function constructionMaterialResolver(
   // The nearest source serves every site it can deliver to; a site out of its reach takes the nearest of
   // the sources that can, which only a split signpost network ever asks for. Those sources are ranked once
   // per good, so a builder weighing many such sites scans the stores in its reach once, not per site.
-  const liftCellByGood = new Map<number, NodeId>();
-  const rankedByGood = new Map<number, readonly NearestByCell[]>();
+  // Made on first use: only a site out of its nearest source's reach asks either.
+  let liftCellByGood: Map<number, NodeId> | undefined;
+  let rankedByGood: Map<number, readonly NearestByCell[]> | undefined;
   const rankedSources = (goodType: number, owner: number): readonly NearestByCell[] => {
+    rankedByGood ??= new Map();
     let ranked = rankedByGood.get(goodType);
     if (ranked === undefined) {
       ranked = storesHoldingRanked(
@@ -107,6 +109,7 @@ export function constructionMaterialResolver(
     if (nearest === null || confined === undefined || plan.limit === null || owner === undefined)
       return nearest;
     if (confined.liftSpots(owner, plan.jobType, site) === null) return nearest;
+    liftCellByGood ??= new Map();
     let lift = liftCellByGood.get(goodType);
     if (lift === undefined) {
       lift = interactionCell(plan.world, plan.ctx, terrain, nearest.source, plan.here);

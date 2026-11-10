@@ -675,7 +675,11 @@ function builderCanReach(
   const { terrain, here } = plan;
   if (!onOwnSide(plan, site)) return false;
   const component = terrain.componentOf(here);
-  return spacing
-    .workCells(site)
-    .some((cell: NodeId) => terrain.componentOf(cell) === component && (limit?.allowsNode(cell) ?? true));
+  const cells = spacing.workCells(site);
+  // A plain loop: an idle builder asks this of every site, and a closure per ask adds up.
+  for (let i = 0; i < cells.length; i++) {
+    const cell = cells[i] as NodeId;
+    if (terrain.componentOf(cell) === component && (limit === null || limit.allowsNode(cell))) return true;
+  }
+  return false;
 }
