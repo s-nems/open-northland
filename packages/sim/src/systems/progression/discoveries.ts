@@ -39,7 +39,8 @@ interface DiscoveryInput {
   readonly experience: number;
   readonly learnedJobs: number;
   readonly learnedGoods: number;
-  readonly permissions: string;
+  /** The {@link DiscoveryMemo.permissions} epoch the walk ran under. */
+  readonly permissions: number;
 }
 
 /**
@@ -50,8 +51,14 @@ interface DiscoveryInput {
 interface DiscoveryMemo {
   readonly inputs: Map<Entity, DiscoveryInput>;
   readonly writes: Set<Entity>;
+  /** The last {@link pendingSettlers} list, its storage reused by the next. */
+  readonly pending: Entity[];
+  pendingCount: number;
+  readonly notePending: (entity: Entity) => void;
   readonly generations: Map<Component<unknown>, number>;
-  permissions: string;
+  /** Counts the changes of the {@link PERMISSION_INPUTS} generations, held in `permissionGenerations`. */
+  permissions: number;
+  readonly permissionGenerations: number[];
   /** The owners and tribes whose last house walk discovered nothing. A re-walk reads only the stores
    *  {@link technologyUnlockGeneration} sums, so it discovers nothing again until that number moves. */
   readonly settledHouses: Map<number | undefined, Set<number>>;
@@ -98,12 +105,29 @@ const PERMISSION_INPUTS: readonly Component<unknown>[] = [
   SeatTribeUnlocks,
 ];
 
-function permissionKey(world: World): string {
-  let key = '';
-  for (const store of PERMISSION_INPUTS) {
-    key += `${world.componentGeneration(store)}:${world.componentValueGeneration(store)}:`;
+/** The permission epoch now: the memo's while no {@link PERMISSION_INPUTS} generation moved since it
+ *  was recorded, the next one otherwise. Generations only grow, so no earlier epoch returns. */
+function permissionEpoch(world: World, memo: DiscoveryMemo): number {
+  const held = memo.permissionGenerations;
+  for (let i = 0; i < PERMISSION_INPUTS.length; i++) {
+    const store = PERMISSION_INPUTS[i] as Component<unknown>;
+    if (
+      held[2 * i] !== world.componentGeneration(store) ||
+      held[2 * i + 1] !== world.componentValueGeneration(store)
+    )
+      return memo.permissions + 1;
   }
-  return key;
+  return memo.permissions;
+}
+
+function recordPermissions(world: World, memo: DiscoveryMemo, epoch: number): void {
+  if (memo.permissions === epoch) return;
+  memo.permissions = epoch;
+  for (let i = 0; i < PERMISSION_INPUTS.length; i++) {
+    const store = PERMISSION_INPUTS[i] as Component<unknown>;
+    memo.permissionGenerations[2 * i] = world.componentGeneration(store);
+    memo.permissionGenerations[2 * i + 1] = world.componentValueGeneration(store);
+  }
 }
 
 /** One read of a walked settler: its discovery input, its view and its tribe's content row. */
@@ -121,7 +145,7 @@ function readSettler(
   world: World,
   content: ContentSet,
   entity: Entity,
-  permissions: string,
+  permissions: number,
 ): DiscoveryRead | null {
   if (!world.has(entity, Person)) return null;
   const settler = world.tryGet(entity, Settler);
@@ -143,30 +167,53 @@ function readSettler(
   return { input, settler, progress, jobType: settler.jobType, tribe };
 }
 
-/** The settlers whose input may have moved since the last pass, or null when every settler must be
- *  re-read: a changed permission key, or a journal that no longer covers the span. */
-function pendingSettlers(world: World, memo: DiscoveryMemo, permissions: string): Set<Entity> | null {
+/** The settlers whose input may have moved since the last pass, ascending and once each, or null when
+ *  every settler must be re-read: a changed permission key, or a journal that no longer covers the span.
+ *  The list is the memo's, valid until the next call. */
+function pendingSettlers(world: World, memo: DiscoveryMemo, permissions: number): readonly Entity[] | null {
   if (memo.permissions !== permissions) return null;
-  const pending = new Set(memo.writes);
-  for (const component of MEMBERSHIP_INPUTS) {
+  const pending = memo.pending;
+  memo.pendingCount = 0;
+  memo.writes.forEach(memo.notePending);
+  for (let i = 0; i < MEMBERSHIP_INPUTS.length; i++) {
+    const component = MEMBERSHIP_INPUTS[i] as Component<unknown>;
     const since = memo.generations.get(component);
-    const deltas = since === undefined ? null : world.membershipDeltasSince(component, since);
-    if (deltas === null) return null;
-    for (const entity of deltas) pending.add(entity);
+    if (since === undefined || !world.replayMembershipSince(component, since, memo.notePending)) return null;
   }
+  let count = memo.pendingCount;
+  // Written by index and trimmed after: an emptied array drops its storage.
+  if (pending.length !== count) pending.length = count;
+  if (count < 2) return pending;
+  pending.sort(ascendingId);
+  let kept = 1;
+  for (let i = 1; i < count; i++) {
+    const entity = pending[i] as Entity;
+    if (entity !== pending[kept - 1]) pending[kept++] = entity;
+  }
+  count = kept;
+  if (pending.length !== count) pending.length = count;
   return pending;
 }
+
+const ascendingId = (a: Entity, b: Entity): number => a - b;
 
 /** `world`'s memo, opened with its journals, progress log and cache verifier on first use. */
 function discoveryMemo(world: World, content: ContentSet): DiscoveryMemo {
   const held = memos.get(world);
   if (held !== undefined) return held;
   for (const component of MEMBERSHIP_INPUTS) world.journalMembership(component);
+  const pending: Entity[] = [];
   const memo: DiscoveryMemo = {
     inputs: new Map(),
     writes: settlerProgressLog(world),
+    pending,
+    pendingCount: 0,
+    notePending: (entity) => {
+      pending[memo.pendingCount++] = entity;
+    },
     generations: new Map(),
-    permissions: '',
+    permissions: 0,
+    permissionGenerations: [],
     settledHouses: new Map(),
     settledContent: null,
     settledGeneration: 0,
@@ -181,9 +228,10 @@ function discoveryMemo(world: World, content: ContentSet): DiscoveryMemo {
  * of its trade, experience or learned lists that bypassed `noteSettlerProgress`.
  */
 function verifyDiscoveryMemo(world: World, content: ContentSet, memo: DiscoveryMemo): string[] {
-  const permissions = permissionKey(world);
-  const pending = pendingSettlers(world, memo, permissions);
-  if (pending === null) return []; // the next pass re-reads everyone
+  const permissions = permissionEpoch(world, memo);
+  const listed = pendingSettlers(world, memo, permissions);
+  if (listed === null) return []; // the next pass re-reads everyone
+  const pending = new Set(listed);
   const violations: string[] = [];
   const skipped = new Set(memo.inputs.keys());
   for (const entity of world.query(Person, Settler)) skipped.add(entity);
@@ -241,12 +289,11 @@ function allGoodsEnabled(
 export const technologySystem: System = (world, ctx) => {
   if (!professionProgressionEnabled(world)) return;
   const memo = discoveryMemo(world, ctx.content);
-  const permissions = permissionKey(world);
+  const permissions = permissionEpoch(world, memo);
   const pending = pendingSettlers(world, memo, permissions);
   // A pass walks the settlers in ascending id, which attributes a shared discovery to the lowest; one
   // whose input is unchanged would walk to nothing new, so only the pending ones are read.
-  const candidates =
-    pending === null ? world.canonicalQuery(Person, Settler) : [...pending].sort((a, b) => a - b);
+  const candidates = pending ?? world.canonicalQuery(Person, Settler);
   if (pending === null) {
     for (const entity of memo.inputs.keys()) {
       if (!world.has(entity, Person) || !world.has(entity, Settler)) memo.inputs.delete(entity);
@@ -256,7 +303,7 @@ export const technologySystem: System = (world, ctx) => {
   for (const component of MEMBERSHIP_INPUTS) {
     memo.generations.set(component, world.componentGeneration(component));
   }
-  memo.permissions = permissions;
+  recordPermissions(world, memo, permissions);
   const settledHouses = memo.settledHouses;
   if (memo.settledContent !== ctx.content || memo.settledGeneration !== technologyUnlockGeneration(world)) {
     settledHouses.clear();
@@ -313,7 +360,9 @@ export const technologySystem: System = (world, ctx) => {
     }
     settled.add(tribeId);
   };
-  for (const entity of candidates) {
+  // Indexed, as the edge loops below: `for...of` allocates an iterator result per element on this path.
+  for (let c = 0; c < candidates.length; c++) {
+    const entity = candidates[c] as Entity;
     const read = readSettler(world, ctx.content, entity, permissions);
     if (read === null) {
       memo.inputs.delete(entity);
@@ -327,15 +376,18 @@ export const technologySystem: System = (world, ctx) => {
     if (settlerMeetsNeed(world, ctx, subject, 'job', jobType)) {
       discover(entity, owner, s.tribe, 'job', jobType);
     }
-    for (const edge of tribe.jobEnables) {
-      if (edge.jobType !== jobType || edge.kind === 'vehicle') continue;
+    const edges = tribe.jobEnables;
+    for (let k = 0; k < edges.length; k++) {
+      const edge = edges[k];
+      if (edge === undefined || edge.jobType !== jobType || edge.kind === 'vehicle') continue;
       if (!typeAllowed(world, ctx, owner, s.tribe, edge.kind, edge.targetId)) continue;
       if (edge.kind === 'house' && tribe.technology !== undefined) continue;
       if (edge.kind !== 'house' && !settlerMeetsNeed(world, ctx, subject, edge.kind, edge.targetId)) continue;
       discover(entity, owner, s.tribe, edge.kind, edge.targetId);
       if (edge.kind === 'job') {
-        for (const product of tribe.jobEnables) {
-          if (product.kind !== 'good' || product.jobType !== edge.targetId) continue;
+        for (let m = 0; m < edges.length; m++) {
+          const product = edges[m];
+          if (product === undefined || product.kind !== 'good' || product.jobType !== edge.targetId) continue;
           if (settlerMeetsNeed(world, ctx, subject, 'good', product.targetId))
             discover(entity, owner, s.tribe, 'good', product.targetId);
         }
