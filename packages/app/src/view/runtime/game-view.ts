@@ -131,6 +131,8 @@ import {
 import { holdWorldAfterContextRestore } from '../graphics/context-restore.js';
 import { applyWhenWarmed, relinkAfterContextRestore } from '../graphics/shader-warmup.js';
 import { createSignpostMapOverlay } from '../map-overlays/signposts.js';
+import type { NetSignalSource } from '../map-ping/pings.js';
+import { createMapPingSession } from '../map-ping/session.js';
 import { mountNetOverlays } from '../net/overlays.js';
 import type { NetReadout } from '../net/readout.js';
 import { floatParam, introParam, menuSearch, tintParam, weatherParam } from '../params.js';
@@ -225,6 +227,9 @@ export interface GameViewDeps {
    *  the status line and the chat log, and drives the speed segments from the room's clock. Omitted
    *  in a local session. */
   readonly netPanel?: NetPanelSource;
+  /** A relayed session's ping link to the local seat's allies; omitted in a local session, which has
+   *  nobody to ping. */
+  readonly netSignals?: NetSignalSource;
   readonly parentSave?: SaveGame;
   /** The loaded save's `view` header, whose control groups return when the same seat loads it. */
   readonly restoredView?: unknown;
@@ -533,6 +538,27 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Stands on the minimap, so it mounts after it; the panel and the minimap's button reach it here.
     let diplomacyMap: DiplomacyMap | undefined;
     let unitWindowOpen: (() => boolean) | undefined;
+    let toggleMapPing: (() => void) | undefined;
+    const mapPing =
+      deps.netSignals === undefined
+        ? undefined
+        : createMapPingSession({
+            source: deps.netSignals,
+            bindings: keyBindings,
+            canvas,
+            seat: () => (watching ? null : localPlayer),
+            roster: deps.rosterPlayers ?? [],
+            stance: (from, to) => host.diplomacyStance(from, to),
+            nodes: nodeBounds(deps.mapSize),
+            colourSlot: (seat) => deps.playerColourOf?.(seat) ?? seat,
+            minimap: () => minimap,
+            toolHeld: () => toolPanel.claimPointer(),
+            callOffTools: () => toolPanel.controller.cancelAllHeld(),
+            rang: () => soundDriver?.notify('signal'),
+            refused: () => uiCue('fail'),
+            now: () => performance.now(),
+          });
+    if (mapPing !== undefined) cleanup.push(mapPing.dispose);
 
     // Client coords, null off-canvas. Tracked persistently so the frame loop reads it instead of probing
     // the sim on every mousemove.
@@ -1068,6 +1094,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         toolPanel.controller.callOffHeld(event) || (overviewPress?.(worldX, worldY, event) ?? false),
       toScreenPx: clientToScreen,
       onOverviewButton: () => diplomacyMap?.toggle(),
+      ...(mapPing === undefined ? {} : { onSignalButton: () => toggleMapPing?.() }),
     });
 
     // The minimap and the DOM regions, open windows among them, keep the wheel from zooming under them
@@ -1145,6 +1172,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       hostileToward: (owner) => host.diplomacyStance(viewerPlayer(), owner) === 'enemy',
       lang,
       bindings: keyBindings,
+      ...(mapPing === undefined ? {} : { mapPing: mapPing.controller }),
       ...(restoredGroups !== undefined ? { controlGroups: restoredGroups } : {}),
       professions: pickerEntries(),
       content: host.content,
@@ -1220,6 +1248,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
     });
     controlGroupMembers = controls.controlGroupMembers;
+    toggleMapPing = controls.toggleMapPing;
+    mapPing?.refresh();
     cleanup.push(() => controls.dispose());
     selectEntity = controls.selectEntity;
     unitSelection = controls;
@@ -1537,6 +1567,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           siege.frame();
           scriptTints.frame(snapshot.tick);
           netOverlays?.refresh();
+          // A spectator's seat switch or a rebinding changes what the ping button says.
+          mapPing?.refresh();
           followLink?.();
           deps.onFrame?.(snapshot);
         },
@@ -1557,6 +1589,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       diplomacyMap: mountedDiplomacyMap,
       mapOverlay,
       controls,
+      ...(mapPing === undefined ? {} : { mapPings: mapPing.live }),
       worldHover,
       geometryDebug: debugMounts.geometryDebug,
       overlayFrame,

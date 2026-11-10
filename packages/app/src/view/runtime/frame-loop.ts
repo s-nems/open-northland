@@ -4,6 +4,7 @@ import {
   cameraViewport,
   type DrawItem,
   type HudModel,
+  type MapPing,
   SPRITE_CULL_MARGIN,
   type Viewport,
 } from '@open-northland/render';
@@ -84,6 +85,8 @@ export interface FrameLoopDeps {
   readonly diplomacyMap: Pick<DiplomacyMap, 'refresh'>;
   readonly mapOverlay?: SignpostMapOverlay;
   readonly controls: UnitControls;
+  /** The map pings showing on the world view; absent in a local game. */
+  readonly mapPings?: () => readonly MapPing[];
   readonly worldHover: WorldHover;
   readonly geometryDebug: GeometryDebugOverlay;
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
@@ -531,6 +534,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         groupNumbers: controls.groupNumbers(),
         rangeRings: controls.rangeRings(),
         orderMarkers: controls.orderMarkers(),
+        mapPings: loop.mapPings?.(),
         targetFlashes: controls.targetFlashes(),
         lostGoals,
         lostGoalPulse: lostGoalPulse(nowMs),

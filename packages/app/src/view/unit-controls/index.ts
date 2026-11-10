@@ -8,7 +8,15 @@ import { isActionHotkey, isFieldKey, isOrderHotkey } from '../../hud/hotkeys.js'
 import { type ModifierState, matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
 import { setCanvasCursor } from '../cursors/element.js';
-import { nodeBounds, pickInRect, pickTopAt, screenToWorld, type Tile, worldToTile } from '../picking.js';
+import {
+  clampTile,
+  nodeBounds,
+  pickInRect,
+  pickTopAt,
+  screenToWorld,
+  type Tile,
+  worldToTile,
+} from '../picking.js';
 import { entityAnchor } from '../projections/entity-anchor.js';
 import { memoBySnapshot, rangeRingsOf } from '../projections/index.js';
 import { createActionHint } from './action-hint/controller.js';
@@ -480,12 +488,31 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     enabled: opts.cursorHints ?? true,
   });
 
+  /** A ping armed before the pick that is armed now gives way to it; arming a ping calls a pick off. */
+  const mapPingAt = (e: MouseEvent, at: Tile): boolean => {
+    const mapPing = opts.mapPing;
+    if (mapPing === undefined) return false;
+    if (pickMode.isArmed()) mapPing.cancel();
+    const nodes = nodeBounds(opts.mapSize);
+    return mapPing.press(e, clampTile(at, nodes.width, nodes.height));
+  };
+  const mapPingPress = (e: MouseEvent): boolean => {
+    if (opts.mapPing === undefined) return false;
+    const world = toWorld(e.clientX, e.clientY);
+    return mapPingAt(e, worldToTile(world.x, world.y, opts.elevation));
+  };
+  const toggleMapPing = (): void => {
+    opts.mapPing?.toggle();
+    if (opts.mapPing?.armed() === true) pickMode.cancel();
+  };
+
   const onMouseDown = (e: MouseEvent): void => {
     pointer = { x: e.clientX, y: e.clientY };
     // The HUD claims its own clicks before any world picking. The ring's buttons take their own presses;
     // its claim below keeps one that lands on a button's rounded edge off the world.
     if (opts.claimPointer?.(e.clientX, e.clientY) === true) return;
     if (chrome.actions().claimsPointer(e.clientX, e.clientY)) return;
+    if (mapPingPress(e)) return;
     const pick = pickMode.handleMouseDown(e);
     if (pick !== null) {
       const pickCue = pickPressCue(pick);
@@ -702,6 +729,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       if (orderRecipients(opts.content, opts.snapshot(), ids, 'changeProfession').length > 0) {
         chrome.actions().openProfessions(ids);
       }
+    } else if (opts.mapPing?.available() === true && isActionHotkey(e, opts.bindings, 'mapPingMode')) {
+      e.preventDefault();
+      toggleMapPing();
     } else if (isOrderHotkey(e, opts.bindings, 'attackMove')) {
       e.preventDefault();
       armAttackMove();
@@ -726,7 +756,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       // picker, an armed pick mode, the selection.
       if (chrome.actions().handleEscape()) return;
       if (chrome.closeWindow()) return;
-      if (pickMode.isArmed()) {
+      if (opts.mapPing?.cancel() === true) {
+        cue('fail');
+      } else if (pickMode.isArmed()) {
         pickMode.cancel();
         cue('fail'); // approximation: the original's cancel click is a mouse path; Esc is unverified
       } else applySelection([], false);
@@ -751,7 +783,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     selectedIds: selection.ids,
     selectionVersion: selection.version,
     selectEntity: (id) => applySelection([id], false),
-    overviewPress,
+    // The overview draws the map flat, so its spot is the flat inverse, as its orders take it.
+    overviewPress: (worldX, worldY, event) =>
+      mapPingAt(event, worldToTile(worldX, worldY)) || overviewPress(worldX, worldY, event),
+    toggleMapPing,
     select: (ids) => applySelection(ids, false),
     portraits: () => chrome.portraits(),
     flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
@@ -782,6 +817,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     claimsEscape: () =>
       chrome.actions().state().mode !== 'closed' ||
       chrome.windowOpen() ||
+      opts.mapPing?.armed() === true ||
       pickMode.isArmed() ||
       selection.ids().size > 0,
     dockPickVehicle: pickMode.dockVehicle,
@@ -798,6 +834,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       chrome.claimsPointer(x, y) ||
       chrome.actions().claimsPointer(x, y),
     refreshCursor: (snapshot) => {
+      // Arming a ping calls a pick off, so a pick armed beside one came later and wins.
+      if (pickMode.isArmed()) opts.mapPing?.cancel();
       selectionCursor.update(snapshot);
       actionHint.update(snapshot);
     },

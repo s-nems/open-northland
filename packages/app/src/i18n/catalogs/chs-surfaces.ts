@@ -446,6 +446,7 @@ export const chsSurfaces = {
         coarseStep: '训练计数器每次调整 10',
         craftToggle: '在生产中添加/移除产品',
         workFlagOrder: '设置工作旗帜',
+        mapPingMode: '标记模式：单击地点通知盟友',
         roadTool: '道路工具',
         palisadeTool: '木栅栏工具',
         upgradeGround: '道路和木栅栏：也可建在建筑升级预留地上',

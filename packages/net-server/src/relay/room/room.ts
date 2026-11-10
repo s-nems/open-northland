@@ -1,5 +1,6 @@
 import type { GameSession } from '@open-northland/lockstep';
 import {
+  type Allowance,
   type BlobUpload,
   type ClientMessage,
   type DepartedSeatMode,
@@ -16,7 +17,6 @@ import {
   type ServerMessage,
   withFlag,
 } from '@open-northland/net-protocol';
-import type { Allowance } from '../allowance.js';
 import { Game } from '../game/game.js';
 import { Lobby } from '../lobby/lobby.js';
 import { type SeatChange, SeatTable } from '../lobby/seats.js';
@@ -26,6 +26,7 @@ import { type RelayLog, wholeSeconds } from '../relay-log.js';
 import { Responsiveness } from '../timing/responsiveness.js';
 import { ChatLog } from './chat-log.js';
 import { RoomGate } from './gate.js';
+import { RoomSignals } from './signals.js';
 import { roomView, sessionForMember } from './view.js';
 
 /** Least wall time between two room views sent only because a member's load, boot progress, link
@@ -80,6 +81,7 @@ export class Room {
   /** Each member's `behindTicks` as the last room view carried it. */
   private readonly announcedBehind = new Map<string, number>();
   private readonly chatLog = new ChatLog();
+  private readonly signals: RoomSignals;
   private readonly responsiveness = new Responsiveness();
   /** Monotonic milliseconds of the room's milestones, for the durations its log lines carry. */
   private readonly createdAt: number;
@@ -105,6 +107,7 @@ export class Room {
     this.creatorToken = creator.token;
     this.hooks = hooks;
     this.gate = new RoomGate(password);
+    this.signals = new RoomSignals(this.members, hooks.deliver);
     this.lobby = new Lobby(
       settings,
       this.seats,
@@ -482,6 +485,11 @@ export class Room {
     );
   }
 
+  signal(member: Member, message: Extract<ClientMessage, { kind: 'signal' }>, now: number): Refusal {
+    if (this.game === null) return { code: 'gameNotStarted' };
+    return this.signals.relay(member, message, now);
+  }
+
   advance(elapsedMs: number, now: number): Refusal {
     if (this.leftBeforeStart !== null) return { code: 'leftBeforeStart', nick: this.leftBeforeStart };
     if (this.game !== null && !this.game.running) {
@@ -648,6 +656,7 @@ export class Room {
     this.game?.forget(member);
     this.seats.standUp(member);
     this.members.delete(member.token);
+    this.signals.forget(member.token);
     if (member.token === this.creatorToken) {
       const next = this.members.keys().next();
       if (!next.done) this.creatorToken = next.value;

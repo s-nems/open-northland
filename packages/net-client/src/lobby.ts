@@ -13,6 +13,7 @@ import {
   type RoomSettings,
   type RoomSummary,
   type RoomView,
+  type SignalNode,
   withFlag,
 } from '@open-northland/net-protocol';
 import { RelayState } from './relay-state.js';
@@ -152,6 +153,11 @@ export class RelayLobby {
 
   say(text: string): void {
     this.send({ kind: 'chat', text });
+  }
+
+  /** Point the members in seats `to` at the half-cell node `at`. */
+  signal(at: SignalNode, to: readonly number[]): void {
+    this.send({ kind: 'signal', at, to });
   }
 
   /** A line for the relay's own chat, said outside a room. */

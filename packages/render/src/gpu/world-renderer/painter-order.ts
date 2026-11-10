@@ -30,6 +30,8 @@ export interface WorldSceneLayers {
   readonly hearts: Container;
   readonly importMarkers: Container;
   readonly groupNumbers: Container;
+  /** A player's map pings: over every sprite and mark, so a ping behind a building still shows. */
+  readonly mapPings: Container;
   readonly geometryDebug: Container;
 }
 
@@ -59,6 +61,7 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.hearts,
     layers.importMarkers,
     layers.groupNumbers,
+    layers.mapPings,
     layers.geometryDebug,
   );
 }

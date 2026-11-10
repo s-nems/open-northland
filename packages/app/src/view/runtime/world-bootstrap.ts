@@ -4,6 +4,7 @@ import { WorldRenderer } from '@open-northland/render';
 import type { Application } from 'pixi.js';
 import { loadBerthPostArt } from '../../content/gui/berth-post-art.js';
 import { loadGuiStrings } from '../../content/gui/gfx.js';
+import { loadMapPingPinArt } from '../../content/gui/map-ping-pin-art.js';
 import { installOriginalNames } from '../../content/gui/original-names.js';
 import { installPersonalNames } from '../../content/gui/personal-names.js';
 import { loadPlanRoadArt } from '../../content/gui/plan-road-art.js';
@@ -53,10 +54,11 @@ export async function createWorldRenderer(
   sheet: SpriteSheet | undefined,
   playerColourOf?: (player: number) => number,
 ): Promise<WorldRenderer> {
-  const [planStakes, planRoads, berthPost] = await Promise.all([
+  const [planStakes, planRoads, berthPost, mapPingPin] = await Promise.all([
     loadPlanStakeArt(),
     loadPlanRoadArt(),
     loadBerthPostArt(),
+    loadMapPingPinArt(),
   ]);
   // One read, so a write landing mid-construction cannot hand the renderer a mixed snapshot.
   const stored = readStoredSettings();
@@ -72,6 +74,7 @@ export async function createWorldRenderer(
     planStakes,
     planRoads,
     berthPost,
+    mapPingPin,
   });
 }
 

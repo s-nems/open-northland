@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Allowance } from '../../src/relay/allowance.js';
+import { Allowance } from '../src/allowance.js';
 
 const BURST = 5;
 const REFILL_MS = 2000;

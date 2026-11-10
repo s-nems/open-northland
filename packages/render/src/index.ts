@@ -229,6 +229,8 @@ export {
   LOST_GOAL_OUTLINE,
   type LostGoalMarker,
   lostGoalPose,
+  MAP_PING_MS,
+  type MapPing,
   makePlaceholderStack,
   makeSignStack,
   type OrderMarker,

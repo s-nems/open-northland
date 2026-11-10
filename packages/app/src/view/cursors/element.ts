@@ -1,13 +1,15 @@
 import { type CursorState, cursorVariable } from './model.js';
 
-type CanvasCursorSource = 'hover' | 'pick' | 'placement';
+type CanvasCursorSource = 'hover' | 'pick' | 'placement' | 'signal';
 const SOURCES = {
   hover: { attribute: 'data-cursor-hover', property: '--world-cursor-hover' },
   pick: { attribute: 'data-cursor-pick', property: '--world-cursor-pick' },
   placement: { attribute: 'data-cursor-placement', property: '--world-cursor-placement' },
+  signal: { attribute: 'data-cursor-signal', property: '--world-cursor-signal' },
 } as const;
 
-/** CSS gives placement precedence over a pending order, then over a hovered object. */
+/** CSS gives an armed ping precedence over placement, placement over a pending order, then over a
+ *  hovered object. */
 export function setCanvasCursor(
   canvas: HTMLCanvasElement,
   source: CanvasCursorSource,
@@ -25,5 +27,6 @@ export function setCanvasCursor(
 }
 
 export function clearCanvasCursors(canvas: HTMLCanvasElement): void {
-  for (const source of ['hover', 'pick', 'placement'] as const) setCanvasCursor(canvas, source, null);
+  for (const source of ['hover', 'pick', 'placement', 'signal'] as const)
+    setCanvasCursor(canvas, source, null);
 }

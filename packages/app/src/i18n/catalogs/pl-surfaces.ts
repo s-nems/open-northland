@@ -460,6 +460,7 @@ export const plSurfaces = {
         coarseStep: 'Zmień licznik szkolenia o 10',
         craftToggle: 'Dodaj/usuń produkt z listy produkcji',
         workFlagOrder: 'Ustaw flagę pracy',
+        mapPingMode: 'Tryb pingu: klik wskazuje miejsce sojusznikom',
         roadTool: 'Narzędzie drogi',
         palisadeTool: 'Narzędzie palisady',
         upgradeGround: 'Droga i palisada: także na miejscu pod rozbudowę budynków',

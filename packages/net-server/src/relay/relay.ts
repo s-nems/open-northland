@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import {
+  Allowance,
   type ClientMessage,
   type ClosingCode,
   type ClosingReason,
@@ -17,7 +18,6 @@ import {
   TICK_MS,
   withFlag,
 } from '@open-northland/net-protocol';
-import { Allowance } from './allowance.js';
 import { saveOrdersRequestId } from './game/save-orders.js';
 import { HALL_CHAT_BURST, HALL_CHAT_REFILL_MS, Hall } from './hall/hall.js';
 import type { HallRecord } from './hall/record.js';

@@ -31,10 +31,10 @@ export function uiCueShot(cue: UiCue): OneShot {
 /**
  * What a notification rings, all authored (the original sounds none of them in game): a new message
  * card the briefing pop, another player's chat line the chat ring, a player joining or returning the
- * ship's bell, and a player leaving, being kicked or the world falling out of sync the same bell, lower
- * and quieter. The fail click stays the cancelled tool's alone.
+ * ship's bell, a player leaving, being kicked or the world falling out of sync the same bell, lower
+ * and quieter, and a map ping the bell higher and brighter. The fail click stays the cancelled tool's alone.
  */
-export type NotificationCue = 'card' | 'chat' | 'arrival' | 'departure';
+export type NotificationCue = 'card' | 'chat' | 'arrival' | 'departure' | 'signal';
 
 /** How a notification sounds: its wav, its gain, its playback rate when not as recorded, and for one
  *  that may come in bursts the least seconds between two rings. */
@@ -70,12 +70,22 @@ export const ARRIVAL_BELL_GAIN = UI_CUE_GAIN / 2;
 export const DEPARTURE_BELL_RATE = 0.8;
 /** A player leaving rings the bell about 3 dB under an arrival. Authored, tune by ear. */
 export const DEPARTURE_BELL_GAIN = ARRIVAL_BELL_GAIN / Math.SQRT2;
+/** A map ping rings the bell a fifth up, short and bright, at the arrival's level. Authored, tune by ear. */
+export const SIGNAL_BELL_RATE = 1.5;
+/** Least seconds between two ping rings, so a burst of pings rings once. Authored. */
+export const SIGNAL_CUE_COOLDOWN_S = 0.6;
 
 export const NOTIFICATION_SOUNDS: Readonly<Record<NotificationCue, NotificationSound>> = {
   card: { files: [UI_CUE_FILES.briefing], gain: NOTICE_CARD_GAIN },
   chat: { files: [UI_CUE_FILES.chat], gain: CHAT_CUE_GAIN, cooldownS: CHAT_CUE_COOLDOWN_S },
   arrival: { files: [SHIP_BELL_FILE], gain: ARRIVAL_BELL_GAIN },
   departure: { files: [SHIP_BELL_FILE], gain: DEPARTURE_BELL_GAIN, rate: DEPARTURE_BELL_RATE },
+  signal: {
+    files: [SHIP_BELL_FILE],
+    gain: ARRIVAL_BELL_GAIN,
+    rate: SIGNAL_BELL_RATE,
+    cooldownS: SIGNAL_CUE_COOLDOWN_S,
+  },
 };
 
 /**

@@ -9,6 +9,7 @@ import type {
   HudFrame,
   LifeHeart,
   LostGoalMarker,
+  MapPing,
   OrderMarker,
   SettlerBubble,
 } from '../overlays/index.js';
@@ -86,6 +87,8 @@ export interface WorldRendererOptions {
   readonly planRoads?: PlanRoadTextures | undefined;
   /** The dock cursor's mooring post art; absent draws a flat stand-in. */
   readonly berthPost?: Texture | undefined;
+  /** The map ping's pin art, the painted pin beside its tintable planks; absent draws a flat stand-in. */
+  readonly mapPingPin?: Texture | undefined;
 }
 
 /** `scale` defaults to the native landscape-object scale of 1. */
@@ -105,6 +108,7 @@ export const NO_STARS: readonly ExperienceStar[] = [];
 export const NO_GROUP_NUMBERS: ReadonlyMap<number, readonly string[]> = new Map();
 export const NO_RANGE_RINGS: readonly RangeRing[] = [];
 export const NO_ORDER_MARKERS: readonly OrderMarker[] = [];
+export const NO_MAP_PINGS: readonly MapPing[] = [];
 export const NO_LOST_GOALS: readonly LostGoalMarker[] = [];
 
 export interface WorldFrame {
@@ -140,6 +144,8 @@ export interface WorldFrame {
   readonly rangeRings?: readonly RangeRing[] | undefined;
   /** The ground acknowledgements of the player's latest walk and march orders (default none). */
   readonly orderMarkers?: readonly OrderMarker[] | undefined;
+  /** The map pings showing, the local player's and its allies' (default none). */
+  readonly mapPings?: readonly MapPing[] | undefined;
   /** The targets of the player's latest orders, playing their one-time flash (default none). */
   readonly targetFlashes?: ReadonlyMap<number, TargetFlash> | undefined;
   /** The refused goals of the selected lost settlers, held while they stay lost (default none). */

@@ -63,6 +63,12 @@ export const MAX_ROOM_NAME_LENGTH = 48;
 /** A room password is one printable line; it is only ever compared, never shown to anyone. */
 export const MAX_ROOM_PASSWORD_LENGTH = 32;
 export const MAX_CHAT_LENGTH = 500;
+/** A map signal names a half-cell node; the widest map the sim builds is well inside this bound. */
+export const MAX_SIGNAL_NODE = 0xffff;
+/** Map signals one member may send at once; after that one more each `SIGNAL_REFILL_MS`. The relay
+ *  drops the rest, and the client counts the same way so it never shows a signal nobody else gets. */
+export const SIGNAL_BURST = 3;
+export const SIGNAL_REFILL_MS = 1500;
 /** Chat lines a room keeps for members who join or return; the oldest go first. */
 export const MAX_CHAT_HISTORY_LINES = 500;
 /** Lines of the relay's own chat a client receives on arriving outside a room; the oldest go first. */

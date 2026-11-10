@@ -343,6 +343,8 @@ export interface ToolPanelController {
   enterStanding(structure: StandingStructure, owner: number, tribe: number): boolean;
   /** Drop a held placement or plan, as Esc does. */
   cancelPlacement(): void;
+  /** Drop every held mode, the plan a cancelled placement hands back included. */
+  cancelAllHeld(): void;
   /** Drop a held placement only when it is the admin tool's finished structure. */
   cancelStanding(): void;
   /** A right press off the game canvas: true when it called a held mode off, so it orders nothing. */
@@ -993,6 +995,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         }
       },
       cancelPlacement: cancelHeld,
+      cancelAllHeld: () => {
+        // Each rung can hand at most one mode back to the one before it.
+        for (let rung = 0; rung < held.length && held.some((mode) => mode.isActive()); rung++) cancelHeld();
+      },
       callOffHeld: (press) => input?.callOffHeld(press) ?? false,
       cancelStanding: (): void => {
         if (placement.activeStanding()) placement.cancel();

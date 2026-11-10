@@ -14,6 +14,7 @@ import {
   parseTribe,
   VACANT_SEAT_MODES,
 } from './room.js';
+import { parseSignalNode, parseSignalSeats } from './signal.js';
 import { assertNever, asTimestamp, parseFlag, parseLine, parseNick, parseToken } from './text.js';
 import { BLOB_TYPES, parseBlobBytes, parseDigest, parseStateHash, parseWireEnvelope } from './wire.js';
 
@@ -44,6 +45,7 @@ export const CLIENT_KINDS = keysOf<ClientMessageKind>({
   kick: true,
   blob: true,
   chat: true,
+  signal: true,
   hallChat: true,
   pong: true,
 });
@@ -190,6 +192,12 @@ export function parseClientMessage(value: unknown): ClientMessage {
     case 'chat':
     case 'hallChat':
       return { kind, text: parseLine(raw.text, `${kind}.text`, MAX_CHAT_LENGTH) };
+    case 'signal':
+      return {
+        kind,
+        at: parseSignalNode(raw.at, 'signal.at'),
+        to: parseSignalSeats(raw.to, 'signal.to'),
+      };
     case 'pong':
       return { kind, t: asTimestamp(raw.t, 'pong.t') };
     default:

@@ -446,6 +446,7 @@ export const chtSurfaces = {
         coarseStep: '以 10 為單位調整訓練計數',
         craftToggle: '在生產中加入／移除產品',
         workFlagOrder: '設置工作旗幟',
+        mapPingMode: '標記模式：點擊地點通知盟友',
         roadTool: '道路工具',
         palisadeTool: '木柵欄工具',
         upgradeGround: '道路和木柵欄：也可建在建築升級用地上',

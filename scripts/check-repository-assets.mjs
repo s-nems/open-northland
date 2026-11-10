@@ -48,6 +48,10 @@ const reviewedBinaryAssets = new Set([
   // plan stake as its style reference, reduced to the game's sprite scale and remapped to the colours of
   // the plan markers above.
   'packages/app/src/assets/markers/berth-post.png',
+  // The map ping's pin, with the shield's planks repeated in grey beside it for tinting, each in a
+  // transparent gutter: generated for this project with gpt-image-1.5 from a text description alone,
+  // reduced to the game's sprite scale.
+  'packages/app/src/assets/markers/map-ping-pin.png',
   // The app's typefaces: Cinzel, Alegreya Sans and Alegreya Sans SC, subset from Google Fonts
   // releases; SIL OFL texts sit beside them as LICENSE-*.txt.
   'packages/app/public/fonts/alegreyasans-cyrillic-400.woff2',

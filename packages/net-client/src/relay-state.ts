@@ -147,6 +147,7 @@ export class RelayState {
       case 'disputed':
       case 'blob':
       case 'rejected':
+      case 'signal':
         break;
       default:
         assertNever(message);

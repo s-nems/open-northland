@@ -38,6 +38,7 @@ export { type GroupNumberFrame, GroupNumberLayer } from './group-number-layer.js
 export { type LifeHeart, LifeHeartLayer } from './heart-layer.js';
 export { DEFAULT_HUD_STYLE, type HudFrame, HudLayer, type HudStyle } from './hud-layer.js';
 export { type ImportMarkerGfx, ImportMarkerLayer } from './import-marker-layer.js';
+export { MAP_PING_MS, type MapPing, MapPingLayer } from './map-ping-layer.js';
 export {
   LOST_GOAL_COLOUR,
   LOST_GOAL_OUTLINE,

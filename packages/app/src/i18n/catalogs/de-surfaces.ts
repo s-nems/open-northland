@@ -500,6 +500,7 @@ export const deSurfaces = {
         coarseStep: 'Ausbildungszähler um 10 ändern',
         craftToggle: 'Produkt zur Herstellung hinzufügen oder daraus entfernen',
         workFlagOrder: 'Arbeitsfahne setzen',
+        mapPingMode: 'Ping-Modus: ein Klick zeigt Verbündeten eine Stelle',
         roadTool: 'Straßenwerkzeug',
         palisadeTool: 'Palisadenwerkzeug',
         upgradeGround: 'Straße und Palisade: auch auf Platz für den Gebäudeausbau',

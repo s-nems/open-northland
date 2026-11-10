@@ -1,6 +1,6 @@
 import type { GameSession } from '@open-northland/lockstep';
 import { verifyInitialSave } from '@open-northland/net-client';
-import { MAX_LOADING_PROGRESS, type ServerMessage } from '@open-northland/net-protocol';
+import { MAX_LOADING_PROGRESS, type ServerMessage, type SignalNode } from '@open-northland/net-protocol';
 import { serializeSaveGame } from '@open-northland/sim';
 import { errorText } from '../../diag/error-text.js';
 import {
@@ -26,6 +26,7 @@ import {
 } from '../../net/relay-reason.js';
 import { networkSaveSession } from '../../net/save-session.js';
 import { dismissBootProgress } from '../../view/boot/progress.js';
+import type { NetSignalSource } from '../../view/map-ping/pings.js';
 import type { NetReadout } from '../../view/net/readout.js';
 import { mountResyncPlaque, type ResyncPlaque } from '../../view/net/resync-plaque.js';
 import { menuSearch } from '../../view/params.js';
@@ -104,6 +105,16 @@ export function renderNetworkGame(
     kick: (seat, yes) => client.kick(seat, yes),
     say: (text) => client.say(text),
     setResponsiveness: (mode) => client.setResponsiveness(mode),
+  };
+
+  // Pings outlive a rebuilt world: the view that listens changes, the link does not.
+  const signalListeners = new Set<(seat: number, at: SignalNode) => void>();
+  const netSignals: NetSignalSource = {
+    send: (at, to) => client.signal(at, to),
+    listen: (onSignal) => {
+      signalListeners.add(onSignal);
+      return () => signalListeners.delete(onSignal);
+    },
   };
 
   function clearWorld(): void {
@@ -213,6 +224,11 @@ export function renderNetworkGame(
     }
     if (event.message.kind === 'kicked' && event.message.player === client.session?.localSeat) {
       fail(ownDepartureText(event.message), null, false);
+      return;
+    }
+    if (event.message.kind === 'signal') {
+      const { seat, at } = event.message;
+      for (const listener of signalListeners) listener(seat, at);
       return;
     }
     startWait.observe(event.message);
@@ -348,6 +364,7 @@ export function renderNetworkGame(
       introAtStart: false,
       netReadout: readout,
       netPanel,
+      netSignals,
       untilStart: (shown) => {
         // This display has shown the world: the room may count the client loaded. The card then stays
         // up for the rest of the room.

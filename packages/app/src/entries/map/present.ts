@@ -64,6 +64,8 @@ export interface MapRuntime {
   readonly netReadout?: () => NetReadout | null;
   /** Present for a relayed session: the network panel's feed. */
   readonly netPanel?: GameViewDeps['netPanel'];
+  /** Present for a relayed session: the ping link to the local seat's allies. */
+  readonly netSignals?: GameViewDeps['netSignals'];
   /** Present for a relayed session. Called once this display has shown the world, so the room may count
    *  the client loaded, or with `shown` false once the view ended before its first frame; the card
    *  covers the drawn world until it settles, once the room starts its shared clock or the wait no
@@ -248,6 +250,7 @@ export async function presentMapWorld(
     ...(runtime.onReturnToMenu !== undefined ? { onReturnToMenu: runtime.onReturnToMenu } : {}),
     ...(runtime.netReadout !== undefined ? { netReadout: runtime.netReadout } : {}),
     ...(runtime.netPanel !== undefined ? { netPanel: runtime.netPanel } : {}),
+    ...(runtime.netSignals !== undefined ? { netSignals: runtime.netSignals } : {}),
     ...(runtime.untilStart === undefined ? {} : { onFirstFrameShown: () => markShown() }),
     cameraCtl,
     terrainGrid,

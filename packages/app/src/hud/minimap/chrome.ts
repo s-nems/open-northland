@@ -51,6 +51,16 @@ export interface MinimapChromeCallbacks {
   readonly onColours: (colours: MinimapColourMode) => void;
   /** Absent, the frame has no overview button: the overview's own frame. */
   readonly onOverview?: () => void;
+  /** Absent, the frame has no ping button: the overview's own frame, and any frame of a local game. */
+  readonly onSignal?: () => void;
+}
+
+/** The ping button: shown while the viewer may ping, pressed while a ping waits for its click. */
+export interface MinimapSignalState {
+  readonly available: boolean;
+  readonly armed: boolean;
+  /** The bindings that ping, named in the tip; empty when none is bound. */
+  readonly keys: readonly string[];
 }
 
 export interface MinimapChrome {
@@ -61,6 +71,7 @@ export interface MinimapChrome {
   setFrame(frame: MinimapFrame): void;
   /** Name the key of the overview button in its tip; `null` when the player left it unbound. */
   setOverviewKey(key: string | null): void;
+  setSignal(state: MinimapSignalState): void;
   focusOverviewButton(): void;
   /** Where a view drawn over the framed map mounts, inside the frame's stacking order. */
   readonly root: HTMLElement;
@@ -71,6 +82,8 @@ export interface MinimapChrome {
 const OVERVIEW_DRAWER_INSET = 34;
 
 const tipWithKey = (text: string, key: string | null): string => (key === null ? text : `${text} · ${key}`);
+const tipWithKeys = (text: string, keys: readonly string[]): string =>
+  keys.length === 0 ? text : `${text} · ${keys.join(' / ')}`;
 
 const icon = (paths: string): string =>
   `<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">${paths}</svg>`;
@@ -79,6 +92,11 @@ const ICONS = {
   plus: icon('<path d="M5 10h10M10 5v10"/>'),
   reset: icon('<path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/><rect x="7" y="7" width="6" height="6"/>'),
   filters: icon('<path d="M3 5h14M3 10h14M3 15h14"/><path d="M7 3v4M13 8v4M8 13v4"/>'),
+  // A pin headed by a round shield with its boss, over a ground ring: the ping's own mark.
+  signal: icon(
+    '<path d="M7.6 10.4 10 15.6l2.4-5.2" fill="currentColor" stroke-linejoin="round"/><circle cx="10" cy="6.6" r="4.6"/><circle cx="10" cy="6.6" r="1.3" fill="currentColor"/>' +
+      '<ellipse cx="10" cy="16.2" rx="6.6" ry="2" stroke-width="1" opacity="0.75"/>',
+  ),
   // A compass star over a sheet of map folded in three.
   overview: icon(
     '<path d="M2 5.2 7 3l6 2.2L18 3v11.8L13 17l-6-2.2L2 17z"/><path d="M7 3v2.4m0 7V14.8M13 5.2v2.2m0 7.2V17" stroke-width="1"/>' +
@@ -216,6 +234,16 @@ export function createMinimapChrome(
     setTip(overviewButton, copy.overview);
     overviewButton.addEventListener('click', callbacks.onOverview);
     root.append(overviewButton);
+  }
+  let signalButton: HTMLButtonElement | null = null;
+  if (callbacks.onSignal !== undefined) {
+    signalButton = button('on-minimap-chrome__button on-minimap-chrome__signal', ICONS.signal);
+    signalButton.setAttribute('aria-label', copy.signal);
+    signalButton.setAttribute('aria-pressed', 'false');
+    setTip(signalButton, copy.signal);
+    signalButton.hidden = true;
+    signalButton.addEventListener('click', callbacks.onSignal);
+    root.append(signalButton);
   }
   const controls = element('div', 'on-minimap-chrome__controls');
   const control = (name: string, label: string, content: string, action: () => void): HTMLButtonElement => {
@@ -472,6 +500,13 @@ export function createMinimapChrome(
     },
     setOverviewKey: (key) => {
       if (overviewButton !== null) setTip(overviewButton, tipWithKey(copy.overview, key));
+    },
+    setSignal: (state) => {
+      if (signalButton === null) return;
+      setHidden(signalButton, !state.available);
+      setAttribute(signalButton, 'aria-pressed', String(state.armed));
+      const tip = tipWithKeys(copy.signal, state.keys);
+      setTip(signalButton, state.armed ? `${tip}\n${copy.signalArmed}` : tip);
     },
     focusOverviewButton: () => overviewButton?.focus({ preventScroll: true }),
     dispose: () => {

@@ -165,7 +165,7 @@ Group code by user-facing concern, one feature folder each:
   boot, settings, graphics, script, placement, map-objects, net, unit-controls (orders, panels,
   right-click resolution, action-hint: the cursor label naming a click's action), admin-debug (debug
   panel tools and catalogs), assistant (builder assistant orders in flight), camera (pan, zoom and
-  drag), cursors (cursor theme and hotspots), map-overlays (signpost reach overlay), escalation (a map
+  drag), cursors (cursor theme and hotspots), map-overlays (signpost reach overlay), map-ping (a relayed game's pings to allies), escalation (a map
   variant's siege notices, attack night, mode mark and countdown), projections (per-frame snapshot
   projections for labels, badges and markers);
 - `content/`: generated-content loaders and pure joins by kind: map, object-gfx, gui, audio and the

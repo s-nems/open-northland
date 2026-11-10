@@ -1,3 +1,4 @@
+export { Allowance } from './allowance.js';
 export {
   type CompatibilityIssue,
   compatibilityIssues,
@@ -36,6 +37,7 @@ export type {
   RoomSummary,
   RoomView,
   ServerMessage,
+  SignalNode,
   VacantSeatMode,
   WaitedMember,
   WaitReason,

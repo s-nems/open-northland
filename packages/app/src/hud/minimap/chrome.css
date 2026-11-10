@@ -421,6 +421,46 @@
   height: 26px;
   stroke-width: 1.1;
 }
+/* The ping: a seal on the top rail's other end, glowing while a ping waits for its click. */
+.on-hud .on-minimap-chrome__signal {
+  position: absolute;
+  z-index: 1;
+  top: -13px;
+  left: 30px;
+  width: 36px;
+  height: 36px;
+}
+.on-hud .on-minimap-chrome__signal[hidden] {
+  display: none;
+}
+.on-hud .on-minimap-chrome__signal svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.3;
+}
+.on-hud .on-minimap-chrome__signal[aria-pressed="true"] {
+  animation: on-minimap-signal-armed 1.1s ease-in-out infinite alternate;
+}
+@keyframes on-minimap-signal-armed {
+  from {
+    box-shadow:
+      0 0 0 1px #d3b079,
+      0 0 4px 1px #ffe6a033;
+  }
+  to {
+    box-shadow:
+      0 0 0 1px #ffe6a0,
+      0 0 12px 4px #ffe6a099;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .on-hud .on-minimap-chrome__signal[aria-pressed="true"] {
+    animation: none;
+    box-shadow:
+      0 0 0 1px #ffe6a0,
+      0 0 10px 3px #ffe6a088;
+  }
+}
 .on-hud .on-minimap-chrome[data-place="overview"] .on-minimap-chrome__button--size {
   display: none;
 }

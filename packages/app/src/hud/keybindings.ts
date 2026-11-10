@@ -78,6 +78,7 @@ export const KEYBINDING_ACTIONS = [
   'attackMove',
   'dockShips',
   'workFlagOrder',
+  'mapPingMode',
   'roadTool',
   'palisadeTool',
   'upgradeGround',
@@ -154,6 +155,8 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   attackMove: 'KeyA',
   dockShips: 'KeyZ',
   workFlagOrder: 'Primary+Mouse2',
+  // A multiplayer ping: arms it for the next left click.
+  mapPingMode: 'KeyT',
   roadTool: 'KeyS',
   palisadeTool: 'KeyD',
   // Beside the road and wall keys, with F left to the original's heroes key; a rare order, so it

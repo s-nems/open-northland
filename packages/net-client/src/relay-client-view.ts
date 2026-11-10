@@ -33,6 +33,7 @@ const LOBBY_ACTIONS = [
   'start',
   'reportLoading',
   'say',
+  'signal',
   'sayInHall',
   'kick',
   'sendBlob',

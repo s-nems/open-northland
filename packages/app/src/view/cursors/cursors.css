@@ -45,3 +45,8 @@ canvas[data-cursor-pick] {
 canvas[data-cursor-placement] {
   cursor: var(--world-cursor-placement);
 }
+
+/* An armed map ping waits for its click over every other pending tool. */
+canvas[data-cursor-signal] {
+  cursor: var(--world-cursor-signal);
+}

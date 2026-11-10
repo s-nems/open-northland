@@ -47,6 +47,7 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     focused: new Set(),
     rangeRings: [],
     orderMarkers: [],
+    mapPings: [],
     lostGoals: [],
     lostGoalPulse: 0,
     doorBadges: [],

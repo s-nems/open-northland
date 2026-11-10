@@ -55,6 +55,8 @@ export function dispatchRoomMessage(room: Room, member: Member, message: RoomMes
     case 'chat':
       room.chat(member, message.text);
       return null;
+    case 'signal':
+      return room.signal(member, message, now);
     default:
       return assertNever(message);
   }

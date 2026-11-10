@@ -49,6 +49,8 @@ export const plGame = {
     minimap: {
       label: 'Minimapa',
       overview: 'Mapa Dyplomacji',
+      signal: 'Ping dla sojuszników',
+      signalArmed: 'Kliknij miejsce na mapie albo minimapie. Prawy klik lub Esc anuluje.',
       interaction:
         'Kliknij lub przeciągnij, aby przesunąć kamerę. Kółko zmienia skalę minimapy. Przeciągnij środkowym przyciskiem, aby przesunąć powiększony wycinek mapy.',
       zoomIn: 'Przybliż',

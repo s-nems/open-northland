@@ -41,6 +41,7 @@ import type { KeyBindings } from '../../hud/keybindings.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import type { PresentationPack } from '../../presentation/pack.js';
 import type { CameraGestures } from '../camera/index.js';
+import type { MapPingController } from '../map-ping/controller.js';
 import type { Tile } from '../picking.js';
 import type { ControlGroupMembers } from './control-groups.js';
 import type { Berth, MooringRule } from './orders/berths.js';
@@ -105,6 +106,9 @@ export interface UnitControlsOptions {
   readonly hostileToward: (owner: number) => boolean;
   readonly lang: string;
   readonly bindings: KeyBindings;
+  /** The map pings of a relayed game; an armed ping takes the next press before any order, and gives
+   *  way to a pick armed after it. */
+  readonly mapPing?: MapPingController;
   /** The control groups a loaded save restores; absent, every group starts empty. */
   readonly controlGroups?: ControlGroupMembers;
   readonly professions: readonly PickerEntry[];
@@ -221,6 +225,8 @@ export interface UnitControls {
   readonly selectEntity: (id: number) => void;
   /** Take a press on the map overview as an order at the world spot it depicts. */
   readonly overviewPress: OverviewPress;
+  /** Arm a map ping for the next click, calling off an armed pick, or call an armed ping off. */
+  readonly toggleMapPing: () => void;
   /** Replace the selection, as a map script's `SelectHuman` does. */
   readonly select: (ids: Iterable<number>) => void;
   /** The live cutouts the frame paints: the selection's portrait and the trade window's houses. */

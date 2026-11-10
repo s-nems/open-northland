@@ -231,6 +231,12 @@ export interface ChatLine extends HallChatLine {
   readonly tick: number | null;
 }
 
+/** A spot on the map as a signal names it: a half-cell node of the sim's lattice. */
+export interface SignalNode {
+  readonly hx: number;
+  readonly hy: number;
+}
+
 export interface WaitedMember {
   readonly nick: string;
   readonly reason: WaitReason;
@@ -326,6 +332,9 @@ export type ClientMessage =
    *  snapshot or a save, since the relay serves the frames after it. */
   | ({ readonly kind: 'blob' } & BlobUpload)
   | { readonly kind: 'chat'; readonly text: string }
+  /** A map signal for the members in the seats `to` names, the sender's allies as its world sees them;
+   *  the relay delivers it to no one else. */
+  | { readonly kind: 'signal'; readonly at: SignalNode; readonly to: readonly number[] }
   /** A line for the relay's own chat, said outside a room. */
   | { readonly kind: 'hallChat'; readonly text: string }
   | { readonly kind: 'pong'; readonly t: number };
@@ -411,6 +420,8 @@ export type ServerMessage =
       readonly bytes: string;
     }
   | ({ readonly kind: 'chat' } & ChatLine)
+  /** A map signal from the member `from` in seat `seat`. Not logged: a member that was away misses it. */
+  | { readonly kind: 'signal'; readonly from: string; readonly seat: number; readonly at: SignalNode }
   /** The room's chat so far, oldest first, sent to a member each time it enters or returns to the
    *  room, right after the room view. */
   | { readonly kind: 'chatHistory'; readonly lines: readonly ChatLine[] }

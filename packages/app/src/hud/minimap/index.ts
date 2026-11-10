@@ -16,7 +16,7 @@ import type { Rect } from '../geometry.js';
 import type { MapOverlayControls } from '../map-overlays.js';
 import { createAlarmLayer } from './alarms.js';
 import { createWorkerMinimapBaker } from './bake.js';
-import { createMinimapChrome } from './chrome.js';
+import { createMinimapChrome, type MinimapSignalState } from './chrome.js';
 import { MinimapDotPlot, type MinimapDotSink } from './dots.js';
 import {
   DEFAULT_MINIMAP_FILTERS,
@@ -42,6 +42,7 @@ import {
 import { createOverviewCanvas, type OverviewCanvas } from './overview-canvas.js';
 import { createDotReplotGate } from './replot-gate.js';
 import { createRoadLayer } from './road-layer.js';
+import { createSignalLayer } from './signals.js';
 import { MARKER_SIZE_SCALES, stampMark } from './stamps.js';
 import { createMinimapSurface } from './surface.js';
 
@@ -86,6 +87,8 @@ export interface MinimapOptions {
   readonly toScreenPx: (clientX: number, clientY: number) => { x: number; y: number };
   /** The button over the corner frame was pressed. */
   readonly onOverviewButton: () => void;
+  /** The corner frame's ping button was pressed; absent, the frame has none. */
+  readonly onSignalButton?: () => void;
 }
 
 /** Where a map stands on the screen, for what is drawn over it; a new `layout` object means it moved. */
@@ -101,6 +104,10 @@ export interface MinimapHandle {
   update(snapshot: WorldSnapshot, fog?: FogView | null, lostGoals?: readonly GoalNode[]): void;
   /** Ring an attack at half-cell node `at`. */
   ping(at: HalfCellNode): void;
+  /** Show a player's map ping at half-cell node `at` in `colour`. */
+  signal(at: HalfCellNode, colour: number): void;
+  /** The corner frame's ping button. */
+  setSignal(state: MinimapSignalState): void;
   setHidden(hidden: boolean): void;
   setUiScale(uiscale: number): Promise<void>;
   setFrame(frame: MinimapFrame): void;
@@ -125,6 +132,8 @@ interface MinimapView {
   dragging(): boolean;
   update: MinimapHandle['update'];
   ping(at: HalfCellNode): void;
+  signal(at: HalfCellNode, colour: number): void;
+  setSignal(state: MinimapSignalState): void;
   setHidden(hidden: boolean): void;
   setUiScale(uiscale: number): void;
   setFrame(frame: MinimapFrame): void;
@@ -182,6 +191,11 @@ function mountBothMaps(opts: MinimapOptions, overviewCanvas: OverviewCanvas): Mi
       corner.ping(at);
       if (overviewOpen) overview.ping(at);
     },
+    signal: (at, colour) => {
+      corner.signal(at, colour);
+      if (overviewOpen) overview.signal(at, colour);
+    },
+    setSignal: corner.setSignal,
     setHidden: corner.setHidden,
     setUiScale: async (next) => {
       corner.setUiScale(next);
@@ -293,6 +307,7 @@ function mountMinimapView(
   dots.height = raster.h;
   world.addChild(dots);
   const alarms = createAlarmLayer(world, unclippedWorld, bounds, rasterScale);
+  const signals = createSignalLayer(world, unclippedWorld, bounds, rasterScale);
 
   const zoomAt = (delta: number, anchor?: { x: number; y: number }): void => {
     const next = Math.max(1, Math.min(4, zoom * 2 ** (delta / 2)));
@@ -336,6 +351,7 @@ function mountMinimapView(
       onMarkerSize: (markerSize) => setFilters({ ...filters, markerSize }),
       onColours: (colours) => setFilters({ ...filters, colours }),
       ...(place === 'corner' ? { onOverview: opts.onOverviewButton } : {}),
+      ...(place === 'corner' && opts.onSignalButton !== undefined ? { onSignal: opts.onSignalButton } : {}),
     },
     opts.frame,
     place,
@@ -479,6 +495,7 @@ function mountMinimapView(
         texture.source.update();
       }
       alarms.draw(performance.now(), stampScale(), visibleRaster);
+      signals.draw(performance.now(), stampScale(), visibleRaster);
       const rect = viewportRectOnMinimap(
         layout,
         bounds,
@@ -494,6 +511,8 @@ function mountMinimapView(
       goalMarks.draw(layout, bounds, lostGoals, uiScale);
     },
     ping: (at) => alarms.add(at, performance.now()),
+    signal: (at, colour) => signals.add(at, colour, performance.now()),
+    setSignal: (state) => chrome.setSignal(state),
     setHidden: (next) => {
       hidden = next;
       // A hidden map plots nothing, so one shown again starts from the world as it stands.

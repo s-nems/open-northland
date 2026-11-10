@@ -55,6 +55,8 @@ export const deGame = {
     minimap: {
       label: 'Minikarte',
       overview: 'Diplomatiekarte',
+      signal: 'Ping für Verbündete',
+      signalArmed: 'Klicke eine Stelle auf der Karte oder Minikarte an. Rechtsklick oder Esc bricht ab.',
       interaction:
         'Klicke oder ziehe, um die Kamera zu bewegen. Scrolle, um den Zoom der Minikarte zu ändern. Ziehe mit der mittleren Maustaste, um den vergrößerten Kartenausschnitt zu verschieben.',
       zoomIn: 'Vergrößern',

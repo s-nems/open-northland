@@ -51,6 +51,8 @@ export const enGame = {
     minimap: {
       label: 'Minimap',
       overview: 'Diplomacy map',
+      signal: 'Ping for allies',
+      signalArmed: 'Click a spot on the map or minimap. Right-click or Esc cancels.',
       interaction:
         'Click or drag to move the camera. Scroll to zoom the minimap. Drag with the middle mouse button to pan the zoomed map.',
       zoomIn: 'Zoom in',

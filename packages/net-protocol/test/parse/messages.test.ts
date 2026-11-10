@@ -170,6 +170,8 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
   { kind: 'blob', type: 'save', to: 'Ania', tick: 40, bytes: BLOB },
   { kind: 'blob', type: 'map', to: null, tick: null, bytes: BLOB },
   { kind: 'chat', text: 'gotowi?' },
+  { kind: 'signal', at: { hx: 40, hy: 72 }, to: [2, 0] },
+  { kind: 'signal', at: { hx: 0, hy: 0 }, to: [] },
   { kind: 'hallChat', text: 'ktoś gra?' },
   { kind: 'pong', t: 1234.5 },
 ];
@@ -345,6 +347,18 @@ describe('client messages', () => {
     ['a zero speed', { kind: 'clock', speed: 0 }, /clock\.speed/],
     ['a negative pong', { kind: 'pong', t: -1 }, /pong\.t/],
     ['an empty chat line', { kind: 'chat', text: '   ' }, /empty/],
+    ['a signal off the lattice', { kind: 'signal', at: { hx: -1, hy: 0 }, to: [1] }, /signal\.at\.hx/],
+    [
+      'a signal past the node bound',
+      { kind: 'signal', at: { hx: 0, hy: 0x10000 }, to: [1] },
+      /signal\.at\.hy/,
+    ],
+    ['a signal to a seat twice', { kind: 'signal', at: { hx: 1, hy: 1 }, to: [1, 1] }, /twice/],
+    [
+      'a signal to a seat past the last',
+      { kind: 'signal', at: { hx: 1, hy: 1 }, to: [16] },
+      /signal\.to\[0\]/,
+    ],
     [
       'a digest missing a domain',
       { kind: 'ack', tick: 1, digest: { ...DIGEST, fog: undefined }, world: 0, load: LOAD },
@@ -610,6 +624,7 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
   },
   { kind: 'chat', from: 'Ania', flag: 'PL', text: 'gotowi?', at: 1_767_297_600_000, tick: null },
   { kind: 'chat', from: 'Ania', text: 'atak!', at: 1_767_297_660_500, tick: 1200 },
+  { kind: 'signal', from: 'Ania', seat: 3, at: { hx: 40, hy: 72 } },
   {
     kind: 'chatHistory',
     lines: [

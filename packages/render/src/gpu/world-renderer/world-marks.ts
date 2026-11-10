@@ -1,5 +1,5 @@
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
-import type { Container } from 'pixi.js';
+import type { Container, Texture } from 'pixi.js';
 import type { FootfallGround } from '../../data/effects/index.js';
 import type { Viewport } from '../../data/projection/index.js';
 import { type ImportMarker, importMarkersOf } from '../../data/scene/import-markers.js';
@@ -28,6 +28,8 @@ import {
   type LifeHeart,
   LifeHeartLayer,
   type LostGoalMarker,
+  type MapPing,
+  MapPingLayer,
   type OrderMarker,
   OrderMarkerLayer,
   type SettlerBubble,
@@ -63,6 +65,7 @@ export type MarkSlots = Pick<
   | 'hearts'
   | 'importMarkers'
   | 'groupNumbers'
+  | 'mapPings'
   | 'geometryDebug'
 >;
 
@@ -93,6 +96,7 @@ export interface WorldMarksFrame {
   readonly focused: ReadonlySet<number>;
   readonly rangeRings: readonly RangeRing[];
   readonly orderMarkers: readonly OrderMarker[];
+  readonly mapPings: readonly MapPing[];
   readonly lostGoals: readonly LostGoalMarker[];
   readonly lostGoalPulse: number;
   readonly doorBadges: readonly DoorBadge[];
@@ -108,6 +112,7 @@ export class WorldMarks {
   private readonly wakes = new ShipWakeLayer();
   private readonly selection = new SelectionLayer();
   private readonly orderMarkers = new OrderMarkerLayer();
+  private readonly mapPings: MapPingLayer;
   private readonly effects: CombatEffectsLayer;
   private readonly blood: BloodLayer;
   /** A razed building's reverse-construction transient. Its nodes live inside the depth-sorted sprite
@@ -139,7 +144,9 @@ export class WorldMarks {
     sheet: SpriteSheet | undefined,
     playerColourOf?: (player: number) => number,
     captureDamage?: (ref: number) => readonly FallenBody[] | undefined,
+    mapPingPin?: Texture,
   ) {
+    this.mapPings = new MapPingLayer(mapPingPin);
     this.blood = new BloodLayer(spriteLayer);
     this.effects = new CombatEffectsLayer((sprite, id, groundY, lift) =>
       this.blood.surfaces.restore(sprite, id, groundY, lift),
@@ -164,6 +171,7 @@ export class WorldMarks {
       hearts: this.hearts.container,
       importMarkers: this.importMarkers.container,
       groupNumbers: this.groupNumbers.container,
+      mapPings: this.mapPings.container,
       geometryDebug: this.geometryDebug.container,
     };
   }
@@ -247,6 +255,7 @@ export class WorldMarks {
       frame.focused,
     );
     this.orderMarkers.draw(frame.orderMarkers, frame.lostGoals, frame.lostGoalPulse, elevation, viewport);
+    this.mapPings.draw(frame.mapPings, elevation, viewport);
     this.effects.draw(frame);
     this.blood.draw(frame);
     this.collapses.draw(elevation, viewport, renderTime);
@@ -294,6 +303,7 @@ export class WorldMarks {
     this.wakes.destroy();
     this.selection.destroy();
     this.orderMarkers.destroy();
+    this.mapPings.destroy();
     this.effects.destroy();
     this.blood.destroy();
     this.collapses.destroy();

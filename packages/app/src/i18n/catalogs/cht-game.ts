@@ -38,6 +38,8 @@ export const chtGame = {
     minimap: {
       label: '小地圖',
       overview: '外交地圖',
+      signal: '向盟友標記',
+      signalArmed: '點擊地圖或小地圖上的地點。右鍵或 Esc 取消。',
       interaction: '點擊或拖曳以移動鏡頭。捲動滾輪以縮放小地圖。按住滑鼠中鍵拖曳可平移放大後的地圖。',
       zoomIn: '放大',
       zoomOut: '縮小',

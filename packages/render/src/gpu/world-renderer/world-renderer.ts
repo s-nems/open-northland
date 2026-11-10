@@ -69,6 +69,7 @@ import {
   NO_GROUP_NUMBERS,
   NO_HEARTS,
   NO_LOST_GOALS,
+  NO_MAP_PINGS,
   NO_ORDER_MARKERS,
   NO_RANGE_RINGS,
   NO_REFS,
@@ -169,7 +170,9 @@ export class WorldRenderer {
     for (const art of [opts?.planStakes, opts?.planRoads]) {
       if (art !== undefined) for (const texture of Object.values(art)) this.textureCache.adopt(texture);
     }
-    if (opts?.berthPost !== undefined) this.textureCache.adopt(opts.berthPost);
+    for (const art of [opts?.berthPost, opts?.mapPingPin]) {
+      if (art !== undefined) this.textureCache.adopt(art);
+    }
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.weatherGround = new WeatherGround([this.terrain, this.mapObjects]);
     this.groundWaves = new GroundWaveLayer(app.renderer, this.terrain.container);
@@ -189,6 +192,7 @@ export class WorldRenderer {
       opts?.sheet,
       opts?.playerColourOf,
       (ref) => pool.captureBuildingDamage(ref),
+      opts?.mapPingPin,
     );
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
     this.mapViews = new MapViewLayer(app, this.worldLayer, this.pool);
@@ -510,6 +514,7 @@ export class WorldRenderer {
       focused = NO_REFS,
       rangeRings = NO_RANGE_RINGS,
       orderMarkers = NO_ORDER_MARKERS,
+      mapPings = NO_MAP_PINGS,
       targetFlashes,
       lostGoals = NO_LOST_GOALS,
       lostGoalPulse = 0,
@@ -629,6 +634,7 @@ export class WorldRenderer {
       focused,
       rangeRings,
       orderMarkers,
+      mapPings,
       lostGoals,
       lostGoalPulse,
       doorBadges,

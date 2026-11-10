@@ -460,6 +460,7 @@ export const enSurfaces = {
         coarseStep: 'Change a training counter by 10',
         craftToggle: 'Add/remove a product from production',
         workFlagOrder: 'Set a work flag',
+        mapPingMode: 'Ping mode: click a spot for allies',
         roadTool: 'Road tool',
         palisadeTool: 'Stockade tool',
         upgradeGround: 'Road and stockade: also on room for building upgrades',

@@ -40,6 +40,7 @@ import {
   parseSeatIndex,
 } from './room.js';
 import { parseSaveOrders } from './save-orders.js';
+import { parseSignalNode } from './signal.js';
 import { assertNever, asTimestamp, parseFlag, parseLine, parseNick, parseRelayBuild } from './text.js';
 import { BLOB_TYPES, parseBlobBytes, parseStateHash, parseWireCommands, SYNC_DOMAINS } from './wire.js';
 
@@ -67,6 +68,7 @@ const SERVER_KINDS = keysOf<ServerMessage['kind']>({
   mapRequest: true,
   blob: true,
   chat: true,
+  signal: true,
   chatHistory: true,
   ping: true,
   rejected: true,
@@ -220,6 +222,13 @@ export function parseServerMessage(
       };
     case 'chat':
       return { kind, ...parseChatLine(raw, 'chat') };
+    case 'signal':
+      return {
+        kind,
+        from: parseNick(raw.from, 'signal.from'),
+        seat: parseSeatIndex(raw.seat, 'signal.seat'),
+        at: parseSignalNode(raw.at, 'signal.at'),
+      };
     case 'chatHistory': {
       const lines = asArray(raw.lines, 'chatHistory.lines');
       if (lines.length > MAX_CHAT_HISTORY_LINES)

@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 59` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 60` in
 `packages/net-protocol`. A change one side of the current version could not honour (a message shape, or
 the value set of a validated field such as the fog mode ids) bumps the version; the relay refuses a
 `hello` that names another.
@@ -677,6 +677,16 @@ newest `MAX_CHAT_HISTORY_LINES` lines, the lobby's included, and the log ends wi
 enters the room: on creating it, on joining it, and on every return of its token, before `start` and
 `clock`.
 
+## Map signals
+
+`signal { at: { hx, hy }, to: [seat] }` points at a half-cell node of the running world for the members
+in the seats `to` names: the sender's allies as its own world judges them, since the relay holds no
+diplomacy. The relay delivers `signal { from, seat, at }` to each connected member seated there, never
+back to the sender and never to an observer, and logs nothing: a member away when it was sent misses
+it. It refuses a signal before the start (`gameNotStarted`) and from a member without a seat
+(`seatRequired`), and drops a member's signals past `SIGNAL_BURST` unanswered, one more each
+`SIGNAL_REFILL_MS`; the client counts the same allowance and sends none past it.
+
 ## The hall
 
 A client outside a room is in the hall: the room list, who is on the relay, and the relay's own chat.
@@ -783,6 +793,7 @@ Each value verified against its constant; the owning package is in brackets.
 | `MAX_NICK_LENGTH`, `MAX_ROOM_NAME_LENGTH`, `MAX_CHAT_LENGTH`, `MAX_CHAT_HISTORY_LINES` [protocol] | 24, 48, 500, 500 | Characters; chat lines kept per room. |
 | `MAX_HALL_CHAT_LINES`, `HALL_CHAT_KEPT_MS` [protocol, server] | 200, 14 days | Server chat lines kept and replayed. |
 | `HALL_CHAT_BURST`, `HALL_CHAT_REFILL_MS` [server] | 5, 2 s | Server chat lines per peer address. |
+| `MAX_SIGNAL_NODE`, `SIGNAL_BURST`, `SIGNAL_REFILL_MS` [protocol] | 65535, 3, 1.5 s | A signal's node coordinates; signals per member. |
 | `MAX_ROOM_PASSWORD_LENGTH` [protocol] | 32 | Characters of a room password. |
 | `JOIN_PASSWORD_BURST`, `JOIN_PASSWORD_REFILL_MS` [server] | 5, 5 s | Wrong or missing room passwords per peer address. |
 | `MAX_PRESENCE_ENTRIES`, `SEEN_KEPT_MS`, `SEEN_AFTER_MS` [protocol, server, server] | 500, 7 days, 15 s | Entries of each `presence` list; how long a nick stays recent; how long a connection stays to be remembered. |
