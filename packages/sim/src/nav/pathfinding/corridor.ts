@@ -30,7 +30,8 @@ export interface CorridorEntry {
  * off the corridor node nearest `goal`. Not the lowest-cost route, only one within the two hops of it.
  * Returns `null` when either nearest node lies more than its hop (Manhattan half-cell nodes) away,
  * when either hop fails, runs past its settle cap or is no straight hop, or when the two nearest nodes
- * leave no stretch of corridor to share.
+ * leave no stretch of corridor to share. `exit` widens the way off alone, as {@link followCorridor}
+ * describes.
  */
 export function joinCorridor(
   graph: TerrainGraph,
@@ -41,6 +42,7 @@ export function joinCorridor(
   stats: SearchStats,
   maxHopNodes: number,
   traversal: Traversal = 'land',
+  exit?: CorridorEntry,
 ): NodeId[] | null {
   const lattice = corridorLattice(graph, corridor);
   // No corridor node lies nearer `start` in Manhattan nodes than the corridor's bounding box does.
@@ -48,14 +50,14 @@ export function joinCorridor(
   // Only the corridor's own start can be blocked, by the walker-exempt rule; no hop may end there.
   const board = nearestStop(graph, lattice, corridor, start, 0, blocked);
   if (board === undefined || manhattanNodes(graph, start, board.node) > maxHopNodes) return null;
-  const exit = nearestStop(graph, lattice, corridor, goal, board.index, blocked);
-  if (exit === undefined || exit.index === board.index) return null;
-  if (manhattanNodes(graph, exit.node, goal) > maxHopNodes) return null;
+  const last = nearestStop(graph, lattice, corridor, goal, board.index, blocked);
+  if (last === undefined || last.index === board.index) return null;
+  if (manhattanNodes(graph, last.node, goal) > maxHopNodes) return null;
   const onto = findPathWithin(graph, start, board.node, blocked, stats, CORRIDOR_LEG_MAX_EXPLORED, traversal);
   if (typeof onto === 'string' || !isHop(graph, onto)) return null;
-  const off = findPathWithin(graph, exit.node, goal, blocked, stats, CORRIDOR_LEG_MAX_EXPLORED, traversal);
-  if (typeof off === 'string' || !isHop(graph, off)) return null;
-  return joinedLegs(graph, onto, lattice, corridor, board.index + 1, exit.index, off);
+  const off = wayOff(graph, last.node, goal, blocked, stats, traversal, exit);
+  if (off === null) return null;
+  return joinedLegs(graph, onto, lattice, corridor, board.index + 1, last.index, off);
 }
 
 /** The index of `node` on a loop-free `corridor`, or undefined off it. */
@@ -92,11 +94,31 @@ export function followCorridor(
   if (at === undefined) return null;
   const last = nearestStop(graph, lattice, corridor, goal, at, blocked);
   if (last === undefined || manhattanNodes(graph, last.node, goal) > maxHopNodes) return null;
-  const off = findPathWithin(graph, last.node, goal, blocked, stats, exit.legMaxExplored, traversal);
-  if (typeof off === 'string' || (off.length > exit.hopNodes && !isHop(graph, off))) return null;
+  const off = wayOff(graph, last.node, goal, blocked, stats, traversal, exit);
+  if (off === null) return null;
   // The corridor stretch runs from the node after the meeting up to the last one, which opens `off`;
   // with the last one at the meeting, `off` repeats that one node and the loop cut drops it.
   return joinedLegs(graph, onto, lattice, corridor, at + 1, Math.max(at + 1, last.index), off);
+}
+
+/**
+ * The search off a corridor from its node `from` to `goal`: a straight hop within
+ * {@link CORRIDOR_LEG_MAX_EXPLORED} settles, or with `exit` any leg of up to `exit.hopNodes` nodes within
+ * `exit.legMaxExplored` settles. Null when it fails either way.
+ */
+function wayOff(
+  graph: TerrainGraph,
+  from: NodeId,
+  goal: NodeId,
+  blocked: BlockOverlay,
+  stats: SearchStats,
+  traversal: Traversal,
+  exit: CorridorEntry | undefined,
+): NodeId[] | null {
+  const cap = exit?.legMaxExplored ?? CORRIDOR_LEG_MAX_EXPLORED;
+  const off = findPathWithin(graph, from, goal, blocked, stats, cap, traversal);
+  if (typeof off === 'string') return null;
+  return (exit !== undefined && off.length <= exit.hopNodes) || isHop(graph, off) ? off : null;
 }
 
 /** Manhattan half-cell nodes from `node` to `corridor`'s bounding box, 0 inside it: no corridor node lies

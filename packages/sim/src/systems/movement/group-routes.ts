@@ -123,6 +123,8 @@ export class GroupRoutes {
         blocked,
         stats,
         GROUP_AREA_RADIUS_NODES,
+        'land',
+        MEETING_EXIT,
       );
       if (joined !== null) return this.lanes.departEarly(blocked, joined, goal, route.meanWeight);
     }
