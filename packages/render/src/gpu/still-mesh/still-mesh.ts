@@ -37,9 +37,10 @@ import { type ByteUploader, QuadStore, VERTICES_PER_QUAD } from './quad-store.js
 /**
  * The pooled sprites of the depth-sorted layer, drawn from one retained mesh instead of Pixi's batches.
  *
- * A band rebuild walks its children in painter order as Pixi would. A child the owner offers has its
- * sprites' quads in stable slots of a shared attribute buffer: the rebuild writes only their indices, and
- * each maximal run of such children between two others becomes one draw of the world batch program,
+ * A band rebuild walks its children in painter order as Pixi would. A child the owner offers, or one that
+ * is itself a world-batched sprite (a tree, its shadow), has its sprites' quads in stable slots of a
+ * shared attribute buffer: the rebuild writes only their indices, and each maximal run of such children
+ * between two others becomes one draw of the world batch program,
  * placed in the band's instructions where Pixi's own batches of that run would have been. A run's draws
  * split where its pages or palette LUT outgrow one draw's texture list, as Pixi's batches do; a rebuild
  * that moves a quad to another texture slot rewrites only that slot's id. A meshed sprite's batch record
@@ -114,7 +115,9 @@ const HIDDEN = 2;
 /** The member record a meshed child carries, keyed off the container itself to spare a map lookup per
  *  child per rebuild. */
 const MEMBER: unique symbol = Symbol('still mesh member');
-type MemberHost = Container & { [MEMBER]?: Member };
+/** Whether a band child is a lone sprite the mesh may draw, as its first look at the child found. */
+const LONE: unique symbol = Symbol('still mesh lone sprite');
+type MemberHost = Container & { [MEMBER]?: Member; [LONE]?: boolean };
 
 interface SpritePipeInternals {
   _getGpuSprite(sprite: Sprite): BatchableSprite;
@@ -124,7 +127,8 @@ interface SpritePipeInternals {
 /** One sprite of a meshed child: its batch record and the slot its quad lives in. */
 interface MeshQuad extends TableQuad {
   readonly sprite: Sprite;
-  /** The band child the sprite draws for: its parent, or the member a nested group of it sits in. */
+  /** The band child the sprite draws for: its parent, the member a nested group of it sits in, or the
+   *  sprite itself when it is the band's child. */
   readonly owner: Container;
   readonly element: BatchableSprite;
   /** Moves between the store's cold and hot blocks only as its band rebuilds, which rewrites its index. */
@@ -251,10 +255,31 @@ function holdsFrom(
   return at;
 }
 
-/** The quads `child` draws from the mesh: its nested groups' sprites once a reshape found them, else one
- *  per direct child. */
+/** Whether `child` is itself a world-batched sprite: a member of one quad, its own, without an owner's
+ *  offer. A sprite is routed to the world batch as it is made, so the first answer stands. */
+function loneSprite(child: MemberHost): child is Sprite & MemberHost {
+  let lone = child[LONE];
+  if (lone === undefined) {
+    lone = child instanceof Sprite && isWorldBatched(child);
+    child[LONE] = lone;
+  }
+  return lone;
+}
+
+/** Whether a lone `sprite` is still its member's one quad, and still meshable if it changed. */
+function loneHolds(sprite: Sprite, quads: readonly MeshQuad[]): boolean {
+  const quad = quads[0];
+  if (quads.length !== 1 || quad === undefined || quad.sprite !== sprite || !quad.live) return false;
+  const changed =
+    quad.containerTick !== sprite._didContainerChangeTick || quad.viewTick !== sprite._didViewChangeTick;
+  return !changed || meshableSprite(sprite);
+}
+
+/** The quads `child` draws from the mesh: one for a lone sprite, else its nested groups' sprites once a
+ *  reshape found them, or one per direct child. */
 function quadsOf(child: MemberHost | undefined): number {
   if (child === undefined) return 0;
+  if (child[LONE] === true) return 1;
   return Math.max(child.children.length, child[MEMBER]?.quads.length ?? 0);
 }
 
@@ -455,7 +480,7 @@ export class StillSpriteMesh implements StillBandCollector {
 
   /**
    * @param offered whether the owner offers `child` to the mesh, whose sprites then draw from it where
-   *   they can.
+   *   they can. A child that is itself a world-batched sprite needs no offer.
    * @param runPayoff the quad packs per frame a run must save to draw from the mesh ({@link RUN_PAYOFF}).
    */
   constructor(
@@ -594,7 +619,7 @@ export class StillSpriteMesh implements StillBandCollector {
     const store = this.store;
     if (quad === undefined || !quad.live || store === null || this.packer === null) return;
     // A sprite changing under a child the owner no longer offers: its band rebuilds and hands it to Pixi.
-    if (quad.sprite.parent === null || !this.offered(quad.owner))
+    if (quad.sprite.parent === null || !this.takes(quad.owner))
       state.band.renderGroup.structureDidChange = true;
     this.packer.repackQuad(quad.element, store.f32, store.u32, QuadStore.start(quad.slot), quad.textureId);
     quad.containerTick = quad.sprite._didContainerChangeTick;
@@ -634,9 +659,14 @@ export class StillSpriteMesh implements StillBandCollector {
     return state;
   }
 
+  /** Whether `child` may draw from the mesh: the owner offers it, or it is a lone world sprite. */
+  private takes(child: MemberHost): boolean {
+    return this.offered(child) || loneSprite(child);
+  }
+
   /**
-   * Sort `children` into Pixi's and the mesh's for this rebuild: an offered child joins the mesh only
-   * within a run of offered children whose quads, at the band's rebuild rate, pay for the run's draws.
+   * Sort `children` into Pixi's and the mesh's for this rebuild: a child the mesh takes joins it only
+   * within a run of such children whose quads, at the band's rebuild rate, pay for the run's draws.
    */
   private classify(state: BandStills, children: readonly MemberHost[], layer: RenderLayer): void {
     const elapsed = state.lastBuildFrame < 0 ? INITIAL_INTERVAL : this.frame - state.lastBuildFrame;
@@ -647,8 +677,7 @@ export class StillSpriteMesh implements StillBandCollector {
     const classes = state.classes;
     for (let i = 0; i < n; i++) {
       const child = children[i];
-      classes[i] =
-        child === undefined || !displayed(child, layer) ? HIDDEN : this.offered(child) ? MESH : PIXI;
+      classes[i] = child === undefined || !displayed(child, layer) ? HIDDEN : this.takes(child) ? MESH : PIXI;
     }
     // A hidden child adds nothing to the instructions, so it does not split a run.
     state.largestRun = 0;
@@ -717,14 +746,14 @@ export class StillSpriteMesh implements StillBandCollector {
       child[MEMBER] = member;
     }
     // A child added or removed moves the view tick and may change the sprites; a transform, tint or alpha
-    // change moves the container tick, which moves every sprite of it, so all its quads repack.
-    const regrouped = member.band === null || member.viewTick !== viewTicksOf(member);
+    // change moves the container tick, which moves every sprite of it, so all its quads repack. A lone
+    // sprite's view tick is its own quad's, which the placing compares.
+    const regrouped = member.band === null || (!loneSprite(child) && member.viewTick !== viewTicksOf(member));
     const moved =
       regrouped || member.containerTick !== containerTicksOf(member) || member.shading !== this.shading;
     const shaped = regrouped
       ? this.reshape(member, layer)
-      : (plainContainer(child) && child.groupBlendMode === 'normal' && this.shapeHolds(member, layer)) ||
-        this.reshape(member, layer);
+      : this.shapeHolds(member, layer) || this.reshape(member, layer);
     if (!shaped) return this.reject(state, member);
     member.moved = moved;
     return member;
@@ -773,16 +802,27 @@ export class StillSpriteMesh implements StillBandCollector {
    * of the container.
    */
   private shapeHolds(member: Member, layer: RenderLayer): boolean {
-    return holdsFrom(member.container, member.quads, 0, layer) === member.quads.length;
+    const container: MemberHost = member.container;
+    if (loneSprite(container)) return loneHolds(container, member.quads);
+    return (
+      plainContainer(container) &&
+      container.groupBlendMode === 'normal' &&
+      holdsFrom(container, member.quads, 0, layer) === member.quads.length
+    );
   }
 
   /** Match `member`'s quads to the sprites Pixi would collect of it now; false if one cannot be meshed. */
   private reshape(member: Member, layer: RenderLayer): boolean {
-    if (!plainContainer(member.container)) return false;
+    const container: MemberHost = member.container;
     const sprites = this.reshaped;
     sprites.length = 0;
     member.nested.length = 0;
-    if (!collectSprites(member.container, layer, sprites, member.nested)) return false;
+    if (loneSprite(container)) {
+      // The rebuild collects only a displayed child.
+      if (!meshableSprite(container)) return false;
+      sprites.push(container);
+    } else if (!plainContainer(container) || !collectSprites(container, layer, sprites, member.nested))
+      return false;
     const store = this.store;
     const renderer = this.renderer;
     if (store === null || renderer === null) return false;

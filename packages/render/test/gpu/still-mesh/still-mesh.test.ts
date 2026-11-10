@@ -644,6 +644,47 @@ describe('StillSpriteMesh', () => {
     expect(h.mesh.quadCount).toBe(0);
   });
 
+  it('draws a world sprite that is itself a child from the mesh, unoffered, and keeps it current', () => {
+    const h = harness();
+    const walker = entity(h.layer, 0);
+    h.held.add(walker);
+    const tree = worldBatched(new Sprite(textureOn(2)));
+    tree.zIndex = 1;
+    const sign = new Sprite(textureOn(3));
+    sign.zIndex = 2;
+    h.layer.addChild(tree, sign);
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    // The walker and the tree share one run; the sprite Pixi's default batch draws stays Pixi's.
+    expect(h.meshDraws()).toBe(1);
+    expect(h.mesh.quadCount).toBe(3);
+
+    tree.skew.x = 0.01;
+    tree.texture = textureOn(4);
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(packedOf(h, tree)).toEqual(freshPack(h, tree));
+    // A rebuild in the frame of a change packs the tree as it now stands.
+    tree.position.set(5, 6);
+    tree.texture = textureOn(5);
+    entity(h.layer, 3);
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(packedOf(h, tree)).toEqual(freshPack(h, tree));
+    // So does one in the frame of a move alone, which rewrites the corners only.
+    tree.position.set(9, 2);
+    entity(h.layer, 4);
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(packedOf(h, tree)).toEqual(freshPack(h, tree));
+
+    tree.visible = false;
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.mesh.quadCount).toBe(2);
+    // Shown again, but with a blend no mesh draw has: Pixi's batches draw it.
+    tree.visible = true;
+    tree.blendMode = 'add';
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(h.mesh.quadCount).toBe(2);
+    expect(h.stale).toEqual([]);
+  });
+
   it('draws the sprites of a plain container nested in a child, and repacks them when it fades', () => {
     const h = harness();
     const selected = entity(h.layer, 0);
