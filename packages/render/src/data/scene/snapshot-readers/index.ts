@@ -45,6 +45,7 @@ export {
   readStoreExchangeRef,
   readsCartLift,
   readVisualScale,
+  readWearsLiveBoots,
 } from './unit-readers.js';
 export {
   readHaulingCartDriver,

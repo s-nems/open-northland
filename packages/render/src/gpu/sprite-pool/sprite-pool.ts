@@ -1,7 +1,7 @@
-import { WERESNAKE_TRIBE } from '@open-northland/data';
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { Container, type Sprite } from 'pixi.js';
 import { BloodCoats } from '../../data/effects/blood-coats.js';
+import { marksGround } from '../../data/effects/footfall.js';
 import type { GhostSource } from '../../data/fog/index.js';
 import { BEARER_GLOW, HOUSE_GLOW, type LightSiteList, lightOn } from '../../data/lighting/light-sites.js';
 import {
@@ -1048,7 +1048,7 @@ export class SpritePool {
     return this.ships;
   }
 
-  /** This frame's drawn adult humans on the map, valid until the next {@link reconcile}; off the culled
+  /** This frame's drawn humans on the map ground, valid until the next {@link reconcile}; off the culled
    *  draw list like {@link shipsAfloat}. */
   walkersDrawn(): readonly DrawnWalker[] {
     return this.walkers;
@@ -1259,9 +1259,4 @@ export class SpritePool {
 /** A fog memory, a portrait-only body and a worker shown inside a house stand on no map ground. */
 function standsOnMapGround(item: SpriteDrawItem): boolean {
   return item.ghost !== true && item.portraitOnly !== true && item.inHouse !== true;
-}
-
-/** Original behavior: every adult human but a weresnake marks the ground where it steps. */
-function marksGround(item: SpriteDrawItem): boolean {
-  return item.young !== true && item.tribe !== WERESNAKE_TRIBE;
 }

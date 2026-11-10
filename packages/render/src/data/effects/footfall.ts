@@ -1,3 +1,4 @@
+import { WERESNAKE_TRIBE } from '@open-northland/data';
 import { cellOfNode } from '@open-northland/sim';
 import type { SceneGround } from '../scene/index.js';
 
@@ -90,6 +91,38 @@ export function footfallAt(ground: FootfallGround, hx: number, hy: number): Foot
   return KIND_BY_CODE[ground.cells[cy * ground.width + cx] ?? NO_FOOTFALL];
 }
 
+/** Original behavior: every adult human but a weresnake marks the ground where it steps. */
+export function marksGround(walker: { readonly young?: boolean; readonly tribe?: number }): boolean {
+  return walker.young !== true && walker.tribe !== WERESNAKE_TRIBE;
+}
+
+/** A node's column on the lattice, each odd row's stagger counted: a column step keeps it. */
+function latticeColumn(hx: number, hy: number): number {
+  return 2 * hx + (hy & 1);
+}
+
+/** Two node rows: a column step's span, straight north or south past the row between. */
+const COLUMN_STEP_ROWS = 2;
+
+/**
+ * Whether a walker read at node row `midHy`, then at `(toHx, toHy)`, was passing over the middle row of a
+ * column step from `(fromHx, fromHy)`: its nearest node turns to that row's node only at the step's half
+ * way, a node the walk never reaches.
+ */
+export function skipsColumnMiddle(
+  fromHx: number,
+  fromHy: number,
+  midHy: number,
+  toHx: number,
+  toHy: number,
+): boolean {
+  return (
+    Math.abs(toHy - fromHy) === COLUMN_STEP_ROWS &&
+    latticeColumn(fromHx, fromHy) === latticeColumn(toHx, toHy) &&
+    2 * midHy === fromHy + toHy
+  );
+}
+
 const FULL_TURN_DEGREES = 360;
 const QUARTER_TURN_DEGREES = 90;
 const THREE_QUARTER_TURN_DEGREES = 270;
@@ -100,7 +133,7 @@ const THREE_QUARTER_TURN_DEGREES = 270;
  * angle a directional effect takes its valency from.
  */
 export function stepHeadingDegrees(fromHx: number, fromHy: number, toHx: number, toHy: number): number {
-  const dx = 2 * toHx + (toHy & 1) - (2 * fromHx + (fromHy & 1));
+  const dx = latticeColumn(toHx, toHy) - latticeColumn(fromHx, fromHy);
   const dy = 2 * toHy - 2 * fromHy;
   if (dy === 0) return dx < 0 ? THREE_QUARTER_TURN_DEGREES : QUARTER_TURN_DEGREES;
   const degrees = Math.trunc((Math.atan2(dy, dx) * 180) / Math.PI) + QUARTER_TURN_DEGREES;

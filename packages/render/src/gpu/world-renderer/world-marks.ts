@@ -82,7 +82,7 @@ export interface WorldMarksFrame {
   readonly renderTime: number;
   /** The drawn ships, off the pool's culled draw list. */
   readonly ships: readonly ShipAfloat[];
-  /** The drawn adult humans, off the pool's culled draw list. */
+  /** The drawn humans on the map ground, off the pool's culled draw list. */
   readonly walkers: readonly DrawnWalker[];
   /** Whether a road runs over a node. */
   readonly roadAt: (hx: number, hy: number) => boolean;

@@ -199,4 +199,29 @@ describe('FootfallLayer', () => {
     expect(layer.container.children).toHaveLength(1);
     expect(print.x).toBe(halfCellToScreen(5, 2).x);
   });
+
+  it('passes over the middle row of a column step, printing only the node it reaches', () => {
+    const { layer, draw, step } = setup();
+    step(4, 2, 10);
+    const start = positionOfNode(4, 2);
+    const end = positionOfNode(4, 4);
+    // Just past half way, nudged off the line, the nearest node is the skipped row's.
+    const middle = { x: Math.round((start.x + end.x) / 2) - 2000, y: Math.round((start.y + end.y) / 2) + 1 };
+    draw(snapshotOf([{ id: WALKER, components: { Position: middle, Person: {} } }], 11));
+    step(4, 4, 12);
+    const print = layer.container.children[0] as Sprite;
+    expect(layer.container.children).toHaveLength(1);
+    expect(print.x).toBe(halfCellToScreen(4, 4).x);
+    // Straight south: valency 2 of 4.
+    expect(bobOf(print)).toBe(222);
+  });
+
+  it('reads the boots worn by the walk under way before the slot', () => {
+    const { sprites, draw } = setup(false, null);
+    const shod = (hx: number, tick: number, walked: number) =>
+      draw(snapshotOf([walkerAt(hx, 2, true, { ...bootsAt(0), PathFollow: { bootsDegree: walked } })], tick));
+    shod(4, 10, 0);
+    shod(5, 11, ONE);
+    expect(sprites.children).toHaveLength(0);
+  });
 });

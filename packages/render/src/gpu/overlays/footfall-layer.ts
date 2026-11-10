@@ -19,12 +19,19 @@ import {
   MAX_STEP_NODES,
   PRINT_SHOWN_TICKS,
   printAlpha,
+  skipsColumnMiddle,
   stepHeadingDegrees,
   stepValency,
 } from '../../data/effects/index.js';
-import { halfCellToScreen, isVisible, type Viewport } from '../../data/projection/index.js';
+import {
+  halfCellToScreenX,
+  halfCellToScreenY,
+  isVisible,
+  type Viewport,
+} from '../../data/projection/index.js';
 import { screenDepth } from '../../data/scene/index.js';
-import { readPosition, readWearsLiveBoots } from '../../data/snapshot/index.js';
+import { readWearsLiveBoots } from '../../data/scene/snapshot-readers/index.js';
+import { readPosition } from '../../data/snapshot/index.js';
 import { type ParticleRef, particleFrame } from '../../data/sprites/index.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/terrain/index.js';
 import type { DrawnWalker } from '../sprite-pool/index.js';
@@ -56,8 +63,8 @@ interface WalkerSteps {
   stepping: boolean;
 }
 
-/** How near, per position axis, a walker counts as standing on the node it steps onto: an eighth of a
- *  column step. */
+/** How near, per position axis, a walker counts as standing on the node it steps onto: an eighth of an
+ *  east-west node step. */
 const ON_NODE_TOLERANCE = ONE / 16;
 
 interface Footfall {
@@ -67,6 +74,10 @@ interface Footfall {
   readonly hy: number;
   readonly valency: number;
   readonly tick: number;
+  /** The node's lifted screen point and the dust's paint depth, fixed for the mark's life. */
+  readonly x: number;
+  readonly y: number;
+  readonly depth: number;
 }
 
 /**
@@ -91,6 +102,8 @@ export class FootfallLayer {
   private lastSnapshot: WorldSnapshot | undefined;
   private readonly nodes = new Map<number, Sprite>();
   private readonly seen = new Set<number>();
+  /** The layer lookup's argument, reused across marks. */
+  private readonly lookup = { layer: '', bob: 0 };
 
   constructor(
     private readonly spriteLayer: Container,
@@ -152,10 +165,13 @@ export class FootfallLayer {
         continue;
       }
       if (steps.hx !== hx || steps.hy !== hy) {
-        if (steps.stepping) this.land(steps, walker.marksGround, components, frame, ground, tick);
-        steps.stepping = hexDistanceBetween(steps.hx, steps.hy, hx, hy) <= MAX_STEP_NODES;
-        steps.fromHx = steps.hx;
-        steps.fromHy = steps.hy;
+        // The middle row of a column step is passed over, never reached: the step runs on to (hx, hy).
+        if (!steps.stepping || !skipsColumnMiddle(steps.fromHx, steps.fromHy, steps.hy, hx, hy)) {
+          if (steps.stepping) this.land(steps, walker.marksGround, components, frame, ground, tick);
+          steps.stepping = hexDistanceBetween(steps.hx, steps.hy, hx, hy) <= MAX_STEP_NODES;
+          steps.fromHx = steps.hx;
+          steps.fromHy = steps.hy;
+        }
         steps.hx = hx;
         steps.hy = hy;
       }
@@ -180,16 +196,28 @@ export class FootfallLayer {
   ): void {
     steps.stepping = false;
     const { fromHx, fromHy, hx, hy } = steps;
-    if (readWearsLiveBoots(components)) this.raise('dust', hx, hy, 0, tick);
+    if (readWearsLiveBoots(components)) this.raise('dust', hx, hy, 0, tick, frame.elevation);
     if (!marksGround || frame.roadAt(hx, hy)) return;
     const kind = ground === null ? undefined : footfallAt(ground, hx, hy);
     if (kind === undefined) return;
     const count = this.sheet?.bindings.footfall?.[kind]?.valencies.length ?? 1;
-    this.raise(kind, hx, hy, stepValency(stepHeadingDegrees(fromHx, fromHy, hx, hy), count), tick);
+    const valency = stepValency(stepHeadingDegrees(fromHx, fromHy, hx, hy), count);
+    this.raise(kind, hx, hy, valency, tick, frame.elevation);
   }
 
-  private raise(kind: FootfallKind, hx: number, hy: number, valency: number, tick: number): void {
-    this.marks.push({ key: this.nextKey++, kind, hx, hy, valency, tick });
+  private raise(
+    kind: FootfallKind,
+    hx: number,
+    hy: number,
+    valency: number,
+    tick: number,
+    elevation: ElevationField,
+  ): void {
+    const x = halfCellToScreenX(hx, hy);
+    const groundY = halfCellToScreenY(hy);
+    const y = groundY - terrainLiftAtNode(elevation, hx, hy);
+    const depth = screenDepth(x, groundY, 'projectile');
+    this.marks.push({ key: this.nextKey++, kind, hx, hy, valency, tick, x, y, depth });
   }
 
   /** Drop the marks whose life is over, compacting the list in place. */
@@ -203,30 +231,32 @@ export class FootfallLayer {
     const age = frame.renderTime - mark.tick;
     const print = mark.kind !== 'dust';
     const alpha = print ? printAlpha(age) : dustAlpha(age, lifeOf(mark, this.sheet));
-    const bob = print ? particleFrame(ref, 0, mark.valency) : particleFrame(ref, age);
-    if (alpha <= 0 || bob === undefined) return;
-    const ground = halfCellToScreen(mark.hx, mark.hy);
-    const x = ground.x;
-    const y = ground.y - terrainLiftAtNode(frame.elevation, mark.hx, mark.hy);
+    if (alpha <= 0) return;
     let node = this.nodes.get(mark.key);
-    if (!isVisible(frame.viewport, x, y)) {
+    if (!isVisible(frame.viewport, mark.x, mark.y)) {
       retainOffscreen(node, mark.key, this.seen);
       return;
     }
-    const sheet = this.sheet;
-    const resolved =
-      sheet === undefined ? null : layeredLayerFor(sheet, 'projectile', { layer: ref.layer, bob });
-    if (resolved === null) return;
-    if (node === undefined) {
-      node = worldBatched(new Sprite());
-      (print ? this.container : this.spriteLayer).addChild(node);
-      this.nodes.set(mark.key, node);
+    // A print's frame never changes, so its sprite is dressed once; the dust turns a frame a tick.
+    if (node === undefined || !print) {
+      const bob = print ? particleFrame(ref, 0, mark.valency) : particleFrame(ref, age);
+      const sheet = this.sheet;
+      if (bob === undefined || sheet === undefined) return;
+      this.lookup.layer = ref.layer;
+      this.lookup.bob = bob;
+      const resolved = layeredLayerFor(sheet, 'projectile', this.lookup);
+      if (resolved === null) return;
+      if (node === undefined) {
+        node = worldBatched(new Sprite());
+        (print ? this.container : this.spriteLayer).addChild(node);
+        this.nodes.set(mark.key, node);
+        if (!print) node.zIndex = mark.depth;
+      }
+      node.texture = this.textures.get(resolved.source, resolved.frame);
+      const scale = print ? resolved.scale : resolved.scale * DUST_SCALE;
+      node.scale.set(scale);
+      node.position.set(mark.x + resolved.frame.offsetX * scale, mark.y + resolved.frame.offsetY * scale);
     }
-    node.texture = this.textures.get(resolved.source, resolved.frame);
-    const scale = print ? resolved.scale : resolved.scale * DUST_SCALE;
-    node.scale.set(scale);
-    node.position.set(x + resolved.frame.offsetX * scale, y + resolved.frame.offsetY * scale);
-    if (!print) node.zIndex = screenDepth(ground.x, ground.y, 'projectile');
     node.alpha = alpha;
     node.visible = true;
     this.seen.add(mark.key);

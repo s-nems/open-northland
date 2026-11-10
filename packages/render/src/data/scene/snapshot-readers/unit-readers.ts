@@ -1,4 +1,4 @@
-import { components as simComponents } from '@open-northland/sim';
+import { ONE, components as simComponents } from '@open-northland/sim';
 import { readNumField, readNumFieldOrNull } from '../../snapshot/index.js';
 import type { SpriteState } from '../draw-item.js';
 
@@ -144,6 +144,18 @@ export function readEquipmentWeaponGood(
   components: Readonly<Record<string, unknown>>,
 ): number | null | undefined {
   return readEquipSlotGood(components, 'weapon');
+}
+
+/** Whether a settler wears a live pair of boots: a boots slot whose wear, the walk under way's when one
+ *  is, has not reached ONE. */
+export function readWearsLiveBoots(components: Readonly<Record<string, unknown>>): boolean {
+  const equipment = components.Equipment;
+  if (typeof equipment !== 'object' || equipment === null) return false;
+  const boots = (equipment as { boots?: unknown }).boots;
+  if (typeof boots !== 'object' || boots === null) return false;
+  const degree =
+    readNumField(components, 'PathFollow', 'bootsDegree') ?? (boots as { degreeOfUse?: unknown }).degreeOfUse;
+  return typeof degree === 'number' && degree < ONE;
 }
 
 /** {@link readEquipmentWeaponGood}'s twin for the `Equipment.armor` slot, same tri-state. */

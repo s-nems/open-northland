@@ -26,8 +26,10 @@ export {
   footfallGround,
   footfallLogicTypes,
   MAX_STEP_NODES,
+  marksGround,
   PRINT_SHOWN_TICKS,
   printAlpha,
+  skipsColumnMiddle,
   stepHeadingDegrees,
   stepValency,
 } from './footfall.js';
