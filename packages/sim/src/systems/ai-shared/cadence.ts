@@ -98,9 +98,14 @@ export const MILITARY_DECISION_PHASE = 5;
  *  a seventh phase would land on the next seat's first. */
 export const POPULATION_PHASE = 4;
 
-/** The room review's phase, the road module's tick: one of the two lightest of a seat's decision, and
- *  not the tick of the colony survey, which shares the review's beat. */
+/** The room review's phase, the road module's tick: the lightest of a seat's decision that no other
+ *  seat's workforce or build order lands on, and not the tick of the colony survey, which shares the
+ *  review's beat. */
 export const ROOM_REVIEW_PHASE = 2;
+
+/** The posture review's phase, the room review's tick: off the workforce allocator's, the dearest of a
+ *  seat's decision, and three ticks ahead of the military module that acts on the posture. */
+export const POSTURE_REVIEW_PHASE = ROOM_REVIEW_PHASE;
 
 /** Whether `tick` is `player`'s defence decision: on the computer slot while a computer controller runs
  *  the seat (`computerControllerRuns`), on the map-AI slot otherwise. */
