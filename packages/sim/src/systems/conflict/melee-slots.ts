@@ -141,26 +141,46 @@ export class MeleeSlots {
   crowdingAround(node: NodeId, band: WeaponBand, side: Side, mine: OwnClaims): Crowding {
     this.standing ??= standingFighterPosts(this.world, this.ctx.content, this.terrain);
     this.enRoute ??= takeChaseGoals(this.world);
-    const { standing, enRoute } = this;
-    let occupied = 0;
-    let open = 0;
-    forEachNodeInBand(this.terrain, node, band, (cell) => {
-      if (cell === mine.standingOn) {
-        if (this.isOpen(cell)) open++;
-        return true;
-      }
-      const body = standing.get(cell);
-      const dealt = this.claimed.get(cell);
-      const walking = cell === mine.goal ? undefined : enRoute.get(cell)?.side;
-      if (body === undefined && dealt === undefined && walking === undefined) {
-        if (this.isOpen(cell)) open++;
-      } else if (body === side || dealt === side || walking === side) {
-        occupied++;
-      }
-      return true;
-    });
-    return { occupied, sealed: open === 0 };
+    const count = this.crowd;
+    count.side = side;
+    count.mine = mine;
+    count.occupied = 0;
+    count.open = 0;
+    forEachNodeInBand(this.terrain, node, band, this.countCrowd);
+    count.mine = undefined;
+    this.crowding.occupied = count.occupied;
+    this.crowding.sealed = count.open === 0;
+    return this.crowding;
   }
+
+  /** {@link crowdingAround}'s result, reused: a caller reads it before the next call. */
+  private readonly crowding = { occupied: 0, sealed: false };
+  /** Its running count over the band. */
+  private readonly crowd: { side: Side; mine: OwnClaims | undefined; occupied: number; open: number } = {
+    side: null,
+    mine: undefined,
+    occupied: 0,
+    open: 0,
+  };
+
+  private readonly countCrowd = (cell: NodeId): boolean => {
+    const count = this.crowd;
+    const { mine, side } = count;
+    if (mine === undefined) return false;
+    if (cell === mine.standingOn) {
+      if (this.isOpen(cell)) count.open++;
+      return true;
+    }
+    const body = this.standing?.get(cell);
+    const dealt = this.claimed.get(cell);
+    const walking = cell === mine.goal ? undefined : this.enRoute?.get(cell)?.side;
+    if (body === undefined && dealt === undefined && walking === undefined) {
+      if (this.isOpen(cell)) count.open++;
+    } else if (body === side || dealt === side || walking === side) {
+      count.occupied++;
+    }
+    return true;
+  };
 
   /** Whether `cell` is ground a route can actually deliver to. A cell under another building's body or a
    *  resource is statically walkable but unroutable, and routing denies a stand-in for a dynamically

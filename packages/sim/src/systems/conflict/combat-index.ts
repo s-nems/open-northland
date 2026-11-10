@@ -38,14 +38,15 @@ export interface KeptKeys {
   count: number;
 }
 
-/** The member a candidate key names. */
+/** The member a candidate key names. Both parts leave as 32-bit integers: a key is a double, and a double
+ *  handed on to a call is boxed. */
 export function keyEntity(key: number): Entity {
-  return (key - Math.floor(key / CANDIDATE_ID_SPAN) * CANDIDATE_ID_SPAN) as Entity;
+  return ((key - Math.floor(key / CANDIDATE_ID_SPAN) * CANDIDATE_ID_SPAN) >>> 0) as Entity;
 }
 
 /** The distance a candidate key holds its member at. */
 export function keyDistance(key: number): number {
-  return Math.floor(key / CANDIDATE_ID_SPAN);
+  return Math.floor(key / CANDIDATE_ID_SPAN) >>> 0;
 }
 
 /** The index each world's latest combat pass built, which the shots landing after it read. */
@@ -189,8 +190,8 @@ export class CombatIndex {
     try {
       for (let i = 0; i < count; i++) {
         const key = keys[i] ?? 0;
-        const distance = Math.floor(key / CANDIDATE_ID_SPAN);
-        const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
+        const distance = keyDistance(key);
+        const entity = keyEntity(key);
         if (!scan.met.firstMark(entity)) continue;
         if (accept(entity)) return { entity, distance };
       }
@@ -230,9 +231,9 @@ export class CombatIndex {
     try {
       for (let i = 0; i < count && found.length < limit; i++) {
         const key = keys[i] ?? 0;
-        const distance = Math.floor(key / CANDIDATE_ID_SPAN);
+        const distance = keyDistance(key);
         if (distance > lastRing) break;
-        const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
+        const entity = keyEntity(key);
         if (!scan.met.firstMark(entity)) continue;
         if (!accept(entity)) continue;
         found.push({ entity, distance });
@@ -277,9 +278,9 @@ export class CombatIndex {
     try {
       for (let i = 0; i < count; i++) {
         const key = keys[i] ?? 0;
-        const distance = Math.floor(key / CANDIDATE_ID_SPAN);
+        const distance = keyDistance(key);
         if (distance > open) break;
-        const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
+        const entity = keyEntity(key);
         if (!scan.met.firstMark(entity)) continue;
         const kind = kindOf(entity);
         const take = found[kind];
@@ -330,12 +331,12 @@ export class CombatIndex {
     try {
       for (let i = 0; i < count; i++) {
         const key = keys[i] ?? 0;
-        const distance = Math.floor(key / CANDIDATE_ID_SPAN);
+        const distance = keyDistance(key);
         // Once the best kind's take is full or past its tail, only a better kind can still change it.
         const closed = found.length >= limit || distance > lastRing;
         const bound = closed ? best : best + 1;
         if (bound === 0) break;
-        const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
+        const entity = keyEntity(key);
         if (!scan.met.firstMark(entity)) continue;
         const kind = rank(entity, Math.min(bound, ranks));
         if (kind >= bound || kind >= ranks || !accept(entity)) continue;
@@ -693,7 +694,7 @@ function narrowKeys(scan: BandScan, count: number, narrow: (e: Entity) => boolea
   let kept = 0;
   for (let i = 0; i < count; i++) {
     const key = keys[i] ?? 0;
-    const entity = (key - Math.floor(key / CANDIDATE_ID_SPAN) * CANDIDATE_ID_SPAN) as Entity;
+    const entity = keyEntity(key);
     if (narrowed.firstMark(entity) && narrow(entity)) passed.mark(entity);
     if (passed.has(entity)) keys[kept++] = key;
   }
