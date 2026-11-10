@@ -135,24 +135,24 @@ export class CellGrid {
 
   add(e: Entity, x: number, y: number): void {
     const tile = (x >> TILE_SHIFT) * GRID_KEY_STRIDE + (y >> TILE_SHIFT);
-    let nodes = this.tiles.get(tile);
-    if (nodes === undefined) {
-      nodes = [];
-      this.tiles.set(tile, nodes);
-      const block = (x >> BLOCK_SHIFT) * GRID_KEY_STRIDE + (y >> BLOCK_SHIFT);
-      let tiles = this.blocks.get(block);
-      if (tiles === undefined) {
-        tiles = [];
-        this.blocks.set(block, tiles);
-      }
-      insertSortedById(tiles, tile, tileKey);
-    }
     const key = x * GRID_KEY_STRIDE + y;
-    const at = nodes[indexAboveId(nodes, key - 1, nodeKeyOf)];
-    if (at?.key === key) insertSortedById(at.entities, e, entityId);
-    else {
-      insertSortedById(nodes, { key, entities: [e] }, nodeKeyOf);
+    const nodes = this.tiles.get(tile);
+    if (nodes === undefined) {
+      // Most tiles hold one node and most blocks one tile: a literal is sized for its one item, where a
+      // push onto an empty array reserves room for seventeen.
+      this.tiles.set(tile, [{ key, entities: [e] }]);
       this.size++;
+      const block = (x >> BLOCK_SHIFT) * GRID_KEY_STRIDE + (y >> BLOCK_SHIFT);
+      const tiles = this.blocks.get(block);
+      if (tiles === undefined) this.blocks.set(block, [tile]);
+      else insertSortedById(tiles, tile, tileKey);
+    } else {
+      const at = nodes[indexAboveId(nodes, key - 1, nodeKeyOf)];
+      if (at?.key === key) insertSortedById(at.entities, e, entityId);
+      else {
+        insertSortedById(nodes, { key, entities: [e] }, nodeKeyOf);
+        this.size++;
+      }
     }
     this.xs.add(x);
     this.ys.add(y);
