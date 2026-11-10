@@ -112,6 +112,8 @@ export function quietRebuildAfter(interval: number, quads: number, runPayoff: nu
 const PIXI = 0;
 const MESH = 1;
 const HIDDEN = 2;
+/** No slot: a quad not packed yet. */
+const UNPACKED = -1;
 /** The member record a meshed child carries, keyed off the container itself to spare a map lookup per
  *  child per rebuild. */
 const MEMBER: unique symbol = Symbol('still mesh member');
@@ -133,6 +135,9 @@ interface MeshQuad extends TableQuad {
   readonly element: BatchableSprite;
   /** Moves between the store's cold and hot blocks only as its band rebuilds, which rewrites its index. */
   slot: number;
+  /** The slot holding its last pack, or {@link UNPACKED}: it differs from {@link slot} after a move that
+   *  left the packed quad behind. */
+  packedSlot: number;
   /** The renders it was last packed on, and the one before. */
   packFrame: number;
   previousPackFrame: number;
@@ -841,6 +846,7 @@ export class StillSpriteMesh implements StillBandCollector {
         owner: member.container,
         element: pipe._getGpuSprite(sprite),
         slot: store.allocate(),
+        packedSlot: UNPACKED,
         containerTick: Number.NaN,
         viewTick: Number.NaN,
         packFrame: Number.NEGATIVE_INFINITY,
@@ -865,7 +871,10 @@ export class StillSpriteMesh implements StillBandCollector {
     const store = this.store;
     if (store === null || store.isHot(quad.slot) === hot) return;
     const slot = store.allocate(hot);
-    if (keeps) store.move(quad.slot, slot);
+    if (keeps) {
+      store.move(quad.slot, slot);
+      quad.packedSlot = slot;
+    }
     store.release(quad.slot);
     quad.slot = slot;
     quad.element._attributeStart = QuadStore.start(slot);
@@ -877,12 +886,18 @@ export class StillSpriteMesh implements StillBandCollector {
     if (store === null || renderer === null || this.packer === null) return;
     const pipe = renderer.renderPipes.sprite as unknown as SpritePipeInternals;
     const element = quad.element;
-    pipe._updateBatchableSprite(quad.sprite, element);
+    // The record's texture and bounds follow the sprite's view, which a move alone leaves as packed.
+    if (quad.viewTick !== quad.sprite._didViewChangeTick) pipe._updateBatchableSprite(quad.sprite, element);
     const start = QuadStore.start(quad.slot);
     element._batcher = state;
     element._textureId = textureId;
     element._attributeStart = start;
-    this.packer.packQuadAttributes(element, store.f32, store.u32, start, textureId);
+    if (quad.packedSlot === quad.slot) {
+      // Its last pack stands here: a quad that only moved has its corners rewritten, at its new page slot.
+      if (quad.textureId !== textureId) store.retarget(quad.slot, textureId);
+      this.packer.repackQuad(element, store.f32, store.u32, start, textureId);
+    } else this.packer.packQuadAttributes(element, store.f32, store.u32, start, textureId);
+    quad.packedSlot = quad.slot;
     quad.textureId = textureId;
     quad.containerTick = quad.sprite._didContainerChangeTick;
     quad.viewTick = quad.sprite._didViewChangeTick;
