@@ -275,6 +275,8 @@ function restoreListedPages(slots: TextureSource[], count: number): void {
  *  selection, blood, splashes and night values. */
 export const WORLD_VERTEX_SIZE = 18;
 const STRIDE = WORLD_VERTEX_SIZE * 4;
+/** A vertex's colour, in 32-bit words past its start. */
+const COLOUR_AT = 4;
 export const WORLD_ATTRIBUTE_OFFSETS = {
   aPosition: 0,
   aUV: 2 * 4,
@@ -326,7 +328,16 @@ export interface LutListingBatcher {
   /** Where `batch` lists its LUT, or null for a batch without one; valid until the next call. */
   lutBinding(batch: Batch): LutBinding | null;
 }
-interface WorldBatcherApi extends Batcher, LutListingBatcher {}
+export interface WorldBatcherApi extends Batcher, LutListingBatcher {
+  /** Packs `element` at `index` after a change Pixi reported, writing no more than changed. */
+  repackQuad(
+    element: DefaultBatchableQuadElement,
+    float32View: Float32Array,
+    uint32View: Uint32Array,
+    index: number,
+    textureId: number,
+  ): void;
+}
 /** The batcher class, its geometry and shaders are defined on first install, not at import, so a
  *  test that mocks `pixi.js` can still load this module. */
 type WorldBatcherClass = new (options: BatcherOptions) => WorldBatcherApi;
@@ -338,6 +349,31 @@ function listsLut(batcher: unknown): batcher is LutListingBatcher {
     batcher !== null &&
     typeof (batcher as Partial<LutListingBatcher>).lutBinding === 'function'
   );
+}
+
+/**
+ * What a quad's last whole pack read apart from where it stands and its colour. While these hold, a
+ * repack rewrites its corners and colour only: a sprite's texture, frame, anchor, palette row and
+ * effects each move its view tick, and its scale or turn moves the transform's first four terms.
+ */
+interface PackedQuad {
+  sprite: object | null;
+  viewTick: number;
+  a: number;
+  b: number;
+  c: number;
+  d: number;
+  shading: boolean;
+}
+const PACKED: unique symbol = Symbol('world quad pack');
+type PackedQuadHost = DefaultBatchableQuadElement & { [PACKED]?: PackedQuad };
+
+/** The sprite's count of view changes, or NaN, which equals nothing, where a whole pack must follow
+ *  every update: no sprite to count them, or a blood surface, whose stains change without one. */
+function movableViewTick(sprite: object | null): number {
+  if (sprite === null || (sprite as { bloodSurface?: unknown }).bloodSurface !== undefined) return Number.NaN;
+  const tick: unknown = (sprite as { _didViewChangeTick?: unknown })._didViewChangeTick;
+  return typeof tick === 'number' ? tick : Number.NaN;
 }
 
 /** The world vertex layout over `attributeBuffer`, drawn through `indexBuffer`: the geometry a world batch
@@ -593,6 +629,64 @@ function defineWorldBatcher(): WorldBatcherClass {
     );
   }
 
+  /** Notes what the whole pack of `element` just read, for {@link moveQuad}. */
+  function notePacked(element: PackedQuadHost, sprite: object | null): void {
+    let packed = element[PACKED];
+    if (packed === undefined) {
+      packed = { sprite: null, viewTick: Number.NaN, a: 0, b: 0, c: 0, d: 0, shading: false };
+      element[PACKED] = packed;
+    }
+    const transform = element.transform;
+    packed.sprite = sprite;
+    packed.viewTick = movableViewTick(sprite);
+    packed.a = transform.a;
+    packed.b = transform.b;
+    packed.c = transform.c;
+    packed.d = transform.d;
+    packed.shading = worldShadowStyle() !== null;
+  }
+
+  /**
+   * Rewrites the corners and colour of a quad whose whole pack still stands at `index`; false where
+   * something else that pack read has changed since, so the quad needs packing whole. The texel bound
+   * a moved quad would note is the one its whole pack noted.
+   */
+  function moveQuad(element: PackedQuadHost, f32: Float32Array, u32: Uint32Array, index: number): boolean {
+    const packed = element[PACKED];
+    if (packed === undefined) return false;
+    const sprite = renderableOf(element);
+    const { a, b, c, d, tx, ty } = element.transform;
+    if (
+      packed.sprite !== sprite ||
+      packed.viewTick !== movableViewTick(sprite) ||
+      packed.a !== a ||
+      packed.b !== b ||
+      packed.c !== c ||
+      packed.d !== d ||
+      packed.shading !== (worldShadowStyle() !== null)
+    )
+      return false;
+    const { minX, minY, maxX, maxY } = element.bounds;
+    const argb = element.color;
+    let i = index;
+    f32[i] = a * minX + c * minY + tx;
+    f32[i + 1] = d * minY + b * minX + ty;
+    u32[i + COLOUR_AT] = argb;
+    i += WORLD_VERTEX_SIZE;
+    f32[i] = a * maxX + c * minY + tx;
+    f32[i + 1] = d * minY + b * maxX + ty;
+    u32[i + COLOUR_AT] = argb;
+    i += WORLD_VERTEX_SIZE;
+    f32[i] = a * maxX + c * maxY + tx;
+    f32[i + 1] = d * maxY + b * maxX + ty;
+    u32[i + COLOUR_AT] = argb;
+    i += WORLD_VERTEX_SIZE;
+    f32[i] = a * minX + c * maxY + tx;
+    f32[i + 1] = d * maxY + b * minX + ty;
+    u32[i + COLOUR_AT] = argb;
+    return true;
+  }
+
   /** Pixi's default batcher plus vertex attributes for what the fragment shader must know about the
    *  element's page: magnification, shadow shading, its palette LUT and row, and its frame's UV box. */
   class WorldBatcher extends Batcher {
@@ -635,7 +729,30 @@ function defineWorldBatcher(): WorldBatcherClass {
           element._attributeStart * Float32Array.BYTES_PER_ELEMENT,
           element.attributeSize * this.vertexSize * Float32Array.BYTES_PER_ELEMENT,
         );
-      super.updateElement(element);
+      if (!element.packAsQuad) {
+        super.updateElement(element);
+        return;
+      }
+      this.dirty = true;
+      const attributes = this.attributeBuffer;
+      this.repackQuad(
+        element as DefaultBatchableQuadElement,
+        attributes.float32View,
+        attributes.uint32View,
+        element._attributeStart,
+        element._textureId,
+      );
+    }
+
+    repackQuad(
+      element: DefaultBatchableQuadElement,
+      float32View: Float32Array,
+      uint32View: Uint32Array,
+      index: number,
+      textureId: number,
+    ): void {
+      if (!moveQuad(element, float32View, uint32View, index))
+        this.packQuadAttributes(element, float32View, uint32View, index, textureId);
     }
 
     /** Pixi always passes the renderer's texture limit; the batch program is compiled for at most
@@ -860,7 +977,9 @@ function defineWorldBatcher(): WorldBatcherClass {
     ): void {
       const texture = element.texture;
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
-      const outline = beginRenderable(renderableOf(element));
+      const renderable = renderableOf(element);
+      notePacked(element, renderable);
+      const outline = beginRenderable(renderable);
       beginElement(texture, textureIdAndRound, element.color, this.flagsOf(element));
       if (this.boundsTexels()) this.texelsPerUnit = Math.min(this.texelsPerUnit, quadTexelsPerUnit(element));
       if (outline !== null) packOutline(outline);

@@ -27,6 +27,7 @@ import {
   type LutListingBatcher,
   lutSlotOf,
   WORLD_VERTEX_SIZE,
+  type WorldBatcherApi,
   worldBatchGeometry,
 } from '../world-batch/batcher.js';
 import { LUT_SLOTS } from '../world-batch/shader.js';
@@ -435,7 +436,7 @@ export interface StillBandCollector {
 
 export class StillSpriteMesh implements StillBandCollector {
   private renderer: WebGLRenderer | null = null;
-  private packer: Batcher | null = null;
+  private packer: WorldBatcherApi | null = null;
   private store: QuadStore | null = null;
   private readonly bands = new Map<Container, BandStills>();
   /** Bands whose last rebuild drew from the mesh: each rebuilds once it goes quiet for long enough. */
@@ -595,13 +596,7 @@ export class StillSpriteMesh implements StillBandCollector {
     // A sprite changing under a child the owner no longer offers: its band rebuilds and hands it to Pixi.
     if (quad.sprite.parent === null || !this.offered(quad.owner))
       state.band.renderGroup.structureDidChange = true;
-    this.packer.packQuadAttributes(
-      quad.element,
-      store.f32,
-      store.u32,
-      QuadStore.start(quad.slot),
-      quad.textureId,
-    );
+    this.packer.repackQuad(quad.element, store.f32, store.u32, QuadStore.start(quad.slot), quad.textureId);
     quad.containerTick = quad.sprite._didContainerChangeTick;
     quad.viewTick = quad.sprite._didViewChangeTick;
     quad.previousPackFrame = quad.packFrame;

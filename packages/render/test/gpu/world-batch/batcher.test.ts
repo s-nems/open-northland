@@ -267,6 +267,78 @@ describe('world batcher element flags', () => {
   });
 });
 
+describe('world batcher repack in place', () => {
+  const FLAGS_AT = WORLD_ATTRIBUTE_OFFSETS.aFlags / 4;
+  const COLOUR_AT = WORLD_ATTRIBUTE_OFFSETS.aColor / 4;
+  /** No flags value: a repack that leaves it standing wrote the corners and colour only. */
+  const UNTOUCHED = -7;
+
+  function packed(sprite: SelectionSprite) {
+    const WorldBatcher = installWorldBatcher();
+    const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT });
+    const floats = new Float32Array(WORLD_VERTEX_SIZE * 4);
+    const words = new Uint32Array(floats.buffer);
+    const element = {
+      texture: sprite.texture,
+      renderable: sprite,
+      transform: new Matrix(),
+      bounds: { minX: 0, minY: 0, maxX: 2, maxY: 4 },
+      color: 0xffffffff,
+      roundPixels: 0,
+    };
+    const quad = element as unknown as DefaultBatchableQuadElement;
+    batcher.packQuadAttributes(quad, floats, words, 0, 0);
+    /** Repacks after the caller's change; whether the whole quad was packed again. */
+    const repackedWhole = (): boolean => {
+      floats[FLAGS_AT] = UNTOUCHED;
+      batcher.repackQuad(quad, floats, words, 0, 0);
+      return floats[FLAGS_AT] !== UNTOUCHED;
+    };
+    return { batcher, floats, words, element, repackedWhole };
+  }
+
+  it('moves and recolours a quad whose view, scale and turn held, and packs any other change whole', () => {
+    const sprite = new SelectionSprite(Texture.WHITE);
+    const { batcher, floats, words, element, repackedWhole } = packed(sprite);
+    element.transform.tx = 10;
+    element.transform.ty = 20;
+    element.color = 0x80ffffff;
+    expect(repackedWhole()).toBe(false);
+    const corners = [0, 1, 2, 3].map((v) => [
+      floats[v * WORLD_VERTEX_SIZE],
+      floats[v * WORLD_VERTEX_SIZE + 1],
+    ]);
+    expect(corners).toEqual([
+      [10, 20],
+      [12, 20],
+      [12, 24],
+      [10, 24],
+    ]);
+    for (let v = 0; v < 4; v++) expect(words[v * WORLD_VERTEX_SIZE + COLOUR_AT]).toBe(0x80ffffff);
+
+    sprite.nightLit = 1;
+    expect(repackedWhole()).toBe(true);
+    expect(repackedWhole()).toBe(false);
+    element.transform.a = 2;
+    expect(repackedWhole()).toBe(true);
+    setWorldShadowStyle(DEFAULT_SHADOW_STYLE);
+    expect(repackedWhole()).toBe(true);
+    setWorldShadowStyle(null);
+    batcher.destroy();
+    sprite.destroy();
+  });
+
+  it('packs a blood surface whole every time: its stains change without a view update', () => {
+    const sprite = new SelectionSprite(Texture.WHITE);
+    bloodSurface(sprite, 0);
+    const { batcher, element, repackedWhole } = packed(sprite);
+    element.transform.tx = 10;
+    expect(repackedWhole()).toBe(true);
+    batcher.destroy();
+    sprite.destroy();
+  });
+});
+
 describe('world batcher palette LUT', () => {
   useHeadlessShaderContext();
   /** A quad element as Pixi's sprite pipe hands it over, drawing `texture` through `lutRow`. */
