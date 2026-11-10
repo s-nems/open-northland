@@ -70,7 +70,7 @@ import { type EntityBounds, meshablePooled, type PooledEntity } from './pooled-e
 import { PortraitSubject } from './portrait-subject.js';
 import { atRest, SNAP_DISTANCE } from './presentation/motion.js';
 import { presentEntity } from './presentation/present-entity.js';
-import { presentAtRest, repeatsInTick } from './presentation/present-item.js';
+import { presentAtRest, repeatsInTick, repeatWithinTick } from './presentation/present-item.js';
 import { loopStepOf } from './presentation/presentation.js';
 import { reconcileSprites } from './reconcile.js';
 import { SpriteSceneCache } from './scene-cache.js';
@@ -303,6 +303,14 @@ export class SpritePool {
    *  or emphasised, and their refs: what a still frame presents. */
   private readonly moving: number[] = [];
   private readonly movingRefs = new Set<number>();
+  /** Indices into {@link lastItems} of the entities the last full pass left standing until the animation
+   *  clock reaches another whole tick: a still frame presents them only on that step. */
+  private readonly steppers: number[] = [];
+  /** The whole animation tick {@link steppers} were last presented at. */
+  private stepperStep = Number.NaN;
+  /** Whether events reached the blood coats since the last full pass, which alone finds a figure its
+   *  new coat. */
+  private coatsIngested = false;
   /** Held entities the last full pass visited off the draw list for an emphasis that moves with the
    *  frame clock, such as a pick target's breathing lift; still frames present them with {@link moving}. */
   private readonly movingHeld: PooledEntity[] = [];
@@ -415,6 +423,7 @@ export class SpritePool {
 
   ingestBlood(events: readonly SimEvent[], tick: number): void {
     this.bloodCoats.ingest(events, tick);
+    if (events.length > 0) this.coatsIngested = true;
   }
 
   /**
@@ -445,10 +454,10 @@ export class SpritePool {
     [this.framed, this.framing] = [this.framing, this.framed];
     this.framing.length = 0;
     const scene = this.sceneFor(frame);
-    this.sheet?.palette?.beginFrame();
     this.epoch.advance(frame, this.textures.textureRevision);
     this.snapResolution = frame.snapResolution;
     if (this.repeatsStill(scene, frame)) {
+      // No new palette frame: a human a still frame leaves unpresented keeps its row as drawn.
       this.presentMoving(frame);
       this.stepLoopers(frame);
       this.reap(scene.liveRefs);
@@ -456,6 +465,7 @@ export class SpritePool {
       this.drawDamage(frame);
       return;
     }
+    this.sheet?.palette?.beginFrame();
     this.frameId++;
     this.portrait.release();
     this.reviseHolds(scene, frame);
@@ -467,6 +477,9 @@ export class SpritePool {
     if (!repeated) this.collectOverlays(scene.items);
     this.moving.length = 0;
     this.movingRefs.clear();
+    this.steppers.length = 0;
+    this.stepperStep = loopStepOf(frame.tick, frame.alpha, frame.environmentMotion === true);
+    this.coatsIngested = false;
     this.movingHeld.length = 0;
     this.passHasPortrait = false;
     const kept = scene.kept;
@@ -593,9 +606,25 @@ export class SpritePool {
         this.loopers.push(pe);
       }
     } else if (!still && index >= 0) {
-      this.moving.push(index);
-      this.movingRefs.add(item.ref);
+      const repeat = emphasis ? 'moves' : this.repeatUntilTick(pe, item, frame);
+      if (repeat === 'moves') {
+        this.moving.push(index);
+        this.movingRefs.add(item.ref);
+      } else if (repeat === 'steps') {
+        this.steppers.push(index);
+      }
     }
+  }
+
+  /**
+   * Whether the present `pe` just ran stands for every frame of this tick ({@link repeatWithinTick}), so
+   * the still frames need not ask: a figure on its tick anchor that wears no drying blood coat, bound in
+   * full.
+   */
+  private repeatUntilTick(pe: PooledEntity, item: DrawItem, frame: PoolFrame): 'holds' | 'steps' | 'moves' {
+    const repeat = repeatWithinTick(pe, item, frame.tick, this.sheet, frame.environmentMotion === true);
+    if (repeat === 'moves' || pe.bound.retrying) return 'moves';
+    return this.bloodCoats.packed(item.ref, frame.tick + frame.alpha) === 0 ? repeat : 'moves';
   }
 
   /**
@@ -798,6 +827,7 @@ export class SpritePool {
   private repeatsStill(scene: SpriteScene, frame: PoolFrame): boolean {
     if (
       scene.items !== this.lastItems ||
+      this.coatsIngested ||
       this.epoch.current !== this.passEpoch ||
       this.epoch.viewMoved ||
       this.passHasPortrait ||
@@ -823,6 +853,20 @@ export class SpritePool {
     for (const pe of this.movingHeld) {
       const item = pe.bound.item;
       if (item !== undefined && pe.attached) this.presentItemAt(pe, item, frame, true);
+    }
+    const step = loopStepOf(frame.tick, frame.alpha, frame.environmentMotion === true);
+    if (step === this.stepperStep) return;
+    this.stepperStep = step;
+    for (const i of this.steppers) {
+      const item = this.lastItems[i];
+      const pe = this.lastPooled[i];
+      if (item === undefined || pe === undefined) continue;
+      this.presentItemAt(pe, item, frame, true);
+      // A stand-in for a turned-away bake binds again on the next frame, a still one included.
+      if (pe.bound.retrying) {
+        this.moving.push(i);
+        this.movingRefs.add(item.ref);
+      }
     }
   }
 
@@ -1250,6 +1294,7 @@ export class SpritePool {
     this.lastPooled.length = 0;
     this.moving.length = 0;
     this.movingRefs.clear();
+    this.steppers.length = 0;
     this.movingHeld.length = 0;
     this.loopers.length = 0;
     this.passEpoch = -1;

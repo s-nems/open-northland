@@ -259,6 +259,30 @@ export function repeatsInTick(
   );
 }
 
+/**
+ * How a later present of `item` in the same tick relates to the track's last one: `holds` repeats it at
+ * every frame alpha, `steps` until the animation clock reaches another whole tick, and `moves` may
+ * resolve other layers on any frame.
+ */
+export function repeatWithinTick(
+  track: PresentationTrack,
+  item: DrawItem,
+  tick: number,
+  sheet: SpriteSheet | undefined,
+  environmentMotion: boolean,
+): 'holds' | 'steps' | 'moves' {
+  const last = track.tickPresent;
+  if (
+    last.item !== item ||
+    last.tick !== tick ||
+    track.motion.tick !== tick ||
+    last.sheet !== sheet ||
+    last.environmentMotion !== environmentMotion
+  )
+    return 'moves';
+  return Number.isNaN(last.clockStep) ? 'holds' : 'steps';
+}
+
 function lookOf(track: PresentationTrack, sheet: SpriteSheet | undefined, item: DrawItem) {
   const look = track.look;
   if (look.item !== item || look.characters !== sheet?.characters) {

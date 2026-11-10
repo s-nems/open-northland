@@ -1,7 +1,9 @@
+import type { Entity } from '@open-northland/sim';
 import { Container, Sprite, Texture } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { DrawItem } from '../../../../src/data/scene/index.js';
 import type { DirectionalAnim } from '../../../../src/data/sprites/settler-bindings.js';
+import { spriteBloodEffect } from '../../../../src/gpu/selection/sprite-effect.js';
 import { LayerBinder } from '../../../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool } from '../../../../src/gpu/sprite-pool/index.js';
 import {
@@ -197,5 +199,103 @@ describe('SpritePool - a frame between ticks', () => {
     pool.reconcile(frameAt(0.75));
     expect(reads()).toBeGreaterThan(first);
     expect(bodyFrameX(layer)).not.toBe(before);
+  });
+
+  /** The refs presented since the call, read through the returned function. */
+  function presentedRefs(): () => number[] {
+    type PresentPooled = (pe: unknown, item: DrawItem) => void;
+    const spy = vi.spyOn(
+      SpritePool.prototype as unknown as { presentPooled: PresentPooled },
+      'presentPooled',
+    );
+    return () => spy.mock.calls.map((call) => call[1].ref);
+  }
+
+  it('leaves a settler whose present holds for the whole tick out of the frames between ticks', () => {
+    const { pool } = countingPool();
+    pool.reconcile({ ...frameAt(0.25), environmentMotion: false });
+    const refs = presentedRefs();
+    pool.reconcile({ ...frameAt(0.5), environmentMotion: false });
+    pool.reconcile({ ...frameAt(1), environmentMotion: false });
+    expect(refs()).toEqual([]);
+    vi.restoreAllMocks();
+  });
+
+  it('presents a settler on its tick anchor once when the animation clock reaches the next tick', () => {
+    const { layer, pool } = countingPool();
+    pool.reconcile(frameAt(0.25));
+    const before = bodyFrameX(layer);
+    const refs = presentedRefs();
+    pool.reconcile(frameAt(0.5));
+    expect(refs()).toEqual([]);
+    expect(bodyFrameX(layer)).toBe(before);
+    pool.reconcile(frameAt(1));
+    pool.reconcile(frameAt(1));
+    expect(refs()).toEqual([SETTLER]);
+    expect(bodyFrameX(layer)).not.toBe(before);
+    vi.restoreAllMocks();
+  });
+
+  it('presents a selected settler on every frame between ticks, and one selected between them', () => {
+    const { pool } = countingPool();
+    const selection = new Set([SETTLER]);
+    const pulsing = (alpha: number): PoolFrame => ({ ...frameAt(alpha), selection, selectionStyle: 'pulse' });
+    pool.reconcile(pulsing(0.25));
+    const refs = presentedRefs();
+    pool.reconcile(pulsing(0.5));
+    pool.reconcile(pulsing(0.75));
+    expect(refs()).toEqual([SETTLER, SETTLER]);
+    vi.restoreAllMocks();
+
+    const late = countingPool();
+    late.pool.reconcile({ ...frameAt(0.25), selectionStyle: 'pulse' });
+    const lateRefs = presentedRefs();
+    late.pool.reconcile(pulsing(0.5));
+    expect(lateRefs()).toEqual([SETTLER]);
+    vi.restoreAllMocks();
+  });
+
+  it('presents a settler in a drying blood coat on every frame between ticks', () => {
+    const { pool } = countingPool();
+    pool.ingestBlood(
+      [
+        {
+          kind: 'combatHit',
+          damage: 250,
+          targetMaxHealth: 1000,
+          attacker: SETTLER as Entity,
+          target: SETTLER as Entity,
+          at: { hx: 0, hy: 0 },
+        },
+      ],
+      TICK,
+    );
+    pool.reconcile(frameAt(0.25));
+    const refs = presentedRefs();
+    pool.reconcile(frameAt(0.5));
+    expect(refs()).toEqual([SETTLER]);
+    vi.restoreAllMocks();
+  });
+
+  it('coats a settler whose blood arrived after the pass of its tick', () => {
+    const { layer, pool } = countingPool();
+    pool.reconcile(frameAt(0.25));
+    const sprites = (layer.children[0] as Container | undefined)?.children ?? [];
+    expect(sprites.some((sprite) => spriteBloodEffect(sprite) > 0)).toBe(false);
+    pool.ingestBlood(
+      [
+        {
+          kind: 'combatHit',
+          damage: 250,
+          targetMaxHealth: 1000,
+          attacker: SETTLER as Entity,
+          target: SETTLER as Entity,
+          at: { hx: 0, hy: 0 },
+        },
+      ],
+      TICK,
+    );
+    pool.reconcile(frameAt(0.5));
+    expect(sprites.some((sprite) => spriteBloodEffect(sprite) > 0)).toBe(true);
   });
 });
