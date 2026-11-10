@@ -117,7 +117,16 @@ interface Card {
   readonly tribe: number;
   readonly element: HTMLElement;
   readonly pick: HTMLButtonElement;
-  readonly slots: readonly { readonly element: HTMLElement; readonly goodType: number; shown: string }[];
+  readonly slots: readonly CostSlotView[];
+}
+
+/** A cost line on a card and what its tooltip was last written from: whether the seat was short of the
+ *  good and, if so, how much it had. `short` is null until the first write. */
+interface CostSlotView {
+  readonly element: HTMLElement;
+  readonly goodType: number;
+  short: boolean | null;
+  have: number;
 }
 
 function button(className: string, html: string): HTMLButtonElement {
@@ -446,7 +455,7 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
           if (!disposed && source !== null) frame.style.cssText = goodIconStyle(source, COST_ICON_BOX_PX);
         });
       }
-      return [{ element: slot, goodType: line.goodType, shown: '' }];
+      return [{ element: slot, goodType: line.goodType, short: null, have: 0 }];
     });
     pick.addEventListener('click', () => {
       deps.cue('confirm');
@@ -626,13 +635,14 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
       for (const [index, slot] of card.slots.entries()) {
         const line = slots[index];
         if (line === undefined) continue;
+        // A covered line's tooltip names the good and the amount alone, so only a short one follows the stock.
+        if (slot.short === line.short && (!line.short || slot.have === line.have)) continue;
+        slot.short = line.short;
+        slot.have = line.have;
         const name = deps.goodLabel(line.goodType);
-        const title = line.short
+        slot.element.title = line.short
           ? formatMessage(copy.costShort, { name, have: line.have, amount: line.amount })
           : formatMessage(copy.costLine, { name, amount: line.amount });
-        if (title === slot.shown) continue;
-        slot.shown = title;
-        slot.element.title = title;
         slot.element.classList.toggle('on-cost__slot--short', line.short);
       }
     }
