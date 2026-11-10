@@ -138,6 +138,43 @@ describe('group failure reachability', () => {
     expect(reachability.unreachable(mask, mask.levelled(), b, terrain.nodeAt(80, 8))).toBe(false);
   });
 
+  it('answers pairs past the search cap as a full flood of the regions does', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(240, 120) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('missing terrain');
+    const mask = walkBlockMask(sim.world, ctxOf(sim), terrain);
+    // A wall across the map and a sealed chamber on its left side.
+    const posts = new Set<NodeId>();
+    for (let y = 0; y < terrain.height; y++) posts.add(terrain.nodeAt(120, y));
+    for (let i = 30; i <= 44; i++) {
+      for (const [x, y] of [
+        [i, 30],
+        [i, 44],
+        [30, i],
+        [44, i],
+      ] as const) {
+        posts.add(terrain.nodeAt(x, y));
+      }
+    }
+    const blocked = new LayeredBlocks([mask.levelled(), posts]);
+    const flood = floodRegions(terrain, blocked);
+    const reachability = new GroupReachability(terrain);
+    const endpoints = [
+      [4, 4],
+      [110, 115],
+      [37, 37],
+      [30, 37],
+      [130, 4],
+      [235, 115],
+    ].map(([x, y]) => terrain.nodeAt(x ?? 0, y ?? 0));
+    for (const a of endpoints) {
+      for (const b of endpoints) {
+        const joined = flood[a] !== 0 && flood[a] === flood[b];
+        expect(reachability.sameRegion(mask, blocked, a, b)).toBe(joined);
+      }
+    }
+  });
+
   it('leaves blocked-start escapes to the pathfinder and invalidates after the wall opens', () => {
     const { sim, terrain, wall, mask, reachability } = fixture();
     const a = terrain.nodeAt(4, 4),
