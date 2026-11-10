@@ -38,7 +38,7 @@ function fixture() {
     const e = sim.world.create();
     sim.world.add(e, Position, positionOfNode(x, 6));
     if (kind === 'stock') sim.world.add(e, Stockpile, { amounts: new Map([[FOOD, 1]]) });
-    else sim.world.add(e, BerryBush, { stage: kind, nextStageAtTick: 0 });
+    else sim.world.add(e, BerryBush, { stage: kind });
     return e;
   };
   const index = () => mealCells(sim.world, content, terrain);
@@ -84,7 +84,7 @@ describe('meal index maintenance', () => {
       const fresh = add('stock', 14);
       for (let i = 0; i <= GENERATION_JOURNAL_LIMIT; i++) {
         if (journal === 'membership') sim.world.add(stock, Position, positionOfNode(20 + (i % 2), 6));
-        else sim.world.mut(ripeningBush, BerryBush).nextStageAtTick = i;
+        else sim.world.mut(ripeningBush, BerryBush).gfxIndex = i;
       }
 
       expect(nearest()?.entity).toBe(ripeningBush);

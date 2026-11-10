@@ -402,7 +402,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Krzew z owocami',
-                '{{bush.regrowSeconds}} s: {{bush.stageSeconds}} s do kwitnienia, {{bush.stageSeconds}} s do owoców',
+                'Jeden etap co {{bush.stageSeconds}} s, kwitnienie, potem owoce: do {{bush.regrowSeconds}} s',
                 '1 posiłek',
               ],
               ['Ławica', '+1 ryba co {{fish.regrowSeconds}} s', '{{fish.swarmMax}} ryb'],

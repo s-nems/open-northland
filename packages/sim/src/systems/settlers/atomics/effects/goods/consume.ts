@@ -2,7 +2,6 @@ import { BerryBush, Carrying, PickupClaim, Position } from '../../../../../compo
 import { eventAt } from '../../../../../core/events.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
-import { BERRY_STAGE_TICKS } from '../../../../economy/berries.js';
 import { accessibleStockAmounts, setAccessibleStockAmount } from '../../../../stores/index.js';
 import { cappedByStorageMinimum } from '../../../targets/stores/storage-reserve.js';
 import { shrinkCarry } from './carry.js';
@@ -40,16 +39,14 @@ export function consumeFood(
 
 /**
  * Forage a ripe {@link BerryBush} for a completed `forage` atomic: its one serving is eaten, so the bush
- * flips to bare and schedules its first regrow step. A bush already bare or gone is a no-op, the same
+ * flips to bare and regrows on the landscape growth trigger. A bush already bare or gone is a no-op, the same
  * raced-source stance as {@link consumeFood}. The entity persists and regrows in place, unlike a depleted
  * `Resource` node, which is destroyed.
  */
 export function forageBerry(world: World, ctx: SystemContext, bush: Entity): void {
   const b = world.tryGet(bush, BerryBush);
   if (b === undefined || b.stage !== 'ripe') return;
-  const v = world.mut(bush, BerryBush);
-  v.stage = 'bare';
-  v.nextStageAtTick = ctx.tick + BERRY_STAGE_TICKS;
+  world.mut(bush, BerryBush).stage = 'bare';
   const pos = world.get(bush, Position);
   ctx.events.emit({ kind: 'berryForaged', bush, at: eventAt(pos.x, pos.y) });
 }

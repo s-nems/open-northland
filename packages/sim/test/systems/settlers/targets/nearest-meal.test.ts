@@ -96,7 +96,7 @@ function fixture() {
     const e = sim.world.create();
     sim.world.add(e, Position, positionOfNode(x, 6));
     if (kind === 'bush') {
-      sim.world.add(e, BerryBush, { stage: 'ripe', nextStageAtTick: 0 });
+      sim.world.add(e, BerryBush, { stage: 'ripe' });
     } else {
       sim.world.add(e, Owner, { player: 0 });
       const goodType = kind === 'producer' ? BREAD : kind === 'ground' ? FISH : FOOD;

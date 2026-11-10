@@ -3,25 +3,18 @@ import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
+import { dueForGrowth, LANDSCAPE_GROWTH_PERIOD_TICKS } from '../landscape/growth-clock.js';
 import { bushesNearNode } from '../spatial/bushes.js';
 import { decorInReservedZone } from './reserved-decor.js';
 
-/**
- * Ticks a bare {@link BerryBush} takes to regrow its fruit; 100 s of game time at 12 ticks per second.
- *
- * Approximation: the original regrows a bush over the `landscapetypes.ini` growth trigger (`transition 7 …`,
- * `bush naked -> flowering -> with fruits`) whose real period is unknown, so this whole-cycle duration
- * stands in for the two-step flowering cycle, tuned so a foraged patch recovers within a settler's hunger
- * cadence.
- */
-export const BERRY_REGROW_TICKS = 1200;
+/** Growth steps from a foraged bush back to fruit: `bush naked -> flowering -> with fruits`. */
+const BERRY_GROWTH_STEPS = 2;
 
-/**
- * Ticks per growth step - half {@link BERRY_REGROW_TICKS}, since the source cycle takes two equal growth
- * triggers (`bush naked → flowering`, then `flowering → with fruits`), so a foraged bush blooms at the
- * regrow midpoint.
- */
-export const BERRY_STAGE_TICKS = BERRY_REGROW_TICKS / 2;
+/** Ticks between two growth steps of a regrowing bush: one landscape growth period. */
+export const BERRY_STAGE_TICKS = LANDSCAPE_GROWTH_PERIOD_TICKS;
+
+/** The longest a foraged bush takes to fruit again; its first step comes at its section's next growth run. */
+export const BERRY_REGROW_TICKS = BERRY_GROWTH_STEPS * BERRY_STAGE_TICKS;
 
 /** The resolved shape of a berry bush to place: its half-cell node and an optional render variant. */
 export interface BerryBushSpec {
@@ -44,32 +37,20 @@ export function createBerryBush(world: World, spec: BerryBushSpec): Entity {
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, BerryBush, {
     stage: 'ripe',
-    nextStageAtTick: 0,
     ...(spec.gfxIndex !== undefined ? { gfxIndex: spec.gfxIndex } : {}),
   });
   return e;
 }
 
 /**
- * Advance regrowing {@link BerryBush}es one stage at a time, on the exact integer compare
- * `tick >= nextStageAtTick` rather than an accumulated fixed-point step, with the next stage anchored on the
- * scheduled tick rather than the current one so the bloom lands at the forage-anchored midpoint. An absolute
- * schedule also leaves a regrowing bush's component unchanged between transitions, so the snapshot scenery
- * cache re-clones it only then.
+ * Grow every regrowing {@link BerryBush} in this run's map section one stage. Original behavior: the bush
+ * types' `transition 7` on the landscape growth trigger, `bush naked -> flowering -> with fruits`.
  */
 export const berryGrowthSystem: System = (world, ctx) => {
-  for (const e of world.query(BerryBush)) {
-    const bush = world.get(e, BerryBush);
-    if (bush.stage === 'ripe') continue;
-    if (ctx.tick < bush.nextStageAtTick) continue;
-    const b = world.mut(e, BerryBush);
-    if (b.stage === 'bare') {
-      b.stage = 'flowering';
-      b.nextStageAtTick += BERRY_STAGE_TICKS;
-    } else {
-      b.stage = 'ripe';
-      b.nextStageAtTick = 0;
-    }
+  for (const e of dueForGrowth(world, ctx, bushesNearNode)) {
+    const stage = world.get(e, BerryBush).stage;
+    if (stage === 'bare') world.mut(e, BerryBush).stage = 'flowering';
+    else if (stage === 'flowering') world.mut(e, BerryBush).stage = 'ripe';
   }
 };
 

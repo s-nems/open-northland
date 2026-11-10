@@ -71,7 +71,7 @@ describe('hunter - a pressing need breaks off the hunt', () => {
     sim.world.add(cow, StayPoint, { cell: entityNode(sim.world, terrain, cow) });
     const bush = sim.world.create();
     sim.world.add(bush, Position, { x: fx.fromInt(16), y: fx.fromInt(20) });
-    sim.world.add(bush, BerryBush, { stage: 'ripe', nextStageAtTick: 0 });
+    sim.world.add(bush, BerryBush, { stage: 'ripe' });
 
     let guard = 200;
     while (!sim.world.has(hunter, Engagement) && guard-- > 0) sim.step();

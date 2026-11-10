@@ -206,7 +206,7 @@ it('keeps a carried sheaf through berry foraging and deposits it before harvesti
   fieldAt(sim, farm, 6, 4, { stage: STAGES });
   const bush = sim.world.create();
   sim.world.add(bush, Position, { x: fx.fromInt(2), y: fx.fromInt(4) });
-  sim.world.add(bush, components.BerryBush, { stage: 'ripe', nextStageAtTick: 0 });
+  sim.world.add(bush, components.BerryBush, { stage: 'ripe' });
   sim.world.add(farmer, Carrying, { goodType: WHEAT, amount: 1 });
   setNeeds(sim, farmer, { hunger: fx.fromInt(1) });
 

@@ -399,7 +399,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Куст с плодами',
-                '{{bush.regrowSeconds}} с: {{bush.stageSeconds}} с до цветения, {{bush.stageSeconds}} с до плодов',
+                'Один этап каждые {{bush.stageSeconds}} с, цветение, затем плоды: до {{bush.regrowSeconds}} с',
                 '1 еда',
               ],
               ['Косяк', '+1 рыба каждые {{fish.regrowSeconds}} с', '{{fish.swarmMax}} шт.'],

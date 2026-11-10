@@ -362,7 +362,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 '果灌木',
-                '{{bush.regrowSeconds}}秒：开花{{bush.stageSeconds}}秒，结果{{bush.stageSeconds}}秒',
+                '每{{bush.stageSeconds}}秒长一个阶段，先开花后结果：最多{{bush.regrowSeconds}}秒',
                 '1餐',
               ],
               ['鱼群', '每{{fish.regrowSeconds}}秒+1条鱼', '{{fish.swarmMax}}条'],

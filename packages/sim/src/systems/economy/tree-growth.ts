@@ -15,6 +15,7 @@ import {
   stampResourceFootprintData,
   unstampResourceFootprint,
 } from '../footprint/index.js';
+import { dueForGrowth, LANDSCAPE_GROWTH_PERIOD_TICKS } from '../landscape/growth-clock.js';
 import { anyRouteFollowed, invalidateRoutesThrough } from '../landscape/routes.js';
 import { evictSettlersFromCells } from '../movement/evict.js';
 import { growingTreesNearNode } from '../spatial/growing-trees.js';
@@ -26,15 +27,8 @@ import { evictWorkFlagsFromCells } from './work-flag.js';
 /** Original behavior: a woodcutter fells, and a siege stone topples, only a tree above valency 2. */
 export const FELLABLE_TREE_LEVEL = 3;
 
-/**
- * Original behavior: the growth trigger runs every 24 ticks over one section of a 20 x 20 grid laid on
- * the map, in row order, so each point grows once every 400 runs (9600 ticks, 800 s).
- */
-const GROWTH_RUN_TICKS = 24;
-const SECTIONS_PER_SIDE = 20;
-const SECTION_COUNT = SECTIONS_PER_SIDE * SECTIONS_PER_SIDE;
-/** Ticks between two growth steps of one tree. */
-export const TREE_GROWTH_PERIOD_TICKS = GROWTH_RUN_TICKS * SECTION_COUNT;
+/** Ticks between two growth steps of one tree: one landscape growth period. */
+export const TREE_GROWTH_PERIOD_TICKS = LANDSCAPE_GROWTH_PERIOD_TICKS;
 
 /**
  * The wood a tree of valency `level` out of `levels` holds, `wood` being its full-grown yield. Original
@@ -65,35 +59,12 @@ export function startTreeGrowth(world: World, content: ContentSet, tree: Entity,
   if (at < growth.maxLevel) world.add(tree, TreeGrowth, { level: at, levels: growth.maxLevel, wood });
 }
 
-/** Column or row `index`'s first node of the `size`-node map side, as the original cuts its sections. */
-function sectionEdge(size: number, index: number): number {
-  return Math.floor((size * index) / SECTIONS_PER_SIDE);
-}
-
 /**
  * Grow every {@link TreeGrowth} tree in this run's map section by one growth step. The trees still growing
  * are the work, never the map's standing forest.
  */
 export const treeGrowthSystem: System = (world, ctx) => {
-  const terrain = ctx.terrain;
-  if (terrain === undefined || ctx.tick % GROWTH_RUN_TICKS !== 0) return;
-  const section = Math.floor(ctx.tick / GROWTH_RUN_TICKS) % SECTION_COUNT;
-  const column = section % SECTIONS_PER_SIDE;
-  const row = Math.floor(section / SECTIONS_PER_SIDE);
-  const x0 = sectionEdge(terrain.width, column);
-  const x1 = sectionEdge(terrain.width, column + 1);
-  const y0 = sectionEdge(terrain.height, row);
-  const y1 = sectionEdge(terrain.height, row + 1);
-  if (x0 === x1 || y0 === y1) return;
-  // The box around the section's middle covers the whole section; the bounds test trims it.
-  const reach = Math.ceil(Math.max(x1 - x0, y1 - y0) / 2);
-  const near = growingTreesNearNode(world, (x0 + x1) >> 1, (y0 + y1) >> 1, reach);
-  const due = near.filter((tree) => {
-    const pos = world.get(tree, Position);
-    const { hx, hy } = nodeOfPosition(pos.x, pos.y);
-    return hx >= x0 && hx < x1 && hy >= y0 && hy < y1;
-  });
-  for (const tree of due) growTree(world, ctx, tree);
+  for (const tree of dueForGrowth(world, ctx, growingTreesNearNode)) growTree(world, ctx, tree);
 };
 
 /**

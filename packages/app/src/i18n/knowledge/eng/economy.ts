@@ -405,7 +405,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Fruit bush',
-                '{{bush.regrowSeconds}} s: {{bush.stageSeconds}} s to bloom, {{bush.stageSeconds}} s to fruit',
+                'One step every {{bush.stageSeconds}} s, bloom then fruit: up to {{bush.regrowSeconds}} s',
                 '1 meal',
               ],
               ['Shoal', '+1 fish every {{fish.regrowSeconds}} s', '{{fish.swarmMax}} fish'],

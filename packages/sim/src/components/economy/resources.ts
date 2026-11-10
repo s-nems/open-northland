@@ -188,8 +188,6 @@ export const LeftCarcass = defineComponent<Record<string, never>>('LeftCarcass',
 export type BerryBushStage = 'bare' | 'flowering' | 'ripe';
 export const BerryBush = defineComponent<{
   stage: BerryBushStage;
-  /** Absolute tick of the next stage change, not a countdown; unused (0) while `ripe`. */
-  nextStageAtTick: number;
   /** Opaque render-variant tag. */
   gfxIndex?: number;
 }>('BerryBush', 'economy');

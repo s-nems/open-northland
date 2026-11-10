@@ -36,7 +36,7 @@ function setup(walk: readonly FootprintCell[]) {
   const eater = needsSettlerAt(sim, 1, 3, { hunger: ONE });
   const berry = sim.world.create();
   sim.world.add(berry, Position, positionOfNode(10, 6));
-  sim.world.add(berry, BerryBush, { stage: 'ripe', nextStageAtTick: 0 });
+  sim.world.add(berry, BerryBush, { stage: 'ripe' });
   const blocker = sim.world.create();
   sim.world.add(blocker, Position, positionOfNode(10, 6));
   stampResourceFootprintData(sim.world, blocker, {
@@ -70,7 +70,7 @@ describe('forage target reachability', () => {
     sim.world.add(store, Stockpile, { amounts: new Map([[3, 5]]) });
     const bush = sim.world.create();
     sim.world.add(bush, Position, positionOfNode(2, 16));
-    sim.world.add(bush, BerryBush, { stage: 'ripe', nextStageAtTick: 0 });
+    sim.world.add(bush, BerryBush, { stage: 'ripe' });
 
     expect(food(sim, eater)).toMatchObject({ kind: 'bush', bush });
     sim.world.destroy(blocker);
@@ -147,7 +147,7 @@ it.each(['bush', 'store'] as const)(
     const berry = sim.world.create();
     sim.world.add(berry, Position, positionOfNode(10, 6));
     if (source === 'bush') {
-      sim.world.add(berry, BerryBush, { stage: 'ripe', nextStageAtTick: 0 });
+      sim.world.add(berry, BerryBush, { stage: 'ripe' });
     } else {
       sim.world.add(berry, Building, { buildingType: 1, tribe: 1, built: ONE, level: 0 });
       sim.world.add(berry, Stockpile, { amounts: new Map([[3, 5]]) });
@@ -169,7 +169,7 @@ it.each(['bush', 'store'] as const)(
     sim.world.add(eater, Owner, { player: 0 });
     const farther = sim.world.create();
     sim.world.add(farther, Position, positionOfNode(2, 16));
-    sim.world.add(farther, BerryBush, { stage: 'ripe', nextStageAtTick: 0 });
+    sim.world.add(farther, BerryBush, { stage: 'ripe' });
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('terrain missing');
     const regions = routeRegions(sim.world, ctxOf(sim), terrain);

@@ -7,16 +7,21 @@ import type { SceneDefinition } from '../types.js';
 
 const MAP_W = 30;
 const MAP_H = 12;
-/** Mid-map, so the settler-centroid framing centres on the stations. */
-const ROW_Y = 6;
+/**
+ * Near the top of the map: the growth trigger takes the map's sections in row order, every 24 ticks, so
+ * this row's bushes bloom at ticks 1992 to 2280, within the run. A bush mid-map would bloom only near tick 4800.
+ */
+const BUSH_ROW_Y = 2;
+/** Mid-map, so the settler-centroid framing centres on the map; each forager walks up to its own bush. */
+const FORAGER_ROW_Y = 6;
 /** Tile gap between the paired bush+forager stations, so each settler's nearest ripe bush is its own. */
 const STATION_GAP = 6;
 const STATIONS = 4;
 const FIRST_STATION_X = 5;
-/** Starts bare rather than ripe, so no station forager ever targets it, and blooms at this absolute tick. */
-const LONE_BARE_BUSH = { x: 14, y: 9, bloomAtTick: 300 } as const;
-/** Clears the forage plus one `BERRY_REGROW_TICKS` (1200), so every bush is ripe again at the end. */
-const RUN_TICKS = 1500;
+/** Starts flowering, so no forager targets it, and ripens on its section's growth run at tick 1176. */
+const LONE_FLOWERING_BUSH = { x: 14, y: 1 } as const;
+/** Past the last station bush's bloom; a fruit needs a whole growth period more, 9600 ticks. */
+const RUN_TICKS = 2400;
 /** Not 1, so `cameraFor` centres on the settlers instead of keeping the fixed origin offset. */
 const INITIAL_ZOOM = 1.2;
 /** Clearly over the drive threshold - these settlers seek food before anything else. */
@@ -33,13 +38,11 @@ function spawnHungryForager(sim: Simulation, x: number, y: number): void {
 function build(sim: Simulation): void {
   for (let i = 0; i < STATIONS; i++) {
     const bx = FIRST_STATION_X + i * STATION_GAP;
-    placeSandboxBerryBush(sim, bx, ROW_Y);
-    spawnHungryForager(sim, bx, ROW_Y - 1);
+    placeSandboxBerryBush(sim, bx, BUSH_ROW_Y);
+    spawnHungryForager(sim, bx, FORAGER_ROW_Y);
   }
-  const bare = placeSandboxBerryBush(sim, LONE_BARE_BUSH.x, LONE_BARE_BUSH.y);
-  const b = sim.world.mut(bare, BerryBush);
-  b.stage = 'bare';
-  b.nextStageAtTick = LONE_BARE_BUSH.bloomAtTick;
+  const lone = placeSandboxBerryBush(sim, LONE_FLOWERING_BUSH.x, LONE_FLOWERING_BUSH.y);
+  sim.world.mut(lone, BerryBush).stage = 'flowering';
 }
 
 export const berriesScene: SceneDefinition = {
@@ -80,12 +83,16 @@ export const berriesScene: SceneDefinition = {
       },
     },
     {
-      label: 'every bush ended RIPE - foraged bushes and the lone bare bush all regrew',
+      label: 'each bush grew one stage on its growth run: the foraged ones FLOWERING, the lone one RIPE',
       predicate: (sim) => {
+        let flowering = 0;
+        let ripe = 0;
         for (const e of sim.world.query(BerryBush)) {
-          if (sim.world.get(e, BerryBush).stage !== 'ripe') return false;
+          const stage = sim.world.get(e, BerryBush).stage;
+          if (stage === 'flowering') flowering++;
+          else if (stage === 'ripe') ripe++;
         }
-        return true;
+        return flowering === STATIONS && ripe === 1;
       },
     },
   ],
