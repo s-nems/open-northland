@@ -462,11 +462,12 @@ export function nearestLiveResourceOfGoods(
   goodTypes: readonly number[],
   from: HalfCellNode,
   workable?: WorkableTest,
+  gate?: AnchorGate,
 ): Entity | null {
   let best: Entity | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (const goodType of goodTypes) {
-    const hit = nearestLiveResource(world, goodType, from, workable);
+    const hit = nearestLiveResource(world, goodType, from, workable, gate);
     const node = hit === null ? null : anchorNodeOf(world, hit);
     if (hit === null || node === null) continue;
     const distance = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);

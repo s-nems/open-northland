@@ -27,9 +27,12 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { anchorNodeOf } from '../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../ai-shared/seat-roster.js';
 import {
+  bothGates,
   type GathererReach,
   gathererReach,
+  limitResourceGate,
   nearestLiveResourceOfGoods,
+  reachableResourceGate,
   reachableResourceTest,
   type WorkableTest,
   workableResourceTest,
@@ -180,8 +183,14 @@ function followFlag(
   } else if (!replantDue(world, e, flagNode, round)) return;
   const origin = settlementSide(world, e, flagNode);
   const from = fed ? flagNode : origin;
+  // `workable`'s anchor gate: on islands or inside a signpost network most of the map's resources fail
+  // it on their node alone, before anything of theirs is read.
+  const gate = bothGates(
+    limitResourceGate(ctx, terrain, limit),
+    reachableResourceGate(ctx, terrain, flagNode),
+  );
   const nearest = (untried: WorkableTest): Entity | null =>
-    nearestLiveResourceOfGoods(world, goods, from, (r) => workable(r) && untried(r));
+    nearestLiveResourceOfGoods(world, goods, from, (r) => workable(r) && untried(r), gate);
   const ground = flagGround(world, ctx, terrain, limit);
   const replant = replantSpot(world, ground, e, flag.radius, nearest, origin, reach, taken, FOLLOW_FLAG_BAND);
   if (replant === 'dry' || replant === null) {
