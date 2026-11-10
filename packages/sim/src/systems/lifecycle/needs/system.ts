@@ -18,6 +18,7 @@ import { handlerTurn, mapAiSeatOnTurn } from '../../ai-shared/cadence.js';
 import type { System, SystemContext } from '../../context.js';
 import { woundBearer } from '../../equipment/index.js';
 import { isFighterJob } from '../../readviews/index.js';
+import { wakeIdleToNeed } from '../../settlers/planner/idle-replan.js';
 import { carriedDrain, carriesNeeds, frozenInCart, settlerCarriesNeeds } from './drain-class.js';
 import { drainReachesBand, mutNeeds, needLevel } from './levels.js';
 import { applyNeedUnits, NEED_CRITICAL_THRESHOLD, NEED_RESERVE_UNITS, needBar } from './scale.js';
@@ -128,7 +129,11 @@ function passPerson(world: World, ctx: SystemContext, e: Entity, refilling: numb
   const settler = world.tryGet(e, Settler);
   const carries = settler !== undefined && settlerCarriesNeeds(world, ctx.content, e, settler);
   const drain: NeedDrain = carries ? carriedDrain(ctx.content, settler) : 'none';
+  const held = world.tryGet(e, SettlerNeeds);
+  // Read before the drain rewrites the bars: the needs rungs fire at a band threshold.
+  const reachesBand = carries && held !== undefined && drainReachesBand(held, ctx.tick);
   const needs = drainNeeds(world, ctx.tick, e, drain);
+  if (reachesBand) wakeIdleToNeed(world, e);
   stepHealth(world, ctx, e, carries ? needLevel(needs, 'hunger', ctx.tick) : undefined, settler);
 }
 

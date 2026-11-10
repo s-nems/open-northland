@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { SettlerNeeds, type SettlerNeedsState } from '../../../src/components/index.js';
+import {
+  AiControl,
+  computerModuleEnables,
+  IdleStand,
+  Owner,
+  SettlerNeeds,
+  type SettlerNeedsState,
+} from '../../../src/components/index.js';
 import {
   exportSaveGame,
   fx,
@@ -58,6 +65,36 @@ describe('needs wake list', () => {
     const { sim, near } = settledSim();
     (sim.world.get(near, SettlerNeeds) as SettlerNeedsState).drain = 'body';
     expect(sim.world.verifyCaches()).toContain('needsWake: 1 drain(s) diverge from the drain class');
+  });
+});
+
+describe('a need bar reaching a band', () => {
+  const SEAT = 0;
+  /** Whether the settler near a band still stands idle on the tick its bar gets there. */
+  const standsThroughBand = (machine: boolean): boolean => {
+    const { sim, near } = settledSim();
+    const { world } = sim;
+    if (machine) {
+      world.add(world.create(), AiControl, {
+        player: SEAT,
+        modules: computerModuleEnables({}),
+        computerEnabled: true,
+        mapAiEnabled: false,
+        difficulty: 'hard',
+      });
+    }
+    world.add(near, Owner, { player: SEAT });
+    world.add(near, IdleStand, { standing: true });
+    const due = nextBandTick(world.get(near, SettlerNeeds), fixtureTick(sim) + 1);
+    while (fixtureTick(sim) < due - 1) needsSystem(world, nextTickCtxOf(sim));
+    expect(world.has(near, IdleStand)).toBe(true);
+    needsSystem(world, nextTickCtxOf(sim));
+    return world.has(near, IdleStand);
+  };
+
+  it("ends a human seat's idle wait on that tick, and leaves a machine seat's to its beat", () => {
+    expect(standsThroughBand(false)).toBe(false);
+    expect(standsThroughBand(true)).toBe(true);
   });
 });
 

@@ -119,6 +119,16 @@ export function wakeIdle(world: World, e: Entity): void {
   if (at !== undefined) wakeCrewInside(world, at);
 }
 
+/**
+ * End the idle wait of a human seat's `e` whose need bar just reached a band threshold, where a needs
+ * rung may fire, so it answers the need on this tick's pass instead of on its idle beat. It alone
+ * re-plans: a crew it waits inside with keeps its seats. A machine seat's idler keeps its beat, the cost
+ * cut {@link COMPUTER_IDLE_REPLAN_PERIOD_TICKS} names.
+ */
+export function wakeIdleToNeed(world: World, e: Entity): void {
+  if (world.has(e, IdleStand) && !ownedByMachine(world, e)) world.remove(e, IdleStand);
+}
+
 /** Wake the workers waiting inside `workplace`, so they re-plan in one pass and re-pair its seats. */
 export function wakeCrewInside(world: World, workplace: Entity): void {
   for (const e of assignedWorkers(world, workplace)) {
