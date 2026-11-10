@@ -101,6 +101,8 @@ function postIndex(world: World, content: ContentSet, terrain: TerrainGraph): Po
   if (held.feed.drain(held.restow)) return rebuild(world, content, terrain);
   if (held.moves.drain(held.restowStanding)) return rebuild(world, content, terrain);
   const trades = settlerTradeLog(world, 'standingPosts');
+  // An empty log is left alone: a long-lived set allocates a fresh table on every clear.
+  if (trades.size === 0) return held;
   for (const e of trades) restowPost(world, held, e);
   trades.clear();
   return held;

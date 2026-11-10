@@ -95,7 +95,10 @@ export const tribeUnlockSystem: System = (world, ctx) => {
   let rescan = memo.rules !== rules;
   memo.rules = rules;
   if (memo.feed.drain(visit)) rescan = true;
-  for (const e of memo.trades) visit(e);
-  memo.trades.clear();
+  // An empty log is left alone: a long-lived set allocates a fresh table on every clear.
+  if (memo.trades.size > 0) {
+    for (const e of memo.trades) visit(e);
+    memo.trades.clear();
+  }
   if (rescan) for (const e of world.query(Person, Settler)) visit(e);
 };

@@ -299,7 +299,8 @@ export const technologySystem: System = (world, ctx) => {
       if (!world.has(entity, Person) || !world.has(entity, Settler)) memo.inputs.delete(entity);
     }
   }
-  memo.writes.clear();
+  // An empty one is left alone: a long-lived set allocates a fresh table on every clear.
+  if (memo.writes.size > 0) memo.writes.clear();
   for (const component of MEMBERSHIP_INPUTS) {
     memo.generations.set(component, world.componentGeneration(component));
   }

@@ -48,6 +48,8 @@ function synced(world: World, content: ContentSet): FighterIndex {
   const resync = (e: Entity): void => refile(world, held, e);
   if (held.feed.drain(resync)) return rebuild(world, content);
   const trades = settlerTradeLog(world, 'ownedFighters');
+  // An empty log is left alone: a long-lived set allocates a fresh table on every clear.
+  if (trades.size === 0) return held;
   for (const e of trades) resync(e);
   trades.clear();
   return held;
