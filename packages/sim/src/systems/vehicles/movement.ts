@@ -733,15 +733,9 @@ export function vehicleRouteTo(
   if (anchor === null || type === undefined) return null;
   const start = terrain.nodeAtClamped(anchor.hx, anchor.hy);
   // The synchronous search cannot change these blockers; keep its repeated node probes local.
-  const blocked = blocksUnder(
-    world,
-    ctx,
-    terrain,
-    vehicle,
-    vehiclePasses(world, ctx, terrain, type),
-    'transit',
-    new Map<NodeId, boolean>(),
-  );
+  // One size test for both searches: a land vehicle's squeeze answers are held per test.
+  const passes = vehiclePasses(world, ctx, terrain, type);
+  const blocked = blocksUnder(world, ctx, terrain, vehicle, passes, 'transit', new Map<NodeId, boolean>());
   const traversal = vehicleTraversal(type);
   if (traversal === 'water' && start !== goal && !sailsTo(world, ctx, terrain, type, start, goal))
     return null;
@@ -749,7 +743,16 @@ export function vehicleRouteTo(
   const group = `${world.tryGet(vehicle, Owner)?.player ?? -1}:${traversal}:${type.logicSize}`;
   const borrowed = orders?.borrow(terrain, group, blocked, start, goal, traversal) ?? null;
   if (borrowed !== null) return drivenNodes(terrain, borrowed);
-  const pastVehicles = vehicleGroundBlocks(world, ctx, terrain, vehicle, type);
+  const pastVehicles = blocksUnder(
+    world,
+    ctx,
+    terrain,
+    vehicle,
+    passes,
+    'transit',
+    undefined,
+    NO_VEHICLE_CELLS,
+  );
   // A ship clear of other vehicles reads only its water's classes, so its route is held across orders.
   const held =
     traversal === 'water' && type.logicSize > 0 && !standsInAnotherVehicle(world, ctx, terrain, vehicle);
