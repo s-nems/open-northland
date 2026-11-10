@@ -7,6 +7,7 @@ import {
   PathRequest,
   Position,
   Resource,
+  Rider,
   Stance,
   StandIn,
   Stockpile,
@@ -200,6 +201,30 @@ describe('DEFEND - hold an anchor, don’t chase past the leash', () => {
     }
     expect(walks).toBe(0);
     expect(entityNode(sim.world, terrain, guard)).toBe(goal);
+  });
+
+  it('leaves a guard seated in a vehicle to walk to its door instead of back to its post', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(30, 1) });
+    const ctx = ctxOf(sim);
+    const guard = combatant(sim, 20, 0, P0, MILITARY_MODE.DEFEND, { jobType: SOLDIER });
+    sim.world.mut(guard, Stance).anchorCell = cell(sim, 5, 0);
+    const vehicle = createVehicle(sim.world, ctx, {
+      vehicleType: CART,
+      tribe: VIKING_TRIBE,
+      x: 24,
+      y: 0,
+      owner: P0,
+    });
+    if (vehicle === null || !seatPassenger(sim.world, vehicle, guard))
+      throw new Error('setup: no vehicle seat');
+    sim.world.add(guard, Rider, { vehicle, boarding: true, leaving: null });
+
+    breakOff(sim.world, ctx, guard, cell(sim, 20, 0), {
+      anchorCell: cell(sim, 5, 0),
+      leash: DEFEND_LEASH_NODES,
+      hold: true,
+    });
+    expect(sim.world.has(guard, MoveGoal)).toBe(false);
   });
 
   it('holds the post beside a covered anchor without searching again until a walk block changes', () => {

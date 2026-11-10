@@ -187,7 +187,8 @@ export function breakOff(
   here: NodeId,
   defend: DefendPost,
 ): void {
-  if (defend?.hold === true) {
+  // A rider's walk belongs to its vehicle: a guard sent back from the door would never step in.
+  if (defend?.hold === true && !world.has(e, Rider)) {
     returnToAnchor(world, ctx, e, here, defend.anchorCell);
     return;
   }
