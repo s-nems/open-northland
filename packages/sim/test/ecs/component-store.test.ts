@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity } from '../../src/ecs/component.js';
-import { ComponentStore } from '../../src/ecs/component-store.js';
+import { ABSENT_SLOT, ComponentStore } from '../../src/ecs/component-store.js';
 import { PAGE_SIZE } from '../../src/ecs/paged-blocks.js';
 import { QueryIterator } from '../../src/ecs/query-iterator.js';
 import { defineComponent, World } from '../../src/ecs/world.js';
@@ -115,11 +115,11 @@ describe('ComponentStore compaction', () => {
     expect(store.length).toBeLessThan(COMPACTING_SIZE);
     for (let e = COMPACTING_SIZE / 2 + 1; e <= COMPACTING_SIZE; e++) {
       const slot = store.slotOf(e as Entity);
-      expect(slot).toBeGreaterThanOrEqual(0);
+      expect(slot).not.toBe(ABSENT_SLOT);
       expect(store.entities[slot]).toBe(e);
       expect(store.valueAt(slot)).toBe(e * 10);
     }
-    expect(store.slotOf(1 as Entity)).toBe(-1);
+    expect(store.slotOf(1 as Entity)).toBe(ABSENT_SLOT);
   });
 
   it('shrinks its dense arrays after a compaction leaves them mostly empty', () => {
@@ -210,7 +210,8 @@ describe('ComponentStore compaction', () => {
       store.set(1 as Entity, tick);
       store.delete(1 as Entity);
     }
-    expect((Reflect.get(store, 'index') as Int32Array).length).toBe(PAGE_SIZE);
+    const emptyBlockAndOne = 2 * PAGE_SIZE;
+    expect((Reflect.get(store, 'index') as Int32Array).length).toBe(emptyBlockAndOne);
   });
 
   it('hands an emptied block to the next new page with every entry vacant', () => {

@@ -1,9 +1,13 @@
 import { BIT_MASK, WORD_SHIFT } from '../core/bit-words.js';
 import type { Entity } from './component.js';
-import { NO_BLOCK, PAGE_BITS, PAGE_MASK, PagedBlocks } from './paged-blocks.js';
+import { PAGE_BITS, PAGE_MASK, PAGE_SIZE, PagedBlocks } from './paged-blocks.js';
 
-/** Entity ids start at 1, so 0 marks a vacated dense slot; an index entry holds `slot + 1`. */
+/** Entity ids start at 1, so 0 marks a vacated dense slot. */
 export const VACANT_SLOT = 0;
+/** The dense slot no member takes: it stays vacant with an undefined value, so an index entry of 0, which
+ *  every entry of a non-member is, reads as absent without a test. */
+export const ABSENT_SLOT = 0;
+const FIRST_SLOT = ABSENT_SLOT + 1;
 const MIN_ENTITY = 1;
 /** The largest id an `Int32Array` dense slot holds. */
 const MAX_ENTITY = 0x7fffffff;
@@ -18,7 +22,8 @@ const SHRINK_FACTOR = 4;
 /**
  * One component's entity-to-value store: a paged entity-to-slot index over dense arrays kept in insertion
  * order. The index blocks share one buffer behind a page table, so a lookup reads two typed arrays the
- * store owns rather than a typed array object per page. Iteration visits slots in insertion order, like a
+ * store holds rather than a typed array object per page, and a page without a block reads the zeroed
+ * empty block instead of branching. Iteration visits slots in insertion order, like a
  * `Map`: a removal vacates its slot and a re-add appends at the end. Compaction preserves the order and
  * bumps {@link epoch}; every slot carries an ascending insertion sequence so an open cursor can find its
  * place again ({@link firstSlotAfter}).
@@ -26,16 +31,18 @@ const SHRINK_FACTOR = 4;
 export class ComponentStore<T> {
   /** A page holds an index block while it holds a member. */
   private readonly blocks = new PagedBlocks((capacity) => this.growBlocks(capacity));
-  /** One entry per id of a block's page, each `slot + 1` or {@link VACANT_SLOT}. */
-  private index = new Int32Array(0);
+  /** {@link PagedBlocks.pages}, held here so a lookup reads it without passing through the blocks. */
+  private pages = this.blocks.pages;
+  /** One entry per id of a block's page: the member's slot, or {@link ABSENT_SLOT}. */
+  private index = new Int32Array(PAGE_SIZE);
   /** One bit per {@link index} entry, set while it holds a slot: `has` reads this, 32 times denser than
    *  the index, so a membership probe touches fewer cache lines. */
-  private memberBits = new Uint32Array(0);
+  private memberBits = new Uint32Array(PAGE_SIZE >>> WORD_SHIFT);
   private denseEntities = new Int32Array(INITIAL_CAPACITY);
   private denseSeqs = new Float64Array(INITIAL_CAPACITY);
-  private values: Array<T | undefined> = [];
+  private values: Array<T | undefined> = [undefined];
   private revisions = new Float64Array(INITIAL_CAPACITY);
-  private denseLength = 0;
+  private denseLength = FIRST_SLOT;
   private liveSize = 0;
   private compactions = 0;
   private nextSeq = 0;
@@ -50,7 +57,7 @@ export class ComponentStore<T> {
     return this.denseSeqs;
   }
 
-  /** Dense slots in use, vacated ones included. */
+  /** Dense slots in use, vacated ones and the never-taken first one included. */
   get length(): number {
     return this.denseLength;
   }
@@ -65,23 +72,27 @@ export class ComponentStore<T> {
     return this.compactions;
   }
 
-  /** The dense slot of `entity`, or -1 while it is not a member. */
+  /** The dense slot of `entity`, or {@link ABSENT_SLOT} while it is not a member. */
   slotOf(entity: Entity): number {
-    const block = this.blocks.blockOf(entity >>> PAGE_BITS);
-    if (block === NO_BLOCK) return -1;
-    return (this.index[(block << PAGE_BITS) | (entity & PAGE_MASK)] as number) - 1;
+    const page = entity >>> PAGE_BITS;
+    const pages = this.pages;
+    const block = page < pages.length ? (pages[page] as number) : this.blocks.farBlockOf(page);
+    return this.index[(block << PAGE_BITS) | (entity & PAGE_MASK)] as number;
   }
 
   has(entity: Entity): boolean {
-    const block = this.blocks.blockOf(entity >>> PAGE_BITS);
-    if (block === NO_BLOCK) return false;
+    const page = entity >>> PAGE_BITS;
+    const pages = this.pages;
+    const block = page < pages.length ? (pages[page] as number) : this.blocks.farBlockOf(page);
     const at = (block << PAGE_BITS) | (entity & PAGE_MASK);
     return ((this.memberBits[at >>> WORD_SHIFT] as number) & (1 << (at & BIT_MASK))) !== 0;
   }
 
   get(entity: Entity): T | undefined {
-    const slot = this.slotOf(entity);
-    return slot < 0 ? undefined : this.values[slot];
+    const page = entity >>> PAGE_BITS;
+    const pages = this.pages;
+    const block = page < pages.length ? (pages[page] as number) : this.blocks.farBlockOf(page);
+    return this.values[this.index[(block << PAGE_BITS) | (entity & PAGE_MASK)] as number];
   }
 
   valueAt(slot: number): T | undefined {
@@ -95,7 +106,7 @@ export class ComponentStore<T> {
   /** Records the revision of a member's value; a non-member is ignored. */
   setRevision(entity: Entity, revision: number): void {
     const slot = this.slotOf(entity);
-    if (slot >= 0) this.revisions[slot] = revision;
+    if (slot !== ABSENT_SLOT) this.revisions[slot] = revision;
   }
 
   setRevisionAt(slot: number, revision: number): void {
@@ -108,9 +119,10 @@ export class ComponentStore<T> {
       throw new RangeError(`ComponentStore.set: entity ${entity} is outside ${MIN_ENTITY}..${MAX_ENTITY}`);
     }
     const block = this.blocks.acquire(entity >>> PAGE_BITS);
+    this.pages = this.blocks.pages;
     const at = (block << PAGE_BITS) | (entity & PAGE_MASK);
-    const existing = (this.index[at] as number) - 1;
-    if (existing >= 0) {
+    const existing = this.index[at] as number;
+    if (existing !== ABSENT_SLOT) {
       this.values[existing] = value;
       return false;
     }
@@ -120,7 +132,7 @@ export class ComponentStore<T> {
     this.denseSeqs[slot] = this.nextSeq++;
     this.revisions[slot] = 0;
     this.values[slot] = value;
-    this.index[at] = slot + 1;
+    this.index[at] = slot;
     this.memberBits[at >>> WORD_SHIFT] =
       (this.memberBits[at >>> WORD_SHIFT] as number) | (1 << (at & BIT_MASK));
     this.blocks.retain(block);
@@ -132,26 +144,26 @@ export class ComponentStore<T> {
   delete(entity: Entity): boolean {
     const page = entity >>> PAGE_BITS;
     const block = this.blocks.blockOf(page);
-    if (block === NO_BLOCK) return false;
     const at = (block << PAGE_BITS) | (entity & PAGE_MASK);
-    const slot = (this.index[at] as number) - 1;
-    if (slot < 0) return false;
-    this.index[at] = VACANT_SLOT;
+    const slot = this.index[at] as number;
+    if (slot === ABSENT_SLOT) return false;
+    this.index[at] = ABSENT_SLOT;
     this.memberBits[at >>> WORD_SHIFT] =
       (this.memberBits[at >>> WORD_SHIFT] as number) & ~(1 << (at & BIT_MASK));
     this.blocks.release(page, block);
     this.denseEntities[slot] = VACANT_SLOT;
     this.values[slot] = undefined;
     this.liveSize--;
-    const vacant = this.denseLength - this.liveSize;
-    if (vacant >= VACANCY_COMPACT_MIN && vacant > this.denseLength * VACANCY_COMPACT_FRACTION) this.compact();
+    const vacant = this.denseLength - FIRST_SLOT - this.liveSize;
+    if (vacant >= VACANCY_COMPACT_MIN && vacant > (this.denseLength - FIRST_SLOT) * VACANCY_COMPACT_FRACTION)
+      this.compact();
     return true;
   }
 
   /** The first dense slot whose insertion sequence exceeds `seq`: where a cursor that last visited `seq`
    *  resumes after a compaction. */
   firstSlotAfter(seq: number): number {
-    let lo = 0;
+    let lo = FIRST_SLOT;
     let hi = this.denseLength;
     while (lo < hi) {
       const mid = (lo + hi) >>> 1;
@@ -164,7 +176,7 @@ export class ComponentStore<T> {
   /** Members in insertion order. */
   keys(): Entity[] {
     const out: Entity[] = [];
-    for (let slot = 0; slot < this.denseLength; slot++) {
+    for (let slot = FIRST_SLOT; slot < this.denseLength; slot++) {
       const e = this.denseEntities[slot] ?? VACANT_SLOT;
       if (e !== VACANT_SLOT) out.push(e as Entity);
     }
@@ -175,7 +187,7 @@ export class ComponentStore<T> {
    *  compaction, so the store must not shrink while it is open; it throws if it did. */
   *entries(): IterableIterator<[Entity, T]> {
     const epoch = this.compactions;
-    for (let slot = 0; slot < this.denseLength; slot++) {
+    for (let slot = FIRST_SLOT; slot < this.denseLength; slot++) {
       const e = this.denseEntities[slot] ?? VACANT_SLOT;
       if (e !== VACANT_SLOT) yield [e as Entity, this.values[slot] as T];
       if (this.compactions !== epoch)
@@ -185,8 +197,8 @@ export class ComponentStore<T> {
 
   private compact(): void {
     const { denseEntities: entities, denseSeqs: seqs, revisions, values } = this;
-    let to = 0;
-    for (let from = 0; from < this.denseLength; from++) {
+    let to = FIRST_SLOT;
+    for (let from = FIRST_SLOT; from < this.denseLength; from++) {
       const e = entities[from] ?? VACANT_SLOT;
       if (e === VACANT_SLOT) continue;
       if (to !== from) {
@@ -194,16 +206,16 @@ export class ComponentStore<T> {
         seqs[to] = seqs[from] ?? 0;
         revisions[to] = revisions[from] ?? 0;
         values[to] = values[from];
-        const block = this.blocks.blockOf(e >>> PAGE_BITS);
-        if (block !== NO_BLOCK) this.index[(block << PAGE_BITS) | (e & PAGE_MASK)] = to + 1;
+        this.index[(this.blocks.blockOf(e >>> PAGE_BITS) << PAGE_BITS) | (e & PAGE_MASK)] = to;
       }
       to++;
     }
     values.length = to;
     this.denseLength = to;
     this.compactions++;
-    if (entities.length > INITIAL_CAPACITY && entities.length >= to * SHRINK_FACTOR) {
-      this.resize(Math.max(INITIAL_CAPACITY, to * 2));
+    const live = to - FIRST_SLOT;
+    if (entities.length > INITIAL_CAPACITY && entities.length >= live * SHRINK_FACTOR) {
+      this.resize(Math.max(INITIAL_CAPACITY, to + live));
     }
   }
 

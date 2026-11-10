@@ -8,7 +8,7 @@ import { type CacheVerifier, CacheVerifiers } from './cache-verifier.js';
 import { CanonicalQueries } from './canonical-queries.js';
 import { ChangeFeed, ChangeFeeds } from './change-feed.js';
 import type { Component, DeepReadonly, Entity } from './component.js';
-import { ComponentStore, VACANT_SLOT } from './component-store.js';
+import { ABSENT_SLOT, ComponentStore, VACANT_SLOT } from './component-store.js';
 import { GenerationJournals } from './generation-journal.js';
 import { EntityMemberships } from './memberships.js';
 import { QueryIterator } from './query-iterator.js';
@@ -165,7 +165,7 @@ export class World {
     const store = this.storeOf(component);
     if (store === undefined) return undefined;
     const slot = store.slotOf(entity);
-    const v = slot < 0 ? undefined : store.valueAt(slot);
+    const v = store.valueAt(slot);
     if (v === undefined) return undefined;
     store.setRevisionAt(slot, this.touched.record(entity, component as Component<unknown>, false));
     this.mutations?.componentWritten(component as Component<unknown>, entity);
@@ -181,8 +181,8 @@ export class World {
    */
   mutUnseen<T>(entity: Entity, component: Component<T>): T {
     const store = this.storeOf(component);
-    const slot = store === undefined ? -1 : store.slotOf(entity);
-    const v = store === undefined || slot < 0 ? undefined : store.valueAt(slot);
+    const slot = store === undefined ? ABSENT_SLOT : store.slotOf(entity);
+    const v = store?.valueAt(slot);
     if (store === undefined || v === undefined)
       throw new Error(`entity ${entity} has no component ${component.name}`);
     store.setRevisionAt(slot, this.touched.recordUnlisted());
@@ -213,8 +213,8 @@ export class World {
    *  from every {@link add} and {@link mut}, so a cache keyed on it re-derives after any write. */
   revisionOf(entity: Entity, component: Component<unknown>): number | undefined {
     const store = this.storeOf(component);
-    const slot = store === undefined ? -1 : store.slotOf(entity);
-    return store === undefined || slot < 0 ? undefined : store.revisionAt(slot);
+    const slot = store === undefined ? ABSENT_SLOT : store.slotOf(entity);
+    return store === undefined || slot === ABSENT_SLOT ? undefined : store.revisionAt(slot);
   }
 
   /** Monotonic version of every entity mutation (`create`/`add`/`remove`/`destroy`/`mut`): the "may the
@@ -253,11 +253,12 @@ export class World {
   }
 
   has<T>(entity: Entity, component: Component<T>): boolean {
-    return this.storeOf(component)?.has(entity) ?? false;
+    const store = this.storesById[component.id];
+    return store !== undefined && store.has(entity);
   }
 
   get<T>(entity: Entity, component: Component<T>): DeepReadonly<T> {
-    const v = this.storeOf(component)?.get(entity);
+    const v = this.storesById[component.id]?.get(entity);
     if (v === undefined) {
       throw new Error(`entity ${entity} has no component ${component.name}`);
     }
@@ -266,7 +267,7 @@ export class World {
   }
 
   tryGet<T>(entity: Entity, component: Component<T>): DeepReadonly<T> | undefined {
-    return this.storeOf(component)?.get(entity) as DeepReadonly<T> | undefined;
+    return this.storesById[component.id]?.get(entity) as DeepReadonly<T> | undefined;
   }
 
   /** Iterate entities that have all of the given components, in the insertion order of the smallest store.
@@ -393,7 +394,6 @@ export class World {
       const store = this.storeOf(c);
       if (store === undefined) continue;
       const slot = store.slotOf(entity);
-      if (slot < 0) continue;
       const v = store.valueAt(slot);
       if (v === undefined) continue;
       visit(c.name, v, store.revisionAt(slot), c);

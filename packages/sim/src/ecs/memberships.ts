@@ -1,6 +1,6 @@
 import { BIT_MASK, WORD_SHIFT } from '../core/bit-words.js';
 import type { Entity } from './component.js';
-import { NO_BLOCK, PAGE_BITS, PAGE_MASK, PAGE_SIZE, PagedBlocks } from './paged-blocks.js';
+import { EMPTY_BLOCK, PAGE_BITS, PAGE_MASK, PAGE_SIZE, PagedBlocks } from './paged-blocks.js';
 
 const NOT_CARRIED = -1;
 
@@ -16,7 +16,7 @@ export class EntityMemberships {
    *  entities. */
   private readonly blocks = new PagedBlocks((capacity) => this.growBlocks(capacity));
   /** {@link PAGE_SIZE} masks of {@link stride} words per block. */
-  private masks = new Uint32Array(0);
+  private masks = new Uint32Array(PAGE_SIZE);
 
   add(entity: Entity, index: number): void {
     const word = index >>> WORD_SHIFT;
@@ -85,7 +85,7 @@ export class EntityMemberships {
   /** The first mask word of `entity`, or {@link NOT_CARRIED} while its page holds no block. */
   private maskOf(entity: Entity): number {
     const block = this.blocks.blockOf(entity >>> PAGE_BITS);
-    if (block === NO_BLOCK) return NOT_CARRIED;
+    if (block === EMPTY_BLOCK) return NOT_CARRIED;
     return ((block << PAGE_BITS) | (entity & PAGE_MASK)) * this.stride;
   }
 
