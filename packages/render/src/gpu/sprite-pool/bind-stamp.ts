@@ -233,7 +233,8 @@ export class BindStamp {
       return;
     }
     const bound = this.layers ?? [];
-    bound.length = layers.length;
+    // A length write is a runtime call even when it changes nothing.
+    if (bound.length !== layers.length) bound.length = layers.length;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (layer === undefined) continue;

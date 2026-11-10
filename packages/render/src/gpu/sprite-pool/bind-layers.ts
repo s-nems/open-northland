@@ -169,7 +169,7 @@ export class LayerBinder {
     inputsHold = false,
   ): void {
     pe.bindSerial++;
-    if (pe.damageBodies !== undefined) pe.damageBodies.length = 0;
+    if (pe.damageBodies !== undefined && pe.damageBodies.length > 0) pe.damageBodies.length = 0;
     setBloodless(pe.container, BLOODLESS_KINDS.has(item.kind));
     let buildingBlood: WeakMap<AtlasFrame, BloodSurface> | undefined;
     if (!pe.paletted && item.kind === 'building') {
@@ -369,8 +369,9 @@ export class LayerBinder {
         if (s !== undefined) hideLayer(s);
       }
     } else {
-      pe.pickExempt.length = spriteSlot;
-      pe.slotLayers.length = spriteSlot;
+      // A length write is a runtime call even when it changes nothing.
+      if (pe.pickExempt.length !== spriteSlot) pe.pickExempt.length = spriteSlot;
+      if (pe.slotLayers.length !== spriteSlot) pe.slotLayers.length = spriteSlot;
     }
     if (site === 'claimed') {
       const road = item.kind === 'roadsite';

@@ -101,7 +101,8 @@ export class LayerBuffer {
    *  list so the buffer keeps its storage. */
   finish(): readonly ResolvedLayer[] {
     if (this.count === 0) return NO_LAYERS;
-    this.layers.length = this.count;
+    // A length write is a runtime call even when it changes nothing.
+    if (this.layers.length !== this.count) this.layers.length = this.count;
     return this.layers;
   }
 }
