@@ -4,6 +4,7 @@ import {
   AttackOrder,
   diplomacyStance,
   Engagement,
+  engagementRecord,
   FOG_MODE,
   Frightened,
   Health,
@@ -237,7 +238,7 @@ function answerBlow(world: World, ctx: SystemContext, attacker: Entity, e: Entit
     if (held !== undefined && keepsWildTarget(world, e, held)) return;
     if (world.has(herdLeaderOf(world, e), Frightened)) return;
     if (!keepsWildTarget(world, e, attacker)) return;
-    if (held === undefined) world.add(e, Engagement, { repathAt: ctx.tick, target: attacker });
+    if (held === undefined) world.add(e, Engagement, engagementRecord(ctx.tick, attacker));
     else world.mut(e, Engagement).target = attacker;
     return;
   }

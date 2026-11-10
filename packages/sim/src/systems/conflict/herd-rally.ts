@@ -1,4 +1,4 @@
-import { Engagement, Frightened, isWildlife, Owner, Settler } from '../../components/index.js';
+import { Engagement, engagementRecord, Frightened, isWildlife, Owner, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -44,7 +44,7 @@ export function rallyFollowers(
     if (own === target || (own !== undefined && keepsWildTarget(world, m, own))) continue;
     if (hexNodeDistance(terrain, settlerMovementNode(world, terrain, m), at) > herd.leaderDistance) continue;
     const engagement = world.tryMut(m, Engagement);
-    if (engagement === undefined) world.add(m, Engagement, { repathAt: ctx.tick, target });
+    if (engagement === undefined) world.add(m, Engagement, engagementRecord(ctx.tick, target));
     else engagement.target = target;
   }
 }

@@ -29,7 +29,8 @@ const ROLE_POST = 2;
 
 /**
  * Which garrison holds its post ({@link mannedPostOf}), kept per world from change feeds over the stores
- * that answer reads, so a pass costs the garrisons and posts that changed rather than every posted man.
+ * that answer is read from, so a pass costs the garrisons and posts that changed rather than every posted
+ * man.
  * Derived state, never hashed; the registered verifier re-derives it.
  */
 export class MannedPosts {

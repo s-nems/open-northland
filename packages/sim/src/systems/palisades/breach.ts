@@ -2,6 +2,7 @@ import {
   AttackOrder,
   Building,
   Engagement,
+  engagementRecord,
   isMachinePlayer,
   Owner,
   Palisade,
@@ -79,7 +80,7 @@ export function breakThroughWall(
       assault: world.tryGet(e, AttackOrder)?.assault,
     });
   }
-  world.add(e, Engagement, { repathAt: ctx.tick });
+  world.add(e, Engagement, engagementRecord(ctx.tick));
   return true;
 }
 
@@ -113,7 +114,7 @@ export function releaseWallBreaches(world: World, ctx: SystemContext, fallen: En
     if (!line.has(wall)) continue;
     if (resume !== null && world.isAlive(resume)) {
       world.add(e, AttackOrder, { target: resume, assault });
-      world.add(e, Engagement, { repathAt: ctx.tick });
+      world.add(e, Engagement, engagementRecord(ctx.tick));
     } else {
       world.remove(e, AttackOrder);
     }

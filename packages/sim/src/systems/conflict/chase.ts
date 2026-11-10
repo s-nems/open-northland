@@ -2,6 +2,7 @@ import {
   AttackOrder,
   Building,
   Engagement,
+  engagementRecord,
   EquipOrder,
   Garrison,
   HuntFocus,
@@ -603,7 +604,7 @@ function leashDistance(terrain: TerrainGraph, defend: NonNullable<DefendPost>, d
  *  target and ends the moment a route is delivered; a chase in between writes nothing. */
 function engagementFor(world: World, ctx: SystemContext, e: Entity, target: Entity) {
   const prior = world.tryGet(e, Engagement);
-  if (prior === undefined) return world.add(e, Engagement, { repathAt: ctx.tick });
+  if (prior === undefined) return world.add(e, Engagement, engagementRecord(ctx.tick));
   if (prior.stall !== undefined && (prior.stall.target !== target || routeDelivered(world, e))) {
     world.mut(e, Engagement).stall = undefined;
   }
@@ -851,7 +852,7 @@ function freeOverBand(
 export function holdEnemy(world: World, ctx: SystemContext, e: Entity, target: Entity): void {
   const engagement = world.tryGet(e, Engagement);
   if (engagement === undefined) {
-    world.add(e, Engagement, { repathAt: ctx.tick, target });
+    world.add(e, Engagement, engagementRecord(ctx.tick, target));
     return;
   }
   if (engagement.target === target) return;

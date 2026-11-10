@@ -7,6 +7,7 @@ import {
   ClaimAnimalOrder,
   CurrentAtomic,
   Engagement,
+  engagementRecord,
   Fleeing,
   Health,
   HuntFocus,
@@ -172,6 +173,6 @@ export function attackUnit(
   }
   // Stamped up front so plannerSystem skips economy for this unit on the tick the order lands rather than
   // leaking one tick; `repathAt = tick` makes the CombatSystem re-path the chase on its first pass.
-  if (!sameFight || !world.has(e, Engagement)) world.add(e, Engagement, { repathAt: ctx.tick });
+  if (!sameFight || !world.has(e, Engagement)) world.add(e, Engagement, engagementRecord(ctx.tick));
   recordAiOrder(world, e, origin);
 }
