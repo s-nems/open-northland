@@ -23,7 +23,7 @@ import {
   type ViewContainer,
   WebGLRenderer,
 } from 'pixi.js';
-import { surfaceOf } from '../blood/surface-sprite.js';
+import { BloodSurfaceSprite } from '../blood/surface-sprite.js';
 import { MAGNIFIED_BELOW } from '../pixel-art/magnify.js';
 import {
   hasPrescaledPages,
@@ -39,13 +39,7 @@ import {
   WORLD_MAGNIFY_MODES,
   worldShadowStyle,
 } from '../pixel-art/registry.js';
-import {
-  type OutlineSprite,
-  outlineOf,
-  spriteBloodEffect,
-  spriteNightLit,
-  spriteSelectionEffect,
-} from '../selection/sprite-effect.js';
+import { OutlineSprite, SelectionGraphics, SelectionSprite } from '../selection/sprite-effect.js';
 import { glProgramFor } from '../shaders/program-source.js';
 import { WorldAttributeBuffer } from './attribute-buffer.js';
 import {
@@ -461,12 +455,15 @@ function defineWorldBatcher(): WorldBatcherClass {
   }
 
   /** The element being packed: what each of its vertices repeats, including its frame's UV box. Filled
-   *  by {@link beginElement} so the packers allocate nothing per element. */
+   *  by {@link beginRenderable} and {@link beginElement} so the packers allocate nothing per element. */
   const packing = {
     selection: 0,
     blood: 0,
     night: 0,
-    splashes: undefined as Float32Array | undefined,
+    splash0: 0,
+    splash1: 0,
+    splash2: 0,
+    splash3: 0,
     textureIdAndRound: 0,
     argb: 0,
     flags: 0,
@@ -475,6 +472,35 @@ function defineWorldBatcher(): WorldBatcherClass {
     maxU: 0,
     maxV: 0,
   };
+
+  function packSplashes(splashes: Float32Array | undefined): void {
+    packing.splash0 = splashes?.[0] ?? 0;
+    packing.splash1 = splashes?.[1] ?? 0;
+    packing.splash2 = splashes?.[2] ?? 0;
+    packing.splash3 = splashes?.[3] ?? 0;
+  }
+
+  /** Reads what the element's sprite itself adds to its vertices: its selection, blood and night values
+   *  and its stains. Answers the sprite when it is an outline quad, for {@link packOutline}. */
+  function beginRenderable(renderable: object | null): OutlineSprite | null {
+    if (!(renderable instanceof BloodSurfaceSprite)) {
+      packing.selection = renderable instanceof SelectionGraphics ? renderable.selectionEffect : 0;
+      packing.blood = 0;
+      packing.night = 0;
+      packSplashes(undefined);
+      return null;
+    }
+    const selects = renderable instanceof SelectionSprite;
+    packing.selection = selects ? renderable.selectionEffect : 0;
+    packing.blood = selects ? renderable.bloodEffect : 0;
+    packing.night = selects ? renderable.nightLit : 0;
+    const surface = renderable.bloodSurface;
+    const stained = surface?.enabled === true;
+    // Body coats are positive packed data; a facade uses the same slot for its negative UV cutoff.
+    if (stained && surface.facade) packing.blood = -surface.clipY;
+    packSplashes(stained ? surface.packed : undefined);
+    return selects && renderable instanceof OutlineSprite ? renderable : null;
+  }
 
   function beginElement(texture: Texture, textureIdAndRound: number, argb: number, flags: number): void {
     const { x0, y0, x1, y1, x2, y2, x3, y3 } = texture.uvs;
@@ -495,7 +521,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     packing.minV = Math.min(y0, y1, y2, y3);
     packing.maxU = Math.max(x0, x1, x2, x3);
     packing.maxV = Math.max(y0, y1, y2, y3);
-    packing.splashes = outline.reachUv;
+    packSplashes(outline.reachUv);
   }
 
   /**
@@ -531,7 +557,10 @@ function defineWorldBatcher(): WorldBatcherClass {
     f32[index + 8] = packing.maxV;
     f32[index + 9] = packing.selection;
     f32[index + 10] = packing.blood;
-    for (let i = 0; i < 4; i++) f32[index + 11 + i] = packing.splashes?.[i] ?? 0;
+    f32[index + 11] = packing.splash0;
+    f32[index + 12] = packing.splash1;
+    f32[index + 13] = packing.splash2;
+    f32[index + 14] = packing.splash3;
     f32[index + 15] = packing.night;
     return index + WORLD_VERTEX_SIZE - 2;
   }
@@ -696,9 +725,10 @@ function defineWorldBatcher(): WorldBatcherClass {
         : 'magnifying';
     }
 
-    private noteTexelsPerUnit(texelsPerUnit: number): void {
-      if (packing.selection >= 0 && gathers(packing.flags))
-        this.texelsPerUnit = Math.min(this.texelsPerUnit, texelsPerUnit);
+    /** Whether the element being packed can lower {@link texelsPerUnit}: its body may gather, and the
+     *  bound is not at its floor yet. */
+    private boundsTexels(): boolean {
+      return this.texelsPerUnit > 0 && packing.selection >= 0 && gathers(packing.flags);
     }
 
     override destroy(options?: { shader?: boolean }): void {
@@ -803,16 +833,10 @@ function defineWorldBatcher(): WorldBatcherClass {
       textureId: number,
     ): void {
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
-      packing.selection = spriteSelectionEffect(renderableOf(element));
-      packing.blood = spriteBloodEffect(renderableOf(element));
-      packing.night = spriteNightLit(renderableOf(element));
-      const surface = surfaceOf(renderableOf(element));
-      // Body coats are positive packed data; a facade uses the same slot for its negative UV cutoff.
-      if (surface?.enabled === true && surface.facade) packing.blood = -surface.clipY;
-      packing.splashes = surface?.enabled === true ? surface.packed : undefined;
+      beginRenderable(renderableOf(element));
       beginElement(element.texture, textureIdAndRound, element.color, this.flagsOf(element));
       // A mesh's vertices may stretch its texels anywhere.
-      this.noteTexelsPerUnit(0);
+      if (this.boundsTexels()) this.texelsPerUnit = 0;
       const { a, b, c, d, tx, ty } = element.transform;
       const { positions, uvs } = element;
       const end = element.attributeOffset + element.attributeSize;
@@ -836,15 +860,9 @@ function defineWorldBatcher(): WorldBatcherClass {
     ): void {
       const texture = element.texture;
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
-      packing.selection = spriteSelectionEffect(renderableOf(element));
-      packing.blood = spriteBloodEffect(renderableOf(element));
-      packing.night = spriteNightLit(renderableOf(element));
-      const surface = surfaceOf(renderableOf(element));
-      if (surface?.enabled === true && surface.facade) packing.blood = -surface.clipY;
-      packing.splashes = surface?.enabled === true ? surface.packed : undefined;
+      const outline = beginRenderable(renderableOf(element));
       beginElement(texture, textureIdAndRound, element.color, this.flagsOf(element));
-      this.noteTexelsPerUnit(quadTexelsPerUnit(element));
-      const outline = outlineOf(renderableOf(element));
+      if (this.boundsTexels()) this.texelsPerUnit = Math.min(this.texelsPerUnit, quadTexelsPerUnit(element));
       if (outline !== null) packOutline(outline);
       const { a, b, c, d, tx, ty } = element.transform;
       const { minX, minY, maxX, maxY } = element.bounds;
