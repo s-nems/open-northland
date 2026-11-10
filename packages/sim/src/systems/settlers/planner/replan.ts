@@ -54,7 +54,7 @@ import { planShelter } from '../drives/shelter.js';
 import { heldIndoors, stepOut } from '../indoors.js';
 import { markLostWay } from '../lost-way.js';
 import { noteUnreachableGoal, pruneUnreachableGoals } from '../unreachable-goals.js';
-import { waitsIdle } from './idle-replan.js';
+import { waitsHoldOnBeat, waitsIdle } from './idle-replan.js';
 
 /** How long a stranded walker parks before shedding its failed route and re-planning: long enough that
  *  a permanently blocked target costs one path query per episode, short enough that a transient
@@ -183,13 +183,15 @@ export type IdleRelease = 'held' | 'travelling' | 'jobless' | 'idle';
  * nothing) or the busy branch wakes, an errand
  * mattering only under an owner that walks it elsewhere ({@link divertsErrand}); or it has no trade and nothing to shed,
  * which an alarm never draws; or it stands idle carrying nothing that call sheds, or waits inside a
- * building ({@link waitsInside}). Keep in step with that call's early-outs.
+ * building ({@link waitsInside}, {@link waitsOutDutyIndoors}). Keep in step with that call's early-outs.
  */
 export function idleRelease(world: World, e: Entity): IdleRelease | null {
   if (!yardRouteSettled(world, e) || world.has(e, UnreachableGoals) || world.has(e, UnreachableTargets)) {
     return null;
   }
-  if (world.has(e, IdleStand)) return shedsNothing(world, e) || waitsInside(world, e) ? 'idle' : null;
+  if (world.has(e, IdleStand)) {
+    return shedsNothing(world, e) || waitsInside(world, e) || waitsOutDutyIndoors(world, e) ? 'idle' : null;
+  }
   if (world.has(e, Garrison)) return null;
   if (atomicHoldsSettler(world, e)) return 'held';
   if (world.get(e, Settler).jobType === null && shedsNothing(world, e)) return 'jobless';
@@ -227,7 +229,7 @@ function shedsNothing(world: World, e: Entity): boolean {
  * {@link releaseStaleIntent} would shed the wait the ladder re-derives; a batch change or the end of the
  * cover wakes it, and losing the building's hold makes it re-plan at once.
  */
-function waitsInside(world: World, e: Entity): boolean {
+export function waitsInside(world: World, e: Entity): boolean {
   const at = world.tryGet(e, Resting)?.at;
   const holder = world.tryGet(e, Sheltering)?.shelter ?? world.tryGet(e, JobAssignment)?.workplace;
   if (
@@ -244,6 +246,25 @@ function waitsInside(world: World, e: Entity): boolean {
   }
   const atomic = world.tryGet(e, CurrentAtomic);
   return atomic === undefined || (atomic.effect.kind === 'produce' && !world.has(e, Wedding));
+}
+
+/**
+ * Whether idle `e` waits a family duty out indoors on its seat's beat ({@link waitsHoldOnBeat}) with
+ * nothing {@link releaseStaleIntent} would shed: the duty keeps it inside, and off its beat the sweep runs
+ * only the shelter rung for it, which a shelter it already holds would answer.
+ */
+function waitsOutDutyIndoors(world: World, e: Entity): boolean {
+  return (
+    world.has(e, FamilyDuty) &&
+    world.has(e, Resting) &&
+    !world.has(e, Garrison) &&
+    !world.has(e, Sheltering) &&
+    !world.has(e, CurrentAtomic) &&
+    !isTravelling(world, e) &&
+    !hasErrand(world, e) &&
+    !world.has(e, FarmTask) &&
+    waitsHoldOnBeat(world, e)
+  );
 }
 
 /** Whether `e` keeps its wait through this pass: {@link waitsInside} off its beat, and no alarm of its

@@ -28,6 +28,7 @@ import {
   releaseStaleIntent,
   shelterHasRoom,
   takesCoverFrom,
+  waitsInside,
 } from './replan.js';
 
 const byId = (e: Entity): number => e;
@@ -104,31 +105,42 @@ class SweepCandidates {
     );
     if (shelters.size === 0) return next;
     for (const owner of shelters.keys()) {
-      // A walker's visit only claims a place, so it waits while its owner has none left.
-      if (shelterHasRoom(shelters, owner)) {
-        next = this.firstTakingCover(this.travellingByOwner.get(owner), cursor, next, content, shelters);
+      // A walker's visit only claims a place, so it waits while its owner has none left. So does an
+      // idler's, but for one waiting inside a building, whose visit runs its whole ladder.
+      const room = shelterHasRoom(shelters, owner);
+      if (room) {
+        next = this.firstTakingCover(
+          this.travellingByOwner.get(owner),
+          cursor,
+          next,
+          content,
+          shelters,
+          true,
+        );
       }
       if (idleTick !== undefined) {
-        next = this.firstTakingCover(this.idleByOwner.get(owner), cursor, next, content, shelters);
+        next = this.firstTakingCover(this.idleByOwner.get(owner), cursor, next, content, shelters, room);
       }
     }
     return next;
   }
 
   /** The first of `ids` above `cursor` and below `bound` whose owner's cover may draw it and that holds
-   *  no shelter yet, else `bound`. */
+   *  no shelter yet, else `bound`. Without `room` only the idlers that wait inside a building count. */
   private firstTakingCover(
     ids: readonly Entity[] | undefined,
     cursor: number,
     bound: Entity | undefined,
     content: ContentSet,
     shelters: ShelterSites,
+    room: boolean,
   ): Entity | undefined {
     if (ids === undefined) return bound;
     for (let i = indexAboveId(ids, cursor, byId); i < ids.length; i++) {
       const e = ids[i];
       if (e === undefined || (bound !== undefined && e > bound)) break;
       if (this.world.has(e, Sheltering)) continue;
+      if (!room && !waitsInside(this.world, e)) continue;
       if (takesCoverFrom(this.world, content, e, shelters)) return e;
     }
     return bound;

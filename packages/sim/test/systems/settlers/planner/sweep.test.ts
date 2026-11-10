@@ -253,7 +253,9 @@ describe('planner sweep order', () => {
 
     employ(world, second, WOODCUTTER, ALARMED);
     employ(world, third, SOLDIER, ALARMED);
-    expect(sweep(new Map([[ALARMED, []]]))).toEqual([first, second, last]);
+    expect(sweep(alarmWithRoom(1))).toEqual([first, second, last]);
+    // With no place left, the shelter rung an idler's visit runs between its beats could only refuse.
+    expect(sweep(alarmWithRoom(0))).toEqual([first, last]);
     wakeIdle(world, second);
     world.add(third, MoveGoal, { cell: GOAL }); // its visit wakes a walking idler
     expect(sweep(NO_SHELTERS)).toEqual([first, second, third, last]);
