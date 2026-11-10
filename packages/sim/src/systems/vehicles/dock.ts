@@ -6,8 +6,21 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { MAX_CLEARANCE_CLASS } from '../../nav/clearance.js';
-import { type HalfCellNode, hexagonRing, hexRingHx, hexRingHy, hexRingLength } from '../../nav/halfcell.js';
-import { NO_COMPONENT, type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
+import {
+  type HalfCellNode,
+  hexagonRing,
+  hexDistanceBetween,
+  hexRingHx,
+  hexRingHy,
+  hexRingLength,
+} from '../../nav/halfcell.js';
+import {
+  NO_COMPONENT,
+  NO_READMITTED,
+  type NodeId,
+  StepGate,
+  type TerrainGraph,
+} from '../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
 import { vehicleClearance } from '../footprint/vehicle-clearance.js';
@@ -117,10 +130,10 @@ export function dockRoute(
 }
 
 /**
- * Which of `points` `vehicle` can dock at through water `closed` never refuses: one flood from the ship over
- * the nodes it may sail, `closed` ones left out (the ship's own node counts), then for each point whether
- * one of its dock nodes ({@link dockCandidates}) was reached. For a planner weighing courses before it
- * orders one. Costs the flood of the water the ship reaches.
+ * Which of `points` `vehicle` can dock at through water `closed` never refuses: for each point, whether one
+ * of its dock nodes ({@link dockCandidates}) joins the ship over the nodes it may sail, `closed` ones left
+ * out (the ship's own node counts). For a planner weighing courses before it orders one. Costs a search
+ * from the dock nodes towards the ship ({@link joinedWater}), the whole sea only when one is cut off in it.
  */
 export function docksReachedThrough(
   world: World,
@@ -135,11 +148,131 @@ export function docksReachedThrough(
   if (anchor === null || type === undefined || !terrain.inBounds(anchor.hx, anchor.hy))
     return points.map(() => false);
   const docks = points.map((point) => dockCandidates(world, ctx, terrain, vehicle, type, anchor, point));
-  const sought = new Set(docks.flat());
   const here = terrain.nodeAt(anchor.hx, anchor.hy);
   const blocked = vehicleGroundBlocks(world, ctx, terrain, vehicle, type);
-  const reached = reachableWater(terrain, blocked, here, closed, sought);
-  return docks.map((nodes) => nodes.some((node) => reached[node] === REACHED));
+  const joined = joinedWater(terrain, blocked, here, closed, docks.flat());
+  return docks.map((nodes) => nodes.some((node) => joined[node] === JOINED));
+}
+
+const JOINED = 1;
+/** A node of water a search exhausted without meeting the ship's. */
+const CUT_OFF = 2;
+/** A node the search under way has found, not yet known to join the ship's water. */
+const PENDING = 3;
+
+/**
+ * Which of `sought` a ship on `start` can sail to under `blocked` and `closed`, marked {@link JOINED}: what
+ * {@link reachableWater} answers for them, the start counted as there. Each is searched from itself
+ * towards the ship, the found node nearest the ship settled first, over edges that read the same both
+ * ways, so one in open water settles a strip of sea and one sealed off settles its pocket; every node a
+ * search found shares its verdict, which the next search stops at.
+ */
+function joinedWater(
+  terrain: TerrainGraph,
+  blocked: BlockOverlay,
+  start: NodeId,
+  closed: (node: NodeId) => boolean,
+  sought: readonly NodeId[],
+): Uint8Array {
+  const marks = new Uint8Array(terrain.nodeCount);
+  marks[start] = JOINED;
+  const gate = new StepGate();
+  terrain.resetGate(gate, 'water', blocked, NO_READMITTED);
+  const lane = gate.lane;
+  const width = terrain.width;
+  const startX = terrain.xOf(start);
+  const startY = terrain.yOf(start);
+  const found = floodQueueOf(terrain);
+  const heap = new NearestFirst();
+  for (const from of sought) {
+    if (marks[from] !== 0 || gate.closes(from) || closed(from)) continue;
+    let count = 0;
+    let verdict = 0;
+    marks[from] = PENDING;
+    found[count++] = from;
+    heap.clear();
+    heap.push(from, hexDistanceBetween(terrain.xOf(from), terrain.yOf(from), startX, startY));
+    while (verdict === 0 && heap.size > 0) {
+      const current = heap.pop();
+      const open = lane[current] ?? 0;
+      const offsets = terrain.stepOffsets(Math.floor(current / width));
+      for (let edge = 0; edge < offsets.length; edge++) {
+        if ((open & (1 << edge)) === 0) continue;
+        const node = (current + (offsets[edge] ?? 0)) as NodeId;
+        const mark = marks[node] ?? 0;
+        if (mark === PENDING) continue;
+        // The start is joined even when it closed under the ship; any other marked node is open water.
+        if (mark !== 0) {
+          verdict = mark;
+          break;
+        }
+        if (gate.closes(node) || closed(node)) continue;
+        marks[node] = PENDING;
+        found[count++] = node;
+        heap.push(node, hexDistanceBetween(terrain.xOf(node), terrain.yOf(node), startX, startY));
+      }
+    }
+    if (verdict === 0) verdict = CUT_OFF;
+    for (let i = 0; i < count; i++) marks[found[i] ?? 0] = verdict;
+  }
+  return marks;
+}
+
+/** A binary heap of nodes by their distance key, the nearest popped first; ties in any order, as
+ *  {@link joinedWater}'s answer does not depend on the order it settles in. */
+class NearestFirst {
+  private readonly nodes: number[] = [];
+  private readonly keys: number[] = [];
+
+  get size(): number {
+    return this.nodes.length;
+  }
+
+  clear(): void {
+    this.nodes.length = 0;
+    this.keys.length = 0;
+  }
+
+  push(node: number, key: number): void {
+    const { nodes, keys } = this;
+    let at = nodes.length;
+    nodes.push(node);
+    keys.push(key);
+    while (at > 0) {
+      const parent = (at - 1) >> 1;
+      const parentKey = keys[parent] ?? 0;
+      if (parentKey <= key) break;
+      nodes[at] = nodes[parent] ?? 0;
+      keys[at] = parentKey;
+      at = parent;
+    }
+    nodes[at] = node;
+    keys[at] = key;
+  }
+
+  /** The nearest node; the heap must not be empty. */
+  pop(): number {
+    const { nodes, keys } = this;
+    const top = nodes[0] ?? 0;
+    const node = nodes.pop() ?? 0;
+    const key = keys.pop() ?? 0;
+    const length = nodes.length;
+    if (length === 0) return top;
+    let at = 0;
+    for (;;) {
+      let child = 2 * at + 1;
+      if (child >= length) break;
+      if (child + 1 < length && (keys[child + 1] ?? 0) < (keys[child] ?? 0)) child++;
+      const childKey = keys[child] ?? 0;
+      if (childKey >= key) break;
+      nodes[at] = nodes[child] ?? 0;
+      keys[at] = childKey;
+      at = child;
+    }
+    nodes[at] = node;
+    keys[at] = key;
+    return top;
+  }
 }
 
 /**
@@ -179,36 +312,46 @@ export function startDock(
 }
 
 const REACHED = 1;
-const NONE_CLOSED = (): boolean => false;
 
 /** The nodes a ship on `start` can sail to under `blocked`, marked {@link REACHED}; the start counts,
  *  as the pathfinder lets a vehicle leave a node that closed under it. */
-function reachableWater(
-  terrain: TerrainGraph,
-  blocked: BlockOverlay,
-  start: NodeId,
-  closed: (node: NodeId) => boolean = NONE_CLOSED,
-  sought?: ReadonlySet<NodeId>,
-): Uint8Array {
+function reachableWater(terrain: TerrainGraph, blocked: BlockOverlay, start: NodeId): Uint8Array {
   const reached = new Uint8Array(terrain.nodeCount);
   reached[start] = REACHED;
-  // With `sought`, the flood stops once it has reached every node of it.
-  let left = sought === undefined ? Number.POSITIVE_INFINITY : sought.size - (sought.has(start) ? 1 : 0);
-  const queue: NodeId[] = [start];
-  const edges = new StepBuffer();
-  // The array iterator re-reads `length`, so `queue` is a live breadth-first queue.
-  for (const current of queue) {
-    if (left <= 0) break;
-    terrain.stepsInto(current, blocked, edges, 'water');
-    for (let i = 0; i < edges.length; i++) {
-      const { node } = edges.at(i);
-      if (reached[node] === REACHED || closed(node)) continue;
+  // The pathfinder's own edges, walked off the step lane: a flood settles a whole sea.
+  const gate = new StepGate();
+  terrain.resetGate(gate, 'water', blocked, NO_READMITTED);
+  const lane = gate.lane;
+  const width = terrain.width;
+  // Each node is marked, and so queued, once.
+  const queue = floodQueueOf(terrain);
+  let tail = 0;
+  queue[tail++] = start;
+  for (let head = 0; head < tail; head++) {
+    const current = queue[head] ?? 0;
+    const open = lane[current] ?? 0;
+    const offsets = terrain.stepOffsets(Math.floor(current / width));
+    for (let edge = 0; edge < offsets.length; edge++) {
+      if ((open & (1 << edge)) === 0) continue;
+      const node = (current + (offsets[edge] ?? 0)) as NodeId;
+      if (reached[node] === REACHED || gate.closes(node)) continue;
       reached[node] = REACHED;
-      if (sought?.has(node) === true) left--;
-      queue.push(node);
+      queue[tail++] = node;
     }
   }
   return reached;
+}
+
+/** A flood's or search's list of the nodes it found, per terrain, read only within the one that fills it. */
+const floodQueues = new WeakMap<TerrainGraph, Int32Array>();
+
+function floodQueueOf(terrain: TerrainGraph): Int32Array {
+  let queue = floodQueues.get(terrain);
+  if (queue === undefined) {
+    queue = new Int32Array(terrain.nodeCount);
+    floodQueues.set(terrain, queue);
+  }
+  return queue;
 }
 
 /**

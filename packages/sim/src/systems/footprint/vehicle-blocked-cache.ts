@@ -33,7 +33,12 @@ interface VehicleBlockedCache {
 const vehicleBlockedCache = new WeakMap<World, VehicleBlockedCache>();
 
 /** Add `delta` to the count of every cell of `disc` on the map; a cell no disc covers holds no entry. */
-function countDisc(terrain: TerrainGraph, cells: Map<NodeId, number>, disc: CountedDisc, delta: number): void {
+function countDisc(
+  terrain: TerrainGraph,
+  cells: Map<NodeId, number>,
+  disc: CountedDisc,
+  delta: number,
+): void {
   const offsets = discOffsets(disc.radius, disc.hy);
   for (let i = 0; i < offsets.length; i++) {
     const offset = offsets[i] as HalfCellNode;

@@ -39,6 +39,7 @@ import { dynamicBlockOverlay, vehicleDoorNode } from '../../../src/systems/footp
 import { vehicleClearance } from '../../../src/systems/footprint/vehicle-clearance.js';
 import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
 import { SUCCESSFUL_IF } from '../../../src/systems/missions/index.js';
+import { docksReachedThrough } from '../../../src/systems/vehicles/dock.js';
 import {
   boardRider,
   createVehicle,
@@ -309,6 +310,22 @@ describe('dockVehicle', () => {
     ).toBeGreaterThanOrEqual(SHIP_SIZE);
     expect(vehicleDoorNode(s.world, ctxOf(s), ship)).toEqual(point);
     expect(docked(s)).toEqual([point]);
+  });
+
+  it('tells a planner which shores the ship reaches through water it keeps out of', () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const { ship } = crewedShip(s, 20, MID_ROW);
+    const shores = [
+      { hx: EAST_SHORE_X + 1, hy: MID_ROW },
+      { hx: WEST_SHORE_X - 1, hy: MID_ROW },
+    ];
+    const reached = (closed: (hx: number) => boolean): boolean[] =>
+      docksReachedThrough(s.world, ctxOf(s), terrain, ship, shores, (node) => closed(terrain.xOf(node)));
+    expect(reached(() => false)).toEqual([true, true]);
+    // Two closed columns across the strait seal the east shore's water off from the ship's.
+    expect(reached((hx) => hx === OPEN_WATER_X || hx === OPEN_WATER_X + 1)).toEqual([false, true]);
   });
 
   it('a Shift-queued dock waits for the sail ahead, then moors at its shore point', () => {
