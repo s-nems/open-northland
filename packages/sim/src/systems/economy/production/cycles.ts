@@ -68,7 +68,10 @@ export function isYardBuilt(ctx: SystemContext, recipe: Recipe): boolean {
 function inputStockForCycles(world: World, building: Entity, recipe: Recipe): number {
   const stock = world.get(building, Stockpile).amounts;
   let cycles = Number.POSITIVE_INFINITY;
-  for (const input of recipe.inputs) {
+  const inputs = recipe.inputs;
+  for (let i = 0; i < inputs.length; i++) {
+    const input = inputs[i];
+    if (input === undefined) continue;
     cycles = Math.min(cycles, Math.floor((stock.get(input.goodType) ?? 0) / input.amount));
   }
   return cycles;
@@ -89,10 +92,13 @@ export function outputRoomForCycles(
   const cycles = world.tryGet(building, Production)?.cycles;
   let inFlight = 0;
   if (cycles !== undefined && product !== undefined) {
-    for (const c of cycles) if (c.goodType === product) inFlight++;
+    for (let i = 0; i < cycles.length; i++) if (cycles[i]?.goodType === product) inFlight++;
   }
   let room = Number.POSITIVE_INFINITY;
-  for (const output of recipe.outputs) {
+  const outputs = recipe.outputs;
+  for (let i = 0; i < outputs.length; i++) {
+    const output = outputs[i];
+    if (output === undefined) continue;
     const have = stock.get(output.goodType) ?? 0;
     const capacity = stockCapacity(world, ctx, building, output.goodType);
     // Every same-product batch already grinding still owes a deposit of `amount`.
