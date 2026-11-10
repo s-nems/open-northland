@@ -13,6 +13,7 @@ import {
 } from '../../../../src/view/unit-controls/orders/controller.js';
 import { withPointHits } from '../../../support/point-hits.js';
 import { rightClickSettlers } from '../../../support/right-click.js';
+import { STILL_CAMERA } from '../../../support/still-camera.js';
 
 /**
  * Right-clicking a claimable animal sends the selected scouts after it, and any wild animal the scouts
@@ -72,6 +73,7 @@ function rightClick(
   });
   const deps = {
     answered: createAnsweredOrders(),
+    camera: STILL_CAMERA,
     selected: () => new Set<number>(settlers),
     targets,
     snapshot: (): WorldSnapshot => snapshot,

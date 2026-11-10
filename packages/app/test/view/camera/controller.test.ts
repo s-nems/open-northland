@@ -433,6 +433,40 @@ describe('createCameraController pan bindings', () => {
   });
 });
 
+describe('createCameraController gestures a modal hands on', () => {
+  it('pans, drags and zooms where the HUD guard claims the point, and takes only pan keys', () => {
+    const { ctl, win, release } = install();
+    ctl.setPointerGuard(() => true);
+    const key = (code: string): KeyboardEvent =>
+      ({ code, target: null, preventDefault: (): void => undefined }) as unknown as KeyboardEvent;
+    expect(ctl.gestures.key(key('KeyQ'))).toBe(false);
+    expect(ctl.gestures.key(key('ArrowLeft'))).toBe(true);
+    expect(panStep(ctl)).toBeGreaterThan(0);
+    release('ArrowLeft');
+
+    const before = ctl.camera();
+    ctl.gestures.press({
+      button: 1,
+      clientX: 400,
+      clientY: 400,
+      preventDefault: () => undefined,
+    } as MouseEvent);
+    win.emit('mousemove', { clientX: 440, clientY: 410, target: null });
+    win.emit('mouseup', { button: 1 });
+    expect(ctl.camera()).toEqual({ offsetX: before.offsetX + 40, offsetY: before.offsetY + 10 });
+
+    ctl.gestures.wheel({
+      clientX: 400,
+      clientY: 300,
+      deltaY: -1,
+      preventDefault: () => undefined,
+    } as WheelEvent);
+    for (let i = 0; i < GLIDE_FRAMES; i++) ctl.update(FRAME_MS);
+    expect(ctl.camera().scale ?? 1).toBeGreaterThan(1);
+    ctl.dispose();
+  });
+});
+
 describe('createCameraController input settings', () => {
   it('hides the cursor only while middle-button dragging', () => {
     const { ctl, cursorHidden, move, startMiddleDrag, win } = install();

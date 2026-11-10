@@ -26,6 +26,7 @@ import {
 } from '../../../../src/view/unit-controls/orders/controller.js';
 import { withPointHits } from '../../../support/point-hits.js';
 import { rightClickRiders, rightClickSettlers } from '../../../support/right-click.js';
+import { STILL_CAMERA } from '../../../support/still-camera.js';
 
 /**
  * The right-click ladder over an own building. A construction site is hired into by the rules of the
@@ -151,6 +152,7 @@ async function pressRightClick(
   });
   const deps = {
     answered: createAnsweredOrders(),
+    camera: STILL_CAMERA,
     selected: () => new Set<number>(settlers),
     targets,
     snapshot: (): WorldSnapshot => snapshot,
@@ -280,6 +282,7 @@ describe('right-clicking a construction site', () => {
       const issued: Command[] = [];
       const deps = {
         answered: createAnsweredOrders(),
+        camera: STILL_CAMERA,
         selected: () => new Set<number>([builder, idle]),
         targets: withPointHits({
           owned: (kind) => (kind === 'roadsite' ? [{ ref: road, x: 0, y: 0 }] : []),

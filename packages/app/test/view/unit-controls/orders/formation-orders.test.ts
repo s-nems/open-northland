@@ -15,6 +15,7 @@ import { createOverviewOrders } from '../../../../src/view/unit-controls/orders/
 import { createPendingGroundOrders } from '../../../../src/view/unit-controls/orders/pending-ground.js';
 import { withPointHits } from '../../../support/point-hits.js';
 import { snapshotOf } from '../../../support/snapshot.js';
+import { STILL_CAMERA } from '../../../support/still-camera.js';
 
 function harness(count = 4, refuse?: (movers: readonly number[]) => void) {
   const units = Array.from({ length: count }, (_, i) => ({
@@ -49,6 +50,7 @@ function harness(count = 4, refuse?: (movers: readonly number[]) => void) {
   const submit = (command: PlayerCommand) => pending.submit(command, (order) => issued.push(order));
   const orders = createUnitOrderController({
     answered: createAnsweredOrders(),
+    camera: STILL_CAMERA,
     pendingGroundOrders: pending,
     requestFormationSlots: (target, ids, spacing) =>
       new Promise((resolve, reject) => {

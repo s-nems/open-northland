@@ -12,6 +12,7 @@ import {
 } from '../../../../src/view/unit-controls/orders/controller.js';
 import { withPointHits } from '../../../support/point-hits.js';
 import { rightClickSettlers } from '../../../support/right-click.js';
+import { STILL_CAMERA } from '../../../support/still-camera.js';
 
 /**
  * Right-clicking a chest with settlers selected sends each one that may open it - the original's default
@@ -64,6 +65,7 @@ function rightClick(
   });
   const deps = {
     answered: createAnsweredOrders(),
+    camera: STILL_CAMERA,
     selected: () => new Set<number>(settlers),
     targets,
     snapshot: (): WorldSnapshot => snapshot,

@@ -5,6 +5,7 @@ import { professionGoods } from '../../../../src/catalog/professions.js';
 import { sandboxContent } from '../../../../src/game/sandbox/index.js';
 import type { ChoiceGroup } from '../../../../src/hud/dom/choice-window.js';
 import { snapshotOf } from '../../../support/snapshot.js';
+import { STILL_CAMERA } from '../../../support/still-camera.js';
 
 const choice = vi.hoisted(() => ({
   pick: undefined as ((key: string) => void) | undefined,
@@ -61,6 +62,7 @@ it('submits one school gesture and skips courses learned since the dialog opened
   let snapshot = f.snapshot;
   const dialog = openSchoolDialog({
     content: f.content,
+    camera: STILL_CAMERA,
     snapshot: () => snapshot,
     settlers: f.students.map(({ id }) => id),
     house: f.house,
@@ -101,6 +103,7 @@ it('refuses oversized school selections without opening or submitting', () => {
     onOrderLimit = vi.fn();
   const dialog = openSchoolDialog({
     content: f.content,
+    camera: STILL_CAMERA,
     snapshot: () => f.snapshot,
     settlers: f.students.map(({ id }) => id),
     house: f.house,
@@ -155,6 +158,7 @@ it('leads each trade with its products and each method with the good it teaches'
   };
   openSchoolDialog({
     content,
+    camera: STILL_CAMERA,
     snapshot: () => f.snapshot,
     settlers: f.students.map(({ id }) => id),
     house: f.house,

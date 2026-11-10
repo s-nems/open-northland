@@ -15,6 +15,7 @@ import type { UnitTargets } from '../../../../src/view/unit-controls/unit-target
 import { withPointHits } from '../../../support/point-hits.js';
 import { rightClickSettlers, rightClickWorkFlag } from '../../../support/right-click.js';
 import { type Ent, snapshotOf } from '../../../support/snapshot.js';
+import { STILL_CAMERA } from '../../../support/still-camera.js';
 
 /**
  * Every order resolves who is selected when the click lands: the controller is driven by the real
@@ -101,6 +102,7 @@ function harness(
   selection.apply(initiallySelected, false);
   const deps = {
     answered: createAnsweredOrders(),
+    camera: STILL_CAMERA,
     selected: selection.ids,
     targets: withPointHits({ ...targets, ...overrides }),
     snapshot: () => world,

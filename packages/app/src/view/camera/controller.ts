@@ -49,8 +49,19 @@ const NUMPAD_PAN: Readonly<Record<string, readonly PanAction[]>> = {
   Numpad3: ['panDown', 'panRight'],
 };
 
+/** The camera's gestures for a modal over the map to hand on, since the canvas beneath it is inert. They
+ *  skip the HUD pointer guard: the modal's backdrop, not a HUD control, is under the pointer. */
+export interface CameraGestures {
+  /** Holds a pan key as the page would and answers true; any other key is left to the modal. */
+  key(event: KeyboardEvent): boolean;
+  /** A middle-button press starts a drag scroll. */
+  press(event: MouseEvent): void;
+  wheel(event: WheelEvent): void;
+}
+
 export interface CameraController {
   camera(): Camera;
+  readonly gestures: CameraGestures;
   /** Apply camera input preferences immediately, including to an in-flight middle drag. */
   setInputSettings(settings: CameraInputSettings): void;
   /**
@@ -174,12 +185,14 @@ export function createCameraController(
   };
   const dragCapture = createDragCapture(canvas, endMiddleDrag);
 
-  const onMouseDown = (e: MouseEvent): void => {
-    if (suspended) return;
-    if (e.button !== 1 || pointerGuard?.(e.clientX, e.clientY)) return;
+  const pressDrag = (e: MouseEvent): void => {
+    if (suspended || e.button !== 1) return;
     dragging = true;
     dragCapture.begin(e.clientX, e.clientY);
     e.preventDefault(); // suppress the middle-click autoscroll widget
+  };
+  const onMouseDown = (e: MouseEvent): void => {
+    if (e.button === 1 && !pointerGuard?.(e.clientX, e.clientY)) pressDrag(e);
   };
   // The page cannot hold the cursor inside the window. One that leaves a window covering its display
   // went to another display, so it keeps scrolling as if pressed against the edge it crossed until it
@@ -222,10 +235,8 @@ export function createCameraController(
     if (e.relatedTarget !== null || pointerSample === null) return;
     pinToExitEdge(e.clientX, e.clientY);
   };
-  const onWheel = (e: WheelEvent): void => {
+  const wheelZoom = (e: WheelEvent): void => {
     if (suspended) return;
-    // The event is left for the claiming panel's own handler, which scrolls its list and preventDefaults.
-    if (pointerGuard?.(e.clientX, e.clientY)) return;
     e.preventDefault(); // don't scroll the page
     const { x, y } = clientToScreen(canvas, resolution(), e.clientX, e.clientY);
     if (activeInputSettings.integerScaling) {
@@ -243,14 +254,22 @@ export function createCameraController(
     zoomAnchorX = x;
     zoomAnchorY = y;
   };
-  const onKeyDown = (e: KeyboardEvent): void => {
+  const onWheel = (e: WheelEvent): void => {
+    // The event is left for the claiming panel's own handler, which scrolls its list and preventDefaults.
+    if (!pointerGuard?.(e.clientX, e.clientY)) wheelZoom(e);
+  };
+  const holdPanKey = (e: KeyboardEvent): boolean => {
     // A focused control that took the key (a tab strip's arrows) keeps it from the camera.
-    if (suspended || e.defaultPrevented || isFieldKey(e)) return;
+    if (suspended || e.defaultPrevented || isFieldKey(e)) return false;
     const action = panActionFor(e);
     if (action !== undefined) held.add(action);
     else if (numpadPans(e)) heldNumpad.add(e.code);
-    else return;
+    else return false;
     e.preventDefault(); // arrow keys (the default bindings) would otherwise scroll the page
+    return true;
+  };
+  const onKeyDown = (e: KeyboardEvent): void => {
+    holdPanKey(e);
   };
   const onKeyUp = (e: KeyboardEvent): void => {
     heldNumpad.delete(e.code);
@@ -297,6 +316,7 @@ export function createCameraController(
 
   return {
     camera: () => cam,
+    gestures: { key: holdPanKey, press: pressDrag, wheel: wheelZoom },
     setInputSettings: (next) => {
       activeInputSettings = next;
       cam = clampCam(onLevel(cam));

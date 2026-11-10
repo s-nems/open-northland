@@ -19,6 +19,7 @@ import { createUnitSelection } from '../../../../src/view/unit-controls/selectio
 import type { UnitTargets } from '../../../../src/view/unit-controls/unit-targets.js';
 import { withPointHits } from '../../../support/point-hits.js';
 import { type Ent, snapshotOf } from '../../../support/snapshot.js';
+import { STILL_CAMERA } from '../../../support/still-camera.js';
 
 /**
  * Orders named on the map overview: the minimap hands over the world spot its pixel depicts, and that
@@ -95,6 +96,7 @@ function harness(
   selection.apply([SCOUT.id], false);
   const orders = createUnitOrderController({
     answered: createAnsweredOrders(),
+    camera: STILL_CAMERA,
     selected: selection.ids,
     targets: withPointHits({ ...targets, wildlife }),
     snapshot: () => WORLD,

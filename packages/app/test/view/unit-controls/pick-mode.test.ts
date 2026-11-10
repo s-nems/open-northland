@@ -12,6 +12,7 @@ import type { ShipPinPlan } from '../../../src/view/unit-controls/right-click/ve
 import { createUnitSelection } from '../../../src/view/unit-controls/selection.js';
 import { NO_TARGETS } from '../../support/pick-mode.js';
 import { snapshotOf } from '../../support/snapshot.js';
+import { STILL_CAMERA } from '../../support/still-camera.js';
 
 /** An armed pick's aim names what its press does at the point: the label reads the aim, the press
  *  orders by the same lookups. */
@@ -69,6 +70,7 @@ function harness(
   const toWorld = (clientX: number, clientY: number) => ({ x: clientX, y: clientY });
   const orders = createUnitOrderController({
     answered: createAnsweredOrders(),
+    camera: STILL_CAMERA,
     selected: selection.ids,
     targets,
     snapshot: () => WORLD,

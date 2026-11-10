@@ -14,6 +14,7 @@ import { createAnsweredOrders } from '../../../../src/view/unit-controls/orders/
 import { createUnitOrderController } from '../../../../src/view/unit-controls/orders/controller.js';
 import { createPendingGroundOrders } from '../../../../src/view/unit-controls/orders/pending-ground.js';
 import { withPointHits } from '../../../support/point-hits.js';
+import { STILL_CAMERA } from '../../../support/still-camera.js';
 
 const TARGET = { hx: 26, hy: 20 };
 const LATER = { hx: 26, hy: 26 };
@@ -94,6 +95,7 @@ function harness({
   });
   const orders = createUnitOrderController({
     answered: createAnsweredOrders(),
+    camera: STILL_CAMERA,
     pendingGroundOrders: pending,
     requestFormationSlots: (...args) => {
       const read = () => host.formationSlots(...args);

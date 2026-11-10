@@ -113,6 +113,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
     const picker = createProfessionPicker({
       professions: opts.professions,
+      camera: opts.camera,
       scale: opts.uiscale,
       ...(opts.icons === undefined ? {} : { icons: opts.icons }),
       onPick: (jobType: number): void => {

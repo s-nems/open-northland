@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { uiStringLookup } from '../../../../src/content/gui/gfx.js';
 import { sandboxContent } from '../../../../src/game/sandbox/index.js';
 import type { ChoiceGroup } from '../../../../src/hud/dom/choice-window.js';
+import { STILL_CAMERA } from '../../../support/still-camera.js';
 
 const picker = vi.hoisted(() => ({
   groups: [] as ChoiceGroup[],
@@ -31,7 +32,7 @@ beforeEach(() => {
   picker.pick = undefined;
 });
 
-const shell = { uiString: uiStringLookup(null), scale: () => 1, icons: () => {} };
+const shell = { uiString: uiStringLookup(null), scale: () => 1, camera: STILL_CAMERA, icons: () => {} };
 const plainClick = { shiftKey: false } as MouseEvent;
 const shiftClick = { shiftKey: true } as MouseEvent;
 

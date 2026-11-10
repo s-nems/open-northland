@@ -7,6 +7,7 @@ import type { PickerEntry } from '../../../catalog/professions.js';
 import type { UiString } from '../../../content/gui/gfx.js';
 import type { ActionOrderId } from '../../../hud/action-ring/index.js';
 import type { GoodIconPainter } from '../../../hud/dom/good-art.js';
+import type { CameraGestures } from '../../camera/index.js';
 import type { SelectionCentre } from './selection-centre.js';
 
 /** Which face the menu shows: nothing, the default arms, or the profession picker. */
@@ -21,6 +22,8 @@ export interface SettlerActionsOptions {
   /** The caller memoizes the result per frame, so the open ring may ask every frame. */
   readonly selectionCentre: (snapshot: WorldSnapshot) => SelectionCentre | null;
   readonly professions: readonly PickerEntry[];
+  /** The map keeps moving under the open profession list. */
+  readonly camera: CameraGestures;
   /** Paints the trades' goods in the profession list. */
   readonly icons?: GoodIconPainter;
   /** Job roles are read off the running content, so buttons offer what the command accepts. */

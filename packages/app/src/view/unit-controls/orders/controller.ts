@@ -25,6 +25,7 @@ import {
   workplaceOf,
 } from '../../../game/snapshot/index.js';
 import type { GoodIconPainter } from '../../../hud/dom/good-art.js';
+import type { CameraGestures } from '../../camera/index.js';
 import { clampTile, nodeBounds, type Tile } from '../../picking.js';
 import { selectionEquipCommands } from '../panels/equip-picker.js';
 import { openSchoolDialog, type SchoolDialog } from '../panels/school-dialog.js';
@@ -84,6 +85,8 @@ export interface UnitOrderDeps {
   readonly enqueue: (command: PlayerCommand) => void;
   readonly selectOwnSettler: (id: number) => void;
   readonly openActions: (atClient: { readonly x: number; readonly y: number }) => void;
+  /** The map keeps moving under the open school dialog. */
+  readonly camera: CameraGestures;
   /** The GUI click the school dialog's buttons confirm with; absent, silent. */
   readonly cue?: (cue: UiCue) => void;
   /** Paints the school dialog's goods; absent, it lists names alone. */
@@ -316,6 +319,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       snapshot: deps.snapshot,
       settlers: units,
       house,
+      camera: deps.camera,
       enqueue: deps.enqueue,
       status: deps.technologyStatus,
       answersVersion: deps.technologyVersion,

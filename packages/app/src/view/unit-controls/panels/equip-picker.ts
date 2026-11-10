@@ -17,6 +17,7 @@ import type { EquipSlotRef } from '../../../hud/details-panel/index.js';
 import { type ChoiceGroup, type ChoiceRow, createChoiceWindow } from '../../../hud/dom/choice-window.js';
 import type { GoodIconPainter } from '../../../hud/dom/good-art.js';
 import { compareLabels, formatMessage, goodName, messages } from '../../../i18n/index.js';
+import type { CameraGestures } from '../../camera/index.js';
 import { enqueueUnitSelection } from '../orders/group.js';
 
 const { MISC_EQUIP_SLOTS } = simComponents;
@@ -30,6 +31,7 @@ export interface EquipPickControllerOptions {
   readonly content: ContentSet;
   /** The HUD plane's current scale, read as the window opens. */
   readonly scale: () => number;
+  readonly camera: CameraGestures;
   readonly icons: GoodIconPainter;
   readonly snapshot: () => WorldSnapshot;
   readonly enqueue: (command: PlayerCommand) => void;
@@ -169,6 +171,7 @@ export function mountEquipPicker(opts: EquipPickControllerOptions): EquipPickCon
     const title = actionLabel('changeEquipment', opts.uiString);
     dialog ??= createChoiceWindow({
       title,
+      camera: opts.camera,
       scale: opts.scale(),
       icons: opts.icons,
       emptyLabel: messages().hud.equipPickEmpty,

@@ -1,6 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { messages } from '../../i18n/index.js';
 import { dismissOnBackdropClick } from '../../view/backdrop-dismiss.js';
+import type { CameraGestures } from '../../view/camera/index.js';
 import { type GoodIconPainter, goodIconMarkup } from './good-art.js';
 import { GLYPH } from './icons.js';
 import { hasWords, searchWords } from './parts/name-search.js';
@@ -32,9 +33,11 @@ const rowGoods = (row: ChoiceRow): readonly string[] =>
   row.goodIds ?? (row.goodId === undefined ? [] : [row.goodId]);
 
 /** Shared modal choice surface for professions, school courses and equipment. The native dialog owns
- * focus and keeps pointer and keyboard input away from the world; the contents use the regular HUD plane. */
+ * focus and keeps clicks and hotkeys away from the world, handing only the camera's gestures on, so the
+ * map still moves under it; the contents use the regular HUD plane. */
 export function createChoiceWindow(opts: {
   readonly title: string;
+  readonly camera: CameraGestures;
   readonly scale?: number;
   /** `event` is the row's click, whose modifiers a caller may read (Shift queues an order). */
   readonly onPick: (key: string, event: MouseEvent) => void;
@@ -228,14 +231,26 @@ export function createChoiceWindow(opts: {
       event.preventDefault();
       return;
     }
-    if (event.key !== 'Escape') return;
+    if (opts.camera.key(event) || event.key !== 'Escape') return;
     event.preventDefault();
     if (search.value) {
       search.value = '';
       render();
     } else dismiss();
   });
-  dismissOnBackdropClick([dialog, plane.element], dismiss);
+  const backdrop: readonly HTMLElement[] = [dialog, plane.element];
+  dismissOnBackdropClick(backdrop, dismiss);
+  const onBackdrop = (event: Event): boolean => backdrop.some((surface) => surface === event.target);
+  dialog.addEventListener('mousedown', (event) => {
+    if (onBackdrop(event)) opts.camera.press(event);
+  });
+  dialog.addEventListener(
+    'wheel',
+    (event) => {
+      if (onBackdrop(event)) opts.camera.wheel(event);
+    },
+    { passive: false },
+  );
   const hide = (): void => {
     if (!dialog.open) return;
     dialog.close();

@@ -14,6 +14,7 @@ import { createPickModeController } from '../../../../src/view/unit-controls/pic
 import { withPointHits } from '../../../support/point-hits.js';
 import { rightClickSettlers, rightClickVehicles } from '../../../support/right-click.js';
 import { snapshotOf } from '../../../support/snapshot.js';
+import { STILL_CAMERA } from '../../../support/still-camera.js';
 
 const COUNT = 1000;
 const TARGET = { col: 150, row: 80 };
@@ -95,6 +96,7 @@ function harness(
   };
   const orderDeps = {
     ...shared,
+    camera: STILL_CAMERA,
     markOrder: (node: unknown) => {
       marked.push(node);
     },

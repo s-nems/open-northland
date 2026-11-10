@@ -1137,6 +1137,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       canvas,
       uiscale,
       camera: () => cameraCtl.camera(),
+      cameraGestures: cameraCtl.gestures,
       snapshot: () => host.snapshot(),
       mapSize: deps.mapSize,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),

@@ -4,10 +4,12 @@ import { createChoiceWindow } from '../../../hud/dom/choice-window.js';
 import type { GoodIconPainter } from '../../../hud/dom/good-art.js';
 import { professionChoices } from '../../../hud/dom/profession-choices.js';
 import { uiLabel } from '../../../i18n/index.js';
+import type { CameraGestures } from '../../camera/index.js';
 
 export interface ProfessionPickerOptions {
   readonly professions: readonly PickerEntry[];
   readonly scale: number;
+  readonly camera: CameraGestures;
   readonly onPick: (jobType: number) => void;
   readonly onDismiss: () => void;
   readonly cue: (cue: UiCue) => void;
@@ -33,6 +35,7 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
   let reason: ((jobType: number) => string) | undefined;
   const dialog = createChoiceWindow({
     title: uiLabel('changeProfession'),
+    camera: opts.camera,
     scale: opts.scale,
     cue: opts.cue,
     ...(opts.icons === undefined ? {} : { icons: opts.icons }),

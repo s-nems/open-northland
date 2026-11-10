@@ -486,6 +486,7 @@ export async function createUnitChrome(
         selection.version,
       ),
       professions: opts.professions,
+      camera: opts.cameraGestures,
       icons,
       content: opts.content,
       ...professionGates({

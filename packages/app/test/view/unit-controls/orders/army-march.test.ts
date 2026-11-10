@@ -6,6 +6,7 @@ import { createUnitOrderController } from '../../../../src/view/unit-controls/or
 import { createPendingGroundOrders } from '../../../../src/view/unit-controls/orders/pending-ground.js';
 import { COUNT, geometry, HEIGHT, makeArmy, report, WIDTH } from '../../../support/army-march.js';
 import { withPointHits } from '../../../support/point-hits.js';
+import { STILL_CAMERA } from '../../../support/still-camera.js';
 
 it.each(['move', 'redirect'] as const)(
   'moves a 1000-soldier real app %s formation without stacking',
@@ -35,6 +36,7 @@ it.each(['move', 'redirect'] as const)(
     });
     const orders = createUnitOrderController({
       answered: createAnsweredOrders(),
+      camera: STILL_CAMERA,
       pendingGroundOrders: pending,
       requestFormationSlots: async (target, ids, rowSpacing) => sim.formationSlots(target, ids, rowSpacing),
       snapshot: () => sim.snapshot(),

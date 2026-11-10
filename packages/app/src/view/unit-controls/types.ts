@@ -40,6 +40,7 @@ import type { FigureFrames } from '../../hud/figures/figure-frames.js';
 import type { KeyBindings } from '../../hud/keybindings.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import type { PresentationPack } from '../../presentation/pack.js';
+import type { CameraGestures } from '../camera/index.js';
 import type { Tile } from '../picking.js';
 import type { ControlGroupMembers } from './control-groups.js';
 import type { Berth, MooringRule } from './orders/berths.js';
@@ -92,6 +93,8 @@ export interface UnitControlsOptions {
   readonly canvas: HTMLCanvasElement;
   readonly uiscale?: number;
   readonly camera: () => Camera;
+  /** The camera gestures a modal choice (professions, school, equipment) hands on to the map. */
+  readonly cameraGestures: CameraGestures;
   readonly snapshot: () => WorldSnapshot;
   readonly mapSize: { readonly width: number; readonly height: number };
   readonly elevation?: ElevationField;

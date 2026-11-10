@@ -24,6 +24,7 @@ import { technologyLabel } from '../../../game/technology.js';
 import { createChoiceWindow } from '../../../hud/dom/choice-window.js';
 import type { GoodIconPainter } from '../../../hud/dom/good-art.js';
 import { compareLabels, formatMessage, messages } from '../../../i18n/index.js';
+import type { CameraGestures } from '../../camera/index.js';
 import { orderRecipients } from '../action-ring/menu-state.js';
 import { enqueueUnitSelection } from '../orders/group.js';
 import type { TechnologyStatusRead } from '../types.js';
@@ -142,6 +143,7 @@ export interface SchoolDialogOptions {
   /** The settlers the order reaches; the ones that may not learn here are dropped. */
   readonly settlers: readonly number[];
   readonly house: number;
+  readonly camera: CameraGestures;
   readonly enqueue: (command: PlayerCommand) => void;
   readonly onOrderLimit?: (() => void) | undefined;
   readonly status?: TechnologyStatusRead | undefined;
@@ -186,6 +188,7 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
   };
   const dialog = createChoiceWindow({
     title: copy.schoolTitle,
+    camera: opts.camera,
     scale: opts.scale,
     ...(cue === undefined ? {} : { cue }),
     ...(opts.icons === undefined ? {} : { icons: opts.icons }),

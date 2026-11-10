@@ -131,6 +131,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       : mountEquipPicker({
           uiString: opts.domHud.uiString,
           scale: opts.domHud.scale,
+          camera: opts.cameraGestures,
           icons: goodIcons,
           pickList: opts.requestEquipPicks,
           selectionPicks: opts.requestSelectionEquipPicks,
@@ -379,6 +380,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     enqueue: opts.enqueue,
     selectOwnSettler: (id) => applySelection([id], false),
     openActions: (atClient) => chrome.actions().open(atClient),
+    camera: opts.cameraGestures,
     cue,
     icons: goodIcons,
     refuse:

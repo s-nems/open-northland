@@ -1,4 +1,9 @@
-export { type CameraController, type CameraInputSettings, createCameraController } from './controller.js';
+export {
+  type CameraController,
+  type CameraGestures,
+  type CameraInputSettings,
+  createCameraController,
+} from './controller.js';
 export {
   cameraCenteredOnTile,
   cameraCenteredOnWorld,
