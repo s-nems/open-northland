@@ -15,7 +15,8 @@ import {
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
-import type { ChangeFeed, Component, Entity, World } from '../../ecs/world.js';
+import { ChangeFeed } from '../../ecs/change-feed.js';
+import type { Component, Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { ACTION_OWNER_MARKERS, anotherSystemOwns } from '../settlers/action-owner.js';
 import { boundWorkplaceTarget } from '../settlers/targets/workplaces.js';
@@ -63,8 +64,9 @@ interface WorkforceIndex {
   epoch: number;
   /** Bumped by every snapshot; only the latest one reads the load stamps. */
   snapshots: number;
-  /** The catch-up's dirty settlers, reused across calls. */
-  readonly dirty: Set<Entity>;
+  /** The catch-up's dirty settlers, each once in the order first marked, reused across calls. A feed
+   *  rather than a set: a long-lived set allocates a fresh table on every clear, in the old generation. */
+  readonly dirty: ChangeFeed;
   /** Journal visitors marking a settler, or a workplace's bound workers, dirty; built once per index so
    *  a catch-up allocates no collected deltas, iterators or closures. */
   readonly markSettler: (e: Entity) => void;
@@ -265,8 +267,7 @@ function caughtUp(world: World, ctx: SystemContext): WorkforceIndex {
   }
   held.ctx = ctx;
   const dirty = held.dirty;
-  // A Set's clear allocates a fresh table, so an empty one is left alone.
-  if (dirty.size > 0) dirty.clear();
+  if (dirty.pending) dirty.drain(ignoreEntity);
   held.untracked.forEach(held.markSettler);
   for (let i = 0; i < SETTLER_MEMBERSHIP.length; i++) {
     const component = SETTLER_MEMBERSHIP[i] as Component<unknown>;
@@ -294,9 +295,9 @@ function caughtUp(world: World, ctx: SystemContext): WorkforceIndex {
     trades.clear();
   }
   noteGenerations(world, held);
-  if (dirty.size === 0) return held;
-  dirty.forEach(held.resyncDirty);
-  dirty.clear();
+  if (!dirty.pending) return held;
+  // More dirty settlers than a feed holds: it dropped them, so every binding is derived afresh.
+  if (dirty.drain(held.resyncDirty)) return rebuild(world, ctx);
   held.epoch++;
   return held;
 }
@@ -313,7 +314,7 @@ function rebuild(world: World, ctx: SystemContext): WorkforceIndex {
 }
 
 function deriveIndex(world: World, ctx: SystemContext, epoch: number): WorkforceIndex {
-  const dirty = new Set<Entity>();
+  const dirty = new ChangeFeed();
   const index: WorkforceIndex = {
     ctx,
     generations: new Map(),
@@ -327,11 +328,11 @@ function deriveIndex(world: World, ctx: SystemContext, epoch: number): Workforce
     snapshots: 0,
     dirty,
     markSettler: (e) => {
-      dirty.add(e);
+      dirty.record(e);
     },
     markCrew: (workplace) => {
       const workers = assignedWorkers(world, workplace);
-      for (let i = 0; i < workers.length; i++) dirty.add(workers[i] as Entity);
+      for (let i = 0; i < workers.length; i++) dirty.record(workers[i] as Entity);
     },
     resyncDirty: (e) => resync(world, index.ctx, index, e),
     retakeSource: (source) => {
