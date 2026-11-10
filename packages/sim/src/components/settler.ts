@@ -196,6 +196,7 @@ export type SettlerTradeReader =
   | 'ownedFighters'
   | 'colliderKinds'
   | 'combatReady'
+  | 'combatUnits'
   | 'gossipCandidates'
   | 'tribeUnlocks'
   | 'livestockScouts'

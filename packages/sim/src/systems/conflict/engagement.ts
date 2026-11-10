@@ -587,6 +587,7 @@ function priorityTargetToTurnTo(
   if (!onStride(ctx.tick, self, REPATH_CADENCE)) return null;
   const x = terrain.xOf(here);
   const y = terrain.yOf(here);
+  if (!pass.index.firstTierWithin(spec.player, x, y, spec.searchRadius)) return null;
   const found = pickByTier(world, ctx, terrain, pass, spec, asker, x, y, COMBAT_TIER);
   return found === null ? null : focusedOn(world, ctx, terrain, here, found.entity);
 }
@@ -601,14 +602,18 @@ function priorityTargetInLook(
   spec: EngageSpec,
   hold: NonNullable<EngageSpec['hold']>,
 ): { target: Entity; dist: number } | null {
+  const x = terrain.xOf(here);
+  const y = terrain.yOf(here);
+  if (!pass.index.firstTierWithin(spec.player, x, y, hold.look.maxRange)) return null;
   const found = pass.index.nearest(
-    terrain.xOf(here),
-    terrain.yOf(here),
+    x,
+    y,
     hold.look.minRange,
     hold.look.maxRange,
     hold.priorityTarget,
     spec.player,
     SEARCH_METRIC,
+    true,
   );
   return found === null ? null : focusedOn(world, ctx, terrain, here, found.entity);
 }
@@ -936,6 +941,7 @@ function pickByTier(
     PICK_SPREAD_NODES,
     SEARCH_METRIC,
     spec.narrow ?? null,
+    tiers === COMBAT_TIER,
   );
   if (found.length === 0) return null;
   if (found.length === 1) return found[0] ?? null;

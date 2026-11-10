@@ -150,7 +150,9 @@ export class CombatIndex {
    * `accept` must be total and pure over any indexed entity: a rejection is remembered for the call.
    * Members owned by `seeker` or by a player at peace with it both ways are never offered: every gated
    * target filter rejects them, so skipping them here saves the filter's reads without changing the winner.
-   * `accept` may re-enter this method: a nested query scans into its own depth's buffer.
+   * `accept` may re-enter this method: a nested query scans into its own depth's buffer. `firstTierOnly`
+   * says `accept` admits first-tier combat targets alone (`isPriorityCombatTarget`), so the band leaves out
+   * every member the grid knows is none.
    */
   nearest(
     fromX: number,
@@ -160,8 +162,9 @@ export class CombatIndex {
     accept: (e: Entity) => boolean,
     seeker: number | null,
     metric: SearchMetric = 'manhattan',
+    firstTierOnly = false,
   ): { entity: Entity; distance: number } | null {
-    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
+    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric, null, firstTierOnly);
     const { keys, count } = scan;
     // A member admitted at several nodes recurs at a larger distance; a rejection holds for all of them.
     scan.met.begin();
@@ -280,7 +283,8 @@ export class CombatIndex {
    * acceptor. `rank(e, bound)` names the first kind below `bound` that `e` is of, or `bound` for none, and
    * `accept` must be total and pure; both are asked at most once per member. `narrow` is a total, pure
    * test every acceptor passes: the members failing it leave the band before it is sorted, which is what
-   * keeps a band far wider than the ground `accept` admits affordable.
+   * keeps a band far wider than the ground `accept` admits affordable. `firstTierOnly` says only rank 0
+   * is asked for and it is the first combat tier, as in {@link nearest}.
    */
   nearestFewOfBestRank(
     fromX: number,
@@ -295,8 +299,9 @@ export class CombatIndex {
     tailRings: number,
     metric: SearchMetric = 'manhattan',
     narrow: ((e: Entity) => boolean) | null = null,
+    firstTierOnly = false,
   ): readonly { entity: Entity; distance: number }[] {
-    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric, narrow);
+    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric, narrow, firstTierOnly);
     const { keys, count } = scan;
     let found: { entity: Entity; distance: number }[] = [];
     let best = ranks;
@@ -381,6 +386,24 @@ export class CombatIndex {
   }
 
   /**
+   * Whether a first-tier combat target (`isPriorityCombatTarget`) a search for `seeker` is offered might
+   * lie within `radius` map points of node (hx, hy). `false` proves that no search of that band finds one;
+   * `true` only means "run the real search".
+   */
+  firstTierWithin(seeker: number | null, hx: number, hy: number, radius: number): boolean {
+    this.grid.markFiring(this, this.firing);
+    const hostile = seeker === null ? EVERY_PLAYER : hostileMaskOf(this.hostileMasks, seeker);
+    const { cx0, cx1, cy0, cy1 } = boxCellRange(hx, hy, radius);
+    for (let cx = cx0; cx <= cx1; cx++) {
+      for (let cy = cy0; cy <= cy1; cy++) {
+        const cell = this.grid.cellAt(cx, cy);
+        if (cell !== undefined && this.grid.holdsFirstTier(cell, hostile)) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Whether the stranger neighbourhood {@link unitsNearStrangers} derived this pass already proves
    * {@link othersWithin} false for unit `e` at every radius up to `radius`, with no cell walked. False
    * proves nothing.
@@ -449,10 +472,13 @@ export class CombatIndex {
     seeker: number | null,
     metric: SearchMetric,
     narrow: ((e: Entity) => boolean) | null = null,
+    firstTierOnly = false,
   ): BandScan {
     const scan = this.grid.bandScanAt(this.depth);
+    if (firstTierOnly) this.grid.markFiring(this, this.firing);
     if (
       narrow === null &&
+      !firstTierOnly &&
       scan.valid &&
       scan.x === fromX &&
       scan.y === fromY &&
@@ -470,16 +496,40 @@ export class CombatIndex {
       for (let cy = cy0; cy <= cy1; cy++) {
         const cell = this.grid.cellAt(cx, cy);
         if (cell === undefined) continue;
+        // A building that only shoots this pass has no tier of its own, so its cell's bodies all stay.
+        const bodyTier = firstTierOnly && !this.grid.holdsShootingBuilding(cell);
         if (bodiesHoldBandCandidate(cell, hostile))
-          count = appendBand(scan, count, cell.bodies, fromX, fromY, minDist, maxDist, hostile, metric);
+          count = appendBand(
+            scan,
+            count,
+            cell.bodies,
+            fromX,
+            fromY,
+            minDist,
+            maxDist,
+            hostile,
+            metric,
+            bodyTier,
+          );
         if (unitsHoldBandCandidate(cell, hostile))
-          count = appendBand(scan, count, cell.units, fromX, fromY, minDist, maxDist, hostile, metric);
+          count = appendBand(
+            scan,
+            count,
+            cell.units,
+            fromX,
+            fromY,
+            minDist,
+            maxDist,
+            hostile,
+            metric,
+            firstTierOnly,
+          );
       }
     }
     if (narrow !== null) count = narrowKeys(scan, count, narrow);
     sortKeys(scan.keys, count);
     // A narrowed band answers its own query alone.
-    scan.valid = narrow === null;
+    scan.valid = narrow === null && !firstTierOnly;
     scan.x = fromX;
     scan.y = fromY;
     scan.minDist = minDist;
@@ -535,7 +585,8 @@ function unitsHoldBandCandidate(cell: CoarseCell, hostile: number): boolean {
 }
 
 /** Append to `scan` from `count` every member of `list` within `minDist..maxDist` of (fromX, fromY) that
- *  `hostile` does not skip, growing its key buffer as needed; returns the new count. */
+ *  `hostile` does not skip, growing its key buffer as needed; returns the new count. `firstTierOnly` also
+ *  skips the members the list holds as no first-tier combat target. */
 function appendBand(
   scan: BandScan,
   count: number,
@@ -546,12 +597,14 @@ function appendBand(
   maxDist: number,
   hostile: number,
   metric: SearchMetric,
+  firstTierOnly: boolean,
 ): number {
-  const { members, x, y, bit } = list;
+  const { members, x, y, bit, tier } = list;
   let n = count;
   for (let i = 0; i < list.count; i++) {
     const memberBit = bit[i] ?? 0;
     if (memberBit !== 0 && (memberBit & hostile) === 0) continue;
+    if (firstTierOnly && tier[i] === 0) continue;
     const mx = x[i] ?? 0;
     const my = y[i] ?? 0;
     const distance =

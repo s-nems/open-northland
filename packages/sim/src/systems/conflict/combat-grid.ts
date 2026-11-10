@@ -8,13 +8,21 @@ import {
   isValidPlayer,
   MAX_PLAYERS,
   Owner,
+  Person,
   Position,
   Settler,
+  settlerTradeLog,
 } from '../../components/index.js';
 import type { ChangeFeed, Component, Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../context.js';
-import { isAggressiveAnimal, isAnimalTribe, isLowPriorityBuildingTarget } from '../readviews/index.js';
+import {
+  isAggressiveAnimal,
+  isAnimalTribe,
+  isFighterJob,
+  isLowPriorityBuildingTarget,
+  ranksWithTowers,
+} from '../readviews/index.js';
 import { moverNode } from '../spatial/mover-node.js';
 import { type NodeMoveFeed, watchNodeMoves } from '../spatial/node-moves.js';
 import { derivedEntityNode } from '../spatial/nodes.js';
@@ -37,10 +45,21 @@ const LAYER_STORES: readonly Component<unknown>[] = [Building, Health, Position,
  *  holds a Settler, a Health pool and a Position, and its Owner, tribe, Anger and Engagement target decide
  *  its tallies. The tribe never changes, and an Anger that lapses without a write is re-read every build. A
  *  Position write only moves a unit, so it has its own feed. */
-const UNIT_MEMBERSHIP: readonly Component<unknown>[] = [Settler, Health, Position, Owner, Anger, Engagement];
+const UNIT_MEMBERSHIP: readonly Component<unknown>[] = [
+  Settler,
+  Health,
+  Position,
+  Owner,
+  Anger,
+  Engagement,
+  Person,
+];
 const UNIT_VALUES: readonly Component<unknown>[] = [Owner];
 /** An Engagement write re-classes only an unowned animal, so its feed skips every other held unit. */
 const WILD_VALUES: readonly Component<unknown>[] = [Engagement];
+
+/** {@link MemberList.tier} of a member that may be a first-tier combat target. */
+const FIRST_TIER = 1;
 
 /** A player's slot bit, or 0 for a player outside the slots. */
 export function playerBit(player: number): number {
@@ -64,6 +83,9 @@ export interface MemberList {
   readonly y: number[];
   /** The member's owner as a {@link playerBit}, 0 when unowned. */
   readonly bit: number[];
+  /** 1 for a member that may be a first-tier combat target by itself: a fighter, a tower-ranked building,
+   *  any vehicle. A building that only shoots this pass is marked on its cells instead. */
+  readonly tier: number[];
 }
 
 /**
@@ -98,6 +120,20 @@ export interface CoarseCell {
   /** Per player slot, the units it owns here, which keep {@link unitOwnerMask} exact as units leave. */
   readonly unitOwners: number[];
   unitOwnerMask: number;
+  /** The fighters among the units, as {@link unitOwners} and {@link unitOwnerMask} count the units, and
+   *  those with no player bit. */
+  readonly unitFighters: number[];
+  unitFighterMask: number;
+  unitFighterUnowned: number;
+  /** The owner bits of the tower-ranked buildings here and whether one has none, current at
+   *  {@link bodyTiersAt} of the grid's building layer version. */
+  towerMask: number;
+  towerUnowned: boolean;
+  bodyTiersAt: number;
+  /** The same for the other buildings able to shoot, marked for the pass numbered {@link firingAt}. */
+  firingMask: number;
+  firingUnowned: boolean;
+  firingAt: number;
   /** This build's share: the vehicles. */
   buildTotal: number;
   buildUndiscounted: number;
@@ -151,6 +187,8 @@ interface BuildingEntry {
 interface HeldBuilding extends BuildingEntry {
   readonly cells: readonly CoarseCell[];
   readonly cellNodes: readonly number[];
+  /** Whether its type ranks with the towers in the first combat priority. */
+  readonly towerRanked: boolean;
 }
 
 /** A unit as the layer holds it: where in which cell, and the classes its tallies counted. */
@@ -159,6 +197,8 @@ interface HeldUnit {
   slot: number;
   readonly bit: number;
   readonly wild: WildClass;
+  /** A person of a fighting trade: a first-tier combat target. */
+  readonly fighter: boolean;
 }
 
 const grids = new WeakMap<World, CombatGrid>();
@@ -183,6 +223,7 @@ export function combatGridOf(world: World, ctx: SystemContext, terrain: TerrainG
     world.watchChanges(UNIT_MEMBERSHIP, UNIT_VALUES),
     world.watchChanges([], WILD_VALUES),
     watchNodeMoves(world),
+    settlerTradeLog(world, 'combatUnits'),
   );
   grids.set(world, grid);
   for (const store of LAYER_STORES) world.journalMembership(store);
@@ -207,6 +248,11 @@ export class CombatGrid {
    *  build. */
   private generations: number[] | null = null;
   private buildingValueGeneration = 0;
+  /** Bumped by every change to the building layer, so a cell's tower tallies are re-read after one. */
+  private buildingLayerVersion = 1;
+  /** The pass whose shooting buildings the cells are marked for, and the index that marked them. */
+  private firingPass = 0;
+  private firingMarkedFor: object | null = null;
   private ownerValueGeneration = 0;
   /** The held units by entity id, so a move's lookup is an array read. */
   private readonly units: (HeldUnit | undefined)[] = [];
@@ -229,6 +275,8 @@ export class CombatGrid {
     private readonly unitFeed: ChangeFeed,
     private readonly wildFeed: ChangeFeed,
     private readonly moveFeed: NodeMoveFeed,
+    /** The settlers whose trade changed since the last sync: a trade makes or unmakes a fighter. */
+    private readonly tradeChanges: Set<Entity>,
   ) {
     this.cols = Math.ceil(terrain.width / COARSE_CELL_NODES);
     this.rows = Math.ceil(terrain.height / COARSE_CELL_NODES);
@@ -274,7 +322,7 @@ export class CombatGrid {
     const e = this.body;
     const bit = this.bodyBit;
     const cell = this.touchForBuild(this.cellFor(x, y));
-    push(cell.bodies, e, x, y, bit);
+    push(cell.bodies, e, x, y, bit, FIRST_TIER);
     if (cell.countedLast !== e) {
       cell.countedLast = e;
       cell.buildTotal++;
@@ -369,6 +417,70 @@ export class CombatGrid {
     return (cell.nearMask & hostileMaskOf(hostileMasks, playerOfBit(held.bit))) === 0;
   }
 
+  /**
+   * Mark for `index`'s pass the cells of every building of `firing` that is not tower-ranked by type, once
+   * per index: with them a cell's first-tier test covers every building able to shoot.
+   */
+  markFiring(index: object, firing: ReadonlySet<Entity>): void {
+    if (this.firingMarkedFor === index) return;
+    this.firingMarkedFor = index;
+    this.firingPass++;
+    firing.forEach(this.markFiringBuilding);
+  }
+
+  private readonly markFiringBuilding = (b: Entity): void => {
+    const held = this.buildings.get(b);
+    if (held === undefined || held.towerRanked) return;
+    for (const cell of held.cells) {
+      if (cell.firingAt !== this.firingPass) {
+        cell.firingAt = this.firingPass;
+        cell.firingMask = 0;
+        cell.firingUnowned = false;
+      }
+      if (held.bit !== 0) cell.firingMask |= held.bit;
+      else cell.firingUnowned = true;
+    }
+  };
+
+  /**
+   * Whether `cell` may hold a first-tier combat target (`isPriorityCombatTarget`) a search for the
+   * `hostile` players is offered: a fighter, a tower-ranked or shooting building, or any vehicle, armed or
+   * not, of such a player or of none. False is a proof of absence. Read after {@link markFiring}.
+   */
+  holdsFirstTier(cell: CoarseCell, hostile: number): boolean {
+    if (cell.unitFighterUnowned > 0 || (cell.unitFighterMask & hostile) !== 0) return true;
+    if (cell.buildUndiscounted > 0 || (cell.buildOwnerMask & hostile) !== 0) return true;
+    if (cell.bodyTiersAt !== this.buildingLayerVersion) this.readTowers(cell);
+    if (cell.towerUnowned || (cell.towerMask & hostile) !== 0) return true;
+    return cell.firingAt === this.firingPass && (cell.firingUnowned || (cell.firingMask & hostile) !== 0);
+  }
+
+  /** Whether a building of `cell` that is first-tier only because it shoots is marked for this pass, so
+   *  its body entries carry no {@link MemberList.tier} of their own. Read after {@link markFiring}. */
+  holdsShootingBuilding(cell: CoarseCell): boolean {
+    return cell.firingAt === this.firingPass;
+  }
+
+  /** Re-read `cell`'s tower tallies off its building entries: a building's nodes in one cell sit together. */
+  private readTowers(cell: CoarseCell): void {
+    const { members, bit } = cell.bodies;
+    let mask = 0;
+    let unowned = false;
+    let last: Entity | undefined;
+    for (let i = 0; i < cell.bodyBase; i++) {
+      const member = members[i];
+      if (member === last || member === undefined) continue;
+      last = member;
+      if (this.buildings.get(member)?.towerRanked !== true) continue;
+      const memberBit = bit[i] ?? 0;
+      if (memberBit !== 0) mask |= memberBit;
+      else unowned = true;
+    }
+    cell.towerMask = mask;
+    cell.towerUnowned = unowned;
+    cell.bodyTiersAt = this.buildingLayerVersion;
+  }
+
   /** The band scan scratch for nesting depth `depth`. */
   bandScanAt(depth: number): BandScan {
     let scan = this.bandScans[depth];
@@ -452,6 +564,7 @@ export class CombatGrid {
   /** Drop each of `changed` from the building layer and admit it again if it still belongs, leaving every
    *  other building's entries in place. The build share must already be cleared. */
   private updateBuildings(world: World, ctx: SystemContext, changed: readonly Entity[]): void {
+    this.buildingLayerVersion++;
     const touched = this.touchedScratch;
     touched.length = 0;
     for (const b of changed) {
@@ -492,6 +605,7 @@ export class CombatGrid {
       cell.builtOn = false;
     }
     this.builtCount = 0;
+    this.buildingLayerVersion++;
     this.buildings.clear();
     this.lowPriority.clear();
     for (const b of world.query(Building, Health, Position)) {
@@ -516,13 +630,14 @@ export class CombatGrid {
    *  The base tallies of the cells it spans are the caller's. */
   private admitBuilding(world: World, ctx: SystemContext, b: Entity): HeldBuilding {
     const entry = buildingEntry(world, ctx, this.terrain, b);
+    const towerRanked = ranksWithTowers(ctx, entry.type);
     const cells: CoarseCell[] = [];
     const cellNodes: number[] = [];
     for (const node of entry.nodes) {
       const x = this.terrain.xOf(node);
       const y = this.terrain.yOf(node);
       const cell = this.cellFor(x, y);
-      push(cell.bodies, b, x, y, entry.bit);
+      push(cell.bodies, b, x, y, entry.bit, towerRanked ? FIRST_TIER : 0);
       const at = cells.indexOf(cell);
       if (at >= 0) {
         cellNodes[at] = (cellNodes[at] ?? 0) + 1;
@@ -531,7 +646,7 @@ export class CombatGrid {
       cells.push(cell);
       cellNodes.push(1);
     }
-    const held = { ...entry, cells, cellNodes };
+    const held = { ...entry, cells, cellNodes, towerRanked };
     this.buildings.set(b, held);
     if (isLowPriorityBuildingTarget(world, ctx, b)) this.lowPriority.add(b);
     return held;
@@ -554,7 +669,12 @@ export class CombatGrid {
       this.wildFeed.drain(() => {});
       this.moveFeed.drain(() => {});
       this.rebuildUnits(world, tick);
+    } else {
+      this.tradeChanges.forEach((e) => {
+        this.placeUnit(world, tick, e);
+      });
     }
+    this.tradeChanges.clear();
     for (const e of world.query(Anger)) this.placeUnit(world, tick, e);
   }
 
@@ -567,6 +687,9 @@ export class CombatGrid {
       cell.unitUndiscounted = 0;
       cell.unitOwners.fill(0);
       cell.unitOwnerMask = 0;
+      cell.unitFighters.fill(0);
+      cell.unitFighterMask = 0;
+      cell.unitFighterUnowned = 0;
       this.refresh(cell);
     }
     this.units.length = 0;
@@ -588,16 +711,17 @@ export class CombatGrid {
     const bit = owner === undefined ? 0 : playerBit(owner.player);
     const unowned = owner === undefined ? world.get(e, Settler) : undefined;
     const wild = wildClassOf(world, this.content, tick, e, unowned);
+    const fighter = isFighterUnit(world, this.content, e);
     if (held !== undefined) {
       const cell = this.cellFor(x, y);
-      if (held.cell === cell && held.bit === bit && held.wild === wild) {
+      if (held.cell === cell && held.bit === bit && held.wild === wild && held.fighter === fighter) {
         cell.units.x[held.slot] = x;
         cell.units.y[held.slot] = y;
         return;
       }
       this.dropUnit(e, held);
     }
-    this.addUnit(e, x, y, bit, wild);
+    this.addUnit(e, x, y, bit, wild, fighter);
   }
 
   /** Follow held unit `e` to the node it now reads (`moverNode`); the membership feed, replayed first,
@@ -617,30 +741,30 @@ export class CombatGrid {
       return;
     }
     this.unslot(held);
-    tallyUnit(held.cell, held.bit, held.wild, -1);
+    tallyUnit(held.cell, held.bit, held.wild, held.fighter, -1);
     this.refresh(held.cell);
     held.cell = cell;
     held.slot = cell.units.count;
-    push(cell.units, e, x, y, held.bit);
-    tallyUnit(cell, held.bit, held.wild, 1);
+    push(cell.units, e, x, y, held.bit, held.fighter ? FIRST_TIER : 0);
+    tallyUnit(cell, held.bit, held.wild, held.fighter, 1);
     this.refresh(cell);
   }
 
-  private addUnit(e: Entity, x: number, y: number, bit: number, wild: WildClass): void {
+  private addUnit(e: Entity, x: number, y: number, bit: number, wild: WildClass, fighter: boolean): void {
     const cell = this.cellFor(x, y);
     const slot = cell.units.count;
-    push(cell.units, e, x, y, bit);
+    push(cell.units, e, x, y, bit, fighter ? FIRST_TIER : 0);
     const units = this.units;
     while (units.length <= e) units.push(undefined);
-    units[e] = { cell, slot, bit, wild };
-    tallyUnit(cell, bit, wild, 1);
+    units[e] = { cell, slot, bit, wild, fighter };
+    tallyUnit(cell, bit, wild, fighter, 1);
     this.refresh(cell);
   }
 
   private dropUnit(e: Entity, held: HeldUnit): void {
     this.unslot(held);
     this.units[e] = undefined;
-    tallyUnit(held.cell, held.bit, held.wild, -1);
+    tallyUnit(held.cell, held.bit, held.wild, held.fighter, -1);
     this.refresh(held.cell);
   }
 
@@ -655,6 +779,7 @@ export class CombatGrid {
       units.x[slot] = units.x[last] ?? 0;
       units.y[slot] = units.y[last] ?? 0;
       units.bit[slot] = units.bit[last] ?? 0;
+      units.tier[slot] = units.tier[last] ?? 0;
       const movedHeld = this.units[moved];
       if (movedHeld !== undefined) movedHeld.slot = slot;
     }
@@ -796,6 +921,7 @@ export class CombatGrid {
       pending.add(e);
     };
     if (this.unitFeed.peek(note) || this.wildFeed.peek(note) || this.moveFeed.peek(note)) return [];
+    this.tradeChanges.forEach(note);
     for (const e of world.query(Settler, Health, Position)) {
       if (pending.has(e)) continue;
       const held = this.units[e];
@@ -812,6 +938,8 @@ export class CombatGrid {
         units.y[held.slot] !== y ||
         held.cell !== this.cellFor(x, y) ||
         held.bit !== (owner === undefined ? 0 : playerBit(owner.player)) ||
+        held.fighter !== isFighterUnit(world, this.content, e) ||
+        units.tier[held.slot] !== (held.fighter ? FIRST_TIER : 0) ||
         // An Anger's lapse is re-read at the next build, so the class of its holder may lag until then.
         (!world.has(e, Anger) && held.wild !== wildClassOf(world, this.content, 0, e, unowned))
       ) {
@@ -835,7 +963,7 @@ export class CombatGrid {
         fresh.set(held.cell, tally);
       }
       tally.count++;
-      tallyUnit(tally.tallies, held.bit, held.wild, 1);
+      tallyUnit(tally.tallies, held.bit, held.wild, held.fighter, 1);
     }
     for (const cell of this.cells) {
       if (cell === undefined) continue;
@@ -846,6 +974,8 @@ export class CombatGrid {
         cell.unitHostileAnimal !== tallies.unitHostileAnimal ||
         cell.unitUndiscounted !== tallies.unitUndiscounted ||
         cell.unitOwnerMask !== tallies.unitOwnerMask ||
+        cell.unitFighterMask !== tallies.unitFighterMask ||
+        cell.unitFighterUnowned !== tallies.unitFighterUnowned ||
         cell.unitOwners.some((owned, player) => owned !== tallies.unitOwners[player])
       ) {
         return [`combatUnitLayer cell ${cell.index} tallies drifted from its units`];
@@ -896,6 +1026,15 @@ export class CombatGrid {
         unitUndiscounted: 0,
         unitOwners: new Array<number>(MAX_PLAYERS).fill(0),
         unitOwnerMask: 0,
+        unitFighters: new Array<number>(MAX_PLAYERS).fill(0),
+        unitFighterMask: 0,
+        unitFighterUnowned: 0,
+        towerMask: 0,
+        towerUnowned: false,
+        bodyTiersAt: 0,
+        firingMask: 0,
+        firingUnowned: false,
+        firingAt: 0,
         buildTotal: 0,
         buildUndiscounted: 0,
         buildOwnerMask: 0,
@@ -968,6 +1107,7 @@ function dropBodies(cell: CoarseCell, e: Entity): void {
       list.x[kept] = list.x[i] ?? 0;
       list.y[kept] = list.y[i] ?? 0;
       list.bit[kept] = list.bit[i] ?? 0;
+      list.tier[kept] = list.tier[i] ?? 0;
     }
     kept++;
   }
@@ -1014,21 +1154,29 @@ function emptyBaseTally(): BaseTally {
 }
 
 function memberList(): MemberList {
-  return { count: 0, members: [], x: [], y: [], bit: [] };
+  return { count: 0, members: [], x: [], y: [], bit: [], tier: [] };
 }
 
-function push(list: MemberList, e: Entity, x: number, y: number, bit: number): void {
+function push(list: MemberList, e: Entity, x: number, y: number, bit: number, tier: number): void {
   const i = list.count++;
   list.members[i] = e;
   list.x[i] = x;
   list.y[i] = y;
   list.bit[i] = bit;
+  list.tier[i] = tier;
 }
 
 /** A cell's unit layer share. */
 type UnitTallies = Pick<
   CoarseCell,
-  'unitPassive' | 'unitHostileAnimal' | 'unitUndiscounted' | 'unitOwners' | 'unitOwnerMask'
+  | 'unitPassive'
+  | 'unitHostileAnimal'
+  | 'unitUndiscounted'
+  | 'unitOwners'
+  | 'unitOwnerMask'
+  | 'unitFighters'
+  | 'unitFighterMask'
+  | 'unitFighterUnowned'
 >;
 
 function emptyUnitTallies(): UnitTallies {
@@ -1038,15 +1186,19 @@ function emptyUnitTallies(): UnitTallies {
     unitUndiscounted: 0,
     unitOwners: new Array<number>(MAX_PLAYERS).fill(0),
     unitOwnerMask: 0,
+    unitFighters: new Array<number>(MAX_PLAYERS).fill(0),
+    unitFighterMask: 0,
+    unitFighterUnowned: 0,
   };
 }
 
 /** Add (`sign` 1) or remove (-1) one unit's share of `cell`'s unit tallies. */
-function tallyUnit(cell: UnitTallies, bit: number, wild: WildClass, sign: 1 | -1): void {
+function tallyUnit(cell: UnitTallies, bit: number, wild: WildClass, fighter: boolean, sign: 1 | -1): void {
   if (wild === 'passive') cell.unitPassive += sign;
   else if (wild === 'hostile') cell.unitHostileAnimal += sign;
   if (bit === 0) {
     if (wild !== 'passive') cell.unitUndiscounted += sign;
+    if (fighter) cell.unitFighterUnowned += sign;
     return;
   }
   const player = playerOfBit(bit);
@@ -1054,6 +1206,16 @@ function tallyUnit(cell: UnitTallies, bit: number, wild: WildClass, sign: 1 | -1
   cell.unitOwners[player] = owned;
   if (owned > 0) cell.unitOwnerMask |= bit;
   else cell.unitOwnerMask &= ~bit;
+  if (!fighter) return;
+  const fighters = (cell.unitFighters[player] ?? 0) + sign;
+  cell.unitFighters[player] = fighters;
+  if (fighters > 0) cell.unitFighterMask |= bit;
+  else cell.unitFighterMask &= ~bit;
+}
+
+/** Whether unit `e` is a person of a fighting trade, as `isFighterTarget` reads a first-tier target. */
+function isFighterUnit(world: World, content: ContentSet, e: Entity): boolean {
+  return world.has(e, Person) && isFighterJob(content, world.get(e, Settler).jobType);
 }
 
 export function coarseOf(node: number): number {
