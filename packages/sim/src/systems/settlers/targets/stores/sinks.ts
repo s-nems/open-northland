@@ -58,13 +58,17 @@ export class StoreSinks {
       () => world.canonicalQuery(Stockpile, Position),
       {
         capture: (e, spent) => sinkCaptureOf(world, content, e, spent),
+        // Indexed: every stock write replays a store's capture, and a for-of here costs an iterator
+        // result per good.
         apply: (e, c) => {
-          for (const good of c.ordinary) membersOf(this.ordinary, good).add(e);
-          for (const good of c.storage) membersOf(this.storage, good).add(e);
+          const { ordinary, storage } = c;
+          for (let i = 0; i < ordinary.length; i++) membersOf(this.ordinary, ordinary[i] as number).add(e);
+          for (let i = 0; i < storage.length; i++) membersOf(this.storage, storage[i] as number).add(e);
         },
         withdraw: (e, c) => {
-          for (const good of c.ordinary) this.ordinary.get(good)?.delete(e);
-          for (const good of c.storage) this.storage.get(good)?.delete(e);
+          const { ordinary, storage } = c;
+          for (let i = 0; i < ordinary.length; i++) this.ordinary.get(ordinary[i] as number)?.delete(e);
+          for (let i = 0; i < storage.length; i++) this.storage.get(storage[i] as number)?.delete(e);
         },
         clear: () => {
           this.ordinary.clear();

@@ -57,8 +57,11 @@ export function razeSalvageOf(world: World, ctx: ContentContext, building: Entit
 const EMPTY_CONSTRUCTION: readonly GoodsLine[] = [];
 
 export function constructionTotalUnits(world: World, ctx: SystemContext, site: Entity): number {
+  const bill = constructionBillOf(world, ctx, site);
   let units = 0;
-  for (const line of constructionBillOf(world, ctx, site)) units += line.amount;
+  // Indexed, here and below: a content bill is a frozen list, which a for-of pays an iterator result
+  // per line for.
+  for (let i = 0; i < bill.length; i++) units += (bill[i] as GoodsLine).amount;
   return units;
 }
 
@@ -71,7 +74,9 @@ export function deliveredConstructionFraction(world: World, ctx: SystemContext, 
   const stock = world.tryGet(site, Stockpile)?.amounts;
   let needed = 0;
   let delivered = 0;
-  for (const line of constructionBillOf(world, ctx, site)) {
+  const bill = constructionBillOf(world, ctx, site);
+  for (let i = 0; i < bill.length; i++) {
+    const line = bill[i] as GoodsLine;
     needed += line.amount;
     delivered += Math.min(Math.max(stock?.get(line.goodType) ?? 0, 0), line.amount);
   }
@@ -115,7 +120,9 @@ export function constructionBillCovered(
   supply: SupplyTally,
 ): boolean {
   const stock = world.tryGet(site, Stockpile)?.amounts;
-  for (const line of constructionBillOf(world, ctx, site)) {
+  const bill = constructionBillOf(world, ctx, site);
+  for (let i = 0; i < bill.length; i++) {
+    const line = bill[i] as GoodsLine;
     const held = Math.max(stock?.get(line.goodType) ?? 0, 0);
     if (held + supply.inboundOf(site, line.goodType) < line.amount) return false;
   }

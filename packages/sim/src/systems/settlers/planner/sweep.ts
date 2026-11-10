@@ -110,6 +110,8 @@ class SweepCandidates {
   after(
     cursor: number,
     shelters: ShelterSites,
+    /** The owners of `shelters`, listed once per pass so a visit walks them without an iterator. */
+    alarmed: readonly number[],
     tick: number,
     checkDue: (owner: number | undefined) => boolean,
     shelterRoom: ReadonlySet<number>,
@@ -127,8 +129,8 @@ class SweepCandidates {
         continue;
       next = earlier(next, ids[indexAboveId(ids, cursor, byId)]);
     }
-    if (shelters.size === 0) return next;
-    for (const owner of shelters.keys()) {
+    for (let i = 0; i < alarmed.length; i++) {
+      const owner = alarmed[i] as number;
       // A visit between beats only claims a place, so a walker or an idler waits while its owner has none
       // left. One waiting inside a building runs its whole ladder instead, on the room the pass began with.
       const room = shelterHasRoom(shelters, owner);
@@ -475,11 +477,14 @@ function verifySweep(world: World): string[] {
   return candidates.get(world)?.verify() ?? [];
 }
 
+const NO_OWNERS: readonly number[] = [];
+
 /** A cursor over {@link sweepOrder}'s settlers: a pass asks for the next one after each visit, so the
  *  walk allocates nothing per settler. */
 class PlannerSweep {
   private cursor = 0;
   private done = false;
+  private readonly alarmed: readonly number[];
 
   constructor(
     private readonly held: SweepCandidates,
@@ -488,12 +493,21 @@ class PlannerSweep {
     private readonly checkDue: (owner: number | undefined) => boolean,
     private readonly shelterRoom: ReadonlySet<number>,
     private readonly createdMidPass: number,
-  ) {}
+  ) {
+    this.alarmed = shelters.size === 0 ? NO_OWNERS : [...shelters.keys()];
+  }
 
   /** The next settler to visit, or undefined once the sweep is over. */
   next(): Entity | undefined {
     if (this.done) return undefined;
-    const e = this.held.after(this.cursor, this.shelters, this.tick, this.checkDue, this.shelterRoom);
+    const e = this.held.after(
+      this.cursor,
+      this.shelters,
+      this.alarmed,
+      this.tick,
+      this.checkDue,
+      this.shelterRoom,
+    );
     if (e === undefined || e >= this.createdMidPass) {
       this.done = true;
       return undefined;
