@@ -54,6 +54,19 @@ export function stockCapacity(world: World, ctx: ContentContext, store: Entity, 
   return UNCAPPED_CAPACITY;
 }
 
+/** The goods of a building type's slot table with room for at least one unit, kept per content table:
+ *  every stock write of a store asks for them again. */
+const positiveSlots = new WeakMap<ReadonlyMap<number, number>, readonly number[]>();
+
+function positiveSlotGoods(slots: ReadonlyMap<number, number>): readonly number[] {
+  let goods = positiveSlots.get(slots);
+  if (goods === undefined) {
+    goods = [...slots.keys()].filter((good) => (slots.get(good) ?? 0) > 0);
+    positiveSlots.set(slots, goods);
+  }
+  return goods;
+}
+
 /** The goods {@link stockCapacity} gives `store` a nonzero ceiling for, branch for branch: every content
  *  good where it caps none out (an empty ground heap, a position-less fixture store). */
 export function slottedGoods(world: World, ctx: ContentContext, store: Entity): Iterable<number> {
@@ -68,7 +81,7 @@ export function slottedGoods(world: World, ctx: ContentContext, store: Entity): 
         .map((line) => line.goodType);
     }
     const slots = index.stockSlotCapacityByBuilding.get(type.typeId);
-    return slots === undefined ? NO_GOODS : [...slots.keys()].filter((good) => (slots.get(good) ?? 0) > 0);
+    return slots === undefined ? NO_GOODS : positiveSlotGoods(slots);
   }
   const stock = world.tryGet(store, Stockpile);
   if (stock !== undefined && world.has(store, Position)) {

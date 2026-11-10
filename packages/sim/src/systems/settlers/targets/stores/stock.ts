@@ -114,8 +114,9 @@ export function acceptsGood(
   const recipe = mergedRecipeOf(world, ctx, entity);
   if (recipe !== undefined) {
     // A plain loop, not `.some(closure)`: the sink scans probe this per candidate per query.
-    for (const output of recipe.outputs) {
-      if (output.goodType === slot.goodType) return false;
+    const outputs = recipe.outputs;
+    for (let i = 0; i < outputs.length; i++) {
+      if (outputs[i]?.goodType === slot.goodType) return false;
     }
     // A ware the house makes outside its recipes (see `isWorkplaceOutput`) is output too: taken back in,
     // the worker hauling it out would put it straight back.

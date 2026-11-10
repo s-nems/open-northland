@@ -132,7 +132,9 @@ function sinkCaptureOf(
   const { ordinary, storage } = capture;
   ordinary.length = 0;
   storage.length = 0;
-  for (const good of depositCandidates(world, ctx, e)) {
+  depositCandidates(world, ctx, e);
+  for (let i = 0; i < candidateCount; i++) {
+    const good = candidates[i] as number;
     if (!acceptsGood(world, ctx, e, good, false)) continue;
     ordinary.push(good);
     if (acceptsGood(world, ctx, e, good, true)) storage.push(good);
@@ -140,20 +142,30 @@ function sinkCaptureOf(
   return ordinary.length === 0 ? null : capture;
 }
 
-/** {@link depositCandidates}' scratch set: a capture reads it to the end before the next fills it. */
-const candidateScratch = new Set<number>();
+/** {@link depositCandidates}' scratch list and its length: a capture reads it to the end before the next
+ *  fills it. */
+const candidates: number[] = [];
+let candidateCount = 0;
+/** The fill each good was last listed by, so a good is listed once without a set. */
+const listedBy: number[] = [];
+let fill = 0;
 
-/** Every good a deposit may shelve in one of `store`'s slots: a slotted good, or a dish whose edible form
- *  is slotted, the two ways {@link bankedSlot} resolves a nonzero slot. The shared scratch set, valid until
- *  the next call. */
-function depositCandidates(world: World, ctx: ContentContext, store: Entity): ReadonlySet<number> {
-  const goods = candidateScratch;
-  goods.clear();
+function listCandidate(good: number): void {
+  if (listedBy[good] === fill) return;
+  listedBy[good] = fill;
+  candidates[candidateCount++] = good;
+}
+
+/** List in {@link candidates} every good a deposit may shelve in one of `store`'s slots: a slotted good,
+ *  or a dish whose edible form is slotted, the two ways {@link bankedSlot} resolves a nonzero slot. */
+function depositCandidates(world: World, ctx: ContentContext, store: Entity): void {
+  fill++;
+  candidateCount = 0;
   for (const slot of slottedGoods(world, ctx, store)) {
-    goods.add(slot);
-    for (const good of edibleClassOf(ctx.content, slot)) goods.add(good);
+    listCandidate(slot);
+    const dishes = edibleClassOf(ctx.content, slot);
+    for (let i = 0; i < dishes.length; i++) listCandidate(dishes[i] as number);
   }
-  return goods;
 }
 
 function membersOf(byGood: Map<number, Set<Entity>>, good: number): Set<Entity> {
