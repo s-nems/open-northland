@@ -44,16 +44,17 @@ function zonesCounted(homes: number, cap: number): number {
   return Math.max(FIT_PER_HOME, lift);
 }
 
-/** Decisions between a seat's room reviews, a stalled placement's retry pace (about a game minute): felled
- *  trees and mined-out deposits free ground slowly. */
-export const ROOM_REVIEW_EVERY_DECISIONS = STALLED_PLACEMENT_RETRY_DECISIONS;
+/** Decisions between a seat's room reviews, twice a stalled placement's retry pace (about two game
+ *  minutes, authored, a performance trade): felled trees and mined-out deposits free ground slowly, and a
+ *  review of a built-up seat walks its whole placement area. */
+export const ROOM_REVIEW_EVERY_DECISIONS = 2 * STALLED_PLACEMENT_RETRY_DECISIONS;
 
 /**
  * The seat's first decision after `tick` on its room beat ({@link moduleBeatDue}). A review costs a few
  * milliseconds, so it never shares a tick with another seat's: every seat decides on a tick of its own in
  * the decision interval ({@link computerDecisionSlot}), and the beat, offset by the seat, gives each seat a
  * different interval of the {@link ROOM_REVIEW_EVERY_DECISIONS}, so the seats' reviews spread over the
- * minute rather than bunching in one interval.
+ * two minutes rather than bunching in one interval.
  */
 export function nextRoomReviewTick(tick: number, player: number): number {
   let start = (decisionIndex(tick) + 1) * COMPUTER_DECISION_INTERVAL_TICKS;
