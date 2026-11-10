@@ -125,7 +125,8 @@ export class JournaledCaptures<C> {
       marks[word] = (marks[word] as number) & ~(1 << (e & BIT_MASK));
     }
     this.touchedCount = 0;
-    this.sparseTouched.clear();
+    // A long-lived set allocates a fresh table on every clear, in the old generation, even when empty.
+    if (this.sparseTouched.size > 0) this.sparseTouched.clear();
   }
 
   private growMarks(word: number): void {
