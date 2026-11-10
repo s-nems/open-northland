@@ -2,7 +2,11 @@ import { Container, type Geometry, RenderContainer, type Renderer, Texture, WebG
 import { describe, expect, it, vi } from 'vitest';
 import type { Viewport } from '../../../src/data/projection/index.js';
 import type { AtlasFrame } from '../../../src/data/sprites/index.js';
-import { type GroundWave, GroundWaveLayer, groundWaveFrameAt } from '../../../src/gpu/ground-waves/index.js';
+import {
+  type GroundWave,
+  GroundWaveLayer,
+  groundWaveFrameIndex,
+} from '../../../src/gpu/ground-waves/index.js';
 import { useHeadlessShaderContext } from '../../support/shader-context.js';
 
 useHeadlessShaderContext();
@@ -92,11 +96,11 @@ function mapQuads(render: ReturnType<typeof vi.fn>): number[][] {
   return quads;
 }
 
-describe('groundWaveFrameAt', () => {
+describe('groundWaveFrameIndex', () => {
   it('advances one frame per tick from the placement phase', () => {
-    expect(groundWaveFrameAt(wave(1), 0)).toBe(FRAME_1);
-    expect(groundWaveFrameAt(wave(1), 1)).toBe(FRAME_0);
-    expect(groundWaveFrameAt(wave(0), 3)).toBe(FRAME_1);
+    expect(groundWaveFrameIndex(1, 2, 0)).toBe(1);
+    expect(groundWaveFrameIndex(1, 2, 1)).toBe(0);
+    expect(groundWaveFrameIndex(0, 2, 3)).toBe(1);
   });
 });
 
