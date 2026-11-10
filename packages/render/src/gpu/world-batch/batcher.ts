@@ -352,9 +352,9 @@ function listsLut(batcher: unknown): batcher is LutListingBatcher {
 }
 
 /**
- * What a quad's last whole pack read apart from where it stands and its colour. While these hold, a
- * repack rewrites its corners and colour only: a sprite's texture, frame, anchor, palette row and
- * effects each move its view tick, and its scale or turn moves the transform's first four terms.
+ * What a quad's last whole pack read apart from its transform and colour. While these hold, a repack
+ * rewrites its corners and colour only: a sprite's texture, frame, anchor, palette row and effects each
+ * move its view tick. The transform's first four terms are the ones its texel bound was last noted for.
  */
 interface PackedQuad {
   sprite: object | null;
@@ -364,6 +364,12 @@ interface PackedQuad {
   c: number;
   d: number;
   shading: boolean;
+  /** Whether its body may gather, so its texel bound counts. */
+  bounded: boolean;
+  /** Page texels per unit of the quad's own x and y, before its transform; zero where snapping, a
+   *  rotated frame or an empty quad leaves them unknown. */
+  texelsX: number;
+  texelsY: number;
 }
 const PACKED: unique symbol = Symbol('world quad pack');
 type PackedQuadHost = DefaultBatchableQuadElement & { [PACKED]?: PackedQuad };
@@ -561,22 +567,17 @@ function defineWorldBatcher(): WorldBatcherClass {
   }
 
   /**
-   * The fewest page texels per render-group unit a quad's fragments see, as the shader measures its
-   * footprint: the larger of the two rows of the unit-to-texel map, each row's absolute sum. Zero when
-   * snapping or a rotated frame leaves it unknown. Reads the frame box {@link beginElement} packed.
+   * The fewest page texels per render-group unit a quad's fragments see under the transform `packed`
+   * holds, as the shader measures its footprint: the larger of the two rows of the unit-to-texel map,
+   * each row's absolute sum. Zero where the quad's own texel density is unknown.
    */
-  function quadTexelsPerUnit(element: DefaultBatchableQuadElement): number {
-    const { a, b, c, d } = element.transform;
-    const { minX, minY, maxX, maxY } = element.bounds;
-    const texture = element.texture;
+  function texelsPerUnitOf(packed: PackedQuad): number {
+    const { a, b, c, d } = packed;
     const determinant = Math.abs(a * d - b * c);
-    if (element.roundPixels !== 0 || texture.rotate !== 0 || determinant === 0) return 0;
-    if (maxX <= minX || maxY <= minY) return 0;
-    const source = texture.source;
-    const texelsX = ((packing.maxU - packing.minU) * source.pixelWidth) / (maxX - minX);
-    const texelsY = ((packing.maxV - packing.minV) * source.pixelHeight) / (maxY - minY);
+    if (determinant === 0) return 0;
     return (
-      Math.max(texelsX * (Math.abs(d) + Math.abs(c)), texelsY * (Math.abs(b) + Math.abs(a))) / determinant
+      Math.max(packed.texelsX * (Math.abs(d) + Math.abs(c)), packed.texelsY * (Math.abs(b) + Math.abs(a))) /
+      determinant
     );
   }
 
@@ -629,11 +630,23 @@ function defineWorldBatcher(): WorldBatcherClass {
     );
   }
 
-  /** Notes what the whole pack of `element` just read, for {@link moveQuad}. */
-  function notePacked(element: PackedQuadHost, sprite: object | null): void {
+  /** Notes what the whole pack of `element` is reading, after {@link beginElement}, for the next
+   *  repack in place. */
+  function notePacked(element: PackedQuadHost, sprite: object | null): PackedQuad {
     let packed = element[PACKED];
     if (packed === undefined) {
-      packed = { sprite: null, viewTick: Number.NaN, a: 0, b: 0, c: 0, d: 0, shading: false };
+      packed = {
+        sprite: null,
+        viewTick: Number.NaN,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+        shading: false,
+        bounded: false,
+        texelsX: 0,
+        texelsY: 0,
+      };
       element[PACKED] = packed;
     }
     const transform = element.transform;
@@ -644,47 +657,17 @@ function defineWorldBatcher(): WorldBatcherClass {
     packed.c = transform.c;
     packed.d = transform.d;
     packed.shading = worldShadowStyle() !== null;
-  }
-
-  /**
-   * Rewrites the corners and colour of a quad whose whole pack still stands at `index`; false where
-   * something else that pack read has changed since, so the quad needs packing whole. The texel bound
-   * a moved quad would note is the one its whole pack noted.
-   */
-  function moveQuad(element: PackedQuadHost, f32: Float32Array, u32: Uint32Array, index: number): boolean {
-    const packed = element[PACKED];
-    if (packed === undefined) return false;
-    const sprite = renderableOf(element);
-    const { a, b, c, d, tx, ty } = element.transform;
-    if (
-      packed.sprite !== sprite ||
-      packed.viewTick !== movableViewTick(sprite) ||
-      packed.a !== a ||
-      packed.b !== b ||
-      packed.c !== c ||
-      packed.d !== d ||
-      packed.shading !== (worldShadowStyle() !== null)
-    )
-      return false;
+    packed.bounded = packing.selection >= 0 && gathers(packing.flags);
+    packed.texelsX = 0;
+    packed.texelsY = 0;
+    if (!packed.bounded) return packed;
     const { minX, minY, maxX, maxY } = element.bounds;
-    const argb = element.color;
-    let i = index;
-    f32[i] = a * minX + c * minY + tx;
-    f32[i + 1] = d * minY + b * minX + ty;
-    u32[i + COLOUR_AT] = argb;
-    i += WORLD_VERTEX_SIZE;
-    f32[i] = a * maxX + c * minY + tx;
-    f32[i + 1] = d * minY + b * maxX + ty;
-    u32[i + COLOUR_AT] = argb;
-    i += WORLD_VERTEX_SIZE;
-    f32[i] = a * maxX + c * maxY + tx;
-    f32[i + 1] = d * maxY + b * maxX + ty;
-    u32[i + COLOUR_AT] = argb;
-    i += WORLD_VERTEX_SIZE;
-    f32[i] = a * minX + c * maxY + tx;
-    f32[i + 1] = d * maxY + b * minX + ty;
-    u32[i + COLOUR_AT] = argb;
-    return true;
+    const texture = element.texture;
+    if (element.roundPixels !== 0 || texture.rotate !== 0 || maxX <= minX || maxY <= minY) return packed;
+    const source = texture.source;
+    packed.texelsX = ((packing.maxU - packing.minU) * source.pixelWidth) / (maxX - minX);
+    packed.texelsY = ((packing.maxV - packing.minV) * source.pixelHeight) / (maxY - minY);
+    return packed;
   }
 
   /** Pixi's default batcher plus vertex attributes for what the fragment shader must know about the
@@ -751,8 +734,58 @@ function defineWorldBatcher(): WorldBatcherClass {
       index: number,
       textureId: number,
     ): void {
-      if (!moveQuad(element, float32View, uint32View, index))
+      if (!this.moveQuad(element, float32View, uint32View, index))
         this.packQuadAttributes(element, float32View, uint32View, index, textureId);
+    }
+
+    /**
+     * Rewrites the corners and colour of a quad whose whole pack still stands at `index`, under whatever
+     * transform it has now; false where something else that pack read has changed since, so the quad
+     * needs packing whole.
+     */
+    private moveQuad(element: PackedQuadHost, f32: Float32Array, u32: Uint32Array, index: number): boolean {
+      const packed = element[PACKED];
+      if (packed === undefined) return false;
+      const sprite = renderableOf(element);
+      if (
+        packed.sprite !== sprite ||
+        packed.viewTick !== movableViewTick(sprite) ||
+        packed.shading !== (worldShadowStyle() !== null)
+      )
+        return false;
+      const { a, b, c, d, tx, ty } = element.transform;
+      if (packed.a !== a || packed.b !== b || packed.c !== c || packed.d !== d) {
+        packed.a = a;
+        packed.b = b;
+        packed.c = c;
+        packed.d = d;
+        this.noteTexelBound(packed);
+      }
+      const { minX, minY, maxX, maxY } = element.bounds;
+      const argb = element.color;
+      let i = index;
+      f32[i] = a * minX + c * minY + tx;
+      f32[i + 1] = d * minY + b * minX + ty;
+      u32[i + COLOUR_AT] = argb;
+      i += WORLD_VERTEX_SIZE;
+      f32[i] = a * maxX + c * minY + tx;
+      f32[i + 1] = d * minY + b * maxX + ty;
+      u32[i + COLOUR_AT] = argb;
+      i += WORLD_VERTEX_SIZE;
+      f32[i] = a * maxX + c * maxY + tx;
+      f32[i + 1] = d * maxY + b * maxX + ty;
+      u32[i + COLOUR_AT] = argb;
+      i += WORLD_VERTEX_SIZE;
+      f32[i] = a * minX + c * maxY + tx;
+      f32[i + 1] = d * maxY + b * minX + ty;
+      u32[i + COLOUR_AT] = argb;
+      return true;
+    }
+
+    /** Lowers {@link texelsPerUnit} to a gathering quad's bound under the transform `packed` holds. */
+    private noteTexelBound(packed: PackedQuad): void {
+      if (packed.bounded && this.texelsPerUnit > 0)
+        this.texelsPerUnit = Math.min(this.texelsPerUnit, texelsPerUnitOf(packed));
     }
 
     /** Pixi always passes the renderer's texture limit; the batch program is compiled for at most
@@ -840,12 +873,6 @@ function defineWorldBatcher(): WorldBatcherClass {
       return this.texelsPerUnit >= MAGNIFIED_BELOW * UNMAGNIFIED_MARGIN * drawPixelsPerUnit
         ? 'unmagnified'
         : 'magnifying';
-    }
-
-    /** Whether the element being packed can lower {@link texelsPerUnit}: its body may gather, and the
-     *  bound is not at its floor yet. */
-    private boundsTexels(): boolean {
-      return this.texelsPerUnit > 0 && packing.selection >= 0 && gathers(packing.flags);
     }
 
     override destroy(options?: { shader?: boolean }): void {
@@ -953,7 +980,7 @@ function defineWorldBatcher(): WorldBatcherClass {
       beginRenderable(renderableOf(element));
       beginElement(element.texture, textureIdAndRound, element.color, this.flagsOf(element));
       // A mesh's vertices may stretch its texels anywhere.
-      if (this.boundsTexels()) this.texelsPerUnit = 0;
+      if (packing.selection >= 0 && gathers(packing.flags)) this.texelsPerUnit = 0;
       const { a, b, c, d, tx, ty } = element.transform;
       const { positions, uvs } = element;
       const end = element.attributeOffset + element.attributeSize;
@@ -978,10 +1005,9 @@ function defineWorldBatcher(): WorldBatcherClass {
       const texture = element.texture;
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
       const renderable = renderableOf(element);
-      notePacked(element, renderable);
       const outline = beginRenderable(renderable);
       beginElement(texture, textureIdAndRound, element.color, this.flagsOf(element));
-      if (this.boundsTexels()) this.texelsPerUnit = Math.min(this.texelsPerUnit, quadTexelsPerUnit(element));
+      this.noteTexelBound(notePacked(element, renderable));
       if (outline !== null) packOutline(outline);
       const { a, b, c, d, tx, ty } = element.transform;
       const { minX, minY, maxX, maxY } = element.bounds;

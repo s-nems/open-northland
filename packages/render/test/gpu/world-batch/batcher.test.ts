@@ -297,7 +297,7 @@ describe('world batcher repack in place', () => {
     return { batcher, floats, words, element, repackedWhole };
   }
 
-  it('moves and recolours a quad whose view, scale and turn held, and packs any other change whole', () => {
+  it('moves and recolours a quad whose view held, under any transform, and packs any other change whole', () => {
     const sprite = new SelectionSprite(Texture.WHITE);
     const { batcher, floats, words, element, repackedWhole } = packed(sprite);
     element.transform.tx = 10;
@@ -319,8 +319,10 @@ describe('world batcher repack in place', () => {
     sprite.nightLit = 1;
     expect(repackedWhole()).toBe(true);
     expect(repackedWhole()).toBe(false);
-    element.transform.a = 2;
-    expect(repackedWhole()).toBe(true);
+    // A shear, as a swaying tree's, moves the corners alone too.
+    element.transform.c = 0.5;
+    expect(repackedWhole()).toBe(false);
+    expect([floats[2 * WORLD_VERTEX_SIZE], floats[2 * WORLD_VERTEX_SIZE + 1]]).toEqual([14, 24]);
     setWorldShadowStyle(DEFAULT_SHADOW_STYLE);
     expect(repackedWhole()).toBe(true);
     setWorldShadowStyle(null);
@@ -934,6 +936,14 @@ describe('world batcher shader selection', () => {
     expect(startProgram(build(scaledQuad(page, 1), scaledQuad(plain, 4)), new Matrix())).toBe(
       program('unmagnified'),
     );
+    // A quad grown in place past its texels lowers the bound as a whole pack of it would.
+    const grown = scaledQuad(page, 1);
+    Object.assign(grown, { renderable: new Sprite() });
+    const grownBatch = build(grown);
+    expect(startProgram(grownBatch, new Matrix())).toBe(program('unmagnified'));
+    Object.assign(grown.transform, { a: 2, d: 2 });
+    batcher.updateElement(grown);
+    expect(startProgram(grownBatch, new Matrix())).toBe(program('magnifying'));
     // A rotated group is beyond the bound.
     const turn = Math.SQRT1_2;
     expect(startProgram(build(scaledQuad(page, 1)), new Matrix(turn, turn, -turn, turn))).toBe(
