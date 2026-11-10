@@ -405,8 +405,13 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   /** Holds the figure canvas among the rows; it takes no box, so the canvas lays out against the list. */
   const figuresItem = element('li', 'on-res-figures');
   figuresItem.setAttribute('aria-hidden', 'true');
-  /** The attached rows, indices into `listedRows`, both ends inclusive. */
+  /** The attached rows, indices into `listedRows`, both ends inclusive, and their people in list order. */
   let attached = { first: 0, last: -1 };
+  let attachedIds: readonly number[] = [];
+  const setPad = (pad: HTMLElement, px: number): void => {
+    const height = `${px}px`;
+    if (pad.style.height !== height) pad.style.height = height;
+  };
   /** A row's height and the list's visible height, layout px; 0 until measured on a shown list. */
   let rowPx = 0;
   let viewPx = 0;
@@ -674,15 +679,17 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     return { first, last };
   };
 
-  /** Attach the rows the scroll shows, written from the listed rows; `reordered` forces the list's
-   *  children to be laid again although the range held. */
-  const attach = (reordered: boolean): void => {
+  /** Attach the rows the scroll shows, written from the listed rows. The list's children are laid again
+   *  only when the attached people or their order changed: a relist that moves people outside the strip
+   *  leaves the rows, and the figure canvas over them, in place. */
+  const attach = (): void => {
     const range = rangeFor(listedRows.length);
-    const moved = reordered || range.first !== attached.first || range.last !== attached.last;
     const items: HTMLLIElement[] = [];
+    const ids: number[] = [];
     for (let at = range.first; at <= range.last; at++) {
       const row = listedRows[at];
       if (row === undefined) continue;
+      ids.push(row.id);
       let view = views.get(row.id);
       if (view === undefined) {
         view = buildRow(row.id);
@@ -693,14 +700,20 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       writeRow(view, row);
       items.push(view.item);
     }
+    setPad(padTop, range.first * rowPx);
+    setPad(padBottom, Math.max(0, listedRows.length - range.last - 1) * rowPx);
+    const moved =
+      range.first !== attached.first ||
+      range.last !== attached.last ||
+      ids.length !== attachedIds.length ||
+      ids.some((id, index) => id !== attachedIds[index]);
     if (moved) {
       // Re-appending a row drops its focus; hand it back without moving the scroll.
       const focused = document.activeElement;
-      padTop.style.height = `${range.first * rowPx}px`;
-      padBottom.style.height = `${Math.max(0, listedRows.length - range.last - 1) * rowPx}px`;
       list.replaceChildren(padTop, ...items, padBottom, figuresItem);
       if (focused instanceof HTMLElement && list.contains(focused)) focused.focus({ preventScroll: true });
       attached = range;
+      attachedIds = ids;
       figuresStale = true;
       overlayStale = true;
     }
@@ -719,7 +732,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     figureBox = { width: figure.clientWidth, height: figure.clientHeight, pixelScale };
     measuredRatio = devicePixelRatio;
     overlayStale = true;
-    attach(false);
+    attach();
   };
 
   /** Filter, order and write the list from the rows in hand; focus and scroll stay where they were. */
@@ -732,7 +745,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
     for (const id of views.keys()) if (!alive.has(id)) views.delete(id);
     listedRows = listed;
     const ids = listed.map((row) => row.id);
-    attach(ids.length !== shownIds.length || ids.some((id, index) => id !== shownIds[index]));
+    attach();
     // A window opened over no people has no row to measure yet.
     if (rowPx <= 0 && listed.length > 0) measure();
     shownIds = ids;
@@ -776,7 +789,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   // Kept live: a hidden element reads its scroll as 0, so the close cannot read it back.
   list.addEventListener('scroll', () => {
     state = { ...state, scrollTop: list.scrollTop };
-    attach(false);
+    attach();
     figuresStale = true;
   });
 
@@ -887,7 +900,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       if (!window.isOpen()) return;
       relist();
       list.scrollTop = next.scrollTop;
-      attach(false);
+      attach();
     },
     onDismiss: window.onDismiss,
     dispose: window.dispose,

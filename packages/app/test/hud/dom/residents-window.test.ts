@@ -239,6 +239,22 @@ describe('residents list', () => {
     expect(second?.textContent).toContain('Sawmill');
   });
 
+  it('leaves the attached rows in place when the list changes outside the strip', () => {
+    let rows = people(PEOPLE);
+    const { list } = openWindow(() => rows);
+    const relaid = vi.spyOn(list, 'replaceChildren');
+    rows = rows.slice(0, PEOPLE - 1);
+    window?.refresh();
+    expect(relaid).not.toHaveBeenCalled();
+    const attached = list.querySelectorAll('.on-res-row').length;
+    expect(padPx(list) + attached * ROW_PX).toBe((PEOPLE - 1) * ROW_PX);
+    rows = rows.slice(1);
+    vi.spyOn(performance, 'now').mockReturnValue(performance.now() + 1000);
+    window?.refresh();
+    expect(relaid).toHaveBeenCalledOnce();
+    expect(shownNames(list)[0]).toBe('Settler 0002');
+  });
+
   it("reads a new tick's people at most four times a second while open", () => {
     let now = 1000;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
