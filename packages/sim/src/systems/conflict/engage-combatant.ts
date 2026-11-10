@@ -84,7 +84,6 @@ export function engageCombatant(
   pass: CombatPass,
   e: Entity,
 ): void {
-  const { index, slots } = pass;
   const attacker = world.get(e, Settler);
   const posted = attacker.jobType === null ? null : towerPostFor(world, ctx, e, attacker.jobType);
   const manning = posted !== null && standsAtPost(world, e) === posted;
@@ -170,6 +169,26 @@ export function engageCombatant(
     disengage(world, e);
     return;
   }
+  fight(world, ctx, terrain, pass, e, attacker, held, owned, dozing, travelling);
+}
+
+/**
+ * The ladder's last rungs for a combatant armed with `held` that no gate stood down: find its enemy, then
+ * swing, pull up or chase. Kept apart from the gates so each half is compiled within its own budget.
+ */
+function fight(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  pass: CombatPass,
+  e: Entity,
+  attacker: SettlerIdentity,
+  held: ArmedWith,
+  owned: boolean,
+  dozing: boolean,
+  travelling: boolean,
+): void {
+  const { index, slots, stance } = pass;
   // The boosted band is what the search, the reach test and the swing all read, so a garrison cannot
   // acquire past what it can actually hit.
   const weapon = stance.post === null ? held : garrisonReach(held);
