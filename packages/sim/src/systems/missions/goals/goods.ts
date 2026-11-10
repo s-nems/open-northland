@@ -70,8 +70,10 @@ export function countGoodsInArea(
 function groundGoodsInRange(world: World, good: number, point: HalfCellNode, range: number): number {
   let total = 0;
   for (const e of world.query(Stockpile, Position)) {
-    if (!isLoosePile(world, e) || !withinRange(world, e, point, range)) continue;
-    total += stockOf(world, e, good);
+    // The stock first: nearly every positioned stockpile holds none of the good, and the sum skips it.
+    const amount = stockOf(world, e, good);
+    if (amount === 0 || !isLoosePile(world, e) || !withinRange(world, e, point, range)) continue;
+    total += amount;
   }
   return total;
 }
