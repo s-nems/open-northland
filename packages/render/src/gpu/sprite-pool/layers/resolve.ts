@@ -16,6 +16,7 @@ import type { SpriteSheet } from '../../textures/sprite-sheet.js';
 import { pushBuildingExtras, pushBuildingLayers } from './building.js';
 import { cartDriveLook, pushCartDriveLayers } from './cart-drive.js';
 import { pushCharacterLayers } from './character.js';
+import { pushFishSchool } from './fish.js';
 import {
   hasLoadedFamily,
   layeredLayerFor,
@@ -301,47 +302,6 @@ function shiftedLayer(layer: ResolvedLayer, post: PalisadePostDraw): ResolvedLay
 
 function byRowOffset(a: ResolvedLayer, b: ResolvedLayer): number {
   return (a.dy ?? 0) - (b.dy ?? 0);
-}
-
-/**
- * Resolve one layer per fish in the authored stock. In the original the
- * renderer loops over the swarm count, moves each fish independently on sinusoidal paths and selects
- * its directional bob from velocity. `fishPoint` deliberately approximates those paths with our own
- * deterministic curves, keeping presentation motion out of the simulation.
- */
-function pushFishSchool(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem, tick: number): boolean {
-  const binding = sheet.bindings.fish;
-  if (binding === undefined || binding.bobs.length === 0) return false;
-  const count = item.swarmCount ?? 0;
-  const t = tick / Math.max(1, binding.ticksPerFrame);
-  for (let fish = 0; fish < count; fish++) {
-    const now = fishPoint(item.ref, fish, t);
-    const before = fishPoint(item.ref, fish, t - 0.25);
-    const heading = fishHeadingIndex(now.x - before.x, now.y - before.y, binding.bobs.length);
-    const bob = binding.bobs[heading];
-    if (bob === undefined) continue;
-    const layer = layeredLayerFor(sheet, 'fish', { layer: binding.layer, bob });
-    if (layer !== null) out.push({ ...layer, dx: now.x, dy: now.y });
-  }
-  return true;
-}
-
-/** Map screen velocity to the original fish sheet's clockwise-descending directional order. */
-export function fishHeadingIndex(dx: number, dy: number, headingCount: number): number {
-  if (headingCount <= 0) return 0;
-  const angle = Math.atan2(dy, dx);
-  const turn = (((angle / (Math.PI * 2)) % 1) + 1) % 1;
-  return Math.floor((1 - turn) * headingCount) % headingCount;
-}
-
-function fishPoint(ref: number, fish: number, t: number): { x: number; y: number } {
-  const phase = ref * 0.754877666 + fish * 2.39996323;
-  return {
-    // Calibrated to the original's 12 Hz world clock: a broad crossing takes tens of seconds, with a
-    // smaller ripple layered over it. The phase curves remain our deterministic approximation.
-    x: Math.sin(t * 0.0097 + phase) * 90 + Math.sin(t * 0.002 + phase * 1.7) * 20,
-    y: Math.sin(t * 0.004 + phase * 1.3) * 60 + Math.sin(t * 0.019 + phase * 0.7) * 20,
-  };
 }
 
 /**

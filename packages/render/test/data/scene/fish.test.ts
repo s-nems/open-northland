@@ -1,8 +1,14 @@
 import { systems } from '@open-northland/sim';
 import type { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { fishHeadingIndex } from '../../../src/gpu/sprite-pool/layers/resolve.js';
-import { buildSpriteScene, resolveLayers, type SpriteAtlas, type SpriteSheet } from '../../../src/index.js';
+import { fishHeadingIndex } from '../../../src/gpu/sprite-pool/layers/fish.js';
+import {
+  buildSpriteScene,
+  type DrawItem,
+  resolveLayers,
+  type SpriteAtlas,
+  type SpriteSheet,
+} from '../../../src/index.js';
 import { entity, snapshotOf } from '../../support/fixtures.js';
 
 const source = {} as TextureSource;
@@ -75,5 +81,34 @@ describe('fish swarm rendering', () => {
       ) ?? []),
     );
     expect(greatestStep).toBeLessThan(2);
+  });
+
+  it('places each fish on the sum of its four sines, however the trigonometry is shared', () => {
+    const atlas: SpriteAtlas = { width: 18, height: 10, frames: new Map([frame(0)]) };
+    const sheet: SpriteSheet = {
+      source,
+      atlas: { width: 0, height: 0, frames: new Map() },
+      bindings: {
+        settler: 1,
+        building: 1,
+        resource: 1,
+        fish: { layer: 'fishes', bobs: [0], ticksPerFrame: 2 },
+      },
+      families: { fishes: { source, atlas } },
+    };
+    const ref = 4711;
+    const item: DrawItem = { kind: 'fish', ref, x: 0, y: 0, depth: 0, swarmCount: 9 };
+    for (const tick of [0, 90000.4, 250001]) {
+      const t = tick / 2;
+      const layers = resolveLayers(sheet, item, tick);
+      expect(layers).toHaveLength(9);
+      for (let fish = 0; fish < 9; fish++) {
+        const phase = ref * 0.754877666 + fish * 2.39996323;
+        const x = Math.sin(t * 0.0097 + phase) * 90 + Math.sin(t * 0.002 + phase * 1.7) * 20;
+        const y = Math.sin(t * 0.004 + phase * 1.3) * 60 + Math.sin(t * 0.019 + phase * 0.7) * 20;
+        expect(layers?.[fish]?.dx).toBeCloseTo(x, 8);
+        expect(layers?.[fish]?.dy).toBeCloseTo(y, 8);
+      }
+    }
   });
 });
