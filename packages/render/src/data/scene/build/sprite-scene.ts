@@ -250,29 +250,37 @@ interface MergeFlags {
 }
 
 /** Two runs sorted by {@link drawOrder} merged into one, as sorting their union would order it. With
- *  `flags`, the left run's items carry their `leftKept` flag into `kept` and the right run's carry 0. */
+ *  `flags`, the left run's items carry their `leftKept` flag into `kept`, which starts zeroed, and the
+ *  right run's stay 0. */
 function mergeSorted(
   left: readonly SpriteDrawItem[],
   right: readonly SpriteDrawItem[],
   flags?: MergeFlags,
 ): SpriteDrawItem[] {
   const out = new Array<SpriteDrawItem>(left.length + right.length);
+  const leftKept = flags?.leftKept;
+  const kept = flags?.kept;
   let i = 0;
   let j = 0;
   let k = 0;
-  while (i < left.length || j < right.length) {
-    const a = left[i];
-    const b = right[j];
-    if (a !== undefined && (b === undefined || drawOrder(a, b) <= 0)) {
-      if (flags !== undefined) flags.kept[k] = flags.leftKept[i] ?? 0;
+  let a = left[0];
+  let b = right[0];
+  while (a !== undefined && b !== undefined) {
+    // `drawOrder(a, b) <= 0`, spelled out: the comparison runs once per item of both runs.
+    if (a.depth < b.depth || (a.depth === b.depth && a.ref <= b.ref)) {
+      if (kept !== undefined && leftKept !== undefined && leftKept[i] === 1) kept[k] = 1;
       out[k++] = a;
-      i++;
-    } else if (b !== undefined) {
-      if (flags !== undefined) flags.kept[k] = 0;
+      a = left[++i];
+    } else {
       out[k++] = b;
-      j++;
+      b = right[++j];
     }
   }
+  for (; a !== undefined; a = left[++i]) {
+    if (kept !== undefined && leftKept !== undefined && leftKept[i] === 1) kept[k] = 1;
+    out[k++] = a;
+  }
+  for (; b !== undefined; b = right[++j]) out[k++] = b;
   return out;
 }
 
