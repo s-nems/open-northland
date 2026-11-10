@@ -267,7 +267,7 @@ export const chsContent = {
     },
     siege: {
       title: '攻城',
-      summary: '一支战团摧毁敌方基地，先砸毁大本营和箭塔，再拆普通民居。',
+      summary: '一支战团摧毁敌方基地，先砸毁大本营、箭塔和兵营，再拆普通民居。',
     },
     'building-damage-variants': {
       title: '损毁变化',

@@ -276,7 +276,7 @@ export const enContent = {
     },
     siege: {
       title: 'Siege',
-      summary: 'A warband razes an enemy base, smashing the HQ and towers before the plain homes.',
+      summary: 'A warband razes an enemy base, smashing the HQ, towers and barracks before the plain homes.',
     },
     'building-damage-variants': {
       title: 'Damage variations',

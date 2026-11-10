@@ -10,9 +10,9 @@ export const HEADQUARTERS_BUILDING_ID = 'headquarters';
 
 /**
  * Siege classes: headquarters and defensive towers precede ordinary buildings in automatic targeting,
- * while `'other'` is the fallback tier a warrior turns on only when nothing better is in sight. A
- * `'wall'` is struck like a palisade: on an order or when it bars the way, never picked on sight. An
- * unknown type reads as `'other'`.
+ * while `'other'` is the fallback tier a warrior turns on only when nothing better is in sight, the
+ * barracks excepted ({@link ranksWithTowers}). A `'wall'` is struck like a palisade: on an order or when
+ * it bars the way, never picked on sight. An unknown type reads as `'other'`.
  */
 export type BuildingCombatClass = 'hq' | 'tower' | 'wall' | 'other';
 
@@ -34,10 +34,21 @@ export function isWallBuilding(world: World, ctx: SystemContext, e: Entity): boo
   return b !== undefined && buildingCombatClass(ctx, b.buildingType) === 'wall';
 }
 
-/** A settler, a headquarters, a tower, and any non-building entity are never low-priority. */
+/** Whether a building of `buildingType` ranks with the towers in a fighter's first combat priority: a
+ *  manned tower type, or the barracks. Original behavior: the barracks stands on the military house list
+ *  beside the towers and the headquarters, the list a fighter's first scan takes houses from. */
+export function ranksWithTowers(ctx: SystemContext, buildingType: number): boolean {
+  const type = contentIndex(ctx.content).buildings.get(buildingType);
+  return type !== undefined && (combatClassOfType(type) === 'tower' || isBarracksType(type));
+}
+
+/** A building a fighter takes only when no other building is in sight: an `'other'` one that is not the
+ *  barracks. A settler, a headquarters, a tower, a wall and any non-building entity are never one. */
 export function isLowPriorityBuildingTarget(world: World, ctx: SystemContext, t: Entity): boolean {
   const b = world.tryGet(t, Building);
-  return b !== undefined && buildingCombatClass(ctx, b.buildingType) === 'other';
+  if (b === undefined) return false;
+  const type = contentIndex(ctx.content).buildings.get(b.buildingType);
+  return type === undefined || (combatClassOfType(type) === 'other' && !isBarracksType(type));
 }
 
 /**

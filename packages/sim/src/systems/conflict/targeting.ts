@@ -29,7 +29,6 @@ import { herdLeaderOf } from '../movement/herd-leader.js';
 import { isTravelling } from '../movement/nav-state.js';
 import {
   animalCannotBeAttacked,
-  buildingCombatClass,
   houseBow,
   isAggressiveAnimal,
   isAnimalTribe,
@@ -37,6 +36,7 @@ import {
   isWallBuilding,
   mayAttack,
   mayHunt,
+  ranksWithTowers,
 } from '../readviews/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 import { EpochMarks } from './epoch-marks.js';
@@ -178,10 +178,11 @@ export function isFighterTarget(world: World, ctx: SystemContext, t: Entity): bo
   return world.has(t, Person) && isFighterJob(ctx.content, world.get(t, Settler).jobType);
 }
 
-/** Fighters, armed vehicles, towers and actively defending buildings share the first combat priority.
- *  Original behavior: a fighter's first scan takes soldiers and heroes, then catapults, crewed or not, then
- *  headquarters and towers. Owner rule: fighters and towers rank equal. Approximation: an armed vehicle,
- *  ranked between them, joins them, and the headquarters stays in the pick's next tier. */
+/** Fighters, armed vehicles, towers, the barracks and actively defending buildings share the first combat
+ *  priority. Original behavior: a fighter's first scan takes soldiers and heroes, then catapults, crewed or
+ *  not, then the military houses: headquarters, barracks and towers. Owner rule: fighters, towers and the
+ *  barracks rank equal. Approximation: an armed vehicle, ranked between them, joins them, and the
+ *  headquarters stays in the pick's next tier. */
 export function isPriorityCombatTarget(
   world: World,
   ctx: SystemContext,
@@ -192,9 +193,7 @@ export function isPriorityCombatTarget(
   const vehicle = world.tryGet(t, Vehicle);
   if (vehicle !== undefined) return vehicleWeapon(ctx, vehicle) !== null;
   const building = world.tryGet(t, Building);
-  return (
-    building !== undefined && (buildingCombatClass(ctx, building.buildingType) === 'tower' || firing().has(t))
-  );
+  return building !== undefined && (ranksWithTowers(ctx, building.buildingType) || firing().has(t));
 }
 
 /** Whether a fighter under `order` may turn aside to an enemy of a higher {@link STRIKE_RANK} than its

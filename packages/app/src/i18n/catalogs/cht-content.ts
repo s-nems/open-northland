@@ -268,7 +268,7 @@ export const chtContent = {
     },
     siege: {
       title: '圍城',
-      summary: '一支戰團摧毀敵方基地，先擊毀大本營與箭塔，再拆一般民居。',
+      summary: '一支戰團摧毀敵方基地，先擊毀大本營、箭塔與兵營，再拆一般民居。',
     },
     'building-damage-variants': {
       title: '損壞變化',

@@ -67,6 +67,7 @@ const HEADQUARTERS = 1;
 const TOWER = 2;
 const HOME = 3;
 const FORT = 4; // the walled type - a 2×2 half-cell body, so contact slots exist on every face
+const BARRACKS = 5; // a staffed training house, which ranks with the towers
 
 const MELEE_VS_UNARMORED = 40;
 const MELEE_VS_BUILDING = 25; // the weapon's HOUSE (material 7) column - distinct from vs-unarmored
@@ -104,6 +105,13 @@ function siegeContent(opts: { meleeRange?: { min: number; max: number } } = {}):
         kind: 'home',
         hitpoints: 1000,
         construction: [{ goodType: STONE, amount: 2 }],
+      },
+      {
+        typeId: BARRACKS,
+        id: 'barracks',
+        kind: 'training',
+        hitpoints: 1000,
+        workers: [{ jobType: SOLDIER, count: 1 }],
       },
       {
         typeId: FORT,
@@ -348,23 +356,31 @@ describe('warriors attack enemy buildings', () => {
     expect(sim.world.get(home, Health).hitpoints).toBe(sim.world.get(home, Health).max); // spared
   });
 
-  it.each([true, false])('picks the nearer fighter or tower (tower nearer: %s)', (towerNearer) => {
+  it.each([
+    { house: 'tower', type: TOWER, houseNearer: true },
+    { house: 'tower', type: TOWER, houseNearer: false },
+    { house: 'barracks', type: BARRACKS, houseNearer: true },
+    { house: 'barracks', type: BARRACKS, houseNearer: false },
+  ])('picks the nearer fighter or $house ($house nearer: $houseNearer)', ({ type, houseNearer }) => {
     const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(8, 1) });
     const soldier = warriorAt(sim, 0, 0, P1);
-    const tower = buildingAt(sim, towerNearer ? 2 : 4, 0, TOWER, P2);
-    const fighter = warriorAt(sim, towerNearer ? 4 : 2, 0, P2);
+    const house = buildingAt(sim, houseNearer ? 2 : 4, 0, type, P2);
+    const fighter = warriorAt(sim, houseNearer ? 4 : 2, 0, P2);
     combatSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(soldier, Engagement).target).toBe(towerNearer ? tower : fighter);
+    expect(sim.world.get(soldier, Engagement).target).toBe(houseNearer ? house : fighter);
   });
 
-  it('takes a tower before a nearer civilian', () => {
+  it.each([
+    { house: 'tower', type: TOWER },
+    { house: 'barracks', type: BARRACKS },
+  ])('takes a $house before a nearer civilian', ({ type }) => {
     const IDLE = 0;
     const second = new Simulation({ seed: 1, content: siegeContent(), map: grass(8, 1) });
     const b = warriorAt(second, 0, 0, P1);
     warriorAt(second, 1, 0, P2, IDLE);
-    const tower = buildingAt(second, 3, 0, TOWER, P2);
+    const house = buildingAt(second, 3, 0, type, P2);
     combatSystem(second.world, ctxOf(second));
-    expect(second.world.get(b, Engagement).target).toBe(tower);
+    expect(second.world.get(b, Engagement).target).toBe(house);
   });
 
   it('an attack-move pursuit turns from a retreating fighter to a nearby tower', () => {

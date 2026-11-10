@@ -274,7 +274,7 @@ export const plContent = {
     siege: {
       title: 'Oblężenie',
       summary:
-        'Drużyna wojowników niszczy wrogą bazę: najpierw kwaterę główną i wieże, na końcu zwykłe domy.',
+        'Drużyna wojowników niszczy wrogą bazę: najpierw kwaterę główną, wieże i koszary, na końcu zwykłe domy.',
     },
     'building-damage-variants': {
       title: 'Różnorodność zniszczeń',

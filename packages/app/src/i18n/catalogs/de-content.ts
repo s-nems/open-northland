@@ -277,7 +277,7 @@ export const deContent = {
     siege: {
       title: 'Belagerung',
       summary:
-        'Eine Kriegerschar zerstört einen feindlichen Stützpunkt und zerschlägt das Hauptquartier und die Türme vor den einfachen Wohnhäusern.',
+        'Eine Kriegerschar zerstört einen feindlichen Stützpunkt und zerschlägt das Hauptquartier, die Türme und die Kaserne vor den einfachen Wohnhäusern.',
     },
     'building-damage-variants': {
       title: 'Schadensvarianten',

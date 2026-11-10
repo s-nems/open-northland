@@ -26,9 +26,9 @@ import type { SceneDefinition } from '../types.js';
 /**
  * The siege scene: a viking warband razes an enemy base. It signs off that a warrior in the attack
  * stance auto-acquires an enemy structure, advances on the nearest wall face, and drains its health on
- * the weapon's vs-building column, and that auto-focus takes the headquarters, the towers and the
- * defenders before the plain homes. A foundation stands at one hitpoint, so the first blow flattens the
- * unfinished third tower.
+ * the weapon's vs-building column, and that auto-focus takes the headquarters, the towers, the barracks
+ * and the defenders before the plain homes. A foundation stands at one hitpoint, so the first blow
+ * flattens the unfinished third tower.
  *
  * It is also the life-heart scene: a human judges that a heart floats over exactly the hurt bodies and
  * that each wears its own faction's colour. The headless twin checks only the settled end state.
@@ -58,6 +58,8 @@ const ENEMY_TOWERS: readonly (readonly [string, number, number])[] = [
 ];
 /** Still a foundation, in the warband's path: a tower ranks high-value however far it has risen. */
 const ENEMY_TOWER_SITE: readonly [string, number, number] = ['tower_00', 10, 7];
+/** Behind the homes: the barracks ranks with the towers, so the warband passes the homes to raze it. */
+const ENEMY_BARRACKS: readonly [string, number, number] = ['barracks', 26, 11];
 const ENEMY_HOMES: readonly (readonly [string, number, number])[] = [
   ['home_level_00', 19, 8],
   ['home_level_00', 19, 14],
@@ -89,6 +91,7 @@ function build(sim: Simulation): void {
   placeBuiltSandboxBuilding(sim, ENEMY_HQ[0], ENEMY_HQ[1], ENEMY_HQ[2], ENEMY_PLAYER);
   for (const [ref, x, y] of ENEMY_TOWERS) placeBuiltSandboxBuilding(sim, ref, x, y, ENEMY_PLAYER);
   placeSandboxSite(sim, ENEMY_TOWER_SITE[0], ENEMY_TOWER_SITE[1], ENEMY_TOWER_SITE[2], ENEMY_PLAYER);
+  placeBuiltSandboxBuilding(sim, ENEMY_BARRACKS[0], ENEMY_BARRACKS[1], ENEMY_BARRACKS[2], ENEMY_PLAYER);
   for (const [ref, x, y] of ENEMY_HOMES) placeBuiltSandboxBuilding(sim, ref, x, y, ENEMY_PLAYER);
   for (const [job, x, y] of ENEMY_DEFENDERS) {
     spawnSandboxSettler(sim, job, x, y, ENEMY_PLAYER, {
@@ -105,8 +108,9 @@ function build(sim: Simulation): void {
 /** The sim's own siege classes, so the check moves with the rule. */
 function isHighValue(sim: Simulation, e: Entity): boolean {
   const def = sim.content.buildings.find((b) => b.typeId === sim.world.get(e, Building).buildingType);
-  const combatClass = def === undefined ? 'other' : systems.combatClassOfType(def);
-  return combatClass === 'hq' || combatClass === 'tower';
+  if (def === undefined) return false;
+  const combatClass = systems.combatClassOfType(def);
+  return combatClass === 'hq' || combatClass === 'tower' || systems.isBarracksType(def);
 }
 
 /** Mean remaining HP fraction over `buildings`; 1 when the set is empty. */
@@ -133,22 +137,22 @@ function enemyDefendersDead(sim: Simulation): boolean {
 }
 
 // `runTicks` must land after the high-value tier is razed but before the warband turns on the plain
-// homes, so the end state itself shows the auto-focus priority. All checks hold at ticks 590..740 in the
+// homes, so the end state itself shows the auto-focus priority. All checks hold at ticks 740..835 in the
 // headless fixture, sampled every 5 ticks; leave margin on both sides.
 export const siegeScene: SceneDefinition = {
   id: 'siege',
   seed: 11,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 665,
+  runTicks: 790,
   initialZoom: 0.8,
   checks: [
     {
-      label: 'the enemy HQ, both watchtowers and the tower foundation are razed',
+      label: 'the enemy HQ, both watchtowers, the tower foundation and the barracks are razed',
       predicate: (sim) => enemyBuildings(sim).filter((e) => isHighValue(sim, e)).length === 0,
     },
     {
-      label: 'the plain homes are spared while HQ / towers fall first',
+      label: 'the plain homes are spared while HQ / towers / barracks fall first',
       predicate: (sim) => {
         const homes = enemyBuildings(sim).filter((e) => !isHighValue(sim, e));
         return homes.length >= 3 && meanHpFraction(sim, homes) > 0.7;

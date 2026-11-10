@@ -27,6 +27,7 @@ export {
   isSchoolType,
   isWallBuilding,
   prayerSiteOf,
+  ranksWithTowers,
 } from './buildings.js';
 export {
   ARMOR_MAIN_TYPE,
