@@ -37,10 +37,20 @@ const { REST, HUNGER, LEISURE } = ATOMIC_EVENT_CHANNEL;
  */
 export const shipboardNeedsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
+  // Most ticks serve nobody, so the riders are grouped only on the ships where one may be served.
+  let serving: Set<Entity> | undefined;
+  for (const e of world.query(Rider, Settler)) {
+    if (world.has(e, Position) || !isAboardShip(world, ctx.content, e)) continue;
+    if (!mayBeServed(world, ctx, e)) continue;
+    serving ??= new Set();
+    serving.add(world.get(e, Rider).vehicle);
+  }
+  if (serving === undefined) return;
   const aboard = new Map<Entity, Entity[]>();
   for (const e of world.query(Rider, Settler)) {
     if (world.has(e, Position) || !isAboardShip(world, ctx.content, e)) continue;
     const vehicle = world.get(e, Rider).vehicle;
+    if (!serving.has(vehicle)) continue;
     const riders = aboard.get(vehicle);
     if (riders === undefined) aboard.set(vehicle, [e]);
     else riders.push(e);
@@ -53,6 +63,22 @@ export const shipboardNeedsSystem: System = (world, ctx) => {
     }
   }
 };
+
+/** Whether `e` passes the need and the pacing of a meal, a sleep or a chat this tick: what each of them
+ *  asks before anything else, so a ship with no such rider aboard serves nobody and changes nothing. */
+function mayBeServed(world: World, ctx: SystemContext, e: Entity): boolean {
+  if (!carriesNeeds(world, ctx.content, e)) return false;
+  const settler = world.get(e, Settler);
+  const needs = world.get(e, SettlerNeeds);
+  return (
+    (needLevel(needs, 'hunger', ctx.tick) >= NEED_DRIVE_THRESHOLD &&
+      due(ctx, e, atomicDuration(ctx.content, settler, EAT_ATOMIC_ID))) ||
+    (needLevel(needs, 'fatigue', ctx.tick) >= NEED_DRIVE_THRESHOLD &&
+      due(ctx, e, atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID))) ||
+    (needLevel(needs, 'enjoyment', ctx.tick) >= NEED_DRIVE_THRESHOLD &&
+      due(ctx, e, atomicDuration(ctx.content, settler, TALK_ATOMIC_ID)))
+  );
+}
 
 /** Whether `e` is due a round of `atomicId` this tick: once per the clip's length, phased by its id. */
 function due(ctx: SystemContext, e: Entity, duration: number): boolean {
