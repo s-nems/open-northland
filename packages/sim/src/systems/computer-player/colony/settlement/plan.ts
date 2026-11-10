@@ -12,7 +12,7 @@ import type { Entity } from '../../../../ecs/world.js';
 import { buildingTypeByContentId } from '../../../ai-shared/content-lookup.js';
 import { isBuilt } from '../../../ai-shared/seat-roster.js';
 import { mayMarry } from '../../../family/eligibility.js';
-import { familiesOf } from '../../../family/households.js';
+import { familyCountOf } from '../../../family/households.js';
 import { ROOM_HOME_BUILDING } from '../../build-order/ground/room.js';
 import { topEnabledTier } from '../../top-tier.js';
 import type { ColonyEnv, ColonyView } from '../env.js';
@@ -121,7 +121,7 @@ export function homeSlots(
     const type = index.buildings.get(world.get(e, Building).buildingType);
     if (type?.kind !== BUILDING_KIND.home) continue;
     slots += type.homeSize;
-    free += type.homeSize - (isBuilt(world, e) ? familiesOf(world, e).length : 0);
+    free += type.homeSize - (isBuilt(world, e) ? familyCountOf(world, e) : 0);
   }
   return { slots, free };
 }

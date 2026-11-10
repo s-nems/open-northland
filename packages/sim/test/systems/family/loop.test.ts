@@ -37,6 +37,7 @@ import {
   ageTicksAt,
   BABY_FEMALE,
   familiesOf,
+  familyCountOf,
   familyOf,
   findPartnerFor,
   KISS_ATOMIC_ID,
@@ -684,6 +685,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     // On marriage the husband joins her home, and the two are one family (one homeSize slot).
     expect(sim.world.get(man(), Residence).home).toBe(home());
     const families = familiesOf(sim.world, home());
+    expect(familyCountOf(sim.world, home())).toBe(families.length);
     expect(families).toHaveLength(1);
     expect(new Set(families[0])).toEqual(new Set([woman(), man()]));
   });

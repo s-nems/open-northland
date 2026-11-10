@@ -5,7 +5,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { isBuilt } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { mayMarry } from '../../../family/eligibility.js';
-import { familiesOf } from '../../../family/households.js';
+import { familyCountOf } from '../../../family/households.js';
 
 /** What population does at home, over a colony's `people` and `buildings`: one marry order per possible
  *  couple, and a family with no home takes the first free slot. */
@@ -23,7 +23,7 @@ export function colonyFamilies(
   const homes = buildings.flatMap((e) => {
     const type = index.buildings.get(world.get(e, Building).buildingType);
     if (!isBuilt(world, e) || type === undefined || type.kind !== 'home') return [];
-    return [{ entity: e, free: type.homeSize - familiesOf(world, e).length }];
+    return [{ entity: e, free: type.homeSize - familyCountOf(world, e) }];
   });
   for (const wife of people) {
     if (!world.has(wife, Female) || !world.has(wife, Marriage) || world.has(wife, Residence)) continue;

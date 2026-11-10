@@ -134,6 +134,50 @@ export function familiesOf(world: World, house: Entity): Entity[][] {
   return [...groups.values()];
 }
 
+/** Scratch of {@link familyCountOf}: the group keys found, and each resident child with its parents'
+ *  head. A home holds a handful of residents, so the lists are searched linearly. */
+const keyScratch: Entity[] = [];
+const childScratch: Entity[] = [];
+const childHeadScratch: Entity[] = [];
+
+function listed(list: readonly Entity[], count: number, e: Entity): boolean {
+  for (let i = 0; i < count; i++) if (list[i] === e) return true;
+  return false;
+}
+
+/** How many families {@link familiesOf} finds in `house`, without building them: the seats' housing
+ *  plans ask it of every home. */
+export function familyCountOf(world: World, house: Entity): number {
+  const residents = residentsOf(world, house);
+  let keys = 0;
+  let children = 0;
+  for (let i = 0; i < residents.length; i++) {
+    const e = residents[i] as Entity;
+    if (isMinor(world, e)) continue;
+    const marriage = world.tryGet(e, Marriage);
+    const cohabits =
+      marriage !== undefined && world.isAlive(marriage.spouse) && residents.includes(marriage.spouse);
+    const head = cohabits && marriage.spouse < e ? marriage.spouse : e;
+    if (!listed(keyScratch, keys, head)) keyScratch[keys++] = head;
+    const child = marriage?.child;
+    if (child == null || !residents.includes(child)) continue;
+    let at = 0;
+    while (at < children && childScratch[at] !== child) at++;
+    childScratch[at] = child;
+    childHeadScratch[at] = head; // the later parent's head wins, as the map write does
+    if (at === children) children++;
+  }
+  for (let i = 0; i < residents.length; i++) {
+    const minor = residents[i] as Entity;
+    if (!isMinor(world, minor)) continue;
+    let at = 0;
+    while (at < children && childScratch[at] !== minor) at++;
+    const withParents = at < children && listed(keyScratch, keys, childHeadScratch[at] as Entity);
+    if (!withParents && !listed(keyScratch, keys, minor)) keyScratch[keys++] = minor;
+  }
+  return keys;
+}
+
 /**
  * Reserve `house` for `e`'s household, where `e` is a settler. The reservation may be made while the home
  * is under construction; household drives continue to require {@link builtHomeType} before using it.

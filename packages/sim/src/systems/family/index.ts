@@ -7,6 +7,7 @@ export { findPartnerFor, isAdultSettler, isOnMission, mayMarry } from './eligibi
 export {
   builtHomeType,
   familiesOf,
+  familyCountOf,
   familyOf,
   isMinor,
   moveFamilyInto,

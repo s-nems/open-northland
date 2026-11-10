@@ -20,7 +20,7 @@ import type { SystemContext } from '../context.js';
 import { liveWorkFlag } from '../economy/work-flag.js';
 import { isAdultSettler, mayMarry } from '../family/eligibility.js';
 import { homeQualityUseFor, householdGoodAllowed } from '../family/home-quality.js';
-import { familiesOf } from '../family/households.js';
+import { familyCountOf } from '../family/households.js';
 import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
 import { type ComputerProfile, computerProfileOf, shareOf } from './difficulty.js';
@@ -77,7 +77,7 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
     const type = index.buildings.get(world.get(e, Building).buildingType);
     if (type === undefined || type.kind !== 'home') continue;
     familySlotsTotal += type.homeSize;
-    homes.push({ entity: e, free: type.homeSize - familiesOf(world, e).length });
+    homes.push({ entity: e, free: type.homeSize - familyCountOf(world, e) });
   }
   for (const woman of women) {
     if (world.has(woman, Residence)) continue;
