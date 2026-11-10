@@ -37,15 +37,21 @@ export const NO_ARMOUR_WAIT: ReadonlySet<Entity> = new Set();
  */
 export function armourWaiters(world: World, ctx: SystemContext, player: number): ReadonlySet<Entity> {
   if (!seatDressesArmy(world, ctx, player)) return NO_ARMOUR_WAIT;
+  // The men before the stock: counting the armour the errands can fetch is the dear read, and a seat whose
+  // men at home are all dressed has nobody to count it for.
+  const fighters = homeFighters(world, ctx, player);
+  const waits = (e: Entity): boolean => isLiveFighter(world, e) && waitsForArmour(world, ctx, e);
+  const first = fighters.findIndex(waits);
+  if (first < 0) return NO_ARMOUR_WAIT;
   const stock = seatArmsStock(world, ctx, player);
   if (stock === null) return NO_ARMOUR_WAIT;
   let pieces = 0;
   for (const good of armorGoodsByProtection(ctx.content)) pieces += stock.units(good);
   if (pieces <= 0) return NO_ARMOUR_WAIT;
   const waiting = new Set<Entity>();
-  for (const e of homeFighters(world, ctx, player)) {
-    if (waiting.size >= pieces) break;
-    if (isLiveFighter(world, e) && waitsForArmour(world, ctx, e)) waiting.add(e);
+  for (let i = first; i < fighters.length && waiting.size < pieces; i++) {
+    const e = fighters[i];
+    if (e !== undefined && (i === first || waits(e))) waiting.add(e);
   }
   return waiting;
 }
