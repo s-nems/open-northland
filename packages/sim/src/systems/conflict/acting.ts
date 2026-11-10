@@ -118,7 +118,7 @@ export function mayEngage(
   return index.othersWithin(owner.player, x, y, radius);
 }
 
-/** The stores whose membership, or whose values for {@link READY_VALUES}, can flip {@link readyAnywhere}.
+/** The stores whose membership, or whose values for {@link READY_VALUES}, can change {@link readinessOf}.
  *  A job change arrives through the settler trade log instead of a Settler value feed. */
 export const READY_MEMBERSHIP: readonly Component<unknown>[] = [
   Settler,
@@ -143,32 +143,60 @@ export const READY_MEMBERSHIP: readonly Component<unknown>[] = [
 ];
 export const READY_VALUES: readonly Component<unknown>[] = [Owner, Stance, CurrentAtomic];
 
+/** How a combatant might pass {@link mayEngage} wherever it stands ({@link readinessOf}). */
+export type Readiness = 'ready' | 'posted' | 'none';
+
 /**
- * Whether combatant `e` might pass {@link mayEngage} wherever it stands: every `true` that function returns
- * without the index's presence test, read off `e`'s own {@link READY_MEMBERSHIP} stores alone. A superset -
- * a combatant for which this is false passes only when an owned one's presence test does.
+ * How combatant `e` might pass {@link mayEngage} wherever it stands, read off `e`'s own
+ * {@link READY_MEMBERSHIP} stores alone. `ready` covers every `true` that function returns without the
+ * index's presence test: a superset. `posted` is a garrison in a player slot holding none of those, which
+ * passes only off its post or by its presence test ({@link idleAtPost}). `none` passes only when an owned
+ * one's presence test does.
  */
-export function readyAnywhere(world: World, content: ContentSet, e: Entity): boolean {
-  if (holdsLadderState(world, e)) return true;
+export function readinessOf(world: World, content: ContentSet, e: Entity): Readiness {
+  if (holdsLadderState(world, e)) return 'ready';
   // A sleeper in the open, or one asleep on its tower.
   const garrisoned = world.has(e, Garrison);
   if (world.tryGet(e, CurrentAtomic)?.effect.kind === 'sleep' && (garrisoned || !world.has(e, Resting)))
-    return true;
+    return 'ready';
   const settler = world.get(e, Settler);
-  if (isHunterJob(content, settler.jobType)) return true;
+  if (isHunterJob(content, settler.jobType)) return 'ready';
   const owner = world.tryGet(e, Owner);
   if (owner === undefined) {
-    return garrisoned || !isAnimalTribe(content, settler.tribe) || isAggressiveAnimal(content, settler.tribe);
+    const acts =
+      garrisoned || !isAnimalTribe(content, settler.tribe) || isAggressiveAnimal(content, settler.tribe);
+    return acts ? 'ready' : 'none';
   }
   // Outside the player slots it holds no bit the presence test could find it by.
-  if (!isValidPlayer(owner.player)) return true;
+  if (!isValidPlayer(owner.player)) return 'ready';
+  if (garrisoned) return 'posted';
   const mode = stanceMode(world, content, e, settler.jobType);
-  if (!guardsAnchor(content, mode, settler.jobType) || isTravelling(world, e)) return false;
-  return (
+  if (!guardsAnchor(content, mode, settler.jobType) || isTravelling(world, e)) return 'none';
+  const anchored =
     (world.tryGet(e, Stance)?.anchorCell ?? null) !== null ||
     world.has(e, PathRoute) ||
-    world.has(e, Stranded)
-  );
+    world.has(e, Stranded);
+  return anchored ? 'ready' : 'none';
+}
+
+/**
+ * Whether `posted` garrison `e` ({@link readinessOf}) stands idle on its post: it holds it and no stranger
+ * is within its reach raised by the tower, the presence test {@link mayEngage} would fail it on.
+ */
+export function idleAtPost(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  index: CombatIndex,
+  e: Entity,
+): boolean {
+  if (index.mannedPost(world, ctx, e) === null) return false;
+  const reach = reachOf(world, ctx, e) + TOWER_RANGE_BONUS_NODES;
+  if (index.clearOfStrangers(e, reach)) return true;
+  const owner = world.tryGet(e, Owner);
+  if (owner === undefined) return false;
+  const here = entityNode(world, terrain, e);
+  return !index.othersWithin(owner.player, terrain.xOf(here), terrain.yOf(here), reach);
 }
 
 /** The radius (map points) {@link mayEngage}'s presence test asks for an owned unit that

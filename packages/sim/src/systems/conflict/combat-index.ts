@@ -378,6 +378,15 @@ export class CombatIndex {
   }
 
   /**
+   * Whether the stranger neighbourhood {@link unitsNearStrangers} derived this pass already proves
+   * {@link othersWithin} false for unit `e` at every radius up to `radius`, with no cell walked. False
+   * proves nothing.
+   */
+  clearOfStrangers(e: Entity, radius: number): boolean {
+    return this.grid.unitClearOfStrangers(e, radius, this.hostileMasks);
+  }
+
+  /**
    * Whether any civilization combatant - everything not classified wildlife - might lie within `radius` map
    * points of node (hx, hy). The hostile-animal seeker's early-out twin of {@link othersWithin}, since a
    * wild animal's only valid targets are civilization settlers.

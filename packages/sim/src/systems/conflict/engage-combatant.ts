@@ -73,7 +73,7 @@ import {
  * Resolve and act on one combatant's engagement this tick: swing, chase, hold a post, flee, or hand back to
  * the economy. The gates run as a ladder whose order is behavior: each rung shields every rung under it
  * from a case it must not see. A rung that writes for a unit holding no combat state must widen
- * `mayEngage` and `readyAnywhere` (`acting.ts`), which skip the units no rung touches. Chasing may release
+ * `mayEngage` and `readinessOf` (`acting.ts`), which skip the units no rung touches. Chasing may release
  * a farther ally's route reservation; all other decisions affect only `e`.
  */
 export function engageCombatant(

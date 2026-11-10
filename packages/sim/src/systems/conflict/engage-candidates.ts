@@ -3,10 +3,11 @@ import { Health, Position, Settler, settlerTradeLog } from '../../components/ind
 import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import {
+  idleAtPost,
   PRESENCE_RADIUS,
   READY_MEMBERSHIP,
   READY_VALUES,
-  readyAnywhere,
+  readinessOf,
   searchesPastPresence,
 } from './acting.js';
 import { isCombatant } from './combat-grid.js';
@@ -14,12 +15,14 @@ import type { CombatIndex } from './combat-index.js';
 import { EpochMarks } from './epoch-marks.js';
 
 /**
- * The combatants {@link readyAnywhere} passes, and those {@link searchesPastPresence} names (`wide`), kept
- * per world from a change feed over the stores both read, so a pass costs the units whose state changed
- * rather than every combatant. Derived state, never hashed; the registered verifier re-derives it.
+ * The combatants by {@link readinessOf}, the `ready` and the `posted`, and those of the rest
+ * {@link searchesPastPresence} names (`wide`), kept per world from a change feed over the stores both
+ * read, so a pass costs the units whose state changed rather than every combatant. Derived state, never
+ * hashed; the registered verifier re-derives it.
  */
 class ReadyUnits {
   private readonly ready = new Set<Entity>();
+  readonly posted = new Set<Entity>();
   readonly wide = new Set<Entity>();
   /** Whether the set was ever built; until then the feed's entries describe nothing held. */
   private built = false;
@@ -55,14 +58,17 @@ class ReadyUnits {
     if (this.feed.peek((e) => pending.add(e))) return [];
     for (const e of world.query(Settler, Health, Position)) {
       if (pending.has(e)) continue;
+      const readiness = readinessOf(world, this.content, e);
+      const wide = readiness !== 'posted' && searchesPastPresence(world, this.content, e);
       if (
-        readyAnywhere(world, this.content, e) !== this.ready.has(e) ||
-        searchesPastPresence(world, this.content, e) !== this.wide.has(e)
+        (readiness === 'ready') !== this.ready.has(e) ||
+        (readiness === 'posted') !== this.posted.has(e) ||
+        wide !== this.wide.has(e)
       ) {
         return [`combatReadyUnits holds a stale entry for ${e} - it changed without a feed entry`];
       }
     }
-    for (const held of [this.ready, this.wide]) {
+    for (const held of [this.ready, this.posted, this.wide]) {
       for (const e of held) {
         if (!pending.has(e) && !isCombatant(world, e))
           return [`combatReadyUnits still holds ${e}, no longer a combatant`];
@@ -73,14 +79,18 @@ class ReadyUnits {
 
   private place(world: World, e: Entity): void {
     const combatant = isCombatant(world, e);
-    if (combatant && readyAnywhere(world, this.content, e)) this.ready.add(e);
+    const readiness = combatant ? readinessOf(world, this.content, e) : 'none';
+    if (readiness === 'ready') this.ready.add(e);
     else this.ready.delete(e);
-    if (combatant && searchesPastPresence(world, this.content, e)) this.wide.add(e);
+    if (readiness === 'posted') this.posted.add(e);
+    else this.posted.delete(e);
+    if (combatant && readiness !== 'posted' && searchesPastPresence(world, this.content, e)) this.wide.add(e);
     else this.wide.delete(e);
   }
 
   private rebuild(world: World): void {
     this.ready.clear();
+    this.posted.clear();
     this.wide.clear();
     for (const e of world.query(Settler, Health, Position)) this.place(world, e);
     this.built = true;
@@ -100,9 +110,9 @@ function readyUnitsOf(world: World, content: ContentSet): ReadyUnits {
 
 /**
  * The combatants a combat pass asks `mayEngage` about, in ascending id: the owned units with a stranger
- * within {@link PRESENCE_RADIUS}, the units searching past it, and the kept ready set. Every other
- * combatant proves `mayEngage` false. Read after the queued alarms are answered, since an alarm hands its
- * answerers ladder state.
+ * within {@link PRESENCE_RADIUS}, the units searching past it, the garrisons not {@link idleAtPost}, and
+ * the kept ready set. Every other combatant proves `mayEngage` false. Read after the queued alarms are
+ * answered, since an alarm hands its answerers ladder state.
  */
 export function engageCandidates(world: World, ctx: SystemContext, index: CombatIndex): EngageCandidates {
   const scratch = candidateScratchOf(world);
@@ -113,6 +123,10 @@ export function engageCandidates(world: World, ctx: SystemContext, index: Combat
   let count = index.unitsNearStrangers(PRESENCE_RADIUS, gathered, 0);
   units.wide.forEach((e) => {
     gathered[count++] = e;
+  });
+  const { terrain } = ctx;
+  units.posted.forEach((e) => {
+    if (terrain === undefined || !idleAtPost(world, ctx, terrain, index, e)) gathered[count++] = e;
   });
   scratch.markNear(count);
   ready.forEach((e) => {
@@ -140,8 +154,8 @@ export interface EngageCandidates {
   /** The `i`th candidate, ascending by id. */
   candidateAt(i: number): Entity;
   /** Whether owned unit `e` needs its presence test run: the index found a stranger within
-   *  {@link PRESENCE_RADIUS} of it, or it searches past that. One in a player slot for which neither holds
-   *  proves every `othersWithin` test false. */
+   *  {@link PRESENCE_RADIUS} of it, it searches past that, or it is a garrison not idle at its post. One in
+   *  a player slot for which none holds proves every `othersWithin` test false. */
   nearStranger(e: Entity): boolean;
 }
 

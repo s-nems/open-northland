@@ -4,6 +4,7 @@ import {
   Building,
   Engagement,
   Health,
+  hostileMaskOf,
   isValidPlayer,
   MAX_PLAYERS,
   Owner,
@@ -347,6 +348,22 @@ export class CombatGrid {
     }
     this.nearDirtyCount = 0;
     return this.strangerCells;
+  }
+
+  /**
+   * Whether the stranger neighbourhood {@link strangerCellsWithin} last derived proves that no cell within
+   * `radius` nodes of held unit `e` holds an undiscounted member or one of the players its
+   * `hostileMasks` entry names. False proves nothing: a unit not held in a player slot, a neighbourhood
+   * not derived or narrower than `radius`.
+   */
+  unitClearOfStrangers(e: Entity, radius: number, hostileMasks: readonly number[]): boolean {
+    const held = this.units[e];
+    if (held === undefined || held.bit === 0 || this.nearCells === null) return false;
+    // The neighbourhood spans whole cells, so from any node of the unit's cell it covers this far.
+    if (radius > this.nearCells * COARSE_CELL_NODES) return false;
+    const { cell } = held;
+    if (cell.nearDirty || cell.nearUndiscounted) return false;
+    return (cell.nearMask & hostileMaskOf(hostileMasks, playerOfBit(held.bit))) === 0;
   }
 
   /** The band scan scratch for nesting depth `depth`. */
