@@ -7,6 +7,7 @@ import {
   DeliveryFlag,
   FamilyDuty,
   IdleStand,
+  JobAssignment,
   MoveGoal,
   NeedOrder,
   Owner,
@@ -304,16 +305,18 @@ describe('a computer seat', () => {
     expect(idleReplanDue(planned[1] ?? -1, key, COMPUTER)).toBe(true);
   });
 
-  it('holds a guard at its post on its beat, where a human seat re-plans it every pass', () => {
-    const guardPlans = (computer: boolean): number => {
+  it('holds a guard at its post on its beat, a human seat’s too unless a workplace binds it', () => {
+    const guardPlans = (computer: boolean, posted = false): number => {
       const sim = newSim();
       if (computer) computerSeat(sim);
       const guard = woodcutterAt(sim, 10, 10);
       sim.world.add(guard, Stance, { mode: MILITARY_MODE.DEFEND, anchorCell: null });
+      if (posted) sim.world.add(guard, JobAssignment, { workplace: sim.world.create() });
       sim.step();
       return plannedTicks(sim, guard, COMPUTER).length;
     };
-    expect(guardPlans(false)).toBe(COMPUTER);
+    expect(guardPlans(false)).toBe(COMPUTER / HUMAN);
+    expect(guardPlans(false, true)).toBe(COMPUTER);
     expect(guardPlans(true)).toBe(1);
   });
 });

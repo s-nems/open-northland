@@ -41,9 +41,9 @@ import { isInside, stepOut } from '../indoors.js';
 import { forgetWorkTried, noteWorkTaken } from '../lost-way.js';
 import type { PlannerContext } from '../planner/context.js';
 import {
+  guardWaitsOnBeat,
   idleReplanDue,
   idleReplanPeriodOf,
-  standsStillForMachine,
   waitsHoldOnBeat,
 } from '../planner/idle-replan.js';
 import type { PlannerPass } from '../planner/pass.js';
@@ -329,11 +329,11 @@ function planBreak(
   }
   // DEFEND hold: a guard keeps its post against the company and economy rungs, and the CombatSystem walks
   // it back when displaced. Below the equip errand on purpose: the one errand a guard still runs without
-  // dropping its stance. A guard sharing its post's node still spaces out like any idler, and a machine
-  // seat's guard holding still waits for its idle beat.
+  // dropping its stance. A guard sharing its post's node still spaces out like any idler, and one
+  // holding still waits for its idle beat, a human seat's unless a workplace binds it.
   if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) {
     if (!staysPut(world, e)) deStackGuard(world, ctx, terrain, e, hx, hy, pass.spacing);
-    if (standsStillForMachine(world, e)) pass.idle.stand(e, false);
+    if (guardWaitsOnBeat(world, e)) pass.idle.stand(e, false);
     return true;
   }
   // The company rung: a lonely settler leaves its work to find a partner, above the economy rungs on

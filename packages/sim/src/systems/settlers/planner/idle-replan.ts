@@ -5,6 +5,7 @@ import {
   FamilyDuty,
   IdleStand,
   isMachinePlayer,
+  JobAssignment,
   MoveGoal,
   ownerOf,
   Resting,
@@ -75,6 +76,20 @@ export function ownedByMachine(world: World, e: Entity): boolean {
  *  answers a need up to its seat's idle period late; a move, clip or order wakes it. */
 export function standsStillForMachine(world: World, e: Entity): boolean {
   return ownedByMachine(world, e) && !world.has(e, MoveGoal) && !world.has(e, CurrentAtomic);
+}
+
+/**
+ * Whether a DEFEND guard its ladder left holding still, with no walk or clip, waits for its idle beat
+ * instead of re-planning every tick. A machine seat's always does ({@link standsStillForMachine}). A human
+ * seat's does unless a workplace binds it: a posted archer walks up to its tower by a rung only a re-plan
+ * runs, once the tower stands. For the rest the wait hides nothing from the player: an order or an
+ * errand wakes it, a need turning pressing does ({@link wakeIdleToNeed}), and combat moves it on its own.
+ * What waits for the beat is stepping off a node a lower-id guard came to share, as for every idler, and
+ * the retry of a pressing need nothing could serve.
+ */
+export function guardWaitsOnBeat(world: World, e: Entity): boolean {
+  if (world.has(e, MoveGoal) || world.has(e, CurrentAtomic)) return false;
+  return ownedByMachine(world, e) || !world.has(e, JobAssignment);
 }
 
 /** Every economy hold but the family duty: any of them keeps the settler re-planning every tick. */
