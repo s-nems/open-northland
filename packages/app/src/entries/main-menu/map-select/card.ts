@@ -42,17 +42,16 @@ export function paintMapThumb(thumb: HTMLElement, item: MapSelectItem): void {
   thumb.replaceChildren(img);
 }
 
-/** The row/card meta line: category name, plus the roster size when the map ships one and a
- *  multiplayer map's lineup. */
+/** The row/card meta line: category name, plus the number of listed seats a person may take and
+ *  a multiplayer map's lineup. */
 export function metaLine(item: MapSelectItem): string {
   const select = messages().mainMenu.mapSelect;
   const category = select.categoryNames[mapCategory(item)];
   if (item.tutorialStep !== undefined)
     return `${category} · ${formatMessage(select.tutorialStep, { step: item.tutorialStep })}`;
-  if (item.seats.length === 0) return category;
-  const players = formatMessage(pluralForm(item.seats.length, select.players, bcp47Tag()), {
-    count: item.seats.length,
-  });
+  const seatable = item.players.filter((slot) => slot.claimable && !slot.hidden).length;
+  if (seatable === 0) return category;
+  const players = formatMessage(pluralForm(seatable, select.players, bcp47Tag()), { count: seatable });
   const lineup = mapItemLineup(item);
   return lineup === null ? `${category} · ${players}` : `${category} · ${players} · ${lineupLabel(lineup)}`;
 }

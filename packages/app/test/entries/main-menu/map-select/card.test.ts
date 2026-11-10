@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
-import { MAP_TEXT_LANGUAGES, type MapsIndexEntry } from '@open-northland/data';
+import {
+  MAP_TEXT_LANGUAGES,
+  MAP_TYPE,
+  type MapsIndexEntry,
+  type MapsIndexPlayerSlot,
+} from '@open-northland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   createMapDetailsCard,
+  metaLine,
   narrationLabel,
   narratorBadge,
 } from '../../../../src/entries/main-menu/map-select/card.js';
@@ -59,5 +65,31 @@ describe('narrated briefing mark', () => {
       expect(select.narrated).toContain('{languages}');
       for (const lang of MAP_TEXT_LANGUAGES) expect(select.narratedLanguageNames[lang]).not.toBe('');
     }
+  });
+});
+
+describe('meta line', () => {
+  function slot(player: number, claimable: boolean, hidden = false): MapsIndexPlayerSlot {
+    return {
+      player,
+      type: claimable ? 'human' : 'ai',
+      tribeId: 1,
+      colorId: player,
+      claimable,
+      hidden,
+      aiAllowed: true,
+      noneAllowed: true,
+      hasComputerControl: true,
+    };
+  }
+
+  it('counts only the listed seats a person may take', () => {
+    const map = mapItem({
+      ...entry(),
+      mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE],
+      players: [slot(0, true), slot(1, true), slot(2, false), slot(3, false), slot(4, true, true)],
+      relations: [{ a: 0, b: 1, stance: 'enemy' }],
+    });
+    expect(metaLine(map)).toBe('multiplayer · 2 graczy · 1 na 1');
   });
 });
