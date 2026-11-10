@@ -89,11 +89,14 @@ export function nodesBesidePosition(x: Fixed, y: Fixed, out: NodesBeside): void 
   out.southHy = located.southHy;
 }
 
-/** {@link locateNode}'s result and the position it is for, reused so the per-entity per-tick node reads
- *  allocate nothing and an `hx` then `hy` read of one position computes once. */
+/** The position {@link located} answers. Module variables, read in fewer bytecodes than a field, which
+ *  keeps {@link locateNode} under the size the optimizer inlines for free. */
+let locatedX: Fixed | undefined;
+let locatedY: Fixed | undefined;
+
+/** {@link locateNode}'s result, reused so the per-entity per-tick node reads allocate nothing and an `hx`
+ *  then `hy` read of one position computes once. */
 const located = {
-  x: Number.NaN,
-  y: Number.NaN,
   hx: 0,
   hy: 0,
   northHx: 0,
@@ -103,11 +106,15 @@ const located = {
 };
 
 /** Write {@link nodeOfPosition}'s node, and the nodes {@link nodesBesidePosition} names, into
- *  {@link located}. */
+ *  {@link located}. Only the test for the position already held, small enough for a caller to inline. */
 function locateNode(x: Fixed, y: Fixed): void {
-  if (x === located.x && y === located.y) return;
-  located.x = x;
-  located.y = y;
+  if (x !== locatedX || y !== locatedY) locateFresh(x, y);
+}
+
+/** {@link locateNode} for a position not held. */
+function locateFresh(x: Fixed, y: Fixed): void {
+  locatedX = x;
+  locatedY = y;
   const wx = worldX(x, y);
   // Doubled by an add: `fx.mul(v, TWO)` exactly, without the product, on a per-entity per-tick path.
   const northHy = Math.floor(fx.add(y, y) / ONE);
