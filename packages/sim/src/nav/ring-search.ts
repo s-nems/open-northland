@@ -38,6 +38,8 @@ export function ringSearch(
   const seen = new Set<NodeId>([from]);
   // One queue holds every ring in turn; `ringStart` and `ringEnd` bound the ring being expanded.
   const queue: NodeId[] = [from];
+  // One neighbour array for the search, not one per expanded node.
+  const around: NodeId[] = [];
   let ringStart = 0;
   let ringEnd = queue.length;
   let visited = 0;
@@ -47,7 +49,10 @@ export function ringSearch(
       if (cell === undefined) continue;
       // Only an untraversable start, a click on water, reaches out across ground no step crosses.
       const stepping = terrain.traversable(cell, traversal);
-      for (const n of terrain.neighbours(cell)) {
+      const count = terrain.neighboursInto(cell, around);
+      for (let k = 0; k < count; k++) {
+        const n = around[k];
+        if (n === undefined) continue;
         if (!terrain.traversable(n, traversal) || seen.has(n) || !traverse(n)) continue;
         if (stepping && !terrain.joined(cell, n)) continue;
         seen.add(n);
