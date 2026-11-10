@@ -9,7 +9,12 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { religionAllowsAtomic } from '../../lifecycle/needs/religion.js';
-import { needSubjectOf, operatorRecipeEnabled, settlerMeetsNeed } from '../../progression/index.js';
+import {
+  emptyNeedSubject,
+  needSubjectInto,
+  operatorRecipeEnabled,
+  settlerMeetsNeed,
+} from '../../progression/index.js';
 import { resolvedAtomicLength } from '../../readviews/animations.js';
 import { productionAtomic } from '../../readviews/production-atomic.js';
 import { beginCycle, canStartCycle, cycleCoveredWith, isYardBuilt, waitingForRecipeInput } from './cycles.js';
@@ -44,7 +49,7 @@ export function craftablePoolInto(
   recipes: ReadonlyMap<number, Recipe>,
   out: number[],
 ): number {
-  const subject = needSubjectOf(world, operator);
+  const subject = needSubjectInto(world, operator, subjectScratch);
   const selection = world.tryGet(operator, ProductionCounters);
   const goods = productsOfRecipes(recipes);
   let size = 0;
@@ -75,6 +80,9 @@ function productsOfRecipes(recipes: ReadonlyMap<number, Recipe>): readonly numbe
 }
 
 const productsByRecipes = new WeakMap<ReadonlyMap<number, Recipe>, readonly number[]>();
+
+/** The operator {@link craftablePoolInto} is asking for, read by its gates and by nothing after it. */
+const subjectScratch = emptyNeedSubject();
 
 /** The product an operator's rotation takes next: `good` at `index` into its craftable `pool`. */
 export interface RotationPick {

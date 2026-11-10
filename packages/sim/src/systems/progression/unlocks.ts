@@ -44,6 +44,23 @@ export function needSubjectOf(world: World, settler: Entity): NeedSubject {
   return { tribe: world.get(settler, Settler).tribe, owner: ownerOf(world, settler), experience, learned };
 }
 
+/** A {@link NeedSubject} a caller owns and refills, for a per-tick loop that keeps none past its gates. */
+export type NeedSubjectScratch = { -readonly [K in keyof NeedSubject]: NeedSubject[K] };
+
+export function emptyNeedSubject(): NeedSubjectScratch {
+  return { tribe: 0, owner: undefined, experience: new Map(), learned: undefined };
+}
+
+/** {@link needSubjectOf} written into `into`. */
+export function needSubjectInto(world: World, settler: Entity, into: NeedSubjectScratch): NeedSubject {
+  const progress = world.get(settler, SettlerProgress);
+  into.tribe = world.get(settler, Settler).tribe;
+  into.owner = ownerOf(world, settler);
+  into.experience = progress.experience;
+  into.learned = progress.learned;
+  return into;
+}
+
 /**
  * Whether a settler meets every `needfor*` XP threshold gating a `(target, targetId)` for its tribe. A
  * target with several must clear all of them, and a tribe absent from content thresholds nothing. A

@@ -72,8 +72,13 @@ export function requirementRepeats(
   expTypes: readonly number[],
 ): number {
   let repeats = 0;
-  for (const id of expTypes) {
-    const track = tracks.find((t) => t.typeId === id);
+  // Plain loops: the gate is asked per settler per good, and a closure per track adds up.
+  for (let i = 0; i < expTypes.length; i++) {
+    const id = expTypes[i] as number;
+    let track: HumanJobExperienceType | undefined;
+    for (let t = 0; t < tracks.length && track === undefined; t++) {
+      if (tracks[t]?.typeId === id) track = tracks[t];
+    }
     const xp = experience.get(id) ?? 0;
     repeats += track === undefined ? xp : experienceRepeats(xp, track);
   }
