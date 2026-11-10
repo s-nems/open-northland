@@ -99,7 +99,7 @@ function readyUnitsOf(world: World, content: ContentSet): ReadyUnits {
 }
 
 /**
- * The combatants a combat pass asks `mayEngage` about, in ascending id: the owned units near a stranger
+ * The combatants a combat pass asks `mayEngage` about, in ascending id: the owned units with a stranger
  * within {@link PRESENCE_RADIUS}, the units searching past it, and the kept ready set. Every other
  * combatant proves `mayEngage` false. Read after the queued alarms are answered, since an alarm hands its
  * answerers ladder state.
@@ -139,8 +139,9 @@ export interface EngageCandidates {
   readonly count: number;
   /** The `i`th candidate, ascending by id. */
   candidateAt(i: number): Entity;
-  /** Whether owned unit `e` needs its presence test run: the index listed it near a stranger, or it searches
-   *  past {@link PRESENCE_RADIUS}. One in a player slot not listed proves every `othersWithin` test false. */
+  /** Whether owned unit `e` needs its presence test run: the index found a stranger within
+   *  {@link PRESENCE_RADIUS} of it, or it searches past that. One in a player slot for which neither holds
+   *  proves every `othersWithin` test false. */
   nearStranger(e: Entity): boolean;
 }
 
