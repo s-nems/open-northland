@@ -44,8 +44,10 @@ import {
   discOffsets,
   dynamicBlockOverlay,
   hexDisc,
+  type VehicleDisc,
   vehicleAnchor,
   vehicleBlockedCells,
+  vehicleDisc,
   vehicleFootprintNodes,
 } from '../footprint/index.js';
 import { landVehicleFits, vehicleClearance, vehicleStandable } from '../footprint/vehicle-clearance.js';
@@ -263,9 +265,27 @@ export function vehicleBodyClear(
   type: VehicleType,
 ): (node: NodeId) => boolean {
   const cover = vehicleBlockedCells(world, ctx, terrain);
-  const own = new Set(vehicleFootprintNodes(world, ctx.content, terrain, vehicle));
-  const isOwn = (node: NodeId): boolean => own.has(node);
+  const isOwn = discCellTest(terrain, vehicleDisc(world, ctx.content, vehicle));
   return (node) => !sharesCell(terrain, cover, nodeOf(terrain, node), type.logicSize, isOwn);
+}
+
+/** Whether a node is one of the cells `disc` covers, read off the disc without listing it. */
+function discCellTest(terrain: TerrainGraph, disc: VehicleDisc | null): (node: NodeId) => boolean {
+  if (disc === null) return () => false;
+  const { hx, hy, radius } = disc;
+  return (node) => hexDistanceBetween(terrain.xOf(node), terrain.yOf(node), hx, hy) <= radius;
+}
+
+/** The cells `disc` covers on the map. */
+function discCells(terrain: TerrainGraph, disc: VehicleDisc | null): NodeId[] {
+  const cells: NodeId[] = [];
+  if (disc === null) return cells;
+  for (const offset of discOffsets(disc.radius, disc.hy)) {
+    const hx = disc.hx + offset.hx;
+    const hy = disc.hy + offset.hy;
+    if (terrain.inBounds(hx, hy)) cells.push(terrain.nodeAt(hx, hy));
+  }
+  return cells;
 }
 
 /** The other vehicles' discs `vehicle`'s anchor stands in. Walks every vehicle, but only for one already
@@ -322,10 +342,11 @@ function blocksUnder(
 ): BlockOverlay {
   const ground = dynamicBlockOverlay(world, ctx, terrain);
   const { fits, below } = passes;
-  const own = new Set(vehicleFootprintNodes(world, ctx.content, terrain, vehicle));
+  const ownDisc = vehicleDisc(world, ctx.content, vehicle);
+  const own = discCellTest(terrain, ownDisc);
   const overlapped = use === 'transit' ? overlappedDiscs(world, ctx, terrain, vehicle) : NO_DISCS;
   const coveredByOthers = (node: NodeId): boolean => {
-    const others = (vehicles.get(node) ?? 0) - (own.has(node) ? 1 : 0);
+    const others = (vehicles.get(node) ?? 0) - (own(node) ? 1 : 0);
     if (others === 0) return false;
     let leaving = 0;
     for (const disc of overlapped) {
@@ -362,7 +383,7 @@ function blocksUnder(
       if (covers) {
         unsure = new Uint8Array(below);
         for (const node of vehicles.keys()) unsure[node] = 1;
-        for (const node of own) unsure[node] = 1;
+        for (const node of discCells(terrain, ownDisc)) unsure[node] = 1;
       }
       lanes = { bytes: groundLanes.bytes, extra: undefined, players: undefined, hostile: 0, unsure };
     } else {
@@ -370,7 +391,7 @@ function blocksUnder(
       if (covers) {
         extra = new Uint8Array(groundLanes.bytes);
         for (const node of vehicles.keys()) if (coveredByOthers(node)) extra[node] = 1;
-        for (const node of own) if (coveredByOthers(node)) extra[node] = 1;
+        for (const node of discCells(terrain, ownDisc)) if (coveredByOthers(node)) extra[node] = 1;
       }
       lanes = { bytes: below, extra, players: undefined, hostile: 0 };
     }
@@ -557,7 +578,7 @@ function otherVehicleCovers(
 ): boolean {
   const cover = vehicleBlockedCells(world, ctx, terrain).get(node) ?? 0;
   if (cover === 0) return false;
-  return cover > (vehicleFootprintNodes(world, ctx.content, terrain, vehicle).includes(node) ? 1 : 0);
+  return cover > (discCellTest(terrain, vehicleDisc(world, ctx.content, vehicle))(node) ? 1 : 0);
 }
 
 /**

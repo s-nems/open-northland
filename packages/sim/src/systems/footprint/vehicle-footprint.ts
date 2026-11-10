@@ -58,6 +58,24 @@ export function vehicleFootprintNodes(
   return nodes;
 }
 
+/** A standing vehicle's disc as its centre and radius. */
+export interface VehicleDisc {
+  readonly hx: number;
+  readonly hy: number;
+  readonly radius: number;
+}
+
+/** The disc `e` stands on, or null for a vehicle that stands nowhere: a node is one of its
+ *  {@link vehicleFootprintNodes} exactly when it lies within `radius` hexagon steps of the centre. */
+export function vehicleDisc(world: World, content: ContentSet, e: Entity): VehicleDisc | null {
+  const vehicle = world.tryGet(e, Vehicle);
+  const p = world.tryGet(e, Position);
+  if (vehicle === undefined || p === undefined) return null;
+  const type = contentIndex(content).vehicles.get(vehicle.vehicleType);
+  if (type === undefined) return null;
+  return { hx: nodeHxOfPosition(p.x, p.y), hy: nodeHyOfPosition(p.x, p.y), radius: type.logicSize };
+}
+
 /** {@link vehicleFootprintNodes} handed to `visit` node by node, allocating nothing. */
 export function forEachVehicleFootprintNode(
   world: World,
