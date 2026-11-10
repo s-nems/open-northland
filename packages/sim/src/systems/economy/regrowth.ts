@@ -152,20 +152,34 @@ function regrowthSpots(test: SpotTest, terrain: TerrainGraph, start: NodeId): No
   for (let step = 0; step < SEARCH_STEPS && frontier.length > 0 && spots.length < MAX_SPOTS; step++) {
     const next: NodeId[] = [];
     for (let f = 0; f < frontier.length; f++) {
-      const node = frontier[f] as NodeId;
-      const count = terrain.neighboursInto(node, around);
-      for (let i = 0; i < count; i++) {
-        const neighbour = around[i];
-        if (neighbour === undefined || seen.has(neighbour) || !terrain.joined(node, neighbour)) continue;
-        seen.add(neighbour);
-        next.push(neighbour);
-        if (test.takesRegrowth(neighbour)) spots.push(neighbour);
-        if (spots.length === MAX_SPOTS) return spots;
-      }
+      if (spreadFrom(test, terrain, frontier[f] as NodeId, around, seen, next, spots)) return spots;
     }
     frontier = next;
   }
   return spots;
+}
+
+/** Step from `node` onto its unseen joined neighbours, listing each in `next` and the spots among them;
+ *  whether the spots are full. Its own function, so the loop is compiled once, not left at every node. */
+function spreadFrom(
+  test: SpotTest,
+  terrain: TerrainGraph,
+  node: NodeId,
+  around: NodeId[],
+  seen: Set<NodeId>,
+  next: NodeId[],
+  spots: NodeId[],
+): boolean {
+  const count = terrain.neighboursInto(node, around);
+  for (let i = 0; i < count; i++) {
+    const neighbour = around[i];
+    if (neighbour === undefined || seen.has(neighbour) || !terrain.joined(node, neighbour)) continue;
+    seen.add(neighbour);
+    next.push(neighbour);
+    if (test.takesRegrowth(neighbour)) spots.push(neighbour);
+    if (spots.length === MAX_SPOTS) return true;
+  }
+  return false;
 }
 
 /**
