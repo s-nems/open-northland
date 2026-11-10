@@ -136,6 +136,31 @@ describe('layer reuse across frames', () => {
     expect(native.map((l) => l.scale)).toEqual([1, 1, 1, 1, 1]);
   });
 
+  it('composes one look and frame apart for another head look, unit scale or glow', () => {
+    const otherHead: SpriteLayer = {
+      source,
+      atlas: { width: 64, height: 64, frames: new Map([[HEAD_BOB, frameAt(-40, 12)]]) },
+    };
+    const look = sheet.characters?.default;
+    if (look === undefined) throw new Error('look missing');
+    const twoHeads: SpriteSheet = {
+      ...sheet,
+      characters: { byJob: {}, default: { ...look, heads: [head, otherHead] } },
+    };
+    const headOf = (item: DrawItem) => resolveLayers(twoHeads, item, 0)?.at(-1)?.frame.offsetY;
+    const scalesOf = (item: DrawItem) => new Set(resolveLayers(twoHeads, item, 0)?.map((l) => l.scale));
+    const glowsOf = (item: DrawItem) =>
+      resolveLayers(twoHeads, item, 0)?.filter((l) => l.glow !== undefined).length;
+    for (let round = 0; round < 2; round++) {
+      expect(headOf({ ...settler, ref: 2 })).toBe(-38);
+      expect(headOf({ ...settler, ref: 3 })).toBe(-40);
+      expect(scalesOf({ ...settler, ref: 2 })).toEqual(new Set([1]));
+      expect(scalesOf({ ...settler, ref: 2, visualScale: 1.5 })).toEqual(new Set([1.5]));
+      expect(glowsOf({ ...settler, ref: 2 })).toBe(0);
+      expect(glowsOf({ ...settler, ref: 2, glow: true })).toBeGreaterThan(0);
+    }
+  });
+
   it('keeps each body its own head cast rows when two bodies share one head frame', () => {
     const headCastRows = (bodyTop: number) =>
       (resolveLayers(sheetFor(bodyTop), settler, 0) ?? []).find((l) => l.castRows !== undefined)?.castRows;

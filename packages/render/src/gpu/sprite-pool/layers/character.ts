@@ -6,6 +6,7 @@ import type {
   PaletteLut,
   SettlerCharacter,
   SettlerCharacterSet,
+  SpriteLayer,
   SpriteSheet,
 } from '../../textures/sprite-sheet.js';
 import { layerScale, resolveFromLayer, shadowLayerFor } from './layered.js';
@@ -69,10 +70,6 @@ function glowLayersFor(of: ResolvedLayer): readonly ResolvedLayer[] {
     glowRecords.set(of, records);
   }
   return records;
-}
-
-function pushGlow(out: LayerBuffer, of: ResolvedLayer): void {
-  for (const layer of glowLayersFor(of)) out.push(layer);
 }
 
 /**
@@ -166,6 +163,27 @@ export function pushCharacterLayers(
   );
 }
 
+/** One composed figure, and what besides its look and bobs shaped it. */
+interface Composition {
+  readonly scale: number;
+  readonly factor: number | undefined;
+  readonly glowing: boolean;
+  readonly body: SpriteLayer;
+  readonly head: SpriteLayer | undefined;
+  readonly layers: readonly ResolvedLayer[];
+}
+
+/** Head bob ids and head looks a composition key tells apart per body bob; a look past either composes
+ *  without the memo. */
+const HEAD_BOB_SPAN = 1 << 20;
+const HEAD_LOOK_SPAN = 1 << 6;
+
+/**
+ * The last figure composed per look, body bob, head bob and head look: the pool composes every drawn
+ * settler on every tick, and one walk frame of one look is on screen many times over.
+ */
+const compositions = new WeakMap<SettlerCharacter, Map<number, Composition>>();
+
 /**
  * Append `char`'s cast silhouettes, authored foot blob (one or the other draws), glow, body and head for `binding`'s frame at
  * `item`'s state and facing; the head reads `headBinding` when the head moves apart from the body,
@@ -185,34 +203,94 @@ export function pushComposedCharacterLayers(
   headRef: number = item.ref,
 ): boolean {
   const scale = characterScale(sheet, char);
-  // Every layer below derives from these records, so a scaled unit's cast, glow, box and outline follow.
   const factor = item.visualScale;
   const bob = resolveSettlerBobId(binding, item, tick, gaitClock, idleElapsed);
-  const body = scaledLayer(resolveFromLayer(char.body, bob, scale), factor);
   const heads = char.heads;
-  const headLayer = heads !== undefined && heads.length > 0 ? heads[headRef % heads.length] : undefined;
+  const headLook = heads !== undefined && heads.length > 0 ? headRef % heads.length : 0;
+  const headLayer = heads?.[headLook];
   const headBob =
     headBinding !== undefined ? resolveSettlerBobId(headBinding, item, tick, gaitClock, idleElapsed) : bob;
+  const glowing = char.glow === 'always' || (item.glow === true && char.glow !== 'never');
+  const keyed =
+    Number.isInteger(bob) &&
+    bob >= 0 &&
+    Number.isInteger(headBob) &&
+    headBob >= 0 &&
+    headBob < HEAD_BOB_SPAN &&
+    Number.isInteger(headLook) &&
+    headLook >= 0 &&
+    headLook < HEAD_LOOK_SPAN;
+  if (!keyed) return pushAll(out, composeCharacter(char, headLayer, bob, headBob, scale, factor, glowing));
+  let byBobs = compositions.get(char);
+  if (byBobs === undefined) {
+    byBobs = new Map();
+    compositions.set(char, byBobs);
+  }
+  const key = (bob * HEAD_BOB_SPAN + headBob) * HEAD_LOOK_SPAN + headLook;
+  let composed = byBobs.get(key);
+  if (
+    composed === undefined ||
+    composed.head !== headLayer ||
+    composed.scale !== scale ||
+    composed.factor !== factor ||
+    composed.glowing !== glowing ||
+    // A look may be handed another atlas layer object over its life.
+    composed.body !== char.body
+  ) {
+    composed = {
+      scale,
+      factor,
+      glowing,
+      body: char.body,
+      head: headLayer,
+      layers: composeCharacter(char, headLayer, bob, headBob, scale, factor, glowing),
+    };
+    byBobs.set(key, composed);
+  }
+  return pushAll(out, composed.layers);
+}
+
+function pushAll(out: LayerBuffer, layers: readonly ResolvedLayer[]): boolean {
+  for (let i = 0; i < layers.length; i++) {
+    const layer = layers[i];
+    if (layer !== undefined) out.push(layer);
+  }
+  return layers.length > 0;
+}
+
+/** The figure's layers in paint order; empty when neither its body nor its head has a frame. */
+function composeCharacter(
+  char: SettlerCharacter,
+  headLayer: SpriteLayer | undefined,
+  bob: number,
+  headBob: number,
+  scale: number,
+  factor: number | undefined,
+  glowing: boolean,
+): readonly ResolvedLayer[] {
+  const layers: ResolvedLayer[] = [];
+  // Every layer below derives from these records, so a scaled unit's cast, glow, box and outline follow.
+  const body = scaledLayer(resolveFromLayer(char.body, bob, scale), factor);
   const head =
     headLayer === undefined ? null : scaledLayer(resolveFromLayer(headLayer, headBob, scale), factor);
   if (body !== null) {
     const originY =
       char.castAnchor === 'body-bottom' ? (body.frame.offsetY + body.frame.height) * body.scale : undefined;
-    out.push(castLayerFor(body, undefined, originY));
+    layers.push(castLayerFor(body, undefined, originY));
     if (head !== null) {
       const rows = headCastRows(body.frame, head.frame);
-      if (rows > 0) out.push(castLayerFor(head, rows, originY));
+      if (rows > 0) layers.push(castLayerFor(head, rows, originY));
     }
     const shadow = scaledLayer(shadowLayerFor(char.body, bob, scale), factor);
-    if (shadow !== null) out.push(blobLayerFor(shadow));
+    if (shadow !== null) layers.push(blobLayerFor(shadow));
   }
-  if (char.glow === 'always' || (item.glow === true && char.glow !== 'never')) {
-    if (body !== null) pushGlow(out, body);
-    if (head !== null) pushGlow(out, head);
+  if (glowing) {
+    if (body !== null) layers.push(...glowLayersFor(body));
+    if (head !== null) layers.push(...glowLayersFor(head));
   }
-  if (body !== null) out.push(body);
-  if (head !== null) out.push(headLayerFor(head));
-  return body !== null || head !== null;
+  if (body !== null) layers.push(body);
+  if (head !== null) layers.push(headLayerFor(head));
+  return layers;
 }
 
 /** The scale a look's layers draw at. */
