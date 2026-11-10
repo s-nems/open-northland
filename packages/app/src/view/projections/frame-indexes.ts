@@ -9,6 +9,7 @@ import {
 } from '@open-northland/render/data';
 import {
   entitiesWith,
+  entityById,
   indexesOf,
   positionedWithin,
   type SignpostReachView,
@@ -50,6 +51,11 @@ const NO_SEAT = -1;
 const NO_TYPE = -1;
 /** No good: a read that only registers its index. */
 const NO_GOODS: ReadonlyMap<number, MinimapFeature> = new Map();
+
+/** The home and the child the last `families` and `parents` reads found: while they still answer, the
+ *  next read walks no entities, so a bench reading per delta measures the indexes and not the search. */
+let firstHome = NO_ENTITY;
+let firstChild = NO_ENTITY;
 
 /** A frame index read that may need the seat's signpost reach, which the runtime asks the host for. */
 export interface AppFrameIndexReader extends FrameIndexReader {
@@ -124,20 +130,29 @@ export const FRAME_INDEX_READERS: readonly AppFrameIndexReader[] = [
   { name: 'assistant bookings', read: (snapshot) => assistantBookingsOf(snapshot, NO_SEAT) },
   {
     name: 'families',
-    // The grouping registers on the first home anybody lives in, as a door badge's read does; a one-off
-    // walk, so the split measures no other index.
+    // The grouping registers on the first home anybody lives in, as a door badge's read does.
     read: (snapshot) => {
+      if (homeFamiliesOf(snapshot, firstHome) !== undefined) return;
       for (const e of snapshot.entities) {
-        if (isBuilding(e) && homeFamiliesOf(snapshot, e.id) !== undefined) return;
+        if (isBuilding(e) && homeFamiliesOf(snapshot, e.id) !== undefined) {
+          firstHome = e.id;
+          return;
+        }
       }
     },
   },
   {
     name: 'parents',
-    // A notice naming a child reads its father once; the same one-off walk finds the first child.
+    // A notice naming a child reads its father once.
     read: (snapshot) => {
+      const known = entityById(snapshot, firstChild);
+      if (known !== undefined && isSettler(known) && !isAdult(known)) {
+        fatherOf(snapshot, known);
+        return;
+      }
       for (const e of snapshot.entities) {
         if (isSettler(e) && !isAdult(e)) {
+          firstChild = e.id;
           fatherOf(snapshot, e);
           return;
         }
