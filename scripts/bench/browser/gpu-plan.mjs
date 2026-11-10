@@ -49,7 +49,7 @@ const MAGNIFIED_ZOOM = 2;
 const WIDE_ZOOM = 0.35;
 /** A `?weather=<kind>:<percent>` amount past every kind's full storm: a thunderstorm with lightning, a
  *  blizzard. A bare kind shows the default heavy shower, which is a full storm for sand already. */
-const FULL_STORM_PERCENT = 100;
+export const FULL_STORM_PERCENT = 100;
 const TOGGLE_ZOOMS = [DENSE_ZOOM, 0.5];
 /** The magnifier comparison's zooms: 0.5 and 0.7 minify, 1 draws a texel per pixel and 2 magnifies.
  *  xBR minifies its pages there, a prescaled scaler its twins at four times the texels. */

@@ -1,5 +1,7 @@
 /** The sessions, rows and report shape of `npm run bench:gpu-settings`; pure, so it unit-tests. */
 
+import { FULL_STORM_PERCENT } from './gpu-plan.mjs';
+
 const USAGE = 'usage: npm run bench:gpu-settings -- checkpoint origin [output-dir] [cycles]';
 const DEFAULT_OUTPUT = 'bench-out/gpu-settings';
 const DEFAULT_CYCLES = 10;
@@ -9,6 +11,15 @@ const WIDE_ZOOM = 0.5;
 /** The night step of the game's own day and night cycle (`view/script/day-night.ts`), held with `?tint=`. */
 const NIGHT_TINT = 58;
 const SCALED_RENDER = 1.5;
+
+/** The weather sessions' `?weather=` values: the default heavy showers, a thunderstorm and a blizzard. */
+const WEATHER_SESSIONS = {
+  rain: 'rain',
+  snow: 'snow',
+  sand: 'sand',
+  storm: `rain:${FULL_STORM_PERCENT}`,
+  blizzard: `snow:${FULL_STORM_PERCENT}`,
+};
 
 /** The art filters a session can switch to live; `off` is enhanced sampling disabled. */
 const PRESCALED_FILTERS = ['xbrz', 'superxbr', 'mmpx'];
@@ -89,8 +100,8 @@ export function settingsSessions() {
         rows: [row('control', 'none', null, null), enhancement('dayNight')],
       })),
     },
-    ...['rain', 'snow'].map((weather) => ({
-      id: weather,
+    ...Object.entries(WEATHER_SESSIONS).map(([id, weather]) => ({
+      id,
       params: { weather },
       settings: {},
       views: [
