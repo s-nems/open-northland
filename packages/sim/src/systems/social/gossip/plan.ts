@@ -157,6 +157,20 @@ export function planGossipSeek(
   // the owner.
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;
+  return seekPartner(world, ctx, e, owner, hx, hy, candidates);
+}
+
+/** {@link planGossipSeek}'s search and claim, apart from its bar tests: the partner filters close over
+ *  the seeker, and a function holding closures allocates their scope on every call, taken or not. */
+function seekPartner(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  owner: number,
+  hx: number,
+  hy: number,
+  candidates: GossipCandidates,
+): boolean {
   const buckets = candidates.ensure();
   const idle = idlePartnerFilter(world, ctx.tick, e, owner);
   const chatting = (cand: Entity): boolean =>

@@ -86,7 +86,9 @@ export function speciesHerdOf(
 ): SpeciesHerd {
   let all = 0;
   let adults = 0;
-  for (const e of herdOf(world, farm)) {
+  const herd = herdOf(world, farm);
+  for (let i = 0; i < herd.length; i++) {
+    const e = herd[i] as Entity;
     if (speciesGoodOf(world, ctx, e) !== speciesGood) continue;
     all += 1;
     if (isAdultAnimal(world, e)) adults += 1;

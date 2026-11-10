@@ -13,7 +13,7 @@ import {
   Wedding,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
@@ -108,26 +108,28 @@ export function findPartnerFor(
       ? null
       : settlementOf(world, { content, terrain }, terrain, owner, from);
   if (settlement !== null && !settlement.holds(seeker)) return null;
-  let best: { entity: Entity; dist: number } | null = null;
-  for (const e of world.canonicalQuery(Person, Position)) {
+  let best: Entity | null = null;
+  let bestDist = 0;
+  // By index and without a node object: the search reads every person on the map.
+  const people = world.canonicalQuery(Person, Position);
+  for (let i = 0; i < people.length; i++) {
+    const e = people[i] as Entity;
     if (e === seeker || !mayMarry(world, content, e)) continue;
     if (world.get(e, Settler).tribe !== tribe || ownerOf(world, e) !== owner) continue;
     if (world.has(e, Female) === seekerFemale) continue;
     const p = world.get(e, Position);
-    const node = nodeOfPosition(p.x, p.y);
-    const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
-    if (best !== null && dist >= best.dist) continue;
-    if (
-      limit !== null &&
-      terrain !== undefined &&
-      !limit.allowsNode(terrain.nodeAtClamped(node.hx, node.hy))
-    ) {
+    const hx = nodeHxOfPosition(p.x, p.y);
+    const hy = nodeHyOfPosition(p.x, p.y);
+    const dist = Math.abs(hx - from.hx) + Math.abs(hy - from.hy);
+    if (best !== null && dist >= bestDist) continue;
+    if (limit !== null && terrain !== undefined && !limit.allowsNode(terrain.nodeAtClamped(hx, hy))) {
       continue;
     }
     if (settlement !== null && !settlement.holds(e)) continue;
-    best = { entity: e, dist };
+    best = e;
+    bestDist = dist;
   }
-  return best?.entity ?? null;
+  return best;
 }
 
 /** The settlement `player` holds around `from`, as a test of who belongs to it: a settler standing inside

@@ -103,12 +103,19 @@ export function cargoHandHasWork(world: World, content: ContentSet, vehicle: Ent
   const stock = world.tryGet(vehicle, VehicleStock);
   const type = state === undefined ? undefined : contentIndex(content).vehicles.get(state.vehicleType);
   if (stock === undefined || type === undefined || !isCargoHand(world, content, vehicle, rider)) return false;
-  let short = false;
-  for (const line of stock.lines.values()) {
-    if (line.wanted < line.reserved) return true;
-    if (line.wanted > line.reserved) short = true;
-  }
-  return short && !vehicleIsFullSoon(type, stock);
+  linesOver = false;
+  linesShort = false;
+  stock.lines.forEach(weighLine);
+  return linesOver || (linesShort && !vehicleIsFullSoon(type, stock));
+}
+
+/** What {@link weighLine} found over one hold: a line booked past its wanted amount, and one short of
+ *  it. Module state rather than a closure, since every rider aboard asks every tick. */
+let linesOver = false;
+let linesShort = false;
+function weighLine(line: { readonly wanted: number; readonly reserved: number }): void {
+  if (line.wanted < line.reserved) linesOver = true;
+  else if (line.wanted > line.reserved) linesShort = true;
 }
 
 function lineOf(stock: { lines: Map<number, VehicleStockLine> }, good: number): VehicleStockLine {

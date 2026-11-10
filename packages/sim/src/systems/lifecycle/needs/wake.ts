@@ -87,7 +87,7 @@ export class NeedsWake {
     // Buckets and marks fill in the order the bars moved, which a world restored from a save does not
     // share; the sync digest folds first-touch order, so the pass writes in ascending id either way.
     if (this.visits.length !== this.visitCount) this.visits.length = this.visitCount;
-    this.visits.sort(ascendingId);
+    sortAscending(this.visits);
     return this.visits;
   }
 
@@ -181,6 +181,25 @@ export class NeedsWake {
 function noop(): void {}
 
 const ascendingId = (a: Entity, b: Entity): number => a - b;
+
+/** Lists up to this long are sorted by insertion in place; a native sort allocates a work array per call. */
+const INSERTION_SORT_MAX = 256;
+
+function sortAscending(list: Entity[]): void {
+  if (list.length > INSERTION_SORT_MAX) {
+    list.sort(ascendingId);
+    return;
+  }
+  for (let i = 1; i < list.length; i++) {
+    const e = list[i] as Entity;
+    let at = i;
+    while (at > 0 && (list[at - 1] as Entity) > e) {
+      list[at] = list[at - 1] as Entity;
+      at--;
+    }
+    list[at] = e;
+  }
+}
 
 /** `for...of` over an array allocates an iterator result per element on this path; an index does not. */
 function eachOf(list: readonly Entity[], visit: (e: Entity) => void): void {
