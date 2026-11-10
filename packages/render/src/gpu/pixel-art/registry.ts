@@ -62,7 +62,31 @@ const MAGNIFY_MODES: Readonly<Record<WorldMagnification, number>> = {
  * stay untouched.
  */
 const pixelArtSources = new WeakSet<TextureSource>();
-const magnifiedTextures = new WeakSet<Texture>();
+
+/**
+ * One byte of marks per texture, indexed by the `uid` Pixi numbers its textures with: the world batch
+ * asks for every quad it packs, and an array read costs a fraction of a weak-set probe. A uid is never
+ * reused, so a destroyed texture's byte marks nothing else.
+ */
+const MAGNIFIED_MARK = 1;
+const SHADOW_MARK = 2;
+const INITIAL_TEXTURE_MARKS = 4096;
+let textureMarks = new Uint8Array(INITIAL_TEXTURE_MARKS);
+
+function markTexture(texture: Texture, mark: number): void {
+  const uid = texture.uid;
+  if (uid >= textureMarks.length) {
+    const grown = new Uint8Array(Math.max(textureMarks.length * 2, uid + 1));
+    grown.set(textureMarks);
+    textureMarks = grown;
+  }
+  textureMarks[uid] = (textureMarks[uid] ?? 0) | mark;
+}
+
+function hasTextureMark(texture: Texture, mark: number): boolean {
+  const uid = texture.uid;
+  return uid < textureMarks.length && ((textureMarks[uid] ?? 0) & mark) !== 0;
+}
 
 export function markPixelArtSource(source: TextureSource): void {
   pixelArtSources.add(source);
@@ -74,11 +98,11 @@ export function isPixelArtSource(source: TextureSource): boolean {
 
 /** Register a world texture for edge-aware magnification; a no-op unless its page is pixel art. */
 export function markMagnifiedTexture(texture: Texture, page: TextureSource = texture.source): void {
-  if (pixelArtSources.has(page)) magnifiedTextures.add(texture);
+  if (pixelArtSources.has(page)) markTexture(texture, MAGNIFIED_MARK);
 }
 
 export function isMagnifiedTexture(texture: Texture): boolean {
-  return magnifiedTextures.has(texture);
+  return hasTextureMark(texture, MAGNIFIED_MARK);
 }
 
 /** The mode the batch shader is compiled for; one value for every renderer on the page. */
@@ -156,14 +180,13 @@ export function takeDrawnPages(): ReadonlySet<TextureSource> {
  * views mark straight through; a body frame drawn as a cast silhouette needs a texture view of its own,
  * since the body itself draws from the same page.
  */
-const shadowTextures = new WeakSet<Texture>();
 
 export function markShadowTexture(texture: Texture): void {
-  shadowTextures.add(texture);
+  markTexture(texture, SHADOW_MARK);
 }
 
 export function isShadowTexture(texture: Texture): boolean {
-  return shadowTextures.has(texture);
+  return hasTextureMark(texture, SHADOW_MARK);
 }
 
 /** How a sheet's pixels read: colour with alpha, the indexed layout (palette index in red, coverage in
