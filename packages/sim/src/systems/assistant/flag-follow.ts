@@ -76,6 +76,13 @@ export const FLAG_FOLLOW_CHECK_PERIOD_TICKS = 4 * TICKS_PER_SECOND;
  *  20 s at the base clock. */
 export const REPLANT_RETRY_EVERY_CHECKS = 5;
 
+/** After this many searches from one flag in a row found nothing, a worked-out gatherer searches again
+ *  only every {@link HOPELESS_REPLANT_RETRY_EVERY_CHECKS} of his checks (authored): a post that keeps
+ *  missing rarely gains a patch within seconds, and each miss paid the full search. 60 s at the base
+ *  clock, a multiple of the first retry phase. */
+export const REPLANT_MISSES_BEFORE_SLOW_RETRY = 3;
+export const HOPELESS_REPLANT_RETRY_EVERY_CHECKS = 15;
+
 export const flagFollowSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless: no cells to plant a flag on
@@ -297,10 +304,16 @@ function followedGoods(world: World, ctx: SystemContext, e: Entity, jobType: num
 }
 
 /** Whether a worked-out gatherer searches for a re-plant on this check: at once when no search from his
- *  flag has missed yet, then on his phase of every {@link REPLANT_RETRY_EVERY_CHECKS}. */
+ *  flag has missed yet, then on his phase of every {@link REPLANT_RETRY_EVERY_CHECKS}, and of every
+ *  {@link HOPELESS_REPLANT_RETRY_EVERY_CHECKS} once {@link REPLANT_MISSES_BEFORE_SLOW_RETRY} have missed. */
 function replantDue(world: World, e: Entity, flagNode: HalfCellNode, round: number): boolean {
-  if (replantMissesAt(world, e, flagNode) === 0) return true;
-  return (round + e) % REPLANT_RETRY_EVERY_CHECKS === 0;
+  const misses = replantMissesAt(world, e, flagNode);
+  if (misses === 0) return true;
+  const every =
+    misses < REPLANT_MISSES_BEFORE_SLOW_RETRY
+      ? REPLANT_RETRY_EVERY_CHECKS
+      : HOPELESS_REPLANT_RETRY_EVERY_CHECKS;
+  return (round + e) % every === 0;
 }
 
 /** How many re-plant searches from `flagNode` in a row found nothing for `e`. */

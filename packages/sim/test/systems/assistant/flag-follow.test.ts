@@ -19,6 +19,8 @@ import { fx, nodeOfPosition, ONE, Simulation } from '../../../src/index.js';
 import {
   FLAG_FOLLOW_CHECK_PERIOD_TICKS,
   FOLLOW_FLAG_BAND,
+  HOPELESS_REPLANT_RETRY_EVERY_CHECKS,
+  REPLANT_MISSES_BEFORE_SLOW_RETRY,
   REPLANT_RETRY_EVERY_CHECKS,
   workReachOf,
 } from '../../../src/systems/assistant/flag-follow.js';
@@ -132,6 +134,16 @@ describe('assistant flag follow', () => {
     runTicks(sim, CHECK_ROUND_TICKS);
     expect(nodeOf(sim, flag)).toEqual(before);
     expect(sim.world.get(gatherer, ReplantMisses)).toEqual({ ...before, misses: 1 });
+  });
+
+  it('searches again less often once its searches keep missing', () => {
+    const { sim, gatherer, tree } = setup(true);
+    sim.world.destroy(tree);
+    const misses = (): number => sim.world.tryGet(gatherer, ReplantMisses)?.misses ?? 0;
+    while (misses() < REPLANT_MISSES_BEFORE_SLOW_RETRY) runTicks(sim, FLAG_FOLLOW_CHECK_PERIOD_TICKS);
+    // One full slow phase: the earlier retry phase would have searched three times in it.
+    runTicks(sim, FLAG_FOLLOW_CHECK_PERIOD_TICKS * HOPELESS_REPLANT_RETRY_EVERY_CHECKS);
+    expect(misses()).toBe(REPLANT_MISSES_BEFORE_SLOW_RETRY + 1);
   });
 
   it('plants two worked-out flags after one resource on different nodes', () => {
