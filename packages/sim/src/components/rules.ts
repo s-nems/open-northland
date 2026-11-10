@@ -225,9 +225,45 @@ export function diplomacyStance(world: World, from: number, to: number): Diploma
 /** A player-slot bitmask naming every slot: players are < {@link MAX_PLAYERS}, which fits one integer. */
 export const EVERY_PLAYER = (1 << MAX_PLAYERS) - 1;
 
+/** One world's {@link hostilePlayerMasks} with the stance store generations they were derived at. */
+interface HeldHostileMasks {
+  readonly masks: readonly number[];
+  readonly diplomacy: number;
+  readonly diplomacyValues: number;
+}
+const heldHostileMasks = new WeakMap<World, HeldHostileMasks>();
+
+function hostileMasksCurrent(world: World, held: HeldHostileMasks): boolean {
+  return (
+    held.diplomacy === world.componentGeneration(DiplomacyRules) &&
+    held.diplomacyValues === world.componentValueGeneration(DiplomacyRules)
+  );
+}
+
 /** Per player slot, the slot bits of the players it holds `enemy` toward or from: the either-way rule a fight
- *  and a body block share. Read once per pass; a stance written later is seen by the next one. */
-export function hostilePlayerMasks(world: World): number[] {
+ *  and a body block share. Held per world until a stance generation moves; the registered verifier
+ *  re-derives it. */
+export function hostilePlayerMasks(world: World): readonly number[] {
+  const held = heldHostileMasks.get(world);
+  if (held !== undefined && hostileMasksCurrent(world, held)) return held.masks;
+  if (held === undefined) {
+    world.registerCacheVerifier('hostilePlayerMasks', () => {
+      const current = heldHostileMasks.get(world);
+      if (current === undefined || !hostileMasksCurrent(world, current)) return [];
+      const derived = deriveHostilePlayerMasks(world);
+      return current.masks.every((m, p) => m === derived[p]) ? [] : ['hostilePlayerMasks is stale'];
+    });
+  }
+  const masks = deriveHostilePlayerMasks(world);
+  heldHostileMasks.set(world, {
+    masks,
+    diplomacy: world.componentGeneration(DiplomacyRules),
+    diplomacyValues: world.componentValueGeneration(DiplomacyRules),
+  });
+  return masks;
+}
+
+function deriveHostilePlayerMasks(world: World): number[] {
   const masks: number[] = [];
   for (let p = 0; p < MAX_PLAYERS; p++) {
     let mask = 0;
@@ -362,7 +398,7 @@ function holdsCurrent(world: World, held: HeldCombatMasks): boolean {
 }
 
 function deriveCombatHostileMasks(world: World): number[] {
-  const masks = hostilePlayerMasks(world);
+  const masks = [...hostilePlayerMasks(world)];
   for (let p = 0; p < MAX_PLAYERS; p++) masks[p] = (masks[p] ?? 0) & ~peacePartnerBits(world, p);
   return masks;
 }
