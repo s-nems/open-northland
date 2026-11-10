@@ -54,8 +54,14 @@ export class GenerationJournals {
    * per entry.
    */
   deltasSince(component: Component<unknown>, since: number): readonly Entity[] | null {
+    const journal = this.byComponent[component.id];
+    if (journal === undefined) return null;
+    const { entities, head } = journal;
+    if (since < journal.start || since < head - entities.length || since > head) return null;
+    if (since === head) return NO_DELTAS;
     const out: Entity[] = [];
-    return this.replaySince(component, since, (e) => out.push(e)) ? out : null;
+    for (let g = since; g < head; g++) out.push(entities[g % entities.length] as Entity);
+    return out;
   }
 
   /** {@link deltasSince} handed to `visit` one by one rather than collected: false, visiting nothing,
@@ -69,6 +75,9 @@ export class GenerationJournals {
     return true;
   }
 }
+
+/** What a caught-up reader gets: shared, so the common empty answer allocates nothing. */
+const NO_DELTAS: readonly Entity[] = [];
 
 /** Double a full ring, moving each retained op to its slot in the larger one. */
 function grow(journal: GenerationJournal): void {
