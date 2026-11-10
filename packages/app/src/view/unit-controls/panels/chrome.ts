@@ -54,6 +54,7 @@ import { buildingPanelActions, buildingPeers } from './building.js';
 import type { EquipPickController } from './equip-picker.js';
 import { groupPanelActions } from './group.js';
 import { createPendingTradeMarks } from './pending-trade-marks.js';
+import { claimOncePerTask } from './pointer-claim.js';
 import { type SettlerContractCommands, settlerPanelActions } from './settler.js';
 import { armedVehiclePick, vehiclePanelActions, vehiclePeersOf } from './vehicle.js';
 
@@ -531,14 +532,16 @@ export async function createUnitChrome(
     panel: () => panel,
     actions: () => mounts.current().actions,
     portraits,
-    claimsPointer: (x, y) =>
-      settlerPanel.claims(x, y) ||
-      vehiclePanel.claims(x, y) ||
-      buildingPanel.claims(x, y) ||
-      groupPanel.claims(x, y) ||
-      palisadePanel.claims(x, y) ||
-      signpostPanel.claims(x, y) ||
-      tradeWindow.claims(x, y),
+    claimsPointer: claimOncePerTask(
+      (x, y) =>
+        settlerPanel.claims(x, y) ||
+        vehiclePanel.claims(x, y) ||
+        buildingPanel.claims(x, y) ||
+        groupPanel.claims(x, y) ||
+        palisadePanel.claims(x, y) ||
+        signpostPanel.claims(x, y) ||
+        tradeWindow.claims(x, y),
+    ),
     browse: (step) => settlerPanel.browse(step) || vehiclePanel.browse(step) || buildingPanel.browse(step),
     upgradeBuilding: () => buildingPanel.upgrade(),
     buildingAlarm: () => buildingPanel.alarm(),
