@@ -9,7 +9,16 @@ const SIZE = 8;
 const page = (): TextureSource => new TextureSource({ width: SIZE, height: SIZE });
 const frameOn = (source: TextureSource): Texture =>
   new Texture({ source, frame: new Rectangle(0, 0, SIZE / 2, SIZE / 2) });
-const quadOf = (texture: Texture): TableQuad => ({ sprite: { texture }, lutTexture: null, lut: undefined });
+/** A quad no table has placed yet. */
+const NO_SLOT = -1;
+type PlacedQuad = { -readonly [K in keyof TableQuad]: TableQuad[K] };
+const quadOf = (texture: Texture): PlacedQuad => ({
+  sprite: { texture },
+  lutTexture: null,
+  lut: undefined,
+  table: null,
+  textureId: NO_SLOT,
+});
 /** A frame drawn through `lut`, as the human palette's frames are. */
 function palettedOn(source: TextureSource, lut: TextureSource): Texture {
   const texture = frameOn(source);
@@ -27,6 +36,28 @@ describe('DrawTable', () => {
     expect(quads.map((quad) => table.join(quad))).toEqual([0, 1, 0]);
     expect(table.count).toBe(2);
     expect(joined).toEqual([a, b]);
+  });
+
+  it('lists a page again whose slot a fill dropped, though a quad still names that slot', () => {
+    const table = new DrawTable(PAGES, () => {});
+    const [first, second] = [quadOf(frameOn(page())), quadOf(frameOn(page()))];
+    /** Joins as a quad's owner does, noting where the table put its page. */
+    const place = (quad: PlacedQuad): number | null => {
+      const slot = table.join(quad);
+      quad.table = table;
+      quad.textureId = slot ?? NO_SLOT;
+      return slot;
+    };
+    expect([place(first), place(second)]).toEqual([0, 1]);
+    table.finish();
+    table.begin();
+    expect(place(first)).toBe(0);
+    table.finish();
+    expect(table.count).toBe(1);
+    table.begin();
+    expect(table.fits([second])).toBe(true);
+    expect(place(second)).toBe(1);
+    expect(table.count).toBe(2);
   });
 
   it('counts a page shared by several quads once against the free slots', () => {

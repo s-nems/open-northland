@@ -7,6 +7,10 @@ export interface TableQuad {
   /** The texture {@link lut} was read for; a rebuild asks again only once the sprite's texture changes. */
   lutTexture: Texture | null;
   lut: TextureSource | undefined;
+  /** The table its draw bound when it was last placed and the slot of its page there, as its owner
+   *  wrote them: where the page still sits, a fill finds its slot without a lookup. */
+  readonly table: unknown;
+  readonly textureId: number;
 }
 
 function lutOf(quad: TableQuad, texture: Texture): TextureSource | undefined {
@@ -92,7 +96,7 @@ export class DrawTable extends BatchTextureArray {
         if (lut === null) lut = quadLut;
         else if (lut !== quadLut) return false;
       }
-      const slot = this.slots.get(source);
+      const slot = this.slotOf(quad, source);
       if ((slot !== undefined && this.claimed[slot] === this.fill) || listedBefore(quads, q, source))
         continue;
       added++;
@@ -107,7 +111,7 @@ export class DrawTable extends BatchTextureArray {
     const lut = lutOf(quad, texture);
     if (lut !== undefined && this.lut !== null && this.lut !== lut) return null;
     const source = texture.source;
-    let slot = this.slots.get(source);
+    let slot = this.slotOf(quad, source);
     if (slot === undefined) {
       const free = this.freeSlot();
       if (free === null) return null;
@@ -127,6 +131,15 @@ export class DrawTable extends BatchTextureArray {
       this.joined(lut);
     }
     return slot;
+  }
+
+  /** The slot listing `source`: the one `quad` last drew it from while the page still sits there (a slot
+   *  standing in for a destroyed page holds a listed page too, which draws from it as well), else the
+   *  table's own lookup. */
+  private slotOf(quad: TableQuad, source: TextureSource): number | undefined {
+    const held = quad.textureId;
+    if (quad.table === this && held < this.count && this.textures[held] === source) return held;
+    return this.slots.get(source);
   }
 
   /** Unlist the page in `slot`. A slot that holds a stand-in for a destroyed page holds a page listed at

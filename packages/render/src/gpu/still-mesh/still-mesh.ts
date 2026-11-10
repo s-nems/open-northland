@@ -246,7 +246,8 @@ function holdsFrom(
   let at = next;
   for (const child of container.children) {
     if (!displayed(child, layer)) continue;
-    if (nestedGroup(child)) {
+    // The sprite the next quad expects is no group: most children end the question here.
+    if (quads[at]?.sprite !== child && nestedGroup(child)) {
       at = holdsFrom(child, quads, at, layer);
       if (at < 0) return -1;
       continue;
