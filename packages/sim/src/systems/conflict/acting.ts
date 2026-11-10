@@ -43,7 +43,7 @@ import type { CombatIndex } from './combat-index.js';
 import { asleepOnDuty } from './engage-combatant.js';
 import { DEFEND_RADIUS_NODES } from './engagement.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, SIGHT_RADIUS_NODES, wildPursuit } from './targeting.js';
-import { mannedPostOf, TOWER_RANGE_BONUS_NODES } from './tower-post.js';
+import { TOWER_RANGE_BONUS_NODES } from './tower-post.js';
 import { attackerWeapon } from './weapons.js';
 
 /**
@@ -99,12 +99,12 @@ export function mayEngage(
     // Every search below finds nothing, so only a guard off its anchor acts, and not from a manned post.
     if (!guardsAnchor(ctx.content, mode, settler.jobType) || !awayFromAnchor(world, ctx, terrain, e, here))
       return false;
-    return !garrisoned || mannedPostOf(world, ctx, e) === null;
+    return !garrisoned || index.mannedPost(world, ctx, e) === null;
   }
   const x = terrain.xOf(here);
   const y = terrain.yOf(here);
   // A manned post searches its weapon's reach raised by the tower, and neither flees nor walks back.
-  if (garrisoned && mannedPostOf(world, ctx, e) !== null) {
+  if (garrisoned && index.mannedPost(world, ctx, e) !== null) {
     return index.othersWithin(owner.player, x, y, reachOf(world, ctx, e) + TOWER_RANGE_BONUS_NODES);
   }
   // Every owned search stays inside this, bar a guard's search further out.

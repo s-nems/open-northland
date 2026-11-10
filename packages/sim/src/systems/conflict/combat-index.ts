@@ -23,7 +23,9 @@ import {
   playerOfBit,
   type SearchMetric,
 } from './combat-grid.js';
+import { type MannedPosts, mannedPostsOf } from './manned-posts.js';
 import { HeldFiringBuildings } from './targeting.js';
+import { mannedPostOf } from './tower-post.js';
 
 /** A candidate packs as `distance * CANDIDATE_ID_SPAN + entity`, so a numeric sort orders by distance and then
  *  id. Entity ids stay below 2^32 and distances below 2^21, so the key is an exact double. */
@@ -99,6 +101,8 @@ export class CombatIndex {
   /** The buildings able to shoot this build, the only ones a struck civilian runs from. The next index
    *  built for the same world refreshes this set in place. */
   readonly firing: ReadonlySet<Entity>;
+  /** Which garrison holds its post, synced at this build; null for a `presence` index. */
+  private readonly posts: MannedPosts | null;
   /** {@link firing} as the getter `strikeRank` reads. */
   readonly firingNow = (): ReadonlySet<Entity> => this.firing;
   /** How many queries are iterating their band: an `accept` that re-enters a query scans on the next
@@ -113,13 +117,25 @@ export class CombatIndex {
     this.hostileMasks = combatHostileMasks(world);
     this.grid = combatGridOf(world, ctx, terrain);
     this.grid.startBuild(world, ctx);
-    this.firing = use === 'pass' ? heldFiringOf(world).refresh(world, ctx) : NO_FIRING;
+    if (use === 'pass') {
+      this.posts = mannedPostsOf(world, ctx.content);
+      this.posts.sync(ctx);
+      this.firing = heldFiringOf(world).refresh(world, ctx, this.posts);
+    } else {
+      this.posts = null;
+      this.firing = NO_FIRING;
+    }
     // A vehicle moves, so it joins per build rather than in a held layer.
     for (const v of world.query(Vehicle, Health, Position)) {
       const owner = world.tryGet(v, Owner);
       const admit = this.grid.bodyAdmitter(v, owner === undefined ? 0 : playerBit(owner.player));
       forEachVehicleFootprintNode(world, ctx.content, terrain, v, admit);
     }
+  }
+
+  /** The post `e` is holding (`mannedPostOf`), or null. */
+  mannedPost(world: World, ctx: SystemContext, e: Entity): Entity | null {
+    return this.posts === null ? mannedPostOf(world, ctx, e) : this.posts.mannedPost(ctx, e);
   }
 
   /** Whether member `e` is a plain building - the siege tier a warrior turns on only when nothing better is

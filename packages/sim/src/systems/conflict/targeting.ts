@@ -40,6 +40,7 @@ import {
 } from '../readviews/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 import { EpochMarks } from './epoch-marks.js';
+import type { MannedPosts } from './manned-posts.js';
 import { holdsPost, standsAtPost } from './tower-post.js';
 import { vehicleWeapon } from './weapons.js';
 
@@ -341,9 +342,17 @@ export class HeldFiringBuildings {
     if (!this.marks.has(b)) this.firing.delete(b);
   };
 
-  refresh(world: World, ctx: SystemContext): ReadonlySet<Entity> {
+  private world: World | undefined;
+  private readonly markManned = (e: Entity, post: Entity): void => {
+    if (!this.marks.has(post) && this.world !== undefined && isAlive(this.world, e)) this.mark(post);
+  };
+
+  /** `posts` is synced: its manned towers stand in for the walk over every garrison. */
+  refresh(world: World, ctx: SystemContext, posts: MannedPosts): ReadonlySet<Entity> {
     this.marks.begin();
-    forEachFiringBuilding(world, ctx, this.marked, this.mark);
+    this.world = world;
+    posts.forEachManning(this.markManned);
+    forEachFiringShelter(world, ctx, this.marked, this.mark);
     this.firing.forEach(this.dropStale);
     return this.firing;
   }
@@ -364,6 +373,16 @@ function forEachFiringBuilding(
     if (post === null || !isAlive(world, e)) continue;
     if (holdsPost(world, ctx, e, post)) mark(post);
   }
+  forEachFiringShelter(world, ctx, marked, mark);
+}
+
+/** The defence-mode half of {@link forEachFiringBuilding}. */
+function forEachFiringShelter(
+  world: World,
+  ctx: SystemContext,
+  marked: (b: Entity) => boolean,
+  mark: (b: Entity) => void,
+): void {
   for (const shelter of shelterOccupancy(world).keys()) {
     if (marked(shelter) || !isAlive(world, shelter) || !shelterStillHolds(world, ctx, shelter)) continue;
     if (houseBow(ctx.content, world.get(shelter, Building).tribe) !== undefined) mark(shelter);
