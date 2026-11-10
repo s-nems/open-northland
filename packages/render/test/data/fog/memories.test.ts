@@ -13,6 +13,8 @@ const OWN = 0;
 const ALLY = 1;
 const HOUSE_TILE = { x: 5, y: 4 } as const;
 const HOUSE_CELL = `${HOUSE_TILE.x},${HOUSE_TILE.y}`;
+const TREE_TILE = { x: 9, y: 4 } as const;
+const TREE_CELL = `${TREE_TILE.x},${TREE_TILE.y}`;
 
 /** `player`'s view watching the cells of `nodes` and `watched`; every other cell explored. */
 function watchingNodes(
@@ -129,6 +131,31 @@ describe('FogMemories', () => {
     after.setViews(own, [own, ally]);
     expect(after.syncRoads(null)).toEqual({ added: [NEAR], removed: [] });
     expect(after.drawnGhosts?.has(house.id)).toBe(true);
+  });
+
+  it('remembers a map-layer node only beside other seats, and leaves it to the layer in a save', () => {
+    const tree = entity(2, TREE_TILE.x, TREE_TILE.y, { Resource: { goodType: 3 } });
+    const layer = new Set([tree.id]);
+    const seeing = watchingNodes(OWN, [], 1, [TREE_CELL]);
+    const left = watchingNodes(OWN, [], 2);
+    const ally = watchingNodes(ALLY, [], 1);
+    /** The tree's cell leaves the drawn seat's sight, then another seat sees it felled. */
+    const fellUnseen = (memories: FogMemories, remembered: readonly FogView[]): boolean => {
+      memories.updateGhosts(snapshotOf([tree]), layer, undefined);
+      memories.setViews(left, remembered);
+      memories.updateGhosts(snapshotOf([tree]), layer, undefined);
+      memories.updateGhosts(snapshotOf([]), new Set(), undefined);
+      return memories.drawnGhosts?.has(tree.id) === true;
+    };
+    const played = new FogMemories(NODE_WIDTH);
+    played.setViews(seeing, []);
+    expect(fellUnseen(played, [])).toBe(false);
+    // Begun as a played seat's, the memory records the layer once other seats are remembered.
+    const watched = new FogMemories(NODE_WIDTH);
+    watched.setViews(seeing, []);
+    expect(fellUnseen(watched, [left, ally])).toBe(true);
+    const own = watched.saved().memories.find((memory) => memory.statics.player === OWN);
+    expect(own?.statics.ghosts).toEqual([]);
   });
 
   it('keeps a restored memory whose seat was not viewed since in the next save', () => {

@@ -249,10 +249,11 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
   never reads it, at most 32 Mi UTF-16 units; restore never applies it to gameplay. The app writes its
   client memory there as versioned JSON, `{version, fog, names}`. `fog` is the fog memory,
   `{mapId, seat, memories, layer}`. `seat` is the saving client's local seat. `memories` holds one
-  `{statics, roads}` per remembered seat, a spectator's for every seat it watched: the remembered
-  statics (their draw fields as last seen, `statics.player` naming the seat, `-1` for the players'
-  sight together) and the road nodes that seat believes laid. `layer` is the map's static layer as the
-  drawn seat last saw it (placements whose quad left it, and harvestables still drawn by quad as
+  `{statics, roads}` per remembered seat, a spectator's for every watchable seat and the players'
+  sight together: the remembered statics other than the static layer's placements (their draw fields
+  as last seen, `statics.player` naming the seat, `-1` for the players' sight together) and the road
+  nodes that seat believes laid. `layer` is the map's static layer as the drawn seat last saw it, kept
+  once for every seat (placements whose quad left it, and harvestables still drawn by quad as
   `[entity, placement, state]`, the state being the node's `Resource.remaining` or a bush's stage). A
   load restores it only into a client of the same local seat on the same map, each seat's memory at
   that seat's first view; a held quad whose entity is gone or whose state moved since retires once the

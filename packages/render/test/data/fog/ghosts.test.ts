@@ -332,7 +332,7 @@ describe('FogGhostStore', () => {
     expect(drawn(store).map((g) => g.ref)).toEqual([HOUSE.id]);
   });
 
-  it('bumps its version only when what it draws changed, and clears on fog off', () => {
+  it('bumps its version only when what it draws changed', () => {
     const store = new FogGhostStore();
     const view = viewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 1);
     store.update(snapshotOf([HOUSE]), view);
@@ -345,11 +345,6 @@ describe('FogGhostStore', () => {
     store.update(snapshotOf([HOUSE]), viewOf(new Map([[HOUSE_CELL, FOG_STATE.EXPLORED]]), 3));
     expect(store.version).not.toBe(steady);
     expect(drawn(store)).toHaveLength(1);
-    const remembered = store.version;
-    store.clear();
-    expect(store.version).not.toBe(remembered);
-    store.update(snapshotOf([HOUSE]), viewOf(new Map([[HOUSE_CELL, FOG_STATE.EXPLORED]]), 3));
-    expect(drawn(store)).toEqual([]);
   });
 
   it('diffs a view carrying its mask bytes exactly as one read cell by cell', () => {

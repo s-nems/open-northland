@@ -142,6 +142,8 @@ interface GhostRecord {
   readonly ghost: FogGhost;
   /** Row-major index of the fog cell holding the ghost's tile. */
   readonly cell: number;
+  /** Captured while the map-object layer drew the ref, so a save leaves it to the layer's own memory. */
+  readonly layer: boolean;
 }
 
 interface MutableTileBox {
@@ -160,13 +162,13 @@ interface MutableTileBox {
  * one vision cadence after the last generation that still saw the cell, so a static that changed or died
  * in that span is remembered as it stands at the loss. A draw query walks only the records under its box.
  *
- * The memory is one seat's. A fresh view (the first update, one after `clear`, or a seat switch) only
+ * The memory is one seat's. A fresh view (the first update, a seat switch or another mask size) only
  * records the cell states: what that seat saw before was never recorded here, so its explored ground
  * stays bare until re-seen (approximation of the original's per-player memory). `FogMemories` keeps
  * one store per seat, so a seat's memory outlives the views of the others. A mode change is an
  * ordinary diff. The start of a known-terrain stretch seeds every natural resource, stump, chest and
  * goods heap wherever it stands, as that view shows the map's placed objects; buildings, walls and
- * vehicles stay intel the player has to see for himself, save a multiplayer map's start buildings
+ * vehicles stay intel the player has to see first-hand, save a multiplayer map's start buildings
  * ({@link knowStartBuildings}).
  */
 export class FogGhostStore implements GhostSource, RememberedMarkers {
@@ -186,7 +188,7 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
   private lastMode: FogView['mode'] | null = null;
   /** Whether the current known-terrain stretch already seeded natural resources. */
   private reconSeeded = false;
-  /** The start buildings the next update remembers (see {@link knowStartBuildings}); outlives `clear`. */
+  /** The start buildings the next update remembers (see {@link knowStartBuildings}). */
   private startBuildings: readonly FogGhost[] | null = null;
   /** A saved memory waiting for its seat's first view. */
   private pendingRestore: FogGhostMemory | null = null;
@@ -220,24 +222,24 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     this.recordsStatics = true;
   }
 
-  /** Start the next view of `memory.player` from a saved memory instead of a blank one. Outlives
-   *  `clear`, as {@link knowStartBuildings} does; another seat's first view drops it. */
+  /** Start the next view of `memory.player` from a saved memory instead of a blank one; another seat's
+   *  first view drops it. */
   restore(memory: FogGhostMemory): void {
     this.pendingRestore = memory;
   }
 
-  /** The memory of the seat last viewed, as plain data; null before any view. */
+  /** The memory of the seat last viewed, as plain data; null before any view. It leaves out the
+   *  map-object layer's nodes ({@link recordStatics}): the layer saves its own memory, once, so a save
+   *  grows with what the seat saw built, not with the map's placements. */
   memory(): FogGhostMemory | null {
     if (this.lastPlayer === null) return null;
-    return {
-      player: this.lastPlayer,
-      ghosts: [...this.records.values()].map((record) => record.ghost),
-      reconSeeded: this.reconSeeded,
-    };
+    const ghosts: FogGhost[] = [];
+    for (const record of this.records.values()) if (!record.layer) ghosts.push(record.ghost);
+    return { player: this.lastPlayer, ghosts, reconSeeded: this.reconSeeded };
   }
 
   /** Forget the memory and the view it was diffed against, so the next update starts a fresh view. */
-  clear(): void {
+  private clear(): void {
     this.lastGeneration = -1;
     this.lastPlayer = null;
     this.lastMode = null;
@@ -419,11 +421,12 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     for (const box of boxes.values()) positionedWithin(snapshot, box, candidates);
     // Neighbouring boxes may both return an entity; capturing it twice stores the same record.
     for (const entity of candidates) {
-      if (!this.recordsStatics && staticRefs?.has(entity.id)) continue;
+      const layer = staticRefs?.has(entity.id) === true;
+      if (layer && !this.recordsStatics) continue;
       const pos = readPosition(entity.components);
       if (pos === null || !this.leavingCells.has(this.cellOf(pos.x / ONE, pos.y / ONE))) continue;
       const kind = classify(entity.components);
-      if (isGhostKind(kind)) this.remember(snapshot, elevation, entity, kind);
+      if (isGhostKind(kind)) this.remember(snapshot, elevation, entity, kind, layer);
     }
     candidates.length = 0;
   }
@@ -448,17 +451,18 @@ export class FogGhostStore implements GhostSource, RememberedMarkers {
     elevation: ElevationField | undefined,
     entity: EntitySnapshot,
     kind: FogGhostKind,
+    layer = false,
   ): void {
     const ghost = capture(snapshot, elevation, entity.id, kind, entity.components);
-    if (ghost !== null) this.keep(ghost);
+    if (ghost !== null) this.keep(ghost, layer);
   }
 
-  private keep(ghost: FogGhost): void {
+  private keep(ghost: FogGhost, layer = false): void {
     this.forget(ghost.ref);
     const cell = this.cellOf(ghost.tileX, ghost.tileY);
     // On watched ground the live entity draws instead; a record there would double-draw the ref.
     if (cell === OFF_MASK || this.states[cell] === FOG_STATE.VISIBLE) return;
-    const record: GhostRecord = { ghost, cell };
+    const record: GhostRecord = { ghost, cell, layer };
     this.records.set(ghost.ref, record);
     if (ghost.kind === 'building' || ghost.kind === 'vehicle') this.markerRefs.add(ghost.ref);
     this.buckets.set(ghost.ref, record, ghost.tileX, ghost.tileY);

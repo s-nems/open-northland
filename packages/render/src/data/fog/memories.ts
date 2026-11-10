@@ -46,7 +46,8 @@ interface SeatMemory {
  * Approximation: the layer follows the drawn view alone. A node worked out of the drawn view's sight
  * keeps its whole quad for every seat until a drawn view sees it; one a seat never saw, on terrain it
  * knows from the start, leaves that seat's view once a drawn view saw it worked; scenery cleared under a
- * building goes the same way.
+ * building goes the same way. A save keeps the layer once, so after a load a node another seat saw
+ * worked shows as the layer holds it.
  */
 export class FogMemories implements SeenRoadNetwork {
   private readonly bySeat = new Map<number, SeatMemory>();
@@ -61,7 +62,8 @@ export class FogMemories implements SeenRoadNetwork {
   /** Saved memories waiting for their seat's first view, by `FogView.player`. */
   private readonly restored = new Map<number, SeatFogMemory>();
   private startBuildingsPending = false;
-  /** A multiplayer map's start buildings, captured at the first update for every memory to know. */
+  /** A multiplayer map's start buildings, captured at the first update for every memory to know, one
+   *  begun later or after the fog was off too (those still standing, as the first update saw them). */
   private startBuildings: readonly FogGhost[] | null = null;
   private nodeWidthValue: number;
   /** Whether other seats' views were given beside the drawn one. */
