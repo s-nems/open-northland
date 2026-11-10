@@ -272,6 +272,21 @@ describe('BadgeLayer (placeholder marks)', () => {
     expect(root.children[0]?.zIndex).toBe(screenDepth(door.x, door.y, 'building') + SIGN_DEPTH_EPS);
   });
 
+  it('moves a held badge when the elevation under it is another field, and with a new badge', () => {
+    const W = 4;
+    const H = 8;
+    const elev = new Array<number>(W * H).fill(0);
+    elev[6 * W + 1] = 160;
+    const { layer, root } = layerIn();
+    const held = badge(1, 1, 6, workers(1, 0));
+    layer.draw([held]);
+    const flat = root.children[0]?.position.y ?? 0;
+    layer.draw([held], makeElevationField(elev, W, H));
+    expect(root.children[0]?.position.y).toBeLessThan(flat - 100);
+    layer.draw([badge(1, 2, 6, workers(1, 0))]);
+    expect(root.children[0]?.position.x).toBe(tileToScreen(2, 6).x);
+  });
+
   it('sorts a stack just over its own building and under a settler in front of it', () => {
     const { layer, root } = layerIn();
     layer.draw([badge(1, 3, 5, workers(1, 0))]);

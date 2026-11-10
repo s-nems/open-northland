@@ -4,7 +4,7 @@ import { SIGN_DEPTH_EPS, screenDepth } from '../../../data/scene/index.js';
 import type { ElevationField } from '../../../data/terrain/index.js';
 import { retainOffscreen, retireUndrawn } from '../retained-pool.js';
 import { makePlaceholderStack, makeSignStack } from './badge-stack.js';
-import { badgeAnchor, type DoorBadge } from './door-badge.js';
+import { type BadgeAnchor, badgeAnchor, type DoorBadge } from './door-badge.js';
 import { GARRISON_STAR_MAX, makeGarrisonFlag } from './garrison-flag.js';
 import { type BuildingSignSheet, IDENTITY_COLOUR, type SignGfx, sheetFor } from './sign-gfx.js';
 
@@ -40,6 +40,11 @@ interface BadgeStack {
   /** The player recolour the stack was built with, 0 for the player-agnostic placeholder marks, so an
    *  owner change never rebuilds a visually identical placeholder stack. */
   readonly player: number;
+  /** The badge and elevation {@link anchor} and the key above were read from: the projection hands the
+   *  same badge while its building's inputs hold. */
+  badge: DoorBadge;
+  elevation: ElevationField | undefined;
+  anchor: BadgeAnchor;
 }
 
 /** A badge's row roles as a change-detection key (order matters - it is the drawn order). A settler
@@ -88,9 +93,9 @@ export class BadgeLayer {
     this.drawn.clear();
     for (const badge of badges) {
       if (badge.rows.length === 0 && badge.garrison === undefined) continue;
-      const anchor = badgeAnchor(badge, elevation);
-
       let stack = this.stacks.get(badge.id);
+      const held = stack !== undefined && stack.badge === badge && stack.elevation === elevation;
+      const anchor = held && stack !== undefined ? stack.anchor : badgeAnchor(badge, elevation);
       // Off-screen: retain the pooled stack so it isn't retired, but skip the reposition/rebuild and drop
       // it out of the sprite layer, whose depth sort runs over its children every frame. An id whose stack
       // doesn't exist yet stays unmarked (see {@link retainOffscreen}).
@@ -105,21 +110,27 @@ export class BadgeLayer {
       const colour = this.colourOf(badge.player ?? 0);
       const sheet = this.gfx === undefined ? undefined : sheetFor(this.gfx, colour);
       const player = sheet === undefined ? 0 : colour;
-      const rows = rowsKey(badge);
-      // Capped here, so the key is what the flag looks like: the sixth man onto a post does not rebuild
-      // a stack that would draw the same five stars.
-      const stars = Math.min(badge.garrison?.stars ?? 0, GARRISON_STAR_MAX);
-      const behindFrom = flagBehindFrom(badge);
-      if (
-        stack === undefined ||
-        stack.rows !== rows ||
-        stack.stars !== stars ||
-        stack.behindFrom !== behindFrom ||
-        stack.player !== player
-      ) {
-        destroyStack(stack);
-        stack = this.build(badge, sheet, rows, player, stars, behindFrom);
-        this.stacks.set(badge.id, stack);
+      if (!held || stack === undefined || stack.player !== player) {
+        const rows = rowsKey(badge);
+        // Capped here, so the key is what the flag looks like: the sixth man onto a post does not rebuild
+        // a stack that would draw the same five stars.
+        const stars = Math.min(badge.garrison?.stars ?? 0, GARRISON_STAR_MAX);
+        const behindFrom = flagBehindFrom(badge);
+        if (
+          stack === undefined ||
+          stack.rows !== rows ||
+          stack.stars !== stars ||
+          stack.behindFrom !== behindFrom ||
+          stack.player !== player
+        ) {
+          destroyStack(stack);
+          stack = this.build(badge, sheet, rows, player, stars, behindFrom, anchor, elevation);
+          this.stacks.set(badge.id, stack);
+        } else {
+          stack.badge = badge;
+          stack.elevation = elevation;
+          stack.anchor = anchor;
+        }
       }
       stack.node.visible = true;
       if (stack.node.parent === null) this.spriteLayer.addChild(stack.node);
@@ -157,13 +168,25 @@ export class BadgeLayer {
     player: number,
     stars: number,
     behindFrom: number | undefined,
+    anchor: BadgeAnchor,
+    elevation: ElevationField | undefined,
   ): BadgeStack {
     const gfx = this.gfx;
     const chain =
       gfx !== undefined && sheet !== undefined
         ? makeSignStack(badge.rows, gfx.textures, sheet)
         : { node: makePlaceholderStack(badge.rows) };
-    const base = { node: chain.node, advanceRows: chain.advance, rows, stars, behindFrom, player };
+    const base = {
+      node: chain.node,
+      advanceRows: chain.advance,
+      rows,
+      stars,
+      behindFrom,
+      player,
+      badge,
+      elevation,
+      anchor,
+    };
     // Gated on the capped `stars`, not on `garrison` being present: `stars` is the whole garrison term
     // in the rebuild key, and a zero-star garrison keys the same as none, so such a flag never retires.
     if (badge.garrison === undefined || stars < 1) return base;

@@ -82,8 +82,11 @@ export function makeGarrisonFlag(
     behind = new Container();
     behind.addChild(back);
   }
+  let shown: AtlasFrame | undefined;
   const advance = (clock: number): void => {
     const frame = waveFrameAt(loop, clock);
+    if (frame === shown) return;
+    shown = frame;
     const cut =
       behindFrom === undefined
         ? frame.height

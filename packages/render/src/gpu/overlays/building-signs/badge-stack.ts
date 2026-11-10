@@ -55,8 +55,12 @@ export function makeSignStack(
   sheet: BuildingSignSheet,
 ): SignStackMark {
   const node = new Container();
-  const waving: { readonly sprite: Sprite; readonly loop: WaveLoop<AtlasFrame>; readonly rowY: number }[] =
-    [];
+  const waving: {
+    readonly sprite: Sprite;
+    readonly loop: WaveLoop<AtlasFrame>;
+    readonly rowY: number;
+    shown: AtlasFrame;
+  }[] = [];
   let drawn = 0;
   for (const row of rows) {
     const kind = signKindOf(row.role);
@@ -69,13 +73,16 @@ export function makeSignStack(
     const rowY = -(drawn * SIGN_STEP);
     s.position.set(first.offsetX, rowY + first.offsetY);
     node.addChild(s);
-    if (rest.length > 0) waving.push({ sprite: s, loop, rowY });
+    if (rest.length > 0) waving.push({ sprite: s, loop, rowY, shown: first });
     drawn++;
   }
   if (waving.length === 0) return { node };
   const advance = (clock: number): void => {
-    for (const { sprite, loop, rowY } of waving) {
+    for (const row of waving) {
+      const { sprite, loop, rowY } = row;
       const frame = waveFrameAt(loop, clock);
+      if (frame === row.shown) continue;
+      row.shown = frame;
       sprite.texture = textures.unmagnified(textures.get(sheet.source, frame));
       sprite.position.set(frame.offsetX, rowY + frame.offsetY);
     }
