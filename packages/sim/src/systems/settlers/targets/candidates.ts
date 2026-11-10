@@ -1,7 +1,6 @@
 import {
   Building,
   Crop,
-  Damaged,
   GroundDrop,
   HarvestedBy,
   Palisade,
@@ -25,6 +24,7 @@ import { cropsByFarm } from './crops-by-farm.js';
 import { fieldZones, type NodeMembership } from './field-zones.js';
 import { harvesterMarks } from './harvester-marks.js';
 import { mealCells } from './meal-cells.js';
+import { repairSiteCells } from './repair-site-cells.js';
 import { roadSiteCells as roadSiteCellsOf } from './road-site-cells.js';
 import { stockpileCells } from './stockpile-cells.js';
 import { SinkAvailability } from './stores/sinks.js';
@@ -63,7 +63,7 @@ export interface TargetCandidates {
   /** The road sites, indexed like {@link wallSiteCells} but kept across ticks. */
   readonly roadSiteCells: InteractionCellIndex;
   /** Buildings carrying {@link Damaged}, as a ring index keyed by interaction cell, for the nearest-repair
-   *  pick. Built on first ask, so a pass with no builder looking for repairs never scans them. */
+   *  pick. Kept across ticks and caught up on first ask. */
   readonly repairSiteCells: InteractionCellIndex;
   /** Walls carrying {@link Damaged}, indexed like {@link repairSiteCells}; kept apart because builders
    *  mend walls only once no building site is left. */
@@ -204,12 +204,12 @@ class TickTargets implements TargetCandidates {
   }
 
   get repairSiteCells(): InteractionCellIndex {
-    this.repairSiteCellsMemo ??= this.indexOver(this.world.canonicalQuery(Damaged, Building, Position));
+    this.repairSiteCellsMemo ??= repairSiteCells(this.world, this.ctx.content, this.terrain, 'building');
     return this.repairSiteCellsMemo;
   }
 
   get wallRepairCells(): InteractionCellIndex {
-    this.wallRepairCellsMemo ??= this.indexOver(this.world.canonicalQuery(Damaged, Palisade, Position));
+    this.wallRepairCellsMemo ??= repairSiteCells(this.world, this.ctx.content, this.terrain, 'wall');
     return this.wallRepairCellsMemo;
   }
 
