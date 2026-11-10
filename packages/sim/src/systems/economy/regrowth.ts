@@ -17,7 +17,7 @@ import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/blocked.js';
 import { createResourceNode, tryFootprintCellsOf } from '../footprint/index.js';
 import { type PlacementGrid, placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
-import { landscapesWithin } from '../landscape/view.js';
+import { landscapeStandsAt } from '../landscape/view.js';
 import { bushesAtNode } from '../spatial/bushes.js';
 import { entityNode } from '../spatial/nodes.js';
 import { resourcesAtNode } from '../spatial/resources.js';
@@ -148,11 +148,15 @@ function regrowthSpots(test: SpotTest, terrain: TerrainGraph, start: NodeId): No
   if (test.takesRegrowth(start)) spots.push(start);
   const seen = new Set<NodeId>([start]);
   let frontier = [start];
+  const around: NodeId[] = [];
   for (let step = 0; step < SEARCH_STEPS && frontier.length > 0 && spots.length < MAX_SPOTS; step++) {
     const next: NodeId[] = [];
-    for (const node of frontier) {
-      for (const neighbour of terrain.neighbours(node)) {
-        if (seen.has(neighbour) || !terrain.joined(node, neighbour)) continue;
+    for (let f = 0; f < frontier.length; f++) {
+      const node = frontier[f] as NodeId;
+      const count = terrain.neighboursInto(node, around);
+      for (let i = 0; i < count; i++) {
+        const neighbour = around[i];
+        if (neighbour === undefined || seen.has(neighbour) || !terrain.joined(node, neighbour)) continue;
         seen.add(neighbour);
         next.push(neighbour);
         if (test.takesRegrowth(neighbour)) spots.push(neighbour);
@@ -187,14 +191,17 @@ class SpotTest {
     const hx = terrain.xOf(node);
     const hy = terrain.yOf(node);
     return (
-      !this.holdsLandscape(hx, hy) &&
       terrain.isPlantable(node) &&
+      !this.holdsLandscape(hx, hy) &&
       // The block test first: in a forest it turns down most nodes, at a third of the road test's rings.
-      this.ringsHold(hx, hy, 0, BLOCK_FREE_RINGS, (n) => !this.blocked(n)) &&
-      this.ringsHold(hx, hy, 0, ROAD_FREE_RINGS, (n) => !terrain.isRoad(n)) &&
+      this.ringsHold(hx, hy, 0, BLOCK_FREE_RINGS, this.unblocked) &&
+      this.ringsHold(hx, hy, 0, ROAD_FREE_RINGS, this.offRoad) &&
       this.inForest(hx, hy)
     );
   }
+
+  private readonly unblocked = (node: NodeId): boolean => !this.blocked(node);
+  private readonly offRoad = (node: NodeId): boolean => !this.terrain.isRoad(node);
 
   /** A signpost on the node, which stays a spot. Project rule: a parked vehicle, which shares the
    *  signposts' grid channel, and a work flag count as one. */
@@ -214,7 +221,7 @@ class SpotTest {
       stockpilesAtNode(world, hx, hy).length > 0 ||
       stumpsAtNode(world, hx, hy).length > 0 ||
       bushesAtNode(world, hx, hy).length > 0 ||
-      landscapesWithin(world, this.terrain, { hx, hy }, 0).length > 0
+      landscapeStandsAt(world, this.terrain, hx, hy)
     );
   }
 
@@ -239,7 +246,7 @@ class SpotTest {
   /** Off-map rings reject the spot, so they are checked first; the count stops at a forest. */
   private inForest(hx: number, hy: number): boolean {
     const terrain = this.terrain;
-    if (!this.ringsHold(hx, hy, 1, FOREST_RINGS, () => true)) return false;
+    if (!this.ringsHold(hx, hy, 1, FOREST_RINGS, anyNode)) return false;
     let trees = 0;
     for (let ring = 1; ring <= FOREST_RINGS; ring++) {
       for (let i = 0; i < hexRingLength(ring); i++) {
@@ -255,8 +262,9 @@ class SpotTest {
     const known = this.trees.get(node);
     if (known !== undefined) return known;
     let trees = 0;
-    for (const e of resourcesAtNode(this.world, this.terrain.xOf(node), this.terrain.yOf(node))) {
-      if (this.world.has(e, Felling)) trees++;
+    const resources = resourcesAtNode(this.world, this.terrain.xOf(node), this.terrain.yOf(node));
+    for (let i = 0; i < resources.length; i++) {
+      if (this.world.has(resources[i] as Entity, Felling)) trees++;
     }
     this.trees.set(node, trees);
     return trees;
@@ -281,3 +289,5 @@ class SpotTest {
     return true;
   }
 }
+
+const anyNode = (): boolean => true;

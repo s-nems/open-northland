@@ -93,6 +93,19 @@ class AuthoredLandscapes {
     return this.indexOf(id) !== ABSENT;
   }
 
+  /** Whether a placement anchored on `node` still stands. */
+  standsAt(node: NodeId, world: World, removed: ReadonlySet<number>): boolean {
+    const placements = this.placements;
+    const end = this.nodeStarts[node + 1] ?? 0;
+    for (let k = this.nodeStarts[node] ?? 0; k < end; k++) {
+      const i = this.nodeEntries[k] ?? 0;
+      const id = placements.id(i);
+      if (removed.has(id)) continue;
+      if (!placements.resourceBacked(i) || landscapeResources(world).has(id)) return true;
+    }
+    return false;
+  }
+
   /** Visit the placements anchored on `node`, in file order. */
   forEachAt(node: NodeId, visit: (index: number) => void): void {
     const end = this.nodeStarts[node + 1] ?? 0;
@@ -293,6 +306,25 @@ export function landscapesWithin(
     }
   }
   return found;
+}
+
+/** Whether a standing placement is anchored on node `(hx, hy)`: {@link landscapesWithin} at range 0
+ *  finding any, without building its list. */
+export function landscapeStandsAt(world: World, terrain: TerrainGraph, hx: number, hy: number): boolean {
+  const removed = removedIds(world);
+  if (
+    terrain.inBounds(hx, hy) &&
+    authoredLandscapes(terrain).standsAt(terrain.nodeAt(hx, hy), world, removed)
+  )
+    return true;
+  const added = landscapeEditState(world).added;
+  for (let i = 0; i < added.length; i++) {
+    const placement = added[i];
+    if (placement === undefined || placement.hx !== hx || placement.hy !== hy) continue;
+    if (removed.has(placement.id)) continue;
+    if (placement.resourceBacked !== true || landscapeResources(world).has(placement.id)) return true;
+  }
+  return false;
 }
 
 interface AttachNodes {
