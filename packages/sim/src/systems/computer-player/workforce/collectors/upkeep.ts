@@ -18,11 +18,11 @@ import type { CollectorGround } from './allocate.js';
 import type { WantedGood } from './wanted-goods.js';
 
 /** Every how many of a seat's workforce runs a collector flag is re-aimed at the nearest live resource
- *  (authored). 15 runs of the allocator's beat are about two minutes at the base clock. */
+ *  (authored). 15 runs of the allocator's beat are about four minutes at the base clock. */
 export const FLAG_RELOCATE_EVERY_RUNS = 15;
 
 /** Whether this tick's workforce run re-aims `holder`'s flag. The runs are counted on the allocator's
- *  beat, so each holder's turn comes whichever half of the decisions his seat runs on. Each holder's round
+ *  beat, so each holder's turn comes whichever of the decisions his seat runs on. Each holder's round
  *  is offset by his id, so a seat's holders pay the re-aim over the whole round instead of all on one run. */
 export function flagRelocateDue(ctx: SystemContext, holder: Entity): boolean {
   const run = Math.floor(decisionIndex(ctx.tick) / WORKFORCE_EVERY_DECISIONS);

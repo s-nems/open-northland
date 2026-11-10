@@ -32,6 +32,11 @@ import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import { contentIndex } from '../../../../src/core/content-index.js';
 import type { Entity, World } from '../../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../../src/index.js';
+import {
+  computerDecisionDue,
+  moduleBeatDue,
+  WORKFORCE_EVERY_DECISIONS,
+} from '../../../../src/systems/ai-shared/cadence.js';
 import { TOWER_POST_STRENGTH } from '../../../../src/systems/ai-shared/military/census.js';
 import { ownedBuildings, ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { SpareForce } from '../../../../src/systems/ai-shared/workforce/pool.js';
@@ -284,6 +289,15 @@ const BARE_SOLDIER = 31;
 const BARE_SOLDIERS = 3;
 /** Enough for the seat's decision, the assistant's beats and a walk to the HQ store and back. */
 const ARMING_TICKS = 3000;
+/** The assistant's beats that put two drafts in flight once the seat's standing order is published. */
+const DRAFT_BEATS_TICKS = 68;
+
+/** The seat's first workforce decision and the assistant's first drafts after it. */
+function firstDraftsTicks(): number {
+  let tick = 0;
+  while (!computerDecisionDue(tick, SEAT) || !moduleBeatDue(tick, SEAT, WORKFORCE_EVERY_DECISIONS)) tick++;
+  return tick + DRAFT_BEATS_TICKS;
+}
 
 function spawnBareSoldiers(seat: ArmedSeat, count: number): void {
   for (let i = 0; i < count; i++) {
@@ -708,7 +722,7 @@ describe('workforce module - the barracks and craft selections', () => {
     makeAiSeat(sim, SEAT);
     // The live loop: the seat publishes the counter, the assistant's beats pace the drafts - no
     // `trainSoldier` command from the AI anywhere in the log.
-    sim.run(80);
+    sim.run(firstDraftsTicks());
     expect([...sim.world.query(TrainingOrder)].length).toBeGreaterThanOrEqual(2);
     expect(sim.commands.log.filter((c) => c.command.kind === 'trainSoldier')).toEqual([]);
     // Stable under in-flight drafts: each recruit left the free pool AND counts as booked, so the
@@ -785,7 +799,7 @@ describe('workforce module - the barracks and craft selections', () => {
     });
     spawnMen(sim, 40);
     makeAiSeat(sim, SEAT);
-    sim.run(80); // the standing order is published and at least two drafts are in flight
+    sim.run(firstDraftsTicks()); // the standing order is published and at least two drafts are in flight
     const drilling = [...sim.world.query(AssistantRecruit)].filter((e) => sim.world.has(e, TrainingOrder));
     const interrupted = drilling[0];
     expect(interrupted).toBeDefined();
@@ -1143,7 +1157,7 @@ describe('workforce module - the barracks and craft selections', () => {
       { good: SWORD, amount: 4 },
       { good: BOW, amount: 4 },
     ]);
-    seat.sim.run(80); // the seat publishes its order, the assistant's beats pace the drafts
+    seat.sim.run(firstDraftsTicks()); // the seat publishes its order, the assistant's beats pace the drafts
 
     // Every booking is a class intent - the seat drills nobody into the weaponless base class.
     const armed: readonly AssistantRecruitIntent[] = ['trainSword', 'trainBow'];

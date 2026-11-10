@@ -486,7 +486,7 @@ describe('computerPlayerSystem - cadence, stagger, and module gates', () => {
     expect(dueByRun).toEqual(new Array(FLAG_RELOCATE_EVERY_RUNS).fill(2));
   });
 
-  it('runs the workforce on every other decision of a seat, the seats splitting the beats', () => {
+  it('runs the workforce on one decision of a seat in its stride, the seats splitting the beats', () => {
     const world = worldWithSeats(0, 1);
     const commands = new CommandQueue();
     const runs: Array<{ decision: number; player: number }> = [];
@@ -498,15 +498,16 @@ describe('computerPlayerSystem - cadence, stagger, and module gates', () => {
         return [];
       },
     };
-    const DECISIONS = 4;
+    const DECISIONS = 2 * WORKFORCE_EVERY_DECISIONS;
     for (let tick = 0; tick < DECISIONS * COMPUTER_DECISION_INTERVAL_TICKS; tick++) {
       runComputerModules(world, ctxAt(tick, commands), [workforce]);
     }
+    // Seat 0 on the stride's first decision, seat 1 on its last: each seat's beat is offset by its number.
     expect(runs).toEqual([
       { decision: 0, player: 0 },
-      { decision: 1, player: 1 },
-      { decision: 2, player: 0 },
-      { decision: 3, player: 1 },
+      { decision: WORKFORCE_EVERY_DECISIONS - 1, player: 1 },
+      { decision: WORKFORCE_EVERY_DECISIONS, player: 0 },
+      { decision: 2 * WORKFORCE_EVERY_DECISIONS - 1, player: 1 },
     ]);
     // The shipped allocator carries the stride the stub stands in for.
     const shipped = COMPUTER_MODULES.find((module) => module.id === 'collectResources');

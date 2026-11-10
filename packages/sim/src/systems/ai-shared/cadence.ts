@@ -49,18 +49,19 @@ export function decisionIndex(tick: number): number {
 /**
  * Every how many of a seat's decisions its workforce allocator runs (authored, a performance trade): the
  * allocator is the dearest module of a late settlement. Hires, staffing, the flag upkeep, the army floor
- * and the garrison drafts run on this 8 s beat, and the allocator's limits (one collector post per good,
+ * and the garrison drafts run on this 16 s beat, and the allocator's limits (one collector post per good,
  * the post ramp) count per run. The settlement defence and the military module's orders run on every
- * decision, the 4 s beat.
+ * decision, the 4 s beat. Observed on magiczny_las and diamentowa_dolina: against an 8 s beat the seats
+ * ended a whole game with no fewer settlers or buildings and with more fighters.
  */
-export const WORKFORCE_EVERY_DECISIONS = 2;
+export const WORKFORCE_EVERY_DECISIONS = 4;
 
 /**
  * Every how many of a seat's decisions its build order runs (authored, a performance trade): its line
  * statuses and site searches are the second dearest module of a late settlement. It gives one command a
  * run, so a seat opens or lifts at most one site every 8 s; the sites it keeps open are bounded by its site
- * pace and take minutes to build. It runs on the decisions the workforce allocator skips
- * ({@link BUILD_ORDER_BEAT}), so a seat's decision holds one of the two.
+ * pace and take minutes to build. It runs on decisions the workforce allocator skips
+ * ({@link BUILD_ORDER_BEAT}), so a seat's decision holds at most one of the two.
  */
 export const BUILD_ORDER_EVERY_DECISIONS = 2;
 
