@@ -37,10 +37,12 @@ export interface SlotChaser {
 }
 
 interface Reservation {
-  readonly entity: Entity;
-  readonly target: Entity | undefined;
-  readonly side: Side;
+  entity: Entity;
+  target: Entity | undefined;
+  side: Side;
   shared: boolean;
+  /** The {@link ChaseGoals} round that filled this entry; it counts in that round alone. */
+  round: number;
 }
 
 /** {@link MeleeSlots.crowdingAround}: `occupied` cells of the band held by the asker's own side, and
@@ -74,7 +76,7 @@ export class MeleeSlots {
   /** The standing bodies by node, each with its player. */
   private standing?: ReadonlyMap<NodeId, number>;
   /** Reservations from earlier ticks; a closer ally may take a front slot before its owner arrives. */
-  private enRoute?: Map<NodeId, Reservation>;
+  private enRoute?: ChaseGoals | undefined;
   private readonly claimants = new Map<NodeId, SlotChaser>();
   /** The cells dealt this tick, each with the side it was dealt to. */
   private readonly claimed = new Map<NodeId, Side>();
@@ -98,14 +100,20 @@ export class MeleeSlots {
     this.standing ??= standingFighterPosts(this.world, this.ctx.content, this.terrain);
     if (this.standing.has(cell) && cell !== standingOn) return true;
     if (this.claimed.has(cell)) return !this.canYield(cell, chaser);
-    this.enRoute ??= enRouteChaseGoals(this.world);
-    return this.enRoute.has(cell) && cell !== ownGoal && !this.canYield(cell, chaser);
+    this.enRoute ??= takeChaseGoals(this.world);
+    return this.enRoute.get(cell) !== undefined && cell !== ownGoal && !this.canYield(cell, chaser);
+  }
+
+  /** Hand the pass's reservation table back for the world's next pass; the slots answer nothing after. */
+  release(): void {
+    if (this.enRoute !== undefined) heldChaseGoals.set(this.world, this.enRoute);
+    this.enRoute = undefined;
   }
 
   /** Friendly destinations stay distinct when braking; opposing chasers can still meet head-on. */
   canStop(cell: NodeId, ownGoal: NodeId | undefined, chaser: SlotChaser): boolean {
     if (this.isOccupied(cell)) return false;
-    this.enRoute ??= enRouteChaseGoals(this.world);
+    this.enRoute ??= takeChaseGoals(this.world);
     const side = this.world.tryGet(chaser.entity, Owner)?.player;
     if (cell !== ownGoal && this.enRoute.get(cell)?.shared === true) return false;
     return (
@@ -132,7 +140,7 @@ export class MeleeSlots {
    */
   crowdingAround(node: NodeId, band: WeaponBand, side: Side, mine: OwnClaims): Crowding {
     this.standing ??= standingFighterPosts(this.world, this.ctx.content, this.terrain);
-    this.enRoute ??= enRouteChaseGoals(this.world);
+    this.enRoute ??= takeChaseGoals(this.world);
     const { standing, enRoute } = this;
     let occupied = 0;
     let open = 0;
@@ -172,7 +180,7 @@ export class MeleeSlots {
       if (engagement !== undefined) engagement.repathAt = this.ctx.tick;
       const order = this.world.tryMut(prior.entity, AttackOrder);
       if (order?.breach?.stand === cell) order.breach.stand = null;
-      this.enRoute?.delete(cell);
+      this.enRoute?.drop(cell);
     }
     this.claimed.set(cell, side);
     if (chaser !== undefined) this.claimants.set(cell, chaser);
@@ -359,19 +367,66 @@ export class MeleeSlots {
   }
 }
 
-/** Multiple live routes to one cell cannot be transferred as one reservation. Retain the first
- * canonical owner for crowding and mark the cell shared, so a claimant never leaves a second route live. */
-function enRouteChaseGoals(world: World): Map<NodeId, Reservation> {
-  const out = new Map<NodeId, Reservation>();
-  for (const e of world.canonicalQuery(Engagement, MoveGoal)) {
-    const cell = world.get(e, MoveGoal).cell;
-    const prior = out.get(cell);
-    if (prior !== undefined) {
-      prior.shared = true;
-      continue;
+/** How many dead entries per live chaser a {@link ChaseGoals} table holds, past {@link DEAD_GOALS_SLACK},
+ *  before a refill starts it over. */
+const DEAD_GOALS_PER_CHASER = 4;
+const DEAD_GOALS_SLACK = 64;
+
+/**
+ * The live chase goals by cell. Multiple live routes to one cell cannot be transferred as one reservation:
+ * the first canonical owner is retained for crowding and the cell marked shared, so a claimant never leaves
+ * a second route live. A table outlives its pass and the next refills its entries in place, so only the
+ * entries of the current round count and no reader may walk the table.
+ */
+class ChaseGoals {
+  private readonly byCell = new Map<NodeId, Reservation>();
+  private round = 0;
+
+  refill(world: World): this {
+    const chasers = world.canonicalQuery(Engagement, MoveGoal);
+    if (this.byCell.size > DEAD_GOALS_PER_CHASER * chasers.length + DEAD_GOALS_SLACK) this.byCell.clear();
+    const round = ++this.round;
+    for (let i = 0; i < chasers.length; i++) {
+      const e = chasers[i] as Entity;
+      const cell = world.get(e, MoveGoal).cell;
+      const prior = this.byCell.get(cell);
+      if (prior !== undefined && prior.round === round) {
+        prior.shared = true;
+        continue;
+      }
+      const target = world.get(e, Engagement).target ?? world.tryGet(e, AttackOrder)?.target;
+      const side = world.tryGet(e, Owner)?.player ?? null;
+      if (prior === undefined) {
+        this.byCell.set(cell, { entity: e, target, side, shared: false, round });
+      } else {
+        prior.entity = e;
+        prior.target = target;
+        prior.side = side;
+        prior.shared = false;
+        prior.round = round;
+      }
     }
-    const target = world.get(e, Engagement).target ?? world.tryGet(e, AttackOrder)?.target;
-    out.set(cell, { entity: e, target, side: world.tryGet(e, Owner)?.player ?? null, shared: false });
+    return this;
   }
-  return out;
+
+  get(cell: NodeId): Reservation | undefined {
+    const held = this.byCell.get(cell);
+    return held !== undefined && held.round === this.round ? held : undefined;
+  }
+
+  drop(cell: NodeId): void {
+    const held = this.byCell.get(cell);
+    if (held !== undefined) held.round = 0;
+  }
+}
+
+/** Each world's table between two passes: the one {@link MeleeSlots.release} handed back. */
+const heldChaseGoals = new WeakMap<World, ChaseGoals>();
+
+/** The world's live chase goals, in the table its last pass released when there is one. */
+function takeChaseGoals(world: World): ChaseGoals {
+  const held = heldChaseGoals.get(world);
+  if (held === undefined) return new ChaseGoals().refill(world);
+  heldChaseGoals.delete(world);
+  return held.refill(world);
 }

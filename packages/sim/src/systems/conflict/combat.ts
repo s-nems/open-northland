@@ -1,4 +1,5 @@
 import { Health, Position, Vehicle } from '../../components/index.js';
+import type { Entity } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { mayEngage } from './acting.js';
 import { BattleFront } from './battle-alert.js';
@@ -71,7 +72,7 @@ export const combatSystem: System = (world, ctx) => {
   fireFromShelters(world, ctx, terrain, pass.index);
   // The siege vehicles fight after the men, off the same index, so a catapult's scan sees the tick's
   // settled positions and its aim never depends on where it sits in the vehicle store.
-  for (const v of world.canonicalQuery(Vehicle, Health, Position)) {
-    engageVehicle(world, ctx, terrain, pass, v);
-  }
+  const vehicles = world.canonicalQuery(Vehicle, Health, Position);
+  for (let i = 0; i < vehicles.length; i++) engageVehicle(world, ctx, terrain, pass, vehicles[i] as Entity);
+  pass.slots.release();
 };

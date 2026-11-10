@@ -17,8 +17,11 @@ import { keepsWildTarget } from './targeting.js';
  */
 export function rallyAttackingHerds(world: World, ctx: SystemContext, terrain: TerrainGraph): void {
   const attacking: Entity[] = [];
-  for (const e of world.canonicalQuery(Engagement))
+  const engaged = world.canonicalQuery(Engagement);
+  for (let i = 0; i < engaged.length; i++) {
+    const e = engaged[i] as Entity;
     if (wildTargetOfLeader(world, e) !== null) attacking.push(e);
+  }
   for (const leader of attacking) rallyFollowers(world, ctx, terrain, leader);
 }
 
