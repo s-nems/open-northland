@@ -165,7 +165,9 @@ export function bindWorldBatchPagesAndLut(renderer: Renderer): void {
       renderer.shader.bind(shader, true);
       const pageSizes = pageSizesOf.get(shader);
       if (pageSizes !== undefined) {
-        if (writePageSizes(pageSizes.uniforms.uPageSizes, textures.textures, listed)) pageSizes.update();
+        // The program reads a size per page slot only: the LUT and the slots it fills have none to tell.
+        const pages = binding === null ? listed : binding.pages;
+        if (writePageSizes(pageSizes.uniforms.uPageSizes, textures.textures, pages)) pageSizes.update();
         renderer.shader.updateUniformGroup(pageSizes);
       }
       const twinSlots = twinSlotsOf.get(shader);
@@ -304,17 +306,13 @@ function renderableOf(element: BatchableElement): object | null {
 }
 
 /** The sprite's own row, else the row its texture names (a recoloured stem's frame). */
-function lutRowOf(element: BatchableElement): number {
-  const renderable = renderableOf(element);
-  if (renderable !== null && 'lutRow' in renderable && typeof renderable.lutRow === 'number') {
-    return renderable.lutRow;
-  }
-  return palettedRowOf(element.texture) ?? 0;
+function lutRowOf(element: BatchableElement, ownRow: number | undefined): number {
+  const row: unknown = (renderableOf(element) as Partial<PalettedRow> | null)?.lutRow;
+  return typeof row === 'number' ? row : (ownRow ?? 0);
 }
 
 function glowOf(element: BatchableElement): boolean {
-  const renderable = renderableOf(element);
-  return renderable !== null && 'glow' in renderable && renderable.glow === true;
+  return (renderableOf(element) as Partial<PalettedRow> | null)?.glow === true;
 }
 
 /** A paletted world batch's LUT, the slot it is listed at, and the page slots listed below it. */
@@ -614,19 +612,21 @@ function defineWorldBatcher(): WorldBatcherClass {
     return plain | WORLD_FLAG_SHADOW;
   }
 
-  /** A recoloured stem's frame names its row and takes the plain page's magnification mark. */
-  function recolouredFlags(texture: Texture): number {
-    if (palettedRowOf(texture) === undefined) return 0;
+  /** A recoloured stem's frame, which names its row, takes the plain page's magnification mark. */
+  function recolouredFlags(texture: Texture, ownRow: number | undefined): number {
+    if (ownRow === undefined) return 0;
     return WORLD_FLAG_RECOLOURED | (isMagnifiedTexture(texture) ? WORLD_FLAG_MAGNIFY : 0);
   }
 
   function palettedFlags(element: BatchableElement): number {
+    const texture = element.texture;
+    const ownRow = palettedRowOf(texture);
     return (
       WORLD_FLAG_PALETTED |
       WORLD_FLAG_INDEXED |
-      recolouredFlags(element.texture) |
+      recolouredFlags(texture, ownRow) |
       (glowOf(element) ? WORLD_FLAG_GLOW : 0) |
-      (lutRowOf(element) << WORLD_LUT_ROW_SHIFT)
+      (lutRowOf(element, ownRow) << WORLD_LUT_ROW_SHIFT)
     );
   }
 
