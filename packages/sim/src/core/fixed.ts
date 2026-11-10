@@ -36,24 +36,35 @@ const MAX_WRAP_PERIOD = 2 ** 31;
 declare const __SIM_ASSERTS__: boolean | undefined;
 const DEV: boolean = typeof __SIM_ASSERTS__ === 'boolean' ? __SIM_ASSERTS__ : true;
 
+// A helper is inlined into its callers by bytecode size, so each one tests `DEV` itself and calls its
+// assert only then, and an assert calls out to throw: with the checks and their messages in place, a
+// helper was several times the size of its arithmetic and many call sites stayed real calls.
 function assertSafe(n: number, op: string): void {
-  if (DEV && !Number.isSafeInteger(n)) {
-    throw new Error(`fixed-point overflow in ${op}: ${n} exceeds the safe integer range`);
-  }
+  if (!Number.isSafeInteger(n)) throwOverflow(n, op);
+}
+
+function throwOverflow(n: number, op: string): never {
+  throw new Error(`fixed-point overflow in ${op}: ${n} exceeds the safe integer range`);
 }
 
 /** Guard the intermediate `a*b` product of `mul`/`mulDiv` (already computed as `p`) against
- *  exceeding the exact-integer range; dev-only, compiled out of production builds. */
+ *  exceeding the exact-integer range. */
 function assertProductSafe(p: number, a: number, b: number, op: string): void {
-  if (DEV && Math.abs(p) > MAX_SAFE) {
-    throw new Error(`fixed-point overflow in ${op}: |${a} * ${b}| exceeds 2^53; reduce magnitudes`);
-  }
+  if (Math.abs(p) > MAX_SAFE) throwProductOverflow(a, b, op);
+}
+
+function throwProductOverflow(a: number, b: number, op: string): never {
+  throw new Error(`fixed-point overflow in ${op}: |${a} * ${b}| exceeds 2^53; reduce magnitudes`);
+}
+
+function throwDivisionByZero(): never {
+  throw new Error('fixed-point division by zero');
 }
 
 export const fx = {
   fromInt(n: number): Fixed {
     const v = n * ONE;
-    assertSafe(v, 'fromInt');
+    if (DEV) assertSafe(v, 'fromInt');
     return v as Fixed;
   },
   /** Truncate toward zero to an integer. */
@@ -70,32 +81,32 @@ export const fx = {
   },
   add(a: Fixed, b: Fixed): Fixed {
     const v = a + b;
-    assertSafe(v, 'add');
+    if (DEV) assertSafe(v, 'add');
     return v as Fixed;
   },
   sub(a: Fixed, b: Fixed): Fixed {
     const v = a - b;
-    assertSafe(v, 'sub');
+    if (DEV) assertSafe(v, 'sub');
     return v as Fixed;
   },
   /** Multiply two Fixeds. Intermediate `a*b` must stay < 2^53 (see safe range above). */
   mul(a: Fixed, b: Fixed): Fixed {
     const p = a * b;
-    assertProductSafe(p, a, b, 'mul');
+    if (DEV) assertProductSafe(p, a, b, 'mul');
     // Deterministic rounding toward zero of the scaled product.
     return Math.trunc(p / ONE) as Fixed;
   },
   /** A Fixed times an integer count: `mul(fromInt(n), a)` exactly, without the scaled intermediate. */
   mulInt(a: Fixed, n: number): Fixed {
     const v = a * n;
-    assertSafe(v, 'mulInt');
+    if (DEV) assertSafe(v, 'mulInt');
     return v as Fixed;
   },
   /** Divide two Fixeds. */
   div(a: Fixed, b: Fixed): Fixed {
-    if (b === 0) throw new Error('fixed-point division by zero');
+    if (b === 0) throwDivisionByZero();
     const scaled = a * ONE;
-    assertSafe(scaled, 'div');
+    if (DEV) assertSafe(scaled, 'div');
     return Math.trunc(scaled / b) as Fixed;
   },
   /**
@@ -107,7 +118,7 @@ export const fx = {
   divCeil(a: Fixed, b: Fixed): Fixed {
     if (b <= 0) throw new Error('fixed-point divCeil requires a positive divisor');
     const scaled = a * ONE;
-    assertSafe(scaled, 'divCeil');
+    if (DEV) assertSafe(scaled, 'divCeil');
     let q = Math.trunc(scaled / b); // float guess; corrected to the exact ceiling below
     while (q * b < scaled) q++;
     while ((q - 1) * b >= scaled) q--;
@@ -120,9 +131,9 @@ export const fx = {
    * {@link fx.mul}.
    */
   mulDiv(a: Fixed, b: Fixed, c: Fixed): Fixed {
-    if (c === 0) throw new Error('fixed-point division by zero');
+    if (c === 0) throwDivisionByZero();
     const p = a * b;
-    assertProductSafe(p, a, b, 'mulDiv');
+    if (DEV) assertProductSafe(p, a, b, 'mulDiv');
     return Math.trunc(p / c) as Fixed;
   },
   /**
@@ -141,7 +152,7 @@ export const fx = {
     if (a <= 0) return 0 as Fixed;
     // sqrt(a/ONE) * ONE  ==  sqrt(a * ONE)
     const scaled = a * ONE;
-    assertSafe(scaled, 'isqrt');
+    if (DEV) assertSafe(scaled, 'isqrt');
     return intSqrt(scaled) as Fixed;
   },
 } as const;
