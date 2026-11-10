@@ -278,8 +278,9 @@ export const signpostLinksSystem: System = (world, ctx) => {
     const linked = passLinks(world, terrain, ctx.content, layout, post, reuse);
     if (linked !== before) moved = true;
     outgoing[i] = linked;
-    for (const other of linked) {
-      const at = postIndex(other);
+    // Indexed, like the loops below: `for...of` allocates an iterator result per element on this path.
+    for (let k = 0; k < linked.length; k++) {
+      const at = postIndex(linked[k] as Entity);
       if (at < 0) continue;
       incomingStart[at + 1] = (incomingStart[at + 1] as number) + 1;
       named++;
@@ -287,7 +288,7 @@ export const signpostLinksSystem: System = (world, ctx) => {
   }
   if (moved) mergeLinks(world, posts, named);
   outgoing.fill(NO_LINKS, 0, posts.length);
-  for (const post of posts) postSlots[post] = 0;
+  for (let i = 0; i < posts.length; i++) postSlots[posts[i] as Entity] = 0;
   // Settling links moves the network revision, so the layout is read after it.
   layout.mask = signpostMask(world, ctx.content, terrain).version;
   layout.roads = terrain.mirroredRoadRevision;
@@ -303,8 +304,9 @@ function mergeLinks(world: World, posts: readonly Entity[], named: number): void
   if (incoming.length < named) incoming = new Int32Array(named);
   // Filled in ascending post order, each post's span ends ascending; the fill moves each start to its end.
   for (let i = 0; i < posts.length; i++) {
-    for (const other of outgoing[i] as readonly Entity[]) {
-      const at = postIndex(other);
+    const linked = outgoing[i] as readonly Entity[];
+    for (let k = 0; k < linked.length; k++) {
+      const at = postIndex(linked[k] as Entity);
       if (at < 0) continue;
       incoming[incomingStart[at] as number] = posts[i] as Entity;
       incomingStart[at] = (incomingStart[at] as number) + 1;
