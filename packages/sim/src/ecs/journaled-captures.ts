@@ -1,5 +1,6 @@
 import { BIT_MASK, WORD_SHIFT } from '../core/bit-words.js';
 import type { Component, Entity } from './component.js';
+import { ComponentStore } from './component-store.js';
 import type { World } from './world.js';
 
 /** Entity ids below this are marked in a dense bitset, a higher one in a set. */
@@ -31,7 +32,8 @@ export interface CaptureInputs {
  * `verifyCaches` verifier is the tripwire when one does.
  */
 export class JournaledCaptures<C> {
-  private readonly held = new Map<Entity, C>();
+  /** A store rather than a `Map`: entities entering and leaving would have a map re-lay its table. */
+  private held = new ComponentStore<C>();
   private readonly membershipGens = new Map<Component<unknown>, number>();
   private readonly valueGens = new Map<Component<unknown>, number>();
   /** The entities one catch-up replays, each once, in the order the journals first name them: the
@@ -124,7 +126,7 @@ export class JournaledCaptures<C> {
   }
 
   private rebuild(): void {
-    this.held.clear();
+    this.held = new ComponentStore<C>();
     this.ops.clear();
     for (const c of this.inputs.membership) this.membershipGens.set(c, this.world.componentGeneration(c));
     for (const c of this.inputs.values) this.valueGens.set(c, this.world.componentValueGeneration(c));
