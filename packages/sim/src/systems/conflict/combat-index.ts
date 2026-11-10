@@ -189,7 +189,8 @@ export class CombatIndex {
    * several nodes is listed once, at its nearest, and `accept` is asked once per member, so it must be
    * total and pure over any indexed entity. The take stops at `limit` acceptors, `maxDist`, or `tailRings`
    * past the first ring that hit, so a band holding fewer acceptors than asked for does not cost every
-   * candidate out to `maxDist`.
+   * candidate out to `maxDist`. `unitsOnly` says `accept` admits settlers alone, so the band leaves out
+   * every building and vehicle node.
    */
   nearestFew(
     fromX: number,
@@ -201,8 +202,9 @@ export class CombatIndex {
     seeker: number | null,
     tailRings: number,
     metric: SearchMetric = 'manhattan',
+    unitsOnly = false,
   ): readonly { entity: Entity; distance: number }[] {
-    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
+    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric, null, false, unitsOnly);
     const { keys, count } = scan;
     const found: { entity: Entity; distance: number }[] = [];
     let lastRing = maxDist;
@@ -269,7 +271,7 @@ export class CombatIndex {
         take.push(entity);
         lastRings[kind] = Math.min(lastRing, distance + tailRings);
         open = 0;
-        for (const ring of lastRings) open = Math.max(open, ring);
+        for (let k = 0; k < kinds; k++) open = Math.max(open, lastRings[k] ?? 0);
       }
       return found;
     } finally {
@@ -473,12 +475,14 @@ export class CombatIndex {
     metric: SearchMetric,
     narrow: ((e: Entity) => boolean) | null = null,
     firstTierOnly = false,
+    unitsOnly = false,
   ): BandScan {
     const scan = this.grid.bandScanAt(this.depth);
     if (firstTierOnly) this.grid.markFiring(this, this.firing);
     if (
       narrow === null &&
       !firstTierOnly &&
+      !unitsOnly &&
       scan.valid &&
       scan.x === fromX &&
       scan.y === fromY &&
@@ -498,7 +502,7 @@ export class CombatIndex {
         if (cell === undefined) continue;
         // A building that only shoots this pass has no tier of its own, so its cell's bodies all stay.
         const bodyTier = firstTierOnly && !this.grid.holdsShootingBuilding(cell);
-        if (bodiesHoldBandCandidate(cell, hostile))
+        if (!unitsOnly && bodiesHoldBandCandidate(cell, hostile))
           count = appendBand(
             scan,
             count,
@@ -529,7 +533,7 @@ export class CombatIndex {
     if (narrow !== null) count = narrowKeys(scan, count, narrow);
     sortKeys(scan.keys, count);
     // A narrowed band answers its own query alone.
-    scan.valid = narrow === null && !firstTierOnly;
+    scan.valid = narrow === null && !firstTierOnly && !unitsOnly;
     scan.x = fromX;
     scan.y = fromY;
     scan.minDist = minDist;

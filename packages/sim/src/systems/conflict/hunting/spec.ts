@@ -134,7 +134,9 @@ function pickPrey(
   const { x, y } = terrain.coordsOf(center);
   let best: Entity | null = null;
   let bestScore = HUNT_PREY_SCORE_CEILING;
-  for (const { entity } of index.nearestFew(x, y, 0, radius, accept, ALL_CANDIDATES, null, radius, 'hex')) {
+  // Game is a settler, so no building or vehicle node need enter the band.
+  const game = index.nearestFew(x, y, 0, radius, accept, ALL_CANDIDATES, null, radius, 'hex', true);
+  for (const { entity } of game) {
     const score = preyScore(world, terrain, here, entity);
     if (score < bestScore) {
       best = entity;
