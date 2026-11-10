@@ -169,7 +169,7 @@ interface LooseFighter extends Raider {
  * seat scans read off it. Derived read-state, never hashed.
  *
  * A rescan re-derives only the men the feeds saw change, and every posted man, whose post test also reads
- * the tower's own position: `records[e]` is `e`'s last derivation, null when he was no loose fighter, and
+ * the tower's own position: `records` holds `e`'s last derivation, null when he was no loose fighter, and
  * `flags[e]` says what was written since ({@link STALE}, {@link MOVED}) and whether he held a post then
  * ({@link POSTED}): the Garrison marker's membership is a written store, so the bit cannot go stale.
  */
@@ -182,7 +182,10 @@ interface LooseFighterScan {
   ctx: SystemContext;
   fighters: LooseFighter[];
   spare: LooseFighter[];
-  readonly records: (LooseFighter | null | undefined)[];
+  readonly records: Map<Entity, LooseFighter | null>;
+  /** Record count that triggers the next sweep of the dead: entity ids are never reused, so without one
+   *  the map would grow with every fighter that ever lived. Doubled after each sweep. */
+  sweepAt: number;
   flags: Uint8Array;
   /** Every write to a {@link RECORD_STORES} store but a Position value write. */
   readonly feed: ChangeFeed;
@@ -246,7 +249,8 @@ function looseFighters(world: World, ctx: SystemContext, terrain: TerrainGraph):
       ctx,
       fighters: [],
       spare: [],
-      records: [],
+      records: new Map(),
+      sweepAt: RECORD_SWEEP_MIN,
       flags: new Uint8Array(0),
       feed: world.watchChanges(RECORD_STORES, RECORD_VALUE_STORES),
       moves: world.watchChanges([], [Position]),
@@ -264,25 +268,23 @@ function looseFighters(world: World, ctx: SystemContext, terrain: TerrainGraph):
   };
   const overflowed = held.feed.drain((e) => mark(e, STALE)) || held.moves.drain((e) => mark(e, MOVED));
   if (overflowed || scan.content !== ctx.content || scan.terrain !== terrain) {
-    scan.records.fill(undefined);
+    scan.records.clear();
     // The other feed may still hold entries; a cleared record re-derives whatever they name.
     held.feed.drain(() => {});
     held.moves.drain(() => {});
   }
   const { records } = scan;
   const roster = ownedFighters(world, ctx.content);
-  const last = roster[roster.length - 1];
-  if (last !== undefined && last >= records.length) growRecords(records, last);
   const fighters = scan.spare;
   let n = 0;
   // The owned-fighter index holds every owned settler of a fighting trade, ascending id: the fighters among
   // the people, without a walk over every civilian.
   for (const e of roster) {
-    let record = records[e];
+    let record = records.get(e);
     const flags = e < scan.flags.length ? (scan.flags[e] as number) : 0;
     if (record === undefined || (flags & (STALE | POSTED)) !== 0) {
       record = looseFighterOf(world, ctx, terrain, e, record ?? null);
-      records[e] = record;
+      records.set(e, record);
       const posted = world.has(e, Garrison) ? POSTED : 0;
       if (posted !== flags) {
         if (e >= scan.flags.length) scan.flags = grownFlags(scan.flags, e);
@@ -292,13 +294,14 @@ function looseFighters(world: World, ctx: SystemContext, terrain: TerrainGraph):
       // Unposted and still standing, so only his place can have changed.
       if (record !== null) {
         record = placed(world, terrain, record);
-        records[e] = record;
+        records.set(e, record);
       }
       scan.flags[e] = 0;
     }
     if (record !== null) fighters[n++] = record;
   }
   fighters.length = n;
+  if (records.size >= scan.sweepAt) sweepDeadRecords(world, scan);
   scan.spare = scan.fighters;
   scan.fighters = fighters;
   scan.content = ctx.content;
@@ -340,11 +343,15 @@ function placed(world: World, terrain: TerrainGraph, was: LooseFighter): LooseFi
   return x === was.x && y === was.y && component === was.component ? was : { ...was, x, y, component };
 }
 
-/** Extends `records` with empty slots past `index`, doubling, so the list stays a packed array rather than
- *  one first written at a high id. */
-function growRecords(records: (LooseFighter | null | undefined)[], index: number): void {
-  const length = Math.max(index + 1, records.length * 2);
-  for (let i = records.length; i < length; i++) records.push(undefined);
+const RECORD_SWEEP_MIN = 256;
+
+/** Drops the records of men who are gone; a living man who left the fighting trades keeps his. */
+function sweepDeadRecords(world: World, scan: LooseFighterScan): void {
+  const { records } = scan;
+  records.forEach((_record, e) => {
+    if (!world.has(e, Person)) records.delete(e);
+  });
+  scan.sweepAt = Math.max(RECORD_SWEEP_MIN, records.size * 2);
 }
 
 function grownFlags(flags: Uint8Array, index: number): Uint8Array {
