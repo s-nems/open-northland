@@ -69,7 +69,9 @@ export const constructionSystem: System = (world, ctx) => {
   // Awake sites only, in ascending id: the pass scales with what is being worked, and two sites finishing
   // on one tick settle their plots in a canonical order.
   const awake = awakeSitesOf(world, ctx);
-  for (const e of awake.take(ctx)) {
+  const sites = awake.take(ctx);
+  for (let i = 0; i < sites.length; i++) {
+    const e = sites[i] as Entity;
     advanceSite(world, ctx, e, launches);
     awake.settle(e);
   }

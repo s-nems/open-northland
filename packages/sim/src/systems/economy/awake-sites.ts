@@ -18,8 +18,6 @@ import { carriesSiteClaim, isSoloSite } from './site-claim.js';
 const SITE_MEMBERSHIP = [UnderConstruction, Stockpile, Health, Building, Palisade, RoadSite, Upgrading];
 const SITE_VALUES = [UnderConstruction, Stockpile, Health, Building, Palisade, RoadSite];
 
-const ascending = (a: Entity, b: Entity): number => a - b;
-
 /**
  * The construction sites the pass must visit, so it scales with sites being worked rather than every
  * pending foundation: those a watched write touched since the last pass, plus the one-builder sites whose
@@ -32,6 +30,19 @@ class AwakeSites {
   private readonly wake = (e: Entity): void => {
     if (this.world.has(e, UnderConstruction)) this.awake.add(e);
   };
+  /** The visits {@link take} hands out, reused; filled by index, since an emptied array drops its storage. */
+  private readonly visits: Entity[] = [];
+  private visitCount = 0;
+  /** Inserted in place: the awake sites are few, and a sort allocates a work array per call. */
+  private readonly listAscending = (e: Entity): void => {
+    const visits = this.visits;
+    let at = this.visitCount++;
+    while (at > 0 && (visits[at - 1] as Entity) > e) {
+      visits[at] = visits[at - 1] as Entity;
+      at--;
+    }
+    visits[at] = e;
+  };
 
   constructor(
     private readonly world: World,
@@ -41,14 +52,17 @@ class AwakeSites {
     this.wakeAll();
   }
 
-  /** This tick's sites to visit, in ascending id. */
-  take(ctx: SystemContext): Entity[] {
+  /** This tick's sites to visit, in ascending id; the list holds until the next call. */
+  take(ctx: SystemContext): readonly Entity[] {
     if (ctx.content !== this.content) {
       this.content = ctx.content;
       this.wakeAll();
     }
     if (this.feed.pending && this.feed.drain(this.wake)) this.wakeAll();
-    return [...this.awake].sort(ascending);
+    this.visitCount = 0;
+    this.awake.forEach(this.listAscending);
+    if (this.visits.length !== this.visitCount) this.visits.length = this.visitCount;
+    return this.visits;
   }
 
   /** Put `site` to sleep after its visit unless it waits on another entity. */
