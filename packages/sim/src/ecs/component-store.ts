@@ -12,6 +12,13 @@ const MIN_ENTITY = 1;
 /** The largest id an `Int32Array` dense slot holds. */
 const MAX_ENTITY = 0x7fffffff;
 const INITIAL_CAPACITY = 8;
+// The lookups below write the paging and bit-word constants as literals: a read is inlined into its
+// caller for free only while every function on its way stays tiny, and a constant read from a module
+// binding costs more of that size than one written into the code.
+if (PAGE_BITS !== 6 || PAGE_MASK !== 63 || WORD_SHIFT !== 5 || BIT_MASK !== 31) {
+  throw new Error('ComponentStore: the lookup literals differ from the paging and bit-word constants');
+}
+
 /** Vacated slots are compacted away once they exceed this share of the dense length... */
 const VACANCY_COMPACT_FRACTION = 0.25;
 /** ...and this count, so a small store churning one member does not rebuild on every removal. */
@@ -74,25 +81,25 @@ export class ComponentStore<T> {
 
   /** The dense slot of `entity`, or {@link ABSENT_SLOT} while it is not a member. */
   slotOf(entity: Entity): number {
-    const page = entity >>> PAGE_BITS;
-    const pages = this.pages;
-    const block = page < pages.length ? (pages[page] as number) : this.blocks.farBlockOf(page);
-    return this.index[(block << PAGE_BITS) | (entity & PAGE_MASK)] as number;
+    return this.index[this.cellOf(entity)] as number;
   }
 
   has(entity: Entity): boolean {
-    const page = entity >>> PAGE_BITS;
-    const pages = this.pages;
-    const block = page < pages.length ? (pages[page] as number) : this.blocks.farBlockOf(page);
-    const at = (block << PAGE_BITS) | (entity & PAGE_MASK);
-    return ((this.memberBits[at >>> WORD_SHIFT] as number) & (1 << (at & BIT_MASK))) !== 0;
+    return this.memberBit(this.cellOf(entity)) !== 0;
   }
 
   get(entity: Entity): T | undefined {
-    const page = entity >>> PAGE_BITS;
-    const pages = this.pages;
-    const block = page < pages.length ? (pages[page] as number) : this.blocks.farBlockOf(page);
-    return this.values[this.index[(block << PAGE_BITS) | (entity & PAGE_MASK)] as number];
+    return this.values[this.index[this.cellOf(entity)] as number];
+  }
+
+  /** Where `entity`'s entry sits in {@link index} and {@link memberBits}; a page without a block, which
+   *  reads `undefined` or the empty block, lands in the empty block's zeroed entries. */
+  private cellOf(entity: Entity): number {
+    return ((this.pages[entity >>> 6] as number) << 6) | (entity & 63);
+  }
+
+  private memberBit(cell: number): number {
+    return ((this.memberBits[cell >>> 5] as number) >>> (cell & 31)) & 1;
   }
 
   valueAt(slot: number): T | undefined {

@@ -95,7 +95,7 @@ export class World {
   }
 
   isAlive(entity: Entity): boolean {
-    return this.alive.has(entity);
+    return this.alive.bit(entity) !== 0;
   }
 
   add<T>(entity: Entity, component: Component<T>, value: T): T {
@@ -255,16 +255,14 @@ export class World {
 
   has<T>(entity: Entity, component: Component<T>): boolean {
     const store = this.storesById[component.id];
+    // biome-ignore lint/complexity/useOptionalChain: the chain needs a comparison more, which takes the method past the size inlined for free
     return store !== undefined && store.has(entity);
   }
 
   get<T>(entity: Entity, component: Component<T>): DeepReadonly<T> {
-    const v = this.storesById[component.id]?.get(entity);
-    if (v === undefined) {
-      throw new Error(`entity ${entity} has no component ${component.name}`);
-    }
     // Narrowing to the read-only view only drops mutation capability; the value is the live store object.
-    return v as DeepReadonly<T>;
+    const v = this.tryGet(entity, component);
+    return v !== undefined ? v : missing(entity, component);
   }
 
   tryGet<T>(entity: Entity, component: Component<T>): DeepReadonly<T> | undefined {
@@ -495,4 +493,9 @@ export class World {
   ): boolean {
     return this.valueJournals.replaySince(component, since, visit);
   }
+}
+
+/** Out of line, so the reads that call it stay small enough to be inlined at no cost. */
+function missing(entity: Entity, component: Component<unknown>): never {
+  throw new Error(`entity ${entity} has no component ${component.name}`);
 }

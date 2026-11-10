@@ -13,7 +13,7 @@ describe('PagedBlocks', () => {
     const far = blocks.acquire(FAR_PAGE);
     const top = blocks.acquire(TOP_PAGE);
     expect([low, far, top]).toEqual([1, 2, 3]);
-    expect(blocks.pages.length).toBe(LOW_PAGE + 1);
+    expect(blocks.pages).not.toBeInstanceOf(Int32Array);
     expect(capacities).toEqual([2, 4]);
     expect(blocks.blockOf(FAR_PAGE)).toBe(far);
     expect(blocks.blockOf(TOP_PAGE)).toBe(top);
