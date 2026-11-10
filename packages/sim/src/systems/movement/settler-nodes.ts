@@ -108,18 +108,27 @@ export function peopleNear(
 ): Entity[] {
   const centre = { hx: terrain.xOf(at), hy: terrain.yOf(at) };
   const byNode = settlersByNode(world);
-  const near: { entity: Entity; distance: number }[] = [];
+  // One sort key per person, `distance * idLimit + id`, so the scan allocates no record per person.
+  const idLimit = world.nextEntityId;
+  const keys: number[] = [];
   const lastRow = Math.min(terrain.height - 1, centre.hy + radius);
   for (let hy = Math.max(0, centre.hy - radius); hy <= lastRow; hy++) {
     const right = Math.min(terrain.width - 1, rowReachRight(centre, hy, radius));
     for (let hx = Math.max(0, rowReachLeft(centre, hy, radius)); hx <= right; hx++) {
-      for (const e of byNode.at(hx, hy)) {
+      // Indexed: most nodes are empty, and a for-of hands out an iterator per node.
+      const here = byNode.at(hx, hy);
+      for (let i = 0; i < here.length; i++) {
+        const e = here[i] as Entity;
         if (world.tryGet(e, Owner)?.player !== player || !world.has(e, Person)) continue;
         if (world.has(e, Resting) && standsAtPost(world, e) === null) continue; // indoors
-        near.push({ entity: e, distance: hexDistanceBetween(hx, hy, centre.hx, centre.hy) });
+        keys.push(hexDistanceBetween(hx, hy, centre.hx, centre.hy) * idLimit + e);
       }
     }
   }
-  near.sort((a, b) => a.distance - b.distance || a.entity - b.entity);
-  return near.map((n) => n.entity);
+  keys.sort(ascending);
+  const near: Entity[] = [];
+  for (let i = 0; i < keys.length; i++) near.push(((keys[i] as number) % idLimit) as Entity);
+  return near;
 }
+
+const ascending = (a: number, b: number): number => a - b;
