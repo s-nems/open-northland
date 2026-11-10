@@ -100,7 +100,9 @@ function beatScans(world: World): BeatScans {
     mothers: (player) => {
       if (mothers === null) {
         mothers = new Map();
-        for (const woman of world.canonicalQuery(Female, Marriage, Residence)) {
+        const wives = world.canonicalQuery(Female, Marriage, Residence);
+        for (let i = 0; i < wives.length; i++) {
+          const woman = wives[i] as Entity;
           const owner = ownerOf(world, woman);
           if (owner === undefined) continue;
           const held = mothers.get(owner);
@@ -253,8 +255,15 @@ function dispatchTraining(
   let turn = Math.floor(ctx.tick / ASSISTANT_DECISION_PERIOD_TICKS) % wanted.length;
   const vetoed = playerGoodList(world, AssistantWeaponVetoes, player);
   const terrain = ctx.terrain;
-  for (const e of scans.people(player)) {
-    if (!isBareSoldier(world, ctx, e, player)) continue;
+  // Listed first by a loop that holds no closure, so the seat's every settler costs no allocation here;
+  // arming one soldier changes no other's answer.
+  const people = scans.people(player);
+  const bare: Entity[] = [];
+  for (let i = 0; i < people.length; i++) {
+    const e = people[i] as Entity;
+    if (isBareSoldier(world, ctx, e, player)) bare.push(e);
+  }
+  for (const e of bare) {
     const { tribe } = world.get(e, Settler);
     const classes = wantedInTurn(wanted, remaining, turn).filter(
       (intent): intent is ClassIntent =>
@@ -283,6 +292,8 @@ function dispatchTraining(
     budget -= 1;
   }
 
+  // Nothing to draft for: the scan below would be dropped at its first candidate.
+  if (budget <= 0 || nextWantedIntent(wanted, remaining, turn) === null) return;
   const free = scans.people(player).filter((e) => isFreeMan(world, e, player));
   const candidates = [
     ...free.filter((e) => !isMarried(world, e)),

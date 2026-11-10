@@ -27,12 +27,18 @@ export function baseSoldierJobType(content: ContentSet): number | null {
   return lowestJobOf(contentIndex(content).soldierJobs);
 }
 
-/** The canonical pick over a role's job set, so set iteration order never decides the answer. */
+const lowestJobs = new WeakMap<ReadonlySet<number>, number | null>();
+
+/** The canonical pick over a role's job set, so set iteration order never decides the answer. Kept per
+ *  set, which a content index builds once: the draft asks it per settler. */
 function lowestJobOf(jobs: ReadonlySet<number>): number | null {
+  const held = lowestJobs.get(jobs);
+  if (held !== undefined) return held;
   let lowest: number | null = null;
   for (const jobType of jobs) {
     if (lowest === null || jobType < lowest) lowest = jobType;
   }
+  lowestJobs.set(jobs, lowest);
   return lowest;
 }
 
