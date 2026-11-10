@@ -199,7 +199,8 @@ export function positionXOfNode(hx: number, hy: number): Fixed {
 
 /** Node `(hx, hy)`'s world column in column units: `hx/2`, plus a quarter on an odd row. */
 export function nodeWorldX(hx: number, hy: number): Fixed {
-  return fx.add(fx.div(fx.fromInt(hx), TWO), oddRowShift(hy));
+  // Half a unit per node column: `fx.div(fx.fromInt(hx), TWO)` exactly, without the division.
+  return fx.add(fx.mulInt(HALF_ONE, hx), oddRowShift(hy));
 }
 
 /** The eastward shift of node row `hy`: a quarter column on an odd row, none on an even one. */
@@ -209,7 +210,8 @@ function oddRowShift(hy: number): Fixed {
 
 /** {@link positionOfNode}'s `y` alone. */
 export function positionYOfNode(hy: number): Fixed {
-  return fx.div(fx.fromInt(hy), TWO);
+  // Half a unit per node row: `fx.div(fx.fromInt(hy), TWO)` exactly, without the division.
+  return fx.mulInt(HALF_ONE, hy);
 }
 
 /**
@@ -303,10 +305,13 @@ export function hexDistance(a: HalfCellNode, b: HalfCellNode): number {
 export function hexDistanceBetween(ahx: number, ahy: number, bhx: number, bhy: number): number {
   const dx = bhx - ahx;
   const rows = Math.abs(bhy - ahy);
-  let columns = Math.abs(dx);
   // Integer coordinates: `& 1` is the row parity for negative rows too, and `>> 1` floors the
   // non-negative span, without `%`'s and `Math.floor`'s double paths.
-  if ((rows & 1) !== 0 && ((bhy & 1) === 0 ? dx > 0 : dx < 0)) columns--;
+  // The free column step of an odd row span lies east of an even destination row and west of an odd
+  // one. Branch-free, as neither parity nor heading is predictable in a range scan: `toward` is `dx`
+  // seen from the destination's free side, and the shift reads 1 exactly when it is positive.
+  const toward = dx * (1 - ((bhy & 1) << 1));
+  const columns = Math.abs(dx) - (rows & 1 & (-toward >>> 31));
   return rows + Math.max(0, columns - (rows >> 1));
 }
 
