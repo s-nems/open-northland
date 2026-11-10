@@ -344,13 +344,16 @@ export class World {
     return this.nextId;
   }
 
-  /** Visit every component store in first-registration order, entries in per-store insertion order
-   *  (the query iteration contract). Values are live; a persisting visitor must clone them. A visitor
-   *  must not remove components while it walks: the entries throw once their store compacts. */
-  forEachStore(visit: (name: string, entries: IterableIterator<[Entity, unknown]>) => void): void {
+  /** Visit every component store in first-registration order: `begin` once per store, then `visit` per
+   *  member in per-store insertion order (the query iteration contract), with no iterator and no pair
+   *  per member. Values are live; a persisting visitor must clone them. A visitor must not remove
+   *  components while it walks: the walk throws once its store compacts. */
+  forEachStoreValue(begin: (name: string) => void, visit: (entity: Entity, value: unknown) => void): void {
     for (const c of this.registered) {
       const store = this.stores.get(c);
-      if (store !== undefined) visit(c.name, store.entries());
+      if (store === undefined) continue;
+      begin(c.name);
+      store.forEach(visit);
     }
   }
 

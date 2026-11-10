@@ -213,6 +213,18 @@ export class ComponentStore<T> {
     return out;
   }
 
+  /** {@link entries} handed to `visit` one by one, with no iterator and no pair per member, under the
+   *  same rule. */
+  forEach(visit: (entity: Entity, value: T) => void): void {
+    const epoch = this.compactions;
+    for (let slot = FIRST_SLOT; slot < this.denseLength; slot++) {
+      const e = this.denseEntities[slot] ?? VACANT_SLOT;
+      if (e !== VACANT_SLOT) visit(e as Entity, this.values[slot] as T);
+      if (this.compactions !== epoch)
+        throw new Error('ComponentStore.forEach: store compacted during the walk');
+    }
+  }
+
   /** Members and values in insertion order; values are live. Unlike a query, the walk does not survive a
    *  compaction, so the store must not shrink while it is open; it throws if it did. */
   *entries(): IterableIterator<[Entity, T]> {

@@ -311,10 +311,12 @@ describe('World over compacting stores', () => {
     }
     const restored = new World();
     restored.restoreAllocation(world.nextEntityId, world.canonicalEntities());
-    world.forEachStore((name, entries) => {
-      expect(name).toBe(Walked.name);
-      restored.restoreStore(Walked, [...entries]);
-    });
+    const entries: Array<[Entity, unknown]> = [];
+    world.forEachStoreValue(
+      (name) => expect(name).toBe(Walked.name),
+      (entity, value) => entries.push([entity, value]),
+    );
+    restored.restoreStore(Walked, entries as Array<[Entity, number]>);
     expect([...restored.query(Walked)]).toEqual([...world.query(Walked)]);
     for (const e of world.query(Walked)) expect(restored.get(e, Walked)).toBe(world.get(e, Walked));
   });

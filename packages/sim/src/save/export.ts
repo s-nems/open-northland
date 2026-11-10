@@ -72,13 +72,18 @@ function captureSave(
       alive: [...sim.world.canonicalEntities()],
     },
   ];
-  sim.world.forEachStore((name, entries) => {
-    const saved: Array<readonly [number, unknown]> = [];
-    for (const [entity, value] of entries) {
-      saved.push([entity, savedValue(value, paths === null ? null : `component:${name}/${entity}`, walk)]);
-    }
-    sections.push({ id: 'component', name, entries: saved });
-  });
+  let store = '';
+  let saved: Array<readonly [number, unknown]> = [];
+  sim.world.forEachStoreValue(
+    (name) => {
+      store = name;
+      saved = [];
+      sections.push({ id: 'component', name, entries: saved });
+    },
+    (entity, value) => {
+      saved.push([entity, savedValue(value, paths === null ? null : `component:${store}/${entity}`, walk)]);
+    },
+  );
   sections.push({ id: 'rng', state: sim.rng.getState() });
   sections.push({ id: 'names', cursors: sim.names.snapshot() });
   const fog = sim.fog;
@@ -168,11 +173,14 @@ function savedValue(value: unknown, path: string | null, walk: Walk): unknown {
   }
   if (typeof value === 'string' || typeof value === 'boolean') return value;
   if (typeof value === 'object') {
-    if (walk.seen.has(value)) {
+    // One hashed operation per object: an add that leaves the size alone met a repeat.
+    const seen = walk.seen;
+    const before = seen.size;
+    seen.add(value);
+    if (seen.size === before) {
       const prior = walk.paths?.get(value);
       unsaveable(path, `object already saved at ${prior}; shared or cyclic state cannot round-trip`);
     }
-    walk.seen.add(value);
     if (path !== null) walk.paths?.set(value, path);
   }
   if (value instanceof Map) {
@@ -200,6 +208,10 @@ function savedValue(value: unknown, path: string | null, walk: Walk): unknown {
     }
     if (Object.hasOwn(value, PROTO_KEY))
       unsaveable(path, `the key '${PROTO_KEY}' cannot round-trip as plain data`);
+    // A record of finite numbers, strings, booleans and nulls alone, which most component values are,
+    // is its own copy field for field: `Object.assign` copies its shape whole, where a store per key
+    // adds each field through a keyed transition.
+    if (isFlatRecord(value)) return Object.assign({}, value);
     const out: Record<string, unknown> = {};
     for (const key in value) {
       const field = value[key];
@@ -210,15 +222,33 @@ function savedValue(value: unknown, path: string | null, walk: Walk): unknown {
   return unsaveable(path, `unsaveable value shape ${valueShapeName(value)}`);
 }
 
+/** Whether every field of `record` is a finite number, a string, a boolean or null: no field to leave
+ *  out, to reject or to walk into. */
+function isFlatRecord(record: Record<string, unknown>): boolean {
+  for (const key in record) {
+    const field = record[key];
+    if (typeof field === 'number') {
+      if (!Number.isFinite(field)) return false;
+    } else if (typeof field !== 'string' && typeof field !== 'boolean' && field !== null) return false;
+  }
+  return true;
+}
+
 const DIGIT_ZERO = '0'.charCodeAt(0);
+/** Mask cells turned into text per call: far below the engine's argument limit. */
+const MASK_DIGIT_CHUNK = 8192;
 
 /** One mask byte per cell as its digit, row-major; the four-value alphabet keeps every byte single-digit. */
 function maskDigits(mask: Uint8Array): string {
-  const chars = new Array<string>(mask.length);
+  const codes = new Uint8Array(mask.length);
   for (let i = 0; i < mask.length; i++) {
     const state = mask[i] ?? 0;
     if (state > 9) throw new Error(`fog mask byte ${state} is outside the single-digit encoding`);
-    chars[i] = String.fromCharCode(DIGIT_ZERO + state);
+    codes[i] = DIGIT_ZERO + state;
   }
-  return chars.join('');
+  let digits = '';
+  for (let at = 0; at < codes.length; at += MASK_DIGIT_CHUNK) {
+    digits += Reflect.apply(String.fromCharCode, null, codes.subarray(at, at + MASK_DIGIT_CHUNK));
+  }
+  return digits;
 }
