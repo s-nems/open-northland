@@ -20,7 +20,7 @@ import {
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../../nav/halfcell.js';
+import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNodeId } from '../../footprint/interaction.js';
@@ -34,6 +34,7 @@ import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors
 import { interactionCell } from '../../settlers/targets/index.js';
 import { unreachableGoalVeto } from '../../settlers/unreachable-goals.js';
 import { landReachAt, navigationLimitFor } from '../../signposts/index.js';
+import { heldMoverNode } from '../../spatial/node-moves.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { deliverHome, fetchFrom, HAUL_LIFT_UNITS } from '../food-haul.js';
 import type { ExternalFoodIndex } from '../food-search.js';
@@ -225,10 +226,11 @@ function homeAcrossWater(
   );
 }
 
-/** The land component `e` stands on. */
+/** The land component under `e`'s mover node: on a column step the step's start or destination, never
+ *  the row it passes between. */
 function landUnder(world: World, terrain: TerrainGraph, e: Entity): number {
-  const p = world.get(e, Position);
-  return terrain.componentOf(terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y)));
+  const node = heldMoverNode(world, e);
+  return terrain.componentOf(terrain.nodeAtClamped(node.hx, node.hy));
 }
 
 /** Drop an order that can never complete, and let its holder out of the house. */
