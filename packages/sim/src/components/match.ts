@@ -34,6 +34,14 @@ const scriptVerdicts = defineWorldSingleton<{
  *  not, since a campaign map decides for whoever it names. */
 export const ScriptVerdicts = scriptVerdicts.component;
 
+const unplayedSeats = defineWorldSingleton<{ players: number }>('UnplayedSeats', 'players', () => ({
+  players: 0,
+}));
+
+/** The seats nobody plays from the start: left off the map, or a multiplayer map's seat nobody took.
+ *  Set once by the world build. */
+export const UnplayedSeats = unplayedSeats.component;
+
 /**
  * One row of a multiplayer map's goal table (`docs/formats/MISSIONS.md`, "Multiplayer goals"). Goods are
  * good type ids. `lastStanding` is no authored row: the app adds it where the map's table and script
@@ -243,6 +251,24 @@ function copyGoal(goal: MatchGoal): MatchGoal {
     case 'lastStanding':
       return { kind: goal.kind };
   }
+}
+
+/** Record the seats nobody plays, replacing any earlier set; an invalid slot is dropped. */
+export function setUnplayedSeats(world: World, players: readonly number[]): void {
+  if (!Array.isArray(players)) return; // an imported log carries untyped payloads
+  let bits = 0;
+  for (const p of players) if (isValidPlayer(p)) bits |= playerBit(p);
+  if (unplayedSeats.read(world).players === bits) return;
+  unplayedSeats.write(world, (seats) => {
+    seats.players = bits;
+  });
+}
+
+/** Whether nobody plays `player`'s seat: nobody did from the start, or the goal table's loser teardown
+ *  took it off the map. */
+export function isSeatUnplayed(world: World, player: number): boolean {
+  if (!isValidPlayer(player)) return false;
+  return ((unplayedSeats.read(world).players | matchGoals.read(world).tornDown) & playerBit(player)) !== 0;
 }
 
 export function markPlayerDead(world: World, player: number): void {

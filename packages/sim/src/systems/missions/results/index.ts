@@ -1,3 +1,4 @@
+import { isSeatUnplayed } from '../../../components/index.js';
 import { type MissionPass, setMissionActive } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import {
@@ -46,6 +47,7 @@ import {
   setScriptedWeather,
   startScriptedEarthquake,
 } from './presentation.js';
+import { receivingSeat } from './receiving-seat.js';
 import {
   removeHumansNearPoint,
   removeScriptedAnimals,
@@ -80,6 +82,10 @@ import { setScriptedWallGate } from './wall-gates.js';
 /** Execute one result of mission `index`. An opcode with no executor is reported and does nothing;
  *  nothing here throws, because a corpus script must never halt a running world. */
 export function executeResult(pass: MissionPass, index: number, result: MissionResultOp): void {
+  // Project rule: a seat nobody plays receives nothing, so a wave a map writes for every seat stands
+  // no army in a base nobody plays.
+  const seat = receivingSeat(result);
+  if (seat !== null && isSeatUnplayed(pass.world, seat)) return;
   switch (result.opcode) {
     case 'AllowMap':
       allowCampaignMap(pass, index, result.campaignId, result.mapId);

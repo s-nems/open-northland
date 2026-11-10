@@ -102,6 +102,14 @@ export type RulesCommand =
       readonly goalSeats?: readonly number[];
     }
   | {
+      /**
+       * Declare the seats nobody plays (`UnplayedSeats`), replacing any earlier set. A map script
+       * stands nothing for them and hands them nothing. An invalid slot is dropped.
+       */
+      readonly kind: 'setUnplayedSeats';
+      readonly players: readonly number[];
+    }
+  | {
       /** Local free play after the result; shared sessions never accept this trusted command. */
       readonly kind: 'continueMatch';
       readonly player: number;

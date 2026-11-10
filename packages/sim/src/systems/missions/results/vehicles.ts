@@ -24,6 +24,7 @@ import {
   landingOf,
   passengerJobAllowed,
 } from '../../vehicles/crew.js';
+import { vehicleSpawnAnchor } from '../../vehicles/evict.js';
 import { dropHeldGoal, endDrive, endMarch, moveVehicle } from '../../vehicles/movement.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { removeVehicle } from '../../vehicles/remove.js';
@@ -43,7 +44,8 @@ const SCRIPT_REMOVAL_CAP = 50;
 const VEHICLE_TELEPORT_CAP = 20;
 
 /**
- * `SetVehicle`: a vehicle of the type at the point for the player and tribe, with the id. With the
+ * `SetVehicle`: a vehicle of the type at the point for the player and tribe, with the id; a point a
+ * house or a doorway covers gives way to the nearest clear landing. With the
  * captain flag the line also spawns the type's `logiccommander` trade at the door, attaches and boards
  * it, and takes the human back when either step is refused; the commander carries the vehicle's id and
  * no behaviour. A type authoring no commander spawns bare.
@@ -60,10 +62,11 @@ export function spawnScriptedVehicle(
     pass.reportFailed(mission, op.opcode);
     return;
   }
+  const at = vehicleSpawnAnchor(world, ctx, type, op.point);
   const vehicle = createVehicle(world, ctx, {
     vehicleType: op.vehicleType,
-    x: op.point.hx,
-    y: op.point.hy,
+    x: at.hx,
+    y: at.hy,
     tribe: op.tribe,
     owner: op.player,
     missionId: op.vehicleId,

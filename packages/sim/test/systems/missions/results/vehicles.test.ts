@@ -19,6 +19,11 @@ import {
 import type { Entity } from '../../../../src/ecs/world.js';
 import { halfCellMapFromCells, type Simulation, type TerrainMap } from '../../../../src/index.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../../../src/nav/halfcell.js';
+import {
+  buildingDoorwayNodes,
+  dynamicBlockOverlay,
+  vehicleFootprintNodes,
+} from '../../../../src/systems/footprint/index.js';
 import type { MissionGoalOp, MissionResultOp } from '../../../../src/systems/missions/index.js';
 import {
   MISSION_EVALUATION_TICKS,
@@ -34,7 +39,9 @@ import {
   firingSim,
   goalMission,
   goalSim,
+  HUT,
   holds,
+  houseContent,
   LOAD_PASS,
   loadPassAfter,
   MAP_NODES,
@@ -211,6 +218,33 @@ describe('SetVehicle', () => {
     const { vehicle, captain } = seatedCaptain(sim);
     expect(sim.world.get(vehicle, Vehicle).vehicleType).toBe(SHIP_SMALL);
     expect(sim.world.get(captain, Settler).jobType).toBe(CARRIER);
+  });
+
+  it('stands a vehicle pointed onto a house clear of its body and its door', () => {
+    const sim = firingSim(
+      [
+        {
+          opcode: 'SetVehicle',
+          player: OWNER,
+          tribe: VIKING,
+          vehicleType: CATAPULT,
+          point: POINT,
+          vehicleId: CART_ID,
+          withCaptain: false,
+        },
+      ],
+      houseContent(),
+    );
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, tribe: VIKING, x: POINT.hx, y: POINT.hy });
+    sim.run(PASS_TICKS);
+    const [e] = vehicles(sim);
+    if (e === undefined || sim.terrain === undefined) throw new Error('no vehicle spawned');
+    const ctx = ctxOf(sim);
+    const blocked = dynamicBlockOverlay(sim.world, ctx, sim.terrain);
+    const doors = buildingDoorwayNodes(sim.world, ctx, sim.terrain);
+    expect(blocked.has(sim.terrain.nodeAt(POINT.hx, POINT.hy))).toBe(true);
+    const disc = vehicleFootprintNodes(sim.world, sim.content, sim.terrain, e);
+    expect(disc.filter((node) => blocked.has(node) || doors.has(node))).toEqual([]);
   });
 
   it('reports a point off the map or a type the content lacks as a failed line', () => {

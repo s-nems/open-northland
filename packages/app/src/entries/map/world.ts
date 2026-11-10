@@ -70,6 +70,8 @@ export interface MapWorldOptions extends SimSessionRules {
   readonly machineSeats: readonly number[];
   /** Seats whose authored placements and walls the world leaves out. */
   readonly absentSeats?: readonly number[];
+  /** Seats nobody plays that stand on the map, which its script feeds nothing like the absent ones. */
+  readonly idleSeats?: readonly number[];
   /** The seats the session's {@link SimSessionRules.peace} binds; an absent seat among them is dropped. */
   readonly peaceSeats?: readonly number[];
   /** Computer seats that enable all modules their tribe supports instead of the map’s toggles. */
@@ -229,6 +231,8 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
   );
   grantStartingPapers(sim, options.specialItems ?? []);
   openPeace(sim, options);
+  const unplayed = [...(options.absentSeats ?? []), ...(options.idleSeats ?? [])];
+  if (unplayed.length > 0) sim.enqueueSetup({ kind: 'setUnplayedSeats', players: unplayed });
   const participants = (
     options.matchParticipants ?? (scripted ? options.script?.participants : undefined)
   )?.filter((seat) => !options.absentSeats?.includes(seat));

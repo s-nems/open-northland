@@ -61,6 +61,22 @@ describe('session world options', () => {
     expect(survivors.matchParticipants).toEqual([0, 1, 2, 3, 5]);
   });
 
+  it("counts an idle seat as unplayed on a multiplayer map only, where it is a player's seat nobody took", () => {
+    const slot = (player: number) => ({ player, type: 'human' as const, tribeId: 1, colorId: player });
+    const players = SESSION.seats.map((seat) => slot(seat.player));
+    const campaign = MapScript.parse({ players });
+    const multiplayer = MapScript.parse({
+      players,
+      multiplayer: {
+        slotOptions: players.map(({ player }) => ({ player, allowed: ['human', 'ai', 'none'] })),
+        hiddenSlots: [],
+        other: [],
+      },
+    });
+    expect(sessionWorldOptions(SESSION, campaign, {}).idleSeats).toEqual([]);
+    expect(sessionWorldOptions(SESSION, multiplayer, {}).idleSeats).toEqual([3]);
+  });
+
   it('binds the humans, idle and lobby computer seats in the peace, never a map AI or an absent seat', () => {
     const slot = (player: number, type: 'human' | 'ai') => ({ player, type, tribeId: 1, colorId: player });
     // Seat 5 is the map's own computer player: an AI slot no person may claim.

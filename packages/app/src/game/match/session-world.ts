@@ -29,6 +29,12 @@ export function sessionWorldOptions(session: GameSession, script: MapScript | nu
   return {
     machineSeats: roles.machineSeats,
     absentSeats: absentSeatsOf(session),
+    // A multiplayer map's idle seat is a player's seat nobody took. A campaign's idle seat is the map's
+    // own scripted village, which its script still feeds.
+    idleSeats:
+      script?.multiplayer === undefined
+        ? []
+        : session.seats.filter((seat) => seat.mode === 'idle').map((seat) => seat.player),
     // A reserved map AI seat plays its map script, which the peace must not hold back.
     peaceSeats: session.seats
       .filter(

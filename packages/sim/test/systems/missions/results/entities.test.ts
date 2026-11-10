@@ -4,6 +4,7 @@ import {
   isWildlife,
   MissionBehaviour,
   MissionObjectId,
+  markGoalTeardown,
   missionRecords,
   Owner,
   ownerOf,
@@ -564,5 +565,77 @@ describe('the object-id results', () => {
     sim.run(LOAD_PASS);
     expect(missionObjects(sim.world, 77)).toHaveLength(0);
     expect([...sim.world.query(MissionObjectId)]).toHaveLength(0);
+  });
+});
+
+describe('a seat off the map', () => {
+  const OFF = 3;
+  const ON = 4;
+  const HANDED_ID = 77;
+  const CATAPULT = 5;
+  /** Soldiers, a catapult, a hut and a handover for `player`: everything a seat can be given. */
+  const wave = (player: number, hx: number): MissionResultOp[] => [
+    {
+      opcode: 'SetHumanX',
+      player,
+      tribe: VIKING,
+      job: SOLDIER,
+      point: { hx, hy: POINT.hy },
+      humanId: 0,
+      behaviour: 0,
+      amount: 2,
+    },
+    {
+      opcode: 'SetVehicle',
+      player,
+      tribe: VIKING,
+      vehicleType: CATAPULT,
+      point: { hx, hy: POINT.hy },
+      vehicleId: 0,
+      withCaptain: false,
+    },
+    {
+      opcode: 'SetHouse',
+      player,
+      houseName: { typeId: HUT, tribe: VIKING },
+      level: 0,
+      built: true,
+      point: { hx, hy: POINT.hy + 12 },
+      objectId: 0,
+    },
+    { opcode: 'ChangeHumanPlayerId', humanId: HANDED_ID, player },
+  ];
+  /** What each seat holds after a script gives both seats a wave, `OFF` second so its handover wins. */
+  function givenTo(arrange: (sim: Simulation) => void): { off: number; on: number } {
+    const sim = scriptedSim(
+      [firingMission([...wave(ON, POINT.hx - 8), ...wave(OFF, POINT.hx + 8)])],
+      houseContent(),
+    );
+    spawn(sim, { player: 0, missionId: HANDED_ID, at: { hx: POINT.hx, hy: POINT.hy - 12 } });
+    arrange(sim);
+    loadPassAfter(sim, 1);
+    const count = (player: number): number =>
+      [...sim.world.query(Owner)].filter((e) => ownerOf(sim.world, e) === player).length;
+    return { off: count(OFF), on: count(ON) };
+  }
+  /** Two soldiers, a catapult and a hut. */
+  const WAVE = 4;
+
+  it('stands and hands a seat on the map what the script names', () => {
+    expect(givenTo(() => {})).toEqual({ off: WAVE + 1, on: WAVE });
+  });
+
+  it('gives a seat the session left off nothing', () => {
+    const left = givenTo((sim) => sim.enqueueSetup({ kind: 'setUnplayedSeats', players: [OFF] }));
+    expect(left).toEqual({ off: 0, on: WAVE + 1 });
+  });
+
+  it('gives a seat the goal table took off the map nothing', () => {
+    const fallen = givenTo((sim) => {
+      sim.enqueueSetup({ kind: 'setMatchParticipants', players: [OFF, ON], victory: 'goals', goals: [] });
+      sim.step();
+      markGoalTeardown(sim.world, OFF);
+    });
+    expect(fallen).toEqual({ off: 0, on: WAVE + 1 });
   });
 });

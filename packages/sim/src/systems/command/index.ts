@@ -17,6 +17,7 @@ import {
   setPlayerPlacementTribes,
   setProfessionProgression,
   setSignpostNavigation,
+  setUnplayedSeats,
 } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import { type Command, MAX_UNIT_MEMBER_ACTIONS, MAX_UNIT_ORDER_MEMBERS } from '../../core/commands/index.js';
@@ -599,6 +600,9 @@ function applyCommand(
       break;
     case 'setMatchParticipants':
       setMatchParticipants(world, command.players, command.victory, command.goals, command.goalSeats);
+      return;
+    case 'setUnplayedSeats':
+      setUnplayedSeats(world, command.players);
       return;
     case 'setAiControl':
       for (const release of setAiControl(world, ctx, command)) {

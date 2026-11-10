@@ -172,6 +172,7 @@ export const COMMAND_ISSUER: {
   setStorePriority: 'seat',
   setJob: 'seat',
   setMatchParticipants: 'trusted',
+  setUnplayedSeats: 'trusted',
   continueMatch: 'trusted',
   endMatchContinuation: 'trusted',
   setMissionsEnabled: 'trusted',

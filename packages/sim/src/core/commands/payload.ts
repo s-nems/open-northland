@@ -436,6 +436,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
       goalSeats: { arrayOf: 'integer', maxLength: MAX_PLAYERS },
     },
   },
+  setUnplayedSeats: { required: { players: { arrayOf: 'integer', maxLength: MAX_PLAYERS } } },
   setNeedsEnabled: { required: { enabled: 'boolean' } },
   setBioGroundWaived: { required: { waived: 'boolean' } },
   setPalisadeGateMode: { required: { palisade: 'integer', mode: { oneOf: GATE_MODES } } },

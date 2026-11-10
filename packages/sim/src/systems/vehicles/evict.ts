@@ -1,16 +1,19 @@
+import type { VehicleType } from '@open-northland/data';
 import { Position, Vehicle, VehicleDrive } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { positionOfNode } from '../../nav/halfcell.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
+import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
 import { hasOpenSide } from '../../nav/nearest.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
-import type { NodeId } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingDoorwayNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
 import { vehicleBlockedCells } from '../footprint/vehicle-blocked-cache.js';
 import { hexDisc, vehicleAnchor, vehicleFootprintNodes } from '../footprint/vehicle-footprint.js';
 import { settlersByNode } from '../movement/settler-nodes.js';
 import { vehicleTraversal } from '../readviews/vehicles.js';
+import type { NodeBuckets } from '../spatial/nodes.js';
 import { endDrive, startVehicleDrive, vehicleWalkBlocks } from './movement.js';
 import { vehicleIndex } from './registry.js';
 
@@ -49,34 +52,14 @@ export function evictVehiclesFromFootprint(world: World, ctx: SystemContext, bui
     const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
     const anchor = vehicleAnchor(world, e);
     if (type === undefined || anchor === null || !terrain.inBounds(anchor.hx, anchor.hy)) continue;
-    const traversal = vehicleTraversal(type);
     const previous = vehicleFootprintNodes(world, ctx.content, terrain, e);
     cover(previous, -1);
-    const landing = ringSearch(
+    const landing = vehicleLanding(
       terrain,
+      type,
       terrain.nodeAt(anchor.hx, anchor.hy),
-      STAND_SEARCH_CAP,
-      {
-        traverse: (node) => !blocked.has(node) || body.has(node),
-        accept: (node) => {
-          const centre = { hx: terrain.xOf(node), hy: terrain.yOf(node) };
-          for (const { hx, hy } of hexDisc(centre, type.logicSize)) {
-            if (!terrain.inBounds(hx, hy)) return false;
-            const cell = terrain.nodeAt(hx, hy);
-            if (
-              !terrain.traversable(cell, traversal) ||
-              terrain.componentOf(cell) !== terrain.componentOf(node) ||
-              blocked.has(cell) ||
-              doors.has(cell) ||
-              (occupied.get(cell) ?? 0) > 0 ||
-              settlers.at(hx, hy).length > 0
-            )
-              return false;
-          }
-          return hasOpenSide(terrain, node, blocked, traversal);
-        },
-      },
-      traversal,
+      { blocked, doors, occupied, settlers },
+      (node) => !blocked.has(node) || body.has(node),
     );
     if (landing === null) {
       cover(previous, 1);
@@ -99,4 +82,81 @@ export function evictVehiclesFromFootprint(world: World, ctx: SystemContext, bui
     }
     cover(vehicleFootprintNodes(world, ctx.content, terrain, e), 1);
   }
+}
+
+/** What a vehicle's landing must keep clear of. */
+interface LandingGround {
+  readonly blocked: BlockOverlay;
+  readonly doors: ReadonlySet<NodeId>;
+  /** Nodes under other vehicles' discs, by how many cover each. */
+  readonly occupied: ReadonlyMap<NodeId, number>;
+  readonly settlers: NodeBuckets;
+}
+
+/** The nearest node, searched through `traverse`, where the type's whole disc stands on its own ground
+ *  clear of `ground` and keeps an open side; null when none lies within the search cap. */
+function vehicleLanding(
+  terrain: TerrainGraph,
+  type: VehicleType,
+  from: NodeId,
+  ground: LandingGround,
+  traverse?: (node: NodeId) => boolean,
+): NodeId | null {
+  const traversal = vehicleTraversal(type);
+  const accept = (node: NodeId): boolean => {
+    const centre = { hx: terrain.xOf(node), hy: terrain.yOf(node) };
+    for (const { hx, hy } of hexDisc(centre, type.logicSize)) {
+      if (!terrain.inBounds(hx, hy)) return false;
+      const cell = terrain.nodeAt(hx, hy);
+      if (
+        !terrain.traversable(cell, traversal) ||
+        terrain.componentOf(cell) !== terrain.componentOf(node) ||
+        ground.blocked.has(cell) ||
+        ground.doors.has(cell) ||
+        (ground.occupied.get(cell) ?? 0) > 0 ||
+        ground.settlers.at(hx, hy).length > 0
+      )
+        return false;
+    }
+    return hasOpenSide(terrain, node, ground.blocked, traversal);
+  };
+  return ringSearch(
+    terrain,
+    from,
+    STAND_SEARCH_CAP,
+    traverse === undefined ? { accept } : { traverse, accept },
+    traversal,
+  );
+}
+
+/**
+ * Where a vehicle a script stands for `anchor` lands: the anchor itself unless its disc covers a
+ * walk-blocked node or a doorway, else the nearest landing clear of them, other vehicles and settlers,
+ * else the anchor. Project rule, as for a settler spawned on a house body: a script names its point on
+ * trust, and a house the player built there since would otherwise wall the vehicle in.
+ */
+export function vehicleSpawnAnchor(
+  world: World,
+  ctx: SystemContext,
+  type: VehicleType,
+  anchor: HalfCellNode,
+): HalfCellNode {
+  const terrain = ctx.terrain;
+  if (terrain === undefined || !terrain.inBounds(anchor.hx, anchor.hy)) return anchor;
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const doors = buildingDoorwayNodes(world, ctx, terrain);
+  const covered = hexDisc(anchor, type.logicSize).some(({ hx, hy }) => {
+    if (!terrain.inBounds(hx, hy)) return false;
+    const cell = terrain.nodeAt(hx, hy);
+    return blocked.has(cell) || doors.has(cell);
+  });
+  if (!covered) return anchor;
+  const occupied = vehicleBlockedCells(world, ctx, terrain);
+  const landing = vehicleLanding(terrain, type, terrain.nodeAt(anchor.hx, anchor.hy), {
+    blocked,
+    doors,
+    occupied,
+    settlers: settlersByNode(world),
+  });
+  return landing === null ? anchor : { hx: terrain.xOf(landing), hy: terrain.yOf(landing) };
 }

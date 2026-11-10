@@ -291,7 +291,7 @@ describe('buildMapWorld', () => {
   });
 });
 
-it('omits a closed authored seat’s entities, AI and match participation', () => {
+it('omits a closed authored seat’s entities, AI, match participation and script spawns', () => {
   const { sim } = buildMapWorld({
     ...NO_SESSION_FLAGS,
     map: authoredMapFile(AUTHORED_ENTITIES),
@@ -309,4 +309,6 @@ it('omits a closed authored seat’s entities, AI and match participation', () =
   expect([...sim.world.query(components.Building)]).toHaveLength(1);
   expect(components.isMachinePlayer(sim.world, 0)).toBe(false);
   expect(sim.matchRules().participants).toEqual([1]);
+  expect(components.isSeatUnplayed(sim.world, 0)).toBe(true);
+  expect(components.isSeatUnplayed(sim.world, 1)).toBe(false);
 });
