@@ -421,6 +421,11 @@ export class World {
     return out;
   }
 
+  /** How many entities carry `component`. */
+  count(component: Component<unknown>): number {
+    return this.storesById[component.id]?.size ?? 0;
+  }
+
   get entityCount(): number {
     return this.alive.size;
   }

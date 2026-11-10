@@ -69,10 +69,9 @@ export function reap(world: World, ctx: SystemContext, e: Entity): void {
  * for a player who keeps bones forever.
  */
 function layBonePile(world: World, tick: number, at: HalfCellNode): void {
-  const piles = world.canonicalQuery(BonePile);
-  // Ids ascend with creation, so the head is the oldest pile.
-  const oldest = piles.length >= MAX_BONE_PILES ? piles[0] : undefined;
-  if (oldest !== undefined) world.destroy(oldest);
+  // Ids ascend with creation, so the lowest is the oldest pile.
+  const oldest = world.count(BonePile) >= MAX_BONE_PILES ? world.lowestEntityWith(BonePile) : null;
+  if (oldest !== null) world.destroy(oldest);
   world.add(world.create(), BonePile, { hx: at.hx, hy: at.hy, tick });
 }
 
