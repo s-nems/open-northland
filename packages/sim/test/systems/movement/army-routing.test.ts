@@ -26,8 +26,8 @@ const WIDTH = 400;
 const HEIGHT = 96;
 const WALL_X = 120;
 const GAP_Y = 76;
-/** Nodes a member's route must share with the route it rides. */
-const SHARED_STRETCH_NODES = 100;
+/** Fewest corridor stops a band rides after its own search met the corridor at the wall's gap. */
+const MET_STRETCH_NODES = 20;
 
 function army(wall: boolean, wallHeight = GAP_Y) {
   const typeIds = new Array<number>(WIDTH * HEIGHT).fill(0);
@@ -220,7 +220,7 @@ describe('army player routing', () => {
     }
   });
 
-  it("boards a band standing beyond the shared area onto the leaders' corridor instead of searching", () => {
+  it("takes up the leaders' corridor where the search of a band standing beyond the shared area meets it", () => {
     const width = 400;
     const height = 160;
     const typeIds = new Array<number>(width * height).fill(0);
@@ -233,7 +233,7 @@ describe('army player routing', () => {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('army terrain missing');
     const bandSize = 10;
-    // The far band stands well past GROUP_AREA_RADIUS_NODES of the leaders' road but within boarding.
+    // The far band stands well past GROUP_AREA_RADIUS_NODES of the leaders' road.
     const bandRows = [4, 120];
     const targetX = 340;
     const targetY = 8;
@@ -271,10 +271,11 @@ describe('army player routing', () => {
     const [leader] = members;
     if (leader === undefined) throw new Error('band missing');
     const leaderRoute = new Set(sim.world.get(leader.entity, PathRoute).waypoints.map(({ node }) => node));
-    // The far band rides the leaders' searched corridor from the gap on.
+    // The far band walks its own way to the gap and rides the leaders' corridor from there until a
+    // straight lane to its slots opens.
     for (const { entity } of members.slice(bandSize)) {
       const shared = sim.world.get(entity, PathRoute).waypoints.filter(({ node }) => leaderRoute.has(node));
-      expect(shared.length).toBeGreaterThan(SHARED_STRETCH_NODES);
+      expect(shared.length).toBeGreaterThan(MET_STRETCH_NODES);
     }
     for (const { entity, goal } of members) {
       expect(sim.world.has(entity, PathRequest)).toBe(false);

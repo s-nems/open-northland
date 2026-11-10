@@ -18,7 +18,7 @@ import { nodeMarksOf } from './node-marks.js';
  */
 const CORRIDOR_LEG_MAX_EXPLORED = 2048;
 
-/** How far a walker may stand from the corridor it boards, and the settle cap of its search onto it. */
+/** How many nodes a leg onto or off a corridor may run, and the settle cap of its search. */
 export interface CorridorEntry {
   readonly hopNodes: number;
   readonly legMaxExplored: number;
@@ -30,8 +30,7 @@ export interface CorridorEntry {
  * off the corridor node nearest `goal`. Not the lowest-cost route, only one within the two hops of it.
  * Returns `null` when either nearest node lies more than its hop (Manhattan half-cell nodes) away,
  * when either hop fails, runs past its settle cap or is no straight hop, or when the two nearest nodes
- * leave no stretch of corridor to share. `entry` widens the boarding side alone; by default both sides
- * take `maxHopNodes` and {@link CORRIDOR_LEG_MAX_EXPLORED}.
+ * leave no stretch of corridor to share.
  */
 export function joinCorridor(
   graph: TerrainGraph,
@@ -42,22 +41,62 @@ export function joinCorridor(
   stats: SearchStats,
   maxHopNodes: number,
   traversal: Traversal = 'land',
-  entry: CorridorEntry = { hopNodes: maxHopNodes, legMaxExplored: CORRIDOR_LEG_MAX_EXPLORED },
 ): NodeId[] | null {
   const lattice = corridorLattice(graph, corridor);
   // No corridor node lies nearer `start` in Manhattan nodes than the corridor's bounding box does.
-  if (manhattanOutside(lattice, graph.xOf(start), graph.yOf(start)) > entry.hopNodes) return null;
+  if (manhattanOutside(lattice, graph.xOf(start), graph.yOf(start)) > maxHopNodes) return null;
   // Only the corridor's own start can be blocked, by the walker-exempt rule; no hop may end there.
   const board = nearestStop(graph, lattice, corridor, start, 0, blocked);
-  if (board === undefined || manhattanNodes(graph, start, board.node) > entry.hopNodes) return null;
+  if (board === undefined || manhattanNodes(graph, start, board.node) > maxHopNodes) return null;
   const exit = nearestStop(graph, lattice, corridor, goal, board.index, blocked);
   if (exit === undefined || exit.index === board.index) return null;
   if (manhattanNodes(graph, exit.node, goal) > maxHopNodes) return null;
-  const onto = findPathWithin(graph, start, board.node, blocked, stats, entry.legMaxExplored, traversal);
+  const onto = findPathWithin(graph, start, board.node, blocked, stats, CORRIDOR_LEG_MAX_EXPLORED, traversal);
   if (typeof onto === 'string' || !isHop(graph, onto)) return null;
   const off = findPathWithin(graph, exit.node, goal, blocked, stats, CORRIDOR_LEG_MAX_EXPLORED, traversal);
   if (typeof off === 'string' || !isHop(graph, off)) return null;
   return joinedLegs(graph, onto, lattice, corridor, board.index + 1, exit.index, off);
+}
+
+/** The index of `node` on a loop-free `corridor`, or undefined off it. */
+export function corridorIndexOf(
+  graph: TerrainGraph,
+  corridor: readonly NodeId[],
+  node: NodeId,
+): number | undefined {
+  return corridorLattice(graph, corridor).indexOf.get(node);
+}
+
+/**
+ * A route to `goal` that takes up `corridor` where `onto` ends: `onto`, a searched path whose last node
+ * lies on the corridor, the corridor from there to its node nearest `goal`, and a search off it. Returns
+ * `null` when `onto` ends off the corridor, when that nearest node lies more than `maxHopNodes` from the
+ * goal, or when the way off runs past `exit.legMaxExplored` settles or is neither a straight hop nor
+ * within `exit.hopNodes` nodes long: by a goal among bodies and walls the straight distance is a few
+ * nodes and a fair way round is several times that.
+ */
+export function followCorridor(
+  graph: TerrainGraph,
+  corridor: readonly NodeId[],
+  onto: readonly NodeId[],
+  goal: NodeId,
+  blocked: BlockOverlay,
+  stats: SearchStats,
+  maxHopNodes: number,
+  exit: CorridorEntry,
+  traversal: Traversal = 'land',
+): NodeId[] | null {
+  const lattice = corridorLattice(graph, corridor);
+  const met = onto.at(-1);
+  const at = met === undefined ? undefined : lattice.indexOf.get(met);
+  if (at === undefined) return null;
+  const last = nearestStop(graph, lattice, corridor, goal, at, blocked);
+  if (last === undefined || manhattanNodes(graph, last.node, goal) > maxHopNodes) return null;
+  const off = findPathWithin(graph, last.node, goal, blocked, stats, exit.legMaxExplored, traversal);
+  if (typeof off === 'string' || (off.length > exit.hopNodes && !isHop(graph, off))) return null;
+  // The corridor stretch runs from the node after the meeting up to the last one, which opens `off`;
+  // with the last one at the meeting, `off` repeats that one node and the loop cut drops it.
+  return joinedLegs(graph, onto, lattice, corridor, at + 1, Math.max(at + 1, last.index), off);
 }
 
 /** Manhattan half-cell nodes from `node` to `corridor`'s bounding box, 0 inside it: no corridor node lies
@@ -77,19 +116,6 @@ export function nearestCorridorStop(
   blocked: BlockOverlay,
 ): { readonly index: number; readonly node: NodeId } | undefined {
   return nearestStop(graph, corridorLattice(graph, corridor), corridor, target, from, blocked);
-}
-
-/** Manhattan half-cell nodes from `node` to the nearest node of `corridor`. */
-export function corridorGap(graph: TerrainGraph, corridor: readonly NodeId[], node: NodeId): number {
-  const { xs, ys } = corridorLattice(graph, corridor);
-  const x = graph.xOf(node);
-  const y = graph.yOf(node);
-  let gap = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < xs.length; i++) {
-    const d = Math.abs(x - (xs[i] ?? 0)) + Math.abs(y - (ys[i] ?? 0));
-    if (d < gap) gap = d;
-  }
-  return gap;
 }
 
 /**

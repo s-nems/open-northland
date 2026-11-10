@@ -8,6 +8,10 @@ import { GroupRoutes } from '../../../src/systems/movement/group-routes.js';
 import { testContent } from '../../fixtures/content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 
+function roadOf(path: readonly NodeId[]): ReadonlySet<NodeId> {
+  return new Set(path);
+}
+
 function fixture() {
   const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(200, 70) });
   const terrain = sim.terrain;
@@ -253,7 +257,7 @@ describe('army route lanes', () => {
     const path = routes.borrow(blocked, terrain.nodeAt(0, 110), terrain.nodeAt(299, 110), { explored: 0 });
     expect(path).toHaveLength(300);
   });
-  it("boards the route of a member's own order, not another order's road passing nearer", () => {
+  it("ends a member's search on the route of its own order, not another order's road passing nearer", () => {
     const width = 400;
     const height = 160;
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(width, height) });
@@ -276,7 +280,13 @@ describe('army route lanes', () => {
     routes.offer(blocked, orderB);
     // A member of B just below the wall: A's road lies nearer it, beyond the wall, and nowhere near its slot.
     const goal = terrain.nodeAt(344, 140);
-    const route = routes.borrow(blocked, terrain.nodeAt(4, 66), goal, { explored: 0 });
+    const start = terrain.nodeAt(4, 66);
+    const stops = routes.meetingStops(blocked, goal);
+    if (stops === null) throw new Error('no route passes by the slot');
+    const onto = findPath(terrain, start, goal, blocked, undefined, 'land', undefined, false, stops);
+    if (onto === null) throw new Error('the member found no way onto a route');
+    expect(roadOf(orderB).has(onto.at(-1) as NodeId)).toBe(true);
+    const route = routes.followMeeting(blocked, onto, goal, { explored: 0 });
     if (route === null) throw new Error('the member found no route to ride');
     expect(route.at(-1)).toBe(goal);
     expect(route.every((node) => terrain.yOf(node) > wallY)).toBe(true);
@@ -285,10 +295,7 @@ describe('army route lanes', () => {
     const atSpur = route.filter((node) => terrain.xOf(node) === spurX);
     expect(atSpur.length).toBeGreaterThan(0);
     expect(atSpur.every((node) => roadB.has(node))).toBe(true);
-    // Boarded, not searched: a member's own route crosses to the spur's foot and shares far less of B.
-    const fresh = findPath(terrain, terrain.nodeAt(4, 66), goal, blocked);
-    if (fresh === null) throw new Error('missing fresh route');
-    const onRoadB = (path: readonly NodeId[]): number => path.filter((node) => roadB.has(node)).length;
-    expect(onRoadB(route)).toBeGreaterThan(onRoadB(fresh));
+    // Its own search ran only as far as B's road.
+    expect(route.slice(0, onto.length)).toEqual(onto);
   });
 });

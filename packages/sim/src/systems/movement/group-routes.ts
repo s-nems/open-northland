@@ -3,8 +3,10 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import {
   type CorridorEntry,
   corridorBoxGap,
-  corridorGap,
+  corridorIndexOf,
+  followCorridor,
   joinCorridor,
+  type NodeStops,
   type SearchStats,
 } from '../../nav/pathfinding/index.js';
 import { type NodeId, nodeLatticeDistance, type TerrainGraph } from '../../nav/terrain/index.js';
@@ -23,18 +25,43 @@ export const GROUP_AREA_RADIUS_NODES = 48;
  */
 export const SHARED_ROUTE_MIN_NODES = 96;
 
+/** The settle cap of a met member's search off the shared route. Authored: a fraction of a cross-map
+ *  search. */
+const MEETING_EXIT_MAX_EXPLORED = 8192;
+
 /**
- * How far (Manhattan half-cell nodes) a member standing beyond {@link GROUP_AREA_RADIUS_NODES} of every
- * shared route may still board the nearest one whose end lies by its goal, instead of its own search the
- * length of the march: an army spread over a settlement converges on its leaders' road rather than each
- * loose band routing alone. Authored: covers a seat's spread-out army.
+ * The way off a shared route for a member whose own search met it: up to this many nodes however it
+ * winds, since a slot among the bodies and walls by the goal lies a few nodes off the route in a straight
+ * line and a fair way round them. Authored: twice the group's area.
  */
-const BOARDING_HOP_NODES = 256;
+const MEETING_EXIT: CorridorEntry = {
+  hopNodes: 2 * GROUP_AREA_RADIUS_NODES,
+  legMaxExplored: MEETING_EXIT_MAX_EXPLORED,
+};
 
-/** The settle cap of the search onto that route. Authored: a fraction of a cross-map search. */
-const BOARDING_LEG_MAX_EXPLORED = 8192;
+/** The largest stop mark before the stamps wrap and are cleared. */
+const MAX_STOP_MARK = 0x7fffffff;
 
-const BOARDING: CorridorEntry = { hopNodes: BOARDING_HOP_NODES, legMaxExplored: BOARDING_LEG_MAX_EXPLORED };
+/** One terrain's stop stamps for {@link GroupRoutes.meetingStops}, held while a member's search runs. */
+class StopStamps {
+  readonly stamps: Int32Array;
+  private mark = 0;
+
+  constructor(nodeCount: number) {
+    this.stamps = new Int32Array(nodeCount);
+  }
+
+  next(): number {
+    if (this.mark === MAX_STOP_MARK) {
+      this.stamps.fill(0);
+      this.mark = 0;
+    }
+    this.mark += 1;
+    return this.mark;
+  }
+}
+
+const stopStampsByTerrain = new WeakMap<TerrainGraph, StopStamps>();
 
 interface GroupRoute {
   readonly blocked: BlockOverlay;
@@ -44,11 +71,11 @@ interface GroupRoute {
 
 /**
  * One tick's group-move routes. The lowest-id member routes in full. Others prefer independently
- * checked straight lanes, then parallel obstacle detours, then short joins to that corridor, and finally
- * one longer boarding leg onto the shared route nearest them. A member no route serves searches alone and
- * offers its route, so full searches count the army's separate bands, not its members. Every member
- * routes in the same tick. A group has no id of its own: compatible terrain resistance and the walk
- * overlay are what permit sharing.
+ * checked straight lanes, then parallel obstacle detours, then short joins to that corridor. A member no
+ * route serves searches on its own, ending on the first shared route its search settles a node of and
+ * following that route from there, and offers the result, so a full search is run for the army's first
+ * band alone and a search onto its route for every further one. Every member routes in the same tick. A
+ * group has no id of its own: compatible terrain resistance and the walk overlay are what permit sharing.
  */
 export class GroupRoutes {
   private readonly routes: GroupRoute[] = [];
@@ -94,41 +121,68 @@ export class GroupRoutes {
       );
       if (joined !== null) return this.lanes.departEarly(blocked, joined, goal, route.meanWeight);
     }
-    const nearest = this.nearestRoute(blocked, start, goal);
-    if (nearest === undefined) return null;
-    const boarded = joinCorridor(
-      this.terrain,
-      nearest.path,
-      start,
-      goal,
-      blocked,
-      stats,
-      GROUP_AREA_RADIUS_NODES,
-      'land',
-      BOARDING,
-    );
-    return boarded === null ? null : this.lanes.departEarly(blocked, boarded, goal, nearest.meanWeight);
+    return null;
   }
 
-  /** The route under `blocked` with a node nearest `start` among those passing within the group's area of
-   *  `goal`, the first offered on a tie. A failed boarding costs a capped search, so a member tries only
-   *  this one before searching alone. */
-  private nearestRoute(blocked: BlockOverlay, start: NodeId, goal: NodeId): GroupRoute | undefined {
-    let nearest: GroupRoute | undefined;
-    let nearestGap = BOARDING_HOP_NODES + 1;
+  /**
+   * The nodes of every route under `blocked` that passes within the group's area of `goal`, for a member
+   * no route served: its own search ends on the first of them it settles, and {@link followMeeting} takes
+   * the route up from there. Null when no route qualifies. Valid until the next call.
+   */
+  meetingStops(blocked: BlockOverlay, goal: NodeId): NodeStops | null {
+    let stops: StopStamps | undefined;
+    let mark = 0;
     for (const route of this.routes) {
-      if (route.blocked !== blocked) continue;
-      // A route passing nowhere near the goal, another order's, could never let the member off by it.
-      if (corridorBoxGap(this.terrain, route.path, goal) > GROUP_AREA_RADIUS_NODES) continue;
-      // The box gap bounds the node gap from below, so a route it already rules out skips the node scan.
-      if (corridorBoxGap(this.terrain, route.path, start) >= nearestGap) continue;
-      const gap = corridorGap(this.terrain, route.path, start);
-      if (gap < nearestGap) {
-        nearest = route;
-        nearestGap = gap;
+      if (!this.passesBy(route, blocked, goal)) continue;
+      if (stops === undefined) {
+        stops = stopStampsByTerrain.get(this.terrain);
+        if (stops === undefined) {
+          stops = new StopStamps(this.terrain.nodeCount);
+          stopStampsByTerrain.set(this.terrain, stops);
+        }
+        mark = stops.next();
       }
+      for (const node of route.path) stops.stamps[node] = mark;
     }
-    return nearest;
+    return stops === undefined ? null : { stamps: stops.stamps, mark };
+  }
+
+  /**
+   * The route to `goal` that follows a shared route from where `onto` ends on it, `onto` being a search
+   * {@link meetingStops} ended; the first offered route holding that node. Null when the way off the
+   * route by the goal fails, and the member then searches alone.
+   */
+  followMeeting(
+    blocked: BlockOverlay,
+    onto: readonly NodeId[],
+    goal: NodeId,
+    stats: SearchStats,
+  ): NodeId[] | null {
+    const met = onto.at(-1);
+    if (met === undefined) return null;
+    for (const route of this.routes) {
+      if (!this.passesBy(route, blocked, goal)) continue;
+      if (corridorIndexOf(this.terrain, route.path, met) === undefined) continue;
+      const joined = followCorridor(
+        this.terrain,
+        route.path,
+        onto,
+        goal,
+        blocked,
+        stats,
+        GROUP_AREA_RADIUS_NODES,
+        MEETING_EXIT,
+      );
+      return joined === null ? null : this.lanes.departEarly(blocked, joined, goal, route.meanWeight);
+    }
+    return null;
+  }
+
+  /** Whether `route` runs under `blocked` and passes within the group's area of `goal`. */
+  private passesBy(route: GroupRoute, blocked: BlockOverlay, goal: NodeId): boolean {
+    return (
+      route.blocked === blocked && corridorBoxGap(this.terrain, route.path, goal) <= GROUP_AREA_RADIUS_NODES
+    );
   }
 
   /** Offer a member's own full route to the rest of its group. */

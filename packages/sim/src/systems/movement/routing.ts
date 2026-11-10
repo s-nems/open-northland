@@ -28,6 +28,7 @@ import { positionXOfNode, positionYOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import {
   findPath,
+  type NodeStops,
   POCKET_PROBE_MAX_EXPLORED,
   RACE_SLICE_EXPLORED,
   SealedPockets,
@@ -272,16 +273,19 @@ class PathDrain {
     const groupRoutes = group ? this.groupRoutes : undefined;
     const borrowed = groupRoutes === undefined ? null : groupRoutes.borrow(overlay, start, goal, spent);
     if (borrowed !== null) return borrowed;
-    const path = resolvePath(
-      this.pocketsOf(player, marching),
-      start,
-      goal,
-      overlay,
-      spent,
-      traversal,
-      this.goalSlice,
-      goalOpen,
-    );
+    // A member no route served still ends its own search on the first shared route it settles a node of.
+    const stops = groupRoutes?.meetingStops(overlay, goal) ?? undefined;
+    const pockets = this.pocketsOf(player, marching);
+    let path = resolvePath(pockets, start, goal, overlay, spent, traversal, this.goalSlice, goalOpen, stops);
+    if (path !== null && groupRoutes !== undefined && stops !== undefined && path.at(-1) !== goal) {
+      const followed = groupRoutes.followMeeting(overlay, path, goal, spent);
+      if (followed !== null) {
+        // A band of its own leads there: its neighbours borrow from this route as from a searched one.
+        groupRoutes.offer(overlay, followed);
+        return followed;
+      }
+      path = resolvePath(pockets, start, goal, overlay, spent, traversal, this.goalSlice, goalOpen);
+    }
     // Only a searched route is offered: offering borrowed ones grows the list each member tries.
     if (path !== null && groupRoutes !== undefined) groupRoutes.offer(overlay, path);
     if (path === null && group && mask !== undefined && !overlay.has(goal)) {
@@ -632,10 +636,11 @@ function resolvePath(
   traversal: Traversal,
   goalSlice: number,
   goalOpen: boolean,
+  stopOn?: NodeStops,
 ): NodeId[] | null {
   const { terrain } = pockets;
   if (!isValidNodeId(terrain, start) || !isValidNodeId(terrain, goal)) return null;
   return traversal === 'land'
-    ? pockets.findPath(start, goal, blocked, stats, goalSlice, goalOpen)
+    ? pockets.findPath(start, goal, blocked, stats, goalSlice, goalOpen, stopOn)
     : findPath(terrain, start, goal, blocked, stats, traversal, goalSlice);
 }

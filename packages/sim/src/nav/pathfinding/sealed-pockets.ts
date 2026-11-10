@@ -5,6 +5,7 @@ import {
   FLOOD_GUARD_MAX_EXPLORED,
   findPath,
   GOAL_EXHAUST_MAX_EXPLORED,
+  type NodeStops,
   POCKET_PROBE_MAX_EXPLORED,
   RACE_SLICE_EXPLORED,
   type SearchStats,
@@ -65,6 +66,7 @@ export class SealedPockets {
     stats: SearchStats,
     goalSlice: number,
     goalOpen = false,
+    stopOn?: NodeStops,
   ): NodeId[] | null {
     const settles = this.refusal(start, goal, blocked, goalSlice, goalOpen);
     if (settles !== null) {
@@ -72,7 +74,7 @@ export class SealedPockets {
       return null;
     }
     const before = stats.explored;
-    const path = findPath(this.terrain, start, goal, blocked, stats, 'land', goalSlice, goalOpen);
+    const path = findPath(this.terrain, start, goal, blocked, stats, 'land', goalSlice, goalOpen, stopOn);
     const charged = stats.explored - before;
     if (path === null && charged > FLOOD_GUARD_MAX_EXPLORED) this.remember(start, goal, blocked, charged);
     return path;

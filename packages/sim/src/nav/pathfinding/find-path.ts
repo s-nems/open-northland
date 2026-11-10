@@ -34,6 +34,15 @@ export interface SearchStats {
 }
 
 /**
+ * Nodes a search may end on short of its goal: every node whose stamp equals `mark`. For a walker that
+ * takes up a route already found from the first node of it the search settles.
+ */
+export interface NodeStops {
+  readonly stamps: Int32Array;
+  readonly mark: number;
+}
+
+/**
  * The settle cap of the goal-side pocket probe. A reverse search exhausts a pocket the overlay sealed the
  * goal into at the pocket's own size, and edges are symmetric, so "the goal's region excludes the start"
  * is exactly "no route". Authored: sized above a melee ring's free band and far under a map flood, so an
@@ -82,6 +91,9 @@ export const RACE_SLICE_EXPLORED = 256;
  * `goalOpen` is the caller's proof that more than {@link POCKET_PROBE_MAX_EXPLORED} nodes are reachable
  * from the goal under `blocked`, so the pocket probe could not refute the goal and is skipped. Like the
  * slice it moves only the settle count, so it must be a pure function of the query's terrain and overlay.
+ *
+ * With `stopOn` the forward search also ends on the first of those nodes it settles, and the path
+ * returned ends there instead of on `goal`: the cheapest way onto them in the search's own settle order.
  */
 export function findPath(
   graph: TerrainGraph,
@@ -92,6 +104,7 @@ export function findPath(
   traversal: Traversal = 'land',
   goalSliceExplored = RACE_SLICE_EXPLORED,
   goalOpen = false,
+  stopOn?: NodeStops,
 ): NodeId[] | null {
   if (!graph.traversable(start, traversal) || !graph.traversable(goal, traversal)) return null;
   // Already-there wins over the overlay, consistent with the blocked-start exemption.
@@ -108,6 +121,8 @@ export function findPath(
     blocked,
     stats,
     traversal,
+    NO_READMITTED,
+    stopOn,
   );
   // Without an overlay a shared static component means reachable, so the search can never flood.
   if (blocked === undefined || blocked.size === 0) return pathOf(forward.advance(UNCAPPED));
@@ -264,6 +279,7 @@ class ResumableSearch {
     private readonly stats: SearchStats | undefined,
     private readonly traversal: Traversal,
     readmitted: number = NO_READMITTED,
+    private readonly stops?: NodeStops,
   ) {
     graph.resetGate(scratch.gate, traversal, blocked, readmitted);
     if (scratch.query >= MAX_QUERY_GENERATION) {
@@ -286,7 +302,7 @@ class ResumableSearch {
 
   /** Settle until a verdict, or return `'aborted'` once this search has settled `maxExplored` in total. */
   advance(maxExplored: number): NodeId[] | 'unreachable' | 'aborted' {
-    const { scratch, graph, goal, stats, query, traversal, startX, startY } = this;
+    const { scratch, graph, goal, stats, query, traversal, startX, startY, stops } = this;
     // The heap arrays are read through `scratch`: a push may replace them with larger ones.
     const { stamps, g, cameFrom, heapIdx, gate } = scratch;
     const lane = gate.lane;
@@ -305,6 +321,7 @@ class ResumableSearch {
       this.explored += 1;
       if (stats !== undefined) stats.explored += 1;
       if (current === goal) return reconstruct(scratch, current);
+      if (stops !== undefined && stops.stamps[current] === stops.mark) return reconstruct(scratch, current);
 
       // The popped minimum is closed for good; see LAND_HEURISTIC_WEIGHT for what that costs on land.
       heapIdx[current] = SETTLED;

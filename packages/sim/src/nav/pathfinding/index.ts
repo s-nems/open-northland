@@ -1,9 +1,16 @@
-export { type CorridorEntry, corridorBoxGap, corridorGap, joinCorridor } from './corridor.js';
+export {
+  type CorridorEntry,
+  corridorBoxGap,
+  corridorIndexOf,
+  followCorridor,
+  joinCorridor,
+} from './corridor.js';
 export {
   FLOOD_GUARD_MAX_EXPLORED,
   findPath,
   findPathWithin,
   GOAL_EXHAUST_MAX_EXPLORED,
+  type NodeStops,
   POCKET_PROBE_MAX_EXPLORED,
   RACE_SLICE_EXPLORED,
   type SearchStats,
