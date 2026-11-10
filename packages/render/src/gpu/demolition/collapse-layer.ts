@@ -19,6 +19,7 @@ import { retainOffscreen, retireUndrawn } from '../overlays/retained-pool.js';
 import { markMagnifiedTexture } from '../pixel-art/registry.js';
 import { createLayerDrawBox, layerDrawBox, type ResolvedLayer } from '../sprite-pool/index.js';
 import { readable2dContext } from '../textures/drawable-resource.js';
+import { RecolouredPageSource } from '../textures/recoloured-pages.js';
 import type { SpriteSheet } from '../textures/sprite-sheet.js';
 import type { TextureCache } from '../textures/texture-cache.js';
 import { collapsePlan } from './collapse-plan.js';
@@ -228,13 +229,21 @@ export class CollapseLayer {
     const hiddenTop = box.hiddenTop;
     if (hiddenTop >= frame.height) return null;
     const rows = new Rectangle(0, hiddenTop, frame.width, frame.height - hiddenTop);
-    // The dismantle shader reads colours, so a recoloured frame comes off its RGBA copy.
-    const whole = bake === null ? this.textures.colouredView(layer.source, frame) : null;
-    if (whole !== null) {
-      rows.x += whole.frame.x;
-      rows.y += whole.frame.y;
+    // The dismantle shader reads colours, so a recoloured frame comes off its RGBA copy. Any other
+    // frame is cut where it lies, never through the texture cache: a leased damage tile's page would
+    // join the world pages there, and a prescaler would then draw that rewritten page's twin once.
+    const copy =
+      bake === null && layer.source instanceof RecolouredPageSource
+        ? this.textures.colouredView(layer.source, frame)
+        : null;
+    if (copy !== null) {
+      rows.x += copy.frame.x;
+      rows.y += copy.frame.y;
+    } else if (bake === null) {
+      rows.x += frame.x;
+      rows.y += frame.y;
     }
-    const view = new Texture({ source: bake?.source ?? whole?.source ?? layer.source, frame: rows });
+    const view = new Texture({ source: bake?.source ?? copy?.source ?? layer.source, frame: rows });
     markMagnifiedTexture(view, layer.source);
     return { view, hiddenTop, ...(bake !== null ? { bake } : {}) };
   }

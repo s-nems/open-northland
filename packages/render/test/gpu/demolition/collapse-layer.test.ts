@@ -12,6 +12,7 @@ import {
 import type { Viewport } from '../../../src/data/projection/index.js';
 import type { ElevationField } from '../../../src/data/terrain/index.js';
 import { CollapseLayer } from '../../../src/gpu/demolition/collapse-layer.js';
+import { markPixelArtSource } from '../../../src/gpu/pixel-art/registry.js';
 import * as drawable from '../../../src/gpu/textures/drawable-resource.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
 import type { SpriteAtlas, SpriteSheet } from '../../../src/index.js';
@@ -188,6 +189,29 @@ describe('CollapseLayer', () => {
     body.destroy();
     accessory.destroy();
     source.destroy();
+  });
+
+  it('keeps a leased damage page off the world pages a prescaler redraws once', () => {
+    const spriteLayer = new Container();
+    // The damage atlas rewrites its page as tiles are leased and returned; a twin drawn once from it
+    // would show whatever a tile's cells held then in place of every later damaged body.
+    const damagePage = new TextureSource({ width: 20, height: 20 });
+    markPixelArtSource(damagePage);
+    const body = new Texture({ source: damagePage });
+    const textures = new TextureCache();
+    const layer = new CollapseLayer(spriteLayer, textures, sheet, () => [
+      { texture: body, x: -10, y: -20, scale: 1, alpha: 1, release: vi.fn() },
+    ]);
+    layer.ingest([razed(9)], 0);
+    layer.draw(FLAT, VIEW_ALL, 0);
+    const mesh = (spriteLayer.children[0] as Container).children[0] as Mesh;
+    expect(mesh.texture.source).toBe(damagePage);
+    expect(textures.pageSources().has(damagePage)).toBe(false);
+    expect(textures.isPrescalable(damagePage)).toBe(false);
+    layer.destroy();
+    textures.clear();
+    body.destroy();
+    damagePage.destroy();
   });
 
   it('dismantles each body in place without moving geometry or cropping its texture, then retires it', () => {
