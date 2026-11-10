@@ -27,6 +27,23 @@ export interface MemoizedEntity {
   item: MutableSpriteDrawItem | undefined;
 }
 
+/** Kinds outside the static run whose own item still reads the entity's own components and the map's
+ *  elevation alone. A build emits them each time, since what they stage beside the item (a home's fire,
+ *  a post's boards) reads other entities, but an unchanged entity gets the item it already has, which
+ *  the pool keeps bound by identity. The scene build adds the settlers standing idle. */
+export function ownsItsItem(kind: EntityKind): boolean {
+  return kind === 'building' || kind === 'signpost';
+}
+
+/** An {@link ownsItsItem} entity's item, the extra items emitted with it and the other entities those
+ *  extras were read from: they stand while each of `readIds` still names the entity in `reads`. */
+export interface OwnItems {
+  readonly item: MutableSpriteDrawItem;
+  readonly extras: readonly MutableSpriteDrawItem[];
+  readonly readIds: readonly number[];
+  readonly reads: readonly (EntitySnapshot | undefined)[];
+}
+
 /**
  * The scene build's records of self-contained entities, carried across builds. A mirror replaces the
  * object of an entity whose components changed, so a record keyed by the object is current for as long
@@ -35,6 +52,7 @@ export interface MemoizedEntity {
  */
 export class SceneItemMemo {
   private records = new WeakMap<EntitySnapshot, MemoizedEntity>();
+  private own = new WeakMap<EntitySnapshot, OwnItems>();
   private elevation: ElevationField | undefined;
   private playerColourOf: ((player: number) => number) | undefined;
 
@@ -45,12 +63,22 @@ export class SceneItemMemo {
   ): void {
     if (elevation === this.elevation && playerColourOf === this.playerColourOf) return;
     this.records = new WeakMap();
+    this.own = new WeakMap();
     this.elevation = elevation;
     this.playerColourOf = playerColourOf;
   }
 
   get(entity: EntitySnapshot): MemoizedEntity | undefined {
     return this.records.get(entity);
+  }
+
+  /** The items an {@link ownsItsItem} entity's last emission under these inputs made, if any. */
+  ownItems(entity: EntitySnapshot): OwnItems | undefined {
+    return this.own.get(entity);
+  }
+
+  holdOwnItems(entity: EntitySnapshot, items: OwnItems): void {
+    this.own.set(entity, items);
   }
 
   /** Remember `entity`'s anchor when its kind is self-contained; the record, or undefined. */

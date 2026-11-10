@@ -16,11 +16,17 @@ import {
   type Viewport,
 } from '../../projection/index.js';
 import type { ElevationField } from '../../terrain/index.js';
-import { type MutableSpriteDrawItem, type SpriteDrawItem, unsetDrawField } from '../draw-item.js';
+import {
+  type EntityKind,
+  type MutableSpriteDrawItem,
+  type SpriteDrawItem,
+  unsetDrawField,
+} from '../draw-item.js';
 import { type HolyFireLookup, holyFireOverlays } from '../holy-fire.js';
 import type { InHousePose, InHouseProgramLookup } from '../in-house.js';
 import { palisadeLayoutOf } from '../palisades/connections.js';
 import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose, vehiclePose } from '../settler-pose.js';
+import { signpostLinkIds } from '../signpost-boards.js';
 import { isIndoorSettler, targetPositionsOf } from '../snapshot-index.js';
 import { classify, readPosition, vehicleDrawTile } from '../snapshot-readers/index.js';
 import { pushEffectItems, pushGhostItems } from './collect-fields.js';
@@ -29,7 +35,7 @@ import type { SpriteDepthOrder } from './depth-order.js';
 import { DrawList } from './draw-list.js';
 import { anchorTileBox, emitEntities } from './entity-source.js';
 import { assembleItem, type SceneBuild } from './item-assembly.js';
-import { isSelfContainedKind, type SceneItemMemo } from './item-memo.js';
+import { isSelfContainedKind, type OwnItems, ownsItsItem, type SceneItemMemo } from './item-memo.js';
 import { collectRebuiltPositioned, type TouchedIds, touchedIdsOf } from './scene-feeds.js';
 
 /** Whether a ref is alive (drawable) this frame. A `ReadonlySet` satisfies it; the viewport build
@@ -298,6 +304,39 @@ function holdsAny(refs: ReadonlySet<number>, ids: ReadonlySet<number>): boolean 
   return false;
 }
 
+const NO_ITEMS: readonly MutableSpriteDrawItem[] = [];
+const NO_IDS: readonly number[] = [];
+const NO_ENTITIES: readonly (EntitySnapshot | undefined)[] = [];
+
+/** `held` while every entity its extras were read from is still the one they were read from. */
+function standingOwnItems(snapshot: WorldSnapshot, held: OwnItems | undefined): OwnItems | undefined {
+  if (held === undefined) return undefined;
+  for (let i = 0; i < held.readIds.length; i++) {
+    if (entityById(snapshot, held.readIds[i] ?? Number.NaN) !== held.reads[i]) return undefined;
+  }
+  return held;
+}
+
+/** What an emission of `entity` just made: `item`, and the extras `list` took from `firstPushed` on (a
+ *  signpost's boards, which read the posts it links to). */
+function ownItemsOf(
+  snapshot: WorldSnapshot,
+  entity: EntitySnapshot,
+  kind: EntityKind,
+  item: MutableSpriteDrawItem,
+  list: DrawList,
+  firstPushed: number,
+): OwnItems {
+  if (kind !== 'signpost') return { item, extras: NO_ITEMS, readIds: NO_IDS, reads: NO_ENTITIES };
+  const extras: MutableSpriteDrawItem[] = [];
+  for (let i = firstPushed; i < list.size; i++) {
+    const pushed = list.at(i);
+    if (pushed !== undefined) extras.push(pushed);
+  }
+  const readIds = signpostLinkIds(entity.components);
+  return { item, extras, readIds, reads: readIds.map((id) => entityById(snapshot, id)) };
+}
+
 /** Reused query outputs of the incremental build. */
 const rebuiltCandidates: EntitySnapshot[] = [];
 const exposedCandidates: EntitySnapshot[] = [];
@@ -416,7 +455,28 @@ function collectScene(
           ? vehiclePose(components)
           : STANDING_POSE);
     const firstPushed = list.size;
-    const item = assembleItem(build, entity, kind, tileX, tileY, screen, pose);
+    // A settler standing idle outdoors, pulling no cart, reads nothing but itself either.
+    const standsAlone =
+      kind === 'settler' &&
+      pose.state === 'idle' &&
+      pose.actingAtomic === null &&
+      inHouse === undefined &&
+      !indoorSettler &&
+      aboard === null &&
+      !('HaulingCart' in components);
+    const owns = memo !== undefined && !isPortrait && (standsAlone || ownsItsItem(kind));
+    const own = owns ? standingOwnItems(snapshot, memo.ownItems(entity)) : undefined;
+    let item: MutableSpriteDrawItem;
+    if (own !== undefined) {
+      for (const extra of own.extras) {
+        collected.add(extra.ref);
+        list.push(extra);
+      }
+      item = own.item;
+    } else {
+      item = assembleItem(build, entity, kind, tileX, tileY, screen, pose);
+      if (owns) memo.holdOwnItems(entity, ownItemsOf(snapshot, entity, kind, item, list, firstPushed));
+    }
     if (record !== undefined) record.item = item;
     // Being choreographed excuses only the indoor hiding: the portrait frames the worker at his craft
     // instead of soloing a hidden sprite, but an offscreen or fogged subject still draws for it alone.

@@ -40,6 +40,13 @@ export function signpostBoards(
   return boards;
 }
 
+/** The entity ids {@link signpostBoards} reads besides the post itself: its numeric links. */
+export function signpostLinkIds(components: Readonly<Record<string, unknown>>): number[] {
+  const ids: number[] = [];
+  for (const link of signpostLinks(components) ?? []) if (typeof link === 'number') ids.push(link);
+  return ids;
+}
+
 /** The board frame pointing from `from` toward `to`, both screen px: the clockwise bearing from
  *  screen-north in 20° buckets. Bob 1 points away from the camera and the series sweeps clockwise in
  *  even steps (decoded frame offsets; the frame↔bearing join is an approximation). */
