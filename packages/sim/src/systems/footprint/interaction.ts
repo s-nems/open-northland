@@ -70,6 +70,34 @@ let resolvedX = 0;
 let resolvedY = 0;
 
 function resolveInteractionNode(world: World, ctx: MapContext, building: Entity): boolean {
+  const memo = doorMemoOf(world, ctx);
+  const held = memo.doors.get(building);
+  if (held !== undefined) {
+    const built = world.revisionOf(building, Building);
+    if (built === held.building && held.position === world.revisionOf(building, Position)) {
+      resolvedX = held.x;
+      resolvedY = held.y;
+      return true;
+    }
+    if (built === undefined) memo.doors.delete(building);
+  }
+  if (!deriveInteractionNode(world, ctx, building)) return false;
+  const built = world.revisionOf(building, Building);
+  const position = world.revisionOf(building, Position);
+  if (built === undefined || position === undefined) return true;
+  if (held !== undefined) {
+    held.building = built;
+    held.position = position;
+    held.x = resolvedX;
+    held.y = resolvedY;
+  } else {
+    if (memo.doors.size >= memo.sweepAt) sweepDoorMemo(world, memo);
+    memo.doors.set(building, { building: built, position, x: resolvedX, y: resolvedY });
+  }
+  return true;
+}
+
+function deriveInteractionNode(world: World, ctx: MapContext, building: Entity): boolean {
   const b = world.tryGet(building, Building);
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return false;
@@ -85,6 +113,77 @@ function resolveInteractionNode(world: World, ctx: MapContext, building: Entity)
   resolvedX = x;
   resolvedY = y;
   return true;
+}
+
+/** A building's interaction node and the Building and Position revisions it was derived from. */
+interface HeldDoor {
+  building: number;
+  position: number;
+  x: number;
+  y: number;
+}
+
+/** Per world, each asked building's interaction node while its Building and Position stand unwritten and
+ *  the content and terrain are the ones it was derived under: the workshops, homes and stores ask it per
+ *  settler per tick. Derived, never saved. */
+interface DoorMemo {
+  content: ContentSet;
+  terrain: TerrainGraph | undefined;
+  readonly doors: Map<Entity, HeldDoor>;
+  /** The size at which razed buildings' entries are next swept. */
+  sweepAt: number;
+}
+
+const DOOR_MEMO_SWEEP_MIN = 256;
+const doorMemos = new WeakMap<World, DoorMemo>();
+/** The memo of the world asked last, so a pass over one world skips the weak-map lookup. */
+let lastDoorWorld: World | undefined;
+let lastDoorMemo: DoorMemo | undefined;
+
+function doorMemoOf(world: World, ctx: MapContext): DoorMemo {
+  let memo = world === lastDoorWorld ? lastDoorMemo : doorMemos.get(world);
+  if (memo === undefined) {
+    const created: DoorMemo = {
+      content: ctx.content,
+      terrain: ctx.terrain,
+      doors: new Map(),
+      sweepAt: DOOR_MEMO_SWEEP_MIN,
+    };
+    doorMemos.set(world, created);
+    world.registerCacheVerifier('interactionNodes', () => verifyDoorMemo(world, created));
+    memo = created;
+  } else if (memo.content !== ctx.content || memo.terrain !== ctx.terrain) {
+    memo.doors.clear();
+    memo.content = ctx.content;
+    memo.terrain = ctx.terrain;
+  }
+  lastDoorWorld = world;
+  lastDoorMemo = memo;
+  return memo;
+}
+
+function sweepDoorMemo(world: World, memo: DoorMemo): void {
+  for (const building of memo.doors.keys()) {
+    if (!world.has(building, Building)) memo.doors.delete(building);
+  }
+  memo.sweepAt = Math.max(DOOR_MEMO_SWEEP_MIN, memo.doors.size * 2);
+}
+
+/** Every held node whose revisions still stand must equal a fresh derivation. */
+function verifyDoorMemo(world: World, memo: DoorMemo): string[] {
+  const ctx: MapContext =
+    memo.terrain === undefined ? { content: memo.content } : { content: memo.content, terrain: memo.terrain };
+  for (const [building, held] of memo.doors) {
+    if (
+      held.building !== world.revisionOf(building, Building) ||
+      held.position !== world.revisionOf(building, Position)
+    )
+      continue;
+    if (!deriveInteractionNode(world, ctx, building) || resolvedX !== held.x || resolvedY !== held.y) {
+      return [`interactionNodes holds a stale node for building ${building}`];
+    }
+  }
+  return [];
 }
 
 /** {@link interactionNode} as a terrain {@link NodeId}. Null for an unpositioned building or an off-map
