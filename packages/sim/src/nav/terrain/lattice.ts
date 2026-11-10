@@ -124,7 +124,8 @@ export abstract class TerrainLattice {
   }
 
   xOf(node: NodeId): number {
-    return node % this.width;
+    // `| 0` pins the integer remainder: an id that arrives as a double would take the float one.
+    return (node | 0) % this.width;
   }
 
   yOf(node: NodeId): number {
