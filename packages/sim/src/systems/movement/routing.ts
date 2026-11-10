@@ -186,6 +186,16 @@ class PathDrain {
     return this.regions.outgrowsPocketCap(goal);
   }
 
+  /**
+   * Whether the structures alone prove `goal` out of reach from `start`: one of them sits in a sealed
+   * pocket the other is outside. A proof under every overlay that only adds blocks to the structures,
+   * such as a collider's standing bodies.
+   */
+  sealedApart(start: NodeId, goal: NodeId): boolean {
+    this.regions ??= routeRegions(this.world, this.ctx, this.terrain);
+    return this.regions.unroutable(start, goal);
+  }
+
   private unitBlocks(): UnitWalkBlocks {
     this.units ??= unitWalkBlocks(this.world, this.ctx.content, this.terrain);
     return this.units;
@@ -370,13 +380,14 @@ export function drainPathRequests(
       traversal === 'land' && playerOrdered && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
     if (group) drain.refreshGroup();
     // The labels read the structures alone: an attack-move's walls and a hostile body are not in them.
+    const labelled =
+      traversal === 'land' && !marching && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
+    const sealed = labelled && drain.sealedApart(start, goal);
     const goalOpen =
-      traversal === 'land' &&
-      !marching &&
-      (bodies === null || bodies.posts === 0) &&
-      isValidNodeId(terrain, goal) &&
-      drain.goalOutgrowsProbe(goal);
-    let path = drain.routeUnder(blocked, start, goal, group, player ?? -1, marching, traversal, goalOpen);
+      labelled && !sealed && (bodies === null || bodies.posts === 0) && drain.goalOutgrowsProbe(goal);
+    let path = sealed
+      ? null
+      : drain.routeUnder(blocked, start, goal, group, player ?? -1, marching, traversal, goalOpen);
     // An attack-move goes for what seals its goal off: the bodies it fights shape its route, never refuse it.
     if (path === null && bodies !== null && world.tryGet(e, PlayerOrder)?.attackMove !== undefined) {
       const through = drain.besideTargetsFor(player ?? -1, structures);
