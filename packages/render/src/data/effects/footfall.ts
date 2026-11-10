@@ -22,6 +22,28 @@ const SAND_LOGIC_TYPE = 4;
 const SNOW_LOGIC_TYPE = 7;
 const BEACH_LOGIC_TYPE = 8;
 
+/** A ground pattern as the footfall join reads it. */
+export interface FootfallPattern {
+  readonly logicType: number;
+  readonly texture?: string | undefined;
+}
+
+/**
+ * The logic type each pattern's footfall keys on. Our choice: a sand-type pattern drawn with a snow
+ * pattern's texture (ice, buildable snow) looks like snow, so it leaves snow prints rather than the
+ * original's dust.
+ */
+export function footfallLogicTypes(patterns: readonly FootfallPattern[]): number[] {
+  const snowTextures = new Set<string>();
+  for (const p of patterns)
+    if (p.logicType === SNOW_LOGIC_TYPE && p.texture !== undefined) snowTextures.add(p.texture);
+  return patterns.map((p) =>
+    p.logicType === SAND_LOGIC_TYPE && p.texture !== undefined && snowTextures.has(p.texture)
+      ? SNOW_LOGIC_TYPE
+      : p.logicType,
+  );
+}
+
 /** A map's footfall per cell, row-major. */
 export interface FootfallGround {
   readonly width: number;
@@ -108,8 +130,8 @@ export function printAlpha(age: number): number {
  * Our choice, softer than the original's full-strength puff: a step's dust is drawn at this scale, starts
  * at this opacity and fades out over its frames, so a busy village is not lost in it.
  */
-export const DUST_SCALE = 0.6;
-const DUST_START_ALPHA = 0.35;
+export const DUST_SCALE = 0.8;
+const DUST_START_ALPHA = 0.6;
 
 /** A step's dust opacity `age` ticks after the step, over its `frames`; 0 once it is gone. */
 export function dustAlpha(age: number, frames: number): number {

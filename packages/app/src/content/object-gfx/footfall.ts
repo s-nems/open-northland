@@ -1,7 +1,9 @@
 import {
   type FootfallBinding,
   type FootfallGround,
+  type FootfallPattern,
   footfallGround,
+  footfallLogicTypes,
   type SceneTerrain,
 } from '@open-northland/render';
 import type { ContentIr } from '../ir/rows.js';
@@ -33,11 +35,16 @@ export function loadedFootfall(refs: FootfallBinding, loaded: ReadonlySet<string
  *  logic type; `null` without a ground lane or on ground that leaves nothing. */
 export function mapFootfallGround(
   terrain: SceneTerrain,
-  patterns: readonly { readonly editName?: string | undefined; readonly logicType: number }[],
+  patterns: readonly (FootfallPattern & { readonly editName?: string | undefined })[],
 ): FootfallGround | null {
   const ground = terrain.ground;
   if (ground === undefined) return null;
-  const logicTypeByName = new Map(patterns.map((p) => [p.editName, p.logicType]));
-  const logicTypes = ground.patterns.map((name) => logicTypeByName.get(name));
-  return footfallGround(ground, logicTypes, terrain.width, terrain.height);
+  const logicTypes = footfallLogicTypes(patterns);
+  const logicTypeByName = new Map(patterns.map((p, i) => [p.editName, logicTypes[i]]));
+  return footfallGround(
+    ground,
+    ground.patterns.map((name) => logicTypeByName.get(name)),
+    terrain.width,
+    terrain.height,
+  );
 }

@@ -1,5 +1,10 @@
 export type { TextureSource } from 'pixi.js';
-export { type FootfallGround, footfallGround } from './data/effects/footfall.js';
+export {
+  type FootfallGround,
+  type FootfallPattern,
+  footfallGround,
+  footfallLogicTypes,
+} from './data/effects/footfall.js';
 export {
   FOG_EXPLORED_ALPHA,
   FOG_UNEXPLORED_ALPHA,

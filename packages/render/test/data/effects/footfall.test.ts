@@ -4,6 +4,7 @@ import {
   dustAlpha,
   footfallAt,
   footfallGround,
+  footfallLogicTypes,
   printAlpha,
   stepHeadingDegrees,
   stepValency,
@@ -71,8 +72,20 @@ describe('printAlpha', () => {
 
 describe('dustAlpha', () => {
   it('starts faint and fades out over its frames', () => {
-    expect(dustAlpha(0, 24)).toBe(0.35);
-    expect(dustAlpha(12, 24)).toBeCloseTo(0.175);
+    expect(dustAlpha(0, 24)).toBe(0.6);
+    expect(dustAlpha(12, 24)).toBeCloseTo(0.3);
     expect(dustAlpha(24, 24)).toBe(0);
+  });
+});
+
+describe('footfallLogicTypes', () => {
+  it('counts sand drawn with a snow texture as snow, and leaves other sand alone', () => {
+    const types = footfallLogicTypes([
+      { logicType: SNOW, texture: 'snow.pcx' },
+      { logicType: SAND, texture: 'snow.pcx' },
+      { logicType: SAND, texture: 'desert.pcx' },
+      { logicType: MEADOW, texture: 'snow.pcx' },
+    ]);
+    expect(types).toEqual([SNOW, SNOW, SAND, MEADOW]);
   });
 });
