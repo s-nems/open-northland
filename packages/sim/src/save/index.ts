@@ -1,5 +1,10 @@
 export { withSaveContinuation } from './continuation.js';
-export { type ExportSaveOptions, exportSaveGame, serializeSaveGame } from './export.js';
+export {
+  type ExportSaveOptions,
+  exportSaveGame,
+  serializeSaveGame,
+  serializeSaveGameParts,
+} from './export.js';
 export {
   type CommandsSection,
   type ComponentSection,

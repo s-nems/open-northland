@@ -10,7 +10,7 @@ import {
 import { diag } from '../../diag/log.js';
 import { diagCadenceAt } from '../../diag/session.js';
 import { profiledInstrument, SystemProfile } from '../../diag/system-profile.js';
-import { type SaveFile, saveFileOf } from '../../view/runtime/save-load/codec.js';
+import { type SaveFile, saveFileOfDetached } from '../../view/runtime/save-load/codec.js';
 import type { SessionHost } from '../host.js';
 import { inlineSessionHost } from '../inline-host.js';
 import { changedFacts, WorldFactsReader } from './facts.js';
@@ -639,8 +639,9 @@ export class ServedSession<E> {
       case 'captureSaveFile':
         if (this.broken) throw new Error(BROKEN_SESSION_MESSAGE);
         // Serialized and compressed here, so the runtime's thread receives a few transferred megabytes
-        // instead of cloning the save's object graph and stringifying it.
-        return saveFileOf(await this.driver.captureSave(call.options));
+        // instead of cloning the save's object graph and stringifying it; in slices, so the clock steps
+        // on once the capture is taken.
+        return saveFileOfDetached(await this.driver.captureSave(call.options), yieldToMessages);
       case 'profileRows':
         return this.profile?.rows() ?? [];
       case 'diagLog':

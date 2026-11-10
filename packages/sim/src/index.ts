@@ -252,6 +252,7 @@ export {
   type SaveGameHeader,
   type SaveGameSection,
   serializeSaveGame,
+  serializeSaveGameParts,
   warmWorldIndexes,
   withSaveContinuation,
 } from './save/index.js';

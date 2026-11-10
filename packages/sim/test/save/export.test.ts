@@ -14,6 +14,7 @@ import {
   type SaveGameSection,
   Simulation,
   serializeSaveGame,
+  serializeSaveGameParts,
 } from '../../src/index.js';
 import { FOG_STATE } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -21,6 +22,8 @@ import { grassCellMap } from '../fixtures/terrain.js';
 
 const P0 = 0;
 const VIKING = 1;
+/** More entries than one part of the part-wise serializer holds. */
+const LONG_STORE = 1000;
 const SAWMILL = 2; // fixture building 2, a standing house as the fog eye
 
 function sectionIds(save: SaveGame): string[] {
@@ -195,6 +198,20 @@ describe('exportSaveGame canonical bytes', () => {
     const first = serializeSaveGame(exportSaveGame(sim, { mapId: 'm' }));
     expect(serializeSaveGame(exportSaveGame(sim, { mapId: 'm' }))).toBe(first);
     expect(serializeSaveGame(JSON.parse(first) as SaveGame)).toBe(first);
+  });
+
+  it('serializes in parts to the same bytes, a long store and a parent included', () => {
+    const sim = populatedSim();
+    for (let i = 0; i < LONG_STORE; i++)
+      sim.world.add(sim.world.create(), Position, { x: fx.fromInt(i), y: fx.fromInt(0) });
+    const parent = exportSaveGame(populatedSim(), { mapId: 'p' });
+    const save = exportSaveGame(sim, { mapId: 'm', presentation: 'memory', parent });
+    const parts = [...serializeSaveGameParts(save)];
+    expect(parts.length).toBeGreaterThan(save.sections.length);
+    expect(parts.join('')).toBe(serializeSaveGame(save));
+    expect([...serializeSaveGameParts(exportSaveGame(sim))].join('')).toBe(
+      serializeSaveGame(exportSaveGame(sim)),
+    );
   });
 
   it('is a detached capture: an in-place mutation of a captured value does not reach the save', () => {

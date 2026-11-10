@@ -141,6 +141,58 @@ export function serializeSaveGame(save: SaveGame): string {
   return JSON.stringify(save);
 }
 
+/** A section's entries serialized per part of {@link serializeSaveGameParts}. */
+const ENTRIES_PER_PART = 256;
+
+/**
+ * {@link serializeSaveGame} in parts whose concatenation is the same text, so a caller holding a capture
+ * can spread the work over several turns: a part per top-level field, per section field and per run of
+ * a long section's entries.
+ */
+export function* serializeSaveGameParts(save: SaveGame): Generator<string> {
+  let open = '{';
+  for (const [key, value] of Object.entries(save)) {
+    // As `JSON.stringify` does, a field holding `undefined` is left out.
+    if (value === undefined) continue;
+    yield `${open}${JSON.stringify(key)}:`;
+    open = ',';
+    if (key === 'sections' && Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        yield i === 0 ? '[' : ',';
+        yield* sectionParts(value[i]);
+      }
+      yield value.length === 0 ? '[]' : ']';
+    } else yield JSON.stringify(value);
+  }
+  yield open === '{' ? '{}' : '}';
+}
+
+function* sectionParts(section: unknown): Generator<string> {
+  if (!isPlainRecord(section)) {
+    yield JSON.stringify(section) ?? 'null';
+    return;
+  }
+  let open = '{';
+  for (const key in section) {
+    const value = section[key];
+    if (value === undefined) continue;
+    const field = `${open}${JSON.stringify(key)}:`;
+    open = ',';
+    if (!Array.isArray(value) || value.length <= ENTRIES_PER_PART) {
+      yield field + JSON.stringify(value);
+      continue;
+    }
+    yield `${field}[`;
+    for (let at = 0; at < value.length; at += ENTRIES_PER_PART) {
+      // A run serialized as an array, without its brackets: its elements as the whole array holds them.
+      const run = JSON.stringify(value.slice(at, at + ENTRIES_PER_PART)).slice(1, -1);
+      yield at === 0 ? run : `,${run}`;
+    }
+    yield ']';
+  }
+  yield open === '{' ? '{}' : '}';
+}
+
 interface Walk {
   /** Every object visited so far in this export. */
   readonly seen: Set<object>;

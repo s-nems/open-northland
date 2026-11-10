@@ -4,7 +4,12 @@
  * decode seam via the magic-byte sniff.
  */
 
-import { type SaveGame, type SaveGameHeader, serializeSaveGame } from '@open-northland/sim';
+import {
+  type SaveGame,
+  type SaveGameHeader,
+  serializeSaveGame,
+  serializeSaveGameParts,
+} from '@open-northland/sim';
 
 const GZIP_MAGIC = [0x1f, 0x8b] as const;
 
@@ -38,6 +43,33 @@ export interface SaveFile {
 export function saveFileOf(save: SaveGame): Promise<SaveFile> {
   const text = serializeSaveGame(save);
   return compressSaveText(text).then((bytes) => ({ header: save.header, bytes }));
+}
+
+/** The longest a {@link saveFileOfDetached} serializes before it pauses, in milliseconds: a fraction
+ *  of a tick, so a sim stepping on the same thread keeps its clock. */
+const SERIALIZE_SLICE_MS = 4;
+
+/**
+ * {@link saveFileOf} for a capture nothing else can reach, as `exportSaveGame` returns it: serialized a
+ * slice at a time with `pause` awaited between slices, so the thread that captured it is held for the
+ * capture alone and not for the megabytes of text after it. The bytes are those of {@link saveFileOf}.
+ */
+export async function saveFileOfDetached(save: SaveGame, pause: () => Promise<void>): Promise<SaveFile> {
+  const parts: Blob[] = [];
+  let slice: string[] = [];
+  let sliceStartMs = performance.now();
+  for (const part of serializeSaveGameParts(save)) {
+    slice.push(part);
+    if (performance.now() - sliceStartMs < SERIALIZE_SLICE_MS) continue;
+    // Encoded per slice too: one blob over the whole text would encode it in a single turn.
+    parts.push(new Blob(slice));
+    slice = [];
+    await pause();
+    sliceStartMs = performance.now();
+  }
+  parts.push(new Blob(slice));
+  const compressed = new Blob(parts).stream().pipeThrough(new CompressionStream('gzip'));
+  return { header: save.header, bytes: new Uint8Array(await new Response(compressed).arrayBuffer()) };
 }
 
 /** The save's JSON text from a picked or staged file, whichever envelope the bytes carry. */
