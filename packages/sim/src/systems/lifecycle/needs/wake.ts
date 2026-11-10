@@ -37,8 +37,9 @@ export class NeedsWake {
   private readonly starving = new Set<Entity>();
   private readonly critical = new Set<Entity>();
   /** This tick's visits, listed once each through {@link listedOn}; reused, so a steady pass allocates
-   *  nothing. */
+   *  nothing. Written by index and trimmed, since an emptied array drops its storage. */
   private readonly visits: Entity[] = [];
+  private visitCount = 0;
   private readonly listedOn = new Map<Entity, number>();
   private listingTick = 0;
   /** The tick of the last pass this list covers, or null when the next pass visits every person. */
@@ -49,7 +50,7 @@ export class NeedsWake {
   private readonly visit = (e: Entity): void => {
     if (this.listedOn.get(e) === this.listingTick || !this.world.has(e, Person)) return;
     this.listedOn.set(e, this.listingTick);
-    this.visits.push(e);
+    this.visits[this.visitCount++] = e;
   };
   private readonly rescheduleEntity = (e: Entity): void => this.reschedule(e);
   /** A visited entity whose band tick the pass did not move past it, such as one it left unwritten. */
@@ -64,7 +65,7 @@ export class NeedsWake {
 
   /** The persons the pass of `tick` visits, or null when it must visit every person. */
   take(tick: number, content: ContentSet, refilling: boolean): readonly Entity[] | null {
-    this.visits.length = 0;
+    this.visitCount = 0;
     this.listingTick = tick;
     if (this.passedTick !== tick - 1 || content !== this.content) return null;
     if (this.classFeed.pending && this.classFeed.drain(this.visit)) return null;
@@ -85,6 +86,7 @@ export class NeedsWake {
     if (refilling) this.critical.forEach(this.visit);
     // Buckets and marks fill in the order the bars moved, which a world restored from a save does not
     // share; the sync digest folds first-touch order, so the pass writes in ascending id either way.
+    if (this.visits.length !== this.visitCount) this.visits.length = this.visitCount;
     this.visits.sort(ascendingId);
     return this.visits;
   }
