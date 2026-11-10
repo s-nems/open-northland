@@ -71,7 +71,9 @@ export function dispatchRecruitArming(pass: PlannerPass): void {
   const recruits = world.canonicalQuery(AssistantRecruit);
   if (recruits.length === 0) return; // no bookings: the pass costs one empty query
 
-  for (const e of recruits) {
+  // Indexed: a for-of over the shared list costs an iterator result per recruit on this every-tick pass.
+  for (let i = 0; i < recruits.length; i++) {
+    const e = recruits[i] as Entity;
     if ((e + ctx.tick) % ASSISTANT_SCAN_PERIOD_TICKS !== 0) continue;
     const booking = world.get(e, AssistantRecruit);
     if (booking.intent === 'trainSoldiers') continue; // never armed (enlist unmarks; a beat may race it)
