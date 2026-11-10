@@ -98,7 +98,7 @@ class SeatStockLedger {
         capture: (e, spent) => heapOf(world, e, spent),
         apply: (e, heap) => {
           bucketOf(this.heapBuckets, heap.bucket).set(e, heap);
-          heap.seats = this.seatsReaching(heap.node);
+          heap.seats = sizedCopy(this.seatsReaching(heap.node));
           for (const seat of heap.seats) this.fold(this.heapTotals, seat, heap.units, 1);
         },
         withdraw: (e, heap) => {
@@ -200,7 +200,7 @@ class SeatStockLedger {
     return totals;
   }
 
-  /** The seats with an anchor in reach of `node`, each once. */
+  /** The seats with an anchor in reach of `node`, each once. A heap keeps a {@link sizedCopy} of it. */
   private seatsReaching(node: HalfCellNode): number[] {
     const seats: number[] = [];
     const key = reachBucketOf(node.hx, node.hy);
@@ -227,7 +227,7 @@ class SeatStockLedger {
         const seats = this.seatsReaching(heap.node);
         if (sameSeats(seats, heap.seats)) continue;
         for (const seat of heap.seats) this.fold(this.heapTotals, seat, heap.units, -1);
-        heap.seats = seats;
+        heap.seats = sizedCopy(seats);
         for (const seat of seats) this.fold(this.heapTotals, seat, heap.units, 1);
       }
     }
@@ -310,9 +310,12 @@ function heapOf(world: World, e: Entity, spent: Heap | undefined): Heap | null {
   const p = world.tryGet(e, Position);
   if (stock === undefined || p === undefined) return null;
   const node = nodeOfPosition(p.x, p.y);
-  const units = spent?.units ?? [];
-  units.length = 0;
-  pushAllUnits(units, stock.amounts);
+  let units = spent?.units;
+  if (units === undefined) units = unitScratch.slice(0, overwriteUnits(unitScratch, stock.amounts));
+  else {
+    const length = overwriteUnits(units, stock.amounts);
+    if (units.length !== length) units.length = length;
+  }
   return { node, bucket: reachBucketOf(node.hx, node.hy), units, seats: [] };
 }
 
@@ -366,6 +369,34 @@ function pushAllUnits(units: Units, amounts: ReadonlyMap<number, number>): void 
   addTarget = units;
   amounts.forEach(pushEntry);
   addTarget = IDLE_TARGET;
+}
+
+/** Writes `amounts` over the head of `units`, growing it as needed, and returns the length written; the
+ *  tail past it is the caller's to cut. Emptying a list first would free its storage, and the push after
+ *  that reserves seventeen slots for the two a ground heap mostly holds. */
+function overwriteUnits(units: Units, amounts: ReadonlyMap<number, number>): number {
+  addTarget = units;
+  overwriteAt = 0;
+  amounts.forEach(overwriteEntry);
+  addTarget = IDLE_TARGET;
+  return overwriteAt;
+}
+
+let overwriteAt = 0;
+const overwriteEntry = (amount: number, good: number): void => {
+  if (overwriteAt < addTarget.length) {
+    addTarget[overwriteAt] = good;
+    addTarget[overwriteAt + 1] = amount;
+  } else addTarget.push(good, amount);
+  overwriteAt += 2;
+};
+
+/** A fresh heap's units are written here and copied out at their own length. */
+const unitScratch: Units = [];
+
+/** `list` at exactly its length, for a list a heap keeps: one built by pushes holds spare slots. */
+function sizedCopy(list: readonly number[]): readonly number[] {
+  return list.length === 0 ? list : list.slice();
 }
 
 function bucketOf<T>(buckets: Map<number, Map<Entity, T>>, key: number): Map<Entity, T> {
