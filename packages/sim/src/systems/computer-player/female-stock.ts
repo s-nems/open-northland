@@ -19,8 +19,29 @@ export function femaleStockOf(world: World, ctx: SystemContext, settlers: readon
 /** Every family slot the seat's women and daughters will want: its {@link femaleStockOf} and the daughters
  *  the assistant booked. The housing lane (`build-order/steps/housing.ts`) keeps the homes ahead of it. */
 export function femaleDemand(world: World, ctx: SystemContext, player: number): number {
-  return femaleStockOf(world, ctx, homeSettlers(world, ctx, player)) + bookedBirths(world, player).daughters;
+  let bySeat = demands.get(world);
+  if (bySeat === undefined) {
+    bySeat = new Map();
+    demands.set(world, bySeat);
+  }
+  const held = bySeat.get(player);
+  if (held !== undefined && held.version === world.mutationVersion && held.content === ctx.content)
+    return held.demand;
+  const demand =
+    femaleStockOf(world, ctx, homeSettlers(world, ctx, player)) + bookedBirths(world, player).daughters;
+  bySeat.set(player, { version: world.mutationVersion, content: ctx.content, demand });
+  return demand;
 }
+
+/** One seat's {@link femaleDemand}, kept until the next mutation of the world: a decision's housing steps
+ *  and its fisher target ask several times. Derived read-state, never hashed. */
+interface HeldDemand {
+  readonly version: number;
+  readonly content: SystemContext['content'];
+  readonly demand: number;
+}
+
+const demands = new WeakMap<World, Map<number, HeldDemand>>();
 
 /** The seat's child orders the assistant booked and a mother still carries, by the child's sex. */
 export function bookedBirths(world: World, player: number): { daughters: number; sons: number } {

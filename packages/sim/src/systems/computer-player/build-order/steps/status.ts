@@ -50,9 +50,11 @@ function handedOverCount(
   world: World,
   player: number,
   tiers: ReadonlySet<number>,
+  memo: DecisionMemo,
 ): number {
+  memo.handedOver ??= colonyOverflow(world, player);
   let count = 0;
-  for (const { building } of colonyOverflow(world, player))
+  for (const { building } of memo.handedOver)
     if (tiers.has(index.buildingTypeBySlug.get(building) ?? NO_BUILDING_TYPE)) count++;
   return count;
 }
@@ -122,7 +124,7 @@ export function entryStatus(
           if (matches && roleOf(e) === entry.role) have++;
         }
       }
-      have += handedOverCount(index, world, player, counted);
+      have += handedOverCount(index, world, player, counted, memo);
       // A seat short of grass raises one of each bio-pattern building, the grass holding no more.
       const wanted =
         type.buildOnBioPattern && entry.count > 1 && memoGrassScarce(world, ctx, player, memo)
@@ -166,7 +168,7 @@ export function entryStatus(
             have++;
         }
       }
-      have += handedOverCount(index, world, player, done);
+      have += handedOverCount(index, world, player, done, memo);
       if (have >= entry.count) return 'satisfied';
       if (entry.onlyWhen === 'needsShips' && !memoNeedsShips(world, ctx, player, memo)) return 'skip';
       if (entry.onlyWhen === 'livestock' && memoHerdless(world, ctx, player, memo)) return 'skip';

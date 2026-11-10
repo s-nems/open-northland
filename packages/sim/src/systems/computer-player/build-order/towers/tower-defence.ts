@@ -193,12 +193,55 @@ function towerScan(
   const base = seatBaseOf(world, ctx, player);
   const anchor = base === null ? null : anchorNodeOf(world, base);
   if (anchor === null) return null;
-  const circles = seatDefenceCircles(world, ctx, owned);
-  const reach = buildReach(world, owned, anchor, seatTuning(world, player).reachNodes);
+  const { circles, reach } = scanGround(world, ctx, player, owned, anchor);
   const wanted = scheduledTowers(world, ctx, player);
   const capped = wanted !== null && countTowers(world, ctx, owned) >= wanted;
   const targets = capped ? [] : defenceTargets(world, ctx, player, owned, coverage, anchor, circles, reach);
   return { circles, reach, targets };
+}
+
+/** One seat's defence circles and build reach, kept while the world and the list they were read from
+ *  stand: a decision asks once per tower entry of its order. Derived read-state, never hashed. */
+interface ScanGround {
+  readonly version: number;
+  readonly owned: readonly Entity[];
+  readonly content: SystemContext['content'];
+  readonly circles: readonly DefenceCircle[];
+  readonly reach: BuildReach;
+}
+
+const scanGrounds = new WeakMap<World, Map<number, ScanGround>>();
+
+function scanGround(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  anchor: HalfCellNode,
+): ScanGround {
+  let bySeat = scanGrounds.get(world);
+  if (bySeat === undefined) {
+    bySeat = new Map();
+    scanGrounds.set(world, bySeat);
+  }
+  const held = bySeat.get(player);
+  // Any mutation drops it, so the base's anchor and the seat's reach stand with the version.
+  if (
+    held !== undefined &&
+    held.version === world.mutationVersion &&
+    held.owned === owned &&
+    held.content === ctx.content
+  )
+    return held;
+  const ground: ScanGround = {
+    version: world.mutationVersion,
+    owned,
+    content: ctx.content,
+    circles: seatDefenceCircles(world, ctx, owned),
+    reach: buildReach(world, owned, anchor, seatTuning(world, player).reachNodes),
+  };
+  bySeat.set(player, ground);
+  return ground;
 }
 
 function* defenceTargets(

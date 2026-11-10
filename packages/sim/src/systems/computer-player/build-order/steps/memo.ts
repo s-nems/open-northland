@@ -1,7 +1,7 @@
 import { Building, Upgrading } from '../../../../components/index.js';
 import type { ContentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { homeSettlers } from '../../../ai-shared/home-roster.js';
+import { type colonyOverflow, homeSettlers } from '../../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../../context.js';
 import { heldGatherGood } from '../../../economy/gather-goods.js';
@@ -26,6 +26,8 @@ export interface DecisionMemo {
   flagsByGood: ReadonlyMap<number, number> | undefined;
   /** {@link OwnedTally} per owned-building list the decision asks about. */
   readonly tallies: Map<readonly Entity[], OwnedTally>;
+  /** The buildings the seat's order has handed to its colonies (`colonyOverflow`). */
+  handedOver: ReturnType<typeof colonyOverflow> | undefined;
 }
 
 /** One owned-building list counted once, so each entry sums its tiers instead of walking the list. */
@@ -69,6 +71,7 @@ export function decisionMemo(): DecisionMemo {
     roleOf: undefined,
     flagsByGood: undefined,
     tallies: new Map(),
+    handedOver: undefined,
   };
 }
 
