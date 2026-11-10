@@ -364,7 +364,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Pole rośnie tylko wtedy, gdy ktoś je podlewa, samo z czasem nie urośnie. Każde podlanie podnosi o 1 etap to pole i 6 sąsiednich, więc jedno pole potrzebuje najwyżej {{field.waterings}} podlań. Po ścięciu zostaje 1 sztuka plonu, a w tym miejscu można znowu siać.',
+          p: 'Każde podlanie podnosi o 1 etap to pole i 6 sąsiednich, więc jedno pole potrzebuje najwyżej {{field.waterings}} podlań. Bez wody pole też rośnie samo, tylko powoli: 1 etap co {{field.stageSeconds}} s. Po ścięciu zostaje 1 sztuka plonu, a w tym miejscu można znowu siać.',
         },
         {
           p: 'Sianie i podlewanie nic nie kosztują, nawet Wody.',

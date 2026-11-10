@@ -1,4 +1,5 @@
 import type { FootprintCell, LandscapeBlockArea } from '@open-northland/data';
+import type { BerryBushStage } from '../../components/economy/resources.js';
 
 export type LandscapeRemovalGroup = 'blocker' | 'fx1' | 'fx2' | 'smoke' | 'wave';
 
@@ -50,7 +51,8 @@ export interface ScriptLandscapeType {
   /** Points a placement holds beyond its walk and build areas, at every level. */
   readonly attach?: readonly FootprintCell[];
   readonly resource?: ResourceSpec;
-  readonly bushGfxIndex?: number;
+  /** A placement is a live berry bush laid at `stage`, drawn from the fruited-bush record `gfxIndex`. */
+  readonly bush?: { readonly gfxIndex: number; readonly stage: BerryBushStage };
   /** A placed record backed by the interactive chest entity rather than the static landscape layer. */
   readonly chest?: { readonly kind: 'wooden' | 'magical'; readonly gfxIndex: number };
   /** A good's ground form (`goodtypes.ini` `landscapetype`): a placement is a loose heap of the good

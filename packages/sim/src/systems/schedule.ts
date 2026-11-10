@@ -12,6 +12,7 @@ import { defenceSystem } from './defence/index.js';
 import { berryGrowthSystem } from './economy/berries.js';
 import { constructionSystem } from './economy/construction.js';
 import { fieldReclaimSystem } from './economy/field-reclaim.js';
+import { fieldGrowthSystem } from './economy/fields.js';
 import { fishReproductionSystem } from './economy/fish.js';
 import { productionSystem } from './economy/production.js';
 import { regrowthSystem } from './economy/regrowth.js';
@@ -166,6 +167,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'selfFillingStock', system: selfFillingStockSystem },
   { name: 'fieldReclaim', system: fieldReclaimSystem },
   { name: 'berryGrowth', system: berryGrowthSystem },
+  { name: 'fieldGrowth', system: fieldGrowthSystem },
   { name: 'treeGrowth', system: treeGrowthSystem },
   { name: 'regrowth', system: regrowthSystem },
   { name: 'fishReproduction', system: fishReproductionSystem },

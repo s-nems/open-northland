@@ -165,6 +165,7 @@ export {
   resourceFootprintForGood,
   stampResourceFootprintOrFallback,
 } from './footprint/resources.js';
+export { LANDSCAPE_GROWTH_PERIOD_TICKS } from './landscape/growth-clock.js';
 export {
   ADULT_AGE_TICKS,
   ageTicksAt,

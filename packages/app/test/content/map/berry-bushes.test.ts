@@ -18,15 +18,25 @@ import { createSceneSim } from '../../../src/scenes/runtime.js';
 
 const { BerryBush } = components;
 
+/** `landscapetypes.ini` `bush naked` and `bush flowering`, the fruited bush's unripe stages. */
+const BUSH_NAKED_LOGIC_TYPE = 9;
+const BUSH_FLOWERING_LOGIC_TYPE = 10;
+
 const MAP_CELLS = 40;
 const WAREHOUSE = { x: 20, y: 20 } as const;
 /** Half-cell nodes from the warehouse anchor to a bush well clear of its reserved zone. */
 const CLEAR_OFFSET_NODES = 20;
 const BUSH_GFX = 500;
+const NAKED_BUSH_GFX = 501;
+const FLOWERING_BUSH_GFX = 502;
 
 function fixtureIr(): ContentIr {
   return {
-    landscapeGfx: [{ index: BUSH_GFX, editName: 'bush fruits 01', logicType: BUSH_WITH_FRUITS_LOGIC_TYPE }],
+    landscapeGfx: [
+      { index: BUSH_GFX, editName: 'bush 01 fruits', logicType: BUSH_WITH_FRUITS_LOGIC_TYPE },
+      { index: NAKED_BUSH_GFX, editName: 'bush 01 empty', logicType: BUSH_NAKED_LOGIC_TYPE },
+      { index: FLOWERING_BUSH_GFX, editName: 'bush 01 flower', logicType: BUSH_FLOWERING_LOGIC_TYPE },
+    ],
   };
 }
 
@@ -45,7 +55,7 @@ describe('spawnMapBerryBushes', () => {
     const sim = warehouseSim();
     const anchor = cellAnchorNode(WAREHOUSE.x, WAREHOUSE.y);
     const objects = {
-      types: ['bush fruits 01'],
+      types: ['bush 01 fruits'],
       placements: [anchor.hx, anchor.hy, 0, anchor.hx + CLEAR_OFFSET_NODES, anchor.hy, 0],
     };
 
@@ -55,5 +65,23 @@ describe('spawnMapBerryBushes', () => {
     expect(result.retiredPlacements).toEqual([0]);
     expect([...result.placementByEntity.values()]).toEqual([1]);
     expect([...sim.world.query(BerryBush)]).toHaveLength(1);
+  });
+
+  it('spawns a naked or flowering bush at its stage, drawn from its fruited twin', () => {
+    const sim = warehouseSim();
+    const anchor = cellAnchorNode(WAREHOUSE.x, WAREHOUSE.y);
+    const clearHx = anchor.hx + CLEAR_OFFSET_NODES;
+    const objects = {
+      types: ['bush 01 empty', 'bush 01 flower'],
+      placements: [clearHx, anchor.hy, 0, clearHx + 2, anchor.hy, 1],
+    };
+
+    const result = spawnMapBerryBushes(sim, objects, fixtureIr());
+
+    expect(result.spawned).toBe(2);
+    expect([...sim.world.query(BerryBush)].map((e) => sim.world.get(e, BerryBush))).toEqual([
+      { stage: 'bare', gfxIndex: BUSH_GFX },
+      { stage: 'flowering', gfxIndex: BUSH_GFX },
+    ]);
   });
 });

@@ -367,7 +367,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: "A field only grows when someone waters it, it won't grow by itself over time. Each watering raises that field and 6 neighbouring ones by 1 stage, so one field needs at most {{field.waterings}} waterings. After the harvest 1 piece of crop is left, and the spot can be sown again.",
+          p: 'Each watering raises that field and 6 neighbouring ones by 1 stage, so one field needs at most {{field.waterings}} waterings. Without water a field grows by itself too, only slowly: 1 stage every {{field.stageSeconds}} s. After the harvest 1 piece of crop is left, and the spot can be sown again.',
         },
         {
           p: 'Sowing and watering cost nothing, not even Water.',

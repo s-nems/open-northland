@@ -154,7 +154,7 @@ function removePlacements(
 }
 
 /** What stands in for a placement of a type: the one entity kind its backing creates, or none for
- *  decor and a bare fruit bush. One reading shared by the backing, its walk cells and the layer flag,
+ *  decor and a berry bush. One reading shared by the backing, its walk cells and the layer flag,
  *  so the three cannot disagree on a type. */
 type PlacementBacking =
   | { readonly kind: 'chest'; readonly chest: NonNullable<ScriptLandscapeType['chest']> }
@@ -259,7 +259,7 @@ export function placementWalkCells(
     case 'resource':
       return placementBlockCells(type, level).walk;
     case 'none':
-      return type.bushGfxIndex !== undefined ? [] : placementBlockCells(type, level).walk;
+      return type.bush !== undefined ? [] : placementBlockCells(type, level).walk;
   }
 }
 
@@ -281,8 +281,8 @@ export function setLandscape(
   removeLandscapes(world, ctx, terrain, point, 0, undefined, (entity) =>
     ctx.events.emit({ kind: 'missionLandscapeResourceRemoved', entity }),
   );
-  if (type.bushGfxIndex !== undefined)
-    createBerryBush(world, { x: point.hx, y: point.hy, gfxIndex: type.bushGfxIndex, landscapeId: id });
+  if (type.bush !== undefined)
+    createBerryBush(world, { x: point.hx, y: point.hy, ...type.bush, landscapeId: id });
   writeLandscapeEdits(world, (edit) => {
     edit.topologyRevision++;
     edit.nextId = id + 1;
@@ -292,7 +292,7 @@ export function setLandscape(
       hx: point.hx,
       hy: point.hy,
       level,
-      ...(placementBackingOf(type).kind !== 'none' || type.bushGfxIndex !== undefined
+      ...(placementBackingOf(type).kind !== 'none' || type.bush !== undefined
         ? { resourceBacked: true }
         : {}),
     });

@@ -1,5 +1,5 @@
 import { harvestObjectsByEditName, type TerrainObjects } from '@open-northland/data';
-import { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from '@open-northland/sim';
+import { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind, type components } from '@open-northland/sim';
 import type { ContentIr } from '../ir/rows.js';
 import { forEachPlacement } from './placements.js';
 
@@ -137,42 +137,74 @@ export function mapResourceSpawns(
 
 /**
  * The `[GfxLandscape].logicType` of a fruited bush (`bush with fruits`, `landscapetypes.ini` type 11): the
- * source-pinned marker that a placed bush object currently holds fruit. The `bush`, `bush naked` and
- * `bush flowering` states (types 8/9/10) stay decor.
+ * source-pinned marker that a placed bush object currently holds fruit.
  */
 export const BUSH_WITH_FRUITS_LOGIC_TYPE = 11;
 
-/** One berry bush a decoded map defines: its fruited-bush record index at half-cell `(hx, hy)`, plus the
- *  placement ordinal. */
-export interface MapBerryBushSpawn {
+/** Each berry bush stage's `[GfxLandscape].logicType`: `bush naked` 9, `bush flowering` 10 and `bush with
+ *  fruits` 11 in `landscapetypes.ini`. The barren `bush` (type 8) never fruits and stays decor. */
+const BUSH_LOGIC_TYPE_BY_STAGE: Readonly<Record<components.BerryBushStage, number>> = {
+  bare: 9,
+  flowering: 10,
+  ripe: BUSH_WITH_FRUITS_LOGIC_TYPE,
+};
+
+/** The editName suffix a fruited bush's stage twins carry in place of its `fruits`. */
+const BUSH_TWIN_SUFFIX = { bare: 'empty', flowering: 'flower' } as const;
+
+/** The editName of fruited bush `fruitedName`'s `stage` twin: "bush 01 fruits" pairs with "bush 01 empty"
+ *  and "bush 01 flower". */
+export function bushTwinName(fruitedName: string, stage: keyof typeof BUSH_TWIN_SUFFIX): string {
+  return fruitedName.replace(/fruits?$/i, BUSH_TWIN_SUFFIX[stage]);
+}
+
+/** A placed bush record's live form: the fruited record it draws from and the stage it stands at. */
+export interface BerryBushRecord {
   readonly gfxIndex: number;
+  readonly stage: components.BerryBushStage;
+}
+
+/**
+ * Every berry bush record keyed by `EditName`: each fruited record, and its naked and flowering twins
+ * pointing back at it, so a bush the map authors in any stage grows on. Degrades to empty on an older
+ * `ir.json` with no `landscapeGfx`.
+ */
+export function berryBushRecordByName(ir: ContentIr): ReadonlyMap<string, BerryBushRecord> {
+  const records = ir.landscapeGfx ?? [];
+  const logicTypeByName = new Map<string, number>();
+  for (const g of records) if (g.editName !== undefined) logicTypeByName.set(g.editName, g.logicType);
+  const out = new Map<string, BerryBushRecord>();
+  for (const g of records) {
+    if (g.editName === undefined || g.logicType !== BUSH_WITH_FRUITS_LOGIC_TYPE) continue;
+    out.set(g.editName, { gfxIndex: g.index, stage: 'ripe' });
+    for (const stage of ['bare', 'flowering'] as const) {
+      const twin = bushTwinName(g.editName, stage);
+      if (logicTypeByName.get(twin) === BUSH_LOGIC_TYPE_BY_STAGE[stage])
+        out.set(twin, { gfxIndex: g.index, stage });
+    }
+  }
+  return out;
+}
+
+/** One berry bush a decoded map defines at half-cell `(hx, hy)`, plus the placement ordinal. */
+export interface MapBerryBushSpawn extends BerryBushRecord {
   readonly hx: number;
   readonly hy: number;
   readonly placement: number;
 }
 
-/** Every `landscapeGfx` record whose `logicType` is {@link BUSH_WITH_FRUITS_LOGIC_TYPE}, keyed by
- *  `EditName` to its record index. Degrades to empty on an older `ir.json` with no `landscapeGfx`. */
-function fruitedBushRecordByName(ir: ContentIr): ReadonlyMap<string, number> {
-  const out = new Map<string, number>();
-  for (const g of ir.landscapeGfx ?? []) {
-    if (g.editName !== undefined && g.logicType === BUSH_WITH_FRUITS_LOGIC_TYPE) out.set(g.editName, g.index);
-  }
-  return out;
-}
-
 /**
- * The forageable berry bushes a decoded map's placed objects define. Deterministic: one pass over
+ * The berry bushes a decoded map's placed objects define, in every stage. Deterministic: one pass over
  * `map.objects.placements` in native row-major order, so the caller mints entity ids in a fixed order.
  */
 export function mapBerryBushSpawns(objects: TerrainObjects, ir: ContentIr): MapBerryBushSpawn[] {
-  const byName = fruitedBushRecordByName(ir);
+  const byName = berryBushRecordByName(ir);
   const { types, placements } = objects;
   const out: MapBerryBushSpawn[] = [];
   forEachPlacement(placements, (hx, hy, typeIndex, placement) => {
     const name = types[typeIndex];
-    const gfxIndex = name !== undefined ? byName.get(name) : undefined;
-    if (gfxIndex !== undefined) out.push({ gfxIndex, hx, hy, placement });
+    const record = name !== undefined ? byName.get(name) : undefined;
+    if (record !== undefined) out.push({ ...record, hx, hy, placement });
   });
   return out;
 }

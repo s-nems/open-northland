@@ -19,7 +19,7 @@ import {
 } from './palisade-rows.js';
 import { forEachPlacement, PLACEMENT_STRIDE } from './placements.js';
 import {
-  BUSH_WITH_FRUITS_LOGIC_TYPE,
+  berryBushRecordByName,
   chestKindByLogicType,
   groundGoodByObjectName,
   harvestGoodByObjectName,
@@ -59,6 +59,7 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
   const harvestByName = harvestGoodByObjectName(ir);
   const groundGoodByName = groundGoodByObjectName(ir);
   const chestKindByType = chestKindByLogicType(ir);
+  const bushByName = berryBushRecordByName(ir);
   const wallByType = playerWallRows(ir);
   const wallScales = wallStrengthScales(ir);
   const woodGoodType = ir.goods?.find((good) => good.id === 'wood')?.typeId;
@@ -78,6 +79,7 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
     const ref = g.editName === undefined ? undefined : harvestByName.get(g.editName);
     const gatherer = ref === undefined ? undefined : gatherers.get(ref.goodId);
     const chestKind = chestKindByType.get(g.logicType);
+    const bush = g.editName === undefined ? undefined : bushByName.get(g.editName);
     const goodId = g.editName === undefined ? undefined : groundGoodByName.get(g.editName);
     const wall = wallByType.get(g.logicType);
     const counterpartName =
@@ -114,7 +116,7 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
         ? {}
         : { attach: g.attachAreas.flatMap(([dx, dy, run]) => attachRun(dx, dy, run)) }),
       ...(resource === undefined ? {} : { resource }),
-      ...(g.logicType === BUSH_WITH_FRUITS_LOGIC_TYPE ? { bushGfxIndex: g.index } : {}),
+      ...(bush === undefined ? {} : { bush }),
       ...(chestKind === undefined ? {} : { chest: { kind: chestKind, gfxIndex: g.index } }),
       ...(goodId === undefined ? {} : { good: { goodId } }),
       ...(wall === undefined
@@ -158,7 +160,7 @@ export function buildScriptLandscapeTerrain(map: TerrainMapFile, ir: ContentIr):
       const type = typeById.get(typeId);
       const resourceBacked =
         type?.resource !== undefined ||
-        type?.bushGfxIndex !== undefined ||
+        type?.bush !== undefined ||
         type?.chest !== undefined ||
         type?.good !== undefined ||
         type?.wall !== undefined;

@@ -402,6 +402,7 @@ export const WORK_FACTS: Readonly<Record<string, Fact>> = {
   ),
   'gather.fishSeconds': whole(fishSeconds),
   'field.waterings': whole(FIELD_GROWTH_STAGES - 1),
+  'field.stageSeconds': whole(seconds(systems.LANDSCAPE_GROWTH_PERIOD_TICKS)),
   'field.max': whole(FARM_MAX_FIELDS),
   'field.radius': whole(FARM_FIELD_RADIUS),
   'field.diagonal': whole(diagonal(FARM_FIELD_RADIUS)),

@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               '田不長',
-              '田地只靠澆水才長。在[[building:work_farm_00|農場]]工作的[[job:farmer|農夫]]或在[[building:work_herb_hut|草藥屋]]工作的[[job:herb_mush_guy|草藥師]]會澆水。他先播種，滿{{field.max}}塊田或無處可播時才澆水。田地澆{{field.waterings}}次成熟，一次澆水同時覆蓋6塊相鄰田地。沙地和道路上不能播種，播種範圍在建築{{field.radius}}格以內。',
+              '不澆水的田地每{{field.stageSeconds}}秒只長1階段。在[[building:work_farm_00|農場]]工作的[[job:farmer|農夫]]或在[[building:work_herb_hut|草藥屋]]工作的[[job:herb_mush_guy|草藥師]]會澆水。他先播種，滿{{field.max}}塊田或無處可播時才澆水。田地澆{{field.waterings}}次成熟，一次澆水同時覆蓋6塊相鄰田地。沙地和道路上不能播種，播種範圍在建築{{field.radius}}格以內。',
             ],
             [
               '雨、雪或黑夜有影響嗎？',

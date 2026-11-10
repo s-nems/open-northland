@@ -9,7 +9,7 @@ import {
   nodeOfPosition,
   positionOfNode,
 } from '../../nav/halfcell.js';
-import type { SystemContext } from '../context.js';
+import type { System, SystemContext } from '../context.js';
 import { buildingFieldZone, translatedCells } from '../footprint/geometry.js';
 import {
   dynamicBlockOverlay,
@@ -17,6 +17,8 @@ import {
   stampResourceFootprintOrFallback,
   unstampResourceFootprint,
 } from '../footprint/index.js';
+import { dueForGrowth } from '../landscape/growth-clock.js';
+import { cropsNearNode } from '../spatial/crops.js';
 import { resourcesAtNode } from '../spatial/resources.js';
 import { stockpilesAtNode } from '../spatial/stockpiles.js';
 
@@ -25,11 +27,10 @@ import { stockpilesAtNode } from '../spatial/stockpiles.js';
 // lanes 27/28/29 and herb lanes 33/34/35 with `maximumValency 5`); its plot size and radius are the content
 // `farming` block's calibration. Any good carrying the three atomics and a `farming` block runs it.
 
-// Watering is the only growth: the cultivate clip fires the `GROW` cue (`atomicanimations.ini` `event 14 16`,
-// `ATOMIC_ANIMATION_EVENT_TYPE_GROW` in `logicdefines.inc`) and `wheat (growing)` answers the transition of
-// the same name with one valency step (`transition 7 27 2 +1 0`: `LANDSCAPE_TRANSITION_GROW`, modifier
-// `DELTA`, +1) up to `maximumValency 5`. Approximation: no clock steps a field, which the data leaves
-// open - a bush carries a `GROW` transition too and something other than a can fires it there.
+// A field grows one valency step per `GROW` transition (`wheat (growing)` `transition 7 27 2 +1 0`:
+// `LANDSCAPE_TRANSITION_GROW`, modifier `DELTA`, +1) up to `maximumValency 5`. The cultivate clip fires it
+// (`atomicanimations.ini` `event 14 16`, `ATOMIC_ANIMATION_EVENT_TYPE_GROW` in `logicdefines.inc`). Original
+// behavior: the landscape growth trigger that grows the bushes and trees fires it on every field too.
 
 /** A field-farmed good's resolved loop parameters: its content `farming` block plus the
  *  `atomicForPlanting` / `atomicForCultivating` / `atomicForHarvesting` ids. */
@@ -225,16 +226,24 @@ export function applyWater(world: World, crop: Entity): void {
   for (const n of hexNeighboursOf(hx, hy)) growFieldsAt(world, n.hx, n.hy);
 }
 
-/** Step every field standing on node `(hx, hy)` one stage; a ripe one stands as it is. */
+/** Step every field standing on node `(hx, hy)` one stage. */
 function growFieldsAt(world: World, hx: number, hy: number): void {
-  for (const e of resourcesAtNode(world, hx, hy)) {
-    const crop = world.tryGet(e, Crop);
-    if (crop === undefined || crop.stage >= crop.stages) continue;
-    const grown = world.mut(e, Crop);
-    grown.stage += 1;
-    if (grown.stage >= grown.stages) world.mut(e, Resource).remaining = grown.yieldUnits;
-  }
+  for (const e of resourcesAtNode(world, hx, hy)) growField(world, e);
 }
+
+/** Step `e` one stage when it is an unripe field; the top stage frees its yield, a ripe one stands. */
+function growField(world: World, e: Entity): void {
+  const crop = world.tryGet(e, Crop);
+  if (crop === undefined || crop.stage >= crop.stages) return;
+  const grown = world.mut(e, Crop);
+  grown.stage += 1;
+  if (grown.stage >= grown.stages) world.mut(e, Resource).remaining = grown.yieldUnits;
+}
+
+/** Grow every field in this run's map section one stage on the landscape growth trigger, watered or not. */
+export const fieldGrowthSystem: System = (world, ctx) => {
+  for (const e of dueForGrowth(world, ctx, cropsNearNode)) growField(world, e);
+};
 
 /**
  * Destroy every field standing under `building`'s walls. A field is worked from the node it stands on, so a

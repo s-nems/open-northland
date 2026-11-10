@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { FarmTask } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { cellAnchorNode, Simulation } from '../../../../src/index.js';
-import { applySow, applyWater, plannerSystem } from '../../../../src/systems/index.js';
+import { applySow, applyWater, fieldGrowthSystem, plannerSystem } from '../../../../src/systems/index.js';
+import { LANDSCAPE_GROWTH_PERIOD_TICKS } from '../../../../src/systems/landscape/growth-clock.js';
 import { testContent } from '../../../fixtures/content.js';
 
 import {
@@ -67,11 +68,14 @@ const BEYOND_ODD_ROW = [
 /** Targets deep enough inside the 12-cell map for every offset above to stay in bounds, one per row parity. */
 const EVEN_TARGET = { hx: 10, hy: 10 } as const;
 const ODD_TARGET = { hx: 10, hy: 11 } as const;
-/** Long enough for any timer the sim might still carry to show. */
+/** Long enough for any timer the sim might still carry to show, and short of the growth trigger reaching
+ *  the small maps' fields. */
 const IDLE_TICKS = 1000;
+/** 20 x 20 cells are 40 x 40 nodes: two nodes a side to each of the growth trigger's 20 x 20 sections. */
+const SECTIONED_CELLS = 20;
 
 describe('crop growth', () => {
-  it('a watering steps the field one stage, and nothing else does - until the top stage frees its yield', () => {
+  it('a watering steps the field one stage, and no timer does - until the top stage frees its yield', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
     const farm = farmAt(sim, 0, 0);
     const field = fieldAt(sim, farm, 2, 2);
@@ -88,6 +92,24 @@ describe('crop growth', () => {
     for (let stage = 2; stage < STAGES; stage++) applyWater(sim.world, field);
     expect(sim.world.get(field, Crop).stage).toBe(STAGES);
     expect(sim.world.get(field, Resource).remaining).toBe(1); // ripe - worth its yield to the scythe
+  });
+
+  it('the growth trigger steps each unwatered field of its section once per period, up to ripe', () => {
+    const sim = new Simulation({
+      seed: 1,
+      content: testContent(),
+      map: grassMap(SECTIONED_CELLS, SECTIONED_CELLS),
+    });
+    const farm = farmAt(sim, SECTIONED_CELLS / 2, SECTIONED_CELLS / 2);
+    const inFirstSection = fieldAtNode(sim, farm, 1, 1);
+    const nextSection = fieldAtNode(sim, farm, 2, 1);
+
+    for (let period = 1; period <= STAGES; period++) {
+      fieldGrowthSystem(sim.world, { ...ctxOf(sim), tick: period * LANDSCAPE_GROWTH_PERIOD_TICKS });
+      expect(sim.world.get(inFirstSection, Crop).stage).toBe(Math.min(1 + period, STAGES));
+    }
+    expect(sim.world.get(inFirstSection, Resource).remaining).toBe(1);
+    expect(sim.world.get(nextSection, Crop).stage).toBe(1);
   });
 
   it('a watering reaches the six lattice neighbours of its target, parity shift included, and nothing farther', () => {

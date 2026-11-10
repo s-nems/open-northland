@@ -1,4 +1,4 @@
-import { BerryBush, LandscapeResource, Position } from '../../components/index.js';
+import { BerryBush, type BerryBushStage, LandscapeResource, Position } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
@@ -16,41 +16,47 @@ export const BERRY_STAGE_TICKS = LANDSCAPE_GROWTH_PERIOD_TICKS;
 /** The longest a foraged bush takes to fruit again; its first step comes at its section's next growth run. */
 export const BERRY_REGROW_TICKS = BERRY_GROWTH_STEPS * BERRY_STAGE_TICKS;
 
-/** The resolved shape of a berry bush to place: its half-cell node and an optional render variant. */
+/** The resolved shape of a berry bush to place: its half-cell node, stage and an optional render variant. */
 export interface BerryBushSpec {
   readonly landscapeId?: number;
   /** Half-cell lattice coords. */
   readonly x: number;
   readonly y: number;
+  /** The authored stage; omitted, the bush holds fruit. */
+  readonly stage?: BerryBushStage;
   /** The fruited-bush `landscapeGfx` index; omitted for a synthetic spawn. */
   readonly gfxIndex?: number;
 }
 
 /**
- * Assemble a wild berry bush, ripe: bushes spawn holding fruit. Unlike a Resource node a bush carries no
- * footprint - bushes are walkable in the original (`landscapetypes.ini` `allowedonland 1`, no block areas) -
- * so a settler stands on the tile to forage it.
+ * Assemble a wild berry bush. Unlike a Resource node a bush carries no footprint - bushes are walkable in
+ * the original (`landscapetypes.ini` `allowedonland 1`, no block areas) - so a settler stands on the tile
+ * to forage it.
  */
 export function createBerryBush(world: World, spec: BerryBushSpec): Entity {
   const e = world.create();
   if (spec.landscapeId !== undefined) world.add(e, LandscapeResource, { id: spec.landscapeId });
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, BerryBush, {
-    stage: 'ripe',
+    stage: spec.stage ?? 'ripe',
     ...(spec.gfxIndex !== undefined ? { gfxIndex: spec.gfxIndex } : {}),
   });
   return e;
 }
 
 /**
- * Grow every regrowing {@link BerryBush} in this run's map section one stage. Original behavior: the bush
- * types' `transition 7` on the landscape growth trigger, `bush naked -> flowering -> with fruits`.
+ * Grow every unripe {@link BerryBush} in this run's map section one stage, a foraged one and one the map
+ * authors naked or flowering alike. Original behavior: the bush types' `transition 7` on the landscape
+ * growth trigger, `bush naked -> flowering -> with fruits`.
  */
 export const berryGrowthSystem: System = (world, ctx) => {
   for (const e of dueForGrowth(world, ctx, bushesNearNode)) {
     const stage = world.get(e, BerryBush).stage;
-    if (stage === 'bare') world.mut(e, BerryBush).stage = 'flowering';
-    else if (stage === 'flowering') world.mut(e, BerryBush).stage = 'ripe';
+    if (stage === 'ripe') continue;
+    world.mut(e, BerryBush).stage = stage === 'bare' ? 'flowering' : 'ripe';
+    // A map-authored bush is still drawn by its static picture until this hands it to the live draw.
+    const pos = world.get(e, Position);
+    ctx.events.emit({ kind: 'berryBushGrew', bush: e, at: eventAt(pos.x, pos.y) });
   }
 };
 

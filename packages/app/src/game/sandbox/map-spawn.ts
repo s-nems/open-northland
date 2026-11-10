@@ -242,7 +242,7 @@ export function spawnMapBerryBushes(
   const placementByEntity = new Map<Entity, number>();
   const retiredPlacements: number[] = [];
   const terrain = sim.terrain;
-  for (const { gfxIndex, hx, hy, placement } of mapBerryBushSpawns(objects, ir)) {
+  for (const { gfxIndex, stage, hx, hy, placement } of mapBerryBushSpawns(objects, ir)) {
     if (
       terrain !== undefined &&
       systems.insideBuildingReservedZone(sim.world, sim.content, terrain, hx, hy)
@@ -253,6 +253,7 @@ export function spawnMapBerryBushes(
     const e = systems.createBerryBush(sim.world, {
       x: hx,
       y: hy,
+      stage,
       gfxIndex,
       ...(sim.terrain?.landscapes !== undefined ? { landscapeId: placement } : {}),
     });

@@ -66,13 +66,15 @@ const depleted = (node: number): SimEvent => ({
 });
 const foraged = (bush: number): SimEvent => ({ kind: 'berryForaged', bush: entity(bush), at: AT });
 const razed = (bush: number): SimEvent => ({ kind: 'berryBushRazed', bush: entity(bush), at: AT });
+const grew = (bush: number): SimEvent => ({ kind: 'berryBushGrew', bush: entity(bush), at: AT });
 
-/** Every event that means "this harvestable was worked for the first time", on a fitting fixture. */
+/** Every event that means "this harvestable changed for the first time", worked or grown, on a fitting fixture. */
 const WORKED = [
   { kind: 'felled', event: felled, node: 10, sprite: 'tree', remaining: 11 },
   { kind: 'mined', event: mined, node: 10, sprite: 'tree', remaining: 11 },
   { kind: 'depleted', event: depleted, node: 10, sprite: 'tree', remaining: 11 },
   { kind: 'foraged', event: foraged, node: 11, sprite: 'bush', remaining: 10 },
+  { kind: 'grown', event: grew, node: 11, sprite: 'bush', remaining: 10 },
 ] as const;
 
 /** Entities 10 and 11 sit on placements 0 and 1; entity 12's placement never resolved to a sprite. */

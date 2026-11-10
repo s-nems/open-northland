@@ -10,8 +10,8 @@ import type { GoodFarming } from '@open-northland/data';
  * minutes, which an idealized farm without hunger or sleep runs well above.
  */
 
-/** Growth stages a sown field passes through before it is ripe, one per watering. Original behavior: a
- *  farmer waters a field whose valency is below 5 and reaps at 5, the
+/** Growth stages a sown field passes through before it is ripe, one per watering or growth run. Original
+ *  behavior: a farmer waters a field whose valency is below 5 and reaps at 5, the
  *  `landscapetypes.ini` `maximumValency 5` of the wheat and herb growing lanes. */
 export const FIELD_GROWTH_STAGES = 5;
 

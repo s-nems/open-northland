@@ -33,9 +33,11 @@ const IR: ContentIr = {
     { index: 15, editName: 'fx wave', logicType: 1 },
     { index: 16, editName: 'similar block decor', logicType: 1 },
     { index: 17, editName: 'test stone', logicType: 15, maxValency: 23 },
-    { index: 18, editName: 'test berries', logicType: 11 },
+    { index: 18, editName: 'bush 01 fruits', logicType: 11 },
     { index: 19, editName: 'chest wooden', logicType: 85 },
     { index: 20, editName: 'chest magical', logicType: 86 },
+    { index: 21, editName: 'bush 01 empty', logicType: 9 },
+    { index: 22, editName: 'bush 01 flower', logicType: 10 },
   ],
   gatheringPipeline: [{ goodType: 9, goodId: 'stone', harvest: { landscapeType: 15, gfxIndices: [17] } }],
 };
@@ -53,6 +55,8 @@ describe('script landscape content', () => {
       [18, []],
       [19, []],
       [20, []],
+      [21, []],
+      [22, []],
     ]);
     expect(types[0]?.walk).toEqual([{ dx: 0, dy: 0 }]);
     expect(types[0]?.build).toEqual([
@@ -66,7 +70,10 @@ describe('script landscape content', () => {
       deposit: { initial: 23, levels: 23 },
     });
     expect(types[5]?.resource).not.toHaveProperty('x');
-    expect(types[6]?.bushGfxIndex).toBe(18);
+    expect(types[6]?.bush).toEqual({ gfxIndex: 18, stage: 'ripe' });
+    // A naked or flowering bush draws from its fruited twin and grows on from its own stage.
+    expect(types[9]?.bush).toEqual({ gfxIndex: 18, stage: 'bare' });
+    expect(types[10]?.bush).toEqual({ gfxIndex: 18, stage: 'flowering' });
     expect(types[7]?.chest).toEqual({ kind: 'wooden', gfxIndex: 19 });
     expect(types[8]?.chest).toEqual({ kind: 'magical', gfxIndex: 20 });
   });
@@ -120,7 +127,7 @@ describe('script landscape content', () => {
       height: 2,
       typeIds: [1, 1, 1, 1],
       objects: {
-        types: ['missing', 'block', 'test stone', 'test berries', 'chest wooden'],
+        types: ['missing', 'block', 'test stone', 'bush 01 fruits', 'chest wooden'],
         placements: [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 2, 1, 4],
         levels: [1, 4, 2, 1, 52],
       },

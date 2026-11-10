@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Pole nie rośnie',
-              'Rośnie tylko od podlewania. Pole podlewa [[job:farmer|Farmer]] na [[building:work_farm_00|Farmie]] albo [[job:herb_mush_guy|Zielarz]] w [[building:work_herb_hut|Chatce zielarza]], jeśli ma tam miejsce pracy. Najpierw sieje, a podlewa dopiero przy {{field.max}} polach albo gdy nie ma gdzie siać. Pole dojrzewa po {{field.waterings}} podlewaniach, a jedno podlewanie obejmuje też 6 sąsiednich pól. Pola nie zasieje na piasku ani na drodze, a sieje do {{field.radius}} hexów od budynku.',
+              'Bez podlewania rośnie tylko o 1 etap co {{field.stageSeconds}} s. Pole podlewa [[job:farmer|Farmer]] na [[building:work_farm_00|Farmie]] albo [[job:herb_mush_guy|Zielarz]] w [[building:work_herb_hut|Chatce zielarza]], jeśli ma tam miejsce pracy. Najpierw sieje, a podlewa dopiero przy {{field.max}} polach albo gdy nie ma gdzie siać. Pole dojrzewa po {{field.waterings}} podlewaniach, a jedno podlewanie obejmuje też 6 sąsiednich pól. Pola nie zasieje na piasku ani na drodze, a sieje do {{field.radius}} hexów od budynku.',
             ],
             [
               'Czy deszcz, śnieg albo noc coś zmieniają?',

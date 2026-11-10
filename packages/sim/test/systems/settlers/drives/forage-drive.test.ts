@@ -257,6 +257,7 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
     // Node (0, 0) is the first section, run on every whole growth period.
     expect(stageAfterRun(BERRY_STAGE_TICKS - GROWTH_RUN_TICKS)).toBe('bare');
     expect(stageAfterRun(BERRY_STAGE_TICKS)).toBe('flowering');
+    expect(sim.snapshot().events).toContainEqual(expect.objectContaining({ kind: 'berryBushGrew', bush }));
     expect(stageAfterRun(2 * BERRY_STAGE_TICKS - GROWTH_RUN_TICKS)).toBe('flowering');
     expect(stageAfterRun(2 * BERRY_STAGE_TICKS)).toBe('ripe');
     expect(stageAfterRun(3 * BERRY_STAGE_TICKS)).toBe('ripe');

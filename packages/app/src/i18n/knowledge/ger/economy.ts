@@ -367,7 +367,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Ein Feld wächst nur, wenn jemand es gießt, von allein mit der Zeit wächst es nicht. Jedes Gießen hebt dieses Feld und 6 Nachbarfelder um 1 Stufe, ein Feld braucht also höchstens {{field.waterings}} Mal Gießen. Nach der Ernte bleibt 1 Stück liegen, und auf dem Platz kann wieder gesät werden.',
+          p: 'Jedes Gießen hebt dieses Feld und 6 Nachbarfelder um 1 Stufe, ein Feld braucht also höchstens {{field.waterings}} Mal Gießen. Ohne Wasser wächst ein Feld auch von allein, nur langsam: 1 Stufe alle {{field.stageSeconds}} s. Nach der Ernte bleibt 1 Stück liegen, und auf dem Platz kann wieder gesät werden.',
         },
         {
           p: 'Säen und Gießen kosten nichts, nicht einmal Wasser.',

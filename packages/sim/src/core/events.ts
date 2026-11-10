@@ -400,6 +400,12 @@ export type SimEvent =
       readonly at: HalfCellNode;
     }
   | {
+      /** A wild berry `bush` grew a stage this tick: naked to flowering, or flowering to fruit. */
+      readonly kind: 'berryBushGrew';
+      readonly bush: Entity;
+      readonly at: HalfCellNode;
+    }
+  | {
       /**
        * A wild berry bush was razed this tick, by a building placed over it or the debug eraser. Unlike
        * `berryForaged` the bush entity is gone by the snapshot.
