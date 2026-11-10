@@ -221,7 +221,38 @@ describe('createVehicle', () => {
     expect(s.vehicleView(near)?.door).toEqual(moored.mooring);
     expect(s.world.get(far, Vehicle)).toMatchObject({ moored: false, mooring: null });
   });
+
+  it('berths a ship spawned on land or far out at the nearest free mooring, and skips one with no shore near', () => {
+    const s = sim(shoreMap());
+    const berthed = (x: number, y: number, map = s): Entity | null =>
+      createVehicle(map.world, ctxOf(map), {
+        vehicleType: SHIP_SMALL,
+        x,
+        y,
+        tribe: VIKING,
+        owner: P0,
+        berth: true,
+      });
+    const inland = MAP_CELLS - SHIP_DOOR_DISTANCE;
+    const out = MAP_CELLS + 3 * SHIP_DOOR_DISTANCE;
+    const ships = [berthed(inland, 10), berthed(inland, 10), berthed(out, 10)];
+    const blocked = vehicleBlockedCells(s.world, ctxOf(s), s.terrain ?? fail());
+    for (const ship of ships) {
+      if (ship === null) throw new Error('no berth found');
+      const state = s.world.get(ship, Vehicle);
+      const at = nodeOfPosition(s.world.get(ship, Position).x, s.world.get(ship, Position).y);
+      expect(state.moored).toBe(true);
+      expect(hexDistance(at, state.mooring ?? fail())).toBe(SHIP_DOOR_DISTANCE);
+      expect(s.terrain?.isWalkable(s.terrain.nodeAt(at.hx, at.hy))).toBe(false);
+      expect(blocked.get(s.terrain?.nodeAt(at.hx, at.hy) ?? fail())).toBe(1);
+    }
+    expect(berthed(2, 10, sim())).toBeNull();
+  });
 });
+
+function fail(): never {
+  throw new Error('fixture terrain missing');
+}
 
 describe('VehicleStock', () => {
   it('aliases a dish onto the edible the hold lists and refuses a good it cannot carry', () => {

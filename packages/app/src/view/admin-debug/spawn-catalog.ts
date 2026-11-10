@@ -244,9 +244,18 @@ export interface VehicleSpawnOptions {
   readonly y: number;
 }
 
-/** Full hit points, an empty hold and no crew; a ship dropped within its door distance of land moors. */
+/** Full hit points, an empty hold and no crew; a ship stands moored at the berth nearest the click, or
+ *  not at all when no shore is near. */
 export function vehicleSpawnCommand(vehicleType: number, opts: VehicleSpawnOptions): Command {
-  return { kind: 'createVehicle', vehicleType, x: opts.x, y: opts.y, tribe: opts.tribe, owner: opts.player };
+  return {
+    kind: 'createVehicle',
+    vehicleType,
+    x: opts.x,
+    y: opts.y,
+    tribe: opts.tribe,
+    owner: opts.player,
+    berth: true,
+  };
 }
 
 /** One spawnable resource node: its good's typeId plus a short material label. */

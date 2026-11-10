@@ -17,7 +17,7 @@ import { vehicleClearance } from '../footprint/vehicle-clearance.js';
 // class crossing the hull's size (`ClearanceField.waterRevision`), so a ship's reach over a whole sea
 // is a lookup, not a flood. Derived state, never hashed.
 
-const NO_REGION = -1;
+export const NO_REGION = -1;
 
 export interface SeaRegions {
   /** Changes whenever a label may have. */

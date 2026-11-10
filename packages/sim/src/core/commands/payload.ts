@@ -295,6 +295,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
       owner: 'integer',
       missionId: 'integer',
       goods: { arrayOf: { fields: { required: { good: 'integer', amount: 'integer' } } } },
+      berth: 'boolean',
     },
   },
   debugCompleteConstruction: { required: { target: 'integer' } },

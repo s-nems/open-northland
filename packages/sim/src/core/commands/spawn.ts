@@ -42,6 +42,10 @@ export interface CreateVehicleCommand {
    *  the hold up to the type's budget and, with no carrier seated yet, asked for in the same amount, so
    *  a carrier attached later leaves it aboard until a player asks for less. */
   readonly goods?: readonly { readonly good: number; readonly amount: number }[];
+  /** For a ship: stand it instead on the nearest node within a few door distances of (x,y) it may lie
+   *  on moored (its disc in open water clear of other vehicles, land at its door distance), skipping the
+   *  command when none is in reach. The admin spawn tool sends it. */
+  readonly berth?: boolean;
 }
 
 /** Commands that create living settlers, wildlife herds or vehicles, and wire the families a map places. */
