@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { BuildMode, Palisade, SiteAssignment, UnderConstruction } from '../../../src/components/index.js';
+import {
+  AiControl,
+  BuildMode,
+  COMPUTER_MODULE_IDS,
+  computerModuleEnables,
+  IdleStand,
+  Palisade,
+  SiteAssignment,
+  UnderConstruction,
+} from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { playerCommand, type Simulation, WALK_RANGE_NODES } from '../../../src/index.js';
 import { claimSite } from '../../../src/systems/economy/site-claim.js';
@@ -210,5 +219,29 @@ describe('a wall run', () => {
     expect(wallsLeft()).toBe(false);
     expect(sim.world.has(house, UnderConstruction)).toBe(false);
     expect(sim.world.has(builder, BuildMode)).toBe(false);
+  });
+
+  it("waits for stone on the short idle beat under a computer seat, every tick under a human's", () => {
+    const waiting = (computer: boolean): unknown => {
+      const sim = roadSim();
+      if (computer) {
+        sim.world.add(sim.world.create(), AiControl, {
+          player: HUMAN,
+          modules: computerModuleEnables(Object.fromEntries(COMPUTER_MODULE_IDS.map((id) => [id, false]))),
+          computerEnabled: true,
+          mapAiEnabled: false,
+          difficulty: 'hard',
+        });
+      }
+      const [first] = ROAD_HXS;
+      const builder = builderAt(sim, first);
+      orderRoads(sim, [{ hx: first, hy: ROW }]);
+      assign(sim, builder, siteOf(sim, first));
+      for (let tick = 0; tick < BUILD_TICKS; tick++) sim.step();
+      expect(sim.world.get(builder, BuildMode).kind).toBe('roads');
+      return sim.world.tryGet(builder, IdleStand);
+    };
+    expect(waiting(false)).toBeUndefined();
+    expect(waiting(true)).toEqual({ standing: false, shortBeat: true });
   });
 });

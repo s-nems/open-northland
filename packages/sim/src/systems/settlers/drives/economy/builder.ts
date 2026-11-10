@@ -1,6 +1,10 @@
 import {
   BuildMode,
+  CurrentAtomic,
+  chatAtomicRunning,
+  inPastimeChat,
   LostWay,
+  MoveGoal,
   ownerOf,
   ownersCompatible,
   Palisade,
@@ -31,7 +35,7 @@ import {
   startAtomic,
 } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
-import { type IdleStands, standsStillForMachine } from '../../planner/idle-replan.js';
+import { type IdleStands, ownedByMachine, standsStillForMachine } from '../../planner/idle-replan.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { FILED_STRIDE } from '../../targets/cell-index.js';
 import {
@@ -61,8 +65,8 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
  * a finishing crew waiting for its last loads. The last builder at a site with a task stays, unless it
  * has no step to hammer there and the site it would go to has nobody. With no task anywhere the builder
  * waits beside a site, unless only its signposts keep it from one; a machine seat's builder waiting there
- * re-plans on the short idle beat. A road or wall run the player started
- * ({@link BuildMode}) goes before all of that. New wall segments wait while a building site holds a task
+ * re-plans on the short idle beat, as does one waiting for material at the site of a run. A road or wall
+ * run the player started ({@link BuildMode}) goes before all of that. New wall segments wait while a building site holds a task
  * the builder can do, and road sites wait while a building or a wall site holds one. Player pins and
  * unfinished workplace bindings are strict: their builders stay with that site even while another has
  * work.
@@ -186,7 +190,12 @@ export function planBuilder(
     if (next !== null) {
       stampAssignment(plan, claims, next, true);
       if (!holdSegment(plan, claims, next)) return false;
-      if (!workAtSite(plan, spacing, claims, orderedMaterials(), next)) waitAtSite(plan, spacing, next);
+      if (!workAtSite(plan, spacing, claims, orderedMaterials(), next)) {
+        waitAtSite(plan, spacing, next);
+        // A machine seat's run builder waiting there for material waits for the short idle beat, like
+        // one standing ready below.
+        if (waitsStillForMachine(world, e)) idle.stand(e, false, true);
+      }
       return true;
     }
     // Nothing of the kind is left to claim: the run is over and normal priorities resume.
@@ -332,6 +341,13 @@ export function planBuilder(
   }
   dropAssignment(plan, claims);
   return false;
+}
+
+/** Whether a machine seat's builder holds still at its site with no walk and no clip but a pastime
+ *  chat's, which runs on while it waits. */
+function waitsStillForMachine(world: World, e: Entity): boolean {
+  if (!ownedByMachine(world, e) || world.has(e, MoveGoal)) return false;
+  return !world.has(e, CurrentAtomic) || (inPastimeChat(world, e) && chatAtomicRunning(world, e));
 }
 
 /**
