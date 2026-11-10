@@ -31,6 +31,7 @@ import {
   firingBuildings,
   isValidTarget,
   keepsWildTarget,
+  type StrikeRank,
   strikeRank,
   turnsAsideUnder,
 } from '../../../../../conflict/targeting.js';
@@ -47,6 +48,7 @@ import {
   isFighterJob,
   isProvokableAnimal,
   MILITARY_MODE,
+  type MilitaryMode,
   stanceMode,
 } from '../../../../../readviews/index.js';
 import { hexNodeDistance } from '../../../../../spatial/metric.js';
@@ -116,12 +118,60 @@ export function turnOnAttacker(world: World, ctx: SystemContext, attacker: Entit
   const settler = world.tryGet(victim, Settler);
   if (terrain === undefined || settler === undefined || !world.has(victim, Owner)) return;
   if (!isFighterJob(ctx.content, settler.jobType)) return;
+  const mode = stanceMode(world, ctx.content, victim, settler.jobType);
+  turnFighterOn(world, ctx, terrain, strikeBy(world, ctx, attacker), victim, settler, mode);
+}
+
+/**
+ * A blow as every fighter of one player it may turn reads it: who struck, and what of the striker no
+ * fighter's own state changes. One strike serves the fighters of one player, for one blow.
+ */
+export interface Strike {
+  /** The body a fighter turns on: the tower an archer shoots from, else the attacker. */
+  readonly striker: Entity;
+  readonly positioned: boolean;
+  /** Whether the striker has an owner: then its validity as a target is the same for every fighter of one
+   *  player, the striker itself aside, and {@link validForSide} holds it once asked. */
+  readonly owned: boolean;
+  validForSide: boolean | undefined;
+  readonly firingNow: () => ReadonlySet<Entity>;
+  /** The striker's {@link strikeRank}, once asked. */
+  rank: StrikeRank | undefined;
+}
+
+export function strikeBy(world: World, ctx: SystemContext, attacker: Entity): Strike {
+  const striker = standsAtPost(world, attacker) ?? attacker;
+  return {
+    striker,
+    positioned: world.has(striker, Position),
+    owned: world.has(striker, Owner),
+    validForSide: undefined,
+    // A melee blow lands before the combat pass, whose index would otherwise hold the firing set.
+    firingNow: passIndexOf(world, ctx.tick)?.firingNow ?? lazyFiringBuildings(world, ctx),
+    rank: undefined,
+  };
+}
+
+/** {@link turnOnAttacker} for owned fighter `victim` of trade `settler` under `mode`, by `strike`. */
+export function turnFighterOn(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  strike: Strike,
+  victim: Entity,
+  settler: SettlerIdentity,
+  mode: MilitaryMode,
+): void {
   const playerOrder = world.tryGet(victim, PlayerOrder);
   if (playerOrder !== undefined && playerOrder.attackMove === undefined) return;
-  const mode = stanceMode(world, ctx.content, victim, settler.jobType);
   if (mode !== MILITARY_MODE.ATTACK && mode !== MILITARY_MODE.DEFEND) return;
-  const striker = standsAtPost(world, attacker) ?? attacker;
-  if (!world.has(striker, Position) || !isValidTarget(world, ctx, victim, settler, striker)) return;
+  const { striker, firingNow } = strike;
+  if (!strike.positioned || victim === striker) return;
+  if (strike.owned) {
+    // Two owned bodies are a target by their owners and the struck one's own state alone.
+    strike.validForSide ??= isValidTarget(world, ctx, victim, settler, striker);
+    if (!strike.validForSide) return;
+  } else if (!isValidTarget(world, ctx, victim, settler, striker)) return;
   const engagement = world.tryGet(victim, Engagement);
   const held = engagement?.target;
   if (held === striker) return;
@@ -131,9 +181,8 @@ export function turnOnAttacker(world: World, ctx: SystemContext, attacker: Entit
     !withinOwnBand(world, ctx, victim, settler, reachFrom(world, ctx, terrain, here, striker))
   )
     return;
-  // A melee blow lands before the combat pass, whose index would otherwise hold the firing set.
-  const firingNow = passIndexOf(world, ctx.tick)?.firingNow ?? lazyFiringBuildings(world, ctx);
-  const strikerRank = strikeRank(world, ctx, striker, firingNow);
+  strike.rank ??= strikeRank(world, ctx, striker, firingNow);
+  const strikerRank = strike.rank;
   const order = world.tryGet(victim, AttackOrder);
   if (
     order !== undefined &&

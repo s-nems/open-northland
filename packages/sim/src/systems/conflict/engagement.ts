@@ -31,7 +31,7 @@ import {
 import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { onStride, REPATH_CADENCE } from './chase.js';
-import type { SearchMetric } from './combat-grid.js';
+import type { BandGround, SearchMetric } from './combat-grid.js';
 import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
 import type { Crowding, OwnClaims, Side } from './melee-slots.js';
@@ -123,6 +123,8 @@ export class EngagementSpecs {
   private readonly nearAnchor = (t: Entity): boolean =>
     hexNodeDistance(this.terrain, this.current().anchor, entityNode(this.world, this.terrain, t)) <=
     DEFEND_RADIUS_NODES;
+  /** The ground of the defender being resolved: {@link nearAnchor} as a search reads it. */
+  private readonly guarded = { x: 0, y: 0, radius: DEFEND_RADIUS_NODES, holds: this.nearAnchor };
   // Original behavior: the search has no sight or fog check; hostility (war only for two players) and
   // reach decide.
   private readonly advanceAccept = (t: Entity): boolean => {
@@ -184,7 +186,7 @@ export class EngagementSpecs {
         searchRadius: number;
         player: number | null;
         lowPriority: (t: Entity) => boolean;
-        narrow: ((t: Entity) => boolean) | null;
+        narrow: BandGround | null;
         lock: null;
         defend: { anchorCell: NodeId; leash: number; hold: boolean } | null;
         hold: {
@@ -302,7 +304,11 @@ export class EngagementSpecs {
             ? hexNodeDistance(terrain, here, anchor) + DEFEND_RADIUS_NODES
             : SIGHT_RADIUS_NODES;
       // Off its anchor a defender's band covers far more than the ground it guards.
-      spec.narrow = kind === 'defend' && spec.searchRadius > DEFEND_RADIUS_NODES ? this.nearAnchor : null;
+      if (kind === 'defend' && spec.searchRadius > DEFEND_RADIUS_NODES) {
+        this.guarded.x = terrain.xOf(anchor);
+        this.guarded.y = terrain.yOf(anchor);
+        spec.narrow = this.guarded;
+      } else spec.narrow = null;
       spec.player = isHunterJob(ctx.content, attacker.jobType) ? null : (viewer ?? null);
       spec.hold.band = weapon;
       // A step past the band takes the enemy about to step into it; a garrison never steps.
@@ -392,9 +398,9 @@ export interface EngageSpec {
   readonly searchCenter?: NodeId;
   /** A hunter seeking prey, whose acquisition rests after a pass that took none. */
   readonly preySeeker?: boolean;
-  /** A cheap test `accept` implies, for a search whose band reaches far past the ground `accept` admits:
-   *  it drops the members failing it before weighing the rest ({@link CombatIndex.nearestFewOfBestRank}). */
-  readonly narrow?: ((t: Entity) => boolean) | null;
+  /** The ground every target `accept` admits stands on, for a search whose band reaches far past it: the
+   *  members off it leave the band before the rest are weighed ({@link CombatIndex.nearestFewOfBestRank}). */
+  readonly narrow?: BandGround | null;
   /** The deprioritized tier among accepted targets, searched only when the primary tier finds nothing in
    *  sight. It splits RAW search candidates ahead of {@link EngageSpec.accept}, so it must stay total
    *  and pure over any indexed entity - a friendly unit, an own building, a carcass. */

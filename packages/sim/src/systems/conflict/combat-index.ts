@@ -13,6 +13,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { forEachVehicleFootprintNode } from '../footprint/index.js';
 import {
+  type BandGround,
   type BandScan,
   type CoarseCell,
   type CombatGrid,
@@ -30,6 +31,22 @@ import { mannedPostOf } from './tower-post.js';
 /** A candidate packs as `distance * CANDIDATE_ID_SPAN + entity`, so a numeric sort orders by distance and then
  *  id. Entity ids stay below 2^32 and distances below 2^21, so the key is an exact double. */
 const CANDIDATE_ID_SPAN = 2 ** 32;
+
+/** Candidate keys a caller keeps in its own buffer: the first {@link count} are live. */
+export interface KeptKeys {
+  keys: Float64Array;
+  count: number;
+}
+
+/** The member a candidate key names. */
+export function keyEntity(key: number): Entity {
+  return (key - Math.floor(key / CANDIDATE_ID_SPAN) * CANDIDATE_ID_SPAN) as Entity;
+}
+
+/** The distance a candidate key holds its member at. */
+export function keyDistance(key: number): number {
+  return Math.floor(key / CANDIDATE_ID_SPAN);
+}
 
 /** The index each world's latest combat pass built, which the shots landing after it read. */
 const passIndexes = new WeakMap<World, CombatIndex>();
@@ -283,9 +300,9 @@ export class CombatIndex {
    * {@link nearestFew} over the best of several kinds in one scan: the take of the lowest `rank` any
    * acceptor holds, exactly what asking `nearestFew` kind by kind returns at the first kind with an
    * acceptor. `rank(e, bound)` names the first kind below `bound` that `e` is of, or `bound` for none, and
-   * `accept` must be total and pure; both are asked at most once per member. `narrow` is a total, pure
-   * test every acceptor passes: the members failing it leave the band before it is sorted, which is what
-   * keeps a band far wider than the ground `accept` admits affordable. `firstTierOnly` says only rank 0
+   * `accept` must be total and pure; both are asked at most once per member. `narrow` is the ground every
+   * acceptor stands on: the members off it leave the band before it is sorted, which is what keeps a band
+   * far wider than the ground `accept` admits affordable. `firstTierOnly` says only rank 0
    * is asked for and it is the first combat tier, as in {@link nearest}.
    */
   nearestFewOfBestRank(
@@ -300,7 +317,7 @@ export class CombatIndex {
     seeker: number | null,
     tailRings: number,
     metric: SearchMetric = 'manhattan',
-    narrow: ((e: Entity) => boolean) | null = null,
+    narrow: BandGround | null = null,
     firstTierOnly = false,
   ): readonly { entity: Entity; distance: number }[] {
     const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric, narrow, firstTierOnly);
@@ -337,45 +354,33 @@ export class CombatIndex {
   }
 
   /**
-   * Every unit or building owned by `player` within `maxDist` of node (fromX, fromY) by `metric`, each once at
-   * its nearest admitted node, in ascending (distance, id) order. Only the owner's own members are measured,
-   * so the cost is the owner's members in the box, however crowded the box is with anyone else.
+   * Write to `out` every unit owned by `player` within `maxDist` of node (fromX, fromY) by `metric`, as
+   * candidate keys in ascending (distance, id) order ({@link keyEntity}, {@link keyDistance}). Only the
+   * owner's own units are measured, so the cost is its units in the box, however crowded the box is with
+   * anyone else. `out` is the caller's, so the keys outlive the queries it runs while reading them.
    */
-  ownedWithin(
+  ownedUnitsWithin(
     player: number,
     fromX: number,
     fromY: number,
     maxDist: number,
     metric: SearchMetric,
-  ): readonly { entity: Entity; distance: number }[] {
+    out: KeptKeys,
+  ): void {
+    out.count = 0;
     const bit = playerBit(player);
-    if (bit === 0) return [];
-    // This depth's band scan holds the keys, so the next band query here scans afresh.
-    const scan = this.grid.bandScanAt(this.depth);
-    scan.valid = false;
+    if (bit === 0) return;
     let count = 0;
     const { cx0, cx1, cy0, cy1 } = boxCellRange(fromX, fromY, maxDist);
     for (let cx = cx0; cx <= cx1; cx++) {
       for (let cy = cy0; cy <= cy1; cy++) {
         const cell = this.grid.cellAt(cx, cy);
-        if (cell === undefined) continue;
-        if (((cell.baseOwnerMask | cell.buildOwnerMask) & bit) !== 0)
-          count = appendOwned(scan, count, cell.bodies, bit, fromX, fromY, maxDist, metric);
-        if ((cell.unitOwnerMask & bit) !== 0)
-          count = appendOwned(scan, count, cell.units, bit, fromX, fromY, maxDist, metric);
+        if (cell !== undefined && (cell.unitOwnerMask & bit) !== 0)
+          count = appendOwned(out, count, cell.units, bit, fromX, fromY, maxDist, metric);
       }
     }
-    sortKeys(scan.keys, count);
-    const { keys } = scan;
-    scan.met.begin();
-    const found: { entity: Entity; distance: number }[] = [];
-    for (let i = 0; i < count; i++) {
-      const key = keys[i] ?? 0;
-      const distance = Math.floor(key / CANDIDATE_ID_SPAN);
-      const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
-      if (scan.met.firstMark(entity)) found.push({ entity, distance });
-    }
-    return found;
+    sortKeys(out.keys, count);
+    out.count = count;
   }
 
   /**
@@ -473,7 +478,7 @@ export class CombatIndex {
     maxDist: number,
     seeker: number | null,
     metric: SearchMetric,
-    narrow: ((e: Entity) => boolean) | null = null,
+    narrow: BandGround | null = null,
     firstTierOnly = false,
     unitsOnly = false,
   ): BandScan {
@@ -515,7 +520,7 @@ export class CombatIndex {
             metric,
             bodyTier,
           );
-        if (unitsHoldBandCandidate(cell, hostile))
+        if (narrow === null && unitsHoldBandCandidate(cell, hostile))
           count = appendBand(
             scan,
             count,
@@ -530,7 +535,22 @@ export class CombatIndex {
           );
       }
     }
-    if (narrow !== null) count = narrowKeys(scan, count, narrow);
+    if (narrow !== null) {
+      // The bodies in the band are asked by member; the units come from the cells the ground reaches.
+      count = narrowKeys(scan, count, narrow.holds);
+      count = this.appendUnitsOn(
+        narrow,
+        scan,
+        count,
+        fromX,
+        fromY,
+        minDist,
+        maxDist,
+        hostile,
+        metric,
+        firstTierOnly,
+      );
+    }
     sortKeys(scan.keys, count);
     // A narrowed band answers its own query alone.
     scan.valid = narrow === null && !firstTierOnly && !unitsOnly;
@@ -542,6 +562,48 @@ export class CombatIndex {
     scan.seeker = seeker;
     scan.count = count;
     return scan;
+  }
+
+  /** Append to `scan` from `count` the band's units standing on `ground`, read from the cells both the
+   *  band's box and the ground's overlap; returns the new count. */
+  private appendUnitsOn(
+    ground: BandGround,
+    scan: BandScan,
+    count: number,
+    fromX: number,
+    fromY: number,
+    minDist: number,
+    maxDist: number,
+    hostile: number,
+    metric: SearchMetric,
+    firstTierOnly: boolean,
+  ): number {
+    const band = boxCellRange(fromX, fromY, maxDist);
+    const on = boxCellRange(ground.x, ground.y, ground.radius);
+    let n = count;
+    for (let cx = Math.max(band.cx0, on.cx0); cx <= Math.min(band.cx1, on.cx1); cx++) {
+      for (let cy = Math.max(band.cy0, on.cy0); cy <= Math.min(band.cy1, on.cy1); cy++) {
+        const cell = this.grid.cellAt(cx, cy);
+        if (cell === undefined || !unitsHoldBandCandidate(cell, hostile)) continue;
+        const { members, x, y, bit, tier } = cell.units;
+        for (let i = 0; i < cell.units.count; i++) {
+          const memberBit = bit[i] ?? 0;
+          if (memberBit !== 0 && (memberBit & hostile) === 0) continue;
+          if (firstTierOnly && tier[i] === 0) continue;
+          const mx = x[i] ?? 0;
+          const my = y[i] ?? 0;
+          if (hexDistanceBetween(ground.x, ground.y, mx, my) > ground.radius) continue;
+          const distance =
+            metric === 'hex'
+              ? hexDistanceBetween(fromX, fromY, mx, my)
+              : Math.abs(mx - fromX) + Math.abs(my - fromY);
+          if (distance < minDist || distance > maxDist) continue;
+          if (n === scan.keys.length) growKeys(scan);
+          scan.keys[n++] = distance * CANDIDATE_ID_SPAN + (members[i] ?? 0);
+        }
+      }
+    }
+    return n;
   }
 
   /** Whether any coarse cell overlapping the box `radius` nodes around (hx, hy) passes `test` against the
@@ -657,7 +719,7 @@ function sortKeys(keys: Float64Array, count: number): void {
 }
 
 /** Double `scan`'s key buffer, keeping its keys. */
-function growKeys(scan: BandScan): void {
+function growKeys(scan: { keys: Float64Array }): void {
   const grown = new Float64Array(scan.keys.length * 2);
   grown.set(scan.keys);
   scan.keys = grown;
@@ -666,7 +728,7 @@ function growKeys(scan: BandScan): void {
 /** Append to `scan` from `count` every member of `list` owned by `bit` within `maxDist` of (fromX, fromY),
  *  growing its key buffer as needed; returns the new count. */
 function appendOwned(
-  scan: BandScan,
+  scan: KeptKeys,
   count: number,
   list: MemberList,
   bit: number,

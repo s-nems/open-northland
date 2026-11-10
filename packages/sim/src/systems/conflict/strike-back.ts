@@ -22,6 +22,16 @@ function strikesUnarmed(world: World, ctx: SystemContext, attacker: Entity): boo
   return !isFighterJob(ctx.content, settler.jobType) && !isAnimalTribe(ctx.content, settler.tribe);
 }
 
+/** Whether a blow on `victim` from `attacker` is one {@link strikeBack} answers at all, asked before its
+ *  caller gathers the people near the blow. */
+export function mayStrikeBack(world: World, ctx: SystemContext, victim: Entity, attacker: Entity): boolean {
+  const owner = world.tryGet(victim, Owner);
+  if (owner === undefined || !seatStrikesBackUnarmed(world, owner.player)) return false;
+  if (isFighterJob(ctx.content, world.get(victim, Settler).jobType)) return false;
+  if (!strikesUnarmed(world, ctx, attacker)) return false;
+  return !seatFieldsSoldier(world, ctx, owner.player);
+}
+
 /**
  * Answer a blow on a computer seat's civilian from an unarmed `attacker`: the struck one and the nearest
  * free civilians of `people` (the struck side's people in the open near the blow, ascending distance) take
@@ -38,10 +48,7 @@ export function strikeBack(
   people: readonly { readonly entity: Entity }[],
 ): boolean {
   const owner = world.tryGet(victim, Owner);
-  if (owner === undefined || !seatStrikesBackUnarmed(world, owner.player)) return false;
-  if (isFighterJob(ctx.content, world.get(victim, Settler).jobType)) return false;
-  if (!strikesUnarmed(world, ctx, attacker)) return false;
-  if (seatFieldsSoldier(world, ctx, owner.player)) return false;
+  if (owner === undefined || !mayStrikeBack(world, ctx, victim, attacker)) return false;
   const origin = { player: owner.player, source: 'military' } as const;
   const party = [victim];
   for (const { entity } of people) if (entity !== victim) party.push(entity);

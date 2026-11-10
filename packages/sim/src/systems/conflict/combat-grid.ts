@@ -155,6 +155,18 @@ export interface CoarseCell {
  *  does. */
 export type SearchMetric = 'manhattan' | 'hex';
 
+/**
+ * The ground a search's acceptors all stand on: every one's own node lies within `radius` map points of
+ * node (x, y), which `holds` answers for any indexed member. A unit is indexed at its own node, so a band
+ * tests it by that node without a call; a building or vehicle spans many and is asked by `holds`.
+ */
+export interface BandGround {
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+  readonly holds: (e: Entity) => boolean;
+}
+
 /** One nesting depth's sorted candidate keys and the band they answer, reused by the next query at that
  *  depth that asks the same band. */
 export interface BandScan {

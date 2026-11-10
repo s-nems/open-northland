@@ -13,11 +13,11 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isFighterJob, MILITARY_MODE, stanceMode } from '../readviews/index.js';
-import { turnOnAttacker } from '../settlers/atomics/effects/combat/hit/reactions.js';
+import { type Strike, strikeBy, turnFighterOn } from '../settlers/atomics/effects/combat/hit/reactions.js';
 import { entityNode } from '../spatial/nodes.js';
-import { type CombatIndex, passIndexOf } from './combat-index.js';
+import { type CombatIndex, type KeptKeys, keyDistance, keyEntity, passIndexOf } from './combat-index.js';
 import { runFromBlow, runsFromBlows } from './flee.js';
-import { strikeBack } from './strike-back.js';
+import { mayStrikeBack, strikeBack } from './strike-back.js';
 import { isFleeThreat } from './targeting.js';
 import { standsAtPost } from './tower-post.js';
 
@@ -125,22 +125,37 @@ function answerAlarm(
     answered.add(key);
   }
   const from = entityNode(world, terrain, alarm.attacker);
-  const answering = alone
-    ? [{ entity: alarm.victim, distance: 0 }]
-    : index.ownedWithin(
-        alarm.player,
-        terrain.xOf(alarm.node),
-        terrain.yOf(alarm.node),
-        ALARM_SOLDIER_RADIUS_NODES,
-        'hex',
-      );
-  const people = answering.filter(
-    ({ entity, distance }) =>
-      distance <= ALARM_PEOPLE_RADIUS_NODES && world.has(entity, Person) && !indoors(world, entity),
-  );
-  const struckBack = strikeBack(world, ctx, terrain, alarm.victim, alarm.attacker, people);
-  for (let i = 0; i < answering.length; i++) {
-    const { entity, distance } = answering[i] as { entity: Entity; distance: number };
+  const answering = answeringOf(world);
+  if (alone) {
+    // A key of distance 0 is the entity itself.
+    answering.keys[0] = alarm.victim;
+    answering.count = 1;
+  } else {
+    index.ownedUnitsWithin(
+      alarm.player,
+      terrain.xOf(alarm.node),
+      terrain.yOf(alarm.node),
+      ALARM_SOLDIER_RADIUS_NODES,
+      'hex',
+      answering,
+    );
+  }
+  let struckBack = false;
+  if (mayStrikeBack(world, ctx, alarm.victim, alarm.attacker)) {
+    const people: { entity: Entity }[] = [];
+    for (let i = 0; i < answering.count; i++) {
+      const key = answering.keys[i] ?? 0;
+      if (keyDistance(key) > ALARM_PEOPLE_RADIUS_NODES) break;
+      const entity = keyEntity(key);
+      if (world.has(entity, Person) && !indoors(world, entity)) people.push({ entity });
+    }
+    struckBack = strikeBack(world, ctx, terrain, alarm.victim, alarm.attacker, people);
+  }
+  // The blow as this player's fighters read it, made for the first one that may turn.
+  let strike: Strike | undefined;
+  for (let i = 0; i < answering.count; i++) {
+    const key = answering.keys[i] ?? 0;
+    const entity = keyEntity(key);
     if (!world.has(entity, Person) || indoors(world, entity)) continue;
     const settler = world.get(entity, Settler);
     const mode = stanceMode(world, ctx.content, entity, settler.jobType);
@@ -150,18 +165,35 @@ function answerAlarm(
       // Already on this attacker: the turn would write nothing.
       if (world.tryGet(entity, Engagement)?.target === alarm.attacker) continue;
       if (mode === MILITARY_MODE.ATTACK || mode === MILITARY_MODE.DEFEND) {
-        turnOnAttacker(world, ctx, alarm.attacker, entity);
+        strike ??= strikeBy(world, ctx, alarm.attacker);
+        turnFighterOn(world, ctx, terrain, strike, entity, settler, mode);
       }
     } else if (
       (!struckBack || entity === alarm.victim) &&
       runsFromBlows(ctx, settler, mode) &&
-      distance <= ALARM_PEOPLE_RADIUS_NODES &&
+      keyDistance(key) <= ALARM_PEOPLE_RADIUS_NODES &&
       (entity === alarm.victim || !asleep(world, entity)) &&
       isFleeThreat(world, ctx, entity, settler, alarm.attacker, index.firing)
     ) {
       runFromBlow(world, ctx, terrain, entity, from);
     }
   }
+}
+
+/** The units one alarm reaches, in a buffer each world keeps: an answer runs searches of its own while it
+ *  reads them, and no answer starts inside another. */
+const answeringByWorld = new WeakMap<World, KeptKeys>();
+
+/** Keys the buffer holds before its first growth. */
+const INITIAL_ANSWERING_KEYS = 64;
+
+function answeringOf(world: World): KeptKeys {
+  let held = answeringByWorld.get(world);
+  if (held === undefined) {
+    held = { keys: new Float64Array(INITIAL_ANSWERING_KEYS), count: 0 };
+    answeringByWorld.set(world, held);
+  }
+  return held;
 }
 
 /** Inside a house, unless standing on its tower post. */
