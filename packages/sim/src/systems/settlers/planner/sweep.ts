@@ -95,6 +95,7 @@ class SweepCandidates {
     content: ContentSet,
     shelters: ShelterSites,
     idleTick: number | undefined,
+    shelterRoom: ReadonlySet<number>,
   ): Entity | undefined {
     this.catchUp();
     let next = earlier(
@@ -105,42 +106,35 @@ class SweepCandidates {
     );
     if (shelters.size === 0) return next;
     for (const owner of shelters.keys()) {
-      // A walker's visit only claims a place, so it waits while its owner has none left. So does an
-      // idler's, but for one waiting inside a building, whose visit runs its whole ladder.
+      // A visit between beats only claims a place, so a walker or an idler waits while its owner has none
+      // left. One waiting inside a building runs its whole ladder instead, on the room the pass began with.
       const room = shelterHasRoom(shelters, owner);
       if (room) {
-        next = this.firstTakingCover(
-          this.travellingByOwner.get(owner),
-          cursor,
-          next,
-          content,
-          shelters,
-          true,
-        );
+        next = this.firstTakingCover(this.travellingByOwner.get(owner), cursor, next, content, shelters);
       }
-      if (idleTick !== undefined) {
-        next = this.firstTakingCover(this.idleByOwner.get(owner), cursor, next, content, shelters, room);
+      if (idleTick !== undefined && (room || shelterRoom.has(owner))) {
+        next = this.firstTakingCover(this.idleByOwner.get(owner), cursor, next, content, shelters, !room);
       }
     }
     return next;
   }
 
   /** The first of `ids` above `cursor` and below `bound` whose owner's cover may draw it and that holds
-   *  no shelter yet, else `bound`. Without `room` only the idlers that wait inside a building count. */
+   *  no shelter yet, else `bound`; with `insideOnly`, only of those waiting inside a building. */
   private firstTakingCover(
     ids: readonly Entity[] | undefined,
     cursor: number,
     bound: Entity | undefined,
     content: ContentSet,
     shelters: ShelterSites,
-    room: boolean,
+    insideOnly = false,
   ): Entity | undefined {
     if (ids === undefined) return bound;
     for (let i = indexAboveId(ids, cursor, byId); i < ids.length; i++) {
       const e = ids[i];
       if (e === undefined || (bound !== undefined && e > bound)) break;
       if (this.world.has(e, Sheltering)) continue;
-      if (!room && !waitsInside(this.world, e)) continue;
+      if (insideOnly && !waitsInside(this.world, e)) continue;
       if (takesCoverFrom(this.world, content, e, shelters)) return e;
     }
     return bound;
@@ -393,6 +387,8 @@ export function sweepOrder(
   content: ContentSet,
   shelters: ShelterSites,
   idleTick: number | undefined,
+  /** {@link ownersWithShelterRoom} of `shelters` as the pass began. */
+  shelterRoom: ReadonlySet<number>,
 ): PlannerSweep {
   let held = candidates.get(world);
   if (held === undefined) {
@@ -401,7 +397,7 @@ export function sweepOrder(
     candidates.set(world, created);
     held = created;
   }
-  return new PlannerSweep(held, content, shelters, idleTick, world.nextEntityId);
+  return new PlannerSweep(held, content, shelters, idleTick, shelterRoom, world.nextEntityId);
 }
 
 /** A cursor over {@link sweepOrder}'s settlers: a pass asks for the next one after each visit, so the
@@ -415,13 +411,14 @@ class PlannerSweep {
     private readonly content: ContentSet,
     private readonly shelters: ShelterSites,
     private readonly idleTick: number | undefined,
+    private readonly shelterRoom: ReadonlySet<number>,
     private readonly createdMidPass: number,
   ) {}
 
   /** The next settler to visit, or undefined once the sweep is over. */
   next(): Entity | undefined {
     if (this.done) return undefined;
-    const e = this.held.after(this.cursor, this.content, this.shelters, this.idleTick);
+    const e = this.held.after(this.cursor, this.content, this.shelters, this.idleTick, this.shelterRoom);
     if (e === undefined || e >= this.createdMidPass) {
       this.done = true;
       return undefined;

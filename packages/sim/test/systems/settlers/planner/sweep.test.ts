@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addCurrentAtomic,
@@ -38,7 +39,12 @@ import type { NodeId } from '../../../../src/nav/terrain/index.js';
 import type { ShelterSites } from '../../../../src/systems/defence/index.js';
 import { collectFarmClaims } from '../../../../src/systems/settlers/drives/farming/index.js';
 import { IDLE_REPLAN_PERIOD_TICKS, wakeIdle } from '../../../../src/systems/settlers/planner/idle-replan.js';
-import { idleRelease, releaseStaleIntent } from '../../../../src/systems/settlers/planner/replan.js';
+import {
+  idleRelease,
+  keepsWaitInside,
+  ownersWithShelterRoom,
+  releaseStaleIntent,
+} from '../../../../src/systems/settlers/planner/replan.js';
 import { sweepOrder } from '../../../../src/systems/settlers/planner/sweep.js';
 import { collectSupplyTally } from '../../../../src/systems/stores/index.js';
 import { testContent } from '../../../fixtures/content.js';
@@ -130,8 +136,13 @@ function busy(world: World): Entity {
 }
 
 /** Every settler a fresh sweep visits, in order. */
-function swept(...args: Parameters<typeof sweepOrder>): Entity[] {
-  const sweep = sweepOrder(...args);
+function swept(
+  world: World,
+  content: ContentSet,
+  shelters: ShelterSites,
+  idleTick: number | undefined,
+): Entity[] {
+  const sweep = sweepOrder(world, content, shelters, idleTick, ownersWithShelterRoom(shelters));
   const visited: Entity[] = [];
   for (let e = sweep.next(); e !== undefined; e = sweep.next()) visited.push(e);
   return visited;
@@ -157,7 +168,7 @@ describe('planner sweep order', () => {
     const first = settler(world);
     const walker = walking(world);
     const visited: Entity[] = [];
-    const sweep = sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER);
+    const sweep = sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER, new Set());
     for (let e = sweep.next(); e !== undefined; e = sweep.next()) {
       visited.push(e);
       if (e === first) {
@@ -278,6 +289,26 @@ describe('the beat an idler waits inside a building on', () => {
     expect(onBeat(workplace)).toEqual([]);
     expect(onBeat(crafter)).toEqual([crafter]);
     expect(world.verifyCaches()).toEqual([]);
+  });
+});
+
+describe('an idler waiting inside a building under its owner’s alarm', () => {
+  it('is drawn from its wait between beats only while a shelter had a place left as the pass began', () => {
+    const sim = new Simulation({ seed: 1, content: CONTENT });
+    const { world } = sim;
+    const ctx = ctxOf(sim);
+    const workplace = world.create();
+    const crafter = employ(world, idler(world), WOODCUTTER, ALARMED);
+    world.add(crafter, JobAssignment, { workplace });
+    world.add(crafter, Resting, { at: workplace });
+    const offBeat = idleReplanTick(world, crafter, 0);
+    const keepsWait = (shelters: ShelterSites): boolean =>
+      keepsWaitInside(world, ctx, shelters, ownersWithShelterRoom(shelters), crafter);
+
+    expect(swept(world, CONTENT, alarmWithRoom(1), offBeat)).toEqual([crafter]);
+    expect(keepsWait(alarmWithRoom(1))).toBe(false);
+    expect(swept(world, CONTENT, alarmWithRoom(0), offBeat)).toEqual([]);
+    expect(keepsWait(alarmWithRoom(0))).toBe(true);
   });
 });
 

@@ -268,14 +268,15 @@ function waitsOutDutyIndoors(world: World, e: Entity): boolean {
 }
 
 /** Whether `e` keeps its wait through this pass: {@link waitsInside} off its beat, and no alarm of its
- *  owner may draw it, which runs its whole ladder. */
+ *  owner may draw it, which runs its whole ladder. `shelterRoom` is the pass's {@link ownersWithShelterRoom}. */
 export function standsThroughPass(
   world: World,
   ctx: SystemContext,
   shelters: ShelterSites,
+  shelterRoom: ReadonlySet<number>,
   e: Entity,
 ): boolean {
-  return waitsIdle(world, ctx.tick, e) && keepsWaitInside(world, ctx, shelters, e);
+  return waitsIdle(world, ctx.tick, e) && keepsWaitInside(world, ctx, shelters, shelterRoom, e);
 }
 
 /** {@link standsThroughPass} for `e` already known to wait idle off its beat. */
@@ -283,10 +284,25 @@ export function keepsWaitInside(
   world: World,
   ctx: SystemContext,
   shelters: ShelterSites,
+  shelterRoom: ReadonlySet<number>,
   e: Entity,
 ): boolean {
   if (!waitsInside(world, e)) return false;
-  return shelters.size === 0 || world.has(e, Sheltering) || !takesCoverFrom(world, ctx.content, e, shelters);
+  if (shelters.size === 0 || world.has(e, Sheltering)) return true;
+  const owner = ownerOf(world, e);
+  return owner === undefined || !shelterRoom.has(owner) || !takesCoverFrom(world, ctx.content, e, shelters);
+}
+
+/**
+ * The owners whose shelters on alarm have a place left, read when a pass begins. An idler waiting inside a
+ * building is drawn from its wait only by an alarm of such an owner: with every shelter full when the pass
+ * began it keeps its beat. Read once, so a crewmate planned earlier in the pass and the sweep agree on who
+ * is visited even after the last place went.
+ */
+export function ownersWithShelterRoom(shelters: ShelterSites): ReadonlySet<number> {
+  const owners = new Set<number>();
+  for (const owner of shelters.keys()) if (shelterHasRoom(shelters, owner)) owners.add(owner);
+  return owners;
 }
 
 /** Whether one of `owner`'s buildings on alarm has a place left this pass. A pass only hands places out,

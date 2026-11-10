@@ -42,14 +42,20 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   dispatchAssistantGrants(pass);
   // The cut-off check tick visits every idler: a standing one off its beat runs only that check, a
   // short-beat stand its whole ladder.
-  const sweep = sweepOrder(world, ctx.content, pass.shelters, cutOffCheckDue(ctx) ? undefined : ctx.tick);
+  const sweep = sweepOrder(
+    world,
+    ctx.content,
+    pass.shelters,
+    cutOffCheckDue(ctx) ? undefined : ctx.tick,
+    pass.shelterRoom,
+  );
   for (let e = sweep.next(); e !== undefined; e = sweep.next()) {
     const idleWait = waitsIdle(world, ctx.tick, e);
-    if (idleWait && keepsWaitInside(world, ctx, pass.shelters, e)) continue;
+    if (idleWait && keepsWaitInside(world, ctx, pass.shelters, pass.shelterRoom, e)) continue;
     // Between its beats an idler runs only the shelter rung, and only when an alarm may draw it. One
-    // still inside a building runs its whole ladder: an alarm draws it from its wait there, or the wait
-    // no longer holds; a hold waited out on the beat keeps it inside instead. Read before the release,
-    // which may step it out.
+    // still inside a building runs its whole ladder: an alarm with a place left draws it from its wait
+    // there, or the wait no longer holds; a hold waited out on the beat keeps it inside instead. Read
+    // before the release, which may step it out.
     const offBeat = idleWait && (!world.has(e, Resting) || waitsHoldOnBeat(world, e));
     // A busy settler plays its intent out, and is no longer idle; the rest shed what the previous plan
     // left before re-planning.

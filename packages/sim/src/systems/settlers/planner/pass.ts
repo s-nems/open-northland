@@ -21,7 +21,7 @@ import { HomewardPosts } from '../drives/lost-guide.js';
 import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../targets/index.js';
 import type { PlannerContextSlot } from './context.js';
 import { IdleStands } from './idle-replan.js';
-import { standsThroughPass } from './replan.js';
+import { ownersWithShelterRoom, standsThroughPass } from './replan.js';
 import { PlannerSpacing } from './spacing.js';
 
 /**
@@ -54,6 +54,8 @@ export interface PlannerPass {
   /** The buildings on alarm and the room each has left, empty on a map with no defence mode up, which
    *  is what makes the shelter rung free when nothing is happening. */
   readonly shelters: ShelterSites;
+  /** {@link ownersWithShelterRoom} of {@link shelters} as the pass began. */
+  readonly shelterRoom: ReadonlySet<number>;
   /** The adults whose ladder found them nothing to do this pass, so they stand. */
   readonly idle: IdleStands;
   /** Equipment errands that may still search for their store this pass; see
@@ -104,6 +106,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
   const targets = collectTargets(world, ctx, terrain);
   const front = new BattleFront(world, ctx);
   const shelters = collectShelters(world, ctx);
+  const shelterRoom = ownersWithShelterRoom(shelters);
   const seatDoors = new SeatDoors(world, ctx, terrain, targets.buildings);
   const supply = collectSupplyTally(world);
   const spacing = PlannerSpacing.forTick(world, ctx, terrain);
@@ -118,7 +121,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     externalQuality: new ExternalQualityIndex(world, ctx, terrain, supply),
     spacing,
     farmClaims: collectFarmClaims(world),
-    seatClaims: new WorkSeatClaims((e) => standsThroughPass(world, ctx, shelters, e)),
+    seatClaims: new WorkSeatClaims((e) => standsThroughPass(world, ctx, shelters, shelterRoom, e)),
     supply,
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),
@@ -129,6 +132,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     seatDoors,
     homeward: new HomewardPosts(world, terrain, seatDoors),
     shelters,
+    shelterRoom,
     idle: new IdleStands(),
     equipFetches: { remaining: EQUIP_FETCH_SEARCHES_PER_PASS },
     alert: new PlanAlert(world, ctx, front),
