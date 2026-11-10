@@ -14,6 +14,15 @@ const MAX_STEPS = 6;
  * A reusable sink for {@link TerrainGraph.stepsInto}, held in typed slots so a fill writes no object.
  * Contents are valid only until the next fill.
  */
+// Thrown from outside the accessors, which a message built in line would make too large to inline.
+function throwFull(): never {
+  throw new Error(`a node emits at most ${MAX_STEPS} steps`);
+}
+
+function throwStale(index: number, length: number): never {
+  throw new Error(`step index ${index} out of range (0..${length - 1})`);
+}
+
 export class StepBuffer {
   private readonly nodes = new Int32Array(MAX_STEPS);
   private readonly costs = new Float64Array(MAX_STEPS);
@@ -29,7 +38,7 @@ export class StepBuffer {
 
   /** Append an emitted edge. */
   push(node: NodeId, cost: Fixed): void {
-    if (this.length >= MAX_STEPS) throw new Error(`a node emits at most ${MAX_STEPS} steps`);
+    if (this.length >= MAX_STEPS) throwFull();
     this.nodes[this.length] = node;
     this.costs[this.length] = cost;
     this.length += 1;
@@ -65,8 +74,6 @@ export class StepBuffer {
   }
 
   private checkLive(index: number): void {
-    if (index >= this.length || index < 0) {
-      throw new Error(`step index ${index} out of range (0..${this.length - 1})`);
-    }
+    if (index >= this.length || index < 0) throwStale(index, this.length);
   }
 }

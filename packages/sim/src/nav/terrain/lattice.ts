@@ -55,6 +55,16 @@ function assertSymmetricEdges(width: number, height: number, edges: Uint8Array):
   }
 }
 
+// The throws below sit outside their callers: a message built in line makes a one-read accessor too
+// large for the optimizer to inline for free.
+function throwOutOfBounds(x: number, y: number, width: number, height: number): never {
+  throw new Error(`node (${x}, ${y}) out of bounds (${width}x${height})`);
+}
+
+function throwOutOfRange(node: number, nodeCount: number): never {
+  throw new Error(`node id ${node} out of range (0..${nodeCount - 1})`);
+}
+
 export abstract class TerrainLattice {
   readonly width: number;
   readonly height: number;
@@ -118,8 +128,7 @@ export abstract class TerrainLattice {
 
   /** The node id at (x, y). Throws if out of bounds - an out-of-range lookup is a programmer error. */
   nodeAt(x: number, y: number): NodeId {
-    if (!this.inBounds(x, y))
-      throw new Error(`node (${x}, ${y}) out of bounds (${this.width}x${this.height})`);
+    if (!this.inBounds(x, y)) throwOutOfBounds(x, y, this.width, this.height);
     return this.idAt(x, y);
   }
 
@@ -158,7 +167,15 @@ export abstract class TerrainLattice {
   /** A per-node value from one of the row-major arrays, throwing on an id outside the grid. */
   protected checkedSlot(arr: Int32Array | Uint8Array, node: NodeId): number {
     const v = arr[node];
-    if (v === undefined) throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
+    if (v === undefined) return throwOutOfRange(node, this.nodeCount);
+    return v;
+  }
+
+  /** The node's flag bits, throwing on an id outside the grid. An accessor of its own keeps the tests
+   *  that read it small enough for the optimizer to inline for free. */
+  private flagsAt(node: NodeId): number {
+    const v = this.flags[node];
+    if (v === undefined) return throwOutOfRange(node, this.nodeCount);
     return v;
   }
 
@@ -169,7 +186,7 @@ export abstract class TerrainLattice {
 
   /** True if a unit may stand on / walk through this node. */
   isWalkable(node: NodeId): boolean {
-    return (this.checkedSlot(this.flags, node) & WALKABLE) !== 0;
+    return (this.flagsAt(node) & WALKABLE) !== 0;
   }
 
   /** Open water: ground no unit walks whose kind is water, so a rock face or a tree trunk on land
@@ -187,12 +204,12 @@ export abstract class TerrainLattice {
   /** Whether a building's reserved zone may cover this node. Placement only; navigation reads
    *  {@link isWalkable}. */
   isBuildable(node: NodeId): boolean {
-    return (this.checkedSlot(this.flags, node) & BUILDABLE) !== 0;
+    return (this.flagsAt(node) & BUILDABLE) !== 0;
   }
 
   /** Whether crops may be sown on this node. Farming only. */
   isPlantable(node: NodeId): boolean {
-    return (this.checkedSlot(this.flags, node) & PLANTABLE) !== 0;
+    return (this.flagsAt(node) & PLANTABLE) !== 0;
   }
 
   /** A per-node lane holding {@link ENTER_BIT} exactly where {@link traversable} holds for `traversal`,

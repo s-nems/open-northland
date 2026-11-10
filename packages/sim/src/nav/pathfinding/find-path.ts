@@ -384,6 +384,10 @@ class ResumableSearch {
   }
 }
 
+function throwUndiscovered(node: number): never {
+  throw new Error(`path reconstruction hit an undiscovered node ${node}`);
+}
+
 /** Walk `cameFrom` back from the goal to the start, returning the path in start→goal order. `cameFrom`
  *  holds only node ids or {@link NO_NODE}. */
 function reconstruct(scratch: SearchScratch, goal: NodeId): NodeId[] {
@@ -391,7 +395,7 @@ function reconstruct(scratch: SearchScratch, goal: NodeId): NodeId[] {
   const path: NodeId[] = [goal];
   let node = cameFrom[goal] ?? NO_NODE;
   while (node !== NO_NODE) {
-    if (stamps[node] !== query) throw new Error(`path reconstruction hit an undiscovered node ${node}`);
+    if (stamps[node] !== query) throwUndiscovered(node);
     path.push(node as NodeId);
     node = cameFrom[node] ?? NO_NODE;
   }
