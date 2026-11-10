@@ -1,6 +1,7 @@
 import {
   type AtlasFrame,
   type BuildingDraw,
+  type BuildTimeSheet,
   frameHasBuildTimes,
   lookupFrame,
   type ResourceDraw,
@@ -15,8 +16,15 @@ import type { LayerBuffer, ResolvedLayer } from './resolved-layer.js';
  * built once per atlas frame and reused while the inputs that shaped it still match. Weak keys let a
  * dropped sheet take its records with it.
  */
-const bodyRecords = new WeakMap<AtlasFrame, ResolvedLayer>();
+const bodyRecords = new WeakMap<AtlasFrame, BodyRecord>();
 const shadowRecords = new WeakMap<AtlasFrame, ResolvedLayer>();
+
+/** A body record and the time sheet of the layer it was made under, which with the frame decides whether
+ *  the record carries build times: the same sheet needs no second look at the frame's time data. */
+interface BodyRecord {
+  readonly layer: ResolvedLayer;
+  readonly under: BuildTimeSheet | undefined;
+}
 
 /**
  * Append {@link layeredLayerFor}'s layer plus the body's cast shadow, ordered `[shadow, body]`; false
@@ -118,17 +126,17 @@ export function resolveFromLayer(
 ): ResolvedLayer | null {
   const frame = lookupFrame(layer.atlas, bob);
   if (frame === null) return null;
-  const times = layer.times !== undefined && frameHasBuildTimes(layer.times, frame) ? layer.times : undefined;
   const cached = bodyRecords.get(frame);
   if (
     cached !== undefined &&
-    cached.source === layer.source &&
-    cached.scale === scale &&
-    cached.atlasW === layer.atlas.width &&
-    cached.atlasH === layer.atlas.height &&
-    cached.times === times
+    cached.under === layer.times &&
+    cached.layer.source === layer.source &&
+    cached.layer.scale === scale &&
+    cached.layer.atlasW === layer.atlas.width &&
+    cached.layer.atlasH === layer.atlas.height
   )
-    return cached;
+    return cached.layer;
+  const times = layer.times !== undefined && frameHasBuildTimes(layer.times, frame) ? layer.times : undefined;
   const record: ResolvedLayer = {
     source: layer.source,
     frame,
@@ -137,7 +145,7 @@ export function resolveFromLayer(
     atlasH: layer.atlas.height,
     ...(times !== undefined ? { times } : {}),
   };
-  bodyRecords.set(frame, record);
+  bodyRecords.set(frame, { layer: record, under: layer.times });
   return record;
 }
 

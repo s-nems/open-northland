@@ -204,4 +204,24 @@ describe('layer reuse across frames', () => {
       [false, 128],
     ]);
   });
+
+  it('rebuilds a remembered record for the same frame under another time sheet', () => {
+    const building: DrawItem = { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, typeId: 13 };
+    const timed = { width: 64, height: 64, values: new Uint8Array(64 * 64).fill(1) };
+    const houses = (times: typeof timed | undefined): SpriteSheet => ({
+      source,
+      atlas: { width: 0, height: 0, frames: new Map() },
+      bindings: {
+        settler: 1,
+        resource: 1,
+        building: { byType: { 13: { layer: 'houses', bob: WALK_BOB } }, default: WALK_BOB },
+      },
+      families: { houses: { source, atlas: bodyAtlas, ...(times !== undefined ? { times } : {}) } },
+    });
+    const bodyTimes = (sheetUnder: SpriteSheet) =>
+      (resolveLayers(sheetUnder, building, 0) ?? []).find((l) => l.groundFoot === 'body')?.times;
+    expect(bodyTimes(houses(timed))).toBe(timed);
+    expect(bodyTimes(houses(undefined))).toBeUndefined();
+    expect(bodyTimes(houses(timed))).toBe(timed);
+  });
 });
