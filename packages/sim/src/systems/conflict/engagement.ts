@@ -119,6 +119,13 @@ export class EngagementSpecs {
       hexNodeDistance(this.terrain, i.here, combatTargetNode(this.world, this.ctx, this.terrain, i.here, t)),
     );
   };
+  /** Whether `t` stands on the ground a defender guards around its anchor. */
+  private readonly nearAnchor = (t: Entity): boolean =>
+    hexNodeDistance(
+      this.terrain,
+      this.current().anchor,
+      entityNode(this.world, this.terrain, t),
+    ) <= DEFEND_RADIUS_NODES;
   // Original behavior: the search has no sight or fog check; hostility (war only for two players) and
   // reach decide.
   private readonly advanceAccept = (t: Entity): boolean => {
@@ -136,11 +143,7 @@ export class EngagementSpecs {
   private readonly accept = (t: Entity): boolean => {
     if (this.world.has(t, Age)) return false;
     const i = this.current();
-    if (
-      i.kind === 'defend' &&
-      hexNodeDistance(this.terrain, i.anchor, entityNode(this.world, this.terrain, t)) > DEFEND_RADIUS_NODES
-    )
-      return false;
+    if (i.kind === 'defend' && !this.nearAnchor(t)) return false;
     if (i.kind === 'ignore' && !this.inBand(t)) return false;
     return this.advanceAccept(t);
   };
@@ -176,6 +179,7 @@ export class EngagementSpecs {
         searchRadius: number;
         player: number | null;
         lowPriority: (t: Entity) => boolean;
+        narrow: ((t: Entity) => boolean) | null;
         lock: null;
         defend: { anchorCell: NodeId; leash: number; hold: boolean } | null;
         hold: {
@@ -266,6 +270,7 @@ export class EngagementSpecs {
         searchRadius: 0,
         player: null,
         lowPriority: this.lowPriority,
+        narrow: null,
         lock: null,
         defend: null,
         hold: {
@@ -291,6 +296,8 @@ export class EngagementSpecs {
           : kind === 'defend'
             ? hexNodeDistance(terrain, here, anchor) + DEFEND_RADIUS_NODES
             : SIGHT_RADIUS_NODES;
+      // Off its anchor a defender's band covers far more than the ground it guards.
+      spec.narrow = kind === 'defend' && spec.searchRadius > DEFEND_RADIUS_NODES ? this.nearAnchor : null;
       spec.player = isHunterJob(ctx.content, attacker.jobType) ? null : (viewer ?? null);
       spec.hold.band = weapon;
       // A step past the band takes the enemy about to step into it; a garrison never steps.
@@ -380,6 +387,9 @@ export interface EngageSpec {
   readonly searchCenter?: NodeId;
   /** A hunter seeking prey, whose acquisition rests after a pass that took none. */
   readonly preySeeker?: boolean;
+  /** A cheap test `accept` implies, for a search whose band reaches far past the ground `accept` admits:
+   *  it drops the members failing it before weighing the rest ({@link CombatIndex.nearestFewOfBestRank}). */
+  readonly narrow?: ((t: Entity) => boolean) | null;
   /** The deprioritized tier among accepted targets, searched only when the primary tier finds nothing in
    *  sight. It splits RAW search candidates ahead of {@link EngageSpec.accept}, so it must stay total
    *  and pure over any indexed entity - a friendly unit, an own building, a carcass. */
@@ -928,6 +938,7 @@ function pickByTier(
     spec.player,
     PICK_SPREAD_NODES,
     SEARCH_METRIC,
+    spec.narrow ?? null,
   );
   if (found.length === 0) return null;
   if (found.length === 1) return found[0] ?? null;

@@ -134,6 +134,9 @@ export interface BandScan {
   /** The members the running query over this scan has met, so a member recurring at a further node is
    *  skipped without a per-query set. */
   readonly met: EpochMarks;
+  /** The members a narrowed scan asked its test about, and those it passed. */
+  readonly narrowed: EpochMarks;
+  readonly passed: EpochMarks;
 }
 
 /** A building as the layer admitted it, for the staleness checks and the verifier. */
@@ -381,6 +384,8 @@ export class CombatGrid {
         count: 0,
         keys: new Float64Array(BAND_SCAN_INITIAL_KEYS),
         met: new EpochMarks(),
+        narrowed: new EpochMarks(),
+        passed: new EpochMarks(),
       };
       this.bandScans[depth] = scan;
     }

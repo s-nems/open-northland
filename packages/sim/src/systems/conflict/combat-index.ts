@@ -278,7 +278,9 @@ export class CombatIndex {
    * {@link nearestFew} over the best of several kinds in one scan: the take of the lowest `rank` any
    * acceptor holds, exactly what asking `nearestFew` kind by kind returns at the first kind with an
    * acceptor. `rank(e, bound)` names the first kind below `bound` that `e` is of, or `bound` for none, and
-   * `accept` must be total and pure; both are asked at most once per member.
+   * `accept` must be total and pure; both are asked at most once per member. `narrow` is a total, pure
+   * test every acceptor passes: the members failing it leave the band before it is sorted, which is what
+   * keeps a band far wider than the ground `accept` admits affordable.
    */
   nearestFewOfBestRank(
     fromX: number,
@@ -292,8 +294,9 @@ export class CombatIndex {
     seeker: number | null,
     tailRings: number,
     metric: SearchMetric = 'manhattan',
+    narrow: ((e: Entity) => boolean) | null = null,
   ): readonly { entity: Entity; distance: number }[] {
-    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
+    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric, narrow);
     const { keys, count } = scan;
     let found: { entity: Entity; distance: number }[] = [];
     let best = ranks;
@@ -445,9 +448,11 @@ export class CombatIndex {
     maxDist: number,
     seeker: number | null,
     metric: SearchMetric,
+    narrow: ((e: Entity) => boolean) | null = null,
   ): BandScan {
     const scan = this.grid.bandScanAt(this.depth);
     if (
+      narrow === null &&
       scan.valid &&
       scan.x === fromX &&
       scan.y === fromY &&
@@ -471,8 +476,10 @@ export class CombatIndex {
           count = appendBand(scan, count, cell.units, fromX, fromY, minDist, maxDist, hostile, metric);
       }
     }
+    if (narrow !== null) count = narrowKeys(scan, count, narrow);
     sortKeys(scan.keys, count);
-    scan.valid = true;
+    // A narrowed band answers its own query alone.
+    scan.valid = narrow === null;
     scan.x = fromX;
     scan.y = fromY;
     scan.minDist = minDist;
@@ -556,6 +563,22 @@ function appendBand(
     scan.keys[n++] = distance * CANDIDATE_ID_SPAN + (members[i] ?? 0);
   }
   return n;
+}
+
+/** Keep of `scan`'s first `count` unsorted keys those whose member passes `narrow`, asked once per member;
+ *  returns the new count. */
+function narrowKeys(scan: BandScan, count: number, narrow: (e: Entity) => boolean): number {
+  const { keys, narrowed, passed } = scan;
+  narrowed.begin();
+  passed.begin();
+  let kept = 0;
+  for (let i = 0; i < count; i++) {
+    const key = keys[i] ?? 0;
+    const entity = (key - Math.floor(key / CANDIDATE_ID_SPAN) * CANDIDATE_ID_SPAN) as Entity;
+    if (narrowed.firstMark(entity) && narrow(entity)) passed.mark(entity);
+    if (passed.has(entity)) keys[kept++] = key;
+  }
+  return kept;
 }
 
 /** The longest band sorted by insertion: a typed sort's view and call cost more than so few compares. */
