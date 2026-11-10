@@ -5,12 +5,8 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { latticeDistanceTo, type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, System } from '../context.js';
-import {
-  dynamicBlockOverlay,
-  interactionNode,
-  resourceStanceCells,
-  unstampResourceFootprint,
-} from '../footprint/index.js';
+import { dynamicBlockOverlay, resourceStanceCells, unstampResourceFootprint } from '../footprint/index.js';
+import { interactionCellOf } from '../footprint/interaction.js';
 
 // Destroy a field no farmer can ever reach again so its `maxFields` slot returns to the plot. These are the
 // cases the under-wall pass cannot see: a field sealed inside a pocket of buildings, a plot split from its
@@ -209,12 +205,11 @@ export const fieldReclaimSystem: System = (world, ctx) => {
     if ((e + ctx.tick) % STRANDED_FIELD_CHECK_PERIOD_TICKS !== 0) continue; // not this field's tick
     const farm = world.get(e, Crop).farm;
     if (farm === null) continue;
-    const at = interactionNode(world, ctx, farm);
-    if (at === null) {
+    const door = interactionCellOf(world, ctx, terrain, farm);
+    if (door === null) {
       world.remove(e, StrandedField); // farm demolished - the field is wild, not stranded
       continue;
     }
-    const door = terrain.nodeAtClamped(at.x, at.y);
     overlay ??= dynamicBlockOverlay(world, ctx, terrain);
     if (fieldWorkable(world, ctx, terrain, e, door, overlay)) {
       world.remove(e, StrandedField);
