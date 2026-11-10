@@ -56,6 +56,10 @@ const FLOATS_PER_VERTEX = 2;
 const FLOATS_PER_QUAD = VERTICES_PER_QUAD * FLOATS_PER_VERTEX;
 const INDICES_PER_QUAD = 6;
 const BYTES_PER_FLOAT = Float32Array.BYTES_PER_ELEMENT;
+/** `x, y` per top-left corner handed to {@link GroundWaveQuads.set}. */
+export const FLOATS_PER_CORNER = 2;
+/** A bind group slot past the shader's own, where the frame's projection uniforms ride in by name. */
+const GLOBAL_UNIFORMS_GROUP = 100;
 /** Quads the first buffers hold; they double when a redraw draws more. */
 const INITIAL_QUADS = 64;
 /** Buffer sets written in turn, for the reason the lift pass keeps three quad geometries. */
@@ -117,7 +121,7 @@ export class GroundWaveQuads {
   }
 
   /**
-   * Redraw from `count` frames: `textures[i]` with its top-left corner at `corners[2i], corners[2i + 1]`,
+   * Redraw from `count` frames: `textures[i]` with its top-left corner at the `i`-th pair of `corners`,
    * each scaled by `scale` about the origin and then moved by the offset, as a parent container of that
    * scale and position would place its sprites. A later frame draws over the earlier ones.
    */
@@ -147,8 +151,8 @@ export class GroundWaveQuads {
       if (texture === undefined) continue;
       // A sprite under the parent: the parent's matrix applied to the sprite's own corner, then the
       // scaled frame size added, in the order Pixi's group transform and quad packing take them.
-      const x0 = (corners[i * 2] ?? 0) * scale + offsetX;
-      const y0 = (corners[i * 2 + 1] ?? 0) * scale + offsetY;
+      const x0 = (corners[i * FLOATS_PER_CORNER] ?? 0) * scale + offsetX;
+      const y0 = (corners[i * FLOATS_PER_CORNER + 1] ?? 0) * scale + offsetY;
       const x1 = scale * texture.orig.width + x0;
       const y1 = scale * texture.orig.height + y0;
       const at = quads * FLOATS_PER_QUAD;
@@ -206,7 +210,7 @@ export class GroundWaveQuads {
   private draw(renderer: WebGLRenderer): void {
     const geometry = this.current?.geometry;
     if (geometry === undefined) return;
-    this.shader.groups[100] = renderer.globalUniforms.bindGroup;
+    this.shader.groups[GLOBAL_UNIFORMS_GROUP] = renderer.globalUniforms.bindGroup;
     for (let i = 0; i < this.runCount; i++) {
       const run = this.runs[i];
       if (run === undefined) continue;

@@ -5,7 +5,7 @@ import type { AtlasFrame } from '../../data/sprites/atlas.js';
 import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
 import { type GroundWave, groundWaveFrameIndex } from './ground-wave.js';
 import { FLOATS_PER_RECT, GroundWaveLift, type ScreenRect } from './ground-wave-lift.js';
-import { GroundWaveQuads } from './ground-wave-quads.js';
+import { FLOATS_PER_CORNER, GroundWaveQuads } from './ground-wave-quads.js';
 
 /** Waves are indexed in square blocks of the terrain chunk's horizontal pitch by their anchors, the
  *  point the cull tests, so a frame looks up only the blocks under the view. */
@@ -170,8 +170,8 @@ export class GroundWaveLayer {
             corners = this.drawnAt;
           }
           this.drawnTextures[drawn] = texture;
-          corners[drawn * 2] = x;
-          corners[drawn * 2 + 1] = y;
+          corners[drawn * FLOATS_PER_CORNER] = x;
+          corners[drawn * FLOATS_PER_CORNER + 1] = y;
           const at = drawn * FLOATS_PER_RECT;
           rects[at] = x - pad;
           rects[at + 1] = y - pad;
@@ -294,7 +294,7 @@ export class GroundWaveLayer {
     const rects = new Float32Array(capacity * FLOATS_PER_RECT);
     rects.set(this.rects);
     this.rects = rects;
-    const corners = new Float64Array(capacity * 2);
+    const corners = new Float64Array(capacity * FLOATS_PER_CORNER);
     corners.set(this.drawnAt);
     this.drawnAt = corners;
   }
