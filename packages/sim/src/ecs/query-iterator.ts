@@ -44,12 +44,8 @@ export class QueryIterator implements IterableIterator<Entity> {
 
   next(): IteratorResult<Entity> {
     const store = this.walked;
-    if (store === null) return this.finish();
+    if (store === null || store.epoch !== this.epoch) return this.resume();
     let slot = this.slot;
-    if (store.epoch !== this.epoch) {
-      slot = store.firstSlotAfter(this.lastSeq);
-      this.epoch = store.epoch;
-    }
     // Re-read per call: a store grows by reallocating its dense arrays.
     const entities = store.entities;
     const others = this.others;
@@ -72,6 +68,15 @@ export class QueryIterator implements IterableIterator<Entity> {
       }
     }
     return this.finish();
+  }
+
+  /** {@link next} for a finished walk, or one whose store compacted since the last step. */
+  private resume(): IteratorResult<Entity> {
+    const store = this.walked;
+    if (store === null) return this.finish();
+    this.slot = store.firstSlotAfter(this.lastSeq);
+    this.epoch = store.epoch;
+    return this.next();
   }
 
   private finish(): IteratorResult<Entity> {
