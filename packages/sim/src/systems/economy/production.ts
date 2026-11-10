@@ -184,9 +184,10 @@ export const productionSystem: System = (world, ctx) => {
     for (let i = 0; i < assigned.length; i++) {
       if (assigned[i] === FREE_SEAT) next[spare++] = staffing.operators[i] as Entity;
     }
+    // Never resized: entries past `spare` are held undefined instead, so the list keeps one elements kind.
     const choices = choiceScratch;
+    const listed = spare;
     while (spare > 0) {
-      choices.length = spare;
       for (let i = 0; i < spare; i++) choices[i] = nextCycleFor(world, ctx, e, next[i] as Entity, recipes);
       const reserved =
         workforce !== undefined && recipes.size > 1
@@ -209,8 +210,10 @@ export const productionSystem: System = (world, ctx) => {
       startCycleChoice(world, ctx, e, next[winner] as Entity, choice);
       for (let i = winner + 1; i < spare; i++) next[i - 1] = next[i] as Entity;
       spare--;
+      choices[spare] = undefined;
     }
-    choices.fill(undefined); // keeps no recipe of this workshop alive past the pass
+    // Keeps no recipe of this workshop alive past the pass.
+    for (let i = 0; i < listed; i++) choices[i] = undefined;
     if ((world.tryGet(e, Production)?.cycles.length ?? 0) !== running) wakeCrewInside(world, e);
   }
 };
