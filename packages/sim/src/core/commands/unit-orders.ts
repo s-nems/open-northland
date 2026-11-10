@@ -378,6 +378,18 @@ export type UnitOrderCommand =
     }
   | {
       /**
+       * Attach a group of owned settlers to one owned `vehicle`, nearest its door first: the members
+       * riding no vehicle while there are any, otherwise the members riding another one. Each member the
+       * vehicle still admits is tried as its own `attachToVehicle`; a member it does not admit, the surplus
+       * of a full vehicle above all, is left alone without a refusal note. Authored group order, as
+       * `assignWorkerGroup`.
+       */
+      readonly kind: 'attachToVehicleGroup';
+      readonly vehicle: Entity;
+      readonly members: readonly GroupMember[];
+    }
+  | {
+      /**
        * Free one owned settler from its vehicle: a rider aboard steps onto the door node, one still
        * walking is released where it stands, and a departing commander promotes the first ordinary
        * passenger. Refused with `riderRefused` aboard a ship that is not moored. A carrier's hauling
@@ -397,6 +409,9 @@ export type UnitOrderCommand =
        *  ship). Ignored for an unmoored ship, even beside land. */
       readonly kind: 'unloadPeople';
       readonly vehicle: Entity;
+      /** Keep the commander seated, so the vehicle can sail or drive off without its passengers. Named
+       *  addition: the original's order lands everyone. */
+      readonly keepCommander?: boolean;
       /** Wait behind the vehicle's current order, so a ship docking lands its crew once it moors. */
       readonly queued?: boolean;
       /** Land the crew only from a ship moored at this shore point: a dock refused or replaced on the

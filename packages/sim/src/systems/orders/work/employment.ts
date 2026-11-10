@@ -30,6 +30,7 @@ import {
 } from '../../economy/jobs/index.js';
 import { builderCrewSize, needsRepair, repairCrewLimit } from '../../economy/repair.js';
 import { releaseSiteClaim } from '../../economy/site-claim.js';
+import { interactionNode } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { canChooseJob, needSubjectOf } from '../../progression/index.js';
 import { isHeroJob } from '../../readviews/index.js';
@@ -153,9 +154,9 @@ export function assignWorkerGroup(
   const workplaceOf = (e: Entity): Entity | undefined => world.tryGet(e, JobAssignment)?.workplace;
   for (const { entity, jobPriority } of groupPlacementOrder(
     world,
-    ctx,
     command.members,
     building,
+    interactionNode(world, ctx, building),
     workplaceOf,
   )) {
     assignWorker(world, ctx, { kind: 'assignWorker', entity, building, jobPriority });

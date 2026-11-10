@@ -75,13 +75,17 @@ describe('group panel orders', () => {
   it("arms the fleet's dock pick and lands each ship's crew, for the viewer's own ships only", () => {
     const own = harness();
     own.actions.dockShips(own.vehicles);
-    own.actions.unloadShips(own.vehicles);
+    own.actions.unloadShips(own.vehicles, false);
+    own.actions.unloadShips(own.vehicles, true);
     expect(own.armed).toEqual([{ kind: 'vehicle-dock', vehicles: own.vehicles }]);
-    expect(own.sent).toEqual(own.vehicles.map((vehicle) => ({ kind: 'unloadPeople', vehicle })));
-    expect(own.cues).toEqual(['confirm', 'confirm']);
+    expect(own.sent).toEqual([
+      ...own.vehicles.map((vehicle) => ({ kind: 'unloadPeople', vehicle })),
+      ...own.vehicles.map((vehicle) => ({ kind: 'unloadPeople', vehicle, keepCommander: true })),
+    ]);
+    expect(own.cues).toEqual(['confirm', 'confirm', 'confirm']);
     const foreign = harness(ENEMY_SEAT);
     foreign.actions.dockShips(foreign.vehicles);
-    foreign.actions.unloadShips(foreign.vehicles);
+    foreign.actions.unloadShips(foreign.vehicles, false);
     expect([foreign.armed, foreign.sent]).toEqual([[], []]);
     expect(foreign.cues).toEqual(['fail', 'fail']);
   });

@@ -190,6 +190,20 @@ describe('vehicle panel model', () => {
     expect(atSea.crew.load).toBe(messages().hud.vehiclePanel.refusals.notMoored);
   });
 
+  it('offers the unload that keeps the commander only while someone else rides', () => {
+    const world = vehiclesWorld();
+    const ship = ownVehicle(world.sim, VEHICLE_SHIP_SMALL).entity;
+    const rider = { entity: ship + 1000, inside: true };
+    const seat = (passengers: readonly (typeof rider | null)[]) =>
+      modelOf(
+        { ...world, snapshot: withVehicle(world.snapshot, ship, (v) => (v.passengers = passengers)) },
+        ship,
+      ).crew;
+    const commanderOnly = seat([null, null, rider]);
+    expect([commanderOnly.unload, commanderOnly.unloadPassengers]).toEqual([true, null]);
+    expect(seat([rider, null, null]).unloadPassengers).toBe(true); // no commander: everyone is a passenger
+  });
+
   it('shows a carried cart riding its ship, leaving only while the ship is moored', () => {
     const world = vehiclesWorld();
     const cart = ownVehicle(world.sim, VEHICLE_HANDCART).entity;
@@ -382,6 +396,7 @@ describe('vehicle crew', () => {
     leave: true,
     leaveCommander: true,
     unload: true,
+    unloadPassengers: true,
     load: null,
     unloadVehicle: null,
     ...over,

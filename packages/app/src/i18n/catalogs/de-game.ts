@@ -901,9 +901,9 @@ export const deGame = {
       },
       armedTooltip: '{order} · Ziel auswählen · Esc zum Abbrechen',
       dockTooltip:
-        '{order} ({key}) · Küste auswählen · Strg/Cmd + Klick: anlegen und Besatzung an Land setzen',
+        '{order} ({key}) · Küste auswählen · Strg/Cmd + Klick: anlegen und alle außer dem Kommandanten an Land setzen',
       dockArmedTooltip:
-        '{order} · Küste auswählen · Strg/Cmd + Klick: anlegen und Besatzung an Land setzen · Esc zum Abbrechen',
+        '{order} · Küste auswählen · Strg/Cmd + Klick: anlegen und alle außer dem Kommandanten an Land setzen · Esc zum Abbrechen',
       refusals: {
         carried: 'Das Fahrzeug befindet sich auf einem Schiff',
         hauled: 'Jemand zieht diesen Karren als Werkzeug',
@@ -950,6 +950,9 @@ export const deGame = {
       emptySeat: 'Freier Platz',
       unloadAll: 'Alle aussteigen lassen',
       unloadAllTooltip: 'Alle steigen an der Tür aus und verlassen die Besatzung',
+      unloadPassengers: 'Passagiere absetzen',
+      unloadPassengersTooltip:
+        'Alle außer dem Kommandanten steigen an der Tür aus; das Schiff kann sofort ablegen',
       deck: 'Fahrzeug',
       deckEmpty: 'keines',
       deckLoad: 'Ein Fahrzeug an Bord fahren',
@@ -1037,7 +1040,10 @@ export const deGame = {
       siegeStance: 'Katapulte',
       fleet: 'Schiffe',
       unloadFleetTooltip: 'Die Besatzungen der angelegten Schiffe ({count} von {total}) gehen an Land',
+      unloadFleetPassengersTooltip:
+        'Die Passagiere der angelegten Schiffe ({count} von {total}) gehen an Land, die Kommandanten bleiben an Bord',
       unloadFleetNone: 'Kein angelegtes Schiff hat eine Besatzung an Bord',
+      unloadFleetPassengersNone: 'Kein angelegtes Schiff hat außer dem Kommandanten jemanden an Bord',
       orderReach: '{order} · gilt für {reach} von {count}',
       orderReachNone: '{order} · niemand in dieser Auswahl kann das ausführen',
       stanceCounts: 'Jetzt: {counts}',

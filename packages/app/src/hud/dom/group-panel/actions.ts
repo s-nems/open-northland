@@ -25,8 +25,8 @@ export interface GroupPanelActions {
   readonly setVehicleStance: (ids: readonly number[], stance: components.VehicleStance) => void;
   /** Arm the dock pick for these ships: each moors at its own berth along the shore picked. */
   readonly dockShips: (ids: readonly number[]) => void;
-  /** Land the crews of these moored ships. */
-  readonly unloadShips: (ids: readonly number[]) => void;
+  /** Land the crews of these moored ships; `keepCommander` leaves each commander aboard. */
+  readonly unloadShips: (ids: readonly number[], keepCommander: boolean) => void;
 }
 
 export interface GroupPanelDeps {

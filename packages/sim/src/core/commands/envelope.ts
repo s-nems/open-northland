@@ -97,6 +97,7 @@ export const COMMAND_ISSUER: {
   attachTradeHouse: 'seat',
   addTradeAgreement: 'trusted',
   attachToVehicle: 'seat',
+  attachToVehicleGroup: 'seat',
   attackMoveUnit: 'seat',
   attackMoveUnitGroup: 'seat',
   moveUnitGroup: 'seat',

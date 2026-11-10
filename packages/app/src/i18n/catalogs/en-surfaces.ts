@@ -594,7 +594,7 @@ export const enSurfaces = {
       buildMany: 'Hold {shift} while placing a building to place several of it, one per click.',
       attackMove: '{key} is attack-move: units walk to the target and attack everything on the way.',
       dockShips:
-        '{key} docks the selected ships along the shore you click, each at a berth of its own. With Ctrl/Cmd (a click after {key}, or a right-click by the shore) the crews step ashore once moored.',
+        '{key} docks the selected ships along the shore you click, each at a berth of its own. With Ctrl/Cmd (a click after {key}, or a right-click by the shore) everyone but the commanders steps ashore once moored, and the ships can sail off at once.',
       postGraduates:
         'In the assistant window ({key}), "{graduatesOption}" sends freshly trained settlers from the schools to the workshops.',
       moveFlags:

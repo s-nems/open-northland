@@ -23,6 +23,7 @@ import {
 } from '../../../src/index.js';
 import { nodeOfPosition, positionOfNode } from '../../../src/nav/halfcell.js';
 import { commandSystem } from '../../../src/systems/command/index.js';
+import { interactionNode } from '../../../src/systems/footprint/index.js';
 import { familiesOf } from '../../../src/systems/index.js';
 import { groupPlacementOrder } from '../../../src/systems/orders/group-placement.js';
 import { assignHouse, assignHouseGroup } from '../../../src/systems/orders/index.js';
@@ -296,7 +297,8 @@ describe('groupPlacementOrder - whom a group order tries first', () => {
     const nearest = adultAt(sim, 12);
     const members = [higher, unmeasured, lower, nearest, higher].map((entity) => ({ entity }));
 
-    const order = groupPlacementOrder(sim.world, ctxOf(sim), members, house, (e) => homeOf(sim, e));
+    const door = interactionNode(sim.world, ctxOf(sim), house);
+    const order = groupPlacementOrder(sim.world, members, house, door, (e) => homeOf(sim, e));
 
     expect(order.map((member) => member.entity)).toEqual([nearest, lower, higher, unmeasured]);
     expect(order[2]).toBe(members[0]); // the first entry of the repeated member

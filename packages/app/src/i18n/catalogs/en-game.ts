@@ -847,8 +847,9 @@ export const enGame = {
         attackPosition: 'Attack position',
       },
       armedTooltip: '{order} · pick the target · Esc cancels',
-      dockTooltip: '{order} ({key}) · pick the shore · Ctrl/Cmd + click: dock and land the crew',
-      dockArmedTooltip: '{order} · pick the shore · Ctrl/Cmd + click: dock and land the crew · Esc cancels',
+      dockTooltip: '{order} ({key}) · pick the shore · Ctrl/Cmd + click: dock and land all but the commander',
+      dockArmedTooltip:
+        '{order} · pick the shore · Ctrl/Cmd + click: dock and land all but the commander · Esc cancels',
       refusals: {
         carried: 'The vehicle stands on a ship',
         hauled: 'Someone pulls this cart as a tool',
@@ -882,6 +883,9 @@ export const enGame = {
       emptySeat: 'Free seat',
       unloadAll: 'Unload everyone',
       unloadAllTooltip: 'Everyone steps out at the door and leaves the crew',
+      unloadPassengers: 'Unload passengers',
+      unloadPassengersTooltip:
+        'Everyone but the commander steps out at the door; the ship can sail off at once',
       deck: 'Vehicle',
       deckEmpty: 'none',
       deckLoad: 'Drive a vehicle on board',
@@ -960,7 +964,10 @@ export const enGame = {
       siegeStance: 'Catapults',
       fleet: 'Ships',
       unloadFleetTooltip: 'The crews of the moored ships ({count} of {total}) step ashore',
+      unloadFleetPassengersTooltip:
+        'The passengers of the moored ships ({count} of {total}) step ashore, the commanders stay aboard',
       unloadFleetNone: 'No moored ship has a crew aboard',
+      unloadFleetPassengersNone: 'No moored ship has anyone but its commander aboard',
       orderReach: '{order} · reaches {reach} of {count}',
       orderReachNone: '{order} · nobody in scope can do this',
       stanceCounts: 'Now: {counts}',

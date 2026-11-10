@@ -386,8 +386,9 @@ export function boardVehicle(
   if (!rider.boarding) world.mut(e, Rider).boarding = true;
 }
 
-/** The unload-people order - see the command doc. Every rider, aboard or on its way, is freed, and an
- *  order held for their boarding and a march lapse with them. */
+/** The unload-people order - see the command doc. Every rider, aboard or on its way, is freed, the
+ *  commander left seated when the order keeps it, and an order held for their boarding and a march lapse
+ *  with them. */
 export function unloadPeople(
   world: World,
   ctx: SystemContext,
@@ -400,8 +401,9 @@ export function unloadPeople(
   if (at !== undefined && (!state.moored || state.mooring?.hx !== at.x || state.mooring.hy !== at.y)) return;
   const landing = landingOf(world, ctx, vehicle);
   if (landing === null) return;
+  const kept = command.keepCommander === true ? vehicleCommander(state) : null;
   for (const seat of vehiclePassengers(state)) {
-    if (!world.isAlive(seat.entity)) continue;
+    if (!world.isAlive(seat.entity) || seat.entity === kept) continue;
     if (seat.inside) landRider(world, ctx, seat.entity, landing);
     releaseRider(world, seat.entity, vehicle);
   }

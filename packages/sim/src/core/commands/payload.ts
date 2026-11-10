@@ -241,6 +241,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
     },
   },
   attachToVehicle: { required: { entity: 'integer', vehicle: 'integer' }, optional: QUEUED },
+  attachToVehicleGroup: { required: { members: UNIT_GROUP, vehicle: 'integer' } },
   attackMoveUnit: { required: { entity: 'integer', ...NODE }, optional: QUEUED },
   setVehicleStanceGroup: { required: { members: UNIT_GROUP, stance: { oneOf: VEHICLE_STANCES } } },
   moveVehicleGroup: {
@@ -498,7 +499,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   unassignHouse: { required: { entity: 'integer' } },
   unloadPeople: {
     required: { vehicle: 'integer' },
-    optional: { ...QUEUED, mooring: { fields: { required: NODE } } },
+    optional: { ...QUEUED, mooring: { fields: { required: NODE } }, keepCommander: 'boolean' },
   },
   unassignWorker: { required: { entity: 'integer' } },
   unequipGood: {

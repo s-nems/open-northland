@@ -215,6 +215,33 @@ describe('attachToVehicle', () => {
     expect(s.world.get(cart, Vehicle).task).toBe('none'); // and the cart stands until ordered
   });
 
+  it('crews a ship from a group nearest the door first, and a second ship from those still riding nothing', () => {
+    const s = sim();
+    const first = spawn(s, SHIP_SMALL, 22, 8);
+    const second = spawn(s, SHIP_SMALL, 22, 24);
+    const seats = s.world.get(first, Vehicle).passengers.length;
+    const spare = 2;
+    // A column along the shore past both doors, spawned from its far end so that ascending id runs away
+    // from the distance order: its first two settlers lie farthest from the first ship's door and nearest
+    // the second's.
+    const lastRow = 1 + seats + spare;
+    const group = Array.from({ length: seats + spare }, (_, i) => spawnSettler(s, 16, lastRow - i, SOLDIER));
+    const members = group.map((entity) => ({ entity }));
+    const groupAttach = (vehicle: Entity): void => {
+      s.enqueue(playerCommand(P0, { kind: 'attachToVehicleGroup', vehicle, members }));
+      s.step();
+    };
+    const ridersOf = (vehicle: Entity): Entity[] =>
+      group.filter((e) => s.world.tryGet(e, Rider)?.vehicle === vehicle);
+
+    groupAttach(first);
+    expect(ridersOf(first)).toEqual(group.slice(spare));
+    expect(crewRefusals(s)).toEqual([]); // the surplus stays unseated without a note
+    groupAttach(second);
+    expect(ridersOf(first)).toEqual(group.slice(spare));
+    expect(ridersOf(second)).toEqual(group.slice(0, spare));
+  });
+
   it('a Shift-queued attach waits for the walk ahead, then seats the settler, whose queue lapses', () => {
     const s = sim();
     const cart = spawn(s, HANDCART, 12, 6);

@@ -106,10 +106,15 @@ export function groupPanelActions(
       host.arm({ kind: 'vehicle-dock', vehicles: ships });
       host.cue('confirm');
     },
-    unloadShips: (ids) => {
+    unloadShips: (ids, keepCommander) => {
       const ships = ownedVehicles(ids);
       if (ships === null) return;
-      for (const ship of ships) opts.enqueue({ kind: 'unloadPeople', vehicle: ship as Entity });
+      for (const ship of ships)
+        opts.enqueue({
+          kind: 'unloadPeople',
+          vehicle: ship as Entity,
+          ...(keepCommander ? { keepCommander } : {}),
+        });
       host.cue('confirm');
     },
   };

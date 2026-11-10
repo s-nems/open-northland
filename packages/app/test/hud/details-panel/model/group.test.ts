@@ -138,6 +138,18 @@ describe('group panel model', () => {
     expect(fleet?.ids).toHaveLength(5);
     expect(fleet?.landable).toEqual([]);
     expect(model.scopes.every((s) => s.fleet === null)).toBe(true);
+    // Moored, each ship's lone rider may step ashore, but nobody besides its commander rides.
+    const fleetSim = createSceneSim(vehicleDockFleetScene);
+    fleetSim.step(); // seats the crews the scene's setup spawns
+    const moored = structuredClone(fleetSim.snapshot());
+    for (const e of moored.entities) {
+      const vehicle = e.components.Vehicle as { moored?: boolean } | undefined;
+      if (vehicle !== undefined) vehicle.moored = true;
+    }
+    const docked = buildUnitPanelModel(moored, new Set(fleet?.ids), ctxOf(fleetSim));
+    if (docked.kind !== 'group') throw new Error(`expected a group, got ${docked.kind}`);
+    expect(docked.scopes[0]?.fleet?.landable).toEqual(fleet?.ids);
+    expect(docked.scopes[0]?.fleet?.passengersLandable).toEqual([]);
     // A settler on the shore selected with the ships makes a mixed group, which gets no ship row.
     const sim = createSceneSim(vehicleDockFleetScene);
     const shore = cellAnchorNode(SHORE_CELL.x, SHORE_CELL.y);

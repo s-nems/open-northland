@@ -418,7 +418,9 @@ at sea. Unload people uses the ordinary boarding landing (`landingOf`, `crew.ts`
 board it again. The crew panel disables unloading while unmoored; rejected unload orders preserve
 an ongoing dock drive. An unload may queue behind the current order like a drive, so a dock followed by
 a queued unload lands the crew once the ship moors; the dock pick's Ctrl/Cmd click and a Ctrl/Cmd right-click of selected ships send that pair
-(addition: the original lands a crew only by its own order). Such an unload names the dock's shore point
+with `keepCommander`, which lands everyone but the commander so the ship can sail off at once (additions:
+the original lands a crew only by its own order, and always the whole crew). The crew panel and a group of
+ships offer both unloads. Such an unload names the dock's shore point
 (`mooring`) and lands nobody from a ship moored anywhere else, so a dock refused or replaced on the way
 leaves the crew aboard. A dock
 walk that loses its route drops the mooring point behind the `vehicleNoPath` note. A sunk ship's
@@ -580,8 +582,9 @@ cursor and drives the rest to spaced slots there, never boarding or docking; the
 Vehicle" is offered to every grown settler, its pick outlines the settler's own vehicles
 `canAttachToVehicle` (job list, free seat, a door on the settler's continent) takes, leaves the
 others plain with a refusing pointer over them, and a refused vehicle drops the click; the selected
-settlers' right-click on an own vehicle attaches each one that rule admits (approximation, owner's
-choice: the original assigns through the pick only); a commander selected while aboard (through its well) stands for its vehicle, so a
+settlers' right-click on an own vehicle sends the ones that rule admits as one `attachToVehicleGroup`,
+which seats those riding no vehicle first, nearest the door, as a building's group order does
+(approximation, owner's choice: the original assigns through the pick only); a commander selected while aboard (through its well) stands for its vehicle, so a
 right-click on the ground drives the vehicle whether the commander is aboard or beside it, and the
 ring's "Remove Vehicle" (`misclogic` 32) is the detach order for any rider. Message id 0x35 is the
 goto refusal above.

@@ -892,9 +892,10 @@ export const ruGame = {
         attackPosition: 'Обстрелять точку',
       },
       armedTooltip: '{order} · выбрать цель · Esc: отмена',
-      dockTooltip: '{order} ({key}) · выбрать берег · Ctrl/Cmd + щелчок: причалить и высадить команду',
+      dockTooltip:
+        '{order} ({key}) · выбрать берег · Ctrl/Cmd + щелчок: причалить и высадить всех, кроме начальника',
       dockArmedTooltip:
-        '{order} · выбрать берег · Ctrl/Cmd + щелчок: причалить и высадить команду · Esc: отмена',
+        '{order} · выбрать берег · Ctrl/Cmd + щелчок: причалить и высадить всех, кроме начальника · Esc: отмена',
       refusals: {
         carried: 'Машина находится на борту корабля',
         hauled: 'Эту тележку тянут как инструмент',
@@ -940,6 +941,8 @@ export const ruGame = {
       emptySeat: 'Свободное место',
       unloadAll: 'Высадить всех',
       unloadAllTooltip: 'Все высаживаются у двери и покидают экипаж',
+      unloadPassengers: 'Высадить пассажиров',
+      unloadPassengersTooltip: 'Все, кроме начальника, высаживаются у двери; корабль может сразу отплыть',
       deck: 'Машина',
       deckEmpty: 'нет',
       deckLoad: 'Завезти машину на борт',
@@ -1026,7 +1029,10 @@ export const ruGame = {
       siegeStance: 'Катапульты',
       fleet: 'Корабли',
       unloadFleetTooltip: 'Команды причаливших кораблей ({count} из {total}) сходят на берег',
+      unloadFleetPassengersTooltip:
+        'Пассажиры причаливших кораблей ({count} из {total}) сходят на берег, начальники остаются на борту',
       unloadFleetNone: 'Ни на одном причалившем корабле нет команды',
+      unloadFleetPassengersNone: 'Ни на одном причалившем корабле нет никого, кроме начальника',
       orderReach: '{order} · доступно для {reach} из {count}',
       orderReachNone: '{order} · никто из выбранных не может это выполнить',
       stanceCounts: 'Сейчас: {counts}',

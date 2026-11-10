@@ -1,5 +1,6 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type {
+  SeatControl,
   VehicleClass,
   VehicleCrewModel,
   VehiclePanelModel,
@@ -84,6 +85,20 @@ export function wellPress(
   return (well.rider.entity === commander?.entity ? leaveCommander : leave) === true ? 'leave' : 'refuse';
 }
 
+/** An unload tile: its glyph and the label beside it. */
+interface UnloadTile {
+  readonly node: HTMLButtonElement;
+  readonly label: HTMLElement;
+}
+
+/** An unload tile: hidden without anyone to land, its refusal as the tooltip while disabled. */
+function paintUnload(tile: UnloadTile, control: SeatControl | null, label: string, tooltip: string): void {
+  setHidden(tile.node, control === null);
+  write(tile.label, label);
+  setDisabled(tile.node, control !== true);
+  setTip(tile.node, control === true ? tooltip : (control ?? ''));
+}
+
 /** The seat pick's well lights while its pick waits for a settler. */
 function lightSeatPick(well: HTMLElement, seating: boolean): void {
   setClass(well, 'on-seat-well--armed', seating && well.classList.contains('on-seat-well--add'));
@@ -105,7 +120,8 @@ export function commanderCaption(model: Pick<VehiclePanelModel, 'vehicleClass' |
 }
 
 /** Crew: the commander's well, marked out from the rest, with a ship's seats as wells beside it or a
- *  land vehicle's role line; a ship's deck; the count and "Unload everyone" at the rule's right end.
+ *  land vehicle's role line; the count at the rule's right end; "Unload all but the commander" and
+ *  "Unload everyone" under the seats; a ship's deck.
  *  A click on a rider selects it, a Ctrl click steps it out. */
 export interface CrewSection {
   readonly element: HTMLElement;
@@ -126,14 +142,21 @@ interface CrewDeps {
 export function createCrewSection(deps: CrewDeps, current: () => VehiclePanelModel | null): CrewSection {
   const { actions, vehicle } = deps;
   const count = element('span', 'on-section__count');
-  const unload = button('on-more');
-  unload.addEventListener('click', () => {
-    const model = current();
-    if (model !== null && !isDisabled(unload)) vehicle.unloadPeople(model.entityId);
-  });
-  const controls = element('span', 'on-section__group');
-  controls.append(count, unload);
-  const title = createSection(controls);
+  const unloadTile = (keepCommander: boolean): UnloadTile => {
+    const node = button('on-order on-order--tile', `${GLYPH.leaveShip}<span></span>`);
+    const label = node.lastElementChild;
+    if (!(label instanceof HTMLElement)) throw new Error('vehicle crew: unload tile');
+    node.addEventListener('click', () => {
+      const model = current();
+      if (model !== null && !isDisabled(node)) vehicle.unloadPeople(model.entityId, keepCommander);
+    });
+    return { node, label };
+  };
+  const unloadPassengers = unloadTile(true);
+  const unload = unloadTile(false);
+  const unloads = element('div', 'on-orders on-orders--tiles');
+  unloads.append(unloadPassengers.node, unload.node);
+  const title = createSection(count);
   const helmWell = createFigureWell('on-seat-well on-seat-well--helm', HELM_FIT);
   const helm = helmWell.node;
   const caption = element('span', 'on-crew__caption', '<b></b><span></span>');
@@ -169,7 +192,7 @@ export function createCrewSection(deps: CrewDeps, current: () => VehiclePanelMod
     },
   });
   const root = element('div', '');
-  root.append(title.element, row, deck.element, pin.element);
+  root.append(title.element, row, unloads, deck.element, pin.element);
 
   let helmSeat: SeatWell = { kind: 'free' };
   let wells: FigureWell[] = [];
@@ -266,10 +289,14 @@ export function createCrewSection(deps: CrewDeps, current: () => VehiclePanelMod
       setHidden(count, !ship);
       write(count, `${crew.count} / ${crew.capacity}`);
       setTip(count, copy.seatCount);
-      setHidden(unload, !ship || crew.unload === null);
-      write(unload, copy.unloadAll);
-      setDisabled(unload, crew.unload !== true);
-      setTip(unload, crew.unload === true ? copy.unloadAllTooltip : (crew.unload ?? ''));
+      setHidden(unloads, !ship || (crew.unload === null && crew.unloadPassengers === null));
+      paintUnload(unload, ship ? crew.unload : null, copy.unloadAll, copy.unloadAllTooltip);
+      paintUnload(
+        unloadPassengers,
+        ship ? crew.unloadPassengers : null,
+        copy.unloadPassengers,
+        copy.unloadPassengersTooltip,
+      );
       helmSeat = commanderWell(crew);
       paintWell(helmWell, helmSeat, model, copy.roles[model.vehicleClass]);
       setHidden(caption, ship);

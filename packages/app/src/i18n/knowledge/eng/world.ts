@@ -216,7 +216,7 @@ export const WORLD: ArticleGroup = {
             "A vehicle goes aboard if its crew fits on the ship. A ship pinned to a Merchant's route takes no vehicle.",
             '"Moor": pick a shore and the ship stops {{vehicle.mooringDistance}} hexes from it. No harbour needed.',
             'Nobody boards or leaves at sea.',
-            'Ctrl/Cmd + right-click moors and lands the crew.',
+            'Ctrl/Cmd + right-click moors and lands everyone but the commander, so the ship can sail off at once.',
           ],
         },
         {

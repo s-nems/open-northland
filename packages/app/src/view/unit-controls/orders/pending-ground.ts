@@ -206,6 +206,7 @@ function orderActors(command: PlayerCommand): OrderActor[] {
     case 'attackWithVehicleGroup':
       return command.members.map(({ entity }) => ({ id: entity, queued: command.queued === true }));
     case 'assignWorkerGroup':
+    case 'attachToVehicleGroup':
       return command.members.map(({ entity }) => ({ id: entity, queued: false }));
     case 'moveUnit':
     case 'attackMoveUnit':

@@ -15,7 +15,8 @@ export interface VehiclePanelActions {
   /** Arm the pick of an own settler to seat: the commander's seat first. */
   readonly seatRider: (vehicle: number) => void;
   readonly leave: (rider: number) => void;
-  readonly unloadPeople: (vehicle: number) => void;
+  /** Land the riders; `keepCommander` leaves the commander aboard, the vehicle free to move off. */
+  readonly unloadPeople: (vehicle: number, keepCommander: boolean) => void;
   /** Arm the pick of an own land vehicle to drive onto the ship's deck. */
   readonly loadVehicle: (ship: number) => void;
   /** Drive a carried vehicle off the deck. */

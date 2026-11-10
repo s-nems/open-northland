@@ -578,7 +578,7 @@ export const chtSurfaces = {
       buildMany: '放置建築時按住 {shift}，即可每點擊一次就放置一座，連續放置多座。',
       attackMove: '{key} 是攻擊移動：單位會走向目標，並攻擊沿途遇到的一切。',
       dockShips:
-        '{key} 讓所選船隻停靠在點擊的海岸，每艘各佔一個泊位。按住 Ctrl/Cmd（按 {key} 後點擊，或在岸邊右鍵點擊），船員會在停靠後上岸。',
+        '{key} 讓所選船隻停靠在點擊的海岸，每艘各佔一個泊位。按住 Ctrl/Cmd（按 {key} 後點擊，或在岸邊右鍵點擊），停靠後除指揮官外所有人上岸，船隻可以立即離開。',
       postGraduates: '在助手視窗（{key}）中，「{graduatesOption}」會把學校剛結業的居民派往工坊。',
       moveFlags:
         '在助手視窗（{key}）中，「{flagsOption}」會在資源快用完時，把採集者的旗幟移到更靠近資源的地方。',

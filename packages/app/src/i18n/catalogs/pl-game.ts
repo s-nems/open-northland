@@ -828,8 +828,10 @@ export const plGame = {
         attackPosition: 'Ostrzelaj miejsce',
       },
       armedTooltip: '{order} · wskaż cel · Esc anuluje',
-      dockTooltip: '{order} ({key}) · wskaż brzeg · Ctrl/Cmd + klik: zacumuj i wysadź załogę',
-      dockArmedTooltip: '{order} · wskaż brzeg · Ctrl/Cmd + klik: zacumuj i wysadź załogę · Esc anuluje',
+      dockTooltip:
+        '{order} ({key}) · wskaż brzeg · Ctrl/Cmd + klik: zacumuj i wysadź wszystkich prócz dowódcy',
+      dockArmedTooltip:
+        '{order} · wskaż brzeg · Ctrl/Cmd + klik: zacumuj i wysadź wszystkich prócz dowódcy · Esc anuluje',
       refusals: {
         carried: 'Wehikuł stoi na statku',
         hauled: 'Ktoś ciągnie ten wóz jako narzędzie',
@@ -863,6 +865,8 @@ export const plGame = {
       emptySeat: 'Wolne miejsce',
       unloadAll: 'Wysadź wszystkich',
       unloadAllTooltip: 'Wszyscy wychodzą przy drzwiach i opuszczają załogę',
+      unloadPassengers: 'Wysadź prócz dowódcy',
+      unloadPassengersTooltip: 'Wszyscy prócz dowódcy wychodzą przy drzwiach; statek może od razu odpłynąć',
       deck: 'Wehikuł',
       deckEmpty: 'brak',
       deckLoad: 'Wprowadź wehikuł na pokład',
@@ -941,7 +945,10 @@ export const plGame = {
       siegeStance: 'Katapulty',
       fleet: 'Statki',
       unloadFleetTooltip: 'Załogi zacumowanych statków ({count} z {total}) wychodzą na brzeg',
+      unloadFleetPassengersTooltip:
+        'Pasażerowie zacumowanych statków ({count} z {total}) wychodzą na brzeg, dowódcy zostają na pokładzie',
       unloadFleetNone: 'Żaden zacumowany statek nie ma załogi',
+      unloadFleetPassengersNone: 'Żaden zacumowany statek nie ma na pokładzie nikogo prócz dowódcy',
       orderReach: '{order} · dotyczy {reach} z {count}',
       orderReachNone: '{order} · nikt w zakresie nie może tego zrobić',
       stanceCounts: 'Teraz: {counts}',

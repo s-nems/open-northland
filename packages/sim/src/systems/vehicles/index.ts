@@ -35,6 +35,7 @@ export {
   pickDraughtAnimal,
 } from './draught.js';
 export {
+  attachToVehicleGroup,
   canTakeHaulingCart,
   orderAttachToVehicle,
   releaseHaulingCart,

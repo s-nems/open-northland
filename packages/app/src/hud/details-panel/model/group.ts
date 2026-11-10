@@ -16,6 +16,7 @@ import {
   settlerJobType,
   settlerTribeOf,
   stanceModeOf,
+  vehicleCommanderOf,
   vehicleSeatsOf,
 } from '../../../game/snapshot/index.js';
 import { soldierWeaponFamily } from '../../../game/unit-kind.js';
@@ -104,10 +105,12 @@ export interface GroupSiegeModel {
   readonly stances: Readonly<Record<components.VehicleStance, number>>;
 }
 
-/** The scope's own ships: the ones a dock order moors, and those whose crew may step ashore now. */
+/** The scope's own ships: the ones a dock order moors, those whose crew may step ashore now, and those
+ *  with someone besides the commander to land. */
 export interface GroupFleetModel {
   readonly ids: readonly number[];
   readonly landable: readonly number[];
+  readonly passengersLandable: readonly number[];
 }
 
 /** What one tab shows and orders: the whole group, or the members of one kind. */
@@ -202,8 +205,9 @@ interface MemberFacts {
   readonly vehicle: {
     readonly siege: boolean;
     readonly stance: components.VehicleStance;
-    /** Null for a land vehicle; `landable` for a moored ship with someone aboard. */
-    readonly ship: { readonly landable: boolean } | null;
+    /** Null for a land vehicle; `landable` for a moored ship with someone aboard, `passengersLandable`
+     *  when that someone includes more than the commander. */
+    readonly ship: { readonly landable: boolean; readonly passengersLandable: boolean } | null;
   } | null;
 }
 
@@ -325,6 +329,17 @@ function settlerFacts(
   };
 }
 
+/** Whether a ship's crew may step ashore now, with and without its commander: moored, riding no carrier. */
+function shipLanding(ent: SnapshotEntity, v: Comp): { landable: boolean; passengersLandable: boolean } {
+  const ashore = v.moored === true && num(v.carrier) === undefined;
+  const riders = vehicleSeatsOf(v.passengers);
+  const commander = vehicleCommanderOf(ent);
+  return {
+    landable: ashore && riders.length > 0,
+    passengersLandable: ashore && riders.some((seat) => seat.entity !== commander),
+  };
+}
+
 function vehicleFacts(ctx: UnitPanelModelContext, ent: SnapshotEntity, owned: boolean): MemberFacts {
   const copy = messages().hud.groupPanel;
   const v = (ent.components.Vehicle ?? {}) as Comp;
@@ -368,13 +383,7 @@ function vehicleFacts(ctx: UnitPanelModelContext, ent: SnapshotEntity, owned: bo
     vehicle: {
       siege: vehicleClass === 'siege',
       stance,
-      ship:
-        vehicleClass === 'ship'
-          ? {
-              landable:
-                v.moored === true && num(v.carrier) === undefined && vehicleSeatsOf(v.passengers).length > 0,
-            }
-          : null,
+      ship: vehicleClass === 'ship' ? shipLanding(ent, v) : null,
     },
   };
 }
@@ -505,6 +514,7 @@ function fleetOf(facts: readonly MemberFacts[], shape: GroupShape): GroupFleetMo
   return {
     ids: facts.map((f) => f.id),
     landable: facts.filter((f) => f.vehicle?.ship?.landable === true).map((f) => f.id),
+    passengersLandable: facts.filter((f) => f.vehicle?.ship?.passengersLandable === true).map((f) => f.id),
   };
 }
 

@@ -113,7 +113,9 @@ export function vehiclePanelActions(host: VehiclePanelHost): VehiclePanelActions
     ),
     seatRider: order((id) => host.arm({ kind: 'vehicle-rider', vehicle: id })),
     leave: order((id) => send({ kind: 'detachFromVehicle', entity: id as Entity })),
-    unloadPeople: order((id) => send({ kind: 'unloadPeople', vehicle: id as Entity })),
+    unloadPeople: order((id, keepCommander: boolean) =>
+      send({ kind: 'unloadPeople', vehicle: id as Entity, ...(keepCommander ? { keepCommander } : {}) }),
+    ),
     loadVehicle: order((id) => host.arm({ kind: 'vehicle-deck', vehicle: id })),
     unloadVehicle: order((id) => send({ kind: 'leaveCarrier', vehicle: id as Entity })),
     setWanted: order((id, goodType: number, amount: number) =>

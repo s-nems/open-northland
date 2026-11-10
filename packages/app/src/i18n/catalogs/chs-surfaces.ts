@@ -578,7 +578,7 @@ export const chsSurfaces = {
       buildMany: '放置建筑时按住 {shift}，每点击一次放置一座，可以连续放置多座。',
       attackMove: '{key} 为攻击移动：单位走向目标，并攻击沿途遇到的一切。',
       dockShips:
-        '{key} 让所选船只停靠在点击的海岸，每艘各占一个泊位。按住 Ctrl/Cmd（按 {key} 后点击，或在岸边右键单击），船员会在停靠后上岸。',
+        '{key} 让所选船只停靠在点击的海岸，每艘各占一个泊位。按住 Ctrl/Cmd（按 {key} 后点击，或在岸边右键单击），停靠后除指挥官外所有人上岸，船只可以立即离开。',
       postGraduates: '在助手窗口（{key}）中，“{graduatesOption}”会把学校里刚完成学习的居民派往工坊。',
       moveFlags: '在助手窗口（{key}）中，“{flagsOption}”会在资源耗尽时把采集者的旗帜移到更靠近资源的地方。',
       lobbyNation: '在大厅中，点击玩家旁的大本营图标即可更改该玩家的民族。',

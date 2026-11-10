@@ -23,12 +23,19 @@ import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexagonRing, nodeOfPosition } from '../../nav/halfcell.js';
 import type { MapContext, SystemContext } from '../context.js';
 import { dynamicBlockOverlay, vehicleDoorNode } from '../footprint/index.js';
+import { groupPlacementOrder } from '../orders/group-placement.js';
 import { sendUnit } from '../orders/movement.js';
 import { isCarrierJobRow, isTrader } from '../readviews/jobs.js';
 import { addCarry, shrinkCarry } from '../settlers/atomics/effects/goods/carry.js';
 import { pickupFromStore, pileupIntoStore } from '../settlers/atomics/effects/goods/transfer.js';
 import { abandonCargoRun } from './cargo.js';
-import { attachToVehicle, doorReachable, passengerJobAllowed, placeOnNode } from './crew.js';
+import {
+  attachToVehicle,
+  canAttachToVehicle,
+  doorReachable,
+  passengerJobAllowed,
+  placeOnNode,
+} from './crew.js';
 import { cartLiftTicks, cartSpeedLossPercent, isCartType } from './drag.js';
 import { endDrive, isOpenLand } from './movement.js';
 import { tradeVehicleStock, vehicleLineCap } from './stock.js';
@@ -93,6 +100,26 @@ export function orderAttachToVehicle(
     orderHaulingCart(world, ctx, command.entity, command.vehicle);
   } else {
     attachToVehicle(world, ctx, command);
+  }
+}
+
+/** Crew one vehicle from a group - see the command doc and {@link groupPlacementOrder}. A member the
+ *  vehicle no longer admits, a full vehicle's surplus above all, stays as it was. */
+export function attachToVehicleGroup(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'attachToVehicleGroup' }>,
+): void {
+  const vehicle = command.vehicle;
+  if (!world.has(vehicle, Vehicle)) return;
+  const door = vehicleDoorNode(world, ctx, vehicle);
+  const vehicleOf = (e: Entity): Entity | undefined =>
+    world.tryGet(e, Rider)?.vehicle ?? world.tryGet(e, HaulingCart)?.vehicle;
+  const at = door === null ? null : { x: door.hx, y: door.hy };
+  for (const { entity } of groupPlacementOrder(world, command.members, vehicle, at, vehicleOf)) {
+    if (!canAttachToVehicle(world, ctx, entity, vehicle) && !canTakeHaulingCart(world, ctx, entity, vehicle))
+      continue;
+    orderAttachToVehicle(world, ctx, { kind: 'attachToVehicle', entity, vehicle });
   }
 }
 

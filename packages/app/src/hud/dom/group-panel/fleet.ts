@@ -15,7 +15,7 @@ import { createSection } from '../parts/section.js';
 import type { GroupPanelDeps } from './actions.js';
 
 /** Ships for a group of ships alone: dock them along a shore picked on the map, or land the crews of
- *  the moored ones. */
+ *  the moored ones, with or without their commanders. */
 export interface GroupFleetSection {
   readonly element: HTMLElement;
   update(scope: GroupScopeModel): void;
@@ -36,16 +36,21 @@ export function createGroupFleetSection(
     return { node, label };
   };
   const dock = tile(GLYPH.anchor);
+  const unloadPassengers = tile(GLYPH.leaveShip);
   const unload = tile(GLYPH.leaveShip);
   const tiles = element('div', 'on-orders on-orders--tiles');
-  tiles.append(dock.node, unload.node);
+  tiles.append(dock.node, unloadPassengers.node, unload.node);
   root.append(title.element, tiles);
-  const ids = (key: 'ids' | 'landable'): readonly number[] => scope()?.fleet?.[key] ?? [];
+  const ids = (key: 'ids' | 'landable' | 'passengersLandable'): readonly number[] =>
+    scope()?.fleet?.[key] ?? [];
   dock.node.addEventListener('click', () => {
     if (!isDisabled(dock.node)) deps.actions.dockShips(ids('ids'));
   });
+  unloadPassengers.node.addEventListener('click', () => {
+    if (!isDisabled(unloadPassengers.node)) deps.actions.unloadShips(ids('passengersLandable'), true);
+  });
   unload.node.addEventListener('click', () => {
-    if (!isDisabled(unload.node)) deps.actions.unloadShips(ids('landable'));
+    if (!isDisabled(unload.node)) deps.actions.unloadShips(ids('landable'), false);
   });
   let armed = false;
   const paintDock = (): void => {
@@ -72,16 +77,38 @@ export function createGroupFleetSection(
       title.update(copy.groupPanel.fleet);
       setDisabled(dock.node, fleet.ids.length === 0);
       paintDock();
-      write(unload.label, copy.vehiclePanel.unloadAll);
-      setDisabled(unload.node, fleet.landable.length === 0);
-      setTip(
+      const paintUnload = (
+        node: HTMLButtonElement,
+        label: HTMLElement,
+        text: string,
+        ships: readonly number[],
+        tooltip: string,
+        none: string,
+      ): void => {
+        write(label, text);
+        setDisabled(node, ships.length === 0);
+        setTip(
+          node,
+          ships.length === 0
+            ? none
+            : formatMessage(tooltip, { count: ships.length, total: fleet.ids.length }),
+        );
+      };
+      paintUnload(
+        unloadPassengers.node,
+        unloadPassengers.label,
+        copy.vehiclePanel.unloadPassengers,
+        fleet.passengersLandable,
+        copy.groupPanel.unloadFleetPassengersTooltip,
+        copy.groupPanel.unloadFleetPassengersNone,
+      );
+      paintUnload(
         unload.node,
-        fleet.landable.length === 0
-          ? copy.groupPanel.unloadFleetNone
-          : formatMessage(copy.groupPanel.unloadFleetTooltip, {
-              count: fleet.landable.length,
-              total: fleet.ids.length,
-            }),
+        unload.label,
+        copy.vehiclePanel.unloadAll,
+        fleet.landable,
+        copy.groupPanel.unloadFleetTooltip,
+        copy.groupPanel.unloadFleetNone,
       );
     },
     refresh(): void {

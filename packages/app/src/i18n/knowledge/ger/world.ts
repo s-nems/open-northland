@@ -216,7 +216,7 @@ export const WORLD: ArticleGroup = {
             'Ein Fahrzeug kommt an Bord, wenn seine Besatzung auf das Schiff passt. Ein Schiff, das einer Händlerroute zugewiesen ist, nimmt kein Fahrzeug auf.',
             '„Andocken“: Wähle ein Ufer, das Schiff hält {{vehicle.mooringDistance}} Hexfelder davon entfernt. Ein Hafen ist nicht nötig.',
             'Auf See steigt niemand ein oder aus.',
-            'Ctrl/Cmd + Rechtsklick dockt an und setzt die Besatzung ab.',
+            'Ctrl/Cmd + Rechtsklick dockt an und setzt alle außer dem Kommandanten ab, sodass das Schiff sofort ablegen kann.',
           ],
         },
         {

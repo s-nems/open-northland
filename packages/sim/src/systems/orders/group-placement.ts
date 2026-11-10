@@ -2,11 +2,9 @@ import { Position } from '../../components/index.js';
 import type { GroupMember } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { SystemContext } from '../context.js';
-import { interactionNode } from '../footprint/index.js';
 
 /**
- * The members a group order tries at `target`, nearest its door first (half-cell Manhattan distance,
+ * The members a group order tries at `target`, nearest `door` first (half-cell Manhattan distance,
  * then ascending id). While any member has no place, only those are tried, so a second click on another
  * target places the rest of a group instead of pulling back the ones the first click placed; a group
  * that is all placed elsewhere relocates. Members already placed at `target` are left out, and a
@@ -15,12 +13,11 @@ import { interactionNode } from '../footprint/index.js';
  */
 export function groupPlacementOrder<M extends GroupMember>(
   world: World,
-  ctx: SystemContext,
   members: readonly M[],
   target: Entity,
+  door: { readonly x: number; readonly y: number } | null,
   placeOf: (e: Entity) => Entity | undefined,
 ): M[] {
-  const door = interactionNode(world, ctx, target);
   const seen = new Set<Entity>();
   const ranked: Array<{ readonly member: M; readonly placed: boolean; readonly dist: number }> = [];
   for (const member of members) {

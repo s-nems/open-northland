@@ -540,7 +540,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(81);
+  const roll = rng.int(82);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiControl carrier created/updated/destroyed - the
@@ -1086,8 +1086,13 @@ function nextCommand(rng: Rng): Command {
       // cart or ship go, the rest are skips.
       return { kind: 'detachFromVehicle', entity: riderTarget(rng) };
     case 61:
-      // Unload people at an aimed id: a crewed vehicle empties, an empty one and a non-vehicle skip.
-      return { kind: 'unloadPeople', vehicle: vehicleTarget(rng) };
+      // Unload people at an aimed id: a crewed vehicle empties, or all but its commander, an empty one
+      // and a non-vehicle skip.
+      return {
+        kind: 'unloadPeople',
+        vehicle: vehicleTarget(rng),
+        ...(rng.int(2) === 0 ? { keepCommander: true } : {}),
+      };
     case 62:
       // A dock order at an aimed id and a random tile: the ships (no commander, or a held point while the
       // crew boards), the carts (not a ship), and every skip; the ring search must replay exactly.
@@ -1217,6 +1222,19 @@ function nextCommand(rng: Rng): Command {
         kind: 'setTradeShip',
         entity: riderTarget(rng),
         ship: rng.int(3) === 0 ? null : vehicleTarget(rng),
+      };
+    case 81:
+      // A group crew order over nucleus and wild ids at an aimed vehicle: the handler seats the members
+      // riding nothing first, nearest the door, against the stream's case-59 attaches and case-60
+      // detaches; a full vehicle, another owner's and a non-vehicle skip.
+      return {
+        kind: 'attachToVehicleGroup',
+        members: firstOfEachEntity(
+          Array.from({ length: rng.int(GROUP_SIZE_RANGE) }, () => ({
+            entity: (rng.int(rng.int(2) === 0 ? NUCLEUS_ID_RANGE : TARGET_ID_RANGE) + 1) as Entity,
+          })),
+        ),
+        vehicle: vehicleTarget(rng),
       };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);

@@ -466,7 +466,7 @@ export const enContent = {
     'vehicle-dock-fleet': {
       title: 'A fleet off a ragged coast',
       summary:
-        'Five crewed ships lie at sea off a coast with a bay and a cape. Select one or several and right-click by the shore, press Z, or use the Dock button of the ship or group panel: a rounded glow shows the shore they can moor at, mooring posts with their lines under the cursor show where each ship will land, and the fleet spreads along the shore with open water between the hulls. With Ctrl/Cmd (a click after Z, or a right-click by the shore) the crews step ashore once moored, and the Unload all button of a group of ships lands the crews of the moored ones.',
+        'Five crewed ships lie at sea off a coast with a bay and a cape. Select one or several and right-click by the shore, press Z, or use the Dock button of the ship or group panel: a rounded glow shows the shore they can moor at, mooring posts with their lines under the cursor show where each ship will land, and the fleet spreads along the shore with open water between the hulls. With Ctrl/Cmd (a click after Z, or a right-click by the shore) everyone but the commanders steps ashore once moored, so the ships can sail off at once; a group of ships has that as its Unload passengers button, beside Unload everyone, which lands the commanders too.',
     },
     'ship-wakes': {
       title: 'Ship wakes',

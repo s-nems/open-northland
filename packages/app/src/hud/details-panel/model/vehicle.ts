@@ -101,6 +101,9 @@ export interface VehicleCrewModel {
   /** "Unload everyone"; null while nobody rides. The order lands every rider, so a pinned ship refuses it
    *  while its trader is aboard, as it refuses the trader's own step out. */
   readonly unload: SeatControl | null;
+  /** "Unload all but the commander", the same order with the commander kept aboard; null while nobody
+   *  but the commander rides. */
+  readonly unloadPassengers: SeatControl | null;
   /** The pick that drives an own land vehicle onto the deck; null without a deck or on a foreign ship. */
   readonly load: SeatControl | null;
   /** A carried vehicle driving off the deck. */
@@ -453,6 +456,9 @@ function crewModel(
   const carried: SeatControl = copy.carried;
   const doorless = inputs.atSea ? atSea : inputs.carried ? carried : true;
   const full = pinned ? seats.every((seat) => seat !== null) : passengers.length >= capacity;
+  const unloadControl = passengers.some((seat) => seat.entity === inputs.tradePin?.entity)
+    ? copy.pinned
+    : doorless;
   return {
     commander,
     seats,
@@ -462,12 +468,8 @@ function crewModel(
     assign: own ? (hauled ? copy.hauled : full ? copy.noSeat : doorless) : null,
     leave: own ? (hauled ? copy.hauled : doorless) : null,
     leaveCommander: own ? (hauled ? copy.hauled : pinned ? copy.pinned : doorless) : null,
-    unload:
-      own && passengers.length > 0
-        ? passengers.some((seat) => seat.entity === inputs.tradePin?.entity)
-          ? copy.pinned
-          : doorless
-        : null,
+    unload: own && passengers.length > 0 ? unloadControl : null,
+    unloadPassengers: own && passengers.some((seat) => seat !== lead) ? unloadControl : null,
     load:
       own && deck !== null
         ? pinned

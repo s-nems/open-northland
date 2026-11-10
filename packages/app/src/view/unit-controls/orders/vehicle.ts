@@ -330,7 +330,13 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     });
     if (lands) {
       const mooring = { x: node.col, y: node.row };
-      deps.enqueue({ kind: 'unloadPeople', vehicle: vehicle as Entity, queued: true, mooring });
+      deps.enqueue({
+        kind: 'unloadPeople',
+        vehicle: vehicle as Entity,
+        queued: true,
+        mooring,
+        keepCommander: true,
+      });
     }
     deps.markOrder?.(node, 'move');
   };
@@ -420,18 +426,27 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
   };
 
   /** Attach each of `settlers` the rule admits, once it answered, in click order among their other
-   *  pending clicks; `onNone` when it admitted nobody. */
+   *  pending clicks; `onNone` when it admitted nobody. A `group` order lets the sim seat the ones riding
+   *  nothing first, as a building's group order does; a queued one attaches each settler in its turn. */
   const attachWhenAdmitted = (
     settlers: readonly number[],
     vehicle: number,
     onNone: () => void,
     queued: boolean,
+    group = false,
   ): boolean => {
     if (settlers.length > MAX_UNIT_ORDER_MEMBERS) {
       deps.onOrderLimit?.();
       return false;
     }
     const attach = (recipients: readonly number[]): boolean => {
+      if (recipients.length === 0) return false;
+      if (group && !queued) {
+        const members = recipients.map((entity) => ({ entity: entity as Entity }));
+        deps.enqueue({ kind: 'attachToVehicleGroup', vehicle: vehicle as Entity, members });
+        deps.flashTarget?.(vehicle, 'order');
+        return true;
+      }
       const sent = enqueueUnitSelection(
         recipients.map((entity) => ({
           kind: 'attachToVehicle',
@@ -475,7 +490,7 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
   };
 
   const issueAttachPlan = (plan: AttachPlan, queued: boolean, onNoneBoards: () => void): boolean =>
-    attachWhenAdmitted(plan.settlers, plan.vehicle, onNoneBoards, queued);
+    attachWhenAdmitted(plan.settlers, plan.vehicle, onNoneBoards, queued, true);
 
   const issueShipPin = (
     { trader, ship, unpins }: ShipPinPlan,

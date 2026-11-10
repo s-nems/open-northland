@@ -88,6 +88,7 @@ import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { marryPlaced, parentPlacedChild, spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
 import {
+  attachToVehicleGroup,
   attackWithVehicle,
   boardVehicle,
   clearVehicleWantedOrder,
@@ -378,6 +379,10 @@ function applyCommand(
       return;
     case 'attachToVehicle':
       orderAttachToVehicle(world, ctx, command);
+      return;
+    case 'attachToVehicleGroup':
+      if (command.members.length > MAX_UNIT_ORDER_MEMBERS) return;
+      attachToVehicleGroup(world, ctx, command);
       return;
     case 'detachFromVehicle':
       // A rider leaves its vehicle only: a trader aboard its pinned ship lands with its cart.

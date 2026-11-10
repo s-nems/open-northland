@@ -396,6 +396,23 @@ describe('dockVehicle', () => {
     expect(vehiclePassengers(s.world.get(ship, Vehicle))).toEqual([]);
   });
 
+  it('keeps the commander aboard when the unload says so, the ship free to sail off', () => {
+    const s = sim();
+    const { ship, riders } = crewedShip(s, 20, MID_ROW, 3);
+    dock(s, ship, EAST_SHORE_X + 1, MID_ROW);
+    sailOut(s, ship);
+    const commander = vehicleCommander(s.world.get(ship, Vehicle));
+    s.enqueue(playerCommand(P0, { kind: 'unloadPeople', vehicle: ship, keepCommander: true }));
+    s.step();
+    expect(vehiclePassengers(s.world.get(ship, Vehicle))).toEqual([{ entity: commander, inside: true }]);
+    for (const rider of riders.filter((e) => e !== commander)) expect(s.world.has(rider, Rider)).toBe(false);
+    const home = { hx: WEST_SHORE_X - 1, hy: MID_ROW };
+    dock(s, ship, home.hx, home.hy);
+    sailOut(s, ship);
+    expect(s.world.get(ship, Vehicle).moored).toBe(true);
+    expect(distanceTo(anchorOf(s, ship), home)).toBe(DOOR_DISTANCE);
+  });
+
   it('lands its commander to empty the hold onto a shore with no store, and keeps it aboard at sea', () => {
     const s = sim();
     const { ship, riders } = crewedShip(s, 20, MID_ROW);

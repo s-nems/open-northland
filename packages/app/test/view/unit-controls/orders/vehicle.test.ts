@@ -530,7 +530,7 @@ describe('vehicle right-click defaults', () => {
 });
 
 describe('right-click attach', () => {
-  it('assigns each selected settler the attach rule admits to the own vehicle under the cursor', async () => {
+  it('sends the selected settlers the attach rule admits as one group order to the own vehicle under the cursor', async () => {
     const second = OWN_SETTLER + 1;
     const h = harness([OWN_SETTLER, second], {
       vehicles: [under(SHIP, 'vehicle')],
@@ -539,7 +539,9 @@ describe('right-click attach', () => {
     });
     expect(h.attach(rightClick, () => undefined)).toBe(true);
     await landed();
-    expect(h.issued).toEqual([{ kind: 'attachToVehicle', entity: OWN_SETTLER, vehicle: SHIP }]);
+    expect(h.issued).toEqual([
+      { kind: 'attachToVehicleGroup', vehicle: SHIP, members: [{ entity: OWN_SETTLER }] },
+    ]);
     expect(h.flashed).toEqual([[SHIP, 'order']]);
   });
 
@@ -710,11 +712,7 @@ describe('vehicle picks', () => {
     expect(h.attach(rightClick, () => {})).toBe(true);
     await landed();
     expect(h.issued).toEqual([
-      {
-        kind: 'unitActionGroup',
-        members: settlers.map((entity) => ({ entity })),
-        action: { kind: 'attachToVehicle', vehicle: SHIP },
-      },
+      { kind: 'attachToVehicleGroup', vehicle: SHIP, members: settlers.map((entity) => ({ entity })) },
     ]);
     const oversized = Array.from({ length: MAX_UNIT_ORDER_MEMBERS + 1 }, (_, i) => i + FIRST_CANDIDATE);
     const rejected = harness(oversized, { settlers: oversized, vehicles: [under(SHIP, 'vehicle')] });
@@ -736,14 +734,14 @@ describe('vehicle picks', () => {
     expect(new Set(goals).size).toBe(2);
   });
 
-  it('lands the crew behind the dock on a Ctrl or Cmd press of the dock pick', () => {
+  it('lands all but the commander behind the dock on a Ctrl or Cmd press of the dock pick', () => {
     for (const modifier of [{ ctrlKey: true }, { metaKey: true }]) {
       const { issued, pickMode } = harness([SHIP], ALL_UNDER);
       pickMode.arm({ kind: 'vehicle-dock', vehicles: [SHIP] });
       expect(pickMode.handleMouseDown({ ...leftClick, ...modifier } as MouseEvent)).toBe('ordered');
       expect(issued).toEqual([
         { kind: 'dockVehicle', vehicle: SHIP, x: 3, y: 3 },
-        { kind: 'unloadPeople', vehicle: SHIP, queued: true, mooring: { x: 3, y: 3 } },
+        { kind: 'unloadPeople', vehicle: SHIP, queued: true, mooring: { x: 3, y: 3 }, keepCommander: true },
       ]);
     }
     // The same press on the map overview.

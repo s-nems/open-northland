@@ -208,7 +208,7 @@ export const WORLD: ArticleGroup = {
             'Pojazd wjedzie na statek, jeśli jego załoga zmieści się na pokładzie. Statek przypięty do trasy Kupca nie przyjmie pojazdu.',
             '"Zacumuj": wskaż brzeg, a statek stanie {{vehicle.mooringDistance}} hexy od niego. Port nie jest potrzebny.',
             'Na morzu nikt nie wsiada ani nie wysiada.',
-            'Ctrl/Cmd + prawy klik cumuje i wysadza załogę.',
+            'Ctrl/Cmd + prawy klik cumuje i wysadza wszystkich prócz dowódcy, więc statek może od razu odpłynąć.',
           ],
         },
         {

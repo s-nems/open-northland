@@ -62,6 +62,7 @@ export function warmVehicleModel(goodIds: readonly string[]): VehiclePanelModel 
       leave: true,
       leaveCommander: true,
       unload: 'warm',
+      unloadPassengers: 'warm',
       load: true,
       unloadVehicle: true,
     },
