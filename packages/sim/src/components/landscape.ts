@@ -17,15 +17,22 @@ export interface LandscapeEditState {
   tints: Map<number, number>;
 }
 
-const edits = defineWorldSingleton<LandscapeEditState>('LandscapeEdits', 'movement', () => ({
-  removed: [],
-  added: [],
-  nextId: 0,
-  topologyRevision: 0,
-  forbiddenRevision: 0,
-  forbidden: new Map(),
-  tints: new Map(),
-}));
+// Sim-only: a host reads the edits through `Simulation.landscapeEdits()`, and the record grows with the
+// map (every removed id, forbidden node and tinted cell), so a read view would carry it whole per edit.
+const edits = defineWorldSingleton<LandscapeEditState>(
+  'LandscapeEdits',
+  'movement',
+  () => ({
+    removed: [],
+    added: [],
+    nextId: 0,
+    topologyRevision: 0,
+    forbiddenRevision: 0,
+    forbidden: new Map(),
+    tints: new Map(),
+  }),
+  { simOnly: true },
+);
 const LandscapeEdits = edits.component;
 export const landscapeEditState = (world: World) => edits.read(world);
 export function writeLandscapeEdits(world: World, apply: (state: LandscapeEditState) => void): void {
