@@ -21,6 +21,8 @@ export class NodeChangeStamps {
   /** Per node row and block column, indexed `y * blockColumns + column`. */
   private readonly blockRowStamps: Int32Array;
   private base = 0;
+  /** The latest stamp any node holds, as an offset from {@link base}. */
+  private latest = 0;
   private readonly blockColumns: number;
   private readonly blockRows: number;
 
@@ -39,14 +41,20 @@ export class NodeChangeStamps {
   stamp(x: number, y: number, clock: number): void {
     if (clock - this.base > MAX_STAMP_OFFSET) this.rebase(clock);
     const offset = clock - this.base;
+    this.latest = offset;
     const column = Math.floor(x / STAMP_BLOCK_SIZE);
     this.nodes[y * this.width + x] = offset;
     this.blocks[Math.floor(y / STAMP_BLOCK_SIZE) * this.blockColumns + column] = offset;
     this.blockRowStamps[y * this.blockColumns + column] = offset;
   }
 
-  /** Whether some node of `area` changed after clock reading `since` and passes `test`. */
+  /** Whether some node of `area` changed after clock reading `since` and passes `test`. Only the test
+   *  that nothing changed anywhere since, small enough for a cache check to inline. */
   anyChangedSince(area: NodeArea, since: number, test: (x: number, y: number) => boolean): boolean {
+    return this.latest > since - this.base && this.scanChangedSince(area, since, test);
+  }
+
+  private scanChangedSince(area: NodeArea, since: number, test: (x: number, y: number) => boolean): boolean {
     const minX = Math.max(0, area.minHx);
     const maxX = Math.min(this.width - 1, area.maxHx);
     const minY = Math.max(0, area.minHy);
@@ -74,6 +82,7 @@ export class NodeChangeStamps {
   /** Move the base just under `clock`, flattening every held stamp to the new base. */
   private rebase(clock: number): void {
     this.base = clock - 1;
+    this.latest = 0;
     this.nodes.fill(0);
     this.blocks.fill(0);
     this.blockRowStamps.fill(0);
