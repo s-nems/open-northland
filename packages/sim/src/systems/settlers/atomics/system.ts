@@ -80,13 +80,14 @@ export const atomicSystem: System = (world, ctx) => {
       if (frames === undefined) {
         if (elapsed === duration) resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
       } else {
-        for (const frame of frames) {
-          if (elapsed === eventTickWithin(frame, duration))
+        // Indexed, with no closure: every swing in flight asks this every tick.
+        for (let i = 0; i < frames.length; i++) {
+          if (elapsed === eventTickWithin(frames[i] as number, duration))
             resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
         }
       }
       const lunge = running.effect.lunge;
-      if (lunge?.frames.some((frame) => eventTick(frame) === elapsed))
+      if (lunge !== undefined && lungesOn(lunge.frames, elapsed))
         lungeForward(world, ctx, e, lunge.direction);
       // A blow may have rewritten the striker's identity, so its clip is joined again.
       settler = world.tryGet(e, Settler);
@@ -149,6 +150,14 @@ export const atomicSystem: System = (world, ctx) => {
 
   applyPendingHitReactions(world, pendingReactions);
 };
+
+/** Whether one of a lunge's `frames` fires on tick `elapsed` of its swing. */
+function lungesOn(frames: readonly number[], elapsed: number): boolean {
+  for (let i = 0; i < frames.length; i++) {
+    if (eventTick(frames[i] as number) === elapsed) return true;
+  }
+  return false;
+}
 
 /** The tick an animation's event frame fires on, clamped into the `duration` ticks the atomic actually runs.
  *  Approximation: the original never fires a frame past its clip; here such a blow lands once, on the last
