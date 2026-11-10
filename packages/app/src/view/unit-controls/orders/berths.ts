@@ -182,10 +182,16 @@ function leastCostMatching(cost: readonly (readonly number[])[]): number[] {
   return pick;
 }
 
+/** The node distance between two hulls of `logicSize` lying side by side with the berths' free water
+ *  between their discs: a fleet's berths and its formation under way are spaced by it. */
+export function hullSpacing(logicSize: number): number {
+  return 2 * logicSize + 1 + BERTH_GAP_NODES;
+}
+
 /** How far from the clicked berth a fleet's berths may spread: a hull and a gap per further ship. */
 export function berthReach(ships: readonly BerthShip[]): number {
   const widest = Math.max(0, ...ships.map((ship) => ship.logicSize));
-  return Math.min(MAX_FLEET_SPREAD_NODES, (ships.length - 1) * (2 * widest + 1 + BERTH_GAP_NODES));
+  return Math.min(MAX_FLEET_SPREAD_NODES, (ships.length - 1) * hullSpacing(widest));
 }
 
 function distinctRules(ships: readonly BerthShip[]): MooringRule[] {

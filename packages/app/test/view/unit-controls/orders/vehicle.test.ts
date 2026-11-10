@@ -19,7 +19,7 @@ import {
 import { fixedViewerSeat } from '../../../../src/game/viewer-seat.js';
 import { type Pickable, type Tile, worldToTile } from '../../../../src/view/picking.js';
 import { createAnsweredOrders } from '../../../../src/view/unit-controls/orders/answered.js';
-import type { MooringRule } from '../../../../src/view/unit-controls/orders/berths.js';
+import { hullSpacing, type MooringRule } from '../../../../src/view/unit-controls/orders/berths.js';
 import {
   createPendingGroundOrders,
   type PendingGroundOrders,
@@ -63,6 +63,9 @@ const ENEMY_PLAYER = 1;
 /** Boarding candidates, numbered from an id no other fixture entity takes. */
 const BOARDING_GROUP = 3;
 const FIRST_CANDIDATE = 100;
+/** A fleet's ships, numbered from an id no other fixture entity takes; each commander's id is its ship's
+ *  plus this. */
+const FLEET = 200;
 
 const CLICK = { x: 100, y: 100 };
 const MAP_SIZE = { width: 16, height: 16 };
@@ -161,6 +164,8 @@ interface Arms {
   readonly settlers?: readonly number[];
   /** Own settlers drawn under the cursor, which take the right-click ahead of a vehicle beneath them. */
   readonly settlersUnder?: readonly Pickable[];
+  /** The world the orders read, {@link WORLD} by default. */
+  readonly world?: WorldSnapshot;
 }
 
 const targetsOf = (arms: Arms) =>
@@ -217,7 +222,7 @@ function harness(selected: readonly number[], arms: Arms) {
     answered: createAnsweredOrders(),
     selected: () => new Set(selected),
     targets,
-    snapshot: () => WORLD,
+    snapshot: () => arms.world ?? WORLD,
     content: sandboxContent(),
     mapSize: MAP_SIZE,
     viewer: fixedViewerSeat(HUMAN_PLAYER),
@@ -732,6 +737,41 @@ describe('vehicle picks', () => {
     const goals = group.members.map((member) => `${member.x},${member.y}`);
     expect(goals[0]).toBe('10,10');
     expect(new Set(goals).size).toBe(2);
+  });
+
+  it('sails a fleet to goals a berth apart, each ship to the goal on its own side', () => {
+    // Three crewed ships in a west-to-east line, the westmost holding the highest id.
+    const columns = [2, 6, 10];
+    const ships = columns.map((_, i) => FLEET + columns.length - 1 - i);
+    const world = snapshotOf(
+      ships.flatMap((ship, i) => [
+        vehicle(
+          ship,
+          VEHICLE_SHIP_SMALL,
+          HUMAN_PLAYER,
+          false,
+          [{ entity: ship + FLEET, inside: true }],
+          null,
+          at(columns[i] ?? 0, 12),
+        ),
+        aboard(ship + FLEET, ship),
+      ]),
+    );
+    const { issued, controller } = harness(ships, { world });
+    expect(controller.issueDriveTo({ col: 16, row: 16 })).toBe(true);
+    const group = issued[0];
+    if (group?.kind !== 'moveVehicleGroup') throw new Error('expected fleet drive');
+    const goals = ships.map((ship) => group.members.find((member) => member.entity === ship));
+    const logicSize =
+      sandboxContent().vehicles.find((type) => type.typeId === VEHICLE_SHIP_SMALL)?.logicSize ?? 0;
+    for (const [i, a] of goals.entries()) {
+      for (const b of goals.slice(i + 1)) {
+        if (a === undefined || b === undefined) throw new Error('a ship without a goal');
+        expect(hexDistanceBetween(a.x, a.y, b.x, b.y)).toBeGreaterThanOrEqual(hullSpacing(logicSize));
+      }
+    }
+    const westToEast = goals.map((goal) => goal?.x ?? 0);
+    expect(westToEast).toEqual([...westToEast].sort((a, b) => a - b));
   });
 
   it('lands all but the commander behind the dock on a Ctrl or Cmd press of the dock pick', () => {

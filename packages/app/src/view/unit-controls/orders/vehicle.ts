@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import type { OrderMarkerKind, TargetFlashTone } from '@open-northland/render';
+import { type OrderMarkerKind, type TargetFlashTone, tileToScreen } from '@open-northland/render';
 import {
   type Entity,
   entityById,
@@ -39,16 +39,18 @@ import {
   berthReach,
   DOCK_PICK_SNAP_NODES,
   type Hull,
+  hullSpacing,
   type MooringRule,
   planBerths,
   RIGHT_CLICK_SNAP_NODES,
 } from './berths.js';
-import { formationTiles } from './formation.js';
+import { type FormationUnit, formationTiles, pairFormation } from './formation.js';
 import { enqueueArmyOrder, enqueueUnitSelection } from './group.js';
 import { afterClickAnswer, type PendingGroundOrders } from './pending-ground.js';
 
 /** How far apart a group's goals lie: past a catapult's footprint disc (`logicsize 1`) and a lane
- *  beside it, so no two marched vehicles contend for one goal. */
+ *  beside it, so no two marched vehicles contend for one goal. A group with a ship spaces its goals
+ *  as far apart as a fleet's berths ({@link hullSpacing}), so the hulls sail and arrive apart. */
 const VEHICLE_FORMATION_SPACING_NODES = 4;
 
 export interface VehicleOrderDeps {
@@ -266,23 +268,48 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     then: (value: T, current: (actor: number) => boolean) => void,
   ): void => afterClickAnswer(deps.pendingGroundOrders, deps.answered, actors, queued, answer, then);
 
-  /** One goal per vehicle around `target`, formation slots on a lattice as wide as the group, each
-   *  scaled out to the spacing. */
-  const formationGoals = (count: number, target: Tile): Tile[] => {
+  /** The node distance between a group's goals: the fleet spacing of its widest ship, or the plain
+   *  vehicle spacing for a group with no ship. */
+  const formationSpacing = (vehicles: readonly number[]): number => {
+    const snapshot = deps.snapshot();
+    let spacing = VEHICLE_FORMATION_SPACING_NODES;
+    for (const vehicle of vehicles) {
+      const e = entityById(snapshot, vehicle);
+      const type = e === undefined || !isShip(e) ? undefined : vehicleTypeOf(e);
+      if (type !== undefined) spacing = Math.max(spacing, hullSpacing(type.logicSize));
+    }
+    return spacing;
+  };
+
+  /** One goal per vehicle around `target`: formation slots on a lattice as wide as the group, scaled out
+   *  to the group's spacing, each paired with the vehicle nearest it so courses keep the group's layout
+   *  instead of crossing. A vehicle standing nowhere takes a slot the paired ones left, in order. */
+  const formationGoals = (vehicles: readonly number[], target: Tile): Tile[] => {
+    const count = vehicles.length;
+    const spacing = formationSpacing(vehicles);
     const slots = formationTiles(
       { col: count, row: count },
       count,
       2 * count + 1,
       2 * count + 1,
       () => false,
+    ).map((slot) =>
+      clampNode({
+        col: target.col + (slot.col - count) * spacing,
+        row: target.row + (slot.row - count) * spacing,
+      }),
     );
-    return Array.from({ length: count }, (_, i) => {
-      const slot = slots[i] ?? { col: count, row: count };
-      return clampNode({
-        col: target.col + (slot.col - count) * VEHICLE_FORMATION_SPACING_NODES,
-        row: target.row + (slot.row - count) * VEHICLE_FORMATION_SPACING_NODES,
-      });
-    });
+    const snapshot = deps.snapshot();
+    const units: FormationUnit[] = [];
+    for (const vehicle of vehicles) {
+      const e = entityById(snapshot, vehicle);
+      const position = e === undefined ? undefined : positionOf(e);
+      if (position !== undefined)
+        units.push({ ref: vehicle, ...tileToScreen(position.x / ONE, position.y / ONE) });
+    }
+    const paired = new Map(pairFormation(units, target, slots).map((order) => [order.ref, order.tile]));
+    let spare = units.length;
+    return vehicles.map((vehicle) => paired.get(vehicle) ?? slots[spare++] ?? clampNode(target));
   };
 
   const driveInFormation = (
@@ -296,7 +323,7 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
       deps.onOrderLimit?.();
       return false;
     }
-    const goals = formationGoals(vehicles.length, target);
+    const goals = formationGoals(vehicles, target);
     const accepted = enqueueArmyOrder(
       {
         kind: 'moveVehicleGroup',
