@@ -32,10 +32,12 @@ class EyeChanges {
   private readonly moves: NodeMoveFeed;
   /** The fog's {@link FogState.eyeMemo} at the last memoizing rebuild, -1 before one. */
   private memoAt = -1;
-  /** The changed entities of the rebuild in hand, reused; may repeat an entity. */
+  /** The changed entities of the rebuild in hand, reused; may repeat an entity. Written by index and
+   *  trimmed after, since an emptied array drops its storage. */
   private readonly changed: Entity[] = [];
+  private count = 0;
   private readonly collect = (e: Entity): void => {
-    this.changed.push(e);
+    this.changed[this.count++] = e;
   };
 
   constructor(world: World) {
@@ -49,9 +51,10 @@ class EyeChanges {
    * drained, and `memo` records the memo this rebuild leaves.
    */
   take(memoizing: boolean, memo: number): readonly Entity[] | null {
-    this.changed.length = 0;
+    this.count = 0;
     const identityLost = this.identity.drain(this.collect);
     const movesLost = this.moves.drain(this.collect);
+    if (this.changed.length !== this.count) this.changed.length = this.count;
     const lost = identityLost || movesLost;
     const replay = memoizing && !lost && this.memoAt === memo;
     this.memoAt = memoizing ? memo : -1;
