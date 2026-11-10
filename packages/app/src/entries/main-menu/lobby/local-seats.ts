@@ -120,7 +120,8 @@ export function localSeatElements(
     return control.root;
   };
 
-  const slotRow = (row: LobbySlotRow): HTMLElement => {
+  /** `relations` is the seat's own relation line, for a seat its lineup group leaves unexplained. */
+  const slotRow = (row: LobbySlotRow, relations: HTMLElement | null): HTMLElement => {
     const title =
       localizedMapText(row.slot.name, currentLocale()) ??
       (row.kind === 'open'
@@ -146,6 +147,7 @@ export function localSeatElements(
       nameClass: 'main-menu__lobby-name',
       detailClass: 'main-menu__lobby-sub',
       beforeLabel: [chipButton(row)],
+      ...(relations === null ? {} : { note: relations }),
       controls: [tribeCell(row), controlCell(row), difficultyCell(row), action],
     });
     // The control cell says who plays the seat; only a monster seat's people get a detail line.

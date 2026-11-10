@@ -223,6 +223,21 @@ export const deSurfaces = {
       start: 'Spiel starten',
       startNeedsSeat: 'Zuerst einen Spielerplatz belegen',
     },
+    lineup: {
+      sideSeparator: ' gegen ',
+      freeForAll: 'jeder gegen jeden',
+      allied: 'alle verbündet',
+      neutral: 'alle neutral',
+      mixed: 'gemischte Beziehungen',
+      team: 'Team {n}',
+      groups: {
+        neutral: 'Neutral',
+        allies: 'Mit allen verbündet',
+        enemies: 'Feind aller',
+        others: 'Übrige',
+      },
+      relations: { ally: 'Verbündete', enemy: 'Feinde', neutral: 'Neutral' },
+    },
     settings: {
       tabs: {
         graphics: 'Grafik',

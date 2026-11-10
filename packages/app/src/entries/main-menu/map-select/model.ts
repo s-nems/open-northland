@@ -1,4 +1,9 @@
-import type { MapsIndexEntry, MapsIndexPlayerSlot, MapTextLanguage } from '@open-northland/data';
+import type {
+  MapSeatRelation,
+  MapsIndexEntry,
+  MapsIndexPlayerSlot,
+  MapTextLanguage,
+} from '@open-northland/data';
 import { isMultiplayerMapType, MAP_TYPE, narratedLanguages } from '@open-northland/data';
 import { catalogEntryThumbnailUrl, type MapSource } from '../../../content/map-source/index.js';
 import { contentUrl } from '../../../content/url.js';
@@ -58,6 +63,8 @@ export interface MapSelectItem {
   readonly seats: readonly MapSeat[];
   /** The full authored roster the lobby negotiates (hidden slots included); scenes carry none. */
   readonly players: readonly MapsIndexPlayerSlot[];
+  /** The roster's start relations that are not neutral. */
+  readonly relations: readonly MapSeatRelation[];
   /** `[multiplayer]` `playerfixcolors` - the lobby locks its team-colour pickers. */
   readonly fixedColors: boolean;
   /** Mission number inside the authored tutorial campaign; absent for every other map and scene. */
@@ -89,6 +96,7 @@ export function mapItem(entry: MapsIndexEntry, lang: MapTextLanguage = currentLo
     multiplayerOnly: entry.multiplayerOnly === true,
     seats: listed.map((slot) => ({ tribeId: slot.tribeId, colorId: slot.colorId })),
     players: entry.players ?? [],
+    relations: entry.relations ?? [],
     fixedColors: entry.fixedColors === true,
     ...(tutorialStep !== undefined ? { tutorialStep } : {}),
     ...(description !== undefined ? { description } : {}),
@@ -123,6 +131,7 @@ export function sceneItem(id: string, title: string, summary: string): MapSelect
     multiplayerOnly: false,
     seats: [],
     players: [],
+    relations: [],
     fixedColors: false,
     description: summary,
     picture: false,

@@ -534,3 +534,15 @@
 .network-room__seat-flag > .network-flag {
   margin-inline-end: 0;
 }
+
+/* The lineup titles in the room's own scale and bronze. */
+.network-room__group {
+  font-size: calc(var(--u) * 15);
+  color: var(--bronze-hi);
+}
+.network-room__relations:empty {
+  display: none;
+}
+.network-room__relations {
+  margin-top: calc(var(--u) * 4);
+}

@@ -8,7 +8,7 @@ import {
   mountNetworkRoom,
   type NetworkRoomDeps,
 } from '../../../../../src/entries/main-menu/network/room/index.js';
-import { formatClockTime, messages } from '../../../../../src/i18n/index.js';
+import { formatClockTime, formatMessage, messages } from '../../../../../src/i18n/index.js';
 import { TINY_FINGERPRINT } from '../../../../support/catalog-maps.js';
 
 const mounted: Array<ReturnType<typeof mountNetworkRoom>> = [];
@@ -290,6 +290,68 @@ describe('room guidance and chat', () => {
     expect(modes).toEqual([messages().networkRoom['map-ai']]);
     expect(view.seats).toHaveLength(3);
     expect(client.setSeat).not.toHaveBeenCalled();
+  });
+
+  it("lays the seats out in the map's teams, each titled", () => {
+    const map = mapItem({
+      id: 'test',
+      fingerprint: TINY_FINGERPRINT,
+      picture: false,
+      minimap: false,
+      mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE],
+      players: [0, 1, 2, 3].map((player) => ({
+        player,
+        type: 'human',
+        tribeId: 1,
+        colorId: player,
+        claimable: true,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+        hasComputerControl: true,
+      })),
+      // Seats 0 and 2 against 1 and 3.
+      relations: [
+        { a: 0, b: 1, stance: 'enemy' },
+        { a: 0, b: 2, stance: 'ally' },
+        { a: 0, b: 3, stance: 'enemy' },
+        { a: 1, b: 2, stance: 'enemy' },
+        { a: 1, b: 3, stance: 'ally' },
+        { a: 2, b: 3, stance: 'enemy' },
+      ],
+    });
+    const { room } = mount(() => map);
+    const base = lobby();
+    const free = base.seats[0];
+    if (free === undefined) throw new Error('Missing seat');
+    const view = { ...base, seats: [0, 1, 2, 3].map((player) => ({ ...free, player, color: player })) };
+    room.update(view, true);
+    const seats = room.element.querySelector('.network-room__seats');
+    const order = [...(seats?.children ?? [])].flatMap((child) =>
+      child.classList.contains('lineup-title')
+        ? [child.textContent]
+        : child.classList.contains('network-room__seat')
+          ? [child.getAttribute('aria-label')?.split(':')[0]]
+          : [],
+    );
+    const team = (n: number): string => formatMessage(messages().mainMenu.lineup.team, { n });
+    const seat = (n: number): string => `${messages().networkRoom.seat} ${n}`;
+    expect(order).toEqual([team(1), seat(1), seat(3), team(2), seat(2), seat(4)]);
+
+    // Another view of the same room moves no row, so a focused control keeps the focus.
+    const rows = [...(seats?.querySelectorAll('.network-room__seat') ?? [])];
+    const take = rows[0]?.querySelector('button');
+    take?.focus();
+    room.update(view, true);
+    expect([...(seats?.querySelectorAll('.network-room__seat') ?? [])]).toEqual(rows);
+    expect(document.activeElement).toBe(take);
+
+    // A resumed save keeps its own stances, so the map's start teams are not shown.
+    room.update(
+      { ...view, settings: { ...view.settings, initialSave: { fingerprint: 'd'.repeat(64), tick: 20 } } },
+      true,
+    );
+    expect(seats?.querySelector('.lineup-title')).toBeNull();
   });
 
   it('shows the map faction without changing the seat', () => {

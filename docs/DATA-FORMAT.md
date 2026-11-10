@@ -10,7 +10,8 @@ and for a production build also under the versioned `/c/<content>/` prefix
 ```text
 content/
   ir.json                 validated rules and presentation bindings
-  maps-index.json         one entry per decoded map: name, provenance, fingerprint, lobby seats, listing header
+  maps-index.json         one entry per decoded map: name, provenance, fingerprint, lobby seats and their
+                          start relations, listing header
   bobs-index.json         the viewable atlases, for the icon gallery
   campaigns-index.json    the campaigns the data pack carries; empty when it carries none
   maps/

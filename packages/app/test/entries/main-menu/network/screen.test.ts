@@ -110,6 +110,7 @@ const fakeAssets = (() => ({
   retry: vi.fn(),
   verifiedMap: () => null,
   mapSlots: () => null,
+  mapRelations: () => null,
   initialSave: () => null,
   savedRoster: () => null,
   dispose: vi.fn(),

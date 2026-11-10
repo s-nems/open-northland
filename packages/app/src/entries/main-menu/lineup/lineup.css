@@ -1,0 +1,88 @@
+/* A map's lineup in the lobby rosters, local and network: group titles between the seat rows, and
+   the relation line of a seat its group leaves unexplained. Stance colours are the in-game
+   diplomacy window's. */
+
+/* Warm against the roster's cool column heads, so a group reads as a part of the list, not a column. */
+.lineup-title {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 10);
+  margin-bottom: calc(var(--u) * -6);
+  font: 600 calc(var(--u) * 20) / 1 var(--font-body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(226, 205, 170, 0.92);
+}
+
+.lineup-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgb(var(--accent-rgb) / 0.18);
+}
+
+.lineup-title:first-child {
+  margin-top: calc(var(--u) * 8);
+}
+
+.lineup-title:not(:first-child) {
+  margin-top: calc(var(--u) * 18);
+}
+
+.lineup-title svg,
+.lineup-relations svg {
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lineup-title[data-stance="ally"],
+.lineup-relations__part[data-stance="ally"] {
+  color: #a9bd8b;
+}
+
+.lineup-title[data-stance="neutral"],
+.lineup-relations__part[data-stance="neutral"] {
+  color: #c9a262;
+}
+
+.lineup-title[data-stance="enemy"],
+.lineup-relations__part[data-stance="enemy"] {
+  color: #ce765d;
+}
+
+.lineup-relations {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--u) * 6) calc(var(--u) * 16);
+}
+
+.lineup-relations:empty {
+  display: none;
+}
+
+.lineup-relations__part {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 5);
+}
+
+.lineup-relations__seat {
+  box-sizing: border-box;
+  min-width: calc(var(--u) * 22);
+  height: calc(var(--u) * 22);
+  padding: 0 calc(var(--u) * 4);
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 calc(var(--u) * 14) / 1 var(--font-body);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}

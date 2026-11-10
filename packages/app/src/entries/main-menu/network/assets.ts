@@ -1,4 +1,9 @@
-import { type MapsIndexPlayerSlot, mapLobbySlots } from '@open-northland/data';
+import {
+  type MapSeatRelation,
+  type MapsIndexPlayerSlot,
+  mapLobbySlots,
+  mapSeatRelations,
+} from '@open-northland/data';
 import { parseSavedSessionMetadata, type SavedSessionMetadata } from '@open-northland/lockstep';
 import { type RelayClientView, verifyInitialSave } from '@open-northland/net-client';
 import {
@@ -45,6 +50,7 @@ export function roomAssets(
   let report: LobbyCompatibility | null = null;
   let map: VerifiedMapDocuments | null = null;
   let mapSlots: readonly MapsIndexPlayerSlot[] | null = null;
+  let mapRelations: readonly MapSeatRelation[] | null = null;
   let prepared: PreparedNetworkSave | null = null;
   let verifiedSave: PreparedNetworkSave | null = null;
   let savedRoster: SavedSessionMetadata | null = null;
@@ -66,6 +72,7 @@ export function roomAssets(
           : variantMapScript(readVerifiedMapDocuments(handle).script, room.settings.world);
       const previousSlots = mapSlots;
       mapSlots = script === null ? null : mapLobbySlots(script);
+      mapRelations = script === null ? null : mapSeatRelations(script);
       if (mapSlots !== previousSlots) onChanged();
       invalidateValidation();
       void refresh();
@@ -171,6 +178,7 @@ export function roomAssets(
         report = null;
         map = null;
         mapSlots = null;
+        mapRelations = null;
         saveRequest = false;
         uploaded = false;
         invalidateValidation();
@@ -210,6 +218,7 @@ export function roomAssets(
     },
     verifiedMap: () => map,
     mapSlots: () => mapSlots,
+    mapRelations: () => mapRelations,
     initialSave: () => verifiedSave,
     savedRoster: () => savedRoster,
     dispose(): void {
@@ -221,6 +230,7 @@ export function roomAssets(
       room = null;
       map = null;
       mapSlots = null;
+      mapRelations = null;
       prepared = null;
       report = null;
     },

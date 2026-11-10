@@ -5,6 +5,7 @@ import {
   MapScript,
   mapAllowsComputerControl,
   mapLobbySlots,
+  mapSeatRelations,
 } from '../src/index.js';
 
 const roster = [
@@ -110,6 +111,28 @@ describe('mapLobbySlots', () => {
       aiAllowed: true,
       noneAllowed: false,
     });
+  });
+});
+
+describe('mapSeatRelations', () => {
+  it('reads both directions of each roster pair: allied only when mutual, enemy when either side', () => {
+    const script = MapScript.parse({
+      players: [...roster, { player: 3, type: 'ai', tribeId: 3, colorId: 2 }],
+      diplomacy: [
+        { from: 0, to: 1, state: 'friend' },
+        { from: 1, to: 0, state: 'friend' },
+        { from: 0, to: 2, state: 'friend' },
+        { from: 2, to: 0, state: 'neutral' },
+        { from: 3, to: 1, state: 'enemy' },
+        { from: 1, to: 3, state: 'friend' },
+        // A row naming a seat outside the roster relates nobody the lobby lists.
+        { from: 0, to: 7, state: 'enemy' },
+      ],
+    });
+    expect(mapSeatRelations(script)).toEqual([
+      { a: 0, b: 1, stance: 'ally' },
+      { a: 1, b: 3, stance: 'enemy' },
+    ]);
   });
 });
 

@@ -1,6 +1,8 @@
 import { playerSwatchHex } from '../../../catalog/roster.js';
 import { bcp47Tag, formatMessage, messages, pluralForm, tribeName } from '../../../i18n/index.js';
 import { segControl } from '../../../view/settings/controls.js';
+import { mapItemLineup } from '../lineup/model.js';
+import { lineupLabel } from '../lineup/view.js';
 import {
   defaultMapPreview,
   type MapPreviewView,
@@ -40,7 +42,8 @@ export function paintMapThumb(thumb: HTMLElement, item: MapSelectItem): void {
   thumb.replaceChildren(img);
 }
 
-/** The row/card meta line: category name, plus the roster size when the map ships one. */
+/** The row/card meta line: category name, plus the roster size when the map ships one and a
+ *  multiplayer map's lineup. */
 export function metaLine(item: MapSelectItem): string {
   const select = messages().mainMenu.mapSelect;
   const category = select.categoryNames[mapCategory(item)];
@@ -50,7 +53,8 @@ export function metaLine(item: MapSelectItem): string {
   const players = formatMessage(pluralForm(item.seats.length, select.players, bcp47Tag()), {
     count: item.seats.length,
   });
-  return `${category} · ${players}`;
+  const lineup = mapItemLineup(item);
+  return lineup === null ? `${category} · ${players}` : `${category} · ${players} · ${lineupLabel(lineup)}`;
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';

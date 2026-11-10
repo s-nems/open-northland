@@ -4,6 +4,8 @@ import { localizedMapText } from '../../../../game/map/strings.js';
 import { currentLocale, formatMessage, messages, tribeName } from '../../../../i18n/index.js';
 import { memberLoadText } from '../../../../view/net/member-load.js';
 import { node } from '../../dom.js';
+import { mapLineup, seatStanceReader } from '../../lineup/model.js';
+import { type LineupRosterPart, lineupRoster, lineupTitle, relationLine } from '../../lineup/view.js';
 import { colorChip, colorPalette } from '../../lobby-controls/color.js';
 import { seatModeControl } from '../../lobby-controls/seat-mode.js';
 import { tribePicker } from '../../lobby-controls/tribe.js';
@@ -150,6 +152,8 @@ export function roomSeats(deps: NetworkRoomDeps) {
     const yours = node('span', 'network-room__badge network-room__badge--you', copy.you);
     const host = node('span', 'network-room__badge', copy.host);
     const faction = node('span', 'network-room__faction');
+    const relations = node('span', 'network-room__relations');
+    let shownRelations: string | null = null;
     const detail = node('span', 'network-room__muted');
     const readiness = node('span', 'network-room__readiness');
     // Holds the occupant's flag; replaced only when the flag changes, as the room view repeats.
@@ -157,7 +161,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
     let shownFlag: PlayerFlag | undefined;
     nameLine.append(flagSlot, name, yours, host, detail);
     const identityText = node('div', 'network-room__seat-description');
-    identityText.append(nameLine, faction);
+    identityText.append(nameLine, faction, relations);
     identity.append(identityText, take, move.root, ban.root);
     const human = node('span', 'network-room__human', copy.human);
     human.append(readiness);
@@ -174,6 +178,13 @@ export function roomSeats(deps: NetworkRoomDeps) {
       row,
       chip: chip.root,
       palette,
+      /** Shows the seat's own relation line, rebuilt only when `key`, what it shows, changes; a null
+       *  key clears it. */
+      showRelations(key: string | null, line: () => HTMLElement): void {
+        if (key === shownRelations) return;
+        shownRelations = key;
+        relations.replaceChildren(...(key === null ? [] : [line()]));
+      },
       update(room: RoomView, seat: RoomSeatView, connected: boolean): void {
         const permissions = roomPermissions(room, client.nick, connected);
         const lookLocked = !canSetSeatLook(room, seat, client.nick, connected);
@@ -248,6 +259,58 @@ export function roomSeats(deps: NetworkRoomDeps) {
       },
     };
   }
+  /** The order last laid out, so a room view that keeps it moves no row and keeps the focus put. */
+  let arranged = '';
+  /** Lays the rows out by the map's lineup, its groups titled, and gives each seat its group leaves
+   *  unexplained its own relation line. */
+  function arrange(room: RoomView): void {
+    const world = room.settings.world;
+    const slots = deps.mapSlots?.() ?? deps.mapPreview?.(world)?.players ?? null;
+    const relations = deps.mapRelations?.() ?? deps.mapPreview?.(world)?.relations ?? [];
+    const hidden = new Set(slots?.filter((slot) => slot.hidden).map((slot) => slot.player));
+    const listed = room.seats
+      .filter((seat) => !hidden.has(seat.player))
+      .map((seat) => ({ player: seat.player, color: seat.color }));
+    // A resumed save plays on from its own stances, which the map's start ones no longer describe.
+    const lineup =
+      slots === null || room.settings.initialSave !== undefined ? null : mapLineup(slots, relations);
+    const parts = lineupRoster(
+      lineup,
+      listed.map((seat) => seat.player),
+    ).filter((part) => part.kind === 'title' || rows.has(part.player));
+    const placed = new Set(parts.flatMap((part) => (part.kind === 'seat' ? [part.player] : [])));
+    const rest = [...rows.keys()].filter((player) => !placed.has(player));
+    const order = [...parts.map(partKey), ...rest.map((player) => `s${player}`)].join('|');
+    if (order !== arranged) {
+      arranged = order;
+      const rowOf = (player: number): HTMLElement[] => {
+        const row = rows.get(player);
+        return row === undefined ? [] : [row.row];
+      };
+      const focused = document.activeElement;
+      root.replaceChildren(
+        header,
+        ...parts.flatMap((part) =>
+          part.kind === 'title' ? [lineupTitle(part, 'network-room__group')] : rowOf(part.player),
+        ),
+        ...rest.flatMap(rowOf),
+      );
+      if (focused instanceof HTMLElement && root.contains(focused)) focused.focus();
+    }
+    const stance = seatStanceReader(relations);
+    const shown = [
+      order,
+      listed.map((seat) => seat.color).join(','),
+      relations.map((row) => `${row.a}${row.stance}${row.b}`).join(','),
+    ].join(';');
+    for (const part of parts) {
+      if (part.kind !== 'seat') continue;
+      rows
+        .get(part.player)
+        ?.showRelations(part.ownRelations ? shown : null, () => relationLine(part.player, listed, stance));
+    }
+  }
+
   return {
     root,
     /** True when a palette was open and is now closed. */
@@ -279,10 +342,14 @@ export function roomSeats(deps: NetworkRoomDeps) {
             seatCivilization(seat),
           );
           rows.set(seat.player, row);
-          root.append(row.row);
         }
         row.update(room, seat, connected);
       }
+      arrange(room);
     },
   };
+}
+
+function partKey(part: LineupRosterPart): string {
+  return part.kind === 'title' ? `t${part.text}` : `s${part.player}`;
 }

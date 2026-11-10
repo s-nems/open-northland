@@ -182,6 +182,21 @@ export const chtSurfaces = {
       start: '開始遊戲',
       startNeedsSeat: '請先入座',
     },
+    lineup: {
+      sideSeparator: ' 對 ',
+      freeForAll: '各自為戰',
+      allied: '全體結盟',
+      neutral: '全體中立',
+      mixed: '混合關係',
+      team: '第 {n} 隊',
+      groups: {
+        neutral: '中立',
+        allies: '全體的盟友',
+        enemies: '全體的敵人',
+        others: '其他',
+      },
+      relations: { ally: '盟友', enemy: '敵人', neutral: '中立' },
+    },
     settings: {
       tabs: {
         graphics: '圖形',

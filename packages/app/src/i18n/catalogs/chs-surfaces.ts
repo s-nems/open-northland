@@ -182,6 +182,21 @@ export const chsSurfaces = {
       start: '开始游戏',
       startNeedsSeat: '请先入座',
     },
+    lineup: {
+      sideSeparator: ' 对 ',
+      freeForAll: '各自为战',
+      allied: '全体结盟',
+      neutral: '全体中立',
+      mixed: '混合关系',
+      team: '第 {n} 队',
+      groups: {
+        neutral: '中立',
+        allies: '全体的盟友',
+        enemies: '全体的敌人',
+        others: '其他',
+      },
+      relations: { ally: '盟友', enemy: '敌人', neutral: '中立' },
+    },
     settings: {
       tabs: {
         graphics: '图形',

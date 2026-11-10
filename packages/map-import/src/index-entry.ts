@@ -1,4 +1,10 @@
-import { type MapMeta, type MapScript, type MapsIndexEntry, mapLobbySlots } from '@open-northland/data';
+import {
+  type MapMeta,
+  type MapScript,
+  type MapsIndexEntry,
+  mapLobbySlots,
+  mapSeatRelations,
+} from '@open-northland/data';
 
 /** What a `maps-index.json` row is built from. */
 export interface MapsIndexSource {
@@ -19,6 +25,7 @@ export interface MapsIndexSource {
 export function mapsIndexEntry(map: MapsIndexSource): MapsIndexEntry {
   const { provenance, campaign, name, description, mapTypes, multiplayerOnly } = map.meta;
   const players = map.script === undefined ? [] : mapLobbySlots(map.script);
+  const relations = map.script === undefined ? [] : mapSeatRelations(map.script);
   return {
     id: map.id,
     fingerprint: map.fingerprint,
@@ -30,6 +37,7 @@ export function mapsIndexEntry(map: MapsIndexSource): MapsIndexEntry {
     minimap: map.minimap,
     ...(map.voices.length > 0 ? { voices: [...map.voices] } : {}),
     ...(players.length > 0 ? { players } : {}),
+    ...(relations.length > 0 ? { relations } : {}),
     ...(map.script?.multiplayer?.fixedColors === true ? { fixedColors: true } : {}),
     ...(mapTypes === undefined ? {} : { mapTypes }),
     ...(multiplayerOnly === true ? { multiplayerOnly: true } : {}),

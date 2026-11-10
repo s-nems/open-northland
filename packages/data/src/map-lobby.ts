@@ -1,7 +1,8 @@
-import type { MapsIndexPlayerSlot } from './schema/maps/listing.js';
+import type { MapSeatRelation, MapSeatStance, MapsIndexPlayerSlot } from './schema/maps/listing.js';
 import {
   ComputerModuleId,
   type MapAiSeat,
+  type MapDiplomacy,
   type MapMultiplayerSlot,
   type MapPlayerSlot,
   type MapScript,
@@ -34,6 +35,31 @@ export function mapLobbySlots(script: MapScript): MapsIndexPlayerSlot[] {
       hasComputerControl: mapAllowsComputerControl(script.ai?.find((row) => row.player === slot.player)),
     };
   });
+}
+
+/**
+ * The roster's start relations that are not neutral, each pair once with its lower slot first. A pair
+ * the `diplomacy` rows leave unset starts neutral, as the world builder fills it. Allied means both
+ * directions `friend`, the rule victory and shared vision read; enemy means either direction `enemy`,
+ * the rule a fight reads.
+ */
+export function mapSeatRelations(script: MapScript): MapSeatRelation[] {
+  const rows = new Map(script.diplomacy.map((row) => [`${row.from}:${row.to}`, row.state]));
+  const state = (from: number, to: number): MapDiplomacy['state'] => rows.get(`${from}:${to}`) ?? 'neutral';
+  const seats = [...new Set(script.players.map((slot) => slot.player))].sort((x, y) => x - y);
+  const relations: MapSeatRelation[] = [];
+  for (const [index, a] of seats.entries()) {
+    for (const b of seats.slice(index + 1)) {
+      const stance = pairStance(state(a, b), state(b, a));
+      if (stance !== 'neutral') relations.push({ a, b, stance });
+    }
+  }
+  return relations;
+}
+
+function pairStance(there: MapDiplomacy['state'], back: MapDiplomacy['state']): MapSeatStance {
+  if (there === 'enemy' || back === 'enemy') return 'enemy';
+  return there === 'friend' && back === 'friend' ? 'ally' : 'neutral';
 }
 
 /** Whether the authored switches permit any autonomous computer-player capability. */

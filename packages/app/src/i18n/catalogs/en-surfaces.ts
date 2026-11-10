@@ -184,6 +184,21 @@ export const enSurfaces = {
       start: 'Start game',
       startNeedsSeat: 'Take a seat first',
     },
+    lineup: {
+      sideSeparator: ' vs ',
+      freeForAll: 'free for all',
+      allied: 'all allied',
+      neutral: 'all neutral',
+      mixed: 'mixed relations',
+      team: 'Team {n}',
+      groups: {
+        neutral: 'Neutral',
+        allies: 'Allied with all',
+        enemies: 'Enemy of all',
+        others: 'Others',
+      },
+      relations: { ally: 'Allies', enemy: 'Enemies', neutral: 'Neutral' },
+    },
     settings: {
       tabs: {
         graphics: 'Graphics',

@@ -222,6 +222,21 @@ export const ruSurfaces = {
       start: 'Начать игру',
       startNeedsSeat: 'Сначала займите место',
     },
+    lineup: {
+      sideSeparator: ' на ',
+      freeForAll: 'каждый сам за себя',
+      allied: 'все в союзе',
+      neutral: 'все нейтральны',
+      mixed: 'смешанные отношения',
+      team: 'Команда {n}',
+      groups: {
+        neutral: 'Нейтральные',
+        allies: 'Союзники всех',
+        enemies: 'Враги всех',
+        others: 'Остальные',
+      },
+      relations: { ally: 'Союзники', enemy: 'Враги', neutral: 'Нейтральные' },
+    },
     settings: {
       tabs: {
         graphics: 'Графика',

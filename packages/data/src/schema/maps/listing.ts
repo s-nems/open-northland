@@ -23,6 +23,17 @@ export const MapsIndexPlayerSlot = MapPlayerSlot.extend({
 });
 export type MapsIndexPlayerSlot = z.infer<typeof MapsIndexPlayerSlot>;
 
+/** How two roster seats stand at the start, both directions read together: `ally` when each is
+ *  `friend` toward the other, `enemy` when either is `enemy`. Any other pair is neutral. */
+export const MapSeatRelation = z.strictObject({
+  /** The lower slot id of the pair. */
+  a: z.number().int().nonnegative(),
+  b: z.number().int().nonnegative(),
+  stance: z.enum(['ally', 'enemy']),
+});
+export type MapSeatRelation = z.infer<typeof MapSeatRelation>;
+export type MapSeatStance = MapSeatRelation['stance'] | 'neutral';
+
 /** A hex SHA-256, the `mapDocumentsFingerprint` of a map's terrain and script documents. */
 export const MAP_FINGERPRINT = /^[a-f0-9]{64}$/;
 
@@ -44,6 +55,8 @@ export const MapsIndexEntry = z.strictObject({
   voices: z.array(z.string().regex(BRIEFING_VOICE_SUFFIX)).optional(),
   /** Absent when the map ships no decodable roster. */
   players: z.array(MapsIndexPlayerSlot).optional(),
+  /** The roster's start relations that are not neutral, by pair. Absent when every pair is neutral. */
+  relations: z.array(MapSeatRelation).optional(),
   /** `[multiplayer]` `playerfixcolors`: the map locks its authored team colours. Present only when true. */
   fixedColors: z.literal(true).optional(),
   mapTypes: MapMeta.shape.mapTypes,

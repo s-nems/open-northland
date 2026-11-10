@@ -4,6 +4,8 @@ interface SeatRowOptions {
   readonly nameClass?: string;
   readonly detailClass?: string;
   readonly beforeLabel?: readonly HTMLElement[];
+  /** A line under the detail, such as the seat's own relations. */
+  readonly note?: HTMLElement;
   readonly controls: readonly HTMLElement[];
   readonly action?: HTMLElement;
 }
@@ -18,6 +20,7 @@ export function seatRow(options: SeatRowOptions) {
   const detail = document.createElement('span');
   detail.className = options.detailClass ?? '';
   label.append(name, detail);
+  if (options.note) label.append(options.note);
   if (options.action) label.append(options.action);
   root.append(...(options.beforeLabel ?? []), label, ...options.controls);
   return {

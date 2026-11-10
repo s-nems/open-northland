@@ -4,6 +4,8 @@ import { drawSessionSeed } from '../../../game/match/session-url.js';
 import { messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { targetSearch } from '../../../view/target-search.js';
+import { mapItemLineup, seatStanceReader } from '../lineup/model.js';
+import { lineupRoster, lineupTitle, relationLine } from '../lineup/view.js';
 import { mapVariantToggles } from '../lobby-controls/variant.js';
 import { createMapDetailsCard } from '../map-select/card.js';
 import type { MapSelectItem } from '../map-select/model.js';
@@ -98,6 +100,8 @@ export function lobbyScreen(
   const options = localLobbyOptions(search, item.types);
   let variant: MapVariantKind | null = chosenMapVariantParam(search, item.id);
   let players = lobbyPlayers(item.id, item.players, variant);
+  let lineup = mapItemLineup(item, players);
+  const stance = seatStanceReader(item.relations);
   // A variant can open seats the authored map reserves, so each map mode keeps its own roster.
   const rosterKey = (): string => (variant === null ? item.id : `${item.id}:${variant}`);
 
@@ -112,6 +116,7 @@ export function lobbyScreen(
     (next) => {
       variant = next;
       players = lobbyPlayers(item.id, item.players, variant);
+      lineup = mapItemLineup(item, players);
       pickerSlot = null;
       update(rosters.get(rosterKey()) ?? initialLobbyState(players));
     },
@@ -204,9 +209,21 @@ export function lobbyScreen(
     });
     const rows: HTMLElement[] = [];
     const slotRows = lobbySlotRows(players, state);
-    for (const row of slotRows) {
-      rows.push(seats.row(row));
-      if (pickerSlot === row.slot.player) rows.push(seats.picker(row));
+    const byPlayer = new Map(slotRows.map((row) => [row.slot.player, row]));
+    const listed = slotRows.map((row) => ({ player: row.slot.player, color: row.colorId }));
+    const parts = lineupRoster(
+      lineup,
+      listed.map((seat) => seat.player),
+    );
+    for (const part of parts) {
+      if (part.kind === 'title') {
+        rows.push(lineupTitle(part));
+        continue;
+      }
+      const row = byPlayer.get(part.player);
+      if (row === undefined) continue;
+      rows.push(seats.row(row, part.ownRelations ? relationLine(part.player, listed, stance) : null));
+      if (pickerSlot === part.player) rows.push(seats.picker(row));
     }
     // The level column is headed only while some seat plays at one.
     difficultyHead.textContent = slotRows.some((row) => row.difficulty !== null)

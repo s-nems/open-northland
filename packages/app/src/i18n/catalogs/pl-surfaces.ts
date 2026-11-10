@@ -186,6 +186,21 @@ export const plSurfaces = {
       start: 'Rozpocznij grę',
       startNeedsSeat: 'Najpierw zajmij miejsce',
     },
+    lineup: {
+      sideSeparator: ' na ',
+      freeForAll: 'każdy na każdego',
+      allied: 'wszyscy w sojuszu',
+      neutral: 'wszyscy neutralni',
+      mixed: 'układ mieszany',
+      team: 'Drużyna {n}',
+      groups: {
+        neutral: 'Neutralni',
+        allies: 'Sojusznicy wszystkich',
+        enemies: 'Wrogowie wszystkich',
+        others: 'Pozostali',
+      },
+      relations: { ally: 'Sojusznicy', enemy: 'Wrogowie', neutral: 'Neutralni' },
+    },
     settings: {
       tabs: {
         graphics: 'Grafika',
