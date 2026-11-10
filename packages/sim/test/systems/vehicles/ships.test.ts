@@ -39,7 +39,7 @@ import { dynamicBlockOverlay, vehicleDoorNode } from '../../../src/systems/footp
 import { vehicleClearance } from '../../../src/systems/footprint/vehicle-clearance.js';
 import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
 import { SUCCESSFUL_IF } from '../../../src/systems/missions/index.js';
-import { docksReachedThrough } from '../../../src/systems/vehicles/dock.js';
+import { dockRoute, docksReachedThrough } from '../../../src/systems/vehicles/dock.js';
 import {
   boardRider,
   createVehicle,
@@ -326,6 +326,26 @@ describe('dockVehicle', () => {
     expect(reached(() => false)).toEqual([true, true]);
     // Two closed columns across the strait seal the east shore's water off from the ship's.
     expect(reached((hx) => hx === OPEN_WATER_X || hx === OPEN_WATER_X + 1)).toEqual([false, true]);
+  });
+
+  it('searches a held course again once its water changes', () => {
+    const point = { hx: EAST_SHORE_X + 1, hy: MID_ROW };
+    const courseIn = (s: Simulation, ship: Entity): HalfCellNode[] => {
+      if (s.terrain === undefined) throw new Error('map missing');
+      return dockRoute(s.world, ctxOf(s), s.terrain, ship, point) ?? [];
+    };
+    const open = sim();
+    const straight = courseIn(open, crewedShip(open, 20, MID_ROW).ship);
+    const midway = straight[Math.floor(straight.length / 2)];
+    if (midway === undefined) throw new Error('no course');
+    const s = sim();
+    const { ship } = crewedShip(s, 20, MID_ROW);
+    const blocker = s.world.create();
+    s.world.add(blocker, Position, positionOfNode(midway.hx, midway.hy));
+    s.world.add(blocker, ResourceFootprint, { walk: [{ dx: 0, dy: 0 }], build: [], work: [] });
+    expect(courseIn(s, ship)).not.toContainEqual(midway);
+    s.world.destroy(blocker);
+    expect(courseIn(s, ship)).toEqual(straight);
   });
 
   it('a Shift-queued dock waits for the sail ahead, then moors at its shore point', () => {

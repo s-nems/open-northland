@@ -75,6 +75,7 @@ import {
 } from './helm.js';
 import type { VehicleOrderRoutes } from './order-routes.js';
 import { seaRegions } from './sea-regions.js';
+import { seaRoutePastVehicles } from './sea-route-memo.js';
 
 // The mover of docs/formats/VEHICLES.md "Movement": a goto is refused without a commander or for a
 // target off the vehicle's continent, reaches as far as the continent or sea does (deviation: the
@@ -749,7 +750,12 @@ export function vehicleRouteTo(
   const borrowed = orders?.borrow(terrain, group, blocked, start, goal, traversal) ?? null;
   if (borrowed !== null) return drivenNodes(terrain, borrowed);
   const pastVehicles = vehicleGroundBlocks(world, ctx, terrain, vehicle, type);
-  const blind = findPath(terrain, start, goal, pastVehicles, undefined, traversal);
+  // A ship clear of other vehicles reads only its water's classes, so its route is held across orders.
+  const held =
+    traversal === 'water' && type.logicSize > 0 && !standsInAnotherVehicle(world, ctx, terrain, vehicle);
+  const blind = held
+    ? seaRoutePastVehicles(world, ctx, terrain, type.logicSize, start, goal, pastVehicles)
+    : findPath(terrain, start, goal, pastVehicles, undefined, traversal);
   if (blind === null) return null;
   const meetsVehicle = blind.some((node, i) => i > 0 && blocked.has(node));
   const around = meetsVehicle ? findPath(terrain, start, goal, blocked, undefined, traversal) : blind;
