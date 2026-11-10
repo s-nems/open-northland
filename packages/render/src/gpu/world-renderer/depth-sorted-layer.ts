@@ -21,10 +21,11 @@ function bandIndexOf(depth: number): number {
 
 const ordinaryDepthChanged = Container.prototype.depthOfChildModified;
 
-/** A child's depth write queues its band for sorting instead of Pixi's whole-group invalidation. */
+/** A child's depth write queues its band for sorting instead of Pixi's whole-group invalidation, and
+ *  the child for the band its new depth files into. */
 const bandDepthChanged: Container['depthOfChildModified'] = function (this: Container) {
   const band = this.parent;
-  if (band instanceof DepthBand) band.layer.queueSort(band);
+  if (band instanceof DepthBand) band.layer.depthChanged(this, band);
   else ordinaryDepthChanged.call(this);
 };
 
@@ -112,19 +113,21 @@ class DepthBand extends Container {
     scratch.reserve(n);
     const depths = scratch.depths;
     const ties = scratch.ties;
-    for (let i = 0; i < n; i++) {
-      const child = children[i];
-      depths[i] = child?.zIndex ?? 0;
-      ties[i] = tieOf(child, sortFrom);
+    for (let i = 0; i < n; i++) depths[i] = children[i]?.zIndex ?? 0;
+    // Most sorts find the band in order: only neighbours of one exact depth need their arrivals read.
+    let ordered = true;
+    for (let i = 1; i < n && ordered; i++) {
+      const da = depths[i - 1] ?? 0;
+      const db = depths[i] ?? 0;
+      ordered = da < db || (da === db && tieOf(children[i - 1], sortFrom) <= tieOf(children[i], sortFrom));
     }
+    if (ordered) return;
+    for (let i = 0; i < n; i++) ties[i] = tieOf(children[i], sortFrom);
     const before = (a: number, b: number): boolean => {
       const da = depths[a] ?? 0;
       const db = depths[b] ?? 0;
       return da < db || (da === db && (ties[a] ?? 0) <= (ties[b] ?? 0));
     };
-    let ordered = true;
-    for (let i = 1; i < n && ordered; i++) ordered = before(i - 1, i);
-    if (ordered) return;
     const entries = scratch.entries;
     const merged = scratch.merged;
     const mergedTies = scratch.mergedTies;
@@ -165,6 +168,8 @@ export function drawLayerOf(child: Container): Container | null {
 interface Migrant {
   readonly child: Container;
   readonly from: DepthBand;
+  /** Its place among the band's children as it leaves. */
+  readonly at: number;
   readonly fresh: boolean;
 }
 
@@ -182,6 +187,9 @@ export class DepthSortedLayer extends Container {
   private readonly bands = new Map<number, DepthBand>();
   private readonly spareBands: DepthBand[] = [];
   private readonly unsorted = new Set<DepthBand>();
+  /** Children whose depth left their band's range since the last sort, in the order they left; one may
+   *  be listed twice, and may have come back or left the layer since. */
+  private readonly leavers: Container[] = [];
   /** Arrivals so far; children that arrived since {@link sortFrom} order by it among equal depths. */
   private arrivalCount = 0;
   private sortFrom = 0;
@@ -260,10 +268,16 @@ export class DepthSortedLayer extends Container {
     this.sortDirty = true;
   }
 
+  /** `child` of `band` took a new depth: the band sorts, and the child moves if another band files it. */
+  depthChanged(child: Container, band: DepthBand): void {
+    this.queueSort(band);
+    if (bandIndexOf(child.zIndex) !== band.index) this.leavers.push(child);
+  }
+
   override sortChildren = (): void => {
     if (!this.sortDirty) return;
     const touched = [...this.unsorted].sort((a, b) => a.index - b.index);
-    const migrants = this.takeMigrants(touched);
+    const migrants = this.takeMigrants();
     for (const migrant of migrants) this.settle(migrant, touched);
     for (const band of touched) {
       if (band.parent !== this) continue;
@@ -289,17 +303,29 @@ export class DepthSortedLayer extends Container {
     super.destroy(options);
   }
 
-  /** Lift out every child whose depth now files into another band, ascending by source band. */
-  private takeMigrants(touched: readonly DepthBand[]): Migrant[] {
+  /**
+   * Lift out every child whose depth now files into another band, ascending by source band and by place
+   * in it. Only a depth write moves a child out of its band's range, so the writes name the candidates;
+   * a child with a depth notification of its own is not among them.
+   */
+  private takeMigrants(): Migrant[] {
     const migrants: Migrant[] = [];
-    for (const band of touched) {
-      const children = band.children;
-      for (let i = 0; i < children.length; i++) {
-        const child = children[i];
-        if (child === undefined || bandIndexOf(child.zIndex) === band.index) continue;
-        migrants.push({ child, from: band, fresh: i >= band.freshFrom });
-      }
+    for (const child of this.leavers) {
+      const band = child.parent;
+      if (!(band instanceof DepthBand) || band.layer !== this) continue;
+      if (bandIndexOf(child.zIndex) === band.index) continue;
+      const at = band.children.indexOf(child);
+      migrants.push({ child, from: band, at, fresh: at >= band.freshFrom });
     }
+    this.leavers.length = 0;
+    migrants.sort((p, q) => p.from.index - q.from.index || p.at - q.at);
+    let kept = 0;
+    for (const migrant of migrants) {
+      // A child listed twice sorts next to itself.
+      if (kept > 0 && migrants[kept - 1]?.child === migrant.child) continue;
+      migrants[kept++] = migrant;
+    }
+    migrants.length = kept;
     for (const { child, from } of migrants) from.removeChild(child);
     return migrants;
   }

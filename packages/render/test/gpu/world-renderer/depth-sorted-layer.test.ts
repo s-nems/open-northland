@@ -92,6 +92,24 @@ describe('depth sorted layer', () => {
     expect(layer.renderGroup.structureDidChange).toBe(false);
   });
 
+  it('moves a child whose depth crossed bands twice once, and leaves one whose depth came back', () => {
+    const { layer, children } = layerWith([0, 1, FAR]);
+    const [crosser, returner, far] = children;
+    if (crosser === undefined || returner === undefined || far === undefined) throw new Error('missing');
+    const home = bandOf(returner);
+    crosser.zIndex = FAR / 2;
+    crosser.zIndex = FAR + 1;
+    returner.zIndex = FAR;
+    returner.zIndex = 1;
+    settle(layer);
+    layer.sortChildren();
+    expect(bandOf(crosser)).toBe(bandOf(far));
+    expect(layer.entries()).toEqual([returner, far, crosser]);
+    expect(bandOf(returner)).toBe(home);
+    expect(home.renderGroup.structureDidChange).toBe(true);
+    layer.destroy({ children: true });
+  });
+
   it('matches Pixi’s single stable sort through adds, removals, re-adds, re-arrivals and band crossings', () => {
     const next = random(7);
     const layer = new DepthSortedLayer();
