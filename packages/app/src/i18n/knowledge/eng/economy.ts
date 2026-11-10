@@ -411,10 +411,15 @@ export const ECONOMY: ArticleGroup = {
               ['Shoal', '+1 fish every {{fish.regrowSeconds}} s', '{{fish.swarmMax}} fish'],
               [
                 'Tree',
-                'A felled tree, {{tree.regrowInTen}} times in 10, seeds a sapling nearby after {{tree.regrowMinMinutes}}-{{tree.regrowMaxMinutes}} min, on a free spot with at least {{tree.forestTrees}} trees around it. The sapling grows a stage every {{tree.growMinutes}} min',
+                'A felled tree, {{regrow.inTen}} times in 10, seeds a sapling nearby after {{regrow.minMinutes}}-{{regrow.maxMinutes}} min, on a free spot with at least {{regrow.forestTrees}} trees around it. The sapling grows a stage every {{tree.growMinutes}} min',
                 '1 sapling per felled tree, fellable only full-grown',
               ],
-              ['Rock, deposit, mushroom', 'Never grow back', '-'],
+              [
+                'Mushroom',
+                'A picked mushroom, {{regrow.inTen}} times in 10, grows back nearby after {{regrow.minMinutes}}-{{regrow.maxMinutes}} min, on a free spot with at least {{regrow.forestTrees}} trees around it',
+                '1 mushroom per picked one, only in a forest',
+              ],
+              ['Rock, deposit', 'Never grow back', '-'],
             ],
           },
         },

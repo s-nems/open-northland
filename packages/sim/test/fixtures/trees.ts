@@ -18,8 +18,16 @@ const TREE_LOGIC_MAX_VALENCY = 5;
 export const TREE_MAX_LEVEL = 3;
 /** A tree record whose valency stops at 1, like the original's `tree_dead 03`: never fellable. */
 export const DEAD_TREE_GFX = 336;
+/** {@link testContent}'s mushroom good and its pick atomic. */
+export const MUSHROOM = 5;
+export const PICK_ATOMIC = 32;
+/** A mushroom record shaped like the original's `mushroom agaric 01`: one pick, blocking nothing. */
+export const MUSHROOM_GFX = 382;
+const MUSHROOM_LOGIC = 36;
+const MUSHROOM_MAX_LEVEL = 1;
 
-/** {@link testContent} with wood's harvest stage on {@link TREE_GFX} and the tree logic type it grows by. */
+/** {@link testContent} with wood's harvest stage on {@link TREE_GFX} and the tree logic type it grows by,
+ *  and the mushroom's on {@link MUSHROOM_GFX}. */
 export function treeContent(): ContentSet {
   const base = testContent();
   return parseContentSet({
@@ -32,6 +40,7 @@ export function treeContent(): ContentSet {
         maxValency: TREE_LOGIC_MAX_VALENCY,
         transitions: TREE_TRANSITIONS,
       },
+      { typeId: MUSHROOM_LOGIC, id: 'mushroommine' },
     ],
     landscapeGfx: [
       ...base.landscapeGfx,
@@ -52,6 +61,14 @@ export function treeContent(): ContentSet {
         maxValency: 1,
         isWorkable: true,
       },
+      {
+        index: MUSHROOM_GFX,
+        editName: 'mushroom agaric 01',
+        logicType: MUSHROOM_LOGIC,
+        maxValency: MUSHROOM_MAX_LEVEL,
+        isWorkable: true,
+        workAreas: [[MUSHROOM_MAX_LEVEL, 0, 0, 1]],
+      },
     ],
     gatheringPipeline: [
       ...base.gatheringPipeline,
@@ -59,6 +76,11 @@ export function treeContent(): ContentSet {
         goodType: WOOD,
         goodId: 'wood',
         harvest: { landscapeType: TREE_LOGIC, gfxIndices: [TREE_GFX, DEAD_TREE_GFX] },
+      },
+      {
+        goodType: MUSHROOM,
+        goodId: 'mushroom',
+        harvest: { landscapeType: MUSHROOM_LOGIC, gfxIndices: [MUSHROOM_GFX] },
       },
     ],
   });
@@ -86,4 +108,18 @@ export function treeAt(
   if (tree === null) throw new Error('tree record missing from the fixture content');
   startTreeGrowth(sim.world, sim.content, tree, level);
   return tree;
+}
+
+/** A one-pick mushroom of {@link MUSHROOM_GFX} on half-cell node `(hx, hy)`. */
+export function mushroomAt(sim: Simulation, hx: number, hy: number): Entity {
+  const mushroom = createResourceNode(sim.world, sim.content, {
+    good: MUSHROOM,
+    x: hx,
+    y: hy,
+    remaining: MUSHROOM_MAX_LEVEL,
+    harvestAtomic: PICK_ATOMIC,
+    gfxIndex: MUSHROOM_GFX,
+  });
+  if (mushroom === null) throw new Error('mushroom record missing from the fixture content');
+  return mushroom;
 }

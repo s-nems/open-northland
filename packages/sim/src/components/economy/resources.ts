@@ -109,19 +109,23 @@ export const TreeGrowth = defineComponent<{ level: number; levels: number; wood:
 );
 
 /**
- * A felled tree's pending regrowth, on an entity of its own: at `dueAtTick` a sapling of the felled
- * record `gfxIndex` may sprout near half-cell node `(hx, hy)`. `goodType`, `harvestAtomic` and the
- * full-grown `wood` are the felled node's, which the sapling takes over.
+ * A felled tree's or a picked mushroom's pending regrowth, on an entity of its own: at `dueAtTick` a node
+ * of the removed record `gfxIndex` may sprout near half-cell node `(hx, hy)`, taking over the removed
+ * node's `goodType` and `harvestAtomic`. A tree's sapling also takes over its full-grown `wood`.
  */
-export const TreeRegrow = defineComponent<{
+export type RegrowthData = {
   dueAtTick: number;
   hx: number;
   hy: number;
   goodType: number;
   harvestAtomic: number;
-  wood: number;
   gfxIndex?: number | undefined;
-}>('TreeRegrow', 'economy', { simOnly: true });
+} & Regrown;
+
+/** What a regrowth sprouts: a tree's sapling, holding its full-grown `wood` once fellable, or a mushroom. */
+export type Regrown = { kind: 'tree'; wood: number } | { kind: 'mushroom' };
+
+export const Regrowth = defineComponent<RegrowthData>('Regrowth', 'economy', { simOnly: true });
 
 /**
  * Marks a {@link Resource} node that is mined one unit at a time, faithful to the original's

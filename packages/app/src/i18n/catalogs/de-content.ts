@@ -667,6 +667,11 @@ export const deContent = {
       summary:
         'Ein gefällter Baum hinterlässt im Wald einen Setzling, und junge Bäume wachsen, bis man sie fällen kann.',
     },
+    'mushroom-regrowth': {
+      title: 'Nachwachsende Pilze',
+      summary:
+        'Ein gesammelter Pilz wächst nach einigen Minuten im Wald nach, jedes Sammeln plant ein Nachwachsen ein.',
+    },
     chests: {
       title: 'Kisten und Briefe',
       summary:

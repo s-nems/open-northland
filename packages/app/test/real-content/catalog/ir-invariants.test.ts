@@ -1,5 +1,5 @@
 import { hasFieldFarmAtomics } from '@open-northland/data';
-import { cadaverGoodCycle } from '@open-northland/sim';
+import { cadaverGoodCycle, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HARVEST_CADAVER_ATOMIC } from '../../../src/catalog/atomics.js';
 import { GARRISON_FINIALS, PLACED_GARRISON_MASTS } from '../../../src/catalog/building-tweaks.js';
@@ -200,6 +200,16 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     const cycle = cadaverGoodCycle(content).map((typeId) => goods.get(typeId));
     expect(cycle.map((g) => g?.id)).toEqual(['leather', 'meat']);
     expect(new Set(cycle.map((g) => g?.atomics.harvest))).toEqual(new Set([HARVEST_CADAVER_ATOMIC]));
+  });
+
+  it('every mushroom record stands as the landscape type whose picks regrow', async () => {
+    const { content } = (await loadContentUnderTest()).merge;
+    const mushroomType = content.landscape.find((t) => t.id === systems.MUSHROOM_LANDSCAPE_SLUG)?.typeId;
+    const records = content.gatheringPipeline.find((p) => p.goodId === 'mushroom')?.harvest?.gfxIndices ?? [];
+    const byIndex = new Map(content.landscapeGfx.map((g) => [g.index, g]));
+    expect(mushroomType).toBeDefined();
+    expect(records.length, 'no mushroom harvest records').toBeGreaterThan(0);
+    for (const index of records) expect(byIndex.get(index)?.logicType, `record ${index}`).toBe(mushroomType);
   });
 
   it('every field-farmed good has a farming block or is reported as a gap - never silently barren', async () => {

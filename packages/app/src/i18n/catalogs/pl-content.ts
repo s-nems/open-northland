@@ -660,6 +660,10 @@ export const plContent = {
       title: 'Odrastające drzewa',
       summary: 'Ścięte drzewo zostawia w lesie sadzonkę, a młode drzewa rosną, aż będzie można je ściąć.',
     },
+    'mushroom-regrowth': {
+      title: 'Odrastające grzyby',
+      summary: 'Zebrany grzyb po kilku minutach odrasta w lesie, a każdy zbiór planuje jeden odrost.',
+    },
     chests: {
       title: 'Skrzynie i plany',
       summary:

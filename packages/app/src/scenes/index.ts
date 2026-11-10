@@ -91,6 +91,7 @@ import { fieldPostFlagsScene } from './gathering/field-post-flags.js';
 import { flagYardLayoutScene } from './gathering/flag-yard-layout.js';
 import { gathererFlagFollowScene } from './gathering/gatherer-flag-follow.js';
 import { gathererGoodsScene } from './gathering/gatherer-goods.js';
+import { mushroomRegrowthScene } from './gathering/mushroom-regrowth.js';
 import { porterFlagScene } from './gathering/porter-flag.js';
 import { treeRegrowthScene } from './gathering/tree-regrowth.js';
 import { audioMixScene } from './interface/audio-mix.js';
@@ -186,6 +187,7 @@ export const SCENES: readonly SceneDefinition[] = [
   goodsCatalogScene,
   berriesScene,
   treeRegrowthScene,
+  mushroomRegrowthScene,
   chestsScene,
   chestQueueScene,
   chainScene,

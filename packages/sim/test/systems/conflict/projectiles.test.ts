@@ -13,13 +13,13 @@ import {
   Owner,
   Position,
   Projectile,
+  Regrowth,
   Resource,
   SettlerProgress,
   Stockpile,
   Stump,
   setMissionBehaviour,
   setPeaceTime,
-  TreeRegrow,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../../src/index.js';
@@ -704,7 +704,7 @@ describe('projectiles - area shots', () => {
     expect(sim.world.isAlive(sapling)).toBe(false);
     expect([...sim.world.query(GroundDrop, Stockpile)]).toHaveLength(0);
     expect([...sim.world.query(Stump)]).toHaveLength(0);
-    expect([...sim.world.query(TreeRegrow)]).toHaveLength(0);
+    expect([...sim.world.query(Regrowth)]).toHaveLength(0);
   });
 
   it('leaves trees standing under a shot that is not an area shot', () => {

@@ -640,6 +640,10 @@ export const chsContent = {
       title: '再生的树木',
       summary: '砍倒的树会在森林里留下树苗，幼树会一直长大，直到可以砍伐。',
     },
+    'mushroom-regrowth': {
+      title: '再生的蘑菇',
+      summary: '采摘的蘑菇几分钟后会在森林里重新长出，每次采摘都会安排一次再生。',
+    },
     chests: {
       title: '箱子与文书',
       summary:

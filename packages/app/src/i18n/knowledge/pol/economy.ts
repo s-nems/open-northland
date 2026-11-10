@@ -408,10 +408,15 @@ export const ECONOMY: ArticleGroup = {
               ['Ławica', '+1 ryba co {{fish.regrowSeconds}} s', '{{fish.swarmMax}} ryb'],
               [
                 'Drzewo',
-                'Ścięte drzewo w {{tree.regrowInTen}} na 10 przypadków po {{tree.regrowMinMinutes}}-{{tree.regrowMaxMinutes}} min zasiewa sadzonkę obok, jeśli znajdzie wolne miejsce z co najmniej {{tree.forestTrees}} drzewami wokół. Sadzonka rośnie o stopień co {{tree.growMinutes}} min',
+                'Ścięte drzewo w {{regrow.inTen}} na 10 przypadków po {{regrow.minMinutes}}-{{regrow.maxMinutes}} min zasiewa sadzonkę obok, jeśli znajdzie wolne miejsce z co najmniej {{regrow.forestTrees}} drzewami wokół. Sadzonka rośnie o stopień co {{tree.growMinutes}} min',
                 '1 sadzonka na ścięte drzewo, ścinać można dopiero dorosłe',
               ],
-              ['Skała, złoże, grzyb', 'Nie odrastają', '-'],
+              [
+                'Grzyb',
+                'Zebrany grzyb w {{regrow.inTen}} na 10 przypadków po {{regrow.minMinutes}}-{{regrow.maxMinutes}} min odrasta obok, jeśli znajdzie wolne miejsce z co najmniej {{regrow.forestTrees}} drzewami wokół',
+                '1 grzyb na zebrany, tylko w lesie',
+              ],
+              ['Skała, złoże', 'Nie odrastają', '-'],
             ],
           },
         },

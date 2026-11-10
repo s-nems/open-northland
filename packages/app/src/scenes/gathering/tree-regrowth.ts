@@ -39,7 +39,7 @@ const FLAG_RADIUS_NODES = 6;
 const RUN_TICKS = 3000;
 const INITIAL_ZOOM = 1.2;
 
-const { Felling, Position, Resource, TreeGrowth, TreeRegrow } = components;
+const { Felling, Position, Regrowth, Resource, TreeGrowth } = components;
 
 function wood() {
   const spec = GATHERERS.find((g) => g.good === GOOD_WOOD);
@@ -81,7 +81,8 @@ function build(sim: Simulation): void {
   const felled = cellAnchorNode(FELLED.x, FELLED.y);
   const spec = resourceSpecFor(g, felled.hx, felled.hy);
   for (const dueAtTick of REGROW_DUE_TICKS) {
-    sim.world.add(sim.world.create(), TreeRegrow, {
+    sim.world.add(sim.world.create(), Regrowth, {
+      kind: 'tree',
       dueAtTick,
       hx: felled.hx,
       hy: felled.hy,
@@ -132,7 +133,7 @@ export const treeRegrowthScene: SceneDefinition = {
     },
     {
       label: "the woodcutter's fall scheduled a regrowth",
-      predicate: (sim) => [...sim.world.query(TreeRegrow)].length > 0,
+      predicate: (sim) => [...sim.world.query(Regrowth)].length > 0,
     },
   ],
 };

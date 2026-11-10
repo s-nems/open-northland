@@ -663,6 +663,10 @@ export const enContent = {
       title: 'Regrowing trees',
       summary: 'A felled tree seeds a sapling in the forest, and young trees grow until they can be felled.',
     },
+    'mushroom-regrowth': {
+      title: 'Regrowing mushrooms',
+      summary: 'A picked mushroom grows back in the forest minutes later, and every pick schedules one.',
+    },
     chests: {
       title: 'Chests and papers',
       summary:

@@ -1,12 +1,21 @@
 import { GROUND_LAND } from '@open-northland/data';
-import { DeliveryFlag, Felling, Position, Resource, TreeRegrow } from '../../components/index.js';
+import {
+  DeliveryFlag,
+  Felling,
+  Position,
+  type Regrown,
+  Regrowth,
+  type RegrowthData,
+  Resource,
+} from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { hexRingHx, hexRingHy, hexRingLength, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/blocked.js';
-import { createResourceNode } from '../footprint/index.js';
+import { createResourceNode, tryFootprintCellsOf } from '../footprint/index.js';
 import { type PlacementGrid, placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
 import { landscapesWithin } from '../landscape/view.js';
 import { bushesAtNode } from '../spatial/bushes.js';
@@ -16,110 +25,127 @@ import { stockpilesAtNode } from '../spatial/stockpiles.js';
 import { stumpsAtNode } from '../spatial/stumps.js';
 import { settleClosedTree, startTreeGrowth } from './tree-growth.js';
 
-// Original behavior throughout: a felled tree may seed one sapling nearby, after a delay, inside a forest.
+// Original behavior throughout: a felled tree or a picked mushroom may seed one of its kind nearby, after
+// a delay, inside a forest.
 
-/** A felled tree's regrowth comes due this many ticks after the fall plus a random share of the spread:
- *  5 to 20 minutes at 12 ticks a second. */
-export const TREE_REGROW_DELAY_MIN_TICKS = 3600;
-export const TREE_REGROW_DELAY_SPREAD_TICKS = 10800;
+/** `landscapetypes.ini` type 36 `mushroommine`, a standing mushroom. Original behavior: a pick off it and
+ *  a tree's fall are the only harvests that schedule a regrowth; no `.ini` key marks either type. */
+export const MUSHROOM_LANDSCAPE_SLUG = 'mushroommine';
+
+/** A regrowth comes due this many ticks after the harvest plus a random share of the spread: 5 to 20
+ *  minutes at 12 ticks a second. */
+export const REGROWTH_DELAY_MIN_TICKS = 3600;
+export const REGROWTH_DELAY_SPREAD_TICKS = 10800;
 /** One regrowth in ten seeds nothing. */
-export const TREE_REGROW_FAIL_PERCENT = 10;
+export const REGROWTH_FAIL_PERCENT = 10;
 const PERCENT = 100;
-/** The steps the search walks out from the felled tree along the ground's edges. */
+/** The steps the search walks out from the harvested node along the ground's edges. */
 const SEARCH_STEPS = 11;
-/** The search stops at this many sapling spots and picks one of them at random. */
+/** The search stops at this many spots and picks one of them at random. */
 const MAX_SPOTS = 20;
 /** No road may run on a spot or this many rings around it. */
 const ROAD_FREE_RINGS = 2;
 /** Neither the spot nor its first ring may be walk- or build-blocked. */
 const BLOCK_FREE_RINGS = 1;
-/** A spot is in the forest with more than five trees, saplings counted, in these rings around it. */
+/** A spot is in the forest with more than five trees, saplings counted, in these rings around it. A
+ *  mushroom too regrows only there. */
 const FOREST_RINGS = 5;
-export const TREE_REGROW_FOREST_TREES = 6;
-/** The valency a sapling sprouts at. */
-const SAPLING_LEVEL = 1;
-/** At most this many regrowths wait at once; a tree felled while they all do schedules none. */
-export const TREE_REGROW_MAX_PENDING = 300;
+export const REGROWTH_FOREST_TREES = 6;
+/** The valency a regrowth sprouts at: a sapling's first stage, a mushroom's single pick. */
+const REGROWN_VALENCY = 1;
+/** At most this many regrowths wait at once; a harvest while they all do schedules none. */
+export const REGROWTH_MAX_PENDING = 300;
 
 /** Schedule the regrowth a `tree` felled now may bring, before its node is removed. */
-export function scheduleTreeRegrow(world: World, ctx: SystemContext, tree: Entity): void {
-  if (regrowthsPending(world) >= TREE_REGROW_MAX_PENDING) return;
-  const res = world.get(tree, Resource);
-  const pos = world.get(tree, Position);
+export function scheduleTreeRegrowth(world: World, ctx: SystemContext, tree: Entity): void {
+  scheduleRegrowth(world, ctx, tree, { kind: 'tree', wood: world.get(tree, Resource).remaining });
+}
+
+/** Schedule the regrowth a unit picked off `node` now may bring, before the node is removed: one for each
+ *  pick off a mushroom, none off any other node. */
+export function schedulePickRegrowth(world: World, ctx: SystemContext, node: Entity): void {
+  const gfx = tryFootprintCellsOf(world, node)?.sourceGfxIndex;
+  if (gfx === undefined) return;
+  const index = contentIndex(ctx.content);
+  const mushroomType = index.landscapeTypeBySlug.get(MUSHROOM_LANDSCAPE_SLUG);
+  const pickedType = index.landscapeGfxByIndex.get(gfx)?.logicType;
+  if (mushroomType === undefined || pickedType !== mushroomType) return;
+  scheduleRegrowth(world, ctx, node, { kind: 'mushroom' });
+}
+
+function scheduleRegrowth(world: World, ctx: SystemContext, node: Entity, regrown: Readonly<Regrown>): void {
+  if (regrowthsPending(world) >= REGROWTH_MAX_PENDING) return;
+  const res = world.get(node, Resource);
+  const pos = world.get(node, Position);
   const { hx, hy } = nodeOfPosition(pos.x, pos.y);
-  const e = world.create();
-  world.add(e, TreeRegrow, {
-    dueAtTick: ctx.tick + TREE_REGROW_DELAY_MIN_TICKS + ctx.rng.int(TREE_REGROW_DELAY_SPREAD_TICKS),
+  world.add(world.create(), Regrowth, {
+    dueAtTick: ctx.tick + REGROWTH_DELAY_MIN_TICKS + ctx.rng.int(REGROWTH_DELAY_SPREAD_TICKS),
     hx,
     hy,
     goodType: res.goodType,
     harvestAtomic: res.harvestAtomic,
-    wood: res.remaining,
     gfxIndex: res.gfxIndex,
+    ...regrown,
   });
 }
 
 function regrowthsPending(world: World): number {
   let pending = 0;
-  for (const _ of world.query(TreeRegrow)) if (++pending >= TREE_REGROW_MAX_PENDING) break;
+  for (const _ of world.query(Regrowth)) if (++pending >= REGROWTH_MAX_PENDING) break;
   return pending;
 }
 
-/** Run every regrowth that has come due, in the order the trees fell. */
-export const treeRegrowSystem: System = (world, ctx) => {
+/** Run every regrowth that has come due, in the order the harvests scheduled them. */
+export const regrowthSystem: System = (world, ctx) => {
   const due: Entity[] = [];
-  for (const e of world.query(TreeRegrow)) if (world.get(e, TreeRegrow).dueAtTick <= ctx.tick) due.push(e);
+  for (const e of world.query(Regrowth)) if (world.get(e, Regrowth).dueAtTick <= ctx.tick) due.push(e);
   for (const e of due) {
-    const regrow = { ...world.get(e, TreeRegrow) };
+    const regrowth = { ...world.get(e, Regrowth) };
     world.destroy(e);
-    regrowTree(world, ctx, regrow);
+    regrow(world, ctx, regrowth);
   }
 };
 
-function regrowTree(
-  world: World,
-  ctx: SystemContext,
-  regrow: Readonly<{
-    hx: number;
-    hy: number;
-    goodType: number;
-    harvestAtomic: number;
-    wood: number;
-    gfxIndex?: number | undefined;
-  }>,
-): void {
-  if (ctx.rng.int(PERCENT) < TREE_REGROW_FAIL_PERCENT) return;
+function regrow(world: World, ctx: SystemContext, regrowth: Readonly<RegrowthData>): void {
+  if (ctx.rng.int(PERCENT) < REGROWTH_FAIL_PERCENT) return;
   const terrain = ctx.terrain;
-  if (terrain === undefined || !terrain.inBounds(regrow.hx, regrow.hy)) return;
-  const start = terrain.nodeAt(regrow.hx, regrow.hy);
+  if (terrain === undefined || !terrain.inBounds(regrowth.hx, regrowth.hy)) return;
+  const start = terrain.nodeAt(regrowth.hx, regrowth.hy);
   if (terrain.groundKinds !== undefined && terrain.groundKinds[start] !== GROUND_LAND) return;
   const test = new SpotTest(world, ctx, terrain);
-  const spots = saplingSpots(test, terrain, start);
+  const spots = regrowthSpots(test, terrain, start);
   if (spots.length === 0) return;
   const spot = spots[ctx.rng.int(spots.length)];
   // The draw of a marked spot seeds nothing: no landscape is ever set on a signpost.
   if (spot === undefined || test.holdsMarker(spot)) return;
-  const sapling = createResourceNode(world, ctx.content, {
-    good: regrow.goodType,
+  const node = {
+    good: regrowth.goodType,
     x: terrain.xOf(spot),
     y: terrain.yOf(spot),
-    remaining: regrow.wood,
-    harvestAtomic: regrow.harvestAtomic,
+    harvestAtomic: regrowth.harvestAtomic,
+    ...(regrowth.gfxIndex !== undefined ? { gfxIndex: regrowth.gfxIndex } : {}),
+  };
+  if (regrowth.kind === 'mushroom') {
+    createResourceNode(world, ctx.content, { ...node, remaining: REGROWN_VALENCY });
+    return;
+  }
+  const sapling = createResourceNode(world, ctx.content, {
+    ...node,
+    remaining: regrowth.wood,
     felling: true,
-    blockLevel: SAPLING_LEVEL,
-    ...(regrow.gfxIndex !== undefined ? { gfxIndex: regrow.gfxIndex } : {}),
+    blockLevel: REGROWN_VALENCY,
   });
   if (sapling === null) return;
-  startTreeGrowth(world, ctx.content, sapling, SAPLING_LEVEL);
+  startTreeGrowth(world, ctx.content, sapling, REGROWN_VALENCY);
   // A record whose sapling already blocks its anchor closes the node under whoever stands there.
   settleClosedTree(world, ctx, sapling);
 }
 
-/** The first {@link MAX_SPOTS} spots a sapling may take, in breadth-first order from `start` over the
+/** The first {@link MAX_SPOTS} spots a regrowth may take, in breadth-first order from `start` over the
  *  ground's edges, whatever stands on them. */
-function saplingSpots(test: SpotTest, terrain: TerrainGraph, start: NodeId): NodeId[] {
+function regrowthSpots(test: SpotTest, terrain: TerrainGraph, start: NodeId): NodeId[] {
   const spots: NodeId[] = [];
-  if (test.takesSapling(start)) spots.push(start);
+  if (test.takesRegrowth(start)) spots.push(start);
   const seen = new Set<NodeId>([start]);
   let frontier = [start];
   for (let step = 0; step < SEARCH_STEPS && frontier.length > 0 && spots.length < MAX_SPOTS; step++) {
@@ -129,7 +155,7 @@ function saplingSpots(test: SpotTest, terrain: TerrainGraph, start: NodeId): Nod
         if (seen.has(neighbour) || !terrain.joined(node, neighbour)) continue;
         seen.add(neighbour);
         next.push(neighbour);
-        if (test.takesSapling(neighbour)) spots.push(neighbour);
+        if (test.takesRegrowth(neighbour)) spots.push(neighbour);
         if (spots.length === MAX_SPOTS) return spots;
       }
     }
@@ -139,10 +165,10 @@ function saplingSpots(test: SpotTest, terrain: TerrainGraph, start: NodeId): Nod
 }
 
 /**
- * Whether a sapling may sprout on a node. Approximations: the node's plantable ground stands for its six
- * triangles' `biocangrowon` and `biocanplanton`, the dynamic walk overlay and ground no walker crosses
- * for the walk-blocked points, and the placement grid's exclusion and building zones, a wall site's body
- * and ground no building takes for the build-blocked ones.
+ * Whether a sapling or a mushroom may sprout on a node. Approximations: the node's plantable ground stands
+ * for its six triangles' `biocangrowon` and `biocanplanton`, the dynamic walk overlay and ground no walker
+ * crosses for the walk-blocked points, and the placement grid's exclusion and building zones, a wall
+ * site's body and ground no building takes for the build-blocked ones.
  */
 class SpotTest {
   private overlay: BlockOverlay | undefined;
@@ -156,7 +182,7 @@ class SpotTest {
     private readonly terrain: TerrainGraph,
   ) {}
 
-  takesSapling(node: NodeId): boolean {
+  takesRegrowth(node: NodeId): boolean {
     const terrain = this.terrain;
     const hx = terrain.xOf(node);
     const hy = terrain.yOf(node);
@@ -218,7 +244,7 @@ class SpotTest {
     for (let ring = 1; ring <= FOREST_RINGS; ring++) {
       for (let i = 0; i < hexRingLength(ring); i++) {
         trees += this.treesOn(terrain.nodeAt(hexRingHx(hx, hy, ring, i), hexRingHy(hy, ring, i)));
-        if (trees >= TREE_REGROW_FOREST_TREES) return true;
+        if (trees >= REGROWTH_FOREST_TREES) return true;
       }
     }
     return false;

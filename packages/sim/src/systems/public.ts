@@ -142,16 +142,17 @@ export {
   toolBonusTenths,
 } from './economy/production/bonus-output.js';
 export { BREEDING_PAIR } from './economy/production/cycles.js';
+export {
+  MUSHROOM_LANDSCAPE_SLUG,
+  REGROWTH_DELAY_MIN_TICKS,
+  REGROWTH_DELAY_SPREAD_TICKS,
+  REGROWTH_FAIL_PERCENT,
+  REGROWTH_FOREST_TREES,
+} from './economy/regrowth.js';
 // The repair crew cap, so the app's right-click and site pick fall through where assignBuilder refuses.
 export { HITPOINTS_PER_REPAIR_STEP, REPAIR_CREW_LIMIT } from './economy/repair.js';
 export { insideBuildingReservedZone } from './economy/reserved-decor.js';
 export { startTreeGrowth, TREE_GROWTH_PERIOD_TICKS } from './economy/tree-growth.js';
-export {
-  TREE_REGROW_DELAY_MIN_TICKS,
-  TREE_REGROW_DELAY_SPREAD_TICKS,
-  TREE_REGROW_FAIL_PERCENT,
-  TREE_REGROW_FOREST_TREES,
-} from './economy/tree-regrow.js';
 export { jobUsesWorkFlag } from './economy/work-flag.js';
 export { HEALING_DRAUGHT_BELOW_PCT } from './equipment/draughts.js';
 export { BARE_HANDS_WORK_FACTOR_PCT, scaledDealtDamage, scaledTakenDamage } from './equipment/effects.js';

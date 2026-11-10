@@ -1,6 +1,13 @@
 import { systems } from '@open-northland/sim';
 import { NAV_LANDSCAPE_TYPES } from '../../catalog/terrain.js';
-import { GATHERERS, type GathererSpec, GOOD_LEATHER, GOOD_MEAT, GOOD_MUD } from './ids/index.js';
+import {
+  GATHERERS,
+  type GathererSpec,
+  GOOD_LEATHER,
+  GOOD_MEAT,
+  GOOD_MUD,
+  GOOD_MUSHROOM,
+} from './ids/index.js';
 import { sandboxPalisadeGfx, sandboxPalisadeLandscapeTypes } from './palisades.js';
 
 /** Structural, so both the authored cell grids and the sim's half-cell maps satisfy it. */
@@ -50,6 +57,12 @@ const CADAVER_LANDSCAPE_TYPES = [
 
 function resourceLandscapeType(good: number): number {
   return RESOURCE_LANDSCAPE_BASE + good;
+}
+
+/** The slug of the logic type a gatherer's node stands as. The mushroom's is the original's, which makes
+ *  its picks regrow. */
+function resourceLandscapeSlug(g: GathererSpec): string {
+  return g.good === GOOD_MUSHROOM ? systems.MUSHROOM_LANDSCAPE_SLUG : `${g.id}_harvest_node`;
 }
 
 function resourceGfxIndex(good: number): number {
@@ -128,7 +141,7 @@ export function sandboxLandscape(map?: TerrainTypeIds): Array<{
     ...sandboxPalisadeLandscapeTypes(),
     ...GATHERERS.map((g) => ({
       typeId: resourceLandscapeType(g.good),
-      id: `${g.id}_harvest_node`,
+      id: resourceLandscapeSlug(g),
       walkable: true,
       buildable: true,
       ...growth(g),

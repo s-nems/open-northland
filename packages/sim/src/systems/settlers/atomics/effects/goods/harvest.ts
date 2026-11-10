@@ -19,7 +19,7 @@ import type { NodeId } from '../../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../../context.js';
 import { stampCarcassFootprint } from '../../../../economy/carcasses.js';
 import { landStrandedDrops } from '../../../../economy/goods-evict.js';
-import { scheduleTreeRegrow } from '../../../../economy/tree-regrow.js';
+import { schedulePickRegrowth, scheduleTreeRegrowth } from '../../../../economy/regrowth.js';
 import { toolWorkFactorPct } from '../../../../equipment/index.js';
 import { stampResourceFootprintOrFallback, unstampResourceFootprint } from '../../../../footprint/index.js';
 import { jobExperiencePercent, strokesPerUnit, workRepeatsFor } from '../../../../progression/index.js';
@@ -58,8 +58,8 @@ export function harvestStrokesPerUnit(
  * Resolve one landed harvest stroke. The node's marker components decide the shape, never its goodType,
  * so the lifecycle stays content-declared: a `Crop` field is reaped whole to the ground, a `Felling` node
  * drops its whole yield as a trunk, a `MineDeposit` chips one ore pile until its last unit, and a bare node
- * goes straight onto the settler's back. Each completes on the stroke that brings the node's landed count
- * to `strokesNeeded`, the count then starting again for the next unit.
+ * goes straight onto the settler's back, a mushroom scheduling its regrowth. Each completes on the stroke
+ * that brings the node's landed count to `strokesNeeded`, the count then starting again for the next unit.
  *
  * Returns the units extracted; zero while the unit is still being worked.
  */
@@ -103,6 +103,7 @@ export function harvestFromNode(
   } else {
     if (!strokeCompletesUnit(world, node, res.strikes, strokesNeeded)) return 0;
     addCarry(world, settler, goodType, took);
+    schedulePickRegrowth(world, ctx, node);
   }
   // Decrement only after the unit is dropped or carried, so a rejecting `addCarry` cannot lose it.
   const remaining = res.remaining - took;
@@ -236,7 +237,7 @@ function fellNode(
   const stump = world.create();
   world.add(stump, Position, { x, y });
   world.add(stump, Stump, { goodType });
-  scheduleTreeRegrow(world, ctx, node);
+  scheduleTreeRegrowth(world, ctx, node);
   removeWorkedNode(world, ctx, node, stance);
   ctx.events.emit({
     kind: 'resourceFelled',
