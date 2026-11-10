@@ -58,6 +58,8 @@ interface PooledEntityBase extends PresentationTrack {
   loopStep: number;
   /** Counts the binds that set this entity's sprites, so an outline laid over them knows it still fits. */
   bindSerial: number;
+  /** Whether the last bind marked the container as refusing blood; `undefined` before the first. */
+  bloodless: boolean | undefined;
   selectionEllipse: { -readonly [K in keyof SelectionEllipse]: SelectionEllipse[K] } | undefined;
   readonly bound: BindStamp;
 }
@@ -116,6 +118,7 @@ export function createPooled(kind: SpriteKind, palette: PaletteLut | undefined):
     looping: false,
     loopStep: Number.NaN,
     bindSerial: 0,
+    bloodless: undefined,
     selectionEllipse: undefined,
     bound: new BindStamp(),
   };

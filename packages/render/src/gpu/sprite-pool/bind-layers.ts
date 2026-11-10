@@ -170,7 +170,11 @@ export class LayerBinder {
   ): void {
     pe.bindSerial++;
     if (pe.damageBodies !== undefined && pe.damageBodies.length > 0) pe.damageBodies.length = 0;
-    setBloodless(pe.container, BLOODLESS_KINDS.has(item.kind));
+    const bloodless = BLOODLESS_KINDS.has(item.kind);
+    if (pe.bloodless !== bloodless) {
+      pe.bloodless = bloodless;
+      setBloodless(pe.container, bloodless);
+    }
     let buildingBlood: WeakMap<AtlasFrame, BloodSurface> | undefined;
     if (!pe.paletted && item.kind === 'building') {
       buildingBlood = this.buildingBlood.get(pe);
@@ -196,12 +200,12 @@ export class LayerBinder {
     const drawX = pe.motion.drawX;
     const drawY = pe.motion.drawY;
     // A custom-shader mesh can't ride the camera-transformed sprite layer (Pixi leaves its transform
-    // UBO unbound), so it self-places in screen space from this camera-applied feet anchor. Unused on
-    // the plain path.
+    // UBO unbound), so it self-places in screen space from this camera-applied feet anchor.
+    const meshes = pe.paletted && pe.kind === 'vehicle';
     const camScale = frame.camera.scale ?? 1;
     const snap = frame.snapResolution;
-    const originX = snapToDevicePixels(cameraScreenX(frame.camera, drawX), snap);
-    const originY = snapToDevicePixels(cameraScreenY(frame.camera, drawY), snap);
+    const originX = meshes ? snapToDevicePixels(cameraScreenX(frame.camera, drawX), snap) : 0;
+    const originY = meshes ? snapToDevicePixels(cameraScreenY(frame.camera, drawY), snap) : 0;
     // The LUT row the body reads; a human's head reads the row after it. Unused on the plain path.
     const bodyRow = !pe.paletted
       ? 0
@@ -305,7 +309,7 @@ export class LayerBinder {
             layer.cast !== true &&
             layer.boundsExempt !== true &&
             (layer.groundFoot === undefined || layer.groundFoot === 'body') &&
-            !BLOODLESS_KINDS.has(item.kind);
+            !bloodless;
           if (buildingBlood === undefined || receivesBlood) {
             const surface = bloodSurface(
               spr,
