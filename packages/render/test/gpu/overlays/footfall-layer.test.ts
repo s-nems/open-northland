@@ -70,14 +70,14 @@ function setup(marksGround = true, footfallGround: FootfallGround | null = groun
   const sprites = new Container();
   const layer = new FootfallLayer(sprites, new TextureCache(), sheet);
   layer.setGround(footfallGround);
-  const draw = (snapshot: WorldSnapshot, drawn = true) =>
+  const draw = (snapshot: WorldSnapshot, drawn = true, renderTime = snapshot.tick) =>
     layer.draw({
       snapshot,
       walkers: drawn ? [{ ref: WALKER, marksGround }] : [],
       roadAt: (hx: number, hy: number) => hx === ROAD_HX && hy === ROAD_HY,
       elevation: FLAT,
       viewport: VIEW_ALL,
-      renderTime: snapshot.tick,
+      renderTime,
     });
   const step = (hx: number, hy: number, tick: number, person = true) =>
     draw(snapshotOf([walkerAt(hx, hy, person)], tick));
@@ -103,6 +103,19 @@ describe('FootfallLayer', () => {
     expect(layer.container.children[0]).toBe(print);
     step(5, 2, 14 + 120);
     expect(layer.container.children).toHaveLength(0);
+  });
+
+  it('rewrites a fading print only when its opacity byte changes', () => {
+    const { layer, step, draw } = setup();
+    step(4, 2, 10);
+    const stepped = snapshotOf([walkerAt(5, 2)], 14);
+    draw(stepped);
+    const print = layer.container.children[0] as Sprite;
+    // 0.75 draws as byte 191; a hundredth of a tick later the fade is still within it.
+    draw(stepped, true, 14.01);
+    expect(print.alpha).toBe(0.75);
+    draw(stepped, true, 14.5);
+    expect(print.alpha).toBe((120 - 0.5) / 160);
   });
 
   it('raises dust on sand in the sprite layer, playing its frames once', () => {

@@ -39,7 +39,6 @@ import { layeredLayerFor } from '../sprite-pool/layers/layered.js';
 import type { SpriteSheet } from '../textures/sprite-sheet.js';
 import type { TextureCache } from '../textures/texture-cache.js';
 import { worldBatched } from '../world-batch/batcher.js';
-import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
 /** One frame's inputs: the pool's drawn walkers and the clock and cull box the marks draw by. */
 export interface FootfallFrame {
@@ -67,8 +66,12 @@ interface WalkerSteps {
  *  east-west node step. */
 const ON_NODE_TOLERANCE = ONE / 16;
 
+/** The byte the world batch packs a sprite's opacity into: the levels a fade can show. */
+const ALPHA_LEVELS = 255;
+const NO_ALPHA_LEVEL = -1;
+const NO_BOB = -1;
+
 interface Footfall {
-  readonly key: number;
   readonly kind: FootfallKind;
   readonly hx: number;
   readonly hy: number;
@@ -78,6 +81,11 @@ interface Footfall {
   readonly x: number;
   readonly y: number;
   readonly depth: number;
+  /** The mark's sprite, minted when it first draws on screen. */
+  node: Sprite | undefined;
+  /** The opacity byte and the frame `node` was last dressed with. */
+  alphaLevel: number;
+  bob: number;
 }
 
 /**
@@ -98,10 +106,7 @@ export class FootfallLayer {
   private readonly lastNode = new Map<number, WalkerSteps>();
   private readonly walking = new Set<number>();
   private readonly marks: Footfall[] = [];
-  private nextKey = 0;
   private lastSnapshot: WorldSnapshot | undefined;
-  private readonly nodes = new Map<number, Sprite>();
-  private readonly seen = new Set<number>();
   /** The layer lookup's argument, reused across marks. */
   private readonly lookup = { layer: '', bob: 0 };
 
@@ -116,26 +121,27 @@ export class FootfallLayer {
   setGround(ground: FootfallGround | null): void {
     this.ground = ground;
     this.lastNode.clear();
-    this.marks.length = 0;
+    this.dropMarks();
   }
 
   draw(frame: FootfallFrame): void {
-    this.seen.clear();
     const binding = this.sheet?.bindings.footfall;
-    if (binding !== undefined) {
-      this.track(frame, this.ground);
-      for (const mark of this.marks) {
-        const ref = binding[mark.kind];
-        if (ref !== undefined) this.place(mark, ref, frame);
-      }
+    if (binding === undefined) return;
+    this.track(frame, this.ground);
+    for (const mark of this.marks) {
+      const ref = binding[mark.kind];
+      if (ref !== undefined) this.place(mark, ref, frame);
     }
-    retireUndrawn(this.nodes, this.seen, (node) => node.destroy());
   }
 
   destroy(): void {
-    for (const node of this.nodes.values()) node.destroy();
-    this.nodes.clear();
+    this.dropMarks();
     this.container.destroy({ children: true });
+  }
+
+  private dropMarks(): void {
+    for (const mark of this.marks) mark.node?.destroy();
+    this.marks.length = 0;
   }
 
   /** Raise a mark for every drawn walker that reached a new node since the last snapshot, and drop the
@@ -217,13 +223,28 @@ export class FootfallLayer {
     const groundY = halfCellToScreenY(hy);
     const y = groundY - terrainLiftAtNode(elevation, hx, hy);
     const depth = screenDepth(x, groundY, 'projectile');
-    this.marks.push({ key: this.nextKey++, kind, hx, hy, valency, tick, x, y, depth });
+    this.marks.push({
+      kind,
+      hx,
+      hy,
+      valency,
+      tick,
+      x,
+      y,
+      depth,
+      node: undefined,
+      alphaLevel: NO_ALPHA_LEVEL,
+      bob: NO_BOB,
+    });
   }
 
-  /** Drop the marks whose life is over, compacting the list in place. */
+  /** Drop the marks whose life is over with their sprites, compacting the list in place. */
   private dropExpired(tick: number): void {
     let kept = 0;
-    for (const mark of this.marks) if (tick - mark.tick < lifeOf(mark, this.sheet)) this.marks[kept++] = mark;
+    for (const mark of this.marks) {
+      if (tick - mark.tick < lifeOf(mark, this.sheet)) this.marks[kept++] = mark;
+      else mark.node?.destroy();
+    }
     this.marks.length = kept;
   }
 
@@ -231,35 +252,44 @@ export class FootfallLayer {
     const age = frame.renderTime - mark.tick;
     const print = mark.kind !== 'dust';
     const alpha = print ? printAlpha(age) : dustAlpha(age, lifeOf(mark, this.sheet));
-    if (alpha <= 0) return;
-    let node = this.nodes.get(mark.key);
-    if (!isVisible(frame.viewport, mark.x, mark.y)) {
-      retainOffscreen(node, mark.key, this.seen);
+    let node = mark.node;
+    if (alpha <= 0 || !isVisible(frame.viewport, mark.x, mark.y)) {
+      if (node !== undefined) node.visible = false;
       return;
     }
     // A print's frame never changes, so its sprite is dressed once; the dust turns a frame a tick.
-    if (node === undefined || !print) {
-      const bob = print ? particleFrame(ref, 0, mark.valency) : particleFrame(ref, age);
+    let bob = mark.bob;
+    if (node === undefined || !print)
+      bob = (print ? particleFrame(ref, 0, mark.valency) : particleFrame(ref, age)) ?? NO_BOB;
+    if (bob !== mark.bob || node === undefined) {
       const sheet = this.sheet;
-      if (bob === undefined || sheet === undefined) return;
       this.lookup.layer = ref.layer;
       this.lookup.bob = bob;
-      const resolved = layeredLayerFor(sheet, 'projectile', this.lookup);
-      if (resolved === null) return;
+      const resolved =
+        bob === NO_BOB || sheet === undefined ? null : layeredLayerFor(sheet, 'projectile', this.lookup);
+      if (resolved === null) {
+        if (node !== undefined) node.visible = false;
+        return;
+      }
       if (node === undefined) {
         node = worldBatched(new Sprite());
         (print ? this.container : this.spriteLayer).addChild(node);
-        this.nodes.set(mark.key, node);
+        mark.node = node;
         if (!print) node.zIndex = mark.depth;
       }
       node.texture = this.textures.get(resolved.source, resolved.frame);
       const scale = print ? resolved.scale : resolved.scale * DUST_SCALE;
       node.scale.set(scale);
       node.position.set(mark.x + resolved.frame.offsetX * scale, mark.y + resolved.frame.offsetY * scale);
+      mark.bob = bob;
     }
-    node.alpha = alpha;
+    // The batch draws the opacity as a byte, so a fade within one level writes nothing.
+    const level = (alpha * ALPHA_LEVELS) | 0;
+    if (level !== mark.alphaLevel) {
+      node.alpha = alpha;
+      mark.alphaLevel = level;
+    }
     node.visible = true;
-    this.seen.add(mark.key);
   }
 }
 
