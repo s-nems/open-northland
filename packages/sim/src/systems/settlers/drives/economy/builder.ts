@@ -218,7 +218,7 @@ export function planBuilder(
   const bestBuildingSite = (): Entity | null => {
     if (rankedBuilding === undefined) {
       rankedBuilding = rankedBuildingSite(
-        claims.rankBuildingSites(settler.owner, targets.constructionSites, e),
+        claims.rankBuildingSites(settler.owner, targets.constructionSites, e, crewBuilding),
         crewBuilding,
         buildingAccepts,
         (sites, accepts) =>
@@ -453,10 +453,12 @@ function rankedBuildingSite(
   accepts: (site: Entity) => boolean,
   nearestAmong: (sites: readonly Entity[], accepts: (site: Entity) => boolean) => Entity | null,
 ): Entity | null {
-  const { ranks, rankOf, sitesByRank } = ranking;
-  for (const rank of ranks) {
-    if (crewSite !== null && rankOf.get(crewSite) === rank && accepts(crewSite)) return crewSite;
-    const site = nearestAmong(sitesByRank.get(rank) ?? [], accepts);
+  const { sitesByTier, watchedTier } = ranking;
+  for (let tier = sitesByTier.length - 1; tier >= 0; tier--) {
+    const sites = sitesByTier[tier];
+    if (sites === undefined || sites.length === 0) continue;
+    if (crewSite !== null && watchedTier === tier && accepts(crewSite)) return crewSite;
+    const site = nearestAmong(sites, accepts);
     if (site !== null) return site;
   }
   return null;

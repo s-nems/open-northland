@@ -172,22 +172,14 @@ class SiteCrews {
 
 const siteCrews = new WeakMap<World, SiteCrews>();
 
-/** The rank order of one builder's pick: the distinct ranks present, highest first, and each site's. A
- *  rank outside `ranks` may still hold an emptied list. */
+/** The rank order of one builder's pick: the ranked sites of each {@link SITE_TIER}, in ascending id,
+ *  indexed by tier, and the tier of the site the pick watched, when it was ranked. */
 export interface SiteRanking {
-  readonly ranks: readonly number[];
-  readonly rankOf: ReadonlyMap<Entity, number>;
-  /** The ranked sites of each rank, in ascending id. */
-  readonly sitesByRank: ReadonlyMap<number, readonly Entity[]>;
+  readonly sitesByTier: readonly (readonly Entity[])[];
+  readonly watchedTier: number | undefined;
 }
 
-function emptyList(list: Entity[]): void {
-  list.length = 0;
-}
-
-function highestFirst(a: number, b: number): number {
-  return b - a;
-}
+const SITE_TIER_COUNT = Object.keys(SITE_TIER).length;
 
 /**
  * Planner-tick reservations for hammer swings, one construction step each, and the standing of every
@@ -204,10 +196,10 @@ export class ConstructionTaskClaims {
   private crews: ReadonlyMap<Entity, number> | null = null;
   private crewMoves: Map<Entity, number> | undefined;
   private walls: SoloSiteSurvey | undefined;
-  private readonly ranking = {
-    ranks: [] as number[],
-    rankOf: new Map<Entity, number>(),
-    sitesByRank: new Map<number, Entity[]>(),
+  private readonly sitesByTier: Entity[][] = Array.from({ length: SITE_TIER_COUNT }, () => []);
+  private readonly ranking: { sitesByTier: Entity[][]; watchedTier: number | undefined } = {
+    sitesByTier: this.sitesByTier,
+    watchedTier: undefined,
   };
 
   constructor(
@@ -274,26 +266,24 @@ export class ConstructionTaskClaims {
    * are read as the crews stand at this moment; a site another builder joins later in the pass re-ranks on
    * its own pick. The ranking is the pass's one, rewritten by the next call.
    */
-  rankBuildingSites(owner: number | undefined, sites: readonly Entity[], builder: Entity): SiteRanking {
-    const { ranks, rankOf, sitesByRank } = this.ranking;
-    ranks.length = 0;
-    rankOf.clear();
-    sitesByRank.forEach(emptyList);
+  rankBuildingSites(
+    owner: number | undefined,
+    sites: readonly Entity[],
+    builder: Entity,
+    /** The site whose tier the caller asks for by itself: the builder's own crew site. */
+    watched: Entity | null,
+  ): SiteRanking {
+    const { ranking, sitesByTier } = this;
+    for (let tier = 0; tier < sitesByTier.length; tier++) (sitesByTier[tier] as Entity[]).length = 0;
+    ranking.watchedTier = undefined;
     for (let i = 0; i < sites.length; i++) {
       const site = sites[i] as Entity;
       if (!ownersCompatible(owner, ownerOf(this.world, site))) continue;
-      const rank = this.siteTier(site, builder);
-      rankOf.set(site, rank);
-      let ranked = sitesByRank.get(rank);
-      if (ranked === undefined) {
-        ranked = [];
-        sitesByRank.set(rank, ranked);
-      }
-      if (ranked.length === 0) ranks.push(rank);
-      ranked.push(site);
+      const tier = this.siteTier(site, builder);
+      if (site === watched) ranking.watchedTier = tier;
+      (sitesByTier[tier] as Entity[]).push(site);
     }
-    ranks.sort(highestFirst);
-    return this.ranking;
+    return ranking;
   }
 
   /** Move a builder's crew count from `from` to `to`, either absent for none, for the rest of the pass.
