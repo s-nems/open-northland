@@ -1,18 +1,11 @@
-import {
-  Container,
-  Rectangle,
-  type Renderer,
-  RenderTexture,
-  Sprite,
-  Texture,
-  type TextureSource,
-} from 'pixi.js';
+import { Container, Rectangle, type Renderer, RenderTexture, Texture, type TextureSource } from 'pixi.js';
 import { isVisible, TILE_HALF_W, type Viewport } from '../../data/projection/index.js';
 import type { Camera } from '../../data/projection/iso.js';
 import type { AtlasFrame } from '../../data/sprites/atlas.js';
 import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
-import { type GroundWave, groundWaveFrameAt } from './ground-wave.js';
+import { type GroundWave, groundWaveFrameIndex } from './ground-wave.js';
 import { FLOATS_PER_RECT, GroundWaveLift, type ScreenRect } from './ground-wave-lift.js';
+import { GroundWaveQuads } from './ground-wave-quads.js';
 
 /** Waves are indexed in square blocks of the terrain chunk's horizontal pitch by their anchors, the
  *  point the cull tests, so a frame looks up only the blocks under the view. */
@@ -23,13 +16,23 @@ const BLOCK_ROW_STRIDE = 1 << 16;
 const blockOf = (px: number): number => Math.floor(px / BLOCK_PX);
 const blockKeyAt = (column: number, row: number): number => row * BLOCK_ROW_STRIDE + column;
 const blockKey = (wave: GroundWave): number => blockKeyAt(blockOf(wave.x), blockOf(wave.y));
+
+/** A wave as a redraw reads it: its lifted anchor and one texture per frame of its loop. */
+interface PlacedWave {
+  readonly wave: GroundWave;
+  readonly x: number;
+  readonly y: number;
+  readonly phase: number;
+  readonly frames: readonly AtlasFrame[];
+  readonly textures: readonly Texture[];
+}
 /** The lift map grows in steps of this many pixels a side. */
 const MAP_STEP_PX = 256;
 
 interface WaveBlock {
   /** Blocks draw in the order their first wave was placed, so overlapping waves keep their order. */
   readonly order: number;
-  readonly waves: GroundWave[];
+  readonly waves: PlacedWave[];
 }
 
 const byPlacement = (a: WaveBlock, b: WaveBlock): number => a.order - b.order;
@@ -57,10 +60,12 @@ interface LiftInputs {
  * and static landscape objects, which the original lifts with the ground, stay put.
  */
 export class GroundWaveLayer {
-  /** The render root of the lift map; {@link view} carries the camera under it. */
+  /** The render root of the lift map, holding the wave quads. */
   private readonly root = new Container();
-  private readonly view = new Container();
-  private readonly sprites: Sprite[] = [];
+  private readonly quads = new GroundWaveQuads(Texture.EMPTY.source);
+  /** The frames this redraw draws and each one's top-left corner in world px, in draw order. */
+  private readonly drawnTextures: Texture[] = [];
+  private drawnAt = new Float64Array(0);
   private readonly blocks = new Map<number, WaveBlock>();
   /** This frame's blocks in view, in placement order. */
   private readonly inView: WaveBlock[] = [];
@@ -68,6 +73,8 @@ export class GroundWaveLayer {
   /** Null until a map is drawn, and after a frame without one. */
   private drawnFrom: LiftInputs | null = null;
   private readonly textures = new Map<AtlasFrame, Texture>();
+  /** The textures of each frame list the placed waves share. */
+  private readonly loops = new Map<readonly AtlasFrame[], readonly Texture[]>();
   private map: RenderTexture | null = null;
   private readonly lift = new GroundWaveLift(Texture.EMPTY.source);
   /** The drawn waves' rectangles, `[x0, y0, x1, y1]` world px each, grown on demand. */
@@ -85,7 +92,7 @@ export class GroundWaveLayer {
     private readonly renderer: Renderer,
     private readonly ground: Container,
   ) {
-    this.root.addChild(this.view);
+    this.root.addChild(this.quads.node);
     ground.addChild(this.lift.node);
     renderer.runners.contextChange.add(this.onContextChange);
   }
@@ -105,14 +112,21 @@ export class GroundWaveLayer {
         block = { order: this.blocks.size, waves: [] };
         this.blocks.set(key, block);
       }
-      block.waves.push(wave);
+      block.waves.push({
+        wave,
+        x: wave.x,
+        y: wave.y - (wave.lift ?? 0),
+        phase: wave.phase,
+        frames: wave.frames,
+        textures: this.loopOf(wave),
+      });
     }
   }
 
   /** Take one placed wave out (a script removed it); O(its block). An unknown wave is a no-op. */
   remove(wave: GroundWave): void {
     const waves = this.blocks.get(blockKey(wave))?.waves;
-    const index = waves?.indexOf(wave) ?? -1;
+    const index = waves?.findIndex((placed) => placed.wave === wave) ?? -1;
     if (index >= 0) waves?.splice(index, 1);
     this.revision++;
   }
@@ -137,26 +151,35 @@ export class GroundWaveLayer {
     let drawn = 0;
     // One target pixel round each quad covers whatever the lift map's own rasterisation of it touches.
     const pad = 1 / (zoom * resolution);
+    // Written here rather than through a method: a call would box every coordinate it is handed.
+    let rects = this.rects;
+    let corners = this.drawnAt;
     if (enabled) {
       for (const block of this.blocksInView(vp)) {
-        for (const wave of block.waves) {
-          if (!isVisible(vp, wave.x, wave.y)) continue;
-          const frame = groundWaveFrameAt(wave, step);
-          if (frame === undefined || frame.width <= 0 || frame.height <= 0) continue;
-          const sprite = this.sprites[drawn] ?? this.mintSprite();
-          const x = wave.x + frame.offsetX;
-          const y = wave.y - (wave.lift ?? 0) + frame.offsetY;
-          sprite.texture = this.textureFor(wave.source, frame);
-          sprite.position.set(x, y);
-          sprite.visible = true;
-          this.rectAt(drawn, x - pad, y - pad, x + frame.width + pad, y + frame.height + pad);
+        for (const placed of block.waves) {
+          if (!isVisible(vp, placed.wave.x, placed.wave.y)) continue;
+          const index = groundWaveFrameIndex(placed.phase, placed.frames.length, step);
+          const frame = placed.frames[index];
+          const texture = placed.textures[index];
+          if (frame === undefined || texture === undefined || frame.width <= 0 || frame.height <= 0) continue;
+          const x = placed.x + frame.offsetX;
+          const y = placed.y + frame.offsetY;
+          if (rects.length < (drawn + 1) * FLOATS_PER_RECT) {
+            this.growScratch(drawn + 1);
+            rects = this.rects;
+            corners = this.drawnAt;
+          }
+          this.drawnTextures[drawn] = texture;
+          corners[drawn * 2] = x;
+          corners[drawn * 2 + 1] = y;
+          const at = drawn * FLOATS_PER_RECT;
+          rects[at] = x - pad;
+          rects[at + 1] = y - pad;
+          rects[at + 2] = x + frame.width + pad;
+          rects[at + 3] = y + frame.height + pad;
           drawn++;
         }
       }
-    }
-    for (let i = drawn; i < this.sprites.length; i++) {
-      const sprite = this.sprites[i];
-      if (sprite !== undefined) sprite.visible = false;
     }
     if (drawn === 0) {
       this.drawnFrom = null;
@@ -175,8 +198,14 @@ export class GroundWaveLayer {
       this.setApplied(false);
       return;
     }
-    this.view.scale.set(zoom * resolution);
-    this.view.position.set(camera.offsetX * resolution - x0, camera.offsetY * resolution - y0);
+    this.quads.set(
+      drawn,
+      this.drawnTextures,
+      this.drawnAt,
+      zoom * resolution,
+      camera.offsetX * resolution - x0,
+      camera.offsetY * resolution - y0,
+    );
     const retired = this.map;
     const map = this.mapCovering(x1 - x0, y1 - y0);
     this.renderer.render({ container: this.root, target: map, clear: true });
@@ -244,8 +273,9 @@ export class GroundWaveLayer {
     this.setApplied(false);
     this.blocks.clear();
     this.dropTextures();
+    this.quads.destroy();
     this.root.destroy({ children: true });
-    this.sprites.length = 0;
+    this.drawnTextures.length = 0;
     this.lift.destroy();
     this.map?.destroy(true);
     this.map = null;
@@ -258,17 +288,15 @@ export class GroundWaveLayer {
     if (applied && children[children.length - 1] !== this.lift.node) this.ground.addChild(this.lift.node);
   }
 
-  private rectAt(index: number, x0: number, y0: number, x1: number, y1: number): void {
-    if (this.rects.length < (index + 1) * FLOATS_PER_RECT) {
-      const grown = new Float32Array(Math.max(this.rects.length * 2, (index + 1) * FLOATS_PER_RECT));
-      grown.set(this.rects);
-      this.rects = grown;
-    }
-    const at = index * FLOATS_PER_RECT;
-    this.rects[at] = x0;
-    this.rects[at + 1] = y0;
-    this.rects[at + 2] = x1;
-    this.rects[at + 3] = y1;
+  /** Grow the rectangle and corner scratch to hold `count` quads, keeping what they hold. */
+  private growScratch(count: number): void {
+    const capacity = Math.max((this.rects.length / FLOATS_PER_RECT) * 2, count);
+    const rects = new Float32Array(capacity * FLOATS_PER_RECT);
+    rects.set(this.rects);
+    this.rects = rects;
+    const corners = new Float64Array(capacity * 2);
+    corners.set(this.drawnAt);
+    this.drawnAt = corners;
   }
 
   /** The screen rectangle (CSS px) of the first `count` wave rectangles under `camera`. */
@@ -304,11 +332,13 @@ export class GroundWaveLayer {
     return next;
   }
 
-  private mintSprite(): Sprite {
-    const sprite = new Sprite();
-    this.view.addChild(sprite);
-    this.sprites.push(sprite);
-    return sprite;
+  private loopOf(wave: GroundWave): readonly Texture[] {
+    let loop = this.loops.get(wave.frames);
+    if (loop === undefined) {
+      loop = wave.frames.map((frame) => this.textureFor(wave.source, frame));
+      this.loops.set(wave.frames, loop);
+    }
+    return loop;
   }
 
   private textureFor(source: TextureSource, frame: AtlasFrame): Texture {
@@ -323,5 +353,6 @@ export class GroundWaveLayer {
   private dropTextures(): void {
     for (const texture of this.textures.values()) texture.destroy(false);
     this.textures.clear();
+    this.loops.clear();
   }
 }

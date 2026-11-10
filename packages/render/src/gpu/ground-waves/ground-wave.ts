@@ -26,5 +26,10 @@ export interface GroundWave {
  */
 export function groundWaveFrameAt(wave: GroundWave, step: number): AtlasFrame | undefined {
   const count = wave.frames.length;
-  return count === 0 ? undefined : wave.frames[(step + wave.phase) % count];
+  return count === 0 ? undefined : wave.frames[groundWaveFrameIndex(wave.phase, count, step)];
+}
+
+/** The index into a loop of `count` frames that {@link groundWaveFrameAt} shows at `step`. */
+export function groundWaveFrameIndex(phase: number, count: number, step: number): number {
+  return (step + phase) % count;
 }

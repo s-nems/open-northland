@@ -2,6 +2,7 @@ import { WEATHER_KINDS } from '../../data/weather/types.js';
 import { BLOOD_GROUND_SOURCE } from '../blood/ground-shader.js';
 import { DISMANTLE_SOURCE } from '../demolition/dismantle-shader.js';
 import { GROUND_WAVE_LIFT_SOURCE } from '../ground-waves/ground-wave-lift.js';
+import { GROUND_WAVE_QUADS_SOURCE } from '../ground-waves/ground-wave-quads.js';
 import { DECOR_SHADOW_SOURCE } from '../map-objects/decor-shadow-shader.js';
 import { PALETTED_SPRITE_SOURCE } from '../paletted-sprite/shader.js';
 import { PRESCALE_RECIPES } from '../pixel-art/page-prescaler.js';
@@ -77,6 +78,7 @@ export function shaderCatalog(): readonly GlslProgramSource[] {
     ...unconditionalPrograms(),
     BLOOD_GROUND_SOURCE,
     GROUND_WAVE_LIFT_SOURCE,
+    GROUND_WAVE_QUADS_SOURCE,
     ...weatherPrograms(),
   );
   return entries;
@@ -124,7 +126,7 @@ export function bootShaderPrograms(
     ...(prescaled === null ? [] : prescalePrograms(prescaled)),
     ...unconditionalPrograms(),
     ...(selection.blood ? [BLOOD_GROUND_SOURCE] : []),
-    ...(selection.groundWaves ? [GROUND_WAVE_LIFT_SOURCE] : []),
+    ...(selection.groundWaves ? [GROUND_WAVE_LIFT_SOURCE, GROUND_WAVE_QUADS_SOURCE] : []),
     ...(selection.weather ? weatherPrograms() : []),
   ];
 }

@@ -1,4 +1,4 @@
-import { Container, RenderContainer, type Renderer, Texture, WebGLRenderer } from 'pixi.js';
+import { Container, type Geometry, RenderContainer, type Renderer, Texture, WebGLRenderer } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Viewport } from '../../../src/data/projection/index.js';
 import type { AtlasFrame } from '../../../src/data/sprites/index.js';
@@ -70,6 +70,26 @@ function liftNode(ground: Container): RenderContainer {
   const node = ground.children.find((child) => child instanceof RenderContainer);
   if (node === undefined) throw new Error('no lift pass on the ground');
   return node;
+}
+
+/** The corners `[x0, y0, x1, y1]` of each wave quad the last lift map render drew, in lift map pixels. */
+function mapQuads(render: ReturnType<typeof vi.fn>): number[][] {
+  const root = render.mock.calls.at(-1)?.[0].container as Container;
+  const target = fakeTarget(false);
+  (root.children[0] as RenderContainer).render(target.renderer);
+  const quads: number[][] = [];
+  for (const [call] of target.draw.mock.calls) {
+    const positions = (call.geometry as Geometry).getBuffer('aPosition').data;
+    for (let q = call.start / 6; q < (call.start + call.size) / 6; q++) {
+      quads.push([
+        positions[q * 8],
+        positions[q * 8 + 1],
+        positions[q * 8 + 4],
+        positions[q * 8 + 5],
+      ] as number[]);
+    }
+  }
+  return quads;
 }
 
 describe('groundWaveFrameAt', () => {
@@ -147,8 +167,7 @@ describe('GroundWaveLayer', () => {
     layer.set([wave()]);
     layer.update(WIDE, { offsetX: 100, offsetY: 50, scale: 1 }, SCREEN, SCREEN, 0, true, 2);
     // At two texels per CSS pixel the wave, padded by one pixel, spans pixels 191..209 by 95..105.
-    const { container } = render.mock.calls[0]?.[0] ?? {};
-    expect(container.children[0].position).toMatchObject({ x: 9, y: 5 });
+    expect(mapQuads(render)).toEqual([[1, 1, 17, 9]]);
     const target = fakeTarget(
       false,
       { x: 0, y: 0, width: 2 * SCREEN, height: 2 * SCREEN },
@@ -181,9 +200,9 @@ describe('GroundWaveLayer', () => {
     const layer = new GroundWaveLayer(renderer, new Container());
     layer.set([wave()]);
     layer.update(WIDE, { offsetX: 100, offsetY: 50, scale: 1 }, SCREEN, SCREEN, 0, true);
-    const { container, target } = render.mock.calls[0]?.[0] ?? {};
+    const { target } = render.mock.calls[0]?.[0] ?? {};
     // The padded wave covers screen x 95..105 and y 47..53, so the map's first texel is pixel (95, 47).
-    expect(container.children[0].position).toMatchObject({ x: 5, y: 3 });
+    expect(mapQuads(render)).toEqual([[1, 1, 9, 5]]);
     expect([target.source.pixelWidth, target.source.pixelHeight]).toEqual([256, 256]);
   });
 
@@ -248,12 +267,34 @@ describe('GroundWaveLayer', () => {
     ]);
     layer.update({ minX: -1000, minY: -1000, maxX: 4000, maxY: 1000 }, CAMERA, SCREEN, SCREEN, 0, true);
     expect(render).toHaveBeenCalledTimes(1);
-    const root = render.mock.calls[0]?.[0].container as Container;
-    const drawn = root.children[0]?.children.filter((sprite) => sprite.visible) ?? [];
-    expect(drawn.map((sprite) => sprite.x)).toEqual([right + FRAME_0.offsetX, left + FRAME_0.offsetX]);
+    // The map starts at screen pixel 0, so a quad's map x is its world x.
+    expect(mapQuads(render).map(([x]) => x)).toEqual([right + FRAME_0.offsetX, left + FRAME_0.offsetX]);
 
     layer.update({ minX: right + 1, minY: -1, maxX: right + 2, maxY: 1 }, CAMERA, SCREEN, SCREEN, 1, true);
-    expect(root.children[0]?.children.filter((sprite) => sprite.visible)).toHaveLength(0);
+    expect(render).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws neighbouring waves of one page in one call, in placement order across pages', () => {
+    const { renderer, render } = fakeRenderer();
+    const layer = new GroundWaveLayer(renderer, new Container());
+    const otherPage = Texture.EMPTY.source;
+    const otherFrames = [{ ...FRAME_0 }, { ...FRAME_1 }];
+    layer.set([
+      wave(),
+      { ...wave(), x: 20 },
+      { ...wave(), x: 40, source: otherPage, frames: otherFrames },
+      { ...wave(), x: 60 },
+    ]);
+    layer.update(WIDE, CAMERA, SCREEN, SCREEN, 0, true);
+    const root = render.mock.calls[0]?.[0].container as Container;
+    const target = fakeTarget(false);
+    (root.children[0] as RenderContainer).render(target.renderer);
+    const calls = target.draw.mock.calls.map(([call]) => [call.start, call.size]);
+    expect(calls).toEqual([
+      [0, 12],
+      [12, 6],
+      [18, 6],
+    ]);
   });
 
   it('stops lifting the ground once its only wave is removed', () => {
