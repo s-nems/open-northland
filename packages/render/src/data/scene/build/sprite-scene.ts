@@ -208,6 +208,9 @@ function exposedBoxes(view: Viewport, previous: Viewport): Viewport[] {
  */
 export class IncrementalScene {
   statics: readonly SpriteDrawItem[] = [];
+  /** The refs of {@link statics}, so a build asks whether a touched entity stands in the run at all
+   *  before it walks the run to drop it. */
+  readonly staticRefs = new Set<number>();
   /** The last build's other items, sorted like the draw list, and the snapshot they were emitted from:
    *  a pan over that same snapshot keeps the ones the new view still shows instead of emitting them. */
   others: readonly SpriteDrawItem[] = [];
@@ -220,6 +223,7 @@ export class IncrementalScene {
 
   clear(): void {
     this.statics = [];
+    this.staticRefs.clear();
     this.others = [];
     this.othersSnapshot = null;
     this.anchors.reset();
@@ -286,6 +290,12 @@ function withheldChanges(
  *  answer for, so only these may stand unvisited between builds. */
 export function isStaticItem(item: SpriteDrawItem): boolean {
   return item.kind !== 'craftfx' && isSelfContainedKind(item.kind, item.isFlag) && item.ghost !== true;
+}
+
+/** Whether `refs` holds any id of `ids`, the smaller set by far. */
+function holdsAny(refs: ReadonlySet<number>, ids: ReadonlySet<number>): boolean {
+  for (const id of ids) if (refs.has(id)) return true;
+  return false;
 }
 
 /** Reused query outputs of the incremental build. */
@@ -565,6 +575,7 @@ function collectScene(
     // item's cull point is its own anchor, so the run keeps an item exactly when the view still shows it.
     const left: number[] = [];
     const dropped = withheld.size === 0 ? touched.ids : new Set([...touched.ids, ...withheld]);
+    const runRefs = incremental.staticRefs;
     const keptRun = viewMoved
       ? incremental.statics.filter((i) => {
           if (dropped.has(i.ref)) return false;
@@ -572,9 +583,14 @@ function collectScene(
           left.push(i.ref);
           return false;
         })
-      : dropped.size === 0
+      : !holdsAny(runRefs, dropped)
         ? incremental.statics
         : incremental.statics.filter((i) => !dropped.has(i.ref));
+    if (keptRun !== incremental.statics) {
+      for (const id of dropped) runRefs.delete(id);
+      for (const id of left) runRefs.delete(id);
+    }
+    for (const item of fresh) runRefs.add(item.ref);
     const staticKept = new Uint8Array(keptRun.length + fresh.length);
     let statics: readonly SpriteDrawItem[] = keptRun;
     if (fresh.length === 0) staticKept.fill(1);
@@ -606,6 +622,8 @@ function collectScene(
     else items.sort(drawOrder);
     if (incremental !== undefined) {
       incremental.statics = inputs === null ? [] : items.filter(inRun);
+      incremental.staticRefs.clear();
+      for (const item of incremental.statics) incremental.staticRefs.add(item.ref);
       incremental.others = inputs === null ? [] : items.filter((item) => !inRun(item));
       incremental.spliced = false;
     }
