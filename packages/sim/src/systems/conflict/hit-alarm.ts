@@ -163,10 +163,11 @@ function answerAlarm(
       // The struck fighter itself turned as the blow landed.
       if (entity === alarm.victim) continue;
       // Already on this attacker: the turn would write nothing.
-      if (world.tryGet(entity, Engagement)?.target === alarm.attacker) continue;
+      const held = world.tryGet(entity, Engagement)?.target;
+      if (held === alarm.attacker) continue;
       if (mode === MILITARY_MODE.ATTACK || mode === MILITARY_MODE.DEFEND) {
-        strike ??= strikeBy(world, ctx, alarm.attacker);
-        turnFighterOn(world, ctx, terrain, strike, entity, settler, mode);
+        strike ??= strikeBy(world, ctx, terrain, alarm.attacker);
+        turnFighterOn(world, ctx, terrain, strike, entity, settler, mode, held);
       }
     } else if (
       (!struckBack || entity === alarm.victim) &&

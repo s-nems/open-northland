@@ -156,6 +156,21 @@ export class CombatIndex {
     return this.posts === null ? mannedPostOf(world, ctx, e) : this.posts.mannedPost(ctx, e);
   }
 
+  /** Whether the index holds `e` as a unit, at the node it stood on when the index was built. Nothing
+   *  moves between that build and the tick's last shot, so the node is the one `entityNode` reads. */
+  holdsUnit(e: Entity): boolean {
+    return this.grid.holdsUnit(e);
+  }
+
+  /** The node column and row of a unit the index holds ({@link holdsUnit}). */
+  unitX(e: Entity): number {
+    return this.grid.unitX(e);
+  }
+
+  unitY(e: Entity): number {
+    return this.grid.unitY(e);
+  }
+
   /** Whether member `e` is a plain building - the siege tier a warrior turns on only when nothing better is
    *  in sight. False for a settler, a headquarters, a tower and anything not indexed. */
   isLowPriorityBuilding(e: Entity): boolean {

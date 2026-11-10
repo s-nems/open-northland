@@ -493,6 +493,23 @@ export class CombatGrid {
     cell.bodyTiersAt = this.buildingLayerVersion;
   }
 
+  /** Whether the unit layer holds `e`: a combatant as of the last build, at the node it stood on then. */
+  holdsUnit(e: Entity): boolean {
+    return this.units[e] !== undefined;
+  }
+
+  /** The node column held unit `e` stands on, 0 for one not held. */
+  unitX(e: Entity): number {
+    const held = this.units[e];
+    return held === undefined ? 0 : (held.cell.units.x[held.slot] ?? 0);
+  }
+
+  /** {@link unitX}'s row. */
+  unitY(e: Entity): number {
+    const held = this.units[e];
+    return held === undefined ? 0 : (held.cell.units.y[held.slot] ?? 0);
+  }
+
   /** The band scan scratch for nesting depth `depth`. */
   bandScanAt(depth: number): BandScan {
     let scan = this.bandScans[depth];
