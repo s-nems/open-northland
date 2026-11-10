@@ -278,12 +278,13 @@ class PathDrain {
     // A member no route served still ends its own search on the first shared route it settles a node of,
     // on a walk long enough to share: a short one costs little alone and would only gain a detour.
     const meets = groupRoutes !== undefined && farApart(this.terrain, start, goal);
-    if (meets && liveRoutes !== undefined) groupRoutes.offerLive(overlay, liveRoutes);
-    const stops = meets ? (groupRoutes.meetingStops(overlay, goal) ?? undefined) : undefined;
+    const live = liveRoutes !== undefined;
+    if (meets && live) groupRoutes.offerLive(overlay, liveRoutes);
+    const stops = meets ? (groupRoutes.meetingStops(overlay, goal, live) ?? undefined) : undefined;
     const pockets = this.pocketsOf(player, marching);
     let path = resolvePath(pockets, start, goal, overlay, spent, traversal, this.goalSlice, goalOpen, stops);
     if (path !== null && groupRoutes !== undefined && stops !== undefined && path.at(-1) !== goal) {
-      const followed = groupRoutes.followMeeting(overlay, path, goal, spent);
+      const followed = groupRoutes.followMeeting(overlay, path, goal, spent, live);
       if (followed !== null) {
         // A band of its own leads there: its neighbours borrow from this route as from a searched one.
         groupRoutes.offer(overlay, followed);
@@ -395,10 +396,11 @@ export function drainPathRequests(
     const goalOpen =
       labelled && !sealed && (bodies === null || bodies.posts === 0) && drain.goalOutgrowsProbe(goal);
     // A member ordered after its band left takes up a route a band-mate still walks. A chase keeps its
-    // own search: its goal is a contact node a few steps off, not the band's.
+    // own search, its goal being a contact node a few steps off, and so does a reroute, which asks for
+    // another way than the one it walks.
     const liveRoutes =
-      group && player !== undefined && !world.has(e, Engagement)
-        ? () => liveBandRoutes(world, ctx.content, terrain, e, player, marching, collides, blocked)
+      group && player !== undefined && !req.grind && !req.retainRoute && !world.has(e, Engagement)
+        ? () => liveBandRoutes(world, ctx.content, terrain, player, marching, collides, blocked)
         : undefined;
     let path = sealed
       ? null

@@ -1,6 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import { Owner, PathFollow, PathRoute, PlayerOrder } from '../../components/index.js';
-import type { Entity, World } from '../../ecs/world.js';
+import type { World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { columnStepMiddles, isColumnStep, nodeMarksOf } from '../../nav/pathfinding/index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -16,9 +16,9 @@ const MAX_LIVE_BAND_ROUTES = 8;
 const LIVE_ROUTE_MIN_NODES = 16;
 
 /**
- * The routes still ahead of the player-ordered walkers of `player` that walk as `asker` does (the same
- * order kind and the same body rule, so the same walk blocks), each as lattice nodes from the stop its
- * walker heads for, lowest entity id first. A walker heading for a node of a route already taken walks
+ * The routes still ahead of the player-ordered walkers of `player` of one order kind and body rule, so
+ * under the same walk blocks, each as lattice nodes from the stop its walker heads for, lowest entity id
+ * first. A walker heading for a node of a route already taken walks
  * that corridor and adds none, and a route with a node `blocked` now closes is left out. Read off saved
  * components alone, so a restored world offers the same routes.
  */
@@ -26,7 +26,6 @@ export function liveBandRoutes(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
-  asker: Entity,
   player: number,
   marching: boolean,
   collides: boolean,
@@ -35,12 +34,13 @@ export function liveBandRoutes(
   const routes: NodeId[][] = [];
   const marks = nodeMarksOf(terrain);
   const taken = marks.next();
-  for (const e of world.canonicalQuery(PlayerOrder, PathRoute, PathFollow)) {
+  for (const e of world.canonicalQuery(PlayerOrder)) {
     if (routes.length >= MAX_LIVE_BAND_ROUTES) break;
-    if (e === asker || world.tryGet(e, Owner)?.player !== player) continue;
+    if (world.tryGet(e, Owner)?.player !== player) continue;
     if ((world.get(e, PlayerOrder).attackMove !== undefined) !== marching) continue;
-    const stops = world.get(e, PathRoute).waypoints;
-    const next = world.get(e, PathFollow).index;
+    const stops = world.tryGet(e, PathRoute)?.waypoints;
+    const next = world.tryGet(e, PathFollow)?.index;
+    if (stops === undefined || next === undefined) continue;
     const heading = stops[next];
     if (heading === undefined || marks.stamps[heading.node] === taken) continue;
     if (hasBodyCollision(world, content, e) !== collides) continue;

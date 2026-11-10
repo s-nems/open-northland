@@ -132,14 +132,14 @@ export class GroupRoutes {
   }
 
   /**
-   * The nodes of every route under `blocked` that passes within the group's area of `goal`, for a member
-   * no route served: its own search ends on the first of them it settles, and {@link followMeeting} takes
+   * The nodes of every route under `blocked` that passes within the group's area of `goal`, the live
+   * ones with `live`, for a member no route served: its own search ends on the first of them it settles, and {@link followMeeting} takes
    * the route up from there. Null when no route qualifies. Valid until the next call.
    */
-  meetingStops(blocked: BlockOverlay, goal: NodeId): NodeStops | null {
+  meetingStops(blocked: BlockOverlay, goal: NodeId, live: boolean): NodeStops | null {
     let stops: StopStamps | undefined;
     let mark = 0;
-    for (const route of this.passing(blocked, goal)) {
+    for (const route of this.passing(blocked, goal, live)) {
       if (stops === undefined) {
         stops = stopStampsByTerrain.get(this.terrain);
         if (stops === undefined) {
@@ -163,10 +163,11 @@ export class GroupRoutes {
     onto: readonly NodeId[],
     goal: NodeId,
     stats: SearchStats,
+    live: boolean,
   ): NodeId[] | null {
     const met = onto.at(-1);
     if (met === undefined) return null;
-    for (const route of this.passing(blocked, goal)) {
+    for (const route of this.passing(blocked, goal, live)) {
       if (corridorIndexOf(this.terrain, route.path, met) === undefined) continue;
       const joined = followCorridor(
         this.terrain,
@@ -183,12 +184,13 @@ export class GroupRoutes {
     return null;
   }
 
-  /** The routes under `blocked` that pass within the group's area of `goal`: this drain's, then the
-   *  live ones. */
-  private passing(blocked: BlockOverlay, goal: NodeId): GroupRoute[] {
+  /** The routes under `blocked` that pass within the group's area of `goal`: this drain's, then with
+   *  `live` the ones band-mates still walk. */
+  private passing(blocked: BlockOverlay, goal: NodeId, live: boolean): GroupRoute[] {
     const passesBy = (route: GroupRoute): boolean =>
       route.blocked === blocked && corridorBoxGap(this.terrain, route.path, goal) <= GROUP_AREA_RADIUS_NODES;
-    return [...this.routes.filter(passesBy), ...this.live.filter(passesBy)];
+    const passing = this.routes.filter(passesBy);
+    return live ? [...passing, ...this.live.filter(passesBy)] : passing;
   }
 
   /**

@@ -334,7 +334,7 @@ describe('army player routing', () => {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('army terrain missing');
     const blocked = new NodeMask(terrain.nodeCount);
-    const live = liveBandRoutes(sim.world, sim.content, terrain, late, 0, true, true, blocked);
+    const live = liveBandRoutes(sim.world, sim.content, terrain, 0, true, true, blocked);
     // The leader's route alone: the stranger marches for another player.
     expect(live).toHaveLength(1);
     const [route] = live;
@@ -345,7 +345,8 @@ describe('army player routing', () => {
     for (let i = 1; i < route.length; i++) {
       expect(terrain.joined(route[i - 1] as NodeId, route[i] as NodeId)).toBe(true);
     }
-    expect(liveBandRoutes(sim.world, sim.content, terrain, leader, 0, true, true, blocked)).toEqual([]);
+    // A plain move order walks under other blocks, so it reads no march's route.
+    expect(liveBandRoutes(sim.world, sim.content, terrain, 0, false, true, blocked)).toEqual([]);
 
     const order = playerCommand(0, { kind: 'attackMoveUnit', entity: late, x: 344, y: 10 });
     const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content, map });
