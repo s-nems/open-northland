@@ -17,13 +17,16 @@ export interface BlockOverlay {
 
 /**
  * An overlay's membership as per-node lanes: a node is blocked where `bytes` or `extra` holds 1, or where
- * `players` shares a slot bit with `hostile`. Absent lanes block nothing.
+ * `players` shares a slot bit with `hostile`. Absent lanes block nothing. With `unsure`, the lanes answer
+ * only where it holds 0, and the overlay's own {@link BlockOverlay.has} decides a node where it holds 1
+ * that `bytes` and `extra` leave open.
  */
 export interface BlockLanes {
   readonly bytes: Uint8Array;
   readonly extra: Uint8Array | undefined;
   readonly players: Uint16Array | undefined;
   readonly hostile: number;
+  readonly unsure?: Uint8Array | undefined;
 }
 
 /**

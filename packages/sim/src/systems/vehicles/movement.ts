@@ -120,11 +120,13 @@ function continentOf(terrain: TerrainGraph, node: NodeId): number {
   return terrain.componentOf(node);
 }
 
-/** Which nodes a vehicle's size passes: the test, and for the plain free-size class test the live lane
- *  of the nodes it closes, which a route search reads as an array instead of calling the test. */
+/** Which nodes a vehicle's size passes: the test, and the live lane of the nodes the plain free-size
+ *  class test closes, which a route search reads as an array instead of calling the test. `squeezes`
+ *  says the test may still pass a node of that lane ({@link landVehicleFits}). */
 interface SizePasses {
   readonly fits: (node: NodeId) => boolean;
-  readonly closed: Uint8Array | undefined;
+  readonly below: Uint8Array;
+  readonly squeezes: boolean;
 }
 
 /** Whether `type` may pass a node by its size: a ship by the water's free-size class, a land vehicle by
@@ -136,7 +138,11 @@ function vehiclePasses(
   type: VehicleType,
 ): SizePasses {
   if (vehicleTraversal(type) === 'land') {
-    return { fits: landVehicleFits(world, ctx, terrain, type.logicSize), closed: undefined };
+    return {
+      fits: landVehicleFits(world, ctx, terrain, type.logicSize),
+      below: vehicleClearance(world, ctx, terrain).belowLane(type.logicSize),
+      squeezes: true,
+    };
   }
   return standablePasses(world, ctx, terrain, type.logicSize);
 }
@@ -149,7 +155,8 @@ function standablePasses(
 ): SizePasses {
   return {
     fits: vehicleStandable(world, ctx, terrain, logicSize),
-    closed: vehicleClearance(world, ctx, terrain).belowLane(logicSize),
+    below: vehicleClearance(world, ctx, terrain).belowLane(logicSize),
+    squeezes: false,
   };
 }
 
@@ -314,7 +321,7 @@ function blocksUnder(
   vehicles: ReadonlyMap<NodeId, number> = vehicleBlockedCells(world, ctx, terrain),
 ): BlockOverlay {
   const ground = dynamicBlockOverlay(world, ctx, terrain);
-  const { fits, closed } = passes;
+  const { fits, below } = passes;
   const own = new Set(vehicleFootprintNodes(world, ctx.content, terrain, vehicle));
   const overlapped = use === 'transit' ? overlappedDiscs(world, ctx, terrain, vehicle) : NO_DISCS;
   const coveredByOthers = (node: NodeId): boolean => {
@@ -337,8 +344,7 @@ function blocksUnder(
     return answer;
   };
   const size = ground.size + vehicles.size + 1; // never empty: the clearance term is not a set
-  if (closed === undefined) return { has, size };
-  // The same membership as lanes: the size test's closed nodes, and the ground beside the cells another
+  // The same membership as lanes: the ground, the size test's closed nodes, and the cells another
   // vehicle covers, the only nodes `coveredByOthers` can close. Copied once per world version.
   let laneVersion = -1;
   let lanes: BlockLanes | undefined;
@@ -348,13 +354,26 @@ function blocksUnder(
     if (groundLanes === undefined || groundLanes.extra !== undefined || groundLanes.players !== undefined) {
       return undefined;
     }
-    let extra = groundLanes.bytes;
-    if (vehicles.size > 0 || overlapped.length > 0) {
-      extra = new Uint8Array(groundLanes.bytes);
-      for (const node of vehicles.keys()) if (coveredByOthers(node)) extra[node] = 1;
-      for (const node of own) if (coveredByOthers(node)) extra[node] = 1;
+    const covers = vehicles.size > 0 || overlapped.length > 0;
+    if (passes.squeezes) {
+      // A squeeze and another vehicle's cover are tested per node, where the plain class test fails or
+      // a vehicle's cells lie; every other node is open or the ground's.
+      let unsure = below;
+      if (covers) {
+        unsure = new Uint8Array(below);
+        for (const node of vehicles.keys()) unsure[node] = 1;
+        for (const node of own) unsure[node] = 1;
+      }
+      lanes = { bytes: groundLanes.bytes, extra: undefined, players: undefined, hostile: 0, unsure };
+    } else {
+      let extra = groundLanes.bytes;
+      if (covers) {
+        extra = new Uint8Array(groundLanes.bytes);
+        for (const node of vehicles.keys()) if (coveredByOthers(node)) extra[node] = 1;
+        for (const node of own) if (coveredByOthers(node)) extra[node] = 1;
+      }
+      lanes = { bytes: below, extra, players: undefined, hostile: 0 };
     }
-    lanes = { bytes: closed, extra, players: undefined, hostile: 0 };
     laneVersion = world.mutationVersion;
     return lanes;
   };

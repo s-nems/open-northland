@@ -65,6 +65,7 @@ export class StepGate {
   private overlay: BlockOverlay | undefined;
   private bytes: Uint8Array | undefined;
   private extra: Uint8Array | undefined;
+  private unsure: Uint8Array | undefined;
   private players: Uint16Array | undefined;
   private hostile = 0;
 
@@ -72,7 +73,8 @@ export class StepGate {
     this.lane = lane;
     this.readmitted = readmitted;
     const lanes = blocked?.blockLanes?.();
-    this.overlay = lanes === undefined ? blocked : undefined;
+    this.unsure = lanes?.unsure;
+    this.overlay = lanes === undefined || this.unsure !== undefined ? blocked : undefined;
     this.bytes = lanes?.bytes;
     this.extra = lanes?.extra;
     this.players = lanes?.players;
@@ -87,6 +89,8 @@ export class StepGate {
       if (bytes[c] === 1) return true;
       const extra = this.extra;
       if (extra !== undefined && extra[c] === 1) return true;
+      const unsure = this.unsure;
+      if (unsure !== undefined && unsure[c] === 1) return this.overlay?.has(c as NodeId) === true;
       const players = this.players;
       return players !== undefined && ((players[c] ?? 0) & this.hostile) !== 0;
     }
