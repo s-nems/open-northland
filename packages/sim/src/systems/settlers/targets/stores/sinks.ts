@@ -130,16 +130,25 @@ function sinkCaptureOf(
   if (!takesDeposits(world, e)) return null;
   const capture = spent ?? { ordinary: [], storage: [] };
   const { ordinary, storage } = capture;
-  ordinary.length = 0;
-  storage.length = 0;
+  // Written over the held lists and cut after: emptying a list first frees its storage, which the next
+  // push reserves again.
+  let taken = 0;
+  let stored = 0;
   depositCandidates(world, ctx, e);
   for (let i = 0; i < candidateCount; i++) {
     const good = candidates[i] as number;
     if (!acceptsGood(world, ctx, e, good, false)) continue;
-    ordinary.push(good);
-    if (acceptsGood(world, ctx, e, good, true)) storage.push(good);
+    if (taken < ordinary.length) ordinary[taken] = good;
+    else ordinary.push(good);
+    taken++;
+    if (!acceptsGood(world, ctx, e, good, true)) continue;
+    if (stored < storage.length) storage[stored] = good;
+    else storage.push(good);
+    stored++;
   }
-  return ordinary.length === 0 ? null : capture;
+  if (ordinary.length !== taken) ordinary.length = taken;
+  if (storage.length !== stored) storage.length = stored;
+  return taken === 0 ? null : capture;
 }
 
 /** {@link depositCandidates}' scratch list and its length: a capture reads it to the end before the next

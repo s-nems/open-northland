@@ -257,16 +257,7 @@ function contributionOf(
   const refilled = refillingGoodsOf(world, ctx, e);
   if (amounts === undefined || (amounts.size === 0 && refilled.length === 0)) return null;
   const reserved = mergedRecipeOf(world, ctx, e)?.inputs;
-  const c = spent ?? {
-    owner: undefined,
-    lent: 0,
-    goods: [],
-    units: [],
-    heldCount: 0,
-    held: [],
-    refilled,
-    storage: false,
-  };
+  const c = spent ?? freshScratch;
   c.owner = ownerOf(world, e);
   const building = world.tryGet(e, Building);
   c.storage = building !== undefined && isStorehouseType(ctx.content, building.buildingType);
@@ -281,8 +272,31 @@ function contributionOf(
     c.units[c.lent++] = amount;
     if (amount > 0) c.held[c.heldCount++] = good;
   }
-  return c;
+  if (spent !== undefined) return c;
+  return {
+    owner: c.owner,
+    lent: c.lent,
+    goods: c.goods.slice(0, c.lent),
+    units: c.units.slice(0, c.lent),
+    heldCount: c.heldCount,
+    held: c.held.slice(0, c.heldCount),
+    refilled,
+    storage: c.storage,
+  };
 }
+
+/** A store's first contribution is derived here and copied out at its own length: a list first written by
+ *  index reserves seventeen slots, for the one good a ground pile holds. */
+const freshScratch: Contribution = {
+  owner: undefined,
+  lent: 0,
+  goods: [],
+  units: [],
+  heldCount: 0,
+  held: [],
+  refilled: [],
+  storage: false,
+};
 
 function goodSetOf(byGood: Map<number, Set<Entity>>, good: number): Set<Entity> {
   let set = byGood.get(good);
