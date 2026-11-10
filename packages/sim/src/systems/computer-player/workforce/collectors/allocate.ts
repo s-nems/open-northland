@@ -215,6 +215,20 @@ export function allocateCollectors(
     const menQualify = (holders.length > 0 && genericCollectors.some(qualifies)) || force.any(qualifies);
     let steal = menQualify ? null : veteranToSteal(world, ctx, w, wanted, collectorsByGood, apprentices);
     if (!menQualify && steal === null) continue;
+    if (holders.length > 0 && builderJob !== null)
+      builders ??= seatBuilders(world, ctx, player, force, builderJob);
+    const keepBuilders = holders.length > 0 && builders !== undefined && builders <= builderFloor;
+    // Whoever would take the post is found before its spot: a post only kept builders qualify for has
+    // no taker, and the spot search is the dear part of the decision.
+    if (menQualify) {
+      const postable =
+        (holders.length > 0 && genericCollectors.some((e) => !apprentices.has(e) && qualifies(e))) ||
+        force.any((e) => qualifies(e) && !(keepBuilders && isBuilder(e)));
+      if (!postable) {
+        steal = veteranToSteal(world, ctx, w, wanted, collectorsByGood, apprentices);
+        if (steal === null) continue;
+      }
+    }
     const band =
       holders.length === 0 && COLLECTED_GOOD_IDS.includes(w.good.id) ? FIRST_POST_FLAG_BAND : undefined;
     const spot = collectorSpot(
@@ -228,9 +242,6 @@ export function allocateCollectors(
       ground.gate,
     );
     if (spot === null) continue; // no reachable free spot beside a live node of this good
-    if (holders.length > 0 && builderJob !== null)
-      builders ??= seatBuilders(world, ctx, player, force, builderJob);
-    const keepBuilders = holders.length > 0 && builders !== undefined && builders <= builderFloor;
     const spare =
       (holders.length > 0 ? takeGenericCollector(world, ctx, genericCollectors, w, apprentices) : null) ??
       force.take(
