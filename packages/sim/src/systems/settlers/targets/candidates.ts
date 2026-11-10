@@ -104,9 +104,13 @@ interface SiteSplit {
  *  list itself while no vehicle site stands. */
 function splitVehicleSites(world: World, ctx: SystemContext): Omit<SiteSplit, 'cells'> {
   const sites = world.canonicalQuery(UnderConstruction, Building, Position);
-  const served = (e: Entity): boolean => isServedConstructionSite(world, ctx.content, e);
-  const vehicle = sites.filter((e) => !served(e));
-  return { construction: vehicle.length === 0 ? sites : sites.filter(served), vehicle };
+  const vehicle: Entity[] = [];
+  for (let i = 0; i < sites.length; i++) {
+    const e = sites[i] as Entity;
+    if (!isServedConstructionSite(world, ctx.content, e)) vehicle.push(e);
+  }
+  if (vehicle.length === 0) return { construction: sites, vehicle };
+  return { construction: sites.filter((e) => isServedConstructionSite(world, ctx.content, e)), vehicle };
 }
 
 /** Snapshot the planner's canonical target categories once for the tick.

@@ -394,7 +394,12 @@ export class HeldBands {
     if (band === undefined) {
       const { world, ctx, terrain } = this;
       band = new HeldBand(world, ctx, terrain, (visit) => {
-        for (const e of StoreSinks.of(world, ctx).sinks(goodType, excludeProducers)) visit(e);
+        // forEach, not for-of: a set's iterator costs a result per member on this per-sync walk.
+        StoreSinks.of(world, ctx)
+          .sinks(goodType, excludeProducers)
+          .forEach((e) => {
+            visit(e);
+          });
       });
       memo.set(goodType, band);
     }
