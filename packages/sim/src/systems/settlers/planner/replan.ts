@@ -254,8 +254,9 @@ export function waitsInside(world: World, e: Entity): boolean {
 
 /**
  * Whether idle `e` waits a family duty out indoors on its seat's beat ({@link waitsHoldOnBeat}) with
- * nothing {@link releaseStaleIntent} would shed: the duty keeps it inside, and off its beat the sweep runs
- * only the shelter rung for it, which a shelter it already holds would answer.
+ * nothing {@link releaseStaleIntent} would shed: the duty keeps it inside, and a visit off its beat runs
+ * only the shelter rung. One that holds a shelter stays acting, since the alarm scan passes shelter
+ * holders by.
  */
 function waitsOutDutyIndoors(world: World, e: Entity): boolean {
   return (
