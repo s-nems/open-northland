@@ -21,15 +21,8 @@ import {
 } from '../../../../../src/systems/computer-player/build-order/ground/room.js';
 import { HOUSING_HOMES_CAP } from '../../../../../src/systems/computer-player/build-order/order/default-order.js';
 import type { BuildOrderEntry } from '../../../../../src/systems/computer-player/build-order/order/entries.js';
-import { buildOrderModule } from '../../../../../src/systems/computer-player/index.js';
-import {
-  BARRACKS_AND_HOME_END,
-  contextOf,
-  decide,
-  HQ,
-  island,
-  LONG_END,
-} from '../../../../fixtures/island-strip.js';
+import { buildOrderModule, roomReviewModule } from '../../../../../src/systems/computer-player/index.js';
+import { BARRACKS_AND_HOME_END, contextOf, HQ, island, LONG_END } from '../../../../fixtures/island-strip.js';
 import { BARRACKS_TYPE, oneLine, SEAT, VIKING } from '../../support.js';
 
 /** A node in the middle of the long strip, where a barracks takes room off it. */
@@ -56,10 +49,12 @@ function setFreeZones(sim: Simulation, freeZones: number, homes = 0): void {
 
 describe('seat room', () => {
   it('measures the home zones free on the land, more on more land, again only at its review', () => {
+    const review = (sim: Simulation, tick = contextOf(sim).tick) =>
+      roomReviewModule(oneLine([HELD_HOME])).run(sim.world, { ...contextOf(sim), tick }, SEAT);
     const long = island(LONG_END, []);
-    decide(long, [HELD_HOME]);
+    review(long);
     const short = island(BARRACKS_AND_HOME_END, []);
-    decide(short, [HELD_HOME]);
+    review(short);
     expect(roomOf(short).freeZones).toBeGreaterThan(0);
     expect(roomOf(long).freeZones).toBeGreaterThan(roomOf(short).freeZones);
 
@@ -75,14 +70,10 @@ describe('seat room', () => {
       force: true,
     });
     long.step();
-    decide(long, [HELD_HOME]);
+    review(long);
     expect(roomOf(long)).toEqual(measured);
     expect(measured.reviewTick).toBe(nextRoomReviewTick(contextOf(long).tick, SEAT));
-    buildOrderModule(oneLine([HELD_HOME])).run(
-      long.world,
-      { ...contextOf(long), tick: measured.reviewTick },
-      SEAT,
-    );
+    review(long, measured.reviewTick);
     expect(roomOf(long).freeZones).toBeLessThan(measured.freeZones);
   });
 
@@ -92,13 +83,15 @@ describe('seat room', () => {
       buildOrderModule(oneLine([HELD_HOME])).run(sim.world, { ...contextOf(sim), tick }, SEAT);
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: an AI seat');
+    const review = (tick: number) =>
+      roomReviewModule(oneLine([HELD_HOME])).run(sim.world, { ...contextOf(sim), tick }, SEAT);
     at(1);
+    review(1);
     expect(sim.world.has(carrier, SeatRoom)).toBe(false);
     at(GROUND_PLAN_FROM_TICKS);
     expect(sim.world.get(carrier, GroundPlan).drawn).toBe(true);
-    expect(sim.world.has(carrier, SeatRoom)).toBe(false);
-    // Measured on the decision after the draw, which the plots are already standing on.
-    at(GROUND_PLAN_FROM_TICKS + 1);
+    // Measured on the review after the draw, which the plots are already standing on.
+    review(GROUND_PLAN_FROM_TICKS);
     expect(sim.world.has(carrier, SeatRoom)).toBe(true);
   });
 

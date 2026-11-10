@@ -126,6 +126,15 @@ export function freeHomeZones(
   return fits;
 }
 
+/** Whether the seat's room is measured on this tick: never yet, or its review is due
+ *  ({@link nextRoomReviewTick}). */
+export function roomReviewDue(world: World, ctx: SystemContext, player: number): boolean {
+  const carrier = aiControlEntity(world, player);
+  if (carrier === null) return false;
+  const held = world.tryGet(carrier, SeatRoom);
+  return held === undefined || ctx.tick >= held.reviewTick;
+}
+
 /**
  * Measures the seat's room ({@link freeHomeZones}), as far as its readers need with its housing lane's
  * `homesCap`, and counts its homes of `owned`, sites included, once its review is due

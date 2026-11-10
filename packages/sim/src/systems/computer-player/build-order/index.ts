@@ -7,6 +7,7 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { World } from '../../../ecs/world.js';
+import { ROOM_REVIEW_PHASE } from '../../ai-shared/cadence.js';
 import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { everyBuildingOf, homeBuildings } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
@@ -20,7 +21,7 @@ import { towerUpgradeWaits } from './ground/front.js';
 import { grassReserved } from './ground/grass-reserve.js';
 import { keepGroundPlan } from './ground/ground-plan.js';
 import { placementSpot, siteCommand } from './ground/placement.js';
-import { keepSeatRoom } from './ground/room.js';
+import { keepSeatRoom, roomReviewDue } from './ground/room.js';
 import {
   type BuildLine,
   type BuildLineId,
@@ -156,6 +157,45 @@ export function buildOrderModule(order: BuildOrder): ComputerModule {
   };
 }
 
+/**
+ * The seat's room review ({@link keepSeatRoom}) as a module of its own, on the road module's tick: a review
+ * walks the whole placement area, a few milliseconds, which the build order's own tick has no room for.
+ * The build order reads the room the last review left, so every step of a decision reads the same room.
+ */
+export function roomReviewModule(order: BuildOrder): ComputerModule {
+  return {
+    id: 'houseBuild',
+    phase: ROOM_REVIEW_PHASE,
+    run: (world, ctx, player) => {
+      reviewSeatRoom(world, ctx, player, order);
+      return [];
+    },
+  };
+}
+
+function reviewSeatRoom(world: World, ctx: SystemContext, player: number, fullOrder: BuildOrder): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined || !roomReviewDue(world, ctx, player)) return;
+  const base = seatBaseOf(world, ctx, player);
+  const anchor = base === null ? null : anchorNodeOf(world, base);
+  const tribe = playerPlacementTribes(world, player)?.[0];
+  if (anchor === null || tribe === undefined) return;
+  const order = seatBuildOrder(world, ctx, player, fullOrder, computerProfileOf(world, player));
+  const owned = homeBuildings(world, ctx, player);
+  const cap = housingCap(world, player, order);
+  keepSeatRoom(
+    world,
+    ctx,
+    terrain,
+    player,
+    owned,
+    anchor,
+    tribe,
+    cap,
+    () => seatSiege(world, ctx, terrain, player, owned).underFire,
+  );
+}
+
 function runBuildOrder(
   world: World,
   ctx: SystemContext,
@@ -228,19 +268,6 @@ function runBuildOrder(
   if (lift !== null && !siegeOf().attacked) return started(lift);
   const anchor = anchorNodeOf(world, base);
   if (anchor === null) return [];
-  // Measured before the statuses, so the filled tower ring reads the same room as the homes.
-  if (tribe !== undefined)
-    keepSeatRoom(
-      world,
-      ctx,
-      terrain,
-      player,
-      owned,
-      anchor,
-      tribe,
-      housingCap(world, player, order),
-      () => siegeOf().underFire,
-    );
   const index = contentIndex(ctx.content);
   const lines = linesByPriority(order);
 

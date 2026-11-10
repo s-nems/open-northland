@@ -439,6 +439,9 @@ describe('computerPlayerSystem - cadence, stagger, and module gates', () => {
     const world = worldWithSeats(...Array.from({ length: MAX_PLAYERS }, (_, player) => player));
     const commands = new CommandQueue();
     const DEAR: readonly string[] = ['collectResources', 'houseBuild', 'military'];
+    const SHARING: readonly string[] = ['colony', 'roomReview'];
+    // The room review runs under the build order's toggle, as the last module.
+    const ROOM_REVIEW = COMPUTER_MODULES.length - 1;
     const runs: Array<{ tick: number; player: number; module: number }> = [];
     const modules = COMPUTER_MODULES.map(
       (real, module): ComputerModule => ({
@@ -459,12 +462,14 @@ describe('computerPlayerSystem - cadence, stagger, and module gates', () => {
     for (const run of runs) {
       const phase = COMPUTER_MODULES[run.module]?.phase ?? run.module;
       expect(computerDecisionDue(run.tick - phase * COMPUTER_MODULE_PHASE_TICKS, run.player)).toBe(true);
-      byTick.set(run.tick, [...(byTick.get(run.tick) ?? []), COMPUTER_MODULES[run.module]?.id ?? '']);
+      const id = run.module === ROOM_REVIEW ? 'roomReview' : (COMPUTER_MODULES[run.module]?.id ?? '');
+      byTick.set(run.tick, [...(byTick.get(run.tick) ?? []), id]);
     }
     for (const ids of byTick.values()) {
       expect(ids.filter((id) => DEAR.includes(id)).length).toBeLessThanOrEqual(1);
-      // The colony shares the population's tick: an idle seat's colony costs one read.
-      expect(ids.filter((id) => !DEAR.includes(id) && id !== 'colony').length).toBeLessThanOrEqual(1);
+      // The colony shares the population's tick: an idle seat's colony costs one read. The room review
+      // shares the road module's and is due once in fifteen decisions.
+      expect(ids.filter((id) => !DEAR.includes(id) && !SHARING.includes(id)).length).toBeLessThanOrEqual(1);
     }
   });
 

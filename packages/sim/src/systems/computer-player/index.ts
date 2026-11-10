@@ -5,7 +5,7 @@ import type { World } from '../../ecs/world.js';
 import { computerDecisionDue, moduleBeatDue } from '../ai-shared/cadence.js';
 import type { System, SystemContext } from '../context.js';
 import { catchUpSeatStock } from '../stores/index.js';
-import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
+import { buildOrderModule, DEFAULT_BUILD_ORDER, roomReviewModule } from './build-order/index.js';
 import { colonyModule } from './colony/index.js';
 import { updateComputerIntel } from './knowledge/intel/index.js';
 import { ensureMapBrief } from './knowledge/map-brief/index.js';
@@ -70,8 +70,9 @@ export const COMPUTER_MODULES: readonly ComputerModule[] = [
   scoutModule(DEFAULT_BUILD_ORDER),
   populationModule,
   militaryModule,
-  // Last, on a phase of its own choosing: the six indices above and the military phase stay put.
+  // Last, on phases of their own choosing: the six indices above and the military phase stay put.
   colonyModule,
+  roomReviewModule(DEFAULT_BUILD_ORDER),
 ];
 
 /**
