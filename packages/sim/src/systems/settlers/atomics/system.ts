@@ -77,26 +77,32 @@ export const atomicSystem: System = (world, ctx) => {
     // completion fallback; a bound clip with no attack event is a visual feint.
     if (running.effect.kind === 'attack') {
       const frames = running.effect.hitFrames;
+      let struck = false;
       if (frames === undefined) {
-        if (elapsed === duration) resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
+        struck = elapsed === duration;
+        if (struck) resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
       } else {
         // Indexed, with no closure: every swing in flight asks this every tick.
         for (let i = 0; i < frames.length; i++) {
-          if (elapsed === eventTickWithin(frames[i] as number, duration))
-            resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
+          if (elapsed !== eventTickWithin(frames[i] as number, duration)) continue;
+          struck = true;
+          resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
         }
       }
       const lunge = running.effect.lunge;
       if (lunge !== undefined && lungesOn(lunge.frames, elapsed))
         lungeForward(world, ctx, e, lunge.direction);
-      // A blow may have rewritten the striker's identity, so its clip is joined again.
-      settler = world.tryGet(e, Settler);
-      clip = settler === undefined ? undefined : atomicClip(ctx.content, settler, running.atomicId);
+      // A blow may have rewritten the striker's identity, so its clip is joined again after one.
+      if (struck) {
+        settler = world.tryGet(e, Settler);
+        clip = settler === undefined ? undefined : atomicClip(ctx.content, settler, running.atomicId);
+      }
     }
 
     if (needsOn && !workshopDisplay && settler !== undefined)
       applyClipNeedEvents(world, ctx, e, settler, clip, elapsed);
-    applyAtomicStockEvents(world, ctx, e, running, elapsed);
+    // Tested here: only a slaughter clip deposits, and the pass is too large for the call to inline.
+    if (running.effect.kind === 'slay') applyAtomicStockEvents(world, ctx, e, running, elapsed);
     emitAtomicSoundCues(world, ctx, e, running, elapsed, clip);
 
     if (elapsed < duration) continue;
