@@ -38,8 +38,7 @@ export const enContent = {
     longbow: 'Longbow Archer',
   },
   category: {
-    gathering: 'Extraction',
-    transport: 'Transport',
+    basic: 'Basic',
     production: 'Crafting',
     special: 'Special',
     military: 'Military',

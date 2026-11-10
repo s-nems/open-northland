@@ -38,8 +38,7 @@ export const ruContent = {
     longbow: 'Стрелок с длинным луком',
   },
   category: {
-    gathering: 'Добыча',
-    transport: 'Перевозка',
+    basic: 'Основные',
     production: 'Ремесло',
     special: 'Особое',
     military: 'Военное дело',

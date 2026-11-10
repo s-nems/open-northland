@@ -38,8 +38,7 @@ export const chtContent = {
     longbow: '長弓手',
   },
   category: {
-    gathering: '採集',
-    transport: '運輸',
+    basic: '基本',
     production: '手工業',
     special: '特殊',
     military: '軍事',

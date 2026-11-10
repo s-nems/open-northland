@@ -38,21 +38,3 @@ it('treats the pupil trade and its learned courses as known, not other trades or
   expect(knowsCourse(learner, { target: 'job', typeId: 11, label: 'Garncarz' })).toBe(false);
   expect(knowsCourse(learner, { target: 'good', typeId: 13, label: 'Kolczuga' })).toBe(false);
 });
-it('keeps only visible professions and orders each group by its label', async () => {
-  const { professionChoices } = await import('../../../../src/hud/dom/profession-choices.js');
-  const choices = professionChoices(
-    [
-      { kind: 'profession', jobType: 6, label: 'Cywil' },
-      { kind: 'header', label: 'Rzemiosło' },
-      { kind: 'profession', jobType: 13, label: 'Kowal' },
-      { kind: 'profession', jobType: 9, label: 'Cieśla' },
-      { kind: 'profession', jobType: 11, label: 'Garncarz' },
-    ],
-    (job) => job !== 11,
-    (job) => job !== 13,
-    () => 'Wymagana nauka',
-  );
-  const rows = choices.flatMap((group) => group.rows);
-  expect(rows.map((row) => row.label)).toEqual(['Cieśla', 'Cywil', 'Kowal']);
-  expect(rows.find((row) => row.key === '13')?.reason).toBe('Wymagana nauka');
-});

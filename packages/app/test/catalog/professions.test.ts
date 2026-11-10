@@ -41,17 +41,17 @@ describe('profession catalog + i18n', () => {
     expect(professionLabel('soldier')).toBe('Żołnierz');
   });
 
-  it('builds a grouped picker list: Cywil leads ungrouped, then a header opens each category', () => {
+  it('builds a grouped picker list: a header opens each category, Cywil in the basic one', () => {
     const entries = pickerEntries();
-    // The leading row assigns the original's civilist job (6) - the no-trade adult no workplace employs.
-    expect(entries[0]).toEqual({ kind: 'profession', jobType: JOB_CIVILIST, label: 'Cywil' });
-    expect(entries[1]?.kind).toBe('header');
+    // The civilist row assigns the original's job 6 - the no-trade adult no workplace employs.
+    expect(entries.slice(0, 2)).toEqual([
+      { kind: 'header', label: 'Podstawowe' },
+      { kind: 'profession', jobType: JOB_CIVILIST, label: 'Cywil' },
+    ]);
+    expect(entries[2]).toMatchObject({ kind: 'profession', jobType: PROFESSIONS[0]?.jobType });
     const rows = entries.filter((e) => e.kind === 'profession');
-    expect(rows).toHaveLength(PROFESSIONS.length + 1); // the roster + the leading Civilian row
-    // The first row after the first header is the first roster profession.
-    const firstRosterRow = entries
-      .slice(2)
-      .find((e): e is Extract<typeof e, { kind: 'profession' }> => e.kind === 'profession');
-    expect(firstRosterRow?.jobType).toBe(PROFESSIONS[0]?.jobType);
+    expect(rows).toHaveLength(PROFESSIONS.length + 1); // the roster + the Civilian row
+    const categories = new Set(PROFESSIONS.map((p) => p.category));
+    expect(entries.filter((e) => e.kind === 'header')).toHaveLength(categories.size);
   });
 });

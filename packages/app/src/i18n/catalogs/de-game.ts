@@ -197,7 +197,6 @@ export const deGame = {
     choiceSearch: 'Suchen…',
     choiceEmpty: 'Noch keine Optionen entdeckt.',
     choiceNoMatches: 'Keine passenden Optionen.',
-    choiceBasic: 'Grundlegend',
     choiceMethods: 'Produktionsmethode',
     schoolPlaces: 'Plätze: {occupied} / {capacity}',
     schoolPlacesQueued: 'Plätze: {occupied} / {capacity} · Warteschlange: {queued}',

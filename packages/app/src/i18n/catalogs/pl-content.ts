@@ -38,8 +38,7 @@ export const plContent = {
     longbow: 'Łucznik (długi łuk)',
   },
   category: {
-    gathering: 'Wydobywanie',
-    transport: 'Transport',
+    basic: 'Podstawowe',
     production: 'Rzemiosło',
     special: 'Specjalne',
     military: 'Wojsko',

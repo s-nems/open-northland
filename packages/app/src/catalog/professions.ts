@@ -60,20 +60,20 @@ export function isSoldierJob(jobType: number): boolean {
 /** The complete roster in picker order; `pickerEntries` inserts a header wherever the category changes. */
 export const PROFESSIONS: readonly ProfessionDef[] = [
   {
+    key: 'builder',
+    jobType: JOB_BUILDER,
+    category: 'basic',
+    source: 'jobtypes.ini 7 "builder"',
+  },
+  {
     key: 'collector',
     goods: ['wood', 'mud', 'stone', 'iron', 'gold', 'mushroom'],
     jobType: JOB_COLLECTOR,
-    category: 'gathering',
+    category: 'basic',
     icon: 'wood',
     source: 'jobtypes.ini 8 "collector"',
   },
-  { key: 'carrier', jobType: JOB_CARRIER, category: 'transport', source: 'jobtypes.ini 24 "carrier"' },
-  {
-    key: 'builder',
-    jobType: JOB_BUILDER,
-    category: 'production',
-    source: 'jobtypes.ini 7 "builder"',
-  },
+  { key: 'carrier', jobType: JOB_CARRIER, category: 'basic', source: 'jobtypes.ini 24 "carrier"' },
   {
     key: 'joiner',
     goods: [
@@ -263,14 +263,19 @@ export type PickerEntry =
   | { readonly kind: 'header'; readonly label: string }
   | { readonly kind: 'profession'; readonly jobType: number; readonly label: string };
 
-/** The localized picker list, top to bottom: a `header` entry at every category boundary. */
+/** The profession the picker lists first, above the rest of its group by name: a layout choice of
+ *  this project, putting the trade every settlement needs at hand. */
+export const LEADING_PROFESSION = JOB_BUILDER;
+
+/** The localized picker list, top to bottom: a `header` entry opens every category. */
 export function pickerEntries(locale?: Locale): PickerEntry[] {
-  // The civilist job (`jobtypes.ini` 6) leads the list but is not a roster row: no workplace employs
-  // it, so assigning it means the settler does nothing until re-traded.
+  // The civilist job (`jobtypes.ini` 6) is in the basic group but is not a roster row: no workplace
+  // employs it, so assigning it means the settler does nothing until re-traded.
   const entries: PickerEntry[] = [
+    { kind: 'header', label: categoryLabel('basic', locale) },
     { kind: 'profession', jobType: JOB_CIVILIST, label: professionLabel('idle', locale) },
   ];
-  let group: ProfessionCategory | null = null;
+  let group: ProfessionCategory = 'basic';
   for (const p of PROFESSIONS) {
     if (p.category !== group) {
       group = p.category;

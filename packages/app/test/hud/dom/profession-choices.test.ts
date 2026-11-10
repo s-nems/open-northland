@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { JOB_BUILDER, JOB_CIVILIST, JOB_POTTER } from '../../../src/catalog/jobs.js';
-import { type PickerEntry, pickerEntries } from '../../../src/catalog/professions.js';
+import { JOB_BUILDER, JOB_CARRIER, JOB_CIVILIST, JOB_POTTER } from '../../../src/catalog/jobs.js';
+import { LEADING_PROFESSION, type PickerEntry, pickerEntries } from '../../../src/catalog/professions.js';
 import { professionChoices } from '../../../src/hud/dom/profession-choices.js';
 
 const ENTRIES: readonly PickerEntry[] = [
+  { kind: 'header', label: 'Basic' },
   { kind: 'profession', jobType: 0, label: 'Idle' },
-  { kind: 'header', label: 'Gathering' },
-  { kind: 'profession', jobType: 1, label: 'Collector' },
-  { kind: 'header', label: 'Transport' },
+  { kind: 'header', label: 'Special' },
   { kind: 'header', label: 'Production' },
   { kind: 'profession', jobType: 2, label: 'Joiner' },
   { kind: 'profession', jobType: 3, label: 'Mason' },
@@ -45,6 +44,20 @@ describe('professionChoices', () => {
         ],
       },
     ]);
+  });
+
+  it('lists the leading profession first and the rest of its group by name', () => {
+    const groups = professionChoices(
+      [
+        { kind: 'header', label: 'Basic' },
+        { kind: 'profession', jobType: JOB_CIVILIST, label: 'Civilian' },
+        { kind: 'profession', jobType: LEADING_PROFESSION, label: 'Worker' },
+        { kind: 'profession', jobType: JOB_CARRIER, label: 'Carrier' },
+      ],
+      () => true,
+      () => true,
+    );
+    expect(groups[0]?.rows.map((row) => row.label)).toEqual(['Worker', 'Carrier', 'Civilian']);
   });
 
   it('leads each trade with its products, and non-producing trades with none', () => {

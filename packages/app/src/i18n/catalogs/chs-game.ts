@@ -159,7 +159,6 @@ export const chsGame = {
     choiceSearch: '搜索…',
     choiceEmpty: '没有已发现的选项。',
     choiceNoMatches: '没有匹配的选项。',
-    choiceBasic: '基础',
     choiceMethods: '生产方式',
     schoolPlaces: '名额：{occupied} / {capacity}',
     schoolPlacesQueued: '名额：{occupied} / {capacity} · 排队：{queued}',

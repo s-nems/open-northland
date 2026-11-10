@@ -1,4 +1,4 @@
-import { type PickerEntry, professionGoods } from '../../catalog/professions.js';
+import { LEADING_PROFESSION, type PickerEntry, professionGoods } from '../../catalog/professions.js';
 import { compareLabels, messages } from '../../i18n/index.js';
 import type { ChoiceGroup, ChoiceRow } from './choice-window.js';
 
@@ -9,14 +9,13 @@ export function professionChoices(
   reason?: (jobType: number) => string,
 ): ChoiceGroup[] {
   const groups: { label: string; rows: ChoiceRow[] }[] = [];
-  let group: (typeof groups)[number] = { label: messages().hud.choiceBasic, rows: [] };
-  groups.push(group);
   for (const entry of professions) {
     if (entry.kind === 'header') {
-      group = { label: entry.label, rows: [] };
-      groups.push(group);
+      groups.push({ label: entry.label, rows: [] });
       continue;
     }
+    const group = groups.at(-1);
+    if (group === undefined) throw new Error(`professionChoices: job ${entry.jobType} has no group header`);
     if (!visible(entry.jobType)) continue;
     const goods = professionGoods(entry.jobType);
     group.rows.push({
@@ -28,10 +27,9 @@ export function professionChoices(
         : { reason: reason?.(entry.jobType) ?? messages().hud.technologyExperience }),
     });
   }
-  // The leading ungrouped civilian, gathering and transport rows form the compact basic group.
-  const basics = groups.splice(0, 3);
-  groups.unshift({ label: messages().hud.choiceBasic, rows: basics.flatMap((part) => part.rows) });
   const compare = compareLabels();
-  for (const part of groups) part.rows.sort((a, b) => compare(a.label, b.label));
+  const leader = String(LEADING_PROFESSION);
+  const rank = (row: ChoiceRow): number => (row.key === leader ? 0 : 1);
+  for (const part of groups) part.rows.sort((a, b) => rank(a) - rank(b) || compare(a.label, b.label));
   return groups.filter((part) => part.rows.length > 0);
 }

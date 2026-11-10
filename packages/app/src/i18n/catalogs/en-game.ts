@@ -174,7 +174,6 @@ export const enGame = {
     choiceSearch: 'Search…',
     choiceEmpty: 'No discovered choices.',
     choiceNoMatches: 'No matching choices.',
-    choiceBasic: 'Basic',
     choiceMethods: 'Production method',
     schoolPlaces: 'Places: {occupied} / {capacity}',
     schoolPlacesQueued: 'Places: {occupied} / {capacity} · Queue: {queued}',

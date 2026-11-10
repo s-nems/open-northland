@@ -194,7 +194,6 @@ export const ruGame = {
     choiceSearch: 'Поиск…',
     choiceEmpty: 'Варианты ещё не открыты.',
     choiceNoMatches: 'Нет подходящих вариантов.',
-    choiceBasic: 'Основные',
     choiceMethods: 'Способ производства',
     schoolPlaces: 'Места: {occupied} / {capacity}',
     schoolPlacesQueued: 'Места: {occupied} / {capacity} · В очереди: {queued}',

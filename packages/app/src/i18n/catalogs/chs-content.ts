@@ -38,8 +38,7 @@ export const chsContent = {
     longbow: '长弓手',
   },
   category: {
-    gathering: '采集',
-    transport: '运输',
+    basic: '基础',
     production: '手工业',
     special: '特殊',
     military: '军事',

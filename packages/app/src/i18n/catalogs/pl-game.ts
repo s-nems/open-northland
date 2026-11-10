@@ -168,7 +168,6 @@ export const plGame = {
     choiceSearch: 'Szukaj…',
     choiceEmpty: 'Brak odkrytych opcji.',
     choiceNoMatches: 'Brak pasujących opcji.',
-    choiceBasic: 'Podstawowe',
     choiceMethods: 'Metoda produkcji',
     schoolPlaces: 'Miejsca: {occupied} / {capacity}',
     schoolPlacesQueued: 'Miejsca: {occupied} / {capacity} · W kolejce: {queued}',

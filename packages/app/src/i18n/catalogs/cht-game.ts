@@ -159,7 +159,6 @@ export const chtGame = {
     choiceSearch: '搜尋…',
     choiceEmpty: '沒有已發現的選項。',
     choiceNoMatches: '沒有符合的選項。',
-    choiceBasic: '基本',
     choiceMethods: '生產方式',
     schoolPlaces: '名額：{occupied} / {capacity}',
     schoolPlacesQueued: '名額：{occupied} / {capacity} · 排隊：{queued}',

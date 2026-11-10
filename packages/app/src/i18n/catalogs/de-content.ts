@@ -38,8 +38,7 @@ export const deContent = {
     longbow: 'Langbogenschütze',
   },
   category: {
-    gathering: 'Abbau',
-    transport: 'Transport',
+    basic: 'Grundlegend',
     production: 'Handwerk',
     special: 'Spezial',
     military: 'Militär',
