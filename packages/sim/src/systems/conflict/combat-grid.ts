@@ -814,6 +814,9 @@ export class CombatGrid {
     }
   }
 
+  /** {@link nearOf}'s result, reused: a caller reads it before the next call. */
+  private readonly near = { nearMask: 0, nearUndiscounted: false };
+
   private nearOf(cell: CoarseCell, reach: number): { nearMask: number; nearUndiscounted: boolean } {
     const cx = cell.index % this.cols;
     const cy = Math.floor(cell.index / this.cols);
@@ -827,7 +830,9 @@ export class CombatGrid {
         if (near.undiscounted > 0) nearUndiscounted = true;
       }
     }
-    return { nearMask, nearUndiscounted };
+    this.near.nearMask = nearMask;
+    this.near.nearUndiscounted = nearUndiscounted;
+    return this.near;
   }
 
   /** The `verifyCaches` tripwire: a layer no journaled change calls stale must match a fresh derivation. */

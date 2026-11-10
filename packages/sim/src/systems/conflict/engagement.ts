@@ -169,6 +169,14 @@ export class EngagementSpecs {
   };
 
   private readonly lowPriority = (t: Entity): boolean => this.index.isLowPriorityBuilding(t);
+  /** The first of the leading `bound` {@link PICK_TIERS} `t` is of, or `bound` for none. The combat tier
+   *  alone is their first, so one ranking serves both picks. */
+  readonly rank = (t: Entity, bound: number): number => {
+    for (let kind = 0; kind < bound; kind++) {
+      if (PICK_TIERS[kind]?.(this.world, this.ctx, this.index, t) === true) return kind;
+    }
+    return bound;
+  };
   private spec:
     | {
         accept: (t: Entity) => boolean;
@@ -921,19 +929,14 @@ function pickByTier(
   tiers: readonly PickTier[] = PICK_TIERS,
 ): { entity: Entity; distance: number } | null {
   const { index } = pass;
-  const rank = (t: Entity, bound: number): number => {
-    for (let kind = 0; kind < bound; kind++) {
-      if (tiers[kind]?.(world, ctx, index, t) === true) return kind;
-    }
-    return bound;
-  };
+  pass.specs ??= new EngagementSpecs(world, ctx, terrain, index);
   // The first tier holding an acceptor wins, so one scan ranks every candidate by its first tier.
   const found = index.nearestFewOfBestRank(
     x,
     y,
     spec.minDist,
     spec.searchRadius,
-    rank,
+    pass.specs.rank,
     tiers.length,
     spec.accept,
     PICK_CANDIDATES,

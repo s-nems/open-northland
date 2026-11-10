@@ -139,7 +139,8 @@ function answerAlarm(
       distance <= ALARM_PEOPLE_RADIUS_NODES && world.has(entity, Person) && !indoors(world, entity),
   );
   const struckBack = strikeBack(world, ctx, terrain, alarm.victim, alarm.attacker, people);
-  for (const { entity, distance } of answering) {
+  for (let i = 0; i < answering.length; i++) {
+    const { entity, distance } = answering[i] as { entity: Entity; distance: number };
     if (!world.has(entity, Person) || indoors(world, entity)) continue;
     const settler = world.get(entity, Settler);
     const mode = stanceMode(world, ctx.content, entity, settler.jobType);

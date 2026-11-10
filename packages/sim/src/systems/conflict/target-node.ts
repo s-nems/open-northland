@@ -27,6 +27,8 @@ interface BuildingBodyCache {
   readonly content: ContentSet;
   readonly terrain: TerrainGraph;
   bodies: Map<Entity, readonly NodeId[]>;
+  /** Drops one entity's held body; kept so the per-tick replay mints no closure. */
+  readonly drop: (e: Entity) => void;
 }
 
 const bodyCache = new WeakMap<World, BuildingBodyCache>();
@@ -79,10 +81,7 @@ function liveBodies(world: World, ctx: MapContext, terrain: TerrainGraph): Map<E
       cached.valueGeneration !== valueGeneration ||
       cached.positionGeneration !== positionGeneration
     ) {
-      const bodies = cached.bodies;
-      const drop = (e: Entity): void => {
-        bodies.delete(e);
-      };
+      const { drop } = cached;
       const replayed =
         world.replayMembershipSince(Building, cached.membershipGeneration, drop) &&
         world.replayValueWritesSince(Building, cached.valueGeneration, drop) &&
@@ -99,14 +98,18 @@ function liveBodies(world: World, ctx: MapContext, terrain: TerrainGraph): Map<E
   world.journalMembership(Position);
   const bodies = new Map<Entity, readonly NodeId[]>();
   const content = ctx.content;
-  bodyCache.set(world, {
+  const cache: BuildingBodyCache = {
     membershipGeneration,
     valueGeneration,
     positionGeneration,
     content,
     terrain,
     bodies,
-  });
+    drop: (e) => {
+      cache.bodies.delete(e);
+    },
+  };
+  bodyCache.set(world, cache);
   world.registerCacheVerifier('combatBuildingBodies', () => verifyBodyCache(world, content, terrain));
   return bodies;
 }

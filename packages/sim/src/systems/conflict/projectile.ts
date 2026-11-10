@@ -55,7 +55,9 @@ export const projectileSystem: System = (world, ctx) => {
   // Deferred reactions from any survivor struck this tick, so a flinch added mid-loop cannot perturb a
   // later projectile's hit decision.
   const pendingReactions: PendingHitReaction[] = [];
-  for (const p of world.canonicalQuery(Projectile, Position)) {
+  const shots = world.canonicalQuery(Projectile, Position);
+  for (let i = 0; i < shots.length; i++) {
+    const p = shots[i] as Entity;
     const proj = world.get(p, Projectile);
     // Loosed this tick: it does not move, so a shot is observable at its launch point (approximated - the
     // sub-tick release instant is unreadable).
