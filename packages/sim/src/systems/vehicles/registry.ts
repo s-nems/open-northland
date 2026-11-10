@@ -16,18 +16,19 @@ export interface VehicleIndex {
   has(e: Entity): boolean;
 }
 
+/** The index and the store generations it was built at: membership of the three stores plus the value
+ *  generations a script's owner or id change bumps. */
 interface VehicleIndexCache {
-  readonly key: string;
-  readonly index: VehicleIndex;
+  vehicles: number;
+  owners: number;
+  ownerValues: number;
+  missions: number;
+  missionValues: number;
+  index: VehicleIndex;
 }
 
 const NONE: readonly Entity[] = [];
 const vehicleIndexCache = new WeakMap<World, VehicleIndexCache>();
-
-/** Membership of the three stores plus the value generations a script's owner or id change bumps. */
-function indexKey(world: World): string {
-  return `${world.componentGeneration(Vehicle)}.${world.componentGeneration(Owner)}.${world.componentValueGeneration(Owner)}.${world.componentGeneration(MissionObjectId)}.${world.componentValueGeneration(MissionObjectId)}`;
-}
 
 function buildIndex(world: World): VehicleIndex {
   const all: Entity[] = [];
@@ -59,12 +60,78 @@ function push(map: Map<number, Entity[]>, key: number, e: Entity): void {
 /** The current index, rebuilt when any of its inputs changed. The lists are the shared cached copies:
  *  a caller that removes vehicles while walking one must not hold it across the removal, so copy first. */
 export function vehicleIndex(world: World): VehicleIndex {
-  const key = indexKey(world);
+  const vehicles = world.componentGeneration(Vehicle);
+  const owners = world.componentGeneration(Owner);
+  const ownerValues = world.componentValueGeneration(Owner);
+  const missions = world.componentGeneration(MissionObjectId);
+  const missionValues = world.componentValueGeneration(MissionObjectId);
   const cached = vehicleIndexCache.get(world);
-  if (cached !== undefined && cached.key === key) return cached.index;
+  if (
+    cached !== undefined &&
+    cached.vehicles === vehicles &&
+    cached.ownerValues === ownerValues &&
+    cached.missions === missions &&
+    cached.missionValues === missionValues &&
+    // Owners come and go with every birth, death and dropped heap; only a vehicle's own moves the index.
+    (cached.owners === owners || noVehicleOwnerMoved(world, cached.owners))
+  ) {
+    cached.owners = owners;
+    return cached.index;
+  }
   const index = buildIndex(world);
-  vehicleIndexCache.set(world, { key, index });
+  if (cached === undefined) {
+    world.journalMembership(Owner);
+    world.registerCacheVerifier('vehicleIndex', () => verifyVehicleIndex(world));
+    vehicleIndexCache.set(world, { vehicles, owners, ownerValues, missions, missionValues, index });
+  } else {
+    cached.vehicles = vehicles;
+    cached.owners = owners;
+    cached.ownerValues = ownerValues;
+    cached.missions = missions;
+    cached.missionValues = missionValues;
+    cached.index = index;
+  }
   return index;
+}
+
+/** Whether the Owner journal replays every change since generation `since` and none touched a vehicle. */
+function noVehicleOwnerMoved(world: World, since: number): boolean {
+  journalWorld = world;
+  vehicleOwnerMoved = false;
+  const replayed = world.replayMembershipSince(Owner, since, noteVehicleOwner);
+  journalWorld = undefined;
+  return replayed && !vehicleOwnerMoved;
+}
+
+/** The world {@link noteVehicleOwner} reads, set only while {@link noVehicleOwnerMoved} replays. */
+let journalWorld: World | undefined;
+let vehicleOwnerMoved = false;
+function noteVehicleOwner(entity: Entity): void {
+  if (journalWorld?.has(entity, Vehicle)) vehicleOwnerMoved = true;
+}
+
+/** The held index, when the next ask would hand it out, must list what a fresh one lists. */
+function verifyVehicleIndex(world: World): string[] {
+  const cached = vehicleIndexCache.get(world);
+  if (
+    cached === undefined ||
+    cached.vehicles !== world.componentGeneration(Vehicle) ||
+    cached.ownerValues !== world.componentValueGeneration(Owner) ||
+    cached.missions !== world.componentGeneration(MissionObjectId) ||
+    cached.missionValues !== world.componentValueGeneration(MissionObjectId) ||
+    (cached.owners !== world.componentGeneration(Owner) && !noVehicleOwnerMoved(world, cached.owners))
+  )
+    return [];
+  const fresh = buildIndex(world);
+  const same = (a: readonly Entity[], b: readonly Entity[]): boolean =>
+    a.length === b.length && a.every((e, i) => e === b[i]);
+  if (!same(cached.index.all, fresh.all)) return ['vehicleIndex lists other vehicles than the store holds'];
+  for (const e of fresh.all) {
+    const owner = world.tryGet(e, Owner)?.player;
+    if (owner !== undefined && !same(cached.index.ownedBy(owner), fresh.ownedBy(owner)))
+      return [`vehicleIndex holds a stale owner list for player ${owner}`];
+  }
+  return [];
 }
 
 /** Whether a vehicle's own state puts it on a per-tick drive. Reads the `Vehicle` value and the content
