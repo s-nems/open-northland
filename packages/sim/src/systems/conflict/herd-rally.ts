@@ -1,4 +1,11 @@
-import { Engagement, engagementRecord, Frightened, isWildlife, Owner, Settler } from '../../components/index.js';
+import {
+  Engagement,
+  engagementRecord,
+  Frightened,
+  isWildlife,
+  Owner,
+  Settler,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';

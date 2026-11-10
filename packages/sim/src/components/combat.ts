@@ -75,7 +75,10 @@ export const Engagement = defineComponent<{
 
 /** A fresh {@link Engagement} with every key present in one order, so the engagements a pass reads share
  *  one hidden class. An undefined key hashes and saves as absent, so the shape is invisible to state. */
-export function engagementRecord(repathAt: number, target?: Entity): {
+export function engagementRecord(
+  repathAt: number,
+  target?: Entity,
+): {
   repathAt: number;
   stall: { target: Entity; routes: number } | undefined;
   target: Entity | undefined;

@@ -121,11 +121,8 @@ export class EngagementSpecs {
   };
   /** Whether `t` stands on the ground a defender guards around its anchor. */
   private readonly nearAnchor = (t: Entity): boolean =>
-    hexNodeDistance(
-      this.terrain,
-      this.current().anchor,
-      entityNode(this.world, this.terrain, t),
-    ) <= DEFEND_RADIUS_NODES;
+    hexNodeDistance(this.terrain, this.current().anchor, entityNode(this.world, this.terrain, t)) <=
+    DEFEND_RADIUS_NODES;
   // Original behavior: the search has no sight or fog check; hostility (war only for two players) and
   // reach decide.
   private readonly advanceAccept = (t: Entity): boolean => {
