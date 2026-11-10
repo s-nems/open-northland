@@ -51,6 +51,9 @@ export function adjustInventory(totals: Map<number, number>, amounts: AmountPair
 
 interface Source {
   readonly owner: number | undefined;
+  /** Whether the entity is a vehicle, the only kind a mooring can place: a step of any other source
+   *  reads its node off its position alone. */
+  readonly vehicle: boolean;
   /** Rewritten in place when the entity steps onto another node. */
   node: HalfCellNode | null;
   readonly parent: number | undefined;
@@ -95,21 +98,25 @@ function mooringOf(c: Components): HalfCellNode | null {
   return typeof mooring?.hx === 'number' && typeof mooring.hy === 'number' ? (mooring as HalfCellNode) : null;
 }
 
-function nodeHx(c: Components, position: { readonly x: number; readonly y: number }): number {
-  return mooringOf(c)?.hx ?? nodeHxOfPosition(position.x as Fixed, position.y as Fixed);
+/** The node a source at `position` counts from: its mooring's, or the one it stands on. */
+function nodeHx(mooring: HalfCellNode | null, position: { readonly x: number; readonly y: number }): number {
+  return mooring === null ? nodeHxOfPosition(position.x as Fixed, position.y as Fixed) : mooring.hx;
 }
 
-function nodeHy(c: Components, position: { readonly x: number; readonly y: number }): number {
-  return mooringOf(c)?.hy ?? nodeHyOfPosition(position.x as Fixed, position.y as Fixed);
+function nodeHy(mooring: HalfCellNode | null, position: { readonly x: number; readonly y: number }): number {
+  return mooring === null ? nodeHyOfPosition(position.x as Fixed, position.y as Fixed) : mooring.hy;
 }
 
 function sourceOf(c: Components): Source | null {
   if (!('Stockpile' in c || 'Upgrading' in c || 'Carrying' in c || 'VehicleStock' in c || 'Vehicle' in c))
     return null;
   const p = readPosition(c);
-  const node = p === null ? null : { hx: nodeHx(c, p), hy: nodeHy(c, p) };
+  const vehicle = 'Vehicle' in c;
+  const mooring = vehicle ? mooringOf(c) : null;
+  const node = p === null ? null : { hx: nodeHx(mooring, p), hy: nodeHy(mooring, p) };
   return {
     owner: readNumField(c, 'Owner', 'player'),
+    vehicle,
     node,
     parent:
       node === null
@@ -172,8 +179,9 @@ function stepped(state: Inventory, source: Source, id: number, is: Components): 
   const from = source.node;
   const p = readPosition(is);
   if (from === null || p === null || state.dependents.has(id)) return false;
-  const hx = nodeHx(is, p);
-  const hy = nodeHy(is, p);
+  const mooring = source.vehicle ? mooringOf(is) : null;
+  const hx = nodeHx(mooring, p);
+  const hy = nodeHy(mooring, p);
   if (hx === from.hx && hy === from.hy) return true;
   const to = { hx, hy };
   crossRegion(state.region, id, source, from, to);
