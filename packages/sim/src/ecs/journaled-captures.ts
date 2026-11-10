@@ -45,6 +45,8 @@ export class JournaledCaptures<C> {
    *  An id past {@link DENSE_MARK_LIMIT} (only a crafted save can name one) uses the set. */
   private marks = new Uint32Array(INITIAL_MARK_WORDS);
   private readonly sparseTouched = new Set<Entity>();
+  /** {@link World.mutationVersion} at the last catch-up; any write to the world moves it on. */
+  private caughtUpAt = -1;
   private readonly touch = (e: Entity): void => {
     if (e < DENSE_MARK_LIMIT) {
       const word = e >>> WORD_SHIFT;
@@ -73,8 +75,17 @@ export class JournaledCaptures<C> {
     this.rebuild();
   }
 
+  /** Bring the captures up to the world as it stands. Free while the world has not been written since
+   *  the last call, which is what most reads of one pass find. */
   catchUp(): void {
+    // A difference rather than a comparison: the bytecode it saves keeps this small enough to be inlined
+    // into every reader for free.
+    if (this.world.mutationVersion - this.caughtUpAt) this.replay();
+  }
+
+  private replay(): void {
     const { world, inputs, touchedOrder } = this;
+    this.caughtUpAt = world.mutationVersion;
     // Indexed: a frozen input list would cost a `for...of` an iterator result per component.
     for (let i = 0; i < inputs.membership.length; i++) {
       const c = inputs.membership[i] as Component<unknown>;

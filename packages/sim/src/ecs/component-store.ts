@@ -53,6 +53,8 @@ export class ComponentStore<T> {
   private liveSize = 0;
   private compactions = 0;
   private nextSeq = 0;
+  /** The slot of the lowest-id member, or {@link ABSENT_SLOT} until {@link findLowest} looks for it. */
+  private lowestSlot = ABSENT_SLOT;
 
   /** Dense members in insertion order; {@link VACANT_SLOT} marks a vacated slot. Callers only read it. */
   get entities(): Int32Array {
@@ -102,6 +104,23 @@ export class ComponentStore<T> {
     return ((this.memberBits[cell >>> 5] as number) >>> (cell & 31)) & 1;
   }
 
+  /** The lowest-id member's value, or undefined while the store is empty. */
+  lowest(): T | undefined {
+    // The absent slot holds no value, so an unknown lowest slot falls through to the search.
+    return this.values[this.lowestSlot] ?? this.findLowest();
+  }
+
+  private findLowest(): T | undefined {
+    const entities = this.denseEntities;
+    let lowest: number = ABSENT_SLOT;
+    for (let slot = FIRST_SLOT; slot < this.denseLength; slot++) {
+      const e = entities[slot] as number;
+      if (e !== VACANT_SLOT && (lowest === ABSENT_SLOT || e < (entities[lowest] as number))) lowest = slot;
+    }
+    this.lowestSlot = lowest;
+    return this.values[lowest];
+  }
+
   valueAt(slot: number): T | undefined {
     return this.values[slot];
   }
@@ -139,6 +158,9 @@ export class ComponentStore<T> {
     this.denseSeqs[slot] = this.nextSeq++;
     this.revisions[slot] = 0;
     this.values[slot] = value;
+    if (this.lowestSlot !== ABSENT_SLOT && entity < (this.denseEntities[this.lowestSlot] as number)) {
+      this.lowestSlot = slot;
+    }
     this.index[at] = slot;
     this.memberBits[at >>> WORD_SHIFT] =
       (this.memberBits[at >>> WORD_SHIFT] as number) | (1 << (at & BIT_MASK));
@@ -160,6 +182,7 @@ export class ComponentStore<T> {
     this.blocks.release(page, block);
     this.denseEntities[slot] = VACANT_SLOT;
     this.values[slot] = undefined;
+    if (slot === this.lowestSlot) this.lowestSlot = ABSENT_SLOT;
     this.liveSize--;
     const vacant = this.denseLength - FIRST_SLOT - this.liveSize;
     if (vacant >= VACANCY_COMPACT_MIN && vacant > (this.denseLength - FIRST_SLOT) * VACANCY_COMPACT_FRACTION)
@@ -219,6 +242,7 @@ export class ComponentStore<T> {
     }
     values.length = to;
     this.denseLength = to;
+    this.lowestSlot = ABSENT_SLOT;
     this.compactions++;
     const live = to - FIRST_SLOT;
     if (entities.length > INITIAL_CAPACITY && entities.length >= live * SHRINK_FACTOR) {

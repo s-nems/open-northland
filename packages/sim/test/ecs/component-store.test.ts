@@ -203,6 +203,25 @@ describe('ComponentStore compaction', () => {
     expect(store.size).toBe(2);
   });
 
+  it('answers the lowest member across additions, removals and a compaction', () => {
+    const store = new ComponentStore<number>();
+    expect(store.lowest()).toBeUndefined();
+    store.set(40 as Entity, 400);
+    expect(store.lowest()).toBe(400);
+    store.set(70 as Entity, 700);
+    store.set(7 as Entity, 70);
+    expect(store.lowest()).toBe(70);
+    store.delete(7 as Entity);
+    expect(store.lowest()).toBe(400);
+    for (let e = 100; e < 100 + COMPACTING_SIZE; e++) store.set(e as Entity, e);
+    const epoch = store.epoch;
+    for (let e = 100; e < 100 + COMPACTING_SIZE; e++) store.delete(e as Entity);
+    expect(store.epoch).toBeGreaterThan(epoch);
+    expect(store.lowest()).toBe(400);
+    store.delete(40 as Entity);
+    expect(store.lowest()).toBe(700);
+  });
+
   it('a lone member toggled every tick reuses its emptied index block', () => {
     const toggles = 10_000;
     const store = new ComponentStore<number>();
