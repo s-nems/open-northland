@@ -15,6 +15,14 @@ game's slowest pathfinding ticks. Measured on the six-AI `magiczny_las` session 
   over mixed road and grass, not from detours round obstacles. Landmark (ALT) lower bounds over the
   static lattice left the settles unchanged (1,110,508 against 1,110,295 on those 60 routes).
 
+A cheaper lever than the two levels, measured on the same session over 2000 ticks from t100000 (23,813
+land searches replayed in place, each variant against the current route's cost): routes of 64 nodes and
+more are 6% of the searches and 52% of the settles. Weighing the land heuristic 1.25 times heavier
+settles 39% fewer nodes (47% fewer on those long routes) for routes 1.1% dearer on average, the worst
+1.46 times; weighing only the estimate past 16 columns from the goal 1.25 times heavier settles 16%
+fewer (29% on routes of 64 nodes and more, 47% on 128 and more) for 0.4% dearer routes, the worst 1.23
+times. Either changes routes and needs the same sign-off.
+
 ## Scope
 
 - A two-level search for walks whose straight lattice distance exceeds a threshold: fixed square
