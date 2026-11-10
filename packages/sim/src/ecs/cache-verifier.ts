@@ -1,3 +1,4 @@
+import type { AliveEntities } from './alive-entities.js';
 import type { CanonicalQueries } from './canonical-queries.js';
 import type { Component, Entity } from './component.js';
 import type { ComponentStore } from './component-store.js';
@@ -10,7 +11,7 @@ export type CacheVerifier = () => string[];
 /** The World state a re-derive reads: `alive` and `stores` are authoritative, while `memberships`,
  *  `canonicalCache` and `canonicalQueries` are the derived views that must reproduce from them. */
 export interface VerifiableStorage {
-  readonly alive: ReadonlySet<Entity>;
+  readonly alive: Pick<AliveEntities, 'ascending'>;
   readonly stores: ReadonlyMap<Component<unknown>, ComponentStore<unknown>>;
   readonly registered: readonly Component<unknown>[];
   readonly memberships: Pick<EntityMemberships, 'has' | 'forEachCarried'>;
@@ -62,7 +63,7 @@ function verifyMemberships({ registered, stores, memberships }: VerifiableStorag
 function verifyCanonicalCache({ canonicalCache, alive }: VerifiableStorage): string[] {
   if (canonicalCache === null) return [];
   const out: string[] = [];
-  const fresh = [...alive].sort((a, b) => a - b);
+  const fresh = alive.ascending();
   if (canonicalCache.length !== fresh.length) {
     out.push(
       `canonicalEntities cache holds ${canonicalCache.length} ids but ${fresh.length} are alive - a missed invalidation or a reader's edit`,

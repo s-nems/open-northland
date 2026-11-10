@@ -4,6 +4,7 @@
  * iteration order history-dependent.
  */
 
+import { AliveEntities } from './alive-entities.js';
 import { type CacheVerifier, CacheVerifiers } from './cache-verifier.js';
 import { CanonicalQueries } from './canonical-queries.js';
 import { ChangeFeed, ChangeFeeds } from './change-feed.js';
@@ -34,7 +35,7 @@ export interface MutationSink {
 
 export class World {
   private nextId = 1;
-  private readonly alive = new Set<Entity>();
+  private readonly alive = new AliveEntities();
   /** The per-component entity→value stores, created on first {@link add}. Each store's insertion order is the
    *  query iteration order. */
   private readonly stores = new Map<Component<unknown>, ComponentStore<unknown>>();
@@ -304,7 +305,7 @@ export class World {
    */
   canonicalEntities(): readonly Entity[] {
     if (this.canonicalCache === null) {
-      this.canonicalCache = [...this.alive].sort((a, b) => a - b);
+      this.canonicalCache = this.alive.ascending();
     }
     return this.canonicalCache;
   }
