@@ -1,6 +1,7 @@
 import type { HudModel, HudPeople } from '@open-northland/render';
-import { systems, TICKS_PER_SECOND } from '@open-northland/sim';
+import { IDLE_JOB, systems, TICKS_PER_SECOND } from '@open-northland/sim';
 import {
+  isCivilianJob,
   JOB_BABY_FEMALE,
   JOB_BABY_MALE,
   JOB_BUILDER,
@@ -100,8 +101,9 @@ export interface SummaryPopulation {
   /** Grown people with and without the sim's `Female` marker; a woman in a trade is still a woman. */
   readonly women: number;
   readonly men: number;
-  /** The men in a soldier or hero job; `workers` is every other man, idle ones included. */
+  /** The men in a soldier or hero job, the men without a trade and the rest: together every man. */
   readonly soldiers: number;
+  readonly civilians: number;
   readonly workers: number;
   /** The men in the builder job, counted within `workers`. */
   readonly builders: number;
@@ -124,6 +126,7 @@ export function summaryPopulation(model: HudPeople): SummaryPopulation {
   let women = 0;
   let men = 0;
   let soldiers = 0;
+  let civilians = 0;
   let builders = 0;
   let girls = 0;
   let boys = 0;
@@ -134,6 +137,7 @@ export function summaryPopulation(model: HudPeople): SummaryPopulation {
       women += female;
       men += count - female;
       if (isMilitaryJob(jobType)) soldiers += count - female;
+      else if (isCivilianJob(jobType === IDLE_JOB ? null : jobType)) civilians += count - female;
       else if (jobType === JOB_BUILDER) builders += count - female;
     }
   }
@@ -141,7 +145,8 @@ export function summaryPopulation(model: HudPeople): SummaryPopulation {
     women,
     men,
     soldiers,
-    workers: men - soldiers,
+    civilians,
+    workers: men - soldiers - civilians,
     builders,
     children: girls + boys,
     girls,

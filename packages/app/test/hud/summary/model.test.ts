@@ -1,5 +1,5 @@
 import type { HudModel, JobCount, StockCount } from '@open-northland/render';
-import { TICKS_PER_SECOND } from '@open-northland/sim';
+import { IDLE_JOB, TICKS_PER_SECOND } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   JOB_BABY_FEMALE,
@@ -65,7 +65,7 @@ function model(jobs: readonly JobCount[], stocks: readonly StockCount[] = [], ti
 }
 
 describe('summaryPopulation', () => {
-  it('splits adults by the Female tally, men by the army band and builders, and children by sex', () => {
+  it('splits adults by the Female tally, men by the army band, trade and builders, and children by sex', () => {
     const out = summaryPopulation(
       model([
         { jobType: JOB_BABY_FEMALE, count: 1, female: 1 },
@@ -73,9 +73,10 @@ describe('summaryPopulation', () => {
         { jobType: JOB_CHILD_FEMALE, count: 2, female: 2 },
         { jobType: JOB_CHILD_MALE, count: 1, female: 0 },
         { jobType: JOB_WOMAN, count: 3, female: 3 },
+        { jobType: IDLE_JOB, count: 1, female: 0 }, // an unassigned man is a civilian
+        { jobType: JOB_IDLE, count: 1, female: 0 }, // and so is one on the `none` job
         { jobType: JOB_CIVILIST, count: 2, female: 0 },
         { jobType: WOODCUTTER, count: 4, female: 1 }, // a woman in a trade stays a woman
-        { jobType: JOB_IDLE, count: 1, female: 0 }, // an idle man is a worker without work
         { jobType: JOB_BUILDER, count: 3, female: 1 }, // the men among the builders are workers
         { jobType: JOB_SOLDIER_SWORD, count: 2, female: 0 },
         { jobType: JOB_HERO_SWORD, count: 1, female: 0 },
@@ -84,14 +85,15 @@ describe('summaryPopulation', () => {
     );
     expect(out).toEqual({
       women: 6,
-      men: 11,
+      men: 12,
       soldiers: 3,
-      workers: 8,
+      civilians: 4,
+      workers: 5,
       builders: 2,
       children: 5,
       girls: 3,
       boys: 2,
-      total: 22,
+      total: 23,
     });
   });
 
@@ -100,6 +102,7 @@ describe('summaryPopulation', () => {
       women: 0,
       men: 0,
       soldiers: 0,
+      civilians: 0,
       workers: 0,
       builders: 0,
       children: 0,

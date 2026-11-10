@@ -1,6 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
-import { JOB_CIVILIST, JOB_IDLE } from '../../../catalog/jobs.js';
+import { isCivilianJob } from '../../../catalog/jobs.js';
 import {
   SOLDIER_ARMOR_OF_MAIN_TYPE,
   SOLDIER_CLASS_OF_JOB,
@@ -82,7 +82,7 @@ export function residentKindOf(
   if (systems.isHeroJob(content, jobType)) return 'hero';
   if (systems.isSoldierJob(content, jobType)) return 'soldier';
   if (isFemale(ent)) return 'woman';
-  if (jobType === null || jobType === JOB_IDLE || jobType === JOB_CIVILIST) return 'civilian';
+  if (isCivilianJob(jobType)) return 'civilian';
   return 'worker';
 }
 

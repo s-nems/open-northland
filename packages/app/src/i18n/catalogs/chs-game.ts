@@ -1263,6 +1263,7 @@ export const chsGame = {
       men: '男人',
       workers: '工人',
       builders: '建筑工',
+      civilians: '平民',
       soldiers: '士兵',
       children: '孩子',
       girls: '女孩',

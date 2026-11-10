@@ -76,6 +76,11 @@ export function isFrankishHeroineSlot(tribe: number, job: number): boolean {
   return tribe === FRANK_TRIBE && job === JOB_HEROINE_BOW;
 }
 
+/** A man without a trade: no job, the `none` job or the generic civilist. The people window's civilians. */
+export function isCivilianJob(jobType: number | null): boolean {
+  return jobType === null || jobType === JOB_IDLE || jobType === JOB_CIVILIST;
+}
+
 /** The `jobtypes.ini` soldier band: the unarmed base plus every weapon class. */
 export const SOLDIER_JOB_MIN = JOB_SOLDIER_UNARMED;
 export const SOLDIER_JOB_MAX = JOB_ARCHER_LONG;

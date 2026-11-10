@@ -1283,6 +1283,7 @@ export const plGame = {
       men: 'Mężczyźni',
       workers: 'pracownicy',
       builders: 'budowniczowie',
+      civilians: 'cywile',
       soldiers: 'żołnierze',
       children: 'Dzieci',
       girls: 'dziewczynki',

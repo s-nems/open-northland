@@ -1302,6 +1302,7 @@ export const enGame = {
       men: 'Men',
       workers: 'workers',
       builders: 'builders',
+      civilians: 'civilians',
       soldiers: 'soldiers',
       children: 'Children',
       girls: 'girls',

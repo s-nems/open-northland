@@ -143,6 +143,7 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
   const womenRow = tipRow(copy.women);
   const workersRow = tipRow(copy.workers, SUB);
   const buildersRow = tipRow(copy.builders, `${SUB} on-tip__row--sub-nested`);
+  const civiliansRow = tipRow(copy.civilians, SUB);
   const soldiersRow = tipRow(copy.soldiers, SUB);
   const childrenRow = tipRow(copy.children);
   const girlsRow = tipRow(copy.girls, SUB);
@@ -152,6 +153,7 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
     menRow.row,
     workersRow.row,
     buildersRow.row,
+    civiliansRow.row,
     soldiersRow.row,
     womenRow.row,
     childrenRow.row,
@@ -217,6 +219,7 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
       setRow(menRow, population.men);
       setRow(workersRow, population.workers);
       setRow(buildersRow, population.builders);
+      setRow(civiliansRow, population.civilians);
       setRow(soldiersRow, population.soldiers);
       setRow(childrenRow, population.children);
       setRow(girlsRow, population.girls);

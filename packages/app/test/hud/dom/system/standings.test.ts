@@ -23,6 +23,7 @@ function standing(
     women: 0,
     men: total,
     soldiers,
+    civilians: 0,
     workers: total - soldiers,
     builders: 0,
     children: 0,
