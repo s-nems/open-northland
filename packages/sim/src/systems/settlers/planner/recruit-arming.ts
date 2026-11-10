@@ -234,8 +234,9 @@ export function reachableStock(
   };
   const lends = (store: Entity, good: number): boolean => {
     if (!ownersCompatible(player, ownerOf(world, store))) return false;
+    if (!reached(store)) return false;
     walls ??= buildingBlockedCells(world, ctx, terrain);
-    return storeYieldsGood(world, ctx, terrain, walls, store, good) && reached(store);
+    return storeYieldsGood(world, ctx, terrain, walls, store, good);
   };
   return {
     holds: (good) => {
