@@ -661,10 +661,14 @@ function limitGroups(
   return {
     bounds: { minX, maxX, minY, maxY },
     reaches: { minX: nearMinX, maxX: nearMaxX, minY: nearMinY, maxY: nearMaxY },
-    nearby,
-    nearbyPosts,
+    // Copied at their own length: a list built by pushes keeps spare slots, and a spot holds its groups
+    // while its network stands.
+    nearby: nearby.slice(),
+    nearbyPosts: nearbyPosts.map(sizedPosts),
   };
 }
+
+const sizedPosts = (posts: readonly SignpostSite[]): readonly SignpostSite[] => posts.slice();
 
 /** The posts {@link limitGroups} last collected; slots past its end hold stale entries. */
 const postScratch: (SignpostSite & { player: number })[] = [];
