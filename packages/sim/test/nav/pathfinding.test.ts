@@ -193,13 +193,13 @@ describe('findPath - deterministic tie-breaking', () => {
 
   it('goal sealed by the overlay fails at pocket cost, not a map flood (the probe elision)', () => {
     // Proving "no route" forward means flooding the whole 6400-node grid; the goal-side probe must
-    // exhaust the ~25-node pocket instead. The explored bound is the test's teeth: without the
-    // probe it lands in the thousands.
+    // exhaust the ~25-node pocket instead, after the forward search's own probe-sized head. The explored
+    // bound is the test's teeth: without the probe it lands in the thousands.
     const g = open(80, 80);
     const blocked = sealedAnnulus(g);
     const stats = { explored: 0 };
     expect(findPath(g, g.nodeAt(2, 2), g.nodeAt(40, 40), blocked, stats)).toBeNull();
-    expect(stats.explored).toBeLessThanOrEqual(POCKET_PROBE_MAX_EXPLORED);
+    expect(stats.explored).toBeLessThanOrEqual(2 * POCKET_PROBE_MAX_EXPLORED);
   });
 
   it('routes normally when start and goal share the sealed pocket', () => {
@@ -226,7 +226,7 @@ describe('findPath - deterministic tie-breaking', () => {
     blocked.add(start);
     const stats = { explored: 0 };
     expect(findPath(g, start, g.nodeAt(40, 40), blocked, stats)).toBeNull();
-    expect(stats.explored).toBeLessThanOrEqual(POCKET_PROBE_MAX_EXPLORED);
+    expect(stats.explored).toBeLessThanOrEqual(2 * POCKET_PROBE_MAX_EXPLORED);
   });
 
   it('reaches a goal whose only way in is the edge from the blocked start, at pocket cost', () => {
@@ -306,14 +306,14 @@ describe('findPath - deterministic tie-breaking', () => {
   });
 
   it('finds a route longer than the probe cap when the overlay does not seal it', () => {
-    // Distant corners on a big grid with one stray blocked node: the probe hits its cap
-    // inconclusively and the full search must still deliver the route.
-    const g = open(80, 80);
+    // Distant corners on a big grid with one stray blocked node: the forward head and the probe both hit
+    // their caps inconclusively and the full search must still deliver the route.
+    const g = open(200, 200);
     const blocked = new Set<NodeId>([g.nodeAt(10, 10)]);
     const stats = { explored: 0 };
-    const path = findPath(g, g.nodeAt(0, 0), g.nodeAt(79, 79), blocked, stats);
+    const path = findPath(g, g.nodeAt(0, 0), g.nodeAt(199, 199), blocked, stats);
     expect(path).not.toBeNull();
-    expect(stats.explored).toBeGreaterThan(POCKET_PROBE_MAX_EXPLORED); // the cap-abort ran, then the real search
+    expect(stats.explored).toBeGreaterThan(2 * POCKET_PROBE_MAX_EXPLORED);
   });
 
   it.each([

@@ -113,6 +113,10 @@ export function findPath(
   if (blocked === undefined || blocked.size === 0) return pathOf(forward.advance(UNCAPPED));
   let reverse: ResumableSearch | undefined;
   if (!goalOpen) {
+    // A goal the forward search reaches, or a start region it exhausts, within the probe's own cost
+    // needs no probe.
+    const near = forward.advance(POCKET_PROBE_MAX_EXPLORED);
+    if (near !== 'aborted') return pathOf(near);
     reverse = goalSideSearch(graph, start, goal, blocked, stats, traversal);
     const probe = reverse.advance(POCKET_PROBE_MAX_EXPLORED);
     if (probe === 'unreachable') return null;
