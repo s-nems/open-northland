@@ -404,10 +404,12 @@ interface ChunkAnimation {
 const ANIMATED_BIN_TILES = 4;
 const ANIMATED_BIN_PX = ANIMATED_BIN_TILES * TILE_HALF_W * 2;
 
-/** The quads of one animated batch that fall in a bin. */
+/** The quads of one animated batch that fall in a bin, and the cell each one's fog is read at, as
+ *  column and row pairs. */
 interface AnimatedRun {
   readonly batch: AnimatedDecorBatch;
   readonly quads: readonly number[];
+  readonly cells: Int32Array;
 }
 
 /** The quads of one GPU-played batch that fall in a bin, and the cell each one's fog is read at, as
@@ -659,7 +661,7 @@ function binAnimated(animation: ChunkAnimation): AnimatedBin[] {
     for (const [q, obj] of batch.objects.entries()) if (obj !== null) gather(binOf(obj).clipRuns, batch, q);
   return [...bins.values()].map(({ bounds, runs, clipRuns }) => ({
     ...bounds,
-    runs: [...runs].map(([batch, quads]) => ({ batch, quads })),
+    runs: [...runs].map(([batch, quads]) => ({ batch, quads, cells: cellsOf(batch, quads) })),
     clipRuns: [...clipRuns].map(([batch, quads]) => ({ batch, quads, cells: cellsOf(batch, quads) })),
     lastWrittenTick: 0,
     writtenFog: Number.NaN,
@@ -668,7 +670,10 @@ function binAnimated(animation: ChunkAnimation): AnimatedBin[] {
 }
 
 /** The fog cells of `quads`' objects, as column and row pairs. */
-function cellsOf(batch: ClipDecorBatch, quads: readonly number[]): Int32Array {
+function cellsOf(
+  batch: { readonly objects: readonly (MapObjectSprite | null)[] },
+  quads: readonly number[],
+): Int32Array {
   const cells = new Int32Array(quads.length * 2);
   for (const [i, q] of quads.entries()) {
     const obj = batch.objects[q];
@@ -730,13 +735,14 @@ export function animateDecorChunk(
     if (bin.lastWrittenTick !== tick || bin.writtenFog !== fog) {
       bin.lastWrittenTick = tick;
       bin.writtenFog = fog;
-      for (const { batch, quads } of bin.runs) {
-        for (const q of quads) {
+      for (const { batch, quads, cells } of bin.runs) {
+        for (let i = 0; i < quads.length; i++) {
+          const q = quads[i] ?? 0;
           const obj = batch.objects[q];
           if (obj === null || obj === undefined) continue; // removed - its quad stays zeroed
-          const cell = screenToCell(obj.x, obj.y);
           const watched =
-            fogStateOfCell === undefined || fogStateOfCell(cell.col, cell.row) === FOG_STATE.VISIBLE;
+            fogStateOfCell === undefined ||
+            fogStateOfCell(cells[i * 2] ?? 0, cells[i * 2 + 1] ?? 0) === FOG_STATE.VISIBLE;
           if (writeAnimatedQuad(batch, q, obj, watched ? tick : 0)) batch.uploadPending = true;
         }
       }
