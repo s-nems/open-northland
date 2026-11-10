@@ -34,6 +34,10 @@ export class StoreSinks {
   private readonly ordinary = new Map<number, Set<Entity>>();
   private readonly storage = new Map<number, Set<Entity>>();
   private readonly captures: JournaledCaptures<SinkCapture>;
+  /** The store whose withdrawal is held back until its re-capture is applied, its goods in the
+   *  `withdrawn*` lists: a stock write re-captures a store that mostly accepts what it did, and taking it
+   *  out of every good's set to put it back makes each set rebuild its table. */
+  private withdrawn: Entity | null = null;
 
   private constructor(
     private readonly world: World,
@@ -61,16 +65,25 @@ export class StoreSinks {
         // Indexed: every stock write replays a store's capture, and a for-of here costs an iterator
         // result per good.
         apply: (e, c) => {
+          if (this.withdrawn === e) {
+            this.withdrawn = null;
+            refile(this.ordinary, e, withdrawnOrdinary, c.ordinary);
+            refile(this.storage, e, withdrawnStorage, c.storage);
+            return;
+          }
+          this.settleWithdrawn();
           const { ordinary, storage } = c;
           for (let i = 0; i < ordinary.length; i++) membersOf(this.ordinary, ordinary[i] as number).add(e);
           for (let i = 0; i < storage.length; i++) membersOf(this.storage, storage[i] as number).add(e);
         },
         withdraw: (e, c) => {
-          const { ordinary, storage } = c;
-          for (let i = 0; i < ordinary.length; i++) this.ordinary.get(ordinary[i] as number)?.delete(e);
-          for (let i = 0; i < storage.length; i++) this.storage.get(storage[i] as number)?.delete(e);
+          this.settleWithdrawn();
+          this.withdrawn = e;
+          hold(withdrawnOrdinary, c.ordinary);
+          hold(withdrawnStorage, c.storage);
         },
         clear: () => {
+          this.withdrawn = null;
           this.ordinary.clear();
           this.storage.clear();
         },
@@ -88,9 +101,23 @@ export class StoreSinks {
       ledger = new StoreSinks(world, { content: ctx.content });
       ledgers.set(world, ledger);
     } else {
-      ledger.captures.catchUp();
+      ledger.catchUp();
     }
     return ledger;
+  }
+
+  private catchUp(): void {
+    this.captures.catchUp();
+    this.settleWithdrawn();
+  }
+
+  /** Take the held-back store out of its goods' sets: its re-capture found it accepts nothing. */
+  private settleWithdrawn(): void {
+    const e = this.withdrawn;
+    if (e === null) return;
+    this.withdrawn = null;
+    unfile(this.ordinary, e, withdrawnOrdinary);
+    unfile(this.storage, e, withdrawnStorage);
   }
 
   /** The stores accepting `goodType`, in no particular order. The live set: read it, never keep it past
@@ -100,7 +127,7 @@ export class StoreSinks {
   }
 
   private verify(): string[] {
-    this.captures.catchUp();
+    this.catchUp();
     const { world, content } = this;
     const stores = world.canonicalQuery(Stockpile, Position);
     const problems: string[] = [];
@@ -175,6 +202,50 @@ function depositCandidates(world: World, ctx: ContentContext, store: Entity): vo
     const dishes = edibleClassOf(ctx.content, slot);
     for (let i = 0; i < dishes.length; i++) listCandidate(dishes[i] as number);
   }
+}
+
+/** A good list kept across calls: `goods` only grows, since emptying a list frees its storage. */
+interface HeldGoods {
+  readonly goods: number[];
+  count: number;
+}
+
+/** The goods of the store whose withdrawal {@link StoreSinks} holds back. */
+const withdrawnOrdinary: HeldGoods = { goods: [], count: 0 };
+const withdrawnStorage: HeldGoods = { goods: [], count: 0 };
+
+function hold(into: HeldGoods, from: readonly number[]): void {
+  for (let i = 0; i < from.length; i++) into.goods[i] = from[i] as number;
+  into.count = from.length;
+}
+
+/** Take `e` out of the set of every good in `was`. */
+function unfile(byGood: Map<number, Set<Entity>>, e: Entity, was: HeldGoods): void {
+  for (let i = 0; i < was.count; i++) byGood.get(was.goods[i] as number)?.delete(e);
+}
+
+/** Move `e` from the sets of the goods in `was` to those in `now`, touching only the sets that differ. */
+function refile(byGood: Map<number, Set<Entity>>, e: Entity, was: HeldGoods, now: readonly number[]): void {
+  if (sameGoods(was, now)) return;
+  for (let i = 0; i < was.count; i++) {
+    const good = was.goods[i] as number;
+    if (!now.includes(good)) byGood.get(good)?.delete(e);
+  }
+  for (let i = 0; i < now.length; i++) {
+    const good = now[i] as number;
+    if (!holds(was, good)) membersOf(byGood, good).add(e);
+  }
+}
+
+function holds(held: HeldGoods, good: number): boolean {
+  for (let i = 0; i < held.count; i++) if (held.goods[i] === good) return true;
+  return false;
+}
+
+function sameGoods(was: HeldGoods, now: readonly number[]): boolean {
+  if (was.count !== now.length) return false;
+  for (let i = 0; i < now.length; i++) if (was.goods[i] !== now[i]) return false;
+  return true;
 }
 
 function membersOf(byGood: Map<number, Set<Entity>>, good: number): Set<Entity> {
