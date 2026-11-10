@@ -13,6 +13,9 @@ export interface ResolvedLayer {
   /** Per-instance offset from the entity anchor in world pixels, used by independently moving swarms. */
   readonly dx?: number;
   readonly dy?: number;
+  /** The record this one draws at its own `dx`/`dy`, every other field equal: a sprite that last bound
+   *  another record moved from the same one only needs placing. */
+  readonly movedFrom?: ResolvedLayer;
   readonly shear?: number;
   /** A frame of a looping landscape record: the entity re-presents on every tick though its item holds
    *  still. */

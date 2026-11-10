@@ -102,7 +102,7 @@ export function pushFishSchool(out: LayerBuffer, sheet: SpriteSheet, item: DrawI
       layer = bob === undefined ? null : layeredLayerFor(sheet, 'fish', { layer: binding.layer, bob });
       headingLayers[heading] = layer;
     }
-    if (layer !== null) out.push({ ...layer, dx: x, dy: y });
+    if (layer !== null) out.push({ ...layer, dx: x, dy: y, movedFrom: layer });
   }
   return true;
 }

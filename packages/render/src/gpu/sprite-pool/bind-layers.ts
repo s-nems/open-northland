@@ -76,6 +76,7 @@ function hideLayer(spr: Sprite | PalettedSprite): void {
 function hideLayers(pe: PooledEntity): void {
   for (const s of pe.sprites) hideLayer(s);
   if (pe.paletted) for (const s of pe.shadows) hideLayer(s);
+  else pe.slotLayers.length = 0;
 }
 
 /** A layer's opacity at the eased build progress: opaque unless it fades out towards completion. */
@@ -154,7 +155,10 @@ export class LayerBinder {
 
   /**
    * Bind the entity's resolved atlas layers onto its pooled sprites and stamp the union of the drawn
-   * rects as its world-space bounds. `null` layers draw the placeholder marker instead.
+   * rects as its world-space bounds. `null` layers draw the placeholder marker instead. `inputsHold`
+   * says nothing but the layers and the drawn anchor changed since this entity's last bind, which
+   * nothing else has bound over: a layer {@link ResolvedLayer.movedFrom} the record its sprite already
+   * shows is then only placed.
    */
   bind(
     pe: PooledEntity,
@@ -162,6 +166,7 @@ export class LayerBinder {
     layers: readonly ResolvedLayer[] | null,
     frame: BindFrame,
     frameId: number,
+    inputsHold = false,
   ): void {
     pe.bindSerial++;
     if (pe.damageBodies !== undefined) pe.damageBodies.length = 0;
@@ -273,32 +278,49 @@ export class LayerBinder {
         // The ground overlays spill past the body; a click on them is a click on the ground.
         pe.pickExempt[spriteSlot] = layer.shadow === true || layer.groundFoot === 'cover';
         const spr = this.plainSlot(pe, spriteSlot);
-        spr.alpha = alpha;
-        if (layer.cast === true) {
-          this.placeShadow(spr, layer, box, tint, shadowStyle);
-        } else {
-          this.bindPlainLayer(spr, layer, revealTexture, box, tint, enhanceBuilding);
-        }
-        const receivesBlood =
-          !pe.pickExempt[spriteSlot] &&
+        const shown = pe.slotLayers[spriteSlot];
+        pe.slotLayers[spriteSlot] = layer;
+        if (
+          inputsHold &&
+          layer.movedFrom !== undefined &&
+          shown?.movedFrom === layer.movedFrom &&
+          // An erased twin draws another frame than the record it was moved from, a building's slots
+          // were just taken off their stains, and a cast or a grounded part is placed by other rules.
+          erased === undefined &&
+          buildingBlood === undefined &&
           layer.cast !== true &&
-          layer.boundsExempt !== true &&
-          (layer.groundFoot === undefined || layer.groundFoot === 'body') &&
-          !BLOODLESS_KINDS.has(item.kind);
-        if (buildingBlood === undefined || receivesBlood) {
-          const surface = bloodSurface(
-            spr,
-            item.y,
-            {
-              lift: item.lift ?? 0,
-              flat: item.kind === 'grounddrop' || item.kind === 'stockpile',
-              facade: item.kind === 'building',
-              enabled: receivesBlood && item.ghost !== true,
-            },
-            // The atlas frame, so the stains outlast a flag that erases part of the body.
-            receivesBlood ? buildingBlood?.get(resolved.frame) : undefined,
-          );
-          if (receivesBlood) buildingBlood?.set(resolved.frame, surface);
+          layer.groundFoot === undefined
+        ) {
+          // As bindPlainLayer places it.
+          spr.position.set(box.ox + box.drawnOy * (layer.shear ?? 0), box.drawnOy);
+        } else {
+          spr.alpha = alpha;
+          if (layer.cast === true) {
+            this.placeShadow(spr, layer, box, tint, shadowStyle);
+          } else {
+            this.bindPlainLayer(spr, layer, revealTexture, box, tint, enhanceBuilding);
+          }
+          const receivesBlood =
+            !pe.pickExempt[spriteSlot] &&
+            layer.cast !== true &&
+            layer.boundsExempt !== true &&
+            (layer.groundFoot === undefined || layer.groundFoot === 'body') &&
+            !BLOODLESS_KINDS.has(item.kind);
+          if (buildingBlood === undefined || receivesBlood) {
+            const surface = bloodSurface(
+              spr,
+              item.y,
+              {
+                lift: item.lift ?? 0,
+                flat: item.kind === 'grounddrop' || item.kind === 'stockpile',
+                facade: item.kind === 'building',
+                enabled: receivesBlood && item.ghost !== true,
+              },
+              // The atlas frame, so the stains outlast a flag that erases part of the body.
+              receivesBlood ? buildingBlood?.get(resolved.frame) : undefined,
+            );
+            if (receivesBlood) buildingBlood?.set(resolved.frame, surface);
+          }
         }
         if (
           (item.kind === 'building' || item.kind === 'palisade') &&
@@ -348,6 +370,7 @@ export class LayerBinder {
       }
     } else {
       pe.pickExempt.length = spriteSlot;
+      pe.slotLayers.length = spriteSlot;
     }
     if (site === 'claimed') {
       const road = item.kind === 'roadsite';

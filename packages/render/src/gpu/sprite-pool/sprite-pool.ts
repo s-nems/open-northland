@@ -905,32 +905,35 @@ export class SpritePool {
     }
     const layers = presentEntity(pe, item, frame, this.sheet);
     stamp.alpha = frame.alpha;
-    if (
+    // The sprites still show the last bind, and a bind now would read what that one did, the layers and
+    // the drawn anchor apart.
+    const inputsHold =
       steady &&
       // The present may have started a construction reveal, which binds every frame.
       item.hpFrac === undefined &&
       pe.reveal === undefined &&
       stamp.bindHolds(item, this.epoch.bind, erased) &&
-      stamp.presents(pe.motion, layers) &&
-      this.binder.paletteHolds(pe, item)
-    ) {
+      this.binder.paletteHolds(pe, item);
+    if (inputsHold && stamp.presents(pe.motion, layers)) {
       stamp.carry(item, this.epoch.current);
       this.keepBound(pe);
       return;
     }
-    this.bindPresented(pe, item, layers, frame, erased);
+    this.bindPresented(pe, item, layers, frame, erased, inputsHold);
   }
 
-  /** Bind the layers a present of `item` resolved onto `pe`, and stamp what the bind read. */
+  /** Bind the layers a present of `item` resolved onto `pe`, and stamp what the bind read; `inputsHold`
+   *  as {@link LayerBinder.bind} takes it. */
   private bindPresented(
     pe: PooledEntity,
     item: DrawItem,
     layers: readonly ResolvedLayer[] | null,
     frame: PoolFrame,
     erased: ErasedRegion | undefined,
+    inputsHold = false,
   ): void {
     const deferrals = this.textures.deferrals;
-    this.binder.bind(pe, item, layers, frame, this.frameId);
+    this.binder.bind(pe, item, layers, frame, this.frameId, inputsHold);
     pe.bound.record(item, this.epoch, erased, pe.motion, layers);
     // A bake the budget turned away left a stand-in on this entity alone: it binds again next frame.
     if (this.textures.deferrals !== deferrals) pe.bound.retry();

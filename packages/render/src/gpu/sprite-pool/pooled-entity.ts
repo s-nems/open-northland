@@ -6,6 +6,7 @@ import type { SelectionGraphics, SelectionSprite } from '../selection/sprite-eff
 import type { PaletteLut } from '../textures/sprite-sheet.js';
 import { BindStamp } from './bind-stamp.js';
 import { HumanPaletteRow } from './layers/human-palette-row.js';
+import type { ResolvedLayer } from './layers/resolved-layer.js';
 import { createPresentationTrack, type PresentationTrack } from './presentation/present-item.js';
 
 /** The world-space (pre-camera) axis-aligned box of an entity's drawn sprite this frame. */
@@ -87,6 +88,9 @@ export interface PlainPooledEntity extends PooledEntityBase {
    *  as it does a cast shadow and a foot's ground cover. A paletted character keeps its shadow on a sprite
    *  of its own. */
   readonly pickExempt: boolean[];
+  /** Parallel to {@link PlainPooledEntity.sprites}: the layer each slot last bound, emptied when a marker
+   *  or the placeholder draws in the layers' place. */
+  readonly slotLayers: ResolvedLayer[];
 }
 
 export type PooledEntity = PalettedPooledEntity | PlainPooledEntity;
@@ -116,7 +120,7 @@ export function createPooled(kind: SpriteKind, palette: PaletteLut | undefined):
     bound: new BindStamp(),
   };
   return palette === undefined
-    ? { ...base, paletted: false, sprites: [], pickExempt: [] }
+    ? { ...base, paletted: false, sprites: [], pickExempt: [], slotLayers: [] }
     : {
         ...base,
         paletted: true,
