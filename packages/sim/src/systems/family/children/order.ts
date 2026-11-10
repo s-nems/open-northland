@@ -20,7 +20,7 @@ import {
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNodeId } from '../../footprint/interaction.js';
@@ -192,9 +192,7 @@ function blockerAt(
     return 'homeUnbuilt';
   if (jobIgnoresHomeHouse(ctx.content, world.get(husband, Settler).jobType)) return 'husbandAway';
   if (world.tryGet(husband, Residence)?.home !== home) return 'livesApart';
-  if (standsOffHomeLand(world, ctx, woman, home) || standsOffHomeLand(world, ctx, husband, home))
-    return 'homeAcrossWater';
-  return undefined;
+  return homeAcrossWater(world, ctx, woman, husband, home) ? 'homeAcrossWater' : undefined;
 }
 
 function upgradeSparesSession(world: World, woman: Entity, home: Entity): boolean {
@@ -202,18 +200,35 @@ function upgradeSparesSession(world: World, woman: Entity, home: Entity): boolea
 }
 
 /**
- * Whether `e` stands ashore on other land than `home`'s door, where no walk home leads: our own rule, so a
- * household split by water, such as a husband ferried to another island, is never called home across it.
- * A rider aboard a vehicle is waited for instead, until it steps off.
+ * Whether a spouse stands ashore on other land than `home`'s door, where no walk home leads: our own rule,
+ * so a household split by water, such as a husband ferried to another island, is never called home across
+ * it. A rider aboard a vehicle is waited for instead, until it steps off.
  */
-function standsOffHomeLand(world: World, ctx: SystemContext, e: Entity, home: Entity): boolean {
+function homeAcrossWater(
+  world: World,
+  ctx: SystemContext,
+  woman: Entity,
+  husband: Entity,
+  home: Entity,
+): boolean {
   const terrain = ctx.terrain;
-  if (terrain === undefined || isAboardVehicle(world, e)) return false;
+  if (terrain === undefined) return false;
+  const wifeAshore = !isAboardVehicle(world, woman);
+  const husbandAshore = !isAboardVehicle(world, husband);
+  if (!wifeAshore && !husbandAshore) return false;
   const door = interactionNodeId(world, ctx, terrain, home);
   if (door === null) return false;
+  const homeLand = terrain.componentOf(door);
+  return (
+    (wifeAshore && landUnder(world, terrain, woman) !== homeLand) ||
+    (husbandAshore && landUnder(world, terrain, husband) !== homeLand)
+  );
+}
+
+/** The land component `e` stands on. */
+function landUnder(world: World, terrain: TerrainGraph, e: Entity): number {
   const p = world.get(e, Position);
-  const here = nodeOfPosition(p.x, p.y);
-  return terrain.componentOf(terrain.nodeAtClamped(here.hx, here.hy)) !== terrain.componentOf(door);
+  return terrain.componentOf(terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y)));
 }
 
 /** Drop an order that can never complete, and let its holder out of the house. */

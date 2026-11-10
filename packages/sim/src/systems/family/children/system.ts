@@ -66,7 +66,9 @@ function dutyClaimsOf(world: World): DutyClaims {
  * food it consumed stays spent.
  */
 function cancelAbandonedSessions(world: World): void {
-  for (const home of world.canonicalQuery(MakingLove)) {
+  const homes = world.canonicalQuery(MakingLove);
+  for (let i = 0; i < homes.length; i++) {
+    const home = homes[i] as Entity;
     const wife = world.get(home, MakingLove).wife;
     const marriage = world.isAlive(wife) ? world.tryGet(wife, Marriage) : undefined;
     const husband = marriage !== undefined && world.isAlive(marriage.spouse) ? marriage.spouse : undefined;
