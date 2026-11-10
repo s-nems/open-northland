@@ -51,7 +51,8 @@ import {
   unitWalkBlocks,
 } from './collision/index.js';
 import { GroupReachability } from './group-reachability.js';
-import { GroupRoutes } from './group-routes.js';
+import { GroupRoutes, SHARED_ROUTE_MIN_NODES } from './group-routes.js';
+import { liveBandRoutes } from './live-band-routes.js';
 import { dropPath, liveStepEnd, restartLeg } from './nav-state.js';
 import { routeBoundsOf } from './route-bounds.js';
 import { grindStartCell, routeStartCell } from './route-start.js';
@@ -264,6 +265,7 @@ class PathDrain {
     marching: boolean,
     traversal: Traversal,
     goalOpen: boolean,
+    liveRoutes?: () => NodeId[][],
   ): NodeId[] | null {
     const { mask, spent } = this;
     if (group && mask !== undefined) {
@@ -273,8 +275,11 @@ class PathDrain {
     const groupRoutes = group ? this.groupRoutes : undefined;
     const borrowed = groupRoutes === undefined ? null : groupRoutes.borrow(overlay, start, goal, spent);
     if (borrowed !== null) return borrowed;
-    // A member no route served still ends its own search on the first shared route it settles a node of.
-    const stops = groupRoutes?.meetingStops(overlay, goal) ?? undefined;
+    // A member no route served still ends its own search on the first shared route it settles a node of,
+    // on a walk long enough to share: a short one costs little alone and would only gain a detour.
+    const meets = groupRoutes !== undefined && farApart(this.terrain, start, goal);
+    if (meets && liveRoutes !== undefined) groupRoutes.offerLive(overlay, liveRoutes);
+    const stops = meets ? (groupRoutes.meetingStops(overlay, goal) ?? undefined) : undefined;
     const pockets = this.pocketsOf(player, marching);
     let path = resolvePath(pockets, start, goal, overlay, spent, traversal, this.goalSlice, goalOpen, stops);
     if (path !== null && groupRoutes !== undefined && stops !== undefined && path.at(-1) !== goal) {
@@ -389,9 +394,25 @@ export function drainPathRequests(
     const sealed = labelled && drain.sealedApart(start, goal);
     const goalOpen =
       labelled && !sealed && (bodies === null || bodies.posts === 0) && drain.goalOutgrowsProbe(goal);
+    // A member ordered after its band left takes up a route a band-mate still walks. A chase keeps its
+    // own search: its goal is a contact node a few steps off, not the band's.
+    const liveRoutes =
+      group && player !== undefined && !world.has(e, Engagement)
+        ? () => liveBandRoutes(world, ctx.content, terrain, e, player, marching, collides, blocked)
+        : undefined;
     let path = sealed
       ? null
-      : drain.routeUnder(blocked, start, goal, group, player ?? -1, marching, traversal, goalOpen);
+      : drain.routeUnder(
+          blocked,
+          start,
+          goal,
+          group,
+          player ?? -1,
+          marching,
+          traversal,
+          goalOpen,
+          liveRoutes,
+        );
     // An attack-move goes for what seals its goal off: the bodies it fights shape its route, never refuse it.
     if (path === null && bodies !== null && world.tryGet(e, PlayerOrder)?.attackMove !== undefined) {
       const through = drain.besideTargetsFor(player ?? -1, structures);
@@ -511,6 +532,13 @@ export function drainPathRequests(
     settleRoute(world, e, req.goal);
   }
   drain.reset();
+}
+
+/** Whether a walk from `start` to `goal` is long enough for a shared route to serve it. */
+function farApart(terrain: TerrainGraph, start: NodeId, goal: NodeId): boolean {
+  const columns = Math.abs(terrain.xOf(start) - terrain.xOf(goal));
+  const rows = Math.abs(terrain.yOf(start) - terrain.yOf(goal));
+  return columns + rows >= SHARED_ROUTE_MIN_NODES;
 }
 
 /** A route installed answers its request and ends any stranded park; one to the work a lost settler

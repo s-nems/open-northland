@@ -79,6 +79,9 @@ interface GroupRoute {
  */
 export class GroupRoutes {
   private readonly routes: GroupRoute[] = [];
+  /** Routes band-mates already walked when the drain began, which a member's own search may end on. */
+  private readonly live: GroupRoute[] = [];
+  private readonly liveRead = new Set<BlockOverlay>();
   private readonly terrain: TerrainGraph;
   private readonly lanes: GroupLanes;
   private version = -1;
@@ -92,6 +95,8 @@ export class GroupRoutes {
     if (version === this.version) return;
     this.version = version;
     this.routes.length = 0;
+    this.live.length = 0;
+    this.liveRead.clear();
     this.lanes.reset();
   }
 
@@ -132,8 +137,7 @@ export class GroupRoutes {
   meetingStops(blocked: BlockOverlay, goal: NodeId): NodeStops | null {
     let stops: StopStamps | undefined;
     let mark = 0;
-    for (const route of this.routes) {
-      if (!this.passesBy(route, blocked, goal)) continue;
+    for (const route of this.passing(blocked, goal)) {
       if (stops === undefined) {
         stops = stopStampsByTerrain.get(this.terrain);
         if (stops === undefined) {
@@ -160,8 +164,7 @@ export class GroupRoutes {
   ): NodeId[] | null {
     const met = onto.at(-1);
     if (met === undefined) return null;
-    for (const route of this.routes) {
-      if (!this.passesBy(route, blocked, goal)) continue;
+    for (const route of this.passing(blocked, goal)) {
       if (corridorIndexOf(this.terrain, route.path, met) === undefined) continue;
       const joined = followCorridor(
         this.terrain,
@@ -178,16 +181,32 @@ export class GroupRoutes {
     return null;
   }
 
-  /** Whether `route` runs under `blocked` and passes within the group's area of `goal`. */
-  private passesBy(route: GroupRoute, blocked: BlockOverlay, goal: NodeId): boolean {
-    return (
-      route.blocked === blocked && corridorBoxGap(this.terrain, route.path, goal) <= GROUP_AREA_RADIUS_NODES
-    );
+  /** The routes under `blocked` that pass within the group's area of `goal`: this drain's, then the
+   *  live ones. */
+  private passing(blocked: BlockOverlay, goal: NodeId): GroupRoute[] {
+    const passesBy = (route: GroupRoute): boolean =>
+      route.blocked === blocked && corridorBoxGap(this.terrain, route.path, goal) <= GROUP_AREA_RADIUS_NODES;
+    return [...this.routes.filter(passesBy), ...this.live.filter(passesBy)];
+  }
+
+  /**
+   * Take in the routes band-mates still walk under `blocked`, read by `read` once per drain and overlay,
+   * for {@link meetingStops} alone: a member ordered after its band left ends its search on one of them.
+   * The cheaper lanes and joins keep to this drain's routes, whose number the army's bands bound.
+   */
+  offerLive(blocked: BlockOverlay, read: () => readonly (readonly NodeId[])[]): void {
+    if (this.liveRead.has(blocked)) return;
+    this.liveRead.add(blocked);
+    for (const path of read()) this.live.push(this.routeOf(blocked, path));
   }
 
   /** Offer a member's own full route to the rest of its group. */
   offer(blocked: BlockOverlay, path: readonly NodeId[]): void {
     if (path.length < SHARED_ROUTE_MIN_NODES) return;
+    this.routes.push(this.routeOf(blocked, path));
+  }
+
+  private routeOf(blocked: BlockOverlay, path: readonly NodeId[]): GroupRoute {
     let length = ZERO,
       cost = ZERO;
     for (let i = 1; i < path.length; i++) {
@@ -199,7 +218,7 @@ export class GroupRoutes {
       cost = fx.add(cost, fx.mul(distance, this.terrain.routeWeightAt(to, 'land')));
     }
     const meanWeight = length === 0 ? ZERO : meanResistance(cost, length);
-    this.routes.push({ blocked, path, meanWeight });
+    return { blocked, path, meanWeight };
   }
 }
 

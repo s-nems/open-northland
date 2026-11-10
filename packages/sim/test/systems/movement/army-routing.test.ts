@@ -13,10 +13,20 @@ import {
   WalkFacing,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, playerCommand, positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
+import {
+  exportSaveGame,
+  fx,
+  playerCommand,
+  positionOfNode,
+  restoreSimulation,
+  Simulation,
+  type TerrainMap,
+} from '../../../src/index.js';
+import { NodeMask } from '../../../src/nav/block-overlay.js';
 import { columnStepMiddles, isColumnStep } from '../../../src/nav/pathfinding/index.js';
 import { type NodeId, StepBuffer } from '../../../src/nav/terrain/index.js';
 import { stampResourceFootprintData } from '../../../src/systems/footprint/index.js';
+import { liveBandRoutes } from '../../../src/systems/movement/live-band-routes.js';
 import { testContent } from '../../fixtures/content.js';
 
 /** Four rows of 32: enough for the army's rows to share searched routes. The thousand-soldier scale
@@ -28,6 +38,8 @@ const WALL_X = 120;
 const GAP_Y = 76;
 /** Fewest corridor stops a band rides after its own search met the corridor at the wall's gap. */
 const MET_STRETCH_NODES = 20;
+/** Ticks a band-mate has marched before a soldier is ordered after it. */
+const LATE_ORDER_TICKS = 12;
 
 function army(wall: boolean, wallHeight = GAP_Y) {
   const typeIds = new Array<number>(WIDTH * HEIGHT).fill(0);
@@ -289,6 +301,63 @@ describe('army player routing', () => {
       expect(centres.every(({ node }) => terrain.isWalkable(node))).toBe(true);
     }
   });
+  it('offers a soldier ordered later the route a band-mate still walks, the same after a restore', () => {
+    const width = 400;
+    const height = 160;
+    const typeIds = new Array<number>(width * height).fill(0);
+    const wallX = 200;
+    const gapRows = { from: 150, to: 154 };
+    for (let y = 0; y < height; y++) if (y < gapRows.from || y > gapRows.to) typeIds[y * width + wallX] = 1;
+    const map: TerrainMap = { resolution: 'half-cell', width, height, typeIds };
+    const sim = new Simulation({ seed: 7, content: testContent(), map });
+    const soldier = (x: number, y: number, player: number): Entity => {
+      const entity = sim.world.create();
+      sim.world.add(entity, Position, positionOfNode(x, y));
+      addPerson(sim.world, entity, {
+        tribe: 1,
+        jobType: 31,
+        hunger: fx.fromInt(0),
+        fatigue: fx.fromInt(0),
+        piety: fx.fromInt(0),
+        enjoyment: fx.fromInt(0),
+      });
+      sim.world.add(entity, Owner, { player });
+      sim.world.add(entity, WalkFacing, { direction: WALK_DIRECTION.E, target: WALK_DIRECTION.E });
+      return entity;
+    };
+    const leader = soldier(4, 4, 0);
+    const stranger = soldier(4, 20, 1);
+    const late = soldier(8, 6, 0);
+    sim.enqueue(playerCommand(0, { kind: 'attackMoveUnit', entity: leader, x: 340, y: 8 }));
+    sim.enqueue(playerCommand(1, { kind: 'attackMoveUnit', entity: stranger, x: 340, y: 20 }));
+    for (let tick = 0; tick < LATE_ORDER_TICKS; tick++) sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('army terrain missing');
+    const blocked = new NodeMask(terrain.nodeCount);
+    const live = liveBandRoutes(sim.world, sim.content, terrain, late, 0, true, true, blocked);
+    // The leader's route alone: the stranger marches for another player.
+    expect(live).toHaveLength(1);
+    const [route] = live;
+    if (route === undefined) throw new Error('live route missing');
+    const ahead = sim.world.get(leader, PathRoute).waypoints.slice(sim.world.get(leader, PathFollow).index);
+    expect(route[0]).toBe(ahead[0]?.node);
+    expect(route.at(-1)).toBe(terrain.nodeAt(340, 8));
+    for (let i = 1; i < route.length; i++) {
+      expect(terrain.joined(route[i - 1] as NodeId, route[i] as NodeId)).toBe(true);
+    }
+    expect(liveBandRoutes(sim.world, sim.content, terrain, leader, 0, true, true, blocked)).toEqual([]);
+
+    const order = playerCommand(0, { kind: 'attackMoveUnit', entity: late, x: 344, y: 10 });
+    const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content, map });
+    sim.enqueue(order);
+    restored.enqueue(order);
+    sim.step();
+    restored.step();
+    const taken = sim.world.get(late, PathRoute).waypoints;
+    expect(taken.at(-1)?.node).toBe(terrain.nodeAt(344, 10));
+    expect(restored.world.get(late, PathRoute).waypoints).toEqual(taken);
+  });
+
   it('routes a band whose boarding leg is refused alone, and its own band joins that route', () => {
     const width = 400;
     const height = 160;
