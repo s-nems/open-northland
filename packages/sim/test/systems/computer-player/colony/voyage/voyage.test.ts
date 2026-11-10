@@ -94,7 +94,10 @@ describe('a colony scouts its site', () => {
     const men = spareMen(sim.world, ctxOf(sim), SEAT);
     const fed = men.at(-1);
     if (fed === undefined) throw new Error('no men');
-    for (const e of men) if (e !== fed) sim.world.mut(e, SettlerNeeds).hunger = ONE;
+    // Every other settler, not only the men spare now: who is spare when the ship is claimed is the
+    // workforce's and the build order's timing.
+    for (const e of [...sim.world.query(SettlerNeeds)])
+      if (e !== fed) sim.world.mut(e, SettlerNeeds).hunger = ONE;
     mooredShip(sim);
     expect(stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim)?.phase === 'scouting')).toBe(true);
     expect(colonyState(sim)?.scout?.helm).toBe(fed);

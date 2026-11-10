@@ -7,7 +7,7 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { World } from '../../../ecs/world.js';
-import { ROOM_REVIEW_PHASE } from '../../ai-shared/cadence.js';
+import { BUILD_ORDER_BEAT, BUILD_ORDER_EVERY_DECISIONS, ROOM_REVIEW_PHASE } from '../../ai-shared/cadence.js';
 import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { everyBuildingOf, homeBuildings } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
@@ -154,6 +154,8 @@ export function buildOrderModule(order: BuildOrder): ComputerModule {
   return {
     id: 'houseBuild',
     run: (world, ctx, player) => runBuildOrder(world, ctx, player, order),
+    everyDecisions: BUILD_ORDER_EVERY_DECISIONS,
+    beat: BUILD_ORDER_BEAT,
   };
 }
 

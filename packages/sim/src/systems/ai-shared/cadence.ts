@@ -55,6 +55,18 @@ export function decisionIndex(tick: number): number {
  */
 export const WORKFORCE_EVERY_DECISIONS = 2;
 
+/**
+ * Every how many of a seat's decisions its build order runs (authored, a performance trade): its line
+ * statuses and site searches are the second dearest module of a late settlement. It gives one command a
+ * run, so a seat opens or lifts at most one site every 8 s; the sites it keeps open are bounded by its site
+ * pace and take minutes to build. It runs on the decisions the workforce allocator skips
+ * ({@link BUILD_ORDER_BEAT}), so a seat's decision holds one of the two.
+ */
+export const BUILD_ORDER_EVERY_DECISIONS = 2;
+
+/** The build order's beat: one decision after the workforce allocator's. */
+export const BUILD_ORDER_BEAT = 1;
+
 /** Whether a module that runs every `every` decisions runs on `player`'s decision at `tick`. The beat is
  *  offset by the seat, so the seats split each slow module's decisions between them. */
 export function moduleBeatDue(tick: number, player: number, every: number): boolean {

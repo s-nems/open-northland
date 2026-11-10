@@ -2,7 +2,11 @@ import { AiControl, type ComputerModuleId, computerModuleRuns } from '../../comp
 import { isPlayerDead } from '../../components/match.js';
 import { aiCommand, type PlayerCommand } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
-import { computerDecisionDue, moduleBeatDue } from '../ai-shared/cadence.js';
+import {
+  COMPUTER_DECISION_INTERVAL_TICKS,
+  computerDecisionDue,
+  moduleBeatDue,
+} from '../ai-shared/cadence.js';
 import type { System, SystemContext } from '../context.js';
 import { catchUpSeatStock } from '../stores/index.js';
 import { buildOrderModule, DEFAULT_BUILD_ORDER, roomReviewModule } from './build-order/index.js';
@@ -47,6 +51,9 @@ interface ComputerModuleParts {
   /** Every how many of the seat's decisions the module runs ({@link moduleBeatDue}); every one when
    *  absent. */
   readonly everyDecisions?: number;
+  /** How many decisions after the seat's own beat an `everyDecisions` module runs; on the beat when
+   *  absent. */
+  readonly beat?: number;
   /** The phase the module shares with another; its index in the run order when absent. */
   readonly phase?: number;
 }
@@ -110,7 +117,10 @@ export function runComputerModules(
       if (module === undefined) continue;
       const slot = ctx.tick - (module.phase ?? index) * COMPUTER_MODULE_PHASE_TICKS;
       if (!computerDecisionDue(slot, seat)) continue;
-      if (module.everyDecisions !== undefined && !moduleBeatDue(slot, seat, module.everyDecisions)) continue;
+      if (module.everyDecisions !== undefined) {
+        const beat = slot - (module.beat ?? 0) * COMPUTER_DECISION_INTERVAL_TICKS;
+        if (!moduleBeatDue(beat, seat, module.everyDecisions)) continue;
+      }
       // The authority gate would refuse a dead seat's orders anyway; skipping keeps them out of the log.
       if (isPlayerDead(world, seat)) continue;
       if (!computerModuleRuns(world, seat, module.id === 'colony' ? module.gate : module.id)) continue;
