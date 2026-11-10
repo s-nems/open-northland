@@ -25,17 +25,32 @@ export class ChangeFeed {
   private overflowed = false;
 
   record(entity: Entity): void {
-    if (this.overflowed) return;
     const word = entity >>> WORD_SHIFT;
     const bit = 1 << (entity & BIT_MASK);
+    const held = this.held;
+    // A word past the bitset reads `undefined`, which holds no bit.
+    if ((held[word] as number) & bit) return;
+    const count = this.count;
+    if (word >= held.length || count === this.entities.length || this.overflowed) {
+      this.recordSlow(entity);
+      return;
+    }
+    held[word] = (held[word] as number) | bit;
+    this.entities[count] = entity;
+    this.count = count + 1;
+  }
+
+  /** {@link record} for a feed that overflowed or must first grow a buffer. */
+  private recordSlow(entity: Entity): void {
+    if (this.overflowed) return;
+    const word = entity >>> WORD_SHIFT;
     if (word >= this.held.length) this.held = grownBits(this.held, word);
-    else if ((this.held[word] as number) & bit) return;
     const count = this.count;
     if (count >= CHANGE_FEED_LIMIT) {
       this.lose();
       return;
     }
-    this.held[word] = (this.held[word] as number) | bit;
+    this.held[word] = (this.held[word] as number) | (1 << (entity & BIT_MASK));
     if (count === this.entities.length) this.entities = grown(this.entities);
     this.entities[count] = entity;
     this.count = count + 1;

@@ -110,14 +110,20 @@ export class World {
   }
 
   remove<T>(entity: Entity, component: Component<T>): void {
-    if (this.storeOf(component)?.delete(entity)) {
-      this.removeMembership(entity, component as Component<unknown>);
-      this.canonicalQueries.changed(component as Component<unknown>, entity);
-      this.bumpComponentGeneration(component as Component<unknown>, entity);
-      // The removed value's revision leaves with its slot; the touch keeps its cached clone from surviving.
-      this.touched.record(entity, component as Component<unknown>, true);
-      this.mutations?.componentWritten(component as Component<unknown>, entity);
-    }
+    // Most removals name a component the entity does not carry: that answer is one member probe.
+    const store = this.storesById[component.id];
+    // biome-ignore lint/complexity/useOptionalChain: the chain needs a comparison more, which this method's inlined size pays for
+    if (store !== undefined && store.has(entity)) this.removeMember(store, entity, component);
+  }
+
+  private removeMember(store: ComponentStore<unknown>, entity: Entity, component: Component<unknown>): void {
+    store.delete(entity);
+    this.removeMembership(entity, component);
+    this.canonicalQueries.changed(component, entity);
+    this.bumpComponentGeneration(component, entity);
+    // The removed value's revision leaves with its slot; the touch keeps its cached clone from surviving.
+    this.touched.record(entity, component, true);
+    this.mutations?.componentWritten(component, entity);
   }
 
   private insertMembership(entity: Entity, component: Component<unknown>): void {
@@ -155,10 +161,7 @@ export class World {
    */
   mut<T>(entity: Entity, component: Component<T>): T {
     const v = this.tryMut(entity, component);
-    if (v === undefined) {
-      throw new Error(`entity ${entity} has no component ${component.name}`);
-    }
-    return v;
+    return v !== undefined ? v : missing(entity, component);
   }
 
   /** {@link mut} for a component the entity may not carry; an absent value logs nothing. */
@@ -184,8 +187,7 @@ export class World {
     const store = this.storeOf(component);
     const slot = store === undefined ? ABSENT_SLOT : store.slotOf(entity);
     const v = store?.valueAt(slot);
-    if (store === undefined || v === undefined)
-      throw new Error(`entity ${entity} has no component ${component.name}`);
+    if (store === undefined || v === undefined) return missing(entity, component);
     store.setRevisionAt(slot, this.touched.recordUnlisted());
     this.mutations?.componentWritten(component as Component<unknown>, entity);
     this.recordValueWrite(component as Component<unknown>, entity);
