@@ -61,10 +61,21 @@ export function cartDragTicks(ticks: number, percent: number): number {
   return Math.round((ticks * percent) / (PERCENT - percent));
 }
 
+/** Per content, the type ids a cart waiting for its draught animal turns into once harnessed. */
+const animalDrawnTypeIds = new WeakMap<ContentSet, ReadonlySet<number>>();
+
 /** A cart an animal draws: the type a cart waiting for its draught animal turns into once harnessed. */
 function isAnimalDrawnType(content: ContentSet, type: VehicleType): boolean {
-  for (const other of contentIndex(content).vehicles.values()) {
-    if (other.draggingAnimalTribe !== undefined && other.transformVehicleType === type.typeId) return true;
+  let drawn = animalDrawnTypeIds.get(content);
+  if (drawn === undefined) {
+    const ids = new Set<number>();
+    for (const other of contentIndex(content).vehicles.values()) {
+      if (other.draggingAnimalTribe !== undefined && other.transformVehicleType !== undefined) {
+        ids.add(other.transformVehicleType);
+      }
+    }
+    drawn = ids;
+    animalDrawnTypeIds.set(content, drawn);
   }
-  return false;
+  return drawn.has(type.typeId);
 }

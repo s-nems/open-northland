@@ -314,10 +314,18 @@ export function vehicleStockEntries(stock: {
 
 /** Units aboard, summed over every good. */
 export function vehicleLoad(stock: { lines: ReadonlyMap<number, DeepReadonly<VehicleStockLine>> }): number {
-  let total = 0;
-  for (const line of stock.lines.values()) total += line.current;
-  return total;
+  // `forEach` with a held callback: a carrier's every step reads this, and a for-of over the map
+  // allocates an iterator and a result per line.
+  loadSum = 0;
+  stock.lines.forEach(addLineLoad);
+  return loadSum;
 }
+
+/** {@link vehicleLoad}'s running sum, reset by each call. */
+let loadSum = 0;
+const addLineLoad = (line: DeepReadonly<VehicleStockLine>): void => {
+  loadSum += line.current;
+};
 
 /** Units booked, summed over every good: aboard plus on their way. */
 export function vehicleReservedLoad(stock: {
