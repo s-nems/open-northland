@@ -134,7 +134,8 @@ export function settingsSessions() {
 /** A row's report id: `<session>-<view>-z<zoom>-<toggle>`. */
 export const rowId = (session, view, entry) => `${session.id}-${view.id}-z${view.zoom}-${entry.toggle}`;
 
-/** Every graphics setting on, xBR the art filter, render scale 1, the FPS counter's timer queries off. */
+/** Every graphics setting on, full detail at every zoom, xBR the art filter, render scale 1, the FPS
+ *  counter's timer queries off. */
 export function sessionSettings(session) {
   return {
     enhancedSampling: true,
@@ -150,6 +151,7 @@ export function sessionSettings(session) {
     spriteSmoothing: true,
     blood: true,
     bonesFade: true,
+    distantDetail: true,
     renderScale: 1,
     ...session.settings,
     fpsCounter: false,

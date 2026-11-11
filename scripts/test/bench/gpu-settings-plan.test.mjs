@@ -40,6 +40,7 @@ test('a session loads with every setting on, its own patch over them, and no tim
   const settings = sessionSettings(scaled);
   assert.equal(settings.renderScale, 1.5);
   assert.equal(settings.softShadows, true);
+  assert.equal(settings.distantDetail, true);
   assert.equal(settings.pixelArtScaler, 'xbr');
   assert.equal(settings.fpsCounter, false);
 });
