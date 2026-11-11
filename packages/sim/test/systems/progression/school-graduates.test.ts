@@ -206,6 +206,19 @@ describe('school graduates', () => {
     expect(sim.world.get(pupil, JobAssignment).workplace).toBe(empty);
   });
 
+  it('posts a graduate to a finished staffed workplace before a nearer empty site', () => {
+    const { sim, pupil, house } = school(COLLECTOR, CARPENTER);
+    postGraduates(sim, true);
+    const site = building(sim, TWIN_MILL, { x: 8, y: 12 });
+    sim.world.add(site, UnderConstruction, { labor: ZERO });
+    const staffed = building(sim, TWIN_MILL, { x: 20, y: 20 });
+    const worker = settlerAt(sim, { jobType: CARPENTER, tribe: TRIBE });
+    sim.world.add(worker, Owner, { player: SEAT });
+    sim.world.add(worker, JobAssignment, { workplace: staffed });
+    graduate(sim, pupil, house, CARPENTER);
+    expect(sim.world.get(pupil, JobAssignment).workplace).toBe(staffed);
+  });
+
   it('posts a graduate to a workplace still under construction', () => {
     const { sim, pupil, house } = school(COLLECTOR, CARPENTER);
     postGraduates(sim, true);
