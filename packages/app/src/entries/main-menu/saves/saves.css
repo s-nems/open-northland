@@ -1,0 +1,33 @@
+/* The in-game load window's list on a menu screen (panel.ts): the HUD's own rows on a HUD plane the
+   game's scale sizes, in a host that fills the screen below the head. */
+.main-menu__saves {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.main-menu__saves > .on-hud {
+  display: flex;
+  justify-content: center;
+  container-type: inline-size;
+}
+
+.main-menu__saves .main-menu__saves-panel.on-saves {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 960px);
+  height: 100%;
+  overflow: hidden;
+}
+
+.main-menu__saves .main-menu__saves-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px 14px 0;
+}
+
+.main-menu__saves .on-hud .on-saves__sheet {
+  margin: 0;
+}

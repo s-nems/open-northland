@@ -4,7 +4,7 @@ import { localImportControls } from '../catalogue/local-import.js';
 import { type CatalogueView, catalogueView, initialCatalogueMemory } from '../catalogue/view.js';
 import { node } from '../dom.js';
 import { hasClaimableSeat } from '../lobby/roster-state.js';
-import { type MapSelectItem, type MapSelectMemory, ROOM_TABS } from '../map-select/model.js';
+import { listedIn, type MapSelectItem, type MapSelectMemory, ROOM_TABS } from '../map-select/model.js';
 import { mapPicker } from '../map-select/picker.js';
 
 interface MapPickOptions {
@@ -12,6 +12,12 @@ interface MapPickOptions {
   readonly onChoose: (item: MapSelectItem) => void;
   readonly onBack: () => void;
   readonly onMaps: (maps: readonly MapSelectItem[]) => void;
+}
+
+/** A map a room can be made on: one the multiplayer list takes, with a seat for the room's creator, which
+ *  the original's list does not look for. */
+export function isRoomMap(item: MapSelectItem): boolean {
+  return listedIn(item, 'multiplayer') && hasClaimableSeat(item.players);
 }
 
 /** The New Game map list under the room listing, with a way back to the create card, and the map
@@ -30,8 +36,7 @@ export function roomMapPick(options: MapPickOptions) {
     memory: options.memory,
     listing: 'multiplayer',
     tabs: ROOM_TABS,
-    // A room needs a seat for its creator; the original's list does not look at the roster.
-    include: (item) => hasClaimableSeat(item.players),
+    include: isRoomMap,
     primaryLabel: () => copy.network.choose,
     onPrimary: options.onChoose,
     onMaps: options.onMaps,

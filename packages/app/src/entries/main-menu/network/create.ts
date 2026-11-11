@@ -1,17 +1,24 @@
 import { initialMapSelectMemory, type MapSelectItem } from '../map-select/model.js';
 import { type CreateChoice, createRoomCard } from './create-card.js';
 import { roomMapPick } from './map-pick.js';
+import { keptRoomSave, type RoomSave, roomSavePick } from './save-pick.js';
+
+type Picker = 'map' | 'save';
 
 interface CreatePanelOptions {
   readonly create: (choice: CreateChoice) => Promise<void>;
-  /** Puts the map list in the browser's place, or the browser back. */
-  readonly showMapList: (on: boolean) => void;
+  /** Puts a list in the browser's place, or the browser back. */
+  readonly showPicker: (on: boolean) => void;
 }
 
-/** The create-room card and the map list it opens; the list stays inside the screen because leaving
- *  the screen drops the relay connection. */
+/** The create-room card and the map and save lists it opens; the lists stay inside the screen because
+ *  leaving the screen drops the relay connection. */
 export function createPanel(options: CreatePanelOptions) {
-  const card = createRoomCard({ create: options.create, pickMap: () => showMapList(true) });
+  const card = createRoomCard({
+    create: options.create,
+    pickMap: () => showPicker('map'),
+    pickSave: () => showPicker('save'),
+  });
   const memory = initialMapSelectMemory('all');
   let chosen: MapSelectItem | null = null;
   const choose = (item: MapSelectItem | null): void => {
@@ -22,38 +29,59 @@ export function createPanel(options: CreatePanelOptions) {
     memory,
     onChoose(item) {
       choose(item);
-      showMapList(false);
+      showPicker(null);
     },
-    onBack: () => showMapList(false),
+    onBack: () => showPicker(null),
     onMaps: (maps) => choose(maps.find((map) => map.id === memory.selectedId) ?? maps[0] ?? null),
   });
-  function showMapList(on: boolean): void {
-    options.showMapList(on);
-    mapList.element.hidden = !on;
+  let chosenSave: RoomSave | null = null;
+  const chooseSave = (save: RoomSave | null): void => {
+    chosenSave = save;
+    card.setSave(save);
+  };
+  const saveList = roomSavePick({
+    onChoose(save) {
+      chooseSave(save);
+      showPicker(null);
+    },
+    onBack: () => showPicker(null),
+    onSaves: (slots) => chooseSave(keptRoomSave(chosenSave, slots)),
+  });
+  let open: Picker | null = null;
+  function showPicker(next: Picker | null): void {
+    const from = open;
+    open = next;
+    options.showPicker(next !== null);
+    mapList.element.hidden = next !== 'map';
+    saveList.element.hidden = next !== 'save';
     // A row browsed and then abandoned must not outlive the card's choice.
-    if (!on && chosen !== null) mapList.select(chosen.id);
+    if (from === 'map' && chosen !== null) mapList.select(chosen.id);
+    if (from === 'save') saveList.select(chosenSave?.kind === 'slot' ? chosenSave.slot.id : null);
     // Hiding the focused control drops focus to <body>, where Esc would read as menu navigation.
-    if (on) mapList.element.querySelector<HTMLButtonElement>('button')?.focus();
-    else card.mapControl.focus();
+    if (next === 'map') mapList.element.querySelector<HTMLButtonElement>('button')?.focus();
+    else if (next === 'save') saveList.focus();
+    else if (from === 'map') card.mapControl.focus();
+    else if (from === 'save') card.saveControl.focus();
   }
   return {
     card: card.element,
-    mapList: mapList.element,
+    pickers: [mapList.element, saveList.element],
     enable: card.enable,
     dispose(): void {
       card.dispose();
       mapList.dispose();
+      saveList.dispose();
     },
-    /** Closes the catalogue and the map list under it. */
-    resetMapList(): void {
+    /** Closes the catalogue and the list over the browser. */
+    resetPickers(): void {
       mapList.closeCatalogue();
-      if (!mapList.element.hidden) showMapList(false);
+      if (open !== null) showPicker(null);
     },
-    /** True when the map list (or the catalogue over it) was open and is now closed. */
-    closeMapList(): boolean {
-      if (mapList.element.hidden) return false;
+    /** True when a list (or the catalogue over the map list) was open and is now closed. */
+    closePicker(): boolean {
+      if (open === null) return false;
       mapList.closeCatalogue();
-      showMapList(false);
+      showPicker(null);
       return true;
     },
   };

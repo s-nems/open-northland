@@ -131,7 +131,7 @@ export function networkScreen(
     assets = null;
     connection?.dispose();
     connection = null;
-    create.resetMapList();
+    create.resetPickers();
     hall.closePassword();
     leftNotice = null;
     resetRoom();
@@ -168,7 +168,7 @@ export function networkScreen(
         sync();
       }
     },
-    showMapList(on) {
+    showPicker(on) {
       head.hidden = on;
       status.hidden = on;
       browser.hidden = on;
@@ -176,7 +176,7 @@ export function networkScreen(
   });
   columns.append(hall.rooms, create.card, hall.chat, hall.players);
   browser.append(form, account, columns);
-  element.append(head, status, browser, create.mapList, roomHost);
+  element.append(head, status, browser, ...create.pickers, roomHost);
 
   function sync(): void {
     const connected = connection?.connected === true && connection.client.welcomed;
@@ -436,7 +436,7 @@ export function networkScreen(
   });
   element.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !escapeLeavesRoom(event.target)) return;
-    if (create.closeMapList()) {
+    if (create.closePicker()) {
       event.stopPropagation();
       event.preventDefault();
       return;
@@ -452,6 +452,8 @@ export function networkScreen(
   });
   return {
     element,
+    // An Esc the screen's own listener never saw, with the focus left outside it, still closes a list.
+    escape: () => create.closePicker(),
     dispose(): void {
       disposed = true;
       generation++;
