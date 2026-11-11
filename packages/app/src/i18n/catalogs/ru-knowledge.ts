@@ -208,6 +208,7 @@ export const ruKnowledge = {
       store: 'Склад',
       larder: 'Запас еды',
       families: 'Семьи',
+      familiesFurnished: '{count} (+{extra} с Мебелью)',
       pupils: 'Мест для учёбы',
       teaches: 'Чему учит',
       teachesTrades: 'Профессии ({count})',
@@ -457,6 +458,7 @@ export const ruKnowledge = {
     },
     homeLevels: {
       families: 'Семьи: {count}',
+      familiesFurnished: 'Семьи: {count} (+{extra} с Мебелью)',
     },
   },
   mechanics: {
@@ -504,6 +506,8 @@ export const ruKnowledge = {
     jobSchoolFoot: 'Курс в Школе вместо практики обычно идёт {seconds} с.',
     homeLevel: 'Уровень',
     homeFamilies: 'Семьи',
+    homeFurnished: 'С Мебелью',
+    homeFurnishedExtra: '+{count}',
     homeLarder: 'Кладовая',
     expPoints: 'Повторений при обычной работе',
     expPercent: 'Опыт',

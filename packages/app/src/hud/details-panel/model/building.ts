@@ -1,5 +1,7 @@
+import type { HomeQualityUse } from '@open-northland/data';
 import {
   countedBy,
+  homeFamilyCapacityView,
   homeQualityView,
   householdGoodPolicyView,
   indexesOf,
@@ -73,10 +75,13 @@ export interface HomeQualityRow {
   readonly value: number;
   readonly capacity: number;
   readonly allowed: boolean;
-  /** Remaining household actions; omitted for holy oil, whose pool drains continuously. */
+  /** Remaining household actions of a ware spent per action: crockery. */
   readonly uses?: number;
   /** Only the holy-oil row carries this live finished-home status. */
   readonly holyFireActive?: boolean;
+  /** Only the furniture row: the pieces the pool holds, in tenths and never none while some is left, and
+   *  the families it houses above the home's base now (0 while it houses none). */
+  readonly furniture?: { readonly pieces: number; readonly extraFamilies: number };
 }
 
 /** Household: the household wares a finished home keeps, and the owner's policy over every home. */
@@ -259,6 +264,32 @@ const TIER_SUFFIX = /\s*(\([^()]*\)|\d+)$/;
 
 const HOUSEHOLD_ORDER: Readonly<Record<HouseholdEffect, number>> = { cooking: 0, lodging: 1, piety: 2 };
 
+const TENTHS = 10;
+
+/** `points` of a ware delivered `deliveryValue` points a piece, in tenths of a piece; some left never
+ *  reads as none. */
+function piecesOf(points: number, deliveryValue: number): number {
+  const tenths = Math.round((points * TENTHS) / deliveryValue);
+  return (points > 0 ? Math.max(1, tenths) : tenths) / TENTHS;
+}
+
+/** What a ware's row says of its pool of `value` points: the uses left, the holy fire, or the furniture
+ *  pieces and the `extraFamilies` they house now. */
+function wareState(
+  use: HomeQualityUse,
+  value: number,
+  extraFamilies: number,
+): Pick<HomeQualityRow, 'uses' | 'holyFireActive' | 'furniture'> {
+  switch (use.effect) {
+    case 'piety':
+      return { holyFireActive: value > 0 };
+    case 'lodging':
+      return { furniture: { pieces: piecesOf(value, use.deliveryValue), extraFamilies } };
+    case 'cooking':
+      return { uses: Math.floor(value / use.useCost) };
+  }
+}
+
 function homeQuality(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -270,6 +301,7 @@ function homeQuality(
   if (player === undefined || def.kind !== 'home') return null;
   const pools = homeQualityView(snapshot, ent.id) ?? { cooking: 0, lodging: 0, piety: 0 };
   const policy = householdGoodPolicyView(snapshot, player);
+  const extraFamilies = homeFamilyCapacityView(snapshot, ent.id, def, ctx.goods) - def.homeSize;
   const rows = ctx.goods
     .flatMap((good): HomeQualityRow[] => {
       const use = good.homeQuality;
@@ -283,10 +315,7 @@ function homeQuality(
           value,
           capacity: use.capacity,
           allowed: policy[use.effect],
-          ...(use.effect === 'piety'
-            ? { holyFireActive: value > 0 }
-            : // A lodging pool counts in sleeps, its smallest regular wear.
-              { uses: Math.floor(value / (use.effect === 'lodging' ? use.wear.sleep : use.useCost)) }),
+          ...wareState(use, value, extraFamilies),
         },
       ];
     })

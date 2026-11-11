@@ -161,7 +161,12 @@ export function homeLevelsFigure(context: KnowledgeContext): HTMLElement {
       step(
         [buildingPicture(context, home.typeId, home.name)],
         home.name,
-        formatMessage(t.families, { count: number(home.homeSize) }),
+        home.furnishedFamilies > 0
+          ? formatMessage(t.familiesFurnished, {
+              count: number(home.homeSize),
+              extra: number(home.furnishedFamilies),
+            })
+          : formatMessage(t.families, { count: number(home.homeSize) }),
       ),
     );
   }

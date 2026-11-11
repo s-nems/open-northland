@@ -219,6 +219,7 @@ function buildBuildings(joins: Joins): KnowledgeBuilding[] {
       row: b,
       help: help?.houses[b.typeId] ?? null,
       homeSize: b.homeSize,
+      furnishedFamilies: b.furnishedFamilies,
       schoolSize: b.schoolSize ?? 0,
       shelterCapacity: b.shelterCapacity,
       hitpoints: b.hitpoints ?? null,

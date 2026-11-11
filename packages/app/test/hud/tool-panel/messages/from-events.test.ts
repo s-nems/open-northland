@@ -443,6 +443,28 @@ describe('user messages from sim events', () => {
     expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([[USER_MESSAGE_TYPE.wantsToPray, 1]]);
   });
 
+  it("notes each family that moved out of this seat's home, on the family's head", () => {
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'person' },
+      { id: 2, player: LOCAL, kind: 'person' },
+      { id: 3, player: ENEMY, kind: 'person' },
+      { id: 10, player: LOCAL, kind: 'building' },
+      { id: 11, player: ENEMY, kind: 'building' },
+    ]);
+    const out = run(
+      [
+        { kind: 'familyMovedOut', entity: e(1), home: e(10), player: LOCAL },
+        { kind: 'familyMovedOut', entity: e(2), home: e(10), player: LOCAL },
+        { kind: 'familyMovedOut', entity: e(3), home: e(11), player: ENEMY },
+      ],
+      snap,
+    );
+    expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([
+      [USER_MESSAGE_TYPE.familyMovedOut, 1],
+      [USER_MESSAGE_TYPE.familyMovedOut, 2],
+    ]);
+  });
+
   it("notes this seat's workshop worker that found nowhere for its vehicle site, by reason", () => {
     const snap = snapshot(50, [
       { id: 1, player: LOCAL, kind: 'person' },

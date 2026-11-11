@@ -54,7 +54,7 @@ export const SETTLERS: ArticleGroup = {
               ['{{need.criticalPct}}%', '發出體力、耐力或信仰通知。'],
               ['{{need.drivePct}}%', '做完手頭動作後丟下工作。耐力到此值時，每步慢{{step.tiredExtra}}秒。'],
               ['{{need.satedPct}}%', '居民在家先補耐力，再補體力，補到此值後出門。'],
-              ['{{need.overfillPct}}%', '需求條最多到這裡。在家進餐和在家用傢俱睡覺可以存下超過100%的部分。'],
+              ['{{need.overfillPct}}%', '需求條最多到這裡。在家進餐或睡覺可以存下超過100%的部分。'],
             ],
           },
         },
@@ -63,26 +63,19 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['對象', '睡眠時長', '每次睡眠恢復耐力：在外', '在家', '在家有傢俱'],
+            head: ['對象', '睡眠時長', '每次睡眠恢復耐力：在外', '在家'],
             rows: [
-              [
-                '男性',
-                '{{sleep.manSeconds}}秒',
-                '+{{sleep.manAwayPct}}%',
-                '+{{sleep.manHomePct}}%',
-                '+{{sleep.manFurnishedPct}}%',
-              ],
+              ['男性', '{{sleep.manSeconds}}秒', '+{{sleep.manAwayPct}}%', '+{{sleep.manHomePct}}%'],
               [
                 '[[job:woman|婦女]]',
                 '{{sleep.womanSeconds}}秒',
                 '+{{sleep.womanAwayPct}}%',
                 '+{{sleep.womanHomePct}}%',
-                '+{{sleep.womanFurnishedPct}}%',
               ],
-              ['商人、偵察兵（總按在家算）', '{{sleep.manSeconds}}秒', '+{{sleep.manHomePct}}%', '-', '-'],
-              ['士兵（無論睡在哪裡）', '{{sleep.soldierSeconds}}秒', '+{{sleep.soldierPct}}%', '-', '-'],
+              ['商人、偵察兵（總按在家算）', '{{sleep.manSeconds}}秒', '+{{sleep.manHomePct}}%', '-'],
+              ['士兵（無論睡在哪裡）', '{{sleep.soldierSeconds}}秒', '+{{sleep.soldierPct}}%', '-'],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
           },
         },
         {
@@ -243,7 +236,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             '只有「指派住所」命令能給人住所。沒人會自己搬進去，結婚也只會搬動伴侶。',
-            '一座住所能住幾戶，看等級表的「家庭」列。住滿後命令無效。',
+            '一座住所能住幾戶，看等級表的「家庭」列，有[[good:furniture|傢俱]]時更多。住滿後命令無效。',
             '重新指派會搬走全家：本人、伴侶和未成年的孩子。',
           ],
         },
@@ -305,8 +298,8 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:furniture|傢俱]]',
                 '1級民居',
-                '睡眠×{{home.factor}}',
-                '男性睡{{home.furnitureManSleeps}}次，女性睡{{home.furnitureWomanSleeps}}次',
+                '可多住幾戶家庭',
+                '{{home.furnitureChildren}}個孩子、{{home.furnitureSleeps}}次睡眠或{{home.furnitureMeals}}頓飯',
                 '{{home.furnitureFetchBelow}}',
               ],
               [
@@ -318,8 +311,14 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: '這些貨物每種最多存{{home.wareUnits}}份。油一直燃燒，沒人禱告時也一樣。',
+            foot: '陶器和油每種最多存{{home.wareUnits}}份，傢俱最多存{{home.furnitureUnits}}份。油一直燃燒，沒人禱告時也一樣。',
           },
+        },
+        {
+          list: [
+            '有傢俱時，民居可多住幾戶家庭，見等級表的「有傢俱時」列。只要家裡還有傢俱、玩家也允許使用，這些名額就一直有效。',
+            '只有當民居住的家庭比沒有傢俱時能住的多時，傢俱才會損耗：在那裡懷上的每個孩子、在家的每次睡眠和從存糧裡吃的每頓飯都會用掉一些。沒有多住家庭的民居不會消耗傢俱。',
+          ],
         },
         {
           p: '在住所面板可以為全聚落關閉陶器、傢俱的使用和油的運送。已存入的油繼續燃燒。',
@@ -334,6 +333,10 @@ export const SETTLERS: ArticleGroup = {
               ['鰥夫', '孩子成年或夭折後失去住所。'],
               ['寡婦', '留在家中。'],
               ['成年子女', '成年時失去住所。'],
+              [
+                '超出基礎戶數的家庭',
+                '傢俱用完或被禁止時搬走，最後搬進來的先走，遊戲會顯示「搬出」。開啟「組建家庭」時，[[article:assistant|助手]]會把它安排到有空位的住所。',
+              ],
               ['商人、偵察兵、士兵', '住所留給家人，但他本人不在家吃住。'],
             ],
           },

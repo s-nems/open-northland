@@ -206,6 +206,7 @@ export const chsKnowledge = {
       store: '仓库',
       larder: '存粮',
       families: '家庭',
+      familiesFurnished: '{count}（有家具时 +{extra}）',
       pupils: '学习名额',
       teaches: '教授内容',
       teachesTrades: '职业（{count}）',
@@ -451,6 +452,7 @@ export const chsKnowledge = {
     },
     homeLevels: {
       families: '家庭：{count}',
+      familiesFurnished: '家庭：{count}（有家具时 +{extra}）',
     },
   },
   mechanics: {
@@ -493,6 +495,8 @@ export const chsKnowledge = {
     jobSchoolFoot: '在学校上课代替实践，通常需要{seconds}秒。',
     homeLevel: '等级',
     homeFamilies: '家庭',
+    homeFurnished: '有家具时',
+    homeFurnishedExtra: '+{count}',
     homeLarder: '存粮',
     expPoints: '普通工作次数',
     expPercent: '经验',

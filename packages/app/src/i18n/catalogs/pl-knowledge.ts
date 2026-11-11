@@ -208,6 +208,7 @@ export const plKnowledge = {
       store: 'Magazyn',
       larder: 'Zapas jedzenia',
       families: 'Rodziny',
+      familiesFurnished: '{count} (+{extra} z Meblami)',
       pupils: 'Miejsca nauki',
       teaches: 'Czego uczy',
       teachesTrades: 'Zawody ({count})',
@@ -457,6 +458,7 @@ export const plKnowledge = {
     },
     homeLevels: {
       families: 'Rodziny: {count}',
+      familiesFurnished: 'Rodziny: {count} (+{extra} z Meblami)',
     },
   },
   mechanics: {
@@ -504,6 +506,8 @@ export const plKnowledge = {
     jobSchoolFoot: 'Kurs w Szkole zamiast praktyki trwa zwykle {seconds} s.',
     homeLevel: 'Poziom',
     homeFamilies: 'Rodziny',
+    homeFurnished: 'Z Meblami',
+    homeFurnishedExtra: '+{count}',
     homeLarder: 'Spiżarnia',
     expPoints: 'Razy przy zwykłej pracy',
     expPercent: 'Doświadczenie',

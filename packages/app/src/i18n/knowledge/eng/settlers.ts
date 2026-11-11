@@ -65,7 +65,7 @@ export const SETTLERS: ArticleGroup = {
               ['{{need.satedPct}}%', 'At home he tops up Stamina, then Energy, to this level and leaves.'],
               [
                 '{{need.overfillPct}}%',
-                'The most a bar holds. A meal at home or sleep at home with Furniture stores a reserve above 100%.',
+                'The most a bar holds. A meal or a sleep at home can bank a reserve above 100%.',
               ],
             ],
           },
@@ -75,44 +75,24 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: [
-              'Who',
-              'Sleep time',
-              'Stamina per sleep: away from home',
-              'at home',
-              'at home with Furniture',
-            ],
+            head: ['Who', 'Sleep time', 'Stamina per sleep: away from home', 'at home'],
             rows: [
-              [
-                'Man',
-                '{{sleep.manSeconds}} s',
-                '+{{sleep.manAwayPct}}%',
-                '+{{sleep.manHomePct}}%',
-                '+{{sleep.manFurnishedPct}}%',
-              ],
+              ['Man', '{{sleep.manSeconds}} s', '+{{sleep.manAwayPct}}%', '+{{sleep.manHomePct}}%'],
               [
                 '[[job:woman|Woman]]',
                 '{{sleep.womanSeconds}} s',
                 '+{{sleep.womanAwayPct}}%',
                 '+{{sleep.womanHomePct}}%',
-                '+{{sleep.womanFurnishedPct}}%',
               ],
               [
                 'Merchant, Scout (always as at home)',
                 '{{sleep.manSeconds}} s',
                 '+{{sleep.manHomePct}}%',
                 '-',
-                '-',
               ],
-              [
-                'Soldier (wherever he sleeps)',
-                '{{sleep.soldierSeconds}} s',
-                '+{{sleep.soldierPct}}%',
-                '-',
-                '-',
-              ],
+              ['Soldier (wherever he sleeps)', '{{sleep.soldierSeconds}} s', '+{{sleep.soldierPct}}%', '-'],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
           },
         },
         {
@@ -280,7 +260,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Only the "Assign home" order gives a dwelling. Nobody moves in on their own, and a wedding moves only the spouse.',
-            'A dwelling holds as many families as the Families column of the level table says. The order fails on a full one.',
+            'A dwelling holds as many families as the Families column of the level table says, more with [[good:furniture|Furniture]]. The order fails on a full one.',
             'Reassigning moves the whole family: settler, spouse and growing child.',
           ],
         },
@@ -342,8 +322,8 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:furniture|Furniture]]',
                 'Dwelling 1',
-                'Sleep ×{{home.factor}}',
-                '{{home.furnitureManSleeps}} sleeps for a man, {{home.furnitureWomanSleeps}} for a woman',
+                'Room for more families',
+                '{{home.furnitureChildren}} children, {{home.furnitureSleeps}} sleeps or {{home.furnitureMeals}} meals',
                 '{{home.furnitureFetchBelow}}',
               ],
               [
@@ -355,8 +335,14 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'A dwelling holds up to {{home.wareUnits}} pieces of each of these goods. Oil burns nonstop, even when nobody is praying.',
+            foot: 'A dwelling holds up to {{home.wareUnits}} pieces of Crockery and of Oil, and {{home.furnitureUnits}} of Furniture. Oil burns nonstop, even when nobody is praying.',
           },
+        },
+        {
+          list: [
+            'With Furniture a dwelling takes extra families, as the With Furniture column of the level table says. The extra places last while Furniture is stored and the player allows it.',
+            'Furniture wears only while a dwelling holds more families than it would without it: each child conceived there, each sleep there and each meal from its larder uses some. A dwelling with no extra family keeps its Furniture.',
+          ],
         },
         {
           p: 'In the dwelling panel the player can turn off Crockery and Furniture use and Oil deliveries for the whole settlement. Oil already stored keeps burning.',
@@ -371,6 +357,10 @@ export const SETTLERS: ArticleGroup = {
               ['Widower', 'Loses it once the child has grown up or died.'],
               ['Widow', 'Stays in the dwelling.'],
               ['Grown child', 'Loses it on reaching adulthood.'],
+              [
+                'Family above the base number',
+                'Moves out when the Furniture runs out or is prohibited, the last to move in first, and the game shows "Moved out". With "Found families" on, the [[article:assistant|Assistant]] moves it into a free place.',
+              ],
               [
                 'Merchant, Scout, soldier',
                 'The family keeps the dwelling, but he neither eats nor sleeps there.',

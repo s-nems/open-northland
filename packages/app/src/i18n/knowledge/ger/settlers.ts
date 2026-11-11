@@ -74,7 +74,7 @@ export const SETTLERS: ArticleGroup = {
               ],
               [
                 '{{need.overfillPct}}%',
-                'Obergrenze. Eine Mahlzeit zu Hause und Schlaf zu Hause mit Möbeln legen Vorrat über 100% an.',
+                'Obergrenze. Eine Mahlzeit oder Schlaf zu Hause kann Vorrat über 100% anlegen.',
               ],
             ],
           },
@@ -84,44 +84,24 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: [
-              'Wer',
-              'Schlafdauer',
-              'Kondition je Schlaf: außer Haus',
-              'zu Hause',
-              'zu Hause mit Möbeln',
-            ],
+            head: ['Wer', 'Schlafdauer', 'Kondition je Schlaf: außer Haus', 'zu Hause'],
             rows: [
-              [
-                'Mann',
-                '{{sleep.manSeconds}} s',
-                '+{{sleep.manAwayPct}}%',
-                '+{{sleep.manHomePct}}%',
-                '+{{sleep.manFurnishedPct}}%',
-              ],
+              ['Mann', '{{sleep.manSeconds}} s', '+{{sleep.manAwayPct}}%', '+{{sleep.manHomePct}}%'],
               [
                 '[[job:woman|Frau]]',
                 '{{sleep.womanSeconds}} s',
                 '+{{sleep.womanAwayPct}}%',
                 '+{{sleep.womanHomePct}}%',
-                '+{{sleep.womanFurnishedPct}}%',
               ],
               [
                 'Händler, Kundschafter (immer wie zu Hause)',
                 '{{sleep.manSeconds}} s',
                 '+{{sleep.manHomePct}}%',
                 '-',
-                '-',
               ],
-              [
-                'Soldat (wo immer er schläft)',
-                '{{sleep.soldierSeconds}} s',
-                '+{{sleep.soldierPct}}%',
-                '-',
-                '-',
-              ],
+              ['Soldat (wo immer er schläft)', '{{sleep.soldierSeconds}} s', '+{{sleep.soldierPct}}%', '-'],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
           },
         },
         {
@@ -289,7 +269,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Ein Wohnhaus bekommt man nur mit dem Befehl „Wohnhaus zuweisen“. Niemand zieht von selbst ein, die Hochzeit bringt nur den Ehepartner mit.',
-            'Ein Wohnhaus fasst so viele Familien, wie die Spalte Familien der Stufentabelle angibt. Bei vollem Haus wirkt der Befehl nicht.',
+            'Ein Wohnhaus fasst so viele Familien, wie die Spalte Familien der Stufentabelle angibt, mit [[good:furniture|Möbeln]] mehr. Bei vollem Haus wirkt der Befehl nicht.',
             'Eine neue Zuweisung zieht die ganze Familie um: Siedler, Ehepartner und heranwachsendes Kind.',
           ],
         },
@@ -351,8 +331,8 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:furniture|Möbel]]',
                 'Wohnhaus 1',
-                'Schlaf ×{{home.factor}}',
-                '{{home.furnitureManSleeps}} Schlafphasen eines Mannes, {{home.furnitureWomanSleeps}} einer Frau',
+                'Platz für weitere Familien',
+                '{{home.furnitureChildren}} Kinder, {{home.furnitureSleeps}} Schlafphasen oder {{home.furnitureMeals}} Mahlzeiten',
                 '{{home.furnitureFetchBelow}}',
               ],
               [
@@ -364,8 +344,14 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'Ein Wohnhaus fasst bis zu {{home.wareUnits}} Stück jeder dieser Waren. Öl brennt ohne Pause, auch wenn niemand betet.',
+            foot: 'Ein Wohnhaus fasst bis zu {{home.wareUnits}} Stück Geschirr und ebenso viel Öl, dazu bis zu {{home.furnitureUnits}} Stück Möbel. Öl brennt ohne Pause, auch wenn niemand betet.',
           },
+        },
+        {
+          list: [
+            'Mit Möbeln nimmt ein Wohnhaus weitere Familien auf, so viele die Spalte Mit Möbeln der Stufentabelle angibt. Die Plätze bleiben, solange Möbel im Haus sind und der Spieler sie erlaubt.',
+            'Möbel nutzen sich nur ab, solange ein Wohnhaus mehr Familien beherbergt, als es ohne sie fassen würde: Jedes dort gezeugte Kind, jeder Schlaf dort und jede Mahlzeit aus der Speisekammer verbraucht etwas. Ein Wohnhaus ohne zusätzliche Familie behält seine Möbel.',
+          ],
         },
         {
           p: 'Im Wohnhaus-Panel schaltest du für das ganze Dorf Geschirr, Möbel und Öllieferungen ab. Schon eingelagertes Öl brennt weiter.',
@@ -380,6 +366,10 @@ export const SETTLERS: ArticleGroup = {
               ['Witwer', 'Verliert es, wenn das Kind erwachsen oder gestorben ist.'],
               ['Witwe', 'Bleibt wohnen.'],
               ['Erwachsenes Kind', 'Verliert es, sobald es erwachsen ist.'],
+              [
+                'Familie über der Grundzahl',
+                'Zieht aus, wenn die Möbel aufgebraucht oder verboten sind, die zuletzt eingezogene zuerst, und das Spiel meldet „Ausgezogen“. Ist „Familien gründen“ an, bringt der [[article:assistant|Assistent]] sie in ein Haus mit freiem Platz.',
+              ],
               [
                 'Händler, Kundschafter, Soldat',
                 'Das Wohnhaus bleibt der Familie, er selbst isst und schläft dort nicht.',

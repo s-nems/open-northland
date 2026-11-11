@@ -230,6 +230,7 @@ export const deKnowledge = {
       store: 'Lager',
       larder: 'Nahrungsvorrat',
       families: 'Familien',
+      familiesFurnished: '{count} (+{extra} mit Möbeln)',
       pupils: 'Schulplätze',
       teaches: 'Was man hier lernt',
       teachesTrades: 'Berufe ({count})',
@@ -485,6 +486,7 @@ export const deKnowledge = {
     },
     homeLevels: {
       families: 'Familien: {count}',
+      familiesFurnished: 'Familien: {count} (+{extra} mit Möbeln)',
     },
   },
   mechanics: {
@@ -545,6 +547,8 @@ export const deKnowledge = {
     jobSchoolFoot: 'Ein Schulkurs statt Praxis dauert meist {seconds} s.',
     homeLevel: 'Stufe',
     homeFamilies: 'Familien',
+    homeFurnished: 'Mit Möbeln',
+    homeFurnishedExtra: '+{count}',
     homeLarder: 'Speisekammer',
     expPoints: 'Mal bei normaler Arbeit',
     expPercent: 'Erfahrung',

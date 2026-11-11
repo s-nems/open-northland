@@ -1149,6 +1149,14 @@ export const plGame = {
       uses: '{count} użyć',
       holyFireOn: 'płonie',
       holyFireOff: 'wygasły',
+      furnitureLodges: {
+        one: '{pieces} szt. · +{count} rodzina',
+        few: '{pieces} szt. · +{count} rodziny',
+        many: '{pieces} szt. · +{count} rodzin',
+      },
+      furnitureIdle: '{pieces} szt. · bez dodatkowej rodziny',
+      furnitureTip:
+        'Z Meblami dom mieści dodatkowe rodziny. Meble zużywają się tylko wtedy, gdy te rodziny tu mieszkają, a kiedy się skończą, rodziny się wyprowadzają.',
       allowed: '{good} · dozwolone we wszystkich domach · kliknij: zabroń',
       forbidden: '{good} · zabronione we wszystkich domach · kliknij: pozwól',
       policyForeign: 'Zasady ustala właściciel',
@@ -1534,7 +1542,7 @@ export const plGame = {
         },
         foundFamilies: {
           label: 'Zakładaj rodziny',
-          tip: 'Bezdomna kobieta wprowadza się do najbliższego domu z wolnym miejscem. Kobieta, która ma już dom, wychodzi za mąż, gdy jest wolny mężczyzna.',
+          tip: 'Bezdomna kobieta wprowadza się do najbliższego domu z wolnym miejscem. Kobieta, która ma już dom, wychodzi za mąż, gdy jest wolny mężczyzna. Rodzina, która musiała się wyprowadzić z braku Mebli, też wprowadza się do takiego domu.',
         },
       },
       notes: {
@@ -1971,6 +1979,7 @@ export const plGame = {
       willDie: 'Umiera',
       grewUp: { he: 'Dorósł', she: 'Dorosła' },
       noOneToMarry: 'Brak pary',
+      familyMovedOut: 'Wyprowadzka',
       cannotEnterVehicle: 'Nie wsiądzie',
       cannotLeaveVehicle: 'Nie wysiądzie',
       settlementAttacked: 'Atak na osadę',
@@ -2062,6 +2071,8 @@ export const plGame = {
         he: '{name} nie znalazł nikogo do ożenku. W jego zasięgu musi mieszkać wolna dorosła kobieta.',
         she: '{name} nie znalazła nikogo do zamążpójścia. W jej zasięgu musi mieszkać wolny dorosły mężczyzna.',
       },
+      familyMovedOut:
+        '{name} z rodziną wyprowadza się: w domu nie ma już dla nich Mebli. Dostarcz Meble albo przydziel im inny dom.',
       cannotEnterVehicle:
         '{name} nie może wsiąść do tego wehikułu: brakuje miejsca albo statek stoi na morzu. Przybij statkiem do brzegu albo wybierz inny wehikuł.',
       cannotLeaveVehicle: '{name}: nie można zejść ze statku na morzu. Najpierw przybij do brzegu.',

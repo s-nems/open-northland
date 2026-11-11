@@ -68,7 +68,7 @@ export const SETTLERS: ArticleGroup = {
               ],
               [
                 '{{need.overfillPct}}%',
-                'Tyle najwyżej mieści pasek. Posiłek w domu i sen w domu z meblami odkładają zapas ponad 100%.',
+                'Tyle najwyżej mieści pasek. Posiłek albo sen w domu może odłożyć zapas ponad 100%.',
               ],
             ],
           },
@@ -78,38 +78,24 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Kto', 'Czas snu', 'Wytrzymałość za sen: poza domem', 'w domu', 'w domu z Meblami'],
+            head: ['Kto', 'Czas snu', 'Wytrzymałość za sen: poza domem', 'w domu'],
             rows: [
-              [
-                'Mężczyzna',
-                '{{sleep.manSeconds}} s',
-                '+{{sleep.manAwayPct}}%',
-                '+{{sleep.manHomePct}}%',
-                '+{{sleep.manFurnishedPct}}%',
-              ],
+              ['Mężczyzna', '{{sleep.manSeconds}} s', '+{{sleep.manAwayPct}}%', '+{{sleep.manHomePct}}%'],
               [
                 '[[job:woman|Kobieta]]',
                 '{{sleep.womanSeconds}} s',
                 '+{{sleep.womanAwayPct}}%',
                 '+{{sleep.womanHomePct}}%',
-                '+{{sleep.womanFurnishedPct}}%',
               ],
               [
                 'Kupiec, Zwiadowca (zawsze jak w domu)',
                 '{{sleep.manSeconds}} s',
                 '+{{sleep.manHomePct}}%',
                 '-',
-                '-',
               ],
-              [
-                'Żołnierz (gdziekolwiek śpi)',
-                '{{sleep.soldierSeconds}} s',
-                '+{{sleep.soldierPct}}%',
-                '-',
-                '-',
-              ],
+              ['Żołnierz (gdziekolwiek śpi)', '{{sleep.soldierSeconds}} s', '+{{sleep.soldierPct}}%', '-'],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
           },
         },
         {
@@ -270,7 +256,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Dom dostaje się tylko rozkazem "Przydziel dom". Nikt nie wprowadza się sam, a ślub przenosi tylko współmałżonka.',
-            'Dom mieści tyle rodzin, ile podaje kolumna Rodziny w tabeli poziomów. Do pełnego domu rozkaz nie działa.',
+            'Dom mieści tyle rodzin, ile podaje kolumna Rodziny w tabeli poziomów, a z [[good:furniture|Meblami]] więcej. Do pełnego domu rozkaz nie działa.',
             'Ponowny przydział przenosi całą rodzinę: osadnika, małżonka i rosnące dziecko.',
           ],
         },
@@ -336,8 +322,8 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:furniture|Meble]]',
                 'Dom 1',
-                'Sen ×{{home.factor}}',
-                '{{home.furnitureManSleeps}} snów mężczyzny, {{home.furnitureWomanSleeps}} snów kobiety',
+                'Miejsce dla kolejnych rodzin',
+                '{{home.furnitureChildren}} dzieci, {{home.furnitureSleeps}} snów albo {{home.furnitureMeals}} posiłków',
                 '{{home.furnitureFetchBelow}}',
               ],
               [
@@ -349,8 +335,14 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'Dom trzyma do {{home.wareUnits}} sztuk każdego z tych towarów. Oliwa pali się bez przerwy, także gdy nikt się nie modli.',
+            foot: 'Dom trzyma do {{home.wareUnits}} sztuk Naczyń i tyle samo Oliwy, a Mebli do {{home.furnitureUnits}} sztuk. Oliwa pali się bez przerwy, także gdy nikt się nie modli.',
           },
+        },
+        {
+          list: [
+            'Z Meblami dom przyjmuje dodatkowe rodziny, ile podaje kolumna Z Meblami w tabeli poziomów. Te miejsca są, dopóki w domu leżą Meble, a gracz ich nie zabronił.',
+            'Meble zużywają się tylko wtedy, gdy w domu mieszka więcej rodzin, niż zmieściłoby się bez nich: każde poczęte tam dziecko, każdy sen w domu i każdy posiłek ze spiżarni trochę je zużywa. Dom bez dodatkowej rodziny Mebli nie zużywa.',
+          ],
         },
         {
           p: 'W panelu domu gracz wyłącza dla całej osady używanie Naczyń i Mebli oraz dostawy Oliwy. Oliwa już złożona pali się dalej.',
@@ -365,6 +357,10 @@ export const SETTLERS: ArticleGroup = {
               ['Wdowiec', 'Traci dom, gdy dziecko dorosło lub zmarło.'],
               ['Wdowa', 'Zostaje w domu.'],
               ['Dorosłe dziecko', 'Traci dom w chwili dorosłości.'],
+              [
+                'Rodzina ponad podstawową liczbę',
+                'Wyprowadza się, gdy Meble się skończą albo gracz ich zabroni, najpierw ta, która wprowadziła się ostatnia. Gra pokazuje wtedy "Wyprowadzka". Przy włączonym "Zakładaj rodziny" [[article:assistant|Asystent]] przenosi ją do domu z wolnym miejscem.',
+              ],
               [
                 'Kupiec, Zwiadowca, żołnierz',
                 'Dom zostaje przy rodzinie, ale on sam w nim nie je ani nie śpi.',

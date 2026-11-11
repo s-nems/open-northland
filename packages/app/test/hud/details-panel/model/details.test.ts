@@ -467,7 +467,7 @@ describe('selection details panel model', () => {
     expect(model.kind === 'building' && model.orders?.upgrade?.control).toBe('Requires collector');
   });
 
-  it('shows exact household durability, remaining uses, and the mature home holy fire', () => {
+  it('shows household durability, remaining uses, furniture pieces and families, and the holy fire', () => {
     const quality = { cooking: 240, lodging: 750, piety: 2000 };
     const mature = buildUnitPanelModel(
       snapshotOf([
@@ -499,7 +499,7 @@ describe('selection details panel model', () => {
         goodId: 'furniture',
         value: 750,
         capacity: 2000,
-        uses: 93,
+        furniture: { pieces: 0.8, extraFamilies: 2 },
       }),
       expect.objectContaining({
         effect: 'piety',
@@ -510,6 +510,9 @@ describe('selection details panel model', () => {
       }),
     ]);
     expect(mature.homeQuality?.rows.find((row) => row.effect === 'piety')?.uses).toBeUndefined();
+    const home02 = sandboxCtx().buildings.find((b) => b.typeId === BUILDING_HOME_02);
+    if (home02 === undefined) throw new Error('sandbox lacks home level 02');
+    expect(mature.staff?.count?.capacity).toBe(home02.homeSize + home02.furnishedFamilies);
     expect(mature.homeQuality?.rows.map((row) => row.goodId)).toEqual([
       sandboxCtx().goods.find((good) => good.typeId === GOOD_CROCKERY)?.id,
       sandboxCtx().goods.find((good) => good.typeId === GOOD_FURNITURE)?.id,
@@ -546,7 +549,11 @@ describe('selection details panel model', () => {
     );
     if (dry.kind !== 'building') throw new Error('expected a building panel');
     expect(dry.homeQuality?.rows.find((row) => row.effect === 'piety')?.holyFireActive).toBe(false);
-    expect(dry.homeQuality?.rows.find((row) => row.effect === 'lodging')?.allowed).toBe(false);
+    expect(dry.homeQuality?.rows.find((row) => row.effect === 'lodging')).toMatchObject({
+      allowed: false,
+      furniture: { pieces: 0.8, extraFamilies: 0 },
+    });
+    expect(dry.staff?.count?.capacity).toBe(home02.homeSize);
 
     const retainedOil = buildUnitPanelModel(
       snapshotOf([

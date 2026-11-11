@@ -1130,6 +1130,14 @@ export const chtGame = {
       uses: '{count} 次',
       holyFireOn: '燃燒中',
       holyFireOff: '已熄滅',
+      furnitureLodges: {
+        one: '{pieces} 件 · 多住 {count} 戶',
+        few: '{pieces} 件 · 多住 {count} 戶',
+        many: '{pieces} 件 · 多住 {count} 戶',
+      },
+      furnitureIdle: '{pieces} 件 · 沒有多住的家庭',
+      furnitureTip:
+        '有傢俱時，民居可多住幾戶家庭。只有這些家庭住在這裡時傢俱才會損耗；傢俱用完後，他們就會搬走。',
       allowed: '{good} · 所有民居皆允許 · 點擊：禁止',
       forbidden: '{good} · 所有民居皆禁止 · 點擊：允許',
       policyForeign: '規則由擁有者設定',
@@ -1505,7 +1513,7 @@ export const chtGame = {
         },
         foundFamilies: {
           label: '組建家庭',
-          tip: '無家可歸的女人會搬進最近的有空位的房屋。已有住處的女人在有單身男人時會結婚。',
+          tip: '無家可歸的女人會搬進最近的有空位的房屋。已有住處的女人在有單身男人時會結婚。因缺少傢俱而搬出的家庭也會搬進這樣的房屋。',
         },
       },
       notes: {
@@ -1936,6 +1944,7 @@ export const chtGame = {
       willDie: '瀕臨死亡',
       grewUp: { he: '已長大成人', she: '已長大成人' },
       noOneToMarry: '找不到對象',
+      familyMovedOut: '搬出',
       cannotEnterVehicle: '無法登上',
       cannotLeaveVehicle: '困在船上',
       settlementAttacked: '村莊遇襲',
@@ -2022,6 +2031,7 @@ export const chtGame = {
         he: '{name}找不到結婚對象。他的範圍內必須住著一名未婚女性。',
         she: '{name}找不到結婚對象。她的範圍內必須住著一名未婚男性。',
       },
+      familyMovedOut: '{name}一家搬走了：民居裡已沒有供他們使用的傢俱。請運來傢俱，或為他們分配別的住所。',
       cannotEnterVehicle: '{name}無法登上這輛載具：已沒有空位，或船隻在海上。請讓船靠岸，或選擇其他載具。',
       cannotLeaveVehicle: '{name}無法在海上下船。請先讓船靠岸。',
       settlementAttacked: '你的聚落正遭受攻擊。敵人：{enemy}。受到攻擊：{hits}。請派士兵前去防守。',

@@ -214,6 +214,12 @@ holding iron stays where he is.
 three men beside a two-family home. Two women move in and each weds a man, who moves in with her. The third
 woman finds no free place, stays homeless and stays single.
 
+`?scene=furnished-home` stands three single-family homes. The west one holds two pieces of furniture
+and a second family. Two tired women walk home to the middle one, whose furniture lasts two more
+sleeps: once both lie down it runs out, the woman who moved in last moves out with a "Moved out" note,
+and the assistant moves her into the empty home in the east. Select each home for its families and
+its furniture row.
+
 `?scene=porter-flag` puts a stone miner at a quarry far east of the headquarters. The headquarters
 porter holds a pickup flag beside the miner's yard: he carries the quarry stone and the flour of an
 unstaffed mill near the flag home, leaves the heap beside the headquarters alone and waits at the flag

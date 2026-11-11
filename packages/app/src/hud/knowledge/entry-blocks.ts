@@ -241,6 +241,8 @@ export interface BuildingCapacity {
   /** The food a home keeps, off its first shelf. */
   readonly larder: number | null;
   readonly families: number;
+  /** The families furniture adds to {@link families}. */
+  readonly furnishedFamilies: number;
   readonly pupils: number;
 }
 
@@ -253,6 +255,7 @@ export function buildingCapacity(building: KnowledgeBuilding): BuildingCapacity 
     store: stores && uniform ? { perGood: shelf.capacity, goods: building.stock.length } : null,
     larder: home ? (shelf?.capacity ?? null) : null,
     families: building.homeSize,
+    furnishedFamilies: building.furnishedFamilies,
     pupils: building.schoolSize,
   };
 }

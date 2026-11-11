@@ -1129,6 +1129,14 @@ export const chsGame = {
       uses: '{count} 次',
       holyFireOn: '燃烧中',
       holyFireOff: '已熄灭',
+      furnitureLodges: {
+        one: '{pieces} 件 · 多住 {count} 户',
+        few: '{pieces} 件 · 多住 {count} 户',
+        many: '{pieces} 件 · 多住 {count} 户',
+      },
+      furnitureIdle: '{pieces} 件 · 没有多住的家庭',
+      furnitureTip:
+        '有家具时，民居可多住几户家庭。只有这些家庭住在这里时家具才会损耗；家具用完后，他们就会搬走。',
       allowed: '{good} · 所有民居均允许使用 · 点击：禁止',
       forbidden: '{good} · 所有民居均禁止使用 · 点击：允许',
       policyForeign: '规则由所有者设定',
@@ -1504,7 +1512,7 @@ export const chsGame = {
         },
         foundFamilies: {
           label: '组建家庭',
-          tip: '无家可归的女人会搬进最近的有空位的房屋。已有住处的女人在有单身男人时会结婚。',
+          tip: '无家可归的女人会搬进最近的有空位的房屋。已有住处的女人在有单身男人时会结婚。因缺少家具而搬出的家庭也会搬进这样的房屋。',
         },
       },
       notes: {
@@ -1935,6 +1943,7 @@ export const chsGame = {
       willDie: '濒临死亡',
       grewUp: { he: '已成年', she: '已成年' },
       noOneToMarry: '无人可婚',
+      familyMovedOut: '搬出',
       cannotEnterVehicle: '无法登上',
       cannotLeaveVehicle: '困在船上',
       settlementAttacked: '村庄遭袭',
@@ -2021,6 +2030,7 @@ export const chsGame = {
         he: '{name}找不到结婚对象。他能到达的范围内必须住着一位未婚女子。',
         she: '{name}找不到结婚对象。她能到达的范围内必须住着一位未婚男子。',
       },
+      familyMovedOut: '{name}一家搬走了：民居里已没有供他们使用的家具。请运来家具，或为他们分配别的住所。',
       cannotEnterVehicle: '{name}无法登上这辆载具：载具没有空位，或船正在海上。请让船靠岸，或选择其他载具。',
       cannotLeaveVehicle: '{name}无法在海上下船。请先让船靠岸。',
       settlementAttacked: '你的聚落遭到攻击。敌人：{enemy}。受袭：{hits}。派士兵去保卫它。',

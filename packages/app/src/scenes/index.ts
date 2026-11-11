@@ -114,6 +114,7 @@ import { childrenScene } from './settlers/children.js';
 import { everydayGesturesScene } from './settlers/everyday-gestures.js';
 import { familyScene } from './settlers/family.js';
 import { familyAwayScene } from './settlers/family-away.js';
+import { furnishedHomeScene } from './settlers/furnished-home.js';
 import { gossipScene } from './settlers/gossip.js';
 import { grownUpTrainingScene } from './settlers/grown-up-training.js';
 import { learningFoundationsScene } from './settlers/learning-foundations.js';
@@ -298,6 +299,7 @@ export const SCENES: readonly SceneDefinition[] = [
   gathererFlagFollowScene,
   toolUpgradeScene,
   assistantFamiliesScene,
+  furnishedHomeScene,
   assistantReminderScene,
   porterFlagScene,
   fieldPostFlagsScene,

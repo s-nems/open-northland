@@ -621,6 +621,11 @@ export const deContent = {
       summary:
         'Drei obdachlose Frauen und drei Männer stehen an einem Haus für zwei Familien, und der Assistent gründet Familien. Zwei Frauen ziehen ein und heiraten, ihre Männer ziehen zu ihnen. Die dritte findet keinen freien Platz, bleibt obdachlos und ledig.',
     },
+    'furnished-home': {
+      title: 'Möbel bieten Platz für weitere Familien',
+      summary:
+        'Drei Wohnhäuser für je eine Familie. Im westlichen stehen zwei Stück Möbel, darum wohnt dort eine zweite Familie. Zwei müde Frauen gehen heim ins mittlere, dessen Möbel noch für zwei Schlafphasen reichen: Sobald sich beide hingelegt haben, sind sie verbraucht, die zuletzt eingezogene Frau zieht aus, und der Assistent bringt sie ins leere Wohnhaus im Osten.',
+    },
     'gatherer-flag-follow': {
       title: 'Fahnen folgen den Rohstoffen',
       summary:
@@ -770,7 +775,7 @@ export const deContent = {
     'household-goods': {
       title: 'Haushaltswaren',
       summary:
-        'Töpfer, Schreiner und Druiden versorgen ein ausgebautes Wohnhaus mit Geschirr, Möbeln und Öl, um Mahlzeiten, Ruhe und Gebet zu verbessern.',
+        'Töpfer, Schreiner und Druiden versorgen ein ausgebautes Wohnhaus mit Geschirr, Möbeln und Öl: mehr Nahrung je Lieferung, Platz für weitere Familien und Gebet vor dem Haus.',
     },
     'storage-minimum': {
       title: 'Lagerminimum',

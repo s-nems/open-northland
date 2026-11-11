@@ -71,7 +71,11 @@ function outputBlock(context: KnowledgeContext, building: KnowledgeBuilding): En
 
 function capacityBlock(building: KnowledgeBuilding): EntryBlock {
   const text = copy().building;
-  const { store, larder, families, pupils } = buildingCapacity(building);
+  const { store, larder, families, furnishedFamilies, pupils } = buildingCapacity(building);
+  const familyCount =
+    furnishedFamilies > 0
+      ? formatMessage(text.familiesFurnished, { count: families, extra: furnishedFamilies })
+      : String(families);
   const rows: (readonly [string, string])[] = [
     ...(store === null
       ? []
@@ -79,7 +83,7 @@ function capacityBlock(building: KnowledgeBuilding): EntryBlock {
           [text.store, formatMessage(text.perGood, { amount: store.perGood, count: store.goods })],
         ] as const)),
     ...(larder === null ? [] : ([[text.larder, String(larder)]] as const)),
-    ...(families > 0 ? ([[text.families, String(families)]] as const) : []),
+    ...(families > 0 ? ([[text.families, familyCount]] as const) : []),
     ...(pupils > 0 ? ([[text.pupils, String(pupils)]] as const) : []),
   ];
   return { node: section(text.capacity, factList(rows)) };

@@ -619,6 +619,11 @@ export const enContent = {
       summary:
         'Three homeless women and three men stand by a two-family home while the assistant founds families. Two women move in and marry, and their husbands move in with them. The third finds no free place, stays homeless and stays single.',
     },
+    'furnished-home': {
+      title: 'Furniture houses extra families',
+      summary:
+        'Three dwellings for one family each. The west one holds two pieces of furniture and houses a second family. Two tired women walk home to the middle one, whose furniture lasts two more sleeps: once both have lain down it is gone, the woman who moved in last moves out, and the assistant moves her into the empty dwelling in the east.',
+    },
     'gatherer-flag-follow': {
       title: 'Flags follow the resources',
       summary:
@@ -764,7 +769,7 @@ export const enContent = {
     'household-goods': {
       title: 'Household goods',
       summary:
-        'Potters, carpenters and druids supply a mature dwelling with crockery, furniture and oil for better meals, rest and prayer.',
+        'Potters, carpenters and druids supply a mature dwelling with crockery, furniture and oil: more food per delivery, room for more families and prayer by the dwelling.',
     },
     'storage-minimum': {
       title: 'Storage minimum',

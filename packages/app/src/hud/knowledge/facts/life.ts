@@ -1,3 +1,4 @@
+import type { LodgingWear } from '@open-northland/data';
 import {
   components,
   DEFAULT_NODE_ROUGHNESS,
@@ -47,10 +48,11 @@ const manSleepPct: FactReader = (base) => sleepPct(base, JOB_CIVILIST);
 
 const womanSleepPct: FactReader = (base) => sleepPct(base, JOB_WOMAN);
 
-/** The sleeps one delivered piece of furniture lasts in a home above its base size. */
-function furnitureSleeps(base: KnowledgeBase): FactValue {
+/** The `source` activities one delivered piece of furniture pays for in full in a home above its base
+ *  size, the only home it wears in. */
+function furnitureCovers(base: KnowledgeBase, source: keyof LodgingWear): FactValue {
   const ware = homeWare(base, 'furniture');
-  return ware?.effect === 'lodging' ? ware.deliveryValue / ware.wear.sleep : undefined;
+  return ware?.effect === 'lodging' ? Math.floor(ware.deliveryValue / ware.wear[source]) : undefined;
 }
 
 const pctFactor = (pct: FactValue): FactValue => (pct === undefined ? undefined : pct / PERCENT);
@@ -96,10 +98,8 @@ export const NEED_FACTS: Readonly<Record<string, Fact>> = {
   ),
   'sleep.manAwayPct': whole(scaled(manSleepPct, 1 / systems.AWAY_REST_DIVISOR)),
   'sleep.manHomePct': whole(manSleepPct),
-  'sleep.manFurnishedPct': whole(scaled(manSleepPct, systems.AT_HOME_FACTOR)),
   'sleep.womanAwayPct': whole(scaled(womanSleepPct, 1 / systems.AWAY_REST_DIVISOR)),
   'sleep.womanHomePct': whole(womanSleepPct),
-  'sleep.womanFurnishedPct': whole(scaled(womanSleepPct, systems.AT_HOME_FACTOR)),
   'sleep.soldierPct': whole((base) => sleepPct(base, JOB_SOLDIER_UNARMED)),
   'pray.seconds': oneDecimal((base) => clipSeconds(base, systems.PRAY_ATOMIC_ID, JOB_CIVILIST)),
   'pray.pct': whole((base) =>
@@ -181,8 +181,10 @@ export const LIFE_FACTS: Readonly<Record<string, Fact>> = {
     const ware = homeWare(base, 'crockery');
     return ware === undefined || ware.effect === 'lodging' ? undefined : ware.deliveryValue / ware.useCost;
   }),
-  'home.furnitureManSleeps': whole(furnitureSleeps),
-  'home.furnitureWomanSleeps': whole(furnitureSleeps),
+  'home.furnitureUnits': whole((base) => wareRatio(base, 'furniture', 'capacity')),
+  'home.furnitureChildren': whole((base) => furnitureCovers(base, 'child')),
+  'home.furnitureSleeps': whole((base) => furnitureCovers(base, 'sleep')),
+  'home.furnitureMeals': whole((base) => furnitureCovers(base, 'meal')),
   'home.crockeryFetchBelow': whole((base) => wareRatio(base, 'crockery', 'fetchBelow')),
   'home.furnitureFetchBelow': whole((base) => wareRatio(base, 'furniture', 'fetchBelow')),
   'home.oilFetchBelow': whole((base) => wareRatio(base, 'holy_oil', 'fetchBelow')),

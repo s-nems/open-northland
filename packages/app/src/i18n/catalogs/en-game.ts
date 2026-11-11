@@ -1171,6 +1171,14 @@ export const enGame = {
       uses: '{count} uses',
       holyFireOn: 'burning',
       holyFireOff: 'out',
+      furnitureLodges: {
+        one: '{pieces} pcs · +{count} family',
+        few: '{pieces} pcs · +{count} families',
+        many: '{pieces} pcs · +{count} families',
+      },
+      furnitureIdle: '{pieces} pcs · no extra family',
+      furnitureTip:
+        'With Furniture the dwelling takes extra families. It wears only while they live here, and when it runs out they move out.',
       allowed: '{good} · allowed in every dwelling · click: prohibit',
       forbidden: '{good} · prohibited in every dwelling · click: allow',
       policyForeign: 'The owner sets the rules',
@@ -1554,7 +1562,7 @@ export const enGame = {
         },
         foundFamilies: {
           label: 'Found families',
-          tip: 'A homeless woman moves into the nearest home with a free place. A woman who already has a home marries once a man is free.',
+          tip: 'A homeless woman moves into the nearest home with a free place. A woman who already has a home marries once a man is free. A family that had to move out for lack of Furniture moves into such a home too.',
         },
       },
       notes: {
@@ -1993,6 +2001,7 @@ export const enGame = {
       willDie: 'Dying',
       grewUp: { he: 'Grown man', she: 'Grown woman' },
       noOneToMarry: 'No match',
+      familyMovedOut: 'Moved out',
       cannotEnterVehicle: 'Cannot board',
       cannotLeaveVehicle: 'Stuck aboard',
       settlementAttacked: 'Village attacked',
@@ -2082,6 +2091,8 @@ export const enGame = {
         he: '{name} found no one to marry. An unmarried woman must live within his reach.',
         she: '{name} found no one to marry. An unmarried man must live within her reach.',
       },
+      familyMovedOut:
+        '{name} and family moved out: the dwelling no longer has Furniture for them. Bring Furniture, or assign them another home.',
       cannotEnterVehicle:
         '{name} cannot board this vehicle: it has no free room or the ship is at sea. Bring the ship to a shore or pick another vehicle.',
       cannotLeaveVehicle: '{name} cannot leave the ship at sea. Bring the ship to a shore first.',

@@ -86,6 +86,8 @@ export interface KnowledgeBuilding {
   readonly row: BuildingType;
   readonly help: string | null;
   readonly homeSize: number;
+  /** The families a home takes on top of `homeSize` while it has furniture. */
+  readonly furnishedFamilies: number;
   readonly schoolSize: number;
   readonly shelterCapacity: number;
   readonly hitpoints: number | null;

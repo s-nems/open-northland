@@ -206,6 +206,7 @@ export const chtKnowledge = {
       store: '倉庫',
       larder: '存糧',
       families: '家庭',
+      familiesFurnished: '{count}（有傢俱時 +{extra}）',
       pupils: '學習名額',
       teaches: '教授內容',
       teachesTrades: '職業（{count}）',
@@ -451,6 +452,7 @@ export const chtKnowledge = {
     },
     homeLevels: {
       families: '家庭：{count}',
+      familiesFurnished: '家庭：{count}（有傢俱時 +{extra}）',
     },
   },
   mechanics: {
@@ -493,6 +495,8 @@ export const chtKnowledge = {
     jobSchoolFoot: '在學校上課代替實踐，通常需要{seconds}秒。',
     homeLevel: '等級',
     homeFamilies: '家庭',
+    homeFurnished: '有傢俱時',
+    homeFurnishedExtra: '+{count}',
     homeLarder: '存糧',
     expPoints: '一般工作次數',
     expPercent: '經驗',

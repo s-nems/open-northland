@@ -617,6 +617,11 @@ export const plContent = {
       summary:
         'Trzy bezdomne kobiety i trzech mężczyzn stoją przy domu na dwie rodziny, a asystent zakłada rodziny. Dwie kobiety wprowadzają się do domu i wychodzą za mąż, a mężowie zamieszkują z nimi. Trzecia nie znajduje wolnego miejsca, zostaje bezdomna i niezamężna.',
     },
+    'furnished-home': {
+      title: 'Meble mieszczą dodatkowe rodziny',
+      summary:
+        'Trzy domy dla jednej rodziny. W zachodnim są dwie sztuki mebli, więc mieszka w nim druga rodzina. Do środkowego wracają dwie zmęczone kobiety, a jego meble starczą jeszcze na dwa sny: gdy obie się położą, mebli już nie ma, kobieta, która wprowadziła się ostatnia, wyprowadza się, a asystent przenosi ją do pustego domu na wschodzie.',
+    },
     'gatherer-flag-follow': {
       title: 'Flagi idą za surowcami',
       summary:
@@ -761,7 +766,7 @@ export const plContent = {
     'household-goods': {
       title: 'Wyposażenie domu',
       summary:
-        'Garncarze, cieśle i druid zaopatrują rozbudowany dom w naczynia, meble i oliwę, wspomagające posiłki, odpoczynek i modlitwę.',
+        'Garncarze, cieśle i druid zaopatrują rozbudowany dom w naczynia, meble i oliwę: więcej jedzenia z dostawy, miejsce dla kolejnych rodzin i modlitwę przed domem.',
     },
     'storage-minimum': {
       title: 'Minimum w magazynach',

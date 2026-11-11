@@ -207,6 +207,7 @@ export const enKnowledge = {
       store: 'Storage',
       larder: 'Larder',
       families: 'Families',
+      familiesFurnished: '{count} (+{extra} with Furniture)',
       pupils: 'Pupil places',
       teaches: 'What it teaches',
       teachesTrades: 'Professions ({count})',
@@ -457,6 +458,7 @@ export const enKnowledge = {
     },
     homeLevels: {
       families: 'Families: {count}',
+      familiesFurnished: 'Families: {count} (+{extra} with Furniture)',
     },
   },
   mechanics: {
@@ -504,6 +506,8 @@ export const enKnowledge = {
     jobSchoolFoot: 'A School course instead of practice usually takes {seconds} s.',
     homeLevel: 'Level',
     homeFamilies: 'Families',
+    homeFurnished: 'With Furniture',
+    homeFurnishedExtra: '+{count}',
     homeLarder: 'Larder',
     expPoints: 'Times at ordinary work',
     expPercent: 'Experience',

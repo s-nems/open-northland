@@ -1256,6 +1256,14 @@ export const deGame = {
       uses: 'Nutzungen: {count}',
       holyFireOn: 'brennt',
       holyFireOff: 'erloschen',
+      furnitureLodges: {
+        one: '{pieces} Stk. · +{count} Familie',
+        few: '{pieces} Stk. · +{count} Familien',
+        many: '{pieces} Stk. · +{count} Familien',
+      },
+      furnitureIdle: '{pieces} Stk. · keine weitere Familie',
+      furnitureTip:
+        'Mit Möbeln nimmt das Wohnhaus weitere Familien auf. Die Möbel nutzen sich nur ab, solange diese Familien hier wohnen, und wenn sie aufgebraucht sind, ziehen sie aus.',
       allowed: '{good} · in allen Wohnhäusern erlaubt · Klicken: verbieten',
       forbidden: '{good} · in allen Wohnhäusern verboten · Klicken: erlauben',
       policyForeign: 'Der Besitzer legt die Regeln fest',
@@ -1684,7 +1692,7 @@ export const deGame = {
         },
         foundFamilies: {
           label: 'Familien gründen',
-          tip: 'Eine obdachlose Frau zieht in das nächste Haus mit einem freien Platz. Eine Frau, die schon ein Haus hat, heiratet, sobald ein Mann frei ist.',
+          tip: 'Eine obdachlose Frau zieht in das nächste Haus mit einem freien Platz. Eine Frau, die schon ein Haus hat, heiratet, sobald ein Mann frei ist. Eine Familie, die mangels Möbeln ausziehen musste, zieht ebenfalls in ein solches Haus.',
         },
       },
       notes: {
@@ -2127,6 +2135,7 @@ export const deGame = {
         she: 'Erwachsene Frau',
       },
       noOneToMarry: 'Kein Partner',
+      familyMovedOut: 'Ausgezogen',
       cannotEnterVehicle: 'Einsteigen nicht möglich',
       cannotLeaveVehicle: 'An Bord gefangen',
       settlementAttacked: 'Dorf angegriffen',
@@ -2218,6 +2227,8 @@ export const deGame = {
         he: '{name} hat keine Frau zum Heiraten gefunden. Eine unverheiratete Frau muss in seiner Reichweite leben.',
         she: '{name} hat keinen Mann zum Heiraten gefunden. Ein unverheirateter Mann muss in ihrer Reichweite leben.',
       },
+      familyMovedOut:
+        '{name} zieht mit Familie aus: Das Wohnhaus hat keine Möbel mehr für sie. Bring Möbel hin oder weise ihnen ein anderes Wohnhaus zu.',
       cannotEnterVehicle:
         '{name} kann dieses Fahrzeug nicht besteigen: Es gibt keinen freien Platz oder das Schiff ist auf See. Bringe das Schiff ans Ufer oder wähle ein anderes Fahrzeug.',
       cannotLeaveVehicle:

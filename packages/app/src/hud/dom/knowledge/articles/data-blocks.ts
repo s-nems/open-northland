@@ -278,12 +278,15 @@ function jobs({ base }: KnowledgeContext): HTMLElement {
 function homes(context: KnowledgeContext): HTMLElement {
   const copy = messages().knowledge.mechanics;
   return plainTable(
-    [copy.homeLevel, copy.homeFamilies, copy.homeLarder, copy.health],
+    [copy.homeLevel, copy.homeFamilies, copy.homeFurnished, copy.homeLarder, copy.health],
     context.base.buildings
       .filter((b) => b.kind === 'home')
       .map((b) => [
         goLink(`building:${b.id}`, b.name),
         b.homeSize,
+        b.furnishedFamilies > 0
+          ? formatMessage(copy.homeFurnishedExtra, { count: b.furnishedFamilies })
+          : '-',
         b.stock[0]?.capacity ?? '-',
         buildingHitpoints(b, context.tribe()) ?? '-',
       ]),
