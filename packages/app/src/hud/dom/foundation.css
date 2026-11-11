@@ -20,7 +20,6 @@ body.on-drag-scroll.on-drag-scroll-free * {
 .on-hud {
   --hud-scale: 1;
   --hud-control-height: 32px;
-  --hud-choice-tile-height: 48px;
 
   position: absolute;
   left: 0;
@@ -9246,26 +9245,12 @@ body.on-drag-scroll.on-drag-scroll-free * {
 .on-hud .on-settings .main-menu__seg-btn {
   color: var(--muted);
 }
-.on-hud .on-settings .main-menu__seg:not(.main-menu__cursor-themes) .main-menu__seg-btn:first-child,
-.on-hud .on-settings .main-menu__seg:not(.main-menu__cursor-themes) .main-menu__seg-btn:last-child {
+.on-hud .on-settings .main-menu__seg .main-menu__seg-btn:first-child,
+.on-hud .on-settings .main-menu__seg .main-menu__seg-btn:last-child {
   border-radius: 0;
 }
 .on-hud .on-settings .main-menu__seg-btn.is-active {
   color: var(--ink);
-}
-.on-hud .on-settings .main-menu__cursor-themes {
-  width: 100%;
-  border: 0;
-  background: none;
-}
-.on-hud .on-settings .main-menu__cursor-themes .main-menu__seg-btn {
-  border: 1px solid var(--bronze-lo);
-  border-radius: 2px;
-  height: var(--hud-choice-tile-height);
-  min-height: var(--hud-choice-tile-height);
-  padding: 3px;
-  text-align: center;
-  white-space: normal;
 }
 .on-hud .on-settings .main-menu__settings-slider {
   flex-shrink: 0;
@@ -9370,10 +9355,10 @@ body.on-drag-scroll.on-drag-scroll-free * {
   align-self: flex-start;
   margin-top: 8px;
 }
-.on-hud .on-settings .main-menu__seg:not(.main-menu__cursor-themes) {
+.on-hud .on-settings .main-menu__seg {
   height: var(--hud-control-height);
 }
-.on-hud .on-settings .main-menu__seg:not(.main-menu__cursor-themes) .main-menu__seg-btn {
+.on-hud .on-settings .main-menu__seg .main-menu__seg-btn {
   height: calc(var(--hud-control-height) - 2px);
   min-height: 0;
 }

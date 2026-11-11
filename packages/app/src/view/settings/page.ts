@@ -432,7 +432,11 @@ export function createSettingsPage(opts: {
             host.classList.remove('main-menu__tip-host');
           }
           for (const control of row.querySelectorAll('button, input')) {
-            control.setAttribute('aria-description', control.getAttribute('data-tip') ?? tip);
+            const description = control.getAttribute('data-tip') ?? tip;
+            // A choice whose tip is its own name would be read out twice.
+            if (description !== control.getAttribute('aria-label')) {
+              control.setAttribute('aria-description', description);
+            }
           }
         }
       }

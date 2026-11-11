@@ -11,7 +11,7 @@ export function cursorSettingsRows(
   const text = messages().mainMenu.settings;
   const settings = store.current();
   const theme = segControl<CursorTheme>(
-    CURSOR_THEMES.map((id) => ({ id, label: text.cursorThemes[id] })),
+    CURSOR_THEMES.map((id) => ({ id, label: text.cursorThemes[id], tip: text.cursorThemes[id] })),
     settings.cursorTheme,
     (cursorTheme) => {
       void store.update({ cursorTheme });
@@ -22,6 +22,9 @@ export function cursorSettingsRows(
   for (const [index, button] of [...theme.root.querySelectorAll('button')].entries()) {
     const id = CURSOR_THEMES[index];
     if (id === undefined) continue;
+    // The picture is the choice; its name stays as the tip and the accessible name.
+    button.setAttribute('aria-label', text.cursorThemes[id]);
+    button.replaceChildren();
     if (id === 'system') {
       const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       icon.setAttribute('viewBox', '0 0 28 28');
@@ -54,11 +57,9 @@ export function cursorSettingsRows(
     },
   );
   markSegment(size.root, 'cursor-size');
-  const themeRow = settingRow(text.cursorTheme, theme.root, { tip: text.cursorThemeTip });
-  themeRow.classList.add('main-menu__settings-row--cursor-theme');
   return [
     settingsHeading(text.cursorHeading),
-    themeRow,
+    settingRow(text.cursorTheme, theme.root, { tip: text.cursorThemeTip }),
     settingRow(text.cursorSize, size.root, { tip: text.cursorSizeTip }),
   ];
 }
