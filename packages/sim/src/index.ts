@@ -211,6 +211,7 @@ export {
   DEFAULT_NODE_ROUGHNESS,
   DEFAULT_WATER_ROUGHNESS,
   halfCellMapFromCells,
+  NO_COMPONENT,
   type NodeId,
   nodeLatticeDistance,
   ROAD_RESISTANCE,
@@ -260,11 +261,13 @@ export { IDLE_JOB } from './simulation/hud.js';
 export {
   type MooringAnswer,
   NODE_SET_STRIDE,
+  NOT_IN_SET,
   type NodeGridAnswer,
   type NodeSetAnswer,
   nodeGridAccepts,
   nodeGridUpgradeReserve,
   nodeSetHas,
+  nodeSetIndexOf,
   shipWaterWorkshopsOf,
 } from './simulation/probe-answers.js';
 export { fogViewOfMask, SHARED_SIGHT_VIEWER } from './simulation/read-seams.js';

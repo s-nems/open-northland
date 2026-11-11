@@ -207,6 +207,7 @@ function shoreRule(vehicle: number, canMoorAt: NonNullable<Arms['canMoorAt']>): 
     key: 'shore',
     moors: (x, y) => canMoorAt(vehicle, x, y),
     docks: (x, y) => !canMoorAt(vehicle, x, y),
+    landOf: () => 0,
   };
 }
 

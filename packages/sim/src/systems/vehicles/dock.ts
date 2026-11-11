@@ -7,7 +7,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { MAX_CLEARANCE_CLASS } from '../../nav/clearance.js';
 import { type HalfCellNode, hexagonRing, hexRingHx, hexRingHy, hexRingLength } from '../../nav/halfcell.js';
-import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
+import { NO_COMPONENT, type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
 import { vehicleClearance } from '../footprint/vehicle-clearance.js';
@@ -281,6 +281,9 @@ export interface MooringProbe {
   /** Whether `(x, y)` is a dock node: a water node the ship can reach and park on (its free-size class
    *  holds its disc) with a mooring spot at the door distance, which a dock order may name. */
   canDock(x: number, y: number): boolean;
+  /** The land component (`TerrainGraph.componentOf`) of mooring spot `(x, y)`: spots alike lie on one
+   *  island. `NO_COMPONENT` for a node that is no spot. */
+  landOf(x: number, y: number): number;
   /** Changes whenever the answers may have; overlay frames memoize on it. */
   readonly key: string;
 }
@@ -361,6 +364,11 @@ function mooringMemoOf(
     key,
     canMoor: (x, y) => terrain.inBounds(x, y) && spots.has(terrain.nodeAt(x, y)),
     canDock: (x, y) => terrain.inBounds(x, y) && docks.has(terrain.nodeAt(x, y)),
+    landOf: (x, y) => {
+      if (!terrain.inBounds(x, y)) return NO_COMPONENT;
+      const node = terrain.nodeAt(x, y);
+      return spots.has(node) ? terrain.componentOf(node) : NO_COMPONENT;
+    },
   };
   const memo: MooringMemo = { key, spots, docks, terrain, probe };
   held.delete(key);

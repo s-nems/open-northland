@@ -258,6 +258,7 @@ export function createPlacementGates(
           key: `${probe.key}:${fogGates.revision()}`,
           moors: (col, row) => fogGates.seesNode(col, row) && probe.canMoor(col, row),
           docks: (col, row) => probe.canDock(col, row),
+          landOf: (col, row) => probe.landOf(col, row),
         };
   const askOwnNodes = (owner: number) => (): Promise<NodeSetAnswer> => host.ownPalisadeNodes(owner);
   const askSites = (): Promise<readonly PalisadeGateProbeResult[]> =>

@@ -80,6 +80,8 @@ export interface MooringAnswer {
   /** Changes whenever the spots may have. */
   readonly key: string;
   readonly spots: NodeSetAnswer;
+  /** The land component of each of `spots`, in its order (`MooringProbe.landOf`). */
+  readonly spotLands: Int32Array;
   /** The water nodes the ship may lie moored at (`MooringProbe.canDock`). */
   readonly docks: NodeSetAnswer;
 }
@@ -116,18 +118,26 @@ export function nodeGridUpgradeReserve(answer: NodeGridAnswer, hx: number, hy: n
 }
 
 export function nodeSetHas(set: NodeSetAnswer, hx: number, hy: number): boolean {
-  if (hx < 0 || hy < 0 || hx >= NODE_SET_STRIDE) return false;
+  return nodeSetIndexOf(set, hx, hy) !== NOT_IN_SET;
+}
+
+/** The value `nodeSetIndexOf` returns for a node the set does not hold. */
+export const NOT_IN_SET = -1;
+
+/** The position of node `(hx, hy)` in the set, or {@link NOT_IN_SET}. */
+export function nodeSetIndexOf(set: NodeSetAnswer, hx: number, hy: number): number {
+  if (hx < 0 || hy < 0 || hx >= NODE_SET_STRIDE) return NOT_IN_SET;
   const packed = hy * NODE_SET_STRIDE + hx;
   let lo = 0;
   let hi = set.length - 1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
     const at = set[mid] ?? 0;
-    if (at === packed) return true;
+    if (at === packed) return mid;
     if (at < packed) lo = mid + 1;
     else hi = mid - 1;
   }
-  return false;
+  return NOT_IN_SET;
 }
 
 function packedNodeSet(nodes: Iterable<HalfCellNode>): NodeSetAnswer {
@@ -382,6 +392,8 @@ export function roadSiteAnswerFor(
 /** The spot and dock sets stay the same objects while the mooring memo's key holds, so each is packed
  *  once. */
 const packedSets = new WeakMap<ReadonlySet<NodeId>, NodeSetAnswer>();
+/** The land components of a packed spot set, built once beside it. */
+const packedLands = new WeakMap<NodeSetAnswer, Int32Array>();
 
 /** The mooring probe's answer; null where the probe is. */
 export function mooringAnswerFor(
@@ -406,7 +418,15 @@ export function mooringAnswerFor(
     }
     return packed;
   };
-  return { key: held.key, spots: pack(held.spots), docks: pack(held.docks) };
+  const spots = pack(held.spots);
+  let spotLands = packedLands.get(spots);
+  if (spotLands === undefined) {
+    spotLands = Int32Array.from(spots, (packed) =>
+      terrain.componentOf(terrain.nodeAt(packed % NODE_SET_STRIDE, Math.floor(packed / NODE_SET_STRIDE))),
+    );
+    packedLands.set(spots, spotLands);
+  }
+  return { key: held.key, spots, spotLands, docks: pack(held.docks) };
 }
 
 /** The nodes `player`'s walls, gates and wall sites stand on. */

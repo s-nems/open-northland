@@ -10,6 +10,8 @@ export interface MooringRule {
   moors(col: number, row: number): boolean;
   /** A water node the ship may lie moored at, with a shore point at its door distance. */
   docks(col: number, row: number): boolean;
+  /** The island a shore point lies on: points alike share one landmass. */
+  landOf(col: number, row: number): number;
 }
 
 /** A ship a dock order could moor, as the berth planner reads it. */
@@ -53,10 +55,10 @@ const MAX_FLEET_SPREAD_NODES = 48;
 
 /**
  * Berths for `ships` along the shore around `cursor`: the shore point within `snap` nodes that lies
- * nearest the cursor on screen, then the points nearest that one, each with a dock node whose hull keeps
- * a gap from every hull already berthed and from the `others` lying near, the hull lying straight out
- * from its point. Each berth goes to the nearest ship that can lie there; ships alike then trade berths for the least total sail, which
- * keeps their courses from crossing. Empty when no shore lies within `snap`; a ship left without a
+ * nearest the cursor on screen, then the points of its island nearest that one, each with a dock node
+ * whose hull keeps a gap from every hull already berthed and from the `others` lying near, the hull lying
+ * straight out from its point. Each berth goes to the nearest ship that can lie there; ships alike then
+ * trade berths for the least total sail, which keeps their courses from crossing. Empty when no shore lies within `snap`; a ship left without a
  * berth is left out. Deterministic in its inputs, so the cursor's preview and the click's order agree.
  */
 export function planBerths(
@@ -78,7 +80,9 @@ export function planBerths(
   }
   if (anchor === null) return [];
   const from = anchor;
+  const island = landOf(rules, from);
   const byDistance = shoreNear(rules, from, berthReach(ships))
+    .filter((spot) => landOf(rules, spot) === island)
     .map((spot) => ({ spot, distance: screenDistanceSq(from, spot) }))
     .sort((a, b) => a.distance - b.distance || a.spot.row - b.spot.row || a.spot.col - b.spot.col);
 
@@ -210,6 +214,11 @@ function shoreNear(rules: readonly MooringRule[], centre: Tile, radius: number):
     }
   }
   return spots;
+}
+
+/** The island of shore point `spot`, read off the first of `rules` that moors there. */
+function landOf(rules: readonly MooringRule[], spot: Tile): number | undefined {
+  return rules.find((rule) => rule.moors(spot.col, spot.row))?.landOf(spot.col, spot.row);
 }
 
 /** The free ship nearest `spot` whose rule moors there; ties to the lower id. */

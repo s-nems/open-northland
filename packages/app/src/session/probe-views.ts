@@ -1,11 +1,13 @@
 import {
   type MooringAnswer,
   type MooringProbe,
+  NO_COMPONENT,
   type NodeArea,
   type NodeGridAnswer,
   type NodeSetAnswer,
   nodeGridAccepts,
   nodeSetHas,
+  nodeSetIndexOf,
 } from '@open-northland/sim';
 import type { LastAnswerCache } from './last-answer-cache.js';
 
@@ -100,6 +102,7 @@ export function mooringProbeOf(answer: MooringAnswer): MooringProbe {
     key: answer.key,
     canMoor: (x, y) => nodeSetHas(answer.spots, x, y),
     canDock: (x, y) => nodeSetHas(answer.docks, x, y),
+    landOf: (x, y) => answer.spotLands[nodeSetIndexOf(answer.spots, x, y)] ?? NO_COMPONENT,
   };
 }
 

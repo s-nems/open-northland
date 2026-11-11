@@ -19,6 +19,7 @@ const SHORE: MooringRule = {
   key: 'shore',
   moors: (_col, row) => row === SHORE_ROW,
   docks: (_col, row) => row > SHORE_ROW,
+  landOf: () => 0,
 };
 
 function ship(vehicle: number, col: number, rule: MooringRule = SHORE): BerthShip {
@@ -53,7 +54,7 @@ describe('planBerths', () => {
   });
 
   it('leaves out a ship whose own rule moors nowhere near', () => {
-    const nowhere: MooringRule = { key: 'none', moors: () => false, docks: () => false };
+    const nowhere: MooringRule = { key: 'none', moors: () => false, docks: () => false, landOf: () => 0 };
     const berths = planBerths([ship(1, 20), ship(2, 22, nowhere)], { col: 20, row: SHORE_ROW }, 3);
     expect(berths.map((b) => b.vehicle)).toEqual([1]);
   });
@@ -62,7 +63,7 @@ describe('planBerths', () => {
 /** The fleet's crossing into the bay and the turn onto its dock node, with margin. */
 const DOCK_TICKS = 600;
 
-it('moors the scene fleet in the bay on its berths with no two hulls touching', () => {
+function sceneFleet(): { sim: ReturnType<typeof createSceneSim>; ships: BerthShip[] } {
   const sim = createSceneSim(vehicleDockFleetScene);
   sim.run(vehicleDockFleetScene.runTicks);
   const types = sim.content.vehicles;
@@ -75,6 +76,7 @@ it('moors the scene fleet in the bay on its berths with no two hulls touching', 
       key: probe.key,
       moors: (col, row) => probe.canMoor(col, row),
       docks: (col, row) => probe.canDock(col, row),
+      landOf: (col, row) => probe.landOf(col, row),
     };
     return [
       {
@@ -86,6 +88,24 @@ it('moors the scene fleet in the bay on its berths with no two hulls touching', 
       },
     ];
   });
+  return { sim, ships };
+}
+
+it('berths the scene fleet docked at the cape on the mainland, none on the islet across the strait', () => {
+  const { ships } = sceneFleet();
+  // The cape's tip, the shore nearest the islet.
+  const aim = cellAnchorNode(19, 22);
+  const berths = planBerths(ships, { col: aim.hx, row: aim.hy }, 3);
+  expect(berths).toHaveLength(ships.length);
+  const rule = ships[0]?.rule;
+  expect(new Set(berths.map(({ col, row }) => rule?.landOf(col, row))).size).toBe(1);
+  // The islet's cells, (22, 25) to (25, 29), as half-cell nodes.
+  const islet = cellAnchorNode(22, 25);
+  expect(berths.filter(({ col, row }) => col >= islet.hx && row >= islet.hy)).toEqual([]);
+});
+
+it('moors the scene fleet in the bay on its berths with no two hulls touching', () => {
+  const { sim, ships } = sceneFleet();
   // The bay's inner corner, where the shore folds toward the ships.
   const aim = cellAnchorNode(11, 13);
   const berths = planBerths(ships, { col: aim.hx, row: aim.hy }, 3);
