@@ -11,6 +11,7 @@ import { type LooseShot, looseProjectile } from '../settlers/atomics/effects/com
 import { hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import type { CombatIndex } from './combat-index.js';
+import { EpochMarks } from './epoch-marks.js';
 import { scatteredNode, shelterSpread } from './shot-aim.js';
 import { buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { isValidTarget } from './targeting.js';
@@ -40,6 +41,14 @@ const TARGET_KINDS: readonly ((world: World, ctx: SystemContext, t: Entity) => b
   (world, _ctx, t) => world.has(t, Building),
   (world, ctx, t) => isPerson(world, t) && !isFighter(world, ctx, t),
 ];
+
+/** The place of `t` in {@link TARGET_KINDS}, or -1 for none. */
+function targetKindOf(world: World, ctx: SystemContext, t: Entity): number {
+  for (let kind = 0; kind < TARGET_KINDS.length; kind++) {
+    if (TARGET_KINDS[kind]?.(world, ctx, t) === true) return kind;
+  }
+  return -1;
+}
 
 /**
  * Loose this tick's shots from every defence-mode building that holds anyone. Reach is measured from the
@@ -173,15 +182,12 @@ function fireFrom(
   const centre = entityNode(world, terrain, building);
   const owner = world.get(building, Owner).player;
   const self = { tribe: b.tribe, jobType: null };
-  const reaches = new Map<Entity, number>();
+  const reaches = shotReachesOf(world);
+  reaches.begin();
   const reach = (t: Entity): number => {
-    let d = reaches.get(t);
-    if (d === undefined) {
-      const mark = combatTargetNode(world, ctx, terrain, centre, t);
-      d = hexNodeDistance(terrain, nearestHexCell(terrain, walls, mark) ?? centre, mark);
-      reaches.set(t, d);
-    }
-    return d;
+    if (reaches.holds(t)) return reaches.of(t);
+    const mark = combatTargetNode(world, ctx, terrain, centre, t);
+    return reaches.hold(t, hexNodeDistance(terrain, nearestHexCell(terrain, walls, mark) ?? centre, mark));
   };
   const accept = (t: Entity): boolean => {
     if (world.has(t, Age) || !isValidTarget(world, ctx, building, self, t)) return false;
@@ -190,14 +196,15 @@ function fireFrom(
   };
   // A wall stands up to `pad` nodes off the centre the index is searched from.
   let pad = 0;
-  for (const wall of walls) pad = Math.max(pad, hexNodeDistance(terrain, centre, wall));
+  for (let i = 0; i < walls.length; i++)
+    pad = Math.max(pad, hexNodeDistance(terrain, centre, walls[i] ?? centre));
   const candidates = index
     .nearestOfEachKind(
       terrain.xOf(centre),
       terrain.yOf(centre),
       0,
       bow.maxRange + pad,
-      (t) => TARGET_KINDS.findIndex((kind) => kind(world, ctx, t)),
+      (t) => targetKindOf(world, ctx, t),
       TARGET_KINDS.length,
       accept,
       owner,
@@ -248,6 +255,48 @@ function nearestByReach(
     if (nearest.length > TARGET_CANDIDATES) nearest.pop();
   }
   return nearest;
+}
+
+/** The reach (map points) of each entity from the walls of the building firing now, remembered for that
+ *  building's turn alone, which {@link begin} starts. One buffer per world serves every turn. */
+class ShotReaches {
+  private readonly known = new EpochMarks();
+  private reaches = new Int32Array(0);
+
+  begin(): void {
+    this.known.begin();
+  }
+
+  holds(e: Entity): boolean {
+    return this.known.has(e);
+  }
+
+  of(e: Entity): number {
+    return this.reaches[e] ?? 0;
+  }
+
+  /** Remember `reach` for `e` this turn, and return it. */
+  hold(e: Entity, reach: number): number {
+    if (e >= this.reaches.length) {
+      const grown = new Int32Array(Math.max(e + 1, 2 * this.reaches.length));
+      grown.set(this.reaches);
+      this.reaches = grown;
+    }
+    this.reaches[e] = reach;
+    this.known.mark(e);
+    return reach;
+  }
+}
+
+const shotReaches = new WeakMap<World, ShotReaches>();
+
+function shotReachesOf(world: World): ShotReaches {
+  let held = shotReaches.get(world);
+  if (held === undefined) {
+    held = new ShotReaches();
+    shotReaches.set(world, held);
+  }
+  return held;
 }
 
 function shoot(
