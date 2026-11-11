@@ -88,11 +88,15 @@ export const KEYBINDING_ACTIONS = [
   'defenceOff',
   'buildingAlarm',
   'nextCivilian',
+  'addCivilians',
   'nextScout',
+  'addScouts',
   'nextSingleWoman',
+  'addSingleWomen',
   'selectSoldiers',
   'addSoldiers',
   'selectHeroes',
+  'addHeroes',
   'keepHeroes',
   'keepSoldiers',
   ...CONTROL_GROUP_BINDING_ACTIONS,
@@ -130,7 +134,8 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   // tree on F8), F8 the HUD, N the network panel of a relayed game (a letter: Mac keyboards give F9 to
   // media keys), O the diplomacy map, Q for the original's A (Assign Work Place), so A stays
   // attack-move, R the shown building's Upgrade, Alt+V the shown building's alarm beside the original's
-  // V, I the selection's equipment window (the common inventory key), Z the selected ships' dock order.
+  // V, I the selection's equipment window (the common inventory key), Z the selected ships' dock order,
+  // Shift with . , / and F adding everyone the key picks, as the original's Shift+M adds the soldiers.
   pauseToggle: 'KeyP',
   speedCycle: 'KeyL',
   gameMenu: 'Escape',
@@ -168,11 +173,15 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   defenceOff: 'Shift+KeyV',
   buildingAlarm: 'Alt+KeyV',
   nextCivilian: 'Period',
+  addCivilians: 'Shift+Period',
   nextScout: 'Comma',
+  addScouts: 'Shift+Comma',
   nextSingleWoman: 'Slash',
+  addSingleWomen: 'Shift+Slash',
   selectSoldiers: 'KeyM',
   addSoldiers: 'Shift+KeyM',
   selectHeroes: 'KeyF',
+  addHeroes: 'Shift+KeyF',
   keepHeroes: 'KeyX',
   keepSoldiers: 'KeyY',
   ...controlGroupDefaults,

@@ -18,11 +18,15 @@ import { residentKindOf } from '../../hud/tool-panel/residents/projection.js';
 /** The keys that pick the player's settlers off the whole map or narrow the selection to a kind. */
 export const SELECTION_KEY_ACTIONS = [
   'nextCivilian',
+  'addCivilians',
   'nextScout',
+  'addScouts',
   'nextSingleWoman',
+  'addSingleWomen',
   'selectSoldiers',
   'addSoldiers',
   'selectHeroes',
+  'addHeroes',
   'keepHeroes',
   'keepSoldiers',
 ] as const satisfies readonly KeybindingAction[];
@@ -88,8 +92,9 @@ function nextAfter(candidates: readonly number[], selected: ReadonlySet<number>)
 /**
  * Original behavior (CnMod 1.3.2 keys included): `.` `,` and `/` select the next civilian, scout or single
  * woman after the current one, M selects every soldier and Shift+M adds them, F selects every hero, X and Y
- * keep only the heroes or the soldiers of the selection. Our selection keys leave the camera in place;
- * a key that finds nobody leaves the selection as it was. Null when nothing changes.
+ * keep only the heroes or the soldiers of the selection. Ours: the civilian, scout, single-woman and hero
+ * keys each have an add twin, as M has, that adds everyone the key picks. Our selection keys leave the
+ * camera in place; a key that finds nobody leaves the selection as it was. Null when nothing changes.
  */
 export function selectionKeyEffect(
   action: SelectionKeyAction,
@@ -113,16 +118,24 @@ export function selectionKeyEffect(
   switch (action) {
     case 'nextCivilian':
       return next(freeCivilianTest(content));
+    case 'addCivilians':
+      return all(freeCivilianTest(content), true);
     case 'nextScout':
       return next(scoutTest(content));
+    case 'addScouts':
+      return all(scoutTest(content), true);
     case 'nextSingleWoman':
       return next(singleWomanTest(content));
+    case 'addSingleWomen':
+      return all(singleWomanTest(content), true);
     case 'selectSoldiers':
       return all(kindTest(content, 'soldier'), false);
     case 'addSoldiers':
       return all(kindTest(content, 'soldier'), true);
     case 'selectHeroes':
       return all(kindTest(content, 'hero'), false);
+    case 'addHeroes':
+      return all(kindTest(content, 'hero'), true);
     case 'keepHeroes':
       return keep(kindTest(content, 'hero'));
     case 'keepSoldiers':

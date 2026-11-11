@@ -115,6 +115,13 @@ describe('selection keys', () => {
     expect(effect('selectHeroes')).toEqual({ ids: [7], add: false });
   });
 
+  it('add everyone a stepping key would pick, whole map', () => {
+    expect(effect('addCivilians', [6])).toEqual({ ids: [2, 5, 15], add: true });
+    expect(effect('addScouts', [6])).toEqual({ ids: [8], add: true });
+    expect(effect('addSingleWomen', [6])).toEqual({ ids: [11], add: true });
+    expect(effect('addHeroes', [6])).toEqual({ ids: [7], add: true });
+  });
+
   it('narrow the selection to its heroes or soldiers, and change nothing when it already is', () => {
     expect(effect('keepHeroes', [2, 6, 7])).toEqual({ ids: [7], add: false });
     expect(effect('keepSoldiers', [2, 6, 7])).toEqual({ ids: [6], add: false });
