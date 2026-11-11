@@ -809,6 +809,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     speed.refresh();
 
     const tradesByType = new Map(opts.buildings.map((entry) => [entry.typeId, entry.trades]));
+    // The viewer seat's stock as the last presented model has it, read by the assistant's reminders.
+    let stockLines: HudModel['stocks'] = [];
+    let stockByType: ReadonlyMap<number, number> | null = null;
+    const stockOf = (goodId: string): number => {
+      stockByType ??= new Map(stockLines.map((line) => [line.goodType, line.amount]));
+      const goodType = goodTypeById.get(goodId);
+      return goodType === undefined ? 0 : (stockByType.get(goodType) ?? 0);
+    };
     const messageCenter = createMessageCenter({
       settlerName: opts.settlerName,
       ctx,
@@ -840,6 +848,17 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       prayerNeeds: opts.prayerNeeds,
       workshops: opts.workshops,
       sites: opts.sites,
+      assistant: {
+        switches: opts.assistant.switches.read,
+        shortages: opts.assistant.shortages,
+        stockOf,
+        labelOf: (id) => messages().hud.assistant.switches[id].label,
+      },
+      onOpenAssistant: () => {
+        const target = windows.byId.assistant;
+        for (const window of Object.values(windows.byId)) if (window !== target) window.close();
+        if (!target.isOpen()) target.toggle();
+      },
       isVehicleSite: opts.isVehicleSite,
     });
     domParts.push(messageCenter);
@@ -1012,6 +1031,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         systemBar.update(model, peaceHoldsUntil);
         speed.refresh();
         windows.presentModel(model);
+        if (model.stocks !== stockLines) {
+          stockLines = model.stocks;
+          stockByType = null;
+        }
         windows.refresh();
         const open = windows.openId();
         nav.setActive(open === null ? null : navEntryForWindow(open));

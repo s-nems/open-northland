@@ -415,10 +415,10 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Przełącznik', 'Na starcie', 'Kto dostaje'],
             rows: [
-              ['[[good:shoes|Buty]]', 'włączony', 'dorosły mężczyzna'],
+              ['[[good:shoes|Buty]]', 'wyłączony', 'dorosły mężczyzna'],
               [
                 'Żelazne narzędzia, Drewniane narzędzia',
-                'włączone',
+                'wyłączone',
                 'każdy pracujący oprócz żołnierza, [[job:scout|Zwiadowcy]] i Cywila',
               ],
               [
@@ -426,7 +426,7 @@ export const SETTLERS: ArticleGroup = {
                 'włączony',
                 'pracujący z Drewnianym Narzędziem, gdy Żelazne narzędzia są włączone',
               ],
-              ['[[good:mead|Miód pitny]]', 'włączony', 'Osadnicy, Żołnierze'],
+              ['[[good:mead|Miód pitny]]', 'wyłączony', 'Osadnicy, Żołnierze'],
               [
                 'Odżywcze mikstury, Mikstury wytrzymałości, Lecznicze mikstury',
                 'wyłączone',
@@ -442,9 +442,9 @@ export const SETTLERS: ArticleGroup = {
                 'wyłączony',
                 'absolwent [[building:school|Szkoły]]',
               ],
-              ['Zbieracze automatycznie przenoszą flagę', 'włączony', '[[job:collector|Zbieracz]] z flagą'],
+              ['Zbieracze automatycznie przenoszą flagę', 'wyłączony', '[[job:collector|Zbieracz]] z flagą'],
             ],
-            foot: 'Przy napojach i amuletach przyciski "Osadnicy" i "Żołnierze" wybierają odbiorców, na starcie oba włączone. Wyłączenie nie odbiera tego, co już wydano.',
+            foot: 'Przy napojach i amuletach przyciski "Osadnicy" i "Żołnierze" wybierają odbiorców, na starcie oba włączone. Wyłączenie nie odbiera tego, co już wydano. Gdy towar wyłączonego przełącznika leży w magazynie i komuś go brakuje, przypomni o nim powiadomienie, a o fladze wtedy, gdy Zbieraczowi skończy się przy niej surowiec.',
           },
         },
         {

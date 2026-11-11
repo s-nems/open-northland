@@ -1,6 +1,7 @@
 import * as sim from '@open-northland/sim';
 import { ONE, systems, type WorkStatus, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { type AssistantGrantId, GRANT_IDS } from '../../../../src/game/assistant-grant-ids.js';
 import { createMessageFeed } from '../../../../src/hud/tool-panel/messages/feed.js';
 import {
   createSnapshotMessageSource,
@@ -11,7 +12,7 @@ import {
   type SnapshotMessageSource,
 } from '../../../../src/hud/tool-panel/messages/from-snapshot.js';
 import { IDLE_NOTE_TYPES, idleReasonOf } from '../../../../src/hud/tool-panel/messages/idle-reasons.js';
-import type { MessageNaming } from '../../../../src/hud/tool-panel/messages/raise.js';
+import type { MessageNaming, RaisedMessage } from '../../../../src/hud/tool-panel/messages/raise.js';
 import type { MessageText } from '../../../../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../../../../src/hud/tool-panel/messages/types.js';
 import {
@@ -19,6 +20,7 @@ import {
   WORK_STATUS_REASK_SWEEPS,
   type WorkAnswer,
 } from '../../../../src/hud/tool-panel/messages/work-asks.js';
+import { NO_SHORTAGES } from '../../../../src/view/assistant/shortages.js';
 
 const LOCAL = 0;
 const ENEMY = 1;
@@ -52,6 +54,8 @@ interface Actor {
   readonly jobType?: number;
   /** A gatherer's flag yard, which stands in for a workplace. */
   readonly workFlag?: number;
+  /** The flag a posted worker's workplace took. */
+  readonly haulFlag?: number;
   readonly doing?: Doing;
   /** A `jobType` of null: the adult nobody plans or feeds. */
   readonly jobless?: boolean;
@@ -124,6 +128,7 @@ function components(a: Actor): Record<string, unknown> {
     ...(kind === 'child' ? { Age: { ticks: 40 } } : {}),
     ...(a.workplace === undefined ? {} : { JobAssignment: { workplace: a.workplace } }),
     ...(a.workFlag === undefined ? {} : { WorkFlag: { flag: a.workFlag } }),
+    ...(a.haulFlag === undefined ? {} : { HaulFlag: { flag: a.haulFlag } }),
     ...(a.lost === true ? { LostWay: { cutOff: false, since: 0, goal: null } } : {}),
     ...(a.childOrder === undefined ? {} : { ChildOrder: { child: 'female', ...a.childOrder } }),
     ...(a.spouse === undefined ? {} : { Marriage: { spouse: a.spouse, child: null } }),
@@ -536,6 +541,40 @@ describe('user messages read off the snapshot', () => {
           expect(idleAt(source, IDLE_SWEEPS_BEFORE_MESSAGE + i, dismissed)).toEqual([]);
         }
         expect(seam.asked).toHaveLength(asked);
+      });
+
+      it('reminds of the flag follow for a posted extractor out of resources, his idle note dismissed or not', () => {
+        const flagged = (i: number): WorldSnapshot =>
+          snapshot(i * SNAPSHOT_SWEEP_INTERVAL_TICKS, [
+            building,
+            { id: 1, workplace: WORKPLACE, haulFlag: FLAG },
+          ]);
+        const off = Object.fromEntries(GRANT_IDS.map((id) => [id, false])) as Record<
+          AssistantGrantId,
+          boolean
+        >;
+        const assistant = {
+          switches: () => off,
+          shortages: () => NO_SHORTAGES,
+          stockOf: () => 0,
+          labelOf: (id: string) => id,
+        };
+        const reminded = (dismissed?: NoteDismissed): boolean => {
+          const source = createSnapshotMessageSource(
+            LOCAL,
+            askingSeam().workshops,
+            undefined,
+            undefined,
+            assistant,
+          );
+          let out: readonly RaisedMessage[] = [];
+          for (let i = 1; i <= IDLE_SWEEPS_BEFORE_MESSAGE; i++) {
+            out = source.sweep(flagged(i), naming, i === IDLE_SWEEPS_BEFORE_MESSAGE ? dismissed : undefined);
+          }
+          return out.some((r) => r.pending.assistantSwitch === 'moveFlags');
+        };
+        expect(reminded()).toBe(true);
+        expect(reminded((pending) => IDLE_NOTE_TYPES.has(pending.type))).toBe(true);
       });
 
       it('asks no more than the sweep budget, and reaches every worker over later sweeps', () => {

@@ -1,6 +1,6 @@
 import type { Command } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { assistantGrantsSeam, grantAssistantDefaults } from '../../../src/view/assistant/grants.js';
+import { assistantGrantsSeam, startAssistantSwitches } from '../../../src/view/assistant/grants.js';
 
 /** The seam translating the assistant window switches to `setAssistantGrant` and
  *  `setAssistantGrantAudience` commands and back - good ids resolved from the live content by slug, so the
@@ -43,8 +43,6 @@ const simGranting = (
 });
 
 const SHOES = 30;
-const TOOL_WOODEN = 31;
-const TOOL_IRON = 32;
 const MEAD = 43;
 const HEAL_SMALL = 48;
 const HEAL_BIG = 49;
@@ -179,37 +177,13 @@ describe('assistantGrantsSeam', () => {
   });
 });
 
-describe('grantAssistantDefaults', () => {
-  it('switches the four default grants, the tool upgrade and the flag follow ON for the seat at world start, no potion, amulet or veto', () => {
+describe('startAssistantSwitches', () => {
+  it('switches only the tool upgrade on at world start, once per seat: every give switch and the flag follow start off', () => {
     const sent: Command[] = [];
-    grantAssistantDefaults({ enqueueSetup: (c) => sent.push(c) }, CONTENT, [1]);
-    expect(sent.filter((c) => c.kind !== 'setAssistantGrant')).toEqual([
-      { kind: 'setAssistantUpgradeTools', player: 1, enabled: true },
-      { kind: 'setAssistantMoveFlags', player: 1, enabled: true },
+    startAssistantSwitches({ enqueueSetup: (c) => sent.push(c) }, [0, 2, 0]);
+    expect(sent).toEqual([
+      { kind: 'setAssistantUpgradeTools', player: 0, enabled: true },
+      { kind: 'setAssistantUpgradeTools', player: 2, enabled: true },
     ]);
-    const grants = sent.filter((c) => c.kind === 'setAssistantGrant');
-    expect(grants.map((c) => c.goodType).sort((a, b) => a - b)).toEqual([
-      SHOES,
-      TOOL_WOODEN,
-      TOOL_IRON,
-      MEAD,
-    ]);
-    expect(grants.every((c) => c.enabled && c.player === 1)).toBe(true);
-  });
-
-  it('gives every played seat all four grants, a repeated seat only once', () => {
-    const sent: Command[] = [];
-    grantAssistantDefaults({ enqueueSetup: (c) => sent.push(c) }, CONTENT, [0, 2, 0]);
-    const perSeat = new Map<number, number[]>();
-    for (const c of sent.filter((c) => c.kind === 'setAssistantGrant')) {
-      perSeat.set(
-        c.player,
-        [...(perSeat.get(c.player) ?? []), c.goodType].sort((a, b) => a - b),
-      );
-    }
-    const all = [SHOES, TOOL_WOODEN, TOOL_IRON, MEAD].sort((a, b) => a - b);
-    expect([...perSeat.keys()].sort((a, b) => a - b)).toEqual([0, 2]);
-    expect(perSeat.get(0)).toEqual(all);
-    expect(perSeat.get(2)).toEqual(all);
   });
 });

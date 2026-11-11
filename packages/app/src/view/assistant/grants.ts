@@ -1,7 +1,6 @@
 import type { components, PlayerCommand } from '@open-northland/sim';
 import {
   type AssistantGrantId,
-  DEFAULT_GIVE_SWITCHES,
   GIVE_SWITCH_GOODS,
   GIVE_SWITCH_IDS,
   type GiveSwitchId,
@@ -116,22 +115,10 @@ export function assistantGrantsSeam(
   };
 }
 
-/** The default give switches, the tool upgrade and the flag follow start enabled in a playable map only;
- *  scenes keep the sim default of nothing granted, tools kept and flags left where they stand. Every
- *  weapon starts allowed and every good open to everyone: the sim defaults, no command needed. */
-export function grantAssistantDefaults(
-  sim: WorldSetup,
-  content: GrantContent,
-  players: readonly number[],
-): void {
-  const grantGoods = resolveGrantGoods(content);
+/** A playable map's one departure from the sim's all-off assistant: the tool upgrade starts on, where it
+ *  waits for the iron tools switch. Scenes keep the sim default throughout. */
+export function startAssistantSwitches(sim: WorldSetup, players: readonly number[]): void {
   for (const player of new Set(players)) {
-    for (const id of DEFAULT_GIVE_SWITCHES) {
-      for (const goodType of grantGoods.get(id) ?? []) {
-        sim.enqueueSetup({ kind: 'setAssistantGrant', player, goodType, enabled: true });
-      }
-    }
     sim.enqueueSetup({ kind: 'setAssistantUpgradeTools', player, enabled: true });
-    sim.enqueueSetup({ kind: 'setAssistantMoveFlags', player, enabled: true });
   }
 }

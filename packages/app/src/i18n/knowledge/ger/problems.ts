@@ -291,6 +291,18 @@ export const PROBLEMS: ArticleGroup = {
                 'Versetze die Fahne oder entferne sie',
               ],
               [
+                '„Nicht verteilt: [Ware]“',
+                'Bemerkenswert',
+                'Ein Schalter des [[article:assistant|Assistenten]] ist aus, die Ware liegt im Lager und jemandem fehlt sie',
+                'Schalte ihn im Assistenten ein oder schließe die Meldung, damit er aus bleibt',
+              ],
+              [
+                '„Fahnen stehen“',
+                'Bemerkenswert',
+                'Ein Abbauer findet an seiner Fahne nichts mehr, und der Assistent versetzt keine Fahnen',
+                'Schalte das im Assistenten ein oder versetze die Fahne selbst',
+              ],
+              [
                 '„Kein Weg zum Schiff“',
                 'Bemerkenswert',
                 'Das Schiff liegt an einer anderen Landmasse als das Fahrzeug',

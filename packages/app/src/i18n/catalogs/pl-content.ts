@@ -566,6 +566,11 @@ export const plContent = {
       summary:
         'Zbieracz, myśliwy i rybak pracują dla kwatery głównej, przy której stoi jedno drzewo, a w pobliżu nie ma ani zwierzyny, ani wody. Zbieracz ma chorągiewkę w zagajniku na południowym wschodzie, myśliwy przy łące z zającami daleko na wschodzie, rybak na brzegu stawu. Wszyscy trzej pracują przy swoich chorągiewkach i noszą do kwatery drewno, skóry, mięso i ryby, a mięso i ryby trafiają tam do zapasów jako jedzenie. Drzewo przy kwaterze stoi nietknięte. Zaznacz któregoś, by przenieść lub zabrać chorągiewkę w wierszu „Obszar” panelu osadnika; bez niej zbieracz ścina pobliskie drzewo, a pozostali stoją bezczynnie przy kwaterze.',
     },
+    'assistant-reminder': {
+      title: 'Asystent startuje wyłączony',
+      summary:
+        'Trzech zbieraczy bez wyposażenia stoi przy magazynie, w którym leżą buty, żelazne narzędzia i miód pitny dla każdego z nich, i nikt po nic nie idzie, bo każdy przełącznik asystenta startuje wyłączony. O każdym z tych trzech przypomina powiadomienie, a kliknięcie w nie otwiera okno asystenta.',
+    },
     'tool-upgrade': {
       title: 'Wymiana narzędzi na lepsze',
       summary:

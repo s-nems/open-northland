@@ -48,7 +48,7 @@ import {
   setupPlacementTribes,
   withNeutralRosterPairs,
 } from '../../game/world/index.js';
-import { grantAssistantDefaults } from '../../view/assistant/grants.js';
+import { startAssistantSwitches } from '../../view/assistant/grants.js';
 
 /**
  * The world the `?map=` entry plays on, assembled from decoded map data alone. It needs no renderer or
@@ -81,7 +81,7 @@ export interface MapWorldOptions extends SimSessionRules {
   readonly playerRoster?: MapScript['players'];
   /** The tribes a changed seat's authored placements take; the map's own when omitted. */
   readonly seatTribes?: SeatTribeRemap;
-  /** Seats whose assistant grants start on, excluding machine seats without autonomous control. */
+  /** Seats that get the assistant's starting switches, excluding machine seats without autonomous control. */
   readonly assistantSeats: readonly number[];
   /** Override the authored participant roster; an empty list runs no match. */
   readonly matchParticipants?: readonly number[];
@@ -222,11 +222,10 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
     });
   }
   // Original behavior: the assistant's switches start off for every player and only a chest-window
-  // command turns them on, so no computer seat ever sends its people for gear. This build starts them
-  // on for the seats a person or the computer player controls; a map AI camp keeps them off.
-  grantAssistantDefaults(
+  // command turns them on, so no computer seat ever sends its people for gear. Here the tool upgrade
+  // starts on, the computer player switches the rest of its own on, and a map AI camp keeps them off.
+  startAssistantSwitches(
     sim,
-    sim.content,
     options.assistantSeats.filter((seat) => !computerDisabled.has(seat)),
   );
   grantStartingPapers(sim, options.specialItems ?? []);

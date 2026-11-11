@@ -4,7 +4,7 @@ import { matchParticipants } from './participants.js';
 /** The seat lists world assembly enqueues setup for, decided from the descriptor alone. */
 export interface SessionRoles {
   readonly machineSeats: readonly number[];
-  /** Seats whose assistant grants start on. */
+  /** Seats that get the assistant's starting switches. */
   readonly assistantSeats: readonly number[];
   readonly matchParticipants: readonly number[];
 }

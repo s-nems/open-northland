@@ -60,6 +60,8 @@ const LIFECYCLE: Readonly<Record<UserMessageTypeName, NoticeLifecycle>> = {
   peaceEnding: 'event',
   peaceEnded: 'event',
   peaceRefused: 'event',
+  // Stands until the switch goes on, so a dismissal is the player's word that it stays off.
+  assistantSwitchOff: 'state',
 };
 
 const LIFECYCLE_BY_TYPE: ReadonlyMap<UserMessageType, NoticeLifecycle> = new Map(

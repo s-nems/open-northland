@@ -444,7 +444,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Woher ein Siedler Werkzeug bekommt',
         },
         {
-          p: 'Werkzeug verteilt der [[article:assistant|Assistent]], der von Spielbeginn an eingeschaltet ist, oder du per Befehl. Ein Siedler ohne Werkzeug holt sich selbst eines aus dem Lager und nimmt Eisenwerkzeug oder, wenn keins da ist, Holzwerkzeug. Holzwerkzeug gegen Eisenwerkzeug tauscht der Assistent, wenn seine Schalter „Eisenwerkzeug“ und „Holzwerkzeug ersetzen“ an sind und ein Lager freies Eisenwerkzeug hat. Angebrauchtes Holzwerkzeug geht beim Tausch verloren, unbenutztes kommt zurück ins Lager.',
+          p: 'Werkzeug verteilt der [[article:assistant|Assistent]], sobald du dort das Werkzeug einschaltest, oder du per Befehl. Ein Siedler ohne Werkzeug holt sich dann selbst eines aus dem Lager und nimmt Eisenwerkzeug oder, wenn keins da ist, Holzwerkzeug. Holzwerkzeug gegen Eisenwerkzeug tauscht der Assistent, wenn seine Schalter „Eisenwerkzeug“ und „Holzwerkzeug ersetzen“ an sind und ein Lager freies Eisenwerkzeug hat. Angebrauchtes Holzwerkzeug geht beim Tausch verloren, unbenutztes kommt zurück ins Lager.',
         },
         {
           h: 'Wer es nutzt',

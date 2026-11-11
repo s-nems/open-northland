@@ -73,12 +73,3 @@ export const AUDIENCE_SWITCH_IDS: readonly GiveSwitchId[] = [
   'giveCriticalHitAmulet',
   'giveSpeedAmulet',
 ];
-
-/** The give switches granted from the start of a playable map: the gear and the mead. The potions and
- *  amulets start off, since a druid's or coiner's output is dear. */
-export const DEFAULT_GIVE_SWITCHES: readonly GiveSwitchId[] = [
-  'giveBoots',
-  'giveWoodenTools',
-  'giveIronTools',
-  'giveMead',
-];

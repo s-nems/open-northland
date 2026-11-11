@@ -130,7 +130,7 @@ function subjectKey(subject: MessageSubject | null, about: number | null): strin
  */
 function identityKey(m: PendingMessage): string {
   if (lifecycleOf(m.type) === 'state') {
-    return `${m.type}|${subjectKey(m.subject, m.about)}|${m.familyWait ?? ''}|${m.stall?.reason ?? ''}`;
+    return `${m.type}|${subjectKey(m.subject, m.about)}|${m.familyWait ?? ''}|${m.stall?.reason ?? ''}|${m.assistantSwitch ?? ''}`;
   }
   const stance = m.stance ?? '';
   const technologies =

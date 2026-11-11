@@ -430,10 +430,10 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Schalter', 'Anfangs', 'Empfänger'],
             rows: [
-              ['[[good:shoes|Schuhe]]', 'an', 'erwachsene Männer'],
+              ['[[good:shoes|Schuhe]]', 'aus', 'erwachsene Männer'],
               [
                 'Eisenwerkzeug, Holzwerkzeug',
-                'an',
+                'aus',
                 'alle Berufstätigen außer Soldat, [[job:scout|Kundschafter]] und Zivilist',
               ],
               [
@@ -441,7 +441,7 @@ export const SETTLERS: ArticleGroup = {
                 'an',
                 'Berufstätige mit Holzwerkzeug, solange Eisenwerkzeug an ist',
               ],
-              ['[[good:mead|Met]]', 'an', 'Zivilisten, Soldaten'],
+              ['[[good:mead|Met]]', 'aus', 'Zivilisten, Soldaten'],
               ['Nahrungstränke, Wachtränke, Heiltränke', 'aus', 'Zivilisten, Soldaten'],
               [
                 'Nahrungsamulett, Wachbleibamulett, Stärkeamulett, Verteidigungsamulett, Trefferamulett, Windamulett',
@@ -453,9 +453,9 @@ export const SETTLERS: ArticleGroup = {
                 'aus',
                 'Absolventen der [[building:school|Schule]]',
               ],
-              ['Abbauer versetzen ihre Fahne automatisch', 'an', '[[job:collector|Abbauer]] mit Fahne'],
+              ['Abbauer versetzen ihre Fahne automatisch', 'aus', '[[job:collector|Abbauer]] mit Fahne'],
             ],
-            foot: 'Bei Getränken und Amuletten wählen die Knöpfe „Zivilisten“ und „Soldaten“ die Empfänger, anfangs sind beide an. Abschalten nimmt nichts weg, was schon ausgegeben ist.',
+            foot: 'Bei Getränken und Amuletten wählen die Knöpfe „Zivilisten“ und „Soldaten“ die Empfänger, anfangs sind beide an. Abschalten nimmt nichts weg, was schon ausgegeben ist. Liegt die Ware eines abgeschalteten Schalters im Lager und fehlt sie jemandem, erinnert dich eine Meldung daran, an den Fahnenschalter dann, wenn ein Abbauer an seiner Fahne nichts mehr findet.',
           },
         },
         {

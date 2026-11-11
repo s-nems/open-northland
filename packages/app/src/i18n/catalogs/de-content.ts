@@ -570,6 +570,11 @@ export const deContent = {
       summary:
         'Ein Abbauer, ein Jäger und ein Fischer arbeiten für das Hauptquartier, neben dem ein einzelner Baum steht und in dessen Nähe es weder Wild noch Wasser gibt. Der Abbauer hat eine Fahne in einem Wäldchen im Südosten, der Jäger eine an einer Hasenwiese weit im Osten, der Fischer eine am Ufer eines Teichs. Alle drei arbeiten an ihrer Fahne und bringen den Ertrag zum Hauptquartier, wo Fleisch und Fisch als Nahrung lagern, und der Baum am Hauptquartier bleibt stehen. Wähle einen von ihnen, um die Fahne in der Zeile „Arbeitsbereich“ im Siedlerfenster zu versetzen oder zu entfernen; ohne sie fällt der Abbauer den nahen Baum und die anderen stehen untätig am Hauptquartier.',
     },
+    'assistant-reminder': {
+      title: 'Assistent startet abgeschaltet',
+      summary:
+        'Drei Abbauer ohne Ausrüstung stehen an einem Lager, das für jeden Schuhe, Eisenwerkzeug und Met bereithält, und keiner holt etwas, weil jeder Schalter des Assistenten abgeschaltet startet. Eine Meldung erinnert an jeden Schalter, und ein Klick darauf öffnet das Fenster des Assistenten.',
+    },
     'tool-upgrade': {
       title: 'Werkzeuge gegen bessere tauschen',
       summary:

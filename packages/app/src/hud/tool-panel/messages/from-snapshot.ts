@@ -27,6 +27,11 @@ import {
   workFlagOf,
   workplaceOf,
 } from '../../../game/snapshot/index.js';
+import {
+  type AssistantReminderSeam,
+  AssistantReminders,
+  type AssistantSwitchReader,
+} from './assistant-reminders.js';
 import { idleReasonOf, shortageTradeOf } from './idle-reasons.js';
 import { idleNotePending, type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
 import { type ShortageReader, type SiteSeam, SiteShortages } from './site-shortages.js';
@@ -65,6 +70,8 @@ export interface SnapshotMessageSource {
   readonly shortages: ShortageReader | null;
   /** The reason the last sweep held for each idle worker it counted. */
   readonly idleReasons: IdleReasonReader;
+  /** The seat's assistant switches as the last sweep read them; null without the assistant seam. */
+  readonly assistantSwitches: AssistantSwitchReader | null;
 }
 
 /** The reason the last sweep held for an idle worker: null for none the sim named, undefined for a
@@ -340,6 +347,8 @@ interface IdleNoteContext {
   readonly stalls: StallReader | null;
   readonly asks: StatusAsks<WorkStatus> | null;
   readonly dismissed: NoteDismissed;
+  readonly reminders: AssistantReminders | null;
+  readonly naming: MessageNaming;
 }
 
 /** The note an idle adult earns: with a post to work at it has nothing to do, and names why, or its trade
@@ -351,7 +360,7 @@ function raiseIdleNote(
   raiser: MessageRaiser,
   snapshot: WorldSnapshot,
   e: SnapshotEntity,
-  { streaks, posts, stalls, asks, dismissed }: IdleNoteContext,
+  { streaks, posts, stalls, asks, dismissed, reminders, naming }: IdleNoteContext,
 ): void {
   const atPost = workplaceOf(e) !== undefined;
   // Tracked ahead of the early-outs, since a settler is at its post precisely while it looks busy.
@@ -365,11 +374,18 @@ function raiseIdleNote(
   if (posted || worksAtOwnFlag(e)) {
     if (count < IDLE_SWEEPS_BEFORE_MESSAGE - 1) return;
     if (posted && (idleNoteHeldByStall(e, stalls) || idlesBetweenLoads(e))) return;
-    if (dismissed(idleNotePending(e, streaks.reason(e.id, undefined)))) return;
+    const known = streaks.reason(e.id, undefined);
+    if (dismissed(idleNotePending(e, known))) {
+      // The reminder has its own dismissal, so a dismissed idle note does not silence it.
+      if (due) reminders?.idleAtFlag(raiser, naming, e, known);
+      return;
+    }
     const reason = streaks.reason(e.id, asks?.status(e.id));
     if (!due) return;
-    if (posted ? reason !== null || !idleNoteNeedsReason(e, stalls) : shortageTradeOf(reason) !== null)
+    if (posted ? reason !== null || !idleNoteNeedsReason(e, stalls) : shortageTradeOf(reason) !== null) {
       raiser.idle(e, reason);
+      reminders?.idleAtFlag(raiser, naming, e, reason);
+    }
   } else if (!due) return;
   else if (lostItsWorkplace(e, everEmployed)) raiser.settler(USER_MESSAGE_TYPE.workplaceNotFound, e);
 }
@@ -404,7 +420,8 @@ function raiseFamilyBlock(
 /**
  * The local player's messages read off the snapshot itself: pressing needs, a settler near death, an
  * idle worker, a child order that cannot start and, given `workshops`, a stalled workshop and the reason
- * an idle worker gives, and given `sites`, a building site short of a material. One pass over
+ * an idle worker gives, given `sites`, a building site short of a material, and given `assistant`, the
+ * assistant switches that are off while they have something to do. One pass over
  * the seat's own settlers per sweep interval, so the cost follows that crowd and the cadence rather than
  * the world's actors or the frame rate.
  */
@@ -413,6 +430,7 @@ export function createSnapshotMessageSource(
   workshops?: WorkshopSeam,
   sites?: SiteSeam,
   prayerNeeds: ReadonlySet<number> = new Set(),
+  assistant?: AssistantReminderSeam,
 ): SnapshotMessageSource {
   let lastSweepTick: number | null = null;
   const streaks = new IdleStreaks();
@@ -425,11 +443,13 @@ export function createSnapshotMessageSource(
       : new WorkshopStalls(localPlayer, workshops.types, asks, workshops.storage);
   const siteAsks = sites === undefined ? null : new StatusAsks(sites.supply);
   const shortages = siteAsks === null ? null : new SiteShortages(localPlayer, siteAsks);
+  const reminders = assistant === undefined ? null : new AssistantReminders(assistant);
   const notDismissed: NoteDismissed = () => false;
   return {
     stalls,
     shortages,
     idleReasons: streaks.lastReason,
+    assistantSwitches: reminders?.isOn ?? null,
     sweep: (snapshot, naming, dismissed = notDismissed) => {
       const since = lastSweepTick === null ? null : snapshot.tick - lastSweepTick;
       // A tick that moved backwards (a reload behind the same source) sweeps rather than waiting forever.
@@ -442,9 +462,10 @@ export function createSnapshotMessageSource(
       // Ahead of the idle notes, which leave a stalled workshop's operators to its note.
       stalls?.sweep(snapshot, raiser, naming);
       shortages?.sweep(snapshot, raiser, naming);
+      reminders?.sweep(raiser, naming);
       streaks.begin();
       foodWaits.begin();
-      const idle: IdleNoteContext = { streaks, posts, stalls, asks, dismissed };
+      const idle: IdleNoteContext = { streaks, posts, stalls, asks, dismissed, reminders, naming };
       for (const e of settlersOwnedBy(snapshot, localPlayer)) {
         if (!isLocalPerson(e, localPlayer)) continue;
         if (needsOn) raiseNeeds(raiser, e, snapshot.tick, prayerNeeds);

@@ -31,6 +31,7 @@ import {
 } from '../../dom/notices/column.js';
 import type { FigureFrames } from '../../figures/figure-frames.js';
 import type { PanelContext } from '../context.js';
+import type { AssistantReminderSeam } from './assistant-reminders.js';
 import { noticeThumb } from './cards.js';
 import { type MessageFeedState, type ShownNote, shownNote, takeRaised } from './feed.js';
 import { FightAreas, shownFightAt } from './fight-areas.js';
@@ -58,6 +59,7 @@ import { tradeRefusedNote } from './trade-refused.js';
 import type { PendingMessage, UserMessage } from './types.js';
 import type { WorkshopSeam } from './workshop-stalls.js';
 
+export type { AssistantReminderSeam } from './assistant-reminders.js';
 export type { MessageFeedState, ShownNote } from './feed.js';
 export type { MetSeat } from './from-diplomacy.js';
 export { NOTICE_GALLERY_DEBUG_FLAG, type NoticeGallery } from './gallery.js';
@@ -114,6 +116,10 @@ export interface MessageCenterDeps {
   readonly workshops?: WorkshopSeam | undefined;
   /** The sim's read of the seat's building sites' supply; absent, no shortage note is raised. */
   readonly sites?: SiteSeam | undefined;
+  /** The viewer seat's assistant; absent, no reminder of a switch that is off is raised. */
+  readonly assistant?: AssistantReminderSeam | undefined;
+  /** Open the assistant window, where a reminder's press leads. */
+  readonly onOpenAssistant?: (() => void) | undefined;
   readonly playerLabel: (player: number) => string | null;
   /** The seats this player has met, as the diplomacy roster lists them; a first contact and a seat that
    *  changed its stance toward this one each become a note. Read once per tick. */
@@ -225,7 +231,7 @@ function cardOf(m: UserMessage, snapshot: WorldSnapshot): NoticeCardView {
     short: m.text.short,
     full: m.text.full,
     thumb: noticeThumb(m, buildingTypeIn(snapshot), vehicleOnMapIn(snapshot)),
-    canGo: m.subject !== null || m.at !== null,
+    canGo: m.subject !== null || m.at !== null || m.assistantSwitch !== undefined,
     fresh: snapshot.tick - m.tick < FRESH_NOTE_TICKS,
   };
 }
@@ -235,7 +241,9 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const feeds = createSeatFeeds(deps.viewer.seat(), deps.initial);
   const naming = makeNaming(deps);
   const snapshotSourceOf = (seat: number | null) =>
-    seat === null ? null : createSnapshotMessageSource(seat, deps.workshops, deps.sites, deps.prayerNeeds);
+    seat === null
+      ? null
+      : createSnapshotMessageSource(seat, deps.workshops, deps.sites, deps.prayerNeeds, deps.assistant);
   let snapshotSource = snapshotSourceOf(feeds.seat);
   let diplomacySource = createDiplomacyMessageSource(deps.metSeats);
   let fights = FightAreas.adopt(deps.initial);
@@ -246,6 +254,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     snapshotSource?.shortages,
     snapshotSource?.idleReasons,
     deps.prayerNeeds,
+    snapshotSource?.assistantSwitches,
   );
   // The tick of the last presented snapshot, which a dismissal is stamped with.
   let presentedTick = 0;
@@ -328,7 +337,8 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       const m = feeds.current.find(id);
       if (m === undefined) return;
       ctx.cue('confirm');
-      select(m);
+      if (m.assistantSwitch !== undefined) deps.onOpenAssistant?.();
+      else select(m);
     },
     onDismiss: (id) => {
       ctx.cue('confirm');
@@ -372,6 +382,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       snapshotSource?.shortages,
       snapshotSource?.idleReasons,
       deps.prayerNeeds,
+      snapshotSource?.assistantSwitches,
     );
     previous = null;
     renderedVersion = -1;

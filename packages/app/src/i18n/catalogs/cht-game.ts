@@ -1908,6 +1908,8 @@ export const chtGame = {
       peaceEnded: '和平結束',
       peaceRefused: '和平：不能前往',
       peaceRefusedBuild: '和平：不能建造',
+      assistantSwitchOff: '未發放：{good}',
+      assistantFlagsOff: '旗幟未跟隨',
       houseUpgraded: '已升級',
       vehicleNoPath: '沒有路線',
       vehicleNoCommander: '沒有指揮官',
@@ -1993,6 +1995,10 @@ export const chtGame = {
       peaceEnded: '和平已結束。玩家之間可以再次互相攻擊。',
       peaceRefused: '和平期間，你不能派人前往與你處於和平的玩家的聚落附近。',
       peaceRefusedBuild: '和平期間，你不能在與你處於和平的玩家的聚落附近建造。',
+      assistantSwitchOff:
+        '未發放：{good}。貨物放在倉庫裡，你的人不會去取。請在助手視窗中開啟，或關閉此通知以保持關閉。',
+      assistantFlagsOff:
+        '有採集者在旗幟旁已無可採集的資源。助手可以讓採集者的旗幟自動跟隨資源：請在助手視窗中開啟，或關閉此通知以保持關閉。',
       houseUpgraded: '升級完成：{building}。',
       vehicleNoPath: '{vehicle}找不到前往該處的路。請選擇其他目的地。',
       vehicleNoCommander: '{vehicle}沒有人指揮。請派一名居民上去。',

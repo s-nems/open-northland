@@ -11,6 +11,7 @@ import {
   settlerJobType,
 } from '../../../game/snapshot/index.js';
 import { messages } from '../../../i18n/index.js';
+import { raiseGiveSwitchReminder } from './assistant-reminders.js';
 import type { MetSeat } from './from-diplomacy.js';
 import { type BuildingTrades, isPerson, raiseFight, raiseUnlocks } from './from-events.js';
 import { peaceNote, peaceRefusalNote } from './peace.js';
@@ -194,6 +195,10 @@ export function galleryMessages(
     if (name === 'settingsNeedRestart') {
       const note = settingsRestartNote([messages().mainMenu.settings.renderScale], naming);
       raiser.raise(`${type}|settings`, note.pending, note.compose);
+      continue;
+    }
+    if (name === 'assistantSwitchOff') {
+      raiseGiveSwitchReminder(raiser, naming, 'giveBoots', messages().hud.assistant.switches.giveBoots.label);
       continue;
     }
     if (HOUSE_ROWS.has(name)) {

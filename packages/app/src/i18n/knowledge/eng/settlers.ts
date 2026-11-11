@@ -421,10 +421,10 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Switch', 'At start', 'Who gets it'],
             rows: [
-              ['[[good:shoes|Shoes]]', 'on', 'adult man'],
+              ['[[good:shoes|Shoes]]', 'off', 'adult man'],
               [
                 'Iron tools, Wooden tools',
-                'on',
+                'off',
                 'anyone with a job except soldiers, [[job:scout|Scouts]] and Civilians',
               ],
               [
@@ -432,7 +432,7 @@ export const SETTLERS: ArticleGroup = {
                 'on',
                 'a worker with a Wooden Tool, while Iron tools is on',
               ],
-              ['[[good:mead|Mead]]', 'on', 'Civilians, Soldiers'],
+              ['[[good:mead|Mead]]', 'off', 'Civilians, Soldiers'],
               ['Nourishing potions, Stamina potions, Healing potions', 'off', 'Civilians, Soldiers'],
               [
                 'Amulet: Nourishing, Stamina, Strength, Defence, Precision, Wind',
@@ -444,9 +444,9 @@ export const SETTLERS: ArticleGroup = {
                 'off',
                 '[[building:school|School]] graduate',
               ],
-              ['Extractors move their flag automatically', 'on', '[[job:collector|Extractor]] with a flag'],
+              ['Extractors move their flag automatically', 'off', '[[job:collector|Extractor]] with a flag'],
             ],
-            foot: 'For potions and amulets, the "Civilians" and "Soldiers" buttons choose who receives them. Both start on. Switching one off takes nothing back.',
+            foot: 'For potions and amulets, the "Civilians" and "Soldiers" buttons choose who receives them. Both start on. Switching one off takes nothing back. A notice reminds you of a switch that is off once its good lies in store and someone lacks it, and of the flag switch once an Extractor runs out by his flag.',
           },
         },
         {

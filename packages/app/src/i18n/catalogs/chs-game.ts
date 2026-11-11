@@ -1907,6 +1907,8 @@ export const chsGame = {
       peaceEnded: '和平结束',
       peaceRefused: '和平：不能前往',
       peaceRefusedBuild: '和平：不能建造',
+      assistantSwitchOff: '未发放：{good}',
+      assistantFlagsOff: '旗帜未跟随',
       houseUpgraded: '已升级',
       vehicleNoPath: '无路线',
       vehicleNoCommander: '无指挥官',
@@ -1992,6 +1994,10 @@ export const chsGame = {
       peaceEnded: '和平已结束。玩家之间可以再次互相攻击。',
       peaceRefused: '和平期间，你不能派人前往与你处于和平的玩家的聚落附近。',
       peaceRefusedBuild: '和平期间，你不能在与你处于和平的玩家的聚落附近建造。',
+      assistantSwitchOff:
+        '未发放：{good}。货物放在仓库里，你的人不会去取。请在助手窗口中开启，或关闭此通知以保持关闭。',
+      assistantFlagsOff:
+        '有采集者在旗帜旁已无可采集的资源。助手可以让采集者的旗帜自动跟随资源：请在助手窗口中开启，或关闭此通知以保持关闭。',
       houseUpgraded: '升级完成：{building}。',
       vehicleNoPath: '{vehicle}找不到前往该处的路。请选择其他目的地。',
       vehicleNoCommander: '{vehicle}没有人指挥。请派一名居民上去。',

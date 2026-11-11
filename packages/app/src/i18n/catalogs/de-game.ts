@@ -2096,6 +2096,8 @@ export const deGame = {
       peaceEnded: 'Frieden vorbei',
       peaceRefused: 'Zutritt gesperrt',
       peaceRefusedBuild: 'Bauen gesperrt',
+      assistantSwitchOff: 'Nicht verteilt: {good}',
+      assistantFlagsOff: 'Fahnen stehen',
       houseUpgraded: 'Ausgebaut',
       vehicleNoPath: 'Kein Weg',
       vehicleNoCommander: 'Kein Kommandant',
@@ -2192,6 +2194,10 @@ export const deGame = {
         'Solange der Frieden gilt, kannst du keine Leute in die Nähe der Siedlung eines Spielers schicken, mit dem du Frieden hast.',
       peaceRefusedBuild:
         'Solange der Frieden gilt, kannst du nicht in der Nähe der Siedlung eines Spielers bauen, mit dem du Frieden hast.',
+      assistantSwitchOff:
+        'Wird nicht ausgegeben: {good}. Die Ware liegt im Lager, und deine Leute holen sie nicht. Schalte das im Assistenten ein oder schließe den Hinweis, damit es aus bleibt.',
+      assistantFlagsOff:
+        'Ein Abbauer findet an seiner Fahne nichts mehr zum Abbauen. Der Assistent kann die Fahnen der Abbauer dem Rohstoff nachsetzen: Schalte das dort ein oder schließe den Hinweis, damit es aus bleibt.',
       houseUpgraded: 'Ausbau abgeschlossen: {building}.',
       vehicleNoPath: '{vehicle}: Kein Weg zum Ziel gefunden. Wähle ein anderes Ziel.',
       vehicleNoCommander: '{vehicle}: Niemand übernimmt das Kommando. Schicke einen Siedler an Bord.',

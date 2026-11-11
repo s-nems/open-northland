@@ -55,6 +55,9 @@ export interface MessageTextParts {
   };
   /** The found paper's name. */
   readonly detail?: string;
+  /** Set on the `assistantSwitchOff` note about the flag follow; the notes about a give switch name its
+   *  row in `goodName`. */
+  readonly assistantFlags?: true;
   /** The settings a `settingsNeedRestart` note names, by their labels. */
   readonly settings?: readonly string[];
   /** The whole match minutes a `peaceEnding` note says the peace still holds for. */
@@ -123,6 +126,9 @@ function linesOf(
   }
   if (name === 'peaceRefused' && parts.peaceOrder === 'build') {
     return [copy.short.peaceRefusedBuild, copy.full.peaceRefusedBuild];
+  }
+  if (name === 'assistantSwitchOff' && parts.assistantFlags === true) {
+    return [copy.short.assistantFlagsOff, copy.full.assistantFlagsOff];
   }
   if (name === 'canDoNewJob' && parts.training?.course === 'barracks') {
     return [copy.short.becameSoldier, copy.full.becameSoldier];

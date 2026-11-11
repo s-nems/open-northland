@@ -276,6 +276,18 @@ export const PROBLEMS: ArticleGroup = {
                 'Przenieś flagę albo ją zabierz',
               ],
               [
+                '"Nie rozdaje: towar"',
+                'Ważne',
+                'Przełącznik [[article:assistant|Asystenta]] jest wyłączony, towar leży w magazynie i komuś go brakuje',
+                'Włącz go w Asystencie albo odrzuć powiadomienie, żeby został wyłączony',
+              ],
+              [
+                '"Flagi stoją"',
+                'Ważne',
+                'Zbieraczowi skończył się surowiec przy fladze, a Asystent nie przenosi flag',
+                'Włącz to w Asystencie albo przenieś flagę ręcznie',
+              ],
+              [
                 '"Nie dojedzie"',
                 'Ważne',
                 'Statek cumuje przy innym lądzie niż pojazd',

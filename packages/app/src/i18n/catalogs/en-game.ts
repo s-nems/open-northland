@@ -1962,6 +1962,8 @@ export const enGame = {
       peaceEnded: 'Peace over',
       peaceRefused: 'Peace: no entry',
       peaceRefusedBuild: 'Peace: no site',
+      assistantSwitchOff: 'Not issued: {good}',
+      assistantFlagsOff: 'Flags stay put',
       houseUpgraded: 'Upgraded',
       vehicleNoPath: 'No route',
       vehicleNoCommander: 'No commander',
@@ -2055,6 +2057,10 @@ export const enGame = {
         'While the peace holds, you cannot send people near the settlement of a player you are at peace with.',
       peaceRefusedBuild:
         'While the peace holds, you cannot build near the settlement of a player you are at peace with.',
+      assistantSwitchOff:
+        'Not handed out: {good}. The goods lie in store and your people do not fetch them. Switch this on in the Assistant, or dismiss the note to leave it off.',
+      assistantFlagsOff:
+        'An Extractor has nothing left to gather by his flag. The Assistant can move Extractors’ flags after the resource: switch it on there, or dismiss the note to leave it off.',
       houseUpgraded: 'Upgrade finished: {building}.',
       vehicleNoPath: '{vehicle} cannot find a way there. Pick another destination.',
       vehicleNoCommander: '{vehicle} has nobody to command it. Send a settler aboard.',

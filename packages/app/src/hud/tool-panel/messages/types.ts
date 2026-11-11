@@ -1,4 +1,5 @@
 import type { DiplomacyState, HalfCellNode, SimEvent, WorkerRefusalReason } from '@open-northland/sim';
+import type { GiveSwitchId } from '../../../game/assistant-grant-ids.js';
 import type { ChildOrderWait } from '../../../game/snapshot/index.js';
 import type { MessageText } from './text.js';
 
@@ -18,7 +19,9 @@ import type { MessageText } from './text.js';
  * a trader's route took no house of another tribe.
  * `settingsNeedRestart` reports the player's own settings change that waits for the map's next start, not
  * anything in the world. `peaceEnding` and `peaceEnded` tell of the lobby peace, which the original lacks, and
- * `peaceRefused` of a walk, drive or placement it held back.
+ * `peaceRefused` of a walk, drive or placement it held back. `assistantSwitchOff` reminds the player of an
+ * assistant switch that is off while it has something to do; the original's switches start off without a
+ * word.
  */
 export const USER_MESSAGE_TYPE = {
   lostWithoutSignposts: 0x03,
@@ -66,9 +69,14 @@ export const USER_MESSAGE_TYPE = {
   peaceEnding: 0x89,
   peaceEnded: 0x8a,
   peaceRefused: 0x8b,
+  assistantSwitchOff: 0x8c,
 } as const;
 
 export type UserMessageTypeName = keyof typeof USER_MESSAGE_TYPE;
+
+/** The assistant switches a notice reminds the player of while they are off: every give switch, and the
+ *  flag follow. */
+export type AssistantReminderSwitch = GiveSwitchId | 'moveFlags';
 
 /** What an order the peace refused would have done: send someone there, or build there. */
 export type PeaceRefusedOrder = Extract<SimEvent, { kind: 'peaceRefused' }>['what'];
@@ -187,6 +195,8 @@ export interface PendingMessage {
   readonly stance?: DiplomacyState;
   /** An attack note's area so far; not part of the identity, since every new hit updates it. */
   readonly fight?: FightTally;
+  /** The switch an assistant reminder is about, part of its identity: one note per switch. */
+  readonly assistantSwitch?: AssistantReminderSwitch;
 }
 
 export interface UserMessage extends PendingMessage {

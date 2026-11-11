@@ -201,6 +201,10 @@ starts on it.
 collector with two trees beside his flag. Once both are felled the flag moves 3-5 tiles from a tree of
 the grove to the east, between the grove and the headquarters, and he goes on felling there.
 
+`?scene=assistant-reminder` leaves every assistant switch off, as a map starts. Three bare extractors stand
+by a store holding shoes, iron tools and mead for each of them and fetch nothing. The notice column
+reminds of each of the three switches, and a press on a reminder opens the assistant window.
+
 `?scene=tool-upgrade` hands out both tools with the assistant's "replace wooden ones" switch on.
 Three extractors holding wooden tools walk to the headquarters for its three iron ones. The two part-used
 wooden tools are lost in the swap, the fresh one goes back into the store, and the extractor already

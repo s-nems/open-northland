@@ -1942,6 +1942,8 @@ export const plGame = {
       peaceEnded: 'Koniec pokoju',
       peaceRefused: 'Nie wejdą',
       peaceRefusedBuild: 'Bez budowy',
+      assistantSwitchOff: 'Nie rozdaje: {good}',
+      assistantFlagsOff: 'Flagi stoją',
       houseUpgraded: 'Rozbudowano',
       vehicleNoPath: 'Brak trasy',
       vehicleNoCommander: 'Brak dowódcy',
@@ -2035,6 +2037,10 @@ export const plGame = {
       peaceEnded: 'Pokój dobiegł końca. Gracze znów mogą się atakować.',
       peaceRefused: 'Dopóki trwa pokój, nie możesz wysyłać ludzi pod osadę gracza, z którym łączy cię pokój.',
       peaceRefusedBuild: 'Dopóki trwa pokój, nie możesz budować pod osadą gracza, z którym łączy cię pokój.',
+      assistantSwitchOff:
+        'Asystent nie rozdaje: {good}. Towar leży w magazynie, a twoi ludzie po niego nie idą. Włącz to w oknie asystenta albo odrzuć powiadomienie, żeby zostało wyłączone.',
+      assistantFlagsOff:
+        'Zbieracz nie ma już czego zbierać przy swojej fladze. Asystent może sam przenosić flagi zbieraczy za surowcem: włącz to w jego oknie albo odrzuć powiadomienie, żeby zostało wyłączone.',
       houseUpgraded: 'Rozbudowa ukończona: {building}.',
       vehicleNoPath: '{vehicle}: brak drogi do celu. Wskaż inny cel.',
       vehicleNoCommander: '{vehicle}: nikt nie kieruje tym wehikułem. Wyślij do wehikułu osadnika.',

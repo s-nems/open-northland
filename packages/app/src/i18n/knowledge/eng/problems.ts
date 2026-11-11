@@ -286,6 +286,18 @@ export const PROBLEMS: ArticleGroup = {
                 'Move the flag or take it away',
               ],
               [
+                '"Not issued: [good]"',
+                'Notable',
+                'An [[article:assistant|Assistant]] switch is off, its good lies in store and someone lacks it',
+                'Switch it on in the Assistant, or dismiss the notice to leave it off',
+              ],
+              [
+                '"Flags stay put"',
+                'Notable',
+                'An Extractor has nothing left by his flag and the Assistant does not move flags',
+                'Switch it on in the Assistant, or move the flag yourself',
+              ],
+              [
                 '"No way to ship"',
                 'Notable',
                 'The ship is moored at a different landmass than the vehicle',

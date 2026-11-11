@@ -444,7 +444,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Where a settler gets a tool',
         },
         {
-          p: 'Tools are handed out by the [[article:assistant|Assistant]], which is on from the start of the game, or by your own order. A settler with no tool goes to a store for one by himself and takes an Iron one, or a Wooden one if there is no Iron. The Assistant swaps a Wooden one for an Iron one when its "Iron tools" and "Replace wooden ones" switches are on and a store has a spare Iron one. A part-used Wooden tool is lost in the swap, an unused one goes back to the store.',
+          p: 'Tools are handed out by the [[article:assistant|Assistant]] once you switch its tool rows on, or by your own order. A settler with no tool then goes to a store for one by himself and takes an Iron one, or a Wooden one if there is no Iron. The Assistant swaps a Wooden one for an Iron one when its "Iron tools" and "Replace wooden ones" switches are on and a store has a spare Iron one. A part-used Wooden tool is lost in the swap, an unused one goes back to the store.',
         },
         {
           h: 'Who benefits',

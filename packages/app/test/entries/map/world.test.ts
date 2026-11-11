@@ -190,8 +190,8 @@ describe('buildMapWorld', () => {
     expect(sim.professionProgressionEnabled()).toBe(false);
     expect(components.isMachinePlayer(sim.world, 2)).toBe(true);
     expect(components.isMachinePlayer(sim.world, 1)).toBe(false);
-    expect(sim.assistantGrants(0)).not.toEqual([]);
-    expect(sim.assistantGrants(1)).toEqual([]);
+    expect(sim.assistantUpgradesTools(0)).toBe(true);
+    expect(sim.assistantUpgradesTools(1)).toBe(false);
   });
 
   it("leaves the world's own rules alone when no flag is set", () => {

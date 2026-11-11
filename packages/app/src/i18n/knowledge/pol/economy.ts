@@ -441,7 +441,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Skąd osadnik ma narzędzie',
         },
         {
-          p: 'Narzędzia rozdaje [[article:assistant|Asystent]], który jest włączony od początku gry, albo ty swoim rozkazem. Osadnik bez narzędzia sam idzie po nie do magazynu i bierze Żelazne, a jeśli ich nie ma, Drewniane. Drewniane na Żelazne wymienia Asystent, gdy włączone są przełączniki "Żelazne narzędzia" i "Wymieniaj drewniane", a w magazynie leżą wolne Żelazne. Częściowo zużyte Drewniane przepada przy wymianie, nieużywane wraca do magazynu.',
+          p: 'Narzędzia rozdaje [[article:assistant|Asystent]], gdy włączysz w nim narzędzia, albo ty swoim rozkazem. Osadnik bez narzędzia sam idzie wtedy po nie do magazynu i bierze Żelazne, a jeśli ich nie ma, Drewniane. Drewniane na Żelazne wymienia Asystent, gdy włączone są przełączniki "Żelazne narzędzia" i "Wymieniaj drewniane", a w magazynie leżą wolne Żelazne. Częściowo zużyte Drewniane przepada przy wymianie, nieużywane wraca do magazynu.',
         },
         {
           h: 'Kto korzysta',

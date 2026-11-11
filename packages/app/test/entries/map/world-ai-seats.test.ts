@@ -127,7 +127,7 @@ it('gives a monster tribe’s machine seat the map AI controller alone', () => {
   }
 });
 
-it('starts the assistant grants for the seats a person or the computer player plays, never a scripted camp', () => {
+it('starts the assistant switches for the seats a person or the computer player plays, never a scripted camp', () => {
   // A seat running no computer module is the map's scripted camp.
   const PERSON = 0;
   const COMPUTER = 1;
@@ -167,12 +167,10 @@ it('starts the assistant grants for the seats a person or the computer player pl
     },
   });
   sim.step();
-  const granted = new Set<number>();
-  for (const e of sim.world.query(components.AssistantGrants)) {
-    const { player, goods } = sim.world.get(e, components.AssistantGrants);
-    if (goods.length > 0) granted.add(player);
-  }
-  expect([...granted].sort((a, b) => a - b)).toEqual([PERSON, COMPUTER]);
+  const started = [PERSON, COMPUTER, SCRIPTED_CAMP, DISABLED].filter((seat) =>
+    sim.assistantUpgradesTools(seat),
+  );
+  expect(started).toEqual([PERSON, COMPUTER]);
 });
 
 it('round-trips Map AI, Computer and Idle into distinct world control', () => {

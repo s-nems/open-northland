@@ -106,6 +106,7 @@ import { terrainEditsScene } from './missions/terrain-edits.js';
 import { tributeScene } from './missions/tribute.js';
 import { victoryScene } from './missions/victory.js';
 import { sandboxScene } from './sandbox/index.js';
+import { assistantReminderScene } from './settlers/assistant-reminder.js';
 import { childrenScene } from './settlers/children.js';
 import { everydayGesturesScene } from './settlers/everyday-gestures.js';
 import { familyScene } from './settlers/family.js';
@@ -281,6 +282,7 @@ export const SCENES: readonly SceneDefinition[] = [
   schoolQueueScene,
   gathererFlagFollowScene,
   toolUpgradeScene,
+  assistantReminderScene,
   porterFlagScene,
   fieldPostFlagsScene,
   gathererGoodsScene,
