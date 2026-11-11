@@ -50,8 +50,12 @@ An imported or project-written translation holds only the translated text keyed 
 label. An overlay in a source language is the project's edit of a community map's text: the edited
 ids and blocks in the project's wording, never a campaign map's or an original tutorial's text, which
 stay pipeline corrections. The one exception is the glossary, `translations/glossary.csv` and
-`translations/glossary-project.csv`: beside each Chinese term it keeps the German, English and Polish
-term it translates (names of characters, places, objects and maps).
+`translations/glossary-project.csv`: beside each Chinese or Italian term it keeps the German, English
+and Polish term it translates (names of characters, places, objects and maps).
+
+The official Italian text of the original lives only in the data pack. The repository's `ita` overlays
+are the project's own translation of the text the pack lacks, never a copy or an edit of the official
+Italian text, and no correction quotes it; the glossary's `ita` column holds single terms and names.
 
 Independently authored film subtitles under `translations/<lang>/campaigns/<campaign>/films/`
 are also permitted: transcriptions of the narration and their translations, with provenance in

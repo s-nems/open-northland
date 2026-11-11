@@ -5,6 +5,7 @@ import type { SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
 import { GUI_CONTENT_DIR, GUI_LANGS } from './paths.js';
 import {
+  fillShippedTable,
   type GameObjectNames,
   normalizeName,
   OBJECT_HELP_FILES,
@@ -65,9 +66,10 @@ async function writeHelp(
 
 /**
  * Decodes each language's goods and houses descriptions into `content/gui/help/<lang>.json`, with the
- * string corrections applied, and writes an overlay language's file from its description overlays. A
- * missing table stays empty and a language with neither emits nothing. A source language's overlay is
- * refused, as `convertGuiStrings` reports for its object tables.
+ * string corrections applied, and writes an overlay language's file from its description overlays, which
+ * only fill the ids the pack's own text of that language lacks. A missing table stays empty and a
+ * language with neither emits nothing. A source language's overlay is refused, as `convertGuiStrings`
+ * reports for its object tables.
  */
 export async function convertGuiObjectHelp(
   roots: SourceRoots,
@@ -75,6 +77,7 @@ export async function convertGuiObjectHelp(
   langs: readonly string[] = GUI_LANGS,
 ): Promise<GuiObjectHelpResult[]> {
   const done: GuiObjectHelpResult[] = [];
+  const shipped = new Map<string, ObjectHelp>();
   for (const lang of langs) {
     const help: HelpBuilder = { goods: {}, houses: {} };
     for (const { key, table } of HELP_TABLES) {
@@ -86,6 +89,7 @@ export async function convertGuiObjectHelp(
       }
     }
     await writeHelp(outDir, lang, help, done);
+    shipped.set(lang, help);
   }
   for (const [lang, overlays] of roots.overlays?.objects ?? []) {
     if (isSourceLanguage(lang)) continue;
@@ -98,6 +102,12 @@ export async function convertGuiObjectHelp(
       );
       help[key] = overlay.names;
     }
+    const own = shipped.get(lang);
+    if (own !== undefined)
+      for (const { key, table } of HELP_TABLES)
+        help[key] = fillShippedTable(`${lang} ${table}`, own[key], help[key]);
+    const replaced = done.findIndex((result) => result.lang === lang);
+    if (replaced !== -1) done.splice(replaced, 1);
     await writeHelp(outDir, lang, help, done);
   }
   return done;

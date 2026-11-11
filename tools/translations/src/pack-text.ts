@@ -18,7 +18,7 @@ import {
   type SourceRoots,
   takesSourceLanguageOverlays,
 } from '@open-northland/asset-pipeline/sources';
-import { jsonFingerprint, mapOverlayDatKey, type SourceLanguage } from '@open-northland/data';
+import { jsonFingerprint, mapOverlayDatKey, type PackLanguage } from '@open-northland/data';
 
 export { objectTableSourceDigest } from '@open-northland/data';
 
@@ -71,9 +71,9 @@ export interface PackText {
   readonly campaigns: ReadonlySet<string>;
   /** One language's game-object or description table; throws when the pack lacks it or it does not
    *  decode. */
-  objectNames(lang: SourceLanguage, table: ObjectOverlayTable): Promise<GameObjectNames>;
+  objectNames(lang: PackLanguage, table: ObjectOverlayTable): Promise<GameObjectNames>;
   /** One language's history book, or undefined when the pack lacks it. */
-  historyBlocks(lang: SourceLanguage): Promise<BookBlocks | undefined>;
+  historyBlocks(lang: PackLanguage): Promise<BookBlocks | undefined>;
 }
 
 /** A book overlay's `basis.digest`: the basis language's blocks by lower-cased block file, then label. */

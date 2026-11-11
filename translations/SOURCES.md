@@ -74,6 +74,11 @@ Overlays the project wrote itself, edited in place:
 - `eng/maps/`, `ger/maps/` and `rus/maps/` files for community maps that ship only Polish: the
   project's machine translation from the Polish text with the glossary, reusing the earlier version's
   shipped translation where the text is unchanged; unreviewed by a native speaker.
+- `ita/`: the project's own machine (agent) translation from the English text, or the Polish where a
+  map ships only Polish, with the glossary's `ita` terms; unreviewed by a native speaker. It covers what
+  the pack's official Italian text does not: maps outside the Northland edition, the object-table ids
+  the edition lacks, and campaign titles. The `ita` column of `glossary-project.csv` follows the
+  edition's word choice for the game's terms and names.
 
 
 ## Campaign film subtitles

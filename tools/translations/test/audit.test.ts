@@ -11,6 +11,7 @@ import {
 import { mapSourceTextDigest } from '@open-northland/map-import';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildMapDat } from '../../../packages/formats/test/fixtures/mapdat.js';
+import { DATA_PACK_VERSION } from '../../../scripts/data-pack.mjs';
 import { auditTranslations } from '../src/audit.js';
 import {
   bookSourceDigest,
@@ -327,6 +328,38 @@ describe('auditTranslations: against the pack', () => {
     ]);
   });
 
+  it("lists an overlay's ids and book that the pack ships in the overlay's own language as redundant", async () => {
+    const shipping: PackText = {
+      ...pack([]),
+      objectNames: async (lang, table) => {
+        if (table !== 'goods') throw new Error(`no ${table}`);
+        return lang === 'ita' ? { names: { 1: 'Legno' }, plurals: {} } : goods;
+      },
+      historyBlocks: async () => history,
+    };
+    await put('ita/objects/goods.json', {
+      version: OVERLAY_VERSION,
+      basis: basis(objectTableSourceDigest(goods)),
+      names: { '1': 'Legna' },
+    });
+    await put('ita/books/history.json', {
+      version: OVERLAY_VERSION,
+      basis: basis(bookSourceDigest(history)),
+      blocks: {},
+    });
+
+    const report = await auditTranslations(dir, shipping);
+
+    expect(report.errors).toEqual([]);
+    expect(report.warnings).toEqual([
+      {
+        file: 'ita/books/history.json',
+        message: 'the pack ships the ita history book, which wins; the overlay is redundant',
+      },
+      { file: 'ita/objects/goods.json', message: 'type ids the pack ships in ita, which win; redundant: 1' },
+    ]);
+  });
+
   it('audits an edit against its basis text like an applied overlay, and leaves out a stale one', async () => {
     const older = basis('f'.repeat(64));
     await put(`chs/maps/${FILE}.json`, mapOverlay({ '0': '峡湾', '1': '描述' }, {}, older));
@@ -566,7 +599,7 @@ describe('readPackText', () => {
     const dat = buildMapDat(1, 1, [2, 2, 2, 2]);
     const manifest = {
       format: 'open-northland-data',
-      version: 4,
+      version: DATA_PACK_VERSION,
       base: 'base',
       components: [{ id: 'base', kind: 'base', sha256: '0'.repeat(64) }],
       campaigns: [],
