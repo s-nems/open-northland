@@ -225,11 +225,11 @@ describe('extractVehicles', () => {
     expect(withOx).not.toHaveProperty('draggingAnimalTribe');
   });
 
-  it('stamps the engine hit-point table by type: ships 5000, the catapult 3000', () => {
+  it('stamps the engine hit-point table by type: ships 5000, the catapult 3600', () => {
     const ini = '[vehicletype]\ntype 3\nname "ship small"\n[vehicletype]\ntype 5\nname "catapult"\n';
     const [ship, catapult] = extractVehicles(parseIniSections(ini), { file: 'vehicletypes.ini' });
     expect(ship?.hitpoints).toBe(5000);
-    expect(catapult?.hitpoints).toBe(3000);
+    expect(catapult?.hitpoints).toBe(3600);
   });
 
   it('throws when two records slug alike and no define tells them apart', () => {

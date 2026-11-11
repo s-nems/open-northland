@@ -118,4 +118,5 @@ const SHIP_BIG_PASSENGERS = 9;
 const SHIP_DOOR = { direction: 2, distance: 4 } as const;
 const CART_HITPOINTS = 1000;
 const SHIP_HITPOINTS = 5000;
-const CATAPULT_HITPOINTS = 3000;
+/** As the content pipeline stamps it: the original's 3000 raised by a fifth. */
+const CATAPULT_HITPOINTS = 3600;
