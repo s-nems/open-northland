@@ -18,7 +18,7 @@ import { groupPlacementOrder } from './group-placement.js';
 import { dropOrderQueue, isOrderableSettler, mayTakeHome } from './guards.js';
 
 /**
- * Match the issuer with the nearest eligible partner and start their wedding - see the command doc. The
+ * Match the issuer with its partner ({@link findPartnerFor}) and start their wedding - see the command doc. The
  * FamilySystem walks them together and kisses them into a {@link Marriage}.
  */
 export function marry(world: World, ctx: SystemContext, command: Extract<Command, { kind: 'marry' }>): void {

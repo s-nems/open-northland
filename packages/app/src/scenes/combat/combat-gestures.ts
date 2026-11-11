@@ -73,8 +73,10 @@ function build(sim: Simulation): void {
       sim.world.add(archer, Carrying, { goodType: goodBySlug(sim, 'food_simple'), amount: 1 });
     sim.enqueueSetup({ kind: 'orderNeed', entity: archer, need });
   }
+  // A bride weds a man with a trade before a civilian, so the groom beside her is a builder and the
+  // civilians stay guests to cheer.
   const bride = spawnSettlerDirect(sim, JOB_WOMAN, 23, 19, HUMAN_PLAYER);
-  spawnSettlerDirect(sim, JOB_CIVILIST, 24, 19, HUMAN_PLAYER);
+  spawnSettlerDirect(sim, JOB_BUILDER, 24, 19, HUMAN_PLAYER);
   spawnSettlerDirect(sim, JOB_CIVILIST, 26, 19, HUMAN_PLAYER);
   sim.enqueueSetup({ kind: 'marry', entity: bride });
 }

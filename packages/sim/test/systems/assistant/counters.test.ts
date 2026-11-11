@@ -513,6 +513,23 @@ describe('the training queue', () => {
     expect(sim.assistantCounters(PLAYER).trainSoldiers).toEqual({ value: 0, infinite: true });
   });
 
+  it('never drafts a married man, even on an infinite counter', () => {
+    const sim = trainSim();
+    barracksAt(sim, 6, 3);
+    const husband = settlerAt(sim, CIVILIST, 2, 2);
+    const bachelor = settlerAt(sim, CIVILIST, 2, 3);
+    // Only a living spouse matters to the draft; this content has no woman's trade to give her.
+    const spouse = settlerAt(sim, WOODCUTTER, 2, 4);
+    sim.world.add(husband, Marriage, { spouse, child: null });
+    sim.world.add(spouse, Marriage, { spouse: husband, child: null });
+
+    setCounter(sim, 'trainSoldiers', 0, true);
+    run(sim, 3 * BEAT_TICKS);
+
+    expect(sim.world.has(bachelor, TrainingOrder)).toBe(true);
+    expect(sim.world.has(husband, TrainingOrder)).toBe(false);
+  });
+
   it('a weapon-class recruit drills the standard term, takes the strongest sword, then armor - and pays on the sword', () => {
     const sim = trainSim();
     const barracks = barracksAt(sim, 6, 3);

@@ -1476,7 +1476,8 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     if (t === 1) {
       sim.enqueueSetup({ kind: 'assignHouse', entity: NUCLEUS_WIFE, house: NUCLEUS_HOME });
       sim.enqueueSetup({ kind: 'assignHouse', entity: NUCLEUS_HUSBAND, house: NUCLEUS_HOME });
-      sim.enqueueSetup({ kind: 'marry', entity: NUCLEUS_WIFE });
+      // He proposes: a woman would take the preamble trader, a man with a trade, over a trade-less one.
+      sim.enqueueSetup({ kind: 'marry', entity: NUCLEUS_HUSBAND });
     }
     // The last man's walk to the food chest: the accept path on every seed, ahead of the stream's own
     // chest rolls, which then find it gone. Sent again until the chest opens, since a stream order such

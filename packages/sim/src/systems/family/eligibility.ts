@@ -2,6 +2,7 @@ import type { ContentSet } from '@open-northland/data';
 import {
   Age,
   Female,
+  isMachinePlayer,
   JobAssignment,
   Marriage,
   ownerOf,
@@ -17,7 +18,7 @@ import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/ha
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
-import { isNonWorkingAge } from '../lifecycle/ageclass.js';
+import { isCivilianTrade, isNonWorkingAge } from '../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob } from '../readviews/index.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { settlementReachAt } from '../signposts/settlement-reach.js';
@@ -79,6 +80,10 @@ export function raisingChild(world: World, marriage: { child: Entity | null }): 
   return marriage.child !== null && world.isAlive(marriage.child) && isMinor(world, marriage.child);
 }
 
+/** A woman's husband preference: lower ranks first, see {@link findPartnerFor}. */
+const WORKER_RANK = 0;
+const CIVILIAN_RANK = 1;
+
 /**
  * The nearest eligible partner for `seeker`, or null when none exists. Nearest by half-cell Manhattan
  * distance with an ascending-entity-id tie-break, so the winner never depends on store insertion order;
@@ -89,6 +94,10 @@ export function raisingChild(world: World, marriage: { child: Entity | null }): 
  * Our own rule: both partners belong to the settlement where the seeker stands ({@link settlementReachAt}),
  * so a man passing through, such as a ship's hand ashore at another island, is not wed into a household
  * across water, and a seeker away from her own settlement weds no one there.
+ *
+ * Our own rule: a human seat's woman takes a man with a trade before any civilian, nearest within each
+ * group, so the civilians the assistant drafts into the army stay single while a working man is free to
+ * wed. A machine seat's bride keeps the nearest man, so she never walks out to a far building site.
  */
 export function findPartnerFor(
   world: World,
@@ -103,12 +112,14 @@ export function findPartnerFor(
   const tribe = world.get(seeker, Settler).tribe;
   const owner = ownerOf(world, seeker);
   const seekerFemale = world.has(seeker, Female);
+  const workersFirst = seekerFemale && owner !== undefined && !isMachinePlayer(world, owner);
   const settlement =
     terrain === undefined || owner === undefined
       ? null
       : settlementOf(world, { content, terrain }, terrain, owner, from);
   if (settlement !== null && !settlement.holds(seeker)) return null;
   let best: Entity | null = null;
+  let bestRank = WORKER_RANK;
   let bestDist = 0;
   // By index and without a node object: the search reads every person on the map.
   const people = world.canonicalQuery(Person, Position);
@@ -117,16 +128,18 @@ export function findPartnerFor(
     if (e === seeker || !mayMarry(world, content, e)) continue;
     if (world.get(e, Settler).tribe !== tribe || ownerOf(world, e) !== owner) continue;
     if (world.has(e, Female) === seekerFemale) continue;
+    const rank = workersFirst && isCivilianTrade(world.get(e, Settler).jobType) ? CIVILIAN_RANK : WORKER_RANK;
     const p = world.get(e, Position);
     const hx = nodeHxOfPosition(p.x, p.y);
     const hy = nodeHyOfPosition(p.x, p.y);
     const dist = Math.abs(hx - from.hx) + Math.abs(hy - from.hy);
-    if (best !== null && dist >= bestDist) continue;
+    if (best !== null && (rank > bestRank || (rank === bestRank && dist >= bestDist))) continue;
     if (limit !== null && terrain !== undefined && !limit.allowsNode(terrain.nodeAtClamped(hx, hy))) {
       continue;
     }
     if (settlement !== null && !settlement.holds(e)) continue;
     best = e;
+    bestRank = rank;
     bestDist = dist;
   }
   return best;

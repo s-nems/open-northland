@@ -24,11 +24,11 @@ import { fighterWeaponClass } from '../../ai-shared/military/census.js';
 import { garrisonSlots } from '../../ai-shared/military/defence/posts.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
-import { draftableTrade, isBareSoldier } from '../../assistant/index.js';
+import { isBareSoldier } from '../../assistant/index.js';
 import { towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried, mayMarry } from '../../family/eligibility.js';
-import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
+import { CIVILIST_JOB, isCivilianTrade } from '../../lifecycle/ageclass.js';
 import { ownedFightersOf } from '../../movement/collision/owned-fighters.js';
 import { baseSoldierJobType, isFighterJob, isSoldierJob } from '../../readviews/index.js';
 import { INTENT_WEAPON_CLASS } from '../../settlers/atomics/effects/goods/weapon-class.js';
@@ -750,7 +750,7 @@ function isUnarmedBachelor(world: World, e: Entity): boolean {
 }
 
 function isDraftable(world: World, e: Entity): boolean {
-  if (!draftableTrade(world.get(e, Settler).jobType) || isMarried(world, e)) return false;
+  if (!isCivilianTrade(world.get(e, Settler).jobType) || isMarried(world, e)) return false;
   // A man wearing a weapon good (a manual civilian equip) is persistently undraftable - counting
   // him would leave the published want standing unfillable.
   return (world.tryGet(e, Equipment)?.weapon ?? null) === null;

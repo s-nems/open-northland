@@ -34,7 +34,7 @@ import { towerPostFor } from '../conflict/tower-post.js';
 import type { System, SystemContext } from '../context.js';
 import { childOrderBlocker } from '../family/children/index.js';
 import { isMarried } from '../family/eligibility.js';
-import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
+import { isCivilianTrade } from '../lifecycle/ageclass.js';
 import { mayBearChild } from '../orders/family.js';
 import { mayChangeTrade } from '../orders/guards.js';
 import { mayDrillAt, mayWalkToDrill, startDrill } from '../orders/training.js';
@@ -217,9 +217,9 @@ function dispatchBirths(
  * civilian as `trainSoldiers` does. Departures: every tribe's bare soldiers are armed with their own
  * tribe's weapons, a counter acts only while a barracks stands to gather the armed at, and (owner's ruling)
  * while a bare soldier waits, armed now or not, the counter drafts no man in his place. Authored rule:
- * "free" is a trade-less civilist with no workplace that no other drive owns, so nobody is pulled off a
- * job. Unmarried men drill first, since a soldier never marries, and intents take turns through a
- * beat-rotated round robin, so an infinite counter cannot starve a finite one.
+ * "free" is an unmarried, trade-less civilist with no workplace that no other drive owns, so nobody is
+ * pulled off a job or out of a household, and intents take turns through a beat-rotated round robin, so an
+ * infinite counter cannot starve a finite one.
  */
 function dispatchTraining(
   world: World,
@@ -294,12 +294,8 @@ function dispatchTraining(
 
   // Nothing to draft for: the scan below would be dropped at its first candidate.
   if (budget <= 0 || nextWantedIntent(wanted, remaining, turn) === null) return;
-  const free = scans.people(player).filter((e) => isFreeMan(world, e, player));
-  const candidates = [
-    ...free.filter((e) => !isMarried(world, e)),
-    ...free.filter((e) => isMarried(world, e)),
-  ];
-  for (const e of candidates) {
+  for (const e of scans.people(player)) {
+    if (!isFreeMan(world, e, player)) continue;
     if (budget <= 0) return;
     const intent = nextWantedIntent(wanted, remaining, turn);
     if (intent === null) return;
@@ -347,12 +343,6 @@ type ClassIntent = keyof typeof INTENT_WEAPON_CLASS;
 /** `player`'s standing barracks, ascending entity id (the deterministic house preference). */
 function ownedBarracks(world: World, ctx: SystemContext, player: number, scans: BeatScans): Entity[] {
   return scans.buildings(player).filter((e) => isBarracks(world, ctx, e));
-}
-
-/** The trade shapes the training dispatcher may draft. Shared with the AI's garrison sizing, so the target
- *  it publishes counts exactly the men this dispatcher would take. */
-export function draftableTrade(jobType: number | null): boolean {
-  return jobType === CIVILIST_JOB || jobType === null;
 }
 
 /**
@@ -406,14 +396,15 @@ function weaponInReach(
 }
 
 /**
- * Whether the assistant may take `e` for a drill: `player`'s adult, trade-less man that no other drive owns
- * and no errand occupies; `mayDrillAt` re-checks the rest per house. The civilist trade implies "adult
- * man", the `jobType: null` shape does not, so women and children are excluded explicitly.
+ * Whether the assistant may take `e` for a drill: `player`'s adult, unmarried, trade-less man that no
+ * other drive owns and no errand occupies; `mayDrillAt` re-checks the rest
+ * per house. The civilist trade implies "adult man", the `jobType: null` shape does not, so women and
+ * children are excluded explicitly.
  */
 function isFreeMan(world: World, e: Entity, player: number): boolean {
   if (ownerOf(world, e) !== player) return false;
-  if (!draftableTrade(world.get(e, Settler).jobType)) return false;
-  if (world.has(e, Female) || world.has(e, Age)) return false;
+  if (!isCivilianTrade(world.get(e, Settler).jobType)) return false;
+  if (world.has(e, Female) || world.has(e, Age) || isMarried(world, e)) return false;
   if (world.has(e, JobAssignment) || world.has(e, TrainingOrder) || world.has(e, AssistantRecruit))
     return false;
   if (world.has(e, EquipOrder) || atomicHoldsSettler(world, e)) return false;
