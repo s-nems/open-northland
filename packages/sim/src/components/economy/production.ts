@@ -19,8 +19,9 @@ export interface ProductionCycle {
 
 /**
  * The in-progress production cycles on a workplace - one independent batch per operator working the craft,
- * so two millers grind two flours in parallel. Each operator on station advances its own oldest batch, so
- * a departed worker's batch simply waits. The component exists only while at least one cycle runs.
+ * so two millers grind two flours in parallel. Each operator on station advances its own oldest batch, else
+ * one left open to it, so the batch of a worker away from the door simply waits. The component exists only
+ * while at least one cycle runs.
  */
 export const Production = defineComponent<{
   /** The independent in-flight batches, oldest first (advanced FIFO; completed ones are removed). */

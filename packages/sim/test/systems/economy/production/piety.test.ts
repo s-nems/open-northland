@@ -243,18 +243,43 @@ describe('production events share the batch clock with the displayed craft', () 
         { goodType: freeGood, elapsed: 0, duration: freeGoodTicks, operator: worker },
       ],
     });
+    buildingAt(sim, HEADQUARTERS, 4, 0, [[WOOD, 2]]);
     const plankBatch = () => sim.world.get(mill, Production).cycles.find((c) => c.goodType === PLANK);
 
     productionSystem(sim.world, nextTickCtxOf(sim));
     expect(plankBatch()).toEqual({ goodType: PLANK, elapsed: 0, duration: 4, operator: empty });
     productionSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(freeGood)).toBe(1);
+    // The planner holds him at the batch left open rather than sending him out for wood.
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(worker, MoveGoal)).toBe(false);
     productionSystem(sim.world, nextTickCtxOf(sim));
     expect(plankBatch()).toEqual({ goodType: PLANK, elapsed: 1, duration: 4, operator: worker });
     // Its old owner's religion back, the batch stays with the colleague now working it.
     setNeeds(sim, empty, { piety: needBar(5000) });
     productionSystem(sim.world, nextTickCtxOf(sim));
     expect(plankBatch()).toEqual({ goodType: PLANK, elapsed: 2, duration: 4, operator: worker });
+  });
+
+  it('leaves a batch its owner may not craft to wait when the free colleague has not earned the ware', () => {
+    const base = contentWithMilitaryPlank();
+    const content = parseContentSet({
+      ...base,
+      buildings: base.buildings.map((b) =>
+        b.typeId === 2 ? { ...b, workers: [{ jobType: CARPENTER, count: 2 }] } : b,
+      ),
+    });
+    const sim = new Simulation({ seed: 1, content, map: grassMap(12, 12) });
+    const { mill } = sawmill(sim, [], false);
+    const owner = spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
+    const novice = spawnSettler(sim, CARPENTER, 0, 0);
+    for (const e of [owner, novice]) sim.world.add(e, JobAssignment, { workplace: mill });
+    setNeeds(sim, owner, { piety: ONE });
+    const batch = { goodType: PLANK, elapsed: 0, duration: 4, operator: owner };
+    sim.world.add(mill, Production, { cycles: [{ ...batch }] });
+
+    productionSystem(sim.world, nextTickCtxOf(sim));
+    expect(sim.world.get(mill, Production).cycles).toEqual([batch]);
   });
 
   it('credits the actual maker when a later batch finishes first', () => {

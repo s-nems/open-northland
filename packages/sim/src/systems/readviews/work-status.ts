@@ -6,6 +6,7 @@ import {
   ownerOf,
   ownersCompatible,
   Person,
+  Production,
   ProductionCounters,
   productionCountOf,
   Settler,
@@ -22,7 +23,7 @@ import {
   jobGatherGoods,
   jobGathersGood,
 } from '../economy/gather-goods.js';
-import { batchWorkedBy } from '../economy/production/assignments.js';
+import { batchWorkedBy, productionAssignmentsInto } from '../economy/production/assignments.js';
 import { canStartCycle, outputRoomForCycles, waitingForRecipeInput } from '../economy/production/cycles.js';
 import { craftablePool } from '../economy/production/rotation.js';
 import { liveHaulFlag, liveWorkFlag } from '../economy/work-flag.js';
@@ -40,7 +41,9 @@ import {
   isWorkplaceOperator,
   isWorkplaceOutput,
   mayFetchGoodFrom,
+  presentOperatorsInto,
   recipesByProductOf,
+  type StaffedScratch,
   stockCapacity,
   workplaceStocksGood,
   workplaceStoredGoods,
@@ -183,7 +186,7 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   const recipes = recipesByProductOf(world, ctx, workplace);
   if (recipes === undefined) return { kind: 'unknown', reason: 'unsupportedWorkplace' };
 
-  const batch = batchWorkedBy(world, ctx, workplace, entity);
+  const batch = crafterBatchOf(world, ctx, workplace, entity);
   if (batch !== undefined) return { kind: 'crafting', goodType: batch.goodType };
 
   const pool = craftablePool(world, ctx, entity, recipes);
@@ -375,6 +378,20 @@ interface PoolEntry {
   readonly good: number;
   readonly recipe: Recipe;
 }
+
+/** The batch production gives `entity` at `workplace`: its share among the operators on the door, or, away
+ *  from it, the one it works on its return while no colleague holds it. */
+function crafterBatchOf(world: World, ctx: SystemContext, workplace: Entity, entity: Entity) {
+  const staffing = presentOperatorsInto(world, ctx, workplace, crewScratch);
+  const seat = staffing.kind === 'staffed' ? staffing.operators.indexOf(entity) : -1;
+  if (staffing.kind !== 'staffed' || seat < 0) return batchWorkedBy(world, ctx, workplace, entity);
+  const batch = productionAssignmentsInto(world, ctx, workplace, staffing.operators, batchScratch)[seat];
+  return batch === undefined ? undefined : world.tryGet(workplace, Production)?.cycles[batch];
+}
+
+// The crew and assignment lists one status read uses and drops.
+const crewScratch: StaffedScratch = { kind: 'staffed', operators: [] };
+const batchScratch: number[] = [];
 
 /** The operator's pool in the order its rotation walks it, starting at the cursor. */
 function rotationOrder(

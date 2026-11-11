@@ -2,6 +2,7 @@ import { JobAssignment, Production, type ProductionCycle, Settler } from '../../
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { religionAllowsAtomic } from '../../lifecycle/needs/religion.js';
+import { emptyNeedSubject, needSubjectInto, settlerMeetsNeed } from '../../progression/index.js';
 import { productionAtomic } from '../../readviews/production-atomic.js';
 import { isWorkplaceOperator } from '../../stores/operators.js';
 
@@ -40,7 +41,7 @@ export function productionAssignmentsInto(
 }
 
 /** The batch of `cycles` that `operator` works and none of the first `taken` entries of `claims` holds: its
- *  own oldest it may craft, else the oldest {@link leftOpen} one it may craft. */
+ *  own oldest it may craft, else the oldest one {@link leftOpenTo} it. */
 function claimInto(
   world: World,
   ctx: SystemContext,
@@ -51,12 +52,13 @@ function claimInto(
   taken: number,
 ): number {
   for (let sweep = OWN_SWEEP; sweep <= OPEN_SWEEP; sweep++) {
+    const open = sweep === OPEN_SWEEP;
     for (let index = 0; index < cycles.length; index++) {
       const cycle = cycles[index];
       if (
         cycle === undefined ||
         heldBy(claims, taken, index) ||
-        !worksBatch(world, ctx, building, operator, cycle, sweep)
+        !worksBatch(world, ctx, building, operator, cycle, open)
       )
         continue;
       return index;
@@ -87,12 +89,13 @@ export function claimProductionCycle(
 ): number {
   const cycles = world.tryGet(building, Production)?.cycles ?? NO_CYCLES;
   for (let sweep = OWN_SWEEP; sweep <= OPEN_SWEEP; sweep++) {
+    const open = sweep === OPEN_SWEEP;
     for (let index = 0; index < cycles.length; index++) {
       const cycle = cycles[index];
       if (
         cycle === undefined ||
         claimed.has(index) ||
-        !worksBatch(world, ctx, building, operator, cycle, sweep)
+        !worksBatch(world, ctx, building, operator, cycle, open)
       )
         continue;
       claimed.add(index);
@@ -113,31 +116,47 @@ export function batchWorkedBy(
   return cycles[claimInto(world, ctx, building, cycles, operator, NO_CLAIMS, 0)];
 }
 
-/** Whether `operator` works `cycle` on `sweep`: one of its own, or one left open, that it may craft now. */
+/** Whether `operator` works `cycle` now that its religion allows the craft: one of its own, or on the `open`
+ *  sweep one {@link leftOpenTo} it. */
 function worksBatch(
   world: World,
   ctx: SystemContext,
   building: Entity,
   operator: Entity,
   cycle: Readonly<ProductionCycle>,
-  sweep: number,
+  open: boolean,
 ): boolean {
   const own = cycle.operator === operator;
-  if (sweep === OWN_SWEEP ? !own : own || !leftOpen(world, ctx, building, cycle)) return false;
+  if (open ? own || !leftOpenTo(world, ctx, building, operator, cycle) : !own) return false;
   return mayCraft(world, ctx, operator, cycle);
 }
 
-/** Whether a batch is free to any operator: anonymous, or its operator no longer works at `building` or
- *  may not craft it now. */
-function leftOpen(
+/**
+ * Whether `operator` may take over a colleague's `cycle`. One whose operator left `building`, or an
+ * anonymous one, is anyone's, so its paid inputs are not lost. One whose operator still works here but may
+ * not craft it now passes only to a colleague whose trade has earned that ware, whatever it was set to make.
+ */
+function leftOpenTo(
   world: World,
   ctx: SystemContext,
   building: Entity,
+  operator: Entity,
   cycle: Readonly<ProductionCycle>,
 ): boolean {
   const owner = cycle.operator;
-  return owner === null || !worksAt(world, ctx, building, owner) || !mayCraft(world, ctx, owner, cycle);
+  if (owner === null || !worksAt(world, ctx, building, owner)) return true;
+  if (mayCraft(world, ctx, owner, cycle)) return false;
+  return settlerMeetsNeed(
+    world,
+    ctx,
+    needSubjectInto(world, operator, subjectScratch),
+    'good',
+    cycle.goodType,
+  );
 }
+
+/** The need subject {@link leftOpenTo} reads, rewritten per call. */
+const subjectScratch = emptyNeedSubject();
 
 /** Whether `operator`'s religion lets it advance `cycle` now. */
 function mayCraft(

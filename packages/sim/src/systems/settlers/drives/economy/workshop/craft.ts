@@ -12,7 +12,7 @@ import { productionAtomic } from '../../../../readviews/production-atomic.js';
 import { presentOperatorsInto, type StaffedScratch } from '../../../../stores/index.js';
 
 /**
- * Show this operator's oldest executable batch using the same assignment as production. An empty
+ * Show the batch production gives this operator, its own first, else one left open to it. An empty
  * religion reserve may leave it unassigned or let it work a later, free product.
  *
  * The batch is the clip's clock. A staffed batch lasts the clip its starting operator resolves
