@@ -14,9 +14,9 @@ import {
   Settler,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { ONE } from '../../core/fixed.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { familyCapacity, homeWareServes } from '../../inspect/home-capacity.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { goodEnabled } from '../progression/availability.js';
 
@@ -105,15 +105,20 @@ export function homeQualityActive(
   home: Entity,
   effect: HomeQualityEffect,
 ): boolean {
-  if (homeQualityValue(world, home, effect) <= 0) return false;
-  const policy = homeQualityUseFor(ctx, effect);
+  const pool = homeQualityValue(world, home, effect);
+  if (pool <= 0) return false;
+  const use = homeQualityUseFor(ctx, effect);
   const building = world.tryGet(home, Building);
-  if (policy === undefined || building === undefined || building.built < ONE) return false;
-  const type = contentIndex(ctx.content).buildings.get(building.buildingType);
-  return (
-    type?.kind === 'home' &&
-    building.level >= policy.minimumHomeLevel &&
-    (effect === 'piety' || homeQualityAllowed(world, home, effect))
+  if (use === undefined || building === undefined) return false;
+  return homeWareServes(
+    {
+      kind: contentIndex(ctx.content).buildings.get(building.buildingType)?.kind,
+      built: building.built,
+      level: building.level,
+      pool,
+      allowed: effect === 'piety' || homeQualityAllowed(world, home, effect),
+    },
+    use,
   );
 }
 
@@ -128,9 +133,7 @@ export function homeFamilyCapacity(
   home: Entity,
   type: BuildingType,
 ): number {
-  return type.furnishedFamilies > 0 && homeQualityActive(world, ctx, home, 'lodging')
-    ? type.homeSize + type.furnishedFamilies
-    : type.homeSize;
+  return familyCapacity(type, type.furnishedFamilies > 0 && homeQualityActive(world, ctx, home, 'lodging'));
 }
 
 /** Spend one use when the pool can pay it in full. A sub-cost remainder stays available, as in the

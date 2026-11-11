@@ -351,7 +351,8 @@ function householdHint(
     const self = entityById(ctx.snapshot, unit.ref);
     return self === undefined || residenceHomeOf(self) !== house;
   });
-  const full = def !== undefined && moving.length > 0 && !homeHasFamilyRoom(ctx.snapshot, house, def);
+  const full =
+    def !== undefined && moving.length > 0 && !homeHasFamilyRoom(ctx.snapshot, house, def, ctx.content.goods);
   return full ? refusal('noFreePlaces') : action('live');
 }
 

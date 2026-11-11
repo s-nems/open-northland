@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import { type BuildingType, type ContentSet, lastByTypeId } from '@open-northland/data';
+import { type BuildingType, type ContentSet, type GoodType, lastByTypeId } from '@open-northland/data';
 import type { TargetFlashTone, TargetMark } from '@open-northland/render';
 import {
   type Entity,
@@ -108,12 +108,14 @@ type SpotMode = Extract<
   }
 >;
 
+/** `goods` are the content goods, whose furniture adds family slots to a home. */
 interface BuildingPick {
   readonly highlight: (
     snapshot: WorldSnapshot,
     settlers: readonly number[],
     byType: ReadonlyMap<number, BuildingType>,
     canTrade: TradeHouseRule,
+    goods: readonly GoodType[],
   ) => TargetMark[];
   /** The orders a click on `building` issues, empty when it orders nothing; null for
    *  the trade-house pick, whose click asks the sim first. */
@@ -123,6 +125,7 @@ interface BuildingPick {
         settlers: readonly number[],
         building: number,
         byType: ReadonlyMap<number, BuildingType>,
+        goods: readonly GoodType[],
       ) => PlayerCommand[])
     | null;
 }
@@ -144,9 +147,10 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
     },
   },
   home: {
-    highlight: computeHouseHighlight,
-    orders: (snapshot, settlers, building, byType) =>
-      houseAssignableAt(snapshot, building, settlers, byType)
+    highlight: (snapshot, settlers, byType, _canTrade, goods) =>
+      computeHouseHighlight(snapshot, settlers, byType, goods),
+    orders: (snapshot, settlers, building, byType, goods) =>
+      houseAssignableAt(snapshot, building, settlers, byType, goods)
         ? [
             {
               kind: 'assignHouseGroup',
@@ -467,7 +471,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     }
     const pick = BUILDING_PICKS[kind].orders;
     if (pick === null) return attachTradeHouse(settlers, building);
-    const orders = pick(snapshot, settlers, building, buildingsByType);
+    const orders = pick(snapshot, settlers, building, buildingsByType, deps.content.goods);
     const selectedOrders = orders
       .filter(
         (order): order is Extract<UnitSelectionCommand, { kind: 'assignBuilder' | 'trainSoldier' }> =>
@@ -778,7 +782,13 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       // Only the building picks light targets up; the rest show on the ground or the cursor.
       const kind = buildingPickOf(mode);
       if (kind === null || !('units' in mode)) return null;
-      return BUILDING_PICKS[kind].highlight(snapshot, mode.units, buildingsByType, canTrade);
+      return BUILDING_PICKS[kind].highlight(
+        snapshot,
+        mode.units,
+        buildingsByType,
+        canTrade,
+        deps.content.goods,
+      );
     },
     () => pickVersion + (deps.answersVersion?.() ?? 0),
   );

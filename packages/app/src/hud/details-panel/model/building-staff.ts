@@ -1,4 +1,4 @@
-import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, homeFamilyCapacityView, systems, type WorldSnapshot } from '@open-northland/sim';
 import { settlerName } from '../../../game/character-names/index.js';
 import { workerRoleOf } from '../../../game/sandbox/index.js';
 import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot/id-index.js';
@@ -228,7 +228,7 @@ export function buildingStaff(
     return {
       kind: 'residents',
       groups,
-      count: { filled: families.length, capacity: def.homeSize },
+      count: { filled: families.length, capacity: homeFamilyCapacityView(snapshot, ent.id, def, ctx.goods) },
       garrison: null,
     };
   }

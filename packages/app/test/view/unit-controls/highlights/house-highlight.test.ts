@@ -24,16 +24,25 @@ const OTHER_TRIBE = 2;
 const HOME_TYPE = 2; // a `home`-kind building type
 const MILL_TYPE = 9; // any non-home type - never a candidate
 const HOME_SIZE = 2; // this home level holds two families
+const FURNISHED_FAMILIES = 1; // and one more while furnished
 const HOUSES = new Map<number, HouseInfo>([
-  [HOME_TYPE, { kind: 'home', homeSize: HOME_SIZE }],
-  [MILL_TYPE, { kind: 'production' }],
+  [HOME_TYPE, { kind: 'home', homeSize: HOME_SIZE, furnishedFamilies: FURNISHED_FAMILIES }],
+  [MILL_TYPE, { kind: 'workplace', homeSize: 0, furnishedFamilies: 0 }],
 ]);
+/** The sandbox goods, whose furniture adds the furnished families. */
+const GOODS = sandboxContent().goods;
+/** Furniture points a home stores: some, so the home takes its furnished families. */
+const SOME_FURNITURE = 1;
 
-/** A built home of `player`. */
-function home(id: number, player = HUMAN_PLAYER, typeId = HOME_TYPE, tribe = TRIBE): Ent {
+/** A built home of `player`; `furniture` stocks its furniture pool. */
+function home(id: number, player = HUMAN_PLAYER, typeId = HOME_TYPE, tribe = TRIBE, furniture = 0): Ent {
   return {
     id,
-    components: { Building: { buildingType: typeId, built: ONE, tribe }, Owner: { player } },
+    components: {
+      Building: { buildingType: typeId, built: ONE, tribe, level: 0 },
+      Owner: { player },
+      HomeQuality: { cooking: 0, lodging: furniture, piety: 0 },
+    },
   };
 }
 
@@ -52,8 +61,8 @@ function person(id: number, opts: { player?: number; tribe?: number; home?: numb
 describe('computeHouseHighlight / houseAssignableAt', () => {
   it('lights an empty own home and the click resolver agrees', () => {
     const snap = snapshotOf([person(1), home(10)]);
-    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, tone: 'candidate' }]);
-    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(true);
+    expect(computeHouseHighlight(snap, [1], HOUSES, GOODS)).toEqual([{ id: 10, tone: 'candidate' }]);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES, GOODS)).toBe(true);
   });
 
   it('lights an own home under construction and reserves its family slot', () => {
@@ -66,8 +75,8 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
       },
     };
     const snap = snapshotOf([person(1), site]);
-    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, tone: 'candidate' }]);
-    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(true);
+    expect(computeHouseHighlight(snap, [1], HOUSES, GOODS)).toEqual([{ id: 10, tone: 'candidate' }]);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES, GOODS)).toBe(true);
   });
 
   it('reds a home already holding homeSize other families', () => {
@@ -77,26 +86,39 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
       person(2, { home: 10 }), // two unrelated households fill a homeSize-2 home
       person(3, { home: 10 }),
     ]);
-    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, tone: 'refused' }]);
-    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(false);
+    expect(computeHouseHighlight(snap, [1], HOUSES, GOODS)).toEqual([{ id: 10, tone: 'refused' }]);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES, GOODS)).toBe(false);
+  });
+
+  it('takes one more family into a full home while it stores furniture', () => {
+    const residents = [person(2, { home: 10 }), person(3, { home: 10 })];
+    const furnished = snapshotOf([
+      person(1),
+      home(10, HUMAN_PLAYER, HOME_TYPE, TRIBE, SOME_FURNITURE),
+      ...residents,
+    ]);
+    expect(computeHouseHighlight(furnished, [1], HOUSES, GOODS)).toEqual([{ id: 10, tone: 'candidate' }]);
+    expect(houseAssignableAt(furnished, 10, [1], HOUSES, GOODS)).toBe(true);
+    const bare = snapshotOf([person(1), home(10), ...residents]);
+    expect(houseAssignableAt(bare, 10, [1], HOUSES, GOODS)).toBe(false);
   });
 
   it('offers no click on the home a lone mover already lives in', () => {
     const snap = snapshotOf([person(1, { home: 10 }), home(10)]);
-    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, tone: 'refused' }]);
-    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(false);
+    expect(computeHouseHighlight(snap, [1], HOUSES, GOODS)).toEqual([{ id: 10, tone: 'refused' }]);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES, GOODS)).toBe(false);
   });
 
   it('skips a non-home building and another player’s home', () => {
     const snap = snapshotOf([person(1), home(11, HUMAN_PLAYER, MILL_TYPE), home(14, ENEMY_PLAYER)]);
-    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([]); // never marked, not even refused
-    for (const id of [11, 14]) expect(houseAssignableAt(snap, id, [1], HOUSES)).toBe(false);
+    expect(computeHouseHighlight(snap, [1], HOUSES, GOODS)).toEqual([]); // never marked, not even refused
+    for (const id of [11, 14]) expect(houseAssignableAt(snap, id, [1], HOUSES, GOODS)).toBe(false);
   });
 
   it('lights an own home of another tribe, which the sim’s assignHouse accepts', () => {
     const snap = snapshotOf([person(1), home(10, HUMAN_PLAYER, HOME_TYPE, OTHER_TRIBE)]);
-    expect(computeHouseHighlight(snap, [1], HOUSES)).toEqual([{ id: 10, tone: 'candidate' }]);
-    expect(houseAssignableAt(snap, 10, [1], HOUSES)).toBe(true);
+    expect(computeHouseHighlight(snap, [1], HOUSES, GOODS)).toEqual([{ id: 10, tone: 'candidate' }]);
+    expect(houseAssignableAt(snap, 10, [1], HOUSES, GOODS)).toBe(true);
   });
 
   it('verdicts stay in lockstep with the click resolver across a mixed world', () => {
@@ -107,18 +129,18 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
       person(2, { home: 20 }),
       person(3, { home: 20 }),
     ]);
-    const items = computeHouseHighlight(snap, [1], HOUSES);
+    const items = computeHouseHighlight(snap, [1], HOUSES, GOODS);
     expect(items.length).toBe(2);
     for (const item of items)
-      expect(item.tone === 'candidate').toBe(houseAssignableAt(snap, item.id, [1], HOUSES));
+      expect(item.tone === 'candidate').toBe(houseAssignableAt(snap, item.id, [1], HOUSES, GOODS));
   });
 });
 
 describe('a home pick armed for a group', () => {
   it('refuses a full home a selected member already lives in', () => {
     const snap = snapshotOf([person(1, { home: 10 }), person(3, { home: 10 }), person(2), home(10)]);
-    expect(computeHouseHighlight(snap, [1, 2], HOUSES)).toEqual([{ id: 10, tone: 'refused' }]);
-    expect(houseAssignableAt(snap, 10, [1, 2], HOUSES)).toBe(false);
+    expect(computeHouseHighlight(snap, [1, 2], HOUSES, GOODS)).toEqual([{ id: 10, tone: 'refused' }]);
+    expect(houseAssignableAt(snap, 10, [1, 2], HOUSES, GOODS)).toBe(false);
   });
 
   it('moves only the homeless members while there are any', () => {
@@ -130,14 +152,14 @@ describe('a home pick armed for a group', () => {
       home(10),
       home(20),
     ]);
-    expect(houseAssignableAt(snap, 20, [1, 2], HOUSES)).toBe(false);
-    expect(houseAssignableAt(snap, 20, [1], HOUSES)).toBe(true);
+    expect(houseAssignableAt(snap, 20, [1, 2], HOUSES, GOODS)).toBe(false);
+    expect(houseAssignableAt(snap, 20, [1], HOUSES, GOODS)).toBe(true);
   });
 
   it('lights a home one member may move into, though another member may not', () => {
     const snap = snapshotOf([person(1), person(2, { player: ENEMY_PLAYER }), home(10)]);
-    expect(computeHouseHighlight(snap, [1, 2], HOUSES)).toEqual([{ id: 10, tone: 'candidate' }]);
-    expect(computeHouseHighlight(snap, [2], HOUSES)).toEqual([]);
+    expect(computeHouseHighlight(snap, [1, 2], HOUSES, GOODS)).toEqual([{ id: 10, tone: 'candidate' }]);
+    expect(computeHouseHighlight(snap, [2], HOUSES, GOODS)).toEqual([]);
   });
 
   it('sends the whole group to the clicked home as one order', () => {

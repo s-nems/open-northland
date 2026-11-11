@@ -185,8 +185,8 @@ function forgetHomeOf(families: Map<number, readonly HomeFamily[]>, e: SnapshotE
 
 /**
  * The families living in `home`, mirroring the sim's `familiesOf`: an adult, its cohabiting spouse and
- * the couple's growing child, with an orphaned minor its own household. `homeSize` caps families rather
- * than settlers. Undefined for a home nobody lives in.
+ * the couple's growing child, with an orphaned minor its own household. A home's capacity
+ * (`homeFamilyCapacityView`) caps families rather than settlers. Undefined for a home nobody lives in.
  */
 export function homeFamiliesOf(snapshot: WorldSnapshot, home: number): readonly HomeFamily[] | undefined {
   const residents = indexesOf(snapshot).get(RESIDENTS).get(home);
