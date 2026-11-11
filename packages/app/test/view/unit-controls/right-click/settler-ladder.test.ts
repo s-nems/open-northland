@@ -74,9 +74,14 @@ const context = (asks: Partial<LadderContext['asks']> = {}): LadderContext => ({
 function resolve(
   units: readonly number[],
   hit: Partial<RightClickHit>,
-  { queued = false, asks = {} }: { queued?: boolean; asks?: Partial<LadderContext['asks']> } = {},
+  {
+    queued = false,
+    usesHeap = false,
+    asks = {},
+  }: { queued?: boolean; usesHeap?: boolean; asks?: Partial<LadderContext['asks']> } = {},
 ): SettlerPlan {
-  return resolveSettlerRightClick(context(asks), units.map(unit), { ...NOTHING, ...hit }, queued, null);
+  const mods = { queued, usesHeap };
+  return resolveSettlerRightClick(context(asks), units.map(unit), { ...NOTHING, ...hit }, mods, null);
 }
 
 /** Each group as `[intent kind, its units]`, the shape the click issues in order. */
@@ -127,16 +132,16 @@ describe('the settlers right-click ladder', () => {
     const equip = resolve(
       [SOLDIER],
       { pile: { ref: PILE, goodType: boots.typeId, amount: 1 } },
-      { asks: { equip: true } },
+      { usesHeap: true, asks: { equip: true } },
     );
     expect(equip).toMatchObject({
       kind: 'orders',
       groups: [{ intent: { kind: 'equip', candidates: [SOLDIER] }, pending: 'equip' }],
     });
-    // Without the pick list, the heap is ground.
-    expect(groupsOf(resolve([SOLDIER], { pile: { ref: PILE, goodType: boots.typeId, amount: 1 } }))).toEqual([
-      ['walk', [SOLDIER]],
-    ]);
+    // Without the heap modifier, or without the pick list, the heap is ground.
+    const heap = { pile: { ref: PILE, goodType: boots.typeId, amount: 1 } };
+    expect(groupsOf(resolve([SOLDIER], heap, { asks: { equip: true } }))).toEqual([['walk', [SOLDIER]]]);
+    expect(groupsOf(resolve([SOLDIER], heap, { usesHeap: true }))).toEqual([['walk', [SOLDIER]]]);
 
     const trade = resolve(
       [TRADER, SOLDIER],

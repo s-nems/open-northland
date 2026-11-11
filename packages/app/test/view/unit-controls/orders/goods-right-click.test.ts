@@ -59,13 +59,14 @@ function settlerAt(
   return e;
 }
 
-/** The orders the click enqueued once the pick lists it asks for have landed. */
+/** The orders the click enqueued once the pick lists it asks for have landed; Alt held unless told otherwise. */
 async function rightClick(
   sim: Simulation,
   settlers: readonly Entity[],
   pile: Pickable,
   withPickList = true,
   shiftKey = false,
+  altKey = true,
 ): Promise<Command[]> {
   const pickList: UnitOrderDeps['requestEquipPicks'] = withPickList
     ? (entity, group) => Promise.resolve(sim.equipPickList(entity as Entity, group))
@@ -103,6 +104,7 @@ async function rightClick(
     clientX: 0,
     clientY: 0,
     shiftKey,
+    altKey,
   } as MouseEvent);
   await new Promise((resolve) => setTimeout(resolve, 0));
   return issued;
@@ -114,9 +116,9 @@ function heap(sim: Simulation, goodType: number, amount = 1): Pickable {
   return { ref, x: 0, y: 0, kind: 'pile', goodType };
 }
 
-describe('right-clicking a good on the ground', () => {
+describe('Alt right-clicking a good on the ground', () => {
   it.each([GOOD_FOOD_SIMPLE, GOOD_FOOD_EXTRA, GOOD_BREAD])(
-    'orders selected civilians and soldiers to eat over food %s without an equipment pick list',
+    'orders selected civilians and soldiers to eat over food %s without an equipment pick list, and walks there without Alt',
     async (goodType) => {
       const sim = new Simulation({ seed: 1, content: sandboxContent() });
       const food = heap(sim, goodType, 2);
@@ -135,6 +137,8 @@ describe('right-clicking a good on the ground', () => {
       expect(await rightClick(sim, [soldier], food, false, true)).toEqual([
         { kind: 'orderNeed', entity: soldier, need: 'hunger', queued: true },
       ]);
+      const plain = await rightClick(sim, [soldier], food, false, false, false);
+      expect(plain.map((command) => command.kind)).toEqual(['moveUnit']);
     },
   );
 
@@ -242,7 +246,7 @@ describe('right-clicking a good on the ground', () => {
       openActions: () => {},
     } satisfies UnitOrderDeps;
     const controller = createUnitOrderController(deps);
-    const shiftClick = { clientX: 0, clientY: 0, shiftKey: true } as MouseEvent;
+    const shiftClick = { clientX: 0, clientY: 0, shiftKey: true, altKey: true } as MouseEvent;
     rightClickSettlers(controller, deps, shiftClick);
     underCursor = food;
     rightClickSettlers(controller, deps, shiftClick);

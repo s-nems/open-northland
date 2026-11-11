@@ -43,6 +43,8 @@ export interface RightClickMods {
   /** Shift: each order waits behind the current one; a standing setting walks there instead. */
   readonly queued: boolean;
   readonly landing: DockLanding;
+  /** Alt (Option on a Mac): the settlers eat from or put on the goods heap under the press. */
+  readonly usesHeap: boolean;
 }
 
 /** What lies under the press: the point's targets and the half-cell node a ground order names. */
@@ -61,7 +63,7 @@ export function rightClickHitAt(
 export function rightClickMods(
   event: Pick<MouseEvent, 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'>,
 ): RightClickMods {
-  return { queued: event.shiftKey, landing: dockLandingOf(event) };
+  return { queued: event.shiftKey, landing: dockLandingOf(event), usesHeap: event.altKey };
 }
 
 /** The pending answer a group's order waits on before it is issued. */

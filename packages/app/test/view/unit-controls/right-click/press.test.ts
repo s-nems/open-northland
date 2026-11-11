@@ -168,7 +168,7 @@ function press(
     doorMarker: null,
     selected: new Set(selected),
     settlers: selected.filter((ref) => SETTLERS.has(ref)).map((ref) => ({ ref, x: 0, y: 0 })),
-    mods: { queued: false, landing: 'none' },
+    mods: { queued: false, landing: 'none', usesHeap: false },
     workFlag: false,
     ...input,
   });
@@ -182,7 +182,7 @@ function boardOrOrders(hit: RightClickHit, settler: number) {
       hit,
       selected: new Set([settler]),
       settlers: [{ ref: settler, x: 0, y: 0 }],
-      mods: { queued: false, landing: 'none' },
+      mods: { queued: false, landing: 'none', usesHeap: false },
     },
     null,
   );
@@ -197,7 +197,11 @@ describe('a right press', () => {
       tile: TILE,
       goodType: GOOD,
     });
-    const ships = press([SHIP], {}, { workFlag: true, mods: { queued: false, landing: 'passengers' } });
+    const ships = press(
+      [SHIP],
+      {},
+      { workFlag: true, mods: { queued: false, landing: 'passengers', usesHeap: false } },
+    );
     expect(ships).toMatchObject({
       kind: 'orders',
       vehicles: {
@@ -233,7 +237,7 @@ describe('a right press', () => {
           doorMarker: null,
           selected: new Set(crowd),
           settlers: [],
-          mods: { queued: false, landing: 'none' },
+          mods: { queued: false, landing: 'none', usesHeap: false },
           workFlag: false,
         },
       ),
@@ -292,7 +296,7 @@ describe('a right press', () => {
     expect(press([SAILOR], hit)).toMatchObject({ kind: 'attach' });
     const selected = new Set([SAILOR]);
     const settlers = [{ ref: SAILOR, x: 0, y: 0 }];
-    const mods = { queued: false, landing: 'none' } as const;
+    const mods = { queued: false, landing: 'none', usesHeap: false } as const;
     expect(resolveRightClickOrders(CONTEXT, { hit, selected, settlers, mods }, null)).toMatchObject({
       vehicles: { groups: [{ vehicles: [SAILORS_SHIP], intent: { kind: 'drive' } }] },
     });
@@ -306,7 +310,7 @@ describe('a right press', () => {
   });
 
   it('skips the pin on a Shift click, since a pin is a standing setting', () => {
-    const mods = { queued: true, landing: 'none' } as const;
+    const mods = { queued: true, landing: 'none', usesHeap: false } as const;
     expect(press([SECOND_TRADER], { ownVehicle: SHIP }, { mods })).toMatchObject({ kind: 'attach' });
   });
 
@@ -322,7 +326,7 @@ describe('a right press', () => {
         doorMarker: null,
         selected: new Set([SECOND_TRADER]),
         settlers: [{ ref: SECOND_TRADER, x: 0, y: 0 }],
-        mods: { queued: false, landing: 'none' },
+        mods: { queued: false, landing: 'none', usesHeap: false },
         workFlag: false,
       },
     );
@@ -353,7 +357,11 @@ describe('a right press', () => {
 
   it('splits a vehicle group: the armed strike, the land vehicles drive, the ships wait on their berths', () => {
     expect(
-      press([CATAPULT, CART, SHIP], { enemy: ENEMY }, { mods: { queued: true, landing: 'passengers' } }),
+      press(
+        [CATAPULT, CART, SHIP],
+        { enemy: ENEMY },
+        { mods: { queued: true, landing: 'passengers', usesHeap: false } },
+      ),
     ).toMatchObject({
       kind: 'orders',
       vehicles: {
@@ -377,7 +385,7 @@ describe('a right press', () => {
         doorMarker: null,
         selected: new Set([CART, SHIP]),
         settlers: [],
-        mods: { queued: false, landing: 'none' },
+        mods: { queued: false, landing: 'none', usesHeap: false },
         workFlag: false,
       },
     );

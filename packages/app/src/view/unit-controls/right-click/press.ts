@@ -127,7 +127,7 @@ export function resolveRightClickOrders(
   onBuilding: number | null,
 ): RightClickOrders {
   const { hit, selected, settlers, mods } = input;
-  const settlerPlan = resolveSettlerRightClick(ctx, settlers, hit, mods.queued, onBuilding);
+  const settlerPlan = resolveSettlerRightClick(ctx, settlers, hit, mods, onBuilding);
   // Picking an own settler replaces the selection first, which leaves nobody else to take the click.
   if (settlerPlan.kind === 'select')
     return { kind: 'orders', onBuilding, settlers: settlerPlan, riders: NO_RIDERS, vehicles: NO_VEHICLES };

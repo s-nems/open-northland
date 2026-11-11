@@ -131,7 +131,7 @@ function hintOf(
       doorMarker: null,
       selected: new Set(selected),
       settlers,
-      mods: { queued: false, landing },
+      mods: { queued: false, landing, usesHeap: false },
       workFlag: false,
     },
   );

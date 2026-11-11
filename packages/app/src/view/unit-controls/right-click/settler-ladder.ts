@@ -11,7 +11,10 @@ import {
   type RightClickAsks,
   type RightClickContext,
   type RightClickHit,
+  type RightClickMods,
 } from './context.js';
+
+export type SettlerClickMods = Pick<RightClickMods, 'queued' | 'usesHeap'>;
 
 export interface LadderContext extends Pick<RightClickContext, 'snapshot' | 'content'> {
   readonly asks: Pick<RightClickAsks, 'tradeHouse' | 'equip' | 'formation'>;
@@ -129,7 +132,7 @@ export function resolveSettlerRightClick(
   ctx: LadderContext,
   commanded: readonly FormationUnit[],
   hit: RightClickHit,
-  queued: boolean,
+  mods: SettlerClickMods,
   onBuilding: number | null,
 ): SettlerPlan {
   if (hit.ownSettler !== null) return { kind: 'select', settler: hit.ownSettler };
@@ -137,7 +140,7 @@ export function resolveSettlerRightClick(
   if (commanded.length === 0) return { kind: 'none' };
   if (commanded.length > MAX_UNIT_ORDER_MEMBERS) return { kind: 'orderLimit' };
   const aim = aimOf(ctx, hit, onBuilding);
-  return { kind: 'orders', aim, groups: ladder(ctx, commanded, hit, aim, queued) };
+  return { kind: 'orders', aim, groups: ladder(ctx, commanded, hit, aim, mods) };
 }
 
 function ladder(
@@ -145,7 +148,7 @@ function ladder(
   commanded: readonly FormationUnit[],
   hit: RightClickHit,
   aim: RightClickAim,
-  queued: boolean,
+  { queued, usesHeap }: SettlerClickMods,
 ): SettlerGroup[] {
   const { content, snapshot } = ctx;
   const groups: SettlerGroup[] = [];
@@ -191,7 +194,9 @@ function ladder(
       return groups;
     }
   }
-  const pile = hit.pile;
+  // Original behavior: the plain click on a good lying on the ground eats it or puts it on. Here that
+  // takes the heap modifier, our choice, so a plain click among heaps still walks.
+  const pile = usesHeap ? hit.pile : null;
   if (pile !== null && systems.isFoodIn(content, systems.edibleGoodFormOf(content, pile.goodType))) {
     groups.push({ units: rest, intent: { kind: 'eat', pile: pile.ref } });
     return groups;
@@ -222,8 +227,8 @@ function ladder(
 }
 
 /**
- * The equip rung: the original's default click on a good lying on the ground offers it to each
- * selected human who does not already wear that item type. A misc good (mead, potions, amulets) skips
+ * The equip rung: the good lying on the ground is offered to each selected human who does not already
+ * wear that item type, as the original offers it. A misc good (mead, potions, amulets) skips
  * the worn check, as its slots stack. Null when the good is no equipment or everyone wears it.
  */
 function equipOf(

@@ -70,7 +70,7 @@ export function rightClickSettlers(
     ladderContext(deps),
     deps.targets.ownedSettlersIn(deps.selected()),
     hitOf(deps, event),
-    event.shiftKey,
+    rightClickMods(event),
     onBuilding,
   );
   return orders.issueSettlerPlan(plan, event);

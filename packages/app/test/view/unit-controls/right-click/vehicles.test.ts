@@ -106,7 +106,7 @@ function resolve(
     { snapshot: WORLD, content: sandboxContent(), viewer: fixedViewerSeat(HUMAN_PLAYER), asks: { mooring } },
     new Set([selected]),
     { ...NOTHING, ...hit },
-    { queued: false, landing },
+    { queued: false, landing, usesHeap: false },
   );
 }
 
