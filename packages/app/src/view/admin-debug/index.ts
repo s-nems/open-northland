@@ -14,6 +14,7 @@ import { resourceCommand } from '../../game/sandbox/place/index.js';
 import { type AdminPanel, createAdminPanel } from '../../hud/dom/admin-panel/index.js';
 import type { AdminSkills, AdminWorldState, FogMapKey } from '../../hud/dom/admin-panel/model.js';
 import type { GoodIconPainter } from '../../hud/dom/good-art.js';
+import { UNLIMITED_GAME_SPEED } from '../../hud/tool-panel/game-speed.js';
 import type { StandingStructure } from '../../hud/tool-panel/placement.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import type { DebugAction, DebugTargetKind } from './actions-catalog.js';
@@ -112,8 +113,8 @@ export interface AdminDebugHandle {
 const DEFAULT_HITPOINTS = systems.HUMAN_HITPOINTS;
 /** The action tools' health share until the field is edited. */
 const DEFAULT_HEALTH_PERCENT = 1;
-/** The debug tempos beyond the HUD's ×1..×3, for watching a map script's slow chains. */
-const DEBUG_GAME_SPEEDS: readonly number[] = [5, 10, 20, 30, 60];
+/** The debug tempos beyond the HUD's ×1..×3, for watching a map script's slow chains, up to unlimited. */
+const DEBUG_GAME_SPEEDS: readonly number[] = [5, 10, 20, 30, 60, UNLIMITED_GAME_SPEED];
 /** How often the shown AI tab reads the world again. A strategy review comes every few game minutes, so
  *  once a second keeps up even at the debug tempos without a per-frame read. */
 const AI_REFRESH_MS = 1000;

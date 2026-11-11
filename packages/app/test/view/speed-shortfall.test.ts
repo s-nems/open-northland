@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sameSpeedBarLook } from '../../src/hud/dom/system/bar.js';
+import { UNLIMITED_GAME_SPEED } from '../../src/hud/tool-panel/game-speed.js';
 import { currentLocale, formatMessage, messages, setActiveLocale } from '../../src/i18n/index.js';
 import { createShortfallLook, shortfallLook } from '../../src/view/speed-shortfall.js';
 
@@ -12,6 +13,10 @@ describe('local speed shortfall on the speed bar', () => {
       pressed: 'normal',
     });
     expect(shortfallLook(2.2, 3)).toMatchObject({ pressed: 'fast' });
+  });
+
+  it('warns of no shortfall under the unlimited tempo, which asks for no pace', () => {
+    expect(shortfallLook(40, UNLIMITED_GAME_SPEED, true)).toBeNull();
   });
 
   it('keeps one look per figure to the tenth, for a caller that asks every frame', () => {

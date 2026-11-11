@@ -1,6 +1,6 @@
 import type { SpeedBarLook } from '../hud/dom/system/bar.js';
 import { formatRoomSpeed } from '../hud/network/text.js';
-import { presetAtOrBelow } from '../hud/tool-panel/game-speed.js';
+import { presetAtOrBelow, UNLIMITED_GAME_SPEED } from '../hud/tool-panel/game-speed.js';
 import { formatMessage, type Messages, messages } from '../i18n/index.js';
 
 /** The delivered speed averages a second or less, good to about a tenth; more digits would overstate it. */
@@ -13,7 +13,8 @@ export function shortfallLook(
   requested: number,
   devSpeeds = false,
 ): SpeedBarLook | null {
-  if (delivered === null) return null;
+  // Unlimited asks for no pace to fall short of.
+  if (delivered === null || requested === UNLIMITED_GAME_SPEED) return null;
   return {
     kind: 'slowed',
     title: formatMessage(messages().hud.speedShortfall, {

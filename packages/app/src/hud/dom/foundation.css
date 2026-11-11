@@ -2352,6 +2352,11 @@ body.on-drag-scroll.on-drag-scroll-free * {
   font: 700 11px / 1 var(--font-body);
   letter-spacing: 0.02em;
 }
+.on-hud .on-speed button .on-glyph {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
 .on-hud .on-speed button:last-child {
   border-right: 0;
 }

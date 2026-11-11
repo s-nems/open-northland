@@ -1,4 +1,5 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
+import { UNLIMITED_GAME_SPEED } from '../../tool-panel/game-speed.js';
 import { element, setHidden, write } from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
 import { createSegmented, type SegmentedOption } from '../parts/segmented.js';
@@ -6,6 +7,8 @@ import { createSwitch } from '../parts/switch.js';
 import type { AdminPanelHandlers, AdminPanelSpec, AdminWorldState, FogMapKey } from './model.js';
 
 const FOG_MAPS: readonly FogMapKey[] = ['off', 'classic', 'recon'];
+/** The unlimited tempo's segment, named in full by its tooltip. */
+const UNLIMITED_LABEL = '∞';
 
 export interface WorldTab {
   readonly element: HTMLElement;
@@ -73,7 +76,12 @@ export function createWorldTab(
 
   const speedKeys = spec.speeds.map(String);
   const speedOptions = Object.fromEntries(
-    spec.speeds.map((factor) => [String(factor), { label: formatMessage(copy.speedFactor, { factor }) }]),
+    spec.speeds.map((factor): [string, SegmentedOption] => [
+      String(factor),
+      factor === UNLIMITED_GAME_SPEED
+        ? { label: UNLIMITED_LABEL, tooltip: copy.speedUnlimited }
+        : { label: formatMessage(copy.speedFactor, { factor }) },
+    ]),
   );
   const speed = createSegmented(speedKeys, copy.speed, (key) => handlers.onSpeed(Number(key)));
   speed.element.classList.add('on-admin__segmented');

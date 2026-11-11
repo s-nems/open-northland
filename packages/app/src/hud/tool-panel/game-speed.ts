@@ -7,7 +7,11 @@ export type GameSpeedState = RunningGameSpeed | 'paused';
 export type RunningGameSpeed = 'normal' | 'fast' | 'faster' | DevGameSpeed;
 
 /** Tempos past the original's ×3 that only a local dev server's bar offers. */
-export type DevGameSpeed = 'dev5' | 'dev10' | 'dev30' | 'dev60';
+export type DevGameSpeed = 'dev5' | 'dev10' | 'dev30' | 'dev60' | 'devUnlimited';
+
+/** The multiplier the unlimited tempo asks for: far past what a map's ticks sustain, so a worker
+ *  session steps as fast as the sim runs. An inline scene still stops at its per-frame step cap. */
+export const UNLIMITED_GAME_SPEED = 1000;
 
 export interface GameSpeedStateSpec {
   readonly state: GameSpeedState;
@@ -29,6 +33,7 @@ export const DEV_GAME_SPEED_STATES: readonly GameSpeedStateSpec[] = [
   { state: 'dev10', factor: 10, tickMultiplier: 10 },
   { state: 'dev30', factor: 30, tickMultiplier: 30 },
   { state: 'dev60', factor: 60, tickMultiplier: 60 },
+  { state: 'devUnlimited', factor: UNLIMITED_GAME_SPEED, tickMultiplier: UNLIMITED_GAME_SPEED },
 ];
 
 const SPEC_BY_STATE: ReadonlyMap<GameSpeedState, GameSpeedStateSpec> = new Map(

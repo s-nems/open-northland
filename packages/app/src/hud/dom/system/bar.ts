@@ -8,6 +8,7 @@ import {
   GAME_SPEED_STATES,
   type GameSpeedControl,
   type RunningGameSpeed,
+  UNLIMITED_GAME_SPEED,
 } from '../../tool-panel/game-speed.js';
 import { GLYPH, menuArt } from '../icons.js';
 import { setAttribute, setClass, setHidden, setTip, setTitle } from '../parts/dom.js';
@@ -48,7 +49,7 @@ export interface HudSystemBarDeps {
   readonly summary: HudSummaryDeps;
   readonly onPauseToggle: () => void;
   readonly onSpeed: (running: RunningGameSpeed) => void;
-  /** Adds the ×5..×60 segments after ×3. */
+  /** Adds the ×5..×60 and unlimited segments after ×3. */
   readonly devSpeeds?: boolean;
   readonly onMenu: () => void;
   /** The caller's own node standing first in the bar's row (the frame rate, the debug tools). Hidden
@@ -138,8 +139,13 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   for (const spec of [...GAME_SPEED_STATES, ...(deps.devSpeeds === true ? DEV_GAME_SPEED_STATES : [])]) {
     if (!isRunning(spec.state)) continue;
     const state = spec.state;
-    const button = segment(formatMessage(copy.speed, { factor: spec.factor }), () => deps.onSpeed(state));
-    button.textContent = `×${spec.factor}`;
+    const unlimited = spec.tickMultiplier === UNLIMITED_GAME_SPEED;
+    const label = unlimited ? copy.speedUnlimited : formatMessage(copy.speed, { factor: spec.factor });
+    const button = segment(label, () => deps.onSpeed(state));
+    if (unlimited) {
+      button.innerHTML = GLYPH.infinity;
+      setTitle(button, label);
+    } else button.textContent = `×${spec.factor}`;
     running.set(state, button);
   }
 
