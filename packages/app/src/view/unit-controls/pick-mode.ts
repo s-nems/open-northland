@@ -229,6 +229,7 @@ export type PickAim =
   | { readonly kind: 'attackMove' }
   | { readonly kind: 'walk' }
   | { readonly kind: 'workArea' }
+  | { readonly kind: 'rallyPoint' }
   | { readonly kind: 'signpost'; readonly fits: boolean }
   | { readonly kind: 'drive'; readonly ship: boolean }
   | { readonly kind: 'dock'; readonly fits: boolean; readonly landing: DockLanding }
@@ -873,8 +874,9 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       case 'destination':
         return { kind: 'walk' };
       case 'work-area':
-      case 'rally-point':
         return { kind: 'workArea' };
+      case 'rally-point':
+        return { kind: 'rallyPoint' };
       case 'attack-move': {
         const prey = mode.units.length > 0 ? strikeAim(preyAt(deps.targets, world), true) : null;
         return prey ?? { kind: 'attackMove' };

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { depthKey, TILE_HALF_H, TILE_HALF_W } from '../../../src/data/projection/index.js';
 import {
   drawPassDepth,
+  type FlagDepth,
   SHADOW_DEPTH_EPS,
   SIGN_DEPTH_EPS,
   screenDepth,
@@ -41,26 +42,29 @@ const MAX_MAP_SCREEN_X = (2 * MAX_MAP_TILE_COLS + 1) * TILE_HALF_W;
 
 describe('same-anchor depth keys', () => {
   it('orders every kind pair (and the delivery flag) identically in the oracle and the live painter', () => {
-    const variants: readonly { kind: DrawKind; isFlag: boolean }[] = [
-      ...ALL_KINDS.map((kind) => ({ kind, isFlag: false })),
-      { kind: 'stockpile', isFlag: true },
+    const variants: readonly { kind: DrawKind; flag?: FlagDepth }[] = [
+      ...ALL_KINDS.map((kind) => ({ kind })),
+      { kind: 'stockpile', flag: 'work' },
+      { kind: 'stockpile', flag: 'rally' },
     ];
     for (const a of variants) {
       for (const b of variants) {
-        const oracle = Math.sign(spriteDepth(5, 7, a.kind, a.isFlag) - spriteDepth(5, 7, b.kind, b.isFlag));
-        const live = Math.sign(
-          screenDepth(340, 133, a.kind, a.isFlag) - screenDepth(340, 133, b.kind, b.isFlag),
-        );
-        expect(live, `${a.kind}${a.isFlag ? '+flag' : ''} vs ${b.kind}${b.isFlag ? '+flag' : ''}`).toBe(
-          oracle,
-        );
+        const oracle = Math.sign(spriteDepth(5, 7, a.kind, a.flag) - spriteDepth(5, 7, b.kind, b.flag));
+        const live = Math.sign(screenDepth(340, 133, a.kind, a.flag) - screenDepth(340, 133, b.kind, b.flag));
+        expect(live, `${a.kind}+${a.flag} vs ${b.kind}+${b.flag}`).toBe(oracle);
       }
     }
   });
 
   it('keeps the flagged stockpile below a settler at the same anchor in both keys', () => {
-    expect(spriteDepth(5, 7, 'stockpile', true)).toBeLessThan(spriteDepth(5, 7, 'settler'));
-    expect(screenDepth(340, 133, 'stockpile', true)).toBeLessThan(screenDepth(340, 133, 'settler'));
+    expect(spriteDepth(5, 7, 'stockpile', 'work')).toBeLessThan(spriteDepth(5, 7, 'settler'));
+    expect(screenDepth(340, 133, 'stockpile', 'work')).toBeLessThan(screenDepth(340, 133, 'settler'));
+  });
+
+  it('lifts the rally flag over a settler on its node and keeps it under a shot', () => {
+    const rally = screenDepth(340, 133, 'stockpile', 'rally');
+    expect(rally).toBeGreaterThan(screenDepth(340, 133, 'settler'));
+    expect(rally).toBeLessThan(screenDepth(340, 133, 'projectile'));
   });
 
   it('keeps the whole kind bias under one tile column (oracle) and one row step (live painter)', () => {
@@ -118,7 +122,7 @@ describe('road site plots', () => {
   it('paint an unclaimed plot under a settler standing a row behind it, and a claimed one in the sort', () => {
     const ROW_BEHIND_PX = -TILE_HALF_H;
     const settler = screenDepth(0, ROW_BEHIND_PX, 'settler');
-    expect(screenDepth(0, 0, 'roadsite', false, true)).toBeLessThan(settler);
+    expect(screenDepth(0, 0, 'roadsite', undefined, true)).toBeLessThan(settler);
     expect(screenDepth(0, 0, 'roadsite')).toBeGreaterThan(settler);
     expect(screenDepth(0, 0, 'roadsite')).toBeLessThan(screenDepth(0, 0, 'settler'));
   });

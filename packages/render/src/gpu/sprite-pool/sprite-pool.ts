@@ -219,10 +219,9 @@ function pooledDepth(pe: PooledEntity, item: DrawItem): number {
     pe.motion.drawX,
     pe.motion.drawY + (item.lift ?? 0) + plotBack,
     item.kind,
-    item.isFlag === true,
+    item.rally === true ? 'rally' : item.isFlag === true ? 'work' : undefined,
     item.roadSite === 'unclaimed',
     item.boardIndex === undefined ? 0 : signpostBoardSteps(item.boardIndex),
-    item.rally === true,
   );
 }
 

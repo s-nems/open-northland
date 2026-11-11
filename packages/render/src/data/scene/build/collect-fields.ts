@@ -155,7 +155,7 @@ export function pushSignpostItems(
       boardRef,
       item.x,
       item.y,
-      spriteDepth(tileX, tileY, 'signpost', false, false, signpostBoardSteps(bucket)),
+      spriteDepth(tileX, tileY, 'signpost', undefined, false, signpostBoardSteps(bucket)),
       'idle',
     );
     board.boardIndex = bucket;

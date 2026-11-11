@@ -29,6 +29,7 @@ import { guardPost } from '../../conflict/chase.js';
 import type { SystemContext } from '../../context.js';
 import { buildingBlockedCells } from '../../footprint/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
+import { moveAnchor } from '../../orders/combat.js';
 import { rallyNodeOf } from '../../orders/rally-point.js';
 import {
   armorGoodsByProtection,
@@ -124,8 +125,6 @@ export function dispatchRecruitArming(pass: PlannerPass): void {
     }
     if (!dispatchArmorFetch(pass, e, booking.intent, booking.barracks, owner)) {
       world.remove(e, AssistantRecruit);
-      // Armed and released with no armor reachable: nothing owns his feet now, so the walk the booking
-      // was holding back starts here - his barracks' rally post, the end its errands close on.
       releaseToPost(pass, e, booking.barracks);
     }
   }
@@ -329,7 +328,7 @@ function dispatchWeaponFetch(
     group: 'weapon',
     slot: 0,
     goodType: pick.goodType,
-    returnTo: armingReturnNode(search, e, barracks, routeOf().here),
+    returnTo: takeBarracksPost(search, e, barracks, routeOf().here),
     stage: 'acquire',
     issuer: 'assistant-recruit',
     queued: [],
@@ -405,7 +404,7 @@ function dispatchArmorFetch(
     group: 'armor',
     slot: 0,
     goodType: pick.goodType,
-    returnTo: armingReturnNode(pass, e, barracks, route.here),
+    returnTo: takeBarracksPost(pass, e, barracks, route.here),
     stage: 'acquire',
     issuer: 'assistant-recruit',
     queued: [],
@@ -548,32 +547,33 @@ export function armRecruitInPlace(search: ArmingSearch, e: Entity, barracks: Ent
 /** The unarmored damage column (`damagevalue 0`), the strength axis the weapon preference sorts on. */
 const BARE_TARGET = 0;
 
-/** Where an arming outing ends: the booking barracks' rally post when its owner planted one, else the
- *  door (owner's ruling: armed soldiers gather at the barracks). `null` when that barracks is gone or
- *  another side's at dispatch; a barracks lost later still draws him to the node stamped here. A rally
- *  post only stands at a finished barracks, so a foundation's outing ends at its door. */
-function armingReturnNode(search: ArmingSearch, e: Entity, barracks: Entity, here: NodeId): NodeId | null {
+/**
+ * Where an arming outing ends: the booking barracks' rally post when its owner planted one, else the door
+ * (owner's ruling: armed soldiers gather at the barracks). The rally flag's node becomes the recruit's
+ * guard anchor here, read once with the walk's end, so a flag moved or taken away later cannot part the
+ * two. `null` when that barracks is gone or another side's at dispatch; a barracks lost later still draws
+ * him to the node stamped here. A rally post only stands at a finished barracks, so a foundation's outing
+ * ends at its door.
+ */
+function takeBarracksPost(search: ArmingSearch, e: Entity, barracks: Entity, here: NodeId): NodeId | null {
   const { world, ctx, terrain } = search;
   if (!isBarracksOrFoundation(world, ctx, barracks) || !sameSide(world, e, barracks)) return null;
   const rally = rallyNodeOf(world, terrain, barracks);
-  if (rally !== undefined) return guardPost(world, ctx, terrain, rally, here);
-  return interactionCell(world, ctx, terrain, barracks, here);
+  if (rally === undefined) return interactionCell(world, ctx, terrain, barracks, here);
+  moveAnchor(world, ctx.content, e, rally);
+  return guardPost(world, ctx, terrain, rally, here);
 }
 
 /**
- * The recruit the arming pass just released, booking gone and no errand dispatched, walks the post its
- * booking's barracks holds: the rally post when the owner planted one, else the door - the same end its
- * fetch errands close on. A recruit still bare starts no walk here either: nothing arms him now, so he
- * waits by the door for the player's hand, as a drill-end release without a booking does
- * (`training.ts`). A recruit wearing his weapon starts the walk at once - the walk his booking's
- * errands would have closed on, now that nothing owns his feet.
+ * The recruit the arming pass just released, booking gone and no errand dispatched, walks to the post his
+ * booking's barracks holds, the end its fetch errands close on. A recruit still bare takes no post: nothing
+ * arms him now, so he waits by the door for the player's hand.
  */
 function releaseToPost(pass: PlannerPass, e: Entity, barracks: Entity): void {
   const { world, terrain } = pass;
-  if (terrain === undefined) return;
   if ((world.tryGet(e, Equipment)?.weapon ?? null) === null) return;
   const here = entityNode(world, terrain, e);
-  const post = armingReturnNode(pass, e, barracks, here);
+  const post = takeBarracksPost(pass, e, barracks, here);
   if (post !== null && post !== here) world.add(e, MoveGoal, { cell: post });
 }
 

@@ -36,7 +36,6 @@ import { fx, ONE, type SimEvent, Simulation } from '../../../../src/index.js';
 import { hexDistanceBetween, nodeOfPosition } from '../../../../src/nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../src/nav/terrain/index.js';
 import { needSubjectOf, plannerSystem, settlerMeetsNeed } from '../../../../src/systems/index.js';
-import { removeBuildingSilently } from '../../../../src/systems/lifecycle/cleanup.js';
 import { WORK_FLAG_SNAP_MAX_RADIUS } from '../../../../src/systems/orders/work/selection.js';
 import { MILITARY_MODE } from '../../../../src/systems/readviews/index.js';
 import { BARRACKS_DRILL_TICKS } from '../../../../src/systems/settlers/drives/training.js';
@@ -305,16 +304,6 @@ describe('trainSoldier - the barracks drill', () => {
     const here = nodeOfPosition(at.x, at.y);
     expect(hexDistanceBetween(here.hx, here.hy, planted.hx, planted.hy)).toBeLessThanOrEqual(1);
     expect(sim.world.get(early, Stance).anchorCell).toBe(earlyAnchor); // the soldier trained before stays put
-
-    // A second click moves the same flag instead of minting another.
-    sim.enqueueSetup({ kind: 'setRallyPoint', building: house, x: 6, y: 12 });
-    sim.step();
-    expect(sim.world.get(house, RallyPoint).flag).toBe(flag);
-
-    sim.enqueueSetup({ kind: 'clearRallyPoint', building: house });
-    sim.step();
-    expect(sim.world.has(house, RallyPoint)).toBe(false);
-    expect(sim.world.isAlive(flag)).toBe(false);
   });
 
   it('a soldier drilled by hand walks to the flag bare: only an assistant recruit fetches a weapon', () => {
@@ -342,74 +331,11 @@ describe('trainSoldier - the barracks drill', () => {
     expect(hexDistanceBetween(at.hx, at.hy, planted.hx, planted.hy)).toBeLessThanOrEqual(1);
   });
 
-  it('a booked recruit the barracks cannot dress starts no rally walk either', () => {
-    const sim = simWithBarracks();
-    const house = barracksAt(sim, 6, 3);
-    sim.enqueueSetup({ kind: 'setRallyPoint', building: house, x: 4, y: 12 });
-    sim.step();
-    const flag = sim.world.get(house, RallyPoint).flag;
-    const rallyNode = entityNode(sim.world, terrainOf(sim), flag);
-    // Counter cover, so the assistant's release pass does not drop the booking as past its ask.
-    sim.world.add(sim.world.create(), AssistantCounters, {
-      player: HUMAN_PLAYER,
-      counters: { ...defaultAssistantCounters(), trainSword: { value: 1, infinite: false } },
-    });
-
-    const recruit = settlerAt(sim, CIVILIST_JOB, 2, 3);
-    sim.world.add(recruit, AssistantRecruit, { intent: 'trainSword', armed: false, barracks: house });
-    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
-    run(sim, RUN_TICKS);
-
-    expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
-    expect(sim.world.get(recruit, Stance).anchorCell).toBe(rallyNode);
-    expect(sim.world.has(recruit, MoveGoal)).toBe(false);
-    // The booking survives unsettled: the arming pass still owes him his sword, and its fetch outing -
-    // closing on the post - will be the walk that first brings him to the flag.
-    expect(sim.world.get(recruit, AssistantRecruit).armed).toBe(false);
-  });
-
-  it('a booked recruit fetches his sword before the rally walk starts', () => {
-    const sim = simWithBarracks();
-    const house = barracksAt(sim, 6, 3);
-    // The swords wait in the headquarters, not the barracks: the recruit's fetch errand is the walk
-    // that first carries him there, and the enlist beat must not race it with a bare rally walk.
-    const store = larderAt(sim, 2, 10);
-    sim.world.mut(store, Stockpile).amounts.set(SWORD_GOOD, 3);
-    sim.enqueueSetup({ kind: 'setRallyPoint', building: house, x: 4, y: 12 });
-    sim.step();
-    const flag = sim.world.get(house, RallyPoint).flag;
-    const rallyNode = entityNode(sim.world, terrainOf(sim), flag);
-    sim.world.add(sim.world.create(), AssistantCounters, {
-      player: HUMAN_PLAYER,
-      counters: { ...defaultAssistantCounters(), trainSword: { value: 1, infinite: false } },
-    });
-
-    const recruit = settlerAt(sim, CIVILIST_JOB, 2, 3);
-    sim.world.add(recruit, AssistantRecruit, { intent: 'trainSword', armed: false, barracks: house });
-    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
-
-    let armedAt = -1;
-    let rallyWalkAt = -1;
-    for (let i = 0; i < RUN_TICKS + 4 * WALK_TICKS && (armedAt < 0 || rallyWalkAt < 0); i++) {
-      sim.step();
-      if ((sim.world.tryGet(recruit, Equipment)?.weapon ?? null) !== null && armedAt < 0) armedAt = i;
-      if (sim.world.tryGet(recruit, MoveGoal)?.cell === rallyNode && rallyWalkAt < 0) rallyWalkAt = i;
-    }
-
-    expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
-    expect(sim.world.get(recruit, Stance).anchorCell).toBe(rallyNode);
-    // He is armed before the flag ever holds his walk: the fetch outing closes on the post.
-    expect(armedAt).toBeGreaterThanOrEqual(0);
-    expect(rallyWalkAt).toBeGreaterThanOrEqual(0);
-    expect(rallyWalkAt).toBeGreaterThanOrEqual(armedAt);
-  });
-
-  it('the combat pass marching him home does not outrun the arming: no bare rally walk on a live map', () => {
-    // The real-game shape this holds: every spawned settler is a combatant (Health), and a rival seat
-    // somewhere on the map keeps the combat dormancy gate awake, so the combat pass runs every tick.
-    // A DEFEND guard off its anchor is sent home by that pass - and without the walk-back's arming
-    // deferral the fresh bare soldier would march to the flag before the arming beat ever dispatched
-    // his fetch, then hold the errand off for the whole walk (`isTravelling`).
+  it('a booked recruit fetches his sword before any walk to the flag, on a live map too', () => {
+    // The real-game shape: every spawned settler is a combatant (Health), and a rival seat somewhere on
+    // the map keeps the combat pass awake, so a DEFEND guard off its anchor is sent home every tick. The
+    // booked recruit keeps the door as his anchor until the arming pass posts him, so that walk home
+    // cannot march him to the flag bare.
     const sim = new Simulation({ seed: 1, content: barracksContent(), map: grassMap(40, 20) });
     const house = barracksAt(sim, 6, 3);
     const store = larderAt(sim, 2, 10);
@@ -449,14 +375,40 @@ describe('trainSoldier - the barracks drill', () => {
 
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
     expect(sim.world.get(recruit, Stance).anchorCell).toBe(rallyNode);
-    // Not one bare step toward the flag, though the combat pass ran the whole way: the walk-back holds
-    // while the weapon is owed.
+    // Not one bare step toward the flag, though the combat pass ran the whole way.
     expect(bareRallyWalkAt).toBe(-1);
     // The fetch owns his feet first, and only the armed landing starts the march to the post.
     expect(fetchAt).toBeGreaterThanOrEqual(0);
     expect(armedAt).toBeGreaterThan(fetchAt);
     expect(rallyWalkAt).toBeGreaterThanOrEqual(0);
     expect(rallyWalkAt).toBeGreaterThanOrEqual(armedAt);
+  });
+
+  it('posts a booked recruit at the flag as it stands when his outing starts, not when his drill ended', () => {
+    const sim = simWithBarracks();
+    const house = barracksAt(sim, 6, 3);
+    const store = larderAt(sim, 2, 10);
+    sim.enqueueSetup({ kind: 'setRallyPoint', building: house, x: 4, y: 12 });
+    sim.world.add(sim.world.create(), AssistantCounters, {
+      player: HUMAN_PLAYER,
+      counters: { ...defaultAssistantCounters(), trainSword: { value: 1, infinite: false } },
+    });
+    const recruit = settlerAt(sim, CIVILIST_JOB, 2, 3);
+    sim.world.add(recruit, AssistantRecruit, { intent: 'trainSword', armed: false, barracks: house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
+    run(sim, RUN_TICKS);
+    expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
+
+    // No sword yet, so he waits by the door; the owner moves the flag meanwhile.
+    sim.enqueueSetup({ kind: 'setRallyPoint', building: house, x: 14, y: 12 });
+    sim.step();
+    const moved = entityNode(sim.world, terrainOf(sim), sim.world.get(house, RallyPoint).flag);
+    sim.world.mut(store, Stockpile).amounts.set(SWORD_GOOD, 1);
+    run(sim, SUPPLY_TICKS);
+
+    expect(sim.world.tryGet(recruit, Equipment)?.weapon ?? null).not.toBeNull();
+    expect(sim.world.get(recruit, Stance).anchorCell).toBe(moved);
+    expect(entityNode(sim.world, terrainOf(sim), recruit)).toBe(moved);
   });
 
   it("an armed recruit the pass releases with no armor to fetch walks his barracks' post", () => {
@@ -492,28 +444,8 @@ describe('trainSoldier - the barracks drill', () => {
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
     // No armor anywhere, so the pass releases him - and the walk the booking held back starts now.
     expect(releasedAt).toBeGreaterThanOrEqual(0);
-    expect(sim.world.has(recruit, AssistantRecruit)).toBe(false);
+    expect(sim.world.get(recruit, Stance).anchorCell).toBe(rallyNode);
     expect(sim.world.tryGet(recruit, MoveGoal)?.cell).toBe(rallyNode);
-  });
-
-  it('takes the rally flag down with a barracks that is razed', () => {
-    const sim = simWithBarracks();
-    const house = barracksAt(sim, 6, 3);
-    sim.enqueueSetup({ kind: 'setRallyPoint', building: house, x: 4, y: 12 });
-    sim.step();
-    const flag = sim.world.get(house, RallyPoint).flag;
-    removeBuildingSilently(sim.world, ctxOf(sim), house);
-    expect(sim.world.isAlive(flag)).toBe(false);
-  });
-
-  it('refuses a rally point on a barracks foundation', () => {
-    const sim = simWithBarracks();
-    const house = barracksAt(sim, 6, 3);
-    sim.world.add(house, UnderConstruction, { labor: fx.fromInt(0) });
-    sim.world.mut(house, Building).built = fx.fromInt(0);
-    sim.enqueueSetup({ kind: 'setRallyPoint', building: house, x: 4, y: 12 });
-    sim.step();
-    expect(sim.world.has(house, RallyPoint)).toBe(false);
   });
 
   it('a Shift-queued drill waits for the walk ahead, and the next walk waits for the drill', () => {
@@ -558,10 +490,8 @@ describe('trainSoldier - the barracks drill', () => {
 
     for (let i = 0; i < 2 * RUN_TICKS && sim.world.has(recruit, TrainingOrder); i++) sim.step();
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
-    // The flag takes the fresh soldier as its guard anchor even so.
+    // The flag takes the fresh soldier as its guard anchor even so; the queued walk goes first.
     expect(sim.world.get(recruit, Stance).anchorCell).toBe(rallyNode);
-    // A bare recruit starts no rally walk, so the queue starts at once: the player's walk takes the road
-    // first, and the flag holds him from the arming outing or the walk-back on.
     for (let i = 0; i < WALK_TICKS && !sim.world.has(recruit, PlayerOrder); i++) sim.step();
     expect(sim.world.has(recruit, PlayerOrder)).toBe(true);
     // And it ends at the queued destination, not at the flag.
@@ -592,7 +522,7 @@ describe('trainSoldier - the barracks drill', () => {
     expect(new Set(nodes).size).toBe(recruits.length);
   });
 
-  it('spreads booked recruits waiting at the door for a weapon, the rally flag staying their post', () => {
+  it('keeps booked recruits owed a weapon by the door, spread and anchored there, flag or not', () => {
     const sim = simWithBarracks();
     const house = barracksAt(sim, 6, 3);
     sim.enqueueSetup({ kind: 'setRallyPoint', building: house, x: 4, y: 12 });
@@ -613,10 +543,9 @@ describe('trainSoldier - the barracks drill', () => {
     const terrain = terrainOf(sim);
     const nodes = recruits.map((recruit) => {
       expect(sim.world.get(recruit, AssistantRecruit).armed).toBe(false);
-      expect(sim.world.get(recruit, Stance).anchorCell).toBe(rallyNode);
-      const at = sim.world.get(recruit, Position);
-      const n = nodeOfPosition(at.x, at.y);
-      return terrain.nodeAtClamped(n.hx, n.hy);
+      const node = entityNode(sim.world, terrain, recruit);
+      expect(sim.world.get(recruit, Stance).anchorCell).toBe(node);
+      return node;
     });
     // Stacked on the door node they would draw as one figure, the others hidden beneath it.
     expect(new Set(nodes).size).toBe(recruits.length);

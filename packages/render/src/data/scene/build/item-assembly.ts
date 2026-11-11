@@ -50,7 +50,7 @@ export function assembleItem(
   // A projectile's ballistic height rides the same lift channel as terrain lift: a draw offset the
   // depth key never sees, so neither can reshuffle occlusion.
   let arcLift = 0;
-  const depth = spriteDepth(tileX, tileY, kind, isFlag, false, 0, isRally);
+  const depth = spriteDepth(tileX, tileY, kind, isRally ? 'rally' : isFlag ? 'work' : undefined);
   const item = newDrawItem(kind, entity.id, screen.x, screen.y, depth, pose.state);
   switch (kind) {
     case 'settler':
@@ -71,7 +71,7 @@ export function assembleItem(
       const player = readOwnerPlayer(components);
       if (player !== undefined) item.player = player;
       item.roadSite = readRoadSiteClaimed(components) ? 'claimed' : 'unclaimed';
-      if (item.roadSite === 'unclaimed') item.depth = spriteDepth(tileX, tileY, kind, false, true);
+      if (item.roadSite === 'unclaimed') item.depth = spriteDepth(tileX, tileY, kind, undefined, true);
       break;
     }
     case 'resource':

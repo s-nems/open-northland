@@ -42,8 +42,12 @@ const FLAG_PAINT_STEP = 0.5;
  */
 const RALLY_FLAG_PAINT_STEP = 1.5;
 
-function paintOrderBias(kind: DrawKind, isFlag: boolean, isRally = false): number {
-  return SPRITE_PAINT_ORDER[kind] + (isRally ? RALLY_FLAG_PAINT_STEP : isFlag ? FLAG_PAINT_STEP : 0);
+/** Which flag a `stockpile` item is, for its paint step: a work or haul flag, or a barracks' rally flag. */
+export type FlagDepth = 'work' | 'rally';
+
+function paintOrderBias(kind: DrawKind, flag: FlagDepth | undefined): number {
+  const step = flag === 'rally' ? RALLY_FLAG_PAINT_STEP : flag === 'work' ? FLAG_PAINT_STEP : 0;
+  return SPRITE_PAINT_ORDER[kind] + step;
 }
 
 /**
@@ -102,16 +106,15 @@ export function spriteDepth(
   tileX: number,
   tileY: number,
   kind: DrawKind,
-  isFlag = false,
+  flag?: FlagDepth,
   groundMarker = false,
   extraSteps = 0,
-  isRally = false,
 ): number {
   return (
     kindPassDepth(kind, groundMarker) +
     tileY * ROW_STRIDE +
     tileX +
-    (paintOrderBias(kind, isFlag, isRally) + extraSteps) * PAINT_ORDER_EPS
+    (paintOrderBias(kind, flag) + extraSteps) * PAINT_ORDER_EPS
   );
 }
 
@@ -124,15 +127,14 @@ export function screenDepth(
   x: number,
   y: number,
   kind: DrawKind,
-  isFlag = false,
+  flag?: FlagDepth,
   groundMarker = false,
   extraSteps = 0,
-  isRally = false,
 ): number {
   return (
     kindPassDepth(kind, groundMarker) +
     depthKey(x, y) +
-    (paintOrderBias(kind, isFlag, isRally) + extraSteps) * SCREEN_PAINT_EPS
+    (paintOrderBias(kind, flag) + extraSteps) * SCREEN_PAINT_EPS
   );
 }
 

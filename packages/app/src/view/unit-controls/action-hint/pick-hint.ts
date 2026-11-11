@@ -35,6 +35,8 @@ export function pickHint(snapshot: WorldSnapshot, aim: PickAim | null): PlanHint
       return action('walk');
     case 'workArea':
       return action('workArea');
+    case 'rallyPoint':
+      return action('rallyPoint');
     case 'signpost':
       return either(aim.fits, 'placeSignpost', 'cannotPlaceSignpost');
     case 'drive':

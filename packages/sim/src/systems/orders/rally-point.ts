@@ -26,8 +26,9 @@ export function rallyNodeOf(world: World, terrain: TerrainGraph, barracks: Entit
 /**
  * Plant or move an owned, finished barracks' rally flag - see the command doc. The clicked node snaps to the
  * nearest legal flag ground within {@link WORK_FLAG_SNAP_MAX_RADIUS}, as a gatherer's work flag does; a click
- * past that is not workable ground and changes nothing. An existing flag only moves, so the same marker
- * stands throughout. Only soldiers trained after the order take the new point.
+ * past that is not workable ground and changes nothing. Only the barracks' own land takes the flag: no
+ * soldier walks to another shore. An existing flag only moves, so the same marker stands throughout. Only
+ * soldiers trained after the order take the new point.
  */
 export function setRallyPoint(
   world: World,
@@ -39,9 +40,11 @@ export function setRallyPoint(
   if (terrain === undefined) return; // mapless: no ground to plant a flag on
   if (!world.has(building, Owner) || !isBarracks(world, ctx, building)) return;
   const live = liveRallyFlag(world, building);
+  const land = terrain.componentOf(entityNode(world, terrain, building));
   const target = nearestWorkFlagPlacement(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y), {
     ignoreFlag: live,
     withinRadius: WORK_FLAG_SNAP_MAX_RADIUS,
+    accept: (node) => terrain.componentOf(node) === land,
   });
   if (target === null) return;
   const c = terrain.coordsOf(target);

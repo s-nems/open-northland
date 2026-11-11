@@ -37,6 +37,11 @@ describe('the armed pick label', () => {
     expect(pickHint(WORLD, { ...site, building: FOUNDATION })).toMatchObject({ action: 'build' });
   });
 
+  it("names the barracks' rally pick apart from a gatherer's work area", () => {
+    expect(pickHint(WORLD, { kind: 'rallyPoint' })).toMatchObject({ tone: 'action', action: 'rallyPoint' });
+    expect(pickHint(WORLD, { kind: 'workArea' })).toMatchObject({ tone: 'action', action: 'workArea' });
+  });
+
   it('names nothing where the press names no target', () => {
     expect(pickHint(WORLD, null)).toBeNull();
   });

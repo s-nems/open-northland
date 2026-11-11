@@ -110,12 +110,9 @@ export function planTraining(
     abandonDrill(world, e);
     if (order.lesson === undefined) {
       const jobType = keepingOrderQueue(world, e, () => {
-        // A plain-soldier counter's recruit is enlisted naked on purpose: the class counters own the
-        // arming, so the enlist beat shops for nobody whose booking asked plain soldiers.
-        const plain = world.tryGet(e, AssistantRecruit)?.intent === 'trainSoldiers';
         const enlisted = enlist(world, ctx, e);
-        // Arming first: the rally walk would only fight the fetch errand a booking still owes.
-        if (!plain) armRecruitInPlace(plan, e, order.house);
+        // Arming first: a recruit the barracks dresses in full has no booking left and walks at once.
+        armRecruitInPlace(plan, e, order.house);
         if (enlisted !== null) sendToRallyPoint(world, ctx, e, order.house);
         return enlisted;
       });
@@ -274,18 +271,16 @@ function abandonDrill(world: World, e: Entity): boolean {
 }
 
 /**
- * Post a fresh soldier at its barracks' rally point: the point becomes the anchor its guard walk-back holds,
- * so it leaves the door for the point instead of standing where it stepped out. A barracks with no rally
- * point leaves the soldier anchored at its feet. An assistant recruit starts no walk here: the fetch
- * errand his booking dispatches owns him, and its outing ends on the post (`recruit-arming.ts`). A soldier
- * the player drilled by hand walks to the post at once, armed or not (owner's ruling).
+ * Post a fresh soldier at its barracks' rally point: the point becomes its guard anchor and it walks there
+ * from the door, armed or not (owner's ruling). A barracks with no rally point leaves it anchored at its
+ * feet. So does a booking: an assistant recruit keeps the door until the arming pass posts him, with the
+ * weapon in hand or on the outing that fetches it (`recruit-arming.ts`).
  */
 function sendToRallyPoint(world: World, ctx: SystemContext, e: Entity, barracks: Entity): void {
-  if (ctx.terrain === undefined) return;
+  if (ctx.terrain === undefined || world.has(e, AssistantRecruit)) return;
   const rally = rallyNodeOf(world, ctx.terrain, barracks);
   if (rally === undefined) return;
   moveAnchor(world, ctx.content, e, rally);
-  if (world.has(e, AssistantRecruit)) return;
   // The post is the anchor, or the open node beside it when something stands on the anchor.
   const here = entityNode(world, ctx.terrain, e);
   const post = guardPost(world, ctx, ctx.terrain, rally, here);
