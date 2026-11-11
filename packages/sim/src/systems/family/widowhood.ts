@@ -1,6 +1,7 @@
-import { Female, Marriage, Residence } from '../../components/index.js';
+import { ChildOrder, Female, Marriage, Residence, Wedding } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { raisingChild } from './eligibility.js';
+import { isMinor } from './households.js';
 
 // The widowing rule: event-driven, never called from a whole-world per-tick scan.
 
@@ -41,4 +42,33 @@ export function parentsByChild(world: World, children: readonly Entity[]): Map<E
     if (child !== null) byChild.get(child)?.push(e);
   }
   return byChild;
+}
+
+/**
+ * Cut `e` out of its family while it lives on, as a script's handover to another player does. Original
+ * behavior: the links to spouse, betrothed, parents and child are cleared on both sides. Here the spouse
+ * left behind is settled as a widow or widower is ({@link settleWidowhood}), and since the marriage is
+ * the only carrier of the parent-child edge, a growing child of the couple keeps its home as a household
+ * of its own (approximation).
+ */
+export function leaveFamily(world: World, e: Entity): void {
+  const wedding = world.tryGet(e, Wedding);
+  if (wedding !== undefined) {
+    if (world.isAlive(wedding.partner)) world.remove(wedding.partner, Wedding);
+    world.remove(e, Wedding);
+  }
+  world.remove(e, ChildOrder);
+  if (isMinor(world, e)) {
+    for (const parent of parentsByChild(world, [e]).get(e) ?? []) {
+      world.mut(parent, Marriage).child = null;
+      settleWidowhood(world, parent);
+    }
+  }
+  const spouse = world.tryGet(e, Marriage)?.spouse;
+  if (spouse === undefined) return;
+  world.remove(e, Marriage);
+  if (!world.isAlive(spouse) || world.tryGet(spouse, Marriage)?.spouse !== e) return;
+  world.remove(spouse, Marriage);
+  world.remove(spouse, ChildOrder);
+  if (!world.has(spouse, Female)) world.remove(spouse, Residence);
 }

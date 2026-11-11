@@ -125,11 +125,14 @@ export function missionPoint(world: World, e: Entity): HalfCellNode | undefined 
   return world.has(e, Person) ? carriedPoint(world, e) : entityPoint(world, e);
 }
 
-/** Everything `player` owns within `range` map points of `point`, ascending by entity id. */
+/** Everything `player` owns within `range` map points of `point`, ascending by entity id. Original
+ *  behavior: a human aboard a vehicle is found where its carrier stands ({@link missionPoint}). */
 export function ownedInRange(world: World, player: number, point: HalfCellNode, range: number): Entity[] {
-  return world
-    .canonicalQuery(Owner, Position)
-    .filter((e) => world.get(e, Owner).player === player && withinRange(world, e, point, range));
+  return world.canonicalQuery(Owner).filter((e) => {
+    if (world.get(e, Owner).player !== player) return false;
+    const at = missionPoint(world, e);
+    return at !== undefined && hexDistance(at, point) <= range;
+  });
 }
 
 /** Whether `e` stands within `range` map points of `point`. An entity with no position is nowhere. */

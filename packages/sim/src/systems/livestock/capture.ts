@@ -123,18 +123,24 @@ function claim(world: World, ctx: SystemContext, animal: Entity, scout: Entity, 
     noteOffence(world, ctx, scout, victim);
   }
   world.add(animal, Owner, { player });
+  cutAnimalBindings(world, ctx, animal);
+}
+
+/** Cut whatever held an animal before it changed owner: its wild herd, a farm's herd, a cart's
+ *  recruitment. Original behavior: every change of an animal's player drops its leader and its house. */
+export function cutAnimalBindings(world: World, ctx: SystemContext, animal: Entity): void {
   // Its wild herd re-leads itself on the herding drive's next pass.
   world.remove(animal, HerdMember);
   world.remove(animal, WildHabitat);
   if (world.has(animal, FarmAnimal)) {
-    // A steal off an enemy farm abandons its herd and any walk to that farm's door with it.
+    // Leaving a farm abandons its herd and any walk to that farm's door with it.
     const { farm, summoner } = world.get(animal, FarmAnimal);
     world.remove(animal, FarmAnimal);
     if (summoner !== null) clearNavState(world, animal);
     recountHerdRows(world, ctx, farm);
   }
   if (world.has(animal, DraughtAnimal)) {
-    // A steal mid-walk abandons the cart's recruitment and the walk to its door with it.
+    // Mid-walk to a cart, it abandons the cart's recruitment and the walk to its door.
     world.remove(animal, DraughtAnimal);
     clearNavState(world, animal);
   }

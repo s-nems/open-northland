@@ -155,16 +155,19 @@ export function attachScriptedHumans(pass: MissionPass, humanId: number, vehicle
  * behaviour mirrored here, since a slower crossing would otherwise leave the crew aboard for good.
  */
 export function detachScriptedHumans(pass: MissionPass, humanId: number): void {
+  for (const e of scriptedHumans(pass.world, humanId)) detachScriptedRider(pass, e);
+}
+
+/** One rider's share of {@link detachScriptedHumans}. */
+export function detachScriptedRider(pass: MissionPass, e: Entity): void {
   const { world, ctx } = pass;
-  for (const e of scriptedHumans(world, humanId)) {
-    const rider = world.tryGet(e, Rider);
-    if (rider === undefined) continue;
-    if (!world.has(e, Position) && landingOf(world, ctx, rider.vehicle) === null) {
-      if (rider.leaving === null) world.mut(e, Rider).leaving = { to: null };
-      continue;
-    }
-    detachFromVehicle(world, ctx, { kind: 'detachFromVehicle', entity: e });
+  const rider = world.tryGet(e, Rider);
+  if (rider === undefined) return;
+  if (!world.has(e, Position) && landingOf(world, ctx, rider.vehicle) === null) {
+    if (rider.leaving === null) world.mut(e, Rider).leaving = { to: null };
+    return;
   }
+  detachFromVehicle(world, ctx, { kind: 'detachFromVehicle', entity: e });
 }
 
 /** `ChangeMissionIdOfVehicles`: every vehicle carrying `from` carries `to` instead. */

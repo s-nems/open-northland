@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Age,
+  AttackOrder,
   Building,
+  Female,
   isWildlife,
+  Marriage,
   MissionBehaviour,
   MissionObjectId,
   markGoalTeardown,
@@ -11,16 +15,25 @@ import {
   Person,
   Position,
   Residence,
+  Rider,
   Settler,
   Signpost,
+  Stance,
+  TradeRoute,
+  TradeShip,
   UnderConstruction,
+  Vehicle,
+  WildHabitat,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
-import { ONE, Simulation } from '../../../../src/index.js';
+import { ONE, playerCommand, Simulation } from '../../../../src/index.js';
 import { hexDistance, nodeOfPosition } from '../../../../src/nav/halfcell.js';
 import { createSignpost, signpostNetwork } from '../../../../src/systems/index.js';
 import type { MissionResultOp } from '../../../../src/systems/missions/index.js';
 import { missionObjects, SUCCESSFUL_IF } from '../../../../src/systems/missions/index.js';
+import { MILITARY_MODE } from '../../../../src/systems/readviews/index.js';
+import { createVehicle } from '../../../../src/systems/vehicles/index.js';
+import { ctxOf } from '../../../fixtures/context.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
   FRANK,
@@ -34,6 +47,7 @@ import {
   missionSim,
   PASS_TICKS,
   POINT,
+  runLoadPass,
   SOLDIER,
   scriptedSim,
   spawn,
@@ -66,6 +80,10 @@ function only<T>(items: readonly T[]): T {
 
 /** Two ticks in, a spawned settler has moved into the home its line named. */
 const BOUND = 2;
+const HANDCART = 1;
+const SCOUT = 27;
+/** A scout's short walk to the cart's door, with margin. */
+const BOARD_TICKS = 150;
 
 const SET_HUMAN: Extract<MissionResultOp, { opcode: 'SetHuman' }> = {
   opcode: 'SetHuman',
@@ -454,6 +472,129 @@ describe('the ownership results', () => {
     expect(sim.world.has(moved, Residence)).toBe(false);
   });
 
+  it('ends the marriage of a handed human on both sides and leaves the wife her home', () => {
+    for (const handedIsHusband of [true, false]) {
+      const { sim, moved } = housed([{ opcode: 'ChangeHumanPlayerId', humanId: 77, player: 4 }]);
+      sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: SOLDIER,
+        tribe: VIKING,
+        x: POINT.hx + 4,
+        y: POINT.hy + 2,
+        owner: 2,
+      });
+      sim.step();
+      const stays = only(humansOf(sim, 2).filter((e) => e !== moved));
+      sim.world.add(stays, Residence, { home: sim.world.get(moved, Residence).home });
+      sim.world.add(handedIsHusband ? stays : moved, Female, { female: true });
+      sim.world.add(moved, Marriage, { spouse: stays, child: null });
+      sim.world.add(stays, Marriage, { spouse: moved, child: null });
+      loadPassAfter(sim, 0);
+      expect(sim.world.has(moved, Marriage)).toBe(false);
+      expect(sim.world.has(stays, Marriage)).toBe(false);
+      // Homes anchor on women: a wife left behind keeps hers, a husband left behind does not.
+      expect(sim.world.has(stays, Residence)).toBe(handedIsHusband);
+    }
+  });
+
+  it('frees a handed minor from its parents and a handed trader from its route', () => {
+    const { sim, moved } = housed([{ opcode: 'ChangeHumanPlayerId', humanId: 77, player: 4 }]);
+    spawn(sim, { player: 2, at: { hx: POINT.hx + 4, hy: POINT.hy + 2 }, missionId: 78 });
+    spawn(sim, { player: 2, at: { hx: POINT.hx + 6, hy: POINT.hy + 2 }, missionId: 79 });
+    sim.step();
+    const [mother, father] = [stamped(sim, 78), stamped(sim, 79)];
+    sim.world.add(moved, Age, { ticks: 0, asOf: null });
+    sim.world.add(mother, Marriage, { spouse: father, child: moved });
+    sim.world.add(father, Marriage, { spouse: mother, child: moved });
+    sim.world.add(moved, TradeRoute, {
+      stops: [],
+      current: -1,
+      agreement: -1,
+      given: 0,
+      received: 0,
+      giveKeep: 0,
+      takeUpTo: 0,
+    });
+    // The pin is all the release reads, so a handcart stands in for the route's ship.
+    const pinned = createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: HANDCART,
+      x: POINT.hx + 8,
+      y: POINT.hy + 8,
+      tribe: VIKING,
+      owner: 2,
+    });
+    if (pinned === null) throw new Error('the fixture has no handcart');
+    sim.world.add(moved, TradeShip, { vehicle: pinned, dockRetryAt: 0, failedDock: null, departure: null });
+    sim.world.mut(pinned, Vehicle).hauler = moved;
+    loadPassAfter(sim, 0);
+    expect(sim.world.get(mother, Marriage)).toEqual({ spouse: father, child: null });
+    expect(sim.world.get(father, Marriage)).toEqual({ spouse: mother, child: null });
+    expect(sim.world.has(moved, TradeRoute)).toBe(false);
+    expect(sim.world.has(moved, TradeShip)).toBe(false);
+    expect(sim.world.get(pinned, Vehicle).hauler).toBeNull();
+  });
+
+  /** A player-2 handcart at the point with a player-2 scout, id 77, aboard it. */
+  function crewed(results: readonly MissionResultOp[]): { sim: Simulation; cart: Entity; scout: Entity } {
+    const sim = scriptedSim([firingMission(results)]);
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    const cart = createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: HANDCART,
+      x: POINT.hx,
+      y: POINT.hy,
+      tribe: VIKING,
+      owner: 2,
+    });
+    if (cart === null) throw new Error('the fixture has no handcart');
+    spawn(sim, { player: 2, job: SCOUT, at: { hx: POINT.hx, hy: POINT.hy + 2 }, missionId: 77 });
+    sim.step();
+    const scout = stamped(sim, 77);
+    sim.enqueue(playerCommand(2, { kind: 'attachToVehicle', entity: scout, vehicle: cart }));
+    sim.step();
+    sim.enqueue(playerCommand(2, { kind: 'boardVehicle', entity: scout }));
+    sim.run(BOARD_TICKS);
+    expect(sim.world.has(scout, Position)).toBe(false);
+    return { sim, cart, scout };
+  }
+
+  it('orders a handed human out of a vehicle its old owner keeps', () => {
+    const { sim, cart, scout } = crewed([{ opcode: 'ChangeHumanPlayerId', humanId: 77, player: 4 }]);
+    loadPassAfter(sim, 0);
+    expect(ownerOf(sim.world, scout)).toBe(4);
+    expect(ownerOf(sim.world, cart)).toBe(2);
+    expect(sim.world.has(scout, Rider)).toBe(false);
+    expect(sim.world.has(scout, Position)).toBe(true);
+    expect(sim.world.get(cart, Vehicle).passengers.every((seat) => seat === null)).toBe(true);
+  });
+
+  it('hands a crew aboard with its vehicle when the area takes the vehicle, seats kept', () => {
+    const { sim, cart, scout } = crewed([
+      { opcode: 'ChangePlayerIdInArea', player: 2, otherPlayer: 4, point: POINT, range: 3 },
+    ]);
+    loadPassAfter(sim, 0);
+    expect(ownerOf(sim.world, cart)).toBe(4);
+    expect(ownerOf(sim.world, scout)).toBe(4);
+    expect(sim.world.get(scout, Rider).vehicle).toBe(cart);
+  });
+
+  it('stands a handed fighter down to guard its place, whole nation or not', () => {
+    const lines: MissionResultOp[] = [
+      { opcode: 'ChangeHumanPlayerId', humanId: 77, player: 4 },
+      { opcode: 'ChangePlayerPlayerId', player: 2, otherPlayer: 4 },
+    ];
+    for (const line of lines) {
+      const { sim, moved } = housed([line]);
+      spawn(sim, { player: 5, job: SOLDIER, at: { hx: POINT.hx + 8, hy: POINT.hy }, missionId: 78 });
+      sim.step();
+      const anchorCell = sim.world.get(moved, Stance).anchorCell;
+      sim.world.add(moved, Stance, { mode: MILITARY_MODE.ATTACK, anchorCell });
+      sim.world.add(moved, AttackOrder, { target: stamped(sim, 78) });
+      runLoadPass(sim);
+      expect(sim.world.get(moved, Stance)).toEqual({ mode: MILITARY_MODE.DEFEND, anchorCell });
+      expect(sim.world.has(moved, AttackOrder)).toBe(false);
+    }
+  });
+
   it('leaves the owner store alone when a repeating line hands a house to its own owner', () => {
     const HOUSE_ID = 5;
     const sim = scriptedSim(
@@ -510,6 +651,8 @@ describe('the ownership results', () => {
     sim.run(LOAD_PASS);
     const tamed = [...sim.world.query(Settler)].filter((e) => ownerOf(sim.world, e) === 7);
     expect(tamed).toHaveLength(2);
+    // A tamed animal leaves the wild range it roamed.
+    expect(tamed.some((e) => sim.world.has(e, WildHabitat))).toBe(false);
   });
 });
 
