@@ -114,13 +114,13 @@ const LONG_BOW_VS_BUILDING = 200;
 
 // Extracted per-material columns (`damagevalue <material> <value>`, materials 1..4 are wool, leather,
 // chain, plate; 6 is the vehicle column). The iron spear vs long sword chain/plate flip is the source's own
-// data, not a typo.
+// data, not a typo. The bows' vehicle column is the data pack's: 80% of the extracted 40 and 125.
 const FIST_VS_MATERIALS = { '1': 80, '2': 300, '3': 40, '4': 40, '6': 15 };
 const SPEAR_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 950, '4': 2090, '6': 125 };
 const SWORD_VS_MATERIALS = { '1': 800, '2': 1200, '3': 400, '4': 400, '6': 40 };
 const BROADSWORD_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 2090, '4': 950, '6': 125 };
-const SHORT_BOW_VS_MATERIALS = { '1': 128, '2': 400, '3': 100, '4': 100, '6': 40 };
-const LONG_BOW_VS_MATERIALS = { '1': 448, '2': 560, '3': 360, '4': 360, '6': 125 };
+const SHORT_BOW_VS_MATERIALS = { '1': 128, '2': 400, '3': 100, '4': 100, '6': 32 };
+const LONG_BOW_VS_MATERIALS = { '1': 448, '2': 560, '3': 360, '4': 360, '6': 100 };
 
 export const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, EquipClass> = new Map(
   EQUIP_GOODS.map(({ typeId, id: _id, ...equip }) => [typeId, equip]),
