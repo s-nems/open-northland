@@ -11,6 +11,7 @@ import { createPooled } from '../../../src/gpu/sprite-pool/pooled-entity.js';
 import { sharpenBuildingInterior } from '../../../src/gpu/textures/building-texture-cache.js';
 import * as drawable from '../../../src/gpu/textures/drawable-resource.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
+import { WrittenPageSource } from '../../../src/gpu/textures/written-page-source.js';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -222,6 +223,18 @@ describe('building frame cache', () => {
     expect(cache.isPrescalable(ownBake.source)).toBe(false);
     cache.clear();
     for (const source of [body, silhouette, ownArt]) source.destroy();
+  });
+
+  it('never hands a prescaler a page rewritten in place, even one served as a pixel-art world page', () => {
+    const cache = new TextureCache();
+    const canvas = { width: 64, height: 64 } as unknown as HTMLCanvasElement;
+    const rewritten = new WrittenPageSource(canvas);
+    markPixelArtSource(rewritten);
+    cache.get(rewritten, { ...FRAME });
+    expect(cache.pageSources().has(rewritten)).toBe(true);
+    expect(cache.isPrescalable(rewritten)).toBe(false);
+    cache.clear();
+    rewritten.destroy();
   });
 
   it('caps GPU storage including the mip chain without evicting textures retained by sprites', () => {

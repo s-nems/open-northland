@@ -32,6 +32,7 @@ import {
   registerRecolouredTexture,
 } from './recoloured-pages.js';
 import { SoftShadowCache } from './soft-shadow-cache.js';
+import { WrittenPageSource } from './written-page-source.js';
 
 /**
  * Threshold quantisation step for the per-pixel reveal bakes: the eased reveal walks 0-255 thresholds in
@@ -405,8 +406,9 @@ export class TextureCache {
 
   /** Whether a page prescaler may redraw `source`: a body page loaded as pixel art (never a silhouette
    *  page, and never art a presentation pack loaded with its own sampling) or an enhanced building bake
-   *  cut from such a page. */
+   *  cut from such a page. A page rewritten in place never is: its twin is drawn once. */
   isPrescalable(source: TextureSource): boolean {
+    if (source instanceof WrittenPageSource) return false;
     if (this.pages.has(source)) return !this.shadowPages.has(source) && isPixelArtSource(source);
     return this.buildings.isPixelArtBake(source) || this.groundedEnhanced.isPixelArtBake(source);
   }
