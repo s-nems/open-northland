@@ -8,12 +8,60 @@
     "reason": "Święty olej to olej do lamp i obrzędów, a nie ropa naftowa."
   },
   {
-    "lang": "rus",
+    "lang": "pol",
     "table": "houses",
     "id": 22,
-    "from": "Гончарня 3",
+    "from": "Mur obronny",
+    "to": "Warszt. garncarski 3",
+    "reason": "Budynek 22 to znów garncarnia 3 (decyzja właściciela: garncarnia ma trzy poziomy), a mur, którym zrobił go mod, ma teraz własny typ 56."
+  },
+  {
+    "lang": "eng",
+    "table": "houses",
+    "id": 22,
+    "from": "Defence wall",
+    "to": "Pottery 3",
+    "reason": "Budynek 22 to znów garncarnia 3 (decyzja właściciela: garncarnia ma trzy poziomy), a mur, którym zrobił go mod, ma teraz własny typ 56."
+  },
+  {
+    "lang": "ger",
+    "table": "houses",
+    "id": 22,
+    "from": "Mauer",
+    "to": "Töpferei 3",
+    "reason": "Budynek 22 to znów garncarnia 3 (decyzja właściciela: garncarnia ma trzy poziomy), a mur, którym zrobił go mod, ma teraz własny typ 56."
+  },
+  {
+    "lang": "pol",
+    "table": "houses",
+    "id": 56,
+    "from": null,
+    "to": "Mur obronny",
+    "reason": "Mur obronny ma własny typ 56, którego tablica nie zna; ta sama nazwa, którą mod dał typowi 22."
+  },
+  {
+    "lang": "eng",
+    "table": "houses",
+    "id": 56,
+    "from": null,
+    "to": "Defence wall",
+    "reason": "Mur obronny ma własny typ 56, którego tablica nie zna; ta sama nazwa, którą mod dał typowi 22."
+  },
+  {
+    "lang": "ger",
+    "table": "houses",
+    "id": 56,
+    "from": null,
+    "to": "Mauer",
+    "reason": "Mur obronny ma własny typ 56, którego tablica nie zna; ta sama nazwa, którą mod dał typowi 22."
+  },
+  {
+    "lang": "rus",
+    "table": "houses",
+    "id": 56,
+    "from": null,
     "to": "Стена",
-    "reason": "Budynek 22 to mur obronny (pol \"Mur obronny\", eng \"Defence wall\", ger \"Mauer\"), a nie garncarnia."
+    "reason": "Mur obronny ma własny typ 56, którego tablica nie zna; ta sama nazwa, którą mod dał typowi 22."
   },
   {
     "lang": "rus",
@@ -2226,58 +2274,58 @@
   {
     "lang": "pol",
     "table": "housesHelp",
-    "id": 22,
-    "from": "W warsztacie garncarskim 3, twój wykwalifikowany rzemieślnik używa gliny do wytwarzania naczyń. Naczynia pomagają kobietom w podwojeniu ilości żywności w domu.",
+    "id": 56,
+    "from": null,
     "to": "Mur obronny jest budowany z kamienia i kamiennych bloków. Zagradza wrogom drogę do twojej wioski, ale nie może być obsadzony przez żołnierzy.",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+    "reason": "Opis muru obronnego, który ma teraz własny typ 56, a tablica nie zna tego id; ten sam tekst, który typ 22 miał jako mur."
   },
   {
     "lang": "eng",
     "table": "housesHelp",
-    "id": 22,
-    "from": "In the pottery 3, your skilled craftsmen use clay to make crockery. Crockery helps the women double the amount of food in a house.",
+    "id": 56,
+    "from": null,
     "to": "A defence wall is built from quarrystone and stone. It bars the enemy's way to your village, but it cannot be manned by soldiers.",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+    "reason": "Opis muru obronnego, który ma teraz własny typ 56, a tablica nie zna tego id; ten sam tekst, który typ 22 miał jako mur."
   },
   {
     "lang": "ger",
     "table": "housesHelp",
-    "id": 22,
-    "from": "In der Töpferei 3 ",
-    "to": "Eine Mauer ",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+    "id": 56,
+    "from": null,
+    "to": "Eine Mauer wird aus Bruchstein und Steinblöcken gebaut. Sie versperrt den Feinden den Weg ins Dorf, kann aber nicht mit Soldaten besetzt werden.",
+    "reason": "Opis muru obronnego, który ma teraz własny typ 56, a tablica nie zna tego id; ten sam tekst, który typ 22 miał jako mur."
   },
   {
-    "lang": "ger",
+    "lang": "rus",
     "table": "housesHelp",
-    "id": 22,
-    "from": "Lehm kunstvoll in liebevoller Handarbeit Geschirr geformt ",
-    "to": "Bruchstein ",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
-  },
-  {
-    "lang": "ger",
-    "table": "housesHelp",
-    "id": 22,
-    "from": "gebrannt. Mit Geschirr schmeckt",
-    "to": "Steinblöcken gebaut. Sie versperrt",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
-  },
-  {
-    "lang": "ger",
-    "table": "housesHelp",
-    "id": 22,
-    "from": "Wikingern ihr Essen gleich doppelt so gut und ihr Appetit bleibt längere Zeit gestillt.",
-    "to": "Feinden den Weg ins Dorf, kann aber nicht mit Soldaten besetzt werden.",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+    "id": 56,
+    "from": null,
+    "to": "Стена строится из булыжника и камня. Она преграждает врагам путь к вашей деревне, но в ней нельзя разместить солдат.",
+    "reason": "Opis muru obronnego, który ma teraz własny typ 56, a tablica nie zna tego id; ten sam tekst, który typ 22 miał jako mur."
   },
   {
     "lang": "rus",
     "table": "housesHelp",
     "id": 22,
-    "from": "В гончарной мастерской 3 умелые мастера делают глинянную посуду. Глинянная посуда помогает женщинам удвоить количесто пищи в доме.",
-    "to": "Стена строится из булыжника и камня. Она преграждает врагам путь к вашей деревне, но в ней нельзя разместить солдат.",
-    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+    "from": "глинянную",
+    "to": "глиняную",
+    "reason": "Literówki w opisie garncarni 3, który wraca z typem 22."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 22,
+    "from": "Глинянная",
+    "to": "Глиняная",
+    "reason": "Literówki w opisie garncarni 3, który wraca z typem 22."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 22,
+    "from": "количесто",
+    "to": "количество",
+    "reason": "Literówki w opisie garncarni 3, który wraca z typem 22."
   },
   {
     "lang": "pol",

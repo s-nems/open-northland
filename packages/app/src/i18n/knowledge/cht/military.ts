@@ -604,14 +604,14 @@ export const MILITARY: ArticleGroup = {
           h: '防禦牆',
         },
         {
-          p: '[[building:work_pottery_02|防禦牆]]是普通建築，傷害看「建築」列。士兵把它當木柵欄對待。',
+          p: '[[building:defence_wall|防禦牆]]是普通建築，傷害看「建築」列。士兵把它當木柵欄對待。',
         },
       ],
       see: [
         'article:damage',
         'article:catapult',
         'article:construction',
-        'building:work_pottery_02',
+        'building:defence_wall',
         'good:wood',
       ],
     },

@@ -16,8 +16,8 @@ const { Building, Health } = components;
 const MAP_W = 30;
 const MAP_H = 16;
 const TOWER = { x: 8, y: 8 } as const;
-/** The defence wall's catalog id (`houses.ini` logictype 22). */
-const DEFENCE_WALL = 'work_pottery_02';
+/** The defence wall's catalog id (`house-types` correction, logictype 56). */
+const DEFENCE_WALL = 'defence_wall';
 /** Two walls between the tower and the enemy, nearer to the enemy than the tower, with a gap at the centre. */
 const WALLS: readonly { readonly x: number; readonly y: number }[] = [
   { x: 12, y: 4 },

@@ -1,0 +1,13 @@
+{
+  "reason": "Mapa zabrania graczowi budowy wszystkich trzech poziomów garncarni. Mod dał numer 22 murom obronnym, więc wiersz zakazujący garncarni 3 zakazywał też murów. Mury mają teraz własny numer 56, a dopisany wiersz zostawia je zakazane jak w modzie (oryginał w ogóle nie miał murów).",
+  "file": "campaigns/asgard/campaign_01_01/map.cif",
+  "sha256": "900458c475a7f8a168b537f09fa5b907815d3023adc049b43bf7d43e2da843d9",
+  "format": "cif",
+  "lines": [
+    {
+      "line": 610,
+      "from": "forbidhouse 0 1 22",
+      "to": ["forbidhouse 0 1 22", "forbidhouse 0 1 56"]
+    }
+  ]
+}

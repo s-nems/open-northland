@@ -128,9 +128,9 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // The first potter and mason work alone, so a carrier hauls for them once the builder reserve is full.
   // The upgraded tiers keep one only while their goods run short (SUPPLY_CARRIER_GOODS_BY_BUILDING_ID),
   // except that from the late game the pottery runs one whenever clay is not short (rawGoodShort), since
-  // bricks bottleneck the late bills. The
-  // pottery's second potter is a minimum post, ahead of the builder reserve, while a building material
-  // runs short once the opening run is done, and a surplus post meanwhile, making the crockery.
+  // bricks bottleneck the late bills. An upgraded pottery's second potter is a minimum post, ahead of the
+  // builder reserve, while a building material runs short (the middle tier once its opening run is done).
+  // At the top tier the second and third potters are also surplus posts on crockery until it piles up.
   // Owner ruling: the potter and the mason stay at work until they earn the tiles and the ornaments,
   // since the upper tiers' bills wait on them.
   work_pottery_00: { carrierTarget: 1, keptUntil: TILE, islandMasterUntil: TILE },
@@ -138,10 +138,16 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   work_pottery_01: {
     operatorMin: 2,
     operatorTarget: 2,
-    operatorSurplus: 2,
     productGated: true,
     late: { carrierTarget: 1 },
     keptUntil: TILE,
+  },
+  work_pottery_02: {
+    operatorMin: 2,
+    operatorTarget: 2,
+    operatorSurplus: 3,
+    productGated: true,
+    late: { carrierTarget: 1 },
   },
   work_mason_hut_01: { operatorTarget: 2, productGated: true, keptUntil: ORNAMENT },
   // Owner ruling: each tailor runs a porter at the target tier, as the animal farm does, and a tunic

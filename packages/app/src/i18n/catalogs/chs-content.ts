@@ -65,7 +65,7 @@ export const chsContent = {
     work_sewery_01: '二级裁缝铺',
     work_pottery_00: '一级制陶坊',
     work_pottery_01: '二级制陶坊',
-    work_pottery_02: '防御墙',
+    work_pottery_02: '三级制陶坊',
     work_joinery_00: '一级木匠坊',
     work_joinery_01: '二级木匠坊',
     work_joinery_02: '三级木匠坊',
@@ -100,6 +100,7 @@ export const chsContent = {
     wonder_pyramid_of_gizeh: '胡夫金字塔',
     wonder_8th_wonder: '世界第八奇迹',
     work_murek: '防御墙',
+    defence_wall: '防御墙',
   },
   goods: {
     wood: '木材',

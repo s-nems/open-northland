@@ -435,10 +435,18 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     {
       id: 'materials',
       // Tiles and marble come only from these tiers, and homes, the armory, the upper bakeries and druids and
-      // the mint all wait on them.
+      // the mint all wait on them. Crockery comes only from the top pottery, which unlocks once the potter
+      // has learned it.
       steps: [
         { kind: 'upgrade', building: 'work_pottery_01', count: 1, holdUntil: MATERIAL_TIERS_DUE },
         { kind: 'upgrade', building: 'work_mason_hut_01', count: 1, holdUntil: MATERIAL_TIERS_DUE },
+        {
+          kind: 'upgrade',
+          building: 'work_pottery_02',
+          count: 1,
+          holdUntil: MATERIAL_TIERS_DUE,
+          lockPasses: true,
+        },
       ],
     },
     {

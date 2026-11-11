@@ -1,0 +1,58 @@
+{
+  "reason": "Garncarnia wraca do trzech poziomów jak w oryginale (decyzja właściciela). Garncarnia 2 (typ 21) robi jak w oryginale cegły i dachówki, po 20 w magazynie, bez naczyń. Typ 22 to znów oryginalna garncarnia 3: trzech garncarzy, tragarz i dwóch zbieraczy, cegły, dachówki i naczynia, po 25 w magazynie. Mod zrobił z typu 22 mur, więc mur dostaje nowy typ 56 (\"defence wall\") z tym samym rodzajem budynku.",
+  "file": "rules/types/houses.ini",
+  "sha256": "edd6f0ce2c83011d31a802c2fe531bd863c4fe4eb5e480d852f35341e279c229",
+  "lines": [
+    {
+      "section": "debugname \"work pottery 01\"",
+      "from": "logicstock 24 25 0",
+      "to": "logicstock 24 20 0"
+    },
+    {
+      "section": "debugname \"work pottery 01\"",
+      "from": "logicstock 25 25 0",
+      "to": "logicstock 25 20 0"
+    },
+    {
+      "section": "debugname \"work pottery 01\"",
+      "from": "logicstock 28 25 0",
+      "to": []
+    },
+    {
+      "section": "debugname \"work pottery 01\"",
+      "from": "logicproduction 28",
+      "to": []
+    },
+    {
+      "section": "debugname \"work pottery 02\"",
+      "from": "logicmaintype 5",
+      "to": [
+        "logicmaintype 3",
+        "logicworker 11 3",
+        "logicworker 24 1",
+        "logicworker 8 2",
+        "logicstock 2 10 1",
+        "logicstock 5 10 1",
+        "logicstock 24 25 0",
+        "logicstock 25 25 0",
+        "logicstock 28 25 0",
+        "logicproduction 24",
+        "logicproduction 25",
+        "logicproduction 28"
+      ]
+    },
+    {
+      "section": "debugname \"work murek\"",
+      "from": "debugcolor 0 0 100",
+      "to": [
+        "debugcolor 0 0 100",
+        "",
+        "[logichousetype]",
+        "debugname \"defence wall\"",
+        "logictype 56",
+        "logicmaintype 5",
+        "debugcolor 0 0 100"
+      ]
+    }
+  ]
+}

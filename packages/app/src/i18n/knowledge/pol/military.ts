@@ -633,14 +633,14 @@ export const MILITARY: ArticleGroup = {
           h: 'Mur obronny',
         },
         {
-          p: '[[building:work_pottery_02|Mur obronny]] to zwykły budynek i dostaje obrażenia z kolumny Budynek. Żołnierz traktuje go jak palisadę.',
+          p: '[[building:defence_wall|Mur obronny]] to zwykły budynek i dostaje obrażenia z kolumny Budynek. Żołnierz traktuje go jak palisadę.',
         },
       ],
       see: [
         'article:damage',
         'article:catapult',
         'article:construction',
-        'building:work_pottery_02',
+        'building:defence_wall',
         'good:wood',
       ],
     },

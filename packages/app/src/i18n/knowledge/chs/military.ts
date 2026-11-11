@@ -604,14 +604,14 @@ export const MILITARY: ArticleGroup = {
           h: '防御墙',
         },
         {
-          p: '[[building:work_pottery_02|防御墙]]是普通建筑，伤害看“建筑”列。士兵对待它和木栅栏一样。',
+          p: '[[building:defence_wall|防御墙]]是普通建筑，伤害看“建筑”列。士兵对待它和木栅栏一样。',
         },
       ],
       see: [
         'article:damage',
         'article:catapult',
         'article:construction',
-        'building:work_pottery_02',
+        'building:defence_wall',
         'good:wood',
       ],
     },

@@ -287,6 +287,13 @@ const TRADE_SHIP_SEAT: CraftSeat = { fleet: TRADE_SHIP_ID, cap: COLONY_TRADE_FLE
  *  stocked home eats it beside its food, so no bill or shelf sizes it. */
 export const CROCKERY_GLUT_UNITS = 24;
 
+/** A top-pottery seat on crockery until it lies at {@link CROCKERY_GLUT_UNITS}, then bricks and tiles. */
+const CROCKERY_SEAT: CraftSeat = {
+  goods: ['crockery'],
+  glut: { crockery: CROCKERY_GLUT_UNITS },
+  otherwise: ['brick', 'tile'],
+};
+
 /** The shoes a tailor keeps in stock (authored): every settler wears a pair out, and no bill or shelf sizes
  *  them. */
 export const SHOES_STOCK_UNITS = 24;
@@ -491,14 +498,12 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   // The upgraded joinery's joiners build the carriers' handcarts in turn with iron tools while few stand
   // spare.
   work_joinery_02: { seats: [HANDCART_SEAT], unfed: NO_IRON_SEAT, sparing: WOODEN_TOOLS },
-  // The first potter works bricks and tiles, the second crockery, which doubles a stocked home's food,
-  // until it piles up; a short building material takes the crockery seat, and both potters turn to
-  // crockery while bricks and tiles lie at their glut lines.
-  work_pottery_01: {
-    seats: [
-      ['brick', 'tile'],
-      { goods: ['crockery'], glut: { crockery: CROCKERY_GLUT_UNITS }, otherwise: ['brick', 'tile'] },
-    ],
+  // The middle pottery's two potters work bricks and tiles. At the top tier the second and third work
+  // crockery, which doubles a stocked home's food, until it piles up; a short building material takes the
+  // crockery seats, and every potter turns to crockery while bricks and tiles lie at their glut lines.
+  work_pottery_01: { seats: [['brick', 'tile']] },
+  work_pottery_02: {
+    seats: [['brick', 'tile'], CROCKERY_SEAT, CROCKERY_SEAT],
     alone: ['brick', 'tile'],
     sink: ['crockery'],
   },

@@ -693,7 +693,7 @@ and Frank have a big-ship binding, and the Viking one is the 32-frame `ve_test_s
 still index the 98-frame `LS_vehicles` layout, so its loaded hull (bobs 66..94) has no frame,
 while the Frank one has hulls but no gait; the ox-less cart has records for Viking and Frank only; the handcart's drive reuses
 `vehicles_bullcart_walk`; Byzantine carts and the Saracen ox cart have a wait but no drive. The
-yards' `[GfxHouse]` records have two holes the `houses-graphics` correction fixes: the Egyptian and
+yards' `[GfxHouse]` records have two holes the `houses` correction fixes: the Egyptian and
 Byzantine catapult yards name bob 32 of `CR_Veh_Body_00.bmd`, an ox-cart frame, where the other
 tribes name bob 32 of `ls_vehicles.bmd`, the catapult; every ship yard names `ls_houses_viking_s.bmd`
 as its shadow, whose bob 4 is empty, where `ls_houses_vehicles_s.bmd` holds that bob's shadow. Every

@@ -65,7 +65,7 @@ export const deContent = {
     work_sewery_01: 'Näherei (Stufe 2)',
     work_pottery_00: 'Töpferei (Stufe 1)',
     work_pottery_01: 'Töpferei (Stufe 2)',
-    work_pottery_02: 'Mauer',
+    work_pottery_02: 'Töpferei (Stufe 3)',
     work_joinery_00: 'Schreinerei (Stufe 1)',
     work_joinery_01: 'Schreinerei (Stufe 2)',
     work_joinery_02: 'Schreinerei (Stufe 3)',
@@ -99,6 +99,7 @@ export const deContent = {
     wonder_pyramid_of_gizeh: 'Pyramide',
     wonder_8th_wonder: '8. Wunder',
     work_murek: 'Mauer',
+    defence_wall: 'Mauer',
   },
   goods: {
     wood: 'Holz',

@@ -19,9 +19,9 @@ const MAP_W = 30;
 const MAP_H = 18;
 /** Between the two potteries, where the camera opens, so both are in view. */
 const HQ = { x: 14, y: 6 } as const;
-/** Hired into straight away: three products on offer. */
+/** Hired into straight away: bricks and tiles on offer. */
 const HIRED_POTTERY = { x: 6, y: 6 } as const;
-/** Hired into while it makes bricks alone, then upgraded to the three-product tier. */
+/** Hired into while it makes bricks alone, then upgraded to the tier that adds tiles. */
 const UPGRADED_POTTERY = { x: 22, y: 6 } as const;
 const HIRE_POTTER = { x: 4, y: 12 } as const;
 const UPGRADE_POTTER = { x: 20, y: 12 } as const;
@@ -99,7 +99,7 @@ export const workshopProductsScene: SceneDefinition = {
   initialZoom: INITIAL_ZOOM,
   checks: [
     {
-      label: 'a potter hired into the three-product pottery makes only bricks, its first product',
+      label: 'a potter hired into the two-product pottery makes only bricks, its first product',
       predicate: (sim) => makesOnlyBricks(sim, potterOf(sim, potteries(sim)[0])),
     },
     {

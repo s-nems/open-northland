@@ -141,12 +141,16 @@ export const BUILDING_LANES: readonly Lane[] = [
       t('work_coin_mint'),
     ],
   },
-  { id: 'clay', unlockedBy: 'potter', roots: [t('work_pottery_00', t('work_pottery_01'))] },
+  {
+    id: 'clay',
+    unlockedBy: 'potter',
+    roots: [t('work_pottery_00', t('work_pottery_01', t('work_pottery_02')))],
+  },
   { id: 'stone', unlockedBy: 'mason', roots: [t('work_mason_hut_00', t('work_mason_hut_01'))] },
   { id: 'iron', unlockedBy: 'smith', roots: [t('work_smithy_00', t('work_smithy_01'))] },
   {
     id: 'militaryLearning',
-    roots: [t('barracks'), t('school'), t('tower_00', t('tower_01')), t('work_pottery_02')],
+    roots: [t('barracks'), t('school'), t('tower_00', t('tower_01')), t('defence_wall')],
   },
 ];
 

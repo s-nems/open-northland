@@ -338,7 +338,7 @@ export function aiContent(): ContentSet {
       },
       {
         typeId: 16,
-        id: 'work_pottery_02',
+        id: 'defence_wall',
         kind: 'tower',
         construction: [{ goodType: 1, amount: 2 }],
       },

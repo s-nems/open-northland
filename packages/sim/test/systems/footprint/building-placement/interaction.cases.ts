@@ -63,7 +63,7 @@ describe('door cell - settlers interact with a house at its entry point', () => 
 });
 
 describe('wall gate - a door listed inside the walls stays walkable', () => {
-  // The real data's defence wall (`work_pottery_02`, the "Mur" records) puts its LogicDoorPoint
+  // The real data's defence wall (`defence_wall`, the "Mur" records) puts its LogicDoorPoint
   // INSIDE its own LogicWalkBlockArea: the door IS the wall's passable gate. Without the carve-out
   // a walk-to-door goal would be a blocked cell → findPath fails → the request is never re-issued →
   // the settler wedges forever. Pinned here on a synthetic gate fixture of the same shape.

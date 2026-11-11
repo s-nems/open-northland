@@ -1,0 +1,13 @@
+{
+  "reason": "Mapa zabrania graczowi budowy wszystkich trzech poziomów garncarni. Mod dał numer 22 murom obronnym, więc wiersz zakazujący garncarni 3 zakazywał też murów. Mury mają teraz własny numer 56, a dopisany wiersz zostawia je zakazane jak w modzie (oryginał w ogóle nie miał murów).",
+  "file": "maps/community/tutorial_006/map.cif",
+  "sha256": "b3836b1a110fbb2a7d35000dbf5d9638cba13de0c688b058dbe0738093a2c8b2",
+  "format": "cif",
+  "lines": [
+    {
+      "line": 929,
+      "from": "forbidhouse 0 1 22",
+      "to": ["forbidhouse 0 1 22", "forbidhouse 0 1 56"]
+    }
+  ]
+}

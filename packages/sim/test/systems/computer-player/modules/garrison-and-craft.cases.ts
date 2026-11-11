@@ -518,10 +518,10 @@ function joineryRecastAs(id: string, products: readonly { typeId: number; id: st
   });
 }
 
-/** The fixture joinery recast as the upgraded pottery, whose own bill takes bricks and tiles so both carry
+/** The fixture joinery recast as the top pottery, whose own bill takes bricks and tiles so both carry
  *  supply lines. */
 function potteryContent(): ContentSet {
-  const recast = joineryRecastAs('work_pottery_01', [
+  const recast = joineryRecastAs('work_pottery_02', [
     { typeId: BRICK, id: 'brick' },
     { typeId: TILE, id: 'tile' },
     { typeId: CROCKERY, id: 'crockery' },
@@ -2039,14 +2039,10 @@ describe('workforce module - the barracks and craft selections', () => {
     return wood;
   }
 
-  /** One pottery past its opening run with both potters hired, deciding at `tick`; the bricks' lines then. */
+  /** One top pottery with two potters hired, deciding at `tick`; the bricks' lines then. */
   function crewedPottery(tick: number) {
     const content = potteryContent();
     const pottery = crewedWorkshops(content, 1, 2, tick);
-    const [building] = pottery.buildings;
-    const run = CRAFT_OPENING_RUN_BY_BUILDING_ID.work_pottery_01?.cycles ?? 0;
-    if (building === undefined) throw new Error('setup: no pottery');
-    pottery.sim.world.add(building, CompletedCycles, { byGood: new Map([[TILE, run]]) });
     pottery.hire(0, 2);
     const bricks = supplyLines(content, DEFAULT_BUILD_ORDER, gamePhase(tick)).get(BRICK);
     const tiles = supplyLines(content, DEFAULT_BUILD_ORDER, gamePhase(tick)).get(TILE);

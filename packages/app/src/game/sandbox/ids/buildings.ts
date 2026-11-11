@@ -22,9 +22,10 @@ export const BUILDING_BAKERY = 14;
 export const BUILDING_ANIMAL_FARM = 17;
 /** The tailor / clothier (`work_sewery_00`). */
 export const BUILDING_TAILOR = 18;
-/** The pottery (`work_pottery_00`). */
+/** The pottery's three levels (`work_pottery_00/01/02`); only the top one fires crockery. */
 export const BUILDING_POTTERY = 20;
 export const BUILDING_POTTERY_01 = 21;
+export const BUILDING_POTTERY_02 = 22;
 /** The joinery's four levels (`work_joinery_00/01/02/03`). */
 export const BUILDING_JOINERY = 23;
 export const BUILDING_JOINERY_01 = 24;

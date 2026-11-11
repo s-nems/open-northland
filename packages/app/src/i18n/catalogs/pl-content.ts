@@ -65,7 +65,7 @@ export const plContent = {
     work_sewery_01: 'Zakład krawiecki (poziom 2)',
     work_pottery_00: 'Warsztat garncarski (poziom 1)',
     work_pottery_01: 'Warsztat garncarski (poziom 2)',
-    work_pottery_02: 'Mur obronny',
+    work_pottery_02: 'Warsztat garncarski (poziom 3)',
     work_joinery_00: 'Warsztat ciesielski (poziom 1)',
     work_joinery_01: 'Warsztat ciesielski (poziom 2)',
     work_joinery_02: 'Warsztat ciesielski (poziom 3)',
@@ -99,6 +99,7 @@ export const plContent = {
     wonder_pyramid_of_gizeh: 'Piramida',
     wonder_8th_wonder: '8. Cud',
     work_murek: 'Mur obronny',
+    defence_wall: 'Mur obronny',
   },
   goods: {
     wood: 'Drewno',

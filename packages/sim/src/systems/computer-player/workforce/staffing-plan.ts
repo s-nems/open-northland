@@ -71,6 +71,7 @@ function trainingStaffing(tick: number): BuildingStaffing {
  *  line and kept until every one reaches its comfort line ({@link SeatSupply}). */
 export const SUPPLY_CARRIER_GOODS_BY_BUILDING_ID: Readonly<Record<string, readonly string[]>> = {
   work_pottery_01: ['brick', 'tile'],
+  work_pottery_02: ['brick', 'tile'],
   work_mason_hut_01: ['pillar', 'ornament'],
 };
 

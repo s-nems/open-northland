@@ -11,9 +11,9 @@ import { TERRAIN_OPEN } from './terrain.js';
  * `canEnableDefenceMode` are transcribed verbatim from `ir.json`'s `buildings`; `label` is the English
  * catalog's name. Level suffixes are 1-based for the player even though the ids stay 0-indexed.
  *
- * Scope is the 41 real viking buildings (`typeId` 1..41), every one with a decoded bob. `work_murek`
- * (typeId 55) is omitted because the mod binds no viking bob for it, so it would draw the fallback house.
- * Vehicles (42..46) and wonders (47..54) are not buildings.
+ * Scope is the 41 real viking buildings (`typeId` 1..41) and the defence wall (56), every one with a
+ * decoded bob. `work_murek` (typeId 55) is omitted because the mod binds no viking bob for it, so it would
+ * draw the fallback house. Vehicles (42..46) and wonders (47..54) are not buildings.
  */
 
 /** The viking `[GfxHouse]` `LogicTribeType`, the tribe every building here belongs to. */
@@ -85,9 +85,7 @@ export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
   { typeId: 19, id: 'work_sewery_01', label: "Tailor's Workshop 2", kind: 'workplace' },
   { typeId: 20, id: 'work_pottery_00', label: 'Pottery 1', kind: 'workplace' },
   { typeId: 21, id: 'work_pottery_01', label: 'Pottery 2', kind: 'workplace' },
-  // typeId 22 is a defence wall, not a pottery: `work_pottery_02` is a pipeline naming artifact, while
-  // the mod binds the wall bob (`mur.bmd`) to it, matching the original's eng string 22 "Defence wall".
-  { typeId: 22, id: 'work_pottery_02', label: 'Defence wall', kind: 'tower' },
+  { typeId: 22, id: 'work_pottery_02', label: 'Pottery 3', kind: 'workplace' },
   { typeId: 23, id: 'work_joinery_00', label: "Carpenter's Shop 1", kind: 'workplace' },
   { typeId: 24, id: 'work_joinery_01', label: "Carpenter's Shop 2", kind: 'workplace' },
   { typeId: 25, id: 'work_joinery_02', label: "Carpenter's Shop 3", kind: 'workplace' },
@@ -107,6 +105,7 @@ export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
   { typeId: 39, id: 'barracks', label: 'Barracks', kind: 'training', canEnableDefenceMode: true },
   { typeId: 40, id: 'tower_00', label: 'Defence Tower 1', kind: 'tower', canEnableDefenceMode: true },
   { typeId: 41, id: 'tower_01', label: 'Defence Tower 2', kind: 'tower', canEnableDefenceMode: true },
+  { typeId: 56, id: 'defence_wall', label: 'Defence wall', kind: 'tower' },
 ];
 
 const BY_TYPE_ID: ReadonlyMap<number, VikingBuilding> = new Map(VIKING_BUILDINGS.map((b) => [b.typeId, b]));

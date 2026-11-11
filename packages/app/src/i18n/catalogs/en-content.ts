@@ -65,7 +65,7 @@ export const enContent = {
     work_sewery_01: "Tailor's Workshop 2",
     work_pottery_00: 'Pottery 1',
     work_pottery_01: 'Pottery 2',
-    work_pottery_02: 'Defence wall',
+    work_pottery_02: 'Pottery 3',
     work_joinery_00: "Carpenter's Shop 1",
     work_joinery_01: "Carpenter's Shop 2",
     work_joinery_02: "Carpenter's Shop 3",
@@ -100,6 +100,7 @@ export const enContent = {
     wonder_pyramid_of_gizeh: 'Pyramid',
     wonder_8th_wonder: '8th Wonder',
     work_murek: 'Defence wall',
+    defence_wall: 'Defence wall',
   },
   goods: {
     wood: 'Wood',

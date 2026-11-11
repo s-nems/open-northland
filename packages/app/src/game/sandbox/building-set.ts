@@ -24,6 +24,7 @@ import {
   BUILDING_OXCART_YARD,
   BUILDING_POTTERY,
   BUILDING_POTTERY_01,
+  BUILDING_POTTERY_02,
   BUILDING_SHIP_BIG_YARD,
   BUILDING_SHIP_SMALL_YARD,
   BUILDING_WAREHOUSE_00,
@@ -474,7 +475,8 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     [GOOD_HANDCART, GOOD_OXCART, GOOD_SHIP_SMALL, GOOD_CATAPULT],
     [{ goodType: GOOD_LEATHER, capacity: JOINERY_03_LEATHER_CAPACITY, initial: 0 }],
   ),
-  // Extracted `work pottery 00/01`: the upgrade keeps bricks, adds tiles, and unlocks crockery.
+  // Extracted `work pottery 00/01/02`: each upgrade keeps the products below it and adds tiles, then
+  // crockery.
   [BUILDING_POTTERY]: {
     stock: [
       { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
@@ -485,6 +487,16 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     recipes: [potteryRecipe(GOOD_BRICK, 1, 1)],
   },
   [BUILDING_POTTERY_01]: {
+    stock: [
+      { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_WOOD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_BRICK, capacity: 20, initial: 0 },
+      { goodType: GOOD_TILE, capacity: 20, initial: 0 },
+    ],
+    produces: [GOOD_BRICK, GOOD_TILE],
+    recipes: [potteryRecipe(GOOD_BRICK, 1, 1), potteryRecipe(GOOD_TILE, 2, 1)],
+  },
+  [BUILDING_POTTERY_02]: {
     stock: [
       { goodType: GOOD_MUD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },
       { goodType: GOOD_WOOD, capacity: CRAFT_INPUT_CAPACITY, initial: 0 },

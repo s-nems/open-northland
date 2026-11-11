@@ -637,14 +637,14 @@ export const MILITARY: ArticleGroup = {
           h: 'Defence wall',
         },
         {
-          p: 'The [[building:work_pottery_02|Defence wall]] is an ordinary building and takes damage from the Building column. A soldier treats it like a stockade.',
+          p: 'The [[building:defence_wall|Defence wall]] is an ordinary building and takes damage from the Building column. A soldier treats it like a stockade.',
         },
       ],
       see: [
         'article:damage',
         'article:catapult',
         'article:construction',
-        'building:work_pottery_02',
+        'building:defence_wall',
         'good:wood',
       ],
     },

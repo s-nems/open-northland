@@ -143,6 +143,11 @@ export const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: 
       { jobType: JOB_CARRIER, count: 1 },
       { jobType: JOB_COLLECTOR, count: 2 },
     ], // work_pottery_01
+    22: [
+      { jobType: JOB_POTTER, count: 3 },
+      { jobType: JOB_CARRIER, count: 1 },
+      { jobType: JOB_COLLECTOR, count: 2 },
+    ], // work_pottery_02
     23: [
       { jobType: JOB_JOINER, count: 1 },
       { jobType: JOB_CARRIER, count: 1 },

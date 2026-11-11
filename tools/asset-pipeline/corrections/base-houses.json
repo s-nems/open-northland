@@ -1,0 +1,23 @@
+{
+  "reason": "Garncarnia wikingów bierze oryginalny trzypoziomowy rekord z bazowej tabeli gry (korekta houses usuwa modowy). Punkty życia zostają na skali moda: poziom 1 stoi na mniejszym budynku (obrazek 0) niż modowy poziom 1 (obrazek 10), więc dostaje 13/15 modowych 35000 (proporcja oryginału między tymi dwoma budynkami), zaokrąglone do tysiąca: 30000; poziomy 2 i 3 mają 45000 jak w modzie.",
+  "file": "Data/engine2d/inis/houses/houses.cif",
+  "sha256": "f3f31ed43411c3a48c2636506aef93fa4312ed130f50de0a1061c19bb90e606d",
+  "format": "cif",
+  "lines": [
+    {
+      "line": 2819,
+      "from": "logichitpoints 0 13000",
+      "to": "logichitpoints 0 30000"
+    },
+    {
+      "line": 2820,
+      "from": "logichitpoints 1 15000",
+      "to": "logichitpoints 1 45000"
+    },
+    {
+      "line": 2821,
+      "from": "logichitpoints 2 20000",
+      "to": "logichitpoints 2 45000"
+    }
+  ]
+}

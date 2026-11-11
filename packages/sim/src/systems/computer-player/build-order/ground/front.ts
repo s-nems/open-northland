@@ -16,8 +16,7 @@ import {
 } from '../../military/deadline.js';
 import { nearestEnemyBuilding } from '../../sea-route.js';
 
-/** Covering towers are an id allowlist, not `kind === 'tower'`: `work_pottery_02` shares the kind but
- *  is the defence wall. */
+/** Covering towers are an id allowlist, not `kind === 'tower'`: the defence wall shares the kind. */
 export const TOWER_CONTENT_IDS: readonly string[] = ['tower_00', 'tower_01'];
 
 /** How far ahead of the seat's base its tower line stands toward the attacks, in world-metric nodes

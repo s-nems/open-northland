@@ -9,7 +9,7 @@ import {
   BUILDING_HOME_01,
   BUILDING_HOME_02,
   BUILDING_JOINERY_01,
-  BUILDING_POTTERY_01,
+  BUILDING_POTTERY_02,
   placeBuiltSandboxBuilding,
   spawnSettlerDirect,
   spawnWorkersAtDoor,
@@ -39,7 +39,7 @@ function quality(sim: Simulation, effect: 'cooking' | 'rest' | 'piety'): number 
 }
 
 function build(sim: Simulation): void {
-  const potteryEntity = placeBuiltSandboxBuilding(sim, BUILDING_POTTERY_01, POTTERY.x, POTTERY.y);
+  const potteryEntity = placeBuiltSandboxBuilding(sim, BUILDING_POTTERY_02, POTTERY.x, POTTERY.y);
   const joineryEntity = placeBuiltSandboxBuilding(sim, BUILDING_JOINERY_01, JOINERY.x, JOINERY.y);
   const druidEntity = placeBuiltSandboxBuilding(sim, BUILDING_DRUID_HUT, DRUID_HUT.x, DRUID_HUT.y);
   placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, HOME_1.x, HOME_1.y);
@@ -78,9 +78,9 @@ export const householdGoodsScene: SceneDefinition = {
   progression: false,
   checks: [
     {
-      label: 'the upgraded pottery fired crockery from clay and wood',
+      label: 'the top-level pottery fired crockery from clay and wood',
       predicate: (sim) =>
-        buildingStock(sim, BUILDING_POTTERY_01, 'crockery') > 0 || quality(sim, 'cooking') > 0,
+        buildingStock(sim, BUILDING_POTTERY_02, 'crockery') > 0 || quality(sim, 'cooking') > 0,
     },
     {
       label: 'the upgraded joinery made furniture from two wood',

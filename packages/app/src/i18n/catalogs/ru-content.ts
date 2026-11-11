@@ -65,7 +65,7 @@ export const ruContent = {
     work_sewery_01: 'Мастерская портного (уровень 2)',
     work_pottery_00: 'Гончарня (уровень 1)',
     work_pottery_01: 'Гончарня (уровень 2)',
-    work_pottery_02: 'Стена',
+    work_pottery_02: 'Гончарня (уровень 3)',
     work_joinery_00: 'Столярная мастерская (уровень 1)',
     work_joinery_01: 'Столярная мастерская (уровень 2)',
     work_joinery_02: 'Столярная мастерская (уровень 3)',
@@ -99,6 +99,7 @@ export const ruContent = {
     wonder_pyramid_of_gizeh: 'Пирамида',
     wonder_8th_wonder: '8-е чудо',
     work_murek: 'Стена',
+    defence_wall: 'Стена',
   },
   goods: {
     wood: 'Дерево',

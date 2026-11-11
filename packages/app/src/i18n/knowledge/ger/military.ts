@@ -637,14 +637,14 @@ export const MILITARY: ArticleGroup = {
           h: 'Mauer',
         },
         {
-          p: 'Die [[building:work_pottery_02|Mauer]] ist ein normales Gebäude und bekommt Schaden aus der Spalte Gebäude. Ein Soldat behandelt sie wie eine Palisade.',
+          p: 'Die [[building:defence_wall|Mauer]] ist ein normales Gebäude und bekommt Schaden aus der Spalte Gebäude. Ein Soldat behandelt sie wie eine Palisade.',
         },
       ],
       see: [
         'article:damage',
         'article:catapult',
         'article:construction',
-        'building:work_pottery_02',
+        'building:defence_wall',
         'good:wood',
       ],
     },

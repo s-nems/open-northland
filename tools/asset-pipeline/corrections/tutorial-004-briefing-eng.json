@@ -1,5 +1,5 @@
 {
-  "reason": "U nas przycisk rozbudowy w panelu budynku nazywa się ROZBUDUJ (skrót R) i jest widoczny zawsze; nieaktywny, dopóki ludzie nie zdobędą potrzebnej wiedzy, a materiały na rozbudowę donoszą się dopiero po jej rozpoczęciu (plac budowy dla budowniczych), nie trzeba ich mieć wcześniej. Wyrób wybiera się przyciskiem towaru w sekcji PRODUKCJA panelu osadnika, nie w zakładce PRODUKT/PRACA. Poprawione są też błędy gramatyczne, literówki i nazwy wyrobów. Naczynia powstają już w warsztacie garncarskim 2. Strona i cel uczą wyboru naczyń w sekcji PRODUKCJA i wyprodukowania przynajmniej jednej sztuki, zamiast niedostępnej kolejnej rozbudowy.",
+  "reason": "U nas przycisk rozbudowy w panelu budynku nazywa się ROZBUDUJ (skrót R) i jest widoczny zawsze; nieaktywny, dopóki ludzie nie zdobędą potrzebnej wiedzy, a materiały na rozbudowę donoszą się dopiero po jej rozpoczęciu (plac budowy dla budowniczych), nie trzeba ich mieć wcześniej. Wyrób wybiera się przyciskiem towaru w sekcji PRODUKCJA panelu osadnika, nie w zakładce PRODUKT/PRACA. Poprawione są też błędy gramatyczne, literówki i nazwy wyrobów.",
   "file": "maps/community/tutorial_004/text/eng/briefings/briefings.txt",
   "sha256": "05fc6b270d2748736f84024658cdcc59c53043fd943d2c70f8c119a4813867f5",
   "encoding": "windows-1250",
@@ -10,7 +10,7 @@
     },
     {
       "from": "Upgrade the POTTERY 2! To do so, click on the pottery to open its building display. Click on the button \"START UPGRADE\". This button will only appear if all the goods required for the upgrade are available.",
-      "to": "If the pottery is not yet level 2, finish upgrading it first. Select the potter working in POTTERY 2 and click the enabled crockery button in the PRODUCTION section of his panel. Produce at least one unit of crockery!"
+      "to": "Upgrade the POTTERY 2! To do so, click on the pottery to open its building display. Click on the button \"UPGRADE\" (or press R). This button only becomes active once your people have gained the required knowledge. The goods required for the upgrade are then brought to the site, and your builders carry out the upgrade."
     },
     {
       "from": "Upgrade the STONEMASON'S WORKSHOP! To do so, click on the stonemason's workshop to open its building display. Click on the button \"START UPGRADE\". This button will only appear if all the goods required for the upgrade are available.",
@@ -59,14 +59,6 @@
     {
       "from": "Now you have upgraded your tailor's workshop, but the tailor doesn't know that he is supposed to produce leather armours instead of shoes ...",
       "to": "Now you have upgraded your tailor's workshop, but the tailor doesn't know that he is supposed to produce leather armour instead of shoes ..."
-    },
-    {
-      "from": "UPGRADE THE POTTERY 2",
-      "to": "CROCKERY PRODUCTION"
-    },
-    {
-      "from": "The potter has gained enough experience at making tiles to produce crockery. This requires you to upgrade the pottery once more. ",
-      "to": "The potter now has enough experience to produce crockery. He makes crockery in pottery 2. "
     }
   ]
 }

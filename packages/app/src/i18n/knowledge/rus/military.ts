@@ -641,14 +641,14 @@ export const MILITARY: ArticleGroup = {
           h: 'Стена',
         },
         {
-          p: '[[building:work_pottery_02|Стена]] это обычное здание, урон по ней берётся из столбца Здание. Солдат относится к ней как к частоколу.',
+          p: '[[building:defence_wall|Стена]] это обычное здание, урон по ней берётся из столбца Здание. Солдат относится к ней как к частоколу.',
         },
       ],
       see: [
         'article:damage',
         'article:catapult',
         'article:construction',
-        'building:work_pottery_02',
+        'building:defence_wall',
         'good:wood',
       ],
     },

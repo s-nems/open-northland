@@ -1,19 +1,9 @@
 {
-  "reason": "Samouczek nadal wymaga trzeciego warsztatu garncarskiego, choć w paczce typ 22 jest murem, a warsztat typu 21 już wytwarza naczynia. Cel ogólny wymaga drugiego poziomu i przynajmniej jednego naczynia, a osobny etap sprawdza naczynia zamiast nieistniejącego ulepszenia. Etap wózków ręcznych liczył wózki w zapasach domów, a gotowy wózek stoi przy warsztacie jako pojazd i nigdy nie trafia do zapasów, więc cel nie mógł się spełnić; teraz liczy wózki ręczne gracza jako pojazdy.",
+  "reason": "Etap wózków ręcznych liczył wózki w zapasach domów, a gotowy wózek stoi przy warsztacie jako pojazd i nigdy nie trafia do zapasów, więc cel nie mógł się spełnić; teraz liczy wózki ręczne gracza jako pojazdy.",
   "file": "maps/community/tutorial_004/map.cif",
   "sha256": "b4c7359b54127e43b8d7187fbcf82760a4b21fa90fb590ff58bfd0119caa35a8",
   "format": "cif",
   "lines": [
-    {
-      "line": 19,
-      "from": "goal \"BuildHouses\" 0 \"work pottery 02\" 1 0",
-      "to": ["goal \"BuildHouses\" 0 \"work pottery 01\" 1 0", "goal \"GoodsGlobal\" 0 \"crockery\" 1"]
-    },
-    {
-      "line": 178,
-      "from": "goal \"BuildHouses\" 0 \"work pottery 02\" 1 0",
-      "to": "goal \"GoodsGlobal\" 0 \"crockery\" 1"
-    },
     {
       "line": 205,
       "from": "goal \"GoodsGlobal\" 0 \"handcart\" 1",
