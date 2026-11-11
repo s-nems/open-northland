@@ -24,14 +24,22 @@ textarea:disabled {
   cursor: var(--cursor-not-allowed, not-allowed);
 }
 
-:root[data-cursor-button="primary"] {
+/* The held button marks only the element under the pointer (held-button.ts). Its own default and
+   selection cursors turn through the variables; one that inherits the default cursor takes the rule
+   below, whose zero specificity yields to any cursor the element declares itself. */
+[data-cursor-button="primary"] {
   --cursor-default: var(--cursor-pressed, default);
   --cursor-select: var(--cursor-pressed, default);
 }
 
-:root[data-cursor-button="secondary"] {
+[data-cursor-button="secondary"] {
   --cursor-default: var(--cursor-command, default);
   --cursor-select: var(--cursor-command, default);
+}
+
+/* Elements the browser gives a cursor of its own keep it, as they do without a held button. */
+:where([data-cursor-inherits]:not(a, button, input, select, textarea, label, summary, option)) {
+  cursor: var(--cursor-default, default);
 }
 
 canvas[data-cursor-hover] {

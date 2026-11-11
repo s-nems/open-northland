@@ -1,5 +1,6 @@
 import { diag } from '../../diag/index.js';
 import { onStoredSettingsChange, readStoredSettings } from '../settings/store.js';
+import { createHeldButtonMark, heldButton } from './held-button.js';
 import { CURSOR_HOTSPOTS } from './hotspots.js';
 import {
   type ArtCursorTheme,
@@ -67,16 +68,16 @@ export function installCursorTheme(): () => void {
     }
   };
   const scope = new AbortController();
-  const reset = (): void => {
-    delete root.dataset.cursorButton;
-  };
+  const mark = createHeldButtonMark({
+    body: () => document.body,
+    cursorOf: (element) => getComputedStyle(element).cursor,
+  });
+  const reset = (): void => mark.set(null, null);
   const buttons = (event: PointerEvent): void => {
     if (event.pointerType !== 'mouse') return;
-    const next = (event.buttons & 2) !== 0 ? 'secondary' : (event.buttons & 1) !== 0 ? 'primary' : undefined;
-    if (next === undefined) reset();
-    else if (root.dataset.cursorButton !== next) root.dataset.cursorButton = next;
+    mark.set(event.target instanceof Element ? event.target : null, heldButton(event.buttons));
   };
-  for (const name of ['pointerdown', 'pointerup', 'pointerover'] as const) {
+  for (const name of ['pointerdown', 'pointerup', 'pointerover', 'gotpointercapture'] as const) {
     window.addEventListener(name, buttons, { capture: true, signal: scope.signal });
   }
   window.addEventListener('blur', reset, { signal: scope.signal });
