@@ -89,9 +89,13 @@ const reviewedBinaryAssets = new Set([
   // https://opengameart.org/node/20947, converted from the author's MP3; notice in
   // packages/app/public/licenses/THIRD-PARTY-NOTICES.txt.
   'packages/app/public/audio/colossal-boss-battle.ogg',
-  // The Byzantine mace blow: "bing1.wav" from "Metal Impact Sounds" by BMacZero, CC0, from
-  // https://opengameart.org/node/118334, trimmed, 13 dB lower as Ogg Opus; notice in THIRD-PARTY-NOTICES.txt.
-  'packages/app/public/audio/mace-hit.ogg',
+  // The Byzantine mace blows: "bing1.wav" (as is and 4 semitones lower), "clink1.wav" and "clink2.wav"
+  // from "Metal Impact Sounds" by BMacZero, CC0, from https://opengameart.org/node/118334, trimmed and
+  // levelled as Ogg Opus; notice in packages/app/public/licenses/THIRD-PARTY-NOTICES.txt.
+  'packages/app/public/audio/mace-hit-1.ogg',
+  'packages/app/public/audio/mace-hit-2.ogg',
+  'packages/app/public/audio/mace-hit-3.ogg',
+  'packages/app/public/audio/mace-hit-4.ogg',
   // Original OpenNorthland branding (commissioned art, no original-game material). The masters live
   // in tools/brand/source; `npm run brand` derives the rest, including the README logo above. The
   // Open Graph image and the manifest screenshot also use docs/images/settlement.webp, a capture of

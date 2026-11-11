@@ -52,10 +52,12 @@ Colossal Boss Battle Theme (the music of a siege attack, audio/colossal-boss-bat
   Source: https://opengameart.org/node/20947
   Modified: converted from the author's MP3 to Ogg Vorbis and lowered by 3 dB.
 
-Mace blow (the Byzantine long-sword soldier's hit, audio/mace-hit.ogg)
-  "bing1.wav" from "Metal Impact Sounds" by BMacZero, dedicated to the public domain under
-  Creative Commons CC0 1.0 Universal, https://creativecommons.org/publicdomain/zero/1.0/.
+Mace blows (the Byzantine long-sword soldier's hit, audio/mace-hit-1.ogg to audio/mace-hit-4.ogg)
+  "bing1.wav", "clink1.wav" and "clink2.wav" from "Metal Impact Sounds" by BMacZero, dedicated to the
+  public domain under Creative Commons CC0 1.0 Universal,
+  https://creativecommons.org/publicdomain/zero/1.0/.
   Source: https://opengameart.org/node/118334
-  Modified: trimmed of its 30 ms lead-in, lowered by 13 dB and encoded as Ogg Opus.
+  Modified: each trimmed to start at its strike, levelled to one loudness and encoded as Ogg Opus;
+  mace-hit-2.ogg is bing1.wav four semitones lower.
 
 The bundled fonts carry their own licenses beside them, under /fonts/ in the same bundle.
