@@ -4,6 +4,7 @@ import {
   Age,
   addCurrentAtomic,
   Building,
+  HomeQuality,
   Position,
   Residence,
   Resting,
@@ -40,6 +41,8 @@ const MEAL = 4000;
 const NAP = 8000;
 /** What being at home multiplies a meal by. */
 const AT_HOME_FACTOR = 2;
+/** A home's stored furniture, in quality points. */
+const FURNISHED_POOL = 1000;
 
 /** A house type with its door one half-cell node east of its anchor, so the doorstep is not the anchor. */
 const HOUSE_TYPE = 97;
@@ -106,7 +109,7 @@ function residentAt(
   const p = sim.world.mut(e, Position);
   p.x = at.x;
   p.y = at.y;
-  if (home !== undefined) sim.world.add(e, Residence, { home });
+  if (home !== undefined) sim.world.add(e, Residence, { home, since: 0 });
   return e;
 }
 
@@ -225,9 +228,10 @@ describe('atomic need events - at the settler own home', () => {
     expect(needsOf(sim, resident).hunger).toBe(fx.sub(ONE, needBar(MEAL * AT_HOME_FACTOR)));
   });
 
-  it('counts the whole nap at home, and doubles nothing without furniture', () => {
+  it('counts the whole nap at home, a furnished home no more', () => {
     const sim = new Simulation({ seed: 1, content: houseContent(), map: grassNodeMap(32, 20) });
     const { house, door } = houseAt(sim);
+    sim.world.add(house, HomeQuality, { cooking: 0, lodging: FURNISHED_POOL, piety: 0 });
     const resident = residentAt(sim, door, { fatigue: ONE }, house);
     sim.world.add(resident, Resting, { at: house });
 

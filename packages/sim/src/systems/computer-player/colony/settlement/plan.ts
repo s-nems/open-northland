@@ -11,6 +11,7 @@ import type { Entity } from '../../../../ecs/world.js';
 import { buildingTypeByContentId } from '../../../ai-shared/content-lookup.js';
 import { isBuilt } from '../../../ai-shared/seat-roster.js';
 import { isAdultSettler } from '../../../family/eligibility.js';
+import { homeFamilyCapacity } from '../../../family/home-quality.js';
 import { familyCountOf } from '../../../family/households.js';
 import { ROOM_HOME_BUILDING } from '../../build-order/ground/room.js';
 import { topEnabledTier } from '../../top-tier.js';
@@ -107,7 +108,7 @@ export function billsOf(env: ColonyEnv, plan: readonly string[]): Map<number, nu
   return bills;
 }
 
-/** The family slots of the colony's homes, sites included, and those families fill. */
+/** The family slots of the colony's homes, sites included at their base size, and those families fill. */
 export function homeSlots(
   env: ColonyEnv,
   buildings: readonly Entity[],
@@ -119,8 +120,10 @@ export function homeSlots(
   for (const e of buildings) {
     const type = index.buildings.get(world.get(e, Building).buildingType);
     if (type?.kind !== BUILDING_KIND.home) continue;
-    slots += type.homeSize;
-    free += type.homeSize - (isBuilt(world, e) ? familyCountOf(world, e) : 0);
+    const built = isBuilt(world, e);
+    const capacity = built ? homeFamilyCapacity(world, ctx, e, type) : type.homeSize;
+    slots += capacity;
+    free += capacity - (built ? familyCountOf(world, e) : 0);
   }
   return { slots, free };
 }

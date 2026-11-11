@@ -8,7 +8,11 @@ import {
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 import { holdsSiteClaim, isSoloSite } from '../../../../economy/site-claim.js';
-import { depositHomeQuality, homeQualityUseFor, spendHomeQuality } from '../../../../family/home-quality.js';
+import {
+  actionHomeQualityFor,
+  depositHomeQuality,
+  spendHomeQuality,
+} from '../../../../family/home-quality.js';
 import { isFood } from '../../../../readviews/index.js';
 import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '../../../../stores/index.js';
 import { carriedGoodForm } from '../../../drives/economy/delivery-targets.js';
@@ -81,7 +85,7 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
   let deposited = moved;
   // A stocked home with crockery adds a unit to each food delivery before it reaches the larder.
   // Crockery spends one durability use per delivery batch, as in the original.
-  const cooking = homeQualityUseFor(ctx, 'cooking');
+  const cooking = actionHomeQualityFor(ctx, 'cooking');
   if (
     moved > 0 &&
     isFood(ctx, slot.goodType) &&

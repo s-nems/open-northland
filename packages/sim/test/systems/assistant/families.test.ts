@@ -4,6 +4,7 @@ import {
   addPerson,
   Building,
   Female,
+  HomeQuality,
   Marriage,
   Owner,
   Position,
@@ -18,7 +19,7 @@ import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
 
 /** The assistant's "found families" switch: homeless women take the nearest open home, housed single
- *  women wed. The home here holds {@link HOME_SIZE} families. */
+ *  women wed. The home here holds {@link HOME_SIZE} families, {@link FURNISHED} more while furnished. */
 
 const VIKING = 1;
 const PLAYER = 0;
@@ -26,6 +27,10 @@ const WOMAN = 5;
 const CIVILIST = 6;
 const HOME = 2;
 const HOME_SIZE = 2;
+const FURNISHED = 1;
+const FURNITURE = 1;
+const PIECE = 1000;
+const SLEEP_WEAR = 10;
 const ROW = 4;
 /** Long enough for a couple a few cells apart to walk together and kiss. */
 const WEDDING_TICKS = 3000;
@@ -33,7 +38,21 @@ const WEDDING_TICKS = 3000;
 function content(): ContentSet {
   return parseContentSet({
     manifest: TEST_MANIFEST,
-    goods: [{ typeId: 0, id: 'none' }],
+    goods: [
+      { typeId: 0, id: 'none' },
+      {
+        typeId: FURNITURE,
+        id: 'furniture',
+        homeQuality: {
+          effect: 'lodging',
+          deliveryValue: PIECE,
+          capacity: PIECE,
+          fetchBelow: PIECE,
+          minimumHomeLevel: 0,
+          wear: { child: PIECE, sleep: SLEEP_WEAR, meal: SLEEP_WEAR },
+        },
+      },
+    ],
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: WOMAN, id: 'woman' },
@@ -43,7 +62,9 @@ function content(): ContentSet {
       { typeId: 0, id: 'grass', walkable: true, buildable: true },
       { typeId: 1, id: 'water', walkable: false, buildable: false },
     ],
-    buildings: [{ typeId: HOME, id: 'home_level_00', kind: 'home', homeSize: HOME_SIZE }],
+    buildings: [
+      { typeId: HOME, id: 'home_level_00', kind: 'home', homeSize: HOME_SIZE, furnishedFamilies: FURNISHED },
+    ],
   });
 }
 
@@ -84,6 +105,10 @@ function beat(sim: Simulation): void {
 }
 
 const homeOf = (sim: Simulation, e: Entity): Entity | undefined => sim.world.tryGet(e, Residence)?.home;
+
+function furnish(sim: Simulation, home: Entity, lodging = PIECE): void {
+  sim.world.add(home, HomeQuality, { cooking: 0, lodging, piety: 0 });
+}
 
 describe('assistant family founding', () => {
   it('leaves the women alone while the switch is off', () => {
@@ -141,5 +166,17 @@ describe('assistant family founding', () => {
     const ashore = homeAt(sim, 40);
     beat(sim);
     expect(homeOf(sim, woman)).toBe(ashore);
+  });
+
+  it("counts a furnished home's extra family slots", () => {
+    const sim = simOn();
+    const home = homeAt(sim, 10);
+    furnish(sim, home);
+    const women = [adultAt(sim, 12, true), adultAt(sim, 14, true), adultAt(sim, 16, true)];
+    switchOn(sim);
+
+    beat(sim);
+
+    expect(women.map((e) => homeOf(sim, e))).toEqual([home, home, home]);
   });
 });

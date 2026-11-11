@@ -116,7 +116,7 @@ describe('confinement gates the housewife hoard source', () => {
     const sim = confinedSim();
     const home = homeAt(sim, 4, 2);
     const woman = adultAt(sim, 2, 2, WOMAN, true);
-    sim.world.add(woman, Residence, { home });
+    sim.world.add(woman, Residence, { home, since: 0 });
     foodPileAt(sim, OUT_OF_AREA, 2, 3);
     sim.step();
     expect(acted(sim, woman)).toBe(false); // the far pile is beyond her area - nothing to hoard
@@ -132,7 +132,7 @@ describe('the same-side rule gates the housewife hoard source', () => {
     const sim = confinedSim();
     const home = homeAt(sim, 4, 2);
     const woman = adultAt(sim, 2, 2, WOMAN, true); // player 0 (adultAt stamps PLAYER)
-    sim.world.add(woman, Residence, { home });
+    sim.world.add(woman, Residence, { home, since: 0 });
     const enemyPile = foodPileAt(sim, IN_AREA, 2, 3); // in her area, but another player's larder
     sim.world.add(enemyPile, Owner, { player: PLAYER + 1 });
     sim.step();
@@ -170,7 +170,7 @@ describe("the marry partner pick keeps to the seeker's settlement", () => {
     const sim = confinedSim();
     const woman = adultAt(sim, 2, 2, WOMAN, true);
     const visitor = adultAt(sim, IN_AREA, 2, CIVILIST, false);
-    sim.world.add(visitor, Residence, { home: homeAt(sim, FAR_SETTLEMENT, 2) });
+    sim.world.add(visitor, Residence, { home: homeAt(sim, FAR_SETTLEMENT, 2), since: 0 });
     const neighbour = adultAt(sim, IN_AREA + 2, 2, CIVILIST, false);
 
     sim.enqueueSetup({ kind: 'marry', entity: woman });

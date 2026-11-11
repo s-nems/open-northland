@@ -468,7 +468,7 @@ describe('selection details panel model', () => {
   });
 
   it('shows exact household durability, remaining uses, and the mature home holy fire', () => {
-    const quality = { cooking: 240, rest: 75, piety: 2000 };
+    const quality = { cooking: 240, lodging: 750, piety: 2000 };
     const mature = buildUnitPanelModel(
       snapshotOf([
         buildingEntity(1, BUILDING_HOME_02, {
@@ -479,7 +479,7 @@ describe('selection details panel model', () => {
         }),
         {
           id: 99,
-          components: { HouseholdGoodPolicy: { player: 0, cooking: true, rest: true, piety: true } },
+          components: { HouseholdGoodPolicy: { player: 0, cooking: true, lodging: true, piety: true } },
         },
       ]),
       new Set([1]),
@@ -495,11 +495,11 @@ describe('selection details panel model', () => {
         uses: 48,
       }),
       expect.objectContaining({
-        effect: 'rest',
+        effect: 'lodging',
         goodId: 'furniture',
-        value: 75,
-        capacity: 500,
-        uses: 15,
+        value: 750,
+        capacity: 2000,
+        uses: 93,
       }),
       expect.objectContaining({
         effect: 'piety',
@@ -526,7 +526,7 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     if (young.kind !== 'building') throw new Error('expected a building panel');
-    expect(young.homeQuality?.rows.map((row) => row.effect)).toEqual(['cooking', 'rest']);
+    expect(young.homeQuality?.rows.map((row) => row.effect)).toEqual(['cooking', 'lodging']);
 
     const dry = buildUnitPanelModel(
       snapshotOf([
@@ -538,7 +538,7 @@ describe('selection details panel model', () => {
         }),
         {
           id: 99,
-          components: { HouseholdGoodPolicy: { player: 0, cooking: true, rest: false, piety: false } },
+          components: { HouseholdGoodPolicy: { player: 0, cooking: true, lodging: false, piety: false } },
         },
       ]),
       new Set([1]),
@@ -546,7 +546,7 @@ describe('selection details panel model', () => {
     );
     if (dry.kind !== 'building') throw new Error('expected a building panel');
     expect(dry.homeQuality?.rows.find((row) => row.effect === 'piety')?.holyFireActive).toBe(false);
-    expect(dry.homeQuality?.rows.find((row) => row.effect === 'rest')?.allowed).toBe(false);
+    expect(dry.homeQuality?.rows.find((row) => row.effect === 'lodging')?.allowed).toBe(false);
 
     const retainedOil = buildUnitPanelModel(
       snapshotOf([
@@ -558,7 +558,7 @@ describe('selection details panel model', () => {
         }),
         {
           id: 99,
-          components: { HouseholdGoodPolicy: { player: 0, cooking: true, rest: true, piety: false } },
+          components: { HouseholdGoodPolicy: { player: 0, cooking: true, lodging: true, piety: false } },
         },
       ]),
       new Set([1]),

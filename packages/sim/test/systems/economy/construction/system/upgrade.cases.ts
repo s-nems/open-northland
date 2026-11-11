@@ -185,7 +185,7 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
     const sim = new Simulation({ seed: 1, content: levelChainContent() });
     const e = placeBuiltHome(sim, HOME_L0, 0);
     const resident = sim.world.create();
-    sim.world.add(resident, Residence, { home: e });
+    sim.world.add(resident, Residence, { home: e, since: 0 });
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: e });
     sim.step();
     expect(sim.world.get(resident, Residence).home).toBe(e); // kept while the site rises

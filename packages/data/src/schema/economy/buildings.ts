@@ -83,6 +83,9 @@ export const BuildingType = z.strictObject({
   kind: z.union([z.enum(BUILDING_KIND), z.templateLiteral(['maintype_', z.string()])]),
   /** Population capacity tier from `logichomesize` - present only on `home` buildings (else 0). */
   homeSize: z.number().int().nonnegative().default(0),
+  /** Extra families a home takes while its lodging pool holds furniture the owner allows, on top of
+   *  {@link homeSize} (0 for every other building). */
+  furnishedFamilies: z.number().int().nonnegative().default(0),
   schoolSize: z.number().int().nonnegative().optional(),
   workers: z.array(WorkerSlot).default([]),
   stock: z.array(StockSlot).default([]),

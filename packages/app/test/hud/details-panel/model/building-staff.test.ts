@@ -674,8 +674,8 @@ describe('building orders', () => {
     actions.demolish(2, 'Obca');
     actions.demolish(1, 'Kwatera');
     actions.demolish(1, 'Kwatera');
-    actions.setHouseholdGoodUse(HUMAN_PLAYER, 'rest', false);
-    actions.setHouseholdGoodUse(1, 'rest', false);
+    actions.setHouseholdGoodUse(HUMAN_PLAYER, 'lodging', false);
+    actions.setHouseholdGoodUse(1, 'lodging', false);
     actions.setStorageMinimum(HUMAN_PLAYER, GOOD_WOOD, 30);
     actions.setStorageMinimum(1, GOOD_WOOD, 30);
     actions.releaseGarrison(2, [8]);
@@ -688,7 +688,7 @@ describe('building orders', () => {
       { kind: 'setDefenceMode', building: 1 as Entity, enabled: true },
       { kind: 'setDefenceMode', building: 1 as Entity, enabled: true },
       { kind: 'setDefenceMode', building: 3 as Entity, enabled: true },
-      { kind: 'setHouseholdGoodUse', player: HUMAN_PLAYER, effect: 'rest', allowed: false },
+      { kind: 'setHouseholdGoodUse', player: HUMAN_PLAYER, effect: 'lodging', allowed: false },
       { kind: 'setStorageMinimum', player: HUMAN_PLAYER, goodType: GOOD_WOOD, amount: 30 },
       { kind: 'unassignWorker', entity: 6 as Entity },
       { kind: 'unassignWorker', entity: 7 as Entity },

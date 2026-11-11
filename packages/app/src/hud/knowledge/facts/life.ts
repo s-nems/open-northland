@@ -11,7 +11,6 @@ import { CRITICAL_CHANCE_PCT, HUMAN_HITPOINTS, STRENGTH_PCT } from '../combat.js
 import type { KnowledgeBase } from '../model.js';
 import {
   clipNeedPct,
-  clipOf,
   clipSeconds,
   duration,
   equipOf,
@@ -48,14 +47,10 @@ const manSleepPct: FactReader = (base) => sleepPct(base, JOB_CIVILIST);
 
 const womanSleepPct: FactReader = (base) => sleepPct(base, JOB_WOMAN);
 
-/** One sleep's use of the furniture: a use per rest event the clip plays. */
-function furnitureSleeps(base: KnowledgeBase, jobType: number): FactValue {
+/** The sleeps one delivered piece of furniture lasts in a home above its base size. */
+function furnitureSleeps(base: KnowledgeBase): FactValue {
   const ware = homeWare(base, 'furniture');
-  const restEvents = clipOf(base, systems.SLEEP_ATOMIC_ID, jobType)?.events.filter(
-    (event) => event.type === systems.ATOMIC_EVENT_CHANNEL.REST,
-  ).length;
-  if (ware === undefined || restEvents === undefined || restEvents === 0) return undefined;
-  return ware.deliveryValue / ware.useCost / restEvents;
+  return ware?.effect === 'lodging' ? ware.deliveryValue / ware.wear.sleep : undefined;
 }
 
 const pctFactor = (pct: FactValue): FactValue => (pct === undefined ? undefined : pct / PERCENT);
@@ -80,7 +75,7 @@ function wareRatio(base: KnowledgeBase, good: string, field: 'capacity' | 'fetch
 /** One delivered unit of oil's burn, a use a second. */
 function oilBurnSeconds(base: KnowledgeBase): FactValue {
   const ware = homeWare(base, 'holy_oil');
-  return ware === undefined ? undefined : ware.deliveryValue / ware.useCost;
+  return ware === undefined || ware.effect === 'lodging' ? undefined : ware.deliveryValue / ware.useCost;
 }
 
 export const NEED_FACTS: Readonly<Record<string, Fact>> = {
@@ -184,10 +179,10 @@ export const LIFE_FACTS: Readonly<Record<string, Fact>> = {
   'home.wareUnits': whole((base) => wareRatio(base, 'crockery', 'capacity')),
   'home.crockeryDeliveries': whole((base) => {
     const ware = homeWare(base, 'crockery');
-    return ware === undefined ? undefined : ware.deliveryValue / ware.useCost;
+    return ware === undefined || ware.effect === 'lodging' ? undefined : ware.deliveryValue / ware.useCost;
   }),
-  'home.furnitureManSleeps': whole((base) => furnitureSleeps(base, JOB_CIVILIST)),
-  'home.furnitureWomanSleeps': whole((base) => furnitureSleeps(base, JOB_WOMAN)),
+  'home.furnitureManSleeps': whole(furnitureSleeps),
+  'home.furnitureWomanSleeps': whole(furnitureSleeps),
   'home.crockeryFetchBelow': whole((base) => wareRatio(base, 'crockery', 'fetchBelow')),
   'home.furnitureFetchBelow': whole((base) => wareRatio(base, 'furniture', 'fetchBelow')),
   'home.oilFetchBelow': whole((base) => wareRatio(base, 'holy_oil', 'fetchBelow')),

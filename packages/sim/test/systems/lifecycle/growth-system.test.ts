@@ -105,8 +105,8 @@ describe('GrowthSystem - non-working settlers mature into workers', () => {
     const she = bornSettler(sim, BABY_FEMALE, 0);
     const he = bornSettler(sim, BABY_MALE, 0);
     const home = 999 as Entity; // any id - graduation must drop the binding regardless
-    sim.world.add(she, Residence, { home });
-    sim.world.add(he, Residence, { home });
+    sim.world.add(she, Residence, { home, since: 0 });
+    sim.world.add(he, Residence, { home, since: 0 });
 
     run(sim, ADULT_AGE_TICKS - 1); // one short of adulthood: children
     expect(sim.world.get(she, Settler).jobType).toBe(CHILD_FEMALE);

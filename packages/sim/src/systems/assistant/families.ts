@@ -11,6 +11,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import { ownedBuildings, ownedSettlers } from '../ai-shared/seat-roster.js';
 import type { SystemContext } from '../context.js';
 import { isAdultSettler, isOnMission, mayMarry } from '../family/eligibility.js';
+import { homeFamilyCapacity } from '../family/home-quality.js';
 import { builtHomeType, familyCountOf } from '../family/households.js';
 import { routeRegions } from '../footprint/index.js';
 import { assignHouse, weddingStarted } from '../orders/family.js';
@@ -84,7 +85,7 @@ function houseWomen(world: World, ctx: SystemContext, player: number, homeless: 
   for (const house of ownedBuildings(world, player)) {
     const type = builtHomeType(world, ctx, house);
     if (type === undefined) continue;
-    const free = type.homeSize - familyCountOf(world, house);
+    const free = homeFamilyCapacity(world, ctx, house, type) - familyCountOf(world, house);
     if (free > 0) homes.push({ house, free });
   }
   if (homes.length === 0) return;

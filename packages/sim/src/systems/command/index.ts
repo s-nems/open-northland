@@ -27,6 +27,7 @@ import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
 import { carriesFoodAmulet } from '../equipment/effects.js';
 import { setHouseholdGoodUse } from '../family/home-quality.js';
+import { moveOutOfUnfurnishedHomes } from '../family/lodging.js';
 import { razePalisade } from '../lifecycle/cleanup.js';
 import { setTempleFire } from '../lifecycle/temple/index.js';
 import { type PeaceRefusal, peaceRefusal } from '../match/peace.js';
@@ -478,6 +479,8 @@ function applyCommand(
       return;
     case 'setHouseholdGoodUse':
       setHouseholdGoodUse(world, ctx, command);
+      if (command.effect === 'lodging' && !command.allowed)
+        moveOutOfUnfurnishedHomes(world, ctx, command.player);
       return;
     case 'setStorageMinimum':
       setStorageMinimum(world, ctx, command);

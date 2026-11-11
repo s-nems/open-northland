@@ -7,7 +7,7 @@ const components = {
   Building: { buildingType: 4, tribe: 1, level: 2, built: ONE },
   Owner: { player: 0 },
   Position: { x: 10 * ONE, y: 10 * ONE },
-  HomeQuality: { cooking: 0, rest: 0, piety: 40 },
+  HomeQuality: { cooking: 0, lodging: 0, piety: 40 },
 };
 const TEMPLE = 37;
 const lookup: HolyFireLookup = (tribe, typeId, level) => {
@@ -20,11 +20,11 @@ const lookup: HolyFireLookup = (tribe, typeId, level) => {
 };
 
 /** Player 0 has switched holy oil on; the default leaves it off. */
-const OIL_ON = { cooking: true, rest: true, piety: true };
+const OIL_ON = { cooking: true, lodging: true, piety: true };
 
 const snapshot = (
   home: Readonly<Record<string, unknown>> = components,
-  policy: { cooking: boolean; rest: boolean; piety: boolean } | null = OIL_ON,
+  policy: { cooking: boolean; lodging: boolean; piety: boolean } | null = OIL_ON,
 ): WorldSnapshot => ({
   tick: 0,
   events: [],
@@ -41,7 +41,7 @@ describe('home holy fire projection', () => {
     ]);
     expect(
       holyFireOverlays(
-        snapshot(components, { cooking: true, rest: true, piety: false }),
+        snapshot(components, { cooking: true, lodging: true, piety: false }),
         HOME,
         components,
         lookup,
@@ -52,7 +52,7 @@ describe('home holy fire projection', () => {
     ]);
     const empty = {
       ...components,
-      HomeQuality: { cooking: 0, rest: 0, piety: 0 },
+      HomeQuality: { cooking: 0, lodging: 0, piety: 0 },
     };
     expect(holyFireOverlays(snapshot(empty), HOME, empty, lookup)).toEqual([]);
     const site = { ...components, UnderConstruction: { labor: 0 } };
@@ -66,7 +66,7 @@ describe('home holy fire projection', () => {
       Owner: { player: 0 },
       Position: { x: 10 * ONE, y: 10 * ONE },
     };
-    const forbidden = { cooking: true, rest: true, piety: false };
+    const forbidden = { cooking: true, lodging: true, piety: false };
     expect(holyFireOverlays(snapshot(temple, forbidden), HOME, temple, lookup)).toEqual([
       { name: 'fx fire incense', dx: 5, dy: 20 },
     ]);

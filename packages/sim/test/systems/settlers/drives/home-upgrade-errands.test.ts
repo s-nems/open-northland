@@ -102,7 +102,7 @@ function scenario(tribe = 1, unchangedDoor = false) {
     needs: { fatigue: ONE },
     position: positionOfNode(RESIDENT_HX, 20),
   });
-  sim.world.add(resident, Residence, { home });
+  sim.world.add(resident, Residence, { home, since: 0 });
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('missing terrain');
   const oldDoor = interactionCell(sim.world, ctxOf(sim), terrain, home);
@@ -245,7 +245,7 @@ describe('home errands during an entrance-changing upgrade', () => {
     const { sim, home, resident, terrain } = scenario();
     setNeeds(sim, resident, { fatigue: ZERO, hunger: ZERO, piety: ONE });
     sim.world.add(resident, NeedOrder, { need: 'piety' });
-    sim.world.add(home, HomeQuality, { cooking: 0, rest: 0, piety: 1000 });
+    sim.world.add(home, HomeQuality, { cooking: 0, lodging: 0, piety: 1000 });
     expect(
       prayAtHome(
         sim.world,
@@ -277,7 +277,7 @@ it('updates the resident index for reassignment, in-place changes and destructio
   const { sim, home, resident } = scenario();
   const otherHome = sim.world.create();
   expect(residentsOf(sim.world, home)).toEqual([resident]);
-  sim.world.add(resident, Residence, { home: otherHome });
+  sim.world.add(resident, Residence, { home: otherHome, since: 0 });
   expect(residentsOf(sim.world, home)).toEqual([]);
   expect(residentsOf(sim.world, otherHome)).toEqual([resident]);
   sim.world.mut(resident, Residence).home = home;

@@ -17,6 +17,7 @@ import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { wearLodging } from '../../family/lodging.js';
 import {
   carriesNeeds,
   DRINK_IN_PLACE_LEVEL,
@@ -344,9 +345,11 @@ function seekMeal(
         : ({ kind: 'forage', bush: food.bush } as const);
     const serve = (): void => startMeal(world, ctx, e, settler, effect, target);
     if (food.kind === 'store' && food.atHome) {
-      enterBuilding(world, e, food.store, here, food.cell, () => {
+      const home = food.store;
+      enterBuilding(world, e, home, here, food.cell, () => {
         fillCompanyOnComingHome(world, ctx, e);
         serve();
+        wearLodging(world, ctx, home, 'meal');
       });
     } else {
       atOrWalk(world, e, here, food.cell, serve);

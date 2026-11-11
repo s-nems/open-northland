@@ -124,7 +124,7 @@ function fixture(buildingType: number): Fixture {
   const ctx = ctxOf(sim);
   const door = interactionCell(sim.world, ctx, terrain, house, terrain.nodeAt(ANCHOR.hx, ANCHOR.hy));
   const woman = womanAt(sim, door);
-  sim.world.add(woman, Residence, { home: house });
+  sim.world.add(woman, Residence, { home: house, since: 0 });
   const spacing = PlannerSpacing.forTick(sim.world, ctx, terrain);
   return { sim, woman, door, spacing, doorways: buildingDoorwayNodes(sim.world, ctx, terrain) };
 }

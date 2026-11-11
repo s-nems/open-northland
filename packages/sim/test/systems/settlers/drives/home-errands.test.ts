@@ -4,6 +4,7 @@ import {
   addCurrentAtomic,
   Building,
   CurrentAtomic,
+  HomeQuality,
   Marriage,
   MISSION_BEHAVIOUR,
   MoveGoal,
@@ -69,13 +70,33 @@ const HOME_AT_RANGE = 1 + HOME_ERRAND_RANGE_NODES / 2;
  *  range. */
 const STRAIT_CELL = 3;
 const HALF_SPENT: Fixed = fx.div(ONE, fx.fromInt(2));
+const FURNITURE = 90;
+const FURNITURE_PIECE = 1000;
+/** Distinct, so the pool reads which home rounds wore it. */
+const SLEEP_WEAR = 10;
+const MEAL_WEAR = 7;
 
-/** The shared fixture plus a `home` building type; `restfulBed: false` strips the sleep clip's rest
- *  pulses. */
+/** The shared fixture plus a `home` building type and furniture; `restfulBed: false` strips the sleep
+ *  clip's rest pulses. */
 function homeContent({ restfulBed = true } = {}): ContentSet {
   const base = testContent();
   return parseContentSet({
     ...base,
+    goods: [
+      ...base.goods,
+      {
+        typeId: FURNITURE,
+        id: 'furniture',
+        homeQuality: {
+          effect: 'lodging',
+          deliveryValue: FURNITURE_PIECE,
+          capacity: FURNITURE_PIECE,
+          fetchBelow: FURNITURE_PIECE,
+          minimumHomeLevel: 0,
+          wear: { child: FURNITURE_PIECE, sleep: SLEEP_WEAR, meal: MEAL_WEAR },
+        },
+      },
+    ],
     buildings: [
       ...base.buildings,
       // The larder slot is what lets the at-home chain feed the sleeper as well as rest it.
@@ -84,6 +105,7 @@ function homeContent({ restfulBed = true } = {}): ContentSet {
         id: 'home_small',
         kind: 'home',
         homeSize: 2,
+        furnishedFamilies: 1,
         stock: [{ goodType: FOOD, capacity: 5 }],
       },
     ],
@@ -109,7 +131,7 @@ function awayFromHome(
   const sim = simWithHomes(homeContent(), FAR_MAP_WIDTH);
   const settler = needsSettlerAt(sim, from, 2, needs);
   const home = homeAt(sim, homeCell, 2);
-  sim.world.add(settler, Residence, { home });
+  sim.world.add(settler, Residence, { home, since: 0 });
   stock(sim, home, 2);
   const door = nodeAt(sim, homeCell, 2);
   const here = nodeAt(sim, from, 2);
@@ -171,7 +193,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 3, 2);
     const home = homeAt(sim, 3, 2); // same cell - the settler is already on the door node
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -182,10 +204,26 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     expect(atomic.duration).toBe(SLEEP_TICKS);
   });
 
+  it('wears a crowded furnished home for a sleep or a meal started at its door', () => {
+    const sim = simWithHomes();
+    const sleeper = tiredAt(sim, 3, 2);
+    const eater = needsSettlerAt(sim, 3, 2, { hunger: HUNGRY });
+    const home = homeAt(sim, 3, 2);
+    stock(sim, home, 2);
+    sim.world.add(home, HomeQuality, { cooking: 0, lodging: FURNITURE_PIECE, piety: 0 });
+    for (const e of [sleeper, eater, sim.world.create()]) sim.world.add(e, Residence, { home, since: 0 });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(sleeper, CurrentAtomic).effect).toEqual({ kind: 'sleep' });
+    expect(sim.world.get(eater, CurrentAtomic).effect).toEqual({ kind: 'eat', goodType: FOOD, from: home });
+    expect(sim.world.get(home, HomeQuality).lodging).toBe(FURNITURE_PIECE - SLEEP_WEAR - MEAL_WEAR);
+  });
+
   it("sounds its clip's cue indoors as it does in the open", () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 3, 2);
-    sim.world.add(settler, Residence, { home: homeAt(sim, 3, 2) });
+    sim.world.add(settler, Residence, { home: homeAt(sim, 3, 2), since: 0 });
     plannerSystem(sim.world, ctxOf(sim));
     expect(cuesOverNap(sim, SLEEP_TICKS)).toEqual([SNORE_SOUND]);
 
@@ -199,7 +237,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 1, 2);
     const home = homeAt(sim, 5, 2);
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -245,7 +283,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     const settler = tiredAt(sim, 3, 2);
     const site = homeAt(sim, 3, 2);
     sim.world.mut(site, Building).built = fx.div(ONE, fx.fromInt(2)); // half-raised - no roof yet
-    sim.world.add(settler, Residence, { home: site });
+    sim.world.add(settler, Residence, { home: site, since: 0 });
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -258,7 +296,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     // as the original does for every trade `jobtypes.ini` marks `ignoresHomeHouseFlag`.
     const sim = simWithHomes();
     const settler = needsSettlerAt(sim, 3, 2, { fatigue: TIRED }, TRADER);
-    sim.world.add(settler, Residence, { home: homeAt(sim, 3, 2) });
+    sim.world.add(settler, Residence, { home: homeAt(sim, 3, 2), since: 0 });
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -269,7 +307,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
   it('beds down where it stands when its home lies across water, however near', () => {
     const sim = new Simulation({ seed: 1, content: homeContent(), map: waterColumnMap(8, 6, STRAIT_CELL) });
     const settler = tiredAt(sim, 1, 2);
-    sim.world.add(settler, Residence, { home: homeAt(sim, 5, 2) });
+    sim.world.add(settler, Residence, { home: homeAt(sim, 5, 2), since: 0 });
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -281,7 +319,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 1, 2);
     const home = homeAt(sim, 5, 2);
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
     const door = nodeAt(sim, 5, 2);
     if (door === undefined) throw new Error('setup: the home has no door node');
     // The walled-in case: the route to the door has already failed, so the memo holds it. Without the
@@ -317,7 +355,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 3, 2);
     const home = homeAt(sim, 3, 2);
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
 
     // Sample every tick: the settler must stay inside for the WHOLE nap and leave once. Asserting only
     // the end state would pass just as happily on a settler flickering in and out of its own door.
@@ -342,7 +380,7 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
     const sim = simWithHomes();
     const settler = needsSettlerAt(sim, 3, 2, { fatigue: TIRED, hunger: HALF_SPENT });
     const home = homeAt(sim, 3, 2);
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
     sim.world.add(home, Stockpile, { amounts: new Map([[FOOD, 2]]) });
 
     let ateIndoors = false;
@@ -367,7 +405,7 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
     const sim = simWithHomes(homeContent({ restfulBed: false }));
     const settler = needsSettlerAt(sim, 3, 2, { fatigue: TIRED, hunger: HALF_SPENT });
     const home = homeAt(sim, 3, 2);
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
     sim.world.add(home, Stockpile, { amounts: new Map([[FOOD, 2]]) });
 
     for (let i = 0; i < 60; i++) sim.step();
@@ -380,7 +418,7 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
     const sim = simWithHomes();
     const settler = needsSettlerAt(sim, 3, 2, { fatigue: TIRED, hunger: HALF_SPENT });
     const home = homeAt(sim, 3, 2);
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
     sim.world.add(home, Stockpile, { amounts: new Map([[FOOD, 2]]) });
     sim.step(); // in bed
     expect(sim.world.tryGet(settler, Resting)?.at).toBe(home);
@@ -396,7 +434,7 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
   it('leaves an empty larder alone and goes back out on its nap alone', () => {
     const sim = simWithHomes();
     const settler = needsSettlerAt(sim, 3, 2, { fatigue: TIRED, hunger: HALF_SPENT });
-    sim.world.add(settler, Residence, { home: homeAt(sim, 3, 2) });
+    sim.world.add(settler, Residence, { home: homeAt(sim, 3, 2), since: 0 });
 
     for (let i = 0; i < 60; i++) sim.step();
 
@@ -446,7 +484,7 @@ describe('eatAtHome - a hungry settler eats off its own larder first', () => {
     const sim = simWithHomes();
     const settler = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
     const home = homeAt(sim, 6, 2);
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
     stock(sim, home, 2);
     storeAt(sim, 2, 2, 2);
 
@@ -507,8 +545,8 @@ describe('eatAtHome - a hungry settler eats off its own larder first', () => {
     const first = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
     const second = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
     const home = homeAt(sim, 6, 2);
-    sim.world.add(first, Residence, { home });
-    sim.world.add(second, Residence, { home });
+    sim.world.add(first, Residence, { home, since: 0 });
+    sim.world.add(second, Residence, { home, since: 0 });
     stock(sim, home, 1);
     const store = storeAt(sim, 2, 2, 1);
 
@@ -524,7 +562,7 @@ describe('eatAtHome - a hungry settler eats off its own larder first', () => {
     const sim = simWithHomes();
     const settler = needsSettlerAt(sim, 3, 2, { hunger: HUNGRY });
     const home = homeAt(sim, 3, 2);
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
     stock(sim, home, 2);
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -545,7 +583,7 @@ describe('eatAtHome - a hungry settler eats off its own larder first', () => {
     const sim = simWithHomes();
     const settler = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY }, TRADER);
     const home = homeAt(sim, 2, 2);
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
     stock(sim, home, 2);
     storeAt(sim, 6, 2, 2);
 
@@ -561,7 +599,7 @@ describe('eatAtHome - a hungry settler eats off its own larder first', () => {
     const settler = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
     sim.world.add(settler, Owner, { player: PLAYER });
     const home = homeAt(sim, OUT_OF_AREA, 2);
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
     stock(sim, home, 2);
     storeAt(sim, 6, 2, 2);
 
@@ -574,7 +612,7 @@ describe('eatAtHome - a hungry settler eats off its own larder first', () => {
     const sim = simWithHomes();
     const settler = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
     const home = homeAt(sim, 6, 2);
-    sim.world.add(settler, Residence, { home });
+    sim.world.add(settler, Residence, { home, since: 0 });
     stock(sim, home, 2);
     storeAt(sim, 3, 4, 2);
     const door = nodeAt(sim, 6, 2);
@@ -589,7 +627,7 @@ describe('eatAtHome - a hungry settler eats off its own larder first', () => {
   it("takes the nearest store past an empty larder, and never another family's", () => {
     const sim = simWithHomes();
     const settler = needsSettlerAt(sim, 1, 2, { hunger: HUNGRY });
-    sim.world.add(settler, Residence, { home: homeAt(sim, 2, 2) });
+    sim.world.add(settler, Residence, { home: homeAt(sim, 2, 2), since: 0 });
     stock(sim, homeAt(sim, 4, 2), 2); // the neighbours' larder
     storeAt(sim, 6, 2, 2);
 

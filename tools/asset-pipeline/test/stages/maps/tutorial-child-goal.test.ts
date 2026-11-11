@@ -89,7 +89,7 @@ function person(sim: Simulation, jobType: number, player: number, alias: number,
   sim.world.add(e, Owner, { player });
   sim.world.add(e, Position, positionOfNode(127, 189));
   sim.world.add(e, MissionObjectId, { id: alias });
-  sim.world.add(e, Residence, { home });
+  sim.world.add(e, Residence, { home, since: 0 });
   return e;
 }
 
@@ -121,7 +121,7 @@ describe('tutorial child goal correction', () => {
 
       sim.world.mut(mother, Position).x = fx.fromInt(500);
       sim.world.mut(mother, Position).y = fx.fromInt(500);
-      const newborn = spawnNewborn(sim.world, sim.content, mother, home, sex, sim.names);
+      const newborn = spawnNewborn(sim.world, sim.content, mother, home, sex, sim.names, sim.tick);
       sim.world.add(newborn, Resting, { at: home }); // An indoor newborn away from the old coordinate still qualifies.
       sim.world.add(newborn, MissionObjectId, { id: 99 });
       sim.run(36);

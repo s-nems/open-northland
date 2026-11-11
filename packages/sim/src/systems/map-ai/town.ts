@@ -29,6 +29,7 @@ import { openWorkerJobFromList } from '../economy/jobs/openings.js';
 import { needsRepair, repairCrewLimit } from '../economy/repair.js';
 import { liveWorkFlag } from '../economy/work-flag.js';
 import { isAdultSettler } from '../family/eligibility.js';
+import { homeFamilyCapacity } from '../family/home-quality.js';
 import { familyCountOf } from '../family/households.js';
 import { isFighterJob, isFisherJob } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
@@ -350,7 +351,11 @@ function homeOrders(
     if (type?.kind !== BUILDING_KIND.home) continue;
     const at = placedBuilding(world, ctx, terrain, house);
     if (!safe(at)) continue;
-    for (let free = type.homeSize - familyCountOf(world, house); free > 0; free--) {
+    for (
+      let free = homeFamilyCapacity(world, ctx, house, type) - familyCountOf(world, house);
+      free > 0;
+      free--
+    ) {
       const tribe = world.get(house, Building).tribe;
       const woman = takeBest(women, at, TOWN_HIRE_RADIUS_POINTS, (e) =>
         world.get(e, Settler).tribe === tribe ? 0 : null,

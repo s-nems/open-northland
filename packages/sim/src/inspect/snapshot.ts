@@ -28,7 +28,7 @@ export interface EntitySnapshot {
 
 export interface HomeQualityView {
   readonly cooking: number;
-  readonly rest: number;
+  readonly lodging: number;
   readonly piety: number;
 }
 
@@ -36,9 +36,9 @@ export interface HomeQualityView {
 export function homeQualityView(snapshot: WorldSnapshot, home: number): HomeQualityView | null {
   const raw = entityById(snapshot, home)?.components.HomeQuality;
   if (!isPlainRecord(raw)) return null;
-  const { cooking, rest, piety } = raw;
-  if (typeof cooking !== 'number' || typeof rest !== 'number' || typeof piety !== 'number') return null;
-  return { cooking, rest, piety };
+  const { cooking, lodging, piety } = raw;
+  if (typeof cooking !== 'number' || typeof lodging !== 'number' || typeof piety !== 'number') return null;
+  return { cooking, lodging, piety };
 }
 
 /**

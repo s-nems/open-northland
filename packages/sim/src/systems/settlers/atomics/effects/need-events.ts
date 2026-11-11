@@ -1,9 +1,8 @@
 import type { AtomicAnimation } from '@open-northland/data';
-import { needsEnabled, Residence, Settler, type SettlerView } from '../../../../components/index.js';
+import { needsEnabled, Settler, type SettlerView } from '../../../../components/index.js';
 import type { AtomicEffect } from '../../../../core/atomic-effect.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
-import { homeQualityUseFor, spendHomeQuality } from '../../../family/home-quality.js';
 import { applyNeedUnits, mutNeeds, settlerCarriesNeeds } from '../../../lifecycle/needs/index.js';
 import { atomicClip, clipEventFactsOf, clipFrameAt } from '../../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, jobIgnoresHomeHouse } from '../../../readviews/index.js';
@@ -14,7 +13,7 @@ import { isAtOwnHome } from '../../indoors.js';
 // here, so a clip's own data decides what an action is worth and an interrupted clip keeps the pulses it
 // already played.
 
-/** How much more a rest or food event counts at home: a meal there, or rest on a furnished bed. */
+/** How much more a food event counts at home. */
 export const AT_HOME_FACTOR = 2;
 /** How much a rest event counts away from home, for a trade that goes home at all. */
 export const AWAY_REST_DIVISOR = 2;
@@ -22,9 +21,8 @@ export const AWAY_REST_DIVISOR = 2;
 /**
  * Apply the need events the clip `e` is playing carries at its current frame, for a settler whose bars move
  * at all ({@link settlerCarriesNeeds}). Original behavior, for either sign of an event:
- * - rest counts half away from home ({@link isAtOwnHome}) unless the trade is one `jobtypes.ini` marks
- *   `ignoresHomeHouseFlag`; at home every rest event spends one use of the home's rest furnishing and
- *   counts double when that use was paid;
+ * - rest counts in full at home ({@link isAtOwnHome}) and half away from it, unless the trade is one
+ *   `jobtypes.ini` marks `ignoresHomeHouseFlag`;
  * - food counts double at home;
  * - company and piety count as authored.
  */
@@ -77,9 +75,8 @@ export function applyClipNeedEvents(
     if (delta === 0) continue;
     if (event.type === ATOMIC_EVENT_CHANNEL.REST) {
       atHome ??= isAtOwnHome(world, ctx, e);
-      rest += atHome
-        ? homeRestDelta(world, ctx, e, delta)
-        : jobIgnoresHomeHouse(ctx.content, settler.jobType)
+      rest +=
+        atHome || jobIgnoresHomeHouse(ctx.content, settler.jobType)
           ? delta
           : Math.trunc(delta / AWAY_REST_DIVISOR);
     } else if (event.type === ATOMIC_EVENT_CHANNEL.HUNGER) {
@@ -95,13 +92,4 @@ export function applyClipNeedEvents(
   if (food !== 0) s.hunger = applyNeedUnits(s.hunger, food);
   if (company !== 0) s.enjoyment = applyNeedUnits(s.enjoyment, company);
   if (piety !== 0) s.piety = applyNeedUnits(s.piety, piety);
-}
-
-/** One rest event at home: it spends a use of the rest furnishing whatever its sign, and counts double when
- *  that use was paid. */
-function homeRestDelta(world: World, ctx: SystemContext, e: Entity, delta: number): number {
-  const home = world.get(e, Residence).home;
-  const furnishing = homeQualityUseFor(ctx, 'rest');
-  const paid = furnishing !== undefined && spendHomeQuality(world, home, 'rest', furnishing.useCost);
-  return paid ? delta * AT_HOME_FACTOR : delta;
 }

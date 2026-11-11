@@ -26,6 +26,7 @@ import {
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { stepOut } from '../settlers/indoors.js';
 import { celebrateWedding } from './celebration.js';
+import { settleIn } from './households.js';
 
 /** The paired kiss atomic ids - `logicdefines.inc` `KISS = 20` / `KISSED = 21`, bound per tribe in
  *  `tribetypes.ini` (`setatomic 5 20 "..._woman_kiss"` / `setatomic 6 21 "..._civilist_kissed"`). */
@@ -45,13 +46,12 @@ export function startWedding(world: World, seeker: Entity, partner: Entity): voi
  * assigned a house stays a one-person household and `makeChild` never finds the couple together
  * (observed original behaviour: a married couple cohabits).
  */
-function coHouseNewlyweds(world: World, a: Entity, b: Entity): void {
+function coHouseNewlyweds(world: World, a: Entity, b: Entity, tick: number): void {
   const [wife, husband] = world.has(b, Female) ? [b, a] : [a, b];
   const wifeHome = world.tryGet(wife, Residence)?.home;
   const husbandHome = world.tryGet(husband, Residence)?.home;
-  if (wifeHome !== undefined && husbandHome !== wifeHome) world.add(husband, Residence, { home: wifeHome });
-  else if (husbandHome !== undefined && wifeHome === undefined)
-    world.add(wife, Residence, { home: husbandHome });
+  if (wifeHome !== undefined && husbandHome !== wifeHome) settleIn(world, husband, wifeHome, tick);
+  else if (husbandHome !== undefined && wifeHome === undefined) settleIn(world, wife, husbandHome, tick);
 }
 
 /** Cancel `e`'s wedding on both sides (partner death, unreachable partner). No marriage results. */
@@ -94,7 +94,7 @@ function drivePair(
     world.remove(b, Wedding);
     world.add(a, Marriage, { spouse: b, child: null });
     world.add(b, Marriage, { spouse: a, child: null });
-    coHouseNewlyweds(world, a, b);
+    coHouseNewlyweds(world, a, b, ctx.tick);
     celebrateWedding(world, ctx, a, b);
     const p = world.get(a, Position);
     ctx.events.emit({

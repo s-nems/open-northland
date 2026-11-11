@@ -166,6 +166,8 @@ export interface SandboxBuildingRow {
   kind: string;
   /** How many families, not settlers, a home houses (`logichomesize`). */
   homeSize?: number;
+  /** The extra families a home takes while furnished (owner's design). */
+  furnishedFamilies?: number;
   schoolSize?: number;
   stock?: readonly StockSlot[];
   construction?: readonly { goodType: number; amount: number }[];
@@ -795,13 +797,14 @@ function vehicleYardRow(yard: VehicleYard): SandboxBuildingRow {
   };
 }
 
-/** Extracted per home tier: `houses.ini` `logichomesize` 1..5 and `logicstock 16/17 <cap> 1`. */
+/** Extracted per home tier: `houses.ini` `logichomesize` 1..5 and `logicstock 16/17 <cap> 1`; the
+ *  furnished extra families are the owner's design, as in the extracted content. */
 const HOME_TIERS = [
-  { homeSize: 1, foodCapacity: 5 },
-  { homeSize: 2, foodCapacity: 10 },
-  { homeSize: 3, foodCapacity: 15 },
-  { homeSize: 4, foodCapacity: 15 },
-  { homeSize: 5, foodCapacity: 15 },
+  { homeSize: 1, furnishedFamilies: 1, foodCapacity: 5 },
+  { homeSize: 2, furnishedFamilies: 1, foodCapacity: 10 },
+  { homeSize: 3, furnishedFamilies: 2, foodCapacity: 15 },
+  { homeSize: 4, furnishedFamilies: 2, foodCapacity: 15 },
+  { homeSize: 5, furnishedFamilies: 2, foodCapacity: 15 },
 ] as const;
 
 /** A home's family capacity and the larder only its own residents eat from. */
@@ -811,6 +814,7 @@ function homeRow(b: VikingBuilding): Partial<SandboxBuildingRow> {
   const tier = HOME_TIERS[index] ?? smallestHome;
   return {
     homeSize: tier.homeSize,
+    furnishedFamilies: tier.furnishedFamilies,
     stock: [
       { goodType: GOOD_FOOD_SIMPLE, capacity: tier.foodCapacity, initial: 0 },
       { goodType: GOOD_FOOD_EXTRA, capacity: tier.foodCapacity, initial: 0 },

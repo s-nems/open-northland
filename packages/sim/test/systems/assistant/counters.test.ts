@@ -1108,8 +1108,8 @@ function coupleSim(couples: number): { sim: Simulation; wives: Entity[] } {
     const husband = spawnAdult(sim, CIVILIST, 5 + 8 * i, 2, false);
     sim.world.add(wife, Marriage, { spouse: husband, child: null });
     sim.world.add(husband, Marriage, { spouse: wife, child: null });
-    sim.world.add(wife, Residence, { home });
-    sim.world.add(husband, Residence, { home });
+    sim.world.add(wife, Residence, { home, since: 0 });
+    sim.world.add(husband, Residence, { home, since: 0 });
     sim.world.mut(home, Stockpile).amounts.set(FOOD, 3);
     wives.push(wife);
   }

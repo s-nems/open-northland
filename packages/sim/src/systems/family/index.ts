@@ -11,6 +11,7 @@ export {
   familyOf,
   isMinor,
   moveFamilyInto,
+  settleIn,
   storedFoodUnits,
 } from './households.js';
 export { KISS_ATOMIC_ID, KISSED_ATOMIC_ID, startWedding } from './weddings.js';

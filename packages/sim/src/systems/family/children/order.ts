@@ -39,6 +39,7 @@ import type { SupplyTally } from '../../stores/index.js';
 import { deliverHome, fetchFrom, HAUL_LIFT_UNITS } from '../food-haul.js';
 import type { ExternalFoodIndex } from '../food-search.js';
 import { builtHomeType, consumeFoodUnits, isMinor, storedFoodUnits } from '../households.js';
+import { wearLodging } from '../lodging.js';
 import { birth, makeLoveDuration } from './make-love.js';
 
 /**
@@ -166,6 +167,8 @@ export function driveOrder(
     elapsed: 0,
     duration: makeLoveDuration(ctx, world.get(woman, Settler).tribe),
   });
+  // After the session is on the home, so furniture that runs out moves another family out first.
+  wearLodging(world, ctx, home, 'child');
 }
 
 /**

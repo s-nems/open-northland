@@ -64,7 +64,7 @@ export * from './building-staff.js';
 export * from './building-status.js';
 export * from './temple-fire.js';
 
-export type HouseholdEffect = 'cooking' | 'rest' | 'piety';
+export type HouseholdEffect = 'cooking' | 'lodging' | 'piety';
 
 export interface HomeQualityRow {
   readonly effect: HouseholdEffect;
@@ -257,7 +257,7 @@ function ownsSeveralTribes(snapshot: WorldSnapshot, owner: number | undefined): 
  *  "<name> N"; the head shows the tier on its own line. */
 const TIER_SUFFIX = /\s*(\([^()]*\)|\d+)$/;
 
-const HOUSEHOLD_ORDER: Readonly<Record<HouseholdEffect, number>> = { cooking: 0, rest: 1, piety: 2 };
+const HOUSEHOLD_ORDER: Readonly<Record<HouseholdEffect, number>> = { cooking: 0, lodging: 1, piety: 2 };
 
 function homeQuality(
   ctx: UnitPanelModelContext,
@@ -268,7 +268,7 @@ function homeQuality(
 ): HomeQualityModel | null {
   const player = ownerPlayerOf(ent);
   if (player === undefined || def.kind !== 'home') return null;
-  const pools = homeQualityView(snapshot, ent.id) ?? { cooking: 0, rest: 0, piety: 0 };
+  const pools = homeQualityView(snapshot, ent.id) ?? { cooking: 0, lodging: 0, piety: 0 };
   const policy = householdGoodPolicyView(snapshot, player);
   const rows = ctx.goods
     .flatMap((good): HomeQualityRow[] => {
@@ -285,7 +285,8 @@ function homeQuality(
           allowed: policy[use.effect],
           ...(use.effect === 'piety'
             ? { holyFireActive: value > 0 }
-            : { uses: Math.floor(value / use.useCost) }),
+            : // A lodging pool counts in sleeps, its smallest regular wear.
+              { uses: Math.floor(value / (use.effect === 'lodging' ? use.wear.sleep : use.useCost)) }),
         },
       ];
     })

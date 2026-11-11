@@ -96,23 +96,45 @@ export const GoodFarming = z.strictObject({
 });
 export type GoodFarming = z.infer<typeof GoodFarming>;
 
-export const HomeQualityEffect = z.enum(['cooking', 'rest', 'piety']);
+export const HomeQualityEffect = z.enum(['cooking', 'lodging', 'piety']);
 export type HomeQualityEffect = z.infer<typeof HomeQualityEffect>;
 
-/** A durable good delivered to a family's home and used there to improve one household activity. */
-export const HomeQuality = z.strictObject({
-  effect: HomeQualityEffect,
+/** What a home keeps of a household good, whatever the good serves. */
+const homeQualityStock = {
   /** Quality points credited when one carried unit reaches the home. */
   deliveryValue: z.number().int().positive(),
   /** Maximum quality points retained by one home. */
   capacity: z.number().int().positive(),
-  /** Quality points spent by one matching household action. */
-  useCost: z.number().int().positive(),
   /** A home requests another unit while its stored quality is below this value. */
   fetchBelow: z.number().int().nonnegative(),
   /** Zero-based home upgrade level required to request and use this good. */
   minimumHomeLevel: z.number().int().nonnegative(),
+};
+
+/** Quality points a lodging pool loses to each household activity that wears it. */
+export const LodgingWear = z.strictObject({
+  /** A couple beginning to make a child in the home. */
+  child: z.number().int().positive(),
+  /** A resident starting a sleep in the home. */
+  sleep: z.number().int().positive(),
+  /** A resident starting a meal off the home's own larder. */
+  meal: z.number().int().positive(),
 });
+export type LodgingWear = z.infer<typeof LodgingWear>;
+
+/**
+ * A durable good delivered to a family's home and used there. Cooking and piety spend one `useCost` per
+ * matching action; lodging lets the home take extra families while it lasts and wears by activity.
+ */
+export const HomeQuality = z.discriminatedUnion('effect', [
+  z.strictObject({
+    effect: z.enum(['cooking', 'piety']),
+    ...homeQualityStock,
+    /** Quality points spent by one matching household action. */
+    useCost: z.number().int().positive(),
+  }),
+  z.strictObject({ effect: z.literal('lodging'), ...homeQualityStock, wear: LodgingWear }),
+]);
 export type HomeQuality = z.infer<typeof HomeQuality>;
 export type HomeQualityUse = HomeQuality;
 

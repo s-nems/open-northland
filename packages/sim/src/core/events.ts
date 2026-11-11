@@ -189,6 +189,17 @@ export type SimEvent =
     }
   | {
       /**
+       * A family moved out of `home`: its furniture ran out or its owner forbade it, and the home's base
+       * `homeSize` has no slot left for the family. `entity` is the family's head (its lower adult id, or the
+       * child of a household with no adult), still alive and now homeless; `player` owns the home.
+       */
+      readonly kind: 'familyMovedOut';
+      readonly entity: Entity;
+      readonly home: Entity;
+      readonly player: number | null;
+    }
+  | {
+      /**
        * Two settlers became spouses this tick. `at` is the kiss node and `player` the couple's owner
        * (`null` for an unowned pair), for the marriage jingle (`DM_MUSIC_TYPE_JINGLE_MARRIAGE`,
        * `logicdefines.inc`), which rings for the owner alone.

@@ -485,7 +485,7 @@ describe('the ownership results', () => {
       });
       sim.step();
       const stays = only(humansOf(sim, 2).filter((e) => e !== moved));
-      sim.world.add(stays, Residence, { home: sim.world.get(moved, Residence).home });
+      sim.world.add(stays, Residence, { home: sim.world.get(moved, Residence).home, since: 0 });
       sim.world.add(handedIsHusband ? stays : moved, Female, { female: true });
       sim.world.add(moved, Marriage, { spouse: stays, child: null });
       sim.world.add(stays, Marriage, { spouse: moved, child: null });

@@ -598,9 +598,10 @@ export type UnitOrderCommand =
   | {
       /**
        * House one owned adult settler's whole family (the settler, its spouse, their still-growing child)
-       * in `house`. A home holds up to `homeSize` families (`houses.ini` `logichomesize`, 1..5 by level);
-       * re-assigning moves the family out of its previous home. A home beyond the settler's signpost
-       * reach still binds, and the settler stands lost as with `assignWorker`.
+       * in `house`. A home holds up to `homeSize` families (`houses.ini` `logichomesize`, 1..5 by level),
+       * `furnishedFamilies` more while furnished; re-assigning moves the family out of its previous home. A
+       * home beyond the settler's signpost reach still binds, and the settler stands lost as with
+       * `assignWorker`.
        */
       readonly kind: 'assignHouse';
       readonly entity: Entity;
@@ -673,7 +674,8 @@ export type UnitOrderCommand =
       readonly enabled: boolean;
     }
   | {
-      /** Allow or forbid consumption of one durable household quality in an owned finished home. */
+      /** Allow or forbid one durable household good across `player`'s homes: its deliveries, and its use
+       *  except holy oil's. Forbidding furniture moves out the extra families it housed. */
       readonly kind: 'setHouseholdGoodUse';
       readonly player: number;
       readonly effect: HomeQualityEffect;

@@ -373,14 +373,14 @@ function ownedAt(sim: Simulation, x: number, buildingType: number, player = PLAY
 function devoutAt(sim: Simulation, x: number, home?: Entity): Entity {
   const e = settlerAt(sim, x, 0, DEVOUT);
   sim.world.add(e, Owner, { player: PLAYER });
-  if (home !== undefined) sim.world.add(e, Residence, { home });
+  if (home !== undefined) sim.world.add(e, Residence, { home, since: 0 });
   return e;
 }
 
 /** A home of {@link PLAYER} holding oil, whose policy lets it burn. */
 function litHomeAt(sim: Simulation, x: number): Entity {
   const home = ownedAt(sim, x, HOME_TYPE);
-  sim.world.add(home, HomeQuality, { cooking: 0, rest: 0, piety: LIT });
+  sim.world.add(home, HomeQuality, { cooking: 0, lodging: 0, piety: LIT });
   setHouseholdGoodUse(sim.world, ctxOf(sim), { player: PLAYER, effect: 'piety', allowed: true });
   return home;
 }

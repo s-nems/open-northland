@@ -102,7 +102,15 @@ describe('personal name decks', () => {
     if (mother === undefined) throw new Error('missing parent');
     sim.world.add(mother, Female, { female: true });
     sim.world.mut(mother, Position).x = fx.fromInt(1);
-    const baby = spawnNewborn(sim.world, sim.content, mother, sim.world.create(), 'female', sim.names);
+    const baby = spawnNewborn(
+      sim.world,
+      sim.content,
+      mother,
+      sim.world.create(),
+      'female',
+      sim.names,
+      sim.tick,
+    );
     expect(pools[1]?.names).toContain(sim.world.get(baby, NameIdentity).name);
   });
   it('persists a living identity and its next allocation through JSON', () => {

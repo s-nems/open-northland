@@ -1,4 +1,10 @@
-import type { ContentSet, GoodType, HomeQualityEffect, HomeQualityUse } from '@open-northland/data';
+import type {
+  BuildingType,
+  ContentSet,
+  GoodType,
+  HomeQualityEffect,
+  HomeQualityUse,
+} from '@open-northland/data';
 import {
   Building,
   DEFAULT_HOUSEHOLD_GOOD_POLICY,
@@ -16,9 +22,14 @@ import { goodEnabled } from '../progression/availability.js';
 
 const EMPTY_QUALITY: Readonly<Record<HomeQualityEffect, number>> = {
   cooking: 0,
-  rest: 0,
+  lodging: 0,
   piety: 0,
 };
+
+/** A ware that spends one `useCost` per household action: crockery, holy oil. */
+type ActionHomeQuality = Exclude<HomeQualityUse, { readonly effect: 'lodging' }>;
+/** The ware that houses extra families and wears by activity: furniture. */
+export type LodgingHomeQuality = Extract<HomeQualityUse, { readonly effect: 'lodging' }>;
 
 export function homeQualityUse(ctx: ContentContext, goodType: number): HomeQualityUse | undefined {
   return contentIndex(ctx.content).goods.get(goodType)?.homeQuality;
@@ -47,6 +58,21 @@ export function homeQualityUseFor(
   return undefined;
 }
 
+/** The per-action ware serving `effect`, first in content order. */
+export function actionHomeQualityFor(
+  ctx: ContentContext,
+  effect: ActionHomeQuality['effect'],
+): ActionHomeQuality | undefined {
+  const use = homeQualityUseFor(ctx, effect);
+  return use?.effect === 'lodging' ? undefined : use;
+}
+
+/** The ware serving lodging, first in content order. */
+export function lodgingUseFor(ctx: ContentContext): LodgingHomeQuality | undefined {
+  const use = homeQualityUseFor(ctx, 'lodging');
+  return use?.effect === 'lodging' ? use : undefined;
+}
+
 export function homeQualityValue(world: World, home: Entity, effect: HomeQualityEffect): number {
   return world.tryGet(home, HomeQuality)?.[effect] ?? 0;
 }
@@ -71,13 +97,15 @@ function householdGoodPolicyEntity(world: World, player: number): Entity | null 
   return best;
 }
 
-/** Whether a finished home may currently use this quality role. */
+/** Whether a finished home may currently use this quality role. The policy pauses the use of stored
+ *  crockery and furniture; stored holy oil serves whatever it says. */
 export function homeQualityActive(
   world: World,
   ctx: ContentContext,
   home: Entity,
   effect: HomeQualityEffect,
 ): boolean {
+  if (homeQualityValue(world, home, effect) <= 0) return false;
   const policy = homeQualityUseFor(ctx, effect);
   const building = world.tryGet(home, Building);
   if (policy === undefined || building === undefined || building.built < ONE) return false;
@@ -85,9 +113,24 @@ export function homeQualityActive(
   return (
     type?.kind === 'home' &&
     building.level >= policy.minimumHomeLevel &&
-    (effect === 'piety' || homeQualityAllowed(world, home, effect)) &&
-    homeQualityValue(world, home, effect) > 0
+    (effect === 'piety' || homeQualityAllowed(world, home, effect))
   );
+}
+
+/**
+ * How many families `home`, a home of `type`, takes now: its `homeSize`, plus its `furnishedFamilies` while
+ * it holds furniture its owner allows ({@link homeQualityActive}). Owner's design: furniture houses extra
+ * families instead of improving rest.
+ */
+export function homeFamilyCapacity(
+  world: World,
+  ctx: ContentContext,
+  home: Entity,
+  type: BuildingType,
+): number {
+  return type.furnishedFamilies > 0 && homeQualityActive(world, ctx, home, 'lodging')
+    ? type.homeSize + type.furnishedFamilies
+    : type.homeSize;
 }
 
 /** Spend one use when the pool can pay it in full. A sub-cost remainder stays available, as in the
@@ -133,7 +176,7 @@ export function depositHomeQuality(
   if (quality === undefined) {
     world.add(home, HomeQuality, {
       cooking: use.effect === 'cooking' ? Math.min(use.capacity, moved * use.deliveryValue) : 0,
-      rest: use.effect === 'rest' ? Math.min(use.capacity, moved * use.deliveryValue) : 0,
+      lodging: use.effect === 'lodging' ? Math.min(use.capacity, moved * use.deliveryValue) : 0,
       piety: use.effect === 'piety' ? Math.min(use.capacity, moved * use.deliveryValue) : 0,
     });
   } else {
@@ -175,7 +218,8 @@ const EMPTY_GOODS: ReadonlySet<number> = new Set<number>();
 
 /**
  * Toggle one player's settlement-wide policy, including homes built later. Oil permission controls
- * deliveries only; stored oil keeps burning and serving prayer. Other furnishings pause their uses.
+ * deliveries only; stored oil keeps burning and serving prayer. Other furnishings pause their uses, and
+ * paused furniture houses no extra families (the command moves them out, `lodging.ts`).
  */
 export function setHouseholdGoodUse(
   world: World,
@@ -191,13 +235,13 @@ export function setHouseholdGoodUse(
   const next = {
     player: command.player,
     cooking: current.cooking,
-    rest: current.rest,
+    lodging: current.lodging,
     piety: current.piety,
     [command.effect]: command.allowed,
   };
   const isDefault =
     next.cooking === DEFAULT_HOUSEHOLD_GOOD_POLICY.cooking &&
-    next.rest === DEFAULT_HOUSEHOLD_GOOD_POLICY.rest &&
+    next.lodging === DEFAULT_HOUSEHOLD_GOOD_POLICY.lodging &&
     next.piety === DEFAULT_HOUSEHOLD_GOOD_POLICY.piety;
   if (isDefault) {
     if (carrier !== null) world.destroy(carrier);
@@ -209,7 +253,7 @@ export function setHouseholdGoodUse(
  * payment extinguishes the fire instead of preserving an indefinitely usable remainder. */
 export function drainHolyOil(world: World, ctx: SystemContext): void {
   if (ctx.tick % TICKS_PER_SECOND !== 0) return;
-  const oil = homeQualityUseFor(ctx, 'piety');
+  const oil = actionHomeQualityFor(ctx, 'piety');
   if (oil === undefined) return;
   for (const home of world.query(HomeQuality, Building)) {
     if (!homeQualityActive(world, ctx, home, 'piety')) continue;
