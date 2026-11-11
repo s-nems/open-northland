@@ -332,14 +332,21 @@
   border-color: var(--accent);
 }
 
+/* The end buttons round themselves instead of the control clipping them, so a choice's tip can hang
+   below the control. Every choice's tip hangs from the control's right edge: one growing rightwards
+   from its own button would reach past the panel and widen its scroll area even while hidden. */
 .main-menu__seg {
+  position: relative;
   display: flex;
   border: 2px solid rgb(var(--accent-rgb) / 0.3);
   border-radius: 6px;
 }
 
-/* The end buttons round themselves instead of the control clipping them, so a choice's tip can hang
-   below the control; the tips of the last two choices grow leftwards to stay inside the panel. */
+.main-menu__seg:has(> .main-menu__tip-host[data-tip]:hover),
+.main-menu__seg:has(> .main-menu__tip-host[data-tip]:focus-within) {
+  z-index: 1;
+}
+
 .main-menu__seg-btn:first-child {
   border-radius: 4px 0 0 4px;
 }
@@ -348,7 +355,11 @@
   border-radius: 0 4px 4px 0;
 }
 
-.main-menu__seg-btn.main-menu__tip-host[data-tip]:nth-last-child(-n + 2)::after {
+.main-menu__seg-btn.main-menu__tip-host[data-tip] {
+  position: static;
+}
+
+.main-menu__seg-btn.main-menu__tip-host[data-tip]::after {
   left: auto;
   right: 0;
 }
