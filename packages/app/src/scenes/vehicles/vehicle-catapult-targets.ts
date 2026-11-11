@@ -2,6 +2,7 @@ import {
   cellAnchorNode,
   components,
   type Entity,
+  hexDistanceBetween,
   nodeOfPosition,
   playerCommand,
   type Simulation,
@@ -24,10 +25,10 @@ import { enemyBuildings, labelledSceneSettler, labelSceneSettler } from '../sand
 import type { SceneDefinition } from '../types.js';
 
 /**
- * What a catapult shoots first: a crewed catapult in its attack stance faces an enemy tower and an
- * archer inside its band while two swordsmen run in and batter its hull. It stays where it stands and
- * shoots the tower down first, then the archer; the swordsmen at its side are too close for a stone, and
- * two of them are a crowd it does not try to drive away from.
+ * What a catapult shoots first: a crewed catapult in its attack stance has an archer inside its band and
+ * an enemy tower just past it, while two swordsmen run in and batter its hull. It rolls a few steps up to
+ * the tower rather than shoot the nearer archer, razes it, then shoots the archer; the swordsmen at its
+ * side are too close for a stone, and two of them are a crowd it does not try to drive away from.
  */
 
 const MAP_W = 26;
@@ -40,8 +41,8 @@ const COMMANDER_AT = { x: 3, y: 10 } as const;
 const MASTER_CATAPULT_SKILL = 100;
 /** A hull the swordsmen cannot break inside the run, so the catapult is still standing to check. */
 const TOUGH_HULL_HITPOINTS = 1_000_000;
-/** About 18 map points east: inside the 8..24 band, past the archer. */
-const ENEMY_TOWER: readonly [string, number, number] = ['tower_00', 14, 8];
+/** East, just past the far reach but inside the reach a military target draws the catapult from. */
+const ENEMY_TOWER: readonly [string, number, number] = ['tower_00', 21, 8];
 /** Two stones' worth, so the tower falls early in the run and the archer's turn comes. */
 const TOWER_HITPOINTS = 10_000;
 /** About 14 map points south-east: inside the band and nearer than the tower. */
@@ -54,9 +55,9 @@ const ENEMY_SWORDSMEN: readonly [number, number][] = [
 /** Enough to outlast the run while they batter the hull. */
 const SWORDSMAN_HITPOINTS = 100_000;
 const ARCHER_LABEL = 'archer';
-const RUN_TICKS = 500;
+const RUN_TICKS = 450;
 /** Between the catapult and the tower, so the browser opens on the whole exchange. */
-const CAMERA_AT = { hx: 20, hy: 20 } as const;
+const CAMERA_AT = { hx: 26, hy: 20 } as const;
 
 const { Health, Position, SettlerProgress } = components;
 
@@ -116,14 +117,16 @@ export const vehicleCatapultTargetsScene: SceneDefinition = {
   initialZoom: 1,
   checks: [
     {
-      label: 'the catapult never left the spot it was set down on',
+      label: 'the catapult drove up toward the tower, never away from the swordsmen',
       predicate: (sim) => {
         const e = ownCatapult(sim);
         const at = e === undefined ? undefined : sim.world.tryGet(e, Position);
         if (at === undefined) return false;
         const node = nodeOfPosition(at.x, at.y);
         const start = cellAnchorNode(CATAPULT_AT.x, CATAPULT_AT.y);
-        return node.hx === start.hx && node.hy === start.hy;
+        const tower = cellAnchorNode(ENEMY_TOWER[1], ENEMY_TOWER[2]);
+        const toTower = (p: { hx: number; hy: number }) => hexDistanceBetween(p.hx, p.hy, tower.hx, tower.hy);
+        return toTower(node) < toTower(start);
       },
     },
     {

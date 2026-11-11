@@ -539,7 +539,7 @@ export const plContent = {
     'vehicle-catapult-targets': {
       title: 'W co katapulta strzela najpierw',
       summary:
-        'Obsadzona katapulta w postawie ataku ma w zasięgu wrogą wieżę i bliżej stojącego łucznika, a dwaj miecznicy podbiegają i biją w jej kadłub. Katapulta zostaje na miejscu: kamienie lecą najpierw w wieżę, potem w łucznika, a miecznicy przy jej boku są za blisko na kamień. Przed dwoma nie próbuje odjechać; gdy nic już nie ma w zasięgu, po prostu stoi.',
+        'Obsadzona katapulta w postawie ataku ma w zasięgu łucznika, a tuż za zasięgiem wrogą wieżę, podczas gdy dwaj miecznicy podbiegają i biją w jej kadłub. Zamiast strzelać w bliższego łucznika, podjeżdża kilka kroków do wieży, burzy ją, a potem strzela w łucznika. Miecznicy przy jej boku są za blisko na kamień; przed dwoma nie próbuje odjechać, a gdy nic już nie ma w zasięgu, po prostu stoi.',
     },
     'vehicle-catapult-wall': {
       title: 'Katapulta ostrzeliwuje miejsce za palisadą',

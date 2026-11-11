@@ -541,7 +541,7 @@ export const enContent = {
     'vehicle-catapult-targets': {
       title: 'What a catapult shoots first',
       summary:
-        'A crewed catapult in its attack stance has an enemy tower and a nearer archer in reach, while two swordsmen run in and batter its hull. It stays where it stands: the stones go to the tower first, then to the archer, and the swordsmen at its side are too close for a stone. With two of them there it does not try to drive away; once nothing is left in reach it simply stands.',
+        'A crewed catapult in its attack stance has an archer in reach and an enemy tower just past it, while two swordsmen run in and batter its hull. It rolls a few steps up to the tower rather than shoot the nearer archer, razes it, then shoots the archer. The swordsmen at its side are too close for a stone; with two of them there it does not try to drive away, and once nothing is left in reach it simply stands.',
     },
     'vehicle-catapult-wall': {
       title: 'A catapult shells a spot over the wall',
