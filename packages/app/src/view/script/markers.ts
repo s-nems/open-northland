@@ -1,15 +1,20 @@
-import { type Camera, type ElevationField, halfCellToScreen, PalettedSprite } from '@open-northland/render';
+import {
+  type Camera,
+  type ElevationField,
+  halfCellToScreen,
+  PalettedSprite,
+  type PaletteLut,
+} from '@open-northland/render';
 import type { HalfCellNode, SimEvent } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import type { GuiArt } from '../../content/gui/art.js';
-import type { PlayerPaletteLut } from '../../content/gui/player-palettes.js';
 
 /**
  * The markers a map script puts on the ground: the ten GUI marker slots, the area rings and the
  * import markers. Drawn as a screen overlay over the world at each point's projected position, the
  * way the original draws the GUI markers (reading: it cycles six bobs of the GUI sheet at 150 ms
  * through the local player's `human_playerNN` palette). Approximation: the area and import markers,
- * the original's own map entities with their own art, draw with the first of those bobs.
+ * the original's own map entities with their own art, draw with the first of those bobs in that palette.
  */
 
 /** The six GUI sheet bobs the marker cycles through, and the cycle's pace (reading). */
@@ -37,7 +42,8 @@ interface Marker {
 /** The GUI sheet the marker bobs are cut from and the player palettes they draw through. */
 export interface ScriptMarkerArt {
   readonly gui: GuiArt;
-  readonly players: PlayerPaletteLut;
+  /** Every colour slot's player palette, row = colour slot. */
+  readonly players: PaletteLut;
 }
 
 const pointKey = (p: HalfCellNode): string => `${p.hx},${p.hy}`;
@@ -82,7 +88,8 @@ export function createScriptMarkers(
       sprites.push(sprite);
       container.addChild(sprite);
     }
-    sprite.setFrame(layer.source, frame, layer.atlas.width, layer.atlas.height);
+    // Only a new bob re-frames: `stretchToRect` voids `setFrame`'s own unchanged-frame check.
+    if (sprite.frame !== frame) sprite.setFrame(layer.source, frame, layer.atlas.width, layer.atlas.height);
     if (sprite.player !== row) sprite.player = row;
     sprite.visible = true;
     return sprite;

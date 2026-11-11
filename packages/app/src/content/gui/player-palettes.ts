@@ -1,5 +1,6 @@
 import { decodeAtlasPalette } from '@open-northland/formats/atlas/paletted-sheet';
-import { BufferImageSource, type TextureSource } from 'pixi.js';
+import type { PaletteLut } from '@open-northland/render';
+import { BufferImageSource } from 'pixi.js';
 import { PLAYER_COLOR_COUNT, playerSignAtlasStem } from '../../catalog/roster.js';
 import { loadServedBobAtlas } from '../bob-atlases.js';
 
@@ -9,21 +10,15 @@ const RGB = 3;
 const RGBA = 4;
 const OPAQUE = 255;
 
-/** Every colour slot's full player palette as a `256 × colours` LUT, row = colour slot. */
-export interface PlayerPaletteLut {
-  readonly source: TextureSource;
-  /** LUT row count, passed to each `PalettedSprite`. */
-  readonly colours: number;
-}
-
-let lutOnce: Promise<PlayerPaletteLut | null> | null = null;
+let lutOnce: Promise<PaletteLut | null> | null = null;
 
 /**
- * The `human_playerNN` palettes the original draws the GUI sheet's player-coloured bobs through, read
- * off the sign stems the pipeline colours with them. `null` when the atlas catalogue or a slot's sign
- * stem is not served. Memoized per page.
+ * Every colour slot's `human_playerNN` palette as a `256 × PLAYER_COLOR_COUNT` LUT, row = colour slot:
+ * the palettes the original draws the GUI sheet's player-coloured bobs through, read off the sign stems
+ * the pipeline colours with them. `null` when the atlas catalogue or a slot's sign stem is not served.
+ * Memoized per page.
  */
-export function loadPlayerPaletteLut(): Promise<PlayerPaletteLut | null> {
+export function loadPlayerPaletteLut(): Promise<PaletteLut | null> {
   lutOnce ??= (async () => {
     const signs = await Promise.all(
       Array.from({ length: PLAYER_COLOR_COUNT }, (_, slot) => loadServedBobAtlas(playerSignAtlasStem(slot))),
