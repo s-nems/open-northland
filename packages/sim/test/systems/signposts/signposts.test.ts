@@ -16,7 +16,14 @@ import {
 } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { cellAnchorNode, hexDistanceBetween, positionOfNode, Simulation } from '../../../src/index.js';
+import {
+  cellAnchorNode,
+  hexDistanceBetween,
+  nodeOfPosition,
+  positionOfNode,
+  Simulation,
+} from '../../../src/index.js';
+import { mintFlagMarker } from '../../../src/systems/economy/work-flag.js';
 import { canPlaceWorkFlag, stampResourceFootprintData } from '../../../src/systems/footprint/index.js';
 import {
   BUILD_GUIDE_ATOMIC_ID,
@@ -280,6 +287,25 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, stone, P0)).toBe(false);
     expect(sim.signpostProbe(P0)?.canPlace(STONE.hx, STONE.hy)).toBe(false);
     expect(sim.signpostProbe(P0)?.canPlace(STONE.hx - 2, STONE.hy)).toBe(true);
+  });
+
+  it('stands over a work flag, pushing the flag to the nearest free field', () => {
+    const sim = freshSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const FLAGGED = { hx: 12, hy: 4 };
+    const flag = mintFlagMarker(sim.world, positionOfNode(FLAGGED.hx, FLAGGED.hy));
+    const node = terrain.nodeAt(FLAGGED.hx, FLAGGED.hy);
+    const ctx = ctxOf(sim);
+    expect(canPlaceWorkFlag(sim.world, ctx, terrain, node)).toBe(false);
+    expect(sim.signpostProbe(P0)?.canPlace(FLAGGED.hx, FLAGGED.hy)).toBe(true);
+
+    expect(erectSignpost(sim.world, ctx, terrain, node, P0)).not.toBeNull();
+    const p = sim.world.get(flag, Position);
+    const moved = nodeOfPosition(p.x, p.y);
+    expect(moved).not.toEqual(FLAGGED);
+    expect(hexDistanceBetween(moved.hx, moved.hy, FLAGGED.hx, FLAGGED.hy)).toBe(1);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it('stands over a mushroom, clearing it, but not over a young tree; a work flag still refuses both', () => {

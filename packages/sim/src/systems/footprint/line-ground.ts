@@ -35,20 +35,20 @@ export function lineGroundOpen(world: World, content: ContentSet, hx: number, hy
   return true;
 }
 
-/** Whether the `flagBlockers` work-flag blocker contributions on node `(hx, hy)` are all resources
- *  anchored there that {@link clearLineGround} clears or leaves lying: where a signpost may stand although
- *  a work flag may not. Such a resource blocks no walking, so its one contribution is its anchor. */
+/** Whether the `blockers` work-flag blocker contributions on node `(hx, hy)` are all resources anchored
+ *  there that {@link clearLineGround} clears or leaves lying: where a signpost may stand although a work
+ *  flag may not. Such a resource blocks no walking, so its one contribution is its anchor. */
 export function onlyLineGroundBlocksAt(
   world: World,
   content: ContentSet,
   hx: number,
   hy: number,
-  flagBlockers: number,
+  blockers: number,
 ): boolean {
   if (!lineGroundOpen(world, content, hx, hy)) return false;
   let anchors = 0;
   for (const e of resourcesAtNode(world, hx, hy)) if (world.has(e, ResourceFootprint)) anchors++;
-  return anchors > 0 && flagBlockers === anchors;
+  return blockers === anchors;
 }
 
 /**
