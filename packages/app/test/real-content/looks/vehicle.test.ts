@@ -88,10 +88,9 @@ describe.runIf(hasRealIr())('the vehicle looks over the decoded content', () => 
     expect(shooting.length).toBeGreaterThan(0);
     for (const row of shooting) {
       const clip = systems.atomicDuration(real, { tribe: row.tribe, jobType: row.job }, ATTACK_ATOMIC);
-      expect(
-        binding?.byTribe[row.tribe]?.[row.vehicleType]?.attack?.ticks,
-        `${row.tribe}/${row.vehicleType}`,
-      ).toBe(clip);
+      const attack = binding?.byTribe[row.tribe]?.[row.vehicleType]?.attack;
+      const ticks = typeof attack === 'object' && 'ticks' in attack ? attack.ticks : undefined;
+      expect(ticks, `${row.tribe}/${row.vehicleType}`).toBe(clip);
     }
   });
 });
