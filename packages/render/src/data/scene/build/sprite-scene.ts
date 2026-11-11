@@ -266,7 +266,7 @@ function mergeSorted(
   let a = left[0];
   let b = right[0];
   while (a !== undefined && b !== undefined) {
-    // `drawOrder(a, b) <= 0`, spelled out: the comparison runs once per item of both runs.
+    // `drawOrder(a, b) <= 0` for the finite depths draw items carry, spelled out: it runs once per item.
     if (a.depth < b.depth || (a.depth === b.depth && a.ref <= b.ref)) {
       if (kept !== undefined && leftKept !== undefined && leftKept[i] === 1) kept[k] = 1;
       out[k++] = a;
