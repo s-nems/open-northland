@@ -90,13 +90,13 @@ const CAMERA_AT = { hx: 40, hy: 36 } as const;
 
 /** A catapult this near the HQ's site (Manhattan half-cell nodes) has driven in on it: nearer than the
  *  gathering point, which stands 40 nodes short of the objective, and than where it stood on the tower. */
-const AT_HEADQUARTERS_NODES = 32;
+const AT_HEADQUARTERS_NODES = 36;
 
 /** The tower has fallen to the catapults and every catapult fires at the HQ the men are still breaking.
- *  Measured: every check holds from tick 3245 to 3685. */
+ *  Measured: every check holds from tick 3230 to 3670. */
 const RUN_TICKS = 3500;
 
-/** Past the HQ's fall. Measured: every check holds from tick 1679 through at least 6000. */
+/** Past the HQ's fall. Measured: every check holds from about tick 2000 through at least 6000. */
 const BAND_RUN_TICKS = 2400;
 
 const { Building, Health, isAboardVehicle, Owner, Settler, Vehicle, vehicleCommander } = components;

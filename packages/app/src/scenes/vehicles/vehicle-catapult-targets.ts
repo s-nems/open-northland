@@ -42,7 +42,7 @@ const MASTER_CATAPULT_SKILL = 100;
 const TOUGH_HULL_HITPOINTS = 1_000_000;
 /** About 18 map points east: inside the 8..24 band, past the archer. */
 const ENEMY_TOWER: readonly [string, number, number] = ['tower_00', 14, 8];
-/** Three stones' worth, so the tower falls early in the run and the archer's turn comes. */
+/** Two stones' worth, so the tower falls early in the run and the archer's turn comes. */
 const TOWER_HITPOINTS = 10_000;
 /** About 14 map points south-east: inside the band and nearer than the tower. */
 const ENEMY_ARCHER_AT = { x: 11, y: 13 } as const;

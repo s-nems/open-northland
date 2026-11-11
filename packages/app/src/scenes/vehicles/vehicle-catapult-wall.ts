@@ -12,6 +12,8 @@ import { grassTerrain } from '../../catalog/buildings.js';
 import { JOB_SOLDIER_SWORD } from '../../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import {
+  CATAPULT_MAX_RANGE,
+  CATAPULT_MIN_RANGE,
   PALISADE_WALL_GFX_INDEX,
   placeBuiltSandboxBuilding,
   spawnSettlerDirect,
@@ -52,9 +54,6 @@ const MASTER_CATAPULT_SKILL = 100;
 const RUN_TICKS = 1500;
 /** Over the wall, between the battery and the hut. */
 const CAMERA_AT = { hx: 26, hy: 18 } as const;
-/** The catapult's weapon band in map points (`weapons.ini` type 21). */
-const CATAPULT_MIN_RANGE = 8;
-const CATAPULT_MAX_RANGE = 24;
 
 const { Palisade, SettlerProgress } = components;
 
