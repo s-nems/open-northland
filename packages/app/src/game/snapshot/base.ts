@@ -425,12 +425,17 @@ export function workplaceOf(e: SnapshotEntity): number | undefined {
   return num(a?.workplace);
 }
 
+/** The building type of the settler's workplace. */
+function workplaceTypeOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {
+  const workplace = workplaceOf(e);
+  const building = workplace === undefined ? undefined : entityById(snapshot, workplace);
+  return building === undefined ? undefined : buildingTypeOf(building);
+}
+
 /** Whether the settler holds a post that takes a flag of its own (the sim's `postTakesHaulFlag`). */
 export function holdsHaulFlagPost(content: ContentSet, snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
   const jobType = settlerJobType(e);
-  const workplace = workplaceOf(e);
-  const building = workplace === undefined ? undefined : entityById(snapshot, workplace);
-  const buildingType = building === undefined ? undefined : buildingTypeOf(building);
+  const buildingType = workplaceTypeOf(snapshot, e);
   return (
     jobType !== undefined &&
     buildingType !== undefined &&
@@ -439,8 +444,8 @@ export function holdsHaulFlagPost(content: ContentSet, snapshot: WorldSnapshot, 
 }
 
 /** The trades whose post takes a flag: a carrier collects around it, a collector, hunter or fisher works
- *  there. */
-export type PostFlagTrade = 'carrier' | 'collector' | 'hunter' | 'fisher';
+ *  there, a farmer sows his fields around it. */
+export type PostFlagTrade = 'carrier' | 'collector' | 'hunter' | 'fisher' | 'farmer';
 
 /** The trade of a settler whose post takes a flag, or null when its post takes none. */
 export function postFlagTradeOf(
@@ -450,6 +455,14 @@ export function postFlagTradeOf(
 ): PostFlagTrade | null {
   if (!holdsHaulFlagPost(content, snapshot, e)) return null;
   const jobType = settlerJobType(e) ?? null;
+  const buildingType = workplaceTypeOf(snapshot, e);
+  if (
+    jobType !== null &&
+    buildingType !== undefined &&
+    systems.sowsFieldsAt(content, jobType, buildingType)
+  ) {
+    return 'farmer';
+  }
   if (systems.isHunterJob(content, jobType)) return 'hunter';
   if (systems.isFisherJob(content, jobType)) return 'fisher';
   return systems.worksFieldFromPost(content, jobType) ? 'collector' : 'carrier';

@@ -638,7 +638,7 @@ export const plSurfaces = {
         'Budynki można stawiać na drogowskazach, własnych i cudzych. Drogowskazy przesuną się na bok, a ich połączenia zostaną.',
       scoutExplore: 'Zwiadowca akcją „Badaj” samodzielnie eksploruje mapę.',
       porterFlag:
-        'Tragarze magazynu i warsztatu mogą dostać flagę odbioru, spod której zbierają towary, a zbieracze, myśliwi i rybacy przypisani do budynku flagę, przy której pracują. Ustawisz ją w wierszu „{area}” panelu osadnika.',
+        'Tragarze magazynu i warsztatu mogą dostać flagę odbioru, spod której zbierają towary, a zbieracze, myśliwi, rybacy, farmerzy i zielarze przypisani do budynku flagę, przy której pracują. Ustawisz ją w wierszu „{area}” panelu osadnika.',
       nationSwitch:
         'Mając osadników innego plemienia, w oknie budowy ({key}) przełączysz się na jego budynki.',
     },

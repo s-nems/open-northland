@@ -673,6 +673,7 @@ export const chsGame = {
         collector: '路标范围内',
         hunter: '工作场所周围',
         fisher: '工作场所附近',
+        farmer: '工作场所周围',
       },
       assignWorkArea: '插下旗帜',
       assignWorkAreaHint: {
@@ -680,6 +681,7 @@ export const chsGame = {
         collector: '选择采集者采集资源的中心位置 · Esc 取消',
         hunter: '选择猎人狩猎的中心位置 · Esc 取消',
         fisher: '选择渔夫捕鱼的水域 · Esc 取消',
+        farmer: '选择播种田地的中心位置 · Esc 取消',
       },
       clearWorkArea: '收回旗帜',
       clearWorkAreaHint: {
@@ -687,6 +689,7 @@ export const chsGame = {
         collector: '采集者重新在整个路标范围内采集资源',
         hunter: '猎人重新在工作场所周围狩猎',
         fisher: '渔夫重新在工作场所附近捕鱼',
+        farmer: '重新在工作场所周围播种田地',
       },
       centreFlag: '显示旗帜',
       centreFlagHint: '将视角对准旗帜',

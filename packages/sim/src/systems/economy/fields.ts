@@ -1,6 +1,6 @@
 import { type ContentSet, type FootprintCell, footprintCellDx, type GoodFarming } from '@open-northland/data';
 import { Building, Crop, LandscapeResource, Position, Resource } from '../../components/index.js';
-import { contentIndex } from '../../core/content-index.js';
+import { contentIndex, jobAllowsAtomic } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import {
   hexNeighboursOf,
@@ -9,13 +9,14 @@ import {
   nodeOfPosition,
   positionOfNode,
 } from '../../nav/halfcell.js';
-import type { System, SystemContext } from '../context.js';
+import type { ContentContext, System, SystemContext } from '../context.js';
 import { buildingFieldZone, translatedCells } from '../footprint/geometry.js';
 import {
   dynamicBlockOverlay,
   stampResourceFootprint,
   stampResourceFootprintOrFallback,
   unstampResourceFootprint,
+  workFlagBlockerCounts,
 } from '../footprint/index.js';
 import { dueForGrowth } from '../landscape/growth-clock.js';
 import { cropsNearNode } from '../spatial/crops.js';
@@ -65,16 +66,27 @@ function farmingSpecFor(content: ContentSet, goodType: number): FarmingSpec | nu
  * `produces` goods that resolves a {@link FarmingSpec}, a fixed content array so the pick is deterministic.
  * The data-driven farm test, never a hardcoded building-type id.
  */
-export function farmWorkGood(world: World, ctx: SystemContext, workplace: Entity): FarmingSpec | null {
+export function farmWorkGood(world: World, ctx: ContentContext, workplace: Entity): FarmingSpec | null {
   const b = world.tryGet(workplace, Building);
-  if (b === undefined) return null;
-  const type = contentIndex(ctx.content).buildings.get(b.buildingType);
+  return b === undefined ? null : farmedGoodOf(ctx.content, b.buildingType);
+}
+
+/** {@link farmWorkGood} by building type. */
+export function farmedGoodOf(content: ContentSet, buildingType: number): FarmingSpec | null {
+  const type = contentIndex(content).buildings.get(buildingType);
   if (type === undefined) return null;
   for (const goodType of type.produces) {
-    const spec = farmingSpecFor(ctx.content, goodType);
+    const spec = farmingSpecFor(content, goodType);
     if (spec !== null) return spec;
   }
   return null;
+}
+
+/** Whether a `jobType` worker posted at `buildingType` sows its fields: the farm's trade that may plant the
+ *  farmed good, not the carrier sharing the building. */
+export function sowsFieldsAt(content: ContentSet, jobType: number, buildingType: number): boolean {
+  const spec = farmedGoodOf(content, buildingType);
+  return spec !== null && jobAllowsAtomic(content, jobType, spec.plantAtomic);
 }
 
 /** Whether a resource, field or stockpile already occupies half-cell node `(hx, hy)` for sowing purposes.
@@ -160,9 +172,11 @@ export function applySow(
   if (insideBuildingFieldZone(world, ctx.content, effect.x, effect.y)) return;
   // Blocked since the planner chose it: a field there would be unreachable from birth. Tests the same
   // memoized overlay `nextSowNode` filtered on, since a narrower one would admit a node it had rejected.
+  // A work flag planted there since holds the node as well.
   if (ctx.terrain !== undefined) {
     const node = ctx.terrain.nodeAtClamped(effect.x, effect.y);
     if (dynamicBlockOverlay(world, ctx, ctx.terrain).has(node)) return;
+    if (workFlagBlockerCounts(world, ctx.content, ctx.terrain).markers(node) > 0) return;
   }
   const e = world.create();
   world.add(e, Position, positionOfNode(effect.x, effect.y));

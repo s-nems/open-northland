@@ -160,7 +160,8 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
       ? builderWorkStatus(world, ctx, entity)
       : { kind: 'unknown', reason: 'constructionSearch' };
   }
-  if (liveHaulFlag(world, entity) !== undefined) return { kind: 'nothingAtFlag' };
+  if (isCarrierJob(ctx, jobType) && liveHaulFlag(world, entity) !== undefined)
+    return { kind: 'nothingAtFlag' };
   // A store's carrier reaches the idle tail of its ladder only after the porter and haul rungs found
   // nothing in reach a store would take.
   if (

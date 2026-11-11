@@ -18,6 +18,7 @@ import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { type FarmingSpec, farmWorkGood } from '../../../economy/fields.js';
+import { liveHaulFlag } from '../../../economy/work-flag.js';
 import { dynamicBlockOverlay, routeRegions } from '../../../footprint/index.js';
 import { workplaceStaffable } from '../../../progression/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
@@ -83,7 +84,10 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims, idle?: Idle
   // A reap stroke ends the task; this rung picks the field again itself, and the strokes bank on the crop.
   if (world.has(e, HarvestFocus)) world.remove(e, HarvestFocus);
   const { farm, spec } = bound;
-  const fp = world.get(farm, Position);
+  // Original behavior: a farmer sows, waters, reaps and gathers around his work centre, which starts at
+  // the farm and the player may move. The herb gatherer's movable centre is our extension of it.
+  const flag = liveHaulFlag(world, e);
+  const fp = world.get(flag?.flag ?? farm, Position);
   const fn = nodeOfPosition(fp.x, fp.y);
   const anchor = terrain.nodeAtClamped(fn.hx, fn.hy);
 
@@ -121,7 +125,9 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims, idle?: Idle
   let thirstyStage = Number.POSITIVE_INFINITY;
   let thirstyCell = 0 as NodeId;
   let thirstyDist = Number.POSITIVE_INFINITY;
-  // The farm's own fields, then the map's unowned ones around it, walked as one run without joining them.
+  // The farm's own fields, then the map's unowned ones around the centre, walked as one run without joining
+  // them. Only fields inside the centre's radius count, so a plot left behind by a moved flag neither holds
+  // the cap nor draws the farmer back; it is worked again once the centre returns.
   const own = targets.cropsByFarm.get(farm) ?? NO_FIELDS;
   const anchorCoords = terrain.coordsOf(anchor);
   const near = resourcesNearNode(world, anchorCoords.x, anchorCoords.y, spec.farming.fieldRadius);
@@ -132,14 +138,11 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims, idle?: Idle
     const crop = world.tryGet(c, Crop);
     if (crop === undefined || (!owned && crop.farm !== null)) continue;
     if (crop.goodType !== spec.goodType) continue;
-    if (crop.farm === null) {
-      const cp = world.get(c, Position);
-      const cn = nodeOfPosition(cp.x, cp.y);
-      const cropNode = terrain.nodeAtClamped(cn.hx, cn.hy);
-      if (manhattan(terrain, anchor, cropNode) > spec.farming.fieldRadius) continue;
-    }
-    // Counted before the reachability gate: the plot cap is a fact about the farm, not about which farmer
-    // is asking.
+    const cp = world.get(c, Position);
+    const cn = nodeOfPosition(cp.x, cp.y);
+    if (manhattan(terrain, anchor, terrain.nodeAtClamped(cn.hx, cn.hy)) > spec.farming.fieldRadius) continue;
+    // Counted before the reachability gate: the plot cap is a fact about the plot, not about whether this
+    // farmer can reach a field of it.
     fields++;
     if (claims.targets.has(c)) continue;
     // A growing field further along than the thirstiest so far cannot be picked, so its cell is not resolved.
@@ -180,8 +183,9 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims, idle?: Idle
     return true;
   }
 
-  // Sow the next field while the farm is under its plot cap, in-flight sow-walks counted in. The cap
-  // belongs to the farm, not its crew - extra farmers turn the plot over faster without enlarging it.
+  // Sow the next field while the plot around the centre is under its cap, in-flight sow-walks counted in.
+  // The cap belongs to the plot, not its crew - extra farmers turn it over faster without enlarging it; a
+  // farmer flagged elsewhere starts a plot of his own.
   if (fields + (claims.byFarm.get(farm) ?? 0) < spec.farming.maxFields) {
     const node = nextSowNode(plan, { anchor, spec, claims, gates });
     if (node !== null) {

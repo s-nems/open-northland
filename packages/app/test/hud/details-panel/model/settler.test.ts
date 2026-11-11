@@ -16,11 +16,13 @@ import {
 import { installPetNames, petNamesOf } from '../../../../src/game/character-names/pet-names.js';
 import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
 import {
+  BUILDING_FARM,
   BUILDING_HOME_00,
   BUILDING_JOINERY,
   BUILDING_WAREHOUSE_00,
   GOOD_IRON,
   GOOD_WOOD,
+  JOB_FARMER_SLOT,
   VEHICLE_HANDCART,
 } from '../../../../src/game/sandbox/ids/index.js';
 import { sandboxContent } from '../../../../src/game/sandbox/index.js';
@@ -197,8 +199,12 @@ describe('the settler panel model', () => {
       ...sandboxCtx(),
       postFlagTrade: (snapshot, ent) => postFlagTradeOf(content, snapshot, ent),
     };
-    const posted = (jobType: number, components: Record<string, unknown> = {}): EntitySnapshot[] => [
-      buildingEntity(WORKSHOP, BUILDING_WAREHOUSE_00),
+    const posted = (
+      jobType: number,
+      components: Record<string, unknown> = {},
+      post = BUILDING_WAREHOUSE_00,
+    ): EntitySnapshot[] => [
+      buildingEntity(WORKSHOP, post),
       {
         id: SETTLER,
         components: owned({
@@ -221,6 +227,8 @@ describe('the settler panel model', () => {
       remove: true,
     });
     expect(settlerModel(posted(JOB_FISHER), ctx).workArea?.trade).toBe('fisher');
+    expect(settlerModel(posted(JOB_FARMER_SLOT, {}, BUILDING_FARM), ctx).workArea?.trade).toBe('farmer');
+    expect(settlerModel(posted(JOB_CARRIER, {}, BUILDING_FARM), ctx).workArea).toBeNull();
     expect(settlerModel(posted(JOB_SCOUT), ctx).workArea).toBeNull();
     const unposted = settlerModel(
       [

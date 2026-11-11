@@ -682,7 +682,7 @@ export const deSurfaces = {
         'Du kannst über eigene und fremde Wegweiser bauen. Sie rücken zur Seite und bleiben miteinander verbunden.',
       scoutExplore: 'Mit dem Befehl „Kläre Gegend auf“ erkundet der Kundschafter die Karte selbstständig.',
       porterFlag:
-        'Träger in Lagerhäusern und Werkstätten können eine Sammelfahne erhalten und Waren in ihrer Nähe abholen, Abbauer, Jäger und Fischer mit Arbeitsplatz eine Fahne, an der sie arbeiten. Setze sie in der Zeile „{area}“ im Siedlerfenster.',
+        'Träger in Lagerhäusern und Werkstätten können eine Sammelfahne erhalten und Waren in ihrer Nähe abholen, Abbauer, Jäger, Fischer, Farmer und Kräutergärtner mit Arbeitsplatz eine Fahne, an der sie arbeiten. Setze sie in der Zeile „{area}“ im Siedlerfenster.',
       nationSwitch:
         'Wenn du Siedler eines anderen Stammes hast, kannst du im Baufenster ({key}) zu dessen Gebäuden wechseln.',
     },

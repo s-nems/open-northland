@@ -689,6 +689,7 @@ export const plGame = {
         collector: 'w zasięgu drogowskazów',
         hunter: 'wokół miejsca pracy',
         fisher: 'przy miejscu pracy',
+        farmer: 'wokół miejsca pracy',
       },
       assignWorkArea: 'Wbij chorągiewkę',
       assignWorkAreaHint: {
@@ -696,6 +697,7 @@ export const plGame = {
         collector: 'Wskaż miejsce, wokół którego zbieracz zbiera surowce · Esc anuluje',
         hunter: 'Wskaż miejsce, wokół którego myśliwy poluje · Esc anuluje',
         fisher: 'Wskaż wodę, przy której rybak łowi · Esc anuluje',
+        farmer: 'Wskaż miejsce, wokół którego będą zasiewane pola · Esc anuluje',
       },
       clearWorkArea: 'Zabierz chorągiewkę',
       clearWorkAreaHint: {
@@ -703,6 +705,7 @@ export const plGame = {
         collector: 'Zbieracz znów zbiera surowce w całym zasięgu drogowskazów',
         hunter: 'Myśliwy znów poluje wokół miejsca pracy',
         fisher: 'Rybak znów łowi przy miejscu pracy',
+        farmer: 'Pola znów są zasiewane wokół miejsca pracy',
       },
       centreFlag: 'Pokaż chorągiewkę',
       centreFlagHint: 'Wyśrodkuj widok na chorągiewce',

@@ -337,11 +337,11 @@ export const ECONOMY: ArticleGroup = {
               ['[[building:work_herb_hut|草藥屋]]', '{{field.max}}', '{{field.radius}}格'],
             ],
             num: [1],
-            foot: '斜向半徑約{{field.diagonal}}格。田數上限按建築算，不按工人算，所以人多只是收得快，田不會變多。人手和庫存見建築卡片。',
+            foot: '斜向半徑約{{field.diagonal}}格。田數上限按一片田地算，不按工人算，所以人多只是收得快，田不會變多。插了工作旗幟的工人會在旗幟周圍開出自己的一片田地。人手和庫存見建築卡片。',
           },
         },
         {
-          p: '沙地和道路上不能播種。建築範圍內地圖自帶的野生田計入其上限。從建築門口{{field.reclaimSeconds}}秒走不到的田會消失，騰出上限名額。',
+          p: '沙地和道路上不能播種。這片田地範圍內地圖自帶的野生田計入其上限。從建築門口{{field.reclaimSeconds}}秒走不到的田會消失，騰出上限名額。',
         },
         {
           h: '什麼會再生',
@@ -539,7 +539,7 @@ export const ECONOMY: ArticleGroup = {
               [
                 '對象',
                 '[[job:collector|採集者]]、[[job:fisher|漁夫]]、[[job:hunter|獵人]]',
-                '同左，另加倉庫、大本營或工坊的[[job:carrier|搬運工]]',
+                '同左，另加倉庫、大本營或工坊的[[job:carrier|搬運工]]，以及[[job:farmer|農夫]]和[[job:herb_mush_guy|草藥師]]',
               ],
               ['旗幟從哪來', '轉職時自動插在腳下', '只能用「插上旗幟」命令'],
               ['工作地點', '旗幟周圍', '旗幟周圍，沒有旗幟時見下表'],
@@ -559,6 +559,7 @@ export const ECONOMY: ArticleGroup = {
               ['採集者', '整個路標範圍'],
               ['倉庫搬運工', '建築{{flag.radius}}格內的貨堆'],
               ['獵人', '工作地點周圍'],
+              ['農夫、草藥師', '工作地點周圍'],
               ['漁夫', '在所站的地方附近釣魚'],
             ],
           },
@@ -576,7 +577,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:fisher|漁夫]]', '工作旗幟', '{{flag.fisher}}', '約{{flag.fisherDiagonal}}'],
               [
                 '[[job:farmer|農夫]]、[[job:herb_mush_guy|草藥師]]',
-                '建築',
+                '工作旗幟或建築',
                 '{{field.radius}}',
                 '約{{field.diagonal}}',
               ],

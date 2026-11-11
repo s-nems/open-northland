@@ -6,20 +6,21 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
 import { jobNeedsWorkHouse } from '../readviews/index.js';
 import { isStorageBuildingType } from '../stores/index.js';
+import { sowsFieldsAt } from './fields.js';
 import { jobUsesWorkFlag } from './work-flag.js';
 
 /**
  * Whether a `jobType` worker posted at `buildingType` may be given a flag of its own: a field trade
- * ({@link worksFieldFromPost}) at any post, a carrier at a warehouse or the headquarters, or at a recipe
- * workshop. A carrier at a farm, herb hut, well, hive, tower or the barracks takes none (owner ruling: a
- * flag there serves nothing).
+ * ({@link worksFieldFromPost}) at any post, the trade sowing a farm's fields, a carrier at a warehouse or
+ * the headquarters, or at a recipe workshop. A carrier at a farm, herb hut, well, hive, tower or the
+ * barracks takes none (owner ruling: a flag there serves nothing).
  */
 export function postTakesHaulFlag(content: ContentSet, jobType: number, buildingType: number): boolean {
   const index = contentIndex(content);
   const job = index.jobs.get(jobType);
   const type = index.buildings.get(buildingType);
   if (job === undefined || type === undefined) return false;
-  if (worksFieldFromPost(content, jobType)) return true;
+  if (worksFieldFromPost(content, jobType) || sowsFieldsAt(content, jobType, buildingType)) return true;
   if (!isCarrierJobId(job.id)) return false;
   if (type.kind === BUILDING_KIND.storage) return true;
   return (

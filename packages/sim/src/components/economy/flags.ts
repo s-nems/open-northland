@@ -23,6 +23,7 @@ export const WorkFlag = defineComponent<{ flag: Entity; radius: number }>('WorkF
  * carrier collects wherever its signposts reach. A posted gatherer harvests only within `radius` nodes of
  * the flag, a posted hunter hunts inside its `radius` (map points) instead of around its workplace, and a
  * posted fisher looks for a shore from it; all still bank at the workplace and wait at the flag when idle.
+ * A farmer sows and tends his plot around it instead of around the farm, and waits inside the farm.
  * The flag belongs to the worker, not to the building.
  * Source basis: owner ruling after the CulturesNation mod's porter flag as the owner describes it; the
  * radius and the wait at the flag are owner choices, not measured behavior.

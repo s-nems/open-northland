@@ -88,9 +88,10 @@ export const GoodFarming = z.strictObject({
   stages: z.number().int().positive(),
   /** Units a ripe field drops (as a ground sheaf) when reaped. */
   yieldPerField: z.number().int().positive(),
-  /** How far from the farm's anchor its workers sow, in half-cell nodes. */
+  /** How far from the work centre (the farm, or its sower's flag) fields are sown and tended, in half-cell
+   *  nodes. */
   fieldRadius: z.number().int().positive(),
-  /** Fields one farm keeps standing at once, whatever its crew size. */
+  /** Fields one plot keeps standing at once, whatever its crew size. */
   maxFields: z.number().int().positive(),
 });
 export type GoodFarming = z.infer<typeof GoodFarming>;

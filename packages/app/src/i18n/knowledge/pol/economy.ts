@@ -377,11 +377,11 @@ export const ECONOMY: ArticleGroup = {
               ['[[building:work_herb_hut|Chatka zielarza]]', '{{field.max}}', '{{field.radius}} hexów'],
             ],
             num: [1],
-            foot: 'Po skosie promień to około {{field.diagonal}} hexów. Limit pól jest na budynek, nie na pracownika, więc więcej ludzi daje szybsze zbiory, ale nie więcej pól. Załogę i zapas podaje karta budynku.',
+            foot: 'Po skosie promień to około {{field.diagonal}} hexów. Limit pól dotyczy poletka, nie pracownika, więc więcej ludzi daje szybsze zbiory, ale nie więcej pól. Pracownik z flagą roboczą zakłada własne poletko wokół niej. Załogę i zapas podaje karta budynku.',
           },
         },
         {
-          p: 'Pola nie zasiejesz na piasku ani na drodze. Dzikie pola z mapy w zasięgu budynku liczą się do jego limitu. Pole, do którego przez {{field.reclaimSeconds}} s nie da się dojść od drzwi budynku, znika i zwalnia miejsce w limicie.',
+          p: 'Pola nie zasiejesz na piasku ani na drodze. Dzikie pola z mapy w zasięgu poletka liczą się do jego limitu. Pole, do którego przez {{field.reclaimSeconds}} s nie da się dojść od drzwi budynku, znika i zwalnia miejsce w limicie.',
         },
         {
           h: 'Co odrasta',
@@ -582,7 +582,7 @@ export const ECONOMY: ArticleGroup = {
               [
                 'Kto',
                 '[[job:collector|Zbieracz]], [[job:fisher|Rybak]], [[job:hunter|Myśliwy]]',
-                'Ci sami, plus [[job:carrier|Tragarz]] magazynu, Kwatery głównej lub warsztatu',
+                'Ci sami, plus [[job:carrier|Tragarz]] magazynu, Kwatery głównej lub warsztatu oraz [[job:farmer|Farmer]] i [[job:herb_mush_guy|Zielarz]]',
               ],
               [
                 'Skąd się bierze flaga',
@@ -606,6 +606,7 @@ export const ECONOMY: ArticleGroup = {
               ['Zbieracz', 'Cały zasięg drogowskazów'],
               ['Tragarz magazynu', 'Stosy do {{flag.radius}} hexów od budynku'],
               ['Myśliwy', 'Wokół miejsca pracy'],
+              ['Farmer, Zielarz', 'Wokół miejsca pracy'],
               ['Rybak', 'Łowi od miejsca, w którym stoi'],
             ],
           },
@@ -623,7 +624,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:fisher|Rybak]]', 'Flaga robocza', '{{flag.fisher}}', 'około {{flag.fisherDiagonal}}'],
               [
                 '[[job:farmer|Farmer]], [[job:herb_mush_guy|Zielarz]]',
-                'Budynek',
+                'Flaga robocza lub budynek',
                 '{{field.radius}}',
                 'około {{field.diagonal}}',
               ],

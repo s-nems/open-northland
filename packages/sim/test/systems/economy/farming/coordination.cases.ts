@@ -115,8 +115,9 @@ describe('work division - two farmers never share a target', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 10) });
     const farm = farmAt(sim, 5, 5);
     fieldAt(sim, farm, 4, 4, { stage: STAGES }); // nearer to the door
-    fieldAt(sim, farm, 8, 8, { stage: STAGES }); // farther
-    for (const [x, y] of RING_AROUND_FARM.slice(0, FIELD_CAP - 2)) fieldAt(sim, farm, x, y); // plot at cap
+    fieldAt(sim, farm, 7, 7, { stage: STAGES }); // farther, at the edge of the plot's radius
+    // The plot at its cap, the ring shifted onto this farm.
+    for (const [x, y] of RING_AROUND_FARM.slice(0, FIELD_CAP - 2)) fieldAt(sim, farm, x + 1, y + 1);
     const f1 = farmerAt(sim, 5, 5, farm);
     plannerSystem(sim.world, ctxOf(sim)); // tick 1: f1 sets off toward the near field (MoveGoal + FarmTask)
     expect(sim.world.tryGet(f1, components.MoveGoal)).toBeDefined();
@@ -126,7 +127,7 @@ describe('work division - two farmers never share a target', () => {
     // A SECOND farmer appears a tick later, while f1 is still walking - it must claim the far field.
     const f2 = farmerAt(sim, 5, 5, farm);
     plannerSystem(sim.world, ctxOf(sim));
-    const farNode = cellAnchorNode(8, 8);
+    const farNode = cellAnchorNode(7, 7);
     expect(sim.world.get(f2, components.FarmTask).node).toBe(sim.terrain?.nodeAt(farNode.hx, farNode.hy));
   });
 

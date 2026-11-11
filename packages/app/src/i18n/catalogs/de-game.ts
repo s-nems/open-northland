@@ -751,6 +751,7 @@ export const deGame = {
         collector: 'in Reichweite der Wegweiser',
         hunter: 'rund um den Arbeitsplatz',
         fisher: 'nahe dem Arbeitsplatz',
+        farmer: 'rund um den Arbeitsplatz',
       },
       assignWorkArea: 'Arbeitsfahne setzen',
       assignWorkAreaHint: {
@@ -758,6 +759,7 @@ export const deGame = {
         collector: 'Wähle die Stelle, in deren Umgebung der Abbauer Rohstoffe sammeln soll · Esc bricht ab',
         hunter: 'Wähle die Stelle, in deren Umgebung der Jäger jagen soll · Esc bricht ab',
         fisher: 'Wähle das Gewässer, an dem der Fischer fischen soll · Esc bricht ab',
+        farmer: 'Wähle die Stelle, in deren Umgebung die Felder angelegt werden sollen · Esc bricht ab',
       },
       clearWorkArea: 'Fahne entfernen',
       clearWorkAreaHint: {
@@ -765,6 +767,7 @@ export const deGame = {
         collector: 'Der Abbauer sammelt wieder überall in Reichweite der Wegweiser Rohstoffe',
         hunter: 'Der Jäger jagt wieder rund um den Arbeitsplatz',
         fisher: 'Der Fischer fischt wieder nahe dem Arbeitsplatz',
+        farmer: 'Die Felder werden wieder rund um den Arbeitsplatz angelegt',
       },
       centreFlag: 'Fahne anzeigen',
       centreFlagHint: 'Ansicht auf die Fahne zentrieren',

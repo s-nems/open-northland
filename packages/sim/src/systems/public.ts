@@ -115,7 +115,7 @@ export { HOUSE_DAMAGE_PER_WALL_VALENCY } from './conflict/weapons.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { STEPS_PER_UNIT } from './economy/construction.js';
 export { STRANDED_FIELD_RECLAIM_TICKS } from './economy/field-reclaim.js';
-export { createMapCrop } from './economy/fields.js';
+export { createMapCrop, sowsFieldsAt } from './economy/fields.js';
 export {
   addFishSwarms,
   FISH_CAST_ATOMIC,

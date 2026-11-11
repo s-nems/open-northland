@@ -380,11 +380,11 @@ export const ECONOMY: ArticleGroup = {
               ['[[building:work_herb_hut|Herb Hut]]', '{{field.max}}', '{{field.radius}} hexes'],
             ],
             num: [1],
-            foot: "On the slant the radius is about {{field.diagonal}} hexes. The field limit is per building, not per worker, so more people means faster harvests but not more fields. The building's card gives its crew and stock.",
+            foot: "On the slant the radius is about {{field.diagonal}} hexes. The field limit belongs to the plot, not to each worker, so more people means faster harvests but not more fields. A worker given a work flag sows his own plot around it. The building's card gives its crew and stock.",
           },
         },
         {
-          p: "You can't sow a field on sand or on a road. Wild fields from the map within the building's radius count toward its limit. A field nobody can reach from the building's door for {{field.reclaimSeconds}} s disappears and frees a place in the limit.",
+          p: "You can't sow a field on sand or on a road. Wild fields from the map within the plot's radius count toward its limit. A field nobody can reach from the building's door for {{field.reclaimSeconds}} s disappears and frees a place in the limit.",
         },
         {
           h: 'What grows back',
@@ -585,7 +585,7 @@ export const ECONOMY: ArticleGroup = {
               [
                 'Who',
                 '[[job:collector|Extractor]], [[job:fisher|Fisherman]], [[job:hunter|Hunter]]',
-                'The same, plus a [[job:carrier|Carrier]] from a warehouse, Headquarters or workshop',
+                'The same, plus a [[job:carrier|Carrier]] from a warehouse, Headquarters or workshop, and a [[job:farmer|Farmer]] or [[job:herb_mush_guy|Herbalist]]',
               ],
               [
                 'Where the flag comes from',
@@ -609,6 +609,7 @@ export const ECONOMY: ArticleGroup = {
               ['Extractor', 'Full signpost reach'],
               ['Warehouse Carrier', 'Piles within {{flag.radius}} hexes of the building'],
               ['Hunter', 'Around the workplace'],
+              ['Farmer, Herbalist', 'Around the workplace'],
               ['Fisherman', 'Fishes from where he stands'],
             ],
           },
@@ -626,7 +627,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:fisher|Fisherman]]', 'Work flag', '{{flag.fisher}}', 'about {{flag.fisherDiagonal}}'],
               [
                 '[[job:farmer|Farmer]], [[job:herb_mush_guy|Herbalist]]',
-                'Building',
+                'Work flag or building',
                 '{{field.radius}}',
                 'about {{field.diagonal}}',
               ],

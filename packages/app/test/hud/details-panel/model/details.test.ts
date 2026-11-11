@@ -61,6 +61,7 @@ import {
   GOOD_WHEAT,
   GOOD_WOOD,
   GOOD_WOOL,
+  JOB_FARMER_SLOT,
 } from '../../../../src/game/sandbox/ids/index.js';
 import { num } from '../../../../src/game/snapshot/index.js';
 import { fixedViewerSeat } from '../../../../src/game/viewer-seat.js';
@@ -1166,6 +1167,40 @@ describe('selection details panel model', () => {
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
     expect(model.production).toMatchObject({ kind: 'fields', sown: 3, growing: 0, ripe: 3 });
+  });
+
+  it("counts map fields around a sower's flag as well as the farm, each field once", () => {
+    const mapField = (id: number, tileX: number) => ({
+      id,
+      components: {
+        Position: { x: tileX * ONE, y: 4 * ONE },
+        Crop: { farm: null, goodType: GOOD_WHEAT, stage: 5, stages: 5 },
+      },
+    });
+    const FLAG = 10;
+    const snapshot = snapshotOf([
+      buildingEntity(1, BUILDING_FARM, {
+        components: { Position: { x: fx.fromInt(4), y: fx.fromInt(4) } },
+      }),
+      {
+        id: 9,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_FARMER_SLOT },
+          JobAssignment: { workplace: 1 },
+          HaulFlag: { flag: FLAG, radius: 16 },
+        },
+      },
+      { id: FLAG, components: { Position: { x: fx.fromInt(12), y: fx.fromInt(4) }, DeliveryFlag: {} } },
+      mapField(2, 5), // by the farm only
+      mapField(3, 12), // within both plots
+      mapField(4, 20), // node (40, 8): the flag plot's edge
+      mapField(5, 30), // off both
+    ]);
+
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    expect(model.kind).toBe('building');
+    if (model.kind !== 'building') return;
+    expect(model.production).toMatchObject({ kind: 'fields', sown: 3, ripe: 3 });
   });
 
   it('shows a settler equipment section with labeled rows, worn goods, condition percentages and empty slots', () => {

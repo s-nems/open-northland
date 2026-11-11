@@ -707,6 +707,7 @@ export const enGame = {
         collector: 'within signpost reach',
         hunter: 'around the workplace',
         fisher: 'near the workplace',
+        farmer: 'around the workplace',
       },
       assignWorkArea: 'Plant a flag',
       assignWorkAreaHint: {
@@ -714,6 +715,7 @@ export const enGame = {
         collector: 'Pick the spot the extractor gathers around · Esc cancels',
         hunter: 'Pick the spot the hunter hunts around · Esc cancels',
         fisher: 'Pick the water the fisherman fishes at · Esc cancels',
+        farmer: 'Pick the spot the fields are sown around · Esc cancels',
       },
       clearWorkArea: 'Take the flag away',
       clearWorkAreaHint: {
@@ -721,6 +723,7 @@ export const enGame = {
         collector: 'The extractor gathers resources anywhere within signpost reach again',
         hunter: 'The hunter hunts around the workplace again',
         fisher: 'The fisherman fishes near the workplace again',
+        farmer: 'Fields are sown around the workplace again',
       },
       centreFlag: 'Show the flag',
       centreFlagHint: 'Centre the view on the flag',

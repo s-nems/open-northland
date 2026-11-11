@@ -637,7 +637,7 @@ export const enSurfaces = {
         "You can build over any signposts, your own or another player's. They move aside and keep their links.",
       scoutExplore: 'With the “Explore” order a scout explores the map by itself.',
       porterFlag:
-        'Warehouse and workshop carriers can get a pickup flag and gather goods around it, and posted extractors, hunters and fishermen a flag to work at. Set it in the "{area}" row of the settler panel.',
+        'Warehouse and workshop carriers can get a pickup flag and gather goods around it, and posted extractors, hunters, fishermen, farmers and herbalists a flag to work at. Set it in the "{area}" row of the settler panel.',
       nationSwitch:
         "With settlers of another tribe, the build window ({key}) can switch to that tribe's buildings.",
     },

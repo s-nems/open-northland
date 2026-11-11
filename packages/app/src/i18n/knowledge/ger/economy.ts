@@ -380,11 +380,11 @@ export const ECONOMY: ArticleGroup = {
               ['[[building:work_herb_hut|Kräuterhütte]]', '{{field.max}}', '{{field.radius}} Hexfelder'],
             ],
             num: [1],
-            foot: 'Schräg beträgt der Radius etwa {{field.diagonal}} Hexfelder. Die Feldgrenze gilt fürs Gebäude, nicht für den Arbeiter, also ernten mehr Leute schneller, haben aber nicht mehr Felder. Besatzung und Vorrat stehen auf der Karte des Gebäudes.',
+            foot: 'Schräg beträgt der Radius etwa {{field.diagonal}} Hexfelder. Die Feldgrenze gilt für ein Feldstück, nicht für den Arbeiter, also ernten mehr Leute schneller, haben aber nicht mehr Felder. Ein Arbeiter mit Arbeitsfahne legt sein eigenes Feldstück um sie an. Besatzung und Vorrat stehen auf der Karte des Gebäudes.',
           },
         },
         {
-          p: 'Auf Sand und auf der Straße kannst du nicht säen. Wilde Felder der Karte im Radius des Gebäudes zählen zu seiner Grenze. Ein Feld, das {{field.reclaimSeconds}} s lang von der Tür seines Gebäudes aus nicht erreichbar ist, verschwindet und gibt seinen Platz in der Grenze frei.',
+          p: 'Auf Sand und auf der Straße kannst du nicht säen. Wilde Felder der Karte im Radius des Feldstücks zählen zu seiner Grenze. Ein Feld, das {{field.reclaimSeconds}} s lang von der Tür seines Gebäudes aus nicht erreichbar ist, verschwindet und gibt seinen Platz in der Grenze frei.',
         },
         {
           h: 'Was nachwächst',
@@ -588,7 +588,7 @@ export const ECONOMY: ArticleGroup = {
               [
                 'Wer',
                 '[[job:collector|Abbauer]], [[job:fisher|Fischer]], [[job:hunter|Jäger]]',
-                'Dieselben, dazu [[job:carrier|Träger]] von Lagerhaus, Hauptquartier oder Werkstatt',
+                'Dieselben, dazu [[job:carrier|Träger]] von Lagerhaus, Hauptquartier oder Werkstatt sowie [[job:farmer|Farmer]] und [[job:herb_mush_guy|Kräutergärtner]]',
               ],
               [
                 'Woher die Fahne kommt',
@@ -612,6 +612,7 @@ export const ECONOMY: ArticleGroup = {
               ['Abbauer', 'Ganze Wegweiser-Reichweite'],
               ['Lagerträger', 'Haufen bis {{flag.radius}} Hexfelder ums Gebäude'],
               ['Jäger', 'Rund um den Arbeitsplatz'],
+              ['Farmer, Kräutergärtner', 'Rund um den Arbeitsplatz'],
               ['Fischer', 'Fischt von seinem Standort aus'],
             ],
           },
@@ -629,7 +630,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[job:fisher|Fischer]]', 'Arbeitsfahne', '{{flag.fisher}}', 'etwa {{flag.fisherDiagonal}}'],
               [
                 '[[job:farmer|Farmer]], [[job:herb_mush_guy|Kräutergärtner]]',
-                'Gebäude',
+                'Arbeitsfahne oder Gebäude',
                 '{{field.radius}}',
                 'etwa {{field.diagonal}}',
               ],

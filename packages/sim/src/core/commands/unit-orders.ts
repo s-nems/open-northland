@@ -499,9 +499,10 @@ export type UnitOrderCommand =
       /**
        * Place or move one worker's flag to (x,y). An unposted gatherer searches its radius; an unposted
        * fisher uses it as the yard where the catch is banked. A carrier posted to a warehouse or a recipe
-       * workshop collects loose goods around it for its post, and a posted gatherer, hunter or fisher works
-       * around it while it banks at its post. Any other posted worker banks at its post, so the order is
-       * ignored. The flag itself holds no stockpile.
+       * workshop collects loose goods around it for its post, a posted gatherer, hunter or fisher works
+       * around it while it banks at its post, and a farm's sower tends his plot around it instead of around
+       * the farm. Any other posted worker banks at its post, so the order is ignored. The flag itself holds
+       * no stockpile.
        */
       readonly kind: 'setWorkFlag';
       readonly entity: Entity;
@@ -510,7 +511,8 @@ export type UnitOrderCommand =
     }
   | {
       /** Take a posted worker's flag away: a carrier or gatherer works wherever its signposts reach again,
-       *  a hunter around its workplace and a fisher searches for a shore from where it stands. */
+       *  a hunter and a farm's sower around the workplace, and a fisher searches for a shore from where it
+       *  stands. */
       readonly kind: 'clearHaulFlag';
       readonly entity: Entity;
     }
