@@ -19,7 +19,7 @@ import {
 } from '../../../../src/components/index.js';
 import { type Entity, World } from '../../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../../src/index.js';
-import { plannerSystem, stampResourceFootprintData } from '../../../../src/systems/index.js';
+import { familySystem, plannerSystem, stampResourceFootprintData } from '../../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../../src/systems/readviews/index.js';
 import * as ladder from '../../../../src/systems/settlers/drives/ladder.js';
 import {
@@ -303,6 +303,25 @@ describe('a computer seat', () => {
     const { key, planned } = heldPlans(true);
     expect(planned).toHaveLength(2); // the first pass, then its beat
     expect(idleReplanDue(planned[1] ?? -1, key, COMPUTER)).toBe(true);
+  });
+
+  it('sends a human seat’s parent stepped out of the house back to work when its duty is stripped', () => {
+    const waitsAfterStrip = (computer: boolean): boolean => {
+      const sim = newSim();
+      if (computer) computerSeat(sim);
+      const parent = woodcutterAt(sim, 10, 10);
+      sim.world.add(parent, FamilyDuty, { duty: true });
+      sim.world.add(parent, Resting, { at: sim.world.create() });
+      plannerSystem(sim.world, { ...ctxOf(sim), tick: 1 });
+      expect(sim.world.get(parent, IdleStand)).toEqual({ standing: false });
+      sim.world.remove(parent, Resting);
+      // No child order claims the duty, so the family pass strips it.
+      familySystem(sim.world, { ...ctxOf(sim), tick: 2 });
+      expect(sim.world.has(parent, FamilyDuty)).toBe(false);
+      return sim.world.has(parent, IdleStand);
+    };
+    expect(waitsAfterStrip(false)).toBe(false);
+    expect(waitsAfterStrip(true)).toBe(true);
   });
 
   it('holds a guard at its post on its beat, a human seat’s too unless a workplace binds it', () => {

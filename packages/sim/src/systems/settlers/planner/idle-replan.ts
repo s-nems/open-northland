@@ -51,10 +51,10 @@ export function idleStandPeriodOf(world: World, e: Entity): number {
  * tick: a computer seat's settler held only by a family duty or a company chat, and a human seat's held
  * by a family duty indoors. The duty's and the chat's own systems still walk it, and a walk or clip
  * they give it wakes it on its next visit. A human seat's wait costs the player nothing he can see: an
- * order, an alarm and a need turning pressing ({@link wakeIdleToNeed}) end it at once, and so does the
- * end of the duty, since a settler indoors that no hold keeps there re-plans on its next visit. Only a
- * pressing need that nothing could serve is tried again on the beat rather than every tick. Outdoors
- * and in a company chat the end of the hold would go unseen until the beat, so those re-plan every tick.
+ * order, an alarm, a need turning pressing and the end of the duty ({@link wakeHumanIdler}) end it at
+ * once. Only a pressing need that nothing could serve is tried again on the beat rather than every tick.
+ * Outdoors and in a company chat the end of the hold would go unseen until the beat, so those re-plan
+ * every tick.
  */
 export function waitsHoldOnBeat(world: World, e: Entity): boolean {
   if (heldByBeatBlockingHold(world, e)) return false;
@@ -83,7 +83,7 @@ export function standsStillForMachine(world: World, e: Entity): boolean {
  * instead of re-planning every tick. A machine seat's always does ({@link standsStillForMachine}). A human
  * seat's does unless a workplace binds it: a posted archer walks up to its tower by a rung only a re-plan
  * runs, once the tower stands. For the rest the wait hides nothing from the player: an order or an
- * errand wakes it, a need turning pressing does ({@link wakeIdleToNeed}), and combat moves it on its own.
+ * errand wakes it, a need turning pressing does ({@link wakeHumanIdler}), and combat moves it on its own.
  * What waits for the beat is stepping off a node a lower-id guard came to share, as for every idler, and
  * the retry of a pressing need nothing could serve.
  */
@@ -145,12 +145,13 @@ export function wakeIdle(world: World, e: Entity): void {
 }
 
 /**
- * End the idle wait of a human seat's `e` whose need bar just reached a band threshold, where a needs
- * rung may fire, so it answers the need on this tick's pass instead of on its idle beat. It alone
- * re-plans: a crew it waits inside with keeps its seats. A machine seat's idler keeps its beat, the cost
- * cut {@link COMPUTER_IDLE_REPLAN_PERIOD_TICKS} names.
+ * End the idle wait of a human seat's `e`, so it re-plans on this tick's pass instead of on its idle
+ * beat: when a need bar reaches a band threshold, where a needs rung may fire, and when its family duty
+ * ends, which may have stepped it out of the house first. It alone re-plans: a crew it waits inside with
+ * keeps its seats. A machine seat's idler keeps its beat, the cost cut
+ * {@link COMPUTER_IDLE_REPLAN_PERIOD_TICKS} names.
  */
-export function wakeIdleToNeed(world: World, e: Entity): void {
+export function wakeHumanIdler(world: World, e: Entity): void {
   if (world.has(e, IdleStand) && !ownedByMachine(world, e)) world.remove(e, IdleStand);
 }
 

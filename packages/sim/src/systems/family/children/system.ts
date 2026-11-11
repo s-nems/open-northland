@@ -12,6 +12,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isInside } from '../../settlers/indoors.js';
+import { wakeHumanIdler } from '../../settlers/planner/idle-replan.js';
 import { collectSupplyTally } from '../../stores/index.js';
 import { ExternalFoodIndex } from '../food-search.js';
 import { type ChildOrderPass, DutyClaims, driveOrder } from './order.js';
@@ -45,6 +46,8 @@ export function driveChildOrders(world: World, ctx: SystemContext, terrain: Terr
     if (dutyClaimed.has(e)) continue;
     world.remove(e, FamilyDuty);
     dutyClaimed.forget(e);
+    // A birth or a stood-down order steps the holder out before its duty goes.
+    wakeHumanIdler(world, e);
   }
   dutyClaimed.end();
 }
