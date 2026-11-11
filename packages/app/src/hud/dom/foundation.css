@@ -7324,9 +7324,7 @@ body.on-drag-scroll.on-drag-scroll-free * {
   font-size: 11px;
 }
 
-/* ---------- switch: a small groove whose iron rivet slides over and lights the slot amber ----------
-   Off reads as a dark recess with a ring at the far end, on as a lit slot with an engraved bar where the
-   rivet stood, so a column of switches reads by shape as well as by colour. */
+/* ---------- switch: a small groove whose iron rivet slides over and lights the slot amber ---------- */
 .on-hud {
   --switch-w: 26px;
   --switch-h: 14px;
@@ -7347,18 +7345,6 @@ body.on-drag-scroll.on-drag-scroll-free * {
     background 0.14s,
     border-color 0.14s,
     box-shadow 0.14s;
-}
-/* The state mark inside the slot: a ring where the rivet goes when off, a bar where it was when on. */
-.on-hud .on-switch::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  width: 4px;
-  height: 4px;
-  margin-top: -3px;
-  border: 1px solid #c9b48a59;
-  border-radius: 50%;
 }
 .on-hud .on-switch::after {
   content: "";
@@ -7381,16 +7367,6 @@ body.on-drag-scroll.on-drag-scroll-free * {
     inset 0 1px 1px #fff3cf66,
     inset 0 -1px 2px #4a300c88,
     0 0 5px #e7b45a59;
-}
-.on-hud .on-switch[aria-checked="true"]::before {
-  right: auto;
-  left: 5px;
-  width: 0;
-  height: 6px;
-  margin-top: -3px;
-  border: 0;
-  border-left: 1.5px solid #4a300cb3;
-  border-radius: 0;
 }
 .on-hud .on-switch[aria-checked="true"]::after {
   transform: translateX(calc(var(--switch-w) - var(--switch-h)));

@@ -271,6 +271,26 @@ describe('setAiControl - the AI seat flag', () => {
     sim.step();
     expect(settlementGrantOrders(sim.world, ctxOf(sim), AI_SEAT)).toEqual([]);
     expect(sim.assistantWithheldGrants(AI_SEAT)).toEqual(NONE_WITHHELD);
+    // Mead kept from the civilians, as a hand that played the seat may have left it, goes to them again.
+    sim.enqueueSetup({
+      kind: 'setAssistantGrantAudience',
+      player: AI_SEAT,
+      goodType: MEAD,
+      groups: ['workers', 'soldiers'],
+    });
+    sim.step();
+    const reopened = settlementGrantOrders(sim.world, ctxOf(sim), AI_SEAT);
+    expect(reopened).toEqual([
+      {
+        kind: 'setAssistantGrantAudience',
+        player: AI_SEAT,
+        goodType: MEAD,
+        groups: ['civilians', 'workers', 'soldiers'],
+      },
+    ]);
+    for (const command of reopened) sim.enqueueSetup(command);
+    sim.step();
+    expect(sim.assistantWithheldGrants(AI_SEAT)).toEqual(NONE_WITHHELD);
 
     sim.enqueueSetup({
       kind: 'setAiControl',

@@ -446,7 +446,7 @@ export const SETTLERS: ArticleGroup = {
               ],
               ['Extractors move their flag automatically', 'off', '[[job:collector|Extractor]] with a flag'],
             ],
-            foot: 'For potions and amulets, the "Civilians" (no trade), "Workers" and "Soldiers" buttons choose who receives them; with all three off, the switch is off. Switching one off takes nothing back. A notice reminds you of a switch that is off once its good lies in store and someone lacks it, and of the flag switch once an Extractor runs out by his flag.',
+            foot: 'For drinks and amulets, the "Civilians" (no trade), "Workers" and "Soldiers" buttons choose who receives them; with all three off, the switch is off. Switching one off takes nothing back. A notice reminds you of a switch that is off once its good lies in store and someone lacks it, and of the flag switch once an Extractor runs out by his flag.',
           },
         },
         {
