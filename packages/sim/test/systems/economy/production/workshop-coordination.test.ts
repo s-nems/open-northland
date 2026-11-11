@@ -2,6 +2,7 @@ import { parseContentSet } from '@open-northland/data';
 import { expect, it } from 'vitest';
 import {
   Carrying,
+  CompletedCycles,
   JobAssignment,
   MoveGoal,
   Owner,
@@ -43,6 +44,12 @@ import {
 
 /** Long enough for both operators to fetch the shared input and finish a cycle. */
 const PRODUCTION_WATCH_TICKS = 1200;
+/** A store far enough that the crew's own trips are the only supply, so the shared wood stays scarce. */
+const FAR_STORE_CELLS = 16;
+const FAR_STORE_WOOD = 100;
+const TURN_CYCLE_TICKS = 180;
+/** Enough fetch trips for a dozen turns between the two operators. */
+const TURN_WATCH_TICKS = 12000;
 
 it('a carrier must not enable recipes deselected by the craftsman', () => {
   const content = testContent();
@@ -104,6 +111,52 @@ it('a recipe waiting for a unit a colleague set off for this pass keeps its rota
   expect(sim.world.get(fetcher, SupplyRun).goodType).toBe(WOOD);
   expect(sim.world.get(waiting, ProductionCounters).cursor).toBe(1);
   expect(sim.world.tryGet(waiting, Resting)).toEqual({ at: shop });
+});
+
+it('leaves a batch to the operator that started it until that operator leaves the post', () => {
+  const content = testContent();
+  workshop(content, FORGE).workers = [{ jobType: CARPENTER, count: 2 }];
+  const sim = new Simulation({ seed: 1, content, map: grassMap(6, 1) });
+  const shop = buildingAt(sim, FORGE, 0, 0);
+  settlerAt(sim, 5, 0, WOODCUTTER);
+  const owner = settlerAt(sim, 3, 0, CARPENTER, shop); // posted, away from the door
+  const colleague = settlerAt(sim, 0, 0, CARPENTER, shop);
+  sim.world.mut(colleague, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+  sim.world.add(shop, Production, {
+    cycles: [{ elapsed: 2, duration: 20, goodType: PLANK, operator: owner }],
+  });
+  productionSystem(sim.world, ctxOf(sim));
+  expect(sim.world.get(shop, Production).cycles[0]?.elapsed).toBe(2);
+  sim.world.remove(owner, JobAssignment);
+  productionSystem(sim.world, ctxOf(sim));
+  expect(sim.world.get(shop, Production).cycles[0]?.elapsed).toBe(3);
+});
+
+it('two operators on different products of one scarce input take turns', () => {
+  const content = testContent();
+  const forge = workshop(content, FORGE);
+  forge.workers = [{ jobType: CARPENTER, count: 2 }];
+  for (const recipe of forge.recipes) recipe.ticks = TURN_CYCLE_TICKS;
+  secondRecipe(forge).inputs = [{ goodType: WOOD, amount: 2 }];
+  const sim = new Simulation({ seed: 1, content, map: grassMap(FAR_STORE_CELLS + 2, 1) });
+  sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+  const shop = buildingAt(sim, FORGE, 0, 0);
+  buildingAt(sim, HEADQUARTERS, FAR_STORE_CELLS, 0, [[WOOD, FAR_STORE_WOOD]]);
+  settlerAt(sim, FAR_STORE_CELLS + 1, 0, WOODCUTTER);
+  for (const good of [PLANK, FOOD_SIMPLE]) {
+    const operator = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.mut(operator, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    pinProducts(sim, operator, [good]);
+  }
+  for (const e of new Set([...sim.world.query(Settler), ...sim.world.query(Stockpile)]))
+    sim.world.add(e, Owner, { player: 0 });
+  sim.world.add(shop, CompletedCycles, { byGood: new Map() });
+  sim.run(TURN_WATCH_TICKS);
+  const done = sim.world.get(shop, CompletedCycles).byGood;
+  const planks = done.get(PLANK) ?? 0;
+  const food = done.get(FOOD_SIMPLE) ?? 0;
+  // Turn about, neither product falls below half of the other's count.
+  expect(Math.min(planks, food) * 2).toBeGreaterThanOrEqual(Math.max(planks, food));
 });
 
 it('a colleague walking to an emptied store does not hold back a startable recipe', () => {
@@ -332,9 +385,13 @@ it('reserves a shared ingredient while the other operator walks to the well', ()
   for (const e of new Set([...sim.world.query(Settler), ...sim.world.query(Stockpile)]))
     sim.world.add(e, Owner, { player: 0 });
   sim.run(700);
+  const carried = [...sim.world.query(Carrying)].filter(
+    (e) => sim.world.get(e, Carrying).goodType === FOOD_SIMPLE,
+  ).length;
   expect(
     (sim.world.get(shop, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0) +
-      (sim.world.get(store, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0),
+      (sim.world.get(store, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0) +
+      carried,
   ).toBe(1);
 });
 

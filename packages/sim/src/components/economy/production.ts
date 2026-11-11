@@ -9,13 +9,17 @@ export interface ProductionCycle {
   /** The product this batch crafts - the key of the building type's per-product recipe (its first output's
    *  goodType), snapshotted at cycle start like `duration`. */
   goodType: number;
+  /** The operator whose rotation started the batch and who alone works it, so a colleague crafting another
+   *  product does not take it over; null for an unstaffed workplace's anonymous batch. Once that operator
+   *  no longer works here, any operator may finish it. Authored: the original's batch ownership is
+   *  unobserved. */
+  operator: Entity | null;
 }
 
 /**
  * The in-progress production cycles on a workplace - one independent batch per operator working the craft,
- * so two millers grind two flours in parallel. As many cycles advance per tick as there are operators on
- * station, so a departed worker's batch simply waits. The component exists only while at least one cycle
- * runs.
+ * so two millers grind two flours in parallel. Each operator on station advances its own oldest batch, so
+ * a departed worker's batch simply waits. The component exists only while at least one cycle runs.
  */
 export const Production = defineComponent<{
   /** The independent in-flight batches, oldest first (advanced FIFO; completed ones are removed). */
@@ -43,8 +47,7 @@ export type ProductionCount = number;
  * Craft: the rotation pool is every product whose counter is at least one, in the workplace's recipe order;
  * each started cycle takes the one at `cursor`, skipping a full output slot but waiting for missing inputs
  * before advancing past it. A finite counter decrements when the operator starts a cycle of that product,
- * and at `0` the product leaves the pool. Approximation: the original decrements on the finished unit;
- * cycles here are not attributed to an operator after they start.
+ * and at `0` the product leaves the pool. Approximation: the original decrements on the finished unit.
  *
  * Gather: a good is harvested only while its counter is at least one, and a finite counter decrements by
  * each unit the gatherer's own stroke or catch lands. A gatherer ignores `cursor`.
@@ -60,7 +63,10 @@ export const ProductionCounters = defineComponent<{
   counters: [goodType: number, count: ProductionCount][];
   /** Craft rotation position into the effective product list (`>= 0`; consumers take it modulo the list). */
   cursor: number;
-}>('ProductionCounters', 'economy');
+  /** The tick this operator last started a batch, absent before its first; it ranks the crew's turns
+   *  (`economy/production.ts`). */
+  lastStart?: number | undefined;
+}>('ProductionCounters', 'economy', { simOnlyFields: ['lastStart'] });
 
 /** A read-only {@link ProductionCounters} value, as `World.get` and a snapshot hand it out. */
 export type ProductionCountersView = DeepReadonly<NonNullable<(typeof ProductionCounters)['__value']>>;

@@ -29,7 +29,7 @@ import { FREE_SEAT, productionAssignmentsInto } from './production/assignments.j
 import { accrueBonusOutput } from './production/bonus-output.js';
 import { depositCycleOutput, startFirstStartable } from './production/cycles.js';
 import { incomingRecipeReservations, recipeInputUnits } from './production/reservations.js';
-import { type CycleChoice, nextCycleFor, startCycleChoice } from './production/rotation.js';
+import { type CycleChoice, lastStartOf, nextCycleFor, startCycleChoice } from './production/rotation.js';
 import { cycleStartable } from './production/start-gate.js';
 
 export {
@@ -57,8 +57,8 @@ export {
 
 /**
  * One workplace turns input goods into output goods over time, one independent batch per present operator,
- * advancing the oldest batch each operator can perform. Observed: a multi-worker workshop out-produces a single-worker one. With every
- * operator away all cycles pause and `elapsed` is held rather than lost.
+ * each advancing the oldest batch of its own it can perform. Observed: a multi-worker workshop out-produces
+ * a single-worker one. With every operator away all cycles pause and `elapsed` is held rather than lost.
  *
  * A workplace produces only while an assigned operator is present, the original's staffed-workshop rule; a carrier at
  * the door neither runs nor speeds the craft. A building type declaring no worker slots is
@@ -171,8 +171,9 @@ export const productionSystem: System = (world, ctx) => {
       if (running < operatorCountOf(staffing)) startFirstStartable(world, ctx, e, recipes);
       continue;
     }
-    // Authored arbitration: give the actual next recipe needing more input units first access to
-    // shared stock. Re-evaluate after each start; another operator may have consumed its ingredients.
+    // Authored arbitration: the spare operator that started its last batch longest ago has first access
+    // to shared stock, then the next recipe needing more input units. Re-evaluate after each start;
+    // another operator may have consumed its ingredients.
     if (recipes.size > 1) workforce ??= workshopWorkforce(world, ctx);
     // Nobody on the door: no spare operator, so nothing starts.
     if (staffing.operators.length === 0) continue;
@@ -189,21 +190,35 @@ export const productionSystem: System = (world, ctx) => {
     const listed = spare;
     while (spare > 0) {
       for (let i = 0; i < spare; i++) choices[i] = nextCycleFor(world, ctx, e, next[i] as Entity, recipes);
-      const reserved =
-        workforce !== undefined && recipes.size > 1
-          ? incomingRecipeReservations(world, ctx, e, recipes, workforce, staffing.operators, choices)
-          : undefined;
       const stock = world.get(e, Stockpile).amounts;
       let winner = -1;
+      let earliestStart = Number.POSITIVE_INFINITY;
       let mostInputs = -1;
       for (let i = 0; i < spare; i++) {
         const choice = choices[i];
-        if (choice === undefined || dipsIntoReserve(stock, choice, reserved)) continue;
+        if (choice === undefined) continue;
+        const operator = next[i] as Entity;
+        const started = lastStartOf(world, operator);
         const units = recipeInputUnits(choice.recipe);
-        if (units > mostInputs) {
-          winner = i;
-          mostInputs = units;
-        }
+        // Ranked first, so a candidate that could not win never pays for its reservations.
+        if (started > earliestStart || (started === earliestStart && units <= mostInputs)) continue;
+        const reserved =
+          workforce !== undefined && recipes.size > 1
+            ? incomingRecipeReservations(
+                world,
+                ctx,
+                e,
+                recipes,
+                workforce,
+                staffing.operators,
+                choices,
+                operator,
+              )
+            : undefined;
+        if (dipsIntoReserve(stock, choice, reserved)) continue;
+        winner = i;
+        earliestStart = started;
+        mostInputs = units;
       }
       const choice = winner < 0 ? undefined : choices[winner];
       if (choice === undefined) break;

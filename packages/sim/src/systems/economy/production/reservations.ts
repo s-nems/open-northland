@@ -7,7 +7,7 @@ import { interactionNode } from '../../footprint/index.js';
 import { operatorRecipeEnabled } from '../../progression/index.js';
 import type { WorkshopWorkforce } from '../../stores/workshop-workforce.js';
 import { cycleCoveredWith, outputRoomForCycles } from './cycles.js';
-import { type CycleChoice, craftablePoolInto, nextCycleFor } from './rotation.js';
+import { type CycleChoice, craftablePoolInto, lastStartOf, nextCycleFor } from './rotation.js';
 
 const NO_RESERVATIONS: ReadonlyMap<number, number> = new Map();
 
@@ -17,10 +17,11 @@ const selectedScratch: number[] = [];
 /** One crew member's craftable pool, read before the next member's overwrites it. */
 const poolScratch: number[] = [];
 
-/** Protect stocked ingredients while an active crew member's other ingredients are arriving, or while
- * a crew member off the door has a costlier cycle to start. Recomputed after deliveries and each start,
- * so a returning operator cannot spend them first. `present` are the operators on the door and
- * `presentChoices` the spare ones' next cycles. */
+/** Protect stocked ingredients from `asker` while an active crew member's other ingredients are arriving,
+ * or while a crew member off the door has a costlier cycle to start. Recomputed after deliveries and each
+ * start, so a returning operator cannot spend them first. Only a crew member that started its last batch
+ * no later than `asker` holds them back, so each operator's turn comes round however its recipe compares
+ * (authored). `present` are the operators on the door and `presentChoices` the spare ones' next cycles. */
 export function incomingRecipeReservations(
   world: World,
   ctx: SystemContext,
@@ -29,16 +30,19 @@ export function incomingRecipeReservations(
   workforce: WorkshopWorkforce,
   present: readonly Entity[],
   presentChoices: readonly (CycleChoice | undefined)[],
+  asker: Entity,
 ): ReadonlyMap<number, number> {
   // Before this workshop's first start changes its stock.
   workforce.shelveInbound(building);
   const stock = world.get(building, Stockpile).amounts;
   const crew = workforce.operatorsAt(building);
+  const askerStart = lastStartOf(world, asker);
   let reserved: Map<number, number> | undefined;
   const selected = selectedScratch;
   let selectedCount = 0;
   for (let c = 0; c < crew.length; c++) {
     const operator = crew[c] as Entity;
+    if (lastStartOf(world, operator) > askerStart) continue;
     const size = craftablePoolInto(world, ctx, operator, recipes, poolScratch);
     for (let p = 0; p < size; p++) {
       const good = poolScratch[p] as number;
@@ -71,6 +75,7 @@ export function incomingRecipeReservations(
   for (let c = 0; c < crew.length; c++) {
     const operator = crew[c] as Entity;
     if (present.includes(operator) || world.tryGet(operator, PathRequest)?.failed === true) continue;
+    if (lastStartOf(world, operator) > askerStart) continue;
     const choice = nextCycleFor(world, ctx, building, operator, recipes);
     if (choice === undefined || recipeInputUnits(choice.recipe) <= maxPresentUnits) continue;
     const goal = world.tryGet(operator, MoveGoal);

@@ -201,15 +201,16 @@ export function planProducer(
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
-  // A vehicle turn is worked outside on a yard site, so it comes before any seat is claimed.
-  if (planVehicleYard(plan, workplace, spacing, idle)) return;
-
-  const own = operatorRecipes(world, ctx, workplace, plan.entity);
+  // A running batch is this operator's alone, so it is finished before the rotation's vehicle turn.
   const seats = seatClaims.seatsAt(workplace);
   if (seatClaims.claimRunning(world, ctx, workplace, plan.entity)) {
     holdInsideWorkplace(plan, workplace, seats, idle);
     return;
   }
+  // A vehicle turn is worked outside on a yard site, so it comes before any new seat is claimed.
+  if (planVehicleYard(plan, workplace, spacing, idle)) return;
+
+  const own = operatorRecipes(world, ctx, workplace, plan.entity);
 
   // A startable cheap recipe must not consume every unit while another open recipe of the crew waits for
   // more of that input, so a worker with no batch to advance brings a missing unit first, unless a

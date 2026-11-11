@@ -51,7 +51,7 @@ function wearTool(sim: Simulation, e: Entity, goodType: number): void {
 }
 
 /** One retired cycle, for driving accrueBonusOutput directly (the shape productionSystem passes). */
-const doneCycle = () => [{ elapsed: CYCLE_TICKS, duration: CYCLE_TICKS, goodType: PLANK }];
+const doneCycle = () => [{ elapsed: CYCLE_TICKS, duration: CYCLE_TICKS, goodType: PLANK, operator: null }];
 
 describe('productionSystem credits a worn tool additively and wears it per cycle', () => {
   it('a fresh carpenter with an iron tool banks the tool credit alone (no points yet)', () => {

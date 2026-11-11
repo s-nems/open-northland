@@ -193,7 +193,7 @@ export function anyCycleStartable(
   return false;
 }
 
-/** Consume `recipe`'s inputs and append a batch of `duration` ticks; the caller has verified
+/** Consume `recipe`'s inputs and append `operator`'s batch of `duration` ticks; the caller has verified
  *  {@link canStartCycle}. `duration` is clamped to the `>= 1` {@link ProductionCycle} requires. */
 export function beginCycle(
   world: World,
@@ -201,9 +201,10 @@ export function beginCycle(
   recipe: Recipe,
   goodType: number,
   duration: number,
+  operator: Entity | null,
 ): void {
   consumeGoods(world, building, recipe.inputs);
-  const cycle: ProductionCycle = { elapsed: 0, duration: Math.max(1, duration), goodType };
+  const cycle: ProductionCycle = { elapsed: 0, duration: Math.max(1, duration), goodType, operator };
   const prod = world.tryMut(building, Production);
   if (prod === undefined) world.add(building, Production, { cycles: [cycle] });
   else prod.cycles.push(cycle);
@@ -219,7 +220,7 @@ export function startFirstStartable(
 ): void {
   for (const [good, recipe] of recipes) {
     if (!canStartCycle(world, ctx, building, recipe)) continue;
-    beginCycle(world, building, recipe, good, recipe.ticks);
+    beginCycle(world, building, recipe, good, recipe.ticks, null);
     return;
   }
 }

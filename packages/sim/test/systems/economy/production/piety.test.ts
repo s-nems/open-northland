@@ -195,7 +195,9 @@ describe('production events share the batch clock with the displayed craft', () 
           sim.step();
       } else for (let i = 0; i < 4; i++) productionSystem(sim.world, nextTickCtxOf(sim));
       expect(sim.world.get(mill, Stockpile).amounts.get(freeGood)).toBe(1);
-      expect(sim.world.get(mill, Production).cycles).toEqual([{ goodType: PLANK, elapsed: 0, duration: 4 }]);
+      expect(sim.world.get(mill, Production).cycles).toEqual([
+        { goodType: PLANK, elapsed: 0, duration: 4, operator: worker },
+      ]);
       sim.world.remove(worker, MoveGoal);
       sim.world.add(worker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
       setNeeds(sim, worker, { piety: needBar(5000) });
@@ -232,8 +234,8 @@ describe('production events share the batch clock with the displayed craft', () 
     buildingAt(sim, HEADQUARTERS, 4, 0, [[WOOD, 2]]);
     sim.world.add(mill, Production, {
       cycles: [
-        { goodType: PLANK, elapsed: 0, duration: 4 },
-        { goodType: 3, elapsed: 0, duration: 20 },
+        { goodType: PLANK, elapsed: 0, duration: 4, operator: null },
+        { goodType: 3, elapsed: 0, duration: 20, operator: null },
       ],
     });
     plannerSystem(sim.world, ctxOf(sim));
@@ -258,8 +260,8 @@ describe('production events share the batch clock with the displayed craft', () 
     sim.world.add(second, JobAssignment, { workplace: mill });
     sim.world.add(mill, Production, {
       cycles: [
-        { goodType: PLANK, elapsed: 0, duration: 4 },
-        { goodType: PLANK, elapsed: 3, duration: 4 },
+        { goodType: PLANK, elapsed: 0, duration: 4, operator: null },
+        { goodType: PLANK, elapsed: 3, duration: 4, operator: null },
       ],
     });
     for (const maker of [worker, second])
@@ -287,8 +289,8 @@ describe('production events share the batch clock with the displayed craft', () 
     if (worker === null) throw new Error('missing maker');
     sim.world.add(mill, Production, {
       cycles: [
-        { goodType: PLANK, elapsed: 0, duration: 8 },
-        { goodType: PLANK, elapsed: 3, duration: 8 },
+        { goodType: PLANK, elapsed: 0, duration: 8, operator: null },
+        { goodType: PLANK, elapsed: 3, duration: 8, operator: null },
       ],
     });
     sim.world.add(worker, Resting, { at: mill });

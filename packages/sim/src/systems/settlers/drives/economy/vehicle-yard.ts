@@ -128,7 +128,7 @@ function releaseFinishedSite(
   world.remove(e, SiteAssignment);
   const pick = nextRotationPick(world, ctx, workplace, e, recipes);
   if (pick !== null && vehicleHouseOfGood(ctx.content, pick.good) !== undefined)
-    spendRotationPick(world, e, pick);
+    spendRotationPick(world, e, pick, ctx.tick);
 }
 
 /**

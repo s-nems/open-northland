@@ -147,11 +147,11 @@ export function advanceRotation(world: World, operator: Entity, pick: RotationPi
 }
 
 /**
- * A start of `pick`: spend one unit of its finite counter and move the rotation past it. A product whose
- * counter runs out leaves the pool, and the cursor stays on the product that followed it. A first-ever
- * start stamps an empty selection so the position persists.
+ * A start of `pick` on `tick`: spend one unit of its finite counter, move the rotation past it and note
+ * the start. A product whose counter runs out leaves the pool, and the cursor stays on the product that
+ * followed it. A first-ever start stamps an empty selection so the position persists.
  */
-export function spendRotationPick(world: World, operator: Entity, pick: RotationPick): void {
+export function spendRotationPick(world: World, operator: Entity, pick: RotationPick, tick: number): void {
   if (!world.has(operator, ProductionCounters))
     world.add(operator, ProductionCounters, { counters: [], cursor: 0 });
   const count = productionCountOf(world.get(operator, ProductionCounters), pick.good);
@@ -160,8 +160,17 @@ export function spendRotationPick(world: World, operator: Entity, pick: Rotation
   const leaves = spent && count === 1;
   const size = leaves ? pick.pool.length - 1 : pick.pool.length;
   const next = leaves ? pick.index : pick.index + 1;
-  world.mut(operator, ProductionCounters).cursor = size > 0 ? next % size : 0;
+  const selection = world.mut(operator, ProductionCounters);
+  selection.cursor = size > 0 ? next % size : 0;
+  selection.lastStart = tick;
 }
+
+/** The tick `operator` last started a batch, or -1 before its first: the lower, the longer it waited. */
+export function lastStartOf(world: World, operator: Entity): number {
+  return world.tryGet(operator, ProductionCounters)?.lastStart ?? NEVER_STARTED;
+}
+
+const NEVER_STARTED = -1;
 
 /** Start the cycle `operator`'s rotation chose and move the rotation past it. */
 export function startCycleChoice(
@@ -172,8 +181,8 @@ export function startCycleChoice(
   choice: CycleChoice,
 ): void {
   const duration = craftCycleTicks(world, ctx, operator, choice.good, choice.recipe);
-  beginCycle(world, building, choice.recipe, choice.good, duration);
-  spendRotationPick(world, operator, choice);
+  beginCycle(world, building, choice.recipe, choice.good, duration, operator);
+  spendRotationPick(world, operator, choice, ctx.tick);
 }
 
 /**

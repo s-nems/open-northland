@@ -547,6 +547,23 @@ describe('the yard site search', () => {
     expect(plankStarted).toBe(true);
     expect(sitesOf(s, SHIP_YARD)).toEqual([]);
   });
+
+  it('finishes its running batch before it walks out for the vehicle turn after it', () => {
+    const s = sim();
+    const { shop, worker } = yardWorld(s, [PLANK, HANDCART_GOOD]);
+    s.world.mut(shop, Stockpile).amounts.set(WOOD, 5);
+    s.world.mut(worker, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    s.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 4, y: 4, tribe: VIKING, owner: P0 });
+    const plankRuns = () =>
+      s.world.tryGet(shop, Production)?.cycles.some((c) => c.goodType === PLANK) === true;
+    for (let i = 0; i < PLANK_START_BUDGET_TICKS && !plankRuns(); i++) s.step();
+    expect(plankRuns()).toBe(true);
+    for (let i = 0; i < PLANK_START_BUDGET_TICKS && plankRuns(); i++) {
+      s.step();
+      expect(s.world.has(worker, SiteAssignment)).toBe(false);
+    }
+    expect(s.world.get(shop, Stockpile).amounts.get(PLANK)).toBe(1);
+  });
 });
 
 describe('a yard site’s ground plot', () => {
