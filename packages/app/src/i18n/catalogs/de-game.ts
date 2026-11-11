@@ -332,6 +332,7 @@ export const deGame = {
     matchFinishedTitle: 'Partie beendet',
     matchFinishedDetail: 'Die Partie ist beendet.',
     matchKicker: 'Das Schicksal deines Stammes',
+    matchTribesKicker: 'Das Schicksal der Stämme',
     matchWatchHint: 'Du kannst die Karte und die anderen Spieler beobachten, ohne Befehle zu erteilen.',
     matchContinue: 'Weiterspielen',
     matchRankingTitle: 'Rangliste',

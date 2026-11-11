@@ -287,6 +287,7 @@ export const chsGame = {
     matchFinishedTitle: '对局结束',
     matchFinishedDetail: '本局已经结束。',
     matchKicker: '你族人的命运',
+    matchTribesKicker: '各族的命运',
     matchWatchHint: '你可以观看地图和其他玩家，但无法下达命令。',
     matchContinue: '继续游戏',
     matchRankingTitle: '排名',

@@ -297,6 +297,7 @@ export const plGame = {
     matchFinishedTitle: 'Rozgrywka zakończona',
     matchFinishedDetail: 'Rozgrywka dobiegła końca.',
     matchKicker: 'Losy twojego plemienia',
+    matchTribesKicker: 'Losy plemion',
     matchWatchHint: 'Możesz obserwować mapę i pozostałych graczy bez wydawania rozkazów.',
     matchContinue: 'Graj dalej',
     matchRankingTitle: 'Ranking',

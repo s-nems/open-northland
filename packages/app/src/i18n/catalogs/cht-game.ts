@@ -287,6 +287,7 @@ export const chtGame = {
     matchFinishedTitle: '對戰結束',
     matchFinishedDetail: '對戰已經結束。',
     matchKicker: '你族人的命運',
+    matchTribesKicker: '各族的命運',
     matchWatchHint: '你可以觀看地圖與其他玩家，但不能下達命令。',
     matchContinue: '繼續遊戲',
     matchRankingTitle: '排名',

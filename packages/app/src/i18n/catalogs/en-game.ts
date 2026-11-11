@@ -303,6 +303,7 @@ export const enGame = {
     matchFinishedTitle: 'Match finished',
     matchFinishedDetail: 'The match has ended.',
     matchKicker: 'The fate of your tribe',
+    matchTribesKicker: 'The fate of the tribes',
     matchWatchHint: 'You can watch the map and the other players without issuing orders.',
     matchContinue: 'Keep playing',
     matchRankingTitle: 'Ranking',

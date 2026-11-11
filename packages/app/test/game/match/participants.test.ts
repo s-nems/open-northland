@@ -1,10 +1,12 @@
 import type { MapScript } from '@open-northland/data';
+import type { MatchOutcome } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   hasEliminationGoal,
   matchParticipants,
   multiplayerMatchGoals,
   neverDiesSeats,
+  playersDecidedBeforeEnd,
   scriptMatchParticipants,
 } from '../../../src/game/match/participants.js';
 
@@ -67,6 +69,26 @@ it('never promises an elimination goal for scripted or spectator seats', () => {
   );
   expect(hasEliminationGoal({ participants: [0, 2], victory: 'goals', lastStanding: true }, 0)).toBe(true);
   expect(hasEliminationGoal({ participants: [0, 2], victory: 'goals', lastStanding: false }, 0)).toBe(false);
+});
+
+it('ends the match for its people once every seat a person holds is decided and a rival plays on', () => {
+  const outcomes =
+    (...list: MatchOutcome[]) =>
+    (seat: number) =>
+      list[seat] ?? 'undecided';
+  // People in seats 0, 1 and 3, a computer in 2; seat 3 cannot die, so only a goal row decides it.
+  const people = [0, 1, 3];
+  const participants = [0, 1, 2];
+  const decided = (list: MatchOutcome[], left: readonly number[] = []): boolean =>
+    playersDecidedBeforeEnd(people, participants, outcomes(...list), (seat) => !left.includes(seat));
+  expect(decided(['victory', 'defeat', 'undecided', 'defeat'])).toBe(true);
+  expect(decided(['victory', 'defeat'])).toBe(false);
+  expect(decided(['defeat', 'undecided', 'undecided', 'defeat'])).toBe(false);
+  // A person who left waits for no verdict, yet someone must have one.
+  expect(decided(['defeat', 'undecided', 'undecided', 'defeat'], [1])).toBe(true);
+  expect(decided([], [0, 1, 3])).toBe(false);
+  // Every participant decided: the match's own end reports it.
+  expect(decided(['victory', 'defeat', 'defeat', 'defeat'])).toBe(false);
 });
 
 describe('multiplayerMatchGoals', () => {

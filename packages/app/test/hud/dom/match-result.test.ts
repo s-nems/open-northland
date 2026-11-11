@@ -23,10 +23,14 @@ function setup(
     onLoad,
     playAgain,
     scriptedEnding,
+    localPlayer = 0,
+    playerNickOf,
   }: {
     onLoad?: (back: () => void) => void;
     playAgain?: () => void;
     scriptedEnding?: boolean;
+    localPlayer?: number | null;
+    playerNickOf?: (player: number) => string | undefined;
   } = {},
 ) {
   vi.stubGlobal(
@@ -43,11 +47,12 @@ function setup(
   const hud = document.createElement('div');
   document.body.append(hud);
   const overlay = createMatchResultOverlay({
-    localPlayer: 0,
+    localPlayer,
     sharedClock,
     ranking,
     ...(scriptedEnding === undefined ? {} : { scriptedEnding }),
     seatNameOf: (player) => (player === 1 ? 'Ragnar' : undefined),
+    playerNickOf,
     pause,
     resume,
     onQuit,
@@ -158,6 +163,43 @@ it('lists the goal table ranking in verdict order, naming the roster seat and nu
   expect(rows.map((row) => row.dataset.outcome)).toEqual(['defeat', 'victory']);
   h.overlay.dispose();
   expect(h.body.children).toHaveLength(0);
+});
+
+it('names a ranked seat by the nick of the person who played it before the roster name', () => {
+  setup(true, () => [{ player: 1, outcome: 'defeat' }], {
+    playerNickOf: (player) => (player === 1 ? 'Ania' : undefined),
+  }).overlay.announce('defeat');
+  expect(document.querySelector('.on-result__rank-name')?.textContent).toBe('Ania');
+});
+
+it('shows a watcher the result once every person has a verdict, then the match end, as no seat of its own', () => {
+  const h = setup(
+    true,
+    () => [
+      { player: 1, outcome: 'defeat' },
+      { player: 0, outcome: 'victory' },
+    ],
+    { localPlayer: null },
+  );
+  const copy = messages().hud;
+  h.overlay.playersDecided('undecided');
+  expect(document.querySelector('.on-result__kicker')?.textContent).toBe(copy.matchTribesKicker);
+  expect(document.querySelector('.on-result__detail')).toBeNull();
+  const rows = [...document.querySelectorAll<HTMLElement>('.on-result__rank')];
+  expect(rows.map((row) => row.dataset.local)).toEqual([undefined, undefined]);
+  h.body.buttons()[0]?.dispatchEvent(new Event('click'));
+  h.overlay.playersDecided('undecided');
+  expect(h.body.children).toHaveLength(0);
+  h.overlay.finish('undecided');
+  expect(document.querySelector('.on-result__detail')?.textContent).toBe(copy.matchFinishedDetail);
+});
+
+it('shows a shared winner its victory once every person has a verdict, before the match ends', () => {
+  const h = setup(true);
+  h.overlay.onEvents([{ kind: 'playerWon', player: 0 }]);
+  expect(h.body.children).toHaveLength(0);
+  h.overlay.playersDecided('victory');
+  expect(document.querySelector('.on-result')?.getAttribute('data-result')).toBe('victory');
 });
 
 it('replaces an open earlier defeat and supports an observer without a local outcome', () => {

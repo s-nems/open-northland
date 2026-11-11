@@ -44,6 +44,7 @@ import {
   type VerifiedStart,
 } from './relayed-world.js';
 import { roomEndText, roomExitObserver } from './room-exit.js';
+import { createSeatNicks } from './seat-nicks.js';
 import { closeKeepsSeat, keptSeat } from './seat-surrender.js';
 import { createStartWait } from './start-wait.js';
 
@@ -84,6 +85,8 @@ export function renderNetworkGame(
   }
   const roomId = client.room?.id ?? params.get('room');
   const kept = roomId === null ? null : keptView(connection.url, roomId);
+  const seatNicks = createSeatNicks(kept);
+  seatNicks.note(client.room);
   const released = new WeakSet<AssembledMapWorld>();
   function release(world: AssembledMapWorld<RelayedMapWorld>): void {
     if (released.has(world)) return;
@@ -231,6 +234,7 @@ export function renderNetworkGame(
       for (const listener of signalListeners) listener(seat, at);
       return;
     }
+    seatNicks.note(client.room);
     startWait.observe(event.message);
     hud?.observe(event.message);
   });
@@ -373,6 +377,9 @@ export function renderNetworkGame(
       },
       onReturnToMenu: returnToMenu,
       onWatchAfterResult: () => client.claimSeat(null),
+      playerNickOf: seatNicks.nickOf,
+      seatHeld: (player) =>
+        client.room?.seats.some((seat) => seat.player === player && seat.mode === 'human') ?? true,
     })
       .then((presented) => {
         if (closed || mine !== revision) {

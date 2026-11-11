@@ -284,6 +284,11 @@ export interface GameViewDeps {
   readonly playerColourOf?: (player: number) => number;
   /** Owner slot to the roster's authored seat name, which the stats header prefers over the slot id. */
   readonly seatNameOf?: (player: number) => string | undefined;
+  /** A relayed session's nick of the person who played a seat, which the result's ranking prefers. */
+  readonly playerNickOf?: (player: number) => string | undefined;
+  /** A shared session's word that the match is over for its people while the others play on; the
+   *  result opens then for everyone, a winner and a watcher too, rather than at the match's end. */
+  readonly playersDecided?: () => boolean;
   /** The map roster's player slots; the diplomacy window lists the discovered ones. Default empty. */
   readonly rosterPlayers?: readonly number[];
   /** The map's `[playermisc]` relation rows, which hide players from the diplomacy window or its
@@ -930,11 +935,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // verdict to hear.
     if (deps.observer !== true || sharedClock) {
       verdict = createMatchResultOverlay({
-        localPlayer,
+        localPlayer: deps.observer === true ? null : localPlayer,
         sharedClock,
         scriptedEnding: scriptEndsVictory,
         ranking: () => host.matchRanking(),
         ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+        playerNickOf: deps.playerNickOf,
         hud: hudDom,
         onOpen: () => systemMenu?.close(),
         setCameraSuspended: cameraCtl.setSuspended,
@@ -944,11 +950,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         ...(sharedClock ? {} : { onLoad: (back) => systemMenu?.openPage('load', back) }),
         ...(replay !== undefined ? { playAgain: replay } : {}),
         onContinue: () => {
-          if (sharedClock) {
+          if (!sharedClock) issueTrusted({ kind: 'continueMatch', player: localPlayer });
+          else if (!watching) {
+            // A watcher keeps the seat it follows.
             watching = true;
             switchableSeat?.watch(PLAYERS_SIGHT);
             deps.onWatchAfterResult?.();
-          } else issueTrusted({ kind: 'continueMatch', player: localPlayer });
+          }
         },
       });
     }
@@ -1586,6 +1594,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           // A spectator's seat switch or a rebinding changes what the ping button says.
           mapPing?.refresh();
           followLink?.();
+          // Read per frame over the seats alone: a person leaving decides it as a verdict does.
+          if (verdict !== null && deps.playersDecided?.() === true)
+            verdict.playersDecided(watching ? 'undecided' : host.matchOutcome(localPlayer));
           deps.onFrame?.(snapshot);
         },
       },

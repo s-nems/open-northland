@@ -326,6 +326,7 @@ export const ruGame = {
     matchFinishedTitle: 'Матч завершён',
     matchFinishedDetail: 'Игра завершена.',
     matchKicker: 'Судьба твоего племени',
+    matchTribesKicker: 'Судьба племён',
     matchWatchHint: 'Можно наблюдать за картой и другими игроками, не отдавая приказов.',
     matchContinue: 'Продолжить игру',
     matchRankingTitle: 'Рейтинг',
