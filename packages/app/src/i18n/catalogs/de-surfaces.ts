@@ -341,7 +341,7 @@ export const deSurfaces = {
         'Beschädigte Dächer, freiliegende Balken, Rauch, Feuer und Trümmer. Ausschalten reduziert die Grafiklast auf einfachen Rauch.',
       adaptiveDetail: 'Weniger Details beim Herauszoomen',
       adaptiveDetailTip:
-        'Je weiter die Kamera herauszoomt, desto mehr lässt das Spiel weg, was ohnehin zu klein ist: zuerst die Schatten von Siedlern und Tieren, Fußspuren und das Schwanken der Bäume, dann Gedankenblasen, Herzen, Sterne und die Schatten der Bäume und in der weitesten Ansicht die Schilder an den Türen. Gebäude, Siedler und Spielerfarben bleiben immer. Aus zeichnet alles in jeder Zoomstufe, was in großen Siedlungen Bildrate kostet.',
+        'Je weiter die Kamera herauszoomt, desto mehr lässt das Spiel weg, was ohnehin zu klein ist: zuerst die Schatten von Siedlern und Tieren, Fußspuren und das Schwanken der Bäume, dann Gedankenblasen, Herzen, Sterne und die Schatten der Bäume und in der weitesten Ansicht die Schilder an den Türen. Gebäude, Siedler und Spielerfarben bleiben immer. Aus behält all das in jeder Zoomstufe, was in großen Siedlungen Bildrate kostet.',
       environmentMotion: 'Bewegte Umgebung',
       environmentMotionTip:
         'Bäume, die im Original nur ein Einzelbild haben, wiegen sich samt Schatten im Wind. Fische schwimmen flüssig, und die Bewegung der eigenen Pflanzengrafiken wird geglättet. Siedler und Tiere behalten ihre ursprünglichen Bewegungsschritte; Originalanimationen erhalten keine zusätzlichen Bilder. In geladenen Spielständen stehen Bäume still.',

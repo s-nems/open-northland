@@ -302,7 +302,7 @@ export const plSurfaces = {
         'Wyrwy w dachach, odsłonięte belki, dym, ogień i odpadające fragmenty. Wyłącz, aby używać prostszego dymu i odciążyć grafikę.',
       adaptiveDetail: 'Mniej szczegółów w oddaleniu',
       adaptiveDetailTip:
-        'Gdy kamera się oddala, gra przestaje rysować to, czego i tak nie widać: najpierw cienie osadników i zwierząt, ślady stóp i kołysanie drzew, potem dymki, serca, gwiazdki i cienie drzew, a w najszerszym widoku szyldy przy drzwiach. Budynki, osadnicy i kolory graczy zostają zawsze. Po wyłączeniu wszystko jest rysowane przy każdym oddaleniu, co w dużej osadzie obniża liczbę klatek.',
+        'Gdy kamera się oddala, gra przestaje rysować to, czego i tak nie widać: najpierw cienie osadników i zwierząt, ślady stóp i kołysanie drzew, potem dymki, serca, gwiazdki i cienie drzew, a w najszerszym widoku szyldy przy drzwiach. Budynki, osadnicy i kolory graczy zostają zawsze. Po wyłączeniu wszystkie te szczegóły zostają przy każdym oddaleniu, co w dużej osadzie obniża liczbę klatek.',
       environmentMotion: 'Ruch otoczenia',
       environmentMotionTip:
         'Drzewa, które oryginał rysuje jedną nieruchomą klatką, kołyszą się na wietrze razem ze swoim cieniem, ryby pływają płynnie, a wiatr w roślinności projektu jest wygładzony. Osadnicy i zwierzęta zachowują krok oryginału, a oryginalne animacje nie dostają dodatkowych klatek. We wczytanym zapisie drzewa stoją nieruchomo.',
