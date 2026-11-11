@@ -89,9 +89,8 @@ export function scanForTarget(
   const military = inBand?.kind === 'entity' && scan.rank(inBand.entity) === VEHICLE_TARGET_RANK.MILITARY;
   if (near && !military) {
     const leash = stance === 'defence' ? centre : null;
-    const past = militaryPastBand(terrain, pass, scan, here, weapon, reach, leash);
-    if (past !== null)
-      return held?.kind === 'entity' && held.entity === past ? held : { kind: 'entity', entity: past };
+    const past = militaryPastBand(world, ctx, terrain, pass, scan, here, weapon, reach, leash, held);
+    if (past !== null) return past;
   }
   if (inBand !== null) return inBand;
   if (near && pressed(terrain, pass, scan, here, weapon.minRange)) return 'pressed';
@@ -99,8 +98,10 @@ export function scanForTarget(
 }
 
 /** The nearest military target past the far reach of `here` but within `reach` map points, and within the
- *  scan radius of `guard` when one is given. */
+ *  scan radius of `guard` when one is given, or a held military target no farther. */
 function militaryPastBand(
+  world: World,
+  ctx: SystemContext,
   terrain: TerrainGraph,
   pass: CombatPass,
   scan: VehicleScan,
@@ -108,7 +109,8 @@ function militaryPastBand(
   { minRange, maxRange }: { minRange: number; maxRange: number },
   reach: number,
   guard: NodeId | null,
-): Entity | null {
+  held: VehicleAttackTarget | null,
+): VehicleAttackTarget | null {
   const accept = scan.militaryInBandFrom(here, minRange, guard);
   const found = pass.index.nearest(
     terrain.xOf(here),
@@ -119,7 +121,14 @@ function militaryPastBand(
     scan.seeker,
     'hex',
   );
-  return found?.entity ?? null;
+  if (found === null) return null;
+  const kept = held?.kind === 'entity' ? held.entity : null;
+  if (kept === found.entity) return held;
+  if (kept !== null && accept(kept)) {
+    const dist = targetDistance(world, ctx, terrain, here, kept);
+    if (dist >= minRange && dist <= found.distance) return held;
+  }
+  return { kind: 'entity', entity: found.entity };
 }
 
 /** The nearest enemy of the best {@link VEHICLE_TARGET_RANK} inside the band around `from`, or a held

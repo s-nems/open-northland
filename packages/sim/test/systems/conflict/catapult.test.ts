@@ -460,6 +460,20 @@ describe('catapult stances and scans', () => {
     expect(hits.every((ev) => ev.kind === 'projectileHit' && ev.target === hq)).toBe(true);
   });
 
+  it('keeps the military target past its band it holds over another one as far', () => {
+    const s = sim(grass(40, 12));
+    const at = 40;
+    const past = CATAPULT_MAX_RANGE + VEHICLE_PRIORITY_REACH_POINTS;
+    houseAt(s, at - past, 8, P2, TOUGH_HOUSE, HEADQUARTERS); // the lower id, which a tie between finds favours
+    const held = houseAt(s, at + past, 8, P2, TOUGH_HOUSE, HEADQUARTERS);
+    const catapult = catapultAt(s, at, 8, P1);
+    const vehicle = s.world.mut(catapult, Vehicle);
+    vehicle.stance = 'attack';
+    vehicle.attack = { target: { kind: 'entity', entity: held }, ordered: false };
+    collect(s, SHOT_TICKS, []);
+    expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: held });
+  });
+
   it('defending, takes a military target past its band only within its scan of the guard position', () => {
     const s = sim(grass(40, 12));
     const catapult = catapultAt(s, 16, 8, P1);
