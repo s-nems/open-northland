@@ -23,11 +23,11 @@ simulation behavior. Bound the implementation to one measured bottleneck:
   A prior `magiczny_las` dense-town capture at zoom 1 measured 2.0 Mpx of mostly transparent overlays
   and about 0.20 ms of a 2.4 ms GPU frame on Apple M2 Pro. Test tighter band quads or meshes only if
   the current overlays retain a material cost; preserve identical coverage and edges.
-- **Page-size queries** (`gpu/world-batch/shader.ts`). `textureSizeOf()` still walks the sampler chain
-  per fragment. The page-size/derivative prologue, forced into the off variant, previously cost
-  0.27 ms of a 1.9 ms GPU-bound frame: Apple M2 Pro, the densest `magiczny_las` town with six hard AI
-  at tick 100000, 1920×1080, zoom 1. Compare passing size as vertex data against the current prescaled
-  and plain paths; retain it only if the measured gain outweighs the attribute cost.
+- **Ground minification** (`gpu/terrain/shading.ts`). A pattern's 63 texels span 68 px across and 38 px
+  down a cell, about 1.85 texels per pixel along the row axis, so at zoom 1 every ground pixel takes the
+  four-tap minification. On a Radeon Vega 7 at 1920x1080 in the densest `magiczny_las` town the ground
+  costs 1.7 ms of a 4.9 ms frame at zoom 1 and 2.0 of 8.0 ms at zoom 0.5, the enhanced sampling 0.5 and
+  0.6 ms of that. Fewer taps change the picture, so a change needs an owner ruling on comparison shots.
 - **Per-frame allocations** (`gpu/sprite-pool`, `data/scene`). Allocation sampling with collected
   objects at tick 80000, ×3, before the still-frame and combat-mark changes measured about 600 KB per
   dense-view frame and 770 KB in the widest view. Pool reconciliation accounted for 25/145 KB,
