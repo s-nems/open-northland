@@ -143,7 +143,7 @@ export interface Strike {
   readonly onOwnNode: boolean;
   readonly x: number;
   readonly y: number;
-  /** The tick's combat index, whose held units stand where it built them; null before the pass. */
+  /** The tick's combat index, which tells a unit from a body without its stores; null before the pass. */
   readonly index: CombatIndex | null;
 }
 
@@ -191,14 +191,10 @@ export function turnFighterOn(
     if (!strike.validForSide) return;
   } else if (!isValidTarget(world, ctx, victim, settler, striker)) return;
   if (held === striker) return;
-  // The fighter's node, off the index where it holds the fighter: the same node, with no store read.
-  const indexed = index?.holdsUnit(victim) === true;
-  const here = indexed ? null : entityNode(world, terrain, victim);
-  const hx = index !== null && indexed ? index.unitX(victim) : here === null ? 0 : terrain.xOf(here);
-  const hy = index !== null && indexed ? index.unitY(victim) : here === null ? 0 : terrain.yOf(here);
+  const here = entityNode(world, terrain, victim);
   if (
     hasGivenUpTarget(world, ctx, victim, striker) &&
-    !withinOwnBand(world, ctx, victim, settler, strikeReach(world, ctx, terrain, strike, hx, hy))
+    !withinOwnBand(world, ctx, victim, settler, strikeReach(world, ctx, terrain, strike, here))
   )
     return;
   strike.rank ??= strikeRank(world, ctx, striker, firingNow);
@@ -217,28 +213,27 @@ export function turnFighterOn(
     const heldRank = strikeRank(world, ctx, held, firingNow);
     if (heldRank < strikerRank) return;
     if (heldRank === strikerRank) {
-      // A held enemy the index holds as a unit is fought on its own node, measured off the index.
+      // A unit the index holds has no body, so it is fought on its own node.
       const heldReach =
         index?.holdsUnit(held) === true
-          ? hexDistanceBetween(hx, hy, index.unitX(held), index.unitY(held))
-          : reachFrom(world, ctx, terrain, terrain.nodeAt(hx, hy), held);
-      if (heldReach <= strikeReach(world, ctx, terrain, strike, hx, hy)) return;
+          ? hexNodeDistance(terrain, here, entityNode(world, terrain, held))
+          : reachFrom(world, ctx, terrain, here, held);
+      if (heldReach <= strikeReach(world, ctx, terrain, strike, here)) return;
     }
   }
   holdEnemy(world, ctx, victim, striker);
 }
 
-/** How far (map points) `strike`'s striker lies from a fighter on node (hx, hy). */
+/** How far (map points) `strike`'s striker lies from a fighter on node `here`. */
 function strikeReach(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   strike: Strike,
-  hx: number,
-  hy: number,
+  here: NodeId,
 ): number {
-  if (strike.onOwnNode) return hexDistanceBetween(hx, hy, strike.x, strike.y);
-  return reachFrom(world, ctx, terrain, terrain.nodeAt(hx, hy), strike.striker);
+  if (strike.onOwnNode) return hexDistanceBetween(terrain.xOf(here), terrain.yOf(here), strike.x, strike.y);
+  return reachFrom(world, ctx, terrain, here, strike.striker);
 }
 
 /** How far (map points) `t`'s combat node lies from `here`. */

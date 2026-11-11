@@ -22,6 +22,8 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../src/index.js';
 import { nodeOfPosition } from '../../../src/nav/halfcell.js';
+import { holdEnemy } from '../../../src/systems/conflict/chase.js';
+import { CombatIndex, holdPassIndex } from '../../../src/systems/conflict/combat-index.js';
 import { FLEE_STEP_NODES } from '../../../src/systems/conflict/flee.js';
 import {
   ALARM_PEOPLE_RADIUS_NODES,
@@ -30,11 +32,15 @@ import {
 import { STRIKE_BACK_LEASH_NODES } from '../../../src/systems/conflict/strike-back.js';
 import { stampResourceFootprintData } from '../../../src/systems/footprint/index.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../../src/systems/index.js';
+import { dropPath } from '../../../src/systems/movement/nav-state.js';
 import { setAiControl } from '../../../src/systems/orders/ai.js';
 import { moveUnit } from '../../../src/systems/orders/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../../src/systems/readviews/index.js';
 import { resolveCombatHit } from '../../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { SLEEP_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
+import { hexNodeDistance } from '../../../src/systems/spatial/metric.js';
+import { entityNode } from '../../../src/systems/spatial/nodes.js';
+import { midColumnStep } from '../../fixtures/waypoints.js';
 import {
   ATTACKED_ATOMIC,
   combatCadenceContent,
@@ -56,6 +62,8 @@ const MAP_ROWS = 2;
 /** Every node row of the map, which a wall of trees across them all seals. */
 const NODE_ROWS = 2 * MAP_ROWS;
 const VICTIM_AT = 10;
+/** Rows enough for a column step between the soldiers. */
+const STEP_MAP_ROWS = 20;
 const BLOW = { damage: 10 };
 /** A blow that does no damage, which leaves the struck side's diplomacy as it was. */
 const HARMLESS_BLOW = { damage: 0 };
@@ -270,6 +278,38 @@ describe('hit alarm - a blow alarms the struck person side', () => {
     combatSystem(s.world, { ...ctxOf(s), tick: s.tick + 1 });
 
     expect(held(s, comrade)).toBeUndefined();
+  });
+
+  it("weighs a soldier's held enemy at its live node when the pass dropped its route after building the index", () => {
+    const s = new Simulation({
+      seed: 1,
+      content: combatCadenceContent(),
+      map: grass(MAP_CELLS, STEP_MAP_ROWS),
+    });
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const placed = (hx: number, hy: number, owner: number, job: number): Entity => {
+      const e = fighterAtNode(s, hx, hy, owner === P0 ? VIKING : SAXON, job);
+      s.world.add(e, Owner, { player: owner });
+      s.world.add(e, Stance, { mode: MILITARY_MODE.ATTACK, anchorCell: null });
+      return e;
+    };
+    const comrade = placed(20, 16, P0, SOLDIER_SPEAR);
+    const attacker = placed(24, 16, P1, SOLDIER_SPEAR);
+    const victim = placed(26, 16, P0, WOMAN);
+    const enemy = placed(20, 20, P1, SOLDIER_SPEAR);
+    midColumnStep(s.world, terrain, enemy, 20, 20);
+    const ctx = ctxOf(s);
+    holdEnemy(s.world, ctx, comrade, enemy);
+    holdPassIndex(s.world, new CombatIndex(s.world, ctx, terrain));
+    const here = entityNode(s.world, terrain, comrade);
+    const strikeReach = hexNodeDistance(terrain, here, entityNode(s.world, terrain, attacker));
+    dropPath(s.world, enemy);
+    expect(hexNodeDistance(terrain, here, entityNode(s.world, terrain, enemy))).toBeGreaterThan(strikeReach);
+
+    resolveCombatHit(s.world, ctx, attacker, victim, BLOW, [], 'projectile');
+
+    expect(held(s, comrade)).toBe(attacker);
   });
 });
 

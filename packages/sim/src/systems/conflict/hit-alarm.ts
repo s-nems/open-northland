@@ -16,6 +16,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isFighterJob, MILITARY_MODE, stanceMode } from '../readviews/index.js';
 import { type Strike, strikeBy, turnFighterOn } from '../settlers/atomics/effects/combat/hit/reactions.js';
+import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { type CombatIndex, type KeptKeys, keyDistance, keyEntity, passIndexOf } from './combat-index.js';
 import { runFromBlow, runsFromBlows } from './flee.js';
@@ -158,7 +159,7 @@ function answerAlarm(
   for (let i = 0; i < answering.count; i++) {
     const key = answering.keys[i] ?? 0;
     const entity = keyEntity(key);
-    if (holdsNearerEnemy(world, ctx, index, strike, entity)) continue;
+    if (holdsNearerEnemy(world, ctx, terrain, index, strike, entity)) continue;
     if (!world.has(entity, Person) || indoors(world, entity)) continue;
     const settler = world.get(entity, Settler);
     const mode = stanceMode(world, ctx.content, entity, settler.jobType);
@@ -193,18 +194,18 @@ function answerAlarm(
 function holdsNearerEnemy(
   world: World,
   ctx: SystemContext,
+  terrain: TerrainGraph,
   index: CombatIndex,
   strike: Strike,
   e: Entity,
 ): boolean {
-  if (!strike.onOwnNode) return false;
+  if (!strike.onOwnNode || !world.has(e, Position)) return false;
   const held = world.tryGet(e, Engagement)?.target;
-  if (held === undefined || !index.holdsUnit(held) || !index.holdsUnit(e)) return false;
-  const x = index.unitX(e);
-  const y = index.unitY(e);
-  const heldReach = hexDistanceBetween(x, y, index.unitX(held), index.unitY(held));
-  const strikeReach = hexDistanceBetween(x, y, strike.x, strike.y);
+  if (held === undefined || !index.holdsUnit(held)) return false;
   if (!world.isAlive(held) || !world.has(held, Position)) return false;
+  const here = entityNode(world, terrain, e);
+  const heldReach = hexNodeDistance(terrain, here, entityNode(world, terrain, held));
+  const strikeReach = hexDistanceBetween(terrain.xOf(here), terrain.yOf(here), strike.x, strike.y);
   if (world.has(e, UnreachableTargets)) return false;
   if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) return false;
   strike.rank ??= strikeRank(world, ctx, strike.striker, strike.firingNow);
