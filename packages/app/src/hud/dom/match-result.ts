@@ -24,8 +24,21 @@ export interface MatchResultDeps {
   readonly onContinue: () => void;
   /** Opens the load page from a defeat; `back` shows the result again when it closes without loading. */
   readonly onLoad?: (back: () => void) => void;
-  /** Starts the map over from a defeat, as a new match. */
-  readonly onPlayAgain?: () => void;
+  /** Starts over from a defeat, as a new match. */
+  readonly playAgain?: ReplayOffer;
+}
+
+/** A fresh start, as a new match: of the `map` being played, or from a sub-mission of the whole
+ *  `mission`, back on its main map. */
+export interface ReplayOffer {
+  readonly scope: 'map' | 'mission';
+  readonly start: () => void;
+}
+
+/** The question that stands before `offer` starts. */
+export function replayQuestion(offer: ReplayOffer): string {
+  const copy = messages().hud;
+  return offer.scope === 'mission' ? copy.playAgainMissionConfirm : copy.playAgainConfirm;
 }
 
 /** What may hold the result window back: a lost link owns the page until it returns, and the
@@ -205,13 +218,13 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
     );
     const row = line('div', 'on-result__actions', '');
     row.append(resume);
-    const onPlayAgain = deps.onPlayAgain;
-    if (onPlayAgain !== undefined && verdict === 'defeat') {
+    const playAgain = deps.playAgain;
+    if (playAgain !== undefined && verdict === 'defeat') {
       row.append(
         button(copy.playAgain, GLYPH.replay, () =>
           leave(
-            { title: copy.playAgain, message: copy.playAgainConfirm, confirm: copy.playAgain },
-            onPlayAgain,
+            { title: copy.playAgain, message: replayQuestion(playAgain), confirm: copy.playAgain },
+            playAgain.start,
           ),
         ),
       );

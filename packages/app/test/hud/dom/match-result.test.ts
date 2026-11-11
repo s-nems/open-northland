@@ -21,11 +21,11 @@ function setup(
   ranking: () => readonly MatchRank[] = () => [],
   {
     onLoad,
-    onPlayAgain,
+    playAgain,
     scriptedEnding,
   }: {
     onLoad?: (back: () => void) => void;
-    onPlayAgain?: () => void;
+    playAgain?: () => void;
     scriptedEnding?: boolean;
   } = {},
 ) {
@@ -56,7 +56,7 @@ function setup(
     onOpen: vi.fn(),
     setCameraSuspended: vi.fn(),
     ...(onLoad !== undefined ? { onLoad } : {}),
-    ...(onPlayAgain !== undefined ? { onPlayAgain } : {}),
+    ...(playAgain !== undefined ? { playAgain: { scope: 'map', start: playAgain } } : {}),
   });
   overlays.push(overlay);
   const body = {
@@ -351,12 +351,12 @@ it('offers loading after a local defeat and returns to the result when the load 
 
 it('offers a lost local map again behind a confirmation, and not after a victory', async () => {
   const playAgain = vi.fn();
-  const won = setup(false, () => [], { onPlayAgain: playAgain });
+  const won = setup(false, () => [], { playAgain });
   won.overlay.announce('victory');
   expect(won.body.buttons()).toHaveLength(2);
   won.overlay.dispose();
 
-  const h = setup(false, () => [], { onLoad: vi.fn(), onPlayAgain: playAgain });
+  const h = setup(false, () => [], { onLoad: vi.fn(), playAgain });
   h.overlay.announce('defeat');
   const copy = messages().hud;
   expect(h.body.buttons().map((button) => button.textContent)).toEqual([

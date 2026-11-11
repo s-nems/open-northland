@@ -312,6 +312,8 @@ export const plGame = {
     quitConfirmNo: 'Graj dalej',
     playAgain: 'Zagraj ponownie',
     playAgainConfirm: 'Zacząć tę mapę od początku? Niezapisany postęp przepadnie.',
+    playAgainMissionConfirm:
+      'Zacząć całą misję od początku, od jej głównej mapy? Niezapisany postęp przepadnie.',
     closeMenu: 'Zamknij',
     saveGame: 'Zapisz grę',
     loadGame: 'Wczytaj grę',

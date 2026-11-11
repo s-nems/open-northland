@@ -7,6 +7,7 @@ import {
   serializeSaveGame,
 } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
+import { replaySearch } from '../../game/match/session-url.js';
 import { openSubMissionWindow } from '../../hud/dom/sub-mission-window.js';
 import { swapToEntry } from '../../launch.js';
 import type { SessionHost } from '../../session/index.js';
@@ -14,6 +15,15 @@ import { compressSaveText } from './save-load/codec.js';
 import { clearPendingLoad, storePendingLoad } from './save-load/pending-store.js';
 import { relaunchSearch } from './save-load/relaunch.js';
 import type { SavedView } from './save-load/view-state.js';
+
+/** The search that plays a sub-mission's whole mission again: its main map, the outermost parent,
+ *  launched as it first was under a new seed. Null when that parent names no world. */
+export function missionReplaySearch(parent: SaveGame): string | null {
+  let main = parent;
+  while (main.parent !== undefined) main = main.parent;
+  const search = relaunchSearch(main.header);
+  return search === null ? null : replaySearch(new URLSearchParams(search));
+}
 
 export type PrepareSubMission = (transition: SubMissionTransition, current: SaveGame) => Promise<SaveGame>;
 

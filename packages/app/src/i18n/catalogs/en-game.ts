@@ -318,6 +318,8 @@ export const enGame = {
     quitConfirmNo: 'Keep playing',
     playAgain: 'Play again',
     playAgainConfirm: 'Start this map again from the beginning? Unsaved progress will be lost.',
+    playAgainMissionConfirm:
+      'Start the whole mission again from the beginning, on its main map? Unsaved progress will be lost.',
     closeMenu: 'Close',
     saveGame: 'Save game',
     loadGame: 'Load game',

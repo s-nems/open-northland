@@ -80,6 +80,7 @@ import {
   createMatchResultOverlay,
   keepsPlayingAfterResult,
   type MatchResultOverlay,
+  type ReplayOffer,
 } from '../../hud/dom/match-result.js';
 import { createLinkLostScreen, type LinkLostScreen } from '../../hud/dom/network/link-lost-screen.js';
 import { mountHudDomRoot } from '../../hud/dom/root.js';
@@ -191,7 +192,7 @@ import {
 import { otherWorldLoader } from './save-load/other-world.js';
 import { worldScreenshot, worldThumbnail } from './save-load/thumbnail.js';
 import { noteRestartOnLeave } from './settings-restart.js';
-import { createSubMissions, type PrepareSubMission } from './sub-missions.js';
+import { createSubMissions, missionReplaySearch, type PrepareSubMission } from './sub-missions.js';
 import { rememberedFog, viewerFog } from './viewer-fog.js';
 import { createWorldEventHandler } from './world-events.js';
 import { createWorldTeardown } from './world-teardown.js';
@@ -467,9 +468,20 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           }
           leaveWorld(`?${search}`);
         };
-  // A sub-mission starts from its parent's save, which a fresh boot of its entry would leave behind.
-  const replay =
-    sharedClock || deps.parentSave !== undefined ? undefined : (): void => leaveWorld(replaySearch(params));
+  // A sub-mission starts from its parent's save, which a fresh boot of its own entry would leave
+  // behind, so its replay plays the whole mission from the main map.
+  const replayTarget = sharedClock
+    ? null
+    : deps.parentSave === undefined
+      ? replaySearch(params)
+      : missionReplaySearch(deps.parentSave);
+  const replay: ReplayOffer | undefined =
+    replayTarget === null
+      ? undefined
+      : {
+          scope: deps.parentSave === undefined ? 'map' : 'mission',
+          start: () => leaveWorld(replayTarget),
+        };
 
   try {
     const storedSettings = readStoredSettings();
@@ -940,7 +952,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         resume: () => pauseHolds.release(PAUSE_HOLDER_VERDICT),
         onQuit: quitToMenu,
         ...(sharedClock ? {} : { onLoad: (back) => systemMenu?.openPage('load', back) }),
-        ...(replay !== undefined ? { onPlayAgain: replay } : {}),
+        ...(replay !== undefined ? { playAgain: replay } : {}),
         onContinue: () => {
           if (sharedClock) {
             watching = true;
@@ -1502,7 +1514,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     systemMenu = createSystemMenu({
       onQuit: quitToMenu,
-      ...(replay !== undefined ? { onRestart: replay } : {}),
+      ...(replay !== undefined ? { restart: replay } : {}),
       saveLoad: {
         ...saveLoad,
         forcePause: () => pauseHolds.hold(PAUSE_HOLDER_MENU),
