@@ -43,7 +43,6 @@ import {
   buildingDoorwayNodes,
   discOffsets,
   dynamicBlockOverlay,
-  hexDisc,
   type VehicleDisc,
   vehicleAnchor,
   vehicleBlockedCells,
@@ -1261,7 +1260,13 @@ function underRouteFootprint(
   step: number,
   logicSize: number,
 ): boolean {
-  for (const { hx, hy } of hexDisc({ hx: terrain.xOf(node), hy: terrain.yOf(node) }, logicSize)) {
+  const x = terrain.xOf(node);
+  const y = terrain.yOf(node);
+  const offsets = discOffsets(logicSize, y);
+  for (let i = 0; i < offsets.length; i++) {
+    const offset = offsets[i] as HalfCellNode;
+    const hx = x + offset.hx;
+    const hy = y + offset.hy;
     if (!terrain.inBounds(hx, hy)) continue;
     const centre = terrain.nodeAt(hx, hy);
     if (centre === entered || (index.get(centre) ?? -1) >= step) return true;
@@ -1291,7 +1296,12 @@ function shoveSettlers(
   let doorways: ReadonlySet<NodeId> | undefined;
   const enteredNode = terrain.nodeAtClamped(entered.hx, entered.hy);
   const claimed = new Set<NodeId>();
-  for (const { hx, hy } of hexDisc(entered, logicSize)) {
+  // The disc in ring order from the anchor outward, which decides who claims a landing first.
+  const offsets = discOffsets(logicSize, entered.hy);
+  for (let i = 0; i < offsets.length; i++) {
+    const offset = offsets[i] as HalfCellNode;
+    const hx = entered.hx + offset.hx;
+    const hy = entered.hy + offset.hy;
     for (const settler of standing.at(hx, hy)) {
       if (isTravelling(world, settler) || atomicHoldsSettler(world, settler)) continue;
       const from = terrain.nodeAtClamped(hx, hy);

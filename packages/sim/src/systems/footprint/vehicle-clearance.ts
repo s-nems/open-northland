@@ -217,7 +217,7 @@ export function vehicleClearance(world: World, ctx: ContentContext, terrain: Ter
     held !== undefined &&
     held.content === ctx.content &&
     held.terrain === terrain &&
-    catchUp(world, ctx, held)
+    (isFresh(world, held) || catchUp(world, ctx, held))
   ) {
     return held.field;
   }
@@ -245,12 +245,19 @@ function verifyMemo(world: World, ctx: ContentContext, terrain: TerrainGraph): s
 }
 
 function isFresh(world: World, memo: ClearanceMemo): boolean {
-  return (
-    !memo.resources.pending &&
-    landscapeEditState(world).topologyRevision === memo.landscapeRevision &&
-    world.componentValueGeneration(Building) === memo.buildingValueGen &&
-    SOURCES.every((source) => world.componentGeneration(source) === (memo.gens.get(source) ?? 0))
-  );
+  if (
+    memo.resources.pending ||
+    landscapeEditState(world).topologyRevision !== memo.landscapeRevision ||
+    world.componentValueGeneration(Building) !== memo.buildingValueGen
+  ) {
+    return false;
+  }
+  // Indexed: every clearance read asks this first.
+  for (let i = 0; i < SOURCES.length; i++) {
+    const source = SOURCES[i] as Component<unknown>;
+    if (world.componentGeneration(source) !== (memo.gens.get(source) ?? 0)) return false;
+  }
+  return true;
 }
 
 /** Resource cells a land vehicle's disc may overlap beyond its anchor in transit. */
