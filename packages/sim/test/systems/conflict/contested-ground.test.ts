@@ -16,11 +16,12 @@ import {
 } from '../../../src/systems/conflict/contested-ground.js';
 import { VISION_CADENCE_TICKS } from '../../../src/systems/vision/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
+import { testContent } from '../../fixtures/content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 
 /**
- * Contested ground: the placement rule that refuses a site near a hostile army, and the `placeBuilding`
- * gate that reads it. A deliberate divergence from the original, which places freely under an enemy
+ * Contested ground: the placement rule that refuses a site near a hostile army or vehicle, and the
+ * `placeBuilding` gate that reads it. A deliberate divergence from the original, which places freely under an enemy
  * army, so nothing here claims fidelity.
  */
 
@@ -31,6 +32,8 @@ const ALLY = 4;
 const CIVILIST = 6;
 const SPEARMAN = 32;
 const HQ_TYPE = 1;
+/** `testContent`'s catapult. */
+const CATAPULT = 5;
 const RADIUS = CONTESTED_GROUND_RADIUS_NODES;
 
 /** Where the fighter stands in every case. */
@@ -128,6 +131,16 @@ describe('contested ground - who contests it', () => {
     sim.world.add(archer, Garrison, { post, returnTo: { x: at.x, y: at.y } });
     Object.assign(sim.world.mut(archer, Position), { x: at.x, y: at.y });
     expect(contestedFor(sim, SEAT, CAMP)).toBe(false);
+  });
+
+  it("an empty hostile vehicle contests the ground as a fighter does, and its owner's own does not", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(64, 32) });
+    sim.enqueueSetup({ kind: 'createVehicle', vehicleType: CATAPULT, ...CAMP, tribe: VIKING, owner: FOE });
+    sim.step();
+
+    expect(contestedFor(sim, SEAT, { x: CAMP.x + RADIUS, y: CAMP.y })).toBe(true);
+    expect(contestedFor(sim, SEAT, { x: CAMP.x + RADIUS + 1, y: CAMP.y })).toBe(false);
+    expect(contestedFor(sim, FOE, CAMP)).toBe(false);
   });
 
   it('a dead fighter contests nothing', () => {

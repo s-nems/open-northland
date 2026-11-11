@@ -1,6 +1,14 @@
 import type { ContentSet } from '@open-northland/data';
-import { fightsPlayer, Health, isValidPlayer, Owner, Position, Settler } from '../../components/index.js';
-import type { World } from '../../ecs/world.js';
+import {
+  fightsPlayer,
+  Health,
+  isValidPlayer,
+  Owner,
+  Position,
+  Settler,
+  Vehicle,
+} from '../../components/index.js';
+import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { type PlacementProbe, placementProbe, siteReachFor } from '../footprint/index.js';
@@ -11,10 +19,11 @@ import { SIGHT_RADIUS_NODES } from './targeting.js';
 import { standsAtPost } from './tower-post.js';
 
 /**
- * How near (Manhattan half-cell nodes) a hostile fighter refuses a site: a fighter who can see the ground
- * strikes the foundation the tick it stands. Deliberate divergence: the original places freely under an
- * enemy army (observation). Approximation on three counts: measured at the anchor rather than the walls,
- * with the plain sight radius rather than a bow's reach, and for a holding guard as for an attacker.
+ * How near (Manhattan half-cell nodes) a hostile fighter or vehicle refuses a site: a fighter who can see
+ * the ground strikes the foundation the tick it stands. Deliberate divergence: the original places freely
+ * under an enemy army (observation). Approximation on three counts: measured at the anchor rather than the
+ * walls, with the plain sight radius rather than a bow's or a catapult's reach, and for a holding guard as
+ * for an attacker.
  */
 export const CONTESTED_GROUND_RADIUS_NODES = SIGHT_RADIUS_NODES;
 
@@ -43,8 +52,9 @@ const memo = new WeakMap<World, Map<number, ContestedMemo>>();
 
 /**
  * The ground `player` may not build on right now: every node within {@link CONTESTED_GROUND_RADIUS_NODES}
- * of a living fighter the seat can see whose owner fights it ({@link fightsPlayer}). Civilians and animals
- * are no army, and a garrison at its post is a fortification rather than one, so none of them contest.
+ * of a living fighter or a vehicle on the map (a catapult, ship or cart, crewed or not; project rule) the
+ * seat can see whose owner fights it ({@link fightsPlayer}). Civilians and animals are no army, and a
+ * garrison at its post is a fortification rather than one, so none of them contest.
  */
 export function contestedGroundFor(
   world: World,
@@ -104,18 +114,22 @@ function scanContestedGround(
 ): ContestedGround {
   const cells: CoarseCells = new Map();
   if (isValidPlayer(player)) {
-    for (const e of world.query(Settler, Owner)) {
+    const contests = (e: Entity): void => {
       const owner = world.get(e, Owner).player;
-      if (owner === player || !fightsPlayer(world, owner, player)) continue;
-      if (!isFighterJob(content, world.get(e, Settler).jobType)) continue;
+      if (owner === player || !fightsPlayer(world, owner, player)) return;
       const health = world.tryGet(e, Health);
-      if (health === undefined || health.hitpoints <= 0) continue;
+      if (health === undefined || health.hitpoints <= 0) return;
       const p = world.tryGet(e, Position);
-      if (p === undefined || standsAtPost(world, e) !== null) continue;
-      if (!playerSeesEntity(world, fog, player, e)) continue;
+      if (p === undefined || !playerSeesEntity(world, fog, player, e)) return;
       const node = { hx: nodeHxOfPosition(p.x, p.y), hy: nodeHyOfPosition(p.x, p.y) };
       cellFor(cells, coarseOf(node.hx), coarseOf(node.hy)).push(node);
+    };
+    for (const e of world.query(Settler, Owner)) {
+      if (isFighterJob(content, world.get(e, Settler).jobType) && standsAtPost(world, e) === null)
+        contests(e);
     }
+    // A carried vehicle has no Position, so only one standing on the map contests.
+    for (const e of world.query(Vehicle, Owner)) contests(e);
   }
   return {
     contested: (hx, hy) => {
