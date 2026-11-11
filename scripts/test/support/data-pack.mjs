@@ -1,12 +1,13 @@
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { DATA_PACK_VERSION } from '../../data-pack.mjs';
 export const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 export async function syntheticPack(root, extra = {}, campaigns = []) {
   const files = { 'base/rules/types/example.ini': '[synthetic]', ...extra };
   const manifest = {
     format: 'open-northland-data',
-    version: 4,
+    version: DATA_PACK_VERSION,
     base: 'base',
     components: [{ id: 'synthetic', kind: 'base', sha256: hash('synthetic') }],
     campaigns,
