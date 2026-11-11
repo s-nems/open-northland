@@ -14,6 +14,7 @@ import {
   type SeatRead,
   type SiteFacts,
   type StepRead,
+  TEMPLE_OIL_UNITS,
   type Worth,
 } from '../../../../../src/systems/computer-player/colony/settlement/industry.js';
 
@@ -53,9 +54,6 @@ const seatRead = (over: Partial<SeatRead> = {}): SeatRead => ({
 });
 
 const industries = (choices: readonly IndustryChoice[]): Industry[] => choices.map((c) => c.industry);
-
-/** The holy oil a colony keeps for its temple: its store of five and a unit spare. */
-const TEMPLE_OIL_UNITS = 6;
 
 describe('a colony industry', () => {
   it('is chosen only where the site offers what its chain takes', () => {

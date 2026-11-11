@@ -8,6 +8,7 @@ import {
   colonyStockPolicy,
   colonyStockReadsOf,
 } from '../../../../../src/systems/computer-player/colony/goods/stock-policy.js';
+import { TEMPLE_OIL_UNITS } from '../../../../../src/systems/computer-player/colony/settlement/industry.js';
 import { colonyIndustries } from '../../../../../src/systems/computer-player/colony/settlement/industry-read.js';
 import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
 import { seatArmsStock } from '../../../../../src/systems/computer-player/military/outfit.js';
@@ -48,8 +49,6 @@ const TEMPLE_TYPE = 61;
 const DRUID = 11;
 /** Beside the barracks, inside the headquarters' signposts. */
 const DRUID_HUT_AT = { x: 60, y: 96 };
-/** The holy oil a colony keeps for its temple: its store of five and a unit spare. */
-const TEMPLE_OIL_UNITS = 6;
 
 /** {@link overflowContent} with a druid hut boiling holy oil and a temple, the armourer's prayer place. */
 function templeContent(): ContentSet {

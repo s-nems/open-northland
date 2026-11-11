@@ -5,6 +5,7 @@ import {
   CurrentAtomic,
   MoveGoal,
   Owner,
+  PickupClaim,
   Stockpile,
   SupplyRun,
   setSignpostNavigation,
@@ -142,6 +143,24 @@ describe('temple fuel - the druids feed the temples, porters and every carrier h
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(maker, SupplyRun)).toBe(false);
+  });
+
+  it("sends one of the temple's porter and the maker for its last free unit, not both", () => {
+    const sim = new Simulation({ seed: 1, content: fuelledContent(), map: grassMap(16, 1) });
+    const temple = owned(sim, buildingAt(sim, TEMPLE, 0, 0, [[PLANK, FUEL_CAPACITY - 1]]));
+    owned(sim, buildingAt(sim, HEADQUARTERS, 12, 0, [[PLANK, 2]]));
+    const mill = owned(sim, buildingAt(sim, SAWMILL, 6, 0, [[PLANK, 1]]));
+    const porter = owned(sim, settlerAt(sim, 0, 0, CARRIER, temple));
+    const maker = owned(sim, settlerAt(sim, 6, 0, CARPENTER, mill));
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const fetching = [porter, maker].filter(
+      (e) =>
+        sim.world.tryGet(e, SupplyRun)?.site === temple ||
+        sim.world.tryGet(e, PickupClaim)?.goodType === PLANK,
+    );
+    expect(fetching).toHaveLength(1);
   });
 
   it("brings its porter's fuel from a store, and lends none of it back", () => {

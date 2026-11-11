@@ -189,11 +189,11 @@ const NO_SUPPLY: Recipe = { inputs: [], outputs: [], ticks: 1 };
 const LOITER_PLAN_PERIOD_TICKS = 1;
 
 /**
- * Run the self-service producer loop: feed a temple short of the workshop's fuel between batches, advance
- * running batches, supply open products, claim a new batch seat, clear a full slot, haul an output out, then loiter
- * by the door with nothing to do. Original
+ * Run the self-service producer loop: advance running batches, supply open products, claim a new batch
+ * seat, clear a full slot, haul an output out, then loiter by the door with nothing to do. Original
  * behavior: a producer fetches a missing input of its own recipe itself, whatever other settlers are
- * bringing, and never waits inside for them.
+ * bringing, and never waits inside for them. Before a batch has begun he feeds a temple short of the
+ * workshop's fuel ({@link planTempleFuelRun}, owner ruling).
  *
  * Source basis: a workshop stopping on a full product slot and resuming once a unit leaves is observed
  * original behavior, and every craft trade carries `jobtypes.ini` `baseatomics 6`, which grants the

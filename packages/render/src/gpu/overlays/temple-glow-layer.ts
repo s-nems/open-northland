@@ -17,20 +17,22 @@ export interface TempleGlowFrame {
   readonly seconds: number;
 }
 
-/** The pale blue of the blessing's range ring. */
-const GLOW_COLOUR = 0xc5edff;
+/** A pale blue, deeper than the blessing's range ring: added over green grass, a paler one reads yellow.
+ *  Tuned by eye. */
+const GLOW_COLOUR = 0x5aa8ff;
 /** The glow's strength at the top of its breath. Tuned by eye. */
-const GLOW_ALPHA = 0.75;
-/** How far the glow spreads past the building's ground ellipse, as a share of its radii. Tuned by eye. */
-const GLOW_SPREAD = 1.5;
-/** The ground ellipse's radii, world px, for a temple whose art gives none. */
-const FALLBACK_RX = 80;
-const FALLBACK_RY = 40;
+const GLOW_ALPHA = 0.9;
+/** The glow's half-width as a share of the drawn temple's, so its rim shows past the walls. Tuned by eye. */
+const GLOW_SPREAD = 1.6;
+/** North-south over east-west radius of a patch of flat ground under the projection, as the art's
+ *  platforms are drawn. Tuned by eye. */
+const GROUND_SQUASH = 0.5;
 
 /**
  * A pale-blue glow breathing on the ground round each temple the viewer sees blessing, every tribe's
  * alike, so a temple with no oil or a wound reads at a glance. Our own effect; the original shows the
- * blessing nowhere. Temples are few, so every blessing one is walked and culled each frame.
+ * blessing nowhere. Temples are few, so every blessing one is walked and culled each frame; their additive
+ * sprites share one container, one batch break a frame.
  */
 export class TempleGlowLayer {
   readonly container = new Container();
@@ -49,14 +51,13 @@ export class TempleGlowLayer {
       const feet = tileToScreen(tileX, tileY);
       if (!isVisible(frame.viewport, feet.x, feet.y) || frame.fogVisible?.(tileX, tileY) === false) continue;
       const anchor = frame.drawn.anchorOf(id);
-      if (anchor === undefined) continue;
-      const ellipse = frame.drawn.selectionOf?.(id);
+      const bounds = frame.drawn.boundsOf(id);
+      if (anchor === undefined || bounds === undefined) continue;
+      // Centred between the feet and the platform's front edge, so most of the glow lies before the walls.
+      const rx = ((bounds.maxX - bounds.minX) / 2) * GLOW_SPREAD;
       const glow = this.glowOf(id);
-      glow.position.set(anchor.x + (ellipse?.cx ?? 0), anchor.y + (ellipse?.cy ?? 0));
-      glow.scale.set(
-        (2 * GLOW_SPREAD * (ellipse?.rx ?? FALLBACK_RX)) / GLOW_TEXTURE_SIZE,
-        (2 * GLOW_SPREAD * (ellipse?.ry ?? FALLBACK_RY)) / GLOW_TEXTURE_SIZE,
-      );
+      glow.position.set((bounds.minX + bounds.maxX) / 2, (anchor.y + bounds.maxY) / 2);
+      glow.scale.set((2 * rx) / GLOW_TEXTURE_SIZE, (2 * rx * GROUND_SQUASH) / GLOW_TEXTURE_SIZE);
       glow.alpha = GLOW_ALPHA * templeGlowPulse(frame.seconds, id);
       this.seen.add(id);
     }

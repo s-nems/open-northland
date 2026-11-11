@@ -20,8 +20,9 @@ import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { WORKPLACE_COLLECT_RADIUS } from '../../../economy/haul-flag.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
+import { templeFuelShortfall } from '../../../lifecycle/temple/index.js';
 import { edibleClassOf } from '../../../readviews/food.js';
-import { templeFuelSlotOf } from '../../../readviews/index.js';
+import { isTempleFuel, templeFuelSlotOf } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { assignedWorkers } from '../../../stores/assigned-workers.js';
 import {
@@ -211,7 +212,7 @@ function nearestPriorityRestock(
   let best: NearestByCell<number> | null = null;
   let bestRoom = 0;
   for (const goodType of goods) {
-    const room = roomLeftForPorters(plan, home, goodType);
+    const room = Math.min(roomLeftForPorters(plan, home, goodType), fuelRoomLeft(plan, home, goodType));
     if (room <= 0) continue;
     if (carriedGoodForm(world, ctx, entity, goodType) !== goodType || sinkOf(goodType) !== home) continue;
     const holders = targets.bands.holding(goodType);
@@ -241,6 +242,15 @@ function restockGoodsOf(plan: PlannerContext, home: Entity): readonly number[] {
   const fuel = type === undefined ? undefined : templeFuelSlotOf(plan.ctx, type)?.goodType;
   if (fuel === undefined || marked.includes(fuel)) return marked;
   return [...marked, fuel].sort((a, b) => a - b);
+}
+
+/** The units of a temple's fuel `home` still takes once every load on its way lands, the druids'
+ *  included; unbounded for any other good or store. */
+function fuelRoomLeft(plan: PlannerContext, home: Entity, goodType: number): number {
+  const { world, ctx, supply } = plan;
+  return isTempleFuel(world, ctx, home, goodType)
+    ? templeFuelShortfall(world, ctx, supply, home)
+    : Number.POSITIVE_INFINITY;
 }
 
 /** The units of `goodType` `home`'s shelf still takes once the loads its other porters carry, have

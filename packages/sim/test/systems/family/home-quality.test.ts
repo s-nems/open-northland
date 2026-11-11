@@ -56,6 +56,9 @@ const FURNITURE = 3;
 const RING_SEARCHED_STORES = 70;
 const OIL = 4;
 const HOME = 1;
+/** A temple that burns its store of oil, which no household may take. */
+const TEMPLE = 2;
+const TEMPLE_OIL_CAPACITY = 5;
 const JOB = 1;
 const TRIBE = 1;
 const SLEEP_ATOMIC = 8;
@@ -111,6 +114,13 @@ function content() {
     jobs: [{ typeId: JOB, id: 'civilist', needsReligion: true }],
     buildings: [
       { typeId: HOME, id: 'home', kind: 'home', homeSize: 1, stock: [{ goodType: FOOD, capacity: 5 }] },
+      {
+        typeId: TEMPLE,
+        id: 'work_temple',
+        kind: 'workplace',
+        prayerSite: 'temple',
+        stock: [{ goodType: OIL, capacity: TEMPLE_OIL_CAPACITY }],
+      },
     ],
     tribes: [
       {
@@ -547,6 +557,17 @@ describe('household quality goods', () => {
     sim.world.destroy(stores[0] as Entity);
 
     expect(index.nearest({ hx: 0, hy: 0 }, undefined, new Set([FURNITURE]), null)?.store).toBe(stores[1]);
+  });
+
+  it("never offers a temple's oil, which its fire burns", () => {
+    const { sim } = setup();
+    const temple = sim.world.create();
+    sim.world.add(temple, Position, { x: fx.fromInt(2), y: fx.fromInt(0) });
+    sim.world.add(temple, Building, { buildingType: TEMPLE, tribe: TRIBE, built: ONE, level: 0 });
+    sim.world.add(temple, Stockpile, { amounts: new Map([[OIL, TEMPLE_OIL_CAPACITY]]) });
+    const index = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined, collectSupplyTally(sim.world));
+
+    expect(index.nearest({ hx: 0, hy: 0 }, undefined, new Set([OIL]), null)).toBeNull();
   });
 
   it('offers the lowest-id demanded quality good whatever order the store was stocked in', () => {

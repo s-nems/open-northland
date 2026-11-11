@@ -11,6 +11,7 @@ import {
   siegeShotsOf,
   targetPositionsOf,
 } from './scene/snapshot-index.js';
+import { blessingTemplesOf } from './scene/temple-glow.js';
 
 /** One per-frame read that registers snapshot indexes on a mirror; `seat` is the viewer the HUD counts
  *  for, null for an observer. */
@@ -35,6 +36,7 @@ export const RENDER_FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   { name: 'import markers', read: (snapshot) => importMarkersOf(snapshot, NO_EXEMPTION) },
   { name: 'palisades', read: (snapshot) => palisadesOf(snapshot) },
   { name: 'siege shots', read: (snapshot) => siegeShotsOf(snapshot) },
+  { name: 'blessing temples', read: (snapshot) => blessingTemplesOf(snapshot) },
   { name: 'fog ghost vehicles', read: (snapshot) => entitiesWith(snapshot, 'Vehicle') },
   { name: 'road network', read: (snapshot) => roadRevisionOf(snapshot) },
   { name: 'road shards', read: (snapshot) => entitiesWith(snapshot, 'RoadShard') },

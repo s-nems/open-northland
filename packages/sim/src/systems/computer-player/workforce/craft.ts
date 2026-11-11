@@ -36,6 +36,7 @@ import { vehicleIndex } from '../../vehicles/registry.js';
 import { militaryWaits, seatArchetype, seatHasSide } from '../build-order/order/seat-order.js';
 import { colonyFleetShips, colonySmallShips, colonyTradeShips } from '../colony/sea/fleet.js';
 import { TRADE_SHIP_ID } from '../colony/sea/trade-ship.js';
+import { TEMPLE_OIL_UNITS } from '../colony/settlement/industry.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
 import { type HerdKept, seatHerdKept } from '../herd.js';
@@ -459,10 +460,8 @@ const DRUID_SEATS = 12;
  *  discovery reads, so the oil's one herb buys the same experience as a potion's eight inputs. */
 const POTION_SEAT: CraftSeat = { firstEnabled: [['potion_heal_big'], ['holy_oil']] };
 
-/** The holy oil the seat holds at which the temple's druid turns back to potions, and the band under it
- *  at which he takes the oil back (authored): the temple's store of five, which counts, and a unit
- *  spare. */
-export const TEMPLE_OIL_UNITS = 6;
+/** The band under {@link TEMPLE_OIL_UNITS}, which the seat's stock counts the temple's store in, at which
+ *  the temple's druid takes the oil back (authored). */
 const TEMPLE_OIL_BAND_UNITS = 1;
 
 /** The first druid keeps the temple in holy oil while the seat owns one, a site or standing: its bill

@@ -8,7 +8,7 @@ const BLESSING = 1;
 const DARK = 2;
 const VIEW = { minX: -1000, maxX: 1000, minY: -1000, maxY: 1000 };
 const ANCHOR = { x: 40, y: 30 };
-const ELLIPSE = { cx: 4, cy: -2, rx: 50, ry: 25 };
+const BOUNDS = { minX: 0, minY: -60, maxX: 80, maxY: 50 };
 
 function temple(id: number, blessing: boolean) {
   return {
@@ -26,7 +26,7 @@ const snapshot: WorldSnapshot = {
 function frame(fogVisible?: () => boolean): TempleGlowFrame {
   return {
     snapshot,
-    drawn: drawnGeometry({ anchorOf: () => ANCHOR, selectionOf: () => ELLIPSE }),
+    drawn: drawnGeometry({ anchorOf: () => ANCHOR, boundsOf: () => BOUNDS }),
     viewport: VIEW,
     fogVisible,
     seconds: 0,
@@ -34,12 +34,15 @@ function frame(fogVisible?: () => boolean): TempleGlowFrame {
 }
 
 describe('TempleGlowLayer', () => {
-  it('glows on the ground ellipse of a blessing temple alone', () => {
+  it('glows on the ground before a blessing temple alone', () => {
     const layer = new TempleGlowLayer();
     layer.draw(frame());
     const glows = layer.container.children as Sprite[];
     expect(glows).toHaveLength(1);
-    expect(glows[0]?.position).toMatchObject({ x: ANCHOR.x + ELLIPSE.cx, y: ANCHOR.y + ELLIPSE.cy });
+    expect(glows[0]?.position).toMatchObject({
+      x: (BOUNDS.minX + BOUNDS.maxX) / 2,
+      y: (ANCHOR.y + BOUNDS.maxY) / 2,
+    });
     expect(glows[0]?.alpha).toBeGreaterThan(0);
   });
 

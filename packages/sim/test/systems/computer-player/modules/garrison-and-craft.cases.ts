@@ -41,6 +41,7 @@ import { TOWER_POST_STRENGTH } from '../../../../src/systems/ai-shared/military/
 import { ownedBuildings, ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { SpareForce } from '../../../../src/systems/ai-shared/workforce/pool.js';
 import { COMPUTER_PUBLISHED_COUNTERS } from '../../../../src/systems/computer-player/assistant-counters.js';
+import { TEMPLE_OIL_UNITS } from '../../../../src/systems/computer-player/colony/settlement/industry.js';
 import {
   AI_PROFILES,
   BUILDER_CAP,
@@ -72,7 +73,6 @@ import {
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   JOINERY_TOOL_GLUT_UNITS,
   SHOES_STOCK_UNITS,
-  TEMPLE_OIL_UNITS,
   tuneCraftCounters,
   WOODEN_TOOL_GLUT_UNITS,
 } from '../../../../src/systems/computer-player/workforce/craft.js';

@@ -380,9 +380,9 @@ export interface IndustryWant {
   readonly upTo: number;
 }
 
-/** The holy oil a colony keeps for its temple (authored): its store of five, which its blessing burns
- *  (owner ruling), and a unit spare, the first of them for its bill. */
-const TEMPLE_OIL_UNITS = 6;
+/** The holy oil a seat or a colony keeps for its temple (authored): its store of five, which its
+ *  blessing burns (owner ruling), and a unit spare, the first of them for its bill. */
+export const TEMPLE_OIL_UNITS = 6;
 
 /**
  * What `chosen` needs delivered that no workshop of the colony takes as a recipe input, so the generic rule

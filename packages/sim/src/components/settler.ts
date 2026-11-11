@@ -289,9 +289,9 @@ export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>
 export const BuildMode = defineComponent<{ kind: 'roads' | 'walls' }>('BuildMode', 'settlers');
 
 /**
- * A settler's live construction or workshop supply errand, cleared and re-stamped at the top of its own
- * next planning pass. Settlers planned later subtract these from a site's outstanding need. The pickup
- * leg carries a {@link PickupClaim} beside it; the delivery leg carries this alone.
+ * A settler's live construction, workshop or temple-fuel supply errand, cleared and re-stamped at the top
+ * of its own next planning pass. Settlers planned later subtract these from a site's outstanding need. The
+ * pickup leg carries a {@link PickupClaim} beside it; the delivery leg carries this alone.
  */
 export const SupplyRun = defineComponent<{
   site: Entity;

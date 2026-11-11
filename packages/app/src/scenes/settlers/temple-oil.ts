@@ -11,7 +11,7 @@ import {
 import { goodBySlug } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
 
-const { Building, Health, setStockAmount, TempleFire } = components;
+const { Building, Health, setStockAmount, Stockpile, TempleFire } = components;
 
 const MAP_W = 60;
 const MAP_H = 30;
@@ -88,7 +88,11 @@ export const templeOilScene: SceneDefinition = {
     },
     {
       label: 'the wounded temple keeps its full store and blesses nobody',
-      predicate: (sim) => !blesses(sim, templeOf(sim, SARACEN)),
+      predicate: (sim) => {
+        const wounded = templeOf(sim, SARACEN);
+        const stored = sim.world.get(wounded, Stockpile).amounts.get(goodBySlug(sim, 'holy_oil'));
+        return !blesses(sim, wounded) && stored === FULL_STORE;
+      },
     },
   ],
 };

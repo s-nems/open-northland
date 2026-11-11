@@ -69,8 +69,9 @@ export function buildingStatus(inputs: BuildingStatusInputs): BuildingStatusMode
         tone: 'trouble',
       };
     }
-    const minutes =
-      blessing.secondsLeft === null ? null : Math.ceil(blessing.secondsLeft / SECONDS_PER_MINUTE);
+    // None left to count on a scripted seat's temple, which blesses on an empty store.
+    const left = blessing.secondsLeft;
+    const minutes = left === null || left <= 0 ? null : Math.ceil(left / SECONDS_PER_MINUTE);
     return {
       label: copy.blessing,
       detail: minutes === null ? null : formatMessage(copy.oilLeft, { minutes }),
