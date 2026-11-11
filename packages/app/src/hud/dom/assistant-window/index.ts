@@ -37,11 +37,13 @@ import {
   type GearLine,
   groupReceives,
   NO_BOOKINGS,
+  NOBODY,
   NOTE_TONE,
   PressHold,
   type RowAudience,
   type StatusNote,
   type StatusNoteKey,
+  sameAudience,
   sameCounter,
   sameGear,
   trainingNotes,
@@ -51,7 +53,6 @@ import {
 type CounterKind = components.AssistantCounterKind;
 type CounterState = components.AssistantCounterState;
 type ClassIntent = Exclude<components.AssistantRecruitIntent, 'trainSoldiers'>;
-type GrantAudience = components.AssistantGrantAudience;
 type GearKind = 'weapons' | 'armor';
 
 const ROW_ICON_PX = 24;
@@ -66,13 +67,13 @@ export interface AssistantCountersSeam {
 }
 
 /** The sim's switches for the watched seat: a give switch is on when its goods are granted, and its
- *  audience says which group its goods are kept for, if any. */
+ *  audience names the groups its goods go to. */
 export interface AssistantSwitchesSeam {
   read(): Readonly<Record<AssistantGrantId, boolean>>;
   /** False when the write was rejected, which the window must not echo. */
   set(id: AssistantGrantId, enabled: boolean): boolean;
-  readAudiences(): Readonly<Record<GiveSwitchId, GrantAudience>>;
-  setAudience(id: GiveSwitchId, audience: GrantAudience): boolean;
+  readAudiences(): Readonly<Record<GiveSwitchId, RowAudience>>;
+  setAudience(id: GiveSwitchId, groups: RowAudience): boolean;
 }
 
 /** One gear line of each weapon class for the watched seat (its weapons or its armor), and the
@@ -199,13 +200,13 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
   // A press shows at once; the live value takes over when it arrives or the hold runs out.
   const pendingCounters = new PressHold<CounterKind, CounterState>(sameCounter);
   const pendingSwitches = new PressHold<AssistantGrantId, boolean>((a, b) => a === b);
-  const pendingAudiences = new PressHold<GiveSwitchId, GrantAudience>((a, b) => a === b);
+  const pendingAudiences = new PressHold<GiveSwitchId, RowAudience>(sameAudience);
   const pendingGear = new PressHold<`${GearKind}:${ClassIntent}`, GearLine>(sameGear);
   const counterNow = (kind: CounterKind): CounterState =>
     pendingCounters.shown(kind, liveCounters[kind], tick);
   const switchNow = (id: AssistantGrantId): boolean => pendingSwitches.shown(id, liveSwitches[id], tick);
   const audienceNow = (id: GiveSwitchId): RowAudience =>
-    !switchNow(id) ? 'none' : pendingAudiences.shown(id, liveAudiences[id], tick);
+    !switchNow(id) ? NOBODY : pendingAudiences.shown(id, liveAudiences[id], tick);
 
   const gearNow = (kind: GearKind, intent: ClassIntent): GearLine =>
     pendingGear.shown(`${kind}:${intent}`, deps[kind].read(intent), tick);
@@ -240,16 +241,17 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     pendingSwitches.hold(id, next, liveSwitches[id], tick);
     show();
   };
-  /** The limit goes first, so no civilian is dressed in the tick between it and the grant. */
+  /** The limit goes first, so no man outside the chosen groups is dressed in the tick between it and
+   *  the grant. */
   const pressAudience = (id: GiveSwitchId, next: RowAudience): void => {
-    const on = next !== 'none';
-    const written = (next === 'none' || deps.switches.setAudience(id, next)) && deps.switches.set(id, on);
+    const on = next.length > 0;
+    const written = (!on || deps.switches.setAudience(id, next)) && deps.switches.set(id, on);
     if (!written) {
       deps.cue('fail');
       return;
     }
     deps.cue('confirm');
-    if (next !== 'none') pendingAudiences.hold(id, next, liveAudiences[id], tick);
+    if (on) pendingAudiences.hold(id, next, liveAudiences[id], tick);
     pendingSwitches.hold(id, on, liveSwitches[id], tick);
     show();
   };
@@ -483,25 +485,29 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     orders.append(row);
   }
 
-  /** The sentence on the men the row's choice would still dress (`lacking`, the tag's figure), the
-   *  soldiers among them while everyone is served, and whether the stock covers them; empty at zero. */
+  /** The sentence on the men the row's choice would still dress (`lacking`, the tag's figure), split by
+   *  group while more than one served group lacks it, and whether the stock covers them; empty at zero. */
   const shortageText = (
     shortage: AssistantShortage,
+    audience: RowAudience,
     lacking: number,
-    everyone: boolean,
     amount: number,
   ): string => {
     if (lacking === 0) return '';
-    const soldiers =
-      everyone && shortage.soldiersLacking > 0
-        ? ` ${formatMessage(pluralForm(shortage.soldiersLacking, copy.shortage.soldiers, locale), { count: shortage.soldiersLacking })}`
+    const parts = audience.flatMap((group) => {
+      const count = shortage.byGroup[group];
+      return count === 0 ? [] : [formatMessage(copy.shortage.part[group], { count })];
+    });
+    const split =
+      parts.length > 1
+        ? ` ${formatMessage(copy.shortage.split, { parts: parts.join(copy.shortage.separator) })}`
         : '';
     const covered = amount < lacking ? copy.shortage.short : copy.shortage.covered;
-    return `${formatMessage(copy.shortage.lacking, { count: lacking })}${soldiers}. ${covered}`;
+    return `${formatMessage(copy.shortage.lacking, { count: lacking })}${split}. ${covered}`;
   };
   /** A give row: the first good's icon with the stock of every good the switch grants and the men its
-   *  current choice would still dress (nobody while it is off, one group alone when it is kept for
-   *  that group), and either an on/off switch or, for a drink and an amulet, one switch per group. */
+   *  current choice would still dress (nobody while it is off, its chosen groups alone for a drink and an
+   *  amulet), and either an on/off switch or, for a drink and an amulet, one switch per group. */
   const giveRow = (id: GiveSwitchId): HTMLElement => {
     const goods = GIVE_SWITCH_GOODS[id];
     const { art, count, lack } = goodArt(goods[0], ROW_ICON_PX);
@@ -509,40 +515,40 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     const gear = audience ? audienceRow(id, art) : switchRow(id, art);
     const rowAudience = (): RowAudience => {
       if (audience) return audienceNow(id);
-      return gear.on() ? 'everyone' : 'none';
+      return gear.on() ? AUDIENCE_GROUPS : NOBODY;
     };
     updates.push(() => {
       const shortage = shortages[id];
       const choice = rowAudience();
       const lacking = audienceLacking(shortage, choice);
       const amount = stockOfAll(goods);
-      showStock(count, amount, gear.on(), shortageText(shortage, lacking, choice === 'everyone', amount));
+      showStock(count, amount, gear.on(), shortageText(shortage, choice, lacking, amount));
       write(lack, String(lacking));
       setHidden(lack, lacking === 0);
     });
     return gear.row;
   };
-  /** Both groups off is the row off, both on hands the good to everyone. */
+  /** Every group off is the row off. */
   const audienceRow = (id: GiveSwitchId, art: HTMLElement): { row: HTMLElement; on: () => boolean } => {
     const row = element('div', 'on-asst-row on-asst-row--audience');
     const text = copy.switches[id];
-    const pair = element('span', 'on-asst-audience');
-    pair.setAttribute('role', 'group');
-    pair.setAttribute('aria-label', `${text.label}: ${copy.audience.label}`);
+    const set = element('span', 'on-asst-audience');
+    set.setAttribute('role', 'group');
+    set.setAttribute('aria-label', `${text.label}: ${copy.audience.label}`);
     // Switches under the section's group words: the word and its meaning travel in the tooltip.
     const switches = AUDIENCE_GROUPS.map((group) => {
       const word = copy.audience[group];
       const control = createSwitch(word, `${word}. ${copy.audience[`${group}Tip`]}`, (next) =>
         pressAudience(id, audienceWith(audienceNow(id), group, next)),
       );
-      pair.append(control.element);
+      set.append(control.element);
       return { group, control };
     });
-    row.append(art, label(text.label, text.tip, element('span', 'on-asst-marks')), pair);
+    row.append(art, label(text.label, text.tip, element('span', 'on-asst-marks')), set);
     updates.push(() => {
       const choice = audienceNow(id);
       for (const { group, control } of switches) control.update(groupReceives(choice, group), writable);
-      row.classList.toggle('on-asst-row--off', choice === 'none');
+      row.classList.toggle('on-asst-row--off', choice.length === 0);
     });
     return { row, on: () => switchNow(id) };
   };

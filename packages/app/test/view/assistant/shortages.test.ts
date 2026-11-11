@@ -24,7 +24,7 @@ import { snapshotOf } from '../../support/sandbox.js';
 
 /** How many of a seat's men each give switch would still dress, off the per-change gear tallies: the
  *  switch's pool (every grown man, the working trades for a tool) less the holders of any of its goods,
- *  and the soldiers among them. */
+ *  in all and by group. */
 
 const RIVAL_PLAYER = 1;
 type Slot = { goodType: number; degreeOfUse: number } | null;
@@ -54,7 +54,7 @@ function man(
 const content = createSceneSim(sandboxScene).content;
 
 describe('assistantShortagesOf', () => {
-  it('counts the grown men of the seat without the switch goods, and the soldiers among them', () => {
+  it('counts the grown men of the seat without the switch goods, by group', () => {
     const snapshot = snapshotOf([
       man(1, JOB_COLLECTOR),
       man(2, JOB_COLLECTOR, { boots: held(GOOD_SHOES) }),
@@ -65,14 +65,18 @@ describe('assistantShortagesOf', () => {
       man(7, JOB_COLLECTOR, {}, { Age: { ticks: 0, asOf: null } }), // a child
       man(8, JOB_HERO_UNARMED), // keeps the arms its job carries
       man(9, null), // jobless: the ladder never plans him
+      man(10, JOB_CIVILIST, { boots: held(GOOD_SHOES) }),
     ]);
     const shortages = assistantShortagesOf(snapshot, content, HUMAN_PLAYER);
-    expect(shortages.giveBoots).toEqual({ lacking: 3, soldiersLacking: 2 });
-    expect(shortages.giveStrengthAmulet).toEqual({ lacking: 3, soldiersLacking: 1 });
-    expect(shortages.giveMead).toEqual({ lacking: 4, soldiersLacking: 2 });
+    expect(shortages.giveBoots).toEqual({ lacking: 3, byGroup: { civilians: 0, workers: 1, soldiers: 2 } });
+    expect(shortages.giveStrengthAmulet).toEqual({
+      lacking: 4,
+      byGroup: { civilians: 1, workers: 2, soldiers: 1 },
+    });
+    expect(shortages.giveMead).toEqual({ lacking: 5, byGroup: { civilians: 1, workers: 2, soldiers: 2 } });
   });
 
-  it('pools a tool switch over the working trades alone, with no soldier figure', () => {
+  it('pools a tool switch over the working trades alone, all of them workers', () => {
     const snapshot = snapshotOf([
       man(1, JOB_COLLECTOR),
       man(2, JOB_COLLECTOR, { tool: held(GOOD_TOOL_IRON) }),
@@ -82,8 +86,9 @@ describe('assistantShortagesOf', () => {
     ]);
     const shortages = assistantShortagesOf(snapshot, content, HUMAN_PLAYER);
     // The iron-tooled collector's slot is taken, so he lacks the wooden tool no more than the iron one.
-    expect(shortages.giveIronTools).toEqual({ lacking: 1, soldiersLacking: 0 });
-    expect(shortages.giveWoodenTools).toEqual({ lacking: 1, soldiersLacking: 0 });
+    const one = { lacking: 1, byGroup: { civilians: 0, workers: 1, soldiers: 0 } };
+    expect(shortages.giveIronTools).toEqual(one);
+    expect(shortages.giveWoodenTools).toEqual(one);
     expect(shortages.giveBoots.lacking).toBe(5);
   });
 

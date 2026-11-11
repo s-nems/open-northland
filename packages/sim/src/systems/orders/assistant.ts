@@ -2,15 +2,15 @@ import {
   ASSISTANT_ARMING_INTENTS,
   ASSISTANT_COUNTER_MAX,
   ASSISTANT_COUNTER_MIN,
+  ASSISTANT_GRANT_GROUPS,
+  ASSISTANT_WITHHELD_GRANTS,
   AssistantArmorOrders,
-  AssistantCivilianOnlyGrants,
   type AssistantCounterKind,
   AssistantCounters,
   AssistantFoundsFamilies,
   AssistantGrants,
   AssistantMovesFlags,
   AssistantPostsGraduates,
-  AssistantSoldierOnlyGrants,
   type AssistantSwitch,
   AssistantUpgradesTools,
   AssistantWeaponOrders,
@@ -51,8 +51,8 @@ export function revokeAssistantGrants(world: World, player: number, goods: reado
   for (const good of goods) setListed(world, AssistantGrants, player, good, false);
 }
 
-/** Keep one carried good for `player`'s fighters or civilians alone, or lift the limit - see the command
- *  doc. The carrier lifecycle is {@link setListed}'s. */
+/** Hand one carried good to the named groups of `player`'s men alone - see the command doc. The carrier
+ *  lifecycle is {@link setListed}'s. */
 export function setAssistantGrantAudience(
   world: World,
   ctx: SystemContext,
@@ -60,14 +60,17 @@ export function setAssistantGrantAudience(
 ): void {
   const good = contentIndex(ctx.content).goods.get(command.goodType);
   if (good?.equip?.category !== 'misc') return; // boots and tools go to everyone the pass dresses
-  const { player, goodType, audience } = command;
-  setListed(world, AssistantSoldierOnlyGrants, player, goodType, audience === 'soldiers');
-  setListed(world, AssistantCivilianOnlyGrants, player, goodType, audience === 'civilians');
+  const { player, goodType, groups } = command;
+  for (const group of ASSISTANT_GRANT_GROUPS) {
+    setListed(world, ASSISTANT_WITHHELD_GRANTS[group], player, goodType, !groups.includes(group));
+  }
 }
 
-/** Lift the soldiers-only limit of `goods` for `player`, the strategic AI's teardown seam. */
-export function liftAssistantSoldiersOnly(world: World, player: number, goods: readonly number[]): void {
-  for (const good of goods) setListed(world, AssistantSoldierOnlyGrants, player, good, false);
+/** Hand `goods` to every group of `player`'s men again, the strategic AI's teardown seam. */
+export function liftAssistantGrantLimits(world: World, player: number, goods: readonly number[]): void {
+  for (const group of ASSISTANT_GRANT_GROUPS) {
+    for (const good of goods) setListed(world, ASSISTANT_WITHHELD_GRANTS[group], player, good, false);
+  }
 }
 
 /** Switch `player`'s graduate posting on or off - see the command doc. */

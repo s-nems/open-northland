@@ -1418,10 +1418,12 @@ export const enGame = {
       charmsTip: 'One of each kind per man. An amulet is never used up.',
       shortage: {
         lacking: 'Without one: {count}',
-        soldiers: {
-          one: '(including {count} soldier)',
-          few: '(including {count} soldiers)',
-          many: '(including {count} soldiers)',
+        split: '({parts})',
+        separator: ', ',
+        part: {
+          civilians: 'civilians {count}',
+          workers: 'workers {count}',
+          soldiers: 'soldiers {count}',
         },
         short: 'Not enough for everyone: the rest wait for more.',
         covered: 'Enough for everyone.',
@@ -1444,7 +1446,10 @@ export const enGame = {
         label: 'who receives it',
         civilians: 'Civilians',
         civiliansTip:
-          'Adult men who are not soldiers. On: each one without it fetches one from the store. Off: whoever carries one keeps it.',
+          'Adult men without a trade. On: each one without it fetches one from the store. Off: whoever carries one keeps it.',
+        workers: 'Workers',
+        workersTip:
+          'Adult men with a trade who are not soldiers. On: each one without it fetches one from the store. Off: whoever carries one keeps it.',
         soldiers: 'Soldiers',
         soldiersTip:
           'On: each soldier without it fetches one from the store. Off: whoever carries one keeps it.',

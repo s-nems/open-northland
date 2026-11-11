@@ -29,7 +29,7 @@ import { defaultStance, MILITARY_MODE, seatLeftToMapAi } from '../readviews/stan
 import { retireComputerCampaign, standDownAutonomousSorties, withdrawAiOrders } from './ai-lifecycle.js';
 import {
   clearAssistantWeaponVetoes,
-  liftAssistantSoldiersOnly,
+  liftAssistantGrantLimits,
   resetAssistantCounters,
   revokeAssistantGrants,
   setAssistantSwitch,
@@ -155,14 +155,14 @@ function applyAiControl(
   return released;
 }
 
-/** Lift the recruit weapon vetoes and the soldier outfit (its grants and their soldiers-only limits) the
+/** Lift the recruit weapon vetoes and the soldier outfit (its grants and their audience limits) the
  *  military module published for `player`. Like the vetoes and the published counter kinds, the outfit
  *  goods are the module's while it runs: a hand that set the same goods before loses them with it. */
 function withdrawMilitaryPublications(world: World, ctx: SystemContext, player: number): void {
   clearAssistantWeaponVetoes(world, player);
   const outfit = soldierOutfitGoods(ctx);
   revokeAssistantGrants(world, player, outfit);
-  liftAssistantSoldiersOnly(world, player, outfit);
+  liftAssistantGrantLimits(world, player, outfit);
 }
 
 /** Lower every alarm the seat is standing on, a hand-raised one included: the seat that would have called

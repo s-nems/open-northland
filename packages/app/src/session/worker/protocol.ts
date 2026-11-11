@@ -3,6 +3,7 @@ import type {
   AssistantArmingIntent,
   AssistantArmorOrder,
   AssistantCounterValues,
+  AssistantGrantGroup,
   CommandEnvelope,
   ConstructionPlot,
   DiplomacyState,
@@ -187,8 +188,7 @@ export interface AssistantFacts {
   readonly counters: Readonly<AssistantCounterValues>;
   readonly grants: readonly number[];
   readonly weaponVetoes: readonly number[];
-  readonly soldierOnlyGrants: readonly number[];
-  readonly civilianOnlyGrants: readonly number[];
+  readonly withheldGrants: Readonly<Record<AssistantGrantGroup, readonly number[]>>;
   readonly armorOrders: Readonly<Record<AssistantArmingIntent, AssistantArmorOrder>>;
   readonly weaponOrders: Readonly<Record<AssistantArmingIntent, readonly number[]>>;
   readonly postsGraduates: boolean;

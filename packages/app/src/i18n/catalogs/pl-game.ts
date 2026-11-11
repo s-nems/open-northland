@@ -1393,10 +1393,12 @@ export const plGame = {
       charmsTip: 'Po jednym każdego rodzaju na osobę. Amulet się nie zużywa.',
       shortage: {
         lacking: 'Bez tego: {count}',
-        soldiers: {
-          one: '(w tym {count} żołnierz)',
-          few: '(w tym {count} żołnierzy)',
-          many: '(w tym {count} żołnierzy)',
+        split: '({parts})',
+        separator: ', ',
+        part: {
+          civilians: 'cywile {count}',
+          workers: 'pracownicy {count}',
+          soldiers: 'żołnierze {count}',
         },
         short: 'Nie starczy dla wszystkich: reszta poczeka na dostawę.',
         covered: 'Starczy dla wszystkich.',
@@ -1417,9 +1419,12 @@ export const plGame = {
       },
       audience: {
         label: 'kto dostaje',
-        civilians: 'Osadnicy',
+        civilians: 'Cywile',
         civiliansTip:
-          'Dorośli mężczyźni, którzy nie są żołnierzami. Włączone: każdy bez tego pójdzie po to do magazynu. Wyłączone: kto już ma, zachowuje.',
+          'Dorośli mężczyźni bez zawodu. Włączone: każdy bez tego pójdzie po to do magazynu. Wyłączone: kto już ma, zachowuje.',
+        workers: 'Pracownicy',
+        workersTip:
+          'Dorośli mężczyźni z zawodem, którzy nie są żołnierzami. Włączone: każdy bez tego pójdzie po to do magazynu. Wyłączone: kto już ma, zachowuje.',
         soldiers: 'Żołnierze',
         soldiersTip:
           'Włączone: każdy żołnierz bez tego pójdzie po to do magazynu. Wyłączone: kto już ma, zachowuje.',

@@ -1536,10 +1536,12 @@ export const deGame = {
       charmsTip: 'Eines jeder Art pro Mann. Ein Amulett nutzt sich nie ab.',
       shortage: {
         lacking: 'Ohne: {count}',
-        soldiers: {
-          one: '(darunter {count} Soldat)',
-          few: '(darunter {count} Soldaten)',
-          many: '(darunter {count} Soldaten)',
+        split: '({parts})',
+        separator: ', ',
+        part: {
+          civilians: 'Zivilisten {count}',
+          workers: 'Arbeiter {count}',
+          soldiers: 'Soldaten {count}',
         },
         short: 'Reicht nicht für alle: der Rest wartet auf Nachschub.',
         covered: 'Reicht für alle.',
@@ -1562,7 +1564,10 @@ export const deGame = {
         label: 'wer es bekommt',
         civilians: 'Zivilisten',
         civiliansTip:
-          'Erwachsene Männer, die keine Soldaten sind. An: Jeder ohne eines holt sich eines aus dem Lager. Aus: Wer eines hat, behält es.',
+          'Erwachsene Männer ohne Beruf. An: Jeder ohne eines holt sich eines aus dem Lager. Aus: Wer eines hat, behält es.',
+        workers: 'Arbeiter',
+        workersTip:
+          'Erwachsene Männer mit Beruf, die keine Soldaten sind. An: Jeder ohne eines holt sich eines aus dem Lager. Aus: Wer eines hat, behält es.',
         soldiers: 'Soldaten',
         soldiersTip:
           'An: Jeder Soldat ohne eines holt sich eines aus dem Lager. Aus: Wer eines hat, behält es.',

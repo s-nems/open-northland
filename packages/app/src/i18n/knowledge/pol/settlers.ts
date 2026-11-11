@@ -426,16 +426,16 @@ export const SETTLERS: ArticleGroup = {
                 'włączony',
                 'pracujący z Drewnianym Narzędziem, gdy Żelazne narzędzia są włączone',
               ],
-              ['[[good:mead|Miód pitny]]', 'wyłączony', 'Osadnicy, Żołnierze'],
+              ['[[good:mead|Miód pitny]]', 'wyłączony', 'Cywile, Pracownicy, Żołnierze'],
               [
                 'Odżywcze mikstury, Mikstury wytrzymałości, Lecznicze mikstury',
                 'wyłączone',
-                'Osadnicy, Żołnierze',
+                'Cywile, Pracownicy, Żołnierze',
               ],
               [
                 'Amulet: Odżywczy, Wytrzymałości, Siły, Obrony, Precyzji, Wiatru',
                 'wyłączone',
-                'Osadnicy, Żołnierze',
+                'Cywile, Pracownicy, Żołnierze',
               ],
               [
                 'Absolwenci szkół automatycznie przydzielani do warsztatów',
@@ -444,7 +444,7 @@ export const SETTLERS: ArticleGroup = {
               ],
               ['Zbieracze automatycznie przenoszą flagę', 'wyłączony', '[[job:collector|Zbieracz]] z flagą'],
             ],
-            foot: 'Przy napojach i amuletach przyciski "Osadnicy" i "Żołnierze" wybierają odbiorców, na starcie oba włączone. Wyłączenie nie odbiera tego, co już wydano. Gdy towar wyłączonego przełącznika leży w magazynie i komuś go brakuje, przypomni o nim powiadomienie, a o fladze wtedy, gdy Zbieraczowi skończy się przy niej surowiec.',
+            foot: 'Przy napojach i amuletach przyciski "Cywile" (bez zawodu), "Pracownicy" i "Żołnierze" wybierają odbiorców; gdy wszystkie są wyłączone, wyłączony jest cały przełącznik. Wyłączenie nie odbiera tego, co już wydano. Gdy towar wyłączonego przełącznika leży w magazynie i komuś go brakuje, przypomni o nim powiadomienie, a o fladze wtedy, gdy Zbieraczowi skończy się przy niej surowiec.',
           },
         },
         {

@@ -45,36 +45,28 @@ export function counterFromFace(current: CounterState, face: number): CounterSta
 export const sameCounter = (a: CounterState, b: CounterState): boolean =>
   a.value === b.value && a.infinite === b.infinite;
 
-/** The two groups a drink or amulet row hands its good to, one switch each. */
-export type AudienceGroup = 'civilians' | 'soldiers';
-export const AUDIENCE_GROUPS: readonly AudienceGroup[] = ['civilians', 'soldiers'];
+/** The groups a drink or amulet row hands its good to, one switch each, in the window's order. */
+export type AudienceGroup = components.AssistantGrantGroup;
+export const AUDIENCE_GROUPS: readonly AudienceGroup[] = components.ASSISTANT_GRANT_GROUPS;
 
-/** A drink or amulet row's state: off, or the sim's audience of the granted good. */
-export type RowAudience = 'none' | components.AssistantGrantAudience;
+/** A give row's state: the groups its good goes to, none while the row is off. */
+export type RowAudience = readonly AudienceGroup[];
+export const NOBODY: RowAudience = [];
 
 export const groupReceives = (audience: RowAudience, group: AudienceGroup): boolean =>
-  audience === 'everyone' || audience === group;
+  audience.includes(group);
 
-/** The row's state once `group`'s switch is set to `on`, the other group's left as it was. */
+export const sameAudience = (a: RowAudience, b: RowAudience): boolean =>
+  a.length === b.length && a.every((group) => b.includes(group));
+
+/** The row's state once `group`'s switch is set to `on`, the other groups left as they were. */
 export function audienceWith(audience: RowAudience, group: AudienceGroup, on: boolean): RowAudience {
-  const other: AudienceGroup = group === 'soldiers' ? 'civilians' : 'soldiers';
-  const otherOn = groupReceives(audience, other);
-  if (on) return otherOn ? 'everyone' : group;
-  return otherOn ? other : 'none';
+  return AUDIENCE_GROUPS.filter((g) => (g === group ? on : audience.includes(g)));
 }
 
 /** The men a row's state would still dress, out of those its good is missing from. */
 export function audienceLacking(shortage: AssistantShortage, audience: RowAudience): number {
-  switch (audience) {
-    case 'none':
-      return 0;
-    case 'everyone':
-      return shortage.lacking;
-    case 'soldiers':
-      return shortage.soldiersLacking;
-    case 'civilians':
-      return shortage.lacking - shortage.soldiersLacking;
-  }
+  return audience.reduce((sum, group) => sum + shortage.byGroup[group], 0);
 }
 
 /** The seat's assistant orders in flight, read off the bookings the sim keeps on the people it sent. */

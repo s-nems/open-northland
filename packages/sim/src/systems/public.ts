@@ -357,8 +357,9 @@ export { CART_TOP_UP_REACH } from './settlers/drives/economy/cart-top-up.js';
 export { REPAIR_CALM_TICKS } from './settlers/drives/economy/repair.js';
 export { VEHICLE_CARGO_SEARCH_RADIUS } from './settlers/drives/economy/vehicle-cargo.js';
 export { BARRACKS_DRILL_TICKS } from './settlers/drives/training.js';
-// Whom the assistant hands a tool: the trades that work with one.
-export { toolHelpsJob } from './settlers/planner/assistant-grants.js';
+// Whom the assistant hands a tool (the trades that work with one), and the group a man takes drinks and
+// amulets as.
+export { assistantGrantGroupOf, toolHelpsJob } from './settlers/planner/assistant-grants.js';
 // The idle re-plan period, so a real-content probe can wait out an idle settler's reaction to new work.
 export { IDLE_REPLAN_PERIOD_TICKS } from './settlers/planner/idle-replan.js';
 export { BUSH_AT_HAND_NODES } from './settlers/targets/food.js';

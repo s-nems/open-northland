@@ -1372,10 +1372,12 @@ export const chtGame = {
       charmsTip: '每人每種各一個。護符永遠不會用完。',
       shortage: {
         lacking: '沒有的人：{count}',
-        soldiers: {
-          one: '（其中 {count} 名士兵）',
-          few: '（其中 {count} 名士兵）',
-          many: '（其中 {count} 名士兵）',
+        split: '（{parts}）',
+        separator: '，',
+        part: {
+          civilians: '平民 {count} 名',
+          workers: '工人 {count} 名',
+          soldiers: '士兵 {count} 名',
         },
         short: '數量不夠所有人分：其餘的人要等補貨。',
         covered: '數量足夠所有人。',
@@ -1397,7 +1399,10 @@ export const chtGame = {
       audience: {
         label: '發放對象',
         civilians: '平民',
-        civiliansTip: '不是士兵的成年男性。開啟：每位沒有的人都會去倉庫領一份。關閉：已經帶著的人可以保留。',
+        civiliansTip: '沒有職業的成年男性。開啟：每位沒有的人都會去倉庫領一份。關閉：已經帶著的人可以保留。',
+        workers: '工人',
+        workersTip:
+          '有職業但不是士兵的成年男性。開啟：每位沒有的人都會去倉庫領一份。關閉：已經帶著的人可以保留。',
         soldiers: '士兵',
         soldiersTip: '開啟：每位沒有的士兵都會去倉庫領一份。關閉：已經帶著的人可以保留。',
       },

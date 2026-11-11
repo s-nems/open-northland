@@ -1,4 +1,4 @@
-import type { components, PlayerCommand } from '@open-northland/sim';
+import { type AssistantGrantGroup, components, type PlayerCommand } from '@open-northland/sim';
 import {
   type AssistantGrantId,
   GIVE_SWITCH_GOODS,
@@ -49,14 +49,13 @@ function resolveGrantGoods(content: GrantContent): ReadonlyMap<GiveSwitchId, rea
 /** Live assistant switch seam for the seat `player` names, read on every call so a spectator's
  *  window follows its watched seat; no seat (null, the whole map) reads every switch OFF. A read-only
  *  spectator session (`writable: false`) rejects every write, so the window never echoes a command
- *  the sim would drop. A give switch reads ON while every good it grants is granted, and kept for one
- *  group while every good it grants is limited to that group. */
+ *  the sim would drop. A give switch reads ON while every good it grants is granted, and a group as
+ *  receiving it while none of those goods is withheld from that group. */
 export function assistantGrantsSeam(
   host: Pick<
     SessionHost,
     | 'assistantGrants'
-    | 'assistantSoldierOnlyGrants'
-    | 'assistantCivilianOnlyGrants'
+    | 'assistantWithheldGrants'
     | 'assistantUpgradesTools'
     | 'assistantPostsGraduates'
     | 'assistantMovesFlags'
@@ -97,27 +96,25 @@ export function assistantGrantsSeam(
     },
     readAudiences: () => {
       const seat = player();
-      const soldiers = new Set(seat === null ? [] : host.assistantSoldierOnlyGrants(seat));
-      const civilians = new Set(seat === null ? [] : host.assistantCivilianOnlyGrants(seat));
-      const audienceOf = (id: GiveSwitchId): components.AssistantGrantAudience => {
-        const goods = grantGoods.get(id);
-        if (goods === undefined) return 'everyone';
-        if (goods.every((goodType) => soldiers.has(goodType))) return 'soldiers';
-        if (goods.every((goodType) => civilians.has(goodType))) return 'civilians';
-        return 'everyone';
+      const withheld = seat === null ? null : host.assistantWithheldGrants(seat);
+      const audienceOf = (id: GiveSwitchId): readonly AssistantGrantGroup[] => {
+        const goods = grantGoods.get(id) ?? [];
+        return components.ASSISTANT_GRANT_GROUPS.filter(
+          (group) => !goods.some((goodType) => withheld?.[group].includes(goodType) === true),
+        );
       };
       return Object.fromEntries(GIVE_SWITCH_IDS.map((id) => [id, audienceOf(id)])) as Record<
         GiveSwitchId,
-        components.AssistantGrantAudience
+        readonly AssistantGrantGroup[]
       >;
     },
-    setAudience: (id, audience) => {
+    setAudience: (id, groups) => {
       const seat = player();
       if (!writable || seat === null) return false;
       const goods = grantGoods.get(id);
       if (goods === undefined) return false;
       for (const goodType of goods) {
-        enqueue({ kind: 'setAssistantGrantAudience', player: seat, goodType, audience });
+        enqueue({ kind: 'setAssistantGrantAudience', player: seat, goodType, groups: [...groups] });
       }
       return true;
     },

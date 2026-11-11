@@ -23,8 +23,7 @@ function readAssistants(sim: Simulation): readonly AssistantFacts[] {
       counters: sim.assistantCounters(player),
       grants: sim.assistantGrants(player),
       weaponVetoes: sim.assistantWeaponVetoes(player),
-      soldierOnlyGrants: sim.assistantSoldierOnlyGrants(player),
-      civilianOnlyGrants: sim.assistantCivilianOnlyGrants(player),
+      withheldGrants: sim.assistantWithheldGrants(player),
       weaponOrders: {
         trainSword: sim.assistantWeaponOrder(player, 'trainSword'),
         trainSpear: sim.assistantWeaponOrder(player, 'trainSpear'),

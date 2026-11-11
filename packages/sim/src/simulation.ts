@@ -6,18 +6,18 @@ import {
   type AssistantArmorOrder,
   AssistantCounters,
   type AssistantCounterValues,
+  type AssistantGrantGroup,
   AssistantWeaponVetoes,
   assistantArmorOrder,
-  assistantCivilianOnlyGoods,
   assistantCountersEntity,
   assistantFoundsFamilies,
   assistantGrantedGoods,
   assistantMovesFlags,
   assistantPostsGraduatesEntity,
   assistantSettingsVersion,
-  assistantSoldierOnlyGoods,
   assistantUpgradesTools,
   assistantWeaponOrder,
+  assistantWithheldGoods,
   atPeace,
   Building,
   buildTribes,
@@ -680,14 +680,12 @@ export class Simulation {
     return [...assistantGrantedGoods(this.world, player)];
   }
 
-  /** The good types `player`'s assistant hands to fighters alone, as a detached copy. */
-  assistantSoldierOnlyGrants(player: number): readonly number[] {
-    return [...assistantSoldierOnlyGoods(this.world, player)];
-  }
-
-  /** The good types `player`'s assistant hands to civilians alone, as a detached copy. */
-  assistantCivilianOnlyGrants(player: number): readonly number[] {
-    return [...assistantCivilianOnlyGoods(this.world, player)];
+  /** The good types `player`'s assistant withholds from each group, as detached copies. */
+  assistantWithheldGrants(player: number): Record<AssistantGrantGroup, readonly number[]> {
+    const withheld = (group: AssistantGrantGroup): readonly number[] => [
+      ...assistantWithheldGoods(this.world, player, group),
+    ];
+    return { civilians: withheld('civilians'), workers: withheld('workers'), soldiers: withheld('soldiers') };
   }
 
   /** The weapon goods `player`'s assistant never arms a recruit with, as a detached copy. */

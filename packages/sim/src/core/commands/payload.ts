@@ -3,7 +3,7 @@ import { COMPUTER_DIFFICULTIES, COMPUTER_MODULE_IDS } from '../../components/ai/
 import {
   ASSISTANT_ARMING_INTENTS,
   ASSISTANT_COUNTER_KINDS,
-  ASSISTANT_GRANT_AUDIENCES,
+  ASSISTANT_GRANT_GROUPS,
 } from '../../components/assistant.js';
 import { HOUSE_RECORD_NAME_MAX_CHARS } from '../../components/economy/infrastructure.js';
 import { MISC_EQUIP_SLOTS } from '../../components/equipment.js';
@@ -392,7 +392,11 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   setAssistantGrant: { required: { player: 'integer', goodType: 'integer', enabled: 'boolean' } },
   setAssistantGrantAudience: {
-    required: { player: 'integer', goodType: 'integer', audience: { oneOf: ASSISTANT_GRANT_AUDIENCES } },
+    required: {
+      player: 'integer',
+      goodType: 'integer',
+      groups: { arrayOf: { oneOf: ASSISTANT_GRANT_GROUPS }, maxLength: ASSISTANT_GRANT_GROUPS.length },
+    },
   },
   setAssistantWeaponVeto: { required: { player: 'integer', goodType: 'integer', vetoed: 'boolean' } },
   setAssistantWeaponOrder: {

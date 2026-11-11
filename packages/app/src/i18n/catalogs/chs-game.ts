@@ -1371,10 +1371,12 @@ export const chsGame = {
       charmsTip: '每人每种一个。护符永不消耗。',
       shortage: {
         lacking: '缺少者：{count}',
-        soldiers: {
-          one: '（其中士兵 {count} 名）',
-          few: '（其中士兵 {count} 名）',
-          many: '（其中士兵 {count} 名）',
+        split: '（{parts}）',
+        separator: '，',
+        part: {
+          civilians: '平民 {count} 名',
+          workers: '工人 {count} 名',
+          soldiers: '士兵 {count} 名',
         },
         short: '不够分给所有人：其余的人等待补货。',
         covered: '足够分给所有人。',
@@ -1396,7 +1398,10 @@ export const chsGame = {
       audience: {
         label: '领取者',
         civilians: '平民',
-        civiliansTip: '不是士兵的成年男人。开启：每个没有的人都会去仓库领一个。关闭：已持有的人继续保留。',
+        civiliansTip: '没有职业的成年男人。开启：每个没有的人都会去仓库领一个。关闭：已持有的人继续保留。',
+        workers: '工人',
+        workersTip:
+          '有职业但不是士兵的成年男人。开启：每个没有的人都会去仓库领一个。关闭：已持有的人继续保留。',
         soldiers: '士兵',
         soldiersTip: '开启：每个没有的士兵都会去仓库领一个。关闭：已持有的人继续保留。',
       },

@@ -441,12 +441,12 @@ export const SETTLERS: ArticleGroup = {
                 'an',
                 'Berufstätige mit Holzwerkzeug, solange Eisenwerkzeug an ist',
               ],
-              ['[[good:mead|Met]]', 'aus', 'Zivilisten, Soldaten'],
-              ['Nahrungstränke, Wachtränke, Heiltränke', 'aus', 'Zivilisten, Soldaten'],
+              ['[[good:mead|Met]]', 'aus', 'Zivilisten, Arbeiter, Soldaten'],
+              ['Nahrungstränke, Wachtränke, Heiltränke', 'aus', 'Zivilisten, Arbeiter, Soldaten'],
               [
                 'Nahrungsamulett, Wachbleibamulett, Stärkeamulett, Verteidigungsamulett, Trefferamulett, Windamulett',
                 'aus',
-                'Zivilisten, Soldaten',
+                'Zivilisten, Arbeiter, Soldaten',
               ],
               [
                 'Schulabgänger automatisch Werkstätten zuweisen',
@@ -455,7 +455,7 @@ export const SETTLERS: ArticleGroup = {
               ],
               ['Abbauer versetzen ihre Fahne automatisch', 'aus', '[[job:collector|Abbauer]] mit Fahne'],
             ],
-            foot: 'Bei Getränken und Amuletten wählen die Knöpfe „Zivilisten“ und „Soldaten“ die Empfänger, anfangs sind beide an. Abschalten nimmt nichts weg, was schon ausgegeben ist. Liegt die Ware eines abgeschalteten Schalters im Lager und fehlt sie jemandem, erinnert dich eine Meldung daran, an den Fahnenschalter dann, wenn ein Abbauer an seiner Fahne nichts mehr findet.',
+            foot: 'Bei Getränken und Amuletten wählen die Knöpfe „Zivilisten“ (ohne Beruf), „Arbeiter“ und „Soldaten“ die Empfänger; sind alle drei aus, ist der Schalter aus. Abschalten nimmt nichts weg, was schon ausgegeben ist. Liegt die Ware eines abgeschalteten Schalters im Lager und fehlt sie jemandem, erinnert dich eine Meldung daran, an den Fahnenschalter dann, wenn ein Abbauer an seiner Fahne nichts mehr findet.',
           },
         },
         {

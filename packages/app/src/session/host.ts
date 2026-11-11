@@ -3,6 +3,7 @@ import type {
   AssistantArmingIntent,
   AssistantArmorOrder,
   AssistantCounterValues,
+  AssistantGrantGroup,
   ConstructionPlot,
   ConstructionSupply,
   DiplomacyState,
@@ -140,10 +141,8 @@ export interface SessionHost {
   assistantGrants(player: number): readonly number[];
   /** The weapon goods `player`'s assistant never arms a recruit with. */
   assistantWeaponVetoes(player: number): readonly number[];
-  /** The good types `player`'s assistant hands to fighters alone. */
-  assistantSoldierOnlyGrants(player: number): readonly number[];
-  /** The good types `player`'s assistant hands to civilians alone. */
-  assistantCivilianOnlyGrants(player: number): readonly number[];
+  /** The good types `player`'s assistant withholds from each group of men. */
+  assistantWithheldGrants(player: number): Readonly<Record<AssistantGrantGroup, readonly number[]>>;
   /** The armor choice of `player`'s `intent` class: the order its recruits shop the armor goods in, and
    *  those they are never handed. */
   assistantArmorOrder(player: number, intent: AssistantArmingIntent): AssistantArmorOrder;

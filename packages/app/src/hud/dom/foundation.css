@@ -7324,44 +7324,89 @@ body.on-drag-scroll.on-drag-scroll-free * {
   font-size: 11px;
 }
 
-/* ---------- switch: an on/off pill whose knob slides, lit bronze like a chosen segment when on ---------- */
+/* ---------- switch: a small groove whose iron rivet slides over and lights the slot amber ----------
+   Off reads as a dark recess with a ring at the far end, on as a lit slot with an engraved bar where the
+   rivet stood, so a column of switches reads by shape as well as by colour. */
+.on-hud {
+  --switch-w: 26px;
+  --switch-h: 14px;
+}
 .on-hud .on-switch {
   position: relative;
   flex-shrink: 0;
-  width: 36px;
-  height: 20px;
+  width: var(--switch-w);
+  height: var(--switch-h);
   padding: 0;
-  border: 1px solid var(--wood-lo);
-  border-radius: 10px;
-  background: #12171399;
-  box-shadow: inset 0 1px 2px #000a;
-  transition: background 0.12s;
+  border: 1px solid #0d0a07;
+  border-radius: calc(var(--switch-h) / 2);
+  background: linear-gradient(#0b0d0b, #1d211c);
+  box-shadow:
+    inset 0 1px 2px #000c,
+    0 1px 0 #ffffff12;
+  transition:
+    background 0.14s,
+    border-color 0.14s,
+    box-shadow 0.14s;
+}
+/* The state mark inside the slot: a ring where the rivet goes when off, a bar where it was when on. */
+.on-hud .on-switch::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  margin-top: -3px;
+  border: 1px solid #c9b48a59;
+  border-radius: 50%;
 }
 .on-hud .on-switch::after {
   content: "";
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
+  top: 1px;
+  left: 1px;
+  width: calc(var(--switch-h) - 4px);
+  height: calc(var(--switch-h) - 4px);
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #8d7a5c, #4a3c2a 80%);
-  box-shadow: 0 1px 2px #000a;
-  transition: left 0.12s;
+  background: radial-gradient(circle at 35% 30%, #a39275, #5a4b37 70%, #3a2f22);
+  box-shadow: 0 1px 1px #000c;
+  transition:
+    transform 0.14s ease-out,
+    background 0.14s;
 }
 .on-hud .on-switch[aria-checked="true"] {
-  border-color: var(--bronze-lo);
-  background: linear-gradient(#c99f55, #8a6a32);
+  border-color: #5e4219;
+  background: linear-gradient(#e0b762, #a77c33);
+  box-shadow:
+    inset 0 1px 1px #fff3cf66,
+    inset 0 -1px 2px #4a300c88,
+    0 0 5px #e7b45a59;
+}
+.on-hud .on-switch[aria-checked="true"]::before {
+  right: auto;
+  left: 5px;
+  width: 0;
+  height: 6px;
+  margin-top: -3px;
+  border: 0;
+  border-left: 1.5px solid #4a300cb3;
+  border-radius: 0;
 }
 .on-hud .on-switch[aria-checked="true"]::after {
-  left: 18px;
-  background: radial-gradient(circle at 40% 35%, #fff4d6, #e3c27c 80%);
+  transform: translateX(calc(var(--switch-w) - var(--switch-h)));
+  background: radial-gradient(circle at 35% 30%, #fffaf0, #f2d898 55%, #b0823a);
+}
+.on-hud .on-switch:not([aria-disabled="true"]):hover {
+  border-color: var(--bronze-lo);
+}
+.on-hud .on-switch:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
 }
 .on-hud .on-switch[aria-disabled="true"] {
   opacity: 0.4;
   cursor: var(--cursor-not-allowed, not-allowed);
 }
-/* A switch that depends on the row above it. */
 
 /* ---------- assistant window: drain-down orders beside standing orders, status marks per row ---------- */
 .on-hud .on-window--assistant .on-window__body {
@@ -7416,13 +7461,13 @@ body.on-drag-scroll.on-drag-scroll-free * {
 }
 /* A drink or amulet row's controls: one switch per group under the group words the section's rule
    carries once, so ten rows read as one table instead of ten strips. A column is a switch wide, so the
-   soldiers' column lines up with the gear switches above; a longer word overhangs it evenly. */
+   soldiers' column lines up with the gear switches above; a longer word overhangs it evenly, and the gap
+   keeps two neighbouring words apart. */
 .on-hud .on-asst-audience-head,
 .on-hud .on-asst-audience {
   display: grid;
-  grid-template-columns: repeat(2, var(--asst-audience-col));
-  column-gap: 20px;
-  --asst-audience-col: 36px; /* the .on-switch width */
+  grid-template-columns: repeat(3, var(--switch-w));
+  column-gap: 26px;
 }
 .on-hud .on-asst-audience-head {
   margin-right: 4px;

@@ -65,8 +65,8 @@ export const GIVE_SWITCH_GOODS: Readonly<Record<GiveSwitchId, readonly [string, 
 export const GIVE_SWITCH_IDS: readonly GiveSwitchId[] = GRANT_IDS.filter(
   (id): id is GiveSwitchId => id in GIVE_SWITCH_GOODS,
 );
-/** The give switches that choose their audience as well: off, everyone, or soldiers alone. Gear has no
- *  audience, since tools already go only to the trades that work with them. */
+/** The give switches that choose their audience as well: any set of the three groups, none being off.
+ *  Gear has no audience, since tools already go only to the trades that work with them. */
 export const AUDIENCE_SWITCH_IDS: readonly GiveSwitchId[] = [
   'giveMead',
   'giveFoodPotions',

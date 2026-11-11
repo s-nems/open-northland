@@ -2,6 +2,7 @@ export type {
   AssistantArmingIntent,
   AssistantArmorOrder,
   AssistantCounterValues,
+  AssistantGrantGroup,
 } from './components/assistant.js';
 export { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from './components/chest.js';
 export {

@@ -118,21 +118,22 @@ describe('assistant bookings off the snapshot', () => {
 });
 
 describe("a drink or amulet row's group switches", () => {
-  it('turns one group on or off and leaves the other as it was', () => {
-    expect(audienceWith('none', 'civilians', true)).toBe('civilians');
-    expect(audienceWith('none', 'soldiers', true)).toBe('soldiers');
-    expect(audienceWith('soldiers', 'civilians', true)).toBe('everyone');
-    expect(audienceWith('everyone', 'soldiers', false)).toBe('civilians');
-    expect(audienceWith('everyone', 'civilians', false)).toBe('soldiers');
-    expect(audienceWith('civilians', 'civilians', false)).toBe('none');
+  it("turns one group on or off, leaves the others as they were and keeps the window's order", () => {
+    expect(audienceWith([], 'workers', true)).toEqual(['workers']);
+    expect(audienceWith(['soldiers'], 'civilians', true)).toEqual(['civilians', 'soldiers']);
+    expect(audienceWith(['civilians', 'workers', 'soldiers'], 'workers', false)).toEqual([
+      'civilians',
+      'soldiers',
+    ]);
+    expect(audienceWith(['workers'], 'workers', false)).toEqual([]);
   });
 
   it('counts the men still lacking the good in the groups that receive it', () => {
-    const shortage = { lacking: 7, soldiersLacking: 3 };
-    expect(audienceLacking(shortage, 'none')).toBe(0);
-    expect(audienceLacking(shortage, 'everyone')).toBe(7);
-    expect(audienceLacking(shortage, 'soldiers')).toBe(3);
-    expect(audienceLacking(shortage, 'civilians')).toBe(4);
+    const shortage = { lacking: 9, byGroup: { civilians: 2, workers: 4, soldiers: 3 } };
+    expect(audienceLacking(shortage, [])).toBe(0);
+    expect(audienceLacking(shortage, ['civilians', 'workers', 'soldiers'])).toBe(9);
+    expect(audienceLacking(shortage, ['soldiers'])).toBe(3);
+    expect(audienceLacking(shortage, ['civilians', 'workers'])).toBe(6);
   });
 });
 

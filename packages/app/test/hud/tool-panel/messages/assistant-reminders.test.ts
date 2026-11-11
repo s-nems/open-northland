@@ -37,7 +37,7 @@ function assistant(state: {
   const on = new Set(state.on ?? []);
   const shortages = { ...NO_SHORTAGES };
   for (const [id, lacking] of Object.entries(state.lacking ?? {})) {
-    shortages[id as 'giveBoots'] = { lacking, soldiersLacking: 0 };
+    shortages[id as 'giveBoots'] = { lacking, byGroup: { civilians: 0, workers: lacking, soldiers: 0 } };
   }
   return {
     on,

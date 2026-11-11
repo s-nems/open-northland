@@ -315,7 +315,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     ],
     setAssistantCounter: [{ player: SEAT, counter: 'extraMen', value: 3, infinite: false }],
     setAssistantGrant: [{ player: SEAT, goodType: SHOES, enabled: true }],
-    setAssistantGrantAudience: [{ player: SEAT, goodType: SHOES, audience: 'soldiers' }],
+    setAssistantGrantAudience: [{ player: SEAT, goodType: SHOES, groups: ['workers', 'soldiers'] }],
     setAssistantPostGraduates: [{ player: SEAT, enabled: true }],
     setAssistantMoveFlags: [{ player: SEAT, enabled: true }],
     setAssistantUpgradeTools: [{ player: SEAT, enabled: true }],
