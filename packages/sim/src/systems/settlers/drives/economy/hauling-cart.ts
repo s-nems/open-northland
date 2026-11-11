@@ -1,4 +1,4 @@
-import { HaulingCart, type HaulingLift, PathRequest } from '../../../../components/index.js';
+import { HaulingCart, type HaulingLift } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { isTrader } from '../../../readviews/jobs.js';
 import { refillingGoodsOf } from '../../../stores/index.js';
@@ -14,6 +14,7 @@ import {
 import { atOrWalk, startCartLoad, startCartUnload, startRefillWait } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { interactionCell, unclaimedStockOf } from '../../targets/index.js';
+import { unreachableGoalVeto } from '../../unreachable-goals.js';
 
 /**
  * HAULING CART - a posted carrier or a trader handed a cart, or a carrier back from a break that parked
@@ -44,17 +45,17 @@ export function planHaulingCart(plan: PlannerContext, loaded: boolean): boolean 
 }
 
 /** Walk to the standing hauling cart's door and take it up there; a door the puller cannot reach, or one
- *  on another continent, gives the cart up where it stands. True while the puller walks or takes it. */
+ *  on another continent, gives the cart up where it stands. True while the puller walks or takes it. A walk
+ *  that failed sheds its route before this rung runs again, so the failed-goal memo is what remembers it. */
 export function fetchHaulingCart(plan: PlannerContext): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const held = world.tryGet(e, HaulingCart);
   if (held === undefined || held.taken) return false;
   const door = boardingNode(world, ctx, terrain, held.vehicle);
-  const request = world.tryGet(e, PathRequest);
   if (
     door === null ||
     terrain.componentOf(door) !== terrain.componentOf(here) ||
-    (request?.failed === true && request.goal === door)
+    (door !== here && unreachableGoalVeto(world, ctx, e)?.(door) === true)
   ) {
     releaseHaulingCart(world, ctx, e);
     return false;

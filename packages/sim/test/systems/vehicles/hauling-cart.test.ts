@@ -6,6 +6,7 @@ import {
   CurrentAtomic,
   HaulingCart,
   JobAssignment,
+  MoveGoal,
   OrderQueue,
   PickupClaim,
   Position,
@@ -32,6 +33,8 @@ import { reap } from '../../../src/systems/lifecycle/death.js';
 import { atomicDuration } from '../../../src/systems/readviews/animations.js';
 import { MEAL_UNITS } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
 import { PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
+import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-goals.js';
+import { boardingNode } from '../../../src/systems/vehicles/crew.js';
 import { cartLiftTicks, HANDCART_FULL_SPEED_LOSS_PERCENT } from '../../../src/systems/vehicles/drag.js';
 import {
   carryCapacityOf,
@@ -334,6 +337,32 @@ describe('setting the cart down', () => {
     expect(s.world.has(porter, Carrying)).toBe(false);
     // Back to one unit a trip, and the cart is free to be taken again.
     expect(s.canAttachToVehicle(porter, cart)).toBe(true);
+  });
+
+  it('gives up a parked cart whose door a walk failed to reach, then hauls by hand', () => {
+    const s = sim();
+    const hq = placeHouse(s, HQ_AT);
+    const { porter, cart } = postedPorterWithCart(s, hq);
+    expect(runUntil(s, TAKE_TICKS, () => s.world.get(porter, HaulingCart).taken)).toBeGreaterThan(0);
+    const ctx = ctxOf(s);
+    if (ctx.terrain === undefined) throw new Error('mapless sim');
+    parkHaulingCart(s.world, ctx, porter);
+    const parkedAt = nodeOf(s, cart);
+    const door = boardingNode(s.world, ctx, ctx.terrain, cart);
+    if (door === null) throw new Error('cart door missing');
+    noteUnreachableGoal(s.world, ctx, porter, door);
+    s.enqueue(
+      playerCommand(P0, { kind: 'moveUnit', entity: porter, x: NEAR_PILE_AT.hx, y: NEAR_PILE_AT.hy }),
+    );
+    s.step();
+    expect(runUntil(s, TRIP_TICKS, () => !s.world.has(porter, MoveGoal))).toBeGreaterThan(0);
+    dropPile(s, WOOD, PILE_AT, PILE_UNITS);
+
+    expect(runUntil(s, TRIP_TICKS, () => stockOf(s, hq, WOOD) > HQ_INITIAL_WOOD)).toBeGreaterThan(0);
+    expect(stockOf(s, hq, WOOD)).toBe(HQ_INITIAL_WOOD + 1);
+    expect(s.world.has(porter, HaulingCart)).toBe(false);
+    expect(s.world.get(cart, Vehicle).hauler).toBeNull();
+    expect(nodeOf(s, cart)).toEqual(parkedAt);
   });
 
   it('the end of the post sets the cart down', () => {
