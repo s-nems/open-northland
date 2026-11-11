@@ -171,10 +171,14 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
   // The walk range is 50 hex nodes, 25 tiles east-west; the forge stands at tile 0 with no signposts.
   const IN_AREA = 6;
   const OUT_OF_AREA = 40;
+  /** Inside the smith's 50-node walk range, past the 40-node goods search from the forge's door. */
+  const PAST_GOODS_SEARCH = 22;
   const HEADQUARTERS = 1;
   const RIVAL = 1;
   /** More rival stores than one diagnosis weighs. */
   const RIVAL_STORES = 140;
+  /** More of the side's stores, or of its gatherers, than one diagnosis weighs one by one. */
+  const PAST_CAP = 140;
   const CARRIER = 36;
 
   function confinedForge(
@@ -336,19 +340,44 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
   });
 
   it('judges an unposted gatherer by the flag it banks at, not by where it fells', () => {
-    // The flag stands inside the area, its woodcutter fells within its radius just past the area's edge.
-    const FLAG_IN_AREA = 20;
+    // The flag stands within the forge door's goods search, its woodcutter fells past the smith's area.
+    const FLAG_IN_REACH = 16;
     const FELLING_OUT_OF_AREA = 34;
     const { sim, smith, woodcutter } = confinedForge(0);
     rivalWoodcutter(sim, woodcutter);
     storeAt(sim, IN_AREA);
     const roamer = spawnSettler(sim, WOODCUTTER, FELLING_OUT_OF_AREA, 2);
     sim.world.add(roamer, Owner, { player: 0 });
-    bindFreshFlag(sim.world, ctxOf(sim), roamer, { x: fx.fromInt(FLAG_IN_AREA), y: fx.fromInt(2) });
+    bindFreshFlag(sim.world, ctxOf(sim), roamer, { x: fx.fromInt(FLAG_IN_REACH), y: fx.fromInt(2) });
     expect(sourceOfWood(sim, smith)).toBe('inReach');
     const flag = sim.world.get(roamer, WorkFlag).flag;
     relocateWorkFlag(sim.world, flag, { x: fx.fromInt(OUT_OF_AREA), y: fx.fromInt(2) }, roamer);
     expect(sourceOfWood(sim, smith)).toBe('outOfReach');
+  });
+
+  it('judges an input from the workshop door through the goods search, which the signpost area outruns', () => {
+    const { sim, smith, woodcutter } = confinedForge(0);
+    rivalWoodcutter(sim, woodcutter);
+    storeAt(sim, PAST_GOODS_SEARCH, [[WOOD, 5]]);
+    expect(sourceOfWood(sim, smith)).toBe('outOfReach');
+    storeAt(sim, IN_AREA, [[WOOD, 5]]);
+    expect(sourceOfWood(sim, smith)).toBe('inReach');
+  });
+
+  it('finds an input out of reach past any number of stores beyond the search', () => {
+    const { sim, smith, woodcutter } = confinedForge(0);
+    rivalWoodcutter(sim, woodcutter);
+    for (let i = 0; i < PAST_CAP; i++) storeAt(sim, OUT_OF_AREA, [[WOOD, 5]]);
+    expect(sourceOfWood(sim, smith)).toBe('outOfReach');
+  });
+
+  it('claims neither reach of an input past more gatherers than it weighs, none of them in reach', () => {
+    const { sim, smith, woodcutter } = confinedForge(0);
+    rivalWoodcutter(sim, woodcutter);
+    for (let i = 0; i < PAST_CAP; i++) {
+      sim.world.add(spawnSettler(sim, WOODCUTTER, OUT_OF_AREA, 2), Owner, { player: 0 });
+    }
+    expect(sourceOfWood(sim, smith)).toBe('undecided');
   });
 
   it('weighs the own side stores past any number of rival stores', () => {

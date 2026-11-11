@@ -21,5 +21,5 @@ export {
   signpostProbe,
 } from './placement.js';
 export { plannedSignposts, plannedSignpostsVersion, type SignpostSpot } from './planned.js';
-export { landReachAt, settlementReachAt } from './settlement-reach.js';
+export { goodsSearchGate, landReachAt, settlementReachAt } from './settlement-reach.js';
 export { warmPostReaches } from './terrain-reach.js';
