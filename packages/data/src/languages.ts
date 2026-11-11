@@ -1,7 +1,8 @@
 /**
- * The one language registry. A source language is one the data pack and a map archive can ship text
- * in (`text/<code>/`, `Data/text/<code>/`) and that the repository never commits original text of; an
- * overlay language may overlay anything through the repository's `translations/<code>/` overlays. The
+ * The one language registry. A source language is one the data pack and a map archive ship text in
+ * (`text/<code>/`, `Data/text/<code>/`); its overlays only translate what the original never shipped
+ * (`translations/AGENTS.md`). An overlay language may overlay anything through the repository's
+ * `translations/<code>/` overlays. The
  * order is the text fallback order: a text missing in the reader's language falls back along it, and the
  * culturesnation mod is Polish-authored.
  */

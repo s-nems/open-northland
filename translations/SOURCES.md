@@ -75,7 +75,7 @@ Overlays the project wrote itself, edited in place:
   project's machine translation from the Polish text with the glossary, reusing the earlier version's
   shipped translation where the text is unchanged; unreviewed by a native speaker.
 - `ita/`: the project's own machine (agent) translation with the glossary's `ita` terms, from the
-  English text for the campaign maps and from the Polish original for the community maps, each map
+  English text where the map ships it, else from the Polish original, each map
   reviewed once by a second agent; unreviewed by a native speaker. It covers what
   the pack's official Italian text does not: maps outside the Northland edition, the object-table ids
   the edition lacks, and campaign titles. The `ita` column of `glossary-project.csv` follows the

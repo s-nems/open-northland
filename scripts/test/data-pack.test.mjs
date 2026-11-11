@@ -3,7 +3,7 @@ import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { dataPath, readCampaigns, readDataPack } from '../data-pack.mjs';
+import { DATA_PACK_VERSION, dataPath, readCampaigns, readDataPack } from '../data-pack.mjs';
 import { syntheticPack } from './support/data-pack.mjs';
 
 async function temp(t) {
@@ -28,7 +28,10 @@ test('rejects unsafe paths, extra files and changed source bytes', async (t) => 
 test('rejects the previous source layout version', async (t) => {
   const root = await temp(t);
   const manifest = await syntheticPack(root);
-  await writeFile(join(root, 'manifest.json'), JSON.stringify({ ...manifest, version: 1 }));
+  await writeFile(
+    join(root, 'manifest.json'),
+    JSON.stringify({ ...manifest, version: DATA_PACK_VERSION - 1 }),
+  );
   await assert.rejects(readDataPack(root), /version|Unsupported/);
 });
 

@@ -115,7 +115,7 @@ interface HistoryPages {
   readonly dir: string;
 }
 
-/** The history folder of `preferred`, else of the first source language that has one. */
+/** The history folder of `preferred`, else of the first GUI language that has one. */
 async function basisBook(roots: SourceRoots, preferred: Language): Promise<HistoryPages | undefined> {
   for (const lang of [preferred, ...GUI_LANGS]) {
     const dir = await historyDir(roots, lang);
