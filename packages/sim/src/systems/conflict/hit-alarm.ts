@@ -8,8 +8,10 @@ import {
   Position,
   Resting,
   Settler,
+  UnreachableTargets,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { hexDistanceBetween } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isFighterJob, MILITARY_MODE, stanceMode } from '../readviews/index.js';
@@ -18,7 +20,7 @@ import { entityNode } from '../spatial/nodes.js';
 import { type CombatIndex, type KeptKeys, keyDistance, keyEntity, passIndexOf } from './combat-index.js';
 import { runFromBlow, runsFromBlows } from './flee.js';
 import { mayStrikeBack, strikeBack } from './strike-back.js';
-import { isFleeThreat } from './targeting.js';
+import { isFleeThreat, strikeRank } from './targeting.js';
 import { standsAtPost } from './tower-post.js';
 
 // The alarm a blow raises: the struck person's side reacts as if it had been struck itself.
@@ -151,11 +153,12 @@ function answerAlarm(
     }
     struckBack = strikeBack(world, ctx, terrain, alarm.victim, alarm.attacker, people);
   }
-  // The blow as this player's fighters read it, made for the first one that may turn.
-  let strike: Strike | undefined;
+  // The blow as this player's fighters read it.
+  const strike = strikeBy(world, ctx, terrain, alarm.attacker);
   for (let i = 0; i < answering.count; i++) {
     const key = answering.keys[i] ?? 0;
     const entity = keyEntity(key);
+    if (holdsNearerEnemy(world, ctx, index, strike, entity)) continue;
     if (!world.has(entity, Person) || indoors(world, entity)) continue;
     const settler = world.get(entity, Settler);
     const mode = stanceMode(world, ctx.content, entity, settler.jobType);
@@ -166,7 +169,6 @@ function answerAlarm(
       const held = world.tryGet(entity, Engagement)?.target;
       if (held === alarm.attacker) continue;
       if (mode === MILITARY_MODE.ATTACK || mode === MILITARY_MODE.DEFEND) {
-        strike ??= strikeBy(world, ctx, terrain, alarm.attacker);
         turnFighterOn(world, ctx, terrain, strike, entity, settler, mode, held);
       }
     } else if (
@@ -179,6 +181,35 @@ function answerAlarm(
       runFromBlow(world, ctx, terrain, entity, from);
     }
   }
+}
+
+/**
+ * Whether unit `e` is a fighter the blow of `strike` cannot turn, told from its held enemy alone: one the
+ * index holds as a unit, alive and positioned, that ranks above the striker or ranks with it and stands no
+ * farther off. That is the last test a turn makes, and every test before it only refuses, so the answer is
+ * the turn's own, reached without the fighter's stance, orders and post. A fighter that remembers given-up
+ * enemies takes the long way, which prunes that memory.
+ */
+function holdsNearerEnemy(
+  world: World,
+  ctx: SystemContext,
+  index: CombatIndex,
+  strike: Strike,
+  e: Entity,
+): boolean {
+  if (!strike.onOwnNode) return false;
+  const held = world.tryGet(e, Engagement)?.target;
+  if (held === undefined || !index.holdsUnit(held) || !index.holdsUnit(e)) return false;
+  const x = index.unitX(e);
+  const y = index.unitY(e);
+  const heldReach = hexDistanceBetween(x, y, index.unitX(held), index.unitY(held));
+  const strikeReach = hexDistanceBetween(x, y, strike.x, strike.y);
+  if (!world.isAlive(held) || !world.has(held, Position)) return false;
+  if (world.has(e, UnreachableTargets)) return false;
+  if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) return false;
+  strike.rank ??= strikeRank(world, ctx, strike.striker, strike.firingNow);
+  const heldRank = strikeRank(world, ctx, held, strike.firingNow);
+  return heldRank < strike.rank || (heldRank === strike.rank && heldReach <= strikeReach);
 }
 
 /** The units one alarm reaches, in a buffer each world keeps: an answer runs searches of its own while it
