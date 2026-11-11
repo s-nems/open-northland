@@ -464,6 +464,38 @@ describe('directAudio combat SFX', () => {
       { files: ['misc/earthquak.wav'], gain: 1, pan: 0, key: 'ui:earthquake' },
     ]);
   });
+
+  it("sounds a wielder's own blow at the gain of the impact it replaces, and leaves others the listed one", () => {
+    const mace = ['/audio/mace.ogg'];
+    const wielder = { tribe: 3, job: 35 };
+    const blow = (attacker: number): SimEvent => ({
+      kind: 'combatHit',
+      damage: 250,
+      targetMaxHealth: 1000,
+      attacker: entity(attacker),
+      target: entity(9),
+      soundType: 82,
+      at,
+    });
+    const events = [blow(20), blow(21)];
+    const base = snapshotAt(events);
+    const settler = (id: number, tribe: number) => ({
+      id,
+      components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: { tribe, jobType: wielder.job } },
+    });
+    const frame = directAudio({
+      events,
+      snapshot: { ...base, entities: [...base.entities, settler(20, wielder.tribe), settler(21, 1)] },
+      camera,
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index,
+      bindings: { ...bindings, blowsByWielder: [{ ...wielder, files: mace }] },
+    });
+    const listed = frame.oneShots.find((s) => s.files[0] === 'static/swordhit01.wav');
+    expect(frame.oneShots.map((s) => s.files)).toEqual([mace, ['static/swordhit01.wav']]);
+    expect(frame.oneShots[0]?.gain).toBe(listed?.gain);
+  });
 });
 
 describe('directAudio spatial location is derived, not enumerated', () => {

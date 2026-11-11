@@ -174,6 +174,15 @@ export interface SoundBindings {
   readonly byChestKind?: Readonly<Record<ChestKind, EventSound>>;
   /** What each notice voice plays per voice class; a class left out stays silent. */
   readonly noticeVoices?: Readonly<Record<NoticeVoice, Partial<Record<VoiceClass, NoticeVoiceSound>>>>;
+  /** Melee blows that sound with their own files instead of the weapon's listed impact, by who lands them. */
+  readonly blowsByWielder?: readonly WielderBlowSound[];
+}
+
+/** The impact a settler of `job` in `tribe` lands a melee blow with, at the replaced impact's gain. */
+export interface WielderBlowSound {
+  readonly tribe: number;
+  readonly job: number;
+  readonly files: readonly string[];
 }
 
 /** The row-major landscape grid the ambient layer samples (the terrain the snapshot is positioned over). */

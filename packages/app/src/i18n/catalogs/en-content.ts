@@ -236,6 +236,11 @@ export const enContent = {
       summary:
         "Columns: a trained wooden spearman, the map's man on a machine seat, the map's gift to the human player. Wooden spears above, iron below; only the trained wooden spear is a man, the other two are dragons.",
     },
+    'mace-blows': {
+      title: 'Mace blows',
+      summary:
+        'Top: a Byzantine long-sword soldier, whose blow rings as a mace on steel. Bottom: a Viking long sword with the original sword cut, to compare by ear.',
+    },
     'combat-gestures': {
       title: 'Strikes and gestures',
       summary:

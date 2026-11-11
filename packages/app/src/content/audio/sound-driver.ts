@@ -4,6 +4,7 @@ import {
   DEFAULT_MUSIC_BASE_URL,
   DEFAULT_SOUNDS_BASE_URL,
   defaultBindings,
+  type SoundBindings,
   SoundDriver,
   type SoundIndex,
 } from '@open-northland/audio';
@@ -11,6 +12,7 @@ import type { SoundBank, SoundQuality } from '@open-northland/data';
 import { timedAudioContext } from '../../diag/audio-context.js';
 import type { ContentIr } from '../ir/rows.js';
 import { contentUrl } from '../url.js';
+import { WIELDER_BLOWS } from './wielder-blows.js';
 
 /**
  * The audio content boundary: build the {@link SoundDriver} the live loop pumps from the decoded sound
@@ -50,6 +52,11 @@ export function soundIndexOf(ir: ContentIr, sounds: SoundBank): SoundIndex {
   );
 }
 
+/** The event bindings of the game: the bank's own plus the app's {@link WIELDER_BLOWS}. */
+export function gameSoundBindings(): SoundBindings {
+  return { ...defaultBindings(), blowsByWielder: WIELDER_BLOWS };
+}
+
 /**
  * Build a {@link SoundDriver} from the fetched IR, or `null` when content is absent - the caller then
  * runs silent.
@@ -57,5 +64,5 @@ export function soundIndexOf(ir: ContentIr, sounds: SoundBank): SoundIndex {
 export function createSoundDriver(ir: ContentIr | null, soundQuality: SoundQuality): SoundDriver | null {
   const sounds = ir?.sounds;
   if (ir === null || !hasSoundContent(sounds)) return null;
-  return new SoundDriver(soundIndexOf(ir, sounds), defaultBindings(), contentAudioOptions(soundQuality));
+  return new SoundDriver(soundIndexOf(ir, sounds), gameSoundBindings(), contentAudioOptions(soundQuality));
 }

@@ -38,6 +38,7 @@ import { creatureBloodScene } from './combat/creature-blood.js';
 import { deathLootScene } from './combat/death-loot.js';
 import { equipmentScene } from './combat/equipment.js';
 import { equipmentEffectsScene } from './combat/equipment-effects.js';
+import { maceBlowsScene } from './combat/mace-blows.js';
 import { overheadIconsScene } from './combat/overhead-icons.js';
 import { weaponFacingsScene } from './combat/weapon-facings.js';
 import { buildingDamageScene, buildingDamageVariantsScene } from './construction/building-damage.js';
@@ -166,6 +167,7 @@ export const SCENES: readonly SceneDefinition[] = [
   clayOverlaysScene,
   combatGesturesScene,
   byzantineSpearsScene,
+  maceBlowsScene,
   combatBloodScene,
   creatureBloodScene,
   personalNamesScene,

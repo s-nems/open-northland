@@ -233,6 +233,11 @@ export const plContent = {
       summary:
         'Kolumny: wyszkolony włócznik, jednostka mapy na miejscu komputera, dar mapy dla gracza. Drewniane włócznie u góry, żelazne u dołu; tylko wyszkolony drewniany włócznik jest człowiekiem, dwa pozostałe to smoki.',
     },
+    'mace-blows': {
+      title: 'Ciosy buławą',
+      summary:
+        'U góry: bizantyjski wojownik z długim mieczem, którego cios brzmi jak buława w stal. Na dole: wiking z długim mieczem z oryginalnym cięciem, do porównania na ucho.',
+    },
     'combat-gestures': {
       title: 'Ciosy i gesty',
       summary:

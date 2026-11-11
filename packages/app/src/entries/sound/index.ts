@@ -1,6 +1,11 @@
-import { defaultBindings, SoundDriver } from '@open-northland/audio';
+import { SoundDriver } from '@open-northland/audio';
 import { loadMusicManifest } from '../../content/audio/music.js';
-import { contentAudioOptions, hasSoundContent, soundIndexOf } from '../../content/audio/sound-driver.js';
+import {
+  contentAudioOptions,
+  gameSoundBindings,
+  hasSoundContent,
+  soundIndexOf,
+} from '../../content/audio/sound-driver.js';
 import { loadIr } from '../../content/ir/load.js';
 import { messages } from '../../i18n/index.js';
 import { el, pageInnerStyle, pageRootStyle } from '../../view/overlay.js';
@@ -48,7 +53,7 @@ export async function renderSoundGallery(
     }
   }
   const index = soundIndexOf(ir, sounds);
-  const bindings = defaultBindings();
+  const bindings = gameSoundBindings();
   const model = buildSoundGalleryModel(sounds, index, bindings, (tribe) => namedTribes.get(tribe));
   const { volumes, monoSound, soundQuality } = readStoredSettings();
   const driver = new SoundDriver(index, bindings, { ...contentAudioOptions(soundQuality), volumes });

@@ -324,6 +324,8 @@ export class SampleCache {
     quality: SoundQuality,
     index: SoundBanksDocument | null,
   ): Promise<ArrayBuffer> {
+    // A file naming an absolute path is an app asset in its one encoding, not a clip under the sound tree.
+    if (file.startsWith('/')) return this.fetchBytes(file);
     const entry = index?.clips[file];
     const held = entry === undefined ? undefined : this.heldBanks.get(entry.bank);
     if (entry !== undefined && held?.quality === quality) {

@@ -12,9 +12,17 @@ import { JINGLE_COMBAT_INTERVAL_S, jingleDuck } from '../bank/bindings.js';
 import { humanVoicesOf } from '../bank/voices.js';
 import { uiCueShot } from '../cues/ui-cues.js';
 import type { ShotLayer } from '../perspective.js';
-import { entityOwner, entityTile, type TilePoint } from '../snapshot.js';
+import { creatureTribe, entityOwner, entityTile, settlerJob, type TilePoint } from '../snapshot.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
-import type { AudioTerrain, DirectorInput, EventSound, Lane, OneShot, SoundBindings } from '../types.js';
+import type {
+  AudioTerrain,
+  DirectorInput,
+  EventSound,
+  Lane,
+  OneShot,
+  SoundBindings,
+  WielderBlowSound,
+} from '../types.js';
 
 /**
  * Sim events → one-shots: resolve each frame event through the {@link SoundBindings}, locate the
@@ -141,7 +149,11 @@ interface PendingBase {
  * audibility only.
  */
 type Pending =
-  | (PendingBase & { readonly kind: 'sfx' })
+  | (PendingBase & {
+      readonly kind: 'sfx';
+      /** The blow's attacker, whose {@link SoundBindings.blowsByWielder} entry replaces `files`. */
+      readonly wielder?: number;
+    })
   | (PendingBase & { readonly kind: 'cue' })
   | (Omit<PendingBase, 'files'> & { readonly kind: 'scream'; readonly victim: number })
   | (PendingBase & {
@@ -159,20 +171,25 @@ interface EmitterFacts {
   readonly owners: ReadonlyMap<number, number>;
   /** The scream group of each needed entity that is a person with a voice for its class. */
   readonly screams: ReadonlyMap<number, string>;
+  /** The files of each needed wielder whose tribe and job have a blow of their own. */
+  readonly blows: ReadonlyMap<number, readonly string[]>;
 }
 
-/** The positions and owners of exactly the `needed` entities, and the scream groups of the `victims`
- *  among them: the emitter set follows the busy population now that every working settler cues its own
- *  animation. */
+/** The positions and owners of exactly the `needed` entities, the scream groups of the `victims` and
+ *  the own blows of the `wielders` among them: the emitter set follows the busy population now that
+ *  every working settler cues its own animation. */
 function emitterFacts(
   snapshot: WorldSnapshot,
   index: SoundIndex,
   needed: ReadonlySet<number>,
   victims: ReadonlySet<number>,
+  wielders: ReadonlySet<number>,
+  wielderBlows: readonly WielderBlowSound[],
 ): EmitterFacts {
   const tiles = new Map<number, TilePoint>();
   const owners = new Map<number, number>();
   const screams = new Map<number, string>();
+  const blows = new Map<number, readonly string[]>();
   for (const id of needed) {
     const e = entityById(snapshot, id);
     if (e === undefined) continue;
@@ -180,11 +197,17 @@ function emitterFacts(
     if (tile !== null) tiles.set(id, tile);
     const owner = entityOwner(e.components);
     if (owner !== undefined) owners.set(id, owner);
+    if (wielders.has(id)) {
+      const tribe = creatureTribe(e.components);
+      const job = settlerJob(e.components);
+      const blow = wielderBlows.find((b) => b.tribe === tribe && b.job === job);
+      if (blow !== undefined && blow.files.length > 0) blows.set(id, blow.files);
+    }
     if (!victims.has(id)) continue;
     const scream = humanVoicesOf(index, e)?.scream;
     if (scream !== undefined) screams.set(id, scream);
   }
-  return { tiles, owners, screams };
+  return { tiles, owners, screams, blows };
 }
 
 /**
@@ -220,7 +243,8 @@ function weaponSoundPending(
   spatial: Spatial,
   index: SoundIndex,
   terrain: AudioTerrain | undefined,
-): Pending | null {
+  wielderBlows: boolean,
+): Extract<Pending, { kind: 'sfx' }> | null {
   let soundType: number | undefined;
   if (ev.kind === 'combatHit' || ev.kind === 'projectileHit') soundType = ev.soundType;
   else if (ev.kind === 'projectileMissed') soundType = missSoundType(ev.missSounds, ev.at, terrain, index);
@@ -237,6 +261,7 @@ function weaponSoundPending(
     entity: undefined,
     layer: 'impact',
     ...(onBody ? { exclusive: 'wav' as const } : {}),
+    ...(wielderBlows && ev.kind === 'combatHit' ? { wielder: ev.attacker as number } : {}),
   };
 }
 
@@ -269,6 +294,8 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
   const pending: Pending[] = [];
   const neededIds = new Set<number>();
   const victims = new Set<number>();
+  const wielders = new Set<number>();
+  const wielderBlows = bindings.blowsByWielder ?? [];
   for (const ev of events) {
     if ((ev.kind === 'playerWon' || ev.kind === 'playerDefeated') && ev.notificationAlreadySent === true)
       continue;
@@ -277,8 +304,14 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     const offScreen = node !== null && spatial === null;
     // A blow names its impact by the weapon's listed id, and the struck body screams in its own voice.
     if (spatial !== null) {
-      const weaponSound = weaponSoundPending(ev, spatial, index, terrain);
-      if (weaponSound !== null) pending.push(weaponSound);
+      const weaponSound = weaponSoundPending(ev, spatial, index, terrain, wielderBlows.length > 0);
+      if (weaponSound !== null) {
+        if (weaponSound.wielder !== undefined) {
+          neededIds.add(weaponSound.wielder);
+          wielders.add(weaponSound.wielder);
+        }
+        pending.push(weaponSound);
+      }
       const scream = screamPending(ev, spatial);
       if (scream !== null) {
         neededIds.add(scream.victim);
@@ -360,14 +393,20 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
   }
   // Pass 2: place the entity events and spatialise every pending one (off-screen or position-less →
   // silent); the fog hides only a cue already on screen.
-  const facts = neededIds.size > 0 ? emitterFacts(snapshot, index, neededIds, victims) : null;
+  const facts =
+    neededIds.size > 0 ? emitterFacts(snapshot, index, neededIds, victims, wielders, wielderBlows) : null;
   for (const p of pending) {
     if (p.kind === 'stinger' && p.ownerEntity !== null) {
       const owner = facts?.owners.get(p.ownerEntity);
       if (owner === undefined || owner !== localPlayer) continue;
     }
     let files: readonly string[];
-    if (p.kind === 'scream') {
+    // A wielder's own blow rings at the gain of the impact it replaces.
+    let gainFiles: readonly string[] | undefined;
+    if (p.kind === 'sfx' && p.wielder !== undefined && facts?.blows.has(p.wielder) === true) {
+      files = facts.blows.get(p.wielder) ?? p.files;
+      gainFiles = p.files;
+    } else if (p.kind === 'scream') {
       const group = facts?.screams.get(p.victim);
       const voice = group === undefined ? undefined : groupFiles(index, group);
       if (voice === undefined) continue; // a voiceless body (an animal, a silent tribe) → no scream
@@ -393,7 +432,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     } else {
       shots.push({
         files,
-        gain: spatial.gain * poolGain(index, files),
+        gain: spatial.gain * poolGain(index, gainFiles ?? files),
         pan: spatial.pan,
         key: p.key,
         lane: p.kind === 'scream' ? SCREAM_LANE : SFX_LANE,

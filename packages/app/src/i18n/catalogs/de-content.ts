@@ -236,6 +236,11 @@ export const deContent = {
       summary:
         'Spalten: ein ausgebildeter Speerträger, der Mann der Karte auf einem Computerplatz, das Geschenk der Karte an den Spieler. Holzspeere oben, Eisenspeere unten; nur der ausgebildete Holzspeer ist ein Mensch, die anderen beiden sind Drachen.',
     },
+    'mace-blows': {
+      title: 'Streitkolbenhiebe',
+      summary:
+        'Oben: ein byzantinischer Langschwertkämpfer, dessen Hieb wie ein Streitkolben auf Stahl klingt. Unten: ein Wikinger-Langschwert mit dem ursprünglichen Schwerthieb, zum Vergleich nach Gehör.',
+    },
     'combat-gestures': {
       title: 'Schläge und Gesten',
       summary:

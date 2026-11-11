@@ -27,6 +27,9 @@ const EMPTY_MARK = 0xe0;
 const OGG_CAPTURE = [0x4f, 0x67, 0x67, 0x53];
 const isOgg = (bytes: Uint8Array): boolean => OGG_CAPTURE.every((byte, i) => bytes[i] === byte);
 
+/** A URL under the sounds root as its path there; an app asset's URL stays whole. */
+const underSounds = (url: string): string => (url.startsWith('/sounds/') ? url.slice('/sounds/'.length) : url);
+
 interface Harness {
   readonly cache: SampleCache;
   /** Every URL asked for under the sounds root, `banks.json` included. */
@@ -63,7 +66,7 @@ function makeCache(
   const warnings: string[] = [];
   const pending: Harness['pending'] = [];
   const serve = async (url: string): Promise<ArrayBuffer> => {
-    const file = url.slice('/sounds/'.length);
+    const file = underSounds(url);
     if (opts.held === true) await new Promise<void>((release) => pending.push({ file, release }));
     if (file === opts.missing) throw new Error('missing clip');
     // A bank holds every clip its index places in it, back to back.
@@ -79,7 +82,7 @@ function makeCache(
   const served = opts.banks === null ? serve : servingSoundBanks(serve, opts.banks ?? NO_SOUND_BANKS);
   let indexFailures = opts.indexFailures ?? 0;
   const fetchBytes = async (url: string): Promise<ArrayBuffer> => {
-    const file = url.slice('/sounds/'.length);
+    const file = underSounds(url);
     fetched.push(file);
     if (file === SOUND_BANKS_FILE && indexFailures-- > 0) throw new Error('index unavailable');
     return served(url);
@@ -274,6 +277,14 @@ describe('SampleCache banks', () => {
     await cache.preload(samples(['talk/a.wav'], false));
     await cache.get('talk/b.wav');
     expect(files(fetched)).toEqual(['banks/talk-0.lossless.bin', 'talk/b.flac']);
+  });
+
+  it('fetches an app asset at its own path in either quality, bypassing the banks', async () => {
+    for (const quality of SOUND_QUALITIES) {
+      const { cache, fetched } = makeCache({ banks: twoBanks(), quality });
+      expect(await cache.get('/audio/mace.ogg')).not.toBeNull();
+      expect(files(fetched)).toEqual(['/audio/mace.ogg']);
+    }
   });
 
   it('loads a clip from its own file when its bank fails to arrive', async () => {
