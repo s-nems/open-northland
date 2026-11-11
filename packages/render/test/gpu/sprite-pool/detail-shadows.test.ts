@@ -95,19 +95,27 @@ describe('a plain landscape entity under a detail tier', () => {
   const TREE = 7;
   const bodySource = new TextureSource({ width: 64, height: 64 });
   const shadowSource = new TextureSource({ width: 64, height: 64 });
+  // Its own frame objects: the texture cache keys a texture by its frame.
+  const shadowAtlas: SpriteAtlas = {
+    width: 32,
+    height: 32,
+    frames: new Map([[BODY_BOB, { x: 0, y: 0, width: 16, height: 8, offsetX: -8, offsetY: -8 }]]),
+  };
   const treeSheet: SpriteSheet = {
     source: bodySource,
     atlas,
     bindings: { settler: BODY_BOB, resource: BODY_BOB, building: BODY_BOB },
-    kindLayers: { resource: { source: bodySource, atlas, shadow: { source: shadowSource, atlas } } },
+    kindLayers: {
+      resource: { source: bodySource, atlas, shadow: { source: shadowSource, atlas: shadowAtlas } },
+    },
   };
   const forest = snapshotOf([entity(TREE, 3, 3, { Resource: { goodType: 1 } })]);
 
-  /** The sources of the tree's layers still in its band, in paint order. */
-  function drawnSources(layer: Container): TextureSource[] {
+  /** The tree's layers still in its band, in paint order. */
+  function drawnSources(layer: Container): string[] {
     return (layer.children[0] as Container).children
       .filter((c): c is Sprite => c instanceof Sprite && c.visible && c.alpha > 0)
-      .map((sprite) => sprite.texture.source);
+      .map((sprite) => (sprite.texture.source === shadowSource ? 'shadow' : 'body'));
   }
 
   it('moves the body into the freed slot, takes the spare one out of the band and shows both again', () => {
@@ -119,13 +127,13 @@ describe('a plain landscape entity under a detail tier', () => {
       tick: forest.tick,
     });
     sprites.reconcile(frame());
-    expect(drawnSources(layer)).toEqual([shadowSource, bodySource]);
+    expect(drawnSources(layer)).toEqual(['shadow', 'body']);
 
     sprites.reconcile(frame({ detail: VIEW_DETAILS.sparse }));
-    expect(drawnSources(layer)).toEqual([bodySource]);
+    expect(drawnSources(layer)).toEqual(['body']);
     expect(sprites.boundsOf(TREE)).toBeDefined();
 
     sprites.reconcile(frame({ detail: VIEW_DETAILS.full }));
-    expect(drawnSources(layer)).toEqual([shadowSource, bodySource]);
+    expect(drawnSources(layer)).toEqual(['shadow', 'body']);
   });
 });
