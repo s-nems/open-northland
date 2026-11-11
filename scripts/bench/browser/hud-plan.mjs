@@ -24,8 +24,8 @@ function scenario(id, setup, overrides = {}) {
 /** Every scenario frames the densest building cluster at x3 with the pointer on the bottom bar, unless
  *  it is about the pointer. `none` is the baseline the others add one HUD surface to, and `none-zoomed`
  *  the one of `select50`, which draws at another zoom and so another world cost. The `-world` twins
- *  rest the pointer over the world with the panel open, `build-tabs` switches the construction
- *  window's tab on a timer, and `presses` presses and releases the mouse button on one. */
+ *  rest the pointer over the world, `build-tabs` switches the construction window's tab on a timer,
+ *  and `presses` presses and releases the mouse button under the pointer. */
 export function hudScenarios() {
   return [
     scenario('none', 'none'),
@@ -43,6 +43,7 @@ export function hudScenarios() {
     scenario('select50', 'select50', { zoom: MANY_SELECTION_ZOOM }),
     scenario('hover', 'hover'),
     scenario('presses', 'presses'),
+    scenario('presses-world', 'presses-world'),
     scenario('fps', 'none', { fpsCounter: true }),
     scenario('groups', 'groups', { groupNumbers: true }),
   ];

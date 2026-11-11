@@ -121,21 +121,36 @@ async function switchBuildTabs(page) {
   };
 }
 
-/** `presses` presses or releases the left mouse button this often, as pointer events on the window:
- *  the cursor theme follows the button, and nothing in the game takes a press there. */
+/** Where the pointer rests unless the scenario is about the pointer: the bottom bar. */
+const restingPointer = (viewport) => ({ x: viewport.width / 2, y: viewport.height - POINTER_BAR_LIFT });
+
+/** `presses` presses or releases the left mouse button this often, as pointer events on the element
+ *  under the resting pointer. They do not bubble, so only capturing listeners such as the cursor
+ *  theme's take them. */
 const PRESS_MS = 250;
 
-/** Keep pressing and releasing the mouse button over the bottom bar until the page reloads. */
-async function pressButtons(page) {
-  await page.evaluate((ms) => {
-    let down = false;
-    setInterval(() => {
-      down = !down;
-      const type = down ? 'pointerdown' : 'pointerup';
-      window.dispatchEvent(new PointerEvent(type, { pointerType: 'mouse', buttons: down ? 1 : 0 }));
-    }, ms);
-  }, PRESS_MS);
-  return { ready: true, note: `button pressed or released every ${PRESS_MS} ms` };
+/** Keep pressing and releasing the mouse button at `pointer` until the page reloads. */
+async function pressButtons(page, pointer) {
+  const under = await page.evaluate(
+    ({ ms, x, y }) => {
+      let down = false;
+      setInterval(() => {
+        down = !down;
+        const type = down ? 'pointerdown' : 'pointerup';
+        const target = document.elementFromPoint(x, y) ?? window;
+        target.dispatchEvent(
+          new PointerEvent(type, {
+            pointerType: 'mouse',
+            buttons: down ? 1 : 0,
+          }),
+        );
+      }, ms);
+      const element = document.elementFromPoint(x, y);
+      return element === null ? 'nothing' : `${element.tagName.toLowerCase()}.${element.className}`;
+    },
+    { ms: PRESS_MS, ...pointer },
+  );
+  return { ready: true, note: `button pressed or released every ${PRESS_MS} ms over ${under}` };
 }
 
 /**
@@ -192,7 +207,11 @@ const SETUPS = {
     return { ready: selected >= MANY_SELECTED, note: `${selected} selected` };
   },
   hover: async ({ viewport }) => ({ ready: true, note: '', pointer: worldCentre(viewport) }),
-  presses: ({ page }) => pressButtons(page),
+  presses: ({ page, viewport }) => pressButtons(page, restingPointer(viewport)),
+  'presses-world': async ({ page, viewport }) => {
+    const pointer = worldCentre(viewport);
+    return { ...(await pressButtons(page, pointer)), pointer };
+  },
   groups: async ({ page, area }) => {
     await drag(page, area);
     const grouped = await page.evaluate(() => window.__frameInputs.selection);
@@ -582,7 +601,7 @@ try {
     );
     const context = { page, dense, viewport, area: worldArea(viewport, metadata.hudScale), camera };
     const setup = await SETUPS[scenario.setup](context);
-    const pointer = setup.pointer ?? { x: viewport.width / 2, y: viewport.height - POINTER_BAR_LIFT };
+    const pointer = setup.pointer ?? restingPointer(viewport);
     await page.mouse.move(pointer.x, pointer.y);
     await guardCamera(page, camera);
     await page.evaluate(async (speed) => {
