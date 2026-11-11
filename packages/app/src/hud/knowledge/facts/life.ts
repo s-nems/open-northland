@@ -141,6 +141,12 @@ export const HEALTH_FACTS: Readonly<Record<string, Fact>> = {
     systems.REGENERATION_HITPOINTS_PER_TICK * TICKS_PER_SECOND + systems.TEMPLE_AURA_HITPOINTS,
   ),
   'aura.pietyPct': oneDecimal(needPct(systems.TEMPLE_AURA_PIETY_UNITS)),
+  'aura.oilBurnTime': duration(systems.TEMPLE_FUEL_BURN_SECONDS),
+  'aura.oilUnits': whole((base) => stockOf(base, 'work_temple', 'holy_oil')),
+  'aura.oilFullBurnTime': duration((base) => {
+    const units = stockOf(base, 'work_temple', 'holy_oil');
+    return typeof units === 'number' ? units * systems.TEMPLE_FUEL_BURN_SECONDS : undefined;
+  }),
   'draught.healBelow': whole((HUMAN_HITPOINTS * systems.HEALING_DRAUGHT_BELOW_PCT) / PERCENT),
   'draught.healSmallTotal': whole((base) =>
     scaled(healSip, equipOf(base, 'potion_heal_small')?.uses ?? 0)(base),

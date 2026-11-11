@@ -39,6 +39,7 @@ export {
   isStorageBuildingType,
   isStorehouseType,
   isWorkplaceOutput,
+  keepsOwnStock,
   keepsStorePriority,
   mayFetchGoodFrom,
   mergedRecipeOf,

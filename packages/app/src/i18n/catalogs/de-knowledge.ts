@@ -211,7 +211,7 @@ export const deKnowledge = {
     building: {
       aura: {
         title: 'Aura',
-        lead: 'Wirkt von selbst, sobald der Tempel fertig und unbeschädigt ist. Erfasst alle Leute des Besitzers in Reichweite.',
+        lead: 'Wirkt von selbst, solange der Tempel fertig und unbeschädigt ist und Öl verbrennt. Erfasst alle Leute des Besitzers in Reichweite.',
         range: 'Reichweite',
         rangeValue: '{{aura.range}} Hexfelder',
         health: 'Gesundheit',
@@ -220,6 +220,9 @@ export const deKnowledge = {
         pietyValue: '+{{aura.pietyPct}}% pro Sekunde, bis {{need.satedPct}}%',
         many: 'Mehrere Tempel',
         manyValue: 'Es wirkt eine Aura, die Werte addieren sich nicht',
+        oil: 'Öl',
+        oilValue:
+          '1 reicht für {{aura.oilBurnTime}}, der volle Vorrat von {{aura.oilUnits}} für {{aura.oilFullBurnTime}}',
       },
       output: 'Was es herstellt',
       capacity: 'Kapazität',

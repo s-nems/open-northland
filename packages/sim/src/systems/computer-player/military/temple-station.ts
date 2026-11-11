@@ -7,7 +7,7 @@ import { homeBuildings } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
-import { TEMPLE_AURA_RANGE } from '../../lifecycle/temple-aura.js';
+import { TEMPLE_AURA_RANGE } from '../../lifecycle/temple/index.js';
 import { isFinishedPrayerSite } from '../../readviews/index.js';
 
 // Owner ruling: a seat that owns a temple stations its waiting army inside the temple's aura, where the

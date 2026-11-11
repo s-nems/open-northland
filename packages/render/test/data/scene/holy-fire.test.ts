@@ -60,7 +60,7 @@ describe('home holy fire projection', () => {
     expect(holyFireOverlays(snapshot(), HOME, components, () => undefined)).toEqual([]);
   });
 
-  it("keeps a prayer site's fire lit with no oil and whatever the oil policy, once it stands", () => {
+  it("keeps a prayer site's fire lit with no oil delivered and whatever the oil policy, once it stands", () => {
     const temple = {
       Building: { buildingType: TEMPLE, tribe: 1, level: 0, built: ONE },
       Owner: { player: 0 },
@@ -74,6 +74,19 @@ describe('home holy fire projection', () => {
     expect(holyFireOverlays(snapshot(site), HOME, site, lookup)).toEqual([]);
     const unfinished = { ...temple, Building: { ...temple.Building, built: ONE - 1 } };
     expect(holyFireOverlays(snapshot(unfinished), HOME, unfinished, lookup)).toEqual([]);
+  });
+
+  it("puts a temple's fire out while it does not bless", () => {
+    const temple = (blessing: boolean) => ({
+      Building: { buildingType: TEMPLE, tribe: 1, level: 0, built: ONE },
+      Owner: { player: 0 },
+      Position: { x: 10 * ONE, y: 10 * ONE },
+      TempleFire: { burnedSeconds: 0, blessing },
+    });
+    expect(holyFireOverlays(snapshot(temple(true)), HOME, temple(true), lookup)).toEqual([
+      { name: 'fx fire incense', dx: 5, dy: 20 },
+    ]);
+    expect(holyFireOverlays(snapshot(temple(false)), HOME, temple(false), lookup)).toEqual([]);
   });
 
   it('emits retained effect refs only while the home survives the existing viewport cull', () => {

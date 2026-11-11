@@ -14,6 +14,7 @@ import type { NodeId } from '../../../../nav/terrain/index.js';
 import { farmWorkGood } from '../../../economy/fields.js';
 import { clearNavState } from '../../../movement/nav-state.js';
 import { atomicDuration } from '../../../readviews/animations.js';
+import { isTempleFuel } from '../../../readviews/buildings.js';
 import { nearestCell } from '../../../spatial/metric.js';
 import { liftsWithHaulingCart, pullsHaulingCart } from '../../../vehicles/hauling-cart.js';
 import { dropCarryAtOwnTile } from '../../atomics/effects/goods/index.js';
@@ -155,7 +156,11 @@ export function planDelivery(
   }
   if (cell === null) return;
   // A supply errand remains committed on its delivery leg, with no source stock held anymore.
-  if (world.has(store, UnderConstruction) || world.tryGet(entity, JobAssignment)?.workplace === store) {
+  if (
+    world.has(store, UnderConstruction) ||
+    world.tryGet(entity, JobAssignment)?.workplace === store ||
+    isTempleFuel(world, ctx, store, load.goodType)
+  ) {
     supply.stampSupplyRun(entity, { site: store, goodType: load.goodType, amount: load.amount });
   }
   if (toFlag) {

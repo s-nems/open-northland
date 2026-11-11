@@ -189,7 +189,7 @@ export const ruKnowledge = {
     building: {
       aura: {
         title: 'Аура',
-        lead: 'Работает сама, когда Храм готов и не повреждён. Охватывает всех людей владельца в радиусе.',
+        lead: 'Работает сама, пока Храм готов, не повреждён и жжёт Масло. Охватывает всех людей владельца в радиусе.',
         range: 'Дальность',
         rangeValue: 'гексов: {{aura.range}}',
         health: 'Здоровье',
@@ -198,6 +198,9 @@ export const ruKnowledge = {
         pietyValue: '+{{aura.pietyPct}}% в секунду, до {{need.satedPct}}%',
         many: 'Несколько Храмов',
         manyValue: 'Работает одна аура, значения не складываются',
+        oil: 'Масло',
+        oilValue:
+          '1 хватает на {{aura.oilBurnTime}}, полного запаса ({{aura.oilUnits}}) на {{aura.oilFullBurnTime}}',
       },
       output: 'Что производит',
       capacity: 'Вместимость',

@@ -25,9 +25,12 @@ export {
   isFinishedPrayerSite,
   isLowPriorityBuildingTarget,
   isSchoolType,
+  isTempleFuel,
   isWallBuilding,
   prayerSiteOf,
   ranksWithTowers,
+  templeFuelGoods,
+  templeFuelSlotOf,
 } from './buildings.js';
 export {
   ARMOR_MAIN_TYPE,

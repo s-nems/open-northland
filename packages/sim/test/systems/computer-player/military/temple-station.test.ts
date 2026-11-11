@@ -16,7 +16,7 @@ import {
 } from '../../../../src/systems/computer-player/military/temple-station.js';
 import type { SystemContext } from '../../../../src/systems/context.js';
 import { dynamicBlockOverlay } from '../../../../src/systems/footprint/index.js';
-import { TEMPLE_AURA_RANGE } from '../../../../src/systems/lifecycle/temple-aura.js';
+import { TEMPLE_AURA_RANGE } from '../../../../src/systems/lifecycle/temple/index.js';
 import { MILITARY_MODE } from '../../../../src/systems/readviews/index.js';
 import { interactionCell } from '../../../../src/systems/settlers/targets/index.js';
 import { manhattan } from '../../../../src/systems/spatial/metric.js';

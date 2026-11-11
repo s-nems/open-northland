@@ -70,10 +70,9 @@ import type { SeatSupply, SupplyLine } from './supply.js';
  * works the first of its seats that names a good the seat may make right now, so a better product
  * replaces weaker ones once earned. An `until` seat works `works` until the seat has earned the good it
  * names and `otherwise` from then on. A `whileOwned` seat works `works` while the seat owns a building of
- * that type, standing or a site (with `siteOnly`, a site still under construction), and `otherwise`
- * meanwhile. A `whileGathered` seat works `works` while a gatherer of the seat, at home or on a colony, is
- * held to the good it names ({@link seatGathers}), and `otherwise` meanwhile. A `rest` seat stops every
- * product of its operator.
+ * that type, standing or a site, and `otherwise` meanwhile. A `whileGathered` seat works `works` while a
+ * gatherer of the seat, at home or on a colony, is held to the good it names ({@link seatGathers}), and
+ * `otherwise` meanwhile. A `rest` seat stops every product of its operator.
  * Over every kind, a seat whose goods all lack their inputs ({@link inputsInStock}) works the next seat's in
  * the plan with one that has them, {@link SeatCraftPlan.unfed} last, and its own while none has.
  */
@@ -89,12 +88,7 @@ export type CraftSeat =
   | { readonly firstFed: readonly { readonly good: string; readonly input: string }[] }
   | { readonly firstEnabled: readonly CraftSeat[] }
   | { readonly until: string; readonly works: CraftSeat; readonly otherwise: CraftSeat }
-  | {
-      readonly whileOwned: string;
-      readonly siteOnly?: true;
-      readonly works: CraftSeat;
-      readonly otherwise: CraftSeat;
-    }
+  | { readonly whileOwned: string; readonly works: CraftSeat; readonly otherwise: CraftSeat }
   | { readonly whileGathered: string; readonly works: CraftSeat; readonly otherwise: CraftSeat }
   | typeof REST_SEAT
   | FleetSeat;
@@ -465,20 +459,20 @@ const DRUID_SEATS = 12;
  *  discovery reads, so the oil's one herb buys the same experience as a potion's eight inputs. */
 const POTION_SEAT: CraftSeat = { firstEnabled: [['potion_heal_big'], ['holy_oil']] };
 
-/** The holy oil in stock at which the temple-site druid turns back to potions, and the band under it at
- *  which he takes the oil back (authored): the site's bill takes one unit, so the store holds one or two. */
-export const TEMPLE_SITE_OIL_UNITS = 2;
-const TEMPLE_SITE_OIL_BAND_UNITS = 1;
+/** The holy oil the seat holds at which the temple's druid turns back to potions, and the band under it
+ *  at which he takes the oil back (authored): the temple's store of five, which counts, and a unit
+ *  spare. */
+export const TEMPLE_OIL_UNITS = 6;
+const TEMPLE_OIL_BAND_UNITS = 1;
 
-/** The first druid keeps a unit of holy oil in store while the seat's temple is a site, whose bill takes
- *  one: the homes may have burned the oil the druids boiled while they earned the big potion. */
-const TEMPLE_SITE_SEAT: CraftSeat = {
+/** The first druid keeps the temple in holy oil while the seat owns one, a site or standing: its bill
+ *  takes a unit and its blessing burns them (owner ruling). */
+const TEMPLE_SEAT: CraftSeat = {
   whileOwned: 'work_temple',
-  siteOnly: true,
   works: {
     goods: ['holy_oil'],
-    glut: { holy_oil: TEMPLE_SITE_OIL_UNITS },
-    band: TEMPLE_SITE_OIL_BAND_UNITS,
+    glut: { holy_oil: TEMPLE_OIL_UNITS },
+    band: TEMPLE_OIL_BAND_UNITS,
     otherwise: POTION_SEAT,
   },
   otherwise: POTION_SEAT,
@@ -518,10 +512,10 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_armory_00: ARMORY,
   work_armory_01: ARMORY,
   // The druids boil holy oil until the big healing potion is earned and brew only it from then on; the
-  // first keeps a unit of oil in store for a temple site. The lower hut boils only holy oil.
+  // first keeps the temple in oil. The lower hut boils only holy oil.
   work_druid_00: { seats: [['holy_oil']] },
   work_druid_01: {
-    seats: [TEMPLE_SITE_SEAT, ...Array.from({ length: DRUID_SEATS - 1 }, (): CraftSeat => POTION_SEAT)],
+    seats: [TEMPLE_SEAT, ...Array.from({ length: DRUID_SEATS - 1 }, (): CraftSeat => POTION_SEAT)],
   },
   work_coin_mint: MINT,
 };
@@ -833,12 +827,11 @@ export function tuneCraftCounters(
       colonyTradeShips(world, ctx, player) + colonyShipsOf(world, ctx, player, tradeShipVehicle(ctx)));
   const tribe = playerPlacementTribes(world, player)?.[0];
   const ownedTypes = new Map<string, boolean>();
-  const owns = (buildingId: string, siteOnly: boolean): boolean => {
-    const key = `${buildingId}:${siteOnly}`;
-    let owned = ownedTypes.get(key);
+  const owns = (buildingId: string): boolean => {
+    let owned = ownedTypes.get(buildingId);
     if (owned === undefined) {
-      owned = ownsBuildingOf(world, ctx, player, buildingId, siteOnly);
-      ownedTypes.set(key, owned);
+      owned = ownsBuildingOf(world, ctx, player, buildingId);
+      ownedTypes.set(buildingId, owned);
     }
     return owned;
   };
@@ -1288,9 +1281,8 @@ interface SeatChoice {
   /** The trade ships the seat's joinery builds: those its colonies owe ({@link colonyTradeShips}) beside the
    *  ones they hold. */
   readonly tradeShips: () => number;
-  /** Whether the seat owns a building of the type with this stable content id, standing or a site, or
-   *  with `siteOnly` a site still under construction. */
-  readonly owns: (buildingId: string, siteOnly: boolean) => boolean;
+  /** Whether the seat owns a building of the type with this stable content id, standing or a site. */
+  readonly owns: (buildingId: string) => boolean;
   /** Whether the seat may make the good with this stable content id ({@link goodEnabled}). */
   readonly earned: (id: string) => boolean;
   /** Whether the seat gathers the good with this stable content id ({@link seatGathers}). */
@@ -1340,7 +1332,7 @@ function seatProducts(
     return goods === REST && choice.pastGlut === true ? seatProducts(choice, current, seat.works) : goods;
   }
   if ('whileOwned' in seat) {
-    const owned = choice.owns(seat.whileOwned, seat.siteOnly === true);
+    const owned = choice.owns(seat.whileOwned);
     return seatProducts(choice, current, owned ? seat.works : seat.otherwise);
   }
   if ('whileGathered' in seat)
@@ -1448,20 +1440,12 @@ function tradeShipVehicle(ctx: SystemContext): number | undefined {
   return house === undefined ? undefined : index.buildings.get(house)?.vehicleType;
 }
 
-/** Whether `player` owns a building of the type with stable content id `buildingId`, standing or a site,
- *  or with `siteOnly` a site still under construction. */
-function ownsBuildingOf(
-  world: World,
-  ctx: SystemContext,
-  player: number,
-  buildingId: string,
-  siteOnly: boolean,
-): boolean {
+/** Whether `player` owns a building of the type with stable content id `buildingId`, standing or a site. */
+function ownsBuildingOf(world: World, ctx: SystemContext, player: number, buildingId: string): boolean {
   const type = contentIndex(ctx.content).buildingTypeBySlug.get(buildingId);
   if (type === undefined) return false;
   for (const e of homeBuildings(world, ctx, player))
-    if (world.get(e, Building).buildingType === type && (!siteOnly || world.has(e, UnderConstruction)))
-      return true;
+    if (world.get(e, Building).buildingType === type) return true;
   return false;
 }
 

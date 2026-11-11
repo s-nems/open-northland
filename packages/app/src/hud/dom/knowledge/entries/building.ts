@@ -262,7 +262,7 @@ function healthBlock(context: KnowledgeContext, building: KnowledgeBuilding): En
   };
 }
 
-/** What a temple does to the people around it, on its own, with no worker. */
+/** What a temple does to the people around it while it burns its oil, with no worker. */
 function auraBlock(context: KnowledgeContext): EntryBlock {
   const text = copy().building.aura;
   const filled = (template: string): string => fillTokens(template, (name) => factText(name, context.base));
@@ -274,6 +274,7 @@ function auraBlock(context: KnowledgeContext): EntryBlock {
         [text.range, filled(text.rangeValue)],
         [text.health, filled(text.healthValue)],
         [text.piety, filled(text.pietyValue)],
+        [text.oil, filled(text.oilValue)],
         [text.many, text.manyValue],
       ]),
     ),

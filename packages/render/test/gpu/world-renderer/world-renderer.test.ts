@@ -67,6 +67,7 @@ const SLOTS = [
   'constructionPlots',
   'placementWash',
   'placementGround',
+  'templeGlow',
   'selection',
   'bones',
   'sprites',

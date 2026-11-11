@@ -201,7 +201,8 @@ export {
   TEMPLE_AURA_HITPOINTS,
   TEMPLE_AURA_PIETY_UNITS,
   TEMPLE_AURA_RANGE,
-} from './lifecycle/temple-aura.js';
+  TEMPLE_FUEL_BURN_SECONDS,
+} from './lifecycle/temple/index.js';
 // The herding ring bound and the farm herd's leash, asserted by the livestock scenes; the slaughter
 // clip's wares, so the real-content suite reads them the way the sim does.
 export { FARM_HERD_LEASH_NODES, LIVESTOCK_GRAZE_RANGE_NODES } from './livestock/assignment.js';

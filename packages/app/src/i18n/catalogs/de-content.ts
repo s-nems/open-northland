@@ -747,6 +747,11 @@ export const deContent = {
       summary:
         'Wähle den Tempel, um die hellblaue Reichweite des Segens zu sehen. Der nahe Siedler gewinnt Religion zurück, der entfernte bleibt außerhalb der Aura.',
     },
+    'temple-oil': {
+      title: 'Tempelöl',
+      summary:
+        'Zwei Tempel beginnen ohne Öl, und ein Druide bringt beiden welches: das Wikingerfeuer entzündet sich und der helle Schein erscheint. Der beschädigte Tempel bleibt trotz vollem Vorrat dunkel.',
+    },
     'household-goods': {
       title: 'Haushaltswaren',
       summary:

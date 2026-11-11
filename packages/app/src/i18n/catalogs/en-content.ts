@@ -741,6 +741,11 @@ export const enContent = {
       summary:
         'Select the temple to see its pale-blue blessing range. The nearby civilian regains religion; the distant one stays outside the aura.',
     },
+    'temple-oil': {
+      title: 'Temple oil',
+      summary:
+        'Two temples start without oil and a druid carries some to each; watch the viking fire light and the pale glow come up. The wounded temple stays dark on a full store.',
+    },
     'household-goods': {
       title: 'Household goods',
       summary:

@@ -54,6 +54,9 @@ const seatRead = (over: Partial<SeatRead> = {}): SeatRead => ({
 
 const industries = (choices: readonly IndustryChoice[]): Industry[] => choices.map((c) => c.industry);
 
+/** The holy oil a colony keeps for its temple: its store of five and a unit spare. */
+const TEMPLE_OIL_UNITS = 6;
+
 describe('a colony industry', () => {
   it('is chosen only where the site offers what its chain takes', () => {
     const fits: readonly [Partial<SiteFacts>, Industry][] = [
@@ -213,9 +216,9 @@ describe('a colony chain', () => {
 });
 
 describe('what a colony industry wants brought', () => {
-  it('is the unit of holy oil a temple takes, while home boils it', () => {
+  it("is the temple's store of holy oil and a unit spare, while home boils it", () => {
     const choices = chooseIndustries({ ...BARE, wood: true }, seatRead());
-    expect(colonyIndustryWants(choices, true)).toEqual([{ good: 'holy_oil', upTo: 1 }]);
+    expect(colonyIndustryWants(choices, true)).toEqual([{ good: 'holy_oil', upTo: TEMPLE_OIL_UNITS }]);
     expect(colonyIndustryWants(choices, false)).toEqual([]);
     expect(colonyIndustryWants([], true)).toEqual([]);
   });

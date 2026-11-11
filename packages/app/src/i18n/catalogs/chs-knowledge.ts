@@ -188,7 +188,7 @@ export const chsKnowledge = {
     building: {
       aura: {
         title: '光环',
-        lead: '神庙建成且无损伤时自动生效，覆盖范围内神庙所有者的全部人员。',
+        lead: '神庙建成、无损伤且在燃烧油时自动生效，覆盖范围内神庙所有者的全部人员。',
         range: '范围',
         rangeValue: '{{aura.range}}格',
         health: '生命值',
@@ -197,6 +197,8 @@ export const chsKnowledge = {
         pietyValue: '每秒+{{aura.pietyPct}}%，上限{{need.satedPct}}%',
         many: '多座神庙',
         manyValue: '只有一层光环，数值不叠加',
+        oil: '油',
+        oilValue: '1份能烧{{aura.oilBurnTime}}，满储{{aura.oilUnits}}份能烧{{aura.oilFullBurnTime}}',
       },
       output: '产出',
       capacity: '容量',

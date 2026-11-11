@@ -195,6 +195,7 @@ describe('building status', () => {
     garrison: null,
     workDetail: null,
     families: null,
+    blessing: null,
   };
   const status = messages().hud.buildingPanel.status;
 
@@ -241,6 +242,19 @@ describe('building status', () => {
       label: status.standing,
       tone: 'neutral',
     });
+  });
+
+  it("reads a temple's blessing over its empty porter post: the oil left, or what puts it out", () => {
+    expect(buildingStatus({ ...idle, seats: 0, blessing: { state: 'on', secondsLeft: 61 } })).toEqual({
+      label: status.blessing,
+      detail: formatMessage(status.oilLeft, { minutes: 2 }),
+      tone: 'ok',
+    });
+    expect(buildingStatus({ ...idle, seats: 0, blessing: { state: 'no-oil' } })).toMatchObject({
+      label: status.noOil,
+      tone: 'trouble',
+    });
+    expect(buildingStatus({ ...idle, blessing: { state: 'damaged' } }).label).toBe(status.blessingDamaged);
   });
 
   it('says whether a home is lived in, and a house without work only stands', () => {

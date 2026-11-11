@@ -189,7 +189,7 @@ export const enKnowledge = {
     building: {
       aura: {
         title: 'Aura',
-        lead: "Works by itself once the Temple is finished and undamaged. It covers all of the owner's people in range.",
+        lead: "Works by itself while the Temple is finished, undamaged and burning Oil. It covers all of the owner's people in range.",
         range: 'Range',
         rangeValue: '{{aura.range}} hexes',
         health: 'Health',
@@ -198,6 +198,8 @@ export const enKnowledge = {
         pietyValue: '+{{aura.pietyPct}}% per second, up to {{need.satedPct}}%',
         many: 'Several Temples',
         manyValue: 'One aura applies, the values do not add up',
+        oil: 'Oil',
+        oilValue: '1 lasts {{aura.oilBurnTime}}, a full store of {{aura.oilUnits}} {{aura.oilFullBurnTime}}',
       },
       output: 'What it makes',
       capacity: 'Capacity',

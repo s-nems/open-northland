@@ -1,24 +1,36 @@
+import type { ContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Health, Owner, Position, UnderConstruction } from '../../../src/components/index.js';
-import { setNeedsEnabled } from '../../../src/components/rules.js';
-import { ULP } from '../../../src/core/fixed.js';
-import { TICKS_PER_SECOND } from '../../../src/core/loop.js';
-import type { Entity } from '../../../src/ecs/world.js';
-import { type Fixed, fx, ONE, Simulation } from '../../../src/index.js';
-import { positionOfNode } from '../../../src/nav/halfcell.js';
-import type { SystemContext } from '../../../src/systems/index.js';
-import { applyNeedUnits, NEED_SATED_THRESHOLD } from '../../../src/systems/lifecycle/needs/index.js';
+import {
+  AiControl,
+  Building,
+  computerModuleEnables,
+  Health,
+  Owner,
+  Position,
+  Stockpile,
+  TempleFire,
+  UnderConstruction,
+} from '../../../../src/components/index.js';
+import { setNeedsEnabled } from '../../../../src/components/rules.js';
+import { ULP } from '../../../../src/core/fixed.js';
+import { TICKS_PER_SECOND } from '../../../../src/core/loop.js';
+import type { Entity } from '../../../../src/ecs/world.js';
+import { type Fixed, fx, ONE, Simulation } from '../../../../src/index.js';
+import { positionOfNode } from '../../../../src/nav/halfcell.js';
+import type { SystemContext } from '../../../../src/systems/index.js';
+import { applyNeedUnits, NEED_SATED_THRESHOLD } from '../../../../src/systems/lifecycle/needs/index.js';
 import {
   blessedHitpointCeiling,
   TEMPLE_AURA_HITPOINTS,
   TEMPLE_AURA_PIETY_UNITS,
   TEMPLE_AURA_RANGE,
+  TEMPLE_FUEL_BURN_SECONDS,
   templeAuraSystem,
-} from '../../../src/systems/lifecycle/temple-aura.js';
-import { testContent } from '../../fixtures/content.js';
-import { ctxOf } from '../../fixtures/context.js';
-import { needsOf, settlerAt } from '../../fixtures/settler.js';
-import { grassNodeMap } from '../../fixtures/terrain.js';
+} from '../../../../src/systems/lifecycle/temple/index.js';
+import { testContent } from '../../../fixtures/content.js';
+import { ctxOf } from '../../../fixtures/context.js';
+import { needsOf, settlerAt } from '../../../fixtures/settler.js';
+import { grassNodeMap } from '../../../fixtures/terrain.js';
 
 const VIKING = 1;
 const TEMPLE_TYPE = 3;
@@ -36,8 +48,32 @@ const WORN: Fixed = fx.add(NEED_SATED_THRESHOLD, ULP);
 /** The row the temple and every settler stand on, so the hex distance is the column gap alone. */
 const ROW = 0;
 
-function fresh(): Simulation {
-  return new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(128, 4) });
+/** The good the fuelled temple burns, and its store's size. */
+const FUEL = 2;
+const FUEL_CAPACITY = 5;
+
+function fresh(content: ContentSet = testContent()): Simulation {
+  return new Simulation({ seed: 1, content, map: grassNodeMap(128, 4) });
+}
+
+/** {@link testContent} with a temple that stores, and so burns, {@link FUEL}. */
+function fuelledContent(): ContentSet {
+  const base = testContent();
+  return {
+    ...base,
+    buildings: base.buildings.map((b) =>
+      b.typeId === TEMPLE_TYPE
+        ? { ...b, stock: [{ goodType: FUEL, capacity: FUEL_CAPACITY, initial: 0 }] }
+        : b,
+    ),
+  };
+}
+
+/** A fuelled temple at `hx` holding `units` of fuel. */
+function fuelledTempleAt(sim: Simulation, hx: number, units: number): Entity {
+  const e = templeAt(sim, hx);
+  sim.world.add(e, Stockpile, { amounts: new Map([[FUEL, units]]) });
+  return e;
 }
 
 function templeAt(sim: Simulation, hx: number, opts: { owner?: number; type?: number } = {}): Entity {
@@ -227,5 +263,59 @@ describe('templeAuraSystem - the temple blesses its owner people once a game sec
     blessAt(sim, TICKS_PER_SECOND);
 
     expect(sim.world.verifyCaches()).toEqual([]);
+  });
+});
+
+describe('templeAuraSystem - a temple that stores fuel blesses only while it burns some', () => {
+  const fuel = (sim: Simulation, e: Entity): number => sim.world.get(e, Stockpile).amounts.get(FUEL) ?? 0;
+  const blessing = (sim: Simulation, e: Entity): boolean => sim.world.get(e, TempleFire).blessing;
+
+  it('blesses for the burn time of each unit, which then leaves the store', () => {
+    const sim = fresh(fuelledContent());
+    const temple = fuelledTempleAt(sim, 10, 1);
+    const settler = personAt(sim, 12);
+
+    let blessed = 0;
+    for (let second = 0; second < TEMPLE_FUEL_BURN_SECONDS + 2; second++) {
+      blessAt(sim, second * TICKS_PER_SECOND);
+      if (blessing(sim, temple)) blessed++;
+    }
+
+    expect(blessed).toBe(TEMPLE_FUEL_BURN_SECONDS);
+    expect(fuel(sim, temple)).toBe(0);
+    sim.world.mut(settler, Health).hitpoints = POOL;
+    blessAt(sim, (TEMPLE_FUEL_BURN_SECONDS + 2) * TICKS_PER_SECOND);
+    expect(hp(sim, settler)).toBe(POOL);
+  });
+
+  it('pauses the burn while the temple is wounded', () => {
+    const sim = fresh(fuelledContent());
+    const temple = fuelledTempleAt(sim, 10, 1);
+    blessAt(sim, 0);
+    sim.world.mut(temple, Health).hitpoints = TEMPLE_HITPOINTS - 1;
+
+    for (let second = 1; second <= TEMPLE_FUEL_BURN_SECONDS; second++)
+      blessAt(sim, second * TICKS_PER_SECOND);
+
+    expect(sim.world.get(temple, TempleFire)).toEqual({ burnedSeconds: 1, blessing: false });
+    expect(fuel(sim, temple)).toBe(1);
+  });
+
+  it("blesses a map-scripted seat's people with an empty store, burning nothing", () => {
+    const sim = fresh(fuelledContent());
+    sim.world.add(sim.world.create(), AiControl, {
+      player: OWNER,
+      computerEnabled: false,
+      modules: computerModuleEnables(),
+      mapAiEnabled: true,
+      difficulty: 'hard',
+    });
+    const temple = fuelledTempleAt(sim, 10, 0);
+    const settler = personAt(sim, 12);
+
+    blessAt(sim, 0);
+
+    expect(hp(sim, settler)).toBe(POOL + TEMPLE_AURA_HITPOINTS);
+    expect(sim.world.get(temple, TempleFire)).toEqual({ burnedSeconds: 0, blessing: true });
   });
 });

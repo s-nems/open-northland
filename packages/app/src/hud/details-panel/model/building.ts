@@ -30,6 +30,7 @@ import { pct } from './bars.js';
 import {
   type ConstructionModel,
   constructionModel,
+  liveAmounts,
   type StockAlert,
   type StockRow,
   stockRows,
@@ -39,7 +40,7 @@ import {
 } from './building-materials.js';
 import { type ProductionModel, productionModel } from './building-production.js';
 import { type BuildingStaffModel, buildingStaff, garrisonPosts, siteCrew } from './building-staff.js';
-import { type BuildingStatusModel, buildingStatus } from './building-status.js';
+import { type BuildingStatusModel, buildingStatus, type TempleBlessing } from './building-status.js';
 import {
   type BuildingDef,
   buildingDef,
@@ -482,6 +483,22 @@ function craftingNow(ctx: UnitPanelModelContext, ent: SnapshotEntity): string | 
   return best === null ? null : goodLabel(ctx, best.good);
 }
 
+/** A temple's blessing off its `TempleFire`: on with the oil it holds still to burn, else out for a wound
+ *  or for want of oil. Null for any house the sim keeps no temple fire on. */
+function templeBlessing(def: BuildingDef | undefined, ent: SnapshotEntity): TempleBlessing | null {
+  const fire = ent.components.TempleFire as { burnedSeconds?: unknown; blessing?: unknown } | undefined;
+  if (fire === undefined) return null;
+  if (fire.blessing !== true) {
+    const health = healthOf(ent);
+    return { state: health !== undefined && health.hitpoints < health.max ? 'damaged' : 'no-oil' };
+  }
+  const fuel = def?.prayerSite === 'temple' ? def.stock[0]?.goodType : undefined;
+  if (fuel === undefined) return { state: 'on', secondsLeft: null };
+  const units = liveAmounts(ent.components.Stockpile).get(fuel) ?? 0;
+  const burned = num(fire.burnedSeconds) ?? 0;
+  return { state: 'on', secondsLeft: units * systems.TEMPLE_FUEL_BURN_SECONDS - burned };
+}
+
 export function buildingPanelModel(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -517,6 +534,7 @@ export function buildingPanelModel(
     garrison: site ? null : garrisonPosts(snapshot, def, ent.id),
     workDetail: work === undefined ? null : workStatusDetail(ctx, work),
     families: kind === 'home' && !site ? (homeFamiliesOf(snapshot, ent.id)?.length ?? 0) : null,
+    blessing: site ? null : templeBlessing(def, ent),
   });
   const level = num(b.level) ?? 0;
   const name = buildingTitle(ctx, rawType);

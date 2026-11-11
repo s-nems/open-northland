@@ -21,6 +21,7 @@ import type { SystemContext } from '../../../context.js';
 import { WORKPLACE_COLLECT_RADIUS } from '../../../economy/haul-flag.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
 import { edibleClassOf } from '../../../readviews/food.js';
+import { templeFuelSlotOf } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { assignedWorkers } from '../../../stores/assigned-workers.js';
 import {
@@ -170,9 +171,9 @@ function restockSearch(plan: PlannerContext, owner: number): RestockSearch {
 }
 
 /**
- * The nearest unit of a good the porter's own store marks as priority (our rule), while the store has
- * room for it: in another of the owner's storehouses that does not prioritize the good too, in a
- * workplace's finished output or in a ground heap. Searched like {@link nearestMinimumRestock}, ascending
+ * The nearest unit of a good the porter's own store marks as priority or burns ({@link restockGoodsOf}),
+ * while the store has room for it: in another of the owner's storehouses that does not prioritize the good
+ * too, in a workplace's finished output or in a ground heap. Searched like {@link nearestMinimumRestock}, ascending
  * by good, and only a load the porter carries as itself and delivers home qualifies. The lift is capped
  * at the room its fellow porters' loads and claims leave, so no surplus walks back to its source.
  * A storehouse source lends only past the owner's storage minimum, even to another storehouse.
@@ -184,7 +185,7 @@ function nearestPriorityRestock(
   const { world, ctx, entity, here, owner, targets, supply } = plan;
   const home = world.tryGet(entity, JobAssignment)?.workplace;
   if (home === undefined || owner === undefined) return null;
-  const goods = storePriorityGoods(world, home);
+  const goods = restockGoodsOf(plan, home);
   if (goods.length === 0 || ownerOf(world, home) !== owner) return null;
 
   let lifted = 0;
@@ -230,6 +231,16 @@ function nearestPriorityRestock(
     best = nearer;
   }
   return best === null ? null : { from: best.entity, goodType: best.payload, amount: bestRoom };
+}
+
+/** The goods `home`'s porters fetch while it has room, ascending: what the player marked as priority
+ *  there, and a temple's fuel, which its porter always fetches (owner ruling). */
+function restockGoodsOf(plan: PlannerContext, home: Entity): readonly number[] {
+  const marked = storePriorityGoods(plan.world, home);
+  const type = plan.world.tryGet(home, Building)?.buildingType;
+  const fuel = type === undefined ? undefined : templeFuelSlotOf(plan.ctx, type)?.goodType;
+  if (fuel === undefined || marked.includes(fuel)) return marked;
+  return [...marked, fuel].sort((a, b) => a - b);
 }
 
 /** The units of `goodType` `home`'s shelf still takes once the loads its other porters carry, have

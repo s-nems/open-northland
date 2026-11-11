@@ -27,6 +27,7 @@ import { interactionNodeId } from '../footprint/interaction.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { settleClosedWall, travellerOnClosing } from '../palisades/index.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
+import { templeFuelSlotOf } from '../readviews/index.js';
 import { cancelRoadSitesUnder, finishRoadSite } from '../roads/sites.js';
 import { retargetHomeErrands } from '../settlers/drives/home-upgrade.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
@@ -117,7 +118,7 @@ function advanceBuildingSite(
   // A free (empty-cost) type has nothing to install, so its labor requirement is waived.
   const laborComplete = constructionTotalUnits(world, ctx, e) === 0 || labor >= ONE;
   if (laborComplete && constructionMaterialsPresent(world, ctx, e)) {
-    consumeMaterials(world, e, cost);
+    consumeMaterials(world, e, spentBill(ctx, building.buildingType, cost));
     const type = contentIndex(ctx.content).buildings.get(building.buildingType);
     if (type?.kind === BUILDING_KIND.vehicle && type.vehicleType !== undefined) return 'launch';
     finishBuilding(world, ctx, e, building);
@@ -353,6 +354,17 @@ function fillHealth(world: World, e: Entity): void {
   const health = world.tryMut(e, Health);
   if (health !== undefined) health.hitpoints = health.max;
   clearRepairedDamage(world, e);
+}
+
+/** The part of a finished site's bill its structure takes: all of it, except a temple's fuel, which stays
+ *  in its store as the first its fire burns (owner ruling). */
+function spentBill(
+  ctx: SystemContext,
+  buildingType: number,
+  cost: ReadonlyArray<{ goodType: number; amount: number }>,
+): ReadonlyArray<{ goodType: number; amount: number }> {
+  const fuel = templeFuelSlotOf(ctx, buildingType)?.goodType;
+  return fuel === undefined ? cost : cost.filter((line) => line.goodType !== fuel);
 }
 
 /** Spend the `cost` materials into the structure; the caller has verified

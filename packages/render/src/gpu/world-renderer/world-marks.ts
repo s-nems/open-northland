@@ -1,4 +1,4 @@
-import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
+import { type SimEvent, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import type { Container, Texture } from 'pixi.js';
 import type { FootfallGround } from '../../data/effects/index.js';
 import type { Viewport } from '../../data/projection/index.js';
@@ -41,6 +41,7 @@ import {
   SettlerBubbleLayer,
   ShipWakeLayer,
   ShotLayer,
+  TempleGlowLayer,
 } from '../overlays/index.js';
 import { SelectionLayer } from '../selection/layer.js';
 import type { RangeRing } from '../selection/range-ring.js';
@@ -59,6 +60,7 @@ const NO_WALKERS: readonly DrawnWalker[] = [];
 export type MarkSlots = Pick<
   WorldSceneLayers,
   | 'wakes'
+  | 'templeGlow'
   | 'selection'
   | 'orderMarkers'
   | 'bones'
@@ -124,6 +126,7 @@ export interface WorldMarksFrame {
 export class WorldMarks {
   private readonly wakes = new ShipWakeLayer();
   private readonly selection = new SelectionLayer();
+  private readonly templeGlow = new TempleGlowLayer();
   private readonly orderMarkers = new OrderMarkerLayer();
   private readonly mapPings: MapPingLayer;
   private readonly rallyBanners: RallyBannerLayer;
@@ -179,6 +182,7 @@ export class WorldMarks {
     this.constructionSigns = new ConstructionSignLayer(playerColourOf);
     this.slots = {
       wakes: this.wakes.container,
+      templeGlow: this.templeGlow.container,
       selection: this.selection.container,
       orderMarkers: this.orderMarkers.container,
       bones: this.effects.groundContainer,
@@ -267,6 +271,13 @@ export class WorldMarks {
   draw(frame: WorldMarksFrame): void {
     const { drawn, elevation, viewport, renderTime } = frame;
     this.wakes.draw(frame.ships, drawn, frame.water, renderTime);
+    this.templeGlow.draw({
+      snapshot: frame.snapshot,
+      drawn,
+      viewport,
+      fogVisible: frame.fogVisible,
+      seconds: renderTime / TICKS_PER_SECOND,
+    });
     this.selection.draw(
       {
         snapshot: frame.snapshot,
@@ -337,6 +348,7 @@ export class WorldMarks {
 
   destroy(): void {
     this.wakes.destroy();
+    this.templeGlow.destroy();
     this.selection.destroy();
     this.orderMarkers.destroy();
     this.mapPings.destroy();

@@ -23,7 +23,7 @@ import { growthSystem } from './lifecycle/ageclass.js';
 import { cleanupSystem } from './lifecycle/cleanup.js';
 import { needsSystem } from './lifecycle/needs/index.js';
 import { ruinSystem } from './lifecycle/ruins.js';
-import { templeAuraSystem } from './lifecycle/temple-aura.js';
+import { templeAuraSystem } from './lifecycle/temple/index.js';
 import {
   livestockAssignmentSystem,
   livestockCaptureSystem,

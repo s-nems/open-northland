@@ -3,6 +3,7 @@ export {
   confinedJob,
   equipErrandConfinement,
   equipFetchLimitFor,
+  jobLimitAt,
   type NavigationLimit,
   navigationLimitFor,
   networkLimitAt,

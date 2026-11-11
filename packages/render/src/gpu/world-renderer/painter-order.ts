@@ -14,6 +14,8 @@ export interface WorldSceneLayers {
   readonly placementWash: Container;
   /** The held building's plot and defence range: on the ground, under the ghost they belong to. */
   readonly placementGround: Container;
+  /** The glow round a blessing temple: on the ground, under the selection drawn over it. */
+  readonly templeGlow: Container;
   readonly selection: Container;
   readonly bones: Container;
   readonly sprites: Container;
@@ -53,6 +55,7 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.constructionPlots,
     layers.placementWash,
     layers.placementGround,
+    layers.templeGlow,
     layers.selection,
     layers.bones,
     layers.sprites,

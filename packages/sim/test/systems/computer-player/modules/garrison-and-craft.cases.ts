@@ -72,7 +72,7 @@ import {
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   JOINERY_TOOL_GLUT_UNITS,
   SHOES_STOCK_UNITS,
-  TEMPLE_SITE_OIL_UNITS,
+  TEMPLE_OIL_UNITS,
   tuneCraftCounters,
   WOODEN_TOOL_GLUT_UNITS,
 } from '../../../../src/systems/computer-player/workforce/craft.js';
@@ -2421,7 +2421,7 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(products([])).toEqual([[POTION_BIG], [POTION_BIG]]);
   });
 
-  it('keeps a unit of holy oil in store while the temple is a site, and none once it stands', () => {
+  it('keeps the temple in holy oil while it is a site and once it stands', () => {
     const druids = crewedWorkshops(druidContent([]), 1, 2);
     druids.hire(0, 2);
     expect(druids.products()).toEqual([[POTION_BIG], [POTION_BIG]]);
@@ -2440,18 +2440,17 @@ describe('workforce module - the barracks and craft selections', () => {
     placeTemple(true);
     expect(druids.products()).toEqual([[HOLY_OIL]]);
     // A unit short of the line he holds to keeps him boiling; at the line he goes back to the potion.
-    druids.stock(HOLY_OIL, TEMPLE_SITE_OIL_UNITS - 1);
+    druids.stock(HOLY_OIL, TEMPLE_OIL_UNITS - 1);
     expect(druids.products()).toEqual([]);
-    druids.stock(HOLY_OIL, TEMPLE_SITE_OIL_UNITS);
+    druids.stock(HOLY_OIL, TEMPLE_OIL_UNITS);
     expect(druids.products()).toEqual([[POTION_BIG]]);
-    // He takes the oil back only once the store is out.
-    druids.stock(HOLY_OIL, 1);
-    expect(druids.products()).toEqual([]);
-    druids.stock(HOLY_OIL, 0);
+    // He takes the oil back a unit under the line.
+    druids.stock(HOLY_OIL, TEMPLE_OIL_UNITS - 2);
     expect(druids.products()).toEqual([[HOLY_OIL]]);
+    // The standing temple burns its oil, so he keeps boiling it.
     const site = entityOfBuilding(druids.sim, TEMPLE_TYPE);
     druids.sim.world.remove(site, UnderConstruction);
-    expect(druids.products()).toEqual([[POTION_BIG]]);
+    expect(druids.products()).toEqual([]);
   });
 
   it("staffs one druid and a porter until the big potion is earned, and the hut's second druid once it is", () => {

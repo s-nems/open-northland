@@ -183,6 +183,9 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
     carrierTarget: 1,
     aloneUntil: { kind: 'good', id: 'amulet_strength' },
   },
+  // Owner ruling: the temple blesses only while it burns holy oil. Its porter keeps the store full from
+  // home and colony stores alike, where the druids feed it only within their signposts.
+  work_temple: { carrierMin: 1, carrierTarget: 1 },
   // The well and the hive stay unstaffed: the brewery's carrier draws its water and honey himself.
 };
 

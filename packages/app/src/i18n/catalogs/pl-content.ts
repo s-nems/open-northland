@@ -738,6 +738,11 @@ export const plContent = {
       summary:
         'Zaznacz świątynię, aby zobaczyć jasnoniebieski zasięg błogosławieństwa. Bliski osadnik odzyskuje religię, odległy pozostaje poza aurą.',
     },
+    'temple-oil': {
+      title: 'Oliwa w świątyni',
+      summary:
+        'Dwie świątynie zaczynają bez oliwy, a druid zanosi ją do obu: zapala się ogień wikingów i jasna poświata. Uszkodzona świątynia zostaje ciemna mimo pełnego zapasu.',
+    },
     'household-goods': {
       title: 'Wyposażenie domu',
       summary:

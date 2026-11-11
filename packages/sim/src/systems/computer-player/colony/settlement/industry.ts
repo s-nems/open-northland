@@ -380,13 +380,13 @@ export interface IndustryWant {
   readonly upTo: number;
 }
 
-/** The holy oil a temple's bill takes. */
-const TEMPLE_OIL_UNITS = 1;
+/** The holy oil a colony keeps for its temple (authored): its store of five, which its blessing burns
+ *  (owner ruling), and a unit spare, the first of them for its bill. */
+const TEMPLE_OIL_UNITS = 6;
 
 /**
  * What `chosen` needs delivered that no workshop of the colony takes as a recipe input, so the generic rule
- * of bringing a standing workshop's inputs cannot know it: the temple's unit of holy oil, while home boils
- * it.
+ * of bringing a standing workshop's inputs cannot know it: the temple's holy oil, while home boils it.
  */
 export function colonyIndustryWants(
   chosen: readonly IndustryChoice[],

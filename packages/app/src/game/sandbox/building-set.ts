@@ -27,6 +27,7 @@ import {
   BUILDING_POTTERY_02,
   BUILDING_SHIP_BIG_YARD,
   BUILDING_SHIP_SMALL_YARD,
+  BUILDING_TEMPLE,
   BUILDING_WAREHOUSE_00,
   BUILDING_WAREHOUSE_01,
   BUILDING_WAREHOUSE_02,
@@ -100,6 +101,9 @@ const ANIMAL_FARM_OUTPUT_CAPACITY = 30;
 const DRUID_INPUT_CAPACITY = 10;
 const DRUID_HUT_OIL_CAPACITY = 15;
 const DRUID_HUT_01_OUTPUT_CAPACITY = 25;
+// Our pack's "work temple": a holy oil store of five holding one, the fuel its blessing burns.
+const TEMPLE_OIL_CAPACITY = 5;
+const TEMPLE_OIL_INITIAL = 1;
 const CRAFT_INPUT_CAPACITY = 10;
 // Extracted `logicstock` on "work joinery 02": the cart slot is declared and never filled, since a
 // vehicle good is built on a yard, not shelved.
@@ -443,6 +447,9 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     ],
     produces: [GOOD_HOLY_OIL, ...POTIONS.map(([, goodType]) => goodType)],
     recipes: [holyOilRecipe(), ...POTIONS.map(([amount, goodType]) => potionRecipe(goodType, amount))],
+  },
+  [BUILDING_TEMPLE]: {
+    stock: [{ goodType: GOOD_HOLY_OIL, capacity: TEMPLE_OIL_CAPACITY, initial: TEMPLE_OIL_INITIAL }],
   },
   [BUILDING_WAREHOUSE_00]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[0]) },
   [BUILDING_WAREHOUSE_01]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[1]) },

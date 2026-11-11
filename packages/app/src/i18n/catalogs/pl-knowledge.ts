@@ -189,7 +189,7 @@ export const plKnowledge = {
     building: {
       aura: {
         title: 'Aura',
-        lead: 'Działa sama, gdy Świątynia jest gotowa i nieuszkodzona. Obejmuje wszystkich ludzi właściciela w zasięgu.',
+        lead: 'Działa sama, gdy Świątynia jest gotowa, nieuszkodzona i pali Oliwę. Obejmuje wszystkich ludzi właściciela w zasięgu.',
         range: 'Zasięg',
         rangeValue: '{{aura.range}} hexów',
         health: 'Zdrowie',
@@ -198,6 +198,9 @@ export const plKnowledge = {
         pietyValue: '+{{aura.pietyPct}}% na sekundę, do {{need.satedPct}}%',
         many: 'Kilka Świątyń',
         manyValue: 'Działa jedna aura, wartości się nie sumują',
+        oil: 'Oliwa',
+        oilValue:
+          '1 starcza na {{aura.oilBurnTime}}, pełny zapas {{aura.oilUnits}} na {{aura.oilFullBurnTime}}',
       },
       output: 'Co wytwarza',
       capacity: 'Pojemność',

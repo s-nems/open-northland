@@ -1,9 +1,16 @@
-import { BUILDING_KIND, type BuildingType, type PrayerSite } from '@open-northland/data';
+import {
+  BUILDING_KIND,
+  type BuildingType,
+  type ContentSet,
+  PRAYER_SITE,
+  type PrayerSite,
+  type StockSlot,
+} from '@open-northland/data';
 import { Building, UnderConstruction } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext, SystemContext } from '../context.js';
 
 /** The content id of the seat's headquarters, the start building a fortress-style map opens with. */
 export const HEADQUARTERS_BUILDING_ID = 'headquarters';
@@ -94,4 +101,35 @@ export function isFinishedPrayerSite(
   if (world.has(building, UnderConstruction)) return false;
   const b = world.tryGet(building, Building);
   return b !== undefined && b.built >= ONE && prayerSiteOf(ctx, b.buildingType) === site;
+}
+
+/** The store slot whose good a temple burns to bless: its one stock slot. Owner ruling, not the
+ *  original's. Undefined for every other type and for a temple that stores nothing, which blesses with
+ *  no fuel. */
+export function templeFuelSlotOf(ctx: ContentContext, buildingType: number): StockSlot | undefined {
+  const type = contentIndex(ctx.content).buildings.get(buildingType);
+  return type?.prayerSite === PRAYER_SITE.temple ? type.stock[0] : undefined;
+}
+
+/** Whether `goodType` is the fuel `building`'s fire burns, which nobody takes back out of its store. */
+export function isTempleFuel(world: World, ctx: ContentContext, building: Entity, goodType: number): boolean {
+  const type = world.tryGet(building, Building)?.buildingType;
+  return type !== undefined && templeFuelSlotOf(ctx, type)?.goodType === goodType;
+}
+
+const fuelGoodsByContent = new WeakMap<ContentSet, ReadonlySet<number>>();
+
+/** The goods some temple type burns, so a workshop making none of them skips the temple search. */
+export function templeFuelGoods(ctx: ContentContext): ReadonlySet<number> {
+  let goods = fuelGoodsByContent.get(ctx.content);
+  if (goods === undefined) {
+    const found = new Set<number>();
+    for (const type of ctx.content.buildings) {
+      const slot = templeFuelSlotOf(ctx, type.typeId);
+      if (slot !== undefined) found.add(slot.goodType);
+    }
+    goods = found;
+    fuelGoodsByContent.set(ctx.content, goods);
+  }
+  return goods;
 }

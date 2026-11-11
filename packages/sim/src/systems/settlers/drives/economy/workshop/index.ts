@@ -1,5 +1,11 @@
 import type { Recipe } from '@open-northland/data';
-import { CARRY_CAPACITY, inPastimeChat, Owner, Resting } from '../../../../../components/index.js';
+import {
+  CARRY_CAPACITY,
+  inPastimeChat,
+  Owner,
+  Production,
+  Resting,
+} from '../../../../../components/index.js';
 import { mergeRecipes } from '../../../../../core/content-index/production.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import {
@@ -37,6 +43,7 @@ import { interactionCell } from '../../../targets/index.js';
 import { loiterCell } from '../../spacing.js';
 import { deliverableGoodProbe } from '../delivery-targets.js';
 import { haulFlagArea, waitAtHaulFlag } from '../haul-flag-area.js';
+import { planTempleFuelRun } from '../temple-fuel.js';
 import { planVehicleYard, settleVehicleYard } from '../vehicle-yard.js';
 import { startCraftAtomic } from './craft.js';
 import {
@@ -88,7 +95,9 @@ export class WorkSeatClaims {
 
   private readonly batches = new Map<Entity, Set<number>>();
 
-  claimRunning(world: World, ctx: PlannerContext['ctx'], workplace: Entity, operator: Entity): boolean {
+  /** Claim a running batch of `workplace` for `operator`: its index in the workplace's `Production`
+   *  cycles, or a negative number when none is left for him. */
+  claimBatch(world: World, ctx: PlannerContext['ctx'], workplace: Entity, operator: Entity): number {
     let claimed = this.batches.get(workplace);
     if (claimed === undefined) {
       claimed = new Set();
@@ -104,7 +113,7 @@ export class WorkSeatClaims {
       }
       this.batches.set(workplace, claimed);
     }
-    return claimProductionCycle(world, ctx, workplace, operator, claimed) >= 0;
+    return claimProductionCycle(world, ctx, workplace, operator, claimed);
   }
 
   recipesFor(world: World, ctx: PlannerContext['ctx'], workplace: Entity): readonly Recipe[] {
@@ -180,8 +189,9 @@ const NO_SUPPLY: Recipe = { inputs: [], outputs: [], ticks: 1 };
 const LOITER_PLAN_PERIOD_TICKS = 1;
 
 /**
- * Run the self-service producer loop: advance running batches, supply open products, claim a new batch
- * seat, clear a full slot, haul an output out, then loiter by the door with nothing to do. Original
+ * Run the self-service producer loop: feed a temple short of the workshop's fuel between batches, advance
+ * running batches, supply open products, claim a new batch seat, clear a full slot, haul an output out, then loiter
+ * by the door with nothing to do. Original
  * behavior: a producer fetches a missing input of its own recipe itself, whatever other settlers are
  * bringing, and never waits inside for them.
  *
@@ -204,7 +214,11 @@ export function planProducer(
   settleVehicleYard(plan, workplace);
   // A running batch is this operator's alone, so it is finished before the rotation's vehicle turn.
   const seats = seatClaims.seatsAt(workplace);
-  if (seatClaims.claimRunning(world, ctx, workplace, plan.entity)) {
+  const batch = seatClaims.claimBatch(world, ctx, workplace, plan.entity);
+  // A batch not yet begun waits for him: the workshop restarts one the moment the last ends, so a temple
+  // run waiting for a free hand would never come.
+  if (!batchBegun(world, workplace, batch) && planTempleFuelRun(plan, workplace)) return;
+  if (batch >= 0) {
     holdInsideWorkplace(plan, workplace, seats, idle);
     return;
   }
@@ -274,6 +288,11 @@ interface RotationMerge {
 }
 
 const rotationMerges = new WeakMap<Recipe, RotationMerge>();
+
+/** Whether `workplace`'s batch at index `batch` has advanced a tick; false for no batch. */
+function batchBegun(world: World, workplace: Entity, batch: number): boolean {
+  return batch >= 0 && (world.tryGet(workplace, Production)?.cycles[batch]?.elapsed ?? 0) > 0;
+}
 
 /** {@link mergeRecipes} of an operator's rotation, memoized by its content-owned recipes in order, so a
  *  producer's every plan does not rebuild the same union. */
