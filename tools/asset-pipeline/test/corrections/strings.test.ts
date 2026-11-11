@@ -111,7 +111,8 @@ describe('string corrections', () => {
   it.each([
     ['an object instead of a list', { ...ENTRY }, /not a JSON array/],
     ['an unknown key', [{ ...ENTRY, sha256: 'x' }], /unknown key "sha256"/],
-    ['an unknown language', [{ ...ENTRY, lang: 'ru' }], /lang must be one of eng, pol, ger, rus/],
+    ['an unknown language', [{ ...ENTRY, lang: 'ru' }], /lang must be one of pol, eng, ger, rus/],
+    ['a language whose shipped text stays private', [{ ...ENTRY, lang: 'ita' }], /lang must be one of pol, eng, ger, rus/],
     ['an unknown table', [{ ...ENTRY, table: 'good' }], /table must be one of main, .*jobsPlural/],
     ['a missing reason', [{ ...ENTRY, reason: ' ' }], /reason must say why/],
     ['a non-integer id', [{ ...ENTRY, id: '4' }], /id must be a string id/],

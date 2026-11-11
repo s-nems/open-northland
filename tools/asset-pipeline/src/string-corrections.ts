@@ -1,9 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { MAP_TEXT_LANGUAGES } from '@open-northland/data';
+import { MAP_TEXT_LANGUAGES, SOURCE_LANGUAGES } from '@open-northland/data';
 import type { MapStringTables } from '@open-northland/map-import';
 import { errorMessage } from './errors.js';
-import { GUI_LANGS } from './stages/gui/paths.js';
 import { EXPORTED_TABLES, OBJECT_HELP_TABLES } from './stages/gui/strings.js';
 
 /** The committed fixes to decoded display strings; this package's AGENTS.md sets the rules. */
@@ -62,7 +61,8 @@ const CORRECTABLE_TABLES: readonly string[] = [...EXPORTED_TABLES, ...OBJECT_HEL
 
 const TABLE_KIND: CorrectionKind = {
   scopeKey: 'table',
-  langs: GUI_LANGS,
+  // A correction quotes the text it fixes, so it never names a language whose shipped text stays private.
+  langs: SOURCE_LANGUAGES,
   checkScope: (table) =>
     CORRECTABLE_TABLES.includes(table) ? undefined : `table must be one of ${CORRECTABLE_TABLES.join(', ')}`,
   isPhrased: (table) => (OBJECT_HELP_TABLES as readonly string[]).includes(table),
