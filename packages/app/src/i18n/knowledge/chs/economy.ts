@@ -395,7 +395,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'tools',
       name: '工具',
-      lead: '工具让人少敲几下，让工坊多出几份，能用{{tool.uses}}次。',
+      lead: '工具让人少敲几下，让工坊多出几份。木质工具能用{{tool.uses.wooden}}次，铁质工具能用{{tool.uses.iron}}次。',
       blocks: [
         {
           h: '居民的工具从哪来',
@@ -455,7 +455,7 @@ export const ECONOMY: ArticleGroup = {
           h: '耗损',
         },
         {
-          p: '每次敲击、抛竿、浇水和工坊每完成一批，都消耗一次工具，没成功的也算。播种和拾蘑菇不消耗。用满{{tool.uses}}次后工具消失，居民徒手工作，直到拿到新工具。没有经验的居民，一件铁质工具够砍{{tool.ironTrees}}棵树。',
+          p: '每次敲击、抛竿、浇水和工坊每完成一批，都消耗一次工具，没成功的也算。播种和拾蘑菇不消耗。木质工具用满{{tool.uses.wooden}}次、铁质工具用满{{tool.uses.iron}}次后消失，居民徒手工作，直到拿到新工具。没有经验的居民，一件铁质工具够砍{{tool.ironTrees}}棵树。',
         },
       ],
       see: [

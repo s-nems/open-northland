@@ -438,7 +438,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'tools',
       name: 'Tools',
-      lead: 'A tool cuts strokes, gives more pieces in a workshop and lasts {{tool.uses}} uses.',
+      lead: 'A tool cuts strokes and gives more pieces in a workshop. A Wooden Tool lasts {{tool.uses.wooden}} uses, an Iron Tool {{tool.uses.iron}}.',
       blocks: [
         {
           h: 'Where a settler gets a tool',
@@ -501,7 +501,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Wear',
         },
         {
-          p: 'Every stroke, rod cast, watering and finished workshop cycle uses the tool once, failed ones too. Sowing and picking mushrooms use nothing. After {{tool.uses}} uses the tool is gone and the settler works bare-handed until he gets a new one. An Iron Tool lasts a settler with no experience {{tool.ironTrees}} trees.',
+          p: 'Every stroke, rod cast, watering and finished workshop cycle uses the tool once, failed ones too. Sowing and picking mushrooms use nothing. A Wooden Tool is gone after {{tool.uses.wooden}} uses, an Iron Tool after {{tool.uses.iron}}, and the settler then works bare-handed until he gets a new one. An Iron Tool lasts a settler with no experience {{tool.ironTrees}} trees.',
         },
       ],
       see: [
