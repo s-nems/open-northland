@@ -13,6 +13,8 @@ import { createWorldHover, type WorldHover } from '../../src/view/world-hover.js
 const HOUSE = 1;
 const FIGHTER = 2;
 const WALL = 3;
+/** A worker whose sign row hangs on the house. */
+const WORKER = 4;
 /** One rendered frame at 60 fps. */
 const FRAME_MS = 16;
 /** Longer than the card's rest. */
@@ -63,7 +65,8 @@ describe('world hover', () => {
   let hover: WorldHover | null = null;
   afterEach(() => hover?.destroy());
 
-  function setup(opts: { readonly wall?: 'hovers' | 'own' } = {}) {
+  function setup(opts: { readonly wall?: 'hovers' | 'own'; readonly signRow?: boolean } = {}) {
+    let rowCovered = false;
     const pointer = { ...ON_HOUSE };
     const camera = { offsetX: 0, offsetY: 0, scale: 1 };
     let swinging = false;
@@ -85,6 +88,7 @@ describe('world hover', () => {
       card: shown,
       buildingModel: (_s, id) => ({ kind: 'building', title: `house ${id}` }) as BuildingHoverModel,
       settlerModel: (_s, id) => ({ kind: 'settler', title: `fighter ${id}` }) as SettlerHoverModel,
+      settlerProxyAt: () => (opts.signRow === true ? { ref: WORKER, covered: rowCovered } : null),
       vehicleModel: () => null,
       palisadeModel: (_s, id) => ({ kind: 'building', title: `wall ${id}` }) as BuildingHoverModel,
       wallHovers: () => opts.wall === 'hovers',
@@ -98,6 +102,7 @@ describe('world hover', () => {
       const start = tick * FRAME_MS;
       while (tick * FRAME_MS - start < ms) {
         swinging = swing === 'held' || (swing === 'alternate' && tick % 2 === 1);
+        rowCovered = opts.signRow === true && swinging;
         hover?.update(snapshot(tick), tick * FRAME_MS);
         tick += 1;
       }
@@ -125,6 +130,20 @@ describe('world hover', () => {
     pointer.clientY = -30;
     run(PAST_REST_MS, 'held');
     expect(shown.title()).toBe(`fighter ${FIGHTER}`);
+  });
+
+  it("opens the worker's card over its sign row on the house", () => {
+    const { shown, run } = setup({ signRow: true });
+    run(PAST_REST_MS, 'away');
+    expect(shown.title()).toBe(`fighter ${WORKER}`);
+  });
+
+  it("keeps the worker's card while a passer-by covers its sign row under a resting pointer", () => {
+    const { shown, run } = setup({ signRow: true });
+    run(PAST_REST_MS, 'away');
+    // The fighter swings over the row on every other frame, covering it each time.
+    run(PAST_REST_MS);
+    expect(shown.title()).toBe(`fighter ${WORKER}`);
   });
 
   it('picks again once the camera moves under a resting pointer', () => {

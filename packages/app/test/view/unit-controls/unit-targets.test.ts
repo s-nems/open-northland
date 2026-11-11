@@ -68,6 +68,8 @@ describe('unit-controls targets over the renderer frame', () => {
     const enemy = { ...firstDrawn('settler', ENEMY_PLAYER), x: 100, y: 200 };
     expect(targetsOver([own]).hasOwnedAt(100, 200)).toBe(true);
     expect(targetsOver([enemy]).hasOwnedAt(100, 200)).toBe(false);
+    expect(targetsOver([own]).ownSettlerAt(100, 190)?.ref).toBe(own.ref);
+    expect(targetsOver([enemy]).ownSettlerAt(100, 200)).toBeNull();
     const observer = createUnitTargets({
       snapshot: () => snapshot,
       viewer: switchableViewerSeat(null),
@@ -424,6 +426,8 @@ describe('unit-controls targets over the renderer frame', () => {
     expect(targets.hasFlagAt(205, flag.y - LIFT - 40)).toBe(true);
     expect(targets.hasFlagAt(flag.x, flag.y)).toBe(false);
     expect(pickTopAt(targets.flags(), flag.x, flag.y)).toBeNull(); // the ground the flag was lifted off
+    expect(targets.flagAt(205, flag.y - LIFT - 40)?.ref).toBe(GATHERER);
+    expect(targets.flagAt(flag.x, flag.y)).toBeNull();
   });
 
   it("hands a claimed site's flag pixels to its builder and the plot around them to the site", () => {

@@ -1412,6 +1412,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       // Both only grow, so their sum moves whenever either does.
       modelVersion: () => viewer.version() + answers.versions.unitPanel(),
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
+      settlerProxyAt: controls.settlerProxyAt,
       pointer: pointerAt,
       suppressed: (clientX, clientY) =>
         hudHidden ||

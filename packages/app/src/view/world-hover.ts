@@ -9,11 +9,13 @@ import type {
   VehicleHoverModel,
 } from '../hud/hover-card/model.js';
 import { containsTargetPoint, drawnInFront, isHitTarget, screenToWorld } from './picking.js';
+import type { SettlerProxy } from './unit-controls/click-hits.js';
 
 /**
  * What the cursor is over in the world: a settler, a building, a vehicle or another seat's wall opens a
- * card. Hit targets are filtered from the renderer's already-culled `drawnItems`, so the work follows
- * the screen, not the map. Goods heaps, chests and nature are named by the unit controls' label beside
+ * card, and so does a sign row on a building or a work flag, as the settler a click on it selects. Hit
+ * targets are filtered from the renderer's already-culled `drawnItems`, so the work follows the screen,
+ * not the map. Goods heaps, chests and nature are named by the unit controls' label beside
  * the cursor instead.
  */
 
@@ -47,6 +49,9 @@ export interface WorldHoverOptions {
   readonly pixelHitOf: ((ref: number, wx: number, wy: number) => boolean | undefined) | undefined;
   /** Cursor position in client coords, or null when the pointer left the canvas. */
   readonly pointer: () => { readonly clientX: number; readonly clientY: number } | null;
+  /** The settler a sign row or a work flag under the client point stands for, whose card it opens
+   *  unless a unit drawn in front covers it. */
+  readonly settlerProxyAt: (clientX: number, clientY: number) => SettlerProxy | null;
   /** Whether the world hover must yield the pointer this frame, because placement or HUD chrome owns it. */
   readonly suppressed: (clientX: number, clientY: number) => boolean;
 }
@@ -193,6 +198,20 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
     return cardModel;
   };
 
+  // A proxy reads the door markers and the drawn flags, so it is asked again only when the tick, the
+  // camera, the pointer or the viewer's seat moves.
+  let proxyKey = '';
+  let proxy: SettlerProxy | null = null;
+  const proxyAt = (snap: WorldSnapshot, clientX: number, clientY: number): SettlerProxy | null => {
+    const cam = opts.camera();
+    const key = `${snap.tick}:${cam.offsetX}:${cam.offsetY}:${cam.scale ?? 1}:${clientX}:${clientY}:${opts.modelVersion()}`;
+    if (key !== proxyKey) {
+      proxyKey = key;
+      proxy = opts.settlerProxyAt(clientX, clientY);
+    }
+    return proxy;
+  };
+
   // The target the cursor is on and when it arrived; leaving one restarts the rest it owes.
   let restingOn: number | null = null;
   let restingSince = 0;
@@ -214,6 +233,8 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
   let restAt: { readonly x: number; readonly y: number; readonly camera: Camera } | null = null;
   let held: number | null = null;
   let heldKind: CardKind | null = null;
+  /** Whether the held settler came through a sign row or a work flag rather than its own sprite. */
+  let heldByProxy = false;
   const pointerMoved = (clientX: number, clientY: number): boolean => {
     const camera = opts.camera();
     const moved =
@@ -239,6 +260,7 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
       if (p === null || opts.suppressed(p.clientX, p.clientY)) {
         restAt = null;
         held = null;
+        heldByProxy = false;
         outlined = null;
         hideCard();
         return;
@@ -246,10 +268,15 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
       const w = toWorld(p.clientX, p.clientY);
       const moved = pointerMoved(p.clientX, p.clientY);
       const found = hitsAt(snap, w.x, w.y, held);
-      const keep = !moved && held !== null && found.heldHit;
-      const target = keep ? null : (found.person ?? found.rest);
-      const ref = keep ? held : (target?.ref ?? null);
-      const kind = keep ? heldKind : (target?.kind ?? null);
+      const marked = proxyAt(snap, p.clientX, p.clientY);
+      // A resting pointer keeps its target: a carrier passing in front of a sign row covers it only for
+      // a moment, and a marker turning up under a held unit does not take it over.
+      const keep = !moved && held !== null && (heldByProxy ? marked?.ref === held : found.heldHit);
+      const proxied = !keep && marked !== null && !marked.covered;
+      const target = keep || proxied ? null : (found.person ?? found.rest);
+      const ref = keep ? held : proxied ? marked.ref : (target?.ref ?? null);
+      const kind: CardKind | null = keep ? heldKind : proxied ? 'settler' : (target?.kind ?? null);
+      heldByProxy = keep ? heldByProxy : proxied;
       held = ref;
       heldKind = kind;
       outlined = ref;

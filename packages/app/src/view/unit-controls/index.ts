@@ -832,6 +832,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       if (pickMode.isArmed()) return [];
       return vehicleOrders.previewBerths(vehicleOrders.rightClickShips(), tile, RIGHT_CLICK_SNAP_NODES);
     },
+    settlerProxyAt: (x, y) => {
+      const w = toWorld(x, y);
+      return clickHits.settlerProxyAt(w.x, w.y);
+    },
     // Includes the details panel, so a consumer gating on this treats a point over the panel as HUD
     // rather than world.
     claimsPointer: (x, y) =>

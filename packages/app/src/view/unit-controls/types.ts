@@ -43,6 +43,7 @@ import type { PresentationPack } from '../../presentation/pack.js';
 import type { CameraGestures } from '../camera/index.js';
 import type { MapPingController } from '../map-ping/controller.js';
 import type { Tile } from '../picking.js';
+import type { SettlerProxy } from './click-hits.js';
 import type { ControlGroupMembers } from './control-groups.js';
 import type { Berth, MooringRule } from './orders/berths.js';
 import type { OverviewPress } from './orders/overview.js';
@@ -275,6 +276,9 @@ export interface UnitControls {
   /** Refresh hit feedback after the renderer has rebuilt its screen-space targets. */
   readonly refreshCursor: (snapshot: WorldSnapshot) => void;
   readonly claimsPointer: (clientX: number, clientY: number) => boolean;
+  /** The settler a sign row on a building or a work flag under the client point stands for; null
+   *  elsewhere. */
+  readonly settlerProxyAt: (clientX: number, clientY: number) => SettlerProxy | null;
   /** Hide the details panel with the rest of the HUD and close the ring; a ring opened while hidden
    *  shows. The selection itself stays. */
   readonly setHudHidden: (hidden: boolean) => void;

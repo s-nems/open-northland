@@ -17,15 +17,25 @@ export type DoorMarkerHit =
 
 export interface ClickHitDeps {
   readonly doorBadges?: () => readonly DoorBadge[];
-  readonly targets: Pick<UnitTargets, 'owned' | 'flags' | 'signposts'> & SelectionHitTargets;
+  readonly targets: Pick<UnitTargets, 'owned' | 'signposts'> & SelectionHitTargets;
   readonly viewer: ViewerSeat;
   readonly elevation?: ElevationField;
+}
+
+/** The settler a sign row or a work flag under the point stands for; `covered` while a unit drawn in
+ *  front of the marker takes the click instead. */
+export interface SettlerProxy {
+  readonly ref: number;
+  readonly covered: boolean;
 }
 
 export interface ClickHits {
   readonly doorMarkerAt: (wx: number, wy: number) => DoorMarkerHit | null;
   readonly hasSelectableAt: (wx: number, wy: number) => boolean;
   readonly selectionAt: (wx: number, wy: number) => number | null;
+  /** The settler a sign row or a work flag under the point stands for; null on the settler itself, a
+   *  garrison flag or anything else. */
+  readonly settlerProxyAt: (wx: number, wy: number) => SettlerProxy | null;
 }
 
 /**
@@ -51,25 +61,31 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
    * work-centre marker to that human at the rank humans hold, above houses and signposts, and the later
    * hit of its front-to-back scan wins among equal ranks.
    */
-  const unitHitAt = (wx: number, wy: number): { readonly pick: Pickable; readonly flag: boolean } | null => {
-    const flag = topTargetAt(deps.targets.flags(), wx, wy);
-    const settler = topTargetAt(deps.targets.owned('settler'), wx, wy);
-    if (settler !== null && (flag === null || drawnInFront(settler, flag)))
-      return { pick: settler, flag: false };
-    return flag === null ? null : { pick: flag, flag: true };
+  const unitAt = (wx: number, wy: number): Pickable | null => {
+    const flag = deps.targets.flagAt(wx, wy);
+    const settler = deps.targets.ownSettlerAt(wx, wy);
+    if (flag === null) return settler;
+    return settler !== null && drawnInFront(settler, flag) ? settler : flag;
   };
-  const unitAt = (wx: number, wy: number): Pickable | null => unitHitAt(wx, wy)?.pick ?? null;
 
-  const doorMarkerAt = (wx: number, wy: number): DoorMarkerHit | null => {
+  /** The door marker under the point, and whether a unit drawn in front of it covers it. */
+  const markerAt = (wx: number, wy: number): { hit: DoorMarkerHit; covered: boolean } | null => {
     const badges = clickableBadges();
     const row = pickDoorBadgeRow(badges, wx, wy, deps.elevation);
     const flag = row === null ? pickGarrisonFlag(badges, wx, wy, deps.elevation) : null;
     const marker = row ?? flag;
     if (marker === null) return null;
-    // The marker's stack draws just over its building, so a unit with its feet further down draws over it.
+    // The marker's stack draws just over its building, so a unit with its feet on the building's row or
+    // further down draws over it.
     const unit = unitAt(wx, wy);
-    if (unit !== null && unit.y > marker.depthY) return null;
-    return row !== null ? { kind: 'settler', ref: row.ref } : { kind: 'building', ref: marker.ref };
+    const hit: DoorMarkerHit =
+      row !== null ? { kind: 'settler', ref: row.ref } : { kind: 'building', ref: marker.ref };
+    return { hit, covered: unit !== null && unit.y >= marker.depthY };
+  };
+
+  const doorMarkerAt = (wx: number, wy: number): DoorMarkerHit | null => {
+    const marker = markerAt(wx, wy);
+    return marker === null || marker.covered ? null : marker.hit;
   };
 
   /** A unit standing on the road plot under the cursor, or in front of it, covers it; one behind it does
@@ -81,8 +97,19 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
     return unit !== null && unit.y >= plot.y ? unit.ref : plot.ref;
   };
 
+  const settlerProxyAt = (wx: number, wy: number): SettlerProxy | null => {
+    const marker = markerAt(wx, wy);
+    if (marker !== null)
+      return marker.hit.kind === 'settler' ? { ref: marker.hit.ref, covered: marker.covered } : null;
+    const flag = deps.targets.flagAt(wx, wy);
+    if (flag === null) return null;
+    const settler = deps.targets.ownSettlerAt(wx, wy);
+    return { ref: flag.ref, covered: settler !== null && drawnInFront(settler, flag) };
+  };
+
   return {
     doorMarkerAt,
+    settlerProxyAt,
     hasSelectableAt: (wx, wy) =>
       doorMarkerAt(wx, wy) !== null ||
       deps.targets.hasFlagAt(wx, wy) ||

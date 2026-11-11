@@ -189,6 +189,10 @@ export interface SelectionHitTargets {
   hasOwnedAt(wx: number, wy: number): boolean;
   hasFlagAt(wx: number, wy: number): boolean;
   hasSignpostAt(wx: number, wy: number): boolean;
+  /** The frontmost owned settler under the point; only the items under it are read. */
+  ownSettlerAt(wx: number, wy: number): Pickable | null;
+  /** The frontmost work or claimed-site flag under the point, as the settler it stands for. */
+  flagAt(wx: number, wy: number): Pickable | null;
 }
 
 /** The frontmost target of one set so far, ordered as {@link drawnInFront} orders them. */
@@ -495,6 +499,31 @@ export function createUnitTargets(
       ),
     hasFlagAt: (wx, wy) =>
       visitFlags(scanAt(wx, wy).items, (target) => hitsTarget(target, wx, wy), { x: wx, y: wy }),
+    ownSettlerAt: (wx, wy) => {
+      let best: DrawItem | null = null;
+      visitOwned(
+        scanAt(wx, wy).items,
+        'settler',
+        (item) => {
+          if (best === null || drawnInFront(item, best)) best = item;
+          return false;
+        },
+        (item, kind) => boxHits(item, kind, wx, wy),
+      );
+      return best === null ? null : hitTarget(best, 'settler');
+    },
+    flagAt: (wx, wy) => {
+      let best: Pickable | null = null;
+      visitFlags(
+        scanAt(wx, wy).items,
+        (target) => {
+          if (hitsTarget(target, wx, wy) && (best === null || drawnInFront(target, best))) best = target;
+          return false;
+        },
+        { x: wx, y: wy },
+      );
+      return best;
+    },
     hasSignpostAt: (wx, wy) =>
       visitSignposts(
         scanAt(wx, wy).items,

@@ -7,7 +7,7 @@ import {
 } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { fixedViewerSeat, switchableViewerSeat } from '../../../src/game/viewer-seat.js';
-import { type Pickable, pickTopAt } from '../../../src/view/picking.js';
+import { type Pickable, pickTopAt, topTargetAt } from '../../../src/view/picking.js';
 import { type ClickHitDeps, createClickHits } from '../../../src/view/unit-controls/click-hits.js';
 
 /**
@@ -70,11 +70,17 @@ const targetsOf = (arms: Arms): ClickHitDeps['targets'] => ({
     kind === 'vehicle'
       ? [...(arms.vehicles ?? [])]
       : (arms.owned ?? []).filter((t) => kind === undefined || t.kind === kind),
-  flags: () => [...(arms.flags ?? [])],
   signposts: () => [...(arms.signposts ?? [])],
   hasOwnedAt: (wx, wy) => pickTopAt([...(arms.owned ?? []), ...(arms.vehicles ?? [])], wx, wy) !== null,
   hasFlagAt: (wx, wy) => pickTopAt(arms.flags ?? [], wx, wy) !== null,
   hasSignpostAt: (wx, wy) => pickTopAt(arms.signposts ?? [], wx, wy) !== null,
+  ownSettlerAt: (wx, wy) =>
+    topTargetAt(
+      (arms.owned ?? []).filter((t) => t.kind === 'settler'),
+      wx,
+      wy,
+    ),
+  flagAt: (wx, wy) => topTargetAt(arms.flags ?? [], wx, wy),
 });
 
 const hitsFor = (arms: Arms): ReturnType<typeof createClickHits> =>
@@ -123,10 +129,13 @@ describe('click hit priority', () => {
     expect(selected(ALL)).toBe(SIGN_ROW_SETTLER);
   });
 
-  it('gives a unit standing in front of the house the click over its sign row', () => {
-    const inFront = { ...under(OWNED_UNIT, 'settler'), y: DOOR.y + 2 };
-    expect(selected({ badges: [mannedDoor()], owned: [inFront] })).toBe(OWNED_UNIT);
-    expect(hitsFor({ badges: [mannedDoor()], owned: [inFront] }).doorMarkerAt(CLICK.x, CLICK.y)).toBeNull();
+  it('gives a unit standing on the house row or in front of it the click over its door markers', () => {
+    const at = (dy: number): Pickable => ({ ...under(OWNED_UNIT, 'settler'), y: DOOR.y + dy });
+    for (const door of [mannedDoor(), flagOnlyDoor()]) {
+      expect(selected({ badges: [door], owned: [at(0)] })).toBe(OWNED_UNIT);
+      expect(selected({ badges: [door], owned: [at(2)] })).toBe(OWNED_UNIT);
+      expect(hitsFor({ badges: [door], owned: [at(2)] }).doorMarkerAt(CLICK.x, CLICK.y)).toBeNull();
+    }
   });
 
   it('falls to the garrison flag when the door flies no sign chain', () => {
@@ -315,3 +324,23 @@ describe('hover selection existence', () => {
   });
 });
 
+describe('settler proxy under the cursor', () => {
+  const proxyAt = (arms: Arms) => hitsFor(arms).settlerProxyAt(CLICK.x, CLICK.y);
+
+  it('names the settler of a sign row or a work flag, and nothing for the settler itself', () => {
+    expect(proxyAt({ badges: [mannedDoor()] })).toEqual({ ref: SIGN_ROW_SETTLER, covered: false });
+    expect(proxyAt({ flags: FLAG_ARM })).toEqual({ ref: FLAG_GATHERER, covered: false });
+    expect(proxyAt({ owned: OWNED_ARM })).toBeNull();
+    expect(proxyAt({ badges: [flagOnlyDoor()] })).toBeNull();
+  });
+
+  it('marks the marker covered while a settler stands in front of it', () => {
+    const inFront = frontOf(OWNED_UNIT, 'settler');
+    expect(proxyAt({ flags: FLAG_ARM, owned: [inFront] })).toEqual({ ref: FLAG_GATHERER, covered: true });
+    const onDoorRow = { ...under(OWNED_UNIT, 'settler'), y: DOOR.y };
+    expect(proxyAt({ badges: [mannedDoor()], owned: [onDoorRow] })).toEqual({
+      ref: SIGN_ROW_SETTLER,
+      covered: true,
+    });
+  });
+});
