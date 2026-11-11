@@ -86,7 +86,7 @@ export {
 // the drive ladder holds it at.
 export { REST_CLEARANCE_NODES, STAND_TO_RADIUS_NODES } from './conflict/battle-alert.js';
 export { ATTACK_RETURN_SLACK_NODES, rangedStandoff } from './conflict/chase.js';
-export { CONTESTED_GROUND_RADIUS_NODES } from './conflict/contested-ground.js';
+export { CONTESTED_GROUND_RADIUS_NODES, CONTESTED_SIEGE_RADIUS_POINTS } from './conflict/contested-ground.js';
 export { APPROACH_BAND_DEPTH, VEHICLE_DEFENCE_LEASH_POINTS } from './conflict/engage-vehicle.js';
 export {
   DEFEND_LEASH_NODES,

@@ -29,8 +29,12 @@ export const ECONOMY: ArticleGroup = {
               ],
               ['Drzewo, skała, złoże, palisada', 'Muszą stać poza miejscem na najwyższy poziom budynku.'],
               [
-                'Wrogi żołnierz',
-                'Nie zbudujesz w promieniu {{contest.radius}} hexów od niego, po skosie około {{contest.diagonal}}. Liczą się tylko żołnierze, których widzisz, ale nie załoga wieży.',
+                'Wrogi żołnierz, wóz lub statek',
+                'Nie zbudujesz w promieniu {{contest.radius}} hexów od niego, po skosie około {{contest.diagonal}}. Liczą się tylko te, które widzisz, ale nie załoga wieży.',
+              ],
+              [
+                'Wroga katapulta',
+                'Nie zbudujesz w promieniu {{contest.siegeRadius}} hexów od niej, tak daleko szuka celu, z załogą czy pusta. Liczą się tylko katapulty, które widzisz.',
               ],
               [
                 'Budynek gracza, z którym masz pokój',

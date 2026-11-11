@@ -32,8 +32,12 @@ export const ECONOMY: ArticleGroup = {
                 'Sie müssen außerhalb des Platzes für die höchste Stufe des Gebäudes stehen.',
               ],
               [
-                'Feindlicher Soldat',
-                'Im Umkreis von {{contest.radius}} Hexfeldern um ihn baust du nicht, schräg etwa {{contest.diagonal}}. Es zählen nur Soldaten, die du siehst, die Turmbesatzung nicht.',
+                'Feindlicher Soldat, Karren oder Schiff',
+                'Im Umkreis von {{contest.radius}} Hexfeldern darum baust du nicht, schräg etwa {{contest.diagonal}}. Es zählt nur, was du siehst, die Turmbesatzung nicht.',
+              ],
+              [
+                'Feindliches Katapult',
+                'Im Umkreis von {{contest.siegeRadius}} Hexfeldern darum baust du nicht, so weit sucht es nach Zielen, bemannt oder leer. Es zählen nur Katapulte, die du siehst.',
               ],
               [
                 'Gebäude eines Spielers, mit dem du Frieden hast',

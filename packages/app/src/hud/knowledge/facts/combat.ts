@@ -287,6 +287,7 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'stance.fleeMax': whole(systems.FLEE_STEP_NODES * DIAGONAL_STEP_COST),
   'contest.radius': whole(systems.CONTESTED_GROUND_RADIUS_NODES),
   'contest.diagonal': whole(diagonal(systems.CONTESTED_GROUND_RADIUS_NODES)),
+  'contest.siegeRadius': whole(systems.CONTESTED_SIEGE_RADIUS_POINTS),
   'peace.keepOut': whole(systems.PEACE_KEEP_OUT_RADIUS_NODES),
   'peace.noticeFirstMinutes': whole(systems.PEACE_NOTICE_MINUTES[0]),
   'peace.noticeLastMinutes': whole(systems.PEACE_NOTICE_MINUTES[1]),

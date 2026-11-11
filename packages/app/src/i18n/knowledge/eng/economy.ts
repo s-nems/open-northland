@@ -32,8 +32,12 @@ export const ECONOMY: ArticleGroup = {
                 "They must stand outside the room for the building's top level.",
               ],
               [
-                'Enemy soldier',
-                "You can't build within {{contest.radius}} hexes of him, about {{contest.diagonal}} on the slant. Only soldiers you can see count, and a tower's crew doesn't.",
+                'Enemy soldier, cart or ship',
+                "You can't build within {{contest.radius}} hexes of one, about {{contest.diagonal}} on the slant. Only those you can see count, and a tower's crew doesn't.",
+              ],
+              [
+                'Enemy catapult',
+                "You can't build within {{contest.siegeRadius}} hexes of it, as far as it looks for a target, crewed or empty. Only catapults you can see count.",
               ],
               [
                 'Building of a player you are at peace with',
