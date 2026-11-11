@@ -11,15 +11,18 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../../src/index.js';
+import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
 import { CombatIndex } from '../../../src/systems/conflict/combat-index.js';
 import { buildingBodyNodes } from '../../../src/systems/conflict/target-node.js';
 import { isFleeThreat, isValidTarget } from '../../../src/systems/conflict/targeting.js';
+import { dropPath } from '../../../src/systems/movement/nav-state.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../src/systems/spatial/metric.js';
 import { canonicalById, entityNode, NodeBuckets } from '../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { grassCellMap } from '../../fixtures/terrain.js';
+import { midColumnStep } from '../../fixtures/waypoints.js';
 import { combatantAtNode, P0, P1, VIKING, WOODCUTTER } from './stances/support.js';
 
 /**
@@ -56,6 +59,11 @@ const LONG_KEEP_WALLS = [0, 1, 2, 3, 4, 5, 6, 7].map((dx) => ({ dx, dy: 0 }));
 const MOVED_ACROSS_CELLS = 20;
 /** The anchor of the keep the across-builds test retypes. */
 const RETYPED_AT = { x: 20, y: 20 };
+/** A narrowed band's ground, and the column steps whose start and passed node lie on either side of its
+ *  edge: one entering it once its route drops, from a coarse cell the ground's box misses, one leaving it. */
+const GROUND = { x: 30, y: 66, radius: 18 };
+const ENTERS_FROM = { x: 30, y: 47 };
+const LEAVES_FROM = { x: 12, y: 67 };
 /** A third player: at peace with P0 both ways, while P1 holds `enemy` toward it one way only. */
 const P2 = 2;
 const OWNERS = [P0, P1, P2];
@@ -373,6 +381,41 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
     // Defeating the readonly view is the bug the verifier exists to catch: no generation bump.
     (sim.world.get(keep, Owner) as { player: number }).player = P2;
     expect(sim.world.verifyCaches().join('\n')).toContain('combatBuildingLayer');
+  });
+
+  it("narrows a band to its ground by each unit's live node, a route dropped after the build included", () => {
+    const sim = mappedSim(1);
+    const terrain = terrainOf(sim);
+    // Both walk a column step from a node on one side of the ground's edge, past one on the other.
+    const enters = combatantAtNode(sim, 0, 0, P1, MILITARY_MODE.ATTACK);
+    const leaves = combatantAtNode(sim, 0, 0, P1, MILITARY_MODE.ATTACK);
+    midColumnStep(sim.world, terrain, enters, ENTERS_FROM.x, ENTERS_FROM.y);
+    midColumnStep(sim.world, terrain, leaves, LEAVES_FROM.x, LEAVES_FROM.y);
+    const index = new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim));
+    const onGround = (e: Entity): boolean => {
+      const node = entityNode(sim.world, terrain, e);
+      return hexDistanceBetween(GROUND.x, GROUND.y, terrain.xOf(node), terrain.yOf(node)) <= GROUND.radius;
+    };
+    expect([onGround(enters), onGround(leaves)]).toEqual([false, true]);
+    dropPath(sim.world, enters);
+    dropPath(sim.world, leaves);
+    expect([onGround(enters), onGround(leaves)]).toEqual([true, false]);
+
+    const found = index.nearestFewOfBestRank(
+      GROUND.x,
+      GROUND.y,
+      0,
+      MAX_RADIUS,
+      () => 0,
+      1,
+      () => true,
+      FEW,
+      P0,
+      TAIL_RINGS,
+      'hex',
+      { ...GROUND, holds: onGround },
+    );
+    expect(found.map((f) => f.entity)).toEqual([enters]);
   });
 
   it('scans a query nested in an accept into its own buffer, leaving the outer band intact', () => {

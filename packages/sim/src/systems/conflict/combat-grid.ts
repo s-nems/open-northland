@@ -156,9 +156,10 @@ export interface CoarseCell {
 export type SearchMetric = 'manhattan' | 'hex';
 
 /**
- * The ground a search's acceptors all stand on: every one's own node lies within `radius` map points of
- * node (x, y), which `holds` answers for any indexed member. A unit is indexed at its own node, so a band
- * tests it by that node without a call; a building or vehicle spans many and is asked by `holds`.
+ * The ground a search's acceptors all stand on: every one's own node (`entityNode`) lies within `radius` map
+ * points of node (x, y), which `holds` answers for any indexed member. A band tests a unit by the node the
+ * layer holds it at while that is still its own ({@link CombatGrid.unitMayHaveMoved}) and asks `holds`
+ * otherwise; a building or vehicle spans many nodes and is always asked.
  */
 export interface BandGround {
   readonly x: number;
@@ -496,6 +497,12 @@ export class CombatGrid {
   /** Whether the unit layer holds `e`: a combatant as of the last build, at the node it stood on then. */
   holdsUnit(e: Entity): boolean {
     return this.units[e] !== undefined;
+  }
+
+  /** Whether held unit `e` may stand on another node than the layer holds it at: a Position or route write
+   *  since the layer's last sync, such as a route dropped mid column step, moves its node unseen. */
+  unitMayHaveMoved(e: Entity): boolean {
+    return this.moveFeed.mayHaveMoved(e);
   }
 
   /** The band scan scratch for nesting depth `depth`. */

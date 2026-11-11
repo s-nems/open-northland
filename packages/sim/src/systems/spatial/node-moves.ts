@@ -14,6 +14,9 @@ export interface NodeMoveFeed {
    *  {@link drain}'s consumer, the node `e` reads now, so the consumer need not re-derive it. */
   heldHx(e: Entity): number;
   heldHy(e: Entity): number;
+  /** Whether `e`'s node may differ from the one this feed's last drain left it at, asked without a pump:
+   *  a Position or route write to it waits for the next pump, or a pump since forwarded a change. */
+  mayHaveMoved(e: Entity): boolean;
 }
 
 /**
@@ -67,6 +70,11 @@ class NodeMoves {
   /** Whether `e`'s held node is its live one: held, and no write to `e` is waiting for the next pass. */
   holdsLive(e: Entity): boolean {
     return this.nodes.hx(e) !== NO_NODE && !this.writes.has(e);
+  }
+
+  /** Whether a write to `e` waits for the next pass. */
+  writePending(e: Entity): boolean {
+    return this.writes.has(e);
   }
 
   subscribe(): NodeMoveFeed {
@@ -140,6 +148,10 @@ class Subscription implements NodeMoveFeed {
 
   heldHy(e: Entity): number {
     return this.moves.heldHy(e);
+  }
+
+  mayHaveMoved(e: Entity): boolean {
+    return this.moves.writePending(e) || this.feed.has(e);
   }
 }
 

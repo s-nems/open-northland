@@ -544,7 +544,7 @@ export class CombatIndex {
       }
     }
     if (narrow !== null) {
-      // The bodies in the band are asked by member; the units come from the cells the ground reaches.
+      // The bodies in the band are asked by member; a unit only where its node may have moved.
       count = narrowKeys(scan, count, narrow.holds);
       count = this.appendUnitsOn(
         narrow,
@@ -572,8 +572,12 @@ export class CombatIndex {
     return scan;
   }
 
-  /** Append to `scan` from `count` the band's units standing on `ground`, read from the cells both the
-   *  band's box and the ground's overlap; returns the new count. */
+  /**
+   * Append to `scan` from `count` the band's units standing on `ground`; returns the new count. A unit is
+   * tested at the node the layer holds it at while that is its live node, so off the ground's cells only
+   * one whose node may have moved since the layer's sync ({@link CombatGrid.unitMayHaveMoved}) is asked,
+   * and that one by `holds`.
+   */
   private appendUnitsOn(
     ground: BandGround,
     scan: BandScan,
@@ -589,25 +593,30 @@ export class CombatIndex {
     const band = boxCellRange(fromX, fromY, maxDist);
     const on = boxCellRange(ground.x, ground.y, ground.radius);
     let n = count;
-    for (let cx = Math.max(band.cx0, on.cx0); cx <= Math.min(band.cx1, on.cx1); cx++) {
-      for (let cy = Math.max(band.cy0, on.cy0); cy <= Math.min(band.cy1, on.cy1); cy++) {
+    for (let cx = band.cx0; cx <= band.cx1; cx++) {
+      for (let cy = band.cy0; cy <= band.cy1; cy++) {
         const cell = this.grid.cellAt(cx, cy);
         if (cell === undefined || !unitsHoldBandCandidate(cell, hostile)) continue;
+        const offGround = cx < on.cx0 || cx > on.cx1 || cy < on.cy0 || cy > on.cy1;
         const { members, x, y, bit, tier } = cell.units;
         for (let i = 0; i < cell.units.count; i++) {
           const memberBit = bit[i] ?? 0;
           if (memberBit !== 0 && (memberBit & hostile) === 0) continue;
           if (firstTierOnly && tier[i] === 0) continue;
+          const member = members[i] ?? (0 as Entity);
+          const moved = this.grid.unitMayHaveMoved(member);
+          if (offGround && !moved) continue;
           const mx = x[i] ?? 0;
           const my = y[i] ?? 0;
-          if (hexDistanceBetween(ground.x, ground.y, mx, my) > ground.radius) continue;
           const distance =
             metric === 'hex'
               ? hexDistanceBetween(fromX, fromY, mx, my)
               : Math.abs(mx - fromX) + Math.abs(my - fromY);
           if (distance < minDist || distance > maxDist) continue;
+          if (moved ? !ground.holds(member) : hexDistanceBetween(ground.x, ground.y, mx, my) > ground.radius)
+            continue;
           if (n === scan.keys.length) growKeys(scan);
-          scan.keys[n++] = distance * CANDIDATE_ID_SPAN + (members[i] ?? 0);
+          scan.keys[n++] = distance * CANDIDATE_ID_SPAN + member;
         }
       }
     }
