@@ -24,17 +24,21 @@ import { dropOrderQueue, isOrderableSettler, mayTakeHome } from './guards.js';
 export function marry(world: World, ctx: SystemContext, command: Extract<Command, { kind: 'marry' }>): void {
   const e = command.entity;
   if (!isOrderableSettler(world, e) || !mayMarry(world, ctx.content, e)) return;
+  if (!weddingStarted(world, ctx, e)) ctx.events.emit({ kind: 'marriageUnmatched', entity: e });
+}
+
+/** Start `e`'s wedding with its partner and report whether one was found; `e` passed the `marry` gates.
+ *  Shared with the assistant's matchmaking, so an auto-started wedding picks exactly the player's partner. */
+export function weddingStarted(world: World, ctx: SystemContext, e: Entity): boolean {
   // Signpost confinement: the partner search only sees candidates inside the issuer's allowed area, the
   // same rule as every other target search.
   const terrain = ctx.terrain;
   const limit = terrain !== undefined ? navigationLimitFor(world, ctx.content, terrain, e) : null;
   const partner = findPartnerFor(world, ctx.content, e, terrain, limit);
-  if (partner === null) {
-    ctx.events.emit({ kind: 'marriageUnmatched', entity: e });
-    return;
-  }
+  if (partner === null) return false;
   dropOrderQueue(world, e);
   startWedding(world, e, partner);
+  return true;
 }
 
 /**

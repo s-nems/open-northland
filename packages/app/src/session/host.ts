@@ -155,6 +155,8 @@ export interface SessionHost {
   assistantPostsGraduates(player: number): boolean;
   /** Whether `player`'s gatherers move their own flags after the resources. */
   assistantMovesFlags(player: number): boolean;
+  /** Whether `player`'s assistant houses its homeless women and weds the housed single ones. */
+  assistantFoundsFamilies(player: number): boolean;
   needsEnabled(): boolean;
   fogMode(): FogMode;
   matchOutcome(player: number): MatchOutcome;

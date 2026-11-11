@@ -540,7 +540,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(82);
+  const roll = rng.int(83);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiControl carrier created/updated/destroyed - the
@@ -1236,6 +1236,10 @@ function nextCommand(rng: Rng): Command {
         ),
         vehicle: vehicleTarget(rng),
       };
+    case 82:
+      // The found-families switch: valid players have the assistant house and wed the fuzzed women
+      // against the stream's own marry and house orders; the out-of-range player is the owner refusal.
+      return { kind: 'setAssistantFoundFamilies', player: pick(rng, OWNERS), enabled: rng.int(2) === 0 };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }

@@ -1,6 +1,7 @@
 import { WERESNAKE_TRIBE, WEREWOLF_TRIBE } from '@open-northland/data';
 import {
   AiControl,
+  AssistantFoundsFamilies,
   AssistantMovesFlags,
   AssistantUpgradesTools,
   aiControlEntity,
@@ -81,6 +82,7 @@ function applyAiControl(
     withdrawMilitaryPublications(world, ctx, command.player);
     setAssistantSwitch(world, AssistantMovesFlags, command.player, false);
     setAssistantSwitch(world, AssistantUpgradesTools, command.player, false);
+    setAssistantSwitch(world, AssistantFoundsFamilies, command.player, false);
     revokeAssistantGrants(world, command.player, settlementGrantGoods(ctx));
     standDownAlarms(world, command.player);
     // Whoever takes the seat over inherits the colonies' routes as they stand.
@@ -141,6 +143,9 @@ function applyAiControl(
     setAssistantSwitch(world, AssistantUpgradesTools, command.player, false);
     revokeAssistantGrants(world, command.player, settlementGrantGoods(ctx));
   }
+  if (foundsFamilies(previous) && !foundsFamilies(next)) {
+    setAssistantSwitch(world, AssistantFoundsFamilies, command.player, false);
+  }
   const seat = world.mut(carrier, AiControl);
   seat.modules = modules;
   seat.mapAiEnabled = mapAiEnabled;
@@ -168,6 +173,12 @@ function standDownAlarms(world: World, player: number): void {
     if (world.get(e, Owner).player === player) alarmed.push(e);
   }
   for (const e of alarmed) world.remove(e, DefenceMode);
+}
+
+/** Whether a controller that keeps the "found families" switch on runs: the home settlement's population
+ *  module or the colonies. */
+function foundsFamilies(enables: ComputerModuleEnables): boolean {
+  return enables.homeExpansion || everyColonyModule(enables);
 }
 
 /** Whether every gate in `gates` is on - the conjunction that keeps an entry's counters published. */

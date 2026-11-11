@@ -14,7 +14,8 @@ export type AssistantCommand =
   | AssistantCounterCommand
   | AssistantPostGraduatesCommand
   | AssistantMoveFlagsCommand
-  | AssistantUpgradeToolsCommand;
+  | AssistantUpgradeToolsCommand
+  | AssistantFoundFamiliesCommand;
 
 type AssistantGrantCommand = {
   /**
@@ -133,6 +134,18 @@ type AssistantUpgradeToolsCommand = {
    * carrier. While on, a worker holding a tool swaps it for a granted tool with a higher production bonus.
    */
   readonly kind: 'setAssistantUpgradeTools';
+  /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
+  readonly player: number;
+  readonly enabled: boolean;
+};
+
+type AssistantFoundFamiliesCommand = {
+  /**
+   * Switch `player`'s "found families" on or off, held on the per-player `AssistantFoundsFamilies`
+   * carrier. While on, a homeless grown woman takes a home with a free family slot and a housed single
+   * woman is wed while a man is free to marry.
+   */
+  readonly kind: 'setAssistantFoundFamilies';
   /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
   readonly player: number;
   readonly enabled: boolean;

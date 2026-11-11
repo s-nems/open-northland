@@ -1528,6 +1528,10 @@ export const enGame = {
           label: 'Extractors move their flag automatically',
           tip: 'When the resource by a flag runs out, the flag follows it, {min}-{max} hexes away.',
         },
+        foundFamilies: {
+          label: 'Found families',
+          tip: 'A homeless woman moves into the nearest home with a free place. A woman who already has a home marries once a man is free.',
+        },
       },
       notes: {
         expected: {

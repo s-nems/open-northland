@@ -13,11 +13,18 @@ import type { SessionHost } from '../../session/index.js';
 /** The switches that map to no good: each flips one sim assistant switch. */
 type SimSwitchId = Exclude<AssistantGrantId, GiveSwitchId>;
 const SIM_SWITCH_COMMANDS: Readonly<
-  Record<SimSwitchId, 'setAssistantUpgradeTools' | 'setAssistantPostGraduates' | 'setAssistantMoveFlags'>
+  Record<
+    SimSwitchId,
+    | 'setAssistantUpgradeTools'
+    | 'setAssistantPostGraduates'
+    | 'setAssistantMoveFlags'
+    | 'setAssistantFoundFamilies'
+  >
 > = {
   upgradeTools: 'setAssistantUpgradeTools',
   postGraduates: 'setAssistantPostGraduates',
   moveFlags: 'setAssistantMoveFlags',
+  foundFamilies: 'setAssistantFoundFamilies',
 };
 const isSimSwitch = (id: AssistantGrantId): id is SimSwitchId => id in SIM_SWITCH_COMMANDS;
 
@@ -53,6 +60,7 @@ export function assistantGrantsSeam(
     | 'assistantUpgradesTools'
     | 'assistantPostsGraduates'
     | 'assistantMovesFlags'
+    | 'assistantFoundsFamilies'
   >,
   content: GrantContent,
   player: () => number | null,
@@ -69,6 +77,7 @@ export function assistantGrantsSeam(
         if (id === 'upgradeTools') return host.assistantUpgradesTools(seat);
         if (id === 'postGraduates') return host.assistantPostsGraduates(seat);
         if (id === 'moveFlags') return host.assistantMovesFlags(seat);
+        if (id === 'foundFamilies') return host.assistantFoundsFamilies(seat);
         const goods = grantGoods.get(id);
         return goods !== undefined && goods.every((goodType) => granted.has(goodType));
       };

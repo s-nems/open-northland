@@ -583,6 +583,11 @@ export const enContent = {
       summary:
         'Three extractors holding wooden tools walk to the headquarters for its iron tools, because the assistant replaces wooden tools. The part-used wooden tools are lost, the fresh one goes back into the store, and the extractor already holding iron stays put.',
     },
+    'assistant-families': {
+      title: 'The assistant founds families',
+      summary:
+        'Three homeless women and three men stand by a two-family home while the assistant founds families. Two women move in and marry, and their husbands move in with them. The third finds no free place, stays homeless and stays single.',
+    },
     'gatherer-flag-follow': {
       title: 'Flags follow the resources',
       summary:

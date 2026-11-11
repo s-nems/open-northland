@@ -16,10 +16,7 @@ import type { Entity } from '../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../src/index.js';
 import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
 import { populationModule } from '../../../../src/systems/computer-player/index.js';
-import {
-  IDLE_MEN_HOLD_BIRTHS,
-  MEN_PROPOSE_UNTIL_TICKS,
-} from '../../../../src/systems/computer-player/population.js';
+import { IDLE_MEN_HOLD_BIRTHS } from '../../../../src/systems/computer-player/population.js';
 import { builderCap } from '../../../../src/systems/computer-player/workforce/staffing.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import {
@@ -110,54 +107,25 @@ describe('population module (homeExpansion)', () => {
     expect([...populationModule.run(oily.world, oilyCtx, SEAT)].filter(isOilOrder)).toEqual([]);
   });
 
-  function menOf(sim: Simulation): Entity[] {
-    return [...sim.world.query(Settler)]
-      .filter((e) => sim.world.get(e, Settler).jobType !== WOMAN)
-      .sort((a, b) => a - b);
-  }
-
-  it('orders one wedding per single woman from the men side while single men exist', () => {
+  it('turns the found-families switch on once and orders no wedding or home itself', () => {
     const sim = populationSim();
     const commands = [...populationModule.run(sim.world, ctxOf(sim), SEAT)];
-    const weddings = commands.filter((c) => c.kind === 'marry');
-    expect(weddings.map((c) => c.entity)).toEqual(menOf(sim));
-  });
-
-  it('weds single builders first in the opening, then from the women side, and every woman marries', () => {
-    const sim = aiSim();
-    placeHq(sim);
-    for (let i = 0; i < 2; i++) {
-      sim.enqueueSetup({
-        kind: 'spawnSettler',
-        jobType: WOMAN,
-        x: 6 + 2 * i,
-        y: 8,
-        tribe: VIKING,
-        owner: SEAT,
-      });
-    }
-    spawnMen(sim, 1);
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType: BUILDER, x: 30, y: 30, tribe: VIKING, owner: SEAT });
+    expect(commands.filter((c) => c.kind === 'marry' || c.kind === 'assignHouse')).toEqual([]);
+    const switches = commands.filter((c) => c.kind === 'setAssistantFoundFamilies');
+    expect(switches).toEqual([{ kind: 'setAssistantFoundFamilies', player: SEAT, enabled: true }]);
+    for (const c of switches) sim.enqueueSetup(c);
     sim.step();
-    const builder = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === BUILDER);
-    const [civilist] = menOf(sim).filter((e) => e !== builder);
-    const opening = [...populationModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'marry');
-    expect(opening.map((c) => c.entity)).toEqual([builder, civilist]);
-
-    const later = { ...ctxOf(sim), tick: MEN_PROPOSE_UNTIL_TICKS };
-    const after = [...populationModule.run(sim.world, later, SEAT)].filter((c) => c.kind === 'marry');
-    expect(after.map((c) => c.entity)).toEqual(womenOf(sim));
-
-    for (let i = 0; i < 3000 && womenOf(sim).some((w) => !sim.world.has(w, Marriage)); i++) {
-      for (const c of populationModule.run(sim.world, ctxOf(sim), SEAT))
-        if (c.kind === 'marry') sim.enqueueSetup(c);
-      sim.step();
-    }
-    expect(womenOf(sim).every((w) => sim.world.has(w, Marriage))).toBe(true);
-    expect(builder !== undefined && sim.world.has(builder, Marriage)).toBe(true);
+    expect(sim.assistantFoundsFamilies(SEAT)).toBe(true);
+    const again = [...populationModule.run(sim.world, ctxOf(sim), SEAT)];
+    expect(again.filter((c) => c.kind === 'setAssistantFoundFamilies')).toEqual([]);
   });
 
-  it('houses married women and drives the birth counters: daughters to the slots, sons infinite', () => {
+  /** Step until the assistant has housed every woman, a few decision beats at most. */
+  function stepUntilHoused(sim: Simulation): void {
+    for (let i = 0; i < 100 && womenOf(sim).some((w) => !sim.world.has(w, Residence)); i++) sim.step();
+  }
+
+  it('has the assistant house the women and drives the birth counters: daughters to the slots, sons infinite', () => {
     const sim = populationSim();
     sim.enqueueSetup({
       kind: 'placeBuilding',
@@ -168,21 +136,20 @@ describe('population module (homeExpansion)', () => {
       owner: SEAT,
     });
     for (const woman of womenOf(sim)) sim.enqueueSetup({ kind: 'marry', entity: woman });
-    // Let the couples walk together and kiss - both marriages must stand before the module houses them.
     for (let i = 0; i < 3000 && womenOf(sim).some((w) => !sim.world.has(w, Marriage)); i++) sim.step();
     expect(womenOf(sim).every((w) => sim.world.has(w, Marriage))).toBe(true);
 
     // 2 women against 2 family slots: no daughter deficit, so the module raises only the standing
     // infinite son counter - the assistant keeps every family expecting a boy from here on.
     const houseCommands = [...populationModule.run(sim.world, ctxOf(sim), SEAT)];
-    const home = entityOfBuilding(sim, HOME_TYPE);
-    expect(houseCommands.filter((c) => c.kind === 'assignHouse').map((c) => c.house)).toEqual([home, home]);
     expect(houseCommands.filter((c) => c.kind === 'makeChild')).toEqual([]);
     expect(houseCommands.filter((c) => c.kind === 'setAssistantCounter')).toEqual([
       { kind: 'setAssistantCounter', player: SEAT, counter: 'extraMen', value: 0, infinite: true },
     ]);
     for (const c of houseCommands) sim.enqueueSetup(c);
-    sim.step();
+    stepUntilHoused(sim);
+    const home = entityOfBuilding(sim, HOME_TYPE);
+    expect(womenOf(sim).map((w) => sim.world.get(w, Residence).home)).toEqual([home, home]);
 
     // Both counters at their wanted state, everyone married and housed: the decision is a no-op.
     expect([...populationModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
@@ -290,7 +257,7 @@ describe('population module (homeExpansion)', () => {
     for (const woman of womenOf(sim)) sim.enqueueSetup({ kind: 'marry', entity: woman });
     for (let i = 0; i < 3000 && womenOf(sim).some((w) => !sim.world.has(w, Marriage)); i++) sim.step();
     for (const c of populationModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
-    sim.step();
+    stepUntilHoused(sim);
     const razed = entityOfBuilding(sim, HOME_TYPE);
     expect(womenOf(sim).every((w) => sim.world.get(w, Residence).home === razed)).toBe(true);
 
@@ -304,13 +271,10 @@ describe('population module (homeExpansion)', () => {
       owner: SEAT,
     });
     sim.step();
+    stepUntilHoused(sim);
 
     const rebuilt = entityOfBuilding(sim, HOME_TYPE);
-    const houseCommands = [...populationModule.run(sim.world, ctxOf(sim), SEAT)];
-    expect(houseCommands.filter((c) => c.kind === 'assignHouse').map((c) => c.house)).toEqual([
-      rebuilt,
-      rebuilt,
-    ]);
+    expect(womenOf(sim).map((w) => sim.world.get(w, Residence).home)).toEqual([rebuilt, rebuilt]);
   });
 
   it('does not count a heroine as daughter stock for a family slot', () => {

@@ -1658,6 +1658,10 @@ export const deGame = {
           label: 'Abbauer versetzen ihre Fahne automatisch',
           tip: 'Wenn der Rohstoff bei einer Fahne erschöpft ist, wird die Fahne zu einem neuen Vorkommen versetzt, mit {min}–{max} Hexfeldern Abstand zum Vorkommen.',
         },
+        foundFamilies: {
+          label: 'Familien gründen',
+          tip: 'Eine obdachlose Frau zieht in das nächste Haus mit einem freien Platz. Eine Frau, die schon ein Haus hat, heiratet, sobald ein Mann frei ist.',
+        },
       },
       notes: {
         expected: {

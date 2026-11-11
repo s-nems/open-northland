@@ -581,6 +581,11 @@ export const plContent = {
       summary:
         'Trzech zbieraczy z drewnianymi narzędziami idzie do kwatery głównej po żelazne, bo asystent wymienia narzędzia na lepsze. Częściowo zużyte drewniane przepadają, nieużywane wraca do magazynu, a zbieracz z żelaznym zostaje na miejscu.',
     },
+    'assistant-families': {
+      title: 'Asystent zakłada rodziny',
+      summary:
+        'Trzy bezdomne kobiety i trzech mężczyzn stoją przy domu na dwie rodziny, a asystent zakłada rodziny. Dwie kobiety wprowadzają się do domu i wychodzą za mąż, a mężowie zamieszkują z nimi. Trzecia nie znajduje wolnego miejsca, zostaje bezdomna i niezamężna.',
+    },
     'gatherer-flag-follow': {
       title: 'Flagi idą za surowcami',
       summary:

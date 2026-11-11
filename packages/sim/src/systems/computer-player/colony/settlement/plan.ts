@@ -2,7 +2,6 @@ import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
   Female,
-  Marriage,
   playerPlacementTribes,
   Residence,
   UnderConstruction,
@@ -11,7 +10,7 @@ import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { buildingTypeByContentId } from '../../../ai-shared/content-lookup.js';
 import { isBuilt } from '../../../ai-shared/seat-roster.js';
-import { mayMarry } from '../../../family/eligibility.js';
+import { isAdultSettler } from '../../../family/eligibility.js';
 import { familyCountOf } from '../../../family/households.js';
 import { ROOM_HOME_BUILDING } from '../../build-order/ground/room.js';
 import { topEnabledTier } from '../../top-tier.js';
@@ -135,12 +134,12 @@ function homeStep(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity
   // Owner ruling: a colony home goes to the top level at once, since the trader brings its materials.
   const type = topEnabledTier(world, ctx, seat, tribe, base);
   const people = colonists(env);
-  const women = people.filter((e) => world.has(e, Female));
-  const wives = women.filter((e) => world.has(e, Marriage) && !world.has(e, Residence)).length;
-  const brides = women.filter((e) => mayMarry(world, ctx.content, e)).length;
-  const grooms = people.filter((e) => !world.has(e, Female) && mayMarry(world, ctx.content, e)).length;
+  // The assistant houses every grown woman, wed or not, so each one without a home wants a slot.
+  const homeless = people.filter(
+    (e) => world.has(e, Female) && !world.has(e, Residence) && isAdultSettler(world, e),
+  ).length;
   const due = homeStepDue({
-    homeless: wives + Math.min(brides, grooms),
+    homeless,
     freeSlots: homeSlots(env, buildings).free,
     fed: colonyFed(env, buildings, people),
     roomy: roomFor(env, colony, buildings, type),

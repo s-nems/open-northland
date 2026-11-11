@@ -585,6 +585,11 @@ export const deContent = {
       summary:
         'Drei Abbauer mit Holzwerkzeug gehen zum Hauptquartier und holen sich dessen Eisenwerkzeug, weil der Assistent Holzwerkzeug ersetzt. Die angebrauchten Holzwerkzeuge gehen verloren, das unbenutzte kommt zurück ins Lager, und der Abbauer mit Eisenwerkzeug bleibt stehen.',
     },
+    'assistant-families': {
+      title: 'Der Assistent gründet Familien',
+      summary:
+        'Drei obdachlose Frauen und drei Männer stehen an einem Haus für zwei Familien, und der Assistent gründet Familien. Zwei Frauen ziehen ein und heiraten, ihre Männer ziehen zu ihnen. Die dritte findet keinen freien Platz, bleibt obdachlos und ledig.',
+    },
     'gatherer-flag-follow': {
       title: 'Fahnen folgen den Rohstoffen',
       summary:

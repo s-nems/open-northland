@@ -1509,6 +1509,10 @@ export const plGame = {
           label: 'Zbieracze automatycznie przenoszą flagę',
           tip: 'Gdy surowiec przy fladze się kończy, flaga przesuwa się za nim, {min}-{max} hexów od niego.',
         },
+        foundFamilies: {
+          label: 'Zakładaj rodziny',
+          tip: 'Bezdomna kobieta wprowadza się do najbliższego domu z wolnym miejscem. Kobieta, która ma już dom, wychodzi za mąż, gdy jest wolny mężczyzna.',
+        },
       },
       notes: {
         expected: {

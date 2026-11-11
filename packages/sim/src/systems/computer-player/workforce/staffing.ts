@@ -171,7 +171,7 @@ export function staffBuildings(
         const ofTrade = (e: Entity): boolean =>
           world.get(e, Settler).jobType === slot.jobType && qualifies(e);
         // A craftsman is picked unwed among equals, so the trade a seat's discovery may wait on goes to a
-        // man no wedding walk or wife's errand holds back, and the builders take the wives (owner ruling).
+        // man no wedding walk or wife's errand holds back.
         const unwedFirst = helpers ? undefined : (e: Entity): boolean => isUnwed(world, e);
         for (let i = held; i < want; i++) {
           let spare =

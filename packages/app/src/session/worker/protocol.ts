@@ -194,6 +194,7 @@ export interface AssistantFacts {
   readonly postsGraduates: boolean;
   readonly movesFlags: boolean;
   readonly upgradesTools: boolean;
+  readonly foundsFamilies: boolean;
 }
 
 /** One stepped tick as the worker saw it. */

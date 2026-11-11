@@ -322,6 +322,16 @@ export const AssistantUpgradesTools = defineComponent<{
   player: number;
 }>('AssistantUpgradesTools', 'players');
 
+/**
+ * The per-player "found families" switch, on while the carrier exists: a homeless grown woman is moved
+ * into a home with a free family slot, and a housed single woman is wed while a man is free to marry.
+ * Off by default for a player; a computer seat keeps it on.
+ */
+export const AssistantFoundsFamilies = defineComponent<{
+  /** The player slot the switch belongs to (`[0, MAX_PLAYERS)`). */
+  player: number;
+}>('AssistantFoundsFamilies', 'players');
+
 /** An on/off assistant switch: the per-player carrier exists while the switch is on. */
 export type AssistantSwitch = Component<{ player: number }>;
 
@@ -351,6 +361,11 @@ export function assistantUpgradesTools(world: World, player: number): boolean {
   return assistantSwitchEntity(world, AssistantUpgradesTools, player) !== null;
 }
 
+/** Whether `player`'s assistant houses and weds its women ({@link AssistantFoundsFamilies}). */
+export function assistantFoundsFamilies(world: World, player: number): boolean {
+  return assistantSwitchEntity(world, AssistantFoundsFamilies, player) !== null;
+}
+
 /** Every per-player carrier the assistant views read: its lists, orders, counters and switches. */
 const ASSISTANT_SETTING_COMPONENTS: readonly Component<unknown>[] = [
   AssistantGrants,
@@ -363,6 +378,7 @@ const ASSISTANT_SETTING_COMPONENTS: readonly Component<unknown>[] = [
   AssistantPostsGraduates,
   AssistantMovesFlags,
   AssistantUpgradesTools,
+  AssistantFoundsFamilies,
 ];
 
 /** A token that changes whenever any seat's assistant settings may read differently: the sum of the

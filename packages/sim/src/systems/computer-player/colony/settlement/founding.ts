@@ -16,12 +16,12 @@ import {
   reachableResourceTest,
   workableResourceTest,
 } from '../../live-resources.js';
+import { familiesSwitch } from '../../population.js';
 import type { ColonyEnv, ColonyView } from '../env.js';
 import { colonists, colonyBuildings, colonyOrigin, storeOf, storeTiers } from '../roster.js';
 import { colonySpot, storeSupply, workshopSpot } from '../spot.js';
 import { colonyStoreType } from '../store-type.js';
 import { unloaded } from '../voyage/voyage.js';
-import { colonyFamilies } from './families.js';
 import { porterFlagOrders } from './haulers.js';
 import { chainStepOf } from './industry.js';
 import { COLONY_SPOT_NODES } from './industry-read.js';
@@ -146,8 +146,9 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
 
 /**
  * Founding and running: the colony raises its plan, its first store first, posts its men by {@link POSTS},
- * marries and houses its people. It runs on, not stopping at `running`, so a post whose man fell is filled by
- * the next free one. `running` starts once the store stands, the hold is empty and a gatherer works.
+ * has the assistant house and wed its women. It runs on, not stopping at `running`, so a post whose man
+ * fell is filled by the next free one. `running` starts once the store stands, the hold is empty and a
+ * gatherer works.
  */
 export function foundColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx } = env;
@@ -175,6 +176,6 @@ export function foundColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[]
     ),
     ...porterFlagOrders(env, store),
     ...raiseSignposts(env, men, read),
-    ...colonyFamilies(world, ctx, people, buildings),
+    ...familiesSwitch(world, env.seat),
   ];
 }

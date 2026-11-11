@@ -6,6 +6,7 @@ import {
   AssistantCivilianOnlyGrants,
   type AssistantCounterKind,
   AssistantCounters,
+  AssistantFoundsFamilies,
   AssistantGrants,
   AssistantMovesFlags,
   AssistantPostsGraduates,
@@ -91,6 +92,14 @@ export function setAssistantUpgradeTools(
   command: Extract<Command, { kind: 'setAssistantUpgradeTools' }>,
 ): void {
   setAssistantSwitch(world, AssistantUpgradesTools, command.player, command.enabled);
+}
+
+/** Switch whether `player`'s assistant houses and weds its women - see the command doc. */
+export function setAssistantFoundFamilies(
+  world: World,
+  command: Extract<Command, { kind: 'setAssistantFoundFamilies' }>,
+): void {
+  setAssistantSwitch(world, AssistantFoundsFamilies, command.player, command.enabled);
 }
 
 /** Turn `player`'s `toggle` on or off: the carrier exists while it is on. */

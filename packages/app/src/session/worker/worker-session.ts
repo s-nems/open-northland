@@ -556,6 +556,7 @@ class WorkerClient<E> {
       assistantPostsGraduates: (player) => assistantFacts(facts(), player).postsGraduates,
       assistantMovesFlags: (player) => assistantFacts(facts(), player).movesFlags,
       assistantUpgradesTools: (player) => assistantFacts(facts(), player).upgradesTools,
+      assistantFoundsFamilies: (player) => assistantFacts(facts(), player).foundsFamilies,
       needsEnabled: () => facts().needsEnabled,
       fogMode: () => facts().fogMode,
       matchOutcome: (player) => facts().matchOutcomes[player] ?? 'undecided',
@@ -693,6 +694,7 @@ function assistantFacts(facts: WorldFacts, player: number): AssistantFacts {
       postsGraduates: false,
       movesFlags: false,
       upgradesTools: false,
+      foundsFamilies: false,
     }
   );
 }

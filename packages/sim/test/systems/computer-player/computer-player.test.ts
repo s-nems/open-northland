@@ -268,6 +268,37 @@ describe('setAiControl - the AI seat flag', () => {
     expect(sim.assistantGrants(AI_SEAT)).toEqual([]);
   });
 
+  it('switches the family founding off on disable, and when neither population nor a colony runs', () => {
+    const sim = fresh();
+    const familiesOn = (): void => {
+      sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: true });
+      sim.enqueueSetup({ kind: 'setAssistantFoundFamilies', player: AI_SEAT, enabled: true });
+      sim.step();
+      expect(sim.assistantFoundsFamilies(AI_SEAT)).toBe(true);
+    };
+    const setModules = (modules: { homeExpansion: boolean; houseBuild?: boolean }): void => {
+      sim.enqueueSetup({
+        kind: 'setAiControl',
+        player: AI_SEAT,
+        enabled: true,
+        computerEnabled: true,
+        modules,
+      });
+      sim.step();
+    };
+    familiesOn();
+    sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: false });
+    sim.step();
+    expect(sim.assistantFoundsFamilies(AI_SEAT)).toBe(false);
+
+    familiesOn();
+    // The colonies still found families with the home population module off.
+    setModules({ homeExpansion: false });
+    expect(sim.assistantFoundsFamilies(AI_SEAT)).toBe(true);
+    setModules({ homeExpansion: false, houseBuild: false });
+    expect(sim.assistantFoundsFamilies(AI_SEAT)).toBe(false);
+  });
+
   it('switches the flag follow and the tool upgrade off on disable, and when the workforce module turns off', () => {
     const sim = fresh();
     sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: true });

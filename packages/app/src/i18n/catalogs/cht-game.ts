@@ -1480,6 +1480,10 @@ export const chtGame = {
           label: '採集者自動移動旗幟',
           tip: '旗幟旁的資源用完時，旗幟會跟著資源移動，距離 {min} 到 {max} 格。',
         },
+        foundFamilies: {
+          label: '組建家庭',
+          tip: '無家可歸的女人會搬進最近的有空位的房屋。已有住處的女人在有單身男人時會結婚。',
+        },
       },
       notes: {
         expected: {

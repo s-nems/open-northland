@@ -2,7 +2,6 @@ import type { ContentSet } from '@open-northland/data';
 import {
   Age,
   Female,
-  isMachinePlayer,
   JobAssignment,
   Marriage,
   ownerOf,
@@ -95,9 +94,8 @@ const CIVILIAN_RANK = 1;
  * so a man passing through, such as a ship's hand ashore at another island, is not wed into a household
  * across water, and a seeker away from her own settlement weds no one there.
  *
- * Our own rule: a human seat's woman takes a man with a trade before any civilian, nearest within each
- * group, so the civilians the assistant drafts into the army stay single while a working man is free to
- * wed. A machine seat's bride keeps the nearest man, so she never walks out to a far building site.
+ * Our own rule: a woman takes a man with a trade before any civilian, nearest within each group, so the
+ * civilians the assistant drafts into the army stay single while a working man is free to wed.
  */
 export function findPartnerFor(
   world: World,
@@ -112,7 +110,6 @@ export function findPartnerFor(
   const tribe = world.get(seeker, Settler).tribe;
   const owner = ownerOf(world, seeker);
   const seekerFemale = world.has(seeker, Female);
-  const workersFirst = seekerFemale && owner !== undefined && !isMachinePlayer(world, owner);
   const settlement =
     terrain === undefined || owner === undefined
       ? null
@@ -128,7 +125,7 @@ export function findPartnerFor(
     if (e === seeker || !mayMarry(world, content, e)) continue;
     if (world.get(e, Settler).tribe !== tribe || ownerOf(world, e) !== owner) continue;
     if (world.has(e, Female) === seekerFemale) continue;
-    const rank = workersFirst && isCivilianTrade(world.get(e, Settler).jobType) ? CIVILIAN_RANK : WORKER_RANK;
+    const rank = seekerFemale && isCivilianTrade(world.get(e, Settler).jobType) ? CIVILIAN_RANK : WORKER_RANK;
     const p = world.get(e, Position);
     const hx = nodeHxOfPosition(p.x, p.y);
     const hy = nodeHyOfPosition(p.x, p.y);

@@ -33,6 +33,7 @@ const simGranting = (
   assistantPostsGraduates: () => boolean;
   assistantMovesFlags: () => boolean;
   assistantUpgradesTools: () => boolean;
+  assistantFoundsFamilies: () => boolean;
 } => ({
   assistantGrants: () => granted,
   assistantSoldierOnlyGrants: () => soldiersOnly,
@@ -40,6 +41,7 @@ const simGranting = (
   assistantPostsGraduates: () => posts,
   assistantMovesFlags: () => movesFlags,
   assistantUpgradesTools: () => false,
+  assistantFoundsFamilies: () => false,
 });
 
 const SHOES = 30;
@@ -86,6 +88,7 @@ describe('assistantGrantsSeam', () => {
       upgradeTools: false,
       postGraduates: false,
       moveFlags: false,
+      foundFamilies: false,
     });
     expect(
       assistantGrantsSeam(

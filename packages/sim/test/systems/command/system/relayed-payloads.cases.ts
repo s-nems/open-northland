@@ -319,6 +319,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     setAssistantPostGraduates: [{ player: SEAT, enabled: true }],
     setAssistantMoveFlags: [{ player: SEAT, enabled: true }],
     setAssistantUpgradeTools: [{ player: SEAT, enabled: true }],
+    setAssistantFoundFamilies: [{ player: SEAT, enabled: true }],
     setAssistantWeaponVeto: [{ player: SEAT, goodType: SWORD, vetoed: true }],
     setAssistantWeaponOrder: [{ player: SEAT, intent: 'trainSword', order: [SWORD] }],
     setAssistantArmorOrder: [{ player: SEAT, intent: 'trainBow', order: [SHOES, WOOD], off: [WOOD] }],

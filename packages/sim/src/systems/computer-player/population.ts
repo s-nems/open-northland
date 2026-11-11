@@ -1,12 +1,12 @@
 import {
   Age,
   AssistantRecruit,
+  assistantFoundsFamilies,
   Building,
   BuildMode,
   Female,
   JobAssignment,
   Marriage,
-  Residence,
   Settler,
 } from '../../components/index.js';
 import type { PlayerCommand } from '../../core/commands/index.js';
@@ -18,74 +18,38 @@ import { isBuilt } from '../ai-shared/seat-roster.js';
 import { builderJobOf, civilianCount, isAllocatableMan } from '../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../context.js';
 import { liveWorkFlag } from '../economy/work-flag.js';
-import { isAdultSettler, mayMarry } from '../family/eligibility.js';
+import { isAdultSettler } from '../family/eligibility.js';
 import { homeQualityUseFor, householdGoodAllowed } from '../family/home-quality.js';
-import { familyCountOf } from '../family/households.js';
 import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
 import { type ComputerProfile, computerProfileOf, shareOf } from './difficulty.js';
 import { bookedBirths, femaleStockOf } from './female-stock.js';
-import { minutesToTicks } from './game-phase.js';
 import type { ComputerModule } from './index.js';
-import { seatEarningTrades } from './technology/apprentices.js';
 import { builderCap } from './workforce/staffing.js';
-
-/** Until when the seat's weddings go out from the men's side in husband order, in ticks (owner ruling:
- *  builders take the wives in the first 30 game minutes). Later the women's side orders, each bride
- *  taking the man nearest her, so no bride walks out to a builder on a far site. */
-export const MEN_PROPOSE_UNTIL_TICKS = minutesToTicks(30);
 
 /** How many idle men beyond the builder reserve hold the sons counter at zero (authored). */
 export const IDLE_MEN_HOLD_BIRTHS = 3;
 
 /**
- * The HomeExpansion module (authored): who marries, which family takes a free home slot, and the birth
- * counters the settlement assistant is held at - daughters up to the housing stock, sons unbounded
- * unless idle men stand beyond the builder reserve ({@link idleMenHoldBirths}), both capped together on
- * a lower difficulty ({@link birthCounters}). It also lets its homes
+ * The HomeExpansion module (authored): the settlement assistant houses and weds the seat's women
+ * ({@link familiesSwitch}) and is held at the birth counters set here - daughters up to the housing
+ * stock, sons unbounded unless idle men stand beyond the builder reserve ({@link idleMenHoldBirths}),
+ * both capped together on a lower difficulty ({@link birthCounters}). It also lets its homes
  * burn the holy oil its druid boils, which a player's policy leaves off by default.
  */
 
 function runPopulation(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
   if (seatBaseOf(world, ctx, player) === null) return [];
-  const commands: PlayerCommand[] = [];
+  const commands: PlayerCommand[] = familiesSwitch(world, player);
   const settlers = homeSettlers(world, ctx, player);
   const women = settlers.filter((e) => world.has(e, Female) && isAdultSettler(world, e));
 
-  // One marry order per possible couple, capped by the smaller side so the command log does not fill with
-  // orders that would only auto-cancel. In the opening every order goes from the men's side in husband
-  // order, each man wedding the woman nearest him, so a woman's order never picks the farmer only because
-  // he stands nearest; the rest go from the women's side.
-  const singleWomen = women.filter((e) => mayMarry(world, ctx.content, e));
-  const singleMen = settlers.filter(
-    (e) => !world.has(e, Female) && isAdultSettler(world, e) && mayMarry(world, ctx.content, e),
-  );
-  const orders = Math.min(singleWomen.length, singleMen.length);
-  if (orders > 0) {
-    const proposers =
-      ctx.tick < MEN_PROPOSE_UNTIL_TICKS ? husbandOrder(world, ctx, player, singleMen) : singleWomen;
-    for (const e of proposers.slice(0, orders)) commands.push({ kind: 'marry', entity: e });
-  }
-
-  // A married, unhoused woman's family takes the first free family slot, in canonical order; slots
-  // claimed this decision are tracked so two families never target the same one.
   const index = contentIndex(ctx.content);
-  const homes: Array<{ entity: Entity; free: number }> = [];
   let familySlotsTotal = 0;
   for (const e of homeBuildings(world, ctx, player)) {
     if (!isBuilt(world, e)) continue;
     const type = index.buildings.get(world.get(e, Building).buildingType);
-    if (type === undefined || type.kind !== 'home') continue;
-    familySlotsTotal += type.homeSize;
-    homes.push({ entity: e, free: type.homeSize - familyCountOf(world, e) });
-  }
-  for (const woman of women) {
-    if (world.has(woman, Residence)) continue;
-    if (!hasLivingSpouse(world, woman)) continue;
-    const home = homes.find((h) => h.free > 0);
-    if (home === undefined) break; // no free slots - wait for the next house
-    home.free--;
-    commands.push({ kind: 'assignHouse', entity: woman, house: home.entity });
+    if (type?.kind === 'home') familySlotsTotal += type.homeSize;
   }
 
   // Both breeding counters are absolute re-sets, issued only when the wanted state differs. An
@@ -111,37 +75,6 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
     commands.push({ kind: 'setHouseholdGoodUse', player, effect: 'piety', allowed: true });
   }
   return commands;
-}
-
-/** Husband ranks, lowest weds first (owner ruling): the builders, whose trade earns the seat nothing a
- *  wife's errands delay; then the men of a trade no pending discovery waits on; last the men still
- *  earning one, such as the farmer toward the miller's trade. */
-const BUILDER_HUSBAND = 0;
-const IDLE_TRADE_HUSBAND = 1;
-const EARNING_HUSBAND = 2;
-
-/**
- * `singleMen` in the order they propose: by husband rank, ascending id within a rank. A priority only:
- * the caller still orders one man per single woman, so every woman marries while single men exist.
- */
-function husbandOrder(
-  world: World,
-  ctx: SystemContext,
-  player: number,
-  singleMen: readonly Entity[],
-): Entity[] {
-  const builderJob = builderJobOf(ctx);
-  let earning: ReadonlySet<number> | undefined;
-  const rankOf = (e: Entity): number => {
-    const job = world.get(e, Settler).jobType;
-    if (job !== null && job === builderJob) return BUILDER_HUSBAND;
-    if (job === null) return IDLE_TRADE_HUSBAND;
-    earning ??= seatEarningTrades(world, ctx, player);
-    return earning.has(job) ? EARNING_HUSBAND : IDLE_TRADE_HUSBAND;
-  };
-  const ranked = singleMen.map((e) => ({ e, rank: rankOf(e) }));
-  ranked.sort((a, b) => a.rank - b.rank || a.e - b.e);
-  return ranked.map((r) => r.e);
 }
 
 /**
@@ -203,6 +136,14 @@ function minorsOf(world: World, settlers: readonly Entity[]): number {
 function hasLivingSpouse(world: World, e: Entity): boolean {
   const marriage = world.tryGet(e, Marriage);
   return marriage !== undefined && world.isAlive(marriage.spouse);
+}
+
+/** The command turning the seat's "found families" switch on, until it is: its women are housed and wed
+ *  by the same assistant feature a player switches on. */
+export function familiesSwitch(world: World, player: number): PlayerCommand[] {
+  return assistantFoundsFamilies(world, player)
+    ? []
+    : [{ kind: 'setAssistantFoundFamilies', player, enabled: true }];
 }
 
 export const populationModule: ComputerModule = {

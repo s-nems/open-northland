@@ -38,6 +38,7 @@ function readAssistants(sim: Simulation): readonly AssistantFacts[] {
       postsGraduates: sim.assistantPostsGraduates(player),
       movesFlags: sim.assistantMovesFlags(player),
       upgradesTools: sim.assistantUpgradesTools(player),
+      foundsFamilies: sim.assistantFoundsFamilies(player),
     }),
   );
 }

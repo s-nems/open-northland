@@ -57,6 +57,7 @@ import {
   placeSignpost,
   setAssistantArmorOrder,
   setAssistantCounter,
+  setAssistantFoundFamilies,
   setAssistantGrant,
   setAssistantGrantAudience,
   setAssistantMoveFlags,
@@ -563,6 +564,9 @@ function applyCommand(
       return;
     case 'setAssistantUpgradeTools':
       setAssistantUpgradeTools(world, command);
+      return;
+    case 'setAssistantFoundFamilies':
+      setAssistantFoundFamilies(world, command);
       return;
     case 'setPlayerPlacementTribes':
       setPlayerPlacementTribes(world, ctx.content, command.player, command.tribes);

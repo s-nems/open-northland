@@ -561,6 +561,7 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
   orders.append(
     switchRow('postGraduates', glyphArt(GLYPH.scroll)).row,
     switchRow('moveFlags', glyphArt(GLYPH.pin)).row,
+    switchRow('foundFamilies', glyphArt(GLYPH.heart)).row,
   );
 
   const show = (): void => {

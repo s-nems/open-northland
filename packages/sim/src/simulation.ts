@@ -10,6 +10,7 @@ import {
   assistantArmorOrder,
   assistantCivilianOnlyGoods,
   assistantCountersEntity,
+  assistantFoundsFamilies,
   assistantGrantedGoods,
   assistantMovesFlags,
   assistantPostsGraduatesEntity,
@@ -724,6 +725,11 @@ export class Simulation {
   /** Whether `player`'s workers swap their tools for better granted ones. */
   assistantUpgradesTools(player: number): boolean {
     return assistantUpgradesTools(this.world, player);
+  }
+
+  /** Whether `player`'s assistant houses its homeless women and weds the housed single ones. */
+  assistantFoundsFamilies(player: number): boolean {
+    return assistantFoundsFamilies(this.world, player);
   }
 
   /** Changes whenever an `assistant*` read of any seat may answer differently. */

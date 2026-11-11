@@ -47,12 +47,13 @@ import { BARRACKS_DRILL_TICKS } from '../settlers/drives/training.js';
 import { armableIntents, armingGoodPreference } from '../settlers/planner/recruit-arming.js';
 import { FetchableStock } from '../settlers/targets/index.js';
 import { goodsSearchLimitAt } from '../signposts/reach.js';
+import { foundFamilies } from './families.js';
 
 /**
  * The assistant's production dispatcher: turns the assistant window's `AssistantCounters` into standing child
  * orders, barracks drills and bare soldiers booked for arming. Each dispatch books itself with a marker, and
  * a counter pays only when the product exists, so a recruit lost mid-pipeline re-dispatches instead of
- * silently draining the queue. Runs before the FamilySystem and the planner, so a fresh child order and a
+ * silently draining the queue. The same beat founds families (`./families.ts`). Runs before the FamilySystem and the planner, so a fresh child order and a
  * fresh drill both start moving the same tick. Approximation: the counters window is a project
  * reconstruction, and the pacing and dispatch policies are authored, with each order passing the player
  * command's own gates.
@@ -72,8 +73,9 @@ export const assistantSystem: System = (world, ctx) => {
   // reset with orders in flight), and a stale one would sit in hashed state until the next write.
   sweepStaleBookings(world, ctx);
   releaseUnaskedArming(world);
+  foundFamilies(world, ctx, Math.floor(ctx.tick / ASSISTANT_DECISION_PERIOD_TICKS));
   const carriers = world.canonicalQuery(AssistantCounters);
-  if (carriers.length === 0) return; // idle worlds pay three empty queries per beat
+  if (carriers.length === 0) return; // an idle world pays a few empty queries per beat
   const scans = beatScans(world);
   const seen = new Set<number>();
   for (const carrier of carriers) {

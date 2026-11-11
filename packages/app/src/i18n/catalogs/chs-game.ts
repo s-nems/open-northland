@@ -1479,6 +1479,10 @@ export const chsGame = {
           label: '采集者自动移动旗帜',
           tip: '旗帜旁的资源耗尽时，旗帜会跟着资源移动，与其相距 {min}-{max} 格。',
         },
+        foundFamilies: {
+          label: '组建家庭',
+          tip: '无家可归的女人会搬进最近的有空位的房屋。已有住处的女人在有单身男人时会结婚。',
+        },
       },
       notes: {
         expected: {

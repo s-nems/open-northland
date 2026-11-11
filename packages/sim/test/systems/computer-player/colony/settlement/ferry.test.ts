@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Health, Resource, Rider, Settler, Vehicle } from '../../../../../src/components/index.js';
+import {
+  Health,
+  JobAssignment,
+  Resource,
+  Rider,
+  Settler,
+  Vehicle,
+} from '../../../../../src/components/index.js';
 import type { PlayerCommand } from '../../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../../src/index.js';
@@ -156,10 +163,10 @@ describe('a colony ferry', () => {
   it("sends men with no work left home as civilians, but keeps its posted men and a wife's husband", () => {
     const { sim } = routedWorld();
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
-    const posted = colonySettlersOf(sim).filter((e) => {
-      const job = sim.world.get(e, Settler).jobType;
-      return job !== BUILDER && job !== CIVILIST && isAllocatableMan(sim.world, ctxOf(sim), e);
-    });
+    // The men bound to a workplace: a flag gatherer whose patch runs dry has no work left either.
+    const posted = colonySettlersOf(sim).filter(
+      (e) => sim.world.has(e, JobAssignment) && isAllocatableMan(sim.world, ctxOf(sim), e),
+    );
     expect(posted.length).toBeGreaterThan(0);
     const { idle, husband } = idleBuilders(sim);
     const landed = (): Entity[] => {

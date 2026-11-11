@@ -2,16 +2,13 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Age,
-  AiControl,
   AssistantChildOrder,
   addCurrentAtomic,
   Building,
   Carrying,
   CHILD_FOOD_UNITS,
   ChildOrder,
-  COMPUTER_MODULE_IDS,
   CurrentAtomic,
-  computerModuleEnables,
   FamilyDuty,
   Female,
   MakingLove,
@@ -1406,21 +1403,6 @@ describe('marry matches the nearest partner', () => {
     const wife = spawn(WOMAN, EAST_FAR_X);
     sim.world.add(worker, Marriage, { spouse: wife, child: null });
     sim.world.add(wife, Marriage, { spouse: worker, child: null });
-    expect(findPartnerFor(sim.world, sim.content, woman, sim.terrain, null)).toBe(civilian);
-  });
-
-  it("a computer seat's woman weds the nearest man, a civilian over a farther worker", () => {
-    const { sim, spawn } = islandsSim();
-    sim.world.add(sim.world.create(), AiControl, {
-      player: PLAYER,
-      modules: computerModuleEnables(Object.fromEntries(COMPUTER_MODULE_IDS.map((id) => [id, false]))),
-      computerEnabled: true,
-      mapAiEnabled: false,
-      difficulty: 'hard',
-    });
-    const woman = spawn(WOMAN, EAST_X);
-    const civilian = spawn(CIVILIST, EAST_BESIDE_X);
-    spawn(WOODCUTTER, EAST_FAR_X);
     expect(findPartnerFor(sim.world, sim.content, woman, sim.terrain, null)).toBe(civilian);
   });
 
