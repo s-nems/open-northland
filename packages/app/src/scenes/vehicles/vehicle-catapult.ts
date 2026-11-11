@@ -41,7 +41,7 @@ const COMMANDER_AT = { x: 3, y: 9 } as const;
 /** Catapult hits the commander has landed: enough stones fly true to raze the hut, whose clean-room
  *  body is its one door node, inside the run, while the rest still scatter around the picket. */
 const COMMANDER_CATAPULT_HITS = 30;
-/** Eighteen nodes east: inside the 8..24 band, so the first stone flies without a drive. */
+/** Eighteen nodes east: inside the weapon band, so the first stone flies without a drive. */
 const ENEMY_HUT: readonly [string, number, number] = ['home_level_00', 14, 9];
 /** Trees in the hut's yard, as whole tiles, where the stones meant for the hut come down. */
 const HUT_GROVE: readonly [number, number][] = [
@@ -64,7 +64,9 @@ const PICKET_HITPOINTS = 100_000;
 const ATTACK_ORDER_TICK = 40;
 /** Claims a position no session transport hands out for that tick. */
 const ORDER_SEQUENCE = 1_000_000;
-const RUN_TICKS = 700;
+/** The hut has fallen and the picket is under fire. Measured: every check holds from about tick 750 to
+ *  1020. */
+const RUN_TICKS = 880;
 /** Between the catapult and the hut, so the browser opens on the whole exchange. */
 const CAMERA_AT = { hx: 20, hy: 19 } as const;
 

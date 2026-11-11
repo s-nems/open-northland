@@ -40,7 +40,7 @@ const BATTERY: readonly { readonly catapult: [number, number]; readonly commande
   { catapult: [5, 7], commander: [3, 7] },
   { catapult: [5, 11], commander: [3, 11] },
 ];
-/** The first catapult's ordered spot: past the wall and 30 nodes east, beyond the 24-point far reach. */
+/** The first catapult's ordered spot: past the wall and 30 nodes east, beyond the far reach. */
 const ORDERED_SPOT = { hx: 41, hy: 14 } as const;
 /** Across the wall and past the waiting catapult's far reach, so its hold scan leaves the hut alone
  *  until the owner orders the shelling. */

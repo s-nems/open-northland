@@ -35,7 +35,7 @@ const BATTERY: readonly { readonly catapult: [number, number]; readonly commande
   { catapult: [5, 11], commander: [2, 10] },
   { catapult: [5, 11], commander: [2, 12] },
 ];
-/** Eighteen nodes east of the pairs: inside the 8..24 band, so no catapult has to close in. */
+/** Eighteen nodes east of the pairs: inside the weapon band, so no catapult has to close in. */
 const ENEMY_HUT: readonly [string, number, number] = ['home_level_00', 14, 9];
 /** A hut no run of stones brings down, so every catapult is still firing when the run ends. */
 const TOUGH_HUT_HITPOINTS = 10_000_000;
