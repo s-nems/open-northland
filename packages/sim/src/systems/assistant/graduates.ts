@@ -24,11 +24,12 @@ import { assignedWorkers } from '../stores/assigned-workers.js';
  * The assistant's graduate posting, checked once as a settler leaves school in `jobType`: with its owner's
  * switch on, bind it to the nearest of the owner's workplaces with a free slot in that trade it can walk to,
  * ties by entity id. A foundation counts, since a site takes its staff from placement. Returns whether it was
- * posted; with no such slot nothing happens. Workplaces rank, before distance: a finished one over a site, then
- * one nobody of that trade works at yet over a staffed one (a second mill gets its first miller before the first
- * gets its second), then, where the school teaches the trade several methods, one that crafts a method the
- * settler learned, which the graduate then starts on. A flag gatherer (collector, fisher) is never posted,
- * since its work runs from a flag rather than a building. Source basis: authored, the switch is this project's addition.
+ * posted; with no such slot nothing happens. Workplaces rank, before distance: a finished one over a site,
+ * then one nobody of that trade works at yet over a staffed one (a second mill gets its first miller before
+ * the first gets its second), then, where the school teaches the trade several methods, one that crafts a
+ * method the settler learned, which the graduate then starts on. A flag gatherer (collector, fisher) is never
+ * posted, since its work runs from a flag rather than a building. Source basis: authored, the switch is this
+ * project's addition.
  */
 export function postGraduate(
   world: World,
