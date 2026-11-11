@@ -445,6 +445,24 @@ describe('BadgeLayer (garrison flag)', () => {
     expect(flag?.zIndex).toBe(chain?.zIndex);
   });
 
+  it('keeps the flag and takes the sign chains off while a detail tier drops them', () => {
+    const { layer, root } = layerIn();
+    const { sheet: s } = garrisonSheet();
+    layer.setGfx({ byPlayer: [s], textures: new TextureCache() });
+    const badges = [
+      { ...manned(1, 3, 5, 2), rows: workers(0, 1), dx: -6, dy: 29 },
+      badge(2, 9, 5, workers(0, 1)),
+    ];
+    layer.draw(badges);
+    expect(root.children).toHaveLength(3);
+
+    layer.draw(badges, undefined, undefined, 0, false);
+    expect(root.children).toEqual([flagOf(root, 3, 5)]);
+
+    layer.draw(badges);
+    expect(root.children).toHaveLength(3);
+  });
+
   it('batches the flag with the world sprites, unmagnified', () => {
     const { layer, root } = layerIn();
     const { sheet: s } = garrisonSheet();

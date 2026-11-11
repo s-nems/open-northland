@@ -19,6 +19,13 @@ import {
   WaterClock,
 } from '../../data/terrain/index.js';
 import {
+  type DetailMode,
+  FULL_DETAIL,
+  type ViewDetail,
+  viewDetailAt,
+  waveStepOf,
+} from '../../data/view-detail.js';
+import {
   CALM_WIND_SWAY,
   sameWindSway,
   WeatherClimate,
@@ -100,6 +107,9 @@ export class WorldRenderer {
   private readonly terrain = new TerrainLayer();
   private readonly waterClock = new WaterClock();
   private paused = false;
+  private detailMode: DetailMode = 'full';
+  /** The detail the last frame drew, which the next one's tier choice leans on. */
+  private detail: ViewDetail = FULL_DETAIL;
   private readonly weatherSky: WeatherSky;
   private readonly sceneLight = new SceneLight();
   /** This frame's night lights, refilled only while the scene light burns them. */
@@ -278,6 +288,12 @@ export class WorldRenderer {
     this.terrain.setEnhancedWater(next.enhancedWater);
     this.mapObjects.setEnvironmentMotion(next.environmentMotion);
     this.textureCache.setGroundColours(next.groundedBuildings ? this.groundTone : null);
+  }
+
+  /** `automatic` drops detail as the view zooms out (`data/view-detail.ts`); `full`, the default, draws
+   *  everything at every scale. */
+  setDetailMode(mode: DetailMode): void {
+    this.detailMode = mode;
   }
 
   setSelectionStyle(style: SelectionStyle): void {
@@ -540,6 +556,10 @@ export class WorldRenderer {
       this.app.screen.height,
       SPRITE_CULL_MARGIN + this.elevation.maxLift,
     );
+    const detail = viewDetailAt(frame.camera.scale ?? 1, this.detailMode, this.detail);
+    this.detail = detail;
+    this.mapObjects.setDetail(detail);
+    const environmentMotion = this.enhancements.environmentMotion && detail.motion;
     this.syncRoads(snapshot);
     this.terrain.cull(vp);
     // Game seconds, so a pause freezes the weather with the world.
@@ -588,7 +608,8 @@ export class WorldRenderer {
       alpha,
       snapResolution,
       enhancedSampling: this.enhancements.enhancedSampling,
-      environmentMotion: this.enhancements.environmentMotion,
+      environmentMotion,
+      detail,
       buildingDamage: this.enhancements.buildingDamage,
       wind: this.wind,
       shadowStyle: this.enhancements.softShadows ? DEFAULT_SHADOW_STYLE : undefined,
@@ -617,6 +638,7 @@ export class WorldRenderer {
     this.marks.draw({
       snapshot,
       zoom: camera.scale ?? 1,
+      detail,
       selectionStyle: this.selectionStyle,
       drawn: this.pool,
       elevation: this.elevation,
@@ -654,7 +676,7 @@ export class WorldRenderer {
       this.app.screen.width,
       this.app.screen.height,
       // The shore waves keep the water's pace: one frame per sim tick at the base rate, whatever the speed.
-      Math.floor(waterSeconds * TICKS_PER_SECOND),
+      waveStepOf(Math.floor(waterSeconds * TICKS_PER_SECOND), detail),
       this.enhancements.environmentMotion,
       this.offscreen.drawResolution(),
     );
@@ -692,11 +714,14 @@ export class WorldRenderer {
         cullTo: (cam, iw, ih) => {
           const viewVp = cameraViewport(cam, iw, ih, SPRITE_CULL_MARGIN + this.elevation.maxLift);
           this.terrain.cull(cameraViewport(cam, iw, ih, this.elevation.maxLift));
+          // A map view frames its own scale, so it keeps the detail the main view's tier dropped.
+          this.mapObjects.setDetail(FULL_DETAIL);
           this.mapObjects.update(viewVp, tick);
           this.fog.container.visible = false;
         },
         restore: () => {
           this.terrain.cull(vp);
+          this.mapObjects.setDetail(detail);
           this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch);
           this.fog.container.visible = true;
         },

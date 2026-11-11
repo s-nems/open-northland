@@ -89,10 +89,16 @@ export class BadgeLayer {
    * rebuilt, so cost tracks the screen and not the map's building count. `clock` is the render clock in
    * sim ticks, which the on-screen residence banners and garrison flags wave on.
    */
-  draw(badges: readonly DoorBadge[], elevation?: ElevationField, viewport?: Viewport, clock = 0): void {
+  draw(
+    badges: readonly DoorBadge[],
+    elevation?: ElevationField,
+    viewport?: Viewport,
+    clock = 0,
+    chains = true,
+  ): void {
     this.drawn.clear();
     for (const badge of badges) {
-      if (badge.rows.length === 0 && badge.garrison === undefined) continue;
+      if ((badge.rows.length === 0 || !chains) && badge.garrison === undefined) continue;
       let stack = this.stacks.get(badge.id);
       const held = stack !== undefined && stack.badge === badge && stack.elevation === elevation;
       const anchor = held && stack !== undefined ? stack.anchor : badgeAnchor(badge, elevation);
@@ -132,10 +138,14 @@ export class BadgeLayer {
           stack.anchor = anchor;
         }
       }
-      stack.node.visible = true;
-      if (stack.node.parent === null) this.spriteLayer.addChild(stack.node);
-      stack.node.position.set(anchor.x, anchor.y);
-      stack.advanceRows?.(clock);
+      if (chains) {
+        stack.node.visible = true;
+        if (stack.node.parent === null) this.spriteLayer.addChild(stack.node);
+        stack.node.position.set(anchor.x, anchor.y);
+        stack.advanceRows?.(clock);
+      } else {
+        stack.node.removeFromParent();
+      }
       const building = screenDepth(anchor.depthX, anchor.depthY, 'building');
       const depth = building + SIGN_DEPTH_EPS;
       stack.node.zIndex = depth;

@@ -5,6 +5,7 @@ import type { Viewport } from '../../data/projection/index.js';
 import { type ImportMarker, importMarkersOf } from '../../data/scene/import-markers.js';
 import { OverheadColumn } from '../../data/scene/overhead-column.js';
 import type { ElevationField, WaterField } from '../../data/terrain/index.js';
+import type { ViewDetail } from '../../data/view-detail.js';
 import { BloodLayer } from '../blood/layer.js';
 import type { FallenBody } from '../building-damage/building-damage.js';
 import { CollapseLayer } from '../demolition/collapse-layer.js';
@@ -44,12 +45,13 @@ import type { SelectionStyle } from '../selection/style.js';
 import type { DrawnGeometry, DrawnWalker, ShipAfloat } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../textures/sprite-sheet.js';
 import type { TextureCache } from '../textures/texture-cache.js';
-import type { CombatBonesGfx } from './frame.js';
+import { type CombatBonesGfx, NO_BUBBLES, NO_HEARTS, NO_SIGNS, NO_STARS } from './frame.js';
 import type { WorldSceneLayers } from './painter-order.js';
 
 /** The marks the world draws on its entities rather than as entities. */
 
 const NO_MARKERS: readonly ImportMarker[] = [];
+const NO_WALKERS: readonly DrawnWalker[] = [];
 
 export type MarkSlots = Pick<
   WorldSceneLayers,
@@ -73,6 +75,8 @@ export type MarkSlots = Pick<
 export interface WorldMarksFrame {
   readonly snapshot: WorldSnapshot;
   readonly zoom: number;
+  /** What the view's scale leaves to draw; a dropped mark's list is read as empty. */
+  readonly detail: ViewDetail;
   readonly selectionStyle?: SelectionStyle;
   readonly drawn: DrawnGeometry;
   readonly elevation: ElevationField;
@@ -260,33 +264,40 @@ export class WorldMarks {
     this.blood.draw(frame);
     this.collapses.draw(elevation, viewport, renderTime);
     this.shots.draw({ snapshot: frame.snapshot, drawn, elevation, viewport, renderTime });
-    this.badges.draw(frame.doorBadges, elevation, viewport, renderTime);
+    const detail = frame.detail;
+    this.badges.draw(frame.doorBadges, elevation, viewport, renderTime, detail.buildingSigns);
     this.familyEffects.draw(frame);
     this.footfall.draw({
       snapshot: frame.snapshot,
-      walkers: frame.walkers,
+      walkers: detail.footfalls ? frame.walkers : NO_WALKERS,
       roadAt: frame.roadAt,
       elevation,
       viewport,
       renderTime,
     });
-    this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
+    this.constructionSigns.draw(
+      detail.buildingSigns ? frame.constructionSigns : NO_SIGNS,
+      elevation,
+      viewport,
+    );
+    const settlerBubbles = detail.overheadIcons ? frame.settlerBubbles : NO_BUBBLES;
+    const lifeHearts = detail.overheadIcons ? frame.lifeHearts : NO_HEARTS;
+    const experienceStars = detail.overheadIcons ? frame.experienceStars : NO_STARS;
     const column = this.column;
     column.clear();
     if (this.experienceStars.drawsStars) {
-      for (const star of frame.experienceStars) {
+      for (const star of experienceStars) {
         if (star.weaponTier > 0) column.wear(star.id, 'weaponStar');
         if (star.jobTier > 0) column.wear(star.id, 'jobStar');
       }
     }
-    for (const heart of frame.lifeHearts) column.wear(heart.id, 'heart');
-    if (this.bubbles.drawsBubbles)
-      for (const bubble of frame.settlerBubbles) column.wear(bubble.id, 'bubble');
+    for (const heart of lifeHearts) column.wear(heart.id, 'heart');
+    if (this.bubbles.drawsBubbles) for (const bubble of settlerBubbles) column.wear(bubble.id, 'bubble');
     const exempt = this.importMarkers.exempt;
     const markers = exempt === undefined ? NO_MARKERS : importMarkersOf(frame.snapshot, exempt);
-    this.bubbles.draw({ bubbles: frame.settlerBubbles, drawn, elevation, column }, viewport);
-    this.experienceStars.draw({ stars: frame.experienceStars, drawn, elevation, column }, viewport);
-    this.hearts.draw({ hearts: frame.lifeHearts, drawn, elevation, column }, viewport);
+    this.bubbles.draw({ bubbles: settlerBubbles, drawn, elevation, column }, viewport);
+    this.experienceStars.draw({ stars: experienceStars, drawn, elevation, column }, viewport);
+    this.hearts.draw({ hearts: lifeHearts, drawn, elevation, column }, viewport);
     this.importMarkers.draw({ markers, drawn, elevation, column }, viewport);
     this.groupNumbers.draw(
       { snapshot: frame.snapshot, drawn, zoom: frame.zoom },

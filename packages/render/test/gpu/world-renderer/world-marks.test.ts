@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { OVERHEAD_STEP } from '../../../src/data/scene/overhead-column.js';
 import type { AtlasFrame } from '../../../src/data/sprites/index.js';
 import { NO_WATER } from '../../../src/data/terrain/index.js';
+import { VIEW_DETAILS } from '../../../src/data/view-detail.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
 import { WorldMarks, type WorldMarksFrame } from '../../../src/gpu/world-renderer/world-marks.js';
 import { cameraViewport, makeElevationField, ONE } from '../../../src/index.js';
@@ -33,6 +34,7 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
   return {
     snapshot: snapshotOf([entity(SETTLER, 3, 4, { Settler: {} })]),
     zoom: 1,
+    detail: VIEW_DETAILS.full,
     drawn: { boundsOf: () => undefined, anchorOf: () => undefined },
     elevation: FLAT,
     viewport: VIEWPORT,
@@ -144,6 +146,20 @@ describe('WorldMarks', () => {
     marks.setExperienceStarGfx({ source, frameByTier: [bob] });
     marks.draw(frame);
     expect(besideUndrawnStar - heartY()).toBe(OVERHEAD_STEP.weaponStar);
+    marks.destroy();
+  });
+
+  it('retires the overhead icons a detail tier drops and draws them again at full detail', () => {
+    const { marks } = marksIn();
+    const at = { id: SETTLER, x: 3 * ONE, y: 4 * ONE };
+    const hearts = { lifeHearts: [{ ...at, colour: 0xff0000, life: 1 }] };
+    const shown = (): number => marks.slots.hearts.children.filter((heart) => heart.visible).length;
+    marks.draw(frameOf(hearts));
+    expect(shown()).toBe(1);
+    marks.draw(frameOf({ ...hearts, detail: VIEW_DETAILS.sparse }));
+    expect(shown()).toBe(0);
+    marks.draw(frameOf(hearts));
+    expect(shown()).toBe(1);
     marks.destroy();
   });
 
