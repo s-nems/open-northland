@@ -26,8 +26,8 @@ const PARTICLE_ORDER: readonly WeatherKind[] = ['sand', 'snow', 'rain'];
 /** The sand's large soft wisps draw into a target at this share of the world's draw resolution and are
  *  scaled up bilinearly. At full size they blend several screens of fill per frame in a sandstorm, the
  *  dearest part of the weather on a weak GPU; their edges fade over tens of px, so the coarser target
- *  stays within a few levels of the full-size picture. */
-const WISP_RESOLUTION_SHARE = 0.5;
+ *  stays within about ten levels of the full-size picture. */
+const WISP_RESOLUTION_SHARE = 0.25;
 /** Screen fraction a flash without a strike lights around: the sky above the view's middle. */
 const FLASH_UNPLACED = 0.5;
 
