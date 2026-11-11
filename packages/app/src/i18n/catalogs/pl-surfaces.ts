@@ -373,6 +373,10 @@ export const plSurfaces = {
       edgeScrollSpeed: 'Prędkość przewijania przy krawędzi',
       dragScrollSpeed: 'Prędkość przewijania przeciąganiem',
       edgeScroll: 'Przewijanie przy krawędzi ekranu',
+      cursorConfine: 'Zatrzymuj kursor w oknie gry',
+      cursorConfineTip:
+        'Kursor nie wyjedzie poza okno gry, także na drugi monitor. Przełączenie na inny program go uwalnia.',
+      cursorConfineModes: { never: 'Nigdy', fullscreen: 'Na pełnym ekranie', always: 'Zawsze' },
       invertDragScroll: 'Odwróć przewijanie przeciąganiem',
       invertDragScrollTip: 'Po włączeniu przeciągnięcie w prawo przesuwa mapę w lewo i odwrotnie.',
       originalGame: 'Oryginalna gra',

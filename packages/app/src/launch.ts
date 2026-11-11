@@ -8,11 +8,13 @@ import {
 } from './i18n/index.js';
 import { routeFor } from './routes.js';
 import { dismissBootProgress } from './view/boot/progress.js';
+import { installCursorConfine } from './view/platform/cursor-confine.js';
 import { guardEntry, pushEntryUrl, releaseDocument } from './view/platform/navigation-guard.js';
 import { originalGameRedirect } from './view/platform/original-game-check.js';
 
 let cursorsInstalled = false;
 let colorBlindInstalled = false;
+let cursorConfineInstalled = false;
 
 /** Leaves the running entry for the one `search` names. */
 export type LaunchEntry = (search: string) => void;
@@ -57,6 +59,10 @@ export async function runEntry(
       const { installCursorTheme } = await import('./view/cursors/theme.js');
       installCursorTheme();
       cursorsInstalled = true;
+    }
+    if (!cursorConfineInstalled) {
+      installCursorConfine();
+      cursorConfineInstalled = true;
     }
     if (!colorBlindInstalled) {
       const { installColorBlindFilter } = await import('./view/accessibility/colorblind-filter.js');

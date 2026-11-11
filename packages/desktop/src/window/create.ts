@@ -9,6 +9,8 @@ import {
   screen,
   shell,
 } from 'electron';
+import { CURSOR_CONFINE_AVAILABLE_CHANNEL, SET_CURSOR_CONFINE_CHANNEL } from '../cursor/channels.js';
+import { type CursorHold, createCursorConfine, parseConfineMode, rectWithin } from '../cursor/confine.js';
 import type { ShellRun } from '../faults/shell-run.js';
 import type { FaultStore } from '../faults/store.js';
 import { watchWindowFaults } from '../faults/watch.js';
@@ -61,6 +63,8 @@ export interface WindowSetup {
   readonly originalGame: OriginalGameRecord;
   readonly faults: FaultStore;
   readonly run: ShellRun;
+  /** Null where the shell cannot or should not hold the cursor inside the window. */
+  readonly cursorHold: CursorHold | null;
 }
 
 export function createWindow({
@@ -70,6 +74,7 @@ export function createWindow({
   originalGame,
   faults,
   run,
+  cursorHold,
 }: WindowSetup): BrowserWindow {
   const state = startupWindowState(
     readWindowState(statePath),
@@ -131,6 +136,41 @@ export function createWindow({
     if (!fromGame(event) || typeof active !== 'boolean') return undefined;
     return setFullScreen(win, active);
   });
+  ipcMain.on(CURSOR_CONFINE_AVAILABLE_CHANNEL, (event) => {
+    event.returnValue = fromGame(event) && cursorHold !== null;
+  });
+  if (cursorHold !== null) {
+    const confine = createCursorConfine(
+      {
+        isFocused: () => win.isFocused(),
+        isFullScreen: () => win.isFullScreen(),
+        holdRect: () => {
+          const bounds = win.getBounds();
+          const display = screen.getDisplayMatching(bounds);
+          // A maximized window's frame reaches past its work area, over the taskbar and the next display.
+          const held = win.isFullScreen()
+            ? rectWithin(bounds, display.bounds)
+            : win.isMaximized()
+              ? rectWithin(bounds, display.workArea)
+              : bounds;
+          // Windows clips in physical pixels; macOS cursor calls take the points Electron reports.
+          return process.platform === 'win32' ? screen.dipToScreenRect(win, held) : held;
+        },
+      },
+      cursorHold,
+    );
+    ipcMain.handle(SET_CURSOR_CONFINE_CHANNEL, (event, value: unknown) => {
+      const mode = parseConfineMode(value);
+      if (fromGame(event) && mode !== null) confine.setMode(mode);
+    });
+    win.on('focus', confine.sync);
+    win.on('blur', confine.sync);
+    win.on('enter-full-screen', confine.sync);
+    win.on('leave-full-screen', confine.sync);
+    win.on('will-move', confine.frameDragStarted);
+    win.on('will-resize', confine.frameDragStarted);
+    win.on('closed', confine.dispose);
+  }
   ipcMain.handle(ORIGINAL_GAME_STATUS_CHANNEL, (event) =>
     fromGame(event) ? originalGameStatus(originalGame) : undefined,
   );

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
+import { CURSOR_CONFINE_AVAILABLE_CHANNEL, SET_CURSOR_CONFINE_CHANNEL } from './cursor/channels.js';
 import {
   CLEAR_FAULTS_CHANNEL,
   FAULT_VERSIONS_CHANNEL,
@@ -33,6 +34,15 @@ ipcRenderer.on(FULLSCREEN_CHANGED_CHANNEL, (_event, next: unknown) => {
   for (const listener of listeners) listener();
 });
 
+const cursorConfine =
+  ipcRenderer.sendSync(CURSOR_CONFINE_AVAILABLE_CHANNEL) === true
+    ? {
+        set: async (mode: unknown): Promise<void> => {
+          await ipcRenderer.invoke(SET_CURSOR_CONFINE_CHANNEL, mode);
+        },
+      }
+    : undefined;
+
 // The shape `packages/app/src/view/platform/host.ts` declares as `window.desktop`.
 contextBridge.exposeInMainWorld('desktop', {
   fullscreen: {
@@ -47,6 +57,7 @@ contextBridge.exposeInMainWorld('desktop', {
       };
     },
   },
+  ...(cursorConfine === undefined ? {} : { cursorConfine }),
   originalGame: {
     status: (): Promise<OriginalGameStatus> => ipcRenderer.invoke(ORIGINAL_GAME_STATUS_CHANNEL),
     pickFolder: (): Promise<OriginalGamePick> => ipcRenderer.invoke(PICK_ORIGINAL_GAME_CHANNEL),

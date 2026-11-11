@@ -373,6 +373,10 @@ export const enSurfaces = {
       edgeScrollSpeed: 'Edge scroll speed',
       dragScrollSpeed: 'Mouse drag scroll speed',
       edgeScroll: 'Edge scrolling',
+      cursorConfine: 'Keep the cursor in the game window',
+      cursorConfineTip:
+        'The cursor cannot leave the game window, not even for another display. Switching to another application frees it.',
+      cursorConfineModes: { never: 'Never', fullscreen: 'In fullscreen', always: 'Always' },
       invertDragScroll: 'Invert drag scrolling',
       invertDragScrollTip: 'When enabled, dragging right moves the map left, and vice versa.',
       originalGame: 'Original game',

@@ -409,6 +409,10 @@ export const ruSurfaces = {
       edgeScrollSpeed: 'Скорость прокрутки у края экрана',
       dragScrollSpeed: 'Скорость перетаскивания карты',
       edgeScroll: 'Прокрутка у края экрана',
+      cursorConfine: 'Удерживать курсор в окне игры',
+      cursorConfineTip:
+        'Курсор не выйдет за окно игры, в том числе на другой монитор. Переключение на другую программу освобождает его.',
+      cursorConfineModes: { never: 'Никогда', fullscreen: 'В полноэкранном режиме', always: 'Всегда' },
       invertDragScroll: 'Обратное перетаскивание',
       invertDragScrollTip: 'При перетаскивании вправо карта движется влево, и наоборот.',
       originalGame: 'Оригинальная игра',

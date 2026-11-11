@@ -1,6 +1,6 @@
 /**
- * electron-builder ships only `dist/**` and `package.json`, so every workspace-symlinked dependency
- * must be inlined here; `tsc` emits declarations only.
+ * electron-builder ships only `dist/**`, `package.json` and the external dependencies below, so every
+ * workspace-symlinked dependency must be inlined here; `tsc` emits declarations only.
  */
 
 import { dirname, join } from 'node:path';
@@ -14,8 +14,9 @@ await build({
   platform: 'node',
   format: 'cjs',
   target: 'node22',
-  // Electron is provided by the runtime.
-  external: ['electron'],
+  // Electron is provided by the runtime; koffi loads a native binary beside its own files, so it ships as
+  // a real dependency and `stage-native.mjs` adds the binary of each packaged platform.
+  external: ['electron', 'koffi'],
   sourcemap: true,
   logLevel: 'warning',
   // The sandboxed preload can require nothing but `electron`, so it is bundled whole as well.

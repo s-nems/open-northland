@@ -413,6 +413,10 @@ export const deSurfaces = {
       edgeScrollSpeed: 'Scrollgeschwindigkeit am Bildschirmrand',
       dragScrollSpeed: 'Scrollgeschwindigkeit beim Ziehen',
       edgeScroll: 'Scrollen am Bildschirmrand',
+      cursorConfine: 'Mauszeiger im Spielfenster halten',
+      cursorConfineTip:
+        'Der Mauszeiger kann das Spielfenster nicht verlassen, auch nicht auf einen anderen Bildschirm. Der Wechsel zu einem anderen Programm gibt ihn frei.',
+      cursorConfineModes: { never: 'Nie', fullscreen: 'Im Vollbild', always: 'Immer' },
       invertDragScroll: 'Ziehen umkehren',
       invertDragScrollTip: 'Beim Ziehen nach rechts bewegt sich die Karte nach links und umgekehrt.',
       originalGame: 'Originalspiel',

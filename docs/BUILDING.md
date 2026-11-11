@@ -82,6 +82,10 @@ Development starts in a normal window, preserving saved bounds.
 `ON_DESKTOP_RESTORE_WINDOW=1 npm run desktop` restores the saved window mode, including fullscreen.
 Packaged builds restore that mode by default and start fullscreen on a fresh profile.
 
+A packaged build on Windows or macOS keeps the cursor inside the game window as the "Keep the cursor
+in the game window" setting says. Development leaves the cursor free;
+`ON_DESKTOP_CURSOR_CONFINE=1 npm run desktop` turns the hold on, and `=0` turns it off in a packaged build.
+
 Installers include the content needed to play. The shell requests the discrete GPU and logs a `GPU:`
 line. The FPS breakdown and `perf().gpu.adapter` show the adapter actually used by WebGL. If Windows
 still chooses the integrated GPU, set the app to **High performance** in Settings > System > Display > Graphics.

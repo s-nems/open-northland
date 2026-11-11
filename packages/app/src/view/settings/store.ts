@@ -80,6 +80,9 @@ export const COLOR_BLIND_FILTERS: readonly ColorBlindFilter[] = [
   'tritanopia',
 ];
 
+export const CURSOR_CONFINES = ['never', 'fullscreen', 'always'] as const;
+export type CursorConfine = (typeof CURSOR_CONFINES)[number];
+
 export const SCROLL_SPEED_MIN = 0.5;
 export const SCROLL_SPEED_MAX = 3;
 export const DEFAULT_SCROLL_SPEED = 1.5;
@@ -159,6 +162,8 @@ export interface MenuSettings {
   readonly edgeScrollSpeed: number;
   readonly dragScrollSpeed: number;
   readonly edgeScrollEnabled: boolean;
+  /** When the desktop shell keeps the cursor inside the game window; a browser has no such hold. */
+  readonly cursorConfine: CursorConfine;
   /** Reverse only middle-button drag; directional edge and keyboard input keep their meaning. */
   readonly invertDragScroll: boolean;
   /** Zoom only where art pixels map to whole device pixels; off by default, since the fixed steps are
@@ -244,6 +249,7 @@ export function defaultSettings(): MenuSettings {
     edgeScrollSpeed: DEFAULT_SCROLL_SPEED,
     dragScrollSpeed: DEFAULT_SCROLL_SPEED,
     edgeScrollEnabled: true,
+    cursorConfine: 'always',
     invertDragScroll: true,
     integerScaling: false,
     keyBindings: DEFAULT_KEY_BINDINGS,
@@ -431,6 +437,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     dragScrollSpeed: clampScrollSpeed(record.dragScrollSpeed),
     edgeScrollEnabled:
       typeof record.edgeScrollEnabled === 'boolean' ? record.edgeScrollEnabled : defaults.edgeScrollEnabled,
+    cursorConfine: CURSOR_CONFINES.find((mode) => mode === record.cursorConfine) ?? defaults.cursorConfine,
     invertDragScroll:
       typeof record.invertDragScroll === 'boolean' ? record.invertDragScroll : defaults.invertDragScroll,
     integerScaling:

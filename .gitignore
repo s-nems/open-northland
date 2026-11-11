@@ -9,6 +9,8 @@ dist-tsc/
 *.tsbuildinfo
 # electron-builder output
 packages/desktop/release/
+# koffi binaries staged for the platform being packaged
+packages/desktop/dist-native/
 
 # Generated intermediate content - DERIVED FROM COPYRIGHTED GAME DATA.
 # Never commit.

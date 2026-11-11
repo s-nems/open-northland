@@ -11,6 +11,10 @@ directories:
 files:
   - dist/**
   - package.json
+  # koffi's script ships as a dependency; its native binary is staged per target below, since npm
+  # installed only the build host's.
+  - '!**/node_modules/@koromix/**'
+beforePack: ./scripts/stage-native.mjs
 extraResources:
   # The built web app and the converted content ride as plain resources (resources/app,
   # resources/content) - both are served by the app:// protocol, not loaded as Electron code.
@@ -26,6 +30,9 @@ extraResources:
       - '!.data-unpacked.sha256'
 win:
   artifactName: ${productName}-${version}-win-${arch}.${ext}
+  extraResources:
+    - from: dist-native/koffi/win32_${arch}
+      to: koffi/win32_${arch}
   # The portable exe is packaged by electron-builder-portable.yml.
   target:
     - target: nsis
@@ -49,6 +56,9 @@ mac:
     - target: dmg
       arch: [arm64]
   identity: null
+  extraResources:
+    - from: dist-native/koffi/darwin_${arch}
+      to: koffi/darwin_${arch}
   artifactName: ${productName}-${version}-${arch}.dmg
 dmg:
   # The mounted volume's icon.

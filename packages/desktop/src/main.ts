@@ -1,7 +1,9 @@
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { app, type BrowserWindow, crashReporter, Menu } from 'electron';
+import { app, type BrowserWindow, crashReporter, Menu, screen } from 'electron';
 import { applicationMenuTemplate } from './application-menu.js';
+import { cursorConfineWanted } from './cursor/confine.js';
+import { loadCursorHold } from './cursor/hold.js';
 import { SHELL_RUN_FILE, startShellRun } from './faults/shell-run.js';
 import { createFaultStore } from './faults/store.js';
 import { recordProcessFaults } from './faults/watch.js';
@@ -78,6 +80,9 @@ if (app.requestSingleInstanceLock()) {
       startUrl: initialGameUrl(GAME_URL, process.env[API_URL_ENV]),
       originalGame,
       faults,
+      cursorHold: cursorConfineWanted(app.isPackaged, process.env)
+        ? await loadCursorHold(process.platform, () => screen.getCursorScreenPoint())
+        : null,
       run,
     });
     app.getGPUInfo('basic').then(

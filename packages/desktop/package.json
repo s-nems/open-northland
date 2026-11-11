@@ -14,11 +14,14 @@
     "test:e2e": "node scripts/bundle.mjs && vitest run --config vitest.e2e.ts"
   },
   "devDependencies": {
+    "@open-northland/map-import": "*",
     "@open-northland/ownership": "*",
     "@types/node": "^26.6.5",
     "electron": "^45.1.0",
     "electron-builder": "^26.18.0",
-    "esbuild": "^0.28.2",
-    "@open-northland/map-import": "*"
+    "esbuild": "^0.28.2"
+  },
+  "dependencies": {
+    "koffi": "3.3.7"
   }
 }

@@ -10,13 +10,23 @@ converted content over the `app://` protocol. The root [`AGENTS.md`](../../AGENT
   closed with (`src/window/state.ts`). Development always starts in a normal window, preserving bounds;
   `ON_DESKTOP_RESTORE_WINDOW=1` opts into the packaged startup behavior for explicit window-mode checks.
   Its preload exposes only `window.desktop.fullscreen` (read, set,
-  subscribe), `window.desktop.originalGame` (status, pick a folder), `window.desktop.maps`
+  subscribe), `window.desktop.cursorConfine` (set the mode; present only where the shell holds the
+  cursor), `window.desktop.originalGame` (status, pick a folder), `window.desktop.maps`
   (pick/drop/cancel a local file or folder, list records, read a map snapshot, file or retained source,
   commit maps and source together) and `window.desktop.faults` (pending faults, clear by id, build
   versions and machine facts, how the previous run ended), which the app feature-detects. Keep that bridge narrow,
   validate every IPC argument and sender, and keep sandbox and context isolation on.
   Saves live in the page's IndexedDB like in a browser. A page or mail link the game opens goes to
   the system browser or mail client, never a second window.
+- `src/cursor/` keeps the system cursor inside the focused game window in the mode the page sets
+  (never, fullscreen only, always). Windows clips the cursor; macOS has no clip, so a cursor found
+  outside is put back; Linux has neither and gets no bridge. A frame drag frees the cursor until the
+  button lifts. The native calls go through `koffi`, the shell's one runtime dependency, which
+  `scripts/bundle.mjs` leaves external. npm installs only the build host's binary, so
+  `scripts/stage-native.mjs` stages the packaged platform's as `resources/koffi/`, fetching another
+  platform's from the tarball `package-lock.json` pins. A
+  packaged build holds the cursor; development and scripted runs do so only with
+  `ON_DESKTOP_CURSOR_CONFINE=1`, so a test window never takes the cursor of whoever shares the machine.
 - Serve the app and generated content through `app://` as read-only static files. Installed maps
   use the snapshot IPC: the app's map-source store serves their logical `/maps/` URLs from those
   bytes. The shell owns both installed records and immutable file generations in the profile's
@@ -51,8 +61,8 @@ converted content over the `app://` protocol. The root [`AGENTS.md`](../../AGENT
 - Keep `main.ts` and `window/create.ts` free of logic worth a unit test; routing, containment and
   path rules live in `protocol/routing.ts`, `protocol/static-files.ts`, `protocol/file-response.ts`,
   `maps/installed.ts`, `maps/store.ts`, `faults/store.ts`, `faults/redact.ts`, `faults/hung-stack.ts`,
-  `faults/reload-guard.ts`, `faults/shell-run.ts`, `faults/machine-facts.ts`, `paths.ts`, `window/state.ts` and
-  `window/control.ts`, which import nothing from `electron`.
+  `faults/reload-guard.ts`, `faults/shell-run.ts`, `faults/machine-facts.ts`, `paths.ts`, `window/state.ts`,
+  `window/control.ts` and `cursor/confine.ts`, which import nothing from `electron`.
 
 ## Layout
 
@@ -61,6 +71,7 @@ converted content over the `app://` protocol. The root [`AGENTS.md`](../../AGENT
 - `src/maps/`: installed-map IPC channels, storage and native local-map input.
 - `src/protocol/`: the `app://` scheme, its routing and static-file responses.
 - `src/window/`: the game window, its saved state, fullscreen control and leave prompt.
+- `src/cursor/`: holding the cursor inside the game window, its native calls and IPC channels.
 - `src/original-game/`: original-game detection, its record and IPC channels.
 - `src/faults/`: fault recording, its store and IPC channels.
 

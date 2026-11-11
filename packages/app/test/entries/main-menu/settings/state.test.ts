@@ -91,6 +91,7 @@ describe('parseStoredSettings', () => {
       edgeScrollSpeed: 2.25,
       dragScrollSpeed: 1.75,
       edgeScrollEnabled: false,
+      cursorConfine: 'fullscreen',
       invertDragScroll: true,
       integerScaling: true,
       netNick: 'Ania',

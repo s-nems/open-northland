@@ -1,6 +1,7 @@
 import type { Camera, WorldBounds } from '@open-northland/render';
 import { isFieldKey } from '../../hud/hotkeys.js';
 import { bindingFromKeyboardEvent, type KeyBindings } from '../../hud/keybindings.js';
+import { cursorConfined } from '../platform/cursor-confine.js';
 import { createDragCapture } from './drag-capture.js';
 import {
   type CameraTuning,
@@ -196,9 +197,10 @@ export function createCameraController(
   };
   // The page cannot hold the cursor inside the window. One that leaves a window covering its display
   // went to another display, so it keeps scrolling as if pressed against the edge it crossed until it
-  // returns or focus moves; leaving a smaller window lands on another application and disarms.
+  // returns or focus moves; leaving a smaller window lands on another application and disarms, unless
+  // the desktop shell holds the cursor and puts it back at that edge. Above the page is the title bar.
   const pinToExitEdge = (clientX: number, clientY: number): void => {
-    if (!windowCoversDisplay()) {
+    if (!windowCoversDisplay() && (!cursorConfined() || clientY < 0)) {
       pointerSample = null;
       return;
     }

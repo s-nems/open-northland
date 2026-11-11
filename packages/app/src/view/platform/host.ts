@@ -1,3 +1,4 @@
+import type { DesktopCursorConfine } from './cursor-confine.js';
 import type { DesktopMaps } from './desktop-bridge.js';
 import type { DesktopFaults } from './desktop-faults.js';
 import type { DesktopFullscreen } from './fullscreen.js';
@@ -8,6 +9,8 @@ declare global {
     /** The desktop shell's preload bridge; absent in a browser. */
     readonly desktop?: {
       readonly fullscreen: DesktopFullscreen;
+      /** Absent where the shell cannot hold the cursor inside its window. */
+      readonly cursorConfine?: DesktopCursorConfine;
       readonly originalGame: DesktopOriginalGame;
       /** Absent in a shell build without the installed-map store. */
       readonly maps?: DesktopMaps;

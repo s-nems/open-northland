@@ -1,6 +1,7 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { _electron, type ElectronApplication } from 'playwright';
+import { CURSOR_CONFINE_ENV } from '../src/cursor/confine.js';
 import { API_URL_ENV, initialGameUrl } from '../src/protocol/routing.js';
 
 export const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -21,7 +22,8 @@ export function launchShell(
   for (const [key, value] of Object.entries(process.env)) if (value !== undefined) inherited[key] = value;
   return _electron.launch({
     args: [packageRoot, `--user-data-dir=${profile}`, '--mute-audio'],
-    env: { ...inherited, ...env, [API_URL_ENV]: E2E_API_URL },
+    // A test window never takes the cursor of whoever shares the machine, whatever the caller's shell set.
+    env: { ...inherited, [CURSOR_CONFINE_ENV]: '0', ...env, [API_URL_ENV]: E2E_API_URL },
     timeout: 30_000,
   });
 }

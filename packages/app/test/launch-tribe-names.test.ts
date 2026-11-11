@@ -5,6 +5,7 @@ import { runEntry } from '../src/launch.js';
 import * as routes from '../src/routes.js';
 import * as colorBlindFilter from '../src/view/accessibility/colorblind-filter.js';
 import * as cursors from '../src/view/cursors/theme.js';
+import * as cursorConfine from '../src/view/platform/cursor-confine.js';
 import * as navigation from '../src/view/platform/navigation-guard.js';
 
 afterEach(() => {
@@ -22,6 +23,7 @@ describe('runEntry', () => {
     });
     vi.spyOn(originalNames, 'originalTribeNameOverlay').mockRejectedValue(new Error('chunk failed'));
     vi.spyOn(cursors, 'installCursorTheme').mockReturnValue(() => undefined);
+    vi.spyOn(cursorConfine, 'installCursorConfine').mockImplementation(() => undefined);
     vi.spyOn(colorBlindFilter, 'installColorBlindFilter').mockReturnValue(() => undefined);
     vi.spyOn(navigation, 'guardEntry').mockImplementation(() => undefined);
     class CanvasStub {}

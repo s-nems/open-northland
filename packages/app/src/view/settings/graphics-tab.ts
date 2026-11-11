@@ -9,6 +9,7 @@ import { MINIMAP_FRAME_IMAGES, MINIMAP_FRAMES, type MinimapFrame } from '../../h
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, UI_SCALE_FACTOR_STEP } from '../../hud/ui-scale.js';
 import { messages } from '../../i18n/index.js';
 import { teamColourStrengthControl } from '../accessibility/team-colour-control.js';
+import { cursorConfineAvailable } from '../platform/cursor-confine.js';
 import { segControl, settingRow, settingsHeading, sliderControl, togglePill } from './controls.js';
 import { cursorSettingsRows } from './cursor-rows.js';
 import type { DisplayMode } from './display-mode.js';
@@ -16,6 +17,8 @@ import type { SettingsPageStore } from './page.js';
 import {
   COLOR_BLIND_FILTERS,
   type ColorBlindFilter,
+  CURSOR_CONFINES,
+  type CursorConfine,
   type FpsLimit,
   type MenuSettings,
   RENDER_SCALE_MAX,
@@ -234,9 +237,21 @@ export function graphicsSettingsRows(
       colorBlindFilter.setActive(choice);
     },
   });
+  const cursorConfine = segControl<CursorConfine>(
+    CURSOR_CONFINES.map((id) => ({ id, label: text.cursorConfineModes[id] })),
+    settings.cursorConfine,
+    (mode) => {
+      void store.update({ cursorConfine: mode });
+      cursorConfine.setActive(mode);
+    },
+  );
+  markSegment(cursorConfine.root, 'cursor-confine');
   return [
     settingsHeading(text.displayHeading),
     settingRow(text.displayMode, displaySeg.root),
+    ...(cursorConfineAvailable()
+      ? [settingRow(text.cursorConfine, cursorConfine.root, { tip: text.cursorConfineTip })]
+      : []),
     settingRow(text.uiScale, uiScale, {
       tip: store.pinnedUiScale === null ? text.uiScaleTip : text.uiScalePinnedTip,
     }),
