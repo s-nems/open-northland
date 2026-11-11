@@ -177,7 +177,7 @@ function pushLayers(
       if (packArt && draw.looping === true) draw = resolveResourceDraw(binding, item) ?? draw;
       if (hasLoadedFamily(sheet, draw)) {
         const shear =
-          sway === undefined
+          sway === undefined || stillLandscape
             ? undefined
             : vegetationShear(
                 item.ghost === true || item.frozen === true ? 0 : vegetationClock,

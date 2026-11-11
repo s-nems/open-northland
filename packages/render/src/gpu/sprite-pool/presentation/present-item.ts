@@ -188,7 +188,8 @@ export function presentItem(
     clocks.gait,
     environmentMotion ? tick + frameAlpha : clocks.animation,
     held ? 0 : idleElapsed,
-    environmentMotion && !held ? wind : undefined,
+    // A tier that stills the landscape leaves the wind in a ship's sails.
+    (environmentMotion || stillLandscape) && !held ? wind : undefined,
     seaClock ?? clocks.animation,
     stillLandscape,
   );

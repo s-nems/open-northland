@@ -119,6 +119,9 @@ export interface PoolFrame {
   /** The weather's wind, bending swaying vegetation and filling sails while `environmentMotion` is on;
    *  the same object while it holds still. Absent is still air. */
   readonly wind?: WindSway | undefined;
+  /** Whether the wind fills sails although a detail tier cleared `environmentMotion`: the motion
+   *  setting itself, since a ship is not landscape. */
+  readonly sailWind?: boolean;
   readonly buildingDamage?: boolean;
   /** How shadow silhouettes draw; absent means the shadow enhancement is off, which also keeps a
    *  character's projected cast layer off the screen. */

@@ -612,6 +612,7 @@ export class WorldRenderer {
       detail,
       buildingDamage: this.enhancements.buildingDamage,
       wind: this.wind,
+      sailWind: this.enhancements.environmentMotion,
       shadowStyle: this.enhancements.softShadows ? DEFAULT_SHADOW_STYLE : undefined,
       ...fogFrame,
       ...(this.withheldRefs !== undefined ? { withheldRefs: this.withheldRefs } : {}),

@@ -17,7 +17,7 @@ export function presentEntity(
     frame.alpha,
     sheet,
     frame.environmentMotion === true,
-    frame.wind,
+    frame.environmentMotion === true || frame.sailWind === true ? frame.wind : undefined,
     frame.seaClock,
     frame.detail?.motion === false,
   );
