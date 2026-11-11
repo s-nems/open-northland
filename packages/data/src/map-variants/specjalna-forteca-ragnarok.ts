@@ -154,6 +154,7 @@ const LORD_NAME = {
   eng: 'Lord Usurper',
   ger: 'Lord Usurpator',
   rus: 'Лорд Узурпатор',
+  ita: 'Lord Usurpatore',
   chs: '篡位领主',
   cht: '篡位領主',
 };

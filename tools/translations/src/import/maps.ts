@@ -1,15 +1,14 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import {
-  MapOverlay,
-  mapOverlayFileId,
-  OVERLAY_LANGUAGES,
-  OVERLAY_VERSION,
-  type OverlayLanguage,
-} from '@open-northland/data';
+import { MapOverlay, mapOverlayFileId, OVERLAY_VERSION } from '@open-northland/data';
 import { type MapLanguageText, mapSourceTextDigest } from '@open-northland/map-import';
 import type { PackMap } from '../pack-text.js';
-import { BASIS_LANGUAGE, LOCALIZATION_SOURCES } from './columns.js';
+import {
+  BASIS_LANGUAGE,
+  LOCALIZATION_LANGUAGES,
+  LOCALIZATION_SOURCES,
+  type LocalizationLanguage,
+} from './columns.js';
 import { correctedMapKeys, type GermanCorrections } from './corrected-keys.js';
 import { type GermanRoundTrip, germanRoundTrip, translateMap } from './map-translation.js';
 import { type LocalizationMap, readLocalizationMap } from './map-xml.js';
@@ -46,7 +45,7 @@ export interface MatchedMap {
   /** XMLs that matched the same `map.dat` but whose German column fits our text less well. */
   readonly passedOver: readonly string[];
   readonly roundTrip: GermanRoundTrip;
-  readonly languages: Readonly<Partial<Record<OverlayLanguage, MapLanguageResult>>>;
+  readonly languages: Readonly<Partial<Record<LocalizationLanguage, MapLanguageResult>>>;
 }
 
 export interface MapImport {
@@ -91,7 +90,7 @@ const basisDigest = (text: MapLanguageText): string => mapSourceTextDigest(text.
 
 function translateLanguage(
   xml: LocalizationMap,
-  lang: OverlayLanguage,
+  lang: LocalizationLanguage,
   { map, basis, digest, corrections }: Target,
 ): { readonly result: MapLanguageResult; readonly file?: OverlayFile } {
   const translation = translateMap(xml, LOCALIZATION_SOURCES[lang].column, basis);
@@ -183,8 +182,8 @@ export async function importMaps(
       const text = copy.text.languages[BASIS_LANGUAGE];
       (text !== undefined && basisDigest(text) === digest ? aliases : twins).push(copy.id);
     }
-    const languages: Partial<Record<OverlayLanguage, MapLanguageResult>> = {};
-    for (const lang of OVERLAY_LANGUAGES) {
+    const languages: Partial<Record<LocalizationLanguage, MapLanguageResult>> = {};
+    for (const lang of LOCALIZATION_LANGUAGES) {
       const { result, file } = translateLanguage(best.xml, lang, { map, basis, digest, corrections });
       languages[lang] = result;
       if (file !== undefined) files.push(file);

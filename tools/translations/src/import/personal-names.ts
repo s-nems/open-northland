@@ -1,14 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
-  OVERLAY_LANGUAGES,
   OVERLAY_VERSION,
-  type OverlayLanguage,
   PERSONAL_NAMES,
   PersonalNameOverlay,
   type PersonalNamePool,
 } from '@open-northland/data';
-import { LOCALIZATION_SOURCES } from './columns.js';
+import { LOCALIZATION_LANGUAGES, LOCALIZATION_SOURCES, type LocalizationLanguage } from './columns.js';
 import type { OverlayFile } from './maps.js';
 
 /**
@@ -59,7 +57,7 @@ async function readNameLines(textRoot: string, folder: string): Promise<readonly
 }
 
 export interface PersonalNameResult {
-  readonly languages: Readonly<Partial<Record<OverlayLanguage, { names: number }>>>;
+  readonly languages: Readonly<Partial<Record<LocalizationLanguage, { names: number }>>>;
 }
 
 /**
@@ -92,8 +90,8 @@ export async function importPersonalNames(
   pools: readonly PersonalNamePool[] = PERSONAL_NAMES,
 ): Promise<PersonalNameResult> {
   const english = await readNameLines(textRoot, ENGLISH_FOLDER);
-  const languages: Partial<Record<OverlayLanguage, { names: number }>> = {};
-  for (const lang of OVERLAY_LANGUAGES) {
+  const languages: Partial<Record<LocalizationLanguage, { names: number }>> = {};
+  for (const lang of LOCALIZATION_LANGUAGES) {
     const translated = await readNameLines(textRoot, LOCALIZATION_SOURCES[lang].textFolder);
     // A name may sit on the male line of one tribe and the female line of another, so keep each.
     const byName = new Map<string, readonly Translation[]>();

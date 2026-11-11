@@ -10,8 +10,8 @@ import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { OVERLAY_LANGUAGES } from '@open-northland/data';
 import { TRANSLATIONS_ROOT } from '@open-northland/translations';
+import { LOCALIZATION_LANGUAGES } from './import/columns.js';
 import { formatReport } from './import/report.js';
 import { GLOSSARY_FILE, importCulturesLocalization } from './import/run.js';
 
@@ -40,7 +40,7 @@ async function writeText(path: string, text: string): Promise<void> {
 /** Every file under `out/<lang>/`, as paths relative to `out`. */
 async function overlayFiles(out: string): Promise<string[]> {
   const files: string[] = [];
-  for (const lang of OVERLAY_LANGUAGES) {
+  for (const lang of LOCALIZATION_LANGUAGES) {
     let entries: string[];
     try {
       entries = await readdir(join(out, lang), { recursive: true });

@@ -1,4 +1,4 @@
-import { OVERLAY_LANGUAGES } from '@open-northland/data';
+import { LOCALIZATION_LANGUAGES } from './columns.js';
 import type { MatchedMap } from './maps.js';
 import { type Alignment, GLOSSARY_FILE, type ImportResult, PROJECT_GLOSSARY_FILE } from './run.js';
 
@@ -70,7 +70,7 @@ export function formatReport(result: ImportResult, sourceCommit: string): string
   }
   add();
 
-  for (const lang of OVERLAY_LANGUAGES) {
+  for (const lang of LOCALIZATION_LANGUAGES) {
     let files = 0;
     let stringCount = 0;
     let blockCount = 0;
@@ -111,7 +111,7 @@ export function formatReport(result: ImportResult, sourceCommit: string): string
 
   add('Object tables (translated entries; ids whose German text differs from ours are left out):');
   for (const table of result.tables) {
-    const parts = OVERLAY_LANGUAGES.map((lang) => {
+    const parts = LOCALIZATION_LANGUAGES.map((lang) => {
       const counts = table.languages[lang];
       return counts === undefined
         ? `${lang} none`
@@ -125,7 +125,7 @@ export function formatReport(result: ImportResult, sourceCommit: string): string
   if (result.book !== undefined) {
     const { book } = result;
     add(`History book: German blocks equal ${rate(book.alignment)}`);
-    for (const lang of OVERLAY_LANGUAGES) {
+    for (const lang of LOCALIZATION_LANGUAGES) {
       const counts = book.languages[lang];
       if (counts === undefined) continue;
       add(
@@ -133,7 +133,7 @@ export function formatReport(result: ImportResult, sourceCommit: string): string
       );
     }
   }
-  for (const lang of OVERLAY_LANGUAGES) {
+  for (const lang of LOCALIZATION_LANGUAGES) {
     const counts = result.personalNames.languages[lang];
     if (counts === undefined) continue;
     add(`Personal names ${lang}: ${counts.names} of the pool names translated`);

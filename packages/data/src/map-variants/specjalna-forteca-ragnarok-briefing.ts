@@ -175,6 +175,40 @@ const TEXTS: Record<Language, LanguageText> = {
       ],
     },
   },
+  ita: {
+    intro: {
+      title: 'CASTELLO OSCURO',
+      paragraphs: [
+        'Giorni bui sono calati sui Vichinghi...\nDa una fortezza nel cuore del paese partono bande di sgherri che devastano tutto ciò che li circonda. Nessuno può nascondersi da loro.',
+        'Questa volta non devi cercare nessuno né commerciare con nessuno. Tutte le tribù della mappa, compresi gli Abitanti della pianura e i Montanari, partecipano come alleati. Solo insieme conquisterete la fortezza!',
+        'Le tribù vichinghe possono cedersi uomini a vicenda. Manda alcuni dei tuoi Vichinghi al fuoco sacro di una tribù vichinga alleata: chi attraversa il cerchio di fiamme da quel momento serve quell’alleato. Gli Abitanti della pianura e i Montanari non possono farlo.',
+        'All’inizio ricevi alcune lettere di costruzione. Non tenerle troppo a lungo, ma scegli con cura!',
+      ],
+    },
+    rules: {
+      title: 'RAGNARÖK',
+      paragraphs: [
+        'La fortezza non aspetta il vostro attacco. I suoi sgherri assaltano ogni tribù secondo un calendario fisso, ogni volta più forti. Tra un attacco e l’altro ci sono brevi pause: sfruttale bene!',
+        'Più o meno da metà partita gli attacchi arrivano anche dal mare: le navi della fortezza sbarcano guerrieri sulle tue coste.',
+        'Col tempo gli sgherri ricevono un equipaggiamento sempre migliore: prima armi migliori, armature leggere e scarpe, poi armature pesanti, amuleti e infine pozioni di guarigione.',
+        'Gli sgherri della fortezza non lasciano nulla quando cadono: le loro armi, le armature e tutto ciò che portavano vanno perduti con loro.',
+        'La guarnigione della fortezza cresce con il tempo e con il numero di tribù in gioco, e le catapulte distrutte tornano al loro posto dopo un po’.',
+        'La fortezza è difesa inoltre da un potente eroe, Lord Usurpatore.',
+        'La fortezza ha costruttori propri, che ricostruiscono ciò che distruggi, e trasportatori che portano via il bottino dal campo di battaglia.',
+        'I giacimenti di oro, ferro e funghi rendono il triplo.',
+        'Anche alberi, cave di pietra e giacimenti di argilla rendono più del solito, e gli Abitanti della pianura ricevono una cava di argilla e un boschetto in più.',
+        'Il tempo che manca al prossimo attacco è indicato tra i tuoi obiettivi.',
+      ],
+    },
+    victory: {
+      title: 'VITTORIA',
+      paragraphs: [
+        'La fortezza è caduta! Gli ultimi sgherri giacciono tra le rovine delle sue mura e, per la prima volta da anni, sul paese sorge un giorno di pace.',
+        'Il Ragnarök non è arrivato. Le tribù che si sono opposte insieme agli oppressori hanno resistito agli attacchi da terra e dal mare e hanno espugnato la roccaforte con le forze unite.',
+        'Il paese è libero. I Vichinghi, gli Abitanti della pianura e i Montanari possono finalmente ricostruire i loro villaggi e vivere senza paura. Gloria ai vincitori!',
+      ],
+    },
+  },
   chs: {
     intro: {
       title: '黑暗城堡',
