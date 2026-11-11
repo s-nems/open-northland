@@ -1497,7 +1497,7 @@ export const plGame = {
         },
         giveDefenseAmulet: {
           label: 'Amulet obrony',
-          tip: 'Każdy bez niego pójdzie po niego do magazynu. Noszący odbiera połowę obrażeń.',
+          tip: 'Każdy bez niego pójdzie po niego do magazynu. Noszący odbiera mniej obrażeń.',
         },
         giveCriticalHitAmulet: {
           label: 'Amulet precyzji',

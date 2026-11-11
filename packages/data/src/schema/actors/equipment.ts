@@ -55,11 +55,11 @@ export const EquipClass = z
     uses: z.number().int().positive().optional(),
     /** What one use restores: a sip of mead or a potion, or an amulet's top-up of its need. */
     restorePct: EquipRestorePct.optional(),
-    /** Percent of its damage a landed blow of the bearer deals (strength amulet 150). */
+    /** Percent of its damage a landed blow of the bearer deals (the strength amulet). */
     damageDealtPct: z.number().int().positive().optional(),
     /** Rolled per landed blow of the bearer, after `damageDealtPct` (critical-hit amulet: 20% for 200%). */
     criticalHit: EquipCriticalHit.optional(),
-    /** Percent of an incoming blow's damage the bearer takes, truncated (defense amulet 50). */
+    /** Percent of an incoming blow's damage the bearer takes, truncated (the defense amulet). */
     damageTakenPct: z.number().int().min(0).max(100).optional(),
     /** Ticks taken off every step of the bearer's walk, before the age and weight terms (speed amulet 2). */
     walkStepTicksSaved: z.number().int().positive().optional(),

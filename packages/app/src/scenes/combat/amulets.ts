@@ -17,7 +17,7 @@ const RACE_START_X = 3;
 const RACE_FINISH_X = 37;
 const RACE_BARE_Y = 3;
 const RACE_AMULET_Y = 5;
-/** The amuleted swordsman faces an equal rival: blows at 3/2, one in five doubled, and half taken. */
+/** A swordsman with the strength, critical-hit and defense amulets faces an equal rival carrying none. */
 const DUEL_Y = 10;
 const DUEL_AMULET_X = 8;
 const DUEL_RIVAL_X = 10;

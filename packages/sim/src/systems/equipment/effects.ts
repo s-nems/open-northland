@@ -53,8 +53,8 @@ function carriedEffect<K extends CarriedEffect>(
 
 /**
  * A landed blow's damage after the striker's carried effects. Original behavior, for a blow on any
- * target: the strength amulet multiplies by 3/2, rounding down, then the critical-hit amulet doubles one
- * blow in five, drawn only while it is carried. A striker already dead carries none.
+ * target: the strength amulet scales it to its `damageDealtPct`, rounding down, then the critical-hit
+ * amulet rolls, drawn only while it is carried. A striker already dead carries none.
  */
 export function damageDealtBy(world: World, ctx: SystemContext, attacker: Entity, damage: number): number {
   const health = world.tryGet(attacker, Health);
@@ -79,8 +79,8 @@ export function scaledTakenDamage(damage: number, takenPct: number): number {
   return Math.trunc((damage * takenPct) / PERCENT);
 }
 
-/** The share of a blow's damage its target takes. Original behavior: the defense amulet halves it,
- *  truncating, after the striker's effects. */
+/** The share of a blow's damage its target takes. Original behavior: the defense amulet scales it to its
+ *  `damageTakenPct`, truncating, after the striker's effects. */
 export function damageTakenBy(world: World, ctx: SystemContext, target: Entity, damage: number): number {
   const takenPct = carriedEffect(world, ctx.content, target, 'damageTakenPct');
   return takenPct === undefined ? damage : scaledTakenDamage(damage, takenPct);

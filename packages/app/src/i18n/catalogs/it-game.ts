@@ -1542,7 +1542,7 @@ export const itGame = {
         },
         giveDefenseAmulet: {
           label: 'Amuleto della difesa',
-          tip: 'Ogni uomo che ne è privo ne preleva uno dal magazzino. Chi lo porta subisce metà del danno.',
+          tip: 'Ogni uomo che ne è privo ne preleva uno dal magazzino. Chi lo porta subisce meno danni.',
         },
         giveCriticalHitAmulet: {
           label: 'Amuleto della precisione',

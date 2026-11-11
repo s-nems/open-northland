@@ -1468,7 +1468,7 @@ export const chtGame = {
         },
         giveDefenseAmulet: {
           label: '防禦護符',
-          tip: '每位沒有的男性都會去倉庫領一個。它讓配戴者只承受一半傷害。',
+          tip: '每位沒有的男性都會去倉庫領一個。它讓配戴者承受的傷害更少。',
         },
         giveCriticalHitAmulet: {
           label: '精準護符',

@@ -1467,7 +1467,7 @@ export const chsGame = {
         },
         giveDefenseAmulet: {
           label: '防御护符',
-          tip: '每个没有的男人都会去仓库领一个。佩戴者只承受一半伤害。',
+          tip: '每个没有的男人都会去仓库领一个。佩戴者承受的伤害更少。',
         },
         giveCriticalHitAmulet: {
           label: '精准护符',

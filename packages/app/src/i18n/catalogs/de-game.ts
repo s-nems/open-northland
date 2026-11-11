@@ -1647,7 +1647,7 @@ export const deGame = {
         },
         giveDefenseAmulet: {
           label: 'Verteidigungsamulett',
-          tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Sein Träger nimmt nur halben Schaden.',
+          tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Sein Träger nimmt weniger Schaden.',
         },
         giveCriticalHitAmulet: {
           label: 'Trefferamulett',

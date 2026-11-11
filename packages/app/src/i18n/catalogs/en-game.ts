@@ -1517,7 +1517,7 @@ export const enGame = {
         },
         giveDefenseAmulet: {
           label: 'Amulet of Defence',
-          tip: 'Every man without one fetches one from the store. Its bearer takes half the damage.',
+          tip: 'Every man without one fetches one from the store. Its bearer takes less damage.',
         },
         giveCriticalHitAmulet: {
           label: 'Amulet of Precision',

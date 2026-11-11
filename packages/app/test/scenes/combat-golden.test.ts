@@ -184,8 +184,9 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
   // bow on leather, 13/14 long bow on plate), then 15 the amuleted champion, 16 its rival, 17 the
   // convalescent. Hitpoints are read after the tick, so a victim between blows shows its regeneration.
   // Civilians now return 400-point fist blows, changing facing, hit interruptions and subsequent rolls.
-  // The champion's first 1200 is 1600 x3/2 halved by the defence amulet, its second 2400 a critical
-  // double of that; the rival's first 1600 is the plain short-sword blow on bare cloth.
+  // The champion's first 1456 is 1600 x13/10 cut to 70% by the defence amulet, its second a critical
+  // double of that, raised a little by fight experience; the rival's first 1600 is the plain short-sword
+  // blow on bare cloth.
   const GOLDEN_TRACE: readonly string[] = [
     '20:miss:12',
     '24:hit:3>4:4600',
@@ -200,7 +201,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
     '32:miss:12',
     '34:hit:8>7:4055',
     '35:hit:16>15:3400',
-    '36:hit:15>16:3800',
+    '36:hit:15>16:3544',
     '36:miss:14',
     '39:hit:2>1:3418',
     '39:hit:6>5:4220',
@@ -211,7 +212,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
     '44:hit:9>10:4214',
     '46:hit:7>8:4214',
     '47:hit:16>15:1804',
-    '48:hit:15>16:1400',
+    '48:hit:15>16:630',
     '51:hit:2>1:2627',
     '51:hit:6>5:3833',
     '52:miss:12',
@@ -222,16 +223,15 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
     '57:hit:1>2:3826',
     '57:died:3',
     '59:hit:16>15:200',
-    '60:hit:15>16:200',
+    '60:hit:15>16:gone',
     '60:hit:9>10:3826',
+    '60:died:16',
     '61:miss:14',
     '62:hit:7>8:3826',
     '63:hit:8>7:3135',
     '63:hit:2>1:1832',
     '63:hit:6>5:3444',
     '63:shot:12>11:4231',
-    '71:hit:16>15:gone',
-    '71:died:15',
     '72:hit:5>6:3436',
     '73:hit:1>2:3436',
     '74:shot:12>11:3847',
@@ -292,7 +292,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
   it('matches the golden final state hash', () => {
     // Moves on any intentional combat change, including a new shape of the stored swing that leaves the
     // hit trace alone; name the change in the commit that moves it.
-    expect(combat().hash).toBe('8af4d97f');
+    expect(combat().hash).toBe('032998eb');
   });
 
   it('matches the golden hit trace', () => {
