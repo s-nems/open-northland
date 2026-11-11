@@ -12,7 +12,9 @@ always claims the carrier. When the supplier has no work it waits at its pickup 
 preventing the wider settlement's hauling fallback. Both output-first unblocking and availability
 for general hauling remain to implement. Original behavior: the workshop's carrier fetches a missing
 input before it carries any output out, so output-first unblocking is a departure that needs the
-owner's ruling.
+owner's ruling. It looks for inputs only within about 20 nodes of its work centre, though, and carries
+output out when none lies there (unconfirmed in a running game); our supplier searches the whole goods
+search limit, so a far input keeps it from ever clearing the shelf.
 
 ## Scope
 
