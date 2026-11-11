@@ -30,9 +30,9 @@ export interface WorldSceneLayers {
   readonly hearts: Container;
   readonly importMarkers: Container;
   readonly groupNumbers: Container;
-  /** A player's map pings: over every sprite and mark, so a ping behind a building still shows. */
   /** A barracks' rally banner: over every sprite, so the soldiers gathered on it never hide it. */
   readonly rallyBanners: Container;
+  /** A player's map pings: over every sprite and mark, so a ping behind a building still shows. */
   readonly mapPings: Container;
   readonly geometryDebug: Container;
 }

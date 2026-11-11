@@ -1,15 +1,9 @@
 import { Container, Graphics, MeshPlane, Rectangle, Sprite, Texture } from 'pixi.js';
 import { isVisible, type Viewport } from '../../data/projection/index.js';
 import { type ElevationField, projectNode } from '../../data/terrain/index.js';
+import { destroyMeshChildren } from '../mesh-teardown.js';
 import { markMagnifiedTexture } from '../pixel-art/registry.js';
 import { retireUndrawn } from './retained-pool.js';
-
-/**
- * A barracks' rally point on the world view: a war banner on a pole, its cloth in the owner's colour and
- * swaying from the arm it hangs on. It stands over every sprite, so the soldiers gathered on the post
- * never hide it. A presentation addition, not taken from the original. The app owns the clock.
- * Extents in art px at zoom 1; authored.
- */
 
 export interface RallyBanner {
   /** Stable while the banner shows, the retained-pool key: the flag entity, or a cursor preview's own id. */
@@ -70,6 +64,10 @@ function splitBannerArt(page: Texture): BannerArt {
 
 interface BannerNode {
   readonly root: Container;
+  /** The cell the pole and the cloth meshes sit in. */
+  readonly body: Container | undefined;
+  /** The cloth that wears the owner's colour; undefined for the stand-in. */
+  readonly tinted: MeshPlane | undefined;
   /** The cloth's meshes with their rest x per vertex; empty for the stand-in. */
   readonly cloths: readonly { readonly mesh: MeshPlane; readonly restX: Float32Array }[];
 }
@@ -96,7 +94,7 @@ function makeNode(banner: RallyBanner, art: BannerArt | undefined): BannerNode {
   if (banner.preview === true) root.alpha = PREVIEW_ALPHA;
   if (art === undefined) {
     root.addChild(standIn(banner.colour));
-    return { root, cloths: [] };
+    return { root, body: undefined, tinted: undefined, cloths: [] };
   }
   // The cell's origin, placed so the pole's foot sits on the node.
   const body = new Container();
@@ -104,7 +102,13 @@ function makeNode(banner: RallyBanner, art: BannerArt | undefined): BannerNode {
   const cloths = [clothMesh(art.cloth, banner.colour), clothMesh(art.trim, 0xffffff)];
   body.addChild(new Sprite(art.pole), ...cloths.map((cloth) => cloth.mesh));
   root.addChild(body);
-  return { root, cloths };
+  return { root, body, tinted: cloths[0]?.mesh, cloths };
+}
+
+/** Pixi's `Mesh` leaves its geometry alive on destroy, so a retired banner frees its cloth's first. */
+function retire(node: BannerNode): void {
+  if (node.body !== undefined) destroyMeshChildren(node.body);
+  node.root.destroy({ children: true });
 }
 
 /** Bend the cloth for wall-clock `seconds`: every mesh row below the hang row shifts sideways, further toward the hem. */
@@ -122,6 +126,12 @@ function sway(node: BannerNode, seconds: number): void {
   }
 }
 
+/**
+ * A barracks' rally point on the world view: a war banner on a pole, its cloth in the owner's colour and
+ * swaying from the arm it hangs on. It stands over every sprite, so the soldiers gathered on the post
+ * never hide it. A presentation addition, not taken from the original. The app owns the clock.
+ * Extents in art px at zoom 1; authored.
+ */
 export class RallyBannerLayer {
   readonly container = new Container();
   private readonly nodes = new Map<number, BannerNode>();
@@ -150,13 +160,15 @@ export class RallyBannerLayer {
         this.nodes.set(banner.id, node);
       }
       node.root.position.set(spot.x, spot.y);
+      if (node.tinted !== undefined) node.tinted.tint = banner.colour;
       sway(node, seconds);
       this.seen.add(banner.id);
     }
-    retireUndrawn(this.nodes, this.seen, (node) => node.root.destroy({ children: true }));
+    retireUndrawn(this.nodes, this.seen, retire);
   }
 
   destroy(): void {
+    for (const node of this.nodes.values()) retire(node);
     this.container.destroy({ children: true });
     this.art?.pole.destroy();
     this.art?.trim.destroy();

@@ -559,7 +559,9 @@ function takeBarracksPost(search: ArmingSearch, e: Entity, barracks: Entity, her
   const { world, ctx, terrain } = search;
   if (!isBarracksOrFoundation(world, ctx, barracks) || !sameSide(world, e, barracks)) return null;
   const rally = rallyNodeOf(world, terrain, barracks);
-  if (rally === undefined) return interactionCell(world, ctx, terrain, barracks, here);
+  // A flag on another shore than his own is no post he can take: a booked soldier of a colony keeps his.
+  if (rally === undefined || terrain.componentOf(rally) !== terrain.componentOf(here))
+    return interactionCell(world, ctx, terrain, barracks, here);
   moveAnchor(world, ctx.content, e, rally);
   return guardPost(world, ctx, terrain, rally, here);
 }

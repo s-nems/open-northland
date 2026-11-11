@@ -28,7 +28,7 @@ export function rallyNodeOf(world: World, terrain: TerrainGraph, barracks: Entit
  * nearest legal flag ground within {@link WORK_FLAG_SNAP_MAX_RADIUS}, as a gatherer's work flag does; a click
  * past that is not workable ground and changes nothing. Only the barracks' own land takes the flag: no
  * soldier walks to another shore. An existing flag only moves, so the same marker stands throughout. Only
- * soldiers trained after the order take the new point.
+ * soldiers the barracks trains or the assistant arms through it after the order take the new point.
  */
 export function setRallyPoint(
   world: World,

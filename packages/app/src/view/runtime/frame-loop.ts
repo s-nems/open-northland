@@ -25,6 +25,7 @@ import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import type { DiplomacyMap } from '../../hud/diplomacy-map/index.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import { type BuildingPick, probeOwner, techWaived } from '../../hud/tool-panel/placement.js';
+import { teamColourVersion } from '../accessibility/team-colour.js';
 import { setCanvasCursor } from '../cursors/element.js';
 import { placementPointer, wallDemolishPointer } from '../cursors/placement.js';
 import { createForeignFlags } from '../foreign-flags.js';
@@ -300,11 +301,11 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const visiblePlots = createVisiblePlots(() => host.constructionPlots(), fogGates.seesNode);
   // The sprite pool withholds both the felling presenter's refs and the flags other seats' settlers hold.
   const foreignFlags = createForeignFlags(loop.viewer);
-  // Both versions only grow, so their sum moves when either does.
+  // Every version only grows, so their sum moves when any does.
   const plantedBanners = memoBySnapshot(
     (snapshot: WorldSnapshot) =>
       rallyBannersOf(snapshot, controls.selectedIds(), pickableSeat(loop.viewer), loop.rallyColourOf),
-    () => controls.selectionVersion() + loop.viewer.version(),
+    () => controls.selectionVersion() + loop.viewer.version() + teamColourVersion(),
   );
   let fellingRefs: ReadonlySet<number> = new Set();
   let hiddenFlags: ReadonlySet<number> = new Set();

@@ -411,6 +411,32 @@ describe('trainSoldier - the barracks drill', () => {
     expect(entityNode(sim.world, terrainOf(sim), recruit)).toBe(moved);
   });
 
+  it('leaves a booked soldier on another shore his own post, whatever flag the barracks keeps', () => {
+    const sim = new Simulation({ seed: 1, content: barracksContent(), map: waterColumnMap(16, 8, 8) });
+    const house = barracksAt(sim, 4, 3);
+    sim.enqueueSetup({ kind: 'setRallyPoint', building: house, x: 6, y: 12 });
+    sim.world.add(sim.world.create(), AssistantCounters, {
+      player: HUMAN_PLAYER,
+      counters: { ...defaultAssistantCounters(), trainSword: { value: 1, infinite: false } },
+    });
+    // Across the water, armed and booked with no armor to fetch: the pass releases him on its beat.
+    const soldier = settlerAt(sim, SOLDIER_JOB, 12, 3);
+    sim.world.add(soldier, Equipment, {
+      boots: null,
+      tool: null,
+      weapon: { goodType: PRESET_WEAPON_GOOD, degreeOfUse: fx.fromInt(0) },
+      armor: null,
+      misc: [],
+    });
+    sim.world.add(soldier, AssistantRecruit, { intent: 'trainSword', armed: true, barracks: house });
+    const post = entityNode(sim.world, terrainOf(sim), soldier);
+    sim.world.add(soldier, Stance, { mode: MILITARY_MODE.DEFEND, anchorCell: post });
+
+    for (let i = 0; i < WALK_TICKS && sim.world.has(soldier, AssistantRecruit); i++) sim.step();
+    expect(sim.world.has(soldier, AssistantRecruit)).toBe(false);
+    expect(sim.world.get(soldier, Stance).anchorCell).toBe(post);
+  });
+
   it("an armed recruit the pass releases with no armor to fetch walks his barracks' post", () => {
     const sim = simWithBarracks();
     const house = barracksAt(sim, 6, 3);
