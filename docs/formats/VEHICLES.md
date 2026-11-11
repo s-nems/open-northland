@@ -496,16 +496,16 @@ landscape on 51 % of footprint nodes and drop all cargo within radius 10.
 A scripted removal draws no ruins, spills nothing and draws no random number; a player leaving the
 game removes his vehicles with ruins but without the cargo spill.
 
-Open Northland (`packages/sim/src/systems/conflict/engage-vehicle.ts`, `projectile.ts`): the
+Open Northland (`packages/sim/src/systems/conflict/engage-vehicle.ts`, `vehicle-targets.ts`,
+`projectile.ts`): the
 stance, guard position and attack ride on the `Vehicle` component; the guard position is set by
 the stance order and a goto's end. A chase, ordered or scanned, leaves it where it was, so a holding
 or defending vehicle that chased far scans around the old spot until a goto or stance order (original
 behavior). A chase that loses its target under way, which fell, left the map or ran the defence past
 its leash, stops on the node it is crossing and leaves the guard position too. Approximation: the original's goto writes its goal as the drive starts, and whether its
 stance order writes it is not read.
-Ranges are map points, the hexagon distance every other weapon band counts in. The four-step target
-preference is one nearest search (approximation). The stone is a `Projectile` with a ground-burst
-payload. Its flight time is `dist * 8 / speed` ticks, as an arrow's is: it covers its release chord
+Ranges are map points, the hexagon distance every other weapon band counts in. The stone is a
+`Projectile` with a ground-burst payload. Its flight time is `dist * 8 / speed` ticks, as an arrow's is: it covers its release chord
 in equal steps over two ticks fewer and strikes on the tick before the flight time runs out, where
 the original's delayed hit lands. It lands through the one pipeline every shot lands through: the men
 and beasts out in the open on the landing point and its six neighbours, then the vehicles and houses
