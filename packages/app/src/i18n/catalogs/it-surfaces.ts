@@ -25,11 +25,7 @@ export const itSurfaces = {
     fullscreenPrompt: "Per un'esperienza migliore, gioca a schermo intero",
     originalGame: {
       message: 'Il gioco richiede che sia installato uno di questi giochi:',
-      games: [
-        'Cultures 2: The Gates of Asgard',
-        'Cultures: Northland',
-        'Cultures - 8th Wonder of the World',
-      ],
+      games: ['Cultures 2: The Gates of Asgard', 'Cultures: Northland', 'Cultures - 8th Wonder of the World'],
       pick: 'Scegli la cartella del gioco',
       checking: 'Controllo della cartella…',
       notRecognized: 'Quella cartella non contiene dati di un gioco Cultures',
@@ -689,7 +685,7 @@ export const itSurfaces = {
         'Puoi costruire sopra qualsiasi cartello, tuo o di un altro giocatore. Si spostano di lato e mantengono i loro collegamenti.',
       scoutExplore: "Con l'ordine «Esplora» un esploratore esplora la mappa da solo.",
       porterFlag:
-        'I trasportatori di magazzini e botteghe possono ricevere una bandierina di raccolta e radunare merci intorno a essa, mentre estrattori, cacciatori, pescatori, contadini ed erboristi assegnati una bandierina presso cui lavorare. Impostala nella riga «{area}» del pannello del colono.',
+        'I trasportatori di magazzini e botteghe possono ricevere una bandierina di raccolta e radunare merci intorno a essa, mentre estrattori, cacciatori, pescatori, contadini ed erboristi con un luogo di lavoro possono riceverne una presso cui lavorare. Impostala nella riga «{area}» del pannello del colono.',
       nationSwitch:
         "Con coloni di un'altra tribù, la finestra di costruzione ({key}) può passare agli edifici di quella tribù.",
     },

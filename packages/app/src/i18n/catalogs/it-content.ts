@@ -240,7 +240,7 @@ export const itContent = {
     'mace-blows': {
       title: 'Colpi di mazza',
       summary:
-        "Sopra: la spada lunga e la spada corta bizantine, entrambe con una mazza, che risuonano come acciaio su un corpo. Sotto: una spada lunga vichinga con il colpo di spada originale, da confrontare a orecchio.",
+        'Sopra: lo spadaccino bizantino con spada lunga e quello con spada corta, entrambi con una mazza, che risuonano come acciaio su un corpo. Sotto: una spada lunga vichinga con il colpo di spada originale, da confrontare a orecchio.',
     },
     'combat-gestures': {
       title: 'Colpi e gesti',

@@ -1107,8 +1107,8 @@ export const itGame = {
       alarmOnEverywhereTooltip: 'Attiva la modalità difensiva in ogni edificio di difesa · {key}',
       alarmOffEverywhereTooltip: 'Disattiva la modalità difensiva in ogni edificio di difesa · {key}',
       rallySetTooltip:
-        "Pianta una bandiera: i soldati addestrati qui la raggiungono. Finché la caserma resta selezionata, anche un clic destro sul terreno la pianta",
-      rallyClearTooltip: "Togli la bandiera di raduno: i nuovi soldati restano davanti alla porta",
+        'Pianta una bandiera: i soldati addestrati qui la raggiungono. Finché la caserma resta selezionata, anche un clic destro sul terreno la pianta',
+      rallyClearTooltip: 'Togli la bandiera di raduno: i nuovi soldati restano davanti alla porta',
       demolishTitle: "Demolisci l'edificio",
       demolishQuestion: 'Demolire «{name}»?',
       demolishKeep: 'Mantieni',
@@ -1566,7 +1566,7 @@ export const itGame = {
         },
         foundFamilies: {
           label: 'Fonda famiglie',
-          tip: "Una donna senza casa si trasferisce nella casa più vicina con un posto libero. Una donna che ha già una casa si sposa appena un uomo è libero.",
+          tip: 'Una donna senza casa si trasferisce nella casa più vicina con un posto libero. Una donna che ha già una casa si sposa appena un uomo è libero.',
         },
       },
       notes: {
