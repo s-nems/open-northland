@@ -28,6 +28,7 @@ import {
   lutSlotOf,
   WORLD_VERTEX_SIZE,
   type WorldBatcherApi,
+  wholePackOf,
   worldBatchGeometry,
 } from '../world-batch/batcher.js';
 import { LUT_SLOTS } from '../world-batch/shader.js';
@@ -135,9 +136,11 @@ interface MeshQuad extends TableQuad {
   readonly element: BatchableSprite;
   /** Moves between the store's cold and hot blocks only as its band rebuilds, which rewrites its index. */
   slot: number;
-  /** The slot holding its last pack, or {@link UNPACKED}: it differs from {@link slot} after a move that
-   *  left the packed quad behind. */
+  /** The slot holding the mesh's last pack of it, or {@link UNPACKED}: it differs from {@link slot} after
+   *  a move that left the packed quad behind. */
   packedSlot: number;
+  /** The record's whole-pack number as the mesh last packed it; another buffer packing it since moves it. */
+  packSerial: number;
   /** The renders it was last packed on, and the one before. */
   packFrame: number;
   previousPackFrame: number;
@@ -627,7 +630,7 @@ export class StillSpriteMesh implements StillBandCollector {
     // A sprite changing under a child the owner no longer offers: its band rebuilds and hands it to Pixi.
     if (quad.sprite.parent === null || !this.takes(quad.owner))
       state.band.renderGroup.structureDidChange = true;
-    this.packer.repackQuad(quad.element, store.f32, store.u32, QuadStore.start(quad.slot), quad.textureId);
+    this.packInPlace(this.packer, store, quad, quad.textureId);
     quad.containerTick = quad.sprite._didContainerChangeTick;
     quad.viewTick = quad.sprite._didViewChangeTick;
     quad.previousPackFrame = quad.packFrame;
@@ -848,6 +851,7 @@ export class StillSpriteMesh implements StillBandCollector {
         element: pipe._getGpuSprite(sprite),
         slot: store.allocate(),
         packedSlot: UNPACKED,
+        packSerial: Number.NaN,
         containerTick: Number.NaN,
         viewTick: Number.NaN,
         packFrame: Number.NEGATIVE_INFINITY,
@@ -893,18 +897,26 @@ export class StillSpriteMesh implements StillBandCollector {
     element._batcher = state;
     element._textureId = textureId;
     element._attributeStart = start;
-    if (quad.packedSlot === quad.slot) {
-      // Its last pack stands here: a quad that only moved has its corners rewritten, at its new page slot.
-      if (quad.textureId !== textureId) store.retarget(quad.slot, textureId);
-      this.packer.repackQuad(element, store.f32, store.u32, start, textureId);
-    } else this.packer.packQuadAttributes(element, store.f32, store.u32, start, textureId);
-    quad.packedSlot = quad.slot;
+    if (quad.packedSlot === quad.slot && quad.textureId !== textureId) store.retarget(quad.slot, textureId);
+    this.packInPlace(this.packer, store, quad, textureId);
     quad.textureId = textureId;
     quad.containerTick = quad.sprite._didContainerChangeTick;
     quad.viewTick = quad.sprite._didViewChangeTick;
     quad.previousPackFrame = quad.packFrame;
     quad.packFrame = this.frame;
     store.markDirty(quad.slot);
+  }
+
+  /** Pack `quad` at its slot: only what changed where the record's last whole pack is the one standing
+   *  there, the whole quad where the slot is new or a Pixi batch packed the sprite since. */
+  private packInPlace(packer: WorldBatcherApi, store: QuadStore, quad: MeshQuad, textureId: number): void {
+    const element = quad.element;
+    const start = QuadStore.start(quad.slot);
+    if (quad.packedSlot === quad.slot && quad.packSerial === wholePackOf(element))
+      packer.repackQuad(element, store.f32, store.u32, start, textureId);
+    else packer.packQuadAttributes(element, store.f32, store.u32, start, textureId);
+    quad.packedSlot = quad.slot;
+    quad.packSerial = wholePackOf(element);
   }
 
   /**

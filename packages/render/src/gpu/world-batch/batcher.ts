@@ -368,9 +368,17 @@ interface PackedQuad {
    *  rotated frame or an empty quad leaves them unknown. */
   texelsX: number;
   texelsY: number;
+  /** The whole pack's number among every packer's; a buffer holding an earlier one holds a stale quad. */
+  serial: number;
 }
 const PACKED: unique symbol = Symbol('world quad pack');
 type PackedQuadHost = DefaultBatchableQuadElement & { [PACKED]?: PackedQuad };
+let wholePacks = 0;
+
+/** The number of `element`'s last whole pack in any buffer, or NaN, which equals nothing, before one. */
+export function wholePackOf(element: DefaultBatchableQuadElement): number {
+  return (element as PackedQuadHost)[PACKED]?.serial ?? Number.NaN;
+}
 
 /** The sprite's count of view changes, or NaN, which equals nothing, where a whole pack must follow
  *  every update: no sprite to count them, or a blood surface, whose stains change without one. */
@@ -646,10 +654,12 @@ function defineWorldBatcher(): WorldBatcherClass {
         bounded: false,
         texelsX: 0,
         texelsY: 0,
+        serial: 0,
       };
       element[PACKED] = packed;
     }
     const transform = element.transform;
+    packed.serial = ++wholePacks;
     packed.sprite = sprite;
     packed.viewTick = movableViewTick(sprite);
     packed.a = transform.a;

@@ -352,6 +352,23 @@ describe('StillSpriteMesh', () => {
     expect(packedOf(h, body)).toEqual(freshPack(h, body));
   });
 
+  it('packs a slot whole once another buffer packed the sprite, though the record notes its new view', () => {
+    const h = harness();
+    const tree = entity(h.layer, 0);
+    h.held.add(tree);
+    h.frame();
+    const body = tree.children[1] as Sprite;
+    // Another frame of the body's page, so only a whole pack moves the slot's texture coordinates.
+    const half = PAGE_SIZE / 2;
+    body.texture = new Texture({ source: body.texture.source, frame: new Rectangle(half, half, half, half) });
+    // A Pixi batch packing the sprite whole notes the view the mesh's slot never held.
+    freshPack(h, body);
+    tree.position.set(12, 30);
+    entity(h.layer, 1);
+    expect(h.frame()).toEqual(painterOrder(h.layer));
+    expect(packedOf(h, body)).toEqual(freshPack(h, body));
+  });
+
   it('draws a band whose pages outgrow one draw from several, each sprite on its own page', () => {
     const h = harness();
     const tree = entity(h.layer, 0, 0);
