@@ -7,12 +7,12 @@ import { HUMAN_PLAYER } from '../../game/rules.js';
 import { BUILDING_HOME_00, placeBuiltSandboxBuilding, spawnSettlerDirect } from '../../game/sandbox/index.js';
 import type { SceneDefinition } from '../types.js';
 
-const MAP_W = 30;
+const MAP_W = 22;
 const MAP_H = 18;
 /** West to east: a well furnished home, a home with its furniture nearly gone, an empty home. */
-const FURNISHED = { x: 6, y: 5 } as const;
-const WORN = { x: 15, y: 5 } as const;
-const SPARE = { x: 24, y: 5 } as const;
+const FURNISHED = { x: 4, y: 5 } as const;
+const WORN = { x: 10, y: 5 } as const;
+const SPARE = { x: 16, y: 5 } as const;
 /** Where a home's two women stand at the start, south of its door. */
 const WOMEN_ROW_BELOW = 9;
 const WOMEN_COLUMN_OFFSET = 1;
@@ -30,9 +30,9 @@ const LATER_MOVE_IN = 1;
 const CROWDED_FAMILIES = 2;
 const LONE_FAMILY = 1;
 const RUN_TICKS = 300;
-const INITIAL_ZOOM = 1.1;
+const INITIAL_ZOOM = 1;
 
-const { Building, HomeQuality, Residence, SettlerNeeds } = components;
+const { Building, HomeQuality, Residence, SettlerNeeds, Stockpile } = components;
 
 function furniture(sim: Simulation): Extract<HomeQualityUse, { readonly effect: 'lodging' }> {
   const ware = sim.content.goods.find((good) => good.homeQuality?.effect === 'lodging')?.homeQuality;
@@ -84,6 +84,8 @@ function build(sim: Simulation): void {
     piety: 0,
   });
   sim.world.add(worn, HomeQuality, { cooking: 0, lodging: SLEEPS_LEFT * ware.wear.sleep, piety: 0 });
+  // An empty larder, so no meal at home wears the worn home's furniture before the two sleeps do.
+  sim.world.mut(worn, Stockpile).amounts.clear();
   settleTwo(sim, furnished, FURNISHED);
   for (const woman of settleTwo(sim, worn, WORN)) {
     sim.world.mut(woman, SettlerNeeds).fatigue = fx.div(fx.fromInt(TIRED_PERCENT), fx.fromInt(PERCENT));
