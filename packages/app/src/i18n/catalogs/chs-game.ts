@@ -1028,7 +1028,7 @@ export const chsGame = {
         workers: '工人',
         knowledge: '知识',
         demolish: '拆除',
-        prioritize: '优先建造',
+        prioritize: '优先',
       },
       upgradeCost: '升级 · {cost}',
       upgradeLevels: '升至',

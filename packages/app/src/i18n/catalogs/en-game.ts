@@ -1068,7 +1068,7 @@ export const enGame = {
         workers: 'Workers',
         knowledge: 'Knowledge',
         demolish: 'Demolish',
-        prioritize: 'Prioritize',
+        prioritize: 'Priority',
       },
       upgradeCost: 'Upgrade · {cost}',
       upgradeLevels: 'To level',

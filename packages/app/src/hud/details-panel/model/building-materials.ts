@@ -1,8 +1,6 @@
 import { buildHud } from '@open-northland/render';
 import { empireInventoryContains } from '@open-northland/render/data';
 import {
-  CONSTRUCTION_PRIORITIES,
-  type ConstructionPriority,
   constructionBillForType,
   type Fixed,
   fx,
@@ -83,16 +81,8 @@ export interface ConstructionModel {
   readonly rows: readonly ConstructionRow[];
   /** The site's current, evidence-backed bottleneck; null while no stall is proven. */
   readonly status: ConstructionStatus | null;
-  /** The owner's build rank for this site, which their builders work in first; `normal` when unset. */
-  readonly priority: ConstructionPriority;
-}
-
-/** The site's build rank a snapshot carries, or `normal` when none or one this build does not know. */
-export function constructionPriorityOf(ent: SnapshotEntity): ConstructionPriority {
-  const priority = (ent.components.UnderConstruction as { priority?: unknown } | undefined)?.priority;
-  return CONSTRUCTION_PRIORITIES.includes(priority as ConstructionPriority)
-    ? (priority as ConstructionPriority)
-    : 'normal';
+  /** Whether the owner marked the site for their builders to work first. */
+  readonly prioritized: boolean;
 }
 
 /** The current holdings of a building's `Stockpile`, as a goodType→amount map. */
@@ -242,7 +232,7 @@ export function constructionModel(
   return {
     rows,
     status: constructionStatus(ent, rows, activity.hasBuilder),
-    priority: constructionPriorityOf(ent),
+    prioritized: (ent.components.UnderConstruction as { prioritized?: boolean }).prioritized === true,
   };
 }
 

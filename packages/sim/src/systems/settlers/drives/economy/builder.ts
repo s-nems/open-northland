@@ -67,7 +67,8 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
  * tier and its own crew site first among equals, so the ordinary work spreads over the sites by
  * distance. At the site, delivered material is hammered before more is fetched, and a covered site keeps
  * a finishing crew waiting for its last loads. The last builder at a site with a task stays, unless it
- * has no step to hammer there and the site it would go to has nobody. With no task anywhere the builder
+ * has no step to hammer there and the site it would go to has nobody, or that site is prioritized and
+ * its own is not. With no task anywhere the builder
  * waits beside a site, unless only its signposts keep it from one; a machine seat's builder waiting there
  * re-plans on the short idle beat, as does one waiting for material at the site of a run. A road or wall
  * run the player started ({@link BuildMode}) goes before all of that. New wall segments wait while a building site holds a task

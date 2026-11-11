@@ -27,6 +27,9 @@ import { atomicHoldsSettler } from '../../atomics/busy.js';
  * A building site's standing with the builders, weighed ahead of its distance; a higher tier draws a
  * builder off a lower one, up to {@link PRIORITY_CREW} builders. Within a tier the nearest site wins, so
  * the ordinary work spreads over the sites by distance. Owner ruling.
+ *
+ * A site its owner prioritized ranks above every unmarked one, in the same tiers among the marked: the
+ * ranking holds the tiers twice, the marked sites in the upper half. Our rule, not the original's.
  */
 const SITE_TIER = {
   /** Material still to fetch, or nothing to do at all. */
@@ -44,9 +47,9 @@ const SITE_TIER = {
   readyUnstaffed: 5,
 } as const;
 
-/** Whether the player has prioritized the construction site `site`. */
+/** Whether `site`'s owner has prioritized it (`setConstructionPriority`). */
 export function isPrioritizedSite(world: World, site: Entity): boolean {
-  return world.tryGet(site, UnderConstruction)?.priority === 'high';
+  return world.tryGet(site, UnderConstruction)?.prioritized === true;
 }
 
 /** Builders a ready or nearly done site draws before it ranks like any other: enough to finish it fast

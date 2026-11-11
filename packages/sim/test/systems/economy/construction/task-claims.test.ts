@@ -73,7 +73,7 @@ describe('construction task claims', () => {
     expect(tierOf(far)).toBeGreaterThan(tierOf(near));
 
     // A prioritized site rises over every unrated one, so the waiting site is worked first.
-    sim.world.mut(near, UnderConstruction).priority = 'high';
+    sim.world.mut(near, UnderConstruction).prioritized = true;
     expect(tierOf(near)).toBeGreaterThan(tierOf(far));
     expect(sim.world.verifyCaches()).toEqual([]);
   });

@@ -1029,7 +1029,7 @@ export const chtGame = {
         workers: '工人',
         knowledge: '知識',
         demolish: '拆除',
-        prioritize: '優先建造',
+        prioritize: '優先',
       },
       upgradeCost: '升級 · {cost}',
       upgradeLevels: '升至',

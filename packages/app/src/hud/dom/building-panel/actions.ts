@@ -1,4 +1,3 @@
-import type { ConstructionPriority } from '@open-northland/sim';
 import type { HouseholdEffect } from '../../details-panel/model/index.js';
 import type { KeybindingAction } from '../../keybindings.js';
 import type { GoodIconPainter } from '../good-art.js';
@@ -30,8 +29,8 @@ export interface BuildingPanelActions {
   readonly setStorageMinimum: (player: number, goodType: number, amount: number) => void;
   /** Mark or unmark `goodType` as priority in `building`, whose porters then fetch it. */
   readonly setStorePriority: (building: number, goodType: number, priority: boolean) => void;
-  /** Prioritize the construction site `building`; `normal` clears its priority. */
-  readonly setConstructionPriority: (building: number, priority: ConstructionPriority) => void;
+  /** Mark or unmark the construction site `building` for the builders to work first. */
+  readonly setConstructionPriority: (building: number, prioritized: boolean) => void;
 }
 
 /** The central windows the panel opens. */

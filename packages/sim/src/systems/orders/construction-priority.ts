@@ -3,9 +3,7 @@ import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
-/** Prioritize one owned construction site - see the command doc. Only a raised building site takes
- *  a rank, so a wall segment, a road site and a standing building refuse; `normal` clears the rank.
- *  Never refused into an error, only ignored. */
+/** Mark or unmark a building site as prioritized; anything else ignores the order. */
 export function setConstructionPriority(
   world: World,
   _ctx: SystemContext,
@@ -14,7 +12,6 @@ export function setConstructionPriority(
   if (!world.has(command.building, Building)) return;
   const site = world.tryMut(command.building, UnderConstruction);
   if (site === undefined) return;
-  // `normal` clears the field; a same-rank order mutates nothing, so caches never churn.
-  if ((site.priority ?? 'normal') === command.priority) return;
-  site.priority = command.priority === 'normal' ? undefined : command.priority;
+  if ((site.prioritized === true) === command.prioritized) return;
+  site.prioritized = command.prioritized ? true : undefined;
 }

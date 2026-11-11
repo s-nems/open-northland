@@ -329,7 +329,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     setHouseholdGoodUse: [{ player: SEAT, effect: HomeQualityEffect.options[0], allowed: true }],
     setStorageMinimum: [{ player: SEAT, goodType: WOOD, amount: 30 }],
     setStorePriority: [{ building: t.hq, goodType: WOOD, priority: true }],
-    setConstructionPriority: [{ building: t.hq, priority: 'high' }],
+    setConstructionPriority: [{ building: t.hq, prioritized: true }],
     setRallyPoint: [{ building: t.hq, ...node }],
     clearRallyPoint: [{ building: t.hq }],
     setJob: [

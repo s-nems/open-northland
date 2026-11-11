@@ -19,6 +19,9 @@ import { createUpgradeLevels } from './upgrade-levels.js';
 
 export type BuildingOrder = 'upgrade' | 'cancelUpgrade' | 'workers' | 'knowledge' | 'demolish' | 'prioritize';
 
+/** The tiles the two-column order grid holds beside the portrait without growing a third row. */
+export const MAX_ORDER_TILES = 4;
+
 /** One order tile as drawn: its face, words, and whether the press is refused. */
 export interface BuildingOrderView {
   readonly order: BuildingOrder;
@@ -32,9 +35,10 @@ export interface BuildingOrderView {
 }
 
 /**
- * The order tiles in their fixed places: Workers, Knowledge, Demolish, then Prioritize for a site and
- * Upgrade (Cancel while a tier is being raised). A refused order stays in its place, faded, its tooltip
- * the reason. Another seat's building offers Knowledge alone.
+ * The order tiles in their fixed places, {@link MAX_ORDER_TILES} at most so the grid keeps two rows:
+ * Workers, Knowledge, Demolish, then Upgrade. A site trades Upgrade, which it would only refuse, for
+ * Prioritize; a building being upgraded shows Cancel last and gives up Knowledge for it. A refused order
+ * stays in its place, faded, its tooltip the reason. Another seat's building offers Knowledge alone.
  */
 export function orderViews(
   model: Pick<BuildingPanelModel, 'orders' | 'name' | 'construction'>,
@@ -51,7 +55,9 @@ export function orderViews(
   const orders = model.orders;
   if (orders === null) return [knowledge];
   const hire = orders.hire;
-  const tier = tierView(orders);
+  const site = model.construction;
+  const upgrading = site !== null && orders.cancelUpgrade;
+  const tier = site === null || upgrading ? tierView(orders) : null;
   return [
     {
       order: 'workers',
@@ -61,7 +67,7 @@ export function orderViews(
       enabled: hire !== null,
       danger: false,
     },
-    knowledge,
+    ...(upgrading ? [] : [knowledge]),
     {
       order: 'demolish',
       glyph: GLYPH.demolish,
@@ -70,7 +76,7 @@ export function orderViews(
       enabled: true,
       danger: true,
     },
-    ...(model.construction === null
+    ...(site === null
       ? []
       : [
           {
@@ -80,7 +86,7 @@ export function orderViews(
             tooltip: copy.buildPriorityTooltip,
             enabled: true,
             danger: false,
-            pressed: model.construction.priority === 'high',
+            pressed: site.prioritized,
           },
         ]),
     ...(tier === null ? [] : [tier]),
@@ -181,7 +187,7 @@ export function createPortraitSection(
       case 'prioritize': {
         const site = shown.construction;
         if (site === null) return false;
-        deps.building.setConstructionPriority(id, site.priority === 'high' ? 'normal' : 'high');
+        deps.building.setConstructionPriority(id, !site.prioritized);
         return true;
       }
       default: {

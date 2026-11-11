@@ -728,7 +728,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(builders.map(siteOf)).toEqual(sites);
 
     const prioritized = sites[2] as Entity;
-    sim.enqueueSetup({ kind: 'setConstructionPriority', building: prioritized, priority: 'high' });
+    sim.enqueueSetup({ kind: 'setConstructionPriority', building: prioritized, prioritized: true });
     for (let i = 0; i < 400 && !builders.every((b) => siteOf(b) === prioritized); i++) sim.step();
 
     expect(builders.map(siteOf)).toEqual([prioritized, prioritized, prioritized]);

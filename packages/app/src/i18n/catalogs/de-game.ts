@@ -1151,7 +1151,7 @@ export const deGame = {
         workers: 'Arbeiter',
         knowledge: 'Wissen',
         demolish: 'Abreißen',
-        prioritize: 'Priorisieren',
+        prioritize: 'Priorität',
       },
       upgradeCost: 'Ausbau · {cost}',
       upgradeLevels: 'Auf Stufe',

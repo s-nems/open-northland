@@ -3,7 +3,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { BuildingPanelModel } from '../../../../src/hud/details-panel/model/index.js';
 import type { BuildingPanelDeps } from '../../../../src/hud/dom/building-panel/actions.js';
-import { createPortraitSection, orderViews } from '../../../../src/hud/dom/building-panel/portrait.js';
+import {
+  createPortraitSection,
+  MAX_ORDER_TILES,
+  orderViews,
+} from '../../../../src/hud/dom/building-panel/portrait.js';
 import { warmBuildingModel } from '../../../../src/hud/dom/building-panel/warm-model.js';
 import { messages } from '../../../../src/i18n/index.js';
 
@@ -37,38 +41,38 @@ function setup(model: BuildingPanelModel) {
 }
 
 describe('building panel Prioritize order', () => {
-  it('places a same-sized Prioritize tile directly after Demolish for construction sites', () => {
-    const model = { ...warmBuildingModel([]), entityId: BUILDING };
-    const views = orderViews(model);
-    const demolish = views.findIndex((view) => view.order === 'demolish');
-    const prioritize = views[demolish + 1];
-    expect(demolish).toBeGreaterThanOrEqual(0);
-    expect(prioritize?.order).toBe('prioritize');
-    expect(prioritize?.label).toBe(messages().hud.buildingPanel.orders.prioritize);
-    expect(prioritize?.pressed).toBe(true);
-    expect(prioritize?.enabled).toBe(true);
+  const site = { ...warmBuildingModel([]), entityId: BUILDING };
+  const ordersOf = (model: BuildingPanelModel): string[] => orderViews(model).map((view) => view.order);
 
-    const finished = orderViews({ ...model, construction: null });
-    expect(finished.some((view) => view.order === 'prioritize')).toBe(false);
+  it('gives a site Prioritize in place of the Upgrade it would refuse', () => {
+    expect(ordersOf(site)).toEqual(['workers', 'knowledge', 'demolish', 'prioritize']);
+    expect(orderViews(site)[3]).toMatchObject({ pressed: true, enabled: true });
+    expect(ordersOf({ ...site, construction: null })).not.toContain('prioritize');
   });
 
-  it('toggles between the former High priority and the normal state', () => {
-    const model = { ...warmBuildingModel([]), entityId: BUILDING };
-    const { section, setConstructionPriority, update } = setup(model);
+  it('keeps Cancel on a building being upgraded and still fits the grid', () => {
+    if (site.orders === null) throw new Error('warm model has no orders');
+    const upgrading = { ...site, orders: { ...site.orders, cancelUpgrade: true } };
+    expect(ordersOf(upgrading)).toEqual(['workers', 'demolish', 'prioritize', 'cancelUpgrade']);
+    expect(ordersOf(upgrading).length).toBeLessThanOrEqual(MAX_ORDER_TILES);
+  });
+
+  it('toggles the mark with each press', () => {
+    const { section, setConstructionPriority, update } = setup(site);
     const prioritizeButton = (): HTMLButtonElement | undefined =>
       [...section.element.querySelectorAll<HTMLButtonElement>('.on-order--tile')].find(
         (button) => button.textContent?.trim() === messages().hud.buildingPanel.orders.prioritize,
       );
 
     prioritizeButton()?.click();
-    expect(setConstructionPriority).toHaveBeenNthCalledWith(1, BUILDING, 'normal');
+    expect(setConstructionPriority).toHaveBeenNthCalledWith(1, BUILDING, false);
 
-    const site = model.construction;
-    if (site === null) throw new Error('warm model has no construction site');
-    update({ ...model, construction: { ...site, priority: 'normal' } });
+    const construction = site.construction;
+    if (construction === null) throw new Error('warm model has no construction site');
+    update({ ...site, construction: { ...construction, prioritized: false } });
     expect(prioritizeButton()?.getAttribute('aria-pressed')).toBe('false');
 
     prioritizeButton()?.click();
-    expect(setConstructionPriority).toHaveBeenNthCalledWith(2, BUILDING, 'high');
+    expect(setConstructionPriority).toHaveBeenNthCalledWith(2, BUILDING, true);
   });
 });

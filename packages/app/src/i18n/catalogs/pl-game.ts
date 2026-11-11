@@ -1047,7 +1047,7 @@ export const plGame = {
         workers: 'Pracownicy',
         knowledge: 'Wiedza',
         demolish: 'Zburz',
-        prioritize: 'Nadaj priorytet',
+        prioritize: 'Priorytet',
       },
       upgradeCost: 'Rozbuduj · {cost}',
       upgradeLevels: 'Do poziomu',
