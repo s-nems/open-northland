@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "map": "mroczny_swiat_sub2",
+  "basis": {
+    "lang": "eng",
+    "digest": "72954f5027a6bdfd07433a39a2adda69e190f2fbd8910c17a761aefadbc5ad95"
+  },
+  "strings": {
+    "0": "MONDO OSCURO: LA CRIPTA",
+    "1": "Cripta sotterranea dei guardiani",
+    "25": "Conduci i sacerdoti fuori dalla cripta",
+    "50": "Bjarni",
+    "51": "Guardiani del Santuario",
+    "100": "Bjarni",
+    "101": "Cyra",
+    "102": "Sigurd",
+    "103": "Hatchie",
+    "104": "Kain",
+    "900": "Proszak",
+    "901": "Ares",
+    "902": "kubaw208",
+    "903": "Krarilotus",
+    "904": "Jozenkow"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCRIPTA\n<font:$local$\\fonts\\font12.fnt>\n\n- \"Vi aspettavamo, eroi! Il sacerdote è al sicuro, laggiù in fondo. Andate a dirgli che è giunto il momento\" - ci dissero i guardiani del Santuario.\n\nScendemmo sottoterra. Lì trovammo ancora più guardiani e un lungo, stretto corridoio. Non ci resta che andare avanti e trovare Kain e Bain.",
+    "501": "CAPO DEI GUARDIANI\n\n- \"Eccovi, vi stavamo aspettando\" - disse uno dei guardiani. - \"Ma prima di aprirvi il cancello dovete superare la prova della luce.\"\n\n- \"Una prova?\" - chiesi.\n\n- \"Sì, dobbiamo assicurarci che non siate posseduti dall'Oscuro. Avrebbe potuto facilmente impadronirsi della vostra volontà e mandarvi quaggiù a uccidere Kain. Ti porrò un indovinello e dovrai rispondere.\nPensaci bene, perché avrai un solo tentativo!\nL'indovinello è:\nCHI HA VINTO IL TORNEO CULTURESNATION 2020?\"\n\nDai la risposta con un tributo nella finestra della diplomazia! (dove cambi i rapporti con un altro giocatore)",
+    "502": "RISPOSTA SBAGLIATA!\n\n- \"Vattene, servo delle forze oscure! Questo cancello non si aprirà mai più per te!\"",
+    "503": "RISPOSTA ESATTA!\n\nIl cancello è aperto!",
+    "504": "Oltre il cancello trovammo un solo sacerdote: Kain.\n\nGli chiedemmo dove fosse suo fratello Bain.\n\n- \"Oh, pensavate di trovarci qui tutti e due? Nessuno vi ha detto che non è qui da tanto tempo? Quando eravamo ancora all'aperto, una notte fu rapito dai Selgiuchidi. Commerciano in schiavi e molto probabilmente l'hanno preso per venderlo. Da allora nessuno l'ha più visto. Avete ragione, per sconfiggere l'Oscuro serve il nostro potere unito, e senza Bain non potremo affrontarlo...\nSperiamo che i Turchi selgiuchidi non abbiano già lasciato il paese o, peggio ancora, non siano già stati soggiogati dall'Oscuro. Ma ho una buona notizia: il mio potere nel Santuario della Luce basta a spezzare gli incantesimi che le forze oscure gettano sulle persone. Scortami al Santuario e portami i malati, li guarirò!\""
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "map": "saracen_3_sub_2",
+  "basis": {
+    "lang": "eng",
+    "digest": "922c37c8459eda24d1d0d0169f6d035be7f0582743104131a7c7436ea7ced6b5"
+  },
+  "strings": {
+    "0": "PDP : 03 - IL NIDO DI MARDUK",
+    "1": "Nel cuore della tempesta",
+    "30": "Uccidi tutti i Kazari.",
+    "31": "Elimina Marduk.",
+    "50": "Hatchie",
+    "51": "Druido",
+    "52": "Kazari",
+    "54": "Fabbro",
+    "55": "Marduk",
+    "56": "Maestro",
+    "90": "Pozioni di guarigione dal druido",
+    "91": "Armature di piastre dal fabbro",
+    "92": "5 guerrieri dal maestro",
+    "100": "Hatchie",
+    "101": "Idris",
+    "102": "Azim",
+    "103": "Generale Olivier",
+    "104": "Marduk"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL NIDO DI MARDUK\n\n<font:$local$\\fonts\\font12.fnt>\nLe scale che scendevano non erano lunghe. Difficile dire cosa sia esattamente il Nido di Marduk. Sembra una specie di base ricavata da una vecchia miniera. Dobbiamo prepararci alla battaglia: noi quattro guerrieri contro l'esercito dei Kazari.\n\n- \"Proprio al centro si trova il loro capo, Marduk.\" - ci informò il generale Olivier.\n\n- \"Tremo tutto solo a sentire il suo nome.\" - disse Azim.\n\n- \"Marduk!\" - lo spaventò Idris.\n\n- \"Uuuuuuuuugh. Ancora!\"\n\n- \"Marduk!\"\n\n- \"Uuuuuuuuugh. Ancora!\"\n\n- \"Sono circondato da cretini... - dissi. - Datevi una regolata, o qualcuno ci vedrà e penserà di avere a che fare con degli idioti.\"\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL NONNO\n\n<font:$local$\\fonts\\font12.fnt>\n- \"Salam aleikum!\" - disse il vecchio.\n\n- \"Wa aleikum salam!\" - rispose Azim.\n\n- \"???????\" - guardai Azim con aria inquisitoria.\n\n- \"Che c'è? È il saluto degli Arabi.\"\n\n- \"Che Allah vi benedica! Cosa ci fate qui?\" - chiese il vecchietto.\n\n- \"Siamo venuti a prendere a calci qualche sedere e a farci una birra.\" - Azim fremeva dalla voglia di agire.\n\n- \"A prendere a calci nel sedere quegli scherzi di natura travestiti, con la testa un po' da leone e un po' da cobra?\"\n\n- \"Non avrei saputo dirlo meglio!\" - rise piano il generale Olivier.\n\n- \"Allora buona fortuna. Dicono che siano addestrati alla perfezione. Vi do un consiglio per combattere. Primo, attirateli fuori uno alla volta. Secondo, sceglietevi un 'tank' che incassi i colpi, perché la loro spada può uccidere con due fendenti! Terzo, potete farvi aiutare dai miei fratelli. Si sono accampati a est di qui. L'ingresso è chiuso, quindi da qualche parte qui vicino è nascosto l'interruttore del cancello. Il druido vi rifornirà di pozioni potenti, il fabbro forgerà armature per fare da 'tank' e il maestro vi darà dei soldati per combattere. Naturalmente niente è gratis.\"\n\n- \"Grazie! Ci sarà utile saperlo.\"\n\n- \"Ancora buona fortuna. Conto su di voi!\"\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nAURA CURATIVA\n\n<font:$local$\\fonts\\font12.fnt>\nQuesto vapore aveva proprietà curative. Ahh, che sensazione divina!\n\n<usericon:1,229,333>\n",
+    "503": "\n- \"Era questo Marduk? - mi stupii. - Così... qualunque...\"\n\n- \"Vedi... Non sempre è il migliore a prendere il potere.\" - spiegò il generale Olivier.\n",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL DRUIDO\n\n<font:$local$\\fonts\\font12.fnt>\n- \"Salve - dissi. - Veniamo su indicazione di un certo vecchietto. È vero che ci rifornirai di pozioni?\"\n\n- \"Volete sconfiggere i Kazari?\"\n\n- \"Sì, è lo scopo della nostra visita in questo... posto.\"\n\n- \"Mmm... al momento ho un ordine di olio da parte del fabbro. Se mi paghi un tributo di 15 unità di olio, riempirò di pozioni di guarigione il magazzino qui accanto.\"\n",
+    "505": "\n- \"Grazie! In cambio ti do 26 pozioni di guarigione!\"\n",
+    "506": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL FABBRO\n\n<font:$local$\\fonts\\font12.fnt>\n- \"Salve - dissi. - Veniamo su indicazione di un certo vecchietto. È vero che qui forgi armature?\"\n\n- \"Sì, perché?\"\n\n- \"Ci servono per sconfiggere i guerrieri kazari.\"\n\n- \"Mmm... al momento ho un ordine di attrezzi di ferro da parte del druido. Portami 15 attrezzi di ferro e io forgerò le armature e le metterò nel magazzino qui accanto.\"\n",
+    "507": "\n- \"Grazie! In cambio ti do 10 armature di piastre!\"\n",
+    "508": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL MAESTRO\n<font:$local$\\fonts\\font12.fnt>\n\n- \"Ehilà, cosa ti porta qui?\" - mi chiese il maestro.\n\n- \"Mi servono soldati per combattere i Kazari. Puoi aiutarmi?\"\n\n- \"Ma certo! Questi cinque guerrieri saranno tuoi per sole 7 unità di olio e 5 attrezzi di ferro.\"\n",
+    "509": "\n- \"Grazie! Da ora questi soldati obbediscono solo a te!\"\n",
+    "520": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA\n\n<font:$local$\\fonts\\font12.fnt>\nUno degli eroi è caduto in battaglia. Senza di lui la missione non può riuscire...\n\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>\n"
+  }
+}

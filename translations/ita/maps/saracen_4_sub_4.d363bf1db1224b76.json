@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "map": "saracen_4_sub_4",
+  "basis": {
+    "lang": "eng",
+    "digest": "7f98ca10b6c245046ac7b336f2989ff812cd72eceed885196d753a3f91d11e79"
+  },
+  "strings": {
+    "0": "PDP : 04 - DENTRO LA SFINGE",
+    "1": "La caduta di Riad",
+    "30": "Esplora i corridoi",
+    "50": "Hatchie",
+    "51": "Zelzar",
+    "100": "Hatchie",
+    "101": "Idris",
+    "102": "Zelzar"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nDENTRO LA SFINGE\n\n<font:$local$\\fonts\\font12.fnt>\nInfilai la tessera di Baltazar tra le zampe della sfinge. All'improvviso l'ingresso si aprì!\n\nNon me lo sarei mai aspettato... Io e Idris scendemmo una lunga scalinata e laggiù vedemmo lunghi corridoi simili al labirinto del Protettorato. Che sia un'altra delle loro basi?\n\nIn ogni caso dobbiamo esplorare questo posto.\n",
+    "501": "\nAccidenti, qui mi aspettavo di tutto, ma non Zelzar!! Come so che è lui? Statura eccezionalmente bassa + stracci costosi placcati d'oro.\n\n- \"Mmm, sei tu quello che chiamano Hatchie?\" - mi disse Zelzar, nascosto dietro un muro.\n\n- \"Ooh, salve. Quindi è qui che si nasconde il Grande Zelzar?\"\n\n- \"Ahah, forse non mi nasconderei se QUALCUNO non avesse liberato una creatura immortale che mi cerca per cavarmi le budella. I miei soldati si sono fatti ammazzare come bambini. Peccato che QUALCUNO mi abbia ucciso tutti i Kazari.\"\n\n- \"Forse quel QUALCUNO non l'avrebbe fatto, se tu fossi stato un sovrano normale e onesto, e non un tiranno.\"\n\n- \"Ha parlato il santo. Guardate! Il grande Hatchie, difensore degli oppressi, condanna i tiranni e protegge gli innocenti. Non inganni nessuno. So cosa hai fatto.\"\n\n- \"Questo scarafaggio osa farmi la predica. Io eseguivo gli ordini. Tu sei solo un idiota insignificante che farà la fine di quel traditore di Baltazar.\"\n\n- \"E tu chi diavolo credi di essere? La Madonna con due sciabole?\"\n\n- \"Io faccio solo pulizia della spazzatura. Quelli come te.\"\n\n- \"Prova pure!\"\n\n- \"Di che parli? Sei solo tra i tuoi servi disarmati, quindi sei alla mia mercé.\"\n\n- \"Allora non sai ancora che mi sono procurato la difesa migliore del paese. Coniglietti, all'attacco!!!!!!!\"\n\n<usericon:1,87,26>\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nZELZAR È MORTO!\n\n<font:$local$\\fonts\\font12.fnt>\n- \"Come hai fatto a sfuggire alla morte per mano dei miei coniglietti?\" - chiese morendo.\n\n- \"La vita sa sorprendere. Oggi per te finisce.\"\n\n- \"Di' a mia madre che...\" - non finì la frase.\n\nCosì il Grande Zelzar morì, e d'ora in poi sulla penisola arabica regnerà la pace...\n\nAndiamo verso l'uscita\n",
+    "520": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA\n\n<font:$local$\\fonts\\font12.fnt>\nUno degli eroi è caduto in battaglia. Senza di lui la missione non può riuscire...\n\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>\n"
+  }
+}

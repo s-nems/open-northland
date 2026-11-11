@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "map": "saracen_4_sub_3",
+  "basis": {
+    "lang": "eng",
+    "digest": "1b31a75b68417d2e9c688354a3e807b092777ce8d38b59c958bf27a94fc75ff6"
+  },
+  "strings": {
+    "0": "PDP : 04 - IL DESERTO DI MEHAT",
+    "1": "La caduta di Riad",
+    "30": "Trova il ladro della Pergamena",
+    "31": "UCCIDI BALTAZAR PRIMA CHE FUGGA",
+    "32": "Torna a nord",
+    "50": "Hatchie",
+    "51": "Baltazar",
+    "53": "Carovana",
+    "100": "Hatchie",
+    "101": "Idris",
+    "102": "Baltazar"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL DESERTO DI MEHAT\n\n<font:$local$\\fonts\\font12.fnt>\nScendemmo a sud delle montagne. Davanti a noi si stende un grande deserto che porta lontano lontano, fino a chissà dove. Più o meno un'ora fa Samuel ci ha detto che il ladro della Pergamena è qui vicino. Visto che un viaggio solitario attraverso il deserto sarebbe molto pericoloso, deve trovarsi in un gruppo organizzato.\n\n- \"Speriamo solo che non abbia soldati con sé, perché noi i nostri non li abbiamo portati...\" - aggiunse Idris.\n\nMettiamoci in cammino a cercare il ladro!\n",
+    "501": "\nSulla strada, in una minuscola oasi, sedeva una figura misteriosa. Decidemmo di avvicinarci di soppiatto e ascoltare cosa diceva.\n\n- \"Abrabaabre? Nooo, non è questo... Simsalabam? No... In fondo non importa. Uff, dov'è quella stupida carovana? Sono qui ad aspettare da 2 ore!!!\"\n\nUn momento, un momento, questa voce la conosco. E anche la faccia! È Baltazar!\n\n- \"Baltazar...\" - feci un cenno di nascosto a Idris.\n\nMi avvicinai a Baltazar per chiedergli cosa stesse succedendo.\n\n- \"Baltazar! Dobbiamo fare due chiacchiere!\"\n\n- \"Ooh, Hatchie! Amico mio! - Nascose in fretta la Pergamena sotto il mantello. - Cosa ti porta qui? Sai, ho deciso di andare sulla costa meridionale attraverso questo deserto e sto aspettando la carovana.\"\n\n- \"Amico mio... perché?\" - chiesi guardandolo negli occhi.\n\n- \"Ma di che parli?\"\n\n- \"Non fare il finto tonto. All'inizio mi hai aiutato nella missione. Mi hai accompagnato. Cos'è successo?\"\n\nBaltazar cominciò a indietreggiare lentamente.\n\n- \"Ahah. I mercanti non hanno amici. Solo una borsa piena d'oro!\"\n\n- \"Di che parli? Quanto ti ha promesso Zelzar per questa pergamena?\"\n\n- \"Non capisci niente, poveraccio. Fin dall'inizio ero qui solo per questa pergamena. Sai quanto mi daranno i mercanti di tutto il mondo? Nuoterò nell'oro!\"\n\n- \"Vecchia canaglia!! Meriti di morire!!!\"\n\n- \"Prima devi prendermi! Poco tempo fa al mercatino mi sono comprato le Scarpe Svelte di Mosè!\"\n\n\nBaltazar sta scappando! Uccidiamolo prima che raggiunga la sua carovana!\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nBALTAZAR È FUGGITO!\n\n<font:$local$\\fonts\\font12.fnt>\nBaltazar è fuggito con la Pergamena verso la sua carovana sotto scorta armata, che si dirige a ovest! Contro di loro non abbiamo alcuna speranza!\n\nLa missione è fallita!\n",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nBALTAZAR È CADUTO!\n\n<font:$local$\\fonts\\font12.fnt>\nQuando infliggemmo il colpo mortale a Baltazar, crollò a terra.\n\n- \"Io... sto... morendo... L'oro... le ricchezze... il potere... la bella vita a corte... che cosa sono i tesori della terra davanti alla morte?\" - disse con l'ultimo respiro.\n\nQuando spirò gli prendemmo la Pergamena, ma nel suo mantello c'era anche qualcos'altro. Una tessera di plastica con la scritta 'Tessera d'accesso'.\n\nPeccato solo aver dovuto uccidere il mio 'amico'. Quanta gente falsa...\n\nQuesta è l'ultima parte. Torniamo a nord dal generale Olivier!\n",
+    "520": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA\n\n<font:$local$\\fonts\\font12.fnt>\nUno degli eroi è caduto in battaglia. Senza di lui la missione non può riuscire...\n\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>\n"
+  }
+}

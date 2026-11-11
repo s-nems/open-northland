@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "map": "wonder-campaign_03_06_sub2",
+  "basis": {
+    "lang": "eng",
+    "digest": "73b19c9d5c7f77238c9037a7fa84a9e60f6fb3fb0bc7140c98d0003f82e5df5e"
+  },
+  "strings": {
+    "0": "@RAGGIUNGI L'ARTEFATTO!",
+    "53": "Elei",
+    "63": "Elei",
+    "71": "Bjarni",
+    "72": "Cyra",
+    "73": "Hatchie",
+    "74": "Sigurd",
+    "75": "Norbert",
+    "76": "Mani",
+    "79": "Elei",
+    "99": "IL MARE DI FIAMME"
+  },
+  "briefings": {
+    "100": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di BJARNI gli dèi piansero... senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "200": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! La tua eroina CYRA è morta per la tua negligenza! Senza questa eroina, l'esito di questa missione ti resterà ignoto! ",
+    "400": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe SIGURD è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe NORBERT, il drago, è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "600": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! MANI, figlio di Bjarni e Cyra, è morto per la tua negligenza! Senza di lui, l'esito di questa missione ti resterà ignoto!",
+    "header": "IL MARE DI FIAMME",
+    "00_start": "Sotto la caserma si apriva una zona inospitale. Erano le antiche cantine degli Spartani!\n\n<usericon:1,108,35>\n\nMa quanto doveva essere cambiato questo luogo! A quanto pareva, avevano costruito la loro città su un vulcano.",
+    "00_start1": "Raggiungi l'artefatto. Attenzione alle pareti di roccia che sputano fuoco! ",
+    "50_endheader": "MISSIONE COMPIUTA! ",
+    "50_end": "Ce l'avevamo fatta! Finalmente stringevamo l'artefatto tra le mani e potevamo lasciare il Mare di fiamme.\n\nE non volevamo restarci un minuto di più!",
+    "50_end1": "<usericon:1,136,102>",
+    "01": "LA GUARDIA DELLE CANTINE\n\n\"Un tempo questi magazzini erano pieni, ma ora le pareti di roccia sono spaccate e dalle crepe esce il fuoco. Tutte le vie per i magazzini sono bloccate.\n\n<usericon:1,100,55>\n\nGli interruttori che un tempo aprivano i cancelli dei magazzini si sono arrugginiti tutti, tranne uno. Ma cosa può fare uno smilzo come me...\"",
+    "02": "ATTENZIONE!\n\nLe fiamme hanno già preso la vita di parecchi eroi!",
+    "03": "FIAMME SPENTE!\n\nInsieme riuscimmo ad azionare l'interruttore, ma nessuna porta si aprì! Una forte corrente d'aria attraversò le sale e spense le fiamme per un po'.",
+    "04": "INTERRUTTORE AZIONATO\n\nAvevamo azionato l'interruttore, ma senza alcun effetto.\n\n<usericon:1,90,70>",
+    "05": "INTERRUTTORE\n\nQuesto interruttore non ebbe alcun effetto. Forse la forza di un solo interruttore non bastava...\n\n<usericon:1,85,50>",
+    "06": "INTERRUTTORE\n\nAvevamo azionato l'interruttore, ma senza alcun effetto.\n\n<usericon:1,111,65>",
+    "07": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\nChe tragedia! L'ELEO è morto tra le fiamme.\nLa missione è fallita."
+  }
+}

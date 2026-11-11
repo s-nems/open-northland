@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "map": "samotna_gora",
+  "basis": {
+    "lang": "eng",
+    "digest": "278a865d11546f23e2f658fbfc162a079ae009c2ac8569336feb207a49dc2d1d"
+  },
+  "strings": {
+    "40": "Distruggi la tribù vicina e prenditi le ricchezze della montagna",
+    "98": "Tribù in lotta si contendono le risorse di una valle fertile. Battaglia 1 contro 1.",
+    "99": "MONTAGNA SOLITARIA",
+    "601": "Abitanti del Nord",
+    "602": "Abitanti del Sud",
+    "701": "Nord",
+    "702": "Sud"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMONTAGNA SOLITARIA\n<font:$local$\\fonts\\font12.fnt> \nAutore: Proszak\n<font:$local$\\fonts\\font12.fnt>\nViaggiando per le fitte foreste della Scandinavia, un gruppo della tua gente scopre una valle ricca di risorse e di selvaggina. Si stende ai piedi di una montagna solitaria, piena di giacimenti di ferro e d'oro.\nPurtroppo nei dintorni è comparsa una tribù che vuole impadronirsi di quelle ricchezze prima di te: non permetterglielo!\n\nwww.culturesnation.pl\n"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "map": "saga-campaign_04_05_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "8b91310b781e4e5e7d5942596fa380d1bddcb739af96ee96981d00e8e079a0dc"
+  },
+  "strings": {
+    "53": "Aquas, draghi d'acqua",
+    "63": "Aquas",
+    "71": "Bjarni",
+    "73": "Aquarom",
+    "99": "SOTTO IL MARE"
+  },
+  "briefings": {
+    "header": "SOTTO IL MARE",
+    "00_start": "\"Come? Lassù in superficie le cose vanno così male? Prendete 10 dei miei draghi migliori, mentre io ne addestro altri\", disse Aquarom.",
+    "00_start1": "\"Con voi a guidarci, abbiamo una possibilità!\""
+  }
+}

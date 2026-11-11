@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "map": "nowa_nadzieja",
+  "basis": {
+    "lang": "eng",
+    "digest": "0c8e8cb18fd74862f2f1bf192409af0f24e617e6ec3094b5da6dd3337ab480cc"
+  },
+  "strings": {
+    "0": "UNA NUOVA SPERANZA",
+    "1": "Scegli il tuo popolo, poi parti con 2 coloni per costruire il tuo impero e sconfiggere un nemico potente.",
+    "30": "@Colonizza la regione!",
+    "31": "Sconfiggi la fortezza dei Franchi!",
+    "50": "Giocatore 0",
+    "51": "Fortezza dei Franchi",
+    "52": "Franchi",
+    "53": "Bizantini",
+    "54": "Saraceni",
+    "55": "Egizi",
+    "56": "Vichinghi",
+    "57": "Nonno del bosco",
+    "58": "Esploratore",
+    "59": "Scelta del popolo",
+    "60": "G0",
+    "61": "Fz.",
+    "62": "Fr.",
+    "63": "Biz.",
+    "64": "Sar.",
+    "65": "Eg.",
+    "66": "Vic.",
+    "67": "Non.",
+    "68": "Es.",
+    "69": "Scelta del popolo",
+    "70": "Banditi",
+    "80": "Ba.",
+    "800": "VICHINGHI",
+    "801": "FRANCHI",
+    "802": "BIZANTINI",
+    "803": "SARACENI",
+    "804": "EGIZI"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCELTA DEL POPOLO\n<font:$local$\\fonts\\font12.fnt>\n\nApri la finestra della diplomazia e scegli il tuo popolo pagando il tributo corrispondente!"
+  }
+}

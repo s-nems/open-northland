@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "map": "walka_niekonczace",
+  "basis": {
+    "lang": "eng",
+    "digest": "7a1a6af7b469459c3222004074eb1704e911c0599103cf5596d808d4e9f2ae8b"
+  },
+  "strings": {
+    "0": "Battaglia: RISORSE INFINITE",
+    "1": "4 tribù vichinghe sono ai ferri corti. Risolvi questo conflitto!",
+    "2": "Vince la tribù che sopravvive!",
+    "10": "Greenlander",
+    "11": "Greenlander",
+    "20": "Vinlander",
+    "21": "Vinlander",
+    "30": "Hellulander",
+    "31": "Hellulander",
+    "40": "Marklander",
+    "41": "Marklander"
+  },
+  "briefings": {
+    "header": "\nRISORSE INFINITE\n",
+    "begin_00": "Di pace non se ne parla nemmeno. I Vichinghi sono in guerra continua con i vicini. I guai sembrano non finire mai...\nMa c'è ancora molto da scoprire: la leggenda narra che nei dintorni si trovino tesori inestimabili!\n\nMettiti al lavoro, la tua tribù ha bisogno di un capo forte!"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "map": "lowcypustyni2",
+  "basis": {
+    "lang": "eng",
+    "digest": "eb1e11d66da48a8c4f289da121d68da3d9d2c90968a71f791ab2f5242419736d"
+  },
+  "strings": {
+    "0": "CACCIATORI DEL DESERTO 2",
+    "1": "Stabilisciti nel deserto e affronta i Selgiuchidi che lo abitano. Cooperazione per 6 giocatori a un livello di difficoltà estremo.",
+    "30": "Stabilisciti nel deserto e affronta i Selgiuchidi che lo abitano",
+    "31": "Trova e salva Bear Grylls",
+    "50": "Vichinghi 1",
+    "51": "Vichinghi 2",
+    "52": "Vichinghi 3",
+    "53": "Vichinghi 4",
+    "54": "Vichinghi 5",
+    "55": "Turchi selgiuchidi",
+    "60": "Vic1",
+    "61": "Vic2",
+    "62": "Vic3",
+    "63": "Vic4",
+    "64": "Vic5",
+    "65": "Selg.",
+    "100": "Bear Grylls"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCACCIATORI DEL DESERTO 2\n<font:$local$\\fonts\\font12.fnt>\n\nLa nostra tribù vichinga ricevette dallo stesso Bjarni l'incarico di partire per una spedizione nel Vicino Oriente e fondarvi un campo di esplorazione. Durante il viaggio decidemmo di accorciare la strada attraversando un deserto lì vicino. All'improvviso, all'orizzonte, scorgemmo un'enorme nube di polvere e sabbia. Ci investì una tremenda tempesta di sabbia, che ci accecò tutti per diverse ore.\n\nQuando la polvere si posò, riuscimmo a ritrovare alcuni dei nostri, ma la maggior parte rimase dispersa. Non sapevamo bene dove ci trovassimo né dove andare. Decidemmo di proseguire dritti davanti a noi...\n\nAndare oltre divenne impossibile, perché le scorte di cibo si stavano esaurendo. Non appena vedemmo una piccola oasi, capimmo che sarebbe stata un buon posto per piantare un piccolo accampamento. Qui non ci sono molte risorse, appena qualche albero e qualche cespuglio. Lungo la strada abbiamo di certo superato giacimenti più o meno grandi di argilla e di pietra: se ci guardiamo intorno, qualcosa troveremo di sicuro.\nMa fa' attenzione! Questa terra appartiene ai Selgiuchidi, con cui non siamo in buoni rapporti.\nÈ anche possibile che in futuro incontreremo gente della nostra tribù, ma non possiamo essere certi che, dopo tanto tempo, vorranno unirsi al nostro accampamento.\n\nIl nostro compito è sfruttare con giudizio le risorse e lo spazio per costruire qui un insediamento prospero e ben funzionante. Non sarà facile ma, per essere in un clima desertico, la natura è stata generosa con noi. Gioca quanto vuoi.\n\nAbbiamo anche sentito voci che in questo deserto si sia perso Bear Grylls, il famoso viaggiatore noto, fra l'altro, per la sua spedizione in Siberia. Probabilmente era in viaggio verso il deserto del Sahara. Speriamo che non sia caduto nelle mani dei Selgiuchidi. Sarebbe bene salvarlo, già che ci siamo.\n\n<usericon:1,973,16>\n\nDi Zohanowaty & Jozenkow\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nBEAR GRYLLS IN SALVO\n<font:$local$\\fonts\\font12.fnt>\n\nAbbiamo ucciso i rapitori di Bear Grylls. Per ringraziarci, ci ha detto che si unirà a una delle nostre tribù. Quando non servirà più, partirà per il deserto del Sahara.\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTURCHI SELGIUCHIDI SCONFITTI\n<font:$local$\\fonts\\font12.fnt>\n\nGrazie al tuo straordinario senso tattico siamo riusciti a sconfiggere i Selgiuchidi, abilissimi a combattere in queste condizioni. Ora possiamo prenderci il loro bestiame e i giacimenti d'oro e di ferro, rarissimi in questa regione. Questo deserto ora è nostro!\n"
+  }
+}

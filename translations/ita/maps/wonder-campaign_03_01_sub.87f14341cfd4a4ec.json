@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "map": "wonder-campaign_03_01_sub",
+  "basis": {
+    "lang": "eng",
+    "digest": "74d952afc20b79a6096a8e97b036bcf8291f1b9d6a30eed4dcdca54b7e7a81b5"
+  },
+  "strings": {
+    "0": "@TROVA IL FUOCO SACRO!",
+    "1": "Trova un modo per aprire il cancello!",
+    "56": "Lavoratori della tribù dei monti",
+    "57": "Guardie",
+    "66": "Lavoratori",
+    "67": "Guardie",
+    "71": "Bjarni",
+    "72": "Cyra",
+    "73": "Hatchie",
+    "74": "Sigurd",
+    "99": "IL FUOCO SACRO"
+  },
+  "briefings": {
+    "100": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di BJARNI gli dèi piansero... senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "200": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! La tua eroina CYRA è morta per la tua negligenza! Senza questa eroina, l'esito di questa missione ti resterà ignoto! ",
+    "300": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe HATCHIE è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto! ",
+    "400": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe SIGURD è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto! ",
+    "header": "IL FUOCO SACRO",
+    "00_start": "Nelle profondità della galleria, il caldo spietato del deserto quasi non si avvertiva.\n\n<usericon:1,38,49>\n\nL'aria stantia ci penetrava nei polmoni, e da qualche parte lì vicino udivamo l'eco dei colpi di martello dei minatori. Ma dove custodivano il Fuoco sacro?",
+    "00_start1": "Trova il Fuoco sacro.",
+    "50_endheader": "MISSIONE COMPIUTA! ",
+    "50_end": "Finalmente avevamo trovato il fuoco per il Faro di Alessandria. Il popolo saraceno ci aveva dato del filo da torcere.\n\n<usericon:1,137,14>",
+    "50_end1": "",
+    "01": "POPOLO DEI MONTI\n\n\"Ehi, voi! Chi vi ha permesso di entrare nelle nostre miniere?\"",
+    "02": "LAVORATORE\n\n\"Non fateci del male! Noi facciamo solo il nostro lavoro e non sappiamo quasi nulla di quello che succede in superficie!\" \n\n<usericon:1,23,62>",
+    "03": "L'accesso al cancello è ancora bloccato!\n\n<usericon:1,121,52>\n\nTrova un modo per aprire il cancello!",
+    "04": "Ora i tuoi Vichinghi possono oltrepassare il cancello! Ma attenzione alle guardie del Fuoco sacro, nascoste dietro il cancello!\n\n<usericon:1,121,52>",
+    "05": "ENERGIA VITALE\n\nUna strana magia avvolgeva questo luogo... \n\n<usericon:1,96,77>\n\nTutti i nostri uomini si sentirono come rinati!"
+  }
+}

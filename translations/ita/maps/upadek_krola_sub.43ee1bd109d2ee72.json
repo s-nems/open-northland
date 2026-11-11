@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "map": "upadek_krola_sub",
+  "basis": {
+    "lang": "eng",
+    "digest": "0b41f9590ca71a0a1c5bbecd9a914c9d8471d4cb3011c9d7cd5ca1f24155f94b"
+  },
+  "strings": {
+    "0": "LA PRIGIONE DI ALTERACK",
+    "1": "segrete",
+    "20": "LIBERA RE CORNELIUS",
+    "50": "Giocatore",
+    "52": "Prigionieri",
+    "53": "Guardie",
+    "60": "GIOCATORE",
+    "62": "PRIGIONIERI",
+    "63": "GUARDIE",
+    "100": "Hatchie",
+    "101": "Jamal",
+    "102": "R.Cornelius"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSEGRETE\n<font:$local$\\fonts\\font12.fnt>\n\nIo e Jamal siamo entrati nella prigione di Alterack. Dicono che non sia grande, quindi la cella di Cornelius dovrebbe essere qui vicino. In lontananza si sente uno sferragliare di metallo: sospettiamo che il Re non sia l'unico prigioniero...\n\n<usericon:1,20,123>\n\n***Per liberare gli altri prigionieri devi avvicinarti a loro con Hatchie***\n",
+    "521": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nUno dei protagonisti è morto, e questo rende impossibile il nostro compito. Kalimdor non riceverà l'aiuto promesso e tutto il popolo sprofonda nella tristezza.",
+    "522": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\People_Dead_F.pcx>\nNessuno dei tuoi sudditi è sopravvissuto alla missione affidata. Purtroppo il nostro compito finisce con una sconfitta."
+  }
+}

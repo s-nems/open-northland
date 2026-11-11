@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "map": "plytkie_brody_1_1",
+  "basis": {
+    "lang": "eng",
+    "digest": "755dd30e592c09aef469a0524d850f59e4fd13d017a2a621d662d80c6a9ea3a2"
+  },
+  "strings": {
+    "0": "GUADI POCO PROFONDI",
+    "1": "Sfruttando la conformazione del terreno, sconfiggi l'avversario e conquista l'intera regione. Mappa 1 contro 1.",
+    "50": "Est",
+    "51": "Ovest",
+    "52": "Franchi",
+    "100": "Sconfiggi l'avversario!"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nGUADI POCO PROFONDI\n<font:$local$\\fonts\\font12.fnt>\n\nDa tempo due tribù vichinghe si contendevano il dominio sulla valle lungo l'ampio fiume. Si arrivò al punto che sull'unico ponte della zona venne posta una guardia dei Franchi, che per un po' mise fine agli scontri.\n\nMa ormai è storia passata. Una grande diga, costruita da una città lontana, ha fatto calare il livello del fiume. Oggi gli esploratori riferiscono che in due punti l'acqua è scesa tanto da poter far passare senza problemi uomini e mezzi da guerra!\n\nOra niente può più fermare i Vichinghi, né l'acqua né i Franchi. La macchina da guerra si è messa in moto...\n\nSconfiggi il nemico!\n\nAutore: Emil\nper culturesnation.pl\n"
+  }
+}

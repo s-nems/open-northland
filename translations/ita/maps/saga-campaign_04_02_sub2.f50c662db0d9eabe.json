@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "map": "saga-campaign_04_02_sub2",
+  "basis": {
+    "lang": "eng",
+    "digest": "129781fe38ab6e87aabe9a5f276e427b314b1dea026eeea43120bb266812d916"
+  },
+  "strings": {
+    "0": "@RAGGIUNGI IL CRISTALLO!",
+    "1": "Accendi le torce.",
+    "53": "Draghi oscuri",
+    "63": "Draghi oscuri",
+    "71": "Bjarni",
+    "72": "Cyra",
+    "73": "Pyro",
+    "99": "BUIO PESTO"
+  },
+  "briefings": {
+    "100": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di BJARNI gli dèi piansero... senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "200": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! La tua eroina CYRA è morta per la tua negligenza! Senza questa eroina, l'esito di questa missione ti resterà ignoto!",
+    "300": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico PYRO, il drago di fuoco, è morto per la tua negligenza! Senza di lui, l'esito di questa missione ti resterà ignoto!",
+    "header": "LA GROTTA OSCURA",
+    "00_start": "Nella grotta c'era ancora buio pesto. Per quanto ci sforzassimo, non riuscivamo ad avanzare. Uno strano campo di energia avvolgeva le alte colonne e non ci lasciava addentrare oltre nella grotta.",
+    "00_start1": "Tutte le nostre speranze erano riposte in PYRO, il drago di fuoco. Di certo lui poteva riaccendere le torce spente...\n \nAccendi le torce e trova la strada verso il cristallo.",
+    "50_endheader": "MISSIONE COMPIUTA!",
+    "50_end": "Avevamo trovato il cristallo nelle profondità della grotta! Ora dovevamo portarlo al custode del bosco SCORZADENTE.\n\n<usericon:1,49,21>\n",
+    "50_end1": "",
+    "01": "TUTTE LE TORCE ACCESE!\n\nTutte le torce qui all'imboccatura della grotta ardevano! Come per magia, una delle strane colonne era svanita e il campo di energia si era spezzato.\nOra potevamo esplorare la grotta più a fondo! Di sicuro c'erano molte altre torce da accendere.",
+    "02": "TUTTE LE TORCE ACCESE!\n\nIl nostro amico Pyro aveva acceso fino all'ultima torcia. La via per il Cristallo di fuoco era aperta!",
+    "03": "DRAGHI OSCURI\n\nAttraverso le sbarre vedemmo dei draghi neri. Avevano un'aria pericolosa, e probabilmente sorvegliavano la via verso il cristallo.\n\n<usericon:2,4>\n\nDovevamo cercare di attirarli altrove. Forse potevamo rinchiuderli nella Sala dell'Arcobaleno?\n\n<usericon:1,43,61>",
+    "04": "DRAGHI SCONFITTI!\n\nAvevamo battuto quelle creature senza colore, ma era stato davvero necessario? Non avremmo potuto attirarle in una trappola nella Sala dell'Arcobaleno?",
+    "05": "DRAGHI RINCHIUSI!\n\n<usericon:2,4>\n\nCe l'avevamo fatta: tutti i draghi oscuri erano chiusi nella Sala dell'Arcobaleno!",
+    "06": "STANZA CHIUSA\n\nCiò che si trova in questa stanza ti resterà nascosto finché non saranno accese tutte le torce!"
+  }
+}

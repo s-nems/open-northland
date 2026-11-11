@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "map": "asgard-campaign_01_10_sub",
+  "basis": {
+    "lang": "eng",
+    "digest": "65174d52cb7fad9a00efd749a4944bb498c376823659c0351b2454229b58f59c"
+  },
+  "strings": {
+    "0": "Rispondi alle domande dell'oracolo e raggiungi il tesoro segreto nel tempio del deserto.",
+    "51": "Guardia serpente",
+    "52": "Guardia serpente",
+    "99": "BAGHDAD - Sub",
+    "101": "Bjarni",
+    "102": "Sigurd",
+    "103": "Cyra",
+    "104": "Hatchie"
+  },
+  "briefings": {
+    "3": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Sigurd, l'eroe della profezia, è morto per la tua negligenza! Il mondo è perduto.",
+    "4": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Cyra, l'eroina della profezia, è morta per la tua negligenza! Il mondo è perduto.",
+    "5": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Hatchie, l'eroe della profezia, è morto per la tua negligenza! Il mondo è perduto.",
+    "header": "\nL'ORACOLO\n",
+    "start": "Ci addentrammo sempre più nell'oscurità del tempio del tesoro, finché Hatchie trovò una vecchia torcia e la accese.\n\nPoi, in fondo alla scalinata, scoprimmo un'antica iscrizione consumata dal tempo, che il nostro amico del posto ci tradusse:\n\nEravamo ormai nel cuore del tempio, sorvegliato da antichi guardiani. Avremmo prevalso soltanto presentandoci all'oracolo. Solo un uomo tanto astuto quanto coraggioso avrebbe ottenuto il premio finale...",
+    "orakel": "\"Chi va là?\" tuonò una voce che sembrava uscire dalla roccia stessa.\n\n\"Intrusi indegni! Io sono l'oracolo del tempio del deserto! Chi vuole oltrepassarmi deve prima rispondere a 7 domande e sconfiggere le mie guardie serpente!\n\nOgni domanda ha 3 risposte. Rispondimi azionando l'interruttore corrispondente! Cerca di ricordare bene i simboli, te li spiegherò una volta sola!\"",
+    "bjarnitot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di Bjarni gli dèi piansero... il loro destino era segnato, e con esso la fine del mondo degli uomini.",
+    "won": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE COMPIUTA!\n<font:$local$\\fonts\\font12.fnt>\nCon coraggio e astuzia superammo i terribili custodi della porta e penetrammo nelle stanze più interne del tempio incantato del deserto.\n\nIn una piccola stanza trovammo un antico forziere. Il coperchio si sollevò lentamente, cigolando. Quando guardammo dentro con cautela, trattenemmo il respiro:\nNon c'erano oggetti prodigiosi, né tesori incantati... sul fondo del forziere giaceva l'ultimo dei tre pezzi della mappa che avevamo cercato per mezzo mondo. Per noi valeva più di qualunque oggetto prezioso!\n\nFu una gioia immensa stringerlo finalmente tra le mani. Il califfo però non avrebbe affatto gradito vederci tornare a mani vuote, perciò decidemmo di prendere il pezzo di mappa e lasciare il paese il più in fretta possibile.\n\nHatchie si offrì di aiutarci...",
+    "schalterbesetzt": "Devi allontanarti dall'interruttore, altrimenti l'oracolo resterà muto!",
+    "falsch": "Sbagliato!\n\nHai dato una risposta errata! A ogni risposta sbagliata ti sarà più difficile passare!",
+    "richtig": "Giusto!\n\nL'oracolo è soddisfatto della tua risposta. Una delle guardie scompare!",
+    "frage1": "\"Prima domanda:\nQual è il tuo colore preferito?\"\n\nA) Rosso... ehm... no, verde... no, BLU!\nB) Giallo moccio\nC) Verde caccola... o blu muffa?",
+    "frage2": "\"Seconda domanda:\nCosa pesa di più: un chilo di piume o un chilo di ferro?\"\n\nA) Non so, forse pesano uguale!\nB) Le piume\nC) Il ferro",
+    "frage3": "\"Terza domanda:\nIl re di Francia è più povero dell'imperatore di Bisanzio. Il califfo di Baghdad è più ricco del re di Francia. L'imperatore di Bisanzio è ricco quanto il califfo di Baghdad. Chi è il più povero?\"\n\nA) Il califfo di Baghdad\nB) L'imperatore di Bisanzio\nC) Il re di Francia",
+    "frage4": "\"Quarta domanda:\nL'esploratore è più veloce del fabbro. Il fabbro è più lento del contadino. L'esploratore è più lento del contadino. Chi è il più veloce?\"\n\nA) Il contadino\nB) L'esploratore\nC) Il fabbro",
+    "frage5": "\"Quinta domanda:\nIl tuo quartier generale si trova in un paese straniero dove tutte le finestre guardano a nord. Dove sei?\"\n\nA) Al Polo Nord\nB) Al Polo Sud\nC) All'equatore",
+    "frage6": "\"Sesta domanda:\nChe cos'è: più ci metti dentro, più diventa piccolo; più ne togli, più diventa grande!\"\n\nA) Un boccale di idromele\nB) I calzini di Bjarni\nC) Un buco nel terreno",
+    "frage7": "\"Settima domanda:\nSe il figlio di Bjarni è il figlio di mio padre... chi sono io?\"\n\nA) Sono Bjarni\nB) Sono il figlio di Bjarni\nC) Sono il padre di Bjarni",
+    "erklärung1": "\"Questo è l'interruttore A.\"",
+    "erklärung2": "\"Questo è l'interruttore B.\"",
+    "erklärung3": "\"Questo è l'interruttore C.\""
+  }
+}

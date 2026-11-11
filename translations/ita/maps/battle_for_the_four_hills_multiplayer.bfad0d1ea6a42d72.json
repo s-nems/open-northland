@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "map": "battle_for_the_four_hills_multiplayer",
+  "basis": {
+    "lang": "eng",
+    "digest": "92fa51e73398e69192c039ec59f218914e6542171a79fb0064f93d621d145e3e"
+  },
+  "strings": {
+    "0": "BATTAGLIA PER LE QUATTRO COLLINE",
+    "1": "Quattro tribù si contendono terre fertili separate da una gola di pietra. Sta a te decidere come andrà avanti questo conflitto.",
+    "40": "Sconfiggi tutti i nemici e conquista queste terre per te, oppure stringi un'alleanza e regnate insieme!",
+    "50": "Tribù di nord-ovest",
+    "51": "Trib. NO",
+    "52": "Tribù di nord-est",
+    "53": "Trib. NE",
+    "54": "Tribù di sud-ovest",
+    "55": "Trib. SO",
+    "56": "Tribù di sud-est",
+    "57": "Trib. SE"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nBattaglia per le Quattro Colline\n<font:$local$\\fonts\\font12.fnt>\nDivise da una gola di pietra, si ergono fiere le Quattro Colline.\nDa secoli sono motivo di conflitto per chi brama i tesori della natura.\n\nQuesta volta le cose cambieranno?\n\nStringerai un'alleanza o arrafferai tutto per te?\n\n\n~~ Creata da Jaymer ~~ \n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLa battaglia è finita!\n<font:$local$\\fonts\\font12.fnt>\nUno solo regnerà su questa terra...\nLa tribù di nord-ovest ha vinto!\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLa battaglia è finita!\n<font:$local$\\fonts\\font12.fnt>\nUno solo regnerà su questa terra...\nLa tribù di nord-est ha vinto!\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLa battaglia è finita!\n<font:$local$\\fonts\\font12.fnt>\nUno solo regnerà su questa terra...\nLa tribù di sud-ovest ha vinto!\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLa battaglia è finita!\n<font:$local$\\fonts\\font12.fnt>\nUno solo regnerà su questa terra...\nLa tribù di sud-est ha vinto!\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>",
+    "505": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLa battaglia è finita!\n<font:$local$\\fonts\\font12.fnt>\nUnendo le forze, le tribù superstiti si sono aperte la strada verso la vittoria.\n\nMa quanto durerà questa alleanza?\n\n<picture:$local$\\graphics\\People_Dead_F.pcx>",
+    "506": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIn questa terra è giunto il tempo della pace...\n<font:$local$\\fonts\\font12.fnt>\nChi mai si sarebbe aspettato una piega simile?\nTutte le tribù vivono insieme in amicizia.\n\nMa quanto durerà?\n",
+    "507": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIn questa guerra vince solo la Morte...\n<font:$local$\\fonts\\font12.fnt>\nChi mai si sarebbe aspettato una guerra tanto sanguinosa?\nTutte le tribù sono state sterminate.\n"
+  }
+}

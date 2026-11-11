@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "map": "oasis_o_plenty",
+  "basis": {
+    "lang": "eng",
+    "digest": "8da10207ea74021387e3116f58b89be97f280dd789bd06558a428ba919f63eb1"
+  },
+  "strings": {
+    "0": "OASI DELL'ABBONDANZA",
+    "1": "Sei tribù vichinghe hanno raggiunto l'oasi dove il destino elargisce doni infiniti, diversi in ogni partita. Sconfiggi gli avversari e conquista la regione.",
+    "2": "Bevidromele",
+    "3": "Bevid.",
+    "4": "Spadalunga",
+    "5": "Spad.",
+    "6": "Corazzati",
+    "7": "Coraz.",
+    "8": "Mangiatorte",
+    "9": "Mang.",
+    "10": "Arcocorto",
+    "11": "Arco.",
+    "12": "Rubavacche",
+    "13": "Ruba.",
+    "14": " ",
+    "15": "Disputate uno scontro fra i guerrieri presenti al centro della mappa.",
+    "16": "Sconfiggi gli altri giocatori e conquista la regione.",
+    "17": "Olaf Bevidromele",
+    "18": "Bjorn Spadalunga",
+    "19": "Harald il Corazzato",
+    "20": "Torvald Mangiatorte",
+    "21": "Karl Arcocorto",
+    "22": "Eric Rubavacche"
+  },
+  "briefings": {
+    "newline": "",
+    "00_title": "PROLOGO",
+    "01_title": "OASI DELL'ABBONDANZA",
+    "02_title": "LA BATTAGLIA È FINITA!",
+    "00_1": "Ci vollero anni perché i Vichinghi raggiungessero l'antica oasi narrata da fiabe e leggende. Le catene montuose e le sabbie del deserto l'avevano celata nella loro ombra fino al giorno in cui vi giunsero i viaggiatori delle lontane terre del nord. Fra gli intrepidi viandanti c'erano sei famosi guerrieri:",
+    "00_2": "Ognuno di loro conosceva bene il racconto, tramandato da generazioni remote, di un paradiso dove accadono cose straordinarie, ed ecco che, dopo molti anni di viaggio, avevano raggiunto la meta tanto agognata. Ma il loro peregrinare non era finito, perché su questo luogo veglia una divinità assetata di sacrifici umani. Gli eroi sapevano bene che versare sangue su questa terra fertile avrebbe fatto scendere un dono dal cielo. Per questo, però, cinque dei sei eroi dovevano cadere in battaglia. Chi fosse rimasto in vita non avrebbe solo conquistato il potere, ma avrebbe anche visto una benedizione scendere su questa terra.",
+    "00_3": "I doni della divinità di questo luogo sanno essere imprevedibili. I racconti narrano che le ricompense che piovono dalla volta celeste siano casuali. Quando sarà compiuto il sacrificio dei nobili condottieri, dalle sette sorgenti dell'oasi sgorgherà una quantità illimitata di tre dei materiali qui sotto:",
+    "00_4": "Le sorgenti di merci si trovano nei quartier generali, e una in più si trova al centro della regione. Una volta concluso lo scontro per il favore della divinità, in quei punti compariranno i materiali estratti a sorte, in quantità infinita. È dunque ora di scendere in battaglia contro i propri compagni. Che vinca il migliore!",
+    "00_5": "Obiettivo: disputate uno scontro fra i guerrieri presenti al centro della mappa per estrarre a sorte le risorse a cui avrete accesso illimitato nei quartier generali. Ogni giocatore riceverà gli stessi materiali. ",
+    "01_1": "I Vichinghi piantarono il campo vicino a una fertile oasi. Quella terra sembrava loro il paese del latte e del miele. Durante il lungo viaggio attraverso le sabbie del deserto, i capi li avevano rassicurati che un antico paradiso attendeva il loro arrivo. Molti avrebbero perso la forza di proseguire, se non fosse stato per il calore e la compassione dei condottieri nei momenti difficili. Ma coloro che un tempo erano stati il sostegno delle loro tribù ora non c'erano più. Da quando agli occhi della loro gente erano apparse le palme svettanti e le erbe più varie, si erano fatti da parte. Di loro si erano perse le tracce, ma si diceva che si fossero diretti verso il centro della regione per consultarsi.",
+    "01_2": "Il sole non aveva fatto in tempo a calare a occidente che quelle terre si riempirono di un'aura rasserenante. Nell'aria si sentiva odore di sangue, eppure il cielo pareva aperto, come se esseri eterni guardassero giù verso la miseria umana come nobili aquile verso un uccellino incapace di volare. Non ci volle molto perché i nuovi arrivati dal nord capissero cos'era accaduto. Le anime dei loro amati sovrani erano state sacrificate per la loro prosperità. Uno solo di loro era rimasto fra i confini della terra, gli altri se n'erano andati nell'aldilà astrale.",
+    "01_3": "Poi, fra le risorse delle tribù, comparvero merci che sembravano non finire mai. Per quanto se ne prelevasse dalle scorte nei magazzini, alcune parevano moltiplicarsi come i pani di Galilea, restando sempre abbondanti per i bisogni delle tribù. Lo stesso valeva per la collina al centro della regione. Chiunque raccogliesse gli oggetti che vi si trovavano, quelli erano sempre lì, come l'acqua in una sorgente senza fine.",
+    "01_4": "Nonostante il grande sconcerto fra i nuovi arrivati del nord, una cosa resta immutata: questa terra può avere un solo sovrano. Stringete alleanze a piacere e scacciate i vostri rivali da questa terra. Pare che lo spargimento di sangue non sia ancora finito.",
+    "01_5": "Obiettivo: sconfiggi gli altri giocatori e conquista la regione.",
+    "02_1": "Non appena rimase in piedi un solo quartier generale, tutti seppero a chi apparteneva l'oasi. In questo giorno è stato versato molto sangue. La divinità di questo luogo, assetata di sacrifici, deve essersi divertita parecchio a guardare le contese dei mortali, come gli Elleni i loro giochi. È tempo di pace e di popolare questa terra senza lotte. Oggi è il giorno in cui i Vichinghi hanno conquistato nuove terre. Speriamo che questo insediamento si conservi per molte generazioni.",
+    "02_credits": ".\nAutore: Mikulus (Mikołaj Walc)\nTester: Ares, Joz, Mikulus, StachuMMV\nCulturesNation.PL\nSettembre 2024"
+  }
+}

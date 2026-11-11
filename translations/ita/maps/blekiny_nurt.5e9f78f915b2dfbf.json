@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "map": "blekiny_nurt",
+  "basis": {
+    "lang": "eng",
+    "digest": "06571e09e8edddac66873c3d40596a9a9f39f0ef27942641bb9fc851967bcfb6"
+  },
+  "strings": {
+    "0": "CORRENTE AZZURRA",
+    "1": "Un gruppo di Egizi parte per fondare una propria tribù vicino alla valle del Nilo Azzurro",
+    "25": "Esplora le terre al di là del fiume",
+    "26": "Uccidi il viaggiatore che cerca di riprendersi il tesoro che hai trovato",
+    "27": "Trova gli abitanti della valle",
+    "28": "Trova l'avamposto dei Bizantini",
+    "29": "Consegna 15 unità ciascuna di pietra grezza, argilla e legno presso le rovine a nord del villaggio egizio",
+    "30": "Sconfiggi la tribù egizia ostile",
+    "31": "Sconfiggi gli abitanti della valle",
+    "32": "Sconfiggi i Bizantini",
+    "80": "Egitto",
+    "81": "Abitanti della valle",
+    "82": "Avamposto militare bizantino",
+    "83": "Invasori",
+    "84": "Vichinghi della valle",
+    "90": "Egitto",
+    "91": "Ab.Valle",
+    "92": "Avamp.Biz",
+    "93": "Invas.",
+    "94": "VichV",
+    "500": "Pietra grezza %d/15",
+    "501": "Argilla %d/15",
+    "502": "Legno %d/15",
+    "930": "5 arcieri",
+    "931": "Catapulta"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCorrente azzurra\n<font:$local$\\fonts\\font12.fnt>\n\nIl viaggio lungo la corrente del Nilo Azzurro fu lungo ed estenuante. Un gruppo di Egizi, separatosi dalla città natale di Khartum, era partito per fondare una propria tribù e lasciare una propria eredità. Quando giudicarono fertile questa terra e ricche di giacimenti le montagne vicine, decisero di fermarsi e di allestire un piccolo accampamento.\n\n\"Questa splendida valle circondata dai monti diventerà la nostra nuova casa\", dissero tutti d'accordo. Speravano soltanto che la valle fosse disabitata. Chi mai vorrebbe dividere una terra simile?\n\nCostruiamo un insediamento ed esploriamo le terre al di là del ponte.\n",
+    "501": "Sulla riva, accanto a una barca, giaceva una lampada misteriosa. Probabilmente l'aveva lasciata lì un viaggiatore sceso a terra. Secondo la leggenda, a strofinare una lampada del genere compare uno spirito, un genio. Curiosi di vedere cosa sarebbe successo, la afferrammo, ma da lontano sentimmo un grido.\n\n- \"Lasciate stare! È roba mia!\"\n",
+    "502": "Da dietro i cespugli sbucò il proprietario della lampada.\n\n- \"Mi ero fermato solo un attimo per un bisognino. Stavo giusto per rimettermi in viaggio. Vi prego, ridatemi la mia lampada e la mia barca!\"\n\n- \"Calma, non così in fretta\", rispondemmo. \"Perché hai reagito in modo così brusco? Qui gatta ci cova. In quei bauli dev'esserci un tesoro, e quella lampada dev'essere preziosissima.\"\n\n- \"Non sono affari vostri! Ridatemela!!\"\n\nIl viaggiatore si fece molto aggressivo e cominciò a strapparci la lampada dalle mani.\n\nChi trova tiene. Per impossessarci dei tesori del viaggiatore dovevamo eliminarlo!\n",
+    "503": "Ucciso l'uomo, potemmo finalmente strofinare la lampada magica. Proprio come raccontavano le leggende, da una nuvola di fumo che usciva dalla lampada emerse un genio.\n\n<usericon:1,282,280>\n\n- \"Finalmente libero!\", esclamò il genio. \"Dove mi trovo? All'estremo margine di questa valle. Mmm... evidentemente il padrone della lampada voleva liberarsi di me a tutti i costi. Grazie di avermi salvato. Purtroppo, se pensavate che fossi uno di quei geni che esaudiscono tre desideri, devo deludervi.\"\n\n- \"Ah, beh...\", rispondemmo delusi. \"Chi era l'uomo che abbiamo ucciso?\"\n\n- \"Un fuggiasco di un villaggio egizio. Aveva preso le sue cianfrusaglie e voleva fuggire seguendo la corrente del fiume. Sono rimasto chiuso in quella lampada per moltissimo, moltissimo tempo: se dovessi raccontarvi tutta la mia storia, non vi basterebbe una vita per ascoltarla.\"\n\n- \"Dunque i nostri fratelli egizi sono già arrivati fin qui? Ci dispiace sentirlo. Volevamo prenderci questa valle tutta per noi.\"\n\n- \"Non siete i soli... Gli Egizi sono arrivati qui molto tempo fa e hanno fondato il loro villaggio al centro della valle, che trabocca di risorse. Un'altra tribù di Egizi vuole prendersi tutto, proprio come voi. Tormentano gli abitanti con continui attacchi e senza il vostro aiuto, prima o poi, li sconfiggeranno. Vi do un buon consiglio: alleatevi con gli abitanti della valle contro gli invasori. Quando avrete sconfitto insieme il nemico, voltatevi contro di loro e attaccateli di sorpresa. Per me è ora di andare. Sono rimasto prigioniero troppo a lungo. Adesso volo a godermi la libertà.\" Così disse il genio, e un attimo dopo svanì davanti ai nostri occhi.\n\nDovremmo addentrarci nella valle e far visita ai suoi abitanti.\n",
+    "504": "I nostri timori erano fondati. La valle era già abitata da Egizi. Quando varcammo le porte del villaggio fummo accolti con calore. Gli abitanti ci chiesero aiuto contro gli invasori, che volevano impadronirsi di queste terre proprio come noi.\n\n- \"I loro soldati sono più numerosi e meglio equipaggiati. Quando avranno distrutto il nostro villaggio, voi sarete i prossimi sulla loro lista. Possiamo ancora unire le forze\", dicevano gli Egizi. \"La parte settentrionale del nostro villaggio è stata rasa al suolo. Per ricostruirla ci servono materiali: 15 unità ciascuna di pietra grezza, legno e argilla. Raccogli queste risorse nel nostro quartiere distrutto o vicino al tuo villaggio e portacele con i buoi. Prima, però, sbarazzati dei guerrieri che sorvegliano le terre conquistate! Se vi servono arcieri, a sud i Bizantini vi forniranno dei mercenari, dietro un giusto compenso.\"\n\n<usericon:1,201,112>\n\n<usericon:1,195,134>\n\n<usericon:1,53,361>\n",
+    "505": "<font:$local$\\fonts\\fonthead16bld.fnt>\nAVAMPOSTO BIZANTINO\n<font:$local$\\fonts\\font12.fnt>\n\nRiuscimmo a trovare l'avamposto militare dei Bizantini. Erano in questa terra per estrarre metalli preziosi. In cambio di 10 unità di vasellame ci offrirono 5 arcieri mercenari. Inoltre, se avessimo coperto il costo di costruzione di una catapulta (15 unità di legno e 1 di ferro), ce ne avrebbero ceduta una.\n",
+    "506": "Pagato il tributo, 5 mercenari passarono ai nostri ordini.\n\n<usericon:1,65,359>\n",
+    "507": "- \"Lo sapevo che non bisognava fidarsi degli Egizi. Un popolo infido, che tradisce i propri alleati... Per colpa vostra la nostra gente, che finora viveva in pace, conoscerà la crudeltà della guerra.\" Così dissero i Bizantini, e subito schierarono le loro truppe per la battaglia.\nI mercenari ai nostri ordini si rivoltarono contro di noi!\n",
+    "508": "Attaccare gli abitanti della valle a questo punto della partita è un grave errore: non riuscirai più a sconfiggere i nemici!\n",
+    "509": "Ricevute le merci, gli Egizi ci ringraziarono e cominciarono a ricostruire il villaggio. Quando chiedemmo il loro sostegno nella lotta contro gli invasori, risposero che non avevano abbastanza armi né guerrieri.\n\nCi sentimmo un po' imbrogliati: in cambio del nostro aiuto contavamo su un sostegno militare. A quanto pare dovremo vedercela da soli con gli Egizi ostili... Di sicuro si sono accorti che siamo per loro una minaccia nuova e molto più seria degli abitanti della valle, quindi conviene fortificare l'insediamento nel caso di un attacco nemico.\n\n<usericon:1,176,40>\n\n<usericon:1,316,145>\n",
+    "510": "- \"Non siete diversi dagli Egizi del nord che invadono la nostra casa! Avremmo dovuto prevederlo!\", dissero gli Egizi, passando sulla difensiva quando li attaccammo.\nAllora dal loro quartier generale uscirono molti guerrieri armati. Avevano mentito sul numero delle loro truppe e avrebbero potuto benissimo aiutarci nella lotta.\nOrmai non ha più importanza. Dobbiamo radere al suolo il loro insediamento per prenderci questa terra.\n",
+    "511": "La minaccia più grande è stata eliminata! Ora che non abbiamo più nemici in comune con gli abitanti della valle, possiamo eliminarli e costruire al loro posto la nostra città.\n\nSconfiggiamo gli abitanti della valle!\n",
+    "512": "I nostri fratelli egizi sono stati cacciati da questa terra, che ora è nostra.\n\nLa nostra eredità è cominciata con la guerra e con la morte. Le future generazioni d'Egitto ricorderanno che noi non seminiamo. Prendiamo ciò che è nostro. Venimmo, vedemmo, vincemmo.\n\nQui però c'è ancora una città dei Bizantini. È vero che non hanno intenzioni ostili verso di noi, ma estraggono risorse dalla nostra terra.\n\nÈ ora di toglier loro tutti i tesori che hanno accumulato qui!\n",
+    "513": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE COMPIUTA!\n<font:$local$\\fonts\\font12.fnt>\n\nSiamo diventati gli unici abitanti di questa terra. Tutte le sue risorse ora appartengono a noi, e chiunque metta piede sul nostro suolo verrà eliminato.\n\nEppure tutti hanno bisogno di alleati, soprattutto di questi tempi. Mercanti e commercianti di terre lontane potranno visitare la nostra città per scambiare merci con noi. Ma qualcuno vorrà ancora collaborare con noi, dopo quello che abbiamo fatto a tutti i nostri alleati?\n\nAh, in fondo poco importa. Abbiamo tutte le merci che vogliamo, o almeno possiamo produrle quando ci pare. Che ce ne facciamo dei commercianti?\n\nI nemici mordono la polvere e noi ce la spassiamo: ananas a volontà, mangia, bevi e allenta la cintura. Non vedevo altro modo in cui potesse finire, perché esistono i salvataggi. Qualunque cosa avessero fatto i nemici, la missione sarebbe stata compiuta comunque: se non al primo tentativo, al secondo o al decimo. Insomma, se stai leggendo queste righe, i nemici non avevano nessuna possibilità, e anche se ce l'avevano, non ce l'avevano lo stesso.\n\nAllora che senso hanno queste missioni, se tanto le completerai comunque e il gioco non ti punisce in alcun modo per una sconfitta, se non facendoti perdere tempo? Capito? Mettiamo che tu giochi peggio e non abbia completato la missione al primo tentativo ma al secondo. Rispetto a chi gioca meglio e l'ha completata al primo colpo, hai perso tempo, ma alla fine leggi lo stesso questa scena finale con la vittoria in tasca. Vale la pena chiedersi perché abbiamo giocato questa mappa: per il gioco o per la scena finale? Se hai finito la mappa di corsa solo per leggere la scena finale, ti saluto. Se invece hai giocato per il piacere di giocare, spero di averti allietato almeno questo momento della giornata.\n\nScrivo queste righe il 13 maggio 2020. Va tutto alla grande.\n",
+    "514": "Pagato il tributo, i Bizantini ci cedettero una catapulta.\n\n<usericon:1,108,305>>\n"
+  }
+}

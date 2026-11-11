@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "map": "saracen_1_sub_1",
+  "basis": {
+    "lang": "eng",
+    "digest": "d229b065d1a754727977180e893c0cb748f9eec73ed06708b1cc316885f15839"
+  },
+  "strings": {
+    "0": "PDP : 01 - HATCHIE STRAFATTO",
+    "1": "Missione secondaria 1 - 1",
+    "50": "Hatchie",
+    "51": "Dei pivellini",
+    "100": "Hatchie"
+  },
+  "briefings": {
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nERBA CATTIVA\n<font:$local$\\fonts\\font12.fnt>\n\nChe botta... Ma che succede?!\n"
+  }
+}

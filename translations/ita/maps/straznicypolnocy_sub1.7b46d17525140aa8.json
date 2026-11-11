@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "map": "straznicypolnocy_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "db53a3f89a2a34246b7b01007659337aea06b69bfb92615e010822ff9fe7f4df"
+  },
+  "strings": {
+    "0": "LA TANA DEI MOSTRI",
+    "1": "La grotta dei draghi si rivela la tana di tutti i mostri che hanno cercato riparo dal gelido inverno...",
+    "25": "Trova l'amuleto del drago",
+    "80": "Ykol",
+    "81": "Serpenti mannari",
+    "82": "Lupi mannari",
+    "83": "Draghi",
+    "84": "Cacciatori di mostri",
+    "90": "Yk",
+    "91": "Serp",
+    "92": "Lupi",
+    "93": "Drag",
+    "94": "Cacc",
+    "100": "Ykol"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA TANA DEI MOSTRI\n<font:$local$\\fonts\\font12.fnt>\n\nPiù scendevamo nelle profondità della grotta, più si faceva buio. L'oscurità impenetrabile rendeva ogni passo sempre più incerto. Qui la luce è la nostra migliore alleata...\n\nLa grotta dei draghi si rivelò la tana di mostri spaventosi: serpenti e lupi. A quanto pare si erano rifugiati qui per sfuggire al gelido inverno. Da ogni parte ci giungevano gli ululati agghiaccianti dei lupi mannari, che avevano fiutato sangue fresco. Dobbiamo essere pronti a combatterli, ma non dimentichiamo il nostro obiettivo: l'amuleto del drago. Finché Ykol non lo indosserà, anche i draghi vorranno sbarazzarsi di te a ogni costo.\n\nNon abbassare la guardia! La notte è buia e piena di terrori.\n\n<usericon:1,54,269>\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nI CACCIATORI DI MOSTRI\n<font:$local$\\fonts\\font12.fnt>\n\n<usericon:1,60,36>\n\n- \"Ahh, finalmente delle persone!\" - dissero i guerrieri incontrati nella grotta. - \"Diamo la caccia alle creature che vivono qui da tanto tempo, ma sembrano soltanto aumentare. E per di più questa grotta è un maledetto labirinto. I pulsanti sorvegliati da quei mostri aprono cancelli lontani, che permettono di proseguire. Ti aiuteremo volentieri nella tua missione!\"\n\nDette queste parole, i Vichinghi si misero ai nostri ordini.\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA\n<font:$local$\\fonts\\font12.fnt>\nSenza uno qualsiasi degli eroi non potremo portare a termine la missione...\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nAMULETO DEL DRAGO TROVATO!\n<font:$local$\\fonts\\font12.fnt>\n\nQuando indossammo l'amuleto del drago, tutti i draghi smisero all'istante di attaccarci. Seguendo le istruzioni di Styr, ne conducemmo fuori dalla grotta uno solo. Ringraziammo i cacciatori di mostri per l'aiuto. Ci dissero che sarebbero rimasti nella grotta per sterminare tutta la feccia che vi si era annidata.\n",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nRINFORZI\n<font:$local$\\fonts\\font12.fnt>\n\nQuando i guerrieri del tuo villaggio si accorsero che Ykol tardava troppo a tornare dalla grotta, partirono in suo aiuto!\n\n<usericon:1,54,23>\n"
+  }
+}

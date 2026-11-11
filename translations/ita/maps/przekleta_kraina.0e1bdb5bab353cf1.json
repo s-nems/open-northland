@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "map": "przekleta_kraina",
+  "basis": {
+    "lang": "eng",
+    "digest": "21fc3f33493652164b93350f881ae87187ec68d514aba277c9ea6ed5dcd47e3f"
+  },
+  "strings": {
+    "0": "TERRA MALEDETTA",
+    "1": "I serpenti mannari hanno sbarrato ogni via attraverso la fitta foresta. Per liberare questa terra dalla maledizione, i Vichinghi devono chiedere aiuto al druido Menelix... Cooperazione multiplayer per 4 giocatori.",
+    "30": "Sconfiggi i serpenti mannari nella terra maledetta",
+    "50": "Vic1",
+    "51": "Miguel",
+    "52": "Leugim",
+    "53": "Serpenti",
+    "54": "SSS",
+    "55": "Vic2",
+    "56": "Vic3",
+    "57": "Vic4",
+    "58": "Menelix",
+    "60": "Vic1",
+    "61": "Mig",
+    "62": "Leu",
+    "63": "Serpenti",
+    "64": "sss",
+    "65": "Vic2",
+    "66": "Vic3",
+    "67": "Vic4",
+    "68": "Menelix",
+    "100": "Druido Menelix",
+    "250": "Spezza la maledizione che grava sulla terra"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTERRA MALEDETTA\n<font:$local$\\fonts\\font12.fnt>\n\n<picture:$local$\\graphics\\waz.pcx>\n\nUn tempo questa valle era un'importante via commerciale che univa quattro tribù vichinghe. Da qualche tempo, però, ci siamo accorti che nessun mercante viene più a trovarci...\n\nE non è tutto...\n\nLa nostra gente che si allontana troppo dall'accampamento sparisce senza lasciare traccia...\n\nOgni passo verso il bosco oscuro sembra voler dire morte certa...\n\nFra gli alberi brillano gli occhi di ripugnanti creature simili a serpenti.\n\nPare che siamo circondati da una bestia che attende solo di toglierci la vita. Non abbiamo via di scampo... Dobbiamo affrontare i serpenti mannari...\n\n<usericon:1,307,173>\n\nMa in questa lotta non saremo soli! In questa terra vive un potente druido che di pozioni ne ha bevute di cotte e di crude. Si chiama Menelix.\n\nMenelix ci ha detto che questa terra è stata maledetta e che da essa sono strisciati fuori i serpenti mannari. Per spezzare la maledizione, Menelix dovrà lanciare un incantesimo, e per il rito gli servono 300 unità di olio. Altrimenti sconfiggere i serpenti mannari sarà impossibile: continueranno a moltiplicarsi all'infinito. Il tuo compito è consegnare a Menelix 300 unità di olio come tributo e poi eliminare tutti i serpenti mannari rimasti.\n\nPiù tribù partecipano alla lotta, più il tributo per Menelix viene diviso. Ogni tribù deve pagare la propria parte del tributo.\n\nSe alla lotta partecipa 1 sola tribù, questa deve pagare 300 unità di olio.\n\nSe partecipano 4 tribù, ognuna deve pagare 75 unità di olio.\n\nSe tutti i membri (anche di una sola tribù) muoiono prima di aver pagato il tributo a Menelix, la missione non potrà più essere completata.\n\nRicorda! Se vuoi giocare questa mappa in solitario, devi avviarla in modalità multiplayer e disattivare tutti i giocatori umani inattivi.\n\n...\n\nAttenzione! La notte è oscura e piena di terrori. Ogni passo verso il bosco oscuro è un rischio. Tieni d'occhio i tuoi Vichinghi, perché non si allontanino troppo dal loro accampamento!\n\nBuona fortuna\ndi Ares & Jozenkow\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVITTORIA!\n<font:$local$\\fonts\\font12.fnt>\n\nOra è il momento di raccogliere tutte le armature di cuoio nel magazzino per ottenere una vittoria al 100% (e il bosco non si riempie di rifiuti). Accumula 1000 armature di cuoio nel tuo magazzino per sbloccare l'eco-bonus.\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\n2137\n<font:$local$\\fonts\\font12.fnt>\n\n21:37\n\n<picture:$local$\\graphics\\pop.pcx>"
+  }
+}

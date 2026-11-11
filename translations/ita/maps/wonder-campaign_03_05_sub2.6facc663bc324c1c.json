@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "map": "wonder-campaign_03_05_sub2",
+  "basis": {
+    "lang": "eng",
+    "digest": "c79912ec70b5f17b0f435c7ff796db019646d5367ec9cdd3eca66827dfc539ce"
+  },
+  "strings": {
+    "0": "@TROVA UNA VIA ATTRAVERSO LE PALUDI!",
+    "51": "Tribù della palude",
+    "61": "Palude",
+    "71": "Bjarni",
+    "72": "Cyra",
+    "73": "Hatchie",
+    "74": "Sigurd",
+    "75": "Norbert",
+    "76": "Mani",
+    "98": "",
+    "99": "LE PALUDI PERDUTE"
+  },
+  "briefings": {
+    "100": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di BJARNI gli dèi piansero... senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "200": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! La tua eroina CYRA è morta per la tua negligenza! Senza questa eroina, l'esito di questa missione ti resterà ignoto! ",
+    "300": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe HATCHIE è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto! ",
+    "400": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe SIGURD è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe NORBERT, il drago, è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "600": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! MANI, figlio di Bjarni e Cyra, è morto per la tua negligenza! Senza di lui, l'esito di questa missione ti resterà ignoto!",
+    "header": "LE PALUDI PERDUTE",
+    "00_start": "Non avevamo ancora idea di come contrastare l'avanzata delle paludi. \n\n<usericon:1,208,156>\n\nGli abitanti di Efeso ci parlarono di \"saggi\" che, si diceva, vivevano nascosti da qualche parte nella palude. \n\nForse loro avrebbero potuto indicarci una via, così speravamo...",
+    "00_start1": "Fa' visita ai saggi!",
+    "50_endheader": "MISSIONE COMPIUTA! ",
+    "50_end": "Mentre attraversavamo il ponte, vedemmo i saggi venirci incontro. Ci parlarono con voci sommesse e cupe:",
+    "50_end1": "I SAGGI\n\n\"Valorosi eroi! Avete trovato la strada che porta a noi saggi! Tanto coraggio e tanta determinazione meritano una ricompensa.\n\n<usericon:1,120,15>\n\nConosciamo il vostro problema e fermeremo l'avanzata delle paludi per un certo tempo. Così avrete abbastanza tempo per finire la vostra costruzione, se lavorerete sodo...\n\nIl vostro eroe Hatchie, però, resterà con noi per un po', perché noi saggi vorremmo imparare tutto sull'esotica cultura della sua terra natale.\"",
+    "01": "LA TRIBÙ DELLA PALUDE\n\n\"Siete venuti a cercare i saggi? È un privilegio per il nostro popolo, ma probabilmente non supererete la prova delle buche della palude\", dissero le donne della tribù della palude. \n\n<usericon:1,409,47>\n\n\"Vi auguriamo comunque buona fortuna! Tenete gli occhi aperti ed esplorate i dintorni quando passerete per la prossima buca!\"",
+    "02": "BUCA DELLA PALUDE\n\nIn questa zona c'erano delle buche della palude. Secondo le nostre informazioni, era facile perdercisi, perché conducevano in luoghi completamente diversi. Ma dovevamo sfruttarle a nostro vantaggio...",
+    "03": "DI NUOVO AL PUNTO DI PARTENZA\n\nQuando attraversammo questa buca, ci ritrovammo al punto di partenza della nostra missione. Difficilmente poteva essere la strada giusta!",
+    "04": "ATTENZIONE!\n\nSenza dubbio dovevamo attraversare questa buca, ma nel farlo provammo una strana sensazione. Che cosa ci aspettava dall'altra parte?",
+    "05": "ENERGIA VITALE\n\nUna strana magia avvolgeva questo luogo... \n\n<usericon:1,268,116>\n\nTutti i nostri uomini si sentirono come rinati!",
+    "06": "HATCHIE\n\n\"Eccovi di nuovo! Che cosa vi ha trattenuti così a lungo? \n\nC'è una via per entrare, ma nessuna per uscire!\" \n\n<usericon:2,3 >"
+  }
+}

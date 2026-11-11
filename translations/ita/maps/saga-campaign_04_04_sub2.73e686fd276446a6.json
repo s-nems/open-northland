@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "map": "saga-campaign_04_04_sub2",
+  "basis": {
+    "lang": "eng",
+    "digest": "ab9f02b85c801bd8813915f16c77b3de0310b4fd74dcbbd05bd3ed84669ecf7b"
+  },
+  "strings": {
+    "0": "@LIBERA TUTTI I DRAGHI!",
+    "1": "Trova i draghi della terra.",
+    "2": "Trova i draghi magici.",
+    "3": "Trova i draghi d'acqua.",
+    "51": "Terras, draghi della terra",
+    "52": "Abras, draghi magici",
+    "53": "Aquas, draghi d'acqua",
+    "54": "Napaliani",
+    "61": "Terras",
+    "62": "Abras",
+    "63": "Aquas",
+    "64": "Napaliani",
+    "71": "Bjarni",
+    "72": "Cyra",
+    "75": "Mani",
+    "76": "Norbert",
+    "99": "LA LIBERAZIONE DEI DRAGHI"
+  },
+  "briefings": {
+    "100": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di BJARNI gli dèi piansero... senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "200": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! La tua eroina CYRA è morta per la tua negligenza! Senza questa eroina, l'esito di questa missione ti resterà ignoto!",
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! MANI, figlio di Bjarni e Cyra, è morto per la tua negligenza! Senza di lui, l'esito di questa missione ti resterà ignoto!",
+    "600": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe NORBERT, il drago, è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "header": "LA LIBERAZIONE DEI DRAGHI",
+    "00_start": "Ci ritrovammo nelle segrete ammuffite dei Napaliani. Era un luogo strano...\nQuaggiù, sotto terra, in una palude fangosa crescevano funghi e canne!",
+    "00_start1": "Di certo i prigionieri erano ben sorvegliati. Ma gli edifici dei Napaliani erano spesso pieni di passaggi segreti, e potevamo approfittarne.\n \nTrova i draghi prigionieri e liberali!",
+    "50_endheader": "MISSIONE COMPIUTA!",
+    "50_end": "Eravamo riusciti a liberare tutti i draghi dalle segrete dei Napaliani,\ne uscimmo da quelle mura buie il più in fretta possibile!",
+    "50_end1": "<usericon:2,11>",
+    "01": "NAPALIANI\n\n<usericon:1,66,88>\n\n\"Osate fare irruzione nelle nostre segrete? Siete già morti!\"",
+    "02": "DRAGHI DELLA TERRA\n\n<usericon:2,11>\n\nFinalmente avevamo trovato dei draghi della terra! Norbert era fuori di sé dalla gioia!",
+    "03": "DRAGHI MAGICI\n\n<usericon:2,12>\n\n\"Questi Napaliani seminano guai ovunque. Noi draghi magici pensavamo di essere al sicuro da loro, ma hanno fatto prigionieri anche noi. Grazie per averci liberato.\"",
+    "04": "DRAGHI D'ACQUA\n\n<usericon:2,13>\n\n\"Per i Napaliani siamo prede facili. Grazie per averci liberato.\"",
+    "05": "INTERRUTTORE AZIONATO!\n\n<usericon:1,36,136>\n\nCon un possente cigolio, due pesanti porte di legno si spalancarono non lontano da qui.",
+    "06": "NAPALIANI SCONFITTI!\n\nI Napaliani erano stati battuti!\n\n<usericon:2,1>",
+    "07": "DRAGHI D'ACQUA MORTI!\n\nTutti i draghi d'acqua sono morti! Ora l'esito di questa missione ti resterà ignoto!",
+    "08": "DRAGHI DELLA TERRA MORTI!\n\nTutti i draghi della terra sono morti! Ora l'esito di questa missione ti resterà ignoto!",
+    "09": "DRAGHI MAGICI MORTI!\n\nTutti i draghi magici sono morti! Ora l'esito di questa missione ti resterà ignoto!"
+  }
+}

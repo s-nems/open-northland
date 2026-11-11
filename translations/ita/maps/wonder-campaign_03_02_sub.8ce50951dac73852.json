@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "map": "wonder-campaign_03_02_sub",
+  "basis": {
+    "lang": "eng",
+    "digest": "fefc8a7b44dc31f333728f056231ae93250caf3b8ab0f60786be9df23df17298"
+  },
+  "strings": {
+    "0": "@TROVA UN MODO PER RECUPERARE I PROGETTI DI COSTRUZIONE!",
+    "1": "Entra nelle sale sotterranee!",
+    "2": "Segui le donne!",
+    "3": "Caccia i predoni!",
+    "4": "Torna dalle donne con tutti i tuoi eroi e il piccolo drago!",
+    "51": "Draghi",
+    "56": "Donne",
+    "57": "Predoni",
+    "61": "Draghi",
+    "66": "Donne",
+    "67": "Predoni",
+    "71": "Bjarni",
+    "72": "Cyra",
+    "73": "Hatchie",
+    "74": "Sigurd",
+    "76": "Norbert",
+    "99": "LE SALE SOTTERRANEE"
+  },
+  "briefings": {
+    "100": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nEroismo o imprudenza? Alla morte di BJARNI gli dèi piansero... senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "200": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! La tua eroina CYRA è morta per la tua negligenza! Senza questa eroina, l'esito di questa missione ti resterà ignoto! ",
+    "300": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe HATCHIE è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto! ",
+    "400": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe SIGURD è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto! ",
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe NORBERT, il drago, è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "header": "LE SALE SOTTERRANEE",
+    "00_start": "I pastori avevano nascosto le loro donne in queste sale per proteggerle dai predoni saraceni. L'ingresso era ben difeso. Speravamo che nessuno ci avesse seguiti...\n\n<usericon:1,21,20>",
+    "00_start1": "Trova un modo per recuperare i progetti di costruzione!",
+    "50_endheader": "MISSIONE COMPIUTA! ",
+    "50_end": "\"Lunga vita a voi! Soltanto grazie a voi gli intrusi sono stati cacciati dalle nostre sale. Accettate questo progetto dei Giardini pensili in segno della nostra gratitudine. È rimasto nascosto per secoli in una fenditura delle sale sotterranee, e ora potrà esservi di grande aiuto.\"\n\n<usericon:1,50,16>",
+    "50_end1": "",
+    "01": "DONNE\n\n\"Siete degli intrusi? \n\n<usericon:1,30,48>\n\nI nostri uomini ci hanno portate in queste sale sotterranee per proteggerci, per risparmiarci la sorte toccata a tante altre donne del nostro popolo. \nSono state rapite dai predoni a nord-ovest. I nostri uomini erano in minoranza e quindi impotenti! Anche voi siete di quei vagabondi? \nCome possiamo sapere se fidarci di voi? Sentite quei suoni orribili? I draghi sono in pericolo?\"",
+    "02": "PREDONI\n\n\"Ah! Ecco dove i pastori tengono le loro donne e i loro beni! Meno male che vi abbiamo seguiti, gente strana! Abbiamo saputo come avete spillato il bottino ai nostri fratelli! Con noi non ve la caverete così facilmente! Ah ah!\" ",
+    "03": "",
+    "04": "DENTRO LE SALE SOTTERRANEE\n\n\"Siete riusciti a entrare nelle grandi sale sotterranee! Dite che vi mandano i nostri uomini? Ma come possiamo sapere se fidarci di voi? Oh, come sarebbe bello tornare a vivere liberamente sotto il sole\", dissero le donne dei pastori.\n \n... ma che cos'era? Di nuovo udimmo dei rumori dall'estremità meridionale della costruzione... \nC'era forse un secondo ingresso?",
+    "05": "GRAZIE!\n\n\"Avete cacciato gli intrusi dalle nostre sale. Ve ne siamo profondamente grate! Vi siete guadagnati la nostra fiducia, e in cambio vi affideremo i progetti nascosti dei Giardini pensili. Sono custoditi in un luogo segreto nelle sale superiori!\n\n<usericon:1,50,16>\n\nVi accompagneremo dai nostri uomini, perché a quanto pare avete scongiurato la minaccia dei predoni che continuavano a invaderci! Peccato che i predoni abbiano quasi sterminato quei draghi così amichevoli. Ma a quanto pare avete trovato un nuovo amico...\n\nSeguiteci nella sala superiore!\" ",
+    "06": "PERICOLO!\n\nCi eravamo appena allontanati quando udimmo dei suoni orribili! Qualcuno, non lontano da qui, doveva soffrire terribilmente!\n\n<usericon:1,37,138>",
+    "07": "IL PICCOLO DRAGO\n\nEravamo arrivati troppo tardi! I predoni avevano massacrato i draghi!\n\n<usericon:1,37,138>\n\nMa che cos'era quello?\n\n<usericon:1,57,157>\n\nUn piccolo drago se ne stava fra i cespugli, tremante di paura. Il poverino aveva dovuto assistere alla terribile fine dei suoi genitori e ora era tutto solo! Dovevamo prenderci cura di lui!\n\nTorna dalle donne insieme al drago e a tutti i tuoi eroi, non appena avrai sconfitto i predoni!"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "map": "wybrzeze_czarow_sub4",
+  "basis": {
+    "lang": "eng",
+    "digest": "a3ecc0c8b152506fdcb0ae20e82a5b1a7d01d4fbf35d8d7174269a6053c57aac"
+  },
+  "strings": {
+    "0": "COSTA DEGLI INCANTESIMI - CAVERNA",
+    "1": "acciuffa zorian (B)",
+    "30": "Björn",
+    "31": "Hring",
+    "32": "Ivar",
+    "33": "Karl",
+    "34": "Zorian",
+    "50": "Tu",
+    "51": "Zorian",
+    "52": "Serpenti mannari",
+    "100": "@Trova Zorian.",
+    "101": "Continua l'inseguimento di Zorian!"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCAVERNA\n<font:$local$\\fonts\\font12.fnt>\n\nEntrammo con passo cauto nella caverna in cui era fuggito Zorian. Tutto era coperto da quella bava ormai familiare... ma alla fine raggiungemmo uno spazio aperto.\n\n<usericon:1,150,303>\n\nQui la caverna si divideva in quattro gallerie diverse...\n\n\"Chissà dov'è andato Zorian...\" pensò Ivar.\n\n\"Bella domanda... forse dovremmo dividerci? Lo troveremmo prima\", disse Hring.\n\n\"Ti sei rimbecillito?\" sbottai, irritato. \"Da tutta questa bava si vede che qui c'è un'infinità di serpenti. Hai già dimenticato quanti guai ci hanno dato?\"\n\n\"Björn ha ragione. Restiamo uniti e facciamo fuori quelle canaglie una alla volta, così sarà più facile sbarazzarcene.\"\n\nAll'improvviso notai una strana nuvoletta...\n\n<usericon:1,166,308>\n\n\"Che cosa può essere?\" chiesi.\n\n\"Sento che questa foschia potrebbe avere poteri curativi... una specie di aura. Forse è un nostro alleato silenzioso?\" rispose Ivar.\n\nNon ci resta molto da fare. Dobbiamo trovare la strada che porta a Zorian e catturarlo!",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCOVO\n<font:$local$\\fonts\\font12.fnt>\n\nEsplorando la caverna, ci imbattemmo in un altro covo di quei luridi serpenti!\n\n<usericon:1,92,117>\n\nSono davvero troppi, per sicurezza cerchiamo un'altra strada...",
+    "502": "Dopo aver premuto l'interruttore, sentimmo un forte stridore...\n\n... e poi uno schianto!\n\nDeve pur significare qualcosa...",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nZORIAN\n<font:$local$\\fonts\\font12.fnt>\n\nIn fondo alla caverna trovammo finalmente Zorian!\n\n<usericon:2,34>\n\n\"Bene, adesso facciamo due chiacchiere!\" dicemmo...\n\n... poi ci gettammo su di lui e gli strappammo i testi di Koslowford...\n\n\"E ora muori!\" sentenziò Hring.\n\n\"Morire?\" rise Zorian, indietreggiando. \"Mentre voi vi perdevate quaggiù... io ho copiato tutti quei testi. Perdere gli originali non mi fa più alcun danno!\n\nIl dominio sul mondo sarà presto mio! Non mi fermerete!\" Ci sputò in faccia, almeno col pensiero, e si diede alla fuga.\n\nDobbiamo fermarlo prima che lasci l'Inghilterra! Inseguiamolo, presto!",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA\n<font:$local$\\fonts\\font12.fnt>\n\nÈ morto uno dei protagonisti della missione, che senza di lui non può più essere compiuta...\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>"
+  }
+}

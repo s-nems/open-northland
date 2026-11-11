@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "map": "wielka_kolonizacja",
+  "basis": {
+    "lang": "eng",
+    "digest": "09f5d3162cdf4a0cb955aa18a3944231890c9169752851b62148855e9beb8891"
+  },
+  "strings": {
+    "30": "Colonizza la regione!",
+    "98": "Colonizza le fertili pianure insieme agli altri giocatori! Decidi tu dove stabilirti e che rapporti avere con i vicini! Partita libera per 5 giocatori.",
+    "99": "LA GRANDE COLONIZZAZIONE",
+    "601": "Mercante",
+    "701": "Mercante"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA GRANDE COLONIZZAZIONE\n<font:$local$\\fonts\\font12.fnt>\nAutore: Proszak\n<font:$local$\\fonts\\font12.fnt>\n\nTra vasti prati e fitte foreste, un vecchio mercante prepara i suoi figli maggiori a un viaggio. Sono ormai adulti, ed è tempo che partano per il mondo in cerca della propria strada.\n\nE tu sei uno di loro.\n\nLanciati dunque all'avventura.\nRaccogli le ricchezze di questa terra vergine. Crea la tua società. Innalza edifici e città magnifiche.\nCollabora con i tuoi fratelli o dichiara loro guerra!\n\nOra tutto è nelle tue mani!\n\nFa' visita ogni tanto al vecchio: avrà di certo interessanti offerte commerciali per te.\n\nwww.culturesnation.pl\n"
+  }
+}

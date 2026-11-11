@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "map": "mroczny_swiat_sub3",
+  "basis": {
+    "lang": "eng",
+    "digest": "8a587349924c8b6a4803c7dc2a392bd0aab7c6143f91593c16853ade4b1d278d"
+  },
+  "strings": {
+    "0": "MONDO OSCURO",
+    "1": "Mondo Oscuro",
+    "25": "Distruggi il villaggio dei Franchi!",
+    "50": "Bjarni",
+    "51": "Villaggio dei Franchi",
+    "100": "Bjarni",
+    "101": "Cyra",
+    "102": "Sigurd",
+    "103": "Hatchie"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nALL'ATTACCO!!!\n<font:$local$\\fonts\\font12.fnt>\n\nAll'attacco!! Dobbiamo sconfiggere il villaggio dei Franchi!!",
+    "501": "Per fortuna stiamo vincendo questa guerra. Presto non resterà in piedi nemmeno uno dei loro villaggi!\n\n- \"Bjarni...\" - si rivolse a me Cyra - \"Qui c'è qualcosa di diverso. Qualcosa non va.\"\n\n- \"Qualcosa non va di sicuro...\" - rispose Sigurd. - \"Andiamocene da qui!\"\n\n- \"Non andiamo da nessuna parte! Non prima di aver finito il lavoro!\" - gridò Hatchie."
+  }
+}

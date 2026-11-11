@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "map": "asgard-campaign_01_06",
+  "basis": {
+    "lang": "eng",
+    "digest": "85dcce633c532e5eb9842a17cfa3655ee3f705863b8861ab6723fac7a7c4f260"
+  },
+  "strings": {
+    "1": "Cerca la guarnigione scomparsa a nord.",
+    "2": "Equipaggia 30 soldati.",
+    "3": "Distruggi i Saraceni o incontra il loro comandante.",
+    "5": "Guardati dal generale traditore!",
+    "6": "Sconfiggi le truppe del generale.",
+    "21": "Paga un tributo per placare i Saraceni.",
+    "51": "Saraceni",
+    "52": "Hardradi",
+    "98": "Come nuova Guardia variaga dell'imperatore, i Vichinghi vengono inviati nella zona di confine orientale di Bisanzio, da dove la guarnigione del generale Hardradi non dà notizie da settimane...",
+    "99": "LA GUARDIA VARIAGA",
+    "100": "Bjarni",
+    "101": "Sigurd"
+  },
+  "briefings": {
+    "header": "\nLA GUARDIA VARIAGA\n",
+    "start_00": "A Bisanzio la situazione era più che tesa. L'antico impero era sull'orlo di una guerra con i Saraceni! \n\nL'imperatore aveva cercato a lungo una soluzione pacifica e aveva offerto al suo rivale un trattato che avrebbe portato una pace duratura nella regione. Una svolta non da tutti condivisa, nemmeno a Bisanzio. In particolare il generale Hardradi non smetteva di lanciare avvertimenti.",
+    "start_01": "Ebbene, il tentato rapimento di sua figlia, che per fortuna eravamo riusciti a sventare, fece cambiare idea all'imperatore. Mandò noi, la sua nuova Guardia variaga, nella zona di confine orientale, da dove la guarnigione del generale Hardradi non dava notizie da settimane.\n\n\nTrova la guarnigione assediata e sostienila.",
+    "garnison": "LA GUARNIGIONE\n\nLa guarnigione scomparsa si trovava, ben fortificata, vicino al confine. Alte mura con robuste torri di guardia circondavano l'accampamento. \n\nQuando rivelammo chi eravamo, la porta si aprì e il generale Hardradi ci venne incontro. Era in tutto e per tutto un uomo abituato a essere obbedito.  \n\n\"Sostenetemi con la vostra gente nella lotta contro i Saraceni! Nelle file della nostra guarnigione bizantina c'è molto posto. Insieme li sconfiggeremo di certo!\" \n\n\nIngrandisci il tuo esercito fino a 30 soldati.",
+    "sarazenenfriedlich": "La nostra gente incontrò un'avanguardia dei Saraceni. Il nemico era in vista! \n\nMa restammo stupiti quando, invece di attaccare, ci chiamarono nella nostra lingua: \n\n\"Noi Saraceni non abbiamo mai avuto problemi con voi Vichinghi e non ne vogliamo nemmeno in futuro! Ma vi distruggeremo se ci attaccherete!\" ",
+    "sarazenenfeindlich": "Quando attaccammo i Saraceni, uno dei loro negoziatori si fece avanti. \n\n\"Non vogliamo farvi guerra! Pagate un tributo e saremo clementi!\"",
+    "soldatenbereit": "Avevamo messo insieme il nostro esercito. Il generale ci spronava ad attaccare i Saraceni. \n\nIo non avevo ancora deciso: se li avessimo sconfitti, avremmo compiuto il nostro dovere e saremmo potuti ripartire! Ma la sera un corno suonò in lontananza, e i Saraceni mandarono dei negoziatori al nostro accampamento. \n\n\"Vediamo che vi preparate a muoverci guerra, ma finora tra i nostri popoli non c'è stata alcuna contesa! Il nostro comandante vi considera uomini d'onore, perciò invita il vostro capo a trattative di pace nel nostro quartier generale. Se non osate venire, attaccateci pure: non abbiamo paura di voi!\"\n\n\nDistruggi i Saraceni o manda Bjarni alla roccaforte saracena a est!",
+    "frieden": "Avevamo fatto la pace con i Saraceni. Pieni di gioia tornammo alla guarnigione bizantina. Ma lì ci attendeva una brutta sorpresa! \n\nIl generale era fuori di sé. \"Sei un pazzo assetato di gloria! Hai fatto la PACE con i nostri nemici!! Come osi! \nChi credi di essere?! In questo regno non c'è posto per DUE generali famosi! Non lascerò che sia TU a tornare dall'imperatore coperto di gloria! Non ho aspettato questa occasione per niente, non ho fatto rapire la principessa per niente, solo per far ricadere i sospetti sui Saraceni! Era l'unico modo per convincere l'imperatore a far loro guerra! La gloria è MIA!\" \n\nNon potevamo credere alle nostre orecchie, ma quando i suoi uomini cominciarono ad attaccarci, capimmo subito tutto!\n\n\nSconfiggi il generale traditore.",
+    "hilfesarazenen": "Il comandante dei Saraceni si rivelò un vero uomo d'onore. Quando seppe che cosa tramava il generale, ci sostenne con le sue truppe. \n\nEra nell'interesse del suo stesso popolo che l'imperatore scoprisse il tradimento del suo soldato... ",
+    "sarazenentot": "Avevamo sconfitto i Saraceni e tornammo alla guarnigione bizantina in corteo trionfale. Ma ci attendeva una brutta sorpresa! \n\nIl generale era fuori di sé. \"Sei un pazzo assetato di gloria! Hai fatto la PACE con i nostri nemici!! Come osi! \nChi credi di essere?! In questo regno non c'è posto per DUE generali famosi! Non lascerò che sia TU a tornare dall'imperatore coperto di gloria! Non ho aspettato questa occasione per niente, non ho fatto rapire la principessa per niente, solo per far ricadere i sospetti sui Saraceni! Era l'unico modo per convincere l'imperatore a far loro guerra! La gloria è MIA!\" \n\nNon potevamo credere alle nostre orecchie, ma quando i suoi uomini cominciarono ad attaccarci, capimmo subito tutto!\n\n\nSconfiggi il generale traditore.",
+    "gewonnen_00": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE COMPIUTA!\n<font:$local$\\fonts\\font12.fnt>\nQuando Hardradi vide che non poteva vincere, si ritirò verso la capitale.",
+    "gewonnen_01": "Avevamo vinto, ma ero preoccupato per ciò che poteva tramare. Si era dimostrato privo di scrupoli nella sua sete di potere, al punto da far rapire la principessa per provocare una guerra. \n\nEra improbabile che ora si arrendesse senza combattere.\nDovevamo raggiungere l'imperatore il prima possibile per avvertirlo e impedire il peggio! Potevo solo sperare che non fosse troppo tardi...\n",
+    "krieggeneral": "Quando attaccammo il generale e il suo esercito, non sapevamo che cosa ci attendesse...\n\nUna risata maligna risuonò da una delle torri, e il generale ci gridò dall'alto: \"Chi credi di essere?! In questo regno non c'è posto per DUE generali famosi! Non lascerò che sia TU a tornare dall'imperatore coperto di gloria! Non ho aspettato questa occasione per niente, non ho fatto rapire la principessa per niente, solo per far ricadere i sospetti sui Saraceni! Era l'unico modo per convincere l'imperatore a far loro guerra! La gloria è MIA!\"\n\nNon potevamo credere alle nostre orecchie, ma quando i suoi uomini cominciarono ad attaccarci, capimmo subito tutto!",
+    "bjarnitot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nChe giornata nera! Bjarni cadde sotto l'ultimo colpo del nemico, abbandonato dai suoi amici. Il Serpente di Midgard si risvegliò, e non rimase nessuno a fermarlo.",
+    "spielertot": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nQuando Sigurd, uno dei quattro eroi della profezia, morì, il filo del destino tessuto dalle Norne si spezzò. Ora niente avrebbe potuto fermare il Serpente di Midgard.",
+    "tribut": "Non appena pagammo il tributo, i Saraceni fecero di nuovo pace con noi. \n\nDopotutto non erano un popolo così violento come ci avevano detto! Tuttavia, difficilmente la loro generosità sarebbe stata infinita. Era più prudente non provocarli oltre.",
+    "friedensgespräch": "Non era affatto una trappola! Il comandante saraceno ci aspettava davanti al suo quartier generale, e non portava armi. \n\nAveva sentito molto parlare del coraggio e della saggezza del nostro popolo, e ci salutò come un uomo di stato. Le trattative furono lunghe e difficili, ma alla fine concordammo un trattato di pace. Il comandante tese la mano e sorrise: \n\n\"Vedo che siete uomini coraggiosi e onesti! Ci ritireremo come promesso e manterremo la pace, se avvertirete il generale Hardradi di non provocarci più. \nMa sta' in guardia, amico mio! Lui non è un uomo onesto come te!\""
+  }
+}

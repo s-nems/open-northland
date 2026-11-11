@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "map": "burza_przybzezna_1_2",
+  "basis": {
+    "lang": "eng",
+    "digest": "91b66924856ae85c1725139127e5c584585aa5231c83ec14a47c181fb8b8a5e4"
+  },
+  "strings": {
+    "40": "Sconfiggi l'avversario e prendi il controllo dell'intera isola.",
+    "98": "Due tribù vichinghe si contendono le risorse di una piccola isola fertile.",
+    "99": "TEMPESTA COSTIERA",
+    "601": "Gente del Sud",
+    "602": "Gente del Nord",
+    "701": "Sud",
+    "702": "Nord"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTEMPESTA COSTIERA\n<font:$local$\\fonts\\font12.fnt> \nAutore: Proszak\n<font:$local$\\fonts\\font12.fnt>\n\nI Vichinghi approdarono sulla riva di una piccola isola, all'apparenza disabitata.  \nQuel piccolo lembo di terra si rivelò ricco di risorse e di selvaggina.  \nQuando i Vichinghi decisero di colonizzare l'isola, scoprirono che all'altro capo si era stabilita un'altra tribù vichinga, per nulla disposta a collaborare.\n\nConquista l'isola e sconfiggi l'avversario!\n\n\nwww.culturesnation.pl\n"
+  }
+}

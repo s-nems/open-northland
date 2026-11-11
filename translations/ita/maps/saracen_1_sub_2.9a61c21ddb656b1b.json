@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "map": "saracen_1_sub_2",
+  "basis": {
+    "lang": "eng",
+    "digest": "47e8bf633accd32e50e4130209b8becc00e50898c97ac60e8425e6ed81a2b25a"
+  },
+  "strings": {
+    "0": "PDP : 01 - LA MINIERA DEI COBOLDI - IL PASSATO",
+    "1": "Missione secondaria - la miniera dei Coboldi",
+    "30": "TROVA LA PRIMA CHIAVE DELLA GABBIA DI AARON PORTANDO TRE EROI SUL POSTO",
+    "31": "Raggiungi l'uscita posteriore con tre eroi",
+    "32": "Lascia il tratto pericoloso della miniera con tre eroi",
+    "50": "Hatchie",
+    "51": "La guardia",
+    "52": "Operai",
+    "53": "PALIZZATA",
+    "54": "Schiavi",
+    "100": "Hatchie",
+    "101": "Azim",
+    "102": "Idris"
+  },
+  "briefings": {
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA MINIERA DEI COBOLDI   300 ANNI FA\n\n<font:$local$\\fonts\\font12.fnt>\nAbracadabra, simsalabim... pronunciato uno strano incantesimo, viaggiammo nel tempo fino a un passato lontanissimo. L'ingresso della miniera era aperto. Con passo piuttosto incerto, io, Azim e Idris entrammo. \n\nLaggiù faceva molto freddo e la nebbia ci copriva la vista. Qui ci sono enormi vene d'oro. In lontananza scorgemmo gli operai della tribù dei Coboldi, intenti a lavorare sodo. Non vorremo mica uccidere dei civili disarmati? \n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nABBIAMO TROVATO LA PRIMA CHIAVE!\n\n<font:$local$\\fonts\\font12.fnt>\nIn fondo alla miniera trovammo il primo anello, chiuso in un piccolo scrigno blu. Bene, è ora di levare le tende. Qui vicino dovrebbe esserci un'altra uscita...\n",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nL'USCITA POSTERIORE\n\n<font:$local$\\fonts\\font12.fnt>\nAbbiamo trovato un'uscita posteriore da questi cunicoli. Ci servirà quando avremo trovato l'artefatto.\n",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCHIAVI\n\n<font:$local$\\fonts\\font12.fnt>\nIncontrammo un gruppo di schiavi rinchiusi dietro una palizzata. Visto che combattevamo contro i Coboldi, si misero subito ai nostri ordini.\n\n<usericon:1,206,180>\n",
+    "505": "- \"Che ci fate qui?! Non avete alcun diritto di stare in questa miniera! - ci accolse calorosamente uno degli operai. - Ma come l'avete sorvegliato l'ingresso, zucconi?!\"\n",
+    "506": "<font:$local$\\fonts\\fonthead16bld.fnt>\nI RIBELLI\n\n<font:$local$\\fonts\\font12.fnt>\n- \"Siamo stufi di stare rintanati in queste vecchie miniere! Tanto lo sappiamo tutti che presto crolleranno. Ti prego, portaci via di qui! Meglio morire in battaglia che sotto i massi!\"\n\n<usericon:1,20,168>\n",
+    "507": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL PULSANTE\n\n<font:$local$\\fonts\\font12.fnt>\nAbbiamo premuto uno dei due pulsanti del cancello. L'altro dev'essere qui vicino. ",
+    "508": "Eravamo appena entrati e avevamo già visto crollare una struttura. I sostegni fatti male sono uno dei motivi principali per cui questa miniera finirà per crollare. Dobbiamo sbrigarci!",
+    "509": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTRATTO PERICOLOSO\n\n<font:$local$\\fonts\\font12.fnt>\nVarcato il cancello, entriamo in un tratto davvero malmesso. Le rocce sul soffitto sembravano sul punto di cedere. Dobbiamo lasciare questo posto al più presto. ",
+    "510": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA MINIERA È CROLLATA\n\n<font:$local$\\fonts\\font12.fnt>\nLe strutture non ressero più alla pressione e crollarono, bloccando il passaggio. Missione fallita!",
+    "511": "<font:$local$\\fonts\\fonthead16bld.fnt>\nPASSAGGIO TROVATO\n\n<font:$local$\\fonts\\font12.fnt>\nAbbiamo trovato un passaggio tra le montagne. Ora non ci cadrà più niente sulla zucca.",
+    "512": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMAGAZZINO ABBANDONATO\n\n<font:$local$\\fonts\\font12.fnt>\nLungo la strada notammo un magazzino in mezzo al nulla. Decidemmo di darci un'occhiata. Era pieno zeppo di cibo e di cose utili!\n\n<usericon:1,147,110>",
+    "520": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA\n\n<font:$local$\\fonts\\font12.fnt>\nUno degli eroi è caduto in battaglia. Senza di lui la missione non può riuscire...\n\n\n<picture:$local$\\graphics\\People_Dead_F.pcx> \n"
+  }
+}

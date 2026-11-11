@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "map": "cn_5",
+  "basis": {
+    "lang": "eng",
+    "digest": "9fea76e2c6cd8f60f341e801bb7296ff9843bb1aaf7572617da9ec922f3a5a05"
+  },
+  "strings": {
+    "0": "CULTURESNATION: OTTAGONO",
+    "1": "Uno contro uno con Arek",
+    "30": "Chi si dimostrerà degno della lotta avrà l'esercito di Arek",
+    "50": "Proszak",
+    "51": "Arek",
+    "60": "CN",
+    "61": "Arek",
+    "100": "Proszak",
+    "101": "Arek"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nOTTAGONO\n<font:$local$\\fonts\\font12.fnt>\n\nAll'improvviso, per una strana magia, fummo trasportati nell'ottagono. Arek ha detto qualcosa tipo che chi è degno della lotta avrà il suo esercito. Secondo la tradizione di culturesnation, è degno chi resiste 3 minuti sul ring, ma io ho intenzione di prendere Arek a calci nel sedere.\n"
+  }
+}

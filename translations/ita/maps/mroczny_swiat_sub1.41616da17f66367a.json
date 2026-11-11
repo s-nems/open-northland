@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "map": "mroczny_swiat_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "f8423a3c1efd2107a482385fc8be0c7719d79df52e9b5654b5d6868fc86dfaeb"
+  },
+  "strings": {
+    "0": "MONDO OSCURO: PROLOGO",
+    "1": "Prologo",
+    "50": "Bjarni",
+    "51": "L'Oscuro",
+    "52": "Bjorni",
+    "60": "Bjarni",
+    "61": "L'Oscuro",
+    "62": "Bjorni",
+    "100": "Bjarni",
+    "101": "Cyra",
+    "102": "Hatchie",
+    "103": "Sigurd",
+    "104": "L'Oscuro"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nIL VILLAGGIO NATALE DI BJARNI\n<font:$local$\\fonts\\font12.fnt>\n\nAvevamo appena salvato il mondo dalla piaga delle Ombre Oscure ricostruendo le sette antiche meraviglie del mondo... Io, Bjarni, figlio di Leif, ero tornato al mio villaggio natale per riposare tra i prati che mi ricordavano gli anni della giovinezza. Ma il mio riposo non durò a lungo. Di recente ho ricevuto una lettera dal mio amico Sigurd, che mi chiede aiuto contro un nuovo pericolo. Il mondo rischia di dissolversi del tutto nel buio e nelle ombre per opera di una potente entità oscura chiamata l'Oscuro. La terra viene divorata da una forza nera, e le persone diventano servi delle tenebre, perdendo il controllo della propria volontà. Che si stia avverando il Ragnarök?\n\nVedo in lontananza nubi nere che vengono dritte verso di noi. Questa piaga presto ci raggiungerà. Il mio villaggio è in pericolo, fortifichiamoci finché c'è tempo! Ci difenderemo. Combatteremo fino all'ultima goccia di sangue. È giunta l'ora della battaglia finale. Sento sul collo un gelido soffio di vento, come se la morte volesse dirmi qualcosa, come se oggi fosse il mio ultimo giorno. Guardo la mia gente, consapevole della situazione disperata, eppure ancora fiduciosa in me, nel suo eroe, certa che la salverò ancora una volta. Il sole viene lentamente oscurato dalle nubi nere. Vedo in lontananza tre figure che corrono verso il mio villaggio.\n\nAlle armi!\n\n~~Creata da Jozenkow~~",
+    "501": "\nGrande fu il mio stupore quando vidi le sagome dei miei amici. Fui travolto dalla gioia, che però lasciò presto il posto alla preoccupazione, quando capii che non erano davvero loro. I loro corpi sembravano fatti di qualcosa di diverso dalla materia, e i loro occhi erano colmi di tenebra.\n\n- \"Bjarni, è finita. L'Oscuro ha vinto e ci ha sconfitti\" - disse Cyra con voce fredda, priva di emozioni.\n\n- \"Non far morire la tua gente. Unitevi al nostro esercito. Insieme trasformeremo il mondo in una notte eterna. Avanti, di' loro di arrendersi!\" - disse Sigurd.\n\n- \"Non so chi siate né che cosa abbiate fatto ai miei amici, ma sappiate che i Vichinghi non si arrendono. Siamo pronti a combattere. Quando arriveranno?\" - risposi, stringendo più forte spada e scudo.\n\n- \"Sono già qui\" - rispose Cyra.\n\nLa nube nera si avvicinava sempre di più. Si levò il vento e, con un brivido, sentii le forze abbandonarmi. D'un tratto non riuscii più a muovermi!",
+    "502": "\nLa mia gente era sconfitta, il mio villaggio in rovina, e io potevo solo assistere impotente. È la fine! L'Oscuro ha trionfato!\n\n<usericon:0,104>\n\n- \"Finalmente ho raggiunto il villaggio del leggendario Bjarni. Non potevi più sfuggirmi! Ho preso il controllo della tua mente e di quella dei tuoi amici. Senza di voi questo mondo non avrà più difensori. Trasformerò questo pianeta in una terra di notte eterna, com'era milioni di anni fa, prima che brillasse il primo raggio di sole. O meglio, dovrei dire: lo trasformeremo!\""
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "map": "flagomania_1_0_01",
+  "basis": {
+    "lang": "eng",
+    "digest": "528cf651b20025fd139a5d67b02b76c2fd076b43ad00dcc61ed1b736a308e389"
+  },
+  "strings": {
+    "0": "CTF: BANDIEROMANIA",
+    "1": "Quattro tribù sono giunte in questa terra fertile per stabilire chi ha le migliori doti, non solo militari ma anche strategiche.",
+    "50": "Grasslanders",
+    "51": "Vinlanders",
+    "52": "Hellulanders",
+    "53": "Marklanders",
+    "54": "Spettatore",
+    "60": "60 minuti all'apertura dei cancelli",
+    "61": "50 minuti all'apertura dei cancelli",
+    "62": "40 minuti all'apertura dei cancelli",
+    "63": "30 minuti all'apertura dei cancelli",
+    "64": "25 minuti all'apertura dei cancelli",
+    "65": "20 minuti all'apertura dei cancelli",
+    "66": "Solo 15 minuti all'apertura dei cancelli",
+    "67": "Solo 10 minuti all'apertura dei cancelli",
+    "68": "Solo 5 minuti all'apertura dei cancelli",
+    "69": "I cancelli sono stati aperti!",
+    "70": "Possiedi tutte e 4 le bandiere",
+    "71": "Possiedi 3 bandiere su 4",
+    "72": "Possiedi 2 bandiere su 4",
+    "73": "Ti resta una sola bandiera!",
+    "74": "Non hai più bandiere! Il tuo quartier generale può essere distrutto!",
+    "100": "@Conquista le bandiere nemiche e impadronisciti della regione! E sorveglia anche le tue..."
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nBANDIEROMANIA\n<font:$local$\\fonts\\font12.fnt>\n\nAlcune tribù vichinghe hanno deciso di regolare i loro conti in questa fertile terra. Qui ci sono tutte le risorse necessarie per lo scontro.\n\nPer mettere alla prova non solo la forza delle armi, ma anche la tattica e la ricognizione, si è stabilito che le tribù non distruggeranno i cuori dei villaggi avversari finché non avranno conquistato le quattro bandiere nemiche. Ogni tribù le ha piazzate in diverse posizioni: tre vicino al cuore del villaggio, mentre la quarta è stata piantata dagli esploratori nel profondo delle montagne.\n\nFinché l'avversario possiede almeno una bandiera, il suo quartier generale resiste a qualunque attacco. Solo dopo aver perso tutte le bandiere potrà essere distrutto. Per conquistare una bandiera devi raggiungerla con un'unità qualsiasi.\n\nLe tribù sono separate da cancelli posti sui passaggi attraverso i fiumi. Di comune accordo, si apriranno dopo un'ora, per dare a ogni tribù la possibilità di prepararsi alla guerra.\n\nIl tempo stringe, quindi in battaglia! Conquista le bandiere nemiche e difendi le tue, poi distruggi i nemici!\n\nAutore: StachuMMV\nper culturesnation.pl",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCANCELLI APERTI\n<font:$local$\\fonts\\font12.fnt>\n\nIl tempo dei preparativi è finito, i cancelli dei passaggi si sono aperti. Avanti, e tieni d'occhio le tue bandiere!",
+    "502": "Il giocatore di nord-est ha perso una delle sue bandiere!",
+    "503": "Il giocatore di sud-est ha perso una delle sue bandiere!",
+    "504": "Il giocatore di sud-ovest ha perso una delle sue bandiere!",
+    "505": "Il giocatore di nord-ovest ha perso una delle sue bandiere!",
+    "506": "Il giocatore di nord-est ha perso tutte le bandiere! Ora il suo quartier generale può essere distrutto...",
+    "507": "Il giocatore di sud-est ha perso tutte le bandiere! Ora il suo quartier generale può essere distrutto...",
+    "508": "Il giocatore di sud-ovest ha perso tutte le bandiere! Ora il suo quartier generale può essere distrutto...",
+    "509": "Il giocatore di nord-ovest ha perso tutte le bandiere! Ora il suo quartier generale può essere distrutto...",
+    "510": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVince il giocatore di nord-est!\n<font:$local$\\fonts\\font12.fnt>",
+    "511": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVince il giocatore di sud-est!\n<font:$local$\\fonts\\font12.fnt>",
+    "512": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVince il giocatore di sud-ovest!\n<font:$local$\\fonts\\font12.fnt>",
+    "513": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVince il giocatore di nord-ovest!\n<font:$local$\\fonts\\font12.fnt>"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "map": "wielka_kolonizacja_ii_1_1",
+  "basis": {
+    "lang": "eng",
+    "digest": "f8433c3a575174ccb7b46f1b71677769c205f9a615a85cbef2ea54cc7398cfd9"
+  },
+  "strings": {
+    "30": "Colonizza la regione!",
+    "90": "Compra una nave",
+    "98": "Davanti a te si stende una terra dimenticata, ricca di ogni bene. Stabilisciti nel luogo che preferisci e crea la tua società! Partita libera per 5 giocatori.",
+    "99": "LA GRANDE COLONIZZAZIONE II",
+    "605": "Porto",
+    "606": "Cacciatori",
+    "607": "Orafi",
+    "608": "Minatori",
+    "609": "Pirati",
+    "705": "Porto",
+    "706": "Cacciatori",
+    "707": "Orafi",
+    "708": "Minatori",
+    "709": "Pirati"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA GRANDE COLONIZZAZIONE II\n<font:$local$\\fonts\\font12.fnt>\nAutore: Proszak\n<font:$local$\\fonts\\font12.fnt>\n\nDopo lunghe settimane di peregrinazioni nel deserto, la nostra tribù giunse in una pianura dall'aspetto promettente.\n\nDa dietro i cespugli ci venne incontro un eremita del posto.\n\n\"Ah, viandanti!\nDa quanto tempo non vedevo facce nuove da queste parti...\nLa nostra terra è stata quasi dimenticata dal mondo. Di tanto in tanto vi fanno tappa soltanto i mercanti dell'oriente, che attraccano al porto qui vicino. Qualche tempo fa un piccolo gruppo è rimasto per estrarre l'oro dai giacimenti del sud.\nA parte loro, si incontrano solo i cacciatori che battono le fitte foreste di nord-ovest.\n\nAh, e poi ci sono i minatori al nord!\nLe vette innevate, ricche di ferro, hanno convinto un fabbro normanno e i suoi figli a trattenersi più a lungo.\n\nCredo che la vostra presenza non farà male a nessuno.\nAnzi, porterete in questa terra uno spirito nuovo!\n\nBuona fortuna, valorosi Vichinghi!\"\n\nUdite queste parole, non riuscimmo a metterci d'accordo su dove stabilirci. Per evitare liti ci dividemmo in diversi gruppi più piccoli, e ognuno prese la propria strada.\n\nwww.culturesnation.pl\n"
+  }
+}

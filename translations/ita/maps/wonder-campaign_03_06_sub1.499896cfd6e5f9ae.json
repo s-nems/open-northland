@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "map": "wonder-campaign_03_06_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "1f2e29383ebe13f90be43c41eb27d28166ba962ba9134d388e9eb2e9d62e90bb"
+  },
+  "strings": {
+    "0": "@BATTI IL CORRIDORE IN UNA CORSA!",
+    "53": "Corridore di Elide",
+    "63": "Corridore",
+    "74": "Sigurd",
+    "77": "Corridore",
+    "99": "LA SFIDA"
+  },
+  "briefings": {
+    "header": "LA SFIDA",
+    "00_start": "Il corridore di Elide era in gran forma e per Sigurd non sarebbe stato facile batterlo nella sfida!\n\n<usericon:1,22,119>\n\nMa doveva comunque provarci, perché se avesse vinto la corsa, i cittadini di Olimpia e di Elide ci avrebbero dato il loro sostegno...",
+    "00_start1": "Batti il corridore nella sfida!",
+    "50_endheader": "MISSIONE COMPIUTA! ",
+    "50_end": "Congratulazioni! Nessuno credeva che Sigurd potesse vincere!\n\n<usericon:2,4>\n\nMa il suo spirito sportivo e la sua ambizione erano così forti che riuscì a battere il corridore di Elide!",
+    "50_end1": "",
+    "01": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\nIl corridore è morto! Questo non si chiama gioco leale!",
+    "02": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\nChe tragedia! Il corridore è stato chiaramente più veloce del tuo amico ed eroe Sigurd.\n\n<usericon:2,7>\n\nRiprova!"
+  }
+}

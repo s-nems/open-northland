@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "map": "w_oku_niepewnosci",
+  "basis": {
+    "lang": "eng",
+    "digest": "85f0bf97acc5a13bc0385f52c302069d87f4ba0bd10e910557f01f0b1b1526bf"
+  },
+  "strings": {
+    "0": "NELL'OCCHIO DELL'INCERTEZZA",
+    "1": "Partita libera per 4 giocatori. Giocatori: Franchi, Bizantini, Vichinghi, Saraceni.",
+    "30": "Colonizza nuovi territori e stabilisci rapporti diplomatici con le altre tribù",
+    "98": "Espanditi in questa terra fertile e stringi un'alleanza con gli altri abitanti, oppure conquistali!",
+    "99": "NELL'OCCHIO DELL'INCERTEZZA",
+    "201": "Imperatore Bjarni",
+    "202": "Jarl Wojak555",
+    "203": "Califfo Warden",
+    "204": "Califfo RajTo"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nNell'occhio dell'incertezza\n\n<font:$local$\\fonts\\font12.fnt>\nSei giunto in questa terra fertile e ricca di risorse in cerca di nuovi territori da colonizzare. In lontananza sono stati avvistati gli insediamenti di altre tribù, arrivate qui per lo stesso motivo. Stabilisci con loro rapporti diplomatici per governare insieme queste terre, oppure distruggile e prenditi la regione tutta per te.\n\nA te la scelta, buona fortuna.\n\nAlla creazione della mappa ha collaborato RajTo.\n\n<font:$local$\\fonts\\font12.fnt>\nMappa multiplayer di Dzejkaci\n\nPer www.culturesnation.pl\n"
+  }
+}

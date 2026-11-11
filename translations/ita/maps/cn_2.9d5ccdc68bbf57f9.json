@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "map": "cn_2",
+  "basis": {
+    "lang": "eng",
+    "digest": "f703bae2d58d037390115c7ec4396ff54fcebe1099072172ce21eb7bbe1d02d7"
+  },
+  "strings": {
+    "0": "CULTURESNATION: ARES",
+    "1": "Ares",
+    "30": "Sconfiggi Ares",
+    "50": "Proszak",
+    "51": "Ares",
+    "52": "Ares",
+    "60": "CN",
+    "61": "CN",
+    "62": "GaTo",
+    "100": "Proszak",
+    "101": "Ares"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTEMPESTA COSTIERA\n<font:$local$\\fonts\\font12.fnt>\n\nÈ ora di fare il culo ad Ares un'altra volta...\n"
+  }
+}

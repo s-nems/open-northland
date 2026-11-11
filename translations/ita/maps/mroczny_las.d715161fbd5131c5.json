@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "map": "mroczny_las",
+  "basis": {
+    "lang": "eng",
+    "digest": "a1e3bc41a422a929f54f0c45db17368bbf8d62d3949e167ad3445379fa70c8bb"
+  },
+  "strings": {
+    "0": "BOSCO OSCURO",
+    "1": "Sconfiggi la tribù aggressiva che abita il Bosco Oscuro. Cooperazione multiplayer per 3 giocatori.",
+    "30": "Sconfiggi la tribù aggressiva che abita il Bosco Oscuro",
+    "50": "Vichinghi dell'ovest",
+    "51": "Vichinghi del centro",
+    "52": "Vichinghi dell'est",
+    "53": "Abitanti del bosco"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nBOSCO OSCURO\n\n<font:$local$\\fonts\\font12.fnt>\nDa poco, nel cuore stesso del Bosco Oscuro, si è stabilita una gente mascherata e quanto mai ostile. Ha ammansito i serpenti e i lupi che finora vegliavano sull'antica foresta, e ha cominciato a razziare i villaggi e le città vicine, seminando il terrore fra la popolazione.\n\nTre tribù vichinghe hanno unito le forze per porre fine alla sua tirannia, e con cautela hanno piantato il campo ai margini.\nDavanti a te si stende una vasta foresta. I lupi non smetteranno di darti la caccia e di tanto in tanto anche i serpenti usciranno dalle loro caverne. Disponi di alcuni permessi di costruzione che ti aiuteranno a espanderti in fretta. Mettiti al sicuro alla svelta, prima che la gente del posto ti scorga dalle sue torri.\nFra circa 70 minuti arriveranno piccoli rinforzi dal tuo villaggio. Buona fortuna!\n\nSuggerimento: per non raggiungere il limite di unità sulla mappa, disattiva sempre i giocatori che non partecipano alla partita. I nemici continueranno ad attaccare finché non avranno ucciso il giocatore, quindi non spostare nemmeno il tuo villaggio.\n\n~~ Creata da Jozenkow ~~\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nRinforzi!\n\n<font:$local$\\fonts\\font12.fnt>\nFinalmente! Alcuni fanti addestrati hanno raggiunto il nostro accampamento.",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nVITTORIA\n\n<font:$local$\\fonts\\font12.fnt>\nDopo una lunga battaglia ce l'abbiamo fatta. Molti valorosi Vichinghi sono caduti in questa missione. Ancora una volta abbiamo dimostrato che nessuno può mettersi contro di noi Vichinghi!"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "map": "saga-campaign_04_01_sub2",
+  "basis": {
+    "lang": "eng",
+    "digest": "9200efe14ae1decf94997985e7bdc2e77e40b0aef00907ab9f7d0b271dee3e3a"
+  },
+  "strings": {
+    "0": "@RAGGIUNGI AQUARIUS!",
+    "1": "Parla con il drago guardiano di Aquarius.",
+    "2": "Sciogli la statua con il drago di fuoco!",
+    "3": "Riporta gli eroi all'uscita!",
+    "52": "Draghi di fuoco",
+    "53": "Aquas, draghi d'acqua",
+    "62": "Lumis",
+    "63": "Aquas",
+    "75": "Norbert",
+    "76": "Mani",
+    "77": "Aquarius",
+    "99": "SOTTO IL MARE"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! Il tuo amico ed eroe NORBERT, il drago, è morto per la tua negligenza! Senza questo eroe, l'esito di questa missione ti resterà ignoto!",
+    "600": "<font:$local$\\fonts\\fonthead16bld.fnt>\nMISSIONE FALLITA!\n<font:$local$\\fonts\\font12.fnt>\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\nBasta un attimo di distrazione per perdere la vita! MANI, figlio di Bjarni e Cyra, è morto per la tua negligenza! Senza di lui, l'esito di questa missione ti resterà ignoto!",
+    "header": "SOTTO IL MARE",
+    "00_start": "Ancora una volta Mani e Norbert entrarono nel tempio d'acqua degli AQUAS, sotto il mare. In quel luogo strano ogni loro movimento era lento, e tutto tremolava davanti ai loro occhi.\n",
+    "00_start1": "Ed eccola lì, la statua di ghiaccio che sbarrava la strada verso Aquarius!",
+    "50_endheader": "MISSIONE COMPIUTA!",
+    "50_end": "Mani e Norbert ce l'avevano fatta! Solo con la loro disponibilità avevano riavvicinato interi popoli. Gli Aquas e i Lumis erano di nuovo in buoni rapporti. Che successo!\n\n<usericon:2,6>\n\nIl saggio GREYHOLM l'avrebbe di certo apprezzato!",
+    "50_end1": "",
+    "01": "IL GUARDIANO DI AQUARIUS\n\n\"Oh, vedo che avete portato uno dei Lumis, i draghi di fuoco. Loro temono l'acqua quanto noi temiamo il fuoco. Non dev'essere stato facile per lui scendere quaggiù. Chissà se riuscirà a sciogliere il ghiaccio?\n\n<usericon:2,9>\n\n\"Su, avvicinatevi alla statua di ghiaccio. Se non ci riuscite voi, probabilmente non ci riuscirà nessuno!\"",
+    "02": "IL GUARDIANO DI AQUARIUS\n\n\"Ce l'avete fatta davvero! Avevamo proprio sottovalutato i draghi di fuoco. Avrete la nostra gratitudine per sempre. Ora seguitemi da AQUARIUS!\"",
+    "03": "AQUARIUS\n\n\"Benvenuti nel regno sotto il mare!\" disse Aquarius con voce gorgogliante, e dalla sua bocca salirono piccole bolle.\n\n<usericon:2,8>\n \n\"I pesci mi hanno già raccontato la vostra avventura. Grazie a voi, la via per il tempio è di nuovo libera. Manderò a dire a GREYHOLM, il saggio pacificatore, che abbiamo fatto pace con i draghi di fuoco. Allora vi lascerà entrare e vi aiuterà.\"\n \nTorna all'uscita!"
+  }
+}

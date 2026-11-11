@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "map": "cn_4",
+  "basis": {
+    "lang": "eng",
+    "digest": "c95e368e763aa57224246fdbe825b492cec0e73f604ddb13c2b62cfd373811a9"
+  },
+  "strings": {
+    "0": "CULTURESNATION: SEGRETE",
+    "1": "Le segrete di culturesnation",
+    "30": "Salva la sorella di Proszak",
+    "50": "Ziomus",
+    "51": "Bot",
+    "52": "Cava meridionale",
+    "53": "Cava settentrionale",
+    "54": "Banda di Apex",
+    "55": "Banda dei Porci Selvatici",
+    "56": "Prigionieri",
+    "60": "CN",
+    "61": "Bot",
+    "62": "Sud",
+    "63": "Nord",
+    "64": "Apex",
+    "65": "Porci",
+    "66": "Prigioniero",
+    "100": "Ziomus",
+    "101": "Apex",
+    "102": "Evo",
+    "103": "Ewelina",
+    "104": "ZbiRek",
+    "105": "Mikulus",
+    "300": "Pizzo per Evo"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLE SEGRETE DI CULTURESNATION\n<font:$local$\\fonts\\font12.fnt>\n\nZiomus: I corridoi delle segrete di culturesnation erano larghissimi, non so quanto dovesse essere grosso un tempo Proszak per non riuscire a passarci.\n\n<usericon:1,102,187>\n\nDa lontano si sentivano i prigionieri al lavoro nella cava. Sono ex utenti di culturesnation, di sicuro mi aiuteranno a trovare la sorella di Proszak. Per ora non sono sicuro di riuscire a salvare qualcun altro oltre a lei. Dovrei prima parlare con gli utenti, ma questi maledetti cunicoli brulicano di guardie. Non posso permettermi di uccidere nessuno. Se qualcuno trovasse il cadavere di una guardia caduta, scatterebbe subito l'allarme in tutta la città di culturesnation e qui arriverebbe in fretta un intero esercito di bot, e questo vorrebbe dire il fallimento della nostra missione!\n\n<usericon:1,148,85>\n\n*** Esplora le segrete di culturesnation per cercare tutti i modi possibili di salvare la sorella di Proszak! ***\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCAVA SETTENTRIONALE\n<font:$local$\\fonts\\font12.fnt>\n\nZiomus: Salve, egregi signori. Per caso sapete dove si trova Ewelina, alias la sorella di Proszak?\n\nIn uno dei lavoratori riconobbi Gimil. Era ormai un vecchietto e si appoggiava a un bastone.\n\nGimil: Ewelina? Ti assicuro che se qui ci fosse stata una ragazza, ormai non ci sarebbe più.\n\nZiomus: Mikulus ha previsto il futuro e l'ha vista in queste segrete. Magari la tengono da qualche parte lontano da voi?\n\nGimil: Noi qui lavoriamo e basta, vattene.\n\nZiomus: Amico, là fuori Proszak sta preparando una rivolta, presto riprenderemo cn e vi salveremo tutti. La domanda è: voi cos'avete fatto in tutti questi anni per riprendervi culturesnation? Ve ne siete stati qui a scavare pietra per GaTo, il vostro invasore?\n\nGimil: Abbiamo scavato pietra, ma non solo qui nella cava. Siamo riusciti a costruire un trenino che corre sottoterra e collega la nostra cava settentrionale ai nostri compari della cava meridionale. Se vuoi andare a trovarli e chiedere a loro, accomodati, segui il corridoio verso nord.\n\n<usericon:1,65,10>\n\nLa stazione grigia è dove scendi dal trenino\n\n<usericon:1,48,9>\n\nE la stazione dorata è dove sali sul trenino.\n",
+    "502": "<font:$local$\\fonts\\fonthead16bld.fnt>\nCAVA MERIDIONALE\n<font:$local$\\fonts\\font12.fnt>\n\nA sud i lavoratori sembravano stanchi della vita e avevano tutti delle facce tristi. In uno dei lavoratori riconobbi Quekuss.\n\nZiomus: Rispettoni, qui Ziomus.\n\nQuekuss: COSA? Io occupato. Lasciare me in pace. Non tempo per giocare. Io non essere orco così. Pronto a lavorare. Tu cosa volere? Qualcosa da fare? Io fare. Volentieri. Lavoro, lavoro. Va bene, va bene. BENE. Prendeteli! Io provare...\n\nMmm, a quanto pare non ha nemmeno senso chiedere a loro della sorella di Proszak.\n",
+    "503": "<font:$local$\\fonts\\fonthead16bld.fnt>\nAPEX ED EVO\n<font:$local$\\fonts\\font12.fnt>\n\nFra i prigionieri rinchiusi nelle celle riconobbi Apex ed Evo. Stavano vicino alla loro baracca e parlavano di qualcosa.\n\nApex: No no no. Te l'ho già detto, Evo, loro sono di più. Una rissa è fuori discussione.\n\nEvo: E allora dobbiamo starcene qui a guardare quegli stronzi che ci insultano?\n\nApex: Dobbiamo reclutare nuovi membri nella nostra banda. Giù in fondo, in cella, ci sono tre tizi. Se ci uniamo a loro, insieme saremo più forti della Banda dei Porci Selvatici.\n\nZiomus: Rispettoni, Apex ed Evo. Sono Ziomus. Sono venuto qui per trovare la sorella di Proszak e portarla fuori di qui. Sapete dove si trova?\n\nEvo: Be', che posso dire. Fra noi prigionieri gira la leggenda della fanciulla perduta Ewelina, ma in realtà nessuno ha mai visto niente. Apex ha le allucinazioni, ma se vuoi, ascoltati pure le sue fesserie.\n\nApex: Non dare retta a quel vecchio rimbambito. La leggenda della fanciulla non è una leggenda, è la verità. La tengono sotto chiave nell'angolo più buio e sorvegliato delle segrete. Posso indicarti il passaggio segreto per arrivarci.\n\nZiomus: Se sai dov'è il passaggio segreto, perché non ci sei passato tu?\n\nApex: Scherzi? Il bastione è sorvegliato, e le chiavi della sua cella le ha un cane da guardia.\n\n<usericon:1,148,85>\n\nZiomus: Va bene, col cane me la sbrigo io e la porto fuori di nascosto. Allora, dov'è questo passaggio?\n\nApex: Calma, signore. Perché dovrei fidarmi di te? Il passaggio segreto è un sapere riservato. Devi superare una prova!\n\nZiomus: E che prova sarebbe?\n\nApex: Se scendi lungo i corridoi verso est troverai la Banda dei Porci Selvatici. Di recente hanno insultato la nostra banda, la mia e di Evo. Devi batterli da solo, e quando ce l'avrai fatta ti mostrerò dov'è il passaggio segreto.\n\n<usericon:1,56,178>\n",
+    "504": "<font:$local$\\fonts\\fonthead16bld.fnt>\nBANDA DEI PORCI SELVATICI SCONFITTA!\n<font:$local$\\fonts\\font12.fnt>\n\nApex: Be', devo dire che non me l'aspettavo. Il passaggio segreto è un portale magico che ho aperto con magie e incantesimi per arrivare in fondo alle segrete di culturesnation. Si trova qui vicino, sulle montagne a ovest della nostra cella. Per attraversarlo devi aprire un cancello con una chiave che ho io. Tieni, prendi la chiave.\n\nEvo: Aspetta! Anch'io voglio qualcosa per la mia complicità!\n\nApex: Cosa? Tu al portale non ci credevi nemmeno.\n\nEvo: Perché adesso faccio la spia alle guardie! Mi devi pagare un tributo di 20 monete!\n\nApex: Perdonalo, lui è fatto così. Meglio dargli quelle 20 monete, perché sa incazzarsi di brutto... Usa il nostro magazzino e il nostro carretto...\n\nZiomus: Mmm, resta solo da capire dove prendo le monete.\n\n<usericon:1,97,179>\n",
+    "505": "<font:$local$\\fonts\\fonthead16bld.fnt>\nPASSAGGIO SEGRETO\n<font:$local$\\fonts\\font12.fnt>\n\nApex: Va bene, ecco le chiavi di quella porta. Segui il corridoio in salita fino al portale.\n\n<usericon:1,16,125>\n",
+    "506": "\nQuando arrivai vicino al misterioso vortice, quello mi risucchiò dentro. Un attimo dopo mi ritrovai dall'altra parte della prigione. Stando a quel che ha detto Apex, la sorella di Proszak deve essere da qualche parte qui intorno. Ma piano piano, che nessuno se ne accorga!\n",
+    "507": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA SORELLA DI PROSZAK\n<font:$local$\\fonts\\font12.fnt>\n\n<usericon:1,147,86>\n\nIn una cella vidi la sorella di Proszak. Con mia sorpresa, nella cella accanto c'era Zbirek!\n\n<usericon:1,137,82>\n\n<usericon:1,132,92>\n\nOh no! Questo posto brulica di guardie! Non c'è tempo per salvare Zbirek, devo prendere al volo la sorella di Proszak e filarmela da qui!!\n\n<usericon:1,142,99>\n",
+    "508": "<font:$local$\\fonts\\fonthead16bld.fnt>\nPORTA DELLA CELLA APERTA\n<font:$local$\\fonts\\font12.fnt>\n\nSorella di Proszak: Chi sei??\n\nZiomus: Rispettoni, qui Ziomus. Non c'è tempo per spiegare, alziamo il culo e filiamo al portale, e poi fuori dalle segrete!\n\n<usericon:1,7,85>\n",
+    "509": "\nOh no! Le guardie sorvegliano l'uscita! E adesso come facciamo a uscire di qui?!\n\n<usericon:1,14,87>\n",
+    "510": "<font:$local$\\fonts\\fonthead16bld.fnt>\nTU NON PUOI PASSARE!!!!!\n<font:$local$\\fonts\\font12.fnt>\n\n<picture:$local$\\graphics\\cn_a.pcx>\n\nAll'improvviso, dal nulla, comparve Mikulus e con un colpo di bastone a terra stese tutte le guardie.\n\n<usericon:1,12,87>\n\nMikulus: Andate, presto arriveranno altre guardie. Le tratterrò il più a lungo possibile.\n\nZiomus: Aspetta, vieni con noi.\n\nMikulus: Se GaTo non vede il cadavere del responsabile di tutto questo trambusto nelle segrete, manderà il suo intero esercito al villaggio di Proszak. Vi auguro buona fortuna. Fuggi con Ewelina in superficie.\n"
+  }
+}

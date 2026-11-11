@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "map": "boso_przez_swiat_sub3",
+  "basis": {
+    "lang": "eng",
+    "digest": "c5746399c57745e692119c5aec82cf1cefd470fd17b8fcc3d03964138c5642a5"
+  },
+  "strings": {
+    "0": "GOLFO DI ADEN",
+    "1": "Golfo di Aden",
+    "30": "Naviga verso sud-ovest. Quando raggiungi il vulcano Donnanuda, vira a est e trova l'ingresso della grotta sottomarina",
+    "50": "Bjarni",
+    "100": "Bjarni",
+    "101": "Sigurd",
+    "102": "Hatchie"
+  },
+  "briefings": {}
+}

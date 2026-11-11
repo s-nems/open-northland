@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "map": "arabskie_wyspy_wolna_gra_mieszana",
+  "basis": {
+    "lang": "eng",
+    "digest": "996f6cb0f89418d7b72203c230510a9aaa44fff2ef949e0a7d5fb54f5b6679d8"
+  },
+  "strings": {
+    "0": "ISOLE ARABE",
+    "1": "Colonizza l'arcipelago arabo. Partita libera per 5 giocatori. Ordine: g0 - Vichinghi, g1 - Franchi, g2 - Bizantini, g3 - Egizi, g4 - Saraceni",
+    "50": "Vichinghi di Grassland",
+    "51": "Vichinghi di Vinland",
+    "52": "Vichinghi di Helluland",
+    "53": "Vichinghi di Markland",
+    "54": "Vichinghi di Flatland",
+    "55": "Mercante Miguel",
+    "56": "Mercante Vinos",
+    "57": "Mercante Diego",
+    "60": "Vichingo 1",
+    "61": "Vichingo 2",
+    "62": "Vichingo 3",
+    "63": "Vichingo 4",
+    "64": "Vichingo 5",
+    "300": "Colonizza l'arcipelago arabo"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nISOLE ARABE\n<font:$local$\\fonts\\font12.fnt>\nAutore: Emilando - Knut\n\nLe tribù si imbatterono in un arcipelago disabitato. Firmarono la pace e decisero di stabilirsi qui. Si scoprì però che qualcuno ci aveva già vissuto, perché c'erano botteghe del carpentiere abbandonate.\n\nLe loro isole non sono grandi, ma nei dintorni ce ne sono di molto più vaste! Si dice che al centro di questa regione ci sia persino un'isola d'oro! E da queste parti ci sono anche alcuni mercanti...\n\nCostruisci una nave e prendi il largo! Potrai trovare oggetti preziosi e la leggendaria montagna d'oro! Trova anche i mercanti!\n\nATTENZIONE: tra i tuoi documenti hai 3 permessi per costruire magazzini. Usali per i mercanti!\n\nculturesnation.pl\n"
+  }
+}

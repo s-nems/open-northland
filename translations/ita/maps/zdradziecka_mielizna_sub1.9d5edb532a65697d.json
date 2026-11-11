@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "map": "zdradziecka_mielizna_sub1",
+  "basis": {
+    "lang": "eng",
+    "digest": "6b1e1654b36b8163ebc95d1a572368cdeb6bc838a1015780e388968abe16bd80"
+  },
+  "strings": {
+    "30": "Supera la prova!",
+    "98": "Missione secondaria 1",
+    "99": "SECCA TRADITRICE-sub",
+    "100": "Bjarni",
+    "102": "Druido",
+    "103": "Cyra",
+    "104": "Hatchi",
+    "105": "Sigurd",
+    "601": "Serpenti antichi",
+    "602": "Druido",
+    "701": "SERPENTI MANNARI",
+    "702": "Druido"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA PROVA DI BJARNI\n<font:$local$\\fonts\\font12.fnt>\n\nAll'improvviso mi ritrovai in un luogo molto strano. Immagini nebbiose e contorni sfocati facevano pensare a un regno del tutto diverso e lontano. Era come trovarsi in un sogno. Poi notai un druido, che mi spiegò in fretta cosa stava succedendo:\n- Questa è la tua prova, Bjarni! Se la supererai, ti affiderò il destino di questa terra. Ora siamo dentro di te, nella tua mente. Devi sconfiggere il male che dimora qui. Ricorda, è tutto un sogno, ma se qui il male ti sconfigge, morirai davvero!\nNon feci altre domande. Però mi chiedevo se ce l'avrei fatta da solo. Pensai ai miei amici, a Cyra, Sigurd e Hatchi. Un attimo dopo me li trovai davanti, come se fossero vivi! Erano qui tutti e tre e volevano aiutarmi! Sentii ancora una volta la voce del druido:\n- È un sogno, mio caro! È solo un sogno!\n",
+    "501": "<font:$local$\\fonts\\fonthead16bld.fnt>\nSCONFITTA!\n<font:$local$\\fonts\\font12.fnt>\n\nÈ morto uno degli eroi indispensabili per la missione. Senza di lui la spedizione non può più riuscire...\n\n<picture:$local$\\graphics\\Hero_Dead_F.pcx>\n"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "map": "diamentowa_dolina",
+  "basis": {
+    "lang": "eng",
+    "digest": "7dd44319b9faf011974bfab6d2596b375c8a5dee2b2a1a9178f80b8880f5f032"
+  },
+  "strings": {
+    "0": "LA VALLE DEI DIAMANTI",
+    "1": "4 squadre si contendono il controllo della miniera di diamanti. Mappa per 8 giocatori per partite a squadre 2v2v2v2. Info per chi ospita la partita: assegna i giocatori in ordine. I giocatori 1 e 2 giocano insieme. I giocatori 3 e 4 giocano insieme... e così via.",
+    "30": "Estrai 10 diamanti dalla miniera prima di tutti gli altri giocatori!",
+    "50": "Giocatore 0",
+    "51": "Giocatore 1",
+    "52": "Giocatore 2",
+    "53": "Giocatore 3",
+    "54": "Giocatore 4",
+    "55": "Giocatore 5",
+    "56": "Giocatore 6",
+    "57": "Giocatore 7",
+    "58": "Ali Baba e i 40 ladroni",
+    "60": "G0",
+    "61": "G1",
+    "62": "G2",
+    "63": "G3",
+    "64": "G4",
+    "65": "G5",
+    "66": "G6",
+    "67": "G7",
+    "68": "Ali Baba",
+    "100": "Ali Baba",
+    "900": "Manda le unità nel Cerchio magico al tuo alleato!",
+    "901": "Diamanti estratti: %d/10",
+    "902": "Ha vinto la squadra a nord-ovest!",
+    "903": "Ha vinto la squadra a nord-est!",
+    "904": "Ha vinto la squadra a sud-est!",
+    "905": "Ha vinto la squadra a sud-ovest!"
+  },
+  "briefings": {
+    "500": "<font:$local$\\fonts\\fonthead16bld.fnt>\nLA VALLE DEI DIAMANTI\n<font:$local$\\fonts\\font12.fnt>\nNon appena i Vichinghi seppero di una miniera di preziosi diamanti nella valle vicina, vollero subito prenderne il controllo e farne una fonte di ricchezza per il loro clan.\n\nDurante il viaggio litigarono su chi dovesse guidare la spedizione. Così si divisero in 4 squadre rivali e si accamparono in diverse parti della valle.\n\nPer vincere devi prendere il controllo della miniera al centro della mappa ed essere il primo giocatore a estrarne 10 diamanti!\n\n<font:$local$\\fonts\\fonthead16bld.fnt>\nLE REGOLE:\n<font:$local$\\fonts\\font12.fnt>\n- Negli angoli della mappa ci sono 4 squadre, ciascuna di 2 giocatori. I quartier generali e le torri di difesa dei giocatori sono indistruttibili.\n\n- Al centro della mappa si trova una miniera di diamanti. Al momento è controllata da Ali Baba e dai suoi 40 ladroni.\n\n- Per cominciare a estrarre diamanti, sconfiggi prima Ali Baba, poi piazza almeno un'unità vicino alla miniera (nell'area apposita).\n\n- Ogni 5 minuti dalla miniera vengono estratti dei diamanti. Ogni giocatore che in quel momento ha almeno 1 unità lì vicino riceve 1 diamante!\n\n- Vince la squadra di cui un giocatore raccoglie per primo 10 diamanti. Tutti gli edifici delle squadre sconfitte verranno distrutti.\n\n<font:$local$\\fonts\\fonthead16bld.fnt>\nEXTRA:\n<font:$local$\\fonts\\font12.fnt>\n- Tra i quartier generali dei giocatori alleati c'è un Cerchio magico. Serve a trasferire unità e veicoli tra alleati. Per trasferire le unità, mandale nel cerchio, poi attiva il tributo nella finestra della diplomazia!\n\n- Vicino al tuo quartier generale c'è un carro. Se vuoi mandare risorse al tuo alleato, caricale sul carro e mandalo all'alleato attraverso il Cerchio magico.\n\n- Sulla riva c'è una cassa di legno. Aprirla attiva per 10 minuti un bonus alla velocità di movimento per la tua squadra. È un bonus che si usa una volta sola, quindi pensa bene in che momento della partita usarlo.\n\n- Ogni volta che una squadra avversaria estrae un diamante, ricevi rinforzi sotto forma di guerrieri e di una catapulta, per abbattere più facilmente il giocatore dominante.\n\n- Hai 3 permessi per piazzare un edificio a tua scelta.\n\nBuon divertimento.\n\n~ by Joz ~\n05.2025\n"
+  }
+}
