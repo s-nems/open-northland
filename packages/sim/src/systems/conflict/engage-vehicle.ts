@@ -419,6 +419,15 @@ function claimedGoals(world: World, ctx: SystemContext, e: Entity): ClaimedGoal[
   return claimed;
 }
 
+/** Whether a disc of `size` map points on node (x, y) touches the disc of any of `claimed`. */
+function touchesClaim(claimed: readonly ClaimedGoal[], x: number, y: number, size: number): boolean {
+  for (let i = 0; i < claimed.length; i++) {
+    const goal = claimed[i];
+    if (goal !== undefined && hexDistanceBetween(x, y, goal.hx, goal.hy) <= goal.radius + size) return true;
+  }
+  return false;
+}
+
 /**
  * The node nearest `here` (map points, then node id) that the vehicle may stand on (never a gap it may
  * only pass), where its disc touches no other vehicle's, standing or bound for its drive's goal, lies on
@@ -457,7 +466,7 @@ function firingNode(
       if (reach < lo || reach > hi) continue;
       const node = terrain.nodeAt(x, y);
       if (terrain.componentOf(node) !== continent || blocked.has(node)) continue;
-      if (claimed.some((goal) => hexDistanceBetween(x, y, goal.hx, goal.hy) <= goal.radius + size)) continue;
+      if (touchesClaim(claimed, x, y, size)) continue;
       const dist = hexNodeDistance(terrain, here, node);
       if (dist > bestDist || !clear(node)) continue;
       if (dist < bestDist || (dist === bestDist && best !== null && node < best)) {
