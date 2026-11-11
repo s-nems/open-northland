@@ -11,6 +11,7 @@ import {
 import { drawPassDepth, SHADOW_DEPTH_EPS } from '../../data/scene/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { scaleColour } from '../../data/terrain/index.js';
+import { FULL_DETAIL, type ViewDetail } from '../../data/view-detail.js';
 import type { WindSway } from '../../data/weather/climate.js';
 import { BloodSurfaceSprite, bloodSurface } from '../blood/surface-sprite.js';
 import { FOOT_OVERLAY_STRIPS, type GroundFootPart } from '../ground-foot/index.js';
@@ -108,6 +109,7 @@ export class TallObjectLayer {
   private lastAnimTick = -1;
   private lastMotionTime = -1;
   private lastEnvironmentMotion = false;
+  private lastDetail: ViewDetail = FULL_DETAIL;
   private lastWind: WindSway | undefined;
   private lastTextureRevision = -1;
 
@@ -249,7 +251,7 @@ export class TallObjectLayer {
     if (po.shadowSprite !== null && obj.shadow !== undefined) {
       const shadowFrame = obj.shadow.frames[frameIndex];
       // A pose with no silhouette hides it, and a ghost casts none: a memory has no sun on it.
-      const casts = watched && shadowFrame !== undefined;
+      const casts = watched && shadowFrame !== undefined && this.lastDetail.landscapeShadows;
       po.shadowSprite.visible = casts;
       if (casts) {
         po.shadowSprite.texture = this.textures.getShadow(obj.shadow.source, shadowFrame);
@@ -278,7 +280,10 @@ export class TallObjectLayer {
     motionTime: number,
     environmentMotion: boolean,
     wind?: WindSway,
+    detail: ViewDetail = FULL_DETAIL,
   ): void {
+    const detailSwitched = detail !== this.lastDetail;
+    this.lastDetail = detail;
     const animAdvanced = tick !== this.lastAnimTick;
     const motionAdvanced = motionTime !== this.lastMotionTime || wind !== this.lastWind;
     const motionSwitched = environmentMotion !== this.lastEnvironmentMotion;
@@ -308,7 +313,7 @@ export class TallObjectLayer {
         // Assigned only on change: Pixi's tint setter allocates a Color.shared round-trip even for an
         // unchanged value, and this runs per visible object per frame.
         const watched = fogState === FOG_STATE.VISIBLE;
-        const sway = activeSway(obj, environmentMotion);
+        const sway = detail.motion ? activeSway(obj, environmentMotion) : undefined;
         const tint = watched ? po.baseTint : po.ghostTint;
         if (sprite.tint !== tint) sprite.tint = tint;
         const overlayTint = watched ? WATCHED_OVERLAY_TINT : GHOST_OVERLAY_TINT;
@@ -320,7 +325,10 @@ export class TallObjectLayer {
           watched !== po.lastWatched ||
           (watched && animAdvanced && obj.frames.length > 1) ||
           (watched && motionAdvanced && sway !== undefined) ||
-          (motionSwitched && obj.environmentSway !== undefined);
+          (motionSwitched && obj.environmentSway !== undefined) ||
+          // A tier stills a swaying object upright and takes its shadow off.
+          (detailSwitched &&
+            (obj.shadow !== undefined || obj.sway !== undefined || obj.environmentSway !== undefined));
         // A ghost holds its frozen pose, still air included.
         if (
           rebind &&

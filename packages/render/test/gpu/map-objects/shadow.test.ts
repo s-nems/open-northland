@@ -2,6 +2,7 @@ import { FOG_STATE } from '@open-northland/sim';
 import { Container, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { AtlasFrame } from '../../../src/data/sprites/index.js';
+import { VIEW_DETAILS } from '../../../src/data/view-detail.js';
 import { MapObjectLayer, type MapObjectSprite } from '../../../src/gpu/map-objects/index.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
 import { FRAME_0, FRAME_1, tallSprites, WIDE } from './support.js';
@@ -64,6 +65,21 @@ describe('MapObjectLayer cast shadows (tall objects)', () => {
     expect(tallSprites(spriteLayer)[1]?.visible).toBe(false);
 
     layer.update(WIDE, 0, () => FOG_STATE.VISIBLE);
+    expect(tallSprites(spriteLayer)[1]?.visible).toBe(true);
+  });
+
+  it('takes the shadow off while a detail tier drops landscape shadows, on the same tick', () => {
+    const spriteLayer = new Container();
+    const layer = new MapObjectLayer(spriteLayer, new TextureCache());
+    layer.set([shadowedTree()]);
+    layer.update(WIDE, 0);
+
+    layer.setDetail(VIEW_DETAILS.sparse);
+    layer.update(WIDE, 0);
+    expect(tallSprites(spriteLayer)[1]?.visible).toBe(false);
+
+    layer.setDetail(VIEW_DETAILS.full);
+    layer.update(WIDE, 0);
     expect(tallSprites(spriteLayer)[1]?.visible).toBe(true);
   });
 

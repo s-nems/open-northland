@@ -1,6 +1,7 @@
 import { type BufferImageSource, Container, Mesh } from 'pixi.js';
 import type { LightSiteList } from '../../data/lighting/light-sites.js';
 import { aabbIntersects, TILE_HALF_W, type Viewport } from '../../data/projection/index.js';
+import { FULL_DETAIL, type ViewDetail } from '../../data/view-detail.js';
 import type { WindSway } from '../../data/weather/climate.js';
 import { WEATHER_SECTOR_NODES } from '../../data/weather/field.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
@@ -76,6 +77,7 @@ export class MapObjectLayer {
    *  matches. `remove` needs no reset - it detaches and zeroes directly. */
   private lastInputs: UpdateInputs | null = null;
   private environmentMotion = false;
+  private detail: ViewDetail = FULL_DETAIL;
   /** The one-shot clips still playing: the work a frame's clip check walks, and only on a tick one ends. */
   private readonly playing: PlayingClip[] = [];
   private nextClipEnd = Number.POSITIVE_INFINITY;
@@ -94,6 +96,13 @@ export class MapObjectLayer {
   setEnvironmentMotion(enabled: boolean): void {
     if (this.environmentMotion === enabled) return;
     this.environmentMotion = enabled;
+    this.lastInputs = null;
+  }
+
+  /** What the view's scale leaves to draw: a tier stills the sway and takes the cast shadows off. */
+  setDetail(detail: ViewDetail): void {
+    if (this.detail === detail) return;
+    this.detail = detail;
     this.lastInputs = null;
   }
 
@@ -257,8 +266,9 @@ export class MapObjectLayer {
     if (tick >= this.nextClipEnd) this.finishClips(tick);
     // The GPU-played decor reads the clock and the fog switch of whichever view draws next.
     writeDecorClipUniforms(this.decorStyle.clips.uniforms, tick, fogStateOfCell !== undefined);
-    const motionTime = this.environmentMotion ? timeTicks : tick;
-    const wind = this.environmentMotion ? weatherWind : undefined;
+    const moves = this.environmentMotion && this.detail.motion;
+    const motionTime = moves ? timeTicks : tick;
+    const wind = moves ? weatherWind : undefined;
     const shadowStyle = worldShadowStyle();
     if (shadowStyle !== this.writtenShadowStyle) {
       writeDecorShadowStyle(this.decorStyle.shadow, shadowStyle);
@@ -299,10 +309,10 @@ export class MapObjectLayer {
     for (const chunk of this.decorChunks.values()) {
       const visible = aabbIntersects(vp, chunk);
       chunk.container.visible = visible;
-      chunk.shadowContainer.visible = visible;
+      chunk.shadowContainer.visible = visible && this.detail.landscapeShadows;
       if (visible) animateDecorChunk(chunk, vp, tick, fogStateOfCell, fogEpoch);
     }
-    this.tall.update(vp, tick, fogStateOfCell, motionTime, this.environmentMotion, wind);
+    this.tall.update(vp, tick, fogStateOfCell, motionTime, this.environmentMotion, wind, this.detail);
   }
 
   private rebindCover(sectorsX: number, sectorsY: number): BufferImageSource {
