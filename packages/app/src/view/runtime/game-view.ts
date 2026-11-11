@@ -44,6 +44,7 @@ import { movieSubtitles } from '../../campaign/subtitles.js';
 import { pickerEntries } from '../../catalog/professions.js';
 import { emblemBuildingType } from '../../content/building-gfx/emblems.js';
 import { loadGuiArt } from '../../content/gui/art.js';
+import { loadPlayerPaletteLut } from '../../content/gui/player-palettes.js';
 import { type BriefingVoiceLoader, briefingVoicePlayer } from '../../content/map-source/briefing-voices.js';
 import type { FellingClips } from '../../content/object-gfx/felling-clips.js';
 import { hasDebugFlag } from '../../diag/debug-flags.js';
@@ -1297,6 +1298,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     cleanup.push(() => scriptOverlay.destroy({ children: true }));
     scriptOverlay.zIndex = SCRIPT_OVERLAY_Z;
     app.stage.addChild(scriptOverlay);
+    const [guiArt, playerPalettes] = await Promise.all([loadGuiArt(), loadPlayerPaletteLut()]);
+    const markerArt =
+      guiArt === null || playerPalettes === null ? null : { gui: guiArt, players: playerPalettes };
     presentation = createScriptPresentation({
       host,
       camera: cameraCtl.camera,
@@ -1308,7 +1312,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       centerOn: jumpToWorld,
       screen: () => app.screen,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-      markers: createScriptMarkers(scriptOverlay, await loadGuiArt(), deps.elevation),
+      markers: createScriptMarkers(
+        scriptOverlay,
+        markerArt,
+        () => deps.playerColourOf?.(viewerPlayer()) ?? viewerPlayer(),
+        deps.elevation,
+      ),
       effects: createScriptEffects(),
       weather: createWeatherFeed(
         deps.mapSize,
