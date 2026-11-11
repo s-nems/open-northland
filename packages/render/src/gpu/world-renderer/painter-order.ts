@@ -12,8 +12,8 @@ export interface WorldSceneLayers {
   readonly fog: Container;
   readonly constructionPlots: Container;
   readonly placementWash: Container;
-  /** The held building's defence range: on the ground, under the ghost it belongs to. */
-  readonly placementRange: Container;
+  /** The held building's plot and defence range: on the ground, under the ghost they belong to. */
+  readonly placementGround: Container;
   readonly selection: Container;
   readonly bones: Container;
   readonly sprites: Container;
@@ -50,7 +50,7 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.fog,
     layers.constructionPlots,
     layers.placementWash,
-    layers.placementRange,
+    layers.placementGround,
     layers.selection,
     layers.bones,
     layers.sprites,

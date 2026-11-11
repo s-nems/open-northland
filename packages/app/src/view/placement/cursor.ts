@@ -7,6 +7,7 @@ import {
   type RoadPreview,
   techWaived,
 } from '../../hud/tool-panel/placement.js';
+import type { GhostPlotAt } from './ghost-plot.js';
 
 export interface PlacementCursor {
   readonly overlay: PlacementOverlayFrame | null;
@@ -48,6 +49,10 @@ export interface PlacementCursorInput {
     techWaived?: boolean,
     owner?: number,
   ) => boolean;
+  /** Whether the seat ever explored a node's ground; absent, it knows every node. */
+  readonly exploredNode?: (col: number, row: number) => boolean;
+  /** The ground the held building takes at a node, marked under its ghost. Absent, no plot shows. */
+  readonly plotAt?: GhostPlotAt;
   /** How far a held building would shoot in defence mode from a node, undefined for a type without one. */
   readonly defenceRangeAt?: (typeId: number, tribe: number, col: number, row: number) => number | undefined;
   readonly blessingRangeFor?: (typeId: number) => number | undefined;
@@ -79,7 +84,8 @@ export interface PlacementCursorInput {
 }
 
 /**
- * The ghost stays hidden over ground that rejects it, matching the original's vanishing house cursor.
+ * A held building's ghost stays over ground that rejects it, marked `refused` with its plot and nothing
+ * else, unless the seat never explored that ground; a signpost's hides there. The original's house cursor vanishes over rejecting ground.
  * A held building takes precedence over a wall or road tool, those over a pending signpost, those over an armed
  * dock pick, whose wash of mooring spots stands the berth posts, and all of them over a pending work flag,
  * which has no wash: the sim snaps the flag to the nearest workable node on the click. With none of them,
@@ -144,18 +150,29 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   if (tile === null) return { overlay, ghost: null };
   if (building !== null) {
     const { typeId, tribe } = building;
-    if (!input.canPlaceAt(typeId, tribe, tile.col, tile.row, techWaived(building), probeOwner(building)))
-      return { overlay, ghost: null };
-    const defenceRangeNodes = input.defenceRangeAt?.(typeId, tribe, tile.col, tile.row);
-    const blessingRangeNodes = input.blessingRangeFor?.(typeId);
-    // The verdict rides the ghost that shows it: `false` tints the body and raises the chip beside it.
-    const shipWater = input.shipWaterAt?.(typeId, tribe, tile.col, tile.row, probeOwner(building));
-    const ghost: PlacementGhost = {
+    const plot = input.plotAt?.(typeId, tribe, tile.col, tile.row);
+    const held = {
       kind: 'building',
       col: tile.col,
       row: tile.row,
       buildingType: typeId,
       tribe,
+      ...(plot === undefined ? {} : { plot }),
+    } as const;
+    if (!input.canPlaceAt(typeId, tribe, tile.col, tile.row, techWaived(building), probeOwner(building))) {
+      // A refused ghost rides the terrain, so over ground the seat never explored it would trace the
+      // hills.
+      return {
+        overlay,
+        ghost: input.exploredNode?.(tile.col, tile.row) === false ? null : { ...held, refused: true },
+      };
+    }
+    const defenceRangeNodes = input.defenceRangeAt?.(typeId, tribe, tile.col, tile.row);
+    const blessingRangeNodes = input.blessingRangeFor?.(typeId);
+    // The verdict rides the ghost that shows it: `false` tints the body and raises the chip beside it.
+    const shipWater = input.shipWaterAt?.(typeId, tribe, tile.col, tile.row, probeOwner(building));
+    const ghost: PlacementGhost = {
+      ...held,
       ...(defenceRangeNodes === undefined ? {} : { defenceRangeNodes }),
       ...(blessingRangeNodes === undefined ? {} : { blessingRangeNodes }),
       ...(shipWater === false ? { warn: true } : {}),

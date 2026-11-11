@@ -8,6 +8,7 @@ import { resolveLayers } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../textures/sprite-sheet.js';
 import type { TextureCache } from '../textures/texture-cache.js';
 import { addBerthMarks } from './berth-marks.js';
+import { type GhostPlot, mintGhostPlot } from './ghost-plot.js';
 import { mintLayerSprite } from './layer-sprite.js';
 import type { PlacementOverlayCell } from './overlay.js';
 import { drawPlotCross, mintPlanRoad, type PlanRoadTextures, plotRim } from './plan-road.js';
@@ -23,8 +24,8 @@ import {
 /**
  * The placement cursor ghost - the held building's, signpost's or work flag's own sprite, translucent,
  * snapped to the hovered half-cell node, the anchor grid buildings place on. The app decides where it
- * hovers and whether it shows at all (the original's house icon vanishes over ground the placement
- * probe rejects).
+ * hovers and whether it shows at all. A held building stays over ground the placement probe rejects,
+ * tinted red on a red plot; the original's house icon vanishes there.
  */
 
 /** The hovered placement, with `col`/`row` as half-cell coordinates on the `2W×2H` lattice. */
@@ -44,6 +45,10 @@ export type PlacementGhost =
       /** The held ship workshop builds no ships from this spot: the body takes a warning tint so the
        *  warning reads on the house itself, beside the cursor chip the app raises over it. */
       readonly warn?: boolean;
+      /** The ground the body would take at this anchor, marked under the ghost. */
+      readonly plot?: GhostPlot;
+      /** The placement rule refuses this anchor: the body and its plot turn red. */
+      readonly refused?: boolean;
     }
   | { readonly kind: 'signpost'; readonly col: number; readonly row: number; readonly player: number }
   | {
@@ -108,7 +113,7 @@ type SpriteGhost = Exclude<PlacementGhost, { readonly kind: 'line' | 'berths' }>
 function ghostKey(ghost: SpriteGhost): string {
   switch (ghost.kind) {
     case 'building':
-      return `b:${ghost.tribe}:${ghost.buildingType}${ghost.warn === true ? ':warn' : ''}`;
+      return `b:${ghost.tribe}:${ghost.buildingType}${ghost.warn === true ? ':warn' : ''}${ghost.refused === true ? ':refused' : ''}`;
     case 'signpost':
       return `s:${ghost.player}`;
     case 'gate':
@@ -170,6 +175,10 @@ const BUILDING_WARN_TINT = 0xffc640;
 /** The rally flag ghost's amber, the highlight outline the planted flag wears (`sprite-pool`'s flagged
  *  tone), so the cursor previews the look it plants. Tuned by eye against it. */
 const RALLY_FLAG_GHOST_TINT = 0xffc020;
+/** Multiplied over a refused building ghost, with the cover it keeps: fainter than a house that fits, so
+ *  the red plot under it carries the refusal. Tuned by eye. */
+const BUILDING_REFUSED_TINT = 0xff6a5a;
+const REFUSED_GHOST_ALPHA = 0.42;
 /** The ring on the ground under a started line's first node. */
 const ANCHOR_RING_RADIUS = { x: 9, y: 4.5 } as const;
 /** A planned road plot's outline, which sets the plan apart from the sites already ordered. Tuned by eye. */
@@ -210,8 +219,12 @@ function sameShifts(a: readonly number[], b: readonly number[]): boolean {
 
 export class PlacementGhostLayer {
   readonly container = new Container();
-  /** The held building's defence or blessing range, mounted under the sprites apart from the ghost. */
+  /** The held building's plot and its defence or blessing range, mounted on the ground under the
+   *  sprites, apart from the ghost. */
+  readonly groundContainer = new Container();
   readonly rangeContainer = new Container();
+  readonly plotContainer = new Container();
+  private plot: { ground: Container; key: string; elevation: ElevationField } | null = null;
   private rangeRing: { g: Graphics; radiusNodes: number; kind: 'defence' | 'blessing' } | null = null;
   private builtForKey: string | null = null;
   /** The line plan and wall layout the memoized `lineShifts` were worked out for. The app hands a new
@@ -233,11 +246,13 @@ export class PlacementGhostLayer {
   ) {
     this.container.visible = false;
     this.container.alpha = GHOST_ALPHA;
+    this.groundContainer.addChild(this.plotContainer, this.rangeContainer);
   }
 
   /** `walls` is the scene's palisade layout, which a line plan staggers with. */
   set(ghost: PlacementGhost | null, elevation: ElevationField, walls?: PalisadeLayout): void {
     this.setRange(ghost, elevation);
+    this.setPlot(ghost, elevation);
     if (ghost === null) {
       this.container.visible = false;
       return;
@@ -298,7 +313,12 @@ export class PlacementGhostLayer {
       this.container.visible = ghost.berths.length > 0;
       return;
     }
-    this.container.alpha = ghost.kind === 'gate' ? GATE_GHOST_ALPHA : GHOST_ALPHA;
+    this.container.alpha =
+      ghost.kind === 'gate'
+        ? GATE_GHOST_ALPHA
+        : ghost.kind === 'building' && ghost.refused === true
+          ? REFUSED_GHOST_ALPHA
+          : GHOST_ALPHA;
     const key = ghostKey(ghost);
     if (this.builtForKey !== key) {
       this.builtForKey = key;
@@ -330,6 +350,27 @@ export class PlacementGhostLayer {
     const p = halfCellToScreen(ghost.col, ghost.row);
     this.rangeContainer.position.set(p.x, p.y - terrainLiftAtNode(elevation, ghost.col, ghost.row));
     this.rangeContainer.visible = true;
+  }
+
+  /** The plot is rebuilt when the anchor, the body or the verdict changes, not per frame. */
+  private setPlot(ghost: PlacementGhost | null, elevation: ElevationField): void {
+    const plot = ghost?.kind === 'building' ? ghost.plot : undefined;
+    if (ghost?.kind !== 'building' || plot === undefined) {
+      this.dropPlot();
+      return;
+    }
+    const refused = ghost.refused === true;
+    const key = `${ghost.tribe}:${ghost.buildingType}:${ghost.col},${ghost.row}:${refused}`;
+    if (this.plot?.key === key && this.plot.elevation === elevation) return;
+    this.dropPlot();
+    const ground = mintGhostPlot(plot, elevation, refused);
+    this.plotContainer.addChild(ground);
+    this.plot = { ground, key, elevation };
+  }
+
+  private dropPlot(): void {
+    this.plot?.ground.destroy({ children: true });
+    this.plot = null;
   }
 
   private rebuildLine(
@@ -451,6 +492,7 @@ export class PlacementGhostLayer {
       // The tints live on the ghost's own sprites, so the shared texture cache a placed building draws
       // from keeps its plain bodies.
       if (ghost.kind === 'building' && ghost.warn === true) sprite.tint = BUILDING_WARN_TINT;
+      if (ghost.kind === 'building' && ghost.refused === true) sprite.tint = BUILDING_REFUSED_TINT;
       if (ghost.kind === 'gate' && !ghost.ok) sprite.tint = STRING_BLOCKED;
       if (ghost.kind === 'flag' && ghost.rally === true) sprite.tint = RALLY_FLAG_GHOST_TINT;
       this.container.addChild(sprite);
@@ -459,7 +501,8 @@ export class PlacementGhostLayer {
 
   destroy(): void {
     this.container.destroy({ children: true });
-    this.rangeContainer.destroy({ children: true });
+    this.groundContainer.destroy({ children: true });
     this.rangeRing = null;
+    this.plot = null;
   }
 }

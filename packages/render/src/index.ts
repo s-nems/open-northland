@@ -276,6 +276,7 @@ export {
   type SupersampledTexture,
 } from './gpu/pixi-app/supersample.js';
 export type { BerthMark, PlacementGhost } from './gpu/placement/ghost.js';
+export type { GhostPlot } from './gpu/placement/ghost-plot.js';
 export type { OverlayBrush, PlacementOverlayCell, PlacementOverlayFrame } from './gpu/placement/overlay.js';
 export type { PlanRoadTextures } from './gpu/placement/plan-road.js';
 export type { PlanStakeTextures } from './gpu/placement/plan-stake.js';

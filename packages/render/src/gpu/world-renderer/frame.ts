@@ -89,6 +89,8 @@ export interface WorldRendererOptions {
   readonly berthPost?: Texture | undefined;
   /** The map ping's pin art, the painted pin beside its tintable planks; absent draws a flat stand-in. */
   readonly mapPingPin?: Texture | undefined;
+  /** A construction site's earth, tiling in world px; absent draws a flat stand-in. */
+  readonly siteEarth?: Texture | undefined;
 }
 
 /** `scale` defaults to the native landscape-object scale of 1. */

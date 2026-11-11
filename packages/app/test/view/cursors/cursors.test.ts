@@ -159,6 +159,9 @@ describe('cursor deliveries', () => {
 it('uses the placement verdict without mistaking a partly accepted wall for a blocked order', () => {
   expect(placementPointer(false, null)).toBeNull();
   expect(placementPointer(true, null)).toBe('not-allowed');
+  expect(
+    placementPointer(true, { kind: 'building', col: 1, row: 2, buildingType: 3, tribe: 1, refused: true }),
+  ).toBe('not-allowed');
   expect(placementPointer(true, { kind: 'gate', col: 1, row: 2, gfxIndex: 0, ok: false })).toBe(
     'not-allowed',
   );

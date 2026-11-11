@@ -1,4 +1,4 @@
-import { Graphics, GraphicsContext } from 'pixi.js';
+import { Graphics, GraphicsContext, Texture } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import { nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../../../src/data/projection/index.js';
 import { type ElevationField, projectNode } from '../../../src/data/terrain/index.js';
@@ -181,18 +181,18 @@ describe('construction plot picking', () => {
       { ref: 7, cells: [{ col: 4, row: 4 }] },
       { ref: 8, cells: [{ col: 10, row: 4 }] },
     ];
-    const fill = vi.spyOn(GraphicsContext.prototype, 'fill');
+    const outline = vi.spyOn(GraphicsContext.prototype, 'roundShape');
     try {
       layer.set(plots(), flat);
       expect(layer.hit(7, 136, 76)).toBe(true);
       expect(layer.hit(8, 340, 76)).toBe(true);
-      const fills = fill.mock.calls.length;
+      const outlines = outline.mock.calls.length;
       for (let generation = 0; generation < 5; generation++) {
         layer.set(plots(), flat);
         expect(layer.hit(7, 136, 76)).toBe(true);
         expect(layer.hit(8, 340, 76)).toBe(true);
       }
-      expect(fill).toHaveBeenCalledTimes(fills);
+      expect(outline).toHaveBeenCalledTimes(outlines);
 
       layer.set(
         [
@@ -204,11 +204,27 @@ describe('construction plot picking', () => {
       expect(layer.hit(7, 136, 76)).toBe(true);
       expect(layer.hit(8, 340, 76)).toBe(false);
       expect(layer.hit(8, 408, 76)).toBe(true);
-      expect(fill).toHaveBeenCalledTimes(fills + 2); // the decal and the changed site's pick shape
+      // The decal's two outlines and the changed site's pick shape.
+      expect(outline).toHaveBeenCalledTimes(outlines + 3);
     } finally {
-      fill.mockRestore();
+      outline.mockRestore();
       layer.destroy();
     }
+  });
+
+  it('lays the earth as a fill over feather strokes of the same outline, each on a path of its own', () => {
+    const layer = new ConstructionPlotLayer(Texture.WHITE);
+    layer.set([{ ref: 7, cells: [{ col: 4, row: 4 }] }], FLAT);
+    const drawn = layer.container.children[0];
+    if (!(drawn instanceof Graphics)) throw new Error('missing plot graphics');
+    const actions = drawn.context.instructions.map((entry) => entry.action);
+    expect(actions.at(-1)).toBe('fill');
+    expect(actions.slice(0, -1).every((action) => action === 'stroke')).toBe(true);
+    expect(actions.length).toBeGreaterThan(1);
+    // The feather reaches past the body's outline; the click shape does not.
+    const body = layer.boundsOf(7, undefined);
+    expect(drawn.getLocalBounds().minX).toBeLessThan(body?.minX ?? Number.NaN);
+    layer.destroy();
   });
 
   it('updates the drawn and clickable plot when elevation changes under the same cells', () => {

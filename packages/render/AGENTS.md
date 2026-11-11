@@ -23,7 +23,7 @@ src under `test/data/` and `test/gpu/`; shared helpers live in `test/support/`.
 | `gpu/sprite-pool/` | pooled entity sprites; `layers/` atlas layer resolution, `picking/` hit tests, `presentation/` inter-tick motion |
 | `gpu/terrain/`, `gpu/map-objects/`, `gpu/still-mesh/`, `gpu/paletted-sprite/` | ground layers and shading; decor batch; still meshes; paletted sprites |
 | `gpu/overlays/` | marker layers over the world; `building-signs/` badges, flags and construction signs |
-| `gpu/placement/`, `gpu/selection/`, `gpu/world-views/` | placement ghost and planned nodes; selection styles and rings; portrait insets and map views |
+| `gpu/placement/`, `gpu/selection/`, `gpu/world-views/` | placement wash, ghost and its plot, construction-site plots, planned nodes; selection styles and rings; portrait insets and map views |
 | `gpu/blood/`, `gpu/building-damage/`, `gpu/demolition/` | blood stains; damage paint, rubble, fire; collapse and dismantle |
 | `gpu/sway/`, `gpu/weather/`, `gpu/lighting/`, `gpu/ground-foot/`, `gpu/ground-waves/`, `gpu/gallery/` | cloth, vegetation and ship motion; weather; scene light; grounded feet; shore waves; animation gallery |
 

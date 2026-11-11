@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { depthKey } from '../../../src/data/projection/index.js';
 import { PlacementGhostLayer } from '../../../src/gpu/placement/ghost.js';
-import { overlayBounds } from '../../../src/gpu/placement/overlay.js';
+import { bandSides, overlayBounds, SIDE_BLOCKED, SIDE_OPEN } from '../../../src/gpu/placement/overlay.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
 import { halfCellToScreen, makeElevationField, TILE_HALF_H, TILE_HALF_W } from '../../../src/index.js';
 
@@ -29,6 +29,33 @@ describe('overlayBounds', () => {
     const lifted = overlayBounds(frame, LIFT);
     expect(flat.y - lifted.y).toBeCloseTo(LIFT, 3);
     expect(lifted.height - flat.height).toBeCloseTo(LIFT, 3);
+  });
+});
+
+describe('bandSides', () => {
+  const band = { minCol: 0, maxCol: 6, minRow: 0, maxRow: 6, reserved: [] };
+
+  it("finds a side's border across the stagger: an odd row's diagonal neighbours stand at col and col + 1", () => {
+    const even = bandSides({ ...band, blocked: [{ col: 3, row: 2 }] });
+    expect(even.at(3, 2)).toBe(SIDE_BLOCKED);
+    expect(even.at(3, 3)).toBe(SIDE_OPEN);
+    // Node (3,2) sits between (2,3) and (3,3) of the odd row below it, not (4,3).
+    expect([even.borders(2, 3), even.borders(3, 3), even.borders(4, 3)]).toEqual([true, true, false]);
+
+    const odd = bandSides({ ...band, blocked: [{ col: 3, row: 3 }] });
+    // Node (3,3) sits between (3,2) and (4,2) of the even row above it, not (2,2).
+    expect([odd.borders(2, 2), odd.borders(3, 2), odd.borders(4, 2)]).toEqual([false, true, true]);
+  });
+
+  it("draws no border along the band's own rim, where the nodes past it are not known", () => {
+    const blocked = [];
+    for (let row = band.minRow; row <= band.maxRow; row++) {
+      for (let col = band.minCol; col <= band.maxCol; col++) blocked.push({ col, row });
+    }
+    const sides = bandSides({ ...band, blocked });
+    expect(sides.borders(0, 0)).toBe(false);
+    expect(sides.borders(6, 3)).toBe(false);
+    expect(sides.borders(6, 6)).toBe(false);
   });
 });
 

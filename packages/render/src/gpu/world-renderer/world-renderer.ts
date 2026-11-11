@@ -128,7 +128,7 @@ export class WorldRenderer {
   private groundTone: GroundTone | null = null;
   private readonly fog = new WorldFog();
   private readonly placementOverlay: PlacementOverlayLayer;
-  private readonly constructionPlots = new ConstructionPlotLayer();
+  private readonly constructionPlots: ConstructionPlotLayer;
   private readonly placementGhost: PlacementGhostLayer;
   private readonly marks: WorldMarks;
   private targetMarks: ReadonlyMap<number, TargetTone> | undefined;
@@ -207,6 +207,7 @@ export class WorldRenderer {
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
     this.mapViews = new MapViewLayer(app, this.worldLayer, this.pool);
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);
+    this.constructionPlots = new ConstructionPlotLayer(opts?.siteEarth);
     // The ghost joins the depth-sorted sprite layer so it occludes like the real house would.
     this.placementGhost = new PlacementGhostLayer(
       opts?.sheet,
@@ -226,7 +227,7 @@ export class WorldRenderer {
       fog: this.fog.container,
       constructionPlots: this.constructionPlots.container,
       placementWash: this.placementOverlay.container,
-      placementRange: this.placementGhost.rangeContainer,
+      placementGround: this.placementGhost.groundContainer,
       sprites: this.spriteLayer,
       ...this.marks.slots,
     });

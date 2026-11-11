@@ -1,4 +1,4 @@
-import { Container, Graphics, GraphicsContext } from 'pixi.js';
+import { Container, Graphics, GraphicsContext, type Texture } from 'pixi.js';
 import {
   halfCellToScreenX,
   halfCellToScreenY,
@@ -11,9 +11,10 @@ import type { EntityBounds } from '../sprite-pool/pooled-entity.js';
 import { hashCells } from './cell-signature.js';
 
 /**
- * The translucent grey plot washed over the ground cells a placed foundation occupies, shaped to the
- * building's footprint (the `blocked` body cells the sim hands over) and drawn as one rounded outline per
- * contiguous region. Colour, alpha, and corner radius are approximations tuned by eye.
+ * The ground a placed foundation occupies until its house stands: trampled earth over the building's
+ * footprint (the `blocked` body cells the sim hands over), one rounded outline per contiguous region.
+ * A project choice: the original washes the cells grey. Colours, alphas and the corner radius are
+ * tuned by eye.
  */
 
 /** The half-cell `(col,row)` body cells one site occupies. */
@@ -22,8 +23,14 @@ export interface ConstructionPlotFrame {
   readonly cells: readonly { readonly col: number; readonly row: number }[];
 }
 
-const PLOT_COLOR = 0x4a4640;
-const PLOT_ALPHA = 0.55;
+/** Without the earth art (a bare render test, the `?shot` entry) a flat wash stands in. */
+const FALLBACK_COLOR = 0x4a4640;
+const FALLBACK_ALPHA = 0.55;
+const EARTH_ALPHA = 0.94;
+/** The darker lip just inside the outline, where the turned earth meets the grass. */
+const LIP_COLOR = 0x1c130a;
+const LIP_ALPHA = 0.4;
+const LIP_WIDTH = 3;
 /** Corner rounding cap in world px. */
 const MAX_CORNER_RADIUS = 12;
 
@@ -48,8 +55,9 @@ export class ConstructionPlotLayer {
   private readonly point = { x: 0, y: 0 };
   private elevation: ElevationField | undefined;
 
-  constructor() {
-    this.container.alpha = PLOT_ALPHA;
+  /** `earth` tiles over the plots in world px; absent, a flat wash stands in. */
+  constructor(private readonly earth?: Texture) {
+    this.g.alpha = earth === undefined ? FALLBACK_ALPHA : EARTH_ALPHA;
     this.container.addChild(this.g);
   }
 
@@ -89,7 +97,7 @@ export class ConstructionPlotLayer {
       this.islands.clear();
       return;
     }
-    fillLoops(g.context, this.outlinedLoops(plots, elevation));
+    fillLoops(g.context, this.outlinedLoops(plots, elevation), this.earth);
   }
 
   /** Every outline loop of `plots` in {@link plotOutlines}' order, reusing the projected loops of each
@@ -174,16 +182,26 @@ interface IslandOutline {
   readonly loops: readonly OrderedLoop[];
 }
 
-function projectedLoops(plots: readonly ConstructionPlotFrame[], elevation: ElevationField): OrderedLoop[] {
+function projectedLoops(
+  plots: readonly Pick<ConstructionPlotFrame, 'cells'>[],
+  elevation: ElevationField,
+): OrderedLoop[] {
   return startedOutlines(plots).map(({ start, loop }) => ({
     start,
     points: withCornerRadii(loop.map(({ u, v }) => projectUV(elevation, u, v))),
   }));
 }
 
-function fillLoops(context: GraphicsContext, loops: readonly OrderedLoop[]): void {
+function fillLoops(context: GraphicsContext, loops: readonly OrderedLoop[], earth?: Texture): void {
   for (const loop of loops) context.roundShape(loop.points, MAX_CORNER_RADIUS);
-  context.fill(PLOT_COLOR);
+  if (earth === undefined) {
+    context.fill(FALLBACK_COLOR);
+    return;
+  }
+  // World-space texels: neighbouring plots continue one stretch of earth.
+  context.fill({ texture: earth, textureSpace: 'global' });
+  for (const loop of loops) context.roundShape(loop.points, MAX_CORNER_RADIUS);
+  context.stroke({ color: LIP_COLOR, alpha: LIP_ALPHA, width: LIP_WIDTH, alignment: 1 });
 }
 
 /** Outline every plot afresh and fill them as one shape, the picture the layer's island cache keeps. */
@@ -193,6 +211,15 @@ export function fillPlotOutlines(
   elevation: ElevationField,
 ): void {
   fillLoops(context, projectedLoops(plots, elevation));
+}
+
+/** Add every plot's rounded outline to `context` as paths, for the caller to fill or stroke. */
+export function tracePlotOutlines(
+  context: GraphicsContext,
+  plots: readonly Pick<ConstructionPlotFrame, 'cells'>[],
+  elevation: ElevationField,
+): void {
+  for (const loop of projectedLoops(plots, elevation)) context.roundShape(loop.points, MAX_CORNER_RADIUS);
 }
 
 function sameIsland(a: readonly ConstructionPlotFrame[], b: readonly ConstructionPlotFrame[]): boolean {

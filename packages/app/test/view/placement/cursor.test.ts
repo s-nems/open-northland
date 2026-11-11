@@ -146,7 +146,7 @@ describe('placement cursor', () => {
     }
   });
 
-  it('asks no ship-water verdict for a ghost the ground hides', () => {
+  it('asks no ship-water verdict for a ghost the ground refuses', () => {
     let asks = 0;
     const f = frame({
       building: HELD,
@@ -154,14 +154,51 @@ describe('placement cursor', () => {
       shipWaterAt: () => (asks++, false),
     });
 
-    expect(f.cursor().ghost).toBe(null);
+    expect(f.cursor().ghost).toMatchObject({ kind: 'building', refused: true });
     expect(asks).toBe(0);
   });
 
-  it('keeps the wash but hides the ghost over rejecting ground', () => {
-    const f = frame({ building: HELD, canPlaceAt: () => false });
+  it('keeps the held building over rejecting ground as a refused ghost, with its plot and no range', () => {
+    const plot = { cells: [TILE], door: TILE };
+    const f = frame({
+      building: HELD,
+      canPlaceAt: () => false,
+      plotAt: () => plot,
+      defenceRangeAt: () => 9,
+    });
+
+    expect(f.cursor()).toEqual({
+      overlay: BUILDING_WASH,
+      ghost: {
+        kind: 'building',
+        col: TILE.col,
+        row: TILE.row,
+        buildingType: HOUSE,
+        tribe: SARACEN,
+        plot,
+        refused: true,
+      },
+    });
+  });
+
+  it('shows no refused ghost over ground the seat never explored', () => {
+    const f = frame({ building: HELD, canPlaceAt: () => false, exploredNode: () => false });
 
     expect(f.cursor()).toEqual({ overlay: BUILDING_WASH, ghost: null });
+  });
+
+  it('marks the plot the held building takes under a ghost the ground accepts', () => {
+    const plot = { cells: [TILE] };
+    const f = frame({ building: HELD, plotAt: () => plot });
+
+    expect(f.cursor().ghost).toEqual({
+      kind: 'building',
+      col: TILE.col,
+      row: TILE.row,
+      buildingType: HOUSE,
+      tribe: SARACEN,
+      plot,
+    });
   });
 
   it("passes the held nation and its waiver to the probes, so a paper's or the admin tool's bypass and the nation's footprint govern the ghost", () => {

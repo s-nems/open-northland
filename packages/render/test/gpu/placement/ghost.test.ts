@@ -98,6 +98,39 @@ describe('PlacementGhostLayer', () => {
     expect(layer.rangeContainer.visible).toBe(false);
   });
 
+  it("marks the held building's plot on the ground, rebuilds it per anchor and turns both red when refused", () => {
+    const layer = new PlacementGhostLayer(sheet, new TextureCache());
+    const held = { kind: 'building', buildingType: HOUSE_TYPE, tribe: VIKING } as const;
+    const plotAt = (col: number, row: number) => ({
+      cells: [{ col, row }],
+      grown: [
+        { col, row },
+        { col: col + 1, row },
+      ],
+      door: { col, row: row + 1 },
+    });
+    layer.set({ ...held, col: 4, row: 6, plot: plotAt(4, 6) }, FLAT);
+    const first = layer.plotContainer.children[0];
+    expect(layer.plotContainer.children).toHaveLength(1);
+    const openAlpha = layer.container.alpha;
+
+    // The same anchor handed again keeps the plot; the ghost follows the cursor every frame.
+    layer.set({ ...held, col: 4, row: 6, plot: plotAt(4, 6) }, FLAT);
+    expect(layer.plotContainer.children[0]).toBe(first);
+
+    layer.set({ ...held, col: 5, row: 6, plot: plotAt(5, 6), refused: true }, FLAT);
+    expect(first?.destroyed).toBe(true);
+    expect(layer.plotContainer.children).toHaveLength(1);
+    const body = layer.container.children[0];
+    if (!(body instanceof Sprite)) throw new Error('expected a sprite');
+    expect(body.tint).not.toBe(0xffffff);
+    expect(layer.container.alpha).toBeLessThan(openAlpha);
+
+    layer.set(null, FLAT);
+    expect(layer.plotContainer.children).toHaveLength(0);
+    layer.destroy();
+  });
+
   it('mints the building body sprite at its resolved layer offset and scale', () => {
     const layer = new PlacementGhostLayer(sheet, new TextureCache());
     layer.set({ kind: 'building', col: 4, row: 6, buildingType: HOUSE_TYPE, tribe: VIKING }, FLAT);

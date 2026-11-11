@@ -52,6 +52,10 @@ const reviewedBinaryAssets = new Set([
   // transparent gutter: generated for this project with gpt-image-1.5 from a text description alone,
   // reduced to the game's sprite scale.
   'packages/app/src/assets/markers/map-ping-pin.png',
+  // A construction site's trampled earth: generated for this project with gpt-image-1.5 from a text
+  // description alone, cross-blended with its half-shifted copy so it tiles, and reduced to the game's
+  // sprite scale and 48 colours.
+  'packages/app/src/assets/markers/site-earth.png',
   // The app's typefaces: Cinzel, Alegreya Sans and Alegreya Sans SC, subset from Google Fonts
   // releases; SIL OFL texts sit beside them as LICENSE-*.txt.
   'packages/app/public/fonts/alegreyasans-cyrillic-400.woff2',

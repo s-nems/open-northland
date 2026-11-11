@@ -139,6 +139,7 @@ import type { NetReadout } from '../net/readout.js';
 import { floatParam, introParam, menuSearch, tintParam, weatherParam } from '../params.js';
 import { nodeBounds } from '../picking.js';
 import { createPlacementGates } from '../placement/gates.js';
+import { makeGhostPlotAt } from '../placement/ghost-plot.js';
 import {
   createFogGates,
   diplomacyMapNations,
@@ -1611,6 +1612,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         if (at === null) shipWaterTip.hide();
         else shipWaterTip.show(at.clientX, at.clientY, messages().hud.construction.shipWater);
       },
+      ghostPlotAt: makeGhostPlotAt((typeId, tribe) => buildingGeometry(typeId, tribe)?.footprint),
       defenceRangeAt: (typeId, tribe, col, row) =>
         systems.shelterFireRadius(host.content, { buildingType: typeId, tribe }, col, row),
       blessingRangeFor: (typeId) => templeAuraRadius(host.content, typeId),

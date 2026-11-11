@@ -17,6 +17,8 @@ export interface FogGates {
   revision(): number;
   /** Whether the viewer sees the cell of a half-cell node. */
   seesNode(col: number, row: number): boolean;
+  /** {@link exploredTile} for the cell of a half-cell node. */
+  exploredNode(col: number, row: number): boolean;
 }
 
 export function createFogGates(): FogGates {
@@ -39,6 +41,11 @@ export function createFogGates(): FogGates {
       if (frameFog === null) return true;
       const { cx, cy } = systems.cellOfNode(col, row);
       return frameFog.stateAt(cx, cy) === FOG_STATE.VISIBLE;
+    },
+    exploredNode: (col, row) => {
+      if (frameFog === null) return true;
+      const { cx, cy } = systems.cellOfNode(col, row);
+      return fogTileExplored(frameFog, cx, cy);
     },
   };
 }

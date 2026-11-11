@@ -32,6 +32,7 @@ import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import { createFellingPresenter } from '../map-objects/felling-presenter.js';
 import type { SignpostMapOverlay } from '../map-overlays/signposts.js';
 import { placementCursor } from '../placement/cursor.js';
+import type { GhostPlotAt } from '../placement/ghost-plot.js';
 import type {
   LitAnswers,
   makeDockOverlaySource,
@@ -119,6 +120,8 @@ export interface FrameLoopDeps {
     techWaived?: boolean,
     owner?: number,
   ) => boolean;
+  /** The held building's ground at a node, marked under its ghost. */
+  readonly ghostPlotAt: GhostPlotAt;
   /** The held building's defence range at a node, drawn around its ghost. */
   readonly defenceRangeAt: (typeId: number, tribe: number, col: number, row: number) => number | undefined;
   readonly blessingRangeFor?: (typeId: number) => number | undefined;
@@ -223,6 +226,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     lifeHeartsFor,
     experienceStarsFor,
     canPlaceAt,
+    ghostPlotAt,
     defenceRangeAt,
     blessingRangeFor,
     canPlaceSignpostAt,
@@ -430,6 +434,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       dockOverlay,
       tileAt: () => (pointer === null ? null : toolPanel.clientToTile(pointer.clientX, pointer.clientY)),
       canPlaceAt,
+      plotAt: ghostPlotAt,
+      exploredNode: fogGates.exploredNode,
       ...(shipWaterWarnAt === undefined ? {} : { shipWaterAt: shipWaterWarnAt }),
       defenceRangeAt,
       ...(blessingRangeFor === undefined ? {} : { blessingRangeFor }),
