@@ -53,8 +53,8 @@ import {
   unitWalkBlocks,
 } from './collision/index.js';
 import { GroupReachability } from './group-reachability.js';
-import { GroupRoutes, SHARED_ROUTE_MIN_NODES } from './group-routes.js';
-import { liveBandRoutes } from './live-band-routes.js';
+import { GroupRoutes, type LiveBand, SHARED_ROUTE_MIN_NODES } from './group-routes.js';
+import { liveBandKey, liveBandRoutes } from './live-band-routes.js';
 import { dropPath, liveStepEnd, restartLeg } from './nav-state.js';
 import { routeBoundsOf } from './route-bounds.js';
 import { grindStartCell, routeStartCell } from './route-start.js';
@@ -273,7 +273,7 @@ class PathDrain {
     marching: boolean,
     traversal: Traversal,
     goalOpen: boolean,
-    liveRoutes?: () => NodeId[][],
+    liveBand?: LiveBand,
   ): NodeId[] | null {
     const { mask, spent } = this;
     if (group && mask !== undefined) {
@@ -286,14 +286,14 @@ class PathDrain {
     // A member no route served still ends its own search on the first shared route it settles a node of,
     // on a walk long enough to share: a short one costs little alone and would only gain a detour.
     const meets = groupRoutes !== undefined && farApart(this.terrain, start, goal);
-    const live = liveRoutes !== undefined;
-    if (meets && live) groupRoutes.offerLive(overlay, liveRoutes);
-    const stops = meets ? (groupRoutes.meetingStops(overlay, goal, live) ?? undefined) : undefined;
+    if (meets && liveBand !== undefined) groupRoutes.offerLive(overlay, liveBand);
+    const band = liveBand?.key;
+    const stops = meets ? (groupRoutes.meetingStops(overlay, goal, band) ?? undefined) : undefined;
     const pockets = this.pocketsOf(player, marching);
     const path =
       stops === undefined || groupRoutes === undefined
         ? this.ownRoute(pockets, overlay, start, goal, traversal, goalOpen)
-        : this.meetingRoute(groupRoutes, pockets, overlay, start, goal, traversal, goalOpen, stops, live);
+        : this.meetingRoute(groupRoutes, pockets, overlay, start, goal, traversal, goalOpen, stops, band);
     // Only a searched or followed route is offered: offering borrowed ones grows the list each member tries.
     if (path !== null && groupRoutes !== undefined) groupRoutes.offer(overlay, path);
     if (path === null && group && mask !== undefined && !overlay.has(goal)) {
@@ -318,7 +318,7 @@ class PathDrain {
     traversal: Traversal,
     goalOpen: boolean,
     stops: NodeStops,
-    live: boolean,
+    band: number | undefined,
   ): NodeId[] | null {
     const { attempt, spent } = this;
     attempt.explored = 0;
@@ -334,7 +334,7 @@ class PathDrain {
       stops,
     );
     const met = onto !== null && onto.at(-1) !== goal;
-    const answer = met ? groupRoutes.followMeeting(overlay, onto, goal, attempt, live) : onto;
+    const answer = met ? groupRoutes.followMeeting(overlay, onto, goal, attempt, band) : onto;
     if (!met || answer !== null) {
       spent.explored += attempt.explored;
       return answer;
@@ -485,23 +485,16 @@ export function drainPathRequests(
     // A member ordered after its band left takes up a route a band-mate still walks. A chase keeps its
     // own search, its goal being a contact node a few steps off, and so does a reroute, which asks for
     // another way than the one it walks.
-    const liveRoutes =
+    const liveBand: LiveBand | undefined =
       group && player !== undefined && !req.grind && !req.retainRoute && !world.has(e, Engagement)
-        ? () => liveBandRoutes(world, ctx.content, terrain, player, marching, collides, blocked)
+        ? {
+            key: liveBandKey(player, marching, collides),
+            read: () => liveBandRoutes(world, ctx.content, terrain, player, marching, collides, blocked),
+          }
         : undefined;
     let path = sealed
       ? null
-      : drain.routeUnder(
-          blocked,
-          start,
-          goal,
-          group,
-          player ?? -1,
-          marching,
-          traversal,
-          goalOpen,
-          liveRoutes,
-        );
+      : drain.routeUnder(blocked, start, goal, group, player ?? -1, marching, traversal, goalOpen, liveBand);
     // An attack-move goes for what seals its goal off: the bodies it fights shape its route, never refuse it.
     if (path === null && bodies !== null && world.tryGet(e, PlayerOrder)?.attackMove !== undefined) {
       const through = drain.besideTargetsFor(player ?? -1, structures);

@@ -8,6 +8,7 @@ import {
   PathRoute,
   PlayerOrder,
   Position,
+  pathFollowRecord,
   setDiplomacyStance,
   WALK_DIRECTION,
   WalkFacing,
@@ -15,6 +16,7 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import {
   exportSaveGame,
+  findPath,
   fx,
   playerCommand,
   positionOfNode,
@@ -26,6 +28,7 @@ import { NodeMask } from '../../../src/nav/block-overlay.js';
 import { columnStepMiddles, isColumnStep } from '../../../src/nav/pathfinding/index.js';
 import { type NodeId, StepBuffer } from '../../../src/nav/terrain/index.js';
 import { stampResourceFootprintData } from '../../../src/systems/footprint/index.js';
+import { drainPathRequests, type SystemContext } from '../../../src/systems/index.js';
 import { liveBandRoutes } from '../../../src/systems/movement/live-band-routes.js';
 import { testContent } from '../../fixtures/content.js';
 
@@ -40,6 +43,9 @@ const GAP_Y = 76;
 const MET_STRETCH_NODES = 20;
 /** Ticks a band-mate has marched before a soldier is ordered after it. */
 const LATE_ORDER_TICKS = 12;
+/** How near, in nodes, a member taking up a band-mate's route passes that route's turning point: a column
+ *  step may skip the point itself. */
+const VIA_REACH_NODES = 2;
 
 function army(wall: boolean, wallHeight = GAP_Y) {
   const typeIds = new Array<number>(WIDTH * HEIGHT).fill(0);
@@ -357,6 +363,77 @@ describe('army player routing', () => {
     const taken = sim.world.get(late, PathRoute).waypoints;
     expect(taken.at(-1)?.node).toBe(terrain.nodeAt(344, 10));
     expect(restored.world.get(late, PathRoute).waypoints).toEqual(taken);
+  });
+
+  it("has two players' civilians ordered late in one drain each take up their own band-mate's route", () => {
+    const width = 400;
+    const height = 160;
+    const typeIds = new Array<number>(width * height).fill(0);
+    const wallX = 200;
+    const gapRows = { from: 150, to: 154 };
+    for (let y = 0; y < height; y++) if (y < gapRows.from || y > gapRows.to) typeIds[y * width + wallX] = 1;
+    const map: TerrainMap = { resolution: 'half-cell', width, height, typeIds };
+    const sim = new Simulation({ seed: 7, content: testContent(), map });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('army terrain missing');
+    const civilian = 1;
+    const ordered = (x: number, y: number, player: number): Entity => {
+      const entity = sim.world.create();
+      sim.world.add(entity, Position, positionOfNode(x, y));
+      addPerson(sim.world, entity, {
+        tribe: 1,
+        jobType: civilian,
+        hunger: fx.fromInt(0),
+        fatigue: fx.fromInt(0),
+        piety: fx.fromInt(0),
+        enjoyment: fx.fromInt(0),
+      });
+      sim.world.add(entity, Owner, { player });
+      sim.world.add(entity, PlayerOrder, {});
+      return entity;
+    };
+    // Each band-mate walks a detour no search of its own would take, so only a member taking it up walks by
+    // its turning point.
+    const bands = [
+      { player: 0, from: [4, 20], via: [190, 20], to: [340, 40], late: [8, 22], goal: [344, 42] },
+      { player: 1, from: [4, 140], via: [100, 60], to: [340, 100], late: [8, 138], goal: [344, 102] },
+    ] as const;
+    const node = ([x, y]: readonly [number, number]): NodeId => terrain.nodeAt(x, y);
+    for (const { player, from, via, to } of bands) {
+      const path = [
+        ...(findPath(terrain, node(from), node(via)) ?? []),
+        ...(findPath(terrain, node(via), node(to)) ?? []),
+      ];
+      const mate = ordered(from[0], from[1], player);
+      sim.world.add(mate, PathRoute, {
+        waypoints: path.map((n) => ({ ...positionOfNode(terrain.xOf(n), terrain.yOf(n)), node: n })),
+      });
+      sim.world.add(mate, PathFollow, pathFollowRecord({ index: 1, legElapsed: 0, legCost: 0 }));
+    }
+    const late = bands.map(({ player, late: [x, y], goal }) => {
+      const entity = ordered(x, y, player);
+      sim.world.add(entity, PathRequest, { start: terrain.nodeAt(x, y), goal: node(goal), failed: false });
+      return entity;
+    });
+    const ctx: SystemContext = {
+      content: sim.content,
+      rng: sim.rng,
+      names: sim.names,
+      tick: 1,
+      events: sim.events,
+      commands: sim.commands,
+      terrain,
+    };
+    drainPathRequests(sim.world, ctx, terrain, Number.POSITIVE_INFINITY);
+    bands.forEach(({ via, goal }, i) => {
+      const entity = late[i];
+      if (entity === undefined) throw new Error('late member missing');
+      const route = sim.world.get(entity, PathRoute).waypoints.map((stop) => stop.node);
+      expect(route.at(-1)).toBe(node(goal));
+      const nearVia = (n: NodeId): boolean =>
+        Math.abs(terrain.xOf(n) - via[0]) + Math.abs(terrain.yOf(n) - via[1]) <= VIA_REACH_NODES;
+      expect(route.some(nearVia)).toBe(true);
+    });
   });
 
   it('routes a band whose boarding leg is refused alone, and its own band joins that route', () => {

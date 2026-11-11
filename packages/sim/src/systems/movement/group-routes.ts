@@ -69,6 +69,17 @@ interface GroupRoute {
   readonly meanWeight: Fixed;
 }
 
+/** A route a band-mate still walks, kept for the askers of its band alone. */
+interface LiveRoute extends GroupRoute {
+  readonly band: number;
+}
+
+/** One band's live routes: its key (player, order kind and body rule) and their read. */
+export interface LiveBand {
+  readonly key: number;
+  readonly read: () => readonly (readonly NodeId[])[];
+}
+
 /**
  * One tick's group-move routes. The lowest-id member routes in full. Others prefer independently
  * checked straight lanes, then parallel obstacle detours, then short joins to that corridor. A member no
@@ -80,8 +91,9 @@ interface GroupRoute {
 export class GroupRoutes {
   private readonly routes: GroupRoute[] = [];
   /** Routes band-mates already walked when the drain began, which a member's own search may end on. */
-  private readonly live: GroupRoute[] = [];
-  private readonly liveRead = new Set<BlockOverlay>();
+  private readonly live: LiveRoute[] = [];
+  /** The bands whose live routes were read, per overlay. */
+  private readonly liveRead = new Map<BlockOverlay, Set<number>>();
   private readonly terrain: TerrainGraph;
   private readonly lanes: GroupLanes;
   private version = -1;
@@ -132,14 +144,15 @@ export class GroupRoutes {
   }
 
   /**
-   * The nodes of every route under `blocked` that passes within the group's area of `goal`, the live
-   * ones with `live`, for a member no route served: its own search ends on the first of them it settles, and {@link followMeeting} takes
-   * the route up from there. Null when no route qualifies. Valid until the next call.
+   * The nodes of every route under `blocked` that passes within the group's area of `goal`, with `band`
+   * that band's live ones too, for a member no route served: its own search ends on the first of them it
+   * settles, and {@link followMeeting} takes the route up from there. Null when no route qualifies. Valid
+   * until the next call.
    */
-  meetingStops(blocked: BlockOverlay, goal: NodeId, live: boolean): NodeStops | null {
+  meetingStops(blocked: BlockOverlay, goal: NodeId, band: number | undefined): NodeStops | null {
     let stops: StopStamps | undefined;
     let mark = 0;
-    for (const route of this.passing(blocked, goal, live)) {
+    for (const route of this.passing(blocked, goal, band)) {
       if (stops === undefined) {
         stops = stopStampsByTerrain.get(this.terrain);
         if (stops === undefined) {
@@ -163,11 +176,11 @@ export class GroupRoutes {
     onto: readonly NodeId[],
     goal: NodeId,
     stats: SearchStats,
-    live: boolean,
+    band: number | undefined,
   ): NodeId[] | null {
     const met = onto.at(-1);
     if (met === undefined) return null;
-    for (const route of this.passing(blocked, goal, live)) {
+    for (const route of this.passing(blocked, goal, band)) {
       if (corridorIndexOf(this.terrain, route.path, met) === undefined) continue;
       const joined = followCorridor(
         this.terrain,
@@ -185,23 +198,29 @@ export class GroupRoutes {
   }
 
   /** The routes under `blocked` that pass within the group's area of `goal`: this drain's, then with
-   *  `live` the ones band-mates still walk. */
-  private passing(blocked: BlockOverlay, goal: NodeId, live: boolean): GroupRoute[] {
+   *  `band` the ones that band's walkers still walk. */
+  private passing(blocked: BlockOverlay, goal: NodeId, band: number | undefined): GroupRoute[] {
     const passesBy = (route: GroupRoute): boolean =>
       route.blocked === blocked && corridorBoxGap(this.terrain, route.path, goal) <= GROUP_AREA_RADIUS_NODES;
     const passing = this.routes.filter(passesBy);
-    return live ? [...passing, ...this.live.filter(passesBy)] : passing;
+    if (band === undefined) return passing;
+    return [...passing, ...this.live.filter((route) => route.band === band && passesBy(route))];
   }
 
   /**
-   * Take in the routes band-mates still walk under `blocked`, read by `read` once per drain and overlay,
-   * for {@link meetingStops} alone: a member ordered after its band left ends its search on one of them.
+   * Take in the routes `band` still walks under `blocked`, read once per drain, overlay and band, for
+   * {@link meetingStops} alone: a member ordered after its band left ends its search on one of them.
    * The cheaper lanes and joins keep to this drain's routes, whose number the army's bands bound.
    */
-  offerLive(blocked: BlockOverlay, read: () => readonly (readonly NodeId[])[]): void {
-    if (this.liveRead.has(blocked)) return;
-    this.liveRead.add(blocked);
-    for (const path of read()) this.live.push(this.routeOf(blocked, path));
+  offerLive(blocked: BlockOverlay, band: LiveBand): void {
+    let read = this.liveRead.get(blocked);
+    if (read === undefined) {
+      read = new Set();
+      this.liveRead.set(blocked, read);
+    }
+    if (read.has(band.key)) return;
+    read.add(band.key);
+    for (const path of band.read()) this.live.push({ ...this.routeOf(blocked, path), band: band.key });
   }
 
   /** Offer a member's own full route to the rest of its group. */

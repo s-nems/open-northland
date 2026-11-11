@@ -15,6 +15,17 @@ const MAX_LIVE_BAND_ROUTES = 8;
 /** The shortest stretch of a live route worth taking up, in nodes. Authored. */
 const LIVE_ROUTE_MIN_NODES = 16;
 
+/** {@link liveBandKey}'s bits for the order kind and body rule, below the player's. */
+const MARCHING_BAND_BIT = 1;
+const COLLIDING_BAND_BIT = 2;
+const BAND_RULE_KINDS = 4;
+
+/** One number per player, order kind and body rule: the walkers whose routes {@link liveBandRoutes}
+ *  reads for an asker, so askers sharing an overlay but not a band keep their reads apart. */
+export function liveBandKey(player: number, marching: boolean, collides: boolean): number {
+  return player * BAND_RULE_KINDS + (marching ? MARCHING_BAND_BIT : 0) + (collides ? COLLIDING_BAND_BIT : 0);
+}
+
 /**
  * The routes still ahead of the player-ordered walkers of `player` of one order kind and body rule, so
  * under the same walk blocks, each as lattice nodes from the stop its walker heads for, lowest entity id

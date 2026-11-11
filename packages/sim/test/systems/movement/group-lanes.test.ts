@@ -281,12 +281,12 @@ describe('army route lanes', () => {
     // A member of B just below the wall: A's road lies nearer it, beyond the wall, and nowhere near its slot.
     const goal = terrain.nodeAt(344, 140);
     const start = terrain.nodeAt(4, 66);
-    const stops = routes.meetingStops(blocked, goal, false);
+    const stops = routes.meetingStops(blocked, goal, undefined);
     if (stops === null) throw new Error('no route passes by the slot');
     const onto = findPath(terrain, start, goal, blocked, undefined, 'land', undefined, false, stops);
     if (onto === null) throw new Error('the member found no way onto a route');
     expect(roadOf(orderB).has(onto.at(-1) as NodeId)).toBe(true);
-    const route = routes.followMeeting(blocked, onto, goal, { explored: 0 }, false);
+    const route = routes.followMeeting(blocked, onto, goal, { explored: 0 }, undefined);
     if (route === null) throw new Error('the member found no route to ride');
     expect(route.at(-1)).toBe(goal);
     expect(route.every((node) => terrain.yOf(node) > wallY)).toBe(true);
