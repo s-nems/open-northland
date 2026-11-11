@@ -751,7 +751,9 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Se il bersaglio è più vicino di {{catapult.min}} esagoni, la catapulta arretra. Se è più lontano di {{catapult.max}}, avanza fino a {{catapult.bandMin}}-{{catapult.max}} esagoni.',
+            "Nella sua portata di {{catapult.min}}-{{catapult.max}} esagoni tira prima alle torri, al quartier generale, alla caserma, alle case da cui si tira e alle catapulte nemiche, poi agli arcieri e agli altri soldati che tirano, poi agli altri soldati, e solo dopo alle altre case e alle persone.",
+            "Fuori da Indifferente, una torre, il quartier generale, la caserma, una casa da cui si tira o una catapulta nemica fino a {{catapult.priorityReach}} esagoni di distanza la attira più vicino, anche quando qualcos'altro è a portata o i nemici le si affollano accanto.",
+            "Senza nulla a portata arretra da un nemico isolato più vicino di {{catapult.min}} esagoni, ma resta ferma quando due o più sono così vicini. Se il bersaglio è più lontano di {{catapult.max}}, avanza fino a {{catapult.bandMin}}-{{catapult.max}} esagoni.",
             'Tira solo da ferma, e solo se non tocca un altro veicolo.',
             'Puoi ordinarle di tirare su un punto qualsiasi del terreno. Tira a una palizzata solo su ordine.',
           ],

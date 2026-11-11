@@ -80,6 +80,7 @@ export const itGame = {
         animals: 'Animali',
         roads: 'Strade',
         signposts: 'Cartelli e bandierine',
+        selection: 'Unità selezionate',
       },
       layerTips: {
         civilians: 'Coloni, come piccoli quadrati.',
@@ -90,6 +91,7 @@ export const itGame = {
         animals: 'Animali selvatici e bestiame, come puntini chiari.',
         roads: 'Strade posate e, in una tonalità più scura, cantieri stradali ancora da costruire.',
         signposts: 'Cartelli indicatori e bandierine di lavoro degli estrattori.',
+        selection: 'Un leggero alone di luce intorno ai coloni e ai veicoli selezionati.',
       },
       scope: 'Proprietari',
       scopeNote:
@@ -275,7 +277,7 @@ export const itGame = {
     tradeOffers: 'Offerte di commercio',
     systemMenuDetails: {
       leaveGame: 'Abbandona la partita',
-      restartMission: 'Ricomincia la missione',
+      restartMap: 'Ricomincia la mappa',
       resume: 'Torna al gioco',
       paused: 'Gioco in pausa',
       multiplayer: 'La partita multiplayer continua',
@@ -304,6 +306,7 @@ export const itGame = {
     matchFinishedTitle: 'Partita conclusa',
     matchFinishedDetail: 'La partita è terminata.',
     matchKicker: 'Il destino della tua tribù',
+    matchTribesKicker: 'Il destino delle tribù',
     matchWatchHint: 'Puoi osservare la mappa e gli altri giocatori senza impartire ordini.',
     matchContinue: 'Continua a giocare',
     matchRankingTitle: 'Classifica',
@@ -320,6 +323,8 @@ export const itGame = {
     quitConfirmNo: 'Continua a giocare',
     playAgain: 'Gioca di nuovo',
     playAgainConfirm: "Ricominciare questa mappa dall'inizio? I progressi non salvati andranno persi.",
+    playAgainMainMapConfirm:
+      "Tornare alla mappa principale e ricominciarla dall'inizio? I progressi non salvati andranno persi.",
     closeMenu: 'Chiudi',
     saveGame: 'Salva partita',
     loadGame: 'Carica partita',
@@ -712,6 +717,7 @@ export const itGame = {
         collector: 'nel raggio dei cartelli',
         hunter: 'intorno al luogo di lavoro',
         fisher: 'vicino al luogo di lavoro',
+        farmer: 'intorno al luogo di lavoro',
       },
       assignWorkArea: 'Pianta una bandierina',
       assignWorkAreaHint: {
@@ -719,6 +725,7 @@ export const itGame = {
         collector: "Scegli il punto intorno a cui l'estrattore raccoglie · Esc annulla",
         hunter: 'Scegli il punto intorno a cui il cacciatore caccia · Esc annulla',
         fisher: "Scegli l'acqua in cui il pescatore pesca · Esc annulla",
+        farmer: 'Scegli il punto intorno a cui seminare i campi · Esc annulla',
       },
       clearWorkArea: 'Togli la bandierina',
       clearWorkAreaHint: {
@@ -726,6 +733,7 @@ export const itGame = {
         collector: "L'estrattore torna a raccogliere risorse ovunque nel raggio dei cartelli",
         hunter: 'Il cacciatore torna a cacciare intorno al luogo di lavoro',
         fisher: 'Il pescatore torna a pescare vicino al luogo di lavoro',
+        farmer: 'I campi tornano a essere seminati intorno al luogo di lavoro',
       },
       centreFlag: 'Mostra la bandierina',
       centreFlagHint: 'Centra la visuale sulla bandierina',
@@ -1432,10 +1440,12 @@ export const itGame = {
       charmsTip: 'Uno di ogni tipo per uomo. Un amuleto non si consuma mai.',
       shortage: {
         lacking: 'Senza: {count}',
-        soldiers: {
-          one: '(di cui {count} soldato)',
-          few: '(di cui {count} soldati)',
-          many: '(di cui {count} soldati)',
+        split: '({parts})',
+        separator: ', ',
+        part: {
+          civilians: 'civili {count}',
+          workers: 'lavoratori {count}',
+          soldiers: 'soldati {count}',
         },
         short: 'Non basta per tutti: gli altri aspettano nuove scorte.',
         covered: 'Basta per tutti.',
@@ -1458,7 +1468,10 @@ export const itGame = {
         label: 'chi lo riceve',
         civilians: 'Civili',
         civiliansTip:
-          'Uomini adulti che non sono soldati. Attivo: chi ne è privo ne preleva uno dal magazzino. Disattivato: chi ne porta uno lo tiene.',
+          'Uomini adulti senza un mestiere. Attivo: chi ne è privo ne preleva uno dal magazzino. Disattivato: chi ne porta uno lo tiene.',
+        workers: 'Lavoratori',
+        workersTip:
+          'Uomini adulti con un mestiere che non sono soldati. Attivo: chi ne è privo ne preleva uno dal magazzino. Disattivato: chi ne porta uno lo tiene.',
         soldiers: 'Soldati',
         soldiersTip:
           'Attivo: ogni soldato che ne è privo ne preleva uno dal magazzino. Disattivato: chi ne porta uno lo tiene.',
@@ -1550,6 +1563,10 @@ export const itGame = {
         moveFlags: {
           label: 'Gli estrattori spostano la bandierina automaticamente',
           tip: 'Quando la risorsa vicino a una bandierina si esaurisce, la bandierina la segue, a {min}-{max} esagoni di distanza.',
+        },
+        foundFamilies: {
+          label: 'Fonda famiglie',
+          tip: "Una donna senza casa si trasferisce nella casa più vicina con un posto libero. Una donna che ha già una casa si sposa appena un uomo è libero.",
         },
       },
       notes: {

@@ -390,11 +390,11 @@ export const ECONOMY: ArticleGroup = {
               ['[[building:work_herb_hut|Capanna delle erbe]]', '{{field.max}}', '{{field.radius}} esagoni'],
             ],
             num: [1],
-            foot: "In diagonale il raggio è di circa {{field.diagonal}} esagoni. Il limite di campi vale per edificio, non per lavoratore, quindi più persone danno raccolti più veloci ma non più campi. La scheda dell'edificio indica i lavoratori e le scorte.",
+            foot: "In diagonale il raggio è di circa {{field.diagonal}} esagoni. Il limite di campi appartiene all'appezzamento, non a ogni lavoratore, quindi più persone danno raccolti più veloci ma non più campi. Un lavoratore con una bandierina di lavoro semina il proprio appezzamento intorno a essa. La scheda dell'edificio indica i lavoratori e le scorte.",
           },
         },
         {
-          p: "Non puoi seminare un campo sulla sabbia o su una strada. I campi selvatici della mappa nel raggio dell'edificio contano nel suo limite. Un campo che nessuno può raggiungere dalla porta dell'edificio per {{field.reclaimSeconds}} s sparisce e libera un posto nel limite.",
+          p: "Non puoi seminare un campo sulla sabbia o su una strada. I campi selvatici della mappa nel raggio dell'appezzamento contano nel suo limite. Un campo che nessuno può raggiungere dalla porta dell'edificio per {{field.reclaimSeconds}} s sparisce e libera un posto nel limite.",
         },
         {
           h: 'Cosa ricresce',
@@ -426,7 +426,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Fungo',
-                'Un fungo raccolto, {{regrow.inTen}} volte su 10, ricresce lì vicino dopo {{regrow.minMinutes}}-{{regrow.maxMinutes}} min, in un punto libero con almeno {{regrow.forestTrees}} alberi intorno',
+                'Un fungo raccolto, {{regrow.inTen}} volte su 10, ricresce lì vicino dopo {{regrow.mushroomMinMinutes}}-{{regrow.mushroomMaxMinutes}} min, in un punto libero con almeno {{regrow.forestTrees}} alberi intorno',
                 '1 fungo per ogni fungo raccolto, solo in un bosco',
               ],
               ['Roccia, giacimento', 'Non ricrescono mai', '-'],
@@ -595,7 +595,7 @@ export const ECONOMY: ArticleGroup = {
               [
                 'Chi',
                 '[[job:collector|Estrattore]], [[job:fisher|pescatore]], [[job:hunter|cacciatore]]',
-                'Gli stessi, più un [[job:carrier|trasportatore]] di un magazzino, del quartier generale o di una bottega',
+                'Gli stessi, più un [[job:carrier|trasportatore]] di un magazzino, del quartier generale o di una bottega, e un [[job:farmer|contadino]] o un [[job:herb_mush_guy|erborista]]',
               ],
               [
                 'Da dove viene la bandierina',
@@ -627,6 +627,7 @@ export const ECONOMY: ArticleGroup = {
               ['Estrattore', 'Tutta la portata dei cartelli'],
               ['Trasportatore di magazzino', "Mucchi entro {{flag.radius}} esagoni dall'edificio"],
               ['Cacciatore', 'Intorno al luogo di lavoro'],
+              ['Contadino, erborista', 'Intorno al luogo di lavoro'],
               ['Pescatore', 'Pesca da dove si trova'],
             ],
           },
@@ -659,7 +660,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 '[[job:farmer|Contadino]], [[job:herb_mush_guy|erborista]]',
-                'Edificio',
+                'Bandierina di lavoro o edificio',
                 '{{field.radius}}',
                 'circa {{field.diagonal}}',
               ],

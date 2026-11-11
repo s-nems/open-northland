@@ -237,6 +237,11 @@ export const itContent = {
       summary:
         "Colonne: un lanciere con lancia di legno addestrato, l'uomo della mappa su un sedile di macchina, il dono della mappa al giocatore umano. Lance di legno sopra, di ferro sotto; solo la lancia di legno addestrata è un uomo, gli altri due sono dragoni.",
     },
+    'mace-blows': {
+      title: 'Colpi di mazza',
+      summary:
+        "Sopra: la spada lunga e la spada corta bizantine, entrambe con una mazza, che risuonano come acciaio su un corpo. Sotto: una spada lunga vichinga con il colpo di spada originale, da confrontare a orecchio.",
+    },
     'combat-gestures': {
       title: 'Colpi e gesti',
       summary:
@@ -536,6 +541,11 @@ export const itContent = {
       summary:
         "Quattro catapulte con equipaggio vengono piazzate in due coppie, ogni coppia su un solo punto, con una capanna nemica a portata. Una catapulta non tira mai dall'interno di un'altra: ognuna di quelle sovrapposte si sposta prima in un punto tutto suo, poi la batteria apre il fuoco. Ordina a più catapulte di andare sullo stesso punto per vederle tenersi a distanza.",
     },
+    'vehicle-catapult-targets': {
+      title: 'Cosa colpisce per prima una catapulta',
+      summary:
+        "Una catapulta con equipaggio nell'atteggiamento d'attacco ha a portata un arciere e, appena oltre, una torre nemica, mentre due spadaccini accorrono e ne colpiscono lo scafo. Avanza di qualche passo verso la torre invece di tirare all'arciere più vicino, la rade al suolo, poi tira all'arciere. Gli spadaccini al suo fianco sono troppo vicini per una pietra; con due di loro accanto non prova ad allontanarsi, e quando non resta più nulla a portata si ferma.",
+    },
     'vehicle-catapult-wall': {
       title: 'Una catapulta bombarda un punto oltre il muro',
       summary:
@@ -580,6 +590,11 @@ export const itContent = {
       title: 'Sostituire gli attrezzi con altri migliori',
       summary:
         "Tre estrattori con attrezzi di legno vanno al quartier generale a prendere i suoi attrezzi di ferro, perché l'assistente sostituisce gli attrezzi di legno. Gli attrezzi di legno già usati vanno persi, quello nuovo torna in magazzino e l'estrattore che ha già il ferro resta dov'è.",
+    },
+    'assistant-families': {
+      title: "L'assistente fonda famiglie",
+      summary:
+        "Tre donne e tre uomini senza casa stanno presso una casa per due famiglie mentre l'assistente fonda famiglie. Due donne vi si trasferiscono e si sposano, e i loro mariti vanno a vivere con loro. La terza non trova un posto libero, resta senza casa e resta nubile.",
     },
     'gatherer-flag-follow': {
       title: 'Le bandierine seguono le risorse',

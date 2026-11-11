@@ -439,16 +439,16 @@ export const SETTLERS: ArticleGroup = {
                 'acceso',
                 'un lavoratore con un attrezzo di legno, se «Attrezzi di ferro» è acceso',
               ],
-              ['[[good:mead|Idromele]]', 'spento', 'civili, soldati'],
+              ['[[good:mead|Idromele]]', 'spento', 'civili, lavoratori, soldati'],
               [
                 'Pozioni nutrienti, Pozioni di resistenza, Pozioni di guarigione',
                 'spento',
-                'civili, soldati',
+                'civili, lavoratori, soldati',
               ],
               [
                 'Amuleto: nutrimento, resistenza, forza, difesa, precisione, vento',
                 'spento',
-                'civili, soldati',
+                'civili, lavoratori, soldati',
               ],
               [
                 'Diplomati della scuola assegnati automaticamente alle botteghe',
@@ -461,7 +461,7 @@ export const SETTLERS: ArticleGroup = {
                 '[[job:collector|Estrattore]] con bandierina',
               ],
             ],
-            foot: 'Per pozioni e amuleti, i pulsanti «Civili» e «Soldati» scelgono chi li riceve. Entrambi partono accesi. Spegnerne uno non ritira nulla. Un avviso ti ricorda un interruttore spento quando il suo bene è in magazzino e a qualcuno manca, e quello della bandierina quando un estrattore esaurisce le risorse vicino alla sua bandierina.',
+            foot: "Per bevande e amuleti, i pulsanti «Civili» (senza mestiere), «Lavoratori» e «Soldati» scelgono chi li riceve; con tutti e tre spenti, l'interruttore è spento. Spegnerne uno non ritira nulla. Un avviso ti ricorda un interruttore spento quando il suo bene è in magazzino e a qualcuno manca, e quello della bandierina quando un estrattore esaurisce le risorse vicino alla sua bandierina.",
           },
         },
         {

@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Un campo non cresce',
-              "Senza acqua cresce solo di 1 stadio ogni {{field.stageSeconds}} s. Lo annaffia un [[job:farmer|Contadino]] di una [[building:work_farm_00|Fattoria]] o un [[job:herb_mush_guy|Erborista]] di una [[building:work_herb_hut|Capanna delle erbe]], se lì ha il suo luogo di lavoro. Prima semina e annaffia solo con {{field.max}} campi o quando non resta posto per seminare. Un campo matura dopo {{field.waterings}} annaffiature, e un'annaffiatura copre anche 6 campi vicini. Non semina sulla sabbia o su una strada, e semina entro {{field.radius}} esagoni dall'edificio.",
+              "Senza acqua cresce solo di 1 stadio ogni {{field.stageSeconds}} s. Lo annaffia un [[job:farmer|Contadino]] di una [[building:work_farm_00|Fattoria]] o un [[job:herb_mush_guy|Erborista]] di una [[building:work_herb_hut|Capanna delle erbe]], se lì ha il suo luogo di lavoro. Prima semina e annaffia solo con {{field.max}} campi o quando non resta posto per seminare. Un campo matura dopo {{field.waterings}} annaffiature, e un'annaffiatura copre anche 6 campi vicini. Non semina sulla sabbia o su una strada, e semina entro {{field.radius}} esagoni dall'edificio, o dalla sua bandierina di lavoro se ne ha una.",
             ],
             [
               'Pioggia, neve o notte cambiano qualcosa?',
@@ -390,7 +390,7 @@ export const PROBLEMS: ArticleGroup = {
                 '«Serve un riavvio»',
                 'Importante',
                 "L'impostazione modificata ha effetto solo dopo un riavvio",
-                '«Ricomincia la missione» nel menu Esc',
+                '«Ricomincia la mappa» nel menu Esc',
               ],
               [
                 '«Prodotto bloccato»',
