@@ -2,23 +2,32 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  DefenceMode,
   diplomacyStance,
   Health,
   Owner,
   Position,
+  Resting,
   Settler,
+  Sheltering,
   setDiplomacyStance,
+  setSettlerJob,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../../src/index.js';
 import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
 import { CombatIndex } from '../../../src/systems/conflict/combat-index.js';
 import { buildingBodyNodes } from '../../../src/systems/conflict/target-node.js';
-import { isFleeThreat, isValidTarget } from '../../../src/systems/conflict/targeting.js';
+import {
+  isFleeThreat,
+  isPriorityCombatTarget,
+  isValidTarget,
+} from '../../../src/systems/conflict/targeting.js';
 import { dropPath } from '../../../src/systems/movement/nav-state.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../src/systems/spatial/metric.js';
 import { canonicalById, entityNode, NodeBuckets } from '../../../src/systems/spatial/nodes.js';
+import { createVehicle } from '../../../src/systems/vehicles/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { grassCellMap } from '../../fixtures/terrain.js';
@@ -64,6 +73,17 @@ const RETYPED_AT = { x: 20, y: 20 };
 const GROUND = { x: 30, y: 66, radius: 18 };
 const ENTERS_FROM = { x: 30, y: 47 };
 const LEAVES_FROM = { x: 12, y: 67 };
+/** A home that shoots its house bow while on alarm with someone inside, and only then ranks first. */
+const SHELTER = 32;
+const SHELTER_CAPACITY = 4;
+const HOUSE_BOW = 20;
+const HOUSE_BOW_RANGE = 12;
+/** The fixture's soldier trade, a cart with no weapon and a catapult. */
+const SOLDIER = 31;
+const HANDCART = 1;
+const CATAPULT = 5;
+/** The node span the first-tier scene and its queries fill. */
+const SCENE_NODES = 48;
 /** A third player: at peace with P0 both ways, while P1 holds `enemy` toward it one way only. */
 const P2 = 2;
 const OWNERS = [P0, P1, P2];
@@ -112,6 +132,36 @@ function indexContent(): ContentSet {
   });
 }
 
+/** {@link indexContent} plus the {@link SHELTER} and the house bow it shoots. */
+function firstTierContent(): ContentSet {
+  const base = indexContent();
+  return parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: SHELTER,
+        id: 'shelter',
+        kind: 'home',
+        hitpoints: KEEP_HP,
+        shelterCapacity: SHELTER_CAPACITY,
+        footprint: { blocked: KEEP_WALLS },
+      },
+    ],
+    weapons: [
+      ...base.weapons,
+      {
+        typeId: HOUSE_BOW,
+        id: 'house_bow',
+        tribeType: VIKING,
+        minRange: 1,
+        maxRange: HOUSE_BOW_RANGE,
+        damage: {},
+      },
+    ],
+  });
+}
+
 function mappedSim(seed: number): Simulation {
   return new Simulation({ seed, content: indexContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
 }
@@ -133,11 +183,12 @@ function crowd(sim: Simulation, draw: () => number): Entity[] {
   return ids;
 }
 
-/** An enemy keep with its anchor on half-cell node (hx, hy) - a direct spawn, the test-setup exception. */
-function keepAtNode(sim: Simulation, hx: number, hy: number, owner: number): Entity {
+/** An enemy building of `type`, a keep unless named, with its anchor on half-cell node (hx, hy) - a direct
+ *  spawn, the test-setup exception. */
+function keepAtNode(sim: Simulation, hx: number, hy: number, owner: number, type = KEEP): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(hx, hy));
-  sim.world.add(e, Building, { buildingType: KEEP, tribe: VIKING, built: ONE, level: 0 });
+  sim.world.add(e, Building, { buildingType: type, tribe: VIKING, built: ONE, level: 0 });
   sim.world.add(e, Health, { hitpoints: KEEP_HP, max: KEEP_HP });
   sim.world.add(e, Owner, { player: owner });
   return e;
@@ -439,6 +490,82 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
     );
     expect(found).toEqual({ entity: last, distance: 4 });
     expect(innerFinds).toEqual(Array(3).fill({ entity: inner[0], distance: 0 }));
+  });
+});
+
+describe('CombatIndex first-tier search', () => {
+  it('finds exactly what the full search finds when both take first-tier targets alone', () => {
+    // The grid's tier marks restate `isPriorityCombatTarget`; each member here stands on an edge of it.
+    const sim = new Simulation({
+      seed: 1,
+      content: firstTierContent(),
+      map: grassCellMap(MAP_CELLS, MAP_CELLS),
+    });
+    const { world } = sim;
+    const terrain = terrainOf(sim);
+    const ctx = ctxOf(sim);
+    setDiplomacyStance(world, P0, P1, 'enemy');
+    setDiplomacyStance(world, P1, P0, 'enemy');
+    const shooting = keepAtNode(sim, 10, 10, P1, SHELTER);
+    world.add(shooting, DefenceMode, {});
+    const inside = combatantAtNode(sim, 10, 10, P1, MILITARY_MODE.IGNORE);
+    world.add(inside, Sheltering, { shelter: shooting });
+    world.add(inside, Resting, { at: shooting });
+    keepAtNode(sim, 40, 12, P1, SHELTER);
+    keepAtNode(sim, 24, 30, P1);
+    createVehicle(world, ctx, { vehicleType: HANDCART, x: 20, y: 14, tribe: VIKING, owner: P1 });
+    createVehicle(world, ctx, { vehicleType: CATAPULT, x: 6, y: 36, tribe: VIKING, owner: P1 });
+    const unowned = combatantAtNode(sim, 30, 20, P1, MILITARY_MODE.ATTACK, { jobType: SOLDIER });
+    world.remove(unowned, Owner);
+    const retrained = combatantAtNode(sim, 16, 24, P1, MILITARY_MODE.ATTACK, { jobType: SOLDIER });
+    const drafted = combatantAtNode(sim, 34, 8, P1, MILITARY_MODE.ATTACK);
+    combatantAtNode(sim, 26, 18, P1, MILITARY_MODE.ATTACK, { jobType: SOLDIER });
+    new CombatIndex(world, ctx, terrain);
+    setSettlerJob(world, retrained, WOODCUTTER);
+    setSettlerJob(world, drafted, SOLDIER);
+    const index = new CombatIndex(world, ctx, terrain);
+    expect(index.firing.has(shooting)).toBe(true);
+    const firstTier: Accept = (e) => isPriorityCombatTarget(world, ctx, e, index.firingNow);
+    const groundAt = (gx: number, gy: number) => ({
+      x: gx,
+      y: gy,
+      radius: GROUND.radius,
+      holds: (e: Entity): boolean => {
+        const node = entityNode(world, terrain, e);
+        return hexDistanceBetween(gx, gy, terrain.xOf(node), terrain.yOf(node)) <= GROUND.radius;
+      },
+    });
+    const draw = lcg(CROWD_SEED);
+    for (let q = 0; q < QUERIES; q++) {
+      const x = Math.floor(draw() * SCENE_NODES);
+      const y = Math.floor(draw() * SCENE_NODES);
+      const minDist = Math.floor(draw() * 3);
+      const maxDist = minDist + Math.floor(draw() * MAX_RADIUS);
+      const seeker = q % 2 === 0 ? P0 : null;
+      const full = index.nearest(x, y, minDist, maxDist, firstTier, seeker, 'hex');
+      expect(index.nearest(x, y, minDist, maxDist, firstTier, seeker, 'hex', true)).toEqual(full);
+      if (!index.firstTierWithin(seeker, x, y, maxDist)) expect(full).toBeNull();
+      const ground = groundAt(Math.floor(draw() * SCENE_NODES), Math.floor(draw() * SCENE_NODES));
+      for (const narrow of [null, ground]) {
+        const few = (only: boolean) =>
+          index.nearestFewOfBestRank(
+            x,
+            y,
+            minDist,
+            maxDist,
+            () => 0,
+            1,
+            firstTier,
+            FEW,
+            seeker,
+            TAIL_RINGS,
+            'hex',
+            narrow,
+            only,
+          );
+        expect(few(true)).toEqual(few(false));
+      }
+    }
   });
 });
 
