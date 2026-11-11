@@ -445,6 +445,14 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
     if (lead?.canGo === true) deps.onGo(lead.id);
     else pinFull(pinned === li ? null : li);
   });
+  // A press anywhere off the column, on the map or another panel, closes the open stack and the pinned
+  // bubble; the notes themselves stay.
+  const onPressOutside = (event: PointerEvent): void => {
+    if (!(event.target instanceof Node) || column.contains(event.target)) return;
+    if (openKey !== null) closeStack();
+    if (pinned !== null) pinFull(null);
+  };
+  document.addEventListener('pointerdown', onPressOutside, true);
   list.addEventListener('contextmenu', (event) => {
     const row = rowOf(event.target);
     const li = itemOf(event.target);
@@ -712,6 +720,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       column.hidden = !shown;
     },
     dispose: (): void => {
+      document.removeEventListener('pointerdown', onPressOutside, true);
       hover.dispose();
       resize.disconnect();
       cardSizes.disconnect();
