@@ -9,7 +9,7 @@ import {
   type VehicleYardSites,
 } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
-import { servedShadowStem } from '../ir/joins.js';
+import { atomicClipTicks, servedShadowStem } from '../ir/joins.js';
 import type { ContentIr } from '../ir/rows.js';
 import { frameListsByFacing } from '../settler-gfx/index.js';
 
@@ -189,6 +189,19 @@ function borrowBaseDrives(byTribe: Record<number, Record<number, VehicleLook>>, 
 /** The `vehicleGraphics` rows of the served IR; empty without one. */
 export function vehicleGraphicsRows(ir: ContentIr | null): readonly VehicleGraphics[] {
   return ir?.vehicleGraphics ?? [];
+}
+
+/** The ticks of the attack clip each row's tribe binds for its job, per tribe resolved once. */
+export function vehicleAttackClipTicks(ir: ContentIr | null): (row: VehicleGraphics) => number | undefined {
+  const byTribe = new Map<number, ReturnType<typeof atomicClipTicks>>();
+  return (row) => {
+    let ticks = byTribe.get(row.tribe);
+    if (ticks === undefined) {
+      ticks = atomicClipTicks(ir, row.tribe);
+      byTribe.set(row.tribe, ticks);
+    }
+    return ticks(row.job, ATTACK_ATOMIC);
+  };
 }
 
 /**

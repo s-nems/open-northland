@@ -3,6 +3,7 @@ export {
   type DrawableFrames,
   vehicleAtlasStem,
   vehicleAtlasStems,
+  vehicleAttackClipTicks,
   vehicleGraphicsRows,
   vehicleLook,
   vehicleOwnerFamily,

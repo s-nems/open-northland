@@ -1,4 +1,3 @@
-import type { VehicleGraphics } from '@open-northland/data';
 import {
   GFX_DIR_TO_FACING,
   type SpriteLayer,
@@ -7,8 +6,6 @@ import {
   type VehicleYardSites,
 } from '@open-northland/render';
 import { components } from '@open-northland/sim';
-import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
-import { atomicClipTicks } from '../ir/joins.js';
 import { loadLayer, MissingAtlasError } from '../ir/load.js';
 import type { ContentIr } from '../ir/rows.js';
 import { loadTextureIfPresent } from '../net.js';
@@ -18,6 +15,7 @@ import {
   type DrawableFrames,
   SHIP_SAIL_INDEX_RANGES,
   vehicleAtlasStems,
+  vehicleAttackClipTicks,
   vehicleGraphicsRows,
   vehicleOwnerFamily,
 } from './bindings.js';
@@ -61,19 +59,6 @@ async function loadOwnerLut(family: string | undefined): Promise<VehicleColourLu
   return { source, colours: source.pixelHeight, sailRanges: SHIP_SAIL_INDEX_RANGES };
 }
 
-/** The ticks of the attack clip each row's tribe binds for its job, per tribe resolved once. */
-function attackClipTicks(ir: ContentIr | null): (row: VehicleGraphics) => number | undefined {
-  const byTribe = new Map<number, ReturnType<typeof atomicClipTicks>>();
-  return (row) => {
-    let ticks = byTribe.get(row.tribe);
-    if (ticks === undefined) {
-      ticks = atomicClipTicks(ir, row.tribe);
-      byTribe.set(row.tribe, ticks);
-    }
-    return ticks(row.job, ATTACK_ATOMIC);
-  };
-}
-
 /**
  * Load every vehicle body the IR binds, whatever tribes the world fields: the bodies are shared across
  * tribes (three cart palettes, two ship libraries), so the whole table costs five pages. With the ships'
@@ -107,7 +92,7 @@ export async function loadVehicleSheet(ir: ContentIr | null, fallbackTribe: numb
   const yards = vehicleYards(ir);
   const binding = buildVehicleBinding(rows, loaded, frames, fallbackTribe, {
     ships,
-    attackTicks: attackClipTicks(ir),
+    attackTicks: vehicleAttackClipTicks(ir),
     ...(ownerFamily !== undefined ? { ownerFamily } : {}),
     ...(yards !== undefined ? { vehicleYards: yards } : {}),
   });
