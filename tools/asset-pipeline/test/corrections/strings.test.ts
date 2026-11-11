@@ -84,6 +84,18 @@ describe('string corrections', () => {
     expect(() => corrections.assertApplied()).not.toThrow();
   });
 
+  it('adds a missing id whole and refuses one the table already holds', async () => {
+    await writeEntries([{ ...ENTRY, id: 9, from: null }]);
+    const added = await convertRus();
+    expect(added.rus.goods).toEqual({ [GOOD_ID]: RUS_TEXT, 5: 'other', 9: 'Ёжик' });
+    expect(() => added.corrections.assertApplied()).not.toThrow();
+
+    await writeEntries([{ ...ENTRY, from: null }]);
+    const held = await convertRus();
+    expect(held.rus.goods?.[GOOD_ID]).toBe(RUS_TEXT);
+    expect(() => held.corrections.assertApplied()).toThrow(/rus\/goods\/4 null: the text is now "Ёж"/);
+  });
+
   it.each([
     ['the text changed', { ...ENTRY, from: 'Ёлка' }, /rus\/goods\/4 "Ёлка": the text is now "Ёж"/],
     ['the id is gone', { ...ENTRY, id: 9 }, /rus\/goods\/9 .*no such id/],
@@ -104,7 +116,6 @@ describe('string corrections', () => {
     ['a missing reason', [{ ...ENTRY, reason: ' ' }], /reason must say why/],
     ['a non-integer id', [{ ...ENTRY, id: '4' }], /id must be a string id/],
     ['a no-op swap', [{ ...ENTRY, to: RUS_TEXT }], /two different strings/],
-    ['an addition to a GUI table', [{ ...ENTRY, from: null }], /two different strings/],
     ['two entries for one string', [ENTRY, { ...ENTRY, to: 'Ёжики' }], /second entry for rus\/goods\/4/],
   ])('rejects %s', async (_why, entries, message) => {
     await writeEntries(entries);
@@ -183,6 +194,16 @@ describe('help text corrections', () => {
     const { text, corrections } = await corrected([entry('silver', 'tin'), entry('Carried', 'Worn')]);
     expect(text).toBe('Made from gold. Worn by men. Gold is rare.');
     expect(corrections.unapplied().map(({ entry: e }) => e.from)).toEqual(['silver']);
+  });
+
+  it('adds a missing description whole, from one entry only', async () => {
+    const added = { ...entry('', TEXT), from: null };
+    const file = join(temp.root, 'tables.json');
+    await writeFile(file, JSON.stringify([added]));
+    const corrections = await loadStringCorrections(file);
+    expect(corrections.correct('eng', 'goodsHelp', {})[ID]).toBe(TEXT);
+    expect(() => corrections.assertApplied()).not.toThrow();
+    await expect(corrected([added, { ...added, to: 'Other.' }])).rejects.toThrow(/second entry/);
   });
 
   it('rejects an empty phrase, and still matches any other table whole', async () => {

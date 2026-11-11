@@ -13,7 +13,8 @@ export const CORRECTIONS_DIR = fileURLToPath(new URL('../corrections/', import.m
  * One whole line of the file replaced by the `to` lines, none deleting it; with `every`, each line
  * spelled like `from`. With `section`, only lines inside the `[...]` block holding the one line spelled
  * `section` count, for a line that repeats verbatim across records. `line` (1-based) names the one
- * line instead, which must read `from`; the pinned hash keeps the number stable.
+ * line instead, which must read `from`; the pinned hash keeps the number stable. With `through`, the
+ * lines from `from` to the first line spelled `through` after it, in the same scope, are replaced as one.
  */
 interface LineEdit {
   readonly from: string;
@@ -22,6 +23,7 @@ interface LineEdit {
   readonly every: boolean;
   readonly section?: string;
   readonly line?: number;
+  readonly through?: string;
 }
 
 /** One placed landscape object: its `[GfxLandscape]` `EditName`, `lmlv` level and `lmlp` owner (null neutral). */
@@ -93,6 +95,7 @@ export interface UnappliedCorrection {
 }
 
 const CORRECTION_KEYS = ['reason', 'file', 'sha256', 'format', 'encoding', 'lines', 'objects'] as const;
+const LINE_EDIT_KEYS = ['from', 'to', 'every', 'section', 'line', 'through'] as const;
 const OBJECT_EDIT_KEYS = ['hx', 'hy', 'from', 'to'] as const;
 const MAP_OBJECT_KEYS = ['type', 'level', 'owner'] as const;
 /** `lmlv` is a byte lane. */
@@ -266,18 +269,29 @@ function applyCorrection(correction: LineCorrection, bytes: Uint8Array): Uint8Ar
   }
   // latin1 maps each byte to one code unit, so every untouched line keeps its exact bytes.
   const lines = Buffer.from(bytes).toString('latin1').split('\n');
-  const edits = new Map<number, LineEdit>();
+  // A replaced line maps to its edit; the later lines of a `through` run map to null, removed.
+  const edits = new Map<number, LineEdit | null>();
   const decoder = correction.encoding === undefined ? undefined : new TextDecoder(correction.encoding);
   const text = lines.map((line) => {
     const bare = line.replace(/\r$/, '');
     return decoder === undefined ? bare : decoder.decode(Buffer.from(bare, 'latin1'));
   });
+  /** Claims the line at `index`, and with `through` the run after it up to `end`, or says why not. */
+  const claim = (edit: LineEdit, index: number, end: number): string | undefined => {
+    const last = edit.through === undefined ? index : text.indexOf(edit.through, index + 1);
+    if (last === -1 || last >= end) return `no line "${edit.through}" follows "${edit.from}"`;
+    for (let i = index; i <= last; i++) {
+      if (edits.has(i)) return `two edits replace the line "${text[i]}"`;
+      edits.set(i, i === index ? edit : null);
+    }
+    return undefined;
+  };
   for (const edit of correction.lines) {
     if (edit.line !== undefined) {
       const index = edit.line - 1;
       if (text[index] !== edit.from) return `line ${edit.line} does not read "${edit.from}"`;
-      if (edits.has(index)) return `two edits replace the line "${edit.from}"`;
-      edits.set(index, edit);
+      const refused = claim(edit, index, text.length);
+      if (refused !== undefined) return refused;
       continue;
     }
     const range =
@@ -290,13 +304,14 @@ function applyCorrection(correction: LineCorrection, bytes: Uint8Array): Uint8Ar
       return `"${edit.from}" matches ${at.length} lines${scope} instead of one`;
     }
     for (const index of at) {
-      if (edits.has(index)) return `two edits replace the line "${edit.from}"`;
-      edits.set(index, edit);
+      const refused = claim(edit, index, range.end);
+      if (refused !== undefined) return refused;
     }
   }
   const corrected = lines.flatMap((line, index) => {
     const edit = edits.get(index);
     if (edit === undefined) return [line];
+    if (edit === null) return [];
     const eol = line.endsWith('\r') ? '\r' : '';
     return edit.to.map((replacement) => `${replacement}${eol}`);
   });
@@ -350,7 +365,11 @@ function parseCorrection(id: string, raw: unknown): SourceCorrection {
   const write = encoding === undefined ? (text: string) => text : codePageWriter(encoding);
   const edits = lines.map((edit: unknown): LineEdit => {
     if (typeof edit !== 'object' || edit === null) return fail('each line edit is an object');
-    const { from, to, every, section, line } = edit as Record<string, unknown>;
+    const unknownEditKey = Object.keys(edit).find(
+      (key) => !(LINE_EDIT_KEYS as readonly string[]).includes(key),
+    );
+    if (unknownEditKey !== undefined) fail(`unknown line edit key "${unknownEditKey}"`);
+    const { from, to, every, section, line, through } = edit as Record<string, unknown>;
     const target = isText(to) ? [to] : Array.isArray(to) && to.every(isText) ? to : undefined;
     if (!isText(from) || target === undefined) {
       return fail(
@@ -375,12 +394,16 @@ function parseCorrection(id: string, raw: unknown): SourceCorrection {
       return fail('"line" is a 1-based line number, without "every" or "section"');
     }
     if (format === 'cif' && lineNumber === undefined) return fail('CIF edits require an explicit "line"');
+    if (through !== undefined && (!isText(through) || every !== undefined || format === 'cif')) {
+      return fail('"through" is a line ending the replaced run, without "every" or "format"');
+    }
     return {
       from,
       to: bytes,
       every: every === true,
       ...(section === undefined ? {} : { section }),
       ...(lineNumber === undefined ? {} : { line: lineNumber }),
+      ...(through === undefined ? {} : { through }),
     };
   });
   return {

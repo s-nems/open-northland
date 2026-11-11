@@ -1,6 +1,11 @@
+import { createHash } from 'node:crypto';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { BuildingType, buildingFootprintFor } from '@open-northland/data';
+import { decodeCifStringArray } from '@open-northland/formats/cif';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildStringCif } from '../../../../../packages/formats/test/fixtures/cif.js';
+import { loadSourceCorrections } from '../../../src/corrections.js';
 import { BASE_BUILDING_GRAPHICS_FILE, BUILDING_GRAPHICS_FILE } from '../../../src/data-layout.js';
 import { resolveGraphicsBindings } from '../../../src/stages/bmd/bindings.js';
 import { applyBuildingGraphicsOverlays } from '../../../src/stages/ir/building-overlays.js';
@@ -91,6 +96,34 @@ describe('base-only houses', () => {
     expect(palace?.hitpoints).toBe(20000);
     expect(palace?.construction).toEqual([{ goodType: 3, amount: 2 }]);
     expect(palace && buildingFootprintFor(palace, SARACEN)?.door).toEqual({ dx: 1, dy: 1 });
+  });
+
+  it('reads the base table through its CIF corrections', async () => {
+    const bytes = await readFile(join(tree.game, BASE_BUILDING_GRAPHICS_FILE));
+    const palaceHitpoints = 'logichitpoints 0 20000';
+    const line = decodeCifStringArray(bytes).lines.findIndex((l) => l.text === palaceHitpoints) + 1;
+    const dir = join(tree.root, 'corrections');
+    await mkdir(dir);
+    await writeFile(
+      join(dir, 'sturdy-palace.json'),
+      JSON.stringify({
+        reason: 'synthetic sturdier palace',
+        file: BASE_BUILDING_GRAPHICS_FILE,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+        format: 'cif',
+        lines: [{ line, from: palaceHitpoints, to: 'logichitpoints 0 45000' }],
+      }),
+    );
+    const corrections = await loadSourceCorrections(dir, tree.game);
+    const roots = { data: tree.game, corrections };
+    const tables = await extractIniTables(roots, await resolveIniSources(roots));
+
+    const [palace] = applyBuildingGraphicsOverlays(
+      [BuildingType.parse({ typeId: PALACE, id: 'palace', kind: 'home' })],
+      tables.buildingGraphicsOverlays,
+    );
+    expect(palace?.hitpoints).toBe(45000);
+    expect(() => corrections.assertApplied()).not.toThrow();
   });
 
   it('binds and bakes the base-only art, never the base art of a ruled name', async () => {

@@ -16,8 +16,8 @@ export const MAP_STRING_CORRECTIONS_FILE = fileURLToPath(
   new URL('../corrections/strings/maps.json', import.meta.url),
 );
 
-/** One display string replaced while it reads `from`, a phrase of a help text, or a missing map string
- *  added with `from: null`. */
+/** One display string replaced while it reads `from`, a phrase of a help text, or a missing string added
+ *  whole with `from: null`. */
 export interface StringCorrection {
   /** The text folder, e.g. `rus`. */
   readonly lang: string;
@@ -134,9 +134,10 @@ async function loadCorrections(path: string, kind: CorrectionKind): Promise<Stri
       for (const entry of list) {
         if (entry.lang !== lang || entry.scope !== scope) continue;
         const actual = corrected[entry.id];
-        const fixed = kind.isPhrased(scope)
-          ? phraseFixed(entry, actual)
-          : wholeFixed(entry, actual, Object.hasOwn(byId, entry.id));
+        const fixed =
+          kind.isPhrased(scope) && entry.from !== null
+            ? phraseFixed(entry, actual)
+            : wholeFixed(entry, actual, Object.hasOwn(byId, entry.id));
         if (typeof fixed === 'string') {
           corrected[entry.id] = fixed;
           applied.add(entry);
@@ -217,15 +218,14 @@ function parseStringCorrections(path: string, kind: CorrectionKind, raw: unknown
     const badScope = kind.checkScope(scope);
     if (badScope !== undefined) at(badScope);
     if (typeof id !== 'number' || !Number.isSafeInteger(id) || id < 0) return at('id must be a string id');
-    const addsMapString = kind.scopeKey === 'map' && from === null;
-    if ((!addsMapString && typeof from !== 'string') || typeof to !== 'string' || from === to) {
+    if ((from !== null && typeof from !== 'string') || typeof to !== 'string' || from === to) {
       return at('"from" and "to" must be two different strings');
     }
     if (typeof reason !== 'string' || reason.trim() === '') return at('reason must say why the fix exists');
     const phrased = kind.isPhrased(scope);
     if (phrased && from === '') at('"from" must name a phrase of the text');
     const key = `${lang}/${scope}/${id}`;
-    if (!phrased && seen.has(key)) at(`a second entry for ${key}`);
+    if ((!phrased || from === null) && seen.has(key)) at(`a second entry for ${key}`);
     seen.add(key);
     return { lang, scope, id, from, to, reason };
   });

@@ -33,7 +33,9 @@ map's `provenance.folder` names), the SHA-256 of the shipped file, and whole-lin
 list in `to` replaces the line with several, an empty list deletes it; `"every": true` when the line
 repeats and each copy takes the same fix; `"section"` naming a unique line to confine the swap to its
 `[...]` block when the line repeats across records; `"line"` naming the one line by number when
-identical lines need different fixes), with a `reason` in Polish for the owner reviewing the list.
+identical lines need different fixes; `"through"` naming the line that ends a run replaced as a whole,
+the first line spelled so after `from` in the same scope), with a `reason` in Polish for the owner
+reviewing the list.
 `"encoding"` (an ASCII-compatible `TextDecoder` label) reads `from` and writes `to` lines outside ASCII
 in that code page, such as a briefing's text; without it both stay printable ASCII. The stage reading
 the file goes through `readSourceFile`, which applies the swaps only while the hash still matches.
@@ -57,10 +59,11 @@ A correction the run did not apply fails the pipeline, including after a data re
 file: check whether the data now fixes it, then delete the file or re-pin its hash. Deleting the file
 removes the correction. Behavior differences from the original stay in code and docs, not here.
 
-An encrypted map script can use `"format": "cif"` in its source correction. Its hash still pins the raw
-file bytes. Each edit requires `"line"`, the 1-based position in `decodeCifStringArray(...).lines`,
-and exact ASCII `from`/`to` property text; only level-2 properties can change. The normal map decoder
-applies these edits before any sections are read, without rewriting the binary. Reading the source
+An encrypted map script or the base house table (`Data/engine2d/inis/houses/houses.cif`) can use
+`"format": "cif"` in its source correction. Its hash still pins the raw file bytes. Each edit requires
+`"line"`, the 1-based position in `decodeCifStringArray(...).lines`, and exact ASCII `from`/`to`
+property text; only level-2 properties can change. The map decoder and the base house reader apply
+these edits before any sections are read, without rewriting the binary. Reading the source
 bytes alone does not mark a CIF correction applied. A hash, line or level mismatch fails the run.
 The callback names the source tree's folder path, independent of a map's published id.
 
@@ -84,9 +87,9 @@ once in the text, kept as short as that allows, and `to` replaces that phrase al
 name one id; they apply in file order, each to the text the one before left, and a phrase that is
 missing or occurs twice leaves its entry unapplied. Only a text rewritten whole quotes the whole text.
 
-A map-string entry may use `"from": null` to add a missing id in an existing language table. It applies
+An entry may use `"from": null` to add a missing id, whole, to an existing language table. It applies
 only if that id is absent; an occupied id, even one already reading `to`, fails the correction check.
-It never creates a missing language table. GUI table entries still require an existing `from` string.
+It never creates a missing language table.
 
 `corrections/strings/maps.json` does the same for a map's own strings (`maps/<map>.strings.json`), such
 as mission goals kept in an encrypted `text/<lang>/strings.cif` that no line swap can reach. Each entry
