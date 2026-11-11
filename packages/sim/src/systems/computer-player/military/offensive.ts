@@ -6,6 +6,7 @@ import { weaponMix } from '../../ai-shared/military/census.js';
 import { spokenFor } from '../../ai-shared/military/errand.js';
 import { seatOutmatched } from '../../ai-shared/military/settlement-defence.js';
 import type { SystemContext } from '../../context.js';
+import { rallyNodeOf } from '../../orders/rally-point.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { entityNode } from '../../spatial/nodes.js';
 import { seatBarracksOf, seatBaseOf } from '../base.js';
@@ -70,7 +71,15 @@ export function runOffensive(
     abandonWave(world, barracks);
     endMarch(world, barracks);
     // The men awaiting a weapon stay by the barracks that arms them.
-    const stand = armedStandOf(world, ctx, terrain, player, home, standGroundOf(world, ctx, terrain, player));
+    const stand = armedStandOf(
+      world,
+      ctx,
+      terrain,
+      player,
+      barracks,
+      home,
+      standGroundOf(world, ctx, terrain, player),
+    );
     if (stand !== null) {
       const armed = [...army, ...wave];
       const atStand = rallyAt(world, ctx, terrain, stand, armed);
@@ -91,10 +100,12 @@ export function runOffensive(
   // A wave spent this decision hands its men back to the muster.
   const muster = marchOn.active ? army : [...army, ...wave].sort((a, b) => a - b);
   // The armed men wait, and a wave forms, under the tower line while a scripted attack is awaited and no
-  // wave is out, else inside a temple's aura; the men awaiting a weapon stay by the barracks that arms them.
+  // wave is out, else at the barracks' rally flag, else inside a temple's aura; the men awaiting a weapon
+  // stay by the barracks that arms them.
   const ground = standGroundOf(world, ctx, terrain, player);
   const towerStand = marchOn.active ? null : towerStandOf(world, ctx, terrain, player, home, ground);
-  const blessed = towerStand ?? templeStationOf(terrain, ground, home);
+  const blessed =
+    towerStand ?? flagStandOf(world, terrain, barracks) ?? templeStationOf(terrain, ground, home);
   const station = blessed === home ? null : blessed;
   const rally = rallyAt(
     world,
@@ -166,27 +177,34 @@ export function runOffensive(
 }
 
 /**
- * Where the armed men at home gather apart from the barracks door `home`, or null for the door: a seat
+ * Where the armed men at home gather apart from the door `home` of `barracks`, or null for the door: a seat
  * awaiting a scripted attack under its tower line ({@link towerStandOf}, which moves into a temple's aura
- * the towers still reach); else an outmatched seat at its base, under its towers, rather than at a
- * barracks out on the front, where they would meet a wave before the towers could shoot it (owner ruling:
- * survive at any cost); else inside a temple's aura ({@link templeStationOf}), the base's or the door's
- * nearest spot of it.
+ * the towers still reach); else an outmatched seat at its base, under its towers, where a wave meets it
+ * last (owner ruling: survive at any cost); else at the barracks' rally flag ({@link flagStandOf}); else
+ * inside a temple's aura ({@link templeStationOf}), the base's or the door's nearest spot of it.
  */
 function armedStandOf(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
+  barracks: Entity,
   home: NodeId,
   ground: StandGround,
 ): NodeId | null {
   const stand = towerStandOf(world, ctx, terrain, player, home, ground);
   if (stand !== null) return stand;
   const base = seatOutmatched(world, player) ? seatBaseOf(world, ctx, player) : null;
+  const flag = base === null ? flagStandOf(world, terrain, barracks) : null;
+  if (flag !== null) return flag === home ? null : flag;
   const at = base === null ? home : interactionCell(world, ctx, terrain, base);
   const blessed = templeStationOf(terrain, ground, at) ?? at;
   return blessed === home ? null : blessed;
+}
+
+/** The node of the rally flag the seat planted for `barracks` (`rally-stand.ts`), or null with none. */
+function flagStandOf(world: World, terrain: TerrainGraph, barracks: Entity): NodeId | null {
+  return rallyNodeOf(world, terrain, barracks) ?? null;
 }
 
 interface Launch {

@@ -14,7 +14,6 @@ import { positionOfNode, Simulation, type TerrainMap } from '../../../../src/ind
 import { GRASS_BESIDE_NODES, spotAcceptor } from '../../../../src/systems/ai-shared/building-spot.js';
 import { bestRingNode } from '../../../../src/systems/ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
-import { FRONT_EDGE_STEP_NODES } from '../../../../src/systems/computer-player/build-order/ground/affinity.js';
 import { FRONT_LINE_DEPTH_NODES } from '../../../../src/systems/computer-player/build-order/ground/front.js';
 import { grassScarce } from '../../../../src/systems/computer-player/build-order/ground/grass-reserve.js';
 import {
@@ -47,7 +46,6 @@ import {
   entityOfBuilding,
   FARM_TYPE,
   HOME_TYPE,
-  HQ_TYPE,
   HQ_X,
   HQ_Y,
   IRON,
@@ -63,7 +61,6 @@ import {
   STOCK_TYPE,
   STONE,
   STONE_HARVEST,
-  TOWER_TYPE,
   VIKING,
   WELL_TYPE,
 } from '../support.js';
@@ -711,139 +708,10 @@ describe('build-order placement - affinity and ground rules', () => {
     );
   });
 
-  it('pulls a front-affinity placement toward the nearest enemy headquarters, or the map centre without one', () => {
-    const HQ_AT = { x: 40, y: 40 };
-    const ENEMY = SEAT + 1;
-    const ENEMY_HQ = { x: 40, y: 200 }; // due south; the map centre (128,128) lies south-east
-    const ENEMY_TOWER = { x: 70, y: 40 }; // nearer, due east - but not a headquarters
-    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
-    placeHq(sim, HQ_AT.x, HQ_AT.y);
-    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: ENEMY, tribes: [VIKING] });
-    for (const [buildingType, at] of [
-      [HQ_TYPE, ENEMY_HQ],
-      [TOWER_TYPE, ENEMY_TOWER],
-    ] as const) {
-      sim.enqueueSetup({
-        kind: 'placeBuilding',
-        buildingType,
-        x: at.x,
-        y: at.y,
-        tribe: VIKING,
-        owner: ENEMY,
-      });
-    }
-    sim.step();
-    const front: BuildOrderEntry[] = [
-      { kind: 'place', building: 'work_well_00', count: 1, near: [{ kind: 'front' }] },
-    ];
-    const spot = firstCommandOf(sim, front);
-    if (spot?.kind !== 'placeBuilding') throw new Error('expected a front-pulled placement');
-    // South toward the enemy headquarters, past the nearer tower's eastward pull, but only a step past
-    // the settlement's edge - here the headquarters alone - never a whole reach out.
-    expect(spot.y - HQ_AT.y).toBeGreaterThan(0);
-    expect(spot.y - HQ_AT.y).toBeLessThanOrEqual(FRONT_EDGE_STEP_NODES + HQ_PULL_DIVISOR_NODES);
-    expect(Math.abs(spot.x - HQ_AT.x)).toBeLessThan(BUILD_SEARCH_MAX_RADIUS_NODES / 4);
-
-    // A home standing out toward the enemy is the settlement's edge: the placement steps past it, not past
-    // the headquarters, and never a reach beyond it.
-    const OUTPOST = { x: HQ_AT.x, y: HQ_AT.y + 40 };
-    const grown = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
-    placeHq(grown, HQ_AT.x, HQ_AT.y);
-    grown.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: ENEMY, tribes: [VIKING] });
-    for (const [buildingType, at, owner] of [
-      [HQ_TYPE, ENEMY_HQ, ENEMY],
-      [HOME_TYPE, OUTPOST, SEAT],
-    ] as const) {
-      grown.enqueueSetup({
-        kind: 'placeBuilding',
-        buildingType,
-        x: at.x,
-        y: at.y,
-        tribe: VIKING,
-        owner,
-        force: true,
-      });
-    }
-    grown.step();
-    const edge = firstCommandOf(grown, front);
-    if (edge?.kind !== 'placeBuilding') throw new Error('expected an edge placement');
-    expect(edge.y - OUTPOST.y).toBeGreaterThan(0);
-    expect(edge.y - OUTPOST.y).toBeLessThanOrEqual(FRONT_EDGE_STEP_NODES + HQ_PULL_DIVISOR_NODES);
-
-    // No enemy building anywhere: the pull falls back to the middle of the map, east and south of here.
-    const alone = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
-    placeHq(alone, HQ_AT.x, HQ_AT.y);
-    alone.step();
-    const fallback = firstCommandOf(alone, front);
-    if (fallback?.kind !== 'placeBuilding') throw new Error('expected a centre-pulled placement');
-    expect(fallback.x).toBeGreaterThan(HQ_AT.x);
-    expect(fallback.y).toBeGreaterThan(HQ_AT.y);
-  });
-
-  it("breaks a tie between two enemy seats' equally near buildings by the lowest id, whichever seat it belongs to", () => {
-    const HQ_AT = { x: 128, y: 40 };
-    const WEST = { x: HQ_AT.x - 60, y: HQ_AT.y };
-    const EAST = { x: HQ_AT.x + 60, y: HQ_AT.y };
-    const front: BuildOrderEntry[] = [
-      { kind: 'place', building: 'work_well_00', count: 1, near: [{ kind: 'front' }] },
-    ];
-    // Two enemy towers, one per seat, the same distance from the base: the one placed first, with the
-    // lower id, pulls the front whichever seat's roster is walked first.
-    const pulledBy = (first: { x: number; y: number }, second: { x: number; y: number }): number => {
-      const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
-      placeHq(sim, HQ_AT.x, HQ_AT.y);
-      for (const [owner, at] of [
-        [SEAT + 2, first],
-        [SEAT + 1, second],
-      ] as const) {
-        sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: owner, tribes: [VIKING] });
-        sim.enqueueSetup({
-          kind: 'placeBuilding',
-          buildingType: TOWER_TYPE,
-          x: at.x,
-          y: at.y,
-          tribe: VIKING,
-          owner,
-        });
-      }
-      sim.step();
-      const spot = firstCommandOf(sim, front);
-      if (spot?.kind !== 'placeBuilding') throw new Error('expected a front-pulled placement');
-      return spot.x - HQ_AT.x;
-    };
-    expect(pulledBy(WEST, EAST)).toBeLessThan(0);
-    expect(pulledBy(EAST, WEST)).toBeGreaterThan(0);
-  });
-
-  it('keeps a front-affinity placement by the base while enemy seats surround it', () => {
-    const HQ_AT = { x: 128, y: 128 };
-    const ENEMY_HQS = [
-      { x: HQ_AT.x - 80, y: HQ_AT.y },
-      { x: HQ_AT.x, y: HQ_AT.y - 80 },
-      { x: HQ_AT.x + 80, y: HQ_AT.y },
-    ];
-    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
-    placeHq(sim, HQ_AT.x, HQ_AT.y);
-    for (const [i, at] of ENEMY_HQS.entries()) {
-      const owner = SEAT + 1 + i;
-      sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: owner, tribes: [VIKING] });
-      sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ_TYPE, ...at, tribe: VIKING, owner });
-    }
-    // The computer seat's first decision scans the map brief, every seat's start in it.
-    makeAiSeat(sim, SEAT, { houseBuild: false });
-    sim.step();
-    const spot = firstCommandOf(sim, [
-      { kind: 'place', building: 'work_well_00', count: 1, near: [{ kind: 'front' }] },
-    ]);
-    if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement');
-    // The base's own search ring, not a front edge pushed toward the nearest of them.
-    expect(Math.abs(spot.x - HQ_AT.x) + Math.abs(spot.y - HQ_AT.y)).toBeLessThan(FRONT_EDGE_STEP_NODES);
-  });
-
   it('searches from the base when the affinity-pulled fan finds no room, so a wide settlement never stalls on its far side', () => {
-    // Grass west of the water line, water east of it; a home stands far out on the water side (forced) and
-    // the enemy beyond it, so the front-pulled centre lands east of the home and its fan never reaches the
-    // grass around the base. Two fans would cover the whole reach; one cannot.
+    // Grass west of the water line, water east of it; a home stands far out on the water side (forced), so
+    // the centre pulled to it lands out on the water and its fan never reaches the grass around the base.
+    // Two fans would cover the whole reach; one cannot.
     const WATER_FROM_X = 60;
     const WIDTH = 256;
     const HEIGHT = 64;
@@ -851,8 +719,6 @@ describe('build-order placement - affinity and ground rules', () => {
     const WATER = 1;
     const HQ = { x: 20, y: 32 };
     const FAR_HOME = { x: 100, y: 32 };
-    const RIVAL_HQ = { x: 240, y: 32 };
-    const RIVAL = 3;
     expect(FAR_HOME.x - BUILD_SEARCH_MAX_RADIUS_NODES).toBeGreaterThan(WATER_FROM_X);
     const typeIds = new Array<number>(WIDTH * HEIGHT).fill(GRASS);
     for (let y = 0; y < HEIGHT; y++)
@@ -860,24 +726,23 @@ describe('build-order placement - affinity and ground rules', () => {
     const map: TerrainMap = { resolution: 'half-cell', width: WIDTH, height: HEIGHT, typeIds };
     const sim = new Simulation({ seed: 1, content: aiContent(), map });
     placeHq(sim, HQ.x, HQ.y);
-    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: RIVAL, tribes: [VIKING] });
-    for (const [buildingType, at, owner] of [
-      [HOME_TYPE, FAR_HOME, SEAT],
-      [HQ_TYPE, RIVAL_HQ, RIVAL],
-    ] as const) {
-      sim.enqueueSetup({
-        kind: 'placeBuilding',
-        buildingType,
-        x: at.x,
-        y: at.y,
-        tribe: VIKING,
-        owner,
-        force: true,
-      });
-    }
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: FAR_HOME.x,
+      y: FAR_HOME.y,
+      tribe: VIKING,
+      owner: SEAT,
+      force: true,
+    });
     sim.step();
     const spot = firstCommandOf(sim, [
-      { kind: 'place', building: 'work_well_00', count: 1, near: [{ kind: 'front' }] },
+      {
+        kind: 'place',
+        building: 'work_well_00',
+        count: 1,
+        near: [{ kind: 'building', id: 'home_level_00' }],
+      },
     ]);
     if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement from the base');
     expect(spot.x).toBeLessThan(WATER_FROM_X);

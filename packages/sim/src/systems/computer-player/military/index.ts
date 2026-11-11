@@ -14,6 +14,7 @@ import { marchingWave } from './march/index.js';
 import { runOffensive } from './offensive.js';
 import { type OperationEnv, runOperations } from './operations/index.js';
 import { armourFetchOrders, barracksPriorityOrders, outfitGrantOrders } from './outfit.js';
+import { rallyOrders } from './rally-stand.js';
 import { siegeCrewOrders } from './siege-crew.js';
 
 export {
@@ -138,6 +139,7 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
     ...(assault?.commands ?? []),
     ...outfitGrantOrders(world, ctx, player),
     ...barracksPriorityOrders(world, ctx, owned),
+    ...rallyOrders(world, ctx, terrain, player, owned),
     ...armourFetchOrders(
       world,
       ctx,

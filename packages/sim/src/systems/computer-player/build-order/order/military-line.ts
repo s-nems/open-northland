@@ -145,14 +145,13 @@ export const MILITARY_LINE: BuildLine = {
         ],
       },
     },
-    // On the settlement's edge toward the nearest enemy, where the attacks come from, or by the base while
-    // enemies surround the seat (`../ground/front.ts`); the barracks also holds the line in defence. Owner
-    // ruling: it opens at its own lead, the economy growing until then.
+    // By the base, behind the town (owner ruling): its rally flag gathers the army on the side the attacks
+    // come from (`../../military/rally-stand.ts`). Owner ruling: it opens at its own lead, the economy
+    // growing until then.
     {
       kind: 'place',
       building: 'barracks',
       count: 1,
-      near: [{ kind: 'front' }],
       holdUntil: { kind: 'deadline', leadTicks: BARRACKS_LEAD_TICKS },
     },
     // Once the seat's economy is safe the settled ring runs as a second lane (owner ruling: later in the

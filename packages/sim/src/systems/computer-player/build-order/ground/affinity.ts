@@ -2,23 +2,22 @@ import type { BuildingType } from '@open-northland/data';
 import { Building, Stockpile } from '../../../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { type HalfCellNode, hexDistanceBetween, nodeManhattan } from '../../../../nav/halfcell.js';
+import { type HalfCellNode, hexDistanceBetween } from '../../../../nav/halfcell.js';
 import { withinNodeRadius } from '../../../../nav/node-circle.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SpotAcceptor } from '../../../ai-shared/building-spot.js';
 import { countedTiers, goodTypeByContentId, tiersAtOrAbove } from '../../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../../ai-shared/military/defence/index.js';
-import { anchorNodeOf, firstRingNode, towardNode } from '../../../ai-shared/node-geometry.js';
+import { anchorNodeOf, firstRingNode } from '../../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../../context.js';
 import { shipYardProbe } from '../../../footprint/placement/vehicle-site.js';
 import { seatBaseLand } from '../../base.js';
 import { SHIP_JOINERY_SHORE_RINGS, smallestShipHouse } from '../../joinery-role.js';
 import { knownResourceTest, nearestLiveResource } from '../../live-resources.js';
-import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../../sea-route.js';
+import { coastsOf, seaRouteOf } from '../../sea-route.js';
 import { workedDeposit } from '../../workforce/collectors/anchor.js';
 import type { BuildOrderEntry, PlacementAffinity } from '../order/entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from '../order/limits.js';
-import { enemiesSurround } from './front.js';
 import { type BuildReach, buildReach } from './reach.js';
 
 /** Where the spot must land beyond the reach and the acceptor, or null for anywhere. */
@@ -36,7 +35,7 @@ function affinityNode(
   terrain: TerrainGraph,
   player: number,
   owned: readonly Entity[],
-  anchor: HalfCellNode,
+  _anchor: HalfCellNode,
   from: HalfCellNode,
   type: BuildingType,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
@@ -65,16 +64,6 @@ function affinityNode(
     }
     case 'mapCentre':
       return mapCentreNode(terrain);
-    case 'front':
-      // With enemies all around the seat no side is its front, so the pull stays by the base.
-      if (enemiesSurround(world, player, anchor)) return anchor;
-      // The pull points down the road the attacks come by rather than at the middle of the map.
-      return frontEdgeNode(
-        world,
-        owned,
-        anchor,
-        nearestEnemyBuilding(world, ctx, player, anchor)?.node ?? mapCentreNode(terrain),
-      );
   }
 }
 
@@ -153,36 +142,6 @@ function shoreTarget(
       : firstRingNode(anchor.hx, anchor.hy, SHORE_SEARCH_RADIUS_NODES, sailable(theirs));
   const node = across ?? firstRingNode(anchor.hx, anchor.hy, SHORE_SEARCH_RADIUS_NODES, sailable(ours));
   return node === null ? null : { node, home };
-}
-
-/** How far past the settlement's front-most building a `front` placement aims, in Manhattan nodes
- *  (authored): on the settlement's edge toward the enemy, never a whole reach out from it. */
-export const FRONT_EDGE_STEP_NODES = 8;
-
-/**
- * The settlement's edge toward `target`: the seat's building nearest it (the lowest id on a tie, `owned`
- * walking ascending), or `anchor` while none has a node, pushed {@link FRONT_EDGE_STEP_NODES} toward it.
- * Aimed at the enemy itself, the pull would land a whole reach past the nearest building, and each
- * building raised there would carry the next one further, until two seats' barracks met mid-map.
- */
-function frontEdgeNode(
-  world: World,
-  owned: readonly Entity[],
-  anchor: HalfCellNode,
-  target: HalfCellNode,
-): HalfCellNode {
-  let edge = anchor;
-  let edgeDistance = Number.POSITIVE_INFINITY;
-  for (const e of owned) {
-    const node = anchorNodeOf(world, e);
-    if (node === null) continue;
-    const distance = nodeManhattan(node, target);
-    if (distance < edgeDistance) {
-      edge = node;
-      edgeDistance = distance;
-    }
-  }
-  return towardNode(edge, target, FRONT_EDGE_STEP_NODES);
 }
 
 /** The seat's store holding the most units of the good, the lowest id on a tie, as a node, or null while
