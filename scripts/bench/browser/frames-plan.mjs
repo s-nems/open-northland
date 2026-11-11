@@ -66,7 +66,7 @@ export function parseGraphicsKnobs(env = {}) {
     enhancedSampling: filter !== 'off',
     ...(filter === 'off' ? {} : { pixelArtScaler: filter }),
     renderScale,
-    adaptiveDetail: detail === 'automatic',
+    distantDetail: detail === 'full',
   };
   return { filter, renderScale, detail, settings };
 }

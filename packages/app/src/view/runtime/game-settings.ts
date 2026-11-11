@@ -38,7 +38,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setCursorHints: (shown: boolean) => void;
   readonly setGroupNumbersShown: (shown: boolean) => void;
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
-  readonly setAdaptiveDetail: (enabled: boolean) => void;
+  readonly setDistantDetail: (enabled: boolean) => void;
   readonly setMinimapFrame: (frame: MenuSettings['minimapFrame']) => void;
   readonly setWeatherEnabled: (enabled: boolean) => void;
   readonly setDayNightShown: (shown: boolean) => void;
@@ -91,7 +91,7 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     if (patch.hoverOutline !== undefined) deps.setHoverOutline(patch.hoverOutline);
     if (patch.cursorHints !== undefined) deps.setCursorHints(patch.cursorHints);
     if (patch.groupNumbers !== undefined) deps.setGroupNumbersShown(patch.groupNumbers);
-    if (patch.adaptiveDetail !== undefined) deps.setAdaptiveDetail(patch.adaptiveDetail);
+    if (patch.distantDetail !== undefined) deps.setDistantDetail(patch.distantDetail);
     if (patch.blood !== undefined) deps.setBloodEnabled(patch.blood);
     if (patch.bonesFade !== undefined) deps.setBonesFade(patch.bonesFade);
     if (patch.weather !== undefined) deps.setWeatherEnabled(patch.weather);

@@ -22,8 +22,8 @@ database. The game owns only the mapping in
 | `BENCHMARK`, tier 0 or 1 | Performance | Off | Enhanced shadows, water, environment motion, building grounding, detailed building damage, day and night, weather and post effects disabled |
 | Missing, blocked, failed or fallback detection | Performance | Off | Same as above |
 
-Every profile keeps blood, bone fading, sprite smoothing and
-[less detail when zoomed out](#detail-by-zoom) enabled. Disabling detailed damage
+Every profile keeps blood, bone fading and sprite smoothing enabled and
+[more detail when zoomed out](#detail-by-zoom) disabled. Disabling detailed damage
 retains basic smoke; disabling enhanced shadows retains authored shadows. Render scale stays at 1,
 the frame cap is 60, and HUD/input/audio preferences keep their ordinary defaults.
 xBRZ, Super-xBR and MMPX remain manual choices; automatic selection uses only xBR or Off. The mapping
@@ -61,7 +61,7 @@ a name without one, keep the library's tier.
 | Building grounding / damage | Cached source-pixel analysis, baking and uploads; extra overlays or detailed smoke/flame/debris sprites. | Grounding: on an Intel UHD 770 at 1080p, 1.0 to 1.1 ms of a 13.4 ms dense-town frame with xBR at zoom 1 and 0.35 ms of 6 ms with the filter off, nearly all of it the shade and cover overlays' fill; damage: none above noise without fires in view |
 | Day and night | While a night darkens the scene: the world drawn into a texture with a one-byte lit mask beside it, a half-resolution light map of the house and fire pools, the weather and chrome drawn into it in a second pass, and one composite pass. Light-bearers mark their own quads, so no draws are added. | `magiczny_las` t100000 at 1920×1080, ×3, densest town, night against a flat night: on an Intel UHD 770 0.4 ms CPU and 0.6 ms GPU at zoom 1, 0.9 ms CPU and 1.0 ms GPU at zoom 0.5; on an RTX 4090 0.3 ms CPU and no GPU cost above noise |
 | Post effects | One screen-covering vignette sprite, not a separate render of the world. | Under 1% of the GPU frame |
-| Less detail when zoomed out | Nothing at zoom 0.75 and above; below it, it removes work. One frame rebinds the view when the scale crosses a tier. | See [detail by zoom](#detail-by-zoom) |
+| More detail when zoomed out | Nothing at zoom 0.75 and above; below it, on draws what the detail tiers drop. Off, one frame rebinds the view when the scale crosses a tier. | See [detail by zoom](#detail-by-zoom) |
 | Blood | Combat-event history and visible spray/stain rendering; not a constant full-screen workload. | CPU only: about 0.6 ms a frame at ×3 in a battle, mostly the contact walk of fresh bursts |
 | Bone fading | Age-based opacity. Disabling it retains piles indefinitely. | No cost above noise |
 | Render scale | Every world pixel at the scale squared, and at zoom 1 every sprite magnified. | 1.5 costs about 3.6 times the frame and 2 about 6.5 times; a DPR 2 display at scale 1 about 7 times |
@@ -108,9 +108,9 @@ time, about 5 or 13 ms for the same view, so its per-scenario milliseconds there
 
 ## Detail by zoom
 
-"Less detail when zoomed out" (`adaptiveDetail`, on in every profile) lets the camera scale pick a
-detail tier (`packages/render/src/data/view-detail.ts`). Each tier drops what the one above it did plus
-more, and only narrows the other settings: it never draws what a toggle turned off. Off keeps all
+With "More detail when zoomed out" (`distantDetail`) off, as it is in every profile, the camera scale
+picks a detail tier (`packages/render/src/data/view-detail.ts`). Each tier drops what the one above it did plus
+more, and only narrows the other settings: it never draws what a toggle turned off. On keeps all
 of it at every zoom. The thresholds and the order are our choice; a settler is about 40 world pixels tall, so
 30, 22 and 17 screen pixels at the three thresholds.
 

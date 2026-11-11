@@ -29,7 +29,7 @@ export function enhancementsOf(settings: WorldEnhancements): WorldEnhancements {
   };
 }
 
-/** The renderer's detail mode under the player's adaptive-detail setting. */
-export function detailModeOf(adaptiveDetail: boolean): DetailMode {
-  return adaptiveDetail ? 'automatic' : 'full';
+/** The renderer's detail mode under the player's distant-detail setting. */
+export function detailModeOf(distantDetail: boolean): DetailMode {
+  return distantDetail ? 'full' : 'automatic';
 }

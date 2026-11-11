@@ -68,7 +68,7 @@ describe('first-start graphics settings', () => {
       environmentMotion: true,
       groundedBuildings: true,
       buildingDamage: true,
-      adaptiveDetail: true,
+      distantDetail: false,
       dayNight: true,
       weather: true,
       postFxEnabled: true,

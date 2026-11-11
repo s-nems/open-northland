@@ -201,7 +201,7 @@ export function graphicsSettingsRows(
       'environmentMotion',
       'groundedBuildings',
       'buildingDamage',
-      'adaptiveDetail',
+      'distantDetail',
       'weather',
       'dayNight',
       'blood',

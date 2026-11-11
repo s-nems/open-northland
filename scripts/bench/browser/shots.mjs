@@ -48,8 +48,8 @@ async function capture(checkpoint, origin, outDir) {
     await page.goto(origin);
     const url = new URL(`?${params}`, origin).href;
     // Only the detail knob: every other setting stays what the harness seeds.
-    const { adaptiveDetail } = settings;
-    await restoreCheckpoint(page, { saveText, header, stateHash, url, settings: { adaptiveDetail } });
+    const { distantDetail } = settings;
+    await restoreCheckpoint(page, { saveText, header, stateHash, url, settings: { distantDetail } });
     if (seat !== null)
       await page.evaluate((watched) => {
         const watch = window.__opennorthland.watchSeat;

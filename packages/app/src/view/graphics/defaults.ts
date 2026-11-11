@@ -12,7 +12,7 @@ type GraphicsDefaults = Pick<
   | 'environmentMotion'
   | 'groundedBuildings'
   | 'buildingDamage'
-  | 'adaptiveDetail'
+  | 'distantDetail'
   | 'weather'
   | 'dayNight'
   | 'postFxEnabled'
@@ -62,8 +62,8 @@ export function recommendGraphics(
       environmentMotion: effects,
       groundedBuildings: effects,
       buildingDamage: effects,
-      // Every profile: it costs no picture at the game's own zoom and frees the wide view.
-      adaptiveDetail: true,
+      // Off in every profile: the tiers cost no picture at the game's own zoom and free the wide view.
+      distantDetail: false,
       weather: effects,
       dayNight: effects,
       postFxEnabled: effects,

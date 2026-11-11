@@ -474,7 +474,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     renderer.setSelectionStyle(storedSettings.selectionStyle);
     renderer.setHoverOutline(storedSettings.hoverOutline);
     renderer.setGroupNumbersShown(storedSettings.groupNumbers);
-    renderer.setDetailMode(detailModeOf(storedSettings.adaptiveDetail));
+    renderer.setDetailMode(detailModeOf(storedSettings.distantDetail));
     // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; only a positive value pins.
     const uiScaleParam = floatParam(params, 'uiscale', 0);
     const pinnedUiScale = uiScaleParam > 0 ? uiScaleParam : null;
@@ -1465,7 +1465,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       setHoverOutline: (enabled) => renderer.setHoverOutline(enabled),
       setGroupNumbersShown: (shown) => renderer.setGroupNumbersShown(shown),
       setGraphicsEnhancements: applyWhenWarmed((next) => renderer.setGraphicsEnhancements(next)),
-      setAdaptiveDetail: (enabled) => renderer.setDetailMode(detailModeOf(enabled)),
+      setDistantDetail: (enabled) => renderer.setDetailMode(detailModeOf(enabled)),
       setBloodEnabled: applyWhenWarmed((enabled) => renderer.setBloodEnabled(enabled), turnedOn),
       setBonesFade: (fades) => renderer.setBonesFade(fades),
       setFpsCounterShown: perfReadout.setShown,

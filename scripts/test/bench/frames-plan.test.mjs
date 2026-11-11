@@ -26,11 +26,11 @@ test('the graphics knobs default to xBR at render scale 1 and switch the filter 
     filter: 'xbr',
     renderScale: 1,
     detail: 'automatic',
-    settings: { enhancedSampling: true, pixelArtScaler: 'xbr', renderScale: 1, adaptiveDetail: true },
+    settings: { enhancedSampling: true, pixelArtScaler: 'xbr', renderScale: 1, distantDetail: false },
   });
   const off = parseGraphicsKnobs({ ON_BENCH_BROWSER_FILTER: 'off', ON_BENCH_BROWSER_RENDER_SCALE: '0.5' });
-  assert.deepEqual(off.settings, { enhancedSampling: false, renderScale: 0.5, adaptiveDetail: true });
-  assert.equal(parseGraphicsKnobs({ ON_BENCH_BROWSER_DETAIL: 'full' }).settings.adaptiveDetail, false);
+  assert.deepEqual(off.settings, { enhancedSampling: false, renderScale: 0.5, distantDetail: false });
+  assert.equal(parseGraphicsKnobs({ ON_BENCH_BROWSER_DETAIL: 'full' }).settings.distantDetail, true);
   assert.throws(() => parseGraphicsKnobs({ ON_BENCH_BROWSER_DETAIL: 'some' }), /DETAIL/);
   assert.throws(() => parseGraphicsKnobs({ ON_BENCH_BROWSER_FILTER: 'bilinear' }), /FILTER/);
   assert.throws(() => parseGraphicsKnobs({ ON_BENCH_BROWSER_RENDER_SCALE: '3' }), /RENDER_SCALE/);

@@ -2,8 +2,8 @@
 
 **Area:** render, app · **Focus:** sprite-pool, map-objects, settings · **Priority:** P3
 
-`packages/render/src/data/view-detail.ts` names three tiers below full detail and the Graphics setting
-"Less detail when zoomed out" picks them by camera scale ([what each drops](../../GRAPHICS.md#detail-by-zoom)).
+`packages/render/src/data/view-detail.ts` names three tiers below full detail. With the Graphics setting
+"More detail when zoomed out" off, the camera scale picks them ([what each drops](../../GRAPHICS.md#detail-by-zoom)).
 Two kinds the widest view still pays for in full are not in a tier, and three seams around the tiers
 are approximate.
 
