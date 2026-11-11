@@ -2,6 +2,7 @@ import type { BuildingType } from '@open-northland/data';
 import {
   Age,
   Building,
+  Evicted,
   Marriage,
   Residence,
   Settler,
@@ -198,10 +199,11 @@ export function moveFamilyInto(world: World, ctx: SystemContext, e: Entity, hous
 
 /**
  * Make `e` live in `home` from `tick`, every {@link Residence} write's one path: a move drops the old home,
- * and one into the home it already lives in keeps its move-in tick.
+ * one into the home it already lives in keeps its move-in tick, and either ends an {@link Evicted} claim.
  */
 export function settleIn(world: World, e: Entity, home: Entity, tick: number): void {
   if (world.tryGet(e, Residence)?.home !== home) world.add(e, Residence, { home, since: tick });
+  world.remove(e, Evicted);
 }
 
 /** Total edible units ({@link isFood}) in `house`'s accessible inventory - the family larder. */

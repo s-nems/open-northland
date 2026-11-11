@@ -2,6 +2,7 @@ import type { BuildingType, LodgingWear } from '@open-northland/data';
 import {
   Building,
   CurrentAtomic,
+  Evicted,
   HomeQuality,
   MakingLove,
   ownerOf,
@@ -63,7 +64,7 @@ interface Household {
 /**
  * Unhouse the families of `home` above its base `homeSize`: the one that moved in last first, the higher
  * head id first on a tie, and a couple making a child there only when no other family is left. Each family
- * leaves with a `familyMovedOut` event.
+ * leaves with a `familyMovedOut` event and an {@link Evicted} mark, so the assistant can re-house it.
  */
 function moveOutAboveBase(world: World, ctx: SystemContext, home: Entity, type: BuildingType): void {
   const families = familiesOf(world, home);
@@ -95,6 +96,7 @@ function household(world: World, members: readonly Entity[], wife: Entity | unde
 /** Unhouse `e` and let it out of `home`: a sleep or a meal off the larder there ends with the stay. */
 function leaveHome(world: World, e: Entity, home: Entity): void {
   world.remove(e, Residence);
+  world.add(e, Evicted, { evicted: true });
   if (!isInside(world, e, home)) return;
   const effect = world.tryGet(e, CurrentAtomic)?.effect;
   if (effect?.kind === 'sleep' || (effect?.kind === 'eat' && effect.from === home))

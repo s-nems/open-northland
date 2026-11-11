@@ -33,6 +33,10 @@ export const Wedding = defineComponent<{ partner: Entity; kissing: boolean }>('W
  *  settlers (see `familiesOf`), more while furnished. */
 export const Residence = defineComponent<{ home: Entity; since: number }>('Residence', 'settlers');
 
+/** A settler whose household had to move out of a home when its furniture ran out or was forbidden, and
+ *  has not lived anywhere since. The assistant re-houses such a household whoever it holds. */
+export const Evicted = defineComponent<{ readonly evicted: true }>('Evicted', 'settlers', { simOnly: true });
+
 /**
  * Why a standing child order waits undriven: the wife has no home, it is still a building site, the
  * husband lives in another one, his trade never comes home, or one of them stands on land the home is not on.

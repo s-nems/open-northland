@@ -1,8 +1,10 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  Age,
   addPerson,
   Building,
+  Evicted,
   Female,
   HomeQuality,
   Marriage,
@@ -15,11 +17,14 @@ import { TICKS_PER_SECOND } from '../../../src/core/loop.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import type { TerrainMap } from '../../../src/nav/terrain/index.js';
+import { wearLodging } from '../../../src/systems/family/lodging.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
+import { ctxOf } from '../../fixtures/context.js';
 import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
 
 /** The assistant's "found families" switch: homeless women take the nearest open home, housed single
- *  women wed. The home here holds {@link HOME_SIZE} families, {@link FURNISHED} more while furnished. */
+ *  women wed, and a household that had to move out goes back under a roof. The home here holds
+ *  {@link HOME_SIZE} families, {@link FURNISHED} more while furnished. */
 
 const VIKING = 1;
 const PLAYER = 0;
@@ -110,6 +115,17 @@ function furnish(sim: Simulation, home: Entity, lodging = PIECE): void {
   sim.world.add(home, HomeQuality, { cooking: 0, lodging, piety: 0 });
 }
 
+function childAt(sim: Simulation, x: number): Entity {
+  const e = adultAt(sim, x, false);
+  sim.world.add(e, Age, { ticks: 0, asOf: null });
+  return e;
+}
+
+function marry(sim: Simulation, wife: Entity, husband: Entity, child: Entity | null): void {
+  sim.world.add(wife, Marriage, { spouse: husband, child });
+  sim.world.add(husband, Marriage, { spouse: wife, child });
+}
+
 describe('assistant family founding', () => {
   it('leaves the women alone while the switch is off', () => {
     const sim = simOn();
@@ -178,5 +194,47 @@ describe('assistant family founding', () => {
     beat(sim);
 
     expect(women.map((e) => homeOf(sim, e))).toEqual([home, home, home]);
+  });
+
+  it('moves a family its furniture ran out on into another home, all together', () => {
+    const sim = simOn();
+    const crowded = homeAt(sim, 10);
+    const open = homeAt(sim, 40);
+    furnish(sim, crowded, 1);
+    for (const x of [11, 12]) sim.world.add(adultAt(sim, x, true), Residence, { home: crowded, since: 0 });
+    const wife = adultAt(sim, 13, true);
+    const husband = adultAt(sim, 14, false);
+    const child = childAt(sim, 15);
+    marry(sim, wife, husband, child);
+    for (const e of [wife, husband, child]) sim.world.add(e, Residence, { home: crowded, since: 1 });
+    switchOn(sim);
+
+    wearLodging(sim.world, ctxOf(sim), crowded, 'sleep');
+    expect(homeOf(sim, wife)).toBeUndefined();
+    beat(sim);
+
+    expect([wife, husband, child].map((e) => homeOf(sim, e))).toEqual([open, open, open]);
+    expect([wife, husband, child].some((e) => sim.world.has(e, Evicted))).toBe(false);
+  });
+
+  it('moves an evicted household with no grown woman back in, but no other single man', () => {
+    const sim = simOn();
+    const home = homeAt(sim, 10);
+    furnish(sim, home);
+    const loner = adultAt(sim, 12, false);
+    const widower = adultAt(sim, 14, false);
+    const child = childAt(sim, 15);
+    const late = adultAt(sim, 16, true);
+    marry(sim, late, widower, child);
+    sim.world.destroy(late);
+    const orphan = childAt(sim, 18);
+    const bachelor = adultAt(sim, 20, false);
+    for (const e of [loner, widower, child, orphan]) sim.world.add(e, Evicted, { evicted: true });
+    switchOn(sim);
+
+    beat(sim);
+
+    expect([loner, widower, child, orphan].map((e) => homeOf(sim, e))).toEqual([home, home, home, home]);
+    expect(homeOf(sim, bachelor)).toBeUndefined();
   });
 });

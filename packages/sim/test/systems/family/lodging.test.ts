@@ -5,6 +5,7 @@ import {
   Building,
   ChildOrder,
   CurrentAtomic,
+  Evicted,
   Female,
   HomeQuality,
   MakingLove,
@@ -242,7 +243,10 @@ describe('furniture housing extra families', () => {
     expect(lodging(sim, home)).toBe(0);
     expect(familyCountOf(sim.world, home)).toBe(BASE_FAMILIES);
     expect(stays.map((e) => sim.world.get(e, Residence).home)).toEqual([home, home]);
-    for (const e of [sleeper, wife, husband]) expect(sim.world.has(e, Residence)).toBe(false);
+    for (const e of [sleeper, wife, husband]) {
+      expect(sim.world.has(e, Residence)).toBe(false);
+      expect(sim.world.has(e, Evicted)).toBe(true);
+    }
     // The evicted sleeper wakes and leaves the home it no longer has.
     expect(sim.world.has(sleeper, CurrentAtomic)).toBe(false);
     expect(sim.world.has(sleeper, Resting)).toBe(false);
