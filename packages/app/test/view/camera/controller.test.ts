@@ -467,6 +467,23 @@ describe('createCameraController gestures a modal hands on', () => {
   });
 });
 
+describe('createCameraController wheel direction', () => {
+  it('zooms in with Shift held, when the wheel reports its notch as horizontal scroll', () => {
+    const { ctl } = install();
+    ctl.gestures.wheel({
+      clientX: 400,
+      clientY: 300,
+      deltaX: -1,
+      deltaY: 0,
+      shiftKey: true,
+      preventDefault: () => undefined,
+    } as WheelEvent);
+    for (let i = 0; i < GLIDE_FRAMES; i++) ctl.update(FRAME_MS);
+    expect(ctl.camera().scale ?? 1).toBeGreaterThan(1);
+    ctl.dispose();
+  });
+});
+
 describe('createCameraController input settings', () => {
   it('hides the cursor only while middle-button dragging', () => {
     const { ctl, cursorHidden, move, startMiddleDrag, win } = install();
