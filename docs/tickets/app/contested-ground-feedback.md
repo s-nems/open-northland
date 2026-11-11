@@ -23,6 +23,6 @@ is refused just as silently.
 - Headless: the scene's predicates pass; the banner model reports the contested reason at a node inside
   the disc and none outside, and the reach reason past the town's reach.
 - Browser: pick a house while an enemy band stands near the town. The wash dims a diamond around each
-  enemy soldier, hero and vehicle, not around civilians or a tower archer at his post; the ghost vanishes inside
-  and returns outside; the banner names the reason; the diamond slides with a walking soldier without
-  the rest of the wash flickering.
+  enemy soldier, hero, cart and ship and a wider hexagon around each catapult, not around civilians or a
+  tower archer at his post; the ghost vanishes inside and returns outside; the banner names the reason;
+  the diamond slides with a walking soldier without the rest of the wash flickering.

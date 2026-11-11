@@ -66,10 +66,10 @@ function fighterGrid(): ContesterGrid {
   };
 }
 
-/** A node within `r` map points lies at most `r` rows and `r + 1` half-cell columns off. */
+/** A node within `r` map points lies at most `r` rows and `r` half-cell columns off. */
 function siegeGrid(): ContesterGrid {
   return {
-    edge: CONTESTED_SIEGE_RADIUS_POINTS + 1,
+    edge: CONTESTED_SIEGE_RADIUS_POINTS,
     reaches: (c, hx, hy) => hexDistanceBetween(c.hx, c.hy, hx, hy) <= CONTESTED_SIEGE_RADIUS_POINTS,
     cells: new Map(),
   };
@@ -188,6 +188,7 @@ function scanContestedGround(
 }
 
 function gridContests(grid: ContesterGrid, hx: number, hy: number): boolean {
+  if (grid.cells.size === 0) return false; // most maps have no hostile vehicle in sight
   const cx = coarseOf(hx, grid.edge);
   const cy = coarseOf(hy, grid.edge);
   for (let dx = -1; dx <= 1; dx++) {

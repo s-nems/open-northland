@@ -8,6 +8,7 @@ import {
   Position,
   Settler,
   setDiplomacyStance,
+  Vehicle,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../src/index.js';
@@ -26,8 +27,8 @@ import { grassNodeMap } from '../../fixtures/terrain.js';
 
 /**
  * Contested ground: the placement rule that refuses a site near a hostile army or vehicle, and the
- * `placeBuilding` gate that reads it. A deliberate divergence from the original, which places freely under an enemy
- * army, so nothing here claims fidelity.
+ * `placeBuilding` gate that reads it. A deliberate divergence from the original, which places freely under
+ * an enemy army, so nothing here claims fidelity.
  */
 
 const VIKING = 1;
@@ -41,6 +42,9 @@ const HQ_TYPE = 1;
 const CATAPULT = 5;
 const CATAPULT_JOB = 54;
 const HANDCART = 1;
+/** The weapon arming the catapult's crew, and the catapult weapon class. */
+const CATAPULT_WEAPON = 21;
+const CATAPULT_MAIN_TYPE = 7;
 const RADIUS = CONTESTED_GROUND_RADIUS_NODES;
 
 /** Where the fighter stands in every case. */
@@ -70,13 +74,11 @@ function armedVehicleContent() {
     weapons: [
       ...combatContent.weapons,
       {
-        typeId: 21,
+        typeId: CATAPULT_WEAPON,
         id: 'catapult',
         tribeType: VIKING,
         jobType: CATAPULT_JOB,
-        mainType: 7,
-        minRange: 8,
-        maxRange: 24,
+        mainType: CATAPULT_MAIN_TYPE,
       },
     ],
   });
@@ -177,7 +179,23 @@ describe('contested ground - who contests it', () => {
 
     expect(contestedFor(sim, SEAT, { x: CAMP.x + r, y: CAMP.y })).toBe(true);
     expect(contestedFor(sim, SEAT, { x: CAMP.x + r + 1, y: CAMP.y })).toBe(false);
+    // Off its row the reach is a hexagon, wider than a diamond: r map points here are 1.5 r nodes.
+    expect(contestedFor(sim, SEAT, { x: CAMP.x + r / 2, y: CAMP.y + r })).toBe(true);
+    expect(contestedFor(sim, SEAT, { x: CAMP.x + r / 2 + 1, y: CAMP.y + r })).toBe(false);
     expect(contestedFor(sim, FOE, CAMP)).toBe(false);
+  });
+
+  it('names a catapult in the key of a box its reach touches, and the key moves when it moves', () => {
+    const sim = vehicleSim(CATAPULT);
+    const r = CONTESTED_SIEGE_RADIUS_POINTS;
+    const parked = keyAt(sim, { x: CAMP.x + r, y: CAMP.y });
+    expect(parked).not.toBe('');
+    expect(keyAt(sim, { x: CAMP.x + 4 * r, y: CAMP.y })).toBe('');
+
+    const [catapult] = sim.world.query(Vehicle);
+    if (catapult === undefined) throw new Error('setup: no catapult');
+    Object.assign(sim.world.mut(catapult, Position), positionOfNode(CAMP.x + 2, CAMP.y));
+    expect(keyAt(sim, { x: CAMP.x + r, y: CAMP.y })).not.toBe(parked);
   });
 
   it('an unarmed hostile vehicle contests as a fighter does', () => {
