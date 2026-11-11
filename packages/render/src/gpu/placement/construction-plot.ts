@@ -27,10 +27,15 @@ export interface ConstructionPlotFrame {
 const FALLBACK_COLOR = 0x4a4640;
 const FALLBACK_ALPHA = 0.55;
 const EARTH_ALPHA = 0.94;
-/** The darker lip just inside the outline, where the turned earth meets the grass. */
-const LIP_COLOR = 0x1c130a;
-const LIP_ALPHA = 0.4;
-const LIP_WIDTH = 3;
+/** The earth thinning into the grass past the outline: bands of the same earth stroked along it, widest
+ *  first, each adding its alpha over the ones under it. Round joins swell the corners. Tuned by eye. */
+const FEATHER: readonly { readonly width: number; readonly alpha: number }[] = [
+  { width: 22, alpha: 0.16 },
+  { width: 17, alpha: 0.2 },
+  { width: 12, alpha: 0.28 },
+  { width: 8, alpha: 0.38 },
+  { width: 4, alpha: 0.55 },
+];
 /** Corner rounding cap in world px. */
 const MAX_CORNER_RADIUS = 12;
 
@@ -199,9 +204,17 @@ function fillLoops(context: GraphicsContext, loops: readonly OrderedLoop[], eart
     return;
   }
   // World-space texels: neighbouring plots continue one stretch of earth.
+  for (const band of FEATHER) {
+    context.stroke({
+      texture: earth,
+      textureSpace: 'global',
+      width: band.width,
+      alpha: band.alpha,
+      join: 'round',
+    });
+    for (const loop of loops) context.roundShape(loop.points, MAX_CORNER_RADIUS);
+  }
   context.fill({ texture: earth, textureSpace: 'global' });
-  for (const loop of loops) context.roundShape(loop.points, MAX_CORNER_RADIUS);
-  context.stroke({ color: LIP_COLOR, alpha: LIP_ALPHA, width: LIP_WIDTH, alignment: 1 });
 }
 
 /** Outline every plot afresh and fill them as one shape, the picture the layer's island cache keeps. */
