@@ -338,6 +338,9 @@ export const itSurfaces = {
       buildingDamage: 'Danni agli edifici',
       buildingDamageTip:
         'Tetti rotti, travi scoperte, fumo, fuoco e frammenti volanti. Disattiva per un fumo più semplice e meno lavoro grafico.',
+      distantDetail: 'Più dettagli da lontano',
+      distantDetailTip:
+        "Quando la visuale si allontana, il gioco di solito smette di disegnare ciò che è troppo piccolo da vedere: prima le ombre di coloni e animali, le impronte e l'ondeggiare degli alberi, poi i fumetti dei pensieri, i cuori, le stelle e le ombre degli alberi, e alla visuale più ampia le insegne alle porte. Edifici, coloni e colori delle squadre restano sempre. Attivo mantiene tutto a ogni zoom, il che costa frame rate in un insediamento grande.",
       environmentMotion: "Movimento dell'ambiente",
       environmentMotionTip:
         "Gli alberi che l'originale disegna con un solo fotogramma fermo ondeggiano al vento insieme alla loro ombra, i pesci nuotano in modo fluido e la brezza nella vegetazione propria del progetto è resa più fluida. Coloni e animali mantengono il passo originale e le animazioni originali non ricevono fotogrammi in più. In un salvataggio ripristinato gli alberi restano fermi.",
