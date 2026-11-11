@@ -42,6 +42,7 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     ships: [],
     walkers: [],
     roadAt: () => false,
+    wetAt: () => 0,
     water: NO_WATER,
     selectionStyle: 'ring-white',
     selection: new Set(),

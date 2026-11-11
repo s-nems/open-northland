@@ -1,7 +1,11 @@
 import { ONE, positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import { Container, type Sprite, type TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import type { FootfallGround } from '../../../src/data/effects/index.js';
+import {
+  type FootfallGround,
+  WET_STEP_FRAME_W,
+  WET_STEP_LIFE_TICKS,
+} from '../../../src/data/effects/index.js';
 import { halfCellToScreen } from '../../../src/data/projection/index.js';
 import { FootfallLayer } from '../../../src/gpu/overlays/footfall-layer.js';
 import { TextureCache } from '../../../src/gpu/textures/texture-cache.js';
@@ -66,7 +70,7 @@ function walkerAt(hx: number, hy: number, person = true, extra: Record<string, u
   };
 }
 
-function setup(marksGround = true, footfallGround: FootfallGround | null = ground) {
+function setup(marksGround = true, footfallGround: FootfallGround | null = ground, wetness = 0) {
   const sprites = new Container();
   const layer = new FootfallLayer(sprites, new TextureCache(), sheet);
   layer.setGround(footfallGround);
@@ -75,6 +79,7 @@ function setup(marksGround = true, footfallGround: FootfallGround | null = groun
       snapshot,
       walkers: drawn ? [{ ref: WALKER, marksGround }] : [],
       roadAt: (hx: number, hy: number) => hx === ROAD_HX && hy === ROAD_HY,
+      wetAt: () => wetness,
       elevation: FLAT,
       viewport: VIEW_ALL,
       renderTime,
@@ -235,6 +240,43 @@ describe('FootfallLayer', () => {
       draw(snapshotOf([walkerAt(hx, 2, true, { ...bootsAt(0), PathFollow: { bootsDegree: walked } })], tick));
     shod(4, 10, 0);
     shod(5, 11, ONE);
+    expect(sprites.children).toHaveLength(0);
+  });
+
+  it('splashes a step on rain-wet ground in the ground slot in place of the dust, on a road too, fainter on damp ground', () => {
+    const { layer, sprites, draw } = setup(true, ground, 1);
+    const shod = (hx: number, tick: number) =>
+      draw(snapshotOf([walkerAt(hx, ROAD_HY, true, bootsAt(0))], tick));
+    // Sand: the ground's dust and the boots' dust both give way to one splash.
+    shod(24, 10);
+    shod(25, 11);
+    expect(sprites.children).toHaveLength(0);
+    expect(layer.container.children).toHaveLength(1);
+    const splash = layer.container.children[0] as Sprite;
+    expect(splash.x).toBe(halfCellToScreen(25, ROAD_HY).x);
+    expect(splash.texture.frame.width).toBe(WET_STEP_FRAME_W);
+    const first = splash.texture;
+    shod(25, 14);
+    expect(splash.texture).not.toBe(first);
+    shod(25, 11 + WET_STEP_LIFE_TICKS);
+    expect(layer.container.children).toHaveLength(0);
+
+    // A body that marks no ground still splashes, on a road too; the next node's splash mirrors.
+    const damp = setup(false, null, 0.2);
+    damp.step(ROAD_HX - 1, ROAD_HY, 10);
+    damp.step(ROAD_HX, ROAD_HY, 11);
+    damp.step(ROAD_HX + 1, ROAD_HY, 12);
+    const [onRoad, next] = damp.layer.container.children as Sprite[];
+    expect(onRoad?.alpha).toBeLessThan(splash.alpha);
+    expect(next?.scale.x).toBe(-(onRoad?.scale.x ?? 0));
+  });
+
+  it('keeps the print on wet snow without a splash', () => {
+    const { layer, sprites, step } = setup(true, ground, 1);
+    step(4, 2, 10);
+    step(5, 2, 11);
+    expect(layer.container.children).toHaveLength(1);
+    expect(bobOf(layer.container.children[0] as Sprite)).toBe(221);
     expect(sprites.children).toHaveLength(0);
   });
 });

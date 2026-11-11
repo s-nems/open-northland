@@ -96,6 +96,8 @@ export interface WorldMarksFrame {
   readonly walkers: readonly DrawnWalker[];
   /** Whether a road runs over a node. */
   readonly roadAt: (hx: number, hy: number) => boolean;
+  /** The rain wetness 0..1 the ground shows at a node. */
+  readonly wetAt: (hx: number, hy: number) => number;
   /** The map's water mask the wakes fade off. */
   readonly water: WaterField;
   readonly selection: ReadonlySet<number>;
@@ -282,6 +284,7 @@ export class WorldMarks {
       snapshot: frame.snapshot,
       walkers: detail.footfalls ? frame.walkers : NO_WALKERS,
       roadAt: frame.roadAt,
+      wetAt: frame.wetAt,
       elevation,
       viewport,
       renderTime,

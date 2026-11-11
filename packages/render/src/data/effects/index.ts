@@ -63,3 +63,15 @@ export {
   type WakeMark,
   washMark,
 } from './wake.js';
+export {
+  WET_STEP_ALPHA,
+  WET_STEP_FOOT_X,
+  WET_STEP_FOOT_Y,
+  WET_STEP_FRAME_H,
+  WET_STEP_FRAME_W,
+  WET_STEP_FRAMES,
+  WET_STEP_LIFE_TICKS,
+  wetStepFrame,
+  wetStepStrength,
+  wetStepStrip,
+} from './wet-step.js';

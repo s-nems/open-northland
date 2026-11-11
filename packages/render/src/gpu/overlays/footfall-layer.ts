@@ -22,6 +22,14 @@ import {
   skipsColumnMiddle,
   stepHeadingDegrees,
   stepValency,
+  WET_STEP_ALPHA,
+  WET_STEP_FOOT_X,
+  WET_STEP_FOOT_Y,
+  WET_STEP_FRAME_H,
+  WET_STEP_FRAME_W,
+  WET_STEP_LIFE_TICKS,
+  wetStepFrame,
+  wetStepStrength,
 } from '../../data/effects/index.js';
 import {
   halfCellToScreenX,
@@ -39,6 +47,7 @@ import { layeredLayerFor } from '../sprite-pool/layers/layered.js';
 import type { SpriteSheet } from '../textures/sprite-sheet.js';
 import type { TextureCache } from '../textures/texture-cache.js';
 import { worldBatched } from '../world-batch/batcher.js';
+import { WetStepTextures } from './wet-step-textures.js';
 
 /** One frame's inputs: the pool's drawn walkers and the clock and cull box the marks draw by. */
 export interface FootfallFrame {
@@ -46,6 +55,8 @@ export interface FootfallFrame {
   readonly walkers: readonly DrawnWalker[];
   /** Whether a road runs over a node: a step onto one leaves nothing. */
   readonly roadAt: (hx: number, hy: number) => boolean;
+  /** The rain wetness 0..1 the ground shows at a node. */
+  readonly wetAt: (hx: number, hy: number) => number;
   readonly elevation: ElevationField;
   readonly viewport: Viewport;
   /** Interpolated render clock, `tick + alpha`. */
@@ -71,8 +82,13 @@ const ALPHA_LEVELS = 255;
 const NO_ALPHA_LEVEL = -1;
 const NO_BOB = -1;
 
+/** A mark's kind: what the ground or the boots leave, or the splash of a step on rain-wet ground. */
+type MarkKind = FootfallKind | 'splash';
+
 interface Footfall {
-  readonly kind: FootfallKind;
+  readonly kind: MarkKind;
+  /** A splash's strength 0..1 by the ground's wetness; 1 for every other mark. */
+  readonly strength: number;
   readonly hx: number;
   readonly hy: number;
   readonly valency: number;
@@ -98,6 +114,9 @@ interface Footfall {
  * plays its frames once, a tick each. A human in live boots also kicks up dust on every step, on any
  * ground and road, whatever its age or tribe; on sand an adult so shod raises two. The dust's slow drift
  * and five-unit start height are left out (approximation).
+ *
+ * Our addition: on rain-wet ground every human's step leaves a splash (`data/effects/wet-step.ts`) in
+ * the ground slot and raises no dust, roads included; snow keeps its print and takes no splash.
  */
 export class FootfallLayer {
   readonly container = new Container();
@@ -109,6 +128,7 @@ export class FootfallLayer {
   private lastSnapshot: WorldSnapshot | undefined;
   /** The layer lookup's argument, reused across marks. */
   private readonly lookup = { layer: '', bob: 0 };
+  private readonly splashes = new WetStepTextures();
 
   constructor(
     private readonly spriteLayer: Container,
@@ -126,16 +146,20 @@ export class FootfallLayer {
 
   draw(frame: FootfallFrame): void {
     const binding = this.sheet?.bindings.footfall;
-    if (binding === undefined) return;
     this.track(frame, this.ground);
     for (const mark of this.marks) {
-      const ref = binding[mark.kind];
-      if (ref !== undefined) this.place(mark, ref, frame);
+      if (mark.kind === 'splash') {
+        this.placeSplash(mark, frame);
+        continue;
+      }
+      const ref = binding?.[mark.kind];
+      if (ref !== undefined) this.place(mark, mark.kind, ref, frame);
     }
   }
 
   destroy(): void {
     this.dropMarks();
+    this.splashes.destroy();
     this.container.destroy({ children: true });
   }
 
@@ -191,7 +215,8 @@ export class FootfallLayer {
     for (const ref of this.lastNode.keys()) if (!this.walking.has(ref)) this.lastNode.delete(ref);
   }
 
-  /** Mark the node a step lands on: the boots' dust, then the ground's print or dust. */
+  /** Mark the node a step lands on: a splash on wet ground or else the boots' dust, then the ground's
+   *  print or dust. */
   private land(
     steps: WalkerSteps,
     marksGround: boolean,
@@ -202,22 +227,28 @@ export class FootfallLayer {
   ): void {
     steps.stepping = false;
     const { fromHx, fromHy, hx, hy } = steps;
-    if (readWearsLiveBoots(components)) this.raise('dust', hx, hy, 0, tick, frame.elevation);
-    if (!marksGround || frame.roadAt(hx, hy)) return;
     const kind = ground === null ? undefined : footfallAt(ground, hx, hy);
-    if (kind === undefined) return;
-    const count = this.sheet?.bindings.footfall?.[kind]?.valencies.length ?? 1;
+    const splash = wetStepStrength(frame.wetAt(hx, hy));
+    if (splash > 0) {
+      if (kind !== 'snowSteps') this.raise('splash', hx, hy, 0, tick, frame.elevation, splash);
+    } else if (readWearsLiveBoots(components)) this.raise('dust', hx, hy, 0, tick, frame.elevation);
+    if (!marksGround || frame.roadAt(hx, hy)) return;
+    if (kind === undefined || (kind === 'dust' && splash > 0)) return;
+    const ref = this.sheet?.bindings.footfall?.[kind];
+    if (ref === undefined) return;
+    const count = ref.valencies.length;
     const valency = stepValency(stepHeadingDegrees(fromHx, fromHy, hx, hy), count);
     this.raise(kind, hx, hy, valency, tick, frame.elevation);
   }
 
   private raise(
-    kind: FootfallKind,
+    kind: MarkKind,
     hx: number,
     hy: number,
     valency: number,
     tick: number,
     elevation: ElevationField,
+    strength = 1,
   ): void {
     const x = halfCellToScreenX(hx, hy);
     const groundY = halfCellToScreenY(hy);
@@ -225,6 +256,7 @@ export class FootfallLayer {
     const depth = screenDepth(x, groundY, 'projectile');
     this.marks.push({
       kind,
+      strength,
       hx,
       hy,
       valency,
@@ -248,9 +280,34 @@ export class FootfallLayer {
     this.marks.length = kept;
   }
 
-  private place(mark: Footfall, ref: ParticleRef, frame: FootfallFrame): void {
+  /** Draw a splash's frame for its age; every other node's splash mirrors, so a column of walkers varies. */
+  private placeSplash(mark: Footfall, frame: FootfallFrame): void {
+    const index = wetStepFrame(frame.renderTime - mark.tick);
+    const texture = index < 0 ? undefined : this.splashes.frame(index);
+    let node = mark.node;
+    if (texture === undefined || !isVisible(frame.viewport, mark.x, mark.y)) {
+      if (node !== undefined) node.visible = false;
+      return;
+    }
+    if (node === undefined) {
+      node = worldBatched(new Sprite());
+      node.anchor.set(WET_STEP_FOOT_X / WET_STEP_FRAME_W, WET_STEP_FOOT_Y / WET_STEP_FRAME_H);
+      node.position.set(mark.x, mark.y);
+      node.scale.x = ((mark.hx + mark.hy) & 1) === 0 ? 1 : -1;
+      node.alpha = WET_STEP_ALPHA * mark.strength;
+      this.container.addChild(node);
+      mark.node = node;
+    }
+    if (index !== mark.bob) {
+      node.texture = texture;
+      mark.bob = index;
+    }
+    node.visible = true;
+  }
+
+  private place(mark: Footfall, kind: FootfallKind, ref: ParticleRef, frame: FootfallFrame): void {
     const age = frame.renderTime - mark.tick;
-    const print = mark.kind !== 'dust';
+    const print = kind !== 'dust';
     const alpha = print ? printAlpha(age) : dustAlpha(age, lifeOf(mark, this.sheet));
     let node = mark.node;
     if (alpha <= 0 || !isVisible(frame.viewport, mark.x, mark.y)) {
@@ -293,8 +350,9 @@ export class FootfallLayer {
   }
 }
 
-/** Ticks a mark stays: a print its shown life, the dust its frames once. */
+/** Ticks a mark stays: a print its shown life, the dust its frames once, a splash its own life. */
 function lifeOf(mark: Footfall, sheet: SpriteSheet | undefined): number {
+  if (mark.kind === 'splash') return WET_STEP_LIFE_TICKS;
   if (mark.kind !== 'dust') return PRINT_SHOWN_TICKS;
   return sheet?.bindings.footfall?.dust?.valencies[0]?.length ?? 0;
 }

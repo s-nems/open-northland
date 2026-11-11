@@ -655,6 +655,7 @@ export class WorldRenderer {
       ships: this.pool.shipsAfloat(),
       walkers: this.pool.walkersDrawn(),
       roadAt: this.terrain.roadAt,
+      wetAt: this.weatherGround.wetnessAt,
       water: this.terrain.waterField(),
       selection,
       flagged,

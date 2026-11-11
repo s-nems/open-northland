@@ -262,4 +262,15 @@ describe('weather cover', () => {
     }
     expect(reported).toBeGreaterThan(0);
   });
+
+  it('reads the wetness between two sectors as their blend', () => {
+    const cover = new WeatherCover();
+    expect(cover.wetAt(10, 5)).toBe(0);
+    cover.setField(gridOf([1, 0, 0, 0, 0, 0]));
+    cover.advance(0);
+    // Sector centres sit at nodes 5 and 15.
+    expect(cover.wetAt(5, 5)).toBe(1);
+    expect(cover.wetAt(10, 5)).toBe(0.5);
+    expect(cover.wetAt(15, 5)).toBe(0);
+  });
 });
