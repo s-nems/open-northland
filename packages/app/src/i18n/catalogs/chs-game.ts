@@ -260,7 +260,7 @@ export const chsGame = {
     tradeOffers: '交易报价',
     systemMenuDetails: {
       leaveGame: '离开游戏',
-      restartMission: '重新开始任务',
+      restartMap: '重新开始地图',
       resume: '返回游戏',
       paused: '游戏已暂停',
       multiplayer: '多人游戏仍在进行',
@@ -302,7 +302,7 @@ export const chsGame = {
     quitConfirmNo: '继续游戏',
     playAgain: '再玩一次',
     playAgainConfirm: '从头重新开始这张地图？未保存的进度将会丢失。',
-    playAgainMissionConfirm: '从主地图开始，从头重新开始整个任务？未保存的进度将会丢失。',
+    playAgainMainMapConfirm: '返回主地图并从头重新开始？未保存的进度将会丢失。',
     closeMenu: '关闭',
     saveGame: '保存游戏',
     loadGame: '载入游戏',

@@ -303,7 +303,7 @@ export const deGame = {
     tradeOffers: 'Handelsangebote',
     systemMenuDetails: {
       leaveGame: 'Spiel verlassen',
-      restartMission: 'Mission neu starten',
+      restartMap: 'Karte neu starten',
       resume: 'Zurück zum Spiel',
       paused: 'Spiel pausiert',
       multiplayer: 'Mehrspielerspiel läuft weiter',
@@ -348,8 +348,8 @@ export const deGame = {
     quitConfirmNo: 'Weiterspielen',
     playAgain: 'Erneut spielen',
     playAgainConfirm: 'Diese Karte von vorn beginnen? Nicht gespeicherter Fortschritt geht verloren.',
-    playAgainMissionConfirm:
-      'Die ganze Mission von vorn beginnen, auf ihrer Hauptkarte? Nicht gespeicherter Fortschritt geht verloren.',
+    playAgainMainMapConfirm:
+      'Zur Hauptkarte zurückkehren und sie von vorn beginnen? Nicht gespeicherter Fortschritt geht verloren.',
     closeMenu: 'Schließen',
     saveGame: 'Spiel speichern',
     loadGame: 'Spiel laden',

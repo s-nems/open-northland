@@ -169,13 +169,13 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   const restart =
     offer === undefined
       ? null
-      : button(text.restartMission, GLYPH.replay, () => {
+      : button(text.restartMap, GLYPH.replay, () => {
           void confirm
             .open({
-              title: text.restartMission,
+              title: text.restartMap,
               message: replayQuestion(offer),
               cancel: text.cancel,
-              confirm: text.restartMission,
+              confirm: text.restartMap,
             })
             .then((confirmed) => {
               if (confirmed && !scope.signal.aborted) offer.start();

@@ -192,7 +192,7 @@ import {
 import { otherWorldLoader } from './save-load/other-world.js';
 import { worldScreenshot, worldThumbnail } from './save-load/thumbnail.js';
 import { noteRestartOnLeave } from './settings-restart.js';
-import { createSubMissions, missionReplaySearch, type PrepareSubMission } from './sub-missions.js';
+import { createSubMissions, mainMapReplaySearch, type PrepareSubMission } from './sub-missions.js';
 import { rememberedFog, viewerFog } from './viewer-fog.js';
 import { createWorldEventHandler } from './world-events.js';
 import { createWorldTeardown } from './world-teardown.js';
@@ -469,17 +469,17 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           leaveWorld(`?${search}`);
         };
   // A sub-mission starts from its parent's save, which a fresh boot of its own entry would leave
-  // behind, so its replay plays the whole mission from the main map.
+  // behind, so its replay starts the main map over.
   const replayTarget = sharedClock
     ? null
     : deps.parentSave === undefined
       ? replaySearch(params)
-      : missionReplaySearch(deps.parentSave);
+      : mainMapReplaySearch(deps.parentSave);
   const replay: ReplayOffer | undefined =
     replayTarget === null
       ? undefined
       : {
-          scope: deps.parentSave === undefined ? 'map' : 'mission',
+          scope: deps.parentSave === undefined ? 'thisMap' : 'mainMap',
           start: () => leaveWorld(replayTarget),
         };
 

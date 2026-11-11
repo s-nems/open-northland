@@ -16,9 +16,9 @@ import { clearPendingLoad, storePendingLoad } from './save-load/pending-store.js
 import { relaunchSearch } from './save-load/relaunch.js';
 import type { SavedView } from './save-load/view-state.js';
 
-/** The search that plays a sub-mission's whole mission again: its main map, the outermost parent,
- *  launched as it first was under a new seed. Null when that parent names no world. */
-export function missionReplaySearch(parent: SaveGame): string | null {
+/** The search that starts a sub-mission's main map over: the outermost parent, launched as it first
+ *  was under a new seed. Null when that parent names no world. */
+export function mainMapReplaySearch(parent: SaveGame): string | null {
   let main = parent;
   while (main.parent !== undefined) main = main.parent;
   const search = relaunchSearch(main.header);

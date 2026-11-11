@@ -202,11 +202,11 @@ describe('system menu navigation', () => {
     expect(onQuit).toHaveBeenCalledOnce();
   });
 
-  it('restarts the mission only after its confirmation, and offers no restart without a replay', async () => {
+  it('restarts the main map only after its confirmation, and offers no restart without a replay', async () => {
     const start = vi.fn();
-    const { menu } = mount({ restart: { scope: 'mission', start } });
+    const { menu } = mount({ restart: { scope: 'mainMap', start } });
     menu.toggle();
-    const restart = messages().hud.systemMenuDetails.restartMission;
+    const restart = messages().hud.systemMenuDetails.restartMap;
     button(restart).click();
     button(messages().hud.systemMenuDetails.cancel).click();
     await Promise.resolve();
@@ -214,7 +214,7 @@ describe('system menu navigation', () => {
     button(restart).click();
     const question = document.querySelector('[role="alertdialog"]');
     if (question === null) throw new Error('Missing confirmation');
-    expect(question.textContent).toContain(messages().hud.playAgainMissionConfirm);
+    expect(question.textContent).toContain(messages().hud.playAgainMainMapConfirm);
     button(restart, question).click();
     await Promise.resolve();
     expect(start).toHaveBeenCalledOnce();

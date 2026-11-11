@@ -380,7 +380,7 @@ export const PROBLEMS: ArticleGroup = {
                 '"Needs a restart"',
                 'Important',
                 'The changed setting takes effect only after a restart',
-                '"Restart mission" in the Esc menu',
+                '"Restart map" in the Esc menu',
               ],
               [
                 '"Product locked"',

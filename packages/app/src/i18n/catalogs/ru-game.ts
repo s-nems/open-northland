@@ -299,7 +299,7 @@ export const ruGame = {
     tradeOffers: 'Торговые предложения',
     systemMenuDetails: {
       leaveGame: 'Покинуть игру',
-      restartMission: 'Перезапустить миссию',
+      restartMap: 'Перезапустить карту',
       resume: 'Вернуться в игру',
       paused: 'Игра приостановлена',
       multiplayer: 'Сетевая игра продолжается',
@@ -341,8 +341,8 @@ export const ruGame = {
     quitConfirmNo: 'Продолжить игру',
     playAgain: 'Сыграть ещё раз',
     playAgainConfirm: 'Начать эту карту сначала? Несохранённый прогресс будет потерян.',
-    playAgainMissionConfirm:
-      'Начать всю миссию сначала, с её главной карты? Несохранённый прогресс будет потерян.',
+    playAgainMainMapConfirm:
+      'Вернуться на главную карту и начать её сначала? Несохранённый прогресс будет потерян.',
     closeMenu: 'Закрыть',
     saveGame: 'Сохранить игру',
     loadGame: 'Загрузить игру',

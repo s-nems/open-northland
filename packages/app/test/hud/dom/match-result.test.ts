@@ -56,7 +56,7 @@ function setup(
     onOpen: vi.fn(),
     setCameraSuspended: vi.fn(),
     ...(onLoad !== undefined ? { onLoad } : {}),
-    ...(playAgain !== undefined ? { playAgain: { scope: 'map', start: playAgain } } : {}),
+    ...(playAgain !== undefined ? { playAgain: { scope: 'thisMap', start: playAgain } } : {}),
   });
   overlays.push(overlay);
   const body = {

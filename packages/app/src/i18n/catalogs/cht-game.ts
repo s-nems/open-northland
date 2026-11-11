@@ -260,7 +260,7 @@ export const chtGame = {
     tradeOffers: '交易提議',
     systemMenuDetails: {
       leaveGame: '離開遊戲',
-      restartMission: '重新開始任務',
+      restartMap: '重新開始地圖',
       resume: '返回遊戲',
       paused: '遊戲已暫停',
       multiplayer: '多人遊戲持續進行中',
@@ -302,7 +302,7 @@ export const chtGame = {
     quitConfirmNo: '繼續遊戲',
     playAgain: '再玩一次',
     playAgainConfirm: '要從頭重新開始這張地圖嗎？未儲存的進度將會遺失。',
-    playAgainMissionConfirm: '要從主地圖開始，從頭重新開始整個任務嗎？未儲存的進度將會遺失。',
+    playAgainMainMapConfirm: '要返回主地圖並從頭重新開始嗎？未儲存的進度將會遺失。',
     closeMenu: '關閉',
     saveGame: '儲存遊戲',
     loadGame: '載入遊戲',

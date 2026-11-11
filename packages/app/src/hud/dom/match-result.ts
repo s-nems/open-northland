@@ -28,17 +28,16 @@ export interface MatchResultDeps {
   readonly playAgain?: ReplayOffer;
 }
 
-/** A fresh start, as a new match: of the `map` being played, or from a sub-mission of the whole
- *  `mission`, back on its main map. */
+/** A fresh start, as a new match: of the map being played, or from a sub-mission of its main map. */
 export interface ReplayOffer {
-  readonly scope: 'map' | 'mission';
+  readonly scope: 'thisMap' | 'mainMap';
   readonly start: () => void;
 }
 
 /** The question that stands before `offer` starts. */
 export function replayQuestion(offer: ReplayOffer): string {
   const copy = messages().hud;
-  return offer.scope === 'mission' ? copy.playAgainMissionConfirm : copy.playAgainConfirm;
+  return offer.scope === 'mainMap' ? copy.playAgainMainMapConfirm : copy.playAgainConfirm;
 }
 
 /** What may hold the result window back: a lost link owns the page until it returns, and the

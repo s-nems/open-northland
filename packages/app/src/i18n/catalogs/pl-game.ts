@@ -269,7 +269,7 @@ export const plGame = {
     tradeOffers: 'Oferty handlowe',
     systemMenuDetails: {
       leaveGame: 'Opuść grę',
-      restartMission: 'Restart misji',
+      restartMap: 'Restart mapy',
       resume: 'Powrót do gry',
       paused: 'Gra wstrzymana',
       multiplayer: 'Rozgrywka sieciowa trwa dalej',
@@ -312,8 +312,7 @@ export const plGame = {
     quitConfirmNo: 'Graj dalej',
     playAgain: 'Zagraj ponownie',
     playAgainConfirm: 'Zacząć tę mapę od początku? Niezapisany postęp przepadnie.',
-    playAgainMissionConfirm:
-      'Zacząć całą misję od początku, od jej głównej mapy? Niezapisany postęp przepadnie.',
+    playAgainMainMapConfirm: 'Wrócić na mapę główną i zacząć ją od początku? Niezapisany postęp przepadnie.',
     closeMenu: 'Zamknij',
     saveGame: 'Zapisz grę',
     loadGame: 'Wczytaj grę',

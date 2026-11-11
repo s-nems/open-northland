@@ -390,7 +390,7 @@ export const PROBLEMS: ArticleGroup = {
                 '„Neustart nötig“',
                 'Wichtig',
                 'Die geänderte Einstellung wirkt erst nach einem Neustart',
-                '„Mission neu starten“ im Esc-Menü',
+                '„Karte neu starten“ im Esc-Menü',
               ],
               [
                 '„Produkt gesperrt“',

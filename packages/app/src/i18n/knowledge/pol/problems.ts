@@ -375,7 +375,7 @@ export const PROBLEMS: ArticleGroup = {
                 '"Wymaga restartu"',
                 'Pilne',
                 'Zmienione ustawienie zadziała dopiero po restarcie',
-                '"Restart misji" w menu Esc',
+                '"Restart mapy" w menu Esc',
               ],
               [
                 '"Wyrób nieodkryty"',
