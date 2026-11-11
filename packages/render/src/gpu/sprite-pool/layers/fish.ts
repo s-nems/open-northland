@@ -18,6 +18,11 @@ const RIPPLE_X = { rate: 0.002, phase: 1.7, reach: 20 } as const;
 const SWAY_Y = { rate: 0.004, phase: 1.3, reach: 60 } as const;
 const RIPPLE_Y = { rate: 0.019, phase: 0.7, reach: 20 } as const;
 const WAVES = [SWAY_X, RIPPLE_X, SWAY_Y, RIPPLE_Y] as const;
+/** Each wave's place in {@link WAVES}. */
+const SWAY_X_AT = 0;
+const RIPPLE_X_AT = 1;
+const SWAY_Y_AT = 2;
+const RIPPLE_Y_AT = 3;
 
 /** Fish clock units back a fish's heading looks to tell where it swims. */
 const HEADING_LOOKBACK = 0.25;
@@ -91,10 +96,16 @@ export function pushFishSchool(out: LayerBuffer, sheet: SpriteSheet, item: DrawI
   for (let heading = 0; heading < headings; heading++) headingLayers[heading] = undefined;
   for (let fish = 0; fish < count; fish++) {
     const at = fish * FISH_STRIDE;
-    const x = swing(turns, at, 0, NOW) * SWAY_X.reach + swing(turns, at, 1, NOW) * RIPPLE_X.reach;
-    const y = swing(turns, at, 2, NOW) * SWAY_Y.reach + swing(turns, at, 3, NOW) * RIPPLE_Y.reach;
-    const beforeX = swing(turns, at, 0, BEFORE) * SWAY_X.reach + swing(turns, at, 1, BEFORE) * RIPPLE_X.reach;
-    const beforeY = swing(turns, at, 2, BEFORE) * SWAY_Y.reach + swing(turns, at, 3, BEFORE) * RIPPLE_Y.reach;
+    const x =
+      swing(turns, at, SWAY_X_AT, NOW) * SWAY_X.reach + swing(turns, at, RIPPLE_X_AT, NOW) * RIPPLE_X.reach;
+    const y =
+      swing(turns, at, SWAY_Y_AT, NOW) * SWAY_Y.reach + swing(turns, at, RIPPLE_Y_AT, NOW) * RIPPLE_Y.reach;
+    const beforeX =
+      swing(turns, at, SWAY_X_AT, BEFORE) * SWAY_X.reach +
+      swing(turns, at, RIPPLE_X_AT, BEFORE) * RIPPLE_X.reach;
+    const beforeY =
+      swing(turns, at, SWAY_Y_AT, BEFORE) * SWAY_Y.reach +
+      swing(turns, at, RIPPLE_Y_AT, BEFORE) * RIPPLE_Y.reach;
     const heading = fishHeadingIndex(x - beforeX, y - beforeY, headings);
     let layer = headingLayers[heading];
     if (layer === undefined) {
