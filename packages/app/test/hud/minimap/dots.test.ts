@@ -401,7 +401,7 @@ describe('forEachMinimapDot', () => {
       'hero:rims',
       'hero:fills',
     ]);
-    // The halo layer off hands the plot no selection: the plain stacking stays.
+    // Without a selection the plain stacking stays.
     expect(partsOf(world)).not.toContain('civilian:halo');
   });
 

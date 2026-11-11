@@ -488,8 +488,10 @@ function mountMinimapView(
         dotColours = teamColourVersion();
         dirtyDots = true;
       }
-      // A new selection shows at once rather than at the next throttled replot.
-      if (filters.layers.selection && selection.selectionVersion() !== plottedSelection) dirtyDots = true;
+      // A new selection shows without waiting for the throttle, but lets a plot under way finish: it reads
+      // the live set, and an army losing members every few frames would otherwise restart every plot.
+      if (filters.layers.selection && selection.selectionVersion() !== plottedSelection && !plot.pending())
+        dirtyDots = true;
       // A changed view starts over at once; otherwise a plot under way walks on before the gate is asked.
       if (dirtyDots || (!plot.pending() && claimDotReplot(snapshot, seat))) {
         plotSeat = seat;
