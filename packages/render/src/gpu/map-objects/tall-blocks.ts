@@ -235,7 +235,10 @@ export class TallObjectLayer {
     watched: boolean,
   ): boolean {
     const obj = po.obj;
-    const frameIndex = objectFrameIndexAt(obj, clock);
+    // A held loop shows its first frame, the one the sprite pool holds a looping node on, so a tree
+    // keeps its pose when the pool takes it over.
+    const held = !this.lastDetail.motion && obj.once === undefined;
+    const frameIndex = held ? 0 : objectFrameIndexAt(obj, clock);
     const frame = obj.frames[frameIndex];
     if (frame === undefined) return false;
     // Draw at the lifted feet; mint's zIndex kept the pre-lift `obj.y`, so depth is still by map row.
@@ -323,12 +326,16 @@ export class TallObjectLayer {
           !po.attached ||
           texturesChanged ||
           watched !== po.lastWatched ||
-          (watched && animAdvanced && obj.frames.length > 1) ||
+          // A tier without landscape motion holds a loop still; a one-shot clip plays on.
+          (watched && animAdvanced && obj.frames.length > 1 && (detail.motion || obj.once !== undefined)) ||
           (watched && motionAdvanced && sway !== undefined) ||
           (motionSwitched && obj.environmentSway !== undefined) ||
-          // A tier stills a swaying object upright and takes its shadow off.
+          // A tier holds a loop, stills a swaying object upright and takes its shadow off.
           (detailSwitched &&
-            (obj.shadow !== undefined || obj.sway !== undefined || obj.environmentSway !== undefined));
+            (obj.frames.length > 1 ||
+              obj.shadow !== undefined ||
+              obj.sway !== undefined ||
+              obj.environmentSway !== undefined));
         // A ghost holds its frozen pose, still air included.
         if (
           rebind &&
