@@ -298,6 +298,8 @@ export function keepsWaitInside(
   return owner === undefined || !shelterRoom.has(owner) || !takesCoverFrom(world, ctx.content, e, shelters);
 }
 
+const NO_OWNERS: ReadonlySet<number> = new Set();
+
 /**
  * The owners whose shelters on alarm have a place left, read when a pass begins. An idler waiting inside a
  * building is drawn from its wait only by an alarm of such an owner: with every shelter full when the pass
@@ -305,6 +307,7 @@ export function keepsWaitInside(
  * is visited even after the last place went.
  */
 export function ownersWithShelterRoom(shelters: ShelterSites): ReadonlySet<number> {
+  if (shelters.size === 0) return NO_OWNERS;
   const owners = new Set<number>();
   for (const owner of shelters.keys()) if (shelterHasRoom(shelters, owner)) owners.add(owner);
   return owners;

@@ -54,7 +54,7 @@ export function idleStandPeriodOf(world: World, e: Entity): number {
  * order, an alarm, a need turning pressing and the end of the duty ({@link wakeHumanIdler}) end it at
  * once. Only a pressing need that nothing could serve is tried again on the beat rather than every tick.
  * Outdoors and in a company chat the end of the hold would go unseen until the beat, so those re-plan
- * every tick.
+ * every tick, as does every hold of a map AI's seat, which has neither the computer beat nor those wakes.
  */
 export function waitsHoldOnBeat(world: World, e: Entity): boolean {
   if (heldByBeatBlockingHold(world, e)) return false;
@@ -62,7 +62,7 @@ export function waitsHoldOnBeat(world: World, e: Entity): boolean {
   if (idleReplanPeriodOf(world, e) === COMPUTER_IDLE_REPLAN_PERIOD_TICKS) {
     return duty || chatHoldsSettler(world, e);
   }
-  return duty && world.has(e, Resting);
+  return duty && world.has(e, Resting) && !ownedByMachine(world, e);
 }
 
 /** Whether `e` belongs to a machine seat, computer or map AI. */

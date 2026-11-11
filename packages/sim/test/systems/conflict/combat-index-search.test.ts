@@ -77,6 +77,9 @@ const LEAVES_FROM = { x: 12, y: 67 };
 /** A keep anchored on the last node column of a coarse cell, its other walls in the next one. */
 const EDGE_KEEP = { x: 47, y: 20 };
 /** A home that shoots its house bow while on alarm with someone inside, and only then ranks first. */
+/** A catapult on the last node of a coarse cell, its body one node into the next. */
+const CART_AT = { x: 31, y: 20 };
+const CART_BODY_REACH = 1;
 const SHELTER = 32;
 const SHELTER_CAPACITY = 4;
 const HOUSE_BOW = 20;
@@ -526,6 +529,39 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
       ground,
     );
     expect(found).toEqual([{ entity: keep, distance: 1 }]);
+  });
+
+  it("keeps a vehicle on a narrowed band's ground at its body past the ground's own cells", () => {
+    // No building stands here, so nothing widens the ground's box: the catapult's own node is the box's
+    // last, and its body reaches into the coarse cell past it.
+    const sim = mappedSim(1);
+    const cart = createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: CATAPULT,
+      x: CART_AT.x,
+      y: CART_AT.y,
+      tribe: VIKING,
+      owner: P1,
+    });
+    if (cart === null) throw new Error('fixture vehicle missing');
+    const index = new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim));
+    const ground = groundAt(sim, CART_AT.x - GROUND.radius, CART_AT.y);
+    expect(ground.holds(cart)).toBe(true);
+
+    const found = index.nearestFewOfBestRank(
+      CART_AT.x + CART_BODY_REACH + 1,
+      CART_AT.y,
+      0,
+      MAX_RADIUS,
+      () => 0,
+      1,
+      () => true,
+      FEW,
+      P0,
+      TAIL_RINGS,
+      'hex',
+      ground,
+    );
+    expect(found).toEqual([{ entity: cart, distance: 1 }]);
   });
 
   it('scans a query nested in an accept into its own buffer, leaving the outer band intact', () => {

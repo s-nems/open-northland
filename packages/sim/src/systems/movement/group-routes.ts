@@ -90,7 +90,8 @@ export interface LiveBand {
  */
 export class GroupRoutes {
   private readonly routes: GroupRoute[] = [];
-  /** Routes band-mates already walked when the drain began, which a member's own search may end on. */
+  /** Routes band-mates walked when their band was first read this drain, which a member's own search
+   *  may end on. */
   private readonly live: LiveRoute[] = [];
   /** The bands whose live routes were read, per overlay. */
   private readonly liveRead = new Map<BlockOverlay, Set<number>>();

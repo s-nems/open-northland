@@ -305,6 +305,20 @@ describe('a computer seat', () => {
     expect(idleReplanDue(planned[1] ?? -1, key, COMPUTER)).toBe(true);
   });
 
+  it('re-plans a family duty of a map-AI-only seat every tick, indoors too', () => {
+    // No computer beat and none of a human seat's wakes reach it, so a wait would outlast the duty.
+    const sim = newSim();
+    computerSeat(sim, P0, false);
+    const held = woodcutterAt(sim, 10, 10);
+    sim.world.add(held, FamilyDuty, { duty: true });
+    sim.world.add(held, Resting, { at: sim.world.create() });
+    const spy = vi.spyOn(ladder, 'planAdult');
+    for (let tick = 1; tick <= HUMAN; tick++) plannerSystem(sim.world, { ...ctxOf(sim), tick });
+    expect(spy.mock.calls).toHaveLength(HUMAN);
+    spy.mockRestore();
+    expect(sim.world.has(held, IdleStand)).toBe(false);
+  });
+
   it('sends a human seat’s parent stepped out of the house back to work when its duty is stripped', () => {
     const waitsAfterStrip = (computer: boolean): boolean => {
       const sim = newSim();

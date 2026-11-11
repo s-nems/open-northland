@@ -44,8 +44,9 @@ const LAYER_STORES: readonly Component<unknown>[] = [Building, Health, Position,
 
 /** The stores whose membership or value re-classes a unit in the unit layer: a unit is indexed while it
  *  holds a Settler, a Health pool and a Position, and its Owner, tribe, Anger and Engagement target decide
- *  its tallies. The tribe never changes, and an Anger that lapses without a write is re-read every build. A
- *  Position write only moves a unit, so it has its own feed. */
+ *  its tallies. A Person of a fighter trade is a fighter: the trade arrives by the settler trade log, the
+ *  Person by membership. The tribe never changes, and an Anger that lapses without a write is re-read every
+ *  build. A Position write only moves a unit, so it has its own feed. */
 const UNIT_MEMBERSHIP: readonly Component<unknown>[] = [
   Settler,
   Health,

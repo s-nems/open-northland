@@ -10,10 +10,6 @@ export interface Step {
 /** The most edges one node emits: its six lattice edges. */
 const MAX_STEPS = 6;
 
-/**
- * A reusable sink for {@link TerrainGraph.stepsInto}, held in typed slots so a fill writes no object.
- * Contents are valid only until the next fill.
- */
 // Thrown from outside the accessors, which a message built in line would make too large to inline.
 function throwFull(): never {
   throw new Error(`a node emits at most ${MAX_STEPS} steps`);
@@ -23,6 +19,10 @@ function throwStale(index: number, length: number): never {
   throw new Error(`step index ${index} out of range (0..${length - 1})`);
 }
 
+/**
+ * A reusable sink for {@link TerrainGraph.stepsInto}, held in typed slots so a fill writes no object.
+ * Contents are valid only until the next fill.
+ */
 export class StepBuffer {
   private readonly nodes = new Int32Array(MAX_STEPS);
   private readonly costs = new Float64Array(MAX_STEPS);

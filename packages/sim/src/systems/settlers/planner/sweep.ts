@@ -53,9 +53,9 @@ function idleSlotOf(world: World, e: Entity): number {
  * The positioned settlers split by what their planner visit may do, each list in ascending id:
  * `acting` holds every one {@link idleRelease} does not pass by, wildlife included since the release
  * is the only failed-route recovery a parked creature has; `travellingByOwner` holds the quiet walkers
- * only an alarm can divert, by owner; `idle` holds the idlers whose visit does something only on their
- * re-plan beat, alarm or cut-off check, also split by {@link idleSlotOf} and by owner, and
- * `checkedLists` those of them their seat's cut-off check tick may do something for
+ * only an alarm can divert, by owner; the idlers, whose visit does something only on their re-plan beat,
+ * alarm or cut-off check, are filed by {@link idleSlotOf} in `idleBySlot` and by owner in `idleByOwner`, and
+ * `checkedLists` holds those of them their seat's cut-off check tick may do something for
  * ({@link checkedOnCutOff}). The owner split lets an alarm scan only its owner's settlers. Kept across ticks per world from a change feed,
  * which also watches the flags of the yard routes passed by, since losing one makes its walkers act, and
  * rebuilt when the seats' AiControl moves, which picks each idler's period.
