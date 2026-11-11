@@ -428,8 +428,8 @@ export function unloadPeople(
 
 /**
  * Detach `e` ahead of an ordinary order that takes it elsewhere - the original's forced detach before a
- * work, walk, attack or home command. False when the rider may not leave, in which case the order is
- * dropped (`riderRefused` already told the player).
+ * work, walk or attack command. False when the rider may not leave, in which case the order is dropped
+ * (`riderRefused` already told the player).
  */
 export function detachBeforeOrder(world: World, ctx: SystemContext, e: Entity): boolean {
   if (!world.has(e, Rider)) return true;
@@ -437,8 +437,9 @@ export function detachBeforeOrder(world: World, ctx: SystemContext, e: Entity): 
 }
 
 /** The player commands that take a settler away from its vehicle first. Approximation: the original's
- *  list is not confirmed exhaustively. The walk orders reach here only for a rider that is not the commander: the commander's
- *  go to its vehicle (`commander.ts`). */
+ *  list is not confirmed exhaustively, and its home order leaves a rider aboard where `assignHouse` takes
+ *  it off. The walk orders reach here only for a rider that is not the commander: the commander's go to its
+ *  vehicle (`commander.ts`). */
 export function forcesDetach(command: Command): command is Command & { entity: Entity } {
   switch (command.kind) {
     case 'moveUnit':

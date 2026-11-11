@@ -8,6 +8,7 @@ import {
   Militia,
   Position,
   Projectile,
+  Rider,
   SeatOffenders,
   Settler,
   Sheltering,
@@ -278,7 +279,7 @@ describe('computer defence - desperate militia', () => {
     expect(militia(sim)).toEqual([]);
   });
 
-  it('puts a militiaman back to his trade and workplace once the zone has been safe the hold', () => {
+  it('puts a militiaman back to his trade and workplace, off any vehicle, once the zone has been safe the hold', () => {
     const { sim, hq } = town();
     const carriers = crowd(sim, CARRIER_SEATS);
     for (const e of carriers) {
@@ -297,6 +298,10 @@ describe('computer defence - desperate militia', () => {
     const armed = militia(sim);
     expect(armed).toEqual(carriers);
     for (const e of armed) expect(sim.world.has(e, JobAssignment)).toBe(false);
+    // One of them crews a vehicle meanwhile, a stand-in seat: he steps off it to take his post again.
+    const [crew] = armed;
+    if (crew === undefined) throw new Error('setup: nobody was armed');
+    sim.world.add(crew, Rider, { vehicle: hq, boarding: false, leaving: null });
 
     sim.world.destroy(raider);
     decide(sim, STAND_DOWN_TICK - COMPUTER_DECISION_INTERVAL_TICKS);
@@ -307,6 +312,7 @@ describe('computer defence - desperate militia', () => {
     for (const e of armed) {
       expect(sim.world.get(e, Settler).jobType).toBe(CARRIER);
       expect(sim.world.get(e, JobAssignment).workplace).toBe(hq);
+      expect(sim.world.has(e, Rider)).toBe(false);
     }
   });
 

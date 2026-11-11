@@ -30,6 +30,7 @@ import { canChooseJob, needSubjectOf } from '../../../progression/index.js';
 import { hunterJobType, isFighterJob, isHunterJob, sheltersOnAlarm } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { isCarrierJob } from '../../../stores/workplace.js';
+import { detachBeforeOrder } from '../../../vehicles/crew.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../cadence.js';
 import { homeSettlers } from '../../home-roster.js';
 import { desperateZones, type SeatThreat, type ZoneThreat } from './danger.js';
@@ -324,11 +325,14 @@ function standDown(
   const { previousJob, previousWorkplace } = member;
   world.remove(e, Militia);
   const owner = world.get(e, Owner).player;
+  // A man crewing a vehicle steps off it before he takes his post again, as a work order makes him; one
+  // that may not leave keeps his seat and goes back to his trade unposted.
   if (
     previousWorkplace !== null &&
     world.isAlive(previousWorkplace) &&
     world.has(previousWorkplace, Building) &&
-    world.tryGet(previousWorkplace, Owner)?.player === owner
+    world.tryGet(previousWorkplace, Owner)?.player === owner &&
+    detachBeforeOrder(world, ctx, e)
   ) {
     assignWorker(world, ctx, {
       kind: 'assignWorker',
