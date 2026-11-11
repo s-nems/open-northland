@@ -37,7 +37,7 @@ import { interactionCell } from '../../../targets/index.js';
 import { loiterCell } from '../../spacing.js';
 import { deliverableGoodProbe } from '../delivery-targets.js';
 import { haulFlagArea, waitAtHaulFlag } from '../haul-flag-area.js';
-import { planVehicleYard } from '../vehicle-yard.js';
+import { planVehicleYard, settleVehicleYard } from '../vehicle-yard.js';
 import { startCraftAtomic } from './craft.js';
 import {
   type InputShortfall,
@@ -201,6 +201,7 @@ export function planProducer(
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
+  settleVehicleYard(plan, workplace);
   // A running batch is this operator's alone, so it is finished before the rotation's vehicle turn.
   const seats = seatClaims.seatsAt(workplace);
   if (seatClaims.claimRunning(world, ctx, workplace, plan.entity)) {
