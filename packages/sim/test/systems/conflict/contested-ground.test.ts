@@ -1,3 +1,4 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
@@ -12,11 +13,15 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../src/index.js';
 import {
   CONTESTED_GROUND_RADIUS_NODES,
+  CONTESTED_SIEGE_RADIUS_POINTS,
   contestedGroundFor,
 } from '../../../src/systems/conflict/contested-ground.js';
 import { VISION_CADENCE_TICKS } from '../../../src/systems/vision/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
-import { testContent } from '../../fixtures/content.js';
+import { combatContent } from '../../fixtures/content/combat.js';
+import { economyContent } from '../../fixtures/content/economy.js';
+import { societyContent } from '../../fixtures/content/societies.js';
+import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 
 /**
@@ -32,8 +37,10 @@ const ALLY = 4;
 const CIVILIST = 6;
 const SPEARMAN = 32;
 const HQ_TYPE = 1;
-/** `testContent`'s catapult. */
+/** The fixture's catapult and its crew's trade, and its handcart. */
 const CATAPULT = 5;
+const CATAPULT_JOB = 54;
+const HANDCART = 1;
 const RADIUS = CONTESTED_GROUND_RADIUS_NODES;
 
 /** Where the fighter stands in every case. */
@@ -50,6 +57,37 @@ function spawn(sim: Simulation, jobType: number, owner: number, at = CAMP): Enti
   const spawned = [...sim.world.query(Settler)].find((e) => !before.has(e));
   if (spawned === undefined) throw new Error('setup: nothing spawned');
   return spawned;
+}
+
+/** The synthetic content with a weapon for the catapult's crew, so the catapult is armed. */
+function armedVehicleContent() {
+  return parseContentSet({
+    manifest: TEST_MANIFEST,
+    ...economyContent,
+    ...combatContent,
+    ...societyContent,
+    jobs: [...economyContent.jobs, { typeId: CATAPULT_JOB, id: 'vehicle_catapult' }],
+    weapons: [
+      ...combatContent.weapons,
+      {
+        typeId: 21,
+        id: 'catapult',
+        tribeType: VIKING,
+        jobType: CATAPULT_JOB,
+        mainType: 7,
+        minRange: 8,
+        maxRange: 24,
+      },
+    ],
+  });
+}
+
+/** A world with one of `FOE`'s vehicles of `vehicleType`, nobody aboard, parked on the camp. */
+function vehicleSim(vehicleType: number): Simulation {
+  const sim = new Simulation({ seed: 1, content: armedVehicleContent(), map: grassNodeMap(128, 64) });
+  sim.enqueueSetup({ kind: 'createVehicle', vehicleType, ...CAMP, tribe: VIKING, owner: FOE });
+  sim.step();
+  return sim;
 }
 
 function groundOf(sim: Simulation, player: number) {
@@ -133,14 +171,20 @@ describe('contested ground - who contests it', () => {
     expect(contestedFor(sim, SEAT, CAMP)).toBe(false);
   });
 
-  it("an empty hostile vehicle contests the ground as a fighter does, and its owner's own does not", () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(64, 32) });
-    sim.enqueueSetup({ kind: 'createVehicle', vehicleType: CATAPULT, ...CAMP, tribe: VIKING, owner: FOE });
-    sim.step();
+  it('an empty hostile catapult contests as far as it looks for a target, measured in map points', () => {
+    const sim = vehicleSim(CATAPULT);
+    const r = CONTESTED_SIEGE_RADIUS_POINTS;
+
+    expect(contestedFor(sim, SEAT, { x: CAMP.x + r, y: CAMP.y })).toBe(true);
+    expect(contestedFor(sim, SEAT, { x: CAMP.x + r + 1, y: CAMP.y })).toBe(false);
+    expect(contestedFor(sim, FOE, CAMP)).toBe(false);
+  });
+
+  it('an unarmed hostile vehicle contests as a fighter does', () => {
+    const sim = vehicleSim(HANDCART);
 
     expect(contestedFor(sim, SEAT, { x: CAMP.x + RADIUS, y: CAMP.y })).toBe(true);
     expect(contestedFor(sim, SEAT, { x: CAMP.x + RADIUS + 1, y: CAMP.y })).toBe(false);
-    expect(contestedFor(sim, FOE, CAMP)).toBe(false);
   });
 
   it('a dead fighter contests nothing', () => {

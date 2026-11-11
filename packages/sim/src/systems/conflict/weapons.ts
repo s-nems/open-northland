@@ -65,7 +65,7 @@ const reaches = new WeakMap<WeaponType, WeaponReach>();
  * overrides resolve to the last definition in file order.
  */
 export function attackerWeapon(
-  ctx: SystemContext,
+  ctx: Pick<SystemContext, 'content'>,
   tribe: number,
   jobType: number | null,
   wornWeaponTypeId?: number,
@@ -122,7 +122,7 @@ function armingPart(id: number, span: number): number | null {
 }
 
 function resolveWeapon(
-  ctx: SystemContext,
+  ctx: Pick<SystemContext, 'content'>,
   tribe: number,
   jobType: number | null,
   wornWeaponTypeId: number | undefined,
@@ -168,7 +168,7 @@ export type ArmedWith = NonNullable<ReturnType<typeof attackerWeapon>>;
 /** The vehicle's weapon: the row its type's job binds for its tribe (weapon 21 for the catapult's job
  *  54). Null for every unarmed vehicle - the carts and ships. */
 export function vehicleWeapon(
-  ctx: SystemContext,
+  ctx: Pick<SystemContext, 'content'>,
   state: Pick<VehicleStateView, 'vehicleType' | 'tribe'>,
 ): ReturnType<typeof attackerWeapon> {
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);

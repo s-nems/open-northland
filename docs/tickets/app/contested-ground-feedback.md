@@ -2,8 +2,9 @@
 
 **Area:** app · **Priority:** P3
 
-`placeBuilding` refuses a site within `CONTESTED_GROUND_RADIUS_NODES` of a hostile fighter or vehicle the
-seat can see (`packages/sim/src/systems/conflict/contested-ground.ts`). The build-mode wash dims the disc and the
+`placeBuilding` refuses a site within `CONTESTED_GROUND_RADIUS_NODES` of a hostile fighter or unarmed
+vehicle, or `CONTESTED_SIEGE_RADIUS_POINTS` of a catapult, the seat can see
+(`packages/sim/src/systems/conflict/contested-ground.ts`). The build-mode wash dims the disc and the
 ghost hides, but the refusal gives the same signal as a tree or fogged ground: a vanished ghost and a
 swallowed click. A house refused over clear grass eight cells from a soldier the player has not noticed
 is not self-explaining. A site past the seat's site reach (`systems/footprint/placement/site-reach.ts`)
