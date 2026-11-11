@@ -21,7 +21,7 @@ import type {
   Lane,
   OneShot,
   SoundBindings,
-  WielderBlowSound,
+  WielderSounds,
 } from '../types.js';
 
 /**
@@ -151,10 +151,14 @@ interface PendingBase {
 type Pending =
   | (PendingBase & {
       readonly kind: 'sfx';
-      /** The blow's attacker, whose {@link SoundBindings.blowsByWielder} entry replaces `files`. */
+      /** The blow's attacker, whose {@link SoundBindings.wielderSounds} blow replaces `files`. */
       readonly wielder?: number;
     })
-  | (PendingBase & { readonly kind: 'cue' })
+  | (PendingBase & {
+      readonly kind: 'cue';
+      /** The cue's settler, whose {@link SoundBindings.wielderSounds} cue for this group replaces `files`. */
+      readonly wielder?: number;
+    })
   | (Omit<PendingBase, 'files'> & { readonly kind: 'scream'; readonly victim: number })
   | (PendingBase & {
       readonly kind: 'stinger';
@@ -171,12 +175,12 @@ interface EmitterFacts {
   readonly owners: ReadonlyMap<number, number>;
   /** The scream group of each needed entity that is a person with a voice for its class. */
   readonly screams: ReadonlyMap<number, string>;
-  /** The files of each needed wielder whose tribe and job have a blow of their own. */
-  readonly blows: ReadonlyMap<number, readonly string[]>;
+  /** The own sounds of each needed wielder whose tribe and job have them. */
+  readonly wielders: ReadonlyMap<number, WielderSounds>;
 }
 
 /** The positions and owners of exactly the `needed` entities, the scream groups of the `victims` and
- *  the own blows of the `wielders` among them: the emitter set follows the busy population now that
+ *  the own sounds of the `wielders` among them: the emitter set follows the busy population now that
  *  every working settler cues its own animation. */
 function emitterFacts(
   snapshot: WorldSnapshot,
@@ -184,12 +188,12 @@ function emitterFacts(
   needed: ReadonlySet<number>,
   victims: ReadonlySet<number>,
   wielders: ReadonlySet<number>,
-  wielderBlows: readonly WielderBlowSound[],
+  wielderSounds: readonly WielderSounds[],
 ): EmitterFacts {
   const tiles = new Map<number, TilePoint>();
   const owners = new Map<number, number>();
   const screams = new Map<number, string>();
-  const blows = new Map<number, readonly string[]>();
+  const ownSounds = new Map<number, WielderSounds>();
   for (const id of needed) {
     const e = entityById(snapshot, id);
     if (e === undefined) continue;
@@ -200,14 +204,30 @@ function emitterFacts(
     if (wielders.has(id)) {
       const tribe = creatureTribe(e.components);
       const job = settlerJob(e.components);
-      const blow = wielderBlows.find((b) => b.tribe === tribe && b.job === job);
-      if (blow !== undefined && blow.files.length > 0) blows.set(id, blow.files);
+      const own = wielderSounds.find((w) => w.tribe === tribe && w.job === job);
+      if (own !== undefined) ownSounds.set(id, own);
     }
     if (!victims.has(id)) continue;
     const scream = humanVoicesOf(index, e)?.scream;
     if (scream !== undefined) screams.set(id, scream);
   }
-  return { tiles, owners, screams, blows };
+  return { tiles, owners, screams, wielders: ownSounds };
+}
+
+/** The files a wielder sounds a pending blow or cue with instead of its own, or undefined to keep them. */
+function wielderFiles(
+  p: Pending,
+  facts: EmitterFacts | null,
+  index: SoundIndex,
+): readonly string[] | undefined {
+  if ((p.kind !== 'sfx' && p.kind !== 'cue') || p.wielder === undefined) return undefined;
+  const own = facts?.wielders.get(p.wielder);
+  if (own === undefined) return undefined;
+  if (p.kind === 'sfx') return own.blow !== undefined && own.blow.length > 0 ? own.blow : undefined;
+  for (const [group, files] of Object.entries(own.cues ?? {})) {
+    if (files.length > 0 && groupFiles(index, group) === p.files) return files;
+  }
+  return undefined;
 }
 
 /**
@@ -295,7 +315,9 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
   const neededIds = new Set<number>();
   const victims = new Set<number>();
   const wielders = new Set<number>();
-  const wielderBlows = bindings.blowsByWielder ?? [];
+  const wielderSounds = bindings.wielderSounds ?? [];
+  const wielderBlows = wielderSounds.some((w) => w.blow !== undefined);
+  const wielderCues = wielderSounds.some((w) => w.cues !== undefined);
   for (const ev of events) {
     if ((ev.kind === 'playerWon' || ev.kind === 'playerDefeated') && ev.notificationAlreadySent === true)
       continue;
@@ -304,7 +326,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     const offScreen = node !== null && spatial === null;
     // A blow names its impact by the weapon's listed id, and the struck body screams in its own voice.
     if (spatial !== null) {
-      const weaponSound = weaponSoundPending(ev, spatial, index, terrain, wielderBlows.length > 0);
+      const weaponSound = weaponSoundPending(ev, spatial, index, terrain, wielderBlows);
       if (weaponSound !== null) {
         if (weaponSound.wielder !== undefined) {
           neededIds.add(weaponSound.wielder);
@@ -327,7 +349,15 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       const id = eventEntity(ev);
       if (files !== undefined && files.length > 0 && id !== undefined) {
         neededIds.add(id);
-        pending.push({ kind: 'cue', files, key: eventKey(ev), spatial: null, entity: id });
+        if (wielderCues) wielders.add(id);
+        pending.push({
+          kind: 'cue',
+          files,
+          key: eventKey(ev),
+          spatial: null,
+          entity: id,
+          ...(wielderCues ? { wielder: id } : {}),
+        });
       }
       continue;
     }
@@ -394,17 +424,18 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
   // Pass 2: place the entity events and spatialise every pending one (off-screen or position-less →
   // silent); the fog hides only a cue already on screen.
   const facts =
-    neededIds.size > 0 ? emitterFacts(snapshot, index, neededIds, victims, wielders, wielderBlows) : null;
+    neededIds.size > 0 ? emitterFacts(snapshot, index, neededIds, victims, wielders, wielderSounds) : null;
   for (const p of pending) {
     if (p.kind === 'stinger' && p.ownerEntity !== null) {
       const owner = facts?.owners.get(p.ownerEntity);
       if (owner === undefined || owner !== localPlayer) continue;
     }
     let files: readonly string[];
-    // A wielder's own blow rings at the gain of the impact it replaces.
+    // A wielder's own sound rings at the gain of the one it replaces.
     let gainFiles: readonly string[] | undefined;
-    if (p.kind === 'sfx' && p.wielder !== undefined && facts?.blows.has(p.wielder) === true) {
-      files = facts.blows.get(p.wielder) ?? p.files;
+    const own = wielderFiles(p, facts, index);
+    if (own !== undefined && p.kind !== 'scream') {
+      files = own;
       gainFiles = p.files;
     } else if (p.kind === 'scream') {
       const group = facts?.screams.get(p.victim);

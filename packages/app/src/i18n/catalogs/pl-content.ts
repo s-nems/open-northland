@@ -236,7 +236,7 @@ export const plContent = {
     'mace-blows': {
       title: 'Ciosy buławą',
       summary:
-        'U góry: bizantyjski wojownik z długim mieczem, którego cios brzmi jak buława w stal. Na dole: wiking z długim mieczem z oryginalnym cięciem, do porównania na ucho.',
+        'U góry: bizantyjski wojownik z długim i z krótkim mieczem, obaj z buzdyganem, ze świstem i ciosem stali. Na dole: wiking z długim mieczem z oryginalnym cięciem, do porównania na ucho.',
     },
     'combat-gestures': {
       title: 'Ciosy i gesty',

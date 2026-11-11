@@ -12,7 +12,7 @@ import type { SoundBank, SoundQuality } from '@open-northland/data';
 import { timedAudioContext } from '../../diag/audio-context.js';
 import type { ContentIr } from '../ir/rows.js';
 import { contentUrl } from '../url.js';
-import { WIELDER_BLOWS } from './wielder-blows.js';
+import { WIELDER_SOUNDS } from './wielder-sounds.js';
 
 /**
  * The audio content boundary: build the {@link SoundDriver} the live loop pumps from the decoded sound
@@ -52,9 +52,9 @@ export function soundIndexOf(ir: ContentIr, sounds: SoundBank): SoundIndex {
   );
 }
 
-/** The event bindings of the game: the bank's own plus the app's {@link WIELDER_BLOWS}. */
+/** The event bindings of the game: the bank's own plus the app's {@link WIELDER_SOUNDS}. */
 export function gameSoundBindings(): SoundBindings {
-  return { ...defaultBindings(), blowsByWielder: WIELDER_BLOWS };
+  return { ...defaultBindings(), wielderSounds: WIELDER_SOUNDS };
 }
 
 /**

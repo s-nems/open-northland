@@ -465,36 +465,59 @@ describe('directAudio combat SFX', () => {
     ]);
   });
 
-  it("sounds a wielder's own blow at the gain of the impact it replaces, and leaves others the listed one", () => {
+  describe("a wielder's own sounds", () => {
     const mace = ['/audio/mace.ogg'];
+    const swing = ['/audio/swing.ogg'];
     const wielder = { tribe: 3, job: 35 };
-    const blow = (attacker: number): SimEvent => ({
-      kind: 'combatHit',
-      damage: 250,
-      targetMaxHealth: 1000,
-      attacker: entity(attacker),
-      target: entity(9),
-      soundType: 82,
-      at,
+    const sounds = { ...wielder, blow: mace, cues: { 'Woodcutter Axe': swing } };
+    /** The fixture snapshot plus the wielder (id 20) and a Viking of the same job (id 21). */
+    const directWithWielders = (events: readonly SimEvent[]) => {
+      const base = snapshotAt(events);
+      const settler = (id: number, tribe: number) => ({
+        id,
+        components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: { tribe, jobType: wielder.job } },
+      });
+      return directAudio({
+        events,
+        snapshot: { ...base, entities: [...base.entities, settler(20, wielder.tribe), settler(21, 1)] },
+        camera,
+        canvasW: CANVAS_W,
+        canvasH: CANVAS_H,
+        index,
+        bindings: { ...bindings, wielderSounds: [sounds] },
+      });
+    };
+
+    it('rings his blow at the gain of the impact it replaces, and leaves others the listed one', () => {
+      const blow = (attacker: number): SimEvent => ({
+        kind: 'combatHit',
+        damage: 250,
+        targetMaxHealth: 1000,
+        attacker: entity(attacker),
+        target: entity(9),
+        soundType: 82,
+        at,
+      });
+      const frame = directWithWielders([blow(20), blow(21)]);
+      const listed = frame.oneShots.find((s) => s.files[0] === 'static/swordhit01.wav');
+      expect(frame.oneShots.map((s) => s.files)).toEqual([mace, ['static/swordhit01.wav']]);
+      expect(frame.oneShots[0]?.gain).toBe(listed?.gain);
     });
-    const events = [blow(20), blow(21)];
-    const base = snapshotAt(events);
-    const settler = (id: number, tribe: number) => ({
-      id,
-      components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: { tribe, jobType: wielder.job } },
+
+    it("replaces only the cue of the group he names, at that group's gain", () => {
+      const cue = (id: number, soundType: number): SimEvent => ({
+        kind: 'atomicSound',
+        entity: entity(id),
+        soundType,
+      });
+      const frame = directWithWielders([cue(20, SOUND_AXE), cue(21, SOUND_AXE), cue(20, SOUND_WATERING_CAN)]);
+      expect(frame.oneShots.map((s) => s.files)).toEqual([
+        swing,
+        ['static/axe01.wav'],
+        ['static/wateringcan.wav'],
+      ]);
+      expect(frame.oneShots[0]?.gain).toBe(frame.oneShots[1]?.gain);
     });
-    const frame = directAudio({
-      events,
-      snapshot: { ...base, entities: [...base.entities, settler(20, wielder.tribe), settler(21, 1)] },
-      camera,
-      canvasW: CANVAS_W,
-      canvasH: CANVAS_H,
-      index,
-      bindings: { ...bindings, blowsByWielder: [{ ...wielder, files: mace }] },
-    });
-    const listed = frame.oneShots.find((s) => s.files[0] === 'static/swordhit01.wav');
-    expect(frame.oneShots.map((s) => s.files)).toEqual([mace, ['static/swordhit01.wav']]);
-    expect(frame.oneShots[0]?.gain).toBe(listed?.gain);
   });
 });
 

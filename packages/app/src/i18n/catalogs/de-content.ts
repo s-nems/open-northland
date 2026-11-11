@@ -239,7 +239,7 @@ export const deContent = {
     'mace-blows': {
       title: 'Streitkolbenhiebe',
       summary:
-        'Oben: ein byzantinischer Langschwertkämpfer, dessen Hieb wie ein Streitkolben auf Stahl klingt. Unten: ein Wikinger-Langschwert mit dem ursprünglichen Schwerthieb, zum Vergleich nach Gehör.',
+        'Oben: der byzantinische Lang- und Kurzschwertkämpfer, beide mit Streitkolben, mit dem Schwung und Hieb von Stahl. Unten: ein Wikinger-Langschwert mit dem ursprünglichen Schwerthieb, zum Vergleich nach Gehör.',
     },
     'combat-gestures': {
       title: 'Schläge und Gesten',

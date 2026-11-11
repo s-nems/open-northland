@@ -96,6 +96,9 @@ const reviewedBinaryAssets = new Set([
   'packages/app/public/audio/mace-hit-2.ogg',
   'packages/app/public/audio/mace-hit-3.ogg',
   'packages/app/public/audio/mace-hit-4.ogg',
+  // The Byzantine mace swing: "metal_swing1.wav" from "Metal Interactions" by qubodup, CC0, from
+  // https://opengameart.org/node/5765, trimmed and levelled as Ogg Opus; notice as above.
+  'packages/app/public/audio/mace-swing.ogg',
   // Original OpenNorthland branding (commissioned art, no original-game material). The masters live
   // in tools/brand/source; `npm run brand` derives the rest, including the README logo above. The
   // Open Graph image and the manifest screenshot also use docs/images/settlement.webp, a capture of

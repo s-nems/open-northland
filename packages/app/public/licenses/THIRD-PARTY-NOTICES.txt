@@ -60,4 +60,10 @@ Mace blows (the Byzantine long-sword soldier's hit, audio/mace-hit-1.ogg to audi
   Modified: each trimmed to start at its strike, levelled to one loudness and encoded as Ogg Opus;
   mace-hit-2.ogg is bing1.wav four semitones lower.
 
+Mace swing (the Byzantine sword soldiers' swing, audio/mace-swing.ogg)
+  "metal_swing1.wav" from "Metal Interactions" by qubodup, dedicated to the public domain under
+  Creative Commons CC0 1.0 Universal, https://creativecommons.org/publicdomain/zero/1.0/.
+  Source: https://opengameart.org/node/5765
+  Modified: trimmed of its 40 ms lead-in, levelled and encoded as Ogg Opus.
+
 The bundled fonts carry their own licenses beside them, under /fonts/ in the same bundle.

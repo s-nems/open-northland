@@ -31,12 +31,13 @@ A siege attack plays "Colossal Boss Battle Theme" ("Blackmoor Colossus") by Matt
 ships it as `packages/app/public/audio/colossal-boss-battle.ogg`, converted from the author's MP3 to
 Ogg Vorbis and lowered by 3 dB; its notice is in `packages/app/public/licenses/THIRD-PARTY-NOTICES.txt`.
 
-The Byzantine long-sword soldier's blow plays "bing1.wav", "clink1.wav" and "clink2.wav" from "Metal
-Impact Sounds" by BMacZero, under Creative Commons CC0 1.0
-(https://creativecommons.org/publicdomain/zero/1.0/), from https://opengameart.org/node/118334. The app
-ships them as `packages/app/public/audio/mace-hit-1.ogg` to `mace-hit-4.ogg` (the second is "bing1.wav"
-four semitones lower), each trimmed to its strike, levelled and encoded as Ogg Opus; their notice is in
-the same file.
+Both Byzantine sword soldiers strike with "bing1.wav", "clink1.wav" and "clink2.wav" from "Metal Impact
+Sounds" by BMacZero (https://opengameart.org/node/118334) and swing with "metal_swing1.wav" from "Metal
+Interactions" by qubodup (https://opengameart.org/node/5765), all under Creative Commons CC0 1.0
+(https://creativecommons.org/publicdomain/zero/1.0/). The app ships them as
+`packages/app/public/audio/mace-hit-1.ogg` to `mace-hit-4.ogg` (the second is "bing1.wav" four semitones
+lower) and `mace-swing.ogg`, each trimmed to its strike or swing, levelled and encoded as Ogg Opus; their
+notice is in the same file.
 
 Text imported from game or mod tables is also generated content, including UI labels. Keep table/id
 bindings in code and load the wording through the pipeline. Project-authored UI text, intentional

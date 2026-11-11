@@ -239,7 +239,7 @@ export const enContent = {
     'mace-blows': {
       title: 'Mace blows',
       summary:
-        'Top: a Byzantine long-sword soldier, whose blow rings as a mace on steel. Bottom: a Viking long sword with the original sword cut, to compare by ear.',
+        'Top: the Byzantine long and short sword, both swinging a mace, ringing as steel on a body. Bottom: a Viking long sword with the original sword cut, to compare by ear.',
     },
     'combat-gestures': {
       title: 'Strikes and gestures',

@@ -267,7 +267,7 @@ export type {
   OrderAnswer,
   SoundBindings,
   VoiceCall,
-  WielderBlowSound,
+  WielderSounds,
 } from './data/types.js';
 export {
   DEFAULT_UNIT_RESPONSES,
