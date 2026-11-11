@@ -257,9 +257,9 @@ describe('pickDoorBadgeRow', () => {
   it('maps a click on each chain band to that row’s settler, and misses beside/above the stack', () => {
     const p = tileToScreen(3, 5);
     const badges = [stack(1, 3, 5)];
-    expect(pickDoorBadgeRow(badges, p.x, p.y - 10)).toBe(40); // base banner emblem
-    expect(pickDoorBadgeRow(badges, p.x, p.y - 30)).toBe(41); // middle disc
-    expect(pickDoorBadgeRow(badges, p.x, p.y - 50)).toBe(42); // carrier pennant on top
+    expect(pickDoorBadgeRow(badges, p.x, p.y - 10)?.ref).toBe(40); // base banner emblem
+    expect(pickDoorBadgeRow(badges, p.x, p.y - 30)?.ref).toBe(41); // middle disc
+    expect(pickDoorBadgeRow(badges, p.x, p.y - 50)?.ref).toBe(42); // carrier pennant on top
     expect(pickDoorBadgeRow(badges, p.x, p.y - 80)).toBeNull(); // above the chain
     expect(pickDoorBadgeRow(badges, p.x + 30, p.y - 10)).toBeNull(); // beside it
   });
@@ -276,7 +276,7 @@ describe('pickDoorBadgeRow', () => {
     const ax = p.x - 6;
     const ay = p.y + 29 - field.liftAt(1, 6);
     expect(badgeAnchor(post, field)).toMatchObject({ x: ax, y: ay }); // the picker's shared anchor
-    expect(pickDoorBadgeRow(badges, ax, ay - 10, field)).toBe(40);
+    expect(pickDoorBadgeRow(badges, ax, ay - 10, field)?.ref).toBe(40);
     expect(pickDoorBadgeRow(badges, p.x, p.y - 10, field)).toBeNull(); // the unlifted spot misses
   });
 
@@ -289,7 +289,7 @@ describe('pickDoorBadgeRow', () => {
     // larger anchor y (the iso frontmost convention) wins.
     const back = stack(1, 3, 4.8, { rows: [{ role: 'single', settler: 7 }] });
     const front = stack(2, 3, 5, { rows: [{ role: 'single', settler: 8 }] });
-    expect(pickDoorBadgeRow([back, front], p.x, p.y - 10)).toBe(8);
+    expect(pickDoorBadgeRow([back, front], p.x, p.y - 10)?.ref).toBe(8);
   });
 
   it('breaks an overlap on the building, not the post, matching what the layer paints', () => {
@@ -302,7 +302,7 @@ describe('pickDoorBadgeRow', () => {
     const frontPost = tileToScreen(3, 7).y + 10;
     expect(rearPost).toBeGreaterThan(frontPost); // the buried chain IS the lower-planted one
     const p = tileToScreen(3, 5);
-    expect(pickDoorBadgeRow([rear, front], p.x, frontPost - 5)).toBe(8); // the front house still wins
+    expect(pickDoorBadgeRow([rear, front], p.x, frontPost - 5)?.ref).toBe(8); // the front house still wins
   });
 });
 
@@ -321,8 +321,8 @@ describe('pickGarrisonFlag', () => {
     const p = tileToScreen(3, 5);
     const badges = [manned(1, 3, 5)];
     const mast = { x: p.x + MAST.dx, y: p.y + MAST.dy };
-    expect(pickGarrisonFlag(badges, mast.x + 20, mast.y - 20)).toBe(1); // mid-cloth, where the stars are
-    expect(pickGarrisonFlag(badges, mast.x, mast.y)).toBe(1); // the mast foot
+    expect(pickGarrisonFlag(badges, mast.x + 20, mast.y - 20)?.ref).toBe(1); // mid-cloth, where the stars are
+    expect(pickGarrisonFlag(badges, mast.x, mast.y)?.ref).toBe(1); // the mast foot
     // A click through the banner used to land on empty ground 230 px above the tower's own box, which
     // clears the selection on the left button and walks the garrison past its tower on the right.
     expect(pickGarrisonFlag(badges, mast.x + 60, mast.y - 20)).toBeNull(); // past the cloth
@@ -341,7 +341,7 @@ describe('pickGarrisonFlag', () => {
     const badges = [tower];
     const lifted = p.y + MAST.dy - field.liftAt(1, 6);
     expect(badgeAnchor(tower, field).mast).toEqual({ x: p.x + MAST.dx, y: lifted });
-    expect(pickGarrisonFlag(badges, p.x + MAST.dx + 20, lifted - 20, field)).toBe(1);
+    expect(pickGarrisonFlag(badges, p.x + MAST.dx + 20, lifted - 20, field)?.ref).toBe(1);
     expect(pickGarrisonFlag(badges, p.x + MAST.dx + 20, p.y + MAST.dy - 20, field)).toBeNull();
 
     const unmanned: DoorBadge = { id: 2, x: ONE, y: 6 * ONE, rows: [{ role: 'carrier', settler: 9 }] };

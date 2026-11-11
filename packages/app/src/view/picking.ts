@@ -212,6 +212,13 @@ export function pickNearestAt(targets: readonly Pickable[], wx: number, wy: numb
   return best;
 }
 
+/** A door marker under the point: the entity it picks, and its building's pre-lift screen y, the depth
+ *  its stack draws at, so a unit with its feet further down the screen draws over it. */
+export interface DoorMarkerPick {
+  readonly ref: number;
+  readonly depthY: number;
+}
+
 /**
  * The settler whose door-badge sign row sits under a world-px point, or `null` if none. Overlapping
  * stacks tie-break on the BUILDING's projected `y`, the key the badge layer sorts drawn stacks by;
@@ -222,9 +229,8 @@ export function pickDoorBadgeRow(
   wx: number,
   wy: number,
   elevation?: ElevationField,
-): number | null {
-  let best: number | null = null;
-  let bestY = Number.NEGATIVE_INFINITY;
+): DoorMarkerPick | null {
+  let best: DoorMarkerPick | null = null;
   for (const badge of badges) {
     if (badge.rows.length === 0) continue;
     const anchor = badgeAnchor(badge, elevation);
@@ -232,10 +238,7 @@ export function pickDoorBadgeRow(
     if (row === null) continue;
     const settler = badge.rows[row]?.settler;
     if (settler === undefined) continue;
-    if (anchor.depthY > bestY) {
-      best = settler;
-      bestY = anchor.depthY;
-    }
+    if (best === null || anchor.depthY > best.depthY) best = { ref: settler, depthY: anchor.depthY };
   }
   return best;
 }
@@ -250,15 +253,13 @@ export function pickGarrisonFlag(
   wx: number,
   wy: number,
   elevation?: ElevationField,
-): number | null {
-  let best: number | null = null;
-  let bestY = Number.NEGATIVE_INFINITY;
+): DoorMarkerPick | null {
+  let best: DoorMarkerPick | null = null;
   for (const badge of badges) {
     const { mast, depthY } = badgeAnchor(badge, elevation);
-    if (mast === undefined || depthY <= bestY) continue;
+    if (mast === undefined || (best !== null && depthY <= best.depthY)) continue;
     if (!hitsGarrisonFlag(wx - mast.x, wy - mast.y)) continue;
-    best = badge.id;
-    bestY = depthY;
+    best = { ref: badge.id, depthY };
   }
   return best;
 }

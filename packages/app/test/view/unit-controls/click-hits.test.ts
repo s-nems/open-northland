@@ -123,6 +123,12 @@ describe('click hit priority', () => {
     expect(selected(ALL)).toBe(SIGN_ROW_SETTLER);
   });
 
+  it('gives a unit standing in front of the house the click over its sign row', () => {
+    const inFront = { ...under(OWNED_UNIT, 'settler'), y: DOOR.y + 2 };
+    expect(selected({ badges: [mannedDoor()], owned: [inFront] })).toBe(OWNED_UNIT);
+    expect(hitsFor({ badges: [mannedDoor()], owned: [inFront] }).doorMarkerAt(CLICK.x, CLICK.y)).toBeNull();
+  });
+
   it('falls to the garrison flag when the door flies no sign chain', () => {
     expect(selected({ ...ALL, badges: [flagOnlyDoor()] })).toBe(GARRISON_TOWER);
   });
@@ -308,3 +314,4 @@ describe('hover selection existence', () => {
     );
   });
 });
+
