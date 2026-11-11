@@ -36,6 +36,7 @@ const TRIBE = 1;
 const SCHOOL = 91;
 const SAWMILL = 2; // the fixture workshop with one carpenter slot
 const HEADQUARTERS = 1; // the fixture store with three collector slots
+const TWIN_MILL = 8; // the fixture workshop with two carpenter slots
 const FORGE = 9; // the fixture workshop whose carpenter crafts planks or the second product
 const COLLECTOR = 1;
 const CARPENTER = 2;
@@ -191,6 +192,18 @@ describe('school graduates', () => {
     expect(sim.world.get(pupil, JobAssignment).workplace).toBe(near);
     expect(sim.world.has(pupil, GraduateWait)).toBe(false);
     expect(sim.world.has(far, JobAssignment)).toBe(false);
+  });
+
+  it('posts a graduate to a workplace nobody of its trade works at before a nearer staffed one', () => {
+    const { sim, pupil, house } = school(COLLECTOR, CARPENTER);
+    postGraduates(sim, true);
+    const staffed = building(sim, TWIN_MILL, { x: 8, y: 12 });
+    const empty = building(sim, TWIN_MILL, { x: 20, y: 20 });
+    const worker = settlerAt(sim, { jobType: CARPENTER, tribe: TRIBE });
+    sim.world.add(worker, Owner, { player: SEAT });
+    sim.world.add(worker, JobAssignment, { workplace: staffed });
+    graduate(sim, pupil, house, CARPENTER);
+    expect(sim.world.get(pupil, JobAssignment).workplace).toBe(empty);
   });
 
   it('posts a graduate to a workplace still under construction', () => {

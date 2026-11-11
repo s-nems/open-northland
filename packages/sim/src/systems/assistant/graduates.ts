@@ -12,14 +12,16 @@ import { isFighterJob } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
+import { assignedWorkers } from '../stores/assigned-workers.js';
 
 /**
  * The assistant's graduate posting, checked once as a settler leaves school in `jobType`: with its owner's
  * switch on, bind it to the nearest of the owner's workplaces with a free slot in that trade it can walk to,
  * ties by entity id. A foundation counts, since a site takes its staff from placement. Returns whether it was
- * posted; with no such slot nothing happens. Where the school teaches the trade several methods, a workplace
- * that crafts one the settler learned wins over a nearer one that does not, and the graduate starts on those
- * methods. A flag gatherer (collector, fisher) is never posted, since its work runs from a flag rather than a
+ * posted; with no such slot nothing happens. A workplace nobody of that trade works at yet wins over any
+ * already staffed one, so a second mill gets its first miller before the first gets its second. Below that,
+ * where the school teaches the trade several methods, a workplace that crafts one the settler learned wins
+ * over a nearer one that does not, and the graduate starts on those methods. A flag gatherer (collector, fisher) is never posted, since its work runs from a flag rather than a
  * building. Source basis: authored, the switch is this project's addition.
  */
 export function postGraduate(
@@ -53,20 +55,24 @@ export function postGraduate(
     : [];
   const regions = routeRegions(world, ctx, terrain);
   let best: Entity | null = null;
+  let bestEmpty = false;
   let bestCrafts = false;
   let bestDistance = Number.POSITIVE_INFINITY;
   // Ascending ids, so the first of equally ranked workplaces wins.
   for (const b of ownedBuildings(world, owner)) {
     if (openWorkerJobFromList(query, b, [jobType]) === null) continue;
+    const empty = !holdsTrade(world, b, jobType);
+    if (bestEmpty && !empty) continue;
     const crafts = craftsAnyAt(world, ctx, b, jobType, methods);
-    if (bestCrafts && !crafts) continue;
+    if (bestEmpty === empty && bestCrafts && !crafts) continue;
     const door = interactionCell(world, ctx, terrain, b, here);
     if (limit !== null && !limit.allowsNode(door)) continue; // posted there, he would stand lost
     // Across water or walls: a bound post never gives up on its route.
     if (terrain.componentOf(door) !== terrain.componentOf(here) || regions.unroutable(here, door)) continue;
     const distance = hexNodeDistance(terrain, here, door);
-    if (crafts !== bestCrafts || distance < bestDistance) {
+    if (empty !== bestEmpty || crafts !== bestCrafts || distance < bestDistance) {
       best = b;
+      bestEmpty = empty;
       bestCrafts = crafts;
       bestDistance = distance;
     }
@@ -74,4 +80,11 @@ export function postGraduate(
   if (best === null) return false;
   bindEmployment(world, ctx, e, best, methods);
   return true;
+}
+
+function holdsTrade(world: World, workplace: Entity, jobType: number): boolean {
+  for (const w of assignedWorkers(world, workplace)) {
+    if (world.tryGet(w, Settler)?.jobType === jobType) return true;
+  }
+  return false;
 }
