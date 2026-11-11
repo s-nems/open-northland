@@ -629,7 +629,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // The druids brew with water: each druid step is followed by a well beside the hut with none in
         // reach.
         wellBeside('work_druid_01', 5),
-        // Beside the barracks: the temple stands with the army it blesses, not on a front of its own.
+        // Beside the barracks, by the base: its aura blesses the men arming there and an army kept home.
         {
           kind: 'place',
           building: 'work_temple',

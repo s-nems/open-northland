@@ -1,13 +1,13 @@
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { type HalfCellNode, hexDistance } from '../../../nav/halfcell.js';
+import { type HalfCellNode, hexDistance, nodeManhattan } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
+import { anchorNodeOf, towardNode } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { rallyNodeOf } from '../../orders/rally-point.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { seatBarracksOf, seatBaseOf } from '../base.js';
-import { enemiesSurround, settlementEdgeToward } from '../build-order/ground/front.js';
+import { enemiesSurround } from '../build-order/ground/front.js';
 import { nearestEnemyBuilding } from '../sea-route.js';
 import { forecastAttackOrigin } from './deadline.js';
 import { type StandGround, standGroundOf } from './temple-station.js';
@@ -15,17 +15,17 @@ import { towerStandToward } from './tower-stand.js';
 
 /** How far the wanted stand may drift from the planted flag before the seat moves it, in hex nodes
  *  (authored): the stand shifts a few nodes with every tower manned or lost, and an army called to a new
- *  flag each time never forms a wave. On magiczny_las a slack just past the flag's own snap moved the
- *  flags of most seats several times an hour. */
+ *  flag each time never forms a wave. */
 const RALLY_MOVE_SLACK_NODES = 16;
 
 /**
  * Where `player`'s seat keeps its barracks' rally flag (owner ruling: the barracks stands by the base and
  * the army gathers on the side the attacks come from, under the towers). The side is where its forecast
- * attacks set out from, else its nearest believed enemy building on the barracks' own land: a rival only
- * ships reach names no side, and the army stays by the door its landings sail from. The stand is the one
- * under the manned towers facing the side ({@link towerStandToward}), and the settlement's edge toward it
- * while no tower is manned. Null without a base or a side, and while enemies surround the seat.
+ * attacks set out from, else its nearest believed enemy building when that stands on the barracks' own
+ * land: a rival only ships reach names no side, and the army stays by the door its landings sail from.
+ * The stand is the one under the manned towers facing the side ({@link towerStandToward}), and the
+ * settlement's edge toward it while no tower is manned and the edge is open ground of that land. Null
+ * otherwise, without a base, and while enemies surround the seat.
  */
 export function rallyStandOf(
   world: World,
@@ -45,7 +45,8 @@ export function rallyStandOf(
   const underTowers = towerStandToward(world, ctx, terrain, owned, baseAt, side, door, ground);
   if (underTowers !== null) return underTowers;
   const edge = settlementEdgeToward(world, owned, baseAt, side);
-  return terrain.nodeAtClamped(edge.hx, edge.hy);
+  const node = terrain.nodeAtClamped(edge.hx, edge.hy);
+  return terrain.isWalkable(node) && terrain.componentOf(node) === terrain.componentOf(door) ? node : null;
 }
 
 /**
@@ -96,4 +97,32 @@ function landRivalOf(
   const sameLand =
     terrain.componentOf(terrain.nodeAtClamped(rival.hx, rival.hy)) === terrain.componentOf(door);
   return sameLand ? rival : null;
+}
+
+/** How far past the settlement's front-most building its edge toward the enemy lies, in Manhattan nodes
+ *  (authored): on the edge, never a whole reach out from it. */
+const EDGE_STEP_NODES = 8;
+
+/**
+ * The settlement's edge toward `target`: the seat's building nearest it (the lowest id on a tie, `owned`
+ * walking ascending), or `anchor` while none has a node, pushed {@link EDGE_STEP_NODES} toward it.
+ */
+function settlementEdgeToward(
+  world: World,
+  owned: readonly Entity[],
+  anchor: HalfCellNode,
+  target: HalfCellNode,
+): HalfCellNode {
+  let edge = anchor;
+  let edgeDistance = Number.POSITIVE_INFINITY;
+  for (const e of owned) {
+    const node = anchorNodeOf(world, e);
+    if (node === null) continue;
+    const distance = nodeManhattan(node, target);
+    if (distance < edgeDistance) {
+      edge = node;
+      edgeDistance = distance;
+    }
+  }
+  return towardNode(edge, target, EDGE_STEP_NODES);
 }

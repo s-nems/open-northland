@@ -145,9 +145,9 @@ export const MILITARY_LINE: BuildLine = {
         ],
       },
     },
-    // By the base, behind the town (owner ruling): its rally flag gathers the army on the side the attacks
-    // come from (`../../military/rally-stand.ts`). Owner ruling: it opens at its own lead, the economy
-    // growing until then.
+    // By the base, behind the town, while its rally flag gathers the army on the side the attacks come
+    // from (`../../military/rally-stand.ts`). Owner ruling: it opens at its own lead, the economy growing
+    // until then.
     {
       kind: 'place',
       building: 'barracks',

@@ -19,6 +19,8 @@ const BARRACKS = { x: 30, y: 40 };
 /** The seat's building nearest the rival: the settlement's edge on that side. */
 const EDGE_HOME = { x: 50, y: 40 };
 const RIVAL_BASE = { x: 110, y: 40 };
+/** Behind the barracks, well past the move slack from the edge stand. */
+const FAR_FROM_STAND = { x: 24, y: 60 };
 
 function setup(): { sim: Simulation; ctx: SystemContext; barracks: Entity } {
   const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(128, 96) });
@@ -66,5 +68,15 @@ describe('rallyOrders', () => {
     sim.step();
     expect(sim.world.has(barracks, RallyPoint)).toBe(true);
     expect(rallyOrders(sim.world, ctx, terrain, SEAT, homeBuildings(sim.world, ctx, SEAT))).toHaveLength(0);
+  });
+
+  it('moves a flag standing far from the stand', () => {
+    const { sim, ctx, barracks } = setup();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    sim.enqueueSetup({ kind: 'setRallyPoint', building: barracks, ...FAR_FROM_STAND });
+    sim.step();
+    const moved = rallyOrders(sim.world, ctx, terrain, SEAT, homeBuildings(sim.world, ctx, SEAT));
+    expect(moved).toMatchObject([{ kind: 'setRallyPoint', building: barracks }]);
   });
 });

@@ -11,7 +11,8 @@ import { TEMPLE_AURA_RANGE } from '../../lifecycle/temple-aura.js';
 import { isFinishedPrayerSite } from '../../readviews/index.js';
 
 // Owner ruling: a seat that owns a temple stations its waiting army inside the temple's aura, where the
-// blessing lifts its soldiers' hitpoints past their max.
+// blessing lifts its soldiers' hitpoints past their max. A seat keeping a rally flag stands its army there
+// instead (`rally-stand.ts`), in the aura only where its tower line's stand reaches it.
 
 /** How far inside the aura's rim the station lies, in hex nodes (authored): a band at the army cap of 150
  *  spreads over one standing place per visual cell to about 17 nodes round its rally, so the whole band

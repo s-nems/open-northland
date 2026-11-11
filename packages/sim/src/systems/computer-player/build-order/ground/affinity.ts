@@ -35,7 +35,6 @@ function affinityNode(
   terrain: TerrainGraph,
   player: number,
   owned: readonly Entity[],
-  _anchor: HalfCellNode,
   from: HalfCellNode,
   type: BuildingType,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
@@ -245,7 +244,7 @@ export function searchCentre(
       continue;
     }
     const from = affinity.kind === 'resource' ? (firstDeposit ?? anchor) : anchor;
-    const node = affinityNode(world, ctx, terrain, player, owned, anchor, from, type, entry, affinity);
+    const node = affinityNode(world, ctx, terrain, player, owned, from, type, entry, affinity);
     if (node === null) continue;
     anchors.push(node);
     if (affinity.kind === 'resource') firstDeposit ??= node;

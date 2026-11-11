@@ -82,12 +82,10 @@ export function runOffensive(
     );
     if (stand !== null) {
       const armed = [...army, ...wave];
+      const unarmed = doorBound(awaitingWeapon, armourWaiting);
       const atStand = rallyAt(world, ctx, terrain, stand, armed);
-      const atDoor = rallyAt(world, ctx, terrain, home, awaitingWeapon);
-      return [
-        ...gatherAt(world, terrain, armed, atStand),
-        ...gatherAt(world, terrain, awaitingWeapon, atDoor),
-      ];
+      const atDoor = rallyAt(world, ctx, terrain, home, unarmed);
+      return [...gatherAt(world, terrain, armed, atStand), ...gatherAt(world, terrain, unarmed, atDoor)];
     }
     const everyone = [...army, ...wave, ...awaitingWeapon];
     const rally = rallyAt(world, ctx, terrain, home, everyone);
@@ -114,7 +112,8 @@ export function runOffensive(
     station ?? home,
     station === null ? [...muster, ...awaitingWeapon] : muster,
   );
-  const doorRally = station === null ? rally : rallyAt(world, ctx, terrain, home, awaitingWeapon);
+  const unarmed = station === null ? awaitingWeapon : doorBound(awaitingWeapon, armourWaiting);
+  const doorRally = station === null ? rally : rallyAt(world, ctx, terrain, home, unarmed);
   // Sorted over the men this decision may actually order, so a wave is never measured at a strength the
   // march cannot fill. A man in transit sits out one decision and is read again once he arrives.
   const free = muster.filter((e) => !spokenFor(world, e));
@@ -172,7 +171,7 @@ export function runOffensive(
     ...launch,
     ...marchOrders(world, terrain, pressOn ? forward : [], objective),
     ...gatherAt(world, terrain, waiting, rally),
-    ...(station === null ? [] : gatherAt(world, terrain, awaitingWeapon, doorRally)),
+    ...(station === null ? [] : gatherAt(world, terrain, unarmed, doorRally)),
   ];
 }
 
@@ -200,6 +199,13 @@ function armedStandOf(
   const at = base === null ? home : interactionCell(world, ctx, terrain, base);
   const blessed = templeStationOf(terrain, ground, at) ?? at;
   return blessed === home ? null : blessed;
+}
+
+/** The men of `awaitingWeapon` called to the barracks door while the armed stand apart from it: those
+ *  still to be armed. A man only waiting for armour keeps his place and takes his fetch order from there,
+ *  since a call to the door would walk him away from the stand and back. */
+function doorBound(awaitingWeapon: readonly Entity[], armourWaiting: ReadonlySet<Entity>): readonly Entity[] {
+  return awaitingWeapon.filter((e) => !armourWaiting.has(e));
 }
 
 /** The node of the rally flag the seat planted for `barracks` (`rally-stand.ts`), or null with none. */

@@ -2,9 +2,9 @@ import { Building, diplomacyStance, mapBriefOf } from '../../../../components/in
 import { contentIndex } from '../../../../core/content-index.js';
 import { intSqrt } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
+import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import { HALF_ROW_PX, NODE_STEP_PX } from '../../../../nav/node-circle.js';
-import { anchorNodeOf, towardNode } from '../../../ai-shared/node-geometry.js';
+import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../../context.js';
 import { seatBaseOf } from '../../base.js';
 import { minutesToTicks } from '../../game-phase.js';
@@ -290,32 +290,4 @@ export function frontLine(
  *  half. */
 function nearestQuotient(a: number, b: number): number {
   return Math.floor((2 * a + b) / (2 * b));
-}
-
-/** How far past the settlement's front-most building its edge toward the enemy lies, in Manhattan nodes
- *  (authored): on the edge, never a whole reach out from it. */
-export const FRONT_EDGE_STEP_NODES = 8;
-
-/**
- * The settlement's edge toward `target`: the seat's building nearest it (the lowest id on a tie, `owned`
- * walking ascending), or `anchor` while none has a node, pushed {@link FRONT_EDGE_STEP_NODES} toward it.
- */
-export function settlementEdgeToward(
-  world: World,
-  owned: readonly Entity[],
-  anchor: HalfCellNode,
-  target: HalfCellNode,
-): HalfCellNode {
-  let edge = anchor;
-  let edgeDistance = Number.POSITIVE_INFINITY;
-  for (const e of owned) {
-    const node = anchorNodeOf(world, e);
-    if (node === null) continue;
-    const distance = nodeManhattan(node, target);
-    if (distance < edgeDistance) {
-      edge = node;
-      edgeDistance = distance;
-    }
-  }
-  return towardNode(edge, target, FRONT_EDGE_STEP_NODES);
 }
