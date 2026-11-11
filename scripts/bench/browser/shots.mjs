@@ -40,14 +40,15 @@ async function capture(checkpoint, origin, outDir) {
   if (seat !== null && !Number.isInteger(seat)) throw new Error('ON_BENCH_BROWSER_SEAT must be a seat');
   await mkdir(outDir, { recursive: true });
   const browser = await openBenchBrowser({ args: ['--mute-audio'] });
-  const report = { checkpoint: resolve(checkpoint), steps, seat, views: {}, errors: [] };
+  const { detail, settings } = parseGraphicsKnobs(process.env);
+  const report = { checkpoint: resolve(checkpoint), steps, seat, detail, views: {}, errors: [] };
   try {
     const page = await openBenchPage(browser);
     page.on('pageerror', (error) => report.errors.push(error.message));
     await page.goto(origin);
     const url = new URL(`?${params}`, origin).href;
     // Only the detail knob: every other setting stays what the harness seeds.
-    const { adaptiveDetail } = parseGraphicsKnobs(process.env).settings;
+    const { adaptiveDetail } = settings;
     await restoreCheckpoint(page, { saveText, header, stateHash, url, settings: { adaptiveDetail } });
     if (seat !== null)
       await page.evaluate((watched) => {
@@ -80,6 +81,12 @@ async function capture(checkpoint, origin, outDir) {
   if (report.errors.length > 0) throw new Error(`browser errors: ${report.errors.join('; ')}`);
 }
 
+/** A capture without this view reads as null; any other read error stands. */
+function missingAsNull(error) {
+  if (error?.code === 'ENOENT') return null;
+  throw error;
+}
+
 async function compare(dirA, dirB) {
   const browser = await openBenchBrowser({ headless: true, args: [] });
   try {
@@ -87,7 +94,7 @@ async function compare(dirA, dirB) {
     for (const view of Object.keys(VIEWS)) {
       const [a, b] = await Promise.all(
         [dirA, dirB].map(async (dir) =>
-          (await readFile(resolve(dir, `${view}.png`)).catch(() => null))?.toString('base64'),
+          (await readFile(resolve(dir, `${view}.png`)).catch(missingAsNull))?.toString('base64'),
         ),
       );
       if (a === undefined || b === undefined) {

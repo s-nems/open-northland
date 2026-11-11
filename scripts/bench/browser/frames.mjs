@@ -83,6 +83,7 @@ const metadata = {
   mode,
   filter: graphics.filter,
   renderScale: graphics.renderScale,
+  detail: graphics.detail,
   watchedSeat,
   cpuThrottle: throttle === 1 ? null : { rate: throttle, page: null, workers: {} },
   os: {
@@ -113,7 +114,7 @@ const writeReport = async () => {
     '',
     `Adapter: ${metadata.hardware?.renderer ?? 'unknown'}.`,
     `Browser: ${metadata.browser?.version ?? 'not started'}${metadata.browser?.cdp ? ` over CDP at ${metadata.browser.cdp}` : ''}.`,
-    `${VIEWPORT.width}x${VIEWPORT.height} at device scale ${DEVICE_SCALE}, art filter ${graphics.filter}, render scale ${graphics.renderScale}; ${seconds} s per window (first-pan ${FIRST_PAN_SECONDS} s); RAF intervals in ms.${metadata.failure ? ` Failed: ${metadata.failure.message}` : ''}`,
+    `${VIEWPORT.width}x${VIEWPORT.height} at device scale ${DEVICE_SCALE}, art filter ${graphics.filter}, render scale ${graphics.renderScale}, detail ${graphics.detail}; ${seconds} s per window (first-pan ${FIRST_PAN_SECONDS} s); RAF intervals in ms.${metadata.failure ? ` Failed: ${metadata.failure.message}` : ''}`,
     '',
     browserWindowTable(metadata.reports),
     '',
