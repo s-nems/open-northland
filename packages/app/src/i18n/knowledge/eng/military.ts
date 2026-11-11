@@ -739,7 +739,8 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'If the target is closer than {{catapult.min}} hexes, the Catapult backs off. If it is farther than {{catapult.max}}, it moves up to {{catapult.bandMin}}-{{catapult.max}} hexes.',
+            'In its {{catapult.min}}-{{catapult.max}} hex reach it fires first at towers, the Headquarters, the Barracks, houses shooting from inside and enemy Catapults, then at archers and other soldiers who shoot, then at the other soldiers, and only then at other houses and people.',
+            'With nothing in reach it backs off from a lone enemy closer than {{catapult.min}} hexes, but stays put when two or more are that close. If the target is farther than {{catapult.max}}, it moves up to {{catapult.bandMin}}-{{catapult.max}} hexes.',
             'It fires only standing still, and only when not touching another vehicle.',
             'You can order it to fire at any spot on the ground. It shoots at a stockade only on orders.',
           ],

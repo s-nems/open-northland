@@ -701,7 +701,8 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '目標近於{{catapult.min}}格時，投石機後撤。目標遠於{{catapult.max}}格時，它會開到{{catapult.bandMin}}-{{catapult.max}}格處。',
+            '在{{catapult.min}}-{{catapult.max}}格射程內，它先打箭塔、大本營、兵營、有人從裡面射擊的房屋和敵方投石機，再打弓箭手等射手，然後是其他士兵，最後才是其他房屋和人。',
+            '射程內沒有目標時，它會從近於{{catapult.min}}格的單個敵人身邊後撤；若有兩個或更多敵人這麼近，它就原地不動。目標遠於{{catapult.max}}格時，它會開到{{catapult.bandMin}}-{{catapult.max}}格處。',
             '只在靜止且不與其他載具接觸時射擊。',
             '可以命令它射擊地面上的任意位置。只有下令它才會打木柵欄。',
           ],

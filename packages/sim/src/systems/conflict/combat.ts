@@ -16,12 +16,10 @@ import { fireFromShelters } from './shelter-fire.js';
 
 // Re-exported so the public surface keeps its single combat import site; the rest of the folder is internal.
 export { REPATH_CADENCE } from './chase.js';
-export {
-  VEHICLE_DEFENCE_LEASH_POINTS,
-  VEHICLE_SCAN_RADIUS_POINTS,
-} from './engage-vehicle.js';
+export { VEHICLE_DEFENCE_LEASH_POINTS } from './engage-vehicle.js';
 export { DEFEND_LEASH_NODES, DEFEND_RADIUS_NODES, IGNORE_LEASH_NODES } from './engagement.js';
 export { SIGHT_RADIUS_NODES } from './targeting.js';
+export { VEHICLE_SCAN_RADIUS_POINTS } from './vehicle-targets.js';
 export { vehicleWeapon } from './weapons.js';
 
 /**

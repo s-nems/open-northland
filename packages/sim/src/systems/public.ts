@@ -87,11 +87,7 @@ export {
 export { REST_CLEARANCE_NODES, STAND_TO_RADIUS_NODES } from './conflict/battle-alert.js';
 export { ATTACK_RETURN_SLACK_NODES, rangedStandoff } from './conflict/chase.js';
 export { CONTESTED_GROUND_RADIUS_NODES } from './conflict/contested-ground.js';
-export {
-  APPROACH_BAND_DEPTH,
-  VEHICLE_DEFENCE_LEASH_POINTS,
-  VEHICLE_SCAN_RADIUS_POINTS,
-} from './conflict/engage-vehicle.js';
+export { APPROACH_BAND_DEPTH, VEHICLE_DEFENCE_LEASH_POINTS } from './conflict/engage-vehicle.js';
 export {
   DEFEND_LEASH_NODES,
   DEFEND_RADIUS_NODES,
@@ -111,6 +107,7 @@ export {
   SIGHT_RADIUS_NODES,
 } from './conflict/targeting.js';
 export { TOWER_RANGE_BONUS_NODES } from './conflict/tower-post.js';
+export { VEHICLE_SCAN_RADIUS_POINTS } from './conflict/vehicle-targets.js';
 export { HOUSE_DAMAGE_PER_WALL_VALENCY } from './conflict/weapons.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { STEPS_PER_UNIT } from './economy/construction.js';

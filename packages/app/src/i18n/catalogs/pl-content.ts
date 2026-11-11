@@ -536,6 +536,11 @@ export const plContent = {
       summary:
         'Cztery obsadzone katapulty stoją parami, każda para na jednym polu, a wroga chata jest w zasięgu. Katapulta nigdy nie strzela z wnętrza innej: każda ze stłoczonych najpierw odjeżdża na własne miejsce, dopiero potem bateria otwiera ogień. Wyślij kilka katapult w jeden punkt, aby zobaczyć, jak trzymają odstęp.',
     },
+    'vehicle-catapult-targets': {
+      title: 'W co katapulta strzela najpierw',
+      summary:
+        'Obsadzona katapulta w postawie ataku ma w zasięgu wrogą wieżę i bliżej stojącego łucznika, a dwaj miecznicy podbiegają i biją w jej kadłub. Katapulta zostaje na miejscu: kamienie lecą najpierw w wieżę, potem w łucznika, a miecznicy przy jej boku są za blisko na kamień. Przed dwoma nie próbuje odjechać; gdy nic już nie ma w zasięgu, po prostu stoi.',
+    },
     'vehicle-catapult-wall': {
       title: 'Katapulta ostrzeliwuje miejsce za palisadą',
       summary:

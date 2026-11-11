@@ -83,6 +83,10 @@ const CATAPULT = 5;
 /** The fixture catapult's `logicsize`: the hex-disc radius its body covers. */
 const CATAPULT_LOGIC_SIZE = 1;
 const HOME = 3;
+const HEADQUARTERS = 4;
+/** A tower whose wall row runs eight map points east of its anchor. */
+const LONG_TOWER = 6;
+const LONG_TOWER_WALLS = [0, 1, 2, 3, 4, 5, 6, 7].map((dx) => ({ dx, dy: 0 }));
 const WALL_TYPE = 1;
 const WALL_HITPOINTS = 100;
 /** The extracted catapult row (`weapons.ini` type 21). */
@@ -137,7 +141,18 @@ function siegeContent(): ContentSet {
       { typeId: ARCHER, id: 'soldier_bow_short' },
       { typeId: CATAPULT_JOB, id: 'vehicle_catapult' },
     ],
-    buildings: [{ typeId: HOME, id: 'home', kind: 'home', hitpoints: 10_000 }],
+    buildings: [
+      { typeId: HOME, id: 'home', kind: 'home', hitpoints: 10_000 },
+      { typeId: HEADQUARTERS, id: 'headquarters', kind: 'storage', hitpoints: 10_000 },
+      {
+        typeId: LONG_TOWER,
+        id: 'long_tower',
+        kind: 'tower',
+        hitpoints: 10_000,
+        workers: [{ jobType: ARCHER, count: 1 }],
+        footprint: { blocked: LONG_TOWER_WALLS },
+      },
+    ],
     landscape: [
       { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
       { typeId: WATER, id: 'water', walkable: false, buildable: false },
@@ -274,10 +289,17 @@ function fighterAt(s: Simulation, hx: number, hy: number, owner: number, jobType
   return e;
 }
 
-function houseAt(s: Simulation, hx: number, hy: number, owner: number, hitpoints = 10_000): Entity {
+function houseAt(
+  s: Simulation,
+  hx: number,
+  hy: number,
+  owner: number,
+  hitpoints = 10_000,
+  buildingType = HOME,
+): Entity {
   const e = s.world.create();
   s.world.add(e, Position, positionOfNode(hx, hy));
-  s.world.add(e, Building, { buildingType: HOME, tribe: VIKING, built: ONE, level: 0 });
+  s.world.add(e, Building, { buildingType, tribe: VIKING, built: ONE, level: 0 });
   s.world.add(e, Health, { hitpoints, max: hitpoints });
   s.world.add(e, Owner, { player: owner });
   return e;
@@ -295,6 +317,12 @@ function catapultAt(s: Simulation, hx: number, hy: number, owner: number, skill 
   expect(seatPassenger(s.world, e, commander)).toBe(true);
   boardRider(s.world, commander, e);
   return e;
+}
+
+/** A hull no run of blows breaks, so a catapult outlasts the men battering it. */
+function toughen(s: Simulation, e: Entity): void {
+  s.world.mut(e, Health).hitpoints = TOUGH_HOUSE;
+  s.world.mut(e, Health).max = TOUGH_HOUSE;
 }
 
 function anchorOf(s: Simulation, e: Entity): HalfCellNode {
@@ -377,6 +405,78 @@ describe('catapult stances and scans', () => {
     expect(s.world.has(catapult, VehicleDrive)).toBe(true);
     const hits = collect(s, 400, ['projectileHit']);
     expect(hits.some((ev) => ev.kind === 'projectileHit' && ev.target === house)).toBe(true);
+  });
+
+  it('takes its mark in the band by rank: headquarters, archer, swordsman, house, the nearer one or not', () => {
+    // Each case: a nearer enemy 10 map points east and a farther one of a better rank 20 points east.
+    const cases: { near: (s: Simulation) => Entity; far: (s: Simulation) => Entity }[] = [
+      {
+        near: (s) => fighterAt(s, 16, 8, P2, ARCHER),
+        far: (s) => houseAt(s, 26, 8, P2, 10_000, HEADQUARTERS),
+      },
+      { near: (s) => fighterAt(s, 16, 8, P2), far: (s) => fighterAt(s, 26, 8, P2, ARCHER) },
+      { near: (s) => houseAt(s, 16, 8, P2), far: (s) => fighterAt(s, 26, 8, P2) },
+    ];
+    for (const { near, far } of cases) {
+      const s = sim(grass(40, 12));
+      const catapult = catapultAt(s, 6, 8, P1);
+      near(s);
+      const mark = far(s);
+      s.run(2);
+      expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: mark });
+    }
+  });
+
+  it('shoots what its band reaches rather than backing off from an enemy at its side', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 8, 8, P1);
+    toughen(s, catapult);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    fighterAt(s, 11, 8, P2); // 3 map points: inside the near reach
+    const house = houseAt(s, 24, 8, P2, TOUGH_HOUSE); // 16 map points: inside the band
+    let drove = false;
+    const launched = collect(s, SHOT_TICKS, ['projectileLaunched'], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    expect(drove).toBe(false);
+    expect(launched.length).toBeGreaterThan(0);
+    expect(launched.every((ev) => ev.kind === 'projectileLaunched' && ev.target === house)).toBe(true);
+  });
+
+  it('judges a house by its nearest wall: one reaching inside the near reach is not in its band', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 24, 8, P1);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    houseAt(s, 29, 8, P2, TOUGH_HOUSE, LONG_TOWER); // walls 5..12 map points east
+    const archer = fighterAt(s, 9, 8, P2, ARCHER); // 15 map points west
+    let drove = false;
+    const launched = collect(s, SHOT_TICKS, ['projectileLaunched'], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    const commander = vehicleCommander(s.world.get(catapult, Vehicle));
+    const stones = launched.filter((ev) => ev.kind === 'projectileLaunched' && ev.shooter === commander);
+    expect(drove).toBe(false);
+    expect(stones.length).toBeGreaterThan(0);
+    expect(stones.every((ev) => ev.kind === 'projectileLaunched' && ev.target === archer)).toBe(true);
+  });
+
+  it('with nothing in its band backs off from a lone enemy at its side, and stands once a second joins', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 20, 8, P1);
+    toughen(s, catapult);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    fighterAt(s, 23, 8, P2);
+    s.run(3);
+    expect(s.world.has(catapult, VehicleDrive)).toBe(true);
+    const at = anchorOf(s, catapult);
+    fighterAt(s, at.hx - 2, at.hy, P2);
+    s.run(SHOT_TICKS); // the leg under way ends
+    const stood = anchorOf(s, catapult);
+    expect(hexDistanceBetween(stood.hx, stood.hy, at.hx, at.hy)).toBeLessThanOrEqual(LEG_MAX_POINTS);
+    s.run(SHOT_TICKS);
+    expect(s.world.has(catapult, VehicleDrive)).toBe(false);
+    expect(s.world.get(catapult, Vehicle).attack).toBeNull();
+    expect(anchorOf(s, catapult)).toEqual(stood);
   });
 
   it('never fires while touching another catapult: stacked ones drive apart first, holding or not', () => {
@@ -1030,6 +1130,24 @@ describe('the attack-move march', () => {
     const state = s.world.get(catapult, Vehicle);
     expect(state.march).toBeNull();
     expect(state.attack).toBeNull();
+    expect(s.world.get(catapult, Position)).toEqual(positionOfNode(GOAL.hx, GOAL.hy));
+  });
+
+  it('stands while two enemies at its side press it with nothing in its band, and drives on once they fall', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 4, 8, P1);
+    toughen(s, catapult);
+    const pressing = [fighterAt(s, 8, 8, P2), fighterAt(s, 8, 10, P2)];
+    march(s, catapult, true);
+    s.run(SHOT_TICKS);
+    const stood = anchorOf(s, catapult);
+    s.run(SHOT_TICKS);
+    expect(s.world.has(catapult, VehicleDrive)).toBe(false);
+    expect(anchorOf(s, catapult)).toEqual(stood);
+    expect(hexDistanceBetween(stood.hx, stood.hy, 4, 8)).toBeLessThanOrEqual(LEG_MAX_POINTS);
+    expect(s.world.get(catapult, Vehicle).march?.goal).toEqual(GOAL);
+    for (const e of pressing) s.world.mut(e, Health).hitpoints = 0;
+    runToGoal(s, catapult, GOAL);
     expect(s.world.get(catapult, Position)).toEqual(positionOfNode(GOAL.hx, GOAL.hy));
   });
 

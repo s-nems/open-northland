@@ -540,6 +540,11 @@ export const deContent = {
       summary:
         'Vier bemannte Katapulte stehen paarweise, jedes Paar auf einem Feld, und eine feindliche Hütte ist in Reichweite. Ein Katapult schießt nie aus einem anderen heraus: Jedes übereinanderstehende fährt zuerst auf einen eigenen Platz, erst dann eröffnet die Batterie das Feuer. Schicke mehrere Katapulte auf einen Punkt, um zu sehen, wie sie Abstand halten.',
     },
+    'vehicle-catapult-targets': {
+      title: 'Worauf ein Katapult zuerst schießt',
+      summary:
+        'Ein bemanntes Katapult in Angriffshaltung hat einen feindlichen Turm und einen näheren Bogenschützen in Reichweite, während zwei Schwertkämpfer heranlaufen und auf sein Gestell einschlagen. Es bleibt stehen: Die Steine fliegen zuerst auf den Turm, dann auf den Bogenschützen, und die Schwertkämpfer an seiner Seite sind für einen Stein zu nah. Vor zweien versucht es nicht wegzufahren; ist nichts mehr in Reichweite, steht es einfach.',
+    },
     'vehicle-catapult-wall': {
       title: 'Ein Katapult beschießt einen Ort hinter dem Wall',
       summary:

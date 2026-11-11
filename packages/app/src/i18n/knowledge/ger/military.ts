@@ -739,7 +739,8 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Ist das Ziel näher als {{catapult.min}} Hexfelder, fährt das Katapult weg. Ist es weiter als {{catapult.max}}, rückt es auf {{catapult.bandMin}}-{{catapult.max}} Hexfelder heran.',
+            'In seiner Reichweite von {{catapult.min}}-{{catapult.max}} Hexfeldern schießt es zuerst auf Türme, das Hauptquartier, die Kaserne, Häuser, aus denen geschossen wird, und feindliche Katapulte, dann auf Bogenschützen und andere Schützen, dann auf die übrigen Soldaten und erst zuletzt auf andere Häuser und Leute.',
+            'Ist nichts in Reichweite, fährt es vor einem einzelnen Feind weg, der näher als {{catapult.min}} Hexfelder steht; stehen zwei oder mehr so nah, bleibt es stehen. Ist das Ziel weiter als {{catapult.max}}, rückt es auf {{catapult.bandMin}}-{{catapult.max}} Hexfelder heran.',
             'Es schießt nur im Stand und nur, wenn es kein anderes Fahrzeug berührt.',
             'Du kannst es auf eine beliebige Stelle am Boden schießen lassen. Palisaden beschießt es nur auf Befehl.',
           ],

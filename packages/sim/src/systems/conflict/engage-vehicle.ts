@@ -1,7 +1,6 @@
 import type { VehicleType, WeaponType } from '@open-northland/data';
 import {
   Health,
-  Owner,
   ownerOf,
   Position,
   Projectile,
@@ -39,22 +38,21 @@ import {
   vehicleBodyClear,
   vehicleRestBlocks,
 } from '../vehicles/movement.js';
-import { exploreAround, playerSeesEntity, SIEGE_SHOT_SIGHT_NODES } from '../vision/index.js';
+import { exploreAround, SIEGE_SHOT_SIGHT_NODES } from '../vision/index.js';
 import type { CombatPass } from './pass.js';
 import { mapPointDistance, shotFlightTicks, shotLandDelay } from './shot-aim.js';
 import { combatTargetNode } from './target-node.js';
 import { isValidOrderedTarget, isValidTarget } from './targeting.js';
-import { givenUpTargetVeto, noteUnreachableTarget } from './unreachable-targets.js';
+import { noteUnreachableTarget } from './unreachable-targets.js';
+import { scanForTarget } from './vehicle-targets.js';
 import { attackClipTiming, vehicleWeapon } from './weapons.js';
 
-// The siege vehicle's fight (docs/formats/VEHICLES.md "Catapult"): a stance-driven scan, a target it
-// backs off from, closes on or fires at, and the shot itself, a ground burst the projectile system
-// flies to its scattered landing node. An attack-move's march is driven from here too. Ranges are map
-// points (`hexNodeDistance`), the metric every other weapon band counts in. Original behavior.
+// The siege vehicle's fight (docs/formats/VEHICLES.md "Catapult"): the target its scan finds
+// (`vehicle-targets.ts`), backed off from, closed on or fired at, and the shot itself, a ground burst
+// the projectile system flies to its scattered landing node. An attack-move's march is driven from here
+// too. Ranges are map points (`hexNodeDistance`), the metric every other weapon band counts in. Original
+// behavior.
 
-/** How far, in map points, an attacking or defending siege vehicle looks for an enemy (original
- *  behavior). */
-export const VEHICLE_SCAN_RADIUS_POINTS = 40;
 /** How far, in map points, from its guard position a defending vehicle keeps a chase before dropping the
  *  target (original behavior). */
 export const VEHICLE_DEFENCE_LEASH_POINTS = 60;
@@ -140,7 +138,24 @@ export function engageVehicle(
       else dropTarget(world, e);
       return;
     }
-    target = scanForTarget(world, ctx, terrain, pass, e, stance, state.guard, identity, weapon, here, target);
+    const found = scanForTarget(
+      world,
+      ctx,
+      terrain,
+      pass,
+      e,
+      stance,
+      state.guard,
+      identity,
+      weapon,
+      here,
+      target,
+    );
+    if (found === 'pressed') {
+      standPressed(world, e);
+      return;
+    }
+    target = found;
   }
   if (target === null) {
     dropTarget(world, e);
@@ -187,6 +202,13 @@ function finishLeg(world: World, e: Entity): boolean {
   return cutRoute(world, e);
 }
 
+/** Stand among enemies too close to shoot: a chase or back-off ends on the node it is crossing, a march
+ *  leg too, keeping the rest of the march to rejoin once they are gone. */
+function standPressed(world: World, e: Entity): void {
+  if (world.get(e, Vehicle).attack !== null) quitChase(world, e);
+  else finishLeg(world, e);
+}
+
 export function sameTarget(a: VehicleAttackTarget, b: VehicleAttackTarget): boolean {
   if (a.kind === 'entity') return b.kind === 'entity' && a.entity === b.entity;
   return b.kind === 'ground' && a.hx === b.hx && a.hy === b.hy;
@@ -224,82 +246,6 @@ function targetStands(
   return attack.ordered
     ? isValidOrderedTarget(world, ctx, self, identity, target.entity)
     : isValidTarget(world, ctx, self, identity, target.entity);
-}
-
-/**
- * The stance's scan: `hold` looks only inside the weapon band around the guard position, `defence`
- * out to the scan radius around it, `attack` around wherever the vehicle stands. The nearest valid,
- * seen enemy wins, and a held auto target no farther than the find is kept (original behavior;
- * approximation: the original's four-step preference for enemies indoors and houses is folded into
- * one nearest search). An enemy a chase could not reach is skipped for a while.
- */
-function scanForTarget(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  pass: CombatPass,
-  e: Entity,
-  stance: VehicleStance,
-  guard: HalfCellNode | null,
-  identity: SettlerIdentity,
-  weapon: { minRange: number; maxRange: number },
-  here: NodeId,
-  held: VehicleAttackTarget | null,
-): VehicleAttackTarget | null {
-  const centre = stance === 'attack' || guard === null ? here : terrain.nodeAtClamped(guard.hx, guard.hy);
-  const minDist = stance === 'hold' ? weapon.minRange : 1;
-  const maxDist = stance === 'hold' ? weapon.maxRange : VEHICLE_SCAN_RADIUS_POINTS;
-  const x = terrain.xOf(centre);
-  const y = terrain.yOf(centre);
-  const owner = world.tryGet(e, Owner);
-  if (owner !== undefined && !pass.index.othersWithin(owner.player, x, y, maxDist)) return held;
-  pass.vehicleScan ??= new VehicleScan(world, ctx);
-  const scan = pass.vehicleScan.aim(e, identity, owner?.player, givenUpTargetVeto(world, ctx, e));
-  const found = pass.index.nearest(x, y, minDist, maxDist, scan.accept, owner?.player ?? null, 'hex');
-  if (found === null) return held;
-  if (held !== null && held.kind === 'entity') {
-    if (held.entity === found.entity) return held;
-    // Both measured from the scan centre, the metric the find carries.
-    const heldDist = hexNodeDistance(
-      terrain,
-      centre,
-      combatTargetNode(world, ctx, terrain, centre, held.entity),
-    );
-    if (heldDist <= found.distance) return held;
-  }
-  return { kind: 'entity', entity: found.entity };
-}
-
-/** One pass's vehicle scan filter, re-aimed per vehicle so a scan allocates no closure: the nearest valid,
- *  seen target the vehicle has not given up on. */
-export class VehicleScan {
-  private e = 0 as Entity;
-  private identity: SettlerIdentity = { tribe: 0, jobType: null };
-  private player: number | undefined;
-  private givenUp: ((t: Entity) => boolean) | undefined;
-
-  constructor(
-    private readonly world: World,
-    private readonly ctx: SystemContext,
-  ) {}
-
-  readonly accept = (t: Entity): boolean =>
-    this.givenUp?.(t) !== true &&
-    isValidTarget(this.world, this.ctx, this.e, this.identity, t) &&
-    (this.player === undefined || playerSeesEntity(this.world, this.ctx.fog, this.player, t));
-
-  aim(
-    e: Entity,
-    identity: SettlerIdentity,
-    player: number | undefined,
-    givenUp: ((t: Entity) => boolean) | undefined,
-  ): this {
-    this.e = e;
-    this.identity = identity;
-    this.player = player;
-    this.givenUp = givenUp;
-    return this;
-  }
 }
 
 /** Content-keyed: the identity a vehicle type's crew fights as, per tribe, so a pass mints none. */
