@@ -92,7 +92,7 @@ Max-Q. Both GPUs match tier 3, Quality.
 | Enhanced water, environment motion, building damage, post effects | 0.08 or less | 0.08 or less | none above noise | none above noise |
 | Coast (36 shore waves in view): environment motion, enhanced water | 0.04 / 0.05, 0.17 / 0.14 | - | none above noise | - |
 | Day and night, at night | 0.75 / 0.73 of a 5.6 ms frame | 0.93 / 0.97 of 7.7 ms | 0.14 / 0.22 | 0.18 / 0.23 |
-| Weather: rain, snow | 3.33 / 3.27, 4.15 / 3.89 | - | 0.11 / 0.13, 0.25 / 0.07 | - |
+| Weather: rain, snow, sand, thunderstorm, blizzard (Vega 7: one run of 6 cycles) | 2.37, 3.29, 2.49, 2.45, 3.85 | - | rain 0.11 / 0.13, snow 0.25 / 0.07 | - |
 | Sprite smoothing off (a separate load) | 5.02 / 5.01 ms frame | 7.31 / 6.95 ms frame | 2.15 ms frame (one run; the other's load was noisy) | 3.08 / 3.10 ms frame |
 | Render scale 1.5 (a separate load) | 17.75 / 17.56 ms frame | - | 3.15 / 3.16 ms frame | - |
 
@@ -100,7 +100,7 @@ The loop's control rows stay within 0.1 ms; a separate load's frame differs from
 up to 0.3 ms at zoom 1 on the Vega 7 with nothing changed. On the GTX 1660 Ti the page's own script
 takes 1.3 ms of the 2.2 ms redraw at zoom 1 and 2.3 of 3.0 ms at zoom 0.5, and render scale 1.5 adds
 only half the frame, so the GPU work of a setting there hides under the frame's CPU work. On the
-Vega 7 the Quality frame takes 9.1 ms at zoom 1 in snow and 7.7 ms at zoom 0.5 at night, inside a
+Vega 7 the Quality frame takes 8.2 ms at zoom 1 in snow and 7.7 ms at zoom 0.5 at night, inside a
 60 fps frame's 16.7 ms.
 
 The WebGL timer `npm run bench:gpu` reads on the Vega 7 takes one of two clock modes for seconds at a

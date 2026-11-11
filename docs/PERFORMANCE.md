@@ -351,7 +351,7 @@ GPU and tool they were read with.
 | --- | --- | --- |
 | `day` | densest town at zoom 1 and 0.5, the coast nearest it at zoom 1 | town: `xbr` against art filter off, and at zoom 1 `xbrz`, `superxbr`, `mmpx` against off; `softShadows`, `enhancedWater`, `environmentMotion`, `groundedBuildings`, `buildingDamage`, `postFx` (the vignette quad). Coast: `environmentMotion` (the shore waves), `enhancedWater` |
 | `night` (`?tint=58`, the cycle's night step) | town at zoom 1 and 0.5 | `dayNight`: the lit night against the flat night grade |
-| `rain`, `snow` | town at zoom 1 | `weather` |
+| `rain`, `snow`, `sand`, `storm` (a thunderstorm), `blizzard` | town at zoom 1 | `weather` |
 | `smoothing-off`, `scale1.5` | town at zoom 1 and 0.5, at zoom 1 | `control` only. Sprite smoothing and render scale apply as a map starts, so these are separate loads read against the `day` session's control rows, not interleaved |
 
 Row ids are `<session>-<view>-z<zoom>-<row>`. `report.md` lists each row's median on and off
