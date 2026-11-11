@@ -32,8 +32,12 @@ export const ECONOMY: ArticleGroup = {
                 "Devono stare fuori dallo spazio per il livello più alto dell'edificio.",
               ],
               [
-                'Soldato nemico',
-                'Non puoi costruire entro {{contest.radius}} esagoni da lui, circa {{contest.diagonal}} in diagonale. Contano solo i soldati che vedi, e la guarnigione di una torre no.',
+                'Soldato, carro o nave nemici',
+                'Non puoi costruire entro {{contest.radius}} esagoni da uno di loro, circa {{contest.diagonal}} in diagonale. Contano solo quelli che vedi, e la guarnigione di una torre no.',
+              ],
+              [
+                'Catapulta nemica',
+                'Non puoi costruire entro {{contest.siegeRadius}} esagoni da essa, la distanza a cui cerca un bersaglio, con o senza equipaggio. Contano solo le catapulte che vedi.',
               ],
               [
                 'Edificio di un giocatore con cui sei in pace',
