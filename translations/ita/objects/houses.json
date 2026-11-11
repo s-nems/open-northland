@@ -12,7 +12,8 @@
     "51": "Tempio di Artemide",
     "52": "Statua di Zeus",
     "53": "Piramide",
-    "54": "Ottava meraviglia"
+    "54": "Ottava meraviglia",
+    "56": "Muro difensivo"
   },
   "plurals": {
     "47": "Fari",
@@ -22,6 +23,7 @@
     "51": "Templi di Artemide",
     "52": "Statue di Zeus",
     "53": "Piramidi",
-    "54": "Ottave meraviglie"
+    "54": "Ottave meraviglie",
+    "56": "Muri difensivi"
   }
 }

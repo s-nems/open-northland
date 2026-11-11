@@ -65,7 +65,7 @@ export const itContent = {
     work_sewery_01: 'Bottega del sarto 2',
     work_pottery_00: 'Bottega del vasaio 1',
     work_pottery_01: 'Bottega del vasaio 2',
-    work_pottery_02: 'Muro difensivo',
+    work_pottery_02: 'Bottega del vasaio 3',
     work_joinery_00: 'Bottega del carpentiere 1',
     work_joinery_01: 'Bottega del carpentiere 2',
     work_joinery_02: 'Bottega del carpentiere 3',
@@ -100,6 +100,7 @@ export const itContent = {
     wonder_pyramid_of_gizeh: 'Piramide',
     wonder_8th_wonder: 'Ottava meraviglia',
     work_murek: 'Muro difensivo',
+    defence_wall: 'Muro difensivo',
   },
   goods: {
     wood: 'Legno',

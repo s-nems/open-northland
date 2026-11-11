@@ -649,14 +649,14 @@ export const MILITARY: ArticleGroup = {
           h: 'Muro difensivo',
         },
         {
-          p: 'Il [[building:work_pottery_02|Muro difensivo]] è un edificio normale e subisce i danni della colonna Edificio. Un soldato lo tratta come una palizzata.',
+          p: 'Il [[building:defence_wall|Muro difensivo]] è un edificio normale e subisce i danni della colonna Edificio. Un soldato lo tratta come una palizzata.',
         },
       ],
       see: [
         'article:damage',
         'article:catapult',
         'article:construction',
-        'building:work_pottery_02',
+        'building:defence_wall',
         'good:wood',
       ],
     },
