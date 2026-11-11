@@ -179,6 +179,9 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
   const RIVAL_STORES = 140;
   /** More of the side's stores, or of its gatherers, than one diagnosis weighs one by one. */
   const PAST_CAP = 140;
+  /** Wood in a headquarters, and the storage minimum above it that holds all of it back. */
+  const STORED_WOOD = 5;
+  const WOOD_MINIMUM = 10;
   const CARRIER = 36;
 
   function confinedForge(
@@ -361,6 +364,22 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
     storeAt(sim, PAST_GOODS_SEARCH, [[WOOD, 5]]);
     expect(sourceOfWood(sim, smith)).toBe('outOfReach');
     storeAt(sim, IN_AREA, [[WOOD, 5]]);
+    expect(sourceOfWood(sim, smith)).toBe('inReach');
+  });
+
+  it('counts no store whose stock the storage minimum holds back, which the fetch never takes', () => {
+    const { sim, smith, woodcutter } = confinedForge(0);
+    rivalWoodcutter(sim, woodcutter);
+    const setMinimum = (amount: number): void => {
+      sim.enqueueSetup({ kind: 'setStorageMinimum', player: 0, goodType: WOOD, amount });
+      sim.step();
+    };
+    setMinimum(WOOD_MINIMUM);
+    const headquarters = storeAt(sim, IN_AREA);
+    sim.world.add(headquarters, Owner, { player: 0 });
+    setStockAmount(sim.world, headquarters, WOOD, STORED_WOOD);
+    expect(sourceOfWood(sim, smith)).toBe('none');
+    setMinimum(0);
     expect(sourceOfWood(sim, smith)).toBe('inReach');
   });
 

@@ -6,8 +6,10 @@ import type { SystemContext } from '../context.js';
 import { QUALIFIES } from '../settlers/targets/cell-index.js';
 import { heldBands } from '../settlers/targets/held-bands.js';
 import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
+import { unclaimedStockOf } from '../settlers/targets/stores/stock.js';
 import { interactionCell } from '../settlers/targets/workplaces.js';
 import { goodsSearchGate, navigationLimitFor } from '../signposts/index.js';
+import { refillingGoodsOf } from '../stores/index.js';
 
 /** Stores or sources of the worker's side one diagnosis weighs before it stops calling the case decided. */
 const MAX_DIAGNOSTIC_STORES = 128;
@@ -58,10 +60,17 @@ export function inputReach(
   producers: Iterable<Entity>,
 ): StoreReach {
   const stock = FetchableStock.of(world, ctx);
+  // A store the fetch lifts from: one lending a unit past its owner's storage minimum, or a self-filling
+  // house of the good, never the workplace's own shelf. Units other walkers claimed are not held back, as
+  // their claims come and go.
+  const lends = (e: Entity): boolean =>
+    e !== workplace &&
+    (unclaimedStockOf(world, ctx, undefined, e, goodType) > 0 ||
+      refillingGoodsOf(world, ctx, e).includes(goodType));
   const terrain = ctx.terrain;
   const here = terrain === undefined ? null : nodeOf(world, terrain, operator);
   if (terrain === undefined || here === null) {
-    const stored = reachAmong(world, operator, stock.holders(goodType), null);
+    const stored = reachAmong(world, operator, kept(stock.holders(goodType), lends), null);
     return stored === 'none' ? reachAmong(world, operator, producers, null) : stored;
   }
   const owner = ownerOf(world, operator);
@@ -70,8 +79,8 @@ export function inputReach(
   const gate = goodsSearchGate(world, ctx.content, terrain, owner, door, limit);
   const band = heldBands(world, ctx, terrain).supplying(goodType);
   band.sync();
-  const notOwnShelf = (e: Entity) => (e === workplace ? null : QUALIFIES);
-  if (band.index.nearest(here, notOwnShelf, gate, undefined, sameSideAs(world, owner), door) !== null) {
+  const source = (e: Entity) => (lends(e) ? QUALIFIES : null);
+  if (band.index.nearest(here, source, gate, undefined, sameSideAs(world, owner), door) !== null) {
     return 'inReach';
   }
   const produced = reachAmong(world, operator, producers, (source) =>
@@ -112,6 +121,11 @@ function signpostGate(world: World, ctx: SystemContext, worker: Entity): ((store
   const limit = navigationLimitFor(world, ctx.content, terrain, worker);
   if (limit === null) return null;
   return (store) => limit.allowsNode(interactionCell(world, ctx, terrain, store, here));
+}
+
+/** The entries of `items` that `keep` admits, in order. */
+function* kept(items: Iterable<Entity>, keep: (item: Entity) => boolean): Generator<Entity> {
+  for (const item of items) if (keep(item)) yield item;
 }
 
 /** The node `e` stands on, or null for an unplaced one. */
