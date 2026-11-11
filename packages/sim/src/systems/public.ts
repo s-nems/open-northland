@@ -141,8 +141,7 @@ export {
 export { BREEDING_PAIR } from './economy/production/cycles.js';
 export {
   MUSHROOM_LANDSCAPE_SLUG,
-  REGROWTH_DELAY_MIN_TICKS,
-  REGROWTH_DELAY_SPREAD_TICKS,
+  REGROWTH_DELAY,
   REGROWTH_FAIL_PERCENT,
   REGROWTH_FOREST_TREES,
 } from './economy/regrowth.js';

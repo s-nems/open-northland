@@ -416,7 +416,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Pilz',
-                'Ein gesammelter Pilz wächst in {{regrow.inTen}} von 10 Fällen nach {{regrow.minMinutes}}-{{regrow.maxMinutes}} Min. in der Nähe nach, auf einem freien Platz mit mindestens {{regrow.forestTrees}} Bäumen ringsum',
+                'Ein gesammelter Pilz wächst in {{regrow.inTen}} von 10 Fällen nach {{regrow.mushroomMinMinutes}}-{{regrow.mushroomMaxMinutes}} Min. in der Nähe nach, auf einem freien Platz mit mindestens {{regrow.forestTrees}} Bäumen ringsum',
                 '1 Pilz je gesammeltem, nur im Wald',
               ],
               ['Fels, Lagerstätte', 'Wachsen nicht nach', '-'],

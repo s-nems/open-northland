@@ -413,8 +413,14 @@ export const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'bush.stageSeconds': whole(seconds(systems.BERRY_STAGE_TICKS)),
   'fish.regrowSeconds': whole(seconds(systems.FISH_REPRODUCTION_TICKS)),
   'fish.swarmMax': whole(systems.MAX_FISH_PER_SWARM),
-  'regrow.minMinutes': whole(minutes(systems.REGROWTH_DELAY_MIN_TICKS)),
-  'regrow.maxMinutes': whole(minutes(systems.REGROWTH_DELAY_MIN_TICKS + systems.REGROWTH_DELAY_SPREAD_TICKS)),
+  'regrow.minMinutes': whole(minutes(systems.REGROWTH_DELAY.tree.minTicks)),
+  'regrow.maxMinutes': whole(
+    minutes(systems.REGROWTH_DELAY.tree.minTicks + systems.REGROWTH_DELAY.tree.spreadTicks),
+  ),
+  'regrow.mushroomMinMinutes': oneDecimal(minutes(systems.REGROWTH_DELAY.mushroom.minTicks)),
+  'regrow.mushroomMaxMinutes': oneDecimal(
+    minutes(systems.REGROWTH_DELAY.mushroom.minTicks + systems.REGROWTH_DELAY.mushroom.spreadTicks),
+  ),
   'regrow.forestTrees': whole(systems.REGROWTH_FOREST_TREES),
   'regrow.inTen': whole((PERCENT - systems.REGROWTH_FAIL_PERCENT) / IN_TEN),
   'tree.growMinutes': whole(minutes(systems.TREE_GROWTH_PERIOD_TICKS)),

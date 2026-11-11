@@ -410,7 +410,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Гриб',
-                'Собранный гриб в {{regrow.inTen}} случаях из 10 через {{regrow.minMinutes}}-{{regrow.maxMinutes}} мин вырастает рядом снова, если есть свободное место, вокруг которого не меньше {{regrow.forestTrees}} деревьев',
+                'Собранный гриб в {{regrow.inTen}} случаях из 10 через {{regrow.mushroomMinMinutes}}-{{regrow.mushroomMaxMinutes}} мин вырастает рядом снова, если есть свободное место, вокруг которого не меньше {{regrow.forestTrees}} деревьев',
                 '1 гриб на собранный, только в лесу',
               ],
               ['Скала, залежь', 'Не восстанавливаются', '-'],

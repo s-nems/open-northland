@@ -413,7 +413,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Grzyb',
-                'Zebrany grzyb w {{regrow.inTen}} na 10 przypadków po {{regrow.minMinutes}}-{{regrow.maxMinutes}} min odrasta obok, jeśli znajdzie wolne miejsce z co najmniej {{regrow.forestTrees}} drzewami wokół',
+                'Zebrany grzyb w {{regrow.inTen}} na 10 przypadków po {{regrow.mushroomMinMinutes}}-{{regrow.mushroomMaxMinutes}} min odrasta obok, jeśli znajdzie wolne miejsce z co najmniej {{regrow.forestTrees}} drzewami wokół',
                 '1 grzyb na zebrany, tylko w lesie',
               ],
               ['Skała, złoże', 'Nie odrastają', '-'],

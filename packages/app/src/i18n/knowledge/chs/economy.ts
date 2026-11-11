@@ -373,7 +373,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 '蘑菇',
-                '蘑菇被采摘后，有{{regrow.inTen}}/10的几率在{{regrow.minMinutes}}-{{regrow.maxMinutes}}分钟后于附近空地重新长出，该处周围须至少有{{regrow.forestTrees}}棵树',
+                '蘑菇被采摘后，有{{regrow.inTen}}/10的几率在{{regrow.mushroomMinMinutes}}-{{regrow.mushroomMaxMinutes}}分钟后于附近空地重新长出，该处周围须至少有{{regrow.forestTrees}}棵树',
                 '每个采摘的蘑菇长出1个，仅在森林中',
               ],
               ['岩石、矿藏', '不再生', '-'],

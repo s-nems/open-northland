@@ -32,10 +32,17 @@ import { settleClosedTree, startTreeGrowth } from './tree-growth.js';
  *  a tree's fall are the only harvests that schedule a regrowth; no `.ini` key marks either type. */
 export const MUSHROOM_LANDSCAPE_SLUG = 'mushroommine';
 
-/** A regrowth comes due this many ticks after the harvest plus a random share of the spread: 5 to 20
- *  minutes at 12 ticks a second. */
-export const REGROWTH_DELAY_MIN_TICKS = 3600;
-export const REGROWTH_DELAY_SPREAD_TICKS = 10800;
+interface RegrowthDelay {
+  readonly minTicks: number;
+  readonly spreadTicks: number;
+}
+/** A regrowth comes due `minTicks` after the harvest plus a random share of `spreadTicks`, at 12 ticks a
+ *  second. Original behavior: 5 to 20 minutes for either kind. Project rule: a mushroom regrows twice as
+ *  fast, 2.5 to 10 minutes. */
+export const REGROWTH_DELAY: Readonly<Record<Regrown['kind'], RegrowthDelay>> = {
+  tree: { minTicks: 3600, spreadTicks: 10800 },
+  mushroom: { minTicks: 1800, spreadTicks: 5400 },
+};
 /** One regrowth in ten seeds nothing. */
 export const REGROWTH_FAIL_PERCENT = 10;
 const PERCENT = 100;
@@ -78,8 +85,9 @@ function scheduleRegrowth(world: World, ctx: SystemContext, node: Entity, regrow
   const res = world.get(node, Resource);
   const pos = world.get(node, Position);
   const { hx, hy } = nodeOfPosition(pos.x, pos.y);
+  const delay = REGROWTH_DELAY[regrown.kind];
   world.add(world.create(), Regrowth, {
-    dueAtTick: ctx.tick + REGROWTH_DELAY_MIN_TICKS + ctx.rng.int(REGROWTH_DELAY_SPREAD_TICKS),
+    dueAtTick: ctx.tick + delay.minTicks + ctx.rng.int(delay.spreadTicks),
     hx,
     hy,
     goodType: res.goodType,

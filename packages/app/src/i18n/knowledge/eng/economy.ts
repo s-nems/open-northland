@@ -416,7 +416,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               [
                 'Mushroom',
-                'A picked mushroom, {{regrow.inTen}} times in 10, grows back nearby after {{regrow.minMinutes}}-{{regrow.maxMinutes}} min, on a free spot with at least {{regrow.forestTrees}} trees around it',
+                'A picked mushroom, {{regrow.inTen}} times in 10, grows back nearby after {{regrow.mushroomMinMinutes}}-{{regrow.mushroomMaxMinutes}} min, on a free spot with at least {{regrow.forestTrees}} trees around it',
                 '1 mushroom per picked one, only in a forest',
               ],
               ['Rock, deposit', 'Never grow back', '-'],
