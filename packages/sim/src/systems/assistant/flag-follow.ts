@@ -14,6 +14,7 @@ import {
   Settler,
   WorkFlag,
 } from '../../components/index.js';
+import { type Fixed, fx } from '../../core/fixed.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import {
@@ -23,7 +24,7 @@ import {
   nodeManhattan,
   positionOfNode,
 } from '../../nav/halfcell.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { anchorNodeOf } from '../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../ai-shared/seat-roster.js';
 import {
@@ -37,9 +38,11 @@ import {
   type WorkableTest,
   workableResourceTest,
 } from '../computer-player/live-resources.js';
+import { walkLowerBound } from '../computer-player/walk-distance.js';
 import {
   claimFlagNode,
   type FlagBand,
+  type FlagGround,
   flagGround,
   replantSpot,
   type TakenFlagNodes,
@@ -60,7 +63,7 @@ import { workplaceStocksGood, workplaceStoredGoods } from '../stores/index.js';
 /**
  * The assistant's flag follow: with its owner's {@link AssistantMovesFlags} switch on, a flag gatherer's
  * flag, his own or the one his post took, is kept within {@link FOLLOW_FLAG_BAND} of a workable resource
- * of his goods. The moved flag stands on the side toward the owner's building nearest the old flag, so the
+ * of his goods. The moved flag stands on the side toward the owner's building nearest the old flag on foot, so the
  * yard lies between the work and the settlement. A computer seat keeps the switch on and adds its own pull
  * back toward its workshops. Source basis: authored, the switch is this project's addition; the band is
  * the owner's ruling.
@@ -133,9 +136,10 @@ function followSearch(world: World, ctx: SystemContext, terrain: TerrainGraph): 
 
 /**
  * Check one gatherer's flag and move it after the resources once the nearest stands past the band or his
- * circle is worked out. A worked-out flag goes to the resource nearest the owner's building by the old
- * flag, so the work stays toward the settlement; one still fed moves only toward the resource nearest
- * it, and only on his retry phase, since he has work meanwhile. A hunter keeps his hunting ground and a
+ * circle is worked out. A worked-out flag goes to the resource nearest the owner's building the shortest
+ * walk from the old flag, so the work stays toward the settlement; one still fed moves only toward the
+ * resource nearest it, and only on his retry phase, since he has work meanwhile. Either way a resource
+ * whose walk runs a long detour round water or a ridge is passed over. A hunter keeps his hunting ground and a
  * fisher his yard: neither works a standing resource.
  */
 function followFlag(
@@ -181,17 +185,28 @@ function followFlag(
     }
     if ((round + e) % REPLANT_RETRY_EVERY_CHECKS !== 0) return;
   } else if (!replantDue(world, e, flagNode, round)) return;
-  const origin = settlementSide(world, e, flagNode);
+  const ground = flagGround(world, ctx, terrain, limit);
+  const origin = settlementSide(world, ctx, terrain, ground, e, flagNode);
   const from = fed ? flagNode : origin;
+  const fromNode = terrain.nodeAtClamped(from.hx, from.hy);
   // `workable`'s anchor gate: on islands or inside a signpost network most of the map's resources fail
   // it on their node alone, before anything of theirs is read.
   const gate = bothGates(
     limitResourceGate(ctx, terrain, limit),
     reachableResourceGate(ctx, terrain, flagNode),
   );
+  // The walk test last: it floods.
   const nearest = (untried: WorkableTest): Entity | null =>
-    nearestLiveResourceOfGoods(world, goods, from, (r) => workable(r) && untried(r), gate);
-  const ground = flagGround(world, ctx, terrain, limit);
+    nearestLiveResourceOfGoods(
+      world,
+      goods,
+      from,
+      (r) =>
+        workable(r) &&
+        untried(r) &&
+        shortWalk(terrain, ground, from, interactionCell(world, ctx, terrain, r, fromNode)),
+      gate,
+    );
   const replant = replantSpot(world, ground, e, flag.radius, nearest, origin, reach, taken, FOLLOW_FLAG_BAND);
   if (replant === 'dry' || replant === null) {
     // A fed gatherer's miss says nothing about his post: only a worked-out one counts toward retiring it.
@@ -279,23 +294,58 @@ function inBand(
   return at !== null && nodeManhattan(at, flagNode) <= FOLLOW_FLAG_BAND.max && workable(r);
 }
 
-/** The anchor of the owner's building nearest `flagNode`, HQ, store or any other, which the new flag faces
- *  so the carriers' walk to it stays short; the old flag when the owner has none. Ties to the lower id. */
-function settlementSide(world: World, e: Entity, flagNode: HalfCellNode): HalfCellNode {
+/** How much longer than the open ground's walk a re-plant's walk to its resource may be, and the flat
+ *  allowance on top in tiles (authored): a deposit across a river or round a ridge whose walk runs half the
+ *  map is no neighbour of the flag, however near it stands as the crow flies. */
+const DETOUR_FACTOR = 2;
+const DETOUR_SLACK = fx.fromInt(8);
+
+/** Whether the walk from `from` to `cell` stays within the detour allowance over the open-ground walk. */
+function shortWalk(terrain: TerrainGraph, ground: FlagGround, from: HalfCellNode, cell: NodeId): boolean {
+  const open = walkLowerBound(from.hx, from.hy, terrain.xOf(cell), terrain.yOf(cell));
+  return ground.walksWithin(from, cell, fx.add(fx.mulInt(open, DETOUR_FACTOR), DETOUR_SLACK));
+}
+
+/** The anchor of the owner's building the shortest walk from `flagNode` to its door, HQ, store or any
+ *  other, which the new flag faces so the carriers' walk to it stays short. When the walk reaches none (a
+ *  flag sealed in a pocket, a settlement past the walk budget), the building on the flag's own land
+ *  nearest as the crow flies; the old flag when that land holds none, so a building across water never
+ *  turns the flag away from its ground. Ties to the lower id. */
+function settlementSide(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  ground: FlagGround,
+  e: Entity,
+  flagNode: HalfCellNode,
+): HalfCellNode {
   const owner = ownerOf(world, e);
   if (owner === undefined) return flagNode;
-  let best = flagNode;
-  let bestDistance = Number.POSITIVE_INFINITY;
+  const flagCell = terrain.nodeAtClamped(flagNode.hx, flagNode.hy);
+  const component = terrain.componentOf(flagCell);
+  let walked: HalfCellNode | null = null;
+  let walkedCost: Fixed | null = null;
+  let nearest = flagNode;
+  let nearestDistance = Number.POSITIVE_INFINITY;
   for (const b of ownedBuildings(world, owner)) {
     const at = anchorNodeOf(world, b);
     if (at === null) continue;
+    const door = interactionCell(world, ctx, terrain, b, flagCell);
+    if (terrain.componentOf(door) !== component) continue;
     const distance = nodeManhattan(at, flagNode);
-    if (distance < bestDistance) {
-      best = at;
-      bestDistance = distance;
+    if (distance < nearestDistance) {
+      nearest = at;
+      nearestDistance = distance;
     }
+    // The walk never undercuts the open ground's, so a building that far off cannot win.
+    const open = walkLowerBound(flagNode.hx, flagNode.hy, terrain.xOf(door), terrain.yOf(door));
+    if (walkedCost !== null && open >= walkedCost) continue;
+    const cost = ground.walkFrom(flagNode, at, 0).costTo(door);
+    if (cost === undefined || (walkedCost !== null && cost >= walkedCost)) continue;
+    walked = at;
+    walkedCost = cost;
   }
-  return best;
+  return walked ?? nearest;
 }
 
 /** The goods his flag follows: those his counters leave open, his post stocks and his experience lets him

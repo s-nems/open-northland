@@ -15,7 +15,7 @@ import {
   writeProductionGoods,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, nodeOfPosition, ONE, Simulation } from '../../../src/index.js';
+import { fx, nodeOfPosition, ONE, Simulation, type TerrainMap } from '../../../src/index.js';
 import {
   FLAG_FOLLOW_CHECK_PERIOD_TICKS,
   FOLLOW_FLAG_BAND,
@@ -28,11 +28,13 @@ import { anchorOnlyFootprint, stampResourceFootprintData } from '../../../src/sy
 import { testContent } from '../../fixtures/content.js';
 import {
   bindToFlag,
+  GRASS,
   grassMap,
   makeWoodcutter,
   placeFellableTree,
   runTicks,
   VIKING,
+  WATER,
   WOOD,
   WOODCUTTER,
 } from '../settlers/drives/gatherer-flag/support.js';
@@ -79,6 +81,22 @@ function setup(
   const tree = placeFellableTree(sim, FAR_TREE_TILE, 0);
   if (moveFlags) sim.enqueueSetup({ kind: 'setAssistantMoveFlags', player: PLAYER, enabled: true });
   return { sim, gatherer, flag, tree };
+}
+
+/** A grass half-cell map with a water wall on node columns `wallCols`, open below node row `fordRow`. */
+function walledMap(width: number, height: number, wallCols: readonly number[], fordRow: number): TerrainMap {
+  const typeIds = new Array(width * height).fill(GRASS);
+  for (let hy = 0; hy < fordRow; hy++) for (const hx of wallCols) typeIds[hy * width + hx] = WATER;
+  return { resolution: 'half-cell', width, height, typeIds };
+}
+
+function setupOn(map: TerrainMap): { sim: Simulation; flag: Entity } {
+  const sim = new Simulation({ seed: 1, content: testContent(), map });
+  const gatherer = makeWoodcutter(sim, FLAG_TILE, 0);
+  sim.world.add(gatherer, Owner, { player: PLAYER });
+  const flag = bindToFlag(sim, gatherer, FLAG_TILE, 0, DEFAULT_WORK_FLAG_RADIUS);
+  sim.enqueueSetup({ kind: 'setAssistantMoveFlags', player: PLAYER, enabled: true });
+  return { sim, flag };
 }
 
 function nodeOf(sim: Simulation, e: Entity): { hx: number; hy: number } {
@@ -218,6 +236,66 @@ describe('assistant flag follow', () => {
     expect(nodeDistance(at, nodeOf(sim, stone))).toBeLessThanOrEqual(FOLLOW_FLAG_BAND.max);
     // On the stone's near side: a flag sent after the farther tree would stand past the stone.
     expect(at.hx).toBeLessThan(nodeOf(sim, stone).hx);
+  });
+
+  it('passes over a tree across a river whose ford makes the walk to it a long detour', () => {
+    // The wall stands between the flag (node 10) and a tree 60 nodes (30 tiles) east; its ford opens 290
+    // rows down, past the walk budget.
+    const { sim, flag } = setupOn(walledMap(140, 300, [60, 61], 290));
+    placeFellableTree(sim, 35, 0);
+    const nearSide = placeFellableTree(sim, FLAG_TILE, 35); // 70 nodes south, on the flag's bank
+    runTicks(sim, CHECK_ROUND_TICKS);
+    expect(nodeDistance(nodeOf(sim, flag), nodeOf(sim, nearSide))).toBeLessThanOrEqual(FOLLOW_FLAG_BAND.max);
+  });
+
+  it('follows a resource across open ground past the reach of one walk flood', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: walledMap(300, 100, [], 0) });
+    const gatherer = makeWoodcutter(sim, FLAG_TILE, 25);
+    sim.world.add(gatherer, Owner, { player: PLAYER });
+    const flag = bindToFlag(sim, gatherer, FLAG_TILE, 25, DEFAULT_WORK_FLAG_RADIUS);
+    sim.enqueueSetup({ kind: 'setAssistantMoveFlags', player: PLAYER, enabled: true });
+    const far = placeFellableTree(sim, 130, 25); // 250 nodes east
+    runTicks(sim, CHECK_ROUND_TICKS);
+    expect(nodeDistance(nodeOf(sim, flag), nodeOf(sim, far))).toBeLessThanOrEqual(FOLLOW_FLAG_BAND.max);
+  });
+
+  it("follows the resource nearest the owner's building nearest on foot", () => {
+    // The east building stands nearer as the crow flies, behind a wall whose ford opens 50 rows down.
+    const { sim, flag } = setupOn(walledMap(96, 90, [70, 71], 50));
+    placeFellableTree(sim, 30, 0); // beside the east building
+    const bySouth = placeFellableTree(sim, FLAG_TILE, 30); // beside the south building
+    for (const [x, y] of [
+      [78, 4],
+      [10, 80],
+    ] as const) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME,
+        x,
+        y,
+        tribe: VIKING,
+        owner: PLAYER,
+        force: true,
+      });
+    }
+    runTicks(sim, CHECK_ROUND_TICKS);
+    expect(nodeDistance(nodeOf(sim, flag), nodeOf(sim, bySouth))).toBeLessThanOrEqual(FOLLOW_FLAG_BAND.max);
+  });
+
+  it("faces the flag's own ground when the owner's only building stands across water", () => {
+    const { sim, flag } = setupOn(walledMap(96, 8, [60, 61], 8));
+    const tree = placeFellableTree(sim, FAR_TREE_TILE, 0);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME,
+      x: 70,
+      y: 4,
+      tribe: VIKING,
+      owner: PLAYER,
+      force: true,
+    });
+    runTicks(sim, CHECK_ROUND_TICKS);
+    expect(nodeOf(sim, flag).hx).toBeLessThan(nodeOf(sim, tree).hx);
   });
 
   it("leaves another player's flags alone while his own switch is off", () => {
