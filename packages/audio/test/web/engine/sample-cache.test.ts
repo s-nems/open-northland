@@ -28,7 +28,8 @@ const OGG_CAPTURE = [0x4f, 0x67, 0x67, 0x53];
 const isOgg = (bytes: Uint8Array): boolean => OGG_CAPTURE.every((byte, i) => bytes[i] === byte);
 
 /** A URL under the sounds root as its path there; an app asset's URL stays whole. */
-const underSounds = (url: string): string => (url.startsWith('/sounds/') ? url.slice('/sounds/'.length) : url);
+const underSounds = (url: string): string =>
+  url.startsWith('/sounds/') ? url.slice('/sounds/'.length) : url;
 
 interface Harness {
   readonly cache: SampleCache;

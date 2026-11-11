@@ -504,6 +504,22 @@ describe('directAudio combat SFX', () => {
       expect(frame.oneShots[0]?.gain).toBe(listed?.gain);
     });
 
+    it("leaves a blow on a building the weapon's house impact", () => {
+      const onHouse: SimEvent = {
+        kind: 'combatHit',
+        damage: 250,
+        targetMaxHealth: 1000,
+        attacker: entity(20),
+        target: entity(7),
+        soundType: 84,
+        structure: true,
+        at,
+      };
+      expect(directWithWielders([onHouse]).oneShots.map((s) => s.files)).toEqual([
+        ['static/swordhouse01.wav'],
+      ]);
+    });
+
     it("replaces only the cue of the group he names, at that group's gain", () => {
       const cue = (id: number, soundType: number): SimEvent => ({
         kind: 'atomicSound',

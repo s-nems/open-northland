@@ -281,7 +281,8 @@ function weaponSoundPending(
     entity: undefined,
     layer: 'impact',
     ...(onBody ? { exclusive: 'wav' as const } : {}),
-    ...(wielderBlows && ev.kind === 'combatHit' ? { wielder: ev.attacker as number } : {}),
+    // A blow on a building keeps the weapon's house impact: the own blow is struck on a body.
+    ...(wielderBlows && ev.kind === 'combatHit' && onBody ? { wielder: ev.attacker as number } : {}),
   };
 }
 

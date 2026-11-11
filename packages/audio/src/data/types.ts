@@ -183,7 +183,7 @@ export interface SoundBindings {
 export interface WielderSounds {
   readonly tribe: number;
   readonly job: number;
-  /** A landed melee blow, instead of the weapon's listed impact. */
+  /** A melee blow landed on a body, instead of the weapon's listed impact. */
   readonly blow?: readonly string[];
   /** An animation cue, keyed by the static group the clip names, instead of that group's files. */
   readonly cues?: Readonly<Record<string, readonly string[]>>;

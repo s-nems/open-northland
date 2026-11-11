@@ -1,4 +1,5 @@
 import { NOTIFICATION_SOUNDS, UI_CUE_FILES } from '../cues/ui-cues.js';
+import type { WielderSounds } from '../types.js';
 import { groupFiles, type SoundIndex } from './bank.js';
 
 /**
@@ -27,9 +28,12 @@ function isTalk(files: readonly string[]): boolean {
   return files.some((file) => TALK_FOLDERS.some((folder) => file.startsWith(folder)));
 }
 
-/** Every wav the index can play, once each, in {@link PRELOAD_TIERS} order. A wav two tiers share
- *  belongs to the earlier one. */
-export function preloadPlan(index: SoundIndex): readonly PreloadEntry[] {
+/** Every wav the index and the wielders' own sounds can play, once each, in {@link PRELOAD_TIERS} order.
+ *  A wav two tiers share belongs to the earlier one. */
+export function preloadPlan(
+  index: SoundIndex,
+  wielderSounds: readonly WielderSounds[] = [],
+): readonly PreloadEntry[] {
   const pools: Record<PreloadTier, (readonly string[])[]> = {
     interface: [
       Object.values(UI_CUE_FILES),
@@ -55,6 +59,11 @@ export function preloadPlan(index: SoundIndex): readonly PreloadEntry[] {
   for (const files of index.groupsByLogicSoundType.values())
     pools[isTalk(files) ? 'chatter' : 'action'].push(files);
   for (const call of index.animalCalls.values()) named('chatter', call.group);
+  // A wielder's own blow and swing stand in for action sounds, so they wait with them.
+  for (const own of wielderSounds) {
+    if (own.blow !== undefined) pools.action.push(own.blow);
+    pools.action.push(...Object.values(own.cues ?? {}));
+  }
 
   const plan: PreloadEntry[] = [];
   const seen = new Set<string>();

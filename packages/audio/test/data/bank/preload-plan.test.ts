@@ -65,4 +65,16 @@ describe('preloadPlan', () => {
   it('lists each wav once', () => {
     expect(new Set(plan.map((entry) => entry.file)).size).toBe(plan.length);
   });
+
+  it("holds a wielder's own blow and swing with the action sounds they stand in for", () => {
+    const own = {
+      tribe: VIKING,
+      job: 35,
+      blow: ['/audio/blow.ogg'],
+      cues: { 'Hammer Wood': ['/audio/swing.ogg'] },
+    };
+    const withOwn = preloadPlan(buildSoundIndex(bank, [], []), [own]);
+    const tierOf = (file: string) => withOwn.find((entry) => entry.file === file)?.tier;
+    expect([tierOf('/audio/blow.ogg'), tierOf('/audio/swing.ogg')]).toEqual(['action', 'action']);
+  });
 });
