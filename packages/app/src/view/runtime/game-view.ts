@@ -60,7 +60,6 @@ import { settlerName } from '../../game/character-names/index.js';
 import { installPetNames, type PetNames, petNamesOf } from '../../game/character-names/pet-names.js';
 import { type MissionBriefSource, missionReader } from '../../game/map/mission-brief.js';
 import type { ObserverSeatEntry } from '../../game/match/observer-seats.js';
-import { replaySearch } from '../../game/match/session-url.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { technologyName, vehicleLabel } from '../../game/technology.js';
 import {
@@ -192,7 +191,7 @@ import {
 import { otherWorldLoader } from './save-load/other-world.js';
 import { worldScreenshot, worldThumbnail } from './save-load/thumbnail.js';
 import { noteRestartOnLeave } from './settings-restart.js';
-import { createSubMissions, mainMapReplaySearch, type PrepareSubMission } from './sub-missions.js';
+import { createSubMissions, type PrepareSubMission, replayPlan } from './sub-missions.js';
 import { rememberedFog, viewerFog } from './viewer-fog.js';
 import { createWorldEventHandler } from './world-events.js';
 import { createWorldTeardown } from './world-teardown.js';
@@ -468,20 +467,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           }
           leaveWorld(`?${search}`);
         };
-  // A sub-mission starts from its parent's save, which a fresh boot of its own entry would leave
-  // behind, so its replay starts the main map over.
-  const replayTarget = sharedClock
-    ? null
-    : deps.parentSave === undefined
-      ? replaySearch(params)
-      : mainMapReplaySearch(deps.parentSave);
+  const replayStart = sharedClock ? null : replayPlan(params, deps.parentSave);
   const replay: ReplayOffer | undefined =
-    replayTarget === null
+    replayStart === null
       ? undefined
-      : {
-          scope: deps.parentSave === undefined ? 'thisMap' : 'mainMap',
-          start: () => leaveWorld(replayTarget),
-        };
+      : { scope: replayStart.scope, start: () => leaveWorld(replayStart.search()) };
 
   try {
     const storedSettings = readStoredSettings();

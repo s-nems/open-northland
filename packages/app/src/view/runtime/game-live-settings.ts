@@ -39,6 +39,10 @@ export interface LiveGameSettingsDeps {
   readonly setFpsLimit: (limit: MenuSettings['fpsLimit']) => void;
 }
 
+/** The search params the settings page rewrites in play, so a reload or a restart keeps the change. */
+export const LIVE_SETTING_PARAMS = ['lang', 'sound'] as const;
+type LiveSettingParam = (typeof LIVE_SETTING_PARAMS)[number];
+
 export interface LiveGameSettings {
   readonly settings: GameSettingsRuntime;
   syncViewport(nowMs: number): void;
@@ -71,7 +75,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
   });
   const initialSoundEnabled = gameSoundEnabled(deps.params, deps.stored.soundEnabled);
   const sound = deps.sound;
-  const syncCarriedParam = (param: string, value: string | null): void => {
+  const syncCarriedParam = (param: LiveSettingParam, value: string | null): void => {
     if (value === null) deps.params.delete(param);
     else deps.params.set(param, value);
     const url = new URL(window.location.href);

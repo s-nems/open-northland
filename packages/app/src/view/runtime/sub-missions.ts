@@ -8,21 +8,46 @@ import {
 } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { replaySearch } from '../../game/match/session-url.js';
+import type { ReplayOffer } from '../../hud/dom/match-result.js';
 import { openSubMissionWindow } from '../../hud/dom/sub-mission-window.js';
 import { swapToEntry } from '../../launch.js';
 import type { SessionHost } from '../../session/index.js';
+import { LIVE_SETTING_PARAMS } from './game-live-settings.js';
 import { compressSaveText } from './save-load/codec.js';
 import { clearPendingLoad, storePendingLoad } from './save-load/pending-store.js';
 import { relaunchSearch } from './save-load/relaunch.js';
 import type { SavedView } from './save-load/view-state.js';
 
-/** The search that starts a sub-mission's main map over: the outermost parent, launched as it first
- *  was under a new seed. Null when that parent names no world. */
-export function mainMapReplaySearch(parent: SaveGame): string | null {
+export interface ReplayPlan {
+  readonly scope: ReplayOffer['scope'];
+  /** Read when the player asks, since the settings page rewrites `params` in play. */
+  readonly search: () => string;
+}
+
+/**
+ * What a replay of the page `params` launched starts, under a new seed: this map, or from a
+ * sub-mission, whose own entry would boot without the parent save it starts from, its main map (the
+ * outermost parent) as that first launched but with the page's live settings. Null when that parent
+ * names no world.
+ */
+export function replayPlan(params: URLSearchParams, parent: SaveGame | undefined): ReplayPlan | null {
+  if (parent === undefined) return { scope: 'thisMap', search: () => replaySearch(params) };
   let main = parent;
   while (main.parent !== undefined) main = main.parent;
-  const search = relaunchSearch(main.header);
-  return search === null ? null : replaySearch(new URLSearchParams(search));
+  const launched = relaunchSearch(main.header);
+  if (launched === null) return null;
+  return {
+    scope: 'mainMap',
+    search: () => {
+      const search = new URLSearchParams(launched);
+      for (const key of LIVE_SETTING_PARAMS) {
+        const value = params.get(key);
+        if (value === null) search.delete(key);
+        else search.set(key, value);
+      }
+      return replaySearch(search);
+    },
+  };
 }
 
 export type PrepareSubMission = (transition: SubMissionTransition, current: SaveGame) => Promise<SaveGame>;
