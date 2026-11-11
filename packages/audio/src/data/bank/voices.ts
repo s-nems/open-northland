@@ -1,7 +1,26 @@
-import type { HumanVoices } from '@open-northland/data';
+import type { HumanVoices, VoiceClass } from '@open-northland/data';
 import type { EntitySnapshot } from '@open-northland/sim';
 import { creatureTribe, isPerson, settlerJob, voiceClassOf } from '../snapshot.js';
 import { groupFiles, type SoundIndex } from './bank.js';
+
+/** How a hero is drawn: with the hero's own figure or a stand-in's ({@link SoundIndex.heroFigures}), or
+ *  null for no hero. */
+function heroFigure(index: SoundIndex, e: EntitySnapshot): 'own' | 'stand-in' | null {
+  const job = settlerJob(e.components);
+  if (job === undefined || job === null || !index.heroJobs.has(job)) return null;
+  const tribe = creatureTribe(e.components);
+  return tribe !== undefined && index.heroFigures.get(tribe)?.has(job) === true ? 'own' : 'stand-in';
+}
+
+/**
+ * The class a person speaks in: the voice of the figure it is drawn as. Our choice: a hero job its tribe
+ * draws with a soldier's figure (a viking heroine as the viking longbowman) speaks as that soldier, a
+ * man, since every figure that stands in for a hero is a man.
+ */
+export function voiceClassIn(index: SoundIndex, e: EntitySnapshot): VoiceClass {
+  const voiceClass = voiceClassOf(e.components);
+  return voiceClass !== 'child' && heroFigure(index, e) === 'stand-in' ? 'male' : voiceClass;
+}
 
 /** The voice row a person speaks with: its tribe's pool for its class, or undefined when the tribe
  *  leaves that class silent or the entity is no person. */
@@ -9,12 +28,13 @@ export function humanVoicesOf(index: SoundIndex, e: EntitySnapshot): HumanVoices
   if (!isPerson(e.components)) return undefined;
   const tribe = creatureTribe(e.components);
   if (tribe === undefined) return undefined;
-  return index.humanVoices.get(tribe)?.get(voiceClassOf(e.components));
+  return index.humanVoices.get(tribe)?.get(voiceClassIn(index, e));
 }
 
 /**
  * The "ok" pool a settler answers with for life: its pools indexed by its entity id modulo their count,
- * as the original indexes by the human's array slot, except a hero always takes the first pool. Two
+ * as the original indexes by the human's array slot, except a hero always takes the first pool. A hero
+ * drawn as a soldier ({@link voiceClassIn}) takes a soldier's pool, our choice. Two
  * job-specific silences (the original appears to mute tribe 3 job 32 and tribe 2 job 42, unconfirmed
  * in play) are not reproduced. Undefined for a tribe and class that answers with nothing (a child, an
  * animal).
@@ -37,9 +57,7 @@ function lifelongPool(
   pools: readonly string[] | undefined,
 ): string | undefined {
   if (pools === undefined || pools.length === 0) return undefined;
-  const job = settlerJob(e.components);
-  const voiceIndex = job !== undefined && job !== null && index.heroJobs.has(job) ? 0 : e.id;
-  return pools[voiceIndex % pools.length];
+  return pools[(heroFigure(index, e) === 'own' ? 0 : e.id) % pools.length];
 }
 
 /**
@@ -139,5 +157,5 @@ export function murmurPool(index: SoundIndex, e: EntitySnapshot): readonly strin
   if (!isPerson(e.components)) return undefined;
   const tribe = creatureTribe(e.components);
   if (tribe === undefined) return undefined;
-  return index.murmurByTribe.get(tribe)?.[voiceClassOf(e.components)];
+  return index.murmurByTribe.get(tribe)?.[voiceClassIn(index, e)];
 }

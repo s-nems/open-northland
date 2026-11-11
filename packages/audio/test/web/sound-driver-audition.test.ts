@@ -46,6 +46,7 @@ const index: SoundIndex = {
   groundLogicTypeByTerrainType: new Map(),
   humanVoices: new Map<number, Map<VoiceClass, never>>(),
   heroJobs: new Set(),
+  heroFigures: new Map(),
   animalCalls: new Map(),
   attackAlertsByTribe: new Map(),
   landscapeAmbienceByRecord: new Map(),

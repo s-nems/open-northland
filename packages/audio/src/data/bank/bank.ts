@@ -40,8 +40,10 @@ export interface SoundIndex {
   /** Settler tribe → voice class → the groups that tribe's settlers of that class speak with; a
    *  voiceless tribe in {@link BORROWED_TRIBE_VOICES} shares its lender's rows. */
   readonly humanVoices: ReadonlyMap<number, ReadonlyMap<VoiceClass, HumanVoices>>;
-  /** Job ids whose authored slug identifies a hero; heroes always use response pool zero. */
+  /** Job ids whose authored slug identifies a hero. */
   readonly heroJobs: ReadonlySet<number>;
+  /** Tribe → the hero jobs it draws with the hero's own figure ({@link HeroFigure}). */
+  readonly heroFigures: ReadonlyMap<number, ReadonlySet<number>>;
   /** Animal tribe → its unprompted call and the roll that gates it. */
   readonly animalCalls: ReadonlyMap<number, AnimalCall>;
   /** Tribe type id → front → the wavs its attack alert shouts from (`sounds.attackAlerts`). A row whose
@@ -194,6 +196,12 @@ export interface AuthoredId {
   readonly id?: string;
 }
 
+/** A hero job a tribe draws with the hero's own figure, not with the soldier its class falls back to. */
+export interface HeroFigure {
+  readonly tribe: number;
+  readonly job: number;
+}
+
 /**
  * The wav files of a static group by its (case-insensitive) name, or `undefined` when the group is
  * absent or empty. The one home for the lower-cased-key `groupsByName` lookup its callers share.
@@ -221,6 +229,7 @@ export function buildSoundIndex(
   jobs: readonly AuthoredId[] = [],
   tribes: readonly AuthoredId[] = [],
   landscapeRecords: readonly LandscapeRecord[] = [],
+  heroFigureRows: readonly HeroFigure[] = [],
 ): SoundIndex {
   const groupsByName = new Map<string, readonly string[]>();
   const groupsByLogicSoundType = new Map<number, readonly string[]>();
@@ -308,6 +317,12 @@ export function buildSoundIndex(
   for (const job of jobs) {
     if (job.typeId !== undefined && job.id?.startsWith('hero') === true) heroJobs.add(job.typeId);
   }
+  const heroFigures = new Map<number, Set<number>>();
+  for (const { tribe, job } of heroFigureRows) {
+    const tribeJobs = heroFigures.get(tribe);
+    if (tribeJobs === undefined) heroFigures.set(tribe, new Set([job]));
+    else tribeJobs.add(job);
+  }
 
   return {
     groupsByName,
@@ -319,6 +334,7 @@ export function buildSoundIndex(
     groundLogicTypeByTerrainType,
     humanVoices,
     heroJobs,
+    heroFigures,
     animalCalls,
     attackAlertsByTribe,
     murmurByTribe: murmurPools(sounds, tribes, groupsByName, poolGains),

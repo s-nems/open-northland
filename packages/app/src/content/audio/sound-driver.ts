@@ -12,6 +12,7 @@ import type { SoundBank, SoundQuality } from '@open-northland/data';
 import { timedAudioContext } from '../../diag/audio-context.js';
 import type { ContentIr } from '../ir/rows.js';
 import { contentUrl } from '../url.js';
+import { heroFigures } from './hero-figures.js';
 import { WIELDER_SOUNDS } from './wielder-sounds.js';
 
 /**
@@ -49,6 +50,7 @@ export function soundIndexOf(ir: ContentIr, sounds: SoundBank): SoundIndex {
     ir.jobs ?? [],
     ir.tribes ?? [],
     ir.landscapeGfx ?? [],
+    heroFigures(ir),
   );
 }
 

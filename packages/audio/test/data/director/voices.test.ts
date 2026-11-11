@@ -12,6 +12,7 @@ import {
   directAudio,
   GENERIC_ROLL_RANGE,
   MAX_CHATTER_TICKS_PER_FRAME,
+  type SoundIndex,
 } from '../../../src/index.js';
 
 /**
@@ -67,7 +68,7 @@ const bank: SoundBank = {
     { tribe: 19, minCount: 3, probability: 10, group: 'Sheep Sounds' },
   ],
 };
-const index = buildSoundIndex(bank, [], [], [{ typeId: 47, id: 'heroine_bow_xena' }]);
+const index = buildSoundIndex(bank, [], []);
 const bindings = defaultBindings();
 
 const CANVAS_W = 800;
@@ -171,17 +172,16 @@ describe('order responses', () => {
     expect(direct({ responses: [3] })[0]?.files).toEqual(['humantalk/m2ok01.wav']);
   });
 
-  it('gives every hero the first response recording rather than an entity-id-selected voice', () => {
-    // Original behavior: a hero's response index is forced to zero instead of following the entity.
-    // Job 47 is the heroine in readable `jobtypes.ini`.
-    const heroSnapshot: WorldSnapshot = {
+  describe('a hero', () => {
+    const HEROINE = 47;
+    const heroine: WorldSnapshot = {
       tick: 10,
       entities: [
         {
           id: 3,
           components: {
             Position: here,
-            Settler: { tribe: 1, jobType: 47 },
+            Settler: { tribe: 1, jobType: HEROINE },
             Person: person,
             Female: { female: true },
             Owner: { player: LOCAL },
@@ -190,17 +190,29 @@ describe('order responses', () => {
       ],
       events: [],
     };
-    const frame = directAudio({
-      events: [],
-      responses: [{ members: [3] }],
-      snapshot: heroSnapshot,
-      camera,
-      canvasW: CANVAS_W,
-      canvasH: CANVAS_H,
-      index,
-      bindings,
+    const answer = (heroIndex: SoundIndex) =>
+      directAudio({
+        events: [],
+        responses: [{ members: [3] }],
+        snapshot: heroine,
+        camera,
+        canvasW: CANVAS_W,
+        canvasH: CANVAS_H,
+        index: heroIndex,
+        bindings,
+      }).oneShots[0]?.files;
+    const jobs = [{ typeId: HEROINE, id: 'heroine_bow_xena' }];
+
+    it('drawn as itself takes the first response recording, not an entity-id-selected one', () => {
+      // Original behavior: a hero's response index is forced to zero instead of following the entity.
+      const own = buildSoundIndex(bank, [], [], jobs, [], [], [{ tribe: 1, job: HEROINE }]);
+      expect(answer(own)).toEqual(['humantalk/f1ok01.wav']);
     });
-    expect(frame.oneShots[0]?.files).toEqual(['humantalk/f1ok01.wav']);
+
+    it('drawn as a soldier speaks as that soldier, a man with an entity-id-selected voice', () => {
+      const standIn = buildSoundIndex(bank, [], [], jobs);
+      expect(answer(standIn)).toEqual(['humantalk/m2ok01.wav']);
+    });
   });
 
   it('leans the answer of an off-screen settler to its side instead of culling it', () => {

@@ -1,7 +1,8 @@
 import { type AnimalCall, type HumanVoices, VOICE_CLASSES, type VoiceClass } from '@open-northland/data';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { groupFiles, poolGain, type SoundIndex } from '../bank/bank.js';
-import { creatureTribe, entityOwner, entityTile, isPerson, voiceClassOf } from '../snapshot.js';
+import { voiceClassIn } from '../bank/voices.js';
+import { creatureTribe, entityOwner, entityTile, isPerson } from '../snapshot.js';
 import { computeSpatial } from '../spatial.js';
 import type { ChatterInput, DirectorInput, Lane, OneShot } from '../types.js';
 import { groupAnswerShots, selectionShots } from './group-answer.js';
@@ -133,7 +134,7 @@ function tallyDrawn(
     if (tribe === undefined) continue;
     if (isPerson(e.components)) {
       if (localPlayer === undefined || entityOwner(e.components) !== localPlayer) continue;
-      tally.speakersOf.get(tribe)?.[voiceClassOf(e.components)]?.push(id);
+      tally.speakersOf.get(tribe)?.[voiceClassIn(index, e)]?.push(id);
     } else {
       tally.herdOf.get(tribe)?.push(id);
     }

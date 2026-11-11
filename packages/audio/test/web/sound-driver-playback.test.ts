@@ -70,6 +70,7 @@ const index: SoundIndex = {
   groundLogicTypeByTerrainType: new Map(),
   humanVoices: new Map([[1, new Map<VoiceClass, HumanVoices>([['male', VIKING_MAN]])]]),
   heroJobs: new Set(),
+  heroFigures: new Map(),
   animalCalls: new Map(),
   attackAlertsByTribe: new Map(),
   landscapeAmbienceByRecord: new Map(),
