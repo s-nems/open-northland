@@ -230,6 +230,8 @@ function settlerParts(ctx: HintContext, group: SettlerGroup): Part[] {
       return [{ count, hint: action('putOn', { kind: 'pile', ref: intent.pile }) }];
     case 'gather':
       return [{ count, hint: action('gather') }];
+    case 'moveWorkFlag':
+      return [{ count, hint: action('workArea') }];
     case 'tradeHouse':
       return [{ count, hint: tradeHouseHint(ctx, intent.house, intent.detach, intent.ask) }];
     case 'walk':

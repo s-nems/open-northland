@@ -1,6 +1,12 @@
 import type { EquipCategory } from '@open-northland/data';
 import { entityById, MAX_UNIT_ORDER_MEMBERS, nodeOfPosition, systems } from '@open-northland/sim';
-import { canOpenChest, chestKindOf, positionOf, settlerJobType } from '../../../game/snapshot/index.js';
+import {
+  canOpenChest,
+  chestKindOf,
+  positionOf,
+  settlerJobType,
+  workFlagOf,
+} from '../../../game/snapshot/index.js';
 import type { Tile } from '../../picking.js';
 import { tradeHousePick } from '../highlights/index.js';
 import type { FormationUnit } from '../orders/formation.js';
@@ -54,6 +60,9 @@ export type SettlerIntent =
     }
   /** The gatherers of the good switch to it; the rest go further down. */
   | { readonly kind: 'gather'; readonly goodType: number }
+  /** The flag holders that gather the good move their flag onto the resource; `goodType` is null for a
+   *  trade whose goods the player cannot set. */
+  | { readonly kind: 'moveWorkFlag'; readonly tile: Tile; readonly goodType: number | null }
   /** `detach` take the house off their route at once; `ask` put it on once the sim admits it, and the
    *  refused take the rungs past the route. */
   | {
@@ -73,7 +82,12 @@ export interface SettlerGroup {
 
 /** The rungs that split the selection, the rest going further down; the press confirms on the rest's
  *  order unless nobody is left. */
-export const PARTITION_RUNGS: ReadonlySet<SettlerIntent['kind']> = new Set(['claimAnimal', 'hunt', 'gather']);
+export const PARTITION_RUNGS: ReadonlySet<SettlerIntent['kind']> = new Set([
+  'claimAnimal',
+  'hunt',
+  'gather',
+  'moveWorkFlag',
+]);
 
 export type SettlerPlan =
   /** Nobody in the selection takes orders. */
@@ -206,23 +220,44 @@ function ladder(
     groups.push({ units: rest, intent: equip, pending: 'equip' });
     return groups;
   }
-  // A gathered good is a standing setting, so a Shift click on a resource walks there.
+  // A gathered good and a flag are standing settings, so a Shift click on a resource walks there.
   const resource = hit.resource;
   if (!queued && resource !== null) {
-    const goodType = resource.goodType;
-    const [gatherers, others] = split(rest, (unit) => {
-      const job = jobOf(ctx, unit);
-      return (
-        job !== null &&
-        systems.jobChangesProduction(content, job) &&
-        systems.jobGathersGood({ content }, job, goodType)
-      );
-    });
-    if (gatherers.length > 0) groups.push({ units: gatherers, intent: { kind: 'gather', goodType } });
-    rest = others;
+    const gathering = resourceRungs(ctx, rest, resource.goodType, hit.tile);
+    groups.push(...gathering);
+    const taken = new Set(gathering.flatMap((group) => group.units));
+    rest = rest.filter((unit) => !taken.has(unit));
     if (rest.length === 0) return groups;
   }
   groups.push(...routeRungs(ctx, rest, aim, queued));
+  return groups;
+}
+
+/** The selected settlers whose trade gathers `goodType`: a flag holder moves its flag onto the resource,
+ *  holding a trade with settable goods to it; a flagless gatherer only switches to it. */
+function resourceRungs(
+  ctx: LadderContext,
+  units: readonly FormationUnit[],
+  goodType: number,
+  tile: Tile,
+): SettlerGroup[] {
+  const { content } = ctx;
+  const movers: FormationUnit[] = [];
+  const settable: FormationUnit[] = [];
+  const switchers: FormationUnit[] = [];
+  for (const unit of units) {
+    const self = entityById(ctx.snapshot, unit.ref);
+    const job = self === undefined ? null : (settlerJobType(self) ?? null);
+    if (self === undefined || job === null || !systems.jobGathersGood({ content }, job, goodType)) continue;
+    const changes = systems.jobChangesProduction(content, job);
+    if (workFlagOf(self) !== undefined) (changes ? settable : movers).push(unit);
+    else if (changes) switchers.push(unit);
+  }
+  const groups: SettlerGroup[] = [];
+  if (settable.length > 0) groups.push({ units: settable, intent: { kind: 'moveWorkFlag', tile, goodType } });
+  if (movers.length > 0)
+    groups.push({ units: movers, intent: { kind: 'moveWorkFlag', tile, goodType: null } });
+  if (switchers.length > 0) groups.push({ units: switchers, intent: { kind: 'gather', goodType } });
   return groups;
 }
 

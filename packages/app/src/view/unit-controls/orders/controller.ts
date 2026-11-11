@@ -434,8 +434,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       }
       case 'equip':
         return wearFromGround(units, intent, aim, event, queued);
+      case 'moveWorkFlag':
+        return setWorkFlags(units, intent.tile, intent.goodType ?? undefined);
       case 'gather':
-        // The work flag stays where it stands (Ctrl moves the flag too).
         return enqueueUnitSelection(
           units.map((unit) => ({
             kind: 'setGatherGood',
