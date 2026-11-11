@@ -35,6 +35,12 @@ const PROMPTS: Readonly<Record<LocaleCode, CrashPrompt>> = {
     restart: 'Перезапустить',
     quit: 'Выйти',
   },
+  ita: {
+    title: TITLE,
+    message: 'Il gioco ha smesso di nuovo di funzionare subito dopo il riavvio.',
+    restart: 'Riavvia',
+    quit: 'Esci',
+  },
   chs: {
     title: TITLE,
     message: '游戏在重新启动后不久再次停止运行。',
