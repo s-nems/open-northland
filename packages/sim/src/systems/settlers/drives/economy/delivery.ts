@@ -144,7 +144,12 @@ export function planDelivery(
             plan.limit ?? undefined,
           );
   } else if (world.has(store, UnderConstruction)) {
-    cell = nearestCell(terrain, spacing.workCells(store), here);
+    // A stand on the carrier's own land first: a ship site's stands may lie on two shores.
+    const stands = spacing.workCells(store);
+    const land = terrain.componentOf(here);
+    cell =
+      nearestCell(terrain, stands, here, (stand) => terrain.componentOf(stand) === land) ??
+      nearestCell(terrain, stands, here);
   } else {
     cell = interactionCell(world, ctx, terrain, store, here);
   }

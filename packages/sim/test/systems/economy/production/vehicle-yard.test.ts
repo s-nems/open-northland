@@ -29,7 +29,6 @@ import {
   dynamicBlockOverlay,
   findVehicleSite,
   SHIP_SITE_RINGS,
-  shipSiteWorkCells,
   VEHICLE_SITE_RINGS,
   vehicleSiteWorkPoint,
 } from '../../../../src/systems/footprint/index.js';
@@ -81,6 +80,12 @@ const OFF_SHORE_WATER_ROWS = 8;
 /** A ship site's anchor row two cell rows short of that shore: one node row of water parts its hull from
  *  the land, which only its work area's outer row reaches. */
 const OFF_SHORE_ANCHOR_ROW = OFF_SHORE_WATER_ROWS - 2;
+/** A cell row of land amid that water whose lower node row borders the off-shore hull's top row. */
+const ISLET_ROW = OFF_SHORE_ANCHOR_ROW - 2;
+/** Cell columns of a mainland strand running up the off-shore map's west edge past the islet. */
+const STRAND_COLS = 4;
+/** The islet's first cell column, two water columns east of the strand. */
+const ISLET_FROM_COL = STRAND_COLS + 2;
 /** The cell column of the river that splits the reuse map into two banks, east of the workshop. */
 const RIVER_COLUMN = 14;
 /** Well past the 2-wood site's fetch, delivery and hammering. */
@@ -190,21 +195,31 @@ function sim(map: TerrainMap = grassCellMap(MAP_CELLS, MAP_CELLS)): Simulation {
   return new Simulation({ seed: 5, content: yardContent(), map });
 }
 
-/** `waterRows` cell rows of open water on continent 1 along the map's top edge (or its bottom edge with
- *  `south`), land elsewhere; land nodes read continent 0. */
+/** `waterRows` cell rows of open water along the map's top edge (or its bottom edge with `south`), land
+ *  elsewhere. */
 function shoreMap(waterRows: number, south = false): TerrainMap {
-  const typeIds = new Array<number>(MAP_CELLS * MAP_CELLS).fill(GRASS);
   const first = south ? MAP_CELLS - waterRows : 0;
-  for (let row = first; row < first + waterRows; row++) {
-    for (let col = 0; col < MAP_CELLS; col++) typeIds[row * MAP_CELLS + col] = WATER;
-  }
+  return cellMap((row) => row >= first && row < first + waterRows);
+}
+
+/** The off-shore map's water with an islet strip at {@link ISLET_ROW}, and a mainland strand up the west
+ *  edge that reaches the islet's row across open water. */
+function isletStrandMap(): TerrainMap {
+  return cellMap(
+    (row, col) =>
+      row < OFF_SHORE_WATER_ROWS && col >= STRAND_COLS && !(row === ISLET_ROW && col >= ISLET_FROM_COL),
+  );
+}
+
+/** Open water on continent 1 in the cells `water` names, land elsewhere; land nodes read continent 0. */
+function cellMap(water: (row: number, col: number) => boolean): TerrainMap {
   const width = MAP_CELLS * 2;
   const height = MAP_CELLS * 2;
   const nodeTypes = new Array<number>(width * height);
   const waterContinents = new Array<number>(width * height);
   for (let hy = 0; hy < height; hy++) {
     for (let hx = 0; hx < width; hx++) {
-      const t = typeIds[(hy >> 1) * MAP_CELLS + (hx >> 1)] ?? GRASS;
+      const t = water(hy >> 1, hx >> 1) ? WATER : GRASS;
       nodeTypes[hy * width + hx] = t;
       waterContinents[hy * width + hx] = t === WATER ? 1 : 0;
     }
@@ -270,10 +285,15 @@ function craftOnly(s: Simulation, worker: Entity, goods: readonly number[]): voi
   setProductionGoods(s.world, ctxOf(s), { kind: 'setProductionGoods', entity: worker, goods: [...goods] });
 }
 
-/** A wainwright at the map's middle with its carpenter on the door and an HQ full of wood beside it. */
-function yardWorld(s: Simulation, select: readonly number[] = [HANDCART_GOOD]) {
+/** A wainwright at the map's middle with its carpenter on the door and an HQ full of wood beside it, or
+ *  at `storeAt`. */
+function yardWorld(
+  s: Simulation,
+  select: readonly number[] = [HANDCART_GOOD],
+  storeAt: { readonly x: number; readonly y: number } = { x: 6, y: 12 },
+) {
   const shop = buildingAt(s, WAINWRIGHT, 12, 12);
-  const store = buildingAt(s, HEADQUARTERS, 6, 12);
+  const store = buildingAt(s, HEADQUARTERS, storeAt.x, storeAt.y);
   s.world.mut(store, Stockpile).amounts.set(WOOD, 10);
   const worker = carpenterAt(s, 12, 13, shop);
   craftOnly(s, worker, select);
@@ -616,22 +636,51 @@ describe('building the vehicle', () => {
     expect(s.checkInvariants()).toEqual([]);
   });
 
-  it('takes a ship’s bill where its crew stands when the hull touches no land, and raises it', () => {
-    const s = sim(shoreMap(OFF_SHORE_WATER_ROWS));
+  /** The yard world on `map`, its store at `storeAt`, with a ship site anchored off the shore and its crew
+   *  asked for a ship, and the lands the site's perimeter borders. */
+  function offShoreShip(map: TerrainMap, storeAt?: { readonly x: number; readonly y: number }) {
+    const s = sim(map);
     const terrain = s.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
-    const { store, worker } = yardWorld(s, [SHIP_GOOD]);
-    const stocked = s.world.get(store, Stockpile).amounts.get(WOOD) ?? 0;
+    const { store, worker } = yardWorld(s, [SHIP_GOOD], storeAt);
     const site = siteAt(s, SHIP_YARD, 12, OFF_SHORE_ANCHOR_ROW);
+    const here = anchorOf(s, worker);
     const blocked = dynamicBlockOverlay(s.world, ctxOf(s), terrain);
-    expect(constructionWorkCells(s.world, ctxOf(s), terrain, site, blocked)).toEqual([]);
-    expect(shipSiteWorkCells(s.world, ctxOf(s), terrain, site, blocked).length).toBeGreaterThan(0);
+    const perimeter = constructionWorkCells(s.world, ctxOf(s), terrain, site, blocked);
+    return {
+      s,
+      store,
+      worker,
+      site,
+      crewLand: terrain.componentOf(terrain.nodeAt(here.hx, here.hy)),
+      perimeterLands: perimeter.map((cell) => terrain.componentOf(cell)),
+    };
+  }
+
+  /** The crew raises the off-shore `site` from the store's wood within the build budget. */
+  function expectRaised({ s, store, worker, site }: ReturnType<typeof offShoreShip>): void {
+    const stocked = s.world.get(store, Stockpile).amounts.get(WOOD) ?? 0;
     const raised = () => s.world.get(site, UnderConstruction).labor > 0;
     for (let i = 0; i < BUILD_BUDGET_TICKS && !raised(); i++) s.step();
     expect(raised()).toBe(true);
     expect(s.world.get(worker, SiteAssignment).site).toBe(site);
     expect(s.world.get(store, Stockpile).amounts.get(WOOD)).toBeLessThan(stocked);
     expect(s.world.verifyCaches()).toEqual([]);
+  }
+
+  it('takes a ship’s bill where its crew stands when the hull touches no land, and raises it', () => {
+    const ship = offShoreShip(shoreMap(OFF_SHORE_WATER_ROWS));
+    expect(ship.perimeterLands).toEqual([]);
+    expectRaised(ship);
+  });
+
+  it('takes a ship’s bill on its crew’s shore when the hull borders only an islet nearer the store', () => {
+    // The store stands on the strand at the islet's row, so the islet's stands lie nearer it than the
+    // crew's own.
+    const ship = offShoreShip(isletStrandMap(), { x: STRAND_COLS / 2, y: ISLET_ROW });
+    expect(ship.perimeterLands.length).toBeGreaterThan(0);
+    expect(ship.perimeterLands).not.toContain(ship.crewLand);
+    expectRaised(ship);
   });
 
   it('builds from the workshop’s own wood before the store’s, though wood is the workshop’s recipe input', () => {

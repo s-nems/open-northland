@@ -11,12 +11,8 @@ import { houseFootprintOf } from '../../footprint/geometry.js';
 import { constructionWorkCells, isShipHouse, shipSiteWorkCells } from '../../footprint/index.js';
 import { type WalkBlockMask, walkBlockMask } from '../../footprint/walk-block-mask.js';
 
-/**
- * A site's stand cells over `blocked` that keep an open side, so no builder is parked in a nook; every one
- * when all are wedged, so such a site still gets built. They are its perimeter, or, for a ship site whose
- * hull borders no walkable land, the work-area cells its crew works it from. Approximation: where the
- * original sets such a ship's material down is not confirmed; here it lands where the crew stands.
- */
+/** A site's {@link standCells} over `blocked` that keep an open side, so no builder is parked in a nook;
+ *  every one when all are wedged, so such a site still gets built. */
 export function openWorkCells(
   world: World,
   ctx: SystemContext,
@@ -24,10 +20,30 @@ export function openWorkCells(
   blocked: BlockOverlay,
   site: Entity,
 ): readonly NodeId[] {
-  const perimeter = constructionWorkCells(world, ctx, terrain, site, blocked);
-  const stands = perimeter.length > 0 ? perimeter : shipSiteWorkCells(world, ctx, terrain, site, blocked);
+  const stands = standCells(world, ctx, terrain, blocked, site);
   const open = stands.filter((cell) => hasOpenSide(terrain, cell, blocked));
   return open.length > 0 ? open : stands;
+}
+
+/**
+ * Where a site's builders stand and its material lands: its perimeter, and for a ship site also the
+ * work-area cells its crew may work it from on each shore the perimeter does not reach, so a hull lying
+ * off its crew's shore still takes its bill. Approximation: where the original sets a ship's material down
+ * is not confirmed; here it lands on the cells a crew works the hull from.
+ */
+function standCells(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  blocked: BlockOverlay,
+  site: Entity,
+): readonly NodeId[] {
+  const perimeter = constructionWorkCells(world, ctx, terrain, site, blocked);
+  const crewCells = shipSiteWorkCells(world, ctx, terrain, site, blocked);
+  if (crewCells.length === 0) return perimeter;
+  const shores = new Set(perimeter.map((cell) => terrain.componentOf(cell)));
+  const beyond = crewCells.filter((cell) => !shores.has(terrain.componentOf(cell)));
+  return beyond.length === 0 ? perimeter : [...perimeter, ...beyond];
 }
 
 /** Nodes past a building's body its {@link openWorkCells} read: the one-node box margin the exterior
