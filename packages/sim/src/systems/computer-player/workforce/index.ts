@@ -77,7 +77,7 @@ import { allocateFishers, fishersWanted, fisherTarget, fishingPlan } from './fis
 import { flagGround, type TakenFlagNodes, unsealedResourceTest } from './flag-spots.js';
 import {
   FOCUS_BUILDERS,
-  focusCrewOrders,
+  focusPriorityOrders,
   focusShortGoods,
   focusShortPosts,
   focusYieldPosts,
@@ -334,21 +334,10 @@ function runWorkforce(
     commands: [...focusCore.commands, ...core.commands, ...rest.commands],
     reserved: [...focusCore.reserved, ...core.reserved, ...rest.reserved],
   };
-  // While the seat's catch feeds its women, the focus site pins only its floor and the other builders
-  // keep the homes and the other sites.
+  // While the seat's catch feeds its women, the focus site is not marked, so the builders keep the
+  // homes and the other sites too.
   const focusCrew =
-    focus === null
-      ? []
-      : focusCrewOrders(
-          world,
-          ctx,
-          player,
-          focus,
-          reserve.reserved,
-          builderJob,
-          (good) => supply.units(good),
-          fishFeedsWomen(world, ctx, player) ? focusFloor : null,
-        );
+    focus === null ? [] : focusPriorityOrders(world, focus, fishFeedsWomen(world, ctx, player));
   // The standing buildings' target crews and the gatherers the reached entries count come before the army
   // floor (authored): both are bounded by what stands, so a seat staffs every building it raised and
   // still leaves the rest to the army. The floor outranks the surplus tier and the generic posts, which
@@ -376,7 +365,7 @@ function runWorkforce(
     ...scouting,
     ...roadCrew.commands,
     ...reserve.commands.filter(undrafted),
-    ...focusCrew.filter(undrafted),
+    ...focusCrew,
     ...targets,
     ...armyFloor.commands,
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'topUp'),
