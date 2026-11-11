@@ -460,6 +460,23 @@ describe('catapult stances and scans', () => {
     expect(hits.every((ev) => ev.kind === 'projectileHit' && ev.target === hq)).toBe(true);
   });
 
+  it('defending, takes a military target past its band only within its scan of the guard position', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 16, 8, P1);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'defence' }));
+    s.run(1);
+    // The guard position 14 map points behind it, where a chase that moved it out left it.
+    s.world.mut(catapult, Vehicle).guard = { hx: 2, hy: 8 };
+    const past = CATAPULT_MAX_RANGE + VEHICLE_PRIORITY_REACH_POINTS;
+    houseAt(s, 16 + past, 8, P2, TOUGH_HOUSE, HEADQUARTERS); // past its band, beyond the scan of its guard
+    let drove = false;
+    collect(s, SHOT_TICKS, [], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    expect(drove).toBe(false);
+    expect(s.world.get(catapult, Vehicle).attack).toBeNull();
+  });
+
   it('judges a house by its nearest wall: one reaching inside the near reach is not in its band', () => {
     const s = sim(grass(40, 12));
     const catapult = catapultAt(s, 24, 8, P1);

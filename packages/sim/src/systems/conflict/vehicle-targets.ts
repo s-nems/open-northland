@@ -49,9 +49,11 @@ export type VehicleScanResult = VehicleAttackTarget | null | 'pressed';
  * The stance's scan. The band comes first: the best-ranked valid, seen enemy the weapon reaches from where
  * the vehicle stands (`hold`: from its guard position), the nearest within its rank. `hold` looks no
  * further. Outside it, a military target up to {@link VEHICLE_PRIORITY_REACH_POINTS} past the band wins
- * over a lesser one inside it; with nothing in the band the vehicle stands `pressed` among
- * {@link PRESSING_ENEMIES} enemies inside the near reach, else takes the nearest enemy out to the scan
- * radius, `attack` around itself and `defence` around its guard position (original behavior). Each find
+ * over a lesser one inside it and over a crowd at its side, `defence` taking one only within the scan
+ * radius of its guard position, so a run of such pulls never walks it off its leash. With nothing in the
+ * band the vehicle stands `pressed` among {@link PRESSING_ENEMIES} enemies inside the near reach, else
+ * takes the nearest enemy out to the scan radius, `attack` around itself and `defence` around its guard
+ * position (original behavior). Each find
  * gives way to a held target no farther, in the band one of its rank or better. An enemy a chase could
  * not reach is skipped for a while.
  */
@@ -86,7 +88,8 @@ export function scanForTarget(
   if (stance === 'hold') return inBand ?? held;
   const military = inBand?.kind === 'entity' && scan.rank(inBand.entity) === VEHICLE_TARGET_RANK.MILITARY;
   if (near && !military) {
-    const past = militaryPastBand(terrain, pass, scan, here, weapon, reach);
+    const leash = stance === 'defence' ? centre : null;
+    const past = militaryPastBand(terrain, pass, scan, here, weapon, reach, leash);
     if (past !== null)
       return held?.kind === 'entity' && held.entity === past ? held : { kind: 'entity', entity: past };
   }
@@ -95,7 +98,8 @@ export function scanForTarget(
   return nearestInReach(world, ctx, terrain, pass, scan, centre, held);
 }
 
-/** The nearest military target past the far reach of `here` but within `reach` map points. */
+/** The nearest military target past the far reach of `here` but within `reach` map points, and within the
+ *  scan radius of `guard` when one is given. */
 function militaryPastBand(
   terrain: TerrainGraph,
   pass: CombatPass,
@@ -103,8 +107,9 @@ function militaryPastBand(
   here: NodeId,
   { minRange, maxRange }: { minRange: number; maxRange: number },
   reach: number,
+  guard: NodeId | null,
 ): Entity | null {
-  const accept = scan.militaryInBandFrom(here, minRange);
+  const accept = scan.militaryInBandFrom(here, minRange, guard);
   const found = pass.index.nearest(
     terrain.xOf(here),
     terrain.yOf(here),
@@ -219,6 +224,7 @@ export class VehicleScan {
   private givenUp: ((t: Entity) => boolean) | undefined;
   private bandFrom = 0 as NodeId;
   private bandMin = 0;
+  private leash: NodeId | null = null;
 
   constructor(
     private readonly world: World,
@@ -244,8 +250,13 @@ export class VehicleScan {
     (!isStructureTarget(this.world, t) ||
       targetDistance(this.world, this.ctx, this.terrain, this.bandFrom, t) >= this.bandMin);
 
+  // A settler is never military, so the structure test spares the rank's reads for every unit offered.
   private readonly militaryInBand = (t: Entity): boolean =>
-    this.rank(t) === VEHICLE_TARGET_RANK.MILITARY && this.acceptInBand(t);
+    isStructureTarget(this.world, t) &&
+    this.rank(t) === VEHICLE_TARGET_RANK.MILITARY &&
+    this.acceptInBand(t) &&
+    (this.leash === null ||
+      targetDistance(this.world, this.ctx, this.terrain, this.leash, t) <= VEHICLE_SCAN_RADIUS_POINTS);
 
   readonly rank = (t: Entity): VehicleTargetRank => vehicleTargetRank(this.world, this.ctx, t, this.firing);
 
@@ -256,9 +267,10 @@ export class VehicleScan {
     return this.acceptInBand;
   }
 
-  /** {@link inBandFrom} for military targets alone. */
-  militaryInBandFrom(from: NodeId, minRange: number): (t: Entity) => boolean {
+  /** {@link inBandFrom} for military targets alone, within the scan radius of `guard` when one is given. */
+  militaryInBandFrom(from: NodeId, minRange: number, guard: NodeId | null): (t: Entity) => boolean {
     this.inBandFrom(from, minRange);
+    this.leash = guard;
     return this.militaryInBand;
   }
 
