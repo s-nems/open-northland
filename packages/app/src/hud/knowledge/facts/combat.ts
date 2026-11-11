@@ -312,6 +312,10 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'dragon.hitpoints': whole(BYZANTINE_SPEAR_VARIANTS.find((row) => row.form === 'native')?.hitpoints ?? 0),
   'catapult.searchRadius': whole(systems.VEHICLE_SCAN_RADIUS_POINTS),
   'catapult.leash': whole(systems.VEHICLE_DEFENCE_LEASH_POINTS),
+  'catapult.priorityReach': whole((base) => {
+    const max = weaponRow(base, VIKING, 'catapult')?.maxRange;
+    return max === undefined ? undefined : max + systems.VEHICLE_PRIORITY_REACH_POINTS;
+  }),
   'catapult.bandMin': whole((base) => {
     const max = weaponRow(base, VIKING, 'catapult')?.maxRange;
     return max === undefined ? undefined : max - systems.APPROACH_BAND_DEPTH;

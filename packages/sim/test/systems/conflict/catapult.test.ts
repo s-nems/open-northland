@@ -51,6 +51,7 @@ import { combatSystem } from '../../../src/systems/conflict/combat.js';
 import { projectileSystem } from '../../../src/systems/conflict/projectile.js';
 import { isFleeThreat } from '../../../src/systems/conflict/targeting.js';
 import { UNREACHABLE_TARGET_MEMO_SIZE } from '../../../src/systems/conflict/unreachable-targets.js';
+import { VEHICLE_PRIORITY_REACH_POINTS } from '../../../src/systems/conflict/vehicle-targets.js';
 import { stampResourceFootprintData } from '../../../src/systems/footprint/index.js';
 import { REGENERATION_HITPOINTS_PER_TICK } from '../../../src/systems/lifecycle/needs/index.js';
 import { vehiclesGone } from '../../../src/systems/missions/goals/casualties.js';
@@ -441,6 +442,22 @@ describe('catapult stances and scans', () => {
     expect(drove).toBe(false);
     expect(launched.length).toBeGreaterThan(0);
     expect(launched.every((ev) => ev.kind === 'projectileLaunched' && ev.target === house)).toBe(true);
+  });
+
+  it('outside hold, drives up to a military target just past its band before a lesser one inside it', () => {
+    const s = sim(grass(40, 12));
+    const catapult = catapultAt(s, 6, 8, P1);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    houseAt(s, 16, 8, P2, TOUGH_HOUSE); // 10 map points: a plain house inside the band
+    const past = CATAPULT_MAX_RANGE + VEHICLE_PRIORITY_REACH_POINTS;
+    const hq = houseAt(s, 6 + past, 8, P2, TOUGH_HOUSE, HEADQUARTERS);
+    let drove = false;
+    const hits = collect(s, 400, ['projectileHit'], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    expect(drove).toBe(true);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.every((ev) => ev.kind === 'projectileHit' && ev.target === hq)).toBe(true);
   });
 
   it('judges a house by its nearest wall: one reaching inside the near reach is not in its band', () => {

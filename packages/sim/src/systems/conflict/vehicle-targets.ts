@@ -32,6 +32,11 @@ const VEHICLE_TARGET_RANK = { MILITARY: 0, SHOOTER: 1, FIGHTER: 2, HOUSE: 3, OTH
 type VehicleTargetRank = (typeof VEHICLE_TARGET_RANK)[keyof typeof VEHICLE_TARGET_RANK];
 const VEHICLE_TARGET_RANKS = Object.keys(VEHICLE_TARGET_RANK).length;
 
+/** How far past its far reach, in map points, a vehicle outside `hold` takes up a military target to
+ *  drive into range of it, ahead of a lesser one inside its band (owner rule): pressing on an enemy
+ *  line, it rolls up to the tower behind the men it could shoot. */
+export const VEHICLE_PRIORITY_REACH_POINTS = 6;
+
 /** How many enemies inside the near reach keep a vehicle with nothing in its band where it stands (owner
  *  rule): it drives away from a lone one to bring it into the band, but a crowd would only follow it. */
 const PRESSING_ENEMIES = 2;
@@ -42,12 +47,13 @@ export type VehicleScanResult = VehicleAttackTarget | null | 'pressed';
 
 /**
  * The stance's scan. The band comes first: the best-ranked valid, seen enemy the weapon reaches from where
- * the vehicle stands (`hold`: from its guard position), the nearest within its rank. With nothing in the
- * band `hold` looks no further; `attack` and `defence` stand `pressed` among {@link PRESSING_ENEMIES}
- * enemies inside the near reach, else take the nearest enemy out to the scan radius, `attack` around
- * itself and `defence` around its guard position (original behavior). Either find gives way to a held
- * target no farther, in the band one of its rank or better. An enemy a chase could not reach is skipped
- * for a while.
+ * the vehicle stands (`hold`: from its guard position), the nearest within its rank. `hold` looks no
+ * further. Outside it, a military target up to {@link VEHICLE_PRIORITY_REACH_POINTS} past the band wins
+ * over a lesser one inside it; with nothing in the band the vehicle stands `pressed` among
+ * {@link PRESSING_ENEMIES} enemies inside the near reach, else takes the nearest enemy out to the scan
+ * radius, `attack` around itself and `defence` around its guard position (original behavior). Each find
+ * gives way to a held target no farther, in the band one of its rank or better. An enemy a chase could
+ * not reach is skipped for a while.
  */
 export function scanForTarget(
   world: World,
@@ -72,13 +78,43 @@ export function scanForTarget(
   );
   // Outside `hold` the band is around `here`, so nobody within its reach means nobody pressing either.
   const from = stance === 'hold' ? centre : here;
+  const reach = stance === 'hold' ? weapon.maxRange : weapon.maxRange + VEHICLE_PRIORITY_REACH_POINTS;
   const { seeker } = scan;
   const near =
-    seeker === null || pass.index.othersWithin(seeker, terrain.xOf(from), terrain.yOf(from), weapon.maxRange);
+    seeker === null || pass.index.othersWithin(seeker, terrain.xOf(from), terrain.yOf(from), reach);
   const inBand = near ? bestInBand(world, ctx, terrain, pass, scan, from, weapon, held) : null;
-  if (inBand !== null || stance === 'hold') return inBand ?? held;
+  if (stance === 'hold') return inBand ?? held;
+  const military = inBand?.kind === 'entity' && scan.rank(inBand.entity) === VEHICLE_TARGET_RANK.MILITARY;
+  if (near && !military) {
+    const past = militaryPastBand(terrain, pass, scan, here, weapon, reach);
+    if (past !== null)
+      return held?.kind === 'entity' && held.entity === past ? held : { kind: 'entity', entity: past };
+  }
+  if (inBand !== null) return inBand;
   if (near && pressed(terrain, pass, scan, here, weapon.minRange)) return 'pressed';
   return nearestInReach(world, ctx, terrain, pass, scan, centre, held);
+}
+
+/** The nearest military target past the far reach of `here` but within `reach` map points. */
+function militaryPastBand(
+  terrain: TerrainGraph,
+  pass: CombatPass,
+  scan: VehicleScan,
+  here: NodeId,
+  { minRange, maxRange }: { minRange: number; maxRange: number },
+  reach: number,
+): Entity | null {
+  const accept = scan.militaryInBandFrom(here, minRange);
+  const found = pass.index.nearest(
+    terrain.xOf(here),
+    terrain.yOf(here),
+    maxRange + 1,
+    reach,
+    accept,
+    scan.seeker,
+    'hex',
+  );
+  return found?.entity ?? null;
 }
 
 /** The nearest enemy of the best {@link VEHICLE_TARGET_RANK} inside the band around `from`, or a held
@@ -208,6 +244,9 @@ export class VehicleScan {
     (!isStructureTarget(this.world, t) ||
       targetDistance(this.world, this.ctx, this.terrain, this.bandFrom, t) >= this.bandMin);
 
+  private readonly militaryInBand = (t: Entity): boolean =>
+    this.rank(t) === VEHICLE_TARGET_RANK.MILITARY && this.acceptInBand(t);
+
   readonly rank = (t: Entity): VehicleTargetRank => vehicleTargetRank(this.world, this.ctx, t, this.firing);
 
   /** {@link acceptInBand} for a band of `minRange` map points and more around `from`. */
@@ -215,6 +254,12 @@ export class VehicleScan {
     this.bandFrom = from;
     this.bandMin = minRange;
     return this.acceptInBand;
+  }
+
+  /** {@link inBandFrom} for military targets alone. */
+  militaryInBandFrom(from: NodeId, minRange: number): (t: Entity) => boolean {
+    this.inBandFrom(from, minRange);
+    return this.militaryInBand;
   }
 
   aim(
