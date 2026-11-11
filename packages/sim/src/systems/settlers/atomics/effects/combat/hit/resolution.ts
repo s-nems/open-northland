@@ -19,6 +19,7 @@ import type { AtomicEffect } from '../../../../../../core/atomic-effect.js';
 import { eventAt } from '../../../../../../core/events.js';
 import type { Fixed } from '../../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
+import { deckShipOf } from '../../../../../conflict/deck-archers.js';
 import { raiseHitAlarm } from '../../../../../conflict/hit-alarm.js';
 import { noteOffence } from '../../../../../conflict/offenders.js';
 import { combatTargetNode } from '../../../../../conflict/target-node.js';
@@ -182,11 +183,13 @@ export function resolveCombatHit(
     woundBearer(world, ctx, target, dealt);
     markStructureDamaged(world, ctx, target);
   }
-  // Original behavior: a struck beast turns angry and a struck person reacts whatever the damage.
-  reactToBlowOnAnimal(world, ctx, attacker, target);
+  // Original behavior: a struck beast turns angry and a struck person reacts whatever the damage. The
+  // struck side answers a deck bowman's shot at his ship, the only body of him on the map.
+  const striker = deckShipOf(world, attacker) ?? attacker;
+  reactToBlowOnAnimal(world, ctx, striker, target);
   if (dealtDamage && source !== 'collateral') provokeHostility(world, ctx, attacker, target);
-  turnOnAttacker(world, ctx, attacker, target);
-  raiseHitAlarm(world, ctx, attacker, target);
+  turnOnAttacker(world, ctx, striker, target);
+  raiseHitAlarm(world, ctx, striker, target);
   const struckSide = ownerOf(world, target);
   if (dealtDamage && source !== 'collateral' && struckSide !== undefined) {
     noteOffence(world, ctx, attacker, struckSide);

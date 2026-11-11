@@ -452,6 +452,11 @@ export const plContent = {
       summary:
         'Katapulty i statki stoją z coraz mniejszym zdrowiem: kadłuby są poszarpane i dymią, statki pod koniec płoną, katapulty tylko lekko dymią. Po drugiej stronie cieśniny wrodzy łucznicy dobijają statek i katapultę: statek płonie i idzie na dno, katapulta rozpada się w odrobinie kurzu.',
     },
+    'vehicle-ship-archers': {
+      title: 'Łucznicy na pokładzie',
+      summary:
+        'Dwunastu łuczników wsiada na statek wojenny, a trzech na handlowy, i oba płyną w stronę wojowników z mieczami na drugim brzegu. Pierwszych dziesięciu łuczników strzela z pokładu statku wojennego, z większym rozrzutem niż na lądzie; pozostali dwaj i załoga statku handlowego nie strzelają.',
+    },
     'vehicle-ships': {
       title: 'Statek przez cieśninę',
       summary:

@@ -457,6 +457,11 @@ export const itContent = {
       summary:
         'Catapulte e navi con salute via via minore: gli scafi sono squarciati e fumano, le navi alla fine prendono fuoco, le catapulte fumano appena. Oltre lo stretto gli arcieri nemici finiscono una nave e una catapulta: la nave brucia e affonda, la catapulta va in pezzi in un po’ di polvere.',
     },
+    'vehicle-ship-archers': {
+      title: 'Arcieri sul ponte',
+      summary:
+        "Dodici arcieri salgono su una nave da guerra e tre su una nave mercantile, ed entrambe salpano verso gli spadaccini sull'altra riva. I primi dieci arcieri della nave da guerra tirano dal ponte, con una dispersione maggiore che a terra; gli altri due e l'equipaggio della nave mercantile non tirano.",
+    },
     'vehicle-ships': {
       title: 'Una nave attraverso lo stretto',
       summary:

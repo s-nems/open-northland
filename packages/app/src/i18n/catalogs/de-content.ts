@@ -456,6 +456,11 @@ export const deContent = {
       summary:
         'Katapulte und Schiffe stehen mit sinkender Gesundheit da: die Rümpfe sind zerschlagen und rauchen, die Schiffe fangen gegen Ende Feuer, die Katapulte rauchen nur leicht. Jenseits der Meerenge erledigen feindliche Bogenschützen ein Schiff und ein Katapult: das Schiff brennt und geht unter, das Katapult zerfällt in etwas Staub.',
     },
+    'vehicle-ship-archers': {
+      title: 'Bogenschützen an Deck',
+      summary:
+        'Zwölf Bogenschützen gehen an Bord eines Kriegsschiffs und drei an Bord eines Handelsschiffs, und beide segeln auf Schwertkämpfer am anderen Ufer zu. Die ersten zehn Bogenschützen des Kriegsschiffs schießen von Deck und streuen stärker als an Land; die anderen beiden und die Besatzung des Handelsschiffs schießen nicht.',
+    },
     'vehicle-ships': {
       title: 'Ein Schiff durch die Meerenge',
       summary:

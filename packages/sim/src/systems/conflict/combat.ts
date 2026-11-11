@@ -4,6 +4,7 @@ import type { System } from '../context.js';
 import { mayEngage } from './acting.js';
 import { BattleFront } from './battle-alert.js';
 import { CombatIndex, holdDormantTick, holdPassIndex } from './combat-index.js';
+import { fireFromDecks } from './deck-fire.js';
 import { combatPossible } from './dormancy.js';
 import { engageCandidates } from './engage-candidates.js';
 import { engageCombatant } from './engage-combatant.js';
@@ -72,5 +73,6 @@ export const combatSystem: System = (world, ctx) => {
   // settled positions and its aim never depends on where it sits in the vehicle store.
   const vehicles = world.canonicalQuery(Vehicle, Health, Position);
   for (let i = 0; i < vehicles.length; i++) engageVehicle(world, ctx, terrain, pass, vehicles[i] as Entity);
+  fireFromDecks(world, ctx, terrain, pass.index, vehicles);
   pass.slots.release();
 };

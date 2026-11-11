@@ -1,4 +1,4 @@
-import { type ContentSet, footprintCellDx, type WeaponType } from '@open-northland/data';
+import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Age, Building, Health, isWildlife, Owner, Position, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
@@ -6,7 +6,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { shelterOccupancy, shelterStillHolds } from '../defence/index.js';
 import { type HouseKey, houseFootprintOf } from '../footprint/geometry.js';
-import { houseBow, isAreaWeapon, isFighterJob, shelterCapacityOf } from '../readviews/index.js';
+import { houseBow, isFighterJob, shelterCapacityOf } from '../readviews/index.js';
 import { type LooseShot, looseProjectile } from '../settlers/atomics/effects/combat/index.js';
 import { hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
@@ -15,6 +15,7 @@ import { EpochMarks } from './epoch-marks.js';
 import { scatteredNode, shelterSpread } from './shot-aim.js';
 import { buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { isValidTarget } from './targeting.js';
+import { loosesMissile, missileOf } from './weapons.js';
 
 // Defence-mode fire. Original behavior: the building on alarm shoots the house bow itself, and the people
 // sheltering inside only set its rate - they neither aim nor wear a bow.
@@ -79,13 +80,6 @@ export function shotsDue(tick: number, occupants: number): number {
   return whole + (tick % SHELTER_SHOT_PERIOD_TICKS < occupants % SHELTER_SHOT_PERIOD_TICKS ? 1 : 0);
 }
 
-type FiringBow = WeaponType & { munitionType: NonNullable<WeaponType['munitionType']>; speed: number };
-
-/** Whether a house bow can loose an arrow at all: a declared munition flying at a positive speed. */
-function fires(bow: WeaponType | undefined): bow is FiringBow {
-  return bow?.munitionType !== undefined && bow.speed !== undefined && bow.speed > 0;
-}
-
 /** Each content's defence radii by type, tribe, house record and anchor row parity, the only part of the
  *  anchor the reach depends on. */
 const fireRadii = new WeakMap<ContentSet, Map<string, number | undefined>>();
@@ -124,7 +118,7 @@ function measuredFireRadius(
   hy: number,
 ): number | undefined {
   const bow = houseBow(content, house.tribe);
-  if (shelterCapacityOf(content, house.buildingType) === 0 || !fires(bow)) return undefined;
+  if (shelterCapacityOf(content, house.buildingType) === 0 || !loosesMissile(bow)) return undefined;
   const cells = houseFootprintOf(content, house)?.blocked ?? [];
   const walls = cells.map((cell) => ({ x: hx + footprintCellDx(hy, cell), y: hy + cell.dy }));
   if (walls.length === 0) walls.push({ x: hx, y: hy });
@@ -168,16 +162,8 @@ function fireFrom(
   if (!shelterStillHolds(world, ctx, building)) return;
   const b = world.get(building, Building);
   const bow = houseBow(ctx.content, b.tribe);
-  if (!fires(bow)) return;
-  const flight = {
-    munitionType: bow.munitionType,
-    speed: bow.speed,
-    hitSelf: bow.hitSelf,
-    area: isAreaWeapon(bow),
-    damage: bow.damage,
-    hitSounds: bow.hitSounds,
-    missSounds: bow.missSounds,
-  };
+  if (!loosesMissile(bow)) return;
+  const flight = missileOf(bow);
   const walls = buildingBodyNodes(world, ctx, terrain, building);
   const centre = entityNode(world, terrain, building);
   const owner = world.get(building, Owner).player;

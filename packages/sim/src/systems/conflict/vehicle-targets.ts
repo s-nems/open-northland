@@ -15,11 +15,12 @@ import type { SystemContext } from '../context.js';
 import { buildingCombatClass, isRangedWeapon, ranksWithTowers } from '../readviews/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 import { playerSeesEntity } from '../vision/index.js';
+import { isArmedVehicle } from './deck-archers.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode } from './target-node.js';
 import { isFighterTarget, isStructureTarget, isValidTarget } from './targeting.js';
 import { givenUpTargetVeto } from './unreachable-targets.js';
-import { attackerWeapon, vehicleWeapon } from './weapons.js';
+import { attackerWeapon } from './weapons.js';
 
 /** How far, in map points, an attacking or defending siege vehicle looks for an enemy (original
  *  behavior). */
@@ -320,9 +321,8 @@ function vehicleTargetRank(
     const military = ranksWithTowers(ctx, type) || buildingCombatClass(ctx, type) === 'hq' || firing().has(t);
     return military ? VEHICLE_TARGET_RANK.MILITARY : VEHICLE_TARGET_RANK.HOUSE;
   }
-  const vehicle = world.tryGet(t, Vehicle);
-  if (vehicle !== undefined) {
-    return vehicleWeapon(ctx, vehicle) === null ? VEHICLE_TARGET_RANK.OTHER : VEHICLE_TARGET_RANK.MILITARY;
+  if (world.has(t, Vehicle)) {
+    return isArmedVehicle(world, ctx, t) ? VEHICLE_TARGET_RANK.MILITARY : VEHICLE_TARGET_RANK.OTHER;
   }
   if (!isFighterTarget(world, ctx, t)) return VEHICLE_TARGET_RANK.OTHER;
   return shootsAtRange(world, ctx, t) ? VEHICLE_TARGET_RANK.SHOOTER : VEHICLE_TARGET_RANK.FIGHTER;

@@ -13,6 +13,7 @@ import {
   type VehicleStateView,
   type WalkDirection,
 } from '../../components/index.js';
+import type { AtomicEffect } from '../../core/atomic-effect.js';
 import { contentIndex } from '../../core/content-index.js';
 import { SMALL_INTEGER_SPAN } from '../../core/small-integer.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -275,22 +276,7 @@ export function startAttack(
   // A ranged weapon with a positive travel `speed` fires a projectile at the release frame instead of
   // landing the blow in place; a melee weapon, or a ranged one missing its `speed`, falls back to the
   // in-place hit.
-  const projectile =
-    isRangedWeapon(weapon) &&
-    weapon.speed !== undefined &&
-    weapon.speed > 0 &&
-    weapon.munitionType !== undefined
-      ? // Copied: saved state may not alias the content row another swing carries too.
-        {
-          munitionType: weapon.munitionType,
-          speed: weapon.speed,
-          hitSelf: weapon.hitSelf,
-          area: isAreaWeapon(weapon),
-          damage: { ...weapon.damage },
-          hitSounds: { ...weapon.hitSounds },
-          missSounds: { ...weapon.missSounds },
-        }
-      : undefined;
+  const projectile = isRangedWeapon(weapon) && loosesMissile(weapon) ? missileOf(weapon) : undefined;
   addCurrentAtomic(world, e, {
     atomicId: ATTACK_ATOMIC_ID,
     duration: atomicDurationForName(ctx.content, animation),
@@ -313,6 +299,29 @@ export function startAttack(
   });
   // The melee swoosh is announced at the strike frame by the executor, not here at windup, so it stays in
   // sync with the visible strike.
+}
+
+/** A weapon that looses a missile: a declared munition flying at a positive speed. */
+export type MissileWeapon = WeaponType & { munitionType: number; speed: number };
+
+/** The shot a missile weapon looses, as a swing and the projectile it becomes carry it. */
+export type MissileShot = NonNullable<Extract<AtomicEffect, { kind: 'attack' }>['projectile']>;
+
+export function loosesMissile(weapon: WeaponType | undefined): weapon is MissileWeapon {
+  return weapon?.munitionType !== undefined && weapon.speed !== undefined && weapon.speed > 0;
+}
+
+/** The shot `weapon` looses, its tables copied: saved state may not alias the content row. */
+export function missileOf(weapon: MissileWeapon): MissileShot {
+  return {
+    munitionType: weapon.munitionType,
+    speed: weapon.speed,
+    hitSelf: weapon.hitSelf,
+    area: isAreaWeapon(weapon),
+    damage: { ...weapon.damage },
+    hitSounds: { ...weapon.hitSounds },
+    missSounds: { ...weapon.missSounds },
+  };
 }
 
 /** Trades using civilian fists inherit the civilian swing's duration and hit events too.

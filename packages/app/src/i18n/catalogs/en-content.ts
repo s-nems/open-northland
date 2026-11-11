@@ -454,6 +454,11 @@ export const enContent = {
       summary:
         'Catapults and ships stand at falling health: the hulls scar and smoke, the ships catch fire near the end, the catapults only smoke a little. Across the strait enemy archers finish a ship and a catapult: the ship burns and goes under, the catapult falls apart in a little dust.',
     },
+    'vehicle-ship-archers': {
+      title: 'Bowmen on deck',
+      summary:
+        "Twelve bowmen board a warship and three a merchant ship, and both sail out toward swordsmen on the far shore. The warship's first ten bowmen shoot from its deck, scattering wider than ashore; the other two and the merchant ship's crew hold fire.",
+    },
     'vehicle-ships': {
       title: 'A ship across the strait',
       summary:

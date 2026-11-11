@@ -565,8 +565,8 @@ const SEARCH_METRIC: SearchMetric = 'hex';
 
 /** How many of the nearest candidates a pick draws among, and how much farther (map points) than the
  *  nearest one of them may stand. Original behavior. */
-const PICK_CANDIDATES = 5;
-const PICK_SPREAD_NODES = 3;
+export const PICK_CANDIDATES = 5;
+export const PICK_SPREAD_NODES = 3;
 
 type PickTier = (world: World, ctx: SystemContext, index: CombatIndex, t: Entity) => boolean;
 
@@ -990,8 +990,11 @@ function leastCrowded(
   return pick?.candidate ?? null;
 }
 
+/** How many ranks {@link tierRank} answers, the last for a target of no listed kind. */
+export const PICK_TIER_RANKS = PICK_TIERS.length + 1;
+
 /** The place of `t` in {@link PICK_TIERS}, one past the last for a target of no listed kind. */
-function tierRank(world: World, ctx: SystemContext, index: CombatIndex, t: Entity): number {
+export function tierRank(world: World, ctx: SystemContext, index: CombatIndex, t: Entity): number {
   for (let rank = 0; rank < PICK_TIERS.length; rank++) {
     if (PICK_TIERS[rank]?.(world, ctx, index, t) === true) return rank;
   }

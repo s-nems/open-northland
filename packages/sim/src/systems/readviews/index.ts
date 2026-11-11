@@ -127,5 +127,6 @@ export {
 export {
   isShipVehicle,
   isSiegeVehicle,
+  isWarship,
   vehicleHouseOfGood,
 } from './vehicles.js';
