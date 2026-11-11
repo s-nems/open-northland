@@ -134,6 +134,7 @@ export function presentItem(
   environmentMotion = false,
   wind?: WindSway,
   seaClock?: number,
+  stillLandscape = false,
 ): readonly ResolvedLayer[] | null {
   if (repeatsInTick(track, item, tick, frameAlpha, sheet, environmentMotion)) return track.tickPresent.layers;
   if (track.motion.tick === -1) {
@@ -189,6 +190,7 @@ export function presentItem(
     held ? 0 : idleElapsed,
     environmentMotion && !held ? wind : undefined,
     seaClock ?? clocks.animation,
+    stillLandscape,
   );
   const last = track.tickPresent;
   // Mirrors `writeMotionClocks` for a figure drawn at its tick anchor: its animation clock carries the
@@ -228,6 +230,7 @@ export function presentAtRest(
   environmentMotion: boolean,
   wind?: WindSway,
   seaClock?: number,
+  stillLandscape = false,
 ): readonly ResolvedLayer[] | null {
   const clocks = track.clocks;
   writeMotionClocks(clocks, item, tick, frameAlpha, track.motion, false, environmentMotion);
@@ -241,6 +244,7 @@ export function presentAtRest(
     undefined,
     environmentMotion ? wind : undefined,
     seaClock ?? clocks.animation,
+    stillLandscape,
   );
 }
 

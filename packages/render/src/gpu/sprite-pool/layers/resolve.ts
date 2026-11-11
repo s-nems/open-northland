@@ -91,9 +91,22 @@ export function resolveLayersInto(
   wind?: WindSway,
   // A ship's swell and sail clock, in ticks; the water clock on the map.
   seaClock: number = tick,
+  // A detail tier that stills the landscape: its looping records hold their first frame.
+  stillLandscape = false,
 ): readonly ResolvedLayer[] | null {
   out.reset();
-  return pushLayers(out, sheet, item, tick, gaitClock, vegetationClock, idleElapsed, wind, seaClock)
+  return pushLayers(
+    out,
+    sheet,
+    item,
+    tick,
+    gaitClock,
+    vegetationClock,
+    idleElapsed,
+    wind,
+    seaClock,
+    stillLandscape,
+  )
     ? out.finish()
     : null;
 }
@@ -109,6 +122,7 @@ function pushLayers(
   idleElapsed: number | undefined,
   wind: WindSway | undefined,
   seaClock: number,
+  stillLandscape: boolean,
 ): boolean {
   if (sheet === undefined) return false;
 
@@ -155,7 +169,7 @@ function pushLayers(
       // Art a presentation pack ships with its own `sway` holds its first frame and leans; the original's
       // looping records play their frames instead.
       const binding = sheet.bindings.resource;
-      let draw = resolveResourceDraw(binding, item, frozenTick(item, tick));
+      let draw = resolveResourceDraw(binding, item, stillLandscape ? undefined : frozenTick(item, tick));
       if (draw === null) return true;
       const sway = draw.layer === undefined ? undefined : sheet.families?.[draw.layer]?.sway;
       const packArt =
@@ -194,7 +208,7 @@ function pushLayers(
     case 'stump':
     case 'berrybush':
     case 'chest':
-      return pushDecorLayers(out, sheet, item, item.kind, tick);
+      return pushDecorLayers(out, sheet, item, item.kind, stillLandscape ? undefined : tick);
     case 'craftfx': {
       // Every effect ref is layer-qualified, so an unloaded `ls_smoke` family draws the placeholder rather
       // than a human frame from the shared body atlas.
@@ -345,11 +359,11 @@ function pushDecorLayers(
   sheet: SpriteSheet,
   item: DrawItem,
   kind: keyof typeof DECOR_BINDING_KEY,
-  tick: number,
+  tick: number | undefined,
 ): boolean {
   const binding = sheet.bindings[DECOR_BINDING_KEY[kind]];
   if (binding === undefined) return false;
-  const draw = resolveResourceDraw(binding, item, frozenTick(item, tick));
+  const draw = resolveResourceDraw(binding, item, tick === undefined ? undefined : frozenTick(item, tick));
   if (draw === null) return true;
   if (draw.layer === undefined) return false;
   return pushLayeredWithShadow(out, sheet, kind, draw);

@@ -28,6 +28,7 @@ import {
 import { signpostBoardSteps } from '../../data/scene/signpost-boards.js';
 import { DEFAULT_FACING, vehicleAfloat, vehicleLookFor } from '../../data/sprites/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
+import type { ViewDetail } from '../../data/view-detail.js';
 import type { WindSway } from '../../data/weather/climate.js';
 import { BuildingDamage, type FallenBody } from '../building-damage/building-damage.js';
 import { PalettedQuad } from '../paletted-sprite/index.js';
@@ -122,6 +123,9 @@ export interface PoolFrame {
   /** How shadow silhouettes draw; absent means the shadow enhancement is off, which also keeps a
    *  character's projected cast layer off the screen. */
   readonly shadowStyle?: ShadowStyle | undefined;
+  /** What the view's scale leaves to draw; the same object while the tier holds. Absent draws full
+   *  detail, as a portrait inset's subjects do under any tier. */
+  readonly detail?: ViewDetail | undefined;
   readonly snapshot: WorldSnapshot;
   /** The margin-inflated world-space box the camera frames - the sprite cull rectangle. */
   readonly viewport: Viewport;
@@ -324,6 +328,10 @@ export class SpritePool {
   private passStyle: PoolFrame['selectionStyle'];
   private passHovered: PoolFrame['hovered'];
   private passHasPortrait = false;
+  /** The portrait subject the last frame named, which a detail tier leaves its shadows. */
+  private shadowedSubject: PoolFrame['portraitRef'];
+  /** Whether an entity must bind again on a frame that otherwise repeats the last pass. */
+  private rebindPending = false;
   /** Bumped whenever a held entity may have to draw otherwise without its draw item changing. */
   private holdGeneration = 0;
   private holdBind = -1;
@@ -456,6 +464,7 @@ export class SpritePool {
     const scene = this.sceneFor(frame);
     this.epoch.advance(frame, this.textures.textureRevision);
     this.snapResolution = frame.snapResolution;
+    this.reviseShadowedSubject(frame);
     if (this.repeatsStill(scene, frame)) {
       // No new palette frame: a human a still frame leaves unpresented keeps its row as drawn.
       this.presentMoving(frame);
@@ -482,6 +491,7 @@ export class SpritePool {
     this.coatsIngested = false;
     this.movingHeld.length = 0;
     this.passHasPortrait = false;
+    this.rebindPending = false;
     const kept = scene.kept;
     const generation = this.holdGeneration;
     const culls = this.cullBoxes(frame);
@@ -664,6 +674,19 @@ export class SpritePool {
     return boxes;
   }
 
+  /** Bind the old and the new portrait subject again when a detail tier draws them unlike the rest. */
+  private reviseShadowedSubject(frame: PoolFrame): void {
+    const subject = frame.portraitRef;
+    if (subject === this.shadowedSubject) return;
+    if (frame.detail !== undefined && !frame.detail.figureShadows) {
+      for (const ref of [this.shadowedSubject, subject]) {
+        if (ref !== undefined) this.pool.get(ref)?.bound.retry();
+      }
+      this.rebindPending = true;
+    }
+    this.shadowedSubject = subject;
+  }
+
   /** Let go of a culled item's hold, so the detach sweep takes its entity and a later frame tests the
    *  item again instead of standing it unvisited. */
   private release(item: SpriteDrawItem): void {
@@ -802,6 +825,7 @@ export class SpritePool {
         frame.environmentMotion === true,
         frame.wind,
         frame.seaClock,
+        frame.detail?.motion === false,
       );
       pe.bound.alpha = frame.alpha;
       if (pe.bound.presents(pe.motion, layers)) {
@@ -828,6 +852,7 @@ export class SpritePool {
     if (
       scene.items !== this.lastItems ||
       this.coatsIngested ||
+      this.rebindPending ||
       this.epoch.current !== this.passEpoch ||
       this.epoch.viewMoved ||
       this.passHasPortrait ||

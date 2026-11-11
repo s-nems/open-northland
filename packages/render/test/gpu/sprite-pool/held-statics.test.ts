@@ -9,6 +9,7 @@ import { Container, TextureSource } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DrawItem } from '../../../src/data/scene/index.js';
 import type { ElevationField } from '../../../src/data/terrain/index.js';
+import { VIEW_DETAILS } from '../../../src/data/view-detail.js';
 import type { TargetTone } from '../../../src/gpu/selection/style.js';
 import { LayerBinder } from '../../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool } from '../../../src/gpu/sprite-pool/index.js';
@@ -210,6 +211,37 @@ describe('SpritePool - a looping tree', () => {
     }
     // Only the comparison pools' first visits presented it.
     expect(refs().filter((ref) => ref === TREE)).toHaveLength(2);
+  });
+
+  it('holds the loop on its first frame while a detail tier stills the landscape, then steps it again', () => {
+    const mirror = mirrorOf([
+      entity(SETTLER, 1, 1, walker),
+      entity(TREE, 4, 1, { Resource: { goodType: 1 } }),
+    ]);
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), loopSheet);
+    const treeX = (): number | undefined =>
+      (pool as unknown as { pool: Map<number, { sprites: { texture: { frame: { x: number } } }[] }> }).pool
+        .get(TREE)
+        ?.sprites.at(-1)?.texture.frame.x;
+    const still = { detail: VIEW_DETAILS.sparse };
+    pool.reconcile(frameOf(mirror.snapshot(), still));
+    const first = loopAtlas.frames.get(BOB)?.x;
+    const seen = new Set([treeX()]);
+    const refs = presentedRefs();
+    for (const x of [2, 3, 4]) {
+      pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, x, walker)]), still));
+      seen.add(treeX());
+    }
+    expect([...seen]).toEqual([first]);
+    // Held as a still, so no tick presents it.
+    expect(refs().filter((ref) => ref === TREE)).toHaveLength(0);
+
+    for (const x of [5, 6]) {
+      pool.reconcile(frameOf(advance(mirror, [moved(SETTLER, x, walker)])));
+      seen.add(treeX());
+    }
+    expect(seen.size).toBe(2);
   });
 
   it('steps a held tree under environment motion as a first visit draws it at every alpha', () => {

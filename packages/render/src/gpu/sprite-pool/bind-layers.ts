@@ -52,8 +52,35 @@ const BLOODLESS_KINDS: ReadonlySet<DrawItem['kind']> = new Set<DrawItem['kind']>
 
 export type BindFrame = Pick<
   PoolFrame,
-  'camera' | 'screenW' | 'screenH' | 'erased' | 'snapResolution' | 'enhancedSampling' | 'shadowStyle'
+  | 'camera'
+  | 'screenW'
+  | 'screenH'
+  | 'erased'
+  | 'snapResolution'
+  | 'enhancedSampling'
+  | 'shadowStyle'
+  | 'detail'
+  | 'portraitRef'
 >;
+
+/** The landscape kinds whose cast shadows a detail tier takes off together. */
+const LANDSCAPE_KINDS: ReadonlySet<DrawItem['kind']> = new Set<DrawItem['kind']>([
+  'resource',
+  'berrybush',
+  'stump',
+  'stockpile',
+  'grounddrop',
+  'chest',
+]);
+
+/** Whether the view's detail tier takes the cast shadows off `item`: a settler or an animal that is not
+ *  the portrait's subject, or a landscape object. Buildings, walls and vehicles keep theirs. */
+export function dropsShadows(frame: BindFrame, item: DrawItem): boolean {
+  const detail = frame.detail;
+  if (detail === undefined) return false;
+  if (item.kind === 'settler') return !detail.figureShadows && item.ref !== frame.portraitRef;
+  return !detail.landscapeShadows && LANDSCAPE_KINDS.has(item.kind);
+}
 
 /**
  * Take a layer sprite off the picture without taking it out of its band: a `visible` flip rebuilds the
@@ -233,10 +260,13 @@ export class LayerBinder {
     let spriteSlot = 0;
     let shadowSlot = 0;
     const shadowStyle = frame.shadowStyle;
+    const unshadowed = dropsShadows(frame, item);
     const erased = frame.erased?.get(item.ref);
     for (let i = 0; i < layers.length; i++) {
       const resolved = layers[i];
       if (resolved === undefined) continue;
+      // A foot's shade sets the body into the ground; only a cast shadow is detail.
+      if (unshadowed && resolved.shadow === true && resolved.groundFoot === undefined) continue;
       const layer = erased === undefined ? resolved : this.erasedLayer(resolved, erased);
       // A cast layer holds unprojected body art, so it draws only with a style to project it by.
       if (layer.cast === true && shadowStyle === undefined) continue;
@@ -282,6 +312,7 @@ export class LayerBinder {
         // The ground overlays spill past the body; a click on them is a click on the ground.
         pe.pickExempt[spriteSlot] = layer.shadow === true || layer.groundFoot === 'cover';
         const spr = this.plainSlot(pe, spriteSlot);
+        if (!spr.visible) spr.visible = true;
         const shown = pe.slotLayers[spriteSlot];
         pe.slotLayers[spriteSlot] = layer;
         if (
@@ -363,14 +394,20 @@ export class LayerBinder {
     // Hide what this frame did not bind: leftover sprites from a frame that needed more layers, and a
     // silhouette the drawn bob has none for. The pick exemptions shrink with the sprites they describe.
     if (!hasSelection) pe.selectionEllipse = undefined;
+    // A slot the tier's dropped shadow frees leaves its band for as long as the tier holds, so it costs
+    // no quad; one a pose lacks comes back within frames and only empties.
     for (let i = spriteSlot; i < pe.sprites.length; i++) {
       const s = pe.sprites[i];
-      if (s !== undefined) hideLayer(s);
+      if (s === undefined) continue;
+      if (unshadowed && !pe.paletted) s.visible = false;
+      else hideLayer(s);
     }
     if (pe.paletted) {
       for (let i = shadowSlot; i < pe.shadows.length; i++) {
         const s = pe.shadows[i];
-        if (s !== undefined) hideLayer(s);
+        if (s === undefined) continue;
+        if (unshadowed) s.visible = false;
+        else hideLayer(s);
       }
     } else {
       // A length write is a runtime call even when it changes nothing.

@@ -29,6 +29,7 @@ export class FrameEpoch {
    *  every swaying entity, so only its arrival or end (the setting switched while paused) bumps. */
   private windy = false;
   private shadowStyle: PoolFrame['shadowStyle'];
+  private detail: PoolFrame['detail'];
   private textureRevision = Number.NaN;
   private offsetX = Number.NaN;
   private offsetY = Number.NaN;
@@ -54,6 +55,7 @@ export class FrameEpoch {
     const bindHolds =
       frame.enhancedSampling === this.enhancedSampling &&
       frame.shadowStyle === this.shadowStyle &&
+      frame.detail === this.detail &&
       textureRevision === this.textureRevision &&
       frame.snapResolution === this.snapResolution;
     if (
@@ -72,6 +74,7 @@ export class FrameEpoch {
     this.environmentMotion = frame.environmentMotion;
     this.windy = windy;
     this.shadowStyle = frame.shadowStyle;
+    this.detail = frame.detail;
     this.textureRevision = textureRevision;
     this.snapResolution = frame.snapResolution;
   }

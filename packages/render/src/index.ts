@@ -184,6 +184,15 @@ export {
   type WaterCellFractions,
   waterCellFractions,
 } from './data/terrain/index.js';
+export {
+  type DetailMode,
+  type DetailTier,
+  detailTierAt,
+  MINIMAL_DETAIL_BELOW,
+  REDUCED_DETAIL_BELOW,
+  SPARSE_DETAIL_BELOW,
+  type ViewDetail,
+} from './data/view-detail.js';
 export { buildWeatherField, type WeatherField } from './data/weather/field.js';
 export {
   AnimationGallery,
