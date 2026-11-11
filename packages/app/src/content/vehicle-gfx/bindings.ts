@@ -117,6 +117,7 @@ export function vehicleLook(
   loaded: ReadonlySet<string>,
   frames: DrawableFrames,
   ownerFamily?: string,
+  attackTicks: number = VEHICLE_ATTACK_TICKS,
 ): VehicleLook | undefined {
   const layer = vehicleAtlasStem(row, ownerFamily);
   const drawable = frames.get(layer);
@@ -125,10 +126,9 @@ export function vehicleLook(
     const clip = row.clips.find((c) => c.action === action);
     return clip === undefined ? undefined : clipAnim(clip.dirFrames, drawable);
   };
-  // The shot's lists stretch over the attack cadence, as the original plays a `gfxanimmode 0` list.
+  // The shot's lists stretch over one attack clip, as the original plays a `gfxanimmode 0` list.
   const attackClip = row.clips.find((c) => c.action === ATTACK_ATOMIC);
-  const attack =
-    attackClip === undefined ? undefined : clipAnim(attackClip.dirFrames, drawable, VEHICLE_ATTACK_TICKS);
+  const attack = attackClip === undefined ? undefined : clipAnim(attackClip.dirFrames, drawable, attackTicks);
   let moving: FrameListAnim | undefined;
   let loadedMoving: FrameListAnim | undefined;
   const movingByGood: Record<number, FrameListAnim> = {};
@@ -207,12 +207,14 @@ export function buildVehicleBinding(
     /** The palette family whose LUT loaded; its rows bind the indexed body. */
     readonly ownerFamily?: string;
     readonly vehicleYards?: VehicleYardSites;
+    /** The ticks of the attack clip a row's tribe binds for its job, which the sim times the shot by. */
+    readonly attackTicks?: (row: VehicleGraphics) => number | undefined;
   } = {},
 ): VehicleBinding | undefined {
   const byTribe: Record<number, Record<number, VehicleLook>> = {};
   let any = false;
   for (const row of rows) {
-    const look = vehicleLook(row, loaded, frames, options.ownerFamily);
+    const look = vehicleLook(row, loaded, frames, options.ownerFamily, options.attackTicks?.(row));
     if (look === undefined) continue;
     const looks = byTribe[row.tribe] ?? {};
     looks[row.vehicleType] = options.ships?.has(row.vehicleType) === true ? { ...look, afloat: true } : look;

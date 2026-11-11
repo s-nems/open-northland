@@ -4,15 +4,22 @@ import { atomicFrame, DEFAULT_FACING, frameOf } from './settler.js';
 import type { SpriteFrameRef } from './settler-bindings.js';
 import type { VehicleBinding, VehicleLook } from './vehicle-bindings.js';
 
-/** Ticks per catapult shot: the original's attack cadence is the 48-tick attack clip
- *  (docs/formats/VEHICLES.md "Catapult"), which the render stretches the shot's frame lists over. */
+/** Ticks per catapult shot when the content names no attack clip length: the original's 48-tick attack
+ *  clip (docs/formats/VEHICLES.md "Catapult"). */
 export const VEHICLE_ATTACK_TICKS = 48;
 
-/** Where in its attack cycle a vehicle is at `tick`: counted from the sim's clip start when the
- *  snapshot carries one, else from the global cadence for a vehicle merely posed as attacking. */
-export function attackPhase(tick: number, clipStart?: number): number {
+/** Where in its `period`-tick attack cycle a vehicle is at `tick`: counted from the sim's clip start when
+ *  the snapshot carries one, else from the global cadence for a vehicle merely posed as attacking. */
+export function attackPhase(tick: number, clipStart?: number, period: number = VEHICLE_ATTACK_TICKS): number {
   const elapsed = clipStart === undefined ? tick : tick - clipStart;
-  return ((elapsed % VEHICLE_ATTACK_TICKS) + VEHICLE_ATTACK_TICKS) % VEHICLE_ATTACK_TICKS;
+  return ((elapsed % period) + period) % period;
+}
+
+/** The ticks one shot of `attack` spans: the clip length its frame lists stretch over. */
+function attackPeriod(attack: SpriteFrameRef): number {
+  return typeof attack === 'object' && 'ticks' in attack && attack.ticks !== undefined
+    ? attack.ticks
+    : VEHICLE_ATTACK_TICKS;
 }
 
 /** The look of `item`'s tribe and type, the fallback tribe's when its own tribe binds none. */
@@ -93,7 +100,8 @@ export function resolveVehicleDraw(
   const indexed = look.indexed === true;
   let bob: number;
   if (item.task === 'attacks' && look.attack !== undefined) {
-    bob = atomicFrame(look.attack, facing, attackPhase(tick, item.attackClipStart), undefined);
+    const period = attackPeriod(look.attack);
+    bob = atomicFrame(look.attack, facing, attackPhase(tick, item.attackClipStart, period), undefined);
   } else if (item.state === 'moving') {
     bob = frameOf(vehicleMovingRef(look, item), facing, gaitClock);
   } else {

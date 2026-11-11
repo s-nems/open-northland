@@ -63,6 +63,8 @@ const catapult: VehicleLook = {
   attack: strip(9000, 40, VEHICLE_ATTACK_TICKS),
 };
 const CATAPULT = 5;
+/** An attack clip longer than the original's 48 ticks. */
+const LONG_SHOT_TICKS = 78;
 
 const binding: VehicleBinding = {
   byTribe: {
@@ -153,6 +155,17 @@ describe('resolveVehicleDraw', () => {
     expect(resolveVehicleDraw(binding, item({ typeId: HANDCART, facing: 1, task: 'attacks' }), 12)?.bob).toBe(
       1001,
     );
+  });
+
+  it('plays the shot once per clip of the look’s own length, with no second throw inside a longer clip', () => {
+    const longShot: VehicleBinding = {
+      byTribe: { [VIKING]: { [CATAPULT]: { ...catapult, attack: strip(9000, 40, LONG_SHOT_TICKS) } } },
+      fallbackTribe: VIKING,
+    };
+    const attacking = item({ typeId: CATAPULT, facing: 1, task: 'attacks' });
+    expect(resolveVehicleDraw(longShot, attacking, VEHICLE_ATTACK_TICKS)?.bob).not.toBe(9100);
+    expect(resolveVehicleDraw(longShot, attacking, LONG_SHOT_TICKS - 1)?.bob).toBe(9100 + 39);
+    expect(resolveVehicleDraw(longShot, attacking, LONG_SHOT_TICKS)?.bob).toBe(9100);
   });
 
   it('draws an unbound tribe’s vehicles from the fallback tribe, and nothing for a type nobody binds', () => {

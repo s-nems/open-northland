@@ -302,7 +302,7 @@ export function gfxAtomicProgramsByAction(
  * tribe binds no clip to, or a bound clip the IR carries no length for, which the simulation runs at its own
  * default length.
  */
-function atomicClipTicks(
+export function atomicClipTicks(
   ir: ContentIr | null,
   tribe: number,
 ): (job: number, action: number) => number | undefined {

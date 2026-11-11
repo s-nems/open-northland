@@ -711,8 +711,9 @@ these choices for the holes:
   empty hull (`ve_test_ship` holds bobs 0..31). A cart with a wait but no drive takes the base
   tribe's drives when both draw from the same atlas; the original looks a drive up by exact tribe,
   so its cart would slide on its wait. Every state falls back down `loaded → unloaded → wait`.
-- The catapult plays its 40-frame shot once over each 48-tick attack cadence while `task` is `attacks`;
-  where in the clip the shot releases is an approximation.
+- The catapult plays its 40-frame shot once over each attack clip (the `length` of the clip its tribe
+  binds to the attack, 48 ticks in the original) while `task` is `attacks`; where in the clip the shot
+  releases is an approximation.
 - The stone in flight, the puff it leaves every tick and the smoke a `createsmoke` weapon raises where
   it lands are the `[particel]` records `Rock` (by `munitiontype`), its `spawnparticelId` and
   `Smoke.org` (`particles` in the IR; `packages/render/src/gpu/overlays/shot-layer.ts`). The lob and
