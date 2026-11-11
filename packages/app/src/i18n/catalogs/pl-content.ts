@@ -547,6 +547,11 @@ export const plContent = {
       summary:
         'Obsadzona katapulta w postawie ataku ma w zasięgu łucznika, a tuż za zasięgiem wrogą wieżę, podczas gdy dwaj miecznicy podbiegają i biją w jej kadłub. Zamiast strzelać w bliższego łucznika, podjeżdża kilka kroków do wieży, burzy ją, a potem strzela w łucznika. Miecznicy przy jej boku są za blisko na kamień; przed dwoma nie próbuje odjechać, a gdy nic już nie ma w zasięgu, po prostu stoi.',
     },
+    'vehicle-catapult-archers': {
+      title: 'Katapulta przeciw łucznikom',
+      summary:
+        'Obsadzona katapulta trzyma pozycję, a trzech wrogich łuczników z długimi łukami, w kolczugach, idzie prosto na nią. Gdy wchodzą w jej zasięg, ciska w nich kamieniami, a oni ze swojego zasięgu strzelają w jej kadłub. Na każdego łucznika trzeba trzech kamieni, a kadłub przetrzymuje wszystkich trzech, z zapasem na kilka strzał.',
+    },
     'vehicle-catapult-wall': {
       title: 'Katapulta ostrzeliwuje miejsce za palisadą',
       summary:

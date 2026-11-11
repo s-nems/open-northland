@@ -552,6 +552,11 @@ export const itContent = {
       summary:
         "Una catapulta con equipaggio nell'atteggiamento d'attacco ha a portata un arciere e, appena oltre, una torre nemica, mentre due spadaccini accorrono e ne colpiscono lo scafo. Avanza di qualche passo verso la torre invece di tirare all'arciere più vicino, la rade al suolo, poi tira all'arciere. Gli spadaccini al suo fianco sono troppo vicini per una pietra; con due di loro accanto non prova ad allontanarsi, e quando non resta più nulla a portata si ferma.",
     },
+    'vehicle-catapult-archers': {
+      title: 'Una catapulta contro gli arcieri',
+      summary:
+        "Una catapulta con equipaggio tiene la posizione mentre tre arcieri nemici con l'arco lungo, in cotta di maglia, marciano verso di lei. Li bersaglia con le pietre appena entrano nella sua gittata, e loro tirano al suo scafo dalla propria. Ogni arciere richiede tre pietre, e lo scafo regge abbastanza da abbatterne due prima di cedere.",
+    },
     'vehicle-catapult-wall': {
       title: 'Una catapulta bombarda un punto oltre il muro',
       summary:

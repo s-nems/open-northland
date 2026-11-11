@@ -549,6 +549,11 @@ export const enContent = {
       summary:
         'A crewed catapult in its attack stance has an archer in reach and an enemy tower just past it, while two swordsmen run in and batter its hull. It rolls a few steps up to the tower rather than shoot the nearer archer, razes it, then shoots the archer. The swordsmen at its side are too close for a stone; with two of them there it does not try to drive away, and once nothing is left in reach it simply stands.',
     },
+    'vehicle-catapult-archers': {
+      title: 'A catapult against archers',
+      summary:
+        'A crewed catapult holds its ground while three enemy longbowmen in chain mail march on it. It stones them as they come into its reach, and they shoot at its hull from theirs. Each archer takes three stones, and the hull outlasts all three with a few arrows to spare.',
+    },
     'vehicle-catapult-wall': {
       title: 'A catapult shells a spot over the wall',
       summary:

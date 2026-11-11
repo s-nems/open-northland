@@ -551,6 +551,11 @@ export const deContent = {
       summary:
         'Ein bemanntes Katapult in Angriffshaltung hat einen Bogenschützen in Reichweite und einen feindlichen Turm knapp dahinter, während zwei Schwertkämpfer heranlaufen und auf sein Gestell einschlagen. Statt auf den näheren Bogenschützen zu schießen, rollt es ein paar Schritte an den Turm heran, zerstört ihn und schießt dann auf den Bogenschützen. Die Schwertkämpfer an seiner Seite sind für einen Stein zu nah; vor zweien versucht es nicht wegzufahren, und ist nichts mehr in Reichweite, steht es einfach.',
     },
+    'vehicle-catapult-archers': {
+      title: 'Ein Katapult gegen Bogenschützen',
+      summary:
+        'Ein bemanntes Katapult hält seine Stellung, während drei feindliche Langbogenschützen in Kettenhemden darauf zumarschieren. Es beschießt sie mit Steinen, sobald sie in seine Reichweite kommen, und sie schießen aus ihrer auf sein Gestell. Jeder Bogenschütze braucht drei Steine, und das Gestell übersteht alle drei, mit Reserve für ein paar Pfeile.',
+    },
     'vehicle-catapult-wall': {
       title: 'Ein Katapult beschießt einen Ort hinter dem Wall',
       summary:

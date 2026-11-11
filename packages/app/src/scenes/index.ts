@@ -135,6 +135,7 @@ import { vehicleAttackMoveScene } from './vehicles/vehicle-attack-move.js';
 import { vehicleBuildingClearanceScene } from './vehicles/vehicle-building-clearance.js';
 import { vehicleCargoScene } from './vehicles/vehicle-cargo.js';
 import { vehicleCatapultScene } from './vehicles/vehicle-catapult.js';
+import { vehicleCatapultArchersScene } from './vehicles/vehicle-catapult-archers.js';
 import { vehicleCatapultSpreadScene } from './vehicles/vehicle-catapult-spread.js';
 import { vehicleCatapultTargetsScene } from './vehicles/vehicle-catapult-targets.js';
 import { vehicleCatapultWallScene } from './vehicles/vehicle-catapult-wall.js';
@@ -315,6 +316,7 @@ export const SCENES: readonly SceneDefinition[] = [
   vehicleTightGapScene,
   vehicleCatapultSpreadScene,
   vehicleCatapultTargetsScene,
+  vehicleCatapultArchersScene,
   vehicleCatapultWallScene,
 ];
 
