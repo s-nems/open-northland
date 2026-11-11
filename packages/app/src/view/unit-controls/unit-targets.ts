@@ -33,6 +33,7 @@ import {
 import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import { containsTargetPoint, drawnInFront, hitsTarget, isHitTarget, type Pickable } from '../picking.js';
 import type { FormationUnit } from './orders/formation.js';
+import { createPointScan, ROAD_PLOT_PICK_MARGIN } from './point-scan.js';
 
 /** What the pickable target sets need from the unit-controls options (a subset threaded through). */
 export interface UnitTargetsDeps {
@@ -83,9 +84,6 @@ function passengerPosition(snapshot: WorldSnapshot, entity: SnapshotEntity): Ret
   }
   return undefined;
 }
-
-/** World px a road plot's click box reaches past its drawn plot. Tuned by eye. */
-const ROAD_PLOT_PICK_MARGIN = 2;
 
 function grownBox(box: EntityBounds, margin: number): EntityBounds {
   return {
@@ -282,15 +280,18 @@ export function createUnitTargets(
   const pixelsHit = (item: DrawItem, kind: UnitTargetKind | 'signpost', wx: number, wy: number): boolean =>
     kind === 'signpost' || !usesPixels(kind) || (deps.pixelHitOf?.(item.ref, wx, wy) ?? true);
 
-  /** Visits the owned pickable items of `kind`; `under` filters on geometry first, so a point query reads
-   *  the entities of the items under the point alone. */
+  const scanAt = createPointScan(deps);
+
+  /** Visits the owned pickable items of `kind` among `items`; `under` filters on geometry first, so a
+   *  point query reads the entities of the items under the point alone. */
   const visitOwned = (
+    items: readonly DrawItem[],
     kind: UnitTargetKind | 'all' | undefined,
     visit: (item: DrawItem, kind: UnitTargetKind) => boolean,
     under?: (item: DrawItem, kind: UnitTargetKind) => boolean,
   ): boolean => {
     const snapshot = deps.snapshot();
-    for (const item of deps.drawnItems()) {
+    for (const item of items) {
       const itemKind = unitKindOf(item);
       if (itemKind === null) continue;
       if (kind === undefined ? itemKind === 'vehicle' : kind !== 'all' && itemKind !== kind) continue;
@@ -317,13 +318,14 @@ export function createUnitTargets(
   /** The flag's bounds follow terrain lift; its selection proxy is its settler. A site's flag answers on
    *  its own pixels only, so the ring or plot it stands in still selects the site. */
   const visitFlags = (
+    items: readonly DrawItem[],
     visit: (target: Pickable) => boolean,
     at?: { readonly x: number; readonly y: number },
   ): boolean => {
     const snapshot = deps.snapshot();
     const player = pickableSeat(deps.viewer) ?? 'any';
     const siteFlagHitOf = deps.siteFlagHitOf;
-    for (const item of deps.drawnItems()) {
+    for (const item of items) {
       if (!isHitTarget(item)) continue;
       const claimedSite = item.palisadeSite === 'claimed' || item.roadSite === 'claimed';
       if (item.isFlag !== true && (siteFlagHitOf === undefined || !claimedSite)) continue;
@@ -346,11 +348,12 @@ export function createUnitTargets(
   };
 
   const visitSignposts = (
+    items: readonly DrawItem[],
     visit: (item: DrawItem) => boolean,
     under?: (item: DrawItem) => boolean,
   ): boolean => {
     const snapshot = deps.snapshot();
-    for (const item of deps.drawnItems()) {
+    for (const item of items) {
       if (item.kind !== 'signpost' || item.ref <= 0 || !isHitTarget(item)) continue;
       if (under !== undefined && !under(item)) continue;
       if (!pickableOwner(ownerOfRef(snapshot, item.ref))) continue;
@@ -377,7 +380,6 @@ export function createUnitTargets(
 
   // Reused across point queries, so a hover read per frame allocates per hit rather than per item.
   const nearby: EntitySnapshot[] = [];
-  const drawnResources = new Set<number>();
 
   const pointHits = (wx: number, wy: number): PointHits => {
     const snapshot = deps.snapshot();
@@ -394,9 +396,8 @@ export function createUnitTargets(
     let chest: Front = null;
     let pile: (Front & { readonly goodType: number; readonly amount: number }) | null = null;
     let resource: Nearest = null;
-    drawnResources.clear();
-    for (const item of deps.drawnItems()) {
-      if (!isHitTarget(item)) continue;
+    const scan = scanAt(wx, wy);
+    for (const item of scan.items) {
       const kind = unitKindOf(item);
       if (kind === null) {
         if (item.kind === 'chest') {
@@ -411,7 +412,6 @@ export function createUnitTargets(
           )
             pile = { ref: item.ref, y: item.y, goodType, amount: item.fill ?? 0 };
         } else if (item.kind === 'resource') {
-          drawnResources.add(item.ref);
           if (item.goodType !== undefined && resourceHits(item.ref, item.x, item.y, wx, wy))
             resource = nearer(resource, item.ref, item.x, item.y, item.goodType, wx, wy);
         }
@@ -448,7 +448,7 @@ export function createUnitTargets(
     for (let i = 0; i < count; i++) {
       const entity = nearby[i];
       if (entity === undefined || entity.components.LandscapeResource === undefined) continue;
-      if (drawnResources.has(entity.id)) continue;
+      if (scan.resources.has(entity.id)) continue;
       const goodType = (entity.components.Resource as { goodType?: unknown } | undefined)?.goodType;
       const position = positionOf(entity);
       if (typeof goodType !== 'number' || position === undefined) continue;
@@ -480,7 +480,7 @@ export function createUnitTargets(
     pointHits,
     owned(kind?: UnitTargetKind): Pickable[] {
       const out: Pickable[] = [];
-      visitOwned(kind, (item, itemKind) => {
+      visitOwned(deps.drawnItems(), kind, (item, itemKind) => {
         out.push(hitTarget(item, itemKind));
         return false;
       });
@@ -488,13 +488,16 @@ export function createUnitTargets(
     },
     hasOwnedAt: (wx, wy) =>
       visitOwned(
+        scanAt(wx, wy).items,
         'all',
         (item, kind) => pixelsHit(item, kind, wx, wy),
         (item, kind) => boxHits(item, kind, wx, wy),
       ),
-    hasFlagAt: (wx, wy) => visitFlags((target) => hitsTarget(target, wx, wy), { x: wx, y: wy }),
+    hasFlagAt: (wx, wy) =>
+      visitFlags(scanAt(wx, wy).items, (target) => hitsTarget(target, wx, wy), { x: wx, y: wy }),
     hasSignpostAt: (wx, wy) =>
       visitSignposts(
+        scanAt(wx, wy).items,
         () => true,
         (item) => boxHits(item, 'signpost', wx, wy),
       ),
@@ -536,7 +539,7 @@ export function createUnitTargets(
 
     flags(): Pickable[] {
       const out: Pickable[] = [];
-      visitFlags((target) => {
+      visitFlags(deps.drawnItems(), (target) => {
         out.push(target);
         return false;
       });
@@ -575,7 +578,7 @@ export function createUnitTargets(
 
     signposts(): Pickable[] {
       const out: Pickable[] = [];
-      visitSignposts((item) => {
+      visitSignposts(deps.drawnItems(), (item) => {
         out.push({ ref: item.ref, x: item.x, y: item.y, kind: 'signpost', box: deps.boundsOf?.(item.ref) });
         return false;
       });
