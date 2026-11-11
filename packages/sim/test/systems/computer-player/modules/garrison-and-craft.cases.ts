@@ -68,6 +68,7 @@ import { PLAN_TUNING } from '../../../../src/systems/computer-player/strategy/mi
 import {
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
+  HOMES_PER_STORED_FURNITURE,
   JOINERY_TOOL_GLUT_UNITS,
   SHOES_STOCK_UNITS,
   tuneCraftCounters,
@@ -114,6 +115,7 @@ import {
   completeSites,
   ctxOf,
   entityOfBuilding,
+  HOME_TYPE,
   HQ_TYPE,
   HQ_X,
   HQ_Y,
@@ -430,26 +432,47 @@ const TOOL_WOODEN = 6;
 /** Wood enough for every joiner of the fixture, under any short line. */
 const JOINERY_WOOD_UNITS = 40;
 
-/** The AI content with the joinery's furniture line, so its joiners have a product to turn to. */
+/** One piece of the fixture's furniture, in lodging points. */
+const FURNITURE_PIECE = 1000;
+
+/** The AI content with the joinery's furniture line, so its joiners have a product to turn to, and a base
+ *  home it furnishes for an extra family. */
 function furnitureContent(): ContentSet {
   const base = aiContent();
   return parseContentSet({
     ...base,
-    goods: [...base.goods, { typeId: FURNITURE, id: 'furniture', weight: 1 }],
+    goods: [
+      ...base.goods,
+      {
+        typeId: FURNITURE,
+        id: 'furniture',
+        weight: 1,
+        homeQuality: {
+          effect: 'lodging',
+          deliveryValue: FURNITURE_PIECE,
+          capacity: 2 * FURNITURE_PIECE,
+          fetchBelow: FURNITURE_PIECE,
+          minimumHomeLevel: 0,
+          wear: { child: 1, sleep: 1, meal: 1 },
+        },
+      },
+    ],
     buildings: base.buildings.map((b) =>
-      b.typeId === JOINERY_TYPE
-        ? {
-            ...b,
-            recipes: [
-              ...b.recipes,
-              {
-                inputs: [{ goodType: WOOD, amount: 1 }],
-                outputs: [{ goodType: FURNITURE, amount: 1 }],
-                ticks: 180,
-              },
-            ],
-          }
-        : b,
+      b.typeId === HOME_TYPE
+        ? { ...b, furnishedFamilies: 1 }
+        : b.typeId === JOINERY_TYPE
+          ? {
+              ...b,
+              recipes: [
+                ...b.recipes,
+                {
+                  inputs: [{ goodType: WOOD, amount: 1 }],
+                  outputs: [{ goodType: FURNITURE, amount: 1 }],
+                  ticks: 180,
+                },
+              ],
+            }
+          : b,
     ),
   });
 }
@@ -1647,7 +1670,7 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(tuned).toEqual([{ kind: 'setProductionGoods', entity: smith, goods: [SWORD_LONG] }]);
   });
 
-  it('keeps both joiners on iron tools to their stock line and rests them there, never on furniture', () => {
+  it('keeps both joiners on iron tools to their stock line, and rests them there with no home to furnish', () => {
     const seat = crewedWorkshop(furnitureContent(), 2);
     postGatherer(seat.sim, IRON);
     expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
@@ -1661,6 +1684,29 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(seat.products()).toEqual([]);
     seat.stock(TOOL_IRON, JOINERY_TOOL_GLUT_UNITS - CRAFT_GLUT_BAND_UNITS - 1);
     expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
+  });
+
+  it('puts the second joiner on furniture first, the first after his tools, to a piece per two built homes', () => {
+    const seat = crewedWorkshop(furnitureContent(), 2);
+    postGatherer(seat.sim, IRON);
+    seat.stock(WOOD, JOINERY_WOOD_UNITS);
+    seat.stock(IRON, JOINERY_WOOD_UNITS);
+    const homes = HOMES_PER_STORED_FURNITURE + 1;
+    for (let i = 0; i < homes; i++)
+      seat.sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x: HQ_X - 6,
+        y: HQ_Y - 6 + 6 * i,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    seat.sim.step();
+    expect(seat.products()).toEqual([[TOOL_IRON], [FURNITURE]]);
+    seat.stock(TOOL_IRON, JOINERY_TOOL_GLUT_UNITS);
+    expect(seat.products()).toEqual([[FURNITURE]]);
+    seat.stock(FURNITURE, Math.ceil(homes / HOMES_PER_STORED_FURNITURE));
+    expect(seat.products()).toEqual(['rest', 'rest']);
   });
 
   it('turns joiners with no iron to wooden tools up to their line, and back once iron comes', () => {

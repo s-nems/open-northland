@@ -1,4 +1,4 @@
-import type { BuildingType, ContentSet } from '@open-northland/data';
+import { BUILDING_KIND, type BuildingType, type ContentSet } from '@open-northland/data';
 import {
   AssistantCounters,
   type AssistantCounterValues,
@@ -73,7 +73,10 @@ import type { SeatSupply, SupplyLine } from './supply.js';
  * names and `otherwise` from then on. A `whileOwned` seat works `works` while the seat owns a building of
  * that type, standing or a site, and `otherwise` meanwhile. A `whileGathered` seat works `works` while a
  * gatherer of the seat, at home or on a colony, is held to the good it names ({@link seatGathers}), and
- * `otherwise` meanwhile. A `rest` seat stops every product of its operator.
+ * `otherwise` meanwhile. A `homeWare` seat works the household ware it names while its stock lies under one
+ * unit per `homesPerUnit` of the seat's built homes the ware serves, rounded up, and from inputs the sites
+ * can spare ({@link inputsSpare}), `otherwise` from then on. The stock is the seat's figure, so what the
+ * homes hold in their pools is not counted. A `rest` seat stops every product of its operator.
  * Over every kind, a seat whose goods all lack their inputs ({@link inputsInStock}) works the next seat's in
  * the plan with one that has them, {@link SeatCraftPlan.unfed} last, and its own while none has.
  */
@@ -91,6 +94,7 @@ export type CraftSeat =
   | { readonly until: string; readonly works: CraftSeat; readonly otherwise: CraftSeat }
   | { readonly whileOwned: string; readonly works: CraftSeat; readonly otherwise: CraftSeat }
   | { readonly whileGathered: string; readonly works: CraftSeat; readonly otherwise: CraftSeat }
+  | { readonly homeWare: string; readonly homesPerUnit: number; readonly otherwise: CraftSeat }
   | typeof REST_SEAT
   | FleetSeat;
 
@@ -228,14 +232,27 @@ export const JOINERY_TOOL_GLUT_UNITS = 24;
  *  and those beside other goods ({@link SeatCraftPlan.sparing}) stand behind the sites' wood. */
 export const WOODEN_TOOL_GLUT_UNITS = 12;
 
+/** Owner ruling: the joiners keep one piece of furniture in store for every two of the seat's built homes,
+ *  rounded up, so a home whose furniture wears out finds a piece to fetch and keeps its extra families. */
+export const HOMES_PER_STORED_FURNITURE = 2;
+
+/** A seat making furniture toward {@link HOMES_PER_STORED_FURNITURE}, from wood the sites can spare, and
+ *  `then` past it. */
+function furnishing(then: CraftSeat): CraftSeat {
+  return { homeWare: 'furniture', homesPerUnit: HOMES_PER_STORED_FURNITURE, otherwise: then };
+}
+
+/** Owner ruling: a joiner makes furniture once his tools lie at their line, and rests past it. */
+const FURNITURE_SEAT: CraftSeat = furnishing(REST_SEAT);
+
 /** Owner ruling: a joiner never stalls for want of iron. With none in stock he works wooden tools, which
  *  need only wood and train the general track every joinery discovery reads, from wood the sites can
- *  spare; he rests while they are short of it. */
+ *  spare, then the {@link FURNITURE_SEAT}; he rests while the sites are short of wood. */
 const NO_IRON_SEAT: CraftSeat = {
   goods: ['tool_wooden'],
   glut: { tool_wooden: WOODEN_TOOL_GLUT_UNITS },
   spareOnly: true,
-  otherwise: REST_SEAT,
+  otherwise: FURNITURE_SEAT,
 };
 
 /** The goods only spare wood goes into. */
@@ -246,15 +263,15 @@ const WOODEN_TOOLS: readonly string[] = ['tool_wooden'];
  *  waiting on iron no gatherer brings stands idle. */
 const IRON_GOOD_ID = 'iron';
 
-/** Owner ruling: a joiner makes wooden tools only to earn the iron tool, from then on iron tools alone and
- *  never furniture while iron comes in ({@link IRON_GOOD_ID}), or {@link NO_IRON_SEAT} without; he rests
- *  while the iron tools lie at {@link JOINERY_TOOL_GLUT_UNITS}. */
+/** Owner ruling: a joiner makes wooden tools only to earn the iron tool, from then on iron tools while iron
+ *  comes in ({@link IRON_GOOD_ID}), or {@link NO_IRON_SEAT} without; while the iron tools lie at
+ *  {@link JOINERY_TOOL_GLUT_UNITS} he works the {@link FURNITURE_SEAT}. */
 const JOINERY_SEAT: CraftSeat = {
   until: 'tool_iron',
   works: ['tool_wooden'],
   otherwise: {
     whileGathered: IRON_GOOD_ID,
-    works: { goods: ['tool_iron'], glut: { tool_iron: JOINERY_TOOL_GLUT_UNITS }, otherwise: REST_SEAT },
+    works: { goods: ['tool_iron'], glut: { tool_iron: JOINERY_TOOL_GLUT_UNITS }, otherwise: FURNITURE_SEAT },
     otherwise: NO_IRON_SEAT,
   },
 };
@@ -463,10 +480,21 @@ const TEMPLE_SEAT: CraftSeat = {
 export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   // The lower joinery makes wooden tools alone, so its joiner rests once the iron tool is earned.
   work_joinery_00: { seats: [{ until: 'tool_iron', works: ['tool_wooden'], otherwise: REST_SEAT }] },
-  work_joinery_01: { seats: [JOINERY_SEAT, JOINERY_SEAT], unfed: NO_IRON_SEAT, sparing: WOODEN_TOOLS },
+  // The second joiner of the tools joinery makes furniture first while it lies under its line, the first
+  // keeps his tools first. Observed: the tools never lie at their line, so with furniture only behind them
+  // one or two of six seats on magiczny_las and diamentowa_dolina made any.
+  work_joinery_01: {
+    seats: [JOINERY_SEAT, furnishing(JOINERY_SEAT)],
+    unfed: NO_IRON_SEAT,
+    sparing: WOODEN_TOOLS,
+  },
   // The upgraded joinery's joiners build the carriers' handcarts in turn with iron tools while few stand
-  // spare.
-  work_joinery_02: { seats: [HANDCART_SEAT], unfed: NO_IRON_SEAT, sparing: WOODEN_TOOLS },
+  // spare, the second furniture first.
+  work_joinery_02: {
+    seats: [HANDCART_SEAT, furnishing(HANDCART_SEAT)],
+    unfed: NO_IRON_SEAT,
+    sparing: WOODEN_TOOLS,
+  },
   // The middle pottery's two potters work bricks and tiles. Owner ruling: at the top tier the first potter
   // always works crockery, which stocked homes and the druids' potions take, and no short building
   // material takes him; the second and third work bricks and tiles and turn to crockery only while both
@@ -554,7 +582,8 @@ export function joineryRolePlans(cap: number, resume: number): JoineryRolePlans 
 
 /** Owner ruling: a colony's level-4 joinery builds carts, ships and iron tools, whose tools alone go home.
  *  Its first joiner builds the seat's ships while it needs them over the sea, by the fleet caps home's ship
- *  joinery works to, and handcarts otherwise; it takes no catapults, which are home's (authored). */
+ *  joinery works to, and handcarts otherwise; it takes no catapults, which are home's, and no furniture,
+ *  which home's homes would never get (its crew reads no homes, {@link SeatChoice.homes}) (authored). */
 const colonyJoineryPlan = (ships: boolean): CraftPlan => ({
   seats: [ships ? TRADE_SHIP_SEAT : HANDCART_SEAT, JOINERY_SEAT, JOINERY_SEAT],
   unfed: NO_IRON_SEAT,
@@ -836,6 +865,15 @@ export function tuneCraftCounters(
     }
     return known;
   };
+  const servedIds = new Map<string, number>();
+  const homes = (ware: string): number => {
+    let served = servedIds.get(ware);
+    if (served === undefined) {
+      served = servedHomes(world, ctx, player, ware);
+      servedIds.set(ware, served);
+    }
+    return served;
+  };
   const reads = stockReads(world, ctx, player, supply, earned);
   const reserve = fleetReserve(world, ctx, player, roleOf, landingShips, tradeShips);
   for (const { type, plan, crew, workplaces } of [...crews.values()].flatMap((byType) => [
@@ -853,6 +891,7 @@ export function tuneCraftCounters(
       owns,
       earned,
       gathers,
+      homes: plan === COLONY_JOINERY_PLAN || plan === COLONY_SHIP_JOINERY_PLAN ? NO_HOMES : homes,
       products,
     };
     const counters = crew.map((e) => world.tryGet(e, ProductionCounters));
@@ -1244,6 +1283,9 @@ interface SeatChoice {
   readonly earned: (id: string) => boolean;
   /** Whether the seat gathers the good with this stable content id ({@link seatGathers}). */
   readonly gathers: (id: string) => boolean;
+  /** The seat's built homes a `homeWare` line counts: those the ware with this stable content id serves
+   *  ({@link servedHomes}), or none for a colony's crew, whose wares stay over the sea. */
+  readonly homes: (ware: string) => number;
   /** The goods the type makes that the seat may make ({@link enabledProducts}). */
   readonly products: readonly number[];
   /** Read a glutted goods list as still wanted rather than handing over to its `otherwise`, and an `until`
@@ -1308,6 +1350,16 @@ function seatProducts(
     });
     return fed === undefined ? seat.firstFed.map((line) => line.good) : [fed.good];
   }
+  if ('homeWare' in seat) {
+    const good = goodTypeByContentId(ctx.content, seat.homeWare)?.typeId;
+    const line = Math.ceil(choice.homes(seat.homeWare) / seat.homesPerUnit);
+    const wanted =
+      good !== undefined &&
+      choice.products.includes(good) &&
+      supply.units(good) < line &&
+      inputsSpare(ctx, supply, choice.type, good, current.includes(good));
+    return wanted ? [seat.homeWare] : seatProducts(choice, current, seat.otherwise);
+  }
   if (!('goods' in seat)) return seat;
   const goods =
     seat.spareOnly === true
@@ -1327,6 +1379,26 @@ function seatProducts(
     return kept.length > 0 ? kept : goods;
   if (seat.otherwise !== undefined) return seatProducts(choice, current, seat.otherwise);
   return goods.length > 0 ? goods : REST;
+}
+
+const NO_HOMES = (): number => 0;
+
+/** How many of `player`'s built homes at home take the household ware with stable content id `ware`: those
+ *  at its `minimumHomeLevel`, and for the lodging ware those with extra family slots to furnish. */
+function servedHomes(world: World, ctx: SystemContext, player: number, ware: string): number {
+  const use = goodTypeByContentId(ctx.content, ware)?.homeQuality;
+  if (use === undefined) return 0;
+  const index = contentIndex(ctx.content);
+  let homes = 0;
+  for (const e of homeBuildings(world, ctx, player)) {
+    const building = world.get(e, Building);
+    const type = index.buildings.get(building.buildingType);
+    if (type?.kind !== BUILDING_KIND.home || !isBuilt(world, e) || building.level < use.minimumHomeLevel)
+      continue;
+    if (use.effect === 'lodging' && type.furnishedFamilies === 0) continue;
+    homes++;
+  }
+  return homes;
 }
 
 /** Whether a settler of `player`, at home or on a colony, works a live flag held to `good`: a colony ships

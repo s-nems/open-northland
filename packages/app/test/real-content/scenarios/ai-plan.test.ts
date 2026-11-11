@@ -263,6 +263,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
         return [...seatGoods(seat.works), ...seatGoods(seat.otherwise)];
       }
       if ('fleet' in seat) return [seat.fleet, ...(seat.beside ?? []), ...seatGoods(seat.otherwise)];
+      if ('homeWare' in seat) return [seat.homeWare, ...seatGoods(seat.otherwise)];
       if (!('goods' in seat)) return [...seat];
       return [...seat.goods, ...(seat.otherwise === undefined ? [] : seatGoods(seat.otherwise))];
     };
