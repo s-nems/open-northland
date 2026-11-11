@@ -210,18 +210,12 @@ export const BUILD_TABLE_FACTS: Readonly<Record<string, Fact>> = Object.fromEntr
   ),
 );
 
-/** A novice's strokes and casts per unit with each tool, the pieces a tool adds to every cycle and the
- *  uses it lasts. */
+/** A novice's strokes and casts per unit with each tool, and the pieces a tool adds to every cycle. */
 export const TOOL_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
   TOOLS.flatMap(([name, tool]) => [
     [`tool.strokes.${name}`, whole((base) => strokes(base, 'collector_wood', 0, tool))],
     [`tool.casts.${name}`, whole((base) => strokes(base, 'fisher_general', 0, tool))],
-    ...(tool === null
-      ? []
-      : [
-          [`tool.bonus.${name}`, fixedOneDecimal((base) => toolBonus(base, tool))],
-          [`tool.uses.${name}`, whole((base) => equipOf(base, tool)?.uses)],
-        ]),
+    ...(tool === null ? [] : [[`tool.bonus.${name}`, fixedOneDecimal((base) => toolBonus(base, tool))]]),
   ]),
 );
 
@@ -424,6 +418,7 @@ export const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'regrow.forestTrees': whole(systems.REGROWTH_FOREST_TREES),
   'regrow.inTen': whole((PERCENT - systems.REGROWTH_FAIL_PERCENT) / IN_TEN),
   'tree.growMinutes': whole(minutes(systems.TREE_GROWTH_PERIOD_TICKS)),
+  'tool.uses': whole((base) => equipOf(base, 'tool_iron')?.uses),
   'tool.ironTrees': whole(ironToolTrees),
   'haul.carry': whole(components.CARRY_CAPACITY),
   'haul.crockeryDelivery': whole(components.CARRY_CAPACITY + systems.CROCKERY_BONUS_UNITS),

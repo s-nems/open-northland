@@ -435,7 +435,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'tools',
       name: 'Narzędzia',
-      lead: 'Narzędzie zmniejsza liczbę uderzeń i daje więcej sztuk w warsztacie. Drewniane starcza na {{tool.uses.wooden}} użyć, Żelazne na {{tool.uses.iron}}.',
+      lead: 'Narzędzie zmniejsza liczbę uderzeń, daje więcej sztuk w warsztacie i starcza na {{tool.uses}} użyć.',
       blocks: [
         {
           h: 'Skąd osadnik ma narzędzie',
@@ -498,7 +498,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Zużycie',
         },
         {
-          p: 'Każde uderzenie, rzut wędką, podlanie i ukończony cykl w warsztacie zużywa jedno użycie, także te nieudane. Sianie i zbieranie grzybów nic nie zużywają. Drewniane znika po {{tool.uses.wooden}} użyciach, Żelazne po {{tool.uses.iron}}, a osadnik pracuje potem gołymi rękami, aż dostanie nowe. Żelazne Narzędzie starcza osadnikowi bez doświadczenia na {{tool.ironTrees}} drzew.',
+          p: 'Każde uderzenie, rzut wędką, podlanie i ukończony cykl w warsztacie zużywa jedno użycie, także te nieudane. Sianie i zbieranie grzybów nic nie zużywają. Po {{tool.uses}} użyciach narzędzie znika i osadnik pracuje gołymi rękami, aż dostanie nowe. Żelazne Narzędzie starcza osadnikowi bez doświadczenia na {{tool.ironTrees}} drzew.',
         },
       ],
       see: [

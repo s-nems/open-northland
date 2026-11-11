@@ -438,7 +438,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'tools',
       name: 'Werkzeug',
-      lead: 'Werkzeug spart Arbeitsschläge und bringt in der Werkstatt mehr Stücke. Holzwerkzeug hält {{tool.uses.wooden}} Einsätze, Eisenwerkzeug {{tool.uses.iron}}.',
+      lead: 'Werkzeug spart Arbeitsschläge, bringt in der Werkstatt mehr Stücke und hält {{tool.uses}} Einsätze.',
       blocks: [
         {
           h: 'Woher ein Siedler Werkzeug bekommt',
@@ -504,7 +504,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Verschleiß',
         },
         {
-          p: 'Jeder Arbeitsschlag, jeder Angelwurf, jedes Gießen und jede fertige Charge kostet einen Einsatz, auch wenn sie nichts bringen. Säen und Pilze aufheben kosten nichts. Holzwerkzeug ist nach {{tool.uses.wooden}} Einsätzen weg, Eisenwerkzeug nach {{tool.uses.iron}}, und der Siedler arbeitet dann mit bloßen Händen, bis er neues bekommt. Eisenwerkzeug reicht einem Siedler ohne Erfahrung für {{tool.ironTrees}} Bäume.',
+          p: 'Jeder Arbeitsschlag, jeder Angelwurf, jedes Gießen und jede fertige Charge kostet einen Einsatz, auch wenn sie nichts bringen. Säen und Pilze aufheben kosten nichts. Nach {{tool.uses}} Einsätzen ist das Werkzeug weg, und der Siedler arbeitet mit bloßen Händen, bis er neues bekommt. Eisenwerkzeug reicht einem Siedler ohne Erfahrung für {{tool.ironTrees}} Bäume.',
         },
       ],
       see: [

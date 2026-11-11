@@ -85,10 +85,8 @@ export type EquipGoodSpec = EquipClass & {
 /** A pair of shoes' condition points in the original:
  *  every node walked off spends its roughness, doubled while hauling. */
 const SHOE_USES = 10000;
-/** Rated uses for a tool: production cycles, gathering strokes, casts and build swings alike. Our
- *  balance: the wooden tool lasts 40% fewer uses than iron, set against its raised production bonus. */
-const IRON_TOOL_USES = 100;
-const WOODEN_TOOL_USES = 60;
+/** Rated uses for a tool: production cycles, gathering strokes, casts and build swings alike. */
+const TOOL_USES = 100;
 /** Original behavior, as the manual says: "Small potions can be used twice, large ones can be used five
  *  times". Mead is a small bottle. */
 const SMALL_BOTTLE_USES = 2;
@@ -135,7 +133,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     wears: true,
     productionBonusPct: WOODEN_TOOL_BONUS_PCT,
     workFactorPct: WOODEN_TOOL_WORK_FACTOR_PCT,
-    uses: WOODEN_TOOL_USES,
+    uses: TOOL_USES,
   },
   {
     typeId: GOOD_TOOL_IRON,
@@ -144,7 +142,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     wears: true,
     productionBonusPct: IRON_TOOL_BONUS_PCT,
     workFactorPct: IRON_TOOL_WORK_FACTOR_PCT,
-    uses: IRON_TOOL_USES,
+    uses: TOOL_USES,
   },
   {
     typeId: GOOD_ARMOR_WOOL,
