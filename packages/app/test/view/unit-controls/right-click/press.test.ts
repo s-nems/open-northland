@@ -166,6 +166,7 @@ function press(
   return resolveRightClick(CONTEXT, {
     hit: { ...NOTHING, ...hit },
     doorMarker: null,
+    markerSettler: null,
     selected: new Set(selected),
     settlers: selected.filter((ref) => SETTLERS.has(ref)).map((ref) => ({ ref, x: 0, y: 0 })),
     mods: { queued: false, landing: 'none', usesHeap: false },
@@ -217,9 +218,9 @@ describe('a right press', () => {
     });
   });
 
-  it('takes a door marker for the person inside, and refuses a gesture past the order cap whole', () => {
-    expect(press([COLLECTOR], {}, { doorMarker: { kind: 'settler', ref: DOOR_SETTLER } })).toEqual({
-      kind: 'doorSettler',
+  it('takes a sign row or work flag for its settler, and refuses a gesture past the order cap whole', () => {
+    expect(press([COLLECTOR], {}, { markerSettler: DOOR_SETTLER })).toEqual({
+      kind: 'markerSettler',
       settler: DOOR_SETTLER,
     });
     const crowd = Array.from({ length: MAX_UNIT_ORDER_MEMBERS + 1 }, (_, i) => RESOURCE + 1 + i);
@@ -235,6 +236,7 @@ describe('a right press', () => {
         {
           hit: NOTHING,
           doorMarker: null,
+          markerSettler: null,
           selected: new Set(crowd),
           settlers: [],
           mods: { queued: false, landing: 'none', usesHeap: false },
@@ -324,6 +326,7 @@ describe('a right press', () => {
       {
         hit: { ...NOTHING, ...onShip },
         doorMarker: null,
+        markerSettler: null,
         selected: new Set([SECOND_TRADER]),
         settlers: [{ ref: SECOND_TRADER, x: 0, y: 0 }],
         mods: { queued: false, landing: 'none', usesHeap: false },
@@ -383,6 +386,7 @@ describe('a right press', () => {
       {
         hit: NOTHING,
         doorMarker: null,
+        markerSettler: null,
         selected: new Set([CART, SHIP]),
         settlers: [],
         mods: { queued: false, landing: 'none', usesHeap: false },

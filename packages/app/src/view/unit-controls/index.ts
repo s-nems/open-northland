@@ -442,6 +442,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     },
   });
 
+  const markerSettlerAt = (world: { readonly x: number; readonly y: number }): number | null => {
+    const proxy = clickHits.settlerProxyAt(world.x, world.y);
+    return proxy === null || proxy.covered ? null : proxy.ref;
+  };
+
   /** The label names what the armed pick's press, else a right press, would do at the point, resolved
    *  as that press resolves it. */
   const hintLineAt = (clientX: number, clientY: number, mods: ModifierState) => {
@@ -455,6 +460,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         : planHint(hintContext(), {
             hit,
             doorMarker: clickHits.doorMarkerAt(world.x, world.y),
+            markerSettler: markerSettlerAt(world),
             selected,
             settlers: unitTargets.ownedSettlersIn(selected),
             mods: rightClickMods(mods),
@@ -564,13 +570,14 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     const plan = resolveRightClick(rightClickContext(), {
       ...input,
       doorMarker: clickHits.doorMarkerAt(world.x, world.y),
+      markerSettler: markerSettlerAt(world),
       workFlag,
     });
     switch (plan.kind) {
       case 'workFlag':
         if (orders.issueWorkFlagAt(plan.tile, plan.goodType, plan.units)) cue('confirm');
         return;
-      case 'doorSettler':
+      case 'markerSettler':
         applySelection([plan.settler], false);
         chrome.actions().open({ x: e.clientX, y: e.clientY });
         cue('confirm');

@@ -138,7 +138,7 @@ export function planHint(ctx: HintContext, input: RightClickInput): PlanHint | n
   switch (plan.kind) {
     case 'workFlag':
       return plan.units.length === 0 ? null : action('workArea');
-    case 'doorSettler':
+    case 'markerSettler':
       return null;
     case 'rallyPoint':
       return action('rallyPoint');

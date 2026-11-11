@@ -129,6 +129,7 @@ function hintOf(
     {
       hit: { ...GROUND, ...hit },
       doorMarker: null,
+      markerSettler: null,
       selected: new Set(selected),
       settlers,
       mods: { queued: false, landing, usesHeap: false },

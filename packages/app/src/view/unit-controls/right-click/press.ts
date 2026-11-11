@@ -27,6 +27,9 @@ import {
 export interface RightClickInput {
   readonly hit: RightClickHit;
   readonly doorMarker: DoorMarkerHit | null;
+  /** The settler a door sign row or a work flag under the press stands for, unless a unit drawn in
+   *  front of the marker covers it (`ClickHits.settlerProxyAt`). */
+  readonly markerSettler: number | null;
   readonly selected: ReadonlySet<number>;
   /** The selection's settlers that take orders (`UnitTargets.ownedSettlersIn`). */
   readonly settlers: readonly FormationUnit[];
@@ -43,8 +46,9 @@ export type RightClickPlan =
       readonly tile: Tile;
       readonly goodType: number | null;
     }
-  /** A door marker stands for the person inside, so it takes the right click the figure would. */
-  | { readonly kind: 'doorSettler'; readonly settler: number }
+  /** A door sign row or a work flag stands for its settler, so it takes the right click the figure
+   *  would: the settler is selected and its ring opens. */
+  | { readonly kind: 'markerSettler'; readonly settler: number }
   /** The lone selected barracks plants or moves its rally flag on the ground the press names. */
   | { readonly kind: 'rallyPoint'; readonly building: number; readonly tile: Tile }
   /** A whole mixed gesture past the order cap is refused before anyone submits anything. */
@@ -89,8 +93,8 @@ export function resolveRightClick(ctx: RightClickContext, input: RightClickInput
       goodType: hit.resource?.goodType ?? null,
     };
   }
+  if (input.markerSettler !== null) return { kind: 'markerSettler', settler: input.markerSettler };
   const marker = input.doorMarker;
-  if (marker?.kind === 'settler') return { kind: 'doorSettler', settler: marker.ref };
   // The rally pick comes before the unit orders: with a barracks selected they would all be no-ops, so
   // the ground press is free to plant the flag - only a person under the press keeps its select.
   if (hit.ownSettler === null) {
