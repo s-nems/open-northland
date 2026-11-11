@@ -68,6 +68,12 @@ export function screenToWorld(camera: Camera, sx: number, sy: number): { x: numb
   return { x: (sx - camera.offsetX) / scale, y: (sy - camera.offsetY) / scale };
 }
 
+/** The camera's forward map: a world-px point to the screen px it is drawn at. */
+export function worldToScreen(camera: Camera, wx: number, wy: number): { x: number; y: number } {
+  const scale = camera.scale ?? 1;
+  return { x: wx * scale + camera.offsetX, y: wy * scale + camera.offsetY };
+}
+
 /** Correction passes the elevation-aware inverse takes before giving up; it also stops once the estimate settles. */
 const PICK_ELEVATION_PASSES = 8;
 

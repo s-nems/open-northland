@@ -10,13 +10,29 @@ const MARQUEE_STYLE = [
   'display:none',
 ].join(';');
 
+interface Point {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** The camera's mapping between client (CSS) px and world px, read as each call lands. */
+export interface MarqueeProjection {
+  readonly toWorld: (clientX: number, clientY: number) => Point;
+  readonly toClient: (worldX: number, worldY: number) => Point;
+}
+
 export interface MarqueeRelease {
-  readonly startX: number;
-  readonly startY: number;
+  /** The world point the drag began on, wherever the camera has scrolled since. */
+  readonly start: Point;
   readonly moved: boolean;
 }
 
-export function createSelectionMarquee(): {
+/**
+ * The selection box anchors its start corner to the world point pressed, as RTS boxes do: a camera
+ * that scrolls during the drag stretches the box over the scrolled ground instead of carrying the
+ * corner along the screen.
+ */
+export function createSelectionMarquee(projection: MarqueeProjection): {
   readonly begin: (clientX: number, clientY: number) => void;
   readonly update: (clientX: number, clientY: number) => void;
   readonly release: (clientX: number, clientY: number) => MarqueeRelease | null;
@@ -26,38 +42,38 @@ export function createSelectionMarquee(): {
   const element = document.createElement('div');
   element.style.cssText = MARQUEE_STYLE;
   document.body.append(element);
-  let dragging = false;
-  let startX = 0;
-  let startY = 0;
+  let anchor: Point | null = null;
+
+  /** The anchor on screen under the camera now, and whether the pointer is a drag away from it. */
+  const span = (start: Point, clientX: number, clientY: number) => {
+    const from = projection.toClient(start.x, start.y);
+    const dx = Math.abs(clientX - from.x);
+    const dy = Math.abs(clientY - from.y);
+    return { from, dx, dy, moved: dx >= DRAG_THRESHOLD || dy >= DRAG_THRESHOLD };
+  };
 
   return {
     begin(clientX, clientY) {
-      dragging = true;
-      startX = clientX;
-      startY = clientY;
+      anchor = projection.toWorld(clientX, clientY);
     },
     update(clientX, clientY) {
-      if (!dragging) return;
-      const dx = Math.abs(clientX - startX);
-      const dy = Math.abs(clientY - startY);
-      if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) return;
+      if (anchor === null) return;
+      const { from, dx, dy, moved } = span(anchor, clientX, clientY);
+      if (!moved) return;
       element.style.display = 'block';
-      element.style.left = `${Math.min(startX, clientX)}px`;
-      element.style.top = `${Math.min(startY, clientY)}px`;
+      element.style.left = `${Math.min(from.x, clientX)}px`;
+      element.style.top = `${Math.min(from.y, clientY)}px`;
       element.style.width = `${dx}px`;
       element.style.height = `${dy}px`;
     },
     release(clientX, clientY) {
-      if (!dragging) return null;
-      dragging = false;
+      if (anchor === null) return null;
+      const start = anchor;
+      anchor = null;
       element.style.display = 'none';
-      return {
-        startX,
-        startY,
-        moved: Math.abs(clientX - startX) >= DRAG_THRESHOLD || Math.abs(clientY - startY) >= DRAG_THRESHOLD,
-      };
+      return { start, moved: span(start, clientX, clientY).moved };
     },
-    active: () => dragging,
+    active: () => anchor !== null,
     dispose: () => element.remove(),
   };
 }

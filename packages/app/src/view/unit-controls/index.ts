@@ -4,9 +4,10 @@ import { pickableSeat } from '../../game/viewer-seat.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import { jobDisplayName } from '../../hud/details-panel/model/context.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
+import { canvasToClient } from '../../hud/geometry.js';
 import { isActionHotkey, isFieldKey, isOrderHotkey } from '../../hud/hotkeys.js';
 import { type ModifierState, matchesMouseBinding } from '../../hud/keybindings.js';
-import { clientToScreen } from '../camera/index.js';
+import { clientToScreen, screenScale } from '../camera/index.js';
 import { setCanvasCursor } from '../cursors/element.js';
 import {
   clampTile,
@@ -15,6 +16,7 @@ import {
   pickTopAt,
   screenToWorld,
   type Tile,
+  worldToScreen,
   worldToTile,
 } from '../picking.js';
 import { entityAnchor } from '../projections/entity-anchor.js';
@@ -206,7 +208,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onOrderLimit: refuseOrderLimit,
   });
 
-  const marquee = createSelectionMarquee();
   /** Last browser cursor point, retained so a keyboard-opened menu can share the click-open anchor. */
   let pointer: { readonly x: number; readonly y: number } | null = null;
 
@@ -228,6 +229,12 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     const c = clientToScreen(canvas, opts.app.renderer.resolution, clientX, clientY);
     return screenToWorld(opts.camera(), c.x, c.y);
   };
+  /** World px to client (CSS) coords under the camera now. */
+  const toClient = (worldX: number, worldY: number): { x: number; y: number } => {
+    const s = worldToScreen(opts.camera(), worldX, worldY);
+    return canvasToClient(screenScale(canvas, opts.app.renderer.resolution), s.x, s.y);
+  };
+  const marquee = createSelectionMarquee({ toWorld, toClient });
 
   /** While a fallback runs, the order controllers read its press's selection. */
   let replaying: RightClickPress | null = null;
@@ -662,7 +669,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (release === null) return;
     if (release.moved) {
       // A drag select is silent in the original; only the single click below confirms.
-      const a = toWorld(release.startX, release.startY);
+      const a = release.start;
       const b = toWorld(e.clientX, e.clientY);
       // Any own vehicle whose sprite the box touches joins the settlers; a single one opens its order
       // window, a group takes the right-click and the attack-move.
@@ -854,6 +861,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       if (pickMode.isArmed()) opts.mapPing?.cancel();
       selectionCursor.update(snapshot);
       actionHint.update(snapshot);
+      // A camera that scrolls under a held drag stretches the box with no pointer move to redraw it.
+      if (pointer !== null) marquee.update(pointer.x, pointer.y);
     },
     tick: (snapshot) => {
       dropGoneMembers(snapshot);
