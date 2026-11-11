@@ -24,6 +24,7 @@ export {
   canPlaceWorkFlag,
   nearestWorkFlagPlacement,
   noteWorkFlagMove,
+  workFlagBlockerCounts,
   workFlagBlockerVersion,
   workFlagPlacementBlocks,
   workFlagPlacementTest,

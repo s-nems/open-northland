@@ -415,8 +415,9 @@ export type SimEvent =
       readonly at: HalfCellNode;
     }
   | {
-      /** A road or wall was ordered over `nodes` this tick, destroying the walk-through `razed` there; the
-       *  static layer drops their sprites and the map's scenery anchored on those nodes. */
+      /** A road or wall was ordered or a signpost erected over `nodes` this tick, destroying the
+       *  walk-through `razed` there; the static layer drops their sprites and the map's scenery anchored on
+       *  those nodes. */
       readonly kind: 'groundCleared';
       readonly nodes: readonly HalfCellNode[];
       readonly razed: readonly Entity[];

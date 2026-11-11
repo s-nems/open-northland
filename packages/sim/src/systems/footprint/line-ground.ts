@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { KilledBy } from '../../components/index.js';
+import { KilledBy, ResourceFootprint } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
@@ -11,10 +11,10 @@ import { stumpsAtNode } from '../spatial/stumps.js';
 import { tryFootprintCellsOf } from './resource-footprint-cells.js';
 import { unstampResourceFootprint } from './resources.js';
 
-// The ground rule a road and a wall share, node by node, past the blocker grid both already consult.
-// Project rule: either clears what grows there, as a building clears bushes and fields, and leaves loose
-// goods and carcasses lying, while a tree of any age or a stone has to be worked away first. The original
-// refuses every landscape object but scenery under either.
+// The ground rule a road, a wall and a signpost share, node by node, past the blocker set each already
+// consults. Project rule: each clears what grows there, as a building clears bushes and fields, and leaves
+// loose goods and carcasses lying, while a tree of any age or a stone has to be worked away first. The
+// original refuses every landscape object but scenery under all three.
 
 /** Whether resource `e` stands solid: its landscape record blocks walking once full-grown, as a tree, a
  *  stone or a mine does, so it refuses a road or wall even while young or part-mined. */
@@ -35,9 +35,25 @@ export function lineGroundOpen(world: World, content: ContentSet, hx: number, hy
   return true;
 }
 
+/** Whether the `flagBlockers` work-flag blocker contributions on node `(hx, hy)` are all resources
+ *  anchored there that {@link clearLineGround} clears or leaves lying: where a signpost may stand although
+ *  a work flag may not. Such a resource blocks no walking, so its one contribution is its anchor. */
+export function onlyLineGroundBlocksAt(
+  world: World,
+  content: ContentSet,
+  hx: number,
+  hy: number,
+  flagBlockers: number,
+): boolean {
+  if (!lineGroundOpen(world, content, hx, hy)) return false;
+  let anchors = 0;
+  for (const e of resourcesAtNode(world, hx, hy)) if (world.has(e, ResourceFootprint)) anchors++;
+  return anchors > 0 && flagBlockers === anchors;
+}
+
 /**
- * Clear what a road or wall ordered over `nodes` covers: the walk-through resources such as mushrooms,
- * clay or a crop, the bushes, the stumps and the opened chests. `groundCleared` names them, so the map's
+ * Clear what a road or wall ordered, or a signpost erected, over `nodes` covers: the walk-through
+ * resources such as mushrooms, clay or a crop, the bushes, the stumps and the opened chests. `groundCleared` names them, so the map's
  * static layer drops their sprites and the scenery on those nodes.
  */
 export function clearLineGround(world: World, ctx: SystemContext, nodes: readonly HalfCellNode[]): void {

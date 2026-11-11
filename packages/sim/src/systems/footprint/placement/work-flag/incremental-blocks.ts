@@ -170,6 +170,17 @@ export function workFlagPlacementBlocks(
   return blocksWithout(state, held);
 }
 
+/** How many standing contributions deny a work flag each node: each resource anchored there adds one,
+ *  and so does every other blocker cell covering it. A live view, like {@link workFlagPlacementBlocks}. */
+export function workFlagBlockerCounts(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+): (node: NodeId) => number {
+  const { counts } = liveBlocks(world, content, terrain);
+  return (node) => counts[node] ?? 0;
+}
+
 /** The blocked set minus one flag's own contribution: the node that flag covers stays blocked only
  *  while another blocker also contributes to it, withheld through the refcounts instead of materializing
  *  the difference. */

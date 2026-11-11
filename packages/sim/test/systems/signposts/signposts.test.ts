@@ -9,23 +9,27 @@ import {
   PathRequest,
   PlayerOrder,
   Position,
+  Resource,
   Settler,
   SIGNPOST_SPACING_NODES,
   Signpost,
 } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { cellAnchorNode, hexDistanceBetween, Simulation } from '../../../src/index.js';
+import { cellAnchorNode, hexDistanceBetween, positionOfNode, Simulation } from '../../../src/index.js';
+import { canPlaceWorkFlag, stampResourceFootprintData } from '../../../src/systems/footprint/index.js';
 import {
   BUILD_GUIDE_ATOMIC_ID,
   canPlaceSignpost,
   signpostNetwork,
   signpostNetworkRevision,
 } from '../../../src/systems/index.js';
+import { erectSignpost } from '../../../src/systems/signposts/index.js';
 import { FOG_STATE } from '../../../src/systems/vision/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { grassCellMap as grassMap, roughNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
+import { MUSHROOM_GFX, ROW, roadSim, TREE_GFX, WOOD } from '../roads/support.js';
 import { stampPost } from './support.js';
 
 /**
@@ -276,6 +280,38 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, stone, P0)).toBe(false);
     expect(sim.signpostProbe(P0)?.canPlace(STONE.hx, STONE.hy)).toBe(false);
     expect(sim.signpostProbe(P0)?.canPlace(STONE.hx - 2, STONE.hy)).toBe(true);
+  });
+
+  it('stands over a mushroom, clearing it, but not over a young tree; a work flag still refuses both', () => {
+    const sim = roadSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const MUSHROOM = { hx: 20, hy: ROW };
+    const SAPLING = { hx: 30, hy: ROW };
+    const resourceAt = (at: { hx: number; hy: number }, gfx: number): Entity => {
+      const e = sim.world.create();
+      sim.world.add(e, Position, positionOfNode(at.hx, at.hy));
+      sim.world.add(e, Resource, { goodType: WOOD, remaining: 1, harvestAtomic: 0 });
+      stampResourceFootprintData(sim.world, e, { walk: [], build: [], work: [], sourceGfxIndex: gfx });
+      return e;
+    };
+    const mushroom = resourceAt(MUSHROOM, MUSHROOM_GFX);
+    resourceAt(SAPLING, TREE_GFX);
+    const ctx = ctxOf(sim);
+    const mushroomNode = terrain.nodeAt(MUSHROOM.hx, MUSHROOM.hy);
+    const saplingNode = terrain.nodeAt(SAPLING.hx, SAPLING.hy);
+    expect(canPlaceWorkFlag(sim.world, ctx, terrain, mushroomNode)).toBe(false);
+    expect(sim.signpostProbe(P0)?.canPlace(MUSHROOM.hx, MUSHROOM.hy)).toBe(true);
+    expect(sim.signpostProbe(P0)?.canPlace(SAPLING.hx, SAPLING.hy)).toBe(false);
+    expect(canPlaceSignpost(sim.world, ctx, terrain, saplingNode, P0)).toBe(false);
+
+    const post = erectSignpost(sim.world, ctx, terrain, mushroomNode, P0);
+    expect(post).not.toBeNull();
+    expect(sim.world.isAlive(mushroom)).toBe(false);
+    expect(sim.events.current().filter((ev) => ev.kind === 'groundCleared')).toEqual([
+      { kind: 'groundCleared', nodes: [MUSHROOM], razed: [mushroom] },
+    ]);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it("demolishSignpost tears a post down, freeing its spacing and its neighbours' links; a non-signpost target is skipped", () => {

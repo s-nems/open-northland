@@ -46,6 +46,7 @@ export {
   type VehicleSiteVerdict,
   vehicleSiteRings,
   vehicleSiteWorkPoint,
+  workFlagBlockerCounts,
   workFlagBlockerVersion,
   workFlagPlacementBlocks,
   workFlagPlacementTest,
