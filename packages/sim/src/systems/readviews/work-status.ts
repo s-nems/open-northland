@@ -60,7 +60,7 @@ export interface MissingWorkInput {
   readonly available: number;
   readonly missing: number;
   /** Where the worker's side keeps or brings in the input, as its fetch from the workplace door searches
-   *  ({@link inputReach}): a store holding a unit, or a workplace turning it out or a gatherer of it, as
+   *  ({@link inputReach}): a store lending a unit, or a workplace turning it out or a gatherer of it, as
    *  {@link producedLandings} lists them. */
   readonly source: StoreReach;
   /** The kind of trade that gathers the input off the map when no building type makes it, so only a

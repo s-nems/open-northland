@@ -16,9 +16,10 @@ const MAX_DIAGNOSTIC_STORES = 128;
 
 /**
  * Where a worker's side has stores for an errand, against the area its search covers: at least one inside
- * it (`inReach`), only ones outside it (`outOfReach`), none at all (`none`), or more than one diagnosis
- * weighs with none of those inside (`undecided`), so the diagnosis never claims what it cannot prove. A
- * search nothing confines finds every store in reach.
+ * it (`inReach`), only ones outside it (`outOfReach`), none at all (`none`), or neither provable
+ * (`undecided`): more than one diagnosis weighs with none of those inside, or an input only its owner's
+ * storage minimum holds back. So the diagnosis never claims what it cannot prove. A search nothing confines
+ * finds every store in reach.
  */
 export type StoreReach = 'inReach' | 'outOfReach' | 'none' | 'undecided';
 
@@ -67,13 +68,14 @@ export function inputReach(
     e !== workplace &&
     (unclaimedStockOf(world, ctx, undefined, e, goodType) > 0 ||
       refillingGoodsOf(world, ctx, e).includes(goodType));
+  const owner = ownerOf(world, operator);
   const terrain = ctx.terrain;
   const here = terrain === undefined ? null : nodeOf(world, terrain, operator);
   if (terrain === undefined || here === null) {
     const stored = reachAmong(world, operator, kept(stock.holders(goodType), lends), null);
-    return stored === 'none' ? reachAmong(world, operator, producers, null) : stored;
+    const found = stored === 'none' ? reachAmong(world, operator, producers, null) : stored;
+    return found === 'none' ? unsourced(stock, owner, goodType) : found;
   }
-  const owner = ownerOf(world, operator);
   const door = interactionCell(world, ctx, terrain, workplace, here);
   const limit = navigationLimitFor(world, ctx.content, terrain, operator) ?? undefined;
   const gate = goodsSearchGate(world, ctx.content, terrain, owner, door, limit);
@@ -91,7 +93,13 @@ export function inputReach(
     owner === undefined
       ? stock.holders(goodType).size + stock.refillers(goodType).size > 0
       : stock.sideSupplies(owner, goodType);
-  return stocked ? 'outOfReach' : 'none';
+  return stocked ? 'outOfReach' : unsourced(stock, owner, goodType);
+}
+
+/** The verdict on an input nothing lends or makes: `none`, unless `owner`'s storehouses keep units of it
+ *  back for its storage minimum, which is no source the fetch lifts but which `none` would deny exists. */
+function unsourced(stock: FetchableStock, owner: number | undefined, goodType: number): StoreReach {
+  return owner !== undefined && stock.storedUnits(owner, goodType) > 0 ? 'undecided' : 'none';
 }
 
 function reachAmong(

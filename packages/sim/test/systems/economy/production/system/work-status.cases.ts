@@ -367,7 +367,7 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
     expect(sourceOfWood(sim, smith)).toBe('inReach');
   });
 
-  it('counts no store whose stock the storage minimum holds back, which the fetch never takes', () => {
+  it('claims no reach for stock the storage minimum holds back, which the fetch never takes', () => {
     const { sim, smith, woodcutter } = confinedForge(0);
     rivalWoodcutter(sim, woodcutter);
     const setMinimum = (amount: number): void => {
@@ -378,7 +378,7 @@ describe('Simulation.workStatus - stores outside the signpost area', () => {
     const headquarters = storeAt(sim, IN_AREA);
     sim.world.add(headquarters, Owner, { player: 0 });
     setStockAmount(sim.world, headquarters, WOOD, STORED_WOOD);
-    expect(sourceOfWood(sim, smith)).toBe('none');
+    expect(sourceOfWood(sim, smith)).toBe('undecided');
     setMinimum(0);
     expect(sourceOfWood(sim, smith)).toBe('inReach');
   });
