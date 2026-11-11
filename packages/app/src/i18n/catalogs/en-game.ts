@@ -76,6 +76,7 @@ export const enGame = {
         animals: 'Animals',
         roads: 'Roads',
         signposts: 'Signposts and flags',
+        selection: 'Selected units',
       },
       layerTips: {
         civilians: 'Settlers, as small squares.',
@@ -86,6 +87,7 @@ export const enGame = {
         animals: 'Wild animals and livestock, as pale dots.',
         roads: 'Laid roads, and road sites still to be built in a darker shade.',
         signposts: 'Signposts and the work flags of extractors.',
+        selection: 'A faint light halo around the selected settlers and vehicles.',
       },
       scope: 'Owners',
       scopeNote: 'Wild animals and laid roads belong to no tribe and always show.',

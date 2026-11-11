@@ -410,7 +410,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // Re-placed every frame; the unit dots redraw on a throttled cadence, the fog mask only on a fog
     // generation change.
     const lostGoals = controls.lostGoals();
-    mountedMinimap.update(snap, fogView, lostGoals);
+    mountedMinimap.update(snap, fogView, lostGoals, controls);
     diplomacyMap.refresh();
     // Decided here from the host's placement probe and handed over as plain data: the renderer stays a
     // pure projection and never calls back into the host.

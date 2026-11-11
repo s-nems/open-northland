@@ -72,6 +72,7 @@ describe('parseStoredSettings', () => {
           animals: false,
           roads: true,
           signposts: true,
+          selection: false,
         },
         scope: 'hostile',
         ground: 'muted',

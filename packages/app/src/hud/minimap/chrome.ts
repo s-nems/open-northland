@@ -115,6 +115,10 @@ const LAYER_ICONS: Readonly<Record<MinimapLayer, string>> = {
   ),
   roads: icon('<path d="M7 2 4 18M13 2l3 16M10 3v2m0 4v2m0 4v2"/>'),
   signposts: icon('<path d="M6 18V2M6 3h9l-2 3 2 3H6"/>'),
+  // A small square in a dashed halo.
+  selection: icon(
+    '<rect x="8" y="8" width="4" height="4" fill="currentColor"/><circle cx="10" cy="10" r="6.5" stroke-dasharray="3 2"/>',
+  ),
 };
 
 interface RadioChoices<T extends string> {

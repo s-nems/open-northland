@@ -74,6 +74,7 @@ export const plGame = {
         animals: 'Zwierzęta',
         roads: 'Drogi',
         signposts: 'Drogowskazy i flagi',
+        selection: 'Zaznaczone jednostki',
       },
       layerTips: {
         civilians: 'Osadnicy jako małe kwadraty.',
@@ -84,6 +85,7 @@ export const plGame = {
         animals: 'Dzikie zwierzęta i zwierzęta hodowlane jako jasne kropki.',
         roads: 'Ułożone drogi, a ciemniejszym odcieniem odcinki jeszcze do zbudowania.',
         signposts: 'Drogowskazy i flagi robocze zbieraczy.',
+        selection: 'Delikatna jasna obwódka wokół zaznaczonych osadników i wehikułów.',
       },
       scope: 'Właściciele',
       scopeNote: 'Dzikie zwierzęta i ułożone drogi nie należą do żadnego plemienia i są zawsze widoczne.',

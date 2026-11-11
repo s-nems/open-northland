@@ -46,6 +46,11 @@ const RIM = 1;
 /** Widening a diamond's L1 radius by `d` thickens its slanted edges by `d / sqrt 2` only. */
 const DIAMOND_RIM_REACH = Math.SQRT2;
 
+/** A selected unit's halo: a thin light band outside its rim, in minimap screen px, so the selection
+ *  stands out without growing its markers much or hiding the ground around them. Authored. */
+const SELECTION_HALO = 1;
+export const SELECTION_HALO_COLOUR = 0xfff5d6;
+
 /** Owned markers sit in a dark rim, which the light minimap fills stand out against; a vehicle's pale rim
  *  sets it apart from a settler of the same colour. */
 const VEHICLE_RIM_COLOUR = 0xf4ead0;
@@ -70,8 +75,9 @@ const MIN_DIAMOND_RADIUS_PX = 1;
 const MIN_RIM_PX = 1;
 
 /** Which part of a mark a stamp paints: `rims` under every fill of a replot, then `fills`, so a crowd's
- *  rims never cut into its neighbours' fills; `both` paints one mark whole. */
-export type MinimapStampPart = 'both' | 'rims' | 'fills';
+ *  rims never cut into its neighbours' fills; `both` paints one mark whole. `halo` paints a selected
+ *  mark's outline grown past its rim, in {@link SELECTION_HALO_COLOUR}, under its rim and fill. */
+export type MinimapStampPart = 'both' | 'rims' | 'fills' | 'halo';
 
 /**
  * Stamp `mark` centred on raster px `(cx, cy)`. `pxPerMinimapPx` converts the marker's authored minimap
@@ -88,6 +94,10 @@ export function stampMark(
   markerScale = 1,
   part: MinimapStampPart = 'both',
 ): void {
+  if (part === 'halo') {
+    stampHalo(raster, cx, cy, mark, pxPerMinimapPx, markerScale);
+    return;
+  }
   const rims = part !== 'fills';
   const fills = part !== 'rims';
   const rim = Math.max(MIN_RIM_PX, RIM * pxPerMinimapPx);
@@ -132,6 +142,45 @@ export function stampMark(
       if (fills) stampRect(raster, cx, cy, halfW, halfH, colour);
       return;
     }
+  }
+}
+
+/** A selected unit's halo: its rimmed shape grown by {@link SELECTION_HALO}. Only settlers and vehicles
+ *  are units; any other mark gets none. */
+function stampHalo(
+  raster: DotRaster,
+  cx: number,
+  cy: number,
+  mark: MinimapMark,
+  pxPerMinimapPx: number,
+  markerScale: number,
+): void {
+  const rim = Math.max(MIN_RIM_PX, RIM * pxPerMinimapPx);
+  const grow = rim + Math.max(MIN_RIM_PX, SELECTION_HALO * pxPerMinimapPx);
+  switch (mark) {
+    case 'civilian':
+    case 'vehicle': {
+      const half = sizePx(RIMMED_SQUARES[mark].half, markerScale, pxPerMinimapPx);
+      stampSquare(raster, cx, cy, half + grow, SELECTION_HALO_COLOUR);
+      return;
+    }
+    case 'soldier': {
+      const radius = Math.max(MIN_DIAMOND_RADIUS_PX, SOLDIER_RADIUS * markerScale * pxPerMinimapPx);
+      stampDiamond(raster, cx, cy, radius + grow * DIAMOND_RIM_REACH, SELECTION_HALO_COLOUR);
+      return;
+    }
+    case 'hero': {
+      const radius = Math.max(MIN_DIAMOND_RADIUS_PX, HERO_RADIUS * markerScale * pxPerMinimapPx);
+      const ring = Math.max(MIN_RIM_PX, HERO_RING * pxPerMinimapPx);
+      stampDisc(raster, cx, cy, radius + rim + ring + grow, SELECTION_HALO_COLOUR);
+      return;
+    }
+    case 'building':
+    case 'roadSite':
+    case 'animal':
+    case 'road':
+    case 'signpost':
+      return;
   }
 }
 

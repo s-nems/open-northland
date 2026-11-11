@@ -62,6 +62,7 @@ export const chsGame = {
         animals: '动物',
         roads: '道路',
         signposts: '路标与旗帜',
+        selection: '选中的单位',
       },
       layerTips: {
         civilians: '居民，显示为小方块。',
@@ -72,6 +73,7 @@ export const chsGame = {
         animals: '野生动物与牲畜，显示为浅色圆点。',
         roads: '已铺设的道路；尚待修建的道路工地颜色较深。',
         signposts: '路标与采集者的工作旗帜。',
+        selection: '选中的居民和载具周围的淡色光圈。',
       },
       scope: '归属',
       scopeNote: '野生动物和已铺设的道路不属于任何民族，始终显示。',

@@ -86,6 +86,7 @@ export const deGame = {
         animals: 'Tiere',
         roads: 'Straßen',
         signposts: 'Wegweiser und Fahnen',
+        selection: 'Ausgewählte Einheiten',
       },
       layerTips: {
         civilians: 'Siedler als kleine Quadrate.',
@@ -96,6 +97,7 @@ export const deGame = {
         animals: 'Wild- und Nutztiere als helle Punkte.',
         roads: 'Fertige Straßen und dunkler dargestellte Straßenbaustellen.',
         signposts: 'Wegweiser und Arbeitsfahnen der Abbauer.',
+        selection: 'Ein dezenter heller Rand um die ausgewählten Siedler und Fahrzeuge.',
       },
       scope: 'Besitzer',
       scopeNote: 'Wildtiere und fertige Straßen gehören zu keinem Stamm und werden immer angezeigt.',

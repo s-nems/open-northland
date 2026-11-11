@@ -229,7 +229,8 @@ describe('forEachMinimapDot', () => {
       { id: 7, components: { Signpost: {}, Owner: { player: 0 }, ...at(6, 6) } },
       person(8, 0, 7, 7, HERO_JOB),
     ];
-    const markOf: Readonly<Record<MinimapLayer, MinimapMark>> = {
+    // The selection layer only haloes markers the other layers plot.
+    const markOf: Readonly<Record<Exclude<MinimapLayer, 'selection'>, MinimapMark>> = {
       civilians: 'civilian',
       soldiers: 'soldier',
       heroes: 'hero',
@@ -372,6 +373,36 @@ describe('forEachMinimapDot', () => {
     ]);
     // A hero is no soldier: the soldiers switch alone shows only the soldier.
     expect(dotsOf(world, { filters: only('soldiers') }).map((dot) => dot.mark)).toEqual(['soldier']);
+  });
+
+  it('haloes the selected settlers and vehicles above the hostiles and under the heroes', () => {
+    const world = [
+      person(1, VIEWER, 1, 1),
+      person(2, VIEWER, 2, 2, SOLDIER_JOB),
+      person(3, FOE, 3, 3),
+      vehicle(4, VIEWER, 1, 2),
+      person(5, VIEWER, 2, 1, HERO_JOB),
+      building(6, VIEWER, 3, 1),
+    ];
+    expect(partsOf(world, { selected: new Set([1, 4, 5, 6]) })).toEqual([
+      'building:rims',
+      'building:fills',
+      'soldier:rims',
+      'soldier:fills',
+      'civilian:rims',
+      'civilian:fills',
+      'civilian:halo',
+      'hero:halo',
+      'vehicle:halo',
+      'civilian:rims',
+      'vehicle:rims',
+      'civilian:fills',
+      'vehicle:fills',
+      'hero:rims',
+      'hero:fills',
+    ]);
+    // The halo layer off hands the plot no selection: the plain stacking stays.
+    expect(partsOf(world)).not.toContain('civilian:halo');
   });
 
   it("rims a hostile marker over the viewer's fills, so an intruder in the crowd keeps its outline", () => {

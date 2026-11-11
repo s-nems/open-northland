@@ -12,6 +12,7 @@ export const MINIMAP_LAYERS = [
   'animals',
   'roads',
   'signposts',
+  'selection',
 ] as const;
 export type MinimapLayer = (typeof MINIMAP_LAYERS)[number];
 
@@ -40,14 +41,15 @@ function layersAll(shown: boolean): Record<MinimapLayer, boolean> {
   return layers;
 }
 
-/** The layers shown out of the box: the owned forces and works; wildlife, roads and posts are clutter
- *  a player opts into. Owner ruling. */
+/** The layers shown out of the box: the owned forces and works and the selection's halo; wildlife,
+ *  roads and posts are clutter a player opts into. Owner ruling. */
 const DEFAULT_SHOWN_LAYERS: ReadonlySet<MinimapLayer> = new Set<MinimapLayer>([
   'civilians',
   'soldiers',
   'heroes',
   'buildings',
   'vehicles',
+  'selection',
 ]);
 
 function defaultLayers(): Record<MinimapLayer, boolean> {

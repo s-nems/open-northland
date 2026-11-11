@@ -52,7 +52,11 @@ export interface MinimapDotContext {
   /** The viewer seat's stance toward `owner`. */
   readonly stanceToward: (owner: number) => DiplomacyState;
   readonly playerColourOf?: ((player: number) => number) | undefined;
+  /** The selected entities; a selected settler or vehicle wears a halo. Empty while the layer is off. */
+  readonly selected?: ReadonlySet<number> | undefined;
 }
+
+const NO_SELECTION: ReadonlySet<number> = new Set();
 
 /** Carriers walked or markers stamped between two reads of the clock while a step has a deadline. */
 const DEADLINE_STRIDE = 64;
@@ -166,7 +170,7 @@ type Walk = (typeof WALKS)[number];
  *  which clears its groups and moves its hostile markers to the pass after every layer. */
 type PlotStage =
   | { readonly kind: 'walk'; readonly walk: Walk }
-  | { readonly kind: 'emit'; readonly group: HeldMarks; readonly part: 'rims' | 'fills' }
+  | { readonly kind: 'emit'; readonly group: HeldMarks; readonly part: 'rims' | 'fills' | 'halo' }
   | { readonly kind: 'settle' };
 
 const ENDS_LAYER: Readonly<Record<Walk, boolean>> = {
@@ -209,8 +213,10 @@ function firstIdFrom(ids: readonly number[], id: number): number {
  * soldiers stamp after civilians, and a layer's rims all go under its fills, so a crowd reads as one
  * rimmed blob while a later layer's rims still part it from the one below. Hostile owners' markers leave
  * the layers and stamp after all of them, rims then fills, so an intruder keeps its own rim on top of the
- * viewer's crowd, buildings and vehicles instead of melting into them. Heroes stamp last of all, whoever
- * owns them: losing one loses most games, so no crowd or intruder covers one.
+ * viewer's crowd, buildings and vehicles instead of melting into them. Selected settlers and vehicles
+ * stamp next, each in a light halo under its rim, so the player finds the units they hold. Heroes stamp
+ * last of all, whoever owns them: losing one loses most games, so no crowd or intruder covers one; a
+ * selected hero's halo goes down with the others.
  *
  * A plot may run over several steps, each walking on by id from where the last stopped, so a big map's
  * plot spreads over frames instead of stalling one; each carrier is read once, off the snapshot of the
@@ -224,6 +230,9 @@ export class MinimapDotPlot {
   private readonly hostileSoldiers = new HeldMarks();
   private readonly allHostiles = new HeldMarks();
   private readonly heroes = new HeldMarks();
+  /** Every selected marker, heroes included, for the halo pass; then the non-hero ones whole. */
+  private readonly selectedHalos = new HeldMarks();
+  private readonly selected = new HeldMarks();
   // A walk meets a handful of owners and trades thousands of times over, so each answer is asked once.
   private readonly stances = new Map<number, DiplomacyState>();
   private readonly colours = new Map<number, number>();
@@ -255,6 +264,8 @@ export class MinimapDotPlot {
       this.hostileSoldiers,
       this.allHostiles,
       this.heroes,
+      this.selectedHalos,
+      this.selected,
     ])
       group.clear();
   }
@@ -288,16 +299,18 @@ export class MinimapDotPlot {
     }
     this.allHostiles.clear();
     this.heroes.clear();
+    this.selectedHalos.clear();
+    this.selected.clear();
     this.remembered.length = 0;
     this.ctx = null;
     return true;
   }
 
   /** The stages of a plot of `layers`: each enabled layer's walks, its rims under its fills and plain
-   *  markers under soldiers; then every layer's hostile markers, then the heroes. */
+   *  markers under soldiers; then every layer's hostile markers, the selection, then the heroes. */
   private stagesFor(layers: MinimapFilters['layers']): PlotStage[] {
     const stages: PlotStage[] = [];
-    const emit = (group: HeldMarks, part: 'rims' | 'fills'): void => {
+    const emit = (group: HeldMarks, part: 'rims' | 'fills' | 'halo'): void => {
       stages.push({ kind: 'emit', group, part });
     };
     for (const walk of WALKS) {
@@ -312,6 +325,9 @@ export class MinimapDotPlot {
     }
     emit(this.allHostiles, 'rims');
     emit(this.allHostiles, 'fills');
+    emit(this.selectedHalos, 'halo');
+    emit(this.selected, 'rims');
+    emit(this.selected, 'fills');
     emit(this.heroes, 'rims');
     emit(this.heroes, 'fills');
     return stages;
@@ -418,7 +434,9 @@ export class MinimapDotPlot {
         if (owner === undefined || !this.admits(ctx, owner)) return;
         const role = this.roleOf(ctx, settlerJobType(e));
         if (role === 'hero') {
-          if (layers.heroes) this.place(ctx, e, 'hero', this.colourOf(ctx, owner), this.heroes);
+          if (!layers.heroes) return;
+          if (this.isSelected(ctx, e)) this.place(ctx, e, 'hero', 0, this.selectedHalos);
+          this.place(ctx, e, 'hero', this.colourOf(ctx, owner), this.heroes);
           return;
         }
         const soldier = role === 'soldier';
@@ -434,6 +452,10 @@ export class MinimapDotPlot {
         return;
       }
     }
+  }
+
+  private isSelected(ctx: MinimapDotContext, e: SnapshotEntity): boolean {
+    return (ctx.selected ?? NO_SELECTION).has(e.id);
   }
 
   /** A remembered static stands on explored ground, where no live marker plots, so it skips the fog. */
@@ -528,6 +550,12 @@ export class MinimapDotPlot {
     mark: MinimapMark,
     colour: number,
   ): void {
+    if ((mark === 'civilian' || mark === 'soldier' || mark === 'vehicle') && this.isSelected(ctx, e)) {
+      // The halo takes no colour; only its place and shape matter.
+      this.place(ctx, e, mark, 0, this.selectedHalos);
+      this.place(ctx, e, mark, colour, this.selected);
+      return;
+    }
     this.place(ctx, e, mark, colour, this.groupOf(ctx, owner, mark));
   }
 

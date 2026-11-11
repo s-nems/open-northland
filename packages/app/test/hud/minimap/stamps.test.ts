@@ -5,6 +5,7 @@ import {
   type DotRaster,
   MARKER_SIZE_SCALES,
   type MinimapMark,
+  SELECTION_HALO_COLOUR,
   stampMark,
 } from '../../../src/hud/minimap/stamps.js';
 
@@ -41,6 +42,16 @@ function colourAt(raster: DotRaster, x: number, y: number): number | null {
   const o = (y * raster.width + x) * 4;
   if (raster.rgba[o + 3] === 0) return null;
   return ((raster.rgba[o] ?? 0) << 16) | ((raster.rgba[o + 1] ?? 0) << 8) | (raster.rgba[o + 2] ?? 0);
+}
+
+/** {@link stamped}'s 2 raster px per minimap px times the one minimap px halo. */
+const HALO_RASTER_PX = 2;
+
+/** The painted columns' span along the centre row. */
+function paintedWidth(raster: DotRaster): number {
+  let span = 0;
+  for (let x = 0; x < raster.width; x++) if (colourAt(raster, x, CENTRE) !== null) span++;
+  return span;
 }
 
 function painted(raster: DotRaster, colour?: number): number {
@@ -150,6 +161,24 @@ describe('stampMark', () => {
     for (const part of ['rims', 'fills'] as const)
       for (const dx of [0, 3]) stampMark(crowd, CENTRE + dx, CENTRE, 'civilian', COLOUR, 2, 1, part);
     expect(painted(crowd, COLOUR)).toBe(2 * painted(stamped('civilian'), COLOUR) - 1 * 4);
+  });
+
+  it('rings a selected unit in a thin light halo just past its rim, which the mark stamped over keeps', () => {
+    for (const mark of ['civilian', 'soldier', 'hero', 'vehicle'] as const) {
+      const whole = stamped(mark);
+      const haloed = { rgba: new Uint8Array(SIDE * SIDE * 4), width: SIDE, height: SIDE };
+      stampMark(haloed, CENTRE, CENTRE, mark, COLOUR, 2, 1, 'halo');
+      expect(painted(haloed), mark).toBe(painted(haloed, SELECTION_HALO_COLOUR));
+      stampMark(haloed, CENTRE, CENTRE, mark, COLOUR, 2);
+      const halo = painted(haloed, SELECTION_HALO_COLOUR);
+      // The mark itself is untouched; the halo shows only around it, about one minimap px past the rim on
+      // each side. A diamond's band reaches sqrt 2 further along the axes, so its slanted edges get it whole.
+      expect(painted(haloed) - halo, mark).toBe(painted(whole));
+      expect(halo, mark).toBeGreaterThan(0);
+      expect(paintedWidth(haloed) - paintedWidth(whole), mark).toBeLessThanOrEqual(
+        2 * Math.ceil(HALO_RASTER_PX * Math.SQRT2),
+      );
+    }
   });
 
   it('scales the marker body with the size choice, never the rim', () => {

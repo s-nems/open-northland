@@ -62,6 +62,7 @@ export const chtGame = {
         animals: '動物',
         roads: '道路',
         signposts: '路標與旗幟',
+        selection: '選取的單位',
       },
       layerTips: {
         civilians: '居民，以小方塊表示。',
@@ -72,6 +73,7 @@ export const chtGame = {
         animals: '野生動物與牲畜，以淺色圓點表示。',
         roads: '已鋪好的道路，尚待建造的道路工地以較深的色調表示。',
         signposts: '路標與採集者的工作旗幟。',
+        selection: '選取的居民和載具周圍的淡色光圈。',
       },
       scope: '擁有者',
       scopeNote: '野生動物與已鋪好的道路不屬於任何民族，一律顯示。',

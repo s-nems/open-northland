@@ -47,6 +47,15 @@ import { MARKER_SIZE_SCALES, stampMark } from './stamps.js';
 import { createMinimapSurface } from './surface.js';
 
 const NO_GOALS: readonly GoalNode[] = [];
+const NO_IDS: ReadonlySet<number> = new Set();
+const NO_SELECTION: MinimapSelection = { selectedIds: () => NO_IDS, selectionVersion: () => 0 };
+
+/** The selected entities, and a version that changes whenever the set does: the set may be one object
+ *  mutated in place. */
+export interface MinimapSelection {
+  readonly selectedIds: () => ReadonlySet<number>;
+  readonly selectionVersion: () => number;
+}
 
 /** Under the map while the DOM backing loads: the dark wood of the frames' backing. */
 const BACKDROP_COLOUR = 0x2a2018;
@@ -100,8 +109,14 @@ export interface MinimapPlacement {
 export interface MinimapHandle {
   claimsPointer(clientX: number, clientY: number): boolean;
   dragging(): boolean;
-  /** `lostGoals` are the selected lost settlers' refused goals, marked over the dots. */
-  update(snapshot: WorldSnapshot, fog?: FogView | null, lostGoals?: readonly GoalNode[]): void;
+  /** `lostGoals` are the selected lost settlers' refused goals, marked over the dots; the `selection`'s
+   *  settlers and vehicles wear a halo while the selection layer is on. */
+  update(
+    snapshot: WorldSnapshot,
+    fog?: FogView | null,
+    lostGoals?: readonly GoalNode[],
+    selection?: MinimapSelection,
+  ): void;
   /** Ring an attack at half-cell node `at`. */
   ping(at: HalfCellNode): void;
   /** Show a player's map ping at half-cell node `at` in `colour`. */
@@ -182,9 +197,9 @@ function mountBothMaps(opts: MinimapOptions, overviewCanvas: OverviewCanvas): Mi
   return {
     claimsPointer: (x, y) => corner.claimsPointer(x, y) || overview.claimsPointer(x, y),
     dragging: () => corner.dragging() || overview.dragging(),
-    update: (snapshot, fog, lostGoals) => {
-      corner.update(snapshot, fog, lostGoals);
-      overview.update(snapshot, fog, lostGoals);
+    update: (snapshot, fog, lostGoals, selection) => {
+      corner.update(snapshot, fog, lostGoals, selection);
+      overview.update(snapshot, fog, lostGoals, selection);
       if (overviewOpen) overviewCanvas.render(overview.visibleMap(), opts.app.renderer.resolution);
     },
     ping: (at) => {
@@ -240,6 +255,8 @@ function mountMinimapView(
   let hasSeat = opts.viewer() !== null;
   let dirtyDots = true;
   let dotColours = teamColourVersion();
+  /** The selection version the shown or running plot halos. */
+  let plottedSelection = -1;
   const placedLayout = (): MinimapLayout =>
     place === 'corner'
       ? minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width)
@@ -441,7 +458,7 @@ function mountMinimapView(
       return pointOverMinimap(layout, point.x, point.y);
     },
     dragging: input.dragging,
-    update: (snapshot, fog = null, lostGoals = NO_GOALS) => {
+    update: (snapshot, fog = null, lostGoals = NO_GOALS, selection = NO_SELECTION) => {
       if (hidden) {
         if (place === 'overview' && !groundAsked) {
           groundAsked = true;
@@ -471,6 +488,8 @@ function mountMinimapView(
         dotColours = teamColourVersion();
         dirtyDots = true;
       }
+      // A new selection shows at once rather than at the next throttled replot.
+      if (filters.layers.selection && selection.selectionVersion() !== plottedSelection) dirtyDots = true;
       // A changed view starts over at once; otherwise a plot under way walks on before the gate is asked.
       if (dirtyDots || (!plot.pending() && claimDotReplot(snapshot, seat))) {
         plotSeat = seat;
@@ -486,7 +505,9 @@ function mountMinimapView(
           viewer,
           stanceToward: opts.stanceToward,
           playerColourOf: opts.playerColourOf,
+          selected: filters.layers.selection ? selection.selectedIds() : NO_IDS,
         });
+        plottedSelection = selection.selectionVersion();
         dirtyDots = false;
       }
       if (plot.pending() && plot.step(snapshot, stamp, performance.now() + DOT_PLOT_MS_PER_FRAME)) {
