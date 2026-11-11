@@ -1,6 +1,12 @@
 import type { UiCue } from '@open-northland/audio';
 import type { ContentSet } from '@open-northland/data';
-import { type Entity, entityById, type PlayerCommand, type WorldSnapshot } from '@open-northland/sim';
+import {
+  type ConstructionPriority,
+  type Entity,
+  entityById,
+  type PlayerCommand,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { ownerPlayerOf } from '../../../game/snapshot/index.js';
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
 import { buildingPeersOf } from '../../../hud/details-panel/model/index.js';
@@ -68,6 +74,9 @@ export function buildingPanelActions(host: BuildingPanelHost): BuildingPanelActi
     },
     setStorePriority: order((id, goodType: number, priority: boolean) =>
       send({ kind: 'setStorePriority', building: id as Entity, goodType, priority }),
+    ),
+    setConstructionPriority: order((id, priority: ConstructionPriority) =>
+      send({ kind: 'setConstructionPriority', building: id as Entity, priority }),
     ),
     setStorageMinimum: (player, goodType, amount) => {
       if (player !== host.viewer.seat()) {

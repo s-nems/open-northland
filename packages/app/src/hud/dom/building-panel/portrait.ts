@@ -4,6 +4,7 @@ import { GLYPH } from '../icons.js';
 import {
   button,
   element,
+  removeAttribute,
   setAttribute,
   setClass,
   setDisabled,
@@ -16,7 +17,7 @@ import { meterFill, meterTone } from '../parts/meter-row.js';
 import type { BuildingPanelDeps } from './actions.js';
 import { createUpgradeLevels } from './upgrade-levels.js';
 
-export type BuildingOrder = 'upgrade' | 'cancelUpgrade' | 'workers' | 'knowledge' | 'demolish';
+export type BuildingOrder = 'upgrade' | 'cancelUpgrade' | 'workers' | 'knowledge' | 'demolish' | 'prioritize';
 
 /** One order tile as drawn: its face, words, and whether the press is refused. */
 export interface BuildingOrderView {
@@ -26,15 +27,18 @@ export interface BuildingOrderView {
   readonly tooltip: string;
   readonly enabled: boolean;
   readonly danger: boolean;
+  /** The optional pressed state of a toggle order. */
+  readonly pressed?: boolean;
 }
 
 /**
- * The order tiles in their fixed places, so a hand learns them: Workers, Knowledge, Demolish, then Upgrade
- * (Cancel while a tier is being raised), last so a top tier without it leaves no gap between the others.
- * A refused order stays in its place, faded, its tooltip the reason. Another seat's building offers
- * Knowledge alone.
+ * The order tiles in their fixed places: Workers, Knowledge, Demolish, then Prioritize for a site and
+ * Upgrade (Cancel while a tier is being raised). A refused order stays in its place, faded, its tooltip
+ * the reason. Another seat's building offers Knowledge alone.
  */
-export function orderViews(model: Pick<BuildingPanelModel, 'orders' | 'name'>): BuildingOrderView[] {
+export function orderViews(
+  model: Pick<BuildingPanelModel, 'orders' | 'name' | 'construction'>,
+): BuildingOrderView[] {
   const copy = messages().hud.buildingPanel;
   const knowledge: BuildingOrderView = {
     order: 'knowledge',
@@ -66,6 +70,19 @@ export function orderViews(model: Pick<BuildingPanelModel, 'orders' | 'name'>): 
       enabled: true,
       danger: true,
     },
+    ...(model.construction === null
+      ? []
+      : [
+          {
+            order: 'prioritize' as const,
+            glyph: GLYPH.star,
+            label: copy.orders.prioritize,
+            tooltip: copy.buildPriorityTooltip,
+            enabled: true,
+            danger: false,
+            pressed: model.construction.priority === 'high',
+          },
+        ]),
     ...(tier === null ? [] : [tier]),
   ];
 }
@@ -160,6 +177,12 @@ export function createPortraitSection(
       case 'demolish':
         deps.building.demolish(id, shown.name);
         return true;
+      case 'prioritize': {
+        const site = shown.construction;
+        if (site === null) return false;
+        deps.building.setConstructionPriority(id, site.priority === 'high' ? 'normal' : 'high');
+        return true;
+      }
       default: {
         const unreachable: never = order;
         throw new Error(`unhandled building order: ${String(unreachable)}`);
@@ -190,6 +213,8 @@ export function createPortraitSection(
       write(label, view.label);
       setTip(node, view.tooltip);
       setDisabled(node, !view.enabled);
+      if (view.pressed === undefined) removeAttribute(node, 'aria-pressed');
+      else setAttribute(node, 'aria-pressed', String(view.pressed));
     });
     levels.update(model);
   };

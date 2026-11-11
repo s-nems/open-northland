@@ -349,6 +349,30 @@ describe('selection details panel model', () => {
     expect(finished.kind === 'building' && finished.construction).toBeNull();
   });
 
+  it('reads the build priority off the site, falling back to normal', () => {
+    const siteOf = (priority: unknown) =>
+      snapshotOf([
+        buildingEntity(1, BUILDING_FARM, {
+          components: {
+            UnderConstruction: priority === undefined ? { labor: ONE / 4 } : { labor: ONE / 4, priority },
+          },
+        }),
+      ]);
+    const priorityOf = (snapshot: WorldSnapshot) => {
+      const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+      if (model.kind !== 'building' || model.construction === null) {
+        throw new Error('expected a construction model');
+      }
+      return model.construction.priority;
+    };
+
+    expect(priorityOf(siteOf('high'))).toBe('high');
+    expect(priorityOf(siteOf('low'))).toBe('normal');
+    expect(priorityOf(siteOf(undefined))).toBe('normal');
+    // A rank this build does not know reads as the default, never as a broken panel.
+    expect(priorityOf(siteOf('urgent'))).toBe('normal');
+  });
+
   it('reports only construction blockers the snapshot proves', () => {
     const site = (labor: number, stock: readonly (readonly [number, number])[] = []) =>
       buildingEntity(1, BUILDING_FARM, {

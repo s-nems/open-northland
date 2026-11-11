@@ -49,7 +49,11 @@ import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { cutOffCheckDue } from '../cut-off.js';
 import { claimWorkCell } from '../spacing.js';
 import { soloSitesAwaitingSupply } from './awaiting-supply-sites.js';
-import type { ConstructionTaskClaims, SiteRanking } from './construction-task-claims.js';
+import {
+  type ConstructionTaskClaims,
+  isPrioritizedSite,
+  type SiteRanking,
+} from './construction-task-claims.js';
 import { type RepairCrews, startRepair } from './repair.js';
 import { boundConstructionSite } from './site-staff.js';
 import { constructionMaterialResolver, type SiteSupplyReach } from './site-supply.js';
@@ -272,7 +276,8 @@ export function planBuilder(
   const keptSolo =
     crewSite !== null && crewBuilding === null && hasTask(crewSite) && inTurn(crewSite) ? crewSite : null;
   // The last builder at a building site with a task stays, so a site is never left for a fuller one,
-  // unless it has no step to hammer and the site it would go to has nobody.
+  // unless it has no step to hammer and the site it would go to has nobody, or the player prioritized
+  // that site over its own.
   const lastHand =
     crewBuilding !== null && claims.crewSize(crewBuilding) <= 1 && buildingAccepts(crewBuilding);
   let site = keptSolo;
@@ -280,9 +285,9 @@ export function planBuilder(
     const best = bestBuildingSite();
     const leaves =
       best !== null &&
-      claims.crewSize(best) === 0 &&
       crewBuilding !== null &&
-      !claims.hasHammerWork(crewBuilding);
+      ((claims.crewSize(best) === 0 && !claims.hasHammerWork(crewBuilding)) ||
+        (isPrioritizedSite(world, best) && !isPrioritizedSite(world, crewBuilding)));
     site = lastHand && best !== crewBuilding && !leaves ? crewBuilding : best;
   }
   site ??=

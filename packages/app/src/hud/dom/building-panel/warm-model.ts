@@ -63,6 +63,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
         unsourced: goodType === 0,
       })),
       status: 'missing-materials',
+      priority: 'high',
       pct: 40,
       upgradeTo: null,
     },

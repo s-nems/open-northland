@@ -5,7 +5,10 @@ import {
   ASSISTANT_COUNTER_KINDS,
   ASSISTANT_GRANT_AUDIENCES,
 } from '../../components/assistant.js';
-import { HOUSE_RECORD_NAME_MAX_CHARS } from '../../components/economy/infrastructure.js';
+import {
+  CONSTRUCTION_PRIORITIES,
+  HOUSE_RECORD_NAME_MAX_CHARS,
+} from '../../components/economy/infrastructure.js';
 import { MISC_EQUIP_SLOTS } from '../../components/equipment.js';
 import { MAX_MATCH_GOALS, type MatchGoal } from '../../components/match.js';
 import {
@@ -427,6 +430,9 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   setStorageMinimum: { required: { player: 'integer', goodType: 'integer', amount: 'integer' } },
   setStorePriority: { required: { building: 'integer', goodType: 'integer', priority: 'boolean' } },
+  setConstructionPriority: {
+    required: { building: 'integer', priority: { oneOf: CONSTRUCTION_PRIORITIES } },
+  },
   setJob: { required: { entity: 'integer', jobType: 'integer' } },
   continueMatch: { required: { player: 'integer' } },
   endMatchContinuation: { required: {} },

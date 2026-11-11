@@ -5,6 +5,10 @@ export type {
 } from './components/assistant.js';
 export { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from './components/chest.js';
 export {
+  CONSTRUCTION_PRIORITIES,
+  type ConstructionPriority,
+} from './components/economy/infrastructure.js';
+export {
   PRODUCTION_COUNT_MAX,
   PRODUCTION_UNLIMITED,
   type ProductionCount,

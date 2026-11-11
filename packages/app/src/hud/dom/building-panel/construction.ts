@@ -1,19 +1,19 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { BuildingPanelModel } from '../../details-panel/model/index.js';
+import type { GoodIconPainter } from '../good-art.js';
 import { element, setHidden, write } from '../parts/dom.js';
 import { meterFill } from '../parts/meter-row.js';
 import { createSection } from '../parts/section.js';
-import type { BuildingPanelDeps } from './actions.js';
 import { createGoodLine, type GoodLine, syncLines } from './good-line.js';
 
-/** Build or Upgrade: how far the site has come on the rule, then one line per material of its bill,
- *  delivered against needed with what is on its way, in amber when the owner holds none of the rest. */
+/** Build or Upgrade: progress against the rule and one line per material of its bill, delivered against
+ *  needed with what is on its way, in amber when the owner holds none of the rest. */
 export interface ConstructionSection {
   readonly element: HTMLElement;
   update(model: BuildingPanelModel): void;
 }
 
-export function createConstructionSection(deps: BuildingPanelDeps): ConstructionSection {
+export function createConstructionSection(deps: { readonly icons: GoodIconPainter }): ConstructionSection {
   const progress = element('span', 'on-section__count');
   const title = createSection(progress);
   const list = element('ul', 'on-manifest');

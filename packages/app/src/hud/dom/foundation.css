@@ -6922,7 +6922,7 @@ body.on-drag-scroll.on-drag-scroll-free * {
 }
 
 /* ---------- building panel: order tiles, alarm bar, staff wells, household wares, stock ---------- */
-/* Up to four labelled tiles in two rows fill the column beside the portrait, each in a fixed place. */
+/* Two columns keep the building's action tiles in fixed places, with Prioritize beside Demolish. */
 .on-hud .on-orders--tiles {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
@@ -6946,6 +6946,14 @@ body.on-drag-scroll.on-drag-scroll-free * {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* A selected Prioritize order keeps its state visible after the press. */
+.on-hud .on-order--tile[aria-pressed="true"] {
+  border-color: var(--active);
+  box-shadow:
+    0 0 0 1px var(--active),
+    0 0 8px #e3b86888;
+  color: #fff6de;
 }
 /* The Upgrade tile's grid place, which also holds the level rail. A corner notch on the tile tells that
    the rail is there. */

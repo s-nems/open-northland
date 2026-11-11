@@ -76,7 +76,7 @@ export function createBuildingPanel(deps: BuildingPanelDeps): BuildingPanel {
 
   const portrait = createPortraitSection(deps, current);
   const alarm = createAlarmSection(deps, current);
-  const construction = createConstructionSection(deps);
+  const construction = createConstructionSection({ icons: deps.icons });
   const crew = createStaffSection(deps, (model) => model.crew);
   const staff = createStaffSection(deps, (model) => model.staff);
   const production = createProductionSection(deps);

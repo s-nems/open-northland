@@ -33,6 +33,7 @@ import { payTribute } from '../missions/tributes.js';
 // `computer-player/assistant-counters.js` for the published-counter map, and routing that through the
 // barrel would widen its import graph.
 import { setAiControl } from '../orders/ai.js';
+import { setConstructionPriority } from '../orders/construction-priority.js';
 import { learn } from '../orders/education.js';
 import {
   assignBuilder,
@@ -476,6 +477,9 @@ function applyCommand(
       return;
     case 'setStorePriority':
       setStorePriority(world, ctx, command);
+      return;
+    case 'setConstructionPriority':
+      setConstructionPriority(world, ctx, command);
       return;
     case 'placeSignpost':
       obeyDespiteHunger(world, ctx, command.entity, () => placeSignpost(world, ctx, command, origin));
