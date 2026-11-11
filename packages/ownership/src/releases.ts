@@ -23,6 +23,7 @@ export const KNOWN_LIBRARY_SIZES: ReadonlyMap<number, KnownRelease> = new Map<nu
   [236_425_219, { game: 'northland', edition: 'PL' }],
   [236_334_059, { game: 'northland', edition: 'HU' }],
   [236_401_816, { game: 'northland', edition: 'CS' }],
+  [235_145_693, { game: 'northland', edition: 'IT' }],
   [130_499_978, { game: 'northland', edition: 'demo' }],
   [255_230_793, { game: 'wonders', edition: 'EN' }],
   [267_643_967, { game: 'wonders', edition: 'DE' }],
