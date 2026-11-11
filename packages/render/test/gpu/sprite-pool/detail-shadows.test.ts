@@ -90,3 +90,42 @@ describe('the sprite pool under a detail tier', () => {
     expect(shadowsShown(layer)).toEqual([0, 0]);
   });
 });
+
+describe('a plain landscape entity under a detail tier', () => {
+  const TREE = 7;
+  const bodySource = new TextureSource({ width: 64, height: 64 });
+  const shadowSource = new TextureSource({ width: 64, height: 64 });
+  const treeSheet: SpriteSheet = {
+    source: bodySource,
+    atlas,
+    bindings: { settler: BODY_BOB, resource: BODY_BOB, building: BODY_BOB },
+    kindLayers: { resource: { source: bodySource, atlas, shadow: { source: shadowSource, atlas } } },
+  };
+  const forest = snapshotOf([entity(TREE, 3, 3, { Resource: { goodType: 1 } })]);
+
+  /** The sources of the tree's layers still in its band, in paint order. */
+  function drawnSources(layer: Container): TextureSource[] {
+    return (layer.children[0] as Container).children
+      .filter((c): c is Sprite => c instanceof Sprite && c.visible && c.alpha > 0)
+      .map((sprite) => sprite.texture.source);
+  }
+
+  it('moves the body into the freed slot, takes the spare one out of the band and shows both again', () => {
+    const layer = new Container();
+    const sprites = new SpritePool(layer, new TextureCache(), treeSheet);
+    const frame = (extra: Partial<PoolFrame> = {}) => ({
+      ...frameOf(extra),
+      snapshot: forest,
+      tick: forest.tick,
+    });
+    sprites.reconcile(frame());
+    expect(drawnSources(layer)).toEqual([shadowSource, bodySource]);
+
+    sprites.reconcile(frame({ detail: VIEW_DETAILS.sparse }));
+    expect(drawnSources(layer)).toEqual([bodySource]);
+    expect(sprites.boundsOf(TREE)).toBeDefined();
+
+    sprites.reconcile(frame({ detail: VIEW_DETAILS.full }));
+    expect(drawnSources(layer)).toEqual([shadowSource, bodySource]);
+  });
+});
