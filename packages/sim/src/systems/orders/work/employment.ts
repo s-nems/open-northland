@@ -150,8 +150,7 @@ export function assignWorker(
 
 /** Employ the group at one building - see the command doc and {@link groupPlacementOrder}. Each member
  *  leaves its vehicle first, as its own `assignWorker` order makes it, or keeps its seat and its old post
- *  when it may not leave. A member already posted there only leaves its vehicle, as the original's work
- *  order detaches before it finds nothing else to do. */
+ *  when it may not leave. */
 export function assignWorkerGroup(
   world: World,
   ctx: SystemContext,
@@ -159,9 +158,6 @@ export function assignWorkerGroup(
 ): void {
   const building = command.building;
   const workplaceOf = (e: Entity): Entity | undefined => world.tryGet(e, JobAssignment)?.workplace;
-  for (const { entity } of command.members) {
-    if (workplaceOf(entity) === building) detachBeforeOrder(world, ctx, entity);
-  }
   for (const { entity, jobPriority } of groupPlacementOrder(
     world,
     command.members,

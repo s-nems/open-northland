@@ -655,41 +655,36 @@ describe('leaving', () => {
     expect(nodeOf(s, scout)).toEqual({ hx: 2, hy: 6 }); // the order ran after the detach
   });
 
-  it.each([false, true])(
-    'takes a cart rider off its cart when a group order posts it to a workplace (posted there already: %s)',
-    (postedThere) => {
-      const s = sim();
-      s.enqueueSetup({
-        kind: 'placeBuilding',
-        buildingType: HEADQUARTERS,
-        tribe: VIKING,
-        x: 4,
-        y: 12,
-        owner: P0,
-        force: true,
-      });
-      const cart = spawn(s, HANDCART, 12, 6);
-      const porter = spawnSettler(s, CART_DOOR.hx, CART_DOOR.hy, FIXTURE_PORTER);
-      const store = [...s.world.query(Building)][0];
-      if (store === undefined) throw new Error('store missing');
-      attach(s, porter, cart); // unposted, so it crews the cart rather than pulling it
-      s.enqueue(playerCommand(P0, { kind: 'boardVehicle', entity: porter }));
-      boardOut(s, cart, porter);
-      // The seat and the post at once, as a group order that kept the seat left them.
-      if (postedThere) s.world.add(porter, JobAssignment, { workplace: store });
-      s.enqueue(
-        playerCommand(P0, {
-          kind: 'assignWorkerGroup',
-          building: store,
-          members: [{ entity: porter, jobPriority: [FIXTURE_PORTER] }],
-        }),
-      );
-      s.step();
-      expect(s.world.has(porter, Rider)).toBe(false);
-      expect(s.world.has(porter, Position)).toBe(true);
-      expect(s.world.tryGet(porter, JobAssignment)?.workplace).toBe(store);
-    },
-  );
+  it('takes a cart rider off its cart when a group order posts it to a workplace', () => {
+    const s = sim();
+    s.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HEADQUARTERS,
+      tribe: VIKING,
+      x: 4,
+      y: 12,
+      owner: P0,
+      force: true,
+    });
+    const cart = spawn(s, HANDCART, 12, 6);
+    const porter = spawnSettler(s, CART_DOOR.hx, CART_DOOR.hy, FIXTURE_PORTER);
+    const store = [...s.world.query(Building)][0];
+    if (store === undefined) throw new Error('store missing');
+    attach(s, porter, cart); // unposted, so it crews the cart rather than pulling it
+    s.enqueue(playerCommand(P0, { kind: 'boardVehicle', entity: porter }));
+    boardOut(s, cart, porter);
+    s.enqueue(
+      playerCommand(P0, {
+        kind: 'assignWorkerGroup',
+        building: store,
+        members: [{ entity: porter, jobPriority: [FIXTURE_PORTER] }],
+      }),
+    );
+    s.step();
+    expect(s.world.has(porter, Rider)).toBe(false);
+    expect(s.world.has(porter, Position)).toBe(true);
+    expect(s.world.tryGet(porter, JobAssignment)?.workplace).toBe(store);
+  });
 
   it('halts a cart whose only commander is taken off it mid-drive by a job order', () => {
     const s = sim();
