@@ -6,6 +6,7 @@ import {
   type DecorClipBinding,
 } from '../map-objects/decor-clip.js';
 import { type GlslProgramSource, glProgramFor } from '../shaders/program-source.js';
+import { coverNoiseSource } from '../weather/cover-noise.js';
 import {
   COVER_FRAGMENT_DECLARATIONS,
   COVER_VERTEX_BODY,
@@ -445,6 +446,7 @@ export function makeShadedTerrainShader(
       sampling: terrainSamplingUniforms(first),
       coverVars: cover.uniforms,
       uCoverTex: cover.texture,
+      uCoverNoise: coverNoiseSource(),
     },
   });
 }
@@ -474,6 +476,7 @@ export function makeShadedDecorShader(
       uSampler: (samplers.uPage0 as TextureSource).style,
       decorCoverVars: cover.uniforms,
       uCoverTex: cover.texture,
+      uCoverNoise: coverNoiseSource(),
       decorClipVars: clips.uniforms,
       uDecorFrames: clips.table.source,
       uRecolourLut: recolourLut,
