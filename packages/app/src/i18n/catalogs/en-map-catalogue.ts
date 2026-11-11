@@ -86,6 +86,7 @@ export const enMapCatalogue = {
     eng: 'English',
     ger: 'German',
     rus: 'Russian',
+    ita: 'Italian',
     chs: 'Chinese (Simplified)',
     cht: 'Chinese (Traditional)',
   },

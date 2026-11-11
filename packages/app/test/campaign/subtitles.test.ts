@@ -93,6 +93,12 @@ describe('subtitle defaults', () => {
     expect(result.visible).toBe(visible);
     expect(result.tracks[0]?.language).toBe(selected);
   });
+  it('shows Italian subtitles only where a film has them, since only unnarrated films do', () => {
+    const subtitled = movieSubtitles({ ...urls, ita: '/it.srt' }, 'ita');
+    expect(subtitled.visible).toBe(true);
+    expect(subtitled.tracks[0]?.language).toBe('ita');
+    expect(movieSubtitles(urls, 'ita').visible).toBe(false);
+  });
   it('falls back to English if the preferred subtitles are missing', () => {
     expect(movieSubtitles({ eng: '/en.srt', pol: '/pl.srt' }, 'cht').tracks[0]?.language).toBe('eng');
   });

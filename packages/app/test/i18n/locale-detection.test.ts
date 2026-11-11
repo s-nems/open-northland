@@ -109,6 +109,7 @@ describe('translated catalogs', () => {
   it.each([
     ['ger', 'de', 'de-AT'],
     ['rus', 'ru', 'ru-RU'],
+    ['ita', 'it', 'it-IT'],
     ['chs', 'zh-Hans', 'zh-CN'],
     ['cht', 'zh-Hant', 'zh-TW'],
   ] as const)('recognizes %s in preferences, URLs and document language', (locale, tag, regional) => {
@@ -130,7 +131,7 @@ describe('translated catalogs', () => {
   const placeholders = (text: string): string[] =>
     [...text.matchAll(/\{[A-Za-z][A-Za-z0-9]*\}|%(?:\d+\$)?[sdiuf]/g)].map((m) => m[0]).sort();
 
-  it.each(['ger', 'rus', 'chs', 'cht'] as const)(
+  it.each(['ger', 'rus', 'ita', 'chs', 'cht'] as const)(
     '%s translates every entry and preserves interpolation tokens',
     (locale) => {
       const source = leaves(messages('eng'));

@@ -18,14 +18,19 @@ export interface MovieSubtitles {
   readonly visible: boolean;
 }
 
-/** Narrated UI languages start with captions off; Chinese and Russian start with captions on. */
+/** Narrated UI languages start with captions off; Chinese and Russian start with captions on. Italian
+ *  subtitles exist only for films without Italian narration, so an Italian track starts on. */
 export function movieSubtitles(
   subtitles: Partial<Record<MapTextLanguage, string>> | undefined,
   uiLanguage: MapTextLanguage,
 ): MovieSubtitles {
   return {
     tracks: subtitleTracks(subtitles, [uiLanguage === 'cht' ? 'chs' : uiLanguage, 'eng', ...LANGUAGES]),
-    visible: uiLanguage === 'rus' || uiLanguage === 'chs' || uiLanguage === 'cht',
+    visible:
+      uiLanguage === 'rus' ||
+      uiLanguage === 'chs' ||
+      uiLanguage === 'cht' ||
+      (uiLanguage === 'ita' && subtitles?.ita !== undefined),
   };
 }
 
