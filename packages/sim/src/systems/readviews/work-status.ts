@@ -6,7 +6,6 @@ import {
   ownerOf,
   ownersCompatible,
   Person,
-  Production,
   ProductionCounters,
   productionCountOf,
   Settler,
@@ -23,7 +22,7 @@ import {
   jobGatherGoods,
   jobGathersGood,
 } from '../economy/gather-goods.js';
-import { batchOpenTo } from '../economy/production/assignments.js';
+import { batchWorkedBy } from '../economy/production/assignments.js';
 import { canStartCycle, outputRoomForCycles, waitingForRecipeInput } from '../economy/production/cycles.js';
 import { craftablePool } from '../economy/production/rotation.js';
 import { liveHaulFlag, liveWorkFlag } from '../economy/work-flag.js';
@@ -184,7 +183,7 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   const recipes = recipesByProductOf(world, ctx, workplace);
   if (recipes === undefined) return { kind: 'unknown', reason: 'unsupportedWorkplace' };
 
-  const batch = oldestBatchOf(world, ctx, workplace, entity);
+  const batch = batchWorkedBy(world, ctx, workplace, entity);
   if (batch !== undefined) return { kind: 'crafting', goodType: batch.goodType };
 
   const pool = craftablePool(world, ctx, entity, recipes);
@@ -375,13 +374,6 @@ function finishedWorkplace(world: World, e: Entity): Entity | undefined {
 interface PoolEntry {
   readonly good: number;
   readonly recipe: Recipe;
-}
-
-/** The oldest running batch at `workplace` open to `entity`, the one production advances first. */
-function oldestBatchOf(world: World, ctx: SystemContext, workplace: Entity, entity: Entity) {
-  return world
-    .tryGet(workplace, Production)
-    ?.cycles.find((cycle) => batchOpenTo(world, ctx, workplace, entity, cycle));
 }
 
 /** The operator's pool in the order its rotation walks it, starting at the cursor. */

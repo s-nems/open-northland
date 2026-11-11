@@ -9,10 +9,11 @@ export interface ProductionCycle {
   /** The product this batch crafts - the key of the building type's per-product recipe (its first output's
    *  goodType), snapshotted at cycle start like `duration`. */
   goodType: number;
-  /** The operator whose rotation started the batch and who alone works it, so a colleague crafting another
-   *  product does not take it over; null for an unstaffed workplace's anonymous batch. Once that operator
-   *  no longer works here, any operator may finish it. Authored: the original's batch ownership is
-   *  unobserved. */
+  /** The operator that alone works the batch, so a colleague crafting another product does not take it
+   *  over: the one whose rotation started it, or the colleague that took it over once that operator
+   *  stopped working here or may not craft it now. null for an unstaffed workplace's anonymous batch.
+   *  Approximation: the original takes the inputs only as a craft completes, so an interrupted craft
+   *  lapses for nobody to continue; inputs here are paid at the start and the batch waits for its owner. */
   operator: Entity | null;
 }
 

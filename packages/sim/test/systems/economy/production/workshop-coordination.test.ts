@@ -50,6 +50,8 @@ const FAR_STORE_WOOD = 100;
 const TURN_CYCLE_TICKS = 180;
 /** Enough fetch trips for a dozen turns between the two operators. */
 const TURN_WATCH_TICKS = 12000;
+/** The fewest cycles either product may finish in the watch, where each makes about nine. */
+const TURN_FLOOR = 3;
 
 it('a carrier must not enable recipes deselected by the craftsman', () => {
   const content = testContent();
@@ -156,6 +158,7 @@ it('two operators on different products of one scarce input take turns', () => {
   const planks = done.get(PLANK) ?? 0;
   const food = done.get(FOOD_SIMPLE) ?? 0;
   // Turn about, neither product falls below half of the other's count.
+  expect(Math.min(planks, food)).toBeGreaterThanOrEqual(TURN_FLOOR);
   expect(Math.min(planks, food) * 2).toBeGreaterThanOrEqual(Math.max(planks, food));
 });
 

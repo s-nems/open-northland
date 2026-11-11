@@ -8,7 +8,7 @@ import { isWorkplaceOperator } from '../../stores/operators.js';
 /** The assignment of a present operator no batch is executable for. */
 export const FREE_SEAT = -1;
 
-/** Oldest executable batch of its own per present operator, or {@link FREE_SEAT}. A suspended batch
+/** The batch each present operator works ({@link claimInto}), or {@link FREE_SEAT}. A suspended batch
  * retains its paid materials and progress without blocking a different product or a replenished coworker. */
 export function productionAssignments(
   world: World,
@@ -39,8 +39,8 @@ export function productionAssignmentsInto(
   return out;
 }
 
-/** The oldest executable batch of `cycles` for `operator` that none of the first `taken` entries of
- *  `claims` holds. */
+/** The batch of `cycles` that `operator` works and none of the first `taken` entries of `claims` holds: its
+ *  own oldest it may craft, else the oldest {@link leftOpen} one it may craft. */
 function claimInto(
   world: World,
   ctx: SystemContext,
@@ -50,15 +50,17 @@ function claimInto(
   claims: readonly number[],
   taken: number,
 ): number {
-  for (let index = 0; index < cycles.length; index++) {
-    const cycle = cycles[index];
-    if (
-      cycle === undefined ||
-      heldBy(claims, taken, index) ||
-      !mayAdvanceCycle(world, ctx, building, operator, cycle)
-    )
-      continue;
-    return index;
+  for (let sweep = OWN_SWEEP; sweep <= OPEN_SWEEP; sweep++) {
+    for (let index = 0; index < cycles.length; index++) {
+      const cycle = cycles[index];
+      if (
+        cycle === undefined ||
+        heldBy(claims, taken, index) ||
+        !worksBatch(world, ctx, building, operator, cycle, sweep)
+      )
+        continue;
+      return index;
+    }
   }
   return FREE_SEAT;
 }
@@ -69,8 +71,13 @@ function heldBy(claims: readonly number[], taken: number, index: number): boolea
 }
 
 const NO_CYCLES: readonly Readonly<ProductionCycle>[] = [];
+const NO_CLAIMS: readonly number[] = [];
 
-/** Claim the oldest executable batch for a production or planner pass. */
+/** The two sweeps an operator makes over a workplace's batches: its own first, then the ones left open. */
+const OWN_SWEEP = 0;
+const OPEN_SWEEP = 1;
+
+/** Claim the batch `operator` works ({@link claimInto}) for a production or planner pass. */
 export function claimProductionCycle(
   world: World,
   ctx: SystemContext,
@@ -79,38 +86,66 @@ export function claimProductionCycle(
   claimed: Set<number>,
 ): number {
   const cycles = world.tryGet(building, Production)?.cycles ?? NO_CYCLES;
-  for (let index = 0; index < cycles.length; index++) {
-    const cycle = cycles[index];
-    if (cycle === undefined || claimed.has(index) || !mayAdvanceCycle(world, ctx, building, operator, cycle))
-      continue;
-    claimed.add(index);
-    return index;
+  for (let sweep = OWN_SWEEP; sweep <= OPEN_SWEEP; sweep++) {
+    for (let index = 0; index < cycles.length; index++) {
+      const cycle = cycles[index];
+      if (
+        cycle === undefined ||
+        claimed.has(index) ||
+        !worksBatch(world, ctx, building, operator, cycle, sweep)
+      )
+        continue;
+      claimed.add(index);
+      return index;
+    }
   }
   return FREE_SEAT;
 }
 
-/** Whether `cycle` at `building` is `operator`'s to work: its own batch, an anonymous one, or one whose
- *  operator no longer works there. */
-export function batchOpenTo(
+/** The batch `operator` works at `building` while no colleague holds one ({@link claimInto}). */
+export function batchWorkedBy(
   world: World,
   ctx: SystemContext,
   building: Entity,
   operator: Entity,
+): Readonly<ProductionCycle> | undefined {
+  const cycles = world.tryGet(building, Production)?.cycles ?? NO_CYCLES;
+  return cycles[claimInto(world, ctx, building, cycles, operator, NO_CLAIMS, 0)];
+}
+
+/** Whether `operator` works `cycle` on `sweep`: one of its own, or one left open, that it may craft now. */
+function worksBatch(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  operator: Entity,
+  cycle: Readonly<ProductionCycle>,
+  sweep: number,
+): boolean {
+  const own = cycle.operator === operator;
+  if (sweep === OWN_SWEEP ? !own : own || !leftOpen(world, ctx, building, cycle)) return false;
+  return mayCraft(world, ctx, operator, cycle);
+}
+
+/** Whether a batch is free to any operator: anonymous, or its operator no longer works at `building` or
+ *  may not craft it now. */
+function leftOpen(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
   cycle: Readonly<ProductionCycle>,
 ): boolean {
   const owner = cycle.operator;
-  return owner === null || owner === operator || !worksAt(world, ctx, building, owner);
+  return owner === null || !worksAt(world, ctx, building, owner) || !mayCraft(world, ctx, owner, cycle);
 }
 
-/** {@link batchOpenTo}, while the operator's religion allows the craft. */
-function mayAdvanceCycle(
+/** Whether `operator`'s religion lets it advance `cycle` now. */
+function mayCraft(
   world: World,
   ctx: SystemContext,
-  building: Entity,
   operator: Entity,
   cycle: Readonly<ProductionCycle>,
 ): boolean {
-  if (!batchOpenTo(world, ctx, building, operator, cycle)) return false;
   const atomic = productionAtomic(ctx.content, world.get(operator, Settler), cycle.goodType);
   return religionAllowsAtomic(world, ctx, operator, atomic, cycle.elapsed);
 }

@@ -57,8 +57,9 @@ export {
 
 /**
  * One workplace turns input goods into output goods over time, one independent batch per present operator,
- * each advancing the oldest batch of its own it can perform. Observed: a multi-worker workshop out-produces
- * a single-worker one. With every operator away all cycles pause and `elapsed` is held rather than lost.
+ * each advancing its own oldest batch it can perform, else one left open to it. Observed: a multi-worker
+ * workshop out-produces a single-worker one. With every operator away all cycles pause and `elapsed` is held
+ * rather than lost.
  *
  * A workplace produces only while an assigned operator is present, the original's staffed-workshop rule; a carrier at
  * the door neither runs nor speeds the craft. A building type declaring no worker slots is
@@ -94,6 +95,9 @@ export const productionSystem: System = (world, ctx) => {
           removeCurrentAtomic(world, operator);
         continue;
       }
+      // A batch left open passes to the operator now working it, so its old owner does not take it back
+      // half done.
+      if (operator !== undefined && cycle.operator !== operator) cycle.operator = operator;
       // The batch clock owns need events, including pauses and replacement operators. The indoor
       // display atomic must not pay them again or replay an earlier frame after a re-plan.
       const settler = operator === undefined ? undefined : world.tryGet(operator, Settler);

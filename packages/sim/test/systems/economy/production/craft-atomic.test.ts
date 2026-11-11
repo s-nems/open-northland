@@ -307,8 +307,8 @@ describe('a seated crafter between its idle beats', () => {
     productionSystem(sim.world, offBeat); // batch 0 lands; the one left advances to 6
     plannerSystem(sim.world, offBeat);
 
-    expect(atomicElapsed(sim.world.get(first, AtomicClock), fixtureTick(sim))).toBe(6);
-    expect(sim.world.has(second, CurrentAtomic)).toBe(false); // a hand beyond the batches
+    expect(atomicElapsed(sim.world.get(second, AtomicClock), fixtureTick(sim))).toBe(6);
+    expect(sim.world.has(first, CurrentAtomic)).toBe(false); // its batch landed; the other is second's
   });
 
   it('re-pairs the whole crew when one crafter is woken alone', () => {
