@@ -12,12 +12,18 @@ import {
 } from '../../../content/transfer/index.js';
 import { assertMultiplayerMap } from '../../../game/map/multiplayer.js';
 import { variantMap, variantMapScript, variantScriptWorld } from '../../../game/map/variant.js';
-import { mapScriptWorld } from '../../../game/world/mission-script.js';
+import { sessionMapScript } from '../../../game/match/seat-tribes.js';
 import { decodeSaveText, type SaveBytes } from '../../../view/runtime/save-load/codec.js';
 import { evaluateSaveDocument } from '../../../view/runtime/save-load/evaluate.js';
 import { restoreMapWorld } from '../../map/world.js';
 import { authoredVacantMode, vacantOffers } from '../lobby/roster-state.js';
-import { restoreSavedSeats, savedDayNightMode, savedMapWorld, savedWeatherMode } from './saved-roster.js';
+import {
+  restoreSavedSeats,
+  savedDayNightMode,
+  savedMapWorld,
+  savedSessionSeats,
+  savedWeatherMode,
+} from './saved-roster.js';
 
 export async function readNetworkSave(bytes: SaveBytes): Promise<SaveGame> {
   const result = evaluateSaveDocument(await decodeSaveText(bytes));
@@ -35,9 +41,10 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
   const map = variantMap(documents.map, world);
   const script = variantMapScript(documents.script, world);
   assertMultiplayerMap(script);
+  const slots = script === null ? [] : mapLobbySlots(script);
   restoreSavedSeats(
     save,
-    (script === null ? [] : mapLobbySlots(script)).map((seat) => ({
+    slots.map((seat) => ({
       player: seat.player,
       color: seat.colorId,
       mode: authoredVacantMode(seat),
@@ -45,12 +52,13 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
       claimable: seat.claimable && !seat.hidden,
     })),
   );
+  const seated = sessionMapScript({ seats: savedSessionSeats(save, slots) }, script, ir);
   const { sim } = restoreMapWorld(
     {
       map,
       ir,
-      playerRoster: script?.players ?? [],
-      script: variantScriptWorld(mapScriptWorld(script, ir), world),
+      playerRoster: seated.script?.players ?? [],
+      script: variantScriptWorld(seated.world, world),
       content: { content: runtime.content, footprints: buildingFootprints(ir) },
     },
     save,

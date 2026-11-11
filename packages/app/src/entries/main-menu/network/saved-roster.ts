@@ -9,6 +9,7 @@ import type { RoomSeatSetup } from '@open-northland/net-protocol';
 import type { SaveGame } from '@open-northland/sim';
 import { mapSessionWorld, mapVariantParam } from '../../../game/map/variant.js';
 import { dayNightModeParam, weatherModeParam } from '../../../game/match/session-rules.js';
+import { mapSession, type SessionRosterSlot } from '../../../game/match/session-url.js';
 import { SAVED_COMPUTER_DIFFICULTY } from '../lobby/roster-state.js';
 
 export function savedRoster(save: SaveGame) {
@@ -28,6 +29,17 @@ export function savedMapWorld(save: SaveGame, mapId: string): SessionWorld {
   if (saved !== null) return saved.descriptor.world;
   const entry = save.header.entry === null ? null : new URLSearchParams(save.header.entry);
   return mapSessionWorld(mapId, entry === null ? null : mapVariantParam(entry, mapId));
+}
+
+/** The seats a save was played with: a relayed save's descriptor, else its single-player launch search.
+ *  A chosen nation rewrites the map's missions, so a restore seats the script by these. */
+export function savedSessionSeats(
+  save: SaveGame,
+  roster: readonly SessionRosterSlot[],
+): readonly SessionSeat[] {
+  const saved = savedRoster(save);
+  if (saved !== null) return saved.descriptor.seats;
+  return mapSession(new URLSearchParams(save.header.entry ?? ''), roster).seats;
 }
 
 /** The weather a save was played under: a relayed save's descriptor, else a single-player launch search. */
