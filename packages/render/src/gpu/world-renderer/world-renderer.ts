@@ -714,14 +714,13 @@ export class WorldRenderer {
         cullTo: (cam, iw, ih) => {
           const viewVp = cameraViewport(cam, iw, ih, SPRITE_CULL_MARGIN + this.elevation.maxLift);
           this.terrain.cull(cameraViewport(cam, iw, ih, this.elevation.maxLift));
-          // A map view frames its own scale, so it keeps the detail the main view's tier dropped.
-          this.mapObjects.setDetail(FULL_DETAIL);
+          // The map objects keep the main view's tier: a second detail would rebind every one of
+          // them twice a frame while a view is open.
           this.mapObjects.update(viewVp, tick);
           this.fog.container.visible = false;
         },
         restore: () => {
           this.terrain.cull(vp);
-          this.mapObjects.setDetail(detail);
           this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch);
           this.fog.container.visible = true;
         },
