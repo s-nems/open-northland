@@ -1,46 +1,35 @@
-# Drop detail as the view zooms out, behind a graphics setting
+# Finish the zoomed-out detail tiers: figures and small decor
 
-**Area:** render, app · **Focus:** world-renderer, sprite-pool, settings · **Priority:** P2
+**Area:** render, app · **Focus:** sprite-pool, map-objects, settings · **Priority:** P3
 
-`MIN_ZOOM` (`packages/app/src/view/camera/pan-zoom.ts`) is 0.35, so the widest view covers about eight
-times the world area of zoom 1 and the visible set grows with it, while every layer draws at every
-scale: cast and soft shadows, settler head overlays, environment motion, bubbles, badges, hearts,
-construction signs and decor shadows. `packages/render/AGENTS.md` requires a deliberate
-level-of-detail strategy for a wider view and none exists.
-
-Measured in the late-game `krwawa_rzeka` session (`docs/perf/heavy-load-krwawa-rzeka-12ai.md`,
-new-headless Chromium on ANGLE Metal, 1920x1080, x3), main-thread CPU only: at zoom 0.35 the main thread spends 30.7, 30.9 and 34.1 ms a frame at t81k, t92k and
-t101k with 1480 to 2190 sprites drawn, 27 to 31 FPS, against 12.5 to 17 ms at zoom 1 over a dense
-settlement.
-
-Headed Chromium on Apple M2 Pro, 1440×900 at device scale 1, from tick 97200 of the seed-7
-`magiczny_las` reference with six AI seats, confirms the scaling at x3:
-zoom 1/0.7/0.5/0.35 draws 1751/2569/4102/6219 entities, with RAF p95
-17.6/33.4/41.7/50.7 ms. The dense repeat stays at 17.4 ms with identical camera and canvas.
-Separate instrumented GPU queries for the main Pixi stage (world, HUD and weather) average
-4.65 ms at zoom 1 and 4.86 ms at 0.35; they exclude later insets and compositor work. CPU profiling
-finds binding, scene collection and Pixi instruction work at the wider view, so measure these along
-with each proposed detail tier. Frame rate and delivered simulation speed are separate measures.
+`packages/render/src/data/view-detail.ts` names three tiers below full detail and the Graphics setting
+"Less detail when zoomed out" picks them by camera scale ([what each drops](../../GRAPHICS.md#detail-by-zoom)).
+Two kinds the widest view still pays for in full are not in a tier, and three seams around the tiers
+are approximate.
 
 ## Scope
 
-- Measure the split per layer on a developed settlement at zoom 1, 0.7, 0.5 and 0.35 from the
-  reference's t80k checkpoint: main-thread CPU per layer, and GPU frame time in a headed browser
-  (headless timing covers the CPU only).
-- Define tiers by camera scale as named constants, each dropping what the previous did: shadows and
-  soft shadows, then head overlays and environment motion, then bubbles, badges, hearts, signs and
-  decor shadows, then characters as a single frame. The owner judges the look of each tier.
-- A tier only narrows the player's enhancements, never turns on what a toggle turned off; portrait
-  and inset subjects keep full detail.
-- The tiers are a Graphics setting: automatic, or always full detail so a screenshot can show
-  everything. The setting applies live and from the first frame of a launched game.
-- The tiers apply inside the existing visibility pass and retained layers (sprite pool bind and
-  present steps, `MapObjectLayer`, `WorldMarks`); no new walk over the world and no retained-texture
-  rebuild on a tier change.
+- Figures at the `minimal` tier. A walking settler presents and binds on every sim tick, which at x3 is
+  nearly every frame. Hold a gait pose for several ticks, or draw one resting frame per facing, without
+  sliding a planted foot: an original walker keeps its tick anchor because its clip plays one authored
+  frame per tick (`presentation/present-item.ts`). Measure the bind and present share of the wide view
+  first; the owner judges the look.
+- Small flat decor (grass, mushrooms, flowers) is packed into the per-chunk decor meshes with every
+  other flat object, so it costs draws and fill but no per-frame CPU. Dropping a family needs its own
+  lane or a shader cut, never a mesh rebuild on a tier change. Measure the GPU share on an integrated
+  GPU before building it.
+- The app still projects door badges, bubbles, hearts and stars every frame for a tier that draws none.
+  Let the projections skip a kind the renderer's tier drops.
+- A portrait inset keeps full detail only for its subject: the world around it draws at the main
+  view's tier. A map view keeps full detail for the entities it borrows; one the main frame also draws
+  keeps the main presentation.
+- The thresholds were measured on the `magiczny_las` t100000 checkpoint only. Repeat the per-tier
+  numbers on the `krwawa_rzeka` reference (`docs/perf/heavy-load-krwawa-rzeka-12ai.md`) and read the GPU
+  frame time in a headed browser on an integrated GPU.
 
 ## Verify
 
-- Frame cost at `MIN_ZOOM` stays within a stated ratio of zoom 1, with the ratio and per-layer
-  numbers in the closing report.
-- One screenshot per tier for the owner's visual sign-off.
+- `npm run bench:browser` with `ON_BENCH_BROWSER_WINDOWS=dense:3,zoom07:3,zoom05:3,wide:3`, automatic
+  against `ON_BENCH_BROWSER_DETAIL=full`, back to back.
+- One screenshot pair per changed tier (`npm run bench:browser-shots`) for the owner's sign-off.
 - `npm test`, `npm run check`, `npm run build`.

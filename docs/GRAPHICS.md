@@ -60,6 +60,7 @@ a name without one, keep the library's tier.
 | Building grounding / damage | Cached source-pixel analysis, baking and uploads; extra overlays or detailed smoke/flame/debris sprites. | Grounding: on an Intel UHD 770 at 1080p, 1.0 to 1.1 ms of a 13.4 ms dense-town frame with xBR at zoom 1 and 0.35 ms of 6 ms with the filter off, nearly all of it the shade and cover overlays' fill; damage: none above noise without fires in view |
 | Day and night | While a night darkens the scene: the world drawn into a texture with a one-byte lit mask beside it, a half-resolution light map of the house and fire pools, the weather and chrome drawn into it in a second pass, and one composite pass. Light-bearers mark their own quads, so no draws are added. | `magiczny_las` t100000 at 1920×1080, ×3, densest town, night against a flat night: on an Intel UHD 770 0.4 ms CPU and 0.6 ms GPU at zoom 1, 0.9 ms CPU and 1.0 ms GPU at zoom 0.5; on an RTX 4090 0.3 ms CPU and no GPU cost above noise |
 | Post effects | One screen-covering vignette sprite, not a separate render of the world. | Under 1% of the GPU frame |
+| Less detail when zoomed out | Nothing at zoom 0.75 and above; below it, it removes work. One frame rebinds the view when the scale crosses a tier. | See [detail by zoom](#detail-by-zoom) |
 | Blood | Combat-event history and visible spray/stain rendering; not a constant full-screen workload. | CPU only: about 0.6 ms a frame at ×3 in a battle, mostly the contact walk of fresh bursts |
 | Bone fading | Age-based opacity. Disabling it retains piles indefinitely. | No cost above noise |
 | Render scale | Every world pixel at the scale squared, and at zoom 1 every sprite magnified. | 1.5 costs about 3.6 times the frame and 2 about 6.5 times; a DPR 2 display at scale 1 about 7 times |
@@ -103,6 +104,43 @@ Vega 7 the Quality frame takes 9.1 ms at zoom 1 in snow and 7.7 ms at zoom 0.5 a
 
 The WebGL timer `npm run bench:gpu` reads on the Vega 7 takes one of two clock modes for seconds at a
 time, about 5 or 13 ms for the same view, so its per-scenario milliseconds there are not setting costs.
+
+## Detail by zoom
+
+"Less detail when zoomed out" (`adaptiveDetail`, on in every profile) lets the camera scale pick a
+detail tier (`packages/render/src/data/view-detail.ts`). Each tier drops what the one above it did plus
+more, and only narrows the other settings: it never draws what a toggle turned off. Off draws everything
+at every zoom. The thresholds and the order are our choice; a settler is about 40 world pixels tall, so
+30, 22 and 17 screen pixels at the three thresholds.
+
+| Tier | Camera scale | Stops drawing |
+| --- | --- | --- |
+| full | 0.75 and above | nothing |
+| reduced | below 0.75 | cast shadows and foot blobs of settlers and animals; footprints and step dust; the landscape's motion: tree and bush frame loops hold their first frame, vegetation stands upright, fish step with the tick, shore waves change frame every fourth tick |
+| sparse | below 0.55 | thought bubbles, life hearts and experience stars; cast shadows of trees, bushes, stumps, goods piles and flat decor |
+| minimal | below 0.42 | sign chains at doors and construction stands |
+
+A view takes a richer tier back only 0.03 above the threshold it fell under, so one resting on a
+threshold does not flicker. Buildings with their shadows and grounding, settlers, team colours,
+construction sites, fire, collapse, selection, attack marks, group numbers and garrison flags draw in
+every tier. The portrait's subject keeps its shadow, and a map view draws what it borrows in full. A
+save's picture and a screenshot show the tier on screen.
+
+Main-thread cost on the `magiczny_las` t100000 checkpoint, densest town, 1920x1080 at x3 on a GeForce
+GTX 1660 Ti Max-Q (`npm run bench:browser`, app CPU ms per frame, automatic against
+`ON_BENCH_BROWSER_DETAIL=full`):
+
+| Camera scale | Tier | Full detail | Automatic | Draws, full to automatic |
+| --- | --- | --- | --- | --- |
+| 1 | full | 9.9 | 9.8 | 227, 227 |
+| 0.7 | reduced | 15.3 | 8.3 / 8.5 | 271, 235 |
+| 0.5 | sparse | 26.8 | 13.3 / 13.4 | 323, 273 |
+| 0.35 | minimal | 43.3 | 21.2 / 22.3 | 460, 295 |
+
+The widest view costs 2.2 times the zoom 1 frame, against 4.4 times with full detail. Most of the gain
+is the landscape standing still: about 3400 trees and bushes in the widest view stop stepping their
+frame loop on every tick and draw from the retained still mesh, and their cast shadows leave the
+batch. Zoom 1 draws the same pixels with the setting on and off.
 
 ## Detection and calibration
 
