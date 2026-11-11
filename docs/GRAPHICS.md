@@ -22,7 +22,8 @@ database. The game owns only the mapping in
 | `BENCHMARK`, tier 0 or 1 | Performance | Off | Enhanced shadows, water, environment motion, building grounding, detailed building damage, day and night, weather and post effects disabled |
 | Missing, blocked, failed or fallback detection | Performance | Off | Same as above |
 
-Every profile keeps blood, bone fading and sprite smoothing enabled. Disabling detailed damage
+Every profile keeps blood, bone fading, sprite smoothing and
+[less detail when zoomed out](#detail-by-zoom) enabled. Disabling detailed damage
 retains basic smoke; disabling enhanced shadows retains authored shadows. Render scale stays at 1,
 the frame cap is 60, and HUD/input/audio preferences keep their ordinary defaults.
 xBRZ, Super-xBR and MMPX remain manual choices; automatic selection uses only xBR or Off. The mapping
@@ -109,22 +110,26 @@ time, about 5 or 13 ms for the same view, so its per-scenario milliseconds there
 
 "Less detail when zoomed out" (`adaptiveDetail`, on in every profile) lets the camera scale pick a
 detail tier (`packages/render/src/data/view-detail.ts`). Each tier drops what the one above it did plus
-more, and only narrows the other settings: it never draws what a toggle turned off. Off draws everything
-at every zoom. The thresholds and the order are our choice; a settler is about 40 world pixels tall, so
+more, and only narrows the other settings: it never draws what a toggle turned off. Off keeps all
+of it at every zoom. The thresholds and the order are our choice; a settler is about 40 world pixels tall, so
 30, 22 and 17 screen pixels at the three thresholds.
 
 | Tier | Camera scale | Stops drawing |
 | --- | --- | --- |
 | full | 0.75 and above | nothing |
-| reduced | below 0.75 | cast shadows and foot blobs of settlers and animals; footprints and step dust; the landscape's motion: tree and bush frame loops hold their first frame, vegetation stands upright, fish step with the tick, shore waves change frame every fourth tick |
+| reduced | below 0.75 | cast shadows and foot blobs of settlers and animals; footprints and step dust; the landscape's motion: tree and bush frame loops hold their first frame, whether the sprite pool or the static map-object layer draws them, while a felling clip plays on; vegetation stands upright, fish step with the tick, shore waves change frame every fourth tick. Flat ground decor keeps its loops, which the GPU plays from a tick uniform, and ship sails keep the wind |
 | sparse | below 0.55 | thought bubbles, life hearts and experience stars; cast shadows of trees, bushes, stumps, goods piles and flat decor |
 | minimal | below 0.42 | sign chains at doors and construction stands |
 
 A view takes a richer tier back only 0.03 above the threshold it fell under, so one resting on a
 threshold does not flicker. Buildings with their shadows and grounding, settlers, team colours,
 construction sites, fire, collapse, selection, attack marks, group numbers and garrison flags draw in
-every tier. The portrait's subject keeps its shadow, and a map view draws what it borrows in full. A
+every tier. The portrait's subject keeps its shadow, and a map view draws the
+entities it borrows in full and the map objects at the main view's tier. A
 save's picture and a screenshot show the tier on screen.
+
+The embers and flying chips of building damage are outside the tiers: they hide below zoom 0.8 and 0.7
+with the setting on or off (`packages/render/src/gpu/building-damage/effects.ts`).
 
 Main-thread cost on the `magiczny_las` t100000 checkpoint, densest town, 1920x1080 at x3 on a GeForce
 GTX 1660 Ti Max-Q (`npm run bench:browser`, app CPU ms per frame, automatic against

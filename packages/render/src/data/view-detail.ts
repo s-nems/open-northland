@@ -18,7 +18,8 @@ export interface ViewDetail {
   /** Footprints and the dust of a step. */
   readonly footfalls: boolean;
   /** The landscape's own motion: the frame loops of trees and bushes, the sway of vegetation and the
-   *  breeze on it, and smoothed fish. Without it shore waves step every {@link WAVE_STEP_TICKS} ticks. */
+   *  breeze on it, and smoothed fish. Without it shore waves step every {@link WAVE_STEP_TICKS} ticks.
+   *  One-shot clips, flat decor's GPU-played loops and the wind in sails are not part of it. */
   readonly motion: boolean;
   /** Thought bubbles, life hearts and experience stars over settlers. */
   readonly overheadIcons: boolean;

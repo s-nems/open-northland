@@ -42,7 +42,8 @@ Per-frame draw cost must follow the viewport, not total map size.
 - Keep zoom-out bounded. `data/view-detail.ts` names the detail tiers a camera scale draws in and what
   each drops; a layer honours a tier where it already culls, binds or collects, so a dropped kind is
   neither collected, bound nor batched. A kind that grows with the view joins a tier, or states why it
-  stays.
+  stays. The ember and chip gates in `gpu/building-damage/effects.ts` stay outside the tiers: they cut
+  above the first threshold in every mode, so moving them would change the full-detail picture.
 
 Portrait insets (`WorldRenderer.setPortraitInsets`) take every HUD box that shows a live world cutout
 this frame: the settler panel's portrait and the trade window's two houses. Each is one more framed
