@@ -49,27 +49,42 @@ export function saveFileOf(save: SaveGame): Promise<SaveFile> {
  *  of a tick, so a sim stepping on the same thread keeps its clock. */
 const SERIALIZE_SLICE_MS = 4;
 
+/** The most text {@link saveFileOfDetached} hands the compressor in one turn, in bytes: the deflate runs
+ *  on the calling thread inside the write, a few milliseconds for this much. */
+const COMPRESS_CHUNK_BYTES = 256 * 1024;
+
 /**
- * {@link saveFileOf} for a capture nothing else can reach, as `exportSaveGame` returns it: serialized a
- * slice at a time with `pause` awaited between slices, so the thread that captured it is held for the
- * capture alone and not for the megabytes of text after it. The bytes are those of {@link saveFileOf}.
+ * {@link saveFileOf} for a capture nothing else can reach, as `exportSaveGame` returns it: serialized and
+ * compressed a slice at a time with `pause` awaited between slices, so the thread that captured it is
+ * held for the capture alone and not for the megabytes of text after it. The bytes inflate to the text
+ * {@link saveFileOf} compresses.
  */
 export async function saveFileOfDetached(save: SaveGame, pause: () => Promise<void>): Promise<SaveFile> {
-  const parts: Blob[] = [];
+  const gzip = new CompressionStream('gzip');
+  // Read from the start: a compressor nobody reads holds its writes back.
+  const compressed = new Response(gzip.readable).arrayBuffer();
+  const writer = gzip.writable.getWriter();
+  const encoder = new TextEncoder();
+  const compress = async (slice: readonly string[]): Promise<void> => {
+    const bytes = encoder.encode(slice.join(''));
+    for (let at = 0; at < bytes.length; at += COMPRESS_CHUNK_BYTES) {
+      await writer.write(bytes.subarray(at, at + COMPRESS_CHUNK_BYTES));
+      await pause();
+    }
+  };
   let slice: string[] = [];
   let sliceStartMs = performance.now();
   for (const part of serializeSaveGameParts(save)) {
     slice.push(part);
     if (performance.now() - sliceStartMs < SERIALIZE_SLICE_MS) continue;
-    // Encoded per slice too: one blob over the whole text would encode it in a single turn.
-    parts.push(new Blob(slice));
-    slice = [];
     await pause();
+    await compress(slice);
+    slice = [];
     sliceStartMs = performance.now();
   }
-  parts.push(new Blob(slice));
-  const compressed = new Blob(parts).stream().pipeThrough(new CompressionStream('gzip'));
-  return { header: save.header, bytes: new Uint8Array(await new Response(compressed).arrayBuffer()) };
+  await compress(slice);
+  await writer.close();
+  return { header: save.header, bytes: new Uint8Array(await compressed) };
 }
 
 /** The save's JSON text from a picked or staged file, whichever envelope the bytes carry. */

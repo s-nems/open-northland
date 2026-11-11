@@ -1,5 +1,5 @@
 import { bytesToBase64, decodeSnapshot, encodeSnapshot } from '@open-northland/net-client';
-import { exportSaveGame, Simulation } from '@open-northland/sim';
+import { exportSaveGame, Simulation, serializeSaveGame } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { testContent } from '../../../../../sim/test/fixtures/content.js';
 import {
@@ -7,6 +7,7 @@ import {
   decodeSaveText,
   isGzipSave,
   saveFileOf,
+  saveFileOfDetached,
 } from '../../../../src/view/runtime/save-load/codec.js';
 
 const SHARED_TICKS = 5;
@@ -45,5 +46,19 @@ describe('save codec', () => {
     expect(shared).toEqual(await decodeSnapshot(await encodeSnapshot(save)));
     expect(shared).toEqual(save);
     expect(file.header).toEqual(save.header);
+  });
+
+  it('compresses a detached capture to the text of the whole one, pausing on the way', async () => {
+    const sim = new Simulation({ seed: 3, content: testContent() });
+    sim.run(SHARED_TICKS);
+    const save = exportSaveGame(sim, { savedAt: 123, mapId: 'test' });
+    let pauses = 0;
+    const file = await saveFileOfDetached(save, () => {
+      pauses++;
+      return Promise.resolve();
+    });
+    await expect(decodeSaveText(file.bytes)).resolves.toBe(serializeSaveGame(save));
+    expect(file.header).toEqual(save.header);
+    expect(pauses).toBeGreaterThan(0);
   });
 });
