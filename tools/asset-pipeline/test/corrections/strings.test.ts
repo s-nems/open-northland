@@ -112,7 +112,11 @@ describe('string corrections', () => {
     ['an object instead of a list', { ...ENTRY }, /not a JSON array/],
     ['an unknown key', [{ ...ENTRY, sha256: 'x' }], /unknown key "sha256"/],
     ['an unknown language', [{ ...ENTRY, lang: 'ru' }], /lang must be one of pol, eng, ger, rus/],
-    ['a language whose shipped text stays private', [{ ...ENTRY, lang: 'ita' }], /lang must be one of pol, eng, ger, rus/],
+    [
+      'a language whose shipped text stays private',
+      [{ ...ENTRY, lang: 'ita' }],
+      /lang must be one of pol, eng, ger, rus/,
+    ],
     ['an unknown table', [{ ...ENTRY, table: 'good' }], /table must be one of main, .*jobsPlural/],
     ['a missing reason', [{ ...ENTRY, reason: ' ' }], /reason must say why/],
     ['a non-integer id', [{ ...ENTRY, id: '4' }], /id must be a string id/],
@@ -304,6 +308,13 @@ describe('map string corrections', () => {
     const { strings, corrections } = await convertMaps([entry]);
     expect(strings.pol?.[STRING_ID]).toBe('Zbuduj ul.');
     expect(() => corrections.assertApplied()).toThrow(message);
+  });
+
+  it('rejects a map entry in a language whose shipped text stays private', async () => {
+    await writeFile(file, JSON.stringify([{ ...MAP_ENTRY, lang: 'ita' }]));
+    await expect(loadMapStringCorrections(file)).rejects.toThrow(
+      /lang must be one of pol, eng, ger, rus, chs, cht/,
+    );
   });
 
   it('rejects a table key in a map entry', async () => {

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { MAP_TEXT_LANGUAGES, SOURCE_LANGUAGES } from '@open-northland/data';
+import { MAP_TEXT_LANGUAGES, PACK_LANGUAGES, SOURCE_LANGUAGES } from '@open-northland/data';
 import type { MapStringTables } from '@open-northland/map-import';
 import { errorMessage } from './errors.js';
 import { EXPORTED_TABLES, OBJECT_HELP_TABLES } from './stages/gui/strings.js';
@@ -68,9 +68,14 @@ const TABLE_KIND: CorrectionKind = {
   isPhrased: (table) => (OBJECT_HELP_TABLES as readonly string[]).includes(table),
 };
 
+/** Pack languages whose shipped text stays private, so no correction may quote it. */
+const PRIVATE_PACK_LANGUAGES: readonly string[] = PACK_LANGUAGES.filter(
+  (lang) => !(SOURCE_LANGUAGES as readonly string[]).includes(lang),
+);
+
 const MAP_KIND: CorrectionKind = {
   scopeKey: 'map',
-  langs: MAP_TEXT_LANGUAGES,
+  langs: MAP_TEXT_LANGUAGES.filter((lang) => !PRIVATE_PACK_LANGUAGES.includes(lang)),
   checkScope: (map) => (map.trim() === '' ? 'map must name a map id' : undefined),
   isPhrased: () => false,
 };
