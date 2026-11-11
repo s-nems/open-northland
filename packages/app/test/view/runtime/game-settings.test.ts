@@ -37,6 +37,7 @@ const LIVE_SETTINGS: readonly LiveSetting[] = [
     applied: { ...enhancementsOf(defaultSettings()), pixelArtScaler: 'xbrz' },
   },
   { patch: { weather: false }, seam: 'setWeatherEnabled', applied: false },
+  { patch: { adaptiveDetail: false }, seam: 'setAdaptiveDetail', applied: false },
   { patch: { groupNumbers: true }, seam: 'setGroupNumbersShown', applied: true },
   { patch: { blood: false }, seam: 'setBloodEnabled', applied: false },
   { patch: { bonesFade: false }, seam: 'setBonesFade', applied: false },
@@ -100,6 +101,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setCameraInputSettings = vi.fn();
   const setDebugToolsEnabled = vi.fn();
   const setGraphicsEnhancements = vi.fn();
+  const setAdaptiveDetail = vi.fn();
   const setMinimapFrame = vi.fn();
   const setSelectionStyle = vi.fn();
   const setHoverOutline = vi.fn();
@@ -132,6 +134,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setCameraInputSettings,
     setDebugToolsEnabled,
     setGraphicsEnhancements,
+    setAdaptiveDetail,
     setSelectionStyle,
     setHoverOutline,
     setCursorHints,
@@ -161,6 +164,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setCameraInputSettings,
     setDebugToolsEnabled,
     setGraphicsEnhancements,
+    setAdaptiveDetail,
     setSelectionStyle,
     setHoverOutline,
     setGroupNumbersShown,

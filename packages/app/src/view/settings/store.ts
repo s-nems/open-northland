@@ -110,6 +110,8 @@ export interface MenuSettings {
   readonly environmentMotion: boolean;
   readonly groundedBuildings: boolean;
   readonly buildingDamage: boolean;
+  /** Drop small detail as the view zooms out; off draws everything at every scale. */
+  readonly adaptiveDetail: boolean;
   /** Rain, snow and sandstorms: their sky, ground and sound, and the tints a script moves with them.
    *  Presentation only, the sim never reads it. */
   readonly weather: boolean;
@@ -219,6 +221,7 @@ export function defaultSettings(): MenuSettings {
     environmentMotion: true,
     groundedBuildings: true,
     buildingDamage: true,
+    adaptiveDetail: true,
     weather: true,
     dayNight: true,
     blood: true,
@@ -403,6 +406,8 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
       typeof record.groundedBuildings === 'boolean' ? record.groundedBuildings : defaults.groundedBuildings,
     buildingDamage:
       typeof record.buildingDamage === 'boolean' ? record.buildingDamage : defaults.buildingDamage,
+    adaptiveDetail:
+      typeof record.adaptiveDetail === 'boolean' ? record.adaptiveDetail : defaults.adaptiveDetail,
     weather: typeof record.weather === 'boolean' ? record.weather : defaults.weather,
     dayNight: typeof record.dayNight === 'boolean' ? record.dayNight : defaults.dayNight,
     blood: typeof record.blood === 'boolean' ? record.blood : defaults.blood,

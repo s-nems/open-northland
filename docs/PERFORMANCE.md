@@ -197,6 +197,7 @@ decided as `audioFrames`. `bench:gpu` does the same with sound on.
 | `ON_BENCH_BROWSER_WINDOWS` | Override baseline windows, e.g. `dense:3,wide:0`; cameras: `dense`, `zoom07`, `zoom05`, `wide`, `empty`; also the [moving and panning windows](#moving-and-panning-windows) |
 | `ON_BENCH_BROWSER_FILTER` | Art filter: `off` (enhanced sampling off), `xbr` (default), `xbrz`, `superxbr` or `mmpx`; every other graphics setting stays at its default |
 | `ON_BENCH_BROWSER_RENDER_SCALE` | Backing-resolution multiplier, 0.5 to 2; default 1 |
+| `ON_BENCH_BROWSER_DETAIL` | `automatic` (default) drops detail as the view zooms out; `full` draws everything at every zoom. `bench:browser-shots` reads it too |
 | `ON_BENCH_BROWSER_PROFILE_VIEWS` | Diagnostic views; default dense and wide at ×3 |
 | `ON_BENCH_BROWSER_CPU_THROTTLE` | DevTools main-thread slowdown; workers are not throttled |
 | `ON_BENCH_BROWSER_SEAT` | Watch a seat with its fog and HUD |

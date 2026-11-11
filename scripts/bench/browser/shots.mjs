@@ -9,6 +9,7 @@ import {
   restoreCheckpoint,
   VIEWPORT,
 } from '../../browser/session.mjs';
+import { parseGraphicsKnobs } from './frames-plan.mjs';
 import { countGlCalls } from './profile.mjs';
 
 /**
@@ -18,8 +19,8 @@ import { countGlCalls } from './profile.mjs';
  *   npm run bench:browser-shots -- capture <checkpoint> <origin> <out-dir>
  *   npm run bench:browser-shots -- compare <dir-a> <dir-b>
  *
- * A capture restores the checkpoint paused, frames the densest building cluster at zoom 1, 0.5, 0.35
- * and 2, and writes `<view>.png` plus `report.json` (draws and texture binds per frame). With
+ * A capture restores the checkpoint paused, frames the densest building cluster at zoom 1, 0.7, 0.5,
+ * 0.35 and 2, and writes `<view>.png` plus `report.json` (draws and texture binds per frame). With
  * `ON_BENCH_SHOT_STEPS=n` it steps the paused sim n ticks before each screenshot, a frame after each,
  * so per-tick render paths run while the picture stays reproducible. The pointer rests on the bottom
  * HUD bar, where no world hover card can rise. With `ON_BENCH_BROWSER_SEAT=n` the spectator watches
@@ -28,7 +29,7 @@ import { countGlCalls } from './profile.mjs';
  */
 
 const [command, ...args] = process.argv.slice(2);
-const VIEWS = { dense: 1, zoom05: 0.5, wide: 0.35, magnify: 2 };
+const VIEWS = { dense: 1, zoom07: 0.7, zoom05: 0.5, wide: 0.35, magnify: 2 };
 
 async function capture(checkpoint, origin, outDir) {
   const saveText = await readFile(checkpoint, 'utf8');
@@ -45,7 +46,9 @@ async function capture(checkpoint, origin, outDir) {
     page.on('pageerror', (error) => report.errors.push(error.message));
     await page.goto(origin);
     const url = new URL(`?${params}`, origin).href;
-    await restoreCheckpoint(page, { saveText, header, stateHash, url });
+    // Only the detail knob: every other setting stays what the harness seeds.
+    const { adaptiveDetail } = parseGraphicsKnobs(process.env).settings;
+    await restoreCheckpoint(page, { saveText, header, stateHash, url, settings: { adaptiveDetail } });
     if (seat !== null)
       await page.evaluate((watched) => {
         const watch = window.__opennorthland.watchSeat;
@@ -83,8 +86,14 @@ async function compare(dirA, dirB) {
     const page = await browser.newPage();
     for (const view of Object.keys(VIEWS)) {
       const [a, b] = await Promise.all(
-        [dirA, dirB].map(async (dir) => (await readFile(resolve(dir, `${view}.png`))).toString('base64')),
+        [dirA, dirB].map(async (dir) =>
+          (await readFile(resolve(dir, `${view}.png`)).catch(() => null))?.toString('base64'),
+        ),
       );
+      if (a === undefined || b === undefined) {
+        console.log(`${view}: not in both captures`);
+        continue;
+      }
       const result = await page.evaluate(
         async ({ a, b }) => {
           const pixels = async (data) => {

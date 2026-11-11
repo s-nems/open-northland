@@ -1,4 +1,4 @@
-import type { WorldEnhancements } from '@open-northland/render';
+import type { DetailMode, WorldEnhancements } from '@open-northland/render';
 
 /** One entry per enhancement field, so a field added to the renderer type fails to compile here. */
 const ENHANCEMENT_FIELDS: Readonly<Record<keyof WorldEnhancements, true>> = {
@@ -27,4 +27,9 @@ export function enhancementsOf(settings: WorldEnhancements): WorldEnhancements {
     buildingDamage: settings.buildingDamage,
     dayNight: settings.dayNight,
   };
+}
+
+/** The renderer's detail mode under the player's adaptive-detail setting. */
+export function detailModeOf(adaptiveDetail: boolean): DetailMode {
+  return adaptiveDetail ? 'automatic' : 'full';
 }

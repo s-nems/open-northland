@@ -299,6 +299,9 @@ export const enSurfaces = {
       buildingDamage: 'Building damage',
       buildingDamageTip:
         'Broken roofs, exposed beams, smoke, fire and flying fragments. Disable for simpler smoke with less graphics work.',
+      adaptiveDetail: 'Less detail when zoomed out',
+      adaptiveDetailTip:
+        'As the camera pulls back, the game stops drawing what is too small to see: first the shadows of settlers and animals, footprints and the sway of trees, then thought bubbles, hearts, stars and the shadows of trees, and at the widest view the signs at doors. Buildings, settlers and team colours always stay. Off draws everything at every zoom, which costs frame rate in a large settlement.',
       environmentMotion: 'Environment motion',
       environmentMotionTip:
         "Trees the original draws as one still frame sway in the wind together with their shadow, fish swim smoothly, and the breeze in the project's own vegetation is smoothed. Settlers and animals keep the original stepping, and original animations gain no extra frames. Trees stand still in a restored save.",

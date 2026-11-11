@@ -129,6 +129,7 @@ import {
   palisadeToolsOf,
 } from '../game-tool-panel.js';
 import { holdWorldAfterContextRestore } from '../graphics/context-restore.js';
+import { detailModeOf } from '../graphics/enhancements.js';
 import { applyWhenWarmed, relinkAfterContextRestore } from '../graphics/shader-warmup.js';
 import { createSignpostMapOverlay } from '../map-overlays/signposts.js';
 import type { NetSignalSource } from '../map-ping/pings.js';
@@ -473,6 +474,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     renderer.setSelectionStyle(storedSettings.selectionStyle);
     renderer.setHoverOutline(storedSettings.hoverOutline);
     renderer.setGroupNumbersShown(storedSettings.groupNumbers);
+    renderer.setDetailMode(detailModeOf(storedSettings.adaptiveDetail));
     // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; only a positive value pins.
     const uiScaleParam = floatParam(params, 'uiscale', 0);
     const pinnedUiScale = uiScaleParam > 0 ? uiScaleParam : null;
@@ -1463,6 +1465,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       setHoverOutline: (enabled) => renderer.setHoverOutline(enabled),
       setGroupNumbersShown: (shown) => renderer.setGroupNumbersShown(shown),
       setGraphicsEnhancements: applyWhenWarmed((next) => renderer.setGraphicsEnhancements(next)),
+      setAdaptiveDetail: (enabled) => renderer.setDetailMode(detailModeOf(enabled)),
       setBloodEnabled: applyWhenWarmed((enabled) => renderer.setBloodEnabled(enabled), turnedOn),
       setBonesFade: (fades) => renderer.setBonesFade(fades),
       setFpsCounterShown: perfReadout.setShown,

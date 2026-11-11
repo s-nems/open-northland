@@ -41,11 +41,15 @@ const RENDER_SCALE_MIN = 0.5;
 const RENDER_SCALE_MAX = 2;
 const DEFAULT_FILTER = 'xbr';
 const DEFAULT_RENDER_SCALE = 1;
+const DETAIL_MODES = ['automatic', 'full'];
+const DEFAULT_DETAIL = 'automatic';
 
 /**
  * `ON_BENCH_BROWSER_FILTER` (a Graphics-menu magnifier, `off` for enhanced sampling disabled; default
- * xBR, the game's default) and `ON_BENCH_BROWSER_RENDER_SCALE` (the backing multiplier, 0.5 to 2;
- * default 1), with the settings patch they load under. Every other setting stays at its default.
+ * xBR, the game's default), `ON_BENCH_BROWSER_RENDER_SCALE` (the backing multiplier, 0.5 to 2;
+ * default 1) and `ON_BENCH_BROWSER_DETAIL` (`automatic`, the game's default, drops detail as the view
+ * zooms out; `full` draws everything at every zoom), with the settings patch they load under. Every
+ * other setting stays at its default.
  */
 export function parseGraphicsKnobs(env = {}) {
   const filter = env.ON_BENCH_BROWSER_FILTER || DEFAULT_FILTER;
@@ -55,12 +59,16 @@ export function parseGraphicsKnobs(env = {}) {
   const renderScale = scaleText === undefined || scaleText === '' ? DEFAULT_RENDER_SCALE : Number(scaleText);
   if (!Number.isFinite(renderScale) || renderScale < RENDER_SCALE_MIN || renderScale > RENDER_SCALE_MAX)
     throw new Error(`ON_BENCH_BROWSER_RENDER_SCALE must be ${RENDER_SCALE_MIN} to ${RENDER_SCALE_MAX}`);
+  const detail = env.ON_BENCH_BROWSER_DETAIL || DEFAULT_DETAIL;
+  if (!DETAIL_MODES.includes(detail))
+    throw new Error(`ON_BENCH_BROWSER_DETAIL must be one of ${DETAIL_MODES}, not '${detail}'`);
   const settings = {
     enhancedSampling: filter !== 'off',
     ...(filter === 'off' ? {} : { pixelArtScaler: filter }),
     renderScale,
+    adaptiveDetail: detail === 'automatic',
   };
-  return { filter, renderScale, settings };
+  return { filter, renderScale, detail, settings };
 }
 
 /**

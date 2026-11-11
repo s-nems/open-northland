@@ -29,6 +29,7 @@ export interface LiveGameSettingsDeps {
   readonly setHoverOutline: (enabled: boolean) => void;
   readonly setGroupNumbersShown: (shown: boolean) => void;
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
+  readonly setAdaptiveDetail: (enabled: boolean) => void;
   readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
   readonly setWeatherEnabled: (enabled: boolean) => void;
   readonly setDayNightShown: (shown: boolean) => void;
@@ -111,6 +112,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setCursorHints: deps.controls.setCursorHints,
     setGroupNumbersShown: deps.setGroupNumbersShown,
     setGraphicsEnhancements: deps.setGraphicsEnhancements,
+    setAdaptiveDetail: deps.setAdaptiveDetail,
     setMinimapFrame: deps.minimap.setFrame,
     setWeatherEnabled: deps.setWeatherEnabled,
     setDayNightShown: deps.setDayNightShown,
