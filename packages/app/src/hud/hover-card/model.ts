@@ -56,6 +56,8 @@ export interface SettlerHoverModel {
   readonly products: string | null;
   /** Another seat's person, on a second line under the name; null for the viewer's own. */
   readonly owner: HoverOwner | null;
+  /** The viewer's own person's experience and its nearest profession unlock. */
+  readonly facts: readonly HoverCardFact[];
 }
 
 /** A named line of words, such as who commands a vehicle, drawn like a good row. */

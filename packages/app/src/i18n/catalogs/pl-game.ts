@@ -133,6 +133,7 @@ export const plGame = {
       allProducts: 'wszystko',
       nobody: 'brak',
       route: 'Trasa',
+      discovery: 'Odkrycie: {job}',
     },
     workFlag: 'Flaga robocza',
     specialization: 'Specjalizacja {id}',

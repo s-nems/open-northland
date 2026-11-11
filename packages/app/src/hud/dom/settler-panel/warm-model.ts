@@ -131,7 +131,7 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
       { label: 'Warm', repeats: 1, bonusPct: 5, own: true },
       { label: 'Warm', repeats: 1, bonusPct: null, own: false },
     ],
-    upcomingUnlocks: [{ unlocks: 'Warm', track: 'warm', current: 1, required: 4 }],
+    upcomingUnlocks: [{ target: 'job', unlocks: 'Warm', track: 'warm', current: 1, required: 4 }],
     equipmentRows: [
       {
         slotLabel: 'Warm',

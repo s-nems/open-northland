@@ -15,7 +15,7 @@ import { setClass, setHidden, setStyleVar, write } from './parts/dom.js';
 import { createMeterRow } from './parts/meter-row.js';
 
 /**
- * The parchment card the cursor opens over the world: a settler's name and trade, a building's name,
+ * The parchment card the cursor opens over the world: a settler's name, trade and training, a building's name,
  * construction state, health and store, or a vehicle's name, state, health, crew and hold; another seat's
  * adds its owner. It rides the DOM plane in design px and never takes pointer events, so the press under
  * it still reaches the map.
@@ -78,7 +78,7 @@ function rowsOf(model: HoverCardModel): readonly HoverCardRow[] {
 const NO_FACTS: readonly HoverCardFact[] = [];
 
 function factsOf(model: HoverCardModel): readonly HoverCardFact[] {
-  return model.kind === 'vehicle' ? model.facts : NO_FACTS;
+  return model.kind === 'building' ? NO_FACTS : model.facts;
 }
 
 function factElement(fact: HoverCardFact): HTMLElement {

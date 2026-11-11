@@ -159,6 +159,7 @@ export const ruGame = {
       allProducts: 'всё',
       nobody: 'нет',
       route: 'Маршрут',
+      discovery: 'Открытие: {job}',
     },
     workFlag: 'Рабочий флажок',
     specialization: 'Специализация {id}',

@@ -162,6 +162,7 @@ export const deGame = {
       allProducts: 'alles',
       nobody: 'keiner',
       route: 'Route',
+      discovery: 'Entdeckung: {job}',
     },
     workFlag: 'Arbeitsfahne',
     specialization: 'Spezialisierung {id}',

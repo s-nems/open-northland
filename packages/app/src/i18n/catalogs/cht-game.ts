@@ -124,6 +124,7 @@ export const chtGame = {
       nobody: '無',
       /** A trader's stops, from the one left to the one headed for. */
       route: '路線',
+      discovery: '發現：{job}',
     },
     workFlag: '工作旗幟',
     specialization: '專長 {id}',

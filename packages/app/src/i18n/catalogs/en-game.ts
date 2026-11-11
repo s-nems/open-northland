@@ -139,6 +139,8 @@ export const enGame = {
       nobody: 'none',
       /** A trader's stops, from the one left to the one headed for. */
       route: 'Route',
+      /** The profession a worker's experience unlocks next; {job} is its name. */
+      discovery: 'Discovery: {job}',
     },
     workFlag: 'Work flag',
     specialization: 'Specialization {id}',

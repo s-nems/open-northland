@@ -252,6 +252,86 @@ describe('settler hover card model', () => {
     expect(settlerHoverModel(snapshot, 8, ctx)?.products).toBeNull();
   });
 
+  it("adds the own worker's trade experience and nearest profession, and nothing for another seat's", () => {
+    const WOOD_TRACK = 3;
+    const base = hoverCtx();
+    const tribe = base.tribes.find((t) => t.typeId === PRIMARY_TRIBE);
+    if (tribe === undefined) throw new Error('sandbox has no primary tribe');
+    const ctx = {
+      ...base,
+      jobExperience: [
+        {
+          typeId: WOOD_TRACK,
+          id: 'collector_wood',
+          jobType: JOB_COLLECTOR,
+          goodTypes: [GOOD_WOOD],
+          experienceFactor: 10,
+          baseRepeatCounter: 10,
+        },
+      ],
+      tribes: [
+        {
+          ...tribe,
+          jobRequirements: [
+            // A nearer ware gate leads the panel's list; the card names only the profession.
+            {
+              requirement: 'need' as const,
+              target: 'good' as const,
+              targetId: GOOD_IRON,
+              amount: 5,
+              experienceTypes: [WOOD_TRACK],
+            },
+            {
+              requirement: 'need' as const,
+              target: 'job' as const,
+              targetId: JOB_JOINER,
+              amount: 10,
+              experienceTypes: [WOOD_TRACK],
+            },
+          ],
+        },
+      ],
+    };
+    const trained = { SettlerProgress: { experience: [[WOOD_TRACK, 40]] } }; // 4 repeats
+    const snapshot = snapshotOf([
+      settlerEntity(1, JOB_COLLECTOR, trained),
+      settlerEntity(2, JOB_COLLECTOR, { ...trained, Owner: { player: OTHER_PLAYER } }),
+    ]);
+
+    expect(settlerHoverModel(snapshot, 1, ctx)?.facts).toEqual([
+      { label: 'Zbieranie - Drewno', value: '+0%' },
+      { label: 'Odkrycie: Cieśla', value: '4 / 10' },
+    ]);
+    expect(settlerHoverModel(snapshot, 2, ctx)?.facts).toEqual([]);
+  });
+
+  it("lists the worker's other trades after its own, and counts what passes the card's limit", () => {
+    const base = hoverCtx();
+    const track = (typeId: number, jobType: number) => ({
+      typeId,
+      id: `track_${typeId}`,
+      jobType,
+      goodTypes: [],
+      experienceFactor: 1,
+      baseRepeatCounter: 10,
+    });
+    const OWN = 1;
+    const OTHER_TRADES = [2, 3, 4, 5, 6, 7];
+    const ctx = {
+      ...base,
+      jobExperience: [track(OWN, JOB_COLLECTOR), ...OTHER_TRADES.map((id) => track(id, JOB_JOINER))],
+    };
+    // The own trade's track is the least trained, yet leads; the others follow most-trained first.
+    const experience = [[OWN, 1], ...OTHER_TRADES.map((id) => [id, 10 * id])];
+    const snapshot = snapshotOf([settlerEntity(1, JOB_COLLECTOR, { SettlerProgress: { experience } })]);
+
+    const facts = settlerHoverModel(snapshot, 1, ctx)?.facts ?? [];
+
+    expect(facts).toHaveLength(6);
+    expect(facts[0]?.label).toBe(settlerHoverModel(snapshot, 1, ctx)?.profession);
+    expect(facts[5]).toEqual({ label: 'jeszcze 2', value: '' });
+  });
+
   it('calls a growing child by its life stage, which is the only trade it has', () => {
     const ctx = hoverCtx();
     const snapshot = snapshotOf([settlerEntity(2, JOB_CHILD_MALE, { Age: { ticks: 0 } })]);

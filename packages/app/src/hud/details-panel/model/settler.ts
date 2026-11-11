@@ -114,7 +114,8 @@ function experienceBonusPct(
  * The Experience rows: the current trade's tracks first, each group most-trained first, off the
  * settler's `SettlerProgress.experience` map (`humanjobexperiencetypes` id → raw points). Raw points are
  * shown as completed-work repeats, dividing the track's accrual rate back out; a track-less bucket
- * (fight) shows raw points and belongs to the fighter trades.
+ * (fight) shows raw points and belongs to the fighter trades. A general track that only repeats one
+ * good's track is left out.
  */
 export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): ExperienceRowModel[] {
   const jobType = num((comps.Settler as { jobType?: unknown } | undefined)?.jobType);
@@ -136,7 +137,26 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
     });
   }
   rows.sort((a, b) => Number(b.own) - Number(a.own) || b.repeats - a.repeats || a.spec - b.spec);
-  return rows.map(({ label, repeats, bonusPct, own }) => ({ label, repeats, bonusPct, own }));
+  return rows
+    .filter((row) => !copiesItsGood(ctx, row, rows))
+    .map(({ label, repeats, bonusPct, own }) => ({ label, repeats, bonusPct, own }));
+}
+
+/** A job's general track that one good-specific track of the same job fully accounts for: work on a
+ *  good accrues both, so a trade with a single trained good ("Farming" and "Farming - Wheat") would
+ *  show the same count twice. With two goods trained the general track is their total and stays. */
+function copiesItsGood(
+  ctx: UnitPanelModelContext,
+  row: { readonly spec: number; readonly repeats: number },
+  rows: readonly { readonly spec: number; readonly repeats: number }[],
+): boolean {
+  const track = ctx.jobExperience.find((t) => t.typeId === row.spec);
+  if (track === undefined || track.goodTypes.length > 0) return false;
+  const goods = rows.filter((other) => {
+    const t = ctx.jobExperience.find((d) => d.typeId === other.spec);
+    return t !== undefined && t.jobType === track.jobType && t.goodTypes.length > 0;
+  });
+  return goods.length === 1 && goods[0]?.repeats === row.repeats;
 }
 
 export const EXPERIENCE_FOLDED_MAX = 3;

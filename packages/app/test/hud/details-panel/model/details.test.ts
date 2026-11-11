@@ -1455,6 +1455,54 @@ describe('selection details panel model', () => {
     expect(experienceShown(model.experience)).toBe(2);
   });
 
+  it('leaves out a general track that only repeats its one trained good, and keeps it as a total', () => {
+    const track = (typeId: number, goodTypes: number[]) => ({
+      typeId,
+      id: `collector_${typeId}`,
+      jobType: JOB_COLLECTOR,
+      goodTypes,
+      experienceFactor: 10,
+      baseRepeatCounter: 10,
+    });
+    const GENERAL = 2;
+    const WOOD = 3;
+    const STONE = 5;
+    const ctx = {
+      ...sandboxCtx(),
+      jobExperience: [track(GENERAL, []), track(WOOD, [GOOD_WOOD]), track(STONE, [GOOD_STONE])],
+    };
+    const rowsOf = (experience: [number, number][]) => {
+      const model = buildUnitPanelModel(
+        snapshotOf([
+          {
+            id: 1,
+            components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR }, SettlerProgress: { experience } },
+          },
+        ]),
+        new Set([1]),
+        ctx,
+      );
+      if (model.kind !== 'settler') throw new Error('expected a settler model');
+      return model.experience.map((row) => row.repeats);
+    };
+
+    // Wood alone: the general track holds the same 4 and is the same row twice.
+    expect(
+      rowsOf([
+        [GENERAL, 40],
+        [WOOD, 40],
+      ]),
+    ).toEqual([4]);
+    // Wood and stone: the general track is their total, which neither row says.
+    expect(
+      rowsOf([
+        [GENERAL, 60],
+        [WOOD, 40],
+        [STONE, 20],
+      ]),
+    ).toEqual([6, 4, 2]);
+  });
+
   it('rounds the remaining-condition percent, with any wear below 100 and a live item above 0', () => {
     expect(remainingPct(undefined)).toBe(100); // fresh (absent degreeOfUse)
     expect(remainingPct(0)).toBe(100);

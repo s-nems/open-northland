@@ -2580,7 +2580,8 @@ body.on-drag-scroll.on-drag-scroll-free * {
   font-size: 10px;
 }
 /* A settler is one line: its name and its trade beside each other, with no rule to divide them and no
-   width floor to leave air after two short words. Another seat's owner wraps onto a line of its own. */
+   width floor to leave air after two short words. Another seat's owner and an own worker's training
+   wrap onto lines of their own, so a long track name never widens the name's column. */
 .on-hud .on-hovercard--brief {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -2588,7 +2589,8 @@ body.on-drag-scroll.on-drag-scroll-free * {
   gap: 2px 5px;
   min-width: 0;
 }
-.on-hud .on-hovercard--brief .on-hovercard__owner {
+.on-hud .on-hovercard--brief .on-hovercard__owner,
+.on-hud .on-hovercard--brief .on-hovercard__facts {
   grid-column: 1 / -1;
 }
 .on-hud .on-hovercard--brief .on-tip__title {
@@ -2671,6 +2673,10 @@ body.on-drag-scroll.on-drag-scroll-free * {
 /* The leader rides lower on a small line than it does under the summary bar's 15 px rows. */
 .on-hud .on-hovercard .on-tip__row > span:first-child::after {
   transform: translateY(-1px);
+}
+/* A line with no figure, such as the count of experience left off the card, leads to nothing. */
+.on-hud .on-hovercard .on-tip__row:has(> b:empty) > span:first-child::after {
+  content: none;
 }
 /* The icon box is taller than the line; centred and unshrinkable, it neither stretches the row nor
    loses width to a long good name. */

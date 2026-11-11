@@ -8,6 +8,8 @@ import { experienceLabel } from './settler.js';
 
 /** One upcoming-unlock row: progress toward a `needforjob` or `needforgood` threshold. */
 export interface UnlockProgressRowModel {
+  /** Whether the threshold unlocks a profession or a good. */
+  readonly target: 'job' | 'good';
   /** The profession or the good the threshold unlocks. */
   readonly unlocks: string;
   /** The experience track this settler trains toward it. */
@@ -30,6 +32,15 @@ const UPCOMING_UNLOCK_ROWS_MAX = 3;
  * gate.
  */
 export function unlockProgressRows(
+  ctx: UnitPanelModelContext,
+  comps: Comp,
+  progressionEnabled: boolean,
+): UnlockProgressRowModel[] {
+  return unlockProgress(ctx, comps, progressionEnabled).slice(0, UPCOMING_UNLOCK_ROWS_MAX);
+}
+
+/** Every row {@link unlockProgressRows} picks from, nearest first. */
+export function unlockProgress(
   ctx: UnitPanelModelContext,
   comps: Comp,
   progressionEnabled: boolean,
@@ -67,6 +78,7 @@ export function unlockProgressRows(
         ? experienceLabel(ctx, trackType, tracks[reachable])
         : jobDisplayName(ctx, jobType);
     rows.push({
+      target: req.target,
       unlocks: req.target === 'job' ? jobDisplayName(ctx, req.targetId) : goodLabel(ctx, req.targetId),
       track: trackLabel,
       current,
@@ -76,7 +88,8 @@ export function unlockProgressRows(
     });
   }
   rows.sort((a, b) => b.current / b.required - a.current / a.required || a.order - b.order);
-  return rows.slice(0, UPCOMING_UNLOCK_ROWS_MAX).map(({ unlocks, track, current, required }) => ({
+  return rows.map(({ target, unlocks, track, current, required }) => ({
+    target,
     unlocks,
     track,
     current,
