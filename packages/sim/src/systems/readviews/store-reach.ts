@@ -79,8 +79,8 @@ export function inputReach(
   const gate = goodsSearchGate(world, ctx.content, terrain, owner, door, limit);
   const band = heldBands(world, ctx, terrain).supplying(goodType);
   band.sync();
-  const source = (e: Entity) => (lends(e) ? QUALIFIES : null);
-  if (band.index.nearest(here, source, gate, undefined, sameSideAs(world, owner), door) !== null) {
+  const lender = (e: Entity) => (lends(e) ? QUALIFIES : null);
+  if (band.index.nearest(here, lender, gate, undefined, sameSideAs(world, owner), door) !== null) {
     return 'inReach';
   }
   const produced = reachAmong(world, operator, producers, (source) =>
