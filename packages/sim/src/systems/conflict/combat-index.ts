@@ -507,6 +507,12 @@ export class CombatIndex {
       return scan;
     }
     const hostile = seeker === null ? EVERY_PLAYER : hostileMaskOf(this.hostileMasks, seeker);
+    // A building's body lies within the layer's body reach of its own node, so off the ground's box widened
+    // by that reach a narrowed band can keep only a vehicle, which moves.
+    const groundWalls =
+      narrow === null
+        ? null
+        : boxCellRange(narrow.x, narrow.y, narrow.radius + this.grid.buildingBodyReach());
     let count = 0;
     const { cx0, cx1, cy0, cy1 } = boxCellRange(fromX, fromY, maxDist);
     for (let cx = cx0; cx <= cx1; cx++) {
@@ -515,11 +521,17 @@ export class CombatIndex {
         if (cell === undefined) continue;
         // A building that only shoots this pass has no tier of its own, so its cell's bodies all stay.
         const bodyTier = firstTierOnly && !this.grid.holdsShootingBuilding(cell);
+        const firstBody =
+          groundWalls !== null &&
+          (cx < groundWalls.cx0 || cx > groundWalls.cx1 || cy < groundWalls.cy0 || cy > groundWalls.cy1)
+            ? cell.bodyBase
+            : 0;
         if (!unitsOnly && bodiesHoldBandCandidate(cell, hostile))
           count = appendBand(
             scan,
             count,
             cell.bodies,
+            firstBody,
             fromX,
             fromY,
             minDist,
@@ -533,6 +545,7 @@ export class CombatIndex {
             scan,
             count,
             cell.units,
+            0,
             fromX,
             fromY,
             minDist,
@@ -667,13 +680,14 @@ function unitsHoldBandCandidate(cell: CoarseCell, hostile: number): boolean {
   return (cell.unitOwnerMask & hostile) !== 0 || cell.unitUndiscounted > 0 || cell.unitPassive > 0;
 }
 
-/** Append to `scan` from `count` every member of `list` within `minDist..maxDist` of (fromX, fromY) that
- *  `hostile` does not skip, growing its key buffer as needed; returns the new count. `firstTierOnly` also
- *  skips the members the list holds as no first-tier combat target. */
+/** Append to `scan` from `count` every member of `list` from entry `first` on within `minDist..maxDist` of
+ *  (fromX, fromY) that `hostile` does not skip, growing its key buffer as needed; returns the new count.
+ *  `firstTierOnly` also skips the members the list holds as no first-tier combat target. */
 function appendBand(
   scan: BandScan,
   count: number,
   list: MemberList,
+  first: number,
   fromX: number,
   fromY: number,
   minDist: number,
@@ -684,7 +698,7 @@ function appendBand(
 ): number {
   const { members, x, y, bit, tier } = list;
   let n = count;
-  for (let i = 0; i < list.count; i++) {
+  for (let i = first; i < list.count; i++) {
     const memberBit = bit[i] ?? 0;
     if (memberBit !== 0 && (memberBit & hostile) === 0) continue;
     if (firstTierOnly && tier[i] === 0) continue;

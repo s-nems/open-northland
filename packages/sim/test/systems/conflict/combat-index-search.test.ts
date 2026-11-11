@@ -16,6 +16,7 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../../src/index.js';
 import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
+import type { BandGround } from '../../../src/systems/conflict/combat-grid.js';
 import { CombatIndex } from '../../../src/systems/conflict/combat-index.js';
 import { buildingBodyNodes } from '../../../src/systems/conflict/target-node.js';
 import {
@@ -73,6 +74,8 @@ const RETYPED_AT = { x: 20, y: 20 };
 const GROUND = { x: 30, y: 66, radius: 18 };
 const ENTERS_FROM = { x: 30, y: 47 };
 const LEAVES_FROM = { x: 12, y: 67 };
+/** A keep anchored on the last node column of a coarse cell, its other walls in the next one. */
+const EDGE_KEEP = { x: 47, y: 20 };
 /** A home that shoots its house bow while on alarm with someone inside, and only then ranks first. */
 const SHELTER = 32;
 const SHELTER_CAPACITY = 4;
@@ -304,7 +307,40 @@ function expectRingWalkAgreement(
     expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, seeker, TAIL_RINGS)).toEqual(
       ringNearestFew(reference, x, y, minDist, maxDist, hostile, FEW),
     );
+    // A narrowed band keeps exactly the acceptors whose own node stands on its ground.
+    const ground = groundAt(sim, Math.floor(draw() * MAP_NODES), Math.floor(draw() * MAP_NODES));
+    const narrowed = index.nearestFewOfBestRank(
+      x,
+      y,
+      minDist,
+      maxDist,
+      () => 0,
+      1,
+      accept,
+      FEW,
+      null,
+      TAIL_RINGS,
+      'manhattan',
+      ground,
+    );
+    expect(narrowed).toEqual(
+      ringNearestFew(reference, x, y, minDist, maxDist, (e) => ground.holds(e) && accept(e), FEW),
+    );
   }
+}
+
+/** The {@link GROUND}-sized ground around node (gx, gy), tested at each member's own node. */
+function groundAt(sim: Simulation, gx: number, gy: number): BandGround {
+  const terrain = terrainOf(sim);
+  return {
+    x: gx,
+    y: gy,
+    radius: GROUND.radius,
+    holds: (e) => {
+      const node = entityNode(sim.world, terrain, e);
+      return hexDistanceBetween(gx, gy, terrain.xOf(node), terrain.yOf(node)) <= GROUND.radius;
+    },
+  };
 }
 
 /** One random crowd: the draws cover every query shape, so further seeds repeat the same branches. */
@@ -443,14 +479,11 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
     midColumnStep(sim.world, terrain, enters, ENTERS_FROM.x, ENTERS_FROM.y);
     midColumnStep(sim.world, terrain, leaves, LEAVES_FROM.x, LEAVES_FROM.y);
     const index = new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim));
-    const onGround = (e: Entity): boolean => {
-      const node = entityNode(sim.world, terrain, e);
-      return hexDistanceBetween(GROUND.x, GROUND.y, terrain.xOf(node), terrain.yOf(node)) <= GROUND.radius;
-    };
-    expect([onGround(enters), onGround(leaves)]).toEqual([false, true]);
+    const ground = groundAt(sim, GROUND.x, GROUND.y);
+    expect([ground.holds(enters), ground.holds(leaves)]).toEqual([false, true]);
     dropPath(sim.world, enters);
     dropPath(sim.world, leaves);
-    expect([onGround(enters), onGround(leaves)]).toEqual([true, false]);
+    expect([ground.holds(enters), ground.holds(leaves)]).toEqual([true, false]);
 
     const found = index.nearestFewOfBestRank(
       GROUND.x,
@@ -464,9 +497,35 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
       P0,
       TAIL_RINGS,
       'hex',
-      { ...GROUND, holds: onGround },
+      ground,
     );
     expect(found.map((f) => f.entity)).toEqual([enters]);
+  });
+
+  it("keeps a building on a narrowed band's ground at its nearest wall, past the ground's own cells", () => {
+    // The keep stands on the ground's east edge, and three of its walls lie in the coarse cell past it.
+    const sim = mappedSim(1);
+    const keep = keepAtNode(sim, EDGE_KEEP.x, EDGE_KEEP.y, P1);
+    const index = new CombatIndex(sim.world, ctxOf(sim), terrainOf(sim));
+    const ground = groundAt(sim, EDGE_KEEP.x - GROUND.radius, EDGE_KEEP.y);
+    expect(ground.holds(keep)).toBe(true);
+    const lastWall = EDGE_KEEP.x + KEEP_WALLS.length - 1;
+
+    const found = index.nearestFewOfBestRank(
+      lastWall + 1,
+      EDGE_KEEP.y,
+      0,
+      MAX_RADIUS,
+      () => 0,
+      1,
+      () => true,
+      FEW,
+      P0,
+      TAIL_RINGS,
+      'hex',
+      ground,
+    );
+    expect(found).toEqual([{ entity: keep, distance: 1 }]);
   });
 
   it('scans a query nested in an accept into its own buffer, leaving the outer band intact', () => {
@@ -526,15 +585,6 @@ describe('CombatIndex first-tier search', () => {
     const index = new CombatIndex(world, ctx, terrain);
     expect(index.firing.has(shooting)).toBe(true);
     const firstTier: Accept = (e) => isPriorityCombatTarget(world, ctx, e, index.firingNow);
-    const groundAt = (gx: number, gy: number) => ({
-      x: gx,
-      y: gy,
-      radius: GROUND.radius,
-      holds: (e: Entity): boolean => {
-        const node = entityNode(world, terrain, e);
-        return hexDistanceBetween(gx, gy, terrain.xOf(node), terrain.yOf(node)) <= GROUND.radius;
-      },
-    });
     const draw = lcg(CROWD_SEED);
     for (let q = 0; q < QUERIES; q++) {
       const x = Math.floor(draw() * SCENE_NODES);
@@ -545,7 +595,7 @@ describe('CombatIndex first-tier search', () => {
       const full = index.nearest(x, y, minDist, maxDist, firstTier, seeker, 'hex');
       expect(index.nearest(x, y, minDist, maxDist, firstTier, seeker, 'hex', true)).toEqual(full);
       if (!index.firstTierWithin(seeker, x, y, maxDist)) expect(full).toBeNull();
-      const ground = groundAt(Math.floor(draw() * SCENE_NODES), Math.floor(draw() * SCENE_NODES));
+      const ground = groundAt(sim, Math.floor(draw() * SCENE_NODES), Math.floor(draw() * SCENE_NODES));
       for (const narrow of [null, ground]) {
         const few = (only: boolean) =>
           index.nearestFewOfBestRank(

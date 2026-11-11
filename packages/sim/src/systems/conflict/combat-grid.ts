@@ -14,6 +14,7 @@ import {
   settlerTradeLog,
 } from '../../components/index.js';
 import type { ChangeFeed, Component, Entity, World } from '../../ecs/world.js';
+import { hexDistanceBetween } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../context.js';
 import {
@@ -255,6 +256,9 @@ export class CombatGrid {
   private readonly builtCells: CoarseCell[] = [];
   private builtCount = 0;
   private readonly buildings = new Map<Entity, HeldBuilding>();
+  /** No held building presents a body node farther (map points) from its own node than this: the most any
+   *  admitted since the last rebuild did, so one that left never lowers it below the truth. */
+  private bodyReach = 0;
   /** Members on the deprioritized siege tier, classified by type when the layer is built. */
   private readonly lowPriority = new Set<Entity>();
   /** The {@link LAYER_STORES} membership generations the layer is known current at; null before the first
@@ -505,6 +509,11 @@ export class CombatGrid {
     return this.moveFeed.mayHaveMoved(e);
   }
 
+  /** How far (map points) from its own node (`entityNode`) a held building may present a body node. */
+  buildingBodyReach(): number {
+    return this.bodyReach;
+  }
+
   /** The band scan scratch for nesting depth `depth`. */
   bandScanAt(depth: number): BandScan {
     let scan = this.bandScans[depth];
@@ -631,6 +640,7 @@ export class CombatGrid {
     this.builtCount = 0;
     this.buildingLayerVersion++;
     this.buildings.clear();
+    this.bodyReach = 0;
     this.lowPriority.clear();
     for (const b of world.query(Building, Health, Position)) {
       const { cells, bit } = this.admitBuilding(world, ctx, b);
@@ -671,6 +681,7 @@ export class CombatGrid {
       cellNodes.push(1);
     }
     const held = { ...entry, cells, cellNodes, towerRanked };
+    this.bodyReach = Math.max(this.bodyReach, bodyReachOf(world, this.terrain, b, entry.nodes));
     this.buildings.set(b, held);
     if (isLowPriorityBuildingTarget(world, ctx, b)) this.lowPriority.add(b);
     return held;
@@ -879,6 +890,9 @@ export class CombatGrid {
         return [
           `combatBuildingLayer holds a stale entry for building ${b} - it changed without a generation bump`,
         ];
+      }
+      if (bodyReachOf(world, this.terrain, b, fresh.nodes) > this.bodyReach) {
+        return [`combatBuildingLayer body reach ${this.bodyReach} is short of building ${b}'s`];
       }
     }
     if (live !== this.buildings.size) {
@@ -1091,6 +1105,17 @@ function isLayerMember(world: World, e: Entity): boolean {
 /** Whether `e` is a combatant, and so in the unit layer: a felled one included until cleanup reaps it. */
 export function isCombatant(world: World, e: Entity): boolean {
   return world.has(e, Settler) && world.has(e, Health) && world.has(e, Position);
+}
+
+/** The farthest (map points) any of `nodes` lies from building `b`'s own node. */
+function bodyReachOf(world: World, terrain: TerrainGraph, b: Entity, nodes: readonly NodeId[]): number {
+  const own = derivedEntityNode(world, terrain, b);
+  const ox = terrain.xOf(own);
+  const oy = terrain.yOf(own);
+  let reach = 0;
+  for (const node of nodes)
+    reach = Math.max(reach, hexDistanceBetween(ox, oy, terrain.xOf(node), terrain.yOf(node)));
+  return reach;
 }
 
 function buildingEntry(world: World, ctx: MapContext, terrain: TerrainGraph, b: Entity): BuildingEntry {
