@@ -34,7 +34,7 @@ Ogg Vorbis and lowered by 3 dB; its notice is in `packages/app/public/licenses/T
 The Byzantine long-sword soldier's blow plays "bing1.wav" from "Metal Impact Sounds" by BMacZero, under
 Creative Commons CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/), from
 https://opengameart.org/node/118334. The app ships it as `packages/app/public/audio/mace-hit.ogg`,
-lowered by 9 dB and encoded as Ogg Opus; its notice is in the same file.
+trimmed of its 30 ms lead-in, lowered by 13 dB and encoded as Ogg Opus; its notice is in the same file.
 
 Text imported from game or mod tables is also generated content, including UI labels. Keep table/id
 bindings in code and load the wording through the pipeline. Project-authored UI text, intentional

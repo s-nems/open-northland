@@ -90,7 +90,7 @@ const reviewedBinaryAssets = new Set([
   // packages/app/public/licenses/THIRD-PARTY-NOTICES.txt.
   'packages/app/public/audio/colossal-boss-battle.ogg',
   // The Byzantine mace blow: "bing1.wav" from "Metal Impact Sounds" by BMacZero, CC0, from
-  // https://opengameart.org/node/118334, 9 dB lower as Ogg Opus; notice in THIRD-PARTY-NOTICES.txt.
+  // https://opengameart.org/node/118334, trimmed, 13 dB lower as Ogg Opus; notice in THIRD-PARTY-NOTICES.txt.
   'packages/app/public/audio/mace-hit.ogg',
   // Original OpenNorthland branding (commissioned art, no original-game material). The masters live
   // in tools/brand/source; `npm run brand` derives the rest, including the README logo above. The

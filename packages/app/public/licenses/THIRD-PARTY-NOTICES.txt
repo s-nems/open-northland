@@ -56,6 +56,6 @@ Mace blow (the Byzantine long-sword soldier's hit, audio/mace-hit.ogg)
   "bing1.wav" from "Metal Impact Sounds" by BMacZero, dedicated to the public domain under
   Creative Commons CC0 1.0 Universal, https://creativecommons.org/publicdomain/zero/1.0/.
   Source: https://opengameart.org/node/118334
-  Modified: lowered by 9 dB and encoded as Ogg Opus.
+  Modified: trimmed of its 30 ms lead-in, lowered by 13 dB and encoded as Ogg Opus.
 
 The bundled fonts carry their own licenses beside them, under /fonts/ in the same bundle.
