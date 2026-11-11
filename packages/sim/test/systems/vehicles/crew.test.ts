@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Building,
   Chat,
   Equipment,
   JobAssignment,
@@ -65,6 +66,9 @@ const SHIP_SMALL = 3;
 const CATAPULT = 5;
 const SCOUT = 27;
 const CARRIER = 24;
+/** The fixture carrier the headquarters posts (`logicworker` slot), which also crews a handcart. */
+const FIXTURE_PORTER = 36;
+const HEADQUARTERS = 1;
 const SOLDIER = 31;
 const CIVILIST = 6;
 const WOODCUTTER = 1;
@@ -649,6 +653,37 @@ describe('leaving', () => {
     expect(s.world.has(scout, Position)).toBe(true);
     s.run(SAIL_TICKS);
     expect(nodeOf(s, scout)).toEqual({ hx: 2, hy: 6 }); // the order ran after the detach
+  });
+
+  it('takes a cart rider off its cart when a group order posts it to a workplace', () => {
+    const s = sim();
+    s.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HEADQUARTERS,
+      tribe: VIKING,
+      x: 4,
+      y: 12,
+      owner: P0,
+      force: true,
+    });
+    const cart = spawn(s, HANDCART, 12, 6);
+    const porter = spawnSettler(s, CART_DOOR.hx, CART_DOOR.hy, FIXTURE_PORTER);
+    const store = [...s.world.query(Building)][0];
+    if (store === undefined) throw new Error('store missing');
+    attach(s, porter, cart); // unposted, so it crews the cart rather than pulling it
+    s.enqueue(playerCommand(P0, { kind: 'boardVehicle', entity: porter }));
+    boardOut(s, cart, porter);
+    s.enqueue(
+      playerCommand(P0, {
+        kind: 'assignWorkerGroup',
+        building: store,
+        members: [{ entity: porter, jobPriority: [FIXTURE_PORTER] }],
+      }),
+    );
+    s.step();
+    expect(s.world.has(porter, Rider)).toBe(false);
+    expect(s.world.has(porter, Position)).toBe(true);
+    expect(s.world.tryGet(porter, JobAssignment)?.workplace).toBe(store);
   });
 
   it('halts a cart whose only commander is taken off it mid-drive by a job order', () => {

@@ -37,6 +37,7 @@ import { isHeroJob } from '../../readviews/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
 import { markIfPostedOutOfReach } from '../../settlers/drives/cut-off.js';
 import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
+import { detachBeforeOrder } from '../../vehicles/crew.js';
 import { groupPlacementOrder } from '../group-placement.js';
 import {
   deferOrderDuringAtomic,
@@ -147,7 +148,9 @@ export function assignWorker(
   markIfPostedOutOfReach(world, ctx, e);
 }
 
-/** Employ the group at one building - see the command doc and {@link groupPlacementOrder}. */
+/** Employ the group at one building - see the command doc and {@link groupPlacementOrder}. Each member
+ *  leaves its vehicle first, as its own `assignWorker` order makes it, or keeps its seat and its old post
+ *  when it may not leave. */
 export function assignWorkerGroup(
   world: World,
   ctx: SystemContext,
@@ -162,6 +165,7 @@ export function assignWorkerGroup(
     interactionNode(world, ctx, building),
     workplaceOf,
   )) {
+    if (!detachBeforeOrder(world, ctx, entity)) continue;
     assignWorker(world, ctx, { kind: 'assignWorker', entity, building, jobPriority });
   }
 }
