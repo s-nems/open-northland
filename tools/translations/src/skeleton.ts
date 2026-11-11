@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Writes a map overlay skeleton for every map of a map archive or folder: each string and briefing block
- * of the basis language with its source text as the value, for a translator to replace in place. Usage:
- * `translations/AGENTS.md`.
+ * Writes a map overlay skeleton for every map of a map archive or folder, or for the selected maps of the
+ * unpacked data pack, campaign maps included: each string and briefing block of the basis language with
+ * its source text as the value, for a translator to replace in place. Usage: `docs/DEVELOPMENT.md`.
  */
 
 import { realpathSync } from 'node:fs';
@@ -29,6 +29,7 @@ import {
   isMapTextFile,
   MAP_DAT_FILE,
   type MapLanguageText,
+  type MapSourceText,
   type MapTree,
   mapIdFromPath,
   mapSourceTextDigest,
@@ -37,6 +38,7 @@ import {
   treeFromFolder,
 } from '@open-northland/map-import';
 import { readOverlayFile, TRANSLATIONS_ROOT } from '@open-northland/translations';
+import { type PackMap, readPackText } from './pack-text.js';
 
 /** One map folder's skeleton; or the earlier folder with the same `map.dat` and basis text, whose
  *  skeleton serves it too; or why it gets none. */
@@ -50,11 +52,14 @@ export type MapSkeleton =
   | { readonly kind: 'shared'; readonly folder: string; readonly sharesWith: string }
   | { readonly kind: 'refused'; readonly folder: string; readonly refusal: string };
 
-export interface SkeletonOptions {
+export interface SkeletonLanguages {
   /** The overlay's language. */
   readonly lang: Language;
   /** The language to translate from; by default the first source language the map ships. */
   readonly basis?: SourceLanguage;
+}
+
+export interface SkeletonOptions extends SkeletonLanguages {
   /** The name a map at the tree root takes: the archive's or folder's own. */
   readonly rootName: string;
 }
@@ -81,20 +86,23 @@ function spelledFolder(tree: MapTree, key: string, rootName: string): string {
 const hasEntries = (text: MapLanguageText | undefined): text is MapLanguageText =>
   text !== undefined && (Object.keys(text.strings).length > 0 || text.briefings.size > 0);
 
-/** The skeleton of every map folder in `tree`, in path order; one per `map.dat` digest and basis text. */
-export async function mapSkeletons(tree: MapTree, options: SkeletonOptions): Promise<MapSkeleton[]> {
+/** One map whose text a skeleton translates: where it sits, the alias its overlay names it by and its text. */
+interface MapTextEntry {
+  readonly folder: string;
+  readonly map: string;
+  readonly text: MapSourceText;
+}
+
+/** The skeleton of each map in order; one per `map.dat` digest and basis text. */
+function skeletonsOf(entries: Iterable<MapTextEntry>, options: SkeletonLanguages): MapSkeleton[] {
   const { lang } = options;
   const skeletons: MapSkeleton[] = [];
   /** The first folder of each `map.dat` digest and basis digest. */
   const folderByText = new Map<string, string>();
-  for (const key of findMapFolders(tree)) {
-    const folder = spelledFolder(tree, key, options.rootName);
+  for (const { folder, map, text } of entries) {
     const refuse = (refusal: string): void => {
       skeletons.push({ kind: 'refused', folder, refusal });
     };
-    const text = await readMapSourceText(tree, key);
-    // findMapFolders lists only folders that hold a map.dat.
-    if (text === undefined) continue;
     const shipped = MAP_TEXT_LANGUAGES.filter(isSourceLanguage).filter((source) =>
       hasEntries(text.languages[source]),
     );
@@ -113,8 +121,6 @@ export async function mapSkeletons(tree: MapTree, options: SkeletonOptions): Pro
       refuse(`the map ships ${lang} text itself, which wins over an overlay${edit}`);
       continue;
     }
-    // A folder name without a Latin letter or digit slugs to nothing.
-    const map = mapIdFromPath(`${folder}/${MAP_DAT_FILE}`) || DEFAULT_ROOT_NAME;
     const overlay = skeletonOverlay(map, basis, source);
     const textKey = `${text.datDigest}/${overlay.basis.digest}`;
     const twin = folderByText.get(textKey);
@@ -126,6 +132,49 @@ export async function mapSkeletons(tree: MapTree, options: SkeletonOptions): Pro
     skeletons.push({ kind: 'skeleton', folder, digest: text.datDigest, overlay });
   }
   return skeletons;
+}
+
+/** The skeleton of every map folder in `tree`, in path order; one per `map.dat` digest and basis text. */
+export async function mapSkeletons(tree: MapTree, options: SkeletonOptions): Promise<MapSkeleton[]> {
+  const entries: MapTextEntry[] = [];
+  for (const key of findMapFolders(tree)) {
+    const text = await readMapSourceText(tree, key);
+    // findMapFolders lists only folders that hold a map.dat.
+    if (text === undefined) continue;
+    const folder = spelledFolder(tree, key, options.rootName);
+    // A folder name without a Latin letter or digit slugs to nothing.
+    const map = mapIdFromPath(`${folder}/${MAP_DAT_FILE}`) || DEFAULT_ROOT_NAME;
+    entries.push({ folder, map, text });
+  }
+  return skeletonsOf(entries, options);
+}
+
+/** The skeleton of each of the pack's `maps`, named by the id the pipeline converts it under, as a
+ *  campaign map's overlay must be. */
+export function packMapSkeletons(maps: readonly PackMap[], options: SkeletonLanguages): MapSkeleton[] {
+  return skeletonsOf(
+    maps.map((map) => ({ folder: map.folder, map: map.id, text: map.text })),
+    options,
+  );
+}
+
+/** The pack's maps `selected` names, by pipeline id or folder name, case-insensitively, in folder order;
+ *  every map without a selection. Throws on a name no map has. */
+export function selectPackMaps(
+  maps: ReadonlyMap<string, readonly PackMap[]>,
+  selected: readonly string[],
+): PackMap[] {
+  const all = [...maps.values()]
+    .flat()
+    .sort((a, b) => (a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0));
+  if (selected.length === 0) return all;
+  const names = (map: PackMap): string[] => [map.id, map.folder.slice(map.folder.lastIndexOf('/') + 1)];
+  const wanted = new Set(selected.map((name) => name.toLowerCase()));
+  const unknown = [...wanted].filter(
+    (name) => !all.some((map) => names(map).some((n) => n.toLowerCase() === name)),
+  );
+  if (unknown.length > 0) throw new Error(`no pack map named ${unknown.join(', ')}`);
+  return all.filter((map) => names(map).some((name) => wanted.has(name.toLowerCase())));
 }
 
 const UNRAR_WASM = 'node-unrar-js/esm/js/unrar.wasm';
@@ -219,7 +268,9 @@ export async function writeMapOverlay(
 
 const USAGE =
   'usage: translations:skeleton <map archive or folder> --lang <language> [--basis <source language>] ' +
-  '[--out <translations dir>] [--force]';
+  '[--out <translations dir>] [--force]\n' +
+  '       translations:skeleton --pack <unpacked data pack> [<map id or folder name>...] --lang <language> ' +
+  '[--basis <source language>] [--out <translations dir>] [--force]';
 
 function entryCount(overlay: MapOverlay): string {
   const strings = Object.keys(overlay.strings).length;
@@ -234,12 +285,14 @@ async function main(): Promise<void> {
       lang: { type: 'string' },
       basis: { type: 'string' },
       out: { type: 'string' },
+      pack: { type: 'string' },
       force: { type: 'boolean', default: false },
     },
     strict: true,
   });
   const [input, ...extra] = positionals;
-  if (input === undefined || extra.length > 0 || values.lang === undefined) throw new Error(USAGE);
+  if (values.lang === undefined || (values.pack === undefined && (input === undefined || extra.length > 0)))
+    throw new Error(USAGE);
   const lang = values.lang;
   if (!isLanguage(lang)) throw new Error(`--lang ${lang}: expected one of ${LANGUAGES.join(', ')}`);
   const basis = values.basis;
@@ -248,9 +301,17 @@ async function main(): Promise<void> {
   // npm runs a workspace script inside the workspace; INIT_CWD is where it was invoked.
   const baseDir = process.env.INIT_CWD ?? process.cwd();
   const out = values.out === undefined ? TRANSLATIONS_ROOT : resolve(baseDir, values.out);
-  const { tree, rootName } = await readMapInput(resolve(baseDir, input));
-  const skeletons = await mapSkeletons(tree, { lang, rootName, ...(basis === undefined ? {} : { basis }) });
-  if (skeletons.length === 0) throw new Error(`${input}: no map folder, no ${MAP_DAT_FILE} found`);
+  const languages = { lang, ...(basis === undefined ? {} : { basis }) };
+  let skeletons: MapSkeleton[];
+  if (values.pack !== undefined) {
+    const pack = await readPackText(resolve(baseDir, values.pack));
+    skeletons = packMapSkeletons(selectPackMaps(await pack.maps(), positionals), languages);
+  } else {
+    if (input === undefined) throw new Error(USAGE);
+    const { tree, rootName } = await readMapInput(resolve(baseDir, input));
+    skeletons = await mapSkeletons(tree, { ...languages, rootName });
+    if (skeletons.length === 0) throw new Error(`${input}: no map folder, no ${MAP_DAT_FILE} found`);
+  }
   for (const skeleton of skeletons) {
     if (skeleton.kind === 'shared') {
       console.log(
