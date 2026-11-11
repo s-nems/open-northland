@@ -485,10 +485,16 @@ ${textureChain(maxTextures, 'vTextureId', (i) => `for (int k = 0; k < OUTLINE_TA
     outColor = recoloured ? recolouredTexel(texel, lutRow) : drawnTexel(texel, indexed, paletted, lutRow);
   } else if (minified) {
     // Not a mipmap substitute at extreme zoom-out: sampling cost is deliberately bounded.
-    vec4 t0 = sampleTexture(clamp(vUV - footprint, low, high), uvDx, uvDy);
-    vec4 t1 = sampleTexture(clamp(vUV + vec2(footprint.x, -footprint.y), low, high), uvDx, uvDy);
-    vec4 t2 = sampleTexture(clamp(vUV + vec2(-footprint.x, footprint.y), low, high), uvDx, uvDy);
-    vec4 t3 = sampleTexture(clamp(vUV + footprint, low, high), uvDx, uvDy);
+    // The four taps in one pass over the chain: a chain walked per tap measured 5% of the frame
+    // slower at zoom 0.5 (Radeon Vega 7 on Direct3D 11).
+    vec2 minifyUV[MINIFY_WINDOWS];
+    for (int k = 0; k < MINIFY_WINDOWS; k++) minifyUV[k] = clamp(vUV + footprint * MINIFY_CORNERS[k], low, high);
+    vec4 minifyTaps[MINIFY_WINDOWS];
+${textureChain(maxTextures, 'vTextureId', (i) => `for (int k = 0; k < MINIFY_WINDOWS; k++) minifyTaps[k] = textureGrad(uTextures[${i}], minifyUV[k], uvDx, uvDy);`)}
+    vec4 t0 = minifyTaps[0];
+    vec4 t1 = minifyTaps[1];
+    vec4 t2 = minifyTaps[2];
+    vec4 t3 = minifyTaps[3];
     // A recoloured page's taps resolve before they blend, since an averaged index names another colour;
     // any other indexed page is never paletted here, so its averaged coverage stays its coverage.
     outColor = recoloured
