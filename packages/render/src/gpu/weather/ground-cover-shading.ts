@@ -1,5 +1,6 @@
 import { BufferImageSource, UniformGroup } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
+import { COVER_HASH_SCALE, COVER_NOISE_PERIOD } from './cover-noise.js';
 
 /**
  * The terrain shader's weather-cover hook: wet ground darkens and deepens in colour with small puddles
@@ -12,7 +13,7 @@ import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
  * The cover texture is the `WeatherCover` grid, one texel per weather sector (r wet, g snow, b dust,
  * a rain falling), linear-filtered so its texel centres land on sector centres. `uCover` gates the
  * whole pass: 0 draws the ground exactly as before. Beyond the cover texel the pass reads four ground
- * taps to classify the ground under snow; its noise is arithmetic.
+ * taps to classify the ground under snow and one lattice texel of `uCoverNoise` per noise lookup.
  */
 
 /** Rec. 601 luma weights, the published grey the grades pivot on. */
@@ -250,28 +251,19 @@ const FBM_SHIFT = 17;
 
 /** Value noise, the transition jitter and the snow drift mask, shared by the ground and the decor. */
 const COVER_NOISE = `
-  const uvec2 COVER_HASH_SCALE = uvec2(1597334673u, 3812015801u);
-  // The hash of a cell from its scaled coordinates q = uvec2(cell) * COVER_HASH_SCALE.
-  float coverHashScaled(uvec2 q) {
-    uint n = (q.x ^ q.y) * 1597334673u;
-    return float(n >> 8) * (1.0 / 16777216.0);
-  }
+  // The lattice (cover-noise.ts): a texel holds its cell's value, then its right, lower and diagonal
+  // neighbours'. highp: the values are 24-bit fractions.
+  uniform highp sampler2D uCoverNoise;
+  // The hash the lattice is built from, for the terms that key on more than a lattice cell.
   float coverHash(ivec2 p) {
-    return coverHashScaled(uvec2(p) * COVER_HASH_SCALE);
+    uvec2 q = uvec2(p) * uvec2(${COVER_HASH_SCALE[0]}u, ${COVER_HASH_SCALE[1]}u);
+    return float(((q.x ^ q.y) * ${COVER_HASH_SCALE[0]}u) >> 8) * (1.0 / 16777216.0);
   }
   float coverNoise(vec2 p) {
-    vec2 i = floor(p);
     vec2 t = fract(p);
     t = t * t * (3.0 - 2.0 * t);
-    // uint arithmetic wraps, so the next cell's scaled coordinate is this one's plus the scale: six
-    // integer multiplies per lookup instead of twelve, bit for bit the same.
-    uvec2 q = uvec2(ivec2(i)) * COVER_HASH_SCALE;
-    uvec2 next = q + COVER_HASH_SCALE;
-    float a = coverHashScaled(q);
-    float b = coverHashScaled(uvec2(next.x, q.y));
-    float d = coverHashScaled(uvec2(q.x, next.y));
-    float e = coverHashScaled(next);
-    return mix(mix(a, b, t.x), mix(d, e, t.x), t.y);
+    vec4 c = texelFetch(uCoverNoise, ivec2(floor(p)) & ${COVER_NOISE_PERIOD - 1}, 0);
+    return mix(mix(c.x, c.y, t.x), mix(c.z, c.w, t.x), t.y);
   }
   // Two octaves at p, the first already drawn there.
   float coverFbm(float first, vec2 p) {
