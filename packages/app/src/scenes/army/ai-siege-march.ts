@@ -93,7 +93,7 @@ const CAMERA_AT = { hx: 40, hy: 36 } as const;
 const AT_HEADQUARTERS_NODES = 36;
 
 /** The tower has fallen to the catapults and every catapult fires at the HQ the men are still breaking.
- *  Measured: every check holds from tick 3230 to 3670. */
+ *  Measured: every check holds from about tick 3330 to 3700. */
 const RUN_TICKS = 3500;
 
 /** Past the HQ's fall. Measured: every check holds from about tick 2000 through at least 6000. */

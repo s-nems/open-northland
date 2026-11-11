@@ -42,9 +42,9 @@ const MASTER_CATAPULT_SKILL = 100;
 /** A hull the swordsmen cannot break inside the run, so the catapult is still standing to check. */
 const TOUGH_HULL_HITPOINTS = 1_000_000;
 /** East, just past the far reach but inside the reach a military target draws the catapult from. */
-const ENEMY_TOWER: readonly [string, number, number] = ['tower_00', 21, 8];
+const ENEMY_TOWER: readonly [string, number, number] = ['tower_00', 20, 8];
 /** Two stones' worth, so the tower falls early in the run and the archer's turn comes. */
-const TOWER_HITPOINTS = 10_000;
+const TOWER_HITPOINTS = 7_000;
 /** About 14 map points south-east: inside the band and nearer than the tower. */
 const ENEMY_ARCHER_AT = { x: 11, y: 13 } as const;
 /** A few cells off the catapult: they reach its hull within seconds. */
