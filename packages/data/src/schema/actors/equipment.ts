@@ -43,8 +43,8 @@ export const EquipClass = z
     /** True when the item is consumed with use (potions/shoes/tools); false for permanent gear
      *  (weapons/armour/amulets). */
     wears: z.boolean().default(false),
-    /** Additive per-cycle production credit, whole percent of the recipe outputs (wooden tool 20,
-     *  iron 70, the original's values). It adds to the operator's experience bonus, never multiplies it. */
+    /** Additive per-cycle production credit, whole percent of the recipe outputs. It adds to the
+     *  operator's experience bonus, never multiplies it. */
     productionBonusPct: z.number().int().positive().optional(),
     /** A tool's work factor in percent (wooden 125, iron 175, the original's values): a gatherer's or
      *  fisher's strokes per unit divide by it and a builder's steps per swing multiply by it. */

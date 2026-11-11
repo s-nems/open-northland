@@ -97,9 +97,10 @@ const MEAD_RESTORE = { hunger: 50, fatigue: 50 } as const;
 const NEED_POTION_RESTORE_PCT = 100;
 const HEALING_POTION_RESTORE_PCT = 40;
 /** Percent of the recipe outputs a worn tool adds per cycle, summed with the experience bonus rather
- *  than multiplied with it. The original's values. */
-const WOODEN_TOOL_BONUS_PCT = 20;
-const IRON_TOOL_BONUS_PCT = 70;
+ *  than multiplied with it. Our balance, departing from the original's 20 and 70 so the wooden tool
+ *  stays worth making beside iron. */
+const WOODEN_TOOL_BONUS_PCT = 30;
+const IRON_TOOL_BONUS_PCT = 60;
 /** A tool's work factor for strokes and build swings, percent of bare hands. The original's values. */
 const WOODEN_TOOL_WORK_FACTOR_PCT = 125;
 const IRON_TOOL_WORK_FACTOR_PCT = 175;
