@@ -2,11 +2,11 @@ import { UNLOADED_GOOD_TYPE, type VehicleGraphics } from '@open-northland/data';
 import {
   type ClothIndexRanges,
   type FrameListAnim,
-  type ShipYardSites,
   VEHICLE_ATTACK_TICKS,
   type VehicleBinding,
   type VehicleLook,
   type VehicleTribeLooks,
+  type VehicleYardSites,
 } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import { servedShadowStem } from '../ir/joins.js';
@@ -206,7 +206,7 @@ export function buildVehicleBinding(
     readonly ships?: ReadonlySet<number>;
     /** The palette family whose LUT loaded; its rows bind the indexed body. */
     readonly ownerFamily?: string;
-    readonly shipYards?: ShipYardSites;
+    readonly vehicleYards?: VehicleYardSites;
   } = {},
 ): VehicleBinding | undefined {
   const byTribe: Record<number, Record<number, VehicleLook>> = {};
@@ -225,6 +225,6 @@ export function buildVehicleBinding(
   return {
     byTribe: tribes,
     fallbackTribe,
-    ...(options.shipYards !== undefined ? { shipYards: options.shipYards } : {}),
+    ...(options.vehicleYards !== undefined ? { vehicleYards: options.vehicleYards } : {}),
   };
 }

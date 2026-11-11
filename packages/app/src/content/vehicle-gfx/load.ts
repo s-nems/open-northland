@@ -1,9 +1,9 @@
 import {
   GFX_DIR_TO_FACING,
-  type ShipYardSites,
   type SpriteLayer,
   type VehicleBinding,
   type VehicleColourLut,
+  type VehicleYardSites,
 } from '@open-northland/render';
 import { components } from '@open-northland/sim';
 import { loadLayer, MissingAtlasError } from '../ir/load.js';
@@ -28,13 +28,12 @@ function shipTypes(ir: ContentIr | null): ReadonlySet<number> {
   return ships;
 }
 
-/** The yard houses launching a ship, each to its ship type, with the facing a launched ship takes. */
-function shipYards(ir: ContentIr | null, ships: ReadonlySet<number>): ShipYardSites | undefined {
+/** The yard houses, each to the vehicle type it launches, with the facing a launched vehicle takes. */
+function vehicleYards(ir: ContentIr | null): VehicleYardSites | undefined {
   const vehicleByHouse: Record<number, number> = {};
   let any = false;
   for (const house of ir?.buildings ?? []) {
-    if (house.typeId === undefined || house.vehicleType === undefined || !ships.has(house.vehicleType))
-      continue;
+    if (house.typeId === undefined || house.vehicleType === undefined) continue;
     vehicleByHouse[house.typeId] = house.vehicleType;
     any = true;
   }
@@ -89,11 +88,11 @@ export async function loadVehicleSheet(ir: ContentIr | null, fallbackTribe: numb
     }),
   );
   const ships = shipTypes(ir);
-  const yards = shipYards(ir, ships);
+  const yards = vehicleYards(ir);
   const binding = buildVehicleBinding(rows, loaded, frames, fallbackTribe, {
     ships,
     ...(ownerFamily !== undefined ? { ownerFamily } : {}),
-    ...(yards !== undefined ? { shipYards: yards } : {}),
+    ...(yards !== undefined ? { vehicleYards: yards } : {}),
   });
   return { binding, families, palette };
 }

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { GFX_DIR_TO_FACING } from '../../../src/data/sprites/settler.js';
 import type { FrameListAnim } from '../../../src/data/sprites/settler-bindings.js';
 import {
-  resolveShipYardSiteDraw,
   resolveVehicleDraw,
+  resolveVehicleYardSiteDraw,
   VEHICLE_ATTACK_TICKS,
 } from '../../../src/data/sprites/vehicle.js';
 import type { VehicleBinding, VehicleLook } from '../../../src/data/sprites/vehicle-bindings.js';
@@ -178,28 +178,28 @@ describe('resolveVehicleDraw', () => {
   });
 });
 
-describe('resolveShipYardSiteDraw', () => {
+describe('resolveVehicleYardSiteDraw', () => {
   const SHIP_YARD = 44;
   const OTHER_HOUSE = 6;
   const LAUNCH_FACING = 4;
   const yards: VehicleBinding = {
     ...binding,
-    shipYards: { vehicleByHouse: { [SHIP_YARD]: SHIP }, facing: LAUNCH_FACING },
+    vehicleYards: { vehicleByHouse: { [SHIP_YARD]: SHIP }, facing: LAUNCH_FACING },
   };
   const site = (fields: Parameters<typeof drawItem>[1]) =>
     drawItem('building', { tribe: VIKING, typeId: SHIP_YARD, builtPct: 40, ...fields });
 
   it('raises a yard site as its tribe’s moored ship at the launch facing, the fallback tribe’s when unbound', () => {
     const own = { bob: 7000 + LAUNCH_FACING, layer: ship.layer, sway: 'none', indexed: false };
-    expect(resolveShipYardSiteDraw(yards, site({}))).toEqual(own);
-    expect(resolveShipYardSiteDraw(yards, site({ tribe: EGYPT }))).toEqual(own);
+    expect(resolveVehicleYardSiteDraw(yards, site({}))).toEqual(own);
+    expect(resolveVehicleYardSiteDraw(yards, site({ tribe: EGYPT }))).toEqual(own);
   });
 
   it('leaves a finished yard, another house and a binding without yards to the building draw', () => {
     expect(
-      resolveShipYardSiteDraw(yards, drawItem('building', { tribe: VIKING, typeId: SHIP_YARD })),
+      resolveVehicleYardSiteDraw(yards, drawItem('building', { tribe: VIKING, typeId: SHIP_YARD })),
     ).toBeNull();
-    expect(resolveShipYardSiteDraw(yards, site({ typeId: OTHER_HOUSE }))).toBeNull();
-    expect(resolveShipYardSiteDraw(binding, site({}))).toBeNull();
+    expect(resolveVehicleYardSiteDraw(yards, site({ typeId: OTHER_HOUSE }))).toBeNull();
+    expect(resolveVehicleYardSiteDraw(binding, site({}))).toBeNull();
   });
 });

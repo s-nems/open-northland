@@ -177,9 +177,9 @@ describe('construction plot picking', () => {
   it('retains identical fog-filtered shapes and replaces only the site whose visible cells changed', () => {
     const layer = new ConstructionPlotLayer();
     const flat = FLAT;
-    const plots = () => [
-      { ref: 7, cells: [{ col: 4, row: 4 }] },
-      { ref: 8, cells: [{ col: 10, row: 4 }] },
+    const plots = (): ConstructionPlotFrame[] => [
+      { ref: 7, foundation: true, cells: [{ col: 4, row: 4 }] },
+      { ref: 8, foundation: true, cells: [{ col: 10, row: 4 }] },
     ];
     const outline = vi.spyOn(GraphicsContext.prototype, 'roundShape');
     try {
@@ -196,8 +196,8 @@ describe('construction plot picking', () => {
 
       layer.set(
         [
-          { ref: 7, cells: [{ col: 4, row: 4 }] },
-          { ref: 8, cells: [{ col: 12, row: 4 }] },
+          { ref: 7, foundation: true, cells: [{ col: 4, row: 4 }] },
+          { ref: 8, foundation: true, cells: [{ col: 12, row: 4 }] },
         ],
         flat,
       );
@@ -214,7 +214,7 @@ describe('construction plot picking', () => {
 
   it('lays the earth as a fill over feather strokes of the same outline, each on a path of its own', () => {
     const layer = new ConstructionPlotLayer(Texture.WHITE);
-    layer.set([{ ref: 7, cells: [{ col: 4, row: 4 }] }], FLAT);
+    layer.set([{ ref: 7, foundation: true, cells: [{ col: 4, row: 4 }] }], FLAT);
     const drawn = layer.container.children[0];
     if (!(drawn instanceof Graphics)) throw new Error('missing plot graphics');
     const actions = drawn.context.instructions.map((entry) => entry.action);
@@ -227,9 +227,25 @@ describe('construction plot picking', () => {
     layer.destroy();
   });
 
+  it('draws no earth for a vehicle yard, which is still picked by its body outline', () => {
+    const layer = new ConstructionPlotLayer();
+    const cells = [{ col: 4, row: 4 }];
+    const drawn = (): number => {
+      const earth = layer.container.children[0];
+      if (!(earth instanceof Graphics)) throw new Error('missing plot graphics');
+      return earth.context.instructions.length;
+    };
+    layer.set([{ ref: 7, foundation: true, cells }], FLAT);
+    expect(drawn()).toBe(1);
+    layer.set([{ ref: 7, foundation: false, cells }], FLAT);
+    expect(drawn()).toBe(0);
+    expect(layer.hit(7, 136, 76)).toBe(true);
+    layer.destroy();
+  });
+
   it('updates the drawn and clickable plot when elevation changes under the same cells', () => {
     const layer = new ConstructionPlotLayer();
-    const plots = [{ ref: 7, cells: [{ col: 4, row: 4 }] }];
+    const plots: ConstructionPlotFrame[] = [{ ref: 7, foundation: true, cells: [{ col: 4, row: 4 }] }];
     layer.set(plots, { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 });
     expect(layer.hit(7, 136, 76)).toBe(true);
     layer.set(plots, { maxLift: 50, liftAt: () => 50, liftAtNode: () => 50 });
@@ -242,7 +258,7 @@ describe('construction plot picking', () => {
   it('selects the lifted ground outline, never the future roof, and extends the body bounds', () => {
     const layer = new ConstructionPlotLayer();
     const elevation = { maxLift: 20, liftAt: () => 20, liftAtNode: () => 20 };
-    layer.set([{ ref: 7, cells: [{ col: 4, row: 4 }] }], elevation);
+    layer.set([{ ref: 7, foundation: true, cells: [{ col: 4, row: 4 }] }], elevation);
     expect(layer.hit(7, 136, 56)).toBe(true);
     expect(layer.hit(7, 136, -40)).toBe(false);
     expect(layer.hit(7, 170, 56)).toBe(false); // rounded diamond tip
@@ -260,9 +276,9 @@ describe('construction plot picking', () => {
     const layer = new ConstructionPlotLayer();
     const flat = FLAT;
     const cells = [{ col: 4, row: 4 }];
-    layer.set([{ ref: 7, cells }], flat);
+    layer.set([{ ref: 7, foundation: true, cells }], flat);
     expect(layer.hit(7, 136, 76)).toBe(true);
-    layer.set([{ ref: 8, cells }], flat);
+    layer.set([{ ref: 8, foundation: true, cells }], flat);
     expect(layer.hit(7, 136, 76)).toBe(false);
     expect(layer.hit(8, 136, 76)).toBe(true);
     layer.set([], flat);
@@ -282,21 +298,21 @@ describe('construction plot islands', () => {
   const block = (ref: number, col: number, row: number, w: number, h: number): ConstructionPlotFrame => {
     const cells: { col: number; row: number }[] = [];
     for (let r = row; r < row + h; r++) for (let c = col; c < col + w; c++) cells.push({ col: c, row: r });
-    return { ref, cells };
+    return { ref, foundation: true, cells };
   };
   /** Lone plots, an overlapping pair, a corner pinch, plots in a line and a ring around a hole. */
   const town = (): ConstructionPlotFrame[] => [
     block(1, 0, 0, 3, 2),
     block(2, 2, 1, 3, 2),
     block(3, 20, 0, 2, 2),
-    { ref: 4, cells: [{ col: 22, row: 2 }] },
+    { ref: 4, foundation: true, cells: [{ col: 22, row: 2 }] },
     block(5, 40, 10, 2, 1),
     block(6, 44, 10, 2, 1),
     block(7, 30, 30, 6, 1),
     block(8, 30, 31, 1, 4),
     block(9, 35, 31, 1, 4),
     block(10, 30, 35, 6, 1),
-    { ref: 11, cells: [{ col: 60, row: 60 }] },
+    { ref: 11, foundation: true, cells: [{ col: 60, row: 60 }] },
   ];
   /** The path each fill of `context` paints, as its drawing calls; the fill objects carry ids. */
   const shapesOf = (context: GraphicsContext): unknown[] =>
@@ -327,7 +343,9 @@ describe('construction plot islands', () => {
       town(),
       [...town(), block(12, 50, 50, 2, 2)],
       town().filter((plot) => plot.ref !== 2),
-      town().map((plot) => (plot.ref === 11 ? { ref: 11, cells: [{ col: 61, row: 60 }] } : plot)),
+      town().map((plot) =>
+        plot.ref === 11 ? { ref: 11, foundation: true, cells: [{ col: 61, row: 60 }] } : plot,
+      ),
       [...town(), block(13, 23, 0, 1, 1)],
       town().reverse(),
       [],
@@ -350,7 +368,10 @@ describe('construction plot islands', () => {
       layer.set(town(), hilly);
       const first = round.mock.calls.map(([points]) => points);
       layer.set(
-        [...town().filter((plot) => plot.ref !== 11), { ref: 11, cells: [{ col: 61, row: 60 }] }],
+        [
+          ...town().filter((plot) => plot.ref !== 11),
+          { ref: 11, foundation: true, cells: [{ col: 61, row: 60 }] },
+        ],
         hilly,
       );
       const second = round.mock.calls.slice(first.length).map(([points]) => points);

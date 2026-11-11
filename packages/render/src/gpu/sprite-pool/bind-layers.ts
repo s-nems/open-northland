@@ -31,7 +31,7 @@ import { cartDriveLook } from './layers/cart-drive.js';
 import { settlerPalette } from './layers/character.js';
 import { humanLayerRow } from './layers/human-palette-row.js';
 import type { ResolvedLayer } from './layers/resolved-layer.js';
-import { shipYardSitePalette, vehicleBodyRow, vehiclePalette } from './layers/vehicle-palette.js';
+import { vehicleBodyRow, vehiclePalette, vehicleYardSitePalette } from './layers/vehicle-palette.js';
 import { drawPlaceholder, placeholderBounds } from './placeholder.js';
 import {
   createPooled,
@@ -108,7 +108,7 @@ function hideLayers(pe: PooledEntity): void {
 
 /** A layer's opacity at the eased build progress: opaque unless it fades out towards completion. */
 function fadeAlpha(layer: ResolvedLayer, reveal: number | undefined): number {
-  if (layer.fadeOutFromPct === undefined || reveal === undefined) return 1;
+  if (layer.fadeOutFromPct === undefined || reveal === undefined) return layer.alpha ?? 1;
   const from = layer.fadeOutFromPct / 100;
   return clamp(1 - (reveal - from) / (1 - from), 0, 1);
 }
@@ -173,7 +173,7 @@ export class LayerBinder {
    *  foot look is baked on. */
   private paletteFor(kind: SpriteKind, item: DrawItem): PaletteLut | undefined {
     if (kind === 'vehicle') return vehiclePalette(this.sheet, item);
-    if (kind === 'building') return shipYardSitePalette(this.sheet, item);
+    if (kind === 'building') return vehicleYardSitePalette(this.sheet, item);
     if (kind !== 'settler') return undefined;
     return cartDriveLook(this.sheet, item) !== undefined
       ? this.sheet?.palette
@@ -339,6 +339,8 @@ export class LayerBinder {
             !pe.pickExempt[spriteSlot] &&
             layer.cast !== true &&
             layer.boundsExempt !== true &&
+            // A yard site's translucent whole vehicle shares its frame, and so its stains, with the built part.
+            layer.alpha === undefined &&
             (layer.groundFoot === undefined || layer.groundFoot === 'body') &&
             !bloodless;
           if (buildingBlood === undefined || receivesBlood) {
@@ -360,7 +362,8 @@ export class LayerBinder {
         if (
           (item.kind === 'building' || item.kind === 'palisade') &&
           layer.boundsExempt !== true &&
-          layer.shadow !== true
+          layer.shadow !== true &&
+          layer.alpha === undefined
         ) {
           pe.damageBodies ??= [];
           pe.damageBodies.push(spr);
@@ -556,7 +559,7 @@ export class LayerBinder {
     // The shader reads the LUT without a bounds check.
     spr.lutRow = clamp(lutRow, 0, pe.palette.colours - 1);
     spr.glow = layer.glow !== undefined;
-    spr.alpha = layer.glow ?? 1;
+    spr.alpha = layer.glow ?? layer.alpha ?? 1;
     if (spr.tint !== tint) spr.tint = tint;
     spr.visible = true;
   }

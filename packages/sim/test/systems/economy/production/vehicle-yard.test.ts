@@ -549,6 +549,19 @@ describe('the yard site search', () => {
   });
 });
 
+describe('a yard site’s ground plot', () => {
+  it('lays a foundation under a house, none under a cart or a ship', () => {
+    const s = sim();
+    const cart = siteAt(s, HANDCART_YARD, 4, 4);
+    const ship = siteAt(s, SHIP_YARD, 12, 4);
+    const house = siteAt(s, WAINWRIGHT, 18, 12);
+    const foundations = new Map(s.constructionPlots().map((plot) => [plot.ref, plot.foundation]));
+    expect(foundations.get(cart)).toBe(false);
+    expect(foundations.get(ship)).toBe(false);
+    expect(foundations.get(house)).toBe(true);
+  });
+});
+
 describe('building the vehicle', () => {
   it('fetches the bill through the site, launches the cart on it, and never shelves the good', () => {
     const s = sim();

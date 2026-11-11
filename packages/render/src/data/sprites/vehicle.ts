@@ -31,15 +31,15 @@ function vehicleLookOf(
 }
 
 /**
- * The ship an under-construction yard building rises as (`VehicleBinding.shipYards`): the first frame of
- * its tribe's moored hull at the launch facing, the look the launched ship stands in. `null` for any
- * other building or a ship no tribe binds.
+ * The vehicle an under-construction yard building rises as (`VehicleBinding.vehicleYards`): the first
+ * frame of its tribe's standing look at the launch facing, a ship's moored hull. `null` for any other
+ * building or a vehicle no tribe binds.
  */
-export function resolveShipYardSiteDraw(
+export function resolveVehicleYardSiteDraw(
   binding: VehicleBinding | undefined,
   item: DrawItem,
 ): VehicleDraw | null {
-  const yards = binding?.shipYards;
+  const yards = binding?.vehicleYards;
   if (binding === undefined || yards === undefined || item.builtPct === undefined) return null;
   const vehicleType = item.typeId === undefined ? undefined : yards.vehicleByHouse[item.typeId];
   if (vehicleType === undefined) return null;

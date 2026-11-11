@@ -20,9 +20,11 @@ export interface CollapsePart {
 }
 
 /** A body the collapse can colour: an indexed page reads through a player LUT the collapse has none
- *  of (a ship yard site's hull), unless the page recolours itself. */
+ *  of (a ship yard site's hull), unless the page recolours itself. A yard site's translucent whole
+ *  vehicle is not yet built, so it does not fall. */
 const bodyLayer = (layer: ResolvedLayer): boolean =>
   layer.shadow !== true &&
+  layer.alpha === undefined &&
   layer.groundFoot !== 'cover' &&
   (!isIndexedSource(layer.source) || layer.source instanceof RecolouredPageSource);
 const sameFrame = (a: ResolvedLayer, b: ResolvedLayer): boolean =>

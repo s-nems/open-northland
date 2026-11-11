@@ -158,7 +158,6 @@ export {
   resolveSettlerBobId,
   resolveStockpileDraw,
   type SettlerStateBinding,
-  type ShipYardSites,
   type SpriteAtlas,
   type SpriteBindings,
   type SpriteFrameRef,
@@ -168,6 +167,7 @@ export {
   type VehicleBinding,
   type VehicleLook,
   type VehicleTribeLooks,
+  type VehicleYardSites,
   type WaveLoop,
   waveFrameAt,
 } from './data/sprites/index.js';
