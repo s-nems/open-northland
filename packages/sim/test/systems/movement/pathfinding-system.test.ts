@@ -512,6 +512,23 @@ describe('pathfindingSystem - mid-walk reroute', () => {
     expect(restored.hashState()).toBe(sim.hashState());
   });
 
+  it('a save taken mid-walk on a corridor route restores to the same state', () => {
+    const map = grassMap(160, 24);
+    const content = testContent();
+    const sim = new Simulation({ seed: 1, content, map });
+    // Far enough for the corridor search; the continuous world then holds cluster regions the restored
+    // one builds afresh for the second route.
+    const e = cruisingWalker(sim, 150, 20);
+    const restored = restoreSimulation(exportSaveGame(sim, { mapId: 'movement-corridor' }), { content, map });
+    for (const world of [sim, restored]) {
+      reorder(world, e, 60);
+      world.run(30);
+    }
+    expect(sim.world.get(e, PathRoute).waypoints.length).toBeGreaterThan(40); // past the long-walk distance
+    expect(restored.hashState()).toBe(sim.hashState());
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
   it('a redirect during a turn uses the new edge length over the already paid step period', () => {
     const { sim } = mappedSim(grassMap(4, 4));
     const e = sim.world.create();

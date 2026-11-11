@@ -1,3 +1,4 @@
+export { ClusterRegions } from './cluster-regions.js';
 export {
   type CorridorEntry,
   corridorBoxGap,
@@ -5,6 +6,7 @@ export {
   followCorridor,
   joinCorridor,
 } from './corridor.js';
+export { CorridorRoutes } from './corridor-route.js';
 export {
   FLOOD_GUARD_MAX_EXPLORED,
   findPath,

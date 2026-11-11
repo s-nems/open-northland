@@ -27,6 +27,8 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { positionXOfNode, positionYOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import {
+  ClusterRegions,
+  CorridorRoutes,
   findPath,
   type NodeStops,
   POCKET_PROBE_MAX_EXPLORED,
@@ -124,6 +126,8 @@ class PathDrain {
    *  attack-move plans for closed enemy gates, so its walls differ from an ordinary walk's. */
   private readonly pocketsByPlayer = new Map<number, SealedPockets>();
   private readonly marchingPocketsByPlayer = new Map<number, SealedPockets>();
+  /** The corridor search under the structure mask, held across drains with its cluster regions. */
+  private corridors: CorridorRoutes | undefined;
 
   constructor(
     private readonly world: World,
@@ -282,7 +286,10 @@ class PathDrain {
     if (meets && live) groupRoutes.offerLive(overlay, liveRoutes);
     const stops = meets ? (groupRoutes.meetingStops(overlay, goal, live) ?? undefined) : undefined;
     const pockets = this.pocketsOf(player, marching);
-    let path = resolvePath(pockets, start, goal, overlay, spent, traversal, this.goalSlice, goalOpen, stops);
+    let path =
+      stops === undefined
+        ? this.ownRoute(pockets, overlay, start, goal, traversal, goalOpen)
+        : resolvePath(pockets, start, goal, overlay, spent, traversal, this.goalSlice, goalOpen, stops);
     if (path !== null && groupRoutes !== undefined && stops !== undefined && path.at(-1) !== goal) {
       const followed = groupRoutes.followMeeting(overlay, path, goal, spent, live);
       if (followed !== null) {
@@ -290,7 +297,7 @@ class PathDrain {
         groupRoutes.offer(overlay, followed);
         return followed;
       }
-      path = resolvePath(pockets, start, goal, overlay, spent, traversal, this.goalSlice, goalOpen);
+      path = this.ownRoute(pockets, overlay, start, goal, traversal, goalOpen);
     }
     // Only a searched route is offered: offering borrowed ones grows the list each member tries.
     if (path !== null && groupRoutes !== undefined) groupRoutes.offer(overlay, path);
@@ -299,6 +306,45 @@ class PathDrain {
       this.groupReachability.rememberFailure(mask, overlay, start, goal);
     }
     return path;
+  }
+
+  /** A request's own search to its goal: the corridor's for a long ghost walk, else the map-wide one. */
+  private ownRoute(
+    pockets: SealedPockets,
+    overlay: BlockOverlay,
+    start: NodeId,
+    goal: NodeId,
+    traversal: Traversal,
+    goalOpen: boolean,
+  ): NodeId[] | null {
+    return (
+      this.corridorRoute(overlay, start, goal, traversal) ??
+      resolvePath(pockets, start, goal, overlay, this.spent, traversal, this.goalSlice, goalOpen)
+    );
+  }
+
+  /**
+   * A long land walk under the structures alone, routed inside a corridor of cluster regions; null hands
+   * the request to the map-wide search. A collider's overlay moves with every standing body, which the
+   * cluster regions do not follow, so only a walk that passes through bodies qualifies.
+   */
+  private corridorRoute(
+    overlay: BlockOverlay,
+    start: NodeId,
+    goal: NodeId,
+    traversal: Traversal,
+  ): NodeId[] | null {
+    const { mask, terrain } = this;
+    if (mask === undefined || overlay !== this.dynamic || traversal !== 'land') return null;
+    if (!isValidNodeId(terrain, start) || !isValidNodeId(terrain, goal)) return null;
+    let corridors = this.corridors;
+    if (corridors === undefined || corridors.regions.mask !== mask) {
+      const regions = new ClusterRegions(terrain, mask);
+      corridors = new CorridorRoutes(terrain, regions);
+      this.corridors = corridors;
+      this.world.registerCacheVerifier('corridorClusterRegions', () => regions.verify());
+    }
+    return corridors.route(start, goal, this.spent);
   }
 }
 
