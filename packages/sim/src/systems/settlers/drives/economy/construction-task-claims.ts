@@ -44,6 +44,11 @@ const SITE_TIER = {
   readyUnstaffed: 5,
 } as const;
 
+/** Whether the player has prioritized the construction site `site`. */
+export function isPrioritizedSite(world: World, site: Entity): boolean {
+  return world.tryGet(site, UnderConstruction)?.priority === 'high';
+}
+
 /** Builders a ready or nearly done site draws before it ranks like any other: enough to finish it fast
  *  without emptying the other sites. Owner ruling. */
 const PRIORITY_CREW = 3;
@@ -196,7 +201,7 @@ export class ConstructionTaskClaims {
   private crews: ReadonlyMap<Entity, number> | null = null;
   private crewMoves: Map<Entity, number> | undefined;
   private walls: SoloSiteSurvey | undefined;
-  private readonly sitesByTier: Entity[][] = Array.from({ length: SITE_TIER_COUNT }, () => []);
+  private readonly sitesByTier: Entity[][] = Array.from({ length: SITE_TIER_COUNT * 2 }, () => []);
   private readonly ranking: { sitesByTier: Entity[][]; watchedTier: number | undefined } = {
     sitesByTier: this.sitesByTier,
     watchedTier: undefined,
@@ -279,7 +284,7 @@ export class ConstructionTaskClaims {
     for (let i = 0; i < sites.length; i++) {
       const site = sites[i] as Entity;
       if (!ownersCompatible(owner, ownerOf(this.world, site))) continue;
-      const tier = this.siteTier(site, builder);
+      const tier = this.siteTier(site, builder) + (isPrioritizedSite(this.world, site) ? SITE_TIER_COUNT : 0);
       if (site === watched) ranking.watchedTier = tier;
       (sitesByTier[tier] as Entity[]).push(site);
     }

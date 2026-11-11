@@ -1,4 +1,5 @@
 import type { EquipCategory, HomeQualityEffect } from '@open-northland/data';
+import type { ConstructionPriority } from '../../components/economy/infrastructure.js';
 import type { NeedKind } from '../../components/needs.js';
 import type { VehicleAttackTarget, VehicleStance } from '../../components/vehicle.js';
 import type { Entity } from '../../ecs/world.js';
@@ -688,6 +689,16 @@ export type UnitOrderCommand =
       readonly building: Entity;
       readonly goodType: number;
       readonly priority: boolean;
+    }
+  | {
+      /**
+       * Prioritize one owned construction site: its builders work it before every unrated site,
+       * whatever the sites' standing. `normal` clears the rank. Only a raised site takes one, so a wall
+       * segment, a road site and a standing building refuse.
+       */
+      readonly kind: 'setConstructionPriority';
+      readonly building: Entity;
+      readonly priority: ConstructionPriority;
     };
 
 /**

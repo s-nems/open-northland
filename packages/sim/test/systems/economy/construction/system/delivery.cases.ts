@@ -711,6 +711,29 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(siteOf(loneBuilder)).toBe(lone);
   });
 
+  it("calls every automatic builder to a prioritized site, the last hand of another site's crew included", () => {
+    const sim = new Simulation({ seed: 31, content: constructionContent(), map: grassMap(48, 5) });
+    builtBuildingAt(sim, HEADQUARTERS, 0, 1, [
+      [STONE, 20],
+      [WOOD, 20],
+    ]);
+    const sites = [6, 20, 36].map((x) => siteAt(sim, HOUSE, x, 1));
+    const builders = sites.map((site, i) => {
+      const builder = builderAt(sim, 6 + i * 14, 3);
+      sim.world.add(builder, SiteAssignment, { site, pinned: false });
+      return builder;
+    });
+    const siteOf = (b: Entity): Entity | undefined => sim.world.tryGet(b, SiteAssignment)?.site;
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(builders.map(siteOf)).toEqual(sites);
+
+    const prioritized = sites[2] as Entity;
+    sim.enqueueSetup({ kind: 'setConstructionPriority', building: prioritized, priority: 'high' });
+    for (let i = 0; i < 400 && !builders.every((b) => siteOf(b) === prioritized); i++) sim.step();
+
+    expect(builders.map(siteOf)).toEqual([prioritized, prioritized, prioritized]);
+  });
+
   it('sends an idle builder past a bare site to the one nearer completion that lacks the same good', () => {
     const sim = new Simulation({ seed: 33, content: constructionContent(), map: grassMap(40, 5) });
     const bare = siteAt(sim, HOUSE, 6, 1);

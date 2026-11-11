@@ -436,7 +436,7 @@ describe('where a devout settler prays: its holy fire, then a temple, then the h
       const before = needsOf(sim, settler).piety;
       if (change === 'extinguished') sim.world.mut(home, HomeQuality).piety = 0;
       else if (change === 'destroyed') sim.world.destroy(home);
-      else sim.world.add(home, UnderConstruction, { labor: 0 });
+      else sim.world.add(home, UnderConstruction, { labor: fx.fromInt(0) });
       atomicSystem(sim.world, nextTickCtxOf(sim));
       expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
       expect(needsOf(sim, settler).piety).toBe(before);

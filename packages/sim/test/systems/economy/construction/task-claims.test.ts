@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { SiteAssignment, Stockpile, UnderConstruction } from '../../../../src/components/index.js';
+import { Owner, SiteAssignment, Stockpile, UnderConstruction } from '../../../../src/components/index.js';
+import type { Entity } from '../../../../src/ecs/world.js';
 import { type Fixed, Simulation } from '../../../../src/index.js';
 import { ConstructionTaskClaims } from '../../../../src/systems/settlers/drives/economy/construction-task-claims.js';
 import { collectSupplyTally, deliveredConstructionFraction } from '../../../../src/systems/stores/index.js';
-import { builderAt, constructionContent, ctxOf, grassMap, HOUSE, STONE, siteAt } from './system/support.js';
+import {
+  builderAt,
+  constructionContent,
+  ctxOf,
+  grassMap,
+  HOUSE,
+  STONE,
+  siteAt,
+  WOOD,
+} from './system/support.js';
 
 describe('construction task claims', () => {
   it('hands out no more hammer strikes than the delivered material can absorb', () => {
@@ -41,6 +51,30 @@ describe('construction task claims', () => {
     expect(first.crewSize(b)).toBe(0);
     const next = pass();
     expect([next.crewSize(a), next.crewSize(b)]).toEqual([1, 1]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('ranks a prioritized site ahead of every unprioritized standing tier', () => {
+    const sim = new Simulation({ seed: 3, content: constructionContent(), map: grassMap(24, 8) });
+    // A fresh site the builders would rank last (nothing delivered), beside a ready, unstaffed one
+    // holding its whole bill (2× stone + 1× wood) with steps to hammer.
+    const near = siteAt(sim, HOUSE, 4, 2);
+    const far = siteAt(sim, HOUSE, 14, 2);
+    sim.world.mut(far, Stockpile).amounts.set(STONE, 2).set(WOOD, 1);
+    const builder = builderAt(sim, 1, 1);
+    for (const e of [near, far, builder]) sim.world.add(e, Owner, { player: 0 });
+    const tierOf = (site: Entity): number => {
+      const claims = new ConstructionTaskClaims(sim.world, ctxOf(sim), collectSupplyTally(sim.world));
+      const { sitesByTier } = claims.rankBuildingSites(0, [near, far], builder, null);
+      return sitesByTier.findIndex((sites) => sites.includes(site));
+    };
+
+    // Without a rank the standing decides: the ready site first, the waiting one last.
+    expect(tierOf(far)).toBeGreaterThan(tierOf(near));
+
+    // A prioritized site rises over every unrated one, so the waiting site is worked first.
+    sim.world.mut(near, UnderConstruction).priority = 'high';
+    expect(tierOf(near)).toBeGreaterThan(tierOf(far));
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 });

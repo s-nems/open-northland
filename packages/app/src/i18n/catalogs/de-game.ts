@@ -1144,6 +1144,7 @@ export const deGame = {
         workers: 'Arbeiter',
         knowledge: 'Wissen',
         demolish: 'Abreißen',
+        prioritize: 'Priorisieren',
       },
       upgradeCost: 'Ausbau · {cost}',
       upgradeLevels: 'Auf Stufe',
@@ -1189,6 +1190,8 @@ export const deGame = {
       billInbound: 'Unterwegs: {count}',
       billUnsourced: 'Nicht vorrätig',
       billUnsourcedMark: 'Keine',
+      buildPriorityTooltip:
+        'Bauarbeiter arbeiten zuerst an dieser Baustelle, vor allen Baustellen ohne Priorität.',
       workers: 'Arbeiter',
       residents: 'Bewohner',
       crew: 'Bauarbeiter',
