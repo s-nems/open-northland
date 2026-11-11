@@ -25,8 +25,11 @@ import {
   positionOfNode,
 } from '../../../../src/nav/halfcell.js';
 import {
+  constructionWorkCells,
+  dynamicBlockOverlay,
   findVehicleSite,
   SHIP_SITE_RINGS,
+  shipSiteWorkCells,
   VEHICLE_SITE_RINGS,
   vehicleSiteWorkPoint,
 } from '../../../../src/systems/footprint/index.js';
@@ -73,6 +76,11 @@ const PLANK_GATE_RAW_XP = 300;
 const MAP_CELLS = 24;
 /** Open water cell rows at the top of the far-shore map: enough for the small ship's hull. */
 const SHALLOW_SHORE_ROWS = 4;
+/** Open water cell rows above the shore of the off-shore ship map. */
+const OFF_SHORE_WATER_ROWS = 8;
+/** A ship site's anchor row two cell rows short of that shore: one node row of water parts its hull from
+ *  the land, which only its work area's outer row reaches. */
+const OFF_SHORE_ANCHOR_ROW = OFF_SHORE_WATER_ROWS - 2;
 /** The cell column of the river that splits the reuse map into two banks, east of the workshop. */
 const RIVER_COLUMN = 14;
 /** Well past the 2-wood site's fetch, delivery and hammering. */
@@ -606,6 +614,24 @@ describe('building the vehicle', () => {
     expect(next).toBeDefined();
     expect(s.world.get(worker, SiteAssignment).site).toBe(next);
     expect(s.checkInvariants()).toEqual([]);
+  });
+
+  it('takes a ship’s bill where its crew stands when the hull touches no land, and raises it', () => {
+    const s = sim(shoreMap(OFF_SHORE_WATER_ROWS));
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const { store, worker } = yardWorld(s, [SHIP_GOOD]);
+    const stocked = s.world.get(store, Stockpile).amounts.get(WOOD) ?? 0;
+    const site = siteAt(s, SHIP_YARD, 12, OFF_SHORE_ANCHOR_ROW);
+    const blocked = dynamicBlockOverlay(s.world, ctxOf(s), terrain);
+    expect(constructionWorkCells(s.world, ctxOf(s), terrain, site, blocked)).toEqual([]);
+    expect(shipSiteWorkCells(s.world, ctxOf(s), terrain, site, blocked).length).toBeGreaterThan(0);
+    const raised = () => s.world.get(site, UnderConstruction).labor > 0;
+    for (let i = 0; i < BUILD_BUDGET_TICKS && !raised(); i++) s.step();
+    expect(raised()).toBe(true);
+    expect(s.world.get(worker, SiteAssignment).site).toBe(site);
+    expect(s.world.get(store, Stockpile).amounts.get(WOOD)).toBeLessThan(stocked);
+    expect(s.world.verifyCaches()).toEqual([]);
   });
 
   it('builds from the workshop’s own wood before the store’s, though wood is the workshop’s recipe input', () => {

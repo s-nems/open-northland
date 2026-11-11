@@ -89,7 +89,7 @@ export class PlannerSpacing {
     this.claims.add(cell);
   }
 
-  /** A site's perimeter stand cells that keep an open side, so no builder is parked in a nook. */
+  /** A site's stand cells ({@link openWorkCells}), where its builders stand and its material lands. */
   workCells(site: Entity): readonly NodeId[] {
     this.workCellsBySite ??= new Map();
     let cells = this.workCellsBySite.get(site);

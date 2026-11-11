@@ -193,7 +193,7 @@ export function vehicleSiteWorkPoint(
   const building = world.tryGet(site, Building);
   const p = world.tryGet(site, Position);
   if (building === undefined || p === undefined) return null;
-  if (contentIndex(ctx.content).buildings.get(building.buildingType)?.ignoreContinents === true) {
+  if (isShipHouse(ctx, building.buildingType)) {
     const anchor = nodeOfPosition(p.x, p.y);
     const blocks = walkBlockMask(world, ctx, terrain);
     const footprint = houseFootprintOf(ctx.content, building);
@@ -201,6 +201,36 @@ export function vehicleSiteWorkPoint(
   }
   const door = interactionCellOf(world, ctx, terrain, site);
   return door !== null && terrain.componentOf(door) === workerContinent ? door : null;
+}
+
+/**
+ * Every land cell a builder may work the ship site `site` from over `blocked`, on whichever shore, in
+ * canonical order: the cells {@link shipWorkPoint} picks among. Empty for a site of any other house.
+ */
+export function shipSiteWorkCells(
+  world: World,
+  ctx: MapContext,
+  terrain: TerrainGraph,
+  site: Entity,
+  blocked: BlockOverlay,
+): NodeId[] {
+  const cells: NodeId[] = [];
+  const building = world.tryGet(site, Building);
+  const p = world.tryGet(site, Position);
+  if (building === undefined || p === undefined || !isShipHouse(ctx, building.buildingType)) return cells;
+  const anchor = nodeOfPosition(p.x, p.y);
+  const footprint = houseFootprintOf(ctx.content, building);
+  // The work area's water cells carry their water body's component, so they are dropped here.
+  visitWorkCells(terrain, blocked, footprint, anchor.hx, anchor.hy, (node) => {
+    if (terrain.isWalkable(node)) cells.push(node);
+    return false;
+  });
+  return cells;
+}
+
+/** Whether `buildingType` is a ship house, raised on water (`ignoreContinents`). */
+export function isShipHouse(ctx: MapContext, buildingType: number): boolean {
+  return contentIndex(ctx.content).buildings.get(buildingType)?.ignoreContinents === true;
 }
 
 type Objection = 'none' | 'blocked' | 'occupied';

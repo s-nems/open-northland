@@ -185,7 +185,7 @@ function fetchableMaterial(
     if (source === null) continue;
     const amount = Math.min(need.amount, source.available, CARRY_CAPACITY);
     if (amount <= 0) continue;
-    // A site with no legal perimeter cell cannot take a delivery, so nothing is fetched for it. Asked after
+    // A site with no legal stand cell cannot take a delivery, so nothing is fetched for it. Asked after
     // the memoized source, since an idle builder asks every waiting site while no material is in store.
     return spacing.workCells(site).length === 0
       ? null

@@ -8,11 +8,15 @@ import { hasOpenSide } from '../../../nav/nearest.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { houseFootprintOf } from '../../footprint/geometry.js';
-import { constructionWorkCells } from '../../footprint/index.js';
+import { constructionWorkCells, isShipHouse, shipSiteWorkCells } from '../../footprint/index.js';
 import { type WalkBlockMask, walkBlockMask } from '../../footprint/walk-block-mask.js';
 
-/** A site's perimeter stand cells over `blocked` that keep an open side, so no builder is parked in a
- *  nook; every perimeter cell when all are wedged, so such a site still gets built. */
+/**
+ * A site's stand cells over `blocked` that keep an open side, so no builder is parked in a nook; every one
+ * when all are wedged, so such a site still gets built. They are its perimeter, or, for a ship site whose
+ * hull borders no walkable land, the work-area cells its crew works it from. Approximation: where the
+ * original sets such a ship's material down is not confirmed; here it lands where the crew stands.
+ */
 export function openWorkCells(
   world: World,
   ctx: SystemContext,
@@ -21,8 +25,9 @@ export function openWorkCells(
   site: Entity,
 ): readonly NodeId[] {
   const perimeter = constructionWorkCells(world, ctx, terrain, site, blocked);
-  const open = perimeter.filter((cell) => hasOpenSide(terrain, cell, blocked));
-  return open.length > 0 ? open : perimeter;
+  const stands = perimeter.length > 0 ? perimeter : shipSiteWorkCells(world, ctx, terrain, site, blocked);
+  const open = stands.filter((cell) => hasOpenSide(terrain, cell, blocked));
+  return open.length > 0 ? open : stands;
 }
 
 /** Nodes past a building's body its {@link openWorkCells} read: the one-node box margin the exterior
@@ -79,12 +84,19 @@ export class HeldWorkCells {
   }
 
   /** `site`'s {@link openWorkCells} over the mask, or undefined for a site this does not hold: a wall or
-   *  road site, whose cells read more than its own body. */
+   *  road site, whose cells read more than its own body, and a ship site, whose work area lies past the
+   *  read margin. */
   cellsOf(site: Entity): readonly NodeId[] | undefined {
     const { world } = this;
     const building = world.tryGet(site, Building);
     const p = world.tryGet(site, Position);
-    if (building === undefined || p === undefined || world.has(site, Palisade) || world.has(site, RoadSite)) {
+    if (
+      building === undefined ||
+      p === undefined ||
+      world.has(site, Palisade) ||
+      world.has(site, RoadSite) ||
+      isShipHouse(this.ctx, building.buildingType)
+    ) {
       return undefined;
     }
     const held = this.entries.get(site);
