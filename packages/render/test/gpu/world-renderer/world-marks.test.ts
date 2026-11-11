@@ -50,6 +50,8 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     rangeRings: [],
     orderMarkers: [],
     mapPings: [],
+    rallyBanners: [],
+    clothSeconds: 0,
     lostGoals: [],
     lostGoalPulse: 0,
     doorBadges: [],

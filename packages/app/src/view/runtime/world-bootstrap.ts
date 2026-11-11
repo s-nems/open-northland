@@ -9,6 +9,7 @@ import { installOriginalNames } from '../../content/gui/original-names.js';
 import { installPersonalNames } from '../../content/gui/personal-names.js';
 import { loadPlanRoadArt } from '../../content/gui/plan-road-art.js';
 import { loadPlanStakeArt } from '../../content/gui/plan-stake-art.js';
+import { loadRallyBannerArt } from '../../content/gui/rally-banner-art.js';
 import { loadSiteEarthArt } from '../../content/gui/site-earth-art.js';
 import {
   loadRuntimeRealContent,
@@ -55,12 +56,13 @@ export async function createWorldRenderer(
   sheet: SpriteSheet | undefined,
   playerColourOf?: (player: number) => number,
 ): Promise<WorldRenderer> {
-  const [planStakes, planRoads, berthPost, mapPingPin, siteEarth] = await Promise.all([
+  const [planStakes, planRoads, berthPost, mapPingPin, siteEarth, rallyBanner] = await Promise.all([
     loadPlanStakeArt(),
     loadPlanRoadArt(),
     loadBerthPostArt(),
     loadMapPingPinArt(),
     loadSiteEarthArt(),
+    loadRallyBannerArt(),
   ]);
   // One read, so a write landing mid-construction cannot hand the renderer a mixed snapshot.
   const stored = readStoredSettings();
@@ -78,6 +80,7 @@ export async function createWorldRenderer(
     berthPost,
     mapPingPin,
     siteEarth,
+    rallyBanner,
   });
 }
 

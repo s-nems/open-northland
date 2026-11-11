@@ -237,6 +237,7 @@ export {
   type OrderMarker,
   type OrderMarkerKind,
   orderMarkerPose,
+  type RallyBanner,
   type SettlerBubble,
   type SettlerBubbleGfx,
   type SettlerBubbleKind,

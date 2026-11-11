@@ -7079,7 +7079,7 @@ body.on-drag-scroll.on-drag-scroll-free * {
   width: 14px;
   height: 14px;
 }
-/* A flag stands: the same amber the flag wears on the map (the ghost's and the outline's 0xffc020). */
+/* A flag stands: an amber apart from the alarm's red. */
 .on-hud .on-rally--on {
   border-color: #7a5c22;
   background: radial-gradient(circle at 45% 35%, #6e5322, #4d3a17 60%, #2a1f0c 95%);

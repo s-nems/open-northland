@@ -78,6 +78,7 @@ import {
   NO_LOST_GOALS,
   NO_MAP_PINGS,
   NO_ORDER_MARKERS,
+  NO_RALLY_BANNERS,
   NO_RANGE_RINGS,
   NO_REFS,
   NO_SIGNS,
@@ -180,7 +181,7 @@ export class WorldRenderer {
     for (const art of [opts?.planStakes, opts?.planRoads]) {
       if (art !== undefined) for (const texture of Object.values(art)) this.textureCache.adopt(texture);
     }
-    for (const art of [opts?.berthPost, opts?.mapPingPin]) {
+    for (const art of [opts?.berthPost, opts?.mapPingPin, opts?.rallyBanner]) {
       if (art !== undefined) this.textureCache.adopt(art);
     }
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
@@ -203,6 +204,7 @@ export class WorldRenderer {
       opts?.playerColourOf,
       (ref) => pool.captureBuildingDamage(ref),
       opts?.mapPingPin,
+      opts?.rallyBanner,
     );
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
     this.mapViews = new MapViewLayer(app, this.worldLayer, this.pool);
@@ -532,6 +534,7 @@ export class WorldRenderer {
       rangeRings = NO_RANGE_RINGS,
       orderMarkers = NO_ORDER_MARKERS,
       mapPings = NO_MAP_PINGS,
+      rallyBanners = NO_RALLY_BANNERS,
       targetFlashes,
       lostGoals = NO_LOST_GOALS,
       lostGoalPulse = 0,
@@ -659,6 +662,8 @@ export class WorldRenderer {
       rangeRings,
       orderMarkers,
       mapPings,
+      rallyBanners,
+      clothSeconds: selectionTime,
       lostGoals,
       lostGoalPulse,
       doorBadges,

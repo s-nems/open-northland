@@ -21,7 +21,7 @@ import {
 import { reportProblem } from '../../diag/report/problem.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { peaceHoldsUntilTickOf } from '../../game/snapshot/index.js';
-import type { ViewerSeat } from '../../game/viewer-seat.js';
+import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import type { DiplomacyMap } from '../../hud/diplomacy-map/index.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import { type BuildingPick, probeOwner, techWaived } from '../../hud/tool-panel/placement.js';
@@ -49,6 +49,8 @@ import {
   type FogGates,
   type GeometryDebugOverlay,
   harshestStance,
+  memoBySnapshot,
+  rallyBanners as rallyBannersOf,
 } from '../projections/index.js';
 import type { ScriptPresentation } from '../script/presentation.js';
 import type { FpsLimit } from '../settings/store.js';
@@ -88,6 +90,8 @@ export interface FrameLoopDeps {
   readonly controls: UnitControls;
   /** The map pings showing on the world view; absent in a local game. */
   readonly mapPings?: () => readonly MapPing[];
+  /** The colour a player's rally banner wears. */
+  readonly rallyColourOf: (player: number) => number;
   readonly worldHover: WorldHover;
   readonly geometryDebug: GeometryDebugOverlay;
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
@@ -198,6 +202,9 @@ function drawnCreatureIds(items: readonly DrawItem[]): number[] {
   return ids;
 }
 
+/** The cursor's rally banner, keyed apart from every flag entity's id. */
+const RALLY_PREVIEW_ID = -1;
+
 /**
  * Start the RAF loop over a session driver. The per-frame order is pinned here: sim steps, camera, one
  * shared snapshot, then the tool panel and unit controls before `renderer.update`, so screen-space HUD
@@ -292,11 +299,13 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   const visiblePlots = createVisiblePlots(() => host.constructionPlots(), fogGates.seesNode);
   // The sprite pool withholds both the felling presenter's refs and the flags other seats' settlers hold.
-  // A rally flag also hides unless its barracks stands in the selection, which the controls version.
-  const foreignFlags = createForeignFlags(loop.viewer, {
-    ids: () => controls.selectedIds(),
-    version: () => controls.selectionVersion(),
-  });
+  const foreignFlags = createForeignFlags(loop.viewer);
+  // Both versions only grow, so their sum moves when either does.
+  const plantedBanners = memoBySnapshot(
+    (snapshot: WorldSnapshot) =>
+      rallyBannersOf(snapshot, controls.selectedIds(), pickableSeat(loop.viewer), loop.rallyColourOf),
+    () => controls.selectionVersion() + loop.viewer.version(),
+  );
   let fellingRefs: ReadonlySet<number> = new Set();
   let hiddenFlags: ReadonlySet<number> = new Set();
   const withhold = (): void => {
@@ -428,7 +437,6 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
               .berthPreview(tile)
               .map((berth) => ({ col: berth.col, row: berth.row, hull: berth.dock })),
       flagActive: controls.workFlagPlacementActive(),
-      rallyActive: controls.rallyPickActive(),
       buildingOverlay,
       signpostOverlay,
       dockOverlay,
@@ -449,6 +457,25 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     });
     renderer.updatePlacementOverlay(cursor.overlay);
     renderer.updatePlacementGhost(cursor.ghost, snap);
+    // The armed rally pick carries its banner on the cursor, beside the one a selected barracks keeps.
+    const rallyTile =
+      controls.rallyPickActive() && pointer !== null
+        ? toolPanel.clientToTile(pointer.clientX, pointer.clientY)
+        : null;
+    const planted = plantedBanners(snap);
+    const rallyBanners =
+      rallyTile === null
+        ? planted
+        : [
+            ...planted,
+            {
+              id: RALLY_PREVIEW_ID,
+              hx: rallyTile.col,
+              hy: rallyTile.row,
+              colour: loop.rallyColourOf(localPlayer),
+              preview: true,
+            },
+          ];
     // The held ship workshop's warning rides the ghost: the tint and the cursor chip both read the `warn`
     // the verdict stamped on the ghost the frame shows, so a fogged or refused spot says nothing, and the
     // chip hides the frame the pick or the tile changes.
@@ -546,6 +573,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         rangeRings: controls.rangeRings(),
         orderMarkers: controls.orderMarkers(),
         mapPings: loop.mapPings?.(),
+        rallyBanners,
         targetFlashes: controls.targetFlashes(),
         lostGoals,
         lostGoalPulse: lostGoalPulse(nowMs),

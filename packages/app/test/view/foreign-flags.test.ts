@@ -19,14 +19,6 @@ const holder = (id: number, flag: number, binding: 'WorkFlag' | 'HaulFlag', play
   },
 });
 
-const barracks = (id: number, flag: number, player: number) => ({
-  id,
-  components: {
-    Owner: { player },
-    RallyPoint: { flag },
-  },
-});
-
 function snapshot(): WorldSnapshot {
   return {
     tick: 0,
@@ -36,30 +28,36 @@ function snapshot(): WorldSnapshot {
       { id: OTHER_FLAG, components: { DeliveryFlag: {} } },
       { id: CARRIER_FLAG, components: { DeliveryFlag: {} } },
       { id: STRAY_FLAG, components: { DeliveryFlag: {} } },
-      { id: RALLY_FLAG, components: { DeliveryFlag: {} } },
       holder(20, OWN_FLAG, 'WorkFlag', OWN),
       holder(21, OTHER_FLAG, 'WorkFlag', OTHER),
       holder(22, CARRIER_FLAG, 'HaulFlag', OTHER),
       holder(23, STRAY_FLAG, 'WorkFlag'),
-      barracks(30, RALLY_FLAG, OWN),
-      barracks(31, RALLY_FLAG, OTHER),
     ],
   };
 }
 
 describe('foreign work flags', () => {
-  it(
-    "hides another seat's gatherer and carrier flags, and every rally flag without a selection, never " +
-      "the viewer's own or an ownerless one",
-    () => {
-      const hidden = createForeignFlags(fixedViewerSeat(OWN))(snapshot());
-      expect(hidden).toEqual(new Set([OTHER_FLAG, CARRIER_FLAG, RALLY_FLAG]));
-    },
-  );
+  it("hides another seat's gatherer and carrier flags, never the viewer's own or an ownerless one", () => {
+    const hidden = createForeignFlags(fixedViewerSeat(OWN))(snapshot());
+    expect(hidden).toEqual(new Set([OTHER_FLAG, CARRIER_FLAG]));
+  });
 
-  it('shows every flag on the whole map once the selection names the rally barracks', () => {
-    const selection = { ids: () => new Set<number>([30, 31]), version: () => 0 };
-    expect(createForeignFlags(switchableViewerSeat(null), selection)(snapshot()).size).toBe(0);
+  it('shows every flag on the whole map', () => {
+    expect(createForeignFlags(switchableViewerSeat(null))(snapshot()).size).toBe(0);
+  });
+
+  it("never draws a barracks' rally flag as a sprite, its owner's included: the banner stands for it", () => {
+    const world = snapshot();
+    const withRally: WorldSnapshot = {
+      ...world,
+      entities: [
+        ...world.entities,
+        { id: RALLY_FLAG, components: { DeliveryFlag: {} } },
+        { id: 30, components: { Owner: { player: OWN }, RallyPoint: { flag: RALLY_FLAG } } },
+      ],
+    };
+    expect(createForeignFlags(fixedViewerSeat(OWN))(withRally).has(RALLY_FLAG)).toBe(true);
+    expect(createForeignFlags(switchableViewerSeat(null))(withRally).has(RALLY_FLAG)).toBe(true);
   });
 
   it('keeps one set while nothing changes and follows a seat switch', () => {
@@ -69,37 +67,6 @@ describe('foreign work flags', () => {
     const first = foreign(snap);
     expect(foreign(snap)).toBe(first);
     viewer.watch(OTHER);
-    expect([...foreign(snap)]).toEqual([OWN_FLAG, RALLY_FLAG]);
-  });
-
-  it('hides every rally flag unless its own selected barracks shows it', () => {
-    const snap = snapshot();
-    const hiddenFor = (ids: ReadonlySet<number> | undefined) => {
-      const foreign =
-        ids === undefined
-          ? createForeignFlags(fixedViewerSeat(OWN))
-          : createForeignFlags(fixedViewerSeat(OWN), { ids: () => ids, version: () => 0 });
-      return [...foreign(snap)];
-    };
-    expect(hiddenFor(new Set([30]))).toEqual([OTHER_FLAG, CARRIER_FLAG]); // its own, selected: shows
-    expect(hiddenFor(new Set([20]))).toEqual([OTHER_FLAG, CARRIER_FLAG, RALLY_FLAG]); // not selected
-    // Another seat's rally flag stays foreign under any selection.
-    expect(hiddenFor(new Set([31]))).toEqual([OTHER_FLAG, CARRIER_FLAG, RALLY_FLAG]);
-    // No selection passed, none to show a rally flag by: every one of them hides.
-    expect(hiddenFor(undefined)).toEqual([OTHER_FLAG, CARRIER_FLAG, RALLY_FLAG]);
-  });
-
-  it('rebuilds the set when the selection changes inside one tick', () => {
-    const snap = snapshot();
-    let ids = new Set<number>([30]);
-    let version = 0;
-    const foreign = createForeignFlags(fixedViewerSeat(OWN), {
-      ids: () => ids,
-      version: () => version,
-    });
-    expect(foreign(snap).has(RALLY_FLAG)).toBe(false);
-    ids = new Set<number>();
-    version++;
-    expect(foreign(snap).has(RALLY_FLAG)).toBe(true);
+    expect([...foreign(snap)]).toEqual([OWN_FLAG]);
   });
 });

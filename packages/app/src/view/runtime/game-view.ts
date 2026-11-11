@@ -132,7 +132,7 @@ import { holdWorldAfterContextRestore } from '../graphics/context-restore.js';
 import { detailModeOf } from '../graphics/enhancements.js';
 import { applyWhenWarmed, relinkAfterContextRestore } from '../graphics/shader-warmup.js';
 import { createSignpostMapOverlay } from '../map-overlays/signposts.js';
-import type { NetSignalSource } from '../map-ping/pings.js';
+import { type NetSignalSource, pingColour } from '../map-ping/pings.js';
 import { createMapPingSession } from '../map-ping/session.js';
 import { mountNetOverlays } from '../net/overlays.js';
 import type { NetReadout } from '../net/readout.js';
@@ -1595,6 +1595,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       mapOverlay,
       controls,
       ...(mapPing === undefined ? {} : { mapPings: mapPing.live }),
+      rallyColourOf: (player) => pingColour(deps.playerColourOf?.(player) ?? player),
       worldHover,
       geometryDebug: debugMounts.geometryDebug,
       overlayFrame,

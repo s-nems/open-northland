@@ -33,6 +33,8 @@ import {
   MapPingLayer,
   type OrderMarker,
   OrderMarkerLayer,
+  type RallyBanner,
+  RallyBannerLayer,
   type SettlerBubble,
   type SettlerBubbleGfx,
   SettlerBubbleLayer,
@@ -67,6 +69,7 @@ export type MarkSlots = Pick<
   | 'hearts'
   | 'importMarkers'
   | 'groupNumbers'
+  | 'rallyBanners'
   | 'mapPings'
   | 'geometryDebug'
 >;
@@ -101,6 +104,9 @@ export interface WorldMarksFrame {
   readonly rangeRings: readonly RangeRing[];
   readonly orderMarkers: readonly OrderMarker[];
   readonly mapPings: readonly MapPing[];
+  readonly rallyBanners: readonly RallyBanner[];
+  /** Wall-clock seconds, the banner cloth's clock. */
+  readonly clothSeconds: number;
   readonly lostGoals: readonly LostGoalMarker[];
   readonly lostGoalPulse: number;
   readonly doorBadges: readonly DoorBadge[];
@@ -117,6 +123,7 @@ export class WorldMarks {
   private readonly selection = new SelectionLayer();
   private readonly orderMarkers = new OrderMarkerLayer();
   private readonly mapPings: MapPingLayer;
+  private readonly rallyBanners: RallyBannerLayer;
   private readonly effects: CombatEffectsLayer;
   private readonly blood: BloodLayer;
   /** A razed building's reverse-construction transient. Its nodes live inside the depth-sorted sprite
@@ -149,8 +156,10 @@ export class WorldMarks {
     playerColourOf?: (player: number) => number,
     captureDamage?: (ref: number) => readonly FallenBody[] | undefined,
     mapPingPin?: Texture,
+    rallyBanner?: Texture,
   ) {
     this.mapPings = new MapPingLayer(mapPingPin);
+    this.rallyBanners = new RallyBannerLayer(rallyBanner);
     this.blood = new BloodLayer(spriteLayer);
     this.effects = new CombatEffectsLayer((sprite, id, groundY, lift) =>
       this.blood.surfaces.restore(sprite, id, groundY, lift),
@@ -175,6 +184,7 @@ export class WorldMarks {
       hearts: this.hearts.container,
       importMarkers: this.importMarkers.container,
       groupNumbers: this.groupNumbers.container,
+      rallyBanners: this.rallyBanners.container,
       mapPings: this.mapPings.container,
       geometryDebug: this.geometryDebug.container,
     };
@@ -260,6 +270,7 @@ export class WorldMarks {
     );
     this.orderMarkers.draw(frame.orderMarkers, frame.lostGoals, frame.lostGoalPulse, elevation, viewport);
     this.mapPings.draw(frame.mapPings, elevation, viewport);
+    this.rallyBanners.draw(frame.rallyBanners, elevation, viewport, frame.clothSeconds);
     this.effects.draw(frame);
     this.blood.draw(frame);
     this.collapses.draw(elevation, viewport, renderTime);
@@ -315,6 +326,7 @@ export class WorldMarks {
     this.selection.destroy();
     this.orderMarkers.destroy();
     this.mapPings.destroy();
+    this.rallyBanners.destroy();
     this.effects.destroy();
     this.blood.destroy();
     this.collapses.destroy();

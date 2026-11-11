@@ -12,7 +12,6 @@ const SCHOOL = FIRST_BUILDING + 1;
 const isUnit = (id: number): boolean => id < FIRST_BUILDING;
 
 const gatherer = (id: number, flag: number): Ent => ({ id, components: { WorkFlag: { flag } } });
-const barracks = (id: number, flag: number): Ent => ({ id, components: { RallyPoint: { flag } } });
 const idle = (id: number): Ent => ({ id, components: { Settler: { jobType: 8 } } });
 
 describe('unit selection set', () => {
@@ -56,8 +55,8 @@ describe('unit selection set', () => {
   });
 });
 
-describe('unit selection flags', () => {
-  const world = snapshotOf([gatherer(1, 101), gatherer(2, 102), barracks(4, 103), idle(3)]);
+describe('unit selection work flags', () => {
+  const world = snapshotOf([gatherer(1, 101), gatherer(2, 102), idle(3)]);
 
   it('resolves the flags of the selected gatherers only', () => {
     const selection = createUnitSelection(ALL_UNITS);
@@ -65,14 +64,6 @@ describe('unit selection flags', () => {
     expect([...selection.flagIds(world)]).toEqual([101]);
     selection.apply([2], true);
     expect([...selection.flagIds(world)]).toEqual([101, 102]);
-  });
-
-  it("resolves a selected barracks' rally flag beside the gatherers' work flags", () => {
-    const selection = createUnitSelection(ALL_UNITS);
-    selection.apply([4], false);
-    expect([...selection.flagIds(world)]).toEqual([103]);
-    selection.apply([1, 4], false);
-    expect([...selection.flagIds(world)]).toEqual([101, 103]);
   });
 
   it('answers an empty selection from one shared set, allocating nothing per frame', () => {

@@ -69,15 +69,8 @@ export type PlacementGhost =
        *  band. A wall's stakes stagger with the walls they will stand in. Defaults to `stake`. */
       readonly marker?: LineMarker;
     }
-  /** A gatherer's work flag, or a barracks' rally flag (`rally`), about to be planted: the owner's
-   *  delivery-flag sprite, the rally one tinted the highlight the planted flag wears. */
-  | {
-      readonly kind: 'flag';
-      readonly col: number;
-      readonly row: number;
-      readonly player: number;
-      readonly rally?: boolean;
-    }
+  /** A gatherer's work flag about to be planted: the owner's delivery-flag sprite. */
+  | { readonly kind: 'flag'; readonly col: number; readonly row: number; readonly player: number }
   /** The berths a dock click would moor its ships at: a mooring post on each shore point, a line to the
    *  ripples where its hull lies. */
   | { readonly kind: 'berths'; readonly berths: readonly BerthMark[] };
@@ -119,7 +112,7 @@ function ghostKey(ghost: SpriteGhost): string {
     case 'gate':
       return `g:${ghost.gfxIndex}:${ghost.ok}`;
     case 'flag':
-      return `f:${ghost.player}${ghost.rally === true ? ':rally' : ''}`;
+      return `f:${ghost.player}`;
     default: {
       const unreachable: never = ghost;
       throw new Error(`unhandled ghost: ${JSON.stringify(unreachable)}`);
@@ -146,16 +139,7 @@ function ghostItem(ghost: SpriteGhost): DrawItem {
     case 'gate':
       return { kind: 'palisade', ref: -1, x: 0, y: 0, depth: 0, gfxIndex: ghost.gfxIndex };
     case 'flag':
-      return {
-        kind: 'stockpile',
-        ref: -1,
-        x: 0,
-        y: 0,
-        depth: 0,
-        isFlag: true,
-        rally: ghost.rally === true,
-        player: ghost.player,
-      };
+      return { kind: 'stockpile', ref: -1, x: 0, y: 0, depth: 0, isFlag: true, player: ghost.player };
     default: {
       const unreachable: never = ghost;
       throw new Error(`unhandled ghost: ${JSON.stringify(unreachable)}`);
@@ -172,9 +156,6 @@ const PLACEHOLDER_COLOR = 0xc8a04a;
 /** A warned building ghost's golden orange, tuned by eye: plain to tell from the untinted ghost, yellow
  *  enough not to read as the refused-placement red. */
 const BUILDING_WARN_TINT = 0xffc640;
-/** The rally flag ghost's amber, the highlight outline the planted flag wears (`sprite-pool`'s flagged
- *  tone), so the cursor previews the look it plants. Tuned by eye against it. */
-const RALLY_FLAG_GHOST_TINT = 0xffc020;
 /** Multiplied over a refused building ghost, with the cover it keeps: fainter than a house that fits, so
  *  the red plot under it carries the refusal. Tuned by eye. */
 const BUILDING_REFUSED_TINT = 0xff6a5a;
@@ -494,7 +475,6 @@ export class PlacementGhostLayer {
       if (ghost.kind === 'building' && ghost.warn === true) sprite.tint = BUILDING_WARN_TINT;
       if (ghost.kind === 'building' && ghost.refused === true) sprite.tint = BUILDING_REFUSED_TINT;
       if (ghost.kind === 'gate' && !ghost.ok) sprite.tint = STRING_BLOCKED;
-      if (ghost.kind === 'flag' && ghost.rally === true) sprite.tint = RALLY_FLAG_GHOST_TINT;
       this.container.addChild(sprite);
     }
   }

@@ -56,6 +56,11 @@ const reviewedBinaryAssets = new Set([
   // description alone, cross-blended with its half-shifted copy so it tiles, and reduced to the game's
   // sprite scale and 48 colours.
   'packages/app/src/assets/markers/site-earth.png',
+  // The barracks' rally banner in three cells, each in a transparent gutter: the pole and its arm, the
+  // cloth's trim and emblem, and the cloth in grey for tinting. Generated for this project with
+  // gpt-image-1.5 from a text description alone, split into the cells and reduced to the game's sprite
+  // scale.
+  'packages/app/src/assets/markers/rally-banner.png',
   // The app's typefaces: Cinzel, Alegreya Sans and Alegreya Sans SC, subset from Google Fonts
   // releases; SIL OFL texts sit beside them as LICENSE-*.txt.
   'packages/app/public/fonts/alegreyasans-cyrillic-400.woff2',

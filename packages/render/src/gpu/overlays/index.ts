@@ -49,5 +49,6 @@ export {
   OrderMarkerLayer,
   orderMarkerPose,
 } from './order-marker-layer.js';
+export { type RallyBanner, RallyBannerLayer } from './rally-banner-layer.js';
 export { ShipWakeLayer } from './ship-wake-layer.js';
 export { type ShotFrame, ShotLayer } from './shot-layer.js';

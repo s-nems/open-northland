@@ -11,6 +11,7 @@ import type {
   LostGoalMarker,
   MapPing,
   OrderMarker,
+  RallyBanner,
   SettlerBubble,
 } from '../overlays/index.js';
 import { DEFAULT_PIXEL_ART_SCALER, type PixelArtScaler } from '../pixel-art/registry.js';
@@ -91,6 +92,8 @@ export interface WorldRendererOptions {
   readonly mapPingPin?: Texture | undefined;
   /** A construction site's earth, tiling in world px; absent draws a flat stand-in. */
   readonly siteEarth?: Texture | undefined;
+  /** The rally banner's art page: pole, cloth trim and tintable cloth; absent draws a flat stand-in. */
+  readonly rallyBanner?: Texture | undefined;
 }
 
 /** `scale` defaults to the native landscape-object scale of 1. */
@@ -111,6 +114,7 @@ export const NO_GROUP_NUMBERS: ReadonlyMap<number, readonly string[]> = new Map(
 export const NO_RANGE_RINGS: readonly RangeRing[] = [];
 export const NO_ORDER_MARKERS: readonly OrderMarker[] = [];
 export const NO_MAP_PINGS: readonly MapPing[] = [];
+export const NO_RALLY_BANNERS: readonly RallyBanner[] = [];
 export const NO_LOST_GOALS: readonly LostGoalMarker[] = [];
 
 export interface WorldFrame {
@@ -148,6 +152,8 @@ export interface WorldFrame {
   readonly orderMarkers?: readonly OrderMarker[] | undefined;
   /** The map pings showing, the local player's and its allies' (default none). */
   readonly mapPings?: readonly MapPing[] | undefined;
+  /** The rally banners showing: the selected barracks' and the one the cursor carries (default none). */
+  readonly rallyBanners?: readonly RallyBanner[] | undefined;
   /** The targets of the player's latest orders, playing their one-time flash (default none). */
   readonly targetFlashes?: ReadonlyMap<number, TargetFlash> | undefined;
   /** The refused goals of the selected lost settlers, held while they stay lost (default none). */

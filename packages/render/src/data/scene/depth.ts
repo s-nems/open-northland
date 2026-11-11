@@ -35,19 +35,9 @@ const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
  * later heap. Half a step stays below `settler`'s `3`, so a worker on the tile still draws in front.
  */
 const FLAG_PAINT_STEP = 0.5;
-/**
- * A whole step more for a barracks' rally flag, which draws over the soldiers standing on it - a post is
- * only a post while its owner can see where it is. `2 + 1.5` stays under `projectile`'s `4`, so a shot
- * still crosses over the flag it lands beside.
- */
-const RALLY_FLAG_PAINT_STEP = 1.5;
 
-/** Which flag a `stockpile` item is, for its paint step: a work or haul flag, or a barracks' rally flag. */
-export type FlagDepth = 'work' | 'rally';
-
-function paintOrderBias(kind: DrawKind, flag: FlagDepth | undefined): number {
-  const step = flag === 'rally' ? RALLY_FLAG_PAINT_STEP : flag === 'work' ? FLAG_PAINT_STEP : 0;
-  return SPRITE_PAINT_ORDER[kind] + step;
+function paintOrderBias(kind: DrawKind, isFlag: boolean): number {
+  return SPRITE_PAINT_ORDER[kind] + (isFlag ? FLAG_PAINT_STEP : 0);
 }
 
 /**
@@ -106,7 +96,7 @@ export function spriteDepth(
   tileX: number,
   tileY: number,
   kind: DrawKind,
-  flag?: FlagDepth,
+  isFlag = false,
   groundMarker = false,
   extraSteps = 0,
 ): number {
@@ -114,7 +104,7 @@ export function spriteDepth(
     kindPassDepth(kind, groundMarker) +
     tileY * ROW_STRIDE +
     tileX +
-    (paintOrderBias(kind, flag) + extraSteps) * PAINT_ORDER_EPS
+    (paintOrderBias(kind, isFlag) + extraSteps) * PAINT_ORDER_EPS
   );
 }
 
@@ -127,14 +117,14 @@ export function screenDepth(
   x: number,
   y: number,
   kind: DrawKind,
-  flag?: FlagDepth,
+  isFlag = false,
   groundMarker = false,
   extraSteps = 0,
 ): number {
   return (
     kindPassDepth(kind, groundMarker) +
     depthKey(x, y) +
-    (paintOrderBias(kind, flag) + extraSteps) * SCREEN_PAINT_EPS
+    (paintOrderBias(kind, isFlag) + extraSteps) * SCREEN_PAINT_EPS
   );
 }
 

@@ -77,6 +77,7 @@ const SLOTS = [
   'hearts',
   'importMarkers',
   'groupNumbers',
+  'rallyBanners',
   'mapPings',
   'geometryDebug',
 ] as const satisfies readonly (keyof WorldSceneLayers)[];

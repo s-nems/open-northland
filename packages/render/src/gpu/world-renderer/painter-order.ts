@@ -31,6 +31,8 @@ export interface WorldSceneLayers {
   readonly importMarkers: Container;
   readonly groupNumbers: Container;
   /** A player's map pings: over every sprite and mark, so a ping behind a building still shows. */
+  /** A barracks' rally banner: over every sprite, so the soldiers gathered on it never hide it. */
+  readonly rallyBanners: Container;
   readonly mapPings: Container;
   readonly geometryDebug: Container;
 }
@@ -61,6 +63,7 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.hearts,
     layers.importMarkers,
     layers.groupNumbers,
+    layers.rallyBanners,
     layers.mapPings,
     layers.geometryDebug,
   );

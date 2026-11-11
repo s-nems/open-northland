@@ -365,8 +365,7 @@ export interface PickModeController {
   /** A pick that plants a work flag is armed (a flag trade's workplace pick or the work-area pick), so
    *  the flag ghost follows the cursor. */
   flagActive(): boolean;
-  /** The barracks rally-point pick is armed, so the flag ghost follows the cursor tinted as the rally
-   *  flag, not the plain work one. */
+  /** The barracks rally-point pick is armed, so the rally banner follows the cursor. */
   rallyActive(): boolean;
   /** Non-null when a mode was armed: the press resolved or cancelled it, so the caller must not fall
    *  through to selection or an order. */
@@ -955,10 +954,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     signpostActive: () => pickMode?.kind === 'signpost',
     dockVehicle: () => (pickMode?.kind === 'vehicle-dock' ? (pickMode.vehicles[0] ?? null) : null),
     dockShips: () => (pickMode?.kind === 'vehicle-dock' ? pickMode.vehicles : []),
-    flagActive: () =>
-      pickMode?.kind === 'workplace-or-flag' ||
-      pickMode?.kind === 'work-area' ||
-      pickMode?.kind === 'rally-point',
+    flagActive: () => pickMode?.kind === 'workplace-or-flag' || pickMode?.kind === 'work-area',
     rallyActive: () => pickMode?.kind === 'rally-point',
     handleMouseDown,
     handleOverviewPress,
