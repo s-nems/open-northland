@@ -120,6 +120,8 @@ class PathDrain {
   private groupRoutes: GroupRoutes | undefined;
   private groupReachability: GroupReachability | undefined;
   readonly spent: SearchStats = { explored: 0 };
+  /** A meeting attempt's settles, added to {@link spent} only when the attempt answers its request. */
+  private readonly attempt: SearchStats = { explored: 0 };
   /** The goal-side race slice of the request being served. */
   goalSlice = RACE_SLICE_EXPLORED;
   /** Each player's sealed goals, held across drains: a refusal is proved against the asking overlay. An
@@ -288,26 +290,62 @@ class PathDrain {
     if (meets && live) groupRoutes.offerLive(overlay, liveRoutes);
     const stops = meets ? (groupRoutes.meetingStops(overlay, goal, live) ?? undefined) : undefined;
     const pockets = this.pocketsOf(player, marching);
-    let path =
-      stops === undefined
+    const path =
+      stops === undefined || groupRoutes === undefined
         ? this.ownRoute(pockets, overlay, start, goal, traversal, goalOpen)
-        : resolvePath(pockets, start, goal, overlay, spent, traversal, this.goalSlice, goalOpen, stops);
-    if (path !== null && groupRoutes !== undefined && stops !== undefined && path.at(-1) !== goal) {
-      const followed = groupRoutes.followMeeting(overlay, path, goal, spent, live);
-      if (followed !== null) {
-        // A band of its own leads there: its neighbours borrow from this route as from a searched one.
-        groupRoutes.offer(overlay, followed);
-        return followed;
-      }
-      path = this.ownRoute(pockets, overlay, start, goal, traversal, goalOpen);
-    }
-    // Only a searched route is offered: offering borrowed ones grows the list each member tries.
+        : this.meetingRoute(groupRoutes, pockets, overlay, start, goal, traversal, goalOpen, stops, live);
+    // Only a searched or followed route is offered: offering borrowed ones grows the list each member tries.
     if (path !== null && groupRoutes !== undefined) groupRoutes.offer(overlay, path);
     if (path === null && group && mask !== undefined && !overlay.has(goal)) {
       this.groupReachability ??= new GroupReachability(this.terrain);
       this.groupReachability.rememberFailure(mask, overlay, start, goal);
     }
     return path;
+  }
+
+  /**
+   * A member's search ending on the first node of a shared route by `goal` it settles, followed from there.
+   * A remembered sealed goal refuses that search at the plain search's charge, so a search that met a route
+   * it then failed to follow off, and the corridor's null after it, charge nothing: a sealed goal then costs
+   * the plain search's settles alone on every client, whether or not it remembers the seal.
+   */
+  private meetingRoute(
+    groupRoutes: GroupRoutes,
+    pockets: SealedPockets,
+    overlay: BlockOverlay,
+    start: NodeId,
+    goal: NodeId,
+    traversal: Traversal,
+    goalOpen: boolean,
+    stops: NodeStops,
+    live: boolean,
+  ): NodeId[] | null {
+    const { attempt, spent } = this;
+    attempt.explored = 0;
+    const onto = resolvePath(
+      pockets,
+      start,
+      goal,
+      overlay,
+      attempt,
+      traversal,
+      this.goalSlice,
+      goalOpen,
+      stops,
+    );
+    const met = onto !== null && onto.at(-1) !== goal;
+    const answer = met ? groupRoutes.followMeeting(overlay, onto, goal, attempt, live) : onto;
+    if (!met || answer !== null) {
+      spent.explored += attempt.explored;
+      return answer;
+    }
+    attempt.explored = 0;
+    const corridor = this.corridorRoute(overlay, start, goal, traversal, attempt);
+    if (corridor !== null) {
+      spent.explored += attempt.explored;
+      return corridor;
+    }
+    return resolvePath(pockets, start, goal, overlay, spent, traversal, this.goalSlice, goalOpen);
   }
 
   /** A request's own search to its goal: the corridor's for a long ghost walk, else the map-wide one. */
@@ -320,7 +358,7 @@ class PathDrain {
     goalOpen: boolean,
   ): NodeId[] | null {
     return (
-      this.corridorRoute(overlay, start, goal, traversal) ??
+      this.corridorRoute(overlay, start, goal, traversal, this.spent) ??
       resolvePath(pockets, start, goal, overlay, this.spent, traversal, this.goalSlice, goalOpen)
     );
   }
@@ -335,6 +373,7 @@ class PathDrain {
     start: NodeId,
     goal: NodeId,
     traversal: Traversal,
+    stats: SearchStats,
   ): NodeId[] | null {
     const { mask, terrain } = this;
     if (mask === undefined || overlay !== this.dynamic || traversal !== 'land') return null;
@@ -346,7 +385,7 @@ class PathDrain {
       this.corridors = corridors;
       this.world.registerCacheVerifier('corridorClusterRegions', () => regions.verify());
     }
-    return corridors.route(start, goal, this.spent);
+    return corridors.route(start, goal, stats);
   }
 }
 

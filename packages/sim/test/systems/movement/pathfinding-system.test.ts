@@ -24,8 +24,11 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../../src/index.js';
+import { RACE_SLICE_EXPLORED } from '../../../src/nav/pathfinding/index.js';
 import type { NodeId } from '../../../src/nav/terrain/index.js';
 import { worldDistance } from '../../../src/nav/world-metric.js';
+import { stampResourceFootprintData } from '../../../src/systems/footprint/index.js';
+import { walkBlockMask } from '../../../src/systems/footprint/walk-block-mask.js';
 import { drainPathRequests, pathfindingSystem, type SystemContext } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../../fixtures/terrain.js';
@@ -330,6 +333,7 @@ describe('pathfindingSystem - per-tick search budget', () => {
 
 describe('pathfindingSystem - a group move shares one route', () => {
   const SOLDIER = 31;
+  const CIVILIAN = 1;
   const P0 = 0;
   const MEMBERS = 8;
   const WIDTH = 160;
@@ -429,6 +433,118 @@ describe('pathfindingSystem - a group move shares one route', () => {
     drainPathRequests(sim.world, ctx, terrain, 1);
     expect(members.filter((e) => sim.world.has(e, PathRequest))).toEqual([]);
   });
+
+  it.each([
+    ['soldier', SOLDIER],
+    ['civilian', CIVILIAN],
+  ])(
+    'charges a %s that meets a route by a sealed goal what a world remembering the seal charges',
+    (_, jobType) => {
+      // A walled yard too large for the structure labels and the pocket probe, beside which a band-mate
+      // still walks. One world remembers the yard sealed and one built alike does not, as a restored world
+      // does not: both must charge the late member's refusal alike, or a later walk is served in one and
+      // deferred in the other. A civilian walks through bodies, so after the meeting it tries the corridor.
+      const width = 200;
+      const height = 120;
+      const yard = { left: 149, right: 180, top: 39, bottom: 70 };
+      const goalX = 165;
+      const goalY = 55;
+      const lateX = 20;
+      const setUp = () => {
+        const sim = new Simulation({
+          seed: 1,
+          content: testContent(),
+          map: {
+            resolution: 'half-cell',
+            width,
+            height,
+            typeIds: new Array<number>(width * height).fill(GRASS),
+          },
+        });
+        const terrain = sim.terrain;
+        if (terrain === undefined) throw new Error('mapped sim expected');
+        const ring: { dx: number; dy: number }[] = [];
+        for (let x = yard.left; x <= yard.right; x++)
+          ring.push({ dx: x, dy: yard.top }, { dx: x, dy: yard.bottom });
+        for (let y = yard.top + 1; y < yard.bottom; y++)
+          ring.push({ dx: yard.left, dy: y }, { dx: yard.right, dy: y });
+        const wall = sim.world.create();
+        sim.world.add(wall, Position, positionOfNode(0, 0));
+        stampResourceFootprintData(sim.world, wall, { walk: ring, build: [], work: [] });
+        const member = (x: number, y: number): Entity => {
+          const e = sim.world.create();
+          sim.world.add(e, Position, positionOfNode(x, y));
+          addPerson(sim.world, e, {
+            tribe: 1,
+            jobType,
+            hunger: fx.fromInt(0),
+            fatigue: fx.fromInt(0),
+            piety: fx.fromInt(0),
+            enjoyment: fx.fromInt(0),
+          });
+          sim.world.add(e, Owner, { player: P0 });
+          sim.world.add(e, PlayerOrder, {});
+          return e;
+        };
+        const ctx: SystemContext = {
+          content: testContent(),
+          rng: sim.rng,
+          names: sim.names,
+          tick: 1,
+          events: sim.events,
+          commands: sim.commands,
+          terrain,
+        };
+        const bandMate = member(24, 50);
+        sim.world.add(bandMate, PathRequest, {
+          start: terrain.nodeAt(24, 50),
+          goal: terrain.nodeAt(yard.left - 9, goalY),
+          failed: false,
+        });
+        drainPathRequests(sim.world, ctx, terrain, Number.POSITIVE_INFINITY);
+        const late = member(lateX, goalY);
+        const walker = sim.world.create();
+        const order = (): void => {
+          sim.world.add(late, PathRequest, {
+            start: terrain.nodeAt(lateX, goalY),
+            goal: terrain.nodeAt(goalX, goalY),
+            failed: false,
+          });
+        };
+        return { sim, ctx, terrain, late, walker, order };
+      };
+      const remembering = setUp();
+      remembering.order();
+      drainPathRequests(
+        remembering.sim.world,
+        remembering.ctx,
+        remembering.terrain,
+        Number.POSITIVE_INFINITY,
+      );
+      expect(remembering.sim.world.get(remembering.late, PathRequest).failed).toBe(true);
+      const fresh = setUp();
+      const { terrain } = fresh;
+      const refusal = { explored: 0 };
+      const structures = walkBlockMask(fresh.sim.world, fresh.ctx, terrain).levelled();
+      const start = terrain.nodeAt(lateX, goalY);
+      const goal = terrain.nodeAt(goalX, goalY);
+      expect(
+        findPath(terrain, start, goal, structures, refusal, 'land', RACE_SLICE_EXPLORED, true),
+      ).toBeNull();
+      for (const world of [remembering, fresh]) {
+        world.order();
+        world.sim.world.add(world.walker, PathRequest, {
+          start: terrain.nodeAt(4, 4),
+          goal: terrain.nodeAt(6, 4),
+          failed: false,
+        });
+        // A budget the refusal alone stays under: the walk after it is served.
+        drainPathRequests(world.sim.world, world.ctx, terrain, refusal.explored + 1);
+        expect(world.sim.world.get(world.late, PathRequest).failed).toBe(true);
+        expect(world.sim.world.has(world.walker, PathRequest)).toBe(false);
+      }
+    },
+  );
 
   it('routes economy walks one by one, so the same crowd spills past the budget', () => {
     const { sim, ctx, members, soloCost } = march(false);
