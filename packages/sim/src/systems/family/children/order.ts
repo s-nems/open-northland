@@ -153,6 +153,9 @@ export function driveOrder(
 
   claimDuty(world, woman, pass);
   if (!ensureInside(world, ctx, terrain, woman, home)) return;
+  // A need pulling the husband away leaves him off duty: his needs drive serves it, or, with nothing that
+  // can, his trade keeps him rather than the duty fence standing him idle. He is called once it passes.
+  if (anyNeedPressing(world, ctx, husband)) return;
   claimDuty(world, husband, pass);
   if (!ensureInside(world, ctx, terrain, husband, home)) return;
   // Another couple's session holds the home: wait for our turn.

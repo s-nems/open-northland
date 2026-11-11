@@ -46,6 +46,7 @@ import {
   NEED_DRAIN_UNITS_PER_TICK,
   needBar,
 } from '../../../src/systems/index.js';
+import { PRAY_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
 import { IDLE_REPLAN_PERIOD_TICKS } from '../../../src/systems/settlers/planner/idle-replan.js';
 import { interactionCell } from '../../../src/systems/settlers/targets/index.js';
 import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-goals.js';
@@ -76,6 +77,7 @@ const LARDER_SLOT = 5;
 const WOMAN = 5;
 const CIVILIST = 6;
 const WOODCUTTER = 7;
+const SMITH = 13;
 const SOLDIER = 31;
 const HOME = 2;
 const WAREHOUSE = 7;
@@ -113,6 +115,8 @@ function familyContent(): ContentSet {
       { typeId: WOMAN, id: 'woman' },
       { typeId: CIVILIST, id: 'civilist' },
       { typeId: WOODCUTTER, id: 'woodcutter' },
+      // A smith's trade prays and needs religion, so its piety bar presses with no temple to serve it.
+      { typeId: SMITH, id: 'smith', allowedAtomics: [PRAY_ATOMIC_ID], needsReligion: true },
       // Every real soldier trade carries `ignoresHomeHouseFlag 1`.
       { typeId: SOLDIER, id: 'soldier_unarmed', ignoresHomeHouse: true },
     ],
@@ -548,6 +552,28 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.world.remove(man(), Rider);
     if (!sim.world.has(man(), Position)) sim.world.add(man(), Position, shore);
     runUntil(sim, () => sim.world.tryGet(man(), Resting)?.at === home(), 600, 'husband walks home');
+  });
+
+  it('leaves at his trade a husband whose pressing need nothing serves, and calls him home once it passes', () => {
+    const { sim, woman, man, home } = familySim(3);
+    sim.world.add(woman(), Marriage, { spouse: man(), child: null });
+    sim.world.add(man(), Marriage, { spouse: woman(), child: null });
+    setSettlerJob(sim.world, man(), SMITH);
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman(), child: 'female' });
+    sim.step();
+    sim.world.mut(home(), Stockpile).amounts.set(FOOD, CHILD_FOOD_UNITS);
+    runUntil(sim, () => sim.world.tryGet(woman(), Resting)?.at === home(), 600, 'wife waits inside');
+    // No temple, and his home serves no prayer: the bar presses with nothing to answer it.
+    sim.enqueueSetup({ kind: 'debugSetNeeds', target: man(), piety: 100 });
+    for (let i = 0; i < 600; i++) {
+      sim.step();
+      expect(sim.world.has(man(), FamilyDuty)).toBe(false);
+    }
+    expect(sim.world.get(woman(), Marriage).child).toBeNull();
+
+    sim.enqueueSetup({ kind: 'debugSetNeeds', target: man(), piety: 0 });
+    runUntil(sim, () => sim.world.get(woman(), Marriage).child !== null, 4000, 'child once the need passed');
   });
 
   it('a hungry wife short of the child cost eats her home meal indoors, not popped out to haul', () => {
