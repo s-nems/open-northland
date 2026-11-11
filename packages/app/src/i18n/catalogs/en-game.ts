@@ -177,6 +177,8 @@ export const enGame = {
     choiceEmpty: 'No discovered choices.',
     choiceNoMatches: 'No matching choices.',
     choiceMethods: 'Production method',
+    choiceGathers: 'What to gather',
+    choiceGatherAll: 'Everything',
     schoolPlaces: 'Places: {occupied} / {capacity}',
     schoolPlacesQueued: 'Places: {occupied} / {capacity} · Queue: {queued}',
     schoolUnavailable: 'These settlers cannot train at this school',

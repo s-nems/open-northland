@@ -171,6 +171,8 @@ export const plGame = {
     choiceEmpty: 'Brak odkrytych opcji.',
     choiceNoMatches: 'Brak pasujących opcji.',
     choiceMethods: 'Metoda produkcji',
+    choiceGathers: 'Co zbierać',
+    choiceGatherAll: 'Wszystko',
     schoolPlaces: 'Miejsca: {occupied} / {capacity}',
     schoolPlacesQueued: 'Miejsca: {occupied} / {capacity} · W kolejce: {queued}',
     schoolUnavailable: 'Nie można wyszkolić wybranych osadników w tej szkole',

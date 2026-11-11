@@ -1,11 +1,5 @@
-import { resolveJobAtomics } from '@open-northland/data';
 import { entityById, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
-import {
-  num,
-  progressionGatesSettler,
-  type SnapshotEntity,
-  settlerLearnedOf,
-} from '../../../game/snapshot/index.js';
+import { num, progressionGatesSettler, type SnapshotEntity } from '../../../game/snapshot/index.js';
 import { technologyLabel } from '../../../game/technology.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
@@ -18,7 +12,7 @@ import {
   PRODUCTION_UNLIMITED,
   type UnitPanelModelContext,
 } from './context.js';
-import { goodExperienceLock } from './settler-unlocks.js';
+import { type GoodGate, HIDDEN, harvestableGoodsFor, settlerGoodGate } from './good-gate.js';
 
 /** Where the settler works: a building the link selects, or a place with no building (a work flag). */
 export interface SettlerPlace {
@@ -148,11 +142,6 @@ export interface SettlerWorkModel {
 
 const NO_WORK: SettlerWorkModel = { place: null, production: null, lesson: null };
 
-const HIDDEN = Symbol('hidden');
-/** The per-good gate both product lists share: hidden while the mission forbids the good, else locked
- *  with the reason, else open. */
-type GoodGate = (goodType: number) => string | null | typeof HIDDEN;
-
 /**
  * The settler's place of work and what it makes there. A gatherer's goods follow the sim's forage
  * filter (what the workplace stocks, a good's edible form counting too), a craft operator's the
@@ -189,12 +178,7 @@ export function settlerWork(
   const jobType = num(settlerComp?.jobType);
   const tribe = num(settlerComp?.tribe) ?? 0;
   const owner = num((comps.Owner as { player?: unknown } | undefined)?.player);
-  const learned = settlerLearnedOf(comps, 'good');
-  const experienceGate: GoodGate = (goodType) => {
-    if (!(ctx.goodAllowed?.(goodType, tribe, owner) ?? true)) return HIDDEN;
-    if (learned.includes(goodType)) return null;
-    return goodExperienceLock(ctx, comps, progressionGated, goodType);
-  };
+  const experienceGate = settlerGoodGate(ctx, comps, progressionGated);
   const counters = productionCounters(comps);
   // A trade the player cannot set the production of (the hunter) lists no products: the sim ignores
   // its counters, so a row would promise a choice that changes nothing.
@@ -250,18 +234,6 @@ export function settlerWork(
 }
 
 type GoodEntry = UnitPanelModelContext['goods'][number];
-
-/** The non-farmed goods `jobType` may harvest, in goods-catalog order. Shares `resolveJobAtomics` with
- *  the sim's permission gate, so the list cannot offer what the planner would refuse. */
-function harvestableGoodsFor(ctx: UnitPanelModelContext, jobType: number | undefined): GoodEntry[] {
-  if (jobType === undefined) return [];
-  const allowed = resolveJobAtomics(ctx.jobs).get(jobType);
-  if (allowed === undefined) return [];
-  return ctx.goods.filter(
-    (good) =>
-      good.farming === undefined && good.atomics.harvest !== undefined && allowed.has(good.atomics.harvest),
-  );
-}
 
 function productRow(
   ctx: UnitPanelModelContext,

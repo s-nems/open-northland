@@ -56,7 +56,7 @@ export type UnitSelectionAction =
       readonly queued?: boolean;
     }
   | { readonly kind: 'unequipGood'; readonly group: EquipCategory; readonly slot: number }
-  | { readonly kind: 'setJob'; readonly jobType: number }
+  | { readonly kind: 'setJob'; readonly jobType: number; readonly goods?: readonly number[] }
   | { readonly kind: 'assignBuilder'; readonly site: Entity; readonly queued?: boolean }
   | { readonly kind: 'trainSoldier'; readonly house: Entity; readonly queued?: boolean }
   | {
@@ -197,6 +197,9 @@ export type UnitOrderCommand =
       readonly kind: 'setJob';
       readonly entity: Entity;
       readonly jobType: number;
+      /** The new trade's goods to make or gather, applied as `setProductionGoods` once the trade is
+       *  taken up; an empty list frees every good. Absent leaves the counters as the change finds them. */
+      readonly goods?: readonly number[];
     }
   | {
       /**

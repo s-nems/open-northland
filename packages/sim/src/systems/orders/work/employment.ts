@@ -45,6 +45,7 @@ import {
   mayChangeTrade,
   supersedeStandingOrders,
 } from '../guards.js';
+import { setProductionGoods } from './selection.js';
 
 /**
  * Change one owned settler's profession - see the command doc. Resets it to a fresh idle worker of the new
@@ -69,6 +70,8 @@ export function setJob(
   if (!canChooseJob(world, ctx, needSubjectOf(world, e), command.jobType)) return; // unearned trade
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;
   takeUpTrade(world, ctx, e, command.jobType);
+  if (command.goods !== undefined)
+    setProductionGoods(world, ctx, { kind: 'setProductionGoods', entity: e, goods: command.goods });
 }
 
 /** {@link setJob}'s change once its checks pass: drop the old post and re-idle `e` as `jobType`. */

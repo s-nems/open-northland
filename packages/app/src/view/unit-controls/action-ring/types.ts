@@ -34,7 +34,11 @@ export interface SettlerActionsOptions {
    *  enforces sim-side as well). */
   readonly jobUnlocked: (ids: readonly number[], jobType: number) => boolean;
   readonly jobBlockedReason?: (ids: readonly number[], jobType: number) => string;
-  readonly onSetJob: (ids: readonly number[], jobType: number) => void;
+  /** The goods a gathering trade lets the player hold the selection to, or none when the trade offers no
+   *  choice; with two or more, picking the trade opens them as a second page. */
+  readonly jobGoods: (ids: readonly number[], jobType: number) => readonly JobGoodChoice[];
+  /** `goods` holds the new trade to those goods, empty for every good (`setJob`'s `goods`). */
+  readonly onSetJob: (ids: readonly number[], jobType: number, goods?: readonly number[]) => void;
   /** Bumped when an answer the job gates read lands changed, so an open list redraws under one
    *  snapshot, as a paused game keeps. */
   readonly jobAnswersVersion: () => number;
@@ -43,6 +47,14 @@ export interface SettlerActionsOptions {
   readonly onCommand: (id: ActionOrderId, targets: readonly number[], queued: boolean) => boolean;
   /** The GUI click every pressed ring button and picked profession confirms with. */
   readonly cue: (cue: UiCue) => void;
+}
+
+/** One good on the trade's second page, with the reason it is locked for every selected settler. */
+export interface JobGoodChoice {
+  readonly goodType: number;
+  readonly goodId: string;
+  readonly label: string;
+  readonly reason?: string;
 }
 
 export interface SettlerActions {

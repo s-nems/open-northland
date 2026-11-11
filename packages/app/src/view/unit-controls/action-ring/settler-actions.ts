@@ -116,8 +116,8 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       camera: opts.camera,
       scale: opts.uiscale,
       ...(opts.icons === undefined ? {} : { icons: opts.icons }),
-      onPick: (jobType: number): void => {
-        if (selectedIds.length > 0) opts.onSetJob(selectedIds, jobType);
+      onPick: (jobType: number, goods?: readonly number[]): void => {
+        if (selectedIds.length > 0) opts.onSetJob(selectedIds, jobType, goods);
         // Picking commits the order, so the whole menu closes rather than stepping back to the arms.
         closeMenu();
       },
@@ -136,6 +136,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
         (jobType) => opts.jobVisible(selectedIds, jobType),
         (jobType) => opts.jobUnlocked(selectedIds, jobType),
         (jobType) => opts.jobBlockedReason?.(selectedIds, jobType) ?? '',
+        (jobType) => opts.jobGoods(selectedIds, jobType),
       );
     };
     /** Hide the list and step back to the default menu. */
@@ -192,6 +193,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
             (jobType) => opts.jobVisible(selectedIds, jobType),
             (jobType) => opts.jobUnlocked(selectedIds, jobType),
             (jobType) => opts.jobBlockedReason?.(selectedIds, jobType) ?? '',
+            (jobType) => opts.jobGoods(selectedIds, jobType),
           );
           picker.setScrollTop(restoredPickerScrollTop);
           restoredJobs = false;

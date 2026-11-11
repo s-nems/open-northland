@@ -162,6 +162,8 @@ export const chsGame = {
     choiceEmpty: '没有已发现的选项。',
     choiceNoMatches: '没有匹配的选项。',
     choiceMethods: '生产方式',
+    choiceGathers: '采集什么',
+    choiceGatherAll: '全部',
     schoolPlaces: '名额：{occupied} / {capacity}',
     schoolPlacesQueued: '名额：{occupied} / {capacity} · 排队：{queued}',
     schoolUnavailable: '这些居民无法在这所学校学习',

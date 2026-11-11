@@ -84,6 +84,12 @@ export const JOB_TYPE_SPACE = 56;
 export const GOOD_TYPE_SPACE = 66;
 export const TRIBE_TYPE_SPACE = 42;
 
+/** A `setJob`'s goods for the new trade. */
+const JOB_GOODS = { goods: { arrayOf: 'integer', maxLength: GOOD_TYPE_SPACE } } as const satisfies Record<
+  string,
+  FieldCheck
+>;
+
 /** The jobs an `assignWorker` member would take, most preferred first. */
 const JOB_PRIORITY: FieldCheck = { arrayOf: 'integer', maxLength: JOB_TYPE_SPACE };
 
@@ -165,7 +171,7 @@ const UNIT_SELECTION_ACTION_PAYLOAD: {
     optional: { skipReturn: 'boolean', ...QUEUED },
   },
   unequipGood: { required: { group: { oneOf: EQUIP_CATEGORIES }, slot: 'integer' } },
-  setJob: { required: { jobType: 'integer' } },
+  setJob: { required: { jobType: 'integer' }, optional: JOB_GOODS },
   assignBuilder: { required: { site: 'integer' }, optional: QUEUED },
   trainSoldier: { required: { house: 'integer' }, optional: QUEUED },
   learn: { required: { house: 'integer', target: { oneOf: ['job', 'good'] }, typeId: 'integer' } },
@@ -435,7 +441,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   setRallyPoint: { required: { building: 'integer', ...NODE } },
   clearRallyPoint: { required: { building: 'integer' } },
-  setJob: { required: { entity: 'integer', jobType: 'integer' } },
+  setJob: { required: { entity: 'integer', jobType: 'integer' }, optional: JOB_GOODS },
   continueMatch: { required: { player: 'integer' } },
   endMatchContinuation: { required: {} },
   setMatchParticipants: {

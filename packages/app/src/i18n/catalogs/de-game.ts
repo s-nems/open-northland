@@ -200,6 +200,8 @@ export const deGame = {
     choiceEmpty: 'Noch keine Optionen entdeckt.',
     choiceNoMatches: 'Keine passenden Optionen.',
     choiceMethods: 'Produktionsmethode',
+    choiceGathers: 'Was sammeln',
+    choiceGatherAll: 'Alles',
     schoolPlaces: 'Plätze: {occupied} / {capacity}',
     schoolPlacesQueued: 'Plätze: {occupied} / {capacity} · Warteschlange: {queued}',
     schoolUnavailable: 'Diese Siedler können an dieser Schule nicht lernen',

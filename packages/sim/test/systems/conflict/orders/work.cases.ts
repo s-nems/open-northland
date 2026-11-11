@@ -222,6 +222,18 @@ describe('setJob work-flag lifecycle', () => {
     expect(gatherPick(s, e)).toBe(WOOD);
   });
 
+  it('holds the new trade to the goods the order names, and an empty list frees them', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 2, 1);
+    s.enqueueSetup({ kind: 'setJob', entity: e, jobType: WOODCUTTER, goods: [WOOD] });
+    s.step();
+    expect(gatherPick(s, e)).toBe(WOOD);
+
+    s.enqueueSetup({ kind: 'setJob', entity: e, jobType: WOODCUTTER, goods: [] });
+    s.step();
+    expect(s.world.has(e, ProductionCounters)).toBe(false);
+  });
+
   it('keeps the same flag when the profession stays a gathering trade', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 2, 1);
