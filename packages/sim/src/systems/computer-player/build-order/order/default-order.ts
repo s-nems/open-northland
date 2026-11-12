@@ -73,6 +73,11 @@ const THIRD_BAKERY_FROM_SETTLERS = 150;
 
 const FOURTH_BAKERY_FROM_SETTLERS = 220;
 
+/** Owner ruling: the second joinery belongs to the late game. Authored figure: magiczny_las and
+ *  diamentowa_dolina seats counted 90-165 settlers at game minute 60, and with this line the second
+ *  joinery stood from minute 70 to 95 on most of them. */
+const SECOND_JOINERY_FROM_SETTLERS = 150;
+
 /** Owner ruling: one armory with two armourers and a porter lasts very long, so the second comes only in
  *  the late late game. */
 const SECOND_ARMORY_FROM_SETTLERS = LATE_LATE_GAME_SETTLERS;
@@ -566,6 +571,20 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         { kind: 'upgrade', building: 'work_joinery_01', count: 1, belowTier: 'work_joinery_03' },
         // Soon after, a tier up for the carriers' handcarts (`workforce/craft.ts`).
         { kind: 'upgrade', building: 'work_joinery_02', count: 1, belowTier: 'work_joinery_03' },
+        // Owner ruling: one joinery falls behind the handcarts, tools and furniture of a grown seat, so a
+        // second follows, at the highest tier the seat sources and lifted to the first one's; a seat
+        // short of ground keeps to one (`./seat-order.ts`).
+        {
+          kind: 'place',
+          building: 'work_joinery_00',
+          count: 2,
+          near: WOOD_AND_IRON,
+          belowTier: 'work_joinery_03',
+          holdUntil: { kind: 'settlers', count: SECOND_JOINERY_FROM_SETTLERS },
+          yieldsRoom: true,
+        },
+        { kind: 'upgrade', building: 'work_joinery_01', count: 2, belowTier: 'work_joinery_03' },
+        { kind: 'upgrade', building: 'work_joinery_02', count: 2, belowTier: 'work_joinery_03' },
       ],
     },
     {

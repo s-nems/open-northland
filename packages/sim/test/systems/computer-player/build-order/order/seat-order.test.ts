@@ -325,6 +325,8 @@ describe('the seat strategy shapes the build order', () => {
       'work_brewery',
       'work_armory_01',
       'work_pottery_02',
+      'work_joinery_00',
+      'work_joinery_02',
     ])
       expect(top(building), building).toBe(1);
     expect(top('home_level_00')).toBeLessThan(ARCHETYPE_TUNING.cramped.copyCaps.home_level_00 ?? 0);

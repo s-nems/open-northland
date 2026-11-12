@@ -489,9 +489,10 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
     sparing: WOODEN_TOOLS,
   },
   // The upgraded joinery's joiners build the carriers' handcarts in turn with iron tools while few stand
-  // spare, the second furniture first.
+  // spare. Owner ruling: its three joiners weigh furniture higher, so the second and the third make it
+  // first.
   work_joinery_02: {
-    seats: [HANDCART_SEAT, furnishing(HANDCART_SEAT)],
+    seats: [HANDCART_SEAT, furnishing(HANDCART_SEAT), furnishing(HANDCART_SEAT)],
     unfed: NO_IRON_SEAT,
     sparing: WOODEN_TOOLS,
   },

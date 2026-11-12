@@ -205,7 +205,7 @@ const TUNIC_ARMS: StepMatch = {
 export const NO_ROOM_HOMES = 6;
 
 /** Owner ruling: a seat with almost no room to grow (arabskie_wyspy_wolna_gra_mieszana's islands) limits
- *  its expansion hard: one smithy, bakery, animal farm, tailor, brewery and armory, fewer homes, no
+ *  its expansion hard: one smithy, bakery, animal farm, tailor, brewery, armory and tools joinery, fewer homes, no
  *  catapults. Its gold line already goes where no gold lies on its land. */
 const NO_ROOM_COPY_CAPS: Readonly<Record<string, number>> = {
   work_smithy_00: 1,
@@ -219,6 +219,9 @@ const NO_ROOM_COPY_CAPS: Readonly<Record<string, number>> = {
   work_hive_00: 1,
   work_armory_00: 1,
   work_armory_01: 1,
+  work_joinery_00: 1,
+  work_joinery_01: 1,
+  work_joinery_02: 1,
   home_level_00: NO_ROOM_HOMES,
 };
 
