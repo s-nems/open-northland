@@ -33,6 +33,16 @@ export function deckShotIntervalTicks(clipTicks: number): number {
   return Math.ceil((clipTicks * DECK_SHOT_INTERVAL_NUMERATOR) / DECK_SHOT_INTERVAL_DENOMINATOR);
 }
 
+/** The farthest a bowman on `ship`'s deck shoots, in map points, or 0 when none shoots from it. */
+export function deckReachOf(world: World, ctx: SystemContext, ship: Entity): number {
+  let reach = 0;
+  visitDeckArchers(world, ctx, ship, (_archer, _seat, bow) => {
+    reach = Math.max(reach, bow.maxRange - DECK_RANGE_PENALTY_POINTS);
+    return false;
+  });
+  return reach;
+}
+
 /** The rank an enemy ship takes ahead of every land archer's {@link tierRank}: it shoots back. */
 const SHIP_RANK = 0;
 
@@ -104,7 +114,8 @@ class DeckVolley {
       bow.minRange,
       maxRange,
       rank,
-      PICK_TIER_RANKS + 1,
+      // The ship rank ahead of the land ranks; a target of no listed kind lands on the bound and is passed.
+      PICK_TIER_RANKS,
       accept,
       PICK_CANDIDATES,
       owner,

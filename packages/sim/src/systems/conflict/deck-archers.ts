@@ -5,7 +5,7 @@ import type { SystemContext } from '../context.js';
 import { isSoldierJob, isWarship, WEAPON_MAIN_TYPE } from '../readviews/index.js';
 import { attackerWeapon, loosesMissile, type MissileWeapon, vehicleWeapon } from './weapons.js';
 
-/** How many bowmen shoot from one deck: the first ones by seat, the rest wait their turn. Owner rule. */
+/** How many bowmen shoot from one deck: the first ones by seat; the rest hold fire. Owner rule. */
 export const DECK_ARCHER_LIMIT = 10;
 
 /**
@@ -48,12 +48,15 @@ export function hasDeckArchers(world: World, ctx: SystemContext, ship: Entity): 
 
 const anyArcher = (): boolean => true;
 
-/** The body a blow from `attacker` comes from as its victims see it: the ship a bowman shoots from aboard,
- *  or null for one standing on the map. */
-export function deckShipOf(world: World, attacker: Entity): Entity | null {
+/** The body a blow from `attacker` comes from as its victims see it: the warship a bowman shoots from
+ *  aboard, or null for anyone else, a siege engine's commander included. */
+export function deckShipOf(world: World, ctx: SystemContext, attacker: Entity): Entity | null {
   if (world.has(attacker, Position)) return null;
   const vehicle = world.tryGet(attacker, Rider)?.vehicle;
-  return vehicle !== undefined && world.has(vehicle, Position) ? vehicle : null;
+  if (vehicle === undefined || !world.has(vehicle, Position)) return null;
+  const state = world.tryGet(vehicle, Vehicle);
+  const type = state === undefined ? undefined : contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  return type !== undefined && isWarship(ctx.content, type) ? vehicle : null;
 }
 
 /** The bow live soldier `e` shoots, or null when he is no bowman. */

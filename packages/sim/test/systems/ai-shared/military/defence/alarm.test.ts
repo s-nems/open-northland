@@ -3,11 +3,10 @@ import { Building, Settler, seatPassenger } from '../../../../../src/components/
 import type { Entity } from '../../../../../src/ecs/world.js';
 import { Simulation, type TerrainMap } from '../../../../../src/index.js';
 import {
-  alarmOrders,
-  seatDeckShips,
+  THREAT_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,
 } from '../../../../../src/systems/ai-shared/military/defence/index.js';
-import { entityNode } from '../../../../../src/systems/spatial/nodes.js';
+import { planSettlementDefence } from '../../../../../src/systems/ai-shared/military/settlement-defence.js';
 import { boardRider, createVehicle } from '../../../../../src/systems/vehicles/index.js';
 import { aiContent } from '../../../../fixtures/ai-content.js';
 import { ctxOf } from '../../../../fixtures/context.js';
@@ -32,6 +31,8 @@ const HQ = { x: 24, y: 20 };
 const SHORE_OFFSET = 8;
 /** How far inside the watch band the ship anchors. */
 const INSIDE_BAND = 2;
+/** How far past the plain watch, yet inside the stand-down margin a raider ashore holds, the ship rides. */
+const PAST_WATCH = 3;
 
 const SHIPS = [
   {
@@ -77,12 +78,13 @@ function setup(): { sim: Simulation; hq: Entity } {
   return { sim, hq };
 }
 
-/** An enemy warship inside the headquarters' watch band with one man of `crew`'s job seated aboard. */
-function shipOff(sim: Simulation, crew: number): Entity {
+/** An enemy warship `offset` points off the headquarters' watch band (negative inside it) with one man of
+ *  `crew`'s job seated aboard. */
+function shipOff(sim: Simulation, crew: number, offset = -INSIDE_BAND): Entity {
   const watch = threatWatchNodes(ctxOf(sim), VIKING);
   const ship = createVehicle(sim.world, ctxOf(sim), {
     vehicleType: WARSHIP,
-    x: HQ.x + watch - INSIDE_BAND,
+    x: HQ.x + watch + offset,
     y: HQ.y,
     tribe: VIKING,
     owner: FOE,
@@ -98,13 +100,12 @@ function shipOff(sim: Simulation, crew: number): Entity {
   return ship;
 }
 
-function alarms(sim: Simulation, hq: Entity): { building: Entity; enabled: boolean }[] {
-  const ctx = ctxOf(sim);
+/** The alarm orders of the seat's whole defence plan this decision. */
+function alarms(sim: Simulation): { building: Entity; enabled: boolean }[] {
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('setup: no terrain graph');
-  expect(terrain.xOf(entityNode(sim.world, terrain, hq))).toBeLessThan(HQ.x + SHORE_OFFSET);
-  return alarmOrders(sim.world, ctx, terrain, [hq], [], seatDeckShips(sim.world, ctx, terrain, SEAT)).flatMap(
-    (c) => (c.kind === 'setDefenceMode' ? [{ building: c.building, enabled: c.enabled }] : []),
+  return planSettlementDefence(sim.world, ctxOf(sim), terrain, SEAT, true).commands.flatMap((c) =>
+    c.kind === 'setDefenceMode' ? [{ building: c.building, enabled: c.enabled }] : [],
   );
 }
 
@@ -113,13 +114,23 @@ describe('ai defence alarm - armed ships', () => {
     const { sim, hq } = setup();
     shipOff(sim, BOWMAN);
 
-    expect(alarms(sim, hq)).toEqual([{ building: hq, enabled: true }]);
+    expect(alarms(sim)).toEqual([{ building: hq, enabled: true }]);
   });
 
   it('ignores the same warship carrying no bowman', () => {
-    const { sim, hq } = setup();
+    const { sim } = setup();
     shipOff(sim, SPEARMAN);
 
-    expect(alarms(sim, hq)).toEqual([]);
+    expect(alarms(sim)).toEqual([]);
+  });
+
+  it('stands down once the ship rides past the plain watch, though a man ashore there would hold it', () => {
+    const { sim, hq } = setup();
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: hq, enabled: true });
+    sim.step();
+    shipOff(sim, BOWMAN, PAST_WATCH);
+
+    expect(PAST_WATCH).toBeLessThan(THREAT_STAND_DOWN_MARGIN_NODES);
+    expect(alarms(sim)).toEqual([{ building: hq, enabled: false }]);
   });
 });

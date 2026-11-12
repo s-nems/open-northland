@@ -185,7 +185,7 @@ export function resolveCombatHit(
   }
   // Original behavior: a struck beast turns angry and a struck person reacts whatever the damage. The
   // struck side answers a deck bowman's shot at his ship, the only body of him on the map.
-  const striker = deckShipOf(world, attacker) ?? attacker;
+  const striker = deckShipOf(world, ctx, attacker) ?? attacker;
   reactToBlowOnAnimal(world, ctx, striker, target);
   if (dealtDamage && source !== 'collateral') provokeHostility(world, ctx, attacker, target);
   turnOnAttacker(world, ctx, striker, target);

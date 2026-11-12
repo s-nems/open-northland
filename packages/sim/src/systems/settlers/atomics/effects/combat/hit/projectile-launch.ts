@@ -27,20 +27,19 @@ import {
   shotLandDelay,
 } from '../../../../../conflict/shot-aim.js';
 import { buildingBodyNodes } from '../../../../../conflict/target-node.js';
+import type { MissileShot } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
 import { weaponClassHits } from '../../../../../progression/index.js';
 import { isHeroJob, WEAPON_MAIN_TYPE } from '../../../../../readviews/index.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 import { exploreAround, SHOT_SIGHT_NODES } from '../../../../../vision/index.js';
 
-type RangedSwing = NonNullable<Extract<AtomicEffect, { kind: 'attack' }>['projectile']>;
-
 /** One shot as its shooter looses it: who fires, the weapon it carries, and where it comes down. */
 export interface LooseShot {
   readonly source: Entity;
   readonly target: Entity;
   readonly player: number | null;
-  readonly weapon: RangedSwing;
+  readonly weapon: MissileShot;
   readonly weaponMainType: number | null;
   /** The defence-mode building that fires the shot itself, read only by the render. */
   readonly cover: Entity | null;
@@ -79,7 +78,7 @@ export function looseSettlerShot(
   shooter: Entity,
   body: Entity,
   target: Entity,
-  weapon: RangedSwing,
+  weapon: MissileShot,
   weaponMainType: number | null,
   extraSpread: number,
 ): void {

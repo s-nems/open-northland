@@ -23,7 +23,7 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../../src/index.js';
-import { DECK_ARCHER_LIMIT } from '../../../src/systems/conflict/deck-archers.js';
+import { DECK_ARCHER_LIMIT, deckShipOf } from '../../../src/systems/conflict/deck-archers.js';
 import { DECK_RANGE_PENALTY_POINTS, deckShotIntervalTicks } from '../../../src/systems/conflict/deck-fire.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../../src/systems/progression/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
@@ -139,6 +139,8 @@ function deckContent(): ContentSet {
       {
         typeId: VIKING,
         id: 'viking',
+        // One rung, so the tribe declares trades and a landed hit trains its bowmen.
+        jobEnables: [{ jobType: SOLDIER, kind: 'job', targetId: ARCHER }],
         atomicBindings: [
           { jobType: SOLDIER, atomicId: ATTACK_ATOMIC, animation: 'viking_attack' },
           { jobType: ARCHER, atomicId: ATTACK_ATOMIC, animation: 'viking_attack' },
@@ -335,7 +337,7 @@ describe('deck fire', () => {
   });
 
   it('scatters a veteran’s deck shots at a lone man where the same veteran ashore shoots true', () => {
-    const offTarget = (deck: boolean): number => {
+    const offTarget = (deck: boolean): { shots: number; off: number } => {
       const s = sim();
       const shore = shoreAt(DECK_REACH);
       const enemy = personAt(s, shore.hx, shore.hy, P2, SOLDIER);
@@ -345,20 +347,61 @@ describe('deck fire', () => {
         : personAt(s, shore.hx + DECK_REACH, ROW, P1, ARCHER);
       s.world.mut(archer, Stance).mode = MILITARY_MODE.IGNORE;
       s.world.mut(archer, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.BOW, VETERAN_BOW_HITS);
+      let shots = 0;
       let off = 0;
       for (let i = 0; i < SHOT_TICKS * 4; i++) {
         s.step();
         for (const ev of s.events.current()) {
           if (ev.kind !== 'projectileLaunched') continue;
+          shots++;
           const flight = s.world.get(ev.projectile, Projectile);
           const at = s.world.get(enemy, Position);
           if (nodeOfPosition(flight.aimX, flight.aimY).hx !== nodeOfPosition(at.x, at.y).hx) off++;
           else if (nodeOfPosition(flight.aimX, flight.aimY).hy !== nodeOfPosition(at.x, at.y).hy) off++;
         }
       }
-      return off;
+      return { shots, off };
     };
-    expect(offTarget(false)).toBe(0);
-    expect(offTarget(true)).toBeGreaterThan(0);
+    const ashore = offTarget(false);
+    expect(ashore.shots).toBeGreaterThan(0);
+    expect(ashore.off).toBe(0);
+    expect(offTarget(true).off).toBeGreaterThan(0);
+  });
+
+  it('trains a deck bowman’s bow on a hit', () => {
+    const s = sim();
+    const { bowmen } = shipWith(s, WARSHIP, SHIP_X, P1, 1);
+    const archer = bowmen[0] as Entity;
+    const shore = shoreAt(DECK_REACH);
+    const enemy = personAt(s, shore.hx, shore.hy, P2, SOLDIER);
+    const before = s.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW) ?? 0;
+    let struck = false;
+    for (let i = 0; i < SHOT_TICKS * 10 && !struck; i++) {
+      s.step();
+      struck = s.events.current().some((ev) => ev.kind === 'projectileHit' && ev.target === enemy);
+    }
+    expect(struck).toBe(true);
+    expect(
+      s.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW) ?? 0,
+    ).toBeGreaterThan(before);
+  });
+
+  it('answers for a rider aboard a warship, never for a siege engine’s commander', () => {
+    const s = sim();
+    const { ship, bowmen } = shipWith(s, WARSHIP, SHIP_X, P1, 1);
+    const catapult = createVehicle(s.world, ctxOf(s), {
+      vehicleType: CATAPULT,
+      x: 4,
+      y: ROW,
+      tribe: VIKING,
+      owner: P1,
+    });
+    if (catapult === null) throw new Error('catapult type missing');
+    const commander = personAt(s, 2, 2, P1, SOLDIER);
+    expect(seatPassenger(s.world, catapult, commander)).toBe(true);
+    boardRider(s.world, commander, catapult);
+
+    expect(deckShipOf(s.world, ctxOf(s), bowmen[0] as Entity)).toBe(ship);
+    expect(deckShipOf(s.world, ctxOf(s), commander)).toBeNull();
   });
 });

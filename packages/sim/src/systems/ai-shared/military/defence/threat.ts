@@ -18,7 +18,7 @@ import {
 import type { ChangeFeed, Entity, World } from '../../../../ecs/world.js';
 import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
-import { hasDeckArchers } from '../../../conflict/deck-archers.js';
+import { deckReachOf } from '../../../conflict/deck-fire.js';
 import { SIGHT_RADIUS_NODES } from '../../../conflict/targeting.js';
 import { garrisonReach, mannedPostOf, standsAtPost } from '../../../conflict/tower-post.js';
 import { attackerWeapon } from '../../../conflict/weapons.js';
@@ -410,19 +410,19 @@ function sameFighter(
 }
 
 /**
- * Every enemy ship with a bowman on its deck that `player` sees, ascending id, as a raider whose fire
- * strikes the ship: the alarm takes cover from it as from a bowman ashore. A fresh list per call over the
- * map's few vehicles. Its reach is a man's sight, as a loose fighter's is at least.
+ * Every enemy ship with a bowman on its deck that `player` sees, ascending id, with the reach of its
+ * farthest deck bow: the alarm takes cover from it as from a bowman ashore. A fresh list per call over
+ * the map's few vehicles.
  */
 export function seatDeckShips(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
-): Raider[] {
+): Shooter[] {
   stanceOf.fill(UNREAD);
   const sight = sightOf(world, ctx, player);
-  const ships: Raider[] = [];
+  const ships: Shooter[] = [];
   for (const e of world.canonicalQuery(Vehicle, Health, Position)) {
     const owner = world.tryGet(e, Owner)?.player;
     if (owner === undefined || world.get(e, Health).hitpoints <= 0 || !engages(world, owner, player))
@@ -431,8 +431,8 @@ export function seatDeckShips(
     const x = terrain.xOf(at);
     const y = terrain.yOf(at);
     if (sight !== null && !playerSeesNode(sight, player, x, y)) continue;
-    if (!hasDeckArchers(world, ctx, e)) continue;
-    ships.push({ entity: e, target: e, x, y, component: terrain.componentOf(at), reach: SIGHT_RADIUS_NODES });
+    const reach = deckReachOf(world, ctx, e);
+    if (reach > 0) ships.push({ x, y, reach });
   }
   return ships;
 }
