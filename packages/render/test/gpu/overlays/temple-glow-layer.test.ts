@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { TEMPLE_MOTES } from '../../../src/data/scene/temple-glow.js';
 import { type TempleGlowFrame, TempleGlowLayer } from '../../../src/gpu/overlays/temple-glow-layer.js';
 import { drawnGeometry } from '../../support/fixtures.js';
+import { useHeadlessShaderContext } from '../../support/shader-context.js';
 
 const BLESSING = 1;
 const DARK = 2;
@@ -42,6 +43,8 @@ function run(layer: TempleGlowLayer, until: number, seams: Partial<TempleGlowFra
 }
 
 describe('TempleGlowLayer', () => {
+  useHeadlessShaderContext();
+
   it('spreads the aura from the wall line of a blessing temple alone', () => {
     const layer = new TempleGlowLayer();
     run(layer, KINDLED_SECONDS);
