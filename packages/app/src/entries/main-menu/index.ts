@@ -1,3 +1,4 @@
+import { diag } from '../../diag/index.js';
 import { messages } from '../../i18n/index.js';
 import { type LaunchEntry, swapToEntry } from '../../launch.js';
 import { abandonNetworkHandover } from '../../net/handover.js';
@@ -202,6 +203,12 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     disposeScreen = (): void => undefined;
     if (next === 'catalogue') catalogueBack = screen === 'newGame' ? 'newGame' : 'main';
     screen = next;
+    // The log of a freeze in the menu then says which screen was up, and since when.
+    diag.info(
+      'menu',
+      'screen',
+      next === 'lobby' && lobbyMap !== null ? { screen: next, map: lobbyMap.id } : { screen: next },
+    );
     root.classList.toggle('is-sub', next !== 'main');
     const mounted = screenFor(next);
     if (mounted.dispose !== undefined) disposeScreen = mounted.dispose;
