@@ -1,7 +1,10 @@
-import type { Container } from 'pixi.js';
+import type { Container, TextureSource } from 'pixi.js';
+import type { AtlasFrame } from '../../data/sprites/index.js';
 import type { WindSway } from '../../data/weather/climate.js';
 import { type PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
 import type { DamagedShip } from '../sprite-pool/picking/pick.js';
+import { readable2dContext } from '../textures/drawable-resource.js';
+import { drawableFrame } from '../textures/recoloured-pages.js';
 import type { DamageEffectTextures } from './effect-textures.js';
 import { DamageEffects, type DamageOrigin, PLAIN_DAMAGE_STYLE, SHIP_DAMAGE_STYLE } from './effects.js';
 import { damageLevel, MAX_DAMAGE_LEVEL } from './surface.js';
@@ -12,20 +15,37 @@ export interface ShipBody {
   readonly sprites: readonly (PalettedQuad | PalettedSprite)[];
 }
 
-/** A hull's drawn rect in feet-local world px. */
+/** A hull's drawn rect in feet-local world px, its roll, and where its fires stand on it. */
 export interface HullBox {
   left: number;
   top: number;
   width: number;
   height: number;
+  /** Px of x per px of y about the feet anchor. */
+  shear: number;
+  /** `[x, y]` per fire, as shares of the rect. */
+  fires: ArrayLike<number>;
+}
+
+export function emptyHullBox(): HullBox {
+  return { left: 0, top: 0, width: 0, height: 0, shear: 0, fires: DEFAULT_FIRES };
 }
 
 type MutableOrigin = { -readonly [K in keyof DamageOrigin]: DamageOrigin[K] };
 
-/** Where the two fires stand along the deck, as shares of the hull rect. Tuned by eye: the upper part
- *  of a ship's frame is mast and sail. */
-const DECK_FIRES = [0.38, 0.62] as const;
-const DECK_HEIGHT = 0.6;
+/** The columns the two fires stand in, as shares of the frame's width. Tuned by eye. */
+const FIRE_COLUMNS = [0.38, 0.62] as const;
+/** Where they stand when the frame's pixels cannot be read: the upper part of a ship's frame is mast
+ *  and sail. */
+const DEFAULT_FIRES: ArrayLike<number> = [FIRE_COLUMNS[0], 0.6, FIRE_COLUMNS[1], 0.6];
+/** A fire stands this far up the hull's side from its lowest pixel, as a share of the side's height,
+ *  and a side counts as no taller than this share of the frame: above it the column is mast or sail. */
+const FIRE_RISE = 0.7;
+const MAX_SIDE_SHARE = 0.3;
+/** The largest frame read for its hull, per side in px. */
+const MAX_READ_PX = 1024;
+const RGBA = 4;
+const COVERAGE = 1;
 const FIRE_SIZE = 24;
 const HULL_WOOD = 0x8a6a45;
 const NO_GROUND: readonly never[] = [];
@@ -42,23 +62,76 @@ export function hullBoxOf(sprites: ShipBody['sprites'], out: HullBox): boolean {
     out.top = mesh.artDy + frame.offsetY * mesh.artScale;
     out.width = frame.width * mesh.artScale;
     out.height = frame.height * mesh.artScale;
+    out.shear = mesh.shear;
+    out.fires = mesh.frameSource === undefined ? DEFAULT_FIRES : deckFires(mesh.frameSource, frame);
   }
   return area > 0;
+}
+
+const firesOfFrame = new WeakMap<AtlasFrame, ArrayLike<number>>();
+let scratch: ReturnType<typeof readable2dContext> | undefined;
+
+/**
+ * Where a hull frame's fires stand, read once from its pixels so a flame rises from the timber and not
+ * from the air beside the mast: in each fire column, part way up the hull's side from its lowest
+ * drawn pixel. An unreadable frame takes {@link DEFAULT_FIRES}.
+ */
+function deckFires(source: TextureSource, frame: AtlasFrame): ArrayLike<number> {
+  const known = firesOfFrame.get(frame);
+  if (known !== undefined) return known;
+  const fires = readDeckFires(source, frame) ?? DEFAULT_FIRES;
+  firesOfFrame.set(frame, fires);
+  return fires;
+}
+
+function readDeckFires(source: TextureSource, frame: AtlasFrame): ArrayLike<number> | null {
+  const { width, height } = frame;
+  if (width < 2 || height < 2 || width > MAX_READ_PX || height > MAX_READ_PX) return null;
+  const drawable = drawableFrame(source, frame);
+  if (drawable === null) return null;
+  if (scratch === undefined) scratch = readable2dContext(MAX_READ_PX, MAX_READ_PX);
+  if (scratch === null) return null;
+  let pixels: Uint8ClampedArray;
+  try {
+    scratch.clearRect(0, 0, width, height);
+    scratch.drawImage(drawable.image, drawable.x, drawable.y, width, height, 0, 0, width, height);
+    pixels = scratch.getImageData(0, 0, width, height).data;
+  } catch {
+    return null;
+  }
+  // An indexed page holds its coverage in green.
+  const solid = (x: number, y: number): boolean => (pixels[(y * width + x) * RGBA + COVERAGE] ?? 0) > 0;
+  const fires = new Float32Array(FIRE_COLUMNS.length * 2);
+  for (let i = 0; i < FIRE_COLUMNS.length; i++) {
+    const x = Math.min(width - 1, Math.floor(width * (FIRE_COLUMNS[i] ?? 0.5)));
+    let bottom = height - 1;
+    while (bottom >= 0 && !solid(x, bottom)) bottom--;
+    if (bottom < 0) return null;
+    let top = bottom;
+    while (top > 0 && solid(x, top - 1)) top--;
+    const side = Math.min(bottom - top, height * MAX_SIDE_SHARE);
+    fires[i * 2] = (x + 0.5) / width;
+    fires[i * 2 + 1] = (bottom - side * FIRE_RISE) / height;
+  }
+  return fires;
 }
 
 /** The deck fires of a hull at `box`, moved `sink` px down and never below its waterline. */
 export function placeDeckFires(origins: DamageOrigin[], box: HullBox, sink = 0): void {
   const waterline = box.top + box.height;
-  for (let i = 0; i < DECK_FIRES.length; i++) {
+  const count = box.fires.length / 2;
+  for (let i = 0; i < count; i++) {
     let origin = origins[i] as MutableOrigin | undefined;
     if (origin === undefined) {
       origin = { x: 0, y: 0, size: FIRE_SIZE, seed: i + 1, colour: HULL_WOOD };
       origins[i] = origin;
     }
-    origin.x = box.left + box.width * (DECK_FIRES[i] ?? 0.5);
-    origin.y = Math.min(box.top + box.height * DECK_HEIGHT + sink, waterline);
+    const y = box.top + box.height * (box.fires[i * 2 + 1] ?? 0);
+    // The roll shifts a row by its height over the feet.
+    origin.x = box.left + box.width * (box.fires[i * 2] ?? 0) + box.shear * y;
+    origin.y = Math.min(y + sink, waterline);
   }
-  origins.length = DECK_FIRES.length;
+  origins.length = count;
 }
 
 interface ShipNode {
@@ -77,7 +150,7 @@ export class ShipDamage {
    *  take the wear back. */
   private readonly listed = new Set<number>();
   private readonly worn = new Map<number, ShipBody>();
-  private readonly box: HullBox = { left: 0, top: 0, width: 0, height: 0 };
+  private readonly box = emptyHullBox();
 
   constructor(
     private readonly art: () => DamageEffectTextures,

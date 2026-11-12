@@ -18,7 +18,13 @@ import {
 import type { WindSway } from '../../data/weather/climate.js';
 import type { DamageEffectTextures } from '../building-damage/effect-textures.js';
 import { DamageEffects, type DamageOrigin, SHIP_DAMAGE_STYLE } from '../building-damage/effects.js';
-import { type HullBox, hullBoxOf, placeDeckFires, type ShipBody } from '../building-damage/ship-damage.js';
+import {
+  emptyHullBox,
+  type HullBox,
+  hullBoxOf,
+  placeDeckFires,
+  type ShipBody,
+} from '../building-damage/ship-damage.js';
 import { MAX_DAMAGE_LEVEL } from '../building-damage/surface.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import type { PaletteLut } from '../textures/sprite-sheet.js';
@@ -146,7 +152,7 @@ export class ShipSinkLayer {
   }
 
   private mint(sinking: ShipSinking, hull: SinkingHull): void {
-    const box: HullBox = { left: 0, top: 0, width: 0, height: 0 };
+    const box = emptyHullBox();
     if (!hullBoxOf(hull.sprites, box)) return;
     const display = new Container();
     const hulls: SinkNode['hulls'] = [];
