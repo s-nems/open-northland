@@ -860,7 +860,9 @@ export const deGame = {
       repeats: '{count} Mal',
       repeatsBonus: '{count} Mal, Ertrag +{bonus}%',
       fightBonus:
-        '{count} Punkte Kampferfahrung: verursacht +{dealt}% Nahkampfschaden, erleidet -{taken}% Schaden',
+        'Kampferfahrung {count}/{max}. Boni: verursachter Nahkampfschaden +{dealt}%, erlittener Schaden -{taken}%',
+      fightDealt: 'verursacht +{pct}%',
+      fightTaken: 'erlitten -{pct}%',
       unlockTooltip: 'Schaltet {unlocks} frei (Erfahrung: {track})',
       moreRows: '{count} weitere',
       fewerRows: 'Weniger anzeigen',

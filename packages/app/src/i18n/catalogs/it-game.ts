@@ -824,7 +824,9 @@ export const itGame = {
       repeats: '{count} volte',
       repeatsBonus: '{count} volte, produzione +{bonus}%',
       fightBonus:
-        '{count} punti di esperienza in combattimento: infligge +{dealt}% di danni in mischia, subisce -{taken}% di danni',
+        'Esperienza in combattimento {count}/{max}. Bonus: danni inflitti in mischia +{dealt}%, danni subiti -{taken}%',
+      fightDealt: 'inflitti +{pct}%',
+      fightTaken: 'subiti -{pct}%',
       unlockTooltip: 'Sblocca {unlocks} (esperienza: {track})',
       moreRows: 'altri {count}',
       fewerRows: 'meno',

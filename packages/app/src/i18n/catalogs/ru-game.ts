@@ -852,7 +852,9 @@ export const ruGame = {
       repeats: 'Повторений: {count}',
       repeatsBonus: 'Повторений: {count}, выпуск +{bonus}%',
       fightBonus:
-        'Очков боевого опыта: {count}. Наносит +{dealt}% урона в ближнем бою, получает -{taken}% урона',
+        'Боевой опыт {count}/{max}. Бонусы: наносимый урон в ближнем бою +{dealt}%, получаемый урон -{taken}%',
+      fightDealt: 'наносимый +{pct}%',
+      fightTaken: 'получаемый -{pct}%',
       unlockTooltip: 'Открывает: {unlocks} (опыт: {track})',
       moreRows: 'ещё {count}',
       fewerRows: 'Показать меньше',

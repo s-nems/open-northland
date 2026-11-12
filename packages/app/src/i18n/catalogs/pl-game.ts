@@ -795,7 +795,9 @@ export const plGame = {
       repeats: '{count} razy',
       repeatsBonus: '{count} razy, wydajność +{bonus}%',
       fightBonus:
-        '{count} pkt doświadczenia w walce: zadaje +{dealt}% obrażeń wręcz, otrzymuje -{taken}% obrażeń',
+        'Doświadczenie w walce {count}/{max}. Premie: zadawane obrażenia wręcz +{dealt}%, otrzymywane obrażenia -{taken}%',
+      fightDealt: 'zadawane +{pct}%',
+      fightTaken: 'otrzymywane -{pct}%',
       unlockTooltip: 'Odblokowuje: {unlocks} (doświadczenie: {track})',
       moreRows: 'jeszcze {count}',
       fewerRows: 'zwiń',

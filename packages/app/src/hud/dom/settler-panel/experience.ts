@@ -1,3 +1,4 @@
+import { systems } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
   type ExperienceRowModel,
@@ -11,18 +12,20 @@ import { createLedger, type Ledger, type LedgerModel } from '../parts/ledger.js'
 import { meterFill } from '../parts/meter-row.js';
 import { createSection } from '../parts/section.js';
 
-function trainedRow(row: ExperienceRowModel): LedgerModel {
+export function trainedRow(row: ExperienceRowModel): LedgerModel {
   const copy = messages().hud.settlerPanel;
   const repeats = String(row.repeats);
   if (row.takenCutPct !== null) {
+    // The fight counter is capped: it reads as a share of its full, as an unlock row does.
     const dealt = row.bonusPct ?? 0;
+    const max = systems.FIGHT_EXPERIENCE_FULL;
     return {
       label: row.label,
-      tooltip: formatMessage(copy.fightBonus, { count: row.repeats, dealt, taken: row.takenCutPct }),
+      tooltip: formatMessage(copy.fightBonus, { count: row.repeats, max, dealt, taken: row.takenCutPct }),
       value: [
-        { text: repeats },
-        { text: `+${dealt}%`, tone: 'bonus' },
-        { text: `-${row.takenCutPct}%`, tone: 'bonus' },
+        { text: `${row.repeats} / ${max}` },
+        { text: formatMessage(copy.fightDealt, { pct: dealt }), tone: 'bonus' },
+        { text: formatMessage(copy.fightTaken, { pct: row.takenCutPct }), tone: 'bonus' },
       ],
     };
   }
