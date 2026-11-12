@@ -15,6 +15,7 @@ import {
   Projectile,
   Regrowth,
   Resource,
+  Resting,
   SettlerProgress,
   Stockpile,
   Stump,
@@ -24,12 +25,15 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../../src/index.js';
 import { hexNeighboursOf } from '../../../src/nav/halfcell.js';
+import { combatSystem } from '../../../src/systems/conflict/combat.js';
+import { projectileSystem } from '../../../src/systems/conflict/projectile.js';
 import {
   anchorOnlyFootprint,
   FIGHT_EXPERIENCE_TYPE,
   stampResourceFootprintData,
 } from '../../../src/systems/index.js';
 import { ARMOR_MATERIAL } from '../../../src/systems/readviews/index.js';
+import { ctxOf } from '../../fixtures/context.js';
 import { addSettlerOfTribe } from '../../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
@@ -441,6 +445,42 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     expect(crowded.house).toBe(TARGET_HP);
     expect(crowded.bystander).toBe(TARGET_HP - BOW_DAMAGE);
     expect(crowded.structure).toBe(false);
+  });
+
+  it('strikes the house its victim went into before it landed, when that house is an enemy one', () => {
+    const houseAfter = (houseOwner: number) => {
+      const sim = new Simulation({ seed: 1, content: content(), map: grassMap(28, 3) });
+      const archer = marksmanAt(sim, 0, 1);
+      sim.world.add(archer, Owner, { player: 0 });
+      const target = fighterAt(sim, 8, 1, FRANK, IDLE);
+      sim.world.add(target, Owner, { player: 1 });
+
+      stepToLaunch(sim);
+      const shot = shotInFlight(sim);
+      sim.world.destroy(archer);
+      const comrade = fighterAt(sim, FAR_COMRADE_X, 1, VIKING, IDLE);
+      sim.world.add(comrade, Owner, { player: 0 });
+      // The house stands off the landing point: only its doorstep, where the victim went in, is under the shot.
+      const house = sim.world.create();
+      sim.world.add(house, Position, { x: fx.fromInt(8), y: fx.fromInt(0) });
+      sim.world.add(house, Building, { buildingType: HUT, tribe: FRANK, built: ONE, level: 0 });
+      sim.world.add(house, Health, { hitpoints: TARGET_HP, max: TARGET_HP });
+      sim.world.add(house, Owner, { player: houseOwner });
+      // The combat pass and the landing are driven directly, so no planner pass steps the victim back out.
+      sim.step();
+      sim.world.add(target, Resting, { at: house });
+      const ctx = ctxOf(sim);
+      sim.world.mut(shot, Projectile).landTick = ctx.tick;
+      combatSystem(sim.world, ctx);
+      projectileSystem(sim.world, ctx);
+      expect(sim.world.isAlive(shot)).toBe(false);
+
+      expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
+      return sim.world.get(house, Health).hitpoints;
+    };
+
+    expect(houseAfter(1)).toBe(TARGET_HP - BOW_DAMAGE_VS_HOUSE);
+    expect(houseAfter(0)).toBe(TARGET_HP);
   });
 
   it('deals damage only AFTER a multi-tick flight (no instant hit), then the projectile is spent', () => {

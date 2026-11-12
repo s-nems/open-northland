@@ -191,8 +191,8 @@ function atWar(world: World, shooter: number | undefined, victim: number | undef
  * thing is that victim when it stands there, then the lowest-id man, beast or vehicle, then a house whose
  * body covers the node, then a wall. An area shot here collects every man and beast of the seven nodes
  * before any house, where the original fills its list node by node; the two differ only past its
- * 100-object cap. With no combat pass this tick no fight was possible, so only the victim loosed at can be
- * struck.
+ * 100-object cap. With no combat pass this tick no fight was possible, so only the victim loosed at, or
+ * the house it went into, can be struck.
  */
 function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly Entity[] {
   const terrain = ctx.terrain;
@@ -201,8 +201,9 @@ function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly
   const landing = landingNode(terrain, proj);
   const nodes = proj.area ? [landing, ...inBoundsNeighbours(terrain, landing)] : [landing];
   const targetThere = target !== null && nodes.some((node) => stands(world, ctx, terrain, target, node));
+  const shelter = shelterStruck(world, ctx, terrain, proj, nodes);
   const index = passIndexOf(world, ctx.tick);
-  if (index === null) return targetThere && target !== null ? [target] : [];
+  if (index === null) return targetThere && target !== null ? [target] : shelter === null ? [] : [shelter];
   if (targetThere && target !== null && !proj.area) return [target];
   const seeker = proj.hitSelf ? null : proj.player;
   const onNode = (building: boolean) => (e: Entity) =>
@@ -212,6 +213,7 @@ function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly
     const y = terrain.yOf(landing);
     const first =
       index.nearest(x, y, 0, 0, onNode(false), seeker)?.entity ??
+      shelter ??
       index.nearest(x, y, 0, 0, onNode(true), seeker)?.entity ??
       wallsCovering(world, ctx, terrain, proj, nodes)[0];
     return first === undefined ? [] : [first];
@@ -228,11 +230,33 @@ function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly
       }
     }
   }
+  if (shelter !== null && struck.size < STRUCK_LIST_CAPACITY) struck.add(shelter);
   for (const wall of wallsCovering(world, ctx, terrain, proj, nodes)) {
     if (struck.size >= STRUCK_LIST_CAPACITY) break;
     struck.add(wall);
   }
   return [...struck];
+}
+
+/**
+ * The house that takes a shot whose victim went indoors before it landed: the one the victim is inside,
+ * when the shot comes down on the doorstep the victim stands on there and may strike that house. Not the
+ * original's rule: without it such a shot thuds into the empty doorstep, since a house's body leaves its
+ * door node out.
+ */
+function shelterStruck(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  proj: Flight,
+  nodes: readonly NodeId[],
+): Entity | null {
+  if (proj.target === null || !world.has(proj.target, Position)) return null;
+  const house = world.tryGet(proj.target, Resting)?.at;
+  if (house === undefined || !strikeable(world, house) || !strayMayStrike(world, ctx, proj, house))
+    return null;
+  if (sparedSide(world, proj, ownerOf(world, house))) return null;
+  return nodes.includes(entityNode(world, terrain, proj.target)) ? house : null;
 }
 
 /**
