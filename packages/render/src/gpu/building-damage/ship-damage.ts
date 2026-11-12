@@ -2,9 +2,9 @@ import type { Container, TextureSource } from 'pixi.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import type { WindSway } from '../../data/weather/climate.js';
 import { type PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
+import { isIndexedSource } from '../pixel-art/registry.js';
 import type { DamagedShip } from '../sprite-pool/picking/pick.js';
-import { readable2dContext } from '../textures/drawable-resource.js';
-import { drawableFrame } from '../textures/recoloured-pages.js';
+import { RecolouredPageSource, readFrameRgba } from '../textures/recoloured-pages.js';
 import type { DamageEffectTextures } from './effect-textures.js';
 import { DamageEffects, type DamageOrigin, PLAIN_DAMAGE_STYLE, SHIP_DAMAGE_STYLE } from './effects.js';
 import { damageLevel, MAX_DAMAGE_LEVEL } from './surface.js';
@@ -42,10 +42,12 @@ const DEFAULT_FIRES: ArrayLike<number> = [FIRE_COLUMNS[0], 0.6, FIRE_COLUMNS[1],
  *  and a side counts as no taller than this share of the frame: above it the column is mast or sail. */
 const FIRE_RISE = 0.7;
 const MAX_SIDE_SHARE = 0.3;
-/** The largest frame read for its hull, per side in px. */
-const MAX_READ_PX = 1024;
+/** The shortest run of drawn pixels that counts as a hull's side: in px, and as a share of the frame. */
+const MIN_SIDE_PX = 6;
+const MIN_SIDE_SHARE = 0.06;
 const RGBA = 4;
-const COVERAGE = 1;
+const GREEN_CHANNEL = 1;
+const ALPHA_CHANNEL = 3;
 const FIRE_SIZE = 24;
 const HULL_WOOD = 0x8a6a45;
 const NO_GROUND: readonly never[] = [];
@@ -69,49 +71,60 @@ export function hullBoxOf(sprites: ShipBody['sprites'], out: HullBox): boolean {
 }
 
 const firesOfFrame = new WeakMap<AtlasFrame, ArrayLike<number>>();
-let scratch: ReturnType<typeof readable2dContext> | undefined;
 
 /**
  * Where a hull frame's fires stand, read once from its pixels so a flame rises from the timber and not
- * from the air beside the mast: in each fire column, part way up the hull's side from its lowest
- * drawn pixel. An unreadable frame takes {@link DEFAULT_FIRES}.
+ * from the air beside the mast. An unreadable frame takes {@link DEFAULT_FIRES}.
  */
 function deckFires(source: TextureSource, frame: AtlasFrame): ArrayLike<number> {
   const known = firesOfFrame.get(frame);
   if (known !== undefined) return known;
-  const fires = readDeckFires(source, frame) ?? DEFAULT_FIRES;
+  const pixels = readFrameRgba(source, frame);
+  // A drawable indexed page holds its coverage in green; a coloured copy holds it in alpha.
+  const channel =
+    isIndexedSource(source) && !(source instanceof RecolouredPageSource) ? GREEN_CHANNEL : ALPHA_CHANNEL;
+  const fires =
+    pixels === null
+      ? DEFAULT_FIRES
+      : (deckFiresOf(pixels, frame.width, frame.height, channel) ?? DEFAULT_FIRES);
   firesOfFrame.set(frame, fires);
   return fires;
 }
 
-function readDeckFires(source: TextureSource, frame: AtlasFrame): ArrayLike<number> | null {
-  const { width, height } = frame;
-  if (width < 2 || height < 2 || width > MAX_READ_PX || height > MAX_READ_PX) return null;
-  const drawable = drawableFrame(source, frame);
-  if (drawable === null) return null;
-  if (scratch === undefined) scratch = readable2dContext(MAX_READ_PX, MAX_READ_PX);
-  if (scratch === null) return null;
-  let pixels: Uint8ClampedArray;
-  try {
-    scratch.clearRect(0, 0, width, height);
-    scratch.drawImage(drawable.image, drawable.x, drawable.y, width, height, 0, 0, width, height);
-    pixels = scratch.getImageData(0, 0, width, height).data;
-  } catch {
-    return null;
-  }
-  // An indexed page holds its coverage in green.
-  const solid = (x: number, y: number): boolean => (pixels[(y * width + x) * RGBA + COVERAGE] ?? 0) > 0;
+/**
+ * The `[x, y]` of each fire as shares of a `width` x `height` RGBA frame whose coverage is `channel`:
+ * in each fire column, part way up the hull's side. The side is the lowest run of drawn pixels tall
+ * enough to be timber, since a keel tip or a rope end under it is not; null when a column draws nothing.
+ */
+export function deckFiresOf(
+  pixels: ArrayLike<number>,
+  width: number,
+  height: number,
+  channel: number,
+): ArrayLike<number> | null {
+  const solid = (x: number, y: number): boolean => (pixels[(y * width + x) * RGBA + channel] ?? 0) > 0;
+  const minSide = Math.max(MIN_SIDE_PX, height * MIN_SIDE_SHARE);
   const fires = new Float32Array(FIRE_COLUMNS.length * 2);
   for (let i = 0; i < FIRE_COLUMNS.length; i++) {
     const x = Math.min(width - 1, Math.floor(width * (FIRE_COLUMNS[i] ?? 0.5)));
-    let bottom = height - 1;
-    while (bottom >= 0 && !solid(x, bottom)) bottom--;
-    if (bottom < 0) return null;
-    let top = bottom;
-    while (top > 0 && solid(x, top - 1)) top--;
-    const side = Math.min(bottom - top, height * MAX_SIDE_SHARE);
+    let sideBottom = -1;
+    let sideLength = 0;
+    for (let y = height - 1; y >= 0; y--) {
+      if (!solid(x, y)) continue;
+      const bottom = y;
+      while (y > 0 && solid(x, y - 1)) y--;
+      const length = bottom - y + 1;
+      // Keep the tallest run seen for a column with no run tall enough.
+      if (length > sideLength) {
+        sideBottom = bottom;
+        sideLength = length;
+      }
+      if (length >= minSide) break;
+    }
+    if (sideBottom < 0) return null;
+    const side = Math.min(sideLength - 1, height * MAX_SIDE_SHARE);
     fires[i * 2] = (x + 0.5) / width;
-    fires[i * 2 + 1] = (bottom - side * FIRE_RISE) / height;
+    fires[i * 2 + 1] = (sideBottom - side * FIRE_RISE) / height;
   }
   return fires;
 }

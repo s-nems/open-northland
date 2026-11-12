@@ -129,6 +129,8 @@ export class ShipSinkLayer {
           (frame.tick * WAVE_RADIANS_PER_TICK) % (Math.PI * 2 * WAVE_PHASE_TURNS),
         );
       }
+      // The fires lean with the listing hull.
+      node.box.shear = node.hulls[0]?.mesh.shear ?? 0;
       placeDeckFires(node.origins, node.box, sink);
       node.effects.container.alpha = sinkSmokeAlpha(age);
       node.effects.draw(node.origins, 0, MAX_DAMAGE_LEVEL, frame.tick, frame.wind, frame.zoom, NO_GROUND);
