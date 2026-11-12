@@ -14,6 +14,7 @@ import {
   recordPlayerAttack,
   Settler,
   type SettlerIdentity,
+  SettlerProgress,
 } from '../../../../../../components/index.js';
 import type { AtomicEffect } from '../../../../../../core/atomic-effect.js';
 import { eventAt } from '../../../../../../core/events.js';
@@ -28,7 +29,7 @@ import type { SystemContext } from '../../../../../context.js';
 import { markStructureDamaged } from '../../../../../economy/repair.js';
 import { woundBearer } from '../../../../../equipment/index.js';
 import { ownersAtPeace } from '../../../../../match/peace.js';
-import { grantFightExperience } from '../../../../../progression/index.js';
+import { fightPointsWith, grantFightExperience } from '../../../../../progression/index.js';
 import { hexNodeDistance } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 import { atomicClipSounds, type SoundingAtomic } from '../../../sound-cue.js';
@@ -71,8 +72,7 @@ export function resolveAttackHit(
   resolveCombatHit(world, ctx, attacker, effect.target, effect, pendingReactions, 'melee');
 }
 
-/** The blow a melee swing or a landing projectile delivers: the weapon's column for the victim (raised
- *  by the striker's experience on a melee blow), the striker's weapon class for the fight-experience
+/** The blow a melee swing or a landing projectile delivers: the weapon's column for the victim, the striker's weapon class for the fight-experience
  *  bucket, and the impact sound the weapon lists for the victim's material. `from` is where the blow
  *  comes from, which a person's hit direction reads: a shot's release point, or the striker's own
  *  position when absent. `vehicleShot` marks a vehicle's stone, which the commander's amulets do not
@@ -147,8 +147,20 @@ export function resolveCombatHit(
   const pool = world.tryGet(target, Health);
   if (pool === undefined || pool.hitpoints <= 0) return null;
   const from = blow.from ?? world.tryGet(attacker, Position);
-  const damage = landedDamage(world, ctx, attacker, target, blow.damage, from, blow.vehicleShot !== true);
   const weaponMainType = blow.weaponMainType ?? undefined;
+  // A melee blow draws on its striker's fight experience as it lands; a shot draws on none.
+  const experience = source === 'melee' ? world.tryGet(attacker, SettlerProgress)?.experience : undefined;
+  const fightPoints = experience === undefined ? 0 : fightPointsWith(experience, weaponMainType);
+  const damage = landedDamage(
+    world,
+    ctx,
+    attacker,
+    target,
+    blow.damage,
+    from,
+    blow.vehicleShot !== true,
+    fightPoints,
+  );
   // A blow counts as damaging by its damage value, so an overkill still earns fight experience. Original
   // behavior: a blow that does no damage is silent, earns nothing and is no attack on the victim's side.
   const dealtDamage = damage > 0;

@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Health, SettlerProgress } from '../../../../../src/components/index.js';
+import { Health, SettlerProgress } from '../../../../../src/components/index.js';
 import { Simulation } from '../../../../../src/index.js';
 import {
   atomicSystem,
-  combatSystem,
   FIGHT_EXPERIENCE_FULL,
   FIGHT_EXPERIENCE_TYPE,
   WEAPON_MAIN_TYPE,
@@ -13,7 +12,6 @@ import {
   ARMOR_BLOCKING,
   CHAIN_CLASS,
   combatCadenceContent,
-  ctxOf,
   fighterAt,
   grass,
   HERO,
@@ -196,23 +194,28 @@ describe('atomicSystem - a damaging swing accrues fight XP into the personal cou
   });
 });
 
-describe('combatSystem - fight experience raises the issued swing damage', () => {
-  const swingDamageOf = (points: number): number => {
+describe('fight experience raises a landed melee blow', () => {
+  /** The hitpoints one melee blow of `base` takes off an unarmored man, struck by a spearman of `points`. */
+  const landedOf = (points: number, base: number): number => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     if (points > 0) sim.world.mut(attacker, SettlerProgress).experience.set(PERSONAL, points);
-    fighterAt(sim, 1, 0, OTHER, null); // an adjacent unarmored enemy - the drive swings this tick
-    combatSystem(sim.world, ctxOf(sim));
-    const atomic = sim.world.get(attacker, CurrentAtomic);
-    if (atomic.effect.kind !== 'attack') throw new Error('expected an attack swing');
-    return atomic.effect.damage;
+    const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
+    startSwing(
+      sim,
+      attacker,
+      { target, damage: base, hitFrames: [0], weaponMainType: WEAPON_MAIN_TYPE.SPEAR },
+      2,
+    );
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+    return 10_000 - sim.world.get(target, Health).hitpoints;
   };
 
-  it('raises the column linearly to +40% at full experience, truncating', () => {
+  it('raises the blow linearly to +40% at full experience, truncating, as it lands', () => {
     const base = IRON_SPEAR_DAMAGE['0'];
+    const bare = landedOf(0, base);
     const HALF = FIGHT_EXPERIENCE_FULL / 2;
-    expect(swingDamageOf(0)).toBe(base);
-    expect(swingDamageOf(HALF)).toBe(Math.trunc((base * 12_000) / 10_000));
-    expect(swingDamageOf(FIGHT_EXPERIENCE_FULL)).toBe(Math.trunc((base * 14_000) / 10_000));
+    expect(landedOf(HALF, base)).toBe(Math.trunc((bare * 12_000) / 10_000));
+    expect(landedOf(FIGHT_EXPERIENCE_FULL, base)).toBe(Math.trunc((bare * 14_000) / 10_000));
   });
 });

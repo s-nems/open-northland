@@ -161,9 +161,10 @@ export function takesStrengthAmulet(weapon: Pick<KnowledgeWeapon, 'id'>): boolea
 }
 
 /**
- * One blow in the sim's order: fight experience on a soldier's melee blow at anything but a vehicle, then
- * for a person direction, blocking and the amulets; anything else takes only the striker's amulets. A
- * blow never heals, so a last `floor` step stops the sum at zero.
+ * One blow in the sim's order: for a person direction and blocking, then the striker's raises (fight
+ * experience on a soldier's melee blow at anything but a vehicle, and the strength amulet, added into one
+ * raise), then for a person the defence amulet. A blow never heals, so a last `floor` step stops the sum at
+ * zero.
  */
 export function blowSteps(
   weapon: StrikingWeapon,
@@ -172,20 +173,20 @@ export function blowSteps(
 ): readonly BlowStep[] {
   const { person } = target;
   const base = weapon.damage[target.column] ?? 0;
-  const raised = gainsFightExperience(weapon, target)
-    ? systems.withFightExperience(base, modifiers.hits)
-    : base;
-  const directed = person ? systems.directedDamage(raised, modifiers.direction) : raised;
+  const directed = person ? systems.directedDamage(base, modifiers.direction) : base;
   const blocked = person ? directed - target.blocking : directed;
+  const experienced = gainsFightExperience(weapon, target);
+  const hits = experienced ? modifiers.hits : 0;
+  const raised = experienced ? systems.withDealtBonuses(blocked, hits) : blocked;
   const amulet = modifiers.strength && takesStrengthAmulet(weapon);
-  const strong = amulet ? systems.scaledDealtDamage(blocked, STRENGTH_PCT) : blocked;
+  const strong = amulet ? systems.withDealtBonuses(blocked, hits, STRENGTH_PCT) : raised;
   const shielded =
     person && modifiers.defense ? systems.scaledTakenDamage(strong, DEFENSE_TAKEN_PCT) : strong;
   return [
     { id: 'base', value: base, applies: true },
-    { id: 'experience', value: raised, applies: gainsFightExperience(weapon, target) },
     { id: 'direction', value: directed, applies: person },
     { id: 'block', value: blocked, applies: person },
+    { id: 'experience', value: raised, applies: experienced },
     { id: 'strength', value: strong, applies: takesStrengthAmulet(weapon) },
     { id: 'defense', value: shielded, applies: person },
     { id: 'floor', value: Math.max(0, shielded), applies: shielded < 0 },

@@ -256,6 +256,7 @@ export {
   rawXpForRepeats,
   requirementRepeats,
   settlerFightPoints,
+  withDealtBonuses,
   withFightExperience,
 } from './progression/bonus.js';
 // What the HUD asks of a coin drill: who may drill, the limit and what one coin buys.

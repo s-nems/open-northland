@@ -81,9 +81,8 @@ export type AtomicEffect =
   | {
       readonly kind: 'attack';
       readonly target: Entity;
-      /** A melee blow's base against `target`: the weapon's `damagevalue[targetMaterial]` column raised by
-       *  the striker's fight experience, before the hit's own modifiers. A ranged swing resolves its own
-       *  on contact. */
+      /** A melee blow's base against `target`: the weapon's `damagevalue[targetMaterial]` column, before
+       *  the hit's own modifiers and the striker's raises. A ranged swing resolves its own on contact. */
       readonly damage: number;
       /** Every attack-event frame; an event lands one blow. Empty means a bound clip with no hit event;
        *  omitted means no bound clip, which uses one completion-frame fallback blow. */

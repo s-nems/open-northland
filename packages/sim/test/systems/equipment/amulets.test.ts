@@ -14,7 +14,12 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../../src/index.js';
-import { FIGHT_EXPERIENCE_FULL, FIGHT_EXPERIENCE_TYPE, plannerSystem } from '../../../src/systems/index.js';
+import {
+  FIGHT_EXPERIENCE_FULL,
+  FIGHT_EXPERIENCE_TYPE,
+  plannerSystem,
+  WEAPON_MAIN_TYPE,
+} from '../../../src/systems/index.js';
 import { walkStepModifiersOf } from '../../../src/systems/movement/walk-cost.js';
 import {
   resolveAttackHit,
@@ -182,6 +187,22 @@ describe('combat amulets', () => {
       .mut(shielded.target, SettlerProgress)
       .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL);
     expect(strike(s, shielded.attacker, shielded.target)).toBe(30); // trunc(101 * 0.5 * 0.6), one truncation
+  });
+
+  it("adds the striker's fight experience to his strength on a melee blow, and leaves a shot unraised by it", () => {
+    const s = sim();
+    const { attacker, target } = duel(s, [worn(AMULET_STRENGTH)]);
+    s.world
+      .mut(attacker, SettlerProgress)
+      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL);
+    const melee = { kind: 'attack', target, damage: BLOW, weaponMainType: WEAPON_MAIN_TYPE.SWORD } as const;
+    const before = s.world.get(target, Health).hitpoints;
+    resolveAttackHit(s.world, ctxOf(s), attacker, ATTACK_SWING, melee, []);
+    expect(before - s.world.get(target, Health).hitpoints).toBe(191); // trunc(101 * (1 + 0.4 + 0.5))
+    const shot = { damage: BLOW, weaponMainType: WEAPON_MAIN_TYPE.BOW };
+    const between = s.world.get(target, Health).hitpoints;
+    resolveCombatHit(s.world, ctxOf(s), attacker, target, shot, [], 'projectile');
+    expect(between - s.world.get(target, Health).hitpoints).toBe(151); // strength alone
   });
 
   it('a critical hit doubles about one blow in five, after strength, drawn only while carried', () => {

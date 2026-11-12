@@ -165,11 +165,27 @@ function clampedPoints(points: number): number {
 }
 
 /**
- * `base` weapon damage raised by the striker's fight `points`, truncating:
+ * The dealt-damage factor of a striker's fight `points` and his carried `dealtPct`, over
+ * {@link FIGHT_EXPERIENCE_FACTOR_SCALE}. Our rule: the two raises add, so full experience (+40%) with a
+ * 130 strength amulet (+30%) deals x1.70, not x1.82.
+ */
+export function dealtDamageFactor(points: number, dealtPct: number = PERCENT): number {
+  return (
+    fightExperienceDealtFactor(points) + (dealtPct - PERCENT) * (FIGHT_EXPERIENCE_FACTOR_SCALE / PERCENT)
+  );
+}
+
+/** `damage` raised once by the summed {@link dealtDamageFactor}, truncating. */
+export function withDealtBonuses(damage: number, points: number, dealtPct: number = PERCENT): number {
+  return Math.trunc((damage * dealtDamageFactor(points, dealtPct)) / FIGHT_EXPERIENCE_FACTOR_SCALE);
+}
+
+/**
+ * `base` weapon damage raised by the striker's fight `points` alone, truncating:
  * `base * (10000 + 40 * points) / 10000`, so full experience adds 40%. Our rule, a departure from the
- * original's `base * 200 / (200 - hits)`, for a blow on a person, a building or an animal alike.
+ * original's `base * 200 / (200 - hits)`.
  */
 export function withFightExperience(base: number, points: number): number {
   if (base <= 0) return base;
-  return Math.trunc((base * fightExperienceDealtFactor(points)) / FIGHT_EXPERIENCE_FACTOR_SCALE);
+  return withDealtBonuses(base, points);
 }

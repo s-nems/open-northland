@@ -7,8 +7,8 @@ import { carriedCombatEffects, healingReserveOf } from '../../equipment/effects.
 import { HUMAN_HITPOINTS } from '../../lifecycle/unit-health.js';
 import { ownedFightersOf } from '../../movement/collision/owned-fighters.js';
 import {
+  dealtDamageFactor,
   FIGHT_EXPERIENCE_FACTOR_SCALE,
-  fightExperienceDealtFactor,
   fightExperienceTakenFactor,
   fightPointsWith,
   settlerFightPoints,
@@ -197,9 +197,9 @@ function fighterBuffsOf(
     experience === undefined || weapon === null || isRangedWeapon(weapon)
       ? 0
       : fightPointsWith(experience, weapon.mainType);
-  let dealtPct = Math.floor(
-    ((effects.damageDealtPct ?? PERCENT) * fightExperienceDealtFactor(dealtPoints)) /
-      FIGHT_EXPERIENCE_FACTOR_SCALE,
+  // Our rule, as a blow lands: the experience and the amulet raises add.
+  let dealtPct = Math.trunc(
+    (PERCENT * dealtDamageFactor(dealtPoints, effects.damageDealtPct)) / FIGHT_EXPERIENCE_FACTOR_SCALE,
   );
   const critical = effects.criticalHit;
   if (critical !== undefined) {

@@ -74,9 +74,9 @@ describe('landed', () => {
     expect(landed(weapon(), target('bare'), { ...NO_MODIFIERS, hits: CAP_HITS * 2 })).toBe(140);
   });
 
-  it('gives a building the experience and the amulet, but no direction or block', () => {
+  it('gives a building the experience and the amulet, added, but no direction or block', () => {
     const strong = { ...NO_MODIFIERS, hits: CAP_HITS, strength: true, direction: HIT_DIRECTION.behind };
-    expect(landed(weapon(), target('building'), strong)).toBe(54);
+    expect(landed(weapon(), target('building'), strong)).toBe(51); // 30 * (1 + 0.4 + 0.3)
   });
 
   it('gives an animal the leather column with no blocking', () => {

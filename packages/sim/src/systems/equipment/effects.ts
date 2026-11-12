@@ -14,6 +14,7 @@ import {
   FIGHT_EXPERIENCE_FACTOR_SCALE,
   fightExperienceTakenFactor,
   settlerFightPoints,
+  withDealtBonuses,
 } from '../progression/bonus.js';
 import { isCarrierJob } from '../stores/index.js';
 
@@ -57,16 +58,23 @@ function carriedEffect<K extends CarriedEffect>(
 }
 
 /**
- * A landed blow's damage after the striker's carried effects. Original behavior, for a blow on any
- * target: the strength amulet scales it to its `damageDealtPct`, rounding down, then the critical-hit
- * amulet rolls, drawn only while it is carried. A striker already dead carries none.
+ * A landed blow's damage after the striker's own raises. Original behavior, for a blow on any target: the
+ * strength amulet scales it to its `damageDealtPct`, then the critical-hit amulet rolls, drawn only while
+ * it is carried. Our rule: the striker's `fightPoints` (a melee blow's, else 0) add their raise to the
+ * amulet's, and the sum applies once, truncating. A striker already dead carries none.
  */
-export function damageDealtBy(world: World, ctx: SystemContext, attacker: Entity, damage: number): number {
+export function damageDealtBy(
+  world: World,
+  ctx: SystemContext,
+  attacker: Entity,
+  damage: number,
+  fightPoints = 0,
+): number {
   const health = world.tryGet(attacker, Health);
   if (health !== undefined && health.hitpoints <= 0) return damage;
-  let dealt = damage;
   const dealtPct = carriedEffect(world, ctx.content, attacker, 'damageDealtPct');
-  if (dealtPct !== undefined) dealt = scaledDealtDamage(dealt, dealtPct);
+  let dealt =
+    dealtPct === undefined && fightPoints === 0 ? damage : withDealtBonuses(damage, fightPoints, dealtPct);
   const critical = carriedEffect(world, ctx.content, attacker, 'criticalHit');
   if (critical !== undefined && ctx.rng.int(PERCENT) < critical.chancePct) {
     dealt = Math.floor((dealt * critical.damagePct) / PERCENT);
