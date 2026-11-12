@@ -55,6 +55,14 @@ describe('computeExperienceStars - the weapon star', () => {
     ]);
   });
 
+  it("the enemy sees it: another seat's soldier on the viewer's screen, outdoors, wears it", () => {
+    const screen = { minX: 0, minY: 0, maxX: 64, maxY: 64 };
+    const snapshot = snapshotOf([human(1, SWORD_SOLDIER_JOB, [[FIGHT, 50]], {}, ENEMY)]);
+    expect(computeExperienceStars(snapshot, { ...RULES, viewer: PLAYER }, screen)).toEqual([
+      { id: 1, x: fx.fromInt(1), y: fx.fromInt(1), weaponTier: 2, jobTier: 0 },
+    ]);
+  });
+
   it('a change of weapon keeps it, and too little experience wears none', () => {
     const spear = { Equipment: { weapon: { goodType: SPEAR_GOOD } } };
     expect(starsOf([human(1, SWORD_SOLDIER_JOB, [[FIGHT, 100]], spear)])).toEqual([
