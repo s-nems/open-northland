@@ -79,7 +79,7 @@ const float NO_CLIP_ROW = 100000.0;
 // How dark the timber inside a breach draws, and how far past a breach's rim the pattern must rise
 // before the hole goes right through: far enough that few do. Tuned by eye.
 const float BREACH_SHADE = 0.2;
-const float THROUGH_BREACH = 0.14;
+const float THROUGH_BREACH = 0.19;
 
 float damageHash(vec2 cell) {
   return fract(sin(dot(cell, vec2(127.1, 311.7)) + uDamage.y) * 43758.5453);
