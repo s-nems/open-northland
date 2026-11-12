@@ -549,7 +549,7 @@ export const deContent = {
     'vehicle-catapult-targets': {
       title: 'Worauf ein Katapult zuerst schießt',
       summary:
-        'Ein bemanntes Katapult in Angriffshaltung hat einen Bogenschützen in Reichweite und einen feindlichen Turm knapp dahinter, während zwei Schwertkämpfer heranlaufen und auf sein Gestell einschlagen. Statt auf den näheren Bogenschützen zu schießen, rollt es ein paar Schritte an den Turm heran, zerstört ihn und schießt dann auf den Bogenschützen. Die Schwertkämpfer an seiner Seite sind für einen Stein zu nah; vor zweien versucht es nicht wegzufahren, und ist nichts mehr in Reichweite, steht es einfach.',
+        'Ein bemanntes Katapult in Angriffshaltung hat einen Bogenschützen in Reichweite und einen feindlichen Turm knapp dahinter, während zwei Schwertkämpfer heranlaufen und auf sein Gestell einschlagen. Zuerst schießt es auf den Bogenschützen in Reichweite, dann rollt es ein paar Schritte an den Turm heran und zerstört ihn. Die Schwertkämpfer an seiner Seite sind für einen Stein zu nah; vor zweien versucht es nicht wegzufahren, und ist nichts mehr in Reichweite, steht es einfach.',
     },
     'vehicle-catapult-archers': {
       title: 'Ein Katapult gegen Bogenschützen',
@@ -559,7 +559,7 @@ export const deContent = {
     'vehicle-catapult-assault': {
       title: 'Eine Batterie stürmt ein verteidigtes Dorf',
       summary:
-        'Drei bemannte Katapulte erhalten einen Angriffsmarsch hinter die feindliche Palisade. An den Flanken stehen Schwertkämpfer in ihrer Reichweite, weiter hinten Bogenschützen und hinter der Palisade ein Turm. Die Katapulte verschwenden keine Steine an die Schwertkämpfer: Sie fahren zuerst an den Turm und die Bogenschützen heran, und jedes schießt von einem eigenen Platz.',
+        'Drei bemannte Katapulte erhalten einen Angriffsmarsch hinter die feindliche Palisade. An den Flanken stehen Schwertkämpfer in ihrer Reichweite, weiter hinten Bogenschützen und hinter der Palisade ein Turm. Die Katapulte verschwenden keine Steine an die Schwertkämpfer: Sie fahren zuerst an die Bogenschützen und dann an den Turm heran, und jedes schießt von einem eigenen Platz.',
     },
     'vehicle-catapult-wall': {
       title: 'Ein Katapult beschießt einen Ort hinter dem Wall',

@@ -32,8 +32,8 @@ const VEHICLE_TARGET_RANK = { MILITARY: 0, SHOOTER: 1, FIGHTER: 2, HOUSE: 3, OTH
 type VehicleTargetRank = (typeof VEHICLE_TARGET_RANK)[keyof typeof VEHICLE_TARGET_RANK];
 const VEHICLE_TARGET_RANKS = Object.keys(VEHICLE_TARGET_RANK).length;
 
-/** The ranks a vehicle drives up to: an enemy of one of them past its far reach is worth leaving a lesser
- *  one inside the band for (owner rule). */
+/** The priority ranks: with none of them inside the band, an enemy of one of them past its far reach is
+ *  worth leaving a lesser one inside the band for (owner rule). */
 const VEHICLE_PRIORITY_RANKS = VEHICLE_TARGET_RANK.SHOOTER + 1;
 
 /** How far past its far reach, in map points, a vehicle outside `hold` takes up a priority target to
@@ -53,8 +53,8 @@ export type VehicleScanResult = VehicleAttackTarget | null | 'pressed';
 /**
  * The stance's scan. The band comes first: the best-ranked valid, seen enemy the weapon reaches from where
  * the vehicle stands (`hold`: from its guard position), the nearest within its rank. `hold` looks no
- * further. Outside it, a military target or a shooter up to {@link VEHICLE_PRIORITY_REACH_POINTS} past the
- * band wins over a lesser-ranked one inside it and over a crowd at its side, `defence` taking one only
+ * further. Outside it, with no military target or shooter in the band, one up to
+ * {@link VEHICLE_PRIORITY_REACH_POINTS} past it wins over a lesser one inside it and over a crowd at its side, `defence` taking one only
  * within the scan radius of its guard position, so a run of such pulls never walks it off its leash. With
  * nothing in the band the vehicle stands `pressed` among {@link PRESSING_ENEMIES} enemies inside the near
  * reach, else takes the nearest enemy out to the scan radius, `attack` around itself and `defence` around
@@ -90,14 +90,11 @@ export function scanForTarget(
     seeker === null || pass.index.othersWithin(seeker, terrain.xOf(from), terrain.yOf(from), reach);
   const inBand = near ? bestInBand(world, ctx, terrain, pass, scan, from, weapon, held) : null;
   if (stance === 'hold') return inBand ?? held;
-  // Only a rank better than the band's best is worth the drive.
-  const below =
-    inBand?.kind === 'entity'
-      ? Math.min(scan.rank(inBand.entity), VEHICLE_PRIORITY_RANKS)
-      : VEHICLE_PRIORITY_RANKS;
-  if (near && below > 0) {
+  // A priority target in the band is shot from here; only a lesser one is left for the drive.
+  const priorityInBand = inBand?.kind === 'entity' && scan.rank(inBand.entity) < VEHICLE_PRIORITY_RANKS;
+  if (near && !priorityInBand) {
     const leash = stance === 'defence' ? centre : null;
-    const past = priorityPastBand(world, ctx, terrain, pass, scan, here, weapon, reach, leash, below, held);
+    const past = priorityPastBand(world, ctx, terrain, pass, scan, here, weapon, reach, leash, held);
     if (past !== null) return past;
   }
   if (inBand !== null) return inBand;
@@ -105,7 +102,7 @@ export function scanForTarget(
   return nearestInReach(world, ctx, terrain, pass, scan, centre, held);
 }
 
-/** The nearest target of the best rank under `below` past the far reach of `here` but within `reach` map
+/** The nearest priority target of the best rank past the far reach of `here` but within `reach` map
  *  points, and within the scan radius of `guard` when one is given, or a held target of that rank or
  *  better no farther. */
 function priorityPastBand(
@@ -118,7 +115,6 @@ function priorityPastBand(
   { minRange, maxRange }: { minRange: number; maxRange: number },
   reach: number,
   guard: NodeId | null,
-  below: number,
   held: VehicleAttackTarget | null,
 ): VehicleAttackTarget | null {
   const accept = scan.leashedInBandFrom(here, minRange, guard);
@@ -128,7 +124,7 @@ function priorityPastBand(
     maxRange + 1,
     reach,
     scan.rankUnder,
-    below,
+    VEHICLE_PRIORITY_RANKS,
     accept,
     1,
     scan.seeker,

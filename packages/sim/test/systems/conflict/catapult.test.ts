@@ -477,6 +477,21 @@ describe('catapult stances and scans', () => {
     expect(s.world.has(catapult, VehicleDrive)).toBe(true);
   });
 
+  it('shoots an archer inside its band before driving up to a military target past it', () => {
+    const s = sim(grass(60, 12));
+    const catapult = catapultAt(s, 6, 8, P1);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    const archer = fighterAt(s, 22, 8, P2, ARCHER); // 16 map points: inside the band
+    s.world.mut(archer, Stance).mode = MILITARY_MODE.IGNORE;
+    houseAt(s, 6 + CATAPULT_MAX_RANGE + VEHICLE_PRIORITY_REACH_POINTS, 8, P2, TOUGH_HOUSE, HEADQUARTERS);
+    let drove = false;
+    collect(s, SHOT_TICKS, [], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    expect(drove).toBe(false);
+    expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: archer });
+  });
+
   it('keeps the military target past its band it holds over another one as far', () => {
     const s = sim(grass(40, 12));
     const at = 40;

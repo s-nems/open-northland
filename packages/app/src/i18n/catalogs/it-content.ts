@@ -550,7 +550,7 @@ export const itContent = {
     'vehicle-catapult-targets': {
       title: 'Cosa colpisce per prima una catapulta',
       summary:
-        "Una catapulta con equipaggio nell'atteggiamento d'attacco ha a portata un arciere e, appena oltre, una torre nemica, mentre due spadaccini accorrono e ne colpiscono lo scafo. Avanza di qualche passo verso la torre invece di tirare all'arciere più vicino, la rade al suolo, poi tira all'arciere. Gli spadaccini al suo fianco sono troppo vicini per una pietra; con due di loro accanto non prova ad allontanarsi, e quando non resta più nulla a portata si ferma.",
+        "Una catapulta con equipaggio nell'atteggiamento d'attacco ha a portata un arciere e, appena oltre, una torre nemica, mentre due spadaccini accorrono e ne colpiscono lo scafo. Tira prima all'arciere a portata, poi avanza di qualche passo verso la torre e la rade al suolo. Gli spadaccini al suo fianco sono troppo vicini per una pietra; con due di loro accanto non prova ad allontanarsi, e quando non resta più nulla a portata si ferma.",
     },
     'vehicle-catapult-archers': {
       title: 'Una catapulta contro gli arcieri',
@@ -560,7 +560,7 @@ export const itContent = {
     'vehicle-catapult-assault': {
       title: 'Una batteria assalta un villaggio difeso',
       summary:
-        'Tre catapulte con equipaggio ricevono un ordine di attacco in movimento oltre la palizzata nemica. Sui fianchi, a portata, ci sono degli spadaccini, più indietro degli arcieri e dietro la palizzata una torre. Le catapulte non sprecano pietre sugli spadaccini: avanzano prima verso la torre e gli arcieri, e ognuna tira da un punto tutto suo.',
+        'Tre catapulte con equipaggio ricevono un ordine di attacco in movimento oltre la palizzata nemica. Sui fianchi, a portata, ci sono degli spadaccini, più indietro degli arcieri e dietro la palizzata una torre. Le catapulte non sprecano pietre sugli spadaccini: avanzano prima verso gli arcieri e poi verso la torre, e ognuna tira da un punto tutto suo.',
     },
     'vehicle-catapult-wall': {
       title: 'Una catapulta bombarda un punto oltre il muro',

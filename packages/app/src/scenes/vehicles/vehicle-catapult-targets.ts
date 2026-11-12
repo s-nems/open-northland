@@ -26,9 +26,9 @@ import type { SceneDefinition } from '../types.js';
 
 /**
  * What a catapult shoots first: a crewed catapult in its attack stance has an archer inside its band and
- * an enemy tower just past it, while two swordsmen run in and batter its hull. It rolls a few steps up to
- * the tower rather than shoot the nearer archer, razes it, then shoots the archer; the swordsmen at its
- * side are too close for a stone, and two of them are a crowd it does not try to drive away from.
+ * an enemy tower just past it, while two swordsmen run in and batter its hull. It shoots the archer in
+ * its band first, then rolls a few steps up to the tower and razes it; the swordsmen at its side are too
+ * close for a stone, and two of them are a crowd it does not try to drive away from.
  */
 
 const MAP_W = 26;
@@ -43,7 +43,7 @@ const MASTER_CATAPULT_SKILL = 100;
 const TOUGH_HULL_HITPOINTS = 1_000_000;
 /** East, just past the far reach but inside the reach a military target draws the catapult from. */
 const ENEMY_TOWER: readonly [string, number, number] = ['tower_00', 20, 8];
-/** Two stones' worth, so the tower falls early in the run and the archer's turn comes. */
+/** Two stones' worth, so the tower falls inside the run once the archer is down. */
 const TOWER_HITPOINTS = 7_000;
 /** About 14 map points south-east: inside the band and nearer than the tower. */
 const ENEMY_ARCHER_AT = { x: 11, y: 13 } as const;

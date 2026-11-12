@@ -545,7 +545,7 @@ export const plContent = {
     'vehicle-catapult-targets': {
       title: 'W co katapulta strzela najpierw',
       summary:
-        'Obsadzona katapulta w postawie ataku ma w zasięgu łucznika, a tuż za zasięgiem wrogą wieżę, podczas gdy dwaj miecznicy podbiegają i biją w jej kadłub. Zamiast strzelać w bliższego łucznika, podjeżdża kilka kroków do wieży, burzy ją, a potem strzela w łucznika. Miecznicy przy jej boku są za blisko na kamień; przed dwoma nie próbuje odjechać, a gdy nic już nie ma w zasięgu, po prostu stoi.',
+        'Obsadzona katapulta w postawie ataku ma w zasięgu łucznika, a tuż za zasięgiem wrogą wieżę, podczas gdy dwaj miecznicy podbiegają i biją w jej kadłub. Najpierw strzela w łucznika w zasięgu, potem podjeżdża kilka kroków do wieży i ją burzy. Miecznicy przy jej boku są za blisko na kamień; przed dwoma nie próbuje odjechać, a gdy nic już nie ma w zasięgu, po prostu stoi.',
     },
     'vehicle-catapult-archers': {
       title: 'Katapulta przeciw łucznikom',
@@ -555,7 +555,7 @@ export const plContent = {
     'vehicle-catapult-assault': {
       title: 'Bateria szturmuje bronioną osadę',
       summary:
-        'Trzy obsadzone katapulty dostają atak-ruch za wrogą palisadę. Na skrzydłach, w ich zasięgu, stoją miecznicy, dalej z tyłu łucznicy, a za palisadą wieża. Katapulty nie marnują kamieni na mieczników: najpierw podjeżdżają pod wieżę i łuczników, a każda strzela z własnego miejsca.',
+        'Trzy obsadzone katapulty dostają atak-ruch za wrogą palisadę. Na skrzydłach, w ich zasięgu, stoją miecznicy, dalej z tyłu łucznicy, a za palisadą wieża. Katapulty nie marnują kamieni na mieczników: najpierw podjeżdżają pod łuczników, a potem pod wieżę, a każda strzela z własnego miejsca.',
     },
     'vehicle-catapult-wall': {
       title: 'Katapulta ostrzeliwuje miejsce za palisadą',
