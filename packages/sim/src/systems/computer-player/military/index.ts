@@ -9,6 +9,7 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { seatBarracksOf } from '../base.js';
 import type { ComputerModule } from '../index.js';
 import { militaryOrdersOf } from '../strategy/military.js';
+import { coinDrillOrders, coinPriorityOrders } from './coin-drill.js';
 import { armourWaiters, isFitSoldier } from './fit.js';
 import { marchingWave } from './march/index.js';
 import { runOffensive } from './offensive.js';
@@ -36,6 +37,12 @@ export {
   towerPostOrders,
 } from '../../ai-shared/military/defence/index.js';
 export { campaignObjective, campaignTarget } from './campaign.js';
+export {
+  COIN_DRILL_REACH_NODES,
+  coinDrillPorters,
+  SECOND_DRILL_PORTER_DRILLERS,
+  THIRD_DRILL_PORTER_DRILLERS,
+} from './coin-drill.js';
 export {
   GATHER_MARCH_TIMEOUT_TICKS,
   GATHER_QUORUM_PERCENT,
@@ -88,7 +95,8 @@ export {
  * dressing armed men later. The seat still sends its armed men at home for the armour made after their
  * weapon ({@link armourFetchOrders}), which the assistant's arming never revisits, keeps every man not yet
  * fit to fight ({@link isFitSoldier}) out of its raids and waves, and marks its barracks'
- * gear as store priority ({@link barracksPriorityOrders}) so the barracks porters fetch it. */
+ * gear as store priority ({@link barracksPriorityOrders}) so the barracks porters fetch it. The men left
+ * at home drill for the barracks' coins (`coin-drill.ts`). */
 function runMilitary(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return []; // mapless sim: no ground to march over
@@ -130,8 +138,12 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
     waiting,
   );
   const assault = env === null ? null : runOperations(env, 'afterCampaign', []);
-  // The men the campaign leaves standing at home this decision may go for armour.
+  // The men the campaign leaves standing at home this decision may go for armour, the rest to drill.
   const sent = orderedMen([...campaign, ...(assault?.commands ?? [])]);
+  const home = [...unfit, ...field].filter((e) => !sent.has(e));
+  // The men waiting for armour first, so the pieces go to the men held back for them.
+  const armour = armourFetchOrders(world, ctx, player, home);
+  const dressing = orderedMen(armour);
   return [
     ...siege.commands,
     ...(raids?.commands ?? []),
@@ -139,13 +151,15 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
     ...(assault?.commands ?? []),
     ...outfitGrantOrders(world, ctx, player),
     ...barracksPriorityOrders(world, ctx, owned),
+    ...coinPriorityOrders(world, ctx, player, owned),
     ...rallyOrders(world, ctx, terrain, player, owned),
-    ...armourFetchOrders(
+    ...armour,
+    ...coinDrillOrders(
       world,
       ctx,
-      player,
-      // The men waiting for armour first, so the pieces go to the men held back for them.
-      [...unfit, ...field].filter((e) => !sent.has(e)),
+      terrain,
+      owned,
+      home.filter((e) => !dressing.has(e)),
     ),
   ];
 }
