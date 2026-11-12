@@ -327,6 +327,24 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     expect(coinsOf(sim, house)).toBe(0);
   });
 
+  it('an attack order calls the drill off, stepping out and giving back the coin of the cut repetition', () => {
+    const sim = freshSim();
+    const house = barracksAt(sim, 8, 3, 2);
+    const driller = soldierAt(sim, SWORD_JOB, 7, 3);
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: driller, house });
+    while (sim.world.tryGet(driller, CoinDrillOrder)?.paid !== true) sim.step();
+    expect(coinsOf(sim, house)).toBe(1);
+    const enemy = soldierAt(sim, SWORD_JOB, 2, 6);
+    sim.world.mut(enemy, Owner).player = OTHER_PLAYER;
+    for (const e of [driller, enemy]) sim.world.add(e, Health, { hitpoints: FIGHTER_HP, max: FIGHTER_HP });
+    sim.enqueueSetup({ kind: 'attackUnit', entity: driller, target: enemy });
+    sim.step();
+    expect(sim.world.has(driller, CoinDrillOrder)).toBe(false);
+    expect(sim.world.has(driller, Resting)).toBe(false);
+    expect(coinsOf(sim, house)).toBe(2);
+    expect(pointsOf(sim, driller)).toBe(0);
+  });
+
   it("refuses another side's barracks, and a walk order calls the drill off", () => {
     const sim = freshSim();
     const theirs = barracksAt(sim, 8, 6, 3, OTHER_PLAYER);

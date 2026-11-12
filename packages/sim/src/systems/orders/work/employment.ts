@@ -90,7 +90,7 @@ export function takeUpTrade(world: World, ctx: SystemContext, e: Entity, jobType
  * and set its load down before taking up `jobType`. Shared by the employment orders and the barracks drill.
  */
 export function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
-  cancelActionAndRoute(world, e);
+  cancelActionAndRoute(world, ctx, e);
   // The old trade's haul goes down rather than into the new job. Before the trade change, so the arms a
   // disarmed soldier is about to take up are not swept into this drop.
   if (world.has(e, Carrying)) startDrop(world, ctx, e);
@@ -186,7 +186,7 @@ export function unassignWorker(
   if (!world.has(e, JobAssignment)) return; // already unposted
   releaseTowerPost(world, ctx, e); // steps him off the tower while the binding it reads is still there
   releaseEmployment(world, ctx, e);
-  cancelActionAndRoute(world, e);
+  cancelActionAndRoute(world, ctx, e);
 }
 
 /**
@@ -225,7 +225,7 @@ export function assignBuilder(
   releaseSiteClaim(world, e);
   // A builder pinned mid-haul keeps its load, unlike a profession change: the trade is unchanged, so it
   // carries the material onward instead of dumping it in the field. Ends any earlier road or wall run.
-  cancelActionAndRoute(world, e);
+  cancelActionAndRoute(world, ctx, e);
   world.add(e, SiteAssignment, { site, pinned: true });
   const mode = buildModeOf(world, site);
   if (mode !== undefined) world.add(e, BuildMode, { kind: mode });
@@ -243,25 +243,29 @@ function buildModeOf(world: World, site: Entity): 'roads' | 'walls' | undefined 
  * to the nearest-site rung. An unpinned crew membership is the builder drive's own bookkeeping, re-stamped
  * every pass, so removing the whole component would be undone the same tick.
  */
-export function unassignBuilder(world: World, command: Extract<Command, { kind: 'unassignBuilder' }>): void {
+export function unassignBuilder(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'unassignBuilder' }>,
+): void {
   const e = command.entity;
   if (!isOrderableSettler(world, e)) return;
   // Never pinned nor on a road or wall run - nothing to release.
   if (world.tryGet(e, SiteAssignment)?.pinned !== true && !world.has(e, BuildMode)) return;
   releaseSiteClaim(world, e);
   world.remove(e, SiteAssignment);
-  cancelActionAndRoute(world, e);
+  cancelActionAndRoute(world, ctx, e);
 }
 
 /** Stop what the settler's current employment had it doing and hand it back to the economy, leaving its
  *  trade, load and gear alone. */
-function cancelActionAndRoute(world: World, e: Entity): void {
+function cancelActionAndRoute(world: World, ctx: SystemContext, e: Entity): void {
   // setJob vets interruptibility before reaching here; the employment orders still cancel unconditionally,
   // a remaining member of the uninterruptible-atomic class.
   removeCurrentAtomic(world, e);
   world.remove(e, SupplyRun); // an interrupted errand stops counting as inbound
   world.remove(e, PickupClaim); // and frees its source immediately
-  supersedeStandingOrders(world, e);
+  supersedeStandingOrders(world, ctx, e);
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
   clearNavState(world, e);
 }

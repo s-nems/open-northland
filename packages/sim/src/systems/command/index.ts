@@ -449,7 +449,7 @@ function applyCommand(
       assignBuilder(world, ctx, command);
       return;
     case 'unassignBuilder':
-      unassignBuilder(world, command);
+      unassignBuilder(world, ctx, command);
       return;
     case 'learn':
       learn(world, ctx, command);

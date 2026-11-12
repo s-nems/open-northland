@@ -29,7 +29,7 @@ import {
   unloadTraderHold,
 } from '../../../trade/index.js';
 import { loadHaulingCart, unloadHaulingCart } from '../../../vehicles/hauling-cart.js';
-import { settleCoinDrillRepetition } from '../../drives/coin-drill.js';
+import { settleCoinDrillRepetition } from '../../drives/coin-drill-coins.js';
 import { serveDrillRepetition } from '../../drives/training.js';
 import {
   consumeFood,

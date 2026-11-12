@@ -40,7 +40,7 @@ export function orderNeed(
   // A retry left by an earlier failed search or an obeyed walk says nothing about this order.
   if (command.need === 'hunger') world.remove(e, MealBreakRetry);
   removeCurrentAtomic(world, e);
-  supersedeStandingOrders(world, e);
+  supersedeStandingOrders(world, ctx, e);
   world.remove(e, PlayerOrder); // and any walk the settler was on
   // And any standing attack order, which would otherwise pull the settler back into the fight the drive
   // ladder breaks off for the errand, leaving the order looking ignored.

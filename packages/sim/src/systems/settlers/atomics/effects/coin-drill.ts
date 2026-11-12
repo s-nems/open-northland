@@ -8,7 +8,11 @@ import {
   ATOMIC_EVENT_TYPE_GET_TRAINING,
   clipFrameAt,
 } from '../../../readviews/animations.js';
-import { payDrillCoins, settleCoinDrillRepetition, turnBackFromCoinDrill } from '../../drives/coin-drill.js';
+import {
+  payDrillCoins,
+  settleCoinDrillRepetition,
+  turnBackFromCoinDrill,
+} from '../../drives/coin-drill-coins.js';
 
 /**
  * Apply the coin-drill clip's events at this tick's frame: `CHANGE_GOLD` takes its coins off `house`'s

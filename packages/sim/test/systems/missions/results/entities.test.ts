@@ -3,6 +3,7 @@ import {
   Age,
   AttackOrder,
   Building,
+  CoinDrillOrder,
   Female,
   isWildlife,
   Marriage,
@@ -369,9 +370,19 @@ describe('the ownership results', () => {
 
   it('hands the humans with an id to another player and cuts their bindings', () => {
     const { sim, moved } = housed([{ opcode: 'ChangeHumanPlayerId', humanId: 77, player: 4 }]);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped fixture expected');
+    const returnTo = terrain.nodeAt(POINT.hx, POINT.hy);
+    sim.world.add(moved, CoinDrillOrder, {
+      house: only(buildings(sim)),
+      returnTo,
+      stage: 'return',
+      paid: false,
+    });
     loadPassAfter(sim, 0);
     expect(ownerOf(sim.world, moved)).toBe(4);
     expect(sim.world.has(moved, Residence)).toBe(false);
+    expect(sim.world.has(moved, CoinDrillOrder)).toBe(false);
   });
 
   it('unhouses the residents of a house the script removes', () => {

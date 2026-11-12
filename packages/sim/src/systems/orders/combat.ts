@@ -153,7 +153,7 @@ export function attackUnit(
   if (!sameFight || !swinging) removeCurrentAtomic(world, e);
   world.remove(e, SupplyRun); // cancel the inbound site claim
   world.remove(e, PickupClaim); // and the source promise of its pickup leg
-  supersedeStandingOrders(world, e);
+  supersedeStandingOrders(world, ctx, e);
   if (!sameFight) clearNavState(world, e);
   world.remove(e, PlayerOrder);
   world.remove(e, Fleeing); // an explicit attack order overrides the flee mode - stop running, fight

@@ -14,7 +14,8 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { isBarracks } from '../readviews/index.js';
-import { freeDrillCoins, soldierMayCoinDrill } from '../settlers/drives/coin-drill.js';
+import { soldierMayCoinDrill } from '../settlers/drives/coin-drill.js';
+import { freeDrillCoins } from '../settlers/drives/coin-drill-coins.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { entityNode } from '../spatial/nodes.js';
@@ -57,10 +58,11 @@ function startCoinDrill(world: World, ctx: SystemContext, e: Entity, house: Enti
   if (terrain === undefined) return;
   releaseTowerPost(world, ctx, e);
   const returnTo = world.tryGet(e, CoinDrillOrder)?.returnTo ?? entityNode(world, terrain, e);
+  // First, as it calls off the drill he may already be on.
+  supersedeStandingOrders(world, ctx, e);
   world.add(e, CoinDrillOrder, { house, returnTo, stage: 'drill', paid: false });
   wakeIdle(world, e);
   removeCurrentAtomic(world, e);
-  supersedeStandingOrders(world, e);
   world.remove(e, PlayerOrder);
   world.remove(e, EquipOrder);
   world.remove(e, TrainingOrder);

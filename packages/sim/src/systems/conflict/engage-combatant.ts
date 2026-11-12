@@ -44,7 +44,7 @@ import {
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
-import { turnBackFromCoinDrill } from '../settlers/drives/coin-drill.js';
+import { turnBackFromCoinDrill } from '../settlers/drives/coin-drill-coins.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { breakOff, chase, disengage, holdEnemy, REPATH_CADENCE } from './chase.js';

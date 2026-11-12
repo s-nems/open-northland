@@ -75,7 +75,7 @@ export function startDrill(
   world.remove(e, GraduateWait); // a new course ends the wait by the last school
   wakeIdle(world, e); // an assistant-booked drill is walked this pass, like an ordered one
   removeCurrentAtomic(world, e);
-  supersedeStandingOrders(world, e);
+  supersedeStandingOrders(world, ctx, e);
   world.remove(e, PlayerOrder);
   world.remove(e, EquipOrder); // and any equip errand, whose return spot this walk would invalidate
   world.remove(e, SiteAssignment); // a builder pulled to drill leaves its foundation's crew

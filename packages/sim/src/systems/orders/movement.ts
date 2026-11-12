@@ -5,7 +5,6 @@ import {
   Carrying,
   Chat,
   ClaimAnimalOrder,
-  CoinDrillOrder,
   CurrentAtomic,
   DeferredOrder,
   Engagement,
@@ -223,14 +222,14 @@ function startPlayerWalk(
     !world.has(e, AttackOrder) &&
     !world.has(e, Fleeing)
   ) {
-    supersedeStandingOrders(world, e); // the same walk, but now the player's own, not a sweep's leg
+    supersedeStandingOrders(world, ctx, e); // the same walk, but now the player's own, not a sweep's leg
     const scripted = confined ? undefined : true;
     if (existingOrder.scripted !== scripted) world.mut(e, PlayerOrder).scripted = scripted;
     return true;
   }
   // Gated after the refusals above, so a refused click neither parks an order nor displaces a parked one.
   if (deferOrderDuringAtomic(world, ctx, e, command, { scripted: !confined })) return true;
-  supersedeStandingOrders(world, e);
+  supersedeStandingOrders(world, ctx, e);
   // A live PathFollow is deliberately kept: the planner re-routes the same tick, and the routing splice
   // carries the walker's momentum through the turn.
   removeCurrentAtomic(world, e);
@@ -254,7 +253,6 @@ function startPlayerWalk(
   // the walk and drag the settler back to its stale pre-order return spot.
   world.remove(e, EquipOrder);
   world.remove(e, TrainingOrder); // likewise the player's only way to call a barracks drill off
-  world.remove(e, CoinDrillOrder); // and a coin drill
   world.remove(e, GraduateWait); // a graduate the player moved stays where it was sent
   world.remove(e, NeedOrder); // and an ordered meal, nap, chat or prayer the walk supersedes
   liftLostWalk(world, e); // an obeyed order is the way found; a cut-off mark waits for its own check

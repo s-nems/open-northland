@@ -29,6 +29,7 @@ import { leaveFamily } from '../../family/widowhood.js';
 import { cutAnimalBindings } from '../../livestock/capture.js';
 import { anchorAtFeet } from '../../orders/combat.js';
 import { isFighterJob, MILITARY_MODE } from '../../readviews/index.js';
+import { callOffCoinDrill } from '../../settlers/drives/coin-drill-coins.js';
 import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
 import { relinkSignpost } from '../../signposts/index.js';
 import { releaseTradeShip } from '../../vehicles/hauling-cart.js';
@@ -159,6 +160,7 @@ function cutLoose(pass: MissionPass, e: Entity): void {
   world.remove(e, Residence);
   world.remove(e, Evicted);
   world.remove(e, TrainingOrder);
+  callOffCoinDrill(world, ctx, e);
   world.remove(e, GraduateWait);
   world.remove(e, BuildMode);
   releaseSiteClaim(world, e);
