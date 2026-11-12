@@ -131,6 +131,26 @@ describe('temple fuel - the druids feed the temples, porters and every carrier h
     expect(sim.world.get(carrier, SupplyRun)).toEqual({ site: temple, goodType: PLANK, amount: 1 });
   });
 
+  it('feeds the temple holding least first, and the nearer of two as short', () => {
+    const sim = new Simulation({ seed: 1, content: fuelledContent(), map: grassMap(12, 1) });
+    owned(sim, buildingAt(sim, TEMPLE, 3, 0, [[PLANK, 2]]));
+    const emptier = owned(sim, buildingAt(sim, TEMPLE, 10, 0, [[PLANK, 1]]));
+    const carrier = owned(sim, settlerAt(sim, 4, 0, CARRIER));
+    sim.world.add(carrier, Carrying, { goodType: PLANK, amount: 1 });
+
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(carrier, SupplyRun).site).toBe(emptier);
+
+    const even = new Simulation({ seed: 1, content: fuelledContent(), map: grassMap(12, 1) });
+    const nearer = owned(even, buildingAt(even, TEMPLE, 3, 0, [[PLANK, 1]]));
+    owned(even, buildingAt(even, TEMPLE, 10, 0, [[PLANK, 1]]));
+    const second = owned(even, settlerAt(even, 4, 0, CARRIER));
+    even.world.add(second, Carrying, { goodType: PLANK, amount: 1 });
+
+    plannerSystem(even.world, ctxOf(even));
+    expect(even.world.get(second, SupplyRun).site).toBe(nearer);
+  });
+
   it("feeds no temple past his post's reach, however near his walk has brought him", () => {
     const sim = new Simulation({ seed: 1, content: fuelledContent(), map: grassMap(LONG_STRIP, 1) });
     setSignpostNavigation(sim.world, true);

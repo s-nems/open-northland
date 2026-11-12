@@ -380,18 +380,24 @@ export interface IndustryWant {
   readonly upTo: number;
 }
 
-/** The holy oil a seat or a colony keeps for its temple (authored): its store of five, which its
- *  blessing burns (owner ruling), and a unit spare, the first of them for its bill. */
+/** The holy oil a seat or a colony with druids keeps for its temple (authored): its store of five, which
+ *  its blessing burns (owner ruling), and a unit spare, the first of them for its bill. */
 export const TEMPLE_OIL_UNITS = 6;
+/** The holy oil a temple's bill takes: all a colony without druids wants, since nobody there carries more
+ *  to the temple and its blessing ends with that unit. */
+export const TEMPLE_BILL_OIL_UNITS = 1;
 
 /**
  * What `chosen` needs delivered that no workshop of the colony takes as a recipe input, so the generic rule
- * of bringing a standing workshop's inputs cannot know it: the temple's holy oil, while home boils it.
+ * of bringing a standing workshop's inputs cannot know it: the temple's holy oil, while home boils it. Its
+ * druids keep the temple's store full from the colony's; without them only the bill's unit comes.
  */
 export function colonyIndustryWants(
   chosen: readonly IndustryChoice[],
   homeMakesHolyOil: boolean,
 ): readonly IndustryWant[] {
   const temple = chosen.some((c) => c.industry === 'temple');
-  return temple && homeMakesHolyOil ? [{ good: 'holy_oil', upTo: TEMPLE_OIL_UNITS }] : [];
+  if (!temple || !homeMakesHolyOil) return [];
+  const druids = chosen.some((c) => c.industry === 'druid');
+  return [{ good: 'holy_oil', upTo: druids ? TEMPLE_OIL_UNITS : TEMPLE_BILL_OIL_UNITS }];
 }

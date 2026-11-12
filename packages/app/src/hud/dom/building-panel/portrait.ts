@@ -49,8 +49,7 @@ export interface BuildingOrderView {
  * Demolish, as a barracks adds its rally tile there. Another seat's building offers Knowledge alone.
  */
 export function orderViews(
-  model: Pick<BuildingPanelModel, 'orders' | 'name' | 'construction'> &
-    Partial<Pick<BuildingPanelModel, 'templeFire'>>,
+  model: Pick<BuildingPanelModel, 'orders' | 'name' | 'construction' | 'templeFire'>,
 ): BuildingOrderView[] {
   const copy = messages().hud.buildingPanel;
   const knowledge: BuildingOrderView = {
@@ -67,7 +66,7 @@ export function orderViews(
   const site = model.construction;
   const upgrading = site !== null && orders.cancelUpgrade;
   const tier = site === null || upgrading ? tierView(orders) : null;
-  const fire = site === null ? (model.templeFire ?? null) : null;
+  const fire = site === null ? model.templeFire : null;
   return [
     {
       order: 'workers',
@@ -96,7 +95,6 @@ export function orderViews(
             tooltip: copy.templeFireDouseTooltip,
             enabled: true,
             danger: false,
-            pressed: !fire.doused,
           },
         ]),
     ...(site === null

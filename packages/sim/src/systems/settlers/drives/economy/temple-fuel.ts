@@ -42,7 +42,7 @@ export function templeShortOf(
   for (const temple of finishedTemples(world, ctx)) {
     if (ownerOf(world, temple) !== owner) continue;
     const type = world.tryGet(temple, Building)?.buildingType;
-    const goodType = type === undefined ? undefined : templeFuelSlotOf(ctx, type)?.goodType;
+    const goodType = type === undefined ? undefined : templeFuelSlotOf(ctx.content, type)?.goodType;
     if (goodType === undefined || !burns(goodType)) continue;
     const shortfall = templeFuelShortfall(world, ctx, supply, temple);
     if (shortfall <= 0 || shortfall < bestShortfall) continue;

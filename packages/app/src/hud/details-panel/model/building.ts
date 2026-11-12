@@ -521,7 +521,7 @@ export function buildingPanelModel(
     garrison: site ? null : garrisonPosts(snapshot, def, ent.id),
     workDetail: work === undefined ? null : workStatusDetail(ctx, work),
     families: kind === 'home' && !site ? (homeFamiliesOf(snapshot, ent.id)?.length ?? 0) : null,
-    blessing: site ? null : templeBlessing(def, ent),
+    blessing: foreign || site ? null : templeBlessing(ent),
   });
   const level = num(b.level) ?? 0;
   const name = buildingTitle(ctx, rawType);
@@ -562,7 +562,7 @@ export function buildingPanelModel(
     staff,
     crew,
     production: foreign || site ? null : productionModel(ctx, snapshot, def, ent),
-    templeFire: foreign || site ? null : templeFireModel(ctx, def, ent),
+    templeFire: foreign || site ? null : templeFireModel(ctx, ent),
     stock,
     stockLayout: stockLayoutOf(def, stock),
     homeQuality:

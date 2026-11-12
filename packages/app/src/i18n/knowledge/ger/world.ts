@@ -651,7 +651,7 @@ export const WORLD: ArticleGroup = {
           },
         },
         {
-          p: '[[job:druid|Druiden]] bringen das Öl selbst zu den Tempeln im Bereich ihrer [[article:roads|Wegweiser]]. Auch ein dem Tempel zugeteilter [[job:carrier|Träger]] oder ein [[job:trader|Händler]] kann es bringen. Ein neuer Tempel beginnt mit dem Öl aus seinen Baukosten. Ohne Öl oder beschädigt erlöschen sein Schein und sein Feuer.',
+          p: '[[job:druid|Druiden]] bringen das Öl selbst zu den Tempeln im Bereich ihrer [[article:roads|Wegweiser]]. Auch ein dem Tempel zugeteilter [[job:carrier|Träger]] oder ein [[job:trader|Händler]] kann es bringen. Ein neuer Tempel beginnt mit dem Öl aus seinen Baukosten. Ohne Öl oder beschädigt erlöschen sein Schein und sein Feuer. Du kannst das Feuer im Fenster des Tempels auch selbst löschen: er behält dann sein Öl und segnet niemanden, bis du es wieder entzündest.',
         },
       ],
       see: ['article:needs', 'article:health', 'building:work_temple', 'good:holy_oil'],

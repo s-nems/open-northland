@@ -106,15 +106,15 @@ export function isFinishedPrayerSite(
 /** The store slot whose good a temple burns to bless: its one stock slot. Owner ruling, not the
  *  original's. Undefined for every other type and for a temple that stores nothing, which blesses with
  *  no fuel. */
-export function templeFuelSlotOf(ctx: ContentContext, buildingType: number): StockSlot | undefined {
-  const type = contentIndex(ctx.content).buildings.get(buildingType);
+export function templeFuelSlotOf(content: ContentSet, buildingType: number): StockSlot | undefined {
+  const type = contentIndex(content).buildings.get(buildingType);
   return type?.prayerSite === PRAYER_SITE.temple ? type.stock[0] : undefined;
 }
 
 /** Whether `goodType` is the fuel `building`'s fire burns, which nobody takes back out of its store. */
 export function isTempleFuel(world: World, ctx: ContentContext, building: Entity, goodType: number): boolean {
   const type = world.tryGet(building, Building)?.buildingType;
-  return type !== undefined && templeFuelSlotOf(ctx, type)?.goodType === goodType;
+  return type !== undefined && templeFuelSlotOf(ctx.content, type)?.goodType === goodType;
 }
 
 const fuelGoodsByContent = new WeakMap<ContentSet, ReadonlySet<number>>();
@@ -125,7 +125,7 @@ export function templeFuelGoods(ctx: ContentContext): ReadonlySet<number> {
   if (goods === undefined) {
     const found = new Set<number>();
     for (const type of ctx.content.buildings) {
-      const slot = templeFuelSlotOf(ctx, type.typeId);
+      const slot = templeFuelSlotOf(ctx.content, type.typeId);
       if (slot !== undefined) found.add(slot.goodType);
     }
     goods = found;

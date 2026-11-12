@@ -57,8 +57,7 @@ const NO_HOLDERS: ReadonlySet<Entity> = new Set();
  * the stores holding any, for the holding band, and the finished self-filling houses of each good, which
  * the workshop input search adds since they hold the next unit within a game second. A from-scratch
  * construction site, a workshop's own input reserve and what a house keeps for itself are excluded,
- * matching {@link storeYieldsGood}; an
- * unowned pile counts for every player.
+ * matching {@link storeYieldsGood}; an unowned pile counts for every player.
  *
  * Kept across ticks per world, so a tick pays for the stores that changed rather than every stockpile.
  * Stock in other signpost networks and buried piles is counted too: the totals only bound the grant

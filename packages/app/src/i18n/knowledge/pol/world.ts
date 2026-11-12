@@ -628,7 +628,7 @@ export const WORLD: ArticleGroup = {
           },
         },
         {
-          p: '[[job:druid|Druidzi]] sami zanoszą Oliwę do Świątyń w zasięgu swoich [[article:roads|drogowskazów]]. Może ją też przynieść [[job:carrier|Tragarz]] przypisany do Świątyni albo [[job:trader|Kupiec]]. Nowa Świątynia ma na start Oliwę z kosztu budowy. Bez Oliwy albo gdy jest uszkodzona, jej poświata i ogień gasną.',
+          p: '[[job:druid|Druidzi]] sami zanoszą Oliwę do Świątyń w zasięgu swoich [[article:roads|drogowskazów]]. Może ją też przynieść [[job:carrier|Tragarz]] przypisany do Świątyni albo [[job:trader|Kupiec]]. Nowa Świątynia ma na start Oliwę z kosztu budowy. Bez Oliwy albo gdy jest uszkodzona, jej poświata i ogień gasną. Ogień możesz też sam wygasić w panelu Świątyni: zachowuje wtedy Oliwę i nie błogosławi, dopóki go nie rozpalisz.',
         },
       ],
       see: ['article:needs', 'article:health', 'building:work_temple', 'good:holy_oil'],

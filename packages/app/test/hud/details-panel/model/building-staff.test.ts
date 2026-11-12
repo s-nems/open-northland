@@ -609,7 +609,7 @@ describe('building orders', () => {
   });
 
   it('keeps four tiles in fixed places: Pracownicy, Wiedza, Zburz in red, then the tier with its bill', () => {
-    const views = orderViews({ orders: orders({}), name: 'Młyn', construction: null });
+    const views = orderViews({ orders: orders({}), name: 'Młyn', construction: null, templeFire: null });
     expect(views.map((view) => view.order)).toEqual(['workers', 'knowledge', 'demolish', 'upgrade']);
     expect(views[0]).toMatchObject({
       enabled: true,
@@ -628,12 +628,18 @@ describe('building orders', () => {
       }),
       name: 'Dom',
       construction: null,
+      templeFire: null,
     });
     expect(refused.map((view) => view.order)).toEqual(['workers', 'knowledge', 'demolish', 'upgrade']);
     expect(refused[0]).toMatchObject({ enabled: false, tooltip: copy.hireNone });
     expect(refused[3]).toMatchObject({ enabled: false, tooltip: copy.upgradeUnfinished });
     expect(
-      orderViews({ orders: orders({ cancelUpgrade: true }), name: 'Dom', construction: null })[3]?.order,
+      orderViews({
+        orders: orders({ cancelUpgrade: true }),
+        name: 'Dom',
+        construction: null,
+        templeFire: null,
+      })[3]?.order,
     ).toBe('cancelUpgrade');
   });
 

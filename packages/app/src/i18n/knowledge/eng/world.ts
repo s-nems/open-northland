@@ -639,7 +639,7 @@ export const WORLD: ArticleGroup = {
           },
         },
         {
-          p: '[[job:druid|Druids]] carry Oil to the Temples within their [[article:roads|signposts]] themselves. A [[job:carrier|Carrier]] posted at the Temple or a [[job:trader|Merchant]] can bring it too. A new Temple starts with the Oil of its building cost. Without Oil, or while damaged, its glow and fire go out.',
+          p: '[[job:druid|Druids]] carry Oil to the Temples within their [[article:roads|signposts]] themselves. A [[job:carrier|Carrier]] posted at the Temple or a [[job:trader|Merchant]] can bring it too. A new Temple starts with the Oil of its building cost. Without Oil, or while damaged, its glow and fire go out. You can also put the fire out yourself in the Temple panel: it then keeps its Oil and blesses no one until you light it again.',
         },
       ],
       see: ['article:needs', 'article:health', 'building:work_temple', 'good:holy_oil'],

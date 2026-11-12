@@ -8,7 +8,7 @@ import {
   colonyStockPolicy,
   colonyStockReadsOf,
 } from '../../../../../src/systems/computer-player/colony/goods/stock-policy.js';
-import { TEMPLE_OIL_UNITS } from '../../../../../src/systems/computer-player/colony/settlement/industry.js';
+import { TEMPLE_BILL_OIL_UNITS } from '../../../../../src/systems/computer-player/colony/settlement/industry.js';
 import { colonyIndustries } from '../../../../../src/systems/computer-player/colony/settlement/industry-read.js';
 import { minutesToTicks } from '../../../../../src/systems/computer-player/game-phase.js';
 import { seatArmsStock } from '../../../../../src/systems/computer-player/military/outfit.js';
@@ -184,6 +184,6 @@ describe('a colony with wood and room', () => {
     const oil = colonyStockPolicy({ ...colonyStockReadsOf(env), outboundNow: new Set() }).inbound.find(
       (m) => m.good === HOLY_OIL,
     );
-    expect(oil?.upTo).toBe(TEMPLE_OIL_UNITS);
+    expect(oil?.upTo).toBe(TEMPLE_BILL_OIL_UNITS);
   });
 });

@@ -14,6 +14,7 @@ import {
   type SeatRead,
   type SiteFacts,
   type StepRead,
+  TEMPLE_BILL_OIL_UNITS,
   TEMPLE_OIL_UNITS,
   type Worth,
 } from '../../../../../src/systems/computer-player/colony/settlement/industry.js';
@@ -214,9 +215,15 @@ describe('a colony chain', () => {
 });
 
 describe('what a colony industry wants brought', () => {
-  it("is the temple's store of holy oil and a unit spare, while home boils it", () => {
+  it("is the unit of holy oil the temple's bill takes, and its whole store where druids carry it", () => {
     const choices = chooseIndustries({ ...BARE, wood: true }, seatRead());
-    expect(colonyIndustryWants(choices, true)).toEqual([{ good: 'holy_oil', upTo: TEMPLE_OIL_UNITS }]);
+    expect(colonyIndustryWants(choices, true)).toEqual([{ good: 'holy_oil', upTo: TEMPLE_BILL_OIL_UNITS }]);
+    const withDruids = [
+      ...choices,
+      ...chooseIndustries({ ...BARE, grass: true, mushroom: true, gold: true }, seatRead()),
+    ];
+    expect(withDruids.map((c) => c.industry)).toContain('druid');
+    expect(colonyIndustryWants(withDruids, true)).toEqual([{ good: 'holy_oil', upTo: TEMPLE_OIL_UNITS }]);
     expect(colonyIndustryWants(choices, false)).toEqual([]);
     expect(colonyIndustryWants([], true)).toEqual([]);
   });

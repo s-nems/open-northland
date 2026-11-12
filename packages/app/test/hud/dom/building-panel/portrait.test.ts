@@ -57,15 +57,16 @@ describe('building panel Prioritize order', () => {
     expect(ordersOf(upgrading).length).toBeLessThanOrEqual(MAX_ORDER_TILES);
   });
 
-  it("adds a standing temple's fire order after Demolish, lit until it is put out", () => {
+  it("adds a standing temple's fire order after Demolish, named for what it does next", () => {
     const temple = { ...site, construction: null };
     const fire = temple.templeFire;
     if (fire === null) throw new Error('warm model has no temple fire');
     const orders = ordersOf(temple);
     expect(orders[orders.indexOf('demolish') + 1]).toBe('templeFire');
     const tile = (model: BuildingPanelModel) => orderViews(model).find((view) => view.order === 'templeFire');
-    expect(tile(temple)).toMatchObject({ pressed: true });
-    expect(tile({ ...temple, templeFire: { ...fire, doused: true } })).toMatchObject({ pressed: false });
+    const copy = messages().hud.buildingPanel;
+    expect(tile(temple)?.label).toBe(copy.templeFireDouse);
+    expect(tile({ ...temple, templeFire: { ...fire, doused: true } })?.label).toBe(copy.templeFireLight);
     expect(ordersOf({ ...temple, templeFire: null })).not.toContain('templeFire');
   });
 

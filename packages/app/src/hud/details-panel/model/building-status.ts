@@ -31,7 +31,7 @@ export interface BuildingStatusInputs {
   readonly workDetail: string | null;
   /** A home's families, null for any other house. */
   readonly families: number | null;
-  /** A finished temple's blessing, null for any other house. */
+  /** A finished temple's blessing, null for any other house and another seat's temple. */
   readonly blessing: TempleBlessing | null;
 }
 

@@ -581,7 +581,7 @@ export const WORLD: ArticleGroup = {
           },
         },
         {
-          p: '[[job:druid|德魯伊]]會自己把油送到[[article:roads|路標]]範圍內的神廟。派駐神廟的[[job:carrier|搬運工]]或[[job:trader|商人]]也能送油。新建的神廟自帶建造費用裡的那份油。沒有油或受損時，神廟的光芒和火焰會熄滅。',
+          p: '[[job:druid|德魯伊]]會自己把油送到[[article:roads|路標]]範圍內的神廟。派駐神廟的[[job:carrier|搬運工]]或[[job:trader|商人]]也能送油。新建的神廟自帶建造費用裡的那份油。沒有油或受損時，神廟的光芒和火焰會熄滅。你也可以在神廟面板裡自己熄滅聖火：神廟會保留油，在你重新點燃之前不再賜福。',
         },
       ],
       see: ['article:needs', 'article:health', 'building:work_temple', 'good:holy_oil'],

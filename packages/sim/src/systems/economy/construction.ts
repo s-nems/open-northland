@@ -363,7 +363,7 @@ function spentBill(
   buildingType: number,
   cost: ReadonlyArray<{ goodType: number; amount: number }>,
 ): ReadonlyArray<{ goodType: number; amount: number }> {
-  const fuel = templeFuelSlotOf(ctx, buildingType)?.goodType;
+  const fuel = templeFuelSlotOf(ctx.content, buildingType)?.goodType;
   return fuel === undefined ? cost : cost.filter((line) => line.goodType !== fuel);
 }
 

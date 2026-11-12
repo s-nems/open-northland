@@ -58,7 +58,7 @@ export const templeAuraSystem: System = (world, ctx) => {
   }
 };
 
-/** Tend every temple's fire for this second, and return the anchors of the owned ones that bless,
+/** Tend every temple's fire for this second, and return the anchors of the ones that bless,
  *  flattened as `hx, hy` pairs per owner. */
 function blessingTempleAnchors(
   world: World,

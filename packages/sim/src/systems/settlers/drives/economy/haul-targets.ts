@@ -174,9 +174,9 @@ function restockSearch(plan: PlannerContext, owner: number): RestockSearch {
 /**
  * The nearest unit of a good the porter's own store marks as priority or burns ({@link restockGoodsOf}),
  * while the store has room for it: in another of the owner's storehouses that does not prioritize the good
- * too, in a workplace's finished output or in a ground heap. Searched like {@link nearestMinimumRestock}, ascending
- * by good, and only a load the porter carries as itself and delivers home qualifies. The lift is capped
- * at the room its fellow porters' loads and claims leave, so no surplus walks back to its source.
+ * too, in a workplace's finished output or in a ground heap. Searched like {@link nearestMinimumRestock},
+ * ascending by good, and only a load the porter carries as itself and delivers home qualifies. The lift is
+ * capped at the room its fellow porters' loads and claims leave, so no surplus walks back to its source.
  * A storehouse source lends only past the owner's storage minimum, even to another storehouse.
  */
 function nearestPriorityRestock(
@@ -239,7 +239,7 @@ function nearestPriorityRestock(
 function restockGoodsOf(plan: PlannerContext, home: Entity): readonly number[] {
   const marked = storePriorityGoods(plan.world, home);
   const type = plan.world.tryGet(home, Building)?.buildingType;
-  const fuel = type === undefined ? undefined : templeFuelSlotOf(plan.ctx, type)?.goodType;
+  const fuel = type === undefined ? undefined : templeFuelSlotOf(plan.ctx.content, type)?.goodType;
   if (fuel === undefined || marked.includes(fuel)) return marked;
   return [...marked, fuel].sort((a, b) => a - b);
 }

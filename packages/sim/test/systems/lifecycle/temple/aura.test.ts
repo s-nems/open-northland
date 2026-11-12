@@ -298,7 +298,7 @@ describe('templeAuraSystem - a temple that stores fuel blesses only while it bur
     for (let second = 1; second <= TEMPLE_FUEL_BURN_SECONDS; second++)
       blessAt(sim, second * TICKS_PER_SECOND);
 
-    expect(sim.world.get(temple, TempleFire)).toEqual({ burnedSeconds: 1, blessing: false, doused: false });
+    expect(sim.world.get(temple, TempleFire)).toMatchObject({ burnedSeconds: 1, blessing: false });
     expect(fuel(sim, temple)).toBe(1);
   });
 
@@ -317,7 +317,11 @@ describe('templeAuraSystem - a temple that stores fuel blesses only while it bur
     blessAt(sim, 0);
 
     expect(hp(sim, settler)).toBe(POOL + TEMPLE_AURA_HITPOINTS);
-    expect(sim.world.get(temple, TempleFire)).toEqual({ burnedSeconds: 0, blessing: true, doused: false });
+    expect(sim.world.get(temple, TempleFire)).toMatchObject({
+      burnedSeconds: 0,
+      blessing: true,
+      fuelGood: null,
+    });
   });
 
   it('burns nothing and blesses no one while its owner keeps the fire out', () => {
@@ -342,13 +346,46 @@ describe('templeAuraSystem - a temple that stores fuel blesses only while it bur
     const sim = fresh(fuelledContent());
     const temple = fuelledTempleAt(sim, 10, 0);
     blessAt(sim, 1);
-    expect(sim.world.get(temple, TempleFire)).toEqual({ burnedSeconds: 0, blessing: false, doused: false });
+    expect(sim.world.get(temple, TempleFire)).toEqual({
+      burnedSeconds: 0,
+      blessing: false,
+      doused: false,
+      fuelGood: FUEL,
+    });
   });
 
-  it('refuses to put out the fire of a house that burns no fuel', () => {
-    const sim = fresh();
-    const temple = templeAt(sim, 10);
-    setTempleFire(sim.world, ctxOf(sim), { kind: 'setTempleFire', building: temple, lit: false });
-    expect(sim.world.has(temple, TempleFire)).toBe(false);
+  it('records a burning fire the tick a temple holding fuel is finished, and burns nothing that tick', () => {
+    const sim = fresh(fuelledContent());
+    const temple = fuelledTempleAt(sim, 10, 1);
+    blessAt(sim, 1);
+    expect(sim.world.get(temple, TempleFire)).toMatchObject({ burnedSeconds: 0, blessing: true });
+  });
+
+  it('neither blesses nor burns in a temple nobody owns', () => {
+    const sim = fresh(fuelledContent());
+    const temple = fuelledTempleAt(sim, 10, 1);
+    sim.world.remove(temple, Owner);
+    blessAt(sim, 0);
+    expect(sim.world.get(temple, TempleFire)).toMatchObject({ burnedSeconds: 0, blessing: false });
+  });
+
+  it('refuses the fire order for a house that burns no fuel, a site and a temple nobody owns', () => {
+    const douse = (sim: Simulation, building: Entity): void =>
+      setTempleFire(sim.world, ctxOf(sim), { kind: 'setTempleFire', building, lit: false });
+    const unfed = fresh();
+    const plain = templeAt(unfed, 10);
+    douse(unfed, plain);
+    expect(unfed.world.has(plain, TempleFire)).toBe(false);
+
+    const sim = fresh(fuelledContent());
+    const site = fuelledTempleAt(sim, 10, 0);
+    sim.world.mut(site, Building).built = fx.fromInt(0);
+    sim.world.add(site, UnderConstruction, {});
+    const unowned = fuelledTempleAt(sim, 30, 1);
+    sim.world.remove(unowned, Owner);
+    douse(sim, site);
+    douse(sim, unowned);
+    expect(sim.world.has(site, TempleFire)).toBe(false);
+    expect(sim.world.has(unowned, TempleFire)).toBe(false);
   });
 });

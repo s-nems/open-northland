@@ -119,8 +119,8 @@ export class ExternalQualityIndex {
 }
 
 /** The lowest household-quality good `store` holds a unit of, among `demanded` when given and passing
- *  `accepts` when given; never a temple's fuel, which its fire keeps. A min over `keys()` plus `get`: destructured entries would allocate a pair per
- *  stock line of every candidate. */
+ *  `accepts` when given; never a temple's fuel, which its fire keeps. A min over `keys()` plus `get`:
+ *  destructured entries would allocate a pair per stock line of every candidate. */
 function lowestQualityGood(
   world: World,
   content: ContentSet,
@@ -131,7 +131,7 @@ function lowestQualityGood(
   const amounts = accessibleStockAmounts(world, store);
   if (amounts === undefined) return null;
   const type = world.tryGet(store, Building)?.buildingType;
-  const kept = type === undefined ? undefined : templeFuelSlotOf({ content }, type)?.goodType;
+  const kept = type === undefined ? undefined : templeFuelSlotOf(content, type)?.goodType;
   let lowest: number | null = null;
   for (const goodType of amounts.keys()) {
     if ((amounts.get(goodType) ?? 0) <= 0 || (demanded !== undefined && !demanded.has(goodType))) continue;
