@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   Health,
+  MISSION_BEHAVIOUR,
   Owner,
   Position,
   Settler,
   SettlerProgress,
+  setMissionBehaviour,
 } from '../../../../../src/components/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
 import { fx, ONE, Simulation, TICKS_PER_SECOND } from '../../../../../src/index.js';
@@ -240,6 +242,38 @@ describe('atomicSystem - a damaging swing accrues fight XP into the personal cou
     const quarter = Math.floor(meleeUnits(sim, attacker) / STRUCTURE_SHARE_DENOMINATOR);
     expect(quarter).toBeGreaterThan(0);
     expect(sim.world.get(attacker, SettlerProgress).experience.get(PERSONAL)).toBe(quarter);
+  });
+
+  it("a clip of several attack events earns its striker and his victim the clip's blow time once, in all", () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    const target = fighterAt(sim, 1, 0, VIKING, WOMAN, { hitpoints: 10_000 });
+    const hitFrames = [0, 1, 2];
+    startSwing(sim, attacker, { target, damage: 100, hitFrames, weaponMainType: WEAPON_MAIN_TYPE.SPEAR }, 4);
+    for (const _ of hitFrames) atomicSystem(sim.world, nextTickCtxOf(sim));
+
+    // Every event lands its own blow, each taking at least a hitpoint.
+    expect(10_000 - sim.world.get(target, Health).hitpoints).toBeGreaterThanOrEqual(hitFrames.length);
+    expect(pointsOf(sim, attacker)).toBe(clipSeconds(sim, attacker) * MELEE_POINTS_PER_SECOND);
+    expect(pointsOf(sim, target)).toBe(clipSeconds(sim, attacker) * TAKEN_POINTS_PER_SECOND);
+  });
+
+  it('a script-shielded victim earns nothing from a blow that takes him no hitpoints; his striker does', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    const target = fighterAt(sim, 1, 0, VIKING, WOMAN, { hitpoints: 10_000 });
+    setMissionBehaviour(sim.world, target, MISSION_BEHAVIOUR.INVULNERABLE, true);
+    startSwing(
+      sim,
+      attacker,
+      { target, damage: 100, hitFrames: [0], weaponMainType: WEAPON_MAIN_TYPE.SPEAR },
+      2,
+    );
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+
+    expect(sim.world.get(target, Health).hitpoints).toBe(10_000);
+    expect(sim.world.get(target, SettlerProgress).experience.size).toBe(0);
+    expect(pointsOf(sim, attacker)).toBe(clipSeconds(sim, attacker) * MELEE_POINTS_PER_SECOND);
   });
 
   it("a wild-animal bite trains the beast nothing, and earns its victim 1/2 point per second of the beast's clip", () => {

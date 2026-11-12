@@ -13,6 +13,7 @@ import {
 import type { Entity } from '../../../ecs/world.js';
 import type { System } from '../../context.js';
 import { religionAllowsClip } from '../../lifecycle/needs/religion.js';
+import { WHOLE_CLIP } from '../../progression/index.js';
 import { atomicClip, eventTick } from '../../readviews/animations.js';
 import { prayerSiteAvailable } from '../../readviews/prayer-sites.js';
 import { applyEffect } from './effects/apply.js';
@@ -81,13 +82,14 @@ export const atomicSystem: System = (world, ctx) => {
       let struck = false;
       if (frames === undefined) {
         struck = elapsed === duration;
-        if (struck) resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
+        if (struck) resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions, WHOLE_CLIP);
       } else {
         // Indexed, with no closure: every swing in flight asks this every tick.
         for (let i = 0; i < frames.length; i++) {
           if (elapsed !== eventTickWithin(frames[i] as number, duration)) continue;
           struck = true;
-          resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
+          const share = { event: i, events: frames.length };
+          resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions, share);
         }
       }
       const lunge = running.effect.lunge;

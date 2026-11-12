@@ -260,11 +260,30 @@ export type FightBlowTarget = 'living' | 'structure';
  */
 export const STRUCTURE_BLOW_SHARE = { numerator: 1, denominator: 4 } as const;
 
-/** The stored units a blow of `clipTicks` at `rate` earns its striker on `target`. */
+/** The stored units a whole attack clip of `clipTicks` at `rate` earns its striker on `target`. */
 export function strikerFightUnits(rate: FightPointsRate, clipTicks: number, target: FightBlowTarget): number {
   const units = clipTicks * fightUnitsPerClipTick(rate);
   if (target === 'living') return units;
   return Math.floor((units * STRUCTURE_BLOW_SHARE.numerator) / STRUCTURE_BLOW_SHARE.denominator);
+}
+
+/** Which of its clip's `events` attack events a blow is (`event` counts from 0). A clip that lands several
+ *  blows earns its blow time once, shared across them. */
+export interface BlowShare {
+  readonly event: number;
+  readonly events: number;
+}
+
+/** A blow that stands for its whole clip: the only attack event, a shot from no clip, a building's. */
+export const WHOLE_CLIP: BlowShare = { event: 0, events: 1 };
+
+/**
+ * Event `share.event`'s part of a whole clip's `units`: the clip's units cut at `floor(units * k / events)`,
+ * so the events of one clip sum to exactly the clip's units and a remainder unit falls to a later event.
+ */
+export function sharedFightUnits(units: number, share: BlowShare): number {
+  const { event, events } = share;
+  return Math.floor((units * (event + 1)) / events) - Math.floor((units * event) / events);
 }
 
 /**
@@ -288,7 +307,7 @@ function earnsFightExperience(world: World, ctx: SystemContext, e: Entity): bool
  * Grant an attacker fight XP for a landed hit, melee or ranged. The catapult bucket gains one raw point
  * per hit under {@link CATAPULT_EXPERIENCE_MAX}; the personal counter gains the blow time of `clipTicks`,
  * the attacker's own attack clip, at the `delivery`'s rate and the `target`'s share
- * ({@link strikerFightUnits}), under {@link FIGHT_EXPERIENCE_FULL_UNITS}.
+ * ({@link strikerFightUnits}), cut to this blow's `share` of the clip, under {@link FIGHT_EXPERIENCE_FULL_UNITS}.
  */
 export function grantFightExperience(
   world: World,
@@ -298,6 +317,7 @@ export function grantFightExperience(
   delivery: FightBlowDelivery,
   clipTicks: number,
   target: FightBlowTarget,
+  share: BlowShare,
 ): void {
   if (weaponMainType === undefined) return;
   if (!earnsFightExperience(world, ctx, attacker)) return;
@@ -306,21 +326,22 @@ export function grantFightExperience(
     accrueExperience(world, attacker, bucket, CATAPULT_EXPERIENCE_PER_HIT, CATAPULT_EXPERIENCE_MAX);
   } else if (bucket === FIGHT_EXPERIENCE_TYPE.PERSONAL) {
     const rate = delivery === 'melee' ? MELEE_BLOW_POINTS_RATE : SHOT_POINTS_RATE;
-    const units = strikerFightUnits(rate, clipTicks, target);
+    const units = sharedFightUnits(strikerFightUnits(rate, clipTicks, target), share);
     accrueExperience(world, attacker, bucket, units, FIGHT_EXPERIENCE_FULL_UNITS);
   }
 }
 
-/** Grant person `victim` the personal fight XP of a damaging blow he took: the blow time of `clipTicks`,
- *  the attacker's attack cadence, at {@link BLOW_TAKEN_POINTS_RATE}. */
+/** Grant person `victim` the personal fight XP of a blow that wounded him: his `share` of the blow time of
+ *  `clipTicks`, the attacker's attack cadence, at {@link BLOW_TAKEN_POINTS_RATE}. */
 export function grantBlowTakenExperience(
   world: World,
   ctx: SystemContext,
   victim: Entity,
   clipTicks: number,
+  share: BlowShare,
 ): void {
   if (!earnsFightExperience(world, ctx, victim)) return;
-  const units = clipTicks * fightUnitsPerClipTick(BLOW_TAKEN_POINTS_RATE);
+  const units = sharedFightUnits(clipTicks * fightUnitsPerClipTick(BLOW_TAKEN_POINTS_RATE), share);
   accrueExperience(world, victim, FIGHT_EXPERIENCE_TYPE.PERSONAL, units, FIGHT_EXPERIENCE_FULL_UNITS);
 }
 

@@ -1,6 +1,7 @@
 import type { Fixed } from '../core/fixed.js';
 import { defineComponent, type Entity } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
+import type { BlowShare } from '../systems/progression/experience.js';
 import type { MilitaryMode } from '../systems/readviews/stances.js';
 
 /**
@@ -184,6 +185,9 @@ export const Projectile = defineComponent<{
   /** The attack cadence in ticks the shot stands for, which its landing earns by blow time: the shooter's
    *  attack clip, a vehicle's attack clip, or a building's per-occupant shot period. */
   blowTicks: number;
+  /** Which of the shooter's clip's attack events loosed the shot, so a clip of several shots earns its
+   *  blow time once; absent, the shot stands for the whole cadence. */
+  blowShare?: BlowShare | undefined;
   /** The weapon's `soundtype_NoHit` table by ground logic type: what a shot that strikes nothing plays
    *  where it comes down. Carried whole and handed on with the miss event, because the sim navigates
    *  terrain classes and never sees the landscape under the landing node. */

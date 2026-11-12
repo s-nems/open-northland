@@ -19,7 +19,7 @@ import { hexNeighboursOf, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/h
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { landStrandedDrops } from '../economy/goods-evict.js';
-import { grantFightExperience } from '../progression/index.js';
+import { grantFightExperience, WHOLE_CLIP } from '../progression/index.js';
 import { weaponDamageVsMaterial } from '../readviews/index.js';
 import {
   applyPendingHitReactions,
@@ -126,7 +126,8 @@ function land(
   if (struckAny) {
     const struck = struckLiving ? 'living' : 'structure';
     const weapon = proj.weaponMainType ?? undefined;
-    grantFightExperience(world, ctx, proj.source, weapon, 'shot', proj.blowTicks, struck);
+    const share = proj.blowShare ?? WHOLE_CLIP;
+    grantFightExperience(world, ctx, proj.source, weapon, 'shot', proj.blowTicks, struck, share);
   }
   if (!struckAny) {
     ctx.events.emit({
@@ -175,6 +176,7 @@ function strike(
     from: { x: proj.originX, y: proj.originY },
     vehicleShot: proj.impact !== null,
     blowTicks: proj.blowTicks,
+    ...(proj.blowShare !== undefined ? { blowShare: proj.blowShare } : {}),
   };
   return resolveCombatHit(world, ctx, proj.source, victim, blow, pendingReactions, source);
 }

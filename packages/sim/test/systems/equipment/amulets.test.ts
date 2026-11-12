@@ -21,6 +21,7 @@ import {
   FIGHT_EXPERIENCE_TYPE,
   plannerSystem,
   WEAPON_MAIN_TYPE,
+  WHOLE_CLIP,
 } from '../../../src/systems/index.js';
 import { walkStepModifiersOf } from '../../../src/systems/movement/walk-cost.js';
 import {
@@ -92,7 +93,15 @@ function duel(
 /** Land one `damage` blow and return the hitpoints it took. */
 function strike(s: Simulation, attacker: Entity, target: Entity, damage = BLOW): number {
   const before = s.world.get(target, Health).hitpoints;
-  resolveAttackHit(s.world, ctxOf(s), attacker, ATTACK_SWING, { kind: 'attack', target, damage }, []);
+  resolveAttackHit(
+    s.world,
+    ctxOf(s),
+    attacker,
+    ATTACK_SWING,
+    { kind: 'attack', target, damage },
+    [],
+    WHOLE_CLIP,
+  );
   return before - s.world.get(target, Health).hitpoints;
 }
 
@@ -201,7 +210,7 @@ describe('combat amulets', () => {
       .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL_UNITS);
     const melee = { kind: 'attack', target, damage: BLOW, weaponMainType: WEAPON_MAIN_TYPE.SWORD } as const;
     const before = s.world.get(target, Health).hitpoints;
-    resolveAttackHit(s.world, ctxOf(s), attacker, ATTACK_SWING, melee, []);
+    resolveAttackHit(s.world, ctxOf(s), attacker, ATTACK_SWING, melee, [], WHOLE_CLIP);
     expect(before - s.world.get(target, Health).hitpoints).toBe(191); // trunc(101 * (1 + 0.4 + 0.5))
     const shot = { damage: BLOW, weaponMainType: WEAPON_MAIN_TYPE.BOW };
     const between = s.world.get(target, Health).hitpoints;

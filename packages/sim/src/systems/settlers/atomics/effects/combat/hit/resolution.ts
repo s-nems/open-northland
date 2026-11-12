@@ -31,9 +31,11 @@ import { markStructureDamaged } from '../../../../../economy/repair.js';
 import { woundBearer } from '../../../../../equipment/index.js';
 import { ownersAtPeace } from '../../../../../match/peace.js';
 import {
+  type BlowShare,
   fightUnitsWith,
   grantBlowTakenExperience,
   grantFightExperience,
+  WHOLE_CLIP,
 } from '../../../../../progression/index.js';
 import { hexNodeDistance } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
@@ -45,9 +47,9 @@ import { collectHitReaction, type PendingHitReaction } from './reaction.js';
 import { provokeHostility, reactToBlowOnAnimal, turnOnAttacker } from './reactions.js';
 
 /**
- * Resolve an `attack` swing at its ATTACK-event frame, the mid-animation hit. A ranged swing launches a
- * projectile that resolves on contact; a melee swing whiffs if the target stepped beyond `effect.maxRange`
- * since the swing started, else lands the blow.
+ * Resolve an `attack` swing at its ATTACK-event frame, the mid-animation hit; `share` says which of the
+ * clip's attack events it is. A ranged swing launches a projectile that resolves on contact; a melee swing
+ * whiffs if the target stepped beyond `effect.maxRange` since the swing started, else lands the blow.
  */
 export function resolveAttackHit(
   world: World,
@@ -56,9 +58,10 @@ export function resolveAttackHit(
   atomic: SoundingAtomic,
   effect: Extract<AtomicEffect, { kind: 'attack' }>,
   pendingReactions: PendingHitReaction[],
+  share: BlowShare,
 ): void {
   if (effect.projectile !== undefined) {
-    launchProjectile(world, ctx, attacker, effect);
+    launchProjectile(world, ctx, attacker, effect, share);
     return;
   }
   // Before the reach check, so a whiff is heard too; a clip that sounds its own swing is left to do so.
@@ -74,7 +77,8 @@ export function resolveAttackHit(
   ) {
     return;
   }
-  resolveCombatHit(world, ctx, attacker, effect.target, effect, pendingReactions, 'melee');
+  const blow = { ...effect, blowShare: share };
+  resolveCombatHit(world, ctx, attacker, effect.target, blow, pendingReactions, 'melee');
 }
 
 /** The blow a melee swing or a landing projectile delivers: the weapon's column for the victim, the striker's weapon class for the fight-experience
@@ -82,11 +86,12 @@ export function resolveAttackHit(
  *  comes from, which a person's hit direction reads: a shot's release point, or the striker's own
  *  position when absent. `vehicleShot` marks a vehicle's stone, which the commander's amulets do not
  *  raise. `blowTicks` is a shot's attack cadence (`Projectile.blowTicks`); a melee blow reads its striker's
- *  attack clip instead. */
+ *  attack clip instead. `blowShare` is the blow's share of that clip, the whole clip when absent. */
 export interface LandingBlow {
   readonly damage: number;
   readonly vehicleShot?: boolean;
   readonly blowTicks?: number;
+  readonly blowShare?: BlowShare;
   readonly weaponMainType?: number | null;
   readonly hitSoundType?: number | null;
   readonly from?: { readonly x: Fixed; readonly y: Fixed };
@@ -219,15 +224,19 @@ export function resolveCombatHit(
     recordPlayerAttack(world, ownerOf(world, target), ownerOf(world, attacker));
   }
   // Fight experience is earned by blow time. A shot grants its striker's once for all it strikes
-  // (`projectileSystem`); a person who survives a damaging blow earns from it, whoever struck it.
+  // (`projectileSystem`); a person who survives a blow that took hitpoints earns from it, whoever struck it,
+  // so a script-shielded one earns nothing from it.
   const survives = world.get(target, Health).hitpoints > 0;
   if (dealtDamage) {
     const blowTicks = source === 'melee' ? meleeClipTicks(world, ctx, attacker) : (blow.blowTicks ?? 0);
+    const share = blow.blowShare ?? WHOLE_CLIP;
     if (source === 'melee') {
       const struck = isStructureTarget(world, target) ? 'structure' : 'living';
-      grantFightExperience(world, ctx, attacker, weaponMainType, 'melee', blowTicks, struck);
+      grantFightExperience(world, ctx, attacker, weaponMainType, 'melee', blowTicks, struck, share);
     }
-    if (survives && world.has(target, Person)) grantBlowTakenExperience(world, ctx, target, blowTicks);
+    if (dealt > 0 && survives && world.has(target, Person)) {
+      grantBlowTakenExperience(world, ctx, target, blowTicks, share);
+    }
   }
   if (!survives) {
     spawnCarcasses(world, ctx, attacker, target);

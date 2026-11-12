@@ -29,6 +29,7 @@ import {
   needsSystem,
   plannerSystem,
   STARVATION_HITPOINTS_PER_TICK,
+  WHOLE_CLIP,
 } from '../../../../src/systems/index.js';
 import { DRINK_IN_PLACE_LEVEL } from '../../../../src/systems/lifecycle/needs/index.js';
 import { resolveAttackHit } from '../../../../src/systems/settlers/atomics/effects/combat/index.js';
@@ -364,7 +365,15 @@ describe('healing draught - below half of max hitpoints', () => {
   }
 
   function strike(sim: Simulation, attacker: Entity, target: Entity, damage: number): void {
-    resolveAttackHit(sim.world, ctxOf(sim), attacker, ATTACK_SWING, { kind: 'attack', target, damage }, []);
+    resolveAttackHit(
+      sim.world,
+      ctxOf(sim),
+      attacker,
+      ATTACK_SWING,
+      { kind: 'attack', target, damage },
+      [],
+      WHOLE_CLIP,
+    );
   }
 
   it('a blow that leaves the bearer under half its max takes one sip', () => {

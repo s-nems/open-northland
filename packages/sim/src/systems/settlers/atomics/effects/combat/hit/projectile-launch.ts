@@ -29,7 +29,7 @@ import {
 import { buildingBodyNodes } from '../../../../../conflict/target-node.js';
 import { attackClipTiming, type MissileShot } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
-import { personalFightPoints } from '../../../../../progression/index.js';
+import { type BlowShare, personalFightPoints } from '../../../../../progression/index.js';
 import { isHeroJob } from '../../../../../readviews/index.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 import { exploreAround, SHOT_SIGHT_NODES } from '../../../../../vision/index.js';
@@ -43,6 +43,8 @@ export interface LooseShot {
   readonly weaponMainType: number | null;
   /** The attack cadence in ticks the shot stands for (`Projectile.blowTicks`). */
   readonly blowTicks: number;
+  /** The shot's share of that cadence (`Projectile.blowShare`); absent, the whole of it. */
+  readonly blowShare?: BlowShare;
   /** The defence-mode building that fires the shot itself, read only by the render. */
   readonly cover: Entity | null;
   readonly aim: { readonly x: Fixed; readonly y: Fixed };
@@ -60,6 +62,7 @@ export function launchProjectile(
   ctx: SystemContext,
   attacker: Entity,
   effect: Extract<AtomicEffect, { kind: 'attack' }>,
+  share: BlowShare,
 ): void {
   const weapon = effect.projectile;
   if (weapon === undefined) return; // not a ranged swing; the caller already gates this
@@ -67,12 +70,13 @@ export function launchProjectile(
   // A target drained to 0 earlier this tick is dead but not yet reaped: no shot, and no launch cue, at a
   // corpse. Checked before the aim draws, so a withheld shot takes nothing from the stream.
   if ((world.tryGet(effect.target, Health)?.hitpoints ?? 0) <= 0) return;
-  looseSettlerShot(world, ctx, attacker, attacker, effect.target, weapon, effect.weaponMainType ?? null, 0);
+  const mainType = effect.weaponMainType ?? null;
+  looseSettlerShot(world, ctx, attacker, attacker, effect.target, weapon, mainType, 0, share);
 }
 
 /**
  * Loose settler `shooter`'s shot at `target` from `body`: the shooter himself, or the ship a deck bowman
- * rides. `extraSpread` nodes widen its scatter.
+ * rides. `extraSpread` nodes widen its scatter; `share` is the shot's share of the shooter's attack clip.
  */
 export function looseSettlerShot(
   world: World,
@@ -83,6 +87,7 @@ export function looseSettlerShot(
   weapon: MissileShot,
   weaponMainType: number | null,
   extraSpread: number,
+  share?: BlowShare,
 ): void {
   const release = world.tryGet(body, Position);
   if (release === undefined) return;
@@ -95,6 +100,7 @@ export function looseSettlerShot(
     weapon,
     weaponMainType,
     blowTicks: settler === undefined ? 0 : attackClipTiming(ctx.content, settler).length,
+    ...(share !== undefined && share.events > 1 ? { blowShare: share } : {}),
     cover: null,
     aim: settlerAim(world, ctx, shooter, body, target, weapon.speed, experience, extraSpread),
     ...(body !== shooter ? { from: release } : {}),
@@ -158,6 +164,7 @@ export function looseProjectile(world: World, ctx: SystemContext, shot: LooseSho
     hitSounds: { ...shot.weapon.hitSounds },
     weaponMainType: shot.weaponMainType,
     blowTicks: shot.blowTicks,
+    ...(shot.blowShare !== undefined ? { blowShare: shot.blowShare } : {}),
     missSounds: { ...shot.weapon.missSounds },
     munitionType: shot.weapon.munitionType,
     // Frozen at release: the render's ballistic-arc origin and the landing blow's direction.
