@@ -545,7 +545,7 @@ export const itContent = {
     'vehicle-catapult-spread': {
       title: 'Le catapulte si distanziano prima di tirare',
       summary:
-        "Quattro catapulte con equipaggio vengono piazzate in due coppie, ogni coppia su un solo punto, con una capanna nemica a portata. Una catapulta non tira mai dall'interno di un'altra: ognuna di quelle sovrapposte si sposta prima in un punto tutto suo, poi la batteria apre il fuoco. Ordina a più catapulte di andare sullo stesso punto per vederle tenersi a distanza.",
+        "Quattro catapulte con equipaggio vengono piazzate in due coppie, ogni coppia su un solo punto, con una capanna nemica a portata. Di due catapulte che si toccano ne tira una sola: una di ogni coppia apre il fuoco dove si trova, e l'altra si sposta prima in un punto tutto suo. Ordina a più catapulte di andare sullo stesso punto per vederle tenersi a distanza.",
     },
     'vehicle-catapult-targets': {
       title: 'Cosa colpisce per prima una catapulta',
@@ -556,6 +556,11 @@ export const itContent = {
       title: 'Una catapulta contro gli arcieri',
       summary:
         "Una catapulta con equipaggio tiene la posizione mentre tre arcieri nemici con l'arco lungo, in cotta di maglia, marciano verso di lei. Li bersaglia con le pietre appena entrano nella sua gittata, e loro tirano al suo scafo dalla propria. Ogni arciere richiede tre pietre, e lo scafo regge abbastanza da abbatterne due prima di cedere.",
+    },
+    'vehicle-catapult-assault': {
+      title: 'Una batteria assalta un villaggio difeso',
+      summary:
+        'Tre catapulte con equipaggio ricevono un ordine di attacco in movimento oltre la palizzata nemica. Sui fianchi, a portata, ci sono degli spadaccini, più indietro degli arcieri e dietro la palizzata una torre. Le catapulte non sprecano pietre sugli spadaccini: avanzano prima verso la torre e gli arcieri, e ognuna tira da un punto tutto suo.',
     },
     'vehicle-catapult-wall': {
       title: 'Una catapulta bombarda un punto oltre il muro',

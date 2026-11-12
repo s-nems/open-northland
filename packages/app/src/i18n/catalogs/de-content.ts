@@ -544,7 +544,7 @@ export const deContent = {
     'vehicle-catapult-spread': {
       title: 'Katapulte verteilen sich vor dem Schuss',
       summary:
-        'Vier bemannte Katapulte stehen paarweise, jedes Paar auf einem Feld, und eine feindliche Hütte ist in Reichweite. Ein Katapult schießt nie aus einem anderen heraus: Jedes übereinanderstehende fährt zuerst auf einen eigenen Platz, erst dann eröffnet die Batterie das Feuer. Schicke mehrere Katapulte auf einen Punkt, um zu sehen, wie sie Abstand halten.',
+        'Vier bemannte Katapulte stehen paarweise, jedes Paar auf einem Feld, und eine feindliche Hütte ist in Reichweite. Von zwei Katapulten, die sich berühren, schießt nur eines: Eines aus jedem Paar eröffnet das Feuer, wo es steht, und das andere fährt zuerst auf einen eigenen Platz. Schicke mehrere Katapulte auf einen Punkt, um zu sehen, wie sie Abstand halten.',
     },
     'vehicle-catapult-targets': {
       title: 'Worauf ein Katapult zuerst schießt',
@@ -555,6 +555,11 @@ export const deContent = {
       title: 'Ein Katapult gegen Bogenschützen',
       summary:
         'Ein bemanntes Katapult hält seine Stellung, während drei feindliche Langbogenschützen in Kettenhemden darauf zumarschieren. Es beschießt sie mit Steinen, sobald sie in seine Reichweite kommen, und sie schießen aus ihrer auf sein Gestell. Jeder Bogenschütze braucht drei Steine, und das Gestell hält lange genug, um zwei von ihnen zu fällen, bevor es bricht.',
+    },
+    'vehicle-catapult-assault': {
+      title: 'Eine Batterie stürmt ein verteidigtes Dorf',
+      summary:
+        'Drei bemannte Katapulte erhalten einen Angriffsmarsch hinter die feindliche Palisade. An den Flanken stehen Schwertkämpfer in ihrer Reichweite, weiter hinten Bogenschützen und hinter der Palisade ein Turm. Die Katapulte verschwenden keine Steine an die Schwertkämpfer: Sie fahren zuerst an den Turm und die Bogenschützen heran, und jedes schießt von einem eigenen Platz.',
     },
     'vehicle-catapult-wall': {
       title: 'Ein Katapult beschießt einen Ort hinter dem Wall',

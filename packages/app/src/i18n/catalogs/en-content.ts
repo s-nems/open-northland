@@ -542,7 +542,7 @@ export const enContent = {
     'vehicle-catapult-spread': {
       title: 'Catapults spread before firing',
       summary:
-        'Four crewed catapults are set down as two pairs, each pair on one spot, with an enemy hut in range. A catapult never fires from inside another: each stacked one first drives out to a spot of its own, then the battery opens fire. Order several catapults onto one spot to watch them keep apart.',
+        'Four crewed catapults are set down as two pairs, each pair on one spot, with an enemy hut in range. Of two catapults that touch only one fires: one of each pair opens fire where it stands, and the other first drives out to a spot of its own. Order several catapults onto one spot to watch them keep apart.',
     },
     'vehicle-catapult-targets': {
       title: 'What a catapult shoots first',
@@ -553,6 +553,11 @@ export const enContent = {
       title: 'A catapult against archers',
       summary:
         'A crewed catapult holds its ground while three enemy longbowmen in chain mail march on it. It stones them as they come into its reach, and they shoot at its hull from theirs. Each archer takes three stones, and the hull lasts long enough to fell two of them before it breaks.',
+    },
+    'vehicle-catapult-assault': {
+      title: 'A battery storms a defended village',
+      summary:
+        'Three crewed catapults are sent on an attack-move behind the enemy palisade. Swordsmen stand in their reach on the flanks, archers stand farther back and a tower stands behind the wall. The catapults do not waste stones on the swordsmen: they roll up to the tower and the archers first, each firing from a spot of its own.',
     },
     'vehicle-catapult-wall': {
       title: 'A catapult shells a spot over the wall',

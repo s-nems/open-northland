@@ -540,7 +540,7 @@ export const plContent = {
     'vehicle-catapult-spread': {
       title: 'Katapulty rozjeżdżają się przed strzałem',
       summary:
-        'Cztery obsadzone katapulty stoją parami, każda para na jednym polu, a wroga chata jest w zasięgu. Katapulta nigdy nie strzela z wnętrza innej: każda ze stłoczonych najpierw odjeżdża na własne miejsce, dopiero potem bateria otwiera ogień. Wyślij kilka katapult w jeden punkt, aby zobaczyć, jak trzymają odstęp.',
+        'Cztery obsadzone katapulty stoją parami, każda para na jednym polu, a wroga chata jest w zasięgu. Z dwóch stykających się katapult strzela tylko jedna: jedna z każdej pary otwiera ogień tam, gdzie stoi, a druga najpierw odjeżdża na własne miejsce. Wyślij kilka katapult w jeden punkt, aby zobaczyć, jak trzymają odstęp.',
     },
     'vehicle-catapult-targets': {
       title: 'W co katapulta strzela najpierw',
@@ -551,6 +551,11 @@ export const plContent = {
       title: 'Katapulta przeciw łucznikom',
       summary:
         'Obsadzona katapulta trzyma pozycję, a trzech wrogich łuczników z długimi łukami, w kolczugach, idzie prosto na nią. Gdy wchodzą w jej zasięg, ciska w nich kamieniami, a oni ze swojego zasięgu strzelają w jej kadłub. Na każdego łucznika trzeba trzech kamieni, a kadłub wytrzymuje dość długo, by powalić dwóch, zanim pęknie.',
+    },
+    'vehicle-catapult-assault': {
+      title: 'Bateria szturmuje bronioną osadę',
+      summary:
+        'Trzy obsadzone katapulty dostają atak-ruch za wrogą palisadę. Na skrzydłach, w ich zasięgu, stoją miecznicy, dalej z tyłu łucznicy, a za palisadą wieża. Katapulty nie marnują kamieni na mieczników: najpierw podjeżdżają pod wieżę i łuczników, a każda strzela z własnego miejsca.',
     },
     'vehicle-catapult-wall': {
       title: 'Katapulta ostrzeliwuje miejsce za palisadą',
