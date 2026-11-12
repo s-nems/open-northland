@@ -540,7 +540,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(83);
+  const roll = rng.int(84);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiControl carrier created/updated/destroyed - the
@@ -1240,6 +1240,14 @@ function nextCommand(rng: Rng): Command {
       // The found-families switch: valid players have the assistant house and wed the fuzzed women
       // against the stream's own marry and house orders; the out-of-range player is the owner refusal.
       return { kind: 'setAssistantFoundFamilies', player: pick(rng, OWNERS), enabled: rng.int(2) === 0 };
+    case 83:
+      // A coin drill: random entity and house ids cover every refusal (no soldier, no barracks, another
+      // side's, no free coin, a re-issue) plus the drill rung and its clip events under a fuzzed stream.
+      return {
+        kind: 'orderCoinDrill',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        house: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+      };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }
