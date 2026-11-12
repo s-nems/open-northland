@@ -25,8 +25,12 @@ export const MILITARY: ArticleGroup = {
             head: ['Moltiplicatore', 'Valore'],
             rows: [
               [
-                "[[article:exp-combat|Esperienza con quest'arma]] (solo in mischia)",
+                "[[article:exp-combat|Esperienza di combattimento]] dell'attaccante (solo in mischia)",
                 'fino a ×{{combat.fightCapFactor}}',
+              ],
+              [
+                '[[article:exp-combat|Esperienza di combattimento]] del bersaglio',
+                'fino a ×{{combat.fightTakenFactor}}',
               ],
               ['Colpo sul fianco posteriore', '×{{combat.backSideFactor}}'],
               ['Colpo alle spalle', '×{{combat.behindFactor}}'],
@@ -36,7 +40,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            "L'esperienza non vale per frecce, pietre, veicoli e palizzate.",
+            "L'esperienza dell'attaccante non rafforza frecce, pietre né colpi contro veicoli e palizzate. L'esperienza del bersaglio riduce ogni colpo e tiro su una persona.",
             "La direzione del colpo e l'Amuleto della difesa contano solo contro le persone. Per una freccia la direzione si calcola dal punto da cui è stata scoccata.",
             "Una catapulta non può ricevere l'Amuleto della forza.",
             'Una palizzata calcola il danno a modo suo: [[article:walls|Palizzate e cancelli]].',
@@ -200,14 +204,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Colpi a segno', 'Probabilità di un tiro preciso'],
+            head: ['Punti', 'Probabilità di un tiro preciso'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
               ['{{aim.noSpreadHits}}+', 'Sempre a segno'],
             ],
             num: [0, 1],
-            foot: "Ogni colpo a segno aggiunge l'1%. Da {{aim.noSpreadHits}} colpi anche una freccia imprecisa arriva sul bersaglio. Arco corto e arco lungo sommano i colpi, la [[article:catapult|Catapulta]] li conta a parte ma sulla stessa tabella. Un eroe colpisce sempre.",
+            foot: "Ogni punto di [[article:exp-combat|esperienza di combattimento]] aggiunge l'1%, anche i punti dell'esercitazione e quelli presi con un'altra arma. Da {{aim.noSpreadHits}} punti anche una freccia imprecisa arriva sul bersaglio. La [[article:catapult|Catapulta]] conta i propri colpi a parte, ma sulla stessa tabella. Un eroe colpisce sempre.",
           },
         },
         {
@@ -359,7 +363,7 @@ export const MILITARY: ArticleGroup = {
             head: ['Caratteristica', 'Soldato', 'Eroe'],
             rows: [
               ['Raggio visivo in esagoni', '{{vision.soldier}}', '{{vision.hero}}'],
-              ["Precisione con l'arco", 'Cresce con i colpi a segno', 'Sempre a segno'],
+              ["Precisione con l'arco", "Cresce con l'esperienza di combattimento", 'Sempre a segno'],
               ['Esperienza di combattimento', 'Cresce', 'Cresce solo se la missione lo consente'],
               ['Mangiare e dormire', 'Ne ha bisogno', 'Non ne ha bisogno'],
               [

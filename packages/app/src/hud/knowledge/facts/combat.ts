@@ -9,11 +9,13 @@ import {
   scaledWallRules,
   WALL_LOGIC_ID,
 } from '../../../content/map/palisade-rows.js';
+import { coinDrillPointsOf } from '../../../game/coin-drill.js';
 import { buildingHitpoints } from '../base.js';
 import {
   CAP_HITS,
   type CombatTarget,
   combatTargets,
+  DEFENSE_TAKEN_PCT,
   HIT_DIRECTION,
   hitsToKill,
   landed,
@@ -138,6 +140,7 @@ export const FIGHT_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
     return [
       [`fight.factor.${hits}`, twoDecimals(blow / SAMPLE_BLOW)],
       [`fight.blow.${hits}`, whole(blow)],
+      [`fight.taken.${hits}`, twoDecimals(systems.withTakenBonuses(SAMPLE_BLOW, hits) / SAMPLE_BLOW)],
     ];
   }),
 );
@@ -273,6 +276,17 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'combat.fightCapFactor': twoDecimals(systems.withFightExperience(SAMPLE_BLOW, CAP_HITS) / SAMPLE_BLOW),
   'combat.fightCapBlow': whole(systems.withFightExperience(SAMPLE_BLOW, CAP_HITS)),
   'combat.sampleBlow': whole(SAMPLE_BLOW),
+  'combat.fightDealtPct': whole(systems.FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL),
+  'combat.fightTakenPct': whole(systems.FIGHT_EXPERIENCE_TAKEN_PCT_AT_FULL),
+  'combat.fightTakenFactor': twoDecimals(systems.withTakenBonuses(SAMPLE_BLOW, CAP_HITS) / SAMPLE_BLOW),
+  'combat.fightStrengthFactor': twoDecimals(
+    systems.withDealtBonuses(SAMPLE_BLOW, CAP_HITS, STRENGTH_PCT) / SAMPLE_BLOW,
+  ),
+  'combat.fightDefenseFactor': twoDecimals(
+    systems.withTakenBonuses(SAMPLE_BLOW, CAP_HITS, DEFENSE_TAKEN_PCT) / SAMPLE_BLOW,
+  ),
+  'coinDrill.points': whole((base) => coinDrillPointsOf(base.content)),
+  'coinDrill.limit': whole(systems.COIN_DRILL_LIMIT),
   'combat.backSideFactor': twoDecimals(HIT_DIRECTION.backSide / PERCENT),
   'combat.behindFactor': twoDecimals(HIT_DIRECTION.behind / PERCENT),
   'aim.basePct': whole(systems.trueShotPct(0)),

@@ -25,9 +25,10 @@ export const MILITARY: ArticleGroup = {
             head: ['Multiplier', 'Value'],
             rows: [
               [
-                '[[article:exp-combat|Experience with this weapon]] (melee only)',
+                "Attacker's [[article:exp-combat|combat experience]] (melee only)",
                 'up to ×{{combat.fightCapFactor}}',
               ],
+              ["Target's [[article:exp-combat|combat experience]]", 'down to ×{{combat.fightTakenFactor}}'],
               ['Blow from the rear flank', '×{{combat.backSideFactor}}'],
               ['Blow from behind', '×{{combat.behindFactor}}'],
             ],
@@ -36,7 +37,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            "Experience doesn't work on arrows, stones, vehicles or stockades.",
+            "The attacker's experience doesn't strengthen arrows, stones or blows on vehicles and stockades. The target's experience cuts every blow and shot on a person.",
             'Blow direction and the Amulet of Defence count only against people. For an arrow, direction is taken from where it was fired.',
             'A Catapult cannot take an Amulet of Strength.',
             'A stockade counts damage its own way: [[article:walls|Stockades and Gates]].',
@@ -197,14 +198,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Hits', 'Chance of an accurate shot'],
+            head: ['Points', 'Chance of an accurate shot'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
               ['{{aim.noSpreadHits}}+', 'Always on target'],
             ],
             num: [0, 1],
-            foot: 'Each hit adds 1%. From {{aim.noSpreadHits}} hits even an inaccurate arrow lands on target. Short Bow and Longbow count hits together, the [[article:catapult|Catapult]] separately but on the same table. A hero always hits.',
+            foot: 'Each point of [[article:exp-combat|combat experience]] adds 1%, points from the coin drill and from fighting with another weapon too. From {{aim.noSpreadHits}} points even an inaccurate arrow lands on target. The [[article:catapult|Catapult]] counts its own hits, but on the same table. A hero always hits.',
           },
         },
         {
@@ -356,7 +357,7 @@ export const MILITARY: ArticleGroup = {
             head: ['Trait', 'Soldier', 'Hero'],
             rows: [
               ['Vision range in hexes', '{{vision.soldier}}', '{{vision.hero}}'],
-              ['Bow accuracy', 'Grows with hits', 'Always true'],
+              ['Bow accuracy', 'Grows with combat experience', 'Always true'],
               ['Combat experience', 'Grows', 'Grows only if the mission allows it'],
               ['Eating and sleeping', 'Needs them', "Doesn't need them"],
               ['Weapon, armour, Shoes', 'Can change, Shoes wear out', "Fixed, Shoes don't wear out"],

@@ -24,7 +24,8 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['倍率', '数值'],
             rows: [
-              ['[[article:exp-combat|该武器的经验]]（仅近战）', '最高×{{combat.fightCapFactor}}'],
+              ['攻击者的[[article:exp-combat|战斗经验]]（仅近战）', '最高×{{combat.fightCapFactor}}'],
+              ['目标的[[article:exp-combat|战斗经验]]', '最低×{{combat.fightTakenFactor}}'],
               ['从后侧攻击', '×{{combat.backSideFactor}}'],
               ['从背后攻击', '×{{combat.behindFactor}}'],
             ],
@@ -33,7 +34,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '经验对箭矢、石弹、载具和木栅栏无效。',
+            '攻击者的经验不加强箭矢、石弹，也不加强对载具和木栅栏的攻击。目标的经验会减少打在人身上的每次攻击和射击。',
             '攻击方向和防御护符只对人起作用。箭矢的方向按射出的位置算。',
             '投石机不能使用力量护符。',
             '木栅栏的伤害另算：[[article:walls|木栅栏与栅门]]。',
@@ -194,14 +195,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['命中次数', '射准的几率'],
+            head: ['点数', '射准的几率'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
               ['{{aim.noSpreadHits}}+', '总落在目标上'],
             ],
             num: [0, 1],
-            foot: '每命中一次增加1%。{{aim.noSpreadHits}}次命中起，打偏的箭也落在目标上。短弓和长弓一起累计命中，[[article:catapult|投石机]]单独累计，但用同一张表。英雄总能射中。',
+            foot: '每一点[[article:exp-combat|战斗经验]]增加1%，操练和用其他武器战斗得到的点数也算。{{aim.noSpreadHits}}点起，打偏的箭也落在目标上。[[article:catapult|投石机]]单独累计自己的命中，但用同一张表。英雄总能射中。',
           },
         },
         {
@@ -343,7 +344,7 @@ export const MILITARY: ArticleGroup = {
             head: ['项目', '士兵', '英雄'],
             rows: [
               ['视野（格）', '{{vision.soldier}}', '{{vision.hero}}'],
-              ['弓箭准头', '随命中次数上升', '总是打得准'],
+              ['弓箭准头', '随战斗经验上升', '总是打得准'],
               ['战斗经验', '增长', '只有任务允许时才增长'],
               ['吃饭和睡觉', '需要', '不需要'],
               ['武器、护甲、鞋子', '可更换，鞋子会磨损', '固定，鞋子不磨损'],

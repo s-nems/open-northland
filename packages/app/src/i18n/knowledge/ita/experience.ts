@@ -69,7 +69,7 @@ export const EXPERIENCE: ArticleGroup = {
             'I [[job:carrier|trasportatori]] accumulano Trasporto. Non velocizza il loro lavoro, ma {{exp.carrierTrader}} consegne sbloccano il [[job:trader|mercante]].',
             'I mercanti accumulano Commercio per ogni pezzo scaricato, ma il Commercio non cambia nulla.',
             'Gli [[job:scout|esploratori]], le [[job:woman|donne]] e i bambini non guadagnano esperienza.',
-            'Piantare, annaffiare, la [[building:school|scuola]] e la [[building:barracks|caserma]] non danno esperienza.',
+            "Piantare, annaffiare, la [[building:school|scuola]] e l'addestramento in [[building:barracks|caserma]] non danno esperienza. L'esercitazione a monete dà esperienza di combattimento: [[article:exp-combat|Esperienza di combattimento]].",
           ],
         },
       ],
@@ -78,40 +78,57 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Esperienza di combattimento',
-      lead: '{{combat.fightCapHits}} colpi a segno con un tipo di arma raddoppiano i tuoi danni in mischia.',
+      lead: "Ogni persona ha un'unica esperienza di combattimento, da 0 a {{combat.fightCapHits}} punti, comune a ogni arma.",
       blocks: [
         {
-          h: 'Danni in mischia',
+          h: "Cosa dà l'esperienza",
+        },
+        {
+          p: 'A {{combat.fightCapHits}} punti un colpo in mischia infligge il {{combat.fightDealtPct}}% di danni in più, e ogni colpo o freccia che raggiunge il combattente ne infligge il {{combat.fightTakenPct}}% in meno. Entrambi crescono in modo uniforme con ogni punto.',
         },
         {
           table: {
-            head: ['Colpi a segno', 'Moltiplicatore', 'Un colpo da {{combat.sampleBlow}} diventa'],
+            head: ['Punti', 'Inflitti in mischia', 'Un colpo da {{combat.sampleBlow}} diventa', 'Subiti'],
             rows: [
-              [0, '×1', '{{combat.sampleBlow}}'],
-              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}'],
-              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}'],
-              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}'],
-              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}'],
-              ['{{combat.fightCapHits}}', '×{{combat.fightCapFactor}}', '{{combat.fightCapBlow}}'],
+              [0, '×1', '{{combat.sampleBlow}}', '×1'],
+              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}', '×{{fight.taken.10}}'],
+              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}', '×{{fight.taken.25}}'],
+              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
+              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
+              [
+                '{{combat.fightCapHits}}',
+                '×{{combat.fightCapFactor}}',
+                '{{combat.fightCapBlow}}',
+                '×{{combat.fightTakenFactor}}',
+              ],
             ],
-            num: [0, 1, 2],
-            foot: 'Oltre {{combat.fightCapHits}} colpi a segno il moltiplicatore smette di crescere.',
+            num: [0, 1, 2, 3],
+            foot: 'Oltre {{combat.fightCapHits}} punti non cresce più nulla.',
           },
         },
         {
-          p: 'Il moltiplicatore vale per i colpi in mischia contro persone, animali ed edifici. Non vale contro [[article:walls|palizzate]] e [[article:vehicles|veicoli]], né per le frecce e la [[article:catapult|catapulta]].',
+          p: "Il bonus ai danni inflitti vale per i colpi in mischia contro persone, animali ed edifici. Non vale contro [[article:walls|palizzate]] e [[article:vehicles|veicoli]], né per frecce e [[article:catapult|catapulta]]. A un arciere l'esperienza dà precisione e meno danni subiti, non frecce più forti.",
         },
         {
-          p: 'Senza esperienza, archi e catapulte vanno a segno con il {{aim.basePct}}% dei tiri, e da {{aim.noSpreadHits}} colpi a segno ogni tiro va a bersaglio. Dettagli: [[article:aim|Colpire e tirare]].',
+          h: 'Con gli amuleti',
         },
         {
-          h: 'Cosa conta come colpo a segno',
+          p: "L'[[good:amulet_strength|Amuleto della forza]] somma il suo bonus a quello dell'esperienza: con esperienza piena un colpo in mischia arriva a ×{{combat.fightStrengthFactor}}. L'[[good:amulet_defense|Amuleto della difesa]] si moltiplica con l'esperienza: con esperienza piena il combattente subisce ×{{combat.fightDefenseFactor}} danni. Amuleti: [[article:draughts|Pozioni e amuleti]].",
         },
         {
-          p: "Un colpo a segno è un colpo o un tiro che ha fatto danni. Si conta separatamente per ogni tipo di arma: pugni, lancia, spada, arco, catapulta. Anche i tiri del [[job:hunter|cacciatore]] contano per l'arco.",
+          p: 'Senza esperienza un arciere va a segno con il {{aim.basePct}}% dei tiri, e da {{aim.noSpreadHits}} punti ogni tiro arriva sul bersaglio. La [[article:catapult|Catapulta]] conta i propri colpi a parte. Dettagli: [[article:aim|Colpire e tirare]].',
         },
         {
-          p: 'Nel pannello del colono sono le righe Combattimento - Spada, Combattimento - Arco e così via. I colpi di spada non aiutano un lanciere e restano anche dopo un cambio di professione. Il combattimento non aumenta i danni di un eroe, a meno che la missione non lo attivi.',
+          h: 'Da dove viene',
+        },
+        {
+          p: "Ogni colpo o tiro che ha inflitto danni dà 1 punto, allo stesso modo con pugni, lancia, spada e arco. Contano anche i tiri del [[job:hunter|cacciatore]]. L'esperienza resta dopo un cambio d'arma o di professione.",
+        },
+        {
+          p: 'Esercitazione: uno spadaccino, un lanciere o un arciere si esercita nella tua [[building:barracks|caserma]] se vi sono monete. Ogni ripetizione prende una [[good:coin|Moneta]] e dà {{coinDrill.points}} punti. Chi ha {{coinDrill.limit}} punti o più non si esercita più e guadagna il resto in battaglia. Seleziona i soldati e fai clic destro sulla tua caserma. Senza moneta il soldato torna indietro.',
+        },
+        {
+          p: "Nel pannello del colono è la riga Combattimento: i punti, il bonus ai danni inflitti in mischia e quanti danni in meno subisce. Il combattimento non fa crescere l'esperienza di un eroe, a meno che la missione non lo consenta.",
         },
         {
           p: "Le armi migliori si sbloccano fabbricandole, non combattendo. La scheda dell'arma indica il requisito, per esempio [[good:sword_long|spada lunga]]. Chi porta quale arma: [[article:equip|Equipaggiare i soldati]].",
@@ -133,7 +150,7 @@ export const EXPERIENCE: ArticleGroup = {
       lead: "Una professione scoperta resta a disposizione di tutto l'insediamento, anche se il colono che l'ha scoperta muore.",
       blocks: [
         {
-          p: "L'impostazione della lobby «Sviluppo delle professioni: Tutte sbloccate dall'inizio» toglie i requisiti per le professioni civili e i prodotti. I requisiti delle professioni militari e i divieti della mappa restano.",
+          p: "L'impostazione della lobby «Sviluppo delle professioni: Tutte sbloccate dall'inizio» toglie i requisiti per le professioni civili e i prodotti. Le professioni militari non hanno requisiti, e i divieti della mappa restano.",
         },
         {
           h: 'Cosa sblocca una professione',

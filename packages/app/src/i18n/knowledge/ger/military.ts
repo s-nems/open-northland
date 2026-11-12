@@ -25,9 +25,10 @@ export const MILITARY: ArticleGroup = {
             head: ['Faktor', 'Wert'],
             rows: [
               [
-                '[[article:exp-combat|Erfahrung mit dieser Waffe]] (nur Nahkampf)',
+                '[[article:exp-combat|Kampferfahrung]] des Angreifers (nur Nahkampf)',
                 'bis ×{{combat.fightCapFactor}}',
               ],
+              ['[[article:exp-combat|Kampferfahrung]] des Ziels', 'bis ×{{combat.fightTakenFactor}}'],
               ['Schlag von der hinteren Flanke', '×{{combat.backSideFactor}}'],
               ['Schlag von hinten', '×{{combat.behindFactor}}'],
             ],
@@ -36,7 +37,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Erfahrung wirkt nicht bei Pfeilen und Steinen und nicht gegen Fahrzeuge und Palisaden.',
+            'Die Erfahrung des Angreifers verstärkt keine Pfeile und Steine und keine Schläge gegen Fahrzeuge und Palisaden. Die Erfahrung des Ziels senkt jeden Schlag und Schuss auf einen Menschen.',
             'Schlagrichtung und Verteidigungsamulett zählen nur bei Menschen. Beim Pfeil richtet sich die Richtung nach dem Ort, von dem er abgeschossen wurde.',
             'Ein Katapult kann kein Amulett der Stärke tragen.',
             'Palisaden rechnen Schaden anders: [[article:walls|Palisaden und Tore]].',
@@ -197,14 +198,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Treffer', 'Chance auf genauen Schuss'],
+            head: ['Punkte', 'Chance auf genauen Schuss'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
               ['{{aim.noSpreadHits}}+', 'Immer im Ziel'],
             ],
             num: [0, 1],
-            foot: 'Jeder Treffer bringt 1% mehr. Ab {{aim.noSpreadHits}} Treffern landet auch ein ungenauer Pfeil im Ziel. Kurz- und Langbogen zählen Treffer gemeinsam, das [[article:catapult|Katapult]] getrennt, aber nach derselben Tabelle. Helden treffen immer.',
+            foot: 'Jeder Punkt [[article:exp-combat|Kampferfahrung]] bringt 1% mehr, auch Punkte aus dem Exerzieren und aus Kämpfen mit einer anderen Waffe. Ab {{aim.noSpreadHits}} Punkten landet auch ein ungenauer Pfeil im Ziel. Das [[article:catapult|Katapult]] zählt eigene Treffer, aber nach derselben Tabelle. Helden treffen immer.',
           },
         },
         {
@@ -362,7 +363,7 @@ export const MILITARY: ArticleGroup = {
             head: ['Eigenschaft', 'Soldat', 'Held'],
             rows: [
               ['Sichtweite in Hexfeldern', '{{vision.soldier}}', '{{vision.hero}}'],
-              ['Genauigkeit mit dem Bogen', 'Steigt mit Treffern', 'Immer genau'],
+              ['Genauigkeit mit dem Bogen', 'Steigt mit der Kampferfahrung', 'Immer genau'],
               ['Kampferfahrung', 'Steigt', 'Steigt nur, wenn die Mission es erlaubt'],
               ['Essen und Schlaf', 'Braucht er', 'Braucht er nicht'],
               [

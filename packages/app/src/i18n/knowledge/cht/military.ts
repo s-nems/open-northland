@@ -24,7 +24,8 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['倍率', '數值'],
             rows: [
-              ['[[article:exp-combat|該武器的經驗]]（僅近戰）', '最高×{{combat.fightCapFactor}}'],
+              ['攻擊者的[[article:exp-combat|戰鬥經驗]]（僅近戰）', '最高×{{combat.fightCapFactor}}'],
+              ['目標的[[article:exp-combat|戰鬥經驗]]', '最低×{{combat.fightTakenFactor}}'],
               ['從後側攻擊', '×{{combat.backSideFactor}}'],
               ['從背後攻擊', '×{{combat.behindFactor}}'],
             ],
@@ -33,7 +34,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '經驗對箭矢、石彈、載具和木柵欄無效。',
+            '攻擊者的經驗不加強箭矢、石彈，也不加強對載具和木柵欄的攻擊。目標的經驗會減少打在人身上的每次攻擊和射擊。',
             '攻擊方向和防禦護符只對人起作用。箭矢的方向按射出的位置計算。',
             '投石機不能使用力量護符。',
             '木柵欄的傷害另算：[[article:walls|木柵欄與柵門]]。',
@@ -194,14 +195,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['命中次數', '射準的機率'],
+            head: ['點數', '射準的機率'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
               ['{{aim.noSpreadHits}}+', '總是落在目標上'],
             ],
             num: [0, 1],
-            foot: '每命中一次增加1%。命中{{aim.noSpreadHits}}次起，沒射準的箭也會落在目標上。短弓和長弓一起累計命中，[[article:catapult|投石機]]單獨累計，但用同一張表。英雄百發百中。',
+            foot: '每一點[[article:exp-combat|戰鬥經驗]]增加1%，操練和用其他武器戰鬥得到的點數也算。{{aim.noSpreadHits}}點起，沒射準的箭也會落在目標上。[[article:catapult|投石機]]單獨累計自己的命中，但用同一張表。英雄百發百中。',
           },
         },
         {
@@ -343,7 +344,7 @@ export const MILITARY: ArticleGroup = {
             head: ['項目', '士兵', '英雄'],
             rows: [
               ['視野（格）', '{{vision.soldier}}', '{{vision.hero}}'],
-              ['弓箭命中率', '隨命中次數上升', '百發百中'],
+              ['弓箭命中率', '隨戰鬥經驗上升', '百發百中'],
               ['戰鬥經驗', '增長', '只有任務允許時才增長'],
               ['吃飯和睡覺', '需要', '不需要'],
               ['武器、護甲、鞋子', '可更換，鞋子會磨損', '固定，鞋子不磨損'],

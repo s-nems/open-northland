@@ -1023,7 +1023,7 @@ export const deContent = {
     barracks: {
       title: 'Ausbildung in der Kaserne',
       summary:
-        'Ein Siedler wird in die Kaserne geschickt, übt dort 15 Sekunden und kommt als unbewaffneter Soldat heraus. Daneben stehen ein bereits dienender Soldat, der nur übt, und ein Siedler, dem der Soldatenberuf verwehrt bleibt.',
+        'Ein Siedler wird in die Kaserne geschickt, übt dort 15 Sekunden und kommt als unbewaffneter Soldat heraus. Daneben stehen ein bereits dienender Soldat, der nur übt, und ein Siedler, der nie geübt hat und den Soldatenberuf trotzdem ergreifen kann.',
     },
     'barracks-armory': {
       title: 'Kasernenwaffenkammer',

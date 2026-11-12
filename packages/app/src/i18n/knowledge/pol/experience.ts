@@ -64,7 +64,7 @@ export const EXPERIENCE: ArticleGroup = {
             '[[job:carrier|Tragarz]] zbiera Noszenie. Nie przyspiesza mu ono pracy, ale {{exp.carrierTrader}} dostaw otwiera [[job:trader|Kupca]].',
             'Kupiec zbiera Handel za każdą rozładowaną sztukę, ale Handel niczego nie zmienia.',
             '[[job:scout|Zwiadowca]], [[job:woman|Kobieta]] i dziecko nie zdobywają doświadczenia.',
-            'Sadzenie, podlewanie, [[building:school|Szkoła]] i [[building:barracks|Koszary]] nie dają doświadczenia.',
+            'Sadzenie, podlewanie, [[building:school|Szkoła]] i szkolenie w [[building:barracks|Koszarach]] nie dają doświadczenia. Musztra za monety daje doświadczenie w walce: [[article:exp-combat|Doświadczenie w walce]].',
           ],
         },
       ],
@@ -73,40 +73,57 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Doświadczenie w walce',
-      lead: '{{combat.fightCapHits}} trafień jednym rodzajem broni podwaja obrażenia wręcz.',
+      lead: 'Każdy człowiek ma jedno doświadczenie w walce, od 0 do {{combat.fightCapHits}} pkt, wspólne dla każdej broni.',
       blocks: [
         {
-          h: 'Obrażenia wręcz',
+          h: 'Co daje doświadczenie',
+        },
+        {
+          p: 'Przy {{combat.fightCapHits}} pkt cios wręcz zadaje o {{combat.fightDealtPct}}% więcej obrażeń, a każdy cios i strzał, który trafi wojownika, o {{combat.fightTakenPct}}% mniej. Obie premie rosną równo z każdym punktem.',
         },
         {
           table: {
-            head: ['Trafienia', 'Mnożnik', 'Cios {{combat.sampleBlow}} po mnożniku'],
+            head: ['Punkty', 'Zadawane wręcz', 'Cios {{combat.sampleBlow}} po mnożniku', 'Otrzymywane'],
             rows: [
-              [0, '×1', '{{combat.sampleBlow}}'],
-              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}'],
-              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}'],
-              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}'],
-              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}'],
-              ['{{combat.fightCapHits}}', '×{{combat.fightCapFactor}}', '{{combat.fightCapBlow}}'],
+              [0, '×1', '{{combat.sampleBlow}}', '×1'],
+              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}', '×{{fight.taken.10}}'],
+              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}', '×{{fight.taken.25}}'],
+              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
+              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
+              [
+                '{{combat.fightCapHits}}',
+                '×{{combat.fightCapFactor}}',
+                '{{combat.fightCapBlow}}',
+                '×{{combat.fightTakenFactor}}',
+              ],
             ],
-            num: [0, 1, 2],
-            foot: 'Powyżej {{combat.fightCapHits}} trafień mnożnik nie rośnie.',
+            num: [0, 1, 2, 3],
+            foot: 'Powyżej {{combat.fightCapHits}} pkt nic już nie rośnie.',
           },
         },
         {
-          p: 'Mnożnik działa przy ciosie wręcz w ludzi, zwierzęta i budynki. Nie działa na [[article:walls|palisady]] i [[article:vehicles|pojazdy]] ani przy strzałach i [[article:catapult|katapulcie]].',
+          p: 'Premia do zadawanych obrażeń działa przy ciosie wręcz w ludzi, zwierzęta i budynki. Nie działa na [[article:walls|palisady]] i [[article:vehicles|pojazdy]] ani przy strzałach i [[article:catapult|katapulcie]]. Łucznikowi doświadczenie daje celność i mniejsze otrzymywane obrażenia, a nie mocniejsze strzały.',
         },
         {
-          p: 'Łuk i katapulta bez doświadczenia trafiają {{aim.basePct}}% strzałów, a od {{aim.noSpreadHits}} trafień każdy strzał spada w cel. Szczegóły: [[article:aim|Trafienie i strzelanie]].',
+          h: 'Z amuletami',
         },
         {
-          h: 'Co liczy się jako trafienie',
+          p: '[[good:amulet_strength|Amulet Siły]] dodaje swoją premię do premii z doświadczenia: przy pełnym doświadczeniu cios wręcz wychodzi ×{{combat.fightStrengthFactor}}. [[good:amulet_defense|Amulet Obrony]] mnoży się z doświadczeniem: z pełnym doświadczeniem wojownik dostaje ×{{combat.fightDefenseFactor}} obrażeń. Amulety: [[article:draughts|Napoje i amulety]].',
         },
         {
-          p: 'Trafienie to cios lub strzał, który zadał obrażenia. Liczy się osobno dla każdego rodzaju broni: Pięść, Włócznia, Miecz, Łuk, Katapulta. Strzały [[job:hunter|Myśliwego]] też liczą się do Łuku.',
+          p: 'Łucznik bez doświadczenia trafia {{aim.basePct}}% strzałów, a od {{aim.noSpreadHits}} pkt każdy strzał spada w cel. [[article:catapult|Katapulta]] liczy własne trafienia. Szczegóły: [[article:aim|Trafienie i strzelanie]].',
         },
         {
-          p: 'W panelu osadnika to wiersze Walka - Miecz, Walka - Łuk i tak dalej. Trafienia mieczem nie pomagają włócznikowi i zostają po zmianie zawodu. Bohaterowi walka nie podnosi obrażeń, chyba że misja to włącza.',
+          h: 'Skąd się bierze',
+        },
+        {
+          p: 'Każdy cios lub strzał, który zadał obrażenia, daje 1 pkt, tak samo pięścią, włócznią, mieczem i łukiem. Strzały [[job:hunter|Myśliwego]] też się liczą. Doświadczenie zostaje po zmianie broni i zawodu.',
+        },
+        {
+          p: 'Musztra: miecznik, włócznik albo łucznik ćwiczy w twoich [[building:barracks|Koszarach]], jeśli leżą w nich monety. Każde powtórzenie zabiera jedną [[good:coin|Monetę]] i daje {{coinDrill.points}} pkt. Kto ma {{coinDrill.limit}} pkt lub więcej, już nie ćwiczy, resztę zdobywa w walce. Zaznacz żołnierzy i kliknij prawym przyciskiem własne Koszary. Bez monety żołnierz wraca na miejsce.',
+        },
+        {
+          p: 'W panelu osadnika to wiersz Walka: punkty, premia do zadawanych obrażeń wręcz i to, o ile mniej obrażeń otrzymuje. Bohaterowi walka nie podnosi doświadczenia, chyba że misja to włącza.',
         },
         {
           p: 'Lepszą broń odkrywa się wyrobem, nie walką. Wymóg podaje karta broni, np. [[good:sword_long|Długi Miecz]]. Kto jaką broń nosi: [[article:equip|Wyposażanie żołnierzy]].',
@@ -128,7 +145,7 @@ export const EXPERIENCE: ArticleGroup = {
       lead: 'Odkryty zawód zostaje dla całej osady, nawet gdy osadnik, który go odkrył, zginie.',
       blocks: [
         {
-          p: 'Ustawienie lobby "Rozwój zawodów: Wszystkie od początku" znosi wymogi zawodów cywilnych i wyrobów. Wymogi zawodów żołnierskich i zakazy mapy zostają.',
+          p: 'Ustawienie lobby "Rozwój zawodów: Wszystkie od początku" znosi wymogi zawodów cywilnych i wyrobów. Zawody żołnierskie nie mają wymogów, a zakazy mapy zostają.',
         },
         {
           h: 'Co otwiera zawód',

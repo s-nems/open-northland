@@ -25,9 +25,10 @@ export const MILITARY: ArticleGroup = {
             head: ['Mnożnik', 'Wartość'],
             rows: [
               [
-                '[[article:exp-combat|Doświadczenie z tą bronią]] (tylko wręcz)',
+                '[[article:exp-combat|Doświadczenie w walce]] atakującego (tylko wręcz)',
                 'do ×{{combat.fightCapFactor}}',
               ],
+              ['[[article:exp-combat|Doświadczenie w walce]] celu', 'do ×{{combat.fightTakenFactor}}'],
               ['Cios w bok z tyłu', '×{{combat.backSideFactor}}'],
               ['Cios od tyłu', '×{{combat.behindFactor}}'],
             ],
@@ -36,7 +37,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Doświadczenie nie działa na strzały, kamienie, pojazdy i palisady.',
+            'Doświadczenie atakującego nie wzmacnia strzał, kamieni ani ciosów w pojazdy i palisady. Doświadczenie celu zmniejsza każdy cios i strzał w człowieka.',
             'Kierunek ciosu i Amulet Obrony liczą się tylko przy ludziach. Przy strzale kierunek liczy się od miejsca, z którego strzelano.',
             'Katapulta nie może mieć Amuletu Siły.',
             'Palisada liczy obrażenia inaczej: [[article:walls|Palisady i bramy]].',
@@ -197,14 +198,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Trafień', 'Szansa na celny strzał'],
+            head: ['Punkty', 'Szansa na celny strzał'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
               ['{{aim.noSpreadHits}}+', 'Zawsze w cel'],
             ],
             num: [0, 1],
-            foot: 'Każde trafienie dodaje 1%. Od {{aim.noSpreadHits}} trafień nawet niecelna strzała spada w cel. Krótki i Długi Łuk liczą trafienia wspólnie, [[article:catapult|Katapulta]] osobno, ale według tej samej tabeli. Bohater zawsze trafia.',
+            foot: 'Każdy punkt [[article:exp-combat|doświadczenia w walce]] dodaje 1%, także punkty z musztry i z walki inną bronią. Od {{aim.noSpreadHits}} pkt nawet niecelna strzała spada w cel. [[article:catapult|Katapulta]] liczy własne trafienia, ale według tej samej tabeli. Bohater zawsze trafia.',
           },
         },
         {
@@ -352,7 +353,7 @@ export const MILITARY: ArticleGroup = {
             head: ['Cecha', 'Żołnierz', 'Bohater'],
             rows: [
               ['Zasięg wzroku w hexach', '{{vision.soldier}}', '{{vision.hero}}'],
-              ['Celność łuku', 'Rośnie z trafieniami', 'Zawsze celny'],
+              ['Celność łuku', 'Rośnie z doświadczeniem w walce', 'Zawsze celny'],
               ['Doświadczenie w walce', 'Rośnie', 'Rośnie tylko, gdy pozwala na to misja'],
               ['Jedzenie i sen', 'Potrzebuje', 'Nie potrzebuje'],
               ['Broń, pancerz, Buty', 'Można zmienić, Buty się zużywają', 'Stałe, Buty się nie zużywają'],

@@ -69,7 +69,7 @@ export const EXPERIENCE: ArticleGroup = {
             "[[job:carrier|Carriers]] build up Carrying. It doesn't speed up their work, but {{exp.carrierTrader}} deliveries open the [[job:trader|Merchant]].",
             'Merchants build up Trade for each piece unloaded, but Trade changes nothing.',
             '[[job:scout|Scouts]], [[job:woman|Women]] and children gain no experience.',
-            'Planting, watering, the [[building:school|School]] and the [[building:barracks|Barracks]] give no experience.',
+            'Planting, watering, the [[building:school|School]] and training in the [[building:barracks|Barracks]] give no experience. The coin drill gives combat experience: [[article:exp-combat|Combat Experience]].',
           ],
         },
       ],
@@ -78,40 +78,57 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Combat Experience',
-      lead: '{{combat.fightCapHits}} hits with one kind of weapon double your melee damage.',
+      lead: 'Every person has one combat experience, from 0 to {{combat.fightCapHits}} points, shared by every weapon.',
       blocks: [
         {
-          h: 'Melee damage',
+          h: 'What experience gives you',
+        },
+        {
+          p: 'At {{combat.fightCapHits}} points a melee blow deals {{combat.fightDealtPct}}% more damage, and every blow or arrow that hits the fighter deals {{combat.fightTakenPct}}% less. Both grow evenly with each point.',
         },
         {
           table: {
-            head: ['Hits', 'Multiplier', 'A {{combat.sampleBlow}} blow becomes'],
+            head: ['Points', 'Melee dealt', 'A {{combat.sampleBlow}} blow becomes', 'Taken'],
             rows: [
-              [0, '×1', '{{combat.sampleBlow}}'],
-              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}'],
-              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}'],
-              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}'],
-              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}'],
-              ['{{combat.fightCapHits}}', '×{{combat.fightCapFactor}}', '{{combat.fightCapBlow}}'],
+              [0, '×1', '{{combat.sampleBlow}}', '×1'],
+              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}', '×{{fight.taken.10}}'],
+              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}', '×{{fight.taken.25}}'],
+              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
+              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
+              [
+                '{{combat.fightCapHits}}',
+                '×{{combat.fightCapFactor}}',
+                '{{combat.fightCapBlow}}',
+                '×{{combat.fightTakenFactor}}',
+              ],
             ],
-            num: [0, 1, 2],
-            foot: 'The multiplier stops growing past {{combat.fightCapHits}} hits.',
+            num: [0, 1, 2, 3],
+            foot: 'Nothing grows past {{combat.fightCapHits}} points.',
           },
         },
         {
-          p: 'The multiplier applies to melee blows against people, animals and buildings. It does not apply to [[article:walls|stockades]] and [[article:vehicles|vehicles]], or to arrows and the [[article:catapult|catapult]].',
+          p: 'The bonus to damage dealt applies to melee blows against people, animals and buildings. It does not apply to [[article:walls|stockades]] and [[article:vehicles|vehicles]], or to arrows and the [[article:catapult|catapult]]. For an archer experience buys accuracy and less damage taken, not stronger arrows.',
         },
         {
-          p: 'Without experience, bows and catapults hit with {{aim.basePct}}% of shots, and from {{aim.noSpreadHits}} hits every shot lands on target. Details: [[article:aim|Hitting and Shooting]].',
+          h: 'With amulets',
         },
         {
-          h: 'What counts as a hit',
+          p: 'The [[good:amulet_strength|Amulet of Strength]] adds its bonus to the experience bonus: with full experience a melee blow comes out at ×{{combat.fightStrengthFactor}}. The [[good:amulet_defense|Amulet of Defence]] multiplies with experience: with full experience the fighter takes ×{{combat.fightDefenseFactor}} damage. Amulets: [[article:draughts|Potions and Amulets]].',
         },
         {
-          p: "A hit is a blow or shot that dealt damage. It counts separately for each kind of weapon: Fist, Spear, Sword, Bow, Catapult. [[job:hunter|Hunter's]] shots count toward Bow too.",
+          p: 'Without experience an archer hits with {{aim.basePct}}% of shots, and from {{aim.noSpreadHits}} points every shot lands on target. The [[article:catapult|Catapult]] counts its own hits. Details: [[article:aim|Hitting and Shooting]].',
         },
         {
-          p: "In the settler panel these are the rows Fighting - Sword, Fighting - Bow and so on. Sword hits don't help a spearman, and they stay after a change of profession. Fighting doesn't raise a hero's damage, unless the mission turns it on.",
+          h: 'Where it comes from',
+        },
+        {
+          p: "Every blow or shot that dealt damage gives 1 point, the same with fists, spear, sword and bow. [[job:hunter|Hunter's]] shots count too. Experience stays after a change of weapon or profession.",
+        },
+        {
+          p: 'Coin drill: a sword fighter, spearman or archer drills in your [[building:barracks|Barracks]] if it holds coins. Each repetition takes one [[good:coin|Coin]] and gives {{coinDrill.points}} points. A man with {{coinDrill.limit}} points or more no longer drills and earns the rest in battle. Select the soldiers and right-click your own Barracks. Without a coin a soldier walks back.',
+        },
+        {
+          p: "In the settler panel this is the Fighting row: the points, the bonus to melee damage dealt and how much less damage he takes. Fighting doesn't raise a hero's experience, unless the mission turns it on.",
         },
         {
           p: 'Better weapons are unlocked by making them, not by fighting. The weapon card gives the requirement, e.g. [[good:sword_long|Longsword]]. Who carries which weapon: [[article:equip|Equipping Soldiers]].',
@@ -133,7 +150,7 @@ export const EXPERIENCE: ArticleGroup = {
       lead: 'A discovered profession stays with the whole settlement, even if the settler who discovered it dies.',
       blocks: [
         {
-          p: 'The lobby setting "Profession development: All unlocked from start" removes the requirements for civilian professions and products. Soldier profession requirements and map bans stay.',
+          p: 'The lobby setting "Profession development: All unlocked from start" removes the requirements for civilian professions and products. Soldier professions have no requirements, and map bans stay.',
         },
         {
           h: 'What opens a profession',
