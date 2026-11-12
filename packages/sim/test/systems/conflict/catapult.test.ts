@@ -463,6 +463,20 @@ describe('catapult stances and scans', () => {
     expect(hits.every((ev) => ev.kind === 'projectileHit' && ev.target === hq)).toBe(true);
   });
 
+  it('outside hold, drives up to archers past its band before the swordsmen inside it', () => {
+    const s = sim(grass(60, 12));
+    const catapult = catapultAt(s, 6, 8, P1);
+    toughen(s, catapult);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    const swordsman = fighterAt(s, 22, 8, P2); // 16 map points: inside the band
+    s.world.mut(swordsman, Stance).mode = MILITARY_MODE.IGNORE;
+    const archer = fighterAt(s, 6 + CATAPULT_MAX_RANGE + VEHICLE_PRIORITY_REACH_POINTS, 8, P2, ARCHER);
+    s.world.mut(archer, Stance).mode = MILITARY_MODE.IGNORE;
+    s.run(2);
+    expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: archer });
+    expect(s.world.has(catapult, VehicleDrive)).toBe(true);
+  });
+
   it('keeps the military target past its band it holds over another one as far', () => {
     const s = sim(grass(40, 12));
     const at = 40;
@@ -530,7 +544,7 @@ describe('catapult stances and scans', () => {
     expect(anchorOf(s, catapult)).toEqual(stood);
   });
 
-  it('never fires while touching another catapult: stacked ones drive apart first, holding or not', () => {
+  it('lets one of two touching catapults fire: the other drives apart first, holding or not', () => {
     for (const stance of ['hold', 'attack'] as const) {
       const s = sim(grass(40, 12));
       const first = catapultAt(s, 6, 8, P1);
@@ -540,19 +554,44 @@ describe('catapult stances and scans', () => {
         s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle, stance }));
       }
       const shooters = new Set<Entity>();
+      let firstDrove = false;
       const refused = collect(s, 400, ['vehicleMoveRefused'], () => {
-        for (const ev of s.events.current()) {
-          if (ev.kind !== 'projectileLaunched') continue;
-          const a = anchorOf(s, first);
-          const b = anchorOf(s, second);
-          // Two discs of this radius share no cell: the bodies do not touch.
-          expect(hexDistanceBetween(a.hx, a.hy, b.hx, b.hy)).toBeGreaterThan(2 * CATAPULT_LOGIC_SIZE);
-          shooters.add(ev.shooter);
-        }
+        firstDrove ||= s.world.has(first, VehicleDrive);
+        const a = anchorOf(s, first);
+        const b = anchorOf(s, second);
+        // Two discs of this radius share no cell past this distance: the bodies do not touch.
+        const touching = hexDistanceBetween(a.hx, a.hy, b.hx, b.hy) <= 2 * CATAPULT_LOGIC_SIZE;
+        const firing = [first, second].filter((v) => s.world.get(v, Vehicle).attackClipStart !== null);
+        if (touching) expect(firing.length).toBeLessThan(2);
+        for (const ev of s.events.current()) if (ev.kind === 'projectileLaunched') shooters.add(ev.shooter);
       });
+      expect(firstDrove).toBe(false); // the lower entity keeps the spot
       expect(shooters.size).toBe(2);
-      expect(refused).toEqual([]); // each leaves for a spot of its own, so neither drive is turned back
+      expect(refused).toEqual([]); // the other leaves for a spot of its own, so its drive is not turned back
     }
+  });
+
+  it('keeps firing from its spot when another catapult drives into it', () => {
+    const s = sim(grass(40, 12));
+    const newcomer = catapultAt(s, 6, 16, P1); // the lower entity, which a tie between idle ones favours
+    const firing = catapultAt(s, 6, 8, P1);
+    const house = houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    for (const vehicle of [newcomer, firing]) {
+      s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle, stance: 'hold' }));
+    }
+    s.run(SHOT_TICKS);
+    s.enqueue(playerCommand(P1, { kind: 'moveVehicle', vehicle: newcomer, x: 7, y: 9 }));
+    let moved = false;
+    const launched = collect(s, 6 * VEHICLE_ATTACK_CLIP_TICKS, ['projectileLaunched'], () => {
+      moved ||= s.world.has(firing, VehicleDrive);
+    });
+    expect(moved).toBe(false);
+    const commander = vehicleCommander(s.world.get(firing, Vehicle));
+    const own = launched.filter((ev) => ev.kind === 'projectileLaunched' && ev.shooter === commander);
+    expect(own.length).toBeGreaterThanOrEqual(5); // no clip skipped while the other stood in its disc
+    expect(own.every((ev) => ev.kind === 'projectileLaunched' && ev.target === house)).toBe(true);
+    // The newcomer left its disc and fires from a spot of its own.
+    expect(launched.length).toBeGreaterThan(own.length);
   });
 
   it('fires the shot at the clip event tick and repeats on the clip cadence', () => {

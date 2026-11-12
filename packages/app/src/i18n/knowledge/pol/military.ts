@@ -736,9 +736,9 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'W zasięgu {{catapult.min}}-{{catapult.max}} hexów strzela najpierw w wieże, Kwaterę główną, Koszary, budynki, z których ktoś strzela, i wrogie Katapulty, potem w łuczników i innych strzelców, potem w pozostałych żołnierzy, a dopiero na końcu w inne budynki i ludzi.',
-            'Poza Ignorowaniem wieża, Kwatera główna, Koszary, budynek, z którego ktoś strzela, albo wroga Katapulta do {{catapult.priorityReach}} hexów od niej przyciąga ją bliżej, nawet gdy w zasięgu jest coś innego albo przy jej boku stoją wrogowie.',
+            'Poza Ignorowaniem wieża, Kwatera główna, Koszary, budynek, z którego ktoś strzela, albo wroga Katapulta do {{catapult.priorityReach}} hexów od niej przyciąga ją bliżej, nawet gdy w zasięgu jest coś innego albo przy jej boku stoją wrogowie. Łucznicy i inni strzelcy przyciągają ją tak samo, gdy w zasięgu nie ma nic lepszego niż pozostali żołnierze.',
             'Gdy nic nie ma w zasięgu, odjeżdża od pojedynczego wroga bliżej niż {{catapult.min}} hexów, ale gdy tak blisko jest dwóch lub więcej, stoi w miejscu. Gdy cel jest dalej niż {{catapult.max}}, podjeżdża na {{catapult.bandMin}}-{{catapult.max}} hexy.',
-            'Strzela tylko, gdy stoi i nie styka się z innym pojazdem.',
+            'Strzela tylko, gdy stoi. Z Katapult, które się stykają, strzela tylko jedna: ta, która stanęła tam pierwsza. Pozostałe odjeżdżają na wolne miejsce albo czekają tam, gdzie stoją, gdy go nie ma.',
             'Możesz kazać jej strzelać w dowolne miejsce na ziemi. Palisadę ostrzeliwuje tylko na rozkaz.',
           ],
         },

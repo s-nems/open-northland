@@ -17,9 +17,10 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
+import { type HalfCellNode, hexDistance, hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { vehicleAnchor } from '../footprint/index.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../progression/index.js';
 import { isAreaWeapon } from '../readviews/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
@@ -27,13 +28,13 @@ import { entityNode } from '../spatial/nodes.js';
 import { facingOfStep } from '../vehicles/helm.js';
 import {
   crewInside,
-  cutRoute,
+  cutRouteAtRest,
   endMarch,
   freeGoal,
-  keepMarchRoute,
   refuseMove,
   rejoinMarch,
   startVehicleDrive,
+  startVehicleDriveToNearest,
   touchesAnotherVehicle,
   vehicleBodyClear,
   vehicleRestBlocks,
@@ -72,6 +73,12 @@ const SCATTER_ROLL = 100;
 const SCATTER_BASE_ACCURACY = 10;
 /** The scatter's reach grows with a quarter of the flight distance (original behavior: `dist >> 2`). */
 const SCATTER_DISTANCE_DIVISOR = 4;
+/** How many firing spots a vehicle weighs by their routes, and how far apart, in map points, they lie, so
+ *  the choice spans more than one pocket between obstacles. */
+const FIRING_SPOT_CHOICES = 4;
+const FIRING_SPOT_SPREAD_POINTS = 6;
+/** How often a vehicle that must leave another's disc to fire, and found no spot, looks again. */
+const FIRING_SPOT_RETRY_TICKS = TICKS_PER_SECOND;
 
 /**
  * Resolve one vehicle's fight this tick: an unarmed, carried or uncommanded vehicle does nothing; an
@@ -106,7 +113,9 @@ export function engageVehicle(
   const identity = vehicleIdentity(type, state.tribe);
   const here = entityNode(world, terrain, e);
 
-  if (state.attackClipStart !== null) {
+  // A clip that ended this tick: the vehicle was firing from here, which keeps the spot its own.
+  const firedHere = state.attackClipStart !== null;
+  if (firedHere) {
     const elapsed = ctx.tick - state.attackClipStart;
     const clip = vehicleShotTiming(ctx.content, identity);
     // A clip with no stone loosed yet ends without one when its aim is gone, reaped, out of the band or
@@ -137,7 +146,7 @@ export function engageVehicle(
     // A plain goto in progress, or one held for the crew to board, is not hijacked by a scan; a march is.
     // A drive that still carries a target is the chase of one that fell or was taken off the map.
     if (march === null && target === null && (world.has(e, VehicleDrive) || state.heldGoal !== null)) {
-      if (held !== null) quitChase(world, e);
+      if (held !== null) quitChase(world, ctx, terrain, e);
       else dropTarget(world, e);
       return;
     }
@@ -155,7 +164,7 @@ export function engageVehicle(
       target,
     );
     if (found === 'pressed') {
-      standPressed(world, e);
+      standPressed(world, ctx, terrain, e);
       return;
     }
     target = found;
@@ -168,9 +177,9 @@ export function engageVehicle(
   if (held === null || !sameTarget(held.target, target) || held.ordered !== ordered) {
     world.mut(e, Vehicle).attack = { target, ordered };
     // A find cuts the march short on the node it is crossing, so the next judgement closes or fires.
-    if (march !== null) finishLeg(world, e);
+    if (march !== null) cutRouteAtRest(world, ctx, terrain, e);
   }
-  actOnTarget(world, ctx, terrain, e, type, stance, weapon, here, target, ordered);
+  actOnTarget(world, ctx, terrain, e, type, stance, weapon, here, target, ordered, firedHere);
 }
 
 /** Drive on toward the march's goal once nothing is left to fight; standing on it, the march is over.
@@ -198,18 +207,11 @@ function marchOn(
   refuseMove(world, ctx, e, 'noPath');
 }
 
-/** End a drive's route after the leg under way, keeping a march's rest to rejoin. False when no drive
- *  stands. */
-function finishLeg(world: World, e: Entity): boolean {
-  keepMarchRoute(world, e);
-  return cutRoute(world, e);
-}
-
 /** Stand among enemies too close to shoot: a chase or back-off ends on the node it is crossing, a march
  *  leg too, keeping the rest of the march to rejoin once they are gone. */
-function standPressed(world: World, e: Entity): void {
-  if (world.get(e, Vehicle).attack !== null) quitChase(world, e);
-  else finishLeg(world, e);
+function standPressed(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): void {
+  if (world.get(e, Vehicle).attack !== null) quitChase(world, ctx, terrain, e);
+  else cutRouteAtRest(world, ctx, terrain, e);
 }
 
 export function sameTarget(a: VehicleAttackTarget, b: VehicleAttackTarget): boolean {
@@ -279,11 +281,12 @@ function vehicleIdentity(type: VehicleType, tribe: number): SettlerIdentity {
 }
 
 /**
- * Too close backs off to a node inside the band, in range fires (once the vehicle stands, outside every
- * other vehicle's disc), too far closes to a node inside the far reach. For a scanned target a holding
- * vehicle moves only to leave another's disc and otherwise drops it, and a defending one drops it once
- * its chase has taken it past the leash; an ordered target is closed on in every stance (original
- * behavior). An auto target no firing node can be reached for is given up.
+ * Too close backs off to a node inside the band, in range fires (once the vehicle stands, with the spot
+ * its own), too far closes to a node inside the far reach. For a scanned target a holding vehicle moves
+ * only to leave another's disc and otherwise drops it, and a defending one drops it once its chase has
+ * taken it past the leash; an ordered target is closed on in every stance (original behavior). An auto
+ * target no firing node can be reached for is given up; a vehicle that only has to leave another's disc
+ * keeps its target and waits where it stands while no spot is free.
  */
 function actOnTarget(
   world: World,
@@ -296,24 +299,25 @@ function actOnTarget(
   here: NodeId,
   target: VehicleAttackTarget,
   ordered: boolean,
+  firedHere: boolean,
 ): void {
   const state = world.get(e, Vehicle);
   const targetNode = aimNode(world, ctx, terrain, here, target);
   if (!ordered && stance === 'defence' && state.guard !== null) {
     const leash = hexNodeDistance(terrain, terrain.nodeAtClamped(state.guard.hx, state.guard.hy), here);
     if (leash > VEHICLE_DEFENCE_LEASH_POINTS) {
-      quitChase(world, e);
+      quitChase(world, ctx, terrain, e);
       return;
     }
   }
   const dist = hexNodeDistance(terrain, here, targetNode);
   const inRange = dist >= weapon.minRange && dist <= weapon.maxRange;
-  // Deviation (owner's choice): a vehicle whose disc shares a cell with another's never fires from there.
-  // It drives apart to a firing node of its own first, in any stance, since a stacked battery would be
-  // too strong; movement alone lets a catapult pass close by another.
-  const stacked = inRange && touchesAnotherVehicle(world, ctx, terrain, e, type);
+  // Deviation (owner's choice): of the vehicles whose discs share a cell only one fires, since a stacked
+  // battery would be too strong. The others drive apart to firing nodes of their own, in any stance;
+  // movement alone lets a catapult pass close by another.
+  const stacked = inRange && yieldsFiringSpot(world, ctx, terrain, e, type, firedHere);
   if (inRange && !stacked) {
-    if (finishLeg(world, e)) return; // fire once the leg is done
+    if (cutRouteAtRest(world, ctx, terrain, e)) return; // fire once the drive is done
 
     const live = world.mut(e, Vehicle);
     live.facing = facingOfStep(pointOf(terrain, here), pointOf(terrain, targetNode));
@@ -326,12 +330,19 @@ function actOnTarget(
     return;
   }
   if (world.has(e, VehicleDrive)) return; // the chase leg under way ends before the next judgement
-  const band: [number, number] =
-    dist < weapon.minRange || stacked
+  if (stacked) {
+    // Staggered by entity, so a waiting battery does not search on one tick.
+    if ((ctx.tick + e) % FIRING_SPOT_RETRY_TICKS !== 0) return;
+    const spots = firingNodes(world, ctx, terrain, e, here, targetNode, [weapon.minRange, weapon.maxRange]);
+    startVehicleDriveToNearest(world, ctx, terrain, e, spots);
+    return;
+  }
+  const approach: [number, number] =
+    dist < weapon.minRange
       ? [weapon.minRange, weapon.maxRange]
       : [Math.max(weapon.minRange, weapon.maxRange - APPROACH_BAND_DEPTH), weapon.maxRange];
-  const goal = firingNode(world, ctx, terrain, e, here, targetNode, band);
-  if (goal !== null && startVehicleDrive(world, ctx, terrain, e, goal)) return;
+  const spots = firingNodes(world, ctx, terrain, e, here, targetNode, approach);
+  if (startVehicleDriveToNearest(world, ctx, terrain, e, spots)) return;
   if (ordered) {
     refuseMove(world, ctx, e, 'noPath');
   } else if (target.kind === 'entity') {
@@ -342,6 +353,41 @@ function actOnTarget(
       world.mut(e, Vehicle).march = { ...state.march, restUntil: ctx.tick + MARCH_REST_TICKS };
   }
   dropTarget(world, e);
+}
+
+/**
+ * Whether `e`, standing in range, leaves the shot to a vehicle whose disc shares a cell with its own: one
+ * in its attack clip, or, while neither fires, the lower entity that holds a target with its crew
+ * aboard. `firedHere` says `e` itself fired from here until this tick, which only a clip under way
+ * outranks, so the vehicle that stood first keeps firing when another drives into it. A vehicle under
+ * way, an unarmed one and one that cannot fire take no spot.
+ */
+function yieldsFiringSpot(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  type: VehicleType,
+  firedHere: boolean,
+): boolean {
+  if (!touchesAnotherVehicle(world, ctx, terrain, e, type)) return false;
+  const anchor = vehicleAnchor(world, e);
+  if (anchor === null) return false;
+  const types = contentIndex(ctx.content).vehicles;
+  for (const other of world.query(Vehicle, Position)) {
+    if (other === e || world.has(other, VehicleDrive)) continue;
+    const state = world.get(other, Vehicle);
+    if (state.attackClipStart === null) {
+      if (firedHere || other > e || state.attack === null) continue;
+      if (!crewInside(state) || vehicleCommander(state) === null || vehicleWeapon(ctx, state) === null)
+        continue;
+    }
+    const centre = vehicleAnchor(world, other);
+    const otherType = types.get(state.vehicleType);
+    if (centre === null || otherType === undefined) continue;
+    if (hexDistance(anchor, centre) <= type.logicSize + otherType.logicSize) return true;
+  }
+  return false;
 }
 
 /** The node a shot is aimed at and the distance is measured to: a unit's own node, the nearest body
@@ -388,13 +434,14 @@ function touchesClaim(claimed: readonly ClaimedGoal[], x: number, y: number, siz
 }
 
 /**
- * The node nearest `here` (map points, then node id) that the vehicle may stand on (never a gap it may
- * only pass), where its disc touches no other vehicle's, standing or bound for its drive's goal, lies on
- * its own continent and is `band` map points from `target`. Approximation: the
- * original walks its own move-point search near the target and floods a radius-5 disc for a firing spot
- * across a continent seam; a target with no such node on this continent is unreachable here too.
+ * Up to {@link FIRING_SPOT_CHOICES} nodes the vehicle may fire from, nearest `here` first (map points, then
+ * node id) and {@link FIRING_SPOT_SPREAD_POINTS} apart: each one it may stand on (never a gap it may only
+ * pass), where its disc touches no other vehicle's, standing or bound for its drive's goal, on its own
+ * continent and `band` map points from `target`. Approximation: the original walks its own move-point
+ * search near the target and floods a radius-5 disc for a firing spot across a continent seam; a target
+ * with no such node on this continent is unreachable here too.
  */
-function firingNode(
+function firingNodes(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -402,18 +449,17 @@ function firingNode(
   here: NodeId,
   target: NodeId,
   [lo, hi]: readonly [number, number],
-): NodeId | null {
+): NodeId[] {
   const state = world.get(e, Vehicle);
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
-  if (type === undefined) return null;
+  if (type === undefined) return [];
   const blocked = vehicleRestBlocks(world, ctx, terrain, e, type);
   const clear = vehicleBodyClear(world, ctx, terrain, e, type);
   const claimed = claimedGoals(world, ctx, e);
   const size = type.logicSize;
   const continent = terrain.componentOf(here);
   const t = terrain.coordsOf(target);
-  let best: NodeId | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
+  const open: { readonly node: NodeId; readonly dist: number }[] = [];
   // A map-point disc of radius `hi` spans `hi` rows and, on any row, `hi` columns plus the odd-row lean.
   const columns = hi + 1;
   for (let dy = -hi; dy <= hi; dy++) {
@@ -426,15 +472,17 @@ function firingNode(
       const node = terrain.nodeAt(x, y);
       if (terrain.componentOf(node) !== continent || blocked.has(node)) continue;
       if (touchesClaim(claimed, x, y, size)) continue;
-      const dist = hexNodeDistance(terrain, here, node);
-      if (dist > bestDist || !clear(node)) continue;
-      if (dist < bestDist || (dist === bestDist && best !== null && node < best)) {
-        best = node;
-        bestDist = dist;
-      }
+      open.push({ node, dist: hexNodeDistance(terrain, here, node) });
     }
   }
-  return best;
+  open.sort((a, b) => a.dist - b.dist || a.node - b.node);
+  const spots: NodeId[] = [];
+  for (const { node } of open) {
+    if (spots.length >= FIRING_SPOT_CHOICES) break;
+    const apart = spots.every((spot) => hexNodeDistance(terrain, spot, node) >= FIRING_SPOT_SPREAD_POINTS);
+    if (apart && clear(node)) spots.push(node);
+  }
+  return spots;
 }
 
 /**
@@ -545,9 +593,9 @@ function dropTarget(world: World, e: Entity): void {
 
 /** Forget the target of a chase under way: the drive stops on the node it is crossing, and its end
  *  leaves the guard position where the chase found it (original behavior: a chase never moves it). */
-function quitChase(world: World, e: Entity): void {
+function quitChase(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): void {
   dropTarget(world, e);
-  if (!cutRoute(world, e)) return;
+  if (!cutRouteAtRest(world, ctx, terrain, e)) return;
   world.mut(e, VehicleDrive).chaseLost = true;
 }
 

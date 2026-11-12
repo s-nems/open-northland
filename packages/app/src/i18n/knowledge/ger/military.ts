@@ -740,9 +740,9 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'In seiner Reichweite von {{catapult.min}}-{{catapult.max}} Hexfeldern schießt es zuerst auf Türme, das Hauptquartier, die Kaserne, Häuser, aus denen geschossen wird, und feindliche Katapulte, dann auf Bogenschützen und andere Schützen, dann auf die übrigen Soldaten und erst zuletzt auf andere Häuser und Leute.',
-            'Außer im Modus Ignorant zieht es ein Turm, das Hauptquartier, die Kaserne, ein Haus, aus dem geschossen wird, oder ein feindliches Katapult bis {{catapult.priorityReach}} Hexfelder entfernt näher heran, auch wenn etwas anderes in Reichweite ist oder Feinde an seiner Seite stehen.',
+            'Außer im Modus Ignorant zieht es ein Turm, das Hauptquartier, die Kaserne, ein Haus, aus dem geschossen wird, oder ein feindliches Katapult bis {{catapult.priorityReach}} Hexfelder entfernt näher heran, auch wenn etwas anderes in Reichweite ist oder Feinde an seiner Seite stehen. Bogenschützen und andere Soldaten, die schießen, ziehen es genauso heran, wenn nichts Besseres als andere Soldaten in Reichweite ist.',
             'Ist nichts in Reichweite, fährt es vor einem einzelnen Feind weg, der näher als {{catapult.min}} Hexfelder steht; stehen zwei oder mehr so nah, bleibt es stehen. Ist das Ziel weiter als {{catapult.max}}, rückt es auf {{catapult.bandMin}}-{{catapult.max}} Hexfelder heran.',
-            'Es schießt nur im Stand und nur, wenn es kein anderes Fahrzeug berührt.',
+            'Es schießt nur im Stand. Von Katapulten, die sich berühren, schießt nur eines: das, das zuerst dort stand. Die anderen fahren auf einen freien Platz oder warten, wo sie stehen, wenn es keinen gibt.',
             'Du kannst es auf eine beliebige Stelle am Boden schießen lassen. Palisaden beschießt es nur auf Befehl.',
           ],
         },
