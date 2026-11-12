@@ -34,7 +34,7 @@ const BUILDERS: readonly (readonly [number, number])[] = [
 const MOORED_HP_PERCENT = 30;
 const AT_SEA_HP_PERCENT = 50;
 const PERCENT = 100;
-/** The builders mend the moored hull by tick 841 on this seed. */
+/** The builders mend the moored hull by tick 833 on this seed. */
 const RUN_TICKS = 1000;
 
 function straitTerrain(): CellTerrainMap {

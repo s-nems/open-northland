@@ -460,7 +460,7 @@ export const itContent = {
     'vehicle-damage': {
       title: 'Veicoli danneggiati e distrutti',
       summary:
-        'Catapulte e navi con salute via via minore: gli scafi sono squarciati e fumano, le navi alla fine prendono fuoco e bruciano da sole in circa un minuto, le catapulte fumano appena. Oltre lo stretto gli arcieri nemici finiscono una nave e una catapulta: la nave brucia e affonda, la catapulta va in pezzi in un po’ di polvere.',
+        'Catapulte e navi con salute via via minore: gli scafi sono squarciati e fumano, le navi alla fine prendono fuoco e bruciano da sole in circa due minuti e mezzo, le catapulte fumano appena. Oltre lo stretto gli arcieri nemici finiscono una nave e una catapulta: la nave brucia e affonda, la catapulta va in pezzi in un po’ di polvere.',
     },
     'vehicle-ship-archers': {
       title: 'Arcieri sul ponte',

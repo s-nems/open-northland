@@ -455,7 +455,7 @@ export const plContent = {
     'vehicle-damage': {
       title: 'Uszkodzone i niszczone pojazdy',
       summary:
-        'Katapulty i statki stoją z coraz mniejszym zdrowiem: kadłuby są poszarpane i dymią, statki pod koniec płoną i same idą na dno po około minucie, katapulty tylko lekko dymią. Po drugiej stronie cieśniny wrodzy łucznicy dobijają statek i katapultę: statek płonie i idzie na dno, katapulta rozpada się w odrobinie kurzu.',
+        'Katapulty i statki stoją z coraz mniejszym zdrowiem: kadłuby są poszarpane i dymią, statki pod koniec płoną i same idą na dno po około dwóch i pół minuty, katapulty tylko lekko dymią. Po drugiej stronie cieśniny wrodzy łucznicy dobijają statek i katapultę: statek płonie i idzie na dno, katapulta rozpada się w odrobinie kurzu.',
     },
     'vehicle-ship-archers': {
       title: 'Łucznicy na pokładzie',

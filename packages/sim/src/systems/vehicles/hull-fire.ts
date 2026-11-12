@@ -11,9 +11,9 @@ import { isShipVehicle } from '../readviews/index.js';
  *  share. Owner rule. */
 export const SHIP_FIRE_HEALTH_PERCENT = 40;
 
-/** Hitpoints a burning hull loses each second: a 10000-point ship left alone goes down a little over three
+/** Hitpoints a burning hull loses each second: a 10000-point ship left alone goes down a little under seven
  *  minutes after it catches. Owner rule: slowly. */
-export const SHIP_FIRE_DAMAGE_PER_SECOND = 20;
+export const SHIP_FIRE_DAMAGE_PER_SECOND = 10;
 
 const PERCENT = 100;
 
