@@ -6,6 +6,7 @@ import {
   CoinDrillOrder,
   CurrentAtomic,
   Health,
+  MISSION_BEHAVIOUR,
   Owner,
   Position,
   Resting,
@@ -13,6 +14,7 @@ import {
   SettlerProgress,
   Stockpile,
   setStockAmount,
+  stampMissionBehaviour,
   TrainingOrder,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
@@ -191,6 +193,22 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     run(sim, WALK_TICKS + 3 * TRAIN_CLIP_TICKS);
     expect(pointsOf(sim, under)).toBe(74);
     expect(coinsOf(sim, house)).toBe(4);
+  });
+
+  it('refuses a man a mission bars from experience, and ends his drill once barred', () => {
+    const sim = freshSim();
+    const house = barracksAt(sim, 8, 3, 5);
+    const barred = soldierAt(sim, SWORD_JOB, 2, 2);
+    const later = soldierAt(sim, SWORD_JOB, 2, 4);
+    stampMissionBehaviour(sim.world, barred, MISSION_BEHAVIOUR.NO_JOB_EXPERIENCE);
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: barred, house });
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: later, house });
+    sim.step();
+    expect(sim.world.has(barred, CoinDrillOrder)).toBe(false);
+    stampMissionBehaviour(sim.world, later, MISSION_BEHAVIOUR.NO_JOB_EXPERIENCE);
+    run(sim, WALK_TICKS);
+    expect(sim.world.get(later, CoinDrillOrder).stage).toBe('return');
+    expect(coinsOf(sim, house)).toBe(5);
   });
 
   it('repeats while under the limit and a coin is left, then walks back to where he stood', () => {

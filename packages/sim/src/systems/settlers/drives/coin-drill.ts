@@ -1,5 +1,7 @@
 import {
   CoinDrillOrder,
+  hasMissionBehaviour,
+  MISSION_BEHAVIOUR,
   Settler,
   type SettlerIdentity,
   SettlerProgress,
@@ -75,6 +77,18 @@ export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): b
 function drillGoesOn(plan: PlannerContext, settler: SettlerIdentity, door: NodeId): boolean {
   const { world, ctx, entity: e } = plan;
   if (!drillDoorOpen(world, ctx, e, door, plan.limit)) return false;
+  return soldierMayCoinDrill(world, ctx, e, settler);
+}
+
+/** {@link mayCoinDrill} on `e`'s own state, refused too for a man a mission bars from experience: he would
+ *  pay and gain nothing. */
+export function soldierMayCoinDrill(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  settler: SettlerIdentity,
+): boolean {
+  if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NO_JOB_EXPERIENCE)) return false;
   const experience = world.tryGet(e, SettlerProgress)?.experience ?? NO_EXPERIENCE;
   return mayCoinDrill(ctx.content, settler, world.tryGet(e, Weapon)?.weaponTypeId, experience);
 }

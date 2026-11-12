@@ -6,25 +6,20 @@ import {
   PlayerOrder,
   removeCurrentAtomic,
   Settler,
-  SettlerProgress,
   sameSide,
   TrainingOrder,
-  Weapon,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { clearNavState } from '../movement/nav-state.js';
-import { mayCoinDrill } from '../progression/coin-drill.js';
 import { isBarracks } from '../readviews/index.js';
-import { freeDrillCoins } from '../settlers/drives/coin-drill.js';
+import { freeDrillCoins, soldierMayCoinDrill } from '../settlers/drives/coin-drill.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { entityNode } from '../spatial/nodes.js';
 import { isOrderableSettler, supersedeStandingOrders } from './guards.js';
 import { mayWalkToDrill } from './training.js';
-
-const NO_EXPERIENCE: ReadonlyMap<number, number> = new Map();
 
 /**
  * Send one owned soldier to coin-drill at a barracks - see the command doc. Re-issuing the order he is
@@ -44,15 +39,13 @@ export function orderCoinDrill(
 
 /**
  * Whether `e` may be sent to coin-drill at `house` now, the order's gate: his own side's finished barracks
- * holding a coin no other man speaks for ({@link freeDrillCoins}), {@link mayCoinDrill} on his state and a
+ * holding a coin no other man speaks for ({@link freeDrillCoins}), {@link soldierMayCoinDrill} on his state and a
  * door he can walk to. A volley of orders in one tick so sends no more men than there are free coins.
  */
 export function mayCoinDrillAt(world: World, ctx: SystemContext, e: Entity, house: Entity): boolean {
   if (!isOrderableSettler(world, e)) return false;
   if (!isBarracks(world, ctx, house) || !sameSide(world, e, house)) return false;
-  const experience = world.tryGet(e, SettlerProgress)?.experience ?? NO_EXPERIENCE;
-  if (!mayCoinDrill(ctx.content, world.get(e, Settler), world.tryGet(e, Weapon)?.weaponTypeId, experience))
-    return false;
+  if (!soldierMayCoinDrill(world, ctx, e, world.get(e, Settler))) return false;
   if (freeDrillCoins(world, ctx, house, e) <= 0) return false;
   return mayWalkToDrill(world, ctx, e, house);
 }
