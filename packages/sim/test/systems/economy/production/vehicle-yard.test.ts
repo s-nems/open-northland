@@ -16,7 +16,7 @@ import {
   VehicleYardRefusals,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
-import { fx, ONE, Simulation, type TerrainMap } from '../../../../src/index.js';
+import { type Fixed, fx, ONE, playerCommand, Simulation, type TerrainMap } from '../../../../src/index.js';
 import {
   type HalfCellNode,
   hexagonRing,
@@ -64,6 +64,8 @@ const SHIP_YARD = 51;
 const WAINWRIGHT = 52;
 const HEADQUARTERS = 1;
 const CARPENTER = 2;
+/** The fixture's civilian job, one its small ship seats. */
+const CIVILIAN = 6;
 /** The fixture's tech enabler: a plank is producible once a woodcutter lives in the tribe. */
 const WOODCUTTER = 1;
 const HANDCART = 1;
@@ -90,6 +92,8 @@ const ISLET_FROM_COL = STRAND_COLS + 2;
 const RIVER_COLUMN = 14;
 /** Well past the 2-wood site's fetch, delivery and hammering. */
 const BUILD_BUDGET_TICKS = 3000;
+/** Well past a walk from the yard's work point to a moored ship's door and the step aboard. */
+const BOARD_BUDGET_TICKS = 600;
 /** The original's yard placement ring (`r < 10`), which the wider owner-ruled search outgrows. */
 const ORIGINAL_PLACEMENT_RINGS = 10;
 /** Well past the first plan and the plank batch it starts. */
@@ -244,17 +248,27 @@ function siteAt(s: Simulation, buildingType: number, x: number, y: number, owner
 }
 
 function carpenterAt(s: Simulation, x: number, y: number, workplace: Entity, owner = P0): Entity {
+  const e = personAt(s, { x: fx.fromInt(x), y: fx.fromInt(y) }, CARPENTER, owner);
+  s.world.add(e, JobAssignment, { workplace });
+  return e;
+}
+
+function personAt(
+  s: Simulation,
+  at: { readonly x: Fixed; readonly y: Fixed },
+  jobType: number,
+  owner = P0,
+): Entity {
   const e = s.world.create();
-  s.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  s.world.add(e, Position, { x: at.x, y: at.y });
   addPerson(s.world, e, {
     tribe: VIKING,
-    jobType: CARPENTER,
+    jobType,
     hunger: fx.fromInt(0),
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
     enjoyment: fx.fromInt(0),
   });
-  s.world.add(e, JobAssignment, { workplace });
   s.world.add(e, Owner, { player: owner });
   return e;
 }
@@ -681,6 +695,27 @@ describe('building the vehicle', () => {
     expect(ship.perimeterLands.length).toBeGreaterThan(0);
     expect(ship.perimeterLands).not.toContain(ship.crewLand);
     expectRaised(ship);
+  });
+
+  it('moors a ship launched nearer an islet on its crew’s shore, where a settler there boards it', () => {
+    const ship = offShoreShip(isletStrandMap(), { x: STRAND_COLS / 2, y: ISLET_ROW });
+    const { s, worker, crewLand } = ship;
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    expect(ship.perimeterLands).not.toContain(crewLand); // the islet is the land nearest the hull
+    for (let i = 0; i < BUILD_BUDGET_TICKS && vehiclesOf(s, SHIP_SMALL).length === 0; i++) s.step();
+    const [launched] = vehiclesOf(s, SHIP_SMALL);
+    if (launched === undefined) throw new Error('no ship launched');
+    const { moored, mooring } = s.world.get(launched, Vehicle);
+    if (mooring === null) throw new Error('ship launched at sea');
+    expect(moored).toBe(true);
+    expect(terrain.componentOf(terrain.nodeAt(mooring.hx, mooring.hy))).toBe(crewLand);
+    const passenger = personAt(s, s.world.get(worker, Position), CIVILIAN);
+    s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: passenger, vehicle: launched }));
+    const aboard = () =>
+      s.world.get(launched, Vehicle).passengers.some((seat) => seat?.entity === passenger && seat.inside);
+    for (let i = 0; i < BOARD_BUDGET_TICKS && !aboard(); i++) s.step();
+    expect(aboard()).toBe(true);
   });
 
   it('builds from the workshop’s own wood before the store’s, though wood is the workshop’s recipe input', () => {

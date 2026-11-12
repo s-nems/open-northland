@@ -405,7 +405,9 @@ Open Northland: a spawned ship's mooring point is the nearest walkable node in h
 within the door distance; the door direction adds the vector's offset to the vehicle's facing in the
 six map-point directions, a N facing read as NE and a S facing as SW, the way a human's walk facing
 reads as a map-point heading (approximation). The spawn search covers every ring out to the door
-distance, not the door ring alone (approximation). The admin spawn tool's `createVehicle` carries
+distance, not the door ring alone (approximation). A ship launched from a yard site moors first on a
+land its site's crew stands on, else as any spawn (owner ruling), so a hull lying nearer an islet than
+its crew's shore still moors where the crew can board it. The admin spawn tool's `createVehicle` carries
 `berth`: the ship stands instead on the nearest node, out to three door distances from the click, whose
 disc lies in open water clear of other vehicles with its nearest land on its door ring, and is not created when
 there is none. `dockVehicle` (`systems/vehicles/dock.ts`) holds the

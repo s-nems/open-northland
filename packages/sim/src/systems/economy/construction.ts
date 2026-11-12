@@ -42,7 +42,7 @@ import { evictVehiclesFromFootprint } from '../vehicles/evict.js';
 import { awakeSitesOf } from './awake-sites.js';
 import { destroyBerryBushesInReserved } from './berries.js';
 import { evictCarcassesFromFootprint } from './carcasses.js';
-import { retireCompletedSiteErrands } from './completed-site-errands.js';
+import { retireCompletedSiteErrands, siteCrew } from './completed-site-errands.js';
 import { destroyFieldsUnderBuilding } from './fields.js';
 import { evictLooseGoodsFromFootprint } from './goods-evict.js';
 import { scatterSpilledStock, spilledStockOf } from './goods-spill.js';
@@ -273,16 +273,31 @@ function launchVehicle(world: World, ctx: SystemContext, site: Entity): void {
   const { hx, hy } = nodeOfPosition(p.x, p.y);
   const owner = ownerOf(world, site);
   const spill = spilledStockOf(world, site);
+  const crewLands = landsStoodOn(world, ctx, siteCrew(world, site));
   // The yard spends its rotation turn when its drive releases the worker's SiteAssignment.
   world.destroy(site);
   scatterSpilledStock(world, ctx, spill);
-  createVehicle(world, ctx, {
-    vehicleType,
-    tribe,
-    ...(owner !== undefined ? { owner } : {}),
-    x: hx,
-    y: hy,
-  });
+  createVehicle(
+    world,
+    ctx,
+    { vehicleType, tribe, ...(owner !== undefined ? { owner } : {}), x: hx, y: hy },
+    crewLands,
+  );
+}
+
+/** The land components `settlers` stand on; one aboard a vehicle or mid-step over water counts none. */
+function landsStoodOn(world: World, ctx: SystemContext, settlers: readonly Entity[]): ReadonlySet<number> {
+  const lands = new Set<number>();
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return lands;
+  for (const e of settlers) {
+    const p = world.tryGet(e, Position);
+    if (p === undefined) continue;
+    const { hx, hy } = nodeOfPosition(p.x, p.y);
+    const node = terrain.nodeAtClamped(hx, hy);
+    if (terrain.isWalkable(node)) lands.add(terrain.componentOf(node));
+  }
+  return lands;
 }
 
 /**
