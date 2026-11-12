@@ -120,6 +120,8 @@ export const GLYPH = {
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M2.5 10.5v3M2.5 12H15M15 10.8 21 7v10l-6-3.8M7 12V9M10 12V9M6.5 12c0 3 1 4 3 4h2.5c2 0 3-1.2 3-4"/></svg>',
   settlement:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M2 20h20M3.5 20v-6l3-2.5 3 2.5v6M9.5 20V9l3-3 3 3v11M15.5 20v-6l3-2.5 3 2.5v6M12.5 11.5v1.5"/></svg>',
+  flame:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 3c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3.5 2-4.500 0 2 1 3 2 3 0-3-1-6 1-9.5Z"/></svg>',
   demolish:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m3 11 9-7 9 7M6 10v10h5l-1-3 2-2-1-3M14 20h4V10M16 4l2-2M19 6l2-1"/></svg>',
   /* A tick and a crossed circle: a household ware allowed or forbidden in every home. */

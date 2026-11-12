@@ -4543,13 +4543,6 @@ body.on-drag-scroll.on-drag-scroll-free * {
   width: 18px;
   height: 18px;
 }
-.on-hud .on-order.on-temple-fire__toggle {
-  width: auto;
-  margin-top: 6px;
-  padding: 0 10px;
-  font: inherit;
-  font-size: 12px;
-}
 .on-hud .on-order:hover:not([aria-disabled="true"]),
 .on-hud .on-order:focus-visible {
   border-color: var(--bronze-lo);
