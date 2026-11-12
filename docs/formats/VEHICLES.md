@@ -343,7 +343,7 @@ way signposts extend a settler's. Humans inside the footprint are shoved away on
 Per node the move period is `max(3, (g*2 + 4) << catapult)` ticks with `g` the 4-bit ground speed
 class stored beside the size class in the node record, which is the map's `lmpr` roughness, re-read at
 every node reached, plus a laden cart's drag (Open Northland addition, owner's feature, `drag.ts`):
-a handcart loses up to 60% of its speed and a cart an animal draws (the harnessed form of a type
+a handcart loses up to 40% of its speed and a cart an animal draws (the harnessed form of a type
 with `draggingAnimalTribe`) up to 15%, in proportion to how full the hold is (whole percent,
 the period lengthened by `loss / (100 - loss)` and rounded to whole ticks), whoever moves it,
 a commander or the carrier or trader pulling it; an empty cart, a ship and the catapult lose nothing; each tick adds `(period + 9999) / period`

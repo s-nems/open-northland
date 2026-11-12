@@ -17,8 +17,8 @@ export function isCartType(type: VehicleType): boolean {
   return !isShipVehicle(type) && type.stockSlots > 0;
 }
 
-/** The speed a full handcart loses, in percent: it moves at 40% of its empty pace. */
-export const HANDCART_FULL_SPEED_LOSS_PERCENT = 60;
+/** The speed a full handcart loses, in percent: it moves at 60% of its empty pace. */
+export const HANDCART_FULL_SPEED_LOSS_PERCENT = 40;
 /** The speed a full animal-drawn cart loses, in percent: far less than the handcart's, yet never nothing. */
 export const DRAWN_CART_FULL_SPEED_LOSS_PERCENT = 15;
 /** A unit's lift into or out of a handcart, in percent of the lifting clip's length. */
