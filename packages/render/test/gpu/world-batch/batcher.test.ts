@@ -1,5 +1,6 @@
 import {
   Batch,
+  BatchableGraphics,
   type BatchableSprite,
   type Batcher,
   BatcherPipe,
@@ -9,6 +10,7 @@ import {
   type DefaultBatchableQuadElement,
   GlBatchAdaptor,
   type GlProgram,
+  Graphics,
   InstructionSet,
   Matrix,
   Rectangle,
@@ -84,6 +86,31 @@ describe('worldBatched', () => {
     expect(batched).toEqual(['world', 'default', 'world']);
     world.destroy();
     hud.destroy();
+  });
+
+  it('renames a pooled record back when a renderable outside the world takes it over', () => {
+    const batched: string[] = [];
+    const pipe = {
+      addToBatch(element: BatchableGraphics, _instructions: InstructionSet): void {
+        batched.push(element.batcherName);
+      },
+    };
+    const renderer = { renderPipes: { batch: pipe } } as unknown as Renderer;
+    routeWorldBatches(renderer);
+    const debris = worldBatched(new Graphics());
+    const marker = new Graphics();
+    const pooled = new BatchableGraphics();
+    const instructions = new InstructionSet();
+    pooled.renderable = debris;
+    pipe.addToBatch(pooled, instructions);
+    // Pixi's pool hands the record on with the name it left with.
+    pooled.renderable = marker;
+    pipe.addToBatch(pooled, instructions);
+    pooled.renderable = debris;
+    pipe.addToBatch(pooled, instructions);
+    expect(batched).toEqual(['world', 'default', 'world']);
+    debris.destroy();
+    marker.destroy();
   });
 });
 
