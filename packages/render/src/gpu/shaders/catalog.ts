@@ -4,6 +4,7 @@ import { DISMANTLE_SOURCE } from '../demolition/dismantle-shader.js';
 import { GROUND_WAVE_LIFT_SOURCE } from '../ground-waves/ground-wave-lift.js';
 import { GROUND_WAVE_QUADS_SOURCE } from '../ground-waves/ground-wave-quads.js';
 import { DECOR_SHADOW_SOURCE } from '../map-objects/decor-shadow-shader.js';
+import { TEMPLE_AURA_SOURCE } from '../overlays/temple-aura-shader.js';
 import { PALETTED_SPRITE_SOURCE } from '../paletted-sprite/shader.js';
 import { PRESCALE_RECIPES } from '../pixel-art/page-prescaler.js';
 import {
@@ -42,6 +43,7 @@ function unconditionalPrograms(): readonly GlslProgramSource[] {
     SHADED_DECOR_SOURCE,
     TINTED_TERRAIN_SOURCE,
     OFFSCREEN_WORLD_SOURCE,
+    TEMPLE_AURA_SOURCE,
   ];
 }
 
