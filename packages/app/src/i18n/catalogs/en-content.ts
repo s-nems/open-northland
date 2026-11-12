@@ -1016,6 +1016,11 @@ export const enContent = {
       summary:
         'Two colonists drill for the sword counter in a barracks that stocks one long sword, one short sword and two chain armors. The first walks out a long-swordsman in chain armor. The second puts on the other armor at the door, leaves the weaker short sword in the barracks and walks to the armory by the headquarters for the long sword lying there.',
     },
+    'barracks-mixed-orders': {
+      title: 'Mixed barracks orders',
+      summary:
+        'The assistant has orders for two swordsmen and two archers, but the armory by the headquarters holds one long sword and two bows. Three of four colonists drill and walk out a long-swordsman and two archers. Nobody is drafted for the missing second sword: the fourth colonist stays home and no soldier stands without a weapon.',
+    },
     'barracks-exit': {
       title: 'Barracks exit',
       summary:

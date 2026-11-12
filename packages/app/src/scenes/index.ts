@@ -15,6 +15,7 @@ import { attackMoveScene } from './army/attack-move.js';
 import { barracksScene } from './army/barracks.js';
 import { barracksArmoryScene } from './army/barracks-armory.js';
 import { barracksExitScene } from './army/barracks-exit.js';
+import { barracksMixedOrdersScene } from './army/barracks-mixed-orders.js';
 import { battleScene } from './army/battle.js';
 import { battleWearyScene } from './army/battle-weary.js';
 import { collisionScene } from './army/collision.js';
@@ -269,6 +270,7 @@ export const SCENES: readonly SceneDefinition[] = [
   potionSipsScene,
   barracksScene,
   barracksArmoryScene,
+  barracksMixedOrdersScene,
   barracksExitScene,
   armorScene,
   towerGarrisonScene,

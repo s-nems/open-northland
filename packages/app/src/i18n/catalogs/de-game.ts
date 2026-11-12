@@ -1616,15 +1616,15 @@ export const deGame = {
         },
         trainSword: {
           label: 'Schwertkämpfer',
-          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus. Waffe und Rüstung in der Reihenfolge darunter.',
+          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus, wenn eine Waffe für sie da ist. Waffe und Rüstung in der Reihenfolge darunter.',
         },
         trainSpear: {
           label: 'Speerträger',
-          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus. Waffe und Rüstung in der Reihenfolge darunter.',
+          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus, wenn eine Waffe für sie da ist. Waffe und Rüstung in der Reihenfolge darunter.',
         },
         trainBow: {
           label: 'Bogenschützen',
-          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus. Waffe und Rüstung in der Reihenfolge darunter.',
+          tip: 'Bewaffnet zuerst Soldaten ohne Waffe und bildet dann neue aus, wenn eine Waffe für sie da ist. Waffe und Rüstung in der Reihenfolge darunter.',
         },
       },
       switches: {

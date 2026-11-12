@@ -1495,15 +1495,15 @@ export const enGame = {
         },
         trainSword: {
           label: 'Sword fighters',
-          tip: 'Arms soldiers without weapons first, then trains new ones. Weapon and armour in the order below.',
+          tip: 'Arms soldiers without weapons first, then trains new ones when there is a weapon for them. Weapon and armour in the order below.',
         },
         trainSpear: {
           label: 'Spearmen',
-          tip: 'Arms soldiers without weapons first, then trains new ones. Weapon and armour in the order below.',
+          tip: 'Arms soldiers without weapons first, then trains new ones when there is a weapon for them. Weapon and armour in the order below.',
         },
         trainBow: {
           label: 'Archers',
-          tip: 'Arms soldiers without weapons first, then trains new ones. Weapon and armour in the order below.',
+          tip: 'Arms soldiers without weapons first, then trains new ones when there is a weapon for them. Weapon and armour in the order below.',
         },
       },
       switches: {

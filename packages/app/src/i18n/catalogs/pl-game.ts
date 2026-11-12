@@ -1469,15 +1469,15 @@ export const plGame = {
         },
         trainSword: {
           label: 'Miecznicy',
-          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych. Broń i zbroja według kolejności niżej.',
+          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych, gdy jest dla nich broń. Broń i zbroja według kolejności niżej.',
         },
         trainSpear: {
           label: 'Włócznicy',
-          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych. Broń i zbroja według kolejności niżej.',
+          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych, gdy jest dla nich broń. Broń i zbroja według kolejności niżej.',
         },
         trainBow: {
           label: 'Łucznicy',
-          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych. Broń i zbroja według kolejności niżej.',
+          tip: 'Najpierw uzbraja żołnierzy bez broni, potem szkoli nowych, gdy jest dla nich broń. Broń i zbroja według kolejności niżej.',
         },
       },
       switches: {

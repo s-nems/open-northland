@@ -1028,6 +1028,11 @@ export const itContent = {
       summary:
         "Due coloni si addestrano per la spada in una caserma che custodisce una spada lunga, una spada corta e due cotte di maglia. Il primo esce come soldato con spada lunga in cotta di maglia. Il secondo indossa l'altra cotta sulla porta, lascia in caserma la spada corta più debole e va all'armeria presso il quartier generale a prendere la spada lunga che si trova lì.",
     },
+    'barracks-mixed-orders': {
+      title: 'Ordini misti della caserma',
+      summary:
+        "L'assistente ha ordini per due spadaccini e due arcieri, ma l'armeria accanto al quartier generale tiene una spada lunga e due archi. Tre coloni su quattro si addestrano ed escono come uno spadaccino con spada lunga e due arcieri. Nessuno viene arruolato per la seconda spada che manca: il quarto colono resta a casa e nessun soldato rimane senza arma.",
+    },
     'barracks-exit': {
       title: 'Uscita dalla caserma',
       summary:

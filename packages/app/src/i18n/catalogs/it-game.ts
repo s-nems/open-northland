@@ -1514,15 +1514,15 @@ export const itGame = {
         },
         trainSword: {
           label: 'Spadaccini',
-          tip: "Prima arma i soldati senza armi, poi ne addestra di nuovi. Arma e armatura nell'ordine qui sotto.",
+          tip: "Prima arma i soldati senza armi, poi ne addestra di nuovi quando c'è un'arma per loro. Arma e armatura nell'ordine qui sotto.",
         },
         trainSpear: {
           label: 'Lancieri',
-          tip: "Prima arma i soldati senza armi, poi ne addestra di nuovi. Arma e armatura nell'ordine qui sotto.",
+          tip: "Prima arma i soldati senza armi, poi ne addestra di nuovi quando c'è un'arma per loro. Arma e armatura nell'ordine qui sotto.",
         },
         trainBow: {
           label: 'Arcieri',
-          tip: "Prima arma i soldati senza armi, poi ne addestra di nuovi. Arma e armatura nell'ordine qui sotto.",
+          tip: "Prima arma i soldati senza armi, poi ne addestra di nuovi quando c'è un'arma per loro. Arma e armatura nell'ordine qui sotto.",
         },
       },
       switches: {

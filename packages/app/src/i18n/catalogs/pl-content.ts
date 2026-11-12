@@ -1013,6 +1013,11 @@ export const plContent = {
       summary:
         'Dwóch osadników ćwiczy na licznik mieczników w koszarach, które mają jeden długi miecz, jeden krótki miecz i dwie kolczugi. Pierwszy wychodzi jako długi miecznik w kolczudze. Drugi zakłada przy wyjściu drugą kolczugę, zostawia w koszarach słabszy krótki miecz i idzie po długi miecz leżący przy siedzibie.',
     },
+    'barracks-mixed-orders': {
+      title: 'Mieszane zamówienia koszar',
+      summary:
+        'Asystent ma zamówienie na dwóch mieczników i dwóch łuczników, ale w zbrojowni przy siedzibie leży jeden długi miecz i dwa łuki. Trzech z czterech osadników ćwiczy i wychodzi jako długi miecznik i dwóch łuczników. Pod brakujący drugi miecz nikt nie zostaje powołany: czwarty osadnik zostaje w domu i żaden żołnierz nie stoi bez broni.',
+    },
     'barracks-exit': {
       title: 'Wyjście z koszar',
       summary:

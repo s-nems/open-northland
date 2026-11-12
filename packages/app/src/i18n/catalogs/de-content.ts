@@ -1025,6 +1025,11 @@ export const deContent = {
       summary:
         'Zwei Siedler üben für den Schwertzähler in einer Kaserne, die ein Langschwert, ein Kurzschwert und zwei Kettenrüstungen lagert. Der erste kommt als Langschwertkämpfer in Kettenrüstung heraus. Der zweite legt an der Tür die andere Rüstung an, lässt das schwächere Kurzschwert in der Kaserne und holt das Langschwert, das beim Hauptquartier liegt.',
     },
+    'barracks-mixed-orders': {
+      title: 'Gemischte Kasernenaufträge',
+      summary:
+        'Der Assistent hat Aufträge für zwei Schwertkämpfer und zwei Bogenschützen, doch die Waffenkammer am Hauptquartier hält ein Langschwert und zwei Bögen. Drei von vier Siedlern üben und kommen als Langschwertkämpfer und zwei Bogenschützen heraus. Für das fehlende zweite Schwert wird niemand eingezogen: Der vierte Siedler bleibt daheim, und kein Soldat steht ohne Waffe da.',
+    },
     'barracks-exit': {
       title: 'Auszug aus der Kaserne',
       summary:
