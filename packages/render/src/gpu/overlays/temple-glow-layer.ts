@@ -32,7 +32,7 @@ export interface TempleGlowFrame {
 }
 
 /** The aura's strength at the top of its breath. Tuned by eye. */
-const AURA_ALPHA = 0.3;
+const AURA_ALPHA = 0.4;
 /** The wall line's and the rim's half-widths as shares of the ground the temple stands on. Tuned by eye. */
 const WALL_SPREAD = 0.87;
 const RIM_SPREAD = 2.5;
