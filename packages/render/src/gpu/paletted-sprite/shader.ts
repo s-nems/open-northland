@@ -76,10 +76,8 @@ ${LIFT_COLOURS_GLSL}
 // A row no frame reaches: uDamage.z at or above it clips nothing.
 const float NO_CLIP_ROW = 100000.0;
 
-// How dark the timber inside a breach draws, and how far past a breach's rim the pattern must rise
-// before the hole goes right through. Tuned by eye.
+// How dark the timber inside a breach draws. Tuned by eye.
 const float BREACH_SHADE = 0.2;
-const float THROUGH_BREACH = 0.15;
 
 float damageHash(vec2 cell) {
   return fract(sin(dot(cell, vec2(127.1, 311.7)) + uDamage.y) * 43758.5453);
@@ -94,8 +92,8 @@ float damageNoise(vec2 p) {
 }
 
 // A vehicle's structural damage at a texel, in native px from the feet so the marks stay on the hull
-// through a clip: x shades the colour, y is 0 under the clip row and in the few breaches that go right
-// through. Most breaches show charred timber, so a wrecked hull stays a solid body.
+// through a clip: x shades the colour, y is 0 under the clip row. A breach shows charred timber and
+// never goes through, so a wrecked hull stays a solid body.
 // Artistic approximation, the procedural stand-in for the pixels a building's damage paint rewrites.
 vec2 hullDamage(vec2 local) {
   if (local.y > uDamage.z) return vec2(1.0, 0.0);
@@ -104,7 +102,6 @@ vec2 hullDamage(vec2 local) {
     float n = damageNoise(local / 10.0) * 0.72 + damageNoise(local / 4.0 + 19.0) * 0.28;
     float edge = 0.8 - uDamage.x * 0.36;
     float breach = max(edge + 0.16, 0.7);
-    if (n > breach + THROUGH_BREACH) return vec2(1.0, 0.0);
     // Soot over the whole hull, charred wood round each breach, and burnt timber inside it.
     shade = (1.0 - 0.22 * uDamage.x) * (1.0 - 0.6 * smoothstep(edge, edge + 0.12, n));
     if (n > breach) shade = BREACH_SHADE * (0.8 + 0.4 * damageHash(floor(local / 2.0)));

@@ -185,7 +185,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   }
 
   /**
-   * A vehicle's structural damage: `wear` (0 whole .. 1 wrecked) scorches and holes the frame in a
+   * A vehicle's structural damage: `wear` (0 whole .. 1 wrecked) scorches and chars the frame in a
    * pattern fixed by `seed`, and rows below `clipRow` (native px from the feet anchor) do not draw, the
    * waterline of a sinking hull.
    */
