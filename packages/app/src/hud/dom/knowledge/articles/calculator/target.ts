@@ -85,12 +85,12 @@ export function targetPanel(
         checkbox(copy.defenseAmulet, target.defense, (defense) => setTarget({ defense })).host,
       );
       const experience = experienceSlider(
-        target.hits,
-        (hits) => setTarget({ hits }),
+        target.points,
+        (points) => setTarget({ points }),
         'taken',
-        copy.targetHitsLabel,
+        copy.targetPointsLabel,
       );
-      pickers.replaceChildren(pair, field(copy.targetHitsLabel, experience.host));
+      pickers.replaceChildren(pair, field(copy.targetPointsLabel, experience.host));
     } else if (target.kind === 'animal') {
       pickers.replaceChildren(
         list(

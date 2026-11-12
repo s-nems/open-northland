@@ -7,7 +7,7 @@ import {
   weaponLabel,
 } from '../../../../knowledge/calculator.js';
 import {
-  CAP_HITS,
+  CAP_POINTS,
   combatTargets,
   experienceBonusPct,
   experienceCutPct,
@@ -55,17 +55,17 @@ export function checkbox(
  *  duel's fighter. */
 export type ExperienceReadout = 'dealt' | 'taken' | 'both';
 
-function experienceReadout(readout: ExperienceReadout, hits: number): string {
+function experienceReadout(readout: ExperienceReadout, points: number): string {
   const copy = messages().knowledge.mechanics;
-  const dealt = experienceBonusPct(hits);
-  const taken = experienceCutPct(hits);
+  const dealt = experienceBonusPct(points);
+  const taken = experienceCutPct(points);
   switch (readout) {
     case 'dealt':
-      return formatMessage(copy.experienceValue, { hits, percent: dealt });
+      return formatMessage(copy.experienceValue, { points, percent: dealt });
     case 'taken':
-      return formatMessage(copy.targetExperienceValue, { hits, percent: taken });
+      return formatMessage(copy.targetExperienceValue, { points, percent: taken });
     case 'both':
-      return formatMessage(copy.fighterExperienceValue, { hits, dealt, taken });
+      return formatMessage(copy.fighterExperienceValue, { points, dealt, taken });
   }
 }
 
@@ -74,7 +74,7 @@ export function experienceSlider(
   value: number,
   change: (next: number) => void,
   readout: ExperienceReadout = 'dealt',
-  label: string = messages().knowledge.mechanics.hitsLabel,
+  label: string = messages().knowledge.mechanics.pointsLabel,
 ): {
   readonly host: HTMLElement;
   readonly input: HTMLInputElement;
@@ -84,13 +84,13 @@ export function experienceSlider(
   const input = element('input', '');
   input.type = 'range';
   input.min = '0';
-  input.max = String(CAP_HITS);
+  input.max = String(CAP_POINTS);
   input.value = String(value);
   input.setAttribute('aria-label', label);
   const shown = element('output', 'kn-calc__value');
   let named = readout;
-  const show = (hits: number): void => {
-    write(shown, experienceReadout(named, hits));
+  const show = (points: number): void => {
+    write(shown, experienceReadout(named, points));
   };
   show(value);
   input.addEventListener('input', () => {

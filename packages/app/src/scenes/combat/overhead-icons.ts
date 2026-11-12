@@ -13,11 +13,11 @@ const ROW_Y = 6;
 const FIRST_X = 5;
 const SPACING = 2;
 /** Fight points per soldier, one per star size. */
-const SWORD_HITS = [25, 50, 75, 100] as const;
+const SWORD_POINTS = [25, 50, 75, 100] as const;
 /** The life each of those soldiers keeps, in percent, so a selection shows the heart's steps. */
 const SOLDIER_LIFE_PERCENT = [100, 70, 30, 10] as const;
-/** The wounded soldier's hits and the life he keeps, in percent. */
-const WOUNDED_HITS = 75;
+/** The wounded soldier's fight points and the life he keeps, in percent. */
+const WOUNDED_POINTS = 75;
 const WOUNDED_LIFE_PERCENT = 40;
 /** The collector general track of the sandbox content, and raw experience past its mastery. */
 const COLLECTOR_TRACK = 2;
@@ -25,11 +25,11 @@ const MASTER_XP = 1_000_000;
 
 const { Health, SettlerProgress } = components;
 
-function placeSoldier(sim: Simulation, x: number, hits: number): Entity {
+function placeSoldier(sim: Simulation, x: number, points: number): Entity {
   const soldier = spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, x, ROW_Y, HUMAN_PLAYER);
   sim.world
     .mut(soldier, SettlerProgress)
-    .experience.set(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(hits));
+    .experience.set(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(points));
   return soldier;
 }
 
@@ -39,10 +39,10 @@ function wound(sim: Simulation, e: Entity, lifePercent = WOUNDED_LIFE_PERCENT): 
 }
 
 function build(sim: Simulation): void {
-  SWORD_HITS.forEach((hits, i) => {
-    wound(sim, placeSoldier(sim, FIRST_X + i * SPACING, hits), SOLDIER_LIFE_PERCENT[i]);
+  SWORD_POINTS.forEach((points, i) => {
+    wound(sim, placeSoldier(sim, FIRST_X + i * SPACING, points), SOLDIER_LIFE_PERCENT[i]);
   });
-  const column = placeSoldier(sim, FIRST_X + SWORD_HITS.length * SPACING, WOUNDED_HITS);
+  const column = placeSoldier(sim, FIRST_X + SWORD_POINTS.length * SPACING, WOUNDED_POINTS);
   wound(sim, column);
   components.setMissionBehaviour(sim.world, column, components.MISSION_BEHAVIOUR.IMPORTED, true);
 
@@ -69,7 +69,7 @@ export const overheadIconsScene: SceneDefinition = {
   initialZoom: 1.5,
   checks: [
     {
-      label: 'the soldiers wear one star size per quarter of their sword hits, the collectors none',
+      label: 'the soldiers wear one star size per 25 fight points, the collectors none',
       predicate: (sim) => weaponTiers(sim).join() === [1, 2, 3, 4, 3].join(),
     },
   ],

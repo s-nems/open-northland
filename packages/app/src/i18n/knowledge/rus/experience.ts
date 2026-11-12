@@ -78,13 +78,13 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Боевой опыт',
-      lead: 'У каждого человека один боевой опыт, от 0 до {{combat.fightCapHits}} очков, общий для любого оружия.',
+      lead: 'У каждого человека один боевой опыт, от 0 до {{combat.fightCapPoints}} очков, общий для любого оружия.',
       blocks: [
         {
           h: 'Что даёт опыт',
         },
         {
-          p: 'При {{combat.fightCapHits}} очках удар в ближнем бою наносит на {{combat.fightDealtPct}}% больше урона, а каждый удар или стрела, попавшие в бойца, на {{combat.fightTakenPct}}% меньше. Оба бонуса растут равномерно с каждым очком.',
+          p: 'При {{combat.fightCapPoints}} очках удар в ближнем бою наносит на {{combat.fightDealtPct}}% больше урона, а каждый удар или стрела, попавшие в бойца, на {{combat.fightTakenPct}}% меньше. Оба бонуса растут равномерно с каждым очком.',
         },
         {
           table: {
@@ -96,14 +96,14 @@ export const EXPERIENCE: ArticleGroup = {
               [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
               [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
               [
-                '{{combat.fightCapHits}}',
+                '{{combat.fightCapPoints}}',
                 '×{{combat.fightCapFactor}}',
                 '{{combat.fightCapBlow}}',
                 '×{{combat.fightTakenFactor}}',
               ],
             ],
             num: [0, 1, 2, 3],
-            foot: 'После {{combat.fightCapHits}} очков ничего больше не растёт.',
+            foot: 'После {{combat.fightCapPoints}} очков ничего больше не растёт.',
           },
         },
         {
@@ -116,7 +116,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: '[[good:amulet_strength|Амулет Силы]] прибавляет свой бонус к бонусу опыта: при полном опыте удар в ближнем бою выходит ×{{combat.fightStrengthFactor}}. [[good:amulet_defense|Амулет Защиты]] умножается на опыт: при полном опыте боец получает ×{{combat.fightDefenseFactor}} урона. Амулеты: [[article:draughts|Напитки и амулеты]].',
         },
         {
-          p: 'Лучник без опыта попадает {{aim.basePct}}% выстрелов, а с {{aim.noSpreadHits}} очков каждый выстрел ложится в цель. [[article:catapult|Катапульта]] считает свои попадания отдельно. Подробно: [[article:aim|Попадание и стрельба]].',
+          p: 'Лучник без опыта попадает {{aim.basePct}}% выстрелов, а с {{aim.noSpreadPoints}} очков каждый выстрел ложится в цель. [[article:catapult|Катапульта]] считает свои попадания отдельно. Подробно: [[article:aim|Попадание и стрельба]].',
         },
         {
           h: 'Как его получить',

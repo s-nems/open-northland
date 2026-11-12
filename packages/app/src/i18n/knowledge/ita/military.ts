@@ -208,10 +208,10 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
-              ['{{aim.noSpreadHits}}+', 'Sempre a segno'],
+              ['{{aim.noSpreadPoints}}+', 'Sempre a segno'],
             ],
             num: [0, 1],
-            foot: "Ogni punto di [[article:exp-combat|esperienza di combattimento]] aggiunge l'1%, anche i punti dell'esercitazione e quelli presi con un'altra arma. Da {{aim.noSpreadHits}} punti anche una freccia imprecisa arriva sul bersaglio. La [[article:catapult|Catapulta]] conta i propri colpi a parte, ma sulla stessa tabella. Un eroe colpisce sempre.",
+            foot: "Ogni punto di [[article:exp-combat|esperienza di combattimento]] aggiunge l'1%, anche i punti dell'esercitazione e quelli presi con un'altra arma. Da {{aim.noSpreadPoints}} punti anche una freccia imprecisa arriva sul bersaglio. La [[article:catapult|Catapulta]] conta i propri colpi a parte, ma sulla stessa tabella. Un eroe colpisce sempre.",
           },
         },
         {
@@ -732,7 +732,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Precisione',
         },
         {
-          p: 'La precisione cresce come per un arciere: [[article:aim|Colpire e tirare]]. A {{catapult.max}} esagoni una pietra imprecisa cade fino a {{stone.spread.0}} esagoni dal bersaglio con 0 colpi a segno, {{stone.spread.25}} con 25, {{stone.spread.50}} con 50. Da {{aim.noSpreadHits}} colpi cade sul bersaglio. I colpi a segno li accumula il comandante: conta ogni pietra che ha danneggiato qualcosa, anche un edificio, ma una volta sola, anche se ha colpito più bersagli.',
+          p: 'La precisione cresce come per un arciere: [[article:aim|Colpire e tirare]]. A {{catapult.max}} esagoni una pietra imprecisa cade fino a {{stone.spread.0}} esagoni dal bersaglio con 0 colpi a segno, {{stone.spread.25}} con 25, {{stone.spread.50}} con 50. Da {{aim.noSpreadPoints}} colpi cade sul bersaglio. I colpi a segno li accumula il comandante: conta ogni pietra che ha danneggiato qualcosa, anche un edificio, ma una volta sola, anche se ha colpito più bersagli.',
         },
         {
           h: 'Atteggiamenti della catapulta',

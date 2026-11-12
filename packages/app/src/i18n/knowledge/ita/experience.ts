@@ -78,13 +78,13 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Esperienza di combattimento',
-      lead: "Ogni persona ha un'unica esperienza di combattimento, da 0 a {{combat.fightCapHits}} punti, comune a ogni arma.",
+      lead: "Ogni persona ha un'unica esperienza di combattimento, da 0 a {{combat.fightCapPoints}} punti, comune a ogni arma.",
       blocks: [
         {
           h: "Cosa dà l'esperienza",
         },
         {
-          p: 'A {{combat.fightCapHits}} punti un colpo in mischia infligge il {{combat.fightDealtPct}}% di danni in più, e ogni colpo o freccia che raggiunge il combattente ne infligge il {{combat.fightTakenPct}}% in meno. Entrambi crescono in modo uniforme con ogni punto.',
+          p: 'A {{combat.fightCapPoints}} punti un colpo in mischia infligge il {{combat.fightDealtPct}}% di danni in più, e ogni colpo o freccia che raggiunge il combattente ne infligge il {{combat.fightTakenPct}}% in meno. Entrambi crescono in modo uniforme con ogni punto.',
         },
         {
           table: {
@@ -96,14 +96,14 @@ export const EXPERIENCE: ArticleGroup = {
               [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
               [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
               [
-                '{{combat.fightCapHits}}',
+                '{{combat.fightCapPoints}}',
                 '×{{combat.fightCapFactor}}',
                 '{{combat.fightCapBlow}}',
                 '×{{combat.fightTakenFactor}}',
               ],
             ],
             num: [0, 1, 2, 3],
-            foot: 'Oltre {{combat.fightCapHits}} punti non cresce più nulla.',
+            foot: 'Oltre {{combat.fightCapPoints}} punti non cresce più nulla.',
           },
         },
         {
@@ -116,7 +116,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: "L'[[good:amulet_strength|Amuleto della forza]] somma il suo bonus a quello dell'esperienza: con esperienza piena un colpo in mischia arriva a ×{{combat.fightStrengthFactor}}. L'[[good:amulet_defense|Amuleto della difesa]] si moltiplica con l'esperienza: con esperienza piena il combattente subisce ×{{combat.fightDefenseFactor}} danni. Amuleti: [[article:draughts|Pozioni e amuleti]].",
         },
         {
-          p: 'Senza esperienza un arciere va a segno con il {{aim.basePct}}% dei tiri, e da {{aim.noSpreadHits}} punti ogni tiro arriva sul bersaglio. La [[article:catapult|Catapulta]] conta i propri colpi a parte. Dettagli: [[article:aim|Colpire e tirare]].',
+          p: 'Senza esperienza un arciere va a segno con il {{aim.basePct}}% dei tiri, e da {{aim.noSpreadPoints}} punti ogni tiro arriva sul bersaglio. La [[article:catapult|Catapulta]] conta i propri colpi a parte. Dettagli: [[article:aim|Colpire e tirare]].',
         },
         {
           h: 'Come guadagnarla',

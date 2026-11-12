@@ -9,8 +9,9 @@ import type { SceneDefinition } from '../types.js';
 const MAP_W = 28;
 const MAP_H = 24;
 const TARGET_HITPOINTS = 100_000;
-/** Bow hits past the scatter roll's reach, so every shot lands on its mark and the scene shows the flight. */
-const MARKSMAN_BOW_HITS = 90;
+/** Fight points past the scatter roll's reach, so every shot lands on its mark and the scene shows the
+ *  flight. */
+const MARKSMAN_POINTS = 90;
 
 /**
  * Compact staggered-raster sight-lines: east, west, straight down the screen, and a reverse diagonal. Each
@@ -39,7 +40,7 @@ function build(sim: Simulation): void {
     const archer = spawnSettlerDirect(sim, JOB_ARCHER, lane.archer.x, lane.archer.y, HUMAN_PLAYER);
     sim.world
       .mut(archer, SettlerProgress)
-      .experience.set(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(MARKSMAN_BOW_HITS));
+      .experience.set(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(MARKSMAN_POINTS));
     sim.enqueueSetup({ kind: 'attackUnit', entity: archer, target });
   }
 }

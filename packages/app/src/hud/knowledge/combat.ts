@@ -8,7 +8,7 @@ const PERCENT = 100;
 const { ARMOR_MATERIAL, WEAPON_MAIN_TYPE } = systems;
 
 export const HUMAN_HITPOINTS = systems.HUMAN_HITPOINTS;
-export const CAP_HITS = systems.FIGHT_EXPERIENCE_FULL;
+export const CAP_POINTS = systems.FIGHT_EXPERIENCE_FULL;
 
 /** Percent a blow lands with by where it comes from. */
 export const HIT_DIRECTION = {
@@ -41,19 +41,19 @@ export interface BlowModifiers {
   /** A {@link HIT_DIRECTION} percent. */
   readonly direction: number;
   /** The striker's personal fight points. */
-  readonly hits: number;
+  readonly points: number;
   readonly strength: boolean;
   readonly defense: boolean;
   /** A person target's own fight points, which cut the blows he takes. */
-  readonly targetHits: number;
+  readonly targetPoints: number;
 }
 
 export const NO_MODIFIERS: BlowModifiers = {
   direction: HIT_DIRECTION.front,
-  hits: 0,
+  points: 0,
   strength: false,
   defense: false,
-  targetHits: 0,
+  targetPoints: 0,
 };
 
 /** Each person target's armour good, by the column its armour row names. */
@@ -188,14 +188,14 @@ export function blowSteps(
   const blocked = person ? directed - target.blocking : directed;
   const experienced = gainsFightExperience(weapon, target);
   // The calculator states fight experience in points; the sim's raises read the counter's fine units.
-  const units = experienced ? systems.fightUnitsOfPoints(modifiers.hits) : 0;
+  const units = experienced ? systems.fightUnitsOfPoints(modifiers.points) : 0;
   const raised = experienced ? systems.withDealtBonuses(blocked, units) : blocked;
   const amulet = modifiers.strength && takesStrengthAmulet(weapon);
   const strong = amulet ? systems.withDealtBonuses(blocked, units, STRENGTH_PCT) : raised;
   const shielded =
     person && modifiers.defense ? systems.scaledTakenDamage(strong, DEFENSE_TAKEN_PCT) : strong;
   const takenPct = modifiers.defense ? DEFENSE_TAKEN_PCT : PERCENT;
-  const targetUnits = systems.fightUnitsOfPoints(modifiers.targetHits);
+  const targetUnits = systems.fightUnitsOfPoints(modifiers.targetPoints);
   const hardened = person ? systems.withTakenBonuses(strong, targetUnits, takenPct) : shielded;
   return [
     { id: 'base', value: base, applies: true },
@@ -222,14 +222,14 @@ export function landed(
 const EXPERIENCE_PROBE_DAMAGE = 10_000;
 
 /** How many percent a striker's fight points add to his melee blow. */
-export function experienceBonusPct(hits: number): number {
-  const raised = systems.withFightExperience(EXPERIENCE_PROBE_DAMAGE, systems.fightUnitsOfPoints(hits));
+export function experienceBonusPct(points: number): number {
+  const raised = systems.withFightExperience(EXPERIENCE_PROBE_DAMAGE, systems.fightUnitsOfPoints(points));
   return Math.round((raised * PERCENT) / EXPERIENCE_PROBE_DAMAGE) - PERCENT;
 }
 
 /** How many percent a person's fight points take off the blows he is dealt. */
-export function experienceCutPct(hits: number): number {
-  const taken = systems.withTakenBonuses(EXPERIENCE_PROBE_DAMAGE, systems.fightUnitsOfPoints(hits));
+export function experienceCutPct(points: number): number {
+  const taken = systems.withTakenBonuses(EXPERIENCE_PROBE_DAMAGE, systems.fightUnitsOfPoints(points));
   return PERCENT - Math.round((taken * PERCENT) / EXPERIENCE_PROBE_DAMAGE);
 }
 

@@ -10,7 +10,7 @@ import {
   weaponLabel,
   withWeapon,
 } from '../../../../knowledge/calculator.js';
-import { CAP_HITS } from '../../../../knowledge/combat.js';
+import { CAP_POINTS } from '../../../../knowledge/combat.js';
 import { formatFactNumber } from '../../../../knowledge/facts/reader.js';
 import { button, element, setStyleVar, write } from '../../../parts/dom.js';
 import type { KnowledgeContext } from '../../context.js';
@@ -184,7 +184,7 @@ function attackerPanel(
     setAttacker({ tribe: id });
     weapon.setActive(activeWeapon());
   });
-  const experience = experienceSlider(read().attacker.hits, (hits) => setAttacker({ hits }));
+  const experience = experienceSlider(read().attacker.points, (points) => setAttacker({ points }));
   const experienceNote = element('small', 'kn-calc__note');
   const strength = checkbox(copy.strengthAmulet, read().attacker.strength, (on) =>
     setAttacker({ strength: on }),
@@ -195,7 +195,7 @@ function attackerPanel(
   host.append(
     sideTitle(copy.attackerTitle),
     pair,
-    field(copy.hitsLabel, experience.host),
+    field(copy.pointsLabel, experience.host),
     experienceNote,
     strength.host,
   );
@@ -211,7 +211,7 @@ function attackerPanel(
         experienceNote,
         skip === null
           ? formatMessage(copy.experienceHint, {
-              cap: CAP_HITS,
+              cap: CAP_POINTS,
               pct: systems.FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL,
             })
           : copy.skips[skip],

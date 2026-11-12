@@ -73,13 +73,13 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Kampferfahrung',
-      lead: 'Jeder Mensch hat eine Kampferfahrung von 0 bis {{combat.fightCapHits}} Punkten, gemeinsam für jede Waffe.',
+      lead: 'Jeder Mensch hat eine Kampferfahrung von 0 bis {{combat.fightCapPoints}} Punkten, gemeinsam für jede Waffe.',
       blocks: [
         {
           h: 'Was Erfahrung bringt',
         },
         {
-          p: 'Bei {{combat.fightCapHits}} Punkten verursacht ein Nahkampfschlag {{combat.fightDealtPct}}% mehr Schaden, und jeder Schlag oder Pfeil, der den Kämpfer trifft, {{combat.fightTakenPct}}% weniger. Beides steigt mit jedem Punkt gleichmäßig.',
+          p: 'Bei {{combat.fightCapPoints}} Punkten verursacht ein Nahkampfschlag {{combat.fightDealtPct}}% mehr Schaden, und jeder Schlag oder Pfeil, der den Kämpfer trifft, {{combat.fightTakenPct}}% weniger. Beides steigt mit jedem Punkt gleichmäßig.',
         },
         {
           table: {
@@ -96,14 +96,14 @@ export const EXPERIENCE: ArticleGroup = {
               [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
               [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
               [
-                '{{combat.fightCapHits}}',
+                '{{combat.fightCapPoints}}',
                 '×{{combat.fightCapFactor}}',
                 '{{combat.fightCapBlow}}',
                 '×{{combat.fightTakenFactor}}',
               ],
             ],
             num: [0, 1, 2, 3],
-            foot: 'Über {{combat.fightCapHits}} Punkte steigt nichts mehr.',
+            foot: 'Über {{combat.fightCapPoints}} Punkte steigt nichts mehr.',
           },
         },
         {
@@ -116,7 +116,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Das [[good:amulet_strength|Stärkeamulett]] addiert seinen Bonus zum Erfahrungsbonus: Mit voller Erfahrung kommt ein Nahkampfschlag auf ×{{combat.fightStrengthFactor}}. Das [[good:amulet_defense|Verteidigungsamulett]] multipliziert sich mit der Erfahrung: Mit voller Erfahrung erleidet der Kämpfer ×{{combat.fightDefenseFactor}} Schaden. Amulette: [[article:draughts|Getränke und Amulette]].',
         },
         {
-          p: 'Ohne Erfahrung trifft ein Bogenschütze {{aim.basePct}}% seiner Schüsse, ab {{aim.noSpreadHits}} Punkten landet jeder Schuss im Ziel. Das [[article:catapult|Katapult]] zählt eigene Treffer. Details: [[article:aim|Treffen und Schießen]].',
+          p: 'Ohne Erfahrung trifft ein Bogenschütze {{aim.basePct}}% seiner Schüsse, ab {{aim.noSpreadPoints}} Punkten landet jeder Schuss im Ziel. Das [[article:catapult|Katapult]] zählt eigene Treffer. Details: [[article:aim|Treffen und Schießen]].',
         },
         {
           h: 'Wie man sie bekommt',

@@ -71,7 +71,7 @@ function fighterPanel(
     paint();
   });
   const armour = armourDropdown(context, copy.armourLabel, fighter().armour, (id) => set({ armour: id }));
-  const experience = experienceSlider(fighter().hits, (hits) => set({ hits }), 'both');
+  const experience = experienceSlider(fighter().points, (points) => set({ points }), 'both');
   const strength = checkbox(copy.strengthAmulet, fighter().strength, (on) => set({ strength: on }));
   const defense = checkbox(copy.defenseAmulet, fighter().defense, (on) => set({ defense: on }));
   const person = combatTargets(base)[0];
@@ -92,7 +92,7 @@ function fighterPanel(
     sideTitle(formatMessage(copy.fighterTitle, { number: index + 1 })),
     pair,
     field(copy.armourLabel, armour.root),
-    field(copy.hitsLabel, experience.host),
+    field(copy.pointsLabel, experience.host),
     checks,
   );
   return host;

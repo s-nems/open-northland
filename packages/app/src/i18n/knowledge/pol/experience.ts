@@ -73,13 +73,13 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Doświadczenie w walce',
-      lead: 'Każdy człowiek ma jedno doświadczenie w walce, od 0 do {{combat.fightCapHits}} pkt, wspólne dla każdej broni.',
+      lead: 'Każdy człowiek ma jedno doświadczenie w walce, od 0 do {{combat.fightCapPoints}} pkt, wspólne dla każdej broni.',
       blocks: [
         {
           h: 'Co daje doświadczenie',
         },
         {
-          p: 'Przy {{combat.fightCapHits}} pkt cios wręcz zadaje o {{combat.fightDealtPct}}% więcej obrażeń, a każdy cios i strzał, który trafi wojownika, o {{combat.fightTakenPct}}% mniej. Obie premie rosną równo z każdym punktem.',
+          p: 'Przy {{combat.fightCapPoints}} pkt cios wręcz zadaje o {{combat.fightDealtPct}}% więcej obrażeń, a każdy cios i strzał, który trafi wojownika, o {{combat.fightTakenPct}}% mniej. Obie premie rosną równo z każdym punktem.',
         },
         {
           table: {
@@ -91,14 +91,14 @@ export const EXPERIENCE: ArticleGroup = {
               [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
               [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
               [
-                '{{combat.fightCapHits}}',
+                '{{combat.fightCapPoints}}',
                 '×{{combat.fightCapFactor}}',
                 '{{combat.fightCapBlow}}',
                 '×{{combat.fightTakenFactor}}',
               ],
             ],
             num: [0, 1, 2, 3],
-            foot: 'Powyżej {{combat.fightCapHits}} pkt nic już nie rośnie.',
+            foot: 'Powyżej {{combat.fightCapPoints}} pkt nic już nie rośnie.',
           },
         },
         {
@@ -111,7 +111,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: '[[good:amulet_strength|Amulet Siły]] dodaje swoją premię do premii z doświadczenia: przy pełnym doświadczeniu cios wręcz ma ×{{combat.fightStrengthFactor}} obrażeń. [[good:amulet_defense|Amulet Obrony]] mnoży się z doświadczeniem: z pełnym doświadczeniem wojownik dostaje ×{{combat.fightDefenseFactor}} obrażeń. Amulety: [[article:draughts|Napoje i amulety]].',
         },
         {
-          p: 'Łucznik bez doświadczenia trafia {{aim.basePct}}% strzałów, a od {{aim.noSpreadHits}} pkt każdy strzał spada w cel. [[article:catapult|Katapulta]] liczy własne trafienia. Szczegóły: [[article:aim|Trafienie i strzelanie]].',
+          p: 'Łucznik bez doświadczenia trafia {{aim.basePct}}% strzałów, a od {{aim.noSpreadPoints}} pkt każdy strzał spada w cel. [[article:catapult|Katapulta]] liczy własne trafienia. Szczegóły: [[article:aim|Trafienie i strzelanie]].',
         },
         {
           h: 'Jak je zdobyć',

@@ -68,13 +68,13 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: '战斗经验',
-      lead: '每个人只有一份战斗经验，从 0 到 {{combat.fightCapHits}} 点，所有武器通用。',
+      lead: '每个人只有一份战斗经验，从 0 到 {{combat.fightCapPoints}} 点，所有武器通用。',
       blocks: [
         {
           h: '经验的作用',
         },
         {
-          p: '达到 {{combat.fightCapHits}} 点时，近战攻击的伤害提高 {{combat.fightDealtPct}}%，而击中这名战士的每次攻击和每支箭伤害降低 {{combat.fightTakenPct}}%。两者都随每一点均匀增长。',
+          p: '达到 {{combat.fightCapPoints}} 点时，近战攻击的伤害提高 {{combat.fightDealtPct}}%，而击中这名战士的每次攻击和每支箭伤害降低 {{combat.fightTakenPct}}%。两者都随每一点均匀增长。',
         },
         {
           table: {
@@ -86,14 +86,14 @@ export const EXPERIENCE: ArticleGroup = {
               [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
               [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
               [
-                '{{combat.fightCapHits}}',
+                '{{combat.fightCapPoints}}',
                 '×{{combat.fightCapFactor}}',
                 '{{combat.fightCapBlow}}',
                 '×{{combat.fightTakenFactor}}',
               ],
             ],
             num: [0, 1, 2, 3],
-            foot: '超过 {{combat.fightCapHits}} 点后不再增长。',
+            foot: '超过 {{combat.fightCapPoints}} 点后不再增长。',
           },
         },
         {
@@ -106,7 +106,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: '[[good:amulet_strength|力量护符]]的加成与经验加成相加：经验满时近战攻击为 ×{{combat.fightStrengthFactor}}。[[good:amulet_defense|防御护符]]与经验相乘：经验满时战士受到 ×{{combat.fightDefenseFactor}} 的伤害。护符：[[article:draughts|饮品与护符]]。',
         },
         {
-          p: '没有经验的弓箭手有 {{aim.basePct}}% 的射击命中，{{aim.noSpreadHits}} 点起每一箭都落在目标上。[[article:catapult|投石机]]单独累计自己的命中。详情：[[article:aim|命中与射击]]。',
+          p: '没有经验的弓箭手有 {{aim.basePct}}% 的射击命中，{{aim.noSpreadPoints}} 点起每一箭都落在目标上。[[article:catapult|投石机]]单独累计自己的命中。详情：[[article:aim|命中与射击]]。',
         },
         {
           h: '怎样获得',

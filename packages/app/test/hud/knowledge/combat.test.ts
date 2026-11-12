@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
 import {
   ANIMAL_TARGET,
-  CAP_HITS,
+  CAP_POINTS,
   type CombatTarget,
   clipSeconds,
   combatTargets,
@@ -70,12 +70,12 @@ describe('landed', () => {
   });
 
   it('raises a soldier blow with fight experience, capped at +40%', () => {
-    expect(landed(weapon(), target('bare'), { ...NO_MODIFIERS, hits: CAP_HITS })).toBe(140);
-    expect(landed(weapon(), target('bare'), { ...NO_MODIFIERS, hits: CAP_HITS * 2 })).toBe(140);
+    expect(landed(weapon(), target('bare'), { ...NO_MODIFIERS, points: CAP_POINTS })).toBe(140);
+    expect(landed(weapon(), target('bare'), { ...NO_MODIFIERS, points: CAP_POINTS * 2 })).toBe(140);
   });
 
   it('gives a building the experience and the amulet, added, but no direction or block', () => {
-    const strong = { ...NO_MODIFIERS, hits: CAP_HITS, strength: true, direction: HIT_DIRECTION.behind };
+    const strong = { ...NO_MODIFIERS, points: CAP_POINTS, strength: true, direction: HIT_DIRECTION.behind };
     expect(landed(weapon(), target('building'), strong)).toBe(51); // 30 * (1 + 0.4 + 0.3)
   });
 
@@ -84,17 +84,17 @@ describe('landed', () => {
   });
 
   it('gives a vehicle the bare column of the weapon, no experience', () => {
-    expect(landed(weapon(), target('vehicle'), { ...NO_MODIFIERS, hits: CAP_HITS })).toBe(40);
+    expect(landed(weapon(), target('vehicle'), { ...NO_MODIFIERS, points: CAP_POINTS })).toBe(40);
   });
 
   it('gives a hero no fight experience', () => {
     const hero = weapon({ id: 'hero_spear' });
-    expect(landed(hero, target('bare'), { ...NO_MODIFIERS, hits: CAP_HITS })).toBe(100);
+    expect(landed(hero, target('bare'), { ...NO_MODIFIERS, points: CAP_POINTS })).toBe(100);
   });
 
   it('gives a ranged shot no fight experience', () => {
     const bow = weapon({ id: 'long_bow', mainType: BOW });
-    expect(landed(bow, target('bare'), { ...NO_MODIFIERS, hits: CAP_HITS })).toBe(100);
+    expect(landed(bow, target('bare'), { ...NO_MODIFIERS, points: CAP_POINTS })).toBe(100);
   });
 
   it('never lets an amulet raise a catapult or a building shot', () => {

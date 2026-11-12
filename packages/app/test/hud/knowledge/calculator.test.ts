@@ -21,7 +21,7 @@ import {
 import {
   ANIMAL_TARGET,
   type BlowModifiers,
-  CAP_HITS,
+  CAP_POINTS,
   combatTargets,
   DEFENSE_TAKEN_PCT,
   HIT_DIRECTION,
@@ -78,7 +78,7 @@ const armedBase = (rows: readonly KnowledgeWeapon[]) => ({
 const fighter = (over: Partial<DuelFighter>): DuelFighter => ({
   tribe: VIKING,
   weapon: 'iron_spear',
-  hits: 0,
+  points: 0,
   strength: false,
   armour: 'bare',
   defense: false,
@@ -87,9 +87,9 @@ const fighter = (over: Partial<DuelFighter>): DuelFighter => ({
 
 describe('breakdown', () => {
   const modifiers: readonly BlowModifiers[] = [
-    { direction: HIT_DIRECTION.front, hits: 0, strength: false, defense: false, targetHits: 0 },
-    { direction: HIT_DIRECTION.behind, hits: 60, strength: true, defense: true, targetHits: 100 },
-    { direction: HIT_DIRECTION.backSide, hits: 100, strength: true, defense: false, targetHits: 30 },
+    { direction: HIT_DIRECTION.front, points: 0, strength: false, defense: false, targetPoints: 0 },
+    { direction: HIT_DIRECTION.behind, points: 60, strength: true, defense: true, targetPoints: 100 },
+    { direction: HIT_DIRECTION.backSide, points: 100, strength: true, defense: false, targetPoints: 30 },
   ];
   const weapons = [
     row(),
@@ -142,9 +142,9 @@ describe('breakdown', () => {
   it("cuts a blow by the target's experience, multiplied with his Amulet of Defence", () => {
     const bare = targets.find((t) => t.id === 'bare');
     if (bare === undefined) throw new Error('no bare target');
-    const blow = { ...(modifiers[0] as BlowModifiers), targetHits: CAP_HITS };
+    const blow = { ...(modifiers[0] as BlowModifiers), targetPoints: CAP_POINTS };
     const plain = landed(row(), bare);
-    const full = systems.fightUnitsOfPoints(CAP_HITS);
+    const full = systems.fightUnitsOfPoints(CAP_POINTS);
     expect(landed(row(), bare, blow)).toBe(systems.withTakenBonuses(plain, full));
     expect(landed(row(), bare, { ...blow, defense: true })).toBe(
       systems.withTakenBonuses(plain, full, DEFENSE_TAKEN_PCT),
@@ -348,10 +348,10 @@ describe('the calculator against the sim', () => {
     if (weapon === undefined || bare === undefined) throw new Error('setup: sword row and bare target');
     const calculated = landed(weapon, bare, {
       direction: HIT_DIRECTION.front,
-      hits: STRIKER_POINTS,
+      points: STRIKER_POINTS,
       strength: true,
       defense: true,
-      targetHits: TARGET_POINTS,
+      targetPoints: TARGET_POINTS,
     });
     expect(calculated).not.toBe(landed(weapon, bare));
     expect(dealt).toBe(calculated);

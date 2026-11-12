@@ -202,10 +202,10 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
-              ['{{aim.noSpreadHits}}+', 'Immer im Ziel'],
+              ['{{aim.noSpreadPoints}}+', 'Immer im Ziel'],
             ],
             num: [0, 1],
-            foot: 'Jeder Punkt [[article:exp-combat|Kampferfahrung]] bringt 1% mehr, auch Punkte aus dem Exerzieren und aus Kämpfen mit einer anderen Waffe. Ab {{aim.noSpreadHits}} Punkten landet auch ein ungenauer Pfeil im Ziel. Das [[article:catapult|Katapult]] zählt eigene Treffer, aber nach derselben Tabelle. Helden treffen immer.',
+            foot: 'Jeder Punkt [[article:exp-combat|Kampferfahrung]] bringt 1% mehr, auch Punkte aus dem Exerzieren und aus Kämpfen mit einer anderen Waffe. Ab {{aim.noSpreadPoints}} Punkten landet auch ein ungenauer Pfeil im Ziel. Das [[article:catapult|Katapult]] zählt eigene Treffer, aber nach derselben Tabelle. Helden treffen immer.',
           },
         },
         {
@@ -717,7 +717,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Genauigkeit',
         },
         {
-          p: 'Die Genauigkeit steigt wie beim Bogenschützen: [[article:aim|Treffen und Schießen]]. Auf {{catapult.max}} Hexfeldern landet ein ungenauer Stein bei 0 Treffern bis {{stone.spread.0}} Hexfelder neben dem Ziel, bei 25 bis {{stone.spread.25}}, bei 50 bis {{stone.spread.50}}. Ab {{aim.noSpreadHits}} Treffern landet er im Ziel. Die Treffer sammelt der Kommandant: Es zählt jeder Stein, der etwas beschädigt hat, auch ein Gebäude, aber nur einmal, auch wenn er mehrere Ziele trifft.',
+          p: 'Die Genauigkeit steigt wie beim Bogenschützen: [[article:aim|Treffen und Schießen]]. Auf {{catapult.max}} Hexfeldern landet ein ungenauer Stein bei 0 Treffern bis {{stone.spread.0}} Hexfelder neben dem Ziel, bei 25 bis {{stone.spread.25}}, bei 50 bis {{stone.spread.50}}. Ab {{aim.noSpreadPoints}} Treffern landet er im Ziel. Die Treffer sammelt der Kommandant: Es zählt jeder Stein, der etwas beschädigt hat, auch ein Gebäude, aber nur einmal, auch wenn er mehrere Ziele trifft.',
         },
         {
           h: 'Katapultmodi',

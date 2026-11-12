@@ -199,10 +199,10 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
-              ['{{aim.noSpreadHits}}+', '總是落在目標上'],
+              ['{{aim.noSpreadPoints}}+', '總是落在目標上'],
             ],
             num: [0, 1],
-            foot: '每一點[[article:exp-combat|戰鬥經驗]]增加1%，操練和用其他武器戰鬥得到的點數也算。{{aim.noSpreadHits}}點起，沒射準的箭也會落在目標上。[[article:catapult|投石機]]單獨累計自己的命中，但用同一張表。英雄百發百中。',
+            foot: '每一點[[article:exp-combat|戰鬥經驗]]增加1%，操練和用其他武器戰鬥得到的點數也算。{{aim.noSpreadPoints}}點起，沒射準的箭也會落在目標上。[[article:catapult|投石機]]單獨累計自己的命中，但用同一張表。英雄百發百中。',
           },
         },
         {
@@ -684,7 +684,7 @@ export const MILITARY: ArticleGroup = {
           h: '命中率',
         },
         {
-          p: '命中率增長與弓手相同：[[article:aim|命中與射擊]]。在{{catapult.max}}格處，未命中的石彈偏離目標：0次命中時最多{{stone.spread.0}}格，25次{{stone.spread.25}}格，50次{{stone.spread.50}}格。命中{{aim.noSpreadHits}}次起落在目標上。命中次數歸指揮官：每發造成損傷的石彈都算，打建築也算，但即使打中多個目標也只算一次。',
+          p: '命中率增長與弓手相同：[[article:aim|命中與射擊]]。在{{catapult.max}}格處，未命中的石彈偏離目標：0次命中時最多{{stone.spread.0}}格，25次{{stone.spread.25}}格，50次{{stone.spread.50}}格。命中{{aim.noSpreadPoints}}次起落在目標上。命中次數歸指揮官：每發造成損傷的石彈都算，打建築也算，但即使打中多個目標也只算一次。',
         },
         {
           h: '投石機的姿態',

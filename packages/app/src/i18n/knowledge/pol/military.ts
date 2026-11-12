@@ -202,10 +202,10 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
-              ['{{aim.noSpreadHits}}+', 'Zawsze w cel'],
+              ['{{aim.noSpreadPoints}}+', 'Zawsze w cel'],
             ],
             num: [0, 1],
-            foot: 'Każdy punkt [[article:exp-combat|doświadczenia w walce]] dodaje 1%, także punkty z musztry i z walki inną bronią. Od {{aim.noSpreadHits}} pkt nawet niecelna strzała spada w cel. [[article:catapult|Katapulta]] liczy własne trafienia, ale według tej samej tabeli. Bohater zawsze trafia.',
+            foot: 'Każdy punkt [[article:exp-combat|doświadczenia w walce]] dodaje 1%, także punkty z musztry i z walki inną bronią. Od {{aim.noSpreadPoints}} pkt nawet niecelna strzała spada w cel. [[article:catapult|Katapulta]] liczy własne trafienia, ale według tej samej tabeli. Bohater zawsze trafia.',
           },
         },
         {
@@ -713,7 +713,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Celność',
         },
         {
-          p: 'Celność rośnie jak u łucznika: [[article:aim|Trafienie i strzelanie]]. Na {{catapult.max}} hexach niecelny kamień spada do {{stone.spread.0}} hexów od celu przy 0 trafień, {{stone.spread.25}} przy 25, {{stone.spread.50}} przy 50. Od {{aim.noSpreadHits}} trafień spada w cel. Trafienia zbiera dowódca: liczy się każdy kamień, który coś uszkodził, także budynek, ale tylko raz, nawet gdy trafił kilka celów.',
+          p: 'Celność rośnie jak u łucznika: [[article:aim|Trafienie i strzelanie]]. Na {{catapult.max}} hexach niecelny kamień spada do {{stone.spread.0}} hexów od celu przy 0 trafień, {{stone.spread.25}} przy 25, {{stone.spread.50}} przy 50. Od {{aim.noSpreadPoints}} trafień spada w cel. Trafienia zbiera dowódca: liczy się każdy kamień, który coś uszkodził, także budynek, ale tylko raz, nawet gdy trafił kilka celów.',
         },
         {
           h: 'Postawy Katapulty',

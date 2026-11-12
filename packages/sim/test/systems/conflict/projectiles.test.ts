@@ -205,8 +205,8 @@ function fighterAt(
 const AIM_SAMPLE_TICKS = 300;
 const AIM_MIN_SHOTS = 5;
 
-/** Hits past which a bowman never scatters: the aim roll tops out at 99, against hits plus 10. */
-const MARKSMAN_BOW_HITS = 90;
+/** Fight points past which a bowman never scatters: the aim roll tops out at 99, against points plus 10. */
+const MARKSMAN_POINTS = 90;
 /** The owner's blow-time rate of a landed shot, in points per second of the shooter's attack clip. */
 const SHOT_POINTS_PER_SECOND = 0.5;
 /** The owner's blow-time rate of a blow taken, in points per second of the attacker's cadence. */
@@ -217,7 +217,7 @@ function marksmanAt(sim: Simulation, x: number, y: number): Entity {
   const archer = fighterAt(sim, x, y, VIKING, ARCHER);
   sim.world
     .mut(archer, SettlerProgress)
-    .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, fightUnitsOfPoints(MARKSMAN_BOW_HITS));
+    .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, fightUnitsOfPoints(MARKSMAN_POINTS));
   return archer;
 }
 
@@ -535,7 +535,7 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     for (let i = 0; i < 30 && sim.world.get(target, Health).hitpoints === TARGET_HP; i++) sim.step();
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE);
     const units = sim.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
-    const earned = (units - fightUnitsOfPoints(MARKSMAN_BOW_HITS)) / FIGHT_EXPERIENCE_UNITS_PER_POINT;
+    const earned = (units - fightUnitsOfPoints(MARKSMAN_POINTS)) / FIGHT_EXPERIENCE_UNITS_PER_POINT;
     expect(earned).toBe((BOW_LEN / TICKS_PER_SECOND) * SHOT_POINTS_PER_SECOND);
   });
 
@@ -639,7 +639,7 @@ describe('projectiles - expiry + dead zone', () => {
     expect(sawMiss).toBe(true);
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
     expect(sim.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL)).toBe(
-      fightUnitsOfPoints(MARKSMAN_BOW_HITS),
+      fightUnitsOfPoints(MARKSMAN_POINTS),
     );
   });
 
@@ -761,7 +761,7 @@ describe('projectiles - area shots', () => {
     sim.world.mut(p, Projectile).weaponMainType = BOW_MAIN_TYPE;
     sim.step();
     const bow = sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
-    const earned = (bow - fightUnitsOfPoints(MARKSMAN_BOW_HITS)) / FIGHT_EXPERIENCE_UNITS_PER_POINT;
+    const earned = (bow - fightUnitsOfPoints(MARKSMAN_POINTS)) / FIGHT_EXPERIENCE_UNITS_PER_POINT;
     expect(earned).toBe((BOW_LEN / TICKS_PER_SECOND) * SHOT_POINTS_PER_SECOND);
   });
 
@@ -796,7 +796,7 @@ describe('projectiles - area shots', () => {
     // A falling tree is no hit: the stone still thuds and trains nobody.
     expect(events.some((ev) => ev.kind === 'projectileMissed')).toBe(true);
     expect(sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL)).toBe(
-      fightUnitsOfPoints(MARKSMAN_BOW_HITS),
+      fightUnitsOfPoints(MARKSMAN_POINTS),
     );
   });
 

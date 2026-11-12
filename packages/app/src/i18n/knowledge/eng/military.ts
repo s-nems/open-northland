@@ -202,10 +202,10 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
-              ['{{aim.noSpreadHits}}+', 'Always on target'],
+              ['{{aim.noSpreadPoints}}+', 'Always on target'],
             ],
             num: [0, 1],
-            foot: 'Each point of [[article:exp-combat|combat experience]] adds 1%, points from the coin drill and from fighting with another weapon too. From {{aim.noSpreadHits}} points even an inaccurate arrow lands on target. The [[article:catapult|Catapult]] counts its own hits, but on the same table. A hero always hits.',
+            foot: 'Each point of [[article:exp-combat|combat experience]] adds 1%, points from the coin drill and from fighting with another weapon too. From {{aim.noSpreadPoints}} points even an inaccurate arrow lands on target. The [[article:catapult|Catapult]] counts its own hits, but on the same table. A hero always hits.',
           },
         },
         {
@@ -717,7 +717,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Accuracy',
         },
         {
-          p: 'Accuracy grows as with an archer: [[article:aim|Hitting and Shooting]]. At {{catapult.max}} hexes an inaccurate stone lands up to {{stone.spread.0}} hexes from the target at 0 hits, {{stone.spread.25}} at 25, {{stone.spread.50}} at 50. From {{aim.noSpreadHits}} hits it lands on target. The commander collects the hits: every stone that damaged something counts, a building included, but only once, even if it hit several targets.',
+          p: 'Accuracy grows as with an archer: [[article:aim|Hitting and Shooting]]. At {{catapult.max}} hexes an inaccurate stone lands up to {{stone.spread.0}} hexes from the target at 0 hits, {{stone.spread.25}} at 25, {{stone.spread.50}} at 50. From {{aim.noSpreadPoints}} hits it lands on target. The commander collects the hits: every stone that damaged something counts, a building included, but only once, even if it hit several targets.',
         },
         {
           h: 'Catapult stances',

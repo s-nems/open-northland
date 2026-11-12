@@ -78,13 +78,13 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Combat Experience',
-      lead: 'Every person has one combat experience, from 0 to {{combat.fightCapHits}} points, shared by every weapon.',
+      lead: 'Every person has one combat experience, from 0 to {{combat.fightCapPoints}} points, shared by every weapon.',
       blocks: [
         {
           h: 'What experience gives you',
         },
         {
-          p: 'At {{combat.fightCapHits}} points a melee blow deals {{combat.fightDealtPct}}% more damage, and every blow or arrow that hits the fighter deals {{combat.fightTakenPct}}% less. Both grow evenly with each point.',
+          p: 'At {{combat.fightCapPoints}} points a melee blow deals {{combat.fightDealtPct}}% more damage, and every blow or arrow that hits the fighter deals {{combat.fightTakenPct}}% less. Both grow evenly with each point.',
         },
         {
           table: {
@@ -96,14 +96,14 @@ export const EXPERIENCE: ArticleGroup = {
               [50, '×{{fight.factor.50}}', '{{fight.blow.50}}', '×{{fight.taken.50}}'],
               [75, '×{{fight.factor.75}}', '{{fight.blow.75}}', '×{{fight.taken.75}}'],
               [
-                '{{combat.fightCapHits}}',
+                '{{combat.fightCapPoints}}',
                 '×{{combat.fightCapFactor}}',
                 '{{combat.fightCapBlow}}',
                 '×{{combat.fightTakenFactor}}',
               ],
             ],
             num: [0, 1, 2, 3],
-            foot: 'Nothing grows past {{combat.fightCapHits}} points.',
+            foot: 'Nothing grows past {{combat.fightCapPoints}} points.',
           },
         },
         {
@@ -116,7 +116,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'The [[good:amulet_strength|Amulet of Strength]] adds its bonus to the experience bonus: with full experience a melee blow comes out at ×{{combat.fightStrengthFactor}}. The [[good:amulet_defense|Amulet of Defence]] multiplies with experience: with full experience the fighter takes ×{{combat.fightDefenseFactor}} damage. Amulets: [[article:draughts|Potions and Amulets]].',
         },
         {
-          p: 'Without experience an archer hits with {{aim.basePct}}% of shots, and from {{aim.noSpreadHits}} points every shot lands on target. The [[article:catapult|Catapult]] counts its own hits. Details: [[article:aim|Hitting and Shooting]].',
+          p: 'Without experience an archer hits with {{aim.basePct}}% of shots, and from {{aim.noSpreadPoints}} points every shot lands on target. The [[article:catapult|Catapult]] counts its own hits. Details: [[article:aim|Hitting and Shooting]].',
         },
         {
           h: 'How to gain it',
