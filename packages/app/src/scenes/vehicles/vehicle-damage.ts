@@ -14,8 +14,8 @@ import type { SceneDefinition } from '../types.js';
 
 /**
  * How a hurt vehicle looks, and how it dies. On the west shore and in the strait stand catapults and
- * ships at falling health: the hulls scar, smoke, and the ships catch fire near the end while the
- * catapults only smoke a little. Across the strait enemy archers finish a ship and a catapult that are
+ * ships at falling health: the hulls scar, smoke, and the ships catch fire near the end and burn down
+ * on their own while the catapults only smoke a little. Across the strait enemy archers finish a ship and a catapult that are
  * nearly spent: the ship burns and slides under where it lay, the catapult falls apart in a little
  * dust and leaves its wreck on the ground. The browser view is the check; the look is ours.
  */
@@ -28,8 +28,9 @@ const STRAIT_TO = 30;
 
 const { Health, Vehicle, WALK_DIRECTION } = components;
 
-/** Remaining health shares the standing vehicles show, mildest first. */
-const SHOWN_HEALTH = [0.7, 0.4, 0.15] as const;
+/** Remaining health shares the standing vehicles show, mildest first: the middle one above the ships'
+ *  fire share, the last below it. */
+const SHOWN_HEALTH = [0.7, 0.45, 0.15] as const;
 /** The rows the three standing vehicles of a kind stand on. */
 const SHOWN_ROWS = [3, 8, 13] as const;
 const CATAPULT_X = 5;

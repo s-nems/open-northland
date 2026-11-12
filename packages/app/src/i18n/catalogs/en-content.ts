@@ -452,7 +452,7 @@ export const enContent = {
     'vehicle-damage': {
       title: 'Damaged and destroyed vehicles',
       summary:
-        'Catapults and ships stand at falling health: the hulls scar and smoke, the ships catch fire near the end, the catapults only smoke a little. Across the strait enemy archers finish a ship and a catapult: the ship burns and goes under, the catapult falls apart in a little dust.',
+        'Catapults and ships stand at falling health: the hulls scar and smoke, the ships catch fire near the end and burn down on their own in about a minute, the catapults only smoke a little. Across the strait enemy archers finish a ship and a catapult: the ship burns and goes under, the catapult falls apart in a little dust.',
     },
     'vehicle-ship-archers': {
       title: 'Bowmen on deck',

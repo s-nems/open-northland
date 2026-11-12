@@ -25,12 +25,15 @@ export interface DamageEffectStyle {
   readonly chips: number;
   /** Multiplies each puff's opacity. */
   readonly smoke: number;
-  /** The damage level the first flame lights at. */
+  /** The damage level the first flame lights at, and how far past it, at most, a body's own draw puts it. */
   readonly flameOnset: number;
+  readonly flameJitter: number;
 }
 
-/** Where a house's first flame lights, a little past half its health. Tuned by eye. */
+/** Where a house's first flame lights, a little past half its health, and how much one house's flames
+ *  lag another's. Tuned by eye. */
 const HOUSE_FLAME_ONSET = 3.4;
+const HOUSE_FLAME_JITTER = 0.2;
 const PERCENT = 100;
 
 export const BUILDING_DAMAGE_STYLE: DamageEffectStyle = {
@@ -41,6 +44,7 @@ export const BUILDING_DAMAGE_STYLE: DamageEffectStyle = {
   chips: 8,
   smoke: 1,
   flameOnset: HOUSE_FLAME_ONSET,
+  flameJitter: HOUSE_FLAME_JITTER,
 };
 /** The look with the damage setting off: one thin plume. */
 export const PLAIN_DAMAGE_STYLE: DamageEffectStyle = {
@@ -51,6 +55,7 @@ export const PLAIN_DAMAGE_STYLE: DamageEffectStyle = {
   chips: 0,
   smoke: 1,
   flameOnset: HOUSE_FLAME_ONSET,
+  flameJitter: HOUSE_FLAME_JITTER,
 };
 /** A ship burns like a house under fewer, thinner plumes, lit where the sim sets its hull afire. Tuned
  *  by eye. */
@@ -62,6 +67,8 @@ export const SHIP_DAMAGE_STYLE: DamageEffectStyle = {
   chips: 6,
   smoke: 1,
   flameOnset: damageLevel(systems.SHIP_FIRE_HEALTH_PERCENT / PERCENT),
+  // No lag: the flame lights the moment the hull starts to burn.
+  flameJitter: 0,
 };
 /** A cart or a catapult splinters and never burns; its one thin plume is denser so it still reads.
  *  Tuned by eye. */
@@ -73,6 +80,7 @@ export const LAND_VEHICLE_DAMAGE_STYLE: DamageEffectStyle = {
   chips: 5,
   smoke: 1.8,
   flameOnset: HOUSE_FLAME_ONSET,
+  flameJitter: HOUSE_FLAME_JITTER,
 };
 
 /** Puffs a plume draws below {@link DETAIL_ZOOM}. */
@@ -179,7 +187,7 @@ export class DamageEffects {
       const flame = this.flames[i];
       if (flame === undefined) continue;
       const origin = origins[i];
-      const onset = style.flameOnset + i * 0.55 + noise(origin?.seed ?? this.seed, 110) * 0.2;
+      const onset = style.flameOnset + i * 0.55 + noise(origin?.seed ?? this.seed, 110) * style.flameJitter;
       const weight = zoom >= DETAIL_ZOOM || i === 0 ? clamp01((level - onset) / 0.75) : 0;
       this.flameWeights[i] = weight;
       flame.visible = weight > 0 && origin !== undefined;

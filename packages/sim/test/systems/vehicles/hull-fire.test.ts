@@ -113,12 +113,15 @@ describe('hull fire', () => {
     expect(s.world.get(catapult, Health).hitpoints).toBe(1);
   });
 
-  it('sinks a ship the fire burns out', () => {
+  it('sinks a ship the fire burns out on the tick it burns out', () => {
     const s = sim();
     const ship = vehicleAt(s, SHIP, SEA_NODE, SHIP_FIRE_DAMAGE_PER_SECOND);
 
-    s.run(TICKS_PER_SECOND + 1);
-
+    for (let i = 0; i <= TICKS_PER_SECOND && s.world.isAlive(ship); i++) {
+      s.step();
+      // Cleanup runs after the fire, so a hull it empties never outlives the tick.
+      if (s.world.isAlive(ship)) expect(s.world.get(ship, Health).hitpoints).toBeGreaterThan(0);
+    }
     expect(s.world.isAlive(ship)).toBe(false);
   });
 });

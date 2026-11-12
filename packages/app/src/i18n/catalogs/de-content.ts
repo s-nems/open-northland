@@ -454,7 +454,7 @@ export const deContent = {
     'vehicle-damage': {
       title: 'Beschädigte und zerstörte Fahrzeuge',
       summary:
-        'Katapulte und Schiffe stehen mit sinkender Gesundheit da: die Rümpfe sind zerschlagen und rauchen, die Schiffe fangen gegen Ende Feuer, die Katapulte rauchen nur leicht. Jenseits der Meerenge erledigen feindliche Bogenschützen ein Schiff und ein Katapult: das Schiff brennt und geht unter, das Katapult zerfällt in etwas Staub.',
+        'Katapulte und Schiffe stehen mit sinkender Gesundheit da: die Rümpfe sind zerschlagen und rauchen, die Schiffe fangen gegen Ende Feuer und brennen in etwa einer Minute von selbst nieder, die Katapulte rauchen nur leicht. Jenseits der Meerenge erledigen feindliche Bogenschützen ein Schiff und ein Katapult: das Schiff brennt und geht unter, das Katapult zerfällt in etwas Staub.',
     },
     'vehicle-ship-archers': {
       title: 'Bogenschützen an Deck',
