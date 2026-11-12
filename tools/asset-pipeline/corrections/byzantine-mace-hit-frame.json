@@ -1,7 +1,7 @@
 {
   "reason": "Bizantyjski wojownik z długim mieczem gra animację ataku z buzdyganem (human_man_Warrior_Broadsword_attack2), w której buzdygan dotyka celu na rysowanej klatce 16, a na klatce 23 jest już za plecami. Zdarzenie z klatki N rysuje się z klatką N+1, więc trafienie w chwili kontaktu to zdarzenie na klatce 15. Mod wpisał Bizantyjczykom klatkę 23, wziętą z animacji szabli, więc cios i jego dźwięk przychodziły około 0,6 s po kontakcie. Przenosimy zdarzenie ataku na klatkę 15. Decyzja właściciela.",
   "file": "rules/atomic-animations/atomicanimations.ini",
-  "sha256": "f32993934b88a9c48d40684bc9871a35bc684c77d5b0f9f4b07e87b6a3a94550",
+  "sha256": "070e7c764b172f8ab0037f6d40fb6dc796d29d5196985409918eec756a1b1d87",
   "lines": [
     {
       "section": "name \"byzantine_soldier_attack_sword_long\"",
