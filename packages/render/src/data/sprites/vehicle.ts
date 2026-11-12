@@ -1,4 +1,4 @@
-import { VEHICLE_SHOT_SETTLE_TICKS } from '@open-northland/sim';
+import { systems } from '@open-northland/sim';
 import type { DrawItem } from '../scene/draw-item.js';
 import type { BuildingDraw } from './layered-bindings.js';
 import { atomicFrame, DEFAULT_FACING, frameOf } from './settler.js';
@@ -17,13 +17,13 @@ export function attackPhase(tick: number, clipStart?: number, period: number = V
 }
 
 /** The tick of the attack clip to draw at `phase` of its `period`: the first frame while the vehicle
- *  settles before its shot (the sim holds the stone back by {@link VEHICLE_SHOT_SETTLE_TICKS}), then the
+ *  settles before its shot (the sim holds the stone back by `VEHICLE_SHOT_SETTLE_TICKS`), then the
  *  whole clip over the rest of the period, so the throw meets the stone. */
 export function attackClipTick(phase: number, period: number): number {
-  const play = period - VEHICLE_SHOT_SETTLE_TICKS;
+  const play = period - systems.VEHICLE_SHOT_SETTLE_TICKS;
   if (play <= 1) return phase;
-  if (phase < VEHICLE_SHOT_SETTLE_TICKS) return 0;
-  return Math.floor(((phase - VEHICLE_SHOT_SETTLE_TICKS) * (period - 1)) / (play - 1));
+  if (phase < systems.VEHICLE_SHOT_SETTLE_TICKS) return 0;
+  return Math.floor(((phase - systems.VEHICLE_SHOT_SETTLE_TICKS) * (period - 1)) / (play - 1));
 }
 
 /** The ticks one shot of `attack` spans: the clip length its frame lists stretch over. */

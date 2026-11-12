@@ -29,10 +29,10 @@ import type { SceneDefinition } from '../types.js';
 
 /**
  * A battery's attack-move on a defended village: three crewed catapults march on a spot behind the
- * enemy palisade. A line of swordsmen stands inside their band, archers stand behind the line and a
+ * enemy palisade. Swordsmen stand inside their band on the flanks, archers stand farther back and a
  * tower behind the wall, both past the band, with a sparse wood in between. The catapults roll up to the
- * archers, then to the tower, rather than stone the swordsmen in reach, and each fires from a spot of its own,
- * none left standing in a gap between the trees.
+ * archers, then to the tower, rather than stone the swordsmen in reach, and each fires from a spot of
+ * its own, none left standing in a gap between the trees.
  */
 
 const MAP_W = 50;

@@ -569,9 +569,9 @@ describe('catapult stances and scans', () => {
         s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle, stance }));
       }
       const shooters = new Set<Entity>();
-      let firstDrove = false;
+      const drove = new Set<Entity>();
       const refused = collect(s, 400, ['vehicleMoveRefused'], () => {
-        firstDrove ||= s.world.has(first, VehicleDrive);
+        for (const v of [first, second]) if (s.world.has(v, VehicleDrive)) drove.add(v);
         const a = anchorOf(s, first);
         const b = anchorOf(s, second);
         // Two discs of this radius share no cell past this distance: the bodies do not touch.
@@ -580,10 +580,30 @@ describe('catapult stances and scans', () => {
         if (touching) expect(firing.length).toBeLessThan(2);
         for (const ev of s.events.current()) if (ev.kind === 'projectileLaunched') shooters.add(ev.shooter);
       });
-      expect(firstDrove).toBe(false); // the lower entity keeps the spot
+      expect(drove.size).toBe(1); // one keeps the spot and fires from it
       expect(shooters.size).toBe(2);
       expect(refused).toEqual([]); // the other leaves for a spot of its own, so its drive is not turned back
     }
+  });
+
+  it('fires beside a catapult nobody crews: an idle hull takes no spot', () => {
+    const s = sim(grass(40, 12));
+    const hull = createVehicle(s.world, ctxOf(s), {
+      vehicleType: CATAPULT,
+      x: 7,
+      y: 9,
+      tribe: VIKING,
+      owner: P1,
+    });
+    expect(hull).not.toBeNull();
+    const catapult = catapultAt(s, 6, 8, P1);
+    houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    let drove = false;
+    const launched = collect(s, 2 * VEHICLE_ATTACK_CLIP_TICKS, ['projectileLaunched'], () => {
+      drove ||= s.world.has(catapult, VehicleDrive);
+    });
+    expect(drove).toBe(false);
+    expect(launched.length).toBeGreaterThanOrEqual(2);
   });
 
   it('keeps firing from its spot when another catapult drives into it', () => {

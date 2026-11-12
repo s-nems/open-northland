@@ -784,6 +784,9 @@ function keepMarchRoute(world: World, vehicle: Entity): void {
   if (march === null || drive === undefined || route === undefined) return;
   if (drive.goal.hx !== march.goal.hx || drive.goal.hy !== march.goal.hy) return;
   if (drive.step >= route.nodes.length) return;
+  // A route a fight already cut short no longer leads to the goal: the rest it kept then stands.
+  const end = route.nodes[route.nodes.length - 1];
+  if (end === undefined || end.hx !== march.goal.hx || end.hy !== march.goal.hy) return;
   const kept = { goal: { hx: march.goal.hx, hy: march.goal.hy }, nodes: route.nodes.slice(drive.step) };
   if (world.has(vehicle, VehicleMarchRoute)) {
     const live = world.mut(vehicle, VehicleMarchRoute);

@@ -54,8 +54,9 @@ export type VehicleScanResult = VehicleAttackTarget | null | 'pressed';
  * The stance's scan. The band comes first: the best-ranked valid, seen enemy the weapon reaches from where
  * the vehicle stands (`hold`: from its guard position), the nearest within its rank. `hold` looks no
  * further. Outside it, with no military target or shooter in the band, one up to
- * {@link VEHICLE_PRIORITY_REACH_POINTS} past it wins over a lesser one inside it and over a crowd at its side, `defence` taking one only
- * within the scan radius of its guard position, so a run of such pulls never walks it off its leash. With
+ * {@link VEHICLE_PRIORITY_REACH_POINTS} past it wins over a lesser one inside it and over a crowd at its
+ * side, `defence` taking one only within the scan radius of its guard position, so a run of such pulls
+ * never walks it off its leash. With
  * nothing in the band the vehicle stands `pressed` among {@link PRESSING_ENEMIES} enemies inside the near
  * reach, else takes the nearest enemy out to the scan radius, `attack` around itself and `defence` around
  * its guard position (original behavior). Each find gives way to a held target no farther, of its rank

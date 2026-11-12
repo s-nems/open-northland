@@ -77,7 +77,7 @@ const SCATTER_DISTANCE_DIVISOR = 4;
  *  the choice spans more than one pocket between obstacles. */
 const FIRING_SPOT_CHOICES = 4;
 const FIRING_SPOT_SPREAD_POINTS = 6;
-/** How often a vehicle that must leave another's disc to fire, and found no spot, looks again. */
+/** How often a vehicle touching another judges whether the shot is its own and looks for a free spot. */
 const FIRING_SPOT_RETRY_TICKS = TICKS_PER_SECOND;
 
 /**
@@ -331,8 +331,7 @@ function actOnTarget(
   }
   if (world.has(e, VehicleDrive)) return; // the chase leg under way ends before the next judgement
   if (stacked) {
-    // Staggered by entity, so a waiting battery does not search on one tick.
-    if ((ctx.tick + e) % FIRING_SPOT_RETRY_TICKS !== 0) return;
+    if (!onFiringSpotBeat(ctx, e)) return;
     const spots = firingNodes(world, ctx, terrain, e, here, targetNode, [weapon.minRange, weapon.maxRange]);
     startVehicleDriveToNearest(world, ctx, terrain, e, spots);
     return;
@@ -356,11 +355,12 @@ function actOnTarget(
 }
 
 /**
- * Whether `e`, standing in range, leaves the shot to a vehicle whose disc shares a cell with its own: one
- * in its attack clip, or, while neither fires, the lower entity that holds a target with its crew
- * aboard. `firedHere` says `e` itself fired from here until this tick, which only a clip under way
- * outranks, so the vehicle that stood first keeps firing when another drives into it. A vehicle under
- * way, an unarmed one and one that cannot fire take no spot.
+ * Whether `e`, standing in range, leaves the shot to a vehicle whose disc shares a cell with its own and
+ * that is in its attack clip, so the one already firing keeps firing when another drives into it. Only
+ * a standing vehicle with its crew aboard plays a clip, so one under way, unarmed or uncrewed takes no
+ * spot. `firedHere` says `e` itself fired from here until this tick and is judged at once; any other
+ * touching vehicle yields until its own beat, staggered by entity, so the walk over every vehicle runs
+ * once a clip for a firing vehicle and once a beat for a waiting one.
  */
 function yieldsFiringSpot(
   world: World,
@@ -371,23 +371,25 @@ function yieldsFiringSpot(
   firedHere: boolean,
 ): boolean {
   if (!touchesAnotherVehicle(world, ctx, terrain, e, type)) return false;
+  if (!firedHere && !onFiringSpotBeat(ctx, e)) return true;
   const anchor = vehicleAnchor(world, e);
   if (anchor === null) return false;
   const types = contentIndex(ctx.content).vehicles;
   for (const other of world.query(Vehicle, Position)) {
     if (other === e || world.has(other, VehicleDrive)) continue;
     const state = world.get(other, Vehicle);
-    if (state.attackClipStart === null) {
-      if (firedHere || other > e || state.attack === null) continue;
-      if (!crewInside(state) || vehicleCommander(state) === null || vehicleWeapon(ctx, state) === null)
-        continue;
-    }
+    if (state.attackClipStart === null) continue;
     const centre = vehicleAnchor(world, other);
     const otherType = types.get(state.vehicleType);
     if (centre === null || otherType === undefined) continue;
     if (hexDistance(anchor, centre) <= type.logicSize + otherType.logicSize) return true;
   }
   return false;
+}
+
+/** The tick on which a vehicle touching another judges its neighbours and looks for a spot of its own. */
+function onFiringSpotBeat(ctx: SystemContext, e: Entity): boolean {
+  return (ctx.tick + e) % FIRING_SPOT_RETRY_TICKS === 0;
 }
 
 /** The node a shot is aimed at and the distance is measured to: a unit's own node, the nearest body
