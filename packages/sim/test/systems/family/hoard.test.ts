@@ -88,7 +88,7 @@ function hoardSim(): { sim: Simulation; woman: Entity; home: Entity; buried: Ent
   const woman = [...sim.world.query(Settler)][0];
   const home = [...sim.world.query(Building)].find((e) => sim.world.get(e, Building).buildingType === HOME);
   if (woman === undefined || home === undefined) throw new Error('setup: woman or home missing');
-  sim.world.add(woman, Residence, { home });
+  sim.world.add(woman, Residence, { home, since: 0 });
   const buried = sim.world.create();
   sim.world.add(buried, Position, positionOfNode(BURIED_X, ROW));
   sim.world.add(buried, Stockpile, { amounts: new Map([[FOOD, 1]]) });
