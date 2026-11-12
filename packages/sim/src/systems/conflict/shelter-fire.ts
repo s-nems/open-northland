@@ -311,6 +311,8 @@ function shoot(
     player: owner,
     weapon: flight,
     weaponMainType: null, // a building earns no fight experience
+    // A building has no attack clip: its shot stands for one occupant's share of its fire.
+    blowTicks: SHELTER_SHOT_PERIOD_TICKS,
     cover: building,
     aim:
       landing === mark && !world.has(target, Building)

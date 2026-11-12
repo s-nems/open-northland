@@ -117,7 +117,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Skąd się bierze',
         },
         {
-          p: 'Każdy cios lub strzał, który zadał obrażenia, daje 1 pkt, tak samo pięścią i każdą bronią. Strzały [[job:hunter|Myśliwego]] też się liczą. Doświadczenie zostaje po zmianie broni i zawodu.',
+          p: 'Punkty liczą się od czasu ciosu, który zadał obrażenia. Cios wręcz daje {{combat.fightMeleePerSecond}} pkt za każdą sekundę zamachu, a strzał {{combat.fightShotPerSecond}} pkt za każdą sekundę naciągania cięciwy, więc wolna broń zbiera punkty w tym samym tempie co szybka, a łuk na sekundę daje mniej. Liczy się też cios przyjęty: kogo zrani ktokolwiek, człowiek, zwierzę, wieża czy katapulta, ten dostaje {{combat.fightTakenPerSecond}} pkt za każdą sekundę ciosu napastnika. Pięść i każda broń liczą się tak samo, strzały [[job:hunter|Myśliwego]] też. Doświadczenie zostaje po zmianie broni i zawodu.',
         },
         {
           p: 'Musztra: każdy uzbrojony żołnierz ćwiczy w twoich [[building:barracks|Koszarach]], jeśli leżą w nich monety. Każde powtórzenie zabiera jedną [[good:coin|Monetę]] i daje {{coinDrill.points}} pkt. Kto ma {{coinDrill.limit}} pkt lub więcej, już nie ćwiczy, resztę zdobywa w walce. Zaznacz żołnierzy i kliknij prawym przyciskiem własne Koszary. Idzie tylu, ile Koszary mają wolnych monet, najbliżsi najpierw; reszta zostaje na miejscu.',

@@ -10,8 +10,8 @@ import {
   dealtDamageFactor,
   FIGHT_EXPERIENCE_FACTOR_SCALE,
   fightExperienceTakenFactor,
-  fightPointsWith,
-  settlerFightPoints,
+  fightUnitsWith,
+  settlerFightUnits,
 } from '../../progression/bonus.js';
 import {
   ARMOR_MATERIAL,
@@ -193,13 +193,13 @@ function fighterBuffsOf(
 ): FighterBuffs {
   const effects = carriedCombatEffects(world, content, e);
   const experience = world.tryGet(e, SettlerProgress)?.experience;
-  const dealtPoints =
+  const dealtUnits =
     experience === undefined || weapon === null || isRangedWeapon(weapon)
       ? 0
-      : fightPointsWith(experience, weapon.mainType);
+      : fightUnitsWith(experience, weapon.mainType);
   // Our rule, as a blow lands: the experience and the amulet raises add.
   let dealtPct = Math.trunc(
-    (PERCENT * dealtDamageFactor(dealtPoints, effects.damageDealtPct)) / FIGHT_EXPERIENCE_FACTOR_SCALE,
+    (PERCENT * dealtDamageFactor(dealtUnits, effects.damageDealtPct)) / FIGHT_EXPERIENCE_FACTOR_SCALE,
   );
   const critical = effects.criticalHit;
   if (critical !== undefined) {
@@ -214,7 +214,7 @@ function fighterBuffsOf(
       ? HUMAN_HITPOINTS
       : health.hitpoints + healingReserveOf(world, content, e, health.max);
   const takenPct = Math.floor(
-    ((effects.damageTakenPct ?? PERCENT) * fightExperienceTakenFactor(settlerFightPoints(world, e))) /
+    ((effects.damageTakenPct ?? PERCENT) * fightExperienceTakenFactor(settlerFightUnits(world, e))) /
       FIGHT_EXPERIENCE_FACTOR_SCALE,
   );
   return { dealtPct, takenPct, hitpoints };

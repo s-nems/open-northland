@@ -56,7 +56,10 @@ import { VEHICLE_PRIORITY_REACH_POINTS } from '../../../src/systems/conflict/veh
 import { stampResourceFootprintData } from '../../../src/systems/footprint/index.js';
 import { REGENERATION_HITPOINTS_PER_TICK } from '../../../src/systems/lifecycle/needs/index.js';
 import { vehiclesGone } from '../../../src/systems/missions/goals/casualties.js';
-import { FIGHT_EXPERIENCE_FULL, FIGHT_EXPERIENCE_TYPE } from '../../../src/systems/progression/index.js';
+import {
+  FIGHT_EXPERIENCE_FULL_UNITS,
+  FIGHT_EXPERIENCE_TYPE,
+} from '../../../src/systems/progression/index.js';
 import { ARMOR_MATERIAL, MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { resolveCombatHit } from '../../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { boardRider, createVehicle } from '../../../src/systems/vehicles/index.js';
@@ -1578,6 +1581,7 @@ describe('the ground burst', () => {
       damage: Object.fromEntries(ALL_MATERIALS.map((m) => [String(m), CATAPULT_VS_HOUSE])),
       hitSounds: {},
       weaponMainType: CATAPULT_MAIN_TYPE,
+      blowTicks: 0,
       missSounds: {},
       munitionType: 0,
       hitSelf: true,
@@ -1739,7 +1743,7 @@ describe('vehicles as targets', () => {
     const soldier = fighterAt(s, 6, 4, P1);
     s.world
       .mut(soldier, SettlerProgress)
-      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL);
+      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL_UNITS);
     const target = createVehicle(s.world, ctxOf(s), {
       vehicleType: CATAPULT,
       x: 7,

@@ -39,7 +39,9 @@ const settler = (id: number, jobType: number | null, site?: number, fightPoints 
   id,
   components: {
     Settler: { tribe: PRIMARY_TRIBE, jobType },
-    SettlerProgress: { experience: [[systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, fightPoints]] },
+    SettlerProgress: {
+      experience: [[systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(fightPoints)]],
+    },
     Owner: { player: HUMAN_PLAYER },
     Position: { x: ONE, y: ONE },
     ...(site === undefined ? {} : { SiteAssignment: { site } }),

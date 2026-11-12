@@ -67,7 +67,7 @@ const boxed: SnapshotEntity[] = [];
  * Each on-screen person's stars, ascending by id. Only units standing in `box` are read; no box reads
  * the whole map. Original behavior (reading, unconfirmed against the running original):
  * - every soldier, whoever owns him, wears a star for his personal fight experience (our rule: one
- *   counter for every weapon, full at a hundred landed hits);
+ *   counter for every weapon, full at a hundred points earned by blow time);
  * - the player's own selected people wear a second star for experience in their trade.
  * Approximation: the trade star reads the best of the trade's tracks, where the original reads its
  * job-efficiency factor.

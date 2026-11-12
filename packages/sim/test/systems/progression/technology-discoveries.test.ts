@@ -18,6 +18,7 @@ import {
   buildingEnabled,
   FIGHT_EXPERIENCE_FULL,
   FIGHT_EXPERIENCE_TYPE,
+  fightUnitsOfPoints,
   goodEnabled,
   grantWorkExperience,
   jobEnabled,
@@ -139,11 +140,11 @@ describe('player technology discoveries', () => {
     const BOW_HITS = 150;
     const lines = [{ track: SPEAR_BUCKET, amount: SPEAR_HITS }];
     expect(startingExperience(sim.content, WOODCUTTER, lines)).toEqual([
-      [FIGHT_EXPERIENCE_TYPE.PERSONAL, SPEAR_HITS],
+      [FIGHT_EXPERIENCE_TYPE.PERSONAL, fightUnitsOfPoints(SPEAR_HITS)],
     ]);
     const capped = [...lines, { track: BOW_BUCKET, amount: BOW_HITS }];
     expect(startingExperience(sim.content, WOODCUTTER, capped)).toEqual([
-      [FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL],
+      [FIGHT_EXPERIENCE_TYPE.PERSONAL, fightUnitsOfPoints(FIGHT_EXPERIENCE_FULL)],
     ]);
   });
 

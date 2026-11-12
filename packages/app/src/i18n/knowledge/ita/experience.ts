@@ -122,7 +122,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Da dove viene',
         },
         {
-          p: "Ogni colpo o tiro che ha inflitto danni dà 1 punto, allo stesso modo con i pugni e con ogni arma. Contano anche i tiri del [[job:hunter|cacciatore]]. L'esperienza resta dopo un cambio d'arma o di professione.",
+          p: "I punti vengono dalla durata di un colpo che infligge danni. Un colpo in mischia dà {{combat.fightMeleePerSecond}} punti per ogni secondo del fendente e un tiro {{combat.fightShotPerSecond}} punti per ogni secondo della tensione dell'arco, quindi un'arma lenta guadagna veloce quanto una rapida e un arco dà meno al secondo. Conta anche il colpo subito: chi viene ferito da chiunque, uomo, animale, torre o catapulta, riceve {{combat.fightTakenPerSecond}} punti per ogni secondo del colpo dell'attaccante. Pugni e ogni arma contano allo stesso modo, anche i tiri del [[job:hunter|cacciatore]]. L'esperienza resta dopo un cambio d'arma o di professione.",
         },
         {
           p: 'Esercitazione: ogni soldato armato si esercita nella tua [[building:barracks|caserma]] se vi sono monete. Ogni ripetizione prende una [[good:coin|Moneta]] e dà {{coinDrill.points}} punti. Chi ha {{coinDrill.limit}} punti o più non si esercita più e guadagna il resto in battaglia. Seleziona i soldati e fai clic destro sulla tua caserma. Partono solo tanti soldati quante sono le monete libere della caserma, i più vicini per primi; gli altri restano dove sono.',

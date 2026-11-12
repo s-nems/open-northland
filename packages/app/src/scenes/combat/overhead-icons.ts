@@ -27,7 +27,9 @@ const { Health, SettlerProgress } = components;
 
 function placeSoldier(sim: Simulation, x: number, hits: number): Entity {
   const soldier = spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, x, ROW_Y, HUMAN_PLAYER);
-  sim.world.mut(soldier, SettlerProgress).experience.set(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, hits);
+  sim.world
+    .mut(soldier, SettlerProgress)
+    .experience.set(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(hits));
   return soldier;
 }
 

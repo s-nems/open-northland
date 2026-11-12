@@ -77,6 +77,9 @@ export interface ExperienceRowModel {
 }
 
 const PERCENT = 100;
+/** A blow large enough that the fight counter's cut on it reads to a whole percent, truncated like its
+ *  raise, rather than to the one-hitpoint step a 100 blow would show. */
+const FIGHT_CUT_PROBE = 10_000;
 
 /** A specialization row's label: the track's `hud.trackLabels` entry, keyed by its content slug, else
  *  the job's name for a general track and "job - good" for a good-specific one. */
@@ -98,47 +101,56 @@ export function experienceLabel(
 }
 
 /** A specialization row's percent is the effect that experience actually buys, not a raw curve read: a
- *  carrier track buys none. */
+ *  carrier track buys none. `raw` is the bucket's stored value; the fight counter's is in its fine units. */
 function experienceBonusPct(
   ctx: UnitPanelModelContext,
   spec: number,
   track: JobExperienceDef | undefined,
-  points: number,
+  raw: number,
 ): number | null {
   if (spec === systems.FIGHT_EXPERIENCE_TYPE.PERSONAL) {
-    return systems.withFightExperience(PERCENT, points) - PERCENT;
+    return systems.withFightExperience(PERCENT, raw) - PERCENT;
   }
   if (track === undefined && WEAPON_XP_KEY_BY_TYPE.has(spec)) return null; // the catapult's buys aim
   if (track !== undefined && isCarrierJob(ctx, track.jobType)) return null;
-  return systems.experiencePercent(systems.experiencePoints(points));
+  return systems.experiencePercent(systems.experiencePoints(raw));
+}
+
+/** The whole percent the personal fight counter's stored `units` take off a blow, truncated. */
+function fightCutPct(units: number): number {
+  const taken = systems.withTakenBonuses(FIGHT_CUT_PROBE, units);
+  return Math.trunc(((FIGHT_CUT_PROBE - taken) * PERCENT) / FIGHT_CUT_PROBE);
 }
 
 /**
  * The Experience rows: the current trade's tracks first, each group most-trained first, off the
  * settler's `SettlerProgress.experience` map (`humanjobexperiencetypes` id → raw points). Raw points are
  * shown as completed-work repeats, dividing the track's accrual rate back out; a track-less bucket
- * (fight) shows raw points and belongs to the fighter trades. A general track that only repeats one
- * good's track is left out.
+ * (fight) belongs to the fighter trades and shows its points, the personal counter's whole. A general
+ * track that only repeats one good's track is left out.
  */
 export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): ExperienceRowModel[] {
   const jobType = num((comps.Settler as { jobType?: unknown } | undefined)?.jobType);
   const job = ctx.jobs.find((j) => j.typeId === jobType);
   const fights = job !== undefined && (systems.isFighterJobRow(job) || systems.isHeroJobRow(job));
   const rows: (ExperienceRowModel & { spec: number })[] = [];
-  for (const [spec, points] of settlerExperienceOf(comps)) {
+  const experience = settlerExperienceOf(comps);
+  for (const [spec, points] of experience) {
     if (points <= 0) continue;
     const track = ctx.jobExperience.find((t) => t.typeId === spec);
-    const repeats = track !== undefined ? systems.experienceRepeats(points, track) : points;
+    const personal = spec === systems.FIGHT_EXPERIENCE_TYPE.PERSONAL;
+    const repeats = personal
+      ? systems.personalFightPoints(experience)
+      : track !== undefined
+        ? systems.experienceRepeats(points, track)
+        : points;
     if (repeats <= 0) continue; // partial credit toward the first repeat - nothing to show yet
     const own = track !== undefined ? track.jobType === jobType : WEAPON_XP_KEY_BY_TYPE.has(spec) && fights;
     rows.push({
       label: experienceLabel(ctx, spec, track),
       repeats,
       bonusPct: experienceBonusPct(ctx, spec, track, points),
-      takenCutPct:
-        spec === systems.FIGHT_EXPERIENCE_TYPE.PERSONAL
-          ? PERCENT - systems.withTakenBonuses(PERCENT, points)
-          : null,
+      takenCutPct: personal ? fightCutPct(points) : null,
       own,
       spec,
     });

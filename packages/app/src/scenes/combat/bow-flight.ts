@@ -39,7 +39,7 @@ function build(sim: Simulation): void {
     const archer = spawnSettlerDirect(sim, JOB_ARCHER, lane.archer.x, lane.archer.y, HUMAN_PLAYER);
     sim.world
       .mut(archer, SettlerProgress)
-      .experience.set(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, MARKSMAN_BOW_HITS);
+      .experience.set(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(MARKSMAN_BOW_HITS));
     sim.enqueueSetup({ kind: 'attackUnit', entity: archer, target });
   }
 }

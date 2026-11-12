@@ -137,9 +137,10 @@ describe('breakdown', () => {
     if (bare === undefined) throw new Error('no bare target');
     const blow = { ...(modifiers[0] as BlowModifiers), targetHits: CAP_HITS };
     const plain = landed(row(), bare);
-    expect(landed(row(), bare, blow)).toBe(systems.withTakenBonuses(plain, CAP_HITS));
+    const full = systems.fightUnitsOfPoints(CAP_HITS);
+    expect(landed(row(), bare, blow)).toBe(systems.withTakenBonuses(plain, full));
     expect(landed(row(), bare, { ...blow, defense: true })).toBe(
-      systems.withTakenBonuses(plain, CAP_HITS, DEFENSE_TAKEN_PCT),
+      systems.withTakenBonuses(plain, full, DEFENSE_TAKEN_PCT),
     );
   });
 });

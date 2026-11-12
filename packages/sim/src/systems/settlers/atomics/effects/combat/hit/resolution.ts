@@ -25,11 +25,16 @@ import { raiseHitAlarm } from '../../../../../conflict/hit-alarm.js';
 import { noteOffence } from '../../../../../conflict/offenders.js';
 import { combatTargetNode } from '../../../../../conflict/target-node.js';
 import { isStructureTarget } from '../../../../../conflict/targeting.js';
+import { attackClipTiming } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
 import { markStructureDamaged } from '../../../../../economy/repair.js';
 import { woundBearer } from '../../../../../equipment/index.js';
 import { ownersAtPeace } from '../../../../../match/peace.js';
-import { fightPointsWith, grantFightExperience } from '../../../../../progression/index.js';
+import {
+  fightUnitsWith,
+  grantBlowTakenExperience,
+  grantFightExperience,
+} from '../../../../../progression/index.js';
 import { hexNodeDistance } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 import { atomicClipSounds, type SoundingAtomic } from '../../../sound-cue.js';
@@ -76,10 +81,12 @@ export function resolveAttackHit(
  *  bucket, and the impact sound the weapon lists for the victim's material. `from` is where the blow
  *  comes from, which a person's hit direction reads: a shot's release point, or the striker's own
  *  position when absent. `vehicleShot` marks a vehicle's stone, which the commander's amulets do not
- *  raise. */
+ *  raise. `blowTicks` is a shot's attack cadence (`Projectile.blowTicks`); a melee blow reads its striker's
+ *  attack clip instead. */
 export interface LandingBlow {
   readonly damage: number;
   readonly vehicleShot?: boolean;
+  readonly blowTicks?: number;
   readonly weaponMainType?: number | null;
   readonly hitSoundType?: number | null;
   readonly from?: { readonly x: Fixed; readonly y: Fixed };
@@ -150,7 +157,7 @@ export function resolveCombatHit(
   const weaponMainType = blow.weaponMainType ?? undefined;
   // A melee blow draws on its striker's fight experience as it lands; a shot draws on none.
   const experience = source === 'melee' ? world.tryGet(attacker, SettlerProgress)?.experience : undefined;
-  const fightPoints = experience === undefined ? 0 : fightPointsWith(experience, weaponMainType);
+  const fightUnits = experience === undefined ? 0 : fightUnitsWith(experience, weaponMainType);
   const damage = landedDamage(
     world,
     ctx,
@@ -159,7 +166,7 @@ export function resolveCombatHit(
     blow.damage,
     from,
     blow.vehicleShot !== true,
-    fightPoints,
+    fightUnits,
   );
   // A blow counts as damaging by its damage value, so an overkill still earns fight experience. Original
   // behavior: a blow that does no damage is silent, earns nothing and is no attack on the victim's side.
@@ -211,9 +218,15 @@ export function resolveCombatHit(
   if (dealtDamage && source !== 'collateral' && world.has(target, Person)) {
     recordPlayerAttack(world, ownerOf(world, target), ownerOf(world, attacker));
   }
-  // A shot grants its experience once for all it strikes (`projectileSystem`).
-  if (dealtDamage && source === 'melee') grantFightExperience(world, ctx, attacker, weaponMainType);
-  if (world.get(target, Health).hitpoints <= 0) {
+  // Fight experience is earned by blow time. A shot grants its striker's once for all it strikes
+  // (`projectileSystem`); a person who survives a damaging blow earns from it, whoever struck it.
+  const survives = world.get(target, Health).hitpoints > 0;
+  if (dealtDamage) {
+    const blowTicks = source === 'melee' ? meleeClipTicks(world, ctx, attacker) : (blow.blowTicks ?? 0);
+    if (source === 'melee') grantFightExperience(world, ctx, attacker, weaponMainType, 'melee', blowTicks);
+    if (survives && world.has(target, Person)) grantBlowTakenExperience(world, ctx, target, blowTicks);
+  }
+  if (!survives) {
     spawnCarcasses(world, ctx, attacker, target);
     // Only humans are counted: a hunted animal and a razed house belong to no kill tally a goal reads.
     if (world.has(target, Person)) recordHumanKill(world, ownerOf(world, attacker));
@@ -221,6 +234,12 @@ export function resolveCombatHit(
     collectHitReaction(world, ctx, target, pendingReactions); // applied after the caller's loop
   }
   return dealtDamage ? wound : null;
+}
+
+/** The length in ticks of a melee striker's attack clip, man or beast; 0 for a striker with no identity. */
+function meleeClipTicks(world: World, ctx: SystemContext, attacker: Entity): number {
+  const identity = world.tryGet(attacker, Settler);
+  return identity === undefined ? 0 : attackClipTiming(ctx.content, identity).length;
 }
 
 /** Whether a script or the map has made this target unharmable - a human's invulnerable bit, a house's

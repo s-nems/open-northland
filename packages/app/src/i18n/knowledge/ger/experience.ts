@@ -122,7 +122,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Woher sie kommt',
         },
         {
-          p: 'Jeder Schlag oder Schuss, der Schaden verursacht hat, bringt 1 Punkt, mit der Faust und mit jeder Waffe gleich. Die Schüsse des [[job:hunter|Jägers]] zählen auch. Die Erfahrung bleibt nach einem Waffen- oder Berufswechsel.',
+          p: 'Punkte bringt die Dauer eines Schlags, der Schaden verursacht hat. Ein Nahkampfschlag bringt {{combat.fightMeleePerSecond}} Punkte je Sekunde seines Ausholens und ein Schuss {{combat.fightShotPerSecond}} Punkte je Sekunde des Spannens, also lernt eine langsame Waffe so schnell wie eine flinke, und ein Bogen bringt pro Sekunde weniger. Auch ein erlittener Schlag zählt: Wer verwundet wird, ob von einem Menschen, einem Tier, einem Turm oder einem Katapult, bekommt {{combat.fightTakenPerSecond}} Punkte je Sekunde des gegnerischen Schlags. Faust und jede Waffe zählen gleich, die Schüsse des [[job:hunter|Jägers]] auch. Die Erfahrung bleibt nach einem Waffen- oder Berufswechsel.',
         },
         {
           p: 'Exerzieren: Jeder bewaffnete Soldat übt in deiner [[building:barracks|Kaserne]], wenn dort Münzen liegen. Jede Wiederholung kostet eine [[good:coin|Münze]] und bringt {{coinDrill.points}} Punkte. Wer {{coinDrill.limit}} Punkte oder mehr hat, exerziert nicht mehr und holt sich den Rest im Kampf. Wähle die Soldaten und klicke mit rechts auf deine eigene Kaserne. Es gehen nur so viele, wie die Kaserne freie Münzen hat, die nächsten zuerst; die übrigen bleiben stehen.',

@@ -52,6 +52,13 @@ const STONE_SAMPLE_HITS = [0, 25, 50] as const;
 /** The value the fight-experience table shows a blow of. */
 const SAMPLE_BLOW = 1000;
 
+/** Full fight experience in the counter's stored units, which the sim's raises read. */
+const CAP_UNITS = systems.fightUnitsOfPoints(CAP_HITS);
+
+/** A blow-time rate as points per second of attack clip. */
+const pointsPerSecond = (rate: { readonly points: number; readonly seconds: number }): number =>
+  rate.points / rate.seconds;
+
 /** `read` times `pct` percent, rounded down as a blow's percent is. */
 const scaledDown =
   (read: FactReader, pct: number) =>
@@ -136,11 +143,12 @@ const buildingHp = (base: KnowledgeBase, id: string, tribe: number = VIKING): Fa
 
 export const FIGHT_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
   FIGHT_SAMPLE_HITS.flatMap((hits) => {
-    const blow = systems.withFightExperience(SAMPLE_BLOW, hits);
+    const units = systems.fightUnitsOfPoints(hits);
+    const blow = systems.withFightExperience(SAMPLE_BLOW, units);
     return [
       [`fight.factor.${hits}`, twoDecimals(blow / SAMPLE_BLOW)],
       [`fight.blow.${hits}`, whole(blow)],
-      [`fight.taken.${hits}`, twoDecimals(systems.withTakenBonuses(SAMPLE_BLOW, hits) / SAMPLE_BLOW)],
+      [`fight.taken.${hits}`, twoDecimals(systems.withTakenBonuses(SAMPLE_BLOW, units) / SAMPLE_BLOW)],
     ];
   }),
 );
@@ -273,18 +281,21 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'longBow.standoff': standoff('long_bow'),
   'heroBow.standoff': standoff('hero_bow'),
   'combat.fightCapHits': whole(CAP_HITS),
-  'combat.fightCapFactor': twoDecimals(systems.withFightExperience(SAMPLE_BLOW, CAP_HITS) / SAMPLE_BLOW),
-  'combat.fightCapBlow': whole(systems.withFightExperience(SAMPLE_BLOW, CAP_HITS)),
+  'combat.fightCapFactor': twoDecimals(systems.withFightExperience(SAMPLE_BLOW, CAP_UNITS) / SAMPLE_BLOW),
+  'combat.fightCapBlow': whole(systems.withFightExperience(SAMPLE_BLOW, CAP_UNITS)),
   'combat.sampleBlow': whole(SAMPLE_BLOW),
   'combat.fightDealtPct': whole(systems.FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL),
   'combat.fightTakenPct': whole(systems.FIGHT_EXPERIENCE_TAKEN_PCT_AT_FULL),
-  'combat.fightTakenFactor': twoDecimals(systems.withTakenBonuses(SAMPLE_BLOW, CAP_HITS) / SAMPLE_BLOW),
+  'combat.fightTakenFactor': twoDecimals(systems.withTakenBonuses(SAMPLE_BLOW, CAP_UNITS) / SAMPLE_BLOW),
   'combat.fightStrengthFactor': twoDecimals(
-    systems.withDealtBonuses(SAMPLE_BLOW, CAP_HITS, STRENGTH_PCT) / SAMPLE_BLOW,
+    systems.withDealtBonuses(SAMPLE_BLOW, CAP_UNITS, STRENGTH_PCT) / SAMPLE_BLOW,
   ),
   'combat.fightDefenseFactor': twoDecimals(
-    systems.withTakenBonuses(SAMPLE_BLOW, CAP_HITS, DEFENSE_TAKEN_PCT) / SAMPLE_BLOW,
+    systems.withTakenBonuses(SAMPLE_BLOW, CAP_UNITS, DEFENSE_TAKEN_PCT) / SAMPLE_BLOW,
   ),
+  'combat.fightMeleePerSecond': twoDecimals(pointsPerSecond(systems.MELEE_BLOW_POINTS_RATE)),
+  'combat.fightShotPerSecond': twoDecimals(pointsPerSecond(systems.SHOT_POINTS_RATE)),
+  'combat.fightTakenPerSecond': twoDecimals(pointsPerSecond(systems.BLOW_TAKEN_POINTS_RATE)),
   'coinDrill.points': whole((base) => coinDrillPointsOf(base.content)),
   'coinDrill.limit': whole(systems.COIN_DRILL_LIMIT),
   'combat.backSideFactor': twoDecimals(HIT_DIRECTION.backSide / PERCENT),

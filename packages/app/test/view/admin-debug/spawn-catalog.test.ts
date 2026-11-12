@@ -173,7 +173,7 @@ describe('admin spawn command mapping', () => {
     }
     // The fighter's row names an old bucket nothing reads; the personal counter starts full instead.
     expect(xp.has(OLD_SWORD_BUCKET)).toBe(false);
-    expect(xp.get(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL)).toBe(systems.FIGHT_EXPERIENCE_FULL);
+    expect(xp.get(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL)).toBe(systems.FIGHT_EXPERIENCE_FULL_UNITS);
   });
 
   it('a wood resource resolves to a felled tree node', () => {

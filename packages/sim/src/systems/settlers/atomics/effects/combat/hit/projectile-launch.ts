@@ -27,7 +27,7 @@ import {
   shotLandDelay,
 } from '../../../../../conflict/shot-aim.js';
 import { buildingBodyNodes } from '../../../../../conflict/target-node.js';
-import type { MissileShot } from '../../../../../conflict/weapons.js';
+import { attackClipTiming, type MissileShot } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
 import { personalFightPoints } from '../../../../../progression/index.js';
 import { isHeroJob } from '../../../../../readviews/index.js';
@@ -41,6 +41,8 @@ export interface LooseShot {
   readonly player: number | null;
   readonly weapon: MissileShot;
   readonly weaponMainType: number | null;
+  /** The attack cadence in ticks the shot stands for (`Projectile.blowTicks`). */
+  readonly blowTicks: number;
   /** The defence-mode building that fires the shot itself, read only by the render. */
   readonly cover: Entity | null;
   readonly aim: { readonly x: Fixed; readonly y: Fixed };
@@ -85,12 +87,14 @@ export function looseSettlerShot(
   const release = world.tryGet(body, Position);
   if (release === undefined) return;
   const experience = world.tryGet(shooter, SettlerProgress)?.experience ?? new Map<number, number>();
+  const settler = world.tryGet(shooter, Settler);
   looseProjectile(world, ctx, {
     source: shooter,
     target,
     player: world.tryGet(shooter, Owner)?.player ?? null,
     weapon,
     weaponMainType,
+    blowTicks: settler === undefined ? 0 : attackClipTiming(ctx.content, settler).length,
     cover: null,
     aim: settlerAim(world, ctx, shooter, body, target, weapon.speed, experience, extraSpread),
     ...(body !== shooter ? { from: release } : {}),
@@ -153,6 +157,7 @@ export function looseProjectile(world: World, ctx: SystemContext, shot: LooseSho
     damage: { ...shot.weapon.damage },
     hitSounds: { ...shot.weapon.hitSounds },
     weaponMainType: shot.weaponMainType,
+    blowTicks: shot.blowTicks,
     missSounds: { ...shot.weapon.missSounds },
     munitionType: shot.weapon.munitionType,
     // Frozen at release: the render's ballistic-arc origin and the landing blow's direction.

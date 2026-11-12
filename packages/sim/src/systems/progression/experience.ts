@@ -12,6 +12,7 @@ import {
   SettlerProgress,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
+import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { WEAPON_MAIN_TYPE } from '../readviews/combat.js';
@@ -98,8 +99,8 @@ function accrueTrack(world: World, settler: Entity, track: HumanJobExperienceTyp
 /**
  * A placed settler's starting experience as a `spawnSettler` payload: each `(track, repeats)` line in the
  * factor-scaled encoding, a repeated track summed under its cap. A track content lacks counts raw, as the
- * fight grant and the `needfor*` readers count it. A line on one of the original's per-weapon-class fight
- * buckets lands in the personal fight counter, all such lines summed under {@link FIGHT_EXPERIENCE_FULL}.
+ * `needfor*` readers count it. A line on one of the original's per-weapon-class fight buckets counts points
+ * of the personal fight counter, all such lines summed under {@link FIGHT_EXPERIENCE_FULL}.
  * Original behavior: a map's `setexpierence` is skipped for a hero, counts in `needfor*` units and adds
  * to the same per-track counter whether or not a track record exists.
  */
@@ -113,9 +114,11 @@ export function startingExperience(
   for (const { track, amount } of lines) {
     if (amount <= 0) continue;
     const id = CLASS_FIGHT_EXPERIENCE_TYPES.has(track) ? FIGHT_EXPERIENCE_TYPE.PERSONAL : track;
-    const factor = contentIndex(content).jobExperience.get(id)?.experienceFactor ?? RAW_EXPERIENCE_FACTOR;
-    const cap =
-      id === FIGHT_EXPERIENCE_TYPE.PERSONAL ? FIGHT_EXPERIENCE_FULL : factor * MAX_EXPERIENCE_REPEATS;
+    const personal = id === FIGHT_EXPERIENCE_TYPE.PERSONAL;
+    const factor = personal
+      ? FIGHT_EXPERIENCE_UNITS_PER_POINT
+      : (contentIndex(content).jobExperience.get(id)?.experienceFactor ?? RAW_EXPERIENCE_FACTOR);
+    const cap = personal ? FIGHT_EXPERIENCE_FULL_UNITS : factor * MAX_EXPERIENCE_REPEATS;
     xp.set(id, Math.min(cap, (xp.get(id) ?? 0) + factor * amount));
   }
   return [...xp].filter(([, amount]) => amount > 0);
@@ -199,12 +202,51 @@ export const FIGHT_EXPERIENCE_TYPE = {
  */
 const CLASS_FIGHT_EXPERIENCE_TYPES: ReadonlySet<number> = new Set([71, 72, 73, 74, 75]);
 
-/** The raw XP a fight bucket gains per landed hit. Original behavior. */
-const FIGHT_EXPERIENCE_PER_HIT = 1;
-/** Full fight experience: the landed hits the personal counter holds at most. Our rule. */
+/** The raw XP the catapult bucket gains per landed hit. Original behavior. */
+const CATAPULT_EXPERIENCE_PER_HIT = 1;
+/** Full fight experience: the points the personal counter holds at most. Our rule. */
 export const FIGHT_EXPERIENCE_FULL = 100;
 /** The raw XP the catapult bucket holds at most. Original behavior. */
 export const CATAPULT_EXPERIENCE_MAX = 10_000;
+
+/**
+ * The fine units the personal fight counter stores per point, so a part of a point is kept. Our rule: 48
+ * makes every blow-time rate below a whole number of units per tick at {@link TICKS_PER_SECOND}. Read the
+ * counter only through `personalFightPoints` (whole points) or `personalFightUnits` (`bonus.ts`).
+ */
+export const FIGHT_EXPERIENCE_UNITS_PER_POINT = 48;
+/** {@link FIGHT_EXPERIENCE_FULL} in the counter's stored units. */
+export const FIGHT_EXPERIENCE_FULL_UNITS = FIGHT_EXPERIENCE_FULL * FIGHT_EXPERIENCE_UNITS_PER_POINT;
+
+/** `points` of the personal fight counter in its stored units. */
+export function fightUnitsOfPoints(points: number): number {
+  return points * FIGHT_EXPERIENCE_UNITS_PER_POINT;
+}
+
+/** A blow-time rate: `points` earned per `seconds` of the attack clip a blow stands for. */
+export interface FightPointsRate {
+  readonly points: number;
+  readonly seconds: number;
+}
+
+/**
+ * Our rule: fight points are earned by blow time, not per blow, so a slow weapon earns as fast as a quick
+ * one. A landed melee blow earns its striker 3/4 point per second of his own attack clip, a landed shot
+ * 1/2 point per second of the shooter's, and every damaging blow on a person earns him 1/2 point per
+ * second of the attacker's clip, whoever the attacker is.
+ */
+export const MELEE_BLOW_POINTS_RATE: FightPointsRate = { points: 3, seconds: 4 };
+export const SHOT_POINTS_RATE: FightPointsRate = { points: 1, seconds: 2 };
+export const BLOW_TAKEN_POINTS_RATE: FightPointsRate = { points: 1, seconds: 2 };
+
+/** The stored units `rate` earns per tick of attack clip; whole by the choice of
+ *  {@link FIGHT_EXPERIENCE_UNITS_PER_POINT}. */
+export function fightUnitsPerClipTick(rate: FightPointsRate): number {
+  return (FIGHT_EXPERIENCE_UNITS_PER_POINT * rate.points) / (rate.seconds * TICKS_PER_SECOND);
+}
+
+/** How a landed blow was delivered, which picks its striker's blow-time rate. */
+export type FightBlowDelivery = 'melee' | 'shot';
 
 /**
  * The fight-experience bucket a `weaponMainType` accrues into: the catapult's own, the personal counter for
@@ -216,31 +258,64 @@ export function fightExperienceTypeFor(weaponMainType: number): number | undefin
   return weaponMainType === WEAPON_MAIN_TYPE.NONE ? undefined : FIGHT_EXPERIENCE_TYPE.PERSONAL;
 }
 
+/** Whether fighting may train `e` at all. Wildlife never levels, and a tribe with no `jobEnables` reaches
+ *  no rung, so the points would be hashed state nothing reads. */
+function earnsFightExperience(world: World, ctx: SystemContext, e: Entity): boolean {
+  const s = world.tryGet(e, Settler);
+  return s !== undefined && !isWildlife(world, e) && !declaresNoTrades(ctx.content, s.tribe);
+}
+
 /**
- * Grant an attacker fight XP for a landed hit, melee or ranged: one raw point into the weapon class's
- * bucket, the personal counter capped at {@link FIGHT_EXPERIENCE_FULL} and the catapult's at
- * {@link CATAPULT_EXPERIENCE_MAX}. Wildlife never levels.
+ * Grant an attacker fight XP for a landed hit, melee or ranged. The catapult bucket gains one raw point
+ * per hit under {@link CATAPULT_EXPERIENCE_MAX}; the personal counter gains the blow time of `clipTicks`,
+ * the attacker's own attack clip, at the `delivery`'s rate, under {@link FIGHT_EXPERIENCE_FULL_UNITS}.
  */
 export function grantFightExperience(
   world: World,
   ctx: SystemContext,
   attacker: Entity,
   weaponMainType: number | undefined,
+  delivery: FightBlowDelivery,
+  clipTicks: number,
 ): void {
   if (weaponMainType === undefined) return;
-  const s = world.tryGet(attacker, Settler);
-  if (s === undefined) return;
-  if (isWildlife(world, attacker)) return;
-  // A tribe with no `jobEnables` reaches no rung, so the points would be hashed state nothing reads.
-  if (declaresNoTrades(ctx.content, s.tribe)) return;
+  if (!earnsFightExperience(world, ctx, attacker)) return;
   const bucket = fightExperienceTypeFor(weaponMainType);
-  if (bucket === undefined) return;
-  const cap = bucket === FIGHT_EXPERIENCE_TYPE.PERSONAL ? FIGHT_EXPERIENCE_FULL : CATAPULT_EXPERIENCE_MAX;
-  accrueExperience(world, attacker, bucket, FIGHT_EXPERIENCE_PER_HIT, cap);
+  if (bucket === FIGHT_EXPERIENCE_TYPE.CATAPULT) {
+    accrueExperience(world, attacker, bucket, CATAPULT_EXPERIENCE_PER_HIT, CATAPULT_EXPERIENCE_MAX);
+  } else if (bucket === FIGHT_EXPERIENCE_TYPE.PERSONAL) {
+    const rate = delivery === 'melee' ? MELEE_BLOW_POINTS_RATE : SHOT_POINTS_RATE;
+    accrueExperience(
+      world,
+      attacker,
+      bucket,
+      clipTicks * fightUnitsPerClipTick(rate),
+      FIGHT_EXPERIENCE_FULL_UNITS,
+    );
+  }
+}
+
+/** Grant person `victim` the personal fight XP of a damaging blow he took: the blow time of `clipTicks`,
+ *  the attacker's attack cadence, at {@link BLOW_TAKEN_POINTS_RATE}. */
+export function grantBlowTakenExperience(
+  world: World,
+  ctx: SystemContext,
+  victim: Entity,
+  clipTicks: number,
+): void {
+  if (!earnsFightExperience(world, ctx, victim)) return;
+  const units = clipTicks * fightUnitsPerClipTick(BLOW_TAKEN_POINTS_RATE);
+  accrueExperience(world, victim, FIGHT_EXPERIENCE_TYPE.PERSONAL, units, FIGHT_EXPERIENCE_FULL_UNITS);
 }
 
 /** Add a coin drill's `points` to `settler`'s personal fight counter, capped at {@link FIGHT_EXPERIENCE_FULL}.
  *  A script that bars him from getting better (`MISSIONS.md`, behaviour bit 11) bars this too. */
 export function grantDrillPoints(world: World, settler: Entity, points: number): void {
-  accrueExperience(world, settler, FIGHT_EXPERIENCE_TYPE.PERSONAL, points, FIGHT_EXPERIENCE_FULL);
+  accrueExperience(
+    world,
+    settler,
+    FIGHT_EXPERIENCE_TYPE.PERSONAL,
+    fightUnitsOfPoints(points),
+    FIGHT_EXPERIENCE_FULL_UNITS,
+  );
 }

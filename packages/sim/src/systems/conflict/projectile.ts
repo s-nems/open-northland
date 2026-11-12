@@ -120,7 +120,9 @@ function land(
     });
   }
   // Original behavior: a shot that did damage trains its shooter once, however many it struck.
-  if (struckAny) grantFightExperience(world, ctx, proj.source, proj.weaponMainType ?? undefined);
+  if (struckAny) {
+    grantFightExperience(world, ctx, proj.source, proj.weaponMainType ?? undefined, 'shot', proj.blowTicks);
+  }
   if (!struckAny) {
     ctx.events.emit({
       kind: 'projectileMissed',
@@ -167,6 +169,7 @@ function strike(
     hitSoundType: hitSoundVsMaterial(proj, material) ?? null,
     from: { x: proj.originX, y: proj.originY },
     vehicleShot: proj.impact !== null,
+    blowTicks: proj.blowTicks,
   };
   return resolveCombatHit(world, ctx, proj.source, victim, blow, pendingReactions, source);
 }

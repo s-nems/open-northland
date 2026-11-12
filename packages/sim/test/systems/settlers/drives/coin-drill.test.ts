@@ -22,7 +22,8 @@ import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../../src/index.js';
 import type { NodeId } from '../../../../src/nav/terrain/index.js';
 import { walkBlockMask } from '../../../../src/systems/footprint/walk-block-mask.js';
-import { FIGHT_EXPERIENCE_TYPE } from '../../../../src/systems/progression/experience.js';
+import { personalFightPoints } from '../../../../src/systems/progression/bonus.js';
+import { FIGHT_EXPERIENCE_TYPE, fightUnitsOfPoints } from '../../../../src/systems/progression/experience.js';
 import { entityNode } from '../../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../../fixtures/content.js';
 import { grassMap } from '../../../fixtures/needs.js';
@@ -156,12 +157,15 @@ function soldierAt(sim: Simulation, jobType: number, x: number, y: number, point
     enjoyment: fx.fromInt(0),
   });
   sim.world.add(e, Owner, { player: PLAYER });
-  if (points > 0) sim.world.mut(e, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, points);
+  if (points > 0)
+    sim.world
+      .mut(e, SettlerProgress)
+      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, fightUnitsOfPoints(points));
   return e;
 }
 
 function pointsOf(sim: Simulation, e: Entity): number {
-  return sim.world.get(e, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
+  return personalFightPoints(sim.world.get(e, SettlerProgress).experience);
 }
 
 function coinsOf(sim: Simulation, house: Entity): number {

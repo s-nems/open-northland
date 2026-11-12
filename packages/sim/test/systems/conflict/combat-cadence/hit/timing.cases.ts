@@ -23,13 +23,21 @@ import {
   restoreSimulation,
   Simulation,
 } from '../../../../../src/index.js';
-import { attackerWeapon, startAttack } from '../../../../../src/systems/conflict/weapons.js';
+import {
+  attackClipTiming,
+  attackerWeapon,
+  startAttack,
+} from '../../../../../src/systems/conflict/weapons.js';
 import {
   atomicSystem,
+  BLOW_TAKEN_POINTS_RATE,
   combatSystem,
+  fightUnitsPerClipTick,
+  MELEE_BLOW_POINTS_RATE,
   REGENERATION_HITPOINTS_PER_TICK,
   WEAPON_MAIN_TYPE,
   withFightExperience,
+  withTakenBonuses,
 } from '../../../../../src/systems/index.js';
 import {
   ATOMIC_EVENT_TYPE_ATTACK,
@@ -343,7 +351,7 @@ describe('atomicSystem - the blow lands at the ATTACK-event frame, not at comple
 describe('atomicSystem - repeating swings at the animation cadence', () => {
   it('a survivor is re-struck one animation-length apart (cadence IS the swing length)', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
-    fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR); // spear: 27-frame swing, ATTACK @17
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR); // spear: 27-frame swing, ATTACK @17
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 1_000_000 });
 
     const hitTicks: number[] = [];
@@ -368,10 +376,17 @@ describe('atomicSystem - repeating swings at the animation cadence', () => {
     const secondHit = hitTicks[1];
     if (firstHit === undefined || secondHit === undefined) throw new Error('expected two hits');
     expect(secondHit - firstHit).toBe(27);
-    // Each blow took the spear-vs-unarmored column off the pool, raised by the hits landed before it. The
-    // needs pass runs ahead of the blow, so every blow after the first lands on a tick that also heals.
+    // Each blow took the spear-vs-unarmored column off the pool, raised by the blow time the striker landed
+    // before it and cut by the blow time the target took. The needs pass runs ahead of the blow, so every
+    // blow after the first lands on a tick that also heals.
     const column = IRON_SPEAR_DAMAGE['0'];
-    const blows = hitTicks.reduce((sum, _, hits) => sum + withFightExperience(column, hits), 0);
+    const clip = attackClipTiming(sim.content, sim.world.get(attacker, Settler)).length;
+    const struck = clip * fightUnitsPerClipTick(MELEE_BLOW_POINTS_RATE);
+    const taken = clip * fightUnitsPerClipTick(BLOW_TAKEN_POINTS_RATE);
+    const blows = hitTicks.reduce(
+      (sum, _, k) => sum + withTakenBonuses(withFightExperience(column, k * struck), k * taken),
+      0,
+    );
     const expected = blows - (hitTicks.length - 1) * REGENERATION_HITPOINTS_PER_TICK;
     expect(dealt).toBe(expected);
   });

@@ -112,7 +112,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: '經驗從哪裡來',
         },
         {
-          p: '每次造成傷害的攻擊或射擊得 1 點，拳頭和任何武器都一樣。[[job:hunter|獵人]]的射擊也算。更換武器或職業後經驗保留。',
+          p: '點數按造成傷害的一擊所用的時間計算。近戰攻擊按揮擊的時長每秒得 {{combat.fightMeleePerSecond}} 點，射擊按拉弓的時長每秒得 {{combat.fightShotPerSecond}} 點，所以慢武器和快武器漲得一樣快，弓每秒得點較少。受到攻擊也算：被任何對手打傷的人，無論對手是人、野獸、塔樓還是投石機，都按對手一擊的時間每秒得 {{combat.fightTakenPerSecond}} 點。拳頭和任何武器都一樣，[[job:hunter|獵人]]的射擊也算。更換武器或職業後經驗保留。',
         },
         {
           p: '操練：任何持有武器的士兵在你存有金幣的[[building:barracks|兵營]]裡操練。每練一次花掉一枚[[good:coin|金幣]]，得 {{coinDrill.points}} 點。達到 {{coinDrill.limit}} 點及以上的人不再操練，其餘的要在戰鬥中獲得。選中士兵後右鍵點擊自己的兵營。兵營有幾枚空閒金幣就去幾名士兵，離得最近的先去；其餘的留在原地。',

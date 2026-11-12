@@ -1291,7 +1291,11 @@ describe('selection details panel model', () => {
   });
 
   it('gives a woman and a child a worker’s slots, none wearable, and no experience section', () => {
-    const trained = { SettlerProgress: { experience: [[systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, 5]] } };
+    const trained = {
+      SettlerProgress: {
+        experience: [[systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(5)]],
+      },
+    };
     const modelFor = (jobType: number, extra: Record<string, unknown>) => {
       const snapshot = snapshotOf([
         { id: 1, components: { Settler: { tribe: 1, jobType }, ...trained, ...extra } },
@@ -1452,7 +1456,8 @@ describe('selection details panel model', () => {
             experience: [
               [3, 50], // 50 raw points at rate 10 → 5 wood gathered, half a curve point
               [9, 100], // 100 raw points at rate 100 → 1 repeat, one curve point
-              [systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, 5], // 5 points: 100 * 10200 / 10000, so +2% damage
+              // 5 points and part of a sixth, shown as 5; the raise reads the fine units: +2% damage
+              [systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(5) + 1],
             ],
           },
         },

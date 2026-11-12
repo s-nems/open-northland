@@ -39,7 +39,7 @@ export const HIT_DIRECTION_PCT: readonly number[] = [PERCENT, PERCENT, BACK_SIDE
  *   raises, then the person's own defence amulet and, our rule, his fight experience;
  * - a building or a wall: nothing for a zero base, then the striker's raises;
  * - an animal or a vehicle: the striker's raises.
- * The striker's raises are his amulets and, our rule, the `fightPoints` of a melee blow, summed
+ * The striker's raises are his amulets and, our rule, the `fightUnits` of a melee blow, summed
  * ({@link damageDealtBy}); original behavior, a wall and a vehicle take no experience. `strikerAmulets` is false for a
  * vehicle's shot, which nothing raises. A result at or below zero does nothing: no damage and no fight
  * experience.
@@ -52,10 +52,10 @@ export function landedDamage(
   base: number,
   from: { readonly x: Fixed; readonly y: Fixed } | undefined,
   strikerAmulets: boolean,
-  fightPoints = 0,
+  fightUnits = 0,
 ): number {
-  const dealtBy = (raw: number, points = fightPoints): number =>
-    strikerAmulets ? damageDealtBy(world, ctx, attacker, raw, points) : raw;
+  const dealtBy = (raw: number, units = fightUnits): number =>
+    strikerAmulets ? damageDealtBy(world, ctx, attacker, raw, units) : raw;
   if (world.has(target, Palisade)) return base === 0 ? 0 : dealtBy(base, 0);
   if (world.has(target, Building)) return base === 0 ? 0 : dealtBy(base);
   if (world.has(target, Vehicle)) return dealtBy(base, 0);

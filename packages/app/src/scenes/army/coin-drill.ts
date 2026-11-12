@@ -43,7 +43,9 @@ function build(sim: Simulation): void {
   const soldiers = SOLDIERS.map(({ job, x }) => spawnSettlerDirect(sim, job, x, ROW_Y));
   const [, spearman] = soldiers;
   if (spearman !== undefined)
-    sim.world.mut(spearman, SettlerProgress).experience.set(FIGHT, SPEAR_START_POINTS);
+    sim.world
+      .mut(spearman, SettlerProgress)
+      .experience.set(FIGHT, systems.fightUnitsOfPoints(SPEAR_START_POINTS));
   for (const entity of soldiers) sim.enqueueSetup({ kind: 'orderCoinDrill', entity, house: barracks });
 }
 
@@ -53,7 +55,7 @@ function cast(sim: Simulation): readonly (Entity | undefined)[] {
 }
 
 function pointsOf(sim: Simulation, e: Entity | undefined): number {
-  return e === undefined ? 0 : (sim.world.get(e, SettlerProgress).experience.get(FIGHT) ?? 0);
+  return e === undefined ? 0 : systems.personalFightPoints(sim.world.get(e, SettlerProgress).experience);
 }
 
 const drilling = (sim: Simulation, e: Entity | undefined): boolean =>

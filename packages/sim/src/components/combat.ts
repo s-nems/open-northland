@@ -181,6 +181,9 @@ export const Projectile = defineComponent<{
   hitSounds: Readonly<Record<string, number>>;
   /** Keys the fight-XP bucket; `null` grants no fight XP. */
   weaponMainType: number | null;
+  /** The attack cadence in ticks the shot stands for, which its landing earns by blow time: the shooter's
+   *  attack clip, a vehicle's attack clip, or a building's per-occupant shot period. */
+  blowTicks: number;
   /** The weapon's `soundtype_NoHit` table by ground logic type: what a shot that strikes nothing plays
    *  where it comes down. Carried whole and handed on with the miss event, because the sim navigates
    *  terrain classes and never sees the landscape under the landing node. */

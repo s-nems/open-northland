@@ -27,7 +27,7 @@ import {
 import { buildingStaffing } from '../../../../src/systems/computer-player/workforce/staffing-plan.js';
 import type { SeatSupply } from '../../../../src/systems/computer-player/workforce/supply.js';
 import { COIN_DRILL_LIMIT } from '../../../../src/systems/progression/coin-drill.js';
-import { FIGHT_EXPERIENCE_TYPE } from '../../../../src/systems/progression/experience.js';
+import { FIGHT_EXPERIENCE_TYPE, fightUnitsOfPoints } from '../../../../src/systems/progression/experience.js';
 import { testContent } from '../../../fixtures/content.js';
 import { ctxOf } from '../../../fixtures/context.js';
 import { grassCellMap } from '../../../fixtures/terrain.js';
@@ -152,7 +152,10 @@ function soldierAt(sim: Simulation, x: number, y: number, jobType = SWORD_JOB, p
     enjoyment: fx.fromInt(0),
   });
   sim.world.add(e, Owner, { player: SEAT });
-  if (points > 0) sim.world.mut(e, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, points);
+  if (points > 0)
+    sim.world
+      .mut(e, SettlerProgress)
+      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, fightUnitsOfPoints(points));
   return e;
 }
 
@@ -225,7 +228,9 @@ describe('the computer seat coin drill', () => {
     sim.enqueueSetup({ ...mark, priority: true } as PlayerCommand);
     sim.step();
     expect(orders()).toEqual([]);
-    sim.world.mut(man, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, COIN_DRILL_LIMIT);
+    sim.world
+      .mut(man, SettlerProgress)
+      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, fightUnitsOfPoints(COIN_DRILL_LIMIT));
     expect(orders()).toEqual([{ ...mark, priority: false }]);
   });
 

@@ -27,7 +27,7 @@ import {
 import { DECK_ARCHER_LIMIT, deckShipOf } from '../../../src/systems/conflict/deck-archers.js';
 import { DECK_RANGE_PENALTY_POINTS, deckShotIntervalTicks } from '../../../src/systems/conflict/deck-fire.js';
 import { attackClipSoundCues, attackClipTiming } from '../../../src/systems/conflict/weapons.js';
-import { FIGHT_EXPERIENCE_TYPE } from '../../../src/systems/progression/index.js';
+import { FIGHT_EXPERIENCE_TYPE, fightUnitsOfPoints } from '../../../src/systems/progression/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { boardRider, createVehicle } from '../../../src/systems/vehicles/index.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
@@ -397,7 +397,9 @@ describe('deck fire', () => {
         ? (shipWith(s, WARSHIP, SHIP_X, P1, 1).bowmen[0] as Entity)
         : personAt(s, shore.hx + DECK_REACH, ROW, P1, ARCHER);
       s.world.mut(archer, Stance).mode = MILITARY_MODE.IGNORE;
-      s.world.mut(archer, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, VETERAN_BOW_HITS);
+      s.world
+        .mut(archer, SettlerProgress)
+        .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, fightUnitsOfPoints(VETERAN_BOW_HITS));
       let shots = 0;
       let off = 0;
       for (let i = 0; i < SHOT_TICKS * 4; i++) {

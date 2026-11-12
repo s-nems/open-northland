@@ -7,15 +7,17 @@ import {
   type EquipmentSlot,
   Health,
   MISC_EQUIP_SLOTS,
+  MISSION_BEHAVIOUR,
   MoveGoal,
   SettlerProgress,
+  setMissionBehaviour,
   WALK_DIRECTION,
   WalkFacing,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../../src/index.js';
 import {
-  FIGHT_EXPERIENCE_FULL,
+  FIGHT_EXPERIENCE_FULL_UNITS,
   FIGHT_EXPERIENCE_TYPE,
   plannerSystem,
   WEAPON_MAIN_TYPE,
@@ -69,7 +71,8 @@ function sim(): Simulation {
   return new Simulation({ seed: 7, content: testContent(), map: grassMap(4, 1) });
 }
 
-/** A striker and a full-health target, each carrying the given misc row. */
+/** A striker and a full-health target, each carrying the given misc row. The target is barred from
+ *  earning fight experience, so every blow lands on the same man. */
 function duel(
   s: Simulation,
   attackerCarries: ReadonlyArray<EquipmentSlot | null>,
@@ -80,6 +83,7 @@ function duel(
   // Facing its striker to the east, so every blow lands head-on at x1.
   s.world.add(target, WalkFacing, { direction: WALK_DIRECTION.E, target: WALK_DIRECTION.E });
   s.world.add(target, Health, { hitpoints: HP, max: HP });
+  setMissionBehaviour(s.world, target, MISSION_BEHAVIOUR.NO_JOB_EXPERIENCE, true);
   carry(s, attacker, attackerCarries);
   carry(s, target, targetCarries);
   return { attacker, target };
@@ -167,7 +171,7 @@ describe('combat amulets', () => {
     const { attacker, target } = duel(s, []);
     s.world
       .mut(target, SettlerProgress)
-      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL);
+      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL_UNITS);
     expect(strike(s, attacker, target)).toBe(60); // trunc(101 * 0.6)
     const shelter = s.world.create();
     const before = s.world.get(target, Health).hitpoints;
@@ -185,7 +189,7 @@ describe('combat amulets', () => {
     const shielded = duel(s, [], [worn(AMULET_DEFENSE)]);
     s.world
       .mut(shielded.target, SettlerProgress)
-      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL);
+      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL_UNITS);
     expect(strike(s, shielded.attacker, shielded.target)).toBe(30); // trunc(101 * 0.5 * 0.6), one truncation
   });
 
@@ -194,7 +198,7 @@ describe('combat amulets', () => {
     const { attacker, target } = duel(s, [worn(AMULET_STRENGTH)]);
     s.world
       .mut(attacker, SettlerProgress)
-      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL);
+      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL_UNITS);
     const melee = { kind: 'attack', target, damage: BLOW, weaponMainType: WEAPON_MAIN_TYPE.SWORD } as const;
     const before = s.world.get(target, Health).hitpoints;
     resolveAttackHit(s.world, ctxOf(s), attacker, ATTACK_SWING, melee, []);

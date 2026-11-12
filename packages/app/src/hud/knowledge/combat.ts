@@ -187,14 +187,16 @@ export function blowSteps(
   const directed = person ? systems.directedDamage(base, modifiers.direction) : base;
   const blocked = person ? directed - target.blocking : directed;
   const experienced = gainsFightExperience(weapon, target);
-  const hits = experienced ? modifiers.hits : 0;
-  const raised = experienced ? systems.withDealtBonuses(blocked, hits) : blocked;
+  // The calculator states fight experience in points; the sim's raises read the counter's fine units.
+  const units = experienced ? systems.fightUnitsOfPoints(modifiers.hits) : 0;
+  const raised = experienced ? systems.withDealtBonuses(blocked, units) : blocked;
   const amulet = modifiers.strength && takesStrengthAmulet(weapon);
-  const strong = amulet ? systems.withDealtBonuses(blocked, hits, STRENGTH_PCT) : raised;
+  const strong = amulet ? systems.withDealtBonuses(blocked, units, STRENGTH_PCT) : raised;
   const shielded =
     person && modifiers.defense ? systems.scaledTakenDamage(strong, DEFENSE_TAKEN_PCT) : strong;
   const takenPct = modifiers.defense ? DEFENSE_TAKEN_PCT : PERCENT;
-  const hardened = person ? systems.withTakenBonuses(strong, modifiers.targetHits, takenPct) : shielded;
+  const targetUnits = systems.fightUnitsOfPoints(modifiers.targetHits);
+  const hardened = person ? systems.withTakenBonuses(strong, targetUnits, takenPct) : shielded;
   return [
     { id: 'base', value: base, applies: true },
     { id: 'direction', value: directed, applies: person },
@@ -221,13 +223,13 @@ const EXPERIENCE_PROBE_DAMAGE = 10_000;
 
 /** How many percent a striker's fight points add to his melee blow. */
 export function experienceBonusPct(hits: number): number {
-  const raised = systems.withFightExperience(EXPERIENCE_PROBE_DAMAGE, hits);
+  const raised = systems.withFightExperience(EXPERIENCE_PROBE_DAMAGE, systems.fightUnitsOfPoints(hits));
   return Math.round((raised * PERCENT) / EXPERIENCE_PROBE_DAMAGE) - PERCENT;
 }
 
 /** How many percent a person's fight points take off the blows he is dealt. */
 export function experienceCutPct(hits: number): number {
-  const taken = systems.withTakenBonuses(EXPERIENCE_PROBE_DAMAGE, hits);
+  const taken = systems.withTakenBonuses(EXPERIENCE_PROBE_DAMAGE, systems.fightUnitsOfPoints(hits));
   return PERCENT - Math.round((taken * PERCENT) / EXPERIENCE_PROBE_DAMAGE);
 }
 

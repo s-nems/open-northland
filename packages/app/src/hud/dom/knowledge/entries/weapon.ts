@@ -142,7 +142,8 @@ function bonusFold(context: KnowledgeContext, weapon: KnowledgeWeapon): EntryBlo
   const change = (change: Partial<typeof NO_MODIFIERS>): number =>
     landed(weapon, plain, { ...NO_MODIFIERS, ...change });
   const factor = (percent: number): string => factorText(percent);
-  const veteran = systems.withFightExperience(FACTOR_SAMPLE, CAP_HITS) / FACTOR_SAMPLE;
+  const veteran =
+    systems.withFightExperience(FACTOR_SAMPLE, systems.fightUnitsOfPoints(CAP_HITS)) / FACTOR_SAMPLE;
   const critical = criticalDamage(FACTOR_SAMPLE) / FACTOR_SAMPLE;
   const table = dataTable(
     [{ title: text.bonus }, { title: text.multiplier }, { title: copy().table.perBlow }],

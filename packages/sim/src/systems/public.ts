@@ -251,8 +251,9 @@ export {
   FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL,
   FIGHT_EXPERIENCE_TAKEN_PCT_AT_FULL,
   fightExperienceTakenFactor,
-  fightPointsWith,
+  fightUnitsWith,
   personalFightPoints,
+  personalFightUnits,
   rawXpForRepeats,
   requirementRepeats,
   withDealtBonuses,
@@ -272,8 +273,14 @@ export {
   strokesPerUnit,
 } from './progression/efficiency.js';
 export {
+  BLOW_TAKEN_POINTS_RATE,
   FIGHT_EXPERIENCE_FULL,
+  FIGHT_EXPERIENCE_FULL_UNITS,
   FIGHT_EXPERIENCE_TYPE,
+  FIGHT_EXPERIENCE_UNITS_PER_POINT,
+  fightUnitsOfPoints,
+  MELEE_BLOW_POINTS_RATE,
+  SHOT_POINTS_RATE,
   startingExperience,
 } from './progression/experience.js';
 // The atomic clip resolution and the need channels its events carry, so the real-content suite can pin the

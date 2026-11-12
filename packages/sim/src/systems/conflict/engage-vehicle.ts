@@ -124,7 +124,7 @@ export function engageVehicle(
     if (elapsed <= clip.shotAt && !canLoose(world, ctx, terrain, e, identity, weapon, here)) {
       endClip(world, e);
     } else {
-      if (elapsed === clip.shotAt) fire(world, ctx, terrain, e, state, weapon.weapon, here);
+      if (elapsed === clip.shotAt) fire(world, ctx, terrain, e, state, weapon.weapon, here, clip.length);
       if (elapsed < clip.length) return;
       endClip(world, e); // the clip is over; the target is judged again below, this tick
     }
@@ -490,7 +490,8 @@ function firingNodes(
 /**
  * Loose the shot at the clip's event tick: the aim is scattered by the commander's roll against its
  * catapult experience, then a ground-burst projectile flies there through the shared projectile
- * system. Three draws when the roll scatters, one otherwise, exactly the original's consumption.
+ * system. Three draws when the roll scatters, one otherwise, exactly the original's consumption. The
+ * stone stands for `clipTicks`, the vehicle's attack clip, as the blow time a person it strikes earns.
  */
 function fire(
   world: World,
@@ -500,6 +501,7 @@ function fire(
   state: VehicleStateView,
   weapon: WeaponType,
   here: NodeId,
+  clipTicks: number,
 ): void {
   const attack = state.attack;
   const commander = vehicleCommander(state);
@@ -520,6 +522,7 @@ function fire(
     damage: { ...weapon.damage },
     hitSounds: { ...weapon.hitSounds },
     weaponMainType: weapon.mainType ?? null,
+    blowTicks: clipTicks,
     missSounds: { ...weapon.missSounds },
     munitionType: weapon.munitionType,
     hitSelf: weapon.hitSelf,

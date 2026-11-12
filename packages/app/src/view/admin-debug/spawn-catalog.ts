@@ -183,7 +183,7 @@ export function everyJobExperience(content: ContentSet): [number, number][] {
       amount,
     ),
   ]);
-  return [...tracks, [systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.FIGHT_EXPERIENCE_FULL]];
+  return [...tracks, [systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.FIGHT_EXPERIENCE_FULL_UNITS]];
 }
 
 /** Creature bodies have fixed tribes and natural weapons; they carry no human inventory goods. */

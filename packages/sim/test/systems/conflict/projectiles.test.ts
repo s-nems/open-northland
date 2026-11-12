@@ -23,13 +23,24 @@ import {
   setPeaceTime,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { type Fixed, fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../../src/index.js';
+import {
+  type Fixed,
+  fx,
+  nodeOfPosition,
+  ONE,
+  positionOfNode,
+  Simulation,
+  TICKS_PER_SECOND,
+} from '../../../src/index.js';
 import { hexNeighboursOf } from '../../../src/nav/halfcell.js';
 import { combatSystem } from '../../../src/systems/conflict/combat.js';
 import { projectileSystem } from '../../../src/systems/conflict/projectile.js';
+import { SHELTER_SHOT_PERIOD_TICKS } from '../../../src/systems/conflict/shelter-fire.js';
 import {
   anchorOnlyFootprint,
   FIGHT_EXPERIENCE_TYPE,
+  FIGHT_EXPERIENCE_UNITS_PER_POINT,
+  fightUnitsOfPoints,
   stampResourceFootprintData,
 } from '../../../src/systems/index.js';
 import { ARMOR_MATERIAL } from '../../../src/systems/readviews/index.js';
@@ -196,11 +207,17 @@ const AIM_MIN_SHOTS = 5;
 
 /** Hits past which a bowman never scatters: the aim roll tops out at 99, against hits plus 10. */
 const MARKSMAN_BOW_HITS = 90;
+/** The owner's blow-time rate of a landed shot, in points per second of the shooter's attack clip. */
+const SHOT_POINTS_PER_SECOND = 0.5;
+/** The owner's blow-time rate of a blow taken, in points per second of the attacker's cadence. */
+const TAKEN_POINTS_PER_SECOND = 0.5;
 
 /** An archer practised enough that every shot lands on its aim. */
 function marksmanAt(sim: Simulation, x: number, y: number): Entity {
   const archer = fighterAt(sim, x, y, VIKING, ARCHER);
-  sim.world.mut(archer, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, MARKSMAN_BOW_HITS);
+  sim.world
+    .mut(archer, SettlerProgress)
+    .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, fightUnitsOfPoints(MARKSMAN_BOW_HITS));
   return archer;
 }
 
@@ -510,6 +527,53 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     expect(sim.world.isAlive(shot)).toBe(false); // the spent arrow was destroyed on impact
   });
 
+  it('earns its shooter 1/2 point per second of his own attack clip when it lands', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
+    const archer = marksmanAt(sim, 0, 0);
+    const target = fighterAt(sim, 8, 0, FRANK, IDLE);
+    stepToLaunch(sim);
+    for (let i = 0; i < 30 && sim.world.get(target, Health).hitpoints === TARGET_HP; i++) sim.step();
+    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE);
+    const units = sim.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
+    const earned = (units - fightUnitsOfPoints(MARKSMAN_BOW_HITS)) / FIGHT_EXPERIENCE_UNITS_PER_POINT;
+    expect(earned).toBe((BOW_LEN / TICKS_PER_SECOND) * SHOT_POINTS_PER_SECOND);
+  });
+
+  it("earns a struck person 1/2 point per second of a tower shot's cadence", () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
+    const tower = sim.world.create(); // a shooter with no identity of its own, as a building is
+    const victim = fighterAt(sim, 8, 0, VIKING, IDLE);
+    const aim = sim.world.get(victim, Position);
+    const shot = sim.world.create();
+    sim.world.add(shot, Position, { x: aim.x, y: aim.y });
+    sim.world.add(shot, Projectile, {
+      source: tower,
+      target: victim,
+      player: null,
+      hitSelf: false,
+      area: false,
+      damage: { '0': BOW_DAMAGE },
+      hitSounds: {},
+      weaponMainType: null,
+      blowTicks: SHELTER_SHOT_PERIOD_TICKS,
+      missSounds: {},
+      munitionType: ARROW,
+      originX: fx.fromInt(0),
+      originY: fx.fromInt(0),
+      aimX: aim.x,
+      aimY: aim.y,
+      cover: null,
+      launchTick: sim.tick,
+      landTick: sim.tick + 1,
+      impact: null,
+    });
+    sim.step();
+    expect(sim.world.get(victim, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE);
+    const units = sim.world.get(victim, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
+    const cadence = SHELTER_SHOT_PERIOD_TICKS / TICKS_PER_SECOND;
+    expect(units / FIGHT_EXPERIENCE_UNITS_PER_POINT).toBe(cadence * TAKEN_POINTS_PER_SECOND);
+  });
+
   it('snapshots the arrow at its aim before resolving contact', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
     marksmanAt(sim, 0, 0);
@@ -575,7 +639,7 @@ describe('projectiles - expiry + dead zone', () => {
     expect(sawMiss).toBe(true);
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
     expect(sim.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL)).toBe(
-      MARKSMAN_BOW_HITS,
+      fightUnitsOfPoints(MARKSMAN_BOW_HITS),
     );
   });
 
@@ -652,6 +716,7 @@ describe('projectiles - area shots', () => {
       damage: { '0': CATAPULT_DAMAGE },
       hitSounds: {},
       weaponMainType: null,
+      blowTicks: BOW_LEN,
       missSounds: {},
       munitionType: 2,
       originX: from.x,
@@ -695,8 +760,9 @@ describe('projectiles - area shots', () => {
     const p = stone(sim, shooter, centre, false);
     sim.world.mut(p, Projectile).weaponMainType = BOW_MAIN_TYPE;
     sim.step();
-    const bow = sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL);
-    expect(bow).toBe(MARKSMAN_BOW_HITS + 1);
+    const bow = sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
+    const earned = (bow - fightUnitsOfPoints(MARKSMAN_BOW_HITS)) / FIGHT_EXPERIENCE_UNITS_PER_POINT;
+    expect(earned).toBe((BOW_LEN / TICKS_PER_SECOND) * SHOT_POINTS_PER_SECOND);
   });
 
   const WOOD = 1;
@@ -730,7 +796,7 @@ describe('projectiles - area shots', () => {
     // A falling tree is no hit: the stone still thuds and trains nobody.
     expect(events.some((ev) => ev.kind === 'projectileMissed')).toBe(true);
     expect(sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL)).toBe(
-      MARKSMAN_BOW_HITS,
+      fightUnitsOfPoints(MARKSMAN_BOW_HITS),
     );
   });
 
@@ -818,6 +884,7 @@ describe('projectiles - a lobby peace', () => {
       damage: { '0': BOW_DAMAGE },
       hitSounds: {},
       weaponMainType: null,
+      blowTicks: BOW_LEN,
       missSounds: {},
       munitionType: ARROW,
       originX: fx.fromInt(0),
@@ -854,6 +921,7 @@ describe('projectiles - the first thing on the landing point', () => {
       damage: { '0': BOW_DAMAGE },
       hitSounds: {},
       weaponMainType: null,
+      blowTicks: BOW_LEN,
       missSounds: {},
       munitionType: ARROW,
       originX: fx.fromInt(0),
