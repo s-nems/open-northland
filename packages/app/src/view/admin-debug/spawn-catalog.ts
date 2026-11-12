@@ -163,26 +163,27 @@ export function soldierSpawnCommand(opts: SoldierSpawnOptions): Command {
 
 /**
  * Starting experience that clears every `needfor*` and `trainfor*` row of the content's tribes: each
- * named track at the largest amount a row asks of it. A row naming two tracks sums them, so each alone
- * at that amount clears it too.
+ * named track at the largest amount a row asks of it, and full personal fight experience. A row naming
+ * two tracks sums them, so each alone at that amount clears it too. A fighter trade reads no row, so its
+ * rows, the only ones naming the old per-weapon fight buckets, are skipped.
  */
-export function everyJobExperience(
-  content: Pick<ContentSet, 'tribes' | 'jobExperience'>,
-): [number, number][] {
+export function everyJobExperience(content: ContentSet): [number, number][] {
   const repeats = new Map<number, number>();
   for (const tribe of content.tribes) {
     for (const row of tribe.jobRequirements) {
+      if (row.target === 'job' && systems.isFighterJob(content, row.targetId)) continue;
       for (const track of row.experienceTypes)
         repeats.set(track, Math.max(repeats.get(track) ?? 0, row.amount));
     }
   }
-  return [...repeats].map(([id, amount]) => [
+  const tracks: [number, number][] = [...repeats].map(([id, amount]) => [
     id,
     systems.rawXpForRepeats(
       content.jobExperience.find((track) => track.typeId === id),
       amount,
     ),
   ]);
+  return [...tracks, [systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.FIGHT_EXPERIENCE_FULL]];
 }
 
 /** Creature bodies have fixed tribes and natural weapons; they carry no human inventory goods. */
