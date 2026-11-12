@@ -80,7 +80,9 @@ then through the ordinary site-supply rungs, and builders and haulers
 never serve a vehicle site. Approximations: which product a worker "currently" makes is the rotation
 cursor (the original's scheduling is not decoded); a land site is worked from its door, a ship site
 from its first work-area cell on the worker's continent that no walk block covers (the original reads
-a per-cell flag there, approximated by the walk block); a ship site needs the water side of the shared
+a per-cell flag there, approximated by the walk block); a ship site's material lands on its perimeter,
+and on its work-area cells on each shore the perimeter does not reach, so a hull off its crew's shore
+still takes its bill (where the original sets it down is not confirmed); a ship site needs the water side of the shared
 free-size field to admit `logicsize` at every body node, all on one water body; a parked vehicle
 counts as reason 9 only when its disc overlaps the vehicle-site body;
 regular houses instead push vehicles off their body and out of newly sealed nooks, leaving vehicles in

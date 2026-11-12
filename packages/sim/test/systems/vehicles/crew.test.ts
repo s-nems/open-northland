@@ -1,3 +1,4 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
@@ -9,6 +10,7 @@ import {
   Owner,
   PlayerOrder,
   Position,
+  Residence,
   Rider,
   Settler,
   StandIn,
@@ -69,6 +71,9 @@ const CARRIER = 24;
 /** The fixture carrier the headquarters posts (`logicworker` slot), which also crews a handcart. */
 const FIXTURE_PORTER = 36;
 const HEADQUARTERS = 1;
+/** A home type this file adds to the fixture, at an id the fixture leaves free. */
+const HOME = 60;
+const HOME_SIZE = 2;
 const SOLDIER = 31;
 const CIVILIST = 6;
 const WOODCUTTER = 1;
@@ -115,8 +120,17 @@ function splitMap(): TerrainMap {
   return halfCellMapFromCells({ width: MAP_CELLS, height: MAP_CELLS, typeIds });
 }
 
-function sim(map: TerrainMap = shoreMap(), seed = 5): Simulation {
-  const s = new Simulation({ seed, content: testContent(), map });
+/** The shared fixture with a home, which it otherwise lacks. */
+function homeContent() {
+  const base = testContent();
+  return parseContentSet({
+    ...base,
+    buildings: [...base.buildings, { typeId: HOME, id: 'home', kind: 'home', homeSize: HOME_SIZE }],
+  });
+}
+
+function sim(map: TerrainMap = shoreMap(), seed = 5, content = testContent()): Simulation {
+  const s = new Simulation({ seed, content, map });
   s.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   return s;
 }
@@ -684,6 +698,31 @@ describe('leaving', () => {
     expect(s.world.has(porter, Rider)).toBe(false);
     expect(s.world.has(porter, Position)).toBe(true);
     expect(s.world.tryGet(porter, JobAssignment)?.workplace).toBe(store);
+  });
+
+  it('takes a cart rider off its cart when a group order houses it', () => {
+    const s = sim(shoreMap(), 5, homeContent());
+    s.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME,
+      tribe: VIKING,
+      x: 4,
+      y: 12,
+      owner: P0,
+      force: true,
+    });
+    const cart = spawn(s, HANDCART, 12, 6);
+    const scout = spawnSettler(s, CART_DOOR.hx, CART_DOOR.hy);
+    const home = [...s.world.query(Building)][0];
+    if (home === undefined) throw new Error('home missing');
+    attach(s, scout, cart);
+    s.enqueue(playerCommand(P0, { kind: 'boardVehicle', entity: scout }));
+    boardOut(s, cart, scout);
+    s.enqueue(playerCommand(P0, { kind: 'assignHouseGroup', house: home, members: [{ entity: scout }] }));
+    s.step();
+    expect(s.world.has(scout, Rider)).toBe(false);
+    expect(s.world.has(scout, Position)).toBe(true);
+    expect(s.world.tryGet(scout, Residence)?.home).toBe(home);
   });
 
   it('halts a cart whose only commander is taken off it mid-drive by a job order', () => {

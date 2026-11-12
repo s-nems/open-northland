@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   AttackOrder,
@@ -12,7 +12,10 @@ import {
   SeatOffenders,
   Settler,
   Sheltering,
+  seatPassenger,
   setDiplomacyStance,
+  Vehicle,
+  vehiclePassengers,
 } from '../../../../../src/components/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
 import {
@@ -23,7 +26,7 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../../../../src/index.js';
-import { hexDistanceBetween } from '../../../../../src/nav/halfcell.js';
+import { hexDistanceBetween, nodeOfPosition } from '../../../../../src/nav/halfcell.js';
 import {
   MILITIA_HOLD_TICKS,
   MILITIA_PER_ZONE_MAX,
@@ -44,6 +47,7 @@ import { setAiControl } from '../../../../../src/systems/orders/ai.js';
 import { assignWorker } from '../../../../../src/systems/orders/work/employment.js';
 import { WEAPON_MAIN_TYPE } from '../../../../../src/systems/readviews/index.js';
 import { entityNode } from '../../../../../src/systems/spatial/nodes.js';
+import { boardRider, createVehicle } from '../../../../../src/systems/vehicles/index.js';
 import { aiContent } from '../../../../fixtures/ai-content.js';
 import { ctxOf } from '../../../../fixtures/context.js';
 import { grassNodeMap } from '../../../../fixtures/terrain.js';
@@ -78,6 +82,10 @@ const CROWD = 24;
 const DEFENCE_TICK = computerDecisionSlot(SEAT) + MILITARY_DECISION_PHASE;
 /** The first of the seat's decisions after a militia armed at {@link DEFENCE_TICK} may stand down. */
 const STAND_DOWN_TICK = DEFENCE_TICK + decisionsOver(MILITIA_HOLD_TICKS) * COMPUTER_DECISION_INTERVAL_TICKS;
+/** The handcart this file adds to the AI fixture, its vehicle job and its hitpoints. */
+const HANDCART = 1;
+const HANDCART_JOB = 50;
+const HANDCART_HITPOINTS = 1000;
 /** Past the scout's band, inside the leash his chasers hold. */
 const RIM_OFFSET = 3;
 
@@ -86,20 +94,34 @@ function decisionsOver(ticks: number): number {
   return Math.ceil(ticks / COMPUTER_DECISION_INTERVAL_TICKS);
 }
 
-/** The AI fixture with the hunter's trade and bow. */
+/** The AI fixture with the hunter's trade and bow, and a handcart. */
 function content(): ContentSet {
   const base = aiContent();
   const bow = base.weapons.find((w) => w.mainType === WEAPON_MAIN_TYPE.BOW);
   const civilist = base.jobs.find((j) => j.typeId === CIVILIST);
   if (bow === undefined || civilist === undefined) throw new Error('setup: the AI fixture lost its bow');
-  return {
+  return parseContentSet({
     ...base,
     jobs: [...base.jobs, { ...civilist, typeId: HUNTER, id: 'hunter', name: 'hunter' }],
     weapons: [
       ...base.weapons,
       { ...bow, typeId: HUNTER_BOW, id: 'hunter_bow', jobType: HUNTER, damage: { '0': HUNTER_BOW_DAMAGE } },
     ],
-  };
+    vehicles: [
+      ...base.vehicles,
+      {
+        typeId: HANDCART,
+        id: 'handcart',
+        jobId: HANDCART_JOB,
+        stockSlots: 0,
+        logicSize: 0,
+        cargoGoods: [],
+        passengerJobs: [CARRIER],
+        commanderJob: CARRIER,
+        hitpoints: HANDCART_HITPOINTS,
+      },
+    ],
+  });
 }
 
 function town(): { sim: Simulation; hq: Entity } {
@@ -298,10 +320,21 @@ describe('computer defence - desperate militia', () => {
     const armed = militia(sim);
     expect(armed).toEqual(carriers);
     for (const e of armed) expect(sim.world.has(e, JobAssignment)).toBe(false);
-    // One of them crews a vehicle meanwhile, a stand-in seat: he steps off it to take his post again.
+    // One of them rides a handcart meanwhile: he steps off it to take his post again.
     const [crew] = armed;
     if (crew === undefined) throw new Error('setup: nobody was armed');
-    sim.world.add(crew, Rider, { vehicle: hq, boarding: false, leaving: null });
+    const p = sim.world.get(crew, Position);
+    const at = nodeOfPosition(p.x, p.y);
+    const cart = createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: HANDCART,
+      tribe: VIKING,
+      owner: SEAT,
+      x: at.hx,
+      y: at.hy,
+    });
+    if (cart === null || !seatPassenger(sim.world, cart, crew)) throw new Error('setup: no cart seat');
+    boardRider(sim.world, crew, cart);
+    expect(sim.world.has(crew, Position)).toBe(false);
 
     sim.world.destroy(raider);
     decide(sim, STAND_DOWN_TICK - COMPUTER_DECISION_INTERVAL_TICKS);
@@ -314,6 +347,8 @@ describe('computer defence - desperate militia', () => {
       expect(sim.world.get(e, JobAssignment).workplace).toBe(hq);
       expect(sim.world.has(e, Rider)).toBe(false);
     }
+    expect(sim.world.has(crew, Position)).toBe(true);
+    expect(vehiclePassengers(sim.world.get(cart, Vehicle))).toEqual([]);
   });
 
   it('stands its militia down and forgets its offenders once the computer stops running the seat', () => {
