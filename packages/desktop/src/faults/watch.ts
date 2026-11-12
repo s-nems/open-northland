@@ -166,7 +166,9 @@ export function watchWindowFaults(
   });
 
   // Chromium reports a hang only after its own hang timeout, so the duration counts from that report.
-  win.on('unresponsive', () => {
+  // The page's events, not the window's: the window adds a hang 5 s after any close the page has not
+  // finished, which the leave prompt causes whenever the player stays or answers slowly.
+  contents.on('unresponsive', () => {
     if (hang !== undefined) return;
     const fault: ShellFault | undefined = safely(() =>
       store.record({
@@ -185,7 +187,7 @@ export function watchWindowFaults(
       if (stack !== undefined) update(fault.id, { stack });
     });
   });
-  win.on('responsive', () => {
+  contents.on('responsive', () => {
     if (hang === undefined) return;
     update(hang.id, { durationMs: Date.now() - hang.sinceMs });
     hang = undefined;
