@@ -30,6 +30,7 @@ import {
 } from './highlights/index.js';
 import type { AnsweredOrders } from './orders/answered.js';
 import { DOCK_PICK_SNAP_NODES } from './orders/berths.js';
+import { coinDrillersAt } from './orders/coin-drill.js';
 import type { UnitOrderController } from './orders/controller.js';
 import { enqueueUnitSelection } from './orders/group.js';
 import type { VehicleOrderController } from './orders/vehicle.js';
@@ -471,13 +472,34 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     }
     const pick = BUILDING_PICKS[kind].orders;
     if (pick === null) return attachTradeHouse(settlers, building);
-    const orders = pick(snapshot, settlers, building, buildingsByType, deps.content.goods);
-    const selectedOrders = orders
-      .filter(
-        (order): order is Extract<UnitSelectionCommand, { kind: 'assignBuilder' | 'trainSoldier' }> =>
-          order.kind === 'assignBuilder' || order.kind === 'trainSoldier',
-      )
-      .map((order) => (queued ? { ...order, queued } : order));
+    // At a barracks a soldier who may coin-drill drills there; the order is never queued.
+    const drillers =
+      kind === 'learning-place' && !queued
+        ? coinDrillersAt(deps.content, snapshot, building, settlers, buildingsByType)
+        : [];
+    const drills = drillers.map(
+      (settler): UnitSelectionCommand => ({
+        kind: 'orderCoinDrill',
+        entity: settler as Entity,
+        house: building as Entity,
+      }),
+    );
+    const orders = pick(
+      snapshot,
+      settlers.filter((settler) => !drillers.includes(settler)),
+      building,
+      buildingsByType,
+      deps.content.goods,
+    );
+    const selectedOrders: UnitSelectionCommand[] = [
+      ...orders
+        .filter(
+          (order): order is Extract<UnitSelectionCommand, { kind: 'assignBuilder' | 'trainSoldier' }> =>
+            order.kind === 'assignBuilder' || order.kind === 'trainSoldier',
+        )
+        .map((order) => (queued ? { ...order, queued } : order)),
+      ...drills,
+    ];
     let ordered: boolean;
     if (selectedOrders.length > 0) {
       ordered = enqueueUnitSelection(selectedOrders, deps.enqueue, deps.onOrderLimit);

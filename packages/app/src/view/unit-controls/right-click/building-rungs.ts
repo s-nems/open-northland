@@ -12,6 +12,7 @@ import {
   settlerJobType,
 } from '../../../game/snapshot/index.js';
 import type { Tile } from '../../picking.js';
+import { mayCoinDrillHere } from '../orders/coin-drill.js';
 import type { FormationUnit } from '../orders/formation.js';
 import { contentLookups, type RightClickContext } from './context.js';
 
@@ -34,12 +35,14 @@ export type BuildingIntent =
       readonly learners: readonly FormationUnit[];
     }
   /** Homes and workplaces have limited room, so each goes out as one group order and the sim seats the
-   *  homeless and the unemployed first. A settler none of them takes gets no order. */
+   *  homeless and the unemployed first. At a barracks a soldier who may coin-drill drills, the rest
+   *  enlist. A settler none of them takes gets no order. */
   | {
       readonly kind: 'building';
       readonly building: number;
       readonly crew: readonly FormationUnit[];
       readonly trainees: readonly FormationUnit[];
+      readonly drillers: readonly FormationUnit[];
       readonly household: readonly FormationUnit[];
       readonly workers: readonly BuildingWorker[];
     }
@@ -117,6 +120,9 @@ export function atBuilding(
   if (def !== undefined && systems.isSchoolType(def))
     return { kind: 'school', building, crew, learners: rest };
   const trainees: FormationUnit[] = [];
+  const drillers: FormationUnit[] = [];
+  const house = entityById(snapshot, building);
+  const buildings = contentLookups(ctx.content).buildings;
   const household: FormationUnit[] = [];
   const workers: BuildingWorker[] = [];
   for (const target of rest) {
@@ -125,14 +131,17 @@ export function atBuilding(
     // A home may be reserved before it stands; its household drives wait for completed construction.
     if (def?.kind === 'home') household.push(target);
     // A recruit sent to a foundation waits at its door until it stands.
-    else if (trainsRatherThanEmploys(def, currentJob)) trainees.push(target);
-    else {
+    else if (trainsRatherThanEmploys(def, currentJob)) {
+      const drills =
+        self !== undefined && house !== undefined && mayCoinDrillHere(ctx.content, self, house, buildings);
+      (drills ? drillers : trainees).push(target);
+    } else {
       // The sim gates every candidate in the priority list, so an unoffered or full trade falls through.
       const jobPriority = assignmentPriorityFor(currentJob, def?.workers);
       if (jobPriority.length > 0) workers.push({ unit: target, jobPriority });
     }
   }
-  return { kind: 'building', building, crew, trainees, household, workers };
+  return { kind: 'building', building, crew, trainees, drillers, household, workers };
 }
 
 export function queueAtBuilding(

@@ -452,6 +452,7 @@ export const chsGame = {
       placeSignpost: '放置路标',
       bombard: '炮击',
       rallyPoint: '设置集结点',
+      coinDrill: '操练',
       tooManyUnits: '单位过多',
       noFreePlaces: '没有空位',
       noRoom: '没有空间',

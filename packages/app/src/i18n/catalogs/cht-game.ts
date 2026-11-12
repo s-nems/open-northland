@@ -452,6 +452,7 @@ export const chtGame = {
       placeSignpost: '放置路標',
       bombard: '砲擊',
       rallyPoint: '設定集結點',
+      coinDrill: '操練',
       tooManyUnits: '單位過多',
       noFreePlaces: '沒有空位',
       noRoom: '沒有空間',

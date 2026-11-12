@@ -45,6 +45,7 @@ export type HintAction =
   | 'removeFromRoute'
   | 'learn'
   | 'train'
+  | 'coinDrill'
   | 'work'
   | 'live'
   | 'build'
@@ -323,6 +324,7 @@ function buildingParts(ctx: HintContext, intent: BuildingIntent, count: number):
     case 'building':
       add(intent.crew.length, action(crewVerb(intent.building)));
       add(intent.trainees.length, action('train'));
+      add(intent.drillers.length, action('coinDrill'));
       add(intent.household.length, householdHint(ctx, intent.building, intent.household));
       add(intent.workers.length, workersHint(ctx, intent.building, intent.workers));
       break;

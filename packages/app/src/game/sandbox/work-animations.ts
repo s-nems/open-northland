@@ -74,6 +74,16 @@ export const CIVILIST_EXERCISE_XP = 1;
 // The `event <at> <type>` type granting TRAINING experience (`ATOMIC_EVENT_TYPE_GET_TRAINING`,
 // logicdefines.inc l.749) - the schooling the `trainfor*` requirement rows read.
 export const TRAINING_EXPERIENCE_EVENT_TYPE = 29;
+// The `event <at> <type>` type spending gold (`ATOMIC_EVENT_TYPE_CHANGE_GOLD`), a negative value a cost.
+export const CHANGE_GOLD_EVENT_TYPE = 30;
+// A soldier's coin-drill repetition - the transcribed `viking_soldier_train` atomicanimation (`length 28`,
+// `event 2 30 -1`: one coin spent, `event 22 29 25`: 25 fight points).
+export const SOLDIER_TRAIN_ANIMATION = 'viking_soldier_train';
+export const SOLDIER_TRAIN_LENGTH = 28;
+export const SOLDIER_TRAIN_COIN_FRAME = 2;
+export const SOLDIER_TRAIN_COIN_CHANGE = -1;
+export const SOLDIER_TRAIN_POINTS_FRAME = 22;
+export const SOLDIER_TRAIN_POINTS = 25;
 
 // The breeder's own clips (`tribetypes.ini setatomic 16 85..88`), transcribed from the mod's
 // `atomicanimations12/atomicanimations.ini`: each `length 100`. The slay pair carries the wares the

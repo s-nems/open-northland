@@ -140,12 +140,19 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       name: professionLabel('builder'),
       allowedAtomics: [BUILD_HOUSE_ATOMIC, BUILD_ROAD_ATOMIC, BUILD_WALL_ATOMIC],
     },
-    { typeId: JOB_SOLDIER_SPEAR_WOODEN, id: 'soldier_spear_wooden', name: messages().soldierClasses.spear },
-    { typeId: JOB_SOLDIER_SPEAR, id: 'soldier_spear', name: messages().soldierClasses.spear },
-    { typeId: JOB_SOLDIER_SWORD, id: 'soldier_sword', name: messages().soldierClasses.sword },
-    { typeId: JOB_SOLDIER_BROADSWORD, id: 'soldier_broadsword', name: messages().soldierClasses.broadsword },
-    { typeId: JOB_ARCHER, id: 'soldier_bow', name: messages().soldierClasses.bow },
-    { typeId: JOB_ARCHER_LONG, id: 'soldier_bow_long', name: messages().soldierClasses.longbow },
+    // The armed classes' extracted `baseJob` is the bare soldier, whose coin-drill clip they play.
+    ...[
+      { typeId: JOB_SOLDIER_SPEAR_WOODEN, id: 'soldier_spear_wooden', name: messages().soldierClasses.spear },
+      { typeId: JOB_SOLDIER_SPEAR, id: 'soldier_spear', name: messages().soldierClasses.spear },
+      { typeId: JOB_SOLDIER_SWORD, id: 'soldier_sword', name: messages().soldierClasses.sword },
+      {
+        typeId: JOB_SOLDIER_BROADSWORD,
+        id: 'soldier_broadsword',
+        name: messages().soldierClasses.broadsword,
+      },
+      { typeId: JOB_ARCHER, id: 'soldier_bow', name: messages().soldierClasses.bow },
+      { typeId: JOB_ARCHER_LONG, id: 'soldier_bow_long', name: messages().soldierClasses.longbow },
+    ].map((job) => ({ ...job, baseJob: JOB_SOLDIER_UNARMED })),
     // Extracted `jobtypes.ini` 54: the catapult's own trade, which its weapon row binds to. Nobody
     // takes it; it is the vehicle's key.
     { typeId: JOB_VEHICLE_CATAPULT, id: 'vehicle_catapult', allowedAtomics: [ATTACK_ATOMIC] },

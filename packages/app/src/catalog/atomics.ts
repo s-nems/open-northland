@@ -94,6 +94,9 @@ export const BUILD_GUIDE_ATOMIC = 43;
 /** One drill repetition at the barracks (`logicdefines.inc` EXERCISE 89). */
 export const EXERCISE_ATOMIC = 89;
 
+/** One coin-drill repetition at the barracks (`logicdefines.inc` 90, bound `setatomic 31 90`). */
+export const SOLDIER_TRAIN_ATOMIC = 90;
+
 /** The bend over a chest's lid (`logicdefines.inc` OPEN_CHEST 91); the mod's `animations.ini` binds it to
  *  the generic pick-up clip, which the characters reuse here. */
 export const OPEN_CHEST_ATOMIC = 91;

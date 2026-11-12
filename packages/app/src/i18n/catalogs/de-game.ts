@@ -507,6 +507,7 @@ export const deGame = {
       placeSignpost: 'Wegweiser setzen',
       bombard: 'Beschießen',
       rallyPoint: 'Sammelpunkt setzen',
+      coinDrill: 'Exerzieren',
       tooManyUnits: 'Zu viele Einheiten',
       noFreePlaces: 'Keine freien Plätze',
       noRoom: 'Kein Platz',

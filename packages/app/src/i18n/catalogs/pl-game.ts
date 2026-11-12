@@ -464,6 +464,7 @@ export const plGame = {
       placeSignpost: 'Postaw drogowskaz',
       bombard: 'Ostrzelaj',
       rallyPoint: 'Ustaw punkt zbiórki',
+      coinDrill: 'Musztra',
       tooManyUnits: 'Za dużo jednostek',
       noFreePlaces: 'Brak wolnych miejsc',
       noRoom: 'Brak miejsca',

@@ -1,7 +1,13 @@
 import { ONE, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_BUILDER, JOB_COLLECTOR } from '../../../../src/catalog/jobs.js';
-import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
+import {
+  JOB_ARCHER,
+  JOB_BUILDER,
+  JOB_COLLECTOR,
+  JOB_SOLDIER_SWORD,
+  JOB_SOLDIER_UNARMED,
+} from '../../../../src/catalog/jobs.js';
+import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../../../src/game/rules.js';
 import { BUILDING_BARRACKS, BUILDING_HOME_00, sandboxContent } from '../../../../src/game/sandbox/index.js';
 import type { FormationUnit } from '../../../../src/view/unit-controls/orders/formation.js';
 import {
@@ -29,10 +35,11 @@ const PINNED = 50;
 
 type BuildingState = 'foundation' | 'damaged' | 'standing';
 
-const settler = (id: number, jobType: number | null, site?: number): Ent => ({
+const settler = (id: number, jobType: number | null, site?: number, fightPoints = 0): Ent => ({
   id,
   components: {
-    Settler: { jobType },
+    Settler: { tribe: PRIMARY_TRIBE, jobType },
+    SettlerProgress: { experience: [[systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, fightPoints]] },
     Owner: { player: HUMAN_PLAYER },
     Position: { x: ONE, y: ONE },
     ...(site === undefined ? {} : { SiteAssignment: { site } }),
@@ -97,6 +104,27 @@ describe('the building rungs', () => {
     expect(at(BUILDING_HOME_00)).toMatchObject({ kind: 'building', crew: [builder], household: [idle] });
     expect(at(BUILDING_BARRACKS)).toMatchObject({ kind: 'building', crew: [builder], trainees: [idle] });
     expect(at(SCHOOL)).toEqual({ kind: 'school', building: BUILDING, crew: [builder], learners: [idle] });
+  });
+
+  it('drill the armed soldiers below the limit for coins at a standing barracks and enlist the rest', () => {
+    const [sword, archer, bare, veteran] = units(4);
+    if (sword === undefined || archer === undefined || bare === undefined || veteran === undefined)
+      throw new Error('setup: four soldiers');
+    const at = (state: BuildingState) =>
+      atBuilding(
+        contextOf([
+          settler(sword.ref, JOB_SOLDIER_SWORD),
+          settler(archer.ref, JOB_ARCHER, undefined, systems.COIN_DRILL_LIMIT - 1),
+          settler(bare.ref, JOB_SOLDIER_UNARMED),
+          settler(veteran.ref, JOB_SOLDIER_SWORD, undefined, systems.COIN_DRILL_LIMIT),
+          building(BUILDING_BARRACKS, state),
+        ]),
+        [sword, archer, bare, veteran],
+        BUILDING,
+      );
+    expect(at('standing')).toMatchObject({ drillers: [sword, archer], trainees: [bare, veteran] });
+    // A foundation drills nobody: its recruits wait at the door.
+    expect(at('foundation')).toMatchObject({ drillers: [], trainees: [sword, archer, bare, veteran] });
   });
 
   it('queue the crew and the recruits under Shift and walk the rest there', () => {

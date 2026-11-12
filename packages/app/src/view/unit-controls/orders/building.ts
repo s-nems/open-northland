@@ -47,6 +47,15 @@ export function createBuildingOrders(deps: BuildingOrderDeps): IssueBuildingInte
       }),
     );
 
+  const drillCommands = (drillers: readonly FormationUnit[], house: number) =>
+    drillers.map(
+      (unit): UnitSelectionCommand => ({
+        kind: 'orderCoinDrill',
+        entity: unit.ref as Entity,
+        house: house as Entity,
+      }),
+    );
+
   return (intent, event, queued) => {
     switch (intent.kind) {
       case 'school': {
@@ -66,6 +75,7 @@ export function createBuildingOrders(deps: BuildingOrderDeps): IssueBuildingInte
           [
             ...builderCommands(intent.crew, building, false),
             ...trainCommands(intent.trainees, building, false),
+            ...drillCommands(intent.drillers, building),
           ],
           deps.enqueue,
           onOrderLimit,

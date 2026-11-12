@@ -477,6 +477,7 @@ export const itGame = {
       placeSignpost: 'Posa cartello',
       bombard: 'Bombarda',
       rallyPoint: 'Imposta il punto di raccolta',
+      coinDrill: 'Esercitati',
       tooManyUnits: 'Troppe unità',
       noFreePlaces: 'Nessun posto libero',
       noRoom: 'Nessuno spazio',

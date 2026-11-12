@@ -473,6 +473,7 @@ export const enGame = {
       placeSignpost: 'Place signpost',
       bombard: 'Bombard',
       rallyPoint: 'Set rally point',
+      coinDrill: 'Drill for coins',
       tooManyUnits: 'Too many units',
       noFreePlaces: 'No free places',
       noRoom: 'No room',

@@ -502,6 +502,7 @@ export const ruGame = {
       placeSignpost: 'Поставить указатель',
       bombard: 'Обстрелять',
       rallyPoint: 'Назначить место сбора',
+      coinDrill: 'Муштра',
       tooManyUnits: 'Слишком много юнитов',
       noFreePlaces: 'Нет свободных мест',
       noRoom: 'Нет места',
