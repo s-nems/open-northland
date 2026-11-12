@@ -481,8 +481,7 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   // The lower joinery makes wooden tools alone, so its joiner rests once the iron tool is earned.
   work_joinery_00: { seats: [{ until: 'tool_iron', works: ['tool_wooden'], otherwise: REST_SEAT }] },
   // The second joiner of the tools joinery makes furniture first while it lies under its line, the first
-  // keeps his tools first. Observed: the tools never lie at their line, so with furniture only behind them
-  // one or two of six seats on magiczny_las and diamentowa_dolina made any.
+  // keeps his tools first: the tools seldom lie at their line, so furniture behind them is rarely made.
   work_joinery_01: {
     seats: [JOINERY_SEAT, furnishing(JOINERY_SEAT)],
     unfed: NO_IRON_SEAT,

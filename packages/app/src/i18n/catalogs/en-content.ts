@@ -622,7 +622,7 @@ export const enContent = {
     'furnished-home': {
       title: 'Furniture houses extra families',
       summary:
-        'Three dwellings for one family each. The west one holds two pieces of furniture and houses a second family. Two tired women walk home to the middle one, whose furniture lasts two more sleeps: once both have lain down it is gone, the woman who moved in last moves out, and the assistant moves her into the empty dwelling in the east.',
+        'Three dwellings for one family each. The west one holds two pieces of furniture and houses a second family. Two tired women walk home to the middle one, where the piece of the woman who moved in last lasts only until her next sleep: once she lies down it is gone, she moves out, and the assistant moves her into the empty dwelling in the east.',
     },
     'gatherer-flag-follow': {
       title: 'Flags follow the resources',

@@ -31,8 +31,9 @@ export type LodgingWearSource = keyof LodgingWear;
 /**
  * Wear the piece `settler`'s family lives on for one `source` activity in `home`, when the family is one of
  * the home's extra ones and the owner allows furniture; a base family wears nothing. A worn-out piece is
- * replaced from the home's store, and with none there the family moves out. The piece a child empties
- * stays at nothing until the family's next sleep or meal, so the couple is not put out mid-session.
+ * replaced from the home's store, then by a piece no family lives on, and with neither the family moves
+ * out. The piece a child empties stays at nothing until the family's next sleep or meal, so the couple is
+ * not put out mid-session.
  */
 export function wearLodging(
   world: World,
@@ -48,7 +49,8 @@ export function wearLodging(
   const families = rankedFamilies(world, home);
   const lodger = families.findIndex((family) => family.members.includes(settler)) - type.homeSize;
   if (lodger < 0) return;
-  const pieces = seatLodgers(world, home, furniture, families.length - type.homeSize);
+  const lodgers = Math.min(type.furnishedFamilies, families.length - type.homeSize);
+  const pieces = seatLodgers(world, home, furniture, lodgers);
   const left = pieces[lodger];
   if (left === undefined) return;
   const worn = Math.max(0, left - furniture.wear[source]);
@@ -56,6 +58,9 @@ export function wearLodging(
     world.mut(home, Lodgings).pieces[lodger] = worn;
   } else if (spendHomeQuality(world, home, 'lodging', furniture.deliveryValue)) {
     world.mut(home, Lodgings).pieces[lodger] = furniture.deliveryValue;
+  } else if (pieces.length > lodgers) {
+    // A piece left by a family that moved away shifts into the worn one's place.
+    world.mut(home, Lodgings).pieces.splice(lodger, 1);
   } else if (source === 'child') {
     world.mut(home, Lodgings).pieces[lodger] = 0;
   } else {

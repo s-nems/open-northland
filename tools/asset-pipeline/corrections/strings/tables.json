@@ -2892,31 +2892,31 @@
     "table": "goodsHelp",
     "id": 29,
     "from": "Meble podnoszą standard życia, ponieważ twoi Wikingowie śpią lepiej w łóżku, niż na gołej podłodze. Dlatego też, są lepiej wypoczęci i dłużej obywają się bez snu.",
-    "to": "Umeblowany dom mieści więcej rodzin: Dom 1 i Dom 2 o jedną, wyższe domy o dwie. Meble zużywają się tylko w domu z dodatkowymi rodzinami, najbardziej przy narodzinach dzieci. Gdy się skończą, dodatkowe rodziny się wyprowadzają.",
-    "reason": "Meble nie poprawiają już snu: umeblowany dom mieści dodatkowe rodziny, a meble zużywają się tylko w domu z dodatkowymi rodzinami (decyzja właściciela)."
+    "to": "Jedna sztuka mebli to miejsce dla jednej dodatkowej rodziny: Dom 1, 2 i 3 mieści jedną taką rodzinę, Dom 4 i 5 dwie. Meble zużywa tylko dodatkowa rodzina, każda swoją sztukę, najbardziej przy narodzinach dzieci. Gdy jej meble się skończą, a dom nie ma zapasu, ta rodzina się wyprowadza.",
+    "reason": "Meble nie poprawiają już snu: jedna sztuka to miejsce dla jednej dodatkowej rodziny i tylko ta rodzina ją zużywa (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 29,
     "from": "Furniture increases the standard of living, because your Vikings sleep better in a bed than on the bare floor, therefore they are well-rested and remain awake longer.",
-    "to": "A furnished dwelling houses more families: Dwelling 1 and 2 one more, higher dwellings two more. Furniture wears out only in a dwelling holding extra families, most of all when children are born there. When it runs out, the extra families move out.",
-    "reason": "Meble nie poprawiają już snu: umeblowany dom mieści dodatkowe rodziny, a meble zużywają się tylko w domu z dodatkowymi rodzinami (decyzja właściciela)."
+    "to": "One piece of furniture is room for one extra family: Dwelling 1, 2 and 3 take one such family, Dwelling 4 and 5 two. Only an extra family wears furniture, each its own piece, most of all when children are born. When its furniture runs out and the dwelling has none in store, that family moves out.",
+    "reason": "Meble nie poprawiają już snu: jedna sztuka to miejsce dla jednej dodatkowej rodziny i tylko ta rodzina ją zużywa (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 29,
     "from": "Mit Möbeln steigt der Wohnkomfort, denn in einem Bett schläft es sich angenehmer als auf hartem Boden. Dadurch sind die Wikinger ausgeruhter und bleiben länger wach.",
-    "to": "Ein möbliertes Wohnhaus nimmt mehr Familien auf: Wohnhaus 1 und 2 eine weitere, höhere Wohnhäuser zwei weitere. Möbel nutzen sich nur in einem Wohnhaus mit zusätzlichen Familien ab, am meisten, wenn dort Kinder geboren werden. Sind sie verbraucht, ziehen die zusätzlichen Familien aus.",
-    "reason": "Meble nie poprawiają już snu: umeblowany dom mieści dodatkowe rodziny, a meble zużywają się tylko w domu z dodatkowymi rodzinami (decyzja właściciela)."
+    "to": "Ein Stück Möbel gibt Platz für eine weitere Familie: Wohnhaus 1, 2 und 3 nehmen eine solche Familie auf, Wohnhaus 4 und 5 zwei. Möbel nutzt nur eine weitere Familie ab, jede ihr eigenes Stück, am meisten, wenn Kinder geboren werden. Sind ihre Möbel verbraucht und hat das Haus keinen Vorrat, zieht diese Familie aus.",
+    "reason": "Meble nie poprawiają już snu: jedna sztuka to miejsce dla jednej dodatkowej rodziny i tylko ta rodzina ją zużywa (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 29,
     "from": "Мебель повышает уровень жизни ваших Викингов, так как они спят намного лучше на кроватях чем на голом полу, они лучше отдыхают и остаются дееспособными большее время.",
-    "to": "Жилище с мебелью вмещает больше семей: Жилище 1 и 2 на одну, более высокие жилища на две. Мебель изнашивается только в жилище с дополнительными семьями, больше всего при рождении детей. Когда она заканчивается, дополнительные семьи выезжают.",
-    "reason": "Meble nie poprawiają już snu: umeblowany dom mieści dodatkowe rodziny, a meble zużywają się tylko w domu z dodatkowymi rodzinami (decyzja właściciela)."
+    "to": "Одна штука мебели даёт место одной дополнительной семье: Жилище 1, 2 и 3 вмещает одну такую семью, Жилище 4 и 5 две. Мебель изнашивает только дополнительная семья, каждая свою штуку, больше всего при рождении детей. Когда её мебель кончается, а в жилище нет запаса, эта семья съезжает.",
+    "reason": "Meble nie poprawiają już snu: jedna sztuka to miejsce dla jednej dodatkowej rodziny i tylko ta rodzina ją zużywa (decyzja właściciela)."
   }
 ]

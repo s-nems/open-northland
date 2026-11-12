@@ -624,7 +624,7 @@ export const deContent = {
     'furnished-home': {
       title: 'Möbel bieten Platz für weitere Familien',
       summary:
-        'Drei Wohnhäuser für je eine Familie. Im westlichen stehen zwei Stück Möbel, darum wohnt dort eine zweite Familie. Zwei müde Frauen gehen heim ins mittlere, dessen Möbel noch für zwei Schlafphasen reichen: Sobald sich beide hingelegt haben, sind sie verbraucht, die zuletzt eingezogene Frau zieht aus, und der Assistent bringt sie ins leere Wohnhaus im Osten.',
+        'Drei Wohnhäuser für je eine Familie. Im westlichen stehen zwei Stück Möbel, darum wohnt dort eine zweite Familie. Zwei müde Frauen gehen heim ins mittlere, wo das Möbelstück der zuletzt eingezogenen Frau nur bis zu ihrem nächsten Schlaf reicht: Sobald sie sich hinlegt, ist es verbraucht, sie zieht aus, und der Assistent bringt sie ins leere Wohnhaus im Osten.',
     },
     'gatherer-flag-follow': {
       title: 'Fahnen folgen den Rohstoffen',

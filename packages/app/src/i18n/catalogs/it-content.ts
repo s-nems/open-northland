@@ -625,7 +625,7 @@ export const itContent = {
     'furnished-home': {
       title: 'Il mobilio ospita famiglie in più',
       summary:
-        "Tre abitazioni da una famiglia ciascuna. Quella a ovest contiene due pezzi di mobilio e ospita una seconda famiglia. Due donne stanche tornano a casa in quella di mezzo, il cui mobilio basta per altri due sonni: quando entrambe si sono coricate è finito, la donna arrivata per ultima trasloca e l'assistente la trasferisce nell'abitazione vuota a est.",
+        "Tre abitazioni da una famiglia ciascuna. Quella a ovest contiene due pezzi di mobilio e ospita una seconda famiglia. Due donne stanche tornano a casa in quella di mezzo, dove il pezzo della donna arrivata per ultima basta solo fino al suo prossimo sonno: quando si corica è finito, lei trasloca e l'assistente la trasferisce nell'abitazione vuota a est.",
     },
     'gatherer-flag-follow': {
       title: 'Le bandierine seguono le risorse',

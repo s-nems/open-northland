@@ -302,6 +302,22 @@ describe('furniture housing extra families', () => {
     expect(pieces(sim, home)).toEqual([kept - MEAL_WEAR]);
   });
 
+  it('moves a family onto a piece another family left behind before moving it out', () => {
+    const { sim, home } = setup();
+    sim.world.mut(home, HomeQuality).lodging = 0;
+    const idle = PIECE - 1;
+    sim.world.add(home, Lodgings, { pieces: [SLEEP_WEAR, idle] });
+    single(sim, home, 0);
+    single(sim, home, 1);
+    const extra = single(sim, home, 2);
+
+    wearLodging(sim.world, ctxOf(sim), home, extra, 'sleep');
+
+    expect(pieces(sim, home)).toEqual([idle]);
+    expect(sim.world.get(extra, Residence).home).toBe(home);
+    expect(movedOut(sim)).toEqual([]);
+  });
+
   it('keeps a couple whose child emptied its piece until its next sleep or meal', () => {
     const { sim, home } = setup();
     sim.world.mut(home, HomeQuality).lodging = 0;

@@ -620,7 +620,7 @@ export const plContent = {
     'furnished-home': {
       title: 'Meble mieszczą dodatkowe rodziny',
       summary:
-        'Trzy domy dla jednej rodziny. W zachodnim są dwie sztuki mebli, więc mieszka w nim druga rodzina. Do środkowego wracają dwie zmęczone kobiety, a jego meble starczą jeszcze na dwa sny: gdy obie się położą, mebli już nie ma, kobieta, która wprowadziła się ostatnia, wyprowadza się, a asystent przenosi ją do pustego domu na wschodzie.',
+        'Trzy domy dla jednej rodziny. W zachodnim są dwie sztuki mebli, więc mieszka w nim druga rodzina. Do środkowego wracają dwie zmęczone kobiety, a mebel tej, która wprowadziła się ostatnia, starczy tylko do jej najbliższego snu: gdy się położy, mebla już nie ma, więc się wyprowadza, a asystent przenosi ją do pustego domu na wschodzie.',
     },
     'gatherer-flag-follow': {
       title: 'Flagi idą za surowcami',
