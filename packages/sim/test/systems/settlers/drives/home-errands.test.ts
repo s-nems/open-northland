@@ -461,11 +461,11 @@ describe('company at home - a married settler fills its company bar on stepping 
       const sim = simWithHomes();
       const married = needsSettlerAt(sim, 1, 2, { ...needs, enjoyment: LONELY });
       const home = homeAt(sim, 4, 2);
-      sim.world.add(married, Residence, { home });
+      sim.world.add(married, Residence, { home, since: 0 });
       stock(sim, home, 2);
       marryAway(sim, married);
       const single = needsSettlerAt(sim, 1, 2, { ...needs, enjoyment: LONELY });
-      sim.world.add(single, Residence, { home });
+      sim.world.add(single, Residence, { home, since: 0 });
 
       sim.step(); // sets off for the door, still lonely on the way
       expect(sim.world.has(married, MoveGoal)).toBe(true);
