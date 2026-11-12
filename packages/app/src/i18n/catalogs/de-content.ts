@@ -554,7 +554,7 @@ export const deContent = {
     'vehicle-catapult-archers': {
       title: 'Ein Katapult gegen Bogenschützen',
       summary:
-        'Ein bemanntes Katapult hält seine Stellung, während drei feindliche Langbogenschützen in Kettenhemden darauf zumarschieren. Es beschießt sie mit Steinen, sobald sie in seine Reichweite kommen, und sie schießen aus ihrer auf sein Gestell. Jeder Bogenschütze braucht drei Steine, und das Gestell übersteht alle drei, mit Reserve für ein paar Pfeile.',
+        'Ein bemanntes Katapult hält seine Stellung, während drei feindliche Langbogenschützen in Kettenhemden darauf zumarschieren. Es beschießt sie mit Steinen, sobald sie in seine Reichweite kommen, und sie schießen aus ihrer auf sein Gestell. Jeder Bogenschütze braucht drei Steine, und das Gestell hält lange genug, um zwei von ihnen zu fällen, bevor es bricht.',
     },
     'vehicle-catapult-wall': {
       title: 'Ein Katapult beschießt einen Ort hinter dem Wall',

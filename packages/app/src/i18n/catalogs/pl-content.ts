@@ -550,7 +550,7 @@ export const plContent = {
     'vehicle-catapult-archers': {
       title: 'Katapulta przeciw łucznikom',
       summary:
-        'Obsadzona katapulta trzyma pozycję, a trzech wrogich łuczników z długimi łukami, w kolczugach, idzie prosto na nią. Gdy wchodzą w jej zasięg, ciska w nich kamieniami, a oni ze swojego zasięgu strzelają w jej kadłub. Na każdego łucznika trzeba trzech kamieni, a kadłub przetrzymuje wszystkich trzech, z zapasem na kilka strzał.',
+        'Obsadzona katapulta trzyma pozycję, a trzech wrogich łuczników z długimi łukami, w kolczugach, idzie prosto na nią. Gdy wchodzą w jej zasięg, ciska w nich kamieniami, a oni ze swojego zasięgu strzelają w jej kadłub. Na każdego łucznika trzeba trzech kamieni, a kadłub wytrzymuje dość długo, by powalić dwóch, zanim pęknie.',
     },
     'vehicle-catapult-wall': {
       title: 'Katapulta ostrzeliwuje miejsce za palisadą',

@@ -39,10 +39,27 @@ const CATAPULT_MAIN_TYPE = 7;
 const CATAPULT_SPEED = 3;
 const SIEGE_DAMAGE_TYPE = 2;
 /** The catapult's `weapons.ini` type 21 row as the data pack sets it: the pack's balance raises the far
- *  reach from 24. Extracted damage columns: bare, wool, leather, chain, plate, vehicle/wood, house. */
+ *  reach from 24 and every damage column to 125%, rounded down. Extracted damage columns: bare, wool,
+ *  leather, chain, plate, vehicle/wood, house. */
 export const CATAPULT_MIN_RANGE = 8;
 export const CATAPULT_MAX_RANGE = 26;
-const CATAPULT_DAMAGE = { '0': 8000, '1': 4000, '2': 6000, '3': 2000, '4': 2000, '6': 350, '7': 3625 };
+const EXTRACTED_CATAPULT_DAMAGE = {
+  '0': 8000,
+  '1': 4000,
+  '2': 6000,
+  '3': 2000,
+  '4': 2000,
+  '6': 350,
+  '7': 3625,
+};
+const CATAPULT_DAMAGE_PERCENT = 125;
+const PERCENT = 100;
+const CATAPULT_DAMAGE: Readonly<Record<string, number>> = Object.fromEntries(
+  Object.entries(EXTRACTED_CATAPULT_DAMAGE).map(([column, value]) => [
+    column,
+    Math.floor((value * CATAPULT_DAMAGE_PERCENT) / PERCENT),
+  ]),
+);
 /** The `logicdefines.inc` `WEAPON_MAIN_TYPE_*` classes the viking rows carry. */
 const UNARMED_MAIN_TYPE = 1;
 const SPEAR_MAIN_TYPE = 2;
@@ -66,7 +83,7 @@ export const SHORT_BOW_DRAW_LENGTH = 12; // viking_soldier_attack_bow_short
 export const SHORT_BOW_RELEASE_FRAME = 10;
 export const LONG_BOW_DRAW_LENGTH = 28; // viking_soldier_attack_bow_long
 export const LONG_BOW_RELEASE_FRAME = 22;
-export const CATAPULT_SHOT_LENGTH = 78; // viking_catapult_attack, as the data pack lengthens it
+export const CATAPULT_SHOT_LENGTH = 96; // viking_catapult_attack, as the data pack lengthens it
 export const CATAPULT_SHOT_FRAME = 1;
 // Bare-target damage per weapon, extracted from `weapons.ini` `damagevalue 0`, so sandbox combat
 // resolves on the same scale as real content.

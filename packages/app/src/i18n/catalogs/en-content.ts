@@ -552,7 +552,7 @@ export const enContent = {
     'vehicle-catapult-archers': {
       title: 'A catapult against archers',
       summary:
-        'A crewed catapult holds its ground while three enemy longbowmen in chain mail march on it. It stones them as they come into its reach, and they shoot at its hull from theirs. Each archer takes three stones, and the hull outlasts all three with a few arrows to spare.',
+        'A crewed catapult holds its ground while three enemy longbowmen in chain mail march on it. It stones them as they come into its reach, and they shoot at its hull from theirs. Each archer takes three stones, and the hull lasts long enough to fell two of them before it breaks.',
     },
     'vehicle-catapult-wall': {
       title: 'A catapult shells a spot over the wall',
