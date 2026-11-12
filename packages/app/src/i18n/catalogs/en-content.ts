@@ -524,6 +524,11 @@ export const enContent = {
       summary:
         'A moored ship asks for wood from the shore piles. Its carrier and a smith riding with him fetch it unit by unit; a soldier riding along boards and stays aboard.',
     },
+    'vehicle-ship-crew-meal': {
+      title: 'Ship crew meal',
+      summary:
+        'A starving crew of soldiers aboard a moored ship with an empty hold. Each drinks the mead it carries; those still hungry step ashore, eat at the warehouse and board again.',
+    },
     'hauling-cart': {
       title: 'Hauling cart',
       summary:

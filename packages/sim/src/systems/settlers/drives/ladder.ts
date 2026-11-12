@@ -237,9 +237,13 @@ function planBreak(
   if (seat?.boarding === true) {
     const loaded = load !== undefined && load.amount > 0;
     if (!loaded || pinnedTraderOf(world, seat.vehicle) === null) abandonCargoRun(world, e);
-    if (!loaded && planRider(world, ctx, terrain, e, pass.spacing, pass.idle)) {
-      stepOut(world, e);
-      return true;
+    if (!loaded) {
+      // A meal ashore ends with the call back, the retry keeping a rider still hungry aboard for it.
+      if (world.has(e, MealBreak)) endMealBreak(world, ctx, e);
+      if (planRider(world, ctx, terrain, e, pass.spacing, pass.idle)) {
+        stepOut(world, e);
+        return true;
+      }
     }
   }
 

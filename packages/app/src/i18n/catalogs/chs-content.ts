@@ -505,6 +505,11 @@ export const chsContent = {
       summary:
         '一艘停泊的船要求装载岸边堆垛中的木材。它的搬运工和同船的铁匠一份一份地取来；同船的士兵登船后一直留在船上。',
     },
+    'vehicle-ship-crew-meal': {
+      title: '船员用餐',
+      summary:
+        '一队饥饿的士兵待在货舱空空的停泊船上。每人先喝掉随身携带的蜂蜜酒；仍然饥饿的人上岸到仓库吃饭，然后回到船上。',
+    },
     'hauling-cart': {
       title: '搬运工推车',
       summary:

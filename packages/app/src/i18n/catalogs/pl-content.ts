@@ -522,6 +522,11 @@ export const plContent = {
       summary:
         'Zacumowany statek zamawia drewno ze stert na brzegu. Przynoszą je sztuka po sztuce tragarz i płynący z nim kowal; żołnierz wsiada i zostaje na pokładzie.',
     },
+    'vehicle-ship-crew-meal': {
+      title: 'Posiłek załogi statku',
+      summary:
+        'Głodująca załoga żołnierzy na zacumowanym statku z pustą ładownią. Każdy wypija miód pitny, który ma przy sobie; wciąż głodni schodzą na brzeg, jedzą w magazynie i wracają na pokład.',
+    },
     'hauling-cart': {
       title: 'Wózek tragarza',
       summary:

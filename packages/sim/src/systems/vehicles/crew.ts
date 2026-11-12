@@ -7,6 +7,7 @@ import {
   HuntFocus,
   hasFreeOrdinarySeat,
   hasFreeSeat,
+  MealBreak,
   ownerOf,
   PlayerOrder,
   Position,
@@ -16,6 +17,7 @@ import {
   setSeatInside,
   TradeShip,
   Vehicle,
+  VehicleDrive,
   vehicleCommander,
   vehiclePassengers,
 } from '../../components/index.js';
@@ -299,6 +301,17 @@ export function landingOf(world: World, ctx: MapContext, vehicle: Entity): HalfC
   return node === null ? null : { hx: terrain.xOf(node), hy: terrain.yOf(node) };
 }
 
+/**
+ * Whether a rider inside `vehicle` may step out of its own accord, for the hold's work or a meal: the
+ * vehicle stands still under no order, a cart with no drive or held goal or a moored ship, and rides no
+ * carrier.
+ */
+export function letsRidersOut(world: World, ctx: ContentContext, vehicle: Entity): boolean {
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined || state.carrier !== null || state.heldGoal !== null) return false;
+  return !world.has(vehicle, VehicleDrive) && !isShipAtSea(ctx, state);
+}
+
 /** Stand `e` on `point`, restoring the Position that boarding gave up. */
 export function placeOnNode(world: World, e: Entity, point: HalfCellNode): void {
   const at = positionOfNode(point.hx, point.hy);
@@ -368,6 +381,8 @@ export function boardRider(world: World, rider: Entity, vehicle: Entity): void {
   world.remove(rider, Engagement);
   world.remove(rider, AttackOrder);
   world.remove(rider, HuntFocus);
+  // A meal ashore the vehicle called its rider back from ends here: nothing plans a rider aboard.
+  world.remove(rider, MealBreak);
   world.remove(rider, Position);
   const seat = world.tryMut(rider, Rider);
   if (seat === undefined) world.add(rider, Rider, { vehicle, boarding: false, leaving: null });

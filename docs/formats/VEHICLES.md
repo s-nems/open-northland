@@ -133,10 +133,16 @@ Open Northland: `Rider` (`packages/sim/src/components/vehicle.ts`) marks an atta
 seat's `inside` says whether it is aboard; a rider aboard has no `Position`, which is what keeps it
 out of every map query. Inside a cart its needs and hitpoints stand still (approximation: the
 original's hitpoint step aboard is not read); inside a ship they run on, and `shipboardNeedsSystem`
-(`systems/vehicles/shipboard-needs.ts`) serves them aboard: a hungry passenger eats a unit of food out
-of the hold, a tired one sleeps, a lonely one chats with a fellow passenger, each worth what the clip
-it would play on land pays in, rest at the open-air half, at most once per clip length. Piety waits for
-land (owner's choice; whether the original serves a rider aboard is unconfirmed). `attachToVehicle` walks the rider to the door through the
+(`systems/vehicles/shipboard-needs.ts`) serves them aboard: a hungry or tired passenger first drinks a
+draught it carries, as on land; a hungry one eats a unit of food out of the hold, a tired one sleeps, a
+lonely one chats with a fellow passenger, each worth what the clip it would play on land pays in, rest
+at the open-air half, at most once per clip length. Piety waits for land (owner's choice; whether the
+original serves a rider aboard is unconfirmed). Where the ship lies moored under no order, a hungry
+passenger allowed to look for food steps out on a meal break instead, eats ashore until sated and boards
+again, so a crew at the shore does not eat the hold faster than a hand restocks it. It falls back on the
+hold for the meal-break retry with nothing to eat ashore, under the battle alert at its landing, and
+after the ship called it back; a pinned trade ship's crew always eats aboard (named addition).
+`attachToVehicle` walks the rider to the door through the
 unconfined walk order and ends any chat it was in; the rider rung of the drive ladder
 (`systems/vehicles/boarding.ts`) steps a passenger in as soon as it reaches the door, while a carrier,
 the crew that works its vehicle from outside, waits by the door until the vehicle asks

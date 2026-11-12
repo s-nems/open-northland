@@ -526,6 +526,11 @@ export const deContent = {
       summary:
         'Ein vertäutes Schiff fordert Holz von den Haufen am Ufer an. Sein Träger und ein mitfahrender Schmied holen es Stück für Stück; ein mitfahrender Soldat steigt ein und bleibt an Bord.',
     },
+    'vehicle-ship-crew-meal': {
+      title: 'Mahlzeit der Schiffsbesatzung',
+      summary:
+        'Eine hungernde Besatzung aus Soldaten an Bord eines vertäuten Schiffs mit leerem Laderaum. Jeder trinkt den Met, den er bei sich trägt; wer noch hungrig ist, geht an Land, isst im Lagerhaus und geht wieder an Bord.',
+    },
     'hauling-cart': {
       title: 'Trägerkarren',
       summary:

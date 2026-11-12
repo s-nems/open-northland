@@ -46,17 +46,26 @@ export const MEAL_BREAK_RETRY_TICKS = 20 * TICKS_PER_SECOND;
 
 /**
  * Whether hunger takes `e` off its player orders or its fight now. Carried draughts were drunk at the node
- * it walked onto or between its blows. A soldier whose regeneration the player prohibited keeps going, as
- * it never leaves what it does to look for food; a computer seat's fighter is left to its seat's refill,
- * so a march holds together; and a unit a script controls keeps to the script's walk. Drops a
- * {@link MealBreakRetry} that has run out.
+ * it walked onto or between its blows. A rider keeps to its vehicle; a moored ship lands its own
+ * (`vehicles/shipboard-needs.ts`).
  */
 export function breaksForMeal(world: World, ctx: SystemContext, e: Entity): boolean {
-  const jobType = world.tryGet(e, Settler)?.jobType ?? null;
-  // A jobless settler never starves and the planner never visits it, so nothing would end its break.
-  if (jobType === null || world.has(e, Rider) || world.has(e, NoRegeneration)) return false;
+  if (world.has(e, Rider)) return false;
   const needs = world.tryGet(e, SettlerNeeds);
   if (needs === undefined || needLevel(needs, 'hunger', ctx.tick) < NEED_CRITICAL_THRESHOLD) return false;
+  return mayLeaveForMeal(world, ctx, e);
+}
+
+/**
+ * Whether a hungry `e` may leave what it does to look for food. A soldier whose regeneration the player
+ * prohibited keeps going, as it never leaves what it does to look for food; a computer seat's fighter is
+ * left to its seat's refill, so a march holds together; and a unit a script controls keeps to the
+ * script's walk. Drops a {@link MealBreakRetry} that has run out.
+ */
+export function mayLeaveForMeal(world: World, ctx: SystemContext, e: Entity): boolean {
+  const jobType = world.tryGet(e, Settler)?.jobType ?? null;
+  // A jobless settler never starves and the planner never visits it, so nothing would end its break.
+  if (jobType === null || world.has(e, NoRegeneration)) return false;
   const retry = world.tryGet(e, MealBreakRetry);
   if (retry !== undefined) {
     if (ctx.tick < retry.retryAt) return false;

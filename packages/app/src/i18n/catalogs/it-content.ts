@@ -527,6 +527,11 @@ export const itContent = {
       summary:
         "Una nave ormeggiata chiede legno dai cumuli sulla riva. Il suo trasportatore e un fabbro che viaggia con lui lo prendono un'unità alla volta; un soldato che viaggia con loro sale a bordo e ci resta.",
     },
+    'vehicle-ship-crew-meal': {
+      title: "Pasto dell'equipaggio",
+      summary:
+        "Un equipaggio di soldati affamati a bordo di una nave ormeggiata con la stiva vuota. Ognuno beve l'idromele che porta con sé; chi ha ancora fame scende a terra, mangia al magazzino e risale a bordo.",
+    },
     'hauling-cart': {
       title: 'Carro da trasporto',
       summary:

@@ -507,6 +507,11 @@ export const chtContent = {
       summary:
         '一艘停泊的船要求裝載岸邊貨堆中的木材。它的搬運工和同船的鐵匠一件一件取來；同船的士兵登船後一直留在船上。',
     },
+    'vehicle-ship-crew-meal': {
+      title: '船員用餐',
+      summary:
+        '一隊飢餓的士兵待在貨艙空空的停泊船上。每人先喝掉隨身攜帶的蜂蜜酒；仍然飢餓的人上岸到倉庫吃飯，然後回到船上。',
+    },
     'hauling-cart': {
       title: '搬運工推車',
       summary:
