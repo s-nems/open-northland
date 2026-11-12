@@ -74,6 +74,13 @@ function wareRatio(base: KnowledgeBase, good: string, field: 'capacity' | 'fetch
   return ware === undefined ? undefined : ware[field] / ware.deliveryValue;
 }
 
+/** What the top home keeps of furniture, in delivered units. */
+function largeHomeRatio(base: KnowledgeBase, field: 'capacity' | 'fetchBelow'): FactValue {
+  const ware = homeWare(base, 'furniture');
+  const large = ware?.effect === 'lodging' ? ware.largeHome : undefined;
+  return ware === undefined || large === undefined ? undefined : large[field] / ware.deliveryValue;
+}
+
 /** One delivered unit of oil's burn, a use a second. */
 function oilBurnSeconds(base: KnowledgeBase): FactValue {
   const ware = homeWare(base, 'holy_oil');
@@ -187,6 +194,8 @@ export const LIFE_FACTS: Readonly<Record<string, Fact>> = {
   'home.furnitureMeals': whole((base) => furnitureCovers(base, 'meal')),
   'home.crockeryFetchBelow': whole((base) => wareRatio(base, 'crockery', 'fetchBelow')),
   'home.furnitureFetchBelow': whole((base) => wareRatio(base, 'furniture', 'fetchBelow')),
+  'home.largeFurnitureUnits': whole((base) => largeHomeRatio(base, 'capacity')),
+  'home.largeFurnitureFetchBelow': whole((base) => largeHomeRatio(base, 'fetchBelow')),
   'home.oilFetchBelow': whole((base) => wareRatio(base, 'holy_oil', 'fetchBelow')),
   'oil.burnTime': duration(oilBurnSeconds),
   'oil.fullBurnTime': duration((base) => {

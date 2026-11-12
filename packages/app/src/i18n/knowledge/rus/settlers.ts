@@ -334,7 +334,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'Жилище держит до {{home.wareUnits}} шт. Посуды и столько же Масла, а Мебели до {{home.furnitureUnits}} шт. Масло горит непрерывно, даже если никто не молится.',
+            foot: 'Жилище держит до {{home.wareUnits}} шт. Посуды и столько же Масла, а Мебели до {{home.furnitureUnits}} шт. Жилище 5 держит {{home.largeFurnitureUnits}} шт. Мебели и пополняет её ниже {{home.largeFurnitureFetchBelow}}. Масло горит непрерывно, даже если никто не молится.',
           },
         },
         {

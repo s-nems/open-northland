@@ -311,7 +311,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: '陶器和油每种最多存{{home.wareUnits}}份，家具最多存{{home.furnitureUnits}}份。油一直燃烧，没人祈祷时也一样。',
+            foot: '陶器和油每种最多存{{home.wareUnits}}份，家具最多存{{home.furnitureUnits}}份。五级民居可存{{home.largeFurnitureUnits}}份家具，低于{{home.largeFurnitureFetchBelow}}份时补充。油一直燃烧，没人祈祷时也一样。',
           },
         },
         {

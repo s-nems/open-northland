@@ -335,7 +335,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'Dom trzyma do {{home.wareUnits}} sztuk Naczyń i tyle samo Oliwy, a Mebli do {{home.furnitureUnits}} sztuk. Oliwa pali się bez przerwy, także gdy nikt się nie modli.',
+            foot: 'Dom trzyma do {{home.wareUnits}} sztuk Naczyń i tyle samo Oliwy, a Mebli do {{home.furnitureUnits}} sztuk. Dom 5 trzyma {{home.largeFurnitureUnits}} sztuki Mebli i uzupełnia je poniżej {{home.largeFurnitureFetchBelow}}. Oliwa pali się bez przerwy, także gdy nikt się nie modli.',
           },
         },
         {

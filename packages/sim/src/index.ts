@@ -133,7 +133,7 @@ export {
   type HashTraceEntry,
   type HashTraceOptions,
 } from './inspect/hashtrace.js';
-export { homeFamilyCapacityView } from './inspect/home-capacity.js';
+export { homeFamilyCapacityView, homeWareStock } from './inspect/home-capacity.js';
 export { type HouseholdGoodPolicyView, householdGoodPolicyView } from './inspect/household-policy.js';
 export { clonePlain, cloneReadView } from './inspect/plain-clone.js';
 export {

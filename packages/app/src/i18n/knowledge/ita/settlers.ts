@@ -348,7 +348,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: "Un'abitazione contiene fino a {{home.wareUnits}} unità di vasellame e di olio, e {{home.furnitureUnits}} di mobilio. L'olio brucia senza sosta, anche quando nessuno prega.",
+            foot: "Un'abitazione contiene fino a {{home.wareUnits}} unità di vasellame e di olio, e {{home.furnitureUnits}} di mobilio. L'Abitazione 5 contiene {{home.largeFurnitureUnits}} unità di mobilio e le rifornisce sotto {{home.largeFurnitureFetchBelow}}. L'olio brucia senza sosta, anche quando nessuno prega.",
           },
         },
         {

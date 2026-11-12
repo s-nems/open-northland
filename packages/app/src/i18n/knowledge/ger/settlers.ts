@@ -344,7 +344,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'Ein Wohnhaus fasst bis zu {{home.wareUnits}} Stück Geschirr und ebenso viel Öl, dazu bis zu {{home.furnitureUnits}} Stück Möbel. Öl brennt ohne Pause, auch wenn niemand betet.',
+            foot: 'Ein Wohnhaus fasst bis zu {{home.wareUnits}} Stück Geschirr und ebenso viel Öl, dazu bis zu {{home.furnitureUnits}} Stück Möbel. Wohnhaus 5 fasst {{home.largeFurnitureUnits}} Stück Möbel und füllt unter {{home.largeFurnitureFetchBelow}} nach. Öl brennt ohne Pause, auch wenn niemand betet.',
           },
         },
         {

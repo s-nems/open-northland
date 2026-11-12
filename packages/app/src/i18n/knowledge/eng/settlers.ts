@@ -335,7 +335,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'A dwelling holds up to {{home.wareUnits}} pieces of Crockery and of Oil, and {{home.furnitureUnits}} of Furniture. Oil burns nonstop, even when nobody is praying.',
+            foot: 'A dwelling holds up to {{home.wareUnits}} pieces of Crockery and of Oil, and {{home.furnitureUnits}} of Furniture. Dwelling 5 holds {{home.largeFurnitureUnits}} pieces of Furniture and restocks below {{home.largeFurnitureFetchBelow}}. Oil burns nonstop, even when nobody is praying.',
           },
         },
         {

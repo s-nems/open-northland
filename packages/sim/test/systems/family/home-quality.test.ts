@@ -63,6 +63,9 @@ const SLEEP_ATOMIC = 8;
 /** Quality points one delivered piece of furniture adds. */
 const FURNITURE_PIECE = 1000;
 
+/** The zero-based level from which the fixture's home keeps a third piece of furniture. */
+const LARGE_HOME_LEVEL = 4;
+
 function content() {
   return parseContentSet({
     manifest: TEST_MANIFEST,
@@ -90,6 +93,11 @@ function content() {
           fetchBelow: FURNITURE_PIECE,
           minimumHomeLevel: 0,
           wear: { child: 100, sleep: 10, meal: 10 },
+          largeHome: {
+            fromLevel: LARGE_HOME_LEVEL,
+            capacity: 3 * FURNITURE_PIECE,
+            fetchBelow: 2 * FURNITURE_PIECE,
+          },
         },
       },
       {
@@ -215,6 +223,27 @@ describe('household quality goods', () => {
 
     setHouseholdGoodUse(sim.world, ctxOf(sim), { player: 0, effect: 'lodging', allowed: false });
     expect(homeFamilyCapacity(sim.world, ctxOf(sim), home, type)).toBe(type.homeSize);
+  });
+
+  it('keeps a third piece of furniture in a large home and restocks it under two', () => {
+    const { sim, home, carrier } = setup();
+    const large = addHome(sim, 0, LARGE_HOME_LEVEL);
+    const resident = adult(sim);
+    const wanted = (at: Entity) =>
+      demandedHomeQualityGoods(sim.world, ctxOf(sim), resident, at).has(FURNITURE);
+    for (const at of [home, large]) {
+      deliver(sim, carrier, at, FURNITURE);
+      sim.world.remove(carrier, Carrying);
+    }
+    expect(wanted(home)).toBe(false);
+    expect(wanted(large)).toBe(true);
+    for (const at of [home, large])
+      for (let i = 0; i < 3; i++) {
+        deliver(sim, carrier, at, FURNITURE);
+        sim.world.remove(carrier, Carrying);
+      }
+    expect(sim.world.get(home, HomeQuality).lodging).toBe(2 * FURNITURE_PIECE);
+    expect(sim.world.get(large, HomeQuality).lodging).toBe(3 * FURNITURE_PIECE);
   });
 
   it('stores oil on a mature home and burns three points each game-second pass', () => {

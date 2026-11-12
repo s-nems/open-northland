@@ -133,7 +133,20 @@ export const HomeQuality = z.discriminatedUnion('effect', [
     /** Quality points spent by one matching household action. */
     useCost: z.number().int().positive(),
   }),
-  z.strictObject({ effect: z.literal('lodging'), ...homeQualityStock, wear: LodgingWear }),
+  z.strictObject({
+    effect: z.literal('lodging'),
+    ...homeQualityStock,
+    wear: LodgingWear,
+    /** What a home at zero-based upgrade level `fromLevel` or above keeps instead of `capacity` and
+     *  `fetchBelow`. */
+    largeHome: z
+      .strictObject({
+        fromLevel: z.number().int().nonnegative(),
+        capacity: z.number().int().positive(),
+        fetchBelow: z.number().int().nonnegative(),
+      })
+      .optional(),
+  }),
 ]);
 export type HomeQuality = z.infer<typeof HomeQuality>;
 export type HomeQualityUse = HomeQuality;

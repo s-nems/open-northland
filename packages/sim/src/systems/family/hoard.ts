@@ -9,6 +9,7 @@ import {
   Stockpile,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { homeWareStock } from '../../inspect/home-capacity.js';
 import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -79,10 +80,11 @@ export function planWomanHoard(
       startDrop(world, ctx, e); // free her hands without consuming a forbidden in-flight household good
       return true;
     }
+    const level = world.get(home, Building).level;
     const qualityRoom =
       quality !== undefined &&
-      world.get(home, Building).level >= quality.minimumHomeLevel &&
-      homeQualityValue(world, home, quality.effect) < quality.capacity;
+      level >= quality.minimumHomeLevel &&
+      homeQualityValue(world, home, quality.effect) < homeWareStock(quality, level).capacity;
     if (!qualityRoom && (!world.has(home, Stockpile) || !hasRoom(world, ctx, home, load.goodType)))
       return false;
     deliverHome(world, ctx, terrain, e, settler, home, hereNode);

@@ -16,7 +16,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { familyCapacity, homeWareServes } from '../../inspect/home-capacity.js';
+import { familyCapacity, homeWareServes, homeWareStock } from '../../inspect/home-capacity.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { goodEnabled } from '../progression/availability.js';
 
@@ -172,18 +172,16 @@ export function depositHomeQuality(
     return 0;
 
   const existing = world.tryGet(home, HomeQuality) ?? EMPTY_QUALITY;
-  if (existing[use.effect] >= use.capacity) return 0;
-  const moved = Math.min(amount, Math.ceil((use.capacity - existing[use.effect]) / use.deliveryValue));
+  const { capacity } = homeWareStock(use, building.level);
+  if (existing[use.effect] >= capacity) return 0;
+  const moved = Math.min(amount, Math.ceil((capacity - existing[use.effect]) / use.deliveryValue));
   if (moved <= 0) return 0;
   const quality = world.tryMut(home, HomeQuality);
   if (quality === undefined) {
-    world.add(home, HomeQuality, {
-      cooking: use.effect === 'cooking' ? Math.min(use.capacity, moved * use.deliveryValue) : 0,
-      lodging: use.effect === 'lodging' ? Math.min(use.capacity, moved * use.deliveryValue) : 0,
-      piety: use.effect === 'piety' ? Math.min(use.capacity, moved * use.deliveryValue) : 0,
-    });
+    const stored = Math.min(capacity, moved * use.deliveryValue);
+    world.add(home, HomeQuality, { ...EMPTY_QUALITY, [use.effect]: stored });
   } else {
-    quality[use.effect] = Math.min(use.capacity, quality[use.effect] + moved * use.deliveryValue);
+    quality[use.effect] = Math.min(capacity, quality[use.effect] + moved * use.deliveryValue);
   }
   return moved;
 }
@@ -204,7 +202,7 @@ export function demandedHomeQualityGoods(
     const use = good.homeQuality;
     if (
       !homeQualityAllowed(world, home, use.effect) ||
-      homeQualityValue(world, home, use.effect) >= use.fetchBelow
+      homeQualityValue(world, home, use.effect) >= homeWareStock(use, level).fetchBelow
     )
       continue;
     // Oil starts serving the mature home. The source field is only structurally identified as house

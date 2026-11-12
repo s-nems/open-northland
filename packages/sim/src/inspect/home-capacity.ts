@@ -32,6 +32,16 @@ export function homeWareServes(home: HomeWareState, use: Pick<HomeQualityUse, 'm
   );
 }
 
+/** What a home at zero-based upgrade `level` keeps of `use`: a lodging ware's `largeHome` figures from
+ *  that row's level on, the ware's own below it. */
+export function homeWareStock(
+  use: HomeQualityUse,
+  level: number,
+): Pick<HomeQualityUse, 'capacity' | 'fetchBelow'> {
+  const large = use.effect === 'lodging' ? use.largeHome : undefined;
+  return large !== undefined && level >= large.fromLevel ? large : use;
+}
+
 /** The families a home of `type` takes: its `homeSize`, plus its `furnishedFamilies` while `furnished`. */
 export function familyCapacity(
   type: Pick<BuildingType, 'homeSize' | 'furnishedFamilies'>,
