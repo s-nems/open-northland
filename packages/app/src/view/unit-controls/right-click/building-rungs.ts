@@ -12,7 +12,7 @@ import {
   settlerJobType,
 } from '../../../game/snapshot/index.js';
 import type { Tile } from '../../picking.js';
-import { mayCoinDrillHere, nearestToBuildingFirst } from '../orders/coin-drill.js';
+import { mayCoinDrillHere, paidDrillers } from '../orders/coin-drill.js';
 import type { FormationUnit } from '../orders/formation.js';
 import { contentLookups, type RightClickContext } from './context.js';
 
@@ -35,8 +35,8 @@ export type BuildingIntent =
       readonly learners: readonly FormationUnit[];
     }
   /** Homes and workplaces have limited room, so each goes out as one group order and the sim seats the
-   *  homeless and the unemployed first. At a barracks a soldier who may coin-drill drills, nearest first
-   *  while its free coins last, and stays put past them; the rest enlist. A settler none of them takes
+   *  homeless and the unemployed first. At a barracks that shows a coin a soldier who may coin-drill drills,
+   *  nearest first while its coins last, and stays put past them; the rest enlist. A settler none of them takes
    *  gets no order. */
   | {
       readonly kind: 'building';
@@ -147,7 +147,7 @@ export function atBuilding(
     building,
     crew,
     trainees,
-    drillers: nearestToBuildingFirst(snapshot, building, drillers, (unit) => unit.ref),
+    drillers: paidDrillers(ctx.content, snapshot, building, drillers, (unit) => unit.ref),
     household,
     workers,
   };

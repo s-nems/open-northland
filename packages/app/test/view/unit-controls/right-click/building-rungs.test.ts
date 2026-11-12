@@ -46,9 +46,18 @@ const settler = (id: number, jobType: number | null, site?: number, fightPoints 
   },
 });
 
-const building = (buildingType: number, state: BuildingState): Ent => ({
+const COIN = ((): number => {
+  const coin = systems.drillCoinGood(CONTENT);
+  if (coin === undefined) throw new Error('the sandbox has no drill coin');
+  return coin;
+})();
+/** More coins on a barracks' shelf than any test sends men. */
+const PLENTY_OF_COINS = 10;
+
+const building = (buildingType: number, state: BuildingState, coins = PLENTY_OF_COINS): Ent => ({
   id: BUILDING,
   components: {
+    Stockpile: { amounts: [[COIN, coins]] },
     Building: { buildingType, tribe: 1, built: state === 'foundation' ? 0 : ONE, level: 0 },
     Owner: { player: HUMAN_PLAYER },
     Position: { x: 4 * ONE, y: 4 * ONE },
@@ -110,24 +119,25 @@ describe('the building rungs', () => {
     const [sword, archer, bare, veteran] = units(4);
     if (sword === undefined || archer === undefined || bare === undefined || veteran === undefined)
       throw new Error('setup: four soldiers');
-    const at = (state: BuildingState) =>
+    const at = (state: BuildingState, coins?: number) =>
       atBuilding(
         contextOf([
           settler(sword.ref, JOB_SOLDIER_SWORD),
           settler(archer.ref, JOB_ARCHER, undefined, systems.COIN_DRILL_LIMIT - 1),
           settler(bare.ref, JOB_SOLDIER_UNARMED),
           settler(veteran.ref, JOB_SOLDIER_SWORD, undefined, systems.COIN_DRILL_LIMIT),
-          building(BUILDING_BARRACKS, state),
+          building(BUILDING_BARRACKS, state, coins),
         ]),
         [sword, archer, bare, veteran],
         BUILDING,
       );
     expect(at('standing')).toMatchObject({ drillers: [sword, archer], trainees: [bare, veteran] });
-    // A foundation drills nobody: its recruits wait at the door.
+    // A foundation, or a barracks with no coin, drills nobody: its recruits go as they would to enlist.
     expect(at('foundation')).toMatchObject({ drillers: [], trainees: [sword, archer, bare, veteran] });
+    expect(at('standing', 0)).toMatchObject({ drillers: [], trainees: [sword, archer, bare, veteran] });
   });
 
-  it('list the drillers nearest to the barracks first, then by id, so the free coins go to them', () => {
+  it('send the drillers nearest to the barracks first, then by id, as many as it shows coins', () => {
     const [far, near, tied] = units(3);
     if (far === undefined || near === undefined || tied === undefined)
       throw new Error('setup: three soldiers');
@@ -136,11 +146,16 @@ describe('the building rungs', () => {
       return { ...ent, components: { ...ent.components, Position: { x: x * ONE, y: 4 * ONE } } };
     };
     const intent = atBuilding(
-      contextOf([placed(far, 12), placed(near, 6), placed(tied, 6), building(BUILDING_BARRACKS, 'standing')]),
+      contextOf([
+        placed(far, 12),
+        placed(near, 6),
+        placed(tied, 6),
+        building(BUILDING_BARRACKS, 'standing', [near, tied].length),
+      ]),
       [far, tied, near],
       BUILDING,
     );
-    expect(intent).toMatchObject({ drillers: [near, tied, far] });
+    expect(intent).toMatchObject({ drillers: [near, tied], trainees: [] });
   });
 
   it('queue the crew and the recruits under Shift and walk the rest there', () => {

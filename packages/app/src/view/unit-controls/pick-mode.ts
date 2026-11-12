@@ -40,6 +40,8 @@ import { isShip } from './right-click/vehicles.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
 const MIDDLE_BUTTON = 1;
+/** No coin drill: a press that is not at a barracks, or a queued one. */
+const NO_DRILLERS = { eligible: [], sent: [] } as const;
 
 /**
  * Arming one mode replaces whatever was armed; a left or right click, Esc, or a selection change
@@ -472,12 +474,13 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     }
     const pick = BUILDING_PICKS[kind].orders;
     if (pick === null) return attachTradeHouse(settlers, building);
-    // At a barracks a soldier who may coin-drill drills there; the order is never queued.
+    // At a barracks a soldier who may coin-drill drills there while its coins last; the order is never
+    // queued.
     const drillers =
       kind === 'learning-place' && !queued
         ? coinDrillersAt(deps.content, snapshot, building, settlers, buildingsByType)
-        : [];
-    const drills = drillers.map(
+        : NO_DRILLERS;
+    const drills = drillers.sent.map(
       (settler): UnitSelectionCommand => ({
         kind: 'orderCoinDrill',
         entity: settler as Entity,
@@ -486,7 +489,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     );
     const orders = pick(
       snapshot,
-      settlers.filter((settler) => !drillers.includes(settler)),
+      settlers.filter((settler) => !drillers.eligible.includes(settler)),
       building,
       buildingsByType,
       deps.content.goods,
