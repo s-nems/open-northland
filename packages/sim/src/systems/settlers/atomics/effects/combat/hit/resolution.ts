@@ -223,7 +223,10 @@ export function resolveCombatHit(
   const survives = world.get(target, Health).hitpoints > 0;
   if (dealtDamage) {
     const blowTicks = source === 'melee' ? meleeClipTicks(world, ctx, attacker) : (blow.blowTicks ?? 0);
-    if (source === 'melee') grantFightExperience(world, ctx, attacker, weaponMainType, 'melee', blowTicks);
+    if (source === 'melee') {
+      const struck = isStructureTarget(world, target) ? 'structure' : 'living';
+      grantFightExperience(world, ctx, attacker, weaponMainType, 'melee', blowTicks, struck);
+    }
     if (survives && world.has(target, Person)) grantBlowTakenExperience(world, ctx, target, blowTicks);
   }
   if (!survives) {

@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { Health, Settler, SettlerProgress } from '../../../../../src/components/index.js';
+import {
+  Building,
+  Health,
+  Owner,
+  Position,
+  Settler,
+  SettlerProgress,
+} from '../../../../../src/components/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
-import { Simulation, TICKS_PER_SECOND } from '../../../../../src/index.js';
+import { fx, ONE, Simulation, TICKS_PER_SECOND } from '../../../../../src/index.js';
 import { attackClipTiming } from '../../../../../src/systems/conflict/weapons.js';
 import {
   atomicSystem,
@@ -35,6 +42,10 @@ const PERSONAL = FIGHT_EXPERIENCE_TYPE.PERSONAL;
 /** The owner's blow-time rates, in points per second of the attack clip. */
 const MELEE_POINTS_PER_SECOND = 0.75;
 const TAKEN_POINTS_PER_SECOND = 0.5;
+/** A blow on a structure earns a quarter of the same blow on a living target. */
+const STRUCTURE_SHARE_DENOMINATOR = 4;
+const HEADQUARTERS_TYPE = 1;
+const OTHER_PLAYER = 1;
 
 /** The seconds of `e`'s own attack clip. */
 function clipSeconds(sim: Simulation, e: Entity): number {
@@ -208,6 +219,27 @@ describe('atomicSystem - a damaging swing accrues fight XP into the personal cou
     atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(wolf, Health).hitpoints).toBeLessThan(10_000);
     expect(sim.world.get(attacker, SettlerProgress).experience.get(PERSONAL)).toBe(meleeUnits(sim, attacker));
+  });
+
+  it('a blow on a building earns a quarter of the same blow on a person, rounded down', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    const house = sim.world.create();
+    sim.world.add(house, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
+    sim.world.add(house, Building, { buildingType: HEADQUARTERS_TYPE, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(house, Owner, { player: OTHER_PLAYER });
+    sim.world.add(house, Health, { hitpoints: 10_000, max: 10_000 });
+    startSwing(
+      sim,
+      attacker,
+      { target: house, damage: 100, hitFrames: [0], weaponMainType: WEAPON_MAIN_TYPE.SPEAR },
+      4,
+    );
+    atomicSystem(sim.world, nextTickCtxOf(sim));
+    expect(sim.world.get(house, Health).hitpoints).toBeLessThan(10_000);
+    const quarter = Math.floor(meleeUnits(sim, attacker) / STRUCTURE_SHARE_DENOMINATOR);
+    expect(quarter).toBeGreaterThan(0);
+    expect(sim.world.get(attacker, SettlerProgress).experience.get(PERSONAL)).toBe(quarter);
   });
 
   it("a wild-animal bite trains the beast nothing, and earns its victim 1/2 point per second of the beast's clip", () => {

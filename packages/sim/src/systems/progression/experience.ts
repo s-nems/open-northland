@@ -248,6 +248,25 @@ export function fightUnitsPerClipTick(rate: FightPointsRate): number {
 /** How a landed blow was delivered, which picks its striker's blow-time rate. */
 export type FightBlowDelivery = 'melee' | 'shot';
 
+/** What a landed blow struck: a person or an animal, or a structure (a building, a wall or palisade
+ *  piece, a vehicle). */
+export type FightBlowTarget = 'living' | 'structure';
+
+/**
+ * Our rule: a blow or shot that lands on a structure earns its striker a quarter of what the same blow
+ * earns on a living target. A quarter of a blow's units is whole only for a clip length that divides out
+ * (a multiple of 4 ticks for melee, an even one for a shot), so it is rounded down: at most 3/4 of a unit,
+ * 1/64 point, is lost per blow.
+ */
+export const STRUCTURE_BLOW_SHARE = { numerator: 1, denominator: 4 } as const;
+
+/** The stored units a blow of `clipTicks` at `rate` earns its striker on `target`. */
+export function strikerFightUnits(rate: FightPointsRate, clipTicks: number, target: FightBlowTarget): number {
+  const units = clipTicks * fightUnitsPerClipTick(rate);
+  if (target === 'living') return units;
+  return Math.floor((units * STRUCTURE_BLOW_SHARE.numerator) / STRUCTURE_BLOW_SHARE.denominator);
+}
+
 /**
  * The fight-experience bucket a `weaponMainType` accrues into: the catapult's own, the personal counter for
  * every other weapon class, and `undefined` for no class. Our rule: the original trains no bucket with a
@@ -268,7 +287,8 @@ function earnsFightExperience(world: World, ctx: SystemContext, e: Entity): bool
 /**
  * Grant an attacker fight XP for a landed hit, melee or ranged. The catapult bucket gains one raw point
  * per hit under {@link CATAPULT_EXPERIENCE_MAX}; the personal counter gains the blow time of `clipTicks`,
- * the attacker's own attack clip, at the `delivery`'s rate, under {@link FIGHT_EXPERIENCE_FULL_UNITS}.
+ * the attacker's own attack clip, at the `delivery`'s rate and the `target`'s share
+ * ({@link strikerFightUnits}), under {@link FIGHT_EXPERIENCE_FULL_UNITS}.
  */
 export function grantFightExperience(
   world: World,
@@ -277,6 +297,7 @@ export function grantFightExperience(
   weaponMainType: number | undefined,
   delivery: FightBlowDelivery,
   clipTicks: number,
+  target: FightBlowTarget,
 ): void {
   if (weaponMainType === undefined) return;
   if (!earnsFightExperience(world, ctx, attacker)) return;
@@ -285,13 +306,8 @@ export function grantFightExperience(
     accrueExperience(world, attacker, bucket, CATAPULT_EXPERIENCE_PER_HIT, CATAPULT_EXPERIENCE_MAX);
   } else if (bucket === FIGHT_EXPERIENCE_TYPE.PERSONAL) {
     const rate = delivery === 'melee' ? MELEE_BLOW_POINTS_RATE : SHOT_POINTS_RATE;
-    accrueExperience(
-      world,
-      attacker,
-      bucket,
-      clipTicks * fightUnitsPerClipTick(rate),
-      FIGHT_EXPERIENCE_FULL_UNITS,
-    );
+    const units = strikerFightUnits(rate, clipTicks, target);
+    accrueExperience(world, attacker, bucket, units, FIGHT_EXPERIENCE_FULL_UNITS);
   }
 }
 

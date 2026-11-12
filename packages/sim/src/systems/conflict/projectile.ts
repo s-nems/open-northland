@@ -94,6 +94,7 @@ function land(
 ): void {
   const at = eventAt(proj.aimX, proj.aimY);
   let struckAny = false;
+  let struckLiving = false;
   for (const victim of struckVictims(world, ctx, proj)) {
     if (peaceSpares(world, proj, victim)) continue;
     const hitSoundType = hitSoundVsMaterial(proj, targetMaterial(world, ctx, victim));
@@ -104,6 +105,7 @@ function land(
     const wound = strike(world, ctx, proj, victim, source, pendingReactions);
     if (wound === null) continue;
     struckAny = true;
+    if (!isStructureTarget(world, victim)) struckLiving = true;
     // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
     ctx.events.emit({
       kind: 'projectileHit',
@@ -119,9 +121,12 @@ function land(
       ...(isStructureTarget(world, victim) ? { structure: true } : {}),
     });
   }
-  // Original behavior: a shot that did damage trains its shooter once, however many it struck.
+  // Original behavior: a shot that did damage trains its shooter once, however many it struck; our rule
+  // gives the full share when any of them lived.
   if (struckAny) {
-    grantFightExperience(world, ctx, proj.source, proj.weaponMainType ?? undefined, 'shot', proj.blowTicks);
+    const struck = struckLiving ? 'living' : 'structure';
+    const weapon = proj.weaponMainType ?? undefined;
+    grantFightExperience(world, ctx, proj.source, weapon, 'shot', proj.blowTicks, struck);
   }
   if (!struckAny) {
     ctx.events.emit({
