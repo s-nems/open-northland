@@ -240,6 +240,17 @@ export const WORLD: ArticleGroup = {
           ],
         },
         {
+          h: 'Navi in battaglia',
+        },
+        {
+          list: [
+            "Dal ponte di una [[vehicle:ship_small|Nave]], quella che trasporta una catapulta, fino a {{deck.archers}} soldati con l'arco tirano ai nemici che vedi. Prima le navi nemiche. Una grande nave non ha arcieri sul ponte.",
+            "Dal ponte un arco arriva {{deck.rangeLoss}} esagoni meno lontano che a terra, tra un tiro e l'altro aspetta il {{deck.slowerPct}}% in più e disperde di più: [[article:aim|Colpire e tirare]].",
+            'Un sasso di catapulta toglie a una nave {{ship.stoneFactor}} volte quanto a un altro veicolo.',
+            'Sotto il {{ship.firePct}}% di salute una nave brucia e perde {{ship.fireLoss}} punti di salute al secondo finché affonda. I costruttori riparano una nave attraccata come un edificio, e sopra il {{ship.firePct}}% il fuoco si spegne.',
+          ],
+        },
+        {
           h: 'Perdere un veicolo',
         },
         {

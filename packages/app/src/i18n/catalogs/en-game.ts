@@ -1558,7 +1558,7 @@ export const enGame = {
         },
         postGraduates: {
           label: 'School graduates assigned to workshops automatically',
-          tip: 'A school graduate goes straight to the nearest free workplace in his profession.',
+          tip: 'A school graduate goes to a free workplace in his profession: a finished one before a building site, an unstaffed one before a staffed one, then the nearest.',
         },
         moveFlags: {
           label: 'Extractors move their flag automatically',

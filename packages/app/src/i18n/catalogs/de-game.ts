@@ -1688,7 +1688,7 @@ export const deGame = {
         },
         postGraduates: {
           label: 'Schulabgänger automatisch Werkstätten zuweisen',
-          tip: 'Ein Schulabgänger geht direkt zum nächsten freien Arbeitsplatz seines Berufs.',
+          tip: 'Ein Schulabgänger geht zu einem freien Arbeitsplatz seines Berufs: einem fertigen vor einer Baustelle, einem unbesetzten vor einem besetzten, dann zum nächsten.',
         },
         moveFlags: {
           label: 'Abbauer versetzen ihre Fahne automatisch',

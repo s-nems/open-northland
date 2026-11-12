@@ -232,6 +232,17 @@ export const WORLD: ArticleGroup = {
           ],
         },
         {
+          h: 'Ships in battle',
+        },
+        {
+          list: [
+            'Up to {{deck.archers}} soldiers with a bow shoot from the deck of a [[vehicle:ship_small|Ship]], the one that carries a Catapult, at enemies you can see. Enemy ships come first. A Big Ship has no archers on deck.',
+            'From the deck a bow reaches {{deck.rangeLoss}} hexes less than ashore, waits {{deck.slowerPct}}% longer between shots and scatters wider: [[article:aim|Hitting and Shooting]].',
+            'A Catapult stone takes {{ship.stoneFactor}} times as much from a ship as from another vehicle.',
+            'Below {{ship.firePct}}% health a ship burns and loses {{ship.fireLoss}} health a second until it sinks. Builders mend a moored ship like a building, and the fire goes out above {{ship.firePct}}%.',
+          ],
+        },
+        {
           h: 'Losing a vehicle',
         },
         {

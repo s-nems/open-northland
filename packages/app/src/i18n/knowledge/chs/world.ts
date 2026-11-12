@@ -206,6 +206,17 @@ export const WORLD: ArticleGroup = {
           ],
         },
         {
+          h: '船只作战',
+        },
+        {
+          list: [
+            '能载投石机的[[vehicle:ship_small|船]]上，最多{{deck.archers}}名持弓士兵会从甲板上射击你能看到的敌人，优先射敌船。大船上没有甲板弓手。',
+            '在甲板上，弓的射程比岸上短{{deck.rangeLoss}}格，两次射击的间隔长{{deck.slowerPct}}%，散布更大：[[article:aim|命中与射击]]。',
+            '投石机的石头对船造成的伤害是对其他载具的{{ship.stoneFactor}}倍。',
+            '生命值低于{{ship.firePct}}%时船会着火，每秒损失{{ship.fireLoss}}点生命值，直到沉没。建筑工人会像修建筑一样修理靠岸的船，生命值回到{{ship.firePct}}%以上火就会熄灭。',
+          ],
+        },
+        {
           h: '失去载具',
         },
         {

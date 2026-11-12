@@ -109,7 +109,7 @@ export const SETTLERS: ArticleGroup = {
               ['Cart passenger', 'Bars do not drain, health does not change.'],
               [
                 'Ship passenger',
-                'Eats from the hold, sleeps as away from home, talks. Prays only once ashore.',
+                'Drinks what he carries first. With the ship moored he goes ashore to eat, at sea he eats from the hold. Sleeps as away from home, talks. Prays only once ashore.',
               ],
             ],
           },
@@ -270,7 +270,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'A wedding takes the "Marry" order.',
-            'The order pairs the settler with the nearest adult of the opposite sex, same tribe, same player.',
+            'The order pairs the settler with the nearest adult of the opposite sex, same tribe, same player. A Woman takes a man with a profession before a Civilian.',
             'The candidate must be within the settler\'s [[article:roads|signpost]] reach. With no candidate the order is lost and the game shows "No match".',
             'Soldiers, heroes, Scouts and anyone sent to the [[building:barracks|Barracks]] or [[building:school|School]] do not marry.',
             "A couple lives in the wife's dwelling, or the husband's if she has none.",
@@ -435,6 +435,7 @@ export const SETTLERS: ArticleGroup = {
                 '[[building:school|School]] graduate',
               ],
               ['Extractors move their flag automatically', 'off', '[[job:collector|Extractor]] with a flag'],
+              ['Found families', 'off', 'homeless Woman, Woman with a dwelling, family that moved out'],
             ],
             foot: 'For drinks and amulets, the "Civilians" (no trade), "Workers" and "Soldiers" buttons choose who receives them; with all three off, the switch is off. Switching one off takes nothing back. A notice reminds you of a switch that is off once its good lies in store and someone lacks it, and of the flag switch once an Extractor runs out by his flag.',
           },
@@ -449,12 +450,23 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
+          h: 'Families',
+        },
+        {
+          list: [
+            'With "Found families" on, a homeless adult [[job:woman|Woman]] moves into the nearest dwelling with a free place she can walk to.',
+            'A Woman with a dwelling gets the "Marry" order once a man is free. A homeless Woman doesn\'t marry.',
+            'A family that had to move out for lack of [[good:furniture|Furniture]] moves into a free place too, a furnished one included: [[article:family|Family and Home]].',
+          ],
+        },
+        {
           h: 'The Barracks draft',
         },
         {
           list: [
-            'Only an adult Civilian with no job and nothing to do goes to the Barracks, unmarried men first. The Assistant never pulls anyone off work.',
-            'The Sword fighters, Spearmen or Archers counter first arms an unarmed soldier, if a weapon is in his reach.',
+            'Only an unmarried adult Civilian with no job and nothing to do goes to the Barracks. The Assistant never pulls anyone off work.',
+            'The Sword fighters, Spearmen or Archers counter first arms an unarmed soldier, if a weapon is in his reach. He then gathers at the nearest Barracks.',
+            "Such a counter drafts a new recruit only while a store in the Barracks' reach holds a weapon of that kind for him. A recruit whose weapon has run out goes over to another counter whose weapon he can fetch.",
           ],
         },
         {
@@ -466,6 +478,10 @@ export const SETTLERS: ArticleGroup = {
               [
                 'An unarmed soldier is waiting for a weapon of this kind',
                 "Deliver the weapon. Until then he holds the new recruit's place.",
+              ],
+              [
+                "No weapon of this kind in a store in the Barracks' reach",
+                'Make the weapon or bring it closer.',
               ],
             ],
             foot: 'A recruit on his way to the Barracks already counts toward the counter.',
@@ -487,7 +503,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'A graduate goes to the nearest free post in his profession, even a workshop still being built. A workshop making the product he studied comes first, even if it is further away.',
+            'A graduate goes to a free post in his profession, even in a workshop still being built. A finished workshop comes before a site, one where nobody of his profession works yet before a staffed one, then one making the product he studied, and among equal ones the nearest.',
             "With no free post he waits at the School. The Assistant doesn't place [[job:collector|Extractors]], [[job:hunter|Hunters]], [[job:fisher|Fishermen]] or soldiers.",
           ],
         },

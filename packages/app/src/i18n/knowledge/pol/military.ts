@@ -105,6 +105,16 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
+          h: 'Punkt zbiórki',
+        },
+        {
+          list: [
+            'W panelu [[building:barracks|Koszar]] możesz wbić flagę zbiórki albo kliknąć prawym na ziemi, gdy zaznaczone są same Koszary.',
+            'Żołnierze wyszkoleni potem w tych Koszarach idą do flagi i trzymają ją jako swój posterunek. Rekrut, który najpierw idzie po broń, kończy tę drogę przy fladze.',
+            'Bez flagi nowi żołnierze zostają przy drzwiach Koszar.',
+          ],
+        },
+        {
           h: 'Co trzymają Koszary',
         },
         {
@@ -412,7 +422,7 @@ export const MILITARY: ArticleGroup = {
             'Cywile, kobiety i dzieci biegną do najbliższego budynku z wolnym miejscem, do którego mogą dojść.',
             'Żołnierze, bohaterowie i [[job:scout|Zwiadowca]] zostają na zewnątrz.',
             'Kto nie znajdzie miejsca, pracuje dalej.',
-            'Na alarm osadnik przerywa jedzenie i sen. W środku nie pracuje i je tylko to, co ma przy sobie.',
+            'Na alarm osadnik przerywa jedzenie i sen. W środku nie pracuje i je to, co ma przy sobie, albo z zapasu budynku.',
             'Schowanego osadnika nie da się zaatakować.',
             'Gdy budynek zostanie zniszczony, schowani wychodzą.',
           ],

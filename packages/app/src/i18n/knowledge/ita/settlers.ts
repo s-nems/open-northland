@@ -118,7 +118,7 @@ export const SETTLERS: ArticleGroup = {
               ['Passeggero di un carro', 'Le barre non calano, la salute non cambia.'],
               [
                 'Passeggero di una nave',
-                'Mangia dalla stiva, dorme come fuori casa, conversa. Prega solo una volta a terra.',
+                'Prima beve ciò che porta con sé. Con la nave attraccata scende a terra a mangiare, in mare mangia dalla stiva. Dorme come fuori casa, conversa. Prega solo una volta a terra.',
               ],
             ],
           },
@@ -279,7 +279,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             "Per un matrimonio serve l'ordine «Sposa».",
-            "L'ordine unisce il colono all'adulto di sesso opposto più vicino, della stessa tribù e dello stesso giocatore.",
+            "L'ordine unisce il colono all'adulto di sesso opposto più vicino, della stessa tribù e dello stesso giocatore. Una donna prende un uomo con un mestiere prima di un civile.",
             "Il candidato deve trovarsi nel raggio dei [[article:roads|cartelli indicatori]] del colono. Senza candidati l'ordine va perso e il gioco mostra «Nessun partner».",
             'Soldati, eroi, esploratori e chiunque sia mandato in [[building:barracks|Caserma]] o a [[building:school|Scuola]] non si sposano.',
             "Una coppia vive nell'abitazione della moglie, o in quella del marito se lei non ne ha una.",
@@ -456,6 +456,7 @@ export const SETTLERS: ArticleGroup = {
                 'spento',
                 '[[job:collector|Estrattore]] con bandierina',
               ],
+              ['Fonda famiglie', 'spento', 'donna senza casa, donna con una casa, famiglia trasferita'],
             ],
             foot: "Per bevande e amuleti, i pulsanti «Civili» (senza mestiere), «Lavoratori» e «Soldati» scelgono chi li riceve; con tutti e tre spenti, l'interruttore è spento. Spegnerne uno non ritira nulla. Un avviso ti ricorda un interruttore spento quando il suo bene è in magazzino e a qualcuno manca, e quello della bandierina quando un estrattore esaurisce le risorse vicino alla sua bandierina.",
           },
@@ -470,12 +471,23 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
+          h: 'Famiglie',
+        },
+        {
+          list: [
+            'Con «Fonda famiglie» acceso, una [[job:woman|Donna]] adulta senza casa si trasferisce nella casa più vicina con un posto libero che può raggiungere.',
+            "Una donna con una casa riceve l'ordine «Sposa» appena c'è un uomo libero. Una donna senza casa non si sposa.",
+            'Anche una famiglia che ha dovuto traslocare per mancanza di [[good:furniture|Mobilio]] va in un posto libero, anche ammobiliato: [[article:family|Famiglia e casa]].',
+          ],
+        },
+        {
           h: 'Reclutamento in caserma',
         },
         {
           list: [
-            "In caserma va solo un civile adulto senza lavoro e senza nulla da fare, prima gli uomini non sposati. L'assistente non toglie mai nessuno dal lavoro.",
-            "Il contatore di spadaccini, lancieri o arcieri arma prima un soldato disarmato, se c'è un'arma alla sua portata.",
+            "In caserma va solo un civile adulto non sposato, senza lavoro e senza nulla da fare. L'assistente non toglie mai nessuno dal lavoro.",
+            "Il contatore di spadaccini, lancieri o arcieri arma prima un soldato disarmato, se c'è un'arma alla sua portata. Poi il soldato si raduna alla caserma più vicina.",
+            "Un contatore di questo tipo arruola una nuova recluta solo finché un magazzino alla portata della caserma ha per lei un'arma di quel tipo. Una recluta la cui arma è finita passa a un altro contatore di cui può andare a prendere l'arma.",
           ],
         },
         {
@@ -487,6 +499,10 @@ export const SETTLERS: ArticleGroup = {
               [
                 "Un soldato disarmato aspetta un'arma di questo tipo",
                 "Consegna l'arma. Fino ad allora occupa il posto della nuova recluta.",
+              ],
+              [
+                'Nessuna arma di questo tipo in un magazzino alla portata della caserma',
+                "Produci l'arma o portala più vicino.",
               ],
             ],
             foot: 'Una recluta in cammino verso la caserma conta già per il contatore.',
@@ -508,7 +524,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Un diplomato va al posto libero più vicino della sua professione, anche in una bottega ancora in costruzione. Ha la precedenza una bottega che produce ciò che ha studiato, anche se è più lontana.',
+            'Un diplomato va a un posto libero della sua professione, anche in una bottega ancora in costruzione. Una bottega finita viene prima di un cantiere, una dove nessuno della sua professione lavora ancora prima di una già occupata, poi una che produce ciò che ha studiato, e a parità la più vicina.',
             "Senza posti liberi aspetta alla scuola. L'assistente non assegna [[job:collector|estrattori]], [[job:hunter|cacciatori]], [[job:fisher|pescatori]] o soldati.",
           ],
         },

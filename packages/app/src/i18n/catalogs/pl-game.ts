@@ -1538,7 +1538,7 @@ export const plGame = {
         },
         postGraduates: {
           label: 'Absolwenci szkół automatycznie przydzielani do warsztatów',
-          tip: 'Absolwent szkoły idzie od razu do najbliższego wolnego miejsca pracy w swoim zawodzie.',
+          tip: 'Absolwent szkoły idzie do wolnego miejsca pracy w swoim zawodzie: gotowego przed placem budowy, nieobsadzonego przed obsadzonym, a potem najbliższego.',
         },
         moveFlags: {
           label: 'Zbieracze automatycznie przenoszą flagę',

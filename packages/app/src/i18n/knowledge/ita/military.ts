@@ -111,6 +111,16 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
+          h: 'Punto di raccolta',
+        },
+        {
+          list: [
+            'Nel pannello della [[building:barracks|caserma]] puoi piantare una bandiera di raduno, oppure fare clic destro sul terreno con solo la caserma selezionata.',
+            "I soldati che la caserma addestra da quel momento vanno alla bandiera e la tengono come loro posto. Una recluta che prima va a prendere un'arma finisce quel cammino alla bandiera.",
+            'Senza bandiera i nuovi soldati restano davanti alla porta della caserma.',
+          ],
+        },
+        {
           h: 'Cosa tiene la caserma',
         },
         {
@@ -426,7 +436,7 @@ export const MILITARY: ArticleGroup = {
             "Civili, donne e bambini corrono all'edificio più vicino con un posto libero che possono raggiungere a piedi.",
             "Soldati, eroi e l'[[job:scout|Esploratore]] restano fuori.",
             'Chi non trova posto continua a lavorare.',
-            "Con l'allarme un colono interrompe il pasto e il sonno. Dentro non lavora e mangia solo ciò che porta con sé.",
+            "Con l'allarme un colono interrompe il pasto e il sonno. Dentro non lavora e mangia ciò che porta con sé o dalle scorte dell'edificio.",
             'Chi è nascosto dentro non può essere attaccato.',
             "Quando l'edificio viene distrutto, chi vi è nascosto esce.",
           ],

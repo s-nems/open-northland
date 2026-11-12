@@ -118,7 +118,7 @@ export const SETTLERS: ArticleGroup = {
               ['Mitfahrer im Karren', 'Balken sinken nicht, Gesundheit bleibt gleich.'],
               [
                 'Passagier auf dem Schiff',
-                'Isst aus dem Frachtraum, schläft wie außer Haus, redet. Betet erst wieder an Land.',
+                'Trinkt zuerst, was er bei sich hat. Ist das Schiff angedockt, geht er zum Essen an Land, auf See isst er aus dem Frachtraum. Schläft wie außer Haus, redet. Betet erst wieder an Land.',
               ],
             ],
           },
@@ -279,7 +279,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Geheiratet wird nur auf den Befehl „Heirate“.',
-            'Der Befehl verbindet den Siedler mit der nächsten erwachsenen Person des anderen Geschlechts, vom selben Stamm und Spieler.',
+            'Der Befehl verbindet den Siedler mit der nächsten erwachsenen Person des anderen Geschlechts, vom selben Stamm und Spieler. Eine Frau nimmt einen Mann mit Beruf vor einem Zivilisten.',
             'Der Partner muss in der [[article:roads|Wegweiser]]-Reichweite des Siedlers sein. Sonst verfällt der Befehl, und das Spiel meldet „Kein Partner“.',
             'Soldaten, Helden, Kundschafter und Siedler auf dem Weg in [[building:barracks|Kaserne]] oder [[building:school|Schule]] heiraten nicht.',
             'Das Paar wohnt im Haus der Frau. Hat sie keines, im Haus des Mannes.',
@@ -444,6 +444,7 @@ export const SETTLERS: ArticleGroup = {
                 'Absolventen der [[building:school|Schule]]',
               ],
               ['Abbauer versetzen ihre Fahne automatisch', 'aus', '[[job:collector|Abbauer]] mit Fahne'],
+              ['Familien gründen', 'aus', 'obdachlose Frau, Frau mit Wohnhaus, ausgezogene Familie'],
             ],
             foot: 'Bei Getränken und Amuletten wählen die Knöpfe „Zivilisten“ (ohne Beruf), „Arbeiter“ und „Soldaten“ die Empfänger; sind alle drei aus, ist der Schalter aus. Abschalten nimmt nichts weg, was schon ausgegeben ist. Liegt die Ware eines abgeschalteten Schalters im Lager und fehlt sie jemandem, erinnert dich eine Meldung daran, an den Fahnenschalter dann, wenn ein Abbauer an seiner Fahne nichts mehr findet.',
           },
@@ -458,12 +459,23 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
+          h: 'Familien',
+        },
+        {
+          list: [
+            'Ist „Familien gründen“ an, zieht eine obdachlose erwachsene [[job:woman|Frau]] in das nächste Wohnhaus mit freiem Platz, das sie erreichen kann.',
+            'Eine Frau mit Wohnhaus bekommt den Befehl „Heirate“, sobald ein Mann frei ist. Eine obdachlose Frau heiratet nicht.',
+            'Eine Familie, die mangels [[good:furniture|Möbeln]] ausziehen musste, zieht ebenfalls auf einen freien Platz, auch einen möblierten: [[article:family|Familie und Wohnhaus]].',
+          ],
+        },
+        {
           h: 'Einberufung in die Kaserne',
         },
         {
           list: [
-            'In die Kaserne geht nur ein erwachsener Zivilist ohne Arbeit und ohne Beschäftigung, Unverheiratete zuerst. Der Assistent holt niemanden von der Arbeit weg.',
-            'Die Zähler Schwertkämpfer, Speerträger oder Bogenschützen bewaffnen zuerst einen unbewaffneten Soldaten, wenn eine Waffe in seiner Reichweite liegt.',
+            'In die Kaserne geht nur ein erwachsener, unverheirateter Zivilist ohne Arbeit und ohne Beschäftigung. Der Assistent holt niemanden von der Arbeit weg.',
+            'Die Zähler Schwertkämpfer, Speerträger oder Bogenschützen bewaffnen zuerst einen unbewaffneten Soldaten, wenn eine Waffe in seiner Reichweite liegt. Danach sammelt er sich an der nächsten Kaserne.',
+            'Einen neuen Rekruten beruft ein solcher Zähler nur ein, solange ein Lager in Reichweite der Kaserne eine Waffe dieser Art für ihn hat. Ein Rekrut, dessen Waffe ausgegangen ist, wechselt zu einem anderen Zähler, dessen Waffe er holen kann.',
           ],
         },
         {
@@ -475,6 +487,10 @@ export const SETTLERS: ArticleGroup = {
               [
                 'Ein unbewaffneter Soldat wartet auf eine Waffe dieser Art',
                 'Liefere die Waffe. Bis dahin belegt er den Platz eines neuen Rekruten.',
+              ],
+              [
+                'Keine Waffe dieser Art in einem Lager in Reichweite der Kaserne',
+                'Stelle die Waffe her oder bring sie näher heran.',
               ],
             ],
             foot: 'Ein Rekrut auf dem Weg zur Kaserne zählt schon zum Zähler.',
@@ -496,7 +512,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Der Absolvent geht zum nächsten freien Platz seines Berufs, auch in eine Werkstatt im Bau. Eine Werkstatt, die das gelernte Produkt herstellt, hat Vorrang, auch wenn sie weiter weg ist.',
+            'Der Absolvent geht auf einen freien Platz seines Berufs, auch in eine Werkstatt im Bau. Eine fertige Werkstatt geht einer Baustelle vor, eine ohne jemanden seines Berufs einer besetzten, dann eine, die das gelernte Produkt herstellt, und unter gleichen die nächste.',
             'Ohne freien Platz wartet er an der Schule. [[job:collector|Abbauer]], [[job:hunter|Jäger]], [[job:fisher|Fischer]] und Soldaten teilt der Assistent nicht zu.',
           ],
         },

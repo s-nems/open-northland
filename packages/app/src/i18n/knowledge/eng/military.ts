@@ -105,6 +105,16 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
+          h: 'Rally point',
+        },
+        {
+          list: [
+            'In the [[building:barracks|Barracks]] panel you can plant a rally flag, or right-click the ground with only the Barracks selected.',
+            'Soldiers the Barracks trains after that walk to the flag and hold it as their post. A recruit who first goes for a weapon ends that walk at the flag.',
+            'Without a flag, new soldiers stay at the Barracks door.',
+          ],
+        },
+        {
           h: 'What the Barracks holds',
         },
         {
@@ -416,7 +426,7 @@ export const MILITARY: ArticleGroup = {
             'Civilians, Women and children run to the nearest building with a free place that they can walk to.',
             'Soldiers, heroes and the [[job:scout|Scout]] stay outside.',
             'Anyone who finds no place keeps working.',
-            "On alarm a settler breaks off eating and sleeping. Inside he doesn't work and eats only what he carries.",
+            "On alarm a settler breaks off eating and sleeping. Inside he doesn't work and eats what he carries or from the building's stock.",
             "Someone hidden inside can't be attacked.",
             'When the building is destroyed, those hidden inside come out.',
           ],

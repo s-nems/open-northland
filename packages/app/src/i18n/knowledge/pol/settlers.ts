@@ -110,7 +110,10 @@ export const SETTLERS: ArticleGroup = {
               ['Potwory, zwierzęta', 'Brak.'],
               ['Żołnierz', 'Bez Towarzystwa.'],
               ['Pasażer wozu', 'Paski nie spadają, zdrowie się nie zmienia.'],
-              ['Pasażer statku', 'Je z ładowni, śpi jak poza domem, rozmawia. Modli się dopiero na lądzie.'],
+              [
+                'Pasażer statku',
+                'Najpierw pije to, co ma przy sobie. Gdy statek stoi przy brzegu, schodzi na ląd zjeść, a na morzu je z ładowni. Śpi jak poza domem, rozmawia. Modli się dopiero na lądzie.',
+              ],
             ],
           },
         },
@@ -266,7 +269,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Ślub wymaga rozkazu "Zawrzyj małżeństwo".',
-            'Rozkaz łączy osadnika z najbliższą dorosłą osobą przeciwnej płci, z tego samego plemienia i od tego samego gracza.',
+            'Rozkaz łączy osadnika z najbliższą dorosłą osobą przeciwnej płci, z tego samego plemienia i od tego samego gracza. Kobieta bierze mężczyznę z zawodem przed Cywilem.',
             'Kandydat musi być w zasięgu [[article:roads|drogowskazów]] osadnika. Bez kandydata rozkaz przepada, a gra pokazuje "Brak pary".',
             'Ślubu nie biorą żołnierze, bohaterowie, Zwiadowcy ani osadnik wysłany do [[building:barracks|Koszar]] lub [[building:school|Szkoły]].',
             'Para mieszka w domu żony, a gdy żona go nie ma, w domu męża.',
@@ -439,6 +442,7 @@ export const SETTLERS: ArticleGroup = {
                 'absolwent [[building:school|Szkoły]]',
               ],
               ['Zbieracze automatycznie przenoszą flagę', 'wyłączony', '[[job:collector|Zbieracz]] z flagą'],
+              ['Zakładaj rodziny', 'wyłączony', 'bezdomna kobieta, kobieta z domem, wyprowadzona rodzina'],
             ],
             foot: 'Przy napojach i amuletach przyciski "Cywile" (bez zawodu), "Pracownicy" i "Żołnierze" wybierają odbiorców; gdy wszystkie są wyłączone, wyłączony jest cały przełącznik. Wyłączenie nie odbiera tego, co już wydano. Gdy towar wyłączonego przełącznika leży w magazynie i komuś go brakuje, przypomni o nim powiadomienie, a o fladze wtedy, gdy Zbieraczowi skończy się przy niej surowiec.',
           },
@@ -453,12 +457,23 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
+          h: 'Rodziny',
+        },
+        {
+          list: [
+            'Przy włączonym "Zakładaj rodziny" bezdomna dorosła [[job:woman|Kobieta]] wprowadza się do najbliższego domu z wolnym miejscem, do którego dojdzie.',
+            'Kobieta z domem dostaje rozkaz "Zawrzyj małżeństwo", gdy jest wolny mężczyzna. Bezdomna Kobieta nie wychodzi za mąż.',
+            'Rodzina, która musiała się wyprowadzić z braku [[good:furniture|Mebli]], też wprowadza się na wolne miejsce, także umeblowane: [[article:family|Rodzina i dom]].',
+          ],
+        },
+        {
           h: 'Pobór do Koszar',
         },
         {
           list: [
-            'Do Koszar idzie tylko dorosły Cywil bez pracy i bez zajęcia, najpierw kawalerowie. Asystent nikogo nie zabiera z pracy.',
-            'Licznik Miecznicy, Włócznicy lub Łucznicy najpierw uzbraja żołnierza bez broni, jeśli broń jest w jego zasięgu.',
+            'Do Koszar idzie tylko dorosły, nieżonaty Cywil bez pracy i bez zajęcia. Asystent nikogo nie zabiera z pracy.',
+            'Licznik Miecznicy, Włócznicy lub Łucznicy najpierw uzbraja żołnierza bez broni, jeśli broń jest w jego zasięgu. Potem żołnierz zbiera się przy najbliższych Koszarach.',
+            'Nowego rekruta taki licznik wysyła tylko wtedy, gdy magazyn w zasięgu Koszar ma dla niego broń tego rodzaju. Rekrut, dla którego broni zabrakło, przechodzi do innego licznika, którego broń może przynieść.',
           ],
         },
         {
@@ -471,6 +486,7 @@ export const SETTLERS: ArticleGroup = {
                 'Żołnierz bez broni czeka na broń tego rodzaju',
                 'Dostarcz broń. Do tego czasu zajmuje miejsce nowego rekruta.',
               ],
+              ['Brak broni tego rodzaju w magazynie w zasięgu Koszar', 'Zrób broń albo przenieś ją bliżej.'],
             ],
             foot: 'Rekrut w drodze do Koszar już liczy się do licznika.',
           },
@@ -491,7 +507,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Absolwent idzie do najbliższego wolnego miejsca w swoim zawodzie, także do warsztatu w budowie. Warsztat robiący wyrób, którego się uczył, ma pierwszeństwo, nawet gdy jest dalej.',
+            'Absolwent idzie na wolne miejsce w swoim zawodzie, także do warsztatu w budowie. Gotowy warsztat ma pierwszeństwo przed placem budowy, warsztat bez nikogo z jego zawodu przed obsadzonym, potem ten, który robi wyrób, którego się uczył, a wśród równych najbliższy.',
             'Gdy wolnego miejsca nie ma, czeka przy Szkole. [[job:collector|Zbieracza]], [[job:hunter|Myśliwego]], [[job:fisher|Rybaka]] i żołnierzy Asystent nie przydziela.',
           ],
         },

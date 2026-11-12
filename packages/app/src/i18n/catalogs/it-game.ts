@@ -1583,7 +1583,7 @@ export const itGame = {
         },
         postGraduates: {
           label: 'Diplomati della scuola assegnati automaticamente alle botteghe',
-          tip: 'Un diplomato della scuola va subito al luogo di lavoro libero più vicino della sua professione.',
+          tip: 'Un diplomato della scuola va a un luogo di lavoro libero della sua professione: uno finito prima di un cantiere, uno vuoto prima di uno occupato, poi il più vicino.',
         },
         moveFlags: {
           label: 'Gli estrattori spostano la bandierina automaticamente',

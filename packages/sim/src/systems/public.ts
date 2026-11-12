@@ -87,6 +87,8 @@ export {
 export { REST_CLEARANCE_NODES, STAND_TO_RADIUS_NODES } from './conflict/battle-alert.js';
 export { ATTACK_RETURN_SLACK_NODES, rangedStandoff } from './conflict/chase.js';
 export { CONTESTED_GROUND_RADIUS_NODES, CONTESTED_SIEGE_RADIUS_POINTS } from './conflict/contested-ground.js';
+export { DECK_ARCHER_LIMIT } from './conflict/deck-archers.js';
+export { DECK_RANGE_PENALTY_POINTS, deckShotIntervalTicks } from './conflict/deck-fire.js';
 export {
   APPROACH_BAND_DEPTH,
   VEHICLE_DEFENCE_LEASH_POINTS,
@@ -112,7 +114,7 @@ export {
 } from './conflict/targeting.js';
 export { TOWER_RANGE_BONUS_NODES } from './conflict/tower-post.js';
 export { VEHICLE_PRIORITY_REACH_POINTS, VEHICLE_SCAN_RADIUS_POINTS } from './conflict/vehicle-targets.js';
-export { HOUSE_DAMAGE_PER_WALL_VALENCY } from './conflict/weapons.js';
+export { HOUSE_DAMAGE_PER_WALL_VALENCY, SHIP_SIEGE_DAMAGE_FACTOR } from './conflict/weapons.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { STEPS_PER_UNIT } from './economy/construction.js';
 export { STRANDED_FIELD_RECLAIM_TICKS } from './economy/field-reclaim.js';
@@ -410,7 +412,7 @@ export {
   loadSpeedLossPercent,
 } from './vehicles/drag.js';
 export { DRAUGHT_BREEDING_PAIR } from './vehicles/draught.js';
-export { SHIP_FIRE_HEALTH_PERCENT } from './vehicles/hull-fire.js';
+export { SHIP_FIRE_DAMAGE_PER_SECOND, SHIP_FIRE_HEALTH_PERCENT } from './vehicles/hull-fire.js';
 // createVehicle stands a vehicle in pre-tick assembly the way the command does and boardRider seats a
 // crew inside it there; modifyVehicleStock and stockVehicleGoods are the writes into a hold, the second
 // the booked-and-stowed one a loaded spawn uses.

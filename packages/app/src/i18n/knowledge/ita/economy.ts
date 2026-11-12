@@ -127,7 +127,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Cosa fa prima un costruttore',
         },
         {
-          p: "Un costruttore prima ripara, poi costruisce edifici, e lascia per ultime palizzate e strade. Se lo assegni a un cantiere, resta lì anche quando c'è lavoro altrove.",
+          p: "Un costruttore prima ripara, poi costruisce edifici, e lascia per ultime palizzate e strade. Se lo assegni a un cantiere, resta lì anche quando c'è lavoro altrove. Un cantiere a cui dai la priorità nel suo pannello viene prima di tutti gli altri e richiama perfino il loro ultimo costruttore.",
         },
         {
           h: 'Miglioramenti',
@@ -145,7 +145,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Riparazioni',
         },
         {
-          p: 'Un costruttore restituisce a un edificio {{repair.minPerSwing}}-{{repair.maxPerSwing}} punti di salute per colpo, e al massimo {{repair.crew}} costruttori riparano lo stesso edificio contemporaneamente. Le riparazioni non costano materiale. Palizzate e cancelli si riparano in un altro modo, e lì esperienza e attrezzi non cambiano nulla: [[article:walls|Palizzate e cancelli]].',
+          p: 'Un costruttore restituisce a un edificio {{repair.minPerSwing}}-{{repair.maxPerSwing}} punti di salute per colpo, e al massimo {{repair.crew}} costruttori riparano lo stesso edificio contemporaneamente. Le riparazioni non costano materiale. Palizzate e cancelli si riparano in un altro modo, e lì esperienza e attrezzi non cambiano nulla: [[article:walls|Palizzate e cancelli]]. Allo stesso modo ripara una tua nave danneggiata mentre è attraccata: [[article:vehicles|Veicoli e navi]].',
         },
         {
           p: "Un costruttore non ripara di sua iniziativa per {{repair.calmSeconds}} s dopo l'ultimo colpo subito, né mentre c'è un combattimento entro {{alert.standTo}} esagoni. Su tuo ordine va subito.",
@@ -263,9 +263,8 @@ export const ECONOMY: ArticleGroup = {
               ['«Solo questa merce»', 'Questo bene ∞, il resto 0'],
               [
                 'Clic destro su una risorsa',
-                "L'ordine «Raccogli»: questo bene ∞, il resto 0. La bandierina di lavoro resta dov'è.",
+                "L'ordine «Raccogli»: questo bene ∞, il resto 0, e la bandierina di lavoro si sposta sulla risorsa. Senza bandierina cambia solo il bene.",
               ],
-              ['Ctrl + clic destro su una risorsa', 'Lo stesso, ma la bandierina si sposta sulla risorsa'],
               ['Tutti i contatori a 0', "L'estrattore mostra «Tutto a 0» e non raccoglie niente"],
               [
                 'Ci sono già beni a terra',
@@ -691,7 +690,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Piantare una bandierina',
         },
         {
-          p: "«Pianta una bandierina» mette la bandierina nel punto che scegli o la sposta lì, proprio come Ctrl + clic destro. Se il punto è occupato, la bandierina va in un punto libero entro {{flag.snap}} esagoni, e se non ce n'è nessuno, l'ordine va perso.",
+          p: "«Pianta una bandierina» mette la bandierina nel punto che scegli o la sposta lì, proprio come un clic destro su una risorsa che raccoglie. Se il punto è occupato, la bandierina va in un punto libero entro {{flag.snap}} esagoni, e se non ce n'è nessuno, l'ordine va perso.",
         },
         {
           p: "Nell'[[article:assistant|Assistente]] puoi lasciare che gli estrattori spostino da soli le loro bandierine. Un estrattore la pianta allora a {{assistant.flagMin}}-{{assistant.flagMax}} esagoni dalla risorsa, e quando tutto quello che c'è intorno è esaurito, si sposta alla risorsa più vicina al suo edificio. Cacciatori e pescatori non lo fanno.",
@@ -728,6 +727,7 @@ export const ECONOMY: ArticleGroup = {
             'Un tuo nuovo cartello deve stare ad almeno {{reach.spacing}} esagoni da un altro.',
             'Un colono cerca i beni a meno di {{reach.goods}} esagoni da sé o dai cartelli entro quella portata.',
             'Un edificio piazzato su un cartello lo sposta di lato fino a {{reach.displace}} esagoni, e se non è possibile, il cartello sparisce.',
+            'Un nuovo cartello sposta di lato una bandierina di lavoro e toglie dal suo posto funghi, raccolti ed erbe.',
           ],
         },
         {

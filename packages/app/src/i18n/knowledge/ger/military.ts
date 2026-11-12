@@ -105,6 +105,16 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
+          h: 'Sammelpunkt',
+        },
+        {
+          list: [
+            'Im Panel der [[building:barracks|Kaserne]] kannst du eine Sammelflagge setzen oder mit Rechtsklick auf den Boden klicken, während nur die Kaserne ausgewählt ist.',
+            'Soldaten, die die Kaserne danach ausbildet, gehen zur Flagge und halten sie als ihren Posten. Ein Rekrut, der zuerst eine Waffe holt, beendet diesen Weg an der Flagge.',
+            'Ohne Flagge bleiben neue Soldaten an der Tür der Kaserne.',
+          ],
+        },
+        {
           h: 'Was die Kaserne lagert',
         },
         {
@@ -426,7 +436,7 @@ export const MILITARY: ArticleGroup = {
             'Zivilisten, Frauen und Kinder laufen zum nächsten Gebäude mit freiem Platz, das sie zu Fuß erreichen.',
             'Soldaten, Helden und [[job:scout|Kundschafter]] bleiben draußen.',
             'Wer keinen Platz findet, arbeitet weiter.',
-            'Im Verteidigungsmodus bricht ein Siedler Essen und Schlaf ab. Drinnen arbeitet er nicht und isst nur, was er bei sich hat.',
+            'Im Verteidigungsmodus bricht ein Siedler Essen und Schlaf ab. Drinnen arbeitet er nicht und isst, was er bei sich hat oder was das Gebäude vorrätig hat.',
             'Wer drinnen ist, lässt sich nicht angreifen.',
             'Wird das Gebäude zerstört, kommen alle heraus, die sich drinnen versteckt haben.',
           ],

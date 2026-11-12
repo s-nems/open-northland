@@ -121,7 +121,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Co Budowniczy robi najpierw',
         },
         {
-          p: 'Budowniczy najpierw naprawia, potem stawia budynki, a palisady i drogi zostawia na koniec. Jeśli przypiszesz go do placu, zostaje przy nim, nawet gdy gdzie indziej czeka praca.',
+          p: 'Budowniczy najpierw naprawia, potem stawia budynki, a palisady i drogi zostawia na koniec. Jeśli przypiszesz go do placu, zostaje przy nim, nawet gdy gdzie indziej czeka praca. Plac, któremu dasz Priorytet w jego panelu, idzie przed wszystkimi innymi i odciąga z nich nawet ostatniego Budowniczego.',
         },
         {
           h: 'Rozbudowa',
@@ -139,7 +139,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Naprawa',
         },
         {
-          p: 'Budowniczy przywraca budynkowi {{repair.minPerSwing}}-{{repair.maxPerSwing}} zdrowia na uderzenie, a jeden budynek naprawia naraz najwyżej {{repair.crew}} Budowniczych. Naprawa nie kosztuje materiału. Palisadę i bramę naprawia się inaczej, doświadczenie i narzędzie nic tam nie zmieniają: [[article:walls|Palisady i bramy]].',
+          p: 'Budowniczy przywraca budynkowi {{repair.minPerSwing}}-{{repair.maxPerSwing}} zdrowia na uderzenie, a jeden budynek naprawia naraz najwyżej {{repair.crew}} Budowniczych. Naprawa nie kosztuje materiału. Palisadę i bramę naprawia się inaczej, doświadczenie i narzędzie nic tam nie zmieniają: [[article:walls|Palisady i bramy]]. Tak samo naprawia twój uszkodzony statek, gdy stoi przy brzegu: [[article:vehicles|Pojazdy i statki]].',
         },
         {
           p: 'Budowniczy sam nie naprawia przez {{repair.calmSeconds}} s od ostatniego trafienia ani wtedy, gdy w promieniu {{alert.standTo}} hexów trwa walka. Na twój rozkaz pójdzie od razu.',
@@ -250,9 +250,8 @@ export const ECONOMY: ArticleGroup = {
               ['"Tylko to dobro"', 'Ten towar ∞, reszta 0'],
               [
                 'Prawy klik na zasobie',
-                'Rozkaz "Zbieraj": ten towar ∞, reszta 0. Flaga robocza zostaje na miejscu.',
+                'Rozkaz "Zbieraj": ten towar ∞, reszta 0, a flaga robocza przenosi się na zasób. Bez flagi zmienia się tylko towar.',
               ],
-              ['Ctrl i prawy klik na zasobie', 'To samo, ale flaga przenosi się na zasób'],
               ['Wszystkie liczniki na 0', 'Zbieracz ma stan "Towary na 0" i nic nie zbiera'],
               [
                 'Towar już leży na ziemi',
@@ -655,7 +654,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Stawianie flagi',
         },
         {
-          p: '"Wbij chorągiewkę" stawia flagę we wskazanym miejscu albo ją tam przenosi, tak samo jak Ctrl z prawym kliknięciem. Jeśli miejsce jest zajęte, flaga stanie na wolnym do {{flag.snap}} hexów obok, a jak takiego nie ma, rozkaz przepada.',
+          p: '"Wbij chorągiewkę" stawia flagę we wskazanym miejscu albo ją tam przenosi, tak samo jak prawy klik na zasobie, który zbiera. Jeśli miejsce jest zajęte, flaga stanie na wolnym do {{flag.snap}} hexów obok, a jak takiego nie ma, rozkaz przepada.',
         },
         {
           p: 'W [[article:assistant|Asystencie]] możesz pozwolić Zbieraczom samym przenosić flagę. Zbieracz stawia ją wtedy {{assistant.flagMin}}-{{assistant.flagMax}} hexów od zasobu, a gdy w okolicy wszystko się skończy, przenosi się do zasobu najbliżej swojego budynku. Myśliwi i Rybacy tego nie robią.',
@@ -692,6 +691,7 @@ export const ECONOMY: ArticleGroup = {
             'Twój nowy drogowskaz musi stać co najmniej {{reach.spacing}} hexów od innego.',
             'Towaru osadnik szuka bliżej niż {{reach.goods}} hexów od siebie albo od drogowskazów w tym zasięgu.',
             'Budynek postawiony na drogowskazie przesuwa go najwyżej o {{reach.displace}} hexów, a jeśli się nie da, drogowskaz znika.',
+            'Nowy drogowskaz odsuwa flagę roboczą i usuwa ze swojego miejsca grzyby, zboże i zioła.',
           ],
         },
         {
