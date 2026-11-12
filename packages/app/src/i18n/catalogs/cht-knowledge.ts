@@ -372,8 +372,6 @@ export const chtKnowledge = {
       trader_general: '貿易',
       fisher_general: '捕魚',
       scout_general: '探索',
-      soldier_general: '戰鬥',
-      hero_general: '戰鬥',
     },
     articles: {
       damage: '機制：武器與傷害',

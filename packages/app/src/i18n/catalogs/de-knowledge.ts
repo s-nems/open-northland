@@ -402,8 +402,6 @@ export const deKnowledge = {
       trader_general: 'Handeln',
       fisher_general: 'Fischen',
       scout_general: 'Aufklären',
-      soldier_general: 'Kämpfen',
-      hero_general: 'Kämpfen',
     },
     articles: {
       damage: 'Mechanik: Waffen und Schaden',

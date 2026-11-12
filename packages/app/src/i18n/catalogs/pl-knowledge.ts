@@ -374,8 +374,6 @@ export const plKnowledge = {
       trader_general: 'Handel',
       fisher_general: 'Rybołówstwo',
       scout_general: 'Zwiadownictwo',
-      soldier_general: 'Walka',
-      hero_general: 'Walka',
     },
     articles: {
       damage: 'Mechanika: broń i obrażenia',

@@ -374,8 +374,6 @@ export const enKnowledge = {
       trader_general: 'Trade',
       fisher_general: 'Fishing',
       scout_general: 'Exploration',
-      soldier_general: 'Fighting',
-      hero_general: 'Fighting',
     },
     articles: {
       damage: 'Mechanics: weapons and damage',

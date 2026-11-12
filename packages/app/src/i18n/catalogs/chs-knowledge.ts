@@ -372,8 +372,6 @@ export const chsKnowledge = {
       trader_general: '贸易',
       fisher_general: '捕鱼',
       scout_general: '探索',
-      soldier_general: '战斗',
-      hero_general: '战斗',
     },
     articles: {
       damage: '机制：武器与伤害',

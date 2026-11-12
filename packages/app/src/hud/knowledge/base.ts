@@ -267,6 +267,8 @@ function buildRequirements({ content, reference }: Joins): Requirements {
   const trackJob = new Map(content.jobExperience.map((track) => [track.typeId, track.jobType]));
   const rows: Requirements = { job: new Map(), good: new Map() };
   for (const r of reference?.jobRequirements ?? []) {
+    // A fighter trade reads no experience row: a soldier's or hero's trade has no practice gate.
+    if (r.target === 'job' && systems.isFighterJob(content, r.targetId)) continue;
     const table = rows[r.target];
     const held = table.get(r.targetId) ?? [];
     table.set(r.targetId, held);

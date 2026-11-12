@@ -374,8 +374,6 @@ export const ruKnowledge = {
       trader_general: 'Торговля',
       fisher_general: 'Рыболовство',
       scout_general: 'Исследование',
-      soldier_general: 'Бой',
-      hero_general: 'Бой',
     },
     articles: {
       damage: 'Механика: оружие и урон',

@@ -401,8 +401,6 @@ export const itKnowledge = {
       trader_general: 'Commercio',
       fisher_general: 'Pesca',
       scout_general: 'Esplorazione',
-      soldier_general: 'Combattimento',
-      hero_general: 'Combattimento',
     },
     articles: {
       damage: 'Meccaniche: armi e danni',
