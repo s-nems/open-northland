@@ -1479,6 +1479,7 @@ describe('selection details panel model', () => {
     ]);
     // 5 points raise his fists' blows by 2% and cut the blows he takes: 100 * 9800 / 10000, so -2%.
     expect(model.experience[2]?.fight).toEqual({
+      sharePct: 5,
       dealtPct: 2,
       takenCutPct: 2,
       accuracyPct: null,
@@ -1510,17 +1511,20 @@ describe('selection details panel model', () => {
     };
     // Half the counter: +20% on a blade's blows, 61% of a bowman's shots true, -20% on every blow taken.
     expect(fightOf(JOB_SOLDIER_SWORD)).toEqual({
+      sharePct: HALF_FIGHT,
       dealtPct: 20,
       takenCutPct: 20,
       accuracyPct: null,
     });
     expect(fightOf(JOB_ARCHER)).toEqual({
+      sharePct: HALF_FIGHT,
       dealtPct: null,
       takenCutPct: 20,
       accuracyPct: systems.trueShotPct(HALF_FIGHT),
     });
     // A heroine's shot flies true whatever her counter; the blows she takes are still cut.
     expect(fightOf(JOB_HEROINE_BOW)).toEqual({
+      sharePct: HALF_FIGHT,
       dealtPct: null,
       takenCutPct: 20,
       accuracyPct: null,

@@ -133,7 +133,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: "Fists and every weapon count alike, and [[job:hunter|Hunter's]] shots count too. Experience stays after a change of weapon or profession. A soldier with {{coinDrill.limit}} points or more no longer drills and earns the rest in battle. A drill cut short by a fight or a new order gives the coin back and no points. Only as many soldiers go as the Barracks has free coins, the nearest first; the rest stay where they are.",
         },
         {
-          p: "In the settler panel this is the Fighting row: the points, the bonus to melee damage dealt and how much less damage he takes. Fighting doesn't raise a hero's experience, unless the mission turns it on.",
+          p: "In the settler panel this is the Fighting row: its share of the full counter as a percent, and in its tooltip the bonuses: more damage dealt with a melee weapon or bare hands, the accuracy with a bow, and how much less damage he takes. Fighting doesn't raise a hero's experience, unless the mission turns it on.",
         },
         {
           p: 'Better weapons are unlocked by making them, not by fighting. The weapon card gives the requirement, e.g. [[good:sword_long|Longsword]]. Who carries which weapon: [[article:equip|Equipping Soldiers]].',

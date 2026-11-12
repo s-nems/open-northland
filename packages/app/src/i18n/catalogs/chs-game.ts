@@ -774,6 +774,7 @@ export const chsGame = {
       agreementUpToTooltip: '交易直到以下位置存有这么多{good}：{where} · ∞：无上限',
       repeats: '{count} 次',
       repeatsBonus: '{count} 次，产量 +{bonus}%',
+      fightShare: '战斗经验：{pct}%',
       fightDealt: '造成的伤害：+{pct}%',
       fightTaken: '受到的伤害：-{pct}%',
       fightAccuracy: '命中率：{pct}%',

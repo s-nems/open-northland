@@ -775,6 +775,7 @@ export const chtGame = {
       agreementUpToTooltip: '持續交易，直到{where}存有這麼多{good} · ∞：無上限',
       repeats: '{count} 次',
       repeatsBonus: '{count} 次，產量 +{bonus}%',
+      fightShare: '戰鬥經驗：{pct}%',
       fightDealt: '造成的傷害：+{pct}%',
       fightTaken: '受到的傷害：-{pct}%',
       fightAccuracy: '命中率：{pct}%',

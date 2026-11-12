@@ -133,7 +133,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Faust und jede Waffe zählen gleich, die Schüsse des [[job:hunter|Jägers]] auch. Die Erfahrung bleibt nach einem Waffen- oder Berufswechsel. Wer {{coinDrill.limit}} Punkte oder mehr hat, exerziert nicht mehr und holt sich den Rest im Kampf. Unterbrechen ein Kampf oder ein neuer Befehl das Exerzieren, kommt die Münze zurück, Punkte gibt es keine. Es gehen nur so viele Soldaten, wie die Kaserne freie Münzen hat, die nächsten zuerst; die übrigen bleiben stehen.',
         },
         {
-          p: 'Im Siedlerfenster ist das die Zeile Kämpfen: die Punkte, der Bonus auf Nahkampfschaden und wie viel weniger Schaden er erleidet. Einem Helden steigt die Erfahrung durch Kämpfen nicht, außer die Mission schaltet es ein.',
+          p: 'Im Siedlerfenster ist das die Zeile Kämpfen: ihr Anteil am vollen Zähler in Prozent und im Tooltip die Boni: mehr verursachter Schaden mit einer Nahkampfwaffe oder bloßen Händen, die Treffsicherheit mit einem Bogen und wie viel weniger Schaden er erleidet. Einem Helden steigt die Erfahrung durch Kämpfen nicht, außer die Mission schaltet es ein.',
         },
         {
           p: 'Bessere Waffen schaltet die Herstellung frei, nicht der Kampf. Die Bedingung steht auf der Karte der Waffe, z. B. [[good:sword_long|Langschwert]]. Wer welche Waffe trägt: [[article:equip|Soldaten ausrüsten]].',

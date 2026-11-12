@@ -1,4 +1,3 @@
-import { systems } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
   type ExperienceRowModel,
@@ -13,29 +12,25 @@ import { createLedger, type Ledger, type LedgerModel } from '../parts/ledger.js'
 import { meterFill } from '../parts/meter-row.js';
 import { createSection } from '../parts/section.js';
 
-/** The bonuses the fight counter buys with the weapon in hand. */
-function fightBonuses(fight: FightRowModel): string[] {
+/** The fight row's tooltip: its share, then each bonus it buys, one to a line. */
+function fightTooltip(fight: FightRowModel): string {
   const copy = messages().hud.settlerPanel;
-  const lines: string[] = [];
+  const lines = [formatMessage(copy.fightShare, { pct: fight.sharePct })];
   if (fight.dealtPct !== null) lines.push(formatMessage(copy.fightDealt, { pct: fight.dealtPct }));
   if (fight.accuracyPct !== null) lines.push(formatMessage(copy.fightAccuracy, { pct: fight.accuracyPct }));
   if (fight.takenCutPct !== null) lines.push(formatMessage(copy.fightTaken, { pct: fight.takenCutPct }));
-  return lines;
+  return lines.join('\n');
 }
 
 export function trainedRow(row: ExperienceRowModel): LedgerModel {
   const copy = messages().hud.settlerPanel;
   const repeats = String(row.repeats);
-  // The fight counter is capped: it reads as a share of its full, as an unlock row does.
+  // The fight counter is capped: it reads as a share of its full, its bonuses in the tooltip.
   if (row.fight !== null) {
-    const bonuses = fightBonuses(row.fight);
     return {
       label: row.label,
-      tooltip: bonuses.join(', '),
-      value: [
-        { text: `${row.repeats} / ${systems.FIGHT_EXPERIENCE_FULL}` },
-        ...bonuses.map((text) => ({ text, tone: 'bonus' as const })),
-      ],
+      tooltip: fightTooltip(row.fight),
+      value: [{ text: `${row.fight.sharePct}%` }],
     };
   }
   return {

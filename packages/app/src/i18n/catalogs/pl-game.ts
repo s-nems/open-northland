@@ -794,6 +794,7 @@ export const plGame = {
       agreementUpToTooltip: 'Handluj, aż tyle sztuk ({good}) będzie w: {where} · ∞: bez pułapu',
       repeats: '{count} razy',
       repeatsBonus: '{count} razy, wydajność +{bonus}%',
+      fightShare: 'Doświadczenie w walce: {pct}%',
       fightDealt: 'Zadawane obrażenia: +{pct}%',
       fightTaken: 'Otrzymywane obrażenia: -{pct}%',
       fightAccuracy: 'Celność: {pct}%',

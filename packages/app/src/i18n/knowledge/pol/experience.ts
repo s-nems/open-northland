@@ -128,7 +128,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Pięść i każda broń liczą się tak samo, strzały [[job:hunter|Myśliwego]] też. Doświadczenie zostaje po zmianie broni i zawodu. Kto ma {{coinDrill.limit}} pkt lub więcej, już nie ćwiczy, resztę zdobywa w walce. Gdy walka albo nowy rozkaz przerwie musztrę, moneta wraca, a punktów nie ma. Idzie tylu żołnierzy, ile Koszary mają wolnych monet, najbliżsi najpierw; reszta zostaje na miejscu.',
         },
         {
-          p: 'W panelu osadnika to wiersz Walka: punkty, premia do zadawanych obrażeń wręcz i to, o ile mniej obrażeń otrzymuje. Bohaterowi walka nie podnosi doświadczenia, chyba że misja to włącza.',
+          p: 'W panelu osadnika to wiersz Walka: jego udział w pełnym liczniku w procentach, a w podpowiedzi premie: z bronią do walki wręcz lub gołymi rękami więcej zadawanych obrażeń, z łukiem celność, i o ile mniej obrażeń otrzymuje. Bohaterowi walka nie podnosi doświadczenia, chyba że misja to włącza.',
         },
         {
           p: 'Lepszą broń odkrywa się wyrobem, nie walką. Wymóg podaje karta broni, np. [[good:sword_long|Długi Miecz]]. Kto jaką broń nosi: [[article:equip|Wyposażanie żołnierzy]].',

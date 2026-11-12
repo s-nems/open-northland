@@ -76,14 +76,17 @@ export interface ExperienceRowModel {
   readonly own: boolean;
 }
 
-/** What the personal fight counter buys with the weapon in hand, each null when it buys that nothing:
- *  dealt for a melee weapon or bare hands, accuracy for a bow, and the cut on blows taken for everyone
- *  the sim reads one for. */
+/** The personal fight counter as a share of its full, and what it buys with the weapon in hand, each
+ *  null when it buys that nothing: dealt for a melee weapon or bare hands, accuracy for a bow, and the
+ *  cut on blows taken for everyone the sim reads one for. */
 export interface FightRowModel {
+  readonly sharePct: number;
   readonly dealtPct: number | null;
   readonly takenCutPct: number | null;
   readonly accuracyPct: number | null;
 }
+
+const PERCENT = 100;
 
 /** A specialization row's label: the track's `hud.trackLabels` entry, keyed by its content slug, else
  *  the job's name for a general track and "job - good" for a good-specific one. */
@@ -124,6 +127,9 @@ function fightRow(
   comps: Comp,
   experience: ReadonlyMap<number, number>,
 ): FightRowModel {
+  const sharePct = Math.trunc(
+    (systems.personalFightPoints(experience) * PERCENT) / systems.FIGHT_EXPERIENCE_FULL,
+  );
   const settler = comps.Settler as { tribe?: unknown; jobType?: unknown; humanForm?: unknown } | undefined;
   const tribe = num(settler?.tribe);
   const effects =
@@ -135,6 +141,7 @@ function fightRow(
           experience,
         );
   return {
+    sharePct,
     dealtPct: effects?.dealtPct ?? null,
     takenCutPct: effects?.takenCutPct ?? null,
     accuracyPct: effects?.accuracyPct ?? null,

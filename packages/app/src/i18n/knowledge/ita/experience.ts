@@ -133,7 +133,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Pugni e ogni arma contano allo stesso modo, anche i tiri del [[job:hunter|cacciatore]]. L’esperienza resta dopo un cambio d’arma o di professione. Chi ha {{coinDrill.limit}} punti o più non si esercita più e guadagna il resto in battaglia. Se una battaglia o un nuovo ordine interrompe l’esercitazione, la moneta torna indietro e non dà punti. Partono solo tanti soldati quante sono le monete libere della caserma, i più vicini per primi; gli altri restano dove sono.',
         },
         {
-          p: "Nel pannello del colono è la riga Combattimento: i punti, il bonus ai danni inflitti in mischia e quanti danni in meno subisce. Il combattimento non fa crescere l'esperienza di un eroe, a meno che la missione non lo consenta.",
+          p: "Nel pannello del colono è la riga Combattimento: la sua quota del contatore pieno in percentuale e, nel suggerimento, i bonus: più danni inflitti con un'arma da mischia o a mani nude, la precisione con un arco e quanti danni in meno subisce. Il combattimento non fa crescere l'esperienza di un eroe, a meno che la missione non lo consenta.",
         },
         {
           p: "Le armi migliori si sbloccano fabbricandole, non combattendo. La scheda dell'arma indica il requisito, per esempio [[good:sword_long|spada lunga]]. Chi porta quale arma: [[article:equip|Equipaggiare i soldati]].",
