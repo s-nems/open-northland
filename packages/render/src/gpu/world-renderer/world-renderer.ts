@@ -452,7 +452,7 @@ export class WorldRenderer {
     this.marks.setDraughtGlowColours(colourOfGood);
   }
 
-  /** The body cells a temple's aura spreads from; `null` spreads it from the drawn temple instead. */
+  /** The body cells a temple's aura spreads from; `null` spreads it from the temple's anchor. */
   setHouseBodies(bodyOf: HouseBodyOf | null): void {
     this.marks.setHouseBodies(bodyOf);
   }
