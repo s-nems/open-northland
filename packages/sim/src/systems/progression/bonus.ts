@@ -157,7 +157,7 @@ export const FIGHT_EXPERIENCE_TAKEN_PCT_AT_FULL = 40;
 
 /** The dealt-damage factor at fight `units` (stored units, not points), over
  *  {@link FIGHT_EXPERIENCE_FACTOR_SCALE}: linear from x1 at 0 to x1.4 at full. */
-export function fightExperienceDealtFactor(units: number): number {
+function fightExperienceDealtFactor(units: number): number {
   return FIGHT_EXPERIENCE_FACTOR_SCALE + FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL * clampedUnits(units);
 }
 

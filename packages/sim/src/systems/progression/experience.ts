@@ -207,7 +207,7 @@ const CATAPULT_EXPERIENCE_PER_HIT = 1;
 /** Full fight experience: the points the personal counter holds at most. Our rule. */
 export const FIGHT_EXPERIENCE_FULL = 100;
 /** The raw XP the catapult bucket holds at most. Original behavior. */
-export const CATAPULT_EXPERIENCE_MAX = 10_000;
+const CATAPULT_EXPERIENCE_MAX = 10_000;
 
 /**
  * The fine units the personal fight counter stores per point, so a part of a point is kept. Our rule: 48

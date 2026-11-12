@@ -33,7 +33,7 @@ export const COIN_DRILL_LIMIT = 50;
 
 /** The good the clip's `CHANGE_GOLD` event spends from the barracks' stock. Our rule: the event names no
  *  good, and the barracks shelves coins for it. */
-export const DRILL_COIN_GOOD_SLUG = 'coin';
+const DRILL_COIN_GOOD_SLUG = 'coin';
 
 /** The content good id of the drill coin, or undefined when content has none. */
 export function drillCoinGood(content: ContentSet): number | undefined {

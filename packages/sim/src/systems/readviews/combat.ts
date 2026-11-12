@@ -38,8 +38,6 @@ export const WEAPON_MAIN_TYPE = {
   SWORD: 3,
   /** The saber rows' class. */
   SABER: 4,
-  /** The hero axe's class. */
-  AXE: 5,
   BOW: 6,
   /** Catapult (siege). */
   CATAPULT: 7,
