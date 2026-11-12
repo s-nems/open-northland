@@ -605,12 +605,14 @@ describe('trainSoldier - the barracks drill', () => {
     expect(sim.world.has(recruit, MoveGoal)).toBe(false);
   });
 
-  it('leaves a serving soldier in the trade he already holds', () => {
+  it('refuses a serving soldier the enlistment drill, leaving him in his trade', () => {
     const sim = simWithBarracks();
     const house = barracksAt(sim, 6, 3);
     const veteran = settlerAt(sim, SOLDIER_JOB, 2, 3);
 
     sim.enqueueSetup({ kind: 'trainSoldier', entity: veteran, house });
+    sim.step();
+    expect(sim.world.has(veteran, TrainingOrder)).toBe(false);
     const events = run(sim, RUN_TICKS);
 
     expect(jobOf(sim, veteran)).toBe(SOLDIER_JOB);

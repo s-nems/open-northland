@@ -48,7 +48,8 @@ export type BuildingIntent =
       readonly workers: readonly BuildingWorker[];
     }
   /** Shift: the crew and the barracks recruits line their order up behind their current one, and the
-   *  rest walk there queued, a post or a home being a standing setting. */
+   *  rest walk there queued, a post or a home being a standing setting; a soldier or hero at a barracks
+   *  gets no order. */
   | {
       readonly kind: 'queueAtBuilding';
       readonly building: number;
@@ -168,15 +169,19 @@ export function queueAtBuilding(
   const crew = crewAmong(ctx, units, building);
   const recruits: FormationUnit[] = [];
   const walkers: FormationUnit[] = [];
+  const barracks = def !== undefined && systems.isBarracksType(def);
   for (const target of units) {
     if (crew.includes(target)) continue;
     const self = entityById(ctx.snapshot, target.ref);
+    const job = self === undefined ? undefined : settlerJobType(self);
+    // A coin drill is never queued, and a soldier never enlists again: he stays where he is.
+    if (barracks && systems.isFighterJob(ctx.content, job ?? null)) continue;
     const recruit =
       def !== undefined &&
       !systems.isSchoolType(def) &&
       self !== undefined &&
       takesBuilding(ctx, self) &&
-      trainsRatherThanEmploys(def, settlerJobType(self));
+      trainsRatherThanEmploys(def, job);
     (recruit ? recruits : walkers).push(target);
   }
   return { kind: 'queueAtBuilding', building, crew, recruits, walkers, tile };

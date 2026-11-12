@@ -3,6 +3,7 @@ import {
   GraduateWait,
   PlayerOrder,
   removeCurrentAtomic,
+  Settler,
   SiteAssignment,
   sameSide,
   TrainingOrder,
@@ -11,7 +12,7 @@ import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { clearNavState } from '../movement/nav-state.js';
-import { isBarracksOrFoundation } from '../readviews/index.js';
+import { isBarracksOrFoundation, isFighterJob } from '../readviews/index.js';
 import { BARRACKS_DRILL_TICKS, drillDoorOpen } from '../settlers/drives/training.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { interactionCell } from '../settlers/targets/index.js';
@@ -42,6 +43,8 @@ export function trainSoldier(
  */
 export function mayDrillAt(world: World, ctx: SystemContext, e: Entity, house: Entity): boolean {
   if (!mayChangeTrade(world, ctx.content, e)) return false;
+  // A soldier or hero would serve the whole term and come out in the trade he had.
+  if (isFighterJob(ctx.content, world.get(e, Settler).jobType)) return false;
   if (!isBarracksOrFoundation(world, ctx, house)) return false;
   if (!sameSide(world, e, house)) return false;
   if (world.tryGet(e, TrainingOrder)?.house === house) return false; // already drilling here

@@ -1026,7 +1026,7 @@ export const itContent = {
     barracks: {
       title: 'Addestramento in caserma',
       summary:
-        'Un civile mandato in caserma si esercita dentro per 15 secondi ed esce come soldato disarmato; accanto a lui un soldato in servizio che si limita ad addestrarsi, e un civile che non si è mai esercitato ma può comunque diventare soldato.',
+        'Un civile mandato in caserma si esercita dentro per 15 secondi ed esce come soldato disarmato; accanto a lui un civile che non si è mai esercitato ma può comunque diventare soldato.',
     },
     'barracks-armory': {
       title: 'Armeria della caserma',

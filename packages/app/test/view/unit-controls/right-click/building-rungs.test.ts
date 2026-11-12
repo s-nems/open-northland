@@ -158,17 +158,18 @@ describe('the building rungs', () => {
     expect(intent).toMatchObject({ drillers: [near, tied], trainees: [] });
   });
 
-  it('queue the crew and the recruits under Shift and walk the rest there', () => {
-    const [builder, idle, collector] = units(3);
-    if (builder === undefined || idle === undefined || collector === undefined)
-      throw new Error('setup: three settlers');
+  it('queue the crew and the civilian recruits under Shift, leave a soldier be and walk the rest there', () => {
+    const [builder, idle, collector, soldier] = units(4);
+    if (builder === undefined || idle === undefined || collector === undefined || soldier === undefined)
+      throw new Error('setup: four settlers');
     const ctx = contextOf([
       settler(builder.ref, JOB_BUILDER),
       settler(idle.ref, null),
       settler(collector.ref, JOB_COLLECTOR),
+      settler(soldier.ref, JOB_SOLDIER_UNARMED),
       building(BUILDING_BARRACKS, 'foundation'),
     ]);
-    expect(queueAtBuilding(ctx, [builder, idle, collector], BUILDING, TILE)).toEqual({
+    expect(queueAtBuilding(ctx, [builder, idle, collector, soldier], BUILDING, TILE)).toEqual({
       kind: 'queueAtBuilding',
       building: BUILDING,
       crew: [builder],

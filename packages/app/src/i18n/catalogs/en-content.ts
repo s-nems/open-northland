@@ -1014,7 +1014,7 @@ export const enContent = {
     barracks: {
       title: 'Barracks training',
       summary:
-        'A civilian sent to the barracks drills inside for 15 seconds and walks out an unarmed soldier; beside him a serving soldier who only drills, and a civilian who never drilled but may still take the soldier profession.',
+        'A civilian sent to the barracks drills inside for 15 seconds and walks out an unarmed soldier; beside him a civilian who never drilled but may still take the soldier profession.',
     },
     'barracks-armory': {
       title: 'Barracks armory',

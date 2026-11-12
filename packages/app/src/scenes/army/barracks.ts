@@ -26,7 +26,6 @@ const BARRACKS = { x: 14, y: 10 } as const;
 /** Clear of both building footprints under the approximate and the real geometries. */
 const START_ROW_Y = 6;
 const RECRUIT_X = 10;
-const VETERAN_X = 12;
 const DRAFTEE_X = 16;
 const BYSTANDER_X = 8;
 /** The armory pile the arming pass fetches from, by the headquarters and away from the barracks, so the
@@ -45,12 +44,10 @@ function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_HEADQUARTERS, HEADQUARTERS.x, HEADQUARTERS.y);
   const barracks = placeBuiltSandboxBuilding(sim, BUILDING_BARRACKS, BARRACKS.x, BARRACKS.y);
   const recruit = spawnSettlerDirect(sim, JOB_CIVILIST, RECRUIT_X, START_ROW_Y);
-  const veteran = spawnSettlerDirect(sim, JOB_SOLDIER, VETERAN_X, START_ROW_Y);
   // Spawn order matters: the assistant drafts the lowest-id free colonist, so the bystander comes after.
   spawnSettlerDirect(sim, JOB_CIVILIST, DRAFTEE_X, START_ROW_Y);
   spawnSettlerDirect(sim, JOB_CIVILIST, BYSTANDER_X, START_ROW_Y);
   sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house: barracks });
-  sim.enqueueSetup({ kind: 'trainSoldier', entity: veteran, house: barracks });
   // Both swords in store, so the arming pass has to pick the stronger one.
   for (const slug of [SWORD_SHORT, SWORD_LONG, ARMOR_CHAIN])
     sim.enqueueSetup({
@@ -72,12 +69,11 @@ function build(sim: Simulation): void {
 /** Query order is spawn order, so the roles follow the sequence `build` spawns them in. */
 function cast(sim: Simulation): {
   recruit: Entity | undefined;
-  veteran: Entity | undefined;
   draftee: Entity | undefined;
   bystander: Entity | undefined;
 } {
-  const [recruit, veteran, draftee, bystander] = sim.world.query(Settler);
-  return { recruit, veteran, draftee, bystander };
+  const [recruit, draftee, bystander] = sim.world.query(Settler);
+  return { recruit, draftee, bystander };
 }
 
 /** The hex distance, in half-cell nodes, from an entity's position to node `to`. */
@@ -104,13 +100,6 @@ export const barracksScene: SceneDefinition = {
       predicate: (sim) => {
         const { recruit } = cast(sim);
         return recruit !== undefined && sim.world.get(recruit, Settler).jobType === JOB_SOLDIER;
-      },
-    },
-    {
-      label: 'the serving soldier sent in after him drills as a no-op, keeping the trade he had',
-      predicate: (sim) => {
-        const { veteran } = cast(sim);
-        return veteran !== undefined && sim.world.get(veteran, Settler).jobType === JOB_SOLDIER;
       },
     },
     {
