@@ -543,7 +543,7 @@ export const deKnowledge = {
     matrixRange: 'Reichweite',
     matrixCadence: 'Schlag alle',
     matrixFoot:
-      'Ein Mensch hat {hitpoints} Gesundheit. Ein Tier zählt als Lederrüstung, aber ohne den Abzug von {blocking}.',
+      'Ein Mensch hat {hitpoints} Gesundheit. Ein Tier zählt als Lederrüstung, aber ohne den Abzug von {blocking}. Das Ziel hat keine Kampferfahrung.',
     directions: {
       front: 'Vorne',
       backSide: 'Hintere Flanke ×1,25',
@@ -595,10 +595,10 @@ export const deKnowledge = {
     tribeLabel: 'Stamm',
     weaponLabel: 'Waffe',
     heroes: 'Helden',
-    hitsLabel: 'Kampferfahrung',
+    hitsLabel: 'Kampferfahrung, Punkte',
     strengthAmulet: 'Stärkeamulett',
     defenseAmulet: 'Verteidigungsamulett',
-    targetHitsLabel: 'Kampferfahrung des Ziels',
+    targetHitsLabel: 'Kampferfahrung des Ziels, Punkte',
     dialLabel: 'Woher der Schlag kommt',
     dialOff: 'Die Richtung zählt nur bei Menschen',
     targetKind: 'Art des Ziels',
@@ -643,7 +643,7 @@ export const deKnowledge = {
     targetExperienceValue: '{hits} (-{percent} % erlittener Schaden)',
     fighterExperienceValue: '{hits} (+{dealt} % verursacht, -{taken} % erlitten)',
     experienceHint:
-      'Punkte aus Treffern und dem Exerzieren, für jede Waffe gemeinsam. Bei {cap} Punkten ist ein Nahkampfschlag {pct} % stärker.',
+      'Punkte aus Kämpfen, erlittenen Schlägen und dem Exerzieren, für jede Waffe gemeinsam. Bei {cap} Punkten ist ein Nahkampfschlag {pct} % stärker.',
     matchup: '{weapon} → {target}',
     matchupPerson: 'Mensch ({armour})',
     neverKillsNote: 'Diese Waffe kann dem Ziel nichts anhaben.',

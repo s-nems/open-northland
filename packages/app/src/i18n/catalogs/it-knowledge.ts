@@ -542,7 +542,7 @@ export const itKnowledge = {
     matrixRange: 'Gittata',
     matrixCadence: 'Colpo ogni',
     matrixFoot:
-      'Una persona ha {hitpoints} di salute. Un animale conta come armatura di cuoio, ma senza sottrarre i {blocking}.',
+      'Una persona ha {hitpoints} di salute. Un animale conta come armatura di cuoio, ma senza sottrarre i {blocking}. Il bersaglio non ha esperienza in combattimento.',
     directions: {
       front: 'Fronte',
       backSide: 'Fianco posteriore ×1,25',
@@ -593,10 +593,10 @@ export const itKnowledge = {
     tribeLabel: 'Tribù',
     weaponLabel: 'Arma',
     heroes: 'Eroi',
-    hitsLabel: 'Esperienza di combattimento',
+    hitsLabel: 'Esperienza di combattimento, punti',
     strengthAmulet: 'Amuleto della forza',
     defenseAmulet: 'Amuleto della difesa',
-    targetHitsLabel: 'Esperienza in combattimento del bersaglio',
+    targetHitsLabel: 'Esperienza in combattimento del bersaglio, punti',
     dialLabel: 'Colpo da',
     dialOff: 'La direzione conta solo sulle persone',
     targetKind: 'Tipo di bersaglio',
@@ -641,7 +641,7 @@ export const itKnowledge = {
     targetExperienceValue: '{hits} (-{percent}% danni subiti)',
     fighterExperienceValue: '{hits} (+{dealt}% inflitti, -{taken}% subiti)',
     experienceHint:
-      'Punti da colpi ed esercitazione, comuni a ogni arma. A {cap} punti un colpo in mischia è più forte del {pct}%.',
+      'Punti da combattimenti, colpi subiti ed esercitazione, comuni a ogni arma. A {cap} punti un colpo in mischia è più forte del {pct}%.',
     matchup: '{weapon} → {target}',
     matchupPerson: 'una persona ({armour})',
     neverKillsNote: "Quest'arma non può ferire questo bersaglio.",

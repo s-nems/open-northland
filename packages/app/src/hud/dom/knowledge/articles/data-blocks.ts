@@ -194,7 +194,7 @@ function matrix(context: KnowledgeContext): HTMLElement {
       },
       state.direction,
     );
-    hits.update({ '0': { label: '0' }, '50': { label: '50' }, '100': { label: '100+' } }, state.hits);
+    hits.update({ '0': { label: '0' }, '50': { label: '50' }, '100': { label: '100' } }, state.hits);
   }
   paint();
   const field = (label: string, control: HTMLElement): HTMLElement => {
