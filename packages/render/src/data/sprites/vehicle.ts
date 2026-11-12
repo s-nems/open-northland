@@ -1,3 +1,4 @@
+import { VEHICLE_SHOT_SETTLE_TICKS } from '@open-northland/sim';
 import type { DrawItem } from '../scene/draw-item.js';
 import type { BuildingDraw } from './layered-bindings.js';
 import { atomicFrame, DEFAULT_FACING, frameOf } from './settler.js';
@@ -13,6 +14,16 @@ export const VEHICLE_ATTACK_TICKS = 48;
 export function attackPhase(tick: number, clipStart?: number, period: number = VEHICLE_ATTACK_TICKS): number {
   const elapsed = clipStart === undefined ? tick : tick - clipStart;
   return ((elapsed % period) + period) % period;
+}
+
+/** The tick of the attack clip to draw at `phase` of its `period`: the first frame while the vehicle
+ *  settles before its shot (the sim holds the stone back by {@link VEHICLE_SHOT_SETTLE_TICKS}), then the
+ *  whole clip over the rest of the period, so the throw meets the stone. */
+export function attackClipTick(phase: number, period: number): number {
+  const play = period - VEHICLE_SHOT_SETTLE_TICKS;
+  if (play <= 1) return phase;
+  if (phase < VEHICLE_SHOT_SETTLE_TICKS) return 0;
+  return Math.floor(((phase - VEHICLE_SHOT_SETTLE_TICKS) * (period - 1)) / (play - 1));
 }
 
 /** The ticks one shot of `attack` spans: the clip length its frame lists stretch over. */
@@ -101,7 +112,8 @@ export function resolveVehicleDraw(
   let bob: number;
   if (item.task === 'attacks' && look.attack !== undefined) {
     const period = attackPeriod(look.attack);
-    bob = atomicFrame(look.attack, facing, attackPhase(tick, item.attackClipStart, period), undefined);
+    const phase = attackPhase(tick, item.attackClipStart, period);
+    bob = atomicFrame(look.attack, facing, attackClipTick(phase, period), undefined);
   } else if (item.state === 'moving') {
     bob = frameOf(vehicleMovingRef(look, item), facing, gaitClock);
   } else {

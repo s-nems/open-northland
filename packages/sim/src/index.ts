@@ -283,6 +283,7 @@ export {
   type SyncDigestInputs,
   type SystemInstrument,
 } from './simulation.js';
+export { VEHICLE_SHOT_SETTLE_TICKS } from './systems/conflict/engage-vehicle.js';
 export type { GatheringTrade } from './systems/economy/gather-goods.js';
 export {
   buildingWalkBodyOf,

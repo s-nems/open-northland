@@ -1,3 +1,4 @@
+import { VEHICLE_SHOT_SETTLE_TICKS } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { GFX_DIR_TO_FACING } from '../../../src/data/sprites/settler.js';
 import type { FrameListAnim } from '../../../src/data/sprites/settler-bindings.js';
@@ -144,9 +145,11 @@ describe('resolveVehicleDraw', () => {
 
   it('stretches the catapult shot over the attack cadence while the vehicle attacks, whatever its motion state', () => {
     const attacking = { typeId: CATAPULT, facing: 1, task: 'attacks' as const };
+    // The first frame holds while the vehicle settles before its shot.
     expect(resolveVehicleDraw(binding, item(attacking), 0)?.bob).toBe(9100);
-    // Entry `12 * 40 / 48` of the 40-frame shot.
-    expect(resolveVehicleDraw(binding, item(attacking), 12)?.bob).toBe(9100 + 10);
+    expect(resolveVehicleDraw(binding, item(attacking), VEHICLE_SHOT_SETTLE_TICKS - 1)?.bob).toBe(9100);
+    // Then the clip plays over the rest: 12 ticks on is clip tick `12 * 47 / 35`, entry `16 * 40 / 48`.
+    expect(resolveVehicleDraw(binding, item(attacking), VEHICLE_SHOT_SETTLE_TICKS + 12)?.bob).toBe(9100 + 13);
     expect(
       resolveVehicleDraw(binding, item({ ...attacking, state: 'moving' }), VEHICLE_ATTACK_TICKS - 1)?.bob,
     ).toBe(9100 + 39);

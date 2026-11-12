@@ -48,6 +48,7 @@ import {
 } from '../../../src/index.js';
 import { findPath } from '../../../src/nav/pathfinding/index.js';
 import { combatSystem } from '../../../src/systems/conflict/combat.js';
+import { VEHICLE_SHOT_SETTLE_TICKS } from '../../../src/systems/conflict/engage-vehicle.js';
 import { projectileSystem } from '../../../src/systems/conflict/projectile.js';
 import { isFleeThreat } from '../../../src/systems/conflict/targeting.js';
 import { UNREACHABLE_TARGET_MEMO_SIZE } from '../../../src/systems/conflict/unreachable-targets.js';
@@ -101,6 +102,8 @@ const CATAPULT_VS_HOUSE = 3625;
 /** The catapult's attack clip (`atomicanimations.ini` `viking_catapult_attack`: `length 48`, `event 1 25`). */
 const VEHICLE_ATTACK_CLIP_TICKS = 48;
 const VEHICLE_ATTACK_EVENT_FRAME = 1;
+/** The clip tick the stone leaves at: its attack event, held back while the vehicle settles. */
+const SHOT_FRAME = VEHICLE_ATTACK_EVENT_FRAME + VEHICLE_SHOT_SETTLE_TICKS;
 const ATTACK_ATOMIC = 81;
 const ATOMIC_EVENT_ATTACK = 25;
 /** Every armor material a weapon row lists damage for. */
@@ -563,7 +566,7 @@ describe('catapult stances and scans', () => {
     }
     expect(launchTicks.length).toBeGreaterThanOrEqual(3);
     // The scan acquires on tick 1 and the clip starts there; its event frame fires `frame + 1` ticks later.
-    expect(launchTicks[0]).toBe(1 + VEHICLE_ATTACK_EVENT_FRAME + 1);
+    expect(launchTicks[0]).toBe(1 + SHOT_FRAME + 1);
     expect((launchTicks[1] ?? 0) - (launchTicks[0] ?? 0)).toBe(VEHICLE_ATTACK_CLIP_TICKS);
   });
 });
@@ -922,7 +925,7 @@ describe('the clip and its target', () => {
     order(s, catapult, P1, wall);
     s.step();
     expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: wall });
-    collect(s, VEHICLE_ATTACK_CLIP_TICKS, ['projectileHit']);
+    collect(s, VEHICLE_ATTACK_CLIP_TICKS + VEHICLE_SHOT_SETTLE_TICKS, ['projectileHit']);
     expect(s.world.get(wall, Health).hitpoints).toBe(WALL_HITPOINTS - WALL_STEPS_PER_STONE);
   });
 
@@ -965,7 +968,7 @@ describe('the clip and its target', () => {
 describe('a running clip', () => {
   const SECOND_HOUSE = { hx: 26, hy: 8 };
   /** The tick the first stone leaves for a house already in the band: tick 1 starts the clip. */
-  const FIRST_SHOT_TICK = 1 + VEHICLE_ATTACK_EVENT_FRAME + 1;
+  const FIRST_SHOT_TICK = 1 + SHOT_FRAME + 1;
 
   /** The ticks a stone left on over `ticks` steps; `beat` sends orders before each step. */
   function launchTicks(s: Simulation, ticks: number, beat: () => void): number[] {
@@ -1565,7 +1568,7 @@ describe('wall demolition', () => {
         target: { kind: 'ground', ...at },
       }),
     );
-    const struck = collect(s, VEHICLE_ATTACK_CLIP_TICKS, ['projectileHit']);
+    const struck = collect(s, VEHICLE_ATTACK_CLIP_TICKS + VEHICLE_SHOT_SETTLE_TICKS, ['projectileHit']);
     expect(struck.map((ev) => (ev.kind === 'projectileHit' ? ev.target : -1))).toEqual([wall]);
     expect(s.world.get(wall, Health).hitpoints).toBe(WALL_HITPOINTS - WALL_STEPS_PER_STONE);
     collect(s, 3 * VEHICLE_ATTACK_CLIP_TICKS, ['projectileHit']);

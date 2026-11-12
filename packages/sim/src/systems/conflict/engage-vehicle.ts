@@ -63,6 +63,9 @@ const MARCH_REST_TICKS = 5 * TICKS_PER_SECOND;
 /** A vehicle too far from its target drives to a node this many map points inside its far reach
  *  (original behavior: `maxRange - 5`). */
 export const APPROACH_BAND_DEPTH = 5;
+/** Deviation (owner's choice): a vehicle looses its stone this many ticks after its clip's attack event,
+ *  so one that has just stopped stands a moment before the shot. The clip's length, the cadence, stays. */
+export const VEHICLE_SHOT_SETTLE_TICKS = 12;
 /** The scatter roll is a percent; the base accuracy every commander has before any catapult
  *  experience (original behavior: `skill + 10`). */
 const SCATTER_ROLL = 100;
@@ -105,7 +108,7 @@ export function engageVehicle(
 
   if (state.attackClipStart !== null) {
     const elapsed = ctx.tick - state.attackClipStart;
-    const clip = attackClipTiming(ctx.content, identity);
+    const clip = vehicleShotTiming(ctx.content, identity);
     // A clip with no stone loosed yet ends without one when its aim is gone, reaped, out of the band or
     // ordered away, and the target is judged again below (the original checks the target's validity
     // before the roll). Past the shot only its end frees the weapon: the clip is not interruptible.
@@ -250,6 +253,16 @@ function targetStands(
 
 /** Content-keyed: the identity a vehicle type's crew fights as, per tribe, so a pass mints none. */
 const vehicleIdentities = new WeakMap<VehicleType, Map<number, SettlerIdentity>>();
+
+/** The vehicle's attack clip with its shot held back by {@link VEHICLE_SHOT_SETTLE_TICKS}, never past
+ *  the clip's end. */
+function vehicleShotTiming(
+  content: SystemContext['content'],
+  identity: SettlerIdentity,
+): { readonly length: number; readonly shotAt: number } {
+  const clip = attackClipTiming(content, identity);
+  return { length: clip.length, shotAt: Math.min(clip.shotAt + VEHICLE_SHOT_SETTLE_TICKS, clip.length) };
+}
 
 function vehicleIdentity(type: VehicleType, tribe: number): SettlerIdentity {
   let byTribe = vehicleIdentities.get(type);
