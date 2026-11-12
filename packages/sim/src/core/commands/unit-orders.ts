@@ -582,11 +582,13 @@ export type UnitOrderCommand =
   | {
       /**
        * Send one owned soldier, armed or bare, to coin-drill at his side's finished barracks `house`:
-       * each repetition inside takes a coin off its shelf and adds the clip's points to his personal fight
-       * counter while it stays below `COIN_DRILL_LIMIT`; then, or when no free coin is left, he walks back to
-       * where he stood. Refused while the barracks holds no coin another ordered man does not speak for, so
-       * a group order sends only as many men as there are free coins, in command order. Not the recruit's
-       * `trainSoldier` enlistment. Any order that takes him calls it off.
+       * each `COIN_DRILL_TERM_TICKS` term (15 s) inside takes one coin off its shelf as it starts and adds
+       * the drill clip's points to his personal fight counter as it ends, term after term while he stays
+       * below `COIN_DRILL_LIMIT`; then, or when no free coin is left, he walks back to where he stood.
+       * Refused while the barracks holds no coin another ordered man does not speak for, so a group order
+       * sends only as many men as there are free coins, in command order. Not the recruit's `trainSoldier`
+       * enlistment. Any order that takes him, or a fight, calls the term off and gives its coin back; a
+       * driller who dies mid-term, or whose barracks is razed, loses the coin.
        */
       readonly kind: 'orderCoinDrill';
       readonly entity: Entity;

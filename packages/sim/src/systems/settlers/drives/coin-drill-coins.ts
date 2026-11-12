@@ -69,7 +69,9 @@ export function callOffCoinDrill(world: World, ctx: SystemContext, e: Entity): v
 }
 
 /** Give back the coins of `e`'s term when it is cut before it was served, and end it. Our rule: a cut
- *  term costs nothing and grants nothing. */
+ *  term costs nothing and grants nothing. The coin goes back whatever the shelf holds, so a shelf
+ *  refilled to its capacity meanwhile ends one coin over it: accepted, so a coin never vanishes. A razed
+ *  barracks has no shelf, and its coin is lost. */
 function refundCutTerm(world: World, ctx: SystemContext, e: Entity): void {
   const order = world.tryGet(e, CoinDrillOrder);
   if (order === undefined || order.termTicksLeft <= 0) return;
