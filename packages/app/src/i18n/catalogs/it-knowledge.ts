@@ -230,6 +230,7 @@ export const itKnowledge = {
       store: 'Stoccaggio',
       larder: 'Dispensa',
       families: 'Famiglie',
+      familiesFurnished: '{count} (+{extra} con il Mobilio)',
       pupils: 'Posti per allievi',
       teaches: 'Cosa insegna',
       teachesTrades: 'Professioni ({count})',
@@ -484,6 +485,7 @@ export const itKnowledge = {
     },
     homeLevels: {
       families: 'Famiglie: {count}',
+      familiesFurnished: 'Famiglie: {count} (+{extra} con il Mobilio)',
     },
   },
   mechanics: {
@@ -543,6 +545,8 @@ export const itKnowledge = {
     jobSchoolFoot: 'Un corso a scuola al posto della pratica dura di solito {seconds} s.',
     homeLevel: 'Livello',
     homeFamilies: 'Famiglie',
+    homeFurnished: 'Con il Mobilio',
+    homeFurnishedExtra: '+{count}',
     homeLarder: 'Dispensa',
     expPoints: 'Lavori ordinari svolti',
     expPercent: 'Esperienza',

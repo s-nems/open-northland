@@ -74,7 +74,7 @@ export const SETTLERS: ArticleGroup = {
               ],
               [
                 '{{need.overfillPct}}%',
-                'Il massimo di una barra. Un pasto a casa o il sonno a casa con il mobilio accumulano una riserva oltre il 100%.',
+                'Il massimo di una barra. Un pasto o un sonno a casa possono accumulare una riserva oltre il 100%.',
               ],
             ],
           },
@@ -84,38 +84,24 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: [
-              'Chi',
-              'Durata del sonno',
-              'Resistenza per sonno: fuori casa',
-              'a casa',
-              'a casa con mobilio',
-            ],
+            head: ['Chi', 'Durata del sonno', 'Resistenza per sonno: fuori casa', 'a casa'],
             rows: [
-              [
-                'Uomo',
-                '{{sleep.manSeconds}} s',
-                '+{{sleep.manAwayPct}}%',
-                '+{{sleep.manHomePct}}%',
-                '+{{sleep.manFurnishedPct}}%',
-              ],
+              ['Uomo', '{{sleep.manSeconds}} s', '+{{sleep.manAwayPct}}%', '+{{sleep.manHomePct}}%'],
               [
                 '[[job:woman|Donna]]',
                 '{{sleep.womanSeconds}} s',
                 '+{{sleep.womanAwayPct}}%',
                 '+{{sleep.womanHomePct}}%',
-                '+{{sleep.womanFurnishedPct}}%',
               ],
               [
                 'Mercante, esploratore (sempre come a casa)',
                 '{{sleep.manSeconds}} s',
                 '+{{sleep.manHomePct}}%',
                 '-',
-                '-',
               ],
-              ['Soldato (ovunque dorma)', '{{sleep.soldierSeconds}} s', '+{{sleep.soldierPct}}%', '-', '-'],
+              ['Soldato (ovunque dorma)', '{{sleep.soldierSeconds}} s', '+{{sleep.soldierPct}}%', '-'],
             ],
-            num: [1, 2, 3, 4],
+            num: [1, 2, 3],
           },
         },
         {
@@ -283,7 +269,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             "Solo l'ordine «Assegna casa» dà un'abitazione. Nessuno ci si trasferisce da solo, e un matrimonio sposta solo il coniuge.",
-            "Un'abitazione ospita tante famiglie quante ne indica la colonna Famiglie della tabella dei livelli. Su un'abitazione piena l'ordine fallisce.",
+            "Un'abitazione ospita tante famiglie quante ne indica la colonna Famiglie della tabella dei livelli, di più con il [[good:furniture|mobilio]]. Su un'abitazione piena l'ordine fallisce.",
             'Una nuova assegnazione sposta tutta la famiglia: il colono, il coniuge e il figlio che cresce.',
           ],
         },
@@ -349,8 +335,8 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:furniture|Mobilio]]',
                 'Abitazione 1',
-                'Sonno ×{{home.factor}}',
-                '{{home.furnitureManSleeps}} sonni per un uomo, {{home.furnitureWomanSleeps}} per una donna',
+                'Posto per altre famiglie',
+                '{{home.furnitureChildren}} figli, {{home.furnitureSleeps}} sonni o {{home.furnitureMeals}} pasti',
                 '{{home.furnitureFetchBelow}}',
               ],
               [
@@ -362,8 +348,14 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: "Un'abitazione contiene fino a {{home.wareUnits}} unità di ciascuno di questi beni. L'olio brucia senza sosta, anche quando nessuno prega.",
+            foot: "Un'abitazione contiene fino a {{home.wareUnits}} unità di vasellame e di olio, e {{home.furnitureUnits}} di mobilio. L'olio brucia senza sosta, anche quando nessuno prega.",
           },
+        },
+        {
+          list: [
+            "Con il mobilio un'abitazione ospita famiglie in più, come indica la colonna Con il Mobilio della tabella dei livelli. I posti in più durano finché c'è mobilio in casa e il giocatore ne consente l'uso.",
+            "Il mobilio si consuma solo finché un'abitazione ospita più famiglie di quante ne ospiterebbe senza: ne usa un po' ogni figlio concepito lì, ogni sonno lì e ogni pasto dalla sua dispensa. Un'abitazione senza famiglie in più conserva il suo mobilio.",
+          ],
         },
         {
           p: "Nel pannello dell'abitazione puoi disattivare per tutto l'insediamento l'uso di vasellame e mobilio e le consegne di olio. L'olio già immagazzinato continua a bruciare.",
@@ -378,6 +370,10 @@ export const SETTLERS: ArticleGroup = {
               ['Vedovo', 'La perde quando il figlio è cresciuto o è morto.'],
               ['Vedova', "Resta nell'abitazione."],
               ['Figlio cresciuto', 'La perde quando diventa adulto.'],
+              [
+                'Famiglia oltre il numero di base',
+                "Trasloca quando il mobilio finisce o viene vietato, per prima l'ultima arrivata, e il gioco mostra «Trasloco». Con «Fonda famiglie» attivo, l'[[article:assistant|Assistente]] la trasferisce in un posto libero.",
+              ],
               [
                 'Mercante, esploratore, soldato',
                 "La famiglia tiene l'abitazione, ma lui non ci mangia né ci dorme.",

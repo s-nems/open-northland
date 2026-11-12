@@ -622,6 +622,11 @@ export const itContent = {
       summary:
         "Tre donne e tre uomini senza casa stanno presso una casa per due famiglie mentre l'assistente fonda famiglie. Due donne vi si trasferiscono e si sposano, e i loro mariti vanno a vivere con loro. La terza non trova un posto libero, resta senza casa e resta nubile.",
     },
+    'furnished-home': {
+      title: 'Il mobilio ospita famiglie in più',
+      summary:
+        "Tre abitazioni da una famiglia ciascuna. Quella a ovest contiene due pezzi di mobilio e ospita una seconda famiglia. Due donne stanche tornano a casa in quella di mezzo, il cui mobilio basta per altri due sonni: quando entrambe si sono coricate è finito, la donna arrivata per ultima trasloca e l'assistente la trasferisce nell'abitazione vuota a est.",
+    },
     'gatherer-flag-follow': {
       title: 'Le bandierine seguono le risorse',
       summary:
@@ -772,7 +777,7 @@ export const itContent = {
     'household-goods': {
       title: 'Beni per la casa',
       summary:
-        "Vasai, carpentieri e druidi riforniscono un'abitazione matura di vasellame, mobilio e olio per pasti, riposo e preghiera migliori.",
+        "Vasai, carpentieri e druidi riforniscono un'abitazione matura di vasellame, mobilio e olio: più cibo per consegna, posto per altre famiglie e preghiera presso l'abitazione.",
     },
     'storage-minimum': {
       title: 'Scorta minima',

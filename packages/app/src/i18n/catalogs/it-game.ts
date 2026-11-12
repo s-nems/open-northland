@@ -1187,6 +1187,14 @@ export const itGame = {
       uses: '{count} usi',
       holyFireOn: 'acceso',
       holyFireOff: 'spento',
+      furnitureLodges: {
+        one: '{pieces} pz · +{count} famiglia',
+        few: '{pieces} pz · +{count} famiglie',
+        many: '{pieces} pz · +{count} famiglie',
+      },
+      furnitureIdle: '{pieces} pz · nessuna famiglia in più',
+      furnitureTip:
+        "Con il Mobilio l'abitazione ospita famiglie in più. Si consuma solo finché queste ci vivono, e quando finisce traslocano.",
       allowed: '{good} · consentito in ogni abitazione · clic: vieta',
       forbidden: '{good} · vietato in ogni abitazione · clic: consenti',
       policyForeign: 'Le regole le stabilisce il proprietario',
@@ -1579,7 +1587,7 @@ export const itGame = {
         },
         foundFamilies: {
           label: 'Fonda famiglie',
-          tip: 'Una donna senza casa si trasferisce nella casa più vicina con un posto libero. Una donna che ha già una casa si sposa appena un uomo è libero.',
+          tip: 'Una donna senza casa si trasferisce nella casa più vicina con un posto libero. Una donna che ha già una casa si sposa appena un uomo è libero. Anche una famiglia che ha dovuto traslocare per mancanza di Mobilio si trasferisce in una casa così.',
         },
       },
       notes: {
@@ -2013,6 +2021,7 @@ export const itGame = {
       willDie: 'Morente',
       grewUp: { he: 'Ora è un uomo', she: 'Ora è una donna' },
       noOneToMarry: 'Nessun partner',
+      familyMovedOut: 'Trasloco',
       cannotEnterVehicle: 'Non può salire',
       cannotLeaveVehicle: 'Bloccato a bordo',
       settlementAttacked: 'Villaggio attaccato',
@@ -2101,6 +2110,8 @@ export const itGame = {
         he: '{name} non ha trovato nessuno da sposare. Una donna nubile deve vivere alla sua portata.',
         she: '{name} non ha trovato nessuno da sposare. Un uomo celibe deve vivere alla sua portata.',
       },
+      familyMovedOut:
+        "{name} e famiglia hanno traslocato: nell'abitazione non c'è più Mobilio per loro. Porta del Mobilio o assegna loro un'altra casa.",
       cannotEnterVehicle:
         "{name} non può salire su questo veicolo: non c'è posto libero o la nave è in mare. Porta la nave a riva o scegli un altro veicolo.",
       cannotLeaveVehicle: '{name} non può lasciare la nave in mare. Prima porta la nave a riva.',
