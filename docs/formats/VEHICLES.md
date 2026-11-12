@@ -32,8 +32,8 @@ Seven records, ids 1..6 (0 is "none"). `logicdefines.inc` names them `CART_HAND 
 | `logictransformvehicleType` | Type the vehicle becomes when the animal arrives (6 -> 2). |
 
 Hit points (table indexed by type): ship small 5000, ship big 5000, catapult 3000, everything
-else 1000. Vision: 15 default, ship small 20, ship big 25, catapult 20 (Open Northland gives both
-ships 25 by owner ruling).
+else 1000 (Open Northland gives both ships 10000 by owner ruling). Vision: 15 default, ship small
+20, ship big 25, catapult 20 (Open Northland gives both ships 25 by owner ruling).
 Vehicles have no armour.
 
 ## Construction
@@ -521,8 +521,12 @@ segment whose body covers the node and takes `damage[7] / 100` off its hitpoints
 own rule, the one every other weapon's blow goes through. A stone strikes with the bare column: neither
 the commander's experience nor his amulets raise it. A stone that damages anything trains the
 commander once. A settler resting indoors is passed over, as every other shot passes over it, and an
-ordered stone may name a wall. A struck settler runs from an armed vehicle and never from a cart or ship
-(approximation). The note is raised for any striker (approximation). An auto target no firing node reaches is
+ordered stone may name a wall. A struck settler runs from an armed vehicle, a warship with a bowman
+on deck included, and never from a cart or an unarmed ship (approximation). Owner additions, not in the
+original: a stone strikes a ship for double damage; bow soldiers aboard a warship shoot from its deck,
+the first ten by seat, at the bow's reach less 2 points, one node wider in scatter and half again as
+slowly as ashore, enemy ships first, and the ship answers for them; a ship under 40% of its hit points
+burns 20 a second until it sinks; a computer seat takes cover from a warship with a bowman on deck. The note is raised for any striker (approximation). An auto target no firing node reaches is
 given up for the combat memo's 30 seconds (approximation: the original drops it and scans again on
 its next update). The row's `hitself 1` is extracted, so the burst strikes every side, the shooter's
 own included. A victim whose player is not at war with the shooter's
