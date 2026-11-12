@@ -291,8 +291,8 @@ export function tribeCharacters(
         ...(spec.logicJob !== undefined ? { carrySeqBySlug: carryWalkSeqs(ir, tribe, spec.logicJob) } : {}),
         // Own-clip names keyed by the settler's job, as the original looks them up, never by the record
         // that drew the body: the spec's own job first, so a class whose body the tribe does not author
-        // still gets the motion it authors for that class (the saracen bowman's shortbow swing on the
-        // plain soldier body), then the classes it degrades through.
+        // still gets the motion it authors for that class (the egyptian longbowman's shortbow swing on the
+        // saracen soldier body), then the classes it degrades through.
         tribeSeqs,
         programsByAction,
         ...(inputs.basePrograms !== undefined ? { basePrograms: inputs.basePrograms } : {}),
