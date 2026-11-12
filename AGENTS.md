@@ -85,6 +85,12 @@ the canonical legal wording.
 - Markdown should answer a reader's task with verified facts and runnable examples. Omit repeated
   summaries, generic advice and investigation transcripts. Do not compress format evidence or art
   provenance merely to meet a word budget.
+- The in-game Knowledge window is the player's reference for the rules. A change to a player-visible
+  mechanic, number or recipe updates, in the same commit, what it contradicts there: the articles in
+  every language under `packages/app/src/i18n/knowledge/`, and the pack help text through
+  `tools/asset-pipeline/corrections/strings/tables.json` and the `chs` help overlays with their
+  derived `cht`. A number the game owns enters an article as a `{{token}}` read in
+  `packages/app/src/hud/knowledge/facts/`, never retyped.
 
 ## Persisted state
 
