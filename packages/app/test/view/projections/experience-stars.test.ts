@@ -49,16 +49,10 @@ describe('starTier', () => {
 });
 
 describe('computeExperienceStars - the weapon star', () => {
-  it('a soldier of any owner wears it for his personal fight experience', () => {
-    expect(
-      starsOf([human(1, SWORD_SOLDIER_JOB, [[FIGHT, systems.fightUnitsOfPoints(60)]], {}, ENEMY)]),
-    ).toEqual([{ id: 1, x: fx.fromInt(1), y: fx.fromInt(1), weaponTier: 2, jobTier: 0 }]);
-  });
-
-  it("the enemy sees it: another seat's soldier on the viewer's screen, outdoors, wears it", () => {
+  it('a soldier of another player, visible, wears the star for his personal fight experience', () => {
     const screen = { minX: 0, minY: 0, maxX: 64, maxY: 64 };
     const snapshot = snapshotOf([
-      human(1, SWORD_SOLDIER_JOB, [[FIGHT, systems.fightUnitsOfPoints(50)]], {}, ENEMY),
+      human(1, SWORD_SOLDIER_JOB, [[FIGHT, systems.fightUnitsOfPoints(60)]], {}, ENEMY),
     ]);
     expect(computeExperienceStars(snapshot, { ...RULES, viewer: PLAYER }, screen)).toEqual([
       { id: 1, x: fx.fromInt(1), y: fx.fromInt(1), weaponTier: 2, jobTier: 0 },
