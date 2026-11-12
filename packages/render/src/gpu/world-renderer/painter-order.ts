@@ -19,8 +19,6 @@ export interface WorldSceneLayers {
   readonly selection: Container;
   readonly bones: Container;
   readonly sprites: Container;
-  /** The motes of light rising before a blessing temple's walls: over the house they rise past. */
-  readonly templeMotes: Container;
   /** Over the sprites: an order's acknowledgement or a refused goal must not hide behind the rock or tree
    *  it marks. */
   readonly orderMarkers: Container;
@@ -61,7 +59,6 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.selection,
     layers.bones,
     layers.sprites,
-    layers.templeMotes,
     layers.orderMarkers,
     layers.constructionSigns,
     layers.bubbles,

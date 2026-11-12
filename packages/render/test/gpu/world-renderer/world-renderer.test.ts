@@ -71,7 +71,6 @@ const SLOTS = [
   'selection',
   'bones',
   'sprites',
-  'templeMotes',
   'orderMarkers',
   'constructionSigns',
   'bubbles',

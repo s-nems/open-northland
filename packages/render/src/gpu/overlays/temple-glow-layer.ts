@@ -1,17 +1,13 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
-import { Container, Mesh, MeshGeometry, Shader, Sprite, type Texture, UniformGroup } from 'pixi.js';
+import { Container, Mesh, MeshGeometry, Shader, UniformGroup } from 'pixi.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
 import {
   blessingTemplesOf,
-  TEMPLE_MOTES,
   type TempleAuraPhases,
-  type TempleMote,
   templeAuraPhases,
   templeGlowPulse,
-  templeMote,
 } from '../../data/scene/temple-glow.js';
 import { readPosition } from '../../data/snapshot/index.js';
-import { bakeGlow, GLOW_TEXTURE_SIZE } from '../lighting/glow-texture.js';
 import { glProgramFor } from '../shaders/program-source.js';
 import type { DrawnGeometry } from '../sprite-pool/index.js';
 import { TEMPLE_AURA_SOURCE } from './temple-aura-shader.js';
@@ -24,15 +20,13 @@ export interface TempleGlowFrame {
   readonly fogVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
   /** Game seconds, so a pause holds the aura. */
   readonly seconds: number;
-  /** Whether the motes rise; a far view drops them. */
-  readonly motes: boolean;
 }
 
 /** The aura's strength at the top of its breath. Tuned by eye. */
-const AURA_ALPHA = 0.3;
+const AURA_ALPHA = 0.22;
 /** The wall line's and the rim's half-widths as shares of the drawn temple's. Tuned by eye. */
 const WALL_SPREAD = 0.8;
-const RIM_SPREAD = 2;
+const RIM_SPREAD = 2.3;
 /** North-south over east-west radius of a patch of flat ground under the projection, as the art's
  *  platforms are drawn. Tuned by eye. */
 const GROUND_SQUASH = 0.5;
@@ -40,55 +34,42 @@ const GROUND_SQUASH = 0.5;
 const KINDLE_SECONDS = 1.2;
 /** The longest step of the clock one frame kindles by, so a jump in time does not skip the rise. */
 const KINDLE_STEP_SECONDS = 0.1;
-/** A mote's colour, its largest width in world px, and its rise as a share of the temple's height. */
-const MOTE_COLOUR = 0xbfeaff;
-const MOTE_SIZE = 14;
-const MOTE_RISE = 0.45;
-const MOTE_ALPHA = 0.5;
 
 const QUAD_CORNERS = [-1, -1, 1, -1, 1, 1, -1, 1];
 const QUAD_INDICES = [0, 1, 2, 0, 2, 3];
 
-/** One temple's aura and its motes. */
+/** One temple's aura. */
 interface Aura {
   readonly ground: Mesh<MeshGeometry, Shader>;
   readonly uniforms: UniformGroup;
   /** The wall line's share of the rim, the crests' travel and the two drift angles the shader reads. */
   readonly values: Float32Array;
-  readonly motes: Sprite[];
   /** 0 dark to 1 fully kindled. */
   kindled: number;
   /** Whether the temple blessed in view this frame. */
   blessing: boolean;
-  /** The wall line's centre and half-width, and the drawn temple's height, in world px. */
+  /** The wall line's centre and half-width in world px. */
   x: number;
   y: number;
   wall: number;
-  height: number;
 }
 
 /**
  * The aura of each temple the viewer sees blessing, every tribe's alike, so a temple with no oil or a
- * wound reads at a glance: light leaving the wall line in crests on the ground under the house, and
- * motes rising before its walls over it. Our own effect; the original shows the blessing nowhere.
+ * wound reads at a glance: light leaving the wall line in crests on the ground under the house.
+ * Our own effect; the original shows the blessing nowhere.
  * Temples are few, so every blessing one is walked and culled each frame, and each draws one quad.
  */
 export class TempleGlowLayer {
-  /** The light on the ground, under every sprite. */
   readonly container = new Container();
-  /** The motes, over the sprites. */
-  readonly motes = new Container();
   private readonly auras = new Map<number, Aura>();
   private readonly geometry = new MeshGeometry({
     positions: new Float32Array(QUAD_CORNERS),
     uvs: new Float32Array(QUAD_CORNERS),
     indices: new Uint32Array(QUAD_INDICES),
   });
-  /** Baked when the first temple blesses. */
-  private moteTexture: Texture | null = null;
   private lastSeconds: number | null = null;
   private readonly phases: TempleAuraPhases = { wave: 0, sway: 0, rays: 0 };
-  private readonly mote: TempleMote = { across: 0, before: 0, rise: 0, alpha: 0, size: 0 };
 
   draw(frame: TempleGlowFrame): void {
     const elapsed = this.lastSeconds === null ? 0 : frame.seconds - this.lastSeconds;
@@ -124,7 +105,6 @@ export class TempleGlowLayer {
     aura.wall = ((bounds.maxX - bounds.minX) / 2) * WALL_SPREAD;
     aura.x = (bounds.minX + bounds.maxX) / 2;
     aura.y = bounds.maxY - aura.wall * GROUND_SQUASH;
-    aura.height = bounds.maxY - bounds.minY;
     aura.blessing = true;
   }
 
@@ -139,19 +119,6 @@ export class TempleGlowLayer {
     aura.ground.position.set(aura.x, aura.y);
     aura.ground.scale.set(rim, rim * GROUND_SQUASH);
     aura.ground.alpha = AURA_ALPHA * aura.kindled * templeGlowPulse(frame.seconds, id);
-    for (let i = 0; i < aura.motes.length; i++) {
-      const sprite = aura.motes[i];
-      if (sprite === undefined) continue;
-      sprite.visible = frame.motes;
-      if (!frame.motes) continue;
-      const mote = templeMote(frame.seconds, id, i, this.mote);
-      sprite.position.set(
-        aura.x + mote.across * aura.wall,
-        aura.y + mote.before * aura.wall * GROUND_SQUASH - mote.rise * aura.height * MOTE_RISE,
-      );
-      sprite.scale.set((MOTE_SIZE * mote.size) / GLOW_TEXTURE_SIZE);
-      sprite.alpha = MOTE_ALPHA * mote.alpha * aura.kindled;
-    }
   }
 
   private auraOf(id: number): Aura {
@@ -166,17 +133,7 @@ export class TempleGlowLayer {
       const ground = new Mesh({ geometry: this.geometry, shader });
       ground.blendMode = 'add';
       this.container.addChild(ground);
-      this.moteTexture ??= bakeGlow();
-      const motes: Sprite[] = [];
-      for (let i = 0; i < TEMPLE_MOTES; i++) {
-        const mote = new Sprite(this.moteTexture);
-        mote.anchor.set(0.5);
-        mote.tint = MOTE_COLOUR;
-        mote.blendMode = 'add';
-        this.motes.addChild(mote);
-        motes.push(mote);
-      }
-      aura = { ground, uniforms, values, motes, kindled: 0, blessing: false, x: 0, y: 0, wall: 0, height: 0 };
+      aura = { ground, uniforms, values, kindled: 0, blessing: false, x: 0, y: 0, wall: 0 };
       this.auras.set(id, aura);
     }
     return aura;
@@ -185,15 +142,12 @@ export class TempleGlowLayer {
   private retire(aura: Aura): void {
     aura.ground.shader?.destroy();
     aura.ground.destroy();
-    for (const mote of aura.motes) mote.destroy();
   }
 
   destroy(): void {
     for (const aura of this.auras.values()) this.retire(aura);
     this.auras.clear();
     this.container.destroy({ children: true });
-    this.motes.destroy({ children: true });
     this.geometry.destroy(true);
-    this.moteTexture?.destroy(true);
   }
 }

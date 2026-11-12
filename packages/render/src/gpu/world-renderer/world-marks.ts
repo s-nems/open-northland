@@ -61,7 +61,6 @@ export type MarkSlots = Pick<
   WorldSceneLayers,
   | 'wakes'
   | 'templeGlow'
-  | 'templeMotes'
   | 'selection'
   | 'orderMarkers'
   | 'bones'
@@ -184,7 +183,6 @@ export class WorldMarks {
     this.slots = {
       wakes: this.wakes.container,
       templeGlow: this.templeGlow.container,
-      templeMotes: this.templeGlow.motes,
       selection: this.selection.container,
       orderMarkers: this.orderMarkers.container,
       bones: this.effects.groundContainer,
@@ -279,7 +277,6 @@ export class WorldMarks {
       viewport,
       fogVisible: frame.fogVisible,
       seconds: renderTime / TICKS_PER_SECOND,
-      motes: frame.detail.motion,
     });
     this.selection.draw(
       {

@@ -1,6 +1,5 @@
 import { ONE, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { TEMPLE_MOTES } from '../../../src/data/scene/temple-glow.js';
 import { type TempleGlowFrame, TempleGlowLayer } from '../../../src/gpu/overlays/temple-glow-layer.js';
 import { drawnGeometry } from '../../support/fixtures.js';
 import { useHeadlessShaderContext } from '../../support/shader-context.js';
@@ -32,7 +31,6 @@ function frame(seconds: number, seams: Partial<TempleGlowFrame> = {}): TempleGlo
     drawn: drawnGeometry({ boundsOf: () => BOUNDS }),
     viewport: VIEW,
     seconds,
-    motes: true,
     ...seams,
   };
 }
@@ -57,7 +55,6 @@ describe('TempleGlowLayer', () => {
     expect(aura?.position.y).toBeGreaterThan(BOUNDS.maxY - halfWidth);
     expect(aura?.scale.x).toBeGreaterThan(halfWidth);
     expect(aura?.alpha).toBeGreaterThan(0);
-    expect(layer.motes.children).toHaveLength(TEMPLE_MOTES);
   });
 
   it('kindles the aura over time and lets it die on a temple the viewer stops seeing', () => {
@@ -68,12 +65,5 @@ describe('TempleGlowLayer', () => {
     expect(layer.container.children[0]?.alpha).toBeGreaterThan(0);
     run(layer, KINDLED_SECONDS, { fogVisible: () => false });
     expect(layer.container.children).toHaveLength(0);
-    expect(layer.motes.children).toHaveLength(0);
-  });
-
-  it('drops the motes where the view asks', () => {
-    const layer = new TempleGlowLayer();
-    run(layer, KINDLED_SECONDS, { motes: false });
-    expect(layer.motes.children.some((mote) => mote.visible)).toBe(false);
   });
 });
