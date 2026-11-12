@@ -30,7 +30,7 @@ import {
 } from './highlights/index.js';
 import type { AnsweredOrders } from './orders/answered.js';
 import { DOCK_PICK_SNAP_NODES } from './orders/berths.js';
-import { coinDrillersAt } from './orders/coin-drill.js';
+import { coinDrillersAt, isFighterSettler } from './orders/coin-drill.js';
 import type { UnitOrderController } from './orders/controller.js';
 import { enqueueUnitSelection } from './orders/group.js';
 import type { VehicleOrderController } from './orders/vehicle.js';
@@ -475,9 +475,10 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     const pick = BUILDING_PICKS[kind].orders;
     if (pick === null) return attachTradeHouse(settlers, building);
     // At a barracks a soldier who may coin-drill drills there while its coins last; the order is never
-    // queued.
+    // queued. A soldier never enlists again, so one who may not drill gets no order.
+    const barracks = kind === 'learning-place';
     const drillers =
-      kind === 'learning-place' && !queued
+      barracks && !queued
         ? coinDrillersAt(deps.content, snapshot, building, settlers, buildingsByType)
         : NO_DRILLERS;
     const drills = drillers.sent.map(
@@ -489,7 +490,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     );
     const orders = pick(
       snapshot,
-      settlers.filter((settler) => !drillers.eligible.includes(settler)),
+      barracks ? settlers.filter((settler) => !isFighterSettler(deps.content, snapshot, settler)) : settlers,
       building,
       buildingsByType,
       deps.content.goods,

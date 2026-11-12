@@ -1,6 +1,6 @@
 import { type Command, fx, ONE, systems } from '@open-northland/sim';
 import { expect, it } from 'vitest';
-import { JOB_CIVILIST } from '../../../src/catalog/jobs.js';
+import { JOB_CIVILIST, JOB_SOLDIER_UNARMED } from '../../../src/catalog/jobs.js';
 import { sandboxContent } from '../../../src/game/sandbox/index.js';
 import { createAnsweredOrders } from '../../../src/view/unit-controls/orders/answered.js';
 import type { UnitOrderController } from '../../../src/view/unit-controls/orders/controller.js';
@@ -31,11 +31,11 @@ const house = (id: number, buildingType: number | undefined, x: number, standing
   },
 });
 
-const worldOf = (standing: boolean): ReturnType<typeof snapshotOf> =>
+const worldOf = (standing: boolean, jobType = JOB_CIVILIST): ReturnType<typeof snapshotOf> =>
   snapshotOf([
     {
       id: PUPIL,
-      components: { Settler: { tribe: TRIBE, jobType: JOB_CIVILIST }, Owner: { player: PLAYER } },
+      components: { Settler: { tribe: TRIBE, jobType }, Owner: { player: PLAYER } },
     },
     house(SCHOOL, schoolType, 2, standing),
     house(BARRACKS, barracksType, 8, standing),
@@ -48,6 +48,7 @@ function harness(
   world = STANDING,
 ): {
   press: () => void;
+  bare: () => void;
   shiftPress: () => ReturnType<ReturnType<typeof createPickModeController>['handleMouseDown']>;
   armed: () => boolean;
   issued: Command[];
@@ -81,6 +82,10 @@ function harness(
       pickMode.arm({ kind: 'learning-place', units: [PUPIL] });
       expect(pickMode.highlight()?.map((item) => item.id)).toEqual([BARRACKS, SCHOOL]);
       expect(pickMode.handleMouseDown({ clientX: 0, clientY: 0, button: 0 } as MouseEvent)).toBe('ordered');
+    },
+    bare: () => {
+      pickMode.arm({ kind: 'learning-place', units: [PUPIL] });
+      pickMode.handleMouseDown({ clientX: 0, clientY: 0, button: 0 } as MouseEvent);
     },
     shiftPress: () => {
       pickMode.arm({ kind: 'learning-place', units: [PUPIL] });
@@ -132,4 +137,11 @@ it('a Shift press on a barracks queues the drill and keeps the pick armed', () =
   expect(shiftPress()).toBe('ordered');
   expect(issued).toEqual([{ kind: 'trainSoldier', entity: PUPIL, house: BARRACKS, queued: true }]);
   expect(armed()).toBe(true);
+});
+
+it('never enlists a soldier again: one who may not coin-drill gets no order, Shift or not', () => {
+  const { bare, shiftPress, issued } = harness(BARRACKS, worldOf(true, JOB_SOLDIER_UNARMED));
+  bare();
+  shiftPress();
+  expect(issued).toEqual([]);
 });

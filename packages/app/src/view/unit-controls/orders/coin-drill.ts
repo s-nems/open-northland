@@ -16,6 +16,7 @@ import {
   positionOf,
   type SnapshotEntity,
   settlerExperienceOf,
+  settlerJobType,
 } from '../../../game/snapshot/index.js';
 import { liveAmounts } from '../../../hud/details-panel/model/building-materials.js';
 
@@ -51,6 +52,12 @@ export function mayCoinDrillHere(
     weapon,
     settlerExperienceOf(settler.components),
   );
+}
+
+/** Whether the settler `id` is a soldier or a hero, whom a barracks never enlists again. */
+export function isFighterSettler(content: ContentSet, snapshot: WorldSnapshot, id: number): boolean {
+  const settler = entityById(snapshot, id);
+  return settler !== undefined && systems.isFighterJob(content, settlerJobType(settler) ?? null);
 }
 
 /**

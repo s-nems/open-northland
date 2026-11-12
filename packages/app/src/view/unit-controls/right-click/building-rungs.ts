@@ -36,8 +36,8 @@ export type BuildingIntent =
     }
   /** Homes and workplaces have limited room, so each goes out as one group order and the sim seats the
    *  homeless and the unemployed first. At a barracks that shows a coin a soldier who may coin-drill drills,
-   *  nearest first while its coins last, and stays put past them; the rest enlist. A settler none of them takes
-   *  gets no order. */
+   *  nearest first while its coins last; a civilian enlists. A settler none of them takes, a soldier who
+   *  may not drill among them, gets no order. */
   | {
       readonly kind: 'building';
       readonly building: number;
@@ -133,9 +133,14 @@ export function atBuilding(
     if (def?.kind === 'home') household.push(target);
     // A recruit sent to a foundation waits at its door until it stands.
     else if (trainsRatherThanEmploys(def, currentJob)) {
-      const drills =
-        self !== undefined && house !== undefined && mayCoinDrillHere(ctx.content, self, house, buildings);
-      (drills ? drillers : trainees).push(target);
+      // A soldier never enlists again: the barracks drills him for coins or leaves him be.
+      if (!systems.isFighterJob(ctx.content, currentJob ?? null)) trainees.push(target);
+      else if (
+        self !== undefined &&
+        house !== undefined &&
+        mayCoinDrillHere(ctx.content, self, house, buildings)
+      )
+        drillers.push(target);
     } else {
       // The sim gates every candidate in the priority list, so an unoffered or full trade falls through.
       const jobPriority = assignmentPriorityFor(currentJob, def?.workers);
