@@ -544,6 +544,18 @@ export function isJobLocked(e: SnapshotEntity): boolean {
   return hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.JOB_LOCKED);
 }
 
+/** A script bars the settler from getting better: the sim refuses him a coin drill he would gain nothing
+ *  from. */
+export function isBarredFromExperience(e: SnapshotEntity): boolean {
+  return hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.NO_JOB_EXPERIENCE);
+}
+
+/** The barracks a soldier's coin drill runs at, while he walks there or drills; undefined on his way back. */
+export function coinDrillHouseOf(e: SnapshotEntity): number | undefined {
+  const order = e.components.CoinDrillOrder as { house?: unknown; stage?: unknown } | undefined;
+  return order?.stage === 'drill' ? num(order.house) : undefined;
+}
+
 /** The training house a settler walks to or drills at. */
 export function trainingHouseOf(e: SnapshotEntity): number | undefined {
   const order = e.components.TrainingOrder as { house?: unknown } | undefined;

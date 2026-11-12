@@ -8,6 +8,8 @@ import {
 } from '@open-northland/sim';
 import {
   buildingTypeOf,
+  coinDrillHouseOf,
+  isBarredFromExperience,
   isFinishedBuilding,
   isPlayerControllable,
   isSettler,
@@ -23,23 +25,44 @@ import { liveAmounts } from '../../../hud/details-panel/model/building-materials
 /** The slice of a building type the gate reads. */
 type BuildingInfo = Pick<BuildingType, 'kind' | 'workers'>;
 
+/** A barracks judged once for a press or a hint: its id and owner, and the drill coins it shows. */
+export interface CoinDrillHouse {
+  readonly id: number;
+  readonly owner: number | undefined;
+  readonly coins: number;
+}
+
 /**
- * The sim's `mayCoinDrillAt` as far as a snapshot shows it: a finished barracks of the soldier's own owner
- * that shows a coin, and `mayCoinDrill` on his trade, weapon and fight points. The walk to its door is the
- * sim's to judge.
+ * `building` as a coin-drill barracks as far as a snapshot shows it: a finished barracks that shows a coin.
+ * Undefined for any other building.
  */
-export function mayCoinDrillHere(
+export function coinDrillHouse(
   content: ContentSet,
-  settler: SnapshotEntity,
   building: SnapshotEntity,
   byType: ReadonlyMap<number, BuildingInfo>,
-): boolean {
-  if (!isSettler(settler) || !isPlayerControllable(settler)) return false;
-  if (!isFinishedBuilding(building) || ownerPlayerOf(building) !== ownerPlayerOf(settler)) return false;
+): CoinDrillHouse | undefined {
+  if (!isFinishedBuilding(building)) return undefined;
   const typeId = buildingTypeOf(building);
   const def = typeId === undefined ? undefined : byType.get(typeId);
-  if (def === undefined || !systems.isBarracksType(def)) return false;
-  if (drillCoinsShown(content, building) <= 0) return false;
+  if (def === undefined || !systems.isBarracksType(def)) return undefined;
+  const coins = drillCoinsShown(content, building);
+  return coins > 0 ? { id: building.id, owner: ownerPlayerOf(building), coins } : undefined;
+}
+
+/**
+ * The sim's `mayCoinDrillAt` for one soldier at a judged barracks of his own owner: `mayCoinDrill` on his
+ * trade, weapon and fight points, not barred from experience by a script, and not drilling there already.
+ * The snapshot leaves out two things the sim judges: the coins men already on their way speak for, and the
+ * walk to the door, so the sim may still refuse an order this admits.
+ */
+export function mayCoinDrillAtHouse(
+  content: ContentSet,
+  settler: SnapshotEntity,
+  house: CoinDrillHouse,
+): boolean {
+  if (!isSettler(settler) || !isPlayerControllable(settler)) return false;
+  if (house.owner !== ownerPlayerOf(settler)) return false;
+  if (isBarredFromExperience(settler) || coinDrillHouseOf(settler) === house.id) return false;
   const identity = settler.components.Settler as
     | { tribe?: unknown; jobType?: unknown; humanForm?: unknown }
     | undefined;
@@ -60,49 +83,44 @@ export function isFighterSettler(content: ContentSet, snapshot: WorldSnapshot, i
   return settler !== undefined && systems.isFighterJob(content, settlerJobType(settler) ?? null);
 }
 
-/**
- * The drill coins on `building`'s shelf as the snapshot shows them. An estimate: the coins men already
- * walking there speak for do not show, and the sim refuses an order past the free ones.
- */
-export function drillCoinsShown(content: ContentSet, building: SnapshotEntity): number {
+/** The drill coins on `building`'s shelf as the snapshot shows them. */
+function drillCoinsShown(content: ContentSet, building: SnapshotEntity): number {
   const coin = systems.drillCoinGood(content);
   return coin === undefined ? 0 : (liveAmounts(building.components.Stockpile).get(coin) ?? 0);
 }
 
-/**
- * The settlers among `settlers` who may coin-drill at `building` (`eligible`), and those of them it sends
- * (`sent`): nearest first while the coins it shows last. The eligible men past them get no order.
- */
+/** The settlers among `settlers` a press on `building` sends to coin-drill: nearest first while the coins
+ *  it shows last. Empty for a building that is no coin-drill barracks. */
 export function coinDrillersAt(
   content: ContentSet,
   snapshot: WorldSnapshot,
   building: number,
   settlers: readonly number[],
   byType: ReadonlyMap<number, BuildingInfo>,
-): { readonly eligible: readonly number[]; readonly sent: readonly number[] } {
-  const house = entityById(snapshot, building);
-  if (house === undefined) return { eligible: [], sent: [] };
+): readonly number[] {
+  const entity = entityById(snapshot, building);
+  const house = entity === undefined ? undefined : coinDrillHouse(content, entity, byType);
+  if (house === undefined) return NO_DRILLERS;
   const eligible = settlers.filter((id) => {
     const settler = entityById(snapshot, id);
-    return settler !== undefined && mayCoinDrillHere(content, settler, house, byType);
+    return settler !== undefined && mayCoinDrillAtHouse(content, settler, house);
   });
-  return { eligible, sent: paidDrillers(content, snapshot, building, eligible, (id) => id) };
+  return paidDrillers(snapshot, house, eligible, (id) => id);
 }
 
+const NO_DRILLERS: readonly number[] = [];
+
 /**
- * The `drillers` the coins `building` shows pay for, nearest first. The sim admits a group's drill orders
+ * The `drillers` the coins `house` shows pay for, nearest first. The sim admits a group's drill orders
  * in command order while free coins last, so the nearest men get them.
  */
 export function paidDrillers<T>(
-  content: ContentSet,
   snapshot: WorldSnapshot,
-  building: number,
+  house: CoinDrillHouse,
   drillers: readonly T[],
   idOf: (unit: T) => number,
 ): T[] {
-  const house = entityById(snapshot, building);
-  const coins = house === undefined ? 0 : drillCoinsShown(content, house);
-  return nearestToBuildingFirst(snapshot, building, drillers, idOf).slice(0, coins);
+  return nearestToBuildingFirst(snapshot, house.id, drillers, idOf).slice(0, house.coins);
 }
 
 /** `units` ordered nearest to `building` first, then by id; an unplaced one goes last. */

@@ -338,8 +338,11 @@ function buildingParts(ctx: HintContext, intent: BuildingIntent, count: number):
       add(intent.walkers.length, action('walk'));
       break;
   }
-  // A building none of the selection takes gets no order at all.
-  return parts.length > 0 ? parts : [{ count, hint: refusal('cannotWorkHere') }];
+  // A building none of the selection takes gets no order at all; a barracks refuses in its own words.
+  if (parts.length > 0) return parts;
+  const def = buildingDefOf(ctx, intent.kind === 'site' ? intent.site : intent.building);
+  const barracks = def !== undefined && systems.isBarracksType(def);
+  return [{ count, hint: refusal(barracks ? 'cannotTrainHere' : 'cannotWorkHere') }];
 }
 
 /** A home with no family slot free refuses every family not already living there. */

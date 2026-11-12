@@ -24,7 +24,7 @@ describe('the armed pick label', () => {
   });
 
   it("mutes the refusal of a building the pick turns down, in the pick's own words", () => {
-    const home = { kind: 'building', pick: 'home', fits: false, school: false } as const;
+    const home = { kind: 'building', pick: 'home', fits: false, school: false, coinDrill: false } as const;
     expect(pickHint(WORLD, { ...home, building: DAMAGED })).toEqual({
       tone: 'refusal',
       refusal: 'cannotLiveHere',
@@ -32,7 +32,13 @@ describe('the armed pick label', () => {
   });
 
   it("names the builders' pick a repair on a damaged building and a build on a foundation", () => {
-    const site = { kind: 'building', pick: 'building-site', fits: true, school: false } as const;
+    const site = {
+      kind: 'building',
+      pick: 'building-site',
+      fits: true,
+      school: false,
+      coinDrill: false,
+    } as const;
     expect(pickHint(WORLD, { ...site, building: DAMAGED })).toMatchObject({ action: 'repair' });
     expect(pickHint(WORLD, { ...site, building: FOUNDATION })).toMatchObject({ action: 'build' });
   });

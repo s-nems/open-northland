@@ -14,7 +14,7 @@ export interface BuildingOrderDeps extends Pick<UnitOrderDeps, 'enqueue' | 'flas
 }
 
 /** Issues a building rung's order; true when it opened the school dialog or enqueued an order, so a
- *  building that takes none of the selection stays silent. A site or a Shift click always answers. */
+ *  building that takes none of the selection stays silent. A site always answers. */
 export type IssueBuildingIntent = (intent: BuildingIntent, event: MouseEvent, queued: boolean) => boolean;
 
 export function createBuildingOrders(deps: BuildingOrderDeps): IssueBuildingIntent {
@@ -95,11 +95,12 @@ export function createBuildingOrders(deps: BuildingOrderDeps): IssueBuildingInte
         if (ordered) deps.flashTarget?.(building, 'assign');
         return ordered;
       }
-      case 'queueAtBuilding':
-        send(builderCommands(intent.crew, intent.building, true), intent.building);
-        send(trainCommands(intent.recruits, intent.building, true), intent.building);
-        if (intent.walkers.length > 0) walkTo(intent.tile, intent.walkers, true);
-        return true;
+      case 'queueAtBuilding': {
+        const crew = send(builderCommands(intent.crew, intent.building, true), intent.building);
+        const recruits = send(trainCommands(intent.recruits, intent.building, true), intent.building);
+        const walked = intent.walkers.length > 0 && walkTo(intent.tile, intent.walkers, true);
+        return crew || recruits || walked;
+      }
       case 'site':
         send(builderCommands(intent.builders, intent.site, queued), intent.site);
         if (intent.walkers.length > 0) walkTo(intent.tile, intent.walkers, queued);

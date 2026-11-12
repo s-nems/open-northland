@@ -12,7 +12,7 @@ import {
   settlerJobType,
 } from '../../../game/snapshot/index.js';
 import type { Tile } from '../../picking.js';
-import { mayCoinDrillHere, paidDrillers } from '../orders/coin-drill.js';
+import { coinDrillHouse, mayCoinDrillAtHouse, paidDrillers } from '../orders/coin-drill.js';
 import type { FormationUnit } from '../orders/formation.js';
 import { contentLookups, type RightClickContext } from './context.js';
 
@@ -123,8 +123,11 @@ export function atBuilding(
     return { kind: 'school', building, crew, learners: rest };
   const trainees: FormationUnit[] = [];
   const drillers: FormationUnit[] = [];
-  const house = entityById(snapshot, building);
-  const buildings = contentLookups(ctx.content).buildings;
+  const entity = entityById(snapshot, building);
+  const house =
+    entity === undefined
+      ? undefined
+      : coinDrillHouse(ctx.content, entity, contentLookups(ctx.content).buildings);
   const household: FormationUnit[] = [];
   const workers: BuildingWorker[] = [];
   for (const target of rest) {
@@ -136,11 +139,7 @@ export function atBuilding(
     else if (trainsRatherThanEmploys(def, currentJob)) {
       // A soldier never enlists again: the barracks drills him for coins or leaves him be.
       if (!systems.isFighterJob(ctx.content, currentJob ?? null)) trainees.push(target);
-      else if (
-        self !== undefined &&
-        house !== undefined &&
-        mayCoinDrillHere(ctx.content, self, house, buildings)
-      )
+      else if (self !== undefined && house !== undefined && mayCoinDrillAtHouse(ctx.content, self, house))
         drillers.push(target);
     } else {
       // The sim gates every candidate in the priority list, so an unoffered or full trade falls through.
@@ -153,7 +152,7 @@ export function atBuilding(
     building,
     crew,
     trainees,
-    drillers: paidDrillers(ctx.content, snapshot, building, drillers, (unit) => unit.ref),
+    drillers: house === undefined ? [] : paidDrillers(snapshot, house, drillers, (unit) => unit.ref),
     household,
     workers,
   };
