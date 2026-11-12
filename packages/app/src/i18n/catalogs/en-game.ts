@@ -811,6 +811,7 @@ export const enGame = {
       agreementUpToTooltip: 'Trade until {where} holds this many {good} · ∞: no ceiling',
       repeats: '{count} times',
       repeatsBonus: '{count} times, output +{bonus}%',
+      fightBonus: '{count} combat experience points: deals +{dealt}% melee damage, takes -{taken}% damage',
       unlockTooltip: 'Unlocks {unlocks} (experience: {track})',
       moreRows: '{count} more',
       fewerRows: 'fewer',

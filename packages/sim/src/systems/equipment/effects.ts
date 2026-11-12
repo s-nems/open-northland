@@ -10,12 +10,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import {
-  FIGHT_EXPERIENCE_FACTOR_SCALE,
-  fightExperienceTakenFactor,
-  settlerFightPoints,
-  withDealtBonuses,
-} from '../progression/bonus.js';
+import { settlerFightPoints, withDealtBonuses, withTakenBonuses } from '../progression/bonus.js';
 import { isCarrierJob } from '../stores/index.js';
 
 // The worn-equipment effect reads: what a worn good grants its bearer, resolved from the content equip
@@ -100,9 +95,7 @@ export function scaledTakenDamage(damage: number, takenPct: number): number {
  */
 export function damageTakenBy(world: World, ctx: SystemContext, target: Entity, damage: number): number {
   const takenPct = carriedEffect(world, ctx.content, target, 'damageTakenPct') ?? PERCENT;
-  const experienceFactor = fightExperienceTakenFactor(settlerFightPoints(world, target));
-  if (takenPct === PERCENT && experienceFactor === FIGHT_EXPERIENCE_FACTOR_SCALE) return damage;
-  return Math.trunc((damage * takenPct * experienceFactor) / (PERCENT * FIGHT_EXPERIENCE_FACTOR_SCALE));
+  return withTakenBonuses(damage, settlerFightPoints(world, target), takenPct);
 }
 
 /** The fight effects `e`'s misc row carries, each as {@link damageDealtBy} and {@link damageTakenBy} read

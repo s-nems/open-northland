@@ -823,6 +823,8 @@ export const itGame = {
         'Commercia finché {where} non contiene questa quantità di {good} · ∞: nessun tetto',
       repeats: '{count} volte',
       repeatsBonus: '{count} volte, produzione +{bonus}%',
+      fightBonus:
+        '{count} punti di esperienza in combattimento: infligge +{dealt}% di danni in mischia, subisce -{taken}% di danni',
       unlockTooltip: 'Sblocca {unlocks} (esperienza: {track})',
       moreRows: 'altri {count}',
       fewerRows: 'meno',

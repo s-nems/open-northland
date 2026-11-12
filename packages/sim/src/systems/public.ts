@@ -258,6 +258,7 @@ export {
   settlerFightPoints,
   withDealtBonuses,
   withFightExperience,
+  withTakenBonuses,
 } from './progression/bonus.js';
 // What the HUD asks of a coin drill: who may drill, the limit and what one coin buys.
 export {

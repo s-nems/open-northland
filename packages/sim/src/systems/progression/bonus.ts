@@ -181,6 +181,16 @@ export function withDealtBonuses(damage: number, points: number, dealtPct: numbe
 }
 
 /**
+ * `damage` a person with fight `points` takes under his carried `takenPct`, truncating once. Our rule: the
+ * experience cut multiplies with the defence amulet, so full experience under a x0.7 amulet takes x0.42.
+ */
+export function withTakenBonuses(damage: number, points: number, takenPct: number = PERCENT): number {
+  const experienceFactor = fightExperienceTakenFactor(points);
+  if (takenPct === PERCENT && experienceFactor === FIGHT_EXPERIENCE_FACTOR_SCALE) return damage;
+  return Math.trunc((damage * takenPct * experienceFactor) / (PERCENT * FIGHT_EXPERIENCE_FACTOR_SCALE));
+}
+
+/**
  * `base` weapon damage raised by the striker's fight `points` alone, truncating:
  * `base * (10000 + 40 * points) / 10000`, so full experience adds 40%. Our rule, a departure from the
  * original's `base * 200 / (200 - hits)`.

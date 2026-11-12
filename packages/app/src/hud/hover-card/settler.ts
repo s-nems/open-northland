@@ -71,7 +71,9 @@ function trainingFacts(
       value:
         trained.bonusPct === null
           ? formatMessage(messages().hud.settlerPanel.repeats, { count: trained.repeats })
-          : `+${trained.bonusPct}%`,
+          : trained.takenCutPct === null
+            ? `+${trained.bonusPct}%`
+            : `+${trained.bonusPct}% / -${trained.takenCutPct}%`,
     });
   }
   const hidden = trainedRows.length - EXPERIENCE_FACTS_MAX;

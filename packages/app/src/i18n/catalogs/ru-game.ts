@@ -851,6 +851,8 @@ export const ruGame = {
       agreementUpToTooltip: 'Торговать, пока не будет столько ({good}): {where} · ∞: без предела',
       repeats: 'Повторений: {count}',
       repeatsBonus: 'Повторений: {count}, выпуск +{bonus}%',
+      fightBonus:
+        'Очков боевого опыта: {count}. Наносит +{dealt}% урона в ближнем бою, получает -{taken}% урона',
       unlockTooltip: 'Открывает: {unlocks} (опыт: {track})',
       moreRows: 'ещё {count}',
       fewerRows: 'Показать меньше',

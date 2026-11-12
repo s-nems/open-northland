@@ -1462,10 +1462,18 @@ describe('selection details panel model', () => {
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     // The collector's own tracks lead, repeats descending; the percents read the curve in raw hundredths
     // (50 raw → 0%, 100 raw → 17%) and the fight counter's own damage factor (5 points: +2%).
-    expect(model.experience.map((r) => ({ repeats: r.repeats, bonusPct: r.bonusPct, own: r.own }))).toEqual([
-      { repeats: 5, bonusPct: 0, own: true },
-      { repeats: 1, bonusPct: 17, own: true },
-      { repeats: 5, bonusPct: 2, own: false },
+    expect(
+      model.experience.map((r) => ({
+        repeats: r.repeats,
+        bonusPct: r.bonusPct,
+        takenCutPct: r.takenCutPct,
+        own: r.own,
+      })),
+    ).toEqual([
+      { repeats: 5, bonusPct: 0, takenCutPct: null, own: true },
+      { repeats: 1, bonusPct: 17, takenCutPct: null, own: true },
+      // 5 points also cut the blows he takes: 100 * 9800 / 10000, so -2%.
+      { repeats: 5, bonusPct: 2, takenCutPct: 2, own: false },
     ]);
     expect(model.experience[0]?.label).toBe('Zbieranie - Drewno'); // hand-translated trackLabels entry
     expect(model.experience[1]?.label).not.toMatch(/Specjalizacja/); // general track labels by its job

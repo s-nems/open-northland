@@ -14,6 +14,18 @@ import { createSection } from '../parts/section.js';
 function trainedRow(row: ExperienceRowModel): LedgerModel {
   const copy = messages().hud.settlerPanel;
   const repeats = String(row.repeats);
+  if (row.takenCutPct !== null) {
+    const dealt = row.bonusPct ?? 0;
+    return {
+      label: row.label,
+      tooltip: formatMessage(copy.fightBonus, { count: row.repeats, dealt, taken: row.takenCutPct }),
+      value: [
+        { text: repeats },
+        { text: `+${dealt}%`, tone: 'bonus' },
+        { text: `-${row.takenCutPct}%`, tone: 'bonus' },
+      ],
+    };
+  }
   return {
     label: row.label,
     tooltip:

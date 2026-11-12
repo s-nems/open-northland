@@ -65,12 +65,14 @@ export function satisfactionBars(
 }
 
 /** One Experience row: a specialization's label, its completed-work repeats ("Wood 5" means five
- *  units gathered), its bonus percent (null when that experience buys no bonus), and whether it trains
- *  the settler's current trade. */
+ *  units gathered), its bonus percent (null when that experience buys no bonus), the percent it takes off
+ *  the damage the person is dealt (the fight counter's alone, else null), and whether it trains the
+ *  settler's current trade. */
 export interface ExperienceRowModel {
   readonly label: string;
   readonly repeats: number;
   readonly bonusPct: number | null;
+  readonly takenCutPct: number | null;
   readonly own: boolean;
 }
 
@@ -133,6 +135,10 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
       label: experienceLabel(ctx, spec, track),
       repeats,
       bonusPct: experienceBonusPct(ctx, spec, track, points),
+      takenCutPct:
+        spec === systems.FIGHT_EXPERIENCE_TYPE.PERSONAL
+          ? PERCENT - systems.withTakenBonuses(PERCENT, points)
+          : null,
       own,
       spec,
     });
@@ -140,7 +146,13 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
   rows.sort((a, b) => Number(b.own) - Number(a.own) || b.repeats - a.repeats || a.spec - b.spec);
   return rows
     .filter((row) => !copiesItsGood(ctx, row, rows))
-    .map(({ label, repeats, bonusPct, own }) => ({ label, repeats, bonusPct, own }));
+    .map(({ label, repeats, bonusPct, takenCutPct, own }) => ({
+      label,
+      repeats,
+      bonusPct,
+      takenCutPct,
+      own,
+    }));
 }
 
 /** A job's general track that one good-specific track of the same job fully accounts for: work on a

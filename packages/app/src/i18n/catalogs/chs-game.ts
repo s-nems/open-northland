@@ -774,6 +774,7 @@ export const chsGame = {
       agreementUpToTooltip: '交易直到以下位置存有这么多{good}：{where} · ∞：无上限',
       repeats: '{count} 次',
       repeatsBonus: '{count} 次，产量 +{bonus}%',
+      fightBonus: '{count} 点战斗经验：近战伤害 +{dealt}%，受到的伤害 -{taken}%',
       unlockTooltip: '解锁{unlocks}（经验：{track}）',
       moreRows: '还有 {count} 项',
       fewerRows: '收起',
