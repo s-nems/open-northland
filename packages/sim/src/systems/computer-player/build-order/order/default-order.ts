@@ -637,12 +637,13 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // The druids brew with water: each druid step is followed by a well beside the hut with none in
         // reach.
         wellBeside('work_druid_01', 5),
-        // Beside the barracks, by the base: its aura blesses the men arming there and an army kept home.
+        // Owner ruling: by the rally flag, so its aura blesses the army waiting there; beside the barracks
+        // while the seat keeps no flag.
         {
           kind: 'place',
           building: 'work_temple',
           count: 1,
-          near: [{ kind: 'building', id: 'barracks' }],
+          near: [{ kind: 'rallyFlag' }],
           needsResources: ['mushroom', 'gold'],
         },
         // Owner ruling: one druid until he has learned the big healing potion; the huts after him make only

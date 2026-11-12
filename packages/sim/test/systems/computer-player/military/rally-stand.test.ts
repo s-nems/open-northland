@@ -1,12 +1,16 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, RallyPoint } from '../../../../src/components/index.js';
 import { CommandQueue } from '../../../../src/core/command-queue.js';
 import { PersonalNames } from '../../../../src/core/personal-names.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { EventBuffer, Rng, Simulation } from '../../../../src/index.js';
+import { hexDistanceBetween } from '../../../../src/nav/halfcell.js';
 import { homeBuildings } from '../../../../src/systems/ai-shared/home-roster.js';
 import { rallyOrders } from '../../../../src/systems/computer-player/military/rally-stand.js';
+import { TEMPLE_STATION_INSET_NODES } from '../../../../src/systems/computer-player/military/temple-station.js';
 import type { SystemContext } from '../../../../src/systems/context.js';
+import { TEMPLE_AURA_RANGE } from '../../../../src/systems/lifecycle/temple/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import { BARRACKS_TYPE, HOME_TYPE, HQ_TYPE, SEAT, VIKING } from '../support.js';
@@ -21,9 +25,24 @@ const EDGE_HOME = { x: 50, y: 40 };
 const RIVAL_BASE = { x: 110, y: 40 };
 /** Behind the barracks, well past the move slack from the edge stand. */
 const FAR_FROM_STAND = { x: 24, y: 60 };
+const TEMPLE_TYPE = 30;
+/** Behind the base, so the edge stand toward the rival lies outside its aura's station. */
+const TEMPLE = { x: 8, y: 40 };
 
-function setup(): { sim: Simulation; ctx: SystemContext; barracks: Entity } {
-  const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(128, 96) });
+function templeContent(): ContentSet {
+  const base = aiContent();
+  return parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      { typeId: TEMPLE_TYPE, id: 'work_temple', kind: 'workplace', prayerSite: 'temple' },
+    ],
+  });
+}
+
+function setup(temple = false): { sim: Simulation; ctx: SystemContext; barracks: Entity } {
+  const content = temple ? templeContent() : aiContent();
+  const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 96) });
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('setup: the fixture map builds no terrain graph');
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: RIVAL, tribes: [VIKING] });
@@ -39,8 +58,9 @@ function setup(): { sim: Simulation; ctx: SystemContext; barracks: Entity } {
   const barracks = place(BARRACKS_TYPE, BARRACKS, SEAT);
   place(HOME_TYPE, EDGE_HOME, SEAT);
   place(HQ_TYPE, RIVAL_BASE, RIVAL);
+  if (temple) place(TEMPLE_TYPE, TEMPLE, SEAT);
   const ctx: SystemContext = {
-    content: aiContent(),
+    content,
     rng: new Rng(1),
     names: new PersonalNames(1, []),
     tick: 0,
@@ -78,5 +98,16 @@ describe('rallyOrders', () => {
     sim.step();
     const moved = rallyOrders(sim.world, ctx, terrain, SEAT, homeBuildings(sim.world, ctx, SEAT));
     expect(moved).toMatchObject([{ kind: 'setRallyPoint', building: barracks }]);
+  });
+
+  it("plants the flag inside the temple's aura, on the side of it toward the rival", () => {
+    const { sim, ctx } = setup(true);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    const order = rallyOrders(sim.world, ctx, terrain, SEAT, homeBuildings(sim.world, ctx, SEAT))[0];
+    if (order?.kind !== 'setRallyPoint') throw new Error('expected a rally order');
+    const fromTemple = hexDistanceBetween(TEMPLE.x, TEMPLE.y, order.x, order.y);
+    expect(fromTemple).toBeLessThanOrEqual(TEMPLE_AURA_RANGE - TEMPLE_STATION_INSET_NODES);
+    expect(order.x).toBeGreaterThan(BASE.x);
   });
 });

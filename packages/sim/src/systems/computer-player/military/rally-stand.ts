@@ -10,7 +10,7 @@ import { seatBarracksOf, seatBaseOf } from '../base.js';
 import { enemiesSurround } from '../build-order/ground/front.js';
 import { nearestEnemyBuilding } from '../sea-route.js';
 import { forecastAttackOrigin } from './deadline.js';
-import { type StandGround, standGroundOf } from './temple-station.js';
+import { type StandGround, standGroundOf, templeStationOf } from './temple-station.js';
 import { towerStandToward } from './tower-stand.js';
 
 /** How far the wanted stand may drift from the planted flag before the seat moves it, in hex nodes
@@ -24,8 +24,10 @@ const RALLY_MOVE_SLACK_NODES = 16;
  * attacks set out from, else its nearest believed enemy building when that stands on the barracks' own
  * land: a rival only ships reach names no side, and the army stays by the door its landings sail from.
  * The stand is the one under the manned towers facing the side ({@link towerStandToward}), and the
- * settlement's edge toward it while no tower is manned and the edge is open ground of that land. Null
- * otherwise, without a base, and while enemies surround the seat.
+ * settlement's edge toward it while no tower is manned and the edge is open ground of that land. A seat
+ * with a temple keeps the flag inside its aura, on the spot of it nearest that stand (owner ruling: the
+ * waiting army stands blessed, its hitpoints past their max), even past its towers' reach. Null with no
+ * stand, without a base, and while enemies surround the seat.
  */
 export function rallyStandOf(
   world: World,
@@ -42,6 +44,21 @@ export function rallyStandOf(
   const side =
     forecastAttackOrigin(world, ctx, player) ?? landRivalOf(world, ctx, terrain, player, baseAt, door);
   if (side === null) return null;
+  const stand = frontStandOf(world, ctx, terrain, owned, baseAt, side, door, ground);
+  return stand === null ? null : (templeStationOf(terrain, ground, stand) ?? stand);
+}
+
+/** The stand on the side the attacks come from, before a temple draws it in. */
+function frontStandOf(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  owned: readonly Entity[],
+  baseAt: HalfCellNode,
+  side: HalfCellNode,
+  door: NodeId,
+  ground: StandGround,
+): NodeId | null {
   const underTowers = towerStandToward(world, ctx, terrain, owned, baseAt, side, door, ground);
   if (underTowers !== null) return underTowers;
   const edge = settlementEdgeToward(world, owned, baseAt, side);
