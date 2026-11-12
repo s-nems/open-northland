@@ -41,9 +41,7 @@ import {
   seatHolders,
 } from '../../../../src/systems/computer-player/workforce/collectors/anchor.js';
 import {
-  CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
-  CROCKERY_GLUT_UNITS,
   tuneCraftCounters,
 } from '../../../../src/systems/computer-player/workforce/craft.js';
 import {
@@ -123,6 +121,8 @@ const MASON_HUT_UPGRADED = 53;
 const POTTERY_TOP = 54;
 /** The top pottery's potter seats. */
 const TOP_POTTERY_POTTERS = 3;
+/** Crockery piled far past any stock line: crockery has none. */
+const PILED_CROCKERY_UNITS = 100;
 /** Enough men that the pool still has a spare hand after the builder reserve and every early post. */
 const SPARE_MEN = 20;
 /** The upper joineries' joiner seats. */
@@ -457,58 +457,32 @@ describe('workforce module - the pottery and mason hut crews', () => {
     expect(potterHires()).toHaveLength(1);
   });
 
-  it('puts a lone potter of the top pottery on bricks and tiles and a second on crockery, which a short material takes', () => {
+  it('puts a lone top potter on bricks and tiles, and with a second keeps one on crockery that no short material or pile moves', () => {
     const seat = topPotterySeat();
     stockAtLine(seat, [BRICK, TILE], 'comfort');
     expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE]]);
     hireSpare(seat, seat.pottery, POTTER);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [CROCKERY]]);
-
-    // At the short line nothing moves; under it the crockery seat, whose good has no lines, turns to tiles.
-    stockAtLine(seat, [TILE], 'short');
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [CROCKERY]]);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [BRICK, TILE]]);
     stockAtLine(seat, [TILE], 'short', -1);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [TILE]]);
-    // It stays on tiles through the band and goes back to crockery at the comfort line.
-    stockAtLine(seat, [TILE], 'comfort', -1);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [TILE]]);
-    stockAtLine(seat, [TILE], 'comfort');
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [CROCKERY]]);
-    // Crockery piled up to its glut: the second potter works the building materials too.
-    seat.stock([CROCKERY], CROCKERY_GLUT_UNITS);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([
-      [BRICK, TILE],
-      [BRICK, TILE],
-    ]);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [BRICK, TILE]]);
+    seat.stock([CROCKERY], PILED_CROCKERY_UNITS);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [BRICK, TILE]]);
   });
 
-  it('seats the third top potter on crockery too, and on the building materials once it lies at glut', () => {
+  it('turns the two brick potters to crockery once bricks and tiles both lie at glut, and back once one falls under comfort', () => {
     const seat = topPotterySeat();
-    stockAtLine(seat, [BRICK, TILE], 'comfort');
     hireSpare(seat, seat.pottery, POTTER);
-    hireSpare(seat, seat.pottery, POTTER);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [CROCKERY], [CROCKERY]]);
-    seat.stock([CROCKERY], CROCKERY_GLUT_UNITS);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([
-      [BRICK, TILE],
-      [BRICK, TILE],
-      [BRICK, TILE],
-    ]);
-  });
-
-  it('turns the top potters to crockery once bricks and tiles both lie at glut, and back once one falls under comfort', () => {
-    const seat = topPotterySeat();
     hireSpare(seat, seat.pottery, POTTER);
     stockAtLine(seat, [BRICK], 'glut');
     stockAtLine(seat, [TILE], 'glut', -1);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [CROCKERY]]);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [BRICK, TILE], [BRICK, TILE]]);
     stockAtLine(seat, [TILE], 'glut');
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [CROCKERY]]);
-    // Down to the comfort line they stay on crockery; under it both go back to their seats.
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [CROCKERY], [CROCKERY]]);
+    // Down to the comfort line they stay on crockery; under it both go back to bricks and tiles.
     stockAtLine(seat, [BRICK], 'comfort');
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [CROCKERY]]);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [CROCKERY], [CROCKERY]]);
     stockAtLine(seat, [BRICK], 'comfort', -1);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [CROCKERY]]);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [BRICK, TILE], [BRICK, TILE]]);
   });
 
   it('keeps the middle pottery to bricks and tiles, its second potter only while one runs short', () => {
@@ -529,27 +503,17 @@ describe('workforce module - the pottery and mason hut crews', () => {
     expect(tiers(crewOf(2))).toEqual({ min: 0, target: 0, surplus: 0 });
   });
 
-  it('staffs the top pottery for crockery out of surplus, and its second potter while a material runs short', () => {
+  it('staffs the top pottery with three potters and a carrier, two of them minimum posts, whatever its stock', () => {
     const seat = topPotterySeat();
     const content = workshopsContent();
-    const tiers = (held: HeldStaff) => operatorTiers(seat, content, seat.pottery, held);
-    stockAtLine(seat, SUPPLY_GOODS, 'comfort');
-    // Bricks and tiles at comfort: the minimum and target tiers keep to the first potter, and the surplus
-    // tier adds both crockery makers.
-    expect(tiers(alone)).toEqual({ min: 1, target: 1, surplus: TOP_POTTERY_POTTERS });
-    // Under the comfort line the second potter is a minimum post, ahead of the builder reserve.
-    stockAtLine(seat, [TILE], 'comfort', -1);
-    expect(tiers(alone)).toEqual({ min: 2, target: 2, surplus: TOP_POTTERY_POTTERS });
-    stockAtLine(seat, [BRICK, TILE], 'glut');
-    expect(tiers(crewOf(2))).toEqual({ min: 1, target: 1, surplus: TOP_POTTERY_POTTERS });
-    // Crockery at its glut releases them; they come back once it has fallen under it by the craft band.
-    seat.stock([CROCKERY], CROCKERY_GLUT_UNITS);
-    expect(tiers(crewOf(2))).toEqual({ min: 1, target: 1, surplus: 1 });
-    seat.stock([CROCKERY], CROCKERY_GLUT_UNITS - 1);
-    expect(tiers(crewOf(2))).toEqual({ min: 1, target: 1, surplus: TOP_POTTERY_POTTERS });
-    expect(tiers(alone)).toEqual({ min: 1, target: 1, surplus: 1 });
-    seat.stock([CROCKERY], CROCKERY_GLUT_UNITS - CRAFT_GLUT_BAND_UNITS - 1);
-    expect(tiers(alone)).toEqual({ min: 1, target: 1, surplus: TOP_POTTERY_POTTERS });
+    for (const line of ['short', 'comfort', 'glut'] as const) {
+      stockAtLine(seat, SUPPLY_GOODS, line);
+      expect(planOf(seat, content, seat.pottery, crewOf(TOP_POTTERY_POTTERS)), line).toMatchObject({
+        operatorMin: 2,
+        operatorTarget: TOP_POTTERY_POTTERS,
+        carrierTarget: 1,
+      });
+    }
   });
 });
 

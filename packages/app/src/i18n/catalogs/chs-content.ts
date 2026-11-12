@@ -724,7 +724,7 @@ export const chsContent = {
     },
     alchemy: {
       title: '炼金小屋',
-      summary: '一名德鲁伊在小屋里用蘑菇熬制油；两名德鲁伊在大屋里用水、蘑菇、草药和金币调制药水。',
+      summary: '一名德鲁伊在小屋里用蘑菇熬制油；两名德鲁伊在大屋里用水、蘑菇、草药和陶器调制药水。',
     },
     'temple-aura': {
       title: '神庙祝福',

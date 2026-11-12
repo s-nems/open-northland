@@ -50,7 +50,6 @@ import {
 } from '../../../../src/systems/computer-player/difficulty.js';
 import {
   gamePhase,
-  MID_GAME_FROM_TICKS,
   TRAINING_CARRIERS_FROM_TICKS,
 } from '../../../../src/systems/computer-player/game-phase.js';
 import {
@@ -67,8 +66,6 @@ import { armourFetchOrders } from '../../../../src/systems/computer-player/milit
 import { COUNTED_ONCE, unitPoints } from '../../../../src/systems/computer-player/military/points.js';
 import { PLAN_TUNING } from '../../../../src/systems/computer-player/strategy/military.js';
 import {
-  COIN_POTIONS_PER_DRUID,
-  COINS_PER_BIG_POTION,
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   JOINERY_TOOL_GLUT_UNITS,
@@ -76,10 +73,7 @@ import {
   tuneCraftCounters,
   WOODEN_TOOL_GLUT_UNITS,
 } from '../../../../src/systems/computer-player/workforce/craft.js';
-import {
-  ARMY_RESERVE_UNITS,
-  OPERATOR_SHARE_UNITS,
-} from '../../../../src/systems/computer-player/workforce/craft-stock.js';
+import { ARMY_RESERVE_UNITS } from '../../../../src/systems/computer-player/workforce/craft-stock.js';
 import {
   ARMY_FLOOR_BUILDER_CORE,
   ARMY_FLOOR_LEAD_TICKS,
@@ -466,13 +460,6 @@ const STRENGTH_AMULET = 16;
 const SHOES = 19;
 const LEATHER_ARMOUR = 20;
 const SWORD_SHORT = 22;
-const BRICK = 26;
-const TILE = 27;
-const CROCKERY = 28;
-/** The largest bill line of each building material in {@link potteryContent} (authored for the fixture). */
-const MATERIAL_BILL_UNITS = 3;
-/** The wood {@link potteryContent}'s recipes find in store: a cycle of each. */
-const POTTERY_WOOD_UNITS = 10;
 /** Free fixture slots for the tailors', breeders' and druids' goods and the temple. */
 const TUNIC = 60;
 const SHEEP_HERD = 61;
@@ -518,38 +505,7 @@ function joineryRecastAs(id: string, products: readonly { typeId: number; id: st
   });
 }
 
-/** The fixture joinery recast as the top pottery, whose own bill takes bricks and tiles so both carry
- *  supply lines. */
-function potteryContent(): ContentSet {
-  const recast = joineryRecastAs('work_pottery_02', [
-    { typeId: BRICK, id: 'brick' },
-    { typeId: TILE, id: 'tile' },
-    { typeId: CROCKERY, id: 'crockery' },
-  ]);
-  return parseContentSet({
-    ...recast,
-    buildings: recast.buildings.map((b) =>
-      b.typeId === JOINERY_TYPE
-        ? {
-            ...b,
-            construction: [
-              { goodType: BRICK, amount: MATERIAL_BILL_UNITS },
-              { goodType: TILE, amount: MATERIAL_BILL_UNITS },
-            ],
-          }
-        : b,
-    ),
-  });
-}
-
-/** A druid hut type of {@link COIN_CONSUMER_OPERATORS} druids whose potion takes coins, the mint's coin
- *  consumer. */
-const COIN_CONSUMER_TYPE = 97;
-const COIN_CONSUMER_OPERATORS = 2;
-const POTION_OF_COINS = 98;
-
-/** The mint with its amulet inputs as plain goods, so the seat's stock of them can feed an amulet seat,
- *  and a druid hut drawing its coins. */
+/** The mint with its amulet inputs as plain goods, so the seat's stock of them can feed an amulet seat. */
 function mintContent(): ContentSet {
   const recast = joineryRecastAs('work_coin_mint', [
     { typeId: COIN, id: 'coin' },
@@ -562,24 +518,6 @@ function mintContent(): ContentSet {
       ...recast.goods,
       { typeId: LEATHER_ARMOUR, id: 'armor_leather', weight: 1 },
       { typeId: SWORD_SHORT, id: 'sword_shord', weight: 1 },
-      { typeId: POTION_OF_COINS, id: 'potion_heal_big', weight: 1 },
-    ],
-    buildings: [
-      ...recast.buildings,
-      {
-        typeId: COIN_CONSUMER_TYPE,
-        id: 'work_druid_01',
-        kind: 'workplace' as const,
-        workers: [{ jobType: JOINER, count: COIN_CONSUMER_OPERATORS }],
-        recipes: [
-          {
-            inputs: [{ goodType: COIN, amount: COINS_PER_BIG_POTION }],
-            outputs: [{ goodType: POTION_OF_COINS, amount: 1 }],
-            ticks: 180,
-          },
-        ],
-        construction: [{ goodType: WOOD, amount: 1 }],
-      },
     ],
   });
 }
@@ -1960,50 +1898,6 @@ describe('workforce module - the barracks and craft selections', () => {
     };
   }
 
-  /** Three mints of two coiners' seats each with `crew` builders to hire. */
-  function crewedMints(crew: number) {
-    const mints = crewedWorkshops(mintContent(), 3, crew);
-    return {
-      ...mints,
-      stockCoins: (units: number) => mints.stock(COIN, units),
-      /** Raise a standing druid hut whose potion takes the mint's coins. */
-      raiseCoinConsumer(): void {
-        mints.sim.enqueueSetup({
-          kind: 'placeBuilding',
-          buildingType: COIN_CONSUMER_TYPE,
-          x: 160,
-          y: 16,
-          tribe: VIKING,
-          owner: SEAT,
-        });
-        mints.sim.step();
-      },
-    };
-  }
-
-  it('keeps coins for the druids, two big potions each, and strikes amulets with the rest', () => {
-    const mints = crewedMints(6);
-    mints.hire(0, 6);
-    // No druid hut: no coin is wanted, and every seat strikes amulets, both lines while neither input is in.
-    const amulets = [DEFENCE_AMULET, STRENGTH_AMULET];
-    expect(mints.products()).toEqual([amulets, amulets, amulets, amulets, amulets, amulets]);
-    // The druids' coins lack two coiners' shares: two coiners strike them, then one past the first share.
-    mints.raiseCoinConsumer();
-    expect(mints.products()).toEqual([[COIN], [COIN]]);
-    const target = COIN_CONSUMER_OPERATORS * COIN_POTIONS_PER_DRUID * COINS_PER_BIG_POTION;
-    mints.stockCoins(target - OPERATOR_SHARE_UNITS);
-    expect(mints.products()).toEqual([amulets]);
-    mints.stockCoins(target - 1);
-    expect(mints.products()).toEqual([]);
-    mints.stockCoins(target);
-    expect(mints.products()).toEqual([amulets]);
-    // Taken up again only under the band.
-    mints.stockCoins(target - 1);
-    expect(mints.products()).toEqual([]);
-    mints.stockCoins(0);
-    expect(mints.products()).toEqual([[COIN], [COIN]]);
-  });
-
   it('strikes coins to earn the amulets while they are unearned', () => {
     const mints = crewedWorkshops(withUnearned(mintContent(), [DEFENCE_AMULET, STRENGTH_AMULET]), 1, 2);
     mints.hire(0, 2);
@@ -2011,7 +1905,7 @@ describe('workforce module - the barracks and craft selections', () => {
   });
 
   it('alternates strength-first and defence-first amulet seats, each falling back to the other line while its own input is out', () => {
-    const mints = crewedMints(6);
+    const mints = crewedWorkshops(mintContent(), 3, 6);
     mints.stock(LEATHER_ARMOUR, 1);
     mints.stock(SWORD_SHORT, 1);
     mints.hire(0, 6);
@@ -2038,47 +1932,6 @@ describe('workforce module - the barracks and craft selections', () => {
     if (wood === undefined) throw new Error('setup: wood takes lines');
     return wood;
   }
-
-  /** One top pottery with two potters hired, deciding at `tick`; the bricks' lines then. */
-  function crewedPottery(tick: number) {
-    const content = potteryContent();
-    const pottery = crewedWorkshops(content, 1, 2, tick);
-    pottery.hire(0, 2);
-    const bricks = supplyLines(content, DEFAULT_BUILD_ORDER, gamePhase(tick)).get(BRICK);
-    const tiles = supplyLines(content, DEFAULT_BUILD_ORDER, gamePhase(tick)).get(TILE);
-    if (bricks === undefined || tiles === undefined) throw new Error('setup: bricks and tiles take lines');
-    // Tiles sit at their comfort line: short in no phase, and under the glut the crockery sink waits for.
-    pottery.stock(TILE, tiles.comfort);
-    // Every recipe's wood in store, so no product's input decides a seat.
-    pottery.stock(WOOD, POTTERY_WOOD_UNITS);
-    return { ...pottery, bricks };
-  }
-
-  it('turns the crockery seat to bricks under the comfort line from the mid game, and holds it to the glut', () => {
-    const pottery = crewedPottery(MID_GAME_FROM_TICKS);
-    const { short, comfort, glut } = pottery.bricks;
-    pottery.stock(BRICK, comfort - 1);
-    expect(comfort - 1).toBeGreaterThanOrEqual(short);
-    expect(pottery.products()).toEqual([[BRICK, TILE], [BRICK]]);
-    pottery.stock(BRICK, glut - 1);
-    expect(pottery.products()).toEqual([]);
-    pottery.stock(BRICK, glut);
-    expect(pottery.products()).toEqual([[CROCKERY]]);
-  });
-
-  it('keeps the crockery seat on crockery in the opening until the bricks fall under the short line', () => {
-    const pottery = crewedPottery(0);
-    const { short, comfort } = pottery.bricks;
-    pottery.stock(BRICK, comfort - 1);
-    expect(comfort - 1).toBeGreaterThanOrEqual(short);
-    expect(pottery.products()).toEqual([[BRICK, TILE], [CROCKERY]]);
-    pottery.stock(BRICK, short - 1);
-    expect(pottery.products()).toEqual([[BRICK]]);
-    pottery.stock(BRICK, comfort - 1);
-    expect(pottery.products()).toEqual([]);
-    pottery.stock(BRICK, comfort);
-    expect(pottery.products()).toEqual([[CROCKERY]]);
-  });
 
   it('releases the crew of a workshop without a plan to every product', () => {
     const seat = crewedWorkshop(

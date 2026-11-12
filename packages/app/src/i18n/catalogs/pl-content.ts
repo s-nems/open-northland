@@ -746,7 +746,7 @@ export const plContent = {
     alchemy: {
       title: 'Chatki alchemika',
       summary:
-        'Druid warzy oliwę z grzybów w małej chatce, a dwóch druidów mikstury z wody, grzybów, ziół i monet w dużej.',
+        'Druid warzy oliwę z grzybów w małej chatce, a dwóch druidów mikstury z wody, grzybów, ziół i naczyń w dużej.',
     },
     'temple-aura': {
       title: 'Aura świątyni',

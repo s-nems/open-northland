@@ -204,6 +204,7 @@ const EASY: ComputerProfile = {
     work_druid_01: 1,
     work_armory_01: 1,
     work_coin_mint: 1,
+    work_pottery_02: 1,
   },
   denseTowerRing: false,
   catapults: { cap: 0, resume: 0 },

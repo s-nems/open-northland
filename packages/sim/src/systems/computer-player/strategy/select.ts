@@ -107,10 +107,11 @@ export function selectEconomy(seat: SeatBrief): EconomicChoice {
     const access = seat.access.get(good);
     return access !== undefined && ON_LAND.includes(access.access);
   };
-  if (fire('goldAndMushroomOnLand', onLand('gold') && onLand('mushroom'))) {
+  if (fire('goldOnLand', onLand('gold'))) {
     sides.add('goldLine');
     if (fire('goldScarce', gold < GOLD_PLENTY_UNITS)) sides.add('oneMint');
   }
+  if (fire('mushroomOnLand', onLand('mushroom'))) sides.add('healingLine');
   const fish = seat.access.get(FISH_ACCESS_KEY);
   if (fire('fishNearby', fish !== undefined && NEARBY.includes(fish.access))) sides.add('fishing');
   if (fire('grassAtHome', home.plantable >= HERBS_HOME_GRASS_NODES)) sides.add('herbs');

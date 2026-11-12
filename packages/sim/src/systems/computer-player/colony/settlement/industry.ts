@@ -94,11 +94,10 @@ const CHAINS: Readonly<Record<Exclude<Industry, 'temple'>, readonly ChainStep[]>
   druid: [
     { building: WELL, ground: 'grass', after: [] },
     { building: HERB_HUT, ground: 'grass', after: [WELL], earnedBy: { gathering: 'mushroom' } },
-    { building: MINT, ground: 'any', after: [HERB_HUT], far: true },
     {
       building: DRUID_HUT,
       ground: 'any',
-      after: [WELL, HERB_HUT, MINT],
+      after: [WELL, HERB_HUT],
       top: DRUID_TOP,
       far: true,
       earnedBy: 'crewBefore',
@@ -133,15 +132,15 @@ export interface SiteFacts {
   readonly room: number;
 }
 
-/** Owner ruling: what each industry takes of the site. Iron and leather may sail in, so the joinery and
- *  the amulets ask for neither. */
+/** Owner ruling: what each industry takes of the site. Iron, leather and crockery may sail in, so the
+ *  joinery, the amulets and the druid ask for none of them. */
 const SITE_FITS: Readonly<Record<Exclude<Industry, 'temple'>, (site: SiteFacts) => boolean>> = {
   baking: (site) => site.field,
   brewing: (site) => site.grass,
   husbandry: (site) => site.animals && site.grass,
   armoury: (site) => site.wood,
   smithy: (site) => site.wood && site.iron,
-  druid: (site) => site.grass && site.mushroom && site.gold,
+  druid: (site) => site.grass && site.mushroom,
   amulets: (site) => site.gold,
   carpentry: (site) => site.wood,
 };
@@ -226,7 +225,7 @@ function scoreOf(industry: Exclude<Industry, 'temple'>, seat: SeatRead): number 
   return INDUSTRY_WEIGHT[industry] * worth;
 }
 
-/** The steps more than one chain holds, as the well, the mint and the temple's druid hut: raising one starts
+/** The steps more than one chain holds, as the well and the temple's druid hut: raising one starts
  *  none of them. */
 const SHARED_STEPS: ReadonlySet<string> = new Set(
   [...Object.values(CHAINS), TEMPLE_OIL_CHAIN]
@@ -236,10 +235,12 @@ const SHARED_STEPS: ReadonlySet<string> = new Set(
 );
 
 /** Owner ruling: an amulet takes a short sword or a leather armour beside its gold and iron, so the mint
- *  makes them only where the colony's land could arm a smithy or a tailor, or home makes either. */
+ *  makes them only where the colony's land could arm a smithy or a tailor, or home makes either. A potion
+ *  takes crockery, which no colony makes, so the druid brews only while home makes it. */
 function fed(industry: Exclude<Industry, 'temple'>, site: SiteFacts, seat: SeatRead): boolean {
-  if (industry !== 'amulets') return true;
   const made = (good: string): boolean => seat.worth(good) !== 'lacking';
+  if (industry === 'druid') return made('crockery');
+  if (industry !== 'amulets') return true;
   return SITE_FITS.smithy(site) || SITE_FITS.husbandry(site) || made('sword_shord') || made('armor_leather');
 }
 

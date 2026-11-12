@@ -19,7 +19,7 @@ import {
 } from '../game-phase.js';
 import { seatHerdKept } from '../herd.js';
 import { COLLECTED_GOOD_IDS, COLLECTOR_WORKSHOP_BY_GOOD_ID } from './collectors/index.js';
-import { type CraftPlan, craftGlutPending, openingRunPending, productsOf, seatCraftPlans } from './craft.js';
+import { type CraftPlan, openingRunPending, productsOf, seatCraftPlans } from './craft.js';
 import {
   type BuildingStaffing,
   discoveryPending,
@@ -131,16 +131,7 @@ export function buildingStaffing(
   const islandMaster = island && discoveryPending(world, ctx, seat.player, authored?.islandMasterUntil);
   if (opening || islandMaster || discoveryPending(world, ctx, seat.player, authored?.aloneUntil))
     plan = capOperators(plan, 1);
-  else if (gate !== null) {
-    const crafting = craftGlutPending(
-      ctx,
-      seat.supply,
-      staffingCraftPlans(world, ctx, seat),
-      type,
-      held.operators > gate,
-    );
-    plan = capOperators(plan, gate, crafting ? Number.POSITIVE_INFINITY : gate);
-  }
+  else if (gate !== null) plan = capOperators(plan, gate);
   const holdsCarrier = held.carriers > 0;
   if (
     suppliesShort(ctx, seat, type, holdsCarrier) ||

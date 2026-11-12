@@ -38,8 +38,9 @@ export type SupplyLine = 'short' | 'comfort' | 'glut';
  * size, by stable content ids (authored): the farm's grain and the mill's flour. The list is authored
  * rather than every intermediate good, because a managed good's lines hire and release its makers; that
  * suits a chain whose consumers' shelves measure its use, not goods such as mead or shoes that settlers
- * draw at their own pace, nor the coins, whose mint seats keep an authored glut (`craft.ts`). A stocked
- * product's consumers, not the sites, size it, so it hoards no more with the game phase.
+ * draw at their own pace, nor the crockery, which the top pottery's first potter makes without a cap
+ * (`craft.ts`). A stocked product's consumers, not the sites, size it, so it hoards no more with the game
+ * phase.
  */
 const STOCKED_PRODUCT_GOOD_IDS: readonly string[] = ['wheat', 'flour'];
 

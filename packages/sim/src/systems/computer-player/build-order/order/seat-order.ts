@@ -19,6 +19,7 @@ import {
   ROOMY_OPENING_HOMES,
   SECOND_ANIMAL_FARM,
   SECOND_ANIMAL_FARM_WELL,
+  SECOND_TOP_POTTERY,
   SECOND_UPPER_TAILOR,
 } from './default-order.js';
 import type { BuildLine, BuildLineId, BuildOrder, BuildOrderEntry, StepHold } from './entries.js';
@@ -92,7 +93,7 @@ const CRAMPED: ArchetypeTuning = {
   clearGroundPct: 67,
   leadOnlyWhen: null,
   homeLandOnly: false,
-  drops: [ROOMY_OPENING_HOMES, ...RICH_STEPS],
+  drops: [ROOMY_OPENING_HOMES, SECOND_TOP_POTTERY, ...RICH_STEPS],
 };
 
 /** Owner ruling: a seat with medium room (krwawa_rzeka) keeps to ten homes. */
@@ -178,11 +179,15 @@ function matches(match: StepMatch, entry: BuildOrderEntry): boolean {
  *  armory's wood and the tailors' tunics. */
 const IRON_ARMS: StepMatch = { buildings: ['work_smithy_00', 'work_smithy_01'], collectors: ['iron'] };
 
-/** The herb, druid, mint and temple steps and the mushroom and gold gatherers feeding them, raised only
- *  where gold and mushrooms lie on the seat's land. */
-const GOLD_LINE: StepMatch = {
-  buildings: ['work_herb_hut', 'work_druid_00', 'work_druid_01', 'work_coin_mint', 'work_temple'],
-  collectors: ['mushroom', 'gold'],
+/** The mint steps and the gold gatherer feeding them, raised only where gold lies on the seat's land. */
+const GOLD_LINE: StepMatch = { buildings: ['work_coin_mint'], collectors: ['gold'] };
+
+/** The herb, druid and temple steps, the second top pottery that keeps the druids in crockery and the
+ *  mushroom gatherers feeding them, raised only where mushrooms lie on the seat's land. */
+const HEALING_LINE: StepMatch = {
+  buildings: ['work_herb_hut', 'work_druid_00', 'work_druid_01', 'work_temple'],
+  collectors: ['mushroom'],
+  steps: [SECOND_TOP_POTTERY],
 };
 
 /** Owner ruling: a seat dressing its army in tunics raises its second animal farm right after the first
@@ -235,11 +240,16 @@ const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
   ironWeapons: { drops: { buildings: [], collectors: [], steps: LATE_SMITHIES }, keeps: TUNIC_ARMS },
   naturalArms: { drops: IRON_ARMS, keeps: TUNIC_ARMS },
   goldLine: { keeps: GOLD_LINE },
+  healingLine: { keeps: HEALING_LINE },
   oneMint: { drops: { buildings: [], collectors: [], steps: LATER_MINTS } },
   fishing: {},
   herbs: {},
   noRoom: {
-    drops: { buildings: [], collectors: [], steps: [ROOMY_OPENING_HOMES, CATAPULT_JOINERY] },
+    drops: {
+      buildings: [],
+      collectors: [],
+      steps: [ROOMY_OPENING_HOMES, CATAPULT_JOINERY, SECOND_TOP_POTTERY],
+    },
     copyCaps: NO_ROOM_COPY_CAPS,
     // Owner ruling: no second carpenter beside the one the seat has. Without catapults every top-tier
     // joinery of this side works tools (`workforce/craft.ts`), the ship joinery once its fleet stands.

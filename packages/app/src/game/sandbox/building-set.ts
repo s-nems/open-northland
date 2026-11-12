@@ -206,8 +206,8 @@ function holyOilRecipe(): SandboxRecipe {
   };
 }
 
-/** The level-2 hut's bottles, each with how many of every ingredient it costs: a small bottle one, a big
- *  bottle two. */
+/** The level-2 hut's bottles, each with how much water, mushroom and herb it costs: a small bottle one of
+ *  each, a big bottle two. */
 const POTIONS: readonly (readonly [ingredientAmount: number, goodType: number])[] = [
   [1, GOOD_POTION_FOOD_SMALL],
   [2, GOOD_POTION_FOOD_BIG],
@@ -217,12 +217,18 @@ const POTIONS: readonly (readonly [ingredientAmount: number, goodType: number])[
   [2, GOOD_POTION_HEAL_BIG],
 ];
 
+/** Owner ruling: every bottle, small or big, takes one crockery. */
+const CROCKERY_PER_POTION = 1;
+
 function potionRecipe(goodType: number, ingredientAmount: number): SandboxRecipe {
   return {
-    inputs: [GOOD_WATER, GOOD_MUSHROOM, GOOD_HERB, GOOD_COIN].map((input) => ({
-      goodType: input,
-      amount: ingredientAmount,
-    })),
+    inputs: [
+      ...[GOOD_WATER, GOOD_MUSHROOM, GOOD_HERB].map((input) => ({
+        goodType: input,
+        amount: ingredientAmount,
+      })),
+      { goodType: GOOD_CROCKERY, amount: CROCKERY_PER_POTION },
+    ],
     outputs: [{ goodType, amount: 1 }],
     ticks: DEFAULT_RECIPE_TICKS,
   };
@@ -426,8 +432,8 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     recipes: [holyOilRecipe()],
   },
   // Extracted shape ("work druid 01"): the oil recipe plus the six potions, each brewed from water,
-  // mushroom, herb and coin - one of each for a small bottle, two of each for a big one
-  // (`productionInputGoods 1 14 13 8` / `1 1 14 14 13 13 8 8`).
+  // mushroom and herb - one of each for a small bottle, two of each for a big one - and one crockery
+  // (`productionInputGoods 1 14 13 28` / `1 1 14 14 13 13 28` in our data pack).
   [BUILDING_DRUID_HUT_01]: {
     stock: [
       { goodType: GOOD_MUSHROOM, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
@@ -438,7 +444,7 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
       },
       { goodType: GOOD_WATER, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
       { goodType: GOOD_HERB, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
-      { goodType: GOOD_COIN, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_CROCKERY, capacity: DRUID_INPUT_CAPACITY, initial: 0 },
       ...POTIONS.map(([, goodType]) => ({
         goodType,
         capacity: DRUID_HUT_01_OUTPUT_CAPACITY,

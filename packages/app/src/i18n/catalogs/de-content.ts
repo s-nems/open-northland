@@ -755,7 +755,7 @@ export const deContent = {
     alchemy: {
       title: 'Alchemistenhütten',
       summary:
-        'In der kleinen Hütte braut ein Druide Öl aus Pilzen. In der großen brauen zwei Druiden Tränke aus Wasser, Pilz, Kraut und Münze.',
+        'In der kleinen Hütte braut ein Druide Öl aus Pilzen. In der großen brauen zwei Druiden Tränke aus Wasser, Pilz, Kraut und Geschirr.',
     },
     'temple-aura': {
       title: 'Tempelsegen',

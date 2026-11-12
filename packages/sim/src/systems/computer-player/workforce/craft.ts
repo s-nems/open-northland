@@ -201,6 +201,9 @@ export interface SeatCraftPlan {
   /** The goods a seat works only from inputs the sites can spare ({@link inputsSpare}), its other goods
    *  meanwhile. */
   readonly sparing?: readonly string[];
+  /** The goods a seat listing only them keeps while a building material runs short: no short product
+   *  takes its operator ({@link shortFirst}). */
+  readonly firm?: readonly string[];
   /** What every operator works while each product of the type with supply lines ({@link SeatSupply}) lies
    *  at its glut line, until one falls under its comfort line. A type without a sink rests its crew
    *  instead (`staffing-plan.ts`). */
@@ -278,38 +281,17 @@ const SHIP_SEAT: CraftSeat = { fleet: 'ship_small', cap: LANDING_FLEET, otherwis
 /** A joiner of the ship joinery while the seat's colony owes a trade ship, else a {@link SHIP_SEAT}. */
 const TRADE_SHIP_SEAT: CraftSeat = { fleet: TRADE_SHIP_ID, cap: COLONY_TRADE_FLEET, otherwise: SHIP_SEAT };
 
-/** The crockery in stock at which the pottery's crockery seat turns to bricks and tiles (authored). A
- *  stocked home eats it beside its food, so no bill or shelf sizes it. */
-export const CROCKERY_GLUT_UNITS = 24;
-
-/** A top-pottery seat on crockery until it lies at {@link CROCKERY_GLUT_UNITS}, then bricks and tiles. */
-const CROCKERY_SEAT: CraftSeat = {
-  goods: ['crockery'],
-  glut: { crockery: CROCKERY_GLUT_UNITS },
-  otherwise: ['brick', 'tile'],
-};
-
 /** The shoes a tailor keeps in stock (authored): every settler wears a pair out, and no bill or shelf sizes
  *  them. */
 export const SHOES_STOCK_UNITS = 24;
 
-/** The most plentiful seats a short product takes at once ({@link shortFirst}) (authored): enough to turn a
- *  pottery's crockery seat to a short building material and still leave its other lines a hand. */
+/** The most plentiful seats a short product takes at once ({@link shortFirst}) (authored), so the type's
+ *  other lines keep a hand. */
 const SHORT_PRODUCT_SEATS = 2;
 
 /** Owner ruling: an input good is kept in a small buffer sized to what consumes it, one cycle's unit per
  *  operator of the seat's workshops that take it. */
 export const INPUT_UNITS_PER_CONSUMER = 1;
-
-/** The coins a big healing potion's recipe takes. */
-export const COINS_PER_BIG_POTION = 2;
-
-/** The big potions' worth of coins the mint keeps in stock per druid (authored, owner ruling that the
- *  coins cover the druids). A druid spends two coins a cycle and a coiner strikes one, so the stock drains
- *  whatever the mint does; at two potions a druid a two-druid hut's lack spans two coiners' shares
- *  (`OPERATOR_SHARE_UNITS`), the whole crew of a mint strikes coins under it, and the amulets take the gold
- *  only once the druids are covered. */
-export const COIN_POTIONS_PER_DRUID = 2;
 
 /** Every armour a recruit may take: an army want for armour reads them all. */
 const ARMOUR_GOOD_IDS: readonly string[] = ['armor_plate', 'armor_chain', 'armor_leather', 'armor_wool'];
@@ -433,16 +415,10 @@ const STRENGTH_AMULET_LINE = { good: 'amulet_strength', input: 'sword_shord' } a
 const STRENGTH_AMULET_SEAT: CraftSeat = { firstFed: [STRENGTH_AMULET_LINE, DEFENCE_AMULET_LINE] };
 const DEFENCE_AMULET_SEAT: CraftSeat = { firstFed: [DEFENCE_AMULET_LINE, STRENGTH_AMULET_LINE] };
 
-/** Owner ruling: the mint keeps coins for the druids and turns the rest of its gold into amulets by the
- *  inputs in store, strength-first and defence-first seats in turn; it strikes coins meanwhile to earn the
- *  amulets. */
+/** Owner ruling: the mint turns its gold into amulets by the inputs in store, strength-first and
+ *  defence-first seats in turn; it strikes coins meanwhile to earn the amulets. No recipe takes coins. */
 const MINT: StockCraftPlan = {
-  wants: [
-    {
-      goods: ['coin'],
-      target: { kind: 'consumers', perConsumer: COIN_POTIONS_PER_DRUID * COINS_PER_BIG_POTION },
-    },
-  ],
+  wants: [],
   overflow: [
     { until: 'amulet_strength', works: ['coin'], otherwise: STRENGTH_AMULET_SEAT },
     { until: 'amulet_defense', works: ['coin'], otherwise: DEFENCE_AMULET_SEAT },
@@ -491,13 +467,15 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   // The upgraded joinery's joiners build the carriers' handcarts in turn with iron tools while few stand
   // spare.
   work_joinery_02: { seats: [HANDCART_SEAT], unfed: NO_IRON_SEAT, sparing: WOODEN_TOOLS },
-  // The middle pottery's two potters work bricks and tiles. At the top tier the second and third work
-  // crockery, which doubles a stocked home's food, until it piles up; a short building material takes the
-  // crockery seats, and every potter turns to crockery while bricks and tiles lie at their glut lines.
+  // The middle pottery's two potters work bricks and tiles. Owner ruling: at the top tier the first potter
+  // always works crockery, which stocked homes and the druids' potions take, and no short building
+  // material takes him; the second and third work bricks and tiles and turn to crockery only while both
+  // lie at their glut lines. A lone potter works the building materials.
   work_pottery_01: { seats: [['brick', 'tile']] },
   work_pottery_02: {
-    seats: [['brick', 'tile'], CROCKERY_SEAT, CROCKERY_SEAT],
+    seats: [['crockery'], ['brick', 'tile'], ['brick', 'tile']],
     alone: ['brick', 'tile'],
+    firm: ['crockery'],
     sink: ['crockery'],
   },
   work_mason_hut_01: { seats: [['pillar', 'ornament']] },
@@ -954,12 +932,15 @@ export function tuneCraftCounters(
       listed.push(spared.length > 0 ? spared : own);
     }
     const sinkGoods = goodsOf(ctx, products, seatPlan?.sink ?? []);
-    // The whole crew, since a seat of its own may work the sink's goods, as the crockery seat does.
+    // The whole crew, since a seat of its own may work the sink's goods, as the top pottery's first does.
     const sinking = free.length > 0 && free.every((seat) => sameGoods(current[seat] ?? [], sinkGoods));
     // A sink none of whose goods has its inputs takes nobody.
     const sink = sinkGoods.some((good) => fed(good, sinking)) ? sinkGoods : [];
     if (sink.length > 0 && sinkHolds(supply, products, sinking)) for (const seat of free) listed[seat] = sink;
-    else shortFirst(supply, gamePhase(ctx.tick), products, free, listed, current, fed);
+    else {
+      const firm = goodsOf(ctx, products, seatPlan?.firm ?? []);
+      shortFirst(supply, gamePhase(ctx.tick), products, free, listed, current, fed, firm);
+    }
     if (reserve.size > 0) {
       for (const seat of free) {
         const kept = listed[seat]?.filter((good) => !heldBack(ctx, supply, reserve, type, good)) ?? null;
@@ -1178,11 +1159,11 @@ const SHORT_PRODUCT_LINES: Readonly<
 /**
  * Put each short product, ascending, on seats of its own: one per supply unit it lacks to its hold line
  * ({@link SHORT_PRODUCT_LINES}), at most {@link SHORT_PRODUCT_SEATS}, taken from the free seats whose listed
- * goods all lie at or above their comfort lines, those already working the product alone first, then the
- * last. A seat the plan itself lists on the product alone is neither counted nor taken: the seats here come
- * on top of it. While a seat works it the product holds to the hold line, otherwise it reads the hire line.
- * Selection changes cost nothing, so the two lines are the whole hysteresis. A product whose inputs are
- * out (`fed`) takes no seat.
+ * goods all lie at or above their comfort lines and are not all `firm` ({@link SeatCraftPlan.firm}), those
+ * already working the product alone first, then the last. A seat the plan itself lists on the product alone
+ * is neither counted nor taken: the seats here come on top of it. While a seat works it the product holds
+ * to the hold line, otherwise it reads the hire line. Selection changes cost nothing, so the two lines are
+ * the whole hysteresis. A product whose inputs are out (`fed`) takes no seat.
  */
 function shortFirst(
   supply: SeatSupply,
@@ -1192,9 +1173,14 @@ function shortFirst(
   listed: (readonly number[] | null)[],
   current: readonly (readonly number[])[],
   fed: (good: number, selected: boolean) => boolean,
+  firm: readonly number[],
 ): void {
   const { hire, hold } = SHORT_PRODUCT_LINES[phase];
-  const plentiful = free.filter((seat) => (listed[seat] ?? []).every((good) => !supply.isShort(good, true)));
+  const plentiful = free.filter((seat) => {
+    const goods = listed[seat] ?? [];
+    const fixed = goods.length > 0 && goods.every((good) => firm.includes(good));
+    return !fixed && goods.every((good) => !supply.isShort(good, true));
+  });
   for (const good of products) {
     if (plentiful.length === 0) return;
     const lines = supply.lines(good);
@@ -1210,34 +1196,6 @@ function shortFirst(
       listed[seat] = [good];
     }
   }
-}
-
-/**
- * Whether a good one of the type's craft seats caps at an authored glut lies under it: under the glut while
- * `engaged`, else under it by the seat's band ({@link CRAFT_GLUT_BAND_UNITS} by default), at which a seat
- * takes the good back.
- * False for a type with no such seat.
- */
-export function craftGlutPending(
-  ctx: SystemContext,
-  supply: SeatSupply,
-  plans: Readonly<Record<string, CraftPlan>>,
-  type: BuildingType,
-  engaged: boolean,
-): boolean {
-  const plan = plans[type.id];
-  if (plan === undefined || 'wants' in plan) return false;
-  return plan.seats.some(
-    (seat) =>
-      'goods' in seat &&
-      Object.entries(seat.glut).some(([id, glut]) => {
-        const good = goodTypeByContentId(ctx.content, id);
-        return (
-          good !== undefined &&
-          supply.units(good.typeId) < (engaged ? glut : glut - (seat.band ?? CRAFT_GLUT_BAND_UNITS))
-        );
-      }),
-  );
 }
 
 function sameGoods(a: readonly number[], b: readonly number[]): boolean {

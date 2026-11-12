@@ -7,14 +7,16 @@ export type EconomicArchetype = (typeof ECONOMIC_ARCHETYPES)[number];
 
 /** The production lines a seat leans on beside its archetype; `ironArms` (iron to spare: plate and mail),
  *  `ironWeapons` (little iron: weapons only, tunics for armour) and `naturalArms` (none in reach) exclude
- *  each other, `oneMint` (little gold) trims the gold line, and `noRoom` (a whole land too small to grow
- *  on) keeps one of each workshop. Canonical order: a record lists its sides in this order. */
+ *  each other, `oneMint` (little gold) trims the gold line, `healingLine` (mushrooms on land) raises the
+ *  druids, and `noRoom` (a whole land too small to grow on) keeps one of each workshop. Canonical order: a
+ *  record lists its sides in this order. */
 export const ECONOMIC_SIDES = [
   'ironArms',
   'ironWeapons',
   'naturalArms',
   'goldLine',
   'oneMint',
+  'healingLine',
   'fishing',
   'herbs',
   'noRoom',
@@ -32,8 +34,9 @@ export const ECONOMIC_RULES = [
   'ironInReach',
   'ironScarce',
   'ironOutOfReach',
-  'goldAndMushroomOnLand',
+  'goldOnLand',
   'goldScarce',
+  'mushroomOnLand',
   'fishNearby',
   'grassAtHome',
 ] as const;

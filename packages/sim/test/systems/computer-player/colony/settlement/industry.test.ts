@@ -56,6 +56,9 @@ const seatRead = (over: Partial<SeatRead> = {}): SeatRead => ({
 
 const industries = (choices: readonly IndustryChoice[]): Industry[] => choices.map((c) => c.industry);
 
+/** Home makes the crockery a potion takes and lacks everything else. */
+const homeCrockery = (good: string): Worth => (good === 'crockery' ? 'wanted' : 'lacking');
+
 describe('a colony industry', () => {
   it('is chosen only where the site offers what its chain takes', () => {
     const fits: readonly [Partial<SiteFacts>, Industry][] = [
@@ -64,16 +67,24 @@ describe('a colony industry', () => {
       [{ wood: true }, 'armoury'],
       [{ wood: true, iron: true }, 'smithy'],
       [{ grass: true, animals: true }, 'husbandry'],
-      [{ grass: true, mushroom: true, gold: true }, 'druid'],
+      [{ grass: true, mushroom: true }, 'druid'],
       [{ gold: true, wood: true, iron: true }, 'amulets'],
     ];
     for (const [site, industry] of fits)
-      expect(industries(chooseIndustries({ ...BARE, ...site }, seatRead()))).toContain(industry);
+      expect(industries(chooseIndustries({ ...BARE, ...site }, seatRead({ worth: homeCrockery })))).toContain(
+        industry,
+      );
     expect(industries(chooseIndustries({ ...BARE, iron: true }, seatRead()))).not.toContain('smithy');
     expect(industries(chooseIndustries({ ...BARE, animals: true }, seatRead()))).not.toContain('husbandry');
-    expect(industries(chooseIndustries({ ...BARE, gold: true, grass: true }, seatRead()))).not.toContain(
-      'druid',
-    );
+    expect(
+      industries(chooseIndustries({ ...BARE, gold: true, grass: true }, seatRead({ worth: homeCrockery }))),
+    ).not.toContain('druid');
+  });
+
+  it('brews potions only while home makes the crockery they take', () => {
+    const site = { ...BARE, grass: true, mushroom: true };
+    expect(industries(chooseIndustries(site, seatRead()))).not.toContain('druid');
+    expect(industries(chooseIndustries(site, seatRead({ worth: homeCrockery })))).toContain('druid');
   });
 
   it('mints amulets only where a sword or a leather armour can be had', () => {
@@ -136,7 +147,7 @@ describe('a colony industry', () => {
   });
 
   it('raises the joinery at the tier the ruling names and takes the druid hut up to its top', () => {
-    const choices = chooseIndustries(RICH, seatRead());
+    const choices = chooseIndustries(RICH, seatRead({ worth: homeCrockery }));
     const steps = choices.flatMap((c) => c.steps);
     expect(steps.flatMap((s) => (s.tier === undefined ? [] : [s.tier]))).toContain('work_joinery_03');
     expect(steps.flatMap((s) => (s.top === undefined ? [] : [s.top]))).toContain('work_druid_01');
@@ -145,8 +156,8 @@ describe('a colony industry', () => {
   it('chooses the druids before home has their trades, gathering the mushrooms that earn the first', () => {
     const unearned = new Set(['work_herb_hut', 'work_druid_00']);
     const open = (step: ChainStep) => !unearned.has(step.building);
-    const site = { ...BARE, grass: true, mushroom: true, gold: true };
-    const choices = chooseIndustries(site, seatRead({ open }));
+    const site = { ...BARE, grass: true, mushroom: true };
+    const choices = chooseIndustries(site, seatRead({ open, worth: homeCrockery }));
     expect(industries(choices)).toContain('druid');
     expect(earningDeposits(choices, open)).toEqual(['mushroom']);
     expect(earningDeposits(choices, () => true)).toEqual([]);
@@ -220,7 +231,7 @@ describe('what a colony industry wants brought', () => {
     expect(colonyIndustryWants(choices, true)).toEqual([{ good: 'holy_oil', upTo: TEMPLE_BILL_OIL_UNITS }]);
     const withDruids = [
       ...choices,
-      ...chooseIndustries({ ...BARE, grass: true, mushroom: true, gold: true }, seatRead()),
+      ...chooseIndustries({ ...BARE, grass: true, mushroom: true }, seatRead({ worth: homeCrockery })),
     ];
     expect(withDruids.map((c) => c.industry)).toContain('druid');
     expect(colonyIndustryWants(withDruids, true)).toEqual([{ good: 'holy_oil', upTo: TEMPLE_OIL_UNITS }]);

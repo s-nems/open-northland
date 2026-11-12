@@ -749,7 +749,7 @@ export const enContent = {
     alchemy: {
       title: "Alchemist's huts",
       summary:
-        'A druid brews oil from mushrooms in the small hut; two druids brew potions from water, mushroom, herb and coin in the large one.',
+        'A druid brews oil from mushrooms in the small hut; two druids brew potions from water, mushroom, herb and crockery in the large one.',
     },
     'temple-aura': {
       title: 'Temple blessing',

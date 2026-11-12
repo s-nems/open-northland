@@ -102,6 +102,9 @@ function breweryWithHiveAndWell(count: number, wellCap: number, fromSettlers: nu
 /** The seat makes the big healing potion. */
 const BIG_POTION: StepHold = { kind: 'good', good: 'potion_heal_big' };
 
+/** The top pottery stands: it alone makes the crockery the potions take. */
+const TOP_POTTERY: StepHold = { kind: 'built', building: 'work_pottery_02' };
+
 /** The coiner has learned the amulets: the strength and the defence amulet share one discovery threshold. */
 const AMULETS: StepHold = { kind: 'good', good: 'amulet_strength' };
 
@@ -158,10 +161,21 @@ function druidHuts(count: number): BuildOrderEntry {
     building: 'work_druid_01',
     count,
     near: [{ kind: 'building', id: 'work_druid_01' }],
-    needsResources: ['mushroom', 'gold'],
-    holdUntil: BIG_POTION,
+    needsResources: ['mushroom'],
+    holdUntil: { kind: 'all', holds: [BIG_POTION, TOP_POTTERY] },
   };
 }
+
+/** Owner ruling: from the late game a seat with room raises a second top pottery once its druid huts are
+ *  placed, since one crockery potter cannot keep their potions in crockery; a cramped seat, one with no
+ *  room, one without the druids and an easy seat keep to one (`./seat-order.ts`, `../../difficulty.ts`). */
+export const SECOND_TOP_POTTERY: BuildOrderEntry = {
+  kind: 'place',
+  building: 'work_pottery_02',
+  count: 2,
+  near: [{ kind: 'resource', good: 'mud' }],
+  holdUntil: { kind: 'tick', tick: LATE_GAME_FROM_TICKS },
+};
 
 /** Mints up to `count`, by the gold. */
 function mints(count: number): Extract<BuildOrderEntry, { kind: 'place' }> {
@@ -485,7 +499,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           count: 1,
           near: [{ kind: 'building', id: 'work_well_00' }],
           ground: 'plantable',
-          needsResources: ['mushroom', 'gold'],
+          needsResources: ['mushroom'],
           onlyWhen: 'grassScarce',
           holdUntil: AFTER_FOOD_AND_ARMS,
         },
@@ -602,8 +616,8 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     MILITARY_LINE,
     {
       id: 'healing',
-      // The big potion takes herbs, mushrooms and coins, and the temple waits on the druids' oil, so all of
-      // it stands only where the map holds both gold and mushrooms.
+      // The big potion takes herbs, mushrooms and the top pottery's crockery, and the temple waits on the
+      // druids' oil, so all of it stands only where the map holds mushrooms.
       // Owner ruling: a mushroom gatherer from game minute 25-40, whose ten mushrooms open the herb hut; not
       // before, nor before the food and arms, and only the one until potions are made in volume.
       steps: [
@@ -622,7 +636,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           count: 1,
           near: [{ kind: 'building', id: 'work_well_00' }],
           ground: 'plantable',
-          needsResources: ['mushroom', 'gold'],
+          needsResources: ['mushroom'],
           holdUntil: AFTER_FOOD_AND_ARMS,
         },
         // The lower tier first: the small food potion its upper tier wants is learned there.
@@ -631,7 +645,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           building: 'work_druid_00',
           count: 1,
           near: [{ kind: 'building', id: 'work_herb_hut' }],
-          needsResources: ['mushroom', 'gold'],
+          needsResources: ['mushroom'],
         },
         { kind: 'upgrade', building: 'work_druid_01', count: 1 },
         // The druids brew with water: each druid step is followed by a well beside the hut with none in
@@ -644,10 +658,11 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           building: 'work_temple',
           count: 1,
           near: [{ kind: 'rallyFlag' }],
-          needsResources: ['mushroom', 'gold'],
+          needsResources: ['mushroom'],
         },
         // Owner ruling: one druid until he has learned the big healing potion; the huts after him make only
-        // big potions, with a second mushroom gatherer to feed them once they stand.
+        // big potions, so they wait for the top pottery too, with a second mushroom gatherer to feed them
+        // once they stand.
         druidHuts(2),
         { kind: 'collector', good: 'mushroom', count: 2, stockedAt: MUSHROOMS_STOCKED },
         wellBeside('work_druid_01', 10),
@@ -655,15 +670,16 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         wellBeside('work_druid_01', 13),
         druidHuts(6),
         wellBeside('work_druid_01', 17),
+        SECOND_TOP_POTTERY,
       ],
     },
     {
       id: 'coins',
       // Owner ruling: one mint early enough to earn experience, since the coiner learns the amulets the
-      // big potion also wants and the druids pay in coins; never two at once as the first. Once he has
-      // learned the amulets, the late game's move into high-end equipment, two more follow, each waiting
-      // for the crews of those standing (`../steps/holds.ts`). The gold gatherer and the first mint wait for
-      // the food and arms like the herb hut.
+      // big potion also wants; never two at once as the first. Once he has learned the amulets, the late
+      // game's move into high-end equipment, two more follow, each waiting for the crews of those standing
+      // (`../steps/holds.ts`). The gold gatherer and the first mint wait for the food and arms like the
+      // herb hut.
       steps: [
         { kind: 'collector', good: 'gold', fromTick: GOLD_FROM_TICKS, holdUntil: AFTER_FOOD_AND_ARMS },
         { ...mints(1), holdUntil: AFTER_FOOD_AND_ARMS },

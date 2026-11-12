@@ -757,7 +757,7 @@ export const itContent = {
     alchemy: {
       title: "Capanne dell'alchimista",
       summary:
-        'Un druido distilla olio dai funghi nella capanna piccola; due druidi preparano pozioni con acqua, funghi, erbe e monete in quella grande.',
+        'Un druido distilla olio dai funghi nella capanna piccola; due druidi preparano pozioni con acqua, funghi, erbe e vasellame in quella grande.',
     },
     'temple-aura': {
       title: 'Benedizione del tempio',

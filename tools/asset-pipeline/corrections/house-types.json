@@ -1,7 +1,7 @@
 {
   "reason": "Garncarnia wraca do trzech poziomów jak w oryginale (decyzja właściciela). Garncarnia 2 (typ 21) robi jak w oryginale cegły i dachówki, po 20 w magazynie, bez naczyń. Typ 22 to znów oryginalna garncarnia 3: trzech garncarzy, tragarz i dwóch zbieraczy, cegły, dachówki i naczynia, po 25 w magazynie. Mod zrobił z typu 22 mur, więc mur dostaje nowy typ 56 (\"defence wall\") z tym samym rodzajem budynku.",
   "file": "rules/types/houses.ini",
-  "sha256": "293b9a96d69679beade166bdaf5b2aca65bb54ee6d70c00cca1175001eb5e4d4",
+  "sha256": "d7e2d17da086b8a818d98e762219e6562f627d4dbeb0e0342343f01ef279d230",
   "lines": [
     {
       "section": "debugname \"work pottery 01\"",
