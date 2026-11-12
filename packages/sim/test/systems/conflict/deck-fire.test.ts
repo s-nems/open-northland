@@ -24,7 +24,7 @@ import {
   type TerrainMap,
 } from '../../../src/index.js';
 import { DECK_ARCHER_LIMIT } from '../../../src/systems/conflict/deck-archers.js';
-import { DECK_RANGE_PENALTY_POINTS } from '../../../src/systems/conflict/deck-fire.js';
+import { DECK_RANGE_PENALTY_POINTS, deckShotIntervalTicks } from '../../../src/systems/conflict/deck-fire.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../../src/systems/progression/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { boardRider, createVehicle } from '../../../src/systems/vehicles/index.js';
@@ -49,6 +49,7 @@ const CATAPULT = 5;
 const ATTACK_ATOMIC = 81;
 const ATOMIC_EVENT_ATTACK = 25;
 const SHORT_BOW_MAX_RANGE = 15;
+const ATTACK_CLIP_TICKS = 4;
 const DECK_REACH = SHORT_BOW_MAX_RANGE - DECK_RANGE_PENALTY_POINTS;
 /** Long enough for every seated bowman's clip to come round several times. */
 const SHOT_TICKS = 24;
@@ -148,7 +149,7 @@ function deckContent(): ContentSet {
       {
         id: 'viking_attack',
         name: 'viking_attack',
-        length: 4,
+        length: ATTACK_CLIP_TICKS,
         events: [{ at: 4, type: ATOMIC_EVENT_ATTACK }],
       },
     ],
@@ -243,6 +244,25 @@ describe('deck fire', () => {
     expect(shots).toBeGreaterThan(0);
     const at = s.world.get(ship, Position);
     expect(origins.every((o) => o.x === at.x && o.y === at.y)).toBe(true);
+  });
+
+  it('shoots slower from the deck than his attack clip ashore', () => {
+    const s = sim();
+    shipWith(s, WARSHIP, SHIP_X, P1, 1);
+    const shore = shoreAt(DECK_REACH);
+    personAt(s, shore.hx, shore.hy, P2, SOLDIER);
+    const shotTicks: number[] = [];
+    for (let i = 0; i < SHOT_TICKS; i++) {
+      s.step();
+      if (s.events.current().some((ev) => ev.kind === 'projectileLaunched')) shotTicks.push(i);
+    }
+
+    const interval = deckShotIntervalTicks(ATTACK_CLIP_TICKS);
+    expect(interval).toBeGreaterThan(ATTACK_CLIP_TICKS);
+    expect(shotTicks.length).toBeGreaterThan(1);
+    expect(shotTicks.slice(1).map((t, i) => t - (shotTicks[i] as number))).toEqual(
+      Array.from({ length: shotTicks.length - 1 }, () => interval),
+    );
   });
 
   it('holds fire on an enemy one map point past the deck reach', () => {

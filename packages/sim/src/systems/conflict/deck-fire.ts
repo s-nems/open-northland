@@ -23,12 +23,22 @@ export const DECK_RANGE_PENALTY_POINTS = 2;
  *  arrow in four on a lone man. Owner rule: a rolling deck makes a poor stand. */
 export const DECK_SCATTER_NODES = 1;
 
+/** How many times its clip a bowman waits between shots on a deck, as a fraction: half as long again as
+ *  ashore. Owner rule: a deck is a slower stand as well as a worse one. */
+const DECK_SHOT_INTERVAL_NUMERATOR = 3;
+const DECK_SHOT_INTERVAL_DENOMINATOR = 2;
+
+/** Ticks between a deck bowman's shots, for an attack clip of `clipTicks` ashore. */
+export function deckShotIntervalTicks(clipTicks: number): number {
+  return Math.ceil((clipTicks * DECK_SHOT_INTERVAL_NUMERATOR) / DECK_SHOT_INTERVAL_DENOMINATOR);
+}
+
 /** The rank an enemy ship takes ahead of every land archer's {@link tierRank}: it shoots back. */
 const SHIP_RANK = 0;
 
 /**
- * Loose this tick's arrows from every warship's deck. Each bowman shoots at the pace of his own attack
- * clip, staggered by seat, at the best enemy in his deck reach. Walks the seats of the vehicles the combat
+ * Loose this tick's arrows from every warship's deck. Each bowman shoots slower than his own attack clip
+ * ashore, staggered by seat, at the best enemy in his deck reach. Walks the seats of the vehicles the combat
  * pass already walks; only a bowman due a shot near an enemy searches for a target.
  */
 export function fireFromDecks(
@@ -66,7 +76,7 @@ class DeckVolley {
   private readonly visit = (archer: Entity, seat: number, bow: MissileWeapon): boolean => {
     const settler = this.world.get(archer, Settler);
     const clip = Math.max(1, attackClipTiming(this.ctx.content, settler).length);
-    if ((this.ctx.tick + seat) % clip === 0) this.shoot(archer, bow);
+    if ((this.ctx.tick + seat) % deckShotIntervalTicks(clip) === 0) this.shoot(archer, bow);
     return false;
   };
 
