@@ -60,8 +60,6 @@ import {
   orderOpenChest,
   placeSignpost,
   setAssistantArmorOrder,
-  setAssistantCoinDrill,
-  setAssistantCoinDrillPriority,
   setAssistantCounter,
   setAssistantFoundFamilies,
   setAssistantGrant,
@@ -584,12 +582,6 @@ function applyCommand(
       return;
     case 'setAssistantFoundFamilies':
       setAssistantFoundFamilies(world, command);
-      return;
-    case 'setAssistantCoinDrill':
-      setAssistantCoinDrill(world, command);
-      return;
-    case 'setAssistantCoinDrillPriority':
-      setAssistantCoinDrillPriority(world, command);
       return;
     case 'setPlayerPlacementTribes':
       setPlayerPlacementTribes(world, ctx.content, command.player, command.tribes);

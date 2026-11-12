@@ -2,7 +2,6 @@ import type {
   AssistantArmingIntent,
   AssistantCounterKind,
   AssistantGrantGroup,
-  CoinDrillClass,
 } from '../../components/assistant.js';
 
 /** Commands that configure the per-player settlement assistant. */
@@ -16,9 +15,7 @@ export type AssistantCommand =
   | AssistantPostGraduatesCommand
   | AssistantMoveFlagsCommand
   | AssistantUpgradeToolsCommand
-  | AssistantFoundFamiliesCommand
-  | AssistantCoinDrillCommand
-  | AssistantCoinDrillPriorityCommand;
+  | AssistantFoundFamiliesCommand;
 
 type AssistantGrantCommand = {
   /**
@@ -153,27 +150,4 @@ type AssistantFoundFamiliesCommand = {
   /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
   readonly player: number;
   readonly enabled: boolean;
-};
-
-type AssistantCoinDrillCommand = {
-  /**
-   * Switch `player`'s "coin drill" on or off, held on the per-player `AssistantCoinDrills` carrier. While on,
-   * idle soldiers who may coin-drill are sent to the barracks holding coins nobody is on his way for.
-   */
-  readonly kind: 'setAssistantCoinDrill';
-  /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
-  readonly player: number;
-  readonly enabled: boolean;
-};
-
-type AssistantCoinDrillPriorityCommand = {
-  /**
-   * Set the class order `player`'s assistant sends soldiers to coin drills in, held on the per-player
-   * `AssistantCoinDrillPriority` carrier while it differs from the default sword, spear, bow.
-   */
-  readonly kind: 'setAssistantCoinDrillPriority';
-  /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
-  readonly player: number;
-  /** Every class once; any other list skips the command. */
-  readonly order: readonly CoinDrillClass[];
 };

@@ -42,9 +42,9 @@ export function orderCoinDrill(
 }
 
 /**
- * Whether `e` may be sent to coin-drill at `house` now, the one gate of the player order and the assistant:
- * his own side's finished barracks, {@link mayCoinDrill} on his state and a door he can walk to. A coin in
- * the barracks is not asked for: an ordered soldier walks there anyway.
+ * Whether `e` may be sent to coin-drill at `house` now, the order's gate: his own side's finished barracks,
+ * {@link mayCoinDrill} on his state and a door he can walk to. A coin in the barracks is not asked for: an
+ * ordered soldier walks there anyway.
  */
 export function mayCoinDrillAt(world: World, ctx: SystemContext, e: Entity, house: Entity): boolean {
   if (!isOrderableSettler(world, e)) return false;
@@ -57,7 +57,7 @@ export function mayCoinDrillAt(world: World, ctx: SystemContext, e: Entity, hous
 
 /** Stamp the coin-drill errand once {@link mayCoinDrillAt} passed and drop what it supersedes: a fight, a
  *  walk, an equip errand, a tower post. A soldier re-ordered on his way back keeps the spot he left from. */
-export function startCoinDrill(world: World, ctx: SystemContext, e: Entity, house: Entity): void {
+function startCoinDrill(world: World, ctx: SystemContext, e: Entity, house: Entity): void {
   const terrain = ctx.terrain;
   if (terrain === undefined) return;
   releaseTowerPost(world, ctx, e);

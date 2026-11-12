@@ -322,7 +322,7 @@ function planBreak(
   // BARRACKS DRILL: a player errand outranking the settler's trade for as long as it lasts, and above the
   // equip errand below because the drill ends in a profession change.
   if (planTraining(plan, settler, pass.spacing, pass.idle, load)) return true;
-  // COIN DRILL: a soldier's paid practice, a player or assistant errand above the equip errand and the
+  // COIN DRILL: a soldier's paid practice, a player errand above the equip errand and the
   // standing soldier rungs below, which take him back over once he has walked home.
   if (planCoinDrill(plan, settler)) return true;
   // EQUIP ERRAND: the player's or the assistant's, outranking the DEFEND hold below, socialising and every

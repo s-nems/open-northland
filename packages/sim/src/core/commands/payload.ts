@@ -4,7 +4,6 @@ import {
   ASSISTANT_ARMING_INTENTS,
   ASSISTANT_COUNTER_KINDS,
   ASSISTANT_GRANT_GROUPS,
-  COIN_DRILL_CLASSES,
 } from '../../components/assistant.js';
 import { HOUSE_RECORD_NAME_MAX_CHARS } from '../../components/economy/infrastructure.js';
 import { MISC_EQUIP_SLOTS } from '../../components/equipment.js';
@@ -420,13 +419,6 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   setAssistantMoveFlags: { required: { player: 'integer', enabled: 'boolean' } },
   setAssistantUpgradeTools: { required: { player: 'integer', enabled: 'boolean' } },
   setAssistantFoundFamilies: { required: { player: 'integer', enabled: 'boolean' } },
-  setAssistantCoinDrill: { required: { player: 'integer', enabled: 'boolean' } },
-  setAssistantCoinDrillPriority: {
-    required: {
-      player: 'integer',
-      order: { arrayOf: { oneOf: COIN_DRILL_CLASSES }, maxLength: COIN_DRILL_CLASSES.length },
-    },
-  },
   setProductionGoods: {
     required: { entity: 'integer', goods: { arrayOf: 'integer', maxLength: GOOD_TYPE_SPACE } },
   },

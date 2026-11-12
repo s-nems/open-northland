@@ -341,52 +341,6 @@ export const AssistantFoundsFamilies = defineComponent<{
   player: number;
 }>('AssistantFoundsFamilies', 'players');
 
-/**
- * The per-player "coin drill" switch, on while the carrier exists: an idle soldier of a class on
- * {@link AssistantCoinDrillPriority} is sent to drill in a barracks that holds a coin nobody is on his way
- * for. Off by default for a player; a computer seat keeps it on while its military runs.
- */
-export const AssistantCoinDrills = defineComponent<{
-  /** The player slot the switch belongs to (`[0, MAX_PLAYERS)`). */
-  player: number;
-}>('AssistantCoinDrills', 'players');
-
-/** The soldier classes a coin drill takes, in the default order the assistant sends them. */
-export const COIN_DRILL_CLASSES = ['sword', 'spear', 'bow'] as const;
-export type CoinDrillClass = (typeof COIN_DRILL_CLASSES)[number];
-
-/**
- * The per-player class order of the assistant's coin drill: the classes whose men go first. The carrier
- * exists only while the order differs from {@link COIN_DRILL_CLASSES}.
- */
-export const AssistantCoinDrillPriority = defineComponent<{
-  /** The player slot the order belongs to (`[0, MAX_PLAYERS)`). */
-  player: number;
-  /** Every class once. */
-  order: readonly CoinDrillClass[];
-}>('AssistantCoinDrillPriority', 'players');
-
-/** Whether `player`'s assistant sends idle soldiers to coin drills ({@link AssistantCoinDrills}). */
-export function assistantCoinDrills(world: World, player: number): boolean {
-  return assistantSwitchEntity(world, AssistantCoinDrills, player) !== null;
-}
-
-/** `player`'s {@link AssistantCoinDrillPriority} carrier, or null while the order is the default. */
-export function assistantCoinDrillPriorityEntity(world: World, player: number): Entity | null {
-  let best: Entity | null = null;
-  for (const e of world.query(AssistantCoinDrillPriority)) {
-    if (world.get(e, AssistantCoinDrillPriority).player !== player) continue;
-    if (best === null || e < best) best = e;
-  }
-  return best;
-}
-
-/** `player`'s coin-drill class order, first sent first. */
-export function assistantCoinDrillPriority(world: World, player: number): readonly CoinDrillClass[] {
-  const carrier = assistantCoinDrillPriorityEntity(world, player);
-  return carrier === null ? COIN_DRILL_CLASSES : world.get(carrier, AssistantCoinDrillPriority).order;
-}
-
 /** An on/off assistant switch: the per-player carrier exists while the switch is on. */
 export type AssistantSwitch = Component<{ player: number }>;
 
@@ -435,8 +389,6 @@ const ASSISTANT_SETTING_COMPONENTS: readonly Component<unknown>[] = [
   AssistantMovesFlags,
   AssistantUpgradesTools,
   AssistantFoundsFamilies,
-  AssistantCoinDrills,
-  AssistantCoinDrillPriority,
 ];
 
 /** A token that changes whenever any seat's assistant settings may read differently: the sum of the

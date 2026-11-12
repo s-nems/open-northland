@@ -262,9 +262,7 @@ export {
 } from './progression/bonus.js';
 // What the HUD asks of a coin drill: who may drill, the limit and what one coin buys.
 export {
-  COIN_DRILL_CLASS_WEAPON,
   COIN_DRILL_LIMIT,
-  coinDrillClassOf,
   coinDrillPointsPerCoin,
   drillCoinGood,
   mayCoinDrill,

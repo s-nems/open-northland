@@ -1,5 +1,5 @@
 import type { AtomicAnimation, ContentSet } from '@open-northland/data';
-import { COIN_DRILL_CLASSES, type CoinDrillClass, type SettlerIdentity } from '../../components/index.js';
+import type { SettlerIdentity } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { attackerWeapon } from '../conflict/weapons.js';
 import {
@@ -11,7 +11,7 @@ import { isSoldierJob, WEAPON_MAIN_TYPE, weaponClassOf } from '../readviews/inde
 import { personalFightPoints } from './bonus.js';
 
 /**
- * The coin drill's rules, shared by the player order, the assistant and the HUD. Original behavior,
+ * The coin drill's rules, shared by the player order and the HUD. Original behavior,
  * unconfirmed against the running original: the soldier's `..._soldier_train` clip takes one coin and grants
  * 25 training points per playthrough. Our rule: one coin pays one whole clip, and a soldier drills only
  * below {@link COIN_DRILL_LIMIT}.
@@ -29,12 +29,13 @@ export const COIN_DRILL_LIMIT = 50;
  *  good, and the barracks shelves coins for it. */
 export const DRILL_COIN_GOOD_SLUG = 'coin';
 
-/** The weapon class (`maintype`) each coin-drill class fights with. A saber or an axe is none of them. */
-export const COIN_DRILL_CLASS_WEAPON: Readonly<Record<CoinDrillClass, number>> = {
-  sword: WEAPON_MAIN_TYPE.SWORD,
-  spear: WEAPON_MAIN_TYPE.SPEAR,
-  bow: WEAPON_MAIN_TYPE.BOW,
-};
+/** The weapon classes (`maintype`) a coin drill takes: sword, spear and bow. A saber or an axe is none of
+ *  them. */
+const COIN_DRILL_WEAPON_CLASSES: ReadonlySet<number> = new Set([
+  WEAPON_MAIN_TYPE.SWORD,
+  WEAPON_MAIN_TYPE.SPEAR,
+  WEAPON_MAIN_TYPE.BOW,
+]);
 
 /** The content good id of the drill coin, or undefined when content has none. */
 export function drillCoinGood(content: ContentSet): number | undefined {
@@ -42,23 +43,20 @@ export function drillCoinGood(content: ContentSet): number | undefined {
 }
 
 /**
- * The coin-drill class of a soldier with `settler`'s identity holding `weaponTypeId` (his worn
- * `Weapon`, else his class default), or null for anyone else: a hero, a civilian, a catapult crew or a
+ * Whether a soldier with `settler`'s identity holding `weaponTypeId` (his worn `Weapon`, else his class
+ * default) fights with a coin-drill weapon class; never a hero, a civilian, a catapult crew or a
  * bare-handed soldier.
  */
-export function coinDrillClassOf(
+function fightsWithDrillWeapon(
   content: ContentSet,
   settler: SettlerIdentity,
   weaponTypeId: number | undefined,
-): CoinDrillClass | null {
-  if (!isSoldierJob(content, settler.jobType)) return null;
+): boolean {
+  if (!isSoldierJob(content, settler.jobType)) return false;
   const armed = attackerWeapon({ content }, settler.tribe, settler.jobType, weaponTypeId, settler.humanForm);
-  if (armed === null) return null;
+  if (armed === null) return false;
   const mainType = weaponClassOf(armed.weapon);
-  for (const drillClass of COIN_DRILL_CLASSES) {
-    if (COIN_DRILL_CLASS_WEAPON[drillClass] === mainType) return drillClass;
-  }
-  return null;
+  return mainType !== undefined && COIN_DRILL_WEAPON_CLASSES.has(mainType);
 }
 
 /**
@@ -108,7 +106,7 @@ export function mayCoinDrill(
   weaponTypeId: number | undefined,
   experience: ReadonlyMap<number, number>,
 ): boolean {
-  if (coinDrillClassOf(content, settler, weaponTypeId) === null) return false;
+  if (!fightsWithDrillWeapon(content, settler, weaponTypeId)) return false;
   if (personalFightPoints(experience) >= COIN_DRILL_LIMIT) return false;
   const clip = coinDrillClip(content, settler);
   return clip !== undefined && coinDrillCoinsOf(clip) > 0;

@@ -159,8 +159,6 @@ export const COMMAND_ISSUER: {
   setAssistantMoveFlags: 'seat',
   setAssistantUpgradeTools: 'seat',
   setAssistantFoundFamilies: 'seat',
-  setAssistantCoinDrill: 'seat',
-  setAssistantCoinDrillPriority: 'seat',
   setAssistantWeaponVeto: 'seat',
   setAssistantArmorOrder: 'seat',
   setAssistantWeaponOrder: 'seat',

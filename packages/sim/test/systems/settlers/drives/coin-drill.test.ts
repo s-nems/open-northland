@@ -12,7 +12,6 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../../src/index.js';
-import { ASSISTANT_DECISION_PERIOD_TICKS } from '../../../../src/systems/assistant/index.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../../../src/systems/progression/experience.js';
 import { entityNode } from '../../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../../fixtures/content.js';
@@ -44,8 +43,6 @@ const POINTS_PER_COIN = 25;
 const WEAPON_CLASS = { SPEAR: 2, SWORD: 3, BOW: 6 } as const;
 /** The walk between the soldiers' row and the barracks door at the fixture's gait, with slack. */
 const WALK_TICKS = 120;
-/** Past the assistant's first decision beat. */
-const FIRST_BEAT_TICKS = ASSISTANT_DECISION_PERIOD_TICKS + 1;
 
 function coinDrillContent(): ContentSet {
   const base = testContent();
@@ -230,55 +227,5 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     sim.step();
     expect(sim.world.has(soldier, CoinDrillOrder)).toBe(false);
     expect(sim.world.has(soldier, TrainingOrder)).toBe(false);
-  });
-});
-
-describe('the assistant coin drill', () => {
-  it('sends idle soldiers for the free coins, class priority first, then the nearest', () => {
-    const sim = freshSim();
-    barracksAt(sim, 8, 3, 2);
-    const nearBow = soldierAt(sim, BOW_JOB, 6, 3);
-    const farSword = soldierAt(sim, SWORD_JOB, 1, 3);
-    const nearSpear = soldierAt(sim, SPEAR_JOB, 5, 4);
-    const farSpear = soldierAt(sim, SPEAR_JOB, 1, 5);
-    sim.enqueueSetup({ kind: 'setAssistantCoinDrill', player: PLAYER, enabled: true });
-    run(sim, FIRST_BEAT_TICKS);
-    expect([farSword, nearSpear, farSpear, nearBow].map((e) => sim.world.has(e, CoinDrillOrder))).toEqual([
-      true,
-      true,
-      false,
-      false,
-    ]);
-  });
-
-  it('follows the class priority the player sets', () => {
-    const sim = freshSim();
-    barracksAt(sim, 8, 3, 1);
-    const sword = soldierAt(sim, SWORD_JOB, 6, 3);
-    const bow = soldierAt(sim, BOW_JOB, 1, 3);
-    sim.enqueueSetup({ kind: 'setAssistantCoinDrill', player: PLAYER, enabled: true });
-    sim.enqueueSetup({
-      kind: 'setAssistantCoinDrillPriority',
-      player: PLAYER,
-      order: ['bow', 'sword', 'spear'],
-    });
-    run(sim, FIRST_BEAT_TICKS);
-    expect(sim.assistantCoinDrillPriority(PLAYER)).toEqual(['bow', 'sword', 'spear']);
-    expect(sim.world.has(bow, CoinDrillOrder)).toBe(true);
-    expect(sim.world.has(sword, CoinDrillOrder)).toBe(false);
-  });
-
-  it('sends nobody for a barracks without coins, nor for a coin another soldier is walking to', () => {
-    const sim = freshSim();
-    const empty = barracksAt(sim, 8, 6, 0);
-    const house = barracksAt(sim, 8, 2, 1);
-    const ordered = soldierAt(sim, SWORD_JOB, 1, 2);
-    const idle = soldierAt(sim, SWORD_JOB, 6, 3);
-    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: ordered, house });
-    sim.enqueueSetup({ kind: 'setAssistantCoinDrill', player: PLAYER, enabled: true });
-    run(sim, FIRST_BEAT_TICKS);
-    expect(sim.world.get(ordered, CoinDrillOrder).house).toBe(house);
-    expect(sim.world.has(idle, CoinDrillOrder)).toBe(false);
-    expect(coinsOf(sim, empty)).toBe(0);
   });
 });
