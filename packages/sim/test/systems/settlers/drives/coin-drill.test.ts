@@ -6,6 +6,7 @@ import {
   CoinDrillOrder,
   CurrentAtomic,
   Health,
+  LostWay,
   MISSION_BEHAVIOUR,
   Owner,
   Position,
@@ -19,6 +20,8 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../../src/index.js';
+import type { NodeId } from '../../../../src/nav/terrain/index.js';
+import { walkBlockMask } from '../../../../src/systems/footprint/walk-block-mask.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../../../src/systems/progression/experience.js';
 import { entityNode } from '../../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../../fixtures/content.js';
@@ -42,6 +45,8 @@ const SWORD_JOB = 34;
 const SABER_JOB = 37;
 const BOW_JOB = 40;
 const BARRACKS_TYPE = 91;
+/** A house whose one walk-blocked node is its own. */
+const HUT_TYPE = 92;
 const COIN_GOOD = 8;
 const TRAIN_ATOMIC = 90;
 const TRAIN_CLIP_TICKS = 28;
@@ -93,6 +98,12 @@ function coinDrillContent(): ContentSet {
         kind: 'training',
         workers: [{ jobType: CARRIER_JOB, count: 4 }],
         stock: [{ goodType: COIN_GOOD, capacity: 100, initial: 1 }],
+      },
+      {
+        typeId: HUT_TYPE,
+        id: 'hut',
+        kind: 'workplace',
+        footprint: { blocked: [{ dx: 0, dy: 0 }], door: { dx: 2, dy: 0 } },
       },
     ],
     atomicAnimations: [
@@ -161,7 +172,7 @@ function run(sim: Simulation, ticks: number): void {
   for (let i = 0; i < ticks; i++) sim.step();
 }
 
-function nodeOf(sim: Simulation, e: Entity): number {
+function nodeOf(sim: Simulation, e: Entity): NodeId {
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('mapped sim expected');
   return entityNode(sim.world, terrain, e);
@@ -303,6 +314,29 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     expect([walker, driller].map((e) => sim.world.has(e, CoinDrillOrder))).toEqual([false, false]);
     expect([walker, driller].map((e) => sim.world.has(e, Resting))).toEqual([false, false]);
     expect([nodeOf(sim, walker), nodeOf(sim, driller)]).toEqual(starts);
+  });
+
+  it('walks back beside the node he left when a building now stands on it, not lost', () => {
+    const sim = freshSim();
+    const house = barracksAt(sim, 8, 3, 1);
+    const soldier = soldierAt(sim, SWORD_JOB, 2, 3);
+    const start = nodeOf(sim, soldier);
+    const startAt = { ...sim.world.get(soldier, Position) };
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: soldier, house });
+    while (sim.world.tryGet(soldier, CoinDrillOrder)?.paid !== true) sim.step();
+    const hut = sim.world.create();
+    sim.world.add(hut, Position, startAt);
+    sim.world.add(hut, Building, { buildingType: HUT_TYPE, tribe: VIKING, built: ONE, level: 0 });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const blocked = walkBlockMask(sim.world, { content: sim.content }, terrain);
+    expect(blocked.has(start)).toBe(true);
+    run(sim, TRAIN_CLIP_TICKS + 2 * WALK_TICKS);
+    expect(sim.world.has(soldier, CoinDrillOrder)).toBe(false);
+    expect(sim.world.has(soldier, LostWay)).toBe(false);
+    const end = nodeOf(sim, soldier);
+    expect(blocked.has(end)).toBe(false);
+    expect(terrain.neighbours(start)).toContain(end);
   });
 
   it('steps out to a fight that takes him from the drill and turns back', () => {

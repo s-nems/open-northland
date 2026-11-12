@@ -1,4 +1,4 @@
-import { components, type Entity, type Simulation, systems } from '@open-northland/sim';
+import { components, type Entity, fx, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
 import { JOB_ARCHER, JOB_SOLDIER_SPEAR, JOB_SOLDIER_SWORD } from '../../catalog/jobs.js';
 import {
@@ -11,7 +11,7 @@ import {
 import { buildingStock, goodBySlug } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
 
-const { CoinDrillOrder, Settler, SettlerProgress, setStockAmount } = components;
+const { CoinDrillOrder, LostWay, Position, Settler, SettlerProgress, setStockAmount } = components;
 const FIGHT = systems.FIGHT_EXPERIENCE_TYPE.PERSONAL;
 const COIN = 'coin';
 
@@ -20,7 +20,14 @@ const BARRACKS = { x: 14, y: 10 } as const;
 const ROW_Y = 6;
 const SWORD_X = 10;
 const SPEAR_X = 12;
-const BOW_X = 16;
+/** Clear of the barracks' extracted footprint, which reaches this row up to column 16. */
+const BOW_X = 18;
+/** The soldiers in spawn order, with the columns they start on. */
+const SOLDIERS = [
+  { job: JOB_SOLDIER_SWORD, x: SWORD_X },
+  { job: JOB_SOLDIER_SPEAR, x: SPEAR_X },
+  { job: JOB_ARCHER, x: BOW_X },
+] as const;
 /** The spearman starts part-way, so one coin takes him past the limit. */
 const SPEAR_START_POINTS = 30;
 /** The coins the three need to reach the limit (two, one, two), and one nobody may take. */
@@ -33,11 +40,7 @@ function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_HEADQUARTERS, HEADQUARTERS.x, HEADQUARTERS.y);
   const barracks = placeBuiltSandboxBuilding(sim, BUILDING_BARRACKS, BARRACKS.x, BARRACKS.y);
   setStockAmount(sim.world, barracks, goodBySlug(sim, COIN), COINS);
-  const soldiers = [
-    spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, SWORD_X, ROW_Y),
-    spawnSettlerDirect(sim, JOB_SOLDIER_SPEAR, SPEAR_X, ROW_Y),
-    spawnSettlerDirect(sim, JOB_ARCHER, BOW_X, ROW_Y),
-  ];
+  const soldiers = SOLDIERS.map(({ job, x }) => spawnSettlerDirect(sim, job, x, ROW_Y));
   const [, spearman] = soldiers;
   if (spearman !== undefined)
     sim.world.mut(spearman, SettlerProgress).experience.set(FIGHT, SPEAR_START_POINTS);
@@ -55,6 +58,12 @@ function pointsOf(sim: Simulation, e: Entity | undefined): number {
 
 const drilling = (sim: Simulation, e: Entity | undefined): boolean =>
   e !== undefined && sim.world.has(e, CoinDrillOrder);
+
+function backWhereHeStarted(sim: Simulation, e: Entity | undefined, x: number): boolean {
+  if (e === undefined || sim.world.has(e, LostWay)) return false;
+  const p = sim.world.get(e, Position);
+  return p.x === fx.fromInt(x) && p.y === fx.fromInt(ROW_Y);
+}
 
 export const coinDrillScene: SceneDefinition = {
   id: 'coin-drill',
@@ -82,6 +91,13 @@ export const coinDrillScene: SceneDefinition = {
       predicate: (sim) => {
         const [, , bow] = cast(sim);
         return pointsOf(sim, bow) === systems.COIN_DRILL_LIMIT && !drilling(sim, bow);
+      },
+    },
+    {
+      label: 'every soldier walks back to the node he started on, none lost on the way',
+      predicate: (sim) => {
+        const soldiers = cast(sim);
+        return SOLDIERS.every(({ x }, i) => backWhereHeStarted(sim, soldiers[i], x));
       },
     },
     {

@@ -9,7 +9,9 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
+import { guardPost } from '../../conflict/chase.js';
 import type { SystemContext } from '../../context.js';
+import { walkBlockMask } from '../../footprint/walk-block-mask.js';
 import { COIN_DRILL_ATOMIC_ID, coinDrillClip, mayCoinDrill } from '../../progression/coin-drill.js';
 import { isBarracks } from '../../readviews/index.js';
 import { atOrWalk, startAtomic } from '../atomics/start.js';
@@ -52,17 +54,27 @@ export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): b
     }
     turnBackFromCoinDrill(world, ctx, e);
   }
-  const returnTo = world.get(e, CoinDrillOrder).returnTo;
-  const limit = plan.limit;
-  if (
-    (limit !== null && !limit.allowsNode(returnTo)) ||
-    isUnreachableGoal(unreachableGoals(world, ctx, e), returnTo)
-  ) {
+  const back = wayBack(plan, world.get(e, CoinDrillOrder).returnTo);
+  if (back === undefined) {
     world.remove(e, CoinDrillOrder);
     return false;
   }
-  atOrWalk(world, e, here, returnTo, () => world.remove(e, CoinDrillOrder));
+  atOrWalk(world, e, here, back, () => world.remove(e, CoinDrillOrder));
   return true;
+}
+
+/**
+ * The node he walks back to: the one he left from, or, as a fresh recruit's rally post, the open node
+ * nearest it when a building now stands there. Undefined when no way leads back, so the order ends where
+ * he stands rather than in a refused route.
+ */
+function wayBack(plan: PlannerContext, returnTo: NodeId): NodeId | undefined {
+  const { world, ctx, terrain, entity: e, here, limit } = plan;
+  const back = guardPost(world, ctx, terrain, returnTo, here);
+  if (walkBlockMask(world, ctx, terrain).has(back)) return undefined;
+  if (limit !== null && !limit.allowsNode(back)) return undefined;
+  if (isUnreachableGoal(unreachableGoals(world, ctx, e), back)) return undefined;
+  return back;
 }
 
 /** Whether he keeps on at his side's standing barracks: its door is open to him and he may still drill. */

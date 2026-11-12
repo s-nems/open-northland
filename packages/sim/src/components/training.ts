@@ -40,9 +40,10 @@ export const RallyPoint = defineComponent<{ flag: Entity }>('RallyPoint', 'settl
  * A soldier's coin drill: paid fight practice in his own side's barracks, one coin of its stock for each
  * repetition, apart from a recruit's {@link TrainingOrder} enlistment. `drill` walks to the door and drills
  * while he may and a coin is there; `return` walks him back to `returnTo`, the node he stood on when the
- * order was given, and the order ends there. `paid` tells whether the repetition in progress has taken its
- * coin and not yet granted its points, so the coins still spoken for are the drilling orders not paid, and
- * a repetition cut while paid gives its coin back. Our rule.
+ * order was given, or the open node nearest it once a building covers it, and the order ends there.
+ * `paid` tells whether the repetition in progress has taken its coin and not yet granted its points, so
+ * the coins still spoken for are the drilling orders not paid, and a repetition cut while paid gives its
+ * coin back. Our rule.
  */
 export const CoinDrillOrder = defineComponent<{
   house: Entity;
