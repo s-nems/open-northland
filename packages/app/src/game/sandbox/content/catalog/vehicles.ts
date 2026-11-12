@@ -117,6 +117,7 @@ const SHIP_BIG_PASSENGERS = 9;
 /** `passengervector 2 4`: the door four steps off at facing offset 2. */
 const SHIP_DOOR = { direction: 2, distance: 4 } as const;
 const CART_HITPOINTS = 1000;
-const SHIP_HITPOINTS = 5000;
+/** The pipeline's owner rule: both ships take 10000 where the original's table gives 5000. */
+const SHIP_HITPOINTS = 10_000;
 /** As the content pipeline stamps it: the original's 3000 raised by a fifth. */
 const CATAPULT_HITPOINTS = 3600;

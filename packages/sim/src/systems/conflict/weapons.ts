@@ -36,6 +36,7 @@ import {
   isAnimalTribe,
   isAreaWeapon,
   isRangedWeapon,
+  isShipVehicle,
 } from '../readviews/index.js';
 
 // The combat weapon layer: what an attacker fights with, which armor material a target presents, and the
@@ -220,10 +221,25 @@ export function wallBlowDamage(houseDamage: number): number {
   return Math.trunc(Math.max(0, houseDamage) / HOUSE_DAMAGE_PER_WALL_VALENCY);
 }
 
-/** A blow's resolved damage against `target`: {@link wallBlowDamage} for a wall, else `damage` itself. A
- *  blow that takes no valency off a wall resolves to 0 and, like every zero-damage blow, lands nothing. */
-export function damageVsTarget(world: World, target: Entity, damage: number): number {
-  return world.has(target, Palisade) ? wallBlowDamage(damage) : damage;
+/** How many times its vehicle column a siege stone deals to a ship. Owner rule: ships hold twice the
+ *  original's pool, and a catapult on the shore stays the answer to a fleet. */
+export const SHIP_SIEGE_DAMAGE_FACTOR = 2;
+
+/** A blow's resolved damage against `target`: {@link wallBlowDamage} for a wall, a `siege` stone's
+ *  {@link SHIP_SIEGE_DAMAGE_FACTOR} on a ship, else `damage` itself. A blow that takes no valency off a
+ *  wall resolves to 0 and, like every zero-damage blow, lands nothing. */
+export function damageVsTarget(
+  world: World,
+  ctx: SystemContext,
+  target: Entity,
+  damage: number,
+  siege: boolean,
+): number {
+  if (world.has(target, Palisade)) return wallBlowDamage(damage);
+  const vehicle = siege ? world.tryGet(target, Vehicle) : undefined;
+  const type =
+    vehicle === undefined ? undefined : contentIndex(ctx.content).vehicles.get(vehicle.vehicleType);
+  return type !== undefined && isShipVehicle(type) ? damage * SHIP_SIEGE_DAMAGE_FACTOR : damage;
 }
 
 /**

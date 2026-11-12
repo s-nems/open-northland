@@ -162,7 +162,7 @@ function strike(
 ): ReturnType<typeof resolveCombatHit> {
   const material = targetMaterial(world, ctx, victim);
   const blow = {
-    damage: damageVsTarget(world, victim, weaponDamageVsMaterial(proj, material)),
+    damage: damageVsTarget(world, ctx, victim, weaponDamageVsMaterial(proj, material), proj.impact !== null),
     weaponMainType: proj.weaponMainType,
     hitSoundType: hitSoundVsMaterial(proj, material) ?? null,
     from: { x: proj.originX, y: proj.originY },
