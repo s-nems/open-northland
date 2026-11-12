@@ -1177,8 +1177,10 @@ export const enGame = {
         many: '{pieces} pcs · +{count} families',
       },
       furnitureIdle: '{pieces} pcs · no extra family',
+      furnitureInUse: 'in use: {left}',
+      furniturePieceLeft: '{percent}%',
       furnitureTip:
-        'With Furniture the dwelling takes extra families. It wears only while they live here, and when it runs out they move out.',
+        "One piece of Furniture is room for one extra family. Each such family wears its own piece and, when it is gone, takes the next from the dwelling's store. With none in store the family moves out.",
       allowed: '{good} · allowed in every dwelling · click: prohibit',
       forbidden: '{good} · prohibited in every dwelling · click: allow',
       policyForeign: 'The owner sets the rules',

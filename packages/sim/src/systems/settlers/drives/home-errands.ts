@@ -62,7 +62,7 @@ export function sleepAtHome(
       atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
       e,
     );
-    wearLodging(world, ctx, home, 'sleep');
+    wearLodging(world, ctx, home, e, 'sleep');
   });
   return true;
 }

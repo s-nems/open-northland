@@ -48,11 +48,10 @@ const manSleepPct: FactReader = (base) => sleepPct(base, JOB_CIVILIST);
 
 const womanSleepPct: FactReader = (base) => sleepPct(base, JOB_WOMAN);
 
-/** The `source` activities one delivered piece of furniture pays for in full in a home above its base
- *  size, the only home it wears in. */
+/** The `source` activities of an extra family that wear out one delivered piece of furniture. */
 function furnitureCovers(base: KnowledgeBase, source: keyof LodgingWear): FactValue {
   const ware = homeWare(base, 'furniture');
-  return ware?.effect === 'lodging' ? Math.floor(ware.deliveryValue / ware.wear[source]) : undefined;
+  return ware?.effect === 'lodging' ? Math.ceil(ware.deliveryValue / ware.wear[source]) : undefined;
 }
 
 const pctFactor = (pct: FactValue): FactValue => (pct === undefined ? undefined : pct / PERCENT);
@@ -71,14 +70,7 @@ const auraSeconds = HUMAN_HITPOINTS / systems.TEMPLE_AURA_HITPOINTS;
 /** A home ware's `field` in delivered units. */
 function wareRatio(base: KnowledgeBase, good: string, field: 'capacity' | 'fetchBelow'): FactValue {
   const ware = homeWare(base, good);
-  return ware === undefined ? undefined : ware[field] / ware.deliveryValue;
-}
-
-/** What the top home keeps of furniture, in delivered units. */
-function largeHomeRatio(base: KnowledgeBase, field: 'capacity' | 'fetchBelow'): FactValue {
-  const ware = homeWare(base, 'furniture');
-  const large = ware?.effect === 'lodging' ? ware.largeHome : undefined;
-  return ware === undefined || large === undefined ? undefined : large[field] / ware.deliveryValue;
+  return ware === undefined || ware.effect === 'lodging' ? undefined : ware[field] / ware.deliveryValue;
 }
 
 /** One delivered unit of oil's burn, a use a second. */
@@ -188,14 +180,10 @@ export const LIFE_FACTS: Readonly<Record<string, Fact>> = {
     const ware = homeWare(base, 'crockery');
     return ware === undefined || ware.effect === 'lodging' ? undefined : ware.deliveryValue / ware.useCost;
   }),
-  'home.furnitureUnits': whole((base) => wareRatio(base, 'furniture', 'capacity')),
   'home.furnitureChildren': whole((base) => furnitureCovers(base, 'child')),
   'home.furnitureSleeps': whole((base) => furnitureCovers(base, 'sleep')),
   'home.furnitureMeals': whole((base) => furnitureCovers(base, 'meal')),
   'home.crockeryFetchBelow': whole((base) => wareRatio(base, 'crockery', 'fetchBelow')),
-  'home.furnitureFetchBelow': whole((base) => wareRatio(base, 'furniture', 'fetchBelow')),
-  'home.largeFurnitureUnits': whole((base) => largeHomeRatio(base, 'capacity')),
-  'home.largeFurnitureFetchBelow': whole((base) => largeHomeRatio(base, 'fetchBelow')),
   'home.oilFetchBelow': whole((base) => wareRatio(base, 'holy_oil', 'fetchBelow')),
   'oil.burnTime': duration(oilBurnSeconds),
   'oil.fullBurnTime': duration((base) => {

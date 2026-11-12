@@ -450,8 +450,6 @@ function furnitureContent(): ContentSet {
         homeQuality: {
           effect: 'lodging',
           deliveryValue: FURNITURE_PIECE,
-          capacity: 2 * FURNITURE_PIECE,
-          fetchBelow: FURNITURE_PIECE,
           minimumHomeLevel: 0,
           wear: { child: 1, sleep: 1, meal: 1 },
         },

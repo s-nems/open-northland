@@ -333,7 +333,7 @@ export const SETTLERS: ArticleGroup = {
                 'Wohnhaus 1',
                 'Platz für weitere Familien',
                 '{{home.furnitureChildren}} Kinder, {{home.furnitureSleeps}} Schlafphasen oder {{home.furnitureMeals}} Mahlzeiten',
-                '{{home.furnitureFetchBelow}}',
+                'wenn ein Stück Vorrat fehlt',
               ],
               [
                 '[[good:holy_oil|Öl]]',
@@ -344,13 +344,13 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'Ein Wohnhaus fasst bis zu {{home.wareUnits}} Stück Geschirr und ebenso viel Öl, dazu bis zu {{home.furnitureUnits}} Stück Möbel. Wohnhaus 5 fasst {{home.largeFurnitureUnits}} Stück Möbel und füllt unter {{home.largeFurnitureFetchBelow}} nach. Öl brennt ohne Pause, auch wenn niemand betet.',
+            foot: 'Ein Wohnhaus fasst bis zu {{home.wareUnits}} Stück Geschirr und ebenso viel Öl. An Möbeln hält es je weitere Familie, die es aufnehmen kann, ein Stück Vorrat. Öl brennt ohne Pause, auch wenn niemand betet.',
           },
         },
         {
           list: [
-            'Mit Möbeln nimmt ein Wohnhaus weitere Familien auf, so viele die Spalte Mit Möbeln der Stufentabelle angibt. Die Plätze bleiben, solange Möbel im Haus sind und der Spieler sie erlaubt.',
-            'Möbel nutzen sich nur ab, solange ein Wohnhaus mehr Familien beherbergt, als es ohne sie fassen würde: Jedes dort gezeugte Kind, jeder Schlaf dort und jede Mahlzeit aus der Speisekammer verbraucht etwas. Ein Wohnhaus ohne zusätzliche Familie behält seine Möbel.',
+            'Ein Stück Möbel gibt Platz für eine weitere Familie, höchstens so viele, wie die Spalte Mit Möbeln der Stufentabelle angibt. Weitere Familien sind die zuletzt eingezogenen. Die Plätze bleiben, solange der Spieler Möbel erlaubt.',
+            'Jede weitere Familie nutzt ihr eigenes Stück ab: wenn sie ein Kind zeugt, im Haus schläft oder aus der Speisekammer isst. Die übrigen Familien nutzen keine Möbel ab. Ist ein Stück aufgebraucht, nimmt die Familie das nächste aus dem Vorrat des Hauses.',
           ],
         },
         {
@@ -368,7 +368,7 @@ export const SETTLERS: ArticleGroup = {
               ['Erwachsenes Kind', 'Verliert es, sobald es erwachsen ist.'],
               [
                 'Familie über der Grundzahl',
-                'Zieht aus, wenn die Möbel aufgebraucht oder verboten sind, die zuletzt eingezogene zuerst, und das Spiel meldet „Ausgezogen“. Ist „Familien gründen“ an, bringt der [[article:assistant|Assistent]] sie in ein Haus mit freiem Platz.',
+                'Zieht aus, wenn ihre Möbel aufgebraucht sind und das Haus keinen Vorrat hat oder wenn der Spieler Möbel verbietet, und das Spiel meldet „Ausgezogen“. Ist „Familien gründen“ an, bringt der [[article:assistant|Assistent]] sie in ein Haus mit freiem Platz.',
               ],
               [
                 'Händler, Kundschafter, Soldat',

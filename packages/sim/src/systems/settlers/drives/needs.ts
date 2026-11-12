@@ -349,7 +349,7 @@ function seekMeal(
       enterBuilding(world, e, home, here, food.cell, () => {
         fillCompanyOnComingHome(world, ctx, e);
         serve();
-        wearLodging(world, ctx, home, 'meal');
+        wearLodging(world, ctx, home, e, 'meal');
       });
     } else {
       atOrWalk(world, e, here, food.cell, serve);

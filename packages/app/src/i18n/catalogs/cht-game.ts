@@ -1136,8 +1136,10 @@ export const chtGame = {
         many: '{pieces} 件 · 多住 {count} 戶',
       },
       furnitureIdle: '{pieces} 件 · 沒有多住的家庭',
+      furnitureInUse: '使用中：{left}',
+      furniturePieceLeft: '{percent}%',
       furnitureTip:
-        '有傢俱時，民居可多住幾戶家庭。只有這些家庭住在這裡時傢俱才會損耗；傢俱用完後，他們就會搬走。',
+        '一件傢俱可多住一戶家庭。每戶多住的家庭消耗自己的那件，用完後從民居的存貨裡取下一件。沒有存貨時，這戶家庭就會搬走。',
       allowed: '{good} · 所有民居皆允許 · 點擊：禁止',
       forbidden: '{good} · 所有民居皆禁止 · 點擊：允許',
       policyForeign: '規則由擁有者設定',

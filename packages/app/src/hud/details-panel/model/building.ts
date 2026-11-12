@@ -6,6 +6,7 @@ import {
   homeWareStock,
   householdGoodPolicyView,
   indexesOf,
+  lodgingPiecesView,
   storageMinimumsView,
   systems,
   type WorldSnapshot,
@@ -80,9 +81,14 @@ export interface HomeQualityRow {
   readonly uses?: number;
   /** Only the holy-oil row carries this live finished-home status. */
   readonly holyFireActive?: boolean;
-  /** Only the furniture row: the pieces the pool holds, in tenths and never none while some is left, and
-   *  the extra families it makes room for now (0 while it serves none). */
-  readonly furniture?: { readonly pieces: number; readonly extraFamilies: number };
+  /** Only the furniture row: the spare pieces the store holds, in tenths and never none while some is
+   *  left, the extra families the home has room for now (0 while it serves none), and the percent left of
+   *  the piece each extra family lives on. */
+  readonly furniture?: {
+    readonly pieces: number;
+    readonly extraFamilies: number;
+    readonly inUse: readonly number[];
+  };
 }
 
 /** Household: the household wares a finished home keeps, and the owner's policy over every home. */
@@ -266,6 +272,7 @@ const TIER_SUFFIX = /\s*(\([^()]*\)|\d+)$/;
 const HOUSEHOLD_ORDER: Readonly<Record<HouseholdEffect, number>> = { cooking: 0, lodging: 1, piety: 2 };
 
 const TENTHS = 10;
+const PERCENT = 100;
 
 /** `points` of a ware delivered `deliveryValue` points a piece, in tenths of a piece; some left never
  *  reads as none. */
@@ -275,17 +282,24 @@ function piecesOf(points: number, deliveryValue: number): number {
 }
 
 /** What a ware's row says of its pool of `value` points: the uses left, the holy fire, or the furniture
- *  pieces and the `extraFamilies` they house now. */
+ *  in store, the `extraFamilies` the home has room for and the pieces `inUse`, in points left. */
 function wareState(
   use: HomeQualityUse,
   value: number,
   extraFamilies: number,
+  inUse: readonly number[],
 ): Pick<HomeQualityRow, 'uses' | 'holyFireActive' | 'furniture'> {
   switch (use.effect) {
     case 'piety':
       return { holyFireActive: value > 0 };
     case 'lodging':
-      return { furniture: { pieces: piecesOf(value, use.deliveryValue), extraFamilies } };
+      return {
+        furniture: {
+          pieces: piecesOf(value, use.deliveryValue),
+          extraFamilies,
+          inUse: inUse.map((left) => Math.ceil((left * PERCENT) / use.deliveryValue)),
+        },
+      };
     case 'cooking':
       return { uses: Math.floor(value / use.useCost) };
   }
@@ -303,6 +317,7 @@ function homeQuality(
   const pools = homeQualityView(snapshot, ent.id) ?? { cooking: 0, lodging: 0, piety: 0 };
   const policy = householdGoodPolicyView(snapshot, player);
   const extraFamilies = homeFamilyCapacityView(snapshot, ent.id, def, ctx.goods) - def.homeSize;
+  const inUse = lodgingPiecesView(snapshot, ent.id);
   const rows = ctx.goods
     .flatMap((good): HomeQualityRow[] => {
       const use = good.homeQuality;
@@ -314,9 +329,9 @@ function homeQuality(
           goodId: good.id,
           label: goodLabel(ctx, good.typeId),
           value,
-          capacity: homeWareStock(use, level).capacity,
+          capacity: homeWareStock(use, def).capacity,
           allowed: policy[use.effect],
-          ...wareState(use, value, extraFamilies),
+          ...wareState(use, value, extraFamilies, inUse),
         },
       ];
     })

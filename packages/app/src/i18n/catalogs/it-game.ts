@@ -1193,8 +1193,10 @@ export const itGame = {
         many: '{pieces} pz · +{count} famiglie',
       },
       furnitureIdle: '{pieces} pz · nessuna famiglia in più',
+      furnitureInUse: 'in uso: {left}',
+      furniturePieceLeft: '{percent}%',
       furnitureTip:
-        "Con il Mobilio l'abitazione ospita famiglie in più. Si consuma solo finché queste ci vivono, e quando finisce traslocano.",
+        "Un pezzo di Mobilio dà posto a una famiglia in più. Ognuna di queste famiglie consuma il proprio pezzo e, finito quello, prende il successivo dalla scorta dell'abitazione. Senza scorta la famiglia trasloca.",
       allowed: '{good} · consentito in ogni abitazione · clic: vieta',
       forbidden: '{good} · vietato in ogni abitazione · clic: consenti',
       policyForeign: 'Le regole le stabilisce il proprietario',

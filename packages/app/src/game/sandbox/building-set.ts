@@ -802,7 +802,7 @@ function vehicleYardRow(yard: VehicleYard): SandboxBuildingRow {
 const HOME_TIERS = [
   { homeSize: 1, furnishedFamilies: 1, foodCapacity: 5 },
   { homeSize: 2, furnishedFamilies: 1, foodCapacity: 10 },
-  { homeSize: 3, furnishedFamilies: 2, foodCapacity: 15 },
+  { homeSize: 3, furnishedFamilies: 1, foodCapacity: 15 },
   { homeSize: 4, furnishedFamilies: 2, foodCapacity: 15 },
   { homeSize: 5, furnishedFamilies: 2, foodCapacity: 15 },
 ] as const;

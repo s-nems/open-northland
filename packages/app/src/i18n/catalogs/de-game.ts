@@ -1262,8 +1262,10 @@ export const deGame = {
         many: '{pieces} Stk. · +{count} Familien',
       },
       furnitureIdle: '{pieces} Stk. · keine weitere Familie',
+      furnitureInUse: 'in Gebrauch: {left}',
+      furniturePieceLeft: '{percent}%',
       furnitureTip:
-        'Mit Möbeln nimmt das Wohnhaus weitere Familien auf. Die Möbel nutzen sich nur ab, solange diese Familien hier wohnen, und wenn sie aufgebraucht sind, ziehen sie aus.',
+        'Ein Stück Möbel gibt Platz für eine weitere Familie. Jede dieser Familien nutzt ihr eigenes Stück ab und nimmt danach das nächste aus dem Vorrat des Hauses. Ohne Vorrat zieht die Familie aus.',
       allowed: '{good} · in allen Wohnhäusern erlaubt · Klicken: verbieten',
       forbidden: '{good} · in allen Wohnhäusern verboten · Klicken: erlauben',
       policyForeign: 'Der Besitzer legt die Regeln fest',

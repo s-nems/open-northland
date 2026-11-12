@@ -5,6 +5,7 @@ import {
   Building,
   CurrentAtomic,
   HomeQuality,
+  Lodgings,
   Marriage,
   MISSION_BEHAVIOUR,
   MoveGoal,
@@ -90,8 +91,6 @@ function homeContent({ restfulBed = true } = {}): ContentSet {
         homeQuality: {
           effect: 'lodging',
           deliveryValue: FURNITURE_PIECE,
-          capacity: FURNITURE_PIECE,
-          fetchBelow: FURNITURE_PIECE,
           minimumHomeLevel: 0,
           wear: { child: FURNITURE_PIECE, sleep: SLEEP_WEAR, meal: MEAL_WEAR },
         },
@@ -204,20 +203,25 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     expect(atomic.duration).toBe(SLEEP_TICKS);
   });
 
-  it('wears a crowded furnished home for a sleep or a meal started at its door', () => {
+  it("wears an extra family's piece for a sleep or a meal started at the door of its home", () => {
     const sim = simWithHomes();
     const sleeper = tiredAt(sim, 3, 2);
     const eater = needsSettlerAt(sim, 3, 2, { hunger: HUNGRY });
     const home = homeAt(sim, 3, 2);
     stock(sim, home, 2);
     sim.world.add(home, HomeQuality, { cooking: 0, lodging: FURNITURE_PIECE, piety: 0 });
-    for (const e of [sleeper, eater, sim.world.create()]) sim.world.add(e, Residence, { home, since: 0 });
+    // A couple is one family, here the last to move in.
+    sim.world.add(sleeper, Marriage, { spouse: eater, child: null });
+    sim.world.add(eater, Marriage, { spouse: sleeper, child: null });
+    for (const e of [sleeper, eater]) sim.world.add(e, Residence, { home, since: 1 });
+    for (const e of [sim.world.create(), sim.world.create()]) sim.world.add(e, Residence, { home, since: 0 });
 
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(sleeper, CurrentAtomic).effect).toEqual({ kind: 'sleep' });
     expect(sim.world.get(eater, CurrentAtomic).effect).toEqual({ kind: 'eat', goodType: FOOD, from: home });
-    expect(sim.world.get(home, HomeQuality).lodging).toBe(FURNITURE_PIECE - SLEEP_WEAR - MEAL_WEAR);
+    expect(sim.world.get(home, HomeQuality).lodging).toBe(0);
+    expect(sim.world.get(home, Lodgings).pieces).toEqual([FURNITURE_PIECE - SLEEP_WEAR - MEAL_WEAR]);
   });
 
   it("sounds its clip's cue indoors as it does in the open", () => {

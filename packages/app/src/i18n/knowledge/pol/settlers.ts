@@ -324,7 +324,7 @@ export const SETTLERS: ArticleGroup = {
                 'Dom 1',
                 'Miejsce dla kolejnych rodzin',
                 '{{home.furnitureChildren}} dzieci, {{home.furnitureSleeps}} snów albo {{home.furnitureMeals}} posiłków',
-                '{{home.furnitureFetchBelow}}',
+                'gdy brakuje sztuki zapasu',
               ],
               [
                 '[[good:holy_oil|Oliwa]]',
@@ -335,13 +335,13 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'Dom trzyma do {{home.wareUnits}} sztuk Naczyń i tyle samo Oliwy, a Mebli do {{home.furnitureUnits}} sztuk. Dom 5 trzyma {{home.largeFurnitureUnits}} sztuki Mebli i uzupełnia je poniżej {{home.largeFurnitureFetchBelow}}. Oliwa pali się bez przerwy, także gdy nikt się nie modli.',
+            foot: 'Dom trzyma do {{home.wareUnits}} sztuk Naczyń i tyle samo Oliwy. Mebli trzyma na zapas tyle sztuk, ile dodatkowych rodzin mieści. Oliwa pali się bez przerwy, także gdy nikt się nie modli.',
           },
         },
         {
           list: [
-            'Z Meblami dom przyjmuje dodatkowe rodziny, ile podaje kolumna Z Meblami w tabeli poziomów. Te miejsca są, dopóki w domu leżą Meble, a gracz ich nie zabronił.',
-            'Meble zużywają się tylko wtedy, gdy w domu mieszka więcej rodzin, niż zmieściłoby się bez nich: każde poczęte tam dziecko, każdy sen w domu i każdy posiłek ze spiżarni trochę je zużywa. Dom bez dodatkowej rodziny Mebli nie zużywa.',
+            'Jedna sztuka Mebli to miejsce dla jednej dodatkowej rodziny, najwyżej tylu, ile podaje kolumna Z Meblami w tabeli poziomów. Dodatkowe są te rodziny, które wprowadziły się ostatnie. Miejsca są, dopóki gracz Mebli nie zabronił.',
+            'Każda dodatkowa rodzina zużywa własną sztukę: poczęciem dziecka, snem w domu i posiłkiem ze spiżarni. Pozostałe rodziny Mebli nie zużywają. Gdy sztuka się zużyje, rodzina bierze następną z zapasu domu.',
           ],
         },
         {
@@ -359,7 +359,7 @@ export const SETTLERS: ArticleGroup = {
               ['Dorosłe dziecko', 'Traci dom w chwili dorosłości.'],
               [
                 'Rodzina ponad podstawową liczbę',
-                'Wyprowadza się, gdy Meble się skończą albo gracz ich zabroni, najpierw ta, która wprowadziła się ostatnia. Gra pokazuje wtedy "Wyprowadzka". Przy włączonym "Zakładaj rodziny" [[article:assistant|Asystent]] przenosi ją do domu z wolnym miejscem.',
+                'Wyprowadza się, gdy jej Meble się zużyją, a dom nie ma zapasu, albo gdy gracz Mebli zabroni. Gra pokazuje wtedy "Wyprowadzka". Przy włączonym "Zakładaj rodziny" [[article:assistant|Asystent]] przenosi ją do domu z wolnym miejscem.',
               ],
               [
                 'Kupiec, Zwiadowca, żołnierz',

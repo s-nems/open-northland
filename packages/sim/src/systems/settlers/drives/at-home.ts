@@ -119,6 +119,6 @@ export function planHomeTopUp(
     atomicDuration(ctx.content, settler, round.atomicId),
     round.target,
   );
-  wearLodging(world, ctx, round.home, round.effect.kind === 'sleep' ? 'sleep' : 'meal');
+  wearLodging(world, ctx, round.home, e, round.effect.kind === 'sleep' ? 'sleep' : 'meal');
   return true;
 }

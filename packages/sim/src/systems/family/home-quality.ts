@@ -10,13 +10,19 @@ import {
   DEFAULT_HOUSEHOLD_GOOD_POLICY,
   HomeQuality,
   HouseholdGoodPolicy,
+  Lodgings,
   ownerOf,
   Settler,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { familyCapacity, homeWareServes, homeWareStock } from '../../inspect/home-capacity.js';
+import {
+  familyCapacity,
+  furnishedSlots,
+  homeWareServes,
+  homeWareStock,
+} from '../../inspect/home-capacity.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { goodEnabled } from '../progression/availability.js';
 
@@ -122,10 +128,17 @@ export function homeQualityActive(
   );
 }
 
+const NO_PIECES: readonly number[] = [];
+
+/** What is left of each piece `home`'s extra families live on, the first extra family's first. */
+export function lodgingPieces(world: World, home: Entity): readonly number[] {
+  return world.tryGet(home, Lodgings)?.pieces ?? NO_PIECES;
+}
+
 /**
- * How many families `home`, a home of `type`, takes now: its `homeSize`, plus its `furnishedFamilies` while
- * it holds furniture its owner allows ({@link homeQualityActive}). Owner's design: furniture houses extra
- * families instead of improving rest.
+ * How many families `home`, a home of `type`, takes now: its `homeSize`, plus one per piece of furniture in
+ * use or whole in store, up to its `furnishedFamilies`, while it is finished and its owner allows furniture.
+ * Owner's design: furniture houses extra families instead of improving rest.
  */
 export function homeFamilyCapacity(
   world: World,
@@ -133,7 +146,25 @@ export function homeFamilyCapacity(
   home: Entity,
   type: BuildingType,
 ): number {
-  return familyCapacity(type, type.furnishedFamilies > 0 && homeQualityActive(world, ctx, home, 'lodging'));
+  const furniture = type.furnishedFamilies > 0 ? lodgingUseFor(ctx) : undefined;
+  const building = world.tryGet(home, Building);
+  if (furniture === undefined || building === undefined) return type.homeSize;
+  const slots = furnishedSlots(
+    furniture,
+    lodgingPieces(world, home).length,
+    homeQualityValue(world, home, 'lodging'),
+  );
+  const serves = homeWareServes(
+    {
+      kind: type.kind,
+      built: building.built,
+      level: building.level,
+      pool: slots,
+      allowed: homeQualityAllowed(world, home, 'lodging'),
+    },
+    furniture,
+  );
+  return familyCapacity(type, serves ? slots : 0);
 }
 
 /** Spend one use when the pool can pay it in full. A sub-cost remainder stays available, as in the
@@ -152,11 +183,15 @@ export function spendHomeQuality(
 }
 
 /**
- * The carried units of `use` a home at `level` holding `pool` points still takes. Furniture goes in only
+ * The carried units of `use` a home of `type` holding `pool` points still takes. Furniture goes in only
  * as a whole piece, so a second woman's delivery is not lost to the cap; the other wares fill up to it.
  */
-export function homeQualityRoom(use: HomeQualityUse, level: number, pool: number): number {
-  const free = Math.max(0, homeWareStock(use, level).capacity - pool);
+export function homeQualityRoom(
+  use: HomeQualityUse,
+  type: Pick<BuildingType, 'furnishedFamilies'>,
+  pool: number,
+): number {
+  const free = Math.max(0, homeWareStock(use, type).capacity - pool);
   return use.effect === 'lodging'
     ? Math.floor(free / use.deliveryValue)
     : Math.ceil(free / use.deliveryValue);
@@ -183,8 +218,8 @@ export function depositHomeQuality(
     return 0;
 
   const existing = world.tryGet(home, HomeQuality) ?? EMPTY_QUALITY;
-  const { capacity } = homeWareStock(use, building.level);
-  const moved = Math.min(amount, homeQualityRoom(use, building.level, existing[use.effect]));
+  const { capacity } = homeWareStock(use, type);
+  const moved = Math.min(amount, homeQualityRoom(use, type, existing[use.effect]));
   if (moved <= 0) return 0;
   const quality = world.tryMut(home, HomeQuality);
   if (quality === undefined) {
@@ -206,13 +241,16 @@ export function demandedHomeQualityGoods(
   const identity = world.tryGet(settler, Settler);
   if (identity === undefined) return EMPTY_GOODS;
   const owner = ownerOf(world, settler);
-  const level = world.tryGet(home, Building)?.level ?? 0;
+  const building = world.tryGet(home, Building);
+  const type = building && contentIndex(ctx.content).buildings.get(building.buildingType);
+  if (building === undefined || type === undefined) return EMPTY_GOODS;
+  const level = building.level;
   let out: Set<number> | undefined;
   for (const good of householdWaresOf(ctx.content)) {
     const use = good.homeQuality;
     if (
       !homeQualityAllowed(world, home, use.effect) ||
-      homeQualityValue(world, home, use.effect) >= homeWareStock(use, level).fetchBelow
+      homeQualityValue(world, home, use.effect) >= homeWareStock(use, type).fetchBelow
     )
       continue;
     // Oil starts serving the mature home. The source field is only structurally identified as house

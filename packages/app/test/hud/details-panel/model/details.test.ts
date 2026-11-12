@@ -467,14 +467,15 @@ describe('selection details panel model', () => {
     expect(model.kind === 'building' && model.orders?.upgrade?.control).toBe('Requires collector');
   });
 
-  it('shows household durability, remaining uses, furniture pieces and families, and the holy fire', () => {
-    const quality = { cooking: 240, lodging: 750, piety: 2000 };
+  it('shows household durability, remaining uses, furniture in store and in use, and the holy fire', () => {
+    const quality = { cooking: 240, lodging: 1000, piety: 2000 };
     const mature = buildUnitPanelModel(
       snapshotOf([
         buildingEntity(1, BUILDING_HOME_02, {
           components: {
             Building: { buildingType: BUILDING_HOME_02, tribe: 1, built: ONE, level: 2 },
             HomeQuality: quality,
+            Lodgings: { pieces: [750] },
           },
         }),
         {
@@ -497,9 +498,9 @@ describe('selection details panel model', () => {
       expect.objectContaining({
         effect: 'lodging',
         goodId: 'furniture',
-        value: 750,
-        capacity: 2000,
-        furniture: { pieces: 0.8, extraFamilies: 2 },
+        value: 1000,
+        capacity: 1000,
+        furniture: { pieces: 1, extraFamilies: 1, inUse: [75] },
       }),
       expect.objectContaining({
         effect: 'piety',
@@ -551,7 +552,7 @@ describe('selection details panel model', () => {
     expect(dry.homeQuality?.rows.find((row) => row.effect === 'piety')?.holyFireActive).toBe(false);
     expect(dry.homeQuality?.rows.find((row) => row.effect === 'lodging')).toMatchObject({
       allowed: false,
-      furniture: { pieces: 0.8, extraFamilies: 0 },
+      furniture: { pieces: 1, extraFamilies: 0, inUse: [] },
     });
     expect(dry.staff?.count?.capacity).toBe(home02.homeSize);
 

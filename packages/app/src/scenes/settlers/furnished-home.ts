@@ -9,17 +9,15 @@ import type { SceneDefinition } from '../types.js';
 
 const MAP_W = 22;
 const MAP_H = 18;
-/** West to east: a well furnished home, a home with its furniture nearly gone, an empty home. */
+/** West to east: a well furnished home, a home whose extra family's piece is nearly gone, an empty home. */
 const FURNISHED = { x: 4, y: 5 } as const;
 const WORN = { x: 10, y: 5 } as const;
 const SPARE = { x: 16, y: 5 } as const;
 /** Where a home's two women stand at the start, south of its door. */
 const WOMEN_ROW_BELOW = 9;
 const WOMEN_COLUMN_OFFSET = 1;
-/** The worn home's furniture lasts this many sleeps above its base. */
-const SLEEPS_LEFT = 2;
-/** The furnished home's furniture: a full pool, two pieces. */
-const FURNISHED_PIECES = 2;
+/** The furnished home's store: the one spare piece a home_level_00 keeps. */
+const SPARE_PIECES = 1;
 /** The worn home's women want sleep: the bar sits below the drive level and above the notice level. */
 const TIRED_PERCENT = 85;
 const PERCENT = 100;
@@ -32,7 +30,7 @@ const LONE_FAMILY = 1;
 const RUN_TICKS = 300;
 const INITIAL_ZOOM = 1;
 
-const { Building, HomeQuality, Residence, SettlerNeeds, Stockpile } = components;
+const { Building, HomeQuality, Lodgings, Residence, SettlerNeeds, Stockpile } = components;
 
 function furniture(sim: Simulation): Extract<HomeQualityUse, { readonly effect: 'lodging' }> {
   const ware = sim.content.goods.find((good) => good.homeQuality?.effect === 'lodging')?.homeQuality;
@@ -80,11 +78,13 @@ function build(sim: Simulation): void {
   placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, SPARE.x, SPARE.y);
   sim.world.add(furnished, HomeQuality, {
     cooking: 0,
-    lodging: FURNISHED_PIECES * ware.deliveryValue,
+    lodging: SPARE_PIECES * ware.deliveryValue,
     piety: 0,
   });
-  sim.world.add(worn, HomeQuality, { cooking: 0, lodging: SLEEPS_LEFT * ware.wear.sleep, piety: 0 });
-  // An empty larder, so no meal at home wears the worn home's furniture before the two sleeps do.
+  sim.world.add(furnished, Lodgings, { pieces: [ware.deliveryValue] });
+  // The later woman's piece lasts until her next sleep, and the home has no spare.
+  sim.world.add(worn, Lodgings, { pieces: [ware.wear.sleep] });
+  // An empty larder, so no meal at home wears her piece out before the sleep does.
   sim.world.mut(worn, Stockpile).amounts.clear();
   settleTwo(sim, furnished, FURNISHED);
   for (const woman of settleTwo(sim, worn, WORN)) {
@@ -107,8 +107,8 @@ export const furnishedHomeScene: SceneDefinition = {
       predicate: (sim) => residentsOf(sim, homes(sim).furnished).length === CROWDED_FAMILIES,
     },
     {
-      label: 'the sleeps of the crowded home wore its furniture out',
-      predicate: (sim) => sim.world.get(homes(sim).worn, HomeQuality).lodging === 0,
+      label: "the later woman's sleep wore out the piece she lived on",
+      predicate: (sim) => sim.world.get(homes(sim).worn, Lodgings).pieces.length === 0,
     },
     {
       label: 'the family that moved in last moved out, the first one stayed',

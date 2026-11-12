@@ -7,6 +7,7 @@ import {
   Evicted,
   Female,
   HomeQuality,
+  Lodgings,
   Marriage,
   Owner,
   Position,
@@ -51,8 +52,6 @@ function content(): ContentSet {
         homeQuality: {
           effect: 'lodging',
           deliveryValue: PIECE,
-          capacity: PIECE,
-          fetchBelow: PIECE,
           minimumHomeLevel: 0,
           wear: { child: PIECE, sleep: SLEEP_WEAR, meal: SLEEP_WEAR },
         },
@@ -200,7 +199,7 @@ describe('assistant family founding', () => {
     const sim = simOn();
     const crowded = homeAt(sim, 10);
     const open = homeAt(sim, 40);
-    furnish(sim, crowded, 1);
+    sim.world.add(crowded, Lodgings, { pieces: [1] });
     for (const x of [11, 12]) sim.world.add(adultAt(sim, x, true), Residence, { home: crowded, since: 0 });
     // The child holds the lowest id: it must wait for a parent instead of taking the slot alone.
     const child = childAt(sim, 15);
@@ -210,7 +209,7 @@ describe('assistant family founding', () => {
     for (const e of [wife, husband, child]) sim.world.add(e, Residence, { home: crowded, since: 1 });
     switchOn(sim);
 
-    wearLodging(sim.world, ctxOf(sim), crowded, 'sleep');
+    wearLodging(sim.world, ctxOf(sim), crowded, wife, 'sleep');
     expect(homeOf(sim, wife)).toBeUndefined();
     beat(sim);
 

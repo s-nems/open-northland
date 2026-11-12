@@ -84,7 +84,7 @@ export function planWomanHoard(
     const qualityRoom =
       quality !== undefined &&
       level >= quality.minimumHomeLevel &&
-      homeQualityRoom(quality, level, homeQualityValue(world, home, quality.effect)) > 0;
+      homeQualityRoom(quality, homeType, homeQualityValue(world, home, quality.effect)) > 0;
     if (!qualityRoom && (!world.has(home, Stockpile) || !hasRoom(world, ctx, home, load.goodType)))
       return false;
     deliverHome(world, ctx, terrain, e, settler, home, hereNode);

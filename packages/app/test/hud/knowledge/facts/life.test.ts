@@ -8,15 +8,13 @@ const FURNITURE_TYPE = 129;
 const PIECE = 1000;
 
 describe('furniture facts', () => {
-  it('count the whole children, sleeps and meals one piece pays for', () => {
+  it('count the children, sleeps and meals of a family that wear one piece out', () => {
     const furniture = GoodType.parse({
       typeId: FURNITURE_TYPE,
       id: 'furniture',
       homeQuality: {
         effect: 'lodging',
         deliveryValue: PIECE,
-        capacity: 2 * PIECE,
-        fetchBelow: PIECE,
         minimumHomeLevel: 0,
         wear: { child: 80, sleep: 8, meal: 300 },
       },
@@ -27,7 +25,6 @@ describe('furniture facts', () => {
       ['home.furnitureChildren', 'home.furnitureSleeps', 'home.furnitureMeals'].map((name) =>
         factText(name, base),
       ),
-    ).toEqual(['12', '125', '3']);
-    expect(factText('home.furnitureUnits', base)).toBe('2');
+    ).toEqual(['13', '125', '4']);
   });
 });

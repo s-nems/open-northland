@@ -77,6 +77,13 @@ export const HomeQuality = defineComponent<{
   piety: number;
 }>('HomeQuality', 'settlers');
 
+/**
+ * The furniture a home's extra families live on: `pieces[i]` is what is left, in the furniture's quality
+ * points, of the piece the i-th family above the home's base `homeSize` wears. {@link HomeQuality}'s
+ * `lodging` pool is the spare that replaces a worn-out piece.
+ */
+export const Lodgings = defineComponent<{ pieces: number[] }>('Lodgings', 'settlers');
+
 /** Settlement-wide permission to supply and consume each household good. Absent means
  *  {@link DEFAULT_HOUSEHOLD_GOOD_POLICY}. */
 export const HouseholdGoodPolicy = defineComponent<{

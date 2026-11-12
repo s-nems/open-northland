@@ -15,20 +15,25 @@ const WARE_ICON_PX = 18;
 const PIECE_FRACTION_DIGITS = 1;
 
 /** What a ware's line says after its name: the uses its pool holds, whether the holy fire burns, or the
- *  furniture pieces left and the families they house above the home's base. */
+ *  furniture in store, the families the home has room for above its base, and what is left of the piece
+ *  each extra family lives on. */
 export function wareState(row: HomeQualityRow): string {
   const copy = messages().hud.buildingPanel;
   if (row.holyFireActive !== undefined) return row.holyFireActive ? copy.holyFireOn : copy.holyFireOff;
   if (row.furniture !== undefined) {
     const tag = bcp47Tag();
-    const { pieces, extraFamilies } = row.furniture;
+    const { pieces, extraFamilies, inUse } = row.furniture;
     const values = {
       pieces: pieces.toLocaleString(tag, { maximumFractionDigits: PIECE_FRACTION_DIGITS }),
       count: extraFamilies,
     };
-    return extraFamilies > 0
-      ? formatMessage(pluralForm(extraFamilies, copy.furnitureLodges, tag), values)
-      : formatMessage(copy.furnitureIdle, values);
+    const store =
+      extraFamilies > 0
+        ? formatMessage(pluralForm(extraFamilies, copy.furnitureLodges, tag), values)
+        : formatMessage(copy.furnitureIdle, values);
+    if (inUse.length === 0) return store;
+    const left = inUse.map((percent) => formatMessage(copy.furniturePieceLeft, { percent })).join(', ');
+    return `${store} · ${formatMessage(copy.furnitureInUse, { left })}`;
   }
   return formatMessage(copy.uses, { count: row.uses ?? 0 });
 }

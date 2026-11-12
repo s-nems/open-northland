@@ -41,7 +41,7 @@ const PRAYER_SITE_BY_LOGIC_TYPE: Readonly<Record<number, PrayerSite>> = {
 const FURNISHED_FAMILIES_BY_HOME_ID: Readonly<Record<string, number>> = {
   home_level_00: 1,
   home_level_01: 1,
-  home_level_02: 2,
+  home_level_02: 1,
   home_level_03: 2,
   home_level_04: 2,
 };

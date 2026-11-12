@@ -167,8 +167,7 @@ export function driveOrder(
     elapsed: 0,
     duration: makeLoveDuration(ctx, world.get(woman, Settler).tribe),
   });
-  // After the session is on the home, so furniture that runs out moves another family out first.
-  wearLodging(world, ctx, home, 'child');
+  wearLodging(world, ctx, home, woman, 'child');
 }
 
 /**

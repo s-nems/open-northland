@@ -8,6 +8,7 @@ import {
   Evicted,
   Female,
   HomeQuality,
+  Lodgings,
   MakingLove,
   Marriage,
   Owner,
@@ -30,8 +31,9 @@ import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { setNeeds } from '../../fixtures/settler.js';
 
-/** Furniture lets a home take extra families; their sleeps, meals and children wear it, and once it is
- *  gone or forbidden the families above the home's base size move out. */
+/** A piece of furniture houses one family above a home's base size. Only that family's sleeps, meals and
+ *  children wear it; a worn-out piece is replaced from the home's store, and with none there, or with
+ *  furniture forbidden, the family moves out. */
 
 const PLAYER = 0;
 const TRIBE = 1;
@@ -48,7 +50,7 @@ const REST_CHANNEL = 1;
 const HUNGER_CHANNEL = 2;
 const CLIP_TICKS = 2;
 const CLIP_PAYS = 1000;
-/** Distinct per source, so a test reads which activity wore the pool. */
+/** Distinct per source, so a test reads which activity wore the piece. */
 const CHILD_WEAR = 100;
 const SLEEP_WEAR = 10;
 const MEAL_WEAR = 7;
@@ -56,7 +58,6 @@ const PIECE = 1000;
 const LARDER = 5;
 /** Food the child session takes from the larder. */
 const CHILD_FOOD = 2;
-const LOVE_TICKS = 100;
 
 function content(): ContentSet {
   return parseContentSet({
@@ -69,8 +70,6 @@ function content(): ContentSet {
         homeQuality: {
           effect: 'lodging',
           deliveryValue: PIECE,
-          capacity: 2 * PIECE,
-          fetchBelow: PIECE,
           minimumHomeLevel: 0,
           wear: { child: CHILD_WEAR, sleep: SLEEP_WEAR, meal: MEAL_WEAR },
         },
@@ -176,41 +175,58 @@ function movedOut(sim: Simulation): Entity[] {
   return sim.events.current().flatMap((ev) => (ev.kind === 'familyMovedOut' ? [ev.entity] : []));
 }
 
+/** What is left of the pieces the home's extra families live on. */
+function pieces(sim: Simulation, home: Entity): readonly number[] {
+  return sim.world.tryGet(home, Lodgings)?.pieces ?? [];
+}
+
+function sleepAtHome(sim: Simulation, sleeper: Entity, home: Entity): boolean {
+  sim.world.add(sleeper, Resting, { at: home });
+  setNeeds(sim, sleeper, { fatigue: ONE, hunger: fx.fromInt(0) });
+  return planHomeTopUp(
+    sim.world,
+    ctxOf(sim),
+    sleeper,
+    sim.world.get(sleeper, Settler),
+    collectSupplyTally(sim.world),
+  );
+}
+
 describe('furniture housing extra families', () => {
-  it('wears for a sleep or a meal at home only while the home holds more families than its base', () => {
+  it('wears for a sleep or a meal at home of an extra family only, off the piece it lives on', () => {
     const { sim, home } = setup();
-    const sleeper = single(sim, home, 0);
-    single(sim, home, 0);
-    sim.world.add(sleeper, Resting, { at: home });
-    setNeeds(sim, sleeper, { fatigue: ONE });
-    const topUp = () =>
+    const base = single(sim, home, 0);
+    single(sim, home, 1);
+    const extra = single(sim, home, 2);
+
+    expect(sleepAtHome(sim, base, home)).toBe(true);
+    expect(lodging(sim, home)).toBe(PIECE);
+    expect(pieces(sim, home)).toEqual([]);
+
+    expect(sleepAtHome(sim, extra, home)).toBe(true);
+    expect(lodging(sim, home)).toBe(0);
+    expect(pieces(sim, home)).toEqual([PIECE - SLEEP_WEAR]);
+
+    setNeeds(sim, extra, { fatigue: fx.fromInt(0), hunger: ONE });
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, LARDER);
+    expect(
       planHomeTopUp(
         sim.world,
         ctxOf(sim),
-        sleeper,
-        sim.world.get(sleeper, Settler),
+        extra,
+        sim.world.get(extra, Settler),
         collectSupplyTally(sim.world),
-      );
-
-    expect(topUp()).toBe(true);
-    expect(lodging(sim, home)).toBe(PIECE);
-
-    single(sim, home, 0);
-    expect(topUp()).toBe(true);
-    expect(lodging(sim, home)).toBe(PIECE - SLEEP_WEAR);
-
-    setNeeds(sim, sleeper, { fatigue: fx.fromInt(0), hunger: ONE });
-    sim.world.mut(home, Stockpile).amounts.set(FOOD, LARDER);
-    expect(topUp()).toBe(true);
-    expect(sim.world.get(sleeper, CurrentAtomic).effect.kind).toBe('eat');
-    expect(lodging(sim, home)).toBe(PIECE - SLEEP_WEAR - MEAL_WEAR);
+      ),
+    ).toBe(true);
+    expect(sim.world.get(extra, CurrentAtomic).effect.kind).toBe('eat');
+    expect(pieces(sim, home)).toEqual([PIECE - SLEEP_WEAR - MEAL_WEAR]);
   });
 
-  it("wears the child cost as a crowded home's couple begins to make a child", () => {
+  it('wears the child cost off the piece of an extra couple beginning to make a child', () => {
     const { sim, home } = setup();
-    const { wife, husband } = couple(sim, home, 0);
     single(sim, home, 0);
-    single(sim, home, 0);
+    single(sim, home, 1);
+    const { wife, husband } = couple(sim, home, 2);
     sim.world.add(wife, Resting, { at: home });
     sim.world.add(husband, Resting, { at: home });
     sim.world.add(wife, ChildOrder, { child: 'female' });
@@ -219,61 +235,89 @@ describe('furniture housing extra families', () => {
     familySystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(home, MakingLove).wife).toBe(wife);
-    expect(lodging(sim, home)).toBe(PIECE - CHILD_WEAR);
+    expect(pieces(sim, home)).toEqual([PIECE - CHILD_WEAR]);
   });
 
-  it('empties the pool on a partial last payment and moves the families above base out', () => {
+  it('keeps one piece per extra family, each worn by its own family, the last to move in being extra', () => {
     const { sim, home } = setup();
+    sim.world.mut(home, HomeQuality).lodging = FURNISHED_FAMILIES * PIECE;
+    // The wife married into a household of tick 1; its own move-in tick stays the earliest.
+    const old = couple(sim, home, 1, 50);
+    const base = single(sim, home, 20);
+    const first = single(sim, home, 30);
+    const second = single(sim, home, 30);
+    const ctx = ctxOf(sim);
+
+    wearLodging(sim.world, ctx, home, old.wife, 'sleep');
+    wearLodging(sim.world, ctx, home, base, 'sleep');
+    expect(pieces(sim, home)).toEqual([]);
+
+    wearLodging(sim.world, ctx, home, second, 'meal');
+    wearLodging(sim.world, ctx, home, first, 'sleep');
+    wearLodging(sim.world, ctx, home, first, 'sleep');
+
+    expect(pieces(sim, home)).toEqual([PIECE - 2 * SLEEP_WEAR, PIECE - MEAL_WEAR]);
+    expect(lodging(sim, home)).toBe(0);
+  });
+
+  it('replaces a worn-out piece from the store of the home', () => {
+    const { sim, home } = setup();
+    sim.world.mut(home, HomeQuality).lodging = PIECE;
+    sim.world.add(home, Lodgings, { pieces: [SLEEP_WEAR - 1] });
+    single(sim, home, 0);
+    single(sim, home, 1);
+    const extra = single(sim, home, 2);
+
+    wearLodging(sim.world, ctxOf(sim), home, extra, 'sleep');
+
+    expect(pieces(sim, home)).toEqual([PIECE]);
+    expect(lodging(sim, home)).toBe(0);
+    expect(movedOut(sim)).toEqual([]);
+  });
+
+  it('moves out the family whose piece wears out with none in store, and nobody else', () => {
+    const { sim, home } = setup();
+    sim.world.mut(home, HomeQuality).lodging = 0;
+    const kept = PIECE - 1;
+    sim.world.add(home, Lodgings, { pieces: [SLEEP_WEAR, kept] });
     const stays = [single(sim, home, 1), single(sim, home, 2)];
     const sleeper = single(sim, home, 3);
     const { wife, husband } = couple(sim, home, 4);
-    sim.world.add(sleeper, Resting, { at: home });
-    setNeeds(sim, sleeper, { fatigue: ONE });
-    planHomeTopUp(
-      sim.world,
-      ctxOf(sim),
-      sleeper,
-      sim.world.get(sleeper, Settler),
-      collectSupplyTally(sim.world),
-    );
-    sim.world.mut(home, HomeQuality).lodging = SLEEP_WEAR - 1;
+    expect(sleepAtHome(sim, sleeper, home)).toBe(true);
 
-    wearLodging(sim.world, ctxOf(sim), home, 'sleep');
-
-    expect(lodging(sim, home)).toBe(0);
-    expect(familyCountOf(sim.world, home)).toBe(BASE_FAMILIES);
-    expect(stays.map((e) => sim.world.get(e, Residence).home)).toEqual([home, home]);
-    for (const e of [sleeper, wife, husband]) {
-      expect(sim.world.has(e, Residence)).toBe(false);
-      expect(sim.world.has(e, Evicted)).toBe(true);
-    }
+    expect(pieces(sim, home)).toEqual([kept]);
+    expect(familyCountOf(sim.world, home)).toBe(BASE_FAMILIES + 1);
+    for (const e of [...stays, wife, husband]) expect(sim.world.get(e, Residence).home).toBe(home);
+    expect(sim.world.has(sleeper, Residence)).toBe(false);
+    expect(sim.world.has(sleeper, Evicted)).toBe(true);
     // The evicted sleeper wakes and leaves the home it no longer has.
     expect(sim.world.has(sleeper, CurrentAtomic)).toBe(false);
     expect(sim.world.has(sleeper, Resting)).toBe(false);
-    expect(movedOut(sim)).toEqual([husband, sleeper]);
-    expect(sim.events.current().find((ev) => ev.kind === 'familyMovedOut')).toEqual({
-      kind: 'familyMovedOut',
-      entity: husband,
-      home,
-      player: PLAYER,
-    });
+    expect(sim.events.current().filter((ev) => ev.kind === 'familyMovedOut')).toEqual([
+      { kind: 'familyMovedOut', entity: sleeper, home, player: PLAYER },
+    ]);
+
+    // The couple is now the first extra family and lives on the piece that is left.
+    wearLodging(sim.world, ctxOf(sim), home, wife, 'meal');
+    expect(pieces(sim, home)).toEqual([kept - MEAL_WEAR]);
   });
 
-  it('moves out the family that moved in last first, sparing a couple making a child there', () => {
+  it('keeps a couple whose child emptied its piece until its next sleep or meal', () => {
     const { sim, home } = setup();
-    // The wife married into a household of tick 1; its own move-in tick stays the earliest.
-    const old = couple(sim, home, 1, 50);
-    const lovers = couple(sim, home, 40);
-    const tiedLow = single(sim, home, 30);
-    const tiedHigh = single(sim, home, 30);
-    sim.world.add(home, MakingLove, { wife: lovers.wife, elapsed: 0, duration: LOVE_TICKS });
-    sim.world.mut(home, HomeQuality).lodging = 1;
+    sim.world.mut(home, HomeQuality).lodging = 0;
+    sim.world.add(home, Lodgings, { pieces: [CHILD_WEAR] });
+    single(sim, home, 0);
+    single(sim, home, 1);
+    const { wife, husband } = couple(sim, home, 2);
+    const ctx = ctxOf(sim);
 
-    wearLodging(sim.world, ctxOf(sim), home, 'meal');
+    wearLodging(sim.world, ctx, home, wife, 'child');
+    expect(pieces(sim, home)).toEqual([0]);
+    expect(sim.world.get(wife, Residence).home).toBe(home);
 
-    expect(movedOut(sim)).toEqual([tiedHigh, tiedLow]);
-    expect(sim.world.get(old.wife, Residence).home).toBe(home);
-    expect(sim.world.get(lovers.wife, Residence).home).toBe(home);
+    wearLodging(sim.world, ctx, home, husband, 'meal');
+    expect(pieces(sim, home)).toEqual([]);
+    expect(movedOut(sim)).toEqual([husband]);
   });
 
   it('moves the extra families out at once when furniture is forbidden, and wears none while it is', () => {
@@ -291,12 +335,14 @@ describe('furniture housing extra families', () => {
     forbid(false);
     expect(movedOut(sim)).toEqual([families[2]]);
     expect(familyCountOf(sim.world, home)).toBe(BASE_FAMILIES);
-    single(sim, home, sim.tick);
-    wearLodging(sim.world, ctxOf(sim), home, 'sleep');
+    expect(homeFamilyCapacity(sim.world, ctxOf(sim), home, type)).toBe(BASE_FAMILIES);
+    const late = single(sim, home, sim.tick);
+    wearLodging(sim.world, ctxOf(sim), home, late, 'sleep');
     expect(lodging(sim, home)).toBe(PIECE);
+    expect(pieces(sim, home)).toEqual([]);
 
     forbid(true);
-    expect(homeFamilyCapacity(sim.world, ctxOf(sim), home, type)).toBe(BASE_FAMILIES + FURNISHED_FAMILIES);
+    expect(homeFamilyCapacity(sim.world, ctxOf(sim), home, type)).toBe(BASE_FAMILIES + 1);
   });
 
   it('moves the extra families out of a home under upgrade when furniture is forbidden', () => {

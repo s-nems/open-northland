@@ -324,7 +324,7 @@ export const SETTLERS: ArticleGroup = {
                 'Dwelling 1',
                 'Room for more families',
                 '{{home.furnitureChildren}} children, {{home.furnitureSleeps}} sleeps or {{home.furnitureMeals}} meals',
-                '{{home.furnitureFetchBelow}}',
+                'when a spare piece is missing',
               ],
               [
                 '[[good:holy_oil|Oil]]',
@@ -335,13 +335,13 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: 'A dwelling holds up to {{home.wareUnits}} pieces of Crockery and of Oil, and {{home.furnitureUnits}} of Furniture. Dwelling 5 holds {{home.largeFurnitureUnits}} pieces of Furniture and restocks below {{home.largeFurnitureFetchBelow}}. Oil burns nonstop, even when nobody is praying.',
+            foot: 'A dwelling holds up to {{home.wareUnits}} pieces of Crockery and of Oil. It keeps one spare piece of Furniture for each extra family it can take. Oil burns nonstop, even when nobody is praying.',
           },
         },
         {
           list: [
-            'With Furniture a dwelling takes extra families, as the With Furniture column of the level table says. The extra places last while Furniture is stored and the player allows it.',
-            'Furniture wears only while a dwelling holds more families than it would without it: each child conceived there, each sleep there and each meal from its larder uses some. A dwelling with no extra family keeps its Furniture.',
+            'One piece of Furniture is room for one extra family, up to what the With Furniture column of the level table says. The extra families are those that moved in last. The places last while the player allows Furniture.',
+            'Each extra family wears its own piece: by conceiving a child, sleeping in the dwelling and eating from its larder. The other families wear none. When a piece is worn out, the family takes the next from the store of the dwelling.',
           ],
         },
         {
@@ -359,7 +359,7 @@ export const SETTLERS: ArticleGroup = {
               ['Grown child', 'Loses it on reaching adulthood.'],
               [
                 'Family above the base number',
-                'Moves out when the Furniture runs out or is prohibited, the last to move in first, and the game shows "Moved out". With "Found families" on, the [[article:assistant|Assistant]] moves it into a free place.',
+                'Moves out when its Furniture is worn out and the dwelling has none in store, or when the player prohibits Furniture, and the game shows "Moved out". With "Found families" on, the [[article:assistant|Assistant]] moves it into a free place.',
               ],
               [
                 'Merchant, Scout, soldier',

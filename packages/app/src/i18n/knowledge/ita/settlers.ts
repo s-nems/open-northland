@@ -337,7 +337,7 @@ export const SETTLERS: ArticleGroup = {
                 'Abitazione 1',
                 'Posto per altre famiglie',
                 '{{home.furnitureChildren}} figli, {{home.furnitureSleeps}} sonni o {{home.furnitureMeals}} pasti',
-                '{{home.furnitureFetchBelow}}',
+                'quando manca un pezzo di scorta',
               ],
               [
                 '[[good:holy_oil|Olio]]',
@@ -348,13 +348,13 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [4],
-            foot: "Un'abitazione contiene fino a {{home.wareUnits}} unità di vasellame e di olio, e {{home.furnitureUnits}} di mobilio. L'Abitazione 5 contiene {{home.largeFurnitureUnits}} unità di mobilio e le rifornisce sotto {{home.largeFurnitureFetchBelow}}. L'olio brucia senza sosta, anche quando nessuno prega.",
+            foot: "Un'abitazione contiene fino a {{home.wareUnits}} unità di vasellame e di olio. Di mobilio tiene un pezzo di scorta per ogni famiglia in più che può ospitare. L'olio brucia senza sosta, anche quando nessuno prega.",
           },
         },
         {
           list: [
-            "Con il mobilio un'abitazione ospita famiglie in più, come indica la colonna Con il Mobilio della tabella dei livelli. I posti in più durano finché c'è mobilio in casa e il giocatore ne consente l'uso.",
-            "Il mobilio si consuma solo finché un'abitazione ospita più famiglie di quante ne ospiterebbe senza: ne usa un po' ogni figlio concepito lì, ogni sonno lì e ogni pasto dalla sua dispensa. Un'abitazione senza famiglie in più conserva il suo mobilio.",
+            'Un pezzo di mobilio dà posto a una famiglia in più, fino a quanto indica la colonna Con il Mobilio della tabella dei livelli. Le famiglie in più sono quelle arrivate per ultime. I posti durano finché il giocatore consente il mobilio.',
+            "Ogni famiglia in più consuma il proprio pezzo: concependo un figlio, dormendo nell'abitazione e mangiando dalla sua dispensa. Le altre famiglie non ne consumano. Finito un pezzo, la famiglia prende il successivo dalla scorta dell'abitazione.",
           ],
         },
         {
@@ -372,7 +372,7 @@ export const SETTLERS: ArticleGroup = {
               ['Figlio cresciuto', 'La perde quando diventa adulto.'],
               [
                 'Famiglia oltre il numero di base',
-                "Trasloca quando il mobilio finisce o viene vietato, per prima l'ultima arrivata, e il gioco mostra «Trasloco». Con «Fonda famiglie» attivo, l'[[article:assistant|Assistente]] la trasferisce in un posto libero.",
+                "Trasloca quando il suo mobilio è consumato e l'abitazione non ha scorta, o quando il giocatore vieta il mobilio, e il gioco mostra «Trasloco». Con «Fonda famiglie» attivo, l'[[article:assistant|Assistente]] la trasferisce in un posto libero.",
               ],
               [
                 'Mercante, esploratore, soldato',

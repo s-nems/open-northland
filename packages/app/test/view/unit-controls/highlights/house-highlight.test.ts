@@ -31,8 +31,8 @@ const HOUSES = new Map<number, HouseInfo>([
 ]);
 /** The sandbox goods, whose furniture adds the furnished families. */
 const GOODS = sandboxContent().goods;
-/** Furniture points a home stores: some, so the home takes its furnished families. */
-const SOME_FURNITURE = 1;
+/** Furniture points a home stores: one whole piece of the sandbox furniture, room for one more family. */
+const SOME_FURNITURE = 1000;
 
 /** A built home of `player`; `furniture` stocks its furniture pool. */
 function home(id: number, player = HUMAN_PLAYER, typeId = HOME_TYPE, tribe = TRIBE, furniture = 0): Ent {

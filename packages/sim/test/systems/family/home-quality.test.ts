@@ -63,8 +63,8 @@ const SLEEP_ATOMIC = 8;
 /** Quality points one delivered piece of furniture adds. */
 const FURNITURE_PIECE = 1000;
 
-/** The zero-based level from which the fixture's home keeps a third piece of furniture. */
-const LARGE_HOME_LEVEL = 4;
+/** The extra families the fixture's home takes while furnished: the spare pieces it stores. */
+const FURNISHED_FAMILIES = 2;
 
 function content() {
   return parseContentSet({
@@ -89,15 +89,8 @@ function content() {
         homeQuality: {
           effect: 'lodging',
           deliveryValue: FURNITURE_PIECE,
-          capacity: 2 * FURNITURE_PIECE,
-          fetchBelow: FURNITURE_PIECE,
           minimumHomeLevel: 0,
           wear: { child: 100, sleep: 10, meal: 10 },
-          largeHome: {
-            fromLevel: LARGE_HOME_LEVEL,
-            capacity: 3 * FURNITURE_PIECE,
-            fetchBelow: 2 * FURNITURE_PIECE,
-          },
         },
       },
       {
@@ -120,7 +113,7 @@ function content() {
         id: 'home',
         kind: 'home',
         homeSize: 1,
-        furnishedFamilies: 1,
+        furnishedFamilies: FURNISHED_FAMILIES,
         stock: [{ goodType: FOOD, capacity: 5 }],
       },
       {
@@ -208,42 +201,37 @@ describe('household quality goods', () => {
     expect(sim.world.get(home, HomeQuality).cooking).toBe(95);
   });
 
-  it('takes its furnished extra families only while it stores furniture its owner allows', () => {
+  it('takes one extra family per stored piece of furniture while its owner allows it', () => {
     const { sim, home, carrier } = setup();
     const type = sim.content.buildings.find((b) => b.typeId === HOME);
     if (type === undefined) throw new Error('fixture home type missing');
-    const [first, second] = [adult(sim), adult(sim)];
-    moveFamilyInto(sim.world, ctxOf(sim), first, home);
-    moveFamilyInto(sim.world, ctxOf(sim), second, home);
+    const [first, second, third] = [adult(sim), adult(sim), adult(sim)];
+    const moveIn = (): void => {
+      for (const e of [first, second, third]) moveFamilyInto(sim.world, ctxOf(sim), e, home);
+    };
+    moveIn();
     expect(familyCountOf(sim.world, home)).toBe(type.homeSize);
 
     deliver(sim, carrier, home, FURNITURE);
-    moveFamilyInto(sim.world, ctxOf(sim), second, home);
-    expect(familyCountOf(sim.world, home)).toBe(type.homeSize + type.furnishedFamilies);
+    moveIn();
+    expect(familyCountOf(sim.world, home)).toBe(type.homeSize + 1);
 
     setHouseholdGoodUse(sim.world, ctxOf(sim), { player: 0, effect: 'lodging', allowed: false });
     expect(homeFamilyCapacity(sim.world, ctxOf(sim), home, type)).toBe(type.homeSize);
   });
 
-  it('keeps a third piece of furniture in a large home and restocks it under two', () => {
+  it('stores one spare piece per extra family it takes, and restocks whenever one is missing', () => {
     const { sim, home, carrier } = setup();
-    const large = addHome(sim, 0, LARGE_HOME_LEVEL);
     const resident = adult(sim);
-    const wanted = (at: Entity) =>
-      demandedHomeQualityGoods(sim.world, ctxOf(sim), resident, at).has(FURNITURE);
-    for (const at of [home, large]) {
-      deliver(sim, carrier, at, FURNITURE);
+    const wanted = () => demandedHomeQualityGoods(sim.world, ctxOf(sim), resident, home).has(FURNITURE);
+    for (let i = 0; i < FURNISHED_FAMILIES; i++) {
+      expect(wanted()).toBe(true);
+      expect(deliver(sim, carrier, home, FURNITURE)).toBe(1);
       sim.world.remove(carrier, Carrying);
     }
-    expect(wanted(home)).toBe(false);
-    expect(wanted(large)).toBe(true);
-    for (const at of [home, large])
-      for (let i = 0; i < 3; i++) {
-        deliver(sim, carrier, at, FURNITURE);
-        sim.world.remove(carrier, Carrying);
-      }
-    expect(sim.world.get(home, HomeQuality).lodging).toBe(2 * FURNITURE_PIECE);
-    expect(sim.world.get(large, HomeQuality).lodging).toBe(3 * FURNITURE_PIECE);
+    expect(wanted()).toBe(false);
+    expect(deliver(sim, carrier, home, FURNITURE)).toBe(0);
+    expect(sim.world.get(home, HomeQuality).lodging).toBe(FURNISHED_FAMILIES * FURNITURE_PIECE);
   });
 
   it('takes furniture only as a whole piece, so a second delivery is not lost to the cap', () => {

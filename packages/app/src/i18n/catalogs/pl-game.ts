@@ -1155,8 +1155,10 @@ export const plGame = {
         many: '{pieces} szt. · +{count} rodzin',
       },
       furnitureIdle: '{pieces} szt. · bez dodatkowej rodziny',
+      furnitureInUse: 'w użyciu: {left}',
+      furniturePieceLeft: '{percent}%',
       furnitureTip:
-        'Z Meblami dom mieści dodatkowe rodziny. Meble zużywają się tylko wtedy, gdy te rodziny tu mieszkają, a kiedy się skończą, rodziny się wyprowadzają.',
+        'Jedna sztuka Mebli to miejsce dla jednej dodatkowej rodziny. Każda taka rodzina zużywa swoją sztukę, a gdy ta się skończy, bierze następną z zapasu domu. Bez zapasu rodzina się wyprowadza.',
       allowed: '{good} · dozwolone we wszystkich domach · kliknij: zabroń',
       forbidden: '{good} · zabronione we wszystkich domach · kliknij: pozwól',
       policyForeign: 'Zasady ustala właściciel',

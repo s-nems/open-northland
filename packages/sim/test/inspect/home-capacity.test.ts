@@ -1,6 +1,6 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, HomeQuality, Owner } from '../../src/components/index.js';
+import { Building, HomeQuality, Lodgings, Owner } from '../../src/components/index.js';
 import { fx, homeFamilyCapacityView, ONE, Simulation } from '../../src/index.js';
 import { homeFamilyCapacity, setHouseholdGoodUse } from '../../src/systems/family/home-quality.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -26,8 +26,6 @@ function content() {
         homeQuality: {
           effect: 'lodging',
           deliveryValue: PIECE,
-          capacity: 2 * PIECE,
-          fetchBelow: PIECE,
           minimumHomeLevel: FURNITURE_LEVEL,
           wear: { child: 100, sleep: 10, meal: 10 },
         },
@@ -64,6 +62,10 @@ describe('homeFamilyCapacityView', () => {
 
     expect(both()).toEqual(base);
     sim.world.mut(home, HomeQuality).lodging = PIECE;
+    expect(both()).toEqual([BASE_FAMILIES + 1, BASE_FAMILIES + 1]);
+    // A piece a family lives on counts beside the whole spare one, a broken spare does not.
+    sim.world.add(home, Lodgings, { pieces: [1] });
+    sim.world.mut(home, HomeQuality).lodging = 2 * PIECE - 1;
     expect(both()).toEqual(furnished);
     sim.world.mut(home, Building).level = FURNITURE_LEVEL - 1;
     expect(both()).toEqual(base);
