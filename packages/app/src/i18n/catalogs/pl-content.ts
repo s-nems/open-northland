@@ -1016,7 +1016,7 @@ export const plContent = {
     'barracks-mixed-orders': {
       title: 'Mieszane zamówienia koszar',
       summary:
-        'Asystent ma zamówienie na dwóch mieczników i dwóch łuczników, ale w zbrojowni przy siedzibie leży jeden długi miecz i dwa łuki. Trzech z czterech osadników ćwiczy i wychodzi jako długi miecznik i dwóch łuczników. Pod brakujący drugi miecz nikt nie zostaje powołany: czwarty osadnik zostaje w domu i żaden żołnierz nie stoi bez broni.',
+        'Asystent ma zamówienie na dwóch mieczników i dwóch łuczników, ale w zbrojowni przy siedzibie leży jeden długi miecz i dwa łuki. Trzech z czterech osadników ćwiczy i wychodzi jako długi miecznik i dwóch łuczników. Pod brakujący drugi miecz nikt nie zostaje powołany: czwarty osadnik zostaje w domu i żaden żołnierz nie stoi bez broni. Po powrocie ze zbrojowni uzbrojeni rozchodzą się wokół drzwi koszar, zamiast tłoczyć się na jednym polu.',
     },
     'barracks-exit': {
       title: 'Wyjście z koszar',

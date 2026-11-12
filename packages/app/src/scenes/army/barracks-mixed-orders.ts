@@ -1,4 +1,4 @@
-import { components, type Simulation } from '@open-northland/sim';
+import { components, type Entity, nodeOfPosition, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
 import { JOB_ARCHER, JOB_CIVILIST, JOB_SOLDIER, JOB_SOLDIER_BROADSWORD } from '../../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
@@ -12,7 +12,7 @@ import {
 import { goodBySlug } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
 
-const { Settler } = components;
+const { Position, Settler, Stance } = components;
 
 const HEADQUARTERS = { x: 6, y: 12 } as const;
 const BARRACKS = { x: 14, y: 10 } as const;
@@ -52,6 +52,20 @@ function build(sim: Simulation): void {
     });
 }
 
+/** The scene's armed soldiers. */
+function armed(sim: Simulation): Entity[] {
+  return [...sim.world.query(Settler)].filter((e) =>
+    [JOB_SOLDIER_BROADSWORD, JOB_ARCHER].includes(sim.world.get(e, Settler).jobType ?? JOB_CIVILIST),
+  );
+}
+
+/** The node `e` stands on, as the `x,y` key its stance anchor reads back as. */
+function nodeKey(sim: Simulation, e: Entity): string {
+  const p = sim.world.get(e, Position);
+  const n = nodeOfPosition(p.x, p.y);
+  return `${n.hx},${n.hy}`;
+}
+
 /** How many of the scene's settlers hold `jobType`. */
 function countOf(sim: Simulation, jobType: number): number {
   return [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === jobType).length;
@@ -80,6 +94,21 @@ export const barracksMixedOrdersScene: SceneDefinition = {
         countOf(sim, JOB_SOLDIER) === 0 &&
         countOf(sim, JOB_CIVILIST) === COLONISTS - SWORDS_IN_STORE - BOWS_IN_STORE &&
         sim.assistantCounters(HUMAN_PLAYER).trainSword.value === ORDERED_PER_CLASS - SWORDS_IN_STORE,
+    },
+    {
+      label: 'back from the armory, the armed stand spread at the barracks, each holding his own post',
+      predicate: (sim) => {
+        const terrain = sim.terrain;
+        const units = armed(sim);
+        if (terrain === undefined || new Set(units.map((e) => nodeKey(sim, e))).size !== units.length)
+          return false;
+        return units.every((e) => {
+          const stance = sim.world.get(e, Stance);
+          if (stance.mode !== systems.MILITARY_MODE.DEFEND || stance.anchorCell === null) return false;
+          const { x, y } = terrain.coordsOf(stance.anchorCell);
+          return nodeKey(sim, e) === `${x},${y}`;
+        });
+      },
     },
   ],
 };

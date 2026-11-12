@@ -1028,7 +1028,7 @@ export const deContent = {
     'barracks-mixed-orders': {
       title: 'Gemischte Kasernenaufträge',
       summary:
-        'Der Assistent hat Aufträge für zwei Schwertkämpfer und zwei Bogenschützen, doch die Waffenkammer am Hauptquartier hält ein Langschwert und zwei Bögen. Drei von vier Siedlern üben und kommen als Langschwertkämpfer und zwei Bogenschützen heraus. Für das fehlende zweite Schwert wird niemand eingezogen: Der vierte Siedler bleibt daheim, und kein Soldat steht ohne Waffe da.',
+        'Der Assistent hat Aufträge für zwei Schwertkämpfer und zwei Bogenschützen, doch die Waffenkammer am Hauptquartier hält ein Langschwert und zwei Bögen. Drei von vier Siedlern üben und kommen als Langschwertkämpfer und zwei Bogenschützen heraus. Für das fehlende zweite Schwert wird niemand eingezogen: Der vierte Siedler bleibt daheim, und kein Soldat steht ohne Waffe da. Zurück aus der Waffenkammer verteilen sich die Bewaffneten um die Kasernentür, statt sich auf einem Feld zu drängen.',
     },
     'barracks-exit': {
       title: 'Auszug aus der Kaserne',

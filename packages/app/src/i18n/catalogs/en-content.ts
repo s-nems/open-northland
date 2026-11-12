@@ -1019,7 +1019,7 @@ export const enContent = {
     'barracks-mixed-orders': {
       title: 'Mixed barracks orders',
       summary:
-        'The assistant has orders for two swordsmen and two archers, but the armory by the headquarters holds one long sword and two bows. Three of four colonists drill and walk out a long-swordsman and two archers. Nobody is drafted for the missing second sword: the fourth colonist stays home and no soldier stands without a weapon.',
+        'The assistant has orders for two swordsmen and two archers, but the armory by the headquarters holds one long sword and two bows. Three of four colonists drill and walk out a long-swordsman and two archers. Nobody is drafted for the missing second sword: the fourth colonist stays home and no soldier stands without a weapon. Back from the armory, the armed spread out around the barracks door instead of crowding one spot.',
     },
     'barracks-exit': {
       title: 'Barracks exit',

@@ -1031,7 +1031,7 @@ export const itContent = {
     'barracks-mixed-orders': {
       title: 'Ordini misti della caserma',
       summary:
-        "L'assistente ha ordini per due spadaccini e due arcieri, ma l'armeria accanto al quartier generale tiene una spada lunga e due archi. Tre coloni su quattro si addestrano ed escono come uno spadaccino con spada lunga e due arcieri. Nessuno viene arruolato per la seconda spada che manca: il quarto colono resta a casa e nessun soldato rimane senza arma.",
+        "L'assistente ha ordini per due spadaccini e due arcieri, ma l'armeria accanto al quartier generale tiene una spada lunga e due archi. Tre coloni su quattro si addestrano ed escono come uno spadaccino con spada lunga e due arcieri. Nessuno viene arruolato per la seconda spada che manca: il quarto colono resta a casa e nessun soldato rimane senza arma. Tornati dall'armeria, gli armati si dispongono attorno alla porta della caserma invece di accalcarsi su un solo punto.",
     },
     'barracks-exit': {
       title: 'Uscita dalla caserma',
