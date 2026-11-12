@@ -1031,6 +1031,11 @@ export const enContent = {
       summary:
         'Six civilians drill in one barracks at once and walk out unarmed soldiers. Each steps off the shared door node onto a free one beside it and holds that post, so the squad stands spread around the door instead of stacked on it.',
     },
+    'coin-drill': {
+      title: 'Coin drill',
+      summary:
+        'A sword fighter, a spearman and an archer drill in a barracks holding six coins. Each repetition takes a coin and gives 25 combat experience points. The sword fighter and the archer stop at 50 points, the spearman, already at 30, needs one coin. The sixth coin stays, as nobody below 50 points is left to take it.',
+    },
     armor: {
       title: 'Armour parade',
       summary:

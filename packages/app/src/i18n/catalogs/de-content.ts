@@ -1040,6 +1040,11 @@ export const deContent = {
       summary:
         'Sechs Siedler üben gleichzeitig in einer Kaserne und kommen als unbewaffnete Soldaten heraus. Jeder tritt vom gemeinsamen Feld vor der Tür auf ein freies daneben und hält dort seinen Posten, sodass der Trupp verteilt um die Tür steht statt übereinander gestapelt.',
     },
+    'coin-drill': {
+      title: 'Exerzieren für Münzen',
+      summary:
+        'Ein Schwertkämpfer, ein Speerträger und ein Bogenschütze exerzieren in einer Kaserne mit sechs Münzen. Jede Wiederholung kostet eine Münze und bringt 25 Punkte Kampferfahrung. Schwertkämpfer und Bogenschütze hören bei 50 Punkten auf, der Speerträger, schon bei 30, braucht eine Münze. Die sechste Münze bleibt liegen, weil niemand unter 50 Punkten mehr übrig ist.',
+    },
     armor: {
       title: 'Rüstungsparade',
       summary:

@@ -19,6 +19,7 @@ import { barracksExitScene } from './army/barracks-exit.js';
 import { barracksMixedOrdersScene } from './army/barracks-mixed-orders.js';
 import { battleScene } from './army/battle.js';
 import { battleWearyScene } from './army/battle-weary.js';
+import { coinDrillScene } from './army/coin-drill.js';
 import { collisionScene } from './army/collision.js';
 import { defenceWallScene } from './army/defence-wall.js';
 import { focusFireScene } from './army/focus-fire.js';
@@ -274,6 +275,7 @@ export const SCENES: readonly SceneDefinition[] = [
   barracksArmoryScene,
   barracksMixedOrdersScene,
   barracksExitScene,
+  coinDrillScene,
   armorScene,
   towerGarrisonScene,
   towerFinialsScene,

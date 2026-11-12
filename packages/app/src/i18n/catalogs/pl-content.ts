@@ -1028,6 +1028,11 @@ export const plContent = {
       summary:
         'Sześciu osadników ćwiczy naraz w jednych koszarach i wychodzi jako żołnierze bez broni. Każdy schodzi ze wspólnego pola przed drzwiami na wolne obok i tam trzyma posterunek, więc oddział stoi rozstawiony wokół drzwi, a nie w jednym stosie.',
     },
+    'coin-drill': {
+      title: 'Musztra za monety',
+      summary:
+        'Miecznik, włócznik i łucznik ćwiczą w koszarach, w których leży sześć monet. Każde powtórzenie zabiera monetę i daje 25 pkt doświadczenia w walce. Miecznik i łucznik kończą na 50 pkt, włócznik, który miał już 30, potrzebuje jednej monety. Szósta moneta zostaje, bo nikt poniżej 50 pkt już na nią nie czeka.',
+    },
     armor: {
       title: 'Parada zbroi',
       summary:

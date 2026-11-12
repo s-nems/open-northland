@@ -1043,6 +1043,11 @@ export const itContent = {
       summary:
         'Sei civili si addestrano insieme in una caserma ed escono come soldati disarmati. Ognuno lascia il nodo della porta comune per uno libero accanto e mantiene quel posto, così la squadra si dispone intorno alla porta invece di ammassarsi su di essa.',
     },
+    'coin-drill': {
+      title: 'Esercitazione a monete',
+      summary:
+        'Uno spadaccino, un lanciere e un arciere si esercitano in una caserma con sei monete. Ogni ripetizione prende una moneta e dà 25 punti di esperienza in combattimento. Spadaccino e arciere si fermano a 50 punti, il lanciere, già a 30, ha bisogno di una moneta. La sesta moneta resta, perché non c’è più nessuno sotto i 50 punti.',
+    },
     armor: {
       title: 'Parata delle armature',
       summary:
