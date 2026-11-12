@@ -1,3 +1,4 @@
+import { systems } from '@open-northland/sim';
 import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { smokePuff } from '../../data/effects/smoke.js';
 import { clamp01 } from '../../data/math.js';
@@ -5,7 +6,7 @@ import type { WindSway } from '../../data/weather/climate.js';
 import { worldBatched } from '../world-batch/batcher.js';
 import { type DamageEffectTextures, FIRE_FRAMES, FIRE_VARIANTS } from './effect-textures.js';
 import { DamageRubble, type GroundContact } from './rubble.js';
-import { noise } from './surface.js';
+import { damageLevel, noise } from './surface.js';
 
 export interface DamageOrigin {
   readonly x: number;
@@ -24,7 +25,13 @@ export interface DamageEffectStyle {
   readonly chips: number;
   /** Multiplies each puff's opacity. */
   readonly smoke: number;
+  /** The damage level the first flame lights at. */
+  readonly flameOnset: number;
 }
+
+/** Where a house's first flame lights, a little past half its health. Tuned by eye. */
+const HOUSE_FLAME_ONSET = 3.4;
+const PERCENT = 100;
 
 export const BUILDING_DAMAGE_STYLE: DamageEffectStyle = {
   rubble: true,
@@ -33,6 +40,7 @@ export const BUILDING_DAMAGE_STYLE: DamageEffectStyle = {
   flames: 4,
   chips: 8,
   smoke: 1,
+  flameOnset: HOUSE_FLAME_ONSET,
 };
 /** The look with the damage setting off: one thin plume. */
 export const PLAIN_DAMAGE_STYLE: DamageEffectStyle = {
@@ -42,8 +50,10 @@ export const PLAIN_DAMAGE_STYLE: DamageEffectStyle = {
   flames: 0,
   chips: 0,
   smoke: 1,
+  flameOnset: HOUSE_FLAME_ONSET,
 };
-/** A ship burns like a house under fewer, thinner plumes. Tuned by eye. */
+/** A ship burns like a house under fewer, thinner plumes, lit where the sim sets its hull afire. Tuned
+ *  by eye. */
 export const SHIP_DAMAGE_STYLE: DamageEffectStyle = {
   rubble: false,
   plumes: 2,
@@ -51,6 +61,7 @@ export const SHIP_DAMAGE_STYLE: DamageEffectStyle = {
   flames: 2,
   chips: 6,
   smoke: 1,
+  flameOnset: damageLevel(systems.SHIP_FIRE_HEALTH_PERCENT / PERCENT),
 };
 /** A cart or a catapult splinters and never burns; its one thin plume is denser so it still reads.
  *  Tuned by eye. */
@@ -61,6 +72,7 @@ export const LAND_VEHICLE_DAMAGE_STYLE: DamageEffectStyle = {
   flames: 0,
   chips: 5,
   smoke: 1.8,
+  flameOnset: HOUSE_FLAME_ONSET,
 };
 
 /** Puffs a plume draws below {@link DETAIL_ZOOM}. */
@@ -132,7 +144,7 @@ export class DamageEffects {
     this.rubble?.draw(ground, Math.round(level * 16) / 16, true);
     if (this.lastHp !== undefined && hp < this.lastHp - 0.0001) this.hitTick = tick;
     this.lastHp = hp;
-    const fire = style.flames > 0 ? clamp01((level - 3.4) / 0.75) : 0;
+    const fire = style.flames > 0 ? clamp01((level - style.flameOnset) / 0.75) : 0;
     const count = zoom < DETAIL_ZOOM ? 1 : style.plumes;
     const perPlume = zoom >= DETAIL_ZOOM ? style.puffs : Math.min(FAR_PUFFS, style.puffs);
     for (let i = 0; i < this.smoke.length; i++) {
@@ -167,7 +179,7 @@ export class DamageEffects {
       const flame = this.flames[i];
       if (flame === undefined) continue;
       const origin = origins[i];
-      const onset = 3.4 + i * 0.55 + noise(origin?.seed ?? this.seed, 110) * 0.2;
+      const onset = style.flameOnset + i * 0.55 + noise(origin?.seed ?? this.seed, 110) * 0.2;
       const weight = zoom >= DETAIL_ZOOM || i === 0 ? clamp01((level - onset) / 0.75) : 0;
       this.flameWeights[i] = weight;
       flame.visible = weight > 0 && origin !== undefined;

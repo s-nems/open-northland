@@ -57,6 +57,7 @@ import { plannerSystem } from './settlers/planner/system.js';
 import { signpostLinksSystem } from './signposts/links.js';
 import { gossipSystem } from './social/index.js';
 import { tradePartnerStockSystem, traderTakesUpCartSystem, tradeVoyageSystem } from './trade/index.js';
+import { hullFireSystem } from './vehicles/hull-fire.js';
 import {
   cargoHandDisembarkSystem,
   draughtAnimalSystem,
@@ -176,6 +177,8 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'vision', system: visionSystem },
   { name: 'combat', system: combatSystem },
   { name: 'projectile', system: projectileSystem },
+  // After this tick's blows and before cleanup, so a hull the fire ends sinks this tick.
+  { name: 'hullFire', system: hullFireSystem },
   // After this tick's blows, so an arrow in the temple stops its blessing at once.
   { name: 'templeAura', system: templeAuraSystem },
   { name: 'growth', system: growthSystem },

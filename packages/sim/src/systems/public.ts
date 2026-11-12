@@ -389,6 +389,7 @@ export {
   loadSpeedLossPercent,
 } from './vehicles/drag.js';
 export { DRAUGHT_BREEDING_PAIR } from './vehicles/draught.js';
+export { SHIP_FIRE_HEALTH_PERCENT } from './vehicles/hull-fire.js';
 // createVehicle stands a vehicle in pre-tick assembly the way the command does; modifyVehicleStock and
 // stockVehicleGoods are the writes into a hold, the second the booked-and-stowed one a loaded spawn uses.
 export {
