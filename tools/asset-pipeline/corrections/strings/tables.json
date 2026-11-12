@@ -1491,129 +1491,129 @@
     "lang": "pol",
     "table": "goodsHelp",
     "id": 44,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 44,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 44,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 44,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
     "table": "goodsHelp",
     "id": 45,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 45,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 45,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 45,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
     "table": "goodsHelp",
     "id": 46,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 46,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 46,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 46,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
     "table": "goodsHelp",
     "id": 47,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 47,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 47,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 47,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
@@ -1621,15 +1621,15 @@
     "id": 48,
     "from": "męskiej, poza bohaterami, ",
     "to": "męskiej ",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
     "table": "goodsHelp",
     "id": 48,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
@@ -1637,15 +1637,15 @@
     "id": 48,
     "from": "apart from the heroes ",
     "to": "",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 48,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
@@ -1653,23 +1653,23 @@
     "id": 48,
     "from": "außer den Helden ",
     "to": "",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 48,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 48,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
@@ -1677,15 +1677,15 @@
     "id": 49,
     "from": "męskiej, poza bohaterami, ",
     "to": "męskiej ",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
     "table": "goodsHelp",
     "id": 49,
-    "from": "złota",
-    "to": "monet",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "potrzebuje złota na sekretne i rzadkie składniki",
+    "to": "zużywa na każdą miksturę jedno naczynie",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
@@ -1693,15 +1693,15 @@
     "id": 49,
     "from": "apart from the heroes ",
     "to": "",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "eng",
     "table": "goodsHelp",
     "id": 49,
-    "from": "gold",
-    "to": "coins",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "needs gold for the secret and rare ingredients",
+    "to": "pours each potion into a piece of crockery",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
@@ -1709,23 +1709,23 @@
     "id": 49,
     "from": "außer den Helden ",
     "to": "",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "ger",
     "table": "goodsHelp",
     "id": 49,
-    "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+    "from": "Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Für jeden Trank braucht der Druide ein Stück Geschirr.",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "rus",
     "table": "goodsHelp",
     "id": 49,
-    "from": "нужно золото",
-    "to": "нужны монеты",
-    "reason": "Receptury mikstur biorą monety, nie złoto."
+    "from": "нужно золото для покупки редких и секретных составляющих",
+    "to": "на каждое зелье нужна одна штука посуды",
+    "reason": "Każda mikstura bierze jedno naczynie, nie złoto ani monety (decyzja właściciela)."
   },
   {
     "lang": "pol",
@@ -1946,6 +1946,38 @@
   {
     "lang": "pol",
     "table": "goodsHelp",
+    "id": 52,
+    "from": "o 50 procent",
+    "to": "o 40 procent",
+    "reason": "Amulet siły wzmacnia cios o 40%, nie o 50% (osłabiony decyzją właściciela)."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 52,
+    "from": "by 50 percent",
+    "to": "by 40 percent",
+    "reason": "Amulet siły wzmacnia cios o 40%, nie o 50% (osłabiony decyzją właściciela)."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 52,
+    "from": "um 50 Prozent",
+    "to": "um 40 Prozent",
+    "reason": "Amulet siły wzmacnia cios o 40%, nie o 50% (osłabiony decyzją właściciela)."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 52,
+    "from": "на 50 процентов",
+    "to": "на 40 процентов",
+    "reason": "Amulet siły wzmacnia cios o 40%, nie o 50% (osłabiony decyzją właściciela)."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
     "id": 53,
     "from": "Nie może być wytworzony,",
     "to": "Może być wytworzony w mennicy,",
@@ -2030,6 +2062,14 @@
     "from": "нельзя создать, но его можно",
     "to": "можно создать на монетном дворе, а также",
     "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 53,
+    "from": "o 50 procent",
+    "to": "o 40 procent",
+    "reason": "Amulet obrony osłabia cios o 40%, nie o połowę (osłabiony decyzją właściciela)."
   },
   {
     "lang": "pol",
@@ -2549,7 +2589,7 @@
     "id": 36,
     "from": "oleju,",
     "to": "ziół,",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "pol",
@@ -2557,15 +2597,15 @@
     "id": 36,
     "from": "wody, ziół ",
     "to": "wody ",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "pol",
     "table": "housesHelp",
     "id": 36,
     "from": "złota.",
-    "to": "monet.",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "to": "naczyń.",
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "eng",
@@ -2573,7 +2613,7 @@
     "id": 36,
     "from": "oil,",
     "to": "herbs,",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "eng",
@@ -2581,15 +2621,15 @@
     "id": 36,
     "from": "water, herbs ",
     "to": "water ",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "eng",
     "table": "housesHelp",
     "id": 36,
     "from": "gold.",
-    "to": "coins.",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "to": "crockery.",
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "ger",
@@ -2597,7 +2637,7 @@
     "id": 36,
     "from": "Öl",
     "to": "Kräuter",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "ger",
@@ -2605,15 +2645,15 @@
     "id": 36,
     "from": "Wasser, Kräuter ",
     "to": "Wasser ",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "ger",
     "table": "housesHelp",
     "id": 36,
     "from": "Gold.",
-    "to": "Münzen.",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "to": "Geschirr.",
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "rus",
@@ -2621,7 +2661,7 @@
     "id": 36,
     "from": "масло,",
     "to": "травы,",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "rus",
@@ -2629,15 +2669,15 @@
     "id": 36,
     "from": "вода, травы ",
     "to": "вода ",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "rus",
     "table": "housesHelp",
     "id": 36,
     "from": "золото.",
-    "to": "монеты.",
-    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+    "to": "посуда.",
+    "reason": "Receptury mikstur biorą wodę, naczynia, zioła i grzyby, bez oliwy, złota i monet."
   },
   {
     "lang": "pol",
