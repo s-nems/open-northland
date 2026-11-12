@@ -2,6 +2,7 @@ import {
   addCurrentAtomic,
   CurrentAtomic,
   Engagement,
+  MealBreak,
   NeedOrder,
   PlayerOrder,
   removeCurrentAtomic,
@@ -98,9 +99,10 @@ export function collectHitReaction(
 /**
  * Whether the struck victim is walking an errand of its own that being attacked should end. A fleeing or
  * ignoring unit keeps going, which is what those stances mean; a chase belongs to the CombatSystem, which
- * re-aims it rather than shedding it; and a walk the player ordered - a march or a meal - is the player's
- * to end. What is left is the settler's own errand, and the CombatSystem leaves a walker alone, so without
- * this a soldier crossing a battle on its way to a bed takes blows the whole way without turning round.
+ * re-aims it rather than shedding it; a walk the player ordered - a march or a meal - is the player's to
+ * end; and a meal break walks out of a fight on purpose. What is left is the settler's own errand, and the
+ * CombatSystem leaves a walker alone, so without this a soldier crossing a battle on its way to a bed
+ * takes blows the whole way without turning round.
  *
  * A melee blow lands in the AtomicSystem, before the CombatSystem's pass, so the victim is already standing
  * when combat looks at it. An arrow lands after that pass, so an errand another drive re-issues the next
@@ -113,7 +115,9 @@ function walksItsOwnErrand(
   victim: SettlerIdentity,
 ): boolean {
   if (!isTravelling(world, target) || world.has(target, Engagement)) return false;
-  if (world.has(target, PlayerOrder) || world.has(target, NeedOrder)) return false;
+  if (world.has(target, PlayerOrder) || world.has(target, NeedOrder) || world.has(target, MealBreak)) {
+    return false;
+  }
   return stanceFights(stanceMode(world, ctx.content, target, victim.jobType));
 }
 

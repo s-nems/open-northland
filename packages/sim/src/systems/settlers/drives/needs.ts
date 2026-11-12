@@ -112,8 +112,9 @@ function needsAfterDraughts(world: World, ctx: SystemContext, e: Entity): Settle
  * answers waits for the end of the fight.
  *
  * What is left to answer with is thin on purpose: a garrison eats from its tower, and a field unit eats
- * only what it happens to carry. A unit locked in a fight it cannot win before its hunger kills
- * it is the player's to pull out, with a move order or an ordered meal; both break the fight off.
+ * only what it happens to carry. Critical hunger takes a unit allowed to regenerate out of the fight on a
+ * meal break (`conflict/hunger-break.ts`); one forbidden to is the player's to pull out, with a move order
+ * or an ordered meal.
  */
 export function answerNeedInPlace(
   world: World,
@@ -159,8 +160,7 @@ function eatCarried(
  *
  * A settler on alert answers a need in place, as {@link answerNeedInPlace} does, except that it walks to
  * food once its hunger turns critical: hunger alone costs hitpoints, so a standoff that never comes to
- * blows cannot starve a unit that is free to go. One the fight itself holds is answered in place at any
- * level, which is where an army can still starve. `onAlert` is asked only where its answer decides a walk,
+ * blows cannot starve a unit that is free to go. `onAlert` is asked only where its answer decides a walk,
  * a bed or a prayer.
  */
 export function planNeeds(

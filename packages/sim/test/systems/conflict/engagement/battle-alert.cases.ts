@@ -307,19 +307,6 @@ describe('a fighting unit on alert takes no rest', () => {
     expect(sim.world.has(starving, MoveGoal)).toBe(true);
   });
 
-  it('an engaged fighter holds even when starving', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
-    const engaged = fighterAt(sim, 10, 0, VIKING, WOODCUTTER, { owner: P0 });
-    setNeeds(sim, engaged, { hunger: ONE });
-    sim.world.add(engaged, Engagement, { repathAt: sim.tick });
-    larderAt(sim, 0);
-    enemyAt(sim, 10 + NEAR_CELLS);
-
-    plannerSystem(sim.world, ctxOf(sim));
-
-    expect(sim.world.has(engaged, MoveGoal)).toBe(false);
-  });
-
   it('an ordered sleeper still gets up for the target its attack order names', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const sleeper = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });

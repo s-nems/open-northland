@@ -81,7 +81,8 @@ function ownsFailedRoute(world: World, e: Entity): boolean {
  * Whether combat owns `e`'s feet, so a pressing need may only be answered where it stands. A self-committed
  * hunter is excluded: its chase is an economy errand, and gating it off the food ladder would starve a
  * working settler. The opposite call is made for flight, where `conflict/flee.ts` lets a collapsing need
- * stop a fleeing settler even in danger; a fighting unit holds instead, at any level.
+ * stop a fleeing settler even in danger; a fighting unit holds until hunger takes it out between blows
+ * (`conflict/hunger-break.ts`).
  */
 export function combatOwnsFeet(world: World, e: Entity): boolean {
   return world.has(e, Engagement) && !world.has(e, HuntFocus);

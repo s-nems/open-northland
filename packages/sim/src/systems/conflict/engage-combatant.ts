@@ -52,6 +52,7 @@ import { entityNode } from '../spatial/nodes.js';
 import { breakOff, chase, disengage, holdEnemy, REPATH_CADENCE } from './chase.js';
 import { type CombatantStance, EngagementSpecs, resolveTarget, stanceMode } from './engagement.js';
 import { runsFromBlows, startBlowRun } from './flee.js';
+import { hungerKeepsFromFight } from './hunger-break.js';
 import { breaksHuntForNeed, holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
 import { strayedPastLeash } from './leash.js';
 import type { MeleeSlots } from './melee-slots.js';
@@ -150,6 +151,7 @@ export function engageCombatant(
     return;
   }
   if (breaksHuntForNeed(world, ctx, e, ordered)) return;
+  if (owned && hungerKeepsFromFight(world, ctx, terrain, e)) return;
 
   const travelling = isTravelling(world, e);
   if (walksUnderAnotherDrive(world, e, travelling, ordered || marching)) return;

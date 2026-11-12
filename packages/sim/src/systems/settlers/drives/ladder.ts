@@ -25,7 +25,7 @@ import { standsAtPost } from '../../conflict/tower-post.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
 import { planWomanHoard } from '../../family/hoard.js';
 import { planChildWander } from '../../family/wander.js';
-import { endMealBreak } from '../../orders/meal-break.js';
+import { endMealBreak, noteOrderedMealUnserved } from '../../orders/meal-break.js';
 import { isFisherJob, MILITARY_MODE } from '../../readviews/index.js';
 import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
@@ -200,12 +200,11 @@ function planBreak(
     return true;
   }
 
-  // A pressing need on a fighting unit is answered from what it carries or what its post holds, never by
-  // walking to food, a bed or a temple and never by lying down. Under the alarm, which still outranks
-  // combat. Departure: the manual gives the need rule no combat exemption and carves a soldier out only for
-  // sleeping at home, so leaving an unprovisioned fighter to go without is a deliberate choice. A need the
-  // player ordered is the exception: the fight is broken off for it and the full ladder below runs, so
-  // ordering a meal is how a player feeds an army that would otherwise starve in the line.
+  // The planner meets a fighting unit only between two fights or on a chase, and answers a pressing need
+  // there from what it carries or what its post holds, never by walking to food, a bed or a temple and
+  // never by lying down. Under the alarm, which still outranks combat. Hunger that turns critical takes a
+  // unit allowed to regenerate out of the fight between blows (`conflict/hunger-break.ts`), and it comes
+  // here on a meal break. A need the player ordered breaks the fight off too, and the full ladder below runs.
   if (combatOwnsFeet(world, e)) {
     if (orderedNeed(world, e) === undefined) {
       answerNeedInPlace(world, ctx, e, settler);
@@ -214,8 +213,8 @@ function planBreak(
     // Breaking off here rather than in the CombatSystem, which runs later in the tick, so the rungs below
     // plan the errand into a unit the fight no longer holds. Only the engagement goes: the route is left
     // for whatever rung replaces it, and an attack order the player gave is the player's to cancel -
-    // `orderNeed` retires it when the order lands. A unit with nowhere to go for its meal is re-engaged
-    // by the CombatSystem this same tick, which beats standing in the line doing nothing.
+    // `orderNeed` retires it when the order lands. A unit with nowhere to go for its meal is noted below
+    // and re-engaged by the CombatSystem this same tick.
     world.remove(e, Engagement);
   }
 
@@ -285,6 +284,7 @@ function planBreak(
     leaveForNeed(world, e);
     return true;
   }
+  if (orderedNeed(world, e) === 'hunger') noteOrderedMealUnserved(world, ctx, e);
   dropUnservedNeedOrder(world, e);
 
   // Ownership gate, below the needs drives on purpose: hunger, fatigue and piety are soft overrides that

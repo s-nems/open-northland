@@ -404,13 +404,14 @@ export const OrderQueue = defineComponent<{ orders: QueuedUnitOrder[]; owner: nu
 );
 
 /**
- * Hunger took this settler off its player orders: the needs drive feeds it while its {@link OrderQueue},
- * headed by the interrupted order, waits. Named addition: the original checks no need while a player's
- * command runs.
+ * Hunger took this settler off its player orders or out of a fight: the needs drive feeds it while its
+ * {@link OrderQueue}, headed by the interrupted order, waits. Named addition: the original checks no need
+ * while a player's command runs.
  */
 export const MealBreak = defineComponent<{ readonly hungry: true }>('MealBreak', 'settlers');
 
-/** A meal break that found nothing to eat: hunger takes the settler off its orders again from `retryAt`. */
+/** A meal break or an ordered meal that found nothing to eat: hunger takes the settler off its orders or
+ *  its fight again from `retryAt`. */
 export const MealBreakRetry = defineComponent<{ readonly retryAt: number }>('MealBreakRetry', 'settlers', {
   simOnly: true,
 });

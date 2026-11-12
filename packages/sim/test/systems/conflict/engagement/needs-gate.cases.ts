@@ -9,10 +9,12 @@ import {
   type EquipmentSlot,
   Health,
   HuntFocus,
+  MealBreakRetry,
   MISC_EQUIP_SLOTS,
   MISSION_BEHAVIOUR,
   MoveGoal,
   NeedOrder,
+  NoRegeneration,
   PathRequest,
   Position,
   Stockpile,
@@ -20,7 +22,11 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '../../../../src/index.js';
-import { plannerSystem } from '../../../../src/systems/index.js';
+import {
+  NEED_CRITICAL_THRESHOLD,
+  NEED_DRIVE_THRESHOLD,
+  plannerSystem,
+} from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import { needsOf, setNeeds } from '../../../fixtures/settler.js';
 import { ctxOf, FRANK, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
@@ -35,6 +41,8 @@ const MEAD = 13;
 const HEADQUARTERS = 1;
 /** Over the the drive threshold eat trigger and still inside the bar, so `needsSystem`'s clamp cannot mask a relief. */
 const PRESSING: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
+/** Between the drive threshold and the critical mark, where hunger leaves a fight alone. */
+const HUNGRY: Fixed = fx.div(fx.fromInt(85), fx.fromInt(100));
 /** Well under the drive threshold: only an order makes this bar a reason to act. */
 const FED: Fixed = fx.div(ONE, fx.fromInt(4));
 /** What one sip of mead takes off the hunger bar: half of it. */
@@ -229,6 +237,7 @@ describe('an engaged unit answers a need in place, never by walking', () => {
   it('a hungry besieger issues no route across a running siege', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const besieger = hungryFighterAt(sim, 5, 0); // no rations: nothing to answer the need with
+    setNeeds(sim, besieger, { hunger: HUNGRY });
     const enemy = fighterAt(sim, 6, 0, FRANK, WOODCUTTER, { owner: P1, hitpoints: 1_000_000 });
     larderAt(sim, 0, 0);
 
@@ -242,6 +251,78 @@ describe('an engaged unit answers a need in place, never by walking', () => {
     }
 
     expect(routed).toBe(0);
-    expect(needsOf(sim, besieger).hunger).toBeGreaterThanOrEqual(PRESSING); // still unfed
+    expect(needsOf(sim, besieger).hunger).toBeGreaterThanOrEqual(HUNGRY); // still unfed
+  });
+
+  it('a fighter trading blows drinks its mead between them', () => {
+    const { sim, fighter } = meleeBesideEnemy(NEED_DRIVE_THRESHOLD);
+    carryMead(sim, fighter);
+
+    for (let i = 0; i < MELEE_TICKS; i++) sim.step();
+
+    expect(sim.world.get(fighter, Equipment).misc[0]?.degreeOfUse).toBeGreaterThan(fx.fromInt(0));
+    expect(needsOf(sim, fighter).hunger).toBeLessThan(NEED_DRIVE_THRESHOLD);
+  });
+
+  it('critical hunger takes a fighter out of the melee to eat, and one forbidden to regenerate stays in it', () => {
+    const allowed = meleeBesideEnemy(NEED_CRITICAL_THRESHOLD);
+    const forbidden = meleeBesideEnemy(NEED_CRITICAL_THRESHOLD);
+    forbidden.sim.world.add(forbidden.fighter, NoRegeneration, { prohibited: true });
+
+    for (let i = 0; i < MEAL_RUN_TICKS; i++) {
+      allowed.sim.step();
+      forbidden.sim.step();
+    }
+
+    expect(needsOf(allowed.sim, allowed.fighter).hunger).toBeLessThan(NEED_DRIVE_THRESHOLD);
+    expect(needsOf(forbidden.sim, forbidden.fighter).hunger).toBeGreaterThan(NEED_CRITICAL_THRESHOLD);
+    expect(forbidden.sim.world.has(forbidden.fighter, Engagement)).toBe(true);
+  });
+
+  it('with nothing to eat in reach it fights on, asking again only now and then', () => {
+    const { sim, fighter, enemy } = meleeBesideEnemy(ONE, { larder: false });
+
+    let fighting = 0;
+    for (let i = 0; i < MELEE_TICKS; i++) {
+      sim.step();
+      if (sim.world.tryGet(fighter, CurrentAtomic)?.effect.kind === 'attack') fighting++;
+    }
+
+    expect(sim.world.has(fighter, MealBreakRetry)).toBe(true);
+    expect(fighting).toBeGreaterThan(MELEE_TICKS * MOSTLY);
+    expect(sim.world.get(enemy, Health).hitpoints).toBeLessThan(1_000_000);
+  });
+
+  it('a meal the player orders is eaten though the enemy follows to the larder', () => {
+    const { sim, fighter } = meleeBesideEnemy(ONE);
+    sim.world.add(fighter, NoRegeneration, { prohibited: true }); // only the order sends it
+
+    sim.step();
+    sim.enqueueSetup({ kind: 'orderNeed', entity: fighter, need: 'hunger' });
+    sim.step();
+    for (let i = 0; i < MEAL_RUN_TICKS && sim.world.has(fighter, NeedOrder); i++) sim.step();
+
+    expect(sim.world.has(fighter, NeedOrder)).toBe(false);
+    expect(needsOf(sim, fighter).hunger).toBeLessThan(ONE);
   });
 });
+
+/** Long enough for several swings of the fixture's attack clip. */
+const MELEE_TICKS = 200;
+/** Long enough for the ten-cell walk to the larder, with the enemy in tow, and the meal there. */
+const MEAL_RUN_TICKS = 500;
+/** The share of a melee's ticks a fighter spends swinging when hunger only asks now and then. */
+const MOSTLY = 0.8;
+
+/** A fighter of P0 at `hunger` beside an enemy that strikes back and follows, a larder ten cells behind. */
+function meleeBesideEnemy(
+  hunger: Fixed,
+  opts: { larder?: boolean } = {},
+): { sim: Simulation; fighter: Entity; enemy: Entity } {
+  const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+  const fighter = fighterAt(sim, 10, 0, VIKING, WOODCUTTER, { owner: P0, hitpoints: 1_000_000 });
+  setNeeds(sim, fighter, { hunger });
+  const enemy = fighterAt(sim, 11, 0, VIKING, WOODCUTTER, { owner: P1, hitpoints: 1_000_000 });
+  if (opts.larder !== false) larderAt(sim, 0, 0);
+  return { sim, fighter, enemy };
+}
