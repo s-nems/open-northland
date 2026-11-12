@@ -37,6 +37,18 @@ export function freeDrillCoins(world: World, ctx: SystemContext, house: Entity, 
   return free;
 }
 
+/**
+ * Whether `e` stands inside the barracks his coin drill runs at with a term running or a free coin to start
+ * the next on. The re-plan between two repetitions keeps such a man inside rather than step him out and
+ * walk him back in: a man who came in from beside an occupied door would otherwise walk to it again on
+ * every repetition, drawn in the doorway each time.
+ */
+export function coinDrillGoesOnInside(world: World, ctx: SystemContext, e: Entity): boolean {
+  const order = world.tryGet(e, CoinDrillOrder);
+  if (order?.stage !== 'drill' || !isInside(world, e, order.house)) return false;
+  return order.termTicksLeft > 0 || freeDrillCoins(world, ctx, order.house, e) > 0;
+}
+
 /** End the drilling half of `e`'s coin drill: he steps out of the barracks, a term cut short gives its
  *  coin back, and he walks back on the next planning. */
 export function turnBackFromCoinDrill(world: World, ctx: SystemContext, e: Entity): void {

@@ -15,7 +15,7 @@ import { walkBlockMask } from '../../footprint/walk-block-mask.js';
 import { COIN_DRILL_ATOMIC_ID, coinDrillClip, mayCoinDrill } from '../../progression/coin-drill.js';
 import { isBarracks } from '../../readviews/index.js';
 import { atOrWalk, startAtomic } from '../atomics/start.js';
-import { enterBuilding } from '../indoors.js';
+import { enterBuilding, isInside } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
@@ -47,7 +47,7 @@ export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): b
     const door = standing ? interactionCell(world, ctx, terrain, house, here) : undefined;
     const clip = coinDrillClip(ctx.content, settler);
     if (clip !== undefined && door !== undefined && drillGoesOn(plan, settler, door)) {
-      enterBuilding(world, e, house, here, door, () => {
+      const drill = (): void => {
         const paid =
           coinDrillTermRuns(world, e) ||
           (freeDrillCoins(world, ctx, house, e) > 0 && startCoinDrillTerm(world, ctx, e, house, clip));
@@ -56,7 +56,10 @@ export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): b
           return;
         }
         startAtomic(world, e, COIN_DRILL_ATOMIC_ID, { kind: 'coinDrill', house }, clip.length, house);
-      });
+      };
+      // One the re-plan kept inside drills on where he stands, which may be a stand-in beside the door.
+      if (isInside(world, e, house)) drill();
+      else enterBuilding(world, e, house, here, door, drill);
       return true;
     }
     turnBackFromCoinDrill(world, ctx, e);

@@ -49,6 +49,7 @@ import type { SupplyTally } from '../../stores/index.js';
 import { ACTION_OWNER_MARKERS, anotherSystemOwns, divertsErrand } from '../action-owner.js';
 import { atomicHoldsSettler } from '../atomics/busy.js';
 import { topsUpAtHome } from '../drives/at-home.js';
+import { coinDrillGoesOnInside } from '../drives/coin-drill-coins.js';
 import { reconcileYardRoute, yardRouteSettled } from '../drives/economy/index.js';
 import { type FarmClaims, releaseFarmTask } from '../drives/farming/index.js';
 import { answerNeedInPlace } from '../drives/needs.js';
@@ -401,10 +402,16 @@ export function releaseStaleIntent(
   releaseFarmTask(world, e, farmClaims);
   // These holds keep their Resting through a re-plan because other systems own those exits: shedding a
   // sheltering settler's marker would pop it out of cover and back in every tick the alarm stands. A
-  // settler mid-way through its at-home top-up keeps it too, so the chain runs its rounds indoors, and a
-  // garrison still on its tower keeps it because anything else already gave the post up above. One
-  // outdoors has nothing to step out of, and a garrison counts as held.
-  if (world.has(e, Resting) && !heldIndoors(world, e) && !topsUpAtHome(world, ctx, supply, e)) {
+  // settler mid-way through its at-home top-up keeps it too, so the chain runs its rounds indoors, as does
+  // a coin driller between two repetitions, and a garrison still on its tower keeps it because anything
+  // else already gave the post up above. One outdoors has nothing to step out of, and a garrison counts as
+  // held.
+  if (
+    world.has(e, Resting) &&
+    !heldIndoors(world, e) &&
+    !topsUpAtHome(world, ctx, supply, e) &&
+    !coinDrillGoesOnInside(world, ctx, e)
+  ) {
     // Mead is drunk inside, out of sight, rather than in the doorway the settler would step out to.
     if (stopToDrink(world, ctx, e, NEED_DRIVE_THRESHOLD)) return false;
     stepOut(world, e);

@@ -19,12 +19,13 @@ import {
   TrainingOrder,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
-import { fx, ONE, Simulation } from '../../../../src/index.js';
+import { fx, ONE, positionOfNode, Simulation } from '../../../../src/index.js';
 import type { NodeId } from '../../../../src/nav/terrain/index.js';
 import { walkBlockMask } from '../../../../src/systems/footprint/walk-block-mask.js';
 import { personalFightPoints } from '../../../../src/systems/progression/bonus.js';
 import { COIN_DRILL_TERM_TICKS } from '../../../../src/systems/progression/coin-drill.js';
 import { FIGHT_EXPERIENCE_TYPE, fightUnitsOfPoints } from '../../../../src/systems/progression/experience.js';
+import { interactionCell } from '../../../../src/systems/settlers/targets/index.js';
 import { entityNode } from '../../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../../fixtures/content.js';
 import { grassMap } from '../../../fixtures/needs.js';
@@ -424,5 +425,26 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     sim.step();
     expect(sim.world.has(soldier, CoinDrillOrder)).toBe(false);
     expect(sim.world.has(soldier, TrainingOrder)).toBe(false);
+  });
+  it('stays inside from entry to exit over two terms, entered from beside a door another man stands on', () => {
+    const sim = freshSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    const house = barracksAt(sim, 8, 3, 2);
+    const driller = soldierAt(sim, SWORD_JOB, 2, 3);
+    const door = interactionCell(sim.world, { content: sim.content }, terrain, house, nodeOf(sim, driller));
+    const blocker = soldierAt(sim, SWORD_JOB, 0, 0);
+    sim.world.add(blocker, Position, (({ x, y }) => positionOfNode(x, y))(terrain.coordsOf(door)));
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: driller, house });
+    while (!sim.world.has(driller, Resting)) sim.step();
+    expect(nodeOf(sim, driller)).not.toBe(door);
+    let insideTicks = 0;
+    while (sim.world.get(driller, CoinDrillOrder).stage === 'drill') {
+      expect(sim.world.get(driller, Resting).at, `tick ${sim.tick}`).toBe(house);
+      insideTicks++;
+      sim.step();
+    }
+    expect(insideTicks).toBeGreaterThanOrEqual(2 * SERVED_TERM_TICKS);
+    expect([pointsOf(sim, driller), coinsOf(sim, house)]).toEqual([2 * POINTS_PER_COIN, 0]);
   });
 });
