@@ -35,12 +35,12 @@ import { MEAL_UNITS } from '../atomics/effects/goods/index.js';
 import { atOrWalk, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic, startMeal } from '../atomics/start.js';
 import { enterBuilding } from '../indoors.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
-import { chooseMeal, nearestPrayerSite, storedFoodGood, type TargetCandidates } from '../targets/index.js';
+import { chooseMeal, nearestPrayerSite, type TargetCandidates } from '../targets/index.js';
 import { fillCompanyOnComingHome } from './at-home.js';
 import { prayAtHome, sleepAtHome } from './home-errands.js';
 import { prayerStand } from './prayer-stand.js';
 import { restingCell } from './rest-spot.js';
-import { eatAtPost, sleepAtPost } from './tower-post.js';
+import { eatAtPost, eatOffShelf, sleepAtPost } from './tower-post.js';
 
 // The needs drives: the highest-priority rungs of the planner ladder. Eat outranks sleep outranks pray,
 // and an unsatisfiable need falls through to normal work rather than freezing the settler. Every rung
@@ -113,9 +113,10 @@ function needsAfterDraughts(world: World, ctx: SystemContext, e: Entity): Settle
  * answers waits for the end of the fight.
  *
  * What is left to answer with is thin on purpose: a garrison eats from its tower, a settler under cover
- * from its shelter's stock (owner ruling), and a field unit eats only what it happens to carry. Critical hunger takes a unit allowed to regenerate out of the fight on a
- * meal break (`conflict/hunger-break.ts`); one forbidden to is the player's to pull out, with a move order
- * or an ordered meal.
+ * from its shelter's stock (owner ruling), and a field unit eats only what it happens to carry. Critical
+ * hunger takes a unit allowed to regenerate out of the fight on a meal break
+ * (`conflict/hunger-break.ts`); one forbidden to is the player's to pull out, with a move order or an
+ * ordered meal.
  */
 export function answerNeedInPlace(
   world: World,
@@ -135,27 +136,13 @@ export function answerNeedInPlace(
     const seek = maySeek(world, e, ordered, 'hunger');
     if (seek && eatCarried(world, ctx, e, settler, world.tryGet(e, Carrying))) return true;
     if (seek && eatAtPost(world, ctx, e, settler)) return true;
-    if (seek && larder !== undefined && eatFromLarder(world, ctx, e, settler, larder)) return true;
+    if (seek && larder !== undefined && eatOffShelf(world, ctx, e, settler, larder)) return true;
     if (seek) settleUnservedNeedForAi(world, ctx.tick, e, 'hunger');
   }
   if (pressing(fatigue, ordered, 'fatigue') && maySeek(world, e, ordered, 'fatigue')) {
     settleUnservedNeedForAi(world, ctx.tick, e, 'fatigue');
   }
   return false;
-}
-
-/** Eat one unit off the shelf of the building the settler is held inside; false when it stocks no food. */
-function eatFromLarder(
-  world: World,
-  ctx: SystemContext,
-  e: Entity,
-  settler: SettlerIdentity,
-  larder: Entity,
-): boolean {
-  const goodType = storedFoodGood(world, ctx, larder);
-  if (goodType === null) return false;
-  startMeal(world, ctx, e, settler, { kind: 'eat', goodType, from: larder }, larder);
-  return true;
 }
 
 /** Eat one unit of carried food where the settler stands; false when it carries none. */

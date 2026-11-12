@@ -135,11 +135,17 @@ describe('housewife larder haul', () => {
     expect(sim.world.has(woman, LostWay)).toBe(false);
   });
 
-  it('lifts a lost mark when the home wants nothing more', () => {
+  it.each([
+    ['the home wants nothing more', LARDER_SLOT, 2],
+    ['no source is left for a larder with room', 0, 0],
+  ])('lifts a lost mark when %s', (_case, larder, openPile) => {
     const { sim, woman, home } = hoardSim();
     const goal = sim.terrain?.nodeAtClamped(BURIED_X, ROW);
     if (goal === undefined) throw new Error('setup: terrain missing');
-    sim.world.mut(home, Stockpile).amounts.set(FOOD, LARDER_SLOT);
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, larder);
+    for (const e of sim.world.query(Stockpile)) {
+      if (e !== home && openPile === 0) sim.world.mut(e, Stockpile).amounts.clear();
+    }
     sim.world.add(woman, LostWay, { cutOff: false, since: sim.tick, goal, tried: null });
 
     stepToIdleReplan(sim, woman);

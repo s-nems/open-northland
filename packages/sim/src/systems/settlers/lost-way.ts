@@ -35,9 +35,9 @@ export function clearLostWay(world: World, e: Entity): void {
   world.remove(e, LostWay);
 }
 
-/** Lift a mark `e`'s own walk earned, now that an obeyed order is its way or nothing it would walk to is
- *  wanted any more. A cut-off mark stands: neither reaches the seat or the work, so only its own check, or
- *  work taken, lifts it. */
+/** Lift a mark `e`'s own walk earned, now that an obeyed order is its way or it has no walk left to take.
+ *  A cut-off mark stands: neither reaches the seat or the work, so only its own check, or work taken,
+ *  lifts it. */
 export function liftLostWalk(world: World, e: Entity): void {
   if (world.tryGet(e, LostWay)?.cutOff === false) world.remove(e, LostWay);
 }

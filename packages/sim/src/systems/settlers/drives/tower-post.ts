@@ -65,10 +65,20 @@ export function releaseTowerPost(world: World, ctx: SystemContext, e: Entity): v
  */
 export function eatAtPost(world: World, ctx: SystemContext, e: Entity, settler: SettlerIdentity): boolean {
   const post = standsAtPost(world, e);
-  if (post === null) return false;
-  const goodType = storedFoodGood(world, ctx, post);
+  return post !== null && eatOffShelf(world, ctx, e, settler, post);
+}
+
+/** Eat one unit off the shelf of `building`, which holds the settler inside; false when it stocks no food. */
+export function eatOffShelf(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  settler: SettlerIdentity,
+  building: Entity,
+): boolean {
+  const goodType = storedFoodGood(world, ctx, building);
   if (goodType === null) return false;
-  startMeal(world, ctx, e, settler, { kind: 'eat', goodType, from: post }, post);
+  startMeal(world, ctx, e, settler, { kind: 'eat', goodType, from: building }, building);
   return true;
 }
 

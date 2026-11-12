@@ -200,8 +200,9 @@ export interface PlaceResourceCommand {
 
 /**
  * Drop a loose pile of `amount` × `good` on the ground at (x,y), in the same shape a felled trunk
- * takes, so the existing pickup and delivery machinery hauls it off unchanged. Skipped for a `good`
- * absent from the content catalog or an `amount <= 0`.
+ * takes, so the existing pickup and delivery machinery hauls it off unchanged. Aimed at a building's
+ * body, it lands on the nearest open ground. Skipped for a `good` absent from the content catalog or an
+ * `amount <= 0`.
  */
 export interface DropGoodCommand {
   readonly kind: 'dropGood';

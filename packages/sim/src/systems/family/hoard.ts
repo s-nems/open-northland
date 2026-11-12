@@ -18,6 +18,7 @@ import { startDrop } from '../settlers/atomics/start.js';
 import { hasRoom } from '../settlers/drives/economy/store-policy.js';
 import { liftLostWalk } from '../settlers/lost-way.js';
 import { unreachableCellVeto } from '../settlers/targets/index.js';
+import { unreachableGoals } from '../settlers/unreachable-goals.js';
 import { landReachAt, type NavigationLimit } from '../signposts/index.js';
 import type { SupplyTally } from '../stores/index.js';
 import { deliverHome, fetchFrom, HAUL_LIFT_UNITS } from './food-haul.js';
@@ -101,8 +102,8 @@ export function planWomanHoard(
     demanded.size > 0 ? externalQuality.nearest(hereNode, owner, demanded, reach, avoid) : null;
   const source = nearerSource(world, hereNode, foodSource, qualitySource);
   if (source === null) {
-    // A home that wants nothing leaves her no walk to be lost on.
-    if (larderFull && demanded.size === 0) liftLostWalk(world, e);
+    // No walk is left for her to be lost on, unless the one she just failed is what hides her source.
+    if (unreachableGoals(world, ctx, e) === null) liftLostWalk(world, e);
     return false; // nothing to hoard, so fall through to idling
   }
   supply.stampPickupClaim(e, { source: source.store, goodType: source.goodType, amount: HAUL_LIFT_UNITS });
