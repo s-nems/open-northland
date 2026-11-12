@@ -17,8 +17,8 @@ import { ctxOf } from './support.js';
 
 const HUMAN_PLAYER = 0;
 const AI_PLAYER = 1;
-/** The fixture's `soldier_unarmed` - a job the content classifies as a fighter, so it is gated by
- *  barracks training and never by work XP. */
+/** The fixture's `soldier_unarmed` - a job the content classifies as a fighter, so no experience row
+ *  gates it. */
 const SOLDIER_JOB = 31;
 
 /** Flag `player`'s seat AI-driven, the state the `setAiControl` command lands (no tick needed). */
@@ -29,17 +29,6 @@ function makeAiSeat(sim: Simulation, player: number): void {
     modules: computerModuleEnables(),
     mapAiEnabled: true,
     difficulty: 'hard',
-  });
-}
-
-/** Gate {@link SOLDIER_JOB} behind fight XP - the fixture tribe carries no fighter requirement. */
-function gateSoldierJob(sim: Simulation): void {
-  sim.content.tribes[0]?.jobRequirements.push({
-    requirement: 'need',
-    target: 'job',
-    targetId: SOLDIER_JOB,
-    amount: 10,
-    experienceTypes: [72],
   });
 }
 
@@ -164,13 +153,11 @@ describe('settlerMeetsNeed - all needfor thresholds gating a target', () => {
     expect(settlerMeetsNeed(sim.world, ctxOf(sim), stranger, 'good', PLANK)).toBe(true);
   });
 
-  it('unthresholds civilian targets while profession progression is off, but not fighter jobs', () => {
+  it('unthresholds civilian targets while profession progression is off', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
-    gateSoldierJob(sim);
     setProfessionProgression(sim.world, false);
     expect(settlerMeetsNeed(sim.world, ctx, human(), 'good', PLANK)).toBe(true); // free start
-    expect(settlerMeetsNeed(sim.world, ctx, human(), 'job', SOLDIER_JOB)).toBe(false); // carve-out
     setProfessionProgression(sim.world, true); // re-enabling restores the civilian threshold
     expect(settlerMeetsNeed(sim.world, ctx, human(), 'good', PLANK)).toBe(false);
   });
@@ -188,62 +175,40 @@ describe('settlerMeetsNeed - all needfor thresholds gating a target', () => {
   });
 });
 
-describe('settlerMeetsNeed - the barracks schooling path onto a fighter trade', () => {
+describe('settlerMeetsNeed - a fighter trade', () => {
   const VIKING = 1;
-  /** The `trainforjob` bucket: a track-less id, so raw XP already is the repeat count. */
-  const TRAINING_TRACK = 77;
+  /** The extracted rows' spear fight bucket and training bucket, both track-less. */
+  const SPEAR_BUCKET = 72;
+  const TRAINING_BUCKET = 77;
 
-  /** Add {@link SOLDIER_JOB}'s schooling row beside the fight-XP gate `gateSoldierJob` adds. */
-  function schoolSoldierJob(sim: Simulation): void {
-    sim.content.tribes[0]?.jobRequirements.push({
-      requirement: 'train',
-      target: 'job',
-      targetId: SOLDIER_JOB,
-      amount: 5,
-      experienceTypes: [TRAINING_TRACK],
-    });
-  }
-
-  const drilled = (repeats: number, owner: number = HUMAN_PLAYER): NeedSubject => ({
-    tribe: VIKING,
-    owner,
-    experience: new Map([[TRAINING_TRACK, repeats]]),
-    learned: undefined,
-  });
-
-  it('opens the trade at the schooling threshold, whatever the fight-XP gate says', () => {
+  it('is met by a fresh civilian whatever its need and train rows, with progression on and off', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
-    gateSoldierJob(sim); // needforjob 10 repeats of a track no civilian accrues
-    schoolSoldierJob(sim);
-    expect(settlerMeetsNeed(sim.world, ctx, drilled(4), 'job', SOLDIER_JOB)).toBe(false);
-    expect(settlerMeetsNeed(sim.world, ctx, drilled(5), 'job', SOLDIER_JOB)).toBe(true);
-  });
-
-  it('opens it for an AI seat and with progression off - the drill is the one route either way', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    const ctx = ctxOf(sim);
-    gateSoldierJob(sim);
-    schoolSoldierJob(sim);
-    makeAiSeat(sim, AI_PLAYER);
-    expect(settlerMeetsNeed(sim.world, ctx, drilled(0, AI_PLAYER), 'job', SOLDIER_JOB)).toBe(false);
-    expect(settlerMeetsNeed(sim.world, ctx, drilled(5, AI_PLAYER), 'job', SOLDIER_JOB)).toBe(true);
-    setProfessionProgression(sim.world, false);
-    expect(settlerMeetsNeed(sim.world, ctx, drilled(0), 'job', SOLDIER_JOB)).toBe(false);
-    expect(settlerMeetsNeed(sim.world, ctx, drilled(5), 'job', SOLDIER_JOB)).toBe(true);
-  });
-
-  it('leaves a civilian target alone - its own train rows are the school slice, not this one', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    // The fixture gates good 2 behind 30 wood repeats AND carries a train row on it with amount 999.
-    // A schooled reading of that row would still refuse it; a civilian target must not read it at all.
-    const schooled: NeedSubject = {
+    sim.content.tribes[0]?.jobRequirements.push(
+      {
+        requirement: 'need',
+        target: 'job',
+        targetId: SOLDIER_JOB,
+        amount: 10,
+        experienceTypes: [SPEAR_BUCKET],
+      },
+      {
+        requirement: 'train',
+        target: 'job',
+        targetId: SOLDIER_JOB,
+        amount: 5,
+        experienceTypes: [TRAINING_BUCKET],
+      },
+    );
+    const fresh: NeedSubject = {
       tribe: VIKING,
       owner: HUMAN_PLAYER,
-      experience: new Map([[1, 300]]),
+      experience: new Map(),
       learned: undefined,
     };
-    expect(settlerMeetsNeed(sim.world, ctxOf(sim), schooled, 'good', 2)).toBe(true);
+    expect(settlerMeetsNeed(sim.world, ctx, fresh, 'job', SOLDIER_JOB)).toBe(true);
+    setProfessionProgression(sim.world, false);
+    expect(settlerMeetsNeed(sim.world, ctx, fresh, 'job', SOLDIER_JOB)).toBe(true);
   });
 });
 

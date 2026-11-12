@@ -35,7 +35,7 @@ import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, ONE, type SimEvent, Simulation } from '../../../../src/index.js';
 import { hexDistanceBetween, nodeOfPosition } from '../../../../src/nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../src/nav/terrain/index.js';
-import { needSubjectOf, plannerSystem, settlerMeetsNeed } from '../../../../src/systems/index.js';
+import { plannerSystem } from '../../../../src/systems/index.js';
 import { WORK_FLAG_SNAP_MAX_RADIUS } from '../../../../src/systems/orders/work/selection.js';
 import { MILITARY_MODE } from '../../../../src/systems/readviews/index.js';
 import { BARRACKS_DRILL_TICKS } from '../../../../src/systems/settlers/drives/training.js';
@@ -49,13 +49,11 @@ import { waterColumnMap } from '../../../fixtures/terrain.js';
 
 /**
  * The barracks drill: a colonist sent to a training house walks to its door, drills inside for
- * {@link BARRACKS_DRILL_TICKS}, and steps back out a soldier. The served term IS the qualification -
- * the drill banks no experience stat and flips the trade directly (authored rule), while the
- * class's requirement rows read tracks nothing accrues, keeping every other door onto the trade shut.
+ * {@link BARRACKS_DRILL_TICKS}, and steps back out a soldier. The drill banks no experience stat and
+ * flips the trade directly (authored rule).
  *
- * The fixture mirrors the extracted shape at fixture scale: a `training` house, the civilist's exercise
- * clip (whose `event <at> 29 1` the sim now ignores), and the base soldier class's
- * `needforjob 31 5 69` / `trainforjob 31 5 77` pair.
+ * The fixture mirrors the extracted shape at fixture scale: a `training` house and the civilist's
+ * exercise clip (whose `event <at> 29 1` the sim now ignores).
  */
 
 const VIKING = 1;
@@ -67,9 +65,6 @@ const SOLDIER_JOB = 31;
 const BARRACKS_TYPE = 91;
 const EXERCISE_ATOMIC = 89;
 const EXERCISE_CLIP_TICKS = 4;
-const SOLDIER_GENERAL_TRACK = 69;
-const TRAINING_TRACK = 77;
-const SCHOOLING_REPEATS = 5;
 /** The fixture's headquarters (it declares the food stock slot) and its `food_simple` good. */
 const HEADQUARTERS_TYPE = 1;
 const FOOD_GOOD = 3;
@@ -147,23 +142,6 @@ function barracksContent(): ContentSet {
           ...viking.atomicBindings,
           { jobType: CIVILIST_JOB, atomicId: EXERCISE_ATOMIC, animation: 'viking_exercise' },
         ],
-        jobRequirements: [
-          ...viking.jobRequirements,
-          {
-            requirement: 'need',
-            target: 'job',
-            targetId: SOLDIER_JOB,
-            amount: SCHOOLING_REPEATS,
-            experienceTypes: [SOLDIER_GENERAL_TRACK],
-          },
-          {
-            requirement: 'train',
-            target: 'job',
-            targetId: SOLDIER_JOB,
-            amount: SCHOOLING_REPEATS,
-            experienceTypes: [TRAINING_TRACK],
-          },
-        ],
       },
       ...base.tribes.slice(1),
     ],
@@ -219,10 +197,6 @@ function jobOf(sim: Simulation, e: Entity): number | null {
   return sim.world.get(e, Settler).jobType;
 }
 
-function qualifiesAsSoldier(sim: Simulation, e: Entity): boolean {
-  return settlerMeetsNeed(sim.world, ctxOf(sim), needSubjectOf(sim.world, e), 'job', SOLDIER_JOB);
-}
-
 function run(sim: Simulation, ticks: number): SimEvent[] {
   const events: SimEvent[] = [];
   for (let i = 0; i < ticks; i++) {
@@ -243,7 +217,6 @@ describe('trainSoldier - the barracks drill', () => {
     const sim = simWithBarracks();
     const house = barracksAt(sim, 6, 3);
     const recruit = settlerAt(sim, CIVILIST_JOB, 2, 3);
-    expect(qualifiesAsSoldier(sim, recruit)).toBe(false); // no route onto the trade before the drill
 
     sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();
@@ -259,9 +232,6 @@ describe('trainSoldier - the barracks drill', () => {
       target: 'job',
       typeId: SOLDIER_JOB,
     });
-    // The flip is the drill's whole product: nothing banked, so the XP-gate stays closed even for
-    // him - the barracks remains the only route onto the trade (authored rule).
-    expect(qualifiesAsSoldier(sim, recruit)).toBe(false);
     expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
     expect(sim.world.has(recruit, Resting)).toBe(false); // back outside
   });

@@ -5,7 +5,6 @@ import {
   hexDistanceBetween,
   nodeOfPosition,
   type Simulation,
-  systems,
 } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
 import { JOB_CIVILIST, JOB_SOLDIER, JOB_SOLDIER_BROADSWORD } from '../../catalog/jobs.js';
@@ -20,10 +19,7 @@ import {
 import { goodBySlug } from '../sandbox-queries.js';
 import type { SceneDefinition } from '../types.js';
 
-const { EquipOrder, Equipment, Position, Settler, SettlerProgress } = components;
-
-/** The drill banks nothing in this bucket, the rule `progression/experience.ts` states on it. */
-const TRAINING_TRACK = systems.TRAINING_EXPERIENCE_TYPE;
+const { EquipOrder, Equipment, Position, Settler } = components;
 
 const HEADQUARTERS = { x: 6, y: 12 } as const;
 const BARRACKS = { x: 14, y: 10 } as const;
@@ -111,32 +107,20 @@ export const barracksScene: SceneDefinition = {
       },
     },
     {
-      label: 'his drill banked no experience stat - the trade flip is its whole product',
-      predicate: (sim) => {
-        const { recruit } = cast(sim);
-        return (
-          recruit !== undefined &&
-          (sim.world.get(recruit, SettlerProgress).experience.get(TRAINING_TRACK) ?? 0) === 0
-        );
-      },
-    },
-    {
       label: 'the serving soldier sent in after him drills as a no-op, keeping the trade he had',
       predicate: (sim) => {
         const { veteran } = cast(sim);
-        if (veteran === undefined) return false;
-        const drilled = sim.world.get(veteran, SettlerProgress).experience.get(TRAINING_TRACK) ?? 0;
-        return sim.world.get(veteran, Settler).jobType === JOB_SOLDIER && drilled === 0;
+        return veteran !== undefined && sim.world.get(veteran, Settler).jobType === JOB_SOLDIER;
       },
     },
     {
-      label: 'the colonist who never drilled is still refused the soldier trade',
+      label: 'the colonist who never drilled may take the soldier trade too: no experience gates it',
       predicate: (sim) => {
         const { bystander } = cast(sim);
         return (
           bystander !== undefined &&
           sim.world.get(bystander, Settler).jobType === JOB_CIVILIST &&
-          !soldierOffered(sim, bystander)
+          soldierOffered(sim, bystander)
         );
       },
     },

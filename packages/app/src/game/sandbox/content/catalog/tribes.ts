@@ -90,26 +90,8 @@ export interface SandboxTribe {
   readonly atomicBindings?: unknown[];
 }
 
-/**
- * Extracted `needforjob 31 5 69` and `trainforjob 31 5 77` on the base soldier class. The armed classes
- * carry no rows on purpose: the weapon-class flip never consults these gates.
- */
-const SOLDIER_GATE: readonly JobRequirement[] = [
-  {
-    requirement: 'need',
-    target: 'job',
-    targetId: JOB_SOLDIER_UNARMED,
-    amount: 5,
-    experienceTypes: [systems.SOLDIER_GENERAL_EXPERIENCE_TYPE],
-  },
-  {
-    requirement: 'train',
-    target: 'job',
-    targetId: JOB_SOLDIER_UNARMED,
-    amount: 5,
-    experienceTypes: [systems.TRAINING_EXPERIENCE_TYPE],
-  },
-];
+/** The training bucket every extracted `trainfor*` row names; the school reads only the row's amount. */
+const SCHOOL_TRAINING_EXPERIENCE_TYPE = 77;
 
 export function buildSandboxTribes(
   jobTypes: readonly number[],
@@ -206,14 +188,13 @@ export function buildSandboxTribes(
     ],
     jobEnables: SANDBOX_JOB_ENABLES,
     jobRequirements: [
-      ...SOLDIER_GATE,
       // Owned CnMod tribetypes.ini: trainforjob 9 10 77.
       {
         requirement: 'train',
         target: 'job',
         targetId: JOB_JOINER,
         amount: 10,
-        experienceTypes: [systems.TRAINING_EXPERIENCE_TYPE],
+        experienceTypes: [SCHOOL_TRAINING_EXPERIENCE_TYPE],
       },
     ],
   });

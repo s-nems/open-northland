@@ -261,9 +261,7 @@ export {
 } from './progression/efficiency.js';
 export {
   FIGHT_EXPERIENCE_TYPE,
-  SOLDIER_GENERAL_EXPERIENCE_TYPE,
   startingExperience,
-  TRAINING_EXPERIENCE_TYPE,
 } from './progression/experience.js';
 // The atomic clip resolution and the need channels its events carry, so the real-content suite can pin the
 // joins against the served IR rather than a fixture, and the committed catalog can author its cues and its

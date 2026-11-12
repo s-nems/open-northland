@@ -16,17 +16,16 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../../src/index.js';
 import { heldGatherGood, holdToGatherGood } from '../../../src/systems/economy/gather-goods.js';
 import { learn } from '../../../src/systems/orders/education.js';
-import {
-  needSubjectOf,
-  settlerMeetsNeed,
-  TRAINING_EXPERIENCE_TYPE,
-} from '../../../src/systems/progression/index.js';
+import { needSubjectOf, settlerMeetsNeed } from '../../../src/systems/progression/index.js';
 import { planTraining } from '../../../src/systems/settlers/drives/training.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { plannerContextAt } from '../../fixtures/planner.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap } from '../../fixtures/terrain.js';
+
+/** The training bucket the extracted `trainfor*` rows name; the school reads only a row's amount. */
+const TRAINING_EXPERIENCE_TYPE = 77;
 
 const SCHOOL = 91;
 const SCHOOL_AT = { x: 4, y: 4 };

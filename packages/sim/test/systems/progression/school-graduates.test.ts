@@ -21,7 +21,6 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation, type TerrainMap } from '../../../src/index.js';
 import { nodeOfPosition } from '../../../src/nav/halfcell.js';
 import { learn } from '../../../src/systems/orders/education.js';
-import { TRAINING_EXPERIENCE_TYPE } from '../../../src/systems/progression/index.js';
 import { planTraining } from '../../../src/systems/settlers/drives/training.js';
 import { interactionCell } from '../../../src/systems/settlers/targets/index.js';
 import { hexNodeDistance } from '../../../src/systems/spatial/metric.js';
@@ -30,6 +29,9 @@ import { ctxOf } from '../../fixtures/context.js';
 import { plannerContextAt } from '../../fixtures/planner.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap, waterColumnMap } from '../../fixtures/terrain.js';
+
+/** The training bucket the extracted `trainfor*` rows name; the school reads only a row's amount. */
+const TRAINING_EXPERIENCE_TYPE = 77;
 
 const SEAT = 0;
 const TRIBE = 1;
