@@ -106,6 +106,7 @@ export {
   type DrawItem,
   type HolyFireBinding,
   type HolyFireLookup,
+  type HouseBodyOf,
   type InHouseProgramLookup,
   indoorHouseOf,
   isIndoorSettler,

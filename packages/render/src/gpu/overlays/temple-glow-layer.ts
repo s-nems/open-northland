@@ -1,13 +1,22 @@
-import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import {
+  type EntitySnapshot,
+  entityById,
+  type Fixed,
+  nodeHyOfPosition,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { Container, Mesh, MeshGeometry, Shader, UniformGroup } from 'pixi.js';
 import { isVisible, ONE, tileToScreenX, tileToScreenY, type Viewport } from '../../data/projection/index.js';
 import {
   blessingTemplesOf,
+  type HouseBodyOf,
+  type HouseGround,
+  houseGroundOf,
   type TempleAuraPhases,
   templeAuraPhases,
   templeGlowPulse,
 } from '../../data/scene/temple-glow.js';
-import { readPosition } from '../../data/snapshot/index.js';
+import { type PositionValue, readPosition } from '../../data/snapshot/index.js';
 import { glProgramFor } from '../shaders/program-source.js';
 import type { DrawnGeometry } from '../sprite-pool/index.js';
 import { TEMPLE_AURA_SOURCE } from './temple-aura-shader.js';
@@ -23,10 +32,13 @@ export interface TempleGlowFrame {
 }
 
 /** The aura's strength at the top of its breath. Tuned by eye. */
-const AURA_ALPHA = 0.22;
-/** The wall line's and the rim's half-widths as shares of the drawn temple's. Tuned by eye. */
-const WALL_SPREAD = 0.8;
-const RIM_SPREAD = 2.3;
+const AURA_ALPHA = 0.3;
+/** The wall line's and the rim's half-widths as shares of the ground the temple stands on. Tuned by eye. */
+const WALL_SPREAD = 0.87;
+const RIM_SPREAD = 2.5;
+/** The share of its drawn half-width taken as the ground of a temple whose body the content does not
+ *  give, centred on its anchor. */
+const DRAWN_GROUND_SHARE = 0.9;
 /** North-south over east-west radius of a patch of flat ground under the projection, as the art's
  *  platforms are drawn. Tuned by eye. */
 const GROUND_SQUASH = 0.5;
@@ -49,15 +61,17 @@ interface Aura {
   kindled: number;
   /** Whether the viewer saw the temple blessing this frame. */
   blessing: boolean;
-  /** The wall line's centre and half-width in world px. */
+  /** The centre and half-width of the ground the temple stands on, in world px. */
   x: number;
   y: number;
-  wall: number;
+  reach: number;
 }
 
 /**
  * The aura of each temple the viewer sees blessing, every tribe's alike, so a temple with no oil or a
- * wound reads at a glance: light leaving the wall line in crests on the ground under the house.
+ * wound reads at a glance: light leaving the wall line in crests on the ground under the house. It
+ * spreads from the centre of the temple's body cells, the ground every tribe's art stands on, not from
+ * its drawn box, which a cast shadow or a tower to one side pulls off the house.
  * Our own effect; the original shows the blessing nowhere.
  * An aura rises when its temple starts blessing and dies when it stops; one the viewer comes upon
  * already blessing shows whole, and one that leaves sight goes at once.
@@ -77,6 +91,13 @@ export class TempleGlowLayer {
   private blessed = new Set<number>();
   private spare = new Set<number>();
   private readonly phases: TempleAuraPhases = { wave: 0, sway: 0, rays: 0 };
+  private readonly ground: HouseGround = { dx: 0, dy: 0, halfWidth: 0 };
+  private bodyOf: HouseBodyOf | undefined;
+
+  /** `null` sizes every aura by its temple's drawn width around its anchor. */
+  setHouseBodies(bodyOf: HouseBodyOf | null): void {
+    this.bodyOf = bodyOf ?? undefined;
+  }
 
   draw(frame: TempleGlowFrame): void {
     const first = this.lastSeconds === null;
@@ -111,27 +132,42 @@ export class TempleGlowLayer {
   /** Mark temple `id` blessing in view and take its drawn place; a new aura of a temple that blessed
    *  `already` starts whole. */
   private place(frame: TempleGlowFrame, id: number, already: boolean): void {
-    const at = readPosition(entityById(frame.snapshot, id)?.components ?? {});
-    if (at === null) return;
+    const house = entityById(frame.snapshot, id);
+    const at = readPosition(house?.components ?? {});
+    if (house === undefined || at === null) return;
     const tileX = at.x / ONE;
     const tileY = at.y / ONE;
     const feetX = tileToScreenX(tileX, tileY);
     const feetY = tileToScreenY(tileY);
     if (!isVisible(frame.viewport, feetX, feetY) || frame.fogVisible?.(tileX, tileY) === false) return;
-    const bounds = frame.drawn.boundsOf(id);
-    if (bounds === undefined) return;
+    const feet = frame.drawn.anchorOf(id);
+    const ground = this.groundOf(house, at, frame.drawn);
+    if (feet === undefined || ground === undefined) return;
     const aura = this.auraOf(id, already);
-    // The wall line is an ellipse of flat ground whose front touches the drawn temple's lowest row.
-    aura.wall = ((bounds.maxX - bounds.minX) / 2) * WALL_SPREAD;
-    aura.x = (bounds.minX + bounds.maxX) / 2;
-    aura.y = bounds.maxY - aura.wall * GROUND_SQUASH;
+    aura.x = feet.x + ground.dx;
+    aura.y = feet.y + ground.dy;
+    aura.reach = ground.halfWidth;
     aura.blessing = true;
   }
 
+  /** The ground `house` stands on, from its body cells, else from its drawn width; valid until the next
+   *  call. */
+  private groundOf(house: EntitySnapshot, at: PositionValue, drawn: DrawnGeometry): HouseGround | undefined {
+    const cells = this.bodyOf?.(house);
+    const hy = nodeHyOfPosition(at.x as Fixed, at.y as Fixed);
+    if (cells !== undefined && houseGroundOf(cells, hy, this.ground)) return this.ground;
+    const bounds = drawn.boundsOf(house.id);
+    if (bounds === undefined) return undefined;
+    this.ground.dx = 0;
+    this.ground.dy = 0;
+    this.ground.halfWidth = ((bounds.maxX - bounds.minX) / 2) * DRAWN_GROUND_SHARE;
+    return this.ground;
+  }
+
   private pose(aura: Aura, frame: TempleGlowFrame): void {
-    const rim = (aura.wall / WALL_SPREAD) * RIM_SPREAD;
+    const rim = aura.reach * RIM_SPREAD;
     const phases = templeAuraPhases(frame.seconds, aura.id, this.phases);
-    aura.values[0] = aura.wall / rim;
+    aura.values[0] = WALL_SPREAD / RIM_SPREAD;
     aura.values[1] = phases.wave;
     aura.values[2] = phases.sway;
     aura.values[3] = phases.rays;
@@ -153,7 +189,7 @@ export class TempleGlowLayer {
       const ground = new Mesh({ geometry: this.geometry, shader });
       ground.blendMode = 'add';
       this.container.addChild(ground);
-      aura = { id, ground, uniforms, values, kindled: whole ? 1 : 0, blessing: false, x: 0, y: 0, wall: 0 };
+      aura = { id, ground, uniforms, values, kindled: whole ? 1 : 0, blessing: false, x: 0, y: 0, reach: 0 };
       this.auras.set(id, aura);
     }
     return aura;

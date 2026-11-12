@@ -754,7 +754,7 @@ export const enContent = {
     'temple-aura': {
       title: 'Temple blessing',
       summary:
-        'Select the temple to see its pale-blue blessing range. The nearby civilian regains religion; the distant one stays outside the aura.',
+        'A temple of each civilization stands in a row. Select one to see its pale-blue blessing range. The nearby civilian regains religion; the distant one stays outside the aura.',
     },
     'temple-oil': {
       title: 'Temple oil',

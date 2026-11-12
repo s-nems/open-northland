@@ -4,6 +4,7 @@ import type { FootfallGround } from '../../data/effects/index.js';
 import type { Viewport } from '../../data/projection/index.js';
 import { type ImportMarker, importMarkersOf } from '../../data/scene/import-markers.js';
 import { OverheadColumn } from '../../data/scene/overhead-column.js';
+import type { HouseBodyOf } from '../../data/scene/temple-glow.js';
 import type { ElevationField, WaterField } from '../../data/terrain/index.js';
 import type { ViewDetail } from '../../data/view-detail.js';
 import { BloodLayer } from '../blood/layer.js';
@@ -223,6 +224,10 @@ export class WorldMarks {
   /** Good type → the colour a sip of it glows in; `null` shows no sip. */
   setDraughtGlowColours(colourOfGood: ReadonlyMap<number, number> | null): void {
     this.draughtGlows.setColours(colourOfGood);
+  }
+
+  setHouseBodies(bodyOf: HouseBodyOf | null): void {
+    this.templeGlow.setHouseBodies(bodyOf);
   }
 
   setBonesFade(fades: boolean): void {

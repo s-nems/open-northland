@@ -1,5 +1,12 @@
-import { indexesOf, type SnapshotIndexSpec, type WorldSnapshot } from '@open-northland/sim';
+import { type FootprintCell, footprintCellDx } from '@open-northland/data';
+import {
+  type EntitySnapshot,
+  indexesOf,
+  type SnapshotIndexSpec,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { frac } from '../effects/random.js';
+import { halfCellToScreenX, halfCellToScreenY } from '../projection/index.js';
 
 /** Whether a temple blesses the people around it this tick (its `TempleFire.blessing`); undefined for an
  *  entity the sim keeps no temple fire on, such as the headquarters. */
@@ -28,6 +35,41 @@ const BLESSING_TEMPLES: SnapshotIndexSpec<Set<number>> = {
  *  all and culls each. A mirror edits the set in place as it advances, so read it within the frame. */
 export function blessingTemplesOf(snapshot: WorldSnapshot): ReadonlySet<number> {
   return indexesOf(snapshot).get(BLESSING_TEMPLES);
+}
+
+/** The body cells (`footprint.blocked`, offsets from its anchor node) a house stands on, resolved from
+ *  content by its type, tribe and record; undefined when the content knows none. */
+export type HouseBodyOf = (house: EntitySnapshot) => readonly FootprintCell[] | undefined;
+
+/** The flat ground a house stands on, in world px: its body's centre off the anchor, and half its width
+ *  between the outermost cell centres. */
+export interface HouseGround {
+  dx: number;
+  dy: number;
+  halfWidth: number;
+}
+
+/** Write into `out` the ground of the body `cells` of a house anchored on node row `hy`, the odd-row
+ *  shift applied as the sim stamps them; false for an empty body. */
+export function houseGroundOf(cells: readonly FootprintCell[], hy: number, out: HouseGround): boolean {
+  if (cells.length === 0) return false;
+  const anchorX = halfCellToScreenX(0, hy);
+  const anchorY = halfCellToScreenY(hy);
+  let sumX = 0;
+  let sumY = 0;
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  for (const cell of cells) {
+    const x = halfCellToScreenX(footprintCellDx(hy, cell), hy + cell.dy) - anchorX;
+    sumX += x;
+    sumY += halfCellToScreenY(hy + cell.dy) - anchorY;
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+  }
+  out.dx = sumX / cells.length;
+  out.dy = sumY / cells.length;
+  out.halfWidth = (maxX - minX) / 2;
+  return true;
 }
 
 const TAU = 2 * Math.PI;

@@ -8,6 +8,7 @@ import type { LightGrade } from '../../data/lighting/types.js';
 import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
 import {
   type DrawItem,
+  type HouseBodyOf,
   palisadeLayoutOf,
   RoadShardTracker,
   type SceneTerrain,
@@ -449,6 +450,11 @@ export class WorldRenderer {
   /** Good type → the colour a settler glows in as it sips that draught; `null` shows no sip. */
   setDraughtGlowColours(colourOfGood: ReadonlyMap<number, number> | null): void {
     this.marks.setDraughtGlowColours(colourOfGood);
+  }
+
+  /** The body cells a temple's aura spreads from; `null` spreads it from the drawn temple instead. */
+  setHouseBodies(bodyOf: HouseBodyOf | null): void {
+    this.marks.setHouseBodies(bodyOf);
   }
 
   setCombatBonesGfx(gfx: CombatBonesGfx | null): void {

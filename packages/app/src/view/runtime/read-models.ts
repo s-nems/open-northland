@@ -1,11 +1,12 @@
-import { buildingFootprintFor, lastByTypeId } from '@open-northland/data';
-import type { BuildingTypeBinding } from '@open-northland/render';
+import { buildingFootprintFor, type FootprintCell, lastByTypeId } from '@open-northland/data';
+import type { BuildingTypeBinding, HouseBodyOf } from '@open-northland/render';
 import type { SignpostReachView } from '@open-northland/sim';
 import { systems } from '@open-northland/sim';
 import { buildingSignAnchorsFor } from '../../content/building-gfx/index.js';
 import { loadIr } from '../../content/ir/load.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
+import { buildingRecordOf, buildingTribeOf, buildingTypeOf } from '../../game/snapshot/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { goodName } from '../../i18n/index.js';
@@ -99,11 +100,26 @@ export function buildingModels(
   return { geometryOf, infoOf };
 }
 
+/** {@link HouseBodyOf} over `geometryOf`, held per snapshot entity object so a frame that asks again of
+ *  an unchanged house builds no lookup key. */
+function houseBodies(geometryOf: GeometryBuildingInfoOf): HouseBodyOf {
+  const held = new WeakMap<object, readonly FootprintCell[] | undefined>();
+  return (house) => {
+    if (held.has(house)) return held.get(house);
+    const body = geometryOf(buildingTypeOf(house), buildingTribeOf(house), buildingRecordOf(house))?.footprint
+      ?.blocked;
+    held.set(house, body);
+    return body;
+  };
+}
+
 export interface ViewReadModels extends ReturnType<typeof createSnapshotProjections> {
   /** A good's display name by sim goodType, falling back to its id. */
   readonly goodLabel: (typeId: number) => string | undefined;
   /** Per-type, per-tribe geometry for the debug overlay; the anchors travel with the projections. */
   readonly buildingGeometry: GeometryBuildingInfoOf;
+  /** The body cells a placed house stands on, which the temple aura spreads from. */
+  readonly houseBodyOf: HouseBodyOf;
   /** The memoized build-mode band probe and its erect-signpost twin. */
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
@@ -120,6 +136,7 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
   return {
     goodLabel: (typeId) => goodLabelByType.get(typeId),
     buildingGeometry: buildings.geometryOf,
+    houseBodyOf: houseBodies(buildings.geometryOf),
     overlayFrame: makeOverlayFrameSource(deps.probes, host, mapSize, localPlayer),
     signpostOverlayFrame: makeSignpostOverlaySource(deps.probes, host, mapSize, localPlayer),
     litOverlayFrame: makeLitOverlaySource(deps.probes, host, mapSize, localPlayer),

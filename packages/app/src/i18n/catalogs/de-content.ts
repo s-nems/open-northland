@@ -760,7 +760,7 @@ export const deContent = {
     'temple-aura': {
       title: 'Tempelsegen',
       summary:
-        'Wähle den Tempel, um die hellblaue Reichweite des Segens zu sehen. Der nahe Siedler gewinnt Religion zurück, der entfernte bleibt außerhalb der Aura.',
+        'In einer Reihe steht ein Tempel jeder Zivilisation. Wähle einen, um die hellblaue Reichweite des Segens zu sehen. Der nahe Siedler gewinnt Religion zurück, der entfernte bleibt außerhalb der Aura.',
     },
     'temple-oil': {
       title: 'Tempelöl',

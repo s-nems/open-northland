@@ -7,7 +7,18 @@ import { useHeadlessShaderContext } from '../../support/shader-context.js';
 const BLESSING = 1;
 const DARK = 2;
 const VIEW = { minX: -1000, maxX: 1000, minY: -1000, maxY: 1000 };
+/** A drawn box pulled left of the feet, as a cast shadow or a side tower pulls a temple's. */
 const BOUNDS = { minX: 0, minY: -60, maxX: 80, maxY: 50 };
+const FEET = { x: 100, y: 200 };
+/** Body cells on an even anchor row: centres 0, 68 and 34 px right of the anchor, the last a row of
+ *  nodes up (38 px). */
+const BODY = [
+  { dx: 0, dy: 0 },
+  { dx: 2, dy: 0 },
+  { dx: 1, dy: -2 },
+];
+const BODY_CENTRE = { x: 34, y: -38 / 3 };
+const BODY_HALF_WIDTH = 34;
 /** Longer than the aura takes to rise or die. */
 const KINDLED_SECONDS = 10;
 const STEP_SECONDS = 0.1;
@@ -28,7 +39,7 @@ function world(blessing: boolean): WorldSnapshot {
 function frame(seconds: number, seams: Partial<TempleGlowFrame> = {}): TempleGlowFrame {
   return {
     snapshot: world(true),
-    drawn: drawnGeometry({ boundsOf: () => BOUNDS }),
+    drawn: drawnGeometry({ boundsOf: () => BOUNDS, anchorOf: () => FEET }),
     viewport: VIEW,
     seconds,
     ...seams,
@@ -43,18 +54,22 @@ function run(layer: TempleGlowLayer, until: number, seams: Partial<TempleGlowFra
 describe('TempleGlowLayer', () => {
   useHeadlessShaderContext();
 
-  it('spreads the aura from the wall line of a blessing temple alone', () => {
+  it('spreads the aura of a blessing temple alone from the centre of its body cells, not its drawn box', () => {
     const layer = new TempleGlowLayer();
+    layer.setHouseBodies(() => BODY);
     run(layer, KINDLED_SECONDS);
     expect(layer.container.children).toHaveLength(1);
     const aura = layer.container.children[0];
-    const halfWidth = (BOUNDS.maxX - BOUNDS.minX) / 2;
-    expect(aura?.position.x).toBe((BOUNDS.minX + BOUNDS.maxX) / 2);
-    // Centred behind the temple's lowest row, on the house and not before it.
-    expect(aura?.position.y).toBeLessThan(BOUNDS.maxY);
-    expect(aura?.position.y).toBeGreaterThan(BOUNDS.maxY - halfWidth);
-    expect(aura?.scale.x).toBeGreaterThan(halfWidth);
+    expect(aura?.position.x).toBeCloseTo(FEET.x + BODY_CENTRE.x);
+    expect(aura?.position.y).toBeCloseTo(FEET.y + BODY_CENTRE.y);
+    expect(aura?.scale.x).toBeGreaterThan(BODY_HALF_WIDTH);
     expect(aura?.alpha).toBeGreaterThan(0);
+  });
+
+  it('centres the aura of a temple whose body the content does not give on its feet', () => {
+    const layer = new TempleGlowLayer();
+    run(layer, KINDLED_SECONDS);
+    expect(layer.container.children[0]?.position).toMatchObject(FEET);
   });
 
   it('kindles the aura when its temple starts blessing and lets it die when it stops', () => {

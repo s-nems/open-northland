@@ -1278,6 +1278,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const {
       goodLabel,
       buildingGeometry,
+      houseBodyOf,
       overlayFrame,
       signpostOverlayFrame,
       litOverlayFrame,
@@ -1305,6 +1306,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       selection: { ids: controls.selectedIds, version: controls.selectionVersion },
     });
     pickableDoorBadges = () => drawnDoorBadgesFor(host.snapshot());
+    renderer.setHouseBodies(houseBodyOf);
 
     // The script's markers draw over the world and under every HUD plane.
     const scriptOverlay = new Container();

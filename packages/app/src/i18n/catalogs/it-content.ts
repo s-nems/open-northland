@@ -762,7 +762,7 @@ export const itContent = {
     'temple-aura': {
       title: 'Benedizione del tempio',
       summary:
-        "Seleziona il tempio per vedere il raggio azzurro della sua benedizione. Il civile vicino recupera religione; quello lontano resta fuori dall'aura.",
+        "In fila c'è un tempio per ogni civiltà. Selezionane uno per vedere il raggio azzurro della sua benedizione. Il civile vicino recupera religione; quello lontano resta fuori dall'aura.",
     },
     'temple-oil': {
       title: 'Olio del tempio',

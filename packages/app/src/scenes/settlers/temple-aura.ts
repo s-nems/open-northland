@@ -1,13 +1,23 @@
 import { components, ONE, type Simulation } from '@open-northland/sim';
 import { grassTerrain } from '../../catalog/buildings.js';
+import { CIVILIZATIONS } from '../../catalog/civilizations.js';
 import { JOB_CIVILIST } from '../../catalog/jobs.js';
+import { HUMAN_PLAYER } from '../../game/rules.js';
 import { placeBuiltSandboxBuilding, spawnSettlerDirect } from '../../game/sandbox/index.js';
 import type { SceneDefinition } from '../types.js';
 
 const { Position, SettlerNeeds } = components;
 
+/** One temple per civilization along a row, so their auras compare side by side. */
+const TEMPLE_ROW_Y = 30;
+const TEMPLE_FIRST_X = 12;
+const TEMPLE_STEP_X = 12;
+
 function build(sim: Simulation): void {
-  placeBuiltSandboxBuilding(sim, 'work_temple', 36, 30);
+  CIVILIZATIONS.forEach((tribe, i) => {
+    const x = TEMPLE_FIRST_X + i * TEMPLE_STEP_X;
+    placeBuiltSandboxBuilding(sim, 'work_temple', x, TEMPLE_ROW_Y, HUMAN_PLAYER, { tribe });
+  });
   for (const [x, y] of [
     [34, 34],
     [36, 64],
@@ -17,11 +27,12 @@ function build(sim: Simulation): void {
   }
 }
 
-/** Select the temple to inspect the pale-blue blessing range; neither civilian has a prayer drive. */
+/** Select a temple to inspect the pale-blue blessing range; neither civilian has a prayer drive. */
 export const templeAuraScene: SceneDefinition = {
   id: 'temple-aura',
   seed: 41,
   terrain: grassTerrain(80, 80),
+  graphicTribes: CIVILIZATIONS,
   build,
   runTicks: 120,
   initialZoom: 0.4,
