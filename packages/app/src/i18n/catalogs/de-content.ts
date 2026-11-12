@@ -727,6 +727,11 @@ export const deContent = {
       summary:
         'Ein hungriger Kundschafter soll mehrere Wegweiser nacheinander errichten. Zuerst geht er jedoch zur Vorratskammer, isst und stellt dann die übrigen auf. Auch ein Soldat, dem Erholung erlaubt ist, macht eine Essenspause; der Soldat ohne Erholungserlaubnis marschiert hungrig weiter.',
     },
+    'mead-drink': {
+      title: 'Met trinken',
+      summary:
+        'Drei Siedler gehen nach Osten und werden nach ein paar Schritten hungrig. Ein Zivilist und ein Soldat halten auf dem Weg an, trinken ihren Met wie beim Essen und gehen weiter. Ein Soldat, dem Regeneration verboten ist, lässt seinen Met zu und trinkt im Gehen einen Nahrungstrank.',
+    },
     'scout-claim': {
       title: 'Ein Kundschafter fängt ein Tier',
       summary:

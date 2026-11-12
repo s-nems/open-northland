@@ -117,6 +117,7 @@ import { familyAwayScene } from './settlers/family-away.js';
 import { gossipScene } from './settlers/gossip.js';
 import { grownUpTrainingScene } from './settlers/grown-up-training.js';
 import { learningFoundationsScene } from './settlers/learning-foundations.js';
+import { meadDrinkScene } from './settlers/mead-drink.js';
 import { mealBreakScene } from './settlers/meal-break.js';
 import { movementContinuityScene } from './settlers/movement-continuity.js';
 import { personalNamesScene } from './settlers/personal-names.js';
@@ -217,6 +218,7 @@ export const SCENES: readonly SceneDefinition[] = [
   workshopProductsScene,
   signpostsScene,
   mealBreakScene,
+  meadDrinkScene,
   familyScene,
   playerColoursScene,
   playerColoursExtraScene,

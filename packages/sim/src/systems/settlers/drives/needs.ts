@@ -19,12 +19,15 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import {
   carriesNeeds,
+  DRINK_IN_PLACE_LEVEL,
   drinkPressingDraughts,
   mutNeeds,
   NEED_CRITICAL_THRESHOLD,
   NEED_DRIVE_THRESHOLD,
   NEED_SATED_THRESHOLD,
   needLevel,
+  stoppingDraughtFor,
+  stopToDrink,
 } from '../../lifecycle/needs/index.js';
 import { noteOrderedMealUnserved } from '../../orders/meal-break.js';
 import { atomicDuration } from '../../readviews/animations.js';
@@ -107,6 +110,12 @@ function needsAfterDraughts(world: World, ctx: SystemContext, e: Entity): Settle
   return world.get(e, SettlerNeeds);
 }
 
+/** Whether `need` waits for the draught the settler stops to drink on its way rather than send it off to
+ *  food or a bed. */
+function waitsForDraught(world: World, ctx: SystemContext, e: Entity, need: 'hunger' | 'fatigue'): boolean {
+  return stoppingDraughtFor(world, ctx, e, need) !== null;
+}
+
 /**
  * The in-place half of the needs ladder, for a settler that must hold its ground: {@link planNeeds}'s rung
  * order with every tail that walks or lies down removed, a tower's bed included, so fatigue no draught
@@ -131,6 +140,7 @@ export function answerNeedInPlace(
     world.remove(e, NeedOrder);
   const ordered = orderedNeed(world, e);
   const needs = needsAfterDraughts(world, ctx, e);
+  if (stopToDrink(world, ctx, e, NEED_DRIVE_THRESHOLD)) return true;
   const fatigue = needLevel(needs, 'fatigue', ctx.tick);
   if (pressing(needLevel(needs, 'hunger', ctx.tick), ordered, 'hunger')) {
     const seek = maySeek(world, e, ordered, 'hunger');
@@ -197,10 +207,12 @@ export function planNeeds(
     world.remove(e, NeedOrder);
   const ordered = orderedNeed(world, e);
   const needs = needsAfterDraughts(world, ctx, e);
+  if (stopToDrink(world, ctx, e, DRINK_IN_PLACE_LEVEL)) return true;
   const hunger = needLevel(needs, 'hunger', ctx.tick);
   const fatigue = needLevel(needs, 'fatigue', ctx.tick);
   if (
     pressing(hunger, ordered, 'hunger') &&
+    !waitsForDraught(world, ctx, e, 'hunger') &&
     seekMeal(
       world,
       ctx,
@@ -214,7 +226,7 @@ export function planNeeds(
   }
   if (ordered === 'hunger') noteOrderedMealUnserved(world, ctx, e);
 
-  if (pressing(fatigue, ordered, 'fatigue')) {
+  if (pressing(fatigue, ordered, 'fatigue') && !waitsForDraught(world, ctx, e, 'fatigue')) {
     if (maySeek(world, e, ordered, 'fatigue') && !onAlert()) {
       if (sleepAtPost(world, ctx, e, settler)) return true;
       if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;

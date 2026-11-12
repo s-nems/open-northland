@@ -520,7 +520,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'draughts',
       name: 'Potions and Amulets',
-      lead: "A settler drinks on the spot without stopping what he's doing. Amulets never wear out.",
+      lead: "A settler drinks potions on the spot without stopping what he's doing. For Mead he stops on his way, as he would to eat. Amulets never wear out.",
       blocks: [
         {
           h: 'Potions',

@@ -92,7 +92,13 @@ export const economyContent = {
       typeId: 13,
       id: 'mead',
       weight: 1,
-      equip: { category: 'misc', wears: true, uses: 2, restorePct: { hunger: 50, fatigue: 50 } },
+      equip: {
+        category: 'misc',
+        wears: true,
+        uses: 2,
+        restorePct: { hunger: 50, fatigue: 50 },
+        stopsToDrink: true,
+      },
     },
     {
       typeId: 14,

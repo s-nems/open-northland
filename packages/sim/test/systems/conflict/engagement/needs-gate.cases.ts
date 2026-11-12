@@ -46,8 +46,6 @@ const PRESSING: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
 const HUNGRY: Fixed = fx.div(fx.fromInt(85), fx.fromInt(100));
 /** Well under the drive threshold: only an order makes this bar a reason to act. */
 const FED: Fixed = fx.div(ONE, fx.fromInt(4));
-/** What one sip of mead takes off the hunger bar: half of it. */
-const MEAD_SIP: Fixed = fx.div(ONE, fx.fromInt(2));
 
 function hungryFighterAt(sim: Simulation, x: number, y: number): Entity {
   const e = fighterAt(sim, x, y, VIKING, WOODCUTTER, { owner: P0 });
@@ -129,13 +127,13 @@ describe('an engaged unit answers a need in place, never by walking', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(besieger, MoveGoal)).toBe(false);
-    expect(needsOf(sim, besieger).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
-    // The sip does not release the fight.
+    expect(sim.world.tryGet(besieger, CurrentAtomic)?.effect.kind).toBe('drink');
+    // The drink does not release the fight.
     expect(sim.world.has(besieger, Engagement)).toBe(true);
     expect(sim.world.has(besieger, AttackOrder)).toBe(true);
   });
 
-  it('a hungry CHASER drinks mid-march without stopping', () => {
+  it('a hungry CHASER stops on its node to drink its mead and stays engaged', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const chaser = hungryFighterAt(sim, 0, 0);
     carryMead(sim, chaser);
@@ -145,9 +143,8 @@ describe('an engaged unit answers a need in place, never by walking', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(needsOf(sim, chaser).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
-    expect(sim.world.has(chaser, CurrentAtomic)).toBe(false);
-    expect(sim.world.has(chaser, MoveGoal)).toBe(true);
+    expect(sim.world.tryGet(chaser, CurrentAtomic)?.effect.kind).toBe('drink');
+    expect(sim.world.has(chaser, MoveGoal)).toBe(false);
     expect(sim.world.has(chaser, Engagement)).toBe(true);
   });
 

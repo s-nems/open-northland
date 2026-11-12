@@ -321,7 +321,7 @@ export const MILITARY: ArticleGroup = {
           h: 'The "Eating and sleeping" switch',
         },
         {
-          p: 'On "Prohibited" a soldier doesn\'t go to eat, sleep or pray on his own. He doesn\'t even eat what he carries or from the tower\'s stock, and hunger doesn\'t break off a long order. Without potions he will starve in the end. An Eat order or switching back to "Allowed" helps.',
+          p: "On \"Prohibited\" a soldier doesn't go to eat, sleep or pray on his own. He doesn't even eat what he carries or from the tower's stock, doesn't stop to drink Mead, and hunger doesn't break off a long order. Without potions he will starve in the end. An Eat order or switching back to \"Allowed\" helps.",
         },
         {
           p: 'Potions, amulets and the Eat, Sleep and Pray orders work with either setting. In the order menu the settings are called "Allow Regeneration" and "Prohibit Regeneration".',

@@ -57,9 +57,9 @@ export function isQueuedOrder(command: Command): command is QueueableOrderComman
 /**
  * Whether `e` is carrying out an order the player gave that ends on its own: a walk or march, an errand
  * with its closing swing, a strike, a drill or course, a sweep, a need order being answered, a road or
- * wall run, or an order parked behind an atomic; or hunger has taken it off its orders for a meal. The
- * settler's other doings are not waited for: a fight it picked, a breach of its own, or an assistant's
- * errand. A need order nothing answers is dropped by the drive ladder while orders wait
+ * wall run, or an order parked behind an atomic; or hunger has taken it off its orders for a meal or a
+ * drink of its mead (`meal-break.ts`). The settler's other doings are not waited for: a fight it picked,
+ * a breach of its own, or an assistant's errand. A need order nothing answers is dropped by the drive ladder while orders wait
  * (`dropUnservedNeedOrder`). A pinned site holds only the orders queued behind it ({@link holdsFor}).
  */
 function holdsCurrentOrder(world: World, e: Entity): boolean {
@@ -81,7 +81,7 @@ function holdsCurrentOrder(world: World, e: Entity): boolean {
   const attack = world.tryGet(e, AttackOrder);
   if (attack !== undefined && attack.breach?.enemy === undefined) return true;
   const effect = world.tryGet(e, CurrentAtomic)?.effect.kind;
-  return effect === 'erectSignpost' || effect === 'openChest';
+  return effect === 'erectSignpost' || effect === 'openChest' || effect === 'drink';
 }
 
 /** Whether `e` is held for `next`: by its current order, or by the pinned site `next` was queued behind. */

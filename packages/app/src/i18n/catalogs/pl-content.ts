@@ -719,6 +719,11 @@ export const plContent = {
       summary:
         'Głodny zwiadowca z kolejką drogowskazów idzie najpierw po jedzenie, je i stawia resztę. Żołnierz z regeneracją też schodzi coś zjeść, ten bez regeneracji maszeruje dalej głodny.',
     },
+    'mead-drink': {
+      title: 'Picie miodu pitnego',
+      summary:
+        'Trzech osadników idzie na wschód i po kilku krokach robi się głodnych. Cywil i żołnierz zatrzymują się na drodze, piją miód pitny z animacją jedzenia i idą dalej. Żołnierz z zakazaną regeneracją nie otwiera miodu, tylko w marszu pije miksturę odżywczą.',
+    },
     'scout-claim': {
       title: 'Zwiadowca zajmuje zwierzę',
       summary:

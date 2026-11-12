@@ -75,6 +75,21 @@ export function startMeal(
 }
 
 /**
+ * Start a sip of the carried draught in misc `slot` on the plain eat slot's clip, for a good that
+ * `stopsToDrink`. Approximation: the clip's eating sound plays with it, as the data has no drinking sound.
+ */
+export function startDrink(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  settler: SettlerIdentity,
+  draught: { readonly slot: number; readonly goodType: number },
+): void {
+  const effect = { kind: 'drink', slot: draught.slot, goodType: draught.goodType } as const;
+  startAtomic(world, e, EAT_ATOMIC_ID, effect, atomicDuration(ctx.content, settler, EAT_ATOMIC_ID), e);
+}
+
+/**
  * The sleep slot across every tribe's `setatomic <job> 8 "..._sleep"` bindings, which cover the age
  * classes and the civilist/soldier only (jobs 1-6 and 31); a working trade plays the civilist's.
  */

@@ -518,7 +518,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'draughts',
       name: 'Napoje i amulety',
-      lead: 'Osadnik pije w miejscu i nie przerywa tego, co robi. Amulet się nie zużywa.',
+      lead: 'Mikstury osadnik pije w miejscu i nie przerywa tego, co robi. Na miód pitny zatrzymuje się w drodze, jak do jedzenia. Amulet się nie zużywa.',
       blocks: [
         {
           h: 'Napoje',

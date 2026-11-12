@@ -478,6 +478,7 @@ export const chtGame = {
       fighting: '戰鬥中',
       training: '訓練中',
       eating: '進食中',
+      drinking: '飲用中',
       mealBreak: '肚子餓，去吃東西',
       sleeping: '睡覺中',
       praying: '禱告中',

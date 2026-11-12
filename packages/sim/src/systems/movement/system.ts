@@ -20,9 +20,15 @@ import { HALF_COLUMN, HALF_ROW, ROW_STEP, worldDistance } from '../../nav/world-
 import { trafficCounter } from '../computer-player/traffic.js';
 import type { System, SystemContext } from '../context.js';
 import { wearWornBoots } from '../equipment/index.js';
-import { chargeBarefootStep, drinkPressingDraughts } from '../lifecycle/needs/index.js';
+import {
+  beginDrink,
+  chargeBarefootStep,
+  drinkDueOnTheWay,
+  drinkPressingDraughts,
+} from '../lifecycle/needs/index.js';
 import { locomotionOf } from '../readviews/index.js';
-import { dropPath } from './nav-state.js';
+import { anotherSystemOwns } from '../settlers/action-owner.js';
+import { clearNavState, dropPath } from './nav-state.js';
 import { emptyLegMeasure, measureLeg, stepAlongLeg, stepTowardPoint } from './stepping.js';
 import { beginWalkTurn, finishWalkTurn } from './turning.js';
 import {
@@ -254,6 +260,7 @@ function walkHumanLeg(
   if (onTarget) return true;
   let turn = facing;
   if (pf.legCost === 0) {
+    if (stopsToDrink(world, ctx, e, pf)) return false;
     const resistance = departureResistance(ctx.terrain, pf, stops);
     const follow = writableFollow(world, e, write);
     const modifiers = walkStepModifiersOf(world, e, ctx.content, ctx.tick, stepModifiers);
@@ -279,6 +286,20 @@ function walkHumanLeg(
     return false;
   }
   return advanceTimedLeg(world, ctx, e, pf, write, p, target, MAX_STEP_PER_TICK);
+}
+
+/**
+ * Whether `e`, walking where the planner sent it, stops on the stop it stands on to drink its mead
+ * ({@link drinkDueOnTheWay}): its walk is dropped and the planner takes it up again once the clip ends.
+ * A walk another system owns pauses through its owner instead (`orders/meal-break.ts`, the fight).
+ */
+function stopsToDrink(world: World, ctx: SystemContext, e: Entity, pf: Readonly<FollowState>): boolean {
+  if (pf.departureCharged === true) return false;
+  const draught = drinkDueOnTheWay(world, ctx, e);
+  if (draught === null || anotherSystemOwns(world, e)) return false;
+  clearNavState(world, e);
+  beginDrink(world, ctx, e, draught);
+  return true;
 }
 
 function walkPeriodicLeg(

@@ -729,6 +729,11 @@ export const itContent = {
       summary:
         'Un esploratore affamato con una serie di cartelli in coda va prima alla dispensa, mangia, poi erige il resto. Anche un soldato a cui è permesso rigenerarsi si interrompe per mangiare; quello senza rigenerazione marcia affamato.',
     },
+    'mead-drink': {
+      title: 'Bere idromele',
+      summary:
+        "Tre coloni camminano verso est e dopo pochi passi hanno fame. Un civile e un soldato si fermano lungo la strada, bevono l'idromele come quando mangiano e ripartono. Un soldato a cui è vietata la rigenerazione lascia chiuso l'idromele e beve sul posto una pozione nutriente.",
+    },
     'scout-claim': {
       title: 'Un esploratore reclama un animale',
       summary:

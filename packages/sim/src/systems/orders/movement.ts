@@ -55,7 +55,7 @@ import { pullsHaulingCart } from '../vehicles/hauling-cart.js';
 import { recordAiOrder } from './ai-lifecycle.js';
 import { moveAnchor } from './combat.js';
 import { deferOrderDuringAtomic, supersedeStandingOrders } from './guards.js';
-import { breaksForMeal, suspendWalkForMeal } from './meal-break.js';
+import { breaksForMeal, suspendWalkForMeal, suspendWalkToDrink } from './meal-break.js';
 
 /**
  * Direct player control over owned units. Faithful to *Cultures*, a move order never seizes a unit
@@ -335,9 +335,11 @@ export const playerOrderSystem: System = (world, ctx) => {
       continue;
     }
     if (isTravelling(world, e)) {
-      // Still walking the order out, unless hunger takes it off a player's walk at a node it reaches.
-      if (order.scripted !== true && breaksForMeal(world, ctx, e) && onNodeCentre(world, e)) {
-        suspendWalkForMeal(world, ctx.terrain, e);
+      // Still walking the order out, unless hunger takes it off a player's walk at a node it reaches, or
+      // it stops there for its mead.
+      if (order.scripted !== true && onNodeCentre(world, e)) {
+        if (breaksForMeal(world, ctx, e)) suspendWalkForMeal(world, ctx.terrain, e);
+        else suspendWalkToDrink(world, ctx, ctx.terrain, e);
       }
       continue;
     }

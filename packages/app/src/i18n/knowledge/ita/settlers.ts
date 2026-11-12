@@ -535,7 +535,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'draughts',
       name: 'Pozioni e amuleti',
-      lead: 'Un colono beve sul posto senza interrompere ciò che sta facendo. Gli amuleti non si consumano mai.',
+      lead: "Le pozioni il colono le beve sul posto senza interrompere ciò che sta facendo. Per l'idromele si ferma lungo la strada, come per mangiare. Gli amuleti non si consumano mai.",
       blocks: [
         {
           h: 'Pozioni',

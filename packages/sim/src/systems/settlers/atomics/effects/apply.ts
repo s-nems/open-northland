@@ -14,6 +14,7 @@ import { advanceConstructionLabor } from '../../../economy/construction.js';
 import { applySow, applyWater } from '../../../economy/fields.js';
 import { repairStructure } from '../../../economy/repair.js';
 import { wearWornTool } from '../../../equipment/index.js';
+import { drinkSip } from '../../../lifecycle/needs/index.js';
 import {
   grantCarryExperience,
   grantProfessionExperience,
@@ -121,6 +122,9 @@ export function applyEffect(
     case 'forage':
       forageBerry(world, ctx, effect.bush);
       clearNeedOrder(world, settler, 'hunger');
+      return;
+    case 'drink':
+      drinkSip(world, ctx, settler, effect.slot, effect.goodType);
       return;
     case 'exercise':
       serveDrillRepetition(world, settler, atomic.duration);

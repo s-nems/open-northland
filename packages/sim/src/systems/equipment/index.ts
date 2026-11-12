@@ -2,6 +2,7 @@
 // production, and the settler drives can all read worn bonuses and spend items without an import cycle.
 
 export {
+  type CarriedDraught,
   draughtFor,
   spendSip,
   woundBearer,

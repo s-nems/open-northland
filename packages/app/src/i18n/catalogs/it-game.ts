@@ -503,6 +503,7 @@ export const itGame = {
       fighting: 'Combatte',
       training: 'Si addestra',
       eating: 'Mangia',
+      drinking: 'Beve',
       mealBreak: 'Ha fame, va a mangiare',
       sleeping: 'Dorme',
       praying: 'Prega',

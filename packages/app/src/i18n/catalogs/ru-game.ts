@@ -528,6 +528,7 @@ export const ruGame = {
       fighting: 'Сражается',
       training: 'Обучается',
       eating: 'Ест',
+      drinking: 'Пьёт',
       mealBreak: 'Чувствует голод, идёт поесть',
       sleeping: 'Спит',
       praying: 'Молится',

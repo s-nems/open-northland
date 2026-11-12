@@ -722,6 +722,11 @@ export const enContent = {
       summary:
         'A hungry scout with a queued run of signposts goes to the larder first, eats, then erects the rest. A soldier allowed to regenerate breaks off to eat too; the one without regeneration marches on hungry.',
     },
+    'mead-drink': {
+      title: 'Drinking mead',
+      summary:
+        'Three settlers walk east and turn hungry a few steps out. A civilian and a soldier stop on the road, drink their mead with the eating animation and walk on. A soldier whose regeneration is prohibited keeps his mead corked and drinks a nourishing potion on the spot instead.',
+    },
     'scout-claim': {
       title: 'A scout claims an animal',
       summary:

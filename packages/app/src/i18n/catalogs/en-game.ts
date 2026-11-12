@@ -499,6 +499,7 @@ export const enGame = {
       fighting: 'Fighting',
       training: 'Training',
       eating: 'Eating',
+      drinking: 'Drinking',
       mealBreak: 'Hungry, going to eat',
       sleeping: 'Sleeping',
       praying: 'Praying',

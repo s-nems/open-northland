@@ -177,6 +177,7 @@ export type SettlerState =
   | 'fighting'
   | 'training'
   | 'eating'
+  | 'drinking'
   | 'mealBreak'
   | 'sleeping'
   | 'praying'
@@ -199,6 +200,7 @@ const ATOMIC_STATE: Readonly<Record<AtomicEffect['kind'], SettlerState>> = {
   move: 'walking',
   idle: 'idle',
   eat: 'eating',
+  drink: 'drinking',
   sleep: 'sleeping',
   pray: 'praying',
   attack: 'fighting',

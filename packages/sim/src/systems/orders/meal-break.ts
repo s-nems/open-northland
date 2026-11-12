@@ -25,7 +25,9 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import {
+  beginDrink,
   carriesNeeds,
+  drinkDueOnTheWay,
   NEED_CRITICAL_THRESHOLD,
   NEED_DRIVE_THRESHOLD,
   needLevel,
@@ -45,9 +47,9 @@ import { isFighterJob } from '../readviews/index.js';
 export const MEAL_BREAK_RETRY_TICKS = 20 * TICKS_PER_SECOND;
 
 /**
- * Whether hunger takes `e` off its player orders or its fight now. Carried draughts were drunk at the node
- * it walked onto or between its blows. A rider keeps to its vehicle; a moored ship lands its own
- * (`vehicles/shipboard-needs.ts`).
+ * Whether hunger takes `e` off its player orders or its fight now. Carried draughts were drunk at the nodes
+ * it walked onto or between its blows, mead on a stop of the way. A rider keeps to its vehicle; a moored
+ * ship lands its own (`vehicles/shipboard-needs.ts`).
  */
 export function breaksForMeal(world: World, ctx: SystemContext, e: Entity): boolean {
   if (world.has(e, Rider)) return false;
@@ -106,6 +108,29 @@ export function startMealBreak(world: World, e: Entity): void {
  * its next leg then. The route goes too, so the planner sees the settler free and plans the meal.
  */
 export function suspendWalkForMeal(world: World, terrain: TerrainGraph, e: Entity): void {
+  suspendWalk(world, terrain, e);
+  startMealBreak(world, e);
+}
+
+/**
+ * Stop `e`, on an order and standing on a stop of its walk, to drink its mead there ({@link drinkDueOnTheWay});
+ * false when none is due. The order goes back to the head of its queue as for a meal, and starts afresh
+ * once the clip ends: a walk order parks behind it.
+ */
+export function suspendWalkToDrink(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+): boolean {
+  const draught = drinkDueOnTheWay(world, ctx, e);
+  if (draught === null) return false;
+  suspendWalk(world, terrain, e);
+  beginDrink(world, ctx, e, draught);
+  return true;
+}
+
+function suspendWalk(world: World, terrain: TerrainGraph, e: Entity): void {
   const resume = resumableOrder(world, terrain, e);
   if (resume !== null) {
     const origin = world.tryGet(e, AiOrder);
@@ -121,7 +146,6 @@ export function suspendWalkForMeal(world: World, terrain: TerrainGraph, e: Entit
   world.remove(e, OpenChestOrder);
   world.remove(e, ClaimAnimalOrder);
   clearNavState(world, e);
-  startMealBreak(world, e);
 }
 
 /** The command that starts `e`'s walking order over again, or null for an explore leg. */

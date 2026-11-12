@@ -204,6 +204,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     wears: true,
     uses: SMALL_BOTTLE_USES,
     restorePct: MEAD_RESTORE,
+    stopsToDrink: true,
   },
   {
     typeId: GOOD_POTION_FOOD_SMALL,

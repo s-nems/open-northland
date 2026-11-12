@@ -41,6 +41,7 @@ import { isManningPost } from '../../conflict/tower-post.js';
 import { pruneUnreachableTargets } from '../../conflict/unreachable-targets.js';
 import type { SystemContext } from '../../context.js';
 import type { ShelterSites } from '../../defence/index.js';
+import { NEED_DRIVE_THRESHOLD, stopToDrink } from '../../lifecycle/needs/index.js';
 import { clearNavState, isTravelling, onNodeCentre } from '../../movement/nav-state.js';
 import { sheltersOnAlarm } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
@@ -90,9 +91,9 @@ export function combatOwnsFeet(world: World, e: Entity): boolean {
 
 /**
  * Answer a combatant's pressing need mid-route, which the drive ladder cannot do because it never runs for a
- * travelling settler. A meal stops the walk, since nothing else pauses a path follower; waiting for the end
- * of a leg keeps the eater on the lattice. A draught needs no stop. A failed route is left alone so the
- * chase still reads its flag.
+ * travelling settler. A meal or mead stops the walk, since nothing else here pauses a path follower;
+ * waiting for the end of a leg keeps the eater on the lattice. A draught drunk on the spot needs no stop.
+ * A failed route is left alone so the chase still reads its flag.
  */
 function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed: boolean): void {
   if (routeFailed || !combatOwnsFeet(world, e) || !onNodeCentre(world, e)) return;
@@ -403,8 +404,11 @@ export function releaseStaleIntent(
   // settler mid-way through its at-home top-up keeps it too, so the chain runs its rounds indoors, and a
   // garrison still on its tower keeps it because anything else already gave the post up above. One
   // outdoors has nothing to step out of, and a garrison counts as held.
-  if (world.has(e, Resting) && !heldIndoors(world, e) && !topsUpAtHome(world, ctx, supply, e))
+  if (world.has(e, Resting) && !heldIndoors(world, e) && !topsUpAtHome(world, ctx, supply, e)) {
+    // Mead is drunk inside, out of sight, rather than in the doorway the settler would step out to.
+    if (stopToDrink(world, ctx, e, NEED_DRIVE_THRESHOLD)) return false;
     stepOut(world, e);
+  }
   // The guard above returned for anything the atomic holds, so what is left is safe to shed: the producer
   // drive below re-derives a craft clip from its workplace's own batch clock in this same pass, and a
   // pastime chat's clip is shed with the chat once a drive takes the settler.

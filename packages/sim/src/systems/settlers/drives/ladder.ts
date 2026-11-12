@@ -118,8 +118,9 @@ export function planShelterRung(pass: PlannerPass, e: Entity, settler: SettlerVi
  *  home the sleep or pray rung just put it in, or a garrison that served its need on the spot and is
  *  still holding the tower. A hunter's chase is the only engagement that reaches a needs rung; dropping
  *  it and the prey hold keeps the CombatSystem off the errand, and the hunter picks its prey afresh once
- *  the need is met. */
+ *  the need is met. A drink pulls it nowhere: it keeps its house, its post and its hunt. */
 function leaveForNeed(world: World, e: Entity): void {
+  if (drinks(world, e)) return;
   if (!isServedAtHome(world, e) && !holdsPostThroughNeed(world, e)) stepOut(world, e);
   world.remove(e, Engagement);
   world.remove(e, HuntFocus);
@@ -146,8 +147,9 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   if (planBreak(pass, plan, settler, load, hx, hy, alert)) {
     // Whatever took the carrier off its trade parks its hauling cart where it stands; the rung below
     // takes the cart up again once the trade is back on. A meal from its own hands is eaten on the spot
-    // with the cart in hand: parked, the food would be stowed out of the meal's reach.
-    if (!eatsFromHands(world, e)) parkHaulingCart(world, ctx, e);
+    // with the cart in hand: parked, the food would be stowed out of the meal's reach. A drink touches
+    // neither the hands nor the cart.
+    if (!eatsFromHands(world, e) && !drinks(world, e)) parkHaulingCart(world, ctx, e);
     return;
   }
   // A posted carrier handed a cart, or back from a break, fetches it before its hauls, once its hands are
@@ -169,6 +171,11 @@ function dropEmptyHandedShipRun(
   if (ship === undefined) return;
   const trader = pinnedTraderOf(world, ship);
   if (trader !== null && trader !== e) abandonCargoRun(world, e);
+}
+
+/** A settler drinking its mead, a break taken where it stands. */
+function drinks(world: World, e: Entity): boolean {
+  return world.tryGet(e, CurrentAtomic)?.effect.kind === 'drink';
 }
 
 /** A settler eating a unit it carries, the one break that spends what is in its hands. */

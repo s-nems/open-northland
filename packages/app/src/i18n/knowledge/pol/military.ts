@@ -321,10 +321,10 @@ export const MILITARY: ArticleGroup = {
           h: 'Przełącznik "Jedzenie i sen"',
         },
         {
-          p: 'Przy "Zabronione" żołnierz sam nie idzie jeść, spać ani się modlić. Nie je nawet tego, co niesie, ani z zapasu wieży, a głód nie przerywa mu długiego rozkazu. Jeśli nie dostaje napojów, w końcu zacznie głodować. Pomoże rozkaz Jedz albo powrót na "Dozwolone".',
+          p: 'Przy "Zabronione" żołnierz sam nie idzie jeść, spać ani się modlić. Nie je nawet tego, co niesie, ani z zapasu wieży, nie zatrzymuje się na miód pitny, a głód nie przerywa mu długiego rozkazu. Jeśli nie ma mikstur, w końcu zacznie głodować. Pomoże rozkaz Jedz albo powrót na "Dozwolone".',
         },
         {
-          p: 'Napoje, amulety i rozkazy Jedz, Śpij, Módl się działają przy obu ustawieniach. W menu rozkazów te ustawienia nazywają się "Zezwól na przerwy" i "Bez przerw na potrzeby".',
+          p: 'Mikstury, amulety i rozkazy Jedz, Śpij, Módl się działają przy obu ustawieniach. W menu rozkazów te ustawienia nazywają się "Zezwól na przerwy" i "Bez przerw na potrzeby".',
         },
         {
           h: 'Odpoczynek blisko walki',

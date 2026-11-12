@@ -1,5 +1,14 @@
 export { carriesNeeds, settlerCarriesNeeds } from './drain-class.js';
-export { drinkPressingDraughts } from './draughts.js';
+export {
+  beginDrink,
+  DRINK_IN_PLACE_LEVEL,
+  drinkDueOnTheWay,
+  drinkPressingDraughts,
+  drinkPressingDraughtsUnseen,
+  drinkSip,
+  stoppingDraughtFor,
+  stopToDrink,
+} from './draughts.js';
 export {
   mutNeeds,
   NEED_BAND_THRESHOLDS,

@@ -324,7 +324,7 @@ export const MILITARY: ArticleGroup = {
           h: "L'interruttore «Mangiare e dormire»",
         },
         {
-          p: 'Con «Vietato» un soldato non va da solo a mangiare, dormire o pregare. Non mangia nemmeno ciò che porta né dalle scorte della torre, e la fame non interrompe un ordine lungo. Senza pozioni alla fine morirà di fame. Aiutano un ordine Mangia o il ritorno a «Consentito».',
+          p: 'Con «Vietato» un soldato non va da solo a mangiare, dormire o pregare. Non mangia nemmeno ciò che porta né dalle scorte della torre, non si ferma a bere idromele, e la fame non interrompe un ordine lungo. Senza pozioni alla fine morirà di fame. Aiutano un ordine Mangia o il ritorno a «Consentito».',
         },
         {
           p: 'Pozioni, amuleti e gli ordini Mangia, Dormi e Prega funzionano con entrambe le impostazioni. Nel menu degli ordini le impostazioni si chiamano «Consenti rigenerazione» e «Vieta rigenerazione».',

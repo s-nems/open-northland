@@ -490,6 +490,7 @@ export const plGame = {
       fighting: 'Walczy',
       training: 'Ćwiczy',
       eating: 'Je',
+      drinking: 'Pije',
       mealBreak: 'Głodny, idzie coś zjeść',
       sleeping: 'Śpi',
       praying: 'Modli się',

@@ -533,6 +533,7 @@ export const deGame = {
       fighting: 'Kämpft',
       training: 'Lernt',
       eating: 'Isst',
+      drinking: 'Trinkt',
       mealBreak: 'Hungrig, geht essen',
       sleeping: 'Schläft',
       praying: 'Betet',

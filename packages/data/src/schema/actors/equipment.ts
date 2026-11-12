@@ -55,6 +55,9 @@ export const EquipClass = z
     uses: z.number().int().positive().optional(),
     /** What one use restores: a sip of mead or a potion, or an amulet's top-up of its need. */
     restorePct: EquipRestorePct.optional(),
+    /** The bearer stops and plays the eat clip for each sip (mead), where every other draught acts on the
+     *  spot. Owner's rule, departing from the original's clipless sip. */
+    stopsToDrink: z.boolean().optional(),
     /** Percent of its damage a landed blow of the bearer deals (the strength amulet). */
     damageDealtPct: z.number().int().positive().optional(),
     /** Rolled per landed blow of the bearer, after `damageDealtPct` (critical-hit amulet: 20% for 200%). */
@@ -82,7 +85,15 @@ export const EquipClass = z
   // healing one forever.
   .refine((e) => e.restorePct?.healthMax === undefined || e.wears, {
     message: 'a healing equip good must wear down',
-  });
+  })
+  // A healing sip lands with the blow it answers, so only a hunger or fatigue draught can wait for a clip.
+  .refine(
+    (e) =>
+      e.stopsToDrink !== true ||
+      (e.restorePct?.healthMax === undefined &&
+        (e.restorePct?.hunger !== undefined || e.restorePct?.fatigue !== undefined)),
+    { message: 'only a hunger or fatigue draught stops its bearer to drink' },
+  );
 export type EquipClass = z.infer<typeof EquipClass>;
 
 export const WeaponType = z.strictObject({

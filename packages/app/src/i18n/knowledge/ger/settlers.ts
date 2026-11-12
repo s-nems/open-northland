@@ -529,7 +529,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'draughts',
       name: 'Getränke und Amulette',
-      lead: 'Ein Siedler trinkt an Ort und Stelle und unterbricht dabei nichts. Ein Amulett nutzt sich nicht ab.',
+      lead: 'Tränke trinkt ein Siedler an Ort und Stelle und unterbricht dabei nichts. Für Met hält er unterwegs an, wie zum Essen. Ein Amulett nutzt sich nicht ab.',
       blocks: [
         {
           h: 'Getränke',

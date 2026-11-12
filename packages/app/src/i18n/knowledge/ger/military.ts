@@ -327,10 +327,10 @@ export const MILITARY: ArticleGroup = {
           h: 'Schalter „Essen und Schlafen“',
         },
         {
-          p: 'Bei „Verboten“ geht ein Soldat nicht von selbst essen, schlafen oder beten. Er isst nicht einmal, was er trägt, oder aus dem Turmvorrat, und Hunger unterbricht keinen langen Befehl. Ohne Getränke verhungert er am Ende. Da hilft der Befehl Iss oder das Zurückschalten auf „Erlaubt“.',
+          p: 'Bei „Verboten“ geht ein Soldat nicht von selbst essen, schlafen oder beten. Er isst nicht einmal, was er trägt, oder aus dem Turmvorrat, hält nicht für Met an, und Hunger unterbricht keinen langen Befehl. Ohne Tränke verhungert er am Ende. Da hilft der Befehl Iss oder das Zurückschalten auf „Erlaubt“.',
         },
         {
-          p: 'Getränke, Amulette und die Befehle Iss, Schlaf, Bete wirken in beiden Stellungen. Im Befehlsmenü heißen die Stellungen „Erlaube Soldaten Regeneration“ und „Verbiete Soldaten Regeneration“.',
+          p: 'Tränke, Amulette und die Befehle Iss, Schlaf, Bete wirken in beiden Stellungen. Im Befehlsmenü heißen die Stellungen „Erlaube Soldaten Regeneration“ und „Verbiete Soldaten Regeneration“.',
         },
         {
           h: 'Ruhe nahe am Kampf',

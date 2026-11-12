@@ -99,7 +99,8 @@ export const atomicSystem: System = (world, ctx) => {
       }
     }
 
-    if (needsOn && !workshopDisplay && settler !== undefined)
+    // A drink borrows the eat clip, and the draught pays instead of the clip's food events.
+    if (needsOn && !workshopDisplay && running.effect.kind !== 'drink' && settler !== undefined)
       applyClipNeedEvents(world, ctx, e, settler, clip, elapsed);
     // Tested here: only a slaughter clip deposits, and the pass is too large for the call to inline.
     if (running.effect.kind === 'slay') applyAtomicStockEvents(world, ctx, e, running, elapsed);

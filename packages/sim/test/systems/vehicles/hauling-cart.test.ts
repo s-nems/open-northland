@@ -4,6 +4,7 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  Equipment,
   HaulingCart,
   JobAssignment,
   MoveGoal,
@@ -21,6 +22,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { checkInvariants } from '../../../src/harness/invariants.js';
 import {
   exportSaveGame,
+  fx,
   nodeOfPosition,
   parseSaveGame,
   playerCommand,
@@ -30,6 +32,7 @@ import {
 } from '../../../src/index.js';
 import { vehicleBlockedCells } from '../../../src/systems/footprint/index.js';
 import { reap } from '../../../src/systems/lifecycle/death.js';
+import { DRINK_IN_PLACE_LEVEL, mutNeeds } from '../../../src/systems/lifecycle/needs/index.js';
 import { atomicDuration } from '../../../src/systems/readviews/animations.js';
 import { MEAL_UNITS } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
 import { PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
@@ -68,6 +71,7 @@ const TWIN_MILL = 8;
 const WOOD = 1;
 /** The fixture's edible good, which a hungry settler eats out of its own hands first. */
 const FOOD = 3;
+const MEAD = 13;
 const MAP_NODES = 120;
 const HQ_AT = { hx: 30, hy: 20 };
 const CART_AT = { hx: 20, hy: 20 };
@@ -620,6 +624,20 @@ describe('the cart as a work tool', () => {
     expect(runUntil(s, TRIP_TICKS, () => !eating())).toBeGreaterThan(0);
     expect(s.world.get(porter, Carrying)).toEqual({ goodType: FOOD, amount: PILE_UNITS - MEAL_UNITS });
     expect(s.world.get(cart, VehicleStock).lines.get(FOOD)?.current ?? 0).toBe(0);
+  });
+
+  it('drinks its mead where it stands with the cart in hand', () => {
+    const s = sim(5, true);
+    const hq = placeHouse(s, HQ_AT);
+    const { porter, cart } = postedPorterWithCart(s, hq);
+    expect(runUntil(s, TAKE_TICKS, () => s.world.get(porter, HaulingCart).taken)).toBeGreaterThan(0);
+    const misc = [{ goodType: MEAD, degreeOfUse: fx.fromInt(0) }, null, null, null];
+    s.world.add(porter, Equipment, { boots: null, tool: null, weapon: null, armor: null, misc });
+    mutNeeds(s.world, porter, s.tick).hunger = DRINK_IN_PLACE_LEVEL;
+    const drinking = () => s.world.tryGet(porter, CurrentAtomic)?.effect.kind === 'drink';
+    expect(runUntil(s, BREAK_TICKS, drinking)).toBeGreaterThan(0);
+    expect(s.world.get(porter, HaulingCart).taken).toBe(true);
+    expect(s.world.has(cart, Position)).toBe(false);
   });
 
   it('a store that refuses a unit ends the unload with the unit back aboard, a second good too', () => {

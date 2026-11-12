@@ -455,7 +455,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'draughts',
       name: '饮品与护符',
-      lead: '居民原地饮用，手上的事不停。护符不会耗损。',
+      lead: '药水居民原地饮用，手上的事不停。喝蜂蜜酒时会像吃饭一样在路上停下来。护符不会耗损。',
       blocks: [
         {
           h: '饮品',

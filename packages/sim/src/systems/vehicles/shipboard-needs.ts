@@ -17,7 +17,7 @@ import type { System, SystemContext } from '../context.js';
 import {
   applyNeedUnits,
   carriesNeeds,
-  drinkPressingDraughts,
+  drinkPressingDraughtsUnseen,
   mutNeeds,
   NEED_DRIVE_THRESHOLD,
   needLevel,
@@ -67,7 +67,7 @@ export const shipboardNeedsSystem: System = (world, ctx) => {
     const riders = canonicalById(aboard.get(vehicle) ?? []);
     for (const e of riders) {
       if (!carriesNeeds(world, ctx.content, e)) continue;
-      drinkPressingDraughts(world, ctx, e);
+      drinkPressingDraughtsUnseen(world, ctx, e);
       eatAshore(world, ctx, front, e, vehicle) ||
         eatAboard(world, ctx, e, vehicle) ||
         sleepAboard(world, ctx, e) ||

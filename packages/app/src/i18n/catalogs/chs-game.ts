@@ -478,6 +478,7 @@ export const chsGame = {
       fighting: '战斗中',
       training: '训练中',
       eating: '进食中',
+      drinking: '饮用中',
       mealBreak: '饿了，去吃东西',
       sleeping: '睡觉中',
       praying: '祈祷中',

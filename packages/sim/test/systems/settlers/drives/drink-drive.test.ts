@@ -11,21 +11,31 @@ import {
   MISC_EQUIP_SLOTS,
   MoveGoal,
   NeedOrder,
+  NoRegeneration,
+  PathFollow,
   Position,
+  Resting,
+  Settler,
   Stockpile,
   WALK_DIRECTION,
   WalkFacing,
+  writeEquipSlot,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../../../src/index.js';
 import {
+  atomicSystem,
   HUMAN_HITPOINTS,
   needsSystem,
   plannerSystem,
   STARVATION_HITPOINTS_PER_TICK,
 } from '../../../../src/systems/index.js';
+import { DRINK_IN_PLACE_LEVEL } from '../../../../src/systems/lifecycle/needs/index.js';
 import { resolveAttackHit } from '../../../../src/systems/settlers/atomics/effects/combat/index.js';
+import { EAT_ATOMIC_ID } from '../../../../src/systems/settlers/atomics/start.js';
+import { answerNeedInPlace } from '../../../../src/systems/settlers/drives/needs.js';
 import { testContent } from '../../../fixtures/content.js';
+import { nextTickCtxOf } from '../../../fixtures/context.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from '../../../fixtures/needs.js';
 import { needsOf, setNeeds } from '../../../fixtures/settler.js';
 
@@ -34,11 +44,12 @@ import { needsOf, setNeeds } from '../../../fixtures/settler.js';
 const ATTACK_SWING = { atomicId: 81, elapsed: 4, duration: 4 } as const;
 
 /**
- * Carried draughts are drunk on the spot with no clip: a pressing hunger or fatigue bar takes a sip before
+ * Carried potions are drunk on the spot with no clip: a pressing hunger or fatigue bar takes a sip before
  * anything else, and a blow or starvation bite that would leave a bearer under half its max hitpoints
- * is softened by healing sips first, even a lethal one. Fixture draughts (2 sips each, the original's
- * restores): mead 13 (half of both bars), potion_food_small 14 (a whole hunger bar),
- * potion_stamina_small 15 (a whole fatigue bar), potion_heal_small 16 (40% of max hitpoints).
+ * is softened by healing sips first, even a lethal one. Mead `stopsToDrink`: it is drunk on the eat clip,
+ * on a stop of the way. Fixture draughts (2 sips each, the original's restores): mead 13 (half of both
+ * bars), potion_food_small 14 (a whole hunger bar), potion_stamina_small 15 (a whole fatigue bar),
+ * potion_heal_small 16 (40% of max hitpoints).
  */
 
 const FOOD = 3;
@@ -55,6 +66,8 @@ const PRESSING: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 const HALF: Fixed = fx.div(ONE, fx.fromInt(2));
 /** Enough ticks for a walker to leave its start and reach the next node on its route. */
 const WALK_TICKS = 60;
+/** Enough ticks for a walker to cross the fixture's 12-cell row, with a drink on the way. */
+const ARRIVE_TICKS = 1200;
 
 /** Put draughts (fresh unless a slot spec says otherwise) on a settler's misc row, low slots first. */
 function carryDraughts(sim: Simulation, e: Entity, slots: ReadonlyArray<EquipmentSlot | null>): void {
@@ -83,11 +96,35 @@ function withBigFoodPotion() {
   });
 }
 
-function foodStoreAt(sim: Simulation, x: number, y: number, food: number): void {
+function foodStoreAt(sim: Simulation, x: number, y: number, food: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
   sim.world.add(e, Stockpile, { amounts: new Map([[FOOD, food]]) });
+  return e;
+}
+
+/** The misc slot of the mead `e` is drinking on the eat clip, or null when it runs no drink. */
+function drinkingSlot(sim: Simulation, e: Entity): number | null {
+  const atomic = sim.world.tryGet(e, CurrentAtomic);
+  if (atomic === undefined || atomic.effect.kind !== 'drink') return null;
+  expect(atomic.atomicId).toBe(EAT_ATOMIC_ID);
+  return atomic.effect.slot;
+}
+
+/** Run the clip `e` is playing out to its end. */
+function finishClip(sim: Simulation, e: Entity): void {
+  const ticks = sim.world.get(e, CurrentAtomic).duration;
+  for (let i = 0; i < ticks; i++) atomicSystem(sim.world, nextTickCtxOf(sim));
+  expect(sim.world.has(e, CurrentAtomic)).toBe(false);
+}
+
+/** Send `e` walking to visual cell `(x, 0)`. */
+function walkTo(sim: Simulation, e: Entity, x: number): void {
+  const goal = cellAnchorNode(x, 0);
+  const cell = sim.terrain?.nodeAt(goal.hx, goal.hy);
+  if (cell === undefined) throw new Error('fixture map has no such cell');
+  sim.world.add(e, MoveGoal, { cell });
 }
 
 describe('drink drive - hunger and fatigue draughts', () => {
@@ -112,15 +149,90 @@ describe('drink drive - hunger and fatigue draughts', () => {
     expect(sim.world.get(settler, Equipment).misc[0]).toBeNull();
   });
 
-  it('mead answers hunger and relieves both bars by half', () => {
+  it('puts mead off for its next walk, then drinks it where it stands on the eat clip near critical', () => {
+    const hungerAt = (level: Fixed) => {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+      const settler = needsSettlerAt(sim, 0, 0, { hunger: level, fatigue: HALF });
+      carryDraughts(sim, settler, [fresh(MEAD)]);
+      foodStoreAt(sim, 5, 0, 5); // the mead it carries keeps it from walking off to eat
+      plannerSystem(sim.world, ctxOf(sim));
+      return { sim, settler };
+    };
+    const early = hungerAt(PRESSING);
+    expect(drinkingSlot(early.sim, early.settler)).toBeNull();
+    expect(early.sim.world.has(early.settler, MoveGoal)).toBe(false);
+
+    const { sim, settler } = hungerAt(DRINK_IN_PLACE_LEVEL);
+    expect(drinkingSlot(sim, settler)).toBe(0);
+    expect(sim.world.get(settler, Equipment).misc[0]).toEqual(fresh(MEAD));
+    finishClip(sim, settler);
+    // Half of both bars, and nothing from the eat clip's own food event.
+    const s = needsOf(sim, settler);
+    expect(s.hunger).toBe(fx.sub(DRINK_IN_PLACE_LEVEL, HALF));
+    expect(s.fatigue).toBe(fx.fromInt(0));
+    expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: MEAD, degreeOfUse: HALF });
+  });
+
+  it('a drink whose mead left the slot during the clip lands nothing', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const settler = needsSettlerAt(sim, 0, 0, { hunger: PRESSING, fatigue: HALF });
+    const settler = needsSettlerAt(sim, 0, 0, { hunger: DRINK_IN_PLACE_LEVEL });
     carryDraughts(sim, settler, [fresh(MEAD)]);
+    plannerSystem(sim.world, ctxOf(sim));
+    writeEquipSlot(sim.world, settler, 'misc', 0, fresh(POTION_HEAL));
+
+    finishClip(sim, settler);
+    expect(needsOf(sim, settler).hunger).toBe(DRINK_IN_PLACE_LEVEL);
+    expect(sim.world.get(settler, Equipment).misc[0]).toEqual(fresh(POTION_HEAL));
+  });
+
+  it('a settler inside a building drinks its mead there rather than in the doorway', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const settler = needsSettlerAt(sim, 0, 0, { hunger: PRESSING });
+    carryDraughts(sim, settler, [fresh(MEAD)]);
+    sim.world.add(settler, Resting, { at: foodStoreAt(sim, 0, 0, 0) });
 
     plannerSystem(sim.world, ctxOf(sim));
-    const s = needsOf(sim, settler);
-    expect(s.hunger).toBe(fx.sub(PRESSING, HALF));
-    expect(s.fatigue).toBe(fx.fromInt(0));
+    expect(drinkingSlot(sim, settler)).toBe(0);
+    expect(sim.world.has(settler, Resting)).toBe(true);
+  });
+
+  it('a walker stops on the way to drink its mead, clear of both ends; a loaded one only near critical', () => {
+    /** Walk from cell 0 toward cell 10 at `hunger`, and where it stopped to drink, or null. */
+    const stopOf = (hunger: Fixed, loaded: boolean): Fixed | null => {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
+      const settler = needsSettlerAt(sim, 0, 0, { hunger });
+      carryDraughts(sim, settler, [fresh(MEAD)]);
+      if (loaded) sim.world.add(settler, Carrying, { goodType: FOOD, amount: 1 });
+      walkTo(sim, settler, 10);
+      for (let i = 0; i < ARRIVE_TICKS && sim.world.has(settler, MoveGoal); i++) {
+        sim.step();
+        if (drinkingSlot(sim, settler) === null) continue;
+        expect(sim.world.has(settler, PathFollow)).toBe(false); // it stands: the planner takes it up after
+        return sim.world.get(settler, Position).x;
+      }
+      expect(sim.world.get(settler, Equipment).misc[0]).toEqual(fresh(MEAD));
+      return null;
+    };
+    const stop = stopOf(PRESSING, false);
+    // Two legs, a cell, clear of either end of the walk from cell 0 to cell 10.
+    expect(stop).toBeGreaterThanOrEqual(fx.fromInt(1));
+    expect(stop).toBeLessThanOrEqual(fx.fromInt(9));
+    expect(stopOf(PRESSING, true)).toBeNull();
+    expect(stopOf(DRINK_IN_PLACE_LEVEL, true)).not.toBeNull();
+  });
+
+  it('a fighter drinks its mead in place, unless its regeneration is prohibited; potions serve either way', () => {
+    for (const prohibited of [false, true]) {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+      const settler = needsSettlerAt(sim, 0, 0, { hunger: PRESSING, fatigue: PRESSING });
+      carryDraughts(sim, settler, [fresh(MEAD), fresh(POTION_FOOD)]);
+      if (prohibited) sim.world.add(settler, NoRegeneration, { prohibited: true });
+
+      const started = answerNeedInPlace(sim.world, ctxOf(sim), settler, sim.world.get(settler, Settler));
+      expect(needsOf(sim, settler).hunger).toBe(fx.sub(PRESSING, ONE)); // the potion, on the spot
+      expect(started).toBe(!prohibited);
+      expect(drinkingSlot(sim, settler)).toBe(prohibited ? null : 0); // mead for the fatigue
+    }
   });
 
   it('drinks a stamina potion instead of bedding down when tired', () => {
@@ -165,8 +277,8 @@ describe('drink drive - hunger and fatigue draughts', () => {
 
     expect(drunkSlot([fresh(POTION_FOOD), opened(POTION_FOOD_BIG)])).toBe(1);
     expect(drunkSlot([fresh(POTION_FOOD_BIG), fresh(POTION_FOOD)])).toBe(1);
-    // Mead counts as a small bottle, so the row order breaks the tie with a small food potion.
-    expect(drunkSlot([fresh(MEAD), fresh(POTION_FOOD)])).toBe(0);
+    // Mead waits for a stop, so a potion answers on the spot whatever the row order.
+    expect(drunkSlot([fresh(MEAD), fresh(POTION_FOOD)])).toBe(1);
     expect(drunkSlot([fresh(POTION_FOOD), fresh(MEAD)])).toBe(0);
   });
 
