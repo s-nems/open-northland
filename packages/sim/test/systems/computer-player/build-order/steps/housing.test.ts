@@ -1,6 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { setStockAmount } from '../../../../../src/components/index.js';
+import { HomeQuality, setStockAmount } from '../../../../../src/components/index.js';
 import type { Command } from '../../../../../src/core/commands/index.js';
 import type { Simulation } from '../../../../../src/index.js';
 import type { BuildOrderEntry } from '../../../../../src/systems/computer-player/build-order/order/entries.js';
@@ -75,6 +75,39 @@ function bakingContent(): ContentSet {
       b.typeId === BAKERY_TYPE
         ? { ...b, recipes: [{ inputs: [], outputs: [{ goodType: FOOD_SIMPLE, amount: 1 }], ticks: 180 }] }
         : b,
+    ),
+  });
+}
+
+/** Extra families the fixture's base home takes while furnished. */
+const FURNISHED_FAMILIES = 1;
+/** A fixture good slot for the furniture, and one piece of it in lodging points. */
+const FURNITURE = 13;
+const FURNITURE_PIECE = 1000;
+
+/** The fixture with furniture that lets the base home take {@link FURNISHED_FAMILIES} more families. */
+function furnishedContent(): ContentSet {
+  const base = aiContent();
+  return parseContentSet({
+    ...base,
+    goods: [
+      ...base.goods,
+      {
+        typeId: FURNITURE,
+        id: 'furniture',
+        weight: 1,
+        homeQuality: {
+          effect: 'lodging',
+          deliveryValue: FURNITURE_PIECE,
+          capacity: 2 * FURNITURE_PIECE,
+          fetchBelow: FURNITURE_PIECE,
+          minimumHomeLevel: 0,
+          wear: { child: 1, sleep: 1, meal: 1 },
+        },
+      },
+    ],
+    buildings: base.buildings.map((b) =>
+      b.typeId === HOME_TYPE ? { ...b, furnishedFamilies: FURNISHED_FAMILIES } : b,
     ),
   });
 }
@@ -155,6 +188,26 @@ describe('the housing lane', () => {
     ]);
     // The homes now hold every woman with the free slots to spare.
     expect(decide(sim)).toBeUndefined();
+  });
+
+  it("counts a standing home's furnished slots, and drops them once its furniture is gone", () => {
+    const content = furnishedContent();
+    const women = BASE_SLOTS + FURNISHED_FAMILIES - HOUSING_PACE.opening.freeSlots;
+    const sim = seatWithWomen(women, FOOD_RICH_UNITS_PER_SETTLER, content);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: HQ_X - 6,
+      y: HQ_Y - 6,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const home = entityOfBuilding(sim, HOME_TYPE);
+    sim.world.add(home, HomeQuality, { cooking: 0, lodging: FURNITURE_PIECE, piety: 0 });
+    expect(decide(sim, housing, content)).toBeUndefined();
+    sim.world.mut(home, HomeQuality).lodging = 0;
+    expect(homePlaced(decide(sim, housing, content))).toBe(true);
   });
 
   it('opens no home site while the store runs short of food and no staple source works', () => {
