@@ -377,7 +377,7 @@ describe('the ownership results', () => {
       house: only(buildings(sim)),
       returnTo,
       stage: 'return',
-      paid: false,
+      termTicksLeft: 0,
     });
     loadPassAfter(sim, 0);
     expect(ownerOf(sim.world, moved)).toBe(4);

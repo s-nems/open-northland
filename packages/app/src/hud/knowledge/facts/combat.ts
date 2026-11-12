@@ -9,7 +9,7 @@ import {
   scaledWallRules,
   WALL_LOGIC_ID,
 } from '../../../content/map/palisade-rows.js';
-import { coinDrillPointsOf } from '../../../game/coin-drill.js';
+import { coinDrillPointsOf, coinDrillServedTicksOf } from '../../../game/coin-drill.js';
 import { buildingHitpoints } from '../base.js';
 import {
   CAP_HITS,
@@ -298,6 +298,10 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'combat.fightTakenPerSecond': twoDecimals(pointsPerSecond(systems.BLOW_TAKEN_POINTS_RATE)),
   'coinDrill.points': whole((base) => coinDrillPointsOf(base.content)),
   'coinDrill.limit': whole(systems.COIN_DRILL_LIMIT),
+  'coinDrill.termSeconds': oneDecimal((base) => {
+    const ticks = coinDrillServedTicksOf(base.content);
+    return ticks === undefined ? undefined : seconds(ticks);
+  }),
   'combat.backSideFactor': twoDecimals(HIT_DIRECTION.backSide / PERCENT),
   'combat.behindFactor': twoDecimals(HIT_DIRECTION.behind / PERCENT),
   'aim.basePct': whole(systems.trueShotPct(0)),

@@ -1031,7 +1031,7 @@ export const plContent = {
     'coin-drill': {
       title: 'Musztra za monety',
       summary:
-        'Miecznik, włócznik i łucznik ćwiczą w koszarach, w których leży sześć monet. Każde powtórzenie zabiera monetę i daje 25 pkt doświadczenia w walce. Miecznik i łucznik kończą na 50 pkt, włócznik, który miał już 30, potrzebuje jednej monety. Szósta moneta zostaje, bo nikt poniżej 50 pkt już na nią nie czeka.',
+        'Miecznik, włócznik i łucznik ćwiczą w koszarach, w których leży sześć monet. Każda moneta to 15 sekund ćwiczeń w środku, a na koniec 25 pkt doświadczenia w walce. Miecznik i łucznik kończą na 50 pkt, włócznik, który miał już 30, potrzebuje jednej monety. Szósta moneta zostaje, bo nikt poniżej 50 pkt już na nią nie czeka.',
     },
     armor: {
       title: 'Parada zbroi',

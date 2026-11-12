@@ -264,7 +264,9 @@ export {
 export {
   COIN_DRILL_ATOMIC_ID,
   COIN_DRILL_LIMIT,
-  coinDrillPointsPerCoin,
+  COIN_DRILL_TERM_TICKS,
+  coinDrillClip,
+  coinDrillPointsOf,
   drillCoinGood,
   mayCoinDrill,
 } from './progression/coin-drill.js';

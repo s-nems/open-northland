@@ -1,6 +1,7 @@
 import {
   AtomicClock,
   atomicElapsed,
+  CoinDrillOrder,
   CurrentAtomic,
   DeferredOrder,
   HarvestFocus,
@@ -15,7 +16,6 @@ import { religionAllowsClip } from '../../lifecycle/needs/religion.js';
 import { atomicClip, eventTick } from '../../readviews/animations.js';
 import { prayerSiteAvailable } from '../../readviews/prayer-sites.js';
 import { applyEffect } from './effects/apply.js';
-import { applyCoinDrillEvents } from './effects/coin-drill.js';
 import {
   applyPendingHitReactions,
   lungeForward,
@@ -100,9 +100,10 @@ export const atomicSystem: System = (world, ctx) => {
       }
     }
 
+    // A coin drill's clip runs only for the order that paid for it; its coin and points are the term's.
     if (
       running.effect.kind === 'coinDrill' &&
-      !applyCoinDrillEvents(world, ctx, e, running.effect.house, elapsed)
+      world.tryGet(e, CoinDrillOrder)?.house !== running.effect.house
     ) {
       removeCurrentAtomic(world, e);
       continue;

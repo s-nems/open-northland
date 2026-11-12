@@ -8,21 +8,26 @@ import {
   atomicClip,
 } from '../readviews/animations.js';
 import { isSoldierJob, weaponClassOf } from '../readviews/index.js';
+import { BARRACKS_TERM_TICKS } from '../settlers/drives/barracks-term.js';
 import { personalFightPoints } from './bonus.js';
 import { FIGHT_EXPERIENCE_TYPE, fightExperienceTypeFor } from './experience.js';
 
 /**
  * The coin drill's rules, shared by the player order and the HUD. Original behavior,
  * unconfirmed against the running original: the soldier's `..._soldier_train` clip takes one coin and grants
- * 25 training points per playthrough. Our rule: one coin pays one whole clip, and a soldier drills only
- * below {@link COIN_DRILL_LIMIT}.
+ * 25 training points per playthrough. Our rule: the clip's coins pay one {@link COIN_DRILL_TERM_TICKS} term,
+ * taken when the term starts; he repeats the clip inside until the term is served, and its points land
+ * when it ends. A soldier drills only below {@link COIN_DRILL_LIMIT}.
  */
+
+/** What the clip's coins buy: one barracks term, the recruit's enlistment length on purpose. */
+export const COIN_DRILL_TERM_TICKS = BARRACKS_TERM_TICKS;
 
 /** The soldier's train action, bound `setatomic 31 90 "..._soldier_train"` for the bare soldier in every
  *  playable tribe. */
 export const COIN_DRILL_ATOMIC_ID = 90;
 
-/** The personal fight points from which a soldier may no longer drill: at 49 one more repetition is
+/** The personal fight points from which a soldier may no longer drill: at 49 one more term is
  *  allowed. Our rule. */
 export const COIN_DRILL_LIMIT = 50;
 
@@ -64,7 +69,7 @@ export function coinDrillClip(content: ContentSet, settler: SettlerIdentity): At
   return atomicClip(content, { ...settler, jobType: baseJob }, COIN_DRILL_ATOMIC_ID);
 }
 
-/** The fight points one repetition of `clip` grants: the sum of its `GET_TRAINING` values. */
+/** The fight points a term drilled on `clip` grants: the sum of its `GET_TRAINING` values. */
 export function coinDrillPointsOf(clip: AtomicAnimation): number {
   let points = 0;
   for (const event of clip.events)
@@ -72,7 +77,7 @@ export function coinDrillPointsOf(clip: AtomicAnimation): number {
   return Math.max(0, points);
 }
 
-/** The coins one repetition of `clip` spends: the negated sum of its `CHANGE_GOLD` values. */
+/** The coins a term drilled on `clip` spends: the negated sum of its `CHANGE_GOLD` values. */
 export function coinDrillCoinsOf(clip: AtomicAnimation): number {
   let coins = 0;
   for (const event of clip.events)
@@ -80,14 +85,8 @@ export function coinDrillCoinsOf(clip: AtomicAnimation): number {
   return Math.max(0, coins);
 }
 
-/** The fight points a soldier with `settler`'s identity gains per repetition, 0 when no clip binds. */
-export function coinDrillPointsPerCoin(content: ContentSet, settler: SettlerIdentity): number {
-  const clip = coinDrillClip(content, settler);
-  return clip === undefined ? 0 : coinDrillPointsOf(clip);
-}
-
 /**
- * Whether a soldier may run another coin-drill repetition, from his plain state alone: a soldier, armed or
+ * Whether a soldier may start another coin-drill term, from his plain state alone: a soldier, armed or
  * bare, below {@link COIN_DRILL_LIMIT} on his personal counter, with a clip that spends a coin. The
  * world gate (`orders/coin-drill.ts`) adds the barracks and the walk; a HUD reads the same fields off a
  * snapshot.

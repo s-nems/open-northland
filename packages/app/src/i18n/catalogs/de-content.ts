@@ -1043,7 +1043,7 @@ export const deContent = {
     'coin-drill': {
       title: 'Exerzieren für Münzen',
       summary:
-        'Ein Schwertkämpfer, ein Speerträger und ein Bogenschütze exerzieren in einer Kaserne mit sechs Münzen. Jede Wiederholung kostet eine Münze und bringt 25 Punkte Kampferfahrung. Schwertkämpfer und Bogenschütze hören bei 50 Punkten auf, der Speerträger, schon bei 30, braucht eine Münze. Die sechste Münze bleibt liegen, weil niemand unter 50 Punkten mehr übrig ist.',
+        'Ein Schwertkämpfer, ein Speerträger und ein Bogenschütze exerzieren in einer Kaserne mit sechs Münzen. Jede Münze kauft 15 Sekunden Exerzieren drinnen und am Ende 25 Punkte Kampferfahrung. Schwertkämpfer und Bogenschütze hören bei 50 Punkten auf, der Speerträger, schon bei 30, braucht eine Münze. Die sechste Münze bleibt liegen, weil niemand unter 50 Punkten mehr übrig ist.',
     },
     armor: {
       title: 'Rüstungsparade',

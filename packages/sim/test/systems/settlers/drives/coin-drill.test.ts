@@ -23,15 +23,16 @@ import { fx, ONE, Simulation } from '../../../../src/index.js';
 import type { NodeId } from '../../../../src/nav/terrain/index.js';
 import { walkBlockMask } from '../../../../src/systems/footprint/walk-block-mask.js';
 import { personalFightPoints } from '../../../../src/systems/progression/bonus.js';
+import { COIN_DRILL_TERM_TICKS } from '../../../../src/systems/progression/coin-drill.js';
 import { FIGHT_EXPERIENCE_TYPE, fightUnitsOfPoints } from '../../../../src/systems/progression/experience.js';
 import { entityNode } from '../../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../../fixtures/content.js';
 import { grassMap } from '../../../fixtures/needs.js';
 
 /**
- * The coin drill: a soldier, armed or bare, pays one barracks coin per repetition of his
- * `..._soldier_train` clip and gains its points, below the drill limit; not the recruit's `trainSoldier`
- * enlistment. The fixture binds the clip to the bare soldier alone, as the real tribes do, with the real
+ * The coin drill: a soldier, armed or bare, pays one barracks coin per term, repeats his
+ * `..._soldier_train` clip inside until it is served and then gains its points, below the drill limit; not
+ * the recruit's `trainSoldier` enlistment. The fixture binds the clip to the bare soldier alone, as the real tribes do, with the real
  * events: `CHANGE_GOLD -1` early and `GET_TRAINING 25` late.
  */
 
@@ -54,6 +55,8 @@ const TRAIN_CLIP_TICKS = 28;
 const COIN_FRAME = 2;
 const POINTS_FRAME = 22;
 const POINTS_PER_COIN = 25;
+/** A served term: whole repetitions until the term's ticks are drawn down, the last one overrunning. */
+const SERVED_TERM_TICKS = Math.ceil(COIN_DRILL_TERM_TICKS / TRAIN_CLIP_TICKS) * TRAIN_CLIP_TICKS;
 const WEAPON_CLASS = { SPEAR: 2, SWORD: 3, SABER: 4, BOW: 6 } as const;
 /** The walk between the soldiers' row and the barracks door at the fixture's gait, with slack. */
 const WALK_TICKS = 120;
@@ -172,6 +175,10 @@ function coinsOf(sim: Simulation, house: Entity): number {
   return sim.world.get(house, Stockpile).amounts.get(COIN_GOOD) ?? 0;
 }
 
+function termRuns(sim: Simulation, e: Entity): boolean {
+  return (sim.world.tryGet(e, CoinDrillOrder)?.termTicksLeft ?? 0) > 0;
+}
+
 function run(sim: Simulation, ticks: number): void {
   for (let i = 0; i < ticks; i++) sim.step();
 }
@@ -193,7 +200,7 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     sim.step();
     expect(soldiers.map((e) => sim.world.has(e, CoinDrillOrder))).toEqual([true, true, true, true, true]);
     expect(sim.world.has(civilian, CoinDrillOrder)).toBe(false);
-    run(sim, WALK_TICKS + 2 * TRAIN_CLIP_TICKS);
+    run(sim, WALK_TICKS + SERVED_TERM_TICKS);
     expect(soldiers.map((e) => pointsOf(sim, e))).toEqual([65, 65, 65, 65, 65]);
     expect(coinsOf(sim, house)).toBe(0);
   });
@@ -207,7 +214,7 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     sim.enqueueSetup({ kind: 'orderCoinDrill', entity: under, house });
     sim.step();
     expect(sim.world.has(atLimit, CoinDrillOrder)).toBe(false);
-    run(sim, WALK_TICKS + 3 * TRAIN_CLIP_TICKS);
+    run(sim, WALK_TICKS + 2 * SERVED_TERM_TICKS);
     expect(pointsOf(sim, under)).toBe(74);
     expect(coinsOf(sim, house)).toBe(4);
   });
@@ -228,13 +235,13 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     expect(coinsOf(sim, house)).toBe(5);
   });
 
-  it('repeats while under the limit and a coin is left, then walks back to where he stood', () => {
+  it('drills one term per coin while under the limit and a coin is left, then walks back to where he stood', () => {
     const sim = freshSim();
     const house = barracksAt(sim, 8, 3, 3);
     const soldier = soldierAt(sim, BOW_JOB, 2, 3);
     const start = nodeOf(sim, soldier);
     sim.enqueueSetup({ kind: 'orderCoinDrill', entity: soldier, house });
-    run(sim, 2 * WALK_TICKS + 3 * TRAIN_CLIP_TICKS);
+    run(sim, 2 * WALK_TICKS + 2 * SERVED_TERM_TICKS);
     expect(pointsOf(sim, soldier)).toBe(50);
     expect(coinsOf(sim, house)).toBe(1);
     expect(sim.world.has(soldier, CoinDrillOrder)).toBe(false);
@@ -280,7 +287,7 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
       false,
       false,
     ]);
-    run(sim, WALK_TICKS + 2 * TRAIN_CLIP_TICKS);
+    run(sim, WALK_TICKS + SERVED_TERM_TICKS);
     expect(near.map((e) => pointsOf(sim, e))).toEqual([65, 65]);
     expect(far.map((e) => nodeOf(sim, e))).toEqual(farStarts);
     expect(coinsOf(sim, house)).toBe(0);
@@ -293,7 +300,7 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     const far = soldierAt(sim, BOW_JOB, 1, 3);
     sim.enqueueSetup({ kind: 'orderCoinDrill', entity: near, house });
     sim.enqueueSetup({ kind: 'orderCoinDrill', entity: far, house });
-    run(sim, 2 * WALK_TICKS + 2 * TRAIN_CLIP_TICKS);
+    run(sim, 2 * WALK_TICKS + 2 * SERVED_TERM_TICKS);
     expect([pointsOf(sim, near), pointsOf(sim, far)]).toEqual([POINTS_PER_COIN, POINTS_PER_COIN]);
     expect(coinsOf(sim, house)).toBe(0);
   });
@@ -309,12 +316,13 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     sim.enqueueSetup({ kind: 'orderCoinDrill', entity: driller, house: drilling });
     sim.step();
     sim.world.destroy(onWay);
-    while (sim.world.get(driller, CoinDrillOrder).paid !== true) sim.step();
+    while (!termRuns(sim, driller)) sim.step();
     sim.world.destroy(drilling);
     run(sim, 2 * WALK_TICKS);
     expect([walker, driller].map((e) => sim.world.has(e, CoinDrillOrder))).toEqual([false, false]);
     expect([walker, driller].map((e) => sim.world.has(e, Resting))).toEqual([false, false]);
     expect([nodeOf(sim, walker), nodeOf(sim, driller)]).toEqual(starts);
+    expect(pointsOf(sim, driller)).toBe(0);
   });
 
   it('walks back beside the node he left when a building now stands on it, not lost', () => {
@@ -324,7 +332,7 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     const start = nodeOf(sim, soldier);
     const startAt = { ...sim.world.get(soldier, Position) };
     sim.enqueueSetup({ kind: 'orderCoinDrill', entity: soldier, house });
-    while (sim.world.tryGet(soldier, CoinDrillOrder)?.paid !== true) sim.step();
+    while (!termRuns(sim, soldier)) sim.step();
     const hut = sim.world.create();
     sim.world.add(hut, Position, startAt);
     sim.world.add(hut, Building, { buildingType: HUT_TYPE, tribe: VIKING, built: ONE, level: 0 });
@@ -332,7 +340,7 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     if (terrain === undefined) throw new Error('mapped sim expected');
     const blocked = walkBlockMask(sim.world, { content: sim.content }, terrain);
     expect(blocked.has(start)).toBe(true);
-    run(sim, TRAIN_CLIP_TICKS + 2 * WALK_TICKS);
+    run(sim, SERVED_TERM_TICKS + 2 * WALK_TICKS);
     expect(sim.world.has(soldier, CoinDrillOrder)).toBe(false);
     expect(sim.world.has(soldier, LostWay)).toBe(false);
     const end = nodeOf(sim, soldier);
@@ -346,7 +354,7 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     const driller = soldierAt(sim, SWORD_JOB, 7, 3);
     sim.world.add(driller, Health, { hitpoints: FIGHTER_HP, max: FIGHTER_HP });
     sim.enqueueSetup({ kind: 'orderCoinDrill', entity: driller, house });
-    while (sim.world.tryGet(driller, CoinDrillOrder)?.paid !== true) sim.step();
+    while (!termRuns(sim, driller)) sim.step();
     const enemy = soldierAt(sim, SWORD_JOB, 6, 3);
     sim.world.mut(enemy, Owner).player = OTHER_PLAYER;
     sim.world.add(enemy, Health, { hitpoints: FIGHTER_HP, max: FIGHTER_HP });
@@ -355,24 +363,41 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     expect(sim.world.get(driller, CoinDrillOrder).stage).toBe('return');
   });
 
-  it('gives back the coin of a repetition cut before its points', () => {
+  it('takes the coin as the term starts and grants the points only once it is served', () => {
     const sim = freshSim();
     const house = barracksAt(sim, 8, 3, 2);
     const driller = soldierAt(sim, SWORD_JOB, 7, 3);
     sim.enqueueSetup({ kind: 'orderCoinDrill', entity: driller, house });
-    while (sim.world.tryGet(driller, CoinDrillOrder)?.paid !== true) sim.step();
+    while (!termRuns(sim, driller)) sim.step();
+    expect(coinsOf(sim, house)).toBe(1);
+    run(sim, SERVED_TERM_TICKS - TRAIN_CLIP_TICKS);
+    expect(sim.world.get(driller, CurrentAtomic).atomicId).toBe(TRAIN_ATOMIC);
+    expect([pointsOf(sim, driller), coinsOf(sim, house)]).toEqual([0, 1]);
+    run(sim, TRAIN_CLIP_TICKS);
+    expect(pointsOf(sim, driller)).toBe(POINTS_PER_COIN);
+  });
+
+  it('resumes the term after a cut clip, with no second coin', () => {
+    const sim = freshSim();
+    const house = barracksAt(sim, 8, 3, 2);
+    const driller = soldierAt(sim, SWORD_JOB, 7, 3);
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: driller, house });
+    while (!termRuns(sim, driller)) sim.step();
     removeCurrentAtomic(sim.world, driller);
-    run(sim, 3 * TRAIN_CLIP_TICKS);
+    run(sim, TRAIN_CLIP_TICKS);
+    expect(termRuns(sim, driller)).toBe(true);
+    expect(coinsOf(sim, house)).toBe(1);
+    run(sim, 2 * SERVED_TERM_TICKS);
     expect(pointsOf(sim, driller)).toBe(2 * POINTS_PER_COIN);
     expect(coinsOf(sim, house)).toBe(0);
   });
 
-  it('an attack order calls the drill off, stepping out and giving back the coin of the cut repetition', () => {
+  it('an attack order calls the drill off, stepping out and giving back the coin of the cut term', () => {
     const sim = freshSim();
     const house = barracksAt(sim, 8, 3, 2);
     const driller = soldierAt(sim, SWORD_JOB, 7, 3);
     sim.enqueueSetup({ kind: 'orderCoinDrill', entity: driller, house });
-    while (sim.world.tryGet(driller, CoinDrillOrder)?.paid !== true) sim.step();
+    while (!termRuns(sim, driller)) sim.step();
     expect(coinsOf(sim, house)).toBe(1);
     const enemy = soldierAt(sim, SWORD_JOB, 2, 6);
     sim.world.mut(enemy, Owner).player = OTHER_PLAYER;

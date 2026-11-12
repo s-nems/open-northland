@@ -19,17 +19,22 @@ import { enterBuilding } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
-import { freeDrillCoins, refundCutRepetition, turnBackFromCoinDrill } from './coin-drill-coins.js';
+import {
+  coinDrillTermRuns,
+  freeDrillCoins,
+  startCoinDrillTerm,
+  turnBackFromCoinDrill,
+} from './coin-drill-coins.js';
 import { drillDoorOpen } from './training.js';
 
 const NO_EXPERIENCE: ReadonlyMap<number, number> = new Map();
 
 /**
- * The coin-drill rung: walk a soldier's `CoinDrillOrder` to the barracks door and run one repetition at a
- * time inside while he may drill and the barracks holds a coin no other man speaks for
- * ({@link freeDrillCoins}); otherwise he steps out and walks back to the node he left from, where the order
- * ends. A soldier whose coin was taken out of the stock on his way so walks there and straight back. Our
- * rule.
+ * The coin-drill rung: walk a soldier's `CoinDrillOrder` to the barracks door and drill inside one term
+ * after another while he may drill: a term starts on a coin no other man speaks for ({@link freeDrillCoins})
+ * and repeats the drill clip until it is served; a needs detour leaves it running. Otherwise he steps out and
+ * walks back to the node he left from, where the order ends. A soldier whose coin was taken out of the stock
+ * on his way so walks there and straight back. Our rule.
  */
 export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
@@ -43,8 +48,10 @@ export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): b
     const clip = coinDrillClip(ctx.content, settler);
     if (clip !== undefined && door !== undefined && drillGoesOn(plan, settler, door)) {
       enterBuilding(world, e, house, here, door, () => {
-        refundCutRepetition(world, ctx, e);
-        if (freeDrillCoins(world, ctx, house, e) <= 0) {
+        const paid =
+          coinDrillTermRuns(world, e) ||
+          (freeDrillCoins(world, ctx, house, e) > 0 && startCoinDrillTerm(world, ctx, e, house, clip));
+        if (!paid) {
           turnBackFromCoinDrill(world, ctx, e);
           return;
         }

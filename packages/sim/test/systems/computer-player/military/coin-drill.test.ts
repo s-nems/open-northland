@@ -265,7 +265,12 @@ describe('the computer seat coin drill', () => {
       queued: [],
     });
     const drilling = soldierAt(sim, 8, 10);
-    sim.world.add(drilling, CoinDrillOrder, { house: barracks, returnTo: 0, stage: 'return', paid: false });
+    sim.world.add(drilling, CoinDrillOrder, {
+      house: barracks,
+      returnTo: 0,
+      stage: 'return',
+      termTicksLeft: 0,
+    });
     const free = soldierAt(sim, 10, 10);
     expect(drillOrders(sim, [outOfReach, atLimit, bare, busy, drilling, free])).toEqual([
       { kind: 'orderCoinDrill', entity: bare, house: barracks },
@@ -277,7 +282,12 @@ describe('the computer seat coin drill', () => {
     const sim = seatSim();
     const barracks = barracksAt(sim, 1);
     const walking = soldierAt(sim, 8, 2);
-    sim.world.add(walking, CoinDrillOrder, { house: barracks, returnTo: 0, stage: 'drill', paid: false });
+    sim.world.add(walking, CoinDrillOrder, {
+      house: barracks,
+      returnTo: 0,
+      stage: 'drill',
+      termTicksLeft: 0,
+    });
     expect(drillOrders(sim, [soldierAt(sim, 8, 4)])).toEqual([]);
   });
 });

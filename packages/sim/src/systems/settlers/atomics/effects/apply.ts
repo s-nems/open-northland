@@ -29,7 +29,7 @@ import {
   unloadTraderHold,
 } from '../../../trade/index.js';
 import { loadHaulingCart, unloadHaulingCart } from '../../../vehicles/hauling-cart.js';
-import { settleCoinDrillRepetition } from '../../drives/coin-drill-coins.js';
+import { serveCoinDrillRepetition } from '../../drives/coin-drill-coins.js';
 import { serveDrillRepetition } from '../../drives/training.js';
 import {
   consumeFood,
@@ -131,9 +131,8 @@ export function applyEffect(
     case 'exercise':
       serveDrillRepetition(world, settler, atomic.duration);
       return;
-    // The coin and the points landed at the clip's own frames.
     case 'coinDrill':
-      settleCoinDrillRepetition(world, settler);
+      serveCoinDrillRepetition(world, ctx, settler, atomic.duration);
       return;
     case 'erectSignpost': {
       world.remove(settler, ErectSignpostOrder);

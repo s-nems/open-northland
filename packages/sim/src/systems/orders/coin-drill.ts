@@ -60,7 +60,7 @@ function startCoinDrill(world: World, ctx: SystemContext, e: Entity, house: Enti
   const returnTo = world.tryGet(e, CoinDrillOrder)?.returnTo ?? entityNode(world, terrain, e);
   // First, as it calls off the drill he may already be on.
   supersedeStandingOrders(world, ctx, e);
-  world.add(e, CoinDrillOrder, { house, returnTo, stage: 'drill', paid: false });
+  world.add(e, CoinDrillOrder, { house, returnTo, stage: 'drill', termTicksLeft: 0 });
   wakeIdle(world, e);
   removeCurrentAtomic(world, e);
   world.remove(e, PlayerOrder);

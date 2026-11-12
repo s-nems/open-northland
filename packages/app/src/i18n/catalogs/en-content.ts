@@ -1034,7 +1034,7 @@ export const enContent = {
     'coin-drill': {
       title: 'Coin drill',
       summary:
-        'A sword fighter, a spearman and an archer drill in a barracks holding six coins. Each repetition takes a coin and gives 25 combat experience points. The sword fighter and the archer stop at 50 points, the spearman, already at 30, needs one coin. The sixth coin stays, as nobody below 50 points is left to take it.',
+        'A sword fighter, a spearman and an archer drill in a barracks holding six coins. Each coin buys 15 seconds of drill inside and, at the end, 25 combat experience points. The sword fighter and the archer stop at 50 points, the spearman, already at 30, needs one coin. The sixth coin stays, as nobody below 50 points is left to take it.',
     },
     armor: {
       title: 'Armour parade',

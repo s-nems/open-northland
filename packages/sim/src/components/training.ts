@@ -37,17 +37,17 @@ export const GraduateWait = defineComponent<{ school: Entity }>('GraduateWait', 
 export const RallyPoint = defineComponent<{ flag: Entity }>('RallyPoint', 'settlers');
 
 /**
- * A soldier's coin drill: paid fight practice in his own side's barracks, one coin of its stock for each
- * repetition, apart from a recruit's {@link TrainingOrder} enlistment. `drill` walks to the door and drills
+ * A soldier's coin drill: paid fight practice in his own side's barracks, one term for each coin of its
+ * stock, apart from a recruit's {@link TrainingOrder} enlistment. `drill` walks to the door and drills
  * while he may and a coin is there; `return` walks him back to `returnTo`, the node he stood on when the
  * order was given, or the open node nearest it once a building covers it, and the order ends there.
- * `paid` tells whether the repetition in progress has taken its coin and not yet granted its points, so
- * the coins still spoken for are the drilling orders not paid, and a repetition cut while paid gives its
- * coin back. Our rule.
+ * `termTicksLeft` is what the term he paid for still owes, drawn down per completed repetition; 0 while no
+ * paid term runs, so the coins still spoken for are the drilling orders at 0, and a term cut short gives
+ * its coin back. Our rule.
  */
 export const CoinDrillOrder = defineComponent<{
   house: Entity;
   returnTo: NodeId;
   stage: 'drill' | 'return';
-  paid: boolean;
+  termTicksLeft: number;
 }>('CoinDrillOrder', 'settlers');

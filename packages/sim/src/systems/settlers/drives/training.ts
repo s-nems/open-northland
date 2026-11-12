@@ -17,7 +17,6 @@ import {
   UnderConstruction,
 } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
-import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { postGraduate } from '../../assistant/graduates.js';
@@ -48,6 +47,7 @@ import { armRecruitInPlace } from '../planner/recruit-arming.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
+import { BARRACKS_TERM_TICKS } from './barracks-term.js';
 import { planDelivery } from './economy/delivery.js';
 import { deliveryTargetFor } from './economy/delivery-targets.js';
 import { fetchNeededMaterial } from './economy/site-supply.js';
@@ -66,12 +66,12 @@ function lessonGoods(content: ContentSet, good: number): number[] {
 }
 
 /**
- * How long a recruit stays inside the barracks before it comes back out a soldier: 15 s of game time,
+ * How long a recruit stays inside the barracks before it comes back out a soldier: one barracks term,
  * drawn down per completed repetition, so the last one always overruns. Every recruit serves this one
  * standard drill; a weapon-class recruit takes what gear it can from the barracks' stock on the way out,
- * the rest in a later arming errand. Source basis: authored.
+ * the rest in a later arming errand.
  */
-export const BARRACKS_DRILL_TICKS = 15 * TICKS_PER_SECOND;
+export const BARRACKS_DRILL_TICKS = BARRACKS_TERM_TICKS;
 
 /**
  * The barracks-drill rung: drive a settler's live `TrainingOrder` one step forward. It walks to the

@@ -33,8 +33,13 @@ const SPEAR_START_POINTS = 30;
 /** The coins the three need to reach the limit (two, one, two), and one nobody may take. */
 const COINS = 6;
 const COINS_LEFT = 1;
-/** Five repetitions of the 28-tick clip in turn behind one door, the walks there and back, with slack. */
-const RUN_TICKS = 900;
+/** The most terms one soldier drills here: the swordsman's and the archer's two, side by side inside. */
+const MOST_TERMS = 2;
+/** A term's overrun: its last repetition of the drill clip plays out past the term. */
+const TERM_OVERRUN_TICKS = 28;
+/** The walks to the door and back, with slack. */
+const WALK_TICKS = 300;
+const RUN_TICKS = MOST_TERMS * (systems.COIN_DRILL_TERM_TICKS + TERM_OVERRUN_TICKS) + WALK_TICKS;
 
 function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_HEADQUARTERS, HEADQUARTERS.x, HEADQUARTERS.y);
