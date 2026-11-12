@@ -85,7 +85,7 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
       effect: 'lodging',
       deliveryValue: 1000,
       minimumHomeLevel: 0,
-      wear: { child: 250, sleep: 125, meal: 125 },
+      wear: { child: 200, sleep: 100, meal: 100 },
     },
   },
   { typeId: 130, id: 'shoes', name: 'Shoes', storable: true },
