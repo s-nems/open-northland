@@ -65,8 +65,8 @@ import type { SeatSupply, SupplyLine } from './supply.js';
  * `band` (default {@link CRAFT_GLUT_BAND_UNITS}) under the glut; while every capped good is dropped it
  * works `otherwise`, or the whole list when there is none. With `spareOnly` it also drops, for an
  * apprentice too, a good whose inputs the sites cannot spare ({@link inputsSpare}). A `firstFed` seat
- * works the first of its lines whose `input` the seat holds a unit of, and every line while it holds none
- * of them. A good with supply lines
+ * works the first of its lines whose `input` the seat holds a unit of, and while it holds none of them its
+ * `unfed` seat, or every line when it has none. A good with supply lines
  * ({@link SeatSupply}) takes no authored glut: {@link SeatCraftPlan.sink} covers it. A `firstEnabled` seat
  * works the first of its seats that names a good the seat may make right now, so a better product
  * replaces weaker ones once earned. An `until` seat works `works` until the seat has earned the good it
@@ -89,7 +89,10 @@ export type CraftSeat =
       readonly spareOnly?: true;
       readonly otherwise?: CraftSeat;
     }
-  | { readonly firstFed: readonly { readonly good: string; readonly input: string }[] }
+  | {
+      readonly firstFed: readonly { readonly good: string; readonly input: string }[];
+      readonly unfed?: CraftSeat;
+    }
   | { readonly firstEnabled: readonly CraftSeat[] }
   | { readonly until: string; readonly works: CraftSeat; readonly otherwise: CraftSeat }
   | { readonly whileOwned: string; readonly works: CraftSeat; readonly otherwise: CraftSeat }
@@ -427,18 +430,30 @@ const LEATHER_SEWERY: StockCraftPlan = {
 const DEFENCE_AMULET_LINE = { good: 'amulet_defense', input: 'armor_leather' } as const;
 const STRENGTH_AMULET_LINE = { good: 'amulet_strength', input: 'sword_shord' } as const;
 
+/** The coins a mint seat strikes while it has no amulet to make. */
+const COIN_SEAT: CraftSeat = ['coin'];
+
 /** Amulet seats: each strikes its own amulet while its input is in store and the other one's meanwhile, so
- *  the seat never idles on a line the tailors or the smiths have not fed; both lines while neither is. */
-const STRENGTH_AMULET_SEAT: CraftSeat = { firstFed: [STRENGTH_AMULET_LINE, DEFENCE_AMULET_LINE] };
-const DEFENCE_AMULET_SEAT: CraftSeat = { firstFed: [DEFENCE_AMULET_LINE, STRENGTH_AMULET_LINE] };
+ *  the seat never idles on a line the tailors or the smiths have not fed. Owner ruling: while neither is,
+ *  it strikes coins, with no cap, as the barracks coin drill spends them, and goes back to the amulets once
+ *  an input is in store. */
+const STRENGTH_AMULET_SEAT: CraftSeat = {
+  firstFed: [STRENGTH_AMULET_LINE, DEFENCE_AMULET_LINE],
+  unfed: COIN_SEAT,
+};
+const DEFENCE_AMULET_SEAT: CraftSeat = {
+  firstFed: [DEFENCE_AMULET_LINE, STRENGTH_AMULET_LINE],
+  unfed: COIN_SEAT,
+};
 
 /** Owner ruling: the mint turns its gold into amulets by the inputs in store, strength-first and
- *  defence-first seats in turn; it strikes coins meanwhile to earn the amulets. No recipe takes coins. */
+ *  defence-first seats in turn, and into coins while it has no amulet to make, as the barracks coin drill
+ *  spends them; it strikes coins until an amulet is earned too. */
 const MINT: StockCraftPlan = {
   wants: [],
   overflow: [
-    { until: 'amulet_strength', works: ['coin'], otherwise: STRENGTH_AMULET_SEAT },
-    { until: 'amulet_defense', works: ['coin'], otherwise: DEFENCE_AMULET_SEAT },
+    { until: 'amulet_strength', works: COIN_SEAT, otherwise: STRENGTH_AMULET_SEAT },
+    { until: 'amulet_defense', works: COIN_SEAT, otherwise: DEFENCE_AMULET_SEAT },
   ],
 };
 
@@ -1348,7 +1363,10 @@ function seatProducts(
       const input = goodTypeByContentId(ctx.content, line.input);
       return input !== undefined && supply.units(input.typeId) > 0;
     });
-    return fed === undefined ? seat.firstFed.map((line) => line.good) : [fed.good];
+    if (fed !== undefined) return [fed.good];
+    return seat.unfed === undefined
+      ? seat.firstFed.map((line) => line.good)
+      : seatProducts(choice, current, seat.unfed);
   }
   if ('homeWare' in seat) {
     const good = goodTypeByContentId(ctx.content, seat.homeWare)?.typeId;

@@ -1948,7 +1948,7 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(mints.products()).toEqual([[COIN], [COIN]]);
   });
 
-  it('alternates strength-first and defence-first amulet seats, each falling back to the other line while its own input is out', () => {
+  it('alternates strength-first and defence-first amulet seats, each falling back to the other line while its own input is out and to coins while both are', () => {
     const mints = crewedWorkshops(mintContent(), 3, 6);
     mints.stock(LEATHER_ARMOUR, 1);
     mints.stock(SWORD_SHORT, 1);
@@ -1964,10 +1964,12 @@ describe('workforce module - the barracks and craft selections', () => {
     mints.stock(LEATHER_ARMOUR, 0);
     mints.stock(SWORD_SHORT, 1);
     expect(mints.products()).toEqual([strength, strength, strength, strength, strength, strength]);
-    // Neither in store: every seat works both lines.
+    // Neither in store: every seat strikes coins, with no cap.
     mints.stock(SWORD_SHORT, 0);
-    const amulets = [DEFENCE_AMULET, STRENGTH_AMULET];
-    expect(mints.products()).toEqual([amulets, amulets, amulets, amulets, amulets, amulets]);
+    expect(mints.products()).toEqual([[COIN], [COIN], [COIN], [COIN], [COIN], [COIN]]);
+    // An input back in store: the seats go back to the amulets.
+    mints.stock(LEATHER_ARMOUR, 1);
+    expect(mints.products()).toEqual([defence, defence, defence, defence, defence, defence]);
   });
 
   /** The wood's supply lines at `tick`. */
