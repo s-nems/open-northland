@@ -202,7 +202,7 @@ export const enContent = {
     'overhead-icons': {
       title: 'Over-head icons',
       summary:
-        'Every sword soldier wears a star that grows a size per quarter of his landed hits; a script-marked soldier wears the marker over it. Select everyone to stack each life heart, and the master collector’s trade star, into the column.',
+        'Every sword soldier wears a star that grows a size every 25 points of fight experience; a script-marked soldier wears the marker over it. Select everyone to stack each life heart, and the master collector’s trade star, into the column.',
     },
     'bow-flight': {
       title: 'Bow flight',
@@ -1014,7 +1014,7 @@ export const enContent = {
     barracks: {
       title: 'Barracks training',
       summary:
-        'A civilian sent to the barracks drills inside for 15 seconds and walks out an unarmed soldier; beside him a civilian who never drilled but may still take the soldier profession.',
+        'A civilian sent to the barracks drills inside for one term and walks out an unarmed soldier; beside him a civilian who never drilled but may still take the soldier profession.',
     },
     'barracks-armory': {
       title: 'Barracks armory',
@@ -1034,7 +1034,7 @@ export const enContent = {
     'coin-drill': {
       title: 'Coin drill',
       summary:
-        'A sword fighter, a spearman and an archer drill in a barracks holding six coins. Each coin buys 15 seconds of drill inside and, at the end, 25 combat experience points. The sword fighter and the archer stop at 50 points, the spearman, already at 30, needs one coin. The sixth coin stays, as nobody below 50 points is left to take it.',
+        'A sword fighter, a spearman and an archer drill in a barracks holding six coins. Each coin buys one term of drill inside and, at its end, combat experience points. The sword fighter and the archer drill up to the limit, the spearman, who starts close to it, needs one coin. The sixth coin stays, as nobody below the limit is left to take it.',
     },
     armor: {
       title: 'Armour parade',

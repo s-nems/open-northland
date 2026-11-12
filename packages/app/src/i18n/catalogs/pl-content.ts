@@ -200,7 +200,7 @@ export const plContent = {
     'overhead-icons': {
       title: 'Ikony nad głową',
       summary:
-        'Każdy miecznik nosi gwiazdkę, która rośnie co ćwierć zadanych trafień; żołnierz oznaczony przez skrypt nosi nad nią znacznik. Zaznacz wszystkich, by w kolumnie stanęły serca życia i gwiazdka fachu mistrza zbieracza.',
+        'Każdy miecznik nosi gwiazdkę, która rośnie co 25 pkt doświadczenia w walce; żołnierz oznaczony przez skrypt nosi nad nią znacznik. Zaznacz wszystkich, by w kolumnie stanęły serca życia i gwiazdka fachu mistrza zbieracza.',
     },
     'bow-flight': {
       title: 'Lot strzały',
@@ -1011,7 +1011,7 @@ export const plContent = {
     barracks: {
       title: 'Szkolenie w koszarach',
       summary:
-        'Osadnik wysłany do koszar ćwiczy w środku 15 sekund i wychodzi jako żołnierz bez broni; obok cywil, który nie ćwiczył, a i tak może zostać żołnierzem.',
+        'Osadnik wysłany do koszar ćwiczy w środku do końca szkolenia i wychodzi jako żołnierz bez broni; obok cywil, który nie ćwiczył, a i tak może zostać żołnierzem.',
     },
     'barracks-armory': {
       title: 'Zbrojownia koszar',
@@ -1031,7 +1031,7 @@ export const plContent = {
     'coin-drill': {
       title: 'Musztra za monety',
       summary:
-        'Miecznik, włócznik i łucznik ćwiczą w koszarach, w których leży sześć monet. Każda moneta to 15 sekund ćwiczeń w środku, a na koniec 25 pkt doświadczenia w walce. Miecznik i łucznik kończą na 50 pkt, włócznik, który miał już 30, potrzebuje jednej monety. Szósta moneta zostaje, bo nikt poniżej 50 pkt już na nią nie czeka.',
+        'Miecznik, włócznik i łucznik ćwiczą w koszarach, w których leży sześć monet. Każda moneta to jedna musztra w środku, a na jej koniec punkty doświadczenia w walce. Miecznik i łucznik ćwiczą aż do limitu, włócznikowi, który jest już blisko niego, wystarczy jedna moneta. Szósta moneta zostaje, bo nikt poniżej limitu już na nią nie czeka.',
     },
     armor: {
       title: 'Parada zbroi',

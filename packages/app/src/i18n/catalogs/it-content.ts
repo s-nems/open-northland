@@ -202,7 +202,7 @@ export const itContent = {
     'overhead-icons': {
       title: 'Icone sopra la testa',
       summary:
-        "Ogni spadaccino porta una stella che cresce di una misura per ogni quarto dei colpi andati a segno; un soldato marcato dallo script porta il segno sopra di essa. Seleziona tutti per impilare nella colonna ogni cuore della vita e la stella commerciale dell'estrattore esperto.",
+        "Ogni spadaccino porta una stella che cresce di una misura ogni 25 punti di esperienza in combattimento; un soldato marcato dallo script porta il segno sopra di essa. Seleziona tutti per impilare nella colonna ogni cuore della vita e la stella commerciale dell'estrattore esperto.",
     },
     'bow-flight': {
       title: 'Volo delle frecce',
@@ -1026,7 +1026,7 @@ export const itContent = {
     barracks: {
       title: 'Addestramento in caserma',
       summary:
-        'Un civile mandato in caserma si esercita dentro per 15 secondi ed esce come soldato disarmato; accanto a lui un civile che non si è mai esercitato ma può comunque diventare soldato.',
+        'Un civile mandato in caserma si esercita dentro per un turno ed esce come soldato disarmato; accanto a lui un civile che non si è mai esercitato ma può comunque diventare soldato.',
     },
     'barracks-armory': {
       title: 'Armeria della caserma',
@@ -1046,7 +1046,7 @@ export const itContent = {
     'coin-drill': {
       title: 'Esercitazione a monete',
       summary:
-        'Uno spadaccino, un lanciere e un arciere si esercitano in una caserma con sei monete. Ogni moneta compra 15 secondi di esercitazione dentro e, alla fine, 25 punti di esperienza in combattimento. Spadaccino e arciere si fermano a 50 punti, il lanciere, già a 30, ha bisogno di una moneta. La sesta moneta resta, perché non c’è più nessuno sotto i 50 punti.',
+        'Uno spadaccino, un lanciere e un arciere si esercitano in una caserma con sei monete. Ogni moneta compra un turno di esercitazione dentro e, alla sua fine, punti di esperienza in combattimento. Spadaccino e arciere si esercitano fino al limite, il lanciere, che parte già vicino, ha bisogno di una moneta. La sesta moneta resta, perché non c’è più nessuno sotto il limite.',
     },
     armor: {
       title: 'Parata delle armature',

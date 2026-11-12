@@ -201,7 +201,7 @@ export const deContent = {
     'overhead-icons': {
       title: 'Symbole über dem Kopf',
       summary:
-        'Jeder Schwertkämpfer trägt einen Stern, der je Viertel seiner gelandeten Treffer wächst; ein vom Skript markierter Soldat trägt darüber die Markierung. Alle auswählen, um die Lebensherzen und den Berufsstern des Meistersammlers in die Säule zu stapeln.',
+        'Jeder Schwertkämpfer trägt einen Stern, der alle 25 Punkte Kampferfahrung um eine Größe wächst; ein vom Skript markierter Soldat trägt darüber die Markierung. Alle auswählen, um die Lebensherzen und den Berufsstern des Meistersammlers in die Säule zu stapeln.',
     },
     'bow-flight': {
       title: 'Pfeilflug',
@@ -1023,7 +1023,7 @@ export const deContent = {
     barracks: {
       title: 'Ausbildung in der Kaserne',
       summary:
-        'Ein Siedler wird in die Kaserne geschickt, übt dort 15 Sekunden und kommt als unbewaffneter Soldat heraus. Daneben steht ein Siedler, der nie geübt hat und den Soldatenberuf trotzdem ergreifen kann.',
+        'Ein Siedler wird in die Kaserne geschickt, übt dort einen Durchgang lang und kommt als unbewaffneter Soldat heraus. Daneben steht ein Siedler, der nie geübt hat und den Soldatenberuf trotzdem ergreifen kann.',
     },
     'barracks-armory': {
       title: 'Kasernenwaffenkammer',
@@ -1043,7 +1043,7 @@ export const deContent = {
     'coin-drill': {
       title: 'Exerzieren für Münzen',
       summary:
-        'Ein Schwertkämpfer, ein Speerträger und ein Bogenschütze exerzieren in einer Kaserne mit sechs Münzen. Jede Münze kauft 15 Sekunden Exerzieren drinnen und am Ende 25 Punkte Kampferfahrung. Schwertkämpfer und Bogenschütze hören bei 50 Punkten auf, der Speerträger, schon bei 30, braucht eine Münze. Die sechste Münze bleibt liegen, weil niemand unter 50 Punkten mehr übrig ist.',
+        'Ein Schwertkämpfer, ein Speerträger und ein Bogenschütze exerzieren in einer Kaserne mit sechs Münzen. Jede Münze kauft einen Durchgang Exerzieren drinnen und an dessen Ende Kampferfahrung. Schwertkämpfer und Bogenschütze exerzieren bis zur Grenze, der Speerträger, der schon nah daran ist, braucht eine Münze. Die sechste Münze bleibt liegen, weil niemand unter der Grenze mehr übrig ist.',
     },
     armor: {
       title: 'Rüstungsparade',
