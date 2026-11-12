@@ -108,7 +108,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Z amuletami',
         },
         {
-          p: '[[good:amulet_strength|Amulet Siły]] dodaje swoją premię do premii z doświadczenia: przy pełnym doświadczeniu cios wręcz wychodzi ×{{combat.fightStrengthFactor}}. [[good:amulet_defense|Amulet Obrony]] mnoży się z doświadczeniem: z pełnym doświadczeniem wojownik dostaje ×{{combat.fightDefenseFactor}} obrażeń. Amulety: [[article:draughts|Napoje i amulety]].',
+          p: '[[good:amulet_strength|Amulet Siły]] dodaje swoją premię do premii z doświadczenia: przy pełnym doświadczeniu cios wręcz ma ×{{combat.fightStrengthFactor}} obrażeń. [[good:amulet_defense|Amulet Obrony]] mnoży się z doświadczeniem: z pełnym doświadczeniem wojownik dostaje ×{{combat.fightDefenseFactor}} obrażeń. Amulety: [[article:draughts|Napoje i amulety]].',
         },
         {
           p: 'Łucznik bez doświadczenia trafia {{aim.basePct}}% strzałów, a od {{aim.noSpreadHits}} pkt każdy strzał spada w cel. [[article:catapult|Katapulta]] liczy własne trafienia. Szczegóły: [[article:aim|Trafienie i strzelanie]].',
@@ -120,12 +120,12 @@ export const EXPERIENCE: ArticleGroup = {
           list: [
             'Walka: cios wręcz, który zadał obrażenia, daje {{combat.fightMeleePerSecond}} pkt za każdą sekundę zamachu, a strzał {{combat.fightShotPerSecond}} pkt za każdą sekundę naciągania cięciwy. Wolna broń zbiera punkty w tym samym tempie co szybka, a łuk na sekundę daje mniej.',
             'Ciosy i strzały w budynki, [[article:walls|palisady]] i [[article:vehicles|pojazdy]] dają {{combat.fightStructurePct}}% tego.',
-            'Przyjęte ciosy: kogo zrani ktokolwiek, człowiek, zwierzę, wieża czy katapulta, ten dostaje {{combat.fightTakenPerSecond}} pkt za każdą sekundę ciosu napastnika.',
+            'Przyjęte ciosy: ranny dostaje {{combat.fightTakenPerSecond}} pkt za każdą sekundę ciosu napastnika, czy to człowiek, zwierzę, wieża czy katapulta.',
             'Musztra: żołnierz, z bronią czy bez, płaci jedną [[good:coin|Monetę]] za {{coinDrill.termSeconds}} s ćwiczeń w twoich [[building:barracks|Koszarach]] i po ich końcu dostaje {{coinDrill.points}} pkt. Zaznacz żołnierzy i kliknij prawym przyciskiem własne Koszary.',
           ],
         },
         {
-          p: 'Pięść i każda broń liczą się tak samo, strzały [[job:hunter|Myśliwego]] też. Doświadczenie zostaje po zmianie broni i zawodu. Kto ma {{coinDrill.limit}} pkt lub więcej, już nie ćwiczy, resztę zdobywa w walce. Gdy walka albo nowy rozkaz przerwie musztrę, moneta wraca, a punktów nie ma. Idzie tylu żołnierzy, ile Koszary mają wolnych monet, najbliżsi najpierw; reszta zostaje na miejscu.',
+          p: 'Pięść i każda broń liczą się tak samo, strzały [[job:hunter|Myśliwego]] też. Doświadczenie zostaje po zmianie broni i zawodu. Kto ma {{coinDrill.limit}} pkt lub więcej, już nie ćwiczy, resztę zdobywa w walce. Gdy walka albo nowy rozkaz przerwie musztrę, moneta wraca, a punktów nie ma. Idzie tylu żołnierzy, ile Koszary mają wolnych monet, najpierw najbliżsi; reszta zostaje na miejscu.',
         },
         {
           p: 'W panelu osadnika to wiersz Walka: jego udział w pełnym liczniku w procentach, a w podpowiedzi premie: z bronią do walki wręcz lub gołymi rękami więcej zadawanych obrażeń, z łukiem celność, i o ile mniej obrażeń otrzymuje. Bohaterowi walka nie podnosi doświadczenia, chyba że misja to włącza.',

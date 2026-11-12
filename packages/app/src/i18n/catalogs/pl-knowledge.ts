@@ -233,7 +233,7 @@ export const plKnowledge = {
         limit: 'Limit',
         limitValue: 'Tylko poniżej {{coinDrill.limit}} pkt',
         cut: 'Przerwana',
-        cutValue: 'Walka albo nowy rozkaz oddaje monetę, punktów nie ma',
+        cutValue: 'Gdy przerwie ją walka albo nowy rozkaz, moneta wraca, punktów nie ma',
       },
       workers: 'Pracownicy',
       seats: { one: '{count} miejsce', few: '{count} miejsca', many: '{count} miejsc' },
