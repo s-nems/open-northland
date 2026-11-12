@@ -408,6 +408,8 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
 describe('company at home - a married settler fills its company bar on stepping in', () => {
   /** A lonely settler: company well past the drive trigger. */
   const LONELY: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
+  /** Ample for three cells' walk to the door. */
+  const WALK_HOME_TICKS = 200;
 
   /** `settler` married to a spouse standing out of the house, across the map. */
   function marryAway(sim: Simulation, settler: Entity): void {
@@ -416,18 +418,21 @@ describe('company at home - a married settler fills its company bar on stepping 
     sim.world.add(spouse, Marriage, { spouse: settler, child: null });
   }
 
-  it('fills it on coming home for a nap or a meal alone, its spouse away; a single settler gets nothing', () => {
+  it('fills it on stepping in for a nap or a meal alone, its spouse away; a single settler gets nothing', () => {
     for (const needs of [{ fatigue: TIRED }, { hunger: HUNGRY }]) {
       const sim = simWithHomes();
-      const married = needsSettlerAt(sim, 3, 2, { ...needs, enjoyment: LONELY });
-      const home = homeAt(sim, 3, 2);
+      const married = needsSettlerAt(sim, 1, 2, { ...needs, enjoyment: LONELY });
+      const home = homeAt(sim, 4, 2);
       sim.world.add(married, Residence, { home });
       stock(sim, home, 2);
       marryAway(sim, married);
-      const single = needsSettlerAt(sim, 3, 2, { ...needs, enjoyment: LONELY });
+      const single = needsSettlerAt(sim, 1, 2, { ...needs, enjoyment: LONELY });
       sim.world.add(single, Residence, { home });
 
-      plannerSystem(sim.world, ctxOf(sim));
+      sim.step(); // sets off for the door, still lonely on the way
+      expect(sim.world.has(married, MoveGoal)).toBe(true);
+      expect(needsOf(sim, married).enjoyment).toBeGreaterThanOrEqual(LONELY);
+      for (let i = 0; i < WALK_HOME_TICKS && sim.world.tryGet(married, Resting)?.at !== home; i++) sim.step();
 
       expect(sim.world.get(married, Resting).at).toBe(home);
       expect(needsOf(sim, married).enjoyment).toBe(0);

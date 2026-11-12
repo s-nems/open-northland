@@ -52,7 +52,7 @@ import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-g
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { stepToIdleReplan } from '../../fixtures/idle-replan.js';
-import { needsOf } from '../../fixtures/settler.js';
+import { needsOf, setNeeds } from '../../fixtures/settler.js';
 import { grassNodeMap as grassMap, waterColumnMap } from '../../fixtures/terrain.js';
 
 /**
@@ -510,6 +510,21 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
       'husband walks home',
     );
     expect(walked).toBe(true);
+  });
+
+  it("fills a lonely husband's company as the child order brings him in", () => {
+    const { sim, woman, man, home } = familySim(3);
+    sim.world.add(woman(), Marriage, { spouse: man(), child: null });
+    sim.world.add(man(), Marriage, { spouse: woman(), child: null });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman(), child: 'female' });
+    sim.step();
+    sim.world.mut(home(), Stockpile).amounts.set(FOOD, CHILD_FOOD_UNITS);
+    setNeeds(sim, man(), { enjoyment: ONE });
+
+    runUntil(sim, () => sim.world.tryGet(man(), Resting)?.at === home(), 600, 'husband walks home');
+
+    expect(needsOf(sim, man()).enjoyment).toBe(0);
   });
 
   it('waits for a husband aboard a vehicle, then calls him home once he steps off', () => {
