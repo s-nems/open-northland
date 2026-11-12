@@ -187,15 +187,22 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   /**
    * A vehicle's structural damage: `wear` (0 whole .. 1 wrecked) scorches and breaches the frame in a
    * pattern fixed by `seed`, and rows below `clipRow` (native px from the feet anchor) do not draw, the
-   * waterline of a sinking hull.
+   * waterline of a sinking hull, which rolls with `wavePhase` (radians).
    */
-  setDamage(wear: number, seed: number, clipRow = UNCLIPPED_ROW): void {
+  setDamage(wear: number, seed: number, clipRow = UNCLIPPED_ROW, wavePhase = 0): void {
     const u = this.vars.uniforms.uDamage;
     // Against the stored single-precision values, or a fractional wear would never compare equal.
-    if (u[0] === Math.fround(wear) && u[1] === Math.fround(seed) && u[2] === Math.fround(clipRow)) return;
+    if (
+      u[0] === Math.fround(wear) &&
+      u[1] === Math.fround(seed) &&
+      u[2] === Math.fround(clipRow) &&
+      u[3] === Math.fround(wavePhase)
+    )
+      return;
     u[0] = wear;
     u[1] = seed;
     u[2] = clipRow;
+    u[3] = wavePhase;
     this.vars.update();
   }
 

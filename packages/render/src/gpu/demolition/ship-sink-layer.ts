@@ -59,6 +59,10 @@ const SUBMERGE_MARGIN_PX = 4;
 const SINK_LIST = 0.16;
 /** World px a hull's art and smoke reach past its feet, for the cull. */
 const CULL_MARGIN_PX = 260;
+/** How fast the waves along a sinking hull's waterline roll. Tuned by eye. */
+const WAVE_RADIANS_PER_TICK = 0.45;
+/** Turns after which the shader's two swells (the second at 0.6 of the phase) both repeat. */
+const WAVE_PHASE_TURNS = 5;
 const NO_GROUND: readonly never[] = [];
 
 interface SinkNode {
@@ -118,7 +122,12 @@ export class ShipSinkLayer {
         mesh.visible = progress < 1;
         mesh.artDy = hull.dy + sink;
         mesh.shear = hull.shear + node.list * progress;
-        mesh.setDamage(1, node.damageSeed, (waterline - mesh.artDy) / mesh.artScale);
+        mesh.setDamage(
+          1,
+          node.damageSeed,
+          (waterline - mesh.artDy) / mesh.artScale,
+          (frame.tick * WAVE_RADIANS_PER_TICK) % (Math.PI * 2 * WAVE_PHASE_TURNS),
+        );
       }
       placeDeckFires(node.origins, node.box, sink);
       node.effects.container.alpha = sinkSmokeAlpha(age);
