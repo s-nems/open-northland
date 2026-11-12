@@ -16,7 +16,8 @@ import { interactionNode } from '../footprint/index.js';
 import { isFood } from '../readviews/index.js';
 import { startDrop } from '../settlers/atomics/start.js';
 import { hasRoom } from '../settlers/drives/economy/store-policy.js';
-import { unreachableGoalVeto } from '../settlers/unreachable-goals.js';
+import { liftLostWalk } from '../settlers/lost-way.js';
+import { unreachableCellVeto } from '../settlers/targets/index.js';
 import { landReachAt, type NavigationLimit } from '../signposts/index.js';
 import type { SupplyTally } from '../stores/index.js';
 import { deliverHome, fetchFrom, HAUL_LIFT_UNITS } from './food-haul.js';
@@ -87,16 +88,23 @@ export function planWomanHoard(
     return true;
   }
   const owner = ownerOf(world, e);
-  const avoid = unreachableGoalVeto(world, ctx, e);
-  const foodSource =
-    storedFoodUnits(world, ctx, home) < larderCapacity(ctx, homeType)
-      ? externalFood.nearest(hereNode, owner, home, reach, avoid)
-      : null;
+  // A source she provably cannot walk to is no source. The failed-goal memo alone holds a few cells for
+  // under a minute, so among more buried piles than that she would walk at them for good.
+  const avoid =
+    terrain === undefined
+      ? undefined
+      : unreachableCellVeto(world, ctx, terrain, e, terrain.nodeAtClamped(hereNode.hx, hereNode.hy));
+  const larderFull = storedFoodUnits(world, ctx, home) >= larderCapacity(ctx, homeType);
+  const foodSource = larderFull ? null : externalFood.nearest(hereNode, owner, home, reach, avoid);
   const demanded = demandedHomeQualityGoods(world, ctx, e, home);
   const qualitySource =
     demanded.size > 0 ? externalQuality.nearest(hereNode, owner, demanded, reach, avoid) : null;
   const source = nearerSource(world, hereNode, foodSource, qualitySource);
-  if (source === null) return false; // nothing to hoard, so fall through to idling
+  if (source === null) {
+    // A home that wants nothing leaves her no walk to be lost on.
+    if (larderFull && demanded.size === 0) liftLostWalk(world, e);
+    return false; // nothing to hoard, so fall through to idling
+  }
   supply.stampPickupClaim(e, { source: source.store, goodType: source.goodType, amount: HAUL_LIFT_UNITS });
   fetchFrom(world, ctx, terrain, e, settler, source, hereNode);
   return true;

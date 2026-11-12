@@ -347,12 +347,15 @@ function planBreak(
     return true;
   }
   // The housewife rung: a woman takes no trade - her work is stocking the family larder. Above the
-  // carry-delivery rung so food she lifted for the pantry goes home, not to the nearest store.
+  // carry-delivery rung so food she lifted for the pantry goes home, not to the nearest store. It is the
+  // work a lost mark of hers waits on, as a trade is an employed settler's.
   if (
     world.has(e, Female) &&
     planWomanHoard(world, ctx, terrain, e, pass.externalFood, pass.externalQuality, pass.supply, limit)
-  )
+  ) {
+    noteWorkTaken(world, e);
     return true;
+  }
   return false;
 }
 

@@ -32,8 +32,7 @@ import { fillCompanyOnComingHome } from '../../settlers/drives/at-home.js';
 import { isServedAtHome } from '../../settlers/drives/home-errands.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
 import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors.js';
-import { interactionCell } from '../../settlers/targets/index.js';
-import { unreachableGoalVeto } from '../../settlers/unreachable-goals.js';
+import { interactionCell, unreachableCellVeto } from '../../settlers/targets/index.js';
 import { landReachAt, navigationLimitFor } from '../../signposts/index.js';
 import { heldMoverNode } from '../../spatial/node-moves.js';
 import type { SupplyTally } from '../../stores/index.js';
@@ -294,7 +293,9 @@ function haulFood(
     ownerOf(world, woman),
     home,
     limit,
-    unreachableGoalVeto(world, ctx, woman),
+    terrain === undefined
+      ? undefined
+      : unreachableCellVeto(world, ctx, terrain, woman, terrain.nodeAtClamped(hereNode.hx, hereNode.hy)),
   );
   if (source === null) {
     // No reachable food outside homes, so she waits and the order stands.

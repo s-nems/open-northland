@@ -4,9 +4,9 @@ import { contentIndex } from '../../core/content-index.js';
 import type { World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
-import { createResourceNode } from '../footprint/index.js';
+import { buildingBlockedCells, createResourceNode, dynamicBlockOverlay } from '../footprint/index.js';
 import { razeBuilding } from '../lifecycle/cleanup.js';
-import { dropOrStackGood } from '../settlers/atomics/effects/goods/index.js';
+import { dropOrStackGood, spillOverRings } from '../settlers/atomics/effects/goods/index.js';
 import { razeSignpost } from '../signposts/index.js';
 
 /** Build a standing resource node through the shared {@link createResourceNode} assembly. A `good` with no
@@ -29,7 +29,9 @@ export function placeResource(
 }
 
 /** Drop a loose good pile, stacking onto an existing pile of the same good on the tile (capped at
- *  `MAX_GROUND_STACK`) so repeated one-unit clicks pile up rather than littering entities. */
+ *  `MAX_GROUND_STACK`) so repeated one-unit clicks pile up rather than littering entities. A drop aimed
+ *  at a building's body lands on the nearest open ground instead: a pile under a building is a source no
+ *  fetcher can reach. */
 export function dropGood(
   world: World,
   ctx: SystemContext,
@@ -37,6 +39,15 @@ export function dropGood(
 ): void {
   if (command.amount <= 0) return;
   if (!contentIndex(ctx.content).goods.has(command.good)) return;
+  const terrain = ctx.terrain;
+  if (terrain !== undefined) {
+    const node = terrain.nodeAtClamped(command.x, command.y);
+    if (buildingBlockedCells(world, ctx, terrain).has(node)) {
+      const blocked = dynamicBlockOverlay(world, ctx, terrain);
+      spillOverRings(world, terrain, node, command.good, command.amount, (n) => !blocked.has(n));
+      return;
+    }
+  }
   const pos = positionOfNode(command.x, command.y);
   dropOrStackGood(world, pos.x, pos.y, command.good, command.amount);
 }
