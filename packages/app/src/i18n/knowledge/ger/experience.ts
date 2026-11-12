@@ -119,13 +119,18 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Ohne Erfahrung trifft ein Bogenschütze {{aim.basePct}}% seiner Schüsse, ab {{aim.noSpreadHits}} Punkten landet jeder Schuss im Ziel. Das [[article:catapult|Katapult]] zählt eigene Treffer. Details: [[article:aim|Treffen und Schießen]].',
         },
         {
-          h: 'Woher sie kommt',
+          h: 'Wie man sie bekommt',
         },
         {
-          p: 'Punkte bringt die Dauer eines Schlags, der Schaden verursacht hat. Ein Nahkampfschlag bringt {{combat.fightMeleePerSecond}} Punkte je Sekunde seines Ausholens und ein Schuss {{combat.fightShotPerSecond}} Punkte je Sekunde des Spannens, also lernt eine langsame Waffe so schnell wie eine flinke, und ein Bogen bringt pro Sekunde weniger. Auch ein erlittener Schlag zählt: Wer verwundet wird, ob von einem Menschen, einem Tier, einem Turm oder einem Katapult, bekommt {{combat.fightTakenPerSecond}} Punkte je Sekunde des gegnerischen Schlags. Faust und jede Waffe zählen gleich, die Schüsse des [[job:hunter|Jägers]] auch. Die Erfahrung bleibt nach einem Waffen- oder Berufswechsel.',
+          list: [
+            'Kampf: Ein Nahkampfschlag, der Schaden verursacht, bringt {{combat.fightMeleePerSecond}} Punkte je Sekunde seines Ausholens, ein Schuss {{combat.fightShotPerSecond}} Punkte je Sekunde des Spannens. Eine langsame Waffe lernt so schnell wie eine flinke, und ein Bogen bringt pro Sekunde weniger.',
+            'Schläge und Schüsse auf Gebäude, [[article:walls|Palisaden]] und [[article:vehicles|Fahrzeuge]] bringen {{combat.fightStructurePct}}% davon.',
+            'Erlittene Schläge: Wer verwundet wird, ob von einem Menschen, einem Tier, einem Turm oder einem Katapult, bekommt {{combat.fightTakenPerSecond}} Punkte je Sekunde des gegnerischen Schlags.',
+            'Exerzieren: Ein Soldat, bewaffnet oder nicht, zahlt eine [[good:coin|Münze]] für {{coinDrill.termSeconds}} s in deiner [[building:barracks|Kaserne]] und bekommt am Ende {{coinDrill.points}} Punkte. Wähle die Soldaten und klicke mit rechts auf deine eigene Kaserne.',
+          ],
         },
         {
-          p: 'Exerzieren: Jeder Soldat, ob bewaffnet oder nicht, übt in deiner [[building:barracks|Kaserne]], wenn dort Münzen liegen. Jede [[good:coin|Münze]] kauft {{coinDrill.termSeconds}} s Exerzieren drinnen, so lange wie die Ausbildung eines Rekruten, und am Ende {{coinDrill.points}} Punkte. Unterbrechen ein Kampf oder ein neuer Befehl das Exerzieren, kommt die Münze zurück, Punkte gibt es keine. Wer {{coinDrill.limit}} Punkte oder mehr hat, exerziert nicht mehr und holt sich den Rest im Kampf. Wähle die Soldaten und klicke mit rechts auf deine eigene Kaserne. Es gehen nur so viele, wie die Kaserne freie Münzen hat, die nächsten zuerst; die übrigen bleiben stehen.',
+          p: 'Faust und jede Waffe zählen gleich, die Schüsse des [[job:hunter|Jägers]] auch. Die Erfahrung bleibt nach einem Waffen- oder Berufswechsel. Wer {{coinDrill.limit}} Punkte oder mehr hat, exerziert nicht mehr und holt sich den Rest im Kampf. Unterbrechen ein Kampf oder ein neuer Befehl das Exerzieren, kommt die Münze zurück, Punkte gibt es keine. Es gehen nur so viele Soldaten, wie die Kaserne freie Münzen hat, die nächsten zuerst; die übrigen bleiben stehen.',
         },
         {
           p: 'Im Siedlerfenster ist das die Zeile Kämpfen: die Punkte, der Bonus auf Nahkampfschaden und wie viel weniger Schaden er erleidet. Einem Helden steigt die Erfahrung durch Kämpfen nicht, außer die Mission schaltet es ein.',

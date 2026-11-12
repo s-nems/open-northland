@@ -109,13 +109,18 @@ export const EXPERIENCE: ArticleGroup = {
           p: '沒有經驗的弓手有 {{aim.basePct}}% 的射擊命中，{{aim.noSpreadHits}} 點起每一箭都落在目標上。[[article:catapult|投石機]]單獨累計自己的命中。詳情：[[article:aim|命中與射擊]]。',
         },
         {
-          h: '經驗從哪裡來',
+          h: '怎樣獲得',
         },
         {
-          p: '點數按造成傷害的一擊所用的時間計算。近戰攻擊按揮擊的時長每秒得 {{combat.fightMeleePerSecond}} 點，射擊按拉弓的時長每秒得 {{combat.fightShotPerSecond}} 點，所以慢武器和快武器漲得一樣快，弓每秒得點較少。受到攻擊也算：被任何對手打傷的人，無論對手是人、野獸、塔樓還是投石機，都按對手一擊的時間每秒得 {{combat.fightTakenPerSecond}} 點。拳頭和任何武器都一樣，[[job:hunter|獵人]]的射擊也算。更換武器或職業後經驗保留。',
+          list: [
+            '戰鬥：造成傷害的近戰攻擊按揮擊的時長每秒得 {{combat.fightMeleePerSecond}} 點，射擊按拉弓的時長每秒得 {{combat.fightShotPerSecond}} 點。慢武器和快武器漲得一樣快，弓每秒得點較少。',
+            '打在建築、[[article:walls|柵欄]]和[[article:vehicles|載具]]上的攻擊和射擊只得其中的 {{combat.fightStructurePct}}%。',
+            '受到攻擊：被任何對手打傷的人，無論對手是人、野獸、塔樓還是投石機，都按對手一擊的時間每秒得 {{combat.fightTakenPerSecond}} 點。',
+            '金幣操練：士兵，無論有沒有武器，花一枚[[good:coin|金幣]]在你的[[building:barracks|兵營]]裡操練 {{coinDrill.termSeconds}} 秒，練完得 {{coinDrill.points}} 點。選中士兵後右鍵點擊自己的兵營。',
+          ],
         },
         {
-          p: '操練：任何士兵，無論有沒有武器，都在你存有金幣的[[building:barracks|兵營]]裡操練。每枚[[good:coin|金幣]]換來在裡面操練 {{coinDrill.termSeconds}} 秒，和新兵受訓一樣長，練完得 {{coinDrill.points}} 點。戰鬥或新命令打斷操練時，金幣退回，不得點數。達到 {{coinDrill.limit}} 點及以上的人不再操練，其餘的要在戰鬥中獲得。選中士兵後右鍵點擊自己的兵營。兵營有幾枚空閒金幣就去幾名士兵，離得最近的先去；其餘的留在原地。',
+          p: '拳頭和任何武器都一樣，[[job:hunter|獵人]]的射擊也算。更換武器或職業後經驗保留。達到 {{coinDrill.limit}} 點及以上的人不再操練，其餘的要在戰鬥中獲得。戰鬥或新命令打斷操練時，金幣退回，不得點數。兵營有幾枚空閒金幣就去幾名士兵，離得最近的先去；其餘的留在原地。',
         },
         {
           p: '在居民面板中這是「戰鬥」一行：點數、近戰傷害加成，以及受到的傷害減少多少。戰鬥不會提高英雄的經驗，除非任務開啟。',

@@ -33,7 +33,7 @@ const TRADE = 8;
 
 const base = (): KnowledgeBase => createKnowledgeBase(knowledgeContent());
 
-const shows = { aura: false, capacity: false, teaches: false, levels: false };
+const shows = { aura: false, capacity: false, teaches: false, coinDrill: false, levels: false };
 
 function building(over: Partial<KnowledgeBuilding>): KnowledgeBuilding {
   const row = base().buildings[0];

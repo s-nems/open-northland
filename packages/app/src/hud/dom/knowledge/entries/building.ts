@@ -99,6 +99,7 @@ function teachesBlock(context: KnowledgeContext, building: KnowledgeBuilding): E
         soldier === undefined
           ? null
           : paragraph(text.drills, ' ', textLink(`job:${soldier.id}`, soldier.name)),
+        paragraph(filledFacts(context, text.enlist)),
       ),
     };
   }
@@ -266,10 +267,37 @@ function healthBlock(context: KnowledgeContext, building: KnowledgeBuilding): En
   };
 }
 
+/** `template` with its `{{fact}}` tokens filled from the knowledge base. */
+function filledFacts(context: KnowledgeContext, template: string): string {
+  return fillTokens(template, (name) => factText(name, context.base));
+}
+
+/** What a barracks does for soldiers who pay it a coin: who drills, how to order it, what a term costs,
+ *  lasts and gives, and the limit. */
+function coinDrillBlock(context: KnowledgeContext): EntryBlock {
+  const text = copy().building.coinDrill;
+  const filled = (template: string): string => filledFacts(context, template);
+  return {
+    node: section(
+      text.title,
+      paragraph(text.lead),
+      factList([
+        [text.who, text.whoValue],
+        [text.order, text.orderValue],
+        [text.cost, filled(text.costValue)],
+        [text.term, filled(text.termValue)],
+        [text.points, filled(text.pointsValue)],
+        [text.limit, filled(text.limitValue)],
+        [text.cut, text.cutValue],
+      ]),
+    ),
+  };
+}
+
 /** What a temple does to the people around it while it burns its oil, with no worker. */
 function auraBlock(context: KnowledgeContext): EntryBlock {
   const text = copy().building.aura;
-  const filled = (template: string): string => fillTokens(template, (name) => factText(name, context.base));
+  const filled = (template: string): string => filledFacts(context, template);
   return {
     node: section(
       text.title,
@@ -296,6 +324,8 @@ export function renderBuilding(context: KnowledgeContext, building: KnowledgeBui
   const levels = levelChain(context.base, building).length > 1;
   const teaches = systems.isSchoolType(building.row) || systems.isBarracksType(building.row);
   const aura = building.row.prayerSite === PRAYER_SITE.temple;
+  const coinDrill =
+    systems.isBarracksType(building.row) && systems.drillCoinGood(context.base.content) !== undefined;
   const render = (block: BuildingBlock): EntryBlock | null => {
     switch (block) {
       case 'status':
@@ -308,6 +338,8 @@ export function renderBuilding(context: KnowledgeContext, building: KnowledgeBui
         return capacityBlock(building);
       case 'teaches':
         return teachesBlock(context, building);
+      case 'coinDrill':
+        return coinDrillBlock(context);
       case 'workers':
         return workersBlock(context, building);
       case 'build':
@@ -332,6 +364,6 @@ export function renderBuilding(context: KnowledgeContext, building: KnowledgeBui
       title: building.name,
       kicker: formatMessage(text.kicker.building, { kind: kindName(building) }),
     },
-    buildingBlocks(building, { aura, capacity, teaches, levels }).map(render),
+    buildingBlocks(building, { aura, capacity, teaches, coinDrill, levels }).map(render),
   );
 }

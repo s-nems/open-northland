@@ -114,13 +114,18 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Łucznik bez doświadczenia trafia {{aim.basePct}}% strzałów, a od {{aim.noSpreadHits}} pkt każdy strzał spada w cel. [[article:catapult|Katapulta]] liczy własne trafienia. Szczegóły: [[article:aim|Trafienie i strzelanie]].',
         },
         {
-          h: 'Skąd się bierze',
+          h: 'Jak je zdobyć',
         },
         {
-          p: 'Punkty liczą się od czasu ciosu, który zadał obrażenia. Cios wręcz daje {{combat.fightMeleePerSecond}} pkt za każdą sekundę zamachu, a strzał {{combat.fightShotPerSecond}} pkt za każdą sekundę naciągania cięciwy, więc wolna broń zbiera punkty w tym samym tempie co szybka, a łuk na sekundę daje mniej. Liczy się też cios przyjęty: kogo zrani ktokolwiek, człowiek, zwierzę, wieża czy katapulta, ten dostaje {{combat.fightTakenPerSecond}} pkt za każdą sekundę ciosu napastnika. Pięść i każda broń liczą się tak samo, strzały [[job:hunter|Myśliwego]] też. Doświadczenie zostaje po zmianie broni i zawodu.',
+          list: [
+            'Walka: cios wręcz, który zadał obrażenia, daje {{combat.fightMeleePerSecond}} pkt za każdą sekundę zamachu, a strzał {{combat.fightShotPerSecond}} pkt za każdą sekundę naciągania cięciwy. Wolna broń zbiera punkty w tym samym tempie co szybka, a łuk na sekundę daje mniej.',
+            'Ciosy i strzały w budynki, [[article:walls|palisady]] i [[article:vehicles|pojazdy]] dają {{combat.fightStructurePct}}% tego.',
+            'Przyjęte ciosy: kogo zrani ktokolwiek, człowiek, zwierzę, wieża czy katapulta, ten dostaje {{combat.fightTakenPerSecond}} pkt za każdą sekundę ciosu napastnika.',
+            'Musztra: żołnierz, z bronią czy bez, płaci jedną [[good:coin|Monetę]] za {{coinDrill.termSeconds}} s ćwiczeń w twoich [[building:barracks|Koszarach]] i po ich końcu dostaje {{coinDrill.points}} pkt. Zaznacz żołnierzy i kliknij prawym przyciskiem własne Koszary.',
+          ],
         },
         {
-          p: 'Musztra: każdy żołnierz, z bronią czy bez, ćwiczy w twoich [[building:barracks|Koszarach]], jeśli leżą w nich monety. Każda [[good:coin|Moneta]] to {{coinDrill.termSeconds}} s ćwiczeń w środku, tyle samo co szkolenie rekruta, a po ich końcu {{coinDrill.points}} pkt. Gdy walka albo nowy rozkaz przerwie ćwiczenia, moneta wraca, a punktów nie ma. Kto ma {{coinDrill.limit}} pkt lub więcej, już nie ćwiczy, resztę zdobywa w walce. Zaznacz żołnierzy i kliknij prawym przyciskiem własne Koszary. Idzie tylu, ile Koszary mają wolnych monet, najbliżsi najpierw; reszta zostaje na miejscu.',
+          p: 'Pięść i każda broń liczą się tak samo, strzały [[job:hunter|Myśliwego]] też. Doświadczenie zostaje po zmianie broni i zawodu. Kto ma {{coinDrill.limit}} pkt lub więcej, już nie ćwiczy, resztę zdobywa w walce. Gdy walka albo nowy rozkaz przerwie musztrę, moneta wraca, a punktów nie ma. Idzie tylu żołnierzy, ile Koszary mają wolnych monet, najbliżsi najpierw; reszta zostaje na miejscu.',
         },
         {
           p: 'W panelu osadnika to wiersz Walka: punkty, premia do zadawanych obrażeń wręcz i to, o ile mniej obrażeń otrzymuje. Bohaterowi walka nie podnosi doświadczenia, chyba że misja to włącza.',

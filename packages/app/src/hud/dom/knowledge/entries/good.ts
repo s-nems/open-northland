@@ -1,3 +1,4 @@
+import { systems } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../../i18n/index.js';
 import { SECONDS_PER_TICK } from '../../../knowledge/base.js';
 import {
@@ -18,7 +19,7 @@ import {
   preciseSecondsText,
   ticksText,
 } from '../../../knowledge/entry-format.js';
-import type { KnowledgeGood, KnowledgeRecipe } from '../../../knowledge/model.js';
+import type { KnowledgeBuilding, KnowledgeGood, KnowledgeRecipe } from '../../../knowledge/model.js';
 import type { KnowledgeContext } from '../context.js';
 import {
   articleLinks,
@@ -120,6 +121,12 @@ export function obtainBlock(
   };
 }
 
+/** The barracks whose coin drill `good` pays for: every barracks when it is the drill coin. */
+function drillCoinBarracks(context: KnowledgeContext, good: KnowledgeGood): readonly KnowledgeBuilding[] {
+  if (systems.drillCoinGood(context.base.content) !== good.typeId) return [];
+  return context.base.buildings.filter((building) => systems.isBarracksType(building.row));
+}
+
 function usesBlock(context: KnowledgeContext, good: KnowledgeGood): EntryBlock | null {
   const text = copy().good;
   const { base } = context;
@@ -142,6 +149,8 @@ function usesBlock(context: KnowledgeContext, good: KnowledgeGood): EntryBlock |
   if (costs.length > 0) {
     parts.push(paragraph(text.material), ...foldedLinks(costs.map(buildingLink), MATERIAL_LINK_LIMIT));
   }
+  const barracks = drillCoinBarracks(context, good);
+  if (barracks.length > 0) parts.push(paragraph(text.coinDrill), links(barracks.map(buildingLink)));
   if (parts.length === 0) {
     if (good.equip !== null || good.meal !== null) return null;
     parts.push(paragraph(text.nothing));

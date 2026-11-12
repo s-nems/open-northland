@@ -266,6 +266,7 @@ export {
   COIN_DRILL_LIMIT,
   COIN_DRILL_TERM_TICKS,
   coinDrillClip,
+  coinDrillCoinsOf,
   coinDrillPointsOf,
   drillCoinGood,
   mayCoinDrill,
@@ -284,6 +285,7 @@ export {
   fightUnitsOfPoints,
   MELEE_BLOW_POINTS_RATE,
   SHOT_POINTS_RATE,
+  STRUCTURE_BLOW_SHARE,
   startingExperience,
 } from './progression/experience.js';
 // The atomic clip resolution and the need channels its events carry, so the real-content suite can pin the

@@ -9,7 +9,7 @@ import {
   scaledWallRules,
   WALL_LOGIC_ID,
 } from '../../../content/map/palisade-rows.js';
-import { coinDrillPointsOf, coinDrillServedTicksOf } from '../../../game/coin-drill.js';
+import { coinDrillCoinsOf, coinDrillPointsOf, coinDrillServedTicksOf } from '../../../game/coin-drill.js';
 import { buildingHitpoints } from '../base.js';
 import {
   CAP_HITS,
@@ -296,8 +296,12 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'combat.fightMeleePerSecond': twoDecimals(pointsPerSecond(systems.MELEE_BLOW_POINTS_RATE)),
   'combat.fightShotPerSecond': twoDecimals(pointsPerSecond(systems.SHOT_POINTS_RATE)),
   'combat.fightTakenPerSecond': twoDecimals(pointsPerSecond(systems.BLOW_TAKEN_POINTS_RATE)),
+  'combat.fightStructurePct': whole(
+    (PERCENT * systems.STRUCTURE_BLOW_SHARE.numerator) / systems.STRUCTURE_BLOW_SHARE.denominator,
+  ),
   'coinDrill.points': whole((base) => coinDrillPointsOf(base.content)),
   'coinDrill.limit': whole(systems.COIN_DRILL_LIMIT),
+  'coinDrill.coins': whole((base) => coinDrillCoinsOf(base.content)),
   'coinDrill.termSeconds': oneDecimal((base) => {
     const ticks = coinDrillServedTicksOf(base.content);
     return ticks === undefined ? undefined : seconds(ticks);

@@ -119,13 +119,18 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Senza esperienza un arciere va a segno con il {{aim.basePct}}% dei tiri, e da {{aim.noSpreadHits}} punti ogni tiro arriva sul bersaglio. La [[article:catapult|Catapulta]] conta i propri colpi a parte. Dettagli: [[article:aim|Colpire e tirare]].',
         },
         {
-          h: 'Da dove viene',
+          h: 'Come guadagnarla',
         },
         {
-          p: "I punti vengono dalla durata di un colpo che infligge danni. Un colpo in mischia dà {{combat.fightMeleePerSecond}} punti per ogni secondo del fendente e un tiro {{combat.fightShotPerSecond}} punti per ogni secondo della tensione dell'arco, quindi un'arma lenta guadagna veloce quanto una rapida e un arco dà meno al secondo. Conta anche il colpo subito: chi viene ferito da chiunque, uomo, animale, torre o catapulta, riceve {{combat.fightTakenPerSecond}} punti per ogni secondo del colpo dell'attaccante. Pugni e ogni arma contano allo stesso modo, anche i tiri del [[job:hunter|cacciatore]]. L'esperienza resta dopo un cambio d'arma o di professione.",
+          list: [
+            'Combattimento: un colpo in mischia che infligge danni dà {{combat.fightMeleePerSecond}} punti per ogni secondo del fendente, un tiro {{combat.fightShotPerSecond}} punti per ogni secondo della tensione dell’arco. Un’arma lenta guadagna veloce quanto una rapida e un arco dà meno al secondo.',
+            'Colpi e tiri su edifici, [[article:walls|palizzate]] e [[article:vehicles|veicoli]] danno il {{combat.fightStructurePct}}% di questo.',
+            'Colpi subiti: chi viene ferito da chiunque, uomo, animale, torre o catapulta, riceve {{combat.fightTakenPerSecond}} punti per ogni secondo del colpo dell’attaccante.',
+            'Esercitazione: un soldato, armato o no, paga una [[good:coin|Moneta]] per {{coinDrill.termSeconds}} s nella tua [[building:barracks|caserma]] e alla fine riceve {{coinDrill.points}} punti. Seleziona i soldati e fai clic destro sulla tua caserma.',
+          ],
         },
         {
-          p: 'Esercitazione: ogni soldato, armato o no, si esercita nella tua [[building:barracks|caserma]] se vi sono monete. Ogni [[good:coin|Moneta]] compra {{coinDrill.termSeconds}} s di esercitazione dentro, quanto l’addestramento di una recluta, e alla fine {{coinDrill.points}} punti. Se una battaglia o un nuovo ordine interrompe l’esercitazione, la moneta torna indietro e non dà punti. Chi ha {{coinDrill.limit}} punti o più non si esercita più e guadagna il resto in battaglia. Seleziona i soldati e fai clic destro sulla tua caserma. Partono solo tanti soldati quante sono le monete libere della caserma, i più vicini per primi; gli altri restano dove sono.',
+          p: 'Pugni e ogni arma contano allo stesso modo, anche i tiri del [[job:hunter|cacciatore]]. L’esperienza resta dopo un cambio d’arma o di professione. Chi ha {{coinDrill.limit}} punti o più non si esercita più e guadagna il resto in battaglia. Se una battaglia o un nuovo ordine interrompe l’esercitazione, la moneta torna indietro e non dà punti. Partono solo tanti soldati quante sono le monete libere della caserma, i più vicini per primi; gli altri restano dove sono.',
         },
         {
           p: "Nel pannello del colono è la riga Combattimento: i punti, il bonus ai danni inflitti in mischia e quanti danni in meno subisce. Il combattimento non fa crescere l'esperienza di un eroe, a meno che la missione non lo consenta.",

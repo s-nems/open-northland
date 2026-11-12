@@ -20,6 +20,12 @@ export function coinDrillPointsOf(content: ContentSet): number {
   return clip === undefined ? 0 : systems.coinDrillPointsOf(clip);
 }
 
+/** The coins one term of a coin drill takes, 0 when the content binds no drill clip. */
+export function coinDrillCoinsOf(content: ContentSet): number {
+  const clip = firstCoinDrillClip(content);
+  return clip === undefined ? 0 : systems.coinDrillCoinsOf(clip);
+}
+
 /** The ticks one coin's term keeps a soldier inside: whole repetitions of the drill clip until the term
  *  is drawn down, so the last one overruns it. Undefined when the content binds no drill clip. */
 export function coinDrillServedTicksOf(content: ContentSet): number | undefined {

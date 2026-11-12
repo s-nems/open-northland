@@ -119,13 +119,18 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Without experience an archer hits with {{aim.basePct}}% of shots, and from {{aim.noSpreadHits}} points every shot lands on target. The [[article:catapult|Catapult]] counts its own hits. Details: [[article:aim|Hitting and Shooting]].',
         },
         {
-          h: 'Where it comes from',
+          h: 'How to gain it',
         },
         {
-          p: "Points come from the time of a blow that deals damage. A melee blow gives {{combat.fightMeleePerSecond}} point for every second of its swing and a shot {{combat.fightShotPerSecond}} point for every second of the draw, so a slow weapon earns as fast as a quick one and a bow earns less per second. A blow taken counts too: whoever wounds a person, a man, a beast, a tower or a catapult, he gets {{combat.fightTakenPerSecond}} point for every second of that attacker's blow. Fists and every weapon count alike, and [[job:hunter|Hunter's]] shots count too. Experience stays after a change of weapon or profession.",
+          list: [
+            'Fighting: a melee blow that deals damage gives {{combat.fightMeleePerSecond}} point for every second of its swing, a shot {{combat.fightShotPerSecond}} point for every second of the draw. A slow weapon earns as fast as a quick one, and a bow earns less per second.',
+            'Blows and shots on buildings, [[article:walls|stockades]] and [[article:vehicles|vehicles]] give {{combat.fightStructurePct}}% of that.',
+            "Taking blows: whoever wounds a person, a man, a beast, a tower or a catapult, he gets {{combat.fightTakenPerSecond}} point for every second of that attacker's blow.",
+            'Coin drill: a soldier, armed or not, pays one [[good:coin|Coin]] for {{coinDrill.termSeconds}} s in your [[building:barracks|Barracks]] and gets {{coinDrill.points}} points when the term ends. Select the soldiers and right-click your own Barracks.',
+          ],
         },
         {
-          p: 'Coin drill: any soldier, armed or not, drills in your [[building:barracks|Barracks]] if it holds coins. Each [[good:coin|Coin]] buys a term of {{coinDrill.termSeconds}} s inside, as long as a recruit trains, and the term gives {{coinDrill.points}} points when it ends. A term cut short by a fight or a new order gives the coin back and nothing else. A man with {{coinDrill.limit}} points or more no longer drills and earns the rest in battle. Select the soldiers and right-click your own Barracks. Only as many go as the Barracks has free coins, the nearest first; the rest stay where they are.',
+          p: "Fists and every weapon count alike, and [[job:hunter|Hunter's]] shots count too. Experience stays after a change of weapon or profession. A soldier with {{coinDrill.limit}} points or more no longer drills and earns the rest in battle. A drill cut short by a fight or a new order gives the coin back and no points. Only as many soldiers go as the Barracks has free coins, the nearest first; the rest stay where they are.",
         },
         {
           p: "In the settler panel this is the Fighting row: the points, the bonus to melee damage dealt and how much less damage he takes. Fighting doesn't raise a hero's experience, unless the mission turns it on.",
