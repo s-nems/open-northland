@@ -8,17 +8,22 @@ import { entityNode } from '../../../spatial/nodes.js';
 import { isBuilt } from '../../seat-roster.js';
 import { nearestRaiderWithin, type Raider, raidersNearAny, watchBandOf } from './threat.js';
 
-/** Ring and unring the seat's shelters: defence mode goes up on every standing shelter a raider has
- *  closed inside its {@link watchBandOf}, and comes down once the last one is out of it. */
+/** Ring and unring the seat's shelters: defence mode goes up on every standing shelter a raider or an
+ *  armed ship (`ships`) has closed inside its {@link watchBandOf}, and comes down once the last one is out
+ *  of it. */
 export function alarmOrders(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   owned: readonly Entity[],
   raiders: readonly Raider[],
+  ships: readonly Raider[],
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
-  const near = raidersNearAny(world, ctx, terrain, owned, raiders);
+  const near = [
+    ...raidersNearAny(world, ctx, terrain, owned, raiders),
+    ...raidersNearAny(world, ctx, terrain, owned, ships),
+  ];
   for (const e of owned) {
     const building = world.get(e, Building);
     if (shelterCapacityOf(ctx.content, building.buildingType) === 0) continue;

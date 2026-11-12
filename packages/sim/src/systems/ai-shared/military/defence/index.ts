@@ -48,6 +48,7 @@ export {
   enemyPosts,
   raidOnTheSettlement,
   type Shooter,
+  seatDeckShips,
   seatRaiders,
   THREAT_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,

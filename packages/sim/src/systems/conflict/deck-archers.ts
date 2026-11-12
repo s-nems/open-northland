@@ -38,7 +38,12 @@ export function visitDeckArchers(
 export function isArmedVehicle(world: World, ctx: SystemContext, vehicle: Entity): boolean {
   const state = world.tryGet(vehicle, Vehicle);
   if (state === undefined) return false;
-  return vehicleWeapon(ctx, state) !== null || visitDeckArchers(world, ctx, vehicle, anyArcher);
+  return vehicleWeapon(ctx, state) !== null || hasDeckArchers(world, ctx, vehicle);
+}
+
+/** Whether at least one bowman shoots from `ship`'s deck. */
+export function hasDeckArchers(world: World, ctx: SystemContext, ship: Entity): boolean {
+  return visitDeckArchers(world, ctx, ship, anyArcher);
 }
 
 const anyArcher = (): boolean => true;

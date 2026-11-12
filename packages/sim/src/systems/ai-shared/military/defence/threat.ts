@@ -12,11 +12,13 @@ import {
   Person,
   Position,
   Settler,
+  Vehicle,
   Weapon,
 } from '../../../../components/index.js';
 import type { ChangeFeed, Entity, World } from '../../../../ecs/world.js';
 import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
+import { hasDeckArchers } from '../../../conflict/deck-archers.js';
 import { SIGHT_RADIUS_NODES } from '../../../conflict/targeting.js';
 import { garrisonReach, mannedPostOf, standsAtPost } from '../../../conflict/tower-post.js';
 import { attackerWeapon } from '../../../conflict/weapons.js';
@@ -405,6 +407,34 @@ function sameFighter(
     was.component === component &&
     was.reach === reach
   );
+}
+
+/**
+ * Every enemy ship with a bowman on its deck that `player` sees, ascending id, as a raider whose fire
+ * strikes the ship: the alarm takes cover from it as from a bowman ashore. A fresh list per call over the
+ * map's few vehicles. Its reach is a man's sight, as a loose fighter's is at least.
+ */
+export function seatDeckShips(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+): Raider[] {
+  stanceOf.fill(UNREAD);
+  const sight = sightOf(world, ctx, player);
+  const ships: Raider[] = [];
+  for (const e of world.canonicalQuery(Vehicle, Health, Position)) {
+    const owner = world.tryGet(e, Owner)?.player;
+    if (owner === undefined || world.get(e, Health).hitpoints <= 0 || !engages(world, owner, player))
+      continue;
+    const at = entityNode(world, terrain, e);
+    const x = terrain.xOf(at);
+    const y = terrain.yOf(at);
+    if (sight !== null && !playerSeesNode(sight, player, x, y)) continue;
+    if (!hasDeckArchers(world, ctx, e)) continue;
+    ships.push({ entity: e, target: e, x, y, component: terrain.componentOf(at), reach: SIGHT_RADIUS_NODES });
+  }
+  return ships;
 }
 
 /** Rewrites `raiders` in place to the `fighters` whose player would engage `player`, in their order: an
