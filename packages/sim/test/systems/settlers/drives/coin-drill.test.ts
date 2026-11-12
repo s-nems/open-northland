@@ -4,9 +4,12 @@ import {
   addPerson,
   Building,
   CoinDrillOrder,
+  CurrentAtomic,
+  Health,
   Owner,
   Position,
   Resting,
+  removeCurrentAtomic,
   SettlerProgress,
   Stockpile,
   setStockAmount,
@@ -45,6 +48,8 @@ const POINTS_PER_COIN = 25;
 const WEAPON_CLASS = { SPEAR: 2, SWORD: 3, BOW: 6 } as const;
 /** The walk between the soldiers' row and the barracks door at the fixture's gait, with slack. */
 const WALK_TICKS = 120;
+/** Enough hitpoints to outlast the few blows a test reads. */
+const FIGHTER_HP = 500;
 
 function coinDrillContent(): ContentSet {
   const base = testContent();
@@ -275,6 +280,33 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     expect([walker, driller].map((e) => sim.world.has(e, CoinDrillOrder))).toEqual([false, false]);
     expect([walker, driller].map((e) => sim.world.has(e, Resting))).toEqual([false, false]);
     expect([nodeOf(sim, walker), nodeOf(sim, driller)]).toEqual(starts);
+  });
+
+  it('steps out to a fight that takes him from the drill and turns back', () => {
+    const sim = freshSim();
+    const house = barracksAt(sim, 8, 3, 5);
+    const driller = soldierAt(sim, SWORD_JOB, 7, 3);
+    sim.world.add(driller, Health, { hitpoints: FIGHTER_HP, max: FIGHTER_HP });
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: driller, house });
+    while (sim.world.tryGet(driller, CoinDrillOrder)?.paid !== true) sim.step();
+    const enemy = soldierAt(sim, SWORD_JOB, 6, 3);
+    sim.world.mut(enemy, Owner).player = OTHER_PLAYER;
+    sim.world.add(enemy, Health, { hitpoints: FIGHTER_HP, max: FIGHTER_HP });
+    while (sim.world.tryGet(driller, CurrentAtomic)?.effect.kind !== 'attack') sim.step();
+    expect(sim.world.has(driller, Resting)).toBe(false);
+    expect(sim.world.get(driller, CoinDrillOrder).stage).toBe('return');
+  });
+
+  it('gives back the coin of a repetition cut before its points', () => {
+    const sim = freshSim();
+    const house = barracksAt(sim, 8, 3, 2);
+    const driller = soldierAt(sim, SWORD_JOB, 7, 3);
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: driller, house });
+    while (sim.world.tryGet(driller, CoinDrillOrder)?.paid !== true) sim.step();
+    removeCurrentAtomic(sim.world, driller);
+    run(sim, 3 * TRAIN_CLIP_TICKS);
+    expect(pointsOf(sim, driller)).toBe(2 * POINTS_PER_COIN);
+    expect(coinsOf(sim, house)).toBe(0);
   });
 
   it("refuses another side's barracks, and a walk order calls the drill off", () => {

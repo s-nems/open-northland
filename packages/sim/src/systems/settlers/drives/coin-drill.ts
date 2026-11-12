@@ -1,5 +1,6 @@
 import {
   CoinDrillOrder,
+  Settler,
   type SettlerIdentity,
   SettlerProgress,
   Stockpile,
@@ -13,12 +14,13 @@ import type { SystemContext } from '../../context.js';
 import {
   COIN_DRILL_ATOMIC_ID,
   coinDrillClip,
+  coinDrillCoinsOf,
   drillCoinGood,
   mayCoinDrill,
 } from '../../progression/coin-drill.js';
 import { isBarracks } from '../../readviews/index.js';
 import { atOrWalk, startAtomic } from '../atomics/start.js';
-import { enterBuilding, stepOut } from '../indoors.js';
+import { enterBuilding, heldIndoors, isInside, stepOut } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
@@ -45,16 +47,16 @@ export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): b
     const clip = coinDrillClip(ctx.content, settler);
     if (clip !== undefined && door !== undefined && drillGoesOn(plan, settler, door)) {
       enterBuilding(world, e, house, here, door, () => {
+        refundCutRepetition(world, ctx, e);
         if (freeDrillCoins(world, ctx, house, e) <= 0) {
-          turnBackFromCoinDrill(world, e);
+          turnBackFromCoinDrill(world, ctx, e);
           return;
         }
-        world.mut(e, CoinDrillOrder).paid = false;
         startAtomic(world, e, COIN_DRILL_ATOMIC_ID, { kind: 'coinDrill', house }, clip.length, house);
       });
       return true;
     }
-    turnBackFromCoinDrill(world, e);
+    turnBackFromCoinDrill(world, ctx, e);
   }
   const returnTo = world.get(e, CoinDrillOrder).returnTo;
   const limit = plan.limit;
@@ -100,13 +102,37 @@ export function freeDrillCoins(world: World, ctx: SystemContext, house: Entity, 
   return free;
 }
 
-/** End the drilling half of `e`'s coin drill: he steps out and walks back on the next planning. */
-export function turnBackFromCoinDrill(world: World, e: Entity): void {
-  if (!world.has(e, CoinDrillOrder)) return;
+/** End the drilling half of `e`'s coin drill: he steps out of the barracks, a repetition cut after its
+ *  coin gives it back, and he walks back on the next planning. */
+export function turnBackFromCoinDrill(world: World, ctx: SystemContext, e: Entity): void {
+  if (world.tryGet(e, CoinDrillOrder)?.stage !== 'drill') return;
+  refundCutRepetition(world, ctx, e);
   stepOut(world, e);
-  const order = world.mut(e, CoinDrillOrder);
-  order.stage = 'return';
-  order.paid = false;
+  world.mut(e, CoinDrillOrder).stage = 'return';
+}
+
+/** Drop `e`'s coin drill, as a player order that takes him does: a repetition cut after its coin gives it
+ *  back, and he steps out of the barracks unless another system holds him indoors. */
+export function callOffCoinDrill(world: World, ctx: SystemContext, e: Entity): void {
+  const order = world.tryGet(e, CoinDrillOrder);
+  if (order === undefined) return;
+  refundCutRepetition(world, ctx, e);
+  if (isInside(world, e, order.house) && !heldIndoors(world, e)) stepOut(world, e);
+  world.remove(e, CoinDrillOrder);
+}
+
+/** Give back the coin of `e`'s repetition when it was cut after the coin and before the points, and settle
+ *  `paid`. Our rule: a cut repetition costs nothing. */
+function refundCutRepetition(world: World, ctx: SystemContext, e: Entity): void {
+  const order = world.tryGet(e, CoinDrillOrder);
+  if (order?.paid !== true) return;
+  world.mut(e, CoinDrillOrder).paid = false;
+  const coin = drillCoinGood(ctx.content);
+  const settler = world.tryGet(e, Settler);
+  const clip = settler === undefined ? undefined : coinDrillClip(ctx.content, settler);
+  const stock = world.isAlive(order.house) ? world.tryGet(order.house, Stockpile) : undefined;
+  if (coin === undefined || clip === undefined || stock === undefined) return;
+  setStockAmount(world, order.house, coin, (stock.amounts.get(coin) ?? 0) + coinDrillCoinsOf(clip));
 }
 
 /**
@@ -130,7 +156,8 @@ export function payDrillCoins(
   return true;
 }
 
-/** The repetition's end: its coin is spent, so the order speaks for the next one. */
-export function endCoinDrillRepetition(world: World, e: Entity): void {
+/** The repetition's points landed, or its clip ended: its coin is spent, so the order speaks for the next
+ *  one. */
+export function settleCoinDrillRepetition(world: World, e: Entity): void {
   if (world.tryGet(e, CoinDrillOrder)?.paid === true) world.mut(e, CoinDrillOrder).paid = false;
 }

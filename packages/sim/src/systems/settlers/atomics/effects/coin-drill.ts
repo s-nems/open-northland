@@ -8,7 +8,7 @@ import {
   ATOMIC_EVENT_TYPE_GET_TRAINING,
   clipFrameAt,
 } from '../../../readviews/animations.js';
-import { payDrillCoins, turnBackFromCoinDrill } from '../../drives/coin-drill.js';
+import { payDrillCoins, settleCoinDrillRepetition, turnBackFromCoinDrill } from '../../drives/coin-drill.js';
 
 /**
  * Apply the coin-drill clip's events at this tick's frame: `CHANGE_GOLD` takes its coins off `house`'s
@@ -32,10 +32,13 @@ export function applyCoinDrillEvents(
     const value = event.value ?? 0;
     if (event.type === ATOMIC_EVENT_TYPE_CHANGE_GOLD && value < 0) {
       if (payDrillCoins(world, ctx, e, house, -value)) continue;
-      turnBackFromCoinDrill(world, e);
+      turnBackFromCoinDrill(world, ctx, e);
       return false;
     }
-    if (event.type === ATOMIC_EVENT_TYPE_GET_TRAINING && value > 0) grantDrillPoints(world, e, value);
+    if (event.type === ATOMIC_EVENT_TYPE_GET_TRAINING && value > 0) {
+      grantDrillPoints(world, e, value);
+      settleCoinDrillRepetition(world, e);
+    }
   }
   return true;
 }

@@ -44,6 +44,7 @@ import {
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
+import { turnBackFromCoinDrill } from '../settlers/drives/coin-drill.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { breakOff, chase, disengage, holdEnemy, REPATH_CADENCE } from './chase.js';
@@ -215,6 +216,8 @@ function fight(
   }
 
   const { target, dist } = found;
+  // A soldier the fight takes between two coin-drill repetitions steps out of the barracks to it.
+  turnBackFromCoinDrill(world, ctx, e);
   if (spec.hold !== undefined || spec.animalSeeker === true) holdEnemy(world, ctx, e, target);
   // Woken: the rest already slept keeps, the clip is cut where it stands.
   if (dozing) removeCurrentAtomic(world, e);
