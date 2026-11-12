@@ -155,7 +155,7 @@ export { insideBuildingReservedZone } from './economy/reserved-decor.js';
 export { startTreeGrowth, TREE_GROWTH_PERIOD_TICKS } from './economy/tree-growth.js';
 export { jobUsesWorkFlag } from './economy/work-flag.js';
 export { HEALING_DRAUGHT_BELOW_PCT } from './equipment/draughts.js';
-export { BARE_HANDS_WORK_FACTOR_PCT, scaledDealtDamage, scaledTakenDamage } from './equipment/effects.js';
+export { BARE_HANDS_WORK_FACTOR_PCT, scaledTakenDamage } from './equipment/effects.js';
 export { CARRYING_WEAR_FACTOR } from './equipment/wear.js';
 export { isOnMission } from './family/eligibility.js';
 export type { HouseKey } from './footprint/geometry.js';
@@ -255,7 +255,6 @@ export {
   personalFightPoints,
   rawXpForRepeats,
   requirementRepeats,
-  settlerFightPoints,
   withDealtBonuses,
   withFightExperience,
   withTakenBonuses,

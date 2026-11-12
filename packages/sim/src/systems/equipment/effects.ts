@@ -77,11 +77,6 @@ export function damageDealtBy(
   return dealt;
 }
 
-/** `damage` raised by a striker's `damageDealtPct`, rounding down. */
-export function scaledDealtDamage(damage: number, dealtPct: number): number {
-  return Math.floor((damage * dealtPct) / PERCENT);
-}
-
 /** `damage` cut by a target's `damageTakenPct`, truncating. */
 export function scaledTakenDamage(damage: number, takenPct: number): number {
   return Math.trunc((damage * takenPct) / PERCENT);
