@@ -8,6 +8,7 @@ import {
   Owner,
   Position,
   Projectile,
+  Settler,
   SettlerProgress,
   Stance,
   seatPassenger,
@@ -25,6 +26,7 @@ import {
 } from '../../../src/index.js';
 import { DECK_ARCHER_LIMIT, deckShipOf } from '../../../src/systems/conflict/deck-archers.js';
 import { DECK_RANGE_PENALTY_POINTS, deckShotIntervalTicks } from '../../../src/systems/conflict/deck-fire.js';
+import { attackClipSoundCues, attackClipTiming } from '../../../src/systems/conflict/weapons.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../../src/systems/progression/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { boardRider, createVehicle } from '../../../src/systems/vehicles/index.js';
@@ -48,6 +50,10 @@ const MERCHANT = 4;
 const CATAPULT = 5;
 const ATTACK_ATOMIC = 81;
 const ATOMIC_EVENT_ATTACK = 25;
+const ATOMIC_EVENT_SOUND = 34;
+/** The bowstring the attack clip authors, two frames before its release. */
+const BOW_SOUND = 74;
+const BOW_SOUND_AT = 2;
 const SHORT_BOW_MAX_RANGE = 15;
 const ATTACK_CLIP_TICKS = 4;
 const DECK_REACH = SHORT_BOW_MAX_RANGE - DECK_RANGE_PENALTY_POINTS;
@@ -152,7 +158,10 @@ function deckContent(): ContentSet {
         id: 'viking_attack',
         name: 'viking_attack',
         length: ATTACK_CLIP_TICKS,
-        events: [{ at: 4, type: ATOMIC_EVENT_ATTACK }],
+        events: [
+          { at: BOW_SOUND_AT, type: ATOMIC_EVENT_SOUND, value: BOW_SOUND },
+          { at: 4, type: ATOMIC_EVENT_ATTACK },
+        ],
       },
     ],
   });
@@ -265,6 +274,48 @@ describe('deck fire', () => {
     expect(shotTicks.slice(1).map((t, i) => t - (shotTicks[i] as number))).toEqual(
       Array.from({ length: shotTicks.length - 1 }, () => interval),
     );
+  });
+
+  it('sounds a deck bowman’s clip from the ship as far ahead of each shot as the clip authors it', () => {
+    const s = sim();
+    const { ship, bowmen } = shipWith(s, WARSHIP, SHIP_X, P1, 1);
+    const archer = bowmen[0] as Entity;
+    const shore = shoreAt(DECK_REACH);
+    personAt(s, shore.hx, shore.hy, P2, SOLDIER);
+    const identity = s.world.get(archer, Settler);
+    const cue = attackClipSoundCues(s.content, identity)[0];
+    if (cue === undefined) throw new Error('setup: the clip authors no sound');
+    const lead = attackClipTiming(s.content, identity).shotAt - cue.tick;
+    const shots: number[] = [];
+    const sounds: number[] = [];
+    for (let i = 0; i < SHOT_TICKS; i++) {
+      s.step();
+      for (const ev of s.events.current()) {
+        if (ev.kind === 'projectileLaunched') shots.push(i);
+        if (ev.kind !== 'atomicSound') continue;
+        expect(ev).toMatchObject({ entity: archer, soundType: BOW_SOUND, from: ship });
+        sounds.push(i);
+      }
+    }
+
+    expect(lead).toBeGreaterThan(0);
+    expect(shots.length).toBeGreaterThan(1);
+    // The last shot's cue may fall past the window's end; every shot inside it was announced.
+    expect(shots.filter((t) => t >= lead).every((t) => sounds.includes(t - lead))).toBe(true);
+    expect(sounds.every((t) => shots.includes(t + lead) || t + lead >= SHOT_TICKS)).toBe(true);
+  });
+
+  it('draws no bowstring on deck with no enemy in reach', () => {
+    const s = sim();
+    shipWith(s, WARSHIP, SHIP_X, P1, 1);
+    const shore = shoreAt(DECK_REACH + 1);
+    personAt(s, shore.hx, shore.hy, P2, SOLDIER);
+    const sounds: number[] = [];
+    for (let i = 0; i < SHOT_TICKS; i++) {
+      s.step();
+      for (const ev of s.events.current()) if (ev.kind === 'atomicSound') sounds.push(i);
+    }
+    expect(sounds).toEqual([]);
   });
 
   it('holds fire on an enemy one map point past the deck reach', () => {

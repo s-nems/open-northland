@@ -1,4 +1,4 @@
-import { Health, Owner, Settler, Vehicle } from '../../components/index.js';
+import { Health, Owner, Settler, type SettlerIdentity, Vehicle } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
@@ -11,7 +11,7 @@ import type { CombatIndex } from './combat-index.js';
 import { visitDeckArchers } from './deck-archers.js';
 import { PICK_CANDIDATES, PICK_SPREAD_NODES, PICK_TIER_RANKS, tierRank } from './engagement.js';
 import { isValidTarget } from './targeting.js';
-import { attackClipTiming, type MissileWeapon, missileOf } from './weapons.js';
+import { attackClipSoundCues, attackClipTiming, type MissileWeapon, missileOf } from './weapons.js';
 
 // Deck fire, a named addition (owner rule): bow soldiers aboard a warship loose arrows from its deck at the
 // enemies its owner sees, so a landing fleet is not helpless, yet weaker than the same men ashore.
@@ -42,6 +42,8 @@ export function deckReachOf(world: World, ctx: SystemContext, ship: Entity): num
   });
   return reach;
 }
+
+const NO_TARGETS: readonly { readonly entity: Entity }[] = [];
 
 /** The rank an enemy ship takes ahead of every land archer's {@link tierRank}: it shoots back. */
 const SHIP_RANK = 0;
@@ -85,18 +87,52 @@ class DeckVolley {
 
   private readonly visit = (archer: Entity, seat: number, bow: MissileWeapon): boolean => {
     const settler = this.world.get(archer, Settler);
-    const clip = Math.max(1, attackClipTiming(this.ctx.content, settler).length);
-    if ((this.ctx.tick + seat) % deckShotIntervalTicks(clip) === 0) this.shoot(archer, bow);
+    const clip = attackClipTiming(this.ctx.content, settler);
+    const interval = deckShotIntervalTicks(Math.max(1, clip.length));
+    const phase = (this.ctx.tick + seat) % interval;
+    if (phase === 0) this.shoot(archer, bow);
+    this.sound(archer, settler, bow, clip.shotAt, interval, phase);
     return false;
   };
 
-  private shoot(archer: Entity, bow: MissileWeapon): void {
+  /**
+   * Sound the bowman's attack clip from the ship as if he drew it on deck: each authored cue the same
+   * ticks ahead of his shot as it lies ahead of the clip's release, while he has a target in his deck reach.
+   * He stands nowhere on the map, so the cue names the ship it comes from.
+   */
+  private sound(
+    archer: Entity,
+    settler: SettlerIdentity,
+    bow: MissileWeapon,
+    shotAt: number,
+    interval: number,
+    phase: number,
+  ): void {
+    const cues = attackClipSoundCues(this.ctx.content, settler);
+    let aimed: boolean | undefined;
+    for (const cue of cues) {
+      const lead = shotAt - cue.tick;
+      if ((((phase + lead) % interval) + interval) % interval !== 0) continue;
+      aimed ??= this.targets(archer, bow).length > 0;
+      if (!aimed) return;
+      this.ctx.events.emit({
+        kind: 'atomicSound',
+        entity: archer,
+        soundType: cue.soundType,
+        from: this.ship,
+      });
+    }
+  }
+
+  /** The best enemies `archer` could shoot with `bow` from the deck now, nearest few of the best rank,
+   *  without a draw; empty when none is in his deck reach. */
+  private targets(archer: Entity, bow: MissileWeapon): readonly { readonly entity: Entity }[] {
     const { world, ctx, terrain, index, ship, owner } = this;
     const from = entityNode(world, terrain, ship);
     const x = terrain.xOf(from);
     const y = terrain.yOf(from);
     const maxRange = bow.maxRange - DECK_RANGE_PENALTY_POINTS;
-    if (maxRange < bow.minRange || !index.othersWithin(owner, x, y, maxRange)) return;
+    if (maxRange < bow.minRange || !index.othersWithin(owner, x, y, maxRange)) return NO_TARGETS;
     const identity = world.get(archer, Settler);
     const accept = (t: Entity): boolean =>
       t !== ship &&
@@ -108,7 +144,7 @@ class DeckVolley {
         vehicle === undefined ? undefined : contentIndex(ctx.content).vehicles.get(vehicle.vehicleType);
       return type !== undefined && isShipVehicle(type) ? SHIP_RANK : 1 + tierRank(world, ctx, index, t);
     };
-    const found = index.nearestFewOfBestRank(
+    return index.nearestFewOfBestRank(
       x,
       y,
       bow.minRange,
@@ -122,6 +158,11 @@ class DeckVolley {
       PICK_SPREAD_NODES,
       'hex',
     );
+  }
+
+  private shoot(archer: Entity, bow: MissileWeapon): void {
+    const { world, ctx, ship } = this;
+    const found = this.targets(archer, bow);
     // As a land pick, draw nothing when nothing is in reach: an idle deck leaves the stream alone.
     if (found.length === 0) return;
     const pick = found.length === 1 ? found[0] : found[ctx.rng.int(found.length)];

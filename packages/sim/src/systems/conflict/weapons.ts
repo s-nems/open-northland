@@ -20,9 +20,12 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { headingToward } from '../movement/turning.js';
 import {
+  atomicAnimationByName,
   atomicDurationForName,
   boundAnimalAtomicAnimation,
   boundAtomicAnimation,
+  type ClipSoundCue,
+  clipEventFactsOf,
 } from '../readviews/animations.js';
 import {
   ARMOR_MATERIAL,
@@ -386,6 +389,18 @@ export function attackClipTiming(
   const event = clip === undefined ? undefined : atomicEventFrame(content, clip, ATOMIC_EVENT_TYPE_ATTACK);
   return { length, shotAt: Math.min(event === undefined ? length : eventTick(event), length) };
 }
+
+/** The sounds the attack clip `attacker`'s trade binds authors, each at its tick of the clip. */
+export function attackClipSoundCues(
+  content: SystemContext['content'],
+  attacker: SettlerIdentity,
+): readonly ClipSoundCue[] {
+  const clip = attackAnimationName(content, attacker);
+  const anim = clip === undefined ? undefined : atomicAnimationByName(content, clip);
+  return anim === undefined ? NO_SOUND_CUES : clipEventFactsOf(anim).soundCues;
+}
+
+const NO_SOUND_CUES: readonly ClipSoundCue[] = [];
 
 /**
  * The numeric atomic id a combatant runs to attack - the original's `setatomic <job> 81 "..._attack"`

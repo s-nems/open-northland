@@ -255,6 +255,16 @@ describe('directAudio one-shots', () => {
     expect(done.oneShots).toHaveLength(0);
   });
 
+  it('sounds a cue of a rider who stands nowhere on the map where the body it rides lies', () => {
+    // A deck bowman has no position of his own; the building at (5,5) stands in for his ship.
+    const aboard = entity(40);
+    expect(direct([{ kind: 'atomicSound', entity: aboard, soundType: SOUND_AXE }]).oneShots).toEqual([]);
+    const frame = direct([{ kind: 'atomicSound', entity: aboard, soundType: SOUND_AXE, from: entity(7) }]);
+    expect(frame.oneShots).toHaveLength(1);
+    expect(frame.oneShots[0]?.files).toEqual(['static/axe01.wav']);
+    expect(frame.oneShots[0]?.key).toBe(`atomicSound:${SOUND_AXE}:40`);
+  });
+
   it("positions a map script's sound at its own point, resolved by the same logicSoundType id", () => {
     const frame = direct([{ kind: 'missionSound', soundType: SOUND_AXE, at: { hx: 11, hy: 10 } }]);
     expect(frame.oneShots).toHaveLength(1);

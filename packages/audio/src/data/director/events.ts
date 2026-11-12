@@ -349,14 +349,19 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       const files = index.groupsByLogicSoundType.get(ev.soundType);
       const id = eventEntity(ev);
       if (files !== undefined && files.length > 0 && id !== undefined) {
-        neededIds.add(id);
-        if (wielderCues) wielders.add(id);
+        // A deck bowman stands nowhere on the map: his cue sounds where his ship lies, in his own voice.
+        const at = ev.from ?? id;
+        neededIds.add(at);
+        if (wielderCues) {
+          neededIds.add(id);
+          wielders.add(id);
+        }
         pending.push({
           kind: 'cue',
           files,
           key: eventKey(ev),
           spatial: null,
-          entity: id,
+          entity: at,
           ...(wielderCues ? { wielder: id } : {}),
         });
       }

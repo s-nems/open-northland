@@ -245,6 +245,9 @@ export type SimEvent =
       readonly kind: 'atomicSound';
       readonly entity: Entity;
       readonly soundType: number;
+      /** The body the sound comes from when `entity` stands nowhere on the map: the warship a deck
+       *  bowman draws on, whose clip sounds as if he played it there. */
+      readonly from?: Entity;
     }
   | {
       /**
