@@ -10,6 +10,17 @@ const RAY_FALLOFF = 2.2;
 /** How far the wall line and the crests sway from a true ellipse, as a share of the reach. */
 const SWAY_WIDE = 0.03;
 const SWAY_FINE = 0.015;
+/** Lobes around the walls of the wide and the fine sway, and of the two turns whose product is the rays. */
+const SWAY_WIDE_LOBES = 3;
+const SWAY_FINE_LOBES = 7;
+const RAY_LOBES = 23;
+const RAY_GROUP_LOBES = 9;
+/** Reach, 0 on the wall line and 1 on the rim, over which the light rises inside the walls, the crests
+ *  rise off them and fade toward the rim; and the radius share past which the whole picture fades out. */
+const INSIDE_RISE = 0.45;
+const CREST_RISE = 0.12;
+const CREST_FADE_FROM = 0.55;
+const EDGE_FADE_FROM = 0.92;
 /** The shares of the three lights in the picture. */
 const HALO_SHARE = 0.6;
 const WAVE_SHARE = 0.5;
@@ -55,19 +66,20 @@ const float TAU = 6.2831853;
 void main() {
   float radius = length(vUV);
   float angle = atan(vUV.y, vUV.x);
-  float sway = ${float(SWAY_WIDE)} * sin(angle * 3.0 + uAura.z) + ${float(SWAY_FINE)} * sin(angle * 7.0 - uAura.w);
+  float sway = ${float(SWAY_WIDE)} * sin(angle * ${float(SWAY_WIDE_LOBES)} + uAura.z) + ${float(SWAY_FINE)} * sin(angle * ${float(SWAY_FINE_LOBES)} - uAura.w);
   // 0 on the wall line, 1 on the rim.
   float reach = (radius - uAura.x) / (1.0 - uAura.x) + sway;
   float outside = max(reach, 0.0);
-  float fromWalls = smoothstep(-0.45, 0.0, reach);
-  float toRim = 1.0 - smoothstep(0.55, 1.0, reach);
+  float fromWalls = smoothstep(${float(-INSIDE_RISE)}, 0.0, reach);
+  float toRim = 1.0 - smoothstep(${float(CREST_FADE_FROM)}, 1.0, reach);
   float halo = exp(-outside * ${float(HALO_FALLOFF)}) * fromWalls;
-  float crest = pow(0.5 + 0.5 * cos(TAU * (outside * ${float(WAVES)} - uAura.y)), ${float(CREST_SHARPNESS)});
-  float waves = crest * toRim * toRim * smoothstep(0.0, 0.12, reach);
-  float turn = 0.5 + 0.5 * sin(angle * 23.0 + uAura.w) * sin(angle * 9.0 - uAura.z);
+  float swell = max(0.5 + 0.5 * cos(TAU * (outside * ${float(WAVES)} - uAura.y)), 0.0);
+  float crest = pow(swell, ${float(CREST_SHARPNESS)});
+  float waves = crest * toRim * toRim * smoothstep(0.0, ${float(CREST_RISE)}, reach);
+  float turn = 0.5 + 0.5 * sin(angle * ${float(RAY_LOBES)} + uAura.w) * sin(angle * ${float(RAY_GROUP_LOBES)} - uAura.z);
   float rays = turn * turn * turn * exp(-outside * ${float(RAY_FALLOFF)}) * fromWalls;
   float light = (halo * ${float(HALO_SHARE)} + waves * ${float(WAVE_SHARE)} + rays * ${float(RAY_SHARE)})
-    * (1.0 - smoothstep(0.92, 1.0, radius));
+    * (1.0 - smoothstep(${float(EDGE_FADE_FROM)}, 1.0, radius));
   vec3 colour = mix(${WALL_COLOUR}, ${RIM_COLOUR}, clamp(reach, 0.0, 1.0));
   finalColor = vec4(colour * light, light) * vColour;
 }`,

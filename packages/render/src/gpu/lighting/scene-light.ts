@@ -1,4 +1,12 @@
-import { type BLEND_MODES, Container, type Renderer, RenderTexture, Sprite, Texture } from 'pixi.js';
+import {
+  type BLEND_MODES,
+  BufferImageSource,
+  Container,
+  type Renderer,
+  RenderTexture,
+  Sprite,
+  Texture,
+} from 'pixi.js';
 import { darkenToAttackNight, fadeAttackNight } from '../../data/lighting/attack-night.js';
 import { fadeGrade } from '../../data/lighting/fade.js';
 import { nightLevel, shownGrade } from '../../data/lighting/grade.js';
@@ -6,7 +14,6 @@ import { LIGHT_LOOKS, type LightSite, lightShare } from '../../data/lighting/lig
 import { type LightGrade, NEUTRAL_GRADE } from '../../data/lighting/types.js';
 import type { Camera } from '../../data/projection/iso.js';
 import type { NightComposite } from '../world-renderer/offscreen-world.js';
-import { bakeGlow, GLOW_TEXTURE_SIZE } from './glow-texture.js';
 
 /**
  * The scene grade: a map script's whole-map vertex tint drawn over everything the stage drew below
@@ -31,6 +38,14 @@ const LIGHT_MAP_SCALE = 0.5;
 const POOL_SQUASH = 0.6;
 /** A flame burns this far above the fire's feet, world px. */
 const FLARE_HEIGHT_PX = 16;
+/** The baked radial glow's size and falloff stops (radius share, alpha). */
+const GLOW_TEXTURE_SIZE = 128;
+const GLOW_STOPS: readonly (readonly [number, number])[] = [
+  [0, 1],
+  [0.4, 0.75],
+  [0.75, 0.25],
+  [1, 0],
+];
 const CHANNEL_MAX = 255;
 /** What a fully lit texel multiplies by at night: a warm lamplight, tuned by eye. */
 const NIGHT_LIT_COLOUR: readonly [number, number, number] = [1, 0.94, 0.84];
@@ -55,6 +70,38 @@ export interface SceneLightFrame {
 function packColour(r: number, g: number, b: number): number {
   const channel = (value: number): number => Math.round(Math.min(1, Math.max(0, value)) * CHANNEL_MAX);
   return (channel(r) << RED_SHIFT) | (channel(g) << GREEN_SHIFT) | channel(b);
+}
+
+/** The soft radial glow every light draws with: white, premultiplied, its alpha falling through
+ *  {@link GLOW_STOPS}. */
+function bakeGlow(): Texture {
+  const data = new Uint8Array(GLOW_TEXTURE_SIZE * GLOW_TEXTURE_SIZE * 4);
+  const centre = GLOW_TEXTURE_SIZE / 2;
+  for (let y = 0; y < GLOW_TEXTURE_SIZE; y++) {
+    for (let x = 0; x < GLOW_TEXTURE_SIZE; x++) {
+      const at = Math.hypot(x + 0.5 - centre, y + 0.5 - centre) / centre;
+      const value = Math.round(glowAlpha(at) * CHANNEL_MAX);
+      data.fill(value, (y * GLOW_TEXTURE_SIZE + x) * 4, (y * GLOW_TEXTURE_SIZE + x + 1) * 4);
+    }
+  }
+  const source = new BufferImageSource({
+    resource: data,
+    width: GLOW_TEXTURE_SIZE,
+    height: GLOW_TEXTURE_SIZE,
+    alphaMode: 'premultiplied-alpha',
+    scaleMode: 'linear',
+  });
+  return new Texture({ source });
+}
+
+/** {@link GLOW_STOPS} at radius share `at`, linear between stops and 0 past the last. */
+function glowAlpha(at: number): number {
+  for (let i = 1; i < GLOW_STOPS.length; i++) {
+    const [from, fromAlpha] = GLOW_STOPS[i - 1] ?? [0, 0];
+    const [to, toAlpha] = GLOW_STOPS[i] ?? [1, 0];
+    if (at <= to) return fromAlpha + ((toAlpha - fromAlpha) * (at - from)) / (to - from);
+  }
+  return 0;
 }
 
 export class SceneLight {

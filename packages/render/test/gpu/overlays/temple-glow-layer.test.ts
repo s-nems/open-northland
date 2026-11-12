@@ -11,6 +11,8 @@ const BOUNDS = { minX: 0, minY: -60, maxX: 80, maxY: 50 };
 /** Longer than the aura takes to rise or die. */
 const KINDLED_SECONDS = 10;
 const STEP_SECONDS = 0.1;
+/** How many times a kindled aura outshines its first frame, at the least. */
+const RISE_FACTOR = 4;
 
 function temple(id: number, blessing: boolean) {
   return {
@@ -19,15 +21,13 @@ function temple(id: number, blessing: boolean) {
   };
 }
 
-const snapshot: WorldSnapshot = {
-  tick: 0,
-  events: [],
-  entities: [temple(BLESSING, true), temple(DARK, false)],
-};
+function world(blessing: boolean): WorldSnapshot {
+  return { tick: 0, events: [], entities: [temple(BLESSING, blessing), temple(DARK, false)] };
+}
 
 function frame(seconds: number, seams: Partial<TempleGlowFrame> = {}): TempleGlowFrame {
   return {
-    snapshot,
+    snapshot: world(true),
     drawn: drawnGeometry({ boundsOf: () => BOUNDS }),
     viewport: VIEW,
     seconds,
@@ -57,13 +57,28 @@ describe('TempleGlowLayer', () => {
     expect(aura?.alpha).toBeGreaterThan(0);
   });
 
-  it('kindles the aura over time and lets it die on a temple the viewer stops seeing', () => {
+  it('kindles the aura when its temple starts blessing and lets it die when it stops', () => {
     const layer = new TempleGlowLayer();
-    layer.draw(frame(0));
-    expect(layer.container.children[0]?.alpha).toBe(0);
+    layer.draw(frame(0, { snapshot: world(false) }));
+    expect(layer.container.children).toHaveLength(0);
+    layer.draw(frame(STEP_SECONDS));
+    const rising = layer.container.children[0]?.alpha ?? 1;
     run(layer, KINDLED_SECONDS);
-    expect(layer.container.children[0]?.alpha).toBeGreaterThan(0);
-    run(layer, KINDLED_SECONDS, { fogVisible: () => false });
+    expect(layer.container.children[0]?.alpha).toBeGreaterThan(rising * RISE_FACTOR);
+    layer.draw(frame(KINDLED_SECONDS + STEP_SECONDS, { snapshot: world(false) }));
+    expect(layer.container.children).toHaveLength(1);
+    run(layer, KINDLED_SECONDS, { snapshot: world(false) });
+    expect(layer.container.children).toHaveLength(0);
+  });
+
+  it('shows a temple the viewer comes upon blessing whole, a held clock included, and drops one out of sight', () => {
+    const layer = new TempleGlowLayer();
+    layer.draw(frame(0, { fogVisible: () => false }));
+    expect(layer.container.children).toHaveLength(0);
+    layer.draw(frame(0));
+    const whole = layer.container.children[0]?.alpha ?? 0;
+    expect(whole).toBeGreaterThan(0);
+    layer.draw(frame(0, { fogVisible: () => false }));
     expect(layer.container.children).toHaveLength(0);
   });
 });

@@ -224,9 +224,10 @@ const MAP_VIEW_BOUNDS_FRAME = -1;
  */
 function pooledDepth(pe: PooledEntity, item: DrawItem): number {
   const plotBack = item.roadSite === 'claimed' ? PLOT_BOUNDS.top : 0;
+  const row = item.sortY ?? pe.motion.drawY + (item.lift ?? 0);
   return screenDepth(
     pe.motion.drawX,
-    (item.sortY ?? pe.motion.drawY) + (item.lift ?? 0) + plotBack,
+    row + plotBack,
     item.kind,
     item.isFlag === true,
     item.roadSite === 'unclaimed',
