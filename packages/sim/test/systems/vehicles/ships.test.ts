@@ -39,7 +39,7 @@ import { dynamicBlockOverlay, vehicleDoorNode } from '../../../src/systems/footp
 import { vehicleClearance } from '../../../src/systems/footprint/vehicle-clearance.js';
 import { removeSettlerSilently } from '../../../src/systems/lifecycle/death.js';
 import { SUCCESSFUL_IF } from '../../../src/systems/missions/index.js';
-import { dockRoute, docksReachedThrough } from '../../../src/systems/vehicles/dock.js';
+import { dockRoute, docksReachedThrough, startDockAtFirst } from '../../../src/systems/vehicles/dock.js';
 import {
   boardRider,
   createVehicle,
@@ -79,6 +79,8 @@ const EAST_SHORE_X = 32;
 const SHIP_SIZE = 2;
 const DOOR_DISTANCE = 4;
 const MID_ROW = 16;
+/** Rows between two hulls lying side by side, closer than the voyage's hull gap keeps them. */
+const HULL_BESIDE_ROWS = 2 * SHIP_SIZE + 1;
 /** The strait node nearest the west shore a ship may lie on; a ship spawned there faces so that its door
  *  point is the water node next to the shore. */
 const NEAR_WEST_SHORE_X = 18;
@@ -613,6 +615,65 @@ describe('dockVehicle', () => {
     expect(boarding.world.get(moored, Vehicle).heldDock).toBeNull();
     sailOut(boarding, moored);
     expect(anchorOf(boarding, moored)).toEqual(named);
+  });
+
+  it('docks at the first of several points clear of the hull another ship sails to dock with', () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const near = { hx: EAST_SHORE_X + 1, hy: MID_ROW };
+    const along = { hx: EAST_SHORE_X + 1, hy: MID_ROW + 3 * DOOR_DISTANCE };
+    const ships = [MID_ROW - DOOR_DISTANCE, MID_ROW + DOOR_DISTANCE].map(
+      (row) => crewedShip(s, 20, row).ship,
+    );
+    const points = ships.map((ship) => startDockAtFirst(s.world, ctxOf(s), terrain, ship, [near, along]));
+    expect(points).toEqual([near, along]);
+
+    const refused: string[] = [];
+    const moored = (): boolean => ships.every((ship) => s.world.get(ship, Vehicle).moored);
+    for (let ticks = 0; ticks < SAIL_TICKS && !moored(); ticks++) {
+      s.step();
+      refused.push(...refusals(s));
+    }
+    expect(refused).toEqual([]);
+    expect(moored()).toBe(true);
+  });
+
+  it('moors in place on a ring node lying near another hull, rather than sail to a farther point', () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const near = { hx: EAST_SHORE_X + 1, hy: MID_ROW };
+    const along = { hx: EAST_SHORE_X + 1, hy: MID_ROW + 3 * DOOR_DISTANCE };
+    const scout = crewedShip(s, 20, MID_ROW).ship;
+    const docks = namedDocks(s, scout, near);
+    const dock = docks[Math.floor(docks.length / 2)];
+    if (dock === undefined) throw new Error('no dock node');
+    removeVehicle(s.world, ctxOf(s), scout, 'script');
+    const ship = crewedShip(s, dock.hx, dock.hy).ship;
+    spawn(s, SHIP_SMALL, dock.hx, dock.hy + HULL_BESIDE_ROWS);
+
+    expect(startDockAtFirst(s.world, ctxOf(s), terrain, ship, [near, along])).toEqual(near);
+    expect(s.world.has(ship, VehicleDrive)).toBe(false);
+    expect(s.world.get(ship, Vehicle).moored).toBe(true);
+  });
+
+  it('counts a ship under way to anything but a dock as passing, not as a hull at its goal', () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const near = { hx: EAST_SHORE_X + 1, hy: MID_ROW };
+    const along = { hx: EAST_SHORE_X + 1, hy: MID_ROW + 3 * DOOR_DISTANCE };
+    const passing = crewedShip(s, 20, MID_ROW - 2 * DOOR_DISTANCE).ship;
+    const ship = crewedShip(s, 20, MID_ROW + DOOR_DISTANCE).ship;
+    const docks = namedDocks(s, passing, near);
+    const goal = docks[Math.floor(docks.length / 2)];
+    if (goal === undefined) throw new Error('no dock node');
+    s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: passing, x: goal.hx, y: goal.hy }));
+    s.step();
+    expect(s.world.has(passing, VehicleDrive)).toBe(true);
+
+    expect(startDockAtFirst(s.world, ctxOf(s), terrain, ship, [near, along])).toEqual(near);
   });
 
   it('takes the ring order when the named node is no node of the ring', () => {

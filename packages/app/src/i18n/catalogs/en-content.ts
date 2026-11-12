@@ -414,6 +414,11 @@ export const enContent = {
       summary:
         'Each island has two warehouses in one signpost network, and both stops of the merchant\'s route stand for their whole settlement. The east island is kept at 20 bricks and 20 stone, taken out of both west warehouses, and its wood goes west until 30 are left over its two warehouses. Select the merchant to see the lit "settlement" chip on both stops.',
     },
+    'trade-sea-shared-stop': {
+      title: 'Two sea routes sharing a stop',
+      summary:
+        "Two merchants each have their own warehouse on the west island and a small ship pinned to their route, and both carry wood to the one warehouse on the east island. The ship that reaches the east shore second moors beside the first instead of waiting for it to leave. Watch the east shore: both ships lie there together while both merchants' carts ferry to the warehouse.",
+    },
     'trade-domestic': {
       title: 'Trade between own warehouses',
       summary:

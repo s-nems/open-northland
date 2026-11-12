@@ -1,6 +1,12 @@
 import type { VehicleType } from '@open-northland/data';
 import type { AiOrderOrigin } from '../../components/ai/order.js';
-import { dropVehicleOrderQueue, Vehicle, vehicleCommander } from '../../components/index.js';
+import {
+  dropVehicleOrderQueue,
+  Position,
+  Vehicle,
+  VehicleDrive,
+  vehicleCommander,
+} from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -46,47 +52,98 @@ import { type SeaRegions, seaRegions } from './sea-regions.js';
 // point, and moors on arrival (`movement.ts`). No port building is involved.
 
 /**
- * The nodes a ship may dock at for `point`, in the original's ring order: the map points at exactly
- * the door distance from the point that lie in a part of the sea the ship can sail into, however far
+ * The nodes a ship may dock at for a point, in the original's ring order: the map points at exactly the
+ * door distance from the point that lie in a part of the sea the ship can sail into, however far
  * (deviation: the original holds the dock to the goto's walk range), and are open under its walk-block,
- * which is the free-size class test plus the other vehicles' cells. The ship's own node qualifies as an
- * in-place mooring.
+ * which is the free-size class test plus the other vehicles' cells; with `giveWay`, also clear of the
+ * other ships' resting hulls ({@link nearHulls}). The ship's own node qualifies as an in-place mooring.
+ * The sea and the blocks are read once, for every point asked about.
  */
-function dockCandidates(
+function dockRing(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   vehicle: Entity,
   type: VehicleType,
   anchor: HalfCellNode,
-  point: HalfCellNode,
-): NodeId[] {
+  giveWay = false,
+): (point: HalfCellNode) => NodeId[] {
   const vector = type.passengerVector;
-  if (vector === undefined) return [];
+  if (vector === undefined) return () => [];
   const regions = seaRegions(world, ctx, terrain, type.logicSize);
   const reach = regions.regionsFrom(terrain.nodeAt(anchor.hx, anchor.hy));
   const blocked = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
-  const out: NodeId[] = [];
-  for (const { point: ring } of hexagonRing(point, vector.distance)) {
-    if (!terrain.inBounds(ring.hx, ring.hy)) continue;
-    const node = terrain.nodeAt(ring.hx, ring.hy);
-    if (reach.includes(regions.regionOf(node)) && !blocked.has(node)) out.push(node);
-  }
-  return out;
+  const here = terrain.nodeAt(anchor.hx, anchor.hy);
+  const crowded = giveWay ? nearHulls(world, ctx, terrain, vehicle, type) : NOT_CROWDED;
+  return (point) => {
+    const out: NodeId[] = [];
+    for (const { point: ring } of hexagonRing(point, vector.distance)) {
+      if (!terrain.inBounds(ring.hx, ring.hy)) continue;
+      const node = terrain.nodeAt(ring.hx, ring.hy);
+      if (!reach.includes(regions.regionOf(node)) || blocked.has(node)) continue;
+      if (node === here || !crowded(node)) out.push(node);
+    }
+    return out;
+  };
 }
 
-/** The first dock node around `point`, `dock` tried first when it is one, that `sails` finds a route to;
- *  the ship's own node needs none. */
-function firstDockNode(
+/** Free water kept between two ships' footprint discs where they lie side by side. A drawn hull reaches
+ *  about a node past its disc on either side, so this leaves about one free cell between the drawn
+ *  ships. A project choice, tuned by eye; the original docks one ship per order. */
+export const HULL_GAP_NODES = 4;
+
+const NOT_CROWDED = (): boolean => false;
+
+/**
+ * Whether a ship of `type` lying on a node would come within {@link HULL_GAP_NODES} of another ship's
+ * resting hull: one lying still where it lies, one sailing to dock at its dock node. Ships sent to one
+ * shore so lie apart instead of racing for the first ring node, where both may give up behind the
+ * no-path note. A ship under way to anything else is passing. Walks the vehicles once per dock.
+ */
+function nearHulls(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  type: VehicleType,
+): (node: NodeId) => boolean {
+  const types = contentIndex(ctx.content).vehicles;
+  const hulls: { readonly hx: number; readonly hy: number; readonly reach: number }[] = [];
+  for (const other of world.query(Vehicle, Position)) {
+    const state = world.get(other, Vehicle);
+    const otherType = types.get(state.vehicleType);
+    if (other === vehicle || otherType === undefined || !isShipVehicle(otherType)) continue;
+    const drive = world.tryGet(other, VehicleDrive);
+    const rest =
+      drive === undefined ? vehicleAnchor(world, other) : state.task === 'docks' ? drive.goal : null;
+    if (rest === null) continue;
+    hulls.push({ hx: rest.hx, hy: rest.hy, reach: otherType.logicSize + type.logicSize + HULL_GAP_NODES });
+  }
+  return (node) =>
+    hulls.some(
+      (hull) => hexDistanceBetween(terrain.xOf(node), terrain.yOf(node), hull.hx, hull.hy) <= hull.reach,
+    );
+}
+
+/** A point a dock order takes and the dock node it sails to for it. */
+interface DockChoice {
+  readonly point: HalfCellNode;
+  readonly node: NodeId;
+}
+
+/** The first of `points` with a dock node that `sails` finds a route to, and that node: per point in
+ *  {@link dockRing} order, `dock` tried first where it is one. The ship's own node needs no route. */
+function firstDock(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   vehicle: Entity,
   anchor: HalfCellNode,
-  point: HalfCellNode,
+  points: Iterable<HalfCellNode>,
   dock: HalfCellNode | null,
   sails: (node: NodeId) => boolean,
-): NodeId | null {
+  giveWay = false,
+): DockChoice | null {
   const type = contentIndex(ctx.content).vehicles.get(world.get(vehicle, Vehicle).vehicleType);
   if (type === undefined) return null;
   const here = terrain.nodeAt(anchor.hx, anchor.hy);
@@ -94,14 +151,17 @@ function firstDockNode(
   // candidates in it are searched, instead of a sea-wide search per ring node out of reach. Other ships
   // are no wall, as a route passes through them where it cannot go around.
   let reached: Uint8Array | undefined;
-  const ring = dockCandidates(world, ctx, terrain, vehicle, type, anchor, point);
+  const ringOf = dockRing(world, ctx, terrain, vehicle, type, anchor, giveWay);
   const named = dock !== null && terrain.inBounds(dock.hx, dock.hy) ? terrain.nodeAt(dock.hx, dock.hy) : null;
-  const candidates =
-    named !== null && ring.includes(named) ? [named, ...ring.filter((n) => n !== named)] : ring;
-  for (const node of candidates) {
-    if (reached !== undefined && reached[node] !== REACHED) continue;
-    if (node === here || sails(node)) return node;
-    reached ??= reachableWater(terrain, vehicleGroundBlocks(world, ctx, terrain, vehicle, type), here);
+  for (const point of points) {
+    const ring = ringOf(point);
+    const candidates =
+      named !== null && ring.includes(named) ? [named, ...ring.filter((n) => n !== named)] : ring;
+    for (const node of candidates) {
+      if (reached !== undefined && reached[node] !== REACHED) continue;
+      if (node === here || sails(node)) return { point, node };
+      reached ??= reachableWater(terrain, vehicleGroundBlocks(world, ctx, terrain, vehicle, type), here);
+    }
   }
   return null;
 }
@@ -122,16 +182,16 @@ export function dockRoute(
   const anchor = vehicleAnchor(world, vehicle);
   if (anchor === null || !terrain.inBounds(anchor.hx, anchor.hy)) return null;
   let route: HalfCellNode[] | null = null;
-  const node = firstDockNode(world, ctx, terrain, vehicle, anchor, point, null, (candidate) => {
+  const choice = firstDock(world, ctx, terrain, vehicle, anchor, [point], null, (candidate) => {
     route = vehicleRouteTo(world, ctx, terrain, vehicle, candidate);
     return route !== null;
   });
-  return node === null ? null : (route ?? []);
+  return choice === null ? null : (route ?? []);
 }
 
 /**
  * Which of `points` `vehicle` can dock at through water `closed` never refuses: for each point, whether one
- * of its dock nodes ({@link dockCandidates}) joins the ship over the nodes it may sail, `closed` ones left
+ * of its dock nodes ({@link dockRing}) joins the ship over the nodes it may sail, `closed` ones left
  * out (the ship's own node counts). For a planner weighing courses before it orders one. Costs a search
  * from the dock nodes towards the ship ({@link joinedWater}), the whole sea only when one is cut off in it.
  */
@@ -147,7 +207,7 @@ export function docksReachedThrough(
   const type = contentIndex(ctx.content).vehicles.get(world.get(vehicle, Vehicle).vehicleType);
   if (anchor === null || type === undefined || !terrain.inBounds(anchor.hx, anchor.hy))
     return points.map(() => false);
-  const docks = points.map((point) => dockCandidates(world, ctx, terrain, vehicle, type, anchor, point));
+  const docks = points.map(dockRing(world, ctx, terrain, vehicle, type, anchor));
   const here = terrain.nodeAt(anchor.hx, anchor.hy);
   const blocked = vehicleGroundBlocks(world, ctx, terrain, vehicle, type);
   const joined = joinedWater(terrain, blocked, here, closed, docks.flat());
@@ -277,9 +337,9 @@ class NearestFirst {
 
 /**
  * Sail `vehicle`, its crew inside, to the first dock node around `point` it finds a route to, `dock`
- * tried first when it is one, and remember the point as the shore it moors at. False, with the `vehicleNoPath` note, when no ring
- * node takes it. Approximation: the original leaves a ship already standing on a ring node as it is;
- * here it moors in place, which is what the order asked for.
+ * tried first when it is one, and remember the point as the shore it moors at. False, with the
+ * `vehicleNoPath` note, when no ring node takes it. Approximation: the original leaves a ship already
+ * standing on a ring node as it is; here it moors in place, which is what the order asked for.
  */
 export function startDock(
   world: World,
@@ -289,26 +349,54 @@ export function startDock(
   point: HalfCellNode,
   dock: HalfCellNode | null = null,
 ): boolean {
+  return dockAtFirst(world, ctx, terrain, vehicle, [point], dock, false) !== null;
+}
+
+/**
+ * {@link startDock} at the first of `points` with a ring node clear of the other ships' resting hulls
+ * ({@link nearHulls}), in their order: for a voyage that moors apart from ships lying at or sailing to its
+ * shore (a named addition; the dock order keeps the original's ring). A point whose ring is crowded
+ * costs no route search. The point it docks at, or null with the `vehicleNoPath` note when none takes it.
+ */
+export function startDockAtFirst(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  points: Iterable<HalfCellNode>,
+): HalfCellNode | null {
+  return dockAtFirst(world, ctx, terrain, vehicle, points, null, true);
+}
+
+function dockAtFirst(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+  points: Iterable<HalfCellNode>,
+  dock: HalfCellNode | null,
+  giveWay: boolean,
+): HalfCellNode | null {
   const anchor = vehicleAnchor(world, vehicle);
-  if (anchor === null) return false;
+  if (anchor === null) return null;
   const here = terrain.nodeAt(anchor.hx, anchor.hy);
-  const node = firstDockNode(world, ctx, terrain, vehicle, anchor, point, dock, (candidate) =>
-    startVehicleDrive(world, ctx, terrain, vehicle, candidate),
-  );
-  if (node !== null) {
+  const sails = (candidate: NodeId): boolean => startVehicleDrive(world, ctx, terrain, vehicle, candidate);
+  const choice = firstDock(world, ctx, terrain, vehicle, anchor, points, dock, sails, giveWay);
+  if (choice !== null) {
+    const { point, node } = choice;
     if (node === here) endDrive(world, vehicle); // a goto under way ends here, moored
     dropHeldGoal(world, vehicle);
     const live = world.mut(vehicle, Vehicle);
     live.task = 'docks';
     live.mooring = { hx: point.hx, hy: point.hy };
     if (node === here) moorVehicle(world, ctx, vehicle);
-    return true;
+    return point;
   }
   refuseMove(world, ctx, vehicle, 'noPath');
   dropHeldGoal(world, vehicle);
   const live = world.mut(vehicle, Vehicle);
   if (live.task === 'docks') live.task = 'none';
-  return false;
+  return null;
 }
 
 const REACHED = 1;
@@ -385,13 +473,13 @@ export function dockVehicle(
   const dock = command.dock === undefined ? null : { hx: command.dock.x, hy: command.dock.y };
   if (
     trader !== null &&
-    firstDockNode(
+    firstDock(
       world,
       ctx,
       terrain,
       e,
       anchor,
-      point,
+      [point],
       dock,
       (node) => vehicleRouteTo(world, ctx, terrain, e, node) !== null,
     ) === null

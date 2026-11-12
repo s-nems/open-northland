@@ -1,5 +1,5 @@
 import { halfCellToScreenX, halfCellToScreenY } from '@open-northland/render/data';
-import { hexDistanceBetween } from '@open-northland/sim';
+import { HULL_GAP_NODES, hexDistanceBetween } from '@open-northland/sim';
 import type { Tile } from '../../picking.js';
 
 /** Where a ship's dock order moors: the sim's mooring rule for one ship, limited to the shore the viewer
@@ -46,10 +46,6 @@ export interface Berth {
 export const DOCK_PICK_SNAP_NODES = 8;
 export const RIGHT_CLICK_SNAP_NODES = 3;
 
-/** Free water left between two berthed footprint discs. A drawn hull reaches about a node past its disc
- *  on either side, so this leaves about one free cell between the drawn ships of a fleet told to dock at
- *  once. A project choice, tuned by eye; the original docks one ship per order. */
-const BERTH_GAP_NODES = 4;
 /** The farthest a fleet's berths spread from the clicked one, which bounds the shore scan. */
 const MAX_FLEET_SPREAD_NODES = 48;
 
@@ -97,7 +93,7 @@ export function planBerths(
       hulls.every(
         (hull) =>
           hexDistanceBetween(hull.at.col, hull.at.row, node.col, node.row) >
-          hull.logicSize + ship.logicSize + BERTH_GAP_NODES,
+          hull.logicSize + ship.logicSize + HULL_GAP_NODES,
       );
     const dock = middleOf(dockRing(ship, spot).filter(clear));
     if (dock === null) continue;
@@ -189,7 +185,7 @@ function leastCostMatching(cost: readonly (readonly number[])[]): number[] {
 /** The node distance between two hulls of `logicSize` lying side by side with the berths' free water
  *  between their discs: a fleet's berths and its formation under way are spaced by it. */
 export function hullSpacing(logicSize: number): number {
-  return 2 * logicSize + 1 + BERTH_GAP_NODES;
+  return 2 * logicSize + 1 + HULL_GAP_NODES;
 }
 
 /** How far from the clicked berth a fleet's berths may spread: a hull and a gap per further ship. */

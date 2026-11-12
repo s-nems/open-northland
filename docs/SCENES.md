@@ -110,6 +110,11 @@ pinned ship. On both shores they carry a unit a trip between the warehouse and t
 trader's cart and ride along in between, 48 wood across in the 2220 ticks the trader alone lands 15.
 Select the ship for their seats, the captain's well still the trader's, and Ctrl click a seat to step one out.
 
+`?scene=trade-sea-shared-stop` runs two traders, each with its own warehouse on the west island and a
+small ship pinned to its route, carrying wood to one warehouse on the east island. The ship that reaches
+the east shore second moors beside the first rather than waiting for it to leave. Watch the east shore:
+both hulls lie there together while both carts ferry.
+
 `?scene=trade-sea-settlements` holds stock levels between two islands. Each island has two warehouses
 under one signpost, and both stops of the route stand for their whole settlement ("osada"). The east
 island is filled up to 20 bricks and 20 stone out of both west warehouses, and its wood goes west until 30

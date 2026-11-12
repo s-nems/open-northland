@@ -417,6 +417,11 @@ export const itContent = {
       summary:
         "Ogni isola ha due magazzini in un'unica rete di cartelli, ed entrambe le tappe della rotta del mercante valgono per l'intero insediamento. L'isola orientale viene tenuta a 20 mattoni e 20 pietre, presi da entrambi i magazzini occidentali, e il suo legno va a ovest finché non ne restano 30 nei suoi due magazzini. Seleziona il mercante per vedere il tasto «insediamento» acceso su entrambe le tappe.",
     },
+    'trade-sea-shared-stop': {
+      title: 'Due rotte marittime con una tappa comune',
+      summary:
+        "Due mercanti hanno ciascuno il proprio magazzino sull'isola occidentale e una piccola nave fissata alla rotta, ed entrambi portano legno all'unico magazzino dell'isola orientale. La nave che raggiunge per seconda la sponda orientale attracca accanto alla prima invece di aspettare che riparta. Guarda la sponda orientale: le due navi vi stanno insieme mentre i carretti di entrambi i mercanti fanno la spola con il magazzino.",
+    },
     'trade-domestic': {
       title: 'Commercio tra i propri magazzini',
       summary:

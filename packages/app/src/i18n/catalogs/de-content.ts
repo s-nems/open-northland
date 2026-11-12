@@ -416,6 +416,11 @@ export const deContent = {
       summary:
         'Auf jeder Insel stehen zwei Lager in einem Wegweisernetz, und beide Stationen der Route des Händlers stehen für ihre ganze Siedlung. Die Ostinsel wird auf 20 Ziegel und 20 Steine gehalten, geholt aus beiden Lagern im Westen, und ihr Holz geht nach Westen, bis in ihren zwei Lagern 30 bleiben. Wähle den Händler, um an beiden Stationen den aktiven Schalter „Siedlung“ zu sehen.',
     },
+    'trade-sea-shared-stop': {
+      title: 'Zwei Seerouten mit gemeinsamer Station',
+      summary:
+        'Zwei Händler haben je ein eigenes Lager auf der Westinsel und ein kleines Schiff auf ihrer Route, und beide bringen Holz in das eine Lager auf der Ostinsel. Das Schiff, das als zweites am Ostufer ankommt, legt neben dem ersten an, statt zu warten, bis es ablegt. Achte auf das Ostufer: Beide Schiffe liegen dort zusammen, während die Karren beider Händler zum Lager pendeln.',
+    },
     'trade-domestic': {
       title: 'Handel zwischen eigenen Lagerhäusern',
       summary:

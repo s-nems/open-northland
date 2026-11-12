@@ -412,6 +412,11 @@ export const plContent = {
       summary:
         'Na każdej wyspie stoją dwa magazyny w jednej sieci drogowskazów, a oba punkty trasy kupca liczą całą osadę. Wschodnia wyspa trzyma 20 cegieł i 20 kamieni, dowożonych z obu zachodnich magazynów, a jej drewno płynie na zachód, aż w jej dwóch magazynach zostanie 30. Zaznacz kupca, by zobaczyć włączony przycisk „osada” przy obu punktach.',
     },
+    'trade-sea-shared-stop': {
+      title: 'Dwie trasy przez morze ze wspólnym przystankiem',
+      summary:
+        'Każdy z dwóch kupców ma własny magazyn na zachodniej wyspie i mały statek przypięty do trasy, a obaj wożą drewno do jednego magazynu na wschodniej wyspie. Statek, który dopłynie do wschodniego brzegu drugi, cumuje obok pierwszego, zamiast czekać, aż ten odpłynie. Patrz na wschodni brzeg: oba statki stoją przy nim razem, a wózki obu kupców kursują do magazynu.',
+    },
     'trade-domestic': {
       title: 'Handel między własnymi magazynami',
       summary:

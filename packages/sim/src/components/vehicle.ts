@@ -200,8 +200,8 @@ export type TradeDeparture = 'onward' | 'round';
  * The ship a player pinned to a trader's sea route (owner's choice; the original's sea trader job is an
  * empty stub), the ship's `Vehicle.hauler` naming the trader back so nobody boards or loads it but the
  * carriers assigned to help (`trade/helpers.ts`). The route owns the ship's hold. `dockRetryAt` is the tick
- * before which a failed voyage is not tried again, `failedDock` the mooring point that last failed, so a ship
- * already on that shore stays where it lies.
+ * before which a failed voyage is not tried again, `failedDock` the mooring point the last voyage could not
+ * take, docking nowhere or beside it, so a ship already on that shore stays where it lies.
  */
 export const TradeShip = defineComponent<{
   vehicle: Entity;

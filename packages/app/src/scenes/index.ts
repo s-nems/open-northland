@@ -84,6 +84,7 @@ import { tradeSeaAgreementScene } from './economy/trade-sea-agreement.js';
 import { tradeSeaCarriersScene } from './economy/trade-sea-carriers.js';
 import { tradeSeaPinScene } from './economy/trade-sea-pin.js';
 import { tradeSeaSettlementsScene } from './economy/trade-sea-settlements.js';
+import { tradeSeaSharedStopScene } from './economy/trade-sea-shared-stop.js';
 import { warehouseScene } from './economy/warehouse.js';
 import { workshopProductsScene } from './economy/workshop-products.js';
 import { berriesScene } from './gathering/berries.js';
@@ -288,6 +289,7 @@ export const SCENES: readonly SceneDefinition[] = [
   tradeSeaAgreementScene,
   tradeSeaCarriersScene,
   tradeSeaSettlementsScene,
+  tradeSeaSharedStopScene,
   tributeScene,
   presentationScene,
   terrainEditsScene,
