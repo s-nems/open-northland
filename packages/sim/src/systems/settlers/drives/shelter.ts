@@ -16,7 +16,7 @@ import { answerNeedInPlace } from './needs.js';
  * drops what it was doing, runs to the nearest defence-mode building with room, and waits inside.
  *
  * Nothing takes a sheltering settler back out while the alarm stands: not hunger, not fatigue, not a chat,
- * and it does not flee. A player move order still walks the unit out, and this rung walks it straight back
+ * and it does not flee. Inside it eats what it carries or what the shelter stocks. A player move order still walks the unit out, and this rung walks it straight back
  * on arrival. A settler that already holds a claim keeps it; the DefenceSystem is what breaks it.
  *
  * Source basis: the defence mode is extracted; that civilians shelter in it, who counts as a civilian, and
@@ -106,7 +106,7 @@ function doorIsWalkable(
 
 /**
  * Walk `e` to its shelter's door, step it inside on arrival, and hold it there; under cover it can only
- * answer a need with what it carries. Returns false only when the door has stopped being walkable, giving
+ * answer a need with what it carries or the shelter stocks. Returns false only when the door has stopped being walkable, giving
  * up the claim rather than standing outside a door forever.
  */
 function walkInto(
@@ -120,7 +120,7 @@ function walkInto(
   limit: NavigationLimit | null,
 ): boolean {
   if (isInside(world, e, shelter)) {
-    answerNeedInPlace(world, ctx, e, settler);
+    answerNeedInPlace(world, ctx, e, settler, shelter);
     return true;
   }
   const door = interactionCell(world, ctx, terrain, shelter, here);
