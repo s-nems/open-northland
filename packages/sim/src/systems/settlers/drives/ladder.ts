@@ -25,7 +25,7 @@ import { standsAtPost } from '../../conflict/tower-post.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
 import { planWomanHoard } from '../../family/hoard.js';
 import { planChildWander } from '../../family/wander.js';
-import { endMealBreak, noteOrderedMealUnserved } from '../../orders/meal-break.js';
+import { endMealBreak } from '../../orders/meal-break.js';
 import { isFisherJob, MILITARY_MODE } from '../../readviews/index.js';
 import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
@@ -213,8 +213,8 @@ function planBreak(
     // Breaking off here rather than in the CombatSystem, which runs later in the tick, so the rungs below
     // plan the errand into a unit the fight no longer holds. Only the engagement goes: the route is left
     // for whatever rung replaces it, and an attack order the player gave is the player's to cancel -
-    // `orderNeed` retires it when the order lands. A unit with nowhere to go for its meal is noted below
-    // and re-engaged by the CombatSystem this same tick.
+    // `orderNeed` retires it when the order lands. A unit with nowhere to go for its meal is noted by
+    // the hunger rung and re-engaged by the CombatSystem this same tick.
     world.remove(e, Engagement);
   }
 
@@ -284,7 +284,6 @@ function planBreak(
     leaveForNeed(world, e);
     return true;
   }
-  if (orderedNeed(world, e) === 'hunger') noteOrderedMealUnserved(world, ctx, e);
   dropUnservedNeedOrder(world, e);
 
   // Ownership gate, below the needs drives on purpose: hunger, fatigue and piety are soft overrides that

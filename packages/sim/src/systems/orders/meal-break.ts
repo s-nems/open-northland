@@ -39,8 +39,8 @@ import { isFighterJob } from '../readviews/index.js';
 // Fatigue costs nothing and waits for the orders to run out. Named addition: the original checks no
 // need while a player's command runs.
 
-/** How long hunger leaves a settler's orders alone after a meal break found nothing to eat, or after the
- *  player ordered it on regardless. Approximation: one failed food search per stretch of a long walk,
+/** How long hunger leaves a settler's orders and its fight alone after a meal break or an ordered meal
+ *  found nothing to eat, or after the player ordered it on regardless. Approximation: one failed food search per stretch of a long walk,
  *  not per node. */
 export const MEAL_BREAK_RETRY_TICKS = 20 * TICKS_PER_SECOND;
 
@@ -92,7 +92,7 @@ export function startMealBreak(world: World, e: Entity): void {
 }
 
 /**
- * Take `e`, walking an order and standing on a node, off it for a meal: the order goes back to the head
+ * Take `e`, on an order and standing on a node, off it for a meal: the order goes back to the head
  * of its queue, to start afresh once it has eaten, and an explore sweep keeps its own marker and picks
  * its next leg then. The route goes too, so the planner sees the settler free and plans the meal.
  */

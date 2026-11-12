@@ -26,6 +26,7 @@ import {
   NEED_SATED_THRESHOLD,
   needLevel,
 } from '../../lifecycle/needs/index.js';
+import { noteOrderedMealUnserved } from '../../orders/meal-break.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { isEdibleFoodIn, jobNeedsReligion } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
@@ -207,6 +208,7 @@ export function planNeeds(
   ) {
     return true;
   }
+  if (ordered === 'hunger') noteOrderedMealUnserved(world, ctx, e);
 
   if (pressing(fatigue, ordered, 'fatigue')) {
     if (maySeek(world, e, ordered, 'fatigue') && !onAlert()) {

@@ -1,6 +1,7 @@
 import { jobCanPray } from '@open-northland/data';
 import type { AiOrderOrigin } from '../../components/ai/order.js';
 import {
+  AttackOrder,
   addPaper,
   continueMatch,
   endMatchContinuation,
@@ -417,7 +418,10 @@ function applyCommand(
       setJob(world, ctx, command);
       return;
     case 'attackUnit':
-      attackUnit(world, ctx, command, origin);
+      obeyDespiteHunger(world, ctx, command.entity, () => {
+        attackUnit(world, ctx, command, origin);
+        return world.tryGet(command.entity, AttackOrder)?.target === command.target;
+      });
       return;
     case 'setStance':
       setStance(world, ctx, command);
