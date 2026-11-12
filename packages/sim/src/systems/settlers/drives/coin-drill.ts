@@ -38,10 +38,12 @@ export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): b
   const order = world.tryGet(e, CoinDrillOrder);
   if (order === undefined) return false;
   if (order.stage === 'drill') {
-    const door = interactionCell(world, ctx, terrain, order.house, here);
+    const house = order.house;
+    // The house first: a razed barracks has no door to resolve.
+    const standing = isBarracks(world, ctx, house) && sameSide(world, e, house);
+    const door = standing ? interactionCell(world, ctx, terrain, house, here) : undefined;
     const clip = coinDrillClip(ctx.content, settler);
-    if (clip !== undefined && drillGoesOn(plan, settler, order.house, door)) {
-      const house = order.house;
+    if (clip !== undefined && door !== undefined && drillGoesOn(plan, settler, door)) {
       enterBuilding(world, e, house, here, door, () => {
         if (freeDrillCoins(world, ctx, house, e) <= 0) {
           turnBackFromCoinDrill(world, e);
@@ -67,11 +69,9 @@ export function planCoinDrill(plan: PlannerContext, settler: SettlerIdentity): b
   return true;
 }
 
-/** Whether he keeps on for `house`: his side's barracks still stands, its door is open to him and he may
- *  still drill. */
-function drillGoesOn(plan: PlannerContext, settler: SettlerIdentity, house: Entity, door: NodeId): boolean {
+/** Whether he keeps on at his side's standing barracks: its door is open to him and he may still drill. */
+function drillGoesOn(plan: PlannerContext, settler: SettlerIdentity, door: NodeId): boolean {
   const { world, ctx, entity: e } = plan;
-  if (!isBarracks(world, ctx, house) || !sameSide(world, e, house)) return false;
   if (!drillDoorOpen(world, ctx, e, door, plan.limit)) return false;
   const experience = world.tryGet(e, SettlerProgress)?.experience ?? NO_EXPERIENCE;
   return mayCoinDrill(ctx.content, settler, world.tryGet(e, Weapon)?.weaponTypeId, experience);

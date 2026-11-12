@@ -6,6 +6,7 @@ import {
   CoinDrillOrder,
   Owner,
   Position,
+  Resting,
   SettlerProgress,
   Stockpile,
   setStockAmount,
@@ -255,6 +256,25 @@ describe('orderCoinDrill - the coin-paid soldier drill', () => {
     run(sim, 2 * WALK_TICKS + 2 * TRAIN_CLIP_TICKS);
     expect([pointsOf(sim, near), pointsOf(sim, far)]).toEqual([POINTS_PER_COIN, POINTS_PER_COIN]);
     expect(coinsOf(sim, house)).toBe(0);
+  });
+
+  it('walks back from a barracks razed on his way or while he drills', () => {
+    const sim = freshSim();
+    const onWay = barracksAt(sim, 8, 6, 1);
+    const drilling = barracksAt(sim, 8, 2, 1);
+    const walker = soldierAt(sim, SWORD_JOB, 2, 6);
+    const driller = soldierAt(sim, SWORD_JOB, 7, 2);
+    const starts = [nodeOf(sim, walker), nodeOf(sim, driller)];
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: walker, house: onWay });
+    sim.enqueueSetup({ kind: 'orderCoinDrill', entity: driller, house: drilling });
+    sim.step();
+    sim.world.destroy(onWay);
+    while (sim.world.get(driller, CoinDrillOrder).paid !== true) sim.step();
+    sim.world.destroy(drilling);
+    run(sim, 2 * WALK_TICKS);
+    expect([walker, driller].map((e) => sim.world.has(e, CoinDrillOrder))).toEqual([false, false]);
+    expect([walker, driller].map((e) => sim.world.has(e, Resting))).toEqual([false, false]);
+    expect([nodeOf(sim, walker), nodeOf(sim, driller)]).toEqual(starts);
   });
 
   it("refuses another side's barracks, and a walk order calls the drill off", () => {
