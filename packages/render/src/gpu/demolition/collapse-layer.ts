@@ -22,11 +22,24 @@ import { readable2dContext } from '../textures/drawable-resource.js';
 import { RecolouredPageSource } from '../textures/recoloured-pages.js';
 import type { SpriteSheet } from '../textures/sprite-sheet.js';
 import type { TextureCache } from '../textures/texture-cache.js';
-import { collapsePlan } from './collapse-plan.js';
+import { collapsePlan, vehicleCollapsePlan } from './collapse-plan.js';
 import { DismantleBody } from './dismantle-body.js';
 import { DismantleDebris } from './dismantle-debris.js';
 
-/** Unwind the building's authored construction layers while retaining its last visible damage. */
+/** Where a wrecked vehicle was last drawn: its feet in world px and the depth it sorted at. */
+export interface WreckAnchor {
+  readonly x: number;
+  readonly y: number;
+  readonly zIndex: number;
+}
+
+/** The dust a wrecked vehicle raises, against a building's fourteen, and the share of its body the
+ *  cloud spreads over. Tuned by eye. */
+const VEHICLE_DUST_PUFFS = 3;
+const VEHICLE_DUST_SPREAD = 0.6;
+
+/** Unwind the building's authored construction layers while retaining its last visible damage. A
+ *  wrecked land vehicle falls the same way where it was last drawn, and not at all if it was not. */
 export class CollapseLayer {
   /** One node per live collapse, keyed by {@link collapseKey}. */
   private readonly nodes = new Map<string, CollapseNode>();
@@ -38,6 +51,7 @@ export class CollapseLayer {
   private dustArt: DamageEffectTextures | undefined;
   private scratch: ReturnType<typeof readable2dContext> | undefined;
   private readonly fallen = new Map<string, readonly FallenBody[]>();
+  private readonly anchors = new Map<string, WreckAnchor>();
 
   constructor(
     /** Depth-sorted sprite layer - collapse nodes interleave with live sprites. */
@@ -46,6 +60,7 @@ export class CollapseLayer {
     /** Undefined draws nothing. */
     private readonly sheet: SpriteSheet | undefined,
     private readonly captureDamage?: (ref: number) => readonly FallenBody[] | undefined,
+    private readonly wreckAnchor?: (ref: number) => WreckAnchor | undefined,
   ) {}
 
   ingest(events: readonly SimEvent[], tick: number): void {
@@ -53,13 +68,18 @@ export class CollapseLayer {
     for (const c of this.collapses) {
       const key = collapseKey(c);
       if (c.spawnTick !== tick || this.fallen.has(key)) continue;
+      const anchor = c.vehicle === true ? this.wreckAnchor?.(c.entity) : undefined;
+      if (c.vehicle === true && anchor === undefined) continue;
       const bodies = this.captureDamage?.(c.entity);
-      if (bodies !== undefined) this.fallen.set(key, bodies);
+      if (bodies === undefined) continue;
+      this.fallen.set(key, bodies);
+      if (anchor !== undefined) this.anchors.set(key, anchor);
     }
     for (const [key, bodies] of this.fallen) {
       if (this.collapses.some((c) => collapseKey(c) === key)) continue;
       for (const body of bodies) body.release();
       this.fallen.delete(key);
+      this.anchors.delete(key);
     }
   }
 
@@ -71,7 +91,9 @@ export class CollapseLayer {
       const age = tick - c.spawnTick;
       if (age >= COLLAPSE_LIFETIME_TICKS) continue;
       const key = collapseKey(c);
-      const p = projectNode(elevation, c.hx, c.hy);
+      const anchor = this.anchors.get(key);
+      if (c.vehicle === true && anchor === undefined) continue;
+      const p = anchor ?? projectNode(elevation, c.hx, c.hy);
       let node = this.nodes.get(key);
       if (!isVisible(viewport, p.x, p.y)) {
         retainOffscreen(node, key, this.seen);
@@ -86,7 +108,7 @@ export class CollapseLayer {
       }
       node.visible = true;
       node.position.set(p.x, p.y);
-      node.zIndex = screenDepth(p.x, p.y, 'building');
+      node.zIndex = anchor?.zIndex ?? screenDepth(p.x, p.y, 'building');
       for (const body of node.bodies) body.pose(collapseProgress(c, tick));
       node.debris.draw(age, node.ground);
       const bounds = node.getLocalBounds();
@@ -105,6 +127,7 @@ export class CollapseLayer {
       if (collapse !== undefined && tick - collapse.spawnTick < COLLAPSE_LIFETIME_TICKS) continue;
       for (const body of bodies) body.release();
       this.fallen.delete(key);
+      this.anchors.delete(key);
     }
   }
 
@@ -118,6 +141,7 @@ export class CollapseLayer {
     this.nodes.clear();
     for (const bodies of this.fallen.values()) for (const body of bodies) body.release();
     this.fallen.clear();
+    this.anchors.clear();
     this.dustArt?.destroy();
     this.masks.destroy();
     this.scratch = null;
@@ -137,7 +161,11 @@ export class CollapseLayer {
       ...(c.builtPct !== undefined ? { builtPct: c.builtPct } : {}),
     };
     const fallen = this.fallen.get(collapseKey(c));
-    const plan = collapsePlan(this.sheet, item, fallen);
+    if (c.vehicle === true && fallen === undefined) return null;
+    const plan =
+      c.vehicle === true && fallen !== undefined
+        ? vehicleCollapsePlan(fallen)
+        : collapsePlan(this.sheet, item, fallen);
     if (plan.length === 0) return null;
     const node = new Container() as CollapseNode;
     node.bodies = [];
@@ -203,7 +231,15 @@ export class CollapseLayer {
       node.destroy();
       return null;
     }
-    node.debris.addDust(maxX - minX, baseY - minY, c.entity, this.dustArt);
+    if (c.vehicle === true) {
+      node.debris.addDust(
+        (maxX - minX) * VEHICLE_DUST_SPREAD,
+        (baseY - minY) * VEHICLE_DUST_SPREAD,
+        c.entity,
+        this.dustArt,
+        VEHICLE_DUST_PUFFS,
+      );
+    } else node.debris.addDust(maxX - minX, baseY - minY, c.entity, this.dustArt);
     node.addChild(node.debris.display);
     node.ground = baseY;
     return node;

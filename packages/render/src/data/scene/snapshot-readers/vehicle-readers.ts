@@ -37,8 +37,8 @@ function readAttackClipStart(components: Readonly<Record<string, unknown>>): num
 }
 
 /**
- * The fields a vehicle keeps through the fog: its type and tribe (the binding key), its owner's colour
- * and its heading. `Vehicle.facing` is a walk heading, numbered like the source's `<dir>` ring with N
+ * The fields a vehicle keeps through the fog: its type and tribe (the binding key), its owner's colour,
+ * its heading and its damage. `Vehicle.facing` is a walk heading, numbered like the source's `<dir>` ring with N
  * and S after the six map-point directions, so the same remap the frame lists use turns it into a render
  * facing.
  */
@@ -54,6 +54,16 @@ export function readVehicleStaticFields(
   if (facing !== undefined) target.facing = gfxDirToFacing(facing);
   const player = readOwnerPlayer(components);
   if (player !== undefined) target.player = player;
+  const hpFrac = readHullFraction(components);
+  if (hpFrac !== undefined) target.hpFrac = hpFrac;
+}
+
+/** The remaining share of a hurt vehicle's health pool; undefined while it is whole. */
+function readHullFraction(components: Readonly<Record<string, unknown>>): number | undefined {
+  const h = components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
+  if (typeof h?.hitpoints !== 'number' || typeof h.max !== 'number') return undefined;
+  if (!(h.max > 0) || !(h.hitpoints < h.max)) return undefined;
+  return clamp01(h.hitpoints / h.max);
 }
 
 /** One `VehicleStock.lines` entry as the snapshot clones it: `[goodType, { current, ... }]`. */

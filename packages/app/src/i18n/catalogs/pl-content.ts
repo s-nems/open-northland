@@ -447,6 +447,11 @@ export const plContent = {
       summary:
         'Kupiec z wózkiem i tragarz z wozem z wołem każdej nacji jadą na wschód; każdy woźnica ma głowę swojej nacji.',
     },
+    'vehicle-damage': {
+      title: 'Uszkodzone i niszczone pojazdy',
+      summary:
+        'Katapulty i statki stoją z coraz mniejszym zdrowiem: kadłuby są poszarpane i dymią, statki pod koniec płoną, katapulty tylko lekko dymią. Po drugiej stronie cieśniny wrodzy łucznicy dobijają statek i katapultę: statek płonie i idzie na dno, katapulta rozpada się w odrobinie kurzu.',
+    },
     'vehicle-ships': {
       title: 'Statek przez cieśninę',
       summary:

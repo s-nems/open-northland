@@ -31,6 +31,9 @@ import type { ElevationField } from '../../data/terrain/index.js';
 import type { ViewDetail } from '../../data/view-detail.js';
 import type { WindSway } from '../../data/weather/climate.js';
 import { BuildingDamage, type FallenBody } from '../building-damage/building-damage.js';
+import { type ShipBody, ShipDamage } from '../building-damage/ship-damage.js';
+import type { WreckAnchor } from '../demolition/collapse-layer.js';
+import { ShipSinkLayer, type SinkingHull } from '../demolition/ship-sink-layer.js';
 import { PalettedQuad } from '../paletted-sprite/index.js';
 import { PLOT_BOUNDS, type PlanRoadTextures } from '../placement/plan-road.js';
 import type { PlanStakeTextures } from '../placement/plan-stake.js';
@@ -48,7 +51,7 @@ import type { TextureCache } from '../textures/texture-cache.js';
 import type { ShadowStyle } from '../world-batch/shadow-style.js';
 import { DepthSortedLayer, drawLayerOf } from '../world-renderer/depth-sorted-layer.js';
 import { restoreStash, type StashedVisibility, stashHidden } from '../world-views/visibility.js';
-import { LayerBinder } from './bind-layers.js';
+import { hullDamageSeed, LayerBinder } from './bind-layers.js';
 import { FrameEpoch } from './bind-stamp.js';
 import { coatBody } from './blood-coats.js';
 import { cullBox, type KindReach, type KindReaches, kindReaches } from './cull-reach.js';
@@ -61,13 +64,19 @@ import {
   anchorOf,
   boundsOf,
   type DamagedBuilding,
+  type DamagedShip,
   type DrawnWalker,
   keelOf,
   pixelHit,
   type ShipAfloat,
   siteFlagHit,
 } from './picking/pick.js';
-import { type EntityBounds, meshablePooled, type PooledEntity } from './pooled-entity.js';
+import {
+  type EntityBounds,
+  meshablePooled,
+  type PalettedPooledEntity,
+  type PooledEntity,
+} from './pooled-entity.js';
 import { PortraitSubject } from './portrait-subject.js';
 import { atRest, SNAP_DISTANCE } from './presentation/motion.js';
 import { presentEntity } from './presentation/present-entity.js';
@@ -351,6 +360,14 @@ export class SpritePool {
     const pe = this.pool.get(ref);
     return pe?.attached === true ? pe : undefined;
   };
+  private readonly damagedShips: DamagedShip[] = [];
+  private readonly shipDamage = new ShipDamage(() => this.buildingDamage.effectArt(), hullDamageSeed);
+  private readonly shipBody = (ref: number): ShipBody | undefined => {
+    const pe = this.damageSubject(ref);
+    return pe !== undefined && this.drawsAsHull(pe) ? pe : undefined;
+  };
+  /** A destroyed ship's dive; it places hull meshes as the pool does, so it lives here. */
+  private readonly sinkings: ShipSinkLayer;
 
   /**
    * Light this frame's night `level` (0 day, 1 full night) on the bearers drawn on the map: an owned
@@ -388,6 +405,24 @@ export class SpritePool {
       frame.enhancedSampling === true,
       frame.camera.scale ?? 1,
     );
+    this.shipDamage.draw(
+      this.damagedShips,
+      this.shipBody,
+      frame.tick + frame.alpha,
+      frame.wind,
+      frame.buildingDamage === true,
+      frame.camera.scale ?? 1,
+    );
+    this.sinkings.draw({
+      camera: frame.camera,
+      screenW: frame.screenW,
+      screenH: frame.screenH,
+      viewport: frame.viewport,
+      tick: frame.tick + frame.alpha,
+      zoom: frame.camera.scale ?? 1,
+      ...(frame.snapResolution !== undefined ? { snapResolution: frame.snapResolution } : {}),
+      ...(frame.wind !== undefined ? { wind: frame.wind } : {}),
+    });
     // Outlines copy the bound texture. Refresh after swaps/releases, including a fully repaired house
     // that has just left the damaged list, so a stamp cannot retain a recycled atlas slot, and a hurt
     // gate's outline follows its holes.
@@ -399,7 +434,9 @@ export class SpritePool {
   private refreshDamageableSelection(ref: number, frame: PoolFrame): void {
     const pe = this.pool.get(ref);
     const item = pe?.bound.item;
-    const damageable = pe?.kind === 'building' || pe?.kind === 'palisade';
+    // A land vehicle's plain body takes the same scarred textures as a house.
+    const damageable =
+      pe?.kind === 'building' || pe?.kind === 'palisade' || (pe?.kind === 'vehicle' && !pe.paletted);
     if (damageable && pe.attached && item !== undefined) this.applySelection(pe, item, frame, false);
   }
   private readonly ships: ShipAfloat[] = [];
@@ -436,6 +473,39 @@ export class SpritePool {
     if (events.length > 0) this.coatsIngested = true;
   }
 
+  /** Before the frame's reconcile, while a ship destroyed this tick still holds its last drawn hull. */
+  ingestSinkings(events: readonly SimEvent[], tick: number): void {
+    this.sinkings.ingest(events, tick);
+  }
+
+  /** A vehicle drawn as self-placing hull meshes through the vehicle LUT: a ship, not a cart drawn as
+   *  its driver. */
+  private drawsAsHull(pe: PooledEntity): pe is PalettedPooledEntity {
+    return pe.paletted && pe.kind === 'vehicle' && pe.palette === this.sheet?.vehiclePalette;
+  }
+
+  private captureSinkingHull(ref: number): SinkingHull | undefined {
+    const pe = this.damageSubject(ref);
+    // A remembered ship under the fog was not seen to go down.
+    if (pe === undefined || !this.drawsAsHull(pe) || pe.bound.item?.ghost === true) return undefined;
+    return {
+      x: pe.motion.drawX,
+      y: pe.motion.drawY,
+      zIndex: pe.container.zIndex,
+      lut: pe.palette,
+      sprites: pe.sprites,
+      damageSeed: hullDamageSeed(ref),
+    };
+  }
+
+  /** Where a land vehicle destroyed this tick was last drawn: its feet in world px and its depth. */
+  wreckAnchor(ref: number): WreckAnchor | undefined {
+    const pe = this.damageSubject(ref);
+    if (pe === undefined || pe.paletted || pe.kind !== 'vehicle' || pe.bound.item?.ghost === true)
+      return undefined;
+    return { x: pe.container.x, y: pe.container.y, zIndex: pe.container.zIndex };
+  }
+
   /**
    * @param spriteLayer the renderer's shared, depth-sorted entity layer, also holding the tall map objects.
    * @param sheet the loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity.
@@ -454,6 +524,11 @@ export class SpritePool {
     this.portrait = new PortraitSubject(spriteLayer);
     this.binder = new LayerBinder(textures, sheet, stakes, roads);
     this.reaches = kindReaches(sheet);
+    this.sinkings = new ShipSinkLayer(
+      spriteLayer,
+      (ref) => this.captureSinkingHull(ref),
+      () => this.buildingDamage.effectArt(),
+    );
   }
 
   /**
@@ -907,6 +982,7 @@ export class SpritePool {
   /** Collect the drawn damaged buildings, ships and walkers off a new draw list. */
   private collectOverlays(items: readonly SpriteDrawItem[]): void {
     this.damaged.length = 0;
+    this.damagedShips.length = 0;
     this.ships.length = 0;
     this.walkers.length = 0;
     const vehicles = this.sheet?.bindings.vehicle;
@@ -921,16 +997,27 @@ export class SpritePool {
             hpFrac: item.hpFrac,
             ...(item.ghost === true ? { ghost: true } : {}),
           });
-      } else if (
-        kind === 'vehicle' &&
-        vehicles !== undefined &&
-        // A portrait-only ship is hidden on the map, so it pushes no water there.
-        item.ghost !== true &&
-        item.portraitOnly !== true
-      ) {
-        // A moored ship still sits in the water: it keeps its lapping foam and lets a wake settle.
+      } else if (kind === 'vehicle' && vehicles !== undefined && item.portraitOnly !== true) {
         const look = vehicleLookFor(vehicles, item);
-        if (look?.afloat === true) {
+        if (item.hpFrac !== undefined) {
+          // An indexed look is a hull mesh, which wears in its shader; a baked one scars like a house.
+          if (look?.indexed !== true)
+            this.damaged.push({
+              ref: item.ref,
+              hpFrac: item.hpFrac,
+              vehicle: true,
+              ...(item.ghost === true ? { ghost: true } : {}),
+            });
+          else
+            this.damagedShips.push({
+              ref: item.ref,
+              hpFrac: item.hpFrac,
+              ...(item.ghost === true ? { ghost: true } : {}),
+            });
+        }
+        // A moored ship still sits in the water: it keeps its lapping foam and lets a wake settle. A
+        // portrait-only or remembered ship pushes no water on the map.
+        if (look?.afloat === true && item.ghost !== true) {
           const sailing = vehicleAfloat(look, item) === 'sailing';
           this.ships.push({ ref: item.ref, facing: item.facing ?? DEFAULT_FACING, sailing });
         }
@@ -1277,6 +1364,7 @@ export class SpritePool {
   private placePaletted(camera: Camera, resWidth: number, resHeight: number): void {
     const camScale = camera.scale ?? 1;
     const snap = this.snapResolution;
+    this.sinkings.place(camera, resWidth, resHeight, snap);
     // Without a device grid a quad stands at its offset under every camera: only a vehicle's
     // self-placing meshes need placing then.
     const quadsHold = snap === undefined;
@@ -1309,6 +1397,8 @@ export class SpritePool {
     this.groundPileCover.clear();
     this.bloodCoats.setEnabled(false);
     this.buildingDamage.destroy();
+    this.shipDamage.destroy();
+    this.sinkings.destroy();
     for (const pe of this.pool.values()) {
       this.selectionEffects.clear(pe);
       pe.container.destroy({ children: true });

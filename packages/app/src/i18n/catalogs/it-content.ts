@@ -452,6 +452,11 @@ export const itContent = {
       summary:
         'Un mercante con un carretto a mano e un trasportatore con un carro di buoi per ogni civiltà avanzano verso est; ogni conducente ha la testa della propria civiltà.',
     },
+    'vehicle-damage': {
+      title: 'Veicoli danneggiati e distrutti',
+      summary:
+        'Catapulte e navi con salute via via minore: gli scafi sono squarciati e fumano, le navi alla fine prendono fuoco, le catapulte fumano appena. Oltre lo stretto gli arcieri nemici finiscono una nave e una catapulta: la nave brucia e affonda, la catapulta va in pezzi in un po’ di polvere.',
+    },
     'vehicle-ships': {
       title: 'Una nave attraverso lo stretto',
       summary:

@@ -28,8 +28,17 @@ export interface DrawnGeometry {
   readonly keelOf?: (ref: number) => readonly number[] | undefined;
 }
 
-/** One drawn damaged building or gate, including a remembered appearance under fog. */
+/** One drawn damaged building, gate or land vehicle, including a remembered appearance under fog. */
 export interface DamagedBuilding {
+  readonly ref: number;
+  readonly hpFrac: number;
+  readonly ghost?: boolean;
+  /** A land vehicle: its body changes frame as it turns and works, and it smokes less and never burns. */
+  readonly vehicle?: boolean;
+}
+
+/** One drawn damaged ship, whose hull wears in its own shader, including one remembered under fog. */
+export interface DamagedShip {
   readonly ref: number;
   readonly hpFrac: number;
   readonly ghost?: boolean;

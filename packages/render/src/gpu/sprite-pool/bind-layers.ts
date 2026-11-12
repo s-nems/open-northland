@@ -10,6 +10,7 @@ import {
   detachBloodSurface,
   setBloodless,
 } from '../blood/surface-sprite.js';
+import { damageLevel, MAX_DAMAGE_LEVEL } from '../building-damage/surface.js';
 import { PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
 import { mintPlanRoad, PLOT_BOUNDS, type PlanRoadTextures } from '../placement/plan-road.js';
 import { mintPlanStake, type PlanStakeTextures, STAKE_BOUNDS } from '../placement/plan-stake.js';
@@ -58,6 +59,7 @@ export type BindFrame = Pick<
   | 'erased'
   | 'snapResolution'
   | 'enhancedSampling'
+  | 'buildingDamage'
   | 'shadowStyle'
   | 'detail'
   | 'portraitRef'
@@ -116,6 +118,15 @@ function fadeAlpha(layer: ResolvedLayer, reveal: number | undefined): number {
 /** The plan-site state a wall segment or road site binds its marker by. */
 export function planSiteOf(item: DrawItem): DrawItem['palisadeSite'] | DrawItem['roadSite'] {
   return item.kind === 'palisade' ? item.palisadeSite : item.kind === 'roadsite' ? item.roadSite : undefined;
+}
+
+/** Hull damage patterns a fleet draws from: enough that neighbours differ. */
+const HULL_DAMAGE_PATTERNS = 61;
+
+/** The shader seed of a ship's damage pattern, steady for the entity: a whole number, so the uniform
+ *  holds it exactly. */
+export function hullDamageSeed(ref: number): number {
+  return ref % HULL_DAMAGE_PATTERNS;
 }
 
 function entityTint(ghost: boolean): number {
@@ -242,6 +253,11 @@ export class LayerBinder {
     const human = pe.paletted && pe.palette === this.sheet?.palette;
     if (pe.paletted) pe.lutRow = bodyRow;
     const tint = entityTint(item.ghost === true); // constant per entity
+    // A ship's hull wears in its shader; a cart drawn as its driver shows no damage.
+    const hullWear =
+      meshes && !human && frame.buildingDamage === true && item.hpFrac !== undefined
+        ? damageLevel(item.hpFrac) / MAX_DAMAGE_LEVEL
+        : 0;
     this.feetX = item.x;
     this.feetY = item.y - (item.lift ?? 0);
     // Feet-local union of the drawn rects: one box for paletted and plain layers alike.
@@ -304,7 +320,18 @@ export class LayerBinder {
             human && this.sheet?.palette !== undefined ? this.sheet.palette.glowRow(item.player ?? 0) : row;
           this.bindPalettedQuad(pe, spriteSlot++, layer, box, frame, glowRow, tint);
         } else if (pe.kind === 'vehicle') {
-          this.bindPalettedMesh(pe, spriteSlot++, layer, originX, originY, camScale, frame, row, tint);
+          const mesh = this.bindPalettedMesh(
+            pe,
+            spriteSlot++,
+            layer,
+            originX,
+            originY,
+            camScale,
+            frame,
+            row,
+            tint,
+          );
+          mesh.setDamage(hullWear, hullDamageSeed(item.ref));
         } else {
           this.bindPalettedQuad(pe, spriteSlot++, layer, box, frame, row, tint);
         }
@@ -360,7 +387,7 @@ export class LayerBinder {
           }
         }
         if (
-          (item.kind === 'building' || item.kind === 'palisade') &&
+          (item.kind === 'building' || item.kind === 'palisade' || item.kind === 'vehicle') &&
           layer.boundsExempt !== true &&
           layer.shadow !== true &&
           layer.alpha === undefined
@@ -575,7 +602,7 @@ export class LayerBinder {
     frame: BindFrame,
     lutRow: number,
     tint: number,
-  ): void {
+  ): PalettedSprite {
     const spr = palettedSlot(
       pe,
       i,
@@ -605,6 +632,7 @@ export class LayerBinder {
     spr.paletteTint = tint;
     spr.setClothWind(layer.cloth ?? null);
     spr.visible = true;
+    return spr;
   }
 
   /** `layer` drawing its frame with `region` cleared: the body and the cast drawn from it. An authored

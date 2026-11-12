@@ -15,6 +15,58 @@ export interface DamageOrigin {
   readonly colour: number;
 }
 
+/** How much one damaged body shows. `puffs` is the slots of one plume; a far zoom draws three of them. */
+export interface DamageEffectStyle {
+  readonly rubble: boolean;
+  readonly plumes: number;
+  readonly puffs: number;
+  readonly flames: number;
+  readonly chips: number;
+  /** Multiplies each puff's opacity. */
+  readonly smoke: number;
+}
+
+export const BUILDING_DAMAGE_STYLE: DamageEffectStyle = {
+  rubble: true,
+  plumes: 3,
+  puffs: 6,
+  flames: 4,
+  chips: 8,
+  smoke: 1,
+};
+/** The look with the damage setting off: one thin plume. */
+export const PLAIN_DAMAGE_STYLE: DamageEffectStyle = {
+  rubble: false,
+  plumes: 1,
+  puffs: 3,
+  flames: 0,
+  chips: 0,
+  smoke: 1,
+};
+/** A ship burns like a house under fewer, thinner plumes. Tuned by eye. */
+export const SHIP_DAMAGE_STYLE: DamageEffectStyle = {
+  rubble: false,
+  plumes: 2,
+  puffs: 4,
+  flames: 2,
+  chips: 6,
+  smoke: 1,
+};
+/** A cart or a catapult splinters and never burns; its one thin plume is denser so it still reads.
+ *  Tuned by eye. */
+export const LAND_VEHICLE_DAMAGE_STYLE: DamageEffectStyle = {
+  rubble: false,
+  plumes: 1,
+  puffs: 3,
+  flames: 0,
+  chips: 5,
+  smoke: 1.8,
+};
+
+/** Puffs a plume draws below {@link DETAIL_ZOOM}. */
+const FAR_PUFFS = 3;
+const DETAIL_ZOOM = 0.65;
+
 /** All marks ride the building's depth-sorted parent, so a nearer house also occludes its neighbour's
  * fire. Animation is driven by render ticks and freezes when the game pauses. */
 export class DamageEffects {
@@ -32,31 +84,31 @@ export class DamageEffects {
   constructor(
     private readonly art: DamageEffectTextures,
     private readonly seed: number,
-    detailed = true,
+    private readonly style: DamageEffectStyle = BUILDING_DAMAGE_STYLE,
   ) {
-    if (detailed) {
+    if (style.rubble) {
       this.rubble = new DamageRubble(seed);
       this.container.addChild(this.rubble.graphics);
     }
-    for (let i = 0; i < (detailed ? 18 : 3); i++) {
+    for (let i = 0; i < style.plumes * style.puffs; i++) {
       const puff = worldBatched(new Sprite(art.smoke[i % 4] ?? Texture.EMPTY));
       puff.anchor.set(0.5);
       this.smoke.push(puff);
       this.container.addChild(puff);
     }
-    for (let i = 0; i < (detailed ? 4 : 0); i++) {
+    for (let i = 0; i < style.flames; i++) {
       const flame = worldBatched(new Sprite(art.flames[0] ?? Texture.EMPTY));
       flame.anchor.set(0.5, 0.91);
       this.flames.push(flame);
       this.container.addChild(flame);
     }
-    for (let i = 0; i < (detailed ? 4 : 0); i++) {
+    for (let i = 0; i < style.flames; i++) {
       const ember = worldBatched(new Sprite(Texture.WHITE));
       ember.tint = i % 2 === 0 ? 0xe8a94b : 0xc56832;
       this.embers.push(ember);
       this.container.addChild(ember);
     }
-    for (let i = 0; i < (detailed ? 8 : 0); i++) {
+    for (let i = 0; i < style.chips; i++) {
       const length = 1.5 + noise(seed, i + 310) * 3;
       const width = 0.4 + noise(seed, i + 320);
       const chip = worldBatched(new Graphics())
@@ -73,21 +125,21 @@ export class DamageEffects {
     level: number,
     tick: number,
     wind: WindSway | undefined,
-    detailed: boolean,
     zoom: number,
     ground: readonly GroundContact[],
   ): void {
-    this.rubble?.draw(ground, Math.round(level * 16) / 16, detailed);
+    const { style } = this;
+    this.rubble?.draw(ground, Math.round(level * 16) / 16, true);
     if (this.lastHp !== undefined && hp < this.lastHp - 0.0001) this.hitTick = tick;
     this.lastHp = hp;
-    const fire = detailed ? clamp01((level - 3.4) / 0.75) : 0;
-    const count = !detailed || zoom < 0.65 ? 1 : 3;
-    const perPlume = detailed && zoom >= 0.65 ? 6 : 3;
+    const fire = style.flames > 0 ? clamp01((level - 3.4) / 0.75) : 0;
+    const count = zoom < DETAIL_ZOOM ? 1 : style.plumes;
+    const perPlume = zoom >= DETAIL_ZOOM ? style.puffs : Math.min(FAR_PUFFS, style.puffs);
     for (let i = 0; i < this.smoke.length; i++) {
       const puff = this.smoke[i];
       if (puff === undefined) continue;
-      const e = Math.floor(i / 6),
-        p = i % 6;
+      const e = Math.floor(i / style.puffs),
+        p = i % style.puffs;
       const origin = origins[e];
       const plume = clamp01((level - 2.2 - e * 0.85) / 0.8);
       puff.visible = plume > 0 && e < count && p < perPlume && origin !== undefined;
@@ -107,7 +159,7 @@ export class DamageEffects {
         pose.radius * scale * 0.066,
       );
       puff.rotation = noise(this.seed, i + 20) * 2 + tick * 0.002;
-      puff.alpha = pose.alpha * (0.34 + fire * 0.26) * plume;
+      puff.alpha = pose.alpha * (0.34 + fire * 0.26) * plume * style.smoke;
       const shade = 1 - fire * (noise(origin.seed, 14) > 0.5 ? 0.3 : 0.43);
       puff.tint = (Math.round(214 * shade) << 16) | (Math.round(207 * shade) << 8) | Math.round(195 * shade);
     }
@@ -116,7 +168,7 @@ export class DamageEffects {
       if (flame === undefined) continue;
       const origin = origins[i];
       const onset = 3.4 + i * 0.55 + noise(origin?.seed ?? this.seed, 110) * 0.2;
-      const weight = detailed && (zoom >= 0.65 || i === 0) ? clamp01((level - onset) / 0.75) : 0;
+      const weight = zoom >= DETAIL_ZOOM || i === 0 ? clamp01((level - onset) / 0.75) : 0;
       this.flameWeights[i] = weight;
       flame.visible = weight > 0 && origin !== undefined;
       if (!flame.visible || origin === undefined) continue;
@@ -158,7 +210,7 @@ export class DamageEffects {
       const chip = this.chips[i];
       const origin = origins[i % Math.max(1, origins.length)];
       if (chip === undefined) continue;
-      chip.visible = detailed && zoom >= 0.7 && age >= 0 && age < 13 && origin !== undefined;
+      chip.visible = zoom >= 0.7 && age >= 0 && age < 13 && origin !== undefined;
       if (!chip.visible || origin === undefined) continue;
       const vx = (noise(this.seed, i + 210) - 0.5) * 3;
       chip.position.set(
@@ -169,6 +221,11 @@ export class DamageEffects {
       chip.tint = origin.colour;
       chip.alpha = Math.min(1, (13 - age) / 4);
     }
+  }
+
+  /** Throw the chips now, for a blow no health change reports: the one that destroys the body. */
+  hit(tick: number): void {
+    this.hitTick = tick;
   }
 
   destroy(): void {

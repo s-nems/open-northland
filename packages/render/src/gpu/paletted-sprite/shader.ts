@@ -51,6 +51,8 @@ uniform vec4 uClothRanges;  // two inclusive palette-index ranges (loA, hiA, loB
 uniform vec4 uClothWave;    // .x phase (rad), .y displacement in native px (0 = still), .z shade depth
 uniform vec2 uClothFreq;    // the wave's radians per native px along x and y
 uniform vec2 uNight;        // .x: the lit mask's share, 0 unlit
+uniform vec4 uDamage;       // .x wear 0..1, .y pattern seed, .z lowest drawn row (native px from the feet)
+uniform vec2 uFrameOrigin;  // the frame's draw offset from the feet anchor, native px
 
 // GUI transparent key, a floating-HUD deviation with no original mechanism behind it (the original's GUI
 // drawing has no colour key; source basis "Left tool panel"). The in-game GUI palettes reserve palette index 0 as a
@@ -70,6 +72,37 @@ bool isCloth(float index) {
 }
 
 ${LIFT_COLOURS_GLSL}
+
+// A row no frame reaches: uDamage.z at or above it clips nothing.
+const float NO_CLIP_ROW = 100000.0;
+
+float damageHash(vec2 cell) {
+  return fract(sin(dot(cell, vec2(127.1, 311.7)) + uDamage.y) * 43758.5453);
+}
+
+float damageNoise(vec2 p) {
+  vec2 cell = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(damageHash(cell), damageHash(cell + vec2(1.0, 0.0)), f.x),
+             mix(damageHash(cell + vec2(0.0, 1.0)), damageHash(cell + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+// A vehicle's structural damage at a texel, in native px from the feet so the marks stay on the hull
+// through a clip: x shades the colour, y is 0 where the hull is holed or under the clip row.
+// Artistic approximation, the procedural stand-in for the pixels a building's damage paint rewrites.
+vec2 hullDamage(vec2 local) {
+  if (local.y > uDamage.z) return vec2(1.0, 0.0);
+  float shade = 1.0;
+  if (uDamage.x > 0.0) {
+    float n = damageNoise(local / 10.0) * 0.72 + damageNoise(local / 4.0 + 19.0) * 0.28;
+    float edge = 0.8 - uDamage.x * 0.36;
+    if (n > max(edge + 0.16, 0.7)) return vec2(1.0, 0.0);
+    // Soot over the whole hull, and charred wood round each breach.
+    shade = (1.0 - 0.22 * uDamage.x) * (1.0 - 0.6 * smoothstep(edge, edge + 0.12, n));
+  }
+  return vec2(shade, 1.0);
+}
 
 vec3 selectionLift() {
   return LIFT_COLOURS[clamp(int(uSelection.y + 0.5), 0, LIFT_TONES - 1)];
@@ -180,6 +213,11 @@ void drawPaletted() {
 
 void main(void) {
   drawPaletted();
+  // Once per fragment on the texel grid, not per magnifier tap: the marks keep the art's pixel size.
+  if (uDamage.x > 0.0 || uDamage.z < NO_CLIP_ROW) {
+    vec2 damage = hullDamage(floor((vUV - uFrameUV.xy) * uAtlasSize) + 0.5 + uFrameOrigin);
+    finalColor = vec4(finalColor.rgb * damage.x, finalColor.a) * damage.y;
+  }
   nightLit = vec4(uNight.x * finalColor.a, 0.0, 0.0, finalColor.a);
 }`;
 
@@ -201,6 +239,8 @@ const QUAD_INDICES = new Uint32Array([0, 1, 2, 0, 2, 3]);
 const LUT_WIDTH = 256;
 /** A cloth-range bound no 8-bit palette index reaches: the empty range. */
 const NO_INDEX = -1;
+/** The clip row that clips nothing; the shader's `NO_CLIP_ROW` is the bound it tests against. */
+export const UNCLIPPED_ROW = 1_000_000;
 
 /** The mesh's mutable uniforms. Every field is a `Float32Array` mutated in place, not a scalar `f32`,
  *  because the shared GL program re-uploads a loose uniform only when its array contents change. */
@@ -236,6 +276,10 @@ export interface PalettedUniforms {
     uClothFreq: Float32Array;
     /** [lit share, _] - the night's lit mask over the mesh. */
     uNight: Float32Array;
+    /** [wear, seed, lowest drawn row, _] - a vehicle's structural damage. */
+    uDamage: Float32Array;
+    /** [offsetX, offsetY] - the frame's draw offset from the feet anchor, native px. */
+    uFrameOrigin: Float32Array;
   };
   /** Bump the group's dirty id so Pixi re-uploads the changed contents. */
   update(): void;
@@ -280,6 +324,8 @@ export function createPalettedShader(lut: TextureSource, colours: number): Shade
     uClothWave: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' as const },
     uClothFreq: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
     uNight: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
+    uDamage: { value: new Float32Array([0, 0, UNCLIPPED_ROW, 0]), type: 'vec4<f32>' as const },
+    uFrameOrigin: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
   };
   return Shader.from({
     gl: PALETTED_SPRITE_SOURCE,

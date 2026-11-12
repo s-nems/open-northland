@@ -42,6 +42,15 @@ export {
 } from './marks.js';
 export { frac } from './random.js';
 export {
+  foldShipSinkings,
+  MAX_ACTIVE_SINKINGS,
+  type ShipSinking,
+  SINK_TICKS,
+  SINKING_LIFETIME_TICKS,
+  sinkProgress,
+  sinkSmokeAlpha,
+} from './ship-sinking.js';
+export {
   SMOKE_PUFF_PERIOD_TICKS,
   SMOKE_PUFFS_PER_EMITTER,
   SMOKE_RISE_PX,

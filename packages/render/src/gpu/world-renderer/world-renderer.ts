@@ -203,6 +203,7 @@ export class WorldRenderer {
       opts?.sheet,
       opts?.playerColourOf,
       (ref) => pool.captureBuildingDamage(ref),
+      (ref) => pool.wreckAnchor(ref),
       opts?.mapPingPin,
       opts?.rallyBanner,
     );
@@ -437,6 +438,7 @@ export class WorldRenderer {
   ingestCombatEffects(events: readonly SimEvent[], tick: number, snapshot?: WorldSnapshot): void {
     this.marks.ingest(events, tick, snapshot);
     this.pool.ingestBlood(events, tick);
+    this.pool.ingestSinkings(events, tick);
   }
 
   /** Off keeps every bone pile whole for good; on fades each out slowly by its age. */

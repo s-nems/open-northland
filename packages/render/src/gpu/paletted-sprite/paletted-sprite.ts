@@ -7,6 +7,7 @@ import {
   PALETTED_SAMPLING_MODES,
   type PalettedSampling,
   type PalettedUniforms,
+  UNCLIPPED_ROW,
 } from './shader.js';
 
 const WHITE = 0xffffff;
@@ -183,6 +184,36 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     this.vars.update();
   }
 
+  /**
+   * A vehicle's structural damage: `wear` (0 whole .. 1 wrecked) scorches and holes the frame in a
+   * pattern fixed by `seed`, and rows below `clipRow` (native px from the feet anchor) do not draw, the
+   * waterline of a sinking hull.
+   */
+  setDamage(wear: number, seed: number, clipRow = UNCLIPPED_ROW): void {
+    const u = this.vars.uniforms.uDamage;
+    // Against the stored single-precision values, or a fractional wear would never compare equal.
+    if (u[0] === Math.fround(wear) && u[1] === Math.fround(seed) && u[2] === Math.fround(clipRow)) return;
+    u[0] = wear;
+    u[1] = seed;
+    u[2] = clipRow;
+    this.vars.update();
+  }
+
+  /** Show `source`'s frame, colour row, roll, tint and placement scale: a still copy of how it draws. */
+  copyLook(source: PalettedSprite): void {
+    if (source.lastSource === undefined || source.lastFrame === undefined) return;
+    this.setFrame(source.lastSource, source.lastFrame, source.lastAtlasW, source.lastAtlasH);
+    this.player = source.player;
+    this.shear = source.shear;
+    this.paletteTint = source.lastTint;
+    this.vars.uniforms.uSampling[0] = source.vars.uniforms.uSampling[0] ?? 0;
+    this.vars.uniforms.uDamage.set(source.vars.uniforms.uDamage);
+    this.vars.update();
+    this.artScale = source.artScale;
+    this.artDx = source.artDx;
+    this.artDy = source.artDy;
+  }
+
   /** The atlas page and frame last set, for the picker's texel test. */
   get frameSource(): TextureSource | undefined {
     return this.lastSource;
@@ -264,6 +295,9 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     const size = this.vars.uniforms.uAtlasSize;
     size[0] = atlasWidth;
     size[1] = atlasHeight;
+    const origin = this.vars.uniforms.uFrameOrigin;
+    origin[0] = offsetX;
+    origin[1] = offsetY;
     this.vars.update();
     const geo = this.geometry;
     geo.positions.set(this.positions);

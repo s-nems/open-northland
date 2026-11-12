@@ -30,6 +30,22 @@ const bodyLayer = (layer: ResolvedLayer): boolean =>
 const sameFrame = (a: ResolvedLayer, b: ResolvedLayer): boolean =>
   a.source === b.source && a.frame === b.frame;
 
+function frozenLayer(body: FallenBody): ResolvedLayer {
+  return {
+    source: body.texture.source,
+    scale: body.scale,
+    frame: { ...body.texture.frame, offsetX: body.x / body.scale, offsetY: body.y / body.scale },
+  };
+}
+
+/** A wrecked vehicle has no construction order: its frozen layers erode from the top down. */
+export function vehicleCollapsePlan(fallen: readonly FallenBody[]): CollapsePart[] {
+  return fallen.map((body) => {
+    const draw = frozenLayer(body);
+    return { draw, construction: draw, alpha: body.alpha, introduced: false, shade: 1 };
+  });
+}
+
 /** Existing layers unwind in place. A completed body may uncover its own construction backing;
  * incomplete and upgrading stacks already contain their backing and must never gain unbuilt work. */
 export function collapsePlan(
@@ -49,11 +65,7 @@ export function collapsePlan(
     fallen === undefined
       ? ordinary.map((draw) => ({ draw, construction: draw, alpha: 1, introduced: false, shade: 1 }))
       : fallen.map((body, i) => {
-          const draw: ResolvedLayer = {
-            source: body.texture.source,
-            scale: body.scale,
-            frame: { ...body.texture.frame, offsetX: body.x / body.scale, offsetY: body.y / body.scale },
-          };
+          const draw = frozenLayer(body);
           return {
             draw,
             construction: body.layer ?? ordinary[i] ?? draw,

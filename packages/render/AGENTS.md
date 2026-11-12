@@ -24,7 +24,7 @@ src under `test/data/` and `test/gpu/`; shared helpers live in `test/support/`.
 | `gpu/terrain/`, `gpu/map-objects/`, `gpu/still-mesh/`, `gpu/paletted-sprite/` | ground layers and shading; decor batch; still meshes; paletted sprites |
 | `gpu/overlays/` | marker layers over the world; `building-signs/` badges, flags and construction signs |
 | `gpu/placement/`, `gpu/selection/`, `gpu/world-views/` | placement wash, ghost and its plot, construction-site plots, planned nodes; selection styles and rings; portrait insets and map views |
-| `gpu/blood/`, `gpu/building-damage/`, `gpu/demolition/` | blood stains; damage paint, rubble, fire; collapse and dismantle |
+| `gpu/blood/`, `gpu/building-damage/`, `gpu/demolition/` | blood stains; damage paint, rubble, fire, also on vehicles; collapse, dismantle and a ship's sinking |
 | `gpu/sway/`, `gpu/weather/`, `gpu/lighting/`, `gpu/ground-foot/`, `gpu/ground-waves/`, `gpu/gallery/` | cloth, vegetation and ship motion; weather; scene light; grounded feet; shore waves; animation gallery |
 
 ## Screen-bounded cost

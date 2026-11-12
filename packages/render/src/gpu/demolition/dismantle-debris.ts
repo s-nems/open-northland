@@ -4,6 +4,7 @@ import {
   dismantleChips,
   dismantleDustOrigins,
   MAX_DISMANTLE_CHIPS,
+  MAX_DISMANTLE_DUST,
   poseDismantleChip,
   poseDismantleDust,
 } from '../../data/effects/dismantle-debris.js';
@@ -59,11 +60,18 @@ export class DismantleDebris {
   }
 
   /** All body layers have supplied their samples before the dust budget is distributed. */
-  addDust(width: number, height: number, seed: number, art: DamageEffectTextures): void {
+  addDust(
+    width: number,
+    height: number,
+    seed: number,
+    art: DamageEffectTextures,
+    most = MAX_DISMANTLE_DUST,
+  ): void {
     this.dustSpan = Math.max(width / 2, height * 0.33);
     for (const origin of dismantleDustOrigins(
       this.bits.map((bit) => bit.origin),
       seed,
+      most,
     )) {
       const sprite = worldBatched(new Sprite(art.smoke[Math.floor(frac(origin.seed, 31) * 4)]));
       sprite.anchor.set(0.5);

@@ -8,7 +8,7 @@ import type { ElevationField, WaterField } from '../../data/terrain/index.js';
 import type { ViewDetail } from '../../data/view-detail.js';
 import { BloodLayer } from '../blood/layer.js';
 import type { FallenBody } from '../building-damage/building-damage.js';
-import { CollapseLayer } from '../demolition/collapse-layer.js';
+import { CollapseLayer, type WreckAnchor } from '../demolition/collapse-layer.js';
 import { FamilyEffectsLayer } from '../overlays/family-effects-layer.js';
 import { FootfallLayer } from '../overlays/footfall-layer.js';
 import {
@@ -157,6 +157,7 @@ export class WorldMarks {
     sheet: SpriteSheet | undefined,
     playerColourOf?: (player: number) => number,
     captureDamage?: (ref: number) => readonly FallenBody[] | undefined,
+    wreckAnchor?: (ref: number) => WreckAnchor | undefined,
     mapPingPin?: Texture,
     rallyBanner?: Texture,
   ) {
@@ -167,7 +168,7 @@ export class WorldMarks {
       this.blood.surfaces.restore(sprite, id, groundY, lift),
     );
     this.blood.groundSurfaces = this.effects.groundContainer;
-    this.collapses = new CollapseLayer(spriteLayer, textures, sheet, captureDamage);
+    this.collapses = new CollapseLayer(spriteLayer, textures, sheet, captureDamage, wreckAnchor);
     this.shots = new ShotLayer(spriteLayer, textures, sheet);
     this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);
     this.footfall = new FootfallLayer(spriteLayer, textures, sheet);

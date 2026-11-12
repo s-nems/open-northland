@@ -451,6 +451,11 @@ export const deContent = {
       summary:
         'Ein Händler mit Handkarren und ein Träger mit Ochsenkarren jeder Zivilisation fahren nach Osten; jeder Lenker trägt den Kopf seiner eigenen Zivilisation.',
     },
+    'vehicle-damage': {
+      title: 'Beschädigte und zerstörte Fahrzeuge',
+      summary:
+        'Katapulte und Schiffe stehen mit sinkender Gesundheit da: die Rümpfe sind zerschlagen und rauchen, die Schiffe fangen gegen Ende Feuer, die Katapulte rauchen nur leicht. Jenseits der Meerenge erledigen feindliche Bogenschützen ein Schiff und ein Katapult: das Schiff brennt und geht unter, das Katapult zerfällt in etwas Staub.',
+    },
     'vehicle-ships': {
       title: 'Ein Schiff durch die Meerenge',
       summary:
