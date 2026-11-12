@@ -151,6 +151,17 @@ export function spendHomeQuality(
   return true;
 }
 
+/**
+ * The carried units of `use` a home at `level` holding `pool` points still takes. Furniture goes in only
+ * as a whole piece, so a second woman's delivery is not lost to the cap; the other wares fill up to it.
+ */
+export function homeQualityRoom(use: HomeQualityUse, level: number, pool: number): number {
+  const free = Math.max(0, homeWareStock(use, level).capacity - pool);
+  return use.effect === 'lodging'
+    ? Math.floor(free / use.deliveryValue)
+    : Math.ceil(free / use.deliveryValue);
+}
+
 /** Deposit one carried household good into a residence's durable quality pool. */
 export function depositHomeQuality(
   world: World,
@@ -173,8 +184,7 @@ export function depositHomeQuality(
 
   const existing = world.tryGet(home, HomeQuality) ?? EMPTY_QUALITY;
   const { capacity } = homeWareStock(use, building.level);
-  if (existing[use.effect] >= capacity) return 0;
-  const moved = Math.min(amount, Math.ceil((capacity - existing[use.effect]) / use.deliveryValue));
+  const moved = Math.min(amount, homeQualityRoom(use, building.level, existing[use.effect]));
   if (moved <= 0) return 0;
   const quality = world.tryMut(home, HomeQuality);
   if (quality === undefined) {

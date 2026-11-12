@@ -422,9 +422,11 @@ function upgradeLeavesRoom(
   if (!homes.some((e) => world.has(e, Upgrading))) return () => true;
   const index = contentIndex(ctx.content);
   let standing = 0;
-  for (const e of homes)
-    if (isBuilt(world, e) && !world.has(e, UnderConstruction))
-      standing += index.buildings.get(world.get(e, Building).buildingType)?.homeSize ?? 0;
+  for (const e of homes) {
+    if (!isBuilt(world, e) || world.has(e, UnderConstruction)) continue;
+    const type = index.buildings.get(world.get(e, Building).buildingType);
+    if (type !== undefined) standing += homeFamilyCapacity(world, ctx, e, type);
+  }
   const demand = femaleDemand(world, ctx, player);
   return (size) => standing - size > demand;
 }

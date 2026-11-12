@@ -14,8 +14,8 @@ import { getInt, getIntValues, getStr } from '../props.js';
  * household activity, 1000 points to a piece; the top home keeps a third piece and restocks under two.
  * Its wear is calibrated on AI-run play of a real map: a full home_level_04 of seven families spends
  * about a piece an hour on sleeps and meals, and about seven an hour while it raises children at the
- * full rate. The readable good rows name no fields for this
- * policy, so it stays beside extraction as explicit calibrated content. */
+ * full rate. The readable good rows name no fields for this policy, so it stays beside extraction as
+ * explicit calibrated content. */
 const HOME_QUALITY_BY_GOOD_ID = {
   holy_oil: {
     effect: 'piety',

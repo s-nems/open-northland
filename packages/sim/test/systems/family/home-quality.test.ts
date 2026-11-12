@@ -246,6 +246,16 @@ describe('household quality goods', () => {
     expect(sim.world.get(large, HomeQuality).lodging).toBe(3 * FURNITURE_PIECE);
   });
 
+  it('takes furniture only as a whole piece, so a second delivery is not lost to the cap', () => {
+    const { sim, home, carrier } = setup();
+    const worn = FURNITURE_PIECE - 10;
+    sim.world.add(home, HomeQuality, { cooking: 0, lodging: worn, piety: 0 });
+    expect(deliver(sim, carrier, home, FURNITURE)).toBe(1);
+    sim.world.remove(carrier, Carrying);
+    expect(deliver(sim, carrier, home, FURNITURE)).toBe(0);
+    expect(sim.world.get(home, HomeQuality).lodging).toBe(worn + FURNITURE_PIECE);
+  });
+
   it('stores oil on a mature home and burns three points each game-second pass', () => {
     const { sim, home, carrier } = setup();
     deliver(sim, carrier, home, OIL);

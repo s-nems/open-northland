@@ -31,7 +31,9 @@ export const Wedding = defineComponent<{ partner: Entity; kissing: boolean }>('W
 /** Where a settler lives: the built `home` building it is assigned to, since tick `since` it moved in. The
  *  `assignHouse` command assigns a whole family at once; a home houses up to `homeSize` families rather than
  *  settlers (see `familiesOf`), more while furnished. */
-export const Residence = defineComponent<{ home: Entity; since: number }>('Residence', 'settlers');
+export const Residence = defineComponent<{ home: Entity; since: number }>('Residence', 'settlers', {
+  simOnlyFields: ['since'],
+});
 
 /** A settler whose household had to move out of a home when its furniture ran out or was forbidden, and
  *  has not lived anywhere since. The assistant re-houses such a household whoever it holds. The claim ends

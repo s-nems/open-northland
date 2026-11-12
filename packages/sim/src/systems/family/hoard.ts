@@ -9,7 +9,6 @@ import {
   Stockpile,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { homeWareStock } from '../../inspect/home-capacity.js';
 import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -27,6 +26,7 @@ import type { ExternalFoodIndex } from './food-search.js';
 import {
   demandedHomeQualityGoods,
   homeQualityAllowed,
+  homeQualityRoom,
   homeQualityUse,
   homeQualityValue,
 } from './home-quality.js';
@@ -84,7 +84,7 @@ export function planWomanHoard(
     const qualityRoom =
       quality !== undefined &&
       level >= quality.minimumHomeLevel &&
-      homeQualityValue(world, home, quality.effect) < homeWareStock(quality, level).capacity;
+      homeQualityRoom(quality, level, homeQualityValue(world, home, quality.effect)) > 0;
     if (!qualityRoom && (!world.has(home, Stockpile) || !hasRoom(world, ctx, home, load.goodType)))
       return false;
     deliverHome(world, ctx, terrain, e, settler, home, hereNode);

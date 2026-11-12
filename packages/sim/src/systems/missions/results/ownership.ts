@@ -23,6 +23,8 @@ import {
 import type { Entity } from '../../../ecs/world.js';
 import { releaseEmployment } from '../../economy/jobs/binding.js';
 import { releaseSiteClaim } from '../../economy/site-claim.js';
+import { householdGoodAllowed } from '../../family/home-quality.js';
+import { moveOutOfUnfurnishedHomes } from '../../family/lodging.js';
 import { leaveFamily } from '../../family/widowhood.js';
 import { cutAnimalBindings } from '../../livestock/capture.js';
 import { anchorAtFeet } from '../../orders/combat.js';
@@ -61,7 +63,7 @@ export function handHousesToPlayer(pass: MissionPass, id: number, player: number
 }
 
 /** Hand everything one player owns to another - units, houses, vehicles and animals alike. No human
- *  is evicted: a town changes flag whole, so a home or a workplace still points at the same owner. */
+ *  is cut loose: a town changes flag whole, so a home or a workplace still points at the same owner. */
 export function handPlayerToPlayer(pass: MissionPass, from: number, to: number): readonly Handed[] {
   const { world } = pass;
   if (!isValidPlayer(from) || !isValidPlayer(to) || from === to) return [];
@@ -71,6 +73,8 @@ export function handPlayerToPlayer(pass: MissionPass, from: number, to: number):
   );
   for (const { entity } of handed) restamp(pass, entity, to);
   relinkHandedSignposts(pass, handed);
+  // The receiver's household policy now rules the homes: one that forbids furniture houses no extras.
+  if (!householdGoodAllowed(world, to, 'lodging')) moveOutOfUnfurnishedHomes(world, pass.ctx, to);
   return handed;
 }
 
