@@ -257,7 +257,7 @@ Owner's choice, nothing in the original: a carrier posted at a store or workshop
 with the carrier trade), or a trader, that the attach order gives a free handcart or harnessed ox cart
 keeps its post or route and takes the cart as its *hauling cart* instead of crewing it (`HaulingCart` in
 `components/vehicle.ts`, `systems/vehicles/hauling-cart.ts`, the planner's `planHaulingCart` and
-`planCartTopUp` rungs). The gate is the attach gate's: own cart, trade in `logicpassenger`, nobody
+`planCartRound` rungs). The gate is the attach gate's: own cart, trade in `logicpassenger`, nobody
 pulling, commanding, riding or carrying it, door on the puller's continent; the "Assign Vehicle"
 pick lights such carts and the cart's `hauler` field refuses crew meanwhile. The puller walks to the
 door and takes the cart there: it leaves the map (no `Position`) and the puller draws as the cart's
@@ -271,8 +271,9 @@ The cart is a work tool, not a harness:
 - **Room.** Every lift the carrier makes for its post, a loose pile, a workshop output or a workshop
   input, fills the cart's room and nothing in hand on top (`carryCapacityOf`: 15 for the handcart,
   30 for the ox cart, less what is already aboard or in hand), and a workshop input fetch brings the
-  slot's whole shortfall up to that and no more (`HaulingLift.units`). In hand, the load rides as the
-  carrier's `Carrying`, one good at a time.
+  slot's whole shortfall up to that and no more (`HaulingLift.units`). In hand, one good of the load
+  rides as the carrier's `Carrying`, the good the delivery rung routes, and the rest of a mixed load
+  stays in the hold; a good the hold lists no line for rides in the hands alone and is never mixed.
 - **Lifts as the trader's.** At a heap, a shelf or a store's door the carrier stands the cart down on
   the nearest open land beside it (`beginCartLift`, `HaulingCart.lift`) and moves the units one lift
   each, the pick-up or pile-up clip of its trade stretched by cart kind (`cartLiftTicks`: 60% of the
@@ -289,12 +290,28 @@ The cart is a work tool, not a harness:
   (`haulingCartSpeedLossPercent`). The load is the cart's: a walk order moves the loaded cart along
   instead of setting the load down, and no hand gesture sheds it (`startDrop` refuses); only a lift
   or the cart's set-down parts the carrier from it.
-- **One yard a trip.** A store's porter whose cart has room after a lift fills it from the nearest
-  heap or finished output of the same good within `CART_TOP_UP_REACH` (12 nodes) of where it stands,
-  and only then goes home; nothing that close, or its own store no longer taking the good, means it
-  delivers what it has rather than crossing the village for a second heap (approximation: reach from
-  the porter, so a yard clears heap by heap). Like any porter it lifts only goods its own store takes,
-  never a load for another store.
+- **A round a trip.** A carrier whose cart has room after a lift makes the next stop of its round
+  before it delivers (`planCartRound`, `drives/economy/cart-round.ts`), any good its post moves. A
+  store's porter sweeps its own pickup area, the nearest heap first from where it stands, then takes
+  a heap or finished output within `CART_TOP_UP_REACH` (12 nodes) of it rather than cross the village
+  for one; it lifts only goods its own store takes, and no more of one than the shelf has room for.
+  A workshop's carrier fetching inputs goes on to the source of the input still shortest of its slot,
+  the units aboard counted, so a heap of one unit does not end the trip. It goes on while no product
+  waits on the cart, that is no recipe of the crew starts only once the load is on the shelf; with
+  one waiting it stops only at a source no farther off than its own door (`extendsFetchTo`). A
+  carrier whose load no store takes still loads the outputs a store does take. Beside one door the lifts follow each other with the cart
+  standing (`nextLiftBesideCart`): every finished output of the
+  workshop on the way out, every good of the hold bound for that store on the way in.
+- **Out with products, back with inputs.** A workshop's carrier with its cart in hand loads the
+  finished output before it fetches a short input (`loadsOutputBeforeFetch`), so one round trip
+  carries both; only while every input still funds a cycle, and only from no farther off the workshop
+  than the source.
+- **Mixed delivery.** Of a mixed load the delivery rung routes the good whose store lies nearest,
+  handed up from the hold (`routableCartLoad`), so a good no store takes never holds the rest back. An
+  unload moves one good a lift (`HaulingLift.goodType`); a refused unit goes back aboard and ends
+  that good's lift, the next good bound for the door following. Every lift for a shelf is capped at
+  the shelf's room (`sinkRoomFor`), and a workshop's carrier left with a product no store takes
+  still fetches inputs.
 - **Breaks park it.** Whatever takes the carrier off its trade (a meal, a bed, a prayer, a chat, the
   alarm, a flight from a threat, a marriage, an equipment errand) parks the cart on the nearest open
   land where the carrier stands, the load stowed in the hold (`parkHaulingCart`, `tradeVehicleStock`,

@@ -62,11 +62,13 @@ import { isFarmCarrierHaulOutRole } from './store-policy.js';
  * reach; a wall or road site's delivered material is never one. The good lifted is the pile's lowest-id
  * stocked one passing `deliverable`, and the scan is canonical by Manhattan distance then ascending cell
  * id. The tests run per candidate, so a lift or claim earlier in the pass is seen by the next porter, and
- * a good every unit of which a walker already claimed is passed over.
+ * a good every unit of which a walker already claimed is passed over. `rankFrom` replaces the flag as
+ * the node a flagged porter's finds are ranked from, for the next stop of a cart's round.
  */
-function nearestLoosePickup(
+export function nearestLoosePickup(
   plan: PlannerContext,
   deliverable: (goodType: number) => boolean,
+  rankFrom?: NodeId,
 ): { from: Entity; goodType: number } | null {
   const { world, ctx, terrain, here, targets, supply } = plan;
   const walls = buildingBlockedCells(world, ctx, terrain);
@@ -100,7 +102,7 @@ function nearestLoosePickup(
     area.gate,
     avoid,
     onSide,
-    area.center,
+    rankFrom ?? area.center,
   );
   return best === null ? null : { from: best.entity, goodType: best.payload };
 }

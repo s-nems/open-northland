@@ -55,7 +55,7 @@ import {
   builderWorkBeyondReach,
   planBuilder,
   planCarrierHaul,
-  planCartTopUp,
+  planCartRound,
   planDelivery,
   planFisher,
   planGatherer,
@@ -66,6 +66,7 @@ import {
   planVehicleCargo,
   planWaitAtFieldFlag,
   planWorkshopSupplier,
+  routableCartLoad,
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
@@ -154,7 +155,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   }
   // A posted carrier handed a cart, or back from a break, fetches it before its hauls, once its hands are
   // free; a hold that no longer stands sets the cart down here, whatever the carrier does next.
-  if (planHaulingCart(plan, load !== undefined && load.amount > 0)) return;
+  if (planHaulingCart(plan, pass.seatClaims, load !== undefined && load.amount > 0)) return;
   planEconomy(plan, pass, settler, load, hx, hy, alert);
 }
 
@@ -435,10 +436,12 @@ function planEconomy(
   }
 
   // Deliver a carried load first: a settler must free its hands before any empty-handed work. A load with
-  // no sink in reach leaves it standing, which is no work taken. A porter with room in its cart fills it
-  // from the same good close by before the trip home.
+  // no sink in reach leaves it standing, which is no work taken. A carrier with room in its cart makes
+  // the next stop of its round before the trip home.
   if (load !== undefined && load.amount > 0) {
-    if (!planCartTopUp(plan, load)) planDelivery(plan, pass.spacing, load);
+    if (!planCartRound(plan, pass.seatClaims)) {
+      planDelivery(plan, pass.spacing, routableCartLoad(plan, load));
+    }
     if (world.has(e, MoveGoal) || world.has(e, CurrentAtomic)) noteWorkTaken(world, e);
     return;
   }

@@ -546,7 +546,8 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Wóz weźmie tylko Tragarz, który ma miejsce pracy, i [[job:trader|Kupiec]].',
             'Wóz musi być twój, wolny i stać na tym samym lądzie.',
-            'Jeśli na wozie zostało miejsce, Tragarz magazynu dobiera ten sam towar ze stosów i warsztatów w promieniu {{haul.cartTopUp}} hexów, zanim wróci.',
+            'Tragarz magazynu, któremu zostało miejsce na wozie, zbiera dalej, także inne towary: stosy w swoim obszarze zbierania, od najbliższego, potem stosy i warsztaty w promieniu {{haul.cartTopUp}} hexów. Bierze tylko to, na co jego magazyn ma miejsce.',
+            'Tragarz warsztatu z wozem w jednym kursie wywozi gotowe towary i przywozi brakujące surowce, kilka rodzajów naraz. Gdy w jednym miejscu jest ich za mało, jedzie po resztę do następnego. Gdy warsztat stoi i czeka na ładunek, najpierw go dowozi.',
           ],
         },
         {

@@ -156,7 +156,8 @@ export const Rider = defineComponent<{ vehicle: Entity; boarding: boolean; leavi
 
 /**
  * A lift a carrier makes with its hauling cart standing beside it, one lift a unit the way a trader loads
- * its cart: units off `from`'s shelf or heap into the hold, or out of the hold onto `store`'s shelf.
+ * its cart: units off `from`'s shelf or heap into the hold, or the hold's units of one good onto
+ * `store`'s shelf.
  */
 export type HaulingLift =
   | {
@@ -167,7 +168,13 @@ export type HaulingLift =
        *  at the slot's shortfall. */
       readonly units: number;
     }
-  | { readonly kind: 'unload'; readonly store: Entity };
+  | {
+      readonly kind: 'unload';
+      readonly store: Entity;
+      readonly goodType: number;
+      /** The store refused a unit of the good: this lift is over, another good may follow at the door. */
+      readonly refused: boolean;
+    };
 
 /**
  * A posted carrier's or a trader's hauling cart (named addition, owner's choice; the original's carrier

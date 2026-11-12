@@ -549,7 +549,8 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Only a Carrier who has a workplace and a [[job:trader|Merchant]] take a cart.',
             'The cart must be yours, free and on the same landmass.',
-            'If there is room left on the cart, a warehouse Carrier picks up the same good from piles and workshops within {{haul.cartTopUp}} hexes before he heads back.',
+            'A warehouse Carrier with room left on the cart keeps collecting, other goods too: the piles of his pickup area, nearest first, then piles and workshops within {{haul.cartTopUp}} hexes. He takes only what his warehouse has room for.',
+            'A workshop Carrier with a cart takes the finished goods out and brings the missing materials back in one round trip, several kinds at once. If one source has too little, he drives on to the next. An idle workshop waiting on his load gets it first.',
           ],
         },
         {

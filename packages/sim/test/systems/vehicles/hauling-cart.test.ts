@@ -41,7 +41,9 @@ import { boardingNode } from '../../../src/systems/vehicles/crew.js';
 import { cartLiftTicks, HANDCART_FULL_SPEED_LOSS_PERCENT } from '../../../src/systems/vehicles/drag.js';
 import {
   carryCapacityOf,
+  haulingCartGoods,
   haulingCartSpeedLossPercent,
+  haulingCartUnits,
   parkHaulingCart,
   releasesHaulingCart,
   unloadHaulingCart,
@@ -69,6 +71,14 @@ const WORKSHOP_CARRIER = 36;
 const HEADQUARTERS = 1;
 const TWIN_MILL = 8;
 const WOOD = 1;
+const PLANK = 2;
+/** A good the fixture carts list no hold line for. */
+const STONE = 4;
+const WHEAT = 6;
+const WAREHOUSE_TYPE = 7;
+/** The fixture's two-product workshop: wood into planks and wheat into food, ten units an input slot. */
+const BAKEHOUSE = 20;
+const BAKEHOUSE_INPUT_CAPACITY = 10;
 /** The fixture's edible good, which a hungry settler eats out of its own hands first. */
 const FOOD = 3;
 const MEAD = 13;
@@ -88,14 +98,20 @@ const TRIP_TICKS = 400;
 const QUEUED_WALK_NODES = 4;
 /** The twin mill's wood slot takes ten units; the fixture headquarters starts with ten wood. */
 const MILL_WOOD_CAPACITY = 10;
+/** The wood one cycle of the mill takes. */
+const MILL_WOOD_FOR_A_CYCLE = 1;
 /** The mill slot part filled, so the fetch has a shortfall smaller than the source's stock. */
 const MILL_STOCKED_WOOD = 8;
 const HQ_WOOD_FOR_MILL = 14;
 const HQ_INITIAL_WOOD = 10;
+const HQ_WOOD_CAPACITY = 150;
+const HQ_PLANK_CAPACITY = 150;
+/** Finished planks waiting on the mill's shelf for its carrier. */
+const MILL_PLANKS = 4;
 /** The fixture handcart's `stockslots`: all a porter lifts with the cart, its hands carrying nothing. */
 const HANDCART_SLOTS = 15;
-/** A second pile four nodes from the first, inside the cart's top-up reach, and one well beyond that
- *  reach but still inside the porter's collect radius around the headquarters. */
+/** A second pile four nodes from the first and one far off it, both inside the porter's collect radius
+ *  around the headquarters. */
 const NEAR_PILE_AT = { hx: 28, hy: 26 };
 const FAR_PILE_AT = { hx: 46, hy: 34 };
 /** A one-unit well beside the store; a cart lift there waits out a refill a game second per unit. */
@@ -548,23 +564,158 @@ describe('the cart as a work tool', () => {
     expect(haulingCartSpeedLossPercent(s.world, s.content, porter)).toBe(HANDCART_FULL_SPEED_LOSS_PERCENT);
   });
 
-  it('fills the cart from the heaps close by before the trip home and leaves the far one for the next', () => {
+  it("sweeps the store porter's area in one round, different goods in the one cart", () => {
     const s = sim();
     const hq = placeHouse(s, HQ_AT);
     const { porter } = postedPorterWithCart(s, hq);
     expect(runUntil(s, TAKE_TICKS, () => s.world.get(porter, HaulingCart).taken)).toBeGreaterThan(0);
     dropPile(s, WOOD, PILE_AT, PILE_UNITS);
-    dropPile(s, WOOD, NEAR_PILE_AT, PILE_UNITS);
+    dropPile(s, FOOD, NEAR_PILE_AT, PILE_UNITS);
     dropPile(s, WOOD, FAR_PILE_AT, PILE_UNITS);
+    const aboard = (): number =>
+      haulingCartUnits(s.world, porter, WOOD) + haulingCartUnits(s.world, porter, FOOD);
+    expect(runUntil(s, 2 * TRIP_TICKS, () => aboard() === 3 * PILE_UNITS)).toBeGreaterThan(0);
+    expect(stockOf(s, hq, WOOD)).toBe(HQ_INITIAL_WOOD);
     expect(
-      runUntil(s, TRIP_TICKS, () => (s.world.tryGet(porter, Carrying)?.amount ?? 0) === 2 * PILE_UNITS),
+      runUntil(
+        s,
+        2 * TRIP_TICKS,
+        () =>
+          stockOf(s, hq, WOOD) === HQ_INITIAL_WOOD + 2 * PILE_UNITS && stockOf(s, hq, FOOD) === PILE_UNITS,
+      ),
     ).toBeGreaterThan(0);
+    expect(haulingCartGoods(s.world, porter)).toEqual([]);
+  });
+
+  it('delivers a good the hold has no line for out of its hands', () => {
+    const s = sim();
+    const store = placeHouse(s, HQ_AT, WAREHOUSE_TYPE);
+    const { porter } = postedPorterWithCart(s, store);
+    expect(runUntil(s, TAKE_TICKS, () => s.world.get(porter, HaulingCart).taken)).toBeGreaterThan(0);
+    dropPile(s, STONE, PILE_AT, PILE_UNITS);
+    expect(runUntil(s, 2 * TRIP_TICKS, () => stockOf(s, store, STONE) === PILE_UNITS)).toBeGreaterThan(0);
+  });
+
+  it('hands up a good a store takes when the one in hand has nowhere to go', () => {
+    const s = sim();
+    const hq = placeHouse(s, HQ_AT);
+    const { porter, cart } = postedPorterWithCart(s, hq);
+    expect(runUntil(s, TAKE_TICKS, () => s.world.get(porter, HaulingCart).taken)).toBeGreaterThan(0);
+    s.world.mut(hq, Stockpile).amounts.set(WOOD, HQ_WOOD_CAPACITY);
+    s.world.add(porter, Carrying, { goodType: WOOD, amount: 2 });
+    s.world.mut(cart, VehicleStock).lines.set(FOOD, { current: 3, wanted: 3, reserved: 3 });
+    expect(runUntil(s, TRIP_TICKS, () => stockOf(s, hq, FOOD) === 3)).toBeGreaterThan(0);
+    expect(haulingCartUnits(s.world, porter, WOOD)).toBe(2);
+  });
+});
+
+describe("a workshop carrier's cart round", () => {
+  /** The fixture with wheat among the carts' cargo, so both of the bakehouse's inputs ride in a hold. */
+  function wheatCartContent(): ContentSet {
+    const base = testContent();
+    return parseContentSet({
+      ...base,
+      vehicles: base.vehicles.map((v) => ({ ...v, cargoGoods: [...v.cargoGoods, WHEAT] })),
+    });
+  }
+
+  function millScene(millWood: number): { s: Simulation; hq: Entity; mill: Entity; porter: Entity } {
+    const s = sim();
+    const hq = placeHouse(s, HQ_AT);
+    const mill = placeHouse(s, { hx: 20, hy: 30 }, TWIN_MILL);
+    s.world.mut(hq, Stockpile).amounts.set(WOOD, HQ_WOOD_FOR_MILL);
+    s.world.mut(mill, Stockpile).amounts.set(WOOD, millWood);
+    const { porter } = postedPorterWithCart(s, mill, WORKSHOP_CARRIER);
+    return { s, hq, mill, porter };
+  }
+
+  it('goes on to a second source when the nearest held less than the shortfall', () => {
+    const { s, mill, porter } = millScene(MILL_WOOD_FOR_A_CYCLE);
+    dropPile(s, WOOD, { hx: 22, hy: 34 }, 1);
+    const shortfall = MILL_WOOD_CAPACITY - MILL_WOOD_FOR_A_CYCLE;
     expect(
-      runUntil(s, TRIP_TICKS, () => stockOf(s, hq, WOOD) === HQ_INITIAL_WOOD + 2 * PILE_UNITS),
+      runUntil(s, 2 * TRIP_TICKS, () => haulingCartUnits(s.world, porter, WOOD) === shortfall),
     ).toBeGreaterThan(0);
-    expect(s.world.has(porter, Carrying)).toBe(false);
+    expect(stockOf(s, mill, WOOD)).toBe(MILL_WOOD_FOR_A_CYCLE);
+    expect(runUntil(s, TRIP_TICKS, () => stockOf(s, mill, WOOD) === MILL_WOOD_CAPACITY)).toBeGreaterThan(0);
+  });
+
+  it('brings home what an empty workshop waits on before the far source', () => {
+    const { s, hq, mill } = millScene(0);
+    dropPile(s, WOOD, { hx: 22, hy: 34 }, 1);
+    expect(runUntil(s, TRIP_TICKS, () => stockOf(s, mill, WOOD) === 1)).toBeGreaterThan(0);
+    expect(stockOf(s, hq, WOOD)).toBe(HQ_WOOD_FOR_MILL);
+  });
+
+  it('brings two inputs in one trip and sets both on the shelf beside the standing cart', () => {
+    const s = new Simulation({
+      seed: 5,
+      content: wheatCartContent(),
+      map: grassNodeMap(MAP_NODES, MAP_NODES),
+    });
+    s.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    placeHouse(s, HQ_AT);
+    const granary = placeHouse(s, { hx: 40, hy: 30 }, WAREHOUSE_TYPE);
+    s.world.mut(granary, Stockpile).amounts.set(WHEAT, 2 * BAKEHOUSE_INPUT_CAPACITY);
+    const bakehouse = placeHouse(s, { hx: 20, hy: 30 }, BAKEHOUSE);
+    const { porter } = postedPorterWithCart(s, bakehouse, WORKSHOP_CARRIER);
+    const full = (holder: (good: number) => number): boolean =>
+      holder(WOOD) === BAKEHOUSE_INPUT_CAPACITY && holder(WHEAT) === BAKEHOUSE_INPUT_CAPACITY;
+    // The handcart's fifteen slots hold the first input whole and half the second.
     expect(
-      runUntil(s, 2 * TRIP_TICKS, () => stockOf(s, hq, WOOD) === HQ_INITIAL_WOOD + 3 * PILE_UNITS),
+      runUntil(
+        s,
+        2 * TRIP_TICKS,
+        () =>
+          haulingCartUnits(s.world, porter, WOOD) + haulingCartUnits(s.world, porter, WHEAT) ===
+          HANDCART_SLOTS,
+      ),
+    ).toBeGreaterThan(0);
+    expect(stockOf(s, bakehouse, WOOD) + stockOf(s, bakehouse, WHEAT)).toBe(0);
+    let takenBetween = false;
+    const landed = runUntil(s, 2 * TRIP_TICKS, () => {
+      const onShelf = stockOf(s, bakehouse, WOOD) + stockOf(s, bakehouse, WHEAT);
+      if (onShelf > 0 && onShelf < HANDCART_SLOTS && s.world.get(porter, HaulingCart).taken)
+        takenBetween = true;
+      return onShelf === HANDCART_SLOTS;
+    });
+    expect(landed).toBeGreaterThan(0);
+    expect(takenBetween).toBe(false);
+    expect(runUntil(s, 2 * TRIP_TICKS, () => full((good) => stockOf(s, bakehouse, good)))).toBeGreaterThan(0);
+  });
+
+  it('lifts no more planks than the store has room for and still brings the wood', () => {
+    const { s, hq, mill, porter } = millScene(5);
+    s.world.mut(mill, Stockpile).amounts.set(PLANK, MILL_PLANKS);
+    s.world.mut(hq, Stockpile).amounts.set(PLANK, HQ_PLANK_CAPACITY - 2);
+    expect(
+      runUntil(
+        s,
+        3 * TRIP_TICKS,
+        () => stockOf(s, hq, PLANK) === HQ_PLANK_CAPACITY && stockOf(s, mill, WOOD) === MILL_WOOD_CAPACITY,
+      ),
+    ).toBeGreaterThan(0);
+    expect(haulingCartGoods(s.world, porter)).toEqual([]);
+  });
+
+  it.each([
+    {
+      name: 'takes the planks along on the way to the wood while the shelf funds a cycle',
+      millWood: 5,
+      first: PLANK,
+    },
+    { name: 'fetches the wood first once the shelf funds no cycle', millWood: 0, first: WOOD },
+  ])('$name', ({ millWood, first }) => {
+    const { s, hq, mill, porter } = millScene(millWood);
+    s.world.mut(mill, Stockpile).amounts.set(PLANK, MILL_PLANKS);
+    expect(runUntil(s, TRIP_TICKS, () => haulingCartGoods(s.world, porter).length > 0)).toBeGreaterThan(0);
+    expect(haulingCartGoods(s.world, porter)).toEqual([first]);
+    expect(
+      runUntil(
+        s,
+        3 * TRIP_TICKS,
+        () => stockOf(s, hq, PLANK) === MILL_PLANKS && stockOf(s, mill, WOOD) === MILL_WOOD_CAPACITY,
+      ),
     ).toBeGreaterThan(0);
   });
 
@@ -646,11 +797,11 @@ describe('the cart as a work tool', () => {
     const mill = placeHouse(s, { hx: 20, hy: 30 }, TWIN_MILL);
     const { porter, cart } = postedPorterWithCart(s, mill, WORKSHOP_CARRIER);
     s.world.mut(mill, Stockpile).amounts.set(WOOD, MILL_WOOD_CAPACITY);
-    s.world.mut(porter, HaulingCart).lift = { kind: 'unload', store: mill };
+    s.world.mut(porter, HaulingCart).lift = { kind: 'unload', store: mill, goodType: WOOD, refused: false };
     s.world.mut(cart, VehicleStock).lines.set(WOOD, { current: 2, wanted: 2, reserved: 2 });
     s.world.mut(cart, VehicleStock).lines.set(FOOD, { current: 1, wanted: 1, reserved: 1 });
-    expect(unloadHaulingCart(s.world, ctxOf(s), porter, mill)).toBe(false);
-    expect(s.world.get(porter, HaulingCart).lift).toBeNull();
+    expect(unloadHaulingCart(s.world, ctxOf(s), porter, mill, WOOD)).toBe(false);
+    expect(s.world.get(porter, HaulingCart).lift).toMatchObject({ refused: true });
     expect(s.world.has(porter, Carrying)).toBe(false);
     expect(s.world.get(cart, VehicleStock).lines.get(WOOD)?.current).toBe(2);
     expect(s.world.get(cart, VehicleStock).lines.get(FOOD)?.current).toBe(1);

@@ -16,7 +16,11 @@ import { clearNavState } from '../../../movement/nav-state.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { isTempleFuel } from '../../../readviews/buildings.js';
 import { nearestCell } from '../../../spatial/metric.js';
-import { liftsWithHaulingCart, pullsHaulingCart } from '../../../vehicles/hauling-cart.js';
+import {
+  haulingCartHoldGood,
+  liftsWithHaulingCart,
+  pullsHaulingCart,
+} from '../../../vehicles/hauling-cart.js';
 import { dropCarryAtOwnTile } from '../../atomics/effects/goods/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startCartUnload, startDrop } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
@@ -84,7 +88,7 @@ export function planDelivery(
   spacing: PlannerSpacing,
   load: { goodType: number; amount: number },
 ): void {
-  const { world, ctx, terrain, entity, here, targets, supply } = plan;
+  const { world, ctx, terrain, entity, here, targets } = plan;
   const worker = plan;
   const store = deliveryTargetFor(plan, load.goodType);
 
@@ -155,21 +159,15 @@ export function planDelivery(
     cell = interactionCell(world, ctx, terrain, store, here);
   }
   if (cell === null) return;
-  // A supply errand remains committed on its delivery leg, with no source stock held anymore.
-  if (
-    world.has(store, UnderConstruction) ||
-    world.tryGet(entity, JobAssignment)?.workplace === store ||
-    isTempleFuel(world, ctx, store, load.goodType)
-  ) {
-    supply.stampSupplyRun(entity, { site: store, goodType: load.goodType, amount: load.amount });
-  }
+  stampDeliveryErrand(plan, store, load.goodType, load.amount);
   if (toFlag) {
     world.add(entity, YardDeliveryRoute, { flag: store, goodType: load.goodType, goal: cell, failed: false });
   }
   atOrWalk(world, entity, here, cell, () => {
     world.remove(entity, YardDeliveryRoute);
     if (liftsWithHaulingCart(world, entity)) {
-      startCartUnload(world, ctx, entity, worker, store);
+      const aboard = haulingCartHoldGood(world, ctx.content, entity, load.goodType);
+      startCartUnload(world, ctx, entity, worker, store, aboard);
       return;
     }
     startAtomic(
@@ -181,4 +179,22 @@ export function planDelivery(
       store,
     );
   });
+}
+
+/** A supply errand remains committed on its delivery leg to a site, the carrier's own workplace or a
+ *  temple's fuel shelf, with no source stock held anymore. */
+export function stampDeliveryErrand(
+  plan: PlannerContext,
+  store: Entity,
+  goodType: number,
+  amount: number,
+): void {
+  const { world, ctx, entity, supply } = plan;
+  if (
+    world.has(store, UnderConstruction) ||
+    world.tryGet(entity, JobAssignment)?.workplace === store ||
+    isTempleFuel(world, ctx, store, goodType)
+  ) {
+    supply.stampSupplyRun(entity, { site: store, goodType, amount });
+  }
 }

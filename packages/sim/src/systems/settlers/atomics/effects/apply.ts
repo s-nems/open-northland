@@ -105,7 +105,8 @@ export function applyEffect(
       loadHaulingCart(world, ctx, settler, effect.from, effect.goodType);
       return;
     case 'haulUnload':
-      if (unloadHaulingCart(world, ctx, settler, effect.store)) grantCarryExperience(world, ctx, settler);
+      if (unloadHaulingCart(world, ctx, settler, effect.store, effect.goodType))
+        grantCarryExperience(world, ctx, settler);
       return;
     case 'vehicleLoad':
       if (loadVehicleHold(world, ctx, settler, effect.vehicle)) grantCarryExperience(world, ctx, settler);

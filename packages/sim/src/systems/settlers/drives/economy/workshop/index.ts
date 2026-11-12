@@ -41,10 +41,11 @@ import {
 import type { PlannerSpacing } from '../../../planner/spacing.js';
 import { interactionCell } from '../../../targets/index.js';
 import { loiterCell } from '../../spacing.js';
-import { deliverableGoodProbe } from '../delivery-targets.js';
+import { deliverableGoodProbe, sinkRoomFor } from '../delivery-targets.js';
 import { haulFlagArea, waitAtHaulFlag } from '../haul-flag-area.js';
 import { planTempleFuelRun } from '../temple-fuel.js';
 import { planVehicleYard, settleVehicleYard } from '../vehicle-yard.js';
+import { carrierInputSource, loadsOutputBeforeFetch } from './cart-supply.js';
 import { startCraftAtomic } from './craft.js';
 import {
   type InputShortfall,
@@ -316,8 +317,9 @@ function mergedRotation(own: readonly Recipe[]): Recipe {
 /**
  * Ferry inputs and outputs for a carrier bound to a recipe workplace, or carry a self-filling house's
  * goods out. Input slots are topped up before output is removed so the operators do not starve
- * (original behavior). A carrier holding a pickup flag takes a missing input from the piles and stores
- * around it before those elsewhere (owner ruling) and waits at the flag when idle.
+ * (original behavior), except by a carrier with a cart that takes the output along on its way to the
+ * inputs ({@link loadsOutputBeforeFetch}). A carrier holding a pickup flag takes a missing input from the
+ * piles and stores around it before those elsewhere (owner ruling) and waits at the flag when idle.
  */
 export function planWorkshopSupplier(
   plan: PlannerContext,
@@ -332,10 +334,13 @@ export function planWorkshopSupplier(
   const supply = seatClaims.carrierRecipe(world, ctx, workplace);
   const area = haulFlagArea(plan);
   if (supply !== undefined) {
-    const source =
-      (area === null ? null : nearestMissingInputSource(plan, workplace, supply, CARRIER_SHORTFALL, area)) ??
-      nearestMissingInputSource(plan, workplace, supply, CARRIER_SHORTFALL);
+    const source = carrierInputSource(plan, workplace, supply, CARRIER_SHORTFALL);
     if (source !== null) {
+      if (
+        loadsOutputBeforeFetch(plan, workplace, seatClaims, supply, source) &&
+        haulWorkplaceOutput(plan, workplace)
+      )
+        return;
       routeToInputSource(plan, workplace, source, seatClaims);
       return;
     }
@@ -369,14 +374,26 @@ function routeToInputSource(
   source: MissingInputSource,
   seatClaims: WorkSeatClaims,
 ): void {
-  const { world, ctx, entity, supply } = plan;
+  const { world, ctx, entity } = plan;
   const amount = Math.max(
     CARRY_CAPACITY,
     Math.min(carryCapacityOf(world, ctx.content, entity), source.shortfall),
   );
-  supply.stampSupplyRun(entity, { site: workplace, goodType: source.goodType, amount });
-  seatClaims.noteErrand(entity, { workplace, goodType: source.goodType, amount });
+  stampInputErrand(plan, seatClaims, workplace, source.goodType, amount);
   walkFetchInput(plan, source.store, source.goodType, source.refills, amount);
+}
+
+/** Commit the settler to bringing `amount` of `goodType` to `workplace`, for the supply tally and for
+ *  the colleagues planned later in this pass. */
+export function stampInputErrand(
+  plan: PlannerContext,
+  seatClaims: WorkSeatClaims,
+  workplace: Entity,
+  goodType: number,
+  amount: number,
+): void {
+  plan.supply.stampSupplyRun(plan.entity, { site: workplace, goodType, amount });
+  seatClaims.noteErrand(plan.entity, { workplace, goodType, amount });
 }
 
 /**
@@ -455,7 +472,8 @@ function blockedOutputToHaul(plan: PlannerContext, workplace: Entity): number | 
   return deliverable[0] ?? null;
 }
 
-/** Lift one carry-load of an output out of the workplace, claimed; the delivery rung routes it to a store. */
+/** Lift one carry-load of an output out of the workplace, claimed and no more than its store has room
+ *  for; the delivery rung routes it there. */
 function haulWorkplaceOutput(plan: PlannerContext, workplace: Entity): boolean {
   const output = workplaceOutputToHaul(
     deliverableGoodProbe(plan),
@@ -465,6 +483,6 @@ function haulWorkplaceOutput(plan: PlannerContext, workplace: Entity): boolean {
     workplace,
   );
   if (output === null) return false;
-  walkPickupBatch(plan, workplace, output);
+  walkPickupBatch(plan, workplace, output, undefined, sinkRoomFor(plan, output));
   return true;
 }

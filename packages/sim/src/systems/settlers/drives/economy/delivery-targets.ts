@@ -1,8 +1,9 @@
-import { JobAssignment, Settler } from '../../../../components/index.js';
+import { JobAssignment, Settler, Stockpile, UnderConstruction } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood } from '../../../economy/work-flag.js';
 import { exportedGoodForm } from '../../../readviews/index.js';
+import { bankedSlot } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
 import {
   DELIVERY_RULES,
@@ -47,6 +48,21 @@ export function deliverySinkProbe(plan: PlannerContext): (goodType: number) => E
     }
     return known;
   };
+}
+
+/**
+ * The units of `goodType` the store this carrier would deliver it to still has room for, so a cart lifts
+ * no more of a good than lands, yet always the unit the routing admitted; unbounded for a sink that is
+ * no shelf, a site or a flag's yard. Zero with no sink.
+ */
+export function sinkRoomFor(plan: PlannerContext, goodType: number): number {
+  const { world, ctx, entity: e } = plan;
+  const carried = carriedGoodForm(world, ctx, e, goodType);
+  const sink = deliveryTargetFor(plan, carried);
+  if (sink === null) return 0;
+  if (world.has(sink, UnderConstruction) || !world.has(sink, Stockpile)) return Number.POSITIVE_INFINITY;
+  const slot = bankedSlot(world, ctx, sink, carried);
+  return Math.max(1, slot.capacity - (world.get(sink, Stockpile).amounts.get(slot.goodType) ?? 0));
 }
 
 /** Whether this settler's `good` would be delivered into its own workplace right now: what a store's

@@ -552,7 +552,8 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Einen Karren nehmen nur ein Träger mit Arbeitsplatz und der [[job:trader|Händler]].',
             'Der Karren muss dir gehören, frei sein und auf derselben Landmasse stehen.',
-            'Ist auf dem Karren noch Platz, nimmt ein Lagerträger dieselbe Ware von Haufen und aus Werkstätten im Umkreis von {{haul.cartTopUp}} Hexfeldern mit, bevor er zurückfährt.',
+            'Ist auf dem Karren noch Platz, sammelt ein Lagerträger weiter, auch andere Waren: die Haufen in seinem Sammelgebiet, den nächsten zuerst, dann Haufen und Werkstätten im Umkreis von {{haul.cartTopUp}} Hexfeldern. Er nimmt nur mit, wofür sein Lager Platz hat.',
+            'Ein Werkstattträger mit Karren bringt in einer Rundfahrt die fertigen Waren weg und die fehlenden Rohstoffe zurück, mehrere Sorten auf einmal. Hat eine Quelle zu wenig, fährt er zur nächsten weiter. Steht die Werkstatt still und wartet auf die Ladung, liefert er sie zuerst ab.',
           ],
         },
         {

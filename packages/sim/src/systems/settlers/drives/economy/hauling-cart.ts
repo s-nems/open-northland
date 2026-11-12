@@ -4,6 +4,7 @@ import { isTrader } from '../../../readviews/jobs.js';
 import { refillingGoodsOf } from '../../../stores/index.js';
 import { boardingNode } from '../../../vehicles/crew.js';
 import {
+  beginCartLift,
   cartLiftContinues,
   endCartLift,
   haulingCartHolds,
@@ -15,17 +16,20 @@ import { atOrWalk, startCartLoad, startCartUnload, startRefillWait } from '../..
 import type { PlannerContext } from '../../planner/context.js';
 import { interactionCell, unclaimedStockOf } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
+import { nextLiftBesideCart } from './cart-round.js';
+import type { WorkSeatClaims } from './workshop/index.js';
 
 /**
  * HAULING CART - a posted carrier or a trader handed a cart, or a carrier back from a break that parked
- * it, walks to its door and takes it there; one in a lift beside the standing cart plays the next clip of it, a unit each,
- * and takes the cart up again when the lift is done; one whose hold no longer stands (the post or the
- * trade gone, the cart gone or another player's) sets the cart down and falls through. A door it cannot
- * reach, or one on another continent, gives the cart up where it stands. True while the carrier walks to
- * the cart, lifts beside it or takes it this tick; a carrier with a load in hand delivers first, so the
- * rung only reconciles for it.
+ * it, walks to its door and takes it there. In a lift beside the standing cart it plays the next clip, a
+ * unit each, and takes the cart up once that lift and any that follows at the same door
+ * ({@link nextLiftBesideCart}) is done. One whose hold no longer stands (the post or the trade gone, the
+ * cart gone or another player's) sets the cart down and falls through; a door it cannot reach, or one on
+ * another continent, gives the cart up where it stands. True while the carrier walks to the cart, lifts
+ * beside it or takes it this tick; a carrier with a load in hand delivers first, so the rung only
+ * reconciles for it.
  */
-export function planHaulingCart(plan: PlannerContext, loaded: boolean): boolean {
+export function planHaulingCart(plan: PlannerContext, seatClaims: WorkSeatClaims, loaded: boolean): boolean {
   const { world, ctx, entity: e } = plan;
   const held = world.tryGet(e, HaulingCart);
   if (held === undefined) return false;
@@ -33,13 +37,19 @@ export function planHaulingCart(plan: PlannerContext, loaded: boolean): boolean 
     releaseHaulingCart(world, ctx, e);
     return false;
   }
+  const trader = isTrader(world, ctx.content, e);
   if (held.lift !== null) {
     if (continueLift(plan, held.lift)) return true;
+    const next = trader ? null : nextLiftBesideCart(plan, seatClaims, held.lift);
     endCartLift(world, e);
+    if (next !== null) {
+      beginCartLift(world, ctx, e, next);
+      if (continueLift(plan, next)) return true;
+      endCartLift(world, e);
+    }
   }
   // A trader's cart standing at a stop stays there while it works the stop; its route takes it up. A
   // trader fetches a cart it is handed with a route unit in hand, which goes into the hold on the take.
-  const trader = isTrader(world, ctx.content, e);
   if (held.taken || (loaded && !trader) || (held.parked && trader)) return false;
   return fetchHaulingCart(plan);
 }
@@ -83,7 +93,7 @@ function continueLift(plan: PlannerContext, lift: HaulingLift): boolean {
   const at = lift.kind === 'load' ? lift.from : lift.store;
   const cell = interactionCell(world, ctx, terrain, at, here);
   atOrWalk(world, e, here, cell, () => {
-    if (lift.kind === 'unload') startCartUnload(world, ctx, e, plan, lift.store);
+    if (lift.kind === 'unload') startCartUnload(world, ctx, e, plan, lift.store, lift.goodType);
     else if (shelved > 0) {
       startCartLoad(world, ctx, e, plan, lift.from, lift.goodType, lift.units);
     } else startRefillWait(world, ctx, e);

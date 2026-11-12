@@ -7,7 +7,7 @@ import type { PlannerContext } from '../../planner/context.js';
 import type { IdleStands } from '../../planner/idle-replan.js';
 import { nearestWorkplaceOutput } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
-import { deliverableGoodProbe, homeBoundGoodProbe } from './delivery-targets.js';
+import { deliverableGoodProbe, homeBoundGoodProbe, sinkRoomFor } from './delivery-targets.js';
 import { haulFlagArea, waitAtHaulFlag } from './haul-flag-area.js';
 import { porterPickupTarget } from './haul-targets.js';
 import { markPorterDormant, porterDormant, wakePorter } from './porter-dormancy.js';
@@ -42,7 +42,7 @@ export function planPorter(plan: PlannerContext, idle: IdleStands): boolean {
   }
   wakePorter(world, e);
   stampTempleFuelRun(plan, pick.goodType, pick.amount);
-  walkPickupBatch(plan, pick.from, pick.goodType, undefined, pick.amount);
+  walkPickupBatch(plan, pick.from, pick.goodType, undefined, pick.amount ?? sinkRoomFor(plan, pick.goodType));
   return true;
 }
 
@@ -82,6 +82,6 @@ export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boo
       )
     : null;
   if (haul === null) return false;
-  walkPickupBatch(plan, haul.workplace, haul.goodType);
+  walkPickupBatch(plan, haul.workplace, haul.goodType, undefined, sinkRoomFor(plan, haul.goodType));
   return true;
 }

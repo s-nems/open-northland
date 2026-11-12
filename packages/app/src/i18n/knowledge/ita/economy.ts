@@ -559,7 +559,8 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Solo un trasportatore con un luogo di lavoro e un [[job:trader|mercante]] prendono un carretto.',
             'Il carretto deve essere tuo, libero e sulla stessa terra emersa.',
-            'Se sul carretto resta spazio, un trasportatore di magazzino raccoglie lo stesso bene da mucchi e botteghe entro {{haul.cartTopUp}} esagoni prima di tornare.',
+            'Se sul carretto resta spazio, un trasportatore di magazzino continua a raccogliere, anche altri beni: i mucchi della sua zona di raccolta, dal più vicino, poi mucchi e botteghe entro {{haul.cartTopUp}} esagoni. Prende solo ciò per cui il suo magazzino ha posto.',
+            'Un trasportatore di bottega con un carretto porta via i prodotti finiti e riporta i materiali mancanti in un solo giro, più tipi insieme. Se una fonte ne ha troppo pochi, prosegue fino alla successiva. Se la bottega è ferma in attesa del carico, lo consegna prima.',
           ],
         },
         {
