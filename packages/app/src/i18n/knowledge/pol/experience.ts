@@ -117,10 +117,10 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Skąd się bierze',
         },
         {
-          p: 'Każdy cios lub strzał, który zadał obrażenia, daje 1 pkt, tak samo pięścią, włócznią, mieczem i łukiem. Strzały [[job:hunter|Myśliwego]] też się liczą. Doświadczenie zostaje po zmianie broni i zawodu.',
+          p: 'Każdy cios lub strzał, który zadał obrażenia, daje 1 pkt, tak samo pięścią i każdą bronią. Strzały [[job:hunter|Myśliwego]] też się liczą. Doświadczenie zostaje po zmianie broni i zawodu.',
         },
         {
-          p: 'Musztra: miecznik, włócznik albo łucznik ćwiczy w twoich [[building:barracks|Koszarach]], jeśli leżą w nich monety. Każde powtórzenie zabiera jedną [[good:coin|Monetę]] i daje {{coinDrill.points}} pkt. Kto ma {{coinDrill.limit}} pkt lub więcej, już nie ćwiczy, resztę zdobywa w walce. Zaznacz żołnierzy i kliknij prawym przyciskiem własne Koszary. Idzie tylu, ile Koszary mają wolnych monet, najbliżsi najpierw; reszta zostaje na miejscu.',
+          p: 'Musztra: każdy uzbrojony żołnierz ćwiczy w twoich [[building:barracks|Koszarach]], jeśli leżą w nich monety. Każde powtórzenie zabiera jedną [[good:coin|Monetę]] i daje {{coinDrill.points}} pkt. Kto ma {{coinDrill.limit}} pkt lub więcej, już nie ćwiczy, resztę zdobywa w walce. Zaznacz żołnierzy i kliknij prawym przyciskiem własne Koszary. Idzie tylu, ile Koszary mają wolnych monet, najbliżsi najpierw; reszta zostaje na miejscu.',
         },
         {
           p: 'W panelu osadnika to wiersz Walka: punkty, premia do zadawanych obrażeń wręcz i to, o ile mniej obrażeń otrzymuje. Bohaterowi walka nie podnosi doświadczenia, chyba że misja to włącza.',

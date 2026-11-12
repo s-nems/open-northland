@@ -181,8 +181,8 @@ export function grantTradeExperience(world: World, ctx: SystemContext, settler: 
 
 /**
  * The fight-experience buckets, which back no `HumanJobExperienceType` record. Our rule, a departure from
- * the original's per-weapon-class buckets: every person keeps one personal fight counter that his fists,
- * spear, sword and bow all train and read, so a change of weapon keeps it. `PERSONAL` is our own id, past
+ * the original's per-weapon-class buckets: every person keeps one personal fight counter that every
+ * weapon but the catapult trains and reads, so a change of weapon keeps it. `PERSONAL` is our own id, past
  * the original's fight and training buckets (71..77), so no map line or content track names it. The
  * catapult keeps its own bucket (`logicdefines.inc` `JOB_EXPERIENCE_TYPE_FIGHT_CATAPULT`), read raw as the
  * commander's aim.
@@ -206,21 +206,14 @@ export const FIGHT_EXPERIENCE_FULL = 100;
 /** The raw XP the catapult bucket holds at most. Original behavior. */
 export const CATAPULT_EXPERIENCE_MAX = 10_000;
 
-/** The weapon classes that train the personal counter, and the catapult its own bucket. */
-const FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE: ReadonlyMap<number, number> = new Map([
-  [WEAPON_MAIN_TYPE.UNARMED, FIGHT_EXPERIENCE_TYPE.PERSONAL],
-  [WEAPON_MAIN_TYPE.SPEAR, FIGHT_EXPERIENCE_TYPE.PERSONAL],
-  [WEAPON_MAIN_TYPE.SWORD, FIGHT_EXPERIENCE_TYPE.PERSONAL],
-  [WEAPON_MAIN_TYPE.BOW, FIGHT_EXPERIENCE_TYPE.PERSONAL],
-  [WEAPON_MAIN_TYPE.CATAPULT, FIGHT_EXPERIENCE_TYPE.CATAPULT],
-]);
-
 /**
- * The fight-experience bucket a `weaponMainType` accrues into, or `undefined` when the weapon has no fight
- * track or its `mainType` falls outside {@link WEAPON_MAIN_TYPE}.
+ * The fight-experience bucket a `weaponMainType` accrues into: the catapult's own, the personal counter for
+ * every other weapon class, and `undefined` for no class. Our rule: the original trains no bucket with a
+ * saber or the hero axe; here every personal weapon trains the one counter.
  */
 export function fightExperienceTypeFor(weaponMainType: number): number | undefined {
-  return FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE.get(weaponMainType);
+  if (weaponMainType === WEAPON_MAIN_TYPE.CATAPULT) return FIGHT_EXPERIENCE_TYPE.CATAPULT;
+  return weaponMainType === WEAPON_MAIN_TYPE.NONE ? undefined : FIGHT_EXPERIENCE_TYPE.PERSONAL;
 }
 
 /**

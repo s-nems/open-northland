@@ -25,7 +25,7 @@ import { testContent } from '../../../fixtures/content.js';
 import { grassMap } from '../../../fixtures/needs.js';
 
 /**
- * The coin drill: a sword, spear or bow soldier pays one barracks coin per repetition of his
+ * The coin drill: an armed soldier pays one barracks coin per repetition of his
  * `..._soldier_train` clip and gains its points, below the drill limit; not the recruit's `trainSoldier`
  * enlistment. The fixture binds the clip to the bare soldier alone, as the real tribes do, with the real
  * events: `CHANGE_GOLD -1` early and `GET_TRAINING 25` late.
@@ -39,6 +39,7 @@ const CARRIER_JOB = 24;
 const SOLDIER_JOB = 31;
 const SPEAR_JOB = 32;
 const SWORD_JOB = 34;
+const SABER_JOB = 37;
 const BOW_JOB = 40;
 const BARRACKS_TYPE = 91;
 const COIN_GOOD = 8;
@@ -47,7 +48,7 @@ const TRAIN_CLIP_TICKS = 28;
 const COIN_FRAME = 2;
 const POINTS_FRAME = 22;
 const POINTS_PER_COIN = 25;
-const WEAPON_CLASS = { SPEAR: 2, SWORD: 3, BOW: 6 } as const;
+const WEAPON_CLASS = { SPEAR: 2, SWORD: 3, SABER: 4, BOW: 6 } as const;
 /** The walk between the soldiers' row and the barracks door at the fixture's gait, with slack. */
 const WALK_TICKS = 120;
 /** Enough hitpoints to outlast the few blows a test reads. */
@@ -74,6 +75,7 @@ function coinDrillContent(): ContentSet {
       ...base.jobs,
       { typeId: SPEAR_JOB, id: 'soldier_spear_wooden', baseJob: SOLDIER_JOB, ignoresHomeHouse: true },
       { typeId: SWORD_JOB, id: 'soldier_sword_short', baseJob: SOLDIER_JOB, ignoresHomeHouse: true },
+      { typeId: SABER_JOB, id: 'soldier_saber_long', baseJob: SOLDIER_JOB, ignoresHomeHouse: true },
       { typeId: BOW_JOB, id: 'soldier_bow_short', baseJob: SOLDIER_JOB, ignoresHomeHouse: true },
     ],
     weapons: [
@@ -81,6 +83,7 @@ function coinDrillContent(): ContentSet {
       weapon(40, SPEAR_JOB, WEAPON_CLASS.SPEAR),
       weapon(41, SWORD_JOB, WEAPON_CLASS.SWORD),
       weapon(42, BOW_JOB, WEAPON_CLASS.BOW),
+      weapon(43, SABER_JOB, WEAPON_CLASS.SABER),
     ],
     buildings: [
       ...base.buildings,
@@ -165,19 +168,21 @@ function nodeOf(sim: Simulation, e: Entity): number {
 }
 
 describe('orderCoinDrill - the coin-paid soldier drill', () => {
-  it('drills a sword, spear and bow soldier for a coin each and refuses the bare soldier and a civilian', () => {
+  it('drills every armed soldier for a coin each and refuses the bare soldier and a civilian', () => {
     const sim = freshSim();
-    const house = barracksAt(sim, 8, 3, 3);
-    const armed = [SWORD_JOB, SPEAR_JOB, BOW_JOB].map((job, i) => soldierAt(sim, job, 2, 2 + i, 40));
+    const armedJobs = [SWORD_JOB, SPEAR_JOB, SABER_JOB, BOW_JOB];
+    const house = barracksAt(sim, 8, 3, armedJobs.length);
+    const armed = armedJobs.map((job, i) => soldierAt(sim, job, 2, 1 + i, 40));
     const bare = soldierAt(sim, SOLDIER_JOB, 3, 5);
     const civilian = soldierAt(sim, CIVILIST_JOB, 3, 6);
     for (const entity of [...armed, bare, civilian])
       sim.enqueueSetup({ kind: 'orderCoinDrill', entity, house });
     sim.step();
+    expect(armed.map((e) => sim.world.has(e, CoinDrillOrder))).toEqual([true, true, true, true]);
     expect(sim.world.has(bare, CoinDrillOrder)).toBe(false);
     expect(sim.world.has(civilian, CoinDrillOrder)).toBe(false);
     run(sim, WALK_TICKS + 2 * TRAIN_CLIP_TICKS);
-    expect(armed.map((e) => pointsOf(sim, e))).toEqual([65, 65, 65]);
+    expect(armed.map((e) => pointsOf(sim, e))).toEqual([65, 65, 65, 65]);
     expect(coinsOf(sim, house)).toBe(0);
   });
 

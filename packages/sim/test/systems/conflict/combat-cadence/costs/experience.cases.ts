@@ -47,11 +47,17 @@ describe('atomicSystem - a damaging swing accrues fight XP into the personal cou
     expect(xp.size).toBe(1); // no other bucket, no trade track
   });
 
-  it('a change of weapon keeps the counter: fist, spear, sword and bow hits all add to it', () => {
+  it('a change of weapon keeps the counter: every class but the catapult adds to it, saber and axe too', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_UNARMED);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
-    const classes = [WEAPON_MAIN_TYPE.UNARMED, WEAPON_MAIN_TYPE.SPEAR, WEAPON_MAIN_TYPE.SWORD];
+    const classes = [
+      WEAPON_MAIN_TYPE.UNARMED,
+      WEAPON_MAIN_TYPE.SPEAR,
+      WEAPON_MAIN_TYPE.SWORD,
+      WEAPON_MAIN_TYPE.SABER,
+      HERO_AXE_MAIN_TYPE,
+    ];
     for (const mainType of classes) {
       startSwing(sim, attacker, { target, damage: 100, hitFrames: [0], weaponMainType: mainType }, 2);
       atomicSystem(sim.world, nextTickCtxOf(sim));
@@ -61,7 +67,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the personal cou
     expect(xp.size).toBe(1);
   });
 
-  it('trains nothing on a 0-damage swing or on a hit of a class without a bucket', () => {
+  it('trains nothing on a 0-damage swing or on a hit of no weapon class', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
@@ -75,8 +81,12 @@ describe('atomicSystem - a damaging swing accrues fight XP into the personal cou
     atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(attacker, SettlerProgress).experience.size).toBe(0);
 
-    // The hero axe's class has no fight bucket.
-    startSwing(sim, attacker, { target, damage: 400, hitFrames: [0], weaponMainType: HERO_AXE_MAIN_TYPE }, 2);
+    startSwing(
+      sim,
+      attacker,
+      { target, damage: 400, hitFrames: [0], weaponMainType: WEAPON_MAIN_TYPE.NONE },
+      2,
+    );
     atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(attacker, SettlerProgress).experience.size).toBe(0);
   });

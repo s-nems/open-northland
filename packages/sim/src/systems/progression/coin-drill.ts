@@ -9,6 +9,7 @@ import {
 } from '../readviews/animations.js';
 import { isSoldierJob, WEAPON_MAIN_TYPE, weaponClassOf } from '../readviews/index.js';
 import { personalFightPoints } from './bonus.js';
+import { FIGHT_EXPERIENCE_TYPE, fightExperienceTypeFor } from './experience.js';
 
 /**
  * The coin drill's rules, shared by the player order and the HUD. Original behavior,
@@ -29,14 +30,6 @@ export const COIN_DRILL_LIMIT = 50;
  *  good, and the barracks shelves coins for it. */
 export const DRILL_COIN_GOOD_SLUG = 'coin';
 
-/** The weapon classes (`maintype`) a coin drill takes: sword, spear and bow. A saber or an axe is none of
- *  them. */
-const COIN_DRILL_WEAPON_CLASSES: ReadonlySet<number> = new Set([
-  WEAPON_MAIN_TYPE.SWORD,
-  WEAPON_MAIN_TYPE.SPEAR,
-  WEAPON_MAIN_TYPE.BOW,
-]);
-
 /** The content good id of the drill coin, or undefined when content has none. */
 export function drillCoinGood(content: ContentSet): number | undefined {
   return contentIndex(content).goodTypeBySlug.get(DRILL_COIN_GOOD_SLUG);
@@ -44,8 +37,8 @@ export function drillCoinGood(content: ContentSet): number | undefined {
 
 /**
  * Whether a soldier with `settler`'s identity holding `weaponTypeId` (his worn `Weapon`, else his class
- * default) fights with a coin-drill weapon class; never a hero, a civilian, a catapult crew or a
- * bare-handed soldier.
+ * default) fights with a weapon that trains the personal counter: any but his fists. Never a hero, a
+ * civilian, a catapult crew or a bare-handed soldier.
  */
 function fightsWithDrillWeapon(
   content: ContentSet,
@@ -56,7 +49,11 @@ function fightsWithDrillWeapon(
   const armed = attackerWeapon({ content }, settler.tribe, settler.jobType, weaponTypeId, settler.humanForm);
   if (armed === null) return false;
   const mainType = weaponClassOf(armed.weapon);
-  return mainType !== undefined && COIN_DRILL_WEAPON_CLASSES.has(mainType);
+  return (
+    mainType !== undefined &&
+    mainType !== WEAPON_MAIN_TYPE.UNARMED &&
+    fightExperienceTypeFor(mainType) === FIGHT_EXPERIENCE_TYPE.PERSONAL
+  );
 }
 
 /**
@@ -95,8 +92,8 @@ export function coinDrillPointsPerCoin(content: ContentSet, settler: SettlerIden
 }
 
 /**
- * Whether a soldier may run another coin-drill repetition, from his plain state alone: a sword, spear or
- * bow class, below {@link COIN_DRILL_LIMIT} on his personal counter, with a clip that spends a coin. The
+ * Whether a soldier may run another coin-drill repetition, from his plain state alone: an armed soldier,
+ * below {@link COIN_DRILL_LIMIT} on his personal counter, with a clip that spends a coin. The
  * world gate (`orders/coin-drill.ts`) adds the barracks and the walk; a HUD reads the same fields off a
  * snapshot.
  */

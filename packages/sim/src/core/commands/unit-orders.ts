@@ -580,12 +580,12 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Send one owned sword, spear or bow soldier to coin-drill at his side's finished barracks `house`:
+       * Send one owned armed soldier to coin-drill at his side's finished barracks `house`:
        * each repetition inside takes a coin off its shelf and adds the clip's points to his personal fight
        * counter while it stays below `COIN_DRILL_LIMIT`; then, or when no free coin is left, he walks back to
        * where he stood. Refused while the barracks holds no coin another ordered man does not speak for, so
        * a group order sends only as many men as there are free coins, in command order. Not the recruit's
-       * `trainSoldier` enlistment. A `moveUnit` order calls it off.
+       * `trainSoldier` enlistment. Any order that takes him calls it off.
        */
       readonly kind: 'orderCoinDrill';
       readonly entity: Entity;

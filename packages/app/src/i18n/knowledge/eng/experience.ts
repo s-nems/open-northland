@@ -122,10 +122,10 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Where it comes from',
         },
         {
-          p: "Every blow or shot that dealt damage gives 1 point, the same with fists, spear, sword and bow. [[job:hunter|Hunter's]] shots count too. Experience stays after a change of weapon or profession.",
+          p: "Every blow or shot that dealt damage gives 1 point, the same with fists and with every weapon. [[job:hunter|Hunter's]] shots count too. Experience stays after a change of weapon or profession.",
         },
         {
-          p: 'Coin drill: a sword fighter, spearman or archer drills in your [[building:barracks|Barracks]] if it holds coins. Each repetition takes one [[good:coin|Coin]] and gives {{coinDrill.points}} points. A man with {{coinDrill.limit}} points or more no longer drills and earns the rest in battle. Select the soldiers and right-click your own Barracks. Only as many go as the Barracks has free coins, the nearest first; the rest stay where they are.',
+          p: 'Coin drill: any armed soldier drills in your [[building:barracks|Barracks]] if it holds coins. Each repetition takes one [[good:coin|Coin]] and gives {{coinDrill.points}} points. A man with {{coinDrill.limit}} points or more no longer drills and earns the rest in battle. Select the soldiers and right-click your own Barracks. Only as many go as the Barracks has free coins, the nearest first; the rest stay where they are.',
         },
         {
           p: "In the settler panel this is the Fighting row: the points, the bonus to melee damage dealt and how much less damage he takes. Fighting doesn't raise a hero's experience, unless the mission turns it on.",

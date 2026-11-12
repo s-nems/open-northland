@@ -122,10 +122,10 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Woher sie kommt',
         },
         {
-          p: 'Jeder Schlag oder Schuss, der Schaden verursacht hat, bringt 1 Punkt, mit Faust, Speer, Schwert und Bogen gleich. Die Schüsse des [[job:hunter|Jägers]] zählen auch. Die Erfahrung bleibt nach einem Waffen- oder Berufswechsel.',
+          p: 'Jeder Schlag oder Schuss, der Schaden verursacht hat, bringt 1 Punkt, mit der Faust und mit jeder Waffe gleich. Die Schüsse des [[job:hunter|Jägers]] zählen auch. Die Erfahrung bleibt nach einem Waffen- oder Berufswechsel.',
         },
         {
-          p: 'Exerzieren: Ein Schwertkämpfer, Speerträger oder Bogenschütze übt in deiner [[building:barracks|Kaserne]], wenn dort Münzen liegen. Jede Wiederholung kostet eine [[good:coin|Münze]] und bringt {{coinDrill.points}} Punkte. Wer {{coinDrill.limit}} Punkte oder mehr hat, exerziert nicht mehr und holt sich den Rest im Kampf. Wähle die Soldaten und klicke mit rechts auf deine eigene Kaserne. Es gehen nur so viele, wie die Kaserne freie Münzen hat, die nächsten zuerst; die übrigen bleiben stehen.',
+          p: 'Exerzieren: Jeder bewaffnete Soldat übt in deiner [[building:barracks|Kaserne]], wenn dort Münzen liegen. Jede Wiederholung kostet eine [[good:coin|Münze]] und bringt {{coinDrill.points}} Punkte. Wer {{coinDrill.limit}} Punkte oder mehr hat, exerziert nicht mehr und holt sich den Rest im Kampf. Wähle die Soldaten und klicke mit rechts auf deine eigene Kaserne. Es gehen nur so viele, wie die Kaserne freie Münzen hat, die nächsten zuerst; die übrigen bleiben stehen.',
         },
         {
           p: 'Im Siedlerfenster ist das die Zeile Kämpfen: die Punkte, der Bonus auf Nahkampfschaden und wie viel weniger Schaden er erleidet. Einem Helden steigt die Erfahrung durch Kämpfen nicht, außer die Mission schaltet es ein.',

@@ -129,7 +129,7 @@ export function settlerFightPoints(world: World, e: Entity): number {
 }
 
 /** The fight points a blow with `weaponMainType` draws on: the personal counter for a class that trains
- *  it, 0 for any other class (the catapult, the hero axe) or none. */
+ *  it, 0 for the catapult or no class. */
 export function fightPointsWith(
   experience: ReadonlyMap<number, number>,
   weaponMainType: number | null | undefined,

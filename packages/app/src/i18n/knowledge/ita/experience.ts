@@ -122,10 +122,10 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Da dove viene',
         },
         {
-          p: "Ogni colpo o tiro che ha inflitto danni dà 1 punto, allo stesso modo con pugni, lancia, spada e arco. Contano anche i tiri del [[job:hunter|cacciatore]]. L'esperienza resta dopo un cambio d'arma o di professione.",
+          p: "Ogni colpo o tiro che ha inflitto danni dà 1 punto, allo stesso modo con i pugni e con ogni arma. Contano anche i tiri del [[job:hunter|cacciatore]]. L'esperienza resta dopo un cambio d'arma o di professione.",
         },
         {
-          p: 'Esercitazione: uno spadaccino, un lanciere o un arciere si esercita nella tua [[building:barracks|caserma]] se vi sono monete. Ogni ripetizione prende una [[good:coin|Moneta]] e dà {{coinDrill.points}} punti. Chi ha {{coinDrill.limit}} punti o più non si esercita più e guadagna il resto in battaglia. Seleziona i soldati e fai clic destro sulla tua caserma. Partono solo tanti soldati quante sono le monete libere della caserma, i più vicini per primi; gli altri restano dove sono.',
+          p: 'Esercitazione: ogni soldato armato si esercita nella tua [[building:barracks|caserma]] se vi sono monete. Ogni ripetizione prende una [[good:coin|Moneta]] e dà {{coinDrill.points}} punti. Chi ha {{coinDrill.limit}} punti o più non si esercita più e guadagna il resto in battaglia. Seleziona i soldati e fai clic destro sulla tua caserma. Partono solo tanti soldati quante sono le monete libere della caserma, i più vicini per primi; gli altri restano dove sono.',
         },
         {
           p: "Nel pannello del colono è la riga Combattimento: i punti, il bonus ai danni inflitti in mischia e quanti danni in meno subisce. Il combattimento non fa crescere l'esperienza di un eroe, a meno che la missione non lo consenta.",
