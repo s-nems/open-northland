@@ -28,6 +28,7 @@ import { forceFinishConstruction } from '../economy/construction.js';
 import { carriesFoodAmulet } from '../equipment/effects.js';
 import { setHouseholdGoodUse } from '../family/home-quality.js';
 import { razePalisade } from '../lifecycle/cleanup.js';
+import { setTempleFire } from '../lifecycle/temple/index.js';
 import { type PeaceRefusal, peaceRefusal } from '../match/peace.js';
 import { payTribute } from '../missions/tributes.js';
 // Deliberately the module, not the orders barrel: the handler reaches into
@@ -492,6 +493,9 @@ function applyCommand(
       return;
     case 'clearRallyPoint':
       clearRallyPoint(world, command);
+      return;
+    case 'setTempleFire':
+      setTempleFire(world, ctx, command);
       return;
     case 'placeSignpost':
       obeyDespiteHunger(world, ctx, command.entity, () => placeSignpost(world, ctx, command, origin));

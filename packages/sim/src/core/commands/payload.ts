@@ -441,6 +441,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   setConstructionPriority: { required: { building: 'integer', prioritized: 'boolean' } },
   setRallyPoint: { required: { building: 'integer', ...NODE } },
   clearRallyPoint: { required: { building: 'integer' } },
+  setTempleFire: { required: { building: 'integer', lit: 'boolean' } },
   setJob: { required: { entity: 'integer', jobType: 'integer' }, optional: JOB_GOODS },
   continueMatch: { required: { player: 'integer' } },
   endMatchContinuation: { required: {} },

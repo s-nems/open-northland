@@ -333,6 +333,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     setConstructionPriority: [{ building: t.hq, prioritized: true }],
     setRallyPoint: [{ building: t.hq, ...node }],
     clearRallyPoint: [{ building: t.hq }],
+    setTempleFire: [{ building: t.hq, lit: false }],
     setJob: [
       { entity: t.worker, jobType: CARPENTER },
       { entity: t.worker, jobType: CARPENTER, goods: [] },

@@ -2,7 +2,7 @@ import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { BUILDING_TEMPLE } from '../../../../src/game/sandbox/ids/index.js';
 import { buildingDef } from '../../../../src/hud/details-panel/model/context.js';
-import { templeFireModel } from '../../../../src/hud/details-panel/model/temple-fire.js';
+import { templeBlessing, templeFireModel } from '../../../../src/hud/details-panel/model/temple-fire.js';
 import { buildingEntity, sandboxCtx } from '../../../support/sandbox.js';
 
 const TEMPLE = 100;
@@ -12,11 +12,11 @@ describe('templeFireModel - the burning unit of a temple oil', () => {
   const ctx = sandboxCtx();
   const def = buildingDef(ctx, BUILDING_TEMPLE);
   const fuel = def?.stock[0]?.goodType ?? -1;
-  const temple = (units: number, burnedSeconds: number, blessing: boolean) =>
+  const temple = (units: number, burnedSeconds: number, blessing: boolean, doused = false) =>
     buildingEntity(TEMPLE, BUILDING_TEMPLE, {
       components: {
         Stockpile: { amounts: [[fuel, units]] },
-        TempleFire: { burnedSeconds, blessing },
+        TempleFire: { burnedSeconds, blessing, doused },
       },
     });
 
@@ -33,6 +33,16 @@ describe('templeFireModel - the burning unit of a temple oil', () => {
       unitSecondsLeft: 0,
       burning: false,
     });
+  });
+
+  it('keeps the unit of a fire put out, unburning', () => {
+    const half = BURN / 2;
+    expect(templeFireModel(ctx, def, temple(2, half, false, true))).toMatchObject({
+      pct: 50,
+      burning: false,
+      doused: true,
+    });
+    expect(templeBlessing(def, temple(2, half, false, true))).toEqual({ state: 'doused' });
   });
 
   it('shows nothing for a house that keeps no temple fire', () => {

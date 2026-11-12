@@ -175,6 +175,7 @@ export const COMMAND_ISSUER: {
   setConstructionPriority: 'seat',
   setRallyPoint: 'seat',
   clearRallyPoint: 'seat',
+  setTempleFire: 'seat',
   setJob: 'seat',
   setMatchParticipants: 'trusted',
   setUnplayedSeats: 'trusted',

@@ -121,6 +121,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
       unitSecondsLeft: 150,
       storeSecondsLeft: 750,
       burning: true,
+      doused: false,
     },
     stock: Array.from({ length: WARM_STOCK_LINES }, (_, goodType) => ({
       goodType,

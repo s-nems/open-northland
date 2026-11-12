@@ -17,17 +17,26 @@ export interface TempleFireModel {
   readonly storeSecondsLeft: number;
   /** Whether it burns now; a wounded temple holds its unit unburned. */
   readonly burning: boolean;
+  /** Whether the owner put the fire out. */
+  readonly doused: boolean;
 }
 
 interface FireState {
   readonly burnedSeconds: number;
   readonly blessing: boolean;
+  readonly doused: boolean;
 }
 
 function fireOf(ent: SnapshotEntity): FireState | null {
-  const fire = ent.components.TempleFire as { burnedSeconds?: unknown; blessing?: unknown } | undefined;
+  const fire = ent.components.TempleFire as
+    | { burnedSeconds?: unknown; blessing?: unknown; doused?: unknown }
+    | undefined;
   if (fire === undefined) return null;
-  return { burnedSeconds: num(fire.burnedSeconds) ?? 0, blessing: fire.blessing === true };
+  return {
+    burnedSeconds: num(fire.burnedSeconds) ?? 0,
+    blessing: fire.blessing === true,
+    doused: fire.doused === true,
+  };
 }
 
 /** The good a temple burns, undefined for a house that burns none. */
@@ -35,12 +44,13 @@ function templeFuelOf(def: BuildingDef | undefined): number | undefined {
   return def?.prayerSite === 'temple' ? def.stock[0]?.goodType : undefined;
 }
 
-/** A temple's blessing off its `TempleFire`: on with the oil it holds still to burn, else out for a wound
- *  or for want of oil. Null for any house the sim keeps no temple fire on. */
+/** A temple's blessing off its `TempleFire`: on with the oil it holds still to burn, else out for a fire
+ *  its owner put out, a wound or want of oil. Null for any house the sim keeps no temple fire on. */
 export function templeBlessing(def: BuildingDef | undefined, ent: SnapshotEntity): TempleBlessing | null {
   const fire = fireOf(ent);
   if (fire === null) return null;
   if (!fire.blessing) {
+    if (fire.doused) return { state: 'doused' };
     const health = healthOf(ent);
     return { state: health !== undefined && health.hitpoints < health.max ? 'damaged' : 'no-oil' };
   }
@@ -72,5 +82,6 @@ export function templeFireModel(
     unitSecondsLeft,
     storeSecondsLeft: Math.max(0, units * burnTime - fire.burnedSeconds),
     burning: fire.blessing,
+    doused: fire.doused,
   };
 }

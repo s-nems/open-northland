@@ -21,6 +21,7 @@ import type { SystemContext } from '../../../../src/systems/index.js';
 import { applyNeedUnits, NEED_SATED_THRESHOLD } from '../../../../src/systems/lifecycle/needs/index.js';
 import {
   blessedHitpointCeiling,
+  setTempleFire,
   TEMPLE_AURA_HITPOINTS,
   TEMPLE_AURA_PIETY_UNITS,
   TEMPLE_AURA_RANGE,
@@ -297,7 +298,7 @@ describe('templeAuraSystem - a temple that stores fuel blesses only while it bur
     for (let second = 1; second <= TEMPLE_FUEL_BURN_SECONDS; second++)
       blessAt(sim, second * TICKS_PER_SECOND);
 
-    expect(sim.world.get(temple, TempleFire)).toEqual({ burnedSeconds: 1, blessing: false });
+    expect(sim.world.get(temple, TempleFire)).toEqual({ burnedSeconds: 1, blessing: false, doused: false });
     expect(fuel(sim, temple)).toBe(1);
   });
 
@@ -316,6 +317,31 @@ describe('templeAuraSystem - a temple that stores fuel blesses only while it bur
     blessAt(sim, 0);
 
     expect(hp(sim, settler)).toBe(POOL + TEMPLE_AURA_HITPOINTS);
-    expect(sim.world.get(temple, TempleFire)).toEqual({ burnedSeconds: 0, blessing: true });
+    expect(sim.world.get(temple, TempleFire)).toEqual({ burnedSeconds: 0, blessing: true, doused: false });
+  });
+
+  it('burns nothing and blesses no one while its owner keeps the fire out', () => {
+    const sim = fresh(fuelledContent());
+    const temple = fuelledTempleAt(sim, 10, 1);
+    const settler = personAt(sim, 12);
+    const ctx = ctxOf(sim);
+
+    setTempleFire(sim.world, ctx, { kind: 'setTempleFire', building: temple, lit: false });
+    for (let second = 0; second <= TEMPLE_FUEL_BURN_SECONDS; second++)
+      blessAt(sim, second * TICKS_PER_SECOND);
+    expect(fuel(sim, temple)).toBe(1);
+    expect(hp(sim, settler)).toBe(POOL);
+    expect(blessing(sim, temple)).toBe(false);
+
+    setTempleFire(sim.world, ctx, { kind: 'setTempleFire', building: temple, lit: true });
+    blessAt(sim, (TEMPLE_FUEL_BURN_SECONDS + 1) * TICKS_PER_SECOND);
+    expect(hp(sim, settler)).toBe(POOL + TEMPLE_AURA_HITPOINTS);
+  });
+
+  it('refuses to put out the fire of a house that burns no fuel', () => {
+    const sim = fresh();
+    const temple = templeAt(sim, 10);
+    setTempleFire(sim.world, ctxOf(sim), { kind: 'setTempleFire', building: temple, lit: false });
+    expect(sim.world.has(temple, TempleFire)).toBe(false);
   });
 });

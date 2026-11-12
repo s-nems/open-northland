@@ -6,4 +6,4 @@ export {
   templeAuraSystem,
 } from './aura.js';
 export { finishedTemples } from './finished.js';
-export { TEMPLE_FUEL_BURN_SECONDS, templeFuelShortfall } from './fire.js';
+export { setTempleFire, TEMPLE_FUEL_BURN_SECONDS, templeFuelShortfall } from './fire.js';

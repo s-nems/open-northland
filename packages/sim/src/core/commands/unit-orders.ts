@@ -719,6 +719,13 @@ export type UnitOrderCommand =
       /** Take a barracks' rally point away: its recruits stay where they step out again. */
       readonly kind: 'clearRallyPoint';
       readonly building: Entity;
+    }
+  | {
+      /** Light or put out a temple's holy fire (owner ruling): put out, it burns no fuel and blesses no
+       *  one. Refused for a house that burns no fuel. */
+      readonly kind: 'setTempleFire';
+      readonly building: Entity;
+      readonly lit: boolean;
     };
 
 /**

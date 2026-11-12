@@ -1,6 +1,6 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { BuildingPanelModel } from '../../details-panel/model/index.js';
-import { element, setHidden } from '../parts/dom.js';
+import { button, element, setHidden, setTip, write } from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
 import type { BuildingPanelDeps } from './actions.js';
 import { createGoodLine } from './good-line.js';
@@ -15,19 +15,30 @@ function clockText(seconds: number): string {
   return `${Math.floor(whole / SECONDS_PER_MINUTE)}:${rest}`;
 }
 
-/** Holy fire: a fuelled temple's burning unit of oil, its rule emptying as the unit burns down. */
+/** Holy fire: a fuelled temple's burning unit of oil, its rule emptying as the unit burns down, and the
+ *  order that puts the fire out or lights it again. */
 export interface TempleFireSection {
   readonly element: HTMLElement;
   update(model: BuildingPanelModel): void;
 }
 
-export function createTempleFireSection(deps: Pick<BuildingPanelDeps, 'icons'>): TempleFireSection {
+export function createTempleFireSection(
+  deps: Pick<BuildingPanelDeps, 'icons' | 'building'>,
+  current: () => BuildingPanelModel | null,
+): TempleFireSection {
   const title = createSection();
   const list = element('ul', 'on-manifest');
   const line = createGoodLine(deps.icons);
   list.append(line.element);
+  const toggle = button('on-order on-temple-fire__toggle');
+  toggle.addEventListener('click', () => {
+    const shown = current();
+    const fire = shown?.templeFire;
+    if (shown === null || fire == null) return;
+    deps.building.setTempleFire(shown.entityId, fire.doused);
+  });
   const root = element('div', '');
-  root.append(title.element, list);
+  root.append(title.element, list, toggle);
 
   const update = (model: BuildingPanelModel): void => {
     const fire = model.templeFire;
@@ -46,9 +57,13 @@ export function createTempleFireSection(deps: Pick<BuildingPanelDeps, 'icons'>):
             time,
             minutes: Math.ceil(fire.storeSecondsLeft / SECONDS_PER_MINUTE),
           })
-        : copy.templeFireOut,
+        : fire.doused
+          ? copy.templeFireDoused
+          : copy.templeFireOut,
       muted: !fire.burning,
     });
+    write(toggle, fire.doused ? copy.templeFireLight : copy.templeFireDouse);
+    setTip(toggle, copy.templeFireDouseTooltip);
   };
 
   return { element: root, update };

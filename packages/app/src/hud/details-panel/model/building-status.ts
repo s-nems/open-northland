@@ -39,9 +39,20 @@ export interface BuildingStatusInputs {
  *  needs none), or what keeps it from blessing. */
 export type TempleBlessing =
   | { readonly state: 'on'; readonly secondsLeft: number | null }
-  | { readonly state: 'no-oil' | 'damaged' };
+  | { readonly state: 'no-oil' | 'damaged' | 'doused' };
 
 const SECONDS_PER_MINUTE = 60;
+
+type StatusCopy = ReturnType<typeof messages>['hud']['buildingPanel']['status'];
+
+/** What a temple that does not bless says, by what keeps it from blessing. */
+const BLESSING_OFF_LABEL: Readonly<
+  Record<Exclude<TempleBlessing['state'], 'on'>, (copy: StatusCopy) => string>
+> = {
+  'no-oil': (copy) => copy.noOil,
+  damaged: (copy) => copy.blessingDamaged,
+  doused: (copy) => copy.blessingDoused,
+};
 
 /** The first state that holds: the site, the alarm, a temple's blessing, a home's families, a running
  *  craft, a tower's garrison, missing hands, a stall the posted worker reports, and the house simply
@@ -64,7 +75,7 @@ export function buildingStatus(inputs: BuildingStatusInputs): BuildingStatusMode
   if (blessing !== null) {
     if (blessing.state !== 'on') {
       return {
-        label: blessing.state === 'damaged' ? copy.blessingDamaged : copy.noOil,
+        label: BLESSING_OFF_LABEL[blessing.state](copy),
         detail: null,
         tone: 'trouble',
       };
