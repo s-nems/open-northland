@@ -226,7 +226,7 @@ function pooledDepth(pe: PooledEntity, item: DrawItem): number {
   const plotBack = item.roadSite === 'claimed' ? PLOT_BOUNDS.top : 0;
   return screenDepth(
     pe.motion.drawX,
-    pe.motion.drawY + (item.lift ?? 0) + plotBack,
+    (item.sortY ?? pe.motion.drawY) + (item.lift ?? 0) + plotBack,
     item.kind,
     item.isFlag === true,
     item.roadSite === 'unclaimed',

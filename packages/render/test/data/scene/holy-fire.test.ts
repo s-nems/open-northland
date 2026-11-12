@@ -94,7 +94,13 @@ describe('home holy fire projection', () => {
     const building = visible.items.find((item) => item.kind === 'building');
     const fire = visible.items.find((item) => item.kind === 'craftfx');
     if (building === undefined || fire === undefined) throw new Error('expected home and holy fire');
-    expect(fire).toMatchObject({ fxName: 'fx fire incense', x: building.x - 80, y: building.y + 24 });
+    // Drawn at its own point, sorted at the house's anchor, so a point behind the house still draws on it.
+    expect(fire).toMatchObject({
+      fxName: 'fx fire incense',
+      x: building.x - 80,
+      y: building.y + 24,
+      sortY: building.y,
+    });
     expect(fire === undefined ? false : visible.liveRefs.has(fire.ref)).toBe(true);
 
     const culled = collectSpriteScene(snapshot(), {
