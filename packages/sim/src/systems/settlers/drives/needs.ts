@@ -35,7 +35,7 @@ import { atOrWalk, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic, startMeal } fro
 import { enterBuilding } from '../indoors.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { chooseMeal, nearestPrayerSite, type TargetCandidates } from '../targets/index.js';
-import { keepSpouseCompany } from './at-home.js';
+import { fillCompanyOnComingHome } from './at-home.js';
 import { prayAtHome, sleepAtHome } from './home-errands.js';
 import { prayerStand } from './prayer-stand.js';
 import { restingCell } from './rest-spot.js';
@@ -327,7 +327,7 @@ function seekMeal(
     const serve = (): void => startMeal(world, ctx, e, settler, effect, target);
     if (food.kind === 'store' && food.atHome) {
       enterBuilding(world, e, food.store, here, food.cell, () => {
-        keepSpouseCompany(world, ctx, e);
+        fillCompanyOnComingHome(world, ctx, e);
         serve();
       });
     } else {

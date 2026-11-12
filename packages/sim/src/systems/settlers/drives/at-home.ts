@@ -81,10 +81,10 @@ export function topsUpAtHome(world: World, ctx: SystemContext, supply: SupplyTal
 }
 
 /**
- * A married settler stepping into its own home leaves its company bar full, wherever its spouse is.
- * Approximation standing in for time with the family, which no clip in the data covers.
+ * Owner's rule: a married settler stepping into its own home leaves its company bar full, wherever its
+ * spouse is. Filling it outright is the approximation: no clip in the data pays company at home.
  */
-export function keepSpouseCompany(world: World, ctx: SystemContext, e: Entity): void {
+export function fillCompanyOnComingHome(world: World, ctx: SystemContext, e: Entity): void {
   if (!needsEnabled(world) || !world.has(e, Marriage) || !carriesNeeds(world, ctx.content, e)) return;
   const needs = world.tryGet(e, SettlerNeeds);
   if (needs !== undefined && needLevel(needs, 'enjoyment', ctx.tick) !== ZERO)

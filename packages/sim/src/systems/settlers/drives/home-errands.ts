@@ -12,7 +12,7 @@ import { enterBuilding, isInside } from '../indoors.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { homeErrandDoor } from '../targets/index.js';
 import { unreachableGoals } from '../unreachable-goals.js';
-import { homeClipServes, keepSpouseCompany } from './at-home.js';
+import { fillCompanyOnComingHome, homeClipServes } from './at-home.js';
 import { prayerStand } from './prayer-stand.js';
 
 // Sleeping at home: a settler with a house walks to its door, goes inside, and comes back out rested; the
@@ -51,7 +51,7 @@ export function sleepAtHome(
   const door = homeErrandDoor(world, ctx, terrain, home, here, limit, unreachableGoals(world, ctx, e));
   if (door === null) return false;
   enterBuilding(world, e, home, here, door, () => {
-    keepSpouseCompany(world, ctx, e);
+    fillCompanyOnComingHome(world, ctx, e);
     startAtomic(
       world,
       e,
