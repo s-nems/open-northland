@@ -34,8 +34,8 @@ const watch = new FreezeWatch(
       // A failed write loses only the report of a page that never comes back.
       record = { stored, written: putFreezeRecord(stored).catch(() => undefined) };
     },
-    thawed: (freezeMs, context) => {
-      scope.postMessage({ kind: 'thawed', freezeMs, frozenAt: Date.now() - freezeMs, context });
+    thawed: (freezeMs, context, afterWake) => {
+      scope.postMessage({ kind: 'thawed', freezeMs, frozenAt: Date.now() - freezeMs, context, afterWake });
       const ended = record;
       record = null;
       if (ended !== null)

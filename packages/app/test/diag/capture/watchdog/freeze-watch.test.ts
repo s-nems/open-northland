@@ -21,7 +21,8 @@ function watched(): { watch: FreezeWatch; events: string[]; checkUntil(fromMs: n
   const watch = new FreezeWatch(
     {
       frozen: (silentMs, context) => events.push(`frozen ${silentMs} at tick ${context?.tick}`),
-      thawed: (freezeMs, context) => events.push(`thawed ${freezeMs} at tick ${context?.tick}`),
+      thawed: (freezeMs, context, afterWake) =>
+        events.push(`thawed ${freezeMs} at tick ${context?.tick}${afterWake ? ' after a wake' : ''}`),
     },
     THRESHOLD_MS,
     BEAT_MS,
@@ -62,5 +63,32 @@ describe('FreezeWatch', () => {
     checkUntil(62_000, 64_000);
     watch.beat(64_500, true, LATER);
     expect(events).toEqual([]);
+  });
+
+  it('tells a freeze that began soon after the machine woke from one that began later', () => {
+    const { watch, events, checkUntil } = watched();
+    const beatUntil = (fromMs: number, toMs: number): void => {
+      for (let nowMs = fromMs; nowMs <= toMs; nowMs += BEAT_MS) {
+        watch.beat(nowMs, true, IN_GAME);
+        watch.check(nowMs);
+      }
+    };
+    beatUntil(0, 2000);
+    // An hour asleep, then the woken page stalls for 11 s within seconds of the first check.
+    const wokeMs = 3_600_000;
+    beatUntil(wokeMs, wokeMs + 3000);
+    checkUntil(wokeMs + 4000, wokeMs + 13_000);
+    watch.beat(wokeMs + 14_000, true, LATER);
+    // The same stall once the woken machine has long settled.
+    const settledMs = wokeMs + 120_000;
+    beatUntil(wokeMs + 15_000, settledMs);
+    checkUntil(settledMs + BEAT_MS, settledMs + 10_000);
+    watch.beat(settledMs + 11_000, true, LATER);
+    expect(events).toEqual([
+      'frozen 9000 at tick 120',
+      'thawed 11000 at tick 120 after a wake',
+      'frozen 9000 at tick 120',
+      'thawed 11000 at tick 120',
+    ]);
   });
 });

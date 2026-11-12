@@ -36,15 +36,15 @@ export function openWatchdog(tabId: string): Watchdog | null {
 }
 
 function thawed(thaw: Thaw): void {
-  const { freezeMs, context } = thaw;
-  diag.warn('freeze', `the page was frozen for ${Math.round(freezeMs)} ms`, { freezeMs, context });
+  const { freezeMs, context, afterWake } = thaw;
+  diag.warn('freeze', `the page was frozen for ${Math.round(freezeMs)} ms`, { freezeMs, context, afterWake });
   const facts = {
     freezeMs: Math.round(freezeMs),
     ...(context === null ? {} : { entry: context.entry, worldId: context.worldId, tick: context.tick }),
   };
-  // A short freeze of a boot or of a page drawn in software is only logged; one the player ended by
-  // closing the tab leaves its record to the next start.
-  const slow = context?.booting === true || captureContext().booting || drawnInSoftware();
+  // A short freeze of a boot, of a page drawn in software or of a woken machine is only logged; one the
+  // player ended by closing the tab leaves its record to the next start.
+  const slow = afterWake || context?.booting === true || captureContext().booting || drawnInSoftware();
   const report = freezeWorthReport(freezeMs, slow);
   const faults = window.desktop?.faults;
   if (faults === undefined) {
