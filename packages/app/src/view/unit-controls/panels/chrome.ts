@@ -453,6 +453,8 @@ export async function createUnitChrome(
     livestockTribeOfGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType),
     edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
     isTraderJob: (jobType) => systems.isTraderJob(opts.content, jobType),
+    fightEffects: (settler, worn, experience) =>
+      systems.fightExperienceEffects(opts.content, settler, worn, experience),
     ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
     ...(opts.signpostReach !== undefined ? { signpostReach: opts.signpostReach } : {}),
     ...(traderView !== undefined

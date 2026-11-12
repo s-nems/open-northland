@@ -288,6 +288,7 @@ export {
   STRUCTURE_BLOW_SHARE,
   startingExperience,
 } from './progression/experience.js';
+export { type FightExperienceEffects, fightExperienceEffects } from './progression/fight-effects.js';
 // The atomic clip resolution and the need channels its events carry, so the real-content suite can pin the
 // joins against the served IR rather than a fixture, and the committed catalog can author its cues and its
 // need clips on the same ids the sim reads back.

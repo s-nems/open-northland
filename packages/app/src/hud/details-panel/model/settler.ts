@@ -65,21 +65,25 @@ export function satisfactionBars(
 }
 
 /** One Experience row: a specialization's label, its completed-work repeats ("Wood 5" means five
- *  units gathered), its bonus percent (null when that experience buys no bonus), the percent it takes off
- *  the damage the person is dealt (the fight counter's alone, else null), and whether it trains the
- *  settler's current trade. */
+ *  units gathered), its bonus percent (null when that experience buys no bonus, and on the fight row),
+ *  the fight counter's own reading (null on every other row), and whether it trains the settler's
+ *  current trade. */
 export interface ExperienceRowModel {
   readonly label: string;
   readonly repeats: number;
   readonly bonusPct: number | null;
-  readonly takenCutPct: number | null;
+  readonly fight: FightRowModel | null;
   readonly own: boolean;
 }
 
-const PERCENT = 100;
-/** A blow large enough that the fight counter's cut on it reads to a whole percent, truncated like its
- *  raise, rather than to the one-hitpoint step a 100 blow would show. */
-const FIGHT_CUT_PROBE = 10_000;
+/** What the personal fight counter buys with the weapon in hand, each null when it buys that nothing:
+ *  dealt for a melee weapon or bare hands, accuracy for a bow, and the cut on blows taken for everyone
+ *  the sim reads one for. */
+export interface FightRowModel {
+  readonly dealtPct: number | null;
+  readonly takenCutPct: number | null;
+  readonly accuracyPct: number | null;
+}
 
 /** A specialization row's label: the track's `hud.trackLabels` entry, keyed by its content slug, else
  *  the job's name for a general track and "job - good" for a good-specific one. */
@@ -108,18 +112,33 @@ function experienceBonusPct(
   track: JobExperienceDef | undefined,
   raw: number,
 ): number | null {
-  if (spec === systems.FIGHT_EXPERIENCE_TYPE.PERSONAL) {
-    return systems.withFightExperience(PERCENT, raw) - PERCENT;
-  }
+  if (spec === systems.FIGHT_EXPERIENCE_TYPE.PERSONAL) return null; // the fight row states its own
   if (track === undefined && WEAPON_XP_KEY_BY_TYPE.has(spec)) return null; // the catapult's buys aim
   if (track !== undefined && isCarrierJob(ctx, track.jobType)) return null;
   return systems.experiencePercent(systems.experiencePoints(raw));
 }
 
-/** The whole percent the personal fight counter's stored `units` take off a blow, truncated. */
-function fightCutPct(units: number): number {
-  const taken = systems.withTakenBonuses(FIGHT_CUT_PROBE, units);
-  return Math.trunc(((FIGHT_CUT_PROBE - taken) * PERCENT) / FIGHT_CUT_PROBE);
+/** The fight row's reading of `experience`, through the sim's seam when the context carries it. */
+function fightRow(
+  ctx: UnitPanelModelContext,
+  comps: Comp,
+  experience: ReadonlyMap<number, number>,
+): FightRowModel {
+  const settler = comps.Settler as { tribe?: unknown; jobType?: unknown; humanForm?: unknown } | undefined;
+  const tribe = num(settler?.tribe);
+  const effects =
+    ctx.fightEffects === undefined || tribe === undefined
+      ? undefined
+      : ctx.fightEffects(
+          { tribe, jobType: num(settler?.jobType) ?? null, humanForm: settler?.humanForm === true },
+          num((comps.Weapon as { weaponTypeId?: unknown } | undefined)?.weaponTypeId),
+          experience,
+        );
+  return {
+    dealtPct: effects?.dealtPct ?? null,
+    takenCutPct: effects?.takenCutPct ?? null,
+    accuracyPct: effects?.accuracyPct ?? null,
+  };
 }
 
 /**
@@ -150,7 +169,7 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
       label: experienceLabel(ctx, spec, track),
       repeats,
       bonusPct: experienceBonusPct(ctx, spec, track, points),
-      takenCutPct: personal ? fightCutPct(points) : null,
+      fight: personal ? fightRow(ctx, comps, experience) : null,
       own,
       spec,
     });
@@ -158,11 +177,11 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
   rows.sort((a, b) => Number(b.own) - Number(a.own) || b.repeats - a.repeats || a.spec - b.spec);
   return rows
     .filter((row) => !copiesItsGood(ctx, row, rows))
-    .map(({ label, repeats, bonusPct, takenCutPct, own }) => ({
+    .map(({ label, repeats, bonusPct, fight, own }) => ({
       label,
       repeats,
       bonusPct,
-      takenCutPct,
+      fight,
       own,
     }));
 }

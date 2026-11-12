@@ -9,7 +9,7 @@ import {
 } from '../../game/snapshot/index.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { jobDisplayName, type UnitPanelModelContext } from '../details-panel/model/context.js';
-import { experienceRows } from '../details-panel/model/settler.js';
+import { experienceRows, type FightRowModel } from '../details-panel/model/settler.js';
 import { settlerRole } from '../details-panel/model/settler-household.js';
 import { unlockProgress } from '../details-panel/model/settler-unlocks.js';
 import { productSelectionLabel, settlerProductSelection } from '../details-panel/model/settler-work.js';
@@ -69,13 +69,13 @@ function trainingFacts(
     facts.push({
       label: trained.label,
       // The bonus alone keeps the card narrow; a track that buys none (a carrier's) counts its repeats,
-      // and the fight counter names its two bonuses.
+      // and the fight counter names the bonuses the weapon in hand draws on.
       value:
-        trained.bonusPct === null
-          ? formatMessage(copy.repeats, { count: trained.repeats })
-          : trained.takenCutPct === null
-            ? `+${trained.bonusPct}%`
-            : `${formatMessage(copy.fightDealt, { pct: trained.bonusPct })}, ${formatMessage(copy.fightTaken, { pct: trained.takenCutPct })}`,
+        trained.fight !== null
+          ? fightBonusText(trained.fight)
+          : trained.bonusPct === null
+            ? formatMessage(copy.repeats, { count: trained.repeats })
+            : `+${trained.bonusPct}%`,
     });
   }
   const hidden = trainedRows.length - EXPERIENCE_FACTS_MAX;
@@ -91,6 +91,16 @@ function trainingFacts(
     });
   }
   return facts;
+}
+
+/** The fight counter's bonuses on one line. */
+function fightBonusText(fight: FightRowModel): string {
+  const copy = messages().hud.settlerPanel;
+  const parts: string[] = [];
+  if (fight.dealtPct !== null) parts.push(formatMessage(copy.fightDealt, { pct: fight.dealtPct }));
+  if (fight.accuracyPct !== null) parts.push(formatMessage(copy.fightAccuracy, { pct: fight.accuracyPct }));
+  if (fight.takenCutPct !== null) parts.push(formatMessage(copy.fightTaken, { pct: fight.takenCutPct }));
+  return parts.join(', ');
 }
 
 /** The products the worker is set to make, named; every open one running reads as one word. */

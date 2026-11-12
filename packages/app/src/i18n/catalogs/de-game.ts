@@ -859,10 +859,9 @@ export const deGame = {
       agreementUpToTooltip: 'Handeln, bis so viel {good} vorhanden ist: {where} · ∞: keine Obergrenze',
       repeats: '{count} Mal',
       repeatsBonus: '{count} Mal, Ertrag +{bonus}%',
-      fightBonus:
-        'Kampferfahrung {count}/{max}. Boni: verursachter Nahkampfschaden +{dealt}%, erlittener Schaden -{taken}%',
-      fightDealt: 'verursacht +{pct}%',
-      fightTaken: 'erlitten -{pct}%',
+      fightDealt: 'Verursachter Schaden: +{pct}%',
+      fightTaken: 'Erlittener Schaden: -{pct}%',
+      fightAccuracy: 'Treffsicherheit: {pct}%',
       unlockTooltip: 'Schaltet {unlocks} frei (Erfahrung: {track})',
       moreRows: '{count} weitere',
       fewerRows: 'Weniger anzeigen',

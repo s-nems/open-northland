@@ -128,8 +128,8 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
       },
     },
     experience: [
-      { label: 'Warm', repeats: 1, bonusPct: 5, takenCutPct: null, own: true },
-      { label: 'Warm', repeats: 1, bonusPct: null, takenCutPct: null, own: false },
+      { label: 'Warm', repeats: 1, bonusPct: 5, fight: null, own: true },
+      { label: 'Warm', repeats: 1, bonusPct: null, fight: null, own: false },
     ],
     upcomingUnlocks: [{ target: 'job', unlocks: 'Warm', track: 'warm', current: 1, required: 4 }],
     equipmentRows: [

@@ -9,6 +9,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { shelterCapacityById } from '../../../../src/catalog/defence.js';
 import {
+  JOB_ARCHER,
   JOB_BABY_MALE,
   JOB_BUILDER,
   JOB_CHILD_MALE,
@@ -21,6 +22,7 @@ import {
   JOB_HEROINE_BOW,
   JOB_HUNTER,
   JOB_SOLDIER,
+  JOB_SOLDIER_SWORD,
   JOB_TRADER,
   JOB_WOMAN,
 } from '../../../../src/catalog/jobs.js';
@@ -88,6 +90,9 @@ import {
  *  own with `freshSandboxCtx`. */
 let sharedSandboxCtx: UnitPanelModelContext | undefined;
 const sandboxCtx = (): UnitPanelModelContext => (sharedSandboxCtx ??= freshSandboxCtx());
+
+/** Fight points at half the counter's full. */
+const HALF_FIGHT = 50;
 
 /** The equipment scene's first-tick snapshot + its content context - the preamble both equipment
  *  tests open with. */
@@ -1456,7 +1461,7 @@ describe('selection details panel model', () => {
             experience: [
               [3, 50], // 50 raw points at rate 10 → 5 wood gathered, half a curve point
               [9, 100], // 100 raw points at rate 100 → 1 repeat, one curve point
-              // 5 points and part of a sixth, shown as 5; the raise reads the fine units: +2% damage
+              // 5 points and part of a sixth, shown as 5; the raise on his fists reads the fine units
               [systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(5) + 1],
             ],
           },
@@ -1466,25 +1471,60 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), ctx);
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     // The collector's own tracks lead, repeats descending; the percents read the curve in raw hundredths
-    // (50 raw → 0%, 100 raw → 17%) and the fight counter's own damage factor (5 points: +2%).
-    expect(
-      model.experience.map((r) => ({
-        repeats: r.repeats,
-        bonusPct: r.bonusPct,
-        takenCutPct: r.takenCutPct,
-        own: r.own,
-      })),
-    ).toEqual([
-      { repeats: 5, bonusPct: 0, takenCutPct: null, own: true },
-      { repeats: 1, bonusPct: 17, takenCutPct: null, own: true },
-      // 5 points also cut the blows he takes: 100 * 9800 / 10000, so -2%.
-      { repeats: 5, bonusPct: 2, takenCutPct: 2, own: false },
+    // (50 raw → 0%, 100 raw → 17%), and the fight counter states its share alone.
+    expect(model.experience.map((r) => ({ repeats: r.repeats, bonusPct: r.bonusPct, own: r.own }))).toEqual([
+      { repeats: 5, bonusPct: 0, own: true },
+      { repeats: 1, bonusPct: 17, own: true },
+      { repeats: 5, bonusPct: null, own: false },
     ]);
+    // 5 points raise his fists' blows by 2% and cut the blows he takes: 100 * 9800 / 10000, so -2%.
+    expect(model.experience[2]?.fight).toEqual({
+      dealtPct: 2,
+      takenCutPct: 2,
+      accuracyPct: null,
+    });
     expect(model.experience[0]?.label).toBe('Zbieranie - Drewno'); // hand-translated trackLabels entry
     expect(model.experience[1]?.label).not.toMatch(/Specjalizacja/); // general track labels by its job
     expect(model.experience[2]?.label).toBe('Walka'); // the personal fight counter's label
     // Both own rows show before the fold; the fight row waits behind "1 more".
     expect(experienceShown(model.experience)).toBe(2);
+  });
+
+  it('states the fight bonuses the weapon in hand buys: damage for a blade, aim for a bow, a heroine none but the cut', () => {
+    const ctx = sandboxCtx();
+    const fightOf = (jobType: number) => {
+      const snapshot = snapshotOf([
+        {
+          id: 1,
+          components: {
+            Settler: { tribe: 1, jobType },
+            SettlerProgress: {
+              experience: [[systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, systems.fightUnitsOfPoints(HALF_FIGHT)]],
+            },
+          },
+        },
+      ]);
+      const model = buildUnitPanelModel(snapshot, new Set([1]), ctx);
+      if (model.kind !== 'settler') throw new Error('expected a settler model');
+      return model.experience.find((row) => row.fight !== null)?.fight;
+    };
+    // Half the counter: +20% on a blade's blows, 61% of a bowman's shots true, -20% on every blow taken.
+    expect(fightOf(JOB_SOLDIER_SWORD)).toEqual({
+      dealtPct: 20,
+      takenCutPct: 20,
+      accuracyPct: null,
+    });
+    expect(fightOf(JOB_ARCHER)).toEqual({
+      dealtPct: null,
+      takenCutPct: 20,
+      accuracyPct: systems.trueShotPct(HALF_FIGHT),
+    });
+    // A heroine's shot flies true whatever her counter; the blows she takes are still cut.
+    expect(fightOf(JOB_HEROINE_BOW)).toEqual({
+      dealtPct: null,
+      takenCutPct: 20,
+      accuracyPct: null,
+    });
   });
 
   it('leaves out a general track that only repeats its one trained good, and keeps it as a total', () => {

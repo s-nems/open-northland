@@ -3,6 +3,7 @@ import { formatMessage, messages } from '../../../i18n/index.js';
 import {
   type ExperienceRowModel,
   experienceShown,
+  type FightRowModel,
   type SettlerPanelModel,
   type UnlockProgressRowModel,
 } from '../../details-panel/model/index.js';
@@ -12,20 +13,28 @@ import { createLedger, type Ledger, type LedgerModel } from '../parts/ledger.js'
 import { meterFill } from '../parts/meter-row.js';
 import { createSection } from '../parts/section.js';
 
+/** The bonuses the fight counter buys with the weapon in hand. */
+function fightBonuses(fight: FightRowModel): string[] {
+  const copy = messages().hud.settlerPanel;
+  const lines: string[] = [];
+  if (fight.dealtPct !== null) lines.push(formatMessage(copy.fightDealt, { pct: fight.dealtPct }));
+  if (fight.accuracyPct !== null) lines.push(formatMessage(copy.fightAccuracy, { pct: fight.accuracyPct }));
+  if (fight.takenCutPct !== null) lines.push(formatMessage(copy.fightTaken, { pct: fight.takenCutPct }));
+  return lines;
+}
+
 export function trainedRow(row: ExperienceRowModel): LedgerModel {
   const copy = messages().hud.settlerPanel;
   const repeats = String(row.repeats);
-  if (row.takenCutPct !== null) {
-    // The fight counter is capped: it reads as a share of its full, as an unlock row does.
-    const dealt = row.bonusPct ?? 0;
-    const max = systems.FIGHT_EXPERIENCE_FULL;
+  // The fight counter is capped: it reads as a share of its full, as an unlock row does.
+  if (row.fight !== null) {
+    const bonuses = fightBonuses(row.fight);
     return {
       label: row.label,
-      tooltip: formatMessage(copy.fightBonus, { count: row.repeats, max, dealt, taken: row.takenCutPct }),
+      tooltip: bonuses.join(', '),
       value: [
-        { text: `${row.repeats} / ${max}` },
-        { text: formatMessage(copy.fightDealt, { pct: dealt }), tone: 'bonus' },
-        { text: formatMessage(copy.fightTaken, { pct: row.takenCutPct }), tone: 'bonus' },
+        { text: `${row.repeats} / ${systems.FIGHT_EXPERIENCE_FULL}` },
+        ...bonuses.map((text) => ({ text, tone: 'bonus' as const })),
       ],
     };
   }
