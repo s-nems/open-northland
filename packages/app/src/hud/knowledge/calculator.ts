@@ -45,6 +45,8 @@ export interface CalculatorTarget {
   readonly kind: TargetKind;
   readonly armour: ArmourId;
   readonly defense: boolean;
+  /** A person target's own fight points. */
+  readonly hits: number;
   /** An animal's tribe id. */
   readonly animal: number;
   readonly building: string;
@@ -142,6 +144,7 @@ export function initialCalculator(base: KnowledgeBase, tribe: number): Calculato
       kind: 'person',
       armour: DEFAULT_ARMOUR,
       defense: false,
+      hits: 0,
       animal: base.animals[0]?.tribe ?? 0,
       building: firstBuilding(base)?.id ?? '',
       buildingTribe: tribe,
@@ -217,11 +220,12 @@ function modifiersOf(state: CalculatorState, target: ResolvedTarget): BlowModifi
     hits: attacker.hits,
     strength: attacker.strength,
     defense: target.combat.person && state.target.defense,
+    targetHits: target.combat.person ? state.target.hits : 0,
   };
 }
 
 /** Why a rule leaves a step out for this blow; null for a step that runs. */
-export type StepSkip = 'catapult' | 'hero' | 'notPerson' | 'notWorn' | 'ranged' | 'vehicle';
+export type StepSkip = 'catapult' | 'hero' | 'notPerson' | 'notWorn' | 'ranged' | 'unseasoned' | 'vehicle';
 
 export interface BreakdownRow {
   readonly id: BlowStep['id'];
@@ -251,6 +255,9 @@ function skipOf(
     case 'defense':
       if (!target.person) return 'notPerson';
       return modifiers.defense ? null : 'notWorn';
+    case 'targetExperience':
+      if (!target.person) return 'notPerson';
+      return modifiers.targetHits > 0 ? null : 'unseasoned';
     default:
       return null;
   }
@@ -379,6 +386,7 @@ function duelSide(base: KnowledgeBase, fighter: DuelFighter, foe: DuelFighter): 
       hits: fighter.hits,
       strength: fighter.strength,
       defense: foe.defense,
+      targetHits: foe.hits,
     }),
   );
   const hits = hitsToKill(damage);

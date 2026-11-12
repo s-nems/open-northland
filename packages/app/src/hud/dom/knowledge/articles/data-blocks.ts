@@ -69,6 +69,7 @@ const blowOf = (state: MatrixState): BlowModifiers => ({
   hits: Number(state.hits),
   strength: state.strength,
   defense: state.defense,
+  targetHits: 0,
 });
 
 function cellValue(

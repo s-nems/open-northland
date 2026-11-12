@@ -1,3 +1,4 @@
+import { systems } from '@open-northland/sim';
 import { formatMessage, messages } from '../../../../../i18n/index.js';
 import {
   type BlowResult,
@@ -208,7 +209,12 @@ function attackerPanel(
       const skip = result.rows.find((row) => row.id === 'experience')?.skip ?? null;
       write(
         experienceNote,
-        skip === null ? formatMessage(copy.experienceHint, { cap: CAP_HITS }) : copy.skips[skip],
+        skip === null
+          ? formatMessage(copy.experienceHint, {
+              cap: CAP_HITS,
+              pct: systems.FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL,
+            })
+          : copy.skips[skip],
       );
       strength.box.disabled = !result.takesStrength;
     },

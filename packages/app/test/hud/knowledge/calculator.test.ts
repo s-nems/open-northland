@@ -1,3 +1,4 @@
+import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
 import {
@@ -16,7 +17,9 @@ import {
 import {
   ANIMAL_TARGET,
   type BlowModifiers,
+  CAP_HITS,
   combatTargets,
+  DEFENSE_TAKEN_PCT,
   HIT_DIRECTION,
   HUMAN_HITPOINTS,
   landed,
@@ -77,9 +80,9 @@ const fighter = (over: Partial<DuelFighter>): DuelFighter => ({
 
 describe('breakdown', () => {
   const modifiers: readonly BlowModifiers[] = [
-    { direction: HIT_DIRECTION.front, hits: 0, strength: false, defense: false },
-    { direction: HIT_DIRECTION.behind, hits: 60, strength: true, defense: true },
-    { direction: HIT_DIRECTION.backSide, hits: 100, strength: true, defense: false },
+    { direction: HIT_DIRECTION.front, hits: 0, strength: false, defense: false, targetHits: 0 },
+    { direction: HIT_DIRECTION.behind, hits: 60, strength: true, defense: true, targetHits: 100 },
+    { direction: HIT_DIRECTION.backSide, hits: 100, strength: true, defense: false, targetHits: 30 },
   ];
   const weapons = [
     row(),
@@ -125,6 +128,19 @@ describe('breakdown', () => {
     expect(skip(row(), 'vehicle', 'direction')).toBe('notPerson');
     expect(skip(row({ id: 'catapult', mainType: CATAPULT_TYPE }), 'building', 'strength')).toBe('catapult');
     expect(skip(row({ id: 'house_bow', mainType: BOW_TYPE }), 'bare', 'strength')).toBe('catapult');
+    expect(skip(row(), 'bare', 'targetExperience')).toBe('unseasoned');
+    expect(skip(row(), 'building', 'targetExperience')).toBe('notPerson');
+  });
+
+  it("cuts a blow by the target's experience, multiplied with his Amulet of Defence", () => {
+    const bare = targets.find((t) => t.id === 'bare');
+    if (bare === undefined) throw new Error('no bare target');
+    const blow = { ...(modifiers[0] as BlowModifiers), targetHits: CAP_HITS };
+    const plain = landed(row(), bare);
+    expect(landed(row(), bare, blow)).toBe(systems.withTakenBonuses(plain, CAP_HITS));
+    expect(landed(row(), bare, { ...blow, defense: true })).toBe(
+      systems.withTakenBonuses(plain, CAP_HITS, DEFENSE_TAKEN_PCT),
+    );
   });
 });
 
