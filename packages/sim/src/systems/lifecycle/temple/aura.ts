@@ -1,4 +1,12 @@
-import { Health, needsEnabled, ownerOf, Person, Position, SettlerNeeds } from '../../../components/index.js';
+import {
+  Health,
+  needsEnabled,
+  ownerOf,
+  Person,
+  Position,
+  SettlerNeeds,
+  TempleFire,
+} from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
@@ -32,7 +40,11 @@ export function blessedHitpointCeiling(max: number): number {
 export const templeAuraSystem: System = (world, ctx) => {
   // Caught up every tick, so a busy tick's building writes never pile past the feed's limit.
   const temples = finishedTemples(world, ctx);
-  if (ctx.tick % TICKS_PER_SECOND !== 0 || temples.length === 0) return;
+  if (ctx.tick % TICKS_PER_SECOND !== 0) {
+    for (const e of temples) if (!world.has(e, TempleFire)) tendTempleFire(world, ctx, e, false);
+    return;
+  }
+  if (temples.length === 0) return;
   const anchorsByOwner = blessingTempleAnchors(world, ctx, temples);
   if (anchorsByOwner.size === 0) return;
   const piety = needsEnabled(world);

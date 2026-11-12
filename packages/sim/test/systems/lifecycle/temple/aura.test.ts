@@ -338,6 +338,13 @@ describe('templeAuraSystem - a temple that stores fuel blesses only while it bur
     expect(hp(sim, settler)).toBe(POOL + TEMPLE_AURA_HITPOINTS);
   });
 
+  it('records a dark fire the tick an unfuelled temple is finished, before the first second', () => {
+    const sim = fresh(fuelledContent());
+    const temple = fuelledTempleAt(sim, 10, 0);
+    blessAt(sim, 1);
+    expect(sim.world.get(temple, TempleFire)).toEqual({ burnedSeconds: 0, blessing: false, doused: false });
+  });
+
   it('refuses to put out the fire of a house that burns no fuel', () => {
     const sim = fresh();
     const temple = templeAt(sim, 10);

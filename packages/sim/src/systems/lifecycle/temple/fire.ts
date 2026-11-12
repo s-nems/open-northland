@@ -50,9 +50,10 @@ export function templeFuelShortfall(
  * unwounded and, when it burns fuel, holds a unit and its owner keeps the fire lit. The oldest unit burns
  * for {@link TEMPLE_FUEL_BURN_SECONDS} and then leaves the store; a wound or a fire put out pauses the
  * burn with the blessing.
- * True when the temple blesses this second.
+ * True when the temple blesses this second. With `burn` off the second burns nothing: the record a
+ * temple takes the tick it is finished, so its fire never shows before the first second decides it.
  */
-export function tendTempleFire(world: World, ctx: ContentContext, temple: Entity): boolean {
+export function tendTempleFire(world: World, ctx: ContentContext, temple: Entity, burn = true): boolean {
   const health = world.tryGet(temple, Health);
   const whole = health === undefined || health.hitpoints >= health.max;
   const slot = fuelBurnedBy(world, ctx, temple);
@@ -61,7 +62,7 @@ export function tendTempleFire(world: World, ctx: ContentContext, temple: Entity
   const doused = slot !== undefined && held?.doused === true;
   const blessing = whole && !doused && (slot === undefined || stored > 0);
   let burned = held?.burnedSeconds ?? 0;
-  if (slot !== undefined && blessing) {
+  if (burn && slot !== undefined && blessing) {
     burned += 1;
     if (burned >= TEMPLE_FUEL_BURN_SECONDS) {
       setStockAmount(world, temple, slot.goodType, stored - 1);
