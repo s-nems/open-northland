@@ -12,7 +12,7 @@ const MAP_H = 14;
 const ROW_Y = 6;
 const FIRST_X = 5;
 const SPACING = 2;
-/** Landed sword hits per soldier, one per star size. */
+/** Fight points per soldier, one per star size. */
 const SWORD_HITS = [25, 50, 75, 100] as const;
 /** The life each of those soldiers keeps, in percent, so a selection shows the heart's steps. */
 const SOLDIER_LIFE_PERCENT = [100, 70, 30, 10] as const;
@@ -27,7 +27,7 @@ const { Health, SettlerProgress } = components;
 
 function placeSoldier(sim: Simulation, x: number, hits: number): Entity {
   const soldier = spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, x, ROW_Y, HUMAN_PLAYER);
-  sim.world.mut(soldier, SettlerProgress).experience.set(systems.FIGHT_EXPERIENCE_TYPE.SWORD, hits);
+  sim.world.mut(soldier, SettlerProgress).experience.set(systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, hits);
   return soldier;
 }
 

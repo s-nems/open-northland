@@ -166,10 +166,7 @@ export const ruGame = {
     workFlag: 'Рабочий флажок',
     specialization: 'Специализация {id}',
     weaponXp: {
-      fist: 'Бой - Кулак',
-      spear: 'Бой - Копьё',
-      sword: 'Бой - Меч',
-      bow: 'Бой - Лук',
+      fight: 'Бой',
       catapult: 'Бой - Катапульта',
     },
     trackLabels: {

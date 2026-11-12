@@ -29,8 +29,8 @@ import {
 import { buildingBodyNodes } from '../../../../../conflict/target-node.js';
 import type { MissileShot } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
-import { weaponClassHits } from '../../../../../progression/index.js';
-import { isHeroJob, WEAPON_MAIN_TYPE } from '../../../../../readviews/index.js';
+import { personalFightPoints } from '../../../../../progression/index.js';
+import { isHeroJob } from '../../../../../readviews/index.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 import { exploreAround, SHOT_SIGHT_NODES } from '../../../../../vision/index.js';
 
@@ -131,8 +131,7 @@ function settlerAim(
     terrain.xOf(mark),
     terrain.yOf(mark),
   );
-  const spread =
-    marksmanSpread(ctx, distance, weaponClassHits(experience, WEAPON_MAIN_TYPE.BOW)) + extraSpread;
+  const spread = marksmanSpread(ctx, distance, personalFightPoints(experience)) + extraSpread;
   if (spread === 0) return aim;
   const landing = scatteredNode(ctx, terrain, mark, spread);
   return positionOfNode(terrain.xOf(landing), terrain.yOf(landing));

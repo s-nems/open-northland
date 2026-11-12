@@ -169,10 +169,7 @@ export const deGame = {
     workFlag: 'Arbeitsfahne',
     specialization: 'Spezialisierung {id}',
     weaponXp: {
-      fist: 'Kämpfen - Faust',
-      spear: 'Kämpfen - Speer',
-      sword: 'Kämpfen - Schwert',
-      bow: 'Kämpfen - Bogen',
+      fight: 'Kämpfen',
       catapult: 'Kämpfen - Katapult',
     },
     trackLabels: {

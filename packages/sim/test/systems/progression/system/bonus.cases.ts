@@ -21,14 +21,13 @@ import {
   experiencePercent,
   experiencePoints,
   experienceRepeats,
-  FIGHT_EXPERIENCE_DAMAGE_CAP_HITS,
-  FIGHT_EXPERIENCE_MAX,
+  FIGHT_EXPERIENCE_FULL,
   FIGHT_EXPERIENCE_TYPE,
+  fightPointsWith,
   jobExperiencePercent,
   stampResourceFootprintData,
   strokesPerUnit,
   WEAPON_MAIN_TYPE,
-  weaponClassHits,
   withFightExperience,
 } from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
@@ -84,20 +83,20 @@ describe('experiencePoints - raw XP in hundredths, whatever the track', () => {
   });
 });
 
-describe('withFightExperience - hits with a weapon class raise its damage', () => {
-  it('scales a column by 200 / (200 - min(hits, 100)) in integer division', () => {
+describe('withFightExperience - personal fight points raise a blow', () => {
+  it('scales a column linearly to +40% at full experience, truncating', () => {
     expect(withFightExperience(3800, 0)).toBe(3800);
-    expect(withFightExperience(3800, 50)).toBe(5066); // 760000 / 150, truncated
-    expect(withFightExperience(3800, FIGHT_EXPERIENCE_DAMAGE_CAP_HITS)).toBe(7600);
-    expect(withFightExperience(3800, FIGHT_EXPERIENCE_MAX)).toBe(7600); // raw points past 100 buy nothing
-    expect(withFightExperience(0, FIGHT_EXPERIENCE_DAMAGE_CAP_HITS)).toBe(0); // a missing column stays 0
+    expect(withFightExperience(3801, FIGHT_EXPERIENCE_FULL / 2)).toBe(4561); // 3801 * 1.2, truncated
+    expect(withFightExperience(3800, FIGHT_EXPERIENCE_FULL)).toBe(5320);
+    expect(withFightExperience(0, FIGHT_EXPERIENCE_FULL)).toBe(0); // a missing column stays 0
   });
 
-  it('weaponClassHits reads the bucket of the swinging weapon class', () => {
-    const sword = new Map([[FIGHT_EXPERIENCE_TYPE.SWORD, 40]]);
-    expect(weaponClassHits(sword, WEAPON_MAIN_TYPE.SWORD)).toBe(40);
-    expect(weaponClassHits(sword, WEAPON_MAIN_TYPE.SPEAR)).toBe(0); // untrained class
-    expect(weaponClassHits(sword, null)).toBe(0); // a class-less weapon
+  it('every weapon class but the catapult reads the one personal counter', () => {
+    const xp = new Map([[FIGHT_EXPERIENCE_TYPE.PERSONAL, 40]]);
+    expect(fightPointsWith(xp, WEAPON_MAIN_TYPE.SWORD)).toBe(40);
+    expect(fightPointsWith(xp, WEAPON_MAIN_TYPE.BOW)).toBe(40);
+    expect(fightPointsWith(xp, WEAPON_MAIN_TYPE.CATAPULT)).toBe(0);
+    expect(fightPointsWith(xp, null)).toBe(0); // a class-less weapon
   });
 });
 

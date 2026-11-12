@@ -4,7 +4,13 @@ import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isCarrierJob } from '../stores/index.js';
-import { fightExperienceTypeFor, generalTrackFor, trackFor } from './experience.js';
+import {
+  FIGHT_EXPERIENCE_FULL,
+  FIGHT_EXPERIENCE_TYPE,
+  fightExperienceTypeFor,
+  generalTrackFor,
+  trackFor,
+} from './experience.js';
 
 /**
  * The original's experience curve. A track accrues its `experienceFactor` per completed work and the curve
@@ -110,30 +116,60 @@ export function jobExperiencePercent(
   return experiencePercent(experiencePoints(xp));
 }
 
-/** Landed hits recorded in `weaponMainType`'s fight bucket: 0 for a class with no bucket. */
-export function weaponClassHits(
+/** A person's personal fight points: the landed hits of his personal counter, at most full. */
+export function personalFightPoints(experience: ReadonlyMap<number, number>): number {
+  const held = experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
+  return Math.min(Math.max(held, 0), FIGHT_EXPERIENCE_FULL);
+}
+
+/** {@link personalFightPoints} of a settler; 0 for one with no progress. */
+export function settlerFightPoints(world: World, e: Entity): number {
+  const progress = world.tryGet(e, SettlerProgress);
+  return progress === undefined ? 0 : personalFightPoints(progress.experience);
+}
+
+/** The fight points a blow with `weaponMainType` draws on: the personal counter for a class that trains
+ *  it, 0 for any other class (the catapult, the hero axe) or none. */
+export function fightPointsWith(
   experience: ReadonlyMap<number, number>,
   weaponMainType: number | null | undefined,
 ): number {
   if (weaponMainType == null) return 0;
-  const bucket = fightExperienceTypeFor(weaponMainType);
-  return bucket === undefined ? 0 : (experience.get(bucket) ?? 0);
+  return fightExperienceTypeFor(weaponMainType) === FIGHT_EXPERIENCE_TYPE.PERSONAL
+    ? personalFightPoints(experience)
+    : 0;
 }
 
-/** The landed hits past which fight experience stops raising damage. Original behavior. */
-export const FIGHT_EXPERIENCE_DAMAGE_CAP_HITS = 100;
-/** The numerator of the fight-experience factor `NUMERATOR / (NUMERATOR - hits)`. Original behavior. */
-const FIGHT_EXPERIENCE_DAMAGE_NUMERATOR = 200;
+/** The scale of the fight-experience factors: full experience in percent, so one point is a ten-thousandth
+ *  per percent of effect. */
+export const FIGHT_EXPERIENCE_FACTOR_SCALE = FIGHT_EXPERIENCE_FULL * PERCENT;
+/** The percent full fight experience adds to the damage a person deals. Our rule. */
+export const FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL = 40;
+/** The percent full fight experience takes off the damage a person is dealt. Our rule. */
+export const FIGHT_EXPERIENCE_TAKEN_PCT_AT_FULL = 40;
+
+/** The dealt-damage factor at `points`, over {@link FIGHT_EXPERIENCE_FACTOR_SCALE}: linear from x1 at 0
+ *  to x1.4 at full. */
+export function fightExperienceDealtFactor(points: number): number {
+  return FIGHT_EXPERIENCE_FACTOR_SCALE + FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL * clampedPoints(points);
+}
+
+/** The taken-damage factor at `points`, over {@link FIGHT_EXPERIENCE_FACTOR_SCALE}: linear from x1 at 0
+ *  to x0.6 at full. */
+export function fightExperienceTakenFactor(points: number): number {
+  return FIGHT_EXPERIENCE_FACTOR_SCALE - FIGHT_EXPERIENCE_TAKEN_PCT_AT_FULL * clampedPoints(points);
+}
+
+function clampedPoints(points: number): number {
+  return Math.min(Math.max(Math.trunc(points), 0), FIGHT_EXPERIENCE_FULL);
+}
 
 /**
- * `base` weapon damage raised by `hits` landed with the swinging weapon's class:
- * `base * 200 / (200 - min(hits, 100))` in integer division, so a hundred landed hits double it.
- * Original behavior, for a blow on a person, a building or an animal alike.
+ * `base` weapon damage raised by the striker's fight `points`, truncating:
+ * `base * (10000 + 40 * points) / 10000`, so full experience adds 40%. Our rule, a departure from the
+ * original's `base * 200 / (200 - hits)`, for a blow on a person, a building or an animal alike.
  */
-export function withFightExperience(base: number, hits: number): number {
+export function withFightExperience(base: number, points: number): number {
   if (base <= 0) return base;
-  const capped = Math.min(Math.max(hits, 0), FIGHT_EXPERIENCE_DAMAGE_CAP_HITS);
-  return Math.trunc(
-    (base * FIGHT_EXPERIENCE_DAMAGE_NUMERATOR) / (FIGHT_EXPERIENCE_DAMAGE_NUMERATOR - capped),
-  );
+  return Math.trunc((base * fightExperienceDealtFactor(points)) / FIGHT_EXPERIENCE_FACTOR_SCALE);
 }

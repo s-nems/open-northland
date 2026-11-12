@@ -4,7 +4,7 @@ import { Simulation } from '../../../../../src/index.js';
 import {
   atomicSystem,
   combatSystem,
-  FIGHT_EXPERIENCE_MAX,
+  FIGHT_EXPERIENCE_FULL,
   FIGHT_EXPERIENCE_TYPE,
   WEAPON_MAIN_TYPE,
 } from '../../../../../src/systems/index.js';
@@ -28,8 +28,10 @@ import {
   WOMAN,
 } from '../support.js';
 
-describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class bucket', () => {
-  it('a spear swing accrues into the SPEAR fight bucket (the needfor-gate id space)', () => {
+const PERSONAL = FIGHT_EXPERIENCE_TYPE.PERSONAL;
+
+describe('atomicSystem - a damaging swing accrues fight XP into the personal counter', () => {
+  it('a spear swing accrues one point into the personal counter', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
@@ -40,24 +42,25 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
       4,
     );
 
-    atomicSystem(sim.world, nextTickCtxOf(sim)); // the blow lands (frame 0) and trains the weapon class
+    atomicSystem(sim.world, nextTickCtxOf(sim)); // the blow lands (frame 0) and trains its striker
 
     const xp = sim.world.get(attacker, SettlerProgress).experience;
-    expect(xp.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
-    expect(xp.size).toBe(1); // only the spear bucket, no trade track
+    expect(xp.get(PERSONAL)).toBe(1);
+    expect(xp.size).toBe(1); // no other bucket, no trade track
   });
 
-  it('maps each weapon class to its fight bucket (sword → SWORD, fist → FIST)', () => {
-    const check = (mainType: number, bucket: number): void => {
-      const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
-      const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_UNARMED);
-      const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
+  it('a change of weapon keeps the counter: fist, spear, sword and bow hits all add to it', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_UNARMED);
+    const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
+    const classes = [WEAPON_MAIN_TYPE.UNARMED, WEAPON_MAIN_TYPE.SPEAR, WEAPON_MAIN_TYPE.SWORD];
+    for (const mainType of classes) {
       startSwing(sim, attacker, { target, damage: 100, hitFrames: [0], weaponMainType: mainType }, 2);
       atomicSystem(sim.world, nextTickCtxOf(sim));
-      expect(sim.world.get(attacker, SettlerProgress).experience.get(bucket)).toBe(1);
-    };
-    check(WEAPON_MAIN_TYPE.SWORD, FIGHT_EXPERIENCE_TYPE.SWORD);
-    check(WEAPON_MAIN_TYPE.UNARMED, FIGHT_EXPERIENCE_TYPE.FIST);
+    }
+    const xp = sim.world.get(attacker, SettlerProgress).experience;
+    expect(xp.get(PERSONAL)).toBe(classes.length);
+    expect(xp.size).toBe(1);
   });
 
   it('trains nothing on a 0-damage swing or on a hit of a class without a bucket', () => {
@@ -100,16 +103,14 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
 
     swing(ARMOR_BLOCKING + 1);
     expect(sim.world.get(target, Health).hitpoints).toBe(10_000 - 1);
-    expect(sim.world.get(attacker, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
+    expect(sim.world.get(attacker, SettlerProgress).experience.get(PERSONAL)).toBe(1);
   });
 
-  it('a bucket stops at 10000 raw points', () => {
+  it('the personal counter stops at full experience', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
-    sim.world
-      .mut(attacker, SettlerProgress)
-      .experience.set(FIGHT_EXPERIENCE_TYPE.SPEAR, FIGHT_EXPERIENCE_MAX);
+    sim.world.mut(attacker, SettlerProgress).experience.set(PERSONAL, FIGHT_EXPERIENCE_FULL);
     startSwing(
       sim,
       attacker,
@@ -118,10 +119,10 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     );
     atomicSystem(sim.world, nextTickCtxOf(sim));
     const xp = sim.world.get(attacker, SettlerProgress).experience;
-    expect(xp.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(FIGHT_EXPERIENCE_MAX);
+    expect(xp.get(PERSONAL)).toBe(FIGHT_EXPERIENCE_FULL);
   });
 
-  it('a hero and a civilian train only the weapon bucket, never a trade track', () => {
+  it('a hero and a civilian train only the personal counter, never a trade track', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(4, 1) });
     const target = fighterAt(sim, 2, 0, OTHER, null, { hitpoints: 10_000 });
 
@@ -129,7 +130,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     startSwing(sim, hero, { target, damage: 400, hitFrames: [0], weaponMainType: WEAPON_MAIN_TYPE.SWORD }, 2);
     atomicSystem(sim.world, nextTickCtxOf(sim));
     const heroXp = sim.world.get(hero, SettlerProgress).experience;
-    expect(heroXp.get(FIGHT_EXPERIENCE_TYPE.SWORD)).toBe(1);
+    expect(heroXp.get(PERSONAL)).toBe(1);
     expect(heroXp.size).toBe(1);
 
     const civilian = fighterAt(sim, 1, 0, VIKING, WOMAN);
@@ -141,7 +142,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     );
     atomicSystem(sim.world, nextTickCtxOf(sim));
     const civXp = sim.world.get(civilian, SettlerProgress).experience;
-    expect(civXp.get(FIGHT_EXPERIENCE_TYPE.FIST)).toBe(1);
+    expect(civXp.get(PERSONAL)).toBe(1);
     expect(civXp.size).toBe(1);
   });
 
@@ -156,7 +157,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
 
     atomicSystem(sim.world, nextTickCtxOf(sim)); // both blows reach their frame this tick; the first one kills
 
-    expect(sim.world.get(killer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
+    expect(sim.world.get(killer, SettlerProgress).experience.get(PERSONAL)).toBe(1);
     expect(sim.world.get(late, SettlerProgress).experience.size).toBe(0);
     const hits = sim.events.current().filter((ev) => ev.kind === 'combatHit');
     expect(hits.map((ev) => ev.kind === 'combatHit' && ev.attacker)).toEqual([killer]);
@@ -174,7 +175,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     );
     atomicSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.get(wolf, Health).hitpoints).toBeLessThan(10_000);
-    expect(sim.world.get(attacker, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
+    expect(sim.world.get(attacker, SettlerProgress).experience.get(PERSONAL)).toBe(1);
   });
 
   it('a wild-animal bite trains nothing - progression is a civilization mechanic', () => {
@@ -196,12 +197,10 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
 });
 
 describe('combatSystem - fight experience raises the issued swing damage', () => {
-  const swingDamageOf = (spearHits: number): number => {
+  const swingDamageOf = (points: number): number => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
-    if (spearHits > 0) {
-      sim.world.mut(attacker, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.SPEAR, spearHits);
-    }
+    if (points > 0) sim.world.mut(attacker, SettlerProgress).experience.set(PERSONAL, points);
     fighterAt(sim, 1, 0, OTHER, null); // an adjacent unarmored enemy - the drive swings this tick
     combatSystem(sim.world, ctxOf(sim));
     const atomic = sim.world.get(attacker, CurrentAtomic);
@@ -209,11 +208,11 @@ describe('combatSystem - fight experience raises the issued swing damage', () =>
     return atomic.effect.damage;
   };
 
-  it('raises the column by 200 / (200 - min(hits, 100)), doubling it at a hundred hits', () => {
+  it('raises the column linearly to +40% at full experience, truncating', () => {
     const base = IRON_SPEAR_DAMAGE['0'];
+    const HALF = FIGHT_EXPERIENCE_FULL / 2;
     expect(swingDamageOf(0)).toBe(base);
-    expect(swingDamageOf(50)).toBe(Math.trunc((base * 200) / 150));
-    expect(swingDamageOf(100)).toBe(base * 2);
-    expect(swingDamageOf(FIGHT_EXPERIENCE_MAX)).toBe(base * 2); // raw points past 100 buy nothing more
+    expect(swingDamageOf(HALF)).toBe(Math.trunc((base * 12_000) / 10_000));
+    expect(swingDamageOf(FIGHT_EXPERIENCE_FULL)).toBe(Math.trunc((base * 14_000) / 10_000));
   });
 });

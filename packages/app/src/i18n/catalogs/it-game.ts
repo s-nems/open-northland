@@ -147,10 +147,7 @@ export const itGame = {
     workFlag: 'Bandierina di lavoro',
     specialization: 'Specializzazione {id}',
     weaponXp: {
-      fist: 'Combattimento - Pugni',
-      spear: 'Combattimento - Lancia',
-      sword: 'Combattimento - Spada',
-      bow: 'Combattimento - Arco',
+      fight: 'Combattimento',
       catapult: 'Combattimento - Catapulta',
     },
     trackLabels: {

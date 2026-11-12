@@ -140,10 +140,7 @@ export const plGame = {
     workFlag: 'Flaga robocza',
     specialization: 'Specjalizacja {id}',
     weaponXp: {
-      fist: 'Walka - Pięść',
-      spear: 'Walka - Włócznia',
-      sword: 'Walka - Miecz',
-      bow: 'Walka - Łuk',
+      fight: 'Walka',
       catapult: 'Walka - Katapulta',
     },
     trackLabels: {

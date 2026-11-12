@@ -270,7 +270,7 @@ export const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'longBow.standoff': standoff('long_bow'),
   'heroBow.standoff': standoff('hero_bow'),
   'combat.fightCapHits': whole(CAP_HITS),
-  'combat.fightCapFactor': whole(systems.withFightExperience(SAMPLE_BLOW, CAP_HITS) / SAMPLE_BLOW),
+  'combat.fightCapFactor': twoDecimals(systems.withFightExperience(SAMPLE_BLOW, CAP_HITS) / SAMPLE_BLOW),
   'combat.fightCapBlow': whole(systems.withFightExperience(SAMPLE_BLOW, CAP_HITS)),
   'combat.sampleBlow': whole(SAMPLE_BLOW),
   'combat.backSideFactor': twoDecimals(HIT_DIRECTION.backSide / PERCENT),

@@ -16,16 +16,14 @@ import { exportSaveGame, restoreSimulation, Simulation } from '../../../src/inde
 import { technologySystem } from '../../../src/systems/progression/discoveries.js';
 import {
   buildingEnabled,
+  FIGHT_EXPERIENCE_FULL,
   FIGHT_EXPERIENCE_TYPE,
   goodEnabled,
   grantWorkExperience,
   jobEnabled,
   rawXpForRepeats,
-  requirementRepeats,
   startingExperience,
-  weaponClassHits,
 } from '../../../src/systems/progression/index.js';
-import { WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/combat.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { settlerAt } from '../../fixtures/settler.js';
@@ -132,14 +130,21 @@ describe('player technology discoveries', () => {
     expect(startingExperience(sim.content, HERO, lines)).toEqual([]);
   });
 
-  it("counts a map's starting fight experience raw, so an archer starts with his landed hits", () => {
+  it("folds a map's per-weapon-class fight lines into the personal counter, capped at full", () => {
     const { sim } = setup();
+    /** The original's spear and bow fight buckets, which a map's `setexpierence` may still name. */
+    const SPEAR_BUCKET = 72;
+    const BOW_BUCKET = 75;
+    const SPEAR_HITS = 30;
     const BOW_HITS = 150;
-    const xp = new Map(
-      startingExperience(sim.content, WOODCUTTER, [{ track: FIGHT_EXPERIENCE_TYPE.BOW, amount: BOW_HITS }]),
-    );
-    expect(weaponClassHits(xp, WEAPON_MAIN_TYPE.BOW)).toBe(BOW_HITS);
-    expect(requirementRepeats(sim.content.jobExperience, xp, [FIGHT_EXPERIENCE_TYPE.BOW])).toBe(BOW_HITS);
+    const lines = [{ track: SPEAR_BUCKET, amount: SPEAR_HITS }];
+    expect(startingExperience(sim.content, WOODCUTTER, lines)).toEqual([
+      [FIGHT_EXPERIENCE_TYPE.PERSONAL, SPEAR_HITS],
+    ]);
+    const capped = [...lines, { track: BOW_BUCKET, amount: BOW_HITS }];
+    expect(startingExperience(sim.content, WOODCUTTER, capped)).toEqual([
+      [FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL],
+    ]);
   });
 
   it('work discovers a profession and its basic product, opening a house before that profession is staffed', () => {

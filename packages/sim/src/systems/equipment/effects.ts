@@ -10,6 +10,11 @@ import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import {
+  FIGHT_EXPERIENCE_FACTOR_SCALE,
+  fightExperienceTakenFactor,
+  settlerFightPoints,
+} from '../progression/bonus.js';
 import { isCarrierJob } from '../stores/index.js';
 
 // The worn-equipment effect reads: what a worn good grants its bearer, resolved from the content equip
@@ -79,11 +84,17 @@ export function scaledTakenDamage(damage: number, takenPct: number): number {
   return Math.trunc((damage * takenPct) / PERCENT);
 }
 
-/** The share of a blow's damage its target takes. Original behavior: the defense amulet scales it to its
- *  `damageTakenPct`, truncating, after the striker's effects. */
+/**
+ * The share of a blow's damage its target person takes, after the striker's effects. Original behavior:
+ * the defence amulet scales it to its `damageTakenPct`. Our rule: the person's own fight experience cuts
+ * it by up to 40%, multiplying with the amulet in one truncation, so full experience under a x0.7 amulet
+ * takes x0.42. Every blow on a person passes here once, whatever struck it.
+ */
 export function damageTakenBy(world: World, ctx: SystemContext, target: Entity, damage: number): number {
-  const takenPct = carriedEffect(world, ctx.content, target, 'damageTakenPct');
-  return takenPct === undefined ? damage : scaledTakenDamage(damage, takenPct);
+  const takenPct = carriedEffect(world, ctx.content, target, 'damageTakenPct') ?? PERCENT;
+  const experienceFactor = fightExperienceTakenFactor(settlerFightPoints(world, target));
+  if (takenPct === PERCENT && experienceFactor === FIGHT_EXPERIENCE_FACTOR_SCALE) return damage;
+  return Math.trunc((damage * takenPct * experienceFactor) / (PERCENT * FIGHT_EXPERIENCE_FACTOR_SCALE));
 }
 
 /** The fight effects `e`'s misc row carries, each as {@link damageDealtBy} and {@link damageTakenBy} read

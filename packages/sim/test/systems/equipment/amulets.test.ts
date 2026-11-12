@@ -8,12 +8,13 @@ import {
   Health,
   MISC_EQUIP_SLOTS,
   MoveGoal,
+  SettlerProgress,
   WALK_DIRECTION,
   WalkFacing,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../../src/index.js';
-import { plannerSystem } from '../../../src/systems/index.js';
+import { FIGHT_EXPERIENCE_FULL, FIGHT_EXPERIENCE_TYPE, plannerSystem } from '../../../src/systems/index.js';
 import { walkStepModifiersOf } from '../../../src/systems/movement/walk-cost.js';
 import {
   resolveAttackHit,
@@ -154,6 +155,33 @@ describe('combat amulets', () => {
     resolveCombatHit(s.world, ctxOf(s), attacker, target, stone, [], 'projectile');
     expect(HP - s.world.get(target, Health).hitpoints).toBe(BLOW);
     expect(s.rng.getState()).toBe(before); // no critical hit rolled
+  });
+
+  it("the bearer's fight experience cuts every kind of blow, multiplying with the defense", () => {
+    const s = sim();
+    const { attacker, target } = duel(s, []);
+    s.world
+      .mut(target, SettlerProgress)
+      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL);
+    expect(strike(s, attacker, target)).toBe(60); // trunc(101 * 0.6)
+    const shelter = s.world.create();
+    const before = s.world.get(target, Health).hitpoints;
+    resolveCombatHit(s.world, ctxOf(s), shelter, target, { damage: BLOW }, [], 'projectile');
+    resolveCombatHit(
+      s.world,
+      ctxOf(s),
+      attacker,
+      target,
+      { damage: BLOW, vehicleShot: true },
+      [],
+      'projectile',
+    );
+    expect(before - s.world.get(target, Health).hitpoints).toBe(2 * 60);
+    const shielded = duel(s, [], [worn(AMULET_DEFENSE)]);
+    s.world
+      .mut(shielded.target, SettlerProgress)
+      .experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, FIGHT_EXPERIENCE_FULL);
+    expect(strike(s, shielded.attacker, shielded.target)).toBe(30); // trunc(101 * 0.5 * 0.6), one truncation
   });
 
   it('a critical hit doubles about one blow in five, after strength, drawn only while carried', () => {

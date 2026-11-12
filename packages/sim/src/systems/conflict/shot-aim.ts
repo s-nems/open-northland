@@ -71,35 +71,36 @@ export function leadPoint(
 /** A shot's scatter reaches up to a quarter of its range. Original behavior. */
 const SCATTER_RANGE_DIVISOR = 4;
 
-/** A settler's aim roll spans 0..99. A roll at or under its bow hits plus this base shoots true; a higher one
- *  scatters the more the further it overshoots. Original behavior. */
+/** A settler's aim roll spans 0..99. A roll at or under its fight points plus this base shoots true; a higher
+ *  one scatters the more the further it overshoots. Original behavior. */
 const AIM_ROLL_SPAN = 100;
 const AIM_TRUE_BASE = 10;
 const PERCENT = 100;
 
 /**
- * The scatter of a settler's shot over `distance` nodes, by the hits it has landed with a bow. A novice's
- * long shot mostly strays, and a bowman past 89 hits never does. Original behavior, which reads the bow
- * count for any ranged weapon; the caller spares a hero, who always shoots true.
+ * The scatter of a settler's shot over `distance` nodes, by its personal fight points. A novice's long
+ * shot mostly strays, and a bowman past 89 points never does. Original behavior, except that the original
+ * reads the hits landed with a bow, where our rule reads the personal counter every weapon trains; the
+ * caller spares a hero, who always shoots true.
  */
-export function marksmanSpread(ctx: SystemContext, distance: number, bowHits: number): number {
-  return spreadForRoll(distance, bowHits, ctx.rng.int(AIM_ROLL_SPAN));
+export function marksmanSpread(ctx: SystemContext, distance: number, fightPoints: number): number {
+  return spreadForRoll(distance, fightPoints, ctx.rng.int(AIM_ROLL_SPAN));
 }
 
-function spreadForRoll(distance: number, bowHits: number, roll: number): number {
-  const threshold = bowHits + AIM_TRUE_BASE;
+function spreadForRoll(distance: number, fightPoints: number, roll: number): number {
+  const threshold = fightPoints + AIM_TRUE_BASE;
   if (roll <= threshold) return 0;
   return Math.floor(((roll - threshold) * Math.floor(distance / SCATTER_RANGE_DIVISOR)) / roll);
 }
 
-/** The percent of a settler's shots with `bowHits` that fly true: the rolls at or under its threshold. */
-export function trueShotPct(bowHits: number): number {
-  return (Math.min(AIM_ROLL_SPAN, bowHits + AIM_TRUE_BASE + 1) * PERCENT) / AIM_ROLL_SPAN;
+/** The percent of a settler's shots with `fightPoints` that fly true: the rolls at or under its threshold. */
+export function trueShotPct(fightPoints: number): number {
+  return (Math.min(AIM_ROLL_SPAN, fightPoints + AIM_TRUE_BASE + 1) * PERCENT) / AIM_ROLL_SPAN;
 }
 
-/** The widest {@link marksmanSpread} a settler with `bowHits` can draw over `distance` nodes: its worst roll. */
-export function widestMarksmanSpread(distance: number, bowHits: number): number {
-  return spreadForRoll(distance, bowHits, AIM_ROLL_SPAN - 1);
+/** The widest {@link marksmanSpread} a settler with `fightPoints` can draw over `distance` nodes: its worst roll. */
+export function widestMarksmanSpread(distance: number, fightPoints: number): number {
+  return spreadForRoll(distance, fightPoints, AIM_ROLL_SPAN - 1);
 }
 
 /** A defence-mode building's scatter divides its reach by a roll of 1..30. Original behavior. */

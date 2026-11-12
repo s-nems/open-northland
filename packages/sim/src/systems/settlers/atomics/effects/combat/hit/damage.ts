@@ -37,7 +37,7 @@ export const HIT_DIRECTION_PCT: readonly number[] = [PERCENT, PERCENT, BACK_SIDE
  * already raised by the striker's fight experience on a melee blow at a person, a beast or a building.
  * Original behavior, by what is struck:
  * - a person: the hit direction multiplier, then its armor's `blockingValue` off, then the striker's
- *   amulets, then the person's own defence amulet;
+ *   amulets, then the person's own defence amulet and, our rule, his fight experience;
  * - a building or a wall: nothing for a zero base, then the striker's amulets;
  * - an animal or a vehicle: the striker's amulets.
  * `strikerAmulets` is false for a vehicle's shot, which no amulet raises. A result at or below zero does

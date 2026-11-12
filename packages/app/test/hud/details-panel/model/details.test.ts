@@ -1291,7 +1291,7 @@ describe('selection details panel model', () => {
   });
 
   it('gives a woman and a child a worker’s slots, none wearable, and no experience section', () => {
-    const trained = { SettlerProgress: { experience: [[systems.FIGHT_EXPERIENCE_TYPE.FIST, 5]] } };
+    const trained = { SettlerProgress: { experience: [[systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, 5]] } };
     const modelFor = (jobType: number, extra: Record<string, unknown>) => {
       const snapshot = snapshotOf([
         { id: 1, components: { Settler: { tribe: 1, jobType }, ...trained, ...extra } },
@@ -1452,7 +1452,7 @@ describe('selection details panel model', () => {
             experience: [
               [3, 50], // 50 raw points at rate 10 → 5 wood gathered, half a curve point
               [9, 100], // 100 raw points at rate 100 → 1 repeat, one curve point
-              [systems.FIGHT_EXPERIENCE_TYPE.SWORD, 4], // 4 hits: 100 * 200 / 196, so +2% damage
+              [systems.FIGHT_EXPERIENCE_TYPE.PERSONAL, 5], // 5 points: 100 * 10200 / 10000, so +2% damage
             ],
           },
         },
@@ -1461,16 +1461,16 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), ctx);
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     // The collector's own tracks lead, repeats descending; the percents read the curve in raw hundredths
-    // (50 raw → 0%, 100 raw → 17%) and the fight bucket's own damage factor (4 hits: +2%).
+    // (50 raw → 0%, 100 raw → 17%) and the fight counter's own damage factor (5 points: +2%).
     expect(model.experience.map((r) => ({ repeats: r.repeats, bonusPct: r.bonusPct, own: r.own }))).toEqual([
       { repeats: 5, bonusPct: 0, own: true },
       { repeats: 1, bonusPct: 17, own: true },
-      { repeats: 4, bonusPct: 2, own: false },
+      { repeats: 5, bonusPct: 2, own: false },
     ]);
     expect(model.experience[0]?.label).toBe('Zbieranie - Drewno'); // hand-translated trackLabels entry
     expect(model.experience[1]?.label).not.toMatch(/Specjalizacja/); // general track labels by its job
-    expect(model.experience[2]?.label).toBe('Walka - Miecz'); // the sword fight bucket's weapon label
-    // Both own rows show before the fold; the sword row waits behind "1 more".
+    expect(model.experience[2]?.label).toBe('Walka'); // the personal fight counter's label
+    // Both own rows show before the fold; the fight row waits behind "1 more".
     expect(experienceShown(model.experience)).toBe(2);
   });
 

@@ -12,16 +12,12 @@ const PLAYER = 0;
 const ENEMY = 1;
 const SWORD_SOLDIER_JOB = 33;
 const WOODCUTTER_JOB = 5;
-const SWORD_CLASS = 3;
-const SPEAR_CLASS = 2;
 const SPEAR_GOOD = 40;
 const WOOD_TRACK = 12;
-const SWORD = systems.FIGHT_EXPERIENCE_TYPE.SWORD;
+const FIGHT = systems.FIGHT_EXPERIENCE_TYPE.PERSONAL;
 
 const RULES: Omit<ExperienceStarInputs, 'viewer' | 'selected'> = {
   isSoldierJob: (job) => job === SWORD_SOLDIER_JOB,
-  weaponClassOf: (_tribe, job, good) =>
-    good === SPEAR_GOOD ? SPEAR_CLASS : job === SWORD_SOLDIER_JOB ? SWORD_CLASS : undefined,
   tradeTracksOf: (job) => (job === WOODCUTTER_JOB ? [WOOD_TRACK] : []),
 };
 
@@ -53,24 +49,26 @@ describe('starTier', () => {
 });
 
 describe('computeExperienceStars - the weapon star', () => {
-  it('a soldier of any owner wears it for the hits with the class he fights with', () => {
-    expect(starsOf([human(1, SWORD_SOLDIER_JOB, [[SWORD, 60]], {}, ENEMY)])).toEqual([
+  it('a soldier of any owner wears it for his personal fight experience', () => {
+    expect(starsOf([human(1, SWORD_SOLDIER_JOB, [[FIGHT, 60]], {}, ENEMY)])).toEqual([
       { id: 1, x: fx.fromInt(1), y: fx.fromInt(1), weaponTier: 2, jobTier: 0 },
     ]);
   });
 
-  it('a worn weapon of another class reads that class, and too few hits wear none', () => {
+  it('a change of weapon keeps it, and too little experience wears none', () => {
     const spear = { Equipment: { weapon: { goodType: SPEAR_GOOD } } };
-    expect(starsOf([human(1, SWORD_SOLDIER_JOB, [[SWORD, 100]], spear)])).toEqual([]);
-    expect(starsOf([human(2, SWORD_SOLDIER_JOB, [[SWORD, 24]])])).toEqual([]);
+    expect(starsOf([human(1, SWORD_SOLDIER_JOB, [[FIGHT, 100]], spear)])).toEqual([
+      { id: 1, x: fx.fromInt(1), y: fx.fromInt(1), weaponTier: 4, jobTier: 0 },
+    ]);
+    expect(starsOf([human(2, SWORD_SOLDIER_JOB, [[FIGHT, 24]])])).toEqual([]);
   });
 
   it('a civilian never wears it, whatever he hit', () => {
-    expect(starsOf([human(1, WOODCUTTER_JOB, [[SWORD, 100]])])).toEqual([]);
+    expect(starsOf([human(1, WOODCUTTER_JOB, [[FIGHT, 100]])])).toEqual([]);
   });
 
   it('nobody indoors wears one', () => {
-    expect(starsOf([human(1, SWORD_SOLDIER_JOB, [[SWORD, 100]], { Resting: { at: 9 } })])).toEqual([]);
+    expect(starsOf([human(1, SWORD_SOLDIER_JOB, [[FIGHT, 100]], { Resting: { at: 9 } })])).toEqual([]);
   });
 });
 
@@ -86,7 +84,7 @@ describe('computeExperienceStars - the trade star', () => {
 
   it('reads the selected inside a box as well as the indexed fighters', () => {
     const box = { minX: 0, minY: 0, maxX: 64, maxY: 64 };
-    const snapshot = snapshotOf([woodcutter(), human(2, SWORD_SOLDIER_JOB, [[SWORD, 30]])]);
+    const snapshot = snapshotOf([woodcutter(), human(2, SWORD_SOLDIER_JOB, [[FIGHT, 30]])]);
     const stars = computeExperienceStars(snapshot, { ...RULES, viewer: PLAYER, selected: new Set([1]) }, box);
     expect(stars.map((s) => [s.id, s.weaponTier, s.jobTier])).toEqual([
       [1, 0, 4],

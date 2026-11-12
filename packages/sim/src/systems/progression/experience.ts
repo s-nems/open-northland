@@ -97,8 +97,9 @@ function accrueTrack(world: World, settler: Entity, track: HumanJobExperienceTyp
 
 /**
  * A placed settler's starting experience as a `spawnSettler` payload: each `(track, repeats)` line in the
- * factor-scaled encoding, a repeated track summed under its cap. A track content lacks (the fight buckets
- * {@link FIGHT_EXPERIENCE_TYPE}) counts raw, as the fight grant and the `needfor*` readers count it.
+ * factor-scaled encoding, a repeated track summed under its cap. A track content lacks counts raw, as the
+ * fight grant and the `needfor*` readers count it. A line on one of the original's per-weapon-class fight
+ * buckets lands in the personal fight counter, all such lines summed under {@link FIGHT_EXPERIENCE_FULL}.
  * Original behavior: a map's `setexpierence` is skipped for a hero, counts in `needfor*` units and adds
  * to the same per-track counter whether or not a track record exists.
  */
@@ -109,10 +110,12 @@ export function startingExperience(
 ): [number, number][] {
   if (isHeroJob(content, jobType)) return [];
   const xp = new Map<number, number>();
-  for (const { track: id, amount } of lines) {
+  for (const { track, amount } of lines) {
     if (amount <= 0) continue;
+    const id = CLASS_FIGHT_EXPERIENCE_TYPES.has(track) ? FIGHT_EXPERIENCE_TYPE.PERSONAL : track;
     const factor = contentIndex(content).jobExperience.get(id)?.experienceFactor ?? RAW_EXPERIENCE_FACTOR;
-    const cap = factor * MAX_EXPERIENCE_REPEATS;
+    const cap =
+      id === FIGHT_EXPERIENCE_TYPE.PERSONAL ? FIGHT_EXPERIENCE_FULL : factor * MAX_EXPERIENCE_REPEATS;
     xp.set(id, Math.min(cap, (xp.get(id) ?? 0) + factor * amount));
   }
   return [...xp].filter(([, amount]) => amount > 0);
@@ -177,31 +180,38 @@ export function grantTradeExperience(world: World, ctx: SystemContext, settler: 
 }
 
 /**
- * The per-weapon-class fight buckets combat XP accrues into (`logicdefines.inc`
- * `JOB_EXPERIENCE_TYPE_FIGHT_*`), in the same expType id space the `needfor*` soldier-upgrade gates read:
- * the viking iron-spear soldier requires `SPEAR` (72), the long-sword soldier `SWORD` (73), the long-bow
- * soldier `BOW` (75). These ids back no `HumanJobExperienceType` record. The define list also names an
- * axe bucket (74), which no weapon class ever feeds.
+ * The fight-experience buckets, which back no `HumanJobExperienceType` record. Our rule, a departure from
+ * the original's per-weapon-class buckets: every person keeps one personal fight counter that his fists,
+ * spear, sword and bow all train and read, so a change of weapon keeps it. `PERSONAL` is our own id, past
+ * the original's fight and training buckets (71..77), so no map line or content track names it. The
+ * catapult keeps its own bucket (`logicdefines.inc` `JOB_EXPERIENCE_TYPE_FIGHT_CATAPULT`), read raw as the
+ * commander's aim.
  */
 export const FIGHT_EXPERIENCE_TYPE = {
-  FIST: 71,
-  SPEAR: 72,
-  SWORD: 73,
-  BOW: 75,
+  PERSONAL: 78,
   CATAPULT: 76,
 } as const;
 
+/**
+ * The original's per-weapon-class fight buckets (`logicdefines.inc` `JOB_EXPERIENCE_TYPE_FIGHT_*`: fist
+ * 71, spear 72, sword 73, axe 74, bow 75). Only a map's `setexpierence` lines still name them, and
+ * {@link startingExperience} folds those into the personal counter.
+ */
+const CLASS_FIGHT_EXPERIENCE_TYPES: ReadonlySet<number> = new Set([71, 72, 73, 74, 75]);
+
 /** The raw XP a fight bucket gains per landed hit. Original behavior. */
 const FIGHT_EXPERIENCE_PER_HIT = 1;
-/** The raw XP a fight bucket holds at most; damage reads only the first 100. Original behavior. */
-export const FIGHT_EXPERIENCE_MAX = 10_000;
+/** Full fight experience: the landed hits the personal counter holds at most. Our rule. */
+export const FIGHT_EXPERIENCE_FULL = 100;
+/** The raw XP the catapult bucket holds at most. Original behavior. */
+export const CATAPULT_EXPERIENCE_MAX = 10_000;
 
-/** Original behavior: only these weapon classes keep a fight bucket. */
+/** The weapon classes that train the personal counter, and the catapult its own bucket. */
 const FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE: ReadonlyMap<number, number> = new Map([
-  [WEAPON_MAIN_TYPE.UNARMED, FIGHT_EXPERIENCE_TYPE.FIST],
-  [WEAPON_MAIN_TYPE.SPEAR, FIGHT_EXPERIENCE_TYPE.SPEAR],
-  [WEAPON_MAIN_TYPE.SWORD, FIGHT_EXPERIENCE_TYPE.SWORD],
-  [WEAPON_MAIN_TYPE.BOW, FIGHT_EXPERIENCE_TYPE.BOW],
+  [WEAPON_MAIN_TYPE.UNARMED, FIGHT_EXPERIENCE_TYPE.PERSONAL],
+  [WEAPON_MAIN_TYPE.SPEAR, FIGHT_EXPERIENCE_TYPE.PERSONAL],
+  [WEAPON_MAIN_TYPE.SWORD, FIGHT_EXPERIENCE_TYPE.PERSONAL],
+  [WEAPON_MAIN_TYPE.BOW, FIGHT_EXPERIENCE_TYPE.PERSONAL],
   [WEAPON_MAIN_TYPE.CATAPULT, FIGHT_EXPERIENCE_TYPE.CATAPULT],
 ]);
 
@@ -215,7 +225,8 @@ export function fightExperienceTypeFor(weaponMainType: number): number | undefin
 
 /**
  * Grant an attacker fight XP for a landed hit, melee or ranged: one raw point into the weapon class's
- * bucket, capped at {@link FIGHT_EXPERIENCE_MAX}. Original behavior. Wildlife never levels.
+ * bucket, the personal counter capped at {@link FIGHT_EXPERIENCE_FULL} and the catapult's at
+ * {@link CATAPULT_EXPERIENCE_MAX}. Wildlife never levels.
  */
 export function grantFightExperience(
   world: World,
@@ -230,7 +241,7 @@ export function grantFightExperience(
   // A tribe with no `jobEnables` reaches no rung, so the points would be hashed state nothing reads.
   if (declaresNoTrades(ctx.content, s.tribe)) return;
   const bucket = fightExperienceTypeFor(weaponMainType);
-  if (bucket !== undefined) {
-    accrueExperience(world, attacker, bucket, FIGHT_EXPERIENCE_PER_HIT, FIGHT_EXPERIENCE_MAX);
-  }
+  if (bucket === undefined) return;
+  const cap = bucket === FIGHT_EXPERIENCE_TYPE.PERSONAL ? FIGHT_EXPERIENCE_FULL : CATAPULT_EXPERIENCE_MAX;
+  accrueExperience(world, attacker, bucket, FIGHT_EXPERIENCE_PER_HIT, cap);
 }

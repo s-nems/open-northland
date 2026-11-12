@@ -200,7 +200,7 @@ const MARKSMAN_BOW_HITS = 90;
 /** An archer practised enough that every shot lands on its aim. */
 function marksmanAt(sim: Simulation, x: number, y: number): Entity {
   const archer = fighterAt(sim, x, y, VIKING, ARCHER);
-  sim.world.mut(archer, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.BOW, MARKSMAN_BOW_HITS);
+  sim.world.mut(archer, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, MARKSMAN_BOW_HITS);
   return archer;
 }
 
@@ -574,7 +574,7 @@ describe('projectiles - expiry + dead zone', () => {
     }
     expect(sawMiss).toBe(true);
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
-    expect(sim.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW)).toBe(
+    expect(sim.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL)).toBe(
       MARKSMAN_BOW_HITS,
     );
   });
@@ -695,7 +695,7 @@ describe('projectiles - area shots', () => {
     const p = stone(sim, shooter, centre, false);
     sim.world.mut(p, Projectile).weaponMainType = BOW_MAIN_TYPE;
     sim.step();
-    const bow = sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW);
+    const bow = sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL);
     expect(bow).toBe(MARKSMAN_BOW_HITS + 1);
   });
 
@@ -729,7 +729,7 @@ describe('projectiles - area shots', () => {
     expect(events.filter((ev) => ev.kind === 'resourceFelled')).toHaveLength(ring.length);
     // A falling tree is no hit: the stone still thuds and trains nobody.
     expect(events.some((ev) => ev.kind === 'projectileMissed')).toBe(true);
-    expect(sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW)).toBe(
+    expect(sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL)).toBe(
       MARKSMAN_BOW_HITS,
     );
   });

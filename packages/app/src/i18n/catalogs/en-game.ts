@@ -147,10 +147,7 @@ export const enGame = {
     workFlag: 'Work flag',
     specialization: 'Specialization {id}',
     weaponXp: {
-      fist: 'Fighting - Fist',
-      spear: 'Fighting - Spear',
-      sword: 'Fighting - Sword',
-      bow: 'Fighting - Bow',
+      fight: 'Fighting',
       catapult: 'Fighting - Catapult',
     },
     trackLabels: {

@@ -103,9 +103,10 @@ function experienceBonusPct(
   track: JobExperienceDef | undefined,
   points: number,
 ): number | null {
-  if (track === undefined && WEAPON_XP_KEY_BY_TYPE.has(spec)) {
+  if (spec === systems.FIGHT_EXPERIENCE_TYPE.PERSONAL) {
     return systems.withFightExperience(PERCENT, points) - PERCENT;
   }
+  if (track === undefined && WEAPON_XP_KEY_BY_TYPE.has(spec)) return null; // the catapult's buys aim
   if (track !== undefined && isCarrierJob(ctx, track.jobType)) return null;
   return systems.experiencePercent(systems.experiencePoints(points));
 }

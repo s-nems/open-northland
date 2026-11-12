@@ -131,10 +131,7 @@ export const chtGame = {
     workFlag: '工作旗幟',
     specialization: '專長 {id}',
     weaponXp: {
-      fist: '戰鬥 - 徒手',
-      spear: '戰鬥 - 長矛',
-      sword: '戰鬥 - 劍',
-      bow: '戰鬥 - 弓',
+      fight: '戰鬥',
       catapult: '戰鬥 - 投石機',
     },
     trackLabels: {

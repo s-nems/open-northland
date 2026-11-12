@@ -7,7 +7,11 @@ import {
 } from '../../../../../src/components/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
 import { Simulation } from '../../../../../src/index.js';
-import { combatSystem } from '../../../../../src/systems/index.js';
+import {
+  combatSystem,
+  FIGHT_EXPERIENCE_FACTOR_SCALE,
+  fightExperienceTakenFactor,
+} from '../../../../../src/systems/index.js';
 import {
   combatCadenceContent,
   ctxOf,
@@ -65,8 +69,11 @@ describe('combatSystem - a swing turns the striker to its victim', () => {
         last.set(e, hp);
       }
     }
-    // Turned back to back they would take x1.5 from behind; facing each other it is x1.
-    expect(firstBlow.get(west)).toBe(IRON_SPEAR_DAMAGE['0']);
-    expect(firstBlow.get(east)).toBe(IRON_SPEAR_DAMAGE['0']);
+    // Turned back to back they would take x1.5 from behind; facing each other it is x1, less the cut of
+    // the one hit the second victim may have landed first.
+    const column = IRON_SPEAR_DAMAGE['0'];
+    const afterOneHit = Math.trunc((column * fightExperienceTakenFactor(1)) / FIGHT_EXPERIENCE_FACTOR_SCALE);
+    expect([column, afterOneHit]).toContain(firstBlow.get(west));
+    expect([column, afterOneHit]).toContain(firstBlow.get(east));
   });
 });

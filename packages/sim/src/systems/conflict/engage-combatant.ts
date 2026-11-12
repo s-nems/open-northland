@@ -36,7 +36,7 @@ import { isManningShelter } from '../defence/index.js';
 import { isStanding } from '../movement/collision/index.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { faceToward } from '../movement/turning.js';
-import { weaponClassHits, withFightExperience } from '../progression/index.js';
+import { fightPointsWith, withFightExperience } from '../progression/index.js';
 import {
   isAnimalTribe,
   isFighterJob,
@@ -520,14 +520,14 @@ function swingAt(
       held.waiting = undefined;
     }
   }
-  // The victim's armor material selects both the damage column and the impact sound, and fight experience
-  // with this weapon class raises the column. Original behavior: a wall and a vehicle take the bare column,
+  // The victim's armor material selects both the damage column and the impact sound, and the striker's
+  // fight experience raises the column. Original behavior: a wall and a vehicle take the bare column,
   // unscaled by experience. A ranged swing's shot resolves the column again, without the experience,
   // against whatever it strikes.
   const material = targetMaterial(world, ctx, target);
   const base = weaponDamageVsMaterial(weapon.weapon, material);
-  const hits = weaponClassHits(world.get(e, SettlerProgress).experience, weapon.weapon.mainType);
-  let damage = withFightExperience(base, hits);
+  const points = fightPointsWith(world.get(e, SettlerProgress).experience, weapon.weapon.mainType);
+  let damage = withFightExperience(base, points);
   if (world.has(target, Palisade)) damage = wallBlowDamage(base);
   else if (world.has(target, Vehicle)) damage = base;
   const blow = { damage, hitSoundType: hitSoundVsMaterial(weapon.weapon, material) };

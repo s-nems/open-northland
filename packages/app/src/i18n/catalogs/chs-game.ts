@@ -131,10 +131,7 @@ export const chsGame = {
     workFlag: '工作旗帜',
     specialization: '专长 {id}',
     weaponXp: {
-      fist: '战斗 - 徒手',
-      spear: '战斗 - 长矛',
-      sword: '战斗 - 剑',
-      bow: '战斗 - 弓',
+      fight: '战斗',
       catapult: '战斗 - 投石机',
     },
     trackLabels: {

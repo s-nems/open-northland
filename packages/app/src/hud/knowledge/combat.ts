@@ -8,7 +8,7 @@ const PERCENT = 100;
 const { ARMOR_MATERIAL, WEAPON_MAIN_TYPE } = systems;
 
 export const HUMAN_HITPOINTS = systems.HUMAN_HITPOINTS;
-export const CAP_HITS = systems.FIGHT_EXPERIENCE_DAMAGE_CAP_HITS;
+export const CAP_HITS = systems.FIGHT_EXPERIENCE_FULL;
 
 /** Percent a blow lands with by where it comes from. */
 export const HIT_DIRECTION = {

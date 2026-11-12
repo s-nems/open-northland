@@ -248,10 +248,14 @@ export {
   experiencePercent,
   experiencePoints,
   experienceRepeats,
-  FIGHT_EXPERIENCE_DAMAGE_CAP_HITS,
+  FIGHT_EXPERIENCE_DEALT_PCT_AT_FULL,
+  FIGHT_EXPERIENCE_TAKEN_PCT_AT_FULL,
+  fightExperienceTakenFactor,
+  fightPointsWith,
+  personalFightPoints,
   rawXpForRepeats,
   requirementRepeats,
-  weaponClassHits,
+  settlerFightPoints,
   withFightExperience,
 } from './progression/bonus.js';
 export {
@@ -260,6 +264,7 @@ export {
   strokesPerUnit,
 } from './progression/efficiency.js';
 export {
+  FIGHT_EXPERIENCE_FULL,
   FIGHT_EXPERIENCE_TYPE,
   startingExperience,
 } from './progression/experience.js';

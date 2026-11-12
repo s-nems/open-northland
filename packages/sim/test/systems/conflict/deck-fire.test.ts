@@ -397,7 +397,7 @@ describe('deck fire', () => {
         ? (shipWith(s, WARSHIP, SHIP_X, P1, 1).bowmen[0] as Entity)
         : personAt(s, shore.hx + DECK_REACH, ROW, P1, ARCHER);
       s.world.mut(archer, Stance).mode = MILITARY_MODE.IGNORE;
-      s.world.mut(archer, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.BOW, VETERAN_BOW_HITS);
+      s.world.mut(archer, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.PERSONAL, VETERAN_BOW_HITS);
       let shots = 0;
       let off = 0;
       for (let i = 0; i < SHOT_TICKS * 4; i++) {
@@ -419,13 +419,13 @@ describe('deck fire', () => {
     expect(offTarget(true).off).toBeGreaterThan(0);
   });
 
-  it('trains a deck bowman’s bow on a hit', () => {
+  it('trains a deck bowman’s fight counter on a hit', () => {
     const s = sim();
     const { bowmen } = shipWith(s, WARSHIP, SHIP_X, P1, 1);
     const archer = bowmen[0] as Entity;
     const shore = shoreAt(DECK_REACH);
     const enemy = personAt(s, shore.hx, shore.hy, P2, SOLDIER);
-    const before = s.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW) ?? 0;
+    const before = s.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0;
     let struck = false;
     for (let i = 0; i < SHOT_TICKS * 10 && !struck; i++) {
       s.step();
@@ -433,7 +433,7 @@ describe('deck fire', () => {
     }
     expect(struck).toBe(true);
     expect(
-      s.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW) ?? 0,
+      s.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.PERSONAL) ?? 0,
     ).toBeGreaterThan(before);
   });
 
