@@ -211,7 +211,7 @@ export const itKnowledge = {
     building: {
       aura: {
         title: 'Aura',
-        lead: 'Agisce da sola quando il tempio è completato e integro. Copre tutte le persone del proprietario nel raggio.',
+        lead: 'Agisce da sola finché il tempio è completato, integro e brucia olio. Copre tutte le persone del proprietario nel raggio.',
         range: 'Raggio',
         rangeValue: '{{aura.range}} esagoni',
         health: 'Salute',
@@ -220,6 +220,9 @@ export const itKnowledge = {
         pietyValue: '+{{aura.pietyPct}}% al secondo, fino a {{need.satedPct}}%',
         many: 'Più templi',
         manyValue: 'Vale una sola aura, i valori non si sommano',
+        oil: 'Olio',
+        oilValue:
+          '1 dura {{aura.oilBurnTime}}, la scorta piena di {{aura.oilUnits}} dura {{aura.oilFullBurnTime}}',
       },
       output: 'Cosa produce',
       capacity: 'Capacità',

@@ -749,6 +749,11 @@ export const itContent = {
       summary:
         "Seleziona il tempio per vedere il raggio azzurro della sua benedizione. Il civile vicino recupera religione; quello lontano resta fuori dall'aura.",
     },
+    'temple-oil': {
+      title: 'Olio del tempio',
+      summary:
+        'Il tempio di ogni civiltà parte senza olio e il druido di ciascuna ne porta dalla sua capanna: il fuoco vichingo si accende e a ogni tempio compare il bagliore azzurro. Il tempio danneggiato resta buio anche con la scorta piena.',
+    },
     'household-goods': {
       title: 'Beni per la casa',
       summary:
