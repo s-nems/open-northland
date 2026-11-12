@@ -13,7 +13,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { heldIndoors, isInside, stepOut } from '../settlers/indoors.js';
 import { homeQualityActive, homeQualityValue, lodgingUseFor, spendHomeQuality } from './home-quality.js';
-import { builtHomeType, familiesOf, familyCountOf, isMinor } from './households.js';
+import { builtHomeType, familiesOf, familyCountOf, homeTypeOf, isMinor } from './households.js';
 
 // Owner's design, replacing the original's furniture rest bonus: furniture lets a home take
 // `furnishedFamilies` more families (`homeFamilyCapacity`), and the extra families wear it out. Once it is
@@ -39,13 +39,13 @@ export function wearLodging(world: World, ctx: SystemContext, home: Entity, sour
 }
 
 /**
- * Forbidding furniture lifts its extra families at once: each of `player`'s homes moves out the families
- * above its base. Only a home that held furniture can have housed them.
+ * Forbidding furniture lifts its extra families at once: each of `player`'s homes holding furniture moves
+ * out the families above its base, a home under upgrade included, since nothing wears there afterwards.
  */
 export function moveOutOfUnfurnishedHomes(world: World, ctx: SystemContext, player: number): void {
   for (const home of world.query(HomeQuality, Building)) {
-    if (ownerOf(world, home) !== player) continue;
-    const type = builtHomeType(world, ctx, home);
+    if (ownerOf(world, home) !== player || homeQualityValue(world, home, 'lodging') <= 0) continue;
+    const type = homeTypeOf(world, ctx, home);
     if (type !== undefined) moveOutAboveBase(world, ctx, home, type);
   }
 }

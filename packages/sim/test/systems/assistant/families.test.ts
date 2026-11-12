@@ -202,9 +202,10 @@ describe('assistant family founding', () => {
     const open = homeAt(sim, 40);
     furnish(sim, crowded, 1);
     for (const x of [11, 12]) sim.world.add(adultAt(sim, x, true), Residence, { home: crowded, since: 0 });
+    // The child holds the lowest id: it must wait for a parent instead of taking the slot alone.
+    const child = childAt(sim, 15);
     const wife = adultAt(sim, 13, true);
     const husband = adultAt(sim, 14, false);
-    const child = childAt(sim, 15);
     marry(sim, wife, husband, child);
     for (const e of [wife, husband, child]) sim.world.add(e, Residence, { home: crowded, since: 1 });
     switchOn(sim);

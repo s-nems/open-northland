@@ -2,6 +2,7 @@ import {
   AssistantFoundsFamilies,
   Evicted,
   Female,
+  Marriage,
   Position,
   Residence,
   Rider,
@@ -54,12 +55,19 @@ export function foundFamilies(world: World, ctx: SystemContext, beat: number): v
 function foundFamiliesOf(world: World, ctx: SystemContext, player: number, beat: number): void {
   const homeless: Entity[] = [];
   const brides: Entity[] = [];
+  const evicted: Entity[] = [];
+  // A child moves back with an evicted parent: on its own it would take the family's slot alone.
+  const withParent = new Set<Entity>();
   let groomFree = false;
   const people = ownedSettlers(world, player);
   for (let i = 0; i < people.length; i++) {
     const e = people[i] as Entity;
-    // A member aboard a vehicle waits to step off; the first member ashore takes the whole family.
-    if (world.has(e, Evicted) && !world.has(e, Rider)) homeless.push(e);
+    if (world.has(e, Evicted)) {
+      const child = world.tryGet(e, Marriage)?.child;
+      if (child != null) withParent.add(child);
+      // A member aboard a vehicle waits to step off; the first adult ashore takes the whole family.
+      if (!world.has(e, Rider)) evicted.push(e);
+    }
     if (!world.has(e, Female)) {
       groomFree ||= mayMarry(world, ctx.content, e);
       continue;
@@ -75,6 +83,8 @@ function foundFamiliesOf(world: World, ctx: SystemContext, player: number, beat:
       homeless.push(e);
     }
   }
+  for (const e of evicted) if (!withParent.has(e)) homeless.push(e);
+  if (homeless.length > 1) homeless.sort((a, b) => a - b);
   if (homeless.length > 0) houseHouseholds(world, ctx, player, homeless);
   if (!groomFree || brides.length === 0) return;
   // Beat-rotated start, so a woman no man can reach never holds the searches from the others.

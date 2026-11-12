@@ -17,7 +17,7 @@ import {
   Settler,
   Stockpile,
 } from '../../../src/components/index.js';
-import { fx, ONE } from '../../../src/core/fixed.js';
+import { fx, ONE, ZERO } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { playerCommand, Simulation } from '../../../src/index.js';
 import { homeFamilyCapacity } from '../../../src/systems/family/home-quality.js';
@@ -297,5 +297,23 @@ describe('furniture housing extra families', () => {
 
     forbid(true);
     expect(homeFamilyCapacity(sim.world, ctxOf(sim), home, type)).toBe(BASE_FAMILIES + FURNISHED_FAMILIES);
+  });
+
+  it('moves the extra families out of a home under upgrade when furniture is forbidden', () => {
+    const { sim, home } = setup();
+    const families = [single(sim, home, 0), single(sim, home, 1), single(sim, home, 2)];
+    sim.world.mut(home, Building).built = ZERO;
+
+    sim.enqueue(
+      playerCommand(PLAYER, {
+        kind: 'setHouseholdGoodUse',
+        player: PLAYER,
+        effect: 'lodging',
+        allowed: false,
+      }),
+    );
+    sim.step();
+
+    expect(movedOut(sim)).toEqual([families[2]]);
   });
 });

@@ -34,7 +34,8 @@ export const Wedding = defineComponent<{ partner: Entity; kissing: boolean }>('W
 export const Residence = defineComponent<{ home: Entity; since: number }>('Residence', 'settlers');
 
 /** A settler whose household had to move out of a home when its furniture ran out or was forbidden, and
- *  has not lived anywhere since. The assistant re-houses such a household whoever it holds. */
+ *  has not lived anywhere since. The assistant re-houses such a household whoever it holds. The claim ends
+ *  where the household does: a child growing up, a widowed man, a settler handed to another player. */
 export const Evicted = defineComponent<{ readonly evicted: true }>('Evicted', 'settlers', { simOnly: true });
 
 /**

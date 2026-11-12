@@ -8,6 +8,7 @@
 
 import {
   Age,
+  Evicted,
   Health,
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
@@ -165,6 +166,7 @@ export const growthSystem: System = (world, ctx) => {
     // Authored: a grown child moves out instead of counting as a second family against its parents'
     // `homeSize`. The Age removal above also expires a widowed parent's carve-out.
     world.remove(e, Residence);
+    world.remove(e, Evicted);
     if (parents === undefined) releaseWidowedParentsOf(world, e);
     else for (const parent of parents.get(e) ?? []) settleWidowhood(world, parent);
   }

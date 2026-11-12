@@ -20,11 +20,11 @@ import { homeFamilyCapacity } from './home-quality.js';
 
 /** Whether `house` is a home building, built or not. */
 export function isHome(world: World, ctx: SystemContext, house: Entity): boolean {
-  return homeType(world, ctx, house) !== undefined;
+  return homeTypeOf(world, ctx, house) !== undefined;
 }
 
 /** The `home`-kind {@link BuildingType} of a house entity, including one still under construction. */
-function homeType(world: World, ctx: SystemContext, house: Entity): BuildingType | undefined {
+export function homeTypeOf(world: World, ctx: SystemContext, house: Entity): BuildingType | undefined {
   const b = world.isAlive(house) ? world.tryGet(house, Building) : undefined;
   return b === undefined ? undefined : homeKindOf(ctx, b.buildingType);
 }
@@ -187,7 +187,7 @@ export function familyCountOf(world: World, house: Entity): number {
  * settler's side will do.
  */
 export function moveFamilyInto(world: World, ctx: SystemContext, e: Entity, house: Entity): void {
-  const type = homeType(world, ctx, house);
+  const type = homeTypeOf(world, ctx, house);
   if (type === undefined) return;
   const family = familyOf(world, e);
   const members = new Set(family);

@@ -2,6 +2,7 @@ import {
   AttackOrder,
   BuildMode,
   Engagement,
+  Evicted,
   GraduateWait,
   isValidPlayer,
   isWildlife,
@@ -152,6 +153,7 @@ function cutLoose(pass: MissionPass, e: Entity): void {
   releaseTowerPost(world, ctx, e); // steps him off the tower while the binding it reads is still there
   releaseEmployment(world, ctx, e);
   world.remove(e, Residence);
+  world.remove(e, Evicted);
   world.remove(e, TrainingOrder);
   world.remove(e, GraduateWait);
   world.remove(e, BuildMode);

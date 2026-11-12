@@ -80,7 +80,7 @@ export interface HomeQualityRow {
   /** Only the holy-oil row carries this live finished-home status. */
   readonly holyFireActive?: boolean;
   /** Only the furniture row: the pieces the pool holds, in tenths and never none while some is left, and
-   *  the families it houses above the home's base now (0 while it houses none). */
+   *  the extra families it makes room for now (0 while it serves none). */
   readonly furniture?: { readonly pieces: number; readonly extraFamilies: number };
 }
 

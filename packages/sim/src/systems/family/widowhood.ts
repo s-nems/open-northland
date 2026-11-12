@@ -1,4 +1,4 @@
-import { ChildOrder, Female, Marriage, Residence, Wedding } from '../../components/index.js';
+import { ChildOrder, Evicted, Female, Marriage, Residence, Wedding } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { raisingChild } from './eligibility.js';
 import { isMinor } from './households.js';
@@ -16,7 +16,7 @@ export function settleWidowhood(world: World, survivor: Entity): void {
   if (marriage === undefined || world.isAlive(marriage.spouse)) return;
   if (raisingChild(world, marriage)) return;
   world.remove(survivor, Marriage);
-  if (!world.has(survivor, Female)) world.remove(survivor, Residence);
+  if (!world.has(survivor, Female)) unhouse(world, survivor);
 }
 
 /**
@@ -70,5 +70,11 @@ export function leaveFamily(world: World, e: Entity): void {
   if (!world.isAlive(spouse) || world.tryGet(spouse, Marriage)?.spouse !== e) return;
   world.remove(spouse, Marriage);
   world.remove(spouse, ChildOrder);
-  if (!world.has(spouse, Female)) world.remove(spouse, Residence);
+  if (!world.has(spouse, Female)) unhouse(world, spouse);
+}
+
+/** A widowed man keeps no home and no claim to be re-housed: homes anchor on women. */
+function unhouse(world: World, man: Entity): void {
+  world.remove(man, Residence);
+  world.remove(man, Evicted);
 }
