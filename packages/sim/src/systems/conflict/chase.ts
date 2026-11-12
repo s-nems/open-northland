@@ -1,6 +1,7 @@
 import {
   AttackOrder,
   Building,
+  CoinDrillOrder,
   Engagement,
   EquipOrder,
   engagementRecord,
@@ -101,13 +102,13 @@ function marchRestTicks(world: World, e: Entity): number {
 
 /** Send a DEFEND guard, or an ATTACK fighter that strayed, back to its anchor when nothing is left to
  *  fight. The {@link Engagement} always drops here, or the planner's Engagement gate would bench the unit for
- *  good; the walk home defers to a live equip errand, whose end re-holds the unchanged anchor, and to a
+ *  good; the walk home defers to a live equip errand or coin drill, whose end re-holds the unchanged anchor, and to a
  *  pressing need, which the planner answers above the DEFEND hold. Without that, a guard facing an enemy it
  *  cannot reach is turned back from every meal and starves beside the store. */
 function returnToAnchor(world: World, ctx: SystemContext, e: Entity, here: NodeId, anchorCell: NodeId): void {
   world.remove(e, Engagement);
   world.remove(e, HuntFocus); // a post-holder holds no prey
-  if (world.has(e, EquipOrder) || anyNeedPressing(world, ctx, e)) return;
+  if (world.has(e, EquipOrder) || world.has(e, CoinDrillOrder) || anyNeedPressing(world, ctx, e)) return;
   if (holdsStandIn(world, ctx, e, here, anchorCell)) return;
   clearNavState(world, e);
   const post = ctx.terrain === undefined ? anchorCell : guardPost(world, ctx, ctx.terrain, anchorCell, here);

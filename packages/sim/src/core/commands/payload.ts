@@ -4,6 +4,7 @@ import {
   ASSISTANT_ARMING_INTENTS,
   ASSISTANT_COUNTER_KINDS,
   ASSISTANT_GRANT_GROUPS,
+  COIN_DRILL_CLASSES,
 } from '../../components/assistant.js';
 import { HOUSE_RECORD_NAME_MAX_CHARS } from '../../components/economy/infrastructure.js';
 import { MISC_EQUIP_SLOTS } from '../../components/equipment.js';
@@ -171,6 +172,7 @@ const UNIT_SELECTION_ACTION_PAYLOAD: {
   setJob: { required: { jobType: 'integer' }, optional: JOB_GOODS },
   assignBuilder: { required: { site: 'integer' }, optional: QUEUED },
   trainSoldier: { required: { house: 'integer' }, optional: QUEUED },
+  orderCoinDrill: { required: { house: 'integer' } },
   learn: { required: { house: 'integer', target: { oneOf: ['job', 'good'] }, typeId: 'integer' } },
   setWorkFlag: { required: NODE },
   setGatherGood: { required: { goodType: { nullOr: 'integer' } } },
@@ -418,6 +420,13 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   setAssistantMoveFlags: { required: { player: 'integer', enabled: 'boolean' } },
   setAssistantUpgradeTools: { required: { player: 'integer', enabled: 'boolean' } },
   setAssistantFoundFamilies: { required: { player: 'integer', enabled: 'boolean' } },
+  setAssistantCoinDrill: { required: { player: 'integer', enabled: 'boolean' } },
+  setAssistantCoinDrillPriority: {
+    required: {
+      player: 'integer',
+      order: { arrayOf: { oneOf: COIN_DRILL_CLASSES }, maxLength: COIN_DRILL_CLASSES.length },
+    },
+  },
   setProductionGoods: {
     required: { entity: 'integer', goods: { arrayOf: 'integer', maxLength: GOOD_TYPE_SPACE } },
   },
@@ -512,6 +521,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   setVehicleWanted: { required: { vehicle: 'integer', goodType: 'integer', amount: 'integer' } },
   clearVehicleWanted: { required: { vehicle: 'integer' } },
   trainSoldier: { required: { entity: 'integer', house: 'integer' }, optional: QUEUED },
+  orderCoinDrill: { required: { entity: 'integer', house: 'integer' } },
   unassignHouse: { required: { entity: 'integer' } },
   unloadPeople: {
     required: { vehicle: 'integer' },

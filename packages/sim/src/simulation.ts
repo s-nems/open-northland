@@ -1,5 +1,6 @@
 import type { ContentSet, EquipCategory, MapEscalation } from '@open-northland/data';
 import type { MapAiScript } from './components/ai/map-ai.js';
+import type { CoinDrillClass } from './components/assistant.js';
 import {
   ASSISTANT_COUNTER_KINDS,
   type AssistantArmingIntent,
@@ -9,6 +10,8 @@ import {
   type AssistantGrantGroup,
   AssistantWeaponVetoes,
   assistantArmorOrder,
+  assistantCoinDrillPriority,
+  assistantCoinDrills,
   assistantCountersEntity,
   assistantFoundsFamilies,
   assistantGrantedGoods,
@@ -121,6 +124,7 @@ import {
   type OpenTribute,
   openTributes,
 } from './systems/missions/index.js';
+import { mayCoinDrillAt } from './systems/orders/coin-drill.js';
 import {
   type FormationOrder,
   type FormationSlotGroup,
@@ -728,6 +732,22 @@ export class Simulation {
   /** Whether `player`'s assistant houses its homeless women and weds the housed single ones. */
   assistantFoundsFamilies(player: number): boolean {
     return assistantFoundsFamilies(this.world, player);
+  }
+
+  /** Whether `player`'s assistant sends idle soldiers to coin drills. */
+  assistantCoinDrills(player: number): boolean {
+    return assistantCoinDrills(this.world, player);
+  }
+
+  /** `player`'s coin-drill class order, first sent first. */
+  assistantCoinDrillPriority(player: number): readonly CoinDrillClass[] {
+    return assistantCoinDrillPriority(this.world, player);
+  }
+
+  /** Whether `entity` may be sent to coin-drill at `house` now: the `orderCoinDrill` gate, the barracks'
+   *  coins aside. */
+  mayCoinDrillAt(entity: Entity, house: Entity): boolean {
+    return mayCoinDrillAt(this.world, this.context(), entity, house);
   }
 
   /** Changes whenever an `assistant*` read of any seat may answer differently. */

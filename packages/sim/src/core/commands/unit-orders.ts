@@ -58,6 +58,7 @@ export type UnitSelectionAction =
   | { readonly kind: 'setJob'; readonly jobType: number; readonly goods?: readonly number[] }
   | { readonly kind: 'assignBuilder'; readonly site: Entity; readonly queued?: boolean }
   | { readonly kind: 'trainSoldier'; readonly house: Entity; readonly queued?: boolean }
+  | { readonly kind: 'orderCoinDrill'; readonly house: Entity }
   | {
       readonly kind: 'learn';
       readonly house: Entity;
@@ -576,6 +577,17 @@ export type UnitOrderCommand =
       readonly house: Entity;
       /** As `moveUnit`'s; the barracks is judged when the order starts. */
       readonly queued?: boolean;
+    }
+  | {
+      /**
+       * Send one owned sword, spear or bow soldier to coin-drill at his side's finished barracks `house`:
+       * each repetition inside takes a coin off its shelf and adds the clip's points to his personal fight
+       * counter while it stays below `COIN_DRILL_LIMIT`; then, or when no coin is left, he walks back to
+       * where he stood. Not the recruit's `trainSoldier` enlistment. A `moveUnit` order calls it off.
+       */
+      readonly kind: 'orderCoinDrill';
+      readonly entity: Entity;
+      readonly house: Entity;
     }
   | {
       readonly kind: 'learn';

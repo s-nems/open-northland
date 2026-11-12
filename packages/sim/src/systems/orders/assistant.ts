@@ -5,6 +5,8 @@ import {
   ASSISTANT_GRANT_GROUPS,
   ASSISTANT_WITHHELD_GRANTS,
   AssistantArmorOrders,
+  AssistantCoinDrillPriority,
+  AssistantCoinDrills,
   type AssistantCounterKind,
   AssistantCounters,
   AssistantFoundsFamilies,
@@ -16,10 +18,12 @@ import {
   AssistantWeaponOrders,
   AssistantWeaponVetoes,
   assistantArmorOrdersEntity,
+  assistantCoinDrillPriorityEntity,
   assistantCountersAtDefault,
   assistantCountersEntity,
   assistantSwitchEntity,
   assistantWeaponOrdersEntity,
+  COIN_DRILL_CLASSES,
   defaultAssistantCounters,
   INFINITE_COUNTER_KINDS,
   type PlayerGoodList,
@@ -105,6 +109,30 @@ export function setAssistantFoundFamilies(
   setAssistantSwitch(world, AssistantFoundsFamilies, command.player, command.enabled);
 }
 
+/** Switch whether `player`'s assistant sends idle soldiers to coin drills - see the command doc. */
+export function setAssistantCoinDrill(
+  world: World,
+  command: Extract<Command, { kind: 'setAssistantCoinDrill' }>,
+): void {
+  setAssistantSwitch(world, AssistantCoinDrills, command.player, command.enabled);
+}
+
+/** Set `player`'s coin-drill class order - see the command doc. The default order drops the carrier. */
+export function setAssistantCoinDrillPriority(
+  world: World,
+  command: Extract<Command, { kind: 'setAssistantCoinDrillPriority' }>,
+): void {
+  const { player, order } = command;
+  if (!isPermutationOf(order, COIN_DRILL_CLASSES)) return;
+  const carrier = assistantCoinDrillPriorityEntity(world, player);
+  if (order.every((drillClass, i) => drillClass === COIN_DRILL_CLASSES[i])) {
+    if (carrier !== null) world.destroy(carrier);
+    return;
+  }
+  if (carrier === null) world.add(world.create(), AssistantCoinDrillPriority, { player, order: [...order] });
+  else world.mut(carrier, AssistantCoinDrillPriority).order = [...order];
+}
+
 /** Turn `player`'s `toggle` on or off: the carrier exists while it is on. */
 export function setAssistantSwitch(
   world: World,
@@ -175,7 +203,7 @@ export function setAssistantWeaponOrder(
 }
 
 /** Whether `order` holds every one of `goods` once and nothing else. */
-function isPermutationOf(order: readonly number[], goods: readonly number[]): boolean {
+function isPermutationOf<T>(order: readonly T[], goods: readonly T[]): boolean {
   return order.length === goods.length && goods.every((good) => order.includes(good));
 }
 

@@ -5,6 +5,7 @@ import {
   Carrying,
   Chat,
   ClaimAnimalOrder,
+  CoinDrillOrder,
   CurrentAtomic,
   DeferredOrder,
   Engagement,
@@ -253,6 +254,7 @@ function startPlayerWalk(
   // the walk and drag the settler back to its stale pre-order return spot.
   world.remove(e, EquipOrder);
   world.remove(e, TrainingOrder); // likewise the player's only way to call a barracks drill off
+  world.remove(e, CoinDrillOrder); // and a coin drill
   world.remove(e, GraduateWait); // a graduate the player moved stays where it was sent
   world.remove(e, NeedOrder); // and an ordered meal, nap, chat or prayer the walk supersedes
   liftLostWalk(world, e); // an obeyed order is the way found; a cut-off mark waits for its own check

@@ -30,6 +30,16 @@ export const ATOMIC_EVENT_TYPE_ATTACK = 25;
 export const ATOMIC_EVENT_TYPE_MOVE_FORWARD = 26;
 
 /**
+ * The coin drill's two event types: `GET_TRAINING` grants the clip's value in fight points and
+ * `CHANGE_GOLD` changes the coins by its value (the soldier's `..._soldier_train` clip carries `-1`).
+ *
+ * Source basis: `logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_GET_TRAINING` (l.749) and `_CHANGE_GOLD`
+ * (l.750).
+ */
+export const ATOMIC_EVENT_TYPE_GET_TRAINING = 29;
+export const ATOMIC_EVENT_TYPE_CHANGE_GOLD = 30;
+
+/**
  * The `event <at> <type>` type id marking the frame a swing plays its sound FX. An animation carrying no
  * such event plays no mid-swing sound.
  *

@@ -245,3 +245,9 @@ export function grantFightExperience(
   const cap = bucket === FIGHT_EXPERIENCE_TYPE.PERSONAL ? FIGHT_EXPERIENCE_FULL : CATAPULT_EXPERIENCE_MAX;
   accrueExperience(world, attacker, bucket, FIGHT_EXPERIENCE_PER_HIT, cap);
 }
+
+/** Add a coin drill's `points` to `settler`'s personal fight counter, capped at {@link FIGHT_EXPERIENCE_FULL}.
+ *  A script that bars him from getting better (`MISSIONS.md`, behaviour bit 11) bars this too. */
+export function grantDrillPoints(world: World, settler: Entity, points: number): void {
+  accrueExperience(world, settler, FIGHT_EXPERIENCE_TYPE.PERSONAL, points, FIGHT_EXPERIENCE_FULL);
+}

@@ -207,6 +207,7 @@ const ATOMIC_STATE: Readonly<Record<AtomicEffect['kind'], SettlerState>> = {
   attack: 'fighting',
   slay: 'fighting',
   exercise: 'training',
+  coinDrill: 'training',
   construct: 'building',
   repair: 'repairing',
   harvest: 'working',

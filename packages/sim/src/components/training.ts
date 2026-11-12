@@ -1,4 +1,5 @@
 import { defineComponent, type Entity } from '../ecs/world.js';
+import type { NodeId } from '../nav/terrain/index.js';
 
 /**
  * A settler's live training order: the barracks drill or, with a `lesson`, the school course it was sent
@@ -34,3 +35,17 @@ export const GraduateWait = defineComponent<{ school: Entity }>('GraduateWait', 
  * where they step out.
  */
 export const RallyPoint = defineComponent<{ flag: Entity }>('RallyPoint', 'settlers');
+
+/**
+ * A soldier's coin drill: paid fight practice in his own side's barracks, one coin of its stock for each
+ * repetition, apart from a recruit's {@link TrainingOrder} enlistment. `drill` walks to the door and drills
+ * while he may and a coin is there; `return` walks him back to `returnTo`, the node he stood on when the
+ * order was given, and the order ends there. `paid` tells whether the repetition in progress has taken its
+ * coin, so the coins still spoken for are the drilling orders not yet paid. Our rule.
+ */
+export const CoinDrillOrder = defineComponent<{
+  house: Entity;
+  returnTo: NodeId;
+  stage: 'drill' | 'return';
+  paid: boolean;
+}>('CoinDrillOrder', 'settlers');

@@ -1,4 +1,4 @@
-import { mapBriefOf } from '../../../components/index.js';
+import { assistantCoinDrills, mapBriefOf } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -133,6 +133,7 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
   // The men the campaign leaves standing at home this decision may go for armour.
   const sent = orderedMen([...campaign, ...(assault?.commands ?? [])]);
   return [
+    ...coinDrillSwitch(world, player),
     ...siege.commands,
     ...(raids?.commands ?? []),
     ...campaign,
@@ -148,6 +149,12 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
       [...unfit, ...field].filter((e) => !sent.has(e)),
     ),
   ];
+}
+
+/** The command turning the seat's assistant coin drill on, until it is: its idle soldiers drill on the
+ *  barracks' coins as a player's do with the switch on, with no coin plan of the seat's own. */
+function coinDrillSwitch(world: World, player: number): PlayerCommand[] {
+  return assistantCoinDrills(world, player) ? [] : [{ kind: 'setAssistantCoinDrill', player, enabled: true }];
 }
 
 /** The seat's operations read its barracks door as home, else its start anchor in the map brief, so a

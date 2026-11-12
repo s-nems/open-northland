@@ -15,6 +15,7 @@ import { religionAllowsClip } from '../../lifecycle/needs/religion.js';
 import { atomicClip, eventTick } from '../../readviews/animations.js';
 import { prayerSiteAvailable } from '../../readviews/prayer-sites.js';
 import { applyEffect } from './effects/apply.js';
+import { applyCoinDrillEvents } from './effects/coin-drill.js';
 import {
   applyPendingHitReactions,
   lungeForward,
@@ -99,6 +100,13 @@ export const atomicSystem: System = (world, ctx) => {
       }
     }
 
+    if (
+      running.effect.kind === 'coinDrill' &&
+      !applyCoinDrillEvents(world, ctx, e, running.effect.house, elapsed)
+    ) {
+      removeCurrentAtomic(world, e);
+      continue;
+    }
     // A drink borrows the eat clip, and the draught pays instead of the clip's food events.
     if (needsOn && !workshopDisplay && running.effect.kind !== 'drink' && settler !== undefined)
       applyClipNeedEvents(world, ctx, e, settler, clip, elapsed);

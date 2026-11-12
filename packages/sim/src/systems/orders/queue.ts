@@ -3,6 +3,7 @@ import {
   AttackOrder,
   BuildMode,
   ClaimAnimalOrder,
+  CoinDrillOrder,
   CurrentAtomic,
   DeferredOrder,
   EquipOrder,
@@ -69,6 +70,7 @@ function holdsCurrentOrder(world: World, e: Entity): boolean {
     world.has(e, OpenChestOrder) ||
     world.has(e, ClaimAnimalOrder) ||
     world.has(e, TrainingOrder) ||
+    world.has(e, CoinDrillOrder) ||
     world.has(e, ExploreOrder) ||
     world.has(e, DeferredOrder) ||
     world.has(e, MealBreak) ||

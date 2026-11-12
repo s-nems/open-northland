@@ -50,6 +50,7 @@ import type { PlannerPass } from '../planner/pass.js';
 import { combatOwnsFeet, shelterHasRoom } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
 import { planHomeTopUp } from './at-home.js';
+import { planCoinDrill } from './coin-drill.js';
 import { cutOffCheckDue, reconcileCutOff, strandedPost } from './cut-off.js';
 import {
   builderWorkBeyondReach,
@@ -321,6 +322,9 @@ function planBreak(
   // BARRACKS DRILL: a player errand outranking the settler's trade for as long as it lasts, and above the
   // equip errand below because the drill ends in a profession change.
   if (planTraining(plan, settler, pass.spacing, pass.idle, load)) return true;
+  // COIN DRILL: a soldier's paid practice, a player or assistant errand above the equip errand and the
+  // standing soldier rungs below, which take him back over once he has walked home.
+  if (planCoinDrill(plan, settler)) return true;
   // EQUIP ERRAND: the player's or the assistant's, outranking the DEFEND hold below, socialising and every
   // economy rung, but under the needs drives and the ownership gate. A DEFEND guard walks the errand and
   // re-holds its unchanged anchor afterwards, since the combat walk-back pass defers to a live errand. A

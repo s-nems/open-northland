@@ -73,6 +73,9 @@ export type AtomicEffect =
   /** The settler runs one drill repetition inside a barracks, charged against the errand's remaining
    *  drill time. Nothing else accrues: the TRAINING bucket grants no experience. */
   | { readonly kind: 'exercise' }
+  /** A soldier runs one coin-drill repetition inside barracks `house`: the clip's own events take the coin
+   *  off `house`'s stock and add the fight points (`atomics/effects/coin-drill.ts`). */
+  | { readonly kind: 'coinDrill'; readonly house: Entity }
   /** The settler swings at `target`, landing a blow that takes hitpoints off it, clamped at 0. A
    *  `target` with no `Health` is a no-op. */
   | {

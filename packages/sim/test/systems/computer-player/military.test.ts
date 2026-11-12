@@ -197,10 +197,10 @@ function rallyOf(sim: Simulation): { node: NodeId; x: number; y: number } {
 }
 
 /** The campaign's orders: the enlistment every fresh fighter gets first (`ai-shared/defence.test.ts`)
- *  is filtered out, so a case reads the muster alone. */
+ *  and the coin-drill switch are filtered out, so a case reads the muster alone. */
 function run(sim: Simulation, seed = EAGER_SEED, tick = 0): Command[] {
   return [...militaryModule.run(sim.world, ctxOf(sim, seed, tick), SEAT)].filter(
-    (c) => c.kind !== 'setRegeneration',
+    (c) => c.kind !== 'setRegeneration' && c.kind !== 'setAssistantCoinDrill',
   );
 }
 
@@ -1264,5 +1264,17 @@ describe('military module - the live seat', { timeout: 60_000 }, () => {
       untilTick: live.tick, // the setup steps count too, so replay to the live run's own clock
     });
     expect(replayed.hashState()).toBe(live.hashState());
+  });
+});
+
+describe('military module - the coin drill', () => {
+  it("switches the seat's assistant coin drill on through the player's command, once", () => {
+    const sim = aiSim();
+    const switches = (): Command[] =>
+      [...militaryModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setAssistantCoinDrill');
+    expect(switches()).toEqual([{ kind: 'setAssistantCoinDrill', player: SEAT, enabled: true }]);
+    sim.enqueueSetup({ kind: 'setAssistantCoinDrill', player: SEAT, enabled: true });
+    sim.step();
+    expect(switches()).toEqual([]);
   });
 });

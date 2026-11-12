@@ -55,10 +55,13 @@ import {
   marry,
   moveUnit,
   orderClaimAnimal,
+  orderCoinDrill,
   orderNeed,
   orderOpenChest,
   placeSignpost,
   setAssistantArmorOrder,
+  setAssistantCoinDrill,
+  setAssistantCoinDrillPriority,
   setAssistantCounter,
   setAssistantFoundFamilies,
   setAssistantGrant,
@@ -456,6 +459,9 @@ function applyCommand(
     case 'trainSoldier':
       trainSoldier(world, ctx, command);
       return;
+    case 'orderCoinDrill':
+      orderCoinDrill(world, ctx, command);
+      return;
     case 'cancelTraining':
       cancelTraining(world, command);
       return;
@@ -578,6 +584,12 @@ function applyCommand(
       return;
     case 'setAssistantFoundFamilies':
       setAssistantFoundFamilies(world, command);
+      return;
+    case 'setAssistantCoinDrill':
+      setAssistantCoinDrill(world, command);
+      return;
+    case 'setAssistantCoinDrillPriority':
+      setAssistantCoinDrillPriority(world, command);
       return;
     case 'setPlayerPlacementTribes':
       setPlayerPlacementTribes(world, ctx.content, command.player, command.tribes);

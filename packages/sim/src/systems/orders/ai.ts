@@ -1,6 +1,7 @@
 import { WERESNAKE_TRIBE, WEREWOLF_TRIBE } from '@open-northland/data';
 import {
   AiControl,
+  AssistantCoinDrills,
   AssistantFoundsFamilies,
   AssistantMovesFlags,
   AssistantUpgradesTools,
@@ -155,14 +156,15 @@ function applyAiControl(
   return released;
 }
 
-/** Lift the recruit weapon vetoes and the soldier outfit (its grants and their audience limits) the
- *  military module published for `player`. Like the vetoes and the published counter kinds, the outfit
- *  goods are the module's while it runs: a hand that set the same goods before loses them with it. */
+/** Lift the recruit weapon vetoes, the soldier outfit (its grants and their audience limits) and the coin
+ *  drill switch the military module published for `player`. Like the vetoes and the published counter
+ *  kinds, they are the module's while it runs: a hand that set the same before loses them with it. */
 function withdrawMilitaryPublications(world: World, ctx: SystemContext, player: number): void {
   clearAssistantWeaponVetoes(world, player);
   const outfit = soldierOutfitGoods(ctx);
   revokeAssistantGrants(world, player, outfit);
   liftAssistantGrantLimits(world, player, outfit);
+  setAssistantSwitch(world, AssistantCoinDrills, player, false);
 }
 
 /** Lower every alarm the seat is standing on, a hand-raised one included: the seat that would have called

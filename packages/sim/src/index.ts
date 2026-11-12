@@ -3,7 +3,9 @@ export type {
   AssistantArmorOrder,
   AssistantCounterValues,
   AssistantGrantGroup,
+  CoinDrillClass,
 } from './components/assistant.js';
+export { COIN_DRILL_CLASSES } from './components/assistant.js';
 export { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from './components/chest.js';
 export {
   PRODUCTION_COUNT_MAX,

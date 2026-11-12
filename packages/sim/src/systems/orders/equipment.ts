@@ -1,5 +1,6 @@
 import type { EquipCategory } from '@open-northland/data';
 import {
+  CoinDrillOrder,
   Equipment,
   EquipOrder,
   type EquipOrderIntent,
@@ -89,6 +90,7 @@ function stampEquipOrder(
   world.remove(e, Stranded);
   world.remove(e, PlayerOrder);
   world.remove(e, TrainingOrder); // and a barracks drill, which outranks this errand and would outlast it
+  world.remove(e, CoinDrillOrder); // and a coin drill, for the same reason
   world.add(e, EquipOrder, {
     ...intent,
     stage: 'acquire',
