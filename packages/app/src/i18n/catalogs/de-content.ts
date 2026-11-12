@@ -750,7 +750,7 @@ export const deContent = {
     'temple-oil': {
       title: 'Tempelöl',
       summary:
-        'Zwei Tempel beginnen ohne Öl, und ein Druide bringt beiden welches: das Wikingerfeuer entzündet sich und der helle Schein erscheint. Der beschädigte Tempel bleibt trotz vollem Vorrat dunkel.',
+        'Die Tempel aller Völker beginnen ohne Öl, und der Druide jedes Volkes bringt welches aus seiner Hütte: das Wikingerfeuer entzündet sich und an jedem Tempel erscheint der helle Schein. Der beschädigte Tempel bleibt trotz vollem Vorrat dunkel.',
     },
     'household-goods': {
       title: 'Haushaltswaren',

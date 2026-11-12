@@ -744,7 +744,7 @@ export const enContent = {
     'temple-oil': {
       title: 'Temple oil',
       summary:
-        'Two temples start without oil and a druid carries some to each; watch the viking fire light and the pale glow come up. The wounded temple stays dark on a full store.',
+        "Every civilization's temple starts without oil, and each one's druid carries some from his hut; watch the viking fire light and the pale glow come up at every temple. The wounded temple stays dark on a full store.",
     },
     'household-goods': {
       title: 'Household goods',

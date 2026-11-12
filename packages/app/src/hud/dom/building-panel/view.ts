@@ -15,6 +15,7 @@ import { createProductionSection } from './production.js';
 import { createRallySection } from './rally.js';
 import { createStaffSection } from './staff.js';
 import { createStockSection } from './stock.js';
+import { createTempleFireSection } from './temple-fire.js';
 import { warmBuildingModel } from './warm-model.js';
 
 /** The selected building's panel on the DOM plane. */
@@ -82,6 +83,7 @@ export function createBuildingPanel(deps: BuildingPanelDeps): BuildingPanel {
   const crew = createStaffSection(deps, (model) => model.crew);
   const staff = createStaffSection(deps, (model) => model.staff);
   const production = createProductionSection(deps);
+  const templeFire = createTempleFireSection(deps);
   const stock = createStockSection(deps);
   const home = createHomeSection(deps);
   const offers = createOffersSection(deps);
@@ -92,6 +94,7 @@ export function createBuildingPanel(deps: BuildingPanelDeps): BuildingPanel {
     crew.element,
     staff.element,
     production.element,
+    templeFire.element,
     home.element,
     offers.element,
     stock.element,
@@ -118,6 +121,7 @@ export function createBuildingPanel(deps: BuildingPanelDeps): BuildingPanel {
     crew.element,
     staff.element,
     production.element,
+    templeFire.element,
     home.element,
     offers.element,
   ]) {
@@ -132,6 +136,7 @@ export function createBuildingPanel(deps: BuildingPanelDeps): BuildingPanel {
     crew.update(model);
     staff.update(model);
     production.update(model);
+    templeFire.update(model);
     home.update(model);
     offers.update(model);
     stock.update(model, fresh);

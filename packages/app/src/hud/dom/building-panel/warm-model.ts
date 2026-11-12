@@ -114,6 +114,14 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
         })),
       })),
     },
+    templeFire: {
+      ...good(0),
+      label: 'Warm',
+      pct: 50,
+      unitSecondsLeft: 150,
+      storeSecondsLeft: 750,
+      burning: true,
+    },
     stock: Array.from({ length: WARM_STOCK_LINES }, (_, goodType) => ({
       goodType,
       ...good(goodType),

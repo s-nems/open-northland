@@ -741,7 +741,7 @@ export const plContent = {
     'temple-oil': {
       title: 'Oliwa w świątyni',
       summary:
-        'Dwie świątynie zaczynają bez oliwy, a druid zanosi ją do obu: zapala się ogień wikingów i jasna poświata. Uszkodzona świątynia zostaje ciemna mimo pełnego zapasu.',
+        'Świątynie wszystkich nacji zaczynają bez oliwy, a druid każdej z nich zanosi ją ze swojej chaty: zapala się ogień wikingów i jasna poświata przy każdej świątyni. Uszkodzona świątynia zostaje ciemna mimo pełnego zapasu.',
     },
     'household-goods': {
       title: 'Wyposażenie domu',

@@ -30,7 +30,6 @@ import { pct } from './bars.js';
 import {
   type ConstructionModel,
   constructionModel,
-  liveAmounts,
   type StockAlert,
   type StockRow,
   stockRows,
@@ -40,7 +39,7 @@ import {
 } from './building-materials.js';
 import { type ProductionModel, productionModel } from './building-production.js';
 import { type BuildingStaffModel, buildingStaff, garrisonPosts, siteCrew } from './building-staff.js';
-import { type BuildingStatusModel, buildingStatus, type TempleBlessing } from './building-status.js';
+import { type BuildingStatusModel, buildingStatus } from './building-status.js';
 import {
   type BuildingDef,
   buildingDef,
@@ -55,6 +54,7 @@ import {
   type UnitPanelModelContext,
 } from './context.js';
 import type { SeatControl } from './settler-household.js';
+import { type TempleFireModel, templeBlessing, templeFireModel } from './temple-fire.js';
 import { offerSide, type TradeOfferSide } from './trade.js';
 import { workStatusDetail } from './work-status.js';
 
@@ -62,6 +62,7 @@ export * from './building-materials.js';
 export * from './building-production.js';
 export * from './building-staff.js';
 export * from './building-status.js';
+export * from './temple-fire.js';
 
 export type HouseholdEffect = 'cooking' | 'rest' | 'piety';
 
@@ -181,6 +182,8 @@ export interface BuildingPanelModel {
   /** A site's builders, beside the staff it already has; null once it stands. */
   readonly crew: BuildingStaffModel | null;
   readonly production: ProductionModel | null;
+  /** A fuelled temple's burning unit of oil, null for any other house and a foreign one. */
+  readonly templeFire: TempleFireModel | null;
   readonly stock: readonly StockRow[];
   readonly stockLayout: StockLayout;
   readonly homeQuality: HomeQualityModel | null;
@@ -483,22 +486,6 @@ function craftingNow(ctx: UnitPanelModelContext, ent: SnapshotEntity): string | 
   return best === null ? null : goodLabel(ctx, best.good);
 }
 
-/** A temple's blessing off its `TempleFire`: on with the oil it holds still to burn, else out for a wound
- *  or for want of oil. Null for any house the sim keeps no temple fire on. */
-function templeBlessing(def: BuildingDef | undefined, ent: SnapshotEntity): TempleBlessing | null {
-  const fire = ent.components.TempleFire as { burnedSeconds?: unknown; blessing?: unknown } | undefined;
-  if (fire === undefined) return null;
-  if (fire.blessing !== true) {
-    const health = healthOf(ent);
-    return { state: health !== undefined && health.hitpoints < health.max ? 'damaged' : 'no-oil' };
-  }
-  const fuel = def?.prayerSite === 'temple' ? def.stock[0]?.goodType : undefined;
-  if (fuel === undefined) return { state: 'on', secondsLeft: null };
-  const units = liveAmounts(ent.components.Stockpile).get(fuel) ?? 0;
-  const burned = num(fire.burnedSeconds) ?? 0;
-  return { state: 'on', secondsLeft: units * systems.TEMPLE_FUEL_BURN_SECONDS - burned };
-}
-
 export function buildingPanelModel(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -575,6 +562,7 @@ export function buildingPanelModel(
     staff,
     crew,
     production: foreign || site ? null : productionModel(ctx, snapshot, def, ent),
+    templeFire: foreign || site ? null : templeFireModel(ctx, def, ent),
     stock,
     stockLayout: stockLayoutOf(def, stock),
     homeQuality:
