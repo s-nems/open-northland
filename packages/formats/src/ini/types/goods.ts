@@ -11,9 +11,9 @@ import { getInt, getIntValues, getStr } from '../props.js';
 /** Holy oil and crockery: effects are described in the owned English tutorial; values are clean-room
  * observations of the original's house demand, delivery and per-use arithmetic. Furniture is the owner's
  * design, not an observation: a piece, 1000 points, houses one extra family (`furnishedFamilies`), and
- * only that family wears it. Its wear aims at a piece lasting a family about 10 to 15 game minutes of
+ * only that family wears it. Its wear aims at a piece lasting a family about 20 to 30 game minutes of
  * sleeps and meals, scaled from AI-run play of a real map, where a family starts about 18 of them at home
- * an hour; a child costs half a piece. The readable good rows name no fields for this policy, so it stays
+ * an hour; a child costs a quarter of a piece. The readable good rows name no fields for this policy, so it stays
  * beside extraction as explicit calibrated content. */
 const HOME_QUALITY_BY_GOOD_ID = {
   holy_oil: {
@@ -36,7 +36,7 @@ const HOME_QUALITY_BY_GOOD_ID = {
     effect: 'lodging',
     deliveryValue: 1000,
     minimumHomeLevel: 0,
-    wear: { child: 500, sleep: 250, meal: 250 },
+    wear: { child: 250, sleep: 125, meal: 125 },
   },
 } as const;
 
