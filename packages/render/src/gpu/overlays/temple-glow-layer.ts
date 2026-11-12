@@ -29,7 +29,7 @@ export interface TempleGlowFrame {
 }
 
 /** The aura's strength at the top of its breath. Tuned by eye. */
-const AURA_ALPHA = 0.5;
+const AURA_ALPHA = 0.3;
 /** The wall line's and the rim's half-widths as shares of the drawn temple's. Tuned by eye. */
 const WALL_SPREAD = 0.8;
 const RIM_SPREAD = 2;
@@ -44,7 +44,7 @@ const KINDLE_STEP_SECONDS = 0.1;
 const MOTE_COLOUR = 0xbfeaff;
 const MOTE_SIZE = 14;
 const MOTE_RISE = 0.45;
-const MOTE_ALPHA = 0.65;
+const MOTE_ALPHA = 0.5;
 
 const QUAD_CORNERS = [-1, -1, 1, -1, 1, 1, -1, 1];
 const QUAD_INDICES = [0, 1, 2, 0, 2, 3];
